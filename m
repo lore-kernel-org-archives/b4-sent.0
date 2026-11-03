@@ -1,10 +1,10 @@
 From: Myria Sarvay <myrialsarvay@gmail.com>
-Date: Tue, 03 Nov 2026 21:14:41 +1100
-Subject: [PATCH 06/13] drivers/perf: apple_m1: Add Apple M3 Series Support
+Date: Tue, 03 Nov 2026 21:14:42 +1100
+Subject: [PATCH 07/13] drivers/perf: apple_m1: Add Apple M4 Series Support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-m3-plus-pmu-events-v1-6-a8eb6c1139fe@gmail.com>
+Message-Id: <20261103-m3-plus-pmu-events-v1-7-a8eb6c1139fe@gmail.com>
 References: <20261103-m3-plus-pmu-events-v1-0-a8eb6c1139fe@gmail.com>
 In-Reply-To: <20261103-m3-plus-pmu-events-v1-0-a8eb6c1139fe@gmail.com>
 To: Will Deacon <will@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
@@ -17,431 +17,344 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-perf-users@vger.kernel.org,
  asahi@lists.linux.dev, Yuvan Shen <yuvanshen09@gmail.com>, 
  Myria Sarvay <myrialsarvay@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=15657;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=14614;
  i=myrialsarvay@gmail.com; h=from:subject:message-id;
- bh=9K0VZg4LwOtc7amv6HDYMy1MvpcCZAVBqVIk8A5lK6I=;
- b=owJ4nJvAy8zAJRbk4iixYu2/l4yn1ZIYsl5uEeneK3nfeJfOu8167r4hAkx1ji7rtx4x+qQRd
- 7Sj7Up0oEJHKQuDGBeDrJgii75pmvZktoZLpctct8DMYWUCGcLAxSkAEzl2lOEX0zqLL//neK3P
- DHYpuup5ZYPjST9OxeeCRt7SCvac5wI2MTLcT569JW45b+y/HouX3Ct23zGN1G9q13bNkdL0l1O
- Yqs0KAHH0RU0=
+ bh=XOoeAlLqX7GMAw/JnyH1BeiYriV8te11JESBEN6vwIk=;
+ b=owJ4nJvAy8zAJRbk4iixYu2/l4yn1ZIYsl5uERE87SKnvmX2q9OyglrnNVI6GKcIzGGdyd5j9
+ UDr0Pmzvu4dpSwMYlwMsmKKLPqmadqT2RoulS5z3QIzh5UJZAgDF6cATGRnEyPDsU8le61qBe5b
+ aeVpPOfjF/my0sGoVe7XkiX2bq+k3FdfYfjD9zkwokdj38QNfKLmV20mxbjZTFrJPEfx5E6vp5M
+ 10xRZAZlFRPc=
 X-Developer-Key: i=myrialsarvay@gmail.com; a=openpgp;
  fpr=2F35662B930680D275A645B452444118A8ADFEE9
 X-Endpoint-Received: by B4 Relay for myrialsarvay@gmail.com/default with auth_id=1027
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the CPU PMU in the M3 Series chips. These events are
-encoded with 16 bits, and similar events have different codes when
-compared to the M1.
+Add support for the CPU PMU found in the various M4 SoCs. This PMU is
+almost exactly the same as the M3 PMU, just with different event
+encodings.
+
+One notable difference, is the addition of the various ARM_* events,
+which appear to implement the PMUv3 specific events that the arm PMU
+specification provides. Hook them up with the various perf events so
+that more can easily be counted on M4+ devices.
 
 Signed-off-by: Myria Sarvay <myrialsarvay@gmail.com>
 ---
- drivers/perf/apple_m1_cpu_pmu.c | 266 +++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 263 insertions(+), 3 deletions(-)
+ drivers/perf/apple_m1_cpu_pmu.c | 224 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 224 insertions(+)
 
 diff --git a/drivers/perf/apple_m1_cpu_pmu.c b/drivers/perf/apple_m1_cpu_pmu.c
-index e7e9b51ffadc..ac9373126054 100644
+index ac9373126054..bdbd138cf1db 100644
 --- a/drivers/perf/apple_m1_cpu_pmu.c
 +++ b/drivers/perf/apple_m1_cpu_pmu.c
-@@ -22,6 +22,7 @@
- #define M1_PMU_NR_COUNTERS		10
- 
- #define M1_PMU_CFG_EVENT		GENMASK(7, 0)
-+#define M3_PMU_CFG_EVENT		GENMASK(15, 0)
- 
- #define ANY_BUT_0_1			GENMASK(9, 2)
- #define ONLY_2_TO_7			GENMASK(7, 2)
-@@ -122,6 +123,84 @@ enum m1_pmu_events {
- 	M1_PMU_CFG_COUNT_GUEST					= BIT(11),
+@@ -201,6 +201,121 @@ enum m3_pmu_events {
+ 	M3_PMU_CFG_COUNT_GUEST					= BIT(19),
  };
  
-+enum m3_pmu_events {
-+	M3_PMU_PERFCTR_RETIRE_UOP				= 0x1,
-+	M3_PMU_PERFCTR_CORE_ACTIVE_CYCLE			= 0x2,
-+	M3_PMU_PERFCTR_FLUSH_RESTART_OTHER_NONSPEC		= 0x84,
-+	M3_PMU_PERFCTR_INST_ALL					= 0x8c,
-+	M3_PMU_PERFCTR_INST_BRANCH				= 0x8d,
-+	M3_PMU_PERFCTR_INST_BRANCH_CALL				= 0x8e,
-+	M3_PMU_PERFCTR_INST_BRANCH_RET				= 0x8f,
-+	M3_PMU_PERFCTR_INST_BRANCH_TAKEN			= 0x90,
-+	M3_PMU_PERFCTR_INST_BRANCH_INDIR			= 0x93,
-+	M3_PMU_PERFCTR_INST_INT_LD				= 0x95,
-+	M3_PMU_PERFCTR_INST_INT_ST				= 0x96,
-+	M3_PMU_PERFCTR_INST_INT_ALU				= 0x97,
-+	M3_PMU_PERFCTR_INST_SIMD_LD				= 0x98,
-+	M3_PMU_PERFCTR_INST_SIMD_ST				= 0x99,
-+	M3_PMU_PERFCTR_INST_SIMD_ALU				= 0x9a,
-+	M3_PMU_PERFCTR_INST_LDST				= 0x9b,
-+	M3_PMU_PERFCTR_INST_BARRIER				= 0x9c,
-+	M3_PMU_PERFCTR_INST_SIMD_ALU_VEC			= 0x9f,
-+	M3_PMU_PERFCTR_L1D_CACHE_MISS_LD_NONSPEC		= 0xbf,
-+	M3_PMU_PERFCTR_L1D_CACHE_MISS_ST_NONSPEC		= 0xc0,
-+	M3_PMU_PERFCTR_L1D_TLB_MISS_NONSPEC			= 0xc1,
-+	M3_PMU_PERFCTR_ST_MEM_ORDER_VIOL_LD_NONSPEC		= 0xc4,
-+	M3_PMU_PERFCTR_BRANCH_COND_MISPRED_NONSPEC		= 0xc5,
-+	M3_PMU_PERFCTR_BRANCH_INDIR_MISPRED_NONSPEC		= 0xc6,
-+	M3_PMU_PERFCTR_BRANCH_RET_INDIR_MISPRED_NONSPEC		= 0xc8,
-+	M3_PMU_PERFCTR_BRANCH_CALL_INDIR_MISPRED_NONSPEC	= 0xca,
-+	M3_PMU_PERFCTR_BRANCH_MISPRED_NONSPEC			= 0xcb,
-+	M3_PMU_PERFCTR_MAP_DISPATCH_BUBBLE_IC			= 0x182,
-+	M3_PMU_PERFCTR_MAP_DISPATCH_BUBBLE_ITLB			= 0x183,
-+	M3_PMU_PERFCTR_DECODE_UOP				= 0x186,
-+	M3_PMU_PERFCTR_L1I_TLB_MISS_DEMAND			= 0x1d4,
-+	M3_PMU_PERFCTR_MAP_DISPATCH_BUBBLE			= 0x1d6,
-+	M3_PMU_PERFCTR_L1I_CACHE_MISS_DEMAND			= 0x1db,
-+	M3_PMU_PERFCTR_FETCH_RESTART				= 0x1de,
-+	M3_PMU_PERFCTR_MAP_UOP					= 0x269,
-+	M3_PMU_PERFCTR_INTERRUPT_PENDING			= 0x26c,
-+	M3_PMU_PERFCTR_MAP_STALL_DISPATCH			= 0x270,
-+	M3_PMU_PERFCTR_MAP_REWIND				= 0x275,
-+	M3_PMU_PERFCTR_MAP_STALL				= 0x276,
-+	M3_PMU_PERFCTR_MAP_INT_UOP				= 0x27c,
-+	M3_PMU_PERFCTR_MAP_LDST_UOP				= 0x27d,
-+	M3_PMU_PERFCTR_MAP_SIMD_UOP				= 0x27e,
-+	M3_PMU_PERFCTR_SCHEDULE_UOP_ANY				= 0x283,
-+	M3_PMU_PERFCTR_LDST_UNIT_OLD_L1D_CACHE_MISS		= 0x290,
-+	M3_PMU_PERFCTR_LDST_UNIT_WAITING_OLD_L1D_CACHE_MISS	= 0x291,
-+	M3_PMU_PERFCTR_SCHEDULE_EMPTY				= 0x351,
-+	M3_PMU_PERFCTR_L1I_TLB_FILL				= 0x404,
-+	M3_PMU_PERFCTR_L1D_TLB_FILL				= 0x405,
-+	M3_PMU_PERFCTR_MMU_TABLE_WALK_INSTRUCTION		= 0x407,
-+	M3_PMU_PERFCTR_MMU_TABLE_WALK_DATA			= 0x408,
-+	M3_PMU_PERFCTR_L2_TLB_MISS_INSTRUCTION			= 0x40a,
-+	M3_PMU_PERFCTR_L2_TLB_MISS_DATA				= 0x40b,
-+	M3_PMU_PERFCTR_L1D_TLB_ACCESS				= 0x5a0,
-+	M3_PMU_PERFCTR_L1D_TLB_MISS				= 0x5a1,
-+	M3_PMU_PERFCTR_L1D_CACHE_MISS_ST			= 0x5a2,
-+	M3_PMU_PERFCTR_L1D_CACHE_MISS_LD			= 0x5a3,
-+	M3_PMU_PERFCTR_LD_UNIT_UOP				= 0x5a6,
-+	M3_PMU_PERFCTR_ST_UNIT_UOP				= 0x5a7,
-+	M3_PMU_PERFCTR_L1D_CACHE_WRITEBACK			= 0x5a8,
-+	M3_PMU_PERFCTR_LDST_X64_UOP				= 0x5b1,
-+	M3_PMU_PERFCTR_LDST_XPG_UOP				= 0x5b2,
-+	M3_PMU_PERFCTR_ATOMIC_OR_EXCLUSIVE_SUCC			= 0x5b3,
-+	M3_PMU_PERFCTR_ATOMIC_OR_EXCLUSIVE_FAIL			= 0x5b4,
-+	M3_PMU_PERFCTR_ST_NT_UOP				= 0x5e5,
-+	M3_PMU_PERFCTR_LD_NT_UOP				= 0x5e6,
-+	M3_PMU_PERFCTR_LAST					= M3_PMU_CFG_EVENT,
++enum m4_pmu_events {
++	M4_PMU_PERFCTR_ARM_L1D_CACHE_REFILL				= 0x03,
++	M4_PMU_PERFCTR_ARM_L1D_CACHE					= 0x04,
++	M4_PMU_PERFCTR_INST_ALL						= 0x08,
++	M4_PMU_PERFCTR_ARM_BR_MIS_PRED					= 0x10,
++	M4_PMU_PERFCTR_CORE_ACTIVE_CYCLE				= 0x11,
++	M4_PMU_PERFCTR_ARM_BR_PRED					= 0x12,
++	M4_PMU_PERFCTR_INST_BRANCH					= 0x21,
++	M4_PMU_PERFCTR_BRANCH_MISPRED_NONSPEC				= 0x22,
++	M4_PMU_PERFCTR_ARM_STALL_FRONTEND				= 0x23,
++	M4_PMU_PERFCTR_ARM_STALL_BACKEND				= 0x24,
++	M4_PMU_PERFCTR_ARM_L1D_CACHE_LMISS_RD				= 0x39,
++	M4_PMU_PERFCTR_RETIRE_UOP					= 0x3a,
++	M4_PMU_PERFCTR_MAP_UOP						= 0x3b,
++	M4_PMU_PERFCTR_ARM_STALL					= 0x3c,
++	M4_PMU_PERFCTR_ARM_STALL_SLOT_BACKEND				= 0x3d,
++	M4_PMU_PERFCTR_ARM_STALL_SLOT_FRONTEND				= 0x3e,
++	M4_PMU_PERFCTR_ARM_STALL_SLOT					= 0x3f,
++	M4_PMU_PERFCTR_ARM_L1D_CACHE_RD					= 0x40,
++	M4_PMU_PERFCTR_MAP_DISPATCH_BUBBLE_IC				= 0x182,
++	M4_PMU_PERFCTR_MAP_DISPATCH_BUBBLE_ITLB				= 0x183,
++	M4_PMU_PERFCTR_DECODE_UOP					= 0x186,
++	M4_PMU_PERFCTR_L1I_TLB_MISS_DEMAND				= 0x1d4,
++	M4_PMU_PERFCTR_MAP_DISPATCH_BUBBLE				= 0x1d6,
++	M4_PMU_PERFCTR_FETCH_RESTART					= 0x1de,
++	M4_PMU_PERFCTR_MAP_DISPATCH_BUBBLE_SLOT				= 0x1e1,
++	M4_PMU_PERFCTR_INTERRUPT_PENDING				= 0x26c,
++	M4_PMU_PERFCTR_MAP_STALL_DISPATCH				= 0x270,
++	M4_PMU_PERFCTR_MAP_REWIND					= 0x275,
++	M4_PMU_PERFCTR_MAP_STALL					= 0x276,
++	M4_PMU_PERFCTR_MAP_INT_UOP					= 0x27c,
++	M4_PMU_PERFCTR_MAP_LDST_UOP					= 0x27d,
++	M4_PMU_PERFCTR_MAP_SIMD_UOP					= 0x27e,
++	M4_PMU_PERFCTR_SCHEDULE_UOP_ANY					= 0x283,
++	M4_PMU_PERFCTR_MAP_INT_SME_UOP					= 0x285,
++	M4_PMU_PERFCTR_SME_ENGINE_SM_ENABLE				= 0x286,
++	M4_PMU_PERFCTR_SME_ENGINE_SM_ZA_ENABLE				= 0x287,
++	M4_PMU_PERFCTR_SME_ENGINE_ZA_ENABLED_SM_DISABLED		= 0x288,
++	M4_PMU_PERFCTR_LDST_UNIT_WAITING_SME_ENGINE_INST_QUEUE_FULL	= 0x28c,
++	M4_PMU_PERFCTR_SCHEDULE_WAITING_SME_ENGINE_REG_DATA		= 0x28e,
++	M4_PMU_PERFCTR_LDST_UNIT_WAITING_SME_ENGINE_MEM_DATA		= 0x28f,
++	M4_PMU_PERFCTR_LDST_UNIT_OLD_L1D_CACHE_MISS			= 0x290,
++	M4_PMU_PERFCTR_LDST_UNIT_WAITING_OLD_L1D_CACHE_MISS		= 0x291,
++	M4_PMU_PERFCTR_LD_UNIT_WAITING_YOUNG_L1D_CACHE_MISS		= 0x294,
++	M4_PMU_PERFCTR_MAP_RECOVERY					= 0x2ad,
++	M4_PMU_PERFCTR_MAP_STALL_NONRECOVERY				= 0x2ae,
++	M4_PMU_PERFCTR_SCHEDULE_EMPTY					= 0x351,
++	M4_PMU_PERFCTR_L1I_TLB_FILL					= 0x404,
++	M4_PMU_PERFCTR_L1D_TLB_FILL					= 0x405,
++	M4_PMU_PERFCTR_MMU_TABLE_WALK_INSTRUCTION			= 0x407,
++	M4_PMU_PERFCTR_MMU_TABLE_WALK_DATA				= 0x408,
++	M4_PMU_PERFCTR_L2_TLB_MISS_INSTRUCTION				= 0x40a,
++	M4_PMU_PERFCTR_L2_TLB_MISS_DATA					= 0x40b,
++	M4_PMU_PERFCTR_LDST_SME_XPG_UOP					= 0x508,
++	M4_PMU_PERFCTR_INST_SME_ENGINE_PACKING_FUSED			= 0x529,
++	M4_PMU_PERFCTR_LD_BLOCKED_BY_SME_LDST				= 0x52c,
++	M4_PMU_PERFCTR_ST_BARRIER_BLOCKED_BY_SME_LDST			= 0x52e,
++	M4_PMU_PERFCTR_LD_SME_NT_UOP					= 0x573,
++	M4_PMU_PERFCTR_ST_SME_NT_UOP					= 0x574,
++	M4_PMU_PERFCTR_LD_SME_NORMAL_UOP				= 0x575,
++	M4_PMU_PERFCTR_ST_SME_NORMAL_UOP				= 0x576,
++	M4_PMU_PERFCTR_LDST_SME_PRED_INACTIVE				= 0x577,
++	M4_PMU_PERFCTR_L1D_TLB_ACCESS					= 0x5a0,
++	M4_PMU_PERFCTR_L1D_TLB_MISS					= 0x5a1,
++	M4_PMU_PERFCTR_L1D_CACHE_MISS_ST				= 0x5a2,
++	M4_PMU_PERFCTR_L1D_CACHE_MISS_LD				= 0x5a3,
++	M4_PMU_PERFCTR_LD_UNIT_UOP					= 0x5a6,
++	M4_PMU_PERFCTR_ST_UNIT_UOP					= 0x5a7,
++	M4_PMU_PERFCTR_L1D_CACHE_WRITEBACK				= 0x5a8,
++	M4_PMU_PERFCTR_LDST_X64_UOP					= 0x5b1,
++	M4_PMU_PERFCTR_LDST_XPG_UOP					= 0x5b2,
++	M4_PMU_PERFCTR_ATOMIC_OR_EXCLUSIVE_SUCC				= 0x5b3,
++	M4_PMU_PERFCTR_ATOMIC_OR_EXCLUSIVE_FAIL				= 0x5b4,
++	M4_PMU_PERFCTR_ST_NT_UOP					= 0x5e5,
++	M4_PMU_PERFCTR_LD_NT_UOP					= 0x5e6,
++	M4_PMU_PERFCTR_FLUSH_RESTART_OTHER_NONSPEC			= 0x884,
++	M4_PMU_PERFCTR_INST_BRANCH_CALL					= 0x88e,
++	M4_PMU_PERFCTR_INST_BRANCH_RET					= 0x88f,
++	M4_PMU_PERFCTR_INST_BRANCH_TAKEN				= 0x890,
++	M4_PMU_PERFCTR_INST_BRANCH_INDIR				= 0x893,
++	M4_PMU_PERFCTR_INST_BRANCH_COND					= 0x894,
++	M4_PMU_PERFCTR_INST_INT_LD					= 0x895,
++	M4_PMU_PERFCTR_INST_INT_ST					= 0x896,
++	M4_PMU_PERFCTR_INST_INT_ALU					= 0x897,
++	M4_PMU_PERFCTR_INST_SIMD_LD					= 0x898,
++	M4_PMU_PERFCTR_INST_SIMD_ST					= 0x899,
++	M4_PMU_PERFCTR_INST_SIMD_ALU					= 0x89a,
++	M4_PMU_PERFCTR_INST_LDST					= 0x89b,
++	M4_PMU_PERFCTR_INST_BARRIER					= 0x89c,
++	M4_PMU_PERFCTR_INST_SIMD_ALU_VEC				= 0x89f,
++	M4_PMU_PERFCTR_INST_SME_ENGINE_SCALARFP				= 0x8a0,
++	M4_PMU_PERFCTR_INST_SME_ENGINE_LD				= 0x8a1,
++	M4_PMU_PERFCTR_INST_SME_ENGINE_ST				= 0x8a2,
++	M4_PMU_PERFCTR_INST_SME_ENGINE_ALU				= 0x8a3,
++	M4_PMU_PERFCTR_L1D_CACHE_MISS_LD_NONSPEC			= 0x8bf,
++	M4_PMU_PERFCTR_L1D_CACHE_MISS_ST_NONSPEC			= 0x8c0,
++	M4_PMU_PERFCTR_L1D_TLB_MISS_NONSPEC				= 0x8c1,
++	M4_PMU_PERFCTR_ST_MEM_ORDER_VIOL_LD_NONSPEC			= 0x8c4,
++	M4_PMU_PERFCTR_BRANCH_COND_MISPRED_NONSPEC			= 0x8c5,
++	M4_PMU_PERFCTR_BRANCH_INDIR_MISPRED_NONSPEC			= 0x8c6,
++	M4_PMU_PERFCTR_BRANCH_RET_INDIR_MISPRED_NONSPEC			= 0x8c8,
++	M4_PMU_PERFCTR_BRANCH_CALL_INDIR_MISPRED_NONSPEC		= 0x8ca,
++	M4_PMU_PERFCTR_L1I_CACHE_MISS_DEMAND				= 0x4006,
++	M4_PMU_PERFCTR_LAST						= M3_PMU_CFG_EVENT,
 +
 +	/*
 +	 * From this point onwards, these are not actual HW events,
 +	 * but attributes that get stored in hw->config_base.
 +	 */
-+	M3_PMU_CFG_COUNT_USER					= BIT(16),
-+	M3_PMU_CFG_COUNT_KERNEL					= BIT(17),
-+	M3_PMU_CFG_COUNT_HOST					= BIT(18),
-+	M3_PMU_CFG_COUNT_GUEST					= BIT(19),
++	M4_PMU_CFG_COUNT_USER						= BIT(16),
++	M4_PMU_CFG_COUNT_KERNEL						= BIT(17),
++	M4_PMU_CFG_COUNT_HOST						= BIT(18),
++	M4_PMU_CFG_COUNT_GUEST						= BIT(19),
 +};
 +
  /*
   * Per-event affinity table. Most events can be installed on counter
   * 2-9, but there are a number of exceptions. Note that this table
-@@ -164,6 +243,40 @@ static const u16 m1_pmu_event_affinity[M1_PMU_PERFCTR_LAST + 1] = {
- 	[M1_PMU_PERFCTR_UNKNOWN_fd]				= ONLY_2_4_6,
+@@ -277,6 +392,40 @@ static const struct event_affinity_16 m3_pmu_event_affinity[] = {
+ 	{ M3_PMU_PERFCTR_BRANCH_MISPRED_NONSPEC,		ONLY_5_6_7		},
  };
  
-+struct event_affinity_16 {
-+	u16 event_code;
-+	u16 affinity;
-+};
-+
-+static const struct event_affinity_16 m3_pmu_event_affinity[] = {
-+	{ M3_PMU_PERFCTR_RETIRE_UOP,				BIT(7)			},
-+	{ M3_PMU_PERFCTR_CORE_ACTIVE_CYCLE,			ANY_BUT_0_1 | BIT(0)	},
-+	{ M3_PMU_PERFCTR_INST_ALL,				BIT(7) | BIT(1)		},
-+	{ M3_PMU_PERFCTR_INST_BRANCH,				ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_INST_BRANCH_CALL,			ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_INST_BRANCH_RET,			ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_INST_BRANCH_TAKEN,			ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_INST_BRANCH_INDIR,			ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_INST_INT_LD,				ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_INST_INT_ST,				ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_INST_INT_ALU,				BIT(7)			},
-+	{ M3_PMU_PERFCTR_INST_SIMD_LD,				ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_INST_SIMD_ST,				ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_INST_SIMD_ALU,				BIT(7)			},
-+	{ M3_PMU_PERFCTR_INST_LDST,				BIT(7)			},
-+	{ M3_PMU_PERFCTR_INST_BARRIER,				ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_INST_SIMD_ALU_VEC,			BIT(7)			},
-+	{ M3_PMU_PERFCTR_L1D_CACHE_MISS_LD_NONSPEC,		ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_L1D_CACHE_MISS_ST_NONSPEC,		ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_L1D_TLB_MISS_NONSPEC,			ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_ST_MEM_ORDER_VIOL_LD_NONSPEC,		ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_BRANCH_COND_MISPRED_NONSPEC,		ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_BRANCH_INDIR_MISPRED_NONSPEC,		ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_BRANCH_RET_INDIR_MISPRED_NONSPEC,	ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_BRANCH_CALL_INDIR_MISPRED_NONSPEC,	ONLY_5_6_7		},
-+	{ M3_PMU_PERFCTR_BRANCH_MISPRED_NONSPEC,		ONLY_5_6_7		},
++static const struct event_affinity_16 m4_pmu_event_affinity[] = {
++	{ M4_PMU_PERFCTR_INST_ALL,				ONLY_2_TO_7 | BIT(1)	},
++	{ M4_PMU_PERFCTR_CORE_ACTIVE_CYCLE,			ANY_BUT_0_1 | BIT(0)	},
++	{ M4_PMU_PERFCTR_INST_BRANCH,				ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_BRANCH_MISPRED_NONSPEC,		ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_RETIRE_UOP,				ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_BRANCH_CALL,			ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_BRANCH_RET,			ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_BRANCH_TAKEN,			ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_BRANCH_INDIR,			ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_BRANCH_COND,			ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_INT_LD,				ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_INT_ST,				ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_INT_ALU,				BIT(7)			},
++	{ M4_PMU_PERFCTR_INST_SIMD_LD,				ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_SIMD_ST,				ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_SIMD_ALU,				BIT(7)			},
++	{ M4_PMU_PERFCTR_INST_LDST,				BIT(7)			},
++	{ M4_PMU_PERFCTR_INST_BARRIER,				ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_SIMD_ALU_VEC,			BIT(7)			},
++	{ M4_PMU_PERFCTR_INST_SME_ENGINE_SCALARFP,		ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_SME_ENGINE_LD,			ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_SME_ENGINE_ST,			ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_INST_SME_ENGINE_ALU,			ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_L1D_CACHE_MISS_LD_NONSPEC,		ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_L1D_CACHE_MISS_ST_NONSPEC,		ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_L1D_TLB_MISS_NONSPEC,			ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_ST_MEM_ORDER_VIOL_LD_NONSPEC,		ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_BRANCH_COND_MISPRED_NONSPEC,		ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_BRANCH_INDIR_MISPRED_NONSPEC,		ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_BRANCH_RET_INDIR_MISPRED_NONSPEC,	ONLY_2_TO_7		},
++	{ M4_PMU_PERFCTR_BRANCH_CALL_INDIR_MISPRED_NONSPEC,	ONLY_2_TO_7		},
 +};
 +
  static const unsigned int m1_pmu_perf_map[PERF_COUNT_HW_MAX] = {
  	PERF_MAP_ALL_UNSUPPORTED,
  	[PERF_COUNT_HW_CPU_CYCLES]		= M1_PMU_PERFCTR_CORE_ACTIVE_CYCLE,
-@@ -172,9 +285,20 @@ static const unsigned int m1_pmu_perf_map[PERF_COUNT_HW_MAX] = {
- 	[PERF_COUNT_HW_BRANCH_MISSES]		= M1_PMU_PERFCTR_BRANCH_MISPRED_NONSPEC,
+@@ -293,12 +442,27 @@ static const unsigned int m3_pmu_perf_map[PERF_COUNT_HW_MAX] = {
+ 	[PERF_COUNT_HW_BRANCH_MISSES]		= M3_PMU_PERFCTR_BRANCH_MISPRED_NONSPEC,
  };
  
-+static const unsigned int m3_pmu_perf_map[PERF_COUNT_HW_MAX] = {
++static const unsigned int m4_pmu_perf_map[PERF_COUNT_HW_MAX] = {
 +	PERF_MAP_ALL_UNSUPPORTED,
-+	[PERF_COUNT_HW_CPU_CYCLES]		= M3_PMU_PERFCTR_CORE_ACTIVE_CYCLE,
-+	[PERF_COUNT_HW_INSTRUCTIONS]		= M3_PMU_PERFCTR_INST_ALL,
-+	[PERF_COUNT_HW_BRANCH_INSTRUCTIONS]	= M3_PMU_PERFCTR_INST_BRANCH,
-+	[PERF_COUNT_HW_BRANCH_MISSES]		= M3_PMU_PERFCTR_BRANCH_MISPRED_NONSPEC,
++	[PERF_COUNT_HW_CPU_CYCLES]		= M4_PMU_PERFCTR_CORE_ACTIVE_CYCLE,
++	[PERF_COUNT_HW_INSTRUCTIONS]		= M4_PMU_PERFCTR_INST_ALL,
++	[PERF_COUNT_HW_CACHE_REFERENCES]	= M4_PMU_PERFCTR_ARM_L1D_CACHE,
++	[PERF_COUNT_HW_CACHE_MISSES]		= M4_PMU_PERFCTR_ARM_L1D_CACHE_REFILL,
++	[PERF_COUNT_HW_BRANCH_INSTRUCTIONS]	= M4_PMU_PERFCTR_INST_BRANCH,
++	[PERF_COUNT_HW_BRANCH_MISSES]		= M4_PMU_PERFCTR_ARM_BR_MIS_PRED,
++	[PERF_COUNT_HW_STALLED_CYCLES_FRONTEND]	= M4_PMU_PERFCTR_ARM_STALL_FRONTEND,
++	[PERF_COUNT_HW_STALLED_CYCLES_BACKEND]	= M4_PMU_PERFCTR_ARM_STALL_BACKEND,
 +};
 +
  #define M1_PMUV3_EVENT_MAP(pmuv3_event, m1_event)				\
  	[ARMV8_PMUV3_PERFCTR_##pmuv3_event]	= M1_PMU_PERFCTR_##m1_event
  
-+#define M3_PMUV3_EVENT_MAP(pmuv3_event, m3_event)				\
-+	[ARMV8_PMUV3_PERFCTR_##pmuv3_event]	= M3_PMU_PERFCTR_##m3_event
+ #define M3_PMUV3_EVENT_MAP(pmuv3_event, m3_event)				\
+ 	[ARMV8_PMUV3_PERFCTR_##pmuv3_event]	= M3_PMU_PERFCTR_##m3_event
+ 
++#define M4_PMUV3_EVENT_MAP(pmuv3_event, m4_event)				\
++	[ARMV8_PMUV3_PERFCTR_##pmuv3_event]	= M4_PMU_PERFCTR_##m4_event
 +
  static const u16 m1_pmu_pmceid_map[ARMV8_PMUV3_MAX_COMMON_EVENTS] = {
  	[0 ... ARMV8_PMUV3_MAX_COMMON_EVENTS - 1]	= HW_OP_UNSUPPORTED,
  	M1_PMUV3_EVENT_MAP(INST_RETIRED,	INST_ALL),
-@@ -183,6 +307,14 @@ static const u16 m1_pmu_pmceid_map[ARMV8_PMUV3_MAX_COMMON_EVENTS] = {
- 	M1_PMUV3_EVENT_MAP(BR_MIS_PRED_RETIRED,	BRANCH_MISPRED_NONSPEC),
+@@ -315,6 +479,25 @@ static const u16 m3_pmu_pmceid_map[ARMV8_PMUV3_MAX_COMMON_EVENTS] = {
+ 	M3_PMUV3_EVENT_MAP(BR_MIS_PRED_RETIRED,	BRANCH_MISPRED_NONSPEC),
  };
  
-+static const u16 m3_pmu_pmceid_map[ARMV8_PMUV3_MAX_COMMON_EVENTS] = {
++static const u16 m4_pmu_pmceid_map[ARMV8_PMUV3_MAX_COMMON_EVENTS] = {
 +	[0 ... ARMV8_PMUV3_MAX_COMMON_EVENTS - 1]	= HW_OP_UNSUPPORTED,
-+	M3_PMUV3_EVENT_MAP(INST_RETIRED,	INST_ALL),
-+	M3_PMUV3_EVENT_MAP(CPU_CYCLES,		CORE_ACTIVE_CYCLE),
-+	M3_PMUV3_EVENT_MAP(BR_RETIRED,		INST_BRANCH),
-+	M3_PMUV3_EVENT_MAP(BR_MIS_PRED_RETIRED,	BRANCH_MISPRED_NONSPEC),
++	M4_PMUV3_EVENT_MAP(L1D_CACHE_REFILL,	ARM_L1D_CACHE_REFILL),
++	M4_PMUV3_EVENT_MAP(L1D_CACHE,		ARM_L1D_CACHE),
++	M4_PMUV3_EVENT_MAP(INST_RETIRED,	INST_ALL),
++	M4_PMUV3_EVENT_MAP(BR_MIS_PRED,		ARM_BR_MIS_PRED),
++	M4_PMUV3_EVENT_MAP(CPU_CYCLES,		CORE_ACTIVE_CYCLE),
++	M4_PMUV3_EVENT_MAP(BR_PRED,		ARM_BR_PRED),
++	M4_PMUV3_EVENT_MAP(BR_RETIRED,		INST_BRANCH),
++	M4_PMUV3_EVENT_MAP(STALL_FRONTEND,	ARM_STALL_FRONTEND),
++	M4_PMUV3_EVENT_MAP(STALL_BACKEND,	ARM_STALL_BACKEND),
++	M4_PMUV3_EVENT_MAP(L1D_CACHE_LMISS_RD,	ARM_L1D_CACHE_LMISS_RD),
++	M4_PMUV3_EVENT_MAP(STALL,		ARM_STALL),
++	M4_PMUV3_EVENT_MAP(STALL_SLOT_BACKEND,	ARM_STALL_SLOT_BACKEND),
++	M4_PMUV3_EVENT_MAP(STALL_SLOT_FRONTEND,	ARM_STALL_SLOT_FRONTEND),
++	M4_PMUV3_EVENT_MAP(STALL_SLOT,		ARM_STALL_SLOT),
++	M4_PMUV3_EVENT_MAP(BR_MIS_PRED_RETIRED,	BRANCH_MISPRED_NONSPEC),
 +};
 +
  /* sysfs definitions */
  static ssize_t m1_pmu_events_sysfs_show(struct device *dev,
  					struct device_attribute *attr,
-@@ -192,38 +324,76 @@ static ssize_t m1_pmu_events_sysfs_show(struct device *dev,
- 
- 	pmu_attr = container_of(attr, struct perf_pmu_events_attr, attr);
- 
-+	return sprintf(page, "event=0x%02llx\n", pmu_attr->id);
-+}
-+
-+static ssize_t m3_pmu_events_sysfs_show(struct device *dev,
-+					struct device_attribute *attr,
-+					char *page)
-+{
-+	struct perf_pmu_events_attr *pmu_attr;
-+
-+	pmu_attr = container_of(attr, struct perf_pmu_events_attr, attr);
-+
- 	return sprintf(page, "event=0x%04llx\n", pmu_attr->id);
- }
- 
- #define M1_PMU_EVENT_ATTR(name, config)					\
- 	PMU_EVENT_ATTR_ID(name, m1_pmu_events_sysfs_show, config)
- 
-+#define M3_PMU_EVENT_ATTR(name, config)					\
-+	PMU_EVENT_ATTR_ID(name, m3_pmu_events_sysfs_show, config)
-+
- static struct attribute *m1_pmu_event_attrs[] = {
- 	M1_PMU_EVENT_ATTR(cycles, M1_PMU_PERFCTR_CORE_ACTIVE_CYCLE),
- 	M1_PMU_EVENT_ATTR(instructions, M1_PMU_PERFCTR_INST_ALL),
+@@ -356,6 +539,12 @@ static struct attribute *m3_pmu_event_attrs[] = {
  	NULL,
  };
  
-+static struct attribute *m3_pmu_event_attrs[] = {
-+	M3_PMU_EVENT_ATTR(cycles, M3_PMU_PERFCTR_CORE_ACTIVE_CYCLE),
-+	M3_PMU_EVENT_ATTR(instructions, M3_PMU_PERFCTR_INST_ALL),
++static struct attribute *m4_pmu_event_attrs[] = {
++	M3_PMU_EVENT_ATTR(cycles, M4_PMU_PERFCTR_CORE_ACTIVE_CYCLE),
++	M3_PMU_EVENT_ATTR(instructions, M4_PMU_PERFCTR_INST_ALL),
 +	NULL,
 +};
 +
  static const struct attribute_group m1_pmu_events_attr_group = {
  	.name = "events",
  	.attrs = m1_pmu_event_attrs,
+@@ -366,6 +555,11 @@ static const struct attribute_group m3_pmu_events_attr_group = {
+ 	.attrs = m3_pmu_event_attrs,
  };
  
-+static const struct attribute_group m3_pmu_events_attr_group = {
++static const struct attribute_group m4_pmu_events_attr_group = {
 +	.name = "events",
-+	.attrs = m3_pmu_event_attrs,
++	.attrs = m4_pmu_event_attrs,
 +};
 +
  PMU_FORMAT_ATTR_SHOW(event_8b, "config:0-7");
-+PMU_FORMAT_ATTR_SHOW(event_16b, "config:0-15");
+ PMU_FORMAT_ATTR_SHOW(event_16b, "config:0-15");
  
- static struct device_attribute format_attr_event_8b =
- 	__ATTR(event, 0444, event_8b_show, NULL);
-+static struct device_attribute format_attr_event_16b =
-+	__ATTR(event, 0444, event_16b_show, NULL);
- 
- static struct attribute *m1_pmu_format_attrs[] = {
- 	&format_attr_event_8b.attr,
- 	NULL,
- };
- 
-+static struct attribute *m3_pmu_format_attrs[] = {
-+	&format_attr_event_16b.attr,
-+	NULL,
-+};
-+
- static const struct attribute_group m1_pmu_format_attr_group = {
- 	.name = "format",
- 	.attrs = m1_pmu_format_attrs,
- };
- 
-+static const struct attribute_group m3_pmu_format_attr_group = {
-+	.name = "format",
-+	.attrs = m3_pmu_format_attrs,
-+};
-+
- /* Low level accessors. No synchronisation. */
- #define PMU_READ_COUNTER(_idx)						\
- 	case _idx:	return read_sysreg_s(SYS_IMP_APL_PMC## _idx ##_EL1)
-@@ -419,6 +589,19 @@ static void m1_pmu_configure_counter(unsigned int index, unsigned long config_ba
- 	__apple_pmu_configure_eventsel(index, evt, 8, M1_PMU_CFG_EVENT);
+@@ -740,6 +934,13 @@ static int m3_pmu_get_event_idx(struct pmu_hw_events *cpuc,
+ 					  m3_pmu_event_affinity);
  }
  
-+static void m3_pmu_configure_counter(unsigned int index, unsigned long config_base)
-+{
-+	bool kernel = config_base & M3_PMU_CFG_COUNT_KERNEL;
-+	bool guest = config_base & M3_PMU_CFG_COUNT_GUEST;
-+	bool host = config_base & M3_PMU_CFG_COUNT_HOST;
-+	bool user = config_base & M3_PMU_CFG_COUNT_USER;
-+	u16 evt = config_base & M3_PMU_CFG_EVENT;
-+
-+	__m1_pmu_configure_event_filter(index, user && host, kernel && host, true);
-+	__m1_pmu_configure_event_filter(index, user && guest, kernel && guest, false);
-+	__apple_pmu_configure_eventsel(index, evt, 16, M3_PMU_CFG_EVENT);
-+}
-+
- /* arm_pmu backend */
- static void m1_pmu_enable_event(struct perf_event *event)
- {
-@@ -428,6 +611,14 @@ static void m1_pmu_enable_event(struct perf_event *event)
- 	isb();
- }
- 
-+static void m3_pmu_enable_event(struct perf_event *event)
-+{
-+	m3_pmu_configure_counter(event->hw.idx, event->hw.config_base);
-+	m1_pmu_enable_counter(event->hw.idx);
-+	m1_pmu_enable_counter_interrupt(event->hw.idx);
-+	isb();
-+}
-+
- static void m1_pmu_disable_event(struct perf_event *event)
- {
- 	m1_pmu_disable_counter_interrupt(event->hw.idx);
-@@ -509,15 +700,46 @@ static int apple_pmu_get_event_idx(struct pmu_hw_events *cpuc,
- 	return -EAGAIN;
- }
- 
--static int m1_pmu_get_event_idx(struct pmu_hw_events *cpuc,
--				struct perf_event *event)
-+static int apple_pmu_get_event_idx_8(struct pmu_hw_events *cpuc,
-+				     struct perf_event *event,
-+				     const u16 event_affinities[M1_PMU_CFG_EVENT + 1])
- {
- 	unsigned long evtype = event->hw.config_base & M1_PMU_CFG_EVENT;
--	unsigned long affinity = m1_pmu_event_affinity[evtype];
-+	unsigned long affinity = event_affinities[evtype];
- 
- 	return apple_pmu_get_event_idx(cpuc, event, affinity);
- }
- 
-+static int apple_pmu_get_event_idx_16(struct pmu_hw_events *cpuc,
-+				      struct perf_event *event,
-+				      unsigned long event_affinities_size,
-+				      const struct event_affinity_16 event_affinities[])
-+{
-+	unsigned long evtype = event->hw.config_base & M3_PMU_CFG_EVENT;
-+	unsigned long affinity = ANY_BUT_0_1;
-+
-+	for (int idx = 0; idx < event_affinities_size; idx++) {
-+		if (event_affinities[idx].event_code == evtype) {
-+			affinity = event_affinities[idx].affinity;
-+			break;
-+		}
-+	}
-+	return apple_pmu_get_event_idx(cpuc, event, affinity);
-+}
-+
-+static int m1_pmu_get_event_idx(struct pmu_hw_events *cpuc,
++static int m4_pmu_get_event_idx(struct pmu_hw_events *cpuc,
 +				struct perf_event *event)
 +{
-+	return apple_pmu_get_event_idx_8(cpuc, event, m1_pmu_event_affinity);
-+}
-+
-+static int m3_pmu_get_event_idx(struct pmu_hw_events *cpuc,
-+				struct perf_event *event)
-+{
-+	return apple_pmu_get_event_idx_16(cpuc, event, ARRAY_SIZE(m3_pmu_event_affinity),
-+					  m3_pmu_event_affinity);
++	return apple_pmu_get_event_idx_16(cpuc, event, ARRAY_SIZE(m4_pmu_event_affinity),
++					  m4_pmu_event_affinity);
 +}
 +
  static void m1_pmu_clear_event_idx(struct pmu_hw_events *cpuc,
  				   struct perf_event *event)
  {
-@@ -572,6 +794,12 @@ static int m2_pmu_map_event(struct perf_event *event)
- 				   M1_PMU_CFG_EVENT);
+@@ -800,6 +1001,12 @@ static int m3_pmu_map_event(struct perf_event *event)
+ 				   M3_PMU_CFG_EVENT);
  }
  
-+static int m3_pmu_map_event(struct perf_event *event)
++static int m4_pmu_map_event(struct perf_event *event)
 +{
-+	return apple_pmu_map_event(event, &m3_pmu_perf_map, ARMPMU_EVT_63BIT,
++	return apple_pmu_map_event(event, &m4_pmu_perf_map, ARMPMU_EVT_63BIT,
 +				   M3_PMU_CFG_EVENT);
 +}
 +
  static int apple_pmu_map_pmuv3_event(unsigned int eventsel, const u16 pmceid_map[])
  {
  	u16 apple_event = HW_OP_UNSUPPORTED;
-@@ -587,6 +815,11 @@ static int m1_pmu_map_pmuv3_event(unsigned int eventsel)
- 	return apple_pmu_map_pmuv3_event(eventsel, m1_pmu_pmceid_map);
+@@ -820,6 +1027,11 @@ static int m3_pmu_map_pmuv3_event(unsigned int eventsel)
+ 	return apple_pmu_map_pmuv3_event(eventsel, m3_pmu_pmceid_map);
  }
  
-+static int m3_pmu_map_pmuv3_event(unsigned int eventsel)
++static int m4_pmu_map_pmuv3_event(unsigned int eventsel)
 +{
-+	return apple_pmu_map_pmuv3_event(eventsel, m3_pmu_pmceid_map);
++	return apple_pmu_map_pmuv3_event(eventsel, m4_pmu_pmceid_map);
 +}
 +
  static void apple_pmu_init_pmceid(struct arm_pmu *pmu)
  {
  	unsigned int event;
-@@ -635,6 +868,29 @@ static int m1_pmu_set_event_filter(struct hw_perf_event *event,
- 	return 0;
- }
+@@ -933,14 +1145,26 @@ static int gen ## _pmu_ ## family ## _init(struct arm_pmu *cpu_pmu)				\
+ #define m2_pmu_events_attr_group	m1_pmu_events_attr_group
+ #define m2_pmu_format_attr_group	m1_pmu_format_attr_group
  
-+static int m3_pmu_set_event_filter(struct hw_perf_event *event,
-+				   struct perf_event_attr *attr)
-+{
-+	unsigned long config_base = 0;
++#define m4_pmu_enable_event		m3_pmu_enable_event
++#define m4_pmu_set_event_filter		m3_pmu_set_event_filter
++#define m4_pmu_format_attr_group	m3_pmu_format_attr_group
 +
-+	if (!attr->exclude_guest && !is_kernel_in_hyp_mode()) {
-+		pr_debug("ARM performance counters do not support mode exclusion\n");
-+		return -EOPNOTSUPP;
-+	}
-+	if (!attr->exclude_kernel)
-+		config_base |= M3_PMU_CFG_COUNT_KERNEL;
-+	if (!attr->exclude_user)
-+		config_base |= M3_PMU_CFG_COUNT_USER;
-+	if (!attr->exclude_host)
-+		config_base |= M3_PMU_CFG_COUNT_HOST;
-+	if (!attr->exclude_guest)
-+		config_base |= M3_PMU_CFG_COUNT_GUEST;
-+
-+	event->config_base = config_base;
-+
-+	return 0;
-+}
-+
- static int apple_pmu_init(struct arm_pmu *cpu_pmu)
- {
- 	cpu_pmu->handle_irq	  = m1_pmu_handle_irq;
-@@ -681,8 +937,12 @@ APPLE_PMU_INIT(m1, icestorm)
+ APPLE_PMU_INIT(m1, icestorm)
  APPLE_PMU_INIT(m1, firestorm)
  APPLE_PMU_INIT(m2, avalanche)
  APPLE_PMU_INIT(m2, blizzard)
-+APPLE_PMU_INIT(m3, sawtooth)
-+APPLE_PMU_INIT(m3, everest)
+ APPLE_PMU_INIT(m3, sawtooth)
+ APPLE_PMU_INIT(m3, everest)
++APPLE_PMU_INIT(m4, donan_e)
++APPLE_PMU_INIT(m4, donan_p)
++APPLE_PMU_INIT(m4, brava_e)
++APPLE_PMU_INIT(m4, brava_p)
  
  static const struct of_device_id m1_pmu_of_device_ids[] = {
-+	{ .compatible = "apple,sawtooth-pmu",	.data = m3_pmu_sawtooth_init, },
-+	{ .compatible = "apple,everest-pmu",	.data = m3_pmu_everest_init, },
++	{ .compatible = "apple,brava-e-pmu",	.data = m4_pmu_brava_e_init, },
++	{ .compatible = "apple,brava-p-pmu",	.data = m4_pmu_brava_p_init, },
++	{ .compatible = "apple,donan-e-pmu",	.data = m4_pmu_donan_e_init, },
++	{ .compatible = "apple,donan-p-pmu",	.data = m4_pmu_donan_p_init, },
+ 	{ .compatible = "apple,sawtooth-pmu",	.data = m3_pmu_sawtooth_init, },
+ 	{ .compatible = "apple,everest-pmu",	.data = m3_pmu_everest_init, },
  	{ .compatible = "apple,avalanche-pmu",	.data = m2_pmu_avalanche_init, },
- 	{ .compatible = "apple,blizzard-pmu",	.data = m2_pmu_blizzard_init, },
- 	{ .compatible = "apple,icestorm-pmu",	.data = m1_pmu_icestorm_init, },
 
 -- 
 2.56.0
