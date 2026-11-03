@@ -1,16 +1,12 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v5 0/2] i2c: Add driver support Amlogic A9 I2C
-Date: Tue, 03 Nov 2026 02:52:36 +0000
-Message-Id: <20261103-a9-i2c-v5-0-86f2dcd179d8@amlogic.com>
+Date: Tue, 03 Nov 2026 02:52:37 +0000
+Subject: [PATCH v5 1/2] dt-bindings: i2c: add Amlogic A9 I2C controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHRM6WoC/2XNQW7DIBAF0KtErEsLA9jQVe9RZQGTcYzU2BVEV
- qLId+8QtW6rLP/wH/8mKpVMVbzubqLQkmueJw7uaSdwjNORZD5wFqCgU0FrGYPMgBKs7T0BUOe
- N4HKKlWQqccKx1bny0moTXc7t+bPQkC/3nfc95zHX81yu99lFt+v3AtifhUVLJZOPh5BsN9jo3
- +LpYz5mfMb5JNonC2xQK4ANAkPryCANundpeITmLwwbNAz7ZBQiKuWMeYT2F7LcoGXoou4CaJc
- 8hf9wXdcvYY7cfmgBAAA=
-X-Change-ID: 20260911-a9-i2c-24478e22e683
+Message-Id: <20261103-a9-i2c-v5-1-86f2dcd179d8@amlogic.com>
+References: <20261103-a9-i2c-v5-0-86f2dcd179d8@amlogic.com>
+In-Reply-To: <20261103-a9-i2c-v5-0-86f2dcd179d8@amlogic.com>
 To: Junyi Zhao <junyi.zhao@amlogic.com>, Andi Shyti <andi.shyti@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -20,61 +16,88 @@ Cc: Junyi Zhao <junyi.zhaol@amlogic.com>, linux-i2c@vger.kernel.org,
  linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793674360; l=2121;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793674360; l=1772;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=7+M64M86zXRcRp+mwvX7/HRiZidre0O5p+ZpTs5Dazo=;
- b=evoz4ROMlBv7BzBePEzTMgLz6aLHhAzwRqQXGqgAFaenx2tn5l1NLmjYiP1hcCK1tIA0RvDPo
- BrKfkqihec7ClBmyafbmm3JTfxsN6lkfa3ba6hSg/m/yD6tVmEIXXik
+ bh=Sz+UB7O1ObrX0Ep7OtBMUUtSVaLagIleTbf9GlXMQy8=;
+ b=kr2LxbDlUScN8iC/AFpWrtMjpomSJf/k3a/RSAvQYAO6W6Inh1FiN5mZCD9znK9eDiVh65Pmy
+ VJwp9qJnBmOBMf6eeYUhdIijzyKNg1FcS6XREUoJj3EwQbFybsipGuh
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a Device Tree binding and driver for the I2C controller found on the
+Add a Device Tree binding for the I2C controller found on the
 Amlogic A9 SoC.
 
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v5:
-- Mask out I2C_FUNC_SMBUS_QUICK and return I2C_FUNC_I2C | (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK).
-- Link to v4: https://lore.kernel.org/r/20261102-a9-i2c-v4-0-5a169215b8e9@amlogic.com
+ .../devicetree/bindings/i2c/amlogic,a9-i2c.yaml    | 56 ++++++++++++++++++++++
+ 1 file changed, 56 insertions(+)
 
-Changes in v4:
-- Repocess xfer len equal 0 use I2C_AQ_NO_ZERO_LEN, and Optimized the function.
-- Disable A9_RX_THRESH_READ/A9_TX_THRESH_WRITE enables of irq when xfer timeout.
-- Use guard(spinlock_irqsave) instead for direct call spinlock in xfer timeout process.
-- Link to v3: https://lore.kernel.org/r/20261029-a9-i2c-v3-0-7b30ccc00533@amlogic.com
+diff --git a/Documentation/devicetree/bindings/i2c/amlogic,a9-i2c.yaml b/Documentation/devicetree/bindings/i2c/amlogic,a9-i2c.yaml
+new file mode 100644
+index 000000000000..31ddc6d23732
+--- /dev/null
++++ b/Documentation/devicetree/bindings/i2c/amlogic,a9-i2c.yaml
+@@ -0,0 +1,56 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/i2c/amlogic,a9-i2c.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Amlogic A9 I2C Controller
++
++maintainers:
++  - Xianwei Zhao <xianwei.zhao@amlogic.com>
++  - Junyi Zhao <junyi.zhao@amlogic.com>
++
++allOf:
++  - $ref: /schemas/i2c/i2c-controller.yaml#
++
++properties:
++  compatible:
++    const: amlogic,a9-i2c
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++
++  dmas:
++    items:
++      - description: DMA controller phandle and request line for RX
++      - description: DMA controller phandle and request line for TX
++
++  dma-names:
++    items:
++      - const: rx
++      - const: tx
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - clocks
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    i2c@3a4400 {
++        compatible = "amlogic,a9-i2c";
++        reg = <0x3a4400 0x3c>;
++        interrupts = <0 164 1>;
++        clocks = <&clkc_periphs 11>;
++        #address-cells = <1>;
++        #size-cells = <0>;
++    };
 
-Changes in v3:
-- Based on the questions raised by the robot, the data flow was reorganized.
-- Some processing was optimized according to Andi's and Markus's suggestions.
-- Link to v2: https://lore.kernel.org/r/20261022-a9-i2c-v2-0-45e3cef175bf@amlogic.com
-
-Changes in v2:
-- dtbinding: make some minor modifications, suggestted by Conor and robot.
-- driver: Make some adjustments, including macro definitions, format adjustments,
-          adding quirks, process optimization, and so on. According to Andi and robot's suggestion
-- Give up MAINTAINERS file the separate submission, make it together with the driver.
-- Link to v1: https://lore.kernel.org/r/20260924-a9-i2c-v1-0-b8ad9b46f4a8@amlogic.com
-
----
-Junyi Zhao (1):
-      i2c: amlogic: Add Amlogic A9 I2C controller driver
-
-Xianwei Zhao (1):
-      dt-bindings: i2c: add Amlogic A9 I2C controller
-
- .../devicetree/bindings/i2c/amlogic,a9-i2c.yaml    |  56 +++
- MAINTAINERS                                        |   9 +
- drivers/i2c/busses/Kconfig                         |   8 +
- drivers/i2c/busses/Makefile                        |   1 +
- drivers/i2c/busses/i2c-amlogic-a9.c                | 431 +++++++++++++++++++++
- 5 files changed, 505 insertions(+)
----
-base-commit: 4ec2365c08de306f52650d8736aef5862baedb8d
-change-id: 20260911-a9-i2c-24478e22e683
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.52.0
 
