@@ -1,222 +1,72 @@
 From: Igor Velkov <iav@iav.lv>
-Date: Tue, 03 Nov 2026 06:05:59 +0000
-Subject: [PATCH] rockchip: rk3399-rock-pi-4: Enable IO-domain driver in SPL
+Date: Tue, 03 Nov 2026 06:07:35 +0000
+Subject: [PATCH] PCI: rockchip-host: Enable async probe by default
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-b4-rock-pi-4-spl-iodomain-v1-1-8dfc34a5e2e2@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAMZ56WoC/x3MQQqAIBBA0avErBtQsxZdJVqYjjVUKgoRRHdPW
- r7F/w8UykwFxuaBTBcXjqFCtg3YzYSVkF01KKEGKUWHi8Yc7Y6JUWNJB3J08TQc0A+qE167noy
- F2qdMnu//Pc3v+wF17EVMawAAAA==
-To: Jagan Teki <jagan@amarulasolutions.com>, 
- Kever Yang <kever.yang@rock-chips.com>, Quentin Schulz <u-boot@0leil.net>, 
- Christopher Obbard <chris.obbard@oss.qualcomm.com>, 
- Tom Rini <trini@konsulko.com>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>
-Cc: Jonas Karlman <jonas@kwiboo.se>, Simon Glass <sjg@chromium.org>, 
- u-boot@lists.u-boot-project.org, Igor Velkov <iav@iav.lv>
+Message-Id: <20261103-rockchip-pcie-async-v1-1-4dcadb94af64@iav.lv>
+X-B4-Tracking: v=1; b=H4sIACZ66WoC/x3MMQqAMAxA0atIZgOmlSpeRRwkRg1CLS2IIr27x
+ fEN/7+QJKokGKoXolya9PQFVFfA++w3QV2KwTTGETUW48kH7xowsArO6fGMrWFi2zvrqINShii
+ r3v91nHL+AHfeqAhlAAAA
+To: Shawn Lin <shawn.lin@rock-chips.com>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, Heiko Stuebner <heiko@sntech.de>
+Cc: Rob Herring <robh@kernel.org>, linux-pci@vger.kernel.org, 
+ linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6346; i=iav@iav.lv;
- h=from:subject:message-id; bh=NUk8Wk4P7MMJBvKKkJJQbczvVwvQytZgIODuS5gkBrA=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkvK49/fvV3BnOmRmXq86OF83UsnjDlt9Tp/VF2zFeqY
- tPoSVrWUcrCIMbFICumyDLhkMatjCVX//p7mD+AmcPKBDKEgYtTACZSVM3IcDk49cDGwDr1sw/D
- bDat38icNjmuV6bp8YbC3y2uW3pmsjMy3PlXMf+JzzfOGw36SULcDHXXuMVbUre+6faNvPhwo4M
- ZHwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1786; i=iav@iav.lv;
+ h=from:subject:message-id; bh=ZRf73Oh50c+9BYq7xVYrqoGA7KZ7hc21cjbuWcPTIPw=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkvq9Q33dNaILT/C3cxu8LL4tufGK5wVXIbLE/R5cpfP
+ Pfm9ft5HaUsDGJcDLJiiiwTDmncylhy9a+/h/kDmDmsTCBDGLg4BWAixo6MDG3aCrO1rvx1qGjM
+ eiz3foPj60OBV5WOG39zNSifdVgg+g/D/7LIaF+1uw6CruuWzXr/+8X969VN935HTem6ILzj/b+
+ OdD4A
 X-Developer-Key: i=iav@iav.lv; a=openpgp;
  fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
 X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With the SD card in a UHS-I mode, vcc_sdio (RK808 LDO4) stays at 1.8 V
-across a warm reset such as a watchdog reset or a panic: the PMIC is
-not reset, and the card supply on ROCK Pi 4 is not switchable. The SD
-I/O domain resets to 3.3 V, and SPL fails to load U-Boot from the card:
+The probe waits for the link to come up, and with an empty slot it
+holds the deferred-probe worker for about 0.7 s. On ROCK Pi 4 with
+UHS-I enabled for the SD card, the I/O-domain driver then binds only
+after the card has switched to 1.8 V, and tuning fails ("All phases
+bad!").
 
-  mmc_load_image_raw_sector: mmc block read error
+Probe asynchronously, as commit c0e1eb441b1d ("PCI: qcom: Enable async
+probe by default") does for the Qualcomm host driver. This does not
+order the I/O domain before dw_mmc in general; an explicit dependency
+was proposed in [1] and not merged.
 
-Enable the RK8XX regulator and Rockchip IO-domain drivers in SPL, and
-drop regulator-always-on and regulator-boot-on from vcc_sdio, as these
-commits do for the NanoPi 4 boards:
-
-  commit 2abd7fff9ebf ("rockchip: rk3399-nanopi-4: Allow MMC driver to control SD regulators")
-  commit 210ab4f60df8 ("rockchip: rk3399-nanopi-4: Enable IO-domain driver in SPL")
-
-Without the boot-on flag U-Boot leaves vcc_sdio at its current voltage,
-and the I/O-domain driver sets the I/O domain to match it.
-
+Link: https://lore.kernel.org/all/20230904115816.1237684-1-s.hauer@pengutronix.de/ [1]
 Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-Tested on ROCK Pi 4A booting U-Boot from SD, with Linux running the
-card in SDR104: sysrq-b 4/4, panic 2/2 and watchdog reset 2/2 boot,
-where SPL without this change stops at "mmc block read error". With
-the card left at 3.0 V (non-UHS DT) cold boot, reboot, sysrq-b and
-watchdog reset still boot in high-speed mode. Not tested on ROCK Pi 4C
-and ROCK 4SE, whose defconfigs and dtsi are changed the same way.
+Tested on v7.3.1 with the Armbian rockchip64 config (PCIE_ROCKCHIP_HOST=y):
+- ROCK Pi 4A, empty slot, UHS-I DT change posted separately: SDR104 on
+  3 of 3 cold boots; without this patch tuning fails.
+- Kobol Helios64, JMB585 in the slot: link, SATA and disk reads OK
+  over 3 cold boots and a reboot.
 ---
- arch/arm/dts/rk3399-rock-pi-4-u-boot.dtsi | 14 ++++++++++++++
- configs/rock-4se-rk3399_defconfig         |  7 +++++++
- configs/rock-pi-4-rk3399_defconfig        |  7 +++++++
- configs/rock-pi-4c-rk3399_defconfig       |  7 +++++++
- 4 files changed, 35 insertions(+)
+ drivers/pci/controller/pcie-rockchip-host.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/arch/arm/dts/rk3399-rock-pi-4-u-boot.dtsi b/arch/arm/dts/rk3399-rock-pi-4-u-boot.dtsi
-index 4861574636e..7a15f613c99 100644
---- a/arch/arm/dts/rk3399-rock-pi-4-u-boot.dtsi
-+++ b/arch/arm/dts/rk3399-rock-pi-4-u-boot.dtsi
-@@ -14,12 +14,26 @@
- 	};
- };
- 
-+&i2c0_xfer {
-+	bootph-pre-ram;
-+};
-+
-+&io_domains {
-+	bootph-pre-ram;
-+};
-+
- &sdhci {
- 	cap-mmc-highspeed;
- 	mmc-ddr-1_8v;
- 	mmc-hs200-1_8v;
- };
- 
-+&vcc_sdio {
-+	bootph-pre-ram;
-+	/delete-property/ regulator-always-on;
-+	/delete-property/ regulator-boot-on;
-+};
-+
- &vdd_log {
- 	regulator-init-microvolt = <950000>;
- };
-diff --git a/configs/rock-4se-rk3399_defconfig b/configs/rock-4se-rk3399_defconfig
-index 7f22aede912..dfec68ac4c0 100644
---- a/configs/rock-4se-rk3399_defconfig
-+++ b/configs/rock-4se-rk3399_defconfig
-@@ -9,6 +9,7 @@ CONFIG_DEFAULT_DEVICE_TREE="rockchip/rk3399-rock-4se"
- CONFIG_DM_RESET=y
- CONFIG_ROCKCHIP_RK3399=y
- CONFIG_ROCKCHIP_SPI_IMAGE=y
-+CONFIG_SPL_DRIVERS_MISC=y
- CONFIG_TARGET_ROCKPI4_RK3399=y
- CONFIG_SYS_LOAD_ADDR=0x800800
- CONFIG_SF_DEFAULT_BUS=1
-@@ -25,6 +26,8 @@ CONFIG_DEFAULT_FDT_FILE="rockchip/rk3399-rock-4se.dtb"
- CONFIG_DISPLAY_BOARDINFO_LATE=y
- CONFIG_SPL_MAX_SIZE=0x40000
- # CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
-+CONFIG_SPL_I2C=y
-+CONFIG_SPL_POWER=y
- CONFIG_SPL_SPI_LOAD=y
- CONFIG_SYS_SPI_U_BOOT_OFFS=0xE0000
- CONFIG_TPL=y
-@@ -52,6 +55,7 @@ CONFIG_ROCKCHIP_GPIO=y
- CONFIG_SYS_I2C_ROCKCHIP=y
- CONFIG_LED=y
- CONFIG_LED_GPIO=y
-+CONFIG_SPL_ROCKCHIP_IODOMAIN=y
- CONFIG_MMC_DW=y
- CONFIG_MMC_DW_ROCKCHIP=y
- CONFIG_MMC_SDHCI=y
-@@ -70,8 +74,11 @@ CONFIG_NVME_PCI=y
- CONFIG_PHY_ROCKCHIP_INNO_USB2=y
- CONFIG_PHY_ROCKCHIP_TYPEC=y
- CONFIG_PMIC_RK8XX=y
-+CONFIG_SPL_PMIC_RK8XX=y
-+CONFIG_SPL_DM_REGULATOR=y
- CONFIG_REGULATOR_PWM=y
- CONFIG_REGULATOR_RK8XX=y
-+CONFIG_SPL_REGULATOR_RK8XX=y
- CONFIG_PWM_ROCKCHIP=y
- CONFIG_RAM_ROCKCHIP_LPDDR4=y
- CONFIG_SCSI=y
-diff --git a/configs/rock-pi-4-rk3399_defconfig b/configs/rock-pi-4-rk3399_defconfig
-index e5c9072c27f..fe120db9b8c 100644
---- a/configs/rock-pi-4-rk3399_defconfig
-+++ b/configs/rock-pi-4-rk3399_defconfig
-@@ -9,6 +9,7 @@ CONFIG_DEFAULT_DEVICE_TREE="rockchip/rk3399-rock-pi-4a"
- CONFIG_DM_RESET=y
- CONFIG_ROCKCHIP_RK3399=y
- CONFIG_ROCKCHIP_SPI_IMAGE=y
-+CONFIG_SPL_DRIVERS_MISC=y
- CONFIG_TARGET_ROCKPI4_RK3399=y
- CONFIG_SYS_LOAD_ADDR=0x800800
- CONFIG_SF_DEFAULT_BUS=1
-@@ -25,6 +26,8 @@ CONFIG_DEFAULT_FDT_FILE="rockchip/rk3399-rock-pi-4a.dtb"
- CONFIG_DISPLAY_BOARDINFO_LATE=y
- CONFIG_SPL_MAX_SIZE=0x40000
- # CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
-+CONFIG_SPL_I2C=y
-+CONFIG_SPL_POWER=y
- CONFIG_SPL_SPI_LOAD=y
- CONFIG_SYS_SPI_U_BOOT_OFFS=0xE0000
- CONFIG_SPL_ATF_NO_PLATFORM_PARAM=y
-@@ -53,6 +56,7 @@ CONFIG_ROCKCHIP_GPIO=y
- CONFIG_SYS_I2C_ROCKCHIP=y
- CONFIG_LED=y
- CONFIG_LED_GPIO=y
-+CONFIG_SPL_ROCKCHIP_IODOMAIN=y
- CONFIG_MMC_DW=y
- CONFIG_MMC_DW_ROCKCHIP=y
- CONFIG_MMC_SDHCI=y
-@@ -71,8 +75,11 @@ CONFIG_NVME_PCI=y
- CONFIG_PHY_ROCKCHIP_INNO_USB2=y
- CONFIG_PHY_ROCKCHIP_TYPEC=y
- CONFIG_PMIC_RK8XX=y
-+CONFIG_SPL_PMIC_RK8XX=y
-+CONFIG_SPL_DM_REGULATOR=y
- CONFIG_REGULATOR_PWM=y
- CONFIG_REGULATOR_RK8XX=y
-+CONFIG_SPL_REGULATOR_RK8XX=y
- CONFIG_PWM_ROCKCHIP=y
- CONFIG_RAM_ROCKCHIP_LPDDR4=y
- CONFIG_SCSI=y
-diff --git a/configs/rock-pi-4c-rk3399_defconfig b/configs/rock-pi-4c-rk3399_defconfig
-index 4be7b0f8130..1a37190d077 100644
---- a/configs/rock-pi-4c-rk3399_defconfig
-+++ b/configs/rock-pi-4c-rk3399_defconfig
-@@ -9,6 +9,7 @@ CONFIG_DEFAULT_DEVICE_TREE="rockchip/rk3399-rock-pi-4c"
- CONFIG_DM_RESET=y
- CONFIG_ROCKCHIP_RK3399=y
- CONFIG_ROCKCHIP_SPI_IMAGE=y
-+CONFIG_SPL_DRIVERS_MISC=y
- CONFIG_TARGET_ROCKPI4_RK3399=y
- CONFIG_SYS_LOAD_ADDR=0x800800
- CONFIG_SF_DEFAULT_BUS=1
-@@ -25,6 +26,8 @@ CONFIG_DEFAULT_FDT_FILE="rockchip/rk3399-rock-pi-4c.dtb"
- CONFIG_DISPLAY_BOARDINFO_LATE=y
- CONFIG_SPL_MAX_SIZE=0x40000
- # CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
-+CONFIG_SPL_I2C=y
-+CONFIG_SPL_POWER=y
- CONFIG_SPL_SPI_LOAD=y
- CONFIG_SYS_SPI_U_BOOT_OFFS=0xE0000
- CONFIG_SPL_ATF_NO_PLATFORM_PARAM=y
-@@ -53,6 +56,7 @@ CONFIG_ROCKCHIP_GPIO=y
- CONFIG_SYS_I2C_ROCKCHIP=y
- CONFIG_LED=y
- CONFIG_LED_GPIO=y
-+CONFIG_SPL_ROCKCHIP_IODOMAIN=y
- CONFIG_MMC_DW=y
- CONFIG_MMC_DW_ROCKCHIP=y
- CONFIG_MMC_SDHCI=y
-@@ -71,8 +75,11 @@ CONFIG_NVME_PCI=y
- CONFIG_PHY_ROCKCHIP_INNO_USB2=y
- CONFIG_PHY_ROCKCHIP_TYPEC=y
- CONFIG_PMIC_RK8XX=y
-+CONFIG_SPL_PMIC_RK8XX=y
-+CONFIG_SPL_DM_REGULATOR=y
- CONFIG_REGULATOR_PWM=y
- CONFIG_REGULATOR_RK8XX=y
-+CONFIG_SPL_REGULATOR_RK8XX=y
- CONFIG_PWM_ROCKCHIP=y
- CONFIG_RAM_ROCKCHIP_LPDDR4=y
- CONFIG_SCSI=y
+diff --git a/drivers/pci/controller/pcie-rockchip-host.c b/drivers/pci/controller/pcie-rockchip-host.c
+index 5b071bdc4f90..1e1556e436b8 100644
+--- a/drivers/pci/controller/pcie-rockchip-host.c
++++ b/drivers/pci/controller/pcie-rockchip-host.c
+@@ -1027,6 +1027,7 @@ static struct platform_driver rockchip_pcie_driver = {
+ 		.name = "rockchip-pcie",
+ 		.of_match_table = rockchip_pcie_of_match,
+ 		.pm = &rockchip_pcie_pm_ops,
++		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
+ 	},
+ 	.probe = rockchip_pcie_probe,
+ 	.remove = rockchip_pcie_remove,
 
 ---
-base-commit: ab4dc5aacf957835c295b59ef2dd28281839cb20
-change-id: 20261103-b4-rock-pi-4-spl-iodomain-f6230f4d5eac
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261103-rockchip-pcie-async-42c1c3863617
 
 Best regards,
 -- 
