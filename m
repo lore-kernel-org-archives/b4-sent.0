@@ -1,117 +1,71 @@
-From: Mani Tofigh <mt4022@columbia.edu>
-Date: Mon, 02 Nov 2026 16:51:24 -0500
-Subject: [PATCH] smpboot: Run the thread function only once before parking
+From: Kohei Otsuka <kohei@spacemachines.com>
+Subject: [PATCH 0/2] serial: 8250_of: RS-485 on Microchip Core16550
+Date: Tue, 03 Nov 2026 11:11:30 +1100
+Message-Id: <20261103-core16550-rs485-v1-0-6d15ebe1e5b9@spacemachines.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-smpboot-park-once-v1-1-920282635d20@columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQpGBsr1K60DjqVExCRosg3
- t2oy7f4fwOhxCTwLjZI9Gfh4DP0owA31L4n5DYbjDKl1sqgTLEJYcZYpxGDd4SvUtmuImvVs4X
- cxUQdr9fz870tS/MjN58j2PcDzX9SmnUAAAA=
-X-Change-ID: 20261102-smpboot-park-once-9607f8e7703d
-To: Thomas Gleixner <tglx@kernel.org>, 
- Peter Zijlstra <peterz@infradead.org>
-Cc: Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
- linux-kernel@vger.kernel.org, tz2294@columbia.edu, 
- Mani Tofigh <mt4022@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CQAxG4auQrp2kA5YQr2JcDOM/WhZgWjUkh
+ Ls76vJbvLeRwxROp2Yjw1tdl7kiHhrK9zTfEPRaTS23fYzchbwYYi/Cwfw4SBCWVLiUBIxUq4e
+ h6Po7ni9/+2uckJ/fDe37BySp/CNzAAAA
+X-Change-ID: 20261103-core16550-rs485-505af0ffaeeb
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Lubomir Rintel <lkundrak@v3.sk>, 
+ devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ conor.dooley@microchip.com, Kohei Otsuka <kohei@spacemachines.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793656284; l=3810;
- i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=7+gwrJFIT86+cmc25bfaTu75k8C3HHor3PiorlzLhzY=;
- b=797VxbCot/vvg5lW0l6AUFp8w7P83tGOkuo07iOCrKtsbPXjdDYmdJNN8q5bTUif8ysS+II2L
- FlK4JYfbJXdD1niboSovpoypZkM+pKbn4hcyXSGBpNA7MRvhGJHrQzb
-X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
- pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
-X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793664697; l=1885;
+ i=kohei@spacemachines.com; s=20261103; h=from:subject:message-id;
+ bh=VtVtaNmxg+V5Ozhf37hKbYQgTOiMqoX/CUGJRiLE/+c=;
+ b=5TP9ZJC4rHLSGXK+Bnq0LwxxZrJEMLnpLSGHx67w8WFUxlPg1pEeAdS3Oqai9qEDy1iKClht+
+ RC8pwrWhAEpDvFPz8wL0WAHD8HELKTYrgKSeplWE7IcWZYXXpcK7dkx
+X-Developer-Key: i=kohei@spacemachines.com; a=ed25519;
+ pk=1kit/vmX5JiLGH9NPcqlvT55ISWaLmNipdL5VrriRt0=
+X-Endpoint-Received: by B4 Relay for kohei@spacemachines.com/20261103 with auth_id=1385
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 4a3b51aab6e2 ("smpboot: Don't park the thread if work is
-pending"), smpboot_thread_fn() parks only once thread_should_run() is
-false.  CPU offline waits for that with no timeout and with
-cpu_hotplug_lock held for write.
+Core16550 is a 16550-compatible UART soft IP for Microchip FPGAs. We use
+four of them in the fabric of a PolarFire SoC Icicle Kit as RS-485
+ports, described as "ns16550a" with linux,rs485-enabled-at-boot-time.
+With RS-485 enabled, RTS (the transceiver's driver enable) goes high at
+the start of the first transmission and never drops, and the port stops
+receiving. Core16550, like the original 16550A, raises no interrupt on
+TEMT, so __stop_tx() waits for one forever unless the port has
+UART_CAP_NOTEMT, which 8250_of never sets.
 
-When the outgoing CPU keeps receiving more packets than it can process,
-ksoftirqd always has NET_RX pending and never parks.  The offline then
-waits for as long as the packets keep coming and everything that takes
-cpus_read_lock() waits with it:
+Testing, on a PolarFire SoC Icicle Kit with four Core16550 instances
+on FIC3 (PCLK 50 MHz), linux-mchp 6.18.17 with this series applied,
+115200 8N1, against USB-RS485 (2-wire, half duplex) and USB-RS422
+(4-wire) converters:
+- All four ports transmit and receive correctly with both converters.
+- On RS-485, each port keeps receiving after transmitting, across
+  repeated request/response exchanges in both directions.
+- Without the series, RTS stays high after the first transmission and
+  nothing more is received.
 
-  [   41.469979] INFO: task kworker/0:1:10 blocked for more than 20 seconds.
-  [   41.470020] task:kworker/0:1     state:D stack:28392 pid:10    tgid:10    ppid:2      task_flags:0x4208060 flags:0x00080000
-  [   41.470055] Workqueue: events vmstat_shepherd
-  [   41.470077] Call Trace:
-  [   41.470082]  <TASK>
-  [   41.470091]  __schedule+0x10f1/0x4760
-  [   41.470175]  schedule+0xd7/0x2c0
-  [   41.470189]  percpu_rwsem_wait+0x1f8/0x4e0
-  [   41.470269]  __percpu_down_read+0x11f/0x3e0
-  [   41.470287]  cpus_read_lock+0xc1/0xd0
-  [   41.470301]  vmstat_shepherd+0x22/0x2a0
-  [   41.470315]  process_one_work+0x92b/0x16d0
-  [   41.470393]  worker_thread+0x4e6/0xd60
-  [   41.470507]  kthread+0x300/0x3e0
-  [   41.470542]  ret_from_fork+0x4f0/0x6f0
-  [   41.470597]  ret_from_fork_asm+0x1a/0x30
-  [   41.470623]  </TASK>
-  [   41.470635] INFO: task cpuhp/3:33 blocked for more than 20 seconds.
-  [   41.470653] task:cpuhp/3         state:D stack:27976 pid:33    tgid:33    ppid:2      task_flags:0x4208040 flags:0x00080000
-  [   41.470678] Call Trace:
-  [   41.470682]  <TASK>
-  [   41.470690]  __schedule+0x10f1/0x4760
-  [   41.470753]  schedule+0xd7/0x2c0
-  [   41.470766]  schedule_timeout+0x176/0x250
-  [   41.470849]  wait_for_completion+0x169/0x3b0
-  [   41.470918]  kthread_park+0xff/0x180
-  [   41.470934]  smpboot_park_threads+0xd5/0x160
-  [   41.470959]  cpuhp_invoke_callback+0x2b0/0x1190
-  [   41.470995]  cpuhp_thread_fun+0x2f8/0x6d0
-  [   41.471027]  smpboot_thread_fn+0x2fb/0x8a0
-  [   41.471051]  kthread+0x300/0x3e0
-  [   41.471083]  ret_from_fork+0x4f0/0x6f0
-  [   41.471132]  ret_from_fork_asm+0x1a/0x30
-  [   41.471154]  </TASK>
+This series was prepared with the help of an AI coding assistant
+(Claude, Anthropic): the analysis of __stop_tx(), both patches and
+these messages. I reviewed and tested the result and take
+responsibility for it.
+Link: https://github.com/linux4microchip/meta-mchp/issues/5
 
-That commit only needs the work queued before the park request to run
-once on its own CPU.  Softirqs left pending are taken over by the
-dead-CPU callbacks as before.  So on a park request, run the thread
-function once if there is work and then park.  With the fix, the
-offline finishes under the same load.
-
-This bug was identified and confirmed with the help of a deterministic
-hypervisor currently under development.  The C reproducer below however
-hits it within about 25s.
-
-Fixes: 4a3b51aab6e2 ("smpboot: Don't park the thread if work is pending")
-Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
+Signed-off-by: Kohei Otsuka <kohei@spacemachines.com>
 ---
-Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/ksoftpark.c
----
- kernel/smpboot.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+Kohei Otsuka (2):
+      dt-bindings: serial: 8250: add Microchip Core16550
+      serial: 8250_of: drop RS-485 RTS on Microchip Core16550
 
-diff --git a/kernel/smpboot.c b/kernel/smpboot.c
-index 3f60e8c6dd30..a2ddd10a8577 100644
---- a/kernel/smpboot.c
-+++ b/kernel/smpboot.c
-@@ -119,9 +119,12 @@ static int smpboot_thread_fn(void *data)
- 		}
- 
- 		should_run = td->status == HP_THREAD_ACTIVE && ht->thread_should_run(td->cpu);
--		if (kthread_should_park() && !should_run) {
-+		if (kthread_should_park()) {
- 			__set_current_state(TASK_RUNNING);
- 			preempt_enable();
-+			/* Run pending work once, new work may keep coming */
-+			if (should_run)
-+				ht->thread_fn(td->cpu);
- 			if (ht->park && td->status == HP_THREAD_ACTIVE) {
- 				BUG_ON(td->cpu != smp_processor_id());
- 				ht->park(td->cpu);
-
+ Documentation/devicetree/bindings/serial/8250.yaml | 1 +
+ drivers/tty/serial/8250/8250_of.c                  | 9 +++++++++
+ 2 files changed, 10 insertions(+)
 ---
-base-commit: b327e63683a2b894b500027375342c25222b58ef
-change-id: 20261102-smpboot-park-once-9607f8e7703d
+base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
+change-id: 20261103-core16550-rs485-505af0ffaeeb
 
 Best regards,
 --  
-Mani Tofigh <mt4022@columbia.edu>
+Kohei Otsuka <kohei@spacemachines.com>
 
