@@ -1,11 +1,11 @@
 From: "David R. Hedges" <linuxdev844@thelittleman.net>
-Date: Tue, 03 Nov 2026 14:02:47 -0600
-Subject: [PATCH 1/5] drm/nouveau/kms/nv50-: reject DP modesets the link
- can't carry
+Date: Tue, 03 Nov 2026 14:02:48 -0600
+Subject: [PATCH 2/5] drm/nouveau/kms/nv50-: don't enable a DP output with
+ no trained link
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-nouveau-dp-relink-v1-1-7ee88c7f1e8a@thelittleman.net>
+Message-Id: <20261103-nouveau-dp-relink-v1-2-7ee88c7f1e8a@thelittleman.net>
 References: <20261103-nouveau-dp-relink-v1-0-7ee88c7f1e8a@thelittleman.net>
 In-Reply-To: <20261103-nouveau-dp-relink-v1-0-7ee88c7f1e8a@thelittleman.net>
 To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
@@ -17,101 +17,181 @@ Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org,
  linux-kernel@vger.kernel.org, Danilo Krummrich <me@dakr.org>, 
  "David R. Hedges" <linuxdev844@thelittleman.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793736171; l=3402;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793736171; l=7227;
  i=linuxdev844@thelittleman.net; s=20261103; h=from:subject:message-id;
- bh=NdWN23uKT/9mBJCO7M1jmiktyYPpdGsPPw0VjH8l0q4=;
- b=IDMPhXCycTOWwZ/CRnLH/Xfh5uYfJtanaF2UzJY8wy5H+5T0PisIBcpFVhOQcX/XX7dqv8lD7
- BGybTpcR0nDB4K6k93VWh8f58LWKetnMziHXxpiJcFefJYu4bXsneZ+
+ bh=fTBppiTsiT2GDYHmvIFueQkmv7rwIKMHTWHZcuUcfpg=;
+ b=qiwvuDt4IUf4VuhzEePZdh9kjlE33AMdMLJwLxilaOBLpr6+JSG9hy9QecBdkjbVvbPZAUSSZ
+ GwfHqduU3i7DccM1sP6IYHNIqgeuE3sZgc9FZHZkqtT0bBEFsMr7l+b
 X-Developer-Key: i=linuxdev844@thelittleman.net; a=ed25519;
  pk=Cynzuei/w0GLdh3LuNJdvH7aaszLrHSxY5UyujS7l+g=
 X-Endpoint-Received: by B4 Relay for linuxdev844@thelittleman.net/20261103 with auth_id=1397
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-nv50_outp_atomic_fix_depth() lowers the bpc of a DP mode until it fits
-the link's capabilities, but carries on at 6 bpc if it still doesn't.
-nouveau_dp_train() then finds no lane count and link rate fast enough,
-trains nothing, and the output is enabled anyway.
+A commit that only turns a CRTC back on mustn't fail atomic check, so
+it still reaches nv50_sor_atomic_enable() when the sink's link
+capabilities have dropped below what the mode needs, or are unknown
+because the sink stopped answering AUX.  nouveau_dp_train() then has
+nothing to train, and the SOR is attached to the head regardless.  On
+a GA102 with GSP-RM 570.144, mutter turning the screen back on while
+the monitor was switched off (HPD still asserted, AUX not answering)
+did exactly that, and the display engine hung: "core notifier
+timeout", after which GSP stopped answering RPCs.
 
-Modes are checked against the link when they're probed, so this takes
-a sink whose capabilities have dropped since, or that couldn't be
-probed at all.  An IGM L28TN4K on a GA102 (GSP-RM 570.144) manages
-both: for a moment after being switched on with its power button it
-advertises DPCD 1.1 and HBR rather than DPCD 1.2 and HBR2, and the
-3840x2160@60 mode it had been running needs 1336500 kB/s even at
-6 bpc, against 1080000 kB/s for 4 x HBR; and while it's switched off
-it keeps HPD asserted but doesn't answer AUX, which leaves its link
-capabilities at zero.  Enabling the output in either state ended in
-"core notifier timeout", after which GSP stopped answering RPCs.
+Have nouveau_dp_train() say why it failed.  When no lane count and
+link rate can carry the mode, leave the SOR detached, set the
+connector's link-status to BAD and send a hotplug event, as the
+link-status property's documentation describes.  Userspace that
+handles link-status can pick a new mode; userspace that doesn't still
+gets the hotplug event and reprobes.  When training is attempted and
+fails, the output is enabled as before; only the case where there was
+nothing to train changes.
 
-Fail the modeset in that case, so that userspace can pick a mode that
-fits.  A commit that only turns the CRTC back on mustn't fail (see
-struct drm_crtc_state), so that case is left to the commit path, which
-the next patch deals with.
+The head produces no vblanks while the SOR is detached, so until the
+sink is back and a modeset restarts the link, each commit to it waits
+out the window channel's 2s timeout ("wndw-0: timeout").  On the
+GA102 above that was the only side effect, with and without GSP-RM.
 
 Link: https://gitlab.freedesktop.org/drm/nouveau/-/work_items/515
 Signed-off-by: David R. Hedges <linuxdev844@thelittleman.net>
 ---
- drivers/gpu/drm/nouveau/dispnv50/disp.c | 23 +++++++++++++++++++----
- 1 file changed, 19 insertions(+), 4 deletions(-)
+ drivers/gpu/drm/nouveau/dispnv50/disp.c     | 10 +++++++++-
+ drivers/gpu/drm/nouveau/nouveau_connector.c | 18 ++++++++++++++++++
+ drivers/gpu/drm/nouveau/nouveau_connector.h |  1 +
+ drivers/gpu/drm/nouveau/nouveau_dp.c        | 13 +++++++++----
+ drivers/gpu/drm/nouveau/nouveau_encoder.h   |  2 +-
+ 5 files changed, 38 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/gpu/drm/nouveau/dispnv50/disp.c b/drivers/gpu/drm/nouveau/dispnv50/disp.c
-index 7daecaecccac..8af01de822d5 100644
+index 8af01de822d5..7f55c016d846 100644
 --- a/drivers/gpu/drm/nouveau/dispnv50/disp.c
 +++ b/drivers/gpu/drm/nouveau/dispnv50/disp.c
-@@ -373,7 +373,8 @@ nv50_outp_atomic_check_view(struct drm_encoder *encoder,
- 	return 0;
- }
+@@ -1843,7 +1843,15 @@ nv50_sor_atomic_enable(struct drm_encoder *encoder, struct drm_atomic_commit *st
+ 		nvif_outp_lvds(&nv_encoder->outp, lvds_dual, lvds_8bpc);
+ 		break;
+ 	case DCB_OUTPUT_DP:
+-		nouveau_dp_train(nv_encoder, false, mode->clock, asyh->or.bpc);
++		/* Attaching the SOR to a link that hasn't been trained can hang
++		 * the display engine.  If the link can't carry the mode at all,
++		 * which atomic check only rules out for a modeset, leave the
++		 * output detached and tell userspace the link is bad.
++		 */
++		if (nouveau_dp_train(nv_encoder, false, mode->clock, asyh->or.bpc) == -EINVAL) {
++			schedule_work(&nv_connector->link_bad_work);
++			return;
++		}
+ 		nv50_sor_dp_watermark_sst(nv_encoder, head, asyh);
+ 		depth = nv50_dp_bpc_to_depth(asyh->or.bpc);
  
--static void
-+/* Returns false if the link can't carry the mode even at the lowest bpc. */
-+static bool
- nv50_outp_atomic_fix_depth(struct drm_encoder *encoder, struct drm_crtc_state *crtc_state)
+diff --git a/drivers/gpu/drm/nouveau/nouveau_connector.c b/drivers/gpu/drm/nouveau/nouveau_connector.c
+index cc3caf8de64b..cae4e35c30aa 100644
+--- a/drivers/gpu/drm/nouveau/nouveau_connector.c
++++ b/drivers/gpu/drm/nouveau/nouveau_connector.c
+@@ -398,6 +398,7 @@ nouveau_connector_destroy(struct drm_connector *connector)
+ 	nvif_event_dtor(&nv_connector->irq);
+ 	nvif_event_dtor(&nv_connector->hpd);
+ 	cancel_work_sync(&nv_connector->irq_work);
++	cancel_work_sync(&nv_connector->link_bad_work);
+ 	drm_edid_free(nv_connector->drm_edid);
+ 	drm_connector_unregister(connector);
+ 	drm_connector_cleanup(connector);
+@@ -1261,6 +1262,22 @@ nouveau_connector_funcs_lvds = {
+ 	.early_unregister = nouveau_connector_early_unregister,
+ };
+ 
++/* The sink isn't getting a picture with the current mode, and userspace may
++ * need to pick another one to get it back.
++ */
++static void
++nouveau_connector_link_bad(struct work_struct *work)
++{
++	struct nouveau_connector *nv_connector =
++		container_of(work, typeof(*nv_connector), link_bad_work);
++	struct drm_connector *connector = &nv_connector->base;
++
++	drm_dbg_kms(connector->dev, "[CONNECTOR:%d:%s] link-status bad\n",
++		    connector->base.id, connector->name);
++	drm_connector_set_link_status_property(connector, DRM_MODE_LINK_STATUS_BAD);
++	drm_kms_helper_connector_hotplug_event(connector);
++}
++
+ void
+ nouveau_connector_hpd(struct nouveau_connector *nv_connector, u64 bits)
  {
- 	struct nv50_head_atom *asyh = nv50_head_atom(crtc_state);
-@@ -389,17 +390,26 @@ nv50_outp_atomic_fix_depth(struct drm_encoder *encoder, struct drm_crtc_state *c
- 		asyh->or.bpc = min_t(u8, asyh->or.bpc, 10);
+@@ -1383,6 +1400,7 @@ nouveau_connector_create(struct drm_device *dev, int index)
+ 	connector = &nv_connector->base;
+ 	nv_connector->index = index;
+ 	INIT_WORK(&nv_connector->irq_work, nouveau_dp_irq);
++	INIT_WORK(&nv_connector->link_bad_work, nouveau_connector_link_bad);
  
- 		/* reduce the bpc until it works out */
--		while (asyh->or.bpc > 6) {
-+		for (;;) {
- 			mode_rate = DIV_ROUND_UP(mode->clock * asyh->or.bpc * 3, 8);
- 			if (mode_rate <= max_rate)
- 				break;
+ 	if (disp->disp.conn_mask & BIT(nv_connector->index)) {
+ 		ret = nvif_conn_ctor(&disp->disp, nv_connector->base.name, nv_connector->index,
+diff --git a/drivers/gpu/drm/nouveau/nouveau_connector.h b/drivers/gpu/drm/nouveau/nouveau_connector.h
+index eb292d2ba4bc..3109278d36ea 100644
+--- a/drivers/gpu/drm/nouveau/nouveau_connector.h
++++ b/drivers/gpu/drm/nouveau/nouveau_connector.h
+@@ -134,6 +134,7 @@ struct nouveau_connector {
+ 	struct nvif_event hpd;
+ 	struct nvif_event irq;
+ 	struct work_struct irq_work;
++	struct work_struct link_bad_work;
  
-+			if (asyh->or.bpc <= 6) {
-+				drm_dbg_kms(encoder->dev,
-+					    "[ENCODER:%d:%s] mode needs %u kB/s, link carries %u kB/s\n",
-+					    encoder->base.id, encoder->name, mode_rate, max_rate);
-+				return false;
-+			}
-+
- 			asyh->or.bpc -= 2;
+ 	struct drm_dp_aux aux;
+ 
+diff --git a/drivers/gpu/drm/nouveau/nouveau_dp.c b/drivers/gpu/drm/nouveau/nouveau_dp.c
+index 019af307c669..9bc24f3914bd 100644
+--- a/drivers/gpu/drm/nouveau/nouveau_dp.c
++++ b/drivers/gpu/drm/nouveau/nouveau_dp.c
+@@ -401,14 +401,17 @@ nouveau_dp_train_link(struct nouveau_encoder *outp, bool retrain)
+ 	return ret == 0;
+ }
+ 
+-bool
++/* Returns -EINVAL if no lane count and link rate can carry the mode, in which
++ * case nothing has been trained, or -EIO if training failed.
++ */
++int
+ nouveau_dp_train(struct nouveau_encoder *outp, bool mst, u32 khz, u8 bpc)
+ {
+ 	struct nouveau_drm *drm = nouveau_drm(outp->base.base.dev);
+ 	struct drm_dp_aux *aux = &outp->conn->aux;
+ 	u32 min_rate;
+ 	u8 pwr;
+-	bool ret = true;
++	int ret = -EINVAL;
+ 
+ 	if (mst)
+ 		min_rate = outp->dp.link_nr * outp->dp.rate[0].rate;
+@@ -434,13 +437,15 @@ nouveau_dp_train(struct nouveau_encoder *outp, bool mst, u32 khz, u8 bpc)
+ 				outp->dp.lt.nr = nr;
+ 				outp->dp.lt.bw = outp->dp.rate[rate].rate;
+ 				outp->dp.lt.mst = mst;
+-				if (nouveau_dp_train_link(outp, false))
++				if (nouveau_dp_train_link(outp, false)) {
++					ret = 0;
+ 					goto done;
++				}
++				ret = -EIO;
+ 			}
  		}
- 		break;
- 	default:
- 		break;
  	}
-+
-+	return true;
- }
  
- static int
-@@ -423,8 +433,13 @@ nv50_outp_atomic_check(struct drm_encoder *encoder,
- 	if (crtc_state->mode_changed || crtc_state->connectors_changed)
- 		asyh->or.bpc = connector->display_info.bpc ?: 8;
+-	ret = false;
+ done:
+ 	mutex_unlock(&outp->dp.hpd_irq_lock);
+ 	return ret;
+diff --git a/drivers/gpu/drm/nouveau/nouveau_encoder.h b/drivers/gpu/drm/nouveau/nouveau_encoder.h
+index 4422c6185d49..9366678e7d05 100644
+--- a/drivers/gpu/drm/nouveau/nouveau_encoder.h
++++ b/drivers/gpu/drm/nouveau/nouveau_encoder.h
+@@ -156,7 +156,7 @@ enum nouveau_dp_status {
+ };
  
--	/* We might have to reduce the bpc */
--	nv50_outp_atomic_fix_depth(encoder, crtc_state);
-+	/* We might have to reduce the bpc.  If the link can't carry the mode
-+	 * at all, fail a modeset, but not a plain DPMS on, which userspace
-+	 * expects to always succeed.
-+	 */
-+	if (!nv50_outp_atomic_fix_depth(encoder, crtc_state) &&
-+	    (crtc_state->mode_changed || crtc_state->connectors_changed))
-+		return -EINVAL;
- 
- 	return 0;
- }
+ int nouveau_dp_detect(struct nouveau_connector *, struct nouveau_encoder *);
+-bool nouveau_dp_train(struct nouveau_encoder *, bool mst, u32 khz, u8 bpc);
++int nouveau_dp_train(struct nouveau_encoder *outp, bool mst, u32 khz, u8 bpc);
+ void nouveau_dp_power_down(struct nouveau_encoder *);
+ bool nouveau_dp_link_check(struct nouveau_connector *);
+ void nouveau_dp_irq(struct work_struct *);
 
 -- 
 2.55.0
