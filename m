@@ -1,188 +1,111 @@
-From: "David R. Hedges" <linuxdev844@thelittleman.net>
-Date: Tue, 03 Nov 2026 14:02:51 -0600
-Subject: [PATCH 5/5] drm/nouveau/dp: restart an active link when the sink
- reasserts HPD
+From: Mani Tofigh <mt4022@columbia.edu>
+Date: Tue, 03 Nov 2026 15:03:21 -0500
+Subject: [PATCH v2] btrfs: fix bio counter and bioc leak when async
+ checksumming fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-nouveau-dp-relink-v1-5-7ee88c7f1e8a@thelittleman.net>
-References: <20261103-nouveau-dp-relink-v1-0-7ee88c7f1e8a@thelittleman.net>
-In-Reply-To: <20261103-nouveau-dp-relink-v1-0-7ee88c7f1e8a@thelittleman.net>
-To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Jani Nikula <jani.nikula@intel.com>, Ben Skeggs <bskeggs@nvidia.com>
-Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Danilo Krummrich <me@dakr.org>, 
- "David R. Hedges" <linuxdev844@thelittleman.net>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793736171; l=6803;
- i=linuxdev844@thelittleman.net; s=20261103; h=from:subject:message-id;
- bh=Wj9O+KZXb+AJG+c61p+ihLDpQLh/2BrNWBgFuU7RiIg=;
- b=XggoV3AxSDbv4q/H13nQdZIi21yV13MlmFAf25rnbaz3E5DM7QnaYtAjDbOVbW/Nx8rvIhgaD
- ifxS9iWRdhDBfdSykeRCEZmGIbWvpLxwmYfs53IoHzQfJCd93s6bRTP
-X-Developer-Key: i=linuxdev844@thelittleman.net; a=ed25519;
- pk=Cynzuei/w0GLdh3LuNJdvH7aaszLrHSxY5UyujS7l+g=
-X-Endpoint-Received: by B4 Relay for linuxdev844@thelittleman.net/20261103 with auth_id=1397
+Message-Id: <20261103-btrfs-async-csum-leak-v2-1-30872bec9613@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw6CMBBFf4XM2jGdEiG68j8Mi1KmUuVhOpRIC
+ P8uj7XLk9x7zgzCwbPALZkh8OjF990K+pSArU33ZPTVyqCVzkilCsshOEEjU2fRSmyxYfNGynN
+ duYtTNtWwfj+Bnf/u3kdxsMTyxXbYZNui9jL0YdrDI227o0GK/jRGQkLHxnFuOCO+3m3fxLb05
+ sxVhGJZlh+5AekZzwAAAA==
+X-Change-ID: 20261030-btrfs-async-csum-leak-1772df5f0c32
+To: David Sterba <dsterba@suse.com>, Chris Mason <mason@kernel.org>
+Cc: Qu Wenruo <wqu@suse.com>, Christoph Hellwig <hch@lst.de>, 
+ Josef Bacik <josef@toxicpanda.com>, 
+ Johannes Thumshirn <johannes.thumshirn@wdc.com>, 
+ John Garry <john.garry@linux.dev>, linux-btrfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, tz2294@columbia.edu, stable@vger.kernel.org, 
+ Mani Tofigh <mt4022@columbia.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793736201; l=3251;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=sZ15wckZNBlDyiOLVC9bEfAohvO3ectUWRrLDyA5+Jo=;
+ b=SvIUTYUzswOF461t+ia+Mvr4QdkS5dDCzWFzYtYqa6vm3Ju6Yv/w1en7R2C3eCAZtWSAW9u2L
+ ifiK38ND2fWA1pfSmFN8mySC2RaANi85jqbizdLWXKaJspdrg/xVBZx
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a DP sink drops HPD for longer than an IRQ_HPD pulse, it may have
-reset its end of the link.  nouveau handles the unplug and plug by
-re-running connector detection and sending hotplug events, but if the
-same display comes back, userspace sees nothing that needs a modeset
-and leaves the CRTC as it was.  Nothing trains the link again, and the
-sink is left without a picture.
+A single failed checksum allocation can make a later device replace
+hang forever.  btrfs_submit_chunk() takes a dev-replace bio counter
+reference and a bioc before it hands a write to the checksum worker.
+If the checksum fails there (e.g., its allocation fails),
+run_one_async_done() ends the bio but drops neither.  The counter then
+never gets back to zero and the next replace waits for it:
 
-That's what happens with an IGM L28TN4K on a GA102 (GSP-RM 570.144)
-after waking it from DPMS off.  If the link is trained before the
-monitor has finished waking up, training succeeds at 4 x HBR2, but
-about two seconds later the monitor raises IRQ_HPD and shows "No input
-signal", and two seconds after that it drops HPD briefly and reasserts
-it.  The link status read on the IRQ_HPD is 77 77 01 03 (DPCD
-0x202-0x205: all lanes locked, interlane-aligned, sink in sync), and
-DP_SET_POWER still reads D0 once HPD is back, so there's nothing to
-check that would show the problem.  Whenever the IRQ_HPD came before
-link training instead, the picture came up normally.  The same happens
-after replugging the cable and after resuming from S3, and the screen
-stays dark until the cable is replugged, often several times.
+  [    8.369171] BTRFS info (device ram0): dev_replace from /dev/ram0 (devid 1) to /dev/ram1 finished
+  [   41.534247] INFO: task btrfscsum:80 blocked for more than 20 seconds.
+  [   41.534391]  btrfs_rm_dev_replace_blocked+0x135/0x180
+  [   41.534463]  btrfs_dev_replace_finishing+0xefe/0x13b0
 
-When a plug or unplug event leaves a DP connector connected while it
-still drives an active CRTC, restart the link with a modeset, using
-the restart added for lost links on GSP-RM, on any GPU.  NVIDIA's own
-DisplayPort library does the equivalent:
-ConnectorImpl::notifyLongPulseInternal() calls assessLink(), which
-retrains the link, for an SST sink that's still connected.  i915, by
-contrast, only retrains on hotplug if the link status says the link is
-bad.  With this applied, the monitor above comes back four to five
-seconds after being woken, replugged or resumed.  On resume,
-nouveau_display_hpd_resume() schedules the HPD worker without any
-events, so this doesn't add a restart to the resume modeset.
+The worker is only used when CONFIG_BTRFS_EXPERIMENTAL is off and the
+checksum isn't a fast one, e.g., sha256.  We hit it on a sha256
+filesystem.
 
-Switched on with its power button, which it reports only as a plug
-event, the same monitor first advertises DPCD 1.1 and HBR, which can't
-carry the 3840x2160@60 mode its CRTC still has.  The restart then fails
-atomic check, link-status is set to BAD, and userspace, which gets a
-hotplug event, picks a mode that fits.  About a second later the
-monitor drops and reasserts HPD with its full capabilities, and
-userspace goes back to 3840x2160@60.
+We put the bioc and drop the counter in that error branch.  We also
+put the bioc on the synchronous error path and on the btrfs_split_bio()
+error path, which both only drop the counter.  With the fix, the
+replace doesn't hang anymore.
 
-A sink that dropped HPD every time its link was trained would have the
-link restarted for ever, so stop after five restarts that each came
-within ten seconds of the one before, until ten seconds have passed
-without one.  If userspace has already responded to a hotplug event
-with a modeset of its own by the time the HPD worker runs, the link is
-restarted a second time, which costs another brief blank but is
-otherwise harmless.
+This bug was identified and confirmed with the help of fault-injection
+testing on a deterministic hypervisor currently under development.  The
+C reproducer below however hits it within about 35s.
 
-Closes: https://gitlab.freedesktop.org/drm/nouveau/-/work_items/515
-Signed-off-by: David R. Hedges <linuxdev844@thelittleman.net>
+Fixes: f8a53bb58ec7 ("btrfs: handle checksum generation in the storage layer")
+Fixes: c7c97ceff98c ("btrfs: handle bio_split() errors")
+Cc: stable@vger.kernel.org # 6.6+
+Reviewed-by: Qu Wenruo <wqu@suse.com>
+Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
- drivers/gpu/drm/nouveau/nouveau_connector.h |  5 +++
- drivers/gpu/drm/nouveau/nouveau_display.c   | 51 ++++++++++++++++++++++++++---
- 2 files changed, 52 insertions(+), 4 deletions(-)
+Changes in v2:
+- Also put the bioc on the btrfs_split_bio() error path (Qu)
+- Mention the sha256 / non-EXPERIMENTAL setup in the commit message (Qu)
+- Add Reviewed-by from Qu
+- Link to v1: https://patch.msgid.link/20261101-btrfs-async-csum-leak-v1-1-feafe7ae61e9@columbia.edu
 
-diff --git a/drivers/gpu/drm/nouveau/nouveau_connector.h b/drivers/gpu/drm/nouveau/nouveau_connector.h
-index 3109278d36ea..914e86ad2df2 100644
---- a/drivers/gpu/drm/nouveau/nouveau_connector.h
-+++ b/drivers/gpu/drm/nouveau/nouveau_connector.h
-@@ -135,6 +135,11 @@ struct nouveau_connector {
- 	struct nvif_event irq;
- 	struct work_struct irq_work;
- 	struct work_struct link_bad_work;
-+	/* Recent link restarts, see nouveau_display_relink() */
-+	struct {
-+		unsigned long last;
-+		unsigned int count;
-+	} relink;
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/btrfscsum.c
+---
+ fs/btrfs/bio.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/fs/btrfs/bio.c b/fs/btrfs/bio.c
+index 2c6234f6182f..2e12a6d7e16f 100644
+--- a/fs/btrfs/bio.c
++++ b/fs/btrfs/bio.c
+@@ -624,6 +624,8 @@ static void run_one_async_done(struct btrfs_work *work, bool do_free)
  
- 	struct drm_dp_aux aux;
- 
-diff --git a/drivers/gpu/drm/nouveau/nouveau_display.c b/drivers/gpu/drm/nouveau/nouveau_display.c
-index c5e914602baf..a52db6129962 100644
---- a/drivers/gpu/drm/nouveau/nouveau_display.c
-+++ b/drivers/gpu/drm/nouveau/nouveau_display.c
-@@ -418,6 +418,33 @@ nouveau_display_hpd_resume(struct nouveau_drm *drm)
- 	schedule_work(&drm->hpd_work);
- }
- 
-+/* A sink that responds to link training by dropping HPD would otherwise have
-+ * its link restarted for ever.  Stop after a few restarts that each came soon
-+ * after the one before, until things have been quiet for a while.
-+ */
-+#define NOUVEAU_RELINK_MAX	5
-+#define NOUVEAU_RELINK_QUIET	(10 * HZ)
-+
-+static bool
-+nouveau_display_relink_allowed(struct drm_connector *connector)
-+{
-+	struct nouveau_connector *nv_connector = nouveau_connector(connector);
-+	unsigned long now = jiffies;
-+
-+	if (time_after(now, nv_connector->relink.last + NOUVEAU_RELINK_QUIET))
-+		nv_connector->relink.count = 0;
-+	nv_connector->relink.last = now;
-+
-+	if (nv_connector->relink.count++ < NOUVEAU_RELINK_MAX)
-+		return true;
-+
-+	if (nv_connector->relink.count == NOUVEAU_RELINK_MAX + 1)
-+		NV_WARN(nouveau_drm(connector->dev),
-+			"%s: link restarted %d times in quick succession, giving up\n",
-+			connector->name, NOUVEAU_RELINK_MAX);
-+	return false;
-+}
-+
- /* Restart the pipe driving @connector with a full modeset, so that its link is
-  * trained again along with everything else.
-  */
-@@ -427,6 +454,7 @@ nouveau_display_relink(struct drm_connector *connector)
- 	struct drm_device *dev = connector->dev;
- 	struct drm_modeset_acquire_ctx ctx;
- 	struct drm_crtc *crtc;
-+	bool counted = false;
- 	int ret;
- 
- 	drm_modeset_acquire_init(&ctx, 0);
-@@ -443,11 +471,18 @@ nouveau_display_relink(struct drm_connector *connector)
- 	if (ret)
- 		goto out;
- 
--	if (crtc->state->active) {
--		drm_dbg_kms(dev, "[CONNECTOR:%d:%s] restarting link\n",
--			    connector->base.id, connector->name);
--		ret = drm_atomic_helper_reset_crtc(crtc, &ctx);
-+	if (!crtc->state->active)
-+		goto out;
-+
-+	if (!counted) {
-+		if (!nouveau_display_relink_allowed(connector))
-+			goto out;
-+		counted = true;
+ 	/* If an error occurred we just want to clean up the bio and move on. */
+ 	if (bio->bi_status) {
++		btrfs_put_bioc(async->bioc);
++		btrfs_bio_counter_dec(async->bbio->inode->root->fs_info);
+ 		btrfs_bio_end_io(async->bbio, bio->bi_status);
+ 		return;
  	}
-+
-+	drm_dbg_kms(dev, "[CONNECTOR:%d:%s] restarting link\n",
-+		    connector->base.id, connector->name);
-+	ret = drm_atomic_helper_reset_crtc(crtc, &ctx);
- out:
- 	if (ret == -EDEADLK) {
- 		drm_modeset_backoff(&ctx);
-@@ -510,6 +545,14 @@ nouveau_display_hpd_work(struct work_struct *work)
- 			    !!(bits & NVIF_CONN_EVENT_V0_UNPLUG),
- 			    !!(bits & NVIF_CONN_EVENT_V0_IRQ));
+@@ -762,6 +764,7 @@ static bool btrfs_submit_chunk(struct btrfs_bio *bbio, int mirror_num)
+ 		split = btrfs_split_bio(fs_info, bbio, map_length);
+ 		if (IS_ERR(split)) {
+ 			status = errno_to_blk_status(PTR_ERR(split));
++			btrfs_put_bioc(bioc);
+ 			btrfs_bio_counter_dec(fs_info);
+ 			goto end_bbio;
+ 		}
+@@ -822,6 +825,7 @@ static bool btrfs_submit_chunk(struct btrfs_bio *bbio, int mirror_num)
+ 	return map_length == length;
  
-+		/* If a DP sink dropped HPD while we were driving it, it may have
-+		 * reset its end of the link whatever its link status says, and
-+		 * userspace won't modeset again if nothing else has changed.
-+		 */
-+		if (nv_connector->dp_encoder &&
-+		    (bits & (NVIF_CONN_EVENT_V0_PLUG | NVIF_CONN_EVENT_V0_UNPLUG)))
-+			modeset = true;
-+
- 		/* A plug or unplug event pending alongside the IRQ, such as a
- 		 * sink count change reported by nouveau_dp_irq(), still needs
- 		 * connector detection.
+ fail:
++	btrfs_put_bioc(bioc);
+ 	btrfs_bio_counter_dec(fs_info);
+ 	/*
+ 	 * We have split the original bbio, now we have to end both the current
 
--- 
-2.55.0
+---
+base-commit: 6255426d70f2755968bb5436ae7b43dae742ac38
+change-id: 20261030-btrfs-async-csum-leak-1772df5f0c32
+
+Best regards,
+--  
+Mani Tofigh <mt4022@columbia.edu>
 
