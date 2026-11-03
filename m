@@ -1,11 +1,11 @@
 From: "David R. Hedges" <linuxdev844@thelittleman.net>
-Date: Tue, 03 Nov 2026 13:28:02 -0600
-Subject: [PATCH 2/5] drm/nouveau/gsp: don't report failed DP AUX transfers
- as completed
+Date: Tue, 03 Nov 2026 13:28:03 -0600
+Subject: [PATCH 3/5] drm/nouveau/gsp: don't dereference a failed DP_CTRL
+ reply
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-nouveau-dp-fixes-v1-2-892f4bd357cd@thelittleman.net>
+Message-Id: <20261103-nouveau-dp-fixes-v1-3-892f4bd357cd@thelittleman.net>
 References: <20261103-nouveau-dp-fixes-v1-0-892f4bd357cd@thelittleman.net>
 In-Reply-To: <20261103-nouveau-dp-fixes-v1-0-892f4bd357cd@thelittleman.net>
 To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
@@ -17,67 +17,63 @@ Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org,
  linux-kernel@vger.kernel.org, 
  "David R. Hedges" <linuxdev844@thelittleman.net>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793734092; l=2363;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793734092; l=2139;
  i=linuxdev844@thelittleman.net; s=20261103; h=from:subject:message-id;
- bh=VnhFFCJgwU5i55xG5SnKSfbRyrndYBR8/9ZzNzwvcvc=;
- b=FvGKLCExeTq/wzKIWyYwo1rYcl1ZNPwjfmlGJ9iRJBjjjUCu0eUeEa1Bfv5QXetBKXpDgnJXF
- yayxYdUuTsrDUdBzi3pocWEpW6KG++byU15FYqnfgrHstlChLrGGO5h
+ bh=Em2OoM13M26pHcKpGhv1LYrtl6SYDlTdhnsjJdx/IvI=;
+ b=SbNR04R3SMfP+QN1UMFdmAjrsP/bJpahSlrmBPEiholWFF0MG14BK5ZjKZRTnQSMaOK9sjjOC
+ 2YG7CX4kHn6BN5hvVQCke4v4O6nJOyumj6eFFm+r36izrVnQkjlVZp/
 X-Developer-Key: i=linuxdev844@thelittleman.net; a=ed25519;
  pk=Cynzuei/w0GLdh3LuNJdvH7aaszLrHSxY5UyujS7l+g=
 X-Endpoint-Received: by B4 Relay for linuxdev844@thelittleman.net/20261103 with auth_id=1397
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 9776c0a75a1a ("nouveau/dp: handle retries for AUX CH transfers
-with GSP.") put the NV0073_CTRL_CMD_DP_AUXCH_CTRL call in a retry loop
-and dropped the check for the call failing.  When RM fails it with
-anything other than a retry request, r535_dp_aux_xfer() ignores the
-error and returns the reply fields as if a transaction had completed:
-replyType becomes the AUX reply, and size and data are copied out.
-NVIDIA's own DisplayPort library (EvoAuxBus::transaction() in
-open-gpu-kernel-modules) treats a failed AUXCH_CTRL call as a NACK and
-ignores the reply.
+Commit eb284f4b3781 ("drm/nouveau/dp: Honor GSP link training retry
+timeouts") put the NV0073_CTRL_CMD_DP_CTRL call in
+r535_dp_train_target() in a retry loop and dropped the check for the
+call failing.  The reply's err field is now read whatever
+nvkm_gsp_rm_ctrl_push() returned, but when the GSP RPC itself fails,
+a timeout for instance, the reply is NULL.
 
-RM does fail these calls.  On a GA102 with GSP-RM 570.144, replugging
-a DP monitor that hasn't come back from DPMS off produces bursts of
+On a GA102 with GSP-RM 570.144 this turned a display hang into an
+oops.  A modeset hit "core notifier timeout", and releasing the output
+afterwards timed out waiting for GSP:
 
-  gsp: cli:0xc1d00001 obj:0x00730000 ctrl cmd:0x00731341 failed: 0x0000ffff
+  WARNING: nvkm/subdev/gsp/rm/r535/rpc.c:164 at r535_gsp_msgq_wait+0xb1/0xc0 [nouveau]
+  ...
+  BUG: kernel NULL pointer dereference, address: 0000000000000010
+  RIP: 0010:r535_dp_train_target+0x1db/0x220 [nouveau]
+  Call Trace:
+   r535_dp_release+0x73/0xe0 [nouveau]
+   nvkm_uoutp_mthd+0xaf0/0xc70 [nouveau]
+   ...
+   nvif_outp_release+0x1b/0xb0 [nouveau]
+   nv50_disp_atomic_commit_core+0x5ba/0x6b0 [nouveau]
 
-(NV_ERR_GENERIC, occasionally NV_ERR_INVALID_DATA), one per AUX
-transaction, and the DPCD and EDID reads made during a burst are
-judged on whatever the reply fields happen to contain.
+0x10 is the offset of err in NV0073_CTRL_DP_CTRL_PARAMS.  Only look at
+err if the control call succeeded.
 
-Return the error from the control call again, as r535_dp_aux_xfer()
-did before the retry loop was added.
-
-Fixes: 9776c0a75a1a ("nouveau/dp: handle retries for AUX CH transfers with GSP.")
+Fixes: eb284f4b3781 ("drm/nouveau/dp: Honor GSP link training retry timeouts")
 Cc: stable@vger.kernel.org
 Link: https://gitlab.freedesktop.org/drm/nouveau/-/work_items/515
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: David R. Hedges <linuxdev844@thelittleman.net>
 ---
- drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c b/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c
-index f5f22173fc2c..953392504413 100644
+index 953392504413..028f342e020b 100644
 --- a/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c
 +++ b/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c
-@@ -1101,9 +1101,12 @@ r535_dp_aux_xfer(struct nvkm_outp *outp, u8 type, u32 addr, u8 *data, u8 *psize)
- 			msleep(ctrl->retryTimeMs);
+@@ -1006,7 +1006,7 @@ r535_dp_train_target(struct nvkm_outp *outp, u8 target, bool mst, u8 link_nr, u8
  			nvkm_gsp_rm_ctrl_done(&disp->rm.objcom, ctrl);
  		} else {
--			memcpy(data, ctrl->data, size);
--			*psize = ctrl->size;
--			ret = ctrl->replyType;
-+			/* The reply only describes a transaction if RM completed one. */
-+			if (ret == 0) {
-+				memcpy(data, ctrl->data, size);
-+				*psize = ctrl->size;
-+				ret = ctrl->replyType;
-+			}
+ 			/* GSP didn't say to retry, or we were successful */
+-			if (ctrl->err)
++			if (ret == 0 && ctrl->err)
+ 				ret = -EIO;
  			nvkm_gsp_rm_ctrl_done(&disp->rm.objcom, ctrl);
  			break;
- 		}
 
 -- 
 2.55.0
