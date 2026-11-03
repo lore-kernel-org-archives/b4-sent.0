@@ -1,11 +1,10 @@
 From: "David R. Hedges" <linuxdev844@thelittleman.net>
-Date: Tue, 03 Nov 2026 13:28:03 -0600
-Subject: [PATCH 3/5] drm/nouveau/gsp: don't dereference a failed DP_CTRL
- reply
+Date: Tue, 03 Nov 2026 13:28:04 -0600
+Subject: [PATCH 4/5] drm/nouveau/kms/nv50-: don't drive outputs at 0 bpc
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-nouveau-dp-fixes-v1-3-892f4bd357cd@thelittleman.net>
+Message-Id: <20261103-nouveau-dp-fixes-v1-4-892f4bd357cd@thelittleman.net>
 References: <20261103-nouveau-dp-fixes-v1-0-892f4bd357cd@thelittleman.net>
 In-Reply-To: <20261103-nouveau-dp-fixes-v1-0-892f4bd357cd@thelittleman.net>
 To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
@@ -17,63 +16,74 @@ Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org,
  linux-kernel@vger.kernel.org, 
  "David R. Hedges" <linuxdev844@thelittleman.net>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793734092; l=2139;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793734092; l=2679;
  i=linuxdev844@thelittleman.net; s=20261103; h=from:subject:message-id;
- bh=Em2OoM13M26pHcKpGhv1LYrtl6SYDlTdhnsjJdx/IvI=;
- b=SbNR04R3SMfP+QN1UMFdmAjrsP/bJpahSlrmBPEiholWFF0MG14BK5ZjKZRTnQSMaOK9sjjOC
- 2YG7CX4kHn6BN5hvVQCke4v4O6nJOyumj6eFFm+r36izrVnQkjlVZp/
+ bh=Y8v/DP3NOf5boFL10j0leqHt5FR44DRl4gjR9gPSoac=;
+ b=+gfw9HJYdTUWBbNvL/5bE6j3pQ5M2dXlma30T3x0/6svDsBcr376nzMJYo9HEWDj21DWbIhVB
+ W5lYu0HUogyD3E8e+nQnlm5I3q1zaW67LFVgvN5alhEUva/Mr8gOH9q
 X-Developer-Key: i=linuxdev844@thelittleman.net; a=ed25519;
  pk=Cynzuei/w0GLdh3LuNJdvH7aaszLrHSxY5UyujS7l+g=
 X-Endpoint-Received: by B4 Relay for linuxdev844@thelittleman.net/20261103 with auth_id=1397
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit eb284f4b3781 ("drm/nouveau/dp: Honor GSP link training retry
-timeouts") put the NV0073_CTRL_CMD_DP_CTRL call in
-r535_dp_train_target() in a retry loop and dropped the check for the
-call failing.  The reply's err field is now read whatever
-nvkm_gsp_rm_ctrl_push() returned, but when the GSP RPC itself fails,
-a timeout for instance, the reply is NULL.
+When nouveau_connector_detect() can't read an EDID it clears the
+connector's EDID, which resets display_info.bpc to 0.  A default is
+only filled back in by nouveau_connector_detect_depth(), from
+->get_modes(), so if the HPD worker's probe loses the EDID and
+userspace commits a modeset before it next fetches the mode list,
+nv50_outp_atomic_check() sets or.bpc to 0.
 
-On a GA102 with GSP-RM 570.144 this turned a display hang into an
-oops.  A modeset hit "core notifier timeout", and releasing the output
-afterwards timed out waiting for GSP:
+For DP, nouveau_dp_train() then computes a minimum link rate of 0, and
+nv50_sor_dp_watermark_sst() computes 0 symbols per line and fires
 
-  WARNING: nvkm/subdev/gsp/rm/r535/rpc.c:164 at r535_gsp_msgq_wait+0xb1/0xc0 [nouveau]
-  ...
-  BUG: kernel NULL pointer dereference, address: 0000000000000010
-  RIP: 0010:r535_dp_train_target+0x1db/0x220 [nouveau]
-  Call Trace:
-   r535_dp_release+0x73/0xe0 [nouveau]
-   nvkm_uoutp_mthd+0xaf0/0xc70 [nouveau]
-   ...
-   nvif_outp_release+0x1b/0xb0 [nouveau]
-   nv50_disp_atomic_commit_core+0x5ba/0x6b0 [nouveau]
+  WARNING: drivers/gpu/drm/nouveau/dispnv50/disp.c:1678 at nv50_sor_dp_watermark_sst.isra.0+0x2ab/0x2c0 [nouveau]
 
-0x10 is the offset of err in NV0073_CTRL_DP_CTRL_PARAMS.  Only look at
-err if the control call succeeded.
+This was seen on a GA102 right after "DDC responded, but no EDID for
+DP-3" from the HPD worker, while replugging a DP monitor.
 
-Fixes: eb284f4b3781 ("drm/nouveau/dp: Honor GSP link training retry timeouts")
+Fall back to 8 bpc when the connector doesn't provide a value, which is
+nouveau_connector_detect_depth()'s own default for outputs that are
+neither eDP nor LVDS, and do the same in nv50_msto_atomic_check(),
+which takes or.bpc from the MST connector the same way.  Calling
+nouveau_connector_detect_depth() from ->detect() instead isn't an
+option, as for LVDS it depends on the native mode that ->get_modes()
+sets up.
+
+Fixes: ac2d9275f371 ("drm/nouveau/kms/nv50-: Store the bpc we're using in nv50_head_atom")
 Cc: stable@vger.kernel.org
 Link: https://gitlab.freedesktop.org/drm/nouveau/-/work_items/515
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: David R. Hedges <linuxdev844@thelittleman.net>
 ---
- drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/gpu/drm/nouveau/dispnv50/disp.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c b/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c
-index 953392504413..028f342e020b 100644
---- a/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/rm/r535/disp.c
-@@ -1006,7 +1006,7 @@ r535_dp_train_target(struct nvkm_outp *outp, u8 target, bool mst, u8 link_nr, u8
- 			nvkm_gsp_rm_ctrl_done(&disp->rm.objcom, ctrl);
- 		} else {
- 			/* GSP didn't say to retry, or we were successful */
--			if (ctrl->err)
-+			if (ret == 0 && ctrl->err)
- 				ret = -EIO;
- 			nvkm_gsp_rm_ctrl_done(&disp->rm.objcom, ctrl);
- 			break;
+diff --git a/drivers/gpu/drm/nouveau/dispnv50/disp.c b/drivers/gpu/drm/nouveau/dispnv50/disp.c
+index 2c66e480b511..a265fd971c99 100644
+--- a/drivers/gpu/drm/nouveau/dispnv50/disp.c
++++ b/drivers/gpu/drm/nouveau/dispnv50/disp.c
+@@ -418,8 +418,11 @@ nv50_outp_atomic_check(struct drm_encoder *encoder,
+ 	if (ret)
+ 		return ret;
+ 
++	/* display_info.bpc is reset to 0 when a probe loses the EDID, and
++	 * isn't given a default again until ->get_modes() runs.
++	 */
+ 	if (crtc_state->mode_changed || crtc_state->connectors_changed)
+-		asyh->or.bpc = connector->display_info.bpc;
++		asyh->or.bpc = connector->display_info.bpc ?: 8;
+ 
+ 	/* We might have to reduce the bpc */
+ 	nv50_outp_atomic_fix_depth(encoder, crtc_state);
+@@ -989,7 +992,7 @@ nv50_msto_atomic_check(struct drm_encoder *encoder,
+ 	if (!state->duplicated) {
+ 		const int clock = crtc_state->adjusted_mode.clock;
+ 
+-		asyh->or.bpc = connector->display_info.bpc;
++		asyh->or.bpc = connector->display_info.bpc ?: 8;
+ 		asyh->dp.pbn = drm_dp_calc_pbn_mode(clock, asyh->or.bpc * 3 << 4);
+ 	}
+ 
 
 -- 
 2.55.0
