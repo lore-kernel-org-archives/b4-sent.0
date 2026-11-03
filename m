@@ -1,11 +1,11 @@
 From: =?utf-8?q?St=C3=A9phane_Grosjean?= <s.grosjean@peak-system.fr>
-Date: Tue, 03 Nov 2026 13:30:28 +0100
-Subject: [PATCH v8 12/14] can: peak_usb: pass the dev_num argument of
- PCAN-USB Pro GETDEVID
+Date: Tue, 03 Nov 2026 13:30:29 +0100
+Subject: [PATCH v8 13/14] can: peak_usb: don't send uninitialized stack
+ bytes to PCAN-USB devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261103-canfd_check_channel_idx-v8-12-4e8b2c0a8806@peak-system.fr>
+Message-Id: <20261103-canfd_check_channel_idx-v8-13-4e8b2c0a8806@peak-system.fr>
 References: <20261103-canfd_check_channel_idx-v8-0-4e8b2c0a8806@peak-system.fr>
 In-Reply-To: <20261103-canfd_check_channel_idx-v8-0-4e8b2c0a8806@peak-system.fr>
 To: Marc Kleine-Budde <mkl@pengutronix.de>, 
@@ -16,60 +16,60 @@ To: Marc Kleine-Budde <mkl@pengutronix.de>,
 Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Tristan Madani <tristmd@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793709024; l=2068;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793709024; l=1939;
  i=s.grosjean@peak-system.fr; s=20261020; h=from:subject:message-id;
- bh=tg+9JBfly0WW6BZBreiuqI5/gaJiy/qaGWKpT4l/6/0=;
- b=Hdej+jVl3N0KAZ3gTV0AnBPXC0qFqNz0TAMjStt05xcW4nMxhTbYNdQah87mWrx6Q1wxj47Fg
- y4SbWW80aY8BE1NuyzI/RJwMvce8QRWwYlUQHdLrO/Nl+sVGl0fJXMS
+ bh=F/qIBCSUbQKHAsdEyP2lkTE3sJagZw87jKmvA+lanFw=;
+ b=DHWRmPaS3UQfJeuINhwExbK7iwB9i424Wwmg8OYQ6j/axgxM9npbr7EU3i4kcy5ONVSTYcbU2
+ Uw+zbP8Q48rB/n5qt1MyTA8tzcjYOY2lkSUNpr4WvQlw5yOXSxi1toj
 X-Developer-Key: i=s.grosjean@peak-system.fr; a=ed25519;
  pk=bP7QV2zvvAKAfConZlUOGKGEcXL64SNUpVUm++Ai+/c=
 X-Endpoint-Received: by B4 Relay for s.grosjean@peak-system.fr/20261020 with auth_id=1250
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-pcan_usb_pro_get_can_channel_id() builds its GETDEVID record with
-pcan_msg_add_rec(), passing only the channel index. However,
-pcan_msg_add_rec() handles GETDEVID together with SETBTR and SETDEVID,
-and also reads a second argument with va_arg(), to fill the dev_num
-field of the record. Reading this missing argument is undefined
-behavior: in practice, whatever value is left in the corresponding
-register or stack slot is written to the request in dev->cmd_buf.
+pcan_usb_send_cmd() copies the PCAN_USB_CMD_ARGS_LEN (14) bytes of the
+args[] array of its caller into the command buffer, and sends the whole
+command to the device.
 
-This value is sent to the device with each GETDEVID request. Moreover,
-peak_usb_disconnect() clears PCAN_USB_STATE_CONNECTED before it
-unregisters the netdevs, and once it is cleared,
-pcan_usb_pro_send_cmd() and pcan_usb_pro_wait_rsp() return success
-without any USB transfer. pcan_usb_pro_get_can_channel_id() then
-returns the dev_num field of the request as the CAN channel ID, so an
-ETHTOOL_GEEPROM request handled in this window makes
-peak_usb_get_eeprom() copy that value to userspace, and cache it in
-dev->can_channel_id.
+pcan_usb_set_bittiming() only sets the first two bytes of its args[]
+array, and pcan_usb_set_can_channel_id() only the first one. The other
+12 or 13 bytes of these uninitialized stack arrays are thus sent to the
+device each time the bitrate or the CAN channel ID is set.
 
-Pass 0 as dev_num, so that the request is fully defined, and a null ID
-is returned in that case.
+Zero-initialize both arrays, as the other setters of the driver do.
 
 Found by Sashiko AI review.
 
-Fixes: d8a199355f8f ("can: usb: PEAK-System Technik PCAN-USB Pro specific part")
+Fixes: 46be265d3388 ("can: usb: PEAK-System Technik PCAN-USB specific part")
+Fixes: e7a7b3d22503 ("can: peak_usb: allow flashing of the CAN channel ID")
 Cc: stable@vger.kernel.org
 Assisted-by: LLM
 Signed-off-by: Stéphane Grosjean <s.grosjean@peak-system.fr>
 ---
- drivers/net/can/usb/peak_usb/pcan_usb_pro.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/net/can/usb/peak_usb/pcan_usb.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/net/can/usb/peak_usb/pcan_usb_pro.c b/drivers/net/can/usb/peak_usb/pcan_usb_pro.c
-index 840658723648..0d014f4c08a7 100644
---- a/drivers/net/can/usb/peak_usb/pcan_usb_pro.c
-+++ b/drivers/net/can/usb/peak_usb/pcan_usb_pro.c
-@@ -435,7 +435,7 @@ static int pcan_usb_pro_get_can_channel_id(struct peak_usb_device *dev,
- 	u8 *pc;
+diff --git a/drivers/net/can/usb/peak_usb/pcan_usb.c b/drivers/net/can/usb/peak_usb/pcan_usb.c
+index 83cf6fe7d258..2838e4ea2b4e 100644
+--- a/drivers/net/can/usb/peak_usb/pcan_usb.c
++++ b/drivers/net/can/usb/peak_usb/pcan_usb.c
+@@ -274,7 +274,7 @@ static int pcan_usb_set_led(struct peak_usb_device *dev, u8 onoff)
+ static int pcan_usb_set_bittiming(struct peak_usb_device *dev,
+ 				  struct can_bittiming *bt)
+ {
+-	u8 args[PCAN_USB_CMD_ARGS_LEN];
++	u8 args[PCAN_USB_CMD_ARGS_LEN] = {};
+ 	u8 btr0, btr1;
  
- 	pc = pcan_msg_init_empty(&um, dev->cmd_buf, PCAN_USB_MAX_CMD_LEN);
--	pcan_msg_add_rec(&um, PCAN_USBPRO_GETDEVID, dev->ctrl_idx);
-+	pcan_msg_add_rec(&um, PCAN_USBPRO_GETDEVID, dev->ctrl_idx, 0);
+ 	btr0 = ((bt->brp - 1) & 0x3f) | (((bt->sjw - 1) & 0x3) << 6);
+@@ -405,7 +405,7 @@ static int pcan_usb_get_can_channel_id(struct peak_usb_device *dev, u32 *can_ch_
+ /* set a new CAN channel id in the flash memory of the device */
+ static int pcan_usb_set_can_channel_id(struct peak_usb_device *dev, u32 can_ch_id)
+ {
+-	u8 args[PCAN_USB_CMD_ARGS_LEN];
++	u8 args[PCAN_USB_CMD_ARGS_LEN] = {};
  
- 	err =  pcan_usb_pro_send_cmd(dev, &um);
- 	if (err)
+ 	/* this kind of device supports 8-bit values only */
+ 	if (can_ch_id > U8_MAX)
 
 -- 
 2.53.0
