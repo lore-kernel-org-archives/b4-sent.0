@@ -1,95 +1,152 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Tue, 03 Nov 2026 18:04:11 +0900
-Subject: [PATCH] pnfs/blocklayout: commit the layout before reading through
- the MDS
+From: Rajan Yadav <rajanyadav0307@gmail.com>
+Date: Tue, 03 Nov 2026 03:09:04 -0600
+Subject: [PATCH] arm64: dts: allwinner: a100: Add CPU thermal trips and
+ cooling maps
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-nfs-bl-mdsread-v1-1-9b29915bbab7@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAIqj6WoC/x3MQQqAIBBA0avErBvIFKGuEi1MxxooCwcikO6et
- HyL/wsIZSaBsSmQ6WbhM1WotgG/ubQScqiGvuut6rTCFAWXHY8gmVxAbWyM3tDgvIEaXZkiP/9
- wmt/3A3KBvq9gAAAA
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-Cc: Christoph Hellwig <hch@lst.de>, 
- Benjamin Coddington <ben.coddington@hammerspace.com>, 
- linux-nfs@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793696650; l=2270;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=WBV4O1aChXYgb5EMs6LEz+MGYblqNH73Uzx1H9P7xWs=;
- b=MfOWEb1eb+VnNW12yPE3M4dqZNyh7pwb45bt0Tbf86q39cKdg2S+NZ4FsUiHDlZ0zrjhbvIRm
- JJF8zzlKF16ACuVyqEup9uFBlYAWL+E7gv125j6CewpSudPQzDX6EXv
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+Message-Id: <20261103-a100-thermal-trips-v1-1-73bce7ff0767@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAK+k6WoC/yXMQQrCQAxG4auUrA0ktah4FXExU39tRGtJRhFK7
+ +6oy2/x3kwBNwTtm5kcLwt7jBW6aqgf0ngB26maWmk3qrLmpCJcBvg93bi4TcEZ2mEn3TZLohp
+ OjrO9f9PD8e945iv68j3RsnwAeuWDOnYAAAA=
+X-Change-ID: 20261103-a100-thermal-trips-be14e8047b0a
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ Rajan Yadav <rajanyadav0307@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793696943; l=3851;
+ i=rajanyadav0307@gmail.com; s=20261103; h=from:subject:message-id;
+ bh=TK5v1GFylrgHUT61Byg8vJfxL26nBlC6KGx7Vp13nuU=;
+ b=/0kW6ihxKb1jQSR5o8EODnSv+/ohl7t86rMTSddqI7rmvqiEcu/p299NMpE/Ho5Fz1M0xWnl5
+ TIh1RNopqd7Bwqbl5AidD39HpB0upbRkKxbFiRQ6ANcSnaXnG3akcoK
+X-Developer-Key: i=rajanyadav0307@gmail.com; a=ed25519;
+ pk=4ZPeiP5qrv2b44q/Obxi2koUS70Q6npbttJnpUoTlgg=
+X-Endpoint-Received: by B4 Relay for rajanyadav0307@gmail.com/20261103 with auth_id=1391
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-bl_pg_init_read() sends some reads to the MDS, such as unaligned
-O_DIRECT reads. The MDS need not see layout writes before LAYOUTCOMMIT
-(RFC 8881, section 12.5.4). With Linux nfsd on XFS, such a read after
-an O_DIRECT write into a hole returns zeroes.
+The CPU thermal zone in sun50i-a100.dtsi has a sensor but no trip
+points, so nothing throttles the CPU as it heats up and nothing shuts
+the system down before it overheats. On a KickPi K5C (A133) without a
+heatsink, the CPU reaches 90 C within minutes of full load.
 
-Send a synchronous LAYOUTCOMMIT first. An asynchronous one could be
-overtaken by the READ. If the LAYOUTCOMMIT returns an error, fail the
-read.
+Add a passive trip at 90 C that throttles all four cores through
+cpufreq, and a critical trip at 110 C, using the same layout as
+sun50i-h6.dtsi.
 
-Fixes: f742dc4a3258 ("pnfsblock: fix non-aligned DIO read")
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+The temperatures come from the Allwinner BSP (sun50iw10p1.dtsi). The
+BSP drives this zone with the power allocator governor: control starts
+at 70 C, the target is 90 C, and 110 C is critical. The power
+allocator needs a power model of the CPUs (dynamic-power-coefficient),
+which the A100 does not have in mainline, so here the 90 C target
+becomes a step_wise passive trip, and the 110 C critical trip is kept.
+110 C is also the highest working junction temperature in the
+recommended operating conditions of the A133 datasheet (rev 1.5,
+table 5-2). The absolute maximum is 125 C.
+
+The GPU and DDR zones are left without trips, as in the BSP.
+
+Polling stays disabled: the sensor raises an interrupt every 250 ms
+and the driver updates the zone from it, as on the H6.
+
+Tested on a KickPi K5C (A133, no heatsink):
+- one hour of full load on all cores held the CPU at about 90 C, with
+  short throttling to 1.32 GHz
+- with thermal emulation, a rising temperature lowers the limit one
+  OPP at a time down to 408 MHz, the limit is released below 88 C, and
+  111 C triggers the hardware protection shutdown
+
+Signed-off-by: Rajan Yadav <rajanyadav0307@gmail.com>
 ---
-Tested with Linux nfsd on XFS, unaligned O_DIRECT reads only. The read
-after the write returned zeroes in 5 of 5 runs before and the data
-after. generic/013, 091 and 263 pass.
-
-A failed LAYOUTCOMMIT now fails the read instead of a later fsync.
-
-"pnfs/blocklayout: don't let a READ layout hide written extents" fixes
-the same zeroes for reads through a READ layout.
+arm64: dts: allwinner: a100: Add CPU thermal trips and cooling maps
 ---
- fs/nfs/blocklayout/blocklayout.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/allwinner/sun50i-a100.dtsi | 29 ++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index b7a3211c58..54825aaad3 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -839,12 +839,16 @@ is_aligned_req(struct nfs_pageio_descriptor *pgio,
- static void
- bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
- {
-+	int err;
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a100.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a100.dtsi
+index ba6020989..fce91dc2c 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a100.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a100.dtsi
+@@ -8,6 +8,7 @@
+ #include <dt-bindings/clock/sun50i-a100-r-ccu.h>
+ #include <dt-bindings/reset/sun50i-a100-ccu.h>
+ #include <dt-bindings/reset/sun50i-a100-r-ccu.h>
++#include <dt-bindings/thermal/thermal.h>
+ 
+ / {
+ 	interrupt-parent = <&gic>;
+@@ -24,6 +25,7 @@ cpu0: cpu@0 {
+ 			reg = <0x0>;
+ 			enable-method = "psci";
+ 			clocks = <&ccu CLK_CPUX>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu1: cpu@1 {
+@@ -32,6 +34,7 @@ cpu1: cpu@1 {
+ 			reg = <0x1>;
+ 			enable-method = "psci";
+ 			clocks = <&ccu CLK_CPUX>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu2: cpu@2 {
+@@ -40,6 +43,7 @@ cpu2: cpu@2 {
+ 			reg = <0x2>;
+ 			enable-method = "psci";
+ 			clocks = <&ccu CLK_CPUX>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu3: cpu@3 {
+@@ -48,6 +52,7 @@ cpu3: cpu@3 {
+ 			reg = <0x3>;
+ 			enable-method = "psci";
+ 			clocks = <&ccu CLK_CPUX>;
++			#cooling-cells = <2>;
+ 		};
+ 	};
+ 
+@@ -659,6 +664,30 @@ cpu-thermal {
+ 			polling-delay-passive = <0>;
+ 			polling-delay = <0>;
+ 			thermal-sensors = <&ths 0>;
 +
- 	if (!is_aligned_req(pgio, req, SECTOR_SIZE, false)) {
- 		nfs_pageio_reset_read_mds(pgio);
--		return;
-+		goto out_commit;
- 	}
++			trips {
++				cpu_alert: cpu-alert {
++					temperature = <90000>;
++					hysteresis = <2000>;
++					type = "passive";
++				};
++
++				cpu-crit {
++					temperature = <110000>;
++					hysteresis = <0>;
++					type = "critical";
++				};
++			};
++
++			cooling-maps {
++				map0 {
++					trip = <&cpu_alert>;
++					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu3 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
+ 		};
  
- 	pnfs_generic_pg_init_read(pgio, req);
-+	if (pgio->pg_error < 0)
-+		return;
- 
- 	if (pgio->pg_lseg &&
- 		test_bit(NFS_LSEG_UNAVAILABLE, &pgio->pg_lseg->pls_flags)) {
-@@ -853,6 +857,13 @@ bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
- 		pnfs_set_lo_fail(pgio->pg_lseg);
- 		nfs_pageio_reset_read_mds(pgio);
- 	}
-+	if (pgio->pg_lseg)
-+		return;
-+out_commit:
-+	/* The MDS may not see layout writes until LAYOUTCOMMIT. */
-+	err = pnfs_layoutcommit_inode(pgio->pg_inode, true);
-+	if (err < 0)
-+		pgio->pg_error = err;
- }
- 
- /*
+ 		ddr-thermal {
 
 ---
-base-commit: eea3fef32a9cf36abcb5975a5a594e4135a6b026
-change-id: 20261031-nfs-bl-mdsread-346ffc4e9ac4
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261103-a100-thermal-trips-be14e8047b0a
 
 Best regards,
--- 
-Daejun Park <daejun7.park@samsung.com>
+--  
+Rajan Yadav <rajanyadav0307@gmail.com>
 
