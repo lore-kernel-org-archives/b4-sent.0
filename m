@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Wed, 04 Nov 2026 00:25:46 +0800
-Subject: [PATCH v4 2/3] mm, swap: give hibernation swap slots their own
- swap table entry type
+Date: Wed, 04 Nov 2026 00:25:47 +0800
+Subject: [PATCH v4 3/3] mm, swap: drop the swap cache guard and reclaim in
+ swap_free_hibernation_slot()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-swap-hibernation-slots-v4-2-0ba9393609e1@tencent.com>
+Message-Id: <20261104-swap-hibernation-slots-v4-3-0ba9393609e1@tencent.com>
 References: <20261104-swap-hibernation-slots-v4-0-0ba9393609e1@tencent.com>
 In-Reply-To: <20261104-swap-hibernation-slots-v4-0-0ba9393609e1@tencent.com>
 To: linux-mm@kvack.org
@@ -17,11 +17,11 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793723146; l=5422;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793723146; l=1453;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=D1R/jLGgi6pquHPzj147tbH7cVtRgUWaR7W1/WKarbM=;
- b=t2IliMLVx2WrDHtLnP1+KhYaf7Fd2wx52llfctOfsBYngOFhThc7P/EgeSo3isI+f2oXQaJz0
- EexZhSYQCudAbyicaWr5OnefJxKjhDF/Cu3MJRLk6Thlcjafimnf4Jg
+ bh=HPBYUP9MF3eSuiR7PGXZbC8XEUoasVA5Ed/MrXu8OwY=;
+ b=4uNVtu2qFnk2q3Ro3dEgv6Ysy2ZgK5QDFSXGgJ3BR5URLa/fqYZSm2gIUkczc6q/+EjLyM7Pp
+ boIUOm6t6rxBLDX/bw1typJvrJs67/sZAvugRsZ71of0Po6iNzyXGyc
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
@@ -29,128 +29,41 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Youngjun Park <youngjun.park@lge.com>
 
-swap_alloc_hibernation_slot() stores a fake shadow in the slot it hands
-out.  An anon slot swapped out with no workingset shadow looks exactly the
-same, so nothing in mm can tell the two apart.
+Both are there for a folio that readahead might have put on the slot.  A
+hibernation entry is not a shadow and has no swap count, so the swap cache
+turns it away and no such folio can exist.
 
-Give hibernation slots their own type.  Bit 4 and every bit above it are
-set, except the count field, which stays 0.  Bits 0 to 3 are taken by the
-shadow, PFN, pointer and bad marks, so bit 4 is the first free one.  The
-type holds no data, so the value alone says what it is.
-
-The entry has no swap count.  Hibernation only allocates and frees a slot,
-so a count would never change.  swap_free_hibernation_slot() frees the slot
-directly, there is no count to put first.
-
-The slot is no longer a shadow, so the previous patch keeps it out of the
-swap cache.  The count field stays 0 as well, so code that reads the count
-without checking the type sees an unused slot instead of one at
-SWP_TB_COUNT_MAX, and a wrong put is caught by the existing underflow
-check.
-
-Suggested-by: Kairui Song <kasong@tencent.com>
-Link: https://lore.kernel.org/linux-mm/abp7aDgYLrxF3Me8@KASONG-MC4/
 Signed-off-by: Youngjun Park <youngjun.park@lge.com>
 Acked-by: Kairui Song <kasong@tencent.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
-[kasong@tencent.com: renamed the layout entry to HIB and reworded its doc]
 ---
- mm/swap_table.h | 14 ++++++++++++++
- mm/swapfile.c   | 13 +++++++------
- 2 files changed, 21 insertions(+), 6 deletions(-)
+ mm/swapfile.c | 12 +-----------
+ 1 file changed, 1 insertion(+), 11 deletions(-)
 
-diff --git a/mm/swap_table.h b/mm/swap_table.h
-index e6613e62f8d0..072625d60d54 100644
---- a/mm/swap_table.h
-+++ b/mm/swap_table.h
-@@ -30,6 +30,7 @@ struct swap_memcg_table {
-  * PFN:      |SWAP_COUNT|Z|------ PFN -------|10| - Cached slot
-  * Pointer:  |----------- Pointer ----------|100| - (Unused)
-  * Bad:      |------------- 1 -------------|1000| - Bad slot
-+ * HIB:      |    0     |------- 1 -------|10000| - Hibernation slot
-  *
-  * COUNT is `SWP_TB_COUNT_BITS` long, Z is the `SWP_TB_ZERO_FLAG` bit,
-  * and together they form the `SWP_TB_FLAGS_BITS` wide flags field.
-@@ -54,6 +55,11 @@ struct swap_memcg_table {
-  *   aligned pointers.
-  *
-  * - Bad: Swap slot is reserved, protects swap header or holes on swap devices.
-+ *
-+ * - HIB: Swap slot is reserved by hibernation for the suspend image. It is a
-+ *   special pin, like the swap cache pin: the allocator treats the non-NULL
-+ *   entry as in use, but the slot is never duplicated and never enters the
-+ *   swap cache. The count stays 0, so a stray put trips the underflow check.
-  */
- 
- /* NULL Entry, all 0 */
-@@ -81,6 +87,9 @@ struct swap_memcg_table {
- /* Bad slot: ends with 0b1000 and rests of bits are all 1 */
- #define SWP_TB_BAD		((~0UL) << 3)
- 
-+/* Hibernation slot: ends with 0b10000, no count, rests of bits are all 1 */
-+#define SWP_TB_HIB		(((~0UL) << 4) & ~SWP_TB_COUNT_MASK)
-+
- /* Macro for shadow offset calculation */
- #define SWAP_COUNT_SHIFT	SWP_TB_FLAGS_BITS
- 
-@@ -166,6 +175,11 @@ static inline bool swp_tb_is_bad(unsigned long swp_tb)
- 	return swp_tb == SWP_TB_BAD;
- }
- 
-+static inline bool swp_tb_is_hibernation(unsigned long swp_tb)
-+{
-+	return swp_tb == SWP_TB_HIB;
-+}
-+
- static inline bool swp_tb_is_countable(unsigned long swp_tb)
- {
- 	return (swp_tb_is_shadow(swp_tb) || swp_tb_is_folio(swp_tb) ||
 diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 189f04d8838f..c26243140bf2 100644
+index c26243140bf2..8dd2ba825413 100644
 --- a/mm/swapfile.c
 +++ b/mm/swapfile.c
-@@ -941,7 +941,7 @@ static bool __swap_cluster_alloc_entries(struct swap_info_struct *si,
- 	 * upon folio unmap.
- 	 *
- 	 * Else, it's a exclusive order 0 allocation for hibernation.
--	 * The slot starts with count == 1 and never increases.
-+	 * The slot carries no swap count and is freed by offset.
- 	 */
- 	if (likely(folio)) {
- 		order = folio_order(folio);
-@@ -953,8 +953,8 @@ static bool __swap_cluster_alloc_entries(struct swap_info_struct *si,
- 		order = 0;
- 		nr_pages = 1;
- 		swap_cluster_assert_empty(ci, ci_off, 1, false);
--		/* Fake shadow placeholder with no flag, hibernation does not use the zeromap */
--		__swap_table_set(ci, ci_off, __swp_tb_mk_count(shadow_to_swp_tb(NULL, 0), 1));
-+		/* Exclusively owned by hibernation, must never enter the swap cache */
-+		__swap_table_set(ci, ci_off, SWP_TB_HIB);
- 	} else {
- 		/* Allocation without folio is only possible with hibernation */
- 		WARN_ON_ONCE(1);
-@@ -1953,9 +1953,11 @@ void __swap_cluster_free_entries(struct swap_info_struct *si,
- 		old_tb = __swap_table_get(ci, ci_off);
- 		/*
- 		 * Freeing is done after release of the last swap count
--		 * ref, or after swap cache is dropped
-+		 * ref, or after swap cache is dropped. A hibernation slot
-+		 * has no count and is freed directly by its owner.
- 		 */
--		VM_WARN_ON(!swp_tb_is_shadow(old_tb) || __swp_tb_get_count(old_tb) > 1);
-+		VM_WARN_ON(!swp_tb_is_hibernation(old_tb) &&
-+			   (!swp_tb_is_shadow(old_tb) || __swp_tb_get_count(old_tb) > 1));
- 
- 		/* Resetting the slot to NULL also clears the inline flags. */
- 		__swap_table_set(ci, ci_off, null_to_swp_tb());
-@@ -2225,7 +2227,6 @@ void swap_free_hibernation_slot(swp_entry_t entry)
+@@ -2227,18 +2227,8 @@ void swap_free_hibernation_slot(swp_entry_t entry)
  	pgoff_t offset = swp_offset(entry);
  
  	ci = swap_cluster_lock(si, offset);
--	__swap_cluster_put_entry(ci, offset % SWAPFILE_CLUSTER);
- 	/*
- 	 * A slot with a folio in the swap cache is freed when the folio
- 	 * leaves the cache, the same rule swap_put_entries_cluster() follows.
+-	/*
+-	 * A slot with a folio in the swap cache is freed when the folio
+-	 * leaves the cache, the same rule swap_put_entries_cluster() follows.
+-	 * Readahead can put a folio here, and freeing the slot now would
+-	 * leave that folio with no entry behind it.
+-	 */
+-	if (!swp_tb_is_folio(__swap_table_get(ci, offset % SWAPFILE_CLUSTER)))
+-		__swap_cluster_free_entries(si, ci, offset % SWAPFILE_CLUSTER, 1);
++	__swap_cluster_free_entries(si, ci, offset % SWAPFILE_CLUSTER, 1);
+ 	swap_cluster_unlock(ci);
+-
+-	/* In theory readahead might add it to the swap cache by accident */
+-	__try_to_reclaim_swap(si, offset, TTRS_ANYWAY);
+ }
+ 
+ static int __find_hibernation_swap_type(dev_t device, sector_t offset)
 
 -- 
 2.56.0
