@@ -1,110 +1,120 @@
-From: Dmitry Safonov <dima@arista.com>
-Date: Tue, 03 Nov 2026 16:55:21 +0000
-Subject: [PATCH] perf build: Override OUTPUT when building internal
- libraries
+From: Mani Tofigh <mt4022@columbia.edu>
+Date: Tue, 03 Nov 2026 13:09:20 -0500
+Subject: [PATCH] cgroup/freezer: walk exiting tasks in the v1 freezer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-perf-output-v1-1-df33a0368cf2@arista.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywrCMBBFf6XM2oEm0vj4FXGRx9RGMA0ziQil/
- 26iy3O552wgxJEErsMGTO8ocU0N1GEAv9j0IIyhMehRG6XGI2biGddaci04nYO5mCnokzbQjMw
- 0x8+vdrv/Wap7ki890R/OCqFjm/zSp5eVQgz7/gX7J+4KiAAAAA==
-X-Change-ID: 20261103-perf-output-58d6965d2726
-To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- James Clark <james.clark@linaro.org>
-Cc: Arnaldo Carvalho de Melo <acme@redhat.com>, 
- linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dmitry Safonov <0x7f454c46@gmail.com>, 
- Dmitry Safonov <0x7f454c46@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793724934; l=2896;
- i=dima@arista.com; s=20250521; h=from:subject:message-id;
- bh=l8SCNpqTNyh3+owYKih6JxRjJiWS4WDYwh5MD7aaoHE=;
- b=IXevTkU5SJ4FxscC8KtUUltaxTyySoo3Kc97o5EFCSGat23lGvJqtzK/0hiUbmodEAgN3oPbN
- ch/1qQDcdyaDqlwAZspbMw5slSBH+Vur9UuhUqTyE86e6uEK5rpUcHG
-X-Developer-Key: i=dima@arista.com; a=ed25519;
- pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
-X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
+Message-Id: <20261103-cgroup-freezer-exiting-v1-1-00d43b443747@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMMQ7CMAxG4atUnrHkBFQkroIYwPwJZkgrp0UVV
+ e9OgPEb3lupwg2VTt1KjpdVG0pD2HWkj2vJYLs3U5TYhyCRNfswj5wceMMZi01WMusx9YKD7qM
+ ItXh0JFt+4/Pl7zrfntDpe6Nt+wAsaXPhegAAAA==
+X-Change-ID: 20261102-cgroup-freezer-exiting-c7f60e4c3200
+To: Tejun Heo <tj@kernel.org>, Johannes Weiner <hannes@cmpxchg.org>, 
+ =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>
+Cc: Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
+ cgroups@vger.kernel.org, linux-kernel@vger.kernel.org, tz2294@columbia.edu, 
+ stable@vger.kernel.org, Mani Tofigh <mt4022@columbia.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793729360; l=3795;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=KM/MnDxFBAC+sHs8ZYIfu9PpFh912v0OKBTiwLZBXTs=;
+ b=1kmrrNgSRj3B7olIMU2INLso9M0fRHp0YmplSCHp+8t7YB5hBjT1nV0u0MqY2E+m8lzO1Cm9Y
+ Z75ryOfyQFtCv4tOtkiqG9jzOFrSmMPf2JNi7dBlcze4KBym1pfyMJ4
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After commit 1572ba36fbca ("perf tests: Improvements to build-test
-performance"), building perf with OUTPUT on the command line fails:
-  make -C tools/perf OUTPUT=/tmp/linux/bld/perf/ ARCH=x86_64 LC_ALL=C CC=gcc HOSTCC=gcc LD=ld
-  ...
-  make[3]: *** No rule to make target '/tmp/linux/perf/libsubcmd/libsubcmd.a'.  Stop.
+An exiting task can stay frozen after its v1 freezer cgroup is thawed.
+Since commit a72f73c4dd9b ("cgroup: Don't expose dead tasks in cgroup")
+the css task walk hides an exiting task once its process has no live
+threads left.  That count drops when another thread of the process
+exits, which can happen between the freeze and the thaw walk.  A pid
+namespace init hits this easily since it waits freezably in
+zap_pid_ns_processes() after commit 81933038f5e2 ("pid_namespace: make
+zap_pid_ns_processes() freezable"):
 
-MAKEFLAGS propagates the command-line OUTPUT assignment to recursive makes.
-The library builds pass their output directories through $O, but the assignment
-to $OUTPUT in tools/scripts/Makefile.include cannot replace a command-line
-argument. This affects libapi, libperf, libsubcmd and libsymbol.
+  Task A (pid ns init)      Task B (A's thread)      Task C
+                            do_exit()
+                              exit_signals()
+  do_exit()
+    zap_pid_ns_processes()
+                                                     write FROZEN
+                                                       /* A frozen */
+                              /* live count 0 */
+                                                     write THAWED
+                                                       /* A skipped */
 
-With "unexport MAKEFLAGS" returned and added $(info) debug in libsubcmd
-Makefile produces:
-  OUTPUT = /tmp/linux/perf/libsubcmd/
-Without it, on current master it prints:
-  OUTPUT = /tmp/linux/perf/
+A then stays frozen even after SIGKILL:
 
-Pass OUTPUT explicitly to each library build, including the trailing slash
-required when constructing file names. This follows the existing libbpf
-build rule and preserves MAKEFLAGS and jobserver propagation.
+  [   10.775155] task:fz-init         state:D stack:28152 pid:65    tgid:65    ppid:1      task_flags:0xc0004c flags:0x00080000
+  [   10.775176] Call Trace:
+  [   10.775180]  <TASK>
+  [   10.775188]  __schedule+0x10f1/0x4760
+  [   10.775252]  schedule+0xd7/0x2c0
+  [   10.775265]  zap_pid_ns_processes+0x2c7/0x5f0
+  [   10.775346]  do_exit+0x1bf4/0x2560
+  [   10.775403]  __x64_sys_exit+0x3d/0x50
+  [   10.775414]  x64_sys_call+0x156c/0x1570
+  [   10.775425]  do_syscall_64+0xfb/0x590
+  [   10.775450]  entry_SYSCALL_64_after_hwframe+0x77/0x7f
+  [   10.775529]  </TASK>
 
-Fixes: 1572ba36fbca ("perf tests: Improvements to build-test performance")
-Signed-off-by: Dmitry Safonov <dima@arista.com>
+Use CSS_TASK_ITER_WITH_DEAD in the three v1 freezer walks so they all
+see the same tasks, as commit 60f21a264930 ("cgroup, sched_ext: Include
+exiting tasks in cgroup iter") did for sched_ext.  With the fix, A is
+thawed and exits.
+
+This bug was identified and confirmed with the help of a deterministic
+hypervisor currently under development.  The C reproducer below however
+hits it within about 10s.
+
+Fixes: a72f73c4dd9b ("cgroup: Don't expose dead tasks in cgroup")
+Cc: stable@vger.kernel.org
+Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
- tools/perf/Makefile.perf | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/freezev1.c
+---
+ kernel/cgroup/legacy_freezer.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/tools/perf/Makefile.perf b/tools/perf/Makefile.perf
-index b74b534e1153..4cc5bb3011da 100644
---- a/tools/perf/Makefile.perf
-+++ b/tools/perf/Makefile.perf
-@@ -798,7 +798,7 @@ $(patsubst perf-%,%.o,$(PROGRAMS)): $(wildcard */*.h)
+diff --git a/kernel/cgroup/legacy_freezer.c b/kernel/cgroup/legacy_freezer.c
+index 8545e0d1ba3d..bd11047f2311 100644
+--- a/kernel/cgroup/legacy_freezer.c
++++ b/kernel/cgroup/legacy_freezer.c
+@@ -265,7 +265,7 @@ static void update_if_frozen(struct cgroup_subsys_state *css)
+ 	rcu_read_unlock();
  
- $(LIBAPI): FORCE | $(LIBAPI_OUTPUT)
- 	$(Q)$(MAKE) -C $(LIBAPI_DIR) O=$(LIBAPI_OUTPUT) \
--		DESTDIR=$(LIBAPI_DESTDIR) prefix= subdir= \
-+		OUTPUT=$(LIBAPI_OUTPUT)/ DESTDIR=$(LIBAPI_DESTDIR) prefix= subdir= \
- 		$@ install_headers
+ 	/* are all tasks frozen? */
+-	css_task_iter_start(css, 0, &it);
++	css_task_iter_start(css, CSS_TASK_ITER_WITH_DEAD, &it);
  
- $(LIBAPI)-clean:
-@@ -816,7 +816,7 @@ $(LIBBPF)-clean:
+ 	while ((task = css_task_iter_next(&it))) {
+ 		if (freezing(task) && !frozen(task))
+@@ -309,7 +309,7 @@ static void freeze_cgroup(struct freezer *freezer)
+ 	struct css_task_iter it;
+ 	struct task_struct *task;
  
- $(LIBPERF): FORCE | $(LIBPERF_OUTPUT)
- 	$(Q)$(MAKE) -C $(LIBPERF_DIR) O=$(LIBPERF_OUTPUT) \
--		DESTDIR=$(LIBPERF_DESTDIR) prefix= subdir= \
-+		OUTPUT=$(LIBPERF_OUTPUT)/ DESTDIR=$(LIBPERF_DESTDIR) prefix= subdir= \
- 		$@ install_headers
+-	css_task_iter_start(&freezer->css, 0, &it);
++	css_task_iter_start(&freezer->css, CSS_TASK_ITER_WITH_DEAD, &it);
+ 	while ((task = css_task_iter_next(&it)))
+ 		freeze_task(task);
+ 	css_task_iter_end(&it);
+@@ -320,7 +320,7 @@ static void unfreeze_cgroup(struct freezer *freezer)
+ 	struct css_task_iter it;
+ 	struct task_struct *task;
  
- $(LIBPERF)-clean:
-@@ -825,7 +825,7 @@ $(LIBPERF)-clean:
- 
- $(LIBSUBCMD): FORCE | $(LIBSUBCMD_OUTPUT)
- 	$(Q)$(MAKE) -C $(LIBSUBCMD_DIR) O=$(LIBSUBCMD_OUTPUT) \
--		DESTDIR=$(LIBSUBCMD_DESTDIR) prefix= subdir= \
-+		OUTPUT=$(LIBSUBCMD_OUTPUT)/ DESTDIR=$(LIBSUBCMD_DESTDIR) prefix= subdir= \
- 		$@ install_headers
- 
- $(LIBSUBCMD)-clean:
-@@ -834,7 +834,7 @@ $(LIBSUBCMD)-clean:
- 
- $(LIBSYMBOL): FORCE | $(LIBSYMBOL_OUTPUT)
- 	$(Q)$(MAKE) -C $(LIBSYMBOL_DIR) O=$(LIBSYMBOL_OUTPUT) \
--		DESTDIR=$(LIBSYMBOL_DESTDIR) prefix= subdir= \
-+		OUTPUT=$(LIBSYMBOL_OUTPUT)/ DESTDIR=$(LIBSYMBOL_DESTDIR) prefix= subdir= \
- 		$@ install_headers
- 
- $(LIBSYMBOL)-clean:
+-	css_task_iter_start(&freezer->css, 0, &it);
++	css_task_iter_start(&freezer->css, CSS_TASK_ITER_WITH_DEAD, &it);
+ 	while ((task = css_task_iter_next(&it)))
+ 		__thaw_task(task);
+ 	css_task_iter_end(&it);
 
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261103-perf-output-58d6965d2726
+base-commit: fffbdad76a57eed26cff1be19f4cbb407f0b6e7c
+change-id: 20261102-cgroup-freezer-exiting-c7f60e4c3200
 
 Best regards,
 --  
-Dmitry Safonov <dima@arista.com>
+Mani Tofigh <mt4022@columbia.edu>
 
