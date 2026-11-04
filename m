@@ -1,97 +1,79 @@
-From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-Date: Wed, 04 Nov 2026 12:31:47 -0600
-Subject: [PATCH v3] doc: process: clarify scope of applying-patches as
- legacy reference
+From: Andrew Gigena <mail@andrewgigena.dev>
+Subject: [PATCH v2 0/2] arm64: dts: qcom: sm8150: Add standalone ICE node
+ for UFS
+Date: Wed, 04 Nov 2026 18:38:11 +0000
+Message-Id: <20261104-sm8150-ice-rfc-v2-0-d697bbce0278@andrewgigena.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261104-doc-patch-fix-v3-1-f71cc8ded7d9@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32MQQqDMBAAvyI5NyUbE8We/EfpQddVF6qRREKL+
- PdGT720xxmY2UQgzxTELduEp8iB3Zwgv2QCx2YeSHKXWGilCwBlZOdQLs2Ko+z5JZU2QC1Rpa0
- RqVk8JX3+7o/EI4fV+fe5j3DYX6cIEmQBJbZVb7AzZT1MDT+v6CZxnKL+W+tU54WCHnOLVtnve
- t/3D+wXCcnoAAAA
-X-Change-ID: 20261104-doc-patch-fix-0241ebee9254
-To: Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>
-Cc: workflows@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>, 
- AleSZLucero <aleszlucero@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793817118; l=2723;
- i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
- bh=PMPUGDIJvLaae9nOJ6pUNp9dXumq3tumeNOVCpv6m7g=;
- b=c1t7ZENmhzR9byPQwQqzthMaaLAVtTVBK8JL4w+j6x4Rzk0Ymme33pQUk2lEqudOAMu7Pueqi
- hiFQGu2A3/yDA5mFQZ49nxAf8Syt8rbalea07FTA8+a9OM59fVd10Za
-X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
- pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
-X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw6CMBBFf4XM2pppecaV/2FY0GGAMbGQFquG8
+ O8Crl2e5NxzFwjshQNckgU8Rwkyug3MKQEaGtezknZjMGgKrTFT4VHpHJUQK9+RQptZQ5jmXCF
+ so8lzJ+8jeKt/HJ72zjTvld0YJMyj/xyPUe/e33jUClVepqUtyDARXhvXen710rNrzi1HqNd1/
+ QKM9s3yxQAAAA==
+X-Change-ID: 20261104-sm8150-ice-rfc-0b4b2c035e80
+To: Abel Vesa <abelvesa@kernel.org>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>, Bart Van Assche <bvanassche@acm.org>, 
+ Bean Huo <beanhuo@micron.com>, Stanley Jhu <stanleyjhu@google.com>, 
+ Bjorn Andersson <andersson@kernel.org>, Andy Gross <agross@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-scsi@vger.kernel.org, Andrew Gigena <mail@andrewgigena.dev>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793817503; l=1778;
+ i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
+ bh=EYYDw/tfOLuPl22DSLCCU8f7CgFbqXXJ5pXhEipb5G4=;
+ b=kp8or87NIVZSizcmjfJxMsBDmwAMDFADyUHX9ZpCifKsu+M7gWCsUUg5i0rRWaJA7hvSsYkTO
+ z3gr7fGK/u5B0+6JLErzPTeCyQeCPRJ4PtjayE0fw+pZ4f5Cl1xrNX2
+X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
+ pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
+X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The applying-patches.rst document describes the manual manipulation of
-source trees using the traditional 'patch' and 'diff' utilities. While
-technically accurate for non-Git or constrained environments, it can
-create friction for new contributors seeking the primary Git-based
-workflows.
+Hi everyone,
 
-Update the opening note to explicitly state that this document serves
-as a reference for legacy or constrained workflows. Provide a direct
-cross-reference to howto.rst to steer contributors toward the standard
-Git infrastructure.
+This small series brings the Qualcomm Inline Crypto Engine (ICE) to the
+SM8150 (Snapdragon 855) platform, following the same standalone-node style
+already used on SM8250 and newer SoCs.
 
-Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
----
-Signed-off-by: AleSZLucero <aleszlucero@gmail.com>
----
-Changes in v3:
-- EDITME: describe what is new in this series revision.
-- EDITME: use bulletpoints and terse descriptions.
-- Link to v2: https://lore.kernel.org/r/20261104-doc-patch-fix-v2-1-3601fc35c505@gmail.com
+The first patch documents the new qcom,sm8150-inline-crypto-engine
+compatible and moves qcom,sm8150-ufshc to the standalone-ICE UFS binding.
+The second patch converts the UFS node to reference a dedicated ICE node
+instead of embedding the registers directly.
+
+I've tested this on a Google Pixel 4 (google-flame) and everything works:
+/sys/block/sda/queue/crypto now advertises AES-256-XTS and ext4 reports
+encryption as "supported". The ICE self-test completes cleanly during boot.
+
+Happy to adjust anything or add more details if needed. Thanks for reviewing!
+
+Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
 
 Changes in v2:
-- EDITME: describe what is new in this series revision.
-- EDITME: use bulletpoints and terse descriptions.
-- Link to v1: https://lore.kernel.org/r/20261104-doc-patch-fix-v1-1-617cb9f4cd47@gmail.com
----
- Documentation/process/applying-patches.rst | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
-
-diff --git a/Documentation/process/applying-patches.rst b/Documentation/process/applying-patches.rst
-index c269f5e1a0a3..59d16b4e0889 100644
---- a/Documentation/process/applying-patches.rst
-+++ b/Documentation/process/applying-patches.rst
-@@ -8,8 +8,14 @@ Original by:
- 
- .. note::
- 
--   This document is obsolete.  In most cases, rather than using ``patch``
--   manually, you'll almost certainly want to look at using Git instead.
-+   This document focuses on the legacy method of manually manipulating source 
-+   trees using the traditional ``patch`` and ``diff`` utilities. 
-+
-+   For the standard Git-based workflow used to clone the repository and work 
-+   with kernel patches, please refer to Documentation/process/howto.rst.
-+
-+   The information below is maintained as a reference for constrained 
-+   environments or legacy workflows where Git infrastructure is unavailable.
- 
- A frequently asked question on the Linux Kernel Mailing List is how to apply
- a patch to the kernel or, more specifically, what base kernel a patch for
-@@ -20,7 +26,6 @@ In addition to explaining how to apply and revert patches, a brief
- description of the different kernel trees (and examples of how to apply
- their specific patches) is also provided.
- 
--
- What is a patch?
- ================
- 
+- Move qcom,sm8150-ufshc from the legacy embedded-ICE UFS binding to
+  the standalone-ICE UFS binding.
+- Keep the SM8150 ICE compatible sorted in the existing list.
+- Link to v1: https://patch.msgid.link/20261104-sm8150-ice-rfc-v1-0-5737b6c2ecc0@andrewgigena.dev
 
 ---
-base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
-change-id: 20261104-doc-patch-fix-0241ebee9254
+Andrew Gigena (2):
+      dt-bindings: crypto: ice: Document sm8150 inline crypto engine
+      arm64: dts: qcom: sm8150: Use standalone ICE node for UFS
+
+ .../bindings/crypto/qcom,inline-crypto-engine.yaml |  1 +
+ .../devicetree/bindings/ufs/qcom,sc7180-ufshc.yaml |  2 ++
+ .../devicetree/bindings/ufs/qcom,ufs.yaml          | 11 ++++------
+ arch/arm64/boot/dts/qcom/sm8150.dtsi               | 25 ++++++++++++++--------
+ 4 files changed, 23 insertions(+), 16 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261104-sm8150-ice-rfc-0b4b2c035e80
 
 Best regards,
--- 
-Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
+--  
+Andrew Gigena <mail@andrewgigena.dev>
 
