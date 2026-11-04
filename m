@@ -1,10 +1,11 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Wed, 04 Nov 2026 02:16:54 -0500
-Subject: [PATCH 2/4] MIPS: Add support for Siflower MIPS SoCs
+Date: Wed, 04 Nov 2026 02:16:55 -0500
+Subject: [PATCH 3/4] MIPS: dts: Add Siflower SF19A2890 and GL.iNet
+ GL-SFT1200
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-sf19a2890-mips-v1-2-eae80820af68@telaak.dev>
+Message-Id: <20261104-sf19a2890-mips-v1-3-eae80820af68@telaak.dev>
 References: <20261104-sf19a2890-mips-v1-0-eae80820af68@telaak.dev>
 In-Reply-To: <20261104-sf19a2890-mips-v1-0-eae80820af68@telaak.dev>
 To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
@@ -15,123 +16,200 @@ Cc: Jiaxun Yang <jiaxun.yang@flygoat.com>,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793776620; l=3748;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793776620; l=5031;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=RDjzO8sQ+osuE/RFFqce+hfkTOcOO0LUeslp1Icc2Hs=;
- b=DjOwpjwlPYsPz01Y25xSTh2FR1v2Nr9UW16QqF75Kn5eA4eBshdinwGRfF306yNc87Tz26QGn
- Oss1t8sGDr0AS2T/hSRcwdL5g9d3/xkOQg9WV+lpUToOAiFUkgHkzXS
+ bh=JAaEQIaY7NkxWTkM4HWJ/BUicKl376ZGCJxJhbn3ft8=;
+ b=xiBdViDyhe5VGc1j3jQ9eXrgPK/6PVwa6x7dB3Me9nWWK8lS//gQLnmqgvGg12Uqrb5kGSVB3
+ vQYkYMzPaUTDLFwEPas1+vg3S1sgVCHrdveP6Ap2tYa6tD8+uNiD8Iu
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Chuanhong Guo <gch981213@gmail.com>
+Add a device tree for the Siflower SF19A2890 with its four interAptiv
+CPUs (two cores with two VPEs each), the MIPS GIC and its timer, and
+the PL011 UART that serves as the console, and one for the GL.iNet
+GL-SFT1200 travel router built on it.
 
-Siflower MIPS SoCs like SF19A2890 use a dual-core MIPS InterAptiv
-processor, built-in GMAC, USB, dual-band WiFi and various other
-peripherals.
+The SoC's clock controller has no driver yet, so fixed clocks stand
+in for the rates the bootloader programs: 800 MHz for the CPU (and so
+for the GIC timer), 100 MHz for the peripheral bus and 125 MHz for
+the UART.
 
-Notably, they use some ARM PLxxx peripherals, and ARM_AMBA is
-selected for the drivers.
-
-Most devices on the market with this chip come with 64M or less
-DRAM. A kmalloc.h with malloc alignment override is added to
-conserve memory, and a MACH_SIFLOWER_MIPS is created with reduced
-features instead of using the generic kernel.
-
-Signed-off-by: Chuanhong Guo <gch981213@gmail.com>
-[jt: rebased on v7.4-rc1, "MIPS:" prefix, longer Kconfig help, commit
- message grammar and paragraphs, MAINTAINERS line]
 Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
- MAINTAINERS                                   |  1 +
- arch/mips/Kconfig                             | 32 +++++++++++++++++++++++++++
- arch/mips/generic/Platform                    |  1 +
- arch/mips/include/asm/mach-siflower/kmalloc.h |  9 ++++++++
- 4 files changed, 43 insertions(+)
+ MAINTAINERS                                        |  1 +
+ arch/mips/boot/dts/Makefile                        |  1 +
+ arch/mips/boot/dts/siflower/Makefile               |  2 +
+ .../dts/siflower/sf19a2890-glinet-gl-sft1200.dts   | 27 ++++++
+ arch/mips/boot/dts/siflower/sf19a2890.dtsi         | 96 ++++++++++++++++++++++
+ 5 files changed, 127 insertions(+)
 
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 2a7a083f2..9e715a168 100644
+index 9e715a168..425b52d4f 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
 @@ -25703,6 +25703,7 @@ M:	Joseph Telaak <joseph@telaak.dev>
  L:	linux-mips@vger.kernel.org
  S:	Maintained
  F:	Documentation/devicetree/bindings/mips/siflower.yaml
-+F:	arch/mips/include/asm/mach-siflower/
++F:	arch/mips/boot/dts/siflower/
+ F:	arch/mips/include/asm/mach-siflower/
  F:	drivers/gpio/gpio-siflower.c
  N:	sf19a2890
- 
-diff --git a/arch/mips/Kconfig b/arch/mips/Kconfig
-index ed17c9b16..e10145ede 100644
---- a/arch/mips/Kconfig
-+++ b/arch/mips/Kconfig
-@@ -937,6 +937,38 @@ config SIBYTE_BIGSUR
- 	select ZONE_DMA32 if 64BIT
- 	select SWIOTLB if ARCH_DMA_ADDR_T_64BIT && PCI
- 
-+config MACH_SIFLOWER_MIPS
-+	bool "Siflower MIPS SoCs"
-+	select MIPS_GENERIC
-+	select MACH_GENERIC_CORE
-+	select ARM_AMBA
-+	select BOOT_RAW
-+	select CEVT_R4K
-+	select CLKSRC_MIPS_GIC
-+	select COMMON_CLK
-+	select CPU_MIPSR2_IRQ_EI
-+	select CPU_MIPSR2_IRQ_VI
-+	select CSRC_R4K
-+	select DMA_NONCOHERENT
-+	select IRQ_MIPS_CPU
-+	select MIPS_CPU_SCACHE
-+	select MIPS_GIC
-+	select MIPS_L1_CACHE_SHIFT_5
-+	select NO_EXCEPT_FILL
-+	select SMP_UP if SMP
-+	select SYS_HAS_CPU_MIPS32_R2
-+	select SYS_SUPPORTS_32BIT_KERNEL
-+	select SYS_SUPPORTS_LITTLE_ENDIAN
-+	select SYS_SUPPORTS_MIPS16
-+	select SYS_SUPPORTS_MIPS_CPS
-+	select SYS_SUPPORTS_MULTITHREADING
-+	select USE_OF
-+	help
-+	  Select this to build a kernel which supports SoCs from Siflower
-+	  with MIPS InterAptiv cores, like Siflower SF19A2890. These have
-+	  ARM PrimeCell peripherals, so ARM_AMBA is selected, and 32-byte
-+	  cache lines, which allows a smaller kmalloc alignment.
-+
- config SNI_RM
- 	bool "SNI RM200/300/400"
- 	select ARC_MEMORY
-diff --git a/arch/mips/generic/Platform b/arch/mips/generic/Platform
-index 0c03623f3..c09a8484d 100644
---- a/arch/mips/generic/Platform
-+++ b/arch/mips/generic/Platform
-@@ -10,6 +10,7 @@
- 
- # Note: order matters, keep the asm/mach-generic include last.
- cflags-$(CONFIG_MACH_INGENIC_SOC)	+= -I$(srctree)/arch/mips/include/asm/mach-ingenic
-+cflags-$(CONFIG_MACH_SIFLOWER_MIPS)	+= -I$(srctree)/arch/mips/include/asm/mach-siflower
- cflags-$(CONFIG_MIPS_GENERIC)	+= -I$(srctree)/arch/mips/include/asm/mach-generic
- 
- load-$(CONFIG_MIPS_GENERIC)	+= 0xffffffff80100000
-diff --git a/arch/mips/include/asm/mach-siflower/kmalloc.h b/arch/mips/include/asm/mach-siflower/kmalloc.h
+diff --git a/arch/mips/boot/dts/Makefile b/arch/mips/boot/dts/Makefile
+index 36c5e4c6e..d33cf7f61 100644
+--- a/arch/mips/boot/dts/Makefile
++++ b/arch/mips/boot/dts/Makefile
+@@ -14,4 +14,5 @@ subdir-y	+= pic32
+ subdir-y	+= qca
+ subdir-y	+= ralink
+ subdir-y	+= realtek
++subdir-y	+= siflower
+ subdir-y	+= xilfpga
+diff --git a/arch/mips/boot/dts/siflower/Makefile b/arch/mips/boot/dts/siflower/Makefile
 new file mode 100644
-index 000000000..d0b270e2e
+index 000000000..6f5e90aab
 --- /dev/null
-+++ b/arch/mips/include/asm/mach-siflower/kmalloc.h
-@@ -0,0 +1,9 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+#ifndef __ASM_MACH_SIFLOWER_KMALLOC_H
-+#define __ASM_MACH_SIFLOWER_KMALLOC_H
++++ b/arch/mips/boot/dts/siflower/Makefile
+@@ -0,0 +1,2 @@
++# SPDX-License-Identifier: GPL-2.0
++dtb-$(CONFIG_MACH_SIFLOWER_MIPS)	+= sf19a2890-glinet-gl-sft1200.dtb
+diff --git a/arch/mips/boot/dts/siflower/sf19a2890-glinet-gl-sft1200.dts b/arch/mips/boot/dts/siflower/sf19a2890-glinet-gl-sft1200.dts
+new file mode 100644
+index 000000000..13e6a0c8b
+--- /dev/null
++++ b/arch/mips/boot/dts/siflower/sf19a2890-glinet-gl-sft1200.dts
+@@ -0,0 +1,27 @@
++// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 +
-+#ifdef CONFIG_DMA_NONCOHERENT
-+#define ARCH_DMA_MINALIGN	32
-+#endif
++/dts-v1/;
 +
-+#endif /* __ASM_MACH_SIFLOWER_KMALLOC_H */
++#include "sf19a2890.dtsi"
++
++/ {
++	model = "GL.iNet GL-SFT1200";
++	compatible = "glinet,gl-sft1200", "siflower,sf19a2890";
++
++	aliases {
++		serial0 = &uart0;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	memory@0 {
++		device_type = "memory";
++		reg = <0x0 0x8000000>;
++	};
++};
++
++&uart0 {
++	status = "okay";
++};
+diff --git a/arch/mips/boot/dts/siflower/sf19a2890.dtsi b/arch/mips/boot/dts/siflower/sf19a2890.dtsi
+new file mode 100644
+index 000000000..3a4b39971
+--- /dev/null
++++ b/arch/mips/boot/dts/siflower/sf19a2890.dtsi
+@@ -0,0 +1,96 @@
++// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
++
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/interrupt-controller/mips-gic.h>
++
++/ {
++	compatible = "siflower,sf19a2890";
++	#address-cells = <1>;
++	#size-cells = <1>;
++
++	cpus {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		cpu@0 {
++			device_type = "cpu";
++			compatible = "mti,interaptiv";
++			reg = <0>;
++			clocks = <&cpu_clk>;
++		};
++
++		cpu@1 {
++			device_type = "cpu";
++			compatible = "mti,interaptiv";
++			reg = <1>;
++			clocks = <&cpu_clk>;
++		};
++
++		cpu@2 {
++			device_type = "cpu";
++			compatible = "mti,interaptiv";
++			reg = <2>;
++			clocks = <&cpu_clk>;
++		};
++
++		cpu@3 {
++			device_type = "cpu";
++			compatible = "mti,interaptiv";
++			reg = <3>;
++			clocks = <&cpu_clk>;
++		};
++	};
++
++	/*
++	 * The bootloader sets up these clocks. They stand in for the system
++	 * clock controller until it has a driver.
++	 */
++	cpu_clk: clock-800000000 {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <800000000>;
++	};
++
++	pbus_clk: clock-100000000 {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <100000000>;
++	};
++
++	uart_clk: clock-125000000 {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <125000000>;
++	};
++
++	soc {
++		compatible = "simple-bus";
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges;
++		interrupt-parent = <&gic>;
++
++		uart0: serial@18300000 {
++			compatible = "arm,pl011", "arm,primecell";
++			reg = <0x18300000 0x1000>;
++			interrupts = <GIC_SHARED 226 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&uart_clk>, <&pbus_clk>;
++			clock-names = "uartclk", "apb_pclk";
++			status = "disabled";
++		};
++
++		gic: interrupt-controller@1bdc0000 {
++			compatible = "mti,gic";
++			reg = <0x1bdc0000 0x20000>;
++			interrupt-controller;
++			#interrupt-cells = <3>;
++			mti,reserved-ipi-vectors = <0 8>;
++
++			timer {
++				compatible = "mti,gic-timer";
++				interrupts = <GIC_LOCAL 1 IRQ_TYPE_NONE>;
++				clocks = <&cpu_clk>;
++			};
++		};
++	};
++};
 
 -- 
 Git-155)
