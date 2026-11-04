@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Wed, 04 Nov 2026 08:46:01 -0800
-Subject: [PATCH net-next v5 1/4] net: qrtr: Allow the host QRTR to assign a
- unique node id
+Date: Wed, 04 Nov 2026 08:46:02 -0800
+Subject: [PATCH net-next v5 2/4] net: qrtr: Assign unique node id for MHI
+ endpoints
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-qrtr-multi-ep-v5-1-4cdb2b4f1920@oss.qualcomm.com>
+Message-Id: <20261104-qrtr-multi-ep-v5-2-4cdb2b4f1920@oss.qualcomm.com>
 References: <20261104-qrtr-multi-ep-v5-0-4cdb2b4f1920@oss.qualcomm.com>
 In-Reply-To: <20261104-qrtr-multi-ep-v5-0-4cdb2b4f1920@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -24,301 +24,142 @@ Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org,
  Jeff Hugo <jeff.hugo@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=9537;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4010;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=UbLsQcHXs5fB3lH4xRZFyPFqjEdySNlLHyo1kxA0IsQ=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBq62FPb2CTzV5djZzMzq2CrjWpVjODCmRIYZK69
- qPehugQ0ZeJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCauthTwAKCRBVnxHm/pHO
- 9RkZB/0XgslZ9sf/3G7tRgu/aI7K/0e5efLwcIlxWdATZZ1SVbs3aWhmsuLPnHA3DX/k4ZRWR83
- tt2JalNIxisTDtUrHznnb1ZzA/2WCWl+24S8mXnjeTteUV2YaA/XNTLPaB3zRs5lqW45WRMmDYX
- 5b4M/HhB0QTZfQZy6dVqKE+Jd9IiY+MigdH5D/Vt4TiKunn1eeV8xnAk51KDBmz2rjG7QJ3p4/F
- mZ1uWK+Z3dGp7NktoEars2WOaLFv55cxrXXmCJ7LEETlei+rGZTSnEp5lW7MIAnYGRFlNsBY6eL
- GZxfnu8yEtskaNRBGC2Mc4cy/vjWveKpQM0P7yRZ2KsaRVUr
+ bh=H0EhOTeuguMjwzlWxiNEAiptD2hqK51M5K4T4n4KhQY=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBq62FPzegVaTTaIYEmlqTf1i1XwQs2eDOwgYn5L
+ iTv8vNrkjOJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCauthTwAKCRBVnxHm/pHO
+ 9cpnB/wIfv7gXHw090GbwPR/AiMkzKW/gaLUdnrfR112PCA4/edrZOfIWKVk5UuMnI2JcCgsctn
+ 3lnK4dgFhTZRLX5DIsiWJJ2Cv6f9XVAVGnUcEQBubruQqA/o3T95KUe8xH69+xrXk12WKeC90yK
+ XBblZ7chZJA00aXpm5wIgEWfhb3M0Ch3QsPiVeKvCxg1AYLvImlgKkJpSXLqZjWbmy0fwvnzKHq
+ o1zBh53vWFdYG7uhYWoA5f3Fq8Xf9Unni10mcH6YDc9jkWGRc2wPxg80IxBqqtDoD5Le9IARmIb
+ Y8WMkPoZfqVrRTEYwtHECLMKsrR6c+nHA7eZgJ44wtG4v/W5
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, QRTR identifies each remote node by the value of the
-'src_node_id' field in the received packet and uses the node id as the key
-to store the node to the internal 'qrtr_nodes' radix tree.
+Now that the QRTR driver allows using the unique node id for each device,
+which is different from the node id received from the remote node, compute
+a unique node id using a new API, qrtr_host_node_id().
 
-But this approach comes with a limitation. When more than one remote node
-share the same id, then QRTR can only add the first node to the radix tree
-and has to drop the successive nodes with the same node id as the 'key' in
-radix tree has to be unique. This prevents connecting identical Qcom PCIe
-WLAN devices to a single host at the same time.
+This API takes the 'index' parameter and adds it to QRTR_NODE_HOST_BASE.
+The base is chosen well above the node ids in use by the remote nodes, so
+that the host assigned ids never collide with the pre-existing ones.
 
-To fix this limitation, allow the host QRTR to use the node id (nid)
-received from the endpoint driver during qrtr_endpoint_register() as the
-unique node id and use it as the 'key' for the internal radix tree. Also,
-store the received 'src_id' in a new 'qrtr_node->ep_nid' field and replace
-the 'ep_nid' with the unique 'nid' in the QRTR control packets if both
-differ i.e., an endpoint driver has passed a unique 'nid' during
-qrtr_endpoint_register(). To maintain symmetry, replace the 'nid' with the
-'ep_nid' while sending the packet back to the remote node if both differ.
+Since the ids at and above the base now belong to the host, reject any
+packet carrying one as the source node id or as the node id of an
+announced server in qrtr_endpoint_post().
 
-A node can also bridge other distant nodes, so the source id of an
-incoming packet is not always the id the endpoint advertises for itself.
-Keep adding such ids to the radix tree as additional keys for the same
-node, as it was done before this change. Otherwise the bridged nodes would
-lose their route and qrtr_sendmsg() would start failing with -ECONNRESET
-for them.
-
-Currently, all QRTR endpoint drivers pass 'QRTR_EP_NID_AUTO' as the 'nid'
-during qrtr_endpoint_register(). So 'ep_nid' and 'nid' are same and the
-routing behavior is not changed.
-
-Finally, since qrtr_node_rewrite_ctrl() dereferences the control packet for
-DEL_SERVER and DEL_CLIENT as well, extend the existing length check in
-qrtr_endpoint_post() to cover both types.
+Finally, call the new API from MHI endpoint driver by passing the MHI
+controller index as the parameter. The MHI controller index is unique for
+each controller, thereby for each MHI endpoint device.
 
 Reviewed-by: Simon Horman <horms@kernel.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- net/qrtr/af_qrtr.c | 132 ++++++++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 116 insertions(+), 16 deletions(-)
+ MAINTAINERS        |  1 +
+ include/net/qrtr.h | 22 ++++++++++++++++++++++
+ net/qrtr/af_qrtr.c |  9 +++++++++
+ net/qrtr/mhi.c     |  4 +++-
+ 4 files changed, 35 insertions(+), 1 deletion(-)
 
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 09713dc4c6a7..79ccd2ec2bf7 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -22992,6 +22992,7 @@ QUALCOMM IPC ROUTER (QRTR) DRIVER
+ M:	Manivannan Sadhasivam <mani@kernel.org>
+ L:	linux-arm-msm@vger.kernel.org
+ S:	Maintained
++F:	include/net/qrtr.h
+ F:	include/trace/events/qrtr.h
+ F:	include/uapi/linux/qrtr.h
+ F:	net/qrtr/
+diff --git a/include/net/qrtr.h b/include/net/qrtr.h
+new file mode 100644
+index 000000000000..6beefe89943b
+--- /dev/null
++++ b/include/net/qrtr.h
+@@ -0,0 +1,22 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++
++#ifndef _NET_QRTR_H
++#define _NET_QRTR_H
++
++#include <linux/types.h>
++
++/* Node ids at and above this base are reserved for the host and are never
++ * accepted from an endpoint. The base is well above the ids used by the
++ * remote nodes, so that pre-existing node ids stay untouched.
++ */
++#define QRTR_NODE_HOST_BASE 0x10000u
++
++/* Compute host node id from a per-device index. The index must be unique
++ * among the host assigned endpoints and smaller than QRTR_NODE_HOST_BASE.
++ */
++static inline unsigned int qrtr_host_node_id(unsigned int index)
++{
++	return QRTR_NODE_HOST_BASE + index;
++}
++
++#endif /* _NET_QRTR_H */
 diff --git a/net/qrtr/af_qrtr.c b/net/qrtr/af_qrtr.c
-index e7b3647424b8..b95ffb98ec23 100644
+index b95ffb98ec23..33df07fb836e 100644
 --- a/net/qrtr/af_qrtr.c
 +++ b/net/qrtr/af_qrtr.c
-@@ -118,7 +118,8 @@ static DEFINE_XARRAY_ALLOC(qrtr_ports);
-  * @ep_lock: lock for endpoint management and callbacks
-  * @ep: endpoint
-  * @ref: reference count for node
-- * @nid: node id
-+ * @nid: node id assigned by the host QRTR
-+ * @ep_nid: endpoint's own node id as received
-  * @qrtr_tx_flow: xarray of qrtr_tx_flow, keyed by node << 32 | port
-  * @qrtr_tx_lock: lock for qrtr_tx_flow inserts
-  * @hello_sent: hello packet send successful
-@@ -131,6 +132,7 @@ struct qrtr_node {
- 	struct qrtr_endpoint *ep;
- 	struct kref ref;
- 	unsigned int nid;
-+	unsigned int ep_nid;
+@@ -11,6 +11,7 @@
+ #include <linux/wait.h>
+ #include <linux/workqueue.h>
  
- 	struct xarray qrtr_tx_flow;
- 	struct mutex qrtr_tx_lock; /* for qrtr_tx_flow */
-@@ -347,6 +349,7 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
- {
- 	struct qrtr_hdr_v1 *hdr;
- 	size_t len = skb->len;
-+	unsigned int dst_node;
- 	int rc, confirm_rx;
++#include <net/qrtr.h>
+ #include <net/sock.h>
  
- 	mutex_lock(&node->ep_lock);
-@@ -369,10 +372,14 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
- 	hdr->src_node_id = cpu_to_le32(from->sq_node);
- 	hdr->src_port_id = cpu_to_le32(from->sq_port);
- 	if (to->sq_port == QRTR_PORT_CTRL) {
--		hdr->dst_node_id = cpu_to_le32(READ_ONCE(node->nid));
-+		hdr->dst_node_id = cpu_to_le32(READ_ONCE(node->ep_nid));
- 		hdr->dst_port_id = cpu_to_le32(QRTR_PORT_CTRL);
- 	} else {
--		hdr->dst_node_id = cpu_to_le32(to->sq_node);
-+		/* Put back the endpoint's own node id */
-+		dst_node = to->sq_node;
-+		if (dst_node == READ_ONCE(node->nid))
-+			dst_node = READ_ONCE(node->ep_nid);
-+		hdr->dst_node_id = cpu_to_le32(dst_node);
- 		hdr->dst_port_id = cpu_to_le32(to->sq_port);
- 	}
- 
-@@ -422,23 +429,72 @@ static struct qrtr_node *qrtr_node_lookup(unsigned int nid)
- 	return node;
- }
- 
--/* Assign node id to node.
-+/* Add 'nid' as a lookup key for 'node', and adopt it as the node's own id if
-+ * the node does not have one yet.
-+ *
-+ * Callers must hold 'qrtr_nodes_lock'.
-  *
-- * This is mostly useful for automatic node id assignment, based on
-- * the source id in the incoming packet.
-+ * Return: 0 on success; negative error code on failure
-  */
--static void qrtr_node_assign(struct qrtr_node *node, unsigned int nid)
-+static int __qrtr_node_assign(struct qrtr_node *node, unsigned int nid)
- {
--	unsigned long flags;
-+	int rc;
- 
- 	if (nid == QRTR_EP_NID_AUTO)
--		return;
-+		return 0;
-+
-+	if (radix_tree_lookup(&qrtr_nodes, nid) == node)
-+		return 0;
-+
-+	rc = radix_tree_insert(&qrtr_nodes, nid, node);
-+	if (rc)
-+		return rc;
- 
--	spin_lock_irqsave(&qrtr_nodes_lock, flags);
--	radix_tree_insert(&qrtr_nodes, nid, node);
- 	if (node->nid == QRTR_EP_NID_AUTO)
- 		WRITE_ONCE(node->nid, nid);
-+
-+	return 0;
-+}
-+
-+/* Assign node id to node.
-+ *
-+ * Return: 0 on success; negative error code on failure
-+ */
-+static int qrtr_node_assign(struct qrtr_node *node, unsigned int nid)
-+{
-+	unsigned long flags;
-+	int rc;
-+
-+	spin_lock_irqsave(&qrtr_nodes_lock, flags);
-+	rc = __qrtr_node_assign(node, nid);
- 	spin_unlock_irqrestore(&qrtr_nodes_lock, flags);
-+
-+	return rc;
-+}
-+
-+/* Replace the node id in the control packet with 'node->nid', if both are
-+ * different.
-+ */
-+static void qrtr_node_rewrite_ctrl(struct qrtr_node *node, unsigned int type,
-+				   struct sk_buff *skb)
-+{
-+	unsigned int ep_nid = READ_ONCE(node->ep_nid);
-+	unsigned int host_nid = READ_ONCE(node->nid);
-+	struct qrtr_ctrl_pkt *pkt;
-+	__le32 *nid;
-+
-+	if (host_nid == ep_nid)
-+		return;
-+
-+	pkt = (struct qrtr_ctrl_pkt *)skb->data;
-+	if (type == QRTR_TYPE_DEL_CLIENT || type == QRTR_TYPE_RESUME_TX)
-+		nid = &pkt->client.node;
-+	else
-+		nid = &pkt->server.node;
-+
-+	/* Rewrite only the endpoint's node id, not those of bridged nodes */
-+	if (le32_to_cpu(*nid) == ep_nid)
-+		*nid = cpu_to_le32(host_nid);
- }
- 
- /**
-@@ -457,9 +513,12 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
- 	struct qrtr_sock *ipc;
- 	struct sk_buff *skb;
- 	struct qrtr_cb *cb;
-+	unsigned long flags;
- 	size_t size;
- 	unsigned int ver;
-+	unsigned int nid;
- 	size_t hdrlen;
-+	int rc = 0;
- 
- 	if (len == 0 || len & 3)
- 		return -EINVAL;
-@@ -521,6 +580,8 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
+ #include "qrtr.h"
+@@ -590,6 +591,12 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
+ 	    cb->type != QRTR_TYPE_RESUME_TX)
  		goto err;
  
- 	if ((cb->type == QRTR_TYPE_NEW_SERVER ||
-+	     cb->type == QRTR_TYPE_DEL_SERVER ||
-+	     cb->type == QRTR_TYPE_DEL_CLIENT ||
- 	     cb->type == QRTR_TYPE_RESUME_TX) &&
- 	    size < sizeof(struct qrtr_ctrl_pkt))
- 		goto err;
-@@ -531,16 +592,46 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
- 
++	/* Host assigned node ids are not supposed to overlap with
++	 * remote node ids
++	 */
++	if (cb->src_node >= QRTR_NODE_HOST_BASE)
++		goto err;
++
  	skb_put_data(skb, data + hdrlen, size);
  
--	qrtr_node_assign(node, cb->src_node);
-+	nid = cb->src_node;
-+
-+	spin_lock_irqsave(&qrtr_nodes_lock, flags);
-+
-+	if (node->ep_nid == QRTR_EP_NID_AUTO)
-+		WRITE_ONCE(node->ep_nid, nid);
-+
-+	/* Add the source id to the lookup table only if 'node->nid' is auto
-+	 * assigned or the packet came from a bridged node.
-+	 */
-+	if (node->nid == QRTR_EP_NID_AUTO || nid != node->ep_nid)
-+		rc = __qrtr_node_assign(node, nid);
-+
-+	spin_unlock_irqrestore(&qrtr_nodes_lock, flags);
-+
-+	if (rc)
-+		goto err_nid;
+ 	nid = cb->src_node;
+@@ -615,6 +622,8 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
+ 		const struct qrtr_ctrl_pkt *pkt = data + hdrlen;
  
- 	if (cb->type == QRTR_TYPE_NEW_SERVER) {
- 		/* Remote node endpoint can bridge other distant nodes */
--		const struct qrtr_ctrl_pkt *pkt;
-+		const struct qrtr_ctrl_pkt *pkt = data + hdrlen;
-+
-+		nid = le32_to_cpu(pkt->server.node);
+ 		nid = le32_to_cpu(pkt->server.node);
++		if (nid >= QRTR_NODE_HOST_BASE)
++			goto err;
  
--		pkt = data + hdrlen;
--		qrtr_node_assign(node, le32_to_cpu(pkt->server.node));
-+		if (nid != READ_ONCE(node->ep_nid)) {
-+			rc = qrtr_node_assign(node, nid);
-+			if (rc)
-+				goto err_nid;
-+		}
- 	}
+ 		if (nid != READ_ONCE(node->ep_nid)) {
+ 			rc = qrtr_node_assign(node, nid);
+diff --git a/net/qrtr/mhi.c b/net/qrtr/mhi.c
+index e9a4bb92ce76..b464231fa0c6 100644
+--- a/net/qrtr/mhi.c
++++ b/net/qrtr/mhi.c
+@@ -6,6 +6,7 @@
+ #include <linux/mhi.h>
+ #include <linux/module.h>
+ #include <linux/skbuff.h>
++#include <net/qrtr.h>
+ #include <net/sock.h>
  
-+	if (cb->src_node == READ_ONCE(node->ep_nid))
-+		cb->src_node = READ_ONCE(node->nid);
-+
-+	if (cb->type == QRTR_TYPE_NEW_SERVER ||
-+	    cb->type == QRTR_TYPE_DEL_SERVER ||
-+	    cb->type == QRTR_TYPE_DEL_CLIENT ||
-+	    cb->type == QRTR_TYPE_RESUME_TX)
-+		qrtr_node_rewrite_ctrl(node, cb->type, skb);
-+
- 	if (cb->type == QRTR_TYPE_RESUME_TX) {
- 		qrtr_tx_resume(node, skb);
- 	} else {
-@@ -558,6 +649,8 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
+ #include "qrtr.h"
+@@ -127,7 +128,8 @@ static int qcom_mhi_qrtr_probe(struct mhi_device *mhi_dev,
+ 	if (rc)
+ 		return rc;
  
- 	return 0;
+-	rc = qrtr_endpoint_register(&qdev->ep, QRTR_EP_NID_AUTO);
++	rc = qrtr_endpoint_register(&qdev->ep,
++				    qrtr_host_node_id(mhi_dev->mhi_cntrl->index));
+ 	if (rc)
+ 		goto err_unprepare;
  
-+err_nid:
-+	pr_err_ratelimited("qrtr: cannot route node id %u: %d\n", nid, rc);
- err:
- 	kfree_skb(skb);
- 	return -EINVAL;
-@@ -647,6 +740,7 @@ EXPORT_SYMBOL_GPL(qrtr_endpoint_hello);
- int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int nid)
- {
- 	struct qrtr_node *node;
-+	int rc;
- 
- 	if (!ep || !ep->xmit)
- 		return -EINVAL;
-@@ -659,6 +753,7 @@ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int nid)
- 	mutex_init(&node->ep_lock);
- 	skb_queue_head_init(&node->rx_queue);
- 	node->nid = QRTR_EP_NID_AUTO;
-+	node->ep_nid = QRTR_EP_NID_AUTO;
- 	node->ep = ep;
- 
- 	node->hello_sent = false;
-@@ -667,7 +762,12 @@ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int nid)
- 	xa_init(&node->qrtr_tx_flow);
- 	mutex_init(&node->qrtr_tx_lock);
- 
--	qrtr_node_assign(node, nid);
-+	rc = qrtr_node_assign(node, nid);
-+	if (rc) {
-+		pr_err("qrtr: cannot assign node id %u: %d\n", nid, rc);
-+		kfree(node);
-+		return rc;
-+	}
- 
- 	mutex_lock(&qrtr_node_lock);
- 	list_add(&node->item, &qrtr_all_nodes);
 
 -- 
 2.43.0
