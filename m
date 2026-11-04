@@ -1,14 +1,13 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Subject: [PATCH 0/2] pinctrl: Add the Siflower SF19A2890 pin controller
-Date: Wed, 04 Nov 2026 02:21:16 -0500
-Message-Id: <20261104-sf19a2890-pinctrl-v1-0-4bb83afdbacf@telaak.dev>
+Date: Wed, 04 Nov 2026 02:21:17 -0500
+Subject: [PATCH 1/2] dt-bindings: pinctrl: Add Siflower SF19A2890 pin
+ controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOzc6moC/y2NQQrCMBBFr1JmbSATMBqvIi5iMtURiXUmFaH07
- k21ywfvvz+BkjApnLoJhD6s/CoNcNdBusdyI8O5MTjrPKJ1RnsM0R2DNQOXVOVpko05+EMm3Ht
- ou0Go5++veb78Wcfrg1JdQ5sh9B7bWd20eV4AoyN4z4oAAAA=
-X-Change-ID: 20261102-sf19a2890-pinctrl-c0ad967de156
+Message-Id: <20261104-sf19a2890-pinctrl-v1-1-4bb83afdbacf@telaak.dev>
+References: <20261104-sf19a2890-pinctrl-v1-0-4bb83afdbacf@telaak.dev>
+In-Reply-To: <20261104-sf19a2890-pinctrl-v1-0-4bb83afdbacf@telaak.dev>
 To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
@@ -16,61 +15,146 @@ Cc: Chuanhong Guo <gch981213@gmail.com>, linux-gpio@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793776885; l=2123;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793776885; l=4104;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=trQxyC9FnpPDYSg5QLUGaKvpgYZNU0c3D/uLunjy+mc=;
- b=cG2tGjvNZZfQ7+rF4DSN6J5m1V1K9pe3HskaPhBlnEQ4NuKy8YXfcWz42m+ZgI+QVXgPDK9fp
- tH7ds7ZtbaqDWad/X7L09Qybo2d69cxI8zjlMZ28Nj2sbsnklDVDj+J
+ bh=uvG21B5tUVJx/q6wef1eKLd9Cm0kUp4Zh6o/D4Wu9yY=;
+ b=/BSAOaOZUEfcEYUShRNKpyaO+SDmuLjOz5hiRXmsNkjcumw2Gcn7UM3YJUUdreg9jv8Znwmpe
+ 4xZrhvCmmnLD0vGY+I4/e6tCzOuCd1CKicogPg6EdTrqF2wGC/vPMOa
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds a binding and a driver for the pin controller of the
-Siflower SF19A2890, a MIPS SoC for home routers. Each of its 49 pins has
-a register pair of its own: one for bias, input enable, Schmitt trigger
-and drive strength, one for the mux.
+The pin controller of the Siflower SF19A2890 selects the function of
+each of its 49 pins and sets their bias, input enable, Schmitt trigger
+and drive strength. Each pin has a register pair of its own, and each
+pin state node holds subnodes that set some of its pins.
 
-The driver is based on Chuanhong Guo's OpenWrt driver, which exposed the
-four mux modes as functions "func0" to "func3". Here the functions are
-named after the peripheral they connect, and each lists the pins it can
-use with the mode that selects it there. The tables cover the functions
-that the vendor firmware and the OpenWrt port use; the other modes are
-not documented.
-
-checkpatch warns about -ENOTSUPP twice. That is what pinconf expects
-from pin_config_get() and pin_config_set() for a parameter the hardware
-lacks.
-
-The SoC support itself (MACH_SIFLOWER_MIPS) goes through the MIPS tree;
-until then the driver builds with COMPILE_TEST.
-
-The MAINTAINERS entry that covers these files comes with the MIPS series
-"MIPS: Add support for the Siflower SF19A2890"; this series applies on
-its own. That entry is also why checkpatch's question about updating
-MAINTAINERS for the new files is left unanswered here.
-
-Tested on a GL.iNet GL-SFT1200: pinmux-pins gives every pin its owner:
-SPI, UART0, I2C0, RGMII and MDIO, and the GPIOs for the switch reset, the
-mode switch, the SPI chip select and the reset button. The console, the
-SPI NAND, the ET6326 on I2C and Ethernet work with the mux this driver
-sets.
-
+Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
-Joseph Telaak (2):
-      dt-bindings: pinctrl: Add Siflower SF19A2890 pin controller
-      pinctrl: Add Siflower SF19A2890 pin controller driver
+ .../pinctrl/siflower,sf19a2890-pinctrl.yaml        | 113 +++++++++++++++++++++
+ 1 file changed, 113 insertions(+)
 
- .../pinctrl/siflower,sf19a2890-pinctrl.yaml        | 113 +++++
- drivers/pinctrl/Kconfig                            |  14 +
- drivers/pinctrl/Makefile                           |   1 +
- drivers/pinctrl/pinctrl-sf19a2890.c                | 536 +++++++++++++++++++++
- 4 files changed, 664 insertions(+)
----
-base-commit: f33a24cc012d34f25bb9942681bd478a1757b806
-change-id: 20261102-sf19a2890-pinctrl-c0ad967de156
+diff --git a/Documentation/devicetree/bindings/pinctrl/siflower,sf19a2890-pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/siflower,sf19a2890-pinctrl.yaml
+new file mode 100644
+index 000000000..8b52d3175
+--- /dev/null
++++ b/Documentation/devicetree/bindings/pinctrl/siflower,sf19a2890-pinctrl.yaml
+@@ -0,0 +1,113 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/pinctrl/siflower,sf19a2890-pinctrl.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Siflower SF19A2890 pin controller
++
++maintainers:
++  - Joseph Telaak <joseph@telaak.dev>
++
++description:
++  The pin controller of the Siflower SF19A2890 selects the function of
++  each of its 49 pins and sets their bias, input enable, Schmitt trigger
++  and drive strength. The GPIO function is selected through the GPIO
++  controller, which maps its lines onto these pins with gpio-ranges.
++
++properties:
++  compatible:
++    const: siflower,sf19a2890-pinctrl
++
++  reg:
++    maxItems: 1
++
++patternProperties:
++  '-pins$':
++    type: object
++    description:
++      A pin state. Each subnode sets the function and configuration of
++      some of its pins.
++
++    patternProperties:
++      '^pins(-[a-z0-9]+)*$':
++        type: object
++        $ref: /schemas/pinctrl/pincfg-node.yaml#
++        allOf:
++          - $ref: /schemas/pinctrl/pinmux-node.yaml#
++
++        properties:
++          pins:
++            items:
++              enum: [JTAG_TDO, JTAG_TDI, JTAG_TMS, JTAG_TCK, JTAG_RST,
++                     SPI_TXD, SPI_RXD, SPI_CLK, SPI_CSN, UART_TX, UART_RX,
++                     I2C_DAT, I2C_CLK, RGMII_GTX_CLK, RGMII_TXCLK,
++                     RGMII_TXD0, RGMII_TXD1, RGMII_TXD2, RGMII_TXD3,
++                     RGMII_TXCTL, RGMII_RXCLK, RGMII_RXD0, RGMII_RXD1,
++                     RGMII_RXD2, RGMII_RXD3, RGMII_RXCTL, RGMII_COL,
++                     RGMII_CRS, RGMII_MDC, RGMII_MDIO, HB0_PA_EN,
++                     HB0_LNA_EN, HB0_SW_CTRL0, HB0_SW_CTRL1, HB1_PA_EN,
++                     HB1_LNA_EN, HB1_SW_CTRL0, HB1_SW_CTRL1, LB0_PA_EN,
++                     LB0_LNA_EN, LB0_SW_CTRL0, LB0_SW_CTRL1, LB1_PA_EN,
++                     LB1_LNA_EN, LB1_SW_CTRL0, LB1_SW_CTRL1, CLK_OUT,
++                     EXT_CLK_IN, DRVVBUS0]
++            minItems: 1
++            maxItems: 49
++
++          function:
++            enum: [i2c0, jtag, mdio, pwm0, pwm1, rgmii, spi, uart0, uart1,
++                   uart2, wlan]
++
++          bias-disable: true
++
++          bias-pull-up: true
++
++          bias-pull-down: true
++
++          input-enable: true
++
++          input-schmitt-enable: true
++
++          input-schmitt-disable: true
++
++          drive-strength:
++            description: Output drive strength in mA.
++            enum: [6, 9, 12, 15, 18, 21, 24, 27]
++
++        required:
++          - pins
++
++        additionalProperties: false
++
++    additionalProperties: false
++
++required:
++  - compatible
++  - reg
++
++allOf:
++  - $ref: pinctrl.yaml#
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    pinctrl@19e3fc00 {
++        compatible = "siflower,sf19a2890-pinctrl";
++        reg = <0x19e3fc00 0x400>;
++
++        uart0-pins {
++            pins-tx {
++                pins = "UART_TX";
++                function = "uart0";
++                bias-pull-up;
++            };
++
++            pins-rx {
++                pins = "UART_RX";
++                function = "uart0";
++                input-enable;
++                bias-pull-up;
++            };
++        };
++    };
 
-Best regards,
---  
-Joseph Telaak <joseph@telaak.dev>
+-- 
+Git-155)
 
