@@ -1,160 +1,112 @@
-From: Joachim Eastwood <joachim.eastwood@gmail.com>
-Date: Wed, 04 Nov 2026 21:59:23 +0100
-Subject: [PATCH v2 3/3] arm64: dts: rockchip: add support for NanoPi M6V2
- board
+From: Joas Antonio dos Santos <joasantonio108@gmail.com>
+Date: Wed, 04 Nov 2026 21:03:01 +0000
+Subject: [PATCH] media: rc: redrat3: fix use-after-free of input device
+ name/phys strings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-nanopi-m6v2-v2-3-dfcd8714f48a@gmail.com>
-References: <20261104-nanopi-m6v2-v2-0-dfcd8714f48a@gmail.com>
-In-Reply-To: <20261104-nanopi-m6v2-v2-0-dfcd8714f48a@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: Shawn Lin <Shawn.lin@rock-chips.com>, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- Joachim Eastwood <joachim.eastwood@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793825992; l=3730;
- i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
- bh=HHQTMsbiHoDvV4k5fOgzM7R6OF8pxLzbRe7t3xi4I0Q=;
- b=pLoioa4DXzOYLFPjeycLv5Si+yS1Jb3O+ClLo26AW0tG4GB0AluSmJgjF0544wpfj4ardxT8A
- GpaGGu0SohEAjGdqxVsOU0rXxfkeSoRkUgo6zQJ/vkRcC67hx4jeaAO
-X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
- pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
-X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
+Message-Id: <20261104-redrat3-input-uaf-v1-1-b882e43d9803@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAISd62oC/x3MPQqAMAxA4atIZgOtlfpzFXGoNmqWKqmKIL27x
+ fEb3nshkjBF6IsXhG6OvIcMXRYwby6shOyzoVKV1VrVKOTFnQY5HNeJl1twst40bUfWzB3k7hB
+ a+Pmfw5jSB8kKYj1jAAAA
+To: Sean Young <sean@mess.org>, Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, 
+ syzbot+aec1962419768c5caf88@syzkaller.appspotmail.com, 
+ Joas Antonio dos Santos <joasantonio108@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793826180; l=3240;
+ i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
+ bh=c68HohiFSurQ192KfXE2Kl4zIbGHGZyY1chc3A+cUM8=;
+ b=ILJCTmi2LPNHZiDhY7hZLunAi84A/UWCfPjunPtMwwTdAoHe90uITNQ1TaMibVa9A+Mm4AS8A
+ AhGIDO/2g90AiLeApxlWYYeWMLde/tj808aR2QUoaXzpVg9dvNpcH6k
+X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
+ pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
+X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The NanoPi M6V2 board is an updated version of the original M6 board
-with the following changes.
-* New audio CODEC (Everest ES8389)
-* New Ethernet PHY (MotorComm YT8531C)
-* 1 extra user button
-* Misc connector changes on the board
+redrat3_init_rc_dev() sets rc->device_name and rc->input_phys to point
+at the name[] and phys[] arrays embedded in struct redrat3_dev.
+rc_prepare_rx_device() then copies these pointers into input_dev->name
+and input_dev->phys without duplicating the strings.
 
-The codec_es_3v3 regulator enable pin is hardwired to the 5V input rail.
+When redrat3_dev_disconnect() runs, it calls redrat3_delete() which
+kfrees the redrat3_dev struct, freeing the embedded name and phys
+arrays.  If an evdev client still holds the input device open, a
+subsequent EVIOCGNAME or EVIOCGPHYS ioctl calls str_to_user() which
+reads the freed string via strlen(), triggering a KASAN
+slab-use-after-free on the freed kmalloc-2k object.
 
-See link below for detailed information:
-https://wiki.friendlyelec.com/wiki/index.php/NanoPi_M6V2
+Fix by allocating the name and phys strings with devm_kasprintf() and
+devm_kzalloc() respectively, tied to the USB interface device lifetime.
+This ensures the strings outlive the input device, since the USB
+interface device (and its devres) is not released until all references
+to it are dropped.
 
-Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
+Found by LLM-assisted code review of syzbot-reported crash patterns.
+
+Reported-by: syzbot+aec1962419768c5caf88@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=aec1962419768c5caf88
+Fixes: 2154be651bfd ("[media] redrat3: new driver")
+Cc: stable@vger.kernel.org
+Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
- arch/arm64/boot/dts/rockchip/Makefile              |  1 +
- .../boot/dts/rockchip/rk3588s-nanopi-m6v2.dts      | 94 ++++++++++++++++++++++
- 2 files changed, 95 insertions(+)
+redrat3_init_rc_dev() stores pointers to the name[] and phys[] arrays
+embedded in struct redrat3_dev into rc->device_name and rc->input_phys.
+These are copied into input_dev->name/phys without duplication.
 
-diff --git a/arch/arm64/boot/dts/rockchip/Makefile b/arch/arm64/boot/dts/rockchip/Makefile
-index 57a1f41986377..3df63c35b4bf0 100644
---- a/arch/arm64/boot/dts/rockchip/Makefile
-+++ b/arch/arm64/boot/dts/rockchip/Makefile
-@@ -240,6 +240,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-indiedroid-nova.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-khadas-edge2.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-lubancat-4.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-nanopi-m6v1.dtb
-+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-nanopi-m6v2.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-nanopi-r6s.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-nanopi-r6c.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-odroid-m2.dtb
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6v2.dts b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6v2.dts
-new file mode 100644
-index 0000000000000..b343c1e08c263
---- /dev/null
-+++ b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6v2.dts
-@@ -0,0 +1,94 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+
-+/dts-v1/;
-+
-+#include "rk3588s-nanopi-m6.dtsi"
-+
-+/ {
-+	model = "FriendlyElec NanoPi M6V2";
-+	compatible = "friendlyarm,nanopi-m6v2", "rockchip,rk3588s";
-+
-+	analog-sound {
-+		compatible = "audio-graph-card";
-+		label = "rk3588s-es8389";
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&hp_det>;
-+		hp-det-gpios = <&gpio1 RK_PC4 GPIO_ACTIVE_LOW>;
-+
-+		dais = <&i2s0_8ch_p0>;
-+		routing =
-+			"Headphones", "HPOL",
-+			"Headphones", "HPOR",
-+			"INPUT1", "Microphone Jack",
-+			"INPUT2", "Microphone Jack";
-+		widgets =
-+			"Headphone", "Headphones",
-+			"Microphone", "Microphone Jack";
-+	};
-+
-+	codec_es_3v3: regulator-codec-es-3v3 {
-+		compatible = "regulator-fixed";
-+		regulator-always-on;
-+		regulator-boot-on;
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		regulator-name = "codec_es_3v3";
-+		vin-supply = <&vcc5v0_sys>;
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&user_btn>;
-+
-+		user-button {
-+			label = "User";
-+			linux,code = <BTN_1>;
-+			gpios = <&gpio0 RK_PD3 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <50>;
-+		};
-+	};
-+};
-+
-+&i2c7 {
-+	audio-codec@10 {
-+		compatible = "everest,es8389";
-+		reg = <0x10>;
-+		assigned-clocks = <&cru I2S0_8CH_MCLKOUT_TO_IO>;
-+		assigned-clock-rates = <12288000>;
-+		clocks = <&cru I2S0_8CH_MCLKOUT_TO_IO>;
-+		clock-names = "mclk";
-+		vddd-supply = <&vcc_1v8_s3>;
-+		vdda-supply = <&codec_es_3v3>;
-+		#sound-dai-cells = <0>;
-+
-+		port {
-+			es8389_p0: endpoint {
-+				remote-endpoint = <&i2s0_8ch_p0_0>;
-+			};
-+		};
-+	};
-+};
-+
-+&i2s0_8ch {
-+	i2s0_8ch_p0: port {
-+		i2s0_8ch_p0_0: endpoint {
-+			dai-format = "i2s";
-+			mclk-fs = <256>;
-+			remote-endpoint = <&es8389_p0>;
-+		};
-+	};
-+};
-+
-+&pinctrl {
-+	buttons {
-+		user_btn: user-btn {
-+			rockchip,pins = <0 RK_PD3 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+};
-+
-+&rgmii_phy1 { /* MotorComm YT8531C */
-+	compatible = "ethernet-phy-id4f51.e91b";
-+};
+When the device disconnects, kfree(rr3) frees the strings while evdev
+may still hold the input device open.  A subsequent EVIOCGNAME ioctl
+dereferences the freed string via str_to_user() -> strlen(), triggering
+a KASAN slab-use-after-free.
 
+syzbot link: https://syzkaller.appspot.com/bug?extid=aec1962419768c5caf88
+---
+ drivers/media/rc/redrat3.c | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/media/rc/redrat3.c b/drivers/media/rc/redrat3.c
+index 3e82b5e66..d9e37ede2 100644
+--- a/drivers/media/rc/redrat3.c
++++ b/drivers/media/rc/redrat3.c
+@@ -229,8 +229,8 @@ struct redrat3_dev {
+ 
+ 	u32 carrier;
+ 
+-	char name[64];
+-	char phys[64];
++	char *name;
++	char *phys;
+ };
+ 
+ static void redrat3_dump_fw_error(struct redrat3_dev *rr3, int code)
+@@ -943,11 +943,16 @@ static struct rc_dev *redrat3_init_rc_dev(struct redrat3_dev *rr3)
+ 	if (!rc)
+ 		return NULL;
+ 
+-	snprintf(rr3->name, sizeof(rr3->name),
+-		 "RedRat3%s Infrared Remote Transceiver",
+-		 prod == USB_RR3IIUSB_PRODUCT_ID ? "-II" : "");
++	rr3->name = devm_kasprintf(rr3->dev, GFP_KERNEL,
++				   "RedRat3%s Infrared Remote Transceiver",
++				   prod == USB_RR3IIUSB_PRODUCT_ID ? "-II" : "");
++	if (!rr3->name)
++		goto out;
+ 
+-	usb_make_path(rr3->udev, rr3->phys, sizeof(rr3->phys));
++	rr3->phys = devm_kzalloc(rr3->dev, 64, GFP_KERNEL);
++	if (!rr3->phys)
++		goto out;
++	usb_make_path(rr3->udev, rr3->phys, 64);
+ 
+ 	rc->device_name = rr3->name;
+ 	rc->input_phys = rr3->phys;
+
+---
+base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
+change-id: 20261104-redrat3-input-uaf-b6d3789e63c9
+
+Best regards,
 -- 
-2.56.0
+Joas Antonio dos Santos <joasantonio108@gmail.com>
 
