@@ -1,103 +1,76 @@
-From: Mark Korenberg <socketpair@gmail.com>
-Date: Wed, 04 Nov 2026 23:00:20 +0500
-Subject: [PATCH v2 2/2] btrfs: zoned: don't treat a negative zone
- reservation as free zones
+From: Demeter Barna <me@fromdisposition.org>
+Subject: [PATCH 0/7] arm64: dts: qcom: sm8350: Add SoundWire and LPASS
+Date: Wed, 04 Nov 2026 18:07:08 +0000
+Message-Id: <20261104-b4-sm8350-sound-v1-0-4c872df294fa@fromdisposition.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-btrfs-zoned-active-zone-leak-v2-2-0cee2ef72171@gmail.com>
-References: <20261104-btrfs-zoned-active-zone-leak-v2-0-0cee2ef72171@gmail.com>
-In-Reply-To: <20261104-btrfs-zoned-active-zone-leak-v2-0-0cee2ef72171@gmail.com>
-To: David Sterba <dsterba@suse.com>, Chris Mason <mason@kernel.org>, 
- Naohiro Aota <naohiro.aota@wdc.com>
-Cc: linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Johannes Thumshirn <johannes.thumshirn@wdc.com>, stable@vger.kernel.org, 
- Mark Korenberg <socketpair@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793815218; l=3073;
- i=socketpair@gmail.com; s=20260603; h=from:subject:message-id;
- bh=9ov6vcyfbxQuSIcyp1fix/LygA/f+6EOEeQPQe4ctp4=;
- b=BxSIrWkqQ7jIlbvptF0To6iRBMrgqR04oWtlTiApNObX+NDfp9ARgMOF+xNx9VoGVIFW6CB+V
- O9rjyoCzkWIBrgtPfuQzfZdT2IIlHoy4E0qAacaSxkHpEEaplKG4shY
-X-Developer-Key: i=socketpair@gmail.com; a=ed25519;
- pk=2iAMjWhs7kA9X8ccetT2YVX8dvniXua2okQogw3Don8=
-X-Endpoint-Received: by B4 Relay for socketpair@gmail.com/20260603 with auth_id=806
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQxFS0VykuTBx1hEbJGBHEu
+ ze1y7f4/wShyCTwKk6ItLPwEjL0owA/dWEk5D4bjDKV1sqisyifunwqlCWFHqlzplHW+KFuIFd
+ rpIGP+/hu/5bkZvLbbwPX9QXVuT6YcwAAAA==
+X-Change-ID: 20261104-b4-sm8350-sound-eab29042cf89
+To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Srinivas Kandagatla <srini@kernel.org>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-sound@vger.kernel.org, Demeter Barna <me@fromdisposition.org>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793815654; l=2038;
+ i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
+ bh=fNBkRx9oOq8JcXG9i2p9apIYE9Yo40nYXqote7bxW7w=;
+ b=o+uWwnaZIlViseX7pK0bL3/DF7R5FDEX9+1gjo8H8V16mzfT87FBFOM2NbKaHW53knKx5DsPq
+ DCT8rBR2POgBrl1RdDDSUPI4kKF/80aapRv8Iuwo8cOisy/7jfcwP/j
+X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
+ pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
+X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-reserved_active_zones goes negative when more metadata and system block
-groups are active than were reserved. btrfs_can_activate_zone() then
-reports a free active zone for data even when none is left, so the
-allocator neither finishes a zone nor waits for one. find_free_extent()
-fails with -ENOSPC on a device with plenty of space and cow_file_range()
-drops the dirty range; only the next fsync() or syncfs() reports it.
+SM8350 has the ADSP audio services in its dtsi but none of the LPASS
+codec macros or SoundWire controllers, so boards can't describe their
+codecs and DMICs yet. This series adds the RX, TX and VA macros with
+their SoundWire controllers, and the SM8350 sound card compatible.
 
-A negative reservation holds nothing back. Treat it as zero for data
-block groups.
+Patches 1-2 go through clk, 3-5 and 7 through ASoC, 6 through qcom
+arm64. The macros use the data the drivers already have: RX that of
+SM8250, TX that of SM8450, VA that of SC7280.
 
-Fixes: a7e1ac7bdc5a ("btrfs: zoned: reserve zones for an active metadata/system block group")
-Cc: stable@vger.kernel.org # 7.0.x
-Signed-off-by: Mark Korenberg <socketpair@gmail.com>
+Tested on the Razer Edge 5G: both DMICs record through the VA macro and
+the WCD9380 enumerates on the RX and TX buses. Capture from the
+WCD9380's ADCs through the TX macro is silent with the SM8450 data, and
+headphone playback isn't tested. The WSA macro is left out: this board
+has no WSA amplifiers to test it with.
+
+Prepared with the help of an AI coding assistant, reviewed and tested
+by me.
+
 ---
- fs/btrfs/zoned.c | 17 ++++++++++++-----
- fs/btrfs/zoned.h |  6 +++++-
- 2 files changed, 17 insertions(+), 6 deletions(-)
+Demeter Barna (7):
+      dt-bindings: clock: qcom,sc8280xp-lpasscc: Add SM8350 LPASS audio CSR
+      clk: qcom: lpassaudiocc-sc7280: Add SM8350 audio CSR resets
+      ASoC: dt-bindings: qcom,lpass-rx-macro: Add SM8350 LPASS RX
+      ASoC: dt-bindings: qcom,lpass-tx-macro: Add SM8350 LPASS TX
+      ASoC: dt-bindings: qcom,lpass-va-macro: Add SM8350 LPASS VA
+      arm64: dts: qcom: sm8350: Add SoundWire and LPASS
+      ASoC: dt-bindings: qcom,sm8250: Add SM8350 sound card
 
-diff --git a/fs/btrfs/zoned.c b/fs/btrfs/zoned.c
-index 1d64c6e162ca..20b99325117b 100644
---- a/fs/btrfs/zoned.c
-+++ b/fs/btrfs/zoned.c
-@@ -2465,12 +2465,13 @@ bool btrfs_zone_activate(struct btrfs_block_group *block_group)
- 		if (zinfo->max_active_zones == 0)
- 			continue;
- 
--		if (is_data)
--			reserved = zinfo->reserved_active_zones;
- 		/*
--		 * For the data block group, leave active zones for one
--		 * metadata block group and one system block group.
-+		 * For the data block group, leave the active zones reserved
-+		 * for metadata, tree-log and system block groups. A negative
-+		 * reservation holds nothing back, see btrfs_can_activate_zone().
- 		 */
-+		if (is_data)
-+			reserved = max(zinfo->reserved_active_zones, 0);
- 		if (atomic_read(&zinfo->active_zones_left) <= reserved) {
- 			ret = false;
- 			goto out_unlock;
-@@ -2744,8 +2745,14 @@ bool btrfs_can_activate_zone(struct btrfs_fs_devices *fs_devices, u64 flags)
- 			break;
- 		}
- 
-+		/*
-+		 * A negative reservation holds nothing back. Do not count it
-+		 * as free zones: the check below would pass with no active
-+		 * zone left, and the caller would allocate a chunk it cannot
-+		 * activate instead of finishing a zone, then fail with -ENOSPC.
-+		 */
- 		if (flags & BTRFS_BLOCK_GROUP_DATA)
--			reserved = zinfo->reserved_active_zones;
-+			reserved = max(zinfo->reserved_active_zones, 0);
- 
- 		switch (flags & BTRFS_BLOCK_GROUP_PROFILE_MASK) {
- 		case 0: /* single */
-diff --git a/fs/btrfs/zoned.h b/fs/btrfs/zoned.h
-index 510e9d118c7c..2225090839f3 100644
---- a/fs/btrfs/zoned.h
-+++ b/fs/btrfs/zoned.h
-@@ -38,7 +38,11 @@ struct btrfs_zoned_device_info {
- 	u32 nr_zones;
- 	unsigned int max_active_zones;
- 	/*
--	 * Reserved active zones for one metadata and one system block group.
-+	 * Reserved active zones for one metadata, one tree-log and one system
-+	 * block group: the reservation made at mount minus the zones of such
-+	 * block groups active on this device now. It is negative when more of
-+	 * them are active than were reserved, which does not mean that there
-+	 * are extra active zones.
- 	 * It can vary per-device depending on the allocation status.
- 	 */
- 	int reserved_active_zones;
+ .../bindings/clock/qcom,sc8280xp-lpasscc.yaml      |   1 +
+ .../bindings/sound/qcom,lpass-rx-macro.yaml        |  12 +-
+ .../bindings/sound/qcom,lpass-tx-macro.yaml        |  12 +-
+ .../bindings/sound/qcom,lpass-va-macro.yaml        |   3 +
+ .../devicetree/bindings/sound/qcom,sm8250.yaml     |   3 +
+ arch/arm64/boot/dts/qcom/sm8350.dtsi               | 196 +++++++++++++++++++++
+ drivers/clk/qcom/lpassaudiocc-sc7280.c             |   4 +
+ 7 files changed, 223 insertions(+), 8 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261104-b4-sm8350-sound-eab29042cf89
 
--- 
-2.56.0
+Best regards,
+--  
+Demeter Barna <me@fromdisposition.org>
 
