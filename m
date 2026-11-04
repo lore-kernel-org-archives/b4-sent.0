@@ -1,125 +1,98 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Wed, 04 Nov 2026 09:37:29 -0600
-Subject: [PATCH] Leave a control interface directory without permission to
- remove it
+Date: Wed, 04 Nov 2026 09:37:43 -0600
+Subject: [PATCH] FT: Configure the PTK after association with full AP
+ client state
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-b136-ctrl-dir-permission-v1-1-0204f87a5a87@gmail.com>
-X-B4-Tracking: v=1; b=H4sIADhR62oC/yXMQQqDQAxA0atI1g1MpuqAV5EudIwaaVUSWwri3
- Tva5Vv8v4OxChtU2Q7KHzFZ5gS6ZRDHZh4YpUsG73xJ5HJs6V5i3PSJnSiurC+xM8ImFCF4F3M
- qHKR8Ve7le63rx9/2bieO2/mD4/gBS33lO3wAAAA=
-X-Change-ID: 20261104-b136-ctrl-dir-permission-a757720c4150
+Message-Id: <20261104-b137-ft-ptk-after-assoc-v1-1-fcc4dc98d305@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAEZR62oC/yXMQQrCMBBG4auUWTuQRDHoVcRFOv2jo9CWTCpC6
+ d2NuvwW761kKAqjc7dSwUtNp7HB7zqSexpvYB2aKbhw9N4duPf7yLnyXJ+cckXhZDYJuyGHeAI
+ kBqFWzwVZ37/z5fq3Lf0DUr872rYPZubGsnsAAAA=
+X-Change-ID: 20261104-b137-ft-ptk-after-assoc-0df279eec72c
 To: hostap@lists.infradead.org
 Cc: Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793806648; l=4131;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793806662; l=2815;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=lriSP7PyB5bJMolvfeRIwu2NEfGhsgm3cF1GsJ8UTSg=;
- b=qY0urMj8K9NpvRxoCpzst0xizuLnIDR65hy7mfyE7df0vBW9sK4z6Cwph4Dkwvm4c1FnRGBl0
- Bqt0ija7IqHDH+sS6oivwAc9TZcwmM6MCYxDgDSUyfK4X40aS6G2XTe
+ bh=22Saxk5Pcllxl4evuVQ70SMax27paiXVHzm/9++h2Ak=;
+ b=EKVILUMcfIzsjELb2G4HPKH9bGhre7lWZXaUsqSIKiKvgAp7a5WEOYzH8t0SeNfO+cYmPD9jO
+ pW04iaUvEi+CDVb7qa7kpFzybOBFNIaQibByT3Fx+2MPdJlmUxAXPTG
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hostapd and wpa_supplicant try to remove their control interface
-directory when the last interface using it goes away, and report any
-failure other than ENOTEMPTY as an error. A process that dropped its
-privileges, as OpenWrt runs both (user network, in a jail), cannot
-remove a directory that was created for it in a root-owned parent
-(/var/run/hostapd), so every time the last interface goes it logs
+At FT authentication, wpa_ft_install_ptk() tries to configure the PTK
+before the STA is associated. A driver with full AP client state
+(mac80211) refuses a pairwise key for an STA that is not associated
+yet (-ENOENT), so every FT authentication logs
 
-  rmdir[ctrl_interface=/var/run/hostapd]: Permission denied
+  nl80211: kernel reports: key addition failed
 
-The directory is not this process's to remove, as when it is not empty:
-treat EACCES and EPERM the same way, at debug level, with the reason.
+as an error, and the PTK is configured after association anyway, by
+the retry for WPA_ASSOC_FT in wpa_auth_sm_event().
+
+Have the add_sta_ft callback report that case, and skip the attempt
+then. The PMF re-add case and EPP STAs are left as they are.
+
+Tested on OpenWrt with ath10k (mac80211) on an Arista W-118, two
+FT-PSK BSSs on one radio and a wpa_supplicant station roaming between
+them over the air: before, each of 6 roams logged the error; after,
+none in 6 roams, all completed, with the station's pairwise key in
+mac80211 after the roam and frames received with it.
 
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
-Tested on OpenWrt (hostapd jailed as user network) on an Arista W-118,
-with the change as a package patch: removing the last BSS logged the
-rmdir error before, and nothing at error level after.
+OpenWrt sees this line at every FT roam on mac80211 drivers; the roams
+themselves were never affected.
 ---
- hostapd/ctrl_iface.c             | 24 ++++++++++++++----------
- wpa_supplicant/ctrl_iface_unix.c |  9 +++++----
- 2 files changed, 19 insertions(+), 14 deletions(-)
+ src/ap/wpa_auth_ft.c   | 7 +++++--
+ src/ap/wpa_auth_glue.c | 8 ++++++++
+ 2 files changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index c53e33b..0a683d7 100644
---- a/hostapd/ctrl_iface.c
-+++ b/hostapd/ctrl_iface.c
-@@ -5260,9 +5260,11 @@ void hostapd_mld_ctrl_iface_deinit(struct hostapd_mld *mld)
+diff --git a/src/ap/wpa_auth_ft.c b/src/ap/wpa_auth_ft.c
+index e12f2ad..201c6d4 100644
+--- a/src/ap/wpa_auth_ft.c
++++ b/src/ap/wpa_auth_ft.c
+@@ -2898,8 +2898,11 @@ void wpa_ft_install_ptk(struct wpa_state_machine *sm, int retry)
+ 		return;
+ 	}
  
- 		if (mld->ctrl_interface &&
- 		    rmdir(mld->ctrl_interface) < 0) {
--			if (errno == ENOTEMPTY) {
-+			if (errno == ENOTEMPTY || errno == EACCES ||
-+			    errno == EPERM) {
- 				wpa_printf(MSG_DEBUG,
--					   "MLD control interface directory not empty - leaving it behind");
-+					   "MLD control interface directory %s not removed (%s) - leaving it behind",
-+					   mld->ctrl_interface, strerror(errno));
- 			} else {
- 				wpa_printf(MSG_ERROR,
- 					   "rmdir[ctrl_interface=%s]: %s",
-@@ -5608,10 +5610,11 @@ void hostapd_ctrl_iface_deinit(struct hostapd_data *hapd)
+-	if (!retry)
+-		wpa_auth_add_sta_ft(sm->wpa_auth, sm->addr);
++	if (!retry && wpa_auth_add_sta_ft(sm->wpa_auth, sm->addr) == 1) {
++		wpa_printf(MSG_DEBUG,
++			   "FT: Configure the PTK to the driver after association");
++		return;
++	}
  
- 		if (hapd->conf->ctrl_interface &&
- 		    rmdir(hapd->conf->ctrl_interface) < 0) {
--			if (errno == ENOTEMPTY) {
--				wpa_printf(MSG_DEBUG, "Control interface "
--					   "directory not empty - leaving it "
--					   "behind");
-+			if (errno == ENOTEMPTY || errno == EACCES ||
-+			    errno == EPERM) {
-+				wpa_printf(MSG_DEBUG,
-+					   "Control interface directory %s not removed (%s) - leaving it behind",
-+					   hapd->conf->ctrl_interface, strerror(errno));
- 			} else {
- 				wpa_printf(MSG_ERROR,
- 					   "rmdir[ctrl_interface=%s]: %s",
-@@ -6399,10 +6402,11 @@ void hostapd_global_ctrl_iface_deinit(struct hapd_interfaces *interfaces)
+ 	/* FIX: add STA entry to kernel/driver here? The set_key will fail
+ 	 * most likely without this.. At the moment, STA entry is added only
+diff --git a/src/ap/wpa_auth_glue.c b/src/ap/wpa_auth_glue.c
+index 9da2e6d..1336171 100644
+--- a/src/ap/wpa_auth_glue.c
++++ b/src/ap/wpa_auth_glue.c
+@@ -1332,6 +1332,14 @@ static int hostapd_wpa_auth_add_sta_ft(void *ctx, const u8 *sta_addr)
+ 		return ap_sta_re_add(hapd, sta);
+ 	}
  
- 		if (interfaces->global_iface_path &&
- 		    rmdir(interfaces->global_iface_path) < 0) {
--			if (errno == ENOTEMPTY) {
--				wpa_printf(MSG_DEBUG, "Control interface "
--					   "directory not empty - leaving it "
--					   "behind");
-+			if (errno == ENOTEMPTY || errno == EACCES ||
-+			    errno == EPERM) {
-+				wpa_printf(MSG_DEBUG,
-+					   "Control interface directory %s not removed (%s) - leaving it behind",
-+					   interfaces->global_iface_path, strerror(errno));
- 			} else {
- 				wpa_printf(MSG_ERROR,
- 					   "rmdir[ctrl_interface=%s]: %s",
-diff --git a/wpa_supplicant/ctrl_iface_unix.c b/wpa_supplicant/ctrl_iface_unix.c
-index 6f5991a..0fa6c88 100644
---- a/wpa_supplicant/ctrl_iface_unix.c
-+++ b/wpa_supplicant/ctrl_iface_unix.c
-@@ -890,10 +890,11 @@ void wpa_supplicant_ctrl_iface_deinit(struct wpa_supplicant *wpa_s,
- 			dir = buf;
++	/* A driver with full AP client state takes a pairwise key only for
++	 * an associated STA (mac80211 refuses it with -ENOENT before that).
++	 * Have the PTK configured after association instead of trying here
++	 * and logging the driver's refusal at every FT authentication. */
++	if (FULL_AP_CLIENT_STATE_SUPP(hapd->iface->drv_flags) &&
++	    !(sta->flags & WLAN_STA_ASSOC) && !ap_sta_is_epp(sta))
++		return 1;
++
+ 	return 0;
+ }
  
- 		if (rmdir(dir) < 0) {
--			if (errno == ENOTEMPTY) {
--				wpa_printf(MSG_DEBUG, "Control interface "
--					   "directory not empty - leaving it "
--					   "behind");
-+			if (errno == ENOTEMPTY || errno == EACCES ||
-+			    errno == EPERM) {
-+				wpa_printf(MSG_DEBUG,
-+					   "Control interface directory %s not removed (%s) - leaving it behind",
-+					   dir, strerror(errno));
- 			} else {
- 				wpa_printf(MSG_ERROR,
- 					   "rmdir[ctrl_interface=%s]: %s",
 
 ---
 base-commit: 412ff0d7f4d2b346df63be52c4201ee7ab0dc804
-change-id: 20261104-b136-ctrl-dir-permission-a757720c4150
+change-id: 20261104-b137-ft-ptk-after-assoc-0df279eec72c
 
 Best regards,
 --  
