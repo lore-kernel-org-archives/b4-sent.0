@@ -1,113 +1,85 @@
-From: Jian Hu <jian.hu@amlogic.com>
-Date: Wed, 04 Nov 2026 10:13:53 +0800
-Subject: [PATCH v2] clk: meson: Fix PLL enable timing
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v6 0/2] i2c: Add driver support Amlogic A9 I2C
+Date: Wed, 04 Nov 2026 02:44:48 +0000
+Message-Id: <20261104-a9-i2c-v6-0-baa6171f26f8@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-fix_enable_timing-v2-1-05cdaf34fcdb@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAOCU6moC/22NQQqDMBBFryKzbkqSioaueo8iEuMkDmgiiYQW8
- e5Nhe7KrN7n/zc7JIyECe7VDhEzJQq+gLxUYCbtHTIaC4PkshFctszSq0evhxn7jRbyjqlaDla
- reiwHZbdGLKXT+ewKT5S2EN/niyy+6c+m/tiyYIK13PKGo7lZqR96mYMjczVhge44jg9Nqm6Dt
- AAAAA==
-X-Change-ID: 20261027-fix_enable_timing-842bfa84d4d4
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, Stephen Boyd <sboyd@kernel.org>, 
- Brian Masney <bmasney+clk@redhat.com>, Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Dmitry Rokosov <ddrokosov@sberdevices.ru>
-Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Chuan Liu <chuan.liu@amlogic.com>, Jian Hu <jian.hu@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIACCc6moC/2XPS27DIBQF0K1EjEsLj4+ho+6j6oDPc4zU2BFEV
+ qrIey9ELY3q4YV7uOJGCuaEhbwebiTjmkpa5hr004GEyc1HpCnWTICBZpZz6ixNEChIORgEQG0
+ EqWXvClKf3RymVq+Vl1ab8Xpp1+eMY7red94/ap5SuSz56z678nb6swDyd2HllFFvXLRe6lE68
+ +ZOn8sxheewnEh7ZIUOOQPoECqUCkXAkQ/Kj3soHqHtUFQ4eMFCCIwpIfZQ/sEqO5QVKse1Ba6
+ 8QbuH6hGKDlWFRo8QQ+SDjf/+uG3bN1o0AKOhAQAA
+X-Change-ID: 20260911-a9-i2c-24478e22e683
+To: Junyi Zhao <junyi.zhao@amlogic.com>, Andi Shyti <andi.shyti@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Xianwei Zhao <xianwei.zhaol@amlogic.com>
+Cc: Junyi Zhao <junyi.zhaol@amlogic.com>, linux-i2c@vger.kernel.org, 
+ linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793758448; l=2881;
- i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
- bh=xxrXTMztdBF0a6VBQPK0bEnfAifBskZXSA2NITGHqh4=;
- b=3C/aE4+3IjlZRhPCE2+cmWyBrKfwj3h7F6xGKTAv7WFzD7Xvq/R7XnrXwbaqnesEhZ/KTy9XC
- HvDa3fB608+Bphq7/Q9ei3vd0wOxU7GPwFeplrgBqV81rLq7WR33XbQ
-X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
- pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
-X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793760291; l=2328;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=Nm1JWbtaRuSABkoleUS6h/wQySv7sonsy5vVlEVZvCs=;
+ b=XeTI+00jgRc76jWdI93jk8kT/tPHJfMO2BBWSKmN3+0z3ZjwvsR5Zh0K/M6/67IQnpdRIvUaC
+ rhjvUdMjcy/AxnIeh3XBjezWE9uFPCKtM+as/2yn8p1LD2rtSrpmS58
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The hardware requires a 50us delay after setting the PLL enable
-bit to allow the PLL power-up sequence to complete.
+Add a Device Tree binding and driver for the I2C controller found on the
+Amlogic A9 SoC.
 
-Without this delay, GP0 and HIFI PLLs on Amlogic T7, SM1 and C3
-may fail to lock under stress testing.
-
-Add a 50us delay after enabling the PLL and another 50us delay
-after deasserting the PLL reset.
-
-Testing on GXL shows that the PLL works correctly without the
-additional delay and continues to lock successfully after the
-50us delay is added.
-
-On A1, remove the redundant 10us delay before enabling the
-self-adaption current module, as the new PLL enable delay already
-covers this timing requirement.
-
-Fixes: b6ec400aa153 ("clk: meson: introduce new pll power-on sequence for A1 SoC family")
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
-Signed-off-by: Jian Hu <jian.hu@amlogic.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-For example, enabling the GP0 PLL at 1512MHz may lose lock and
-result in an output I/O error:
+Changes in v6:
+- use xfer instead of master_xfer interface, and when div=8 remain valid.
+- Optimized the function.
+- Link to v5: https://lore.kernel.org/r/20261103-a9-i2c-v5-0-86f2dcd179d8@amlogic.com
 
-echo 1512000000 > /sys/kernel/debug/clk/gp0_pll/clk_rate
-echo 1 > /sys/kernel/debug/clk/gp0_pll/clk_prepare_enable
-sh: write error: I/O error
+Changes in v5:
+- Mask out I2C_FUNC_SMBUS_QUICK and return I2C_FUNC_I2C | (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK).
+- Link to v4: https://lore.kernel.org/r/20261102-a9-i2c-v4-0-5a169215b8e9@amlogic.com
 
-Tested on: T7, C3, S4, AXG, GXL, SM1 and A1.
----
+Changes in v4:
+- Repocess xfer len equal 0 use I2C_AQ_NO_ZERO_LEN, and Optimized the function.
+- Disable A9_RX_THRESH_READ/A9_TX_THRESH_WRITE enables of irq when xfer timeout.
+- Use guard(spinlock_irqsave) instead for direct call spinlock in xfer timeout process.
+- Link to v3: https://lore.kernel.org/r/20261029-a9-i2c-v3-0-7b30ccc00533@amlogic.com
+
+Changes in v3:
+- Based on the questions raised by the robot, the data flow was reorganized.
+- Some processing was optimized according to Andi's and Markus's suggestions.
+- Link to v2: https://lore.kernel.org/r/20261022-a9-i2c-v2-0-45e3cef175bf@amlogic.com
+
 Changes in v2:
-- Combine Chuan's patch to this patch.
-- Update the Fixes tag.
-- Move test details below the commit message.
-- Link to Chuan's patch: https://lore.kernel.org/all/20251031-optimize_pll_driver-v3-2-92f3b2f36a83@amlogic.com
-- Link to v1: https://lore.kernel.org/r/20261028-fix_enable_timing-v1-1-70f060ec3f2a@amlogic.com
----
- drivers/clk/meson/clk-pll.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
-
-diff --git a/drivers/clk/meson/clk-pll.c b/drivers/clk/meson/clk-pll.c
-index 1ea6579a760f..477eb9958a8d 100644
---- a/drivers/clk/meson/clk-pll.c
-+++ b/drivers/clk/meson/clk-pll.c
-@@ -369,20 +369,25 @@ static int meson_clk_pll_enable(struct clk_hw *hw)
- 	/* Enable the pll */
- 	meson_parm_write(clk->map, &pll->en, 1);
- 
-+	/* Wait for the PLL power-up sequence to complete */
-+	udelay(50);
-+
- 	/* Take the pll out reset */
--	if (MESON_PARM_APPLICABLE(&pll->rst))
-+	if (MESON_PARM_APPLICABLE(&pll->rst)) {
- 		meson_parm_write(clk->map, &pll->rst, 0);
-+		/* Wait for the PLL loop to stabilize */
-+		udelay(50);
-+	}
- 
- 	/*
- 	 * Compared with the previous SoCs, self-adaption current module
- 	 * is newly added for A1, keep the new power-on sequence to enable the
- 	 * PLL. The sequence is:
--	 * 1. enable the pll, delay for 10us
-+	 * 1. enable the pll, delay for 50us
- 	 * 2. enable the pll self-adaption current module, delay for 40us
- 	 * 3. enable the lock detect module
- 	 */
- 	if (MESON_PARM_APPLICABLE(&pll->current_en)) {
--		udelay(10);
- 		meson_parm_write(clk->map, &pll->current_en, 1);
- 		udelay(40);
- 	}
+- dtbinding: make some minor modifications, suggestted by Conor and robot.
+- driver: Make some adjustments, including macro definitions, format adjustments,
+          adding quirks, process optimization, and so on. According to Andi and robot's suggestion
+- Give up MAINTAINERS file the separate submission, make it together with the driver.
+- Link to v1: https://lore.kernel.org/r/20260924-a9-i2c-v1-0-b8ad9b46f4a8@amlogic.com
 
 ---
-base-commit: 363f97a1ce635b86be7fd263d56a040fbd87bdbb
-change-id: 20261027-fix_enable_timing-842bfa84d4d4
+Junyi Zhao (1):
+      i2c: amlogic: Add Amlogic A9 I2C controller driver
+
+Xianwei Zhao (1):
+      dt-bindings: i2c: add Amlogic A9 I2C controller
+
+ .../devicetree/bindings/i2c/amlogic,a9-i2c.yaml    |  56 +++
+ MAINTAINERS                                        |   9 +
+ drivers/i2c/busses/Kconfig                         |   8 +
+ drivers/i2c/busses/Makefile                        |   1 +
+ drivers/i2c/busses/i2c-amlogic-a9.c                | 428 +++++++++++++++++++++
+ 5 files changed, 502 insertions(+)
+---
+base-commit: 4ec2365c08de306f52650d8736aef5862baedb8d
+change-id: 20260911-a9-i2c-24478e22e683
 
 Best regards,
 -- 
-Jian Hu <jian.hu@amlogic.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
