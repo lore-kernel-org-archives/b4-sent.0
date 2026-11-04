@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Wed, 04 Nov 2026 08:46:02 -0800
-Subject: [PATCH net-next v5 2/4] net: qrtr: Assign unique node id for MHI
- endpoints
+Date: Wed, 04 Nov 2026 08:46:03 -0800
+Subject: [PATCH net-next v5 3/4] wifi: ath11k: Connect to the QMI server
+ belonging to the device owned by this driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-qrtr-multi-ep-v5-2-4cdb2b4f1920@oss.qualcomm.com>
+Message-Id: <20261104-qrtr-multi-ep-v5-3-4cdb2b4f1920@oss.qualcomm.com>
 References: <20261104-qrtr-multi-ep-v5-0-4cdb2b4f1920@oss.qualcomm.com>
 In-Reply-To: <20261104-qrtr-multi-ep-v5-0-4cdb2b4f1920@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -22,144 +22,129 @@ Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org,
  Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>, 
  Juha-Matti Tilli <juha-matti.tilli@iki.fi>, 
  Jeff Hugo <jeff.hugo@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Jeff Johnson <jeff.johnson@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4010;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4200;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=H0EhOTeuguMjwzlWxiNEAiptD2hqK51M5K4T4n4KhQY=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBq62FPzegVaTTaIYEmlqTf1i1XwQs2eDOwgYn5L
- iTv8vNrkjOJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCauthTwAKCRBVnxHm/pHO
- 9cpnB/wIfv7gXHw090GbwPR/AiMkzKW/gaLUdnrfR112PCA4/edrZOfIWKVk5UuMnI2JcCgsctn
- 3lnK4dgFhTZRLX5DIsiWJJ2Cv6f9XVAVGnUcEQBubruQqA/o3T95KUe8xH69+xrXk12WKeC90yK
- XBblZ7chZJA00aXpm5wIgEWfhb3M0Ch3QsPiVeKvCxg1AYLvImlgKkJpSXLqZjWbmy0fwvnzKHq
- o1zBh53vWFdYG7uhYWoA5f3Fq8Xf9Unni10mcH6YDc9jkWGRc2wPxg80IxBqqtDoD5Le9IARmIb
- Y8WMkPoZfqVrRTEYwtHECLMKsrR6c+nHA7eZgJ44wtG4v/W5
+ bh=8jdd/IxbkpdXzxb0pbbCtVyl0Xl30Xp8Q0D9LtdyvhY=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBq62FPbjDf/0qWzmhZRJGSlPc5ilpfYhrma+JkR
+ fdrQ7uP0XWJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCauthTwAKCRBVnxHm/pHO
+ 9R8BCACidy14HAjJGZYhBuvH+k52nwAL23/DmWX1dAWwekfv4MDQF8Mdj64fv2T9mMtH8wOaQUM
+ dT470wVrTKQAKkfzzLMPschxkhU9Y7BdbFAI2dE+Wjv0mHTCjKUnB5EIFtJzZxQRtJm0zCOwpiQ
+ PB1RyQdwiruDc/o/OIEOR3zgTZROTIejzZ6JxdFEjJx2TG0fByWWvRU8FqNWrZNl1+VmJZ2o30S
+ vbL84l3K8MHy1yjWWauqzT15iT44TJc09Jmh6uAJTZhzQWIDo6PT1GvU8pspoUQn+vaegVLO57w
+ 7XQUlbm8TLs0+WSDQsdhSf91VgQvDYzqpoZpGMhuVwntwryg
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that the QRTR driver allows using the unique node id for each device,
-which is different from the node id received from the remote node, compute
-a unique node id using a new API, qrtr_host_node_id().
+When two identical ath11k PCIe devices are connected to the same host, both
+advertise the WLFW service with the same service and instance id. The QMI
+lookup reports both servers to each device, so a device may connect to the
+firmware running on the other device.
 
-This API takes the 'index' parameter and adds it to QRTR_NODE_HOST_BASE.
-The base is chosen well above the node ids in use by the remote nodes, so
-that the host assigned ids never collide with the pre-existing ones.
-
-Since the ids at and above the base now belong to the host, reject any
-packet carrying one as the source node id or as the node id of an
-announced server in qrtr_endpoint_post().
-
-Finally, call the new API from MHI endpoint driver by passing the MHI
-controller index as the parameter. The MHI controller index is unique for
-each controller, thereby for each MHI endpoint device.
+But now, QRTR provides each MHI endpoint a unique node id which is
+different from the node id announced by the device. So use the same id to
+pick the correct server. Add a get_qrtr_node_id() HIF callback that returns
+the node id derived from the MHI controller index and zero for transports
+that do not assign one. In the new_server callback, reject any service
+whose node id does not match. A node id of zero disables the check, so
+transports that do not assign one keep their current behavior.
 
 Reviewed-by: Simon Horman <horms@kernel.org>
+Acked-by: Jeff Johnson <jeff.johnson@oss.qualcomm.com>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- MAINTAINERS        |  1 +
- include/net/qrtr.h | 22 ++++++++++++++++++++++
- net/qrtr/af_qrtr.c |  9 +++++++++
- net/qrtr/mhi.c     |  4 +++-
- 4 files changed, 35 insertions(+), 1 deletion(-)
+ drivers/net/wireless/ath/ath11k/hif.h |  9 +++++++++
+ drivers/net/wireless/ath/ath11k/pci.c |  9 +++++++++
+ drivers/net/wireless/ath/ath11k/qmi.c | 11 +++++++++++
+ 3 files changed, 29 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 09713dc4c6a7..79ccd2ec2bf7 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -22992,6 +22992,7 @@ QUALCOMM IPC ROUTER (QRTR) DRIVER
- M:	Manivannan Sadhasivam <mani@kernel.org>
- L:	linux-arm-msm@vger.kernel.org
- S:	Maintained
-+F:	include/net/qrtr.h
- F:	include/trace/events/qrtr.h
- F:	include/uapi/linux/qrtr.h
- F:	net/qrtr/
-diff --git a/include/net/qrtr.h b/include/net/qrtr.h
-new file mode 100644
-index 000000000000..6beefe89943b
---- /dev/null
-+++ b/include/net/qrtr.h
-@@ -0,0 +1,22 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+
-+#ifndef _NET_QRTR_H
-+#define _NET_QRTR_H
-+
-+#include <linux/types.h>
-+
-+/* Node ids at and above this base are reserved for the host and are never
-+ * accepted from an endpoint. The base is well above the ids used by the
-+ * remote nodes, so that pre-existing node ids stay untouched.
-+ */
-+#define QRTR_NODE_HOST_BASE 0x10000u
-+
-+/* Compute host node id from a per-device index. The index must be unique
-+ * among the host assigned endpoints and smaller than QRTR_NODE_HOST_BASE.
-+ */
-+static inline unsigned int qrtr_host_node_id(unsigned int index)
+diff --git a/drivers/net/wireless/ath/ath11k/hif.h b/drivers/net/wireless/ath/ath11k/hif.h
+index 017fed1b4bd1..f432fa4890be 100644
+--- a/drivers/net/wireless/ath/ath11k/hif.h
++++ b/drivers/net/wireless/ath/ath11k/hif.h
+@@ -32,6 +32,7 @@ struct ath11k_hif_ops {
+ 	void (*ce_irq_disable)(struct ath11k_base *ab);
+ 	void (*get_ce_msi_idx)(struct ath11k_base *ab, u32 ce_id, u32 *msi_idx);
+ 	void (*coredump_download)(struct ath11k_base *ab);
++	unsigned int (*get_qrtr_node_id)(struct ath11k_base *ab);
+ };
+ 
+ static inline void ath11k_hif_ce_irq_enable(struct ath11k_base *ab)
+@@ -159,4 +160,12 @@ static inline void ath11k_hif_coredump_download(struct ath11k_base *ab)
+ 		ab->hif.ops->coredump_download(ab);
+ }
+ 
++static inline unsigned int ath11k_hif_get_qrtr_node_id(struct ath11k_base *ab)
 +{
-+	return QRTR_NODE_HOST_BASE + index;
++	if (!ab->hif.ops->get_qrtr_node_id)
++		return 0;
++
++	return ab->hif.ops->get_qrtr_node_id(ab);
 +}
 +
-+#endif /* _NET_QRTR_H */
-diff --git a/net/qrtr/af_qrtr.c b/net/qrtr/af_qrtr.c
-index b95ffb98ec23..33df07fb836e 100644
---- a/net/qrtr/af_qrtr.c
-+++ b/net/qrtr/af_qrtr.c
-@@ -11,6 +11,7 @@
- #include <linux/wait.h>
- #include <linux/workqueue.h>
- 
+ #endif /* _HIF_H_ */
+diff --git a/drivers/net/wireless/ath/ath11k/pci.c b/drivers/net/wireless/ath/ath11k/pci.c
+index a163168f3617..d40c057e130c 100644
+--- a/drivers/net/wireless/ath/ath11k/pci.c
++++ b/drivers/net/wireless/ath/ath11k/pci.c
+@@ -10,6 +10,7 @@
+ #include <linux/of.h>
+ #include <linux/time.h>
+ #include <linux/vmalloc.h>
 +#include <net/qrtr.h>
- #include <net/sock.h>
  
- #include "qrtr.h"
-@@ -590,6 +591,12 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
- 	    cb->type != QRTR_TYPE_RESUME_TX)
- 		goto err;
+ #include "pci.h"
+ #include "core.h"
+@@ -900,6 +901,13 @@ static int ath11k_pci_start(struct ath11k_base *ab)
+ 	return 0;
+ }
  
-+	/* Host assigned node ids are not supposed to overlap with
-+	 * remote node ids
-+	 */
-+	if (cb->src_node >= QRTR_NODE_HOST_BASE)
-+		goto err;
++static unsigned int ath11k_pci_get_qrtr_node_id(struct ath11k_base *ab)
++{
++	struct ath11k_pci *ab_pci = ath11k_pci_priv(ab);
 +
- 	skb_put_data(skb, data + hdrlen, size);
++	return qrtr_host_node_id(ab_pci->mhi_ctrl->index);
++}
++
+ static const struct ath11k_hif_ops ath11k_pci_hif_ops = {
+ 	.start = ath11k_pci_start,
+ 	.stop = ath11k_pcic_stop,
+@@ -921,6 +929,7 @@ static const struct ath11k_hif_ops ath11k_pci_hif_ops = {
+ #ifdef CONFIG_DEV_COREDUMP
+ 	.coredump_download = ath11k_pci_coredump_download,
+ #endif
++	.get_qrtr_node_id = ath11k_pci_get_qrtr_node_id,
+ };
  
- 	nid = cb->src_node;
-@@ -615,6 +622,8 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
- 		const struct qrtr_ctrl_pkt *pkt = data + hdrlen;
+ static void ath11k_pci_read_hw_version(struct ath11k_base *ab, u32 *major, u32 *minor)
+diff --git a/drivers/net/wireless/ath/ath11k/qmi.c b/drivers/net/wireless/ath/ath11k/qmi.c
+index 7dc07339b957..09c23ddffb38 100644
+--- a/drivers/net/wireless/ath/ath11k/qmi.c
++++ b/drivers/net/wireless/ath/ath11k/qmi.c
+@@ -3170,8 +3170,19 @@ static int ath11k_qmi_ops_new_server(struct qmi_handle *qmi_hdl,
+ 	struct ath11k_qmi *qmi = container_of(qmi_hdl, struct ath11k_qmi, handle);
+ 	struct ath11k_base *ab = qmi->ab;
+ 	struct sockaddr_qrtr *sq = &qmi->sq;
++	unsigned int node_id;
+ 	int ret;
  
- 		nid = le32_to_cpu(pkt->server.node);
-+		if (nid >= QRTR_NODE_HOST_BASE)
-+			goto err;
- 
- 		if (nid != READ_ONCE(node->ep_nid)) {
- 			rc = qrtr_node_assign(node, nid);
-diff --git a/net/qrtr/mhi.c b/net/qrtr/mhi.c
-index e9a4bb92ce76..b464231fa0c6 100644
---- a/net/qrtr/mhi.c
-+++ b/net/qrtr/mhi.c
-@@ -6,6 +6,7 @@
- #include <linux/mhi.h>
- #include <linux/module.h>
- #include <linux/skbuff.h>
-+#include <net/qrtr.h>
- #include <net/sock.h>
- 
- #include "qrtr.h"
-@@ -127,7 +128,8 @@ static int qcom_mhi_qrtr_probe(struct mhi_device *mhi_dev,
- 	if (rc)
- 		return rc;
- 
--	rc = qrtr_endpoint_register(&qdev->ep, QRTR_EP_NID_AUTO);
-+	rc = qrtr_endpoint_register(&qdev->ep,
-+				    qrtr_host_node_id(mhi_dev->mhi_cntrl->index));
- 	if (rc)
- 		goto err_unprepare;
- 
++	/*
++	 * Identical devices advertise the same QMI services, so connect only
++	 * to the QMI server on this device's node. A node id of 0 means the
++	 * transport has not assigned a unique node id, so accept the server
++	 * unfiltered.
++	 */
++	node_id = ath11k_hif_get_qrtr_node_id(ab);
++	if (node_id && service->node != node_id)
++		return -EINVAL;
++
+ 	sq->sq_family = AF_QIPCRTR;
+ 	sq->sq_node = service->node;
+ 	sq->sq_port = service->port;
 
 -- 
 2.43.0
