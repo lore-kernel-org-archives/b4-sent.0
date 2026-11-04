@@ -1,11 +1,11 @@
 From: Nathan Lynch <nathan.lynch@amd.com>
-Date: Tue, 03 Nov 2026 20:50:00 -0600
-Subject: [PATCH v4 19/25] dmaengine: sdxi: Encode context start, stop,
- update, and sync descriptors
+Date: Tue, 03 Nov 2026 20:50:01 -0600
+Subject: [PATCH v4 20/25] dmaengine: sdxi: Add client context release with
+ update and sync
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-sdxi-base-v4-19-3668ccc7aab8@amd.com>
+Message-Id: <20261103-sdxi-base-v4-20-3668ccc7aab8@amd.com>
 References: <20261103-sdxi-base-v4-0-3668ccc7aab8@amd.com>
 In-Reply-To: <20261103-sdxi-base-v4-0-3668ccc7aab8@amd.com>
 To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
@@ -19,337 +19,213 @@ Cc: Bjorn Helgaas <bhelgaas@google.com>,
  dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-pci@vger.kernel.org, Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793760600; l=8953;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793760600; l=6419;
  i=nathan.lynch@amd.com; s=20260722; h=from:subject:message-id;
- bh=z+jEsoZr//SenqycV7TSGDKA13KLnuBAx156cLS9unw=;
- b=CbXLeHHyPhln/azPixNqzw0lgJEdJR9vfmdgvwWy6nRVf+hz4IO2KYCvkoh5PaPvQW4MrR1Yt
- ajkynDN0lNGCfXtL4T99h/3fwR0A6+0LzUWpLzCI8U/McF17gHD+IuM
+ bh=DyUho94aHD/s6qLu87Q74yX1eWXQuWFBmFBUTNvyZ70=;
+ b=c0EsCJ4zJpMETA4m5fpESHZKanIxfR6hDGYSHc4bC7hNSdo9Pg5okyTxVUXk1fsqZ3HzOeq9t
+ +sBiss4oNUDB9jMLArRw2j30t61L+YAKvM2Z+4PjZcOIsu0SS5c1edn
 X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
  pk=pO5+BCw/TENGLvwX5NYZOZmZihcxjkxeFSMuk47erps=
 X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20260722 with auth_id=891
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add layouts and encoders for administrative context start, stop, update,
-and synchronization descriptors. Parameters select the context range,
-update level, and synchronization filter. Encoders set mandatory fields
-and produce little-endian descriptors with VL clear; callers attach
-completion storage and publish them.
+Invalidate an unused, stopped client context and synchronize hardware
+caches before freeing its resources. Add administrative update, reservation, and
+completion-polling helpers.
 
-Co-developed-by: Wei Huang <wei.huang2@amd.com>
-Signed-off-by: Wei Huang <wei.huang2@amd.com>
+Claim completion-status storage before making an irrevocable ring
+reservation. Return the claim if reservation fails, and release it after
+consuming a terminal result. A timeout leaves hardware ownership
+unresolved, so retain that block in the administrative pool until context
+teardown, even if the device writes its terminal signal later. Repeated
+timeouts can exhaust the pool, causing further claims to time out rather
+than reuse outstanding status blocks.
+
+If update or synchronization fails, retain the context and its ID for
+cleanup after function shutdown. Device-wide teardown frees clients after
+the best-effort function stop/reset path without submitting additional
+administrative operations.
+
 Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
- drivers/dma/sdxi/Makefile     |   1 +
- drivers/dma/sdxi/descriptor.c | 119 ++++++++++++++++++++++++++++++++++++++++++
- drivers/dma/sdxi/descriptor.h |  58 ++++++++++++++++++++
- drivers/dma/sdxi/hw.h         |  77 +++++++++++++++++++++++++++
- 4 files changed, 255 insertions(+)
+ drivers/dma/sdxi/context.c | 128 +++++++++++++++++++++++++++++++++++++++++++++
+ drivers/dma/sdxi/context.h |   6 +++
+ 2 files changed, 134 insertions(+)
 
-diff --git a/drivers/dma/sdxi/Makefile b/drivers/dma/sdxi/Makefile
-index d12eebe03870..e9c180ea6fa4 100644
---- a/drivers/dma/sdxi/Makefile
-+++ b/drivers/dma/sdxi/Makefile
-@@ -3,6 +3,7 @@ obj-$(CONFIG_SDXI_CORE) += sdxi-core.o
- sdxi-core-y := \
- 	completion.o  \
- 	context.o     \
-+	descriptor.o  \
- 	device.o      \
- 	ring.o
- 
-diff --git a/drivers/dma/sdxi/descriptor.c b/drivers/dma/sdxi/descriptor.c
-new file mode 100644
-index 000000000000..424453ff7ba0
---- /dev/null
-+++ b/drivers/dma/sdxi/descriptor.c
-@@ -0,0 +1,119 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * SDXI descriptor encoding.
-+ *
-+ * Copyright Advanced Micro Devices, Inc.
-+ */
-+
-+#include <kunit/visibility.h>
-+#include <linux/bitfield.h>
-+#include <linux/types.h>
-+#include <asm/byteorder.h>
-+
-+#include "hw.h"
-+#include "descriptor.h"
-+
-+int sdxi_encode_cxt_start(struct sdxi_desc *desc,
-+			  const struct sdxi_cxt_start *params)
-+{
-+	u64 csb_ptr;
-+	u32 opcode;
-+
-+	opcode = (FIELD_PREP(SDXI_DSC_FE, 1) |
-+		  FIELD_PREP(SDXI_DSC_SUBTYPE, SDXI_DSC_OP_SUBTYPE_CXT_START_NM) |
-+		  FIELD_PREP(SDXI_DSC_TYPE, SDXI_DSC_OP_TYPE_ADMIN));
-+
-+	csb_ptr = FIELD_PREP(SDXI_DSC_NP, 1);
-+
-+	*desc = (typeof(*desc)) {
-+		.cxt_start = (typeof(desc->cxt_start)) {
-+			.opcode = cpu_to_le32(opcode),
-+			.cxt_start = cpu_to_le16(params->range.cxt_start),
-+			.cxt_end = cpu_to_le16(params->range.cxt_end),
-+			.csb_ptr = cpu_to_le64(csb_ptr),
-+		},
-+	};
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL_IF_KUNIT(sdxi_encode_cxt_start);
-+
-+int sdxi_encode_cxt_stop(struct sdxi_desc *desc,
-+			  const struct sdxi_cxt_stop *params)
-+{
-+	u64 csb_ptr;
-+	u32 opcode;
-+
-+	opcode = (FIELD_PREP(SDXI_DSC_FE, 1) |
-+		  FIELD_PREP(SDXI_DSC_SUBTYPE, SDXI_DSC_OP_SUBTYPE_CXT_STOP) |
-+		  FIELD_PREP(SDXI_DSC_TYPE, SDXI_DSC_OP_TYPE_ADMIN));
-+
-+	csb_ptr = FIELD_PREP(SDXI_DSC_NP, 1);
-+
-+	*desc = (typeof(*desc)) {
-+		.cxt_stop = (typeof(desc->cxt_stop)) {
-+			.opcode = cpu_to_le32(opcode),
-+			.cxt_start = cpu_to_le16(params->range.cxt_start),
-+			.cxt_end = cpu_to_le16(params->range.cxt_end),
-+			.csb_ptr = cpu_to_le64(csb_ptr),
-+		},
-+	};
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL_IF_KUNIT(sdxi_encode_cxt_stop);
-+
-+int sdxi_encode_cxt_upd(struct sdxi_desc *desc,
-+			const struct sdxi_cxt_upd *params)
-+{
-+	u64 csb_ptr;
-+	u32 opcode;
-+	u8 cflags;
-+
-+	opcode = (FIELD_PREP(SDXI_DSC_SUBTYPE, SDXI_DSC_OP_SUBTYPE_CXT_UPD) |
-+		  FIELD_PREP(SDXI_DSC_TYPE, SDXI_DSC_OP_TYPE_ADMIN));
-+
-+	cflags = FIELD_PREP(SDXI_DSC_CXT_UPD_PCD, params->level);
-+
-+	csb_ptr = FIELD_PREP(SDXI_DSC_NP, 1);
-+
-+	*desc = (typeof(*desc)) {
-+		.cxt_upd = (typeof(desc->cxt_upd)) {
-+			.opcode = cpu_to_le32(opcode),
-+			.cflags = cflags,
-+			.cxt_start = cpu_to_le16(params->range.cxt_start),
-+			.cxt_end = cpu_to_le16(params->range.cxt_end),
-+			.csb_ptr = cpu_to_le64(csb_ptr),
-+		},
-+	};
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL_IF_KUNIT(sdxi_encode_cxt_upd);
-+
-+int sdxi_encode_sync(struct sdxi_desc *desc, const struct sdxi_sync *params)
-+{
-+	u64 csb_ptr;
-+	u32 opcode;
-+	u8 cflags;
-+
-+	opcode = (FIELD_PREP(SDXI_DSC_SUBTYPE, SDXI_DSC_OP_SUBTYPE_SYNC) |
-+		  FIELD_PREP(SDXI_DSC_TYPE, SDXI_DSC_OP_TYPE_ADMIN));
-+
-+	cflags = FIELD_PREP(SDXI_DSC_SYNC_FLT, params->filter);
-+
-+	csb_ptr = FIELD_PREP(SDXI_DSC_NP, 1);
-+
-+	*desc = (typeof(*desc)) {
-+		.sync = (typeof(desc->sync)) {
-+			.opcode = cpu_to_le32(opcode),
-+			.cflags = cflags,
-+			.cxt_start = cpu_to_le16(params->range.cxt_start),
-+			.cxt_end = cpu_to_le16(params->range.cxt_end),
-+			.csb_ptr = cpu_to_le64(csb_ptr),
-+		},
-+	};
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL_IF_KUNIT(sdxi_encode_sync);
-diff --git a/drivers/dma/sdxi/descriptor.h b/drivers/dma/sdxi/descriptor.h
-index b19d5d329e43..9138f7c85f3a 100644
---- a/drivers/dma/sdxi/descriptor.h
-+++ b/drivers/dma/sdxi/descriptor.h
-@@ -9,6 +9,7 @@
-  */
- 
- #include <linux/bitfield.h>
-+#include <linux/minmax.h>
- #include <linux/ratelimit.h>
- #include <linux/types.h>
- #include <asm/byteorder.h>
-@@ -61,4 +62,61 @@ static inline void sdxi_desc_set_csr(struct sdxi_desc *desc)
- 	desc->opcode = cpu_to_le32(opcode);
+diff --git a/drivers/dma/sdxi/context.c b/drivers/dma/sdxi/context.c
+index 679c5cfab19d..5ca99ac8080c 100644
+--- a/drivers/dma/sdxi/context.c
++++ b/drivers/dma/sdxi/context.c
+@@ -106,6 +106,78 @@ static struct sdxi_cxt *sdxi_alloc_cxt(struct sdxi_dev *sdxi)
+ 	return_ptr(cxt);
  }
  
-+struct sdxi_cxt_range {
-+	u16 cxt_start;
-+	u16 cxt_end;
-+};
-+
-+static inline struct sdxi_cxt_range sdxi_cxt_range(u16 a, u16 b)
++/* Claim completion storage before making a ring reservation irrevocable. */
++static int sdxi_cxt_reserve(struct sdxi_cxt *cxt, size_t nr,
++			    struct sdxi_ring_resv *resv,
++			    struct sdxi_completion *comp)
 +{
-+	return (struct sdxi_cxt_range) {
-+		.cxt_start = min(a, b),
-+		.cxt_end   = max(a, b),
-+	};
++	int err;
++
++	err = sdxi_cst_pool_get_wait(cxt->cst_pool, comp);
++	if (err)
++		return err;
++
++	err = sdxi_ring_reserve(cxt->ring_state, nr, resv);
++	if (err)
++		sdxi_cst_pool_put(cxt->cst_pool, comp->cst_blk);
++
++	return err;
 +}
 +
-+static inline struct sdxi_cxt_range sdxi_cxt_range_single(u16 nr)
++static int sdxi_cxt_poll_completion(struct sdxi_cxt *cxt,
++				    const struct sdxi_completion *comp)
 +{
-+	return sdxi_cxt_range(nr, nr);
++	int err = sdxi_cst_blk_poll(comp->cst_blk);
++
++	/*
++	 * A timeout does not end hardware ownership. Keep these administrative
++	 * blocks claimed until context teardown, even if they complete later.
++	 * Repeated timeouts can exhaust the pool; allocation then times out too.
++	 */
++	if (err != -ETIMEDOUT)
++		sdxi_cst_pool_put(cxt->cst_pool, comp->cst_blk);
++	sdxi_ring_wake_up(cxt->ring_state);
++
++	return err;
 +}
 +
-+struct sdxi_cxt_start {
-+	struct sdxi_cxt_range range;
-+};
++/*
++ * Signal the function that a client context's control structures have
++ * been modified so it discards any privately cached copies of them.
++ * DSC_SYNC.CXT is required before the operation can be considered
++ * complete.
++ */
++static int sdxi_cxt_update(const struct sdxi_cxt *cxt)
++{
++	struct sdxi_cxt *adm = to_admin_cxt(cxt);
++	struct sdxi_slot upd, sync;
++	struct sdxi_ring_resv resv;
++	struct sdxi_completion comp;
++	int err;
 +
-+int sdxi_encode_cxt_start(struct sdxi_desc *desc,
-+			  const struct sdxi_cxt_start *params);
++	might_sleep();
 +
-+struct sdxi_cxt_stop {
-+	struct sdxi_cxt_range range;
-+};
++	err = sdxi_cxt_reserve(adm, 2, &resv, &comp);
++	if (err)
++		return err;
 +
-+int sdxi_encode_cxt_stop(struct sdxi_desc *desc,
-+			  const struct sdxi_cxt_stop *params);
++	upd = sdxi_ring_resv_slot(&resv, 0);
++	sync = sdxi_ring_resv_slot(&resv, 1);
 +
-+struct sdxi_cxt_upd {
-+	enum sdxi_cxt_upd_level {
-+		SDXI_CXT_UPD_LVL_CTL = 0x4,
-+		SDXI_CXT_UPD_LVL_L1  = 0x6,
-+		SDXI_CXT_UPD_LVL_L2  = 0x7,
-+	} level;
-+	struct sdxi_cxt_range range;
-+};
++	sdxi_encode_cxt_upd(sdxi_slot_desc(upd), &(const struct sdxi_cxt_upd) {
++			.level = SDXI_CXT_UPD_LVL_L1,
++			.range = sdxi_cxt_range_single(cxt->id),
++		});
++	sdxi_encode_sync(sdxi_slot_desc(sync), &(const struct sdxi_sync) {
++			.filter = SDXI_SYNC_FLT_CXT,
++			.range = sdxi_cxt_range_single(cxt->id),
++		});
++	sdxi_cxt_submit(adm, upd, NULL, 0);
++	sdxi_cxt_submit(adm, sync, &comp, SDXI_CXT_SUBMIT_KICK);
 +
-+int sdxi_encode_cxt_upd(struct sdxi_desc *desc,
-+			const struct sdxi_cxt_upd *params);
++	return sdxi_cxt_poll_completion(adm, &comp);
++}
 +
-+struct sdxi_sync {
-+	enum sdxi_sync_filter  {
-+		SDXI_SYNC_FLT_CXT  = 0x0,
-+		SDXI_SYNC_FLT_STOP = 0x1,
-+		SDXI_SYNC_FLT_AKEY = 0x2,
-+		SDXI_SYNC_FLT_RKEY = 0x3,
-+		SDXI_SYNC_FLT_FN   = 0x4,
-+	} filter;
-+	struct sdxi_cxt_range range;
-+};
-+
-+int sdxi_encode_sync(struct sdxi_desc *desc, const struct sdxi_sync *params);
-+
- #endif /* DMA_SDXI_DESCRIPTOR_H */
-diff --git a/drivers/dma/sdxi/hw.h b/drivers/dma/sdxi/hw.h
-index edc43190148c..51b2bcbeca90 100644
---- a/drivers/dma/sdxi/hw.h
-+++ b/drivers/dma/sdxi/hw.h
-@@ -142,12 +142,89 @@ struct sdxi_desc {
- #define SDXI_DSC_SE  BIT(1)
- #define SDXI_DSC_FE  BIT(2)
- #define SDXI_DSC_CSR BIT(4)
-+#define SDXI_DSC_SUBTYPE GENMASK(15, 8)
-+#define SDXI_DSC_TYPE    GENMASK(26, 16)
+ struct sdxi_cxt_ctl_cfg {
+ 	dma_addr_t ds_ring_ptr;
+ 	dma_addr_t cxt_sts_ptr;
+@@ -144,6 +216,16 @@ static int configure_cxt_ctl(struct sdxi_cxt_ctl *ctl, const struct sdxi_cxt_ctl
+ 	return 0;
+ }
  
- /* For csb_ptr field */
-+#define SDXI_DSC_NP BIT_ULL(0)
- #define SDXI_DSC_CSB_PTR GENMASK_ULL(63, 5)
++static void invalidate_cxt_ctl(struct sdxi_cxt_ctl *ctl)
++{
++	u64 ds_ring_ptr = le64_to_cpu(ctl->ds_ring_ptr);
++
++	FIELD_MODIFY(SDXI_CXT_CTL_VL, &ds_ring_ptr, 0);
++	WRITE_ONCE(ctl->ds_ring_ptr, cpu_to_le64(ds_ring_ptr));
++	dma_wmb();
++	*ctl = (typeof(*ctl)) { 0 };
++}
++
+ /*
+  * Logical representation of CXT_L1_ENT subfields.
+  */
+@@ -194,6 +276,17 @@ static int configure_L1_entry(struct sdxi_cxt_L1_ent *ent,
+ 	return 0;
+ }
  
-+#define define_sdxi_dsc(tag_, name_, op_body_)				\
-+	struct tag_ {							\
-+		__le32 opcode;						\
-+		op_body_						\
-+		__le64 csb_ptr;						\
-+	} __packed __aligned(64) name_;					\
-+	static_assert(sizeof(struct tag_) ==				\
-+		      sizeof(struct sdxi_dsc_generic));			\
-+	static_assert(offsetof(struct tag_, csb_ptr) ==			\
-+		      offsetof(struct sdxi_dsc_generic, csb_ptr))
++static void invalidate_L1_entry(struct sdxi_cxt_L1_ent *ent)
++{
++	u64 cxt_ctl_ptr = le64_to_cpu(ent->cxt_ctl_ptr);
 +
-+		/* SDXI 1.0 Table 6-14: DSC_CXT_START Descriptor Format */
-+		define_sdxi_dsc(sdxi_dsc_cxt_start, cxt_start,
-+			__u8 rsvd_0;
-+			__u8 vflags;
-+			__le16 vf_num;
-+			__le16 cxt_start;
-+			__le16 cxt_end;
-+			__u8 rsvd_1[4];
-+			__le64 db_value;
-+			__u8 rsvd_2[32];
-+		);
++	FIELD_MODIFY(SDXI_CXT_L1_ENT_VL, &cxt_ctl_ptr, 0);
++	WRITE_ONCE(ent->cxt_ctl_ptr, cpu_to_le64(cxt_ctl_ptr));
++	dma_wmb();
++	*ent = (typeof(*ent)) { 0 };
++}
 +
-+		/* SDXI 1.0 Table 6-15: DSC_CXT_STOP Descriptor Format */
-+		define_sdxi_dsc(sdxi_dsc_cxt_stop, cxt_stop,
-+			__u8 rsvd_0;
-+			__u8 vflags;
-+			__le16 vf_num;
-+			__le16 cxt_start;
-+			__le16 cxt_end;
-+			__u8 rsvd_1[44];
-+		);
 +
-+		/* SDXI 1.0 Table 6-18: DSC_CXT_UPD Descriptor Format */
-+		define_sdxi_dsc(sdxi_dsc_cxt_upd, cxt_upd,
-+			__u8 cflags;
-+			__u8 vflags;
-+			__le16 vf_num;
-+			__le16 cxt_start;
-+			__le16 cxt_end;
-+			__u8 rsvd_0[44];
-+		);
-+/* For use with cxt_upd.cflags */
-+#define SDXI_DSC_CXT_UPD_PCD GENMASK(2, 0)
+ /* Publish the context control block and L1 entry to hardware. */
+ static int sdxi_publish_cxt(const struct sdxi_cxt *cxt)
+ {
+@@ -398,3 +491,38 @@ void sdxi_cxt_submit(struct sdxi_cxt *cxt, struct sdxi_slot slot,
+ 	if (flags & SDXI_CXT_SUBMIT_KICK)
+ 		sdxi_cxt_kick(cxt);
+ }
 +
-+		/* SDXI 1.0 Table 6-22: DSC_SYNC Descriptor Format */
-+		define_sdxi_dsc(sdxi_dsc_sync, sync,
-+			__u8 cflags;
-+			__u8 vflags;
-+			__le16 vf_num;
-+			__le16 cxt_start;
-+			__le16 cxt_end;
-+			__le16 key_start;
-+			__le16 key_end;
-+			__u8 rsvd_0[40];
-+		);
-+/* For use with sync.cflags */
-+#define SDXI_DSC_SYNC_FLT GENMASK(2, 0)
++/*
++ * Release an unused, stopped client context. On update/sync failure the
++ * context remains owned by the device and its resources are retained for
++ * cleanup after function shutdown; the caller must not reuse it.
++ */
++int sdxi_cxt_exit(struct sdxi_cxt *cxt)
++{
++	struct sdxi_dev *sdxi = cxt->sdxi;
++	struct sdxi_cxt_L1_ent *ent;
++	u8 state;
++	int err;
 +
-+#undef define_sdxi_dsc
- 	};
- } __packed __aligned(64);
- static_assert(sizeof(struct sdxi_desc) == 64);
++	if (WARN_ON(sdxi_cxt_is_admin(cxt)))
++		return -EINVAL;
++
++	state = FIELD_GET(SDXI_CXT_STS_STATE, READ_ONCE(cxt->sq->cxt_sts.state));
++	if (state != CXTV_STOP_SW && state != CXTV_STOP_FN && state != CXTV_ERR_FN)
++		return -EBUSY;
++
++	ent = &sdxi->L1_table->entry[ID_TO_L1_INDEX(cxt->id)];
++	invalidate_L1_entry(ent);
++	invalidate_cxt_ctl(cxt->cxt_ctl);
++
++	err = sdxi_cxt_update(cxt);
++	if (err) {
++		dev_err(sdxi->dev,
++			"context %u release failed (%d), retaining resources until function shutdown\n",
++			cxt->id, err);
++		return err;
++	}
++
++	sdxi_free_cxt(cxt);
++	return 0;
++}
+diff --git a/drivers/dma/sdxi/context.h b/drivers/dma/sdxi/context.h
+index f048e298f6de..71eef2c6243b 100644
+--- a/drivers/dma/sdxi/context.h
++++ b/drivers/dma/sdxi/context.h
+@@ -52,6 +52,12 @@ struct sdxi_cxt {
  
-+/* SDXI 1.0 Table 6-1: SDXI Operation Groups */
-+enum sdxi_dsc_type {
-+	SDXI_DSC_OP_TYPE_ADMIN   = 0x002,
-+};
-+
-+/* SDXI 1.0 Table 6-2: SDXI Operation Groups, Types, and Subtypes */
-+enum sdxi_dsc_subtype {
-+	/* Administrative */
-+	SDXI_DSC_OP_SUBTYPE_CXT_UPD      = 0x01,
-+	SDXI_DSC_OP_SUBTYPE_CXT_START_NM = 0x03,
-+	SDXI_DSC_OP_SUBTYPE_CXT_STOP     = 0x04,
-+	SDXI_DSC_OP_SUBTYPE_SYNC         = 0x06,
-+};
-+
- #endif /* DMA_SDXI_HW_H */
+ int sdxi_admin_cxt_init(struct sdxi_dev *sdxi);
+ struct sdxi_cxt *sdxi_cxt_new(struct sdxi_dev *sdxi);
++/*
++ * Caller must exclude users and stop the client before release. An update or
++ * synchronization failure retains the invalidated context for device teardown;
++ * the caller must not reuse it.
++ */
++int sdxi_cxt_exit(struct sdxi_cxt *cxt);
+ void sdxi_client_cxts_exit(struct sdxi_dev *sdxi);
+ 
+ enum sdxi_submit_flags {
 
 -- 
 2.56.0
