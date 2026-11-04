@@ -1,78 +1,75 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 04 Nov 2026 13:54:45 +0100
-Subject: [PATCH RFC 3/3] arm64: dts: qcom: sdm845-shift-axolotl: Wake the
- system on a touchscreen double tap
+From: AleSZLucero <aleszlucero@gmail.com>
+Date: Wed, 04 Nov 2026 07:53:29 -0600
+Subject: [PATCH] doc: process: clarify scope of applying-patches as legacy
+ reference
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-ft5x06-double-tap-v1-3-5a1bd80449cc@ixit.cz>
-References: <20261104-ft5x06-double-tap-v1-0-5a1bd80449cc@ixit.cz>
-In-Reply-To: <20261104-ft5x06-double-tap-v1-0-5a1bd80449cc@ixit.cz>
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>
-Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1038; i=david@ixit.cz;
- h=from:subject:message-id; bh=gVCDyYfuQzZ+YQquXafcJW7FFenl4GNi6oZKBwhfrWI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq6ytMe815RX1a0N0eshGYgGeLRlEwiMcSDon56
- mBRBAXxnT6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCausrTAAKCRBgAj/E00kg
- cqm4D/9hDSLf2LwEVC9LRzcuRML9wLXa9giF1R67yIzc+wlg0RuW6V+WNfwYs2VAWREjIsYemqx
- 1RwzoA46JMZEhNgxSxM8hGauxekMiuuJ76lBpBg2hiRIo78V8sdjiR3S2VftxQUzry2IhDlDO5X
- q4yRTKnaknvOTBIy/dQsldPRWqusokHEf6Fif/HnE3MUxSDcApky/o+ZaEZvgr4k1ODn3DbQVZ/
- ygwhqwH0HmP382ABkLUfQ0LEV+Ml2W1mv//ftrj78qlcpMFAKbixuM6Ssz4vR+JssMW110XmgYZ
- Z6t/7zwotfdbfd61wLiGnLeyGlRhNEhMn6elfCiFXR0HEUW0YVyz9SCNv0h7tEnTP/fXV0sh+DD
- wIDpNF73S6xMNjZ1giIi+BFu2G1cI8HwUdHnDoZtImte4AtfDhoUi9ECq4a6DOmjf0U1KLiQ47h
- NBWSPPWMqbi7IFxlEK/B8AyqNhy4GTcvYBa3DJ6zDci72pmftDYF1adtMVT545gnXcxkP1BpQCD
- sGvCAU8c1xhr6TF6lWPBTEexm6axM/9Xr8Hc+1pLmNgwjTFURn3zXCowdiBL3+Fidi2263oKA3T
- GtgQOdnsDHJF0lMg7owte2up+yHxR6txVhA+Hit+o6UxTYeudJM+nH6qfSzsIcNS9E1uJXTqy8P
- xdTasBdQuiARQPg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20261104-doc-patch-fix-v1-1-617cb9f4cd47@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQqAIBAAvxJ7bkHFgvpKdDDdci8qGhGIf086z
+ sBMhUKZqcA6VMj0cOEYOshxAOtNuAjZdQYl1Cyl0OiixWRu6/HkF4XSkg6iRU0aepMydf3/tr2
+ 1D2sqEiRfAAAA
+X-Change-ID: 20261104-doc-patch-fix-0241ebee9254
+To: Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>
+Cc: workflows@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, AleSZLucero <aleszlucero@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793800413; l=2000;
+ i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
+ bh=6D7WcOq0h4YcM4Z4K2LccHCGleOSZiNJjyl0B7SS6fs=;
+ b=NAaFqc7c38Fl8v4KPRiEc7EEuhMVfWxXk7IRJiaZPfgi/+WI/NbrbrsMzUxEx3/MolYjrwp4X
+ Nq5d0DITiXTBVktkAEHKKyNP63JBcyzymU5kGdUviMGqp4Kp3SHfWz2
+X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
+ pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
+X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The touch interrupt on GPIO 125 is routed to the PDC, so the panel can
-wake the phone. Report the controller's double tap gesture as
-KEY_WAKEUP.
+The applying-patches.rst document describes the manual manipulation of
+source trees using the traditional 'patch' and 'diff' utilities. While
+technically accurate for non-Git or constrained environments, it can
+create friction for new contributors seeking the primary Git-based
+workflows.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Update the opening note to explicitly state that this document serves
+as a reference for legacy or constrained workflows. Provide direct
+cross-references to submitting-patches.rst and howto.rst to steer
+contributors toward the standard Git infrastructure.
+
+Signed-off-by: AleSZLucero <aleszlucero@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 6 ++++++
- 1 file changed, 6 insertions(+)
+ Documentation/process/applying-patches.rst | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-index 1b0eaeafbd517..e4eef60271c55 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-@@ -504,16 +504,22 @@ touchscreen@38 {
- 		iovcc-supply = <&vreg_l14a_1p88>;
+diff --git a/Documentation/process/applying-patches.rst b/Documentation/process/applying-patches.rst
+index c269f5e1a0a3..74af6d8a2249 100644
+--- a/Documentation/process/applying-patches.rst
++++ b/Documentation/process/applying-patches.rst
+@@ -8,8 +8,15 @@ Original by:
  
- 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
- 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
- 		pinctrl-names = "default", "sleep";
+ .. note::
  
- 		touchscreen-size-x = <1080>;
- 		touchscreen-size-y = <2160>;
+-   This document is obsolete.  In most cases, rather than using ``patch``
+-   manually, you'll almost certainly want to look at using Git instead.
++   This document focuses on the legacy method of manually manipulating source
++   trees using the traditional ``patch`` and ``diff`` utilities.
 +
-+		wakeup-source;
++   For the standard Git-based workflow used in current development, including
++   how to format, apply, and send patches via Git, please refer to
++   :ref:`submitting_patches` and :ref:`howto`.
 +
-+		event-tap-double {
-+			linux,code = <KEY_WAKEUP>;
-+		};
- 	};
- };
++   The information below is maintained as a reference for constrained
++   environments or legacy workflows where Git infrastructure is unavailable.
  
- &i2c10 {
- 	/* SMB1355@0x0C */
- };
- 
- &i2c11 {
+ A frequently asked question on the Linux Kernel Mailing List is how to apply
+ a patch to the kernel or, more specifically, what base kernel a patch for
 
+---
+base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
+change-id: 20261104-doc-patch-fix-0241ebee9254
+
+Best regards,
 -- 
-2.55.0
+AleSZLucero <aleszlucero@gmail.com>
 
