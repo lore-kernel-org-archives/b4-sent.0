@@ -1,78 +1,89 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Wed, 04 Nov 2026 18:59:09 +0900
-Subject: [PATCH 2/2] mm/page_owner: also check PageTail before reading
- memcg_data
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v7 0/2] i2c: Add driver support Amlogic A9 I2C
+Date: Wed, 04 Nov 2026 10:00:58 +0000
+Message-Id: <20261104-a9-i2c-v7-0-b31f2b53faf4@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-kpagecgroup-split-v1-2-f70e947fec85@samsung.com>
-References: <20261104-kpagecgroup-split-v1-0-f70e947fec85@samsung.com>
-In-Reply-To: <20261104-kpagecgroup-split-v1-0-f70e947fec85@samsung.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Tao Yi <escape@deepseek.com>, Johannes Weiner <hannes@cmpxchg.org>, 
- Michal Hocko <mhocko@kernel.org>, Roman Gushchin <roman.gushchin@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
- David Hildenbrand <david@kernel.org>, Zi Yan <ziy@nvidia.com>, 
- Matthew Wilcox <willy@infradead.org>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- "Liam R. Howlett" <liam@infradead.org>, Nico Pache <nico.pache@linux.dev>, 
- Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
- Barry Song <baohua@kernel.org>, Lance Yang <lance.yang@linux.dev>, 
- Usama Arif <usama.arif@linux.dev>, Kiryl Shutsemau <kas@kernel.org>, 
- Vlastimil Babka <vbabka@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Brendan Jackman <brendan.jackman@linux.dev>, linux-mm@kvack.org, 
- cgroups@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793786347; l=1494;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=Tqm3nbQI1nWClGneJZ4Vn7FgKvDR6MGrjq0L2fxkJJg=;
- b=jF1VyraheDQeftMsTSeeShKLufOP/x6ZE8gVhGZ9J5wjIN48n1F2UD5mWKXUqYitdOutXoi71
- O73YaVFvaRmDVw6oCDkIzhWabi9SfSmF0DAaIx8yLkW/5QSQ3GX9K2Z
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-B4-Tracking: v=1; b=H4sIAFoC62oC/23QTW7DIBAF4KtErEsLw39XvUfVBeAhRmrsCEdWq
+ sh3L0StY9VdDryPJ+ZGJiwZJ/J6uJGCc57yONTBPB1I7P1wRJq7OhNgoJnjnHpHM0QKUhqLAKi
+ tIDUc/IQ0FD/EvsVr5KXFBrxe2vW5YMrXe8/7R537PF3G8nWvnXk7/WkA+dswc8posL5zQeokv
+ X3zp8/xmONzHE+kPTLDCjkDWCFUKBWKiIkbFdIeii10KxQVmiBYjJExJcQeygescoWyQuW5dsB
+ VsOj2UG2hWKGq0OoEXey4cd0/f9Rb+FiObsvxXnPDE+j0By7L8g04HW4t2gEAAA==
+X-Change-ID: 20260911-a9-i2c-24478e22e683
+To: Junyi Zhao <junyi.zhao@amlogic.com>, Andi Shyti <andi.shyti@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Xianwei Zhao <xianwei.zhaol@amlogic.com>
+Cc: Junyi Zhao <junyi.zhaol@amlogic.com>, linux-i2c@vger.kernel.org, 
+ linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793786462; l=2523;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=vW3AT4pvQk4g8bNIqB+xYCeCb73QmptprCE/Oot1+eM=;
+ b=6BwzhTGQPeaRRMF8CT/qD/8uagFtJYqzJ8Hxp9dxdpThw0G1+iDqC3IOzlOM/xcE8SyqKVo12
+ 3lqX6bmQoG4CgK2VdUY08TKnPxt5gXE4lxJSjKhGsp/wDDcFA8ziMVI
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-print_page_owner_memcg() loads memcg_data before it tests PageTail().
-In the first tail page, memcg_data holds the folio's _nr_pages. A split
-can make the page a folio between the two loads. The stale _nr_pages
-then passes the PageTail() test and is used as an objcg pointer.
+Add a Device Tree binding and driver for the I2C controller found on the
+Amlogic A9 SoC.
 
-__split_folio_to_order() stores memcg_data before the smp_wmb() that
-precedes clear_compound_head(). Also test PageTail() before the load,
-with a paired smp_rmb(). Keep the test after the load for a page that
-becomes a tail in between.
-
-Fixes: 4996fc547f5b ("mm: let _folio_nr_pages overlay memcg_data in first tail page")
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Needs patch 1 for the store order. Found by reading the code, not
-reproduced. The page_owner oops seen with a delay after
-clear_compound_head() is the window patch 1 closes.
+Changes in v7:
+- Move complete(done) out of lock, and when state = idle not complete(done) in irq func.
+- Link to v6: https://lore.kernel.org/r/20261104-a9-i2c-v6-0-baa6171f26f8@amlogic.com
+
+Changes in v6:
+- use xfer instead of master_xfer interface, and when div=8 remain valid.
+- Optimized the function.
+- Link to v5: https://lore.kernel.org/r/20261103-a9-i2c-v5-0-86f2dcd179d8@amlogic.com
+
+Changes in v5:
+- Mask out I2C_FUNC_SMBUS_QUICK and return I2C_FUNC_I2C | (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK).
+- Link to v4: https://lore.kernel.org/r/20261102-a9-i2c-v4-0-5a169215b8e9@amlogic.com
+
+Changes in v4:
+- Repocess xfer len equal 0 use I2C_AQ_NO_ZERO_LEN, and Optimized the function.
+- Disable A9_RX_THRESH_READ/A9_TX_THRESH_WRITE enables of irq when xfer timeout.
+- Use guard(spinlock_irqsave) instead for direct call spinlock in xfer timeout process.
+- Link to v3: https://lore.kernel.org/r/20261029-a9-i2c-v3-0-7b30ccc00533@amlogic.com
+
+Changes in v3:
+- Based on the questions raised by the robot, the data flow was reorganized.
+- Some processing was optimized according to Andi's and Markus's suggestions.
+- Link to v2: https://lore.kernel.org/r/20261022-a9-i2c-v2-0-45e3cef175bf@amlogic.com
+
+Changes in v2:
+- dtbinding: make some minor modifications, suggestted by Conor and robot.
+- driver: Make some adjustments, including macro definitions, format adjustments,
+          adding quirks, process optimization, and so on. According to Andi and robot's suggestion
+- Give up MAINTAINERS file the separate submission, make it together with the driver.
+- Link to v1: https://lore.kernel.org/r/20260924-a9-i2c-v1-0-b8ad9b46f4a8@amlogic.com
+
 ---
- mm/page_owner.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+Junyi Zhao (1):
+      i2c: amlogic: Add Amlogic A9 I2C controller driver
 
-diff --git a/mm/page_owner.c b/mm/page_owner.c
-index cfc31c92d7..058d4dec84 100644
---- a/mm/page_owner.c
-+++ b/mm/page_owner.c
-@@ -564,6 +564,13 @@ static inline int print_page_owner_memcg(char *kbuf, size_t count, int ret,
- 	char name[80];
- 
- 	rcu_read_lock();
-+	if (PageTail(page))
-+		goto out_unlock;
-+	/*
-+	 * Order the memcg_data load after the PageTail() load. Pairs with
-+	 * smp_wmb() in __split_folio_to_order().
-+	 */
-+	smp_rmb();
- 	memcg_data = READ_ONCE(page->memcg_data);
- 	if (!memcg_data || PageTail(page))
- 		goto out_unlock;
+Xianwei Zhao (1):
+      dt-bindings: i2c: add Amlogic A9 I2C controller
 
+ .../devicetree/bindings/i2c/amlogic,a9-i2c.yaml    |  56 +++
+ MAINTAINERS                                        |   9 +
+ drivers/i2c/busses/Kconfig                         |   8 +
+ drivers/i2c/busses/Makefile                        |   1 +
+ drivers/i2c/busses/i2c-amlogic-a9.c                | 432 +++++++++++++++++++++
+ 5 files changed, 506 insertions(+)
+---
+base-commit: 4ec2365c08de306f52650d8736aef5862baedb8d
+change-id: 20260911-a9-i2c-24478e22e683
+
+Best regards,
 -- 
-2.43.0
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
