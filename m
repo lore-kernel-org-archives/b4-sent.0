@@ -1,116 +1,77 @@
-From: Andrew Gigena <mail@andrewgigena.dev>
-Date: Wed, 04 Nov 2026 18:38:13 +0000
-Subject: [PATCH v2 2/2] arm64: dts: qcom: sm8150: Use standalone ICE node
- for UFS
+From: Asdlerto Korry <korryasdlerto@gmail.com>
+Subject: [PATCH 0/2] arm64: dts: qcom: Add Samsung Galaxy M52 5G
+Date: Wed, 04 Nov 2026 20:59:14 +0200
+Message-Id: <20261104-m52xq-dts-v1-0-b198f02912ff@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-sm8150-ice-rfc-v2-2-d697bbce0278@andrewgigena.dev>
-References: <20261104-sm8150-ice-rfc-v2-0-d697bbce0278@andrewgigena.dev>
-In-Reply-To: <20261104-sm8150-ice-rfc-v2-0-d697bbce0278@andrewgigena.dev>
-To: Abel Vesa <abelvesa@kernel.org>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>, Bart Van Assche <bvanassche@acm.org>, 
- Bean Huo <beanhuo@micron.com>, Stanley Jhu <stanleyjhu@google.com>, 
- Bjorn Andersson <andersson@kernel.org>, Andy Gross <agross@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-scsi@vger.kernel.org, Andrew Gigena <mail@andrewgigena.dev>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793817503; l=2613;
- i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
- bh=WlKNWLgTKrbe/21NLFWi4EX5Ly7RQNJI7RvyIEWjaMI=;
- b=a1nAxirKiAJiQ/12HZ3XDuVxxAvfW9Z8hM8ms+EoxVWLhaCPZPHg43hXKoKNt4udsKIMN2QpI
- w8Km050FwcaBD9DXTuzim5qYMjdt9khW9TidgKjwro6cV5u9sGV+VTB
-X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
- pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
-X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
+X-B4-Tracking: v=1; b=H4sIAIKA62oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwMT3VxTo4pC3ZSSYl0jC+PkVIO05KRkE0sloPqCotS0zAqwWdGxtbU
+ AGdQVtFsAAAA=
+X-Change-ID: 20261104-m52xq-dts-283ce0fcbc49
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
+ Tony Luck <tony.luck@intel.com>, 
+ "Guilherme G. Piccoli" <gpiccoli@igalia.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Asdlerto Korry <korryasdlerto@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793818754; l=2032;
+ i=korryasdlerto@gmail.com; s=20261104; h=from:subject:message-id;
+ bh=2xMJJCx7BHBsazgo/Rt9pf3D8n8vHFB8iVwUBQPj1+I=;
+ b=uXj1aVnTnGh4hrD96LnWa1axAmz6m0lbhrLjVhHO73c46XKL1qWMHtdE7Tl0qOKnzueAVS31J
+ hwM/+CUCReaDyIEdEvwx2U2yA/4vh52LVS/m+rNxEXjqX4VxZb9Zs9s
+X-Developer-Key: i=korryasdlerto@gmail.com; a=ed25519;
+ pk=RqttIGkm2XZ8NhLQBzPgpXXawOdVa1uODGsk+sagbxs=
+X-Endpoint-Received: by B4 Relay for korryasdlerto@gmail.com/20261104 with auth_id=1411
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert SM8150 UFS to use a standalone ICE node.
+This series adds initial support for the Samsung Galaxy M52 5G
+(SM-M526B, codename m52xq), a smartphone based on the Qualcomm SM7325
+SoC.
 
-Move the ICE register region and clock from the UFS controller node
-into a dedicated ICE node. Reference the new node from the UFS
-controller using the qcom,ice property.
+Tested on next-20261030 with only this series applied: the device boots
+to a postmarketOS userspace from UFS. ADSP, MPSS and WPSS come up, WiFi
+connects, Venus probes, the microSD card is detected and readable, and
+USB peripheral mode works in both plug orientations. The kernel log
+shows no errors from the nodes described here. Bluetooth, NFC, IPA
+mobile data and the GPU were tested with the same nodes on a 7.1
+kernel.
 
-This brings the SM8150 device tree in line with the standalone ICE
-representation used on newer Qualcomm platforms.
+Not included yet: the display panel, touchscreen, cameras, audio, the
+fuel gauge/charger and the USB Type-C controller (SM5714). They need
+drivers that are not upstream yet. The display works through
+simple-framebuffer for now.
 
-Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
-Tested-by: Andrew Gigena <mail@andrewgigena.dev>
+Notes:
+* The stock ABL picks the DTB by qcom,msm-id/qcom,board-id. These
+  properties are left out as required for new SM7325 boards, so users
+  add them when packaging the boot image.
+* The reserved memory map follows the stock device tree. The removed
+  region is larger than on other SM7325 devices (0x5f00000). With the
+  common size, the kernel livelocks when it touches the memory the
+  hypervisor keeps.
+* Several regulators need a fixed voltage or must stay always-on (UFS
+  VCC on L7b, the ADSP-managed sensors on L12c). With the stock ranges
+  Linux sets the minimum and UFS or the ADSP fail.
+
+Signed-off-by: Asdlerto Korry <korryasdlerto@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sm8150.dtsi | 25 ++++++++++++++++---------
- 1 file changed, 16 insertions(+), 9 deletions(-)
+Asdlerto Korry (2):
+      dt-bindings: arm: qcom: Add Samsung Galaxy M52 5G
+      arm64: dts: qcom: sm7325: Add Samsung Galaxy M52 5G
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8150.dtsi b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-index 293fcbacff34..b3d6f3d92395 100644
---- a/arch/arm64/boot/dts/qcom/sm8150.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-@@ -2071,9 +2071,7 @@ pcie1_phy: phy@1c0e000 {
- 		ufs_mem_hc: ufshc@1d84000 {
- 			compatible = "qcom,sm8150-ufshc", "qcom,ufshc",
- 				     "jedec,ufs-2.0";
--			reg = <0 0x01d84000 0 0x2500>,
--			      <0 0x01d90000 0 0x8000>;
--			reg-names = "std", "ice";
-+			reg = <0 0x01d84000 0 0x2500>;
- 			interrupts = <GIC_SPI 265 IRQ_TYPE_LEVEL_HIGH>;
- 			phys = <&ufs_mem_phy>;
- 			phy-names = "ufsphy";
-@@ -2092,8 +2090,7 @@ ufs_mem_hc: ufshc@1d84000 {
- 				"ref_clk",
- 				"tx_lane0_sync_clk",
- 				"rx_lane0_sync_clk",
--				"rx_lane1_sync_clk",
--				"ice_core_clk";
-+				"rx_lane1_sync_clk";
- 			clocks =
- 				<&gcc GCC_UFS_PHY_AXI_CLK>,
- 				<&gcc GCC_AGGRE_UFS_PHY_AXI_CLK>,
-@@ -2102,8 +2099,7 @@ ufs_mem_hc: ufshc@1d84000 {
- 				<&rpmhcc RPMH_CXO_CLK>,
- 				<&gcc GCC_UFS_PHY_TX_SYMBOL_0_CLK>,
- 				<&gcc GCC_UFS_PHY_RX_SYMBOL_0_CLK>,
--				<&gcc GCC_UFS_PHY_RX_SYMBOL_1_CLK>,
--				<&gcc GCC_UFS_PHY_ICE_CORE_CLK>;
-+				<&gcc GCC_UFS_PHY_RX_SYMBOL_1_CLK>;
- 			freq-table-hz =
- 				<37500000 300000000>,
- 				<0 0>,
-@@ -2112,8 +2108,8 @@ ufs_mem_hc: ufshc@1d84000 {
- 				<0 0>,
- 				<0 0>,
- 				<0 0>,
--				<0 0>,
--				<0 300000000>;
-+				<0 0>;
-+			qcom,ice = <&ice>;
- 
- 			status = "disabled";
- 		};
-@@ -2139,6 +2135,17 @@ ufs_mem_phy: phy@1d87000 {
- 			status = "disabled";
- 		};
- 
-+		ice: crypto@1d90000 {
-+			compatible = "qcom,sm8150-inline-crypto-engine",
-+				     "qcom,inline-crypto-engine";
-+			reg = <0 0x01d90000 0 0x8000>;
-+			clocks = <&gcc GCC_UFS_PHY_ICE_CORE_CLK>,
-+				 <&gcc GCC_UFS_PHY_AHB_CLK>;
-+			clock-names = "core",
-+				      "iface";
-+			power-domains = <&gcc UFS_PHY_GDSC>;
-+		};
-+
- 		cryptobam: dma-controller@1dc4000 {
- 			compatible = "qcom,bam-v1.7.4", "qcom,bam-v1.7.0";
- 			reg = <0 0x01dc4000 0 0x24000>;
+ Documentation/devicetree/bindings/arm/qcom.yaml   |   1 +
+ arch/arm64/boot/dts/qcom/Makefile                 |   1 +
+ arch/arm64/boot/dts/qcom/sm7325-samsung-m52xq.dts | 828 ++++++++++++++++++++++
+ 3 files changed, 830 insertions(+)
+---
+base-commit: 7649ba73f9e7e1e04d0b46213e39c79ae09dd55c
+change-id: 20261104-m52xq-dts-283ce0fcbc49
 
+Best regards,
 -- 
-2.56.0
+Asdlerto Korry <korryasdlerto@gmail.com>
 
