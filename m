@@ -1,150 +1,79 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Wed, 04 Nov 2026 09:37:44 -0600
-Subject: [PATCH] Do not show a hidden SSID in unsolicited broadcast Probe
- Responses
+Date: Wed, 04 Nov 2026 09:37:45 -0600
+Subject: [PATCH] VLAN: Open the link event socket only for a BSS that has
+ VLANs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-b30-unsol-probe-resp-hidden-ssid-v1-1-18431b9a4c79@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEdR62oC/yXNTQrCQAxA4auUrA3MT6niVcRFp4k2IjND0opQe
- ndHXX6b9zYwVmGDc7eB8ktMSm7whw6mecx3RqFmCC4M3rseU3S4ZitPrFoSo7JVnIWIM5oJIY2
- ndBwiBddHaJmqfJP3b3G5/m1revC0fLuw7x8RbTAphAAAAA==
-X-Change-ID: 20261104-b30-unsol-probe-resp-hidden-ssid-da8b763d2043
+Message-Id: <20261104-b140-vlan-socket-only-when-needed-v1-1-c6d18a85267b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAEhR62oC/yXNQQrCMBBG4auUWTuQ1FDEq4iLJvPXRstEklqV0
+ rsbdflt3lupIEcUOjYrZSyxxKQVdtdQGHu9gKNUU2vazlrj2FtneJl65ZLCDTMnnd78HKGsgEC
+ 423vxdhB3EEO1c88Y4uv3OJ3/Lg9/RZi/Ydq2D9QcSV6FAAAA
+X-Change-ID: 20261104-b140-vlan-socket-only-when-needed-63bdb1fd48d0
 To: hostap@lists.infradead.org
 Cc: Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793806664; l=4878;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793806664; l=2465;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=KbPSp98Bkm8Y3LoKQ11KhWcSUE0m7Y0zFZv6xZMS2+Q=;
- b=o0lLKqXtT28FFmmHRkzRv9X4185rpeF5XHzPOE0tPG90rbseihkJ9WRQ7ksmtfNKzqj86CjPT
- XQTXLR90+sFDqEVCF7G2l9AtHNQ987gAJPcgAIkv9yLUZUqr5CLFCHc
+ bh=+y3+f1a44XpZ50F61RbvhDkO1IBbUaHgD73z4m4qFSU=;
+ b=+hLazDcU1ez+AIWQ6/VUJLvAyZIAnO228+ZAI6marX/pHRLj1dSnoBKjvv+NAZmMiMB5buLRX
+ VsppQO059iuBrVaH1vavGRLGV/GZFP9sWk7oT0hECZvXWoR2d4DtYK7
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hostapd_unsol_bcast_probe_resp() builds the 6 GHz unsolicited broadcast
-Probe Response frame template with the SSID element of a solicited
-Probe Response frame, which always carries the actual SSID. With
-ignore_broadcast_ssid set, the Beacon frames hide the SSID, but the
-unsolicited broadcast Probe Response frames, sent to all every
-unsol_bcast_probe_resp_interval, show it.
+vlan_init() opens a NETLINK_ROUTE socket in the RTMGRP_LINK group for
+every BSS when hostapd is built with CONFIG_FULL_DYNAMIC_VLAN, whether
+or not the BSS uses VLANs. Its events matter only to the BSS's VLAN
+interfaces: vlan_newlink() and vlan_dellink() match them against
+conf->vlan. A BSS with dynamic_vlan disabled, no per_sta_vif and no
+VLAN list receives every link event in the system and uses none. When
+hostapd is busy during a burst of link events, each of these sockets
+overflows, and each BSS logs "VLAN: vlan_event_receive: recvfrom
+failed: No buffer space available" at error level.
 
-Write the SSID element of the unsolicited template as in Beacon frames:
-empty with ignore_broadcast_ssid=1, zeroed with 2. Move that code from
-ieee802_11_build_ap_params() into a helper for both. Solicited Probe
-Response frames and the Probe Response offload template keep the
-actual SSID.
+Open the socket only when the BSS can have VLAN interfaces. The rest
+of the VLAN setup in vlan_init() already depends on the same settings,
+and vlan_init() runs only at BSS setup.
 
-Tested on an Arista W-318 (ath11k, QCN9072) on 6 GHz channel 37 with
-a hidden BSS and unsol_bcast_probe_resp_interval=20, reading the
-templates hostapd passes to nl80211 (nlmon). Before, the unsolicited
-template carried the SSID while the Beacon frame head had an empty
-SSID element. After, both have an empty SSID element, or with
-ignore_broadcast_ssid=2 a zeroed one of the SSID's length. Without
-ignore_broadcast_ssid, both carry the SSID as before.
+Tested on OpenWrt (wpad, 4 BSSes without VLANs, on an Arista W-318).
+hostapd held 5 NETLINK_ROUTE link sockets before (one per BSS and the
+driver's) and 1 after. With hostapd stopped during 1000 up/down
+toggles of a test bridge, the 4 per-BSS sockets overflowed and each
+logged the error. With this change only the driver's socket
+overflowed; it logs "netlink: Link events lost, request the link
+state" and recovers.
 
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
-OpenWrt does not set unsol_bcast_probe_resp_interval by default, so
-its users hit this only through raw hostapd options.
+Seen as one error line per BSS on OpenWrt APs with several BSSes and
+no VLANs, at boot and around channel switches.
 ---
- src/ap/beacon.c | 49 ++++++++++++++++++++++++++++++-------------------
- 1 file changed, 30 insertions(+), 19 deletions(-)
+ src/ap/vlan_init.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index d7b9874..86baf39 100644
---- a/src/ap/beacon.c
-+++ b/src/ap/beacon.c
-@@ -88,6 +88,29 @@ static u8 ieee802_11_erp_info(struct hostapd_data *hapd)
- }
- 
- 
-+/* SSID element; hide_ssid applies ignore_broadcast_ssid as in Beacon frames */
-+static u8 * hostapd_eid_ssid(struct hostapd_data *hapd, u8 *pos,
-+			     bool hide_ssid)
-+{
-+	*pos++ = WLAN_EID_SSID;
-+	if (hide_ssid && hapd->conf->ignore_broadcast_ssid == 2) {
-+		/* clear the data, but keep the correct length of the SSID */
-+		*pos++ = hapd->conf->ssid.ssid_len;
-+		os_memset(pos, 0, hapd->conf->ssid.ssid_len);
-+		pos += hapd->conf->ssid.ssid_len;
-+	} else if (hide_ssid && hapd->conf->ignore_broadcast_ssid) {
-+		*pos++ = 0; /* empty SSID */
-+	} else {
-+		*pos++ = hapd->conf->ssid.ssid_len;
-+		os_memcpy(pos, hapd->conf->ssid.ssid,
-+			  hapd->conf->ssid.ssid_len);
-+		pos += hapd->conf->ssid.ssid_len;
-+	}
-+
-+	return pos;
-+}
-+
-+
- static u8 * hostapd_eid_ds_params(struct hostapd_data *hapd, u8 *eid)
+diff --git a/src/ap/vlan_init.c b/src/ap/vlan_init.c
+index 53eacfb..02b9a9f 100644
+--- a/src/ap/vlan_init.c
++++ b/src/ap/vlan_init.c
+@@ -133,7 +133,10 @@ static void vlan_dynamic_remove(struct hostapd_data *hapd,
+ int vlan_init(struct hostapd_data *hapd)
  {
- 	enum hostapd_hw_mode hw_mode = hapd->iconf->hw_mode;
-@@ -738,6 +761,8 @@ static size_t he_elem_len(struct hostapd_data *hapd)
- struct probe_resp_params {
- 	const struct ieee80211_mgmt *req;
- 	bool is_p2p;
-+	/* Unsolicited broadcast Probe Response template */
-+	bool unsol_bcast;
+ #ifdef CONFIG_FULL_DYNAMIC_VLAN
+-	hapd->full_dynamic_vlan = full_dynamic_vlan_init(hapd);
++	/* Only a BSS that can have VLAN interfaces needs their link events */
++	if (hapd->conf->ssid.dynamic_vlan != DYNAMIC_VLAN_DISABLED ||
++	    hapd->conf->ssid.per_sta_vif || hapd->conf->vlan)
++		hapd->full_dynamic_vlan = full_dynamic_vlan_init(hapd);
+ #endif /* CONFIG_FULL_DYNAMIC_VLAN */
  
- 	/* Generated IEs will be included inside an ML element */
- 	struct hostapd_data *mld_ap;
-@@ -874,11 +899,9 @@ static u8 * hostapd_probe_resp_fill_elems(struct hostapd_data *hapd,
- 	hapd = hostapd_mbssid_get_tx_bss(hapd);
- 	epos = pos + len;
- 
--	*pos++ = WLAN_EID_SSID;
--	*pos++ = hapd->conf->ssid.ssid_len;
--	os_memcpy(pos, hapd->conf->ssid.ssid,
--		  hapd->conf->ssid.ssid_len);
--	pos += hapd->conf->ssid.ssid_len;
-+	/* An unsolicited broadcast Probe Response frame is sent to all, like
-+	 * a Beacon frame, so it must not show the SSID a Beacon frame hides. */
-+	pos = hostapd_eid_ssid(hapd, pos, params->unsol_bcast);
- 
- 	/* Supported rates */
- 	pos = hostapd_eid_supp_rates(hapd, pos);
-@@ -1920,6 +1943,7 @@ u8 * hostapd_unsol_bcast_probe_resp(struct hostapd_data *hapd,
- 	os_memset(&probe_params, 0, sizeof(probe_params));
- 	probe_params.req = NULL;
- 	probe_params.is_p2p = false;
-+	probe_params.unsol_bcast = true;
- 	probe_params.known_bss = NULL;
- 	probe_params.known_bss_len = 0;
- 	probe_params.mld_ap = NULL;
-@@ -2392,20 +2416,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
- 	pos = &head->u.beacon.variable[0];
- 
- 	/* SSID */
--	*pos++ = WLAN_EID_SSID;
--	if (hapd->conf->ignore_broadcast_ssid == 2) {
--		/* clear the data, but keep the correct length of the SSID */
--		*pos++ = hapd->conf->ssid.ssid_len;
--		os_memset(pos, 0, hapd->conf->ssid.ssid_len);
--		pos += hapd->conf->ssid.ssid_len;
--	} else if (hapd->conf->ignore_broadcast_ssid) {
--		*pos++ = 0; /* empty SSID */
--	} else {
--		*pos++ = hapd->conf->ssid.ssid_len;
--		os_memcpy(pos, hapd->conf->ssid.ssid,
--			  hapd->conf->ssid.ssid_len);
--		pos += hapd->conf->ssid.ssid_len;
--	}
-+	pos = hostapd_eid_ssid(hapd, pos, true);
- 
- 	/* Supported rates */
- 	pos = hostapd_eid_supp_rates(hapd, pos);
+ 	if ((hapd->conf->ssid.dynamic_vlan != DYNAMIC_VLAN_DISABLED ||
 
 ---
 base-commit: 412ff0d7f4d2b346df63be52c4201ee7ab0dc804
-change-id: 20261104-b30-unsol-probe-resp-hidden-ssid-da8b763d2043
+change-id: 20261104-b140-vlan-socket-only-when-needed-63bdb1fd48d0
 
 Best regards,
 --  
