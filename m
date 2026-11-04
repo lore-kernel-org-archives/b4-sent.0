@@ -1,17 +1,13 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Subject: [PATCH net-next v5 0/4] net: qrtr: Add support for using identical
- MHI endpoint devices
-Date: Wed, 04 Nov 2026 08:46:00 -0800
-Message-Id: <20261104-qrtr-multi-ep-v5-0-4cdb2b4f1920@oss.qualcomm.com>
+Date: Wed, 04 Nov 2026 08:46:01 -0800
+Subject: [PATCH net-next v5 1/4] net: qrtr: Allow the host QRTR to assign a
+ unique node id
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAEhh62oC/3XN3WrDMAwF4Fcpvp6LLOfH7dXeY+zCkZXVo0la2
- wkdJe8+J4NRuuVGcJD0nbuIHDxHcdzdReDJRz/0OZQvO0En23+w9C5ngYAVHJSR15CC7MZz8pI
- vkrAmbKgsmJXIP5fArb+t3pvoOcmeb0m8/2zi2HwypYVbbk8+piF8rdWTWj82WiYlQRoLFVmrK
- +P06xDj/jraMw1dt89jrZjwAUH1jGBGsHbOgDOFsrCB6EcEnxGdEQIwWrExh7LeQIpfRMFfpFi
- QqnVNXbbkNP+DzPP8DU1QPxKcAQAA
-X-Change-ID: 20260918-qrtr-multi-ep-c27c2bc54ee1
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261104-qrtr-multi-ep-v5-1-4cdb2b4f1920@oss.qualcomm.com>
+References: <20261104-qrtr-multi-ep-v5-0-4cdb2b4f1920@oss.qualcomm.com>
+In-Reply-To: <20261104-qrtr-multi-ep-v5-0-4cdb2b4f1920@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
  "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
  Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
@@ -26,127 +22,304 @@ Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org,
  Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>, 
  Juha-Matti Tilli <juha-matti.tilli@iki.fi>, 
  Jeff Hugo <jeff.hugo@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
- Daizhuang Bai <daizhuang.bai@oss.qualcomm.com>
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4612;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=9537;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=y2J9xaz0uLoyFrScT4xkB8c2QveIyP+efStfQ3ylWUE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBq62FO+oXYYLu7YdB5LRuFC36REfIvTqUPmpa67
- tN4fsbPzXSJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCauthTgAKCRBVnxHm/pHO
- 9RDyCACmwwMCggdJFkWxixS65FSH8KOFaNcvNc9SDm9DBEwVuguMWSvgCe30SoP2dhJpy3Z1Wla
- N0eXxchVMHXKWIyJGLTEha1O3XrM/w6KwazZ/SYDB9qnqm4HbwOH3MmyEZAfqV1FZhupGf0my20
- KfB1bisuX/XFx1ElPWUorH5MuZXxNR3gpm/tavZl3pNsxZVzHdBGogKA2gnLe2oIMvhWyEr6Mev
- zNgypS8iMzKy4GqXCRfsfx+q0ySvIh258KDCTKH/spEObRwxTWqlmKMK8Pb3nO2KpuFA/pjUXTm
- 3A6em7ks+HNgtFlDssqDhW94f2qJecthJ4A6s2yS8CwEW5Md
+ bh=UbLsQcHXs5fB3lH4xRZFyPFqjEdySNlLHyo1kxA0IsQ=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBq62FPb2CTzV5djZzMzq2CrjWpVjODCmRIYZK69
+ qPehugQ0ZeJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCauthTwAKCRBVnxHm/pHO
+ 9RkZB/0XgslZ9sf/3G7tRgu/aI7K/0e5efLwcIlxWdATZZ1SVbs3aWhmsuLPnHA3DX/k4ZRWR83
+ tt2JalNIxisTDtUrHznnb1ZzA/2WCWl+24S8mXnjeTteUV2YaA/XNTLPaB3zRs5lqW45WRMmDYX
+ 5b4M/HhB0QTZfQZy6dVqKE+Jd9IiY+MigdH5D/Vt4TiKunn1eeV8xnAk51KDBmz2rjG7QJ3p4/F
+ mZ1uWK+Z3dGp7NktoEars2WOaLFv55cxrXXmCJ7LEETlei+rGZTSnEp5lW7MIAnYGRFlNsBY6eL
+ GZxfnu8yEtskaNRBGC2Mc4cy/vjWveKpQM0P7yRZ2KsaRVUr
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+Currently, QRTR identifies each remote node by the value of the
+'src_node_id' field in the received packet and uses the node id as the key
+to store the node to the internal 'qrtr_nodes' radix tree.
 
-This series reworks the QRTR driver to add support for using identical MHI
-endpoint devices at the same time. Currently, QRTR driver has a limitation on
-using more than one identical MHI endpoint devices like QCS6490 or any Qcom
-Endpoint device making use of QRTR at the same time. Because of the fact that
-these devices will have the identical QRTR node id, they cannot be used at the
-same time, on the same host machine.
+But this approach comes with a limitation. When more than one remote node
+share the same id, then QRTR can only add the first node to the radix tree
+and has to drop the successive nodes with the same node id as the 'key' in
+radix tree has to be unique. This prevents connecting identical Qcom PCIe
+WLAN devices to a single host at the same time.
 
-This limitation is a blocker for running upstream kernel on devices like Qcom
-based routers as they often have multiple identical WLAN Endpoint devices
-connected to the Router SoC.
+To fix this limitation, allow the host QRTR to use the node id (nid)
+received from the endpoint driver during qrtr_endpoint_register() as the
+unique node id and use it as the 'key' for the internal radix tree. Also,
+store the received 'src_id' in a new 'qrtr_node->ep_nid' field and replace
+the 'ep_nid' with the unique 'nid' in the QRTR control packets if both
+differ i.e., an endpoint driver has passed a unique 'nid' during
+qrtr_endpoint_register(). To maintain symmetry, replace the 'nid' with the
+'ep_nid' while sending the packet back to the remote node if both differ.
 
-This series supersedes the following 2 series from Juha:
-https://lore.kernel.org/all/20260915054207.2513877-1-juha-matti.tilli@iki.fi
-https://lore.kernel.org/all/20260915074135.2567411-1-juha-matti.tilli@iki.fi
+A node can also bridge other distant nodes, so the source id of an
+incoming packet is not always the id the endpoint advertises for itself.
+Keep adding such ids to the radix tree as additional keys for the same
+node, as it was done before this change. Otherwise the bridged nodes would
+lose their route and qrtr_sendmsg() would start failing with -ECONNRESET
+for them.
 
-Compared to the series from Juha, this series simplifies the multi-endpoint
-support by computing a unique node id for each MHI endpoint and uses it for the
-internal QRTR book keeping. This ensures that even if the MHI endpoint devices
-have same node ids, the host QRTR will always use a unique node id for each one
-of them.
+Currently, all QRTR endpoint drivers pass 'QRTR_EP_NID_AUTO' as the 'nid'
+during qrtr_endpoint_register(). So 'ep_nid' and 'nid' are same and the
+routing behavior is not changed.
 
-More details can be found in the individual patches.
+Finally, since qrtr_node_rewrite_ctrl() dereferences the control packet for
+DEL_SERVER and DEL_CLIENT as well, extend the existing length check in
+qrtr_endpoint_post() to cover both types.
 
-Merge Strategy
-==============
-
-Since both QRTR and ath drivers are falling under the networking tree, the whole
-series can be merged through netdev tree.
-
+Reviewed-by: Simon Horman <horms@kernel.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
-Changes in v5:
-- Rebased on top of net-next/main
-- Collected tags
-- Link to v4: https://patch.msgid.link/20261022-qrtr-multi-ep-v4-0-c6fdb75fcd3e@oss.qualcomm.com
+ net/qrtr/af_qrtr.c | 132 ++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 116 insertions(+), 16 deletions(-)
 
-Changes in v4:
-- Moved the 'ep_nid' and the node id assignment into a single
-  'qrtr_nodes_lock' critical section and used READ_ONCE() elsewhere
-- Propagated the radix tree insert error out of qrtr_node_assign() and
-  rejected the packet or failed the endpoint registration
-- Fixed the assign condition that stopped adding bridged node ids as
-  lookup keys
-- Moved the control packet length check to qrtr_endpoint_post() and
-  extended it to DEL_SERVER and DEL_CLIENT
-- Rejected endpoint node ids at and above QRTR_NODE_HOST_BASE
-- Returned error for the QMI message received from an unknown server in
-  ath{11k,12k} so that the QMI core drops the service
-- Dropped Juha's Tested-by and Vasanth's Reviewed-bt as the code changed since v3
-- Link to v3: https://patch.msgid.link/20260922-qrtr-multi-ep-v3-0-c00831e88957@oss.qualcomm.com
+diff --git a/net/qrtr/af_qrtr.c b/net/qrtr/af_qrtr.c
+index e7b3647424b8..b95ffb98ec23 100644
+--- a/net/qrtr/af_qrtr.c
++++ b/net/qrtr/af_qrtr.c
+@@ -118,7 +118,8 @@ static DEFINE_XARRAY_ALLOC(qrtr_ports);
+  * @ep_lock: lock for endpoint management and callbacks
+  * @ep: endpoint
+  * @ref: reference count for node
+- * @nid: node id
++ * @nid: node id assigned by the host QRTR
++ * @ep_nid: endpoint's own node id as received
+  * @qrtr_tx_flow: xarray of qrtr_tx_flow, keyed by node << 32 | port
+  * @qrtr_tx_lock: lock for qrtr_tx_flow inserts
+  * @hello_sent: hello packet send successful
+@@ -131,6 +132,7 @@ struct qrtr_node {
+ 	struct qrtr_endpoint *ep;
+ 	struct kref ref;
+ 	unsigned int nid;
++	unsigned int ep_nid;
+ 
+ 	struct xarray qrtr_tx_flow;
+ 	struct mutex qrtr_tx_lock; /* for qrtr_tx_flow */
+@@ -347,6 +349,7 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
+ {
+ 	struct qrtr_hdr_v1 *hdr;
+ 	size_t len = skb->len;
++	unsigned int dst_node;
+ 	int rc, confirm_rx;
+ 
+ 	mutex_lock(&node->ep_lock);
+@@ -369,10 +372,14 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
+ 	hdr->src_node_id = cpu_to_le32(from->sq_node);
+ 	hdr->src_port_id = cpu_to_le32(from->sq_port);
+ 	if (to->sq_port == QRTR_PORT_CTRL) {
+-		hdr->dst_node_id = cpu_to_le32(READ_ONCE(node->nid));
++		hdr->dst_node_id = cpu_to_le32(READ_ONCE(node->ep_nid));
+ 		hdr->dst_port_id = cpu_to_le32(QRTR_PORT_CTRL);
+ 	} else {
+-		hdr->dst_node_id = cpu_to_le32(to->sq_node);
++		/* Put back the endpoint's own node id */
++		dst_node = to->sq_node;
++		if (dst_node == READ_ONCE(node->nid))
++			dst_node = READ_ONCE(node->ep_nid);
++		hdr->dst_node_id = cpu_to_le32(dst_node);
+ 		hdr->dst_port_id = cpu_to_le32(to->sq_port);
+ 	}
+ 
+@@ -422,23 +429,72 @@ static struct qrtr_node *qrtr_node_lookup(unsigned int nid)
+ 	return node;
+ }
+ 
+-/* Assign node id to node.
++/* Add 'nid' as a lookup key for 'node', and adopt it as the node's own id if
++ * the node does not have one yet.
++ *
++ * Callers must hold 'qrtr_nodes_lock'.
+  *
+- * This is mostly useful for automatic node id assignment, based on
+- * the source id in the incoming packet.
++ * Return: 0 on success; negative error code on failure
+  */
+-static void qrtr_node_assign(struct qrtr_node *node, unsigned int nid)
++static int __qrtr_node_assign(struct qrtr_node *node, unsigned int nid)
+ {
+-	unsigned long flags;
++	int rc;
+ 
+ 	if (nid == QRTR_EP_NID_AUTO)
+-		return;
++		return 0;
++
++	if (radix_tree_lookup(&qrtr_nodes, nid) == node)
++		return 0;
++
++	rc = radix_tree_insert(&qrtr_nodes, nid, node);
++	if (rc)
++		return rc;
+ 
+-	spin_lock_irqsave(&qrtr_nodes_lock, flags);
+-	radix_tree_insert(&qrtr_nodes, nid, node);
+ 	if (node->nid == QRTR_EP_NID_AUTO)
+ 		WRITE_ONCE(node->nid, nid);
++
++	return 0;
++}
++
++/* Assign node id to node.
++ *
++ * Return: 0 on success; negative error code on failure
++ */
++static int qrtr_node_assign(struct qrtr_node *node, unsigned int nid)
++{
++	unsigned long flags;
++	int rc;
++
++	spin_lock_irqsave(&qrtr_nodes_lock, flags);
++	rc = __qrtr_node_assign(node, nid);
+ 	spin_unlock_irqrestore(&qrtr_nodes_lock, flags);
++
++	return rc;
++}
++
++/* Replace the node id in the control packet with 'node->nid', if both are
++ * different.
++ */
++static void qrtr_node_rewrite_ctrl(struct qrtr_node *node, unsigned int type,
++				   struct sk_buff *skb)
++{
++	unsigned int ep_nid = READ_ONCE(node->ep_nid);
++	unsigned int host_nid = READ_ONCE(node->nid);
++	struct qrtr_ctrl_pkt *pkt;
++	__le32 *nid;
++
++	if (host_nid == ep_nid)
++		return;
++
++	pkt = (struct qrtr_ctrl_pkt *)skb->data;
++	if (type == QRTR_TYPE_DEL_CLIENT || type == QRTR_TYPE_RESUME_TX)
++		nid = &pkt->client.node;
++	else
++		nid = &pkt->server.node;
++
++	/* Rewrite only the endpoint's node id, not those of bridged nodes */
++	if (le32_to_cpu(*nid) == ep_nid)
++		*nid = cpu_to_le32(host_nid);
+ }
+ 
+ /**
+@@ -457,9 +513,12 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
+ 	struct qrtr_sock *ipc;
+ 	struct sk_buff *skb;
+ 	struct qrtr_cb *cb;
++	unsigned long flags;
+ 	size_t size;
+ 	unsigned int ver;
++	unsigned int nid;
+ 	size_t hdrlen;
++	int rc = 0;
+ 
+ 	if (len == 0 || len & 3)
+ 		return -EINVAL;
+@@ -521,6 +580,8 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
+ 		goto err;
+ 
+ 	if ((cb->type == QRTR_TYPE_NEW_SERVER ||
++	     cb->type == QRTR_TYPE_DEL_SERVER ||
++	     cb->type == QRTR_TYPE_DEL_CLIENT ||
+ 	     cb->type == QRTR_TYPE_RESUME_TX) &&
+ 	    size < sizeof(struct qrtr_ctrl_pkt))
+ 		goto err;
+@@ -531,16 +592,46 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
+ 
+ 	skb_put_data(skb, data + hdrlen, size);
+ 
+-	qrtr_node_assign(node, cb->src_node);
++	nid = cb->src_node;
++
++	spin_lock_irqsave(&qrtr_nodes_lock, flags);
++
++	if (node->ep_nid == QRTR_EP_NID_AUTO)
++		WRITE_ONCE(node->ep_nid, nid);
++
++	/* Add the source id to the lookup table only if 'node->nid' is auto
++	 * assigned or the packet came from a bridged node.
++	 */
++	if (node->nid == QRTR_EP_NID_AUTO || nid != node->ep_nid)
++		rc = __qrtr_node_assign(node, nid);
++
++	spin_unlock_irqrestore(&qrtr_nodes_lock, flags);
++
++	if (rc)
++		goto err_nid;
+ 
+ 	if (cb->type == QRTR_TYPE_NEW_SERVER) {
+ 		/* Remote node endpoint can bridge other distant nodes */
+-		const struct qrtr_ctrl_pkt *pkt;
++		const struct qrtr_ctrl_pkt *pkt = data + hdrlen;
++
++		nid = le32_to_cpu(pkt->server.node);
+ 
+-		pkt = data + hdrlen;
+-		qrtr_node_assign(node, le32_to_cpu(pkt->server.node));
++		if (nid != READ_ONCE(node->ep_nid)) {
++			rc = qrtr_node_assign(node, nid);
++			if (rc)
++				goto err_nid;
++		}
+ 	}
+ 
++	if (cb->src_node == READ_ONCE(node->ep_nid))
++		cb->src_node = READ_ONCE(node->nid);
++
++	if (cb->type == QRTR_TYPE_NEW_SERVER ||
++	    cb->type == QRTR_TYPE_DEL_SERVER ||
++	    cb->type == QRTR_TYPE_DEL_CLIENT ||
++	    cb->type == QRTR_TYPE_RESUME_TX)
++		qrtr_node_rewrite_ctrl(node, cb->type, skb);
++
+ 	if (cb->type == QRTR_TYPE_RESUME_TX) {
+ 		qrtr_tx_resume(node, skb);
+ 	} else {
+@@ -558,6 +649,8 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
+ 
+ 	return 0;
+ 
++err_nid:
++	pr_err_ratelimited("qrtr: cannot route node id %u: %d\n", nid, rc);
+ err:
+ 	kfree_skb(skb);
+ 	return -EINVAL;
+@@ -647,6 +740,7 @@ EXPORT_SYMBOL_GPL(qrtr_endpoint_hello);
+ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int nid)
+ {
+ 	struct qrtr_node *node;
++	int rc;
+ 
+ 	if (!ep || !ep->xmit)
+ 		return -EINVAL;
+@@ -659,6 +753,7 @@ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int nid)
+ 	mutex_init(&node->ep_lock);
+ 	skb_queue_head_init(&node->rx_queue);
+ 	node->nid = QRTR_EP_NID_AUTO;
++	node->ep_nid = QRTR_EP_NID_AUTO;
+ 	node->ep = ep;
+ 
+ 	node->hello_sent = false;
+@@ -667,7 +762,12 @@ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int nid)
+ 	xa_init(&node->qrtr_tx_flow);
+ 	mutex_init(&node->qrtr_tx_lock);
+ 
+-	qrtr_node_assign(node, nid);
++	rc = qrtr_node_assign(node, nid);
++	if (rc) {
++		pr_err("qrtr: cannot assign node id %u: %d\n", nid, rc);
++		kfree(node);
++		return rc;
++	}
+ 
+ 	mutex_lock(&qrtr_node_lock);
+ 	list_add(&node->item, &qrtr_all_nodes);
 
-Changes in v3:
-- Added missing qrtr_node_rewrite_ctrl() for QRTR_TYPE_RESUME_TX
-- Fixed the types of ath{11k/12k}_pci_get_qrtr_node_id() and helpers to use
-  'unsigned int' to match qrtr_host_node_id()
-- Collected tags
-- Link to v2: https://patch.msgid.link/20260921-qrtr-multi-ep-v2-0-27dd80d841a0@oss.qualcomm.com
-
-Changes in v2:
-- Rebased on top of net-next/main
-- Used READ/WRITE_ONCE for reading/writing ep_nid
-- Link to v1: https://patch.msgid.link/20260918-qrtr-multi-ep-v1-0-8a06caa368d3@oss.qualcomm.com
-
-Cc: linux-arm-msm@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: linux-wireless@vger.kernel.org
-Cc: ath11k@lists.infradead.org
-Cc: ath12k@lists.infradead.org
-To: Manivannan Sadhasivam <mani@kernel.org>
-To: "David S. Miller" <davem@davemloft.net>
-To: Eric Dumazet <edumazet@kernel.org>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Simon Horman <horms@kernel.org>
-To: Jeff Johnson <jjohnson@kernel.org>
-
----
-Manivannan Sadhasivam (4):
-      net: qrtr: Allow the host QRTR to assign a unique node id
-      net: qrtr: Assign unique node id for MHI endpoints
-      wifi: ath11k: Connect to the QMI server belonging to the device owned by this driver
-      wifi: ath12k: Connect to the QMI server belonging to the device owned by this driver
-
- MAINTAINERS                           |   1 +
- drivers/net/wireless/ath/ath11k/hif.h |   9 +++
- drivers/net/wireless/ath/ath11k/pci.c |   9 +++
- drivers/net/wireless/ath/ath11k/qmi.c |  11 +++
- drivers/net/wireless/ath/ath12k/hif.h |   9 +++
- drivers/net/wireless/ath/ath12k/pci.c |   9 +++
- drivers/net/wireless/ath/ath12k/qmi.c |  12 +++
- include/net/qrtr.h                    |  22 ++++++
- net/qrtr/af_qrtr.c                    | 141 ++++++++++++++++++++++++++++++----
- net/qrtr/mhi.c                        |   4 +-
- 10 files changed, 210 insertions(+), 17 deletions(-)
----
-base-commit: 7b6ab4dbc156e2f96419715130b3d5738a306c93
-change-id: 20260918-qrtr-multi-ep-c27c2bc54ee1
-
-Best regards,
---  
-மணிவண்ணன் சதாசிவம்
+-- 
+2.43.0
 
