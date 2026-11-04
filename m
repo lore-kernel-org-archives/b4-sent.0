@@ -1,423 +1,77 @@
-From: Andrew Gigena <mail@andrewgigena.dev>
-Date: Wed, 04 Nov 2026 20:54:17 +0000
-Subject: [PATCH 4/4] arm64: dts: qcom: sm8150: Add CAMSS and CCI nodes
+From: Joachim Eastwood <joachim.eastwood@gmail.com>
+Subject: [PATCH v2 0/3] arm64: dts: rockchip: Add NanoPi M6V2 board
+Date: Wed, 04 Nov 2026 21:59:20 +0100
+Message-Id: <20261104-nanopi-m6v2-v2-0-dfcd8714f48a@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-sm8150-v7-4-rc1-camss-v1-4-7a9534a9a22f@andrewgigena.dev>
-References: <20261104-sm8150-v7-4-rc1-camss-v1-0-7a9534a9a22f@andrewgigena.dev>
-In-Reply-To: <20261104-sm8150-v7-4-rc1-camss-v1-0-7a9534a9a22f@andrewgigena.dev>
-To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Robert Foss <rfoss@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bryan O'Donoghue <bod@kernel.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-i2c@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-media@vger.kernel.org, Andrew Gigena <mail@andrewgigena.dev>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1XNQQ6CMBCF4auQWVvT1lrElfcwLEoZYYy0pMVGQ
+ 7i7BVYu/+TNNzNEDIQRrsUMARNF8i6HPBRge+M6ZNTmBsmlFlwo5ozzI7FBJ8msbnnJL9VZYAn
+ 5Ygz4oM+m3eu947t5op1WYl30FCcfvtu7JNbdLmf6T06CcYaKCzRaNadK3brB0Oto/QD1siw/T
+ kmd6bgAAAA=
+X-Change-ID: 20261014-nanopi-m6v2-c6d0708951e7
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: Shawn Lin <Shawn.lin@rock-chips.com>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ Joachim Eastwood <joachim.eastwood@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793825658; l=10903;
- i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
- bh=VQJuXKfUaZ1ncIrHEvEBHMSxL5rDNiiN3jEsia5UrGc=;
- b=aAh2aAOd3E/LYojqL4egj4qz6U9XRk514hDWLtC8HYA3Ynw+f8TgAYVjxnnM+h5UJdrwAABR9
- EnjKAZLywcjDiGSouDfxfEZSjlRkRzNnkGyQ4BhpiVvO/WJgQNixrpD
-X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
- pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
-X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793825992; l=1813;
+ i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
+ bh=k2DHblhEFj5w7haYS80AKB4LL0FpR8EBvvhmiINNXjs=;
+ b=2UAY/XFiEe8nlaDhGsA7ktyvq+cTBT3Xo9QsZVDr4r05QeI4+dS7zrCOBQDYBxliFsbd+Pc9A
+ 90J9Myq7AxhDM6NhG2QhPK7hoY+XwoGAe7KiXPrWJpnpmMAbFNzGDnf
+X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
+ pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
+X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the SM8150 CAMSS block and its CSIPHY, CSID, VFE and
-VFE-Lite instances, together with the two CCI controllers and their
-I2C buses.
+This short patch series add support for the NanoPi M6V2. The board is
+very similar to the original M6 with only a few differences.
 
-The CAMSS node exposes four CSI input ports and references the CAMCC
-clocks and GDSCs, the interconnects and the IOMMU streams. The CCI
-nodes describe the CCI0/CCI1 I2C buses, and the TLMM pinctrl states
-for their clock and data lines are added to the existing pin
-controller node.
+Differences:
+* New audio CODEC (Everest ES8389)
+* New Ethernet PHY (MotorComm YT8531C)
+* 1 extra user button
+* Misc connector changes on the board
 
-All new nodes are left disabled. The CAMSS supplies and the sensor
-wiring are board-specific, so they belong in the board DTS that
-enables the controller.
+Patch 1 documents the NanoPi M6V2 board compatibility string.
+Patch 2 remove reference to the rtl8211f phy from common dtsi.
+Patch 3 adds the NanoPi M6V2 device tree.
 
-Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
+Link to schematic:
+https://wiki.friendlyelec.com/wiki/images/b/b6/NanoPi_M6V2_2603_SCH.pdf
+
+Based on linux-rockchip v7.5-armsoc/dts64 branch.
+
+Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sm8150.dtsi | 350 +++++++++++++++++++++++++++++++++++
- 1 file changed, 350 insertions(+)
+Changes in v2:
+- Fix title of patch 3 - Sashiko
+- Fix I2S clock copy-past mistake in patch 3 - Sashiko
+- Dropped the generic phy compatibility since it won't work - Sashiko
+- Add acked-by to patch 1 - Krzysztof
+- Add new patch which remove reference to the rtl8211f phy
+- Rebase on linux-rockchip v7.5-armsoc/dts64 branch
+- Link to v1: https://patch.msgid.link/20261101-nanopi-m6v2-v1-0-e401ea64b394@gmail.com
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8150.dtsi b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-index 293fcbacff34..72bfcaea8cf8 100644
---- a/arch/arm64/boot/dts/qcom/sm8150.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-@@ -2736,6 +2736,86 @@ wake-pins {
- 					bias-pull-up;
- 				};
- 			};
-+
-+			cci0_default: cci0-default-state {
-+				cci0_i2c0_default: cci0-i2c0-default-pins {
-+					/* CLK, DATA */
-+					pins = "gpio17", "gpio18";
-+					function = "cci_i2c";
-+
-+					bias-pull-up;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+
-+				cci0_i2c1_default: cci0-i2c1-default-pins {
-+					/* CLK, DATA */
-+					pins = "gpio19", "gpio20";
-+					function = "cci_i2c";
-+
-+					bias-pull-up;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+			};
-+
-+			cci0_sleep: cci0-sleep-state {
-+				cci0_i2c0_sleep: cci0-i2c0-sleep-pins {
-+					/* CLK, DATA */
-+					pins = "gpio17", "gpio18";
-+					function = "cci_i2c";
-+
-+					drive-strength = <2>; /* 2 mA */
-+					bias-pull-down;
-+				};
-+
-+				cci0_i2c1_sleep: cci0-i2c1-sleep-pins {
-+					/* CLK, DATA */
-+					pins = "gpio19", "gpio20";
-+					function = "cci_i2c";
-+
-+					drive-strength = <2>; /* 2 mA */
-+					bias-pull-down;
-+				};
-+			};
-+
-+			cci1_default: cci1-default-state {
-+				cci1_i2c0_default: cci1-i2c0-default-pins {
-+					/* CLK, DATA */
-+					pins = "gpio31", "gpio32";
-+					function = "cci_i2c";
-+
-+					bias-pull-up;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+
-+				cci1_i2c1_default: cci1-i2c1-default-pins {
-+					/* CLK, DATA */
-+					pins = "gpio33", "gpio34";
-+					function = "cci_i2c";
-+
-+					bias-pull-up;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+			};
-+
-+			cci1_sleep: cci1-sleep-state {
-+				cci1_i2c0_sleep: cci1-i2c0-sleep-pins {
-+					/* CLK, DATA */
-+					pins = "gpio31", "gpio32";
-+					function = "cci_i2c";
-+
-+					bias-pull-down;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+
-+				cci1_i2c1_sleep: cci1-i2c1-sleep-pins {
-+					/* CLK, DATA */
-+					pins = "gpio33", "gpio34";
-+					function = "cci_i2c";
-+
-+					bias-pull-down;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+			};
- 		};
- 
- 		remoteproc_mpss: remoteproc@4080000 {
-@@ -3782,6 +3862,276 @@ camnoc_virt: interconnect@ac00000 {
- 			qcom,bcm-voters = <&apps_bcm_voter>;
- 		};
- 
-+		cci0: cci@ac4a000 {
-+			compatible = "qcom,sm8150-cci", "qcom,msm8996-cci";
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			reg = <0 0xac4a000 0 0x1000>;
-+			interrupts = <GIC_SPI 460 IRQ_TYPE_EDGE_RISING>;
-+			power-domains = <&camcc TITAN_TOP_GDSC>;
-+
-+			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
-+				 <&camcc CAM_CC_SLOW_AHB_CLK_SRC>,
-+				 <&camcc CAM_CC_CPAS_AHB_CLK>,
-+				 <&camcc CAM_CC_CCI_0_CLK>,
-+				 <&camcc CAM_CC_CCI_0_CLK_SRC>;
-+			clock-names = "camnoc_axi",
-+				      "slow_ahb_src",
-+				      "cpas_ahb",
-+				      "cci",
-+				      "cci_src";
-+
-+			pinctrl-0 = <&cci0_default>;
-+			pinctrl-1 = <&cci0_sleep>;
-+			pinctrl-names = "default", "sleep";
-+
-+			status = "disabled";
-+
-+			cci0_i2c0: i2c-bus@0 {
-+				reg = <0>;
-+				clock-frequency = <1000000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+
-+			cci0_i2c1: i2c-bus@1 {
-+				reg = <1>;
-+				clock-frequency = <1000000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+		};
-+
-+		cci1: cci@ac4b000 {
-+			compatible = "qcom,sm8150-cci", "qcom,msm8996-cci";
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			reg = <0 0xac4b000 0 0x1000>;
-+			interrupts = <GIC_SPI 271 IRQ_TYPE_EDGE_RISING>;
-+			power-domains = <&camcc TITAN_TOP_GDSC>;
-+
-+			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
-+				 <&camcc CAM_CC_SLOW_AHB_CLK_SRC>,
-+				 <&camcc CAM_CC_CPAS_AHB_CLK>,
-+				 <&camcc CAM_CC_CCI_1_CLK>,
-+				 <&camcc CAM_CC_CCI_1_CLK_SRC>;
-+			clock-names = "camnoc_axi",
-+				      "slow_ahb_src",
-+				      "cpas_ahb",
-+				      "cci",
-+				      "cci_src";
-+
-+			pinctrl-0 = <&cci1_default>;
-+			pinctrl-1 = <&cci1_sleep>;
-+			pinctrl-names = "default", "sleep";
-+
-+			status = "disabled";
-+
-+			cci1_i2c0: i2c-bus@0 {
-+				reg = <0>;
-+				clock-frequency = <1000000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+
-+			cci1_i2c1: i2c-bus@1 {
-+				reg = <1>;
-+				clock-frequency = <1000000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+		};
-+
-+		camss: camss@ac65000 {
-+			compatible = "qcom,sm8150-camss";
-+			status = "disabled";
-+
-+			reg = <0 0xac65000 0 0x1000>,
-+			      <0 0xac66000 0 0x1000>,
-+			      <0 0xac67000 0 0x1000>,
-+			      <0 0xac68000 0 0x1000>,
-+			      <0 0xacaf000 0 0x4000>,
-+			      <0 0xacb3000 0 0x1000>,
-+			      <0 0xacb6000 0 0x4000>,
-+			      <0 0xacba000 0 0x1000>,
-+			      <0 0xacc4000 0 0x4000>,
-+			      <0 0xacc8000 0 0x1000>,
-+			      <0 0xaccb000 0 0x4000>,
-+			      <0 0xaccf000 0 0x1000>;
-+
-+			reg-names = "csiphy0",
-+				    "csiphy1",
-+				    "csiphy2",
-+				    "csiphy3",
-+				    "vfe0",
-+				    "csid0",
-+				    "vfe1",
-+				    "csid1",
-+				    "vfe_lite0",
-+				    "csid_lite0",
-+				    "vfe_lite1",
-+				    "csid_lite1";
-+
-+			interrupts = <GIC_SPI 477 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 478 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 479 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 448 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 465 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 464 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 467 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 466 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 469 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 468 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 360 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 359 IRQ_TYPE_EDGE_RISING>;
-+
-+			interrupt-names = "csiphy0",
-+					  "csiphy1",
-+					  "csiphy2",
-+					  "csiphy3",
-+					  "vfe0",
-+					  "csid0",
-+					  "vfe1",
-+					  "csid1",
-+					  "vfe_lite0",
-+					  "csid_lite0",
-+					  "vfe_lite1",
-+					  "csid_lite1";
-+
-+			power-domains = <&camcc IFE_0_GDSC>,
-+					<&camcc IFE_1_GDSC>,
-+					<&camcc TITAN_TOP_GDSC>;
-+			power-domain-names = "ife0",
-+					     "ife1",
-+					     "top";
-+
-+			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
-+				 <&camcc CAM_CC_CAMNOC_AXI_CLK_SRC>,
-+				 <&camcc CAM_CC_CPAS_AHB_CLK>,
-+				 <&camcc CAM_CC_CPHY_RX_CLK_SRC>,
-+				 <&camcc CAM_CC_CSIPHY0_CLK>,
-+				 <&camcc CAM_CC_CSI0PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_CSI0PHYTIMER_CLK_SRC>,
-+				 <&camcc CAM_CC_CSIPHY1_CLK>,
-+				 <&camcc CAM_CC_CSI1PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_CSI1PHYTIMER_CLK_SRC>,
-+				 <&camcc CAM_CC_CSIPHY2_CLK>,
-+				 <&camcc CAM_CC_CSI2PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_CSI2PHYTIMER_CLK_SRC>,
-+				 <&camcc CAM_CC_CSIPHY3_CLK>,
-+				 <&camcc CAM_CC_CSI3PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_CSI3PHYTIMER_CLK_SRC>,
-+				 <&camcc CAM_CC_IFE_0_AXI_CLK>,
-+				 <&camcc CAM_CC_IFE_0_CLK>,
-+				 <&camcc CAM_CC_IFE_0_CLK_SRC>,
-+				 <&camcc CAM_CC_IFE_0_CPHY_RX_CLK>,
-+				 <&camcc CAM_CC_IFE_0_CSID_CLK>,
-+				 <&camcc CAM_CC_IFE_0_CSID_CLK_SRC>,
-+				 <&camcc CAM_CC_IFE_1_AXI_CLK>,
-+				 <&camcc CAM_CC_IFE_1_CLK>,
-+				 <&camcc CAM_CC_IFE_1_CLK_SRC>,
-+				 <&camcc CAM_CC_IFE_1_CPHY_RX_CLK>,
-+				 <&camcc CAM_CC_IFE_1_CSID_CLK>,
-+				 <&camcc CAM_CC_IFE_1_CSID_CLK_SRC>,
-+				 <&camcc CAM_CC_IFE_LITE_0_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_0_CLK_SRC>,
-+				 <&camcc CAM_CC_IFE_LITE_0_CPHY_RX_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_0_CSID_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_0_CSID_CLK_SRC>,
-+				 <&camcc CAM_CC_IFE_LITE_1_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_1_CLK_SRC>,
-+				 <&camcc CAM_CC_IFE_LITE_1_CPHY_RX_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_1_CSID_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_1_CSID_CLK_SRC>,
-+				 <&camcc CAM_CC_SLOW_AHB_CLK_SRC>,
-+				 <&gcc GCC_CAMERA_AHB_CLK>,
-+				 <&gcc GCC_CAMERA_HF_AXI_CLK>,
-+				 <&gcc GCC_CAMERA_SF_AXI_CLK>;
-+			clock-names = "camnoc_axi",
-+				      "camnoc_axi_src",
-+				      "cpas_ahb",
-+				      "cphy_rx_src",
-+				      "csiphy0",
-+				      "csiphy0_timer",
-+				      "csiphy0_timer_src",
-+				      "csiphy1",
-+				      "csiphy1_timer",
-+				      "csiphy1_timer_src",
-+				      "csiphy2",
-+				      "csiphy2_timer",
-+				      "csiphy2_timer_src",
-+				      "csiphy3",
-+				      "csiphy3_timer",
-+				      "csiphy3_timer_src",
-+				      "vfe0_axi",
-+				      "vfe0",
-+				      "vfe0_src",
-+				      "vfe0_cphy_rx",
-+				      "vfe0_csid",
-+				      "vfe0_csid_src",
-+				      "vfe1_axi",
-+				      "vfe1",
-+				      "vfe1_src",
-+				      "vfe1_cphy_rx",
-+				      "vfe1_csid",
-+				      "vfe1_csid_src",
-+				      "vfe_lite0",
-+				      "vfe_lite0_src",
-+				      "vfe_lite0_cphy_rx",
-+				      "vfe_lite0_csid",
-+				      "vfe_lite0_csid_src",
-+				      "vfe_lite1",
-+				      "vfe_lite1_src",
-+				      "vfe_lite1_cphy_rx",
-+				      "vfe_lite1_csid",
-+				      "vfe_lite1_csid_src",
-+				      "slow_ahb_src",
-+				      "gcc_ahb",
-+				      "gcc_axi_hf",
-+				      "gcc_axi_sf";
-+
-+			iommus = <&apps_smmu 0x840 0x620>,
-+				 <&apps_smmu 0x860 0x620>,
-+				 <&apps_smmu 0xA40 0x620>,
-+				 <&apps_smmu 0xA60 0x620>,
-+				 <&apps_smmu 0xC40 0x620>,
-+				 <&apps_smmu 0xC60 0x620>,
-+				 <&apps_smmu 0xE40 0x620>,
-+				 <&apps_smmu 0xE60 0x620>;
-+
-+			interconnects = <&gem_noc MASTER_AMPSS_M0 0 &config_noc SLAVE_CAMERA_CFG 0>,
-+					<&mmss_noc MASTER_CAMNOC_HF0 0 &mc_virt SLAVE_EBI_CH0 0>,
-+					<&mmss_noc MASTER_CAMNOC_HF1 0 &mc_virt SLAVE_EBI_CH0 0>,
-+					<&mmss_noc MASTER_CAMNOC_SF 0 &mc_virt SLAVE_EBI_CH0 0>;
-+			interconnect-names = "cam_ahb",
-+					     "cam_hf_0_mnoc",
-+					     "cam_hf_1_mnoc",
-+					     "cam_sf_0_mnoc";
-+
-+			ports {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				port@0 {
-+					reg = <0>;
-+				};
-+
-+				port@1 {
-+					reg = <1>;
-+				};
-+
-+				port@2 {
-+					reg = <2>;
-+				};
-+
-+				port@3 {
-+					reg = <3>;
-+				};
-+			};
-+		};
-+
- 		camcc: clock-controller@ad00000 {
- 			compatible = "qcom,sm8150-camcc";
- 			reg = <0 0x0ad00000 0 0x10000>;
+---
+Joachim Eastwood (3):
+      dt-bindings: arm: rockchip: add FriendlyElec NanoPi M6V2
+      arm64: dts: rockchip: rename rtl8211f node on rk3588s-nanopi
+      arm64: dts: rockchip: add support for NanoPi M6V2 board
 
--- 
-2.56.0
+ .../devicetree/bindings/arm/rockchip.yaml          |  1 +
+ arch/arm64/boot/dts/rockchip/Makefile              |  1 +
+ .../boot/dts/rockchip/rk3588s-nanopi-m6v2.dts      | 94 ++++++++++++++++++++++
+ arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi   | 12 +--
+ 4 files changed, 102 insertions(+), 6 deletions(-)
+---
+base-commit: 80e2828a00ba4f472289a699727abfd72a31de34
+change-id: 20261014-nanopi-m6v2-c6d0708951e7
+
+Best regards,
+--  
+Joachim Eastwood <joachim.eastwood@gmail.com>
 
