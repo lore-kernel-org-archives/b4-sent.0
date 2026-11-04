@@ -1,112 +1,93 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Wed, 04 Nov 2026 02:22:08 -0500
-Subject: [PATCH 3/3] usb: dwc2: Handle OTG interrupts that GINTSTS does not
- flag
+Subject: [PATCH net-next 0/2] net: stmmac: Add the Siflower SF19A2890 glue
+Date: Wed, 04 Nov 2026 02:22:23 -0500
+Message-Id: <20261104-sf19a2890-gmac-v1-0-a15965a49574@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-sf19a2890-dwc2-v1-3-d959375e26ab@telaak.dev>
-References: <20261104-sf19a2890-dwc2-v1-0-d959375e26ab@telaak.dev>
-In-Reply-To: <20261104-sf19a2890-dwc2-v1-0-d959375e26ab@telaak.dev>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+X-B4-Tracking: v=1; b=H4sIAC/d6moC/y2NwQqDMBBEf0X23IUkiCT9leIhphu7gmmbjSKI/
+ 9609jjMvDc7CGUmgWuzQ6aVhZ+pBn1pIDx8Ggn5XjMYZTqtlUGJ2nljncJx9gHbOLRW2Wg7F6B
+ Cr0yRt5/wBokKJtoK9GcjyzBRKF/ff5vpvdTPcgL9cXwAoL3q7ZEAAAA=
+X-Change-ID: 20261102-sf19a2890-gmac-4fb4808f869c
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Minas Harutyunyan <hminas@synopsys.com>
-Cc: Chuanhong Guo <gch981213@gmail.com>, linux-usb@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joseph Telaak <joseph@telaak.dev>
+ Conor Dooley <conor+dt@kernel.org>, 
+ Richard Cochran <richardcochran@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Giuseppe Cavallaro <peppe.cavallaro@st.com>, 
+ Jose Abreu <joabreu@synopsys.com>, 
+ Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>
+Cc: Chuanhong Guo <gch981213@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, linux-mips@vger.kernel.org, 
+ netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793776930; l=3164;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793776955; l=2659;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=+gnzh383ADRzly7Ief5zkWrWw3Pc47lfMuoWe2KoTVw=;
- b=1yVicNsr/efnZEvvp94GLSifXj9AyCXXPcTOUGEKdU2lZ9aNrNouQYqdzn/dvoE3770lk5VEi
- 7rp+Fl7JCq0A/Y2wCu2UchGJRbWOze6EqUcUiHTKA//MwZjQaVwmei2
+ bh=4aX1WuQkiEXgDzkE3OQjN92P69c1uJb0rksZC2QCI/c=;
+ b=5W2C6p3JKlr/OYkYYzwVZ7Y5b/m53N4KDQeoxViOd9QSaRTx62D8T06k382412ER3M30amjJg
+ EQ22G8hgj8LDsd9xPfExPXtkSI+BUGn7ruvO4K5Ikn+zcvgJNRsHte8
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Chuanhong Guo <gch981213@gmail.com>
+The Siflower SF19A2890, a MIPS SoC for home routers, has a DesignWare
+GMAC 3.73a. Its interface type and RGMII clock delays are set in a
+small configuration block next to its clock and reset manager. This
+series adds a binding and the glue.
 
-The DWC OTG 3.30a found on Siflower SF19A2890 has battery charger
-support enabled. It triggers MultVallpChng interrupt (bit 20 of
-GOTGINT) but doesn't set OTGInt in GINTSTS. As a result, this
-interrupt is never handled, and Linux disables USB interrupt
-because "nobody cares".
+The glue is based on Chuanhong Guo's driver, which read the RGMII delays
+from a factory flash cell in the delay line's own units and always
+applied them. Here the delays come from rx-internal-delay-ps and
+tx-internal-delay-ps and are applied only when those are present. The
+interface type is set through set_phy_intf_sel.
 
-Handle OTG interrupt in IRQ handler regardless of whether the
-OTGInt bit in GINTSTS is set or not.
+The delay line's step is not documented, so I measured it: sweeping
+each delay register over 0-255 with the link at 1000 Mb/s, the working
+windows repeat every 145 steps (TX) and 144.5 steps (RX), which is one
+8 ns period of the 125 MHz RGMII clock. So a step is about 55 ps. The
+TX eye is about 3.1 ns wide and the RX eye about 1.75 ns; the delays the
+bootloader programs, 17 and 10 steps (935 and 550 ps), sit inside both.
 
-On a GL.iNet GL-SFT1200 it shows differently: after a few replugs of a
-USB stick the system stops making progress, the console repeating its
-last message with the same timestamp, until a power cycle.
+On the GL.iNet GL-SFT1200 the GMAC is the CPU port of a MaxLinear GSW150
+switch over RGMII with no delays on the board; the GMAC adds both.
 
-Signed-off-by: Chuanhong Guo <gch981213@gmail.com>
-[jt: only on cores with the new otg_int_unflagged parameter, which
- SF19A2890 sets, in the one place that already handles flagged OTG
- interrupts and with IRQ_HANDLED returned; the others still handle OTG
- interrupts only when GINTSTS flags them; what a GL-SFT1200 does without
- the patch, subject]
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+The MAINTAINERS entry that covers these files comes with the MIPS series
+"MIPS: Add support for the Siflower SF19A2890"; this series applies on
+its own. That entry is also why checkpatch's question about updating
+MAINTAINERS for the new files is left unanswered here.
+
+Tested on a GL-SFT1200 with the GSW150 driver:
+- each of WAN, LAN 1 and LAN 2 links at 1000 Mb/s full duplex and
+  passes iperf3 both ways (160-205 Mb/s out, 262-273 Mb/s in, well
+  under line rate; I have not looked into where the limit is);
+- 10 GB each way through LAN 1, after which every CRC, alignment,
+  error, drop, overflow and underflow counter on eth0 and lan1 is 0;
+- 50 link down/up cycles, after which the link and traffic recover;
+- the MAC address from the factory partition, and ethtool reporting the
+  link with no PCS workaround.
+
 ---
- drivers/usb/dwc2/core.h      | 6 ++++++
- drivers/usb/dwc2/core_intr.c | 5 ++++-
- drivers/usb/dwc2/params.c    | 1 +
- 3 files changed, 11 insertions(+), 1 deletion(-)
+Joseph Telaak (2):
+      dt-bindings: net: Add Siflower SF19A2890 GMAC
+      net: stmmac: Add Siflower SF19A2890 glue
 
-diff --git a/drivers/usb/dwc2/core.h b/drivers/usb/dwc2/core.h
-index 015a5fb78..288baaaf4 100644
---- a/drivers/usb/dwc2/core.h
-+++ b/drivers/usb/dwc2/core.h
-@@ -367,6 +367,11 @@ enum dwc2_ep0_state {
-  * @no_clock_gating:	Specifies whether to avoid clock gating feature.
-  *			0 - No (use clock gating)
-  *			1 - Yes (avoid it)
-+ * @otg_int_unflagged:	Specifies whether the core raises OTG interrupts
-+ *			without setting OTGINT in GINTSTS, so that GOTGINT
-+ *			has to be checked on every interrupt.
-+ *			0 - No
-+ *			1 - Yes
-  * @lpm:		Enable LPM support.
-  *			0 - No
-  *			1 - Yes
-@@ -466,6 +471,7 @@ struct dwc2_core_params {
- #define DWC2_POWER_DOWN_PARAM_PARTIAL		1
- #define DWC2_POWER_DOWN_PARAM_HIBERNATION	2
- 	bool no_clock_gating;
-+	bool otg_int_unflagged;
- 
- 	bool lpm;
- 	bool lpm_clock_gating;
-diff --git a/drivers/usb/dwc2/core_intr.c b/drivers/usb/dwc2/core_intr.c
-index 9565e6a52..e7bb9709c 100644
---- a/drivers/usb/dwc2/core_intr.c
-+++ b/drivers/usb/dwc2/core_intr.c
-@@ -874,8 +874,11 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
- 
- 	if (gintsts & GINTSTS_MODEMIS)
- 		dwc2_handle_mode_mismatch_intr(hsotg);
--	if (gintsts & GINTSTS_OTGINT)
-+	if ((gintsts & GINTSTS_OTGINT) ||
-+	    (hsotg->params.otg_int_unflagged && dwc2_readl(hsotg, GOTGINT))) {
- 		dwc2_handle_otg_intr(hsotg);
-+		retval = IRQ_HANDLED;
-+	}
- 	if (gintsts & GINTSTS_CONIDSTSCHNG)
- 		dwc2_handle_conn_id_status_change_intr(hsotg);
- 	if (gintsts & GINTSTS_DISCONNINT)
-diff --git a/drivers/usb/dwc2/params.c b/drivers/usb/dwc2/params.c
-index f6379e616..22ab9ce13 100644
---- a/drivers/usb/dwc2/params.c
-+++ b/drivers/usb/dwc2/params.c
-@@ -243,6 +243,7 @@ static void dwc2_set_sf19a2890_params(struct dwc2_hsotg *hsotg)
- 
- 	p->max_transfer_size = 65535;
- 	p->ahbcfg = GAHBCFG_HBSTLEN_INCR4 << GAHBCFG_HBSTLEN_SHIFT;
-+	p->otg_int_unflagged = true;
- }
- 
- static void dwc2_set_stm32f4x9_fsotg_params(struct dwc2_hsotg *hsotg)
+ .../bindings/net/siflower,sf19a2890-gmac.yaml      | 110 ++++++++++++++
+ .../devicetree/bindings/net/snps,dwmac.yaml        |   1 +
+ drivers/net/ethernet/stmicro/stmmac/Kconfig        |  11 ++
+ drivers/net/ethernet/stmicro/stmmac/Makefile       |   1 +
+ .../net/ethernet/stmicro/stmmac/dwmac-sf19a2890.c  | 158 +++++++++++++++++++++
+ 5 files changed, 281 insertions(+)
+---
+base-commit: 7b6ab4dbc156e2f96419715130b3d5738a306c93
+change-id: 20261102-sf19a2890-gmac-4fb4808f869c
 
--- 
-Git-155)
+Best regards,
+--  
+Joseph Telaak <joseph@telaak.dev>
 
