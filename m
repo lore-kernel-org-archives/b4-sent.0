@@ -1,111 +1,103 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Wed, 04 Nov 2026 02:15:48 -0500
-Subject: [PATCH net-next 2/2] net: dsa: mxl-gsw1xx: reset the switch
- through reset-gpios
+Subject: [PATCH 0/4] MIPS: Add support for the Siflower SF19A2890
+Date: Wed, 04 Nov 2026 02:16:52 -0500
+Message-Id: <20261104-sf19a2890-mips-v1-0-eae80820af68@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-mxl-gsw1xx-reset-v1-2-53839bf5c88e@telaak.dev>
-References: <20261104-mxl-gsw1xx-reset-v1-0-53839bf5c88e@telaak.dev>
-In-Reply-To: <20261104-mxl-gsw1xx-reset-v1-0-53839bf5c88e@telaak.dev>
-To: Hauke Mehrtens <hauke@hauke-m.de>, Andrew Lunn <andrew@lunn.ch>, 
- Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+X-B4-Tracking: v=1; b=H4sIAOXb6moC/yXMMQ6DMAxA0asgz42UeGjqXgUxhOAUIxVQXBAS4
+ u4NML7h/x2Us7DCu9oh8yoq01jgHhXEPowfNtIVA1p8OmfRaHIU8EXWfGVWE1qPHVFInjyUaM6
+ cZLuGdXNbl3bg+DsvcBx/OBhnVXIAAAA=
+X-Change-ID: 20261102-sf19a2890-mips-ab72d99af797
+To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Daniel Golle <daniel@makrotopia.org>, netdev@vger.kernel.org, 
+ Conor Dooley <conor+dt@kernel.org>, Paul Burton <paulburton@kernel.org>
+Cc: Jiaxun Yang <jiaxun.yang@flygoat.com>, 
+ Chuanhong Guo <gch981213@gmail.com>, linux-mips@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793776564; l=2985;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793776620; l=3656;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=uztjZiDQnh4Ex7diNq4uofcWFk+cr6zOCxuZ3l2XlYg=;
- b=4cWp3cP7Blg0M1aZhb89CvDwiLWOaRhkkQMswf6pp/ckEDthOZ2N5ReLWTY0bc6KWr74oq12O
- 12uuKsNlIncBHieETviuLGLK10lNLqGEZI1YTI565wf96Mr3wTx3FzK
+ bh=jLtPGFDJSxOa7Hz/dlsyOuLDpxX8AIEklpDcWgF25c8=;
+ b=HFWvLVqQTrtu8b5WSntlf++TMyzNTXIPBRBNdcilH3Ha8MK2XqZhQdgVPZlRN59r8u9XDwWf6
+ bCnJUElpG0XBeTXi6ErITVrh6OUjSMxyaLWSTsazVuKfw2GJsfrD+gv
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The switch keeps the configuration the bootloader left in it, and the
-driver never resets it. The MDIO core asserts and releases reset-gpios
-only for PHY devices, so a reset line described on the switch node has
-no effect either.
+This series adds basic support for the Siflower SF19A2890, a MIPS
+interAptiv SoC (two cores, two VPEs each) for home routers, and for the
+GL.iNet GL-SFT1200 ("Opal") travel router built on it. It boots to a
+shell on the PL011 console with all four CPUs up.
 
-On the GL.iNet GL-SFT1200 the bootloader leaves each internal PHY of
-the GSW150 one MDIO address above its port. Port 0 then fails with
-"failed to connect to PHY: -ENODEV", and the PHY that answers at a
-port's address belongs to the neighbouring port. After a hardware reset
-every PHY is back at its port's address and all ports work.
+Patch 2 is Chuanhong Guo's patch from January 2025 [1], rebased. Jiaxun
+asked then why it does not use MIPS_GENERIC. It does: MACH_SIFLOWER_MIPS
+selects MIPS_GENERIC and MACH_GENERIC_CORE and boots through
+arch/mips/generic, the way MACH_REALTEK_RTL and MACH_INGENIC_SOC do. What
+it avoids is MIPS_GENERIC_KERNEL, which selects MIPS_L1_CACHE_SHIFT_7 and
+takes ARCH_DMA_MINALIGN 128 from mach-generic/kmalloc.h, so that with
+DMA_NONCOHERENT no kmalloc cache below 128 bytes exists. The interAptiv's
+L1 and L2 lines are 32 bytes (the boot log reports both).
 
-Request the reset GPIO in the driver and pulse it before the first
-register access. The timing follows the vendor driver: asserted for
-2 ms, then 100 ms before the switch is accessed.
+On a GL-SFT1200 (128 MB) booted to an idle initramfs, 62 s after boot:
 
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+                                       MemFree   Slab   kmalloc-128 objs
+  this series (MACH_SIFLOWER_MIPS)     107444    4832   1497
+  MIPS_GENERIC_KERNEL                  106442    5252   5538
+  MIPS_GENERIC_KERNEL, DMA_MINALIGN 32 107660    4732   1497
+
+(kB, means of two boots.) So the whole difference, about 1 MB, comes
+from the 128-byte kmalloc alignment; the larger L1_CACHE_SHIFT costs
+nothing measurable. If the generic kernel sized its kmalloc alignment
+from the probed cache lines at run time, as arm64 does, this board could
+use MIPS_GENERIC_KERNEL, and I can send that change in place of a
+platform of its own if you prefer.
+
+The SoC's clock controller has a driver of its own, sent to the clk tree.
+Until it is merged, the dtsi describes the clock rates the bootloader
+programs with fixed clocks; a later patch replaces them. The pin
+controller, GPIO, USB PHY, DWC2 and GMAC drivers go to their own trees.
+
+Patch 1 adds a MAINTAINERS entry for the SoC that also covers those
+drivers, by "N: sf19a2890" and one F: line for the GPIO driver, so that
+they don't each need to touch MAINTAINERS. Until the GPIO driver lands,
+get_maintainer.pl --self-test reports that F: line as matching no file.
+
+Tested on a GL-SFT1200, booted from U-Boot over TFTP: the initramfs
+shell on ttyAMA0; four CPUs, with CPUs 1-3 taken offline and back
+online; the GIC timer within 0.06 s of a reference clock over 298 s; and
+the UART divisors U-Boot programs (IBRD 0x43, FBRD 0x34), which confirm
+the 125 MHz UART clock in the device tree.
+
+[1] https://lore.kernel.org/r/20250120015254.124447-1-gch981213@gmail.com
+
 ---
- drivers/net/dsa/lantiq/mxl-gsw1xx.c | 16 ++++++++++++++++
- drivers/net/dsa/lantiq/mxl-gsw1xx.h |  4 ++++
- 2 files changed, 20 insertions(+)
+Chuanhong Guo (1):
+      MIPS: Add support for Siflower MIPS SoCs
 
-diff --git a/drivers/net/dsa/lantiq/mxl-gsw1xx.c b/drivers/net/dsa/lantiq/mxl-gsw1xx.c
-index a26f78e1a4..8767c8cf1d 100644
---- a/drivers/net/dsa/lantiq/mxl-gsw1xx.c
-+++ b/drivers/net/dsa/lantiq/mxl-gsw1xx.c
-@@ -11,6 +11,7 @@
- 
- #include <linux/bits.h>
- #include <linux/delay.h>
-+#include <linux/gpio/consumer.h>
- #include <linux/jiffies.h>
- #include <linux/module.h>
- #include <linux/of_device.h>
-@@ -719,6 +720,7 @@ static int gsw1xx_serdes_pcs_init(struct gsw1xx_priv *priv)
- static int gsw1xx_probe(struct mdio_device *mdiodev)
- {
- 	struct device *dev = &mdiodev->dev;
-+	struct gpio_desc *reset_gpio;
- 	struct gsw1xx_priv *priv;
- 	u32 version, val;
- 	u8 shellver;
-@@ -737,6 +739,20 @@ static int gsw1xx_probe(struct mdio_device *mdiodev)
- 	if (!priv->gswip.hw_info)
- 		return -EINVAL;
- 
-+	/* The MDIO core handles reset-gpios only for PHYs. Reset the switch
-+	 * here, so it does not run with whatever the bootloader configured.
-+	 */
-+	reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
-+	if (IS_ERR(reset_gpio))
-+		return dev_err_probe(dev, PTR_ERR(reset_gpio),
-+				     "failed to get reset GPIO\n");
-+
-+	if (reset_gpio) {
-+		fsleep(GSW1XX_RESET_ASSERT_US);
-+		gpiod_set_value_cansleep(reset_gpio, 0);
-+		fsleep(GSW1XX_RESET_DEASSERT_US);
-+	}
-+
- 	priv->gswip.gswip = gsw1xx_regmap_init(priv, "switch",
- 					       GSW1XX_SWITCH_BASE, 0xfff);
- 	if (IS_ERR(priv->gswip.gswip))
-diff --git a/drivers/net/dsa/lantiq/mxl-gsw1xx.h b/drivers/net/dsa/lantiq/mxl-gsw1xx.h
-index 81bc00eabb..684bb135bc 100644
---- a/drivers/net/dsa/lantiq/mxl-gsw1xx.h
-+++ b/drivers/net/dsa/lantiq/mxl-gsw1xx.h
-@@ -19,6 +19,10 @@
- 
- #define GSW1XX_SYS_CLK_FREQ			340000000
- 
-+/* Hardware reset timing, as the vendor driver for the GSW150 does it */
-+#define GSW1XX_RESET_ASSERT_US			2000
-+#define GSW1XX_RESET_DEASSERT_US		100000
-+
- /* SMDIO switch register base address */
- #define GSW1XX_SMDIO_BADR			0x1f
- #define  GSW1XX_SMDIO_BADR_UNKNOWN		-1
+Joseph Telaak (3):
+      dt-bindings: mips: Add Siflower SF19A2890 based boards
+      MIPS: dts: Add Siflower SF19A2890 and GL.iNet GL-SFT1200
+      MIPS: configs: Add sf19a2890_defconfig
 
--- 
-Git-155)
+ .../devicetree/bindings/mips/siflower.yaml         | 26 ++++++
+ MAINTAINERS                                        | 11 +++
+ arch/mips/Kconfig                                  | 32 ++++++++
+ arch/mips/boot/dts/Makefile                        |  1 +
+ arch/mips/boot/dts/siflower/Makefile               |  2 +
+ .../dts/siflower/sf19a2890-glinet-gl-sft1200.dts   | 27 ++++++
+ arch/mips/boot/dts/siflower/sf19a2890.dtsi         | 96 ++++++++++++++++++++++
+ arch/mips/configs/sf19a2890_defconfig              | 15 ++++
+ arch/mips/generic/Platform                         |  1 +
+ arch/mips/include/asm/mach-siflower/kmalloc.h      |  9 ++
+ 10 files changed, 220 insertions(+)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261102-sf19a2890-mips-ab72d99af797
+
+Best regards,
+--  
+Joseph Telaak <joseph@telaak.dev>
 
