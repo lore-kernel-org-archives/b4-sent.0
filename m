@@ -1,89 +1,71 @@
-From: orkunsari <sariorkunemin@gmail.com>
-Date: Wed, 04 Nov 2026 14:56:19 +0300
-Subject: [PATCH] io_uring: only wait for in-flight requests if the closing
- task uses the ring
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH RFC 0/3] Input - Tap to wake for FT5452
+Date: Wed, 04 Nov 2026 13:54:42 +0100
+Message-Id: <20261104-ft5x06-double-tap-v1-0-5a1bd80449cc@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-io-uring-wait-inflight-v1-1-4361a0905e20@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSwqDMBRG4a3IHfeCER+lW5EOYryJfylRkvgAc
- e9N2+E3OOekKAES6VGcFGRDxOwz1K0gM2nvhDFmU1VWrVJlzZh5DfCOd43E8PYNNyVurO3uujO
- tGRvK8RLE4viN++ffcR1eYtL3Rtf1ASYhsHB6AAAA
-X-Change-ID: 20261104-io-uring-wait-inflight-5ff78a7c6cd5
-To: Jens Axboe <axboe@kernel.dk>
-Cc: io-uring@vger.kernel.org, linux-kernel@vger.kernel.org, 
- orkunsari <sariorkunemin@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwMT3bQS0woDM92U/NKknFTdksQCXQsDI6CsQUqqsZGxElBfQVFqWmY
+ F2MxopSA3Z6VYiGBxaVJWanIJyDSl2loACo0QQHoAAAA=
+X-Change-ID: 20261104-ft5x06-double-tap-8022020de323
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>
+Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793793378; l=2611;
- i=sariorkunemin@gmail.com; s=20261103; h=from:subject:message-id;
- bh=rQjol/LPkMVu62dXGlOPXlCfjI+XemuiRWZSMmo7src=;
- b=5PjPbkizTDH9QC18dQaOuU/zlDs99/qdedC5HPYSwnnn7xu5G0a0zJmuwde5JUJ/9WSp+JOMi
- H7Iswq6AR7bCSTo9tfyNAm8ivkZoyQEd7DNKmcATRsB2PLu7LezQyMy
-X-Developer-Key: i=sariorkunemin@gmail.com; a=ed25519;
- pk=MJ3Y3somkGDQVAXOSR189QAqWOcfzYCRkL1cSQgJXnE=
-X-Endpoint-Received: by B4 Relay for sariorkunemin@gmail.com/20261103 with auth_id=1408
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1258; i=david@ixit.cz;
+ h=from:subject:message-id; bh=pzSw6TKmONM6czBm61/vbfVAdGJHk+kTaSJEbz59twU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq6ytM/Owsjy5J6firfogdWwPvKt+ZEZb8PK7um
+ 529GuYtDsuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCausrTAAKCRBgAj/E00kg
+ chBsD/0YUwsWoetDiBLm9SRyuFDq/RO6ukE3DxRxLUgI7ht59clz+7UKoMKfrwC5SMJWI3CL4x+
+ YujCy4QgbLfQW1KwV+tR8eZkoDf6Qy6okZbNBRR1qKQZBeE0cFdXPVXYVCQvPtT2gqwQtuUxkoq
+ IZO9VNp5YBcuWMGcwJyh+quufE1lvkfOUQB4+gBtw6jRirm3gdAUOixoMZtvcHsuAnZYgKcv9ND
+ rC8G/djBpzK3qOCwzGLXFYyedgl2/XbABbmKoIjiMDl6HdBiSateeZuphC/+GM/M8/cyVmPrfiO
+ IPoO6sHE/EwA5HnERE6xd/czgqLqGruI6H5/4bNl5B+izcGLLt7ZLPOAZTBFEcaOfq/YfNYo7mB
+ N6FiJdWQ6gkhD5Jw0HZB6ErihUpK5+LpXgBO4tAMJTUqzcA59HCRGeIAZ35t2zMz8or/9p9NfJU
+ J1epB0Pq9BwUmqVrzejfiwS9uubHiLfzDj0GC8nCvamEbFLYxMGM19kQrLW0yG1ETbsxCjupZW/
+ 1blNrGbIggErc+bHW2etFmqL78GbMRqtInIS+WSUIdkjZ6DmNDrNPZBRki6jLsQ1L8UaUUIxRW9
+ 7jeZnFgiMhgQ4ZAGo+KbV/k3wDK1hva+sYq5PEd7OcPBTJrF309nNUM/7uteCDHJo3S9IaT4aYt
+ r0EqJWOJzgyyMrA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 13d3783a55b7 ("io_uring: wait for in-flight requests on
-ring release"), the task dropping the last reference to a ring file
-waits in io_ring_ctx_wait_inflight() until every request on the ring
-has completed, and only a fatal signal ends the wait early.  The
-requests may belong to other tasks and may not complete for an
-unbounded time, e.g. a read on a FUSE file whose server never replies.
-A process that merely received the ring fd over a UNIX socket and
-closes it then blocks in close(2) for as long as those requests stay
-in flight.
+Sending RFC just to validate if this would be the correct approach to
+implementing the tap toi wake functionality
 
-The comment in io_ring_ctx_wait_and_kill() states that the wait is
-meant for requests owned by the task closing the ring.  Only tasks that
-created or submitted to a ring have a node for it in their
-io_uring_task, so skip the wait for any other task and leave the
-remaining requests to io_ring_exit_work() as before.
+I've tested this patch, it does wake up the phone.
+The second assessment is let device shell to react to double-tap input
+device when phone is only in screen-off mode, thus the second input
+device to bind to (when touchscreen is in the runtime sleep).
 
-A thread of the same process that never attached to the ring no longer
-waits either when it drops the last reference.  A task that is attached
-can still be held up by requests submitted by other tasks; that case
-is not addressed here.
+Feel free to skip detailed review for RFC v1, I'll polish the code for
+upcoming v2 submission, after design discussion and approval.
 
-This was found by AI-assisted code review (Claude Code).  The fix has
-been build-tested with W=1 only; no reproducer was run.
+Thanks
 
-Fixes: 13d3783a55b7 ("io_uring: wait for in-flight requests on ring release")
-Signed-off-by: orkunsari <sariorkunemin@gmail.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Regression in v7.4-rc1 only; released kernels are not affected.
----
- io_uring/io_uring.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+David Heidelberg (3):
+      dt-bindings: input: touchscreen: edt-ft5x06: Add wakeup gestures
+      Input: edt-ft5x06 - Add wakeup gesture support for FT5452
+      arm64: dts: qcom: sdm845-shift-axolotl: Wake the system on a touchscreen double tap
 
-diff --git a/io_uring/io_uring.c b/io_uring/io_uring.c
-index 03724419c4..04e3da5de0 100644
---- a/io_uring/io_uring.c
-+++ b/io_uring/io_uring.c
-@@ -2547,7 +2547,16 @@ static __cold void io_ring_ctx_wait_inflight(struct io_ring_ctx *ctx)
- 
- 	if (current->flags & (PF_KTHREAD | PF_EXITING))
- 		return;
--	if (tctx && atomic_read(&tctx->in_cancel))
-+	/*
-+	 * Tasks that have attached to this ring (created it, submitted to it,
-+	 * registered its fd, ...) have a node for it in their io_uring_task.
-+	 * A task without one owns no requests here, e.g. one that received
-+	 * the fd over a socket, and must not be made to wait for requests it
-+	 * has no control over.
-+	 */
-+	if (!tctx || !xa_load(&tctx->xa, (unsigned long)ctx))
-+		return;
-+	if (atomic_read(&tctx->in_cancel))
- 		return;
- 
- 	while (io_ring_ctx_inflight(ctx) && !fatal_signal_pending(current)) {
-
+ .../bindings/input/touchscreen/edt-ft5x06.yaml     |  37 ++++
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts  |   6 +
+ drivers/input/touchscreen/edt-ft5x06.c             | 205 ++++++++++++++++++++-
+ 3 files changed, 244 insertions(+), 4 deletions(-)
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261104-io-uring-wait-inflight-5ff78a7c6cd5
+base-commit: 2637bdec0535a2044cd830eba9a79363651d9043
+change-id: 20261104-ft5x06-double-tap-8022020de323
 
 Best regards,
 --  
-orkunsari <sariorkunemin@gmail.com>
+David Heidelberg <david@ixit.cz>
 
