@@ -1,11 +1,10 @@
 From: Mark Korenberg <socketpair@gmail.com>
-Date: Thu, 05 Nov 2026 00:25:05 +0500
-Subject: [PATCH 1/2] ublk: publish a new device by its id only once it is
- set up
+Date: Thu, 05 Nov 2026 00:25:06 +0500
+Subject: [PATCH 2/2] ublk: don't take ublk_ctl_mutex in DEL_DEV
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-ublk-del-gendisk-hang-v1-1-913a91a4314d@gmail.com>
+Message-Id: <20261105-ublk-del-gendisk-hang-v1-2-913a91a4314d@gmail.com>
 References: <20261105-ublk-del-gendisk-hang-v1-0-913a91a4314d@gmail.com>
 In-Reply-To: <20261105-ublk-del-gendisk-hang-v1-0-913a91a4314d@gmail.com>
 To: Ming Lei <tom.leiming@gmail.com>
@@ -13,89 +12,138 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
  linux-kernel@vger.kernel.org, Ming Lei <ming.lei@redhat.com>, 
  Mark Korenberg <socketpair@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793820305; l=2820;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793820305; l=4989;
  i=socketpair@gmail.com; s=20260603; h=from:subject:message-id;
- bh=kErRrExpI2LtJAMvv3KNrq5h1atq5uq7x5u9yvNiW0k=;
- b=wGCIBYj0ASQ8ToPwvpJBCU6doUyE+kmK3ox+J7uRIlsmHnyZ3vkPISWKJxGdYVtxgUnJYIMVF
- 1DeqksiQfXGB0CdULrSsihuqh1eb5n/FCB9ykRmxHE4nnD2eq08geMH
+ bh=rq+V0p9ah2pKCehbSs97gh/beSumuzgTTTAyhHi8BZM=;
+ b=O9eOIbxuERP1hL8Q7gLQa3qXQHEASMBS+huKkFqP9unpltD6yK5P6uuGh6wt0Vx1Z+zTig/n3
+ VveVbkTf+HcATVEwiBv50BN0YagUNt3baVkzWMAIgTv44bxrzT0VYxT
 X-Developer-Key: i=socketpair@gmail.com; a=ed25519;
  pk=2iAMjWhs7kA9X8ccetT2YVX8dvniXua2okQogw3Don8=
 X-Endpoint-Received: by B4 Relay for socketpair@gmail.com/20260603 with auth_id=806
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ADD_DEV stores the device in ublk_index_idr when it allocates the id,
-and control commands find it there as soon as ublk_add_chdev() has
-initialized its struct device, before the char device is added. If
-dev_set_name() or cdev_device_add() then fails, ublk_add_chdev() drops
-the initial reference to free the device. A DEL_DEV that found the
-device meanwhile waits for ublk_ctl_mutex, then calls ublk_remove():
-cdev_device_del() of a device that was never added, and a second put of
-the initial reference, which frees the device under the callers still
-holding references.
+ublk_ctrl_del_dev() holds the global ublk_ctl_mutex across
+ublk_remove(). Stopping the device calls del_gendisk(), which syncs the
+filesystem on the disk. If that filesystem is stuck, DEL_DEV never
+returns, and ADD_DEV and DEL_DEV of every other ublk device wait for
+ublk_ctl_mutex behind it, until reboot. This happens with the server
+alive, and also when it dies: the release work then hangs in the same
+del_gendisk() with ub->mutex held, and DEL_DEV sleeps on ub->mutex
+uninterruptibly, holding ublk_ctl_mutex.
 
-Reserve the id with a NULL entry, which idr_find() and the idr iterators
-skip, and store the device once ublk_add_chdev() succeeded.
+DEL_DEV doesn't need the mutex. ADD_DEV is done with the device when
+DEL_DEV finds it: the device is found by its id only once it is set up,
+since the previous patch. Claiming UB_STATE_DELETED with
+test_and_set_bit() lets only one DEL_DEV remove the device, and the
+device number is freed under ublk_idr_lock on release. The mutex also
+protected unprivileged_ublks_added: make it atomic. ADD_DEV still
+checks and increments it under the mutex, so a decrement without it
+can only lower the count, and the limit holds.
 
-Fixes: 71f28f3136af ("ublk_drv: add io_uring based userspace block driver")
+A second DEL_DEV of the same device used to wait for the first one on
+ublk_ctl_mutex. Now it sees UB_STATE_DELETED and, unless it is
+DEL_DEV_ASYNC, waits interruptibly for the device number to be freed.
+The counter is decremented once the device is removed, so at the limit
+ADD_DEV of an unprivileged device fails with -EACCES instead of waiting
+for the removal, and the limit is never exceeded, even if the removal
+never completes.
+
+Reproducer: XFS on a ublk loop device with an external log on
+dm-linear; "dmsetup suspend --nolockfs --noflush" the log device, write
+a file and syncfs, SIGKILL the ublk server or not, DEL_DEV the device,
+ADD_DEV another one. Before, ADD_DEV hangs on ublk_ctl_mutex until the
+log device is resumed. After, it completes; only the DEL_DEV of the
+device with the stuck filesystem waits.
+
 Signed-off-by: Mark Korenberg <socketpair@gmail.com>
 ---
- drivers/block/ublk_drv.c | 23 +++++++++++++++++++++--
- 1 file changed, 21 insertions(+), 2 deletions(-)
+ drivers/block/ublk_drv.c | 37 ++++++++++++++++---------------------
+ 1 file changed, 16 insertions(+), 21 deletions(-)
 
 diff --git a/drivers/block/ublk_drv.c b/drivers/block/ublk_drv.c
-index 72e9c435208c..14d2823a92e5 100644
+index 14d2823a92e5..40f521077bc9 100644
 --- a/drivers/block/ublk_drv.c
 +++ b/drivers/block/ublk_drv.c
-@@ -4405,14 +4405,18 @@ static int ublk_alloc_dev_number(struct ublk_device *ub, int idx)
- 	int i = idx;
- 	int err;
+@@ -881,7 +881,8 @@ static ssize_t ublk_batch_copy_io_tags(struct ublk_batch_fetch_cmd *fcmd,
+  * by cgroup.
+  */
+ static unsigned int unprivileged_ublks_max = 64;
+-static unsigned int unprivileged_ublks_added; /* protected by ublk_ctl_mutex */
++/* checked and incremented under ublk_ctl_mutex, decremented without it */
++static atomic_t unprivileged_ublks_added = ATOMIC_INIT(0);
  
-+	/*
-+	 * Only reserve the id: the device is published by
-+	 * ublk_publish_dev_number() once it is fully set up.
-+	 */
- 	spin_lock(&ublk_idr_lock);
- 	/* allocate id, if @id >= 0, we're requesting that specific id */
- 	if (i >= 0) {
--		err = idr_alloc(&ublk_index_idr, ub, i, i + 1, GFP_NOWAIT);
-+		err = idr_alloc(&ublk_index_idr, NULL, i, i + 1, GFP_NOWAIT);
- 		if (err == -ENOSPC)
- 			err = -EEXIST;
- 	} else {
--		err = idr_alloc(&ublk_index_idr, ub, 0, UBLK_MAX_UBLKS,
-+		err = idr_alloc(&ublk_index_idr, NULL, 0, UBLK_MAX_UBLKS,
- 				GFP_NOWAIT);
- 	}
- 	spin_unlock(&ublk_idr_lock);
-@@ -4423,6 +4427,19 @@ static int ublk_alloc_dev_number(struct ublk_device *ub, int idx)
- 	return err;
+ static struct miscdevice ublk_misc;
+ 
+@@ -4486,7 +4487,7 @@ static int ublk_add_chdev(struct ublk_device *ub)
+ 		goto fail;
+ 
+ 	if (ub->dev_info.flags & UBLK_F_UNPRIVILEGED_DEV)
+-		unprivileged_ublks_added++;
++		atomic_inc(&unprivileged_ublks_added);
+ 	return 0;
+  fail:
+ 	put_device(dev);
+@@ -4518,15 +4519,9 @@ static int ublk_add_tag_set(struct ublk_device *ub)
+ 
+ static void ublk_remove(struct ublk_device *ub)
+ {
+-	bool unprivileged;
+-
+ 	ublk_stop_dev(ub);
+ 	cdev_device_del(&ub->cdev, &ub->cdev_dev);
+-	unprivileged = ub->dev_info.flags & UBLK_F_UNPRIVILEGED_DEV;
+ 	ublk_put_device(ub);
+-
+-	if (unprivileged)
+-		unprivileged_ublks_added--;
  }
  
-+/*
-+ * Make the device visible to control commands by its id. Before its char
-+ * device is added, DEL_DEV could find it and remove a char device that was
-+ * never added, and drop the reference that ublk_add_chdev() drops on
-+ * failure.
-+ */
-+static void ublk_publish_dev_number(struct ublk_device *ub)
-+{
-+	spin_lock(&ublk_idr_lock);
-+	WARN_ON_ONCE(idr_replace(&ublk_index_idr, ub, ub->ub_number) != NULL);
-+	spin_unlock(&ublk_idr_lock);
-+}
-+
- static void ublk_free_dev_number(struct ublk_device *ub)
- {
- 	spin_lock(&ublk_idr_lock);
-@@ -4991,6 +5008,8 @@ static int ublk_ctrl_add_dev(const struct ublksrv_ctrl_cmd *header)
- 	 * ublk_add_chdev() will cleanup everything if it fails.
- 	 */
- 	ret = ublk_add_chdev(ub);
-+	if (!ret)
-+		ublk_publish_dev_number(ub);
- 	goto out_unlock;
+ static struct ublk_device *ublk_get_device_from_id(int idx)
+@@ -4916,7 +4911,7 @@ static int ublk_ctrl_add_dev(const struct ublksrv_ctrl_cmd *header)
  
- out_deinit_queues:
+ 	ret = -EACCES;
+ 	if ((info.flags & UBLK_F_UNPRIVILEGED_DEV) &&
+-	    unprivileged_ublks_added >= unprivileged_ublks_max)
++	    atomic_read(&unprivileged_ublks_added) >= unprivileged_ublks_max)
+ 		goto out_unlock;
+ 
+ 	ret = -ENOMEM;
+@@ -5042,23 +5037,23 @@ static int ublk_ctrl_del_dev(struct ublk_device **p_ub, bool wait)
+ {
+ 	struct ublk_device *ub = *p_ub;
+ 	int idx = ub->ub_number;
+-	int ret;
+-
+-	ret = mutex_lock_killable(&ublk_ctl_mutex);
+-	if (ret)
+-		return ret;
++	bool unprivileged = ub->dev_info.flags & UBLK_F_UNPRIVILEGED_DEV;
+ 
+-	if (!test_bit(UB_STATE_DELETED, &ub->state)) {
++	/*
++	 * Don't take ublk_ctl_mutex: stopping the device may wait for the
++	 * filesystem on its disk indefinitely, and ADD_DEV and DEL_DEV of all
++	 * other ublk devices would wait for that too. ADD_DEV is done with the
++	 * device, it is found by its id only then.
++	 */
++	if (!test_and_set_bit(UB_STATE_DELETED, &ub->state)) {
+ 		ublk_remove(ub);
+-		set_bit(UB_STATE_DELETED, &ub->state);
++		if (unprivileged)
++			atomic_dec(&unprivileged_ublks_added);
+ 	}
+ 
+-	mutex_unlock(&ublk_ctl_mutex);
+-
+ 	/*
+-	 * Drop the reference outside ublk_ctl_mutex: if it is the last one,
+-	 * the release frees the tag set, which waits for an SRCU grace period,
+-	 * and holding the mutex would serialize concurrent deletions on it.
++	 * If this is the last reference, the release frees the tag set, which
++	 * waits for an SRCU grace period.
+ 	 */
+ 	*p_ub = NULL;
+ 	ublk_put_device(ub);
 
 -- 
 2.56.0
