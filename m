@@ -1,120 +1,119 @@
-From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Tue, 03 Nov 2026 23:41:51 +0000
-Subject: [PATCH] serial: 8250: fix use-after-free of IRQ action name on
- port removal
+From: Riley <riley.redeker@gmail.com>
+Date: Wed, 04 Nov 2026 11:39:38 +1100
+Subject: [PATCH] ALSA: usb-audio: Add quirk for Yamaha ZG02
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-serial-8250-irq-uaf-v1-1-24223dcc3119@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAD5x6moC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwNjXZD6xBxdCyNTA93MokLd0sQ0XYMUA+M0i0QTi0RLCyWgzoKi1LT
- MCrCp0bG1tQDmZD5zZQAAAA==
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- stable@vger.kernel.org, 
- syzbot+bc6b37960b1d13f68f9f@syzkaller.appspotmail.com, 
- Joas Antonio dos Santos <joasantonio108@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793749310; l=3589;
- i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=Vj1DUOXxenSAPPDmSUT0HtmMZVzSOWReRJpl/rpE5m0=;
- b=RtK5sce09jMCtpUzz10809eZmaAN2TcxLlFael8IJpcwKhsR0wJZYm3UPfvtQqtuZ2Vjtn6l1
- 9hl+ZqqFMV+C28dIDEk1Lbxc8PkFg4qTOt6jy+w5m8/sVYfWOeDocGp
-X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
- pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
-X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
+Message-Id: <20261104-yamaha-zg02-v1-1-3fd61b8c564f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwMT3crE3MSMRN2qdAMj3RRz00SL5LSUxMRkQyWgjoKi1LTMCrBp0bE
+ QfnFpUlZqcgnICKXaWgCuY3tBbwAAAA==
+X-Change-ID: 20261104-yamaha-zg02-d75a8cfdaac1
+To: Takashi Iwai <tiwai@suse.com>, Jaroslav Kysela <perex@perex.cz>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Riley <riley.redeker@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793752778; l=3436;
+ i=riley.redeker@gmail.com; s=20261104; h=from:subject:message-id;
+ bh=QfAs+gUhXiKkL5wB51Zjd56vxHsgYEBg+Im4XPnvZHo=;
+ b=REIeVRBrNFUpjO85xAq43voKcSvOApMyTOUHbvak5DKrYqtr9s3PFhA0CB3t7hjtpFJ1N+5PC
+ pmdQ+FwIXqJBomg5u7X2T/T+yrNGr5qH7U28vXdfCg+jYGVwMW51bZD
+X-Developer-Key: i=riley.redeker@gmail.com; a=ed25519;
+ pk=wo/NEUhxXVG+kr+llQuIWhIFFvK0zNLuzLmkrUPQBR4=
+X-Endpoint-Received: by B4 Relay for riley.redeker@gmail.com/20261104 with auth_id=1401
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-serial_link_irq_chain() passes up->port.name directly to request_irq().
-The IRQ subsystem stores this pointer in irqaction->name without copying
-the string.
+The Yamaha ZG02 game streaming mixer (0499:1516) exposes UAC2 audio
+streaming interfaces with a vendor-specific interface class. Only its
+MIDI interfaces get bound today: the Yamaha catch-all QUIRK_AUTODETECT
+entry rejects the PCM interfaces because create_auto_pcm_quirk()
+expects a UAC1-sized FORMAT_TYPE descriptor (bLength >= 8), while the
+ZG02 has the 6-byte UAC2 one. As a result no PCM device is created.
 
-When the port that originally called request_irq() is removed while
-other ports still share the same IRQ:
+The interface layout matches the Steinberg UR22 (0499:1509):
 
-  1. serial_unlink_irq_chain() removes the port from the shared list
-  2. Since other ports remain, free_irq() is NOT called
-  3. irqaction->name still references the removed port's name string
-  4. serial_core_remove_one_port() frees uport->name (kfree at line 3292)
-  5. irqaction->name becomes a dangling pointer
+  0: UAC2 AudioControl (vendor class), clock source ID 1
+  1: playback, 10ch S32_LE 48kHz, async isochronous OUT
+  2: capture, 4ch, isochronous IN used as implicit feedback
+  3: Yamaha MIDI
+  4: vendor bulk interface
 
-Any subsequent read of /proc/interrupts dereferences the freed string
-via show_interrupts() -> seq_printf("%s", action->name), triggering a
-KASAN slab-use-after-free on the freed kmalloc-8 object.
+Add the same composite quirk and QUIRK_FLAG_GENERIC_IMPLICIT_FB for
+it. The generic UAC2 implicit feedback detection does not apply here
+because it requires USB_CLASS_AUDIO.
 
-Fix by giving struct irq_info ownership of the name string passed to
-request_irq().  serial_get_or_create_irq_info() now kstrdup()s the port
-name into irq_info->name when creating a new irq_info, and
-serial_do_unlink() frees it alongside the irq_info.  This decouples the
-IRQ action name lifetime from any individual port's lifetime.
+Tested on a 7.3 kernel with this patch applied (no quirk_alias): the
+card registers as USB0499:1516, implicit feedback is set up from EP
+0x81, and playback (voice chat and game buses) and capture (microphone)
+work. The full channel mapping (playback 1-2 voice chat bus, 3-10 game
+bus; capture 1-2 streaming mix, 3-4 microphone) was verified with
+quirk_alias=04991516:04991509, which applies the same quirk and flag
+entries.
 
-Found by LLM-assisted code review of syzbot-reported crash patterns.
-
-Reported-by: syzbot+bc6b37960b1d13f68f9f@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=bc6b37960b1d13f68f9f
-Fixes: f7048b15900f ("tty: serial_core: Add name field to uart_port struct")
-Cc: stable@vger.kernel.org
-Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
+Assisted-by: Claude Opus 5.5
+Signed-off-by: Riley <riley.redeker@gmail.com>
 ---
-serial_link_irq_chain() passes up->port.name directly to request_irq().
-When the first port sharing an IRQ is removed, kfree(uport->name) frees
-the string while irqaction->name still references it.  Reading
-/proc/interrupts then triggers a KASAN slab-use-after-free.
+Hi,
 
-syzbot link: https://syzkaller.appspot.com/bug?extid=bc6b37960b1d13f68f9f
+The Yamaha ZG02 currently shows up with MIDI only and no PCM device, so
+it's unusable as a sound card on Linux.
+
+I've been running the identical quirk via quirk_alias since 2026-11-03 in
+daily use (including voice chat), and tested this patch itself on the
+device: playback, capture and implicit feedback all work. Full lsusb -v
+output for the device is available if useful.
+
+A UCM profile that splits the streams into Game / Chat / Microphone /
+Streaming Mix is going to alsa-ucm-conf separately.
 ---
- drivers/tty/serial/8250/8250_core.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+ sound/usb/quirks-table.h | 14 ++++++++++++++
+ sound/usb/quirks.c       |  2 ++
+ 2 files changed, 16 insertions(+)
 
-diff --git a/drivers/tty/serial/8250/8250_core.c b/drivers/tty/serial/8250/8250_core.c
-index 42319843c..f73113daa 100644
---- a/drivers/tty/serial/8250/8250_core.c
-+++ b/drivers/tty/serial/8250/8250_core.c
-@@ -47,6 +47,7 @@ struct irq_info {
- 	int			irq;
- 	spinlock_t		lock;	/* Protects list not the hash */
- 	struct list_head	*head;
-+	const char		*name;	/* owned copy for request_irq() */
- };
- 
- #define IRQ_HASH_BITS		5	/* Can be adjusted later */
-@@ -122,6 +123,7 @@ static void serial_do_unlink(struct irq_info *i, struct uart_8250_port *up)
- 	/* List empty so throw away the hash node */
- 	if (i->head == NULL) {
- 		hlist_del(&i->node);
-+		kfree(i->name);
- 		kfree(i);
+diff --git a/sound/usb/quirks-table.h b/sound/usb/quirks-table.h
+index 8b2316fe8..e85eeb536 100644
+--- a/sound/usb/quirks-table.h
++++ b/sound/usb/quirks-table.h
+@@ -404,6 +404,20 @@ YAMAHA_DEVICE(0x105d, NULL),
+ 		}
  	}
- }
-@@ -145,6 +147,12 @@ static struct irq_info *serial_get_or_create_irq_info(const struct uart_8250_por
- 	if (i == NULL)
- 		return ERR_PTR(-ENOMEM);
- 
-+	i->name = kstrdup(up->port.name, GFP_KERNEL);
-+	if (!i->name) {
-+		kfree(i);
-+		return ERR_PTR(-ENOMEM);
+ },
++{
++	USB_DEVICE(0x0499, 0x1516),
++	QUIRK_DRIVER_INFO {
++		/* .vendor_name = "Yamaha", */
++		/* .product_name = "ZG02", */
++		QUIRK_DATA_COMPOSITE {
++			{ QUIRK_DATA_STANDARD_AUDIO(1) },
++			{ QUIRK_DATA_STANDARD_AUDIO(2) },
++			{ QUIRK_DATA_MIDI_YAMAHA(3) },
++			{ QUIRK_DATA_IGNORE(4) },
++			QUIRK_COMPOSITE_END
++		}
 +	}
-+
- 	spin_lock_init(&i->lock);
- 	i->irq = up->port.irq;
- 	hash_add(irq_lists, &i->node, i->irq);
-@@ -172,7 +180,7 @@ static int serial_link_irq_chain(struct uart_8250_port *up)
- 		i->head = &up->list;
- 	}
- 
--	ret = request_irq(up->port.irq, serial8250_interrupt, up->port.irqflags, up->port.name, i);
-+	ret = request_irq(up->port.irq, serial8250_interrupt, up->port.irqflags, i->name, i);
- 	if (ret < 0)
- 		serial_do_unlink(i, up);
- 
++},
+ {
+ 	USB_DEVICE(0x0499, 0x1718),
+ 	QUIRK_DRIVER_INFO {
+diff --git a/sound/usb/quirks.c b/sound/usb/quirks.c
+index 05a9f6727..7c581e283 100644
+--- a/sound/usb/quirks.c
++++ b/sound/usb/quirks.c
+@@ -2556,6 +2556,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
+ 		   QUIRK_FLAG_GENERIC_IMPLICIT_FB),
+ 	DEVICE_FLG(0x0499, 0x1509, /* Steinberg UR22 */
+ 		   QUIRK_FLAG_GENERIC_IMPLICIT_FB),
++	DEVICE_FLG(0x0499, 0x1516, /* Yamaha ZG02 */
++		   QUIRK_FLAG_GENERIC_IMPLICIT_FB),
+ 	DEVICE_FLG(0x0499, 0x3108, /* Yamaha YIT-W12TX */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
+ 	DEVICE_FLG(0x04d8, 0xfeea, /* Benchmark DAC1 Pre */
 
 ---
-base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
-change-id: 20261103-serial-8250-irq-uaf-0d03f8a48a98
+base-commit: 3f2882212c558336d0bf3b1c03b8e1a6b348a6e0
+change-id: 20261104-yamaha-zg02-d75a8cfdaac1
 
 Best regards,
--- 
-Joas Antonio dos Santos <joasantonio108@gmail.com>
+--  
+Riley <riley.redeker@gmail.com>
 
