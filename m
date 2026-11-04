@@ -1,119 +1,113 @@
-From: Riley <riley.redeker@gmail.com>
-Date: Wed, 04 Nov 2026 11:39:38 +1100
-Subject: [PATCH] ALSA: usb-audio: Add quirk for Yamaha ZG02
+From: Jian Hu <jian.hu@amlogic.com>
+Date: Wed, 04 Nov 2026 10:13:53 +0800
+Subject: [PATCH v2] clk: meson: Fix PLL enable timing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-yamaha-zg02-v1-1-3fd61b8c564f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwMT3crE3MSMRN2qdAMj3RRz00SL5LSUxMRkQyWgjoKi1LTMCrBp0bE
- QfnFpUlZqcgnICKXaWgCuY3tBbwAAAA==
-X-Change-ID: 20261104-yamaha-zg02-d75a8cfdaac1
-To: Takashi Iwai <tiwai@suse.com>, Jaroslav Kysela <perex@perex.cz>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Riley <riley.redeker@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793752778; l=3436;
- i=riley.redeker@gmail.com; s=20261104; h=from:subject:message-id;
- bh=QfAs+gUhXiKkL5wB51Zjd56vxHsgYEBg+Im4XPnvZHo=;
- b=REIeVRBrNFUpjO85xAq43voKcSvOApMyTOUHbvak5DKrYqtr9s3PFhA0CB3t7hjtpFJ1N+5PC
- pmdQ+FwIXqJBomg5u7X2T/T+yrNGr5qH7U28vXdfCg+jYGVwMW51bZD
-X-Developer-Key: i=riley.redeker@gmail.com; a=ed25519;
- pk=wo/NEUhxXVG+kr+llQuIWhIFFvK0zNLuzLmkrUPQBR4=
-X-Endpoint-Received: by B4 Relay for riley.redeker@gmail.com/20261104 with auth_id=1401
+Message-Id: <20261104-fix_enable_timing-v2-1-05cdaf34fcdb@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAOCU6moC/22NQQqDMBBFryKzbkqSioaueo8iEuMkDmgiiYQW8
+ e5Nhe7KrN7n/zc7JIyECe7VDhEzJQq+gLxUYCbtHTIaC4PkshFctszSq0evhxn7jRbyjqlaDla
+ reiwHZbdGLKXT+ewKT5S2EN/niyy+6c+m/tiyYIK13PKGo7lZqR96mYMjczVhge44jg9Nqm6Dt
+ AAAAA==
+X-Change-ID: 20261027-fix_enable_timing-842bfa84d4d4
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Stephen Boyd <sboyd@kernel.org>, 
+ Brian Masney <bmasney+clk@redhat.com>, Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Dmitry Rokosov <ddrokosov@sberdevices.ru>
+Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Chuan Liu <chuan.liu@amlogic.com>, Jian Hu <jian.hu@amlogic.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793758448; l=2881;
+ i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
+ bh=xxrXTMztdBF0a6VBQPK0bEnfAifBskZXSA2NITGHqh4=;
+ b=3C/aE4+3IjlZRhPCE2+cmWyBrKfwj3h7F6xGKTAv7WFzD7Xvq/R7XnrXwbaqnesEhZ/KTy9XC
+ HvDa3fB608+Bphq7/Q9ei3vd0wOxU7GPwFeplrgBqV81rLq7WR33XbQ
+X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
+ pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
+X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Yamaha ZG02 game streaming mixer (0499:1516) exposes UAC2 audio
-streaming interfaces with a vendor-specific interface class. Only its
-MIDI interfaces get bound today: the Yamaha catch-all QUIRK_AUTODETECT
-entry rejects the PCM interfaces because create_auto_pcm_quirk()
-expects a UAC1-sized FORMAT_TYPE descriptor (bLength >= 8), while the
-ZG02 has the 6-byte UAC2 one. As a result no PCM device is created.
+The hardware requires a 50us delay after setting the PLL enable
+bit to allow the PLL power-up sequence to complete.
 
-The interface layout matches the Steinberg UR22 (0499:1509):
+Without this delay, GP0 and HIFI PLLs on Amlogic T7, SM1 and C3
+may fail to lock under stress testing.
 
-  0: UAC2 AudioControl (vendor class), clock source ID 1
-  1: playback, 10ch S32_LE 48kHz, async isochronous OUT
-  2: capture, 4ch, isochronous IN used as implicit feedback
-  3: Yamaha MIDI
-  4: vendor bulk interface
+Add a 50us delay after enabling the PLL and another 50us delay
+after deasserting the PLL reset.
 
-Add the same composite quirk and QUIRK_FLAG_GENERIC_IMPLICIT_FB for
-it. The generic UAC2 implicit feedback detection does not apply here
-because it requires USB_CLASS_AUDIO.
+Testing on GXL shows that the PLL works correctly without the
+additional delay and continues to lock successfully after the
+50us delay is added.
 
-Tested on a 7.3 kernel with this patch applied (no quirk_alias): the
-card registers as USB0499:1516, implicit feedback is set up from EP
-0x81, and playback (voice chat and game buses) and capture (microphone)
-work. The full channel mapping (playback 1-2 voice chat bus, 3-10 game
-bus; capture 1-2 streaming mix, 3-4 microphone) was verified with
-quirk_alias=04991516:04991509, which applies the same quirk and flag
-entries.
+On A1, remove the redundant 10us delay before enabling the
+self-adaption current module, as the new PLL enable delay already
+covers this timing requirement.
 
-Assisted-by: Claude Opus 5.5
-Signed-off-by: Riley <riley.redeker@gmail.com>
+Fixes: b6ec400aa153 ("clk: meson: introduce new pll power-on sequence for A1 SoC family")
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Signed-off-by: Jian Hu <jian.hu@amlogic.com>
 ---
-Hi,
+For example, enabling the GP0 PLL at 1512MHz may lose lock and
+result in an output I/O error:
 
-The Yamaha ZG02 currently shows up with MIDI only and no PCM device, so
-it's unusable as a sound card on Linux.
+echo 1512000000 > /sys/kernel/debug/clk/gp0_pll/clk_rate
+echo 1 > /sys/kernel/debug/clk/gp0_pll/clk_prepare_enable
+sh: write error: I/O error
 
-I've been running the identical quirk via quirk_alias since 2026-11-03 in
-daily use (including voice chat), and tested this patch itself on the
-device: playback, capture and implicit feedback all work. Full lsusb -v
-output for the device is available if useful.
-
-A UCM profile that splits the streams into Game / Chat / Microphone /
-Streaming Mix is going to alsa-ucm-conf separately.
+Tested on: T7, C3, S4, AXG, GXL, SM1 and A1.
 ---
- sound/usb/quirks-table.h | 14 ++++++++++++++
- sound/usb/quirks.c       |  2 ++
- 2 files changed, 16 insertions(+)
+Changes in v2:
+- Combine Chuan's patch to this patch.
+- Update the Fixes tag.
+- Move test details below the commit message.
+- Link to Chuan's patch: https://lore.kernel.org/all/20251031-optimize_pll_driver-v3-2-92f3b2f36a83@amlogic.com
+- Link to v1: https://lore.kernel.org/r/20261028-fix_enable_timing-v1-1-70f060ec3f2a@amlogic.com
+---
+ drivers/clk/meson/clk-pll.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/sound/usb/quirks-table.h b/sound/usb/quirks-table.h
-index 8b2316fe8..e85eeb536 100644
---- a/sound/usb/quirks-table.h
-+++ b/sound/usb/quirks-table.h
-@@ -404,6 +404,20 @@ YAMAHA_DEVICE(0x105d, NULL),
- 		}
- 	}
- },
-+{
-+	USB_DEVICE(0x0499, 0x1516),
-+	QUIRK_DRIVER_INFO {
-+		/* .vendor_name = "Yamaha", */
-+		/* .product_name = "ZG02", */
-+		QUIRK_DATA_COMPOSITE {
-+			{ QUIRK_DATA_STANDARD_AUDIO(1) },
-+			{ QUIRK_DATA_STANDARD_AUDIO(2) },
-+			{ QUIRK_DATA_MIDI_YAMAHA(3) },
-+			{ QUIRK_DATA_IGNORE(4) },
-+			QUIRK_COMPOSITE_END
-+		}
+diff --git a/drivers/clk/meson/clk-pll.c b/drivers/clk/meson/clk-pll.c
+index 1ea6579a760f..477eb9958a8d 100644
+--- a/drivers/clk/meson/clk-pll.c
++++ b/drivers/clk/meson/clk-pll.c
+@@ -369,20 +369,25 @@ static int meson_clk_pll_enable(struct clk_hw *hw)
+ 	/* Enable the pll */
+ 	meson_parm_write(clk->map, &pll->en, 1);
+ 
++	/* Wait for the PLL power-up sequence to complete */
++	udelay(50);
++
+ 	/* Take the pll out reset */
+-	if (MESON_PARM_APPLICABLE(&pll->rst))
++	if (MESON_PARM_APPLICABLE(&pll->rst)) {
+ 		meson_parm_write(clk->map, &pll->rst, 0);
++		/* Wait for the PLL loop to stabilize */
++		udelay(50);
 +	}
-+},
- {
- 	USB_DEVICE(0x0499, 0x1718),
- 	QUIRK_DRIVER_INFO {
-diff --git a/sound/usb/quirks.c b/sound/usb/quirks.c
-index 05a9f6727..7c581e283 100644
---- a/sound/usb/quirks.c
-+++ b/sound/usb/quirks.c
-@@ -2556,6 +2556,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
- 		   QUIRK_FLAG_GENERIC_IMPLICIT_FB),
- 	DEVICE_FLG(0x0499, 0x1509, /* Steinberg UR22 */
- 		   QUIRK_FLAG_GENERIC_IMPLICIT_FB),
-+	DEVICE_FLG(0x0499, 0x1516, /* Yamaha ZG02 */
-+		   QUIRK_FLAG_GENERIC_IMPLICIT_FB),
- 	DEVICE_FLG(0x0499, 0x3108, /* Yamaha YIT-W12TX */
- 		   QUIRK_FLAG_GET_SAMPLE_RATE),
- 	DEVICE_FLG(0x04d8, 0xfeea, /* Benchmark DAC1 Pre */
+ 
+ 	/*
+ 	 * Compared with the previous SoCs, self-adaption current module
+ 	 * is newly added for A1, keep the new power-on sequence to enable the
+ 	 * PLL. The sequence is:
+-	 * 1. enable the pll, delay for 10us
++	 * 1. enable the pll, delay for 50us
+ 	 * 2. enable the pll self-adaption current module, delay for 40us
+ 	 * 3. enable the lock detect module
+ 	 */
+ 	if (MESON_PARM_APPLICABLE(&pll->current_en)) {
+-		udelay(10);
+ 		meson_parm_write(clk->map, &pll->current_en, 1);
+ 		udelay(40);
+ 	}
 
 ---
-base-commit: 3f2882212c558336d0bf3b1c03b8e1a6b348a6e0
-change-id: 20261104-yamaha-zg02-d75a8cfdaac1
+base-commit: 363f97a1ce635b86be7fd263d56a040fbd87bdbb
+change-id: 20261027-fix_enable_timing-842bfa84d4d4
 
 Best regards,
---  
-Riley <riley.redeker@gmail.com>
+-- 
+Jian Hu <jian.hu@amlogic.com>
 
