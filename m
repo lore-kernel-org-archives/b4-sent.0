@@ -1,150 +1,67 @@
-From: Mark Korenberg <socketpair@gmail.com>
-Date: Thu, 05 Nov 2026 00:25:06 +0500
-Subject: [PATCH 2/2] ublk: don't take ublk_ctl_mutex in DEL_DEV
+From: Nizat Mikayilli <nacht@dxdmail.cc>
+Date: Wed, 04 Nov 2026 20:41:49 +0100
+Subject: [PATCH] arm64: dts: qcom: sm8550: Add missing CPU7 3.36GHz OPP
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-ublk-del-gendisk-hang-v1-2-913a91a4314d@gmail.com>
-References: <20261105-ublk-del-gendisk-hang-v1-0-913a91a4314d@gmail.com>
-In-Reply-To: <20261105-ublk-del-gendisk-hang-v1-0-913a91a4314d@gmail.com>
-To: Ming Lei <tom.leiming@gmail.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ming Lei <ming.lei@redhat.com>, 
- Mark Korenberg <socketpair@gmail.com>
+Message-Id: <20261104-sm8550-prime-3p36ghz-v1-1-c72630265379@dxdmail.cc>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avIrBsY7cfoKtEibKpZaKIQUXT3p
+ OW3eO+BzEk4w6AeSHxKliMU6EqB2+ewMcpSDIZMpzU1mH3ftoQxiWesY91t+43WsmOryTlaoKQ
+ x8SrXvx2n9/0A62+GLWYAAAA=
+X-Change-ID: 20261104-sm8550-prime-3p36ghz-77ece710cc0d
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Aaron Kling <webgeek1234@gmail.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Nizat Mikayilli <nacht@dxdmail.cc>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793820305; l=4989;
- i=socketpair@gmail.com; s=20260603; h=from:subject:message-id;
- bh=rq+V0p9ah2pKCehbSs97gh/beSumuzgTTTAyhHi8BZM=;
- b=O9eOIbxuERP1hL8Q7gLQa3qXQHEASMBS+huKkFqP9unpltD6yK5P6uuGh6wt0Vx1Z+zTig/n3
- VveVbkTf+HcATVEwiBv50BN0YagUNt3baVkzWMAIgTv44bxrzT0VYxT
-X-Developer-Key: i=socketpair@gmail.com; a=ed25519;
- pk=2iAMjWhs7kA9X8ccetT2YVX8dvniXua2okQogw3Don8=
-X-Endpoint-Received: by B4 Relay for socketpair@gmail.com/20260603 with auth_id=806
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793821317; l=1185;
+ i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
+ bh=qRT6IO1l358AuB03TLo/hQmXkRKy7jq10Y/5pck5sP0=;
+ b=fd2Az2+Ro8NXmE0zpXmgAs+pC5T86WS/IBSuxIky2uQcQwEPzUZn85dQzT3DIEaqQQZ9X5TRB
+ 5i6gJL9v80jD1utEPeqkJ9OQN5kH+g1R9hhISmveR0sl47PGfbU0coa
+X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
+ pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
+X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ublk_ctrl_del_dev() holds the global ublk_ctl_mutex across
-ublk_remove(). Stopping the device calls del_gendisk(), which syncs the
-filesystem on the disk. If that filesystem is stuck, DEL_DEV never
-returns, and ADD_DEV and DEL_DEV of every other ublk device wait for
-ublk_ctl_mutex behind it, until reboot. This happens with the server
-alive, and also when it dies: the release work then hangs in the same
-del_gendisk() with ub->mutex held, and DEL_DEV sleeps on ub->mutex
-uninterruptibly, holding ublk_ctl_mutex.
+The cpufreq LUT on the Samsung Galaxy Tab S9 Wi-Fi has a 3.36GHz boost
+entry for CPU7 without a matching OPP, so the frequency is dropped:
 
-DEL_DEV doesn't need the mutex. ADD_DEV is done with the device when
-DEL_DEV finds it: the device is found by its id only once it is set up,
-since the previous patch. Claiming UB_STATE_DELETED with
-test_and_set_bit() lets only one DEL_DEV remove the device, and the
-device number is freed under ublk_idr_lock on release. The mutex also
-protected unprivileged_ublks_added: make it atomic. ADD_DEV still
-checks and increments it under the mutex, so a decrement without it
-can only lower the count, and the limit holds.
+cpu cpu7: Voltage update failed freq=3360000
+cpu cpu7: failed to update OPP for freq=3360000
 
-A second DEL_DEV of the same device used to wait for the first one on
-ublk_ctl_mutex. Now it sees UB_STATE_DELETED and, unless it is
-DEL_DEV_ASYNC, waits interruptibly for the device number to be freed.
-The counter is decremented once the device is removed, so at the limit
-ADD_DEV of an unprivileged device fails with -EACCES instead of waiting
-for the removal, and the limit is never exceeded, even if the removal
-never completes.
-
-Reproducer: XFS on a ublk loop device with an external log on
-dm-linear; "dmsetup suspend --nolockfs --noflush" the log device, write
-a file and syncfs, SIGKILL the ublk server or not, DEL_DEV the device,
-ADD_DEV another one. Before, ADD_DEV hangs on ublk_ctl_mutex until the
-log device is resumed. After, it completes; only the DEL_DEV of the
-device with the stuck filesystem waits.
-
-Signed-off-by: Mark Korenberg <socketpair@gmail.com>
+Fixes: 3f5dcc05cd33 ("arm64: dts: qcom: sm8550: add cpu OPP table with DDR, LLCC & L3 bandwidths")
+Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
 ---
- drivers/block/ublk_drv.c | 37 ++++++++++++++++---------------------
- 1 file changed, 16 insertions(+), 21 deletions(-)
+ arch/arm64/boot/dts/qcom/sm8550.dtsi | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/drivers/block/ublk_drv.c b/drivers/block/ublk_drv.c
-index 14d2823a92e5..40f521077bc9 100644
---- a/drivers/block/ublk_drv.c
-+++ b/drivers/block/ublk_drv.c
-@@ -881,7 +881,8 @@ static ssize_t ublk_batch_copy_io_tags(struct ublk_batch_fetch_cmd *fcmd,
-  * by cgroup.
-  */
- static unsigned int unprivileged_ublks_max = 64;
--static unsigned int unprivileged_ublks_added; /* protected by ublk_ctl_mutex */
-+/* checked and incremented under ublk_ctl_mutex, decremented without it */
-+static atomic_t unprivileged_ublks_added = ATOMIC_INIT(0);
+diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+index 03f6d40edea7..ed6e34ac8d56 100644
+--- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+@@ -752,6 +752,11 @@ opp-3187200000 {
+ 			opp-hz = /bits/ 64 <3187200000>;
+ 			opp-peak-kBps = <(933000 * 16) (3686000 * 4) (1689600 * 32)>;
+ 		};
++
++		opp-3360000000 {
++			opp-hz = /bits/ 64 <3360000000>;
++			opp-peak-kBps = <(933000 * 16) (3686000 * 4) (1689600 * 32)>;
++		};
+ 	};
  
- static struct miscdevice ublk_misc;
- 
-@@ -4486,7 +4487,7 @@ static int ublk_add_chdev(struct ublk_device *ub)
- 		goto fail;
- 
- 	if (ub->dev_info.flags & UBLK_F_UNPRIVILEGED_DEV)
--		unprivileged_ublks_added++;
-+		atomic_inc(&unprivileged_ublks_added);
- 	return 0;
-  fail:
- 	put_device(dev);
-@@ -4518,15 +4519,9 @@ static int ublk_add_tag_set(struct ublk_device *ub)
- 
- static void ublk_remove(struct ublk_device *ub)
- {
--	bool unprivileged;
--
- 	ublk_stop_dev(ub);
- 	cdev_device_del(&ub->cdev, &ub->cdev_dev);
--	unprivileged = ub->dev_info.flags & UBLK_F_UNPRIVILEGED_DEV;
- 	ublk_put_device(ub);
--
--	if (unprivileged)
--		unprivileged_ublks_added--;
- }
- 
- static struct ublk_device *ublk_get_device_from_id(int idx)
-@@ -4916,7 +4911,7 @@ static int ublk_ctrl_add_dev(const struct ublksrv_ctrl_cmd *header)
- 
- 	ret = -EACCES;
- 	if ((info.flags & UBLK_F_UNPRIVILEGED_DEV) &&
--	    unprivileged_ublks_added >= unprivileged_ublks_max)
-+	    atomic_read(&unprivileged_ublks_added) >= unprivileged_ublks_max)
- 		goto out_unlock;
- 
- 	ret = -ENOMEM;
-@@ -5042,23 +5037,23 @@ static int ublk_ctrl_del_dev(struct ublk_device **p_ub, bool wait)
- {
- 	struct ublk_device *ub = *p_ub;
- 	int idx = ub->ub_number;
--	int ret;
--
--	ret = mutex_lock_killable(&ublk_ctl_mutex);
--	if (ret)
--		return ret;
-+	bool unprivileged = ub->dev_info.flags & UBLK_F_UNPRIVILEGED_DEV;
- 
--	if (!test_bit(UB_STATE_DELETED, &ub->state)) {
-+	/*
-+	 * Don't take ublk_ctl_mutex: stopping the device may wait for the
-+	 * filesystem on its disk indefinitely, and ADD_DEV and DEL_DEV of all
-+	 * other ublk devices would wait for that too. ADD_DEV is done with the
-+	 * device, it is found by its id only then.
-+	 */
-+	if (!test_and_set_bit(UB_STATE_DELETED, &ub->state)) {
- 		ublk_remove(ub);
--		set_bit(UB_STATE_DELETED, &ub->state);
-+		if (unprivileged)
-+			atomic_dec(&unprivileged_ublks_added);
- 	}
- 
--	mutex_unlock(&ublk_ctl_mutex);
--
- 	/*
--	 * Drop the reference outside ublk_ctl_mutex: if it is the last one,
--	 * the release frees the tag set, which waits for an SRCU grace period,
--	 * and holding the mutex would serialize concurrent deletions on it.
-+	 * If this is the last reference, the release frees the tag set, which
-+	 * waits for an SRCU grace period.
- 	 */
- 	*p_ub = NULL;
- 	ublk_put_device(ub);
+ 	pmu-a510 {
 
+---
+base-commit: f5672a3dff0291d6a45eb0c258b9d2baeb4dc577
+change-id: 20261104-sm8550-prime-3p36ghz-77ece710cc0d
+
+Best regards,
 -- 
-2.56.0
+Nizat Mikayilli <nacht@dxdmail.cc>
 
