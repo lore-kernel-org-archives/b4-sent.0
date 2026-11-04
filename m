@@ -1,102 +1,125 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Wed, 04 Nov 2026 09:36:50 -0600
-Subject: [PATCH ath-next] wifi: ath10k: don't warn about a pdev param the
- firmware lacks
+Date: Wed, 04 Nov 2026 09:37:29 -0600
+Subject: [PATCH] Leave a control interface directory without permission to
+ remove it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-b4-ath10k-unsupported-pdev-param-v1-1-b3973cef8a72@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABFR62oC/yWNWwrCMBQFt1Lutxdy2yDoVsSPpDm1UUxDHqVQu
- nejfg6HM7NTRvLIdO12Slh99ktoIKeOxtmEB9i7xtSr/iyiNFvNpsyiXlxDrjEuqcBxdFg5mmT
- erI3YCwZYmUBNExMmv/0SN2pXDtgK3f9LrvaJsXwLdBwf/fZNAY4AAAA=
-X-Change-ID: 20261104-b4-ath10k-unsupported-pdev-param-4a1b9e3eb1fe
-To: Jeff Johnson <jjohnson@kernel.org>
-Cc: linux-wireless@vger.kernel.org, ath10k@lists.infradead.org, 
- linux-kernel@vger.kernel.org, 
- Christopher Griffin <christophergriffin05@gmail.com>
+Message-Id: <20261104-b136-ctrl-dir-permission-v1-1-0204f87a5a87@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADhR62oC/yXMQQqDQAxA0atI1g1MpuqAV5EudIwaaVUSWwri3
+ Tva5Vv8v4OxChtU2Q7KHzFZ5gS6ZRDHZh4YpUsG73xJ5HJs6V5i3PSJnSiurC+xM8ImFCF4F3M
+ qHKR8Ve7le63rx9/2bieO2/mD4/gBS33lO3wAAAA=
+X-Change-ID: 20261104-b136-ctrl-dir-permission-a757720c4150
+To: hostap@lists.infradead.org
+Cc: Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793806609; l=3220;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793806648; l=4131;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=FSA292u5sCTcbszeVed2MuneSQSw8t2SoCteAKWPoU8=;
- b=EBX0Q4NJ1xPErZiJJT39EEgLp79tCgdRVMqeWXrewECTgvMS4XI2mTCB3cMf+g6u3Kji10nhZ
- oYl0MGyNh20DLNAa9lOPEe5XSuU04DL9z5gt7mA4/hJT7E4zzZGjrDv
+ bh=lriSP7PyB5bJMolvfeRIwu2NEfGhsgm3cF1GsJ8UTSg=;
+ b=qY0urMj8K9NpvRxoCpzst0xizuLnIDR65hy7mfyE7df0vBW9sK4z6Cwph4Dkwvm4c1FnRGBl0
+ Bqt0ija7IqHDH+sS6oivwAc9TZcwmM6MCYxDgDSUyfK4X40aS6G2XTe
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On firmware other than WMI-TLV, every start of the radio logs
+hostapd and wpa_supplicant try to remove their control interface
+directory when the last interface using it goes away, and report any
+failure other than ENOTEMPTY as an error. A process that dropped its
+privileges, as OpenWrt runs both (user network, in a jail), cannot
+remove a directory that was created for it in a root-owned parent
+(/var/run/hostapd), so every time the last interface goes it logs
 
-  ath10k_pci 0000:01:00.0: pdev param 0 not supported by firmware
+  rmdir[ctrl_interface=/var/run/hostapd]: Permission denied
 
-and every association of a station interface logs it again, followed by
+The directory is not this process's to remove, as when it is not empty:
+treat EACCES and EPERM the same way, at debug level, with the reason.
 
-  ath10k_pci 0000:01:00.0: failed to enable peer stats info: -95
-
-ath10k_start() sets idle_ps_config and ath10k_bss_assoc() sets
-peer_stats_info_enable; only the WMI-TLV pdev param map has them, the
-others hold WMI_PDEV_PARAM_UNSUPPORTED, and the set returns -EOPNOTSUPP
-after the warning. ath10k_start() already takes -EOPNOTSUPP as no
-error, so the warning tells nothing.
-
-Report an unsupported pdev param at debug level, as an unsupported
-vdev param already is, and let ath10k_bss_assoc() take -EOPNOTSUPP as
-no error too. A caller that needs the param still warns with the
-error.
-
-Seen with QCA9882 radios on 10.1 firmware used as scanning and test
-stations: 204 "pdev param 0" and 62 "peer stats info" warnings in ten
-hours on one access point.
-
-Tested-on: QCA988X hw2.0 PCI 10.1-ct-8x-__fW-023-23ea9f8e
-Tested-on: IPQ4019 hw1.0 AHB 10.4b-ct-4019-fW-14-fcb240f0
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
-Tested with ath10k-ct's copy of these two functions, which carries the
-same lines (OpenWrt's default ath10k driver for these chips), on a
-QCA9882 scan radio and the IPQ4019 radios of an Arista W-118: before,
-each firmware start and each station association logged the warnings;
-with the change, none in two firmware starts of each radio and an
-association of the QCA9882 as a station. This patch itself is
-compile-tested on ath-next (wmi.o, mac.o, W=1).
+Tested on OpenWrt (hostapd jailed as user network) on an Arista W-118,
+with the change as a package patch: removing the last BSS logged the
+rmdir error before, and nothing at error level after.
 ---
- drivers/net/wireless/ath/ath10k/mac.c | 2 +-
- drivers/net/wireless/ath/ath10k/wmi.c | 4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ hostapd/ctrl_iface.c             | 24 ++++++++++++++----------
+ wpa_supplicant/ctrl_iface_unix.c |  9 +++++----
+ 2 files changed, 19 insertions(+), 14 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath10k/mac.c b/drivers/net/wireless/ath/ath10k/mac.c
-index 8e604697d6c20..20b91e8abb5be 100644
---- a/drivers/net/wireless/ath/ath10k/mac.c
-+++ b/drivers/net/wireless/ath/ath10k/mac.c
-@@ -3158,7 +3158,7 @@ static void ath10k_bss_assoc(struct ieee80211_hw *hw,
+diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
+index c53e33b..0a683d7 100644
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -5260,9 +5260,11 @@ void hostapd_mld_ctrl_iface_deinit(struct hostapd_mld *mld)
  
- 	ret = ath10k_wmi_pdev_set_param(ar,
- 					ar->wmi.pdev_param->peer_stats_info_enable, 1);
--	if (ret)
-+	if (ret && ret != -EOPNOTSUPP)
- 		ath10k_warn(ar, "failed to enable peer stats info: %d\n", ret);
+ 		if (mld->ctrl_interface &&
+ 		    rmdir(mld->ctrl_interface) < 0) {
+-			if (errno == ENOTEMPTY) {
++			if (errno == ENOTEMPTY || errno == EACCES ||
++			    errno == EPERM) {
+ 				wpa_printf(MSG_DEBUG,
+-					   "MLD control interface directory not empty - leaving it behind");
++					   "MLD control interface directory %s not removed (%s) - leaving it behind",
++					   mld->ctrl_interface, strerror(errno));
+ 			} else {
+ 				wpa_printf(MSG_ERROR,
+ 					   "rmdir[ctrl_interface=%s]: %s",
+@@ -5608,10 +5610,11 @@ void hostapd_ctrl_iface_deinit(struct hostapd_data *hapd)
  
- 	ret = ath10k_wmi_vdev_up(ar, arvif->vdev_id, arvif->aid, arvif->bssid);
-diff --git a/drivers/net/wireless/ath/ath10k/wmi.c b/drivers/net/wireless/ath/ath10k/wmi.c
-index e57588c19c800..a2efd2188d111 100644
---- a/drivers/net/wireless/ath/ath10k/wmi.c
-+++ b/drivers/net/wireless/ath/ath10k/wmi.c
-@@ -6544,8 +6544,8 @@ ath10k_wmi_op_gen_pdev_set_param(struct ath10k *ar, u32 id, u32 value)
- 	struct sk_buff *skb;
+ 		if (hapd->conf->ctrl_interface &&
+ 		    rmdir(hapd->conf->ctrl_interface) < 0) {
+-			if (errno == ENOTEMPTY) {
+-				wpa_printf(MSG_DEBUG, "Control interface "
+-					   "directory not empty - leaving it "
+-					   "behind");
++			if (errno == ENOTEMPTY || errno == EACCES ||
++			    errno == EPERM) {
++				wpa_printf(MSG_DEBUG,
++					   "Control interface directory %s not removed (%s) - leaving it behind",
++					   hapd->conf->ctrl_interface, strerror(errno));
+ 			} else {
+ 				wpa_printf(MSG_ERROR,
+ 					   "rmdir[ctrl_interface=%s]: %s",
+@@ -6399,10 +6402,11 @@ void hostapd_global_ctrl_iface_deinit(struct hapd_interfaces *interfaces)
  
- 	if (id == WMI_PDEV_PARAM_UNSUPPORTED) {
--		ath10k_warn(ar, "pdev param %d not supported by firmware\n",
--			    id);
-+		ath10k_dbg(ar, ATH10K_DBG_WMI,
-+			   "pdev param %d not supported by firmware\n", id);
- 		return ERR_PTR(-EOPNOTSUPP);
- 	}
+ 		if (interfaces->global_iface_path &&
+ 		    rmdir(interfaces->global_iface_path) < 0) {
+-			if (errno == ENOTEMPTY) {
+-				wpa_printf(MSG_DEBUG, "Control interface "
+-					   "directory not empty - leaving it "
+-					   "behind");
++			if (errno == ENOTEMPTY || errno == EACCES ||
++			    errno == EPERM) {
++				wpa_printf(MSG_DEBUG,
++					   "Control interface directory %s not removed (%s) - leaving it behind",
++					   interfaces->global_iface_path, strerror(errno));
+ 			} else {
+ 				wpa_printf(MSG_ERROR,
+ 					   "rmdir[ctrl_interface=%s]: %s",
+diff --git a/wpa_supplicant/ctrl_iface_unix.c b/wpa_supplicant/ctrl_iface_unix.c
+index 6f5991a..0fa6c88 100644
+--- a/wpa_supplicant/ctrl_iface_unix.c
++++ b/wpa_supplicant/ctrl_iface_unix.c
+@@ -890,10 +890,11 @@ void wpa_supplicant_ctrl_iface_deinit(struct wpa_supplicant *wpa_s,
+ 			dir = buf;
  
+ 		if (rmdir(dir) < 0) {
+-			if (errno == ENOTEMPTY) {
+-				wpa_printf(MSG_DEBUG, "Control interface "
+-					   "directory not empty - leaving it "
+-					   "behind");
++			if (errno == ENOTEMPTY || errno == EACCES ||
++			    errno == EPERM) {
++				wpa_printf(MSG_DEBUG,
++					   "Control interface directory %s not removed (%s) - leaving it behind",
++					   dir, strerror(errno));
+ 			} else {
+ 				wpa_printf(MSG_ERROR,
+ 					   "rmdir[ctrl_interface=%s]: %s",
 
 ---
-base-commit: a3ddbb45768717b5c9f923489387cf55c838d1ad
-change-id: 20261104-b4-ath10k-unsupported-pdev-param-4a1b9e3eb1fe
+base-commit: 412ff0d7f4d2b346df63be52c4201ee7ab0dc804
+change-id: 20261104-b136-ctrl-dir-permission-a757720c4150
 
 Best regards,
 --  
