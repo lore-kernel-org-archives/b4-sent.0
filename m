@@ -1,96 +1,66 @@
-From: Babis Danias <b.danias@tutamail.com>
-Date: Wed, 04 Nov 2026 11:42:49 +0200
-Subject: [PATCH 3/3] media: i2c: ov8856: Power off the sensor during system
- suspend
+From: Daejun Park <daejun7.park@samsung.com>
+Subject: [PATCH 0/2] mm: fix memcg_data reads during a THP split
+Date: Wed, 04 Nov 2026 18:59:07 +0900
+Message-Id: <20261104-kpagecgroup-split-v1-0-f70e947fec85@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-ov8856-pm-fixes-v1-3-1958b730ce66@tutamail.com>
-References: <20261104-ov8856-pm-fixes-v1-0-1958b730ce66@tutamail.com>
-In-Reply-To: <20261104-ov8856-pm-fixes-v1-0-1958b730ce66@tutamail.com>
-To: Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Serin Yeh <serin.yeh@intel.com>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Robert Foss <rfoss@kernel.org>, Hans de Goede <hansg@kernel.org>, 
- Bryan O'Donoghue <bod@kernel.org>, 
- Kieran Bingham <kieran.bingham@ideasonboard.com>, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Babis Danias <b.danias@tutamail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793785376; l=2806;
- i=b.danias@tutamail.com; s=20261103; h=from:subject:message-id;
- bh=D6TzCaSHwO5sxfGpSVeAfyeQYpOZbznZnsTWQvfOylA=;
- b=RaX+DSEFW0zQSOLC+4Irzx1Rw9oIY89rIlVs810BM1jeOii2AqSXcbpcaJcKLy6AviB3b1Sd5
- ItiBQ2Jm82EA5myR/D/Lq7D0r/+A5uGsqms2TaXMz1eXkbmzvbn04JC
-X-Developer-Key: i=b.danias@tutamail.com; a=ed25519;
- pk=6DWeigdk0D3JwBjwvmxo9RW8cG8S1Eku42cb9PP+ghk=
-X-Endpoint-Received: by B4 Relay for b.danias@tutamail.com/20261103 with auth_id=1406
+X-B4-Tracking: v=1; b=H4sIAOsB62oC/x3MQQqAIBRF0a3EHyeYRFlbiQZiL/sUJVoRSHtPG
+ p7BvYkiAiNSXyQKuDnysWdUZUF2MbuD4CmblFRNJZUWqzcO1oXj8iL6jU+hTVt3tgFUC8qdD5j
+ 5+Z/D+L4feHUaV2MAAAA=
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Tao Yi <escape@deepseek.com>, Johannes Weiner <hannes@cmpxchg.org>, 
+ Michal Hocko <mhocko@kernel.org>, Roman Gushchin <roman.gushchin@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
+ David Hildenbrand <david@kernel.org>, Zi Yan <ziy@nvidia.com>, 
+ Matthew Wilcox <willy@infradead.org>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, 
+ "Liam R. Howlett" <liam@infradead.org>, Nico Pache <nico.pache@linux.dev>, 
+ Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
+ Barry Song <baohua@kernel.org>, Lance Yang <lance.yang@linux.dev>, 
+ Usama Arif <usama.arif@linux.dev>, Kiryl Shutsemau <kas@kernel.org>, 
+ Vlastimil Babka <vbabka@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+ Brendan Jackman <brendan.jackman@linux.dev>, linux-mm@kvack.org, 
+ cgroups@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793786347; l=1142;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=y+BIdTbHzrH+8Uu1YnmKDz/Hk8zUyXmI5VDnrLuv9PY=;
+ b=0+otGc3rNezYaJu/zwXPPYuiIecNe6HZUqy7esh0CFuBqce5P1RDP0GxbRJvib69MJuiM1e+o
+ VoK4dvibbOeC6yGIvA864Y0zKn7FrlYCtd9M/sFikqiNwtBE7itbRNL
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On a Dell Latitude 7320 Detachable, the rear OV8856 stays powered for
-the whole of s2idle once the dw9714 VCM driver is bound, even with the
-camera idle. Tracing a 20 second suspend shows the sensor's clock and
-regulators enabled about 0.5 s after "PM: suspend entry", and disabled
-only just before "PM: suspend exit". Without the VCM driver bound, they
-stay off.
+Tao Yi reported an oops in page_cgroup_ino() while reading
+/proc/kpagecgroup and traced it to the THP split in an RFC [1]. The
+RFC skips frozen folios in the reader. Patch 1 moves the memcg_data
+copy in the split instead. Patch 2 orders the same loads in
+page_owner and needs patch 1.
 
-ipu-bridge links the VCM to the sensor with a runtime PM device link,
-which makes the sensor a supplier of the VCM. The dw9714 driver has
-system sleep callbacks, so the VCM can't use direct-complete, and
-dpm_clear_superiors_direct_complete() then clears direct_complete for
-the sensor as well. The sensor goes through the full system suspend
-path, where acpi_subsys_suspend() runtime-resumes it before calling the
-driver's suspend callback. But ov8856 has had no system sleep callbacks
-since commit 19ae6ba57f88 ("media: i2c: ov8856: Drop system suspend and
-resume handlers"), so nothing powers the sensor off again.
+Charged large kmalloc pages are frozen, so the RFC would report them
+as uncharged. My review of the RFC [2] got no reply. Tested on x86_64
+with KASAN, see patch 1.
 
-This matters since commit 609a71568664 ("media: i2c: ov8856 : remove
-ACPI node bypass mechanism") made the runtime PM callbacks control the
-sensor's power on ACPI systems.
+[1] https://lore.kernel.org/all/20260907124001.1544655-1-escape@deepseek.com/
+[2] https://lore.kernel.org/all/20261028040418epcms2p7ac0f584cdfdc6a0ea9b7f20eadeada3d@epcms2p7/
 
-Use DEFINE_RUNTIME_DEV_PM_OPS(), so that pm_runtime_force_suspend()
-powers the sensor off during system suspend, and
-pm_runtime_force_resume() powers it on again only if it was in use. With
-this, the sensor is off for the whole suspend. It is still powered up
-for a few milliseconds at suspend entry, by acpi_subsys_suspend().
-
-The problem was found, and this patch written, with the help of an AI
-coding assistant (Claude Opus 5.5). See the cover letter for details.
-
-Fixes: 609a71568664 ("media: i2c: ov8856 : remove ACPI node bypass mechanism")
-Cc: stable@vger.kernel.org
-Signed-off-by: Babis Danias <b.danias@tutamail.com>
 ---
- drivers/media/i2c/ov8856.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+Daejun Park (2):
+      mm/huge_memory: set memcg_data before a split page leaves the folio
+      mm/page_owner: also check PageTail before reading memcg_data
 
-diff --git a/drivers/media/i2c/ov8856.c b/drivers/media/i2c/ov8856.c
-index f9bcdd412..848e981ff 100644
---- a/drivers/media/i2c/ov8856.c
-+++ b/drivers/media/i2c/ov8856.c
-@@ -2462,9 +2462,8 @@ static int ov8856_probe(struct i2c_client *client)
- 	return ret;
- }
- 
--static const struct dev_pm_ops ov8856_pm_ops = {
--	SET_RUNTIME_PM_OPS(ov8856_power_off, ov8856_power_on, NULL)
--};
-+static DEFINE_RUNTIME_DEV_PM_OPS(ov8856_pm_ops, ov8856_power_off,
-+				 ov8856_power_on, NULL);
- 
- #ifdef CONFIG_ACPI
- static const struct acpi_device_id ov8856_acpi_ids[] = {
-@@ -2484,7 +2483,7 @@ MODULE_DEVICE_TABLE(of, ov8856_of_match);
- static struct i2c_driver ov8856_i2c_driver = {
- 	.driver = {
- 		.name = "ov8856",
--		.pm = &ov8856_pm_ops,
-+		.pm = pm_ptr(&ov8856_pm_ops),
- 		.acpi_match_table = ACPI_PTR(ov8856_acpi_ids),
- 		.of_match_table = ov8856_of_match,
- 	},
+ mm/huge_memory.c | 17 +++++++++++++----
+ mm/memcontrol.c  |  9 ++++++++-
+ mm/page_owner.c  |  7 +++++++
+ 3 files changed, 28 insertions(+), 5 deletions(-)
+---
+base-commit: a13b500946e5dc467976838572b8ddd2fd777ca7
+change-id: 20261028-kpagecgroup-split-8a749c6ee27e
 
+Best regards,
 -- 
-2.56.0
+Daejun Park <daejun7.park@samsung.com>
 
