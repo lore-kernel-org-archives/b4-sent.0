@@ -1,11 +1,11 @@
 From: Babis Danias <b.danias@tutamail.com>
-Date: Wed, 04 Nov 2026 11:42:48 +0200
-Subject: [PATCH 2/3] media: i2c: ov8856: Enable runtime PM before
- registering the sub-device
+Date: Wed, 04 Nov 2026 11:42:49 +0200
+Subject: [PATCH 3/3] media: i2c: ov8856: Power off the sensor during system
+ suspend
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-ov8856-pm-fixes-v1-2-1958b730ce66@tutamail.com>
+Message-Id: <20261104-ov8856-pm-fixes-v1-3-1958b730ce66@tutamail.com>
 References: <20261104-ov8856-pm-fixes-v1-0-1958b730ce66@tutamail.com>
 In-Reply-To: <20261104-ov8856-pm-fixes-v1-0-1958b730ce66@tutamail.com>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>
@@ -18,90 +18,78 @@ Cc: Mauro Carvalho Chehab <mchehab@kernel.org>,
  linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org, Babis Danias <b.danias@tutamail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793785376; l=3065;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793785376; l=2806;
  i=b.danias@tutamail.com; s=20261103; h=from:subject:message-id;
- bh=rio8Ofl7JAOdPxjbb0My+vg5aCRf/Neov9MPh8InP7c=;
- b=Xd/bDsiTeDb3b9wbUGceRefwIPGyKMVOY70n0EcT6npYcEB4o4gzVl2tdVCHgQfhDz7AlqE8k
- qZMAB9PuKe6A3PTqiKH9P7R9D+DIAsUePRfoplEwpDXrQOvqGAefh2j
+ bh=D6TzCaSHwO5sxfGpSVeAfyeQYpOZbznZnsTWQvfOylA=;
+ b=RaX+DSEFW0zQSOLC+4Irzx1Rw9oIY89rIlVs810BM1jeOii2AqSXcbpcaJcKLy6AviB3b1Sd5
+ ItiBQ2Jm82EA5myR/D/Lq7D0r/+A5uGsqms2TaXMz1eXkbmzvbn04JC
 X-Developer-Key: i=b.danias@tutamail.com; a=ed25519;
  pk=6DWeigdk0D3JwBjwvmxo9RW8cG8S1Eku42cb9PP+ghk=
 X-Endpoint-Received: by B4 Relay for b.danias@tutamail.com/20261103 with auth_id=1406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ov8856_probe() registers the async sub-device before it enables runtime
-PM. But the sub-device can be used as soon as it is registered. On ACPI
-systems where ipu-bridge instantiates a VCM for the sensor, the bridge's
-.bound() callback queues a work item that runtime-resumes the sensor.
-If the work runs before probe reaches pm_runtime_enable(),
-pm_runtime_get_sync() fails with -EACCES and the VCM is never created:
+On a Dell Latitude 7320 Detachable, the rear OV8856 stays powered for
+the whole of s2idle once the dw9714 VCM driver is bound, even with the
+camera idle. Tracing a 20 second suspend shows the sensor's clock and
+regulators enabled about 0.5 s after "PM: suspend entry", and disabled
+only just before "PM: suspend exit". Without the VCM driver bound, they
+stay off.
 
-  [  213.265894] ov8856 i2c-OVTI8856:00: Error -13 runtime-resuming sensor, cannot instantiate VCM
+ipu-bridge links the VCM to the sensor with a runtime PM device link,
+which makes the sensor a supplier of the VCM. The dw9714 driver has
+system sleep callbacks, so the VCM can't use direct-complete, and
+dpm_clear_superiors_direct_complete() then clears direct_complete for
+the sensor as well. The sensor goes through the full system suspend
+path, where acpi_subsys_suspend() runtime-resumes it before calling the
+driver's suspend callback. But ov8856 has had no system sleep callbacks
+since commit 19ae6ba57f88 ("media: i2c: ov8856: Drop system suspend and
+resume handlers"), so nothing powers the sensor off again.
 
-On a Dell Latitude 7320 Detachable this happened on every bind of the
-rear sensor after the IPU6 ISYS driver had probed, so the dw9714 focus
-motor never showed up. Documentation/driver-api/media/v4l2-subdev.rst
-asks drivers to enable runtime PM before registering the sub-device.
+This matters since commit 609a71568664 ("media: i2c: ov8856 : remove
+ACPI node bypass mechanism") made the runtime PM callbacks control the
+sensor's power on ACPI systems.
 
-Enable runtime PM first, and hold a usage reference until registration
-is done, so that the sensor can't be suspended halfway through. Drop the
-reference with pm_runtime_put(), which also lets the sensor suspend once
-probe is done, as the old pm_runtime_idle() call did. If registration
-fails, undo the runtime PM setup. The probe_error_media_entity_cleanup
-label then has no users left, so remove it.
+Use DEFINE_RUNTIME_DEV_PM_OPS(), so that pm_runtime_force_suspend()
+powers the sensor off during system suspend, and
+pm_runtime_force_resume() powers it on again only if it was in use. With
+this, the sensor is off for the whole suspend. It is still powered up
+for a few milliseconds at suspend entry, by acpi_subsys_suspend().
 
 The problem was found, and this patch written, with the help of an AI
 coding assistant (Claude Opus 5.5). See the cover letter for details.
 
-Fixes: 879347f0c258 ("media: ov8856: Add support for OV8856 sensor")
+Fixes: 609a71568664 ("media: i2c: ov8856 : remove ACPI node bypass mechanism")
 Cc: stable@vger.kernel.org
 Signed-off-by: Babis Danias <b.danias@tutamail.com>
 ---
- drivers/media/i2c/ov8856.c | 23 ++++++++++++++++-------
- 1 file changed, 16 insertions(+), 7 deletions(-)
+ drivers/media/i2c/ov8856.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/media/i2c/ov8856.c b/drivers/media/i2c/ov8856.c
-index 988ce0310..f9bcdd412 100644
+index f9bcdd412..848e981ff 100644
 --- a/drivers/media/i2c/ov8856.c
 +++ b/drivers/media/i2c/ov8856.c
-@@ -2425,22 +2425,31 @@ static int ov8856_probe(struct i2c_client *client)
- 		goto probe_error_v4l2_ctrl_handler_free;
- 	}
+@@ -2462,9 +2462,8 @@ static int ov8856_probe(struct i2c_client *client)
+ 	return ret;
+ }
  
-+	/* Set the device's state to active if it's in D0 state. */
-+	if (full_power)
-+		pm_runtime_set_active(ov8856->dev);
-+	/*
-+	 * The sub-device can be used as soon as it is registered, so enable
-+	 * runtime PM first, and hold a reference until registration is done.
-+	 */
-+	pm_runtime_get_noresume(ov8856->dev);
-+	pm_runtime_enable(ov8856->dev);
-+
- 	ret = v4l2_async_register_subdev_sensor(&ov8856->sd);
- 	if (ret < 0) {
- 		dev_err(ov8856->dev, "failed to register V4L2 subdev: %d",
- 			ret);
--		goto probe_error_media_entity_cleanup;
-+		goto probe_error_pm_runtime_disable;
- 	}
+-static const struct dev_pm_ops ov8856_pm_ops = {
+-	SET_RUNTIME_PM_OPS(ov8856_power_off, ov8856_power_on, NULL)
+-};
++static DEFINE_RUNTIME_DEV_PM_OPS(ov8856_pm_ops, ov8856_power_off,
++				 ov8856_power_on, NULL);
  
--	/* Set the device's state to active if it's in D0 state. */
--	if (full_power)
--		pm_runtime_set_active(ov8856->dev);
--	pm_runtime_enable(ov8856->dev);
--	pm_runtime_idle(ov8856->dev);
-+	pm_runtime_put(ov8856->dev);
- 
- 	return 0;
- 
--probe_error_media_entity_cleanup:
-+probe_error_pm_runtime_disable:
-+	pm_runtime_disable(ov8856->dev);
-+	pm_runtime_set_suspended(ov8856->dev);
-+	pm_runtime_put_noidle(ov8856->dev);
- 	media_entity_cleanup(&ov8856->sd.entity);
- 
- probe_error_v4l2_ctrl_handler_free:
+ #ifdef CONFIG_ACPI
+ static const struct acpi_device_id ov8856_acpi_ids[] = {
+@@ -2484,7 +2483,7 @@ MODULE_DEVICE_TABLE(of, ov8856_of_match);
+ static struct i2c_driver ov8856_i2c_driver = {
+ 	.driver = {
+ 		.name = "ov8856",
+-		.pm = &ov8856_pm_ops,
++		.pm = pm_ptr(&ov8856_pm_ops),
+ 		.acpi_match_table = ACPI_PTR(ov8856_acpi_ids),
+ 		.of_match_table = ov8856_of_match,
+ 	},
 
 -- 
 2.56.0
