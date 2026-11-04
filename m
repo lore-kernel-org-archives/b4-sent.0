@@ -1,11 +1,10 @@
 From: Nathan Lynch <nathan.lynch@amd.com>
-Date: Tue, 03 Nov 2026 20:49:58 -0600
-Subject: [PATCH v4 17/25] dmaengine: sdxi: Add unit tests for completion
- pool ownership
+Date: Tue, 03 Nov 2026 20:49:59 -0600
+Subject: [PATCH v4 18/25] dmaengine: sdxi: Add context submission helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-sdxi-base-v4-17-3668ccc7aab8@amd.com>
+Message-Id: <20261103-sdxi-base-v4-18-3668ccc7aab8@amd.com>
 References: <20261103-sdxi-base-v4-0-3668ccc7aab8@amd.com>
 In-Reply-To: <20261103-sdxi-base-v4-0-3668ccc7aab8@amd.com>
 To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
@@ -19,258 +18,240 @@ Cc: Bjorn Helgaas <bhelgaas@google.com>,
  dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-pci@vger.kernel.org, Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793760600; l=8791;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793760600; l=7115;
  i=nathan.lynch@amd.com; s=20260722; h=from:subject:message-id;
- bh=UKgpOPnxXxSWuJws2LmbCd9jOGUCzGSR66fffU0Lkh8=;
- b=3ti8GbL21v0aKqtG7r5c2WMxCq0oj9m6meVHSn8qVMixURCdGrM6NUkJzKiK3UFPkyLzs1MQL
- ThDGJXOPTD7CEysRpnVptq0ap2UijQJYwaaJMsaQNvr0RJ3yp6R6i/H
+ bh=D2VhE9T4zXLg/qsEzHpzFlwOhD/dwDNnB6nHgIPOxQE=;
+ b=2EVbzrZ386lHM3wjp6DCLqX3xLNDdDUuFYM/BnGRhLcTXdbVe+aR0xRzfDn0uufViE/LR2UGl
+ +U8qdvjUWcrDizt/xPbyCm5usEnIME/uPCz/fDwenUhliNP8/MotwHl
 X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
  pk=pO5+BCw/TENGLvwX5NYZOZmZihcxjkxeFSMuk47erps=
 X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20260722 with auth_id=891
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add hardware-independent KUnit coverage for completion-pool exhaustion
-across a bitmap word boundary, arbitrary release and reuse, reinitialization
-of reused status blocks. Verify that a claimed block remains unavailable
-until explicitly released, including after a simulated late device completion.
-Also cover release of an unpublished claim.
+Add sdxi_cxt_submit() to consolidate optional fence and completion-status
+block setup, valid-bit publication, and doorbell ringing. An optional
+struct sdxi_completion input identifies storage already claimed and
+initialized by the caller.
 
-Provide test allocation helpers and KUnit-only exports so the tests exercise
-the production claim and release paths without a coherent-DMA device.
+Introduce generic descriptor helpers for attaching completion storage,
+setting completion-status mode, fencing, and publishing the valid bit.
+Publishing orders prior descriptor writes before transferring ownership
+to hardware; the helpers warn if a caller attempts to modify an already
+valid descriptor.
 
+Provide sdxi_cxt_attach_cst() for attaching completion storage without
+publishing the descriptor, and sdxi_cxt_kick() for ringing a context
+doorbell.
+
+Co-developed-by: Wei Huang <wei.huang2@amd.com>
+Signed-off-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
- drivers/dma/sdxi/Makefile           |   1 +
- drivers/dma/sdxi/completion.c       |  37 ++++++++++
- drivers/dma/sdxi/completion.h       |   4 ++
- drivers/dma/sdxi/completion_kunit.c | 131 ++++++++++++++++++++++++++++++++++++
- 4 files changed, 173 insertions(+)
+ drivers/dma/sdxi/context.c    | 36 ++++++++++++++++++++++++
+ drivers/dma/sdxi/context.h    | 28 +++++++++++++++++++
+ drivers/dma/sdxi/descriptor.h | 64 +++++++++++++++++++++++++++++++++++++++++++
+ drivers/dma/sdxi/hw.h         | 10 +++++++
+ 4 files changed, 138 insertions(+)
 
-diff --git a/drivers/dma/sdxi/Makefile b/drivers/dma/sdxi/Makefile
-index eacad504a816..d12eebe03870 100644
---- a/drivers/dma/sdxi/Makefile
-+++ b/drivers/dma/sdxi/Makefile
-@@ -10,4 +10,5 @@ obj-$(CONFIG_SDXI_PCI) += sdxi-pci.o
- sdxi-pci-y := pci.o
+diff --git a/drivers/dma/sdxi/context.c b/drivers/dma/sdxi/context.c
+index 60cc812df204..679c5cfab19d 100644
+--- a/drivers/dma/sdxi/context.c
++++ b/drivers/dma/sdxi/context.c
+@@ -24,6 +24,7 @@
  
- obj-$(CONFIG_SDXI_KUNIT_TEST) += \
-+	completion_kunit.o    \
- 	ring_kunit.o
-diff --git a/drivers/dma/sdxi/completion.c b/drivers/dma/sdxi/completion.c
-index c07a0fc101c8..dacd1cac6303 100644
---- a/drivers/dma/sdxi/completion.c
-+++ b/drivers/dma/sdxi/completion.c
-@@ -4,6 +4,7 @@
-  *
-  * Copyright Advanced Micro Devices, Inc.
-  */
-+#include <kunit/visibility.h>
- #include <linux/bitfield.h>
- #include <linux/bitmap.h>
+ #include "completion.h"
+ #include "context.h"
++#include "descriptor.h"
+ #include "hw.h"
+ #include "ring.h"
+ #include "sdxi.h"
+@@ -362,3 +363,38 @@ void sdxi_client_cxts_exit(struct sdxi_dev *sdxi)
+ 		sdxi_free_cxt(cxt);
+ 	xa_destroy(&sdxi->client_cxts);
+ }
++
++/*
++ * Attach a claimed, initialized completion block to a descriptor slot.
++ * The descriptor is not published; the caller sets the valid bit (and
++ * kicks) once the operation is fully encoded.
++ */
++void sdxi_cxt_attach_cst(struct sdxi_slot slot,
++			 const struct sdxi_completion *comp)
++{
++	struct sdxi_desc *desc = sdxi_slot_desc(slot);
++
++	/*
++	 * We use simple (non-atomic) completion status mode only; set the
++	 * descriptor's CSR bit. See SDXI 1.0 4.4.2 Completion-Status Modes.
++	 */
++	sdxi_desc_set_csr(desc);
++	sdxi_desc_set_csb(desc, comp->cst_blk_dma);
++}
++
++void sdxi_cxt_submit(struct sdxi_cxt *cxt, struct sdxi_slot slot,
++		     const struct sdxi_completion *comp, enum sdxi_submit_flags flags)
++{
++	struct sdxi_desc *desc = sdxi_slot_desc(slot);
++
++	if (flags & SDXI_CXT_SUBMIT_FENCE)
++		sdxi_desc_set_fence(desc);
++
++	if (comp)
++		sdxi_cxt_attach_cst(slot, comp);
++
++	sdxi_desc_make_valid(desc);
++
++	if (flags & SDXI_CXT_SUBMIT_KICK)
++		sdxi_cxt_kick(cxt);
++}
+diff --git a/drivers/dma/sdxi/context.h b/drivers/dma/sdxi/context.h
+index 94e0fc45f281..f048e298f6de 100644
+--- a/drivers/dma/sdxi/context.h
++++ b/drivers/dma/sdxi/context.h
+@@ -9,10 +9,12 @@
+ #include <linux/array_size.h>
  #include <linux/dma-mapping.h>
-@@ -90,6 +91,7 @@ bool sdxi_cst_pool_get(struct sdxi_cst_pool *pool, struct sdxi_completion *comp)
- 	sdxi_cst_blk_init(comp->cst_blk);
- 	return true;
- }
-+EXPORT_SYMBOL_IF_KUNIT(sdxi_cst_pool_get);
+ #include <linux/idr.h>
++#include <linux/io.h>
+ #include <linux/string.h>
+ #include <linux/types.h>
  
- int sdxi_cst_pool_get_wait(struct sdxi_cst_pool *pool,
- 			 struct sdxi_completion *comp)
-@@ -116,7 +118,42 @@ void sdxi_cst_pool_put(struct sdxi_cst_pool *pool, struct sdxi_cst_blk *cst)
- 	spin_unlock_irqrestore(&pool->lock, flags);
- 	wake_up_all(&pool->wait);
- }
-+EXPORT_SYMBOL_IF_KUNIT(sdxi_cst_pool_put);
+ #include "hw.h"
++#include "ring.h"
+ #include "sdxi.h"
+ #include "submission.h"
  
-+#if IS_ENABLED(CONFIG_SDXI_KUNIT_TEST)
-+/* Exercise allocation without requiring a device capable of coherent DMA. */
-+struct sdxi_cst_pool *sdxi_cst_pool_test_create(unsigned int count)
-+{
-+	struct sdxi_cst_pool *pool;
+@@ -52,6 +54,16 @@ int sdxi_admin_cxt_init(struct sdxi_dev *sdxi);
+ struct sdxi_cxt *sdxi_cxt_new(struct sdxi_dev *sdxi);
+ void sdxi_client_cxts_exit(struct sdxi_dev *sdxi);
+ 
++enum sdxi_submit_flags {
++	SDXI_CXT_SUBMIT_KICK  = BIT(0),
++	SDXI_CXT_SUBMIT_FENCE = BIT(1),
++};
 +
-+	pool = kzalloc_obj(*pool, GFP_KERNEL);
-+	if (!pool)
-+		return NULL;
-+	pool->allocated = bitmap_zalloc(count, GFP_KERNEL);
-+	if (!pool->allocated) {
-+		kfree(pool);
-+		return NULL;
-+	}
-+	pool->blocks = kcalloc(count, sizeof(*pool->blocks), GFP_KERNEL);
-+	if (!pool->blocks) {
-+		bitmap_free(pool->allocated);
-+		kfree(pool);
-+		return NULL;
-+	}
-+	pool->dma = 0x1000;
-+	sdxi_cst_pool_init(pool, count);
-+	return pool;
-+}
-+EXPORT_SYMBOL_IF_KUNIT(sdxi_cst_pool_test_create);
++void sdxi_cxt_attach_cst(struct sdxi_slot slot,
++			 const struct sdxi_completion *comp);
++void sdxi_cxt_submit(struct sdxi_cxt *cxt, struct sdxi_slot slot,
++		     const struct sdxi_completion *comp, enum sdxi_submit_flags flags);
 +
-+void sdxi_cst_pool_test_destroy(struct sdxi_cst_pool *pool)
+ static inline struct sdxi_cxt *to_admin_cxt(const struct sdxi_cxt *cxt)
+ {
+ 	return cxt->sdxi->admin_cxt;
+@@ -62,6 +74,22 @@ static inline bool sdxi_cxt_is_admin(const struct sdxi_cxt *cxt)
+ 	return cxt == to_admin_cxt(cxt);
+ }
+ 
++static inline void sdxi_cxt_kick(struct sdxi_cxt *cxt)
 +{
-+	kfree(pool->blocks);
-+	bitmap_free(pool->allocated);
-+	kfree(pool);
++	/*
++	 * Ring the context's doorbell with its current write index.
++	 *
++	 * It's OK to locklessly sample the index for this purpose: it
++	 * monotonically increases and the implementation is required
++	 * to ignore out-of-order doorbell values (SDXI 1.0 5.2.1
++	 * Multi-Producer Enqueue).
++	 *
++	 * writeq() orders the descriptors' valid bits ahead of the
++	 * doorbell, so no explicit barrier is needed here.
++	 */
++	writeq(le64_to_cpu(READ_ONCE(cxt->sq->write_index)), cxt->sq->doorbell);
 +}
-+EXPORT_SYMBOL_IF_KUNIT(sdxi_cst_pool_test_destroy);
-+#endif
- 
- enum sdxi_completion_state sdxi_cst_blk_check(const struct sdxi_cst_blk *cst)
++
+ static inline struct sdxi_akey_ent *sdxi_alloc_akey(struct sdxi_cxt *cxt)
  {
-diff --git a/drivers/dma/sdxi/completion.h b/drivers/dma/sdxi/completion.h
-index f91f44b9b516..18c89701d1d6 100644
---- a/drivers/dma/sdxi/completion.h
-+++ b/drivers/dma/sdxi/completion.h
-@@ -34,6 +34,10 @@ int sdxi_cst_pool_get_wait(struct sdxi_cst_pool *pool,
- /* Release only after consumption, unpublished rollback, or hardware quiescence. */
- void sdxi_cst_pool_put(struct sdxi_cst_pool *pool, struct sdxi_cst_blk *cst);
- 
-+#if IS_ENABLED(CONFIG_SDXI_KUNIT_TEST)
-+struct sdxi_cst_pool *sdxi_cst_pool_test_create(unsigned int count);
-+void sdxi_cst_pool_test_destroy(struct sdxi_cst_pool *pool);
-+#endif
- 
- static inline void sdxi_cst_blk_init(struct sdxi_cst_blk *cst)
- {
-diff --git a/drivers/dma/sdxi/completion_kunit.c b/drivers/dma/sdxi/completion_kunit.c
+ 	unsigned int max = ARRAY_SIZE(cxt->akey_table->entry) - 1;
+diff --git a/drivers/dma/sdxi/descriptor.h b/drivers/dma/sdxi/descriptor.h
 new file mode 100644
-index 000000000000..326e3d84da0d
+index 000000000000..b19d5d329e43
 --- /dev/null
-+++ b/drivers/dma/sdxi/completion_kunit.c
-@@ -0,0 +1,131 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/* Copyright Advanced Micro Devices, Inc. */
-+#include <kunit/test.h>
-+#include <linux/module.h>
++++ b/drivers/dma/sdxi/descriptor.h
+@@ -0,0 +1,64 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#ifndef DMA_SDXI_DESCRIPTOR_H
++#define DMA_SDXI_DESCRIPTOR_H
 +
-+#include "completion.h"
++/*
++ * Facilities for encoding SDXI descriptors.
++ *
++ * Copyright Advanced Micro Devices, Inc.
++ */
 +
-+MODULE_IMPORT_NS("EXPORTED_FOR_KUNIT_TESTING");
++#include <linux/bitfield.h>
++#include <linux/ratelimit.h>
++#include <linux/types.h>
++#include <asm/byteorder.h>
 +
-+static void destroy_pool(void *pool)
++#include "hw.h"
++
++static inline void sdxi_desc_vl_expect(const struct sdxi_desc *desc, bool expected)
 +{
-+	sdxi_cst_pool_test_destroy(pool);
++	u8 vl = FIELD_GET(SDXI_DSC_VL, le32_to_cpu(desc->opcode));
++
++	WARN_RATELIMIT(vl != expected, "expected vl=%u but got %u\n", expected, vl);
 +}
 +
-+static struct sdxi_cst_pool *alloc_pool(struct kunit *test, unsigned int count)
++static inline void sdxi_desc_set_csb(struct sdxi_desc *desc, dma_addr_t addr)
 +{
-+	struct sdxi_cst_pool *pool = sdxi_cst_pool_test_create(count);
-+
-+	if (!pool || kunit_add_action_or_reset(test, destroy_pool, pool))
-+		return NULL;
-+	return pool;
++	sdxi_desc_vl_expect(desc, 0);
++	desc->csb_ptr = cpu_to_le64(FIELD_PREP(SDXI_DSC_CSB_PTR, addr >> 5));
 +}
 +
-+static void exhaustion(struct kunit *test)
++static inline void sdxi_desc_make_valid(struct sdxi_desc *desc)
 +{
-+	/* Cross a bitmap word boundary without filling the final word. */
-+	const unsigned int count = BITS_PER_LONG + 3;
-+	struct sdxi_completion *held, extra = {};
-+	struct sdxi_cst_pool *pool;
++	u32 opcode = le32_to_cpu(desc->opcode);
 +
-+	pool = alloc_pool(test, count);
-+	KUNIT_ASSERT_NOT_NULL(test, pool);
-+	held = kunit_kcalloc(test, count, sizeof(*held), GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, held);
-+	for (unsigned int i = 0; i < count; i++) {
-+		KUNIT_ASSERT_TRUE(test, sdxi_cst_pool_get(pool, &held[i]));
-+		KUNIT_EXPECT_EQ(test, held[i].cst_blk_dma % 32, 0);
-+		KUNIT_EXPECT_EQ(test, le64_to_cpu(held[i].cst_blk->signal),
-+				(u64)SDXI_CST_BLK_SIGNAL_INIT);
-+		for (unsigned int j = 0; j < i; j++) {
-+			KUNIT_EXPECT_PTR_NE(test, held[i].cst_blk, held[j].cst_blk);
-+			KUNIT_EXPECT_NE(test, held[i].cst_blk_dma, held[j].cst_blk_dma);
-+		}
-+	}
-+	KUNIT_EXPECT_FALSE(test, sdxi_cst_pool_get(pool, &extra));
-+	KUNIT_EXPECT_PTR_EQ(test, extra.cst_blk, NULL);
-+	for (unsigned int i = 0; i < count; i++)
-+		sdxi_cst_pool_put(pool, held[i].cst_blk);
++	sdxi_desc_vl_expect(desc, 0);
++	FIELD_MODIFY(SDXI_DSC_VL, &opcode, 1);
++	/*
++	 * Once vl is set, no more modifications to the descriptor
++	 * payload are allowed. Ensure the vl update is ordered after
++	 * all other initialization of the descriptor.
++	 */
++	dma_wmb();
++	WRITE_ONCE(desc->opcode, cpu_to_le32(opcode));
 +}
 +
-+static void arbitrary_release(struct kunit *test)
++static inline void sdxi_desc_set_fence(struct sdxi_desc *desc)
 +{
-+	struct sdxi_completion held[5], comp;
-+	struct sdxi_cst_pool *pool;
-+	const unsigned int order[] = { 3, 1, 4, 0, 2 };
++	u32 opcode = le32_to_cpu(desc->opcode);
 +
-+	pool = alloc_pool(test, ARRAY_SIZE(held));
-+	KUNIT_ASSERT_NOT_NULL(test, pool);
-+	for (unsigned int i = 0; i < ARRAY_SIZE(held); i++)
-+		KUNIT_ASSERT_TRUE(test, sdxi_cst_pool_get(pool, &held[i]));
-+
-+	/* A released block is reusable while all other owners retain theirs. */
-+	for (unsigned int i = 0; i < ARRAY_SIZE(order); i++) {
-+		unsigned int index = order[i];
-+
-+		sdxi_cst_pool_put(pool, held[index].cst_blk);
-+		KUNIT_ASSERT_TRUE(test, sdxi_cst_pool_get(pool, &comp));
-+		KUNIT_EXPECT_PTR_EQ(test, comp.cst_blk, held[index].cst_blk);
-+		KUNIT_EXPECT_EQ(test, comp.cst_blk_dma, held[index].cst_blk_dma);
-+		KUNIT_EXPECT_FALSE(test, sdxi_cst_pool_get(pool, &comp));
-+	}
-+	for (unsigned int i = 0; i < ARRAY_SIZE(held); i++)
-+		sdxi_cst_pool_put(pool, held[i].cst_blk);
++	sdxi_desc_vl_expect(desc, 0);
++	FIELD_MODIFY(SDXI_DSC_FE, &opcode, 1);
++	desc->opcode = cpu_to_le32(opcode);
 +}
 +
-+static void reuse_initializes_status(struct kunit *test)
++static inline void sdxi_desc_set_csr(struct sdxi_desc *desc)
 +{
-+	const struct sdxi_cst_blk initial = {
-+		.signal = cpu_to_le64(SDXI_CST_BLK_SIGNAL_INIT),
-+	};
-+	struct sdxi_completion first, second;
-+	struct sdxi_cst_pool *pool;
++	u32 opcode = le32_to_cpu(desc->opcode);
 +
-+	pool = alloc_pool(test, 1);
-+	KUNIT_ASSERT_NOT_NULL(test, pool);
-+	KUNIT_ASSERT_TRUE(test, sdxi_cst_pool_get(pool, &first));
-+	memset(first.cst_blk, 0xff, sizeof(*first.cst_blk));
-+	first.cst_blk->signal = cpu_to_le64(SDXI_CST_BLK_SIGNAL_TERMINAL);
-+	sdxi_cst_pool_put(pool, first.cst_blk);
-+	KUNIT_ASSERT_TRUE(test, sdxi_cst_pool_get(pool, &second));
-+	KUNIT_EXPECT_PTR_EQ(test, first.cst_blk, second.cst_blk);
-+	KUNIT_EXPECT_MEMEQ(test, second.cst_blk, &initial, sizeof(initial));
-+	sdxi_cst_pool_put(pool, second.cst_blk);
++	sdxi_desc_vl_expect(desc, 0);
++	FIELD_MODIFY(SDXI_DSC_CSR, &opcode, 1);
++	desc->opcode = cpu_to_le32(opcode);
 +}
 +
-+static void retained_completion(struct kunit *test)
-+{
-+	struct sdxi_completion timed_out, other;
-+	struct sdxi_cst_pool *pool;
++#endif /* DMA_SDXI_DESCRIPTOR_H */
+diff --git a/drivers/dma/sdxi/hw.h b/drivers/dma/sdxi/hw.h
+index c1bff631a5ae..edc43190148c 100644
+--- a/drivers/dma/sdxi/hw.h
++++ b/drivers/dma/sdxi/hw.h
+@@ -136,6 +136,16 @@ struct sdxi_desc {
+ 			__u8 operation[52];
+ 			__le64 csb_ptr;
+ 		);
 +
-+	pool = alloc_pool(test, 1);
-+	KUNIT_ASSERT_NOT_NULL(test, pool);
-+	KUNIT_ASSERT_TRUE(test, sdxi_cst_pool_get(pool, &timed_out));
-+	KUNIT_EXPECT_FALSE(test, sdxi_cst_pool_get(pool, &other));
-+	/* Even a late completion remains allocated until its owner releases it. */
-+	timed_out.cst_blk->signal = cpu_to_le64(SDXI_CST_BLK_SIGNAL_TERMINAL);
-+	KUNIT_EXPECT_FALSE(test, sdxi_cst_pool_get(pool, &other));
-+	sdxi_cst_pool_put(pool, timed_out.cst_blk);
-+	KUNIT_ASSERT_TRUE(test, sdxi_cst_pool_get(pool, &other));
-+	/* A never-published claim can be returned without a terminal signal. */
-+	sdxi_cst_pool_put(pool, other.cst_blk);
-+	KUNIT_ASSERT_TRUE(test, sdxi_cst_pool_get(pool, &other));
-+	sdxi_cst_pool_put(pool, other.cst_blk);
-+}
++/* For opcode field */
++#define SDXI_DSC_VL  BIT(0)
++#define SDXI_DSC_SE  BIT(1)
++#define SDXI_DSC_FE  BIT(2)
++#define SDXI_DSC_CSR BIT(4)
 +
-+static struct kunit_case completion_testcases[] = {
-+	KUNIT_CASE(exhaustion),
-+	KUNIT_CASE(arbitrary_release),
-+	KUNIT_CASE(reuse_initializes_status),
-+	KUNIT_CASE(retained_completion),
-+	{}
-+};
++/* For csb_ptr field */
++#define SDXI_DSC_CSB_PTR GENMASK_ULL(63, 5)
 +
-+static struct kunit_suite completion_tests = {
-+	.name = "SDXI completion pool",
-+	.test_cases = completion_testcases,
-+};
-+kunit_test_suite(completion_tests);
-+
-+MODULE_DESCRIPTION("SDXI completion pool tests");
-+MODULE_LICENSE("GPL");
+ 	};
+ } __packed __aligned(64);
+ static_assert(sizeof(struct sdxi_desc) == 64);
 
 -- 
 2.56.0
