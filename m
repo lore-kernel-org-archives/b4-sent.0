@@ -1,182 +1,82 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Thu, 05 Nov 2026 11:49:13 +0900
-Subject: [PATCH 2/2] xfs: skip the fsync flush when a later flush has
- completed
+From: Dave Airlie <airlied@redhat.com>
+Subject: [PATCH v4 0/2] nova-core: add initial support for gpu timer (v4)
+Date: Thu, 05 Nov 2026 13:07:00 +1000
+Message-Id: <20261105-nova-timer-v4-0-45a7c121d4de@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-xfs-fsync-flush-seq-v1-2-299bdf5e28c3@samsung.com>
-References: <20261105-xfs-fsync-flush-seq-v1-0-299bdf5e28c3@samsung.com>
-In-Reply-To: <20261105-xfs-fsync-flush-seq-v1-0-299bdf5e28c3@samsung.com>
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>, 
- "Darrick J. Wong" <djwong@kernel.org>, Amir Goldstein <amir73il@gmail.com>, 
- linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793846951; l=5190;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=CP7EIACxnvec5vGCIOS285YW810d9eW4b4Yw8xE5yJ0=;
- b=yCLjYvB4h1N4WikF8IL9ngx0V236OUzrUIe7C7Wl3iaYQoEQQF9sVeb/YT07vIjb60JRlMDoY
- aDYX3acWrSECc1M14Zd7VntKsIBIRHaeEfdw/FQcZOSWxKPI5kz0dAd
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23MSw6CMBSF4a2QO7amr4A4ch/GQUtv5Q6gpm0aD
+ WHvFkaSODwn+f4FEkbCBNdmgYiFEoW5Dn1qYBjN/ERGrm6QXLZCcMnmUAzLNGFkXtveoZKdNgI
+ qeEX09N5j90fdI6Uc4mdvF7G9fzNFMM6s0h0a12rd9reIbjT5PIQJtk5Rv1YdrKqWD7631uDFu
+ 6Nd1/ULOc7xM+EAAAA=
+X-Change-ID: 20261102-nova-timer-f4b9de3274a1
+To: Andreas Hindborg <a.hindborg@kernel.org>, 
+ FUJITA Tomonori <fujita.tomonori@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Alexandre Courbot <acourbot@nvidia.com>
+Cc: nova-gpu@lists.linux.dev, dri-devel@lists.freedesktop.org, 
+ Dave Airlie <airlied@redhat.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1607; i=airlied@redhat.com;
+ h=from:subject:message-id; bh=gmzSh2vYZ5T/6/GkbD9fkp9oFKW0guaRJJHQCAjtZMI=;
+ b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBq6/Ldh79zNkPvkT9lxN+SDhjUzWUJLw0mA2eso
+ OTyMjfAqU+JAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCauvy3QAKCRAMdPNZecSG
+ vlHvEACOX7OQGTHa/HXbcHfQeXhUh9ugawpcZnUOroGXIfdKcIyEiXEd/Xt1YC7QYNvHJlO+jsO
+ lyEkikNb4YiKAtHHakVagbECLnrEwBlFCYScN1if79AdMptzucYoX0hyYeanPlLhyccEk/UkPwR
+ Pqmi83O+M+iyw/6xH5PG5gZKecCZcrgyl+PNrCjyE5W6cfMVTXkTgM6c5rXThFUuNdtSTSCrYMz
+ 4BeeGAk8MWa5QutxXEbUYIrYFZk8ou17vxebG0ix5WwjNXI1VxluI1u+XWoCZnZsI/Sx5cPUSjb
+ BWIMhKs1UpmzF7d/to/vsGIdNMh77wMfJ2jOiPrpMAjPM8mpcjc5dLxQEchuIVf3VAePUDcsQ9Q
+ StTPHSenra6m4BhUYYr5PcXT4lmkgkxIufkTMPBhx9EcnBvpFdLcYTL8W7t8H8j6e6L3jb/+JkX
+ h1DxaochVusW8Ya0vurPl2BJ1KJG8n/z/q1ooguurRfRCwt7vjzoXQ+yS1+AkwAgndTMZ8rKH8n
+ /gvW4c5xanvg0qEkkxaenshbDuafefscnMuiIlKeQ+6IH+hPPjGHwFtKF40aoJvYH7ceSyrD+u+
+ YGjxoiA6joscR1Zq78hZOcvpTWlAM/2WGlCsgldSYMc+pHBPIM9CWrD6pZrfLEXlI1GJ/oUXXun
+ w8uSVXEAVru/RNw==
+X-Developer-Key: i=airlied@redhat.com; a=openpgp;
+ fpr=10A6D91DA1B05BD29F6DEBAC0C74F35979C486BE
+X-Endpoint-Received: by B4 Relay for airlied@redhat.com/default with auth_id=1321
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 47c7d0b19502 ("xfs: fix incorrect log_flushed on
-fsync"), fsync sends its own cache flush whenever another task wrote
-out the iclog it waited for. With concurrent fsyncs, these flushes can
-limit throughput.
+The GPU has a timer, one of the pieces of information
+we need to pass into GSP init later is the timer offset.
+    
+This series just adds support for setting up the timer
+on Turing+, with hals for Turing and Hopper.
+    
+Right now it calculates the value to send to GSP but
+the code to send it will be added later.
+    
+For some hardware variants sending a proper value
+is required for GSP init to succeed.
 
-Skip the flush when a flush submitted after the data writes completed
-has finished. Number the fsync's own flush too, so that concurrent
-fsyncs can share it. DAX does not use the new skip, because DAX writes
-do not go through block I/O.
-
-Suggested-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+Signed-off-by: Dave Airlie <airlied@redhat.com>
 ---
-16 fio jobs of 4k append + fsync, QEMU guest on a 990 PRO without
-power loss protection (virtio-blk, cache=none): 809 -> 4185 fsyncs/s,
-mean fsync latency 19.8 -> 3.8 ms.
+Changes in v4:
+- reworked register handling
+- used a timerstate.
+- Link to v3: https://lore.kernel.org/r/20261103-nova-timer-v3-0-0cf9bbae8fd9@redhat.com
 
-dm-log-writes with 8 fsync writers: no fsync-ed block was lost in 528
-replays, while at least 33257 of 48048 fsyncs skipped their flush
-through the new check. Taking the snapshot before the writeback loses
-15 of 528. The test needs "dm-log-writes: log earlier flushes' writes
-when a later flush completes", sent to dm-devel.
 ---
- fs/xfs/xfs_buf.c  | 26 ++++++++++++++++++++++++++
- fs/xfs/xfs_buf.h  | 19 +++++++++++++++++++
- fs/xfs/xfs_file.c | 21 +++++++++++++++------
- 3 files changed, 60 insertions(+), 6 deletions(-)
+Dave Airlie (2):
+      rust: time: expose as_nanos for clock sources.
+      gpu: nova-core: add support for GPU timer block. (v4)
 
-diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-index 9025b177931..6b545d79a41 100644
---- a/fs/xfs/xfs_buf.c
-+++ b/fs/xfs/xfs_buf.c
-@@ -1785,6 +1785,32 @@ xfs_buftarg_flush_done(
- 		;
- }
- 
-+/*
-+ * Return true if a flush numbered above @seq has completed. All writes that
-+ * completed before @seq was read are then on stable storage.
-+ */
-+bool
-+xfs_buftarg_flushed_since(
-+	struct xfs_buftarg	*btp,
-+	s64			seq)
-+{
-+	return atomic64_read(&btp->bt_flush_completed) > seq;
-+}
-+
-+/* Flush the device cache and record it. */
-+int
-+xfs_buftarg_flush(
-+	struct xfs_buftarg	*btp)
-+{
-+	s64			seq = xfs_buftarg_flush_start(btp);
-+	int			error;
-+
-+	error = blkdev_issue_flush(btp->bt_bdev);
-+	if (!error)
-+		xfs_buftarg_flush_done(btp, seq);
-+	return error;
-+}
-+
- struct xfs_buftarg *
- xfs_alloc_buftarg(
- 	struct xfs_mount	*mp,
-diff --git a/fs/xfs/xfs_buf.h b/fs/xfs/xfs_buf.h
-index e8ca4452025..0f48ee6d3f2 100644
---- a/fs/xfs/xfs_buf.h
-+++ b/fs/xfs/xfs_buf.h
-@@ -368,6 +368,23 @@ struct xfs_buftarg *xfs_alloc_buftarg(struct xfs_mount *mp,
- 		struct file *bdev_file);
- extern void xfs_free_buftarg(struct xfs_buftarg *);
- 
-+/*
-+ * Call after the writes that a flush must cover have completed, and pass the
-+ * result to xfs_buftarg_flushed_since().
-+ */
-+static inline s64
-+xfs_buftarg_flush_seq(
-+	struct xfs_buftarg	*btp)
-+{
-+	/*
-+	 * Order the read after the write completions the caller waited for.
-+	 * Pairs with the fully ordered atomic64_inc_return() that
-+	 * xfs_buftarg_flush_start() does before the flush is submitted.
-+	 */
-+	smp_mb();
-+	return atomic64_read(&btp->bt_flush_submitted);
-+}
-+
- /* Call right before submitting a cache flush to @btp. */
- static inline s64
- xfs_buftarg_flush_start(
-@@ -377,6 +394,8 @@ xfs_buftarg_flush_start(
- }
- 
- void xfs_buftarg_flush_done(struct xfs_buftarg *btp, s64 seq);
-+bool xfs_buftarg_flushed_since(struct xfs_buftarg *btp, s64 seq);
-+int xfs_buftarg_flush(struct xfs_buftarg *btp);
- extern void xfs_buftarg_wait(struct xfs_buftarg *);
- extern void xfs_buftarg_drain(struct xfs_buftarg *);
- int xfs_configure_buftarg(struct xfs_buftarg *btp, unsigned int sectorsize,
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 396aca8c66a..a98361e9ead 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -87,7 +87,9 @@ xfs_file_fsync(
- 	int			datasync)
- {
- 	struct xfs_inode	*ip = XFS_I(file->f_mapping->host);
-+	struct xfs_buftarg	*btp = xfs_inode_buftarg(ip);
- 	int			log_flushed = 0;
-+	s64			flush_seq;
- 	int			error;
- 
- 	trace_xfs_file_fsync(ip);
-@@ -95,6 +97,7 @@ xfs_file_fsync(
- 	error = file_write_and_wait_range(file, start, end);
- 	if (error)
- 		return error;
-+	flush_seq = xfs_buftarg_flush_seq(btp);
- 
- 	if (xfs_is_shutdown(ip->i_mount))
- 		return -EIO;
-@@ -115,16 +118,22 @@ xfs_file_fsync(
- 	}
- 
- 	/*
--	 * If the log force was a no-op, we may still need to flush the
--	 * file data target cache here. This can happen for fdatasync/O_DSYNC
--	 * when no metadata needed to be committed.
-+	 * Flush the file data target unless a flush submitted to it after the
-+	 * data writes above completed has already finished. That is usually
-+	 * the flush before an iclog written out by this log force or by
-+	 * another task, or another fsync's flush.
-+	 *
-+	 * DAX writes are CPU stores, not block I/O, and the check above
-+	 * relies on REQ_PREFLUSH covering completed block I/O. So DAX only
-+	 * skips the flush when this log force flushed, as before.
- 	 *
- 	 * Use the inode's actual file data target rather than assuming the
- 	 * main data device.
- 	 */
--	if (!log_flushed)
--		return blkdev_issue_flush(xfs_inode_buftarg(ip)->bt_bdev);
--	return 0;
-+	if (log_flushed ||
-+	    (!IS_DAX(VFS_I(ip)) && xfs_buftarg_flushed_since(btp, flush_seq)))
-+		return 0;
-+	return xfs_buftarg_flush(btp);
- }
- 
- static int
+ drivers/gpu/nova-core/fsp.rs             |  5 +-
+ drivers/gpu/nova-core/fsp/regs.rs        | 30 ++++++++++++
+ drivers/gpu/nova-core/gpu.rs             |  8 ++++
+ drivers/gpu/nova-core/nova_core.rs       |  1 +
+ drivers/gpu/nova-core/timer.rs           | 33 +++++++++++++
+ drivers/gpu/nova-core/timer/hal.rs       | 27 +++++++++++
+ drivers/gpu/nova-core/timer/hal/gh100.rs | 79 ++++++++++++++++++++++++++++++
+ drivers/gpu/nova-core/timer/hal/tu102.rs | 53 +++++++++++++++++++++
+ drivers/gpu/nova-core/timer/regs.rs      | 82 ++++++++++++++++++++++++++++++++
+ rust/kernel/time.rs                      |  3 +-
+ 10 files changed, 318 insertions(+), 3 deletions(-)
+---
+base-commit: 3497a403264b094ebd61b8b755165d56e7d9dc37
+change-id: 20261102-nova-timer-f4b9de3274a1
 
+Best regards,
 -- 
-2.43.0
+Dave Airlie <airlied@redhat.com>
 
