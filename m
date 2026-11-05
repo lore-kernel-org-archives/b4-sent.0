@@ -1,83 +1,82 @@
-From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Thu, 05 Nov 2026 12:12:23 -0600
-Subject: [PATCH 2/2] wifi: ath12k: don't leave a monitor link started when
- its stop fails
+From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
+Date: Thu, 05 Nov 2026 13:14:05 -0600
+Subject: [PATCH v4] doc: process: clarify scope of applying-patches as
+ legacy reference
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-ath-monitor-unassign-v1-2-277f0fbadb91@gmail.com>
-References: <20261105-ath-monitor-unassign-v1-0-277f0fbadb91@gmail.com>
-In-Reply-To: <20261105-ath-monitor-unassign-v1-0-277f0fbadb91@gmail.com>
-To: Jeff Johnson <jjohnson@kernel.org>, 
- Vasanthakumar Thiagarajan <vasanthakumar.thiagarajan@oss.qualcomm.com>, 
- Jouni Malinen <quic_jouni@quicinc.com>, Kalle Valo <kvalo@kernel.org>, 
- P Praneesh <quic_ppranees@quicinc.com>, 
- Ramya Gnanasekar <quic_rgnanase@quicinc.com>, 
- Wen Gong <quic_wgong@quicinc.com>, 
- Karthikeyan Periyasamy <quic_periyasa@quicinc.com>
-Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
- linux-kernel@vger.kernel.org, 
- Baochen Qiang <baochen.qiang@oss.qualcomm.com>, 
- Pradeep Kumar Chitrapu <quic_pradeepc@quicinc.com>, 
- ath12k@lists.infradead.org, 
- Christopher Griffin <christophergriffin05@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793902344; l=1783;
- i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=yJliLnA52UPk6OOcZziqgLXylvHUHFJud+o6Dahzovo=;
- b=RtI+6f08VIMKSgrwalriN0ZtZkc2Iu2Qe8TRHTrgj/6k40N7JIbH5s21SSzcD4HAbUzPEHa4p
- VaHljDdHCQgAdHgfZS9xoqenVGZJOZd07I55M5njTRLZWP7jChamzqJ
-X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
- pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
-X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261105-doc-patch-fix-v4-1-3eb49e363f64@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33MSwqDMBSF4a1Ixk3JzUNrR91H6UBvbjRQjaiEF
+ nHvjY5KoQ7Pge9f2ESjp4lds4WNFP3kQ5+GPmUM26pviHubNpNC5gBCcxuQD9WMLXf+xYXUQDV
+ RKY1myQwjpXvv3R9pt36aw/je8xG2918pAgeeQ4F16TRaXdyarvLPM4aObaUoD7VMWuUCHCqDR
+ phfrQ61StoVgHixZAtbfut1XT+8xyF6JgEAAA==
+X-Change-ID: 20261104-doc-patch-fix-0241ebee9254
+To: Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, aleszlucero@gmail.com
+Cc: workflows@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793906058; l=2347;
+ i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
+ bh=uXAeXMYJHBZaq18If5t37B8wZb2wghKi5aFBALJmnDg=;
+ b=khlWhtgm3JIArww2rBqs4kYMf3N+eC2YdcxDXdzbYFWUnNfeTTQyzy1t2hsgJBvRo1GCKxf/v
+ dsCfLkNF+lxBh4wxMs4RfXEp8j7W1aFBbPcZfL18pwyTeNb48bsR6Ia
+X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
+ pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
+X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ath12k_mac_op_unassign_vif_chanctx() returns early, with
-arvif->is_started still set, when ath12k_mac_monitor_stop() fails.
-mac80211 can't fail an unassignment and considers the channel context
-released, so the link's next assignment hits WARN_ON(arvif->is_started)
-in ath12k_mac_op_assign_vif_chanctx() and fails with -EBUSY. A firmware
-crash during a monitor channel change is enough: the vdev stop times
-out.
+The applying-patches.rst document describes the manual manipulation of
+source trees using the traditional 'patch' and 'diff' utilities. While
+technically accurate for non-Git or constrained environments, it can
+create friction for new contributors seeking the primary Git-based
+workflows.
 
-ath11k has the same flow and shows the warning that way on a QCN9074.
+Update the opening note to explicitly state that this document serves
+as a reference for legacy or constrained workflows. Provide a direct
+cross-reference to howto.rst to steer contributors toward the standard
+Git infrastructure.
 
-Fall through to the common path, which clears is_started.
-ath12k_mac_monitor_stop() already warns on failure.
-
-Compile-tested only.
-
-Fixes: d889913205cf ("wifi: ath12k: driver for Qualcomm Wi-Fi 7 devices")
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
+Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 ---
- drivers/net/wireless/ath/ath12k/mac.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+Update the applying-patches.rst document to clarify that it serves as a
+reference for legacy or constrained workflows where Git infrastructure
+is unavailable, redirecting new contributors to standard Git-based tools.
+---
+Changes in v4:
+- Restored missing blank line, cleaned template markers, dropped duplicated alias, and updated links across versions v1 to v4.
+---
+ Documentation/process/applying-patches.rst | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
-index 9fd3841f71b71..7d04f16f99e37 100644
---- a/drivers/net/wireless/ath/ath12k/mac.c
-+++ b/drivers/net/wireless/ath/ath12k/mac.c
-@@ -12422,13 +12422,11 @@ ath12k_mac_op_unassign_vif_chanctx(struct ieee80211_hw *hw,
+diff --git a/Documentation/process/applying-patches.rst b/Documentation/process/applying-patches.rst
+index c269f5e1a0a3..70142c8ec9a3 100644
+--- a/Documentation/process/applying-patches.rst
++++ b/Documentation/process/applying-patches.rst
+@@ -8,8 +8,14 @@ Original by:
  
- 	WARN_ON(!arvif->is_started);
+ .. note::
  
--	if (ahvif->vdev_type == WMI_VDEV_TYPE_MONITOR) {
--		ret = ath12k_mac_monitor_stop(ar);
--		if (ret)
--			return;
--
--		arvif->is_started = false;
--	}
-+	/* mac80211 can't fail an unassignment, so the link counts as stopped
-+	 * below even if the monitor stop fails (that warns on its own).
-+	 */
-+	if (ahvif->vdev_type == WMI_VDEV_TYPE_MONITOR)
-+		ath12k_mac_monitor_stop(ar);
+-   This document is obsolete.  In most cases, rather than using ``patch``
+-   manually, you'll almost certainly want to look at using Git instead.
++   This document focuses on the legacy method of manually manipulating source 
++   trees using the traditional ``patch`` and ``diff`` utilities. 
++
++   For the standard Git-based workflow used to clone the repository and work 
++   with kernel patches, please refer to Documentation/process/howto.rst.
++
++   The information below is maintained as a reference for constrained 
++   environments or legacy workflows where Git infrastructure is unavailable.
  
- 	if (ahvif->vdev_type != WMI_VDEV_TYPE_STA &&
- 	    ahvif->vdev_type != WMI_VDEV_TYPE_MONITOR) {
+ A frequently asked question on the Linux Kernel Mailing List is how to apply
+ a patch to the kernel or, more specifically, what base kernel a patch for
 
+---
+base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
+change-id: 20261104-doc-patch-fix-0241ebee9254
+
+Best regards,
 -- 
-2.43.0
+Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 
