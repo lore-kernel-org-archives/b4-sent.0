@@ -1,10 +1,10 @@
 From: Rajan Yadav <rajanyadav0307@gmail.com>
-Date: Wed, 04 Nov 2026 22:40:56 -0600
-Subject: [PATCH 1/6] dt-bindings: opp: h6: Add A133 operating points
+Date: Wed, 04 Nov 2026 22:40:57 -0600
+Subject: [PATCH 2/6] cpufreq: sun50i: Move nvmem cell reading into a helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-a133-series-v1-1-58217cb33a87@gmail.com>
+Message-Id: <20261104-a133-series-v1-2-58217cb33a87@gmail.com>
 References: <20261104-a133-series-v1-0-58217cb33a87@gmail.com>
 In-Reply-To: <20261104-a133-series-v1-0-58217cb33a87@gmail.com>
 To: Yangtao Li <tiny.windzz@gmail.com>, Viresh Kumar <vireshk@kernel.org>, 
@@ -19,176 +19,123 @@ To: Yangtao Li <tiny.windzz@gmail.com>, Viresh Kumar <vireshk@kernel.org>,
 Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
  linux-kernel@vger.kernel.org, Cody Eksal <masterr3c0rd@epochal.quest>, 
- Alexander Sverdlin <alex@sverdlin.org>, 
+ Alexander Sverdlin <alex@sverdlin.org>, kernel test robot <lkp@intel.com>, 
  Rajan Yadav <rajanyadav0307@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793853656; l=6403;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793853656; l=3211;
  i=rajanyadav0307@gmail.com; s=20261103; h=from:subject:message-id;
- bh=X/G3DksgzJ+i3rQed4wwbAo4p4D1KALjHDwiLrfYOcU=;
- b=XbeYqKPsgFqj7vO1t315STSTeX5BuZ63YmtmxA7auWASLJShZKufJ6TogzfwvDNE9Ys1QZWfK
- IQI/YWY6ku2DD49oMXg83kCPHqAhaleIMU/unjfq3UnQLirUoJHkj/t
+ bh=jug1cYQuSv5vtD26KyGAcWUzxwXZeSilBxENXC4nAHg=;
+ b=k0dIIHjmW7+QmHhHfNI7sv6p4fN6fPT5z/URspyr/6RQHO8f1lmPqeO5DKL27skarbEWmIzqG
+ dyveJDl+NJ4BHE0MldP9sop/vfM5Jg6T/yKTwlavNrJkql/F2zTG5q/
 X-Developer-Key: i=rajanyadav0307@gmail.com; a=ed25519;
  pk=4ZPeiP5qrv2b44q/Obxi2koUS70Q6npbttJnpUoTlgg=
 X-Endpoint-Received: by B4 Relay for rajanyadav0307@gmail.com/20261103 with auth_id=1391
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The vendor BSP for the A100/A133 family (sun50iw10) selects the CPU
-speed grade from four efuse fields and the die revision: the speed bin
-(SID offset 0x1c, which also holds the ICPU current), the chip marking
-ID (0x00), a value programmed at production that the BSP calls PCPU
-(0x20) and a bin extension bit (0x28). It knows 11 grades, a0-a6 and
-b0-b3. The A100 operating points describe only three speed bins, taken
-from 0x1c.
+The A133 speed grade needs several efuse cells, but the cell reading
+is open coded in sun50i_cpufreq_get_efuse() for a single cell. Move it
+into sun50i_cpufreq_read_cell(), which takes the cell name, so the next
+patch can read the A133 cells by name.
 
-Add allwinner,sun50i-a133-operating-points for this. In its tables the
-N of opp-microvolt-speedN is the vendor grade: 0-5 are a0-a5 (a6 has
-the same OPPs and voltages as a5) and 6-9 are b0-b3. The four cells are
-named, with the speed bin first. The meaning of the PCPU field is not
-documented; the name follows the vendor BSP.
+No functional change: the existing users read the first cell, as
+before, with the same length check, byte order and error message. The
+raw bytes are now held in a __le32, the type le32_to_cpu() expects,
+which also removes the sparse warning "cast to restricted __le32" that
+the kernel test robot reported.
 
-Indices 0-2 are the vendor grades a0-a2, which have the voltages of the
-three A100 speed bins. So allwinner,sun50i-a100-operating-points is a
-valid fallback: software that knows only the A100 compatible reads the
-first cell, selects one of speed0-2 with the A100 rule and gets the
-OPPs and voltages of the A100 table today, with 1008 instead of
-1080 MHz. That is the A100 selection, not the vendor's; the new
-compatible adds the vendor's. The binding requires indices 0-2 to stay
-usable this way.
+Claude Code (Anthropic) drafted this refactor and its message; I
+reviewed and tested it.
 
-The new compatible is SoC specific, like the root compatible
-allwinner,sun50i-a133; the A100 compatible stays as it is for existing
-DTBs. The schema now also limits the other compatibles to the single
-unnamed cell that all in-tree users have.
-
-Claude Code (Anthropic) drafted this change and its message from the
-vendor BSP sources (field layout and numbers only, no code copied); I
-reviewed it and checked it with dt_binding_check and dtbs_check.
-
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202603021703.aBD0w99y-lkp@intel.com/
 Signed-off-by: Rajan Yadav <rajanyadav0307@gmail.com>
 ---
- .../opp/allwinner,sun50i-h6-operating-points.yaml  | 94 ++++++++++++++++++++--
- 1 file changed, 86 insertions(+), 8 deletions(-)
+ drivers/cpufreq/sun50i-cpufreq-nvmem.c | 55 ++++++++++++++++++++--------------
+ 1 file changed, 33 insertions(+), 22 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/opp/allwinner,sun50i-h6-operating-points.yaml b/Documentation/devicetree/bindings/opp/allwinner,sun50i-h6-operating-points.yaml
-index 75ab552f6ec..5fa6a1074da 100644
---- a/Documentation/devicetree/bindings/opp/allwinner,sun50i-h6-operating-points.yaml
-+++ b/Documentation/devicetree/bindings/opp/allwinner,sun50i-h6-operating-points.yaml
-@@ -16,24 +16,70 @@ description: |
-   Voltage Scaling Tables define the voltage and frequency values based
-   on the speedbin blown in the efuse combination.
+diff --git a/drivers/cpufreq/sun50i-cpufreq-nvmem.c b/drivers/cpufreq/sun50i-cpufreq-nvmem.c
+index 9261d148a16..34c0897c22c 100644
+--- a/drivers/cpufreq/sun50i-cpufreq-nvmem.c
++++ b/drivers/cpufreq/sun50i-cpufreq-nvmem.c
+@@ -31,6 +31,34 @@ struct sunxi_cpufreq_data {
+ 	u32 (*efuse_xlate)(u32 speedbin);
+ };
  
-+  With allwinner,sun50i-a133-operating-points, the speed bin index N of
-+  opp-microvolt-speedN and opp-supported-hw is the speed grade of the
-+  Allwinner BSP: 0-5 are a0-a5 (a6 uses the a5 values) and 6-9 are b0-b3.
-+  Indices 0-2 must be usable as the A100 speed bins 0-2, because software
-+  using the A100 fallback compatible selects only these.
++static int sun50i_cpufreq_read_cell(struct device *cpu_dev,
++				    struct device_node *np, const char *id,
++				    u32 *value)
++{
++	struct nvmem_cell *cell;
++	void *buf;
++	size_t len;
++	__le32 tmp = 0;
 +
- allOf:
-   - $ref: opp-v2-base.yaml#
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: allwinner,sun50i-a133-operating-points
-+    then:
-+      properties:
-+        nvmem-cells:
-+          minItems: 4
-+      required:
-+        - nvmem-cell-names
-+    else:
-+      properties:
-+        nvmem-cells:
-+          maxItems: 1
-+        nvmem-cell-names: false
++	cell = of_nvmem_cell_get(np, id);
++	if (IS_ERR(cell))
++		return dev_err_probe(cpu_dev, PTR_ERR(cell),
++				     "Could not get nvmem cell\n");
++
++	buf = nvmem_cell_read(cell, &len);
++	nvmem_cell_put(cell);
++	if (IS_ERR(buf))
++		return PTR_ERR(buf);
++
++	if (len <= 4)
++		memcpy(&tmp, buf, len);
++	*value = le32_to_cpu(tmp);
++
++	kfree(buf);
++
++	return 0;
++}
++
+ static u32 sun50i_h6_efuse_xlate(u32 speedbin)
+ {
+ 	u32 efuse_value;
+@@ -191,12 +219,9 @@ static bool dt_has_supported_hw(void)
+ static int sun50i_cpufreq_get_efuse(void)
+ {
+ 	const struct sunxi_cpufreq_data *opp_data;
+-	struct nvmem_cell *speedbin_nvmem;
+ 	const struct of_device_id *match;
+ 	struct device *cpu_dev;
+-	void *speedbin_ptr;
+-	u32 speedbin = 0;
+-	size_t len;
++	u32 speedbin;
+ 	int ret;
  
- properties:
-   compatible:
--    enum:
--      - allwinner,sun50i-a100-operating-points
--      - allwinner,sun50i-h6-operating-points
--      - allwinner,sun50i-h616-operating-points
-+    oneOf:
-+      - enum:
-+          - allwinner,sun50i-a100-operating-points
-+          - allwinner,sun50i-h6-operating-points
-+          - allwinner,sun50i-h616-operating-points
-+      - items:
-+          - const: allwinner,sun50i-a133-operating-points
-+          - const: allwinner,sun50i-a100-operating-points
+ 	cpu_dev = get_cpu_device(0);
+@@ -214,25 +239,11 @@ static int sun50i_cpufreq_get_efuse(void)
  
-   nvmem-cells:
-     description: |
--      A phandle pointing to a nvmem-cells node representing the efuse
--      register that has information about the speedbin that is used
--      to select the right frequency/voltage value pair. Please refer
--      to the nvmem-cells bindings in
-+      Phandles pointing to nvmem-cells nodes representing the efuse
-+      registers that have information about the speedbin that is used
-+      to select the right frequency/voltage value pair. Please refer to
-+      the nvmem-cells bindings in
-       Documentation/devicetree/bindings/nvmem/nvmem.yaml and also the
-       examples below.
-+    minItems: 1
-+    items:
-+      - description:
-+          Speed bin, or the chip marking ID on the H616. With the A133
-+          compatible, bits 15:12 are the CPU bin and bits 11:0 the ICPU
-+          current in units of 0.1 mA.
-+      - description: Chip marking ID.
-+      - description:
-+          Value programmed at production, called PCPU by Allwinner. Bits
-+          11:0 are used together with the ICPU current to select the speed
-+          grade; their unit is not documented.
-+      - description:
-+          Bin extension. Bit 31 is used to select the speed grade.
-+
-+  nvmem-cell-names:
-+    items:
-+      - const: bin
-+      - const: marking
-+      - const: pcpu
-+      - const: bin-ext
+ 	opp_data = match->data;
  
-   opp-shared: true
+-	speedbin_nvmem = of_nvmem_cell_get(np, NULL);
+-	if (IS_ERR(speedbin_nvmem))
+-		return dev_err_probe(cpu_dev, PTR_ERR(speedbin_nvmem),
+-				     "Could not get nvmem cell\n");
+-
+-	speedbin_ptr = nvmem_cell_read(speedbin_nvmem, &len);
+-	nvmem_cell_put(speedbin_nvmem);
+-	if (IS_ERR(speedbin_ptr))
+-		return PTR_ERR(speedbin_ptr);
+-
+-	if (len <= 4)
+-		memcpy(&speedbin, speedbin_ptr, len);
+-	speedbin = le32_to_cpu(speedbin);
+-
+-	ret = opp_data->efuse_xlate(speedbin);
+-
+-	kfree(speedbin_ptr);
++	ret = sun50i_cpufreq_read_cell(cpu_dev, np, NULL, &speedbin);
++	if (ret)
++		return ret;
  
-@@ -132,4 +178,36 @@ examples:
-         };
-     };
+-	return ret;
++	return opp_data->efuse_xlate(speedbin);
+ };
  
-+  - |
-+    opp-table {
-+        compatible = "allwinner,sun50i-a133-operating-points",
-+                     "allwinner,sun50i-a100-operating-points";
-+        nvmem-cells = <&cpu_speed_grade>, <&chip_marking>,
-+                      <&cpu_pcpu>, <&cpu_bin_ext>;
-+        nvmem-cell-names = "bin", "marking", "pcpu", "bin-ext";
-+        opp-shared;
-+
-+        opp-408000000 {
-+            clock-latency-ns = <244144>; /* 8 32k periods */
-+            opp-hz = /bits/ 64 <408000000>;
-+
-+            opp-microvolt-speed0 = <900000>;
-+            opp-microvolt-speed1 = <900000>;
-+            opp-microvolt-speed2 = <900000>;
-+            opp-microvolt-speed8 = <940000>;
-+            opp-supported-hw = <0x107>;
-+        };
-+
-+        opp-1512000000 {
-+            clock-latency-ns = <244144>; /* 8 32k periods */
-+            opp-hz = /bits/ 64 <1512000000>;
-+
-+            opp-microvolt-speed6 = <1180000>;
-+            opp-microvolt-speed7 = <1130000 1130000 1140000>;
-+            opp-microvolt-speed8 = <1100000>;
-+            opp-microvolt-speed9 = <1080000>;
-+            opp-supported-hw = <0x3c0>;
-+        };
-+    };
-+
- ...
+ static int sun50i_cpufreq_nvmem_probe(struct platform_device *pdev)
 
 -- 
 2.34.1
