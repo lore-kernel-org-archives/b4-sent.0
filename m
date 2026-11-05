@@ -1,93 +1,168 @@
-From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Thu, 05 Nov 2026 02:20:14 +0000
-Subject: [PATCH] media: dvb-core: fix use-after-free in dvb_remove_device()
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Thu, 05 Nov 2026 11:49:00 +0900
+Subject: [PATCH] dm-log-writes: log earlier flushes' writes when a later
+ flush completes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-dvb-remove-device-uaf-v1-1-a9e091d7c9ae@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAN3n62oC/x2MOwqAMBAFryJbu+CqsfAqYhGTp27hhwSDIN7dY
- DkwMw9FBEWkvngoIGnUY88gZUFutfsCVp+Z6qruRCrDPk0csB0J7LPvwJed2cI2rTSdM2Iot2f
- ArPf/Hcb3/QDZT06qZwAAAA==
-To: Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzbot+37578f730d38898f4b74@syzkaller.appspotmail.com, 
- stable@vger.kernel.org, Joas Antonio dos Santos <joasantonio108@gmail.com>
+Message-Id: <20261105-dmlw-flush-order-v1-1-4f154e06bc78@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAJvu62oC/x3MSQqAMAxA0auUrA3YguNVxIW0qQbUSooDFO9uc
+ fkW/yeIJEwRepVA6OLIYc/QhQK7TPtMyC4bTGlqrcsK3bbe6NczLhjEkeBETdcaWzlvasjZIeT
+ 5+ZfD+L4fp3Lx02IAAAA=
+To: Alasdair Kergon <agk@redhat.com>, Mike Snitzer <snitzer@kernel.org>, 
+ Mikulas Patocka <mpatocka@redhat.com>, 
+ Benjamin Marzinski <bmarzins@redhat.com>, dm-devel@lists.linux.dev
+Cc: Josef Bacik <josef@toxicpanda.com>, fstests@vger.kernel.org, 
+ linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793845213; l=2266;
- i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=prLpSJVWNrnZT55RbJ2w1/TI1YO7NXSCENMkRGHUepw=;
- b=zCVEFfk4tLNKrt4gCOPsh3ztTBXtUF35/c3pdzSfvAzgmMIih85IFQxlWBVrgTs/tGl0aN+ib
- ICsbECE8OH3CIWpJSE7Z0yTVnIqb9SBOurvdMKsOf9AFWkgpphJRgci
-X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
- pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
-X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793846939; l=5569;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=QMRPbrKH67WwaocGnLh1SuH2BjgDRIWTU01gSB6rW3k=;
+ b=tqLmSXBijEpYe5T4s0jo8SrtcUdu54mPjNscxK+IvpTmPO+zaxGm2962Y69S4Y0hU5qGV/HEb
+ us+23pU/duUDY/1bGrXInEfptTzvY5eKlV5MdiRw8qNavJFmTaKqhzH
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-dvb_remove_device() calls dvb_device_put() while still holding and
-using the dvb_device pointer.  If the put drops the last reference,
-dvb_free_device() kfrees the struct, and the subsequent calls to
-dvb_media_device_free(), device_destroy(), and list_del() all operate
-on freed memory.
+Each flush takes the writes that completed since the previous flush
+was issued, and logs them when it completes. If a later flush
+completes first, the earlier flush's writes are logged after anything
+logged in between, such as a mark. A replay to that mark then misses
+writes that were already stable. Crash consistency tests report this
+as data loss.
 
-The syzbot KASAN report shows the freed kmalloc-256 object being read
-at dvb_media_device_free()+0x3a, which dereferences dvbdev->entity
-(dvbdev.c:210) after dvb_device_put() in dvb_remove_device() already
-freed it via dvb_free_device().
+Those writes completed before the later flush was issued, so its
+completion makes them stable. Log them when it completes, and document
+this in log-writes.rst.
 
-Fix by saving the minor number before releasing the reference and
-moving dvb_device_put() to after all accesses to the dvb_device
-struct.  This ensures the device remains valid for the entire cleanup
-sequence regardless of the reference count.
-
-Found by LLM-assisted code review of syzbot-reported crash patterns.
-
-Reported-by: syzbot+37578f730d38898f4b74@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=37578f730d38898f4b74
-Fixes: 0fc044b2b5e2 ("media: dvbdev: adopts refcnt to avoid UAF")
-Cc: stable@vger.kernel.org
-Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
+Fixes: 0e9cebe72459 ("dm: add log writes target")
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- drivers/media/dvb-core/dvbdev.c | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+Found on XFS (xfs for-next, QEMU guest, loop devices on tmpfs) with 8
+writers that each write a block, fsync it and log a mark. A replay to
+the mark missed the fsynced block at 3 of 1408 marks without this
+patch and at none of 1408 with it. generic/455 457 482 757 pass with
+and without it, and KASAN and lockdep report nothing.
+---
+ .../admin-guide/device-mapper/log-writes.rst       |  6 +++++
+ drivers/md/dm-log-writes.c                         | 30 ++++++++++++++++++++++
+ 2 files changed, 36 insertions(+)
 
-diff --git a/drivers/media/dvb-core/dvbdev.c b/drivers/media/dvb-core/dvbdev.c
-index d753d3295..b2beacbab 100644
---- a/drivers/media/dvb-core/dvbdev.c
-+++ b/drivers/media/dvb-core/dvbdev.c
-@@ -593,19 +593,22 @@ EXPORT_SYMBOL(dvb_register_device);
+diff --git a/Documentation/admin-guide/device-mapper/log-writes.rst b/Documentation/admin-guide/device-mapper/log-writes.rst
+index 23141f2ffb7..1223803684e 100644
+--- a/Documentation/admin-guide/device-mapper/log-writes.rst
++++ b/Documentation/admin-guide/device-mapper/log-writes.rst
+@@ -36,6 +36,12 @@ Again this is to simulate what is actually on disk, this allows us to detect
+ cases where a power failure at a particular point in time would create an
+ inconsistent file system.
  
- void dvb_remove_device(struct dvb_device *dvbdev)
- {
-+	int minor;
++If a later REQ_PREFLUSH request completes while an earlier one is still in
++flight, the WRITEs attached to the earlier request are logged then, ahead of the
++later request's own WRITEs. They completed before the later REQ_PREFLUSH was
++issued, so they are on disk as well. The earlier FLUSH is logged when it
++completes.
 +
- 	if (!dvbdev)
- 		return;
+ Any REQ_FUA requests bypass this flushing mechanism and are logged as soon as
+ they complete as those requests will obviously bypass the device cache.
  
-+	minor = dvbdev->minor;
-+
- 	down_write(&minor_rwsem);
--	dvb_minors[dvbdev->minor] = NULL;
--	dvb_device_put(dvbdev);
-+	dvb_minors[minor] = NULL;
- 	up_write(&minor_rwsem);
+diff --git a/drivers/md/dm-log-writes.c b/drivers/md/dm-log-writes.c
+index c72e07c3f5a..982a240f031 100644
+--- a/drivers/md/dm-log-writes.c
++++ b/drivers/md/dm-log-writes.c
+@@ -115,6 +115,7 @@ struct log_writes_c {
+ 	spinlock_t blocks_lock;
+ 	struct list_head unflushed_blocks;
+ 	struct list_head logging_blocks;
++	struct list_head inflight_flushes;
+ 	wait_queue_head_t wait;
+ 	struct task_struct *log_kthread;
+ 	struct completion super_done;
+@@ -128,6 +129,7 @@ struct pending_block {
+ 	char *data;
+ 	u32 datalen;
+ 	struct list_head list;
++	struct list_head flush_list;
+ 	struct bio_vec vecs[];
+ };
  
- 	dvb_media_device_free(dvbdev);
--
--	device_destroy(dvb_class, MKDEV(DVB_MAJOR, dvbdev->minor));
--
-+	device_destroy(dvb_class, MKDEV(DVB_MAJOR, minor));
- 	list_del(&dvbdev->list_head);
-+
-+	dvb_device_put(dvbdev);
+@@ -526,6 +528,7 @@ static int log_writes_ctr(struct dm_target *ti, unsigned int argc, char **argv)
+ 	}
+ 	spin_lock_init(&lc->blocks_lock);
+ 	INIT_LIST_HEAD(&lc->unflushed_blocks);
++	INIT_LIST_HEAD(&lc->inflight_flushes);
+ 	INIT_LIST_HEAD(&lc->logging_blocks);
+ 	init_waitqueue_head(&lc->wait);
+ 	init_completion(&lc->super_done);
+@@ -629,6 +632,7 @@ static void log_writes_dtr(struct dm_target *ti)
+ 
+ 	WARN_ON(!list_empty(&lc->logging_blocks));
+ 	WARN_ON(!list_empty(&lc->unflushed_blocks));
++	WARN_ON(!list_empty(&lc->inflight_flushes));
+ 	dm_put_device(ti, lc->dev);
+ 	dm_put_device(ti, lc->logdev);
+ 	kfree(lc);
+@@ -688,6 +692,7 @@ static int log_writes_map(struct dm_target *ti, struct bio *bio)
+ 		spin_unlock_irq(&lc->blocks_lock);
+ 		return DM_MAPIO_KILL;
+ 	}
++	INIT_LIST_HEAD(&block->flush_list);
+ 	INIT_LIST_HEAD(&block->list);
+ 	pb->block = block;
+ 	atomic_inc(&lc->pending_blocks);
+@@ -717,6 +722,7 @@ static int log_writes_map(struct dm_target *ti, struct bio *bio)
+ 	if (flush_bio && !bio_sectors(bio)) {
+ 		spin_lock_irq(&lc->blocks_lock);
+ 		list_splice_init(&lc->unflushed_blocks, &block->list);
++		list_add_tail(&block->flush_list, &lc->inflight_flushes);
+ 		spin_unlock_irq(&lc->blocks_lock);
+ 		goto map_bio;
+ 	}
+@@ -764,6 +770,29 @@ static int log_writes_map(struct dm_target *ti, struct bio *bio)
+ 	return DM_MAPIO_REMAPPED;
  }
- EXPORT_SYMBOL(dvb_remove_device);
  
++/*
++ * A flush mapped before @block holds writes that completed before @block was
++ * mapped, so @block's completion makes them stable. Queue them ahead of
++ * @block's own writes. inflight_flushes holds the empty flushes, in map order,
++ * whose writes are not yet queued.
++ */
++static void log_earlier_flushes(struct log_writes_c *lc,
++				struct pending_block *block)
++{
++	struct pending_block *prev;
++
++	lockdep_assert_held(&lc->blocks_lock);
++	if (list_empty(&block->flush_list))
++		return;
++	while ((prev = list_first_entry(&lc->inflight_flushes,
++					struct pending_block,
++					flush_list)) != block) {
++		list_splice_tail_init(&prev->list, &lc->logging_blocks);
++		list_del_init(&prev->flush_list);
++	}
++	list_del_init(&block->flush_list);
++}
++
+ static int normal_end_io(struct dm_target *ti, struct bio *bio,
+ 		blk_status_t *error)
+ {
+@@ -776,6 +805,7 @@ static int normal_end_io(struct dm_target *ti, struct bio *bio,
+ 
+ 		spin_lock_irqsave(&lc->blocks_lock, flags);
+ 		if (block->flags & LOG_FLUSH_FLAG) {
++			log_earlier_flushes(lc, block);
+ 			list_splice_tail_init(&block->list, &lc->logging_blocks);
+ 			list_add_tail(&block->list, &lc->logging_blocks);
+ 			wake_up_process(lc->log_kthread);
 
 ---
-base-commit: ebcf66fba448879076bfdd1018ac5cda37b912bf
-change-id: 20261105-dvb-remove-device-uaf-aea34136c515
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261105-dmlw-flush-order-ae7982c5df26
 
 Best regards,
 -- 
-Joas Antonio dos Santos <joasantonio108@gmail.com>
+Daejun Park <daejun7.park@samsung.com>
 
