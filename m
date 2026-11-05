@@ -1,11 +1,11 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Wed, 04 Nov 2026 23:17:26 -0600
-Subject: [PATCH ath-next 1/2] wifi: ath11k: don't bit-reverse the
+Date: Wed, 04 Nov 2026 23:17:27 -0600
+Subject: [PATCH ath-next 2/2] wifi: ath12k: don't bit-reverse the
  firmware's PPE thresholds
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-ath-ppe-thresholds-bit-order-v1-1-0f569106cbc4@gmail.com>
+Message-Id: <20261104-ath-ppe-thresholds-bit-order-v1-2-0f569106cbc4@gmail.com>
 References: <20261104-ath-ppe-thresholds-bit-order-v1-0-0f569106cbc4@gmail.com>
 In-Reply-To: <20261104-ath-ppe-thresholds-bit-order-v1-0-0f569106cbc4@gmail.com>
 To: Jeff Johnson <jjohnson@kernel.org>, John Crispin <john@phrozen.org>, 
@@ -24,11 +24,11 @@ Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org,
  ath12k@lists.infradead.org, 
  Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793855845; l=2073;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793855845; l=1920;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=lRDCXb5fGqCIVT7aLQMio7qzrVZEvLsJS6K3rr1zoFA=;
- b=HxsVhn7nW+oc2hCfogzfaE60v4s1cr3V3MsFVFNOGWXSrL6D7cjsfiMXTfQfbLM2387B36S2x
- 98q7iBMhVbmBAJduHvsDlnW68pPkmk8FYDaDNmqyW4hpCJ+k0v43rV5
+ bh=SMblyxjOwtNSOyKKPUpr21wi2JYn4nPN/eEapCpTvQM=;
+ b=O2mE/jfSWzTKdAb79q7OZtw8Y3o9lqo5OB5LbHvFB/hM8f/2FLXAD3F6nkRLgPIcNmnGlE+1n
+ HC7onnizJ7rC3fyX6vRhcLNy1Eev2SizV/agDLCvi7mY5o46dVBIfwE
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
@@ -38,10 +38,10 @@ The firmware reports its PPE thresholds as WMI defines them: in
 ppet16_ppet8_ru3_ru0[nss], each RU has six bits, PPET16 in bits 2:0 and
 PPET8 in bits 5:3, each a 3-bit constellation index. The PPE Thresholds
 field of the HE Capabilities element carries the same two subfields in
-the same order, bit 0 first, and ath11k_peer_assoc_h_he() already
+the same order, bit 0 first, and ath12k_peer_assoc_h_he() already
 converts a peer's field to the WMI layout that way.
 
-ath11k_gen_ppe_thresh(), which builds our own field from the firmware's,
+ath12k_gen_ppe_thresh(), which builds our own field from the firmware's,
 swaps the two halves and then writes the six bits from the top down.
 That puts PPET16 first again, but with its three bits reversed, and the
 same for PPET8: a threshold of 1 (QPSK) is advertised as 4 (256-QAM),
@@ -51,23 +51,20 @@ come out right, so the bug does not show with firmware that asks for
 
 Copy the six bits in order.
 
-IPQ8074 (WLAN.HK.2.9.0.1-02146) and QCN9074 (WLAN.HK.2.5.r4-00683)
-firmware report PPET16 0 and PPET8 7 everywhere (iw phy: PPE Threshold
-0x7b 0x1c 0xc7 0x71 ...), which reads the same either way, so their HE
-capabilities do not change. Compile-tested.
+Compile-tested; ath11k has the same function and gets the same fix.
 
-Fixes: 9f056ed8ee01 ("ath11k: add HE support")
+Fixes: d889913205cf ("wifi: ath12k: driver for Qualcomm Wi-Fi 7 devices")
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- drivers/net/wireless/ath/ath11k/mac.c | 3 +--
+ drivers/net/wireless/ath/ath12k/mac.c | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
-index 1a237adaa37d1..8b4e992b609a6 100644
---- a/drivers/net/wireless/ath/ath11k/mac.c
-+++ b/drivers/net/wireless/ath/ath11k/mac.c
-@@ -5825,8 +5825,7 @@ static void ath11k_gen_ppe_thresh(struct ath11k_ppe_threshold *fw_ppet,
+diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
+index 9fd3841f71b71..ebf28a8089ca8 100644
+--- a/drivers/net/wireless/ath/ath12k/mac.c
++++ b/drivers/net/wireless/ath/ath12k/mac.c
+@@ -8647,8 +8647,7 @@ static void ath12k_gen_ppe_thresh(struct ath12k_wmi_ppe_threshold_arg *fw_ppet,
  				continue;
  			val = (fw_ppet->ppet16_ppet8_ru3_ru0[nss] >> (ru * 6)) &
  			       0x3f;
