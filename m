@@ -1,157 +1,65 @@
-From: Xuheng Li <xuheng@cs.columbia.edu>
-Date: Thu, 05 Nov 2026 19:45:21 +0000
-Subject: [PATCH] KVM: arm64: Order a later pinner's accesses after the hyp
- mapping
+From: Mani Tofigh <mt4022@columbia.edu>
+Subject: [PATCH v2 0/3] kprobes: Fix optprobe state after forced
+ unoptimization
+Date: Thu, 05 Nov 2026 15:32:11 -0500
+Message-Id: <20261105-kprobes-optprobe-state-v2-0-7a2f5290baa0@columbia.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-pin-barrier-v1-1-04ebf118175a@cs.columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwNT3YLMPN2kxCKgpiJdU4s0I2Mjy2RLQwsjJaCOgqLUtMwKsGnRsbW
- 1AHAag7RdAAAA
-X-Change-ID: 20261105-pin-barrier-58f2329c9182
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oupton@kernel.org>
-Cc: Quentin Perret <qperret@google.com>, Will Deacon <will@kernel.org>, 
- Catalin Marinas <catalin.marinas@arm.com>, 
- Mark Rutland <mark.rutland@arm.com>, Fuad Tabba <fuad.tabba@linux.dev>, 
- Joey Gouly <joey.gouly@arm.com>, Steffen Eiden <seiden@linux.ibm.com>, 
- Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, kvmarm@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Xuheng Li <xuheng@cs.columbia.edu>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793907920; l=4979;
- i=xuheng@cs.columbia.edu; s=20261028; h=from:subject:message-id;
- bh=VSD4GLblhd6azQKpEOEzqUEqojO3itNwjO/sVgeUiIo=;
- b=QTSVYgfFMuRB8xUVfGJEOEYn5PHpxm7RURrEUKvrivYUBnG4i8kkVU4ZFZfpoibktyqcqFCLM
- redV+d6YhMKClxjlcRUrICmxiCS1kKQL1FJrXBMRBJVHHUy8JOYyWfy
-X-Developer-Key: i=xuheng@cs.columbia.edu; a=ed25519;
- pk=L1HVV+goqxYmEMO/OXakL6uf9isSpgk2QrLlFqyZ2Qs=
-X-Endpoint-Received: by B4 Relay for xuheng@cs.columbia.edu/20261028 with auth_id=1349
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNTQ6CMBCFr0Jm7Zi2ShNdeQ/DYloGGX8oaQvRE
+ O4u4AHcvS95730TJI7CCc7FBJFHSRK6BcyuAN9Sd2OUemEwylit1QEffQyOE4Y+bwlTpsx4UrV
+ rytKZo/WwjPvIjby342v14zS4O/u8vq2NVlIO8bOZR732/kpGjQotEXmrDTm2Fx+ew8sJ7bkeo
+ Jrn+QsB++2H0QAAAA==
+X-Change-ID: 20261103-kprobes-optprobe-state-90dbf55b246c
+To: Masami Hiramatsu <mhiramat@kernel.org>, 
+ Naveen N Rao <naveen@kernel.org>
+Cc: Steven Rostedt <rostedt@goodmis.org>, 
+ "David S. Miller" <davem@davemloft.net>, linux-trace-kernel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, tz2294@columbia.edu, 
+ Mani Tofigh <mt4022@columbia.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793910731; l=1406;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=hnUymYaUl8Tfgtc5VBb7tf8wxHH8l5HhxgLGwo09e/c=;
+ b=D7gyGRXlx/bvfd1JO0VtXlp8l4pqdAQ6/8weat8FY9Y5dR04iMLjmYs8ARYgpq7GdWTP8eQii
+ nNCmeVwHqQgDha2DlEoJNut20u8xxLAeJA1MUfbQY7jY6p72SACVYRK
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 48d848882395 ("KVM: arm64: Defer EL2 stage-1 mapping on
-share"), hyp_pin_shared_mem() maps a shared page into the hypervisor's
-stage-1 only when its refcount goes from 0 to 1.  The CPU that maps it
-runs dsb(ishst); isb() in kvm_pgtable_hyp_map(), which orders that CPU's
-own accesses.  A CPU that pins the page later sees refcount >= 1, maps
-nothing and runs no barrier.  It then accesses the page through an
-address it computed before taking the locks, so nothing orders its
-translation after the other CPU's PTE write.  The access can use a
-translation performed while the entry was still invalid, and fault.
+Since commit 06e0d3b89da1 ("kprobes: Make optprobe optimizer
+multi-generational and asynchronous") a forced unoptimization can leave
+a probe's int3 in the wrong state.  A disabled probe can be freed with
+its int3 still in the text, an unhashed probe gets disarmed twice and a
+reused probe never gets armed.
 
-A host can do this with any pinning hypercall by passing the same page
-from two CPUs, for example __pkvm_init_vm() with the same struct kvm:
+Patch 2 relies on patch 1 since it assumes every disabled probe on a
+cooling list is already disarmed.
 
-  CPU A                                CPU B
-  -----                                -----
-                                       host_kvm = kern_hyp_va_host(x1)
-                                       (host_kvm may be translated now,
-                                        while its entry is invalid)
-  __pkvm_init_vm(host_kvm)
-   hyp_pin_shared_mem()
-    host/hyp locks
-    refcount 0 -> 1
-    pkvm_create_mappings_locked()
-     kvm_pgtable_hyp_map()
-      write the valid PTE
-      dsb(ishst); isb()   <- CPU A only
-    unlock
-                                       __pkvm_init_vm(host_kvm)
-                                        hyp_pin_shared_mem()
-                                         host/hyp locks
-                                         refcount 1 -> 2: no mapping,
-                                         no barrier
-                                         unlock
-                                        READ_ONCE(host_kvm->created_vcpus)
-                                         uses the old translation:
-                                         translation fault -> hyp_panic()
-
-The lock hand-off orders CPU B's loads and stores after CPU A's PTE
-write, but not its translation table walks.  Arm's herd7 model with
--variant vmsa allows the fault for this shape: a mapping made and
-completed with DSB; ISB on one CPU, handed over through a
-release/acquire, then used on another CPU through an address it already
-held.  It forbids the fault once the second CPU runs DSB; ISB after the
-acquire.
-
-Make every successful pin end with dsb(ish); isb(), so that the pinning
-CPU's later accesses through the range are ordered after the mapping,
-whichever pin installed it.
-
-Fixes: 48d848882395 ("KVM: arm64: Defer EL2 stage-1 mapping on share")
-Cc: stable@vger.kernel.org
-Signed-off-by: Xuheng Li <xuheng@cs.columbia.edu>
----
-The fault was found with herd7 (herdtools7 7.58+1) and Arm's AArch64
-model with -variant vmsa,fatal.  The test reduces the host/hyp locks to
-an acquire of CPU A's release and the pin to its refcount check:
-
-AArch64 pin-maps-nothing
-{
-pte_x=(valid:0);
-0:X2=pte_x; 0:X1=(oa:phy_y);
-y=1;
-pte_z=(af:1,db:1); pte_r=(af:1,db:1);
-0:X8=z; 1:X8=z;
-0:X9=r; 1:X9=r;
-1:X3=x;
-}
- P0               | P1                ;
- MOV W5,#1        | LDAR W7,[X8]      ;
- STR W5,[X9]      | LDR W5,[X9]       ;
- STLR X1,[X2]     | ADD W5,W5,#1      ;
- DSB ISHST        | STR W5,[X9]       ;
- ISB              | CMP W5,#1         ;
- MOV W7,#1        | B.EQ LMAP         ;
- STLR W7,[X8]     | MOV W6,#2         ;
-                  | STLR W6,[X8]      ;
-                  | L0: LDR W4,[X3]   ;
-                  | LMAP:             ;
-exists (1:X7=1 /\ 1:X5=2 /\ fault(P1:L0,x))
-
-P0 is the pin that maps x (refcount 0 -> 1, PTE store, dsb(ishst);
-isb(), unlock).  P1 takes the lock after P0's unlock, sees refcount 2,
-maps nothing, and then loads through the address it already held in X3.
-
-  $ herd7 -variant vmsa,fatal pin-maps-nothing.litmus
-  ...
-  1:X5=2; 1:X7=1; Fault(P1:L0,x,D-MMU:Translation);
-  ...
-  Observation pin-maps-nothing Sometimes 1 7
-
-With DSB ISH; ISB on P1 after its acquire and before L0, as this patch
-adds, the result is Never (0 6).  It is also Never with
--variant vmsa,fatal,ets2, i.e. on CPUs with FEAT_ETS2.
----
- arch/arm64/kvm/hyp/nvhe/mem_protect.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/arch/arm64/kvm/hyp/nvhe/mem_protect.c b/arch/arm64/kvm/hyp/nvhe/mem_protect.c
-index d4c332a91..5cb1a1e1f 100644
---- a/arch/arm64/kvm/hyp/nvhe/mem_protect.c
-+++ b/arch/arm64/kvm/hyp/nvhe/mem_protect.c
-@@ -1210,6 +1210,14 @@ int hyp_pin_shared_mem(void *from, void *to)
- 							    PAGE_HYP));
- 	}
- 
-+	/*
-+	 * Only the first pin of a page maps it, and that CPU's barriers order
-+	 * only its own accesses. Order this CPU's accesses through the range
-+	 * after the mapping, whichever pin made it.
-+	 */
-+	dsb(ish);
-+	isb();
-+
- unlock:
- 	hyp_unlock_component();
- 	host_unlock_component();
+Changes in v2:
+- Patch 1: disarm a disabled probe before choosing the freeing or cooling
+  list (Masami)
+- Patch 3: keep a reused cooling probe disabled so register_aggr_kprobe()
+  arms it only for an enabled new probe (Masami, Sashiko)
+- Patch 3: skip the forced unoptimization in add_new_kprobe() for a
+  cooling probe, which would otherwise unhash it when the new probe has a
+  post_handler
+- Link to v1: https://lore.kernel.org/all/20261103-kprobes-optprobe-state-v1-0-6aaac612abe6@columbia.edu/
 
 ---
-base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
-change-id: 20261105-pin-barrier-58f2329c9182
+Mani Tofigh (3):
+      kprobes: Disarm disabled optprobe on forced unoptimization
+      kprobes: Do not disarm unhashed optprobe on dispatch
+      kprobes: Arm reused optprobe on cooling list
+
+ kernel/kprobes.c | 20 +++++++++++++++-----
+ 1 file changed, 15 insertions(+), 5 deletions(-)
+---
+base-commit: d4d028a7ae6401ce70825a3eb663f0a2dfc49db6
+change-id: 20261103-kprobes-optprobe-state-90dbf55b246c
 
 Best regards,
--- 
-Xuheng Li <xuheng@cs.columbia.edu>
+--  
+Mani Tofigh <mt4022@columbia.edu>
 
