@@ -1,11 +1,11 @@
 From: Xuheng Li <xuheng@cs.columbia.edu>
-Date: Thu, 05 Nov 2026 22:59:49 +0000
-Subject: [PATCH v2 2/3] KVM: arm64: Check the host stage-2 PGD allocation
- for NULL
+Date: Thu, 05 Nov 2026 22:59:50 +0000
+Subject: [PATCH v2 3/3] KVM: arm64: Don't replace a valid hyp block mapping
+ with a table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-hyp-pool-and-map-v2-2-44a6ca90190b@cs.columbia.edu>
+Message-Id: <20261105-hyp-pool-and-map-v2-3-44a6ca90190b@cs.columbia.edu>
 References: <20261105-hyp-pool-and-map-v2-0-44a6ca90190b@cs.columbia.edu>
 In-Reply-To: <20261105-hyp-pool-and-map-v2-0-44a6ca90190b@cs.columbia.edu>
 To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oupton@kernel.org>
@@ -18,47 +18,52 @@ Cc: Quentin Perret <qperret@google.com>, Will Deacon <will@kernel.org>,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Xuheng Li <xuheng@cs.columbia.edu>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793919587; l=1285;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793919587; l=1509;
  i=xuheng@cs.columbia.edu; s=20261028; h=from:subject:message-id;
- bh=XdIMBDSmGASRQbiHAq1YVe0xT84zqEKj8tGXxAjv0Fc=;
- b=IYseq6oMUYI7xPYqCu8HI+7gkAetQ3w4+ns34XBkZMS+HEwhZqz0Z138syy5KpNwBdnAztEdM
- r1OLdD/vZpkCRRh+5QHK3jlPcBtikNHnddgDeUPNg9SF53GdH3JP63Z
+ bh=UqwLIs4gUAaU1DFo5IEMy2L+DohqOBeFqpV1fxyeXnM=;
+ b=RGzjFUFx7mvUIxn1cSt9bemQ3coav41Jf/AuM4uYqwKDJjEzN3YdwgHqcNpkqvnnDS+kutDeY
+ JJhDKLlWAyND6RJDqKJZlv2eRaJwba8TAQr8lXVDGdwnBf1j3Tf4wMi
 X-Developer-Key: i=xuheng@cs.columbia.edu; a=ed25519;
  pk=L1HVV+goqxYmEMO/OXakL6uf9isSpgk2QrLlFqyZ2Qs=
 X-Endpoint-Received: by B4 Relay for xuheng@cs.columbia.edu/20261028 with auth_id=1349
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-host_s2_zalloc_pages_exact() passes the result of hyp_alloc_pages() to
-hyp_split_page(hyp_virt_to_page(addr)) without checking it for NULL.
-If the host stage-2 pool cannot supply the PGD, hyp_virt_to_page(NULL)
-yields a bogus struct hyp_page, and hyp_split_page() reads and writes
-through it, which ends in a hyp panic during pKVM initialisation
-although kvm_pgtable_stage2_init() is prepared to fail with -ENOMEM.
+When kvm_pgtable_hyp_map() is asked to map part of a range that a valid
+block mapping already covers, hyp_map_walker_try_leaf() declines, as the
+request cannot be a leaf at the block's level.  hyp_map_walker() then
+allocates a zeroed table and stores it over the valid block entry.  The
+walk descends into the new table and maps the requested pages, but the
+rest of the block is now unmapped, and the valid block was replaced
+without break-before-make.
 
-The pool is sized so that this allocation, the first one made from it,
-cannot fail, so nothing in mainline reaches this path once the pool
-size is computed correctly.  Return NULL early anyway, so that a
-mis-sized pool makes initialisation fail cleanly.
+No in-tree caller maps into an existing hyp block mapping today, so this
+cannot be triggered in mainline.  Fail such a request with -EEXIST
+instead, so that a future caller gets an error rather than silently
+losing the rest of the block.
 
 Signed-off-by: Xuheng Li <xuheng@cs.columbia.edu>
 ---
- arch/arm64/kvm/hyp/nvhe/mem_protect.c | 3 +++
- 1 file changed, 3 insertions(+)
+ arch/arm64/kvm/hyp/pgtable.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/kvm/hyp/nvhe/mem_protect.c b/arch/arm64/kvm/hyp/nvhe/mem_protect.c
-index d4c332a91..ee0848f2e 100644
---- a/arch/arm64/kvm/hyp/nvhe/mem_protect.c
-+++ b/arch/arm64/kvm/hyp/nvhe/mem_protect.c
-@@ -85,6 +85,9 @@ static void *host_s2_zalloc_pages_exact(size_t size)
- {
- 	void *addr = hyp_alloc_pages(&host_s2_pool, get_order(size));
+diff --git a/arch/arm64/kvm/hyp/pgtable.c b/arch/arm64/kvm/hyp/pgtable.c
+index 9c83837b1..4c731b101 100644
+--- a/arch/arm64/kvm/hyp/pgtable.c
++++ b/arch/arm64/kvm/hyp/pgtable.c
+@@ -434,6 +434,13 @@ static int hyp_map_walker(const struct kvm_pgtable_visit_ctx *ctx,
+ 	if (WARN_ON(ctx->level == KVM_PGTABLE_LAST_LEVEL))
+ 		return -EINVAL;
  
-+	if (!addr)
-+		return NULL;
++	/*
++	 * Replacing a valid block with a table would need break-before-make,
++	 * and the new table would leave the rest of the block unmapped.
++	 */
++	if (WARN_ON(kvm_pte_valid(ctx->old)))
++		return -EEXIST;
 +
- 	hyp_split_page(hyp_virt_to_page(addr));
- 
- 	/*
+ 	childp = (kvm_pte_t *)mm_ops->zalloc_page(NULL);
+ 	if (!childp)
+ 		return -ENOMEM;
 
 -- 
 2.53.0
