@@ -1,94 +1,68 @@
 From: =?utf-8?q?Orkun_Emin_Sar=C4=B1?= <sariorkunemin@gmail.com>
-Date: Thu, 05 Nov 2026 16:23:39 +0300
-Subject: [PATCH bpf] bpf: lwt: Don't let bpf_lwt_push_encap() wrap gso_size
+Date: Thu, 05 Nov 2026 16:23:41 +0300
+Subject: [PATCH] fuse: don't pass a NULL inode to fuse_inode_backing() on
+ release
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261105-bpf-lwt-gso-v1-1-cda5e19d321a@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywqDMBBFf0Xu2oFE8IG/Ii5MOtEpRSWjbUH8d
- 2O7PJd7zgHlKKxoswOR36KyzAlsnsFPwzwyySMxClNU1pqS3Bro9dlo1IXqUBrHjfU+NEjGGjn
- I91frkI7o/6Pu7sl+uzs4zws8SA9ndAAAAA==
-X-Change-ID: 20261105-bpf-lwt-gso-7f50be81ccf8
-To: Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, 
- Martin KaFai Lau <martin.lau@linux.dev>
-Cc: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Josef Bacik <josef@toxicpanda.com>, bpf@vger.kernel.org, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+Message-Id: <20261105-fuse-cuse-release-v1-1-8be1eec02c66@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQpAQBRFf0VvbcpMIX5FFmNcPAnNQ0r+3WBzb
+ 2dxzkUCzxAqo4s8DhZe5gA6jsgNdu6huA1MJjGZ1kmqul2g3DseE2z4tsmL1NqsgHEUvNWj4/N
+ rVvXPsjcj3PaG6L4fffXB23UAAAA=
+X-Change-ID: 20261105-fuse-cuse-release-db795aa69e2c
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: fuse-devel@lists.linux.dev, linux-kernel@vger.kernel.org, 
  =?utf-8?q?Orkun_Emin_Sar=C4=B1?= <sariorkunemin@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793885019; l=2284;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793885020; l=1699;
  i=sariorkunemin@gmail.com; s=20261103; h=from:subject:message-id;
- bh=OabHy4jnG0JqeGBm2zFBbMq6JrHCZ6mnFb/ssUZq31s=;
- b=K2qToYY0e5rmJnMHod+0n8EB4eoKafi6TKBoscUn3C31d2HEhO1ZE/pBsMB1wPy7F6BOte3nQ
- YYMEJq5s6NiBkjZ4bIH0qOlhvacrby6haOzjeA/5z0oGKjvi3PtL6s6
+ bh=XgrvzfoNZJLMVh7JOSKQ9IdZU0PRskqYDZqGT15zz/w=;
+ b=gbs3HQ72yYDqlKX7DMo75dpKLuTDfDO1J+2qiHIr4nDluBHTjdmRWaPOpizu0jKzK2XzTYiTa
+ hkzztqUCQO0BkXO/ll2ZyKLdsCNX0p2Lh5bKH5Zwkjb/pdDG0p9SDZG
 X-Developer-Key: i=sariorkunemin@gmail.com; a=ed25519;
  pk=MJ3Y3somkGDQVAXOSR189QAqWOcfzYCRkL1cSQgJXnE=
 X-Endpoint-Received: by B4 Relay for sariorkunemin@gmail.com/20261103 with auth_id=1408
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When bpf_lwt_push_encap() adds an IP header to a TCP GSO skb in
-BPF_LWT_ENCAP_IP mode, handle_gso_type() lowers gso_size by the length
-of the header. Nothing checks the result. gso_size has 16 bits, so a
-gso_size smaller than the header wraps, and one less than the header
-length gives GSO_BY_FRAGS. skb_segment() then takes the segment lengths
-from a frag_list that the skb does not have.
+cuse_release() and the error path of fuse_create_open() call
+fuse_prepare_release() with a NULL fuse_inode. Since commit bbe2d73a8231
+("fuse: don't assume ff->passthrough is set for FOPEN_PASSTHROUGH"),
+fuse_prepare_release() calls fuse_inode_backing(fi) whenever the open
+reply had FOPEN_PASSTHROUGH set, not only when ff->passthrough was set
+up. A CUSE server that sets FOPEN_PASSTHROUGH thus makes the kernel
+dereference a NULL pointer when the device is closed.
 
-This is the problem that commit 12d07c38e1b0 ("bpf: Don't let
-bpf_skb_adjust_room() use up the MSS") fixed for bpf_skb_adjust_room().
-As there, gso_size comes from the peer if GRO built the skb, or from the
-virtio header if it came from a tun device or a packet socket, so it can
-be as small as TCP_MIN_GSO_SIZE.
-
-Refuse the encap if less than TCP_MIN_GSO_SIZE would be left, before the
-skb is changed. Return -ENOTSUPP, as handle_gso_encap() does for GSO
-skbs it cannot handle.
+Pass a NULL backing when there is no inode. fuse_passthrough_release()
+only prints it.
 
 Found with AI-assisted code review (Claude Code).
 
-Fixes: ca78801a81e0 ("bpf: handle GSO in bpf_lwt_push_encap")
+Fixes: bbe2d73a8231 ("fuse: don't assume ff->passthrough is set for FOPEN_PASSTHROUGH")
 Signed-off-by: Orkun Emin Sarı <sariorkunemin@gmail.com>
 ---
 No reproducer was run and the fix is not runtime-tested. Build-tested
-with LLVM=1 W=1 and CONFIG_LWTUNNEL_BPF=y. checkpatch prefers
-EOPNOTSUPP; ENOTSUPP is kept to match the other errors of this helper.
+with LLVM=1 W=1 and FUSE_FS, CUSE and FUSE_PASSTHROUGH enabled.
 ---
- net/core/lwt_bpf.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ fs/fuse/file.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/core/lwt_bpf.c b/net/core/lwt_bpf.c
-index da49364ec6..c151a013a8 100644
---- a/net/core/lwt_bpf.c
-+++ b/net/core/lwt_bpf.c
-@@ -13,6 +13,7 @@
- #include <net/gre.h>
- #include <net/ip.h>
- #include <net/ip6_route.h>
-+#include <net/tcp.h>
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index d5e1cb53d8..36144fdd69 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -320,7 +320,7 @@ static void fuse_prepare_release(struct fuse_inode *fi, struct fuse_file *ff,
+ 	struct fuse_release_args *ra = &ff->args->release_args;
  
- struct bpf_lwt_prog {
- 	struct bpf_prog *prog;
-@@ -632,6 +633,14 @@ int bpf_lwt_push_ip_encap(struct sk_buff *skb, void *hdr, u32 len, bool ingress)
- 		return -EINVAL;
- 	}
+ 	if (fuse_is_passthrough(ff))
+-		fuse_passthrough_release(ff, fuse_inode_backing(fi));
++		fuse_passthrough_release(ff, fi ? fuse_inode_backing(fi) : NULL);
  
-+	/*
-+	 * The MSS is lowered by len. Leave the least that the stack lets a
-+	 * TCP GSO packet have, or gso_size can wrap.
-+	 */
-+	if (skb_is_gso(skb) &&
-+	    skb_shinfo(skb)->gso_size < len + TCP_MIN_GSO_SIZE)
-+		return -ENOTSUPP;
-+
- 	if (ingress)
- 		err = skb_cow_head(skb, len + skb->mac_len);
- 	else
+ 	/* Inode is NULL on error path of fuse_create_open() */
+ 	if (likely(fi)) {
 
 ---
 base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261105-bpf-lwt-gso-7f50be81ccf8
+change-id: 20261105-fuse-cuse-release-db795aa69e2c
 
 Best regards,
 --  
