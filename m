@@ -1,11 +1,11 @@
 From: Dave Marquardt <davemarq@linux.ibm.com>
-Date: Thu, 05 Nov 2026 11:22:54 -0600
-Subject: [PATCH v18 01/13] scsi: ibmvfc: fix IRQ leak and guard deregister
- on channel reg failure
+Date: Thu, 05 Nov 2026 11:22:55 -0600
+Subject: [PATCH v18 02/13] scsi: ibmvfc: fix potential clobbering of rc
+ after failed irq setup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-ibmvfc-fpin-support-v18-1-d683b74736a3@linux.ibm.com>
+Message-Id: <20261105-ibmvfc-fpin-support-v18-2-d683b74736a3@linux.ibm.com>
 References: <20261105-ibmvfc-fpin-support-v18-0-d683b74736a3@linux.ibm.com>
 In-Reply-To: <20261105-ibmvfc-fpin-support-v18-0-d683b74736a3@linux.ibm.com>
 To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
@@ -17,63 +17,53 @@ To: Madhavan Srinivasan <maddy@linux.ibm.com>,
 Cc: linux-scsi@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
  linux-kernel@vger.kernel.org, Dave Marquardt <davemarq@linux.ibm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793899377; l=1764;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793899377; l=1351;
  i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
- bh=sg9Lbgea4G1OveFwjkYaq90w+e+5hioGkpYGXVuzHdo=;
- b=kzuAwRrzj/87SL7IW2LrsUJeY7mTiiLjjYCxMzcXZtnXPbJ2NEoooUbnDtO9YpLq63MeSpNs4
- qaR8MBXoE5+D2x+vr+7JRpswGlK/bLECQYZtvxYOiUKxIlBAFX7ssX4
+ bh=nvE9rGLbRD6+mhvHw9wBWLEiRdGSv55IfTVTSl/45g0=;
+ b=4y8qDzRzYG/kzx6Q8TlxM/H6fu1T6qWmkhTlblv0WhXXN+GyD3yt4/vaqwkqquHbbPfYY7sFu
+ E/vFjQsIi6+AE3lKWOk4aIp64y489l0OCFM4R+PbX34/TpzdAcOBq8+
 X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
  pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
 X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If request_irq() fails during ibmvfc_register_channel(), the error path
-disposes of the IRQ mapping via irq_dispose_mapping() but leaves scrq->irq
-populated with the stale virq number. A subsequent call to
-ibmvfc_deregister_channel() during teardown or reset cleanup then
-unconditionally invokes free_irq() and irq_dispose_mapping() on the stale
-IRQ descriptor, triggering kernel warnings.
+From: Tyrel Datwyler <tyreld@linux.ibm.com>
 
-Fix this by:
-1. Explicitly setting scrq->irq to 0 after irq_dispose_mapping() in the
-   ibmvfc_register_channel() error path.
-2. Guarding free_irq() and irq_dispose_mapping() with a check for scrq->irq
-   in ibmvfc_deregister_channel() so unmapped or unregistered queues are
-   safely skipped.
+Fix a variable-shadowing bug in ibmvfc_register_channel() where the
+irq_failed cleanup loop reused rc for the H_FREE_SUB_CRQ hcall result,
+clobbering the error code returned to the caller.
+
+Introduce hcall_rc for the cleanup loop instead.
 
 Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
-Acked-by: Tyrel Datwyler <tyreld@linux.ibm.com>
+Signed-off-by: Tyrel Datwyler <tyreld@linux.ibm.com>
 ---
- drivers/scsi/ibmvscsi/ibmvfc-core.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ drivers/scsi/ibmvscsi/ibmvfc-core.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/scsi/ibmvscsi/ibmvfc-core.c b/drivers/scsi/ibmvscsi/ibmvfc-core.c
-index 0b154e07299c..7818838669ae 100644
+index 7818838669ae..145d559041f1 100644
 --- a/drivers/scsi/ibmvscsi/ibmvfc-core.c
 +++ b/drivers/scsi/ibmvscsi/ibmvfc-core.c
-@@ -6435,6 +6435,7 @@ static int ibmvfc_register_channel(struct ibmvfc_host *vhost,
- 	if (rc) {
- 		dev_err(dev, "Couldn't register sub-crq[%d] irq\n", index);
- 		irq_dispose_mapping(scrq->irq);
-+		scrq->irq = 0;
- 		goto irq_failed;
- 	}
- 
-@@ -6463,9 +6464,11 @@ static void ibmvfc_deregister_channel(struct ibmvfc_host *vhost,
+@@ -6391,6 +6391,7 @@ static int ibmvfc_register_channel(struct ibmvfc_host *vhost,
+ 	struct vio_dev *vdev = to_vio_dev(dev);
+ 	struct ibmvfc_queue *scrq = &channels->scrqs[index];
+ 	int rc = -ENOMEM;
++	int hcall_rc;
  
  	ENTER;
  
--	free_irq(scrq->irq, scrq);
--	irq_dispose_mapping(scrq->irq);
--	scrq->irq = 0;
-+	if (scrq->irq) {
-+		free_irq(scrq->irq, scrq);
-+		irq_dispose_mapping(scrq->irq);
-+		scrq->irq = 0;
-+	}
+@@ -6446,8 +6447,8 @@ static int ibmvfc_register_channel(struct ibmvfc_host *vhost,
  
+ irq_failed:
  	do {
- 		rc = plpar_hcall_norets(H_FREE_SUB_CRQ, vdev->unit_address,
+-		rc = plpar_hcall_norets(H_FREE_SUB_CRQ, vdev->unit_address, scrq->cookie);
+-	} while (rc == H_BUSY || H_IS_LONG_BUSY(rc));
++		hcall_rc = plpar_hcall_norets(H_FREE_SUB_CRQ, vdev->unit_address, scrq->cookie);
++	} while (hcall_rc == H_BUSY || H_IS_LONG_BUSY(hcall_rc));
+ reg_failed:
+ 	LEAVE;
+ 	return rc;
 
 -- 
 2.56.0
