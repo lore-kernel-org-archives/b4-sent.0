@@ -1,73 +1,60 @@
-From: Long Zhao <longzhao@ambarella.com>
-Date: Thu, 05 Nov 2026 19:06:39 +0800
-Subject: [PATCH v11 5/5] MAINTAINERS: add ARM/AMBARELLA SoC support
+From: Roman Vivchar <rva333@protonmail.com>
+Date: Thu, 05 Nov 2026 13:29:12 +0200
+Subject: [PATCH] dt-bindings: input: mediatek,mt6779-keypad: add mt6595
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-cv75-soc-v11-5-aa6ee0b2380d@ambarella.com>
-References: <20261105-cv75-soc-v11-0-aa6ee0b2380d@ambarella.com>
-In-Reply-To: <20261105-cv75-soc-v11-0-aa6ee0b2380d@ambarella.com>
-To: Arnd Bergmann <arnd@arndb.de>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Alexandre Belloni <alexandre.belloni@bootlin.com>, soc@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>
-Cc: Jerome Brunet <jbrunet@baylibre.com>, linux-clk@vger.kernel.org, 
- Brian Masney <masneyb@kernel.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+Message-Id: <20261105-6595-dt-keypad-v1-1-f0911f40d3ad@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ5EMBCA4VeROZukLWNjX0UcSgezEistQsS7b
+ 5fjd/j/EwJ74QDv5ATPmwT5ThE6TaAd7NQziosGo0yhtSIsqCR0C458zNahy5TNDXUv4gxiNHv
+ uZL+HVf04rM2H2+V/gev6AR8w/uRyAAAA
+X-Change-ID: 20261105-6595-dt-keypad-d30a425f75e3
+To: Mattijs Korpershoek <mkorpershoek@kernel.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- devicetree@vger.kernel.org, Long Zhao <longzhao@ambarella.com>, 
- Long Zhao <zl020895@163.com>, linux-kernel@vger.kernel.org, 
- Linus Walleij <linusw@kernel.org>
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793876823; l=1241;
- i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=66/FpPmSuU75AtQewU8cj7mu+Qa/5qamx4Km8ySoeYo=;
- b=xAh3tkUI2kmwUkqlbkc1QWPFQD/HdhXVQhlU8BXpEX2u+sz+O9JyPIE8rVMYW/JtELUrTdBSD
- NBuBvxdiaj5CHQ8X5WOgk94QE+DZNn1Jtq5NrV5bnbRUOwSp7uOhT/v
-X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
- pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
-X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793878154; l=1042;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=1ilWPyJZwXIBoX7Ef7K1dJA5qk/q0NQM6AQiVyoSYi0=;
+ b=gsl/L1Nidw63mZs0argyawLAon+vgqnunhZ5yy+E3ul11j/wHv6bXMvJ5xrU1xKAHQyY96nB5
+ xCtkMOJ53ExAWZQr9KQL1lf3SKp0g2voI0Xnc9l1YvqCV2iz8HIHOOy
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a maintainer entry covering Ambarella CV75 bindings, DTS and
-related drivers.
+Add a compatible string for the mt6595 keypad, that is compatible with
+mt6779.
 
-Reviewed-by: Linus Walleij <linusw@kernel.org>
-Signed-off-by: Long Zhao <longzhao@ambarella.com>
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- MAINTAINERS | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ Documentation/devicetree/bindings/input/mediatek,mt6779-keypad.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 803b60ad628f..59e5b32d7a02 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2502,6 +2502,20 @@ F:	drivers/clocksource/asm9260_timer.c
- F:	drivers/rtc/rtc-asm9260.c
- F:	drivers/watchdog/asm9260_wdt.c
- 
-+ARM/AMBARELLA SOC SUPPORT
-+M:	Long Zhao <longzhao@ambarella.com>
-+L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
-+L:	devicetree@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/arm/ambarella.yaml
-+F:	Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml
-+F:	Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml
-+F:	arch/arm64/boot/dts/ambarella/
-+F:	drivers/clk/ambarella/
-+F:	drivers/pinctrl/pinctrl-ambarella*
-+F:	include/dt-bindings/clock/ambarella,cv75-rct.h
-+N:	ambarella
-+
- ARM/AMD PENSANDO ARM64 ARCHITECTURE
- M:	Brad Larson <blarson@amd.com>
- L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
+diff --git a/Documentation/devicetree/bindings/input/mediatek,mt6779-keypad.yaml b/Documentation/devicetree/bindings/input/mediatek,mt6779-keypad.yaml
+index e0758aac7ffe..9f0da1240187 100644
+--- a/Documentation/devicetree/bindings/input/mediatek,mt6779-keypad.yaml
++++ b/Documentation/devicetree/bindings/input/mediatek,mt6779-keypad.yaml
+@@ -27,6 +27,7 @@ properties:
+       - items:
+           - enum:
+               - mediatek,mt6572-keypad
++              - mediatek,mt6595-keypad
+               - mediatek,mt6873-keypad
+               - mediatek,mt8173-keypad
+               - mediatek,mt8183-keypad
 
--- 
-2.34.1
+---
+base-commit: 8b7179210b22f8e48a82c5ceacb9d56a9c4cfec4
+change-id: 20261105-6595-dt-keypad-d30a425f75e3
+
+Best regards,
+--  
+Roman Vivchar <rva333@protonmail.com>
 
