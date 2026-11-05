@@ -1,11 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Thu, 05 Nov 2026 13:54:08 +0300
-Subject: [PATCH v8 04/11] dt-bindings: sram: qcom,imem: Document MSM8952
+Date: Thu, 05 Nov 2026 13:54:09 +0300
+Subject: [PATCH v8 05/11] dt-bindings: mailbox: qcom: Add MSM8952 APCS
  compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-msm8952-initial-support-v8-4-311ae8e8f14b@mainlining.org>
+Message-Id: <20261105-msm8952-initial-support-v8-5-311ae8e8f14b@mainlining.org>
 References: <20261105-msm8952-initial-support-v8-0-311ae8e8f14b@mainlining.org>
 In-Reply-To: <20261105-msm8952-initial-support-v8-0-311ae8e8f14b@mainlining.org>
 To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -43,36 +43,40 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  Muzaffer Kadir <muzafferkadir@mainlining.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793876100; l=823;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793876100; l=1080;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=zJBupVape6ZlIyOXe+U5V6odCjgZTNQlYKK8oIpndf4=;
- b=pylaM1buz9GHKjkj+t38gaqW0b/RagcSeY/h2pJ0qZqu07PCgfSW4HgP6imZTPGcMdJNPilTP
- V+qNZ7rKygKASWTIrmGQbXEMEgcQpX1GAc+QTkW28dm879HMX+16Zu8
+ bh=bfllieSk1x0Zo8xBxn5AQLJBSUyzj9oz9UVJP9mqh0g=;
+ b=BkAVYp5XLBwZyWHx1KKefdibqr2AbuR9S3KS8apAEHWwlOLenggE8vmJHX2nGHvRnNLBR5lCl
+ uCnCOobkwloB6ROYUhv64xsxDwEmJfzg85+kFQwmZLR8knu2LKWkR7z
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the IMEM block found on the MSM8952.
+Document the APCS mailbox compatible for the MSM8952.
 
 Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/sram/qcom,imem.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ Documentation/devicetree/bindings/mailbox/qcom,apcs-kpss-global.yaml | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/sram/qcom,imem.yaml b/Documentation/devicetree/bindings/sram/qcom,imem.yaml
-index 2f120376a8f4..5d7b226cc587 100644
---- a/Documentation/devicetree/bindings/sram/qcom,imem.yaml
-+++ b/Documentation/devicetree/bindings/sram/qcom,imem.yaml
-@@ -19,6 +19,7 @@ properties:
-       - enum:
-           - qcom,apq8064-imem
-           - qcom,msm8226-imem
-+          - qcom,msm8952-imem
-           - qcom,msm8974-imem
-           - qcom,msm8976-imem
-           - qcom,qcs404-imem
+diff --git a/Documentation/devicetree/bindings/mailbox/qcom,apcs-kpss-global.yaml b/Documentation/devicetree/bindings/mailbox/qcom,apcs-kpss-global.yaml
+index 5110363a0717..c2b0d7394f36 100644
+--- a/Documentation/devicetree/bindings/mailbox/qcom,apcs-kpss-global.yaml
++++ b/Documentation/devicetree/bindings/mailbox/qcom,apcs-kpss-global.yaml
+@@ -31,6 +31,11 @@ properties:
+               - qcom,qcs404-apcs-apps-global
+           - const: qcom,msm8916-apcs-kpss-global
+           - const: syscon
++      - items:
++          - enum:
++              - qcom,msm8952-apcs-kpss-global
++          - const: qcom,msm8939-apcs-kpss-global
++          - const: syscon
+       - items:
+           - enum:
+               - qcom,msm8974-apcs-kpss-global
 
 -- 
 2.56.0
