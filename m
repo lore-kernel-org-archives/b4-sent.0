@@ -1,114 +1,175 @@
-From: Rajan Yadav <rajanyadav0307@gmail.com>
-Date: Wed, 04 Nov 2026 22:41:01 -0600
-Subject: [PATCH 6/6] arm64: dts: allwinner: a133: Use the A133 CPU OPP
- table
+From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Subject: [PATCH v13 0/2] Add LPASS VA CSR HeartBeat pulse clock support
+Date: Thu, 05 Nov 2026 10:44:55 +0530
+Message-Id: <20261105-master-v13-0-dbb43cdc60e5@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-a133-series-v1-6-58217cb33a87@gmail.com>
-References: <20261104-a133-series-v1-0-58217cb33a87@gmail.com>
-In-Reply-To: <20261104-a133-series-v1-0-58217cb33a87@gmail.com>
-To: Yangtao Li <tiny.windzz@gmail.com>, Viresh Kumar <vireshk@kernel.org>, 
- Nishanth Menon <nm@ti.com>, Stephen Boyd <sboyd@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Viresh Kumar <viresh.kumar@linaro.org>, 
- Andre Przywara <andre.przywara@arm.com>
-Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Cody Eksal <masterr3c0rd@epochal.quest>, 
- Alexander Sverdlin <alex@sverdlin.org>, 
- Rajan Yadav <rajanyadav0307@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAM8Q7GoC/3XOTW7DIBAF4KtErEs0M4gAXfUeVRaYn4aqjltwr
+ FSR715IJcdS6w3SoPe9mRsrIadQ2PPuxnKYUknDuQ4onnbMnez5LfDk6wcjoAMYVLy3ZQyZHxw
+ ppaNU1lhWw585xHS9N70ef+dy6d6DG5tuiVMq45C/76sm3XJ/SifNgWsSnpz0YMC+DKXsvy72w
+ w19v68Pa92TWWnSizZVUz0rgonGgtnQCCsuYOEI1SNIAtU5SUpueVw8AtLDY/MSwAQRnHViy9P
+ KEz48VW864aPE6NGrf/w8zz87305MtAEAAA==
+X-Change-ID: 20260917-master-6c2778f57a9a
+To: andersson@kernel.org, abelvesa@kernel.org, sboyd@kernel.org, 
+ bmasney+clk@redhat.com, jbrunet+clk@baylibre.com, robh@kernel.org, 
+ krzk+dt@kernel.org, conor+dt@kernel.org, 
+ srinivas.kandagatla@oss.qualcomm.com, sarath.ganapathiraju@oss.qualcomm.com
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ prasad.kumpatla@oss.qualcomm.com
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793853656; l=3324;
- i=rajanyadav0307@gmail.com; s=20261103; h=from:subject:message-id;
- bh=x5FE0Mhj6qYPFUq6zvVIYk5BeSBjVopTztLIpG1kUCM=;
- b=piOPG5YLJZp9HRQREOhbgGNTbR72tV2osHC80xB2c/s04EqF2pecIuVVvVFrmA7bNITkzMaP1
- rEp1ItCY4kyCpCPkzegLvgQs+BLD8k0cHTkALKaQm76R1ezINQbZfyN
-X-Developer-Key: i=rajanyadav0307@gmail.com; a=ed25519;
- pk=4ZPeiP5qrv2b44q/Obxi2koUS70Q6npbttJnpUoTlgg=
-X-Endpoint-Received: by B4 Relay for rajanyadav0307@gmail.com/20261103 with auth_id=1391
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793855695; l=6704;
+ i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
+ h=from:subject:message-id; bh=60zgrvAhIy090AKFvFg9SI7zyCdU4BpYjOwge+0OMSE=;
+ b=o8xoz4Gutzf11wFVW8nNvPX+ptdEbP/mctZgt12mK+0eo21+aSTfv/0go2N0z/rQ9Ql1Ue0vo
+ S9eZvDpwFpEA18Be2F0Sa+9la7N7MdLUBuxaM5f1oumJyK2jAAlltlA
+X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
+ pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
+X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Switch the three A133 boards in mainline (Baijie Helperboard A133,
-Liontron H-A133L and Teclast P80) from the A100 OPP table to the A133
-one, so the speed grade is selected as the vendor does it.
+The LPASS VA CSR block contains rate generator hardware that produces
+a HeartBeat Pulse (also known as RateGen Pulse). This pulse
+synchronizes the start of the DMAs and Codec Interfaces for the audio
+usecases and can serve as a periodic wakeup source for the DSP.
 
-What changes depends on the chip:
-- revision A-E parts with a normal marking ID get a0-a2 from the bin
-  field, as they get speed0-2 today, with the same voltages; only
-  1080 MHz becomes 1008 MHz. The exception is a part whose ICPU and
-  PCPU values are in the range for which the BSP forces a0.
-- revision F and later parts with a normal marking ID get the a3-a6
-  voltages: higher at 408 and 600 MHz, equal or lower from 1008 MHz,
-  and 1008 instead of 1080 MHz.
-- "high speed" parts get the b grades, with 1416 and 1512 MHz instead
-  of 1464 MHz.
-- if the firmware does not provide SMCCC SOC_ID, the driver keeps the
-  A100 selection, adds the BSP's a0 rule for normal parts and warns at
-  boot.
+This series adds the DT binding and driver support to model this
+rate generator as a clock provider.
 
-All three boards supply the CPUs from AXP803 DCDC2 with a 0.81-1.2 V
-range, which covers every new voltage. Without the A133 support in
-sun50i-cpufreq-nvmem the A100 fallback applies. The Teclast P80 also
-needs "cpufreq: sun50i: Handle boards with the allwinner,sun50i-a133
-compatible" to get cpufreq at all.
+Patch 1 adds the YAML binding for the new qcom,hawi-lpass-va-csr
+clock provider node under Documentation/devicetree/bindings/clock/.
 
-Claude Code (Anthropic) drafted this change and its message; I
-reviewed it. I tested the A133 table on a KickPi K5C; I cannot test
-these three boards.
+Patch 2 adds the lpass-va-csr driver under drivers/clk/qcom that
+registers the lpass_heartbeat_pulse clock and enables/disables the
+rate generator via regmap when the clock consumer requests it.
 
-Suggested-by: Andre Przywara <andre.przywara@arm.com>
-Signed-off-by: Rajan Yadav <rajanyadav0307@gmail.com>
+Changes in v13:
+- Rebase the series on linux-next next-20261104.
+- Create and populate the PM clock list before enabling runtime PM so
+  runtime resume cannot touch VA CSR registers before the LPASS vote
+  clocks are available (Sashiko).
+- Drop the regmap cache for the LPASS rate generator registers to avoid
+  stale LPASS_RATE_GEN_CTRL state after LPASS register context loss
+  (Sashiko).
+- Use runtime PM force suspend and resume for system sleep, and restore
+  LPASS_RATE_GEN_CTRL on resume when the heartbeat clock was enabled
+  before LPASS register context loss.
+- Link to v12: https://patch.msgid.link/20261021-master-v12-0-9b3df51fd1d7@oss.qualcomm.com
+
+Changes in v12:
+- Rebase the series on linux-next next-20261020.
+- Depend on PM_CLK so COMPILE_TEST builds cannot select the driver when
+  pm_clk_suspend() and pm_clk_resume() are unavailable (Sashiko, LKP).
+- Link to v11: https://patch.msgid.link/20261012-master-v11-0-15009e3ecac3@oss.qualcomm.com
+
+Changes in v11:
+- Rebase the series on linux-next next-20261009.
+- Drop the custom heartbeat prepare/unprepare callbacks and rely on CCF
+  provider runtime PM handling (Ajay).
+- Restore the rate generator counter and delay registers from the
+  runtime resume callback after the LPASS vote clocks are enabled
+  (Sashiko).
+- Add an of_device_get_match_data() NULL guard (Sashiko).
+- Link to v10: https://patch.msgid.link/20260930-master-v10-0-105207bc5275@oss.qualcomm.com
+
+Changes in v10:
+- Rebase the series on linux-next next-20260929.
+- Add clk_is_enabled_regmap() to report the heartbeat gate state for
+  clk_disable_unused() (Sashiko).
+- Add Rob's Reviewed-by tag to the binding patch.
+- Link to v9: https://patch.msgid.link/20260928-master-v9-0-2277f09f9a09@oss.qualcomm.com
+
+Changes in v9:
+- Rebase the series on linux-next next-20260928.
+- Add runtime PM callbacks so the LPASS LPR and audio vote clocks are
+  enabled by pm_runtime_resume_and_get() before touching VA CSR
+  registers.
+- Keep the LPASS vote clocks enabled across heartbeat clock
+  enable/disable register accesses by taking a runtime PM reference from
+  the heartbeat clock prepare path.
+- Use synchronous runtime PM put on probe success and error paths.
+- Drop the one-use runtime PM error label while keeping synchronous puts (Konrad).
+- Wrap the runtime PM ops with pm_ptr() from HTML review.
+- Link to v8: https://patch.msgid.link/20260917-master-v8-0-823d2c5d090a@oss.qualcomm.com
+
+Changes in v8:
+- Rebase the series on linux-next next-20260916.
+- Require the LPASS LPR and audio vote clocks to access VA CSR
+  register space safely.
+- Attach the DT vote clocks to runtime PM and resume the device before
+  programming the rate generator registers.
+- Program the counter and delay registers once during probe.
+- Use qcom's simple regmap gate ops for the enable bit (Srinivas).
+- Drop the unreachable of_device_get_match_data() NULL check (Srinivas).
+- Drop stale Reviewed-by/Tested-by tags after the binding and driver
+  changes.
+- Link to v7: https://patch.msgid.link/20260831-heartbeat-v7-next-20260828-v7-0-e3ffeac46a51@oss.qualcomm.com
+
+Changes in v7:
+- Rebase the series on linux-next next-20260828.
+- Add Prasad's Reviewed-by and Tested-by tags to patch 2.
+- Link to v6: https://patch.msgid.link/20260821-heartbeat-v6-next-20260821-send-v6-0-62c5df84ce21@oss.qualcomm.com
+
+Changes in v6:
+- Rebase the series on linux-next next-20260821.
+- Capitalize Hawi in binding text (Bjorn).
+- Simplify the binding example by removing the soc wrapper and
+  two-cell address/size setup (Bjorn).
+- Keep the full VA CSR register window in the binding and describe it
+  as the VA CSR register block after Konrad clarified the earlier
+  register-range concern (Bjorn, Konrad).
+- Link to v5: https://patch.msgid.link/20260806-master-20260805-sync-v5-0-0ff42e9b6431@oss.qualcomm.com
+
+Changes in v5:
+- Add explicit ARM64 Kconfig gating and Qualcomm default-module policy
+  for QCOM_CLK_LPASS_HEARTBEAT_PULSE to align with nearby qcom clock
+  entries.
+- Link to v4: https://patch.msgid.link/20260805-master-20260805-sync-v4-0-dfbcbf427c2c@oss.qualcomm.com
+
+Changes in v4:
+- Rename the binding filename and schema ID to hawi-specific naming:
+  qcom,lpass-va-csr.yaml -> qcom,hawi-lpass-va-csr.yaml (Krzysztof).
+- Rename Kconfig symbol QCOM_CLK_LPASS_VA_CSR to
+  QCOM_CLK_LPASS_HEARTBEAT_PULSE (Konrad).
+- Add devm_pm_runtime_enable() in the lpass-va-csr probe path.
+- Drop the qcom,lpass-va-macro binding extension patch; it will be
+  resubmitted with the Hawi DTSI changes.
+- Drop sound/soc/codecs/Kconfig select wiring to keep this series
+  clock-only (Konrad).
+- Link to v3: https://lore.kernel.org/all/20260723-master-v3-0-3d67b79b0515@oss.qualcomm.com/
+
+Changes in v3:
+- Move the qcom,lpass-va-csr binding under
+  Documentation/devicetree/bindings/clock/ (Krzysztof).
+- Move the driver under drivers/clk/qcom/ (Krzysztof).
+- Improve the schema description and use generic clock-controller node
+  naming (Krzysztof).
+- Use additionalProperties: false and keep compatibles sorted.
+
+Changes in v2:
+- Split the qcom,lpass-va-csr and qcom,lpass-va-macro bindings into
+  separate patches.
+
+Changes in v1:
+- Initial version
+
+Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 ---
- arch/arm64/boot/dts/allwinner/sun50i-a133-helperboard-core.dtsi | 2 +-
- arch/arm64/boot/dts/allwinner/sun50i-a133-liontron-h-a133l.dts  | 2 +-
- arch/arm64/boot/dts/allwinner/sun50i-a133-teclast-p80.dts       | 2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+Sarath Ganapathiraju (2):
+      dt-bindings: clock: qcom: Add LPASS VA CSR HeartBeat pulse clock
+      clk: qcom: Add LPASS VA CSR heartbeat pulse clock
 
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a133-helperboard-core.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a133-helperboard-core.dtsi
-index 545972d2324..3a89d3f74b3 100644
---- a/arch/arm64/boot/dts/allwinner/sun50i-a133-helperboard-core.dtsi
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-a133-helperboard-core.dtsi
-@@ -7,7 +7,7 @@
- /dts-v1/;
- 
- #include "sun50i-a100.dtsi"
--#include "sun50i-a100-cpu-opp.dtsi"
-+#include "sun50i-a133-cpu-opp.dtsi"
- 
- /{
- 	model = "Baijie A133 HelperBoard Core";
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a133-liontron-h-a133l.dts b/arch/arm64/boot/dts/allwinner/sun50i-a133-liontron-h-a133l.dts
-index 90a50910f07..1b9cbcbe5f3 100644
---- a/arch/arm64/boot/dts/allwinner/sun50i-a133-liontron-h-a133l.dts
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-a133-liontron-h-a133l.dts
-@@ -6,7 +6,7 @@
- /dts-v1/;
- 
- #include "sun50i-a100.dtsi"
--#include "sun50i-a100-cpu-opp.dtsi"
-+#include "sun50i-a133-cpu-opp.dtsi"
- 
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/leds/common.h>
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a133-teclast-p80.dts b/arch/arm64/boot/dts/allwinner/sun50i-a133-teclast-p80.dts
-index 47b5f2ac824..7d4c346276e 100644
---- a/arch/arm64/boot/dts/allwinner/sun50i-a133-teclast-p80.dts
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-a133-teclast-p80.dts
-@@ -6,7 +6,7 @@
- /dts-v1/;
- 
- #include "sun50i-a100.dtsi"
--#include "sun50i-a100-cpu-opp.dtsi"
-+#include "sun50i-a133-cpu-opp.dtsi"
- 
- #include <dt-bindings/gpio/gpio.h>
- 
+ .../bindings/clock/qcom,hawi-lpass-va-csr.yaml     |  62 ++++++
+ drivers/clk/qcom/Kconfig                           |  15 ++
+ drivers/clk/qcom/Makefile                          |   1 +
+ drivers/clk/qcom/lpass-va-csr.c                    | 210 +++++++++++++++++++++
+ 4 files changed, 288 insertions(+)
+---
+base-commit: 8b7179210b22f8e48a82c5ceacb9d56a9c4cfec4
+change-id: 20260917-master-6c2778f57a9a
 
--- 
-2.34.1
+Best regards,
+--  
+Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 
