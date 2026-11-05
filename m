@@ -1,14 +1,13 @@
 From: Demeter Barna <me@fromdisposition.org>
-Subject: [PATCH 0/5] SM8350 GPU: memory bandwidth vote and speed bins
-Date: Thu, 05 Nov 2026 13:29:59 +0000
-Message-Id: <20261105-b4-sm8350-gpu-v1-0-a7175cdd6512@fromdisposition.org>
+Date: Thu, 05 Nov 2026 13:30:00 +0000
+Subject: [PATCH 1/5] arm64: dts: qcom: sm8350: Vote the GPU memory
+ bandwidth
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwNT3SQT3eJcC2NTA930glLd5ERLw+S0RMvERKM0JaCegqLUtMwKsHn
- RsRB+cWlSVmpyCcgQpdpaAMy1mwRxAAAA
-X-Change-ID: 20261105-b4-sm8350-gpu-ca91cfa9aa2f
+Message-Id: <20261105-b4-sm8350-gpu-v1-1-a7175cdd6512@fromdisposition.org>
+References: <20261105-b4-sm8350-gpu-v1-0-a7175cdd6512@fromdisposition.org>
+In-Reply-To: <20261105-b4-sm8350-gpu-v1-0-a7175cdd6512@fromdisposition.org>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -24,57 +23,108 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
  freedreno@lists.freedesktop.org, Demeter Barna <me@fromdisposition.org>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793885419; l=1797;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793885419; l=2824;
  i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
- bh=D8VZFoCVME1aMQHvCdWPw5lNShSOUsROxlYF0NZDL6M=;
- b=7AfKYelxwTvmG/00jufz4oiz8vWvG22SyGOJ9LXr+Wuy0s6v8uyCf5WgNVLURRlYq4RxTi+si
- N919nvXLo0wCqQSA2Hcht8v7eNmhmGAbCYXMRglaWSy3pilzS4CGbve
+ bh=Qj0SetyPXcoz/xqqaiV7q7+hqlgKFBJNuFzemnv6s4o=;
+ b=5k1FzaWwPTWmD/1NkUbNJdAoQuLjitJ1m3kP377Dc4pqlngCKZdo6rf+qrYK5ez549PL8xZqB
+ j7hWNqGEiH/CGMv0k47fj2wK//sUKL4PsdtlPd0qxAMIu6Uj+Uz7WZw
 X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
  pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
 X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Two things are missing for the SM8350 GPU in mainline.
+The SM8350 GPU never asks for DDR bandwidth. On A660 the GMU gets a DDR
+table with only an "off" entry, so the driver leaves the vote to the OPP
+core, and the OPP core votes only when the GPU has an interconnect path
+and its OPPs carry a bandwidth. sm8350.dtsi has neither.
 
-First, the GPU never votes for DDR bandwidth (patch 1). This fix stands
-alone and can be taken on its own.
-
-Second, the GPU speed bins are not read, so every part runs up to
-840 MHz: parts validated only up to 738 MHz run above their rating, and
-parts that support 900 MHz never get it (patches 2-5).
-
-The frequencies, voltage levels and bandwidths all come from Qualcomm's
-GPU tables for SM8350.
-
-Patch 5 needs patch 3: without the keepout regions, reading the nvmem
-file resets the SoC. Patch 4 alone changes nothing until patch 5 adds
-the speed bin cell, and patch 5 without patch 4 keeps every part at
-speed bin 0 (up to 840 MHz, as today).
-
-The keepout regions in patch 3 were measured on one device (Razer Edge
-5G), one 32-bit word at a time; the 0x128-0x147 one matches SC7180 and
-SC7280. If Qualcomm has the documented ranges, I'm happy to use them
-instead.
+Add the GPU's path to DDR and give each OPP the peak bandwidth that
+Qualcomm's GPU tables for this SoC vote at that frequency on LPDDR5, as
+kodiak.dtsi does for its A635.
 
 Signed-off-by: Demeter Barna <me@fromdisposition.org>
 ---
-Demeter Barna (5):
-      arm64: dts: qcom: sm8350: Vote the GPU memory bandwidth
-      dt-bindings: nvmem: qfprom: Add SM8350 compatible
-      nvmem: qfprom: Add the SM8350 keepout regions
-      drm/msm/adreno: Add speedbins for A660 GPU
-      arm64: dts: qcom: sm8350: Add the GPU speed bins
+ arch/arm64/boot/dts/qcom/sm8350.dtsi | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
- .../devicetree/bindings/nvmem/qcom,qfprom.yaml     |  1 +
- arch/arm64/boot/dts/qcom/sm8350.dtsi               | 47 +++++++++++++++++++++-
- drivers/gpu/drm/msm/adreno/a6xx_catalog.c          |  8 ++++
- drivers/nvmem/qfprom.c                             | 13 ++++++
- 4 files changed, 68 insertions(+), 1 deletion(-)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261105-b4-sm8350-gpu-ca91cfa9aa2f
+diff --git a/arch/arm64/boot/dts/qcom/sm8350.dtsi b/arch/arm64/boot/dts/qcom/sm8350.dtsi
+index 55b32050c..903b2968c 100644
+--- a/arch/arm64/boot/dts/qcom/sm8350.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8350.dtsi
+@@ -2050,6 +2050,10 @@ gpu: gpu@3d00000 {
+ 
+ 			iommus = <&adreno_smmu 0 0x400>, <&adreno_smmu 1 0x400>;
+ 
++			interconnects = <&gem_noc MASTER_GFX3D QCOM_ICC_TAG_ALWAYS
++					 &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>;
++			interconnect-names = "gfx-mem";
++
+ 			operating-points-v2 = <&gpu_opp_table>;
+ 
+ 			qcom,gmu = <&gmu>;
+@@ -2068,51 +2072,61 @@ gpu_opp_table: opp-table {
+ 				opp-840000000 {
+ 					opp-hz = /bits/ 64 <840000000>;
+ 					opp-level = <RPMH_REGULATOR_LEVEL_TURBO_L1>;
++					opp-peak-kBps = <12484375>;
+ 				};
+ 
+ 				opp-778000000 {
+ 					opp-hz = /bits/ 64 <778000000>;
+ 					opp-level = <RPMH_REGULATOR_LEVEL_TURBO>;
++					opp-peak-kBps = <12484375>;
+ 				};
+ 
+ 				opp-738000000 {
+ 					opp-hz = /bits/ 64 <738000000>;
+ 					opp-level = <RPMH_REGULATOR_LEVEL_NOM_L1>;
++					opp-peak-kBps = <12484375>;
+ 				};
+ 
+ 				opp-676000000 {
+ 					opp-hz = /bits/ 64 <676000000>;
+ 					opp-level = <RPMH_REGULATOR_LEVEL_NOM>;
++					opp-peak-kBps = <10687500>;
+ 				};
+ 
+ 				opp-608000000 {
+ 					opp-hz = /bits/ 64 <608000000>;
+ 					opp-level = <RPMH_REGULATOR_LEVEL_SVS_L2>;
++					opp-peak-kBps = <6074218>;
+ 				};
+ 
+ 				opp-540000000 {
+ 					opp-hz = /bits/ 64 <540000000>;
+ 					opp-level = <RPMH_REGULATOR_LEVEL_SVS_L1>;
++					opp-peak-kBps = <6074218>;
+ 				};
+ 
+ 				opp-491000000 {
+ 					opp-hz = /bits/ 64 <491000000>;
+ 					opp-level = <RPMH_REGULATOR_LEVEL_SVS_L0>;
++					opp-peak-kBps = <6074218>;
+ 				};
+ 
+ 				opp-443000000 {
+ 					opp-hz = /bits/ 64 <443000000>;
+ 					opp-level = <RPMH_REGULATOR_LEVEL_SVS>;
++					opp-peak-kBps = <6074218>;
+ 				};
+ 
+ 				opp-379000000 {
+ 					opp-hz = /bits/ 64 <379000000>;
+ 					opp-level = <80 /* RPMH_REGULATOR_LEVEL_LOW_SVS_L1 */>;
++					opp-peak-kBps = <3972656>;
+ 				};
+ 
+ 				opp-315000000 {
+ 					opp-hz = /bits/ 64 <315000000>;
+ 					opp-level = <RPMH_REGULATOR_LEVEL_LOW_SVS>;
++					opp-peak-kBps = <1761718>;
+ 				};
+ 			};
+ 		};
 
-Best regards,
---  
-Demeter Barna <me@fromdisposition.org>
+-- 
+2.53.0
 
