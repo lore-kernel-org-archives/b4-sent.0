@@ -1,11 +1,10 @@
 From: Mani Tofigh <mt4022@columbia.edu>
-Date: Thu, 05 Nov 2026 15:32:13 -0500
-Subject: [PATCH v2 2/3] kprobes: Do not disarm unhashed optprobe on
- dispatch
+Date: Thu, 05 Nov 2026 15:32:14 -0500
+Subject: [PATCH v2 3/3] kprobes: Arm reused optprobe on cooling list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-kprobes-optprobe-state-v2-2-7a2f5290baa0@columbia.edu>
+Message-Id: <20261105-kprobes-optprobe-state-v2-3-7a2f5290baa0@columbia.edu>
 References: <20261105-kprobes-optprobe-state-v2-0-7a2f5290baa0@columbia.edu>
 In-Reply-To: <20261105-kprobes-optprobe-state-v2-0-7a2f5290baa0@columbia.edu>
 To: Masami Hiramatsu <mhiramat@kernel.org>, 
@@ -15,51 +14,65 @@ Cc: Steven Rostedt <rostedt@goodmis.org>,
  linux-kernel@vger.kernel.org, tz2294@columbia.edu, 
  Mani Tofigh <mt4022@columbia.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793910731; l=1584;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793910731; l=2160;
  i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=q2MgFbRgliZtJJNKFCxRw6QZHPAxcNxpRFt4YgkzeAU=;
- b=FpcUHoZjaTuoeSpXflU6m3me0/LGnND0ixaLOJpFN0TIH2/fx20O/cTZ8tlp+nl8jBXxdmF+7
- vhFuzXo6m7KCXdlMqqKCfX9PFzvwSDluBD2O6g3IZn7vEUxFAgd84hO
+ bh=/HCAv1Fv22PKOX1Qzyg9tXxCq5Zh9hIH5VnZqnVHksw=;
+ b=ftE/orfEOyDjW80q5zI9iiCT+8OyojyN8qC5+QqeNDmikou06iUZOqX1EUfK+MCZdeqhsGSqC
+ lNfP//+EoNCABHJJ/XqJqKnqiTeGJuhQ0JUzVLKZR+GYU1DpuQF63VJ
 X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
  pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
 X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A new probe at the address of a force-unoptimized probe can stop
-firing.  When unoptimize_kprobe() force-unoptimizes an unused probe it
-disarms and unhashes it, but the next dispatch disarms it again.  If a
-new probe was registered at the same address in the meantime, the
-second disarm clears the new probe's int3.  For a module address the
-same disarm would write to freed module text after rmmod.
+A new probe that reuses an unused probe still on a cooling list doesn't
+fire.  reuse_unused_kprobe() clears DISABLED, so register_aggr_kprobe()
+doesn't arm it and the probe has no int3 until it's optimized again, or
+ever if it can't be (e.g., it has a post_handler).
 
-Skip the disarm for unhashed probes since they're always disarmed before
-they're unhashed.  With the fix, the new probe fires.
+Keep a reused cooling probe disabled instead, so register_aggr_kprobe()
+arms it if the new probe is enabled, or enable_kprobe() does it later.
+The probe is then still unused when add_new_kprobe() force-unoptimizes
+it for a new probe with a post_handler, which would unhash it and queue
+it for freeing.  Skip that since a cooling probe is already unoptimized.
+With the fix, the new probe fires.
 
 Fixes: 06e0d3b89da1 ("kprobes: Make optprobe optimizer multi-generational and asynchronous")
+Suggested-by: Masami Hiramatsu (Google) <mhiramat@kernel.org>
 Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
- kernel/kprobes.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+Changes in v2:
+- Keep a reused cooling probe disabled so register_aggr_kprobe() arms it
+  only for an enabled new probe (Masami, Sashiko)
+- Skip the forced unoptimization in add_new_kprobe() for a cooling probe
+---
+ kernel/kprobes.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/kernel/kprobes.c b/kernel/kprobes.c
-index 809ed63d6dd8..099a38ca146a 100644
+index 099a38ca146a..5f8ce6892bd1 100644
 --- a/kernel/kprobes.c
 +++ b/kernel/kprobes.c
-@@ -631,8 +631,12 @@ static void do_unoptimize_kprobes(struct list_head *unopt_list,
- 	list_for_each_entry_safe(op, tmp, free_list, list) {
- 		/* Switching from detour code to origin */
- 		op->kp.flags &= ~KPROBE_FLAG_OPTIMIZED;
--		/* Disarm probes if marked disabled and not gone */
--		if (kprobe_disabled(&op->kp) && !kprobe_gone(&op->kp))
-+		/*
-+		 * Disarm probes if marked disabled and not gone. Unhashed probes
-+		 * were disarmed before they were unhashed.
-+		 */
-+		if (kprobe_disabled(&op->kp) && !kprobe_gone(&op->kp) &&
-+		    !hlist_unhashed(&op->kp.hlist))
- 			arch_disarm_kprobe(&op->kp);
- 		if (kprobe_unused(&op->kp)) {
- 			/*
+@@ -1059,6 +1059,10 @@ static int reuse_unused_kprobe(struct kprobe *ap)
+ 	 */
+ 	op = container_of(ap, struct optimized_kprobe, kp);
+ 	WARN_ON_ONCE(list_empty(&op->list));
++	/* Already disarmed, the caller arms it only for an enabled probe */
++	if (optprobe_queued_cooling(op))
++		return 0;
++
+ 	/* Enable the probe again */
+ 	ap->flags &= ~KPROBE_FLAG_DISABLED;
+ 	/* Optimize it again. (remove from 'op->list') */
+@@ -1571,7 +1575,8 @@ void kprobe_busy_end(void)
+ /* Add the new probe to 'ap->list'. */
+ static int add_new_kprobe(struct kprobe *ap, struct kprobe *p)
+ {
+-	if (p->post_handler)
++	/* A reused cooling probe is already unoptimized */
++	if (p->post_handler && !kprobe_unused(ap))
+ 		unoptimize_kprobe(ap, true);	/* Fall back to normal kprobe */
+ 
+ 	list_add_rcu(&p->list, &ap->list);
 
 -- 
 2.53.0
