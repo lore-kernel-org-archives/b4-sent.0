@@ -1,313 +1,220 @@
-From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
-Date: Thu, 05 Nov 2026 10:44:57 +0530
-Subject: [PATCH v13 2/2] clk: qcom: Add LPASS VA CSR heartbeat pulse clock
+From: Christopher Griffin <christophergriffin05@gmail.com>
+Date: Wed, 04 Nov 2026 23:17:08 -0600
+Subject: [PATCH ath-next] wifi: ath11k: drop the full monitor state left
+ from before a monitor stop
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-master-v13-2-dbb43cdc60e5@oss.qualcomm.com>
-References: <20261105-master-v13-0-dbb43cdc60e5@oss.qualcomm.com>
-In-Reply-To: <20261105-master-v13-0-dbb43cdc60e5@oss.qualcomm.com>
-To: andersson@kernel.org, abelvesa@kernel.org, sboyd@kernel.org, 
- bmasney+clk@redhat.com, jbrunet+clk@baylibre.com, robh@kernel.org, 
- krzk+dt@kernel.org, conor+dt@kernel.org, 
- srinivas.kandagatla@oss.qualcomm.com, sarath.ganapathiraju@oss.qualcomm.com
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- prasad.kumpatla@oss.qualcomm.com
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793855695; l=8461;
- i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
- h=from:subject:message-id; bh=gA9ojBmiDpwXK+6wEqXMXy8AjyVKLAFP4FkN77mtAtg=;
- b=IMWKW2XB3166zLTGOlzhKIB1QxHHg4lWVZChosA7lLTk75AfWE7diBbeiFGuyt5DuIgOLCDb9
- 4gPWpEmU7H3BKLy+fuV6rUAqFBH4Uuq/eycHn8tKgcJDq6bgUP7o+2Q
-X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
- pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
-X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
+Message-Id: <20261104-ath11k-full-monitor-stale-hold-v1-1-10a680c3ad2f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAFMR7GoC/yWNywrCMBBFf6XM2oEkfSD+irhI06kZjYlkUimU/
+ ruxLg+He+4GQplJ4NJskOnDwilW0KcGnLfxTshTZTDKDFqrDm3xWj9xXkLAV4pcUkYpNhD6FCZ
+ 0pu3VaE03tGeokXemmdfj4Ap1i5HWAre/kWV8kCu/Puz7F0NilUWMAAAA
+X-Change-ID: 20261104-ath11k-full-monitor-stale-hold-c2350ba24638
+To: Jeff Johnson <jjohnson@kernel.org>, 
+ Anilkumar Kolli <quic_akolli@quicinc.com>, Kalle Valo <kvalo@kernel.org>
+Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
+ Christopher Griffin <christophergriffin05@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793855827; l=8294;
+ i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
+ bh=XLX7K0utKQw/gsxKboFItICJfxTeRdNiCzLnMMpwlvs=;
+ b=9rxh9ZYJ9W6nXOONrK46TRxpAz7oEQ3qfJsONmBMCxlOjS3CRzK7NpUDhPAXJI/USohyHnXNH
+ 0IseRnpfh0TBfFMz4LBb1umhgeC56vfjVpdOtLLuGWpetqcFmdDG9SQ
+X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
+ pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
+X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HeartBeat Pulse, also known as RateGen Pulse, synchronizes the
-start of DMAs and Codec Interfaces for the audio usecases and can
-serve as a periodic wakeup source for the DSP.
+In full monitor mode (QCN9074) the monitor destination ring is read
+first, and the PPDU it ends on is held, together with the destination
+ring, until its status buffer turns up on the monitor status ring. A
+status buffer with the same PPDU ID delivers the PPDU and ends the
+hold; one that reads as newer (LEAD) drops the PPDU and ends it; one
+that reads as older (LAG) keeps the hold.
 
-Add the LPASS VA CSR driver that models the rate generator as a clock
-provider so consumers can enable and disable it through the common
-clock framework.
+The hold outlives a monitor stop. While the monitor is stopped,
+ath11k_dp_rx_process_mon_rings() reaps the status ring on the plain
+path, so the held PPDU's status buffer is gone. When the monitor starts
+again, the held PPDU ID is compared with whatever the status ring
+carries after the gap, and the 16-bit compare in
+ath11k_dp_rx_mon_update_status_buf_state() reads LEAD or LAG depending
+on how far the PPDU counter moved meanwhile. After a long, busy stop it
+reads LAG about half the time, and then the hold never ends: the
+destination ring fills, the firmware reports backpressure on the
+monitor destination ring, and the radio receives nothing more, scan
+results included, until the driver is bound again.
 
-Attach the DT vote clocks to runtime PM and program the rate generator
-counter and delay registers from runtime resume after the votes are
-enabled. This restores the state if the LPASS register context is lost
-across runtime suspend.
+Seen with a QCN9074 used as a scanning radio and lent, for about 25 s
+at a time, as the station of a client test: it went deaf after 4 of 7
+loans, each time with the hold set, the status ring empty (buf_state
+DP_MON_STATUS_REPLINISH) and the destination ring full. The monitor
+also stops and starts at each channel change of a scan, and a PPDU was
+held at nearly every start (4022 of 4033).
 
-Rely on the clock core provider runtime PM handling around clock
-prepare and unprepare to keep the votes active for regmap gate
-accesses. Use the same runtime suspend and resume callbacks for
-system sleep so the vote clocks are enabled before restoring the
-rate generator after suspend. Track the heartbeat gate state in the
-clock callbacks and restore LPASS_RATE_GEN_CTRL on resume when the
-clock was enabled before the LPASS register context was lost.
+When the monitor starts, drop the held PPDU and the destination ring
+entries left behind it, and clear the hold. Also bound a hold: more
+status buffers than the status ring holds cannot come before the held
+PPDU's own, so drop the PPDU then rather than wait.
 
-Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+With this, the radio kept receiving through 13 hours of such loans,
+about four an hour, and two more units through 9 and 11 hours.
+
+Fixes: 7e2ea2e94704 ("ath11k: Process full monitor mode rx support")
+Tested-on: QCN9074 hw1.0 PCI WLAN.HK.2.5.r4-00683-QCAHKSWPL_SILICONZ-1
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- drivers/clk/qcom/Kconfig        |  15 +++
- drivers/clk/qcom/Makefile       |   1 +
- drivers/clk/qcom/lpass-va-csr.c | 210 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 226 insertions(+)
+ drivers/net/wireless/ath/ath11k/dp.h    |  1 +
+ drivers/net/wireless/ath/ath11k/dp_rx.c | 75 +++++++++++++++++++++++++++++++++
+ drivers/net/wireless/ath/ath11k/dp_rx.h |  1 +
+ drivers/net/wireless/ath/ath11k/mac.c   |  3 ++
+ 4 files changed, 80 insertions(+)
 
-diff --git a/drivers/clk/qcom/Kconfig b/drivers/clk/qcom/Kconfig
-index 27d0ab24d50a..718a847fa8a0 100644
---- a/drivers/clk/qcom/Kconfig
-+++ b/drivers/clk/qcom/Kconfig
-@@ -2137,6 +2137,21 @@ config CLK_GFM_LPASS_SM8250
- 	  Support for the Glitch Free Mux (GFM) Low power audio
-           subsystem (LPASS) clocks found on SM8250 SoCs.
+diff --git a/drivers/net/wireless/ath/ath11k/dp.h b/drivers/net/wireless/ath/ath11k/dp.h
+index 84f66839f0c6d..0f2d278eb709d 100644
+--- a/drivers/net/wireless/ath/ath11k/dp.h
++++ b/drivers/net/wireless/ath/ath11k/dp.h
+@@ -162,6 +162,7 @@ struct ath11k_mon_data {
+ 	bool hold_mon_dst_ring;
+ 	enum dp_mon_status_buf_state buf_state;
+ 	dma_addr_t mon_status_paddr;
++	u32 hold_status_bufs;
+ 	struct dp_full_mon_mpdu *mon_mpdu;
+ 	struct hal_sw_mon_ring_entries sw_mon_entries;
+ 	struct ath11k_pdev_mon_stats rx_mon_stats;
+diff --git a/drivers/net/wireless/ath/ath11k/dp_rx.c b/drivers/net/wireless/ath/ath11k/dp_rx.c
+index 6d95f7b343a55..c941f35741167 100644
+--- a/drivers/net/wireless/ath/ath11k/dp_rx.c
++++ b/drivers/net/wireless/ath/ath11k/dp_rx.c
+@@ -5595,6 +5595,15 @@ ath11k_dp_rx_process_full_mon_status_ring(struct ath11k_base *ab, int mac_id,
+ 			   pmon->buf_state == DP_MON_STATUS_LEAD) {
+ 			sw_mon_entries->drop_ppdu = true;
+ 			pmon->hold_mon_dst_ring = false;
++		} else if (quota &&
++			   ++pmon->hold_status_bufs > DP_RXDMA_MON_STATUS_RING_SIZE) {
++			/* More status buffers than the ring holds came before
++			 * this PPDU's own: it is not coming.
++			 */
++			ath11k_dbg(ab, ATH11K_DBG_DATA, "full mon: ppdu %u held past %u status buffers, dropped\n",
++				   sw_mon_entries->ppdu_id, pmon->hold_status_bufs);
++			sw_mon_entries->drop_ppdu = true;
++			pmon->hold_mon_dst_ring = false;
+ 		}
  
-+config QCOM_CLK_LPASS_HEARTBEAT_PULSE
-+	tristate "Qualcomm LPASS VA CSR heartbeat pulse clock provider"
-+	depends on COMMON_CLK
-+	depends on ARM64 || COMPILE_TEST
-+	depends on PM_CLK
-+	select REGMAP_MMIO
-+	default m if ARCH_QCOM
-+	help
-+	  Qualcomm LPASS VA CSR block contains the rate generator hardware
-+	  that produces the HeartBeat Pulse (also known as RateGen Pulse).
-+	  This driver models the rate generator as a clock provider so
-+	  that consumers can enable or disable it via the common clock
-+	  framework, and it can be used to synchronize the start of DMAs
-+	  and Codec Interfaces or as a periodic wakeup source for the DSP.
-+
- config SM_VIDEOCC_8450
- 	tristate "SM8450 Video Clock Controller"
- 	depends on ARM64 || COMPILE_TEST
-diff --git a/drivers/clk/qcom/Makefile b/drivers/clk/qcom/Makefile
-index 6affb5073f26..787a3761af3b 100644
---- a/drivers/clk/qcom/Makefile
-+++ b/drivers/clk/qcom/Makefile
-@@ -28,6 +28,7 @@ obj-$(CONFIG_CLK_ELIZA_GPUCC) += gpucc-eliza.o
- obj-$(CONFIG_CLK_ELIZA_TCSRCC) += tcsrcc-eliza.o
- obj-$(CONFIG_CLK_ELIZA_VIDEOCC) += videocc-eliza.o
- obj-$(CONFIG_CLK_GFM_LPASS_SM8250) += lpass-gfm-sm8250.o
-+obj-$(CONFIG_QCOM_CLK_LPASS_HEARTBEAT_PULSE) += lpass-va-csr.o
- obj-$(CONFIG_CLK_GLYMUR_CAMCC) += camcc-glymur.o
- obj-$(CONFIG_CLK_GLYMUR_DISPCC) += dispcc-glymur.o
- obj-$(CONFIG_CLK_GLYMUR_EVACC) += evacc-glymur.o
-diff --git a/drivers/clk/qcom/lpass-va-csr.c b/drivers/clk/qcom/lpass-va-csr.c
-new file mode 100644
-index 000000000000..b4257e8d74e4
---- /dev/null
-+++ b/drivers/clk/qcom/lpass-va-csr.c
-@@ -0,0 +1,210 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ 		if (!quota)
+@@ -5672,6 +5681,7 @@ static int ath11k_dp_full_mon_process_rx(struct ath11k_base *ab, int mac_id,
+ 		pmon->buf_state = DP_MON_STATUS_LAG;
+ 		pmon->mon_status_paddr = sw_mon_entries->mon_status_paddr;
+ 		pmon->hold_mon_dst_ring = true;
++		pmon->hold_status_bufs = 0;
+ next_entry:
+ 		ring_entry = ath11k_hal_srng_dst_get_next_entry(ar->ab,
+ 								mon_dst_srng);
+@@ -5697,6 +5707,71 @@ static int ath11k_dp_full_mon_process_rx(struct ath11k_base *ab, int mac_id,
+ 	return quota;
+ }
+ 
++/* Drop what full monitor mode kept from before the monitor was stopped: a
++ * PPDU held for its status buffer and the destination ring entries behind
++ * it. While the monitor is stopped the status ring is reaped on the plain
++ * path, so their status buffers are gone, and a hold that compares its
++ * PPDU ID with what the status ring carries after the gap can wait for
++ * good. The destination ring then fills and stalls the RXDMA.
 + */
-+
-+#include <linux/clk-provider.h>
-+#include <linux/device.h>
-+#include <linux/module.h>
-+#include <linux/of_clk.h>
-+#include <linux/pm_clock.h>
-+#include <linux/platform_device.h>
-+#include <linux/pm_runtime.h>
-+#include <linux/regmap.h>
-+
-+#include "clk-regmap.h"
-+
-+#define LPASS_RATE_GEN_CTRL		0xd000
-+#define LPASS_RATE_GEN_COUNTER_0	0xd004
-+#define LPASS_RATE_GEN_DELAY		0xd010
-+
-+#define LPASS_RATE_GEN_MAX_REG		LPASS_RATE_GEN_DELAY
-+
-+#define LPASS_RG_CTRL_EN		BIT(0)
-+
-+struct lpass_va_csr_data {
-+	u32 counter_0;
-+	u32 delay;
-+};
-+
-+static const struct lpass_va_csr_data hawi_csr_data = {
-+	.counter_0 = 0x960,
-+	.delay = 0x16,
-+};
-+
-+static const struct regmap_config lpass_rate_gen_regmap_config = {
-+	.name = "lpass_rate_gen",
-+	.reg_bits = 32,
-+	.val_bits = 32,
-+	.reg_stride = 4,
-+	.max_register = LPASS_RATE_GEN_MAX_REG,
-+};
-+
-+struct lpass_va_csr {
-+	const struct lpass_va_csr_data *data;
-+	struct clk_regmap hb;
-+	bool hb_enabled;
-+};
-+
-+static int lpass_va_csr_hb_enable(struct clk_hw *hw)
++void ath11k_dp_rx_full_mon_reset(struct ath11k *ar)
 +{
-+	struct lpass_va_csr *csr = container_of(to_clk_regmap(hw),
-+					       struct lpass_va_csr, hb);
-+	int ret;
++	struct ath11k_base *ab = ar->ab;
++	struct ath11k_pdev_dp *dp = &ar->dp;
++	struct ath11k_mon_data *pmon = &dp->mon_data;
++	struct hal_sw_mon_ring_entries *sw_mon_entries = &pmon->sw_mon_entries;
++	struct sk_buff *head_msdu, *tail_msdu, *msdu, *next;
++	struct hal_srng *mon_dst_srng;
++	u32 rx_bufs_used = 0, entries = 0;
++	bool held;
++	u16 ppdu_id;
++	void *ring_entry;
 +
-+	ret = clk_enable_regmap(hw);
-+	if (ret)
-+		return ret;
++	spin_lock_bh(&pmon->mon_lock);
 +
-+	csr->hb_enabled = true;
++	held = pmon->hold_mon_dst_ring;
++	ppdu_id = sw_mon_entries->ppdu_id;
++	ath11k_dp_rx_full_mon_drop_ppdu(&ab->dp, pmon->mon_mpdu);
 +
-+	return 0;
-+}
-+
-+static void lpass_va_csr_hb_disable(struct clk_hw *hw)
-+{
-+	struct lpass_va_csr *csr = container_of(to_clk_regmap(hw),
-+					       struct lpass_va_csr, hb);
-+
-+	clk_disable_regmap(hw);
-+	csr->hb_enabled = false;
-+}
-+
-+static const struct clk_ops lpass_va_csr_hb_ops = {
-+	.enable = lpass_va_csr_hb_enable,
-+	.disable = lpass_va_csr_hb_disable,
-+	.is_enabled = clk_is_enabled_regmap,
-+};
-+
-+static int lpass_va_csr_runtime_resume(struct device *dev)
-+{
-+	struct lpass_va_csr *csr = dev_get_drvdata(dev);
-+	const struct lpass_va_csr_data *data = csr->data;
-+	int ret;
-+
-+	ret = pm_clk_resume(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_write(csr->hb.regmap, LPASS_RATE_GEN_COUNTER_0,
-+			   data->counter_0);
-+	if (ret)
-+		goto err_pm_clk_suspend;
-+
-+	ret = regmap_write(csr->hb.regmap, LPASS_RATE_GEN_DELAY, data->delay);
-+	if (ret)
-+		goto err_pm_clk_suspend;
-+
-+	if (csr->hb_enabled) {
-+		ret = regmap_update_bits(csr->hb.regmap, LPASS_RATE_GEN_CTRL,
-+					 LPASS_RG_CTRL_EN, LPASS_RG_CTRL_EN);
-+		if (ret)
-+			goto err_pm_clk_suspend;
++	mon_dst_srng = &ab->hal.srng_list[dp->rxdma_mon_dst_ring.ring_id];
++	spin_lock_bh(&mon_dst_srng->lock);
++	ath11k_hal_srng_access_begin(ab, mon_dst_srng);
++	while ((ring_entry = ath11k_hal_srng_dst_peek(ab, mon_dst_srng))) {
++		head_msdu = NULL;
++		tail_msdu = NULL;
++		rx_bufs_used += ath11k_dp_rx_full_mon_mpdu_pop(ar, ring_entry,
++							       &head_msdu,
++							       &tail_msdu,
++							       sw_mon_entries);
++		for (msdu = head_msdu; msdu; msdu = next) {
++			next = msdu->next;
++			dev_kfree_skb_any(msdu);
++		}
++		entries++;
++		ath11k_hal_srng_dst_get_next_entry(ab, mon_dst_srng);
 +	}
++	ath11k_hal_srng_access_end(ab, mon_dst_srng);
++	spin_unlock_bh(&mon_dst_srng->lock);
 +
-+	return 0;
++	pmon->hold_mon_dst_ring = false;
++	pmon->hold_status_bufs = 0;
++	pmon->mon_status_paddr = 0;
++	pmon->mon_ppdu_status = DP_PPDU_STATUS_START;
++	memset(sw_mon_entries, 0, sizeof(*sw_mon_entries));
 +
-+err_pm_clk_suspend:
-+	pm_clk_suspend(dev);
-+	return ret;
++	spin_unlock_bh(&pmon->mon_lock);
++
++	if (rx_bufs_used)
++		ath11k_dp_rxbufs_replenish(ab, dp->mac_id,
++					   &dp->rxdma_mon_buf_ring,
++					   rx_bufs_used,
++					   HAL_RX_BUF_RBM_SW3_BM);
++
++	if (held || entries)
++		ath11k_dbg(ab, ATH11K_DBG_DATA, "full mon: monitor start: dropped %s ppdu %u, %u dest ring entries\n",
++			   held ? "held" : "no held", ppdu_id, entries);
 +}
 +
-+static int lpass_va_csr_runtime_suspend(struct device *dev)
-+{
-+	return pm_clk_suspend(dev);
-+}
+ int ath11k_dp_rx_process_mon_rings(struct ath11k_base *ab, int mac_id,
+ 				   struct napi_struct *napi, int budget)
+ {
+diff --git a/drivers/net/wireless/ath/ath11k/dp_rx.h b/drivers/net/wireless/ath/ath11k/dp_rx.h
+index f69d9301e0a16..ea005537e6275 100644
+--- a/drivers/net/wireless/ath/ath11k/dp_rx.h
++++ b/drivers/net/wireless/ath/ath11k/dp_rx.h
+@@ -81,6 +81,7 @@ int ath11k_dp_htt_tlv_iter(struct ath11k_base *ab, const void *ptr, size_t len,
+ 			   int (*iter)(struct ath11k_base *ar, u16 tag, u16 len,
+ 				       const void *ptr, void *data),
+ 			   void *data);
++void ath11k_dp_rx_full_mon_reset(struct ath11k *ar);
+ int ath11k_dp_rx_process_mon_rings(struct ath11k_base *ab, int mac_id,
+ 				   struct napi_struct *napi, int budget);
+ int ath11k_dp_rx_process_mon_status(struct ath11k_base *ab, int mac_id,
+diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
+index 1a237adaa37d1..a4556d8e75cdf 100644
+--- a/drivers/net/wireless/ath/ath11k/mac.c
++++ b/drivers/net/wireless/ath/ath11k/mac.c
+@@ -1185,6 +1185,9 @@ static int ath11k_mac_monitor_start(struct ath11k *ar)
+ 		return ret;
+ 	}
+ 
++	if (ar->ab->hw_params.full_monitor_mode)
++		ath11k_dp_rx_full_mon_reset(ar);
 +
-+static int lpass_va_csr_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	const struct lpass_va_csr_data *data = of_device_get_match_data(dev);
-+	struct lpass_va_csr *csr;
-+	struct clk_init_data init = {
-+		.name = "lpass_heartbeat_pulse",
-+		.ops = &lpass_va_csr_hb_ops,
-+	};
-+	struct regmap *regmap;
-+	void __iomem *base;
-+	int ret;
-+
-+	csr = devm_kzalloc(dev, sizeof(*csr), GFP_KERNEL);
-+	if (!csr)
-+		return -ENOMEM;
-+
-+	if (!data)
-+		return dev_err_probe(dev, -EINVAL, "missing match data\n");
-+
-+	base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(base))
-+		return PTR_ERR(base);
-+
-+	regmap = devm_regmap_init_mmio(dev, base,
-+				       &lpass_rate_gen_regmap_config);
-+	if (IS_ERR(regmap))
-+		return dev_err_probe(dev, PTR_ERR(regmap),
-+				     "failed to init regmap\n");
-+
-+	csr->data = data;
-+	csr->hb.regmap = regmap;
-+	csr->hb.enable_reg = LPASS_RATE_GEN_CTRL;
-+	csr->hb.enable_mask = LPASS_RG_CTRL_EN;
-+	csr->hb.hw.init = &init;
-+
-+	platform_set_drvdata(pdev, csr);
-+
-+	ret = devm_pm_clk_create(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = of_pm_clk_add_clks(dev);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "failed to get vote clocks\n");
-+
-+	ret = devm_pm_runtime_enable(dev);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to enable PM runtime\n");
-+
-+	ret = pm_runtime_resume_and_get(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = devm_clk_register_regmap(dev, &csr->hb);
-+	if (ret) {
-+		pm_runtime_put_sync(dev);
-+		return ret;
-+	}
-+
-+	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, &csr->hb.hw);
-+	if (ret) {
-+		pm_runtime_put_sync(dev);
-+		return ret;
-+	}
-+
-+	pm_runtime_put_sync(dev);
-+
-+	return 0;
-+}
-+
-+static const struct of_device_id lpass_va_csr_dt_match[] = {
-+	{ .compatible = "qcom,hawi-lpass-va-csr", .data = &hawi_csr_data },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, lpass_va_csr_dt_match);
-+
-+static DEFINE_RUNTIME_DEV_PM_OPS(lpass_va_csr_pm_ops,
-+				 lpass_va_csr_runtime_suspend,
-+				 lpass_va_csr_runtime_resume, NULL);
-+
-+static struct platform_driver lpass_va_csr_driver = {
-+	.driver = {
-+		.name = "qcom-lpass-va-csr",
-+		.of_match_table = lpass_va_csr_dt_match,
-+		.pm = pm_ptr(&lpass_va_csr_pm_ops),
-+	},
-+	.probe = lpass_va_csr_probe,
-+};
-+
-+module_platform_driver(lpass_va_csr_driver);
-+
-+MODULE_DESCRIPTION("Qualcomm LPASS VA CSR heartbeat pulse clock provider");
-+MODULE_LICENSE("GPL");
+ 	set_bit(ATH11K_FLAG_MONITOR_STARTED, &ar->monitor_flags);
+ 
+ 	ar->num_started_vdevs++;
 
--- 
-2.34.1
+---
+base-commit: a3ddbb45768717b5c9f923489387cf55c838d1ad
+change-id: 20261104-ath11k-full-monitor-stale-hold-c2350ba24638
+
+Best regards,
+--  
+Christopher Griffin <christophergriffin05@gmail.com>
 
