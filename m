@@ -1,15 +1,12 @@
 From: Xuheng Li <xuheng@cs.columbia.edu>
-Subject: [PATCH 0/3] KVM: arm64: Fix the hyp pool size on large machines,
- plus two hardening patches
-Date: Thu, 05 Nov 2026 22:28:49 +0000
-Message-Id: <20261105-hyp-pool-and-map-v1-0-756bb5d8e067@cs.columbia.edu>
+Date: Thu, 05 Nov 2026 22:28:50 +0000
+Subject: [PATCH 1/3] KVM: arm64: Compute the hyp pool size in 64 bits
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avIrBtohAq7SrSwnGqgVBSiiO6et
- HyL/x/InIQz9OqBxKdkCb6AKgXzZv3KKK4YdK1borrB7Y4YQ9jReoeHjTg13E1sLJEhKFlMvMj
- 1L4fxfT/QCcPTYgAAAA==
-X-Change-ID: 20261105-hyp-pool-and-map-b5e7be9a1191
+Message-Id: <20261105-hyp-pool-and-map-v1-1-756bb5d8e067@cs.columbia.edu>
+References: <20261105-hyp-pool-and-map-v1-0-756bb5d8e067@cs.columbia.edu>
+In-Reply-To: <20261105-hyp-pool-and-map-v1-0-756bb5d8e067@cs.columbia.edu>
 To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oupton@kernel.org>
 Cc: Quentin Perret <qperret@google.com>, Will Deacon <will@kernel.org>, 
  Catalin Marinas <catalin.marinas@arm.com>, 
@@ -20,49 +17,81 @@ Cc: Quentin Perret <qperret@google.com>, Will Deacon <will@kernel.org>,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Xuheng Li <xuheng@cs.columbia.edu>, stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793917729; l=1436;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793917729; l=2873;
  i=xuheng@cs.columbia.edu; s=20261028; h=from:subject:message-id;
- bh=gQekyKtD9gqE06JU2ATVEtl2lW315Pl8Hsi4FhanixE=;
- b=4VskGk/nnncCTlFFpyv3yW8wjN2DEulU4CGjyKuATzAXd5ZtSIs40RgAyCWjcH90faDMofvwW
- QBW4Q1u4euzD8W3zGQ3dJBTFllXoV432+H67kpL3UW0tDIXSTi0QnmS
+ bh=UxuVgBjPBETyOHIqHbEHAWaoxXnBBnvVmnBeY1ybafA=;
+ b=j9yH+aaCv6O2qR5kWkR35pr2U+iHzJ4e49Ta/xuKRt8WMXlEXE3VrDsW3x/tw1Ag3OsxxiFMq
+ s0jXWQBw68lBQs2POH+PpP/WYzowh9qbNa32gIpdjHLnA3+Krye1ZQ8
 X-Developer-Key: i=xuheng@cs.columbia.edu; a=ed25519;
  pk=L1HVV+goqxYmEMO/OXakL6uf9isSpgk2QrLlFqyZ2Qs=
 X-Endpoint-Received: by B4 Relay for xuheng@cs.columbia.edu/20261028 with auth_id=1349
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Three changes for issues we found in pKVM as part of our research
-project.
+hyp_pool_init() takes the pool size as an unsigned int number of pages
+and computes the size in bytes as nr_pages << PAGE_SHIFT, in 32 bits.
+For a pool of 4 GiB or more (nr_pages >= 2^20 with 4 KiB pages) the
+shift overflows, and both pool->range_end and pool->max_order are
+derived from the truncated size.
 
-Patch 1 fixes a 32-bit size computation in hyp_pool_init(): a pool of
-4 GiB or more gets a truncated range and maximum order.  hpool and
-host_s2_pool reach that size on machines with about 2 TiB of RAM.
+The two large pools are sized from the amount of memory:
+hyp_s1_pgtable_pages() for hpool and host_s2_pgtable_pages() for
+host_s2_pool both provision page-granular tables for all of memory,
+about one page per 2 MiB of RAM, so they reach 4 GiB on a machine with
+about 2 TiB of RAM.  Arm systems of that size exist, for example AWS
+Graviton4 x8g.metal-48xl instances (3 TiB) and Ampere Altra Max
+servers (up to 4 TiB per socket).
 
-Patch 2 checks the host stage-2 PGD allocation for NULL before using
-it.  With patch 1 applied that allocation cannot fail, so this only
-turns a mis-sized pool into a clean -ENOMEM instead of a hyp panic.
+With a truncated range_end, most of the pool lies outside
+[range_start, range_end), so __hyp_attach_page() treats those pages as
+external order-0 pages that never coalesce, and the pool cannot satisfy
+multi-page allocations.  What that does depends on the host's IPA size,
+since the only multi-page allocation from these pools is the host
+stage-2 PGD in host_s2_zalloc_pages_exact():
 
-Patch 3 makes hyp_map_walker() refuse to replace a valid block mapping
-with a table, which would skip break-before-make and unmap the rest of
-the block.  Nothing in mainline maps into an existing hyp block, so this
-is hardening; Android's interface for EL2 modules to map pages can reach
-it.
+ - With a 44- or 48-bit PARange the PGD is a single page.  pKVM boots,
+   but both pools run with a wrong range and maximum order, and any
+   later multi-page allocation from them would fail.
 
+ - With a 42-bit PARange the PGD is eight concatenated level-1 tables.
+   Its allocation fails, and host_s2_zalloc_pages_exact() calls
+   hyp_split_page() on the result before checking it for NULL, so pKVM
+   initialisation operates on a bogus struct hyp_page instead of failing
+   with -ENOMEM.
+
+Compute the size in 64 bits.
+
+Fixes: 8e17c66249e9 ("KVM: arm64: Introduce a Hyp buddy page allocator")
+Cc: stable@vger.kernel.org
 Signed-off-by: Xuheng Li <xuheng@cs.columbia.edu>
 ---
-Xuheng Li (3):
-      KVM: arm64: Compute the hyp pool size in 64 bits
-      KVM: arm64: Check the host stage-2 PGD allocation for NULL
-      KVM: arm64: Don't replace a valid hyp block mapping with a table
+ arch/arm64/kvm/hyp/nvhe/page_alloc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
- arch/arm64/kvm/hyp/nvhe/mem_protect.c | 3 +++
- arch/arm64/kvm/hyp/nvhe/page_alloc.c  | 6 +++---
- arch/arm64/kvm/hyp/pgtable.c          | 7 +++++++
- 3 files changed, 13 insertions(+), 3 deletions(-)
----
-base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
-change-id: 20261105-hyp-pool-and-map-b5e7be9a1191
+diff --git a/arch/arm64/kvm/hyp/nvhe/page_alloc.c b/arch/arm64/kvm/hyp/nvhe/page_alloc.c
+index 57f86aa0f..e7c10d2f7 100644
+--- a/arch/arm64/kvm/hyp/nvhe/page_alloc.c
++++ b/arch/arm64/kvm/hyp/nvhe/page_alloc.c
+@@ -233,16 +233,16 @@ int hyp_pool_init(struct hyp_pool *pool, u64 pfn, unsigned int nr_pages,
+ 		  unsigned int reserved_pages)
+ {
+ 	phys_addr_t phys = hyp_pfn_to_phys(pfn);
++	u64 size = (u64)nr_pages << PAGE_SHIFT;
+ 	struct hyp_page *p;
+ 	int i;
+ 
+ 	hyp_spin_lock_init(&pool->lock);
+-	pool->max_order = min(MAX_PAGE_ORDER,
+-			      get_order(nr_pages << PAGE_SHIFT));
++	pool->max_order = min(MAX_PAGE_ORDER, get_order(size));
+ 	for (i = 0; i <= pool->max_order; i++)
+ 		INIT_LIST_HEAD(&pool->free_area[i]);
+ 	pool->range_start = phys;
+-	pool->range_end = phys + (nr_pages << PAGE_SHIFT);
++	pool->range_end = phys + size;
+ 
+ 	/* Init the vmemmap portion */
+ 	p = hyp_phys_to_page(phys);
 
-Best regards,
 -- 
-Xuheng Li <xuheng@cs.columbia.edu>
+2.53.0
 
