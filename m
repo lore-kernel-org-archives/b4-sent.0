@@ -1,531 +1,121 @@
-From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Thu, 05 Nov 2026 13:54:15 +0300
-Subject: [PATCH v8 11/11] arm64: dts: qcom: generalmobile-shamrock: new
- device
+From: Long Zhao <longzhao@ambarella.com>
+Subject: [PATCH v11 0/5] arm64: add Ambarella CV75 SoC support
+Date: Thu, 05 Nov 2026 19:06:34 +0800
+Message-Id: <20261105-cv75-soc-v11-0-aa6ee0b2380d@ambarella.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-msm8952-initial-support-v8-11-311ae8e8f14b@mainlining.org>
-References: <20261105-msm8952-initial-support-v8-0-311ae8e8f14b@mainlining.org>
-In-Reply-To: <20261105-msm8952-initial-support-v8-0-311ae8e8f14b@mainlining.org>
-To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, "Joerg Roedel (AMD)" <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>, 
- Rajendra Nayak <quic_rjendra@quicinc.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Jassi Brar <jassisinghbrar@gmail.com>, Abel Vesa <abelvesa@kernel.org>, 
- Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, 
- Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Krishna Manikandan <quic_mkrishn@quicinc.com>, 
- Mathieu Poirier <mathieu.poirier@linaro.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Kees Cook <kees@kernel.org>, 
- Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
- linux-watchdog@vger.kernel.org, linux-clk@vger.kernel.org, 
- dri-devel@lists.freedesktop.org, freedreno@lists.freedesktop.org, 
- linux-remoteproc@vger.kernel.org, linux-input@vger.kernel.org, 
- Muzaffer Kadir <muzafferkadir@mainlining.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIADpj7GoC/12OwQ7CIAyGX8VwFgNsMObJ9zAeGHQOsw0Dk2iWv
+ buwxWhMemn7f187owDeQkDH3Yw8RBusG1ND6X6HdKfGK2Br0gAxwgQlpMI6VhwHpzEIJtuCVy0
+ RAqX43UNrn6vrfNn68GhuoKfM50Rnw+T8az0W65z7aOmmjalqTHAphdZM1qps5EkNjfLQ9+qg3
+ YCyOVLyA9P6+1PaJNwUUhDBgRnD//FlWd4F6klB9QAAAA==
+X-Change-ID: 20261007-cv75-soc-e628f357f066
+To: Arnd Bergmann <arnd@arndb.de>, Krzysztof Kozlowski <krzk@kernel.org>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, soc@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: Jerome Brunet <jbrunet@baylibre.com>, linux-clk@vger.kernel.org, 
+ Brian Masney <masneyb@kernel.org>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ devicetree@vger.kernel.org, Long Zhao <longzhao@ambarella.com>, 
+ Long Zhao <zl020895@163.com>, linux-kernel@vger.kernel.org, 
+ Linus Walleij <linusw@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793876100; l=11481;
- i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=HymBjmE3sNKbpYsY/r6M8zEjNfwrtuOvrLXhgf1+qtM=;
- b=xBs4NXkNFugK6GQ8bfia3EiCuhsAZu+poizw2oTtl0xbw5R5/Ww2Mucq4NtGImPLLUVOiVxtc
- 5uaF2nzkrSuCVLSQYYE81nYKyffOyoKN1kD7gPdTMF15f3Vzs/THama
-X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
- pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
-X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793876823; l=3501;
+ i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
+ bh=AVzwdrPqmXDKIIAxlOumBsj3BZ0AuGGaxyVMdRkHk20=;
+ b=8UWLdjRv/iksvX+vRoXqsIjzNdNyzojvgDsrJYb0Tin0Z1ymhEd1Jq9z4hI2Cd7nCZly4x/Z1
+ CirGO7XBDt8DbT4724QX/nTjOwrwBt7TSqTjPPT/dcvYyveRrmyTPI2
+X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
+ pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
+X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add General Mobile Shamrock (GM 5 Plus). Shamrock is designed
-similar to L9300. Downstream reference is [1].
+Add the Ambarella CV75 SoC and EVK support: the board binding, the
+RCT clock binding and driver, ARCH_AMBARELLA, the devicetree and
+MAINTAINERS.
 
-[1] https://github.com/Asderdd/android_kernel_generalmobile_shamrock/blob/cm-14.1/arch/arm/boot/dts/qcom/msm8952-l9300.dtsi
+The clock ID header is added before the devicetree that includes it,
+so patch 2 (the clock binding) has to be applied before patch 4 (the
+devicetree).
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
+The ambarella vendor prefix and the CV75 secure scratchpad syscon
+binding are already in linux-next. This series does not repeat
+either of them.
+
+GPIO, UART and pinctrl bindings and drivers are separate series.
+This devicetree references those compatibles.
+
+Tested on the CV75 EVK. The board boots. That boot used a local tree
+that also includes the GPIO, UART and pinctrl patches.
+
+To: Arnd Bergmann <arnd@arndb.de>
+To: Krzysztof Kozlowski <krzk@kernel.org>
+To: Alexandre Belloni <alexandre.belloni@bootlin.com>
+To: soc@lists.linux.dev
+To: linux-arm-kernel@lists.infradead.org
+To: Michael Turquette <mturquette@baylibre.com>
+To: Stephen Boyd <sboyd@kernel.org>
+Cc: Jerome Brunet <jbrunet@baylibre.com>
+Cc: linux-clk@vger.kernel.org
+Cc: Brian Masney <masneyb@kernel.org>
+Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: Rob Herring <robh@kernel.org>
+Cc: Krzysztof Kozlowski <krzk+dt@kernel.org>
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Cc: Conor Dooley <conor+dt@kernel.org>
+Cc: Catalin Marinas <catalin.marinas@arm.com>
+Cc: Will Deacon <will@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: Long Zhao <longzhao@ambarella.com>
+Cc: Long Zhao <zl020895@163.com>
+Cc: linux-kernel@vger.kernel.org
+
+Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../dts/qcom/msm8952-generalmobile-shamrock.dts    | 442 +++++++++++++++++++++
- 2 files changed, 443 insertions(+)
+Changes in v11:
+- clk: use builtin_platform_driver(). The Kconfig symbol is bool. (Brian)
+- clk: drop CLK_IS_CRITICAL from the core PLL. It has no enable op. (Brian)
+- clk: drop the misleading (u64) cast in the div_u64() call. (Brian)
+- clk: add .suppress_bind_attrs = true to block sysfs unbind. (Brian)
+- clk: drop MODULE_AUTHOR. (Brian)
+- Link to v10:
+  https://patch.msgid.link/20261019-cv75-soc-v10-0-d386065e2dd5@ambarella.com
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 88230c4e00ea..898df8754657 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -130,6 +130,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-samsung-a7.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-sony-xperia-kanuti-tulip.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-wingtech-wt82918.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-wingtech-wt82918hd.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= msm8952-generalmobile-shamrock.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-flipkart-rimob.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-motorola-deen.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-motorola-potter.dtb
-diff --git a/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts b/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts
-new file mode 100644
-index 000000000000..d9ffdcf24634
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts
-@@ -0,0 +1,442 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+
-+/dts-v1/;
-+
-+#include "msm8952.dtsi"
-+#include "pm8950.dtsi"
-+#include "pmi8950.dtsi"
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/leds/common.h>
-+
-+/ {
-+	model = "General Mobile GM 5 Plus";
-+	compatible = "generalmobile,shamrock", "qcom,msm8952";
-+	chassis-type = "handset";
-+	qcom,msm-id = <QCOM_ID_MSM8952 0x0>;
-+	qcom,board-id = <QCOM_BOARD_ID_QRD 1>;
-+
-+	aliases {
-+		mmc0 = &sdhc_1; /* SDC1 eMMC slot */
-+		mmc1 = &sdhc_2; /* SDC2 SD card slot */
-+		serial0 = &blsp1_uart2;
-+	};
-+
-+	battery: battery {
-+		compatible = "simple-battery";
-+
-+		charge-term-current-microamp = <100000>;
-+		charge-full-design-microamp-hours = <3100000>;
-+		constant-charge-current-max-microamp = <3000000>;
-+		constant-charge-voltage-max-microvolt = <4400000>;
-+		voltage-min-design-microvolt = <3400000>;
-+		voltage-max-design-microvolt = <4400000>;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+
-+		framebuffer {
-+			compatible = "simple-framebuffer";
-+			memory-region = <&cont_splash_mem>;
-+
-+			width = <1080>;
-+			height = <1920>;
-+			stride = <(1080 * 3)>;
-+			format = "r8g8b8";
-+
-+			power-domains = <&gcc MDSS_GDSC>;
-+
-+			clocks = <&gcc GCC_MDSS_AHB_CLK>,
-+				 <&gcc GCC_MDSS_AXI_CLK>,
-+				 <&gcc GCC_MDSS_VSYNC_CLK>,
-+				 <&gcc GCC_MDSS_MDP_CLK>,
-+				 <&gcc GCC_MDSS_BYTE0_CLK>,
-+				 <&gcc GCC_MDSS_PCLK0_CLK>,
-+				 <&gcc GCC_MDSS_ESC0_CLK>;
-+		};
-+	};
-+
-+	/* Front Flash */
-+	flash-led-controller {
-+		compatible = "sgmicro,sgm3140";
-+
-+		enable-gpios = <&tlmm 33 GPIO_ACTIVE_HIGH>;
-+		flash-gpios = <&tlmm 128 GPIO_ACTIVE_HIGH>;
-+
-+		pinctrl-0 = <&front_flash_default>;
-+		pinctrl-names = "default";
-+
-+		front_flash_led: led {
-+			function = LED_FUNCTION_FLASH;
-+			color = <LED_COLOR_ID_WHITE>;
-+			flash-max-microamp = <1000000>;
-+			led-max-microamp = <625000>;
-+			flash-max-timeout-us = <1280000>;
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		pinctrl-0 = <&gpio_hall_sensor_default>, <&gpio_keys_default>;
-+		pinctrl-names = "default";
-+
-+		button-volume-up {
-+			label = "Volume Up";
-+			gpios = <&tlmm 85 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <15>;
-+			wakeup-source;
-+			linux,code = <KEY_VOLUMEUP>;
-+		};
-+
-+		event-hall-sensor {
-+			label = "Hall Effect Sensor";
-+			gpios = <&tlmm 46 GPIO_ACTIVE_LOW>;
-+			wakeup-source;
-+			linux,input-type = <EV_SW>;
-+			linux,code = <SW_LID>;
-+			linux,can-disable;
-+		};
-+	};
-+
-+	multi-led {
-+		compatible = "leds-group-multicolor";
-+		color = <LED_COLOR_ID_RGB>;
-+		function = LED_FUNCTION_STATUS;
-+		leds = <&red_status>, <&green_status>, <&blue_status>;
-+	};
-+
-+	reserved-memory {
-+		cont_splash_mem: cont-splash@83200000 {
-+			reg = <0x0 0x83200000 0x0 (1080 * 1920 * 3)>;
-+			no-map;
-+		};
-+	};
-+
-+	vph_pwr: regulator-vph-pwr {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vph-pwr";
-+		regulator-always-on;
-+		regulator-boot-on;
-+	};
-+};
-+
-+&adsp {
-+	status = "okay";
-+};
-+
-+&blsp1_i2c2 {
-+	status = "okay";
-+	/* SMB1351 @1d charger */
-+	/* wsa881x-i2c @e @44 @f @45 audio amplifier */
-+};
-+
-+&blsp1_i2c3 {
-+	status = "okay";
-+
-+	/* himax,852x@48 Touchscreen */
-+
-+	touchscreen@5d {
-+		compatible = "goodix,gt970", "goodix,gt911";
-+		reg = <0x5d>;
-+		interrupts-extended = <&tlmm 65 IRQ_TYPE_EDGE_FALLING>;
-+		irq-gpios = <&tlmm 65 GPIO_ACTIVE_HIGH>;
-+		reset-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
-+		AVDD28-supply = <&pm8950_l10>;
-+		VDDIO-supply = <&pm8950_l6>;
-+
-+		pinctrl-0 = <&touchscreen_default>;
-+		pinctrl-names = "default";
-+
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <1920>;
-+	};
-+};
-+
-+&blsp1_uart2 {
-+	status = "okay";
-+};
-+
-+&blsp2_i2c1 {
-+	status = "okay";
-+
-+	/* FUSB301 @25 USB-C Controller */
-+
-+	tpa6130a2: audio-controller@60 {
-+		compatible = "ti,tpa6130a2";
-+		reg = <0x60>;
-+		pinctrl-0 = <&tpa6130a2_default>;
-+		pinctrl-names = "default";
-+		power-gpio = <&tlmm 61 GPIO_ACTIVE_HIGH>;
-+		Vdd-supply = <&pm8950_l22>;
-+	};
-+
-+	tusb320: usb@67 {
-+		compatible = "ti,tusb320";
-+		reg = <0x67>;
-+		interrupts-extended = <&tlmm 45 IRQ_TYPE_EDGE_FALLING>;
-+	};
-+
-+	led-controller@68 {
-+		compatible = "si-en,sn3193";
-+		reg = <0x68>;
-+
-+		shutdown-gpios = <&tlmm 68 GPIO_ACTIVE_HIGH>;
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		red_status: led@1 {
-+			reg = <1>;
-+			color = <LED_COLOR_ID_RED>;
-+			function = LED_FUNCTION_STATUS;
-+			led-max-microamp = <17500>;
-+		};
-+
-+		green_status: led@2 {
-+			reg = <2>;
-+			color = <LED_COLOR_ID_GREEN>;
-+			function = LED_FUNCTION_STATUS;
-+			led-max-microamp = <17500>;
-+		};
-+
-+		blue_status: led@3 {
-+			reg = <3>;
-+			color = <LED_COLOR_ID_BLUE>;
-+			function = LED_FUNCTION_STATUS;
-+			led-max-microamp = <17500>;
-+		};
-+	};
-+};
-+
-+&pm8950_spmi_regulators {
-+	/* PM8950 S5 + S6 = VDD_APC supply */
-+	pm8950_s5: s5 {
-+		regulator-min-microvolt = <1050000>;
-+		regulator-max-microvolt = <1350000>;
-+		regulator-always-on;
-+		regulator-boot-on;
-+	};
-+};
-+
-+&pm8950_resin {
-+	linux,code = <KEY_VOLUMEDOWN>;
-+
-+	status = "okay";
-+};
-+
-+&pmi8950_wled {
-+	qcom,enabled-strings = <0 1>;
-+	qcom,current-limit-microamp = <30000>;
-+	qcom,ovp-millivolt = <29500>;
-+	qcom,external-pfet;
-+
-+	status = "okay";
-+};
-+
-+&ramoops_mem {
-+	status = "okay";
-+};
-+
-+&rpm_requests {
-+	pm8950_rpm_regulators: regulators {
-+		compatible = "qcom,rpm-pm8950-regulators";
-+		vdd_s1-supply = <&vph_pwr>;
-+		vdd_s2-supply = <&vph_pwr>;
-+		vdd_s3-supply = <&vph_pwr>;
-+		vdd_s4-supply = <&vph_pwr>;
-+		vdd_s6-supply = <&vph_pwr>;
-+		vdd_l1_l19-supply = <&pm8950_s3>;
-+		vdd_l2_l23-supply = <&pm8950_s3>;
-+		vdd_l3-supply = <&pm8950_s3>;
-+		vdd_l5_l6_l7_l16-supply = <&pm8950_s4>;
-+		vdd_l8_l11_l12_l17_l22-supply = <&vph_pwr>;
-+		vdd_l9_l10_l13_l14_l15_l18-supply = <&vph_pwr>;
-+
-+		pm8950_s1: s1 {
-+			regulator-min-microvolt = <1000000>;
-+			regulator-max-microvolt = <1225000>;
-+		};
-+
-+		pm8950_s3: s3 {
-+			regulator-min-microvolt = <1300000>;
-+			regulator-max-microvolt = <1300000>;
-+		};
-+
-+		pm8950_s4: s4 {
-+			regulator-min-microvolt = <2050000>;
-+			regulator-max-microvolt = <2050000>;
-+		};
-+
-+		pm8950_l2: l2 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-always-on;
-+			regulator-boot-on;
-+		};
-+
-+		/* pm8950_l3 is managed by rpmpd (RPMPD_VDDMX) */
-+
-+		pm8950_l5: l5 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l6: l6 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l7: l7 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l8: l8 {
-+			regulator-min-microvolt = <2850000>;
-+			regulator-max-microvolt = <2900000>;
-+		};
-+
-+		pm8950_l9: l9 {
-+			regulator-min-microvolt = <3000000>;
-+			regulator-max-microvolt = <3300000>;
-+		};
-+
-+		pm8950_l10: l10 {
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+		};
-+
-+		pm8950_l11: l11 {
-+			regulator-min-microvolt = <2950000>;
-+			regulator-max-microvolt = <2950000>;
-+			regulator-allow-set-load;
-+			regulator-system-load = <200000>;
-+		};
-+
-+		pm8950_l12: l12 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <2950000>;
-+		};
-+
-+		pm8950_l13: l13 {
-+			regulator-min-microvolt = <3075000>;
-+			regulator-max-microvolt = <3075000>;
-+		};
-+
-+		pm8950_l14: l14 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3300000>;
-+		};
-+
-+		pm8950_l15: l15 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3300000>;
-+		};
-+
-+		pm8950_l16: l16 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l17: l17 {
-+			regulator-min-microvolt = <2850000>;
-+			regulator-max-microvolt = <2850000>;
-+		};
-+
-+		pm8950_l19: l19 {
-+			regulator-min-microvolt = <1225000>;
-+			regulator-max-microvolt = <1350000>;
-+		};
-+
-+		pm8950_l22: l22 {
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+		};
-+
-+		pm8950_l23: l23 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+		};
-+	};
-+};
-+
-+&sdhc_1 {
-+	vmmc-supply = <&pm8950_l8>;
-+	vqmmc-supply = <&pm8950_l5>;
-+
-+	status = "okay";
-+};
-+
-+&sdhc_2 {
-+	cd-gpios = <&tlmm 67 GPIO_ACTIVE_HIGH>;
-+	vmmc-supply = <&pm8950_l11>;
-+	vqmmc-supply = <&pm8950_l12>;
-+
-+	status = "okay";
-+};
-+
-+&sleep_clk {
-+	clock-frequency = <32768>;
-+};
-+
-+&tlmm {
-+	gpio-reserved-ranges = <20 4>; /* Unknown, TZ Protected */
-+
-+	gpio_hall_sensor_default: gpio-hall-sensor-default-state {
-+		pins = "gpio46";
-+		function = "gpio";
-+		drive-strength = <6>;
-+		bias-pull-up;
-+	};
-+
-+	tpa6130a2_default: tpa6130a2-default-state {
-+		pins = "gpio61";
-+		function = "gpio";
-+		drive-strength = <8>;
-+		bias-pull-down;
-+	};
-+
-+	touchscreen_default: touchscreen-default-state {
-+		reset-pins {
-+			pins = "gpio64";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+
-+		irq-pins {
-+			pins = "gpio65";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+	};
-+
-+	gpio_keys_default: gpio-keys-default-state {
-+		pins = "gpio85";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-up;
-+	};
-+
-+	front_flash_default: front-flash-default-state {
-+		enable-pins {
-+			pins = "gpio33";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-down;
-+		};
-+
-+		flash-pins {
-+			pins = "gpio128";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-down;
-+		};
-+	};
-+};
-+
-+&xo_board {
-+	clock-frequency = <19200000>;
-+};
+---
+Long Zhao (5):
+      dt-bindings: arm: add Ambarella CV75 platforms
+      dt-bindings: clock: add Ambarella CV75 RCT
+      clk: ambarella: add CV75 RCT clock controller
+      arm64: ambarella: add ARCH_AMBARELLA and CV75 EVK DT
+      MAINTAINERS: add ARM/AMBARELLA SoC support
 
--- 
-2.56.0
+ .../devicetree/bindings/arm/ambarella.yaml         |  24 ++
+ .../bindings/clock/ambarella,cv75-rct.yaml         |  64 ++++
+ MAINTAINERS                                        |  14 +
+ arch/arm64/Kconfig.platforms                       |   6 +
+ arch/arm64/boot/dts/Makefile                       |   1 +
+ arch/arm64/boot/dts/ambarella/Makefile             |   3 +
+ arch/arm64/boot/dts/ambarella/cv75-evk.dts         |  30 ++
+ arch/arm64/boot/dts/ambarella/cv75.dtsi            | 177 ++++++++++
+ arch/arm64/configs/defconfig                       |   1 +
+ drivers/clk/Kconfig                                |   1 +
+ drivers/clk/Makefile                               |   1 +
+ drivers/clk/ambarella/Kconfig                      |   8 +
+ drivers/clk/ambarella/Makefile                     |   3 +
+ drivers/clk/ambarella/clk-cv75.c                   | 361 +++++++++++++++++++++
+ include/dt-bindings/clock/ambarella,cv75-rct.h     |  14 +
+ 15 files changed, 708 insertions(+)
+---
+base-commit: 34cf6dafc47441dfb6b356a095b89c3585a93714
+change-id: 20261007-cv75-soc-e628f357f066
+
+Best regards,
+--  
+Long Zhao <longzhao@ambarella.com>
 
