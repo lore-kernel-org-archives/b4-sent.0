@@ -1,11 +1,11 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Thu, 05 Nov 2026 12:12:22 -0600
-Subject: [PATCH 1/2] wifi: ath11k: don't leave a monitor vif started when
+Date: Thu, 05 Nov 2026 12:12:23 -0600
+Subject: [PATCH 2/2] wifi: ath12k: don't leave a monitor link started when
  its stop fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-ath-monitor-unassign-v1-1-277f0fbadb91@gmail.com>
+Message-Id: <20261105-ath-monitor-unassign-v1-2-277f0fbadb91@gmail.com>
 References: <20261105-ath-monitor-unassign-v1-0-277f0fbadb91@gmail.com>
 In-Reply-To: <20261105-ath-monitor-unassign-v1-0-277f0fbadb91@gmail.com>
 To: Jeff Johnson <jjohnson@kernel.org>, 
@@ -22,73 +22,61 @@ Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org,
  ath12k@lists.infradead.org, 
  Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793902344; l=2565;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793902344; l=1783;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=1R7oAGbBN78/oVWlhCPSGL7JqxfEoXYdSJISg6BkmUs=;
- b=TPfNd1rwEb1IAORwzaVwKydgTWq9y85ofF0dnxUxsONH+KfMDevRtnzxDbtsB6PGwVN6ME/y0
- jYIA7dJ3kDFAneU9+97YW99sbcrvw1DOYHUKbEhDvc7OksKHkKLF0b/
+ bh=yJliLnA52UPk6OOcZziqgLXylvHUHFJud+o6Dahzovo=;
+ b=RtI+6f08VIMKSgrwalriN0ZtZkc2Iu2Qe8TRHTrgj/6k40N7JIbH5s21SSzcD4HAbUzPEHa4p
+ VaHljDdHCQgAdHgfZS9xoqenVGZJOZd07I55M5njTRLZWP7jChamzqJ
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ath11k_mac_op_unassign_vif_chanctx() returns early, with
-arvif->is_started still set, when ath11k_mac_monitor_stop() fails for a
-monitor vif. mac80211 can't fail an unassignment and considers the
-channel context released, so the vif's next assignment, e.g. the next
-channel change of the monitor interface, hits WARN_ON(arvif->is_started)
-in ath11k_mac_op_assign_vif_chanctx() and fails with -EBUSY.
+ath12k_mac_op_unassign_vif_chanctx() returns early, with
+arvif->is_started still set, when ath12k_mac_monitor_stop() fails.
+mac80211 can't fail an unassignment and considers the channel context
+released, so the link's next assignment hits WARN_ON(arvif->is_started)
+in ath12k_mac_op_assign_vif_chanctx() and fails with -EBUSY. A firmware
+crash during a monitor channel change is enough: the vdev stop times
+out.
 
-A firmware crash during a monitor channel change does it. On a QCN9074
-with a monitor interface that changes channel every few hundred
-milliseconds, after simulate_fw_crash:
+ath11k has the same flow and shows the warning that way on a QCN9074.
 
-  failed to stop monitor vdev: -110
-  failed to stop monitor during vif channel context unassignment: -110
-  WARNING: CPU: 2 PID: 15367 at drivers/net/wireless/ath/ath11k/mac.c:8499 ath11k_mac_op_assign_vif_chanctx+0x304/0x3e0 [ath11k]
-  Call trace:
-   ath11k_mac_op_assign_vif_chanctx+0x304/0x3e0 [ath11k] (P)
-   drv_assign_vif_chanctx+0xac/0x144 [mac80211]
-   ieee80211_recalc_smps_chanctx+0x278/0x940 [mac80211]
-   _ieee80211_link_use_channel+0x158/0x210 [mac80211]
-   ieee80211_set_monitor_channel+0xa4/0x860 [mac80211]
-   cfg80211_set_monitor_channel+0x3c/0x60 [cfg80211]
-   nl80211_set_wiphy+0x2cc/0x7d8 [cfg80211]
+Fall through to the common path, which clears is_started.
+ath12k_mac_monitor_stop() already warns on failure.
 
-Recovery resets the vif afterwards, but without a crash the vif would
-refuse every later channel context, with a warning each time.
+Compile-tested only.
 
-Clear is_started even when the stop fails, as the non-monitor path in
-the same function does.
-
-Tested-on: QCN9074 hw1.0 PCI WLAN.HK.2.5.r4-00683-QCAHKSWPL_SILICONZ-1
-
-Fixes: 689a5e6fff75 ("ath11k: monitor mode clean up to use separate APIs")
+Fixes: d889913205cf ("wifi: ath12k: driver for Qualcomm Wi-Fi 7 devices")
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- drivers/net/wireless/ath/ath11k/mac.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ drivers/net/wireless/ath/ath12k/mac.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
-index 1a237adaa37d1..fc6c374c787fd 100644
---- a/drivers/net/wireless/ath/ath11k/mac.c
-+++ b/drivers/net/wireless/ath/ath11k/mac.c
-@@ -8514,12 +8514,10 @@ ath11k_mac_op_unassign_vif_chanctx(struct ieee80211_hw *hw,
+diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
+index 9fd3841f71b71..7d04f16f99e37 100644
+--- a/drivers/net/wireless/ath/ath12k/mac.c
++++ b/drivers/net/wireless/ath/ath12k/mac.c
+@@ -12422,13 +12422,11 @@ ath12k_mac_op_unassign_vif_chanctx(struct ieee80211_hw *hw,
  
- 	if (arvif->vdev_type == WMI_VDEV_TYPE_MONITOR) {
- 		ret = ath11k_mac_monitor_stop(ar);
--		if (ret) {
-+		if (ret)
-+			/* continue: mac80211 has unassigned the context anyway */
- 			ath11k_warn(ar->ab, "failed to stop monitor during vif channel context unassignment: %d",
- 				    ret);
--			mutex_unlock(&ar->conf_mutex);
+ 	WARN_ON(!arvif->is_started);
+ 
+-	if (ahvif->vdev_type == WMI_VDEV_TYPE_MONITOR) {
+-		ret = ath12k_mac_monitor_stop(ar);
+-		if (ret)
 -			return;
--		}
+-
+-		arvif->is_started = false;
+-	}
++	/* mac80211 can't fail an unassignment, so the link counts as stopped
++	 * below even if the monitor stop fails (that warns on its own).
++	 */
++	if (ahvif->vdev_type == WMI_VDEV_TYPE_MONITOR)
++		ath12k_mac_monitor_stop(ar);
  
- 		arvif->is_started = false;
- 		mutex_unlock(&ar->conf_mutex);
+ 	if (ahvif->vdev_type != WMI_VDEV_TYPE_STA &&
+ 	    ahvif->vdev_type != WMI_VDEV_TYPE_MONITOR) {
 
 -- 
 2.43.0
