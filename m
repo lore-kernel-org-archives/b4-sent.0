@@ -1,11 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Thu, 05 Nov 2026 13:54:06 +0300
-Subject: [PATCH v8 02/11] dt-bindings: iommu: qcom,iommu: Add MSM8952 IOMMU
- to SMMUv2 compatibles
+Date: Thu, 05 Nov 2026 13:54:07 +0300
+Subject: [PATCH v8 03/11] dt-bindings: watchdog: qcom-wdt: Document MSM8952
+ watchdog
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-msm8952-initial-support-v8-2-311ae8e8f14b@mainlining.org>
+Message-Id: <20261105-msm8952-initial-support-v8-3-311ae8e8f14b@mainlining.org>
 References: <20261105-msm8952-initial-support-v8-0-311ae8e8f14b@mainlining.org>
 In-Reply-To: <20261105-msm8952-initial-support-v8-0-311ae8e8f14b@mainlining.org>
 To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -43,38 +43,36 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  Muzaffer Kadir <muzafferkadir@mainlining.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793876100; l=969;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793876100; l=902;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=kpqMYq4BzsuyLclvUfDPu/lZin8icjEat8+zs0C5qZw=;
- b=9WSZMwhPlP7hXbdYUrdG/vxs8AJkxR/4Y4m+tW62ZnC+XgNTxbi3GIJZbQk1BhG/fe7KSFTLw
- l+RMCYRa2YmAT8BGxEcSw8QXMEyotCg21ySNJU5Y3cqphbNMnGQWJMH
+ bh=CVXmuzbvh1yrXvbAPQPnGHqHjpewg6nuUS4b1kM2YZs=;
+ b=/1yNGZLtQnjGcwViYL3Zd6KAb3MfgFAi2DskVQ7c03EGd1LGGUNpaKWXPtvWcvzJYp9yHUAN5
+ HzCxj3jpdJGB/1sGwup2eYb03eWzzYzpzMLqbvaI3PFtXpW/dZxzWss
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MSM8952 compatible string with "qcom,msm-iommu-v2" as fallback
-for the MSM8952 IOMMU which is compatible with Qualcomm's secure
-fw "SMMU v2" implementation.
+Document the watchdog found on MSM8952.
 
 Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/iommu/qcom,iommu.yaml | 1 +
+ Documentation/devicetree/bindings/watchdog/qcom-wdt.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml b/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
-index 93a489025317..9952b9da9a6a 100644
---- a/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
-+++ b/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
-@@ -27,6 +27,7 @@ properties:
-           - const: qcom,msm-iommu-v1
-       - items:
-           - enum:
-+              - qcom,msm8952-iommu
-               - qcom,msm8953-iommu
-               - qcom,msm8976-iommu
-           - const: qcom,msm-iommu-v2
+diff --git a/Documentation/devicetree/bindings/watchdog/qcom-wdt.yaml b/Documentation/devicetree/bindings/watchdog/qcom-wdt.yaml
+index 4ff61102e407..38f86ccd1ffd 100644
+--- a/Documentation/devicetree/bindings/watchdog/qcom-wdt.yaml
++++ b/Documentation/devicetree/bindings/watchdog/qcom-wdt.yaml
+@@ -29,6 +29,7 @@ properties:
+               - qcom,apss-wdt-kaanapali
+               - qcom,apss-wdt-maili
+               - qcom,apss-wdt-msm8226
++              - qcom,apss-wdt-msm8952
+               - qcom,apss-wdt-msm8974
+               - qcom,apss-wdt-msm8994
+               - qcom,apss-wdt-nord
 
 -- 
 2.56.0
