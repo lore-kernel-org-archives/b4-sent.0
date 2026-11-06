@@ -1,14 +1,12 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Subject: [PATCH 0/2] wifi: ath: simplify copying a peer's PPE thresholds
-Date: Fri, 06 Nov 2026 12:48:25 -0600
-Message-Id: <20261106-ath-peer-ppe-thres-loop-v1-0-f6bb5fe9ffb3@gmail.com>
+Date: Fri, 06 Nov 2026 12:48:26 -0600
+Subject: [PATCH 1/2] wifi: ath11k: simplify copying a peer's PPE thresholds
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPkg7moC/yXMQQrCMBBG4auUWTvQBAziVcRFG3/NiDTDTBSh9
- O5GXX6L91ZymMDpOKxkeIlLXTrCbqBcpuUGlks3xTGmEMbEUyusgLEquBWD86NW5Yx9jnNEOiB
- Qr9VwlffvfDr/7c/5jty+O9q2Dx44q7l7AAAA
-X-Change-ID: 20261106-ath-peer-ppe-thres-loop-ce5c2b2e68e1
+Message-Id: <20261106-ath-peer-ppe-thres-loop-v1-1-f6bb5fe9ffb3@gmail.com>
+References: <20261106-ath-peer-ppe-thres-loop-v1-0-f6bb5fe9ffb3@gmail.com>
+In-Reply-To: <20261106-ath-peer-ppe-thres-loop-v1-0-f6bb5fe9ffb3@gmail.com>
 To: Jeff Johnson <jjohnson@kernel.org>
 Cc: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>, 
  Baochen Qiang <baochen.qiang@oss.qualcomm.com>, 
@@ -17,40 +15,52 @@ Cc: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>,
  Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
  Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990906; l=1038;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990906; l=1559;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=BZ5UT6GcKMGhEPdLdsmXEAyHHHroZPYfl6Q6xV+s1sk=;
- b=I6tQcvhYxaQai7bBUx4Hd+v1uXiA6kOGJUQgRMMpWBIRVkLVvt251Nq2uCFN4vH9ElbRhmOM8
- 5QePBEhVxl3COlRvD5hSjzIlnM2C7oZ6fQS/vxMx3JlHAe6lXx9a2/W
+ bh=Fx0MoPhTsHoV7Mqo4RpE2ktBUJ4V6dxFpUHZthPxLf8=;
+ b=B/Qqm/yjFtcACrMbciWL+jekNjj58CDkS6g0yK1GLR5WdeOX3Kej/ZhtjmYFeWPgJERADPfXt
+ mRkrX/x5dL3BRbSL7RsY8bI+x5yD9sUhdtDRU2p5cD6I4+c7crQj6cb
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Rameshkumar suggested this while reviewing the PPE threshold bit-order
-fix [1]: the loop that copies a peer's PPE thresholds into the WMI
-layout shifts each bit in from the top, where it can put it in place.
-ath11k and ath12k carry the same loop, so one patch each. No functional
-change; the patches don't depend on the bit-order series.
+ath11k_peer_assoc_h_he() copies each 6-bit PPE threshold of a peer's HE
+capabilities into the WMI layout one bit at a time, shifting it in from
+the top: val >>= 1, then the new bit at bit 5, six times over. After the
+sixth bit, bit i of the field sits at bit i of val, so put it there
+directly.
 
-The patches, this letter and the equivalence test were written with
-Claude, an AI coding assistant.
+No functional change: a userspace copy of both loops gives the same
+ppet16_ppet8_ru3_ru0 for every 6-bit value in every RU slot and for 2.5
+million random threshold fields. Compile-tested with W=1.
 
-[1] https://lore.kernel.org/all/b60c4c56-483b-406e-92ab-643b0fdf2dc8@oss.qualcomm.com/
+The change, this message and the test were written with Claude, an AI
+coding assistant.
 
+Suggested-by: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>
+Link: https://lore.kernel.org/all/b60c4c56-483b-406e-92ab-643b0fdf2dc8@oss.qualcomm.com/
+Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
-Christopher Griffin (2):
-      wifi: ath11k: simplify copying a peer's PPE thresholds
-      wifi: ath12k: simplify copying a peer's PPE thresholds
-
  drivers/net/wireless/ath/ath11k/mac.c | 3 +--
- drivers/net/wireless/ath/ath12k/mac.c | 3 +--
- 2 files changed, 2 insertions(+), 4 deletions(-)
----
-base-commit: 5c8eab13e391aaabd5a1ad58f3ee4bb10ce7573e
-change-id: 20261106-ath-peer-ppe-thres-loop-ce5c2b2e68e1
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-Best regards,
---  
-Christopher Griffin <christophergriffin05@gmail.com>
+diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
+index 1a237adaa37d1..d7ae9e8747233 100644
+--- a/drivers/net/wireless/ath/ath11k/mac.c
++++ b/drivers/net/wireless/ath/ath11k/mac.c
+@@ -2496,9 +2496,8 @@ static void ath11k_peer_assoc_h_he(struct ath11k *ar,
+ 				if ((arg->peer_ppet.ru_bit_mask & BIT(ru)) == 0)
+ 					continue;
+ 				for (i = 0; i < 6; i++) {
+-					val >>= 1;
+ 					val |= ((he_cap->ppe_thres[bit / 8] >>
+-						 (bit % 8)) & 0x1) << 5;
++						 (bit % 8)) & 0x1) << i;
+ 					bit++;
+ 				}
+ 				arg->peer_ppet.ppet16_ppet8_ru3_ru0[nss] |=
+
+-- 
+2.43.0
 
