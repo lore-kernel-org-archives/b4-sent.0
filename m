@@ -1,11 +1,11 @@
 From: Andrew Gigena <mail@andrewgigena.dev>
-Date: Fri, 06 Nov 2026 18:35:35 +0000
-Subject: [PATCH v3 3/7] dt-bindings: phy: qcom,sm8150-csi2-phy: Add SM8150
- CSI2 PHY
+Date: Fri, 06 Nov 2026 18:35:36 +0000
+Subject: [PATCH v3 4/7] media: qcom: camss: Match VFE lite clocks by name
+ prefix
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-sm8150-v7.4-rc1-camss-v3-3-0103e8a0bbcd@andrewgigena.dev>
+Message-Id: <20261106-sm8150-v7.4-rc1-camss-v3-4-0103e8a0bbcd@andrewgigena.dev>
 References: <20261106-sm8150-v7.4-rc1-camss-v3-0-0103e8a0bbcd@andrewgigena.dev>
 In-Reply-To: <20261106-sm8150-v7.4-rc1-camss-v3-0-0103e8a0bbcd@andrewgigena.dev>
 To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
@@ -25,199 +25,73 @@ Cc: linux-arm-msm@vger.kernel.org, linux-i2c@vger.kernel.org,
  linux-media@vger.kernel.org, linux-phy@lists.infradead.org, 
  Andrew Gigena <mail@andrewgigena.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990195; l=4862;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990195; l=2177;
  i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
- bh=4StL/0cZR1pFiugSPlhrlX0GIRod4xaFwYZMPXIq5uU=;
- b=rq1wgRFBH69KD9ie9nj8PIdAORsADHLf4ffIJIaka/kMmLNX+F8ANwuv/JwtLum1w7czf5MpO
- 2HLV4M8CMEPDEMpNiBAbfq6ZqBw7hmIzyYzQe/qhw+8/K0ePDV2baBP
+ bh=RKXBqJzp5jx1oO13mVy3JGt1LTgj4JwjvJ23lzdf2Vg=;
+ b=pYp3wGGx24nx3RQs/uM68jjw91qjhA54KzVks5zInjKDvgsrjRK40Pq5jZGxUGXkWe0RqKT4s
+ kFoiJZYWW+9DN1jzG0xNruH04CTSWPOBKwBxb5v1kw7COZqtwWWOPJE
 X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
  pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
 X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the Qualcomm SM8150 MIPI CSI2 D-PHY. The PHY sits between the
-CSI2 sensor and the CAMSS CSI decoder and is fed by the CSIPHY "core" and
-"timer" clocks, the TITAN top power domain and the vdda-phy/vdda-pll
-supplies.
+vfe_match_clock_names() builds the expected lite clock name from
+vfe->id, but vfe->id is the index of the VFE in the resources array.
+On SoCs where the lite VFEs come after the full VFEs, the generated
+name is vfe_lite2, vfe_lite3, ... and never matches the actual
+vfe_lite0/vfe_lite1 clocks, so their rates are never programmed.
 
-Unlike the X1E80100 C-PHY/D-PHY combo PHY, SM8150 only has a D-PHY, has
-no separate AHB clock and no MMCX/MX power domains, so describe it in a
-dedicated schema.
+Restrict the new prefix match to numbered "vfe_liteN" clocks (digit
+check) to avoid matching aux clocks, leaving the pre-existing
+vfe_lite_name and bare "vfe_lite" matches unchanged.
+
+This affects SM8150, SC7280 and SC8280XP. On a Pixel 4 (SM8150),
+streaming through VFE-lite0 left cam_cc_ife_lite_0_clk at 19.2 MHz and
+failed with "VFE reset timeout".
 
 Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
 ---
- .../bindings/phy/qcom,sm8150-csi2-phy.yaml         | 163 +++++++++++++++++++++
- 1 file changed, 163 insertions(+)
+ drivers/media/platform/qcom/camss/camss-vfe.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/phy/qcom,sm8150-csi2-phy.yaml b/Documentation/devicetree/bindings/phy/qcom,sm8150-csi2-phy.yaml
-new file mode 100644
-index 000000000000..86d8970d1119
---- /dev/null
-+++ b/Documentation/devicetree/bindings/phy/qcom,sm8150-csi2-phy.yaml
-@@ -0,0 +1,163 @@
-+# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/phy/qcom,sm8150-csi2-phy.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Qualcomm SM8150 SoC CSI2 PHY
-+
-+maintainers:
-+  - Andrew Gigena <mail@andrewgigena.dev>
-+
-+description:
-+  Qualcomm MIPI CSI2 D-PHY. Connects MIPI CSI2 sensors to Qualcomm's Camera
-+  CSI decoder (CAMSS).
-+
-+properties:
-+  compatible:
-+    const: qcom,sm8150-csi2-phy
-+
-+  reg:
-+    maxItems: 1
-+
-+  clocks:
-+    maxItems: 2
-+
-+  clock-names:
-+    items:
-+      - const: core
-+      - const: timer
-+
-+  interrupts:
-+    maxItems: 1
-+
-+  operating-points-v2: true
-+
-+  opp-table:
-+    type: object
-+
-+  power-domains:
-+    maxItems: 1
-+
-+  power-domain-names:
-+    items:
-+      - const: top
-+
-+  vdda-phy-supply:
-+    description: Phandle to a 0.88V regulator supply to a PHY.
-+
-+  vdda-pll-supply:
-+    description: Phandle to a 1.2V regulator supply to a PHY PLL.
-+
-+  ports:
-+    $ref: /schemas/graph.yaml#/properties/ports
-+
-+    properties:
-+      port@0:
-+        $ref: /schemas/graph.yaml#/$defs/port-base
-+        unevaluatedProperties: false
-+        description:
-+          Sensor input. A single sensor is described by a single endpoint with
-+          one to four data lanes, numbered 1-4. The clock lane is position 0.
-+
-+        properties:
-+          endpoint:
-+            $ref: /schemas/media/video-interfaces.yaml#
-+            unevaluatedProperties: false
-+
-+            properties:
-+              bus-type:
-+                enum:
-+                  - 4 # MEDIA_BUS_TYPE_CSI2_DPHY
-+                default: 4
-+
-+              data-lanes:
-+                minItems: 1
-+                maxItems: 4
-+                items:
-+                  minimum: 1
-+                  maximum: 4
-+
-+            required:
-+              - data-lanes
-+              - remote-endpoint
-+
-+      port@1:
-+        $ref: /schemas/graph.yaml#/properties/port
-+        description: Output to the CAMSS CSI input port.
-+
-+    required:
-+      - port@0
-+      - port@1
-+
-+required:
-+  - compatible
-+  - reg
-+  - clocks
-+  - clock-names
-+  - interrupts
-+  - operating-points-v2
-+  - power-domains
-+  - power-domain-names
-+  - vdda-phy-supply
-+  - vdda-pll-supply
-+  - ports
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/clock/qcom,sm8150-camcc.h>
-+    #include <dt-bindings/interrupt-controller/arm-gic.h>
-+    #include <dt-bindings/media/video-interfaces.h>
-+
-+    phy@ac65000 {
-+        compatible = "qcom,sm8150-csi2-phy";
-+        reg = <0xac65000 0x1000>;
-+
-+        clocks = <&camcc CAM_CC_CSIPHY0_CLK>,
-+                 <&camcc CAM_CC_CSI0PHYTIMER_CLK>;
-+        clock-names = "core",
-+                      "timer";
-+
-+        interrupts = <GIC_SPI 477 IRQ_TYPE_EDGE_RISING>;
-+
-+        operating-points-v2 = <&csiphy0_opp_table>;
-+
-+        power-domains = <&camcc TITAN_TOP_GDSC>;
-+        power-domain-names = "top";
-+
-+        vdda-phy-supply = <&vreg_l5a_0p88>;
-+        vdda-pll-supply = <&vreg_l12a_1p2>;
-+
-+        csiphy0_opp_table: opp-table {
-+            compatible = "operating-points-v2";
-+
-+            opp-400000000 {
-+                opp-hz = /bits/ 64 <400000000>;
-+            };
-+        };
-+
-+        ports {
-+            #address-cells = <1>;
-+            #size-cells = <0>;
-+
-+            port@0 {
-+                reg = <0>;
-+
-+                endpoint {
-+                    bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
-+                    data-lanes = <1 2 3 4>;
-+                    remote-endpoint = <&sensor_out>;
-+                };
-+            };
-+
-+            port@1 {
-+                reg = <1>;
-+
-+                endpoint {
-+                    remote-endpoint = <&camss_csi0_in>;
-+                };
-+            };
-+        };
-+    };
+diff --git a/drivers/media/platform/qcom/camss/camss-vfe.c b/drivers/media/platform/qcom/camss/camss-vfe.c
+index 2680a9914765..29e04d097116 100644
+--- a/drivers/media/platform/qcom/camss/camss-vfe.c
++++ b/drivers/media/platform/qcom/camss/camss-vfe.c
+@@ -9,6 +9,7 @@
+  */
+ #include <linux/clk.h>
+ #include <linux/completion.h>
++#include <linux/ctype.h>
+ #include <linux/interrupt.h>
+ #include <linux/iommu.h>
+ #include <linux/mutex.h>
+@@ -346,6 +347,7 @@ static u32 vfe_src_pad_code(struct vfe_line *line, u32 sink_code,
+ 	case CAMSS_6350:
+ 	case CAMSS_7280:
+ 	case CAMSS_8x96:
++	case CAMSS_8150:
+ 	case CAMSS_8250:
+ 	case CAMSS_8280XP:
+ 	case CAMSS_8300:
+@@ -914,6 +916,9 @@ static int vfe_match_clock_names(struct vfe_device *vfe,
+ 	return (!strcmp(clock->name, vfe_name) ||
+ 		!strcmp(clock->name, vfe_lite_name) ||
+ 		!strcmp(clock->name, "vfe_lite") ||
++		(vfe->res->is_lite &&
++		 !strncmp(clock->name, "vfe_lite", 8) &&
++		 isdigit((unsigned char)clock->name[8])) ||
+ 		!strcmp(clock->name, "camnoc_axi") ||
+ 		!strcmp(clock->name, "camnoc_rt_axi"));
+ }
+@@ -2006,6 +2011,7 @@ static int vfe_bpl_align_rdi(struct vfe_device *vfe)
+ 	case CAMSS_6150:
+ 	case CAMSS_6350:
+ 	case CAMSS_7280:
++	case CAMSS_8150:
+ 	case CAMSS_8250:
+ 	case CAMSS_8280XP:
+ 	case CAMSS_8300:
 
 -- 
 2.56.0
