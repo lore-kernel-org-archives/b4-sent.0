@@ -1,86 +1,85 @@
-From: Jerome Mohm <jrmmhm.kernel@eldare.de>
-Date: Fri, 06 Nov 2026 22:57:22 +0100
-Subject: [PATCH net v4 2/2] vsock/bpf: fix zero-length, MSG_OOB and
- MSG_ERRQUEUE reads in recvmsg
+From: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+Date: Sat, 07 Nov 2026 00:08:07 +0200
+Subject: [PATCH] x86/apic: Use the physical address for the local APIC
+ resource
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-kbh3-1-022-fix-v2-v4-2-c7d36703814d@eldare.de>
-References: <20261106-kbh3-1-022-fix-v2-v4-0-c7d36703814d@eldare.de>
-In-Reply-To: <20261106-kbh3-1-022-fix-v2-v4-0-c7d36703814d@eldare.de>
-To: Stefano Garzarella <sgarzare@redhat.com>, 
- Bobby Eshleman <bobbyeshleman@meta.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, "Michael S. Tsirkin" <mst@redhat.com>
-Cc: Michal Luczaj <mhal@rbox.co>, virtualization@lists.linux.dev, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
- stable@vger.kernel.org, Jerome Mohm <jrmmhm.kernel@eldare.de>
+Message-Id: <20261107-x86-apic-lapic-resource-v1-1-28de4cb3fb1e@ahmedabdelfattah.dev>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMBCE4VeRPXfB5JCEvkrpIY1jXSkqu7UI4
+ rs3tZeB7zD/TgYVGF2bnRQfMZmnCndpqAx5eoKlqybf+uBcG3lLgfMihV/nKmxetYDh+5Ryl1O
+ Ikep7UfSyneXb/W9bHyPK+5ej4/gC/Gn7NXsAAAA=
+X-Change-ID: 20261107-x86-apic-lapic-resource-e2f88ada8677
+To: Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, 
+ Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>, 
+ x86@kernel.org, "H. Peter Anvin" <hpa@zytor.com>, 
+ "Peter Zijlstra (Intel)" <peterz@infradead.org>
+Cc: linux-kernel@vger.kernel.org, 
+ Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794002242; l=2197;
- i=jrmmhm.kernel@eldare.de; s=20260928; h=from:subject:message-id;
- bh=dwUGR/eCK7GtoK8H9bbKU0ilJyfRtgnQIrQ7vPni5kQ=;
- b=4nZ5slW3UfHVgJAEtqPZdz8lRe6LZIvhoXJrslECxOHSir4x5eu+lfl6KdZ04cTHPnrsnMHUi
- AqwPFJDB60RDKoWYhN1qCGgcwQVMb13vpu1lai55X4LjYu6QHfWu1sK
-X-Developer-Key: i=jrmmhm.kernel@eldare.de; a=ed25519;
- pk=xRCxNXbnNottaHpmvPDAOC9NuMJxqKo24abkehKRVlo=
-X-Endpoint-Received: by B4 Relay for jrmmhm.kernel@eldare.de/20260928 with auth_id=1075
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794002892; l=1942;
+ i=me@ahmedabdelfattah.dev; s=20261106; h=from:subject:message-id;
+ bh=SomVT+8jY+UWMuch1Im0ts42WOl22oH4Ih7Wd2VbXQ0=;
+ b=u1CCahQz+RJLuoJ9j4aVIhSv13Vg6bc6UrD7LZzgeQj4YcS9hwmx83Dr2MrUk8KMDEDunoPbL
+ 5V+9+wE+MYMA2a60CQhiAlDQX/MHJ1aRTIbnKrKw13m91RitqqqKKhq
+X-Developer-Key: i=me@ahmedabdelfattah.dev; a=ed25519;
+ pk=DHEHKU4PddrkJ/iYMZpwyyXsFyIQ6ySjTttKLrt9YqI=
+X-Endpoint-Received: by B4 Relay for me@ahmedabdelfattah.dev/20261106 with auth_id=1438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vsock_bpf_recvmsg() sends every read that the transport queue cannot
-serve through sk_msg_recvmsg() and the sockmap wait, which handle
-neither a zero length nor these flags:
+Since v6.6 the "Local APIC" entry is missing from /proc/iomem whenever
+the kernel maps the xAPIC itself.
 
- - with len == 0 and data in the psock ingress queue the loop spins with
-   lock_sock() held, and the delivery worker blocks on the lock;
- - MSG_ERRQUEUE with data in the psock ingress queue consumes stream
-   bytes, and a zero-length MSG_ERRQUEUE read, as MSG_ZEROCOPY users
-   do, never reaches the error queue: it gets -EAGAIN, or waits for
-   stream data if it blocks;
- - MSG_OOB consumes ordinary stream bytes or waits for data, where the
-   native path returns -EOPNOTSUPP.
+lapic_insert_resource() used to take the address from apic_phys. When
+apic_phys went away it was switched to apic_mmio_base, but that holds
+the fixmap virtual address, not the physical one:
 
-Handle them at the top of vsock_bpf_recvmsg(). The order matters:
-MSG_ERRQUEUE goes to the native path first, as in tcp_bpf, or a
-zero-length error-queue read would return 0; MSG_OOB comes before
-len == 0, as in unix_bpf, so recv(fd, buf, 0, MSG_OOB) returns
--EOPNOTSUPP as on a connected native socket.
+  APIC: Mapped APIC to ffffffffff5fc000 (        fee00000)
 
-The MSG_ERRQUEUE case was found with the help of Anthropic's Claude, the
-zero-length and MSG_OOB cases by the netdev Sashiko review. Each was
-reproduced in a VM with a vsock-loopback socket in a sockmap, without
-kernel changes or error injection. With the series applied the reads
-behave as on a connected native socket, and the vsock vmtest.sh
-single-VM tests and the BPF sockmap test_progs pass.
+insert_resource() rejects that range because it lies outside
+iomem_resource, and as the return value is not checked, the failure
+goes unnoticed.
 
-Fixes: 634f1a7110b4 ("vsock: support sockmap")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jerome Mohm <jrmmhm.kernel@eldare.de>
+Use mp_lapic_addr, which is the address apic_set_fixmap() maps. Keep
+the apic_mmio_base check, so the resource is still only added when the
+APIC was actually mapped.
+
+Fixes: 78c32000848c ("x86/apic: Get rid of apic_phys")
+Signed-off-by: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 ---
- net/vmw_vsock/vsock_bpf.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+This showed up while comparing /proc/iomem with the memory map of a
+QEMU guest.
 
-diff --git a/net/vmw_vsock/vsock_bpf.c b/net/vmw_vsock/vsock_bpf.c
-index 6d96ff03f28c..58b32fbc1f4b 100644
---- a/net/vmw_vsock/vsock_bpf.c
-+++ b/net/vmw_vsock/vsock_bpf.c
-@@ -119,6 +119,15 @@ static int vsock_bpf_recvmsg(struct sock *sk, struct msghdr *msg,
- 	struct vsock_sock *vsk;
- 	int copied;
+Tested on QEMU q35 with KVM (x86_64_defconfig + kvm_guest.config),
+booting with and without nox2apic. Without the patch there is no
+"Local APIC" entry in either case; with it both show
+
+  fee00000-fee00fff : Local APIC
+
+as before 78c32000848c.
+---
+ arch/x86/kernel/apic/apic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/kernel/apic/apic.c b/arch/x86/kernel/apic/apic.c
+index 90025451ace2..17525b5daa0d 100644
+--- a/arch/x86/kernel/apic/apic.c
++++ b/arch/x86/kernel/apic/apic.c
+@@ -2667,7 +2667,7 @@ static int __init lapic_insert_resource(void)
+ 		return -1;
  
-+	if (unlikely(flags & MSG_ERRQUEUE))
-+		return __vsock_recvmsg(sk, msg, len, flags);
-+
-+	if (flags & MSG_OOB)
-+		return -EOPNOTSUPP;
-+
-+	if (!len)
-+		return 0;
-+
- 	psock = sk_psock_get(sk);
- 	if (unlikely(!psock))
- 		return __vsock_recvmsg(sk, msg, len, flags);
+ 	/* Put local APIC into the resource map. */
+-	lapic_resource.start = apic_mmio_base;
++	lapic_resource.start = mp_lapic_addr;
+ 	lapic_resource.end = lapic_resource.start + PAGE_SIZE - 1;
+ 	insert_resource(&iomem_resource, &lapic_resource);
+ 
 
--- 
-2.56.0
+---
+base-commit: d48723711bae9b8cdc56719c448ba42fef28cbee
+change-id: 20261107-x86-apic-lapic-resource-e2f88ada8677
+
+Best regards,
+--  
+Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 
