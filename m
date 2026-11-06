@@ -1,10 +1,10 @@
 From: Andrew Gigena <mail@andrewgigena.dev>
-Date: Fri, 06 Nov 2026 18:35:38 +0000
-Subject: [PATCH v3 6/7] phy: qcom-mipi-csi2: Add SM8150 CSI2 DPHY support
+Date: Fri, 06 Nov 2026 18:35:39 +0000
+Subject: [PATCH v3 7/7] arm64: dts: qcom: sm8150: Add CAMSS and CCI nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-sm8150-v7.4-rc1-camss-v3-6-0103e8a0bbcd@andrewgigena.dev>
+Message-Id: <20261106-sm8150-v7.4-rc1-camss-v3-7-0103e8a0bbcd@andrewgigena.dev>
 References: <20261106-sm8150-v7.4-rc1-camss-v3-0-0103e8a0bbcd@andrewgigena.dev>
 In-Reply-To: <20261106-sm8150-v7.4-rc1-camss-v3-0-0103e8a0bbcd@andrewgigena.dev>
 To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
@@ -24,216 +24,544 @@ Cc: linux-arm-msm@vger.kernel.org, linux-i2c@vger.kernel.org,
  linux-media@vger.kernel.org, linux-phy@lists.infradead.org, 
  Andrew Gigena <mail@andrewgigena.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990195; l=10225;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990195; l=13107;
  i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
- bh=fAFtbuNKrv0SCgpDRGKPsktmDHYGiaUp7Ava6AeGnlc=;
- b=VAG5fKZPSbi0SHPgrNKQFBE+LBfJrV3lrDvIKjb+aoy3awnqy8KYfv8K41EH57gBArh3uy9w0
- vkqIMpYTnVnDcQj6a8CVt+rp7d1s34v9Aw6VOGMTVpsm7FThq0I01WT
+ bh=wZwrsoUDBqcXubxpglOHtI9ltv3LEaZKNJvQ/8Ba4ug=;
+ b=1HWIC7qdT+/bR9cZ1qHK+5C/DjsRz2nAkmfkmSIVHn85TQCtSOEU9LSPgwPI7o6cmrQXmFNXX
+ wt0OT5H0lkvCTVsAc6ibq1hOAph8Ua+Byr7/CAKiQOMf5tLRD572pJl
 X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
  pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
 X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add SM8150 platform data to the CSI2 DPHY driver so that SM8150 can use
-the dedicated PHY driver instead of the CAMSS-integrated CSIPHY.
+Describe the SM8150 CAMSS block and its CSID, VFE and VFE-Lite
+instances, together with the four dedicated CSI2 PHYs, the two CCI
+controllers and their I2C buses.
 
-The SM8150 CSIPHY uses the SC8280XP lane register layout, as already
-used by the CAMSS driver, so reuse that table, dropping the DNP entries,
-which the new PHY driver does not program. The PHY is fed by the "core"
-and "timer" clocks, the vdda-phy and vdda-pll supplies, and the Titan top
-power domain, which is not scaled.
+The CAMSS node exposes four CSI input ports, each linked to one
+CSI2 PHY output port, and references the CAMCC clocks and GDSCs, the
+interconnects and the IOMMU streams. Each of the four CSIPHY I/O
+spaces is described by its own qcom,sm8150-csi2-phy node, fed by the
+CSIPHY clocks and the Titan top power domain; the vdda-phy and
+vdda-pll supplies are board-specific. The CCI nodes describe the
+CCI0/CCI1 I2C buses, and the TLMM pinctrl states for their clock and
+data lines are added to the existing pin controller node.
 
-The timer clock is pinned to 300 MHz via a new timer_rate_hz soc field
-(SM8150 timer only supports 19.2/300 MHz). SM8150 is ordered before
-X1E80100 as it predates it (7 nm vs 4 nm). A detach of the
-platform-attached single power domain is done before attaching by name,
-so single-domain SoCs do not fail with -EEXIST.
+All new nodes are left disabled. The PHY supplies and the sensor
+wiring are board-specific, so they belong in the board DTS that
+enables the controller.
 
 Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
 ---
- drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c | 97 ++++++++++++++++++++++
- drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c     | 16 +++-
- drivers/phy/qualcomm/phy-qcom-mipi-csi2.h          |  4 +
- 3 files changed, 116 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/qcom/sm8150.dtsi | 488 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 488 insertions(+)
 
-diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c
-index 966d79c98f9b..b8b6589cee35 100644
---- a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c
-+++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c
-@@ -45,6 +45,73 @@
- #define CSIPHY_SETTLE_CNT_LOWER_BYTE			2
- #define CSIPHY_SKEW_CAL					7
- 
-+/* 7nm 2PH v 1.1 2p5Gbps 4 lane DPHY mode */
-+static const struct
-+mipi_csi2phy_lane_regs lane_regs_sm8150[] = {
-+	{.reg_addr = 0x0004, .reg_data = 0x0c, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x002c, .reg_data = 0x01, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0034, .reg_data = 0x0f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x001c, .reg_data = 0x0a, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0014, .reg_data = 0x60, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x003c, .reg_data = 0xb8, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0000, .reg_data = 0x90, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0008, .reg_data = 0x0e, .param_type = CSIPHY_SETTLE_CNT_LOWER_BYTE},
-+	{.reg_addr = 0x0010, .reg_data = 0x52, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0038, .reg_data = 0xfe, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0060, .reg_data = 0x00, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0064, .reg_data = 0x7f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0704, .reg_data = 0x0c, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x072c, .reg_data = 0x01, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0734, .reg_data = 0x0f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x071c, .reg_data = 0x0a, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0714, .reg_data = 0x60, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0728, .reg_data = 0x04, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x073c, .reg_data = 0xb8, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0700, .reg_data = 0x80, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0708, .reg_data = 0x0e, .param_type = CSIPHY_SETTLE_CNT_LOWER_BYTE},
-+	{.reg_addr = 0x070c, .reg_data = 0xa5, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0710, .reg_data = 0x52, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0738, .reg_data = 0x1f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0760, .reg_data = 0x00, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0764, .reg_data = 0x7f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0204, .reg_data = 0x0c, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x022c, .reg_data = 0x01, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0234, .reg_data = 0x0f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x021c, .reg_data = 0x0a, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0214, .reg_data = 0x60, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x023c, .reg_data = 0xb8, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0200, .reg_data = 0x90, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0208, .reg_data = 0x0e, .param_type = CSIPHY_SETTLE_CNT_LOWER_BYTE},
-+	{.reg_addr = 0x0210, .reg_data = 0x52, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0238, .reg_data = 0xfe, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0260, .reg_data = 0x00, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0264, .reg_data = 0x7f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0404, .reg_data = 0x0c, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x042c, .reg_data = 0x01, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0434, .reg_data = 0x0f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x041c, .reg_data = 0x0a, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0414, .reg_data = 0x60, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x043c, .reg_data = 0xb8, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0400, .reg_data = 0x90, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0408, .reg_data = 0x0e, .param_type = CSIPHY_SETTLE_CNT_LOWER_BYTE},
-+	{.reg_addr = 0x0410, .reg_data = 0x52, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0438, .reg_data = 0xfe, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0460, .reg_data = 0x00, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0464, .reg_data = 0x7f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0604, .reg_data = 0x0c, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x062c, .reg_data = 0x01, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0634, .reg_data = 0x0f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x061c, .reg_data = 0x0a, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0614, .reg_data = 0x60, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x063c, .reg_data = 0xb8, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0600, .reg_data = 0x90, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0608, .reg_data = 0x0e, .param_type = CSIPHY_SETTLE_CNT_LOWER_BYTE},
-+	{.reg_addr = 0x0610, .reg_data = 0x52, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0638, .reg_data = 0xfe, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0660, .reg_data = 0x00, .param_type = CSIPHY_DEFAULT_PARAMS},
-+	{.reg_addr = 0x0664, .reg_data = 0x7f, .param_type = CSIPHY_DEFAULT_PARAMS},
-+};
+diff --git a/arch/arm64/boot/dts/qcom/sm8150.dtsi b/arch/arm64/boot/dts/qcom/sm8150.dtsi
+index 293fcbacff34..008f787235b8 100644
+--- a/arch/arm64/boot/dts/qcom/sm8150.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8150.dtsi
+@@ -2736,6 +2736,86 @@ wake-pins {
+ 					bias-pull-up;
+ 				};
+ 			};
 +
- /* 4nm 2PH v 2.1.2 2p5Gbps 4 lane DPHY mode */
- static const struct
- mipi_csi2phy_lane_regs lane_regs_x1e80100[] = {
-@@ -352,6 +419,36 @@ static const struct mipi_csi2phy_hw_ops phy_qcom_mipi_csi2_ops_3ph_1_0 = {
- 	.lanes_disable = phy_qcom_mipi_csi2_lanes_disable,
- };
- 
-+static const char * const sm8150_clks[] = {
-+	"core",
-+	"timer"
-+};
++			cci0_default: cci0-default-state {
++				cci0_i2c0_default: cci0-i2c0-default-pins {
++					/* SDA, SCL */
++					pins = "gpio17", "gpio18";
++					function = "cci_i2c";
 +
-+static const char * const sm8150_supplies[] = {
-+	"vdda-phy",
-+	"vdda-pll"
-+};
++					bias-pull-up;
++					drive-strength = <2>; /* 2 mA */
++				};
 +
-+static struct mipi_csi2_genpd sm8150_genpds[] = {
-+	{ .name = "top", .scaled = false },
-+};
++				cci0_i2c1_default: cci0-i2c1-default-pins {
++					/* SDA, SCL */
++					pins = "gpio19", "gpio20";
++					function = "cci_i2c";
 +
-+const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_sm8150 = {
-+	.ops = &phy_qcom_mipi_csi2_ops_3ph_1_0,
-+	.reg_info = {
-+		.init_seq = lane_regs_sm8150,
-+		.lane_array_size = ARRAY_SIZE(lane_regs_sm8150),
-+		.common_regs_offset = 0x800,
-+	},
-+	.supply_names = (const char **)sm8150_supplies,
-+	.num_supplies = ARRAY_SIZE(sm8150_supplies),
-+	.clk_names = (const char **)sm8150_clks,
-+	.num_clk = ARRAY_SIZE(sm8150_clks),
-+	.timer_rate_hz = 300000000,
-+	.genpds = sm8150_genpds,
-+	.num_genpds = ARRAY_SIZE(sm8150_genpds),
-+};
++					bias-pull-up;
++					drive-strength = <2>; /* 2 mA */
++				};
++			};
 +
- static const char * const x1e_clks[] = {
- 	"core",
- 	"timer",
-diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c
-index c0a4fa20eaf0..3a45b8766311 100644
---- a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c
-+++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c
-@@ -68,7 +68,11 @@ phy_qcom_mipi_csi2_set_clock_rates(struct mipi_csi2phy_device *csi2phy,
- 		goto unset_opp_rate;
- 	}
- 
--	timer_rate = clk_round_rate(csi2phy->timer_clk, link_freq / 4);
-+	if (csi2phy->soc_cfg->timer_rate_hz)
-+		timer_rate = clk_round_rate(csi2phy->timer_clk,
-+					    csi2phy->soc_cfg->timer_rate_hz);
-+	else
-+		timer_rate = clk_round_rate(csi2phy->timer_clk, link_freq / 4);
- 	if (timer_rate <= 0) {
- 		ret = -ENODEV;
- 		goto unset_opp_rate;
-@@ -233,6 +237,15 @@ static int phy_qcom_mipi_csi2_attach_pm_domains(struct mipi_csi2phy_device *csi2
- 	const char **pd_names;
- 	int i;
- 
-+	/*
-+	 * platform_probe() auto-attaches a single power domain during probe.
-+	 * Detach it first so devm_pm_domain_attach_list() can attach all
-+	 * domains by name (otherwise it returns -EEXIST for single-domain
-+	 * SoCs such as SM8150).
-+	 */
-+	if (csi2phy->dev->pm_domain)
-+		dev_pm_domain_detach(csi2phy->dev, false);
++			cci0_sleep: cci0-sleep-state {
++				cci0_i2c0_sleep: cci0-i2c0-sleep-pins {
++					/* SDA, SCL */
++					pins = "gpio17", "gpio18";
++					function = "cci_i2c";
 +
- 	pd_names = devm_kzalloc(csi2phy->dev,
- 				sizeof(char *) * csi2phy->soc_cfg->num_genpds,
- 				GFP_KERNEL);
-@@ -443,6 +456,7 @@ static int phy_qcom_mipi_csi2_probe(struct platform_device *pdev)
- }
- 
- static const struct of_device_id phy_qcom_mipi_csi2_of_match_table[] = {
-+	{ .compatible	= "qcom,sm8150-csi2-phy", .data = &mipi_csi2_dphy_sm8150 },
- 	{ .compatible	= "qcom,x1e80100-csi2-phy", .data = &mipi_csi2_dphy_4nm_x1e },
- 	{ }
- };
-diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h b/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
-index 7e55ae007370..4da9f12d4f8d 100644
---- a/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
-+++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
-@@ -68,6 +68,9 @@ struct mipi_csi2phy_soc_cfg {
- 	const char ** const clk_names;
- 	const unsigned int num_clk;
- 
-+	/* 0 = derive timer rate from link_freq/4; non-zero = fixed rate */
-+	unsigned long timer_rate_hz;
++					drive-strength = <2>; /* 2 mA */
++					bias-pull-down;
++				};
 +
- 	const struct mipi_csi2_genpd *genpds;
- 	const unsigned int num_genpds;
- };
-@@ -92,6 +95,7 @@ struct mipi_csi2phy_device {
- 	u32 hw_version;
- };
++				cci0_i2c1_sleep: cci0-i2c1-sleep-pins {
++					/* SDA, SCL */
++					pins = "gpio19", "gpio20";
++					function = "cci_i2c";
++
++					drive-strength = <2>; /* 2 mA */
++					bias-pull-down;
++				};
++			};
++
++			cci1_default: cci1-default-state {
++				cci1_i2c0_default: cci1-i2c0-default-pins {
++					/* SDA, SCL */
++					pins = "gpio31", "gpio32";
++					function = "cci_i2c";
++
++					bias-pull-up;
++					drive-strength = <2>; /* 2 mA */
++				};
++
++				cci1_i2c1_default: cci1-i2c1-default-pins {
++					/* SDA, SCL */
++					pins = "gpio33", "gpio34";
++					function = "cci_i2c";
++
++					bias-pull-up;
++					drive-strength = <2>; /* 2 mA */
++				};
++			};
++
++			cci1_sleep: cci1-sleep-state {
++				cci1_i2c0_sleep: cci1-i2c0-sleep-pins {
++					/* SDA, SCL */
++					pins = "gpio31", "gpio32";
++					function = "cci_i2c";
++
++					bias-pull-down;
++					drive-strength = <2>; /* 2 mA */
++				};
++
++				cci1_i2c1_sleep: cci1-i2c1-sleep-pins {
++					/* SDA, SCL */
++					pins = "gpio33", "gpio34";
++					function = "cci_i2c";
++
++					bias-pull-down;
++					drive-strength = <2>; /* 2 mA */
++				};
++			};
+ 		};
  
-+extern const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_sm8150;
- extern const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_4nm_x1e;
+ 		remoteproc_mpss: remoteproc@4080000 {
+@@ -3782,6 +3862,414 @@ camnoc_virt: interconnect@ac00000 {
+ 			qcom,bcm-voters = <&apps_bcm_voter>;
+ 		};
  
- #endif /* __PHY_QCOM_MIPI_CSI2_H__ */
++		cci0: cci@ac4a000 {
++			compatible = "qcom,sm8150-cci", "qcom,msm8996-cci";
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			reg = <0 0xac4a000 0 0x1000>;
++			interrupts = <GIC_SPI 460 IRQ_TYPE_EDGE_RISING>;
++			power-domains = <&camcc TITAN_TOP_GDSC>;
++
++			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
++				 <&camcc CAM_CC_SLOW_AHB_CLK_SRC>,
++				 <&camcc CAM_CC_CPAS_AHB_CLK>,
++				 <&camcc CAM_CC_CCI_0_CLK>,
++				 <&camcc CAM_CC_CCI_0_CLK_SRC>;
++			clock-names = "camnoc_axi",
++				      "slow_ahb_src",
++				      "cpas_ahb",
++				      "cci",
++				      "cci_src";
++
++			pinctrl-0 = <&cci0_default>;
++			pinctrl-1 = <&cci0_sleep>;
++			pinctrl-names = "default", "sleep";
++
++			status = "disabled";
++
++			cci0_i2c0: i2c-bus@0 {
++				reg = <0>;
++				clock-frequency = <1000000>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++			};
++
++			cci0_i2c1: i2c-bus@1 {
++				reg = <1>;
++				clock-frequency = <1000000>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++			};
++		};
++
++		cci1: cci@ac4b000 {
++			compatible = "qcom,sm8150-cci", "qcom,msm8996-cci";
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			reg = <0 0xac4b000 0 0x1000>;
++			interrupts = <GIC_SPI 271 IRQ_TYPE_EDGE_RISING>;
++			power-domains = <&camcc TITAN_TOP_GDSC>;
++
++			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
++				 <&camcc CAM_CC_SLOW_AHB_CLK_SRC>,
++				 <&camcc CAM_CC_CPAS_AHB_CLK>,
++				 <&camcc CAM_CC_CCI_1_CLK>,
++				 <&camcc CAM_CC_CCI_1_CLK_SRC>;
++			clock-names = "camnoc_axi",
++				      "slow_ahb_src",
++				      "cpas_ahb",
++				      "cci",
++				      "cci_src";
++
++			pinctrl-0 = <&cci1_default>;
++			pinctrl-1 = <&cci1_sleep>;
++			pinctrl-names = "default", "sleep";
++
++			status = "disabled";
++
++			cci1_i2c0: i2c-bus@0 {
++				reg = <0>;
++				clock-frequency = <1000000>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++			};
++
++			cci1_i2c1: i2c-bus@1 {
++				reg = <1>;
++				clock-frequency = <1000000>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++			};
++		};
++
++		camss: isp@acaf000 {
++			compatible = "qcom,sm8150-camss";
++			status = "disabled";
++
++			reg = <0 0xacaf000 0 0x4000>,
++			      <0 0xacb3000 0 0x1000>,
++			      <0 0xacb6000 0 0x4000>,
++			      <0 0xacba000 0 0x1000>,
++			      <0 0xacc4000 0 0x4000>,
++			      <0 0xacc8000 0 0x1000>,
++			      <0 0xaccb000 0 0x4000>,
++			      <0 0xaccf000 0 0x1000>;
++
++			reg-names = "vfe0",
++				    "csid0",
++				    "vfe1",
++				    "csid1",
++				    "vfe_lite0",
++				    "csid_lite0",
++				    "vfe_lite1",
++				    "csid_lite1";
++
++			interrupts = <GIC_SPI 465 IRQ_TYPE_EDGE_RISING>,
++				     <GIC_SPI 464 IRQ_TYPE_EDGE_RISING>,
++				     <GIC_SPI 467 IRQ_TYPE_EDGE_RISING>,
++				     <GIC_SPI 466 IRQ_TYPE_EDGE_RISING>,
++				     <GIC_SPI 469 IRQ_TYPE_EDGE_RISING>,
++				     <GIC_SPI 468 IRQ_TYPE_EDGE_RISING>,
++				     <GIC_SPI 360 IRQ_TYPE_EDGE_RISING>,
++				     <GIC_SPI 359 IRQ_TYPE_EDGE_RISING>;
++
++			interrupt-names = "vfe0",
++					  "csid0",
++					  "vfe1",
++					  "csid1",
++					  "vfe_lite0",
++					  "csid_lite0",
++					  "vfe_lite1",
++					  "csid_lite1";
++
++			power-domains = <&camcc IFE_0_GDSC>,
++					<&camcc IFE_1_GDSC>,
++					<&camcc TITAN_TOP_GDSC>;
++			power-domain-names = "ife0",
++					     "ife1",
++					     "top";
++
++			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
++				 <&camcc CAM_CC_CPAS_AHB_CLK>,
++				 <&camcc CAM_CC_IFE_0_AXI_CLK>,
++				 <&camcc CAM_CC_IFE_0_CLK>,
++				 <&camcc CAM_CC_IFE_0_CPHY_RX_CLK>,
++				 <&camcc CAM_CC_IFE_0_CSID_CLK>,
++				 <&camcc CAM_CC_IFE_1_AXI_CLK>,
++				 <&camcc CAM_CC_IFE_1_CLK>,
++				 <&camcc CAM_CC_IFE_1_CPHY_RX_CLK>,
++				 <&camcc CAM_CC_IFE_1_CSID_CLK>,
++				 <&camcc CAM_CC_IFE_LITE_0_CLK>,
++				 <&camcc CAM_CC_IFE_LITE_0_CPHY_RX_CLK>,
++				 <&camcc CAM_CC_IFE_LITE_0_CSID_CLK>,
++				 <&camcc CAM_CC_IFE_LITE_1_CLK>,
++				 <&camcc CAM_CC_IFE_LITE_1_CPHY_RX_CLK>,
++				 <&camcc CAM_CC_IFE_LITE_1_CSID_CLK>,
++				 <&gcc GCC_CAMERA_AHB_CLK>,
++				 <&gcc GCC_CAMERA_HF_AXI_CLK>,
++				 <&gcc GCC_CAMERA_SF_AXI_CLK>;
++			clock-names = "camnoc_axi",
++				      "cpas_ahb",
++				      "vfe0_axi",
++				      "vfe0",
++				      "vfe0_cphy_rx",
++				      "vfe0_csid",
++				      "vfe1_axi",
++				      "vfe1",
++				      "vfe1_cphy_rx",
++				      "vfe1_csid",
++				      "vfe_lite0",
++				      "vfe_lite0_cphy_rx",
++				      "vfe_lite0_csid",
++				      "vfe_lite1",
++				      "vfe_lite1_cphy_rx",
++				      "vfe_lite1_csid",
++				      "gcc_ahb",
++				      "gcc_axi_hf",
++				      "gcc_axi_sf";
++
++			iommus = <&apps_smmu 0x840 0x620>,
++				 <&apps_smmu 0x860 0x620>,
++				 <&apps_smmu 0xa40 0x620>,
++				 <&apps_smmu 0xa60 0x620>,
++				 <&apps_smmu 0xc40 0x620>,
++				 <&apps_smmu 0xc60 0x620>,
++				 <&apps_smmu 0xe40 0x620>,
++				 <&apps_smmu 0xe60 0x620>;
++
++			interconnects = <&gem_noc MASTER_AMPSS_M0 0 &config_noc SLAVE_CAMERA_CFG 0>,
++					<&mmss_noc MASTER_CAMNOC_HF0 0 &mc_virt SLAVE_EBI_CH0 0>,
++					<&mmss_noc MASTER_CAMNOC_SF 0 &mc_virt SLAVE_EBI_CH0 0>,
++					<&mmss_noc MASTER_CAMNOC_HF1 0 &mc_virt SLAVE_EBI_CH0 0>;
++			interconnect-names = "cam_ahb",
++					     "cam_hf_0_mnoc",
++					     "cam_sf_0_mnoc",
++					     "cam_hf_1_mnoc";
++
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				port@0 {
++					reg = <0>;
++
++					camss_csi0_in: endpoint {
++						remote-endpoint = <&csiphy0_out>;
++					};
++				};
++
++				port@1 {
++					reg = <1>;
++
++					camss_csi1_in: endpoint {
++						remote-endpoint = <&csiphy1_out>;
++					};
++				};
++
++				port@2 {
++					reg = <2>;
++
++					camss_csi2_in: endpoint {
++						remote-endpoint = <&csiphy2_out>;
++					};
++				};
++
++				port@3 {
++					reg = <3>;
++
++					camss_csi3_in: endpoint {
++						remote-endpoint = <&csiphy3_out>;
++					};
++				};
++			};
++		};
++
++		csiphy0: phy@ac65000 {
++			compatible = "qcom,sm8150-csi2-phy";
++			reg = <0 0xac65000 0 0x1000>;
++			status = "disabled";
++
++			clocks = <&camcc CAM_CC_CSIPHY0_CLK>,
++				 <&camcc CAM_CC_CSI0PHYTIMER_CLK>;
++			clock-names = "core",
++				      "timer";
++
++			interrupts = <GIC_SPI 477 IRQ_TYPE_EDGE_RISING>;
++
++			operating-points-v2 = <&csiphy0_opp_table>;
++
++			power-domains = <&camcc TITAN_TOP_GDSC>;
++			power-domain-names = "top";
++
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				port@0 {
++					reg = <0>;
++
++					csiphy0_in: endpoint {
++					};
++				};
++
++				port@1 {
++					reg = <1>;
++
++					csiphy0_out: endpoint {
++						remote-endpoint = <&camss_csi0_in>;
++					};
++				};
++			};
++
++			csiphy0_opp_table: opp-table {
++				compatible = "operating-points-v2";
++
++				opp-400000000 {
++					opp-hz = /bits/ 64 <400000000>;
++				};
++			};
++		};
++
++		csiphy1: phy@ac66000 {
++			compatible = "qcom,sm8150-csi2-phy";
++			reg = <0 0xac66000 0 0x1000>;
++			status = "disabled";
++
++			clocks = <&camcc CAM_CC_CSIPHY1_CLK>,
++				 <&camcc CAM_CC_CSI1PHYTIMER_CLK>;
++			clock-names = "core",
++				      "timer";
++
++			interrupts = <GIC_SPI 478 IRQ_TYPE_EDGE_RISING>;
++
++			operating-points-v2 = <&csiphy1_opp_table>;
++
++			power-domains = <&camcc TITAN_TOP_GDSC>;
++			power-domain-names = "top";
++
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				port@0 {
++					reg = <0>;
++
++					csiphy1_in: endpoint {
++					};
++				};
++
++				port@1 {
++					reg = <1>;
++
++					csiphy1_out: endpoint {
++						remote-endpoint = <&camss_csi1_in>;
++					};
++				};
++			};
++
++			csiphy1_opp_table: opp-table {
++				compatible = "operating-points-v2";
++
++				opp-400000000 {
++					opp-hz = /bits/ 64 <400000000>;
++				};
++			};
++		};
++
++		csiphy2: phy@ac67000 {
++			compatible = "qcom,sm8150-csi2-phy";
++			reg = <0 0xac67000 0 0x1000>;
++			status = "disabled";
++
++			clocks = <&camcc CAM_CC_CSIPHY2_CLK>,
++				 <&camcc CAM_CC_CSI2PHYTIMER_CLK>;
++			clock-names = "core",
++				      "timer";
++
++			interrupts = <GIC_SPI 479 IRQ_TYPE_EDGE_RISING>;
++
++			operating-points-v2 = <&csiphy2_opp_table>;
++
++			power-domains = <&camcc TITAN_TOP_GDSC>;
++			power-domain-names = "top";
++
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				port@0 {
++					reg = <0>;
++
++					csiphy2_in: endpoint {
++					};
++				};
++
++				port@1 {
++					reg = <1>;
++
++					csiphy2_out: endpoint {
++						remote-endpoint = <&camss_csi2_in>;
++					};
++				};
++			};
++
++			csiphy2_opp_table: opp-table {
++				compatible = "operating-points-v2";
++
++				opp-400000000 {
++					opp-hz = /bits/ 64 <400000000>;
++				};
++			};
++		};
++
++		csiphy3: phy@ac68000 {
++			compatible = "qcom,sm8150-csi2-phy";
++			reg = <0 0xac68000 0 0x1000>;
++			status = "disabled";
++
++			clocks = <&camcc CAM_CC_CSIPHY3_CLK>,
++				 <&camcc CAM_CC_CSI3PHYTIMER_CLK>;
++			clock-names = "core",
++				      "timer";
++
++			interrupts = <GIC_SPI 448 IRQ_TYPE_EDGE_RISING>;
++
++			operating-points-v2 = <&csiphy3_opp_table>;
++
++			power-domains = <&camcc TITAN_TOP_GDSC>;
++			power-domain-names = "top";
++
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				port@0 {
++					reg = <0>;
++
++					csiphy3_in: endpoint {
++					};
++				};
++
++				port@1 {
++					reg = <1>;
++
++					csiphy3_out: endpoint {
++						remote-endpoint = <&camss_csi3_in>;
++					};
++				};
++			};
++
++			csiphy3_opp_table: opp-table {
++				compatible = "operating-points-v2";
++
++				opp-400000000 {
++					opp-hz = /bits/ 64 <400000000>;
++				};
++			};
++		};
++
+ 		camcc: clock-controller@ad00000 {
+ 			compatible = "qcom,sm8150-camcc";
+ 			reg = <0 0x0ad00000 0 0x10000>;
 
 -- 
 2.56.0
