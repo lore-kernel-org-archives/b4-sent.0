@@ -1,393 +1,61 @@
-From: Andrew Gigena <mail@andrewgigena.dev>
-Date: Fri, 06 Nov 2026 03:24:56 +0000
-Subject: [PATCH v2 5/5] arm64: dts: qcom: sm8150: Add CAMSS and CCI nodes
+From: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+Subject: [PATCH v2 0/2] selftests/bpf: Fix d_path check_mem_access and drop
+ CHECK()
+Date: Fri, 06 Nov 2026 10:37:07 +0700
+Message-Id: <20261106-dpath-memfd-v2-0-1dc0799b4aa6@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-sm8150-v7.4-rc1-camss-v2-5-39ee37787b00@andrewgigena.dev>
-References: <20261106-sm8150-v7.4-rc1-camss-v2-0-39ee37787b00@andrewgigena.dev>
-In-Reply-To: <20261106-sm8150-v7.4-rc1-camss-v2-0-39ee37787b00@andrewgigena.dev>
-To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Robert Foss <rfoss@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bryan O'Donoghue <bod@kernel.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-i2c@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-media@vger.kernel.org, Andrew Gigena <mail@andrewgigena.dev>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793935531; l=9806;
- i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
- bh=D1rMjPsx19QuATAxMNj055xYi4wuuTc067JVdGrqPds=;
- b=sOtVD2zCvJnyY6MspbZWspsbpw4s7ocT2VoF8FXGD2nlF7d8dlNOuybHN5AqN1o8gpr7wgirH
- Y6nr2lUXg47AcNc5323Trr2YYenyUJr+csIxI+UV0X7Sf/SdPUgIezY
-X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
- pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
-X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/03MQQqDMBBA0avIrDslSZtBu/IepYupmZhAo5KIF
+ MS7N3Tl8i3+36FIjlLg0eyQZYslzlOFuTQwBJ5GweiqwShDWitCt/AaMEnyDlkstU7ZtrMearF
+ k8fH7vz1f1T7PCdeQhc8Pgw5Pk02jRuoMW6L7+0auHxPHz3WYExzHDwzAaAOhAAAA
+X-Change-ID: 20261106-dpath-memfd-ae568d05895f
+To: Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, 
+ Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, Shuah Khan <shuah@kernel.org>
+Cc: bpf@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793936228; l=1020;
+ i=thamrinjonathan@gmail.com; s=20261102; h=from:subject:message-id;
+ bh=oHBYZOmhLKtt3g9DkPVwr2isJO0GLayzgSm6warDTzw=;
+ b=QjyMQE8ho5ZRgpHMESZDc79jLl+iy65YXwkJJJNeITymJxj8scp6bNke1eolxQt1dwHL8Uau1
+ 7/b1HfTiWzOB9/Kn2fU3VXurUzb59ZdKo3rY+5RA5JV3YhBycer2kEO
+X-Developer-Key: i=thamrinjonathan@gmail.com; a=ed25519;
+ pk=mr0q5PZVaUIrv8WvTxIfK7QVcAiRSYI8hOByBQL1ZRo=
+X-Endpoint-Received: by B4 Relay for thamrinjonathan@gmail.com/20261102 with auth_id=1383
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the SM8150 CAMSS block and its CSIPHY, CSID, VFE and
-VFE-Lite instances, together with the two CCI controllers and their
-I2C buses.
+Patch 1 replaces the deprecated CHECK() calls with ASSERT_*().
 
-The CAMSS node exposes four CSI input ports and references the CAMCC
-clocks and GDSCs, the interconnects and the IOMMU streams. The CCI
-nodes describe the CCI0/CCI1 I2C buses, and the TLMM pinctrl states
-for their clock and data lines are added to the existing pin
-controller node.
+Patch 2 fixes check_mem_access, which creates a temp file in
+/dev/shm that isn't mounted under vmtest.sh in local runs. This
+causes mkstemp() to fail with ENOENT. mkstemp() is replaced with
+memfd_create() as it gives a shmem-backed file with no mount
+needed while still reaching vfs_fallocate.
 
-All new nodes are left disabled. The CAMSS supplies and the sensor
-wiring are board-specific, so they belong in the board DTS that
-enables the controller.
+Changes in v2:
+- Added patch 1 converting CHECK() to ASSERT_*() (Andrii)
+- Link to v1: https://lore.kernel.org/bpf/20261102-d-path-memfd-v1-1-692a5664b36d@gmail.com/
 
-Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
 ---
- arch/arm64/boot/dts/qcom/sm8150.dtsi | 320 +++++++++++++++++++++++++++++++++++
- 1 file changed, 320 insertions(+)
+Jonathan Bastari Thamrin (2):
+      selftests/bpf: Replace d_path CHECK() with ASSERT_*()
+      selftests/bpf: Use memfd_create instead of mkstemp in d_path
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8150.dtsi b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-index 293fcbacff34..a1fd3a4ed2e5 100644
---- a/arch/arm64/boot/dts/qcom/sm8150.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-@@ -2736,6 +2736,86 @@ wake-pins {
- 					bias-pull-up;
- 				};
- 			};
-+
-+			cci0_default: cci0-default-state {
-+				cci0_i2c0_default: cci0-i2c0-default-pins {
-+					/* CLK, DATA */
-+					pins = "gpio17", "gpio18";
-+					function = "cci_i2c";
-+
-+					bias-pull-up;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+
-+				cci0_i2c1_default: cci0-i2c1-default-pins {
-+					/* CLK, DATA */
-+					pins = "gpio19", "gpio20";
-+					function = "cci_i2c";
-+
-+					bias-pull-up;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+			};
-+
-+			cci0_sleep: cci0-sleep-state {
-+				cci0_i2c0_sleep: cci0-i2c0-sleep-pins {
-+					/* CLK, DATA */
-+					pins = "gpio17", "gpio18";
-+					function = "cci_i2c";
-+
-+					drive-strength = <2>; /* 2 mA */
-+					bias-pull-down;
-+				};
-+
-+				cci0_i2c1_sleep: cci0-i2c1-sleep-pins {
-+					/* CLK, DATA */
-+					pins = "gpio19", "gpio20";
-+					function = "cci_i2c";
-+
-+					drive-strength = <2>; /* 2 mA */
-+					bias-pull-down;
-+				};
-+			};
-+
-+			cci1_default: cci1-default-state {
-+				cci1_i2c0_default: cci1-i2c0-default-pins {
-+					/* CLK, DATA */
-+					pins = "gpio31", "gpio32";
-+					function = "cci_i2c";
-+
-+					bias-pull-up;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+
-+				cci1_i2c1_default: cci1-i2c1-default-pins {
-+					/* CLK, DATA */
-+					pins = "gpio33", "gpio34";
-+					function = "cci_i2c";
-+
-+					bias-pull-up;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+			};
-+
-+			cci1_sleep: cci1-sleep-state {
-+				cci1_i2c0_sleep: cci1-i2c0-sleep-pins {
-+					/* CLK, DATA */
-+					pins = "gpio31", "gpio32";
-+					function = "cci_i2c";
-+
-+					bias-pull-down;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+
-+				cci1_i2c1_sleep: cci1-i2c1-sleep-pins {
-+					/* CLK, DATA */
-+					pins = "gpio33", "gpio34";
-+					function = "cci_i2c";
-+
-+					bias-pull-down;
-+					drive-strength = <2>; /* 2 mA */
-+				};
-+			};
- 		};
- 
- 		remoteproc_mpss: remoteproc@4080000 {
-@@ -3782,6 +3862,246 @@ camnoc_virt: interconnect@ac00000 {
- 			qcom,bcm-voters = <&apps_bcm_voter>;
- 		};
- 
-+		cci0: cci@ac4a000 {
-+			compatible = "qcom,sm8150-cci", "qcom,msm8996-cci";
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			reg = <0 0xac4a000 0 0x1000>;
-+			interrupts = <GIC_SPI 460 IRQ_TYPE_EDGE_RISING>;
-+			power-domains = <&camcc TITAN_TOP_GDSC>;
-+
-+			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
-+				 <&camcc CAM_CC_SLOW_AHB_CLK_SRC>,
-+				 <&camcc CAM_CC_CPAS_AHB_CLK>,
-+				 <&camcc CAM_CC_CCI_0_CLK>,
-+				 <&camcc CAM_CC_CCI_0_CLK_SRC>;
-+			clock-names = "camnoc_axi",
-+				      "slow_ahb_src",
-+				      "cpas_ahb",
-+				      "cci",
-+				      "cci_src";
-+
-+			pinctrl-0 = <&cci0_default>;
-+			pinctrl-1 = <&cci0_sleep>;
-+			pinctrl-names = "default", "sleep";
-+
-+			status = "disabled";
-+
-+			cci0_i2c0: i2c-bus@0 {
-+				reg = <0>;
-+				clock-frequency = <1000000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+
-+			cci0_i2c1: i2c-bus@1 {
-+				reg = <1>;
-+				clock-frequency = <1000000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+		};
-+
-+		cci1: cci@ac4b000 {
-+			compatible = "qcom,sm8150-cci", "qcom,msm8996-cci";
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			reg = <0 0xac4b000 0 0x1000>;
-+			interrupts = <GIC_SPI 271 IRQ_TYPE_EDGE_RISING>;
-+			power-domains = <&camcc TITAN_TOP_GDSC>;
-+
-+			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
-+				 <&camcc CAM_CC_SLOW_AHB_CLK_SRC>,
-+				 <&camcc CAM_CC_CPAS_AHB_CLK>,
-+				 <&camcc CAM_CC_CCI_1_CLK>,
-+				 <&camcc CAM_CC_CCI_1_CLK_SRC>;
-+			clock-names = "camnoc_axi",
-+				      "slow_ahb_src",
-+				      "cpas_ahb",
-+				      "cci",
-+				      "cci_src";
-+
-+			pinctrl-0 = <&cci1_default>;
-+			pinctrl-1 = <&cci1_sleep>;
-+			pinctrl-names = "default", "sleep";
-+
-+			status = "disabled";
-+
-+			cci1_i2c0: i2c-bus@0 {
-+				reg = <0>;
-+				clock-frequency = <1000000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+
-+			cci1_i2c1: i2c-bus@1 {
-+				reg = <1>;
-+				clock-frequency = <1000000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+		};
-+
-+		camss: camss@ac65000 {
-+			compatible = "qcom,sm8150-camss";
-+			status = "disabled";
-+
-+			reg = <0 0xac65000 0 0x1000>,
-+			      <0 0xac66000 0 0x1000>,
-+			      <0 0xac67000 0 0x1000>,
-+			      <0 0xac68000 0 0x1000>,
-+			      <0 0xacaf000 0 0x4000>,
-+			      <0 0xacb3000 0 0x1000>,
-+			      <0 0xacb6000 0 0x4000>,
-+			      <0 0xacba000 0 0x1000>,
-+			      <0 0xacc4000 0 0x4000>,
-+			      <0 0xacc8000 0 0x1000>,
-+			      <0 0xaccb000 0 0x4000>,
-+			      <0 0xaccf000 0 0x1000>;
-+
-+			reg-names = "csiphy0",
-+				    "csiphy1",
-+				    "csiphy2",
-+				    "csiphy3",
-+				    "vfe0",
-+				    "csid0",
-+				    "vfe1",
-+				    "csid1",
-+				    "vfe_lite0",
-+				    "csid_lite0",
-+				    "vfe_lite1",
-+				    "csid_lite1";
-+
-+			interrupts = <GIC_SPI 477 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 478 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 479 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 448 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 465 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 464 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 467 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 466 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 469 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 468 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 360 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 359 IRQ_TYPE_EDGE_RISING>;
-+
-+			interrupt-names = "csiphy0",
-+					  "csiphy1",
-+					  "csiphy2",
-+					  "csiphy3",
-+					  "vfe0",
-+					  "csid0",
-+					  "vfe1",
-+					  "csid1",
-+					  "vfe_lite0",
-+					  "csid_lite0",
-+					  "vfe_lite1",
-+					  "csid_lite1";
-+
-+			power-domains = <&camcc IFE_0_GDSC>,
-+					<&camcc IFE_1_GDSC>,
-+					<&camcc TITAN_TOP_GDSC>;
-+			power-domain-names = "ife0",
-+					     "ife1",
-+					     "top";
-+
-+			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
-+				 <&camcc CAM_CC_CPAS_AHB_CLK>,
-+				 <&camcc CAM_CC_CSIPHY0_CLK>,
-+				 <&camcc CAM_CC_CSI0PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_CSIPHY1_CLK>,
-+				 <&camcc CAM_CC_CSI1PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_CSIPHY2_CLK>,
-+				 <&camcc CAM_CC_CSI2PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_CSIPHY3_CLK>,
-+				 <&camcc CAM_CC_CSI3PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_IFE_0_AXI_CLK>,
-+				 <&camcc CAM_CC_IFE_0_CLK>,
-+				 <&camcc CAM_CC_IFE_0_CPHY_RX_CLK>,
-+				 <&camcc CAM_CC_IFE_0_CSID_CLK>,
-+				 <&camcc CAM_CC_IFE_1_AXI_CLK>,
-+				 <&camcc CAM_CC_IFE_1_CLK>,
-+				 <&camcc CAM_CC_IFE_1_CPHY_RX_CLK>,
-+				 <&camcc CAM_CC_IFE_1_CSID_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_0_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_0_CPHY_RX_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_0_CSID_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_1_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_1_CPHY_RX_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_1_CSID_CLK>,
-+				 <&gcc GCC_CAMERA_AHB_CLK>,
-+				 <&gcc GCC_CAMERA_HF_AXI_CLK>,
-+				 <&gcc GCC_CAMERA_SF_AXI_CLK>;
-+			clock-names = "camnoc_axi",
-+				      "cpas_ahb",
-+				      "csiphy0",
-+				      "csiphy0_timer",
-+				      "csiphy1",
-+				      "csiphy1_timer",
-+				      "csiphy2",
-+				      "csiphy2_timer",
-+				      "csiphy3",
-+				      "csiphy3_timer",
-+				      "vfe0_axi",
-+				      "vfe0",
-+				      "vfe0_cphy_rx",
-+				      "vfe0_csid",
-+				      "vfe1_axi",
-+				      "vfe1",
-+				      "vfe1_cphy_rx",
-+				      "vfe1_csid",
-+				      "vfe_lite0",
-+				      "vfe_lite0_cphy_rx",
-+				      "vfe_lite0_csid",
-+				      "vfe_lite1",
-+				      "vfe_lite1_cphy_rx",
-+				      "vfe_lite1_csid",
-+				      "gcc_ahb",
-+				      "gcc_axi_hf",
-+				      "gcc_axi_sf";
-+
-+			iommus = <&apps_smmu 0x840 0x620>,
-+				 <&apps_smmu 0x860 0x620>,
-+				 <&apps_smmu 0xA40 0x620>,
-+				 <&apps_smmu 0xA60 0x620>,
-+				 <&apps_smmu 0xC40 0x620>,
-+				 <&apps_smmu 0xC60 0x620>,
-+				 <&apps_smmu 0xE40 0x620>,
-+				 <&apps_smmu 0xE60 0x620>;
-+
-+			interconnects = <&gem_noc MASTER_AMPSS_M0 0 &config_noc SLAVE_CAMERA_CFG 0>,
-+					<&mmss_noc MASTER_CAMNOC_HF0 0 &mc_virt SLAVE_EBI_CH0 0>,
-+					<&mmss_noc MASTER_CAMNOC_HF1 0 &mc_virt SLAVE_EBI_CH0 0>,
-+					<&mmss_noc MASTER_CAMNOC_SF 0 &mc_virt SLAVE_EBI_CH0 0>;
-+			interconnect-names = "cam_ahb",
-+					     "cam_hf_0_mnoc",
-+					     "cam_hf_1_mnoc",
-+					     "cam_sf_0_mnoc";
-+
-+			ports {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				port@0 {
-+					reg = <0>;
-+				};
-+
-+				port@1 {
-+					reg = <1>;
-+				};
-+
-+				port@2 {
-+					reg = <2>;
-+				};
-+
-+				port@3 {
-+					reg = <3>;
-+				};
-+			};
-+		};
-+
- 		camcc: clock-controller@ad00000 {
- 			compatible = "qcom,sm8150-camcc";
- 			reg = <0 0x0ad00000 0 0x10000>;
+ tools/testing/selftests/bpf/prog_tests/d_path.c | 74 +++++++++----------------
+ 1 file changed, 26 insertions(+), 48 deletions(-)
+---
+base-commit: 87eddc739d20b466881e4c5cdd2ddf465a5debfd
+change-id: 20261106-dpath-memfd-ae568d05895f
 
+Best regards,
 -- 
-2.56.0
+Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
 
