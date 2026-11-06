@@ -1,10 +1,10 @@
 From: Andrew Gigena <mail@andrewgigena.dev>
-Date: Fri, 06 Nov 2026 18:35:37 +0000
-Subject: [PATCH v3 5/7] media: qcom: camss: Add support for SM8150
+Date: Fri, 06 Nov 2026 18:35:38 +0000
+Subject: [PATCH v3 6/7] phy: qcom-mipi-csi2: Add SM8150 CSI2 DPHY support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-sm8150-v7.4-rc1-camss-v3-5-0103e8a0bbcd@andrewgigena.dev>
+Message-Id: <20261106-sm8150-v7.4-rc1-camss-v3-6-0103e8a0bbcd@andrewgigena.dev>
 References: <20261106-sm8150-v7.4-rc1-camss-v3-0-0103e8a0bbcd@andrewgigena.dev>
 In-Reply-To: <20261106-sm8150-v7.4-rc1-camss-v3-0-0103e8a0bbcd@andrewgigena.dev>
 To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
@@ -24,325 +24,216 @@ Cc: linux-arm-msm@vger.kernel.org, linux-i2c@vger.kernel.org,
  linux-media@vger.kernel.org, linux-phy@lists.infradead.org, 
  Andrew Gigena <mail@andrewgigena.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990195; l=9431;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990195; l=10225;
  i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
- bh=XGER5/nNLrxHHeVeD6R2PB2HfzasWHcrEstJmcRUSE8=;
- b=C12fe012US7MHoklcemqZuXkiv373tUub/PiWXw6henB+4DXDLKj0aBQ6JexS/Fky4Ld/A6v1
- ZI4b4W51TZhDFWyx+vKS+EuhSwAIr26j1WJK9lKZ23kCS5XZeSzEhCA
+ bh=fAFtbuNKrv0SCgpDRGKPsktmDHYGiaUp7Ava6AeGnlc=;
+ b=VAG5fKZPSbi0SHPgrNKQFBE+LBfJrV3lrDvIKjb+aoy3awnqy8KYfv8K41EH57gBArh3uy9w0
+ vkqIMpYTnVnDcQj6a8CVt+rp7d1s34v9Aw6VOGMTVpsm7FThq0I01WT
 X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
  pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
 X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add CAMSS platform data for the Qualcomm SM8150 SoC. The camera
-subsystem contains four CSIPHY, four CSID (two full and two lite), two
-VFE and two VFE-Lite instances.
+Add SM8150 platform data to the CSI2 DPHY driver so that SM8150 can use
+the dedicated PHY driver instead of the CAMSS-integrated CSIPHY.
 
-The hardware reuses the existing 3-phase 1.0 CSIPHY, Gen2 CSID and
-VFE 17x implementations; the CSIPHY uses the SC8280XP lane register
-layout. Add CAMSS_8150 to the version enum and to the shared code
-paths, then add the per-block clock, regulator, power domain,
-interrupt and interconnect resources.
+The SM8150 CSIPHY uses the SC8280XP lane register layout, as already
+used by the CAMSS driver, so reuse that table, dropping the DNP entries,
+which the new PHY driver does not program. The PHY is fed by the "core"
+and "timer" clocks, the vdda-phy and vdda-pll supplies, and the Titan top
+power domain, which is not scaled.
 
-The CSIPHY resources are reduced to id/hw_ops/formats only; clocks,
-regulators, registers and interrupts are owned by the dedicated CSI2
-PHY driver.
+The timer clock is pinned to 300 MHz via a new timer_rate_hz soc field
+(SM8150 timer only supports 19.2/300 MHz). SM8150 is ordered before
+X1E80100 as it predates it (7 nm vs 4 nm). A detach of the
+platform-attached single power domain is done before attaching by name,
+so single-domain SoCs do not fail with -EEXIST.
 
 Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
 ---
- .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     |   2 +
- drivers/media/platform/qcom/camss/camss.c          | 231 +++++++++++++++++++++
- drivers/media/platform/qcom/camss/camss.h          |   1 +
- 3 files changed, 234 insertions(+)
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c | 97 ++++++++++++++++++++++
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c     | 16 +++-
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2.h          |  4 +
+ 3 files changed, 116 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-index dac8d2ecf799..5e7c2e67ae88 100644
---- a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-+++ b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-@@ -1133,6 +1133,7 @@ static bool csiphy_is_gen2(u32 version)
- 	case CAMSS_6150:
- 	case CAMSS_6350:
- 	case CAMSS_7280:
-+	case CAMSS_8150:
- 	case CAMSS_8250:
- 	case CAMSS_8280XP:
- 	case CAMSS_8300:
-@@ -1235,6 +1236,7 @@ static int csiphy_init(struct csiphy_device *csiphy)
- 		regs->lane_regs = &lane_regs_sm8250[0];
- 		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8250);
- 		break;
-+	case CAMSS_8150:
- 	case CAMSS_8280XP:
- 		regs->lane_regs = &lane_regs_sc8280xp[0];
- 		regs->lane_array_size = ARRAY_SIZE(lane_regs_sc8280xp);
-diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
-index c54185c93a8a..da4d2213fd3d 100644
---- a/drivers/media/platform/qcom/camss/camss.c
-+++ b/drivers/media/platform/qcom/camss/camss.c
-@@ -1940,6 +1940,223 @@ static const struct resources_icc icc_res_sm6350[] = {
- 	},
+diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c
+index 966d79c98f9b..b8b6589cee35 100644
+--- a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c
++++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c
+@@ -45,6 +45,73 @@
+ #define CSIPHY_SETTLE_CNT_LOWER_BYTE			2
+ #define CSIPHY_SKEW_CAL					7
+ 
++/* 7nm 2PH v 1.1 2p5Gbps 4 lane DPHY mode */
++static const struct
++mipi_csi2phy_lane_regs lane_regs_sm8150[] = {
++	{.reg_addr = 0x0004, .reg_data = 0x0c, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x002c, .reg_data = 0x01, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0034, .reg_data = 0x0f, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x001c, .reg_data = 0x0a, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0014, .reg_data = 0x60, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x003c, .reg_data = 0xb8, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0000, .reg_data = 0x90, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0008, .reg_data = 0x0e, .param_type = CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{.reg_addr = 0x0010, .reg_data = 0x52, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0038, .reg_data = 0xfe, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0060, .reg_data = 0x00, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0064, .reg_data = 0x7f, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0704, .reg_data = 0x0c, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x072c, .reg_data = 0x01, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0734, .reg_data = 0x0f, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x071c, .reg_data = 0x0a, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0714, .reg_data = 0x60, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0728, .reg_data = 0x04, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x073c, .reg_data = 0xb8, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0700, .reg_data = 0x80, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0708, .reg_data = 0x0e, .param_type = CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{.reg_addr = 0x070c, .reg_data = 0xa5, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0710, .reg_data = 0x52, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0738, .reg_data = 0x1f, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0760, .reg_data = 0x00, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0764, .reg_data = 0x7f, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0204, .reg_data = 0x0c, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x022c, .reg_data = 0x01, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0234, .reg_data = 0x0f, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x021c, .reg_data = 0x0a, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0214, .reg_data = 0x60, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x023c, .reg_data = 0xb8, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0200, .reg_data = 0x90, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0208, .reg_data = 0x0e, .param_type = CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{.reg_addr = 0x0210, .reg_data = 0x52, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0238, .reg_data = 0xfe, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0260, .reg_data = 0x00, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0264, .reg_data = 0x7f, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0404, .reg_data = 0x0c, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x042c, .reg_data = 0x01, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0434, .reg_data = 0x0f, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x041c, .reg_data = 0x0a, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0414, .reg_data = 0x60, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x043c, .reg_data = 0xb8, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0400, .reg_data = 0x90, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0408, .reg_data = 0x0e, .param_type = CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{.reg_addr = 0x0410, .reg_data = 0x52, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0438, .reg_data = 0xfe, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0460, .reg_data = 0x00, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0464, .reg_data = 0x7f, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0604, .reg_data = 0x0c, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x062c, .reg_data = 0x01, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0634, .reg_data = 0x0f, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x061c, .reg_data = 0x0a, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0614, .reg_data = 0x60, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x063c, .reg_data = 0xb8, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0600, .reg_data = 0x90, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0608, .reg_data = 0x0e, .param_type = CSIPHY_SETTLE_CNT_LOWER_BYTE},
++	{.reg_addr = 0x0610, .reg_data = 0x52, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0638, .reg_data = 0xfe, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0660, .reg_data = 0x00, .param_type = CSIPHY_DEFAULT_PARAMS},
++	{.reg_addr = 0x0664, .reg_data = 0x7f, .param_type = CSIPHY_DEFAULT_PARAMS},
++};
++
+ /* 4nm 2PH v 2.1.2 2p5Gbps 4 lane DPHY mode */
+ static const struct
+ mipi_csi2phy_lane_regs lane_regs_x1e80100[] = {
+@@ -352,6 +419,36 @@ static const struct mipi_csi2phy_hw_ops phy_qcom_mipi_csi2_ops_3ph_1_0 = {
+ 	.lanes_disable = phy_qcom_mipi_csi2_lanes_disable,
  };
  
-+static const struct camss_subdev_resources csiphy_res_sm8150[] = {
-+	/* CSIPHY0 - clocks/regs/supplies owned by PHY driver */
-+	{
-+		.csiphy = {
-+			.id = 0,
-+			.hw_ops = &csiphy_ops_3ph_1_0,
-+			.formats = &csiphy_formats_sdm845
-+		}
-+	},
-+	/* CSIPHY1 - clocks/regs/supplies owned by PHY driver */
-+	{
-+		.csiphy = {
-+			.id = 1,
-+			.hw_ops = &csiphy_ops_3ph_1_0,
-+			.formats = &csiphy_formats_sdm845
-+		}
-+	},
-+	/* CSIPHY2 - clocks/regs/supplies owned by PHY driver */
-+	{
-+		.csiphy = {
-+			.id = 2,
-+			.hw_ops = &csiphy_ops_3ph_1_0,
-+			.formats = &csiphy_formats_sdm845
-+		}
-+	},
-+	/* CSIPHY3 - clocks/regs/supplies owned by PHY driver */
-+	{
-+		.csiphy = {
-+			.id = 3,
-+			.hw_ops = &csiphy_ops_3ph_1_0,
-+			.formats = &csiphy_formats_sdm845
-+		}
-+	},
++static const char * const sm8150_clks[] = {
++	"core",
++	"timer"
 +};
 +
-+static const struct camss_subdev_resources csid_res_sm8150[] = {
-+	/* CSID0 */
-+	{
-+		.regulators = {},
-+		.clock = { "vfe0_csid", "vfe0_cphy_rx", "vfe0", "vfe0_axi" },
-+		.clock_rate = { { 400000000, 480000000, 600000000 },
-+				{ 0 },
-+				{ 0 },
-+				{ 0 } },
-+		.reg = { "csid0" },
-+		.interrupt = { "csid0" },
-+		.csid = {
-+			.hw_ops = &csid_ops_gen2,
-+			.parent_dev_ops = &vfe_parent_dev_ops,
-+			.formats = &csid_formats_gen2
-+		}
-+	},
-+	/* CSID1 */
-+	{
-+		.regulators = {},
-+		.clock = { "vfe1_csid", "vfe1_cphy_rx", "vfe1", "vfe1_axi" },
-+		.clock_rate = { { 400000000, 480000000, 600000000 },
-+				{ 0 },
-+				{ 0 },
-+				{ 0 } },
-+		.reg = { "csid1" },
-+		.interrupt = { "csid1" },
-+		.csid = {
-+			.hw_ops = &csid_ops_gen2,
-+			.parent_dev_ops = &vfe_parent_dev_ops,
-+			.formats = &csid_formats_gen2
-+		}
-+	},
-+	/* CSID_LITE0 */
-+	{
-+		.regulators = {},
-+		.clock = { "vfe_lite0_csid", "vfe_lite0_cphy_rx", "vfe_lite0" },
-+		.clock_rate = { { 400000000, 480000000, 600000000 },
-+				{ 0 },
-+				{ 0 }, },
-+		.reg = { "csid_lite0" },
-+		.interrupt = { "csid_lite0" },
-+		.csid = {
-+			.is_lite = true,
-+			.hw_ops = &csid_ops_gen2,
-+			.parent_dev_ops = &vfe_parent_dev_ops,
-+			.formats = &csid_formats_gen2
-+		}
-+	},
-+	/* CSID_LITE1 */
-+	{
-+		.regulators = {},
-+		.clock = { "vfe_lite1_csid", "vfe_lite1_cphy_rx", "vfe_lite1" },
-+		.clock_rate = { { 400000000, 480000000, 600000000 },
-+				{ 0 },
-+				{ 0 }, },
-+		.reg = { "csid_lite1" },
-+		.interrupt = { "csid_lite1" },
-+		.csid = {
-+			.is_lite = true,
-+			.hw_ops = &csid_ops_gen2,
-+			.parent_dev_ops = &vfe_parent_dev_ops,
-+			.formats = &csid_formats_gen2
-+		}
-+	}
++static const char * const sm8150_supplies[] = {
++	"vdda-phy",
++	"vdda-pll"
 +};
 +
-+/*
-+ * cpas_ahb is left at the CAMCC default 80 MHz; it is not matched by
-+ * vfe_match_clock_names(). The VFE/VFE-Lite rates are set from the
-+ * remaining clock-rate tables.
-+ */
-+static const struct camss_subdev_resources vfe_res_sm8150[] = {
-+	/* VFE0 */
-+	{
-+		.regulators = {},
-+		.clock = { "gcc_axi_hf", "gcc_axi_sf", "cpas_ahb", "camnoc_axi",
-+			   "vfe0", "vfe0_axi" },
-+		.clock_rate = { { 0 },
-+				{ 0 },
-+				{ 0 },
-+				{ 19200000, 150000000, 266666667, 320000000, 400000000, 480000000 },
-+				{ 400000000, 558000000, 637000000, 847000000, 950000000 },
-+				{ 0 }, },
-+		.reg = { "vfe0" },
-+		.interrupt = { "vfe0" },
-+		.vfe = {
-+			.line_num = 4,
-+			.is_lite = false,
-+			.has_pd = true,
-+			.pd_name = "ife0",
-+			.hw_ops = &vfe_ops_170,
-+			.formats_rdi = &vfe_formats_rdi_845,
-+			.formats_pix = &vfe_formats_pix_845
-+		}
-+	},
-+	/* VFE1 */
-+	{
-+		.regulators = {},
-+		.clock = { "gcc_axi_hf", "gcc_axi_sf", "cpas_ahb", "camnoc_axi",
-+			   "vfe1", "vfe1_axi" },
-+		.clock_rate = { { 0 },
-+				{ 0 },
-+				{ 0 },
-+				{ 19200000, 150000000, 266666667, 320000000, 400000000, 480000000 },
-+				{ 400000000, 558000000, 637000000, 847000000, 950000000 },
-+				{ 0 }, },
-+		.reg = { "vfe1" },
-+		.interrupt = { "vfe1" },
-+		.vfe = {
-+			.line_num = 4,
-+			.is_lite = false,
-+			.has_pd = true,
-+			.pd_name = "ife1",
-+			.hw_ops = &vfe_ops_170,
-+			.formats_rdi = &vfe_formats_rdi_845,
-+			.formats_pix = &vfe_formats_pix_845
-+		}
-+	},
-+	/* VFE_LITE_0 */
-+	{
-+		.regulators = {},
-+		.clock = { "gcc_axi_hf", "gcc_axi_sf", "cpas_ahb", "camnoc_axi", "vfe_lite0" },
-+		.clock_rate = { { 0 },
-+				{ 0 },
-+				{ 0 },
-+				{ 19200000, 150000000, 266666667, 320000000, 400000000, 480000000 },
-+				{ 320000000, 400000000, 480000000, 600000000 }, },
-+		.reg = { "vfe_lite0" },
-+		.interrupt = { "vfe_lite0" },
-+		.vfe = {
-+			.is_lite = true,
-+			.line_num = 4,
-+			.hw_ops = &vfe_ops_170,
-+			.formats_rdi = &vfe_formats_rdi_845,
-+			.formats_pix = &vfe_formats_pix_845
-+		}
-+	},
-+	/* VFE_LITE_1 */
-+	{
-+		.regulators = {},
-+		.clock = { "gcc_axi_hf", "gcc_axi_sf", "cpas_ahb", "camnoc_axi", "vfe_lite1" },
-+		.clock_rate = { { 0 },
-+				{ 0 },
-+				{ 0 },
-+				{ 19200000, 150000000, 266666667, 320000000, 400000000, 480000000 },
-+				{ 320000000, 400000000, 480000000, 600000000 }, },
-+		.reg = { "vfe_lite1" },
-+		.interrupt = { "vfe_lite1" },
-+		.vfe = {
-+			.is_lite = true,
-+			.line_num = 4,
-+			.hw_ops = &vfe_ops_170,
-+			.formats_rdi = &vfe_formats_rdi_845,
-+			.formats_pix = &vfe_formats_pix_845
-+		}
-+	}
++static struct mipi_csi2_genpd sm8150_genpds[] = {
++	{ .name = "top", .scaled = false },
 +};
 +
-+static const struct resources_icc icc_res_sm8150[] = {
-+	{
-+		.name = "cam_ahb",
-+		.icc_bw_tbl.avg = 38400,
-+		.icc_bw_tbl.peak = 76800,
++const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_sm8150 = {
++	.ops = &phy_qcom_mipi_csi2_ops_3ph_1_0,
++	.reg_info = {
++		.init_seq = lane_regs_sm8150,
++		.lane_array_size = ARRAY_SIZE(lane_regs_sm8150),
++		.common_regs_offset = 0x800,
 +	},
-+	{
-+		.name = "cam_hf_0_mnoc",
-+		.icc_bw_tbl.avg = 2097152,
-+		.icc_bw_tbl.peak = 2097152,
-+	},
-+	{
-+		.name = "cam_hf_1_mnoc",
-+		.icc_bw_tbl.avg = 2097152,
-+		.icc_bw_tbl.peak = 2097152,
-+	},
-+	{
-+		.name = "cam_sf_0_mnoc",
-+		.icc_bw_tbl.avg = 2097152,
-+		.icc_bw_tbl.peak = 2097152,
-+	},
++	.supply_names = (const char **)sm8150_supplies,
++	.num_supplies = ARRAY_SIZE(sm8150_supplies),
++	.clk_names = (const char **)sm8150_clks,
++	.num_clk = ARRAY_SIZE(sm8150_clks),
++	.timer_rate_hz = 300000000,
++	.genpds = sm8150_genpds,
++	.num_genpds = ARRAY_SIZE(sm8150_genpds),
 +};
 +
- static const struct camss_subdev_resources csiphy_res_8250[] = {
- 	/* CSIPHY0 */
- 	{
-@@ -5725,6 +5942,19 @@ static const struct camss_resources sm6350_resources = {
- 	.vfe_num = ARRAY_SIZE(vfe_res_sm6350),
+ static const char * const x1e_clks[] = {
+ 	"core",
+ 	"timer",
+diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c
+index c0a4fa20eaf0..3a45b8766311 100644
+--- a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c
++++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c
+@@ -68,7 +68,11 @@ phy_qcom_mipi_csi2_set_clock_rates(struct mipi_csi2phy_device *csi2phy,
+ 		goto unset_opp_rate;
+ 	}
+ 
+-	timer_rate = clk_round_rate(csi2phy->timer_clk, link_freq / 4);
++	if (csi2phy->soc_cfg->timer_rate_hz)
++		timer_rate = clk_round_rate(csi2phy->timer_clk,
++					    csi2phy->soc_cfg->timer_rate_hz);
++	else
++		timer_rate = clk_round_rate(csi2phy->timer_clk, link_freq / 4);
+ 	if (timer_rate <= 0) {
+ 		ret = -ENODEV;
+ 		goto unset_opp_rate;
+@@ -233,6 +237,15 @@ static int phy_qcom_mipi_csi2_attach_pm_domains(struct mipi_csi2phy_device *csi2
+ 	const char **pd_names;
+ 	int i;
+ 
++	/*
++	 * platform_probe() auto-attaches a single power domain during probe.
++	 * Detach it first so devm_pm_domain_attach_list() can attach all
++	 * domains by name (otherwise it returns -EEXIST for single-domain
++	 * SoCs such as SM8150).
++	 */
++	if (csi2phy->dev->pm_domain)
++		dev_pm_domain_detach(csi2phy->dev, false);
++
+ 	pd_names = devm_kzalloc(csi2phy->dev,
+ 				sizeof(char *) * csi2phy->soc_cfg->num_genpds,
+ 				GFP_KERNEL);
+@@ -443,6 +456,7 @@ static int phy_qcom_mipi_csi2_probe(struct platform_device *pdev)
+ }
+ 
+ static const struct of_device_id phy_qcom_mipi_csi2_of_match_table[] = {
++	{ .compatible	= "qcom,sm8150-csi2-phy", .data = &mipi_csi2_dphy_sm8150 },
+ 	{ .compatible	= "qcom,x1e80100-csi2-phy", .data = &mipi_csi2_dphy_4nm_x1e },
+ 	{ }
+ };
+diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h b/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
+index 7e55ae007370..4da9f12d4f8d 100644
+--- a/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
++++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
+@@ -68,6 +68,9 @@ struct mipi_csi2phy_soc_cfg {
+ 	const char ** const clk_names;
+ 	const unsigned int num_clk;
+ 
++	/* 0 = derive timer rate from link_freq/4; non-zero = fixed rate */
++	unsigned long timer_rate_hz;
++
+ 	const struct mipi_csi2_genpd *genpds;
+ 	const unsigned int num_genpds;
+ };
+@@ -92,6 +95,7 @@ struct mipi_csi2phy_device {
+ 	u32 hw_version;
  };
  
-+static const struct camss_resources sm8150_resources = {
-+	.version = CAMSS_8150,
-+	.pd_name = "top",
-+	.csiphy_res = csiphy_res_sm8150,
-+	.csid_res = csid_res_sm8150,
-+	.vfe_res = vfe_res_sm8150,
-+	.icc_res = icc_res_sm8150,
-+	.icc_path_num = ARRAY_SIZE(icc_res_sm8150),
-+	.csiphy_num = ARRAY_SIZE(csiphy_res_sm8150),
-+	.csid_num = ARRAY_SIZE(csid_res_sm8150),
-+	.vfe_num = ARRAY_SIZE(vfe_res_sm8150),
-+};
-+
- static const struct camss_resources sm8250_resources = {
- 	.version = CAMSS_8250,
- 	.pd_name = "top",
-@@ -5824,6 +6054,7 @@ static const struct of_device_id camss_dt_match[] = {
- 	{ .compatible = "qcom,sdm845-camss", .data = &sdm845_resources },
- 	{ .compatible = "qcom,sm6150-camss", .data = &sm6150_resources },
- 	{ .compatible = "qcom,sm6350-camss", .data = &sm6350_resources },
-+	{ .compatible = "qcom,sm8150-camss", .data = &sm8150_resources },
- 	{ .compatible = "qcom,sm8250-camss", .data = &sm8250_resources },
- 	{ .compatible = "qcom,sm8550-camss", .data = &sm8550_resources },
- 	{ .compatible = "qcom,sm8650-camss", .data = &sm8650_resources },
-diff --git a/drivers/media/platform/qcom/camss/camss.h b/drivers/media/platform/qcom/camss/camss.h
-index 7dc2fd9f03e0..74d8cc2921be 100644
---- a/drivers/media/platform/qcom/camss/camss.h
-+++ b/drivers/media/platform/qcom/camss/camss.h
-@@ -89,6 +89,7 @@ enum camss_version {
- 	CAMSS_8x39,
- 	CAMSS_8x53,
- 	CAMSS_8x96,
-+	CAMSS_8150,
- 	CAMSS_8250,
- 	CAMSS_8280XP,
- 	CAMSS_8300,
++extern const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_sm8150;
+ extern const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_4nm_x1e;
+ 
+ #endif /* __PHY_QCOM_MIPI_CSI2_H__ */
 
 -- 
 2.56.0
