@@ -1,97 +1,86 @@
-From: Mark Korenberg <socketpair@gmail.com>
-Date: Fri, 06 Nov 2026 22:33:10 +0500
-Subject: [PATCH v2 2/2] btrfs: raid56: pass REQ_META to per-device bios
+From: incharilla <incharilla@incharilla.site>
+Date: Fri, 06 Nov 2026 19:20:08 +0100
+Subject: [PATCH] md: dont warn about sb update on auto read only arrays
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-btrfs-sb-read-req-meta-v2-2-71c1afaf5c67@gmail.com>
-References: <20261106-btrfs-sb-read-req-meta-v2-0-71c1afaf5c67@gmail.com>
-In-Reply-To: <20261106-btrfs-sb-read-req-meta-v2-0-71c1afaf5c67@gmail.com>
-To: David Sterba <dsterba@suse.com>, Chris Mason <mason@kernel.org>
-Cc: Qu Wenruo <wqu@suse.com>, linux-btrfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Mark Korenberg <socketpair@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793986388; l=2479;
- i=socketpair@gmail.com; s=20260603; h=from:subject:message-id;
- bh=03ZVHtjUEaKbOwy9y4lTSzoDh3nzlMUykXCapQogZXk=;
- b=lmkNKMF54ONzD8K3N1HX3MJFukSl6LQyyWTdJUAgRTxEkpZZkvKHFAymIAOODq1p9zMpYKpWB
- faiV3VpR9eHCr+P2H3pNfdOuqPsTYy4f1RgYMZR5ucHFxZPmrLP+JVP
-X-Developer-Key: i=socketpair@gmail.com; a=ed25519;
- pk=2iAMjWhs7kA9X8ccetT2YVX8dvniXua2okQogw3Don8=
-X-Endpoint-Received: by B4 Relay for socketpair@gmail.com/20260603 with auth_id=806
+Message-Id: <20261106-md-auto-read-only-sb-warn-v1-1-5bfde3559841@incharilla.site>
+X-B4-Tracking: v=1; b=H4sIAFca7moC/x3MTQqDMBBA4avIrDuQqIzYq5Quohl1wCZl4k+Le
+ HeDy2/x3gGJVTjBszhAeZMkMWTYRwH95MLIKD4bSlOStYbw49GtS0Rl5zGG+Y+pw91pwKavPFH
+ dGqoryP1XeZDf/X69z/MCqaYV42sAAAA=
+X-Change-ID: 20261106-md-auto-read-only-sb-warn-7c3d66490643
+To: Song Liu <song@kernel.org>, Yu Kuai <yukuai@fygo.io>, 
+ Li Nan <magiclinan@didiglobal.com>, Xiao Ni <xiao@kernel.org>
+Cc: Yu Kuai <yukuai@fnnas.com>, Corey Hickey <bugfood-c@fatooh.org>, 
+ linux-raid@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ incharilla <incharilla@incharilla.site>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793989253; l=2603;
+ i=incharilla@incharilla.site; s=20261106; h=from:subject:message-id;
+ bh=+Wd6+KQm8viRtD/x34JdBjsIzmmj3vcZRVUKHpYuaGI=;
+ b=ipL8t19JS3Mm0slekkicOmxJ0gwtSHfF1GGUH3z36OC+7GEwiABPyFZ3R6wIfsRRw+5JQ9BP8
+ UGFQCnt/q1CANoKkBDYueW4IXWCsQM3WL9c2u9Zh5cFTno706XykKj3
+X-Developer-Key: i=incharilla@incharilla.site; a=ed25519;
+ pk=xE5D6YKyyCtab6ZeeJEA15KoJWTPKAxBRXCtRrslYk4=
+X-Endpoint-Received: by B4 Relay for incharilla@incharilla.site/20261106 with auth_id=1436
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-RAID5/6 writes, and reads that need a rebuild, go through an rbio,
-which builds new per-device bios from a bare REQ_OP_READ or
-REQ_OP_WRITE.  So all tree block writes on RAID5/6 lose REQ_META, while
-on the other profiles the per-device bios are clones and keep it.  The
-same goes for a tree block read rebuilt from the other stripes, for
-example with a missing device.
+Commit 8c9e376b9d1a ("md: warn about updating super block failure") added
+an error when md_update_sb is called on a read only array to help debug io
+hangs.
 
-Pass REQ_META on to all per-device bios of an rbio, data and P/Q alike,
-if any bio it serves has it.  Scrub and relocation do not set REQ_META,
-so their rbios stay untagged, as do rbios that only serve file data.
+An array that is started auto read only prints this error for no reason.
+This happens when it is assembled with start_ro set or when a degraded
+array is created with start_ro set. md_update_sb already defers the
+update by setting MD_SB_CHANGE_DEVS and the sb is written as soon as the
+first write makes the array read write. No io can hang on an array that
+has not been written to yet.
 
-Signed-off-by: Mark Korenberg <socketpair@gmail.com>
+Skip the message for MD_AUTO_READ the same way dm raid is already skipped.
+It is still printed for arrays that are really read only.
+
+Tested in qemu on loop devices with raid1 and raid5 and raid10. Before
+this patch assembling a clean array with start_ro set prints the error
+for all three levels. Creating a degraded array with start_ro set prints
+it in 5 of 10 tries for raid1 and 8 of 10 for raid5 and 4 of 10 for
+raid10. After this patch none of these print it. On raid1 the first write
+still makes the array read write and the sb events go from 17 to 19.
+Assembling with mdadm --readonly still prints the error.
+
+The fix and the qemu test were made with help from Claude Code.
+
+Fixes: 8c9e376b9d1a ("md: warn about updating super block failure")
+Reported-by: Corey Hickey <bugfood-c@fatooh.org>
+Closes: https://bugzilla.kernel.org/show_bug.cgi?id=222162
+Signed-off-by: incharilla <incharilla@incharilla.site>
 ---
- fs/btrfs/raid56.c | 14 +++++++++++---
- fs/btrfs/raid56.h |  7 +++++++
- 2 files changed, 18 insertions(+), 3 deletions(-)
+Found from bugzilla 222162. The qemu test script used is a busybox
+initramfs that creates raid1 and raid5 and raid10 arrays on loop devices
+with start_ro set and counts the message in dmesg.
+---
+ drivers/md/md.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/btrfs/raid56.c b/fs/btrfs/raid56.c
-index a8a8004bb14c..63b5acbf107e 100644
---- a/fs/btrfs/raid56.c
-+++ b/fs/btrfs/raid56.c
-@@ -1202,10 +1202,15 @@ static int rbio_add_io_paddrs(struct btrfs_raid_bio *rbio, struct bio_list *bio_
- 		}
- 	}
- 
--	/* put a new bio on the list */
-+	/*
-+	 * Put a new bio on the list.  Every per-device bio, data and P/Q
-+	 * alike, serves the bios in rbio->bio_list, so it is metadata I/O if
-+	 * any of them is: a tree block write, or a tree block read rebuilt
-+	 * from the other stripes.
-+	 */
- 	bio = bio_alloc(stripe->dev->bdev,
- 			max(rbio->bioc->stripe_len >> PAGE_SHIFT, 1),
--			op, GFP_NOFS);
-+			op | rbio->req_meta, GFP_NOFS);
- 	bio->bi_iter.bi_sector = disk_start >> SECTOR_SHIFT;
- 	bio->bi_private = rbio;
- 
-@@ -1246,8 +1251,11 @@ static void index_rbio_pages(struct btrfs_raid_bio *rbio)
- 	struct bio *bio;
- 
- 	spin_lock(&rbio->bio_list_lock);
--	bio_list_for_each(bio, &rbio->bio_list)
-+	rbio->req_meta = 0;
-+	bio_list_for_each(bio, &rbio->bio_list) {
- 		index_one_bio(rbio, bio);
-+		rbio->req_meta |= bio->bi_opf & REQ_META;
-+	}
- 
- 	spin_unlock(&rbio->bio_list_lock);
- }
-diff --git a/fs/btrfs/raid56.h b/fs/btrfs/raid56.h
-index 8700910b8dc9..a5a0ff8e4a03 100644
---- a/fs/btrfs/raid56.h
-+++ b/fs/btrfs/raid56.h
-@@ -139,6 +139,13 @@ struct btrfs_raid_bio {
- 	 */
- 	enum btrfs_rbio_ops operation;
- 
-+	/*
-+	 * REQ_META if any bio in bio_list has it.  Set under bio_list_lock by
-+	 * index_rbio_pages(), which runs before every assembly of per-device
-+	 * bios.
-+	 */
-+	blk_opf_t req_meta;
-+
- 	/* How many pages there are for the full stripe including P/Q */
- 	u16 nr_pages;
- 
+diff --git a/drivers/md/md.c b/drivers/md/md.c
+index 03e35386a80283032e317e037a749eca23ce170e..a0fc6028990530026404f0019a458dfabed02349 100644
+--- a/drivers/md/md.c
++++ b/drivers/md/md.c
+@@ -2819,7 +2819,8 @@ void md_update_sb(struct mddev *mddev, int force_change)
+ 	if (!md_is_rdwr(mddev)) {
+ 		if (force_change)
+ 			set_bit(MD_SB_CHANGE_DEVS, &mddev->sb_flags);
+-		if (!mddev_is_dm(mddev))
++		/* auto read only arrays write the sb once they become writable */
++		if (!mddev_is_dm(mddev) && mddev->ro != MD_AUTO_READ)
+ 			pr_err_ratelimited("%s: can't update sb for read-only array %s\n",
+ 					   __func__, mdname(mddev));
+ 		return;
 
+---
+base-commit: a91337fb5e8e0127c8b5be87be9f3027f95b48bc
+change-id: 20261106-md-auto-read-only-sb-warn-7c3d66490643
+
+Best regards,
 -- 
-2.56.0
+incharilla <incharilla@incharilla.site>
 
