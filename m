@@ -1,11 +1,11 @@
 From: Jerome Mohm <jrmmhm.kernel@eldare.de>
-Date: Fri, 06 Nov 2026 22:57:21 +0100
-Subject: [PATCH net v4 1/2] vsock/bpf: release sock lock while waiting for
- data in recvmsg
+Date: Fri, 06 Nov 2026 22:57:22 +0100
+Subject: [PATCH net v4 2/2] vsock/bpf: fix zero-length, MSG_OOB and
+ MSG_ERRQUEUE reads in recvmsg
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-kbh3-1-022-fix-v2-v4-1-c7d36703814d@eldare.de>
+Message-Id: <20261106-kbh3-1-022-fix-v2-v4-2-c7d36703814d@eldare.de>
 References: <20261106-kbh3-1-022-fix-v2-v4-0-c7d36703814d@eldare.de>
 In-Reply-To: <20261106-kbh3-1-022-fix-v2-v4-0-c7d36703814d@eldare.de>
 To: Stefano Garzarella <sgarzare@redhat.com>, 
@@ -17,147 +17,69 @@ Cc: Michal Luczaj <mhal@rbox.co>, virtualization@lists.linux.dev,
  netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
  stable@vger.kernel.org, Jerome Mohm <jrmmhm.kernel@eldare.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794002242; l=4767;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794002242; l=2197;
  i=jrmmhm.kernel@eldare.de; s=20260928; h=from:subject:message-id;
- bh=tMncr/t2BZDCVu+DkSDka364ua2a05eGFszh7At9iJI=;
- b=AYg1/w4e3WXm2lKA1GWiOSiVmfBY81KRkcGtQraSUK/I77t97ELFZHMRkMqAmkZdyUrfpA9pF
- h8X5oc7IjtJDad5dcC3ygPR5QHkyl9yFm+Qqi4sswW66P7Mw3RnGoSq
+ bh=dwUGR/eCK7GtoK8H9bbKU0ilJyfRtgnQIrQ7vPni5kQ=;
+ b=4nZ5slW3UfHVgJAEtqPZdz8lRe6LZIvhoXJrslECxOHSir4x5eu+lfl6KdZ04cTHPnrsnMHUi
+ AqwPFJDB60RDKoWYhN1qCGgcwQVMb13vpu1lai55X4LjYu6QHfWu1sK
 X-Developer-Key: i=jrmmhm.kernel@eldare.de; a=ed25519;
  pk=xRCxNXbnNottaHpmvPDAOC9NuMJxqKo24abkehKRVlo=
 X-Endpoint-Received: by B4 Relay for jrmmhm.kernel@eldare.de/20260928 with auth_id=1075
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vsock_bpf_recvmsg() holds lock_sock() while vsock_msg_wait_data() sleeps
-in wait_woken(). The transport delivers data in
-virtio_transport_recv_pkt(), which takes the same lock, so the reader
-and the delivery worker deadlock: recv() hangs until a signal or
-SO_RCVTIMEO, and all vsock rx handled by that worker stops.
+vsock_bpf_recvmsg() sends every read that the transport queue cannot
+serve through sk_msg_recvmsg() and the sockmap wait, which handle
+neither a zero length nor these flags:
 
-Release the lock around wait_woken(), as unix_bpf and tcp_bpf release
-theirs. That alone ends the deadlock but makes a blocking recv()
-return -EAGAIN early: the reader is also woken without data, for
-example by a credit update. So the wait also loops until data arrives
-or one of the native exits applies: a socket error, a local or peer
-shutdown, a socket that is no longer connected, the timeout or a
-pending signal. The loop alone, with the lock still held, keeps the
-deadlock, so the fix needs both halves and stays one patch.
+ - with len == 0 and data in the psock ingress queue the loop spins with
+   lock_sock() held, and the delivery worker blocks on the lock;
+ - MSG_ERRQUEUE with data in the psock ingress queue consumes stream
+   bytes, and a zero-length MSG_ERRQUEUE read, as MSG_ZEROCOPY users
+   do, never reaches the error queue: it gets -EAGAIN, or waits for
+   stream data if it blocks;
+ - MSG_OOB consumes ordinary stream bytes or waits for data, where the
+   native path returns -EOPNOTSUPP.
 
-For a non-blocking read, a socket error, a peer shutdown and a socket
-that is not connected are now reported before -EAGAIN, as on the native
-path. A blocking read interrupted by a signal returns sock_intr_errno()
-instead of -EAGAIN. A recv() that starts after a virtio transport reset
-returns -ECONNRESET until SO_ERROR has read the error, where the native
-path returns -ENOTCONN.
+Handle them at the top of vsock_bpf_recvmsg(). The order matters:
+MSG_ERRQUEUE goes to the native path first, as in tcp_bpf, or a
+zero-length error-queue read would return 0; MSG_OOB comes before
+len == 0, as in unix_bpf, so recv(fd, buf, 0, MSG_OOB) returns
+-EOPNOTSUPP as on a connected native socket.
 
-The deadlock was found with the help of Anthropic's Claude; Sashiko
-reviews of two earlier sockmap patches had already noted it as a
-pre-existing issue. The other cases were reported by the netdev Sashiko
-review. Each was reproduced in a VM with a vsock socket in a sockmap,
-without kernel changes or error injection; the reset case unbinds the
-guest's virtio-vsock device. With the series applied they behave as on
-a native socket, except for the reset case above, and the vsock
-vmtest.sh single-VM tests and the BPF sockmap test_progs pass.
+The MSG_ERRQUEUE case was found with the help of Anthropic's Claude, the
+zero-length and MSG_OOB cases by the netdev Sashiko review. Each was
+reproduced in a VM with a vsock-loopback socket in a sockmap, without
+kernel changes or error injection. With the series applied the reads
+behave as on a connected native socket, and the vsock vmtest.sh
+single-VM tests and the BPF sockmap test_progs pass.
 
 Fixes: 634f1a7110b4 ("vsock: support sockmap")
 Cc: stable@vger.kernel.org
 Signed-off-by: Jerome Mohm <jrmmhm.kernel@eldare.de>
 ---
- net/vmw_vsock/vsock_bpf.c | 68 +++++++++++++++++++++++++++++++++++++----------
- 1 file changed, 54 insertions(+), 14 deletions(-)
+ net/vmw_vsock/vsock_bpf.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
 diff --git a/net/vmw_vsock/vsock_bpf.c b/net/vmw_vsock/vsock_bpf.c
-index 9049d2648646..6d96ff03f28c 100644
+index 6d96ff03f28c..58b32fbc1f4b 100644
 --- a/net/vmw_vsock/vsock_bpf.c
 +++ b/net/vmw_vsock/vsock_bpf.c
-@@ -34,24 +34,63 @@ static bool vsock_has_data(struct sock *sk, struct sk_psock *psock)
- 	return vsock_sk_has_data(sk, psock);
- }
+@@ -119,6 +119,15 @@ static int vsock_bpf_recvmsg(struct sock *sk, struct msghdr *msg,
+ 	struct vsock_sock *vsk;
+ 	int copied;
  
--static bool vsock_msg_wait_data(struct sock *sk, struct sk_psock *psock, long timeo)
-+/* Returns 1 if data is ready, 0 on EOF/shutdown, or a negative error. */
-+static int vsock_msg_wait_data(struct sock *sk, struct sk_psock *psock, long timeo)
- {
--	bool ret;
-+	struct vsock_sock *vsk = vsock_sk(sk);
-+	int ret;
- 
- 	DEFINE_WAIT_FUNC(wait, woken_wake_function);
- 
--	if (sk->sk_shutdown & RCV_SHUTDOWN)
--		return true;
--
--	if (!timeo)
--		return false;
--
- 	add_wait_queue(sk_sleep(sk), &wait);
- 	sk_set_bit(SOCKWQ_ASYNC_WAITDATA, sk);
--	ret = vsock_has_data(sk, psock);
--	if (!ret) {
--		wait_woken(&wait, TASK_INTERRUPTIBLE, timeo);
--		ret = vsock_has_data(sk, psock);
-+	while (1) {
-+		if (vsock_has_data(sk, psock)) {
-+			ret = 1;
-+			break;
-+		}
++	if (unlikely(flags & MSG_ERRQUEUE))
++		return __vsock_recvmsg(sk, msg, len, flags);
 +
-+		/* Stop on a socket error, as vsock_connectible_wait_data()
-+		 * does, so that recv() returns it; the checks below would
-+		 * end the wait with 0 or -ENOTCONN instead.
-+		 */
-+		if (sk->sk_err) {
-+			ret = -sk->sk_err;
-+			break;
-+		}
++	if (flags & MSG_OOB)
++		return -EOPNOTSUPP;
 +
-+		if ((sk->sk_shutdown & RCV_SHUTDOWN) ||
-+		    (vsk->peer_shutdown & SEND_SHUTDOWN)) {
-+			ret = 0;
-+			break;
-+		}
++	if (!len)
++		return 0;
 +
-+		/* virtio_vsock_reset_sock() sets no shutdown bits, and
-+		 * SO_ERROR clears sk_err: check the state the way
-+		 * __vsock_connectible_recvmsg() does.
-+		 */
-+		if (sk->sk_state != TCP_ESTABLISHED) {
-+			ret = sock_flag(sk, SOCK_DONE) ? 0 : -ENOTCONN;
-+			break;
-+		}
-+
-+		if (!timeo) {
-+			ret = -EAGAIN;
-+			break;
-+		}
-+
-+		release_sock(sk);
-+		timeo = wait_woken(&wait, TASK_INTERRUPTIBLE, timeo);
-+		lock_sock(sk);
-+
-+		/* With a signal pending, wait_woken() returns at once, so
-+		 * without this check the loop would spin until the timeout,
-+		 * or forever without one.
-+		 */
-+		if (signal_pending(current)) {
-+			ret = sock_intr_errno(timeo);
-+			break;
-+		}
- 	}
- 	sk_clear_bit(SOCKWQ_ASYNC_WAITDATA, sk);
- 	remove_wait_queue(sk_sleep(sk), &wait);
-@@ -101,9 +140,10 @@ static int vsock_bpf_recvmsg(struct sock *sk, struct msghdr *msg,
- 	copied = sk_msg_recvmsg(sk, psock, msg, len, flags);
- 	while (copied == 0) {
- 		long timeo = sock_rcvtimeo(sk, flags & MSG_DONTWAIT);
-+		int data = vsock_msg_wait_data(sk, psock, timeo);
- 
--		if (!vsock_msg_wait_data(sk, psock, timeo)) {
--			copied = -EAGAIN;
-+		if (data <= 0) {
-+			copied = data;
- 			break;
- 		}
- 
+ 	psock = sk_psock_get(sk);
+ 	if (unlikely(!psock))
+ 		return __vsock_recvmsg(sk, msg, len, flags);
 
 -- 
 2.56.0
