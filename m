@@ -1,86 +1,139 @@
-From: incharilla <incharilla@incharilla.site>
-Date: Fri, 06 Nov 2026 19:20:08 +0100
-Subject: [PATCH] md: dont warn about sb update on auto read only arrays
+From: Andrew Gigena <mail@andrewgigena.dev>
+Subject: [PATCH v3 0/7] media: qcom: camss: Add SM8150 CAMSS support
+Date: Fri, 06 Nov 2026 18:35:32 +0000
+Message-Id: <20261106-sm8150-v7.4-rc1-camss-v3-0-0103e8a0bbcd@andrewgigena.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-md-auto-read-only-sb-warn-v1-1-5bfde3559841@incharilla.site>
-X-B4-Tracking: v=1; b=H4sIAFca7moC/x3MTQqDMBBA4avIrDuQqIzYq5Quohl1wCZl4k+Le
- HeDy2/x3gGJVTjBszhAeZMkMWTYRwH95MLIKD4bSlOStYbw49GtS0Rl5zGG+Y+pw91pwKavPFH
- dGqoryP1XeZDf/X69z/MCqaYV42sAAAA=
-X-Change-ID: 20261106-md-auto-read-only-sb-warn-7c3d66490643
-To: Song Liu <song@kernel.org>, Yu Kuai <yukuai@fygo.io>, 
- Li Nan <magiclinan@didiglobal.com>, Xiao Ni <xiao@kernel.org>
-Cc: Yu Kuai <yukuai@fnnas.com>, Corey Hickey <bugfood-c@fatooh.org>, 
- linux-raid@vger.kernel.org, linux-kernel@vger.kernel.org, 
- incharilla <incharilla@incharilla.site>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793989253; l=2603;
- i=incharilla@incharilla.site; s=20261106; h=from:subject:message-id;
- bh=+Wd6+KQm8viRtD/x34JdBjsIzmmj3vcZRVUKHpYuaGI=;
- b=ipL8t19JS3Mm0slekkicOmxJ0gwtSHfF1GGUH3z36OC+7GEwiABPyFZ3R6wIfsRRw+5JQ9BP8
- UGFQCnt/q1CANoKkBDYueW4IXWCsQM3WL9c2u9Zh5cFTno706XykKj3
-X-Developer-Key: i=incharilla@incharilla.site; a=ed25519;
- pk=xE5D6YKyyCtab6ZeeJEA15KoJWTPKAxBRXCtRrslYk4=
-X-Endpoint-Received: by B4 Relay for incharilla@incharilla.site/20261106 with auth_id=1436
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WOzQ6CMBAGX4X07JL+AAVPvofxUOgCNQFMi1VDe
+ HdbvHDA4yTfzuxCHFqDjpyThVj0xplpDCBOCWl6NXYIRgcmnPKCMZqBG0qWU/AyzcA2DBo1OAd
+ aaJ0j5YpJSsLtw2Jr3pv3evuxe9Z3bOYoi4veuHmyny3sWdwdNGDf8AwoSFXlIlOV4ry9qFFbf
+ HWmw1GlGj2JKc/3suLPw54HmagQhZSlrCk9kK3r+gUaJPuWIAEAAA==
+X-Change-ID: 20261104-sm8150-v7.4-rc1-camss-d3dd5e02a170
+To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
+ Robert Foss <rfoss@kernel.org>, Andi Shyti <andi.shyti@linaro.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bryan O'Donoghue <bod@kernel.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Andi Shyti <andi.shyti@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-i2c@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-media@vger.kernel.org, linux-phy@lists.infradead.org, 
+ Andrew Gigena <mail@andrewgigena.dev>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990195; l=5223;
+ i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
+ bh=82w+gBOiHNZipuQ9Fpb3q+R7M29hG4hLN0t/RXBVzlI=;
+ b=u/T0mjyls0ehcm82r7sEtXQAIREEeuflk4Fif2/Bt9mHv/iPjNQSe0cE8M/igKC0w1JS2JLSy
+ p9r3bgKEcfnAnqh+5iVnk4j7rl5aA43nLKbXgDXoSxBEjGj62VW/gTN
+X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
+ pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
+X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 8c9e376b9d1a ("md: warn about updating super block failure") added
-an error when md_update_sb is called on a read only array to help debug io
-hangs.
+This series adds SoC-level CAMSS support for the Qualcomm SM8150
+(Snapdragon 855), based on v7.4-rc1.
 
-An array that is started auto read only prints this error for no reason.
-This happens when it is assembled with start_ro set or when a degraded
-array is created with start_ro set. md_update_sb already defers the
-update by setting MD_SB_CHANGE_DEVS and the sb is written as soon as the
-first write makes the array read write. No io can hang on an array that
-has not been written to yet.
+SM8150 contains four CSIPHY, four CSID (two full and two lite), two
+VFE and two VFE-Lite instances. The blocks are close to the existing
+SDM845/SM8250/SC8280XP implementations, so the driver change only adds
+platform data and hooks the SoC into the existing Gen2 CSID and
+VFE 17x code paths.
 
-Skip the message for MD_AUTO_READ the same way dm raid is already skipped.
-It is still printed for arrays that are really read only.
+As requested in the v2 review, the CSIPHY I/O spaces, clocks,
+interrupts and supplies are excluded from the CAMSS container device
+and instead described by four qcom,sm8150-csi2-phy nodes driven by the
+dedicated CSI2 PHY driver. Each PHY node feeds one CAMSS CSI input
+port and is fed by the core and timer clocks, the vdda-phy and
+vdda-pll supplies, and the Titan top power domain. No new register
+programming sequences are introduced: the PHY driver reuses the
+existing SC8280XP lane register table.
 
-Tested in qemu on loop devices with raid1 and raid5 and raid10. Before
-this patch assembling a clean array with start_ro set prints the error
-for all three levels. Creating a degraded array with start_ro set prints
-it in 5 of 10 tries for raid1 and 8 of 10 for raid5 and 4 of 10 for
-raid10. After this patch none of these print it. On raid1 the first write
-still makes the array read write and the sb events go from 17 to 19.
-Assembling with mdadm --readonly still prints the error.
+The series documents the SM8150 CCI compatible, which the CCI nodes use
+with qcom,msm8996-cci as the fallback. The patches are ordered bindings
+first, then driver data, then the DT description. The series is
+intentionally SoC-level only: it does not add a board DTS, camera
+sensor drivers, or board-specific camera wiring.
 
-The fix and the qemu test were made with help from Claude Code.
+Testing: with a local Pixel 4 (google-flame) board port and
+out-of-tree sensor drivers, the rear wide (IMX363), rear tele
+(IMX481), front (IMX520) and IR (dual OV7251, patched driver)
+cameras stream. The board port itself is not part of this series.
 
-Fixes: 8c9e376b9d1a ("md: warn about updating super block failure")
-Reported-by: Corey Hickey <bugfood-c@fatooh.org>
-Closes: https://bugzilla.kernel.org/show_bug.cgi?id=222162
-Signed-off-by: incharilla <incharilla@incharilla.site>
+checkpatch reports no errors. The only warning is the new-binding
+"MAINTAINERS needs updating" prompt, which is a false positive because
+the existing CAMSS entry already covers qcom,*camss* bindings.
+dt_binding_check passes for qcom,sm8150-camss.yaml and
+qcom,sm8150-csi2-phy.yaml, and the new PHY/CAMSS drivers and DTS build.
+
+Changes in v3:
+- Switch to the new CSI2 PHY driver (Vladimir's v2 review request):
+  new qcom,sm8150-csi2-phy binding + driver, four phy@ nodes linked to
+  CAMSS CSI ports. CAMSS keeps only VFE/CSID resources (19 clocks,
+  8 IRQs). Timer pinned to 300 MHz (SM8150 timer only supports
+  19.2/300 MHz).
+- Fix VFE lite clock match: restrict prefix match to numbered
+  "vfe_liteN" clocks to avoid matching aux clocks.
+- Binding/DTS cleanup: patternProperties for ports, reg/reg-names after
+  compatible, sorted required list, redundant minItems dropped, aligned
+  example (lowercase hex, wrapped interconnects, isp@ name), ports
+  required, remote-endpoint in example, cam_hf_1_mnoc last, SDA/SCL
+  pinctrl comments, remote-only SoC endpoints (Glymur pattern).
+- Order SM8150 before X1E80100 in PHY driver (7 nm predates 4 nm).
+- The new CSI2 PHY driver does not support DPHY split mode, so the
+  Pixel 4 follower OV7251 (one of the two sensors sharing CSIPHY1) is
+  disabled in this series. A separate patchset adding split-mode support
+  to mainline OV7251 driver is planned.
+- Link to v2: https://patch.msgid.link/20261106-sm8150-v7.4-rc1-camss-v2-0-39ee37787b00@andrewgigena.dev
+
+Changes in v2:
+- Address the review comments from Sashiko, Bryan and Val.
+- Drop the internal CAMCC *_src clocks from the binding, the example and
+  the DTS; the binding now lists 27 clocks instead of 42.
+- Remove clock-lanes from the CSI endpoints and use an unnumbered
+  endpoint in the example, matching the other CAMSS bindings.
+- Describe vdda-phy-supply as 0.88V and vdda-pll-supply as 1.2V.
+- Move the CSIPHY supplies from the CSID resources to the CSIPHY
+  resources, so they are enabled before the PHY is accessed.
+- Add a separate fix for the VFE lite clock rates
+- Tidy the CAMSS_8150 switch ordering.
+- Link to v1: https://patch.msgid.link/20261104-sm8150-v7-4-rc1-camss-v1-0-7a9534a9a22f@andrewgigena.dev
+
+Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
 ---
-Found from bugzilla 222162. The qemu test script used is a busybox
-initramfs that creates raid1 and raid5 and raid10 arrays on loop devices
-with start_ro set and counts the message in dmesg.
----
- drivers/md/md.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Andrew Gigena (7):
+      dt-bindings: i2c: qcom-cci: Document SM8150 compatible
+      dt-bindings: media: qcom,sm8150-camss: Add SM8150 CAMSS
+      dt-bindings: phy: qcom,sm8150-csi2-phy: Add SM8150 CSI2 PHY
+      media: qcom: camss: Match VFE lite clocks by name prefix
+      media: qcom: camss: Add support for SM8150
+      phy: qcom-mipi-csi2: Add SM8150 CSI2 DPHY support
+      arm64: dts: qcom: sm8150: Add CAMSS and CCI nodes
 
-diff --git a/drivers/md/md.c b/drivers/md/md.c
-index 03e35386a80283032e317e037a749eca23ce170e..a0fc6028990530026404f0019a458dfabed02349 100644
---- a/drivers/md/md.c
-+++ b/drivers/md/md.c
-@@ -2819,7 +2819,8 @@ void md_update_sb(struct mddev *mddev, int force_change)
- 	if (!md_is_rdwr(mddev)) {
- 		if (force_change)
- 			set_bit(MD_SB_CHANGE_DEVS, &mddev->sb_flags);
--		if (!mddev_is_dm(mddev))
-+		/* auto read only arrays write the sb once they become writable */
-+		if (!mddev_is_dm(mddev) && mddev->ro != MD_AUTO_READ)
- 			pr_err_ratelimited("%s: can't update sb for read-only array %s\n",
- 					   __func__, mdname(mddev));
- 		return;
-
+ .../devicetree/bindings/i2c/qcom,i2c-cci.yaml      |   2 +
+ .../bindings/media/qcom,sm8150-camss.yaml          | 285 ++++++++++++
+ .../bindings/phy/qcom,sm8150-csi2-phy.yaml         | 163 +++++++
+ arch/arm64/boot/dts/qcom/sm8150.dtsi               | 488 +++++++++++++++++++++
+ .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     |   2 +
+ drivers/media/platform/qcom/camss/camss-vfe.c      |   6 +
+ drivers/media/platform/qcom/camss/camss.c          | 231 ++++++++++
+ drivers/media/platform/qcom/camss/camss.h          |   1 +
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c |  97 ++++
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c     |  16 +-
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2.h          |   4 +
+ 11 files changed, 1294 insertions(+), 1 deletion(-)
 ---
-base-commit: a91337fb5e8e0127c8b5be87be9f3027f95b48bc
-change-id: 20261106-md-auto-read-only-sb-warn-7c3d66490643
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261104-sm8150-v7.4-rc1-camss-d3dd5e02a170
 
 Best regards,
--- 
-incharilla <incharilla@incharilla.site>
+--  
+Andrew Gigena <mail@andrewgigena.dev>
 
