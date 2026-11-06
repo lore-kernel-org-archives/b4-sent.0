@@ -1,97 +1,148 @@
 From: Mani Tofigh <mt4022@columbia.edu>
-Date: Fri, 06 Nov 2026 11:13:50 -0500
-Subject: [PATCH v3] smpboot: Run the thread function only once before
- parking
+Date: Fri, 06 Nov 2026 11:53:21 -0500
+Subject: [PATCH v2] blk-mq: take quiesce_lock when removing a queue from
+ the tag set
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-smpboot-park-once-v3-1-86dadce65c63@columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NQQ6CMBQE0KuYrq1pPwLFlfcwLkr7kapQ0kKjI
- dzdFjfGGJeTzLyZiUdn0JPDZiYOg/HG9jFk2w1RrewvSI2OmQCDgnMG1HdDbe1IB+lu1PYKaVW
- wshFYlizTJO4Gh415rObp/M5+qq+oxgSlRmv8aN1zPQ089f75gVNOq1gQUGS5BnZU9j51tZE71
- BNJFwE+kf0vBCKCEgSqqtEixy9kWZYXs+xc7AwBAAA=
-X-Change-ID: 20261102-smpboot-park-once-9607f8e7703d
-To: Thomas Gleixner <tglx@kernel.org>, 
- Peter Zijlstra <peterz@infradead.org>
-Cc: Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
- linux-kernel@vger.kernel.org, tz2294@columbia.edu, 
+Message-Id: <20261106-blk-mq-del-quiesce-lock-v2-1-cd4f72a6eb03@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0K6dkxbCYIr72FYtGWQkUqlpURDu
+ LsFD+DyJf/9t7CAnjCwS7YwjzMFckMCeciY6dRwR6AmMZNcFkLwE2jbw3OEBi2MMZkGwTrTg66
+ Qt6Wo8rMuWbJfHlt678+3+sch6geaabvbFh2FyfnPnp7FtvtfmQUI4LlSslJ5KdriapyNT03qi
+ E1k9bquX4Wg/tDTAAAA
+X-Change-ID: 20261103-blk-mq-del-quiesce-lock-b9e0f81947b8
+To: Jens Axboe <axboe@kernel.dk>
+Cc: Mohamed Khalfella <mkhalfella@purestorage.com>, 
+ Keith Busch <kbusch@kernel.org>, Ming Lei <tom.leiming@gmail.com>, 
+ Bart Van Assche <bvanassche@acm.org>, Christoph Hellwig <hch@lst.de>, 
+ Nilay Shroff <nilay@linux.ibm.com>, Josef Bacik <josef@toxicpanda.com>, 
+ linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ tz2294@columbia.edu, stable@vger.kernel.org, 
  Mani Tofigh <mt4022@columbia.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793981630; l=2770;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793984001; l=5226;
  i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=hQCHuB1d9BRH2/8dcB77iRnc4fAbW9qf8O+O+kdrRw4=;
- b=POb6tSQ/ejI405B3M4LOQ80NK42gYvLvXTSTzWXlsOnoeevhpP692cq/zUuxtZ1UOKHR7Lod6
- dkPJjgTT5sDAI9iTHU60FYh6YFfIfj9oy/jzIcJnZD/Pirx2KLZKJa2
+ bh=cv5/KeOSZ4Z4BXwwrEX0tsh7Mnk0wVg6c4mcT61tdeI=;
+ b=qvjLRqoflof3sB16O9bxZWwBNGt0IL+TS6gS3msI13ym+D4/PcZb+GtCM+2rGjJYB95LH8/37
+ M/pyn7sDNZmBKrfGTskvpKLu0zMhyLbHdD/cwKjBC13eou6PT1YCgdV
 X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
  pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
 X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 4a3b51aab6e2 ("smpboot: Don't park the thread if work is
-pending"), smpboot_thread_fn() parks only once thread_should_run() is
-false.  CPU offline waits for that with no timeout and with
-cpu_hotplug_lock held for write.
+Unquiescing a tag set can run the hw queues of a queue whose hctxs were
+already freed.  blk_mq_unquiesce_tagset() walks the tag set's queues
+under quiesce_lock and rcu_read_lock().  Commit 71ec3c7d6db8 ("blk-mq:
+quiesce a queue that joins a quiesced tag set") added quiesce_lock to
+the walks and to adding a queue, but blk_mq_del_queue_tag_set() still
+removes a queue without it.  The hctxs are then freed right away since
+RCU only keeps the request_queue itself alive:
 
-When the outgoing CPU keeps receiving more packets than it can process,
-ksoftirqd always has NET_RX pending and never parks.  The offline then
-waits for as long as the packets keep coming and everything that takes
-cpus_read_lock() waits with it.
+  Task A (controller reset)            Task B (namespace removal)
+  blk_mq_unquiesce_tagset()
+    /* finds q */
+                                       blk_mq_del_queue_tag_set(q)
+                                       blk_mq_release(q)
+                                         /* frees the hctxs */
+    blk_mq_run_hw_queues(q)
+      /* reads freed hctxs */
 
-That commit only needs the work queued before the park request to run
-once on its own CPU.  Softirqs left pending are taken over by the
-dead-CPU callbacks as before.  So on a park request, run the thread
-function once if there is work and then park.  With the fix, the
-offline finishes under the same load.
+The window is short.  On PREEMPT_RT quiesce_lock is a sleeping lock and
+the walk can be preempted inside it, which is how it's hit here:
+
+  [  399.851277] BUG: KASAN: slab-use-after-free in blk_mq_run_hw_queues+0x4bd/0x550
+  [  399.851328] Read of size 8 at addr ff11000003014148 by task kworker/u9:2/116
+  [  399.851352] CPU: 1 UID: 0 PID: 116 Comm: kworker/u9:2 Not tainted 7.3.0-16299-g81cb9aa43246 #1 PREEMPT_RT
+  [  399.851425] Workqueue: nvme-reset-wq nvme_loop_reset_ctrl_work
+  [  399.851441] Call Trace:
+  [  399.851457]  <TASK>
+  [  399.851551]  blk_mq_run_hw_queues+0x4bd/0x550
+  [  399.851564]  blk_mq_unquiesce_tagset+0x128/0x210
+  [  399.851576]  nvme_loop_reset_ctrl_work+0x78/0x4c0
+  [  399.851600]  process_one_work+0x92b/0x16d0
+  [  399.851660]  worker_thread+0x4e6/0xd60
+  [  399.851707]  kthread+0x300/0x3e0
+  [  399.851727]  ret_from_fork+0x4f0/0x6f0
+  [  399.851776]  ret_from_fork_asm+0x1a/0x30
+  [  399.851793]  </TASK>
+  ...
+  [  399.851988] Freed by task 111:
+  [  399.852040]  kfree+0x1b3/0x4b0
+  [  399.852050]  blk_mq_release+0x400/0x550
+  [  399.852060]  blk_put_queue+0x94/0x120
+  [  399.852068]  disk_release+0x1bd/0x3f0
+  [  399.852102]  nvme_free_ns+0x39/0x270
+  [  399.852113]  nvme_remove_nsid_range+0x2d1/0x4a0
+  [  399.852123]  nvme_scan_ns_list+0x2cc/0x390
+  [  399.852134]  nvme_scan_work+0x421/0x9f0
+  ...
+
+With BLK_CGROUP the disk's root blkg holds the queue until a grace
+period later, which hides this for NVMe namespaces.  It's still open
+without BLK_CGROUP, and from reading the code also for queues freed
+without a disk (e.g., SCSI device queues on a UFS host).
+
+Take quiesce_lock around the list_del_rcu() as well so that the walk
+either finishes with a queue before it leaves the list or never sees
+it, and say so in the comment of quiesce_lock.  With the fix, KASAN
+doesn't report the use-after-free anymore.
 
 This bug was identified and confirmed with the help of a deterministic
 hypervisor currently under development.  The C reproducer below however
-hits it within about 25s.
+hits it about once every 20 minutes on a PREEMPT_RT kernel.
 
-Fixes: 4a3b51aab6e2 ("smpboot: Don't park the thread if work is pending")
-Reviewed-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Fixes: 59e25ef2b413 ("block: Use RCU in blk_mq_[un]quiesce_tagset() instead of set->tag_list_lock")
+Cc: stable@vger.kernel.org
+Reviewed-by: Mohamed Khalfella <mkhalfella@purestorage.com>
 Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
-Changes in v3:
-- Drop the hung task traces (Sebastian)
-- Add Sebastian's Reviewed-by
-- Link to v2: https://lore.kernel.org/all/20261104-smpboot-park-once-v2-1-ea28ec9fd85e@columbia.edu/
-
 Changes in v2:
-- Use Sebastian's comment above the thread function call
-- Link to v1: https://lore.kernel.org/all/20261102-smpboot-park-once-v1-1-920282635d20@columbia.edu/
+- Say in the quiesce_lock comment that it's also taken when a queue is
+  removed from the tag set (Mohamed)
+- Add Mohamed's Reviewed-by
+- Link to v1: https://lore.kernel.org/all/20261103-blk-mq-del-quiesce-lock-v1-1-04aa29a481f6@columbia.edu/
 
-Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/ksoftpark.c
+Stable trees need 71ec3c7d6db8 first since it adds quiesce_lock.
+
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/blkquiesce.c
 ---
- kernel/smpboot.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+ block/blk-mq.c         | 3 +++
+ include/linux/blk-mq.h | 3 ++-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/kernel/smpboot.c b/kernel/smpboot.c
-index 3f60e8c6dd30..b477267903d7 100644
---- a/kernel/smpboot.c
-+++ b/kernel/smpboot.c
-@@ -119,9 +119,17 @@ static int smpboot_thread_fn(void *data)
- 		}
+diff --git a/block/blk-mq.c b/block/blk-mq.c
+index 5ae22d556540..54ccfc43c27c 100644
+--- a/block/blk-mq.c
++++ b/block/blk-mq.c
+@@ -4354,7 +4354,10 @@ static void blk_mq_del_queue_tag_set(struct request_queue *q)
  
- 		should_run = td->status == HP_THREAD_ACTIVE && ht->thread_should_run(td->cpu);
--		if (kthread_should_park() && !should_run) {
-+		if (kthread_should_park()) {
- 			__set_current_state(TASK_RUNNING);
- 			preempt_enable();
-+			/*
-+			 * Run pending work once to handle queued work prior the
-+			 * parking request. Don't try to process everything in case
-+			 * new work continues to come and the handler has a hotplug
-+			 * notifier for everything that was enqueued later.
-+			 */
-+			if (should_run)
-+				ht->thread_fn(td->cpu);
- 			if (ht->park && td->status == HP_THREAD_ACTIVE) {
- 				BUG_ON(td->cpu != smp_processor_id());
- 				ht->park(td->cpu);
+ 	lockdep_assert_held(&set->tag_list_lock);
+ 
++	/* blk_mq_unquiesce_tagset() runs the hctxs, which are not RCU freed */
++	spin_lock(&set->quiesce_lock);
+ 	list_del_rcu(&q->tag_set_list);
++	spin_unlock(&set->quiesce_lock);
+ 	if (list_is_singular(&set->tag_list)) {
+ 		/* just transitioned to unshared */
+ 		set->flags &= ~BLK_MQ_F_TAG_QUEUE_SHARED;
+diff --git a/include/linux/blk-mq.h b/include/linux/blk-mq.h
+index 1a2f8d48adc4..3c9667854c46 100644
+--- a/include/linux/blk-mq.h
++++ b/include/linux/blk-mq.h
+@@ -524,7 +524,8 @@ enum hctx_type {
+  * @tag_list:	   List of the request queues that use this tag set. See also
+  *		   request_queue.tag_set_list.
+  * @quiesce_lock:  Serializes blk_mq_[un]quiesce_tagset() against each other
+- *		   and against a request queue being added to @tag_list.
++ *		   and against a request queue being added to or removed from
++ *		   @tag_list.
+  * @quiesce_depth: How often blk_mq_quiesce_tagset() has been called without
+  *		   blk_mq_unquiesce_tagset().
+  * @srcu:	   Use as lock when type of the request queue is blocking
 
 ---
-base-commit: 006991aa89974378ee579416dba87adc22cd60fd
-change-id: 20261102-smpboot-park-once-9607f8e7703d
+base-commit: 28f7d31c2aeb350df9a0116093fade0a840fb4ce
+change-id: 20261103-blk-mq-del-quiesce-lock-b9e0f81947b8
 
 Best regards,
 --  
