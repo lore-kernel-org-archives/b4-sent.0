@@ -1,165 +1,90 @@
-From: =?utf-8?q?Dani=C3=ABl_Trujillo?= <datrujillo@nvidia.com>
-Date: Fri, 06 Nov 2026 05:02:23 +0000
-Subject: [PATCH net v3] ipv4: fib_trie: prevent speculative out-of-bounds
- child access
+From: Dave Airlie <airlied@redhat.com>
+Subject: [PATCH v5 0/2] nova-core: add initial support for gpu timer (v5)
+Date: Fri, 06 Nov 2026 15:34:01 +1000
+Message-Id: <20261106-nova-timer-v5-0-a0cd25f3ee18@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261106-fib-trie-nospec-v3-1-53da6550dcf8@nvidia.com>
-X-B4-Tracking: v=1; b=H4sIAF5f7WoC/3XNTQ7CIBAF4KsY1mKA/qEr72FcFJjaMREaQKJpe
- ncpbjTG5Zu8981MAniEQA6bmXhIGNDZHKrthuixtxegaHImgomWMybpgIrGPKHWhQk0bXTXMiG
- 1hE6TvJo8DPgo4olYiOT8Poa7uoKOq7XWRgzR+Wf5m3gp/32ROOV06LnsRGtq2cDRJjTY77S7F
- T6JD4CzX0BkoGIV36vaKGnYF7AsywtOGBkaBwEAAA==
-X-Change-ID: 20261008-fib-trie-nospec-5c76028c8e7c
-To: David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
- =?utf-8?q?Dani=C3=ABl_Trujillo?= <datrujillo@nvidia.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793941344; l=5447;
- i=datrujillo@nvidia.com; s=20261008; h=from:subject:message-id;
- bh=5c7YINK8sjo1SrfVNltMm2KMO1jVWrBXalQL2Wr8bkA=;
- b=Z6qQ/lszbof05Q5gSAbauvuwAu6MsKLFgkjXGFMRArOgu5BrHZ1In+z4rdMR/2GTgXIdoOUOH
- 49V2s6kwhXeByzS36DUIbQ4XixZDpouTIYi3o9h8Eu0zV2+hF4X1TeL
-X-Developer-Key: i=datrujillo@nvidia.com; a=ed25519;
- pk=AP24zUwENFy2geglpKJAA8oaT41tkteCL9hTWGd88rs=
-X-Endpoint-Received: by B4 Relay for datrujillo@nvidia.com/20261008 with auth_id=1128
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23MSw6CMBSF4a2Qjq3p4wLiyH0YB33cSgdQ05JGQ
+ 9i7hRFEh+ck3z+ThNFjItdqJhGzTz6MZdSniphejU+k3pZNBBMN50zQMWRFJz9gpA50Z1GKFhQ
+ nBbwiOv/eYvdH2b1PU4ifrZ35+v7NZE4Z1RJaVLYBaLpbRNur6WzCQNZOlnsrD1YWy4zrtFZ4c
+ fbXwt7WBwvFQq1awwW3YPFgl2X5AsHoi4wdAQAA
+X-Change-ID: 20261102-nova-timer-f4b9de3274a1
+To: Andreas Hindborg <a.hindborg@kernel.org>, 
+ FUJITA Tomonori <fujita.tomonori@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Alexandre Courbot <acourbot@nvidia.com>
+Cc: nova-gpu@lists.linux.dev, dri-devel@lists.freedesktop.org, 
+ Dave Airlie <airlied@redhat.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1950; i=airlied@redhat.com;
+ h=from:subject:message-id; bh=g7MfgFdREEC1S5dgSmy+QtPmwok55SXsU5E0VesvkuA=;
+ b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBq7WbMRidSdN9Jw5fT0l6XMpGreiVf6TgZxiDUS
+ 81yQHZGUH6JAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCau1mzAAKCRAMdPNZecSG
+ vs/MD/9mqXLJ15mBM5jLlypANpwPEAgbflJgeyg0bid7lzqr5W7vnH3wUbMm9jllX0esZocnF44
+ 0nU7T2WUaQJtVWfeuZSAU/oKWmcY/KHLzQo8T487kqo+ZSLV7GOY1COp0UHmTUsJfseX3i4q7TG
+ lUiuznCxYaJqu+zgL1Y8UKnYx1r7AVVC8PbjTNbr+eZWTCt13EFCi6fgYl7gIzm10PcN5+cRyU9
+ a3n+v82yHfmHhshpogZbS4MhFRpSx8jHs3RBzN7e/xD9P1JCUhrM0tcH6I7igbCzgPX0DD97y2n
+ SYVIFAejYl3egVBjd9QFk525Cz8gICiyKgA2AcgdAWoE5gKVJGZjyAKEXycDtkFARdhsssebcwW
+ d/uEfW7rkCvrf2G9ustA9GCC1seszco9babtgrMU5+NtXxCpApdQ0MegtYxCs8Bv7c4SInomG/8
+ j4E+Wmm+bYcRZ0tQezREpPh3YPYTIrQDKkcfON+/6+nnu9Y9oxhO72pSIZGJkRyKAgDIYdkvsPj
+ lkJ+wqyLKAppm7Gq+7AxqLt11T6iqNW9XVVN3gzf/zYj7eyAlInD4EAvoBW+/1YfSiaM3gD6vu2
+ gCaogmsrjE8o6PbNpEXr2Ts5ATajsXc09lt5Sc84sw0QsUY8LZXIOojcyPL2YVazBub2b73/4hk
+ gJb/UGQDYWgFDBg==
+X-Developer-Key: i=airlied@redhat.com; a=openpgp;
+ fpr=10A6D91DA1B05BD29F6DEBAC0C74F35979C486BE
+X-Endpoint-Received: by B4 Relay for airlied@redhat.com/default with auth_id=1321
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-fib_table_lookup() checks the child index against the bounds before
-passing it to get_child_rcu().
+The GPU has a timer, one of the pieces of information
+we need to pass into GSP init later is the timer offset.
+    
+This series just adds support for setting up the timer
+on Turing+, with hals for Turing and Hopper.
+    
+Right now it calculates the value to send to GSP but
+the code to send it will be added later.
+    
+For some hardware variants sending a proper value
+is required for GSP init to succeed.
 
-The index is derived from the lookup key, which in turn is derived from
-flp->daddr. A userspace process can therefore influence the index by
-triggering lookups for chosen destination IPv4 addresses.
-
-If this bounds check is mispredicted as in-bounds, an out-of-bounds index
-can be transiently passed to get_child_rcu(). The value loaded beyond the
-child array is then treated as a node pointer. A later transient
-dereference of that pointer can cause a data-dependent cache footprint.
-
-This was found during Spectre-v1 research. Leakage was demonstrated with
-instrumentation that delays branch resolution with a CLFLUSH before the
-mispredicted branch and makes the leaked location deterministic for
-reproducible measurement. In that setup, a userspace-controlled IPv4
-lookup key was able to trigger a transient out-of-bounds child access.
-The transient use of the loaded value as a pointer caused a
-data-dependent cache footprint that was recoverable from userspace using
-Prime+Probe. A real-world attacker would likely need to delay branch
-resolution, which was not demonstrated end-to-end without the added
-CLFLUSH.
-
-Sanitize the index with array_index_nospec() before accessing the child
-array. This removed the observed leakage in the described setup.
-
-Apply the hardening before setting cindex in fib_table_lookup(), because
-cindex can later be used by the backtrace path to load another child
-pointer. fib_find_node() has the same pattern, with the checked index
-derived from a user-provided key in fib_table_insert() and
-fib_table_delete(). leaf_walk_rcu() has a similar checked cindex before
-get_child_rcu(), and the traversed state can be influenced by userspace
-actions. fib_find_node() runs under RTNL and leaf_walk_rcu() is not on
-the packet lookup hot path, so harden those analogous accesses in the
-same way. Also harden fib_trie_get_next(), where a mispredicted loop
-condition could transiently read one child past the array.
-
-I see a slowdown of roughly 10% in a microbenchmark where we call
-fib_table_lookup() with 64 routes directly from inside the kernel. I
-observed no slowdown in a loopback UDP sendto() microbenchmark.
-
-Fixes: 9f9e636d4f89 ("fib_trie: Optimize fib_table_lookup to avoid wasting time on loops/variables")
-Cc: stable@vger.kernel.org
-Reviewed-by: Eric Dumazet <edumazet@kernel.org>
-Signed-off-by: Daniël Trujillo <datrujillo@nvidia.com>
+Signed-off-by: Dave Airlie <airlied@redhat.com>
 ---
-Changes in v3:
-- Harden fib_trie_get_next() against a speculative one-past-the-end child
-  access, as suggested by Sashiko.
-- Explain the procfs iterator case in the changelog.
-- Add direct lookup and UDP send-path benchmark results to the changelog.
-- Link to v2: https://patch.msgid.link/20261010-fib-trie-nospec-v2-1-30319b4db8d0@nvidia.com
+Changes in v5:
+- Alexandre's review comments handled
+- reworked registers/workaround logic into fsp
+- fixed all the timer register handling to be non-falling.
+- Link to v4: https://lore.kernel.org/r/20261105-nova-timer-v4-0-45a7c121d4de@redhat.com
 
-Changes in v2:
-- Move array_index_nospec() before cindex is set in
-  fib_table_lookup() so the backtrace path cannot use an out-of-bounds index
-  (Eric Dumazet).
-- Apply the same hardening to fib_find_node() and leaf_walk_rcu()
-  (Eric Dumazet).
-- Add discovery/testing details of the gadget to the changelog.
-- Link to v1: https://patch.msgid.link/20261008-fib-trie-nospec-v1-1-fa18726d485e@nvidia.com
----
- net/ipv4/fib_trie.c | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
-
-diff --git a/net/ipv4/fib_trie.c b/net/ipv4/fib_trie.c
-index be1e40780ad7..394df1de1281 100644
---- a/net/ipv4/fib_trie.c
-+++ b/net/ipv4/fib_trie.c
-@@ -61,6 +61,7 @@
- #include <linux/export.h>
- #include <linux/vmalloc.h>
- #include <linux/notifier.h>
-+#include <linux/nospec.h>
- #include <net/net_namespace.h>
- #include <net/inet_dscp.h>
- #include <net/ip.h>
-@@ -961,6 +962,8 @@ static struct key_vector *fib_find_node(struct trie *t,
- 			break;
- 		}
- 
-+		index = array_index_nospec(index, 1ul << n->bits);
-+
- 		/* keep searching until we find a perfect match leaf or NULL */
- 	} while (IS_TNODE(n));
- 
-@@ -1467,6 +1470,8 @@ int fib_table_lookup(struct fib_table *tb, const struct flowi4 *flp,
- 		if (IS_LEAF(n))
- 			goto found;
- 
-+		index = array_index_nospec(index, 1ul << n->bits);
-+
- 		/* only record pn and cindex if we are going to be chopping
- 		 * bits later.  Otherwise we are just wasting cycles.
- 		 */
-@@ -1770,6 +1775,8 @@ static struct key_vector *leaf_walk_rcu(struct key_vector **tn, t_key key)
- 		if (cindex >> pn->bits)
- 			break;
- 
-+		cindex = array_index_nospec(cindex, 1ul << pn->bits);
-+
- 		/* descend into the next child */
- 		n = get_child_rcu(pn, cindex++);
- 		if (!n)
-@@ -1791,6 +1798,8 @@ static struct key_vector *leaf_walk_rcu(struct key_vector **tn, t_key key)
- 			continue;
- 		}
- 
-+		cindex = array_index_nospec(cindex, 1ul << pn->bits);
-+
- 		/* grab the next available node */
- 		n = get_child_rcu(pn, cindex++);
- 		if (!n)
-@@ -2437,7 +2446,10 @@ static struct key_vector *fib_trie_get_next(struct fib_trie_iter *iter)
- 
- 	while (!IS_TRIE(pn)) {
- 		while (cindex < child_length(pn)) {
--			struct key_vector *n = get_child_rcu(pn, cindex++);
-+			struct key_vector *n;
-+
-+			cindex = array_index_nospec(cindex, child_length(pn));
-+			n = get_child_rcu(pn, cindex++);
- 
- 			if (!n)
- 				continue;
+Changes in v4:
+- reworked register handling
+- used a timerstate.
+- Link to v3: https://lore.kernel.org/r/20261103-nova-timer-v3-0-0cf9bbae8fd9@redhat.com
 
 ---
-base-commit: f66469d9905b39d2c260a15d7d6db450f4db67c1
-change-id: 20261008-fib-trie-nospec-5c76028c8e7c
+Dave Airlie (2):
+      rust: time: expose as_nanos for clock sources.
+      gpu: nova-core: add support for GPU timer block. (v5)
+
+ drivers/gpu/nova-core/fsp.rs             | 19 ++++++-
+ drivers/gpu/nova-core/fsp/hal.rs         |  5 ++
+ drivers/gpu/nova-core/fsp/hal/gh100.rs   |  6 ++
+ drivers/gpu/nova-core/fsp/regs.rs        | 28 +++++++++
+ drivers/gpu/nova-core/gpu.rs             |  8 +++
+ drivers/gpu/nova-core/nova_core.rs       |  1 +
+ drivers/gpu/nova-core/timer.rs           | 38 +++++++++++++
+ drivers/gpu/nova-core/timer/hal.rs       | 31 ++++++++++
+ drivers/gpu/nova-core/timer/hal/gh100.rs | 62 ++++++++++++++++++++
+ drivers/gpu/nova-core/timer/hal/tu102.rs | 53 +++++++++++++++++
+ drivers/gpu/nova-core/timer/regs.rs      | 98 ++++++++++++++++++++++++++++++++
+ rust/kernel/time.rs                      |  3 +-
+ 12 files changed, 348 insertions(+), 4 deletions(-)
+---
+base-commit: 7a6bc132f1b51437063c9203e7221067b40a791e
+change-id: 20261102-nova-timer-f4b9de3274a1
 
 Best regards,
---  
-Daniël Trujillo <datrujillo@nvidia.com>
+-- 
+Dave Airlie <airlied@redhat.com>
 
