@@ -1,167 +1,99 @@
-From: kvnshroom <kvnshroom@gmail.com>
-Date: Fri, 06 Nov 2026 03:47:00 +0100
-Subject: [PATCH] wifi: mt76: mt76x0: select the VGA gain from the RSSI
+From: Andrew Gigena <mail@andrewgigena.dev>
+Subject: [PATCH v2 0/5] media: qcom: camss: Add SM8150 CAMSS support
+Date: Fri, 06 Nov 2026 03:24:51 +0000
+Message-Id: <20261106-sm8150-v7.4-rc1-camss-v2-0-39ee37787b00@andrewgigena.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-mt76x0-rssi-agc-v1-1-9d2f3ad74096@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwMz3dwSc7MKA92i4uJM3cT0ZF3TVPNEC2MzS/PEpGQloK6CotS0zAq
- widGxtbUAHa7S42EAAAA=
-X-Change-ID: 20261106-mt76x0-rssi-agc-5e7a83697abc
-To: Felix Fietkau <nbd@nbd.name>, Lorenzo Bianconi <lorenzo@kernel.org>, 
- Ryder Lee <ryder.lee@mediatek.com>, Shayne Chen <shayne.chen@mediatek.com>, 
- Sean Wang <sean.wang@mediatek.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- kvnshroom <kvnshroom@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793933291; l=4777;
- i=kvnshroom@gmail.com; s=20261106; h=from:subject:message-id;
- bh=GOUrR0SBzLl91iB01un4+ocyPS/13W2NZJubzZQmBUM=;
- b=u5iZ31sHOf1LNUdzPgpZzqWvjRaA3mYJPtptQvXyoEbww3yQIV9dtYYK4psF31FL6ZasMU6zF
- GhVWAqLvr/uDC+3Y+jAiie91KB5QWbRnMie1jQfhRTWOQRdUG1Duqk1
-X-Developer-Key: i=kvnshroom@gmail.com; a=ed25519;
- pk=8lajK9/tD4YlPR/MOkqpgUU4drxTtsOnUfM8foTue/4=
-X-Endpoint-Received: by B4 Relay for kvnshroom@gmail.com/20261106 with auth_id=1426
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0K6dkhbQMSV9zAsxnaAmlBMB6uG9
+ O4CHsDlS95/fxFMwRGLc7aIQNGxm/wK+pAJM6DvCZxdWWipj0rJEng8qUpCrPMSglFgcGQGW1h
+ bkdSoainW7SNQ595799r+mJ+3O5l5i23G4Hiewmc/jmrz/n1EBRJqbKqixAa17i7obaBX73rym
+ FuKok0pfQFJ665r0wAAAA==
+X-Change-ID: 20261104-sm8150-v7.4-rc1-camss-d3dd5e02a170
+To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
+ Robert Foss <rfoss@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bryan O'Donoghue <bod@kernel.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-i2c@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-media@vger.kernel.org, Andrew Gigena <mail@andrewgigena.dev>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793935531; l=3089;
+ i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
+ bh=qLVJbZNBqU02j9nDuuDniRv57jjqg5cA/kA8QxuVntM=;
+ b=PYcC/EQh4zF8hn21EmdBlq17VpmgZQ2Cy3YQKqECxFxBxwEjdcRuRJvErOXRfOiPgGiLpqDCP
+ 3JJI6lxH6/GD/K7zuBWszqJYI4oiPWM9cN2uUitJrhKPBqzDL8LrtwQ
+X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
+ pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
+X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit e1534fef1ae4 ("wifi: mt76: feed the station RSSI average
-from the chain signals") mt76x0 gets the real station RSSI for its gain
-control. On an MT7610U (ASUS USB-AC51, 5 GHz, 80 MHz, about -60 dBm)
-this makes the false CCA based VGA loop worse: with low_gain 2 the gain
-moves between 44 and 56 and stays at 56 most of the time, the false CCA
-counter reads 30k-50k per calibration interval and the receiver is
-overdriven.
+This series adds SoC-level CAMSS support for the Qualcomm SM8150
+(Snapdragon 855), based on v7.4-rc1.
 
-Fixed gain (BBP AGC8 bits 14:8) against the false CCA counter, with a
-ping to the AP every 200 ms during a download at the 50 Mbit/s line
-rate:
+SM8150 contains four CSIPHY, four CSID (two full and two lite), two
+VFE and two VFE-Lite instances. The blocks are close to the existing
+SDM845/SM8250/SC8280XP implementations, so the driver change only adds
+platform data and hooks the SoC into the existing Gen2 CSIPHY, Gen2
+CSID and VFE 17x code paths. No new register programming sequences are
+introduced.
 
-  gain   false CCA   ping p95 / max     download
-  24-48  0.9k-4k     2.5-3.8 / 5-27 ms  51 Mbit/s
-  50     8k-11k      3.2-4.5 / 25-40 ms 51 Mbit/s
-  56     46k-59k     164-299 / 400 ms   39-43 Mbit/s
+The series documents the SM8150 CCI compatible, which the CCI nodes use
+with qcom,msm8996-cci as the fallback. The patches are ordered bindings
+first, then driver data, then the DT description. The series is
+intentionally SoC-level only: it does not add a board DTS, camera
+sensor drivers, or board-specific camera wiring.
 
-The MediaTek Windows driver (netr28ux.sys 5.1.38) does not use the
-false CCA counter on MT7610/MT7650. It selects the gain from the RSSI
-in three steps, at -60 and -70 dBm. Do the same: reduce the calibrated
-initial gain by 42, 26 or 2 depending on the RSSI, with 2 dB of
-hysteresis between the steps. On this adapter the initial gain is 66,
-which gives the 24/40/64 used by that driver. MT7630 keeps the current
-behaviour.
+Testing: with a local Pixel 4 (google-flame) board port and
+out-of-tree IMX363, IMX481 and IMX520 sensor drivers, the rear wide
+(IMX363) and rear tele (IMX481) cameras stream, and the front (IMX520)
+path has produced frames. The board port itself is not part of this
+series.
 
-Same setup, 60 s per run, two runs each:
+checkpatch reports no errors. The only warning is the new-binding
+"MAINTAINERS needs updating" prompt, which is a false positive because
+the existing CAMSS entry already covers qcom,*camss* bindings.
 
-             gain       false CCA  ping p95 / max     loss  download
-  CCA loop   mostly 56  30k-50k    1.1-1.8 s / 3.4 s  0-9%  18-39 Mbit/s
-  RSSI steps 40         ~300       3 ms / 8-15 ms     0%    46-51 Mbit/s
+Changes in v2:
+- Address the review comments from Sashiko, Bryan and Val.
+- Drop the internal CAMCC *_src clocks from the binding, the example and
+  the DTS; the binding now lists 27 clocks instead of 42.
+- Remove clock-lanes from the CSI endpoints and use an unnumbered
+  endpoint in the example, matching the other CAMSS bindings.
+- Describe vdda-phy-supply as 0.88V and vdda-pll-supply as 1.2V.
+- Move the CSIPHY supplies from the CSID resources to the CSIPHY
+  resources, so they are enabled before the PHY is accessed.
+- Add a separate fix for the VFE lite clock rates
+- Tidy the CAMSS_8150 switch ordering.
+- Link to v1: https://patch.msgid.link/20261104-sm8150-v7-4-rc1-camss-v1-0-7a9534a9a22f@andrewgigena.dev
 
-Not tested: weak signal (below -70 dBm), 2.4 GHz and MT7610E/MT7650E.
-
-The Windows driver was analysed with Ghidra. The analysis, this change
-and the changelog were prepared with the help of an AI coding assistant
-(Claude); I reviewed and tested the result on my hardware.
-
-Signed-off-by: kvnshroom <kvnshroom@gmail.com>
+Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
 ---
-Tested on an ASUS USB-AC51 (MT7610U) with Linux 7.3 and e1534fef1ae4
-backported. I can run more tests, for example with a weaker signal or
-on 2.4 GHz, if that helps.
----
- drivers/net/wireless/mediatek/mt76/mt76x0/phy.c | 64 +++++++++++++++++++++++++
- 1 file changed, 64 insertions(+)
+Andrew Gigena (5):
+      dt-bindings: i2c: qcom-cci: Document SM8150 compatible
+      dt-bindings: media: qcom,sm8150-camss: Add SM8150 CAMSS
+      media: qcom: camss: Match VFE lite clocks by name prefix
+      media: qcom: camss: Add support for SM8150
+      arm64: dts: qcom: sm8150: Add CAMSS and CCI nodes
 
-diff --git a/drivers/net/wireless/mediatek/mt76/mt76x0/phy.c b/drivers/net/wireless/mediatek/mt76/mt76x0/phy.c
-index ec554a059..d052d8619 100644
---- a/drivers/net/wireless/mediatek/mt76/mt76x0/phy.c
-+++ b/drivers/net/wireless/mediatek/mt76/mt76x0/phy.c
-@@ -1064,6 +1064,64 @@ static void mt76x0_phy_set_gain_val(struct mt76x02_dev *dev)
- 		mt76x02_phy_dfs_adjust_agc(dev);
- }
- 
-+/*
-+ * MT7610/MT7650: select the VGA gain from the RSSI only. The gain is
-+ * reduced from the calibrated initial value by a fixed amount per RSSI
-+ * step, with some hysteresis between the steps. The false CCA counter is
-+ * not used, since on these chips it drives the gain into a range where
-+ * the receiver is overdriven.
-+ */
-+#define MT76X0_RSSI_GAIN_STRONG		-60
-+#define MT76X0_RSSI_GAIN_MEDIUM		-70
-+#define MT76X0_RSSI_GAIN_HYST		2
-+
-+static int mt76x0_phy_rssi_gain_step(int rssi, int prev)
-+{
-+	int strong = MT76X0_RSSI_GAIN_STRONG;
-+	int medium = MT76X0_RSSI_GAIN_MEDIUM;
-+
-+	if (prev == 2)
-+		strong -= MT76X0_RSSI_GAIN_HYST;
-+	else if (prev >= 0)
-+		strong += MT76X0_RSSI_GAIN_HYST;
-+	if (prev >= 1)
-+		medium -= MT76X0_RSSI_GAIN_HYST;
-+	else if (prev == 0)
-+		medium += MT76X0_RSSI_GAIN_HYST;
-+
-+	if (rssi > strong)
-+		return 2;
-+	if (rssi > medium)
-+		return 1;
-+	return 0;
-+}
-+
-+static void mt76x0_phy_update_rssi_gain(struct mt76x02_dev *dev)
-+{
-+	static const u8 gain_adjust[] = { 2, 26, 42 };
-+	int step;
-+	u8 adjust;
-+
-+	/* keep the counter visible in debugfs and clear it */
-+	dev->cal.false_cca = FIELD_GET(MT_RX_STAT_1_CCA_ERRORS,
-+				       mt76_rr(dev, MT_RX_STAT_1));
-+
-+	if (!dev->cal.avg_rssi_all)
-+		step = 1;
-+	else
-+		step = mt76x0_phy_rssi_gain_step(dev->cal.avg_rssi_all,
-+						 dev->cal.low_gain);
-+
-+	adjust = min_t(u8, gain_adjust[step], dev->cal.agc_gain_init[0]);
-+	if (step == dev->cal.low_gain && adjust == dev->cal.agc_gain_adjust)
-+		return;
-+
-+	dev->cal.low_gain = step;
-+	dev->cal.agc_gain_adjust = adjust;
-+	dev->cal.agc_gain_cur[0] = dev->cal.agc_gain_init[0];
-+	mt76x0_phy_set_gain_val(dev);
-+}
-+
- static void
- mt76x0_phy_update_channel_gain(struct mt76x02_dev *dev)
- {
-@@ -1072,6 +1130,12 @@ mt76x0_phy_update_channel_gain(struct mt76x02_dev *dev)
- 	int low_gain;
- 
- 	dev->cal.avg_rssi_all = mt76_get_min_avg_rssi(&dev->mt76, 0);
-+
-+	if (!is_mt7630(dev)) {
-+		mt76x0_phy_update_rssi_gain(dev);
-+		return;
-+	}
-+
- 	if (!dev->cal.avg_rssi_all)
- 		dev->cal.avg_rssi_all = -75;
- 
-
+ .../devicetree/bindings/i2c/qcom,i2c-cci.yaml      |   2 +
+ .../bindings/media/qcom,sm8150-camss.yaml          | 412 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sm8150.dtsi               | 320 ++++++++++++++++
+ .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     |   2 +
+ drivers/media/platform/qcom/camss/camss-vfe.c      |   3 +
+ drivers/media/platform/qcom/camss/camss.c          | 267 +++++++++++++
+ drivers/media/platform/qcom/camss/camss.h          |   1 +
+ 7 files changed, 1007 insertions(+)
 ---
-base-commit: b8e5b0ae8ff47240366d38e5d12c65f878724316
-change-id: 20261106-mt76x0-rssi-agc-5e7a83697abc
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261104-sm8150-v7.4-rc1-camss-d3dd5e02a170
 
 Best regards,
--- 
-kvnshroom <kvnshroom@gmail.com>
+--  
+Andrew Gigena <mail@andrewgigena.dev>
 
