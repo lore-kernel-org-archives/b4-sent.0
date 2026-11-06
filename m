@@ -1,105 +1,91 @@
-From: Cunhao Lu <1579567540@qq.com>
-Date: Fri, 06 Nov 2026 17:37:26 +0800
-Subject: [PATCH net v7 7/7] can: rockchip_canfd: serialize timecounter
- timestamp conversion
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Date: Fri, 06 Nov 2026 12:09:59 +0100
+Subject: [PATCH RFC] power: sequencing: pcie-m2: stop requiring subsystem
+ IDs for WCN6855/WCN7850
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-rockchip-canfd-restart-close-v7-7-accdb11bc845@qq.com>
-References: <20261106-rockchip-canfd-restart-close-v7-0-accdb11bc845@qq.com>
-In-Reply-To: <20261106-rockchip-canfd-restart-close-v7-0-accdb11bc845@qq.com>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- "David S. Miller" <davem@davemloft.net>, 
- Wolfgang Grandegger <wg@grandegger.com>, 
- Oliver Hartkopp <socketcan@hartkopp.net>, kernel@pengutronix.de, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>
-Cc: Cunhao Lu <1579567540@qq.com>, linux-can@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, netdev@vger.kernel.org, 
- linux-doc@vger.kernel.org, stable@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793957851; l=2957;
- i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=9VhCsHzQVgwKjVIZpuLTsjW3kBG025wPmIX2/tRYdvQ=;
- b=sz/9NQvLuATVJz94MCNVfIqwEm2Gr872h5VzhPU+f8O4Du68Qr2SXiK8DNtS5baW6aVkFr9W5
- baVm4YY9zaKB9c2wcIDXAyhQp9haK+TO7+5ngmhJSGn34hHn4RLZwSp
-X-Developer-Key: i=1579567540@qq.com; a=ed25519;
- pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
-X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
+Message-Id: <20261106-pwrseq-bt-subsystem-v1-1-11fb09f63c93@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwMz3YLyouLUQt2kEt3i0qTiyuKS1FxdIxPLZHOLVAsDo+QkJaDOgqL
+ UtMwKsKnRSkFuzkqxtbUAp1bYMWoAAAA=
+X-Change-ID: 20261106-pwrseq-bt-subsystem-249c78e802cb
+To: Manivannan Sadhasivam <mani@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>, Wei Deng <wei.deng@oss.qualcomm.com>
+Cc: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
+ linux-pci@vger.kernel.org, linux-pm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793963402; l=3002;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=t5UII2v99mLuMKVxGQklvEBJsKKUJFSN4tb1ImMhs0k=;
+ b=w/e8/FRzz6dIH+oxyAlLxQfsWrqcdJm7iFVI1QuyVeFH6PoCpRsMpGN4qOtU3cdHjsY+ll4Dk
+ DkK+mUkRAs6AXl5Gv9xCUltGGe9clDlEvEBWvC18dFgvMdomfojfkol
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The timestamp worker advances the timecounter with timecounter_read()
-while RX, TX completion and error-frame paths use timecounter_cyc2time()
-to convert hardware timestamps without holding timestamp_lock.
+Commit a39ac4651e3b ("power: sequencing: pcie-m2: Match WCN6855 and
+WCN7851 UART BT variants by subdevice ID") narrowed the PCI match for
+the WCN6855/WCN7850 family from PCI_DEVICE() to PCI_DEVICE_SUB() in
+order to avoid creating a UART serdev on USB-BT variants that share
+the same device ID.
 
-timecounter_read() updates frac, cycle_last and nsec in separate steps.
-A concurrent conversion can observe the new cycle_last with the old
-nsec and produce an incorrect timestamp.
+The practical result is that every legitimate UART-BT board must now be
+explicitly listed. Missing entries (e.g. Lenovo T14s Gen 6, subsystem
+17aa:e0e9) silently prevent serdev creation even though the DT graph
+already describes a UART link on the connector.
 
-Hold timestamp_lock across timecounter_cyc2time(), using the same lock
-as timecounter_read() and timecounter_init(). Keep the SKB timestamp
-assignment outside the critical section.
+The graph link is the reliable signal that a UART BT interface exists.
+Once it is present, the vendor + device ID is sufficient to select the
+correct compatible string for the dynamically created node. A pure
+USB-BT card simply has no UART graph endpoint, so no serdev is created.
 
-TX completion nests timestamp_lock inside tx_lock; no timestamp-lock
-holder acquires tx_lock.
+Keep a single PCI_DEVICE_SUB() entry for the QCA2066 (which shares the
+1103 ID but needs distinct BT driver data) and fall back to bare
+PCI_DEVICE() matches for the rest of the 1103 and 1107 families.
 
-Fixes: 4e1a18bab124 ("can: rockchip_canfd: add hardware timestamping support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Cunhao Lu <1579567540@qq.com>
+This removes the growing OEM subsystem-ID catalog from the critical
+path while preserving the one case that actually needs a subsystem
+distinction.
+
+Fixes: a39ac4651e3b ("power: sequencing: pcie-m2: Match WCN6855 and WCN7851 UART BT variants by subdevice ID")
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/net/can/rockchip/rockchip_canfd-timestamp.c | 5 ++++-
- drivers/net/can/rockchip/rockchip_canfd.h           | 4 ++--
- 2 files changed, 6 insertions(+), 3 deletions(-)
+ drivers/power/sequencing/pwrseq-pcie-m2.c | 10 ++--------
+ 1 file changed, 2 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/net/can/rockchip/rockchip_canfd-timestamp.c b/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-index 1d2a122770dc..e255bb33a20d 100644
---- a/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-+++ b/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-@@ -15,13 +15,16 @@ static u64 rkcanfd_timestamp_read(struct cyclecounter *cc)
- 	return rkcanfd_get_timestamp(priv);
- }
- 
--void rkcanfd_skb_set_timestamp(const struct rkcanfd_priv *priv,
-+void rkcanfd_skb_set_timestamp(struct rkcanfd_priv *priv,
- 			       struct sk_buff *skb, const u32 timestamp)
- {
- 	struct skb_shared_hwtstamps *hwtstamps = skb_hwtstamps(skb);
-+	unsigned long flags;
- 	u64 ns;
- 
-+	spin_lock_irqsave(&priv->timestamp_lock, flags);
- 	ns = timecounter_cyc2time(&priv->tc, timestamp);
-+	spin_unlock_irqrestore(&priv->timestamp_lock, flags);
- 
- 	hwtstamps->hwtstamp = ns_to_ktime(ns);
- }
-diff --git a/drivers/net/can/rockchip/rockchip_canfd.h b/drivers/net/can/rockchip/rockchip_canfd.h
-index 078876769a05..ecb9e2d6aa19 100644
---- a/drivers/net/can/rockchip/rockchip_canfd.h
-+++ b/drivers/net/can/rockchip/rockchip_canfd.h
-@@ -477,7 +477,7 @@ struct rkcanfd_priv {
- 
- 	/* Serialize TX submission/completion with bus-off and restart. */
- 	spinlock_t tx_lock;
--	/* Protects timestamp_active and worker reads/requeueing. */
-+	/* Protects tc, timestamp_active and worker requeueing. */
- 	spinlock_t timestamp_lock;
- 	void __iomem *regs;
- 	unsigned int tx_head;
-@@ -557,7 +557,7 @@ void rkcanfd_ethtool_init(struct rkcanfd_priv *priv);
- 
- int rkcanfd_handle_rx_int(struct rkcanfd_priv *priv);
- 
--void rkcanfd_skb_set_timestamp(const struct rkcanfd_priv *priv,
-+void rkcanfd_skb_set_timestamp(struct rkcanfd_priv *priv,
- 			       struct sk_buff *skb, const u32 timestamp);
- void rkcanfd_timestamp_work_init(struct rkcanfd_priv *priv);
- void rkcanfd_timestamp_init(struct rkcanfd_priv *priv);
+diff --git a/drivers/power/sequencing/pwrseq-pcie-m2.c b/drivers/power/sequencing/pwrseq-pcie-m2.c
+index 56c5d51293c10..72c721149dfae 100644
+--- a/drivers/power/sequencing/pwrseq-pcie-m2.c
++++ b/drivers/power/sequencing/pwrseq-pcie-m2.c
+@@ -217,15 +217,9 @@ static const struct pci_device_id pwrseq_m2_pci_ids[] = {
+ 	  .driver_data = (kernel_ulong_t)"nxp,88w8987-bt" },
+ 	{ PCI_DEVICE_SUB(PCI_VENDOR_ID_QCOM, 0x1103, PCI_VENDOR_ID_QCOM, 0x0108),
+ 	  .driver_data = (kernel_ulong_t)"qcom,qca2066-bt" },
+-	{ PCI_DEVICE_SUB(PCI_VENDOR_ID_QCOM, 0x1103, PCI_VENDOR_ID_FOXCONN, 0xe105),
++	{ PCI_DEVICE(PCI_VENDOR_ID_QCOM, 0x1103),
+ 	  .driver_data = (kernel_ulong_t)"qcom,wcn6855-bt" },
+-	{ PCI_DEVICE_SUB(PCI_VENDOR_ID_QCOM, 0x1103, PCI_VENDOR_ID_QCOM, 0x337e),
+-	  .driver_data = (kernel_ulong_t)"qcom,wcn6855-bt" },
+-	{ PCI_DEVICE_SUB(PCI_VENDOR_ID_QCOM, 0x1107, PCI_VENDOR_ID_QCOM, 0x337c),
+-	  .driver_data = (kernel_ulong_t)"qcom,wcn7850-bt" },
+-	{ PCI_DEVICE_SUB(PCI_VENDOR_ID_QCOM, 0x1107, PCI_VENDOR_ID_LENOVO, 0xe0e9),
+-	  .driver_data = (kernel_ulong_t)"qcom,wcn7850-bt" },
+-	{ PCI_DEVICE_SUB(PCI_VENDOR_ID_QCOM, 0x1107, PCI_VENDOR_ID_FOXCONN, 0xe0ee),
++	{ PCI_DEVICE(PCI_VENDOR_ID_QCOM, 0x1107),
+ 	  .driver_data = (kernel_ulong_t)"qcom,wcn7850-bt" },
+ 	{ } /* Sentinel */
+ };
 
+---
+base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
+change-id: 20261106-pwrseq-bt-subsystem-249c78e802cb
+
+Best regards,
 -- 
-2.34.1
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
