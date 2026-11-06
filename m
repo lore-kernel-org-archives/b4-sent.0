@@ -1,54 +1,41 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Fri, 06 Nov 2026 08:24:58 -0600
-Subject: [PATCH] wifi: ath11k: don't report firmware-dropped TX frames as
- failed
+Date: Fri, 06 Nov 2026 08:25:04 -0600
+Subject: [PATCH] wifi: ath11k: print each user's sounding counts in
+ htt_stats
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-ath11k-tqm-internal-drops-v1-1-8ddcb8105dd0@gmail.com>
-X-B4-Tracking: v=1; b=H4sIADnj7WoC/yXMTQ6CQAxA4auQrm0yJWQwXsW4GIYi9WfAdjQkh
- Lsz6vJbvLeCsQobnKoVlD9iMqUCOlQQx5CujNIXQ+1qT+Q8hjwS3TG/nigps6bwwF6n2bBpWzf
- 4SNwcGUo/Kw+y/N7ny9/27m4c83cI27YDBZaJd30AAAA=
-X-Change-ID: 20261106-ath11k-tqm-internal-drops-4770f6c1e48e
+Message-Id: <20261106-ath11k-sounding-stats-per-user-v1-1-6aa8e62fddf7@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAD/j7WoC/yXNwQrCMAyA4VcZORtYhk7nq8gOaRu3KHSjaUUYe
+ 3erHv/L929gklQMrs0GSV5qusQadGjAzxwnQQ21oWu7nqjtkfNM9ERbSgwaJ7TM2XCVhKVSOBz
+ DwN5d3PnEUJE1yV3fv8Ft/LcV9xCfvyrs+weElegYggAAAA==
+X-Change-ID: 20261106-ath11k-sounding-stats-per-user-94d9acb8b75a
 To: Jeff Johnson <jjohnson@kernel.org>, Kalle Valo <kvalo@kernel.org>, 
  Baochen Qiang <baochen.qiang@oss.qualcomm.com>
 Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
  Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793975097; l=4659;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793975103; l=3065;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=hpLRVZ36gLFspO6IkI74GMS59/eWb8aH9xvagx/E5BQ=;
- b=zQgBkzn3jUFZ+Gqll6XIBgxBC4bxFiQeW+Yw7v/XMoV4q2ke64QGBxiQ8T+3QoFifJPfW7Z7h
- JI28Y4pqEkIBBb0m6vrdjFFfMJIxNQHfLmfkgbZ4ZB27qqKaSWODLTk
+ bh=c89X/CZkTuy4umNZacZz4q0MYqGlGh/C+IYiRrx7/hI=;
+ b=1L3ijR4PS3qnP2Nje9ciC8eMBRgDHYfAjTdV7FHasLRnzFQGgYENXqb2aUTOUzHwXE7yDpHsI
+ sYQfftSKB9jBFp3wixheBQYWu1Rf1TL0D4Y/y4DyF9tM6+Cp4Q1/U6I
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the firmware drops a frame from its TX queue without sending it,
-the TX completion carries a TQM release reason other than FRAME_ACKED,
-and ath11k_dp_tx_complete_msdu() reports it to mac80211 as an unacked
-frame. mac80211 then counts it as a failed transmission: the station's
-tx_failed and the mesh path metric's failure average go up although
-nothing was lost on the air. With extended TX stats enabled, such a
-completion also overwrites the station's TX rate with the empty rate
-fields of the completion.
+The TX sounding stats of htt_stats print a "Sounding User" line for
+each of the 4 (11ac) or 8 (11ax) users, but every line shows
+sounding[0] to sounding[3], the 20/40/80/160 MHz counts of user 0. The
+array holds the counts of all users, at sounding[user * max_bw + bw]
+as the comment in struct htt_tx_sounding_stats_tlv says, and ath12k
+prints it that way.
 
-On an IPQ8074 AP, three 30 s UDP downloads offered at 650 Mbit/s into a
-40 MHz HE link that carries about 400 Mbit/s raised the station's
-tx_failed by 659146, 826963 and 1020775, matching the datagrams iperf
-lost, while the firmware's PPDU statistics counted no failed MPDU. Every
-one of those completions carried HAL_WBM_TQM_REL_REASON_CMD_REMOVE_MPDU.
-
-Handle the release reasons the way ath12k does since
-commit 50971dc6694c ("wifi: ath12k: drop failed transmitted frames from metric calculation.")
-and free the frames the firmware removed itself (CMD_REMOVE_MPDU,
-CMD_REMOVE_AGED_FRAMES, and CMD_REMOVE_TX of a frame that expected an
-ACK) with ieee80211_free_txskb() instead of reporting a TX status,
-before the extended TX stats are updated. With the change, three runs
-of the same download left tx_failed unchanged; TCP and UDP throughput
-stayed within the run-to-run spread of the runs without it.
+Print each user's own counts. On an IPQ8074 AP that sounded one HE
+client at 40 MHz (392 SU CBF), all 8 lines showed 40 MHz: 404 before;
+after, user 0 shows 404 and users 1 to 7 show 0.
 
 Tested-on: IPQ8074 hw2.0 AHB WLAN.HK.2.9.0.1-02146-QCAHKSWPL_SILICONZ-1
 
@@ -56,75 +43,57 @@ Fixes: d5c65159f289 ("ath11k: driver for Qualcomm IEEE 802.11ax devices")
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
-ath12k stopped reporting the firmware's own TX drops as failed
-transmissions in 2024; ath11k still does. Found on an Arista C-360
-(IPQ8074) while comparing the firmware's per-MCS TX statistics with the
-station's tx_failed under an overloaded UDP download: the firmware
-counted no failed MPDU while tx_failed matched the datagrams iperf lost.
+Found on an Arista C-360 (IPQ8074) while checking that beamforming
+sounding ran after enabling SU beamforming: every "Sounding User" line
+of htt_stats type 22 showed the same counts.
 ---
- drivers/net/wireless/ath/ath11k/dp_tx.c | 41 +++++++++++++++++++++++----------
- 1 file changed, 29 insertions(+), 12 deletions(-)
+ drivers/net/wireless/ath/ath11k/debugfs_htt_stats.c | 18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath11k/dp_tx.c b/drivers/net/wireless/ath/ath11k/dp_tx.c
-index cac970c92806a..8f619d89ec100 100644
---- a/drivers/net/wireless/ath/ath11k/dp_tx.c
-+++ b/drivers/net/wireless/ath/ath11k/dp_tx.c
-@@ -586,22 +586,39 @@ static void ath11k_dp_tx_complete_msdu(struct ath11k *ar,
- 	/* skip tx rate update from ieee80211_status*/
- 	info->status.rates[0].idx = -1;
+diff --git a/drivers/net/wireless/ath/ath11k/debugfs_htt_stats.c b/drivers/net/wireless/ath/ath11k/debugfs_htt_stats.c
+index 731f3ca867111..5ddc1ff8492f6 100644
+--- a/drivers/net/wireless/ath/ath11k/debugfs_htt_stats.c
++++ b/drivers/net/wireless/ath/ath11k/debugfs_htt_stats.c
+@@ -1235,13 +1235,12 @@ static inline void htt_print_tx_sounding_stats_tlv(const void *tag_buf,
+ 				 cbf_160[HTT_EXPLICIT_TXBF_MU_RBO_STEER_STATS]);
  
--	if (ts->status == HAL_WBM_TQM_REL_REASON_FRAME_ACKED &&
--	    !(info->flags & IEEE80211_TX_CTL_NO_ACK)) {
--		info->flags |= IEEE80211_TX_STAT_ACK;
--		info->status.ack_signal = ts->ack_rssi;
-+	switch (ts->status) {
-+	case HAL_WBM_TQM_REL_REASON_FRAME_ACKED:
-+		if (!(info->flags & IEEE80211_TX_CTL_NO_ACK)) {
-+			info->flags |= IEEE80211_TX_STAT_ACK;
-+			info->status.ack_signal = ts->ack_rssi;
+ 		for (i = 0; i < HTT_TX_PDEV_STATS_NUM_AC_MUMIMO_USER_STATS; i++) {
++			const u32 *snd = htt_stats_buf->sounding +
++					 i * HTT_TX_PDEV_STATS_NUM_BW_COUNTERS;
++
+ 			len += scnprintf(buf + len, buf_len - len,
+ 					 "Sounding User %u = 20MHz: %u, 40MHz : %u, 80MHz: %u, 160MHz: %u\n",
+-					 i,
+-					 htt_stats_buf->sounding[0],
+-					 htt_stats_buf->sounding[1],
+-					 htt_stats_buf->sounding[2],
+-					 htt_stats_buf->sounding[3]);
++					 i, snd[0], snd[1], snd[2], snd[3]);
+ 		}
+ 	} else if (htt_stats_buf->tx_sounding_mode == HTT_TX_AX_SOUNDING_MODE) {
+ 		len += scnprintf(buf + len, buf_len - len,
+@@ -1276,13 +1275,12 @@ static inline void htt_print_tx_sounding_stats_tlv(const void *tag_buf,
+ 				 cbf_160[HTT_EXPLICIT_TXBF_MU_RBO_STEER_STATS]);
  
--		if (!test_bit(WMI_TLV_SERVICE_HW_DB2DBM_CONVERSION_SUPPORT,
--			      ab->wmi_ab.svc_map))
--			info->status.ack_signal += ATH11K_DEFAULT_NOISE_FLOOR;
-+			if (!test_bit(WMI_TLV_SERVICE_HW_DB2DBM_CONVERSION_SUPPORT,
-+				      ab->wmi_ab.svc_map))
-+				info->status.ack_signal += ATH11K_DEFAULT_NOISE_FLOOR;
- 
--		info->status.flags |= IEEE80211_TX_STATUS_ACK_SIGNAL_VALID;
-+			info->status.flags |= IEEE80211_TX_STATUS_ACK_SIGNAL_VALID;
-+		}
-+		break;
-+	case HAL_WBM_TQM_REL_REASON_CMD_REMOVE_TX:
-+		if (info->flags & IEEE80211_TX_CTL_NO_ACK) {
-+			info->flags |= IEEE80211_TX_STAT_NOACK_TRANSMITTED;
-+			break;
-+		}
-+		fallthrough;
-+	case HAL_WBM_TQM_REL_REASON_CMD_REMOVE_MPDU:
-+	case HAL_WBM_TQM_REL_REASON_CMD_REMOVE_AGED_FRAMES:
-+		/* The firmware dropped the frame itself (for example when the
-+		 * peer's queue was full); it was not lost on the air, so do
-+		 * not report it to mac80211 as a failed transmission.
-+		 */
-+		ieee80211_free_txskb(ar->hw, msdu);
-+		return;
-+	default:
-+		ath11k_dbg(ab, ATH11K_DBG_DP_TX, "tx frame is not acked status %d\n",
-+			   ts->status);
-+		break;
+ 		for (i = 0; i < HTT_TX_PDEV_STATS_NUM_AX_MUMIMO_USER_STATS; i++) {
++			const u32 *snd = htt_stats_buf->sounding +
++					 i * HTT_TX_PDEV_STATS_NUM_BW_COUNTERS;
++
+ 			len += scnprintf(buf + len, buf_len - len,
+ 					 "Sounding User %u = 20MHz: %u, 40MHz : %u, 80MHz: %u, 160MHz: %u\n",
+-					 i,
+-					 htt_stats_buf->sounding[0],
+-					 htt_stats_buf->sounding[1],
+-					 htt_stats_buf->sounding[2],
+-					 htt_stats_buf->sounding[3]);
++					 i, snd[0], snd[1], snd[2], snd[3]);
+ 		}
  	}
  
--	if (ts->status == HAL_WBM_TQM_REL_REASON_CMD_REMOVE_TX &&
--	    (info->flags & IEEE80211_TX_CTL_NO_ACK))
--		info->flags |= IEEE80211_TX_STAT_NOACK_TRANSMITTED;
--
- 	if (unlikely(ath11k_debugfs_is_extd_tx_stats_enabled(ar)) ||
- 	    ab->hw_params.single_pdev_only) {
- 		if (ts->flags & HAL_TX_STATUS_FLAGS_FIRST_MSDU) {
 
 ---
 base-commit: 5c8eab13e391aaabd5a1ad58f3ee4bb10ce7573e
-change-id: 20261106-ath11k-tqm-internal-drops-4770f6c1e48e
+change-id: 20261106-ath11k-sounding-stats-per-user-94d9acb8b75a
 
 Best regards,
 --  
