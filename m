@@ -1,66 +1,63 @@
-From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Fri, 06 Nov 2026 12:48:27 -0600
-Subject: [PATCH 2/2] wifi: ath12k: simplify copying a peer's PPE thresholds
+From: Han Gao <gaohan@iscas.ac.cn>
+Subject: [PATCH 0/3] pinctrl: add Zhihe A210 pin controller support
+Date: Sat, 07 Nov 2026 03:36:06 +0800
+Message-Id: <20261107-a210-pinctrl-v1-0-6ddedfb0b76b@iscas.ac.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-ath-peer-ppe-thres-loop-v1-2-f6bb5fe9ffb3@gmail.com>
-References: <20261106-ath-peer-ppe-thres-loop-v1-0-f6bb5fe9ffb3@gmail.com>
-In-Reply-To: <20261106-ath-peer-ppe-thres-loop-v1-0-f6bb5fe9ffb3@gmail.com>
-To: Jeff Johnson <jjohnson@kernel.org>
-Cc: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>, 
- Baochen Qiang <baochen.qiang@oss.qualcomm.com>, 
- linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
- ath12k@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
- Christopher Griffin <christophergriffin05@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBBA0avIrDXpVELjKmJBTRmRkhaRNO6uW
+ L7F/xECeaYAdRbB08mBV5eAeQZm6txIgodkUFKViLISnUIpNnZm94tQhZYV6sLaUkNKNk+Wr2/
+ XtL/D0c9k9vcB9/0ASGCkjXAAAAA=
+X-Change-ID: 20261107-a210-pinctrl-23807183ff68
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Linus Walleij <linusw@kernel.org>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+ Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>, 
+ Bartosz Golaszewski <brgl@kernel.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-gpio@vger.kernel.org, Han Gao <rabenda.cn@gmail.com>, 
+ Han Gao <gaohan@iscas.ac.cn>, Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990906; l=1559;
- i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=JLN7YicOXOFCr/vXZYPyTuLNZ3CcFDfpEDaO5w1TJNk=;
- b=Pa8jp3EhLqfYJuIC7j4KkGCHkhfh1h+xKMZt9a6cFmdDX3spOspd8+5b5OhSlyFuwKhqyqXF2
- ZHVoE/lhKZABcQNqO1MD6D7HrYmmogO93RLPDR6yKg0NyBvFKos6x/+
-X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
- pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
-X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793993783; l=1226;
+ i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
+ bh=lI0jPaIXPZUKAJwf6sStoxzn6nqviOYKQAzrRSANV4Q=;
+ b=Yn+bD4PSpOp1/GW1CAi4yUtLp/rW1nacSB/RPLf7sk18TzrvqNG7Uohp3yHDbRkLFgavbYT44
+ eG8QIW5zlkjArpcNvk2zkv3F86hcN/n6+UzAFAuYfjZBpz8hdyDS4n0
+X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
+ pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
+X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ath12k_peer_assoc_h_he() copies each 6-bit PPE threshold of a peer's HE
-capabilities into the WMI layout one bit at a time, shifting it in from
-the top: val >>= 1, then the new bit at bit 5, six times over. After the
-sixth bit, bit i of the field sits at bit i of val, so put it there
-directly.
+This adds the binding and driver for the Zhihe A210 pin controllers
+(AON, PERI1 and PERI2).
 
-No functional change: a userspace copy of both loops gives the same
-ppet16_ppet8_ru3_ru0 for every 6-bit value in every RU slot and for 2.5
-million random threshold fields. Compile-tested with W=1.
+As Conor suggested, the patches are split out of the A210 SoC series
+[1] and are unchanged from its v3, except that Han Gao is added as a
+maintainer of the binding and as a copyright holder of the driver. The
+vendor prefix patch is included so the series applies on its own.
+ARCH_ZHIHE comes with [1].
 
-The change, this message and the test were written with Claude, an AI
-coding assistant.
+[1] https://patch.msgid.link/20261103-a210-scmi-v3-0-ee6b31580808@iscas.ac.cn
 
-Suggested-by: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>
-Link: https://lore.kernel.org/all/b60c4c56-483b-406e-92ab-643b0fdf2dc8@oss.qualcomm.com/
-Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
+Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- drivers/net/wireless/ath/ath12k/mac.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+Zhiguo Zhu (3):
+      dt-bindings: vendor-prefixes: add Zhihe
+      dt-bindings: pinctrl: add Zhihe A210 pin controller
+      pinctrl: zhihe: add A210 support
 
-diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
-index 9fd3841f71b71..12dfac1d3b42c 100644
---- a/drivers/net/wireless/ath/ath12k/mac.c
-+++ b/drivers/net/wireless/ath/ath12k/mac.c
-@@ -2731,9 +2731,8 @@ static void ath12k_peer_assoc_h_he(struct ath12k *ar,
- 				if ((arg->peer_ppet.ru_bit_mask & BIT(ru)) == 0)
- 					continue;
- 				for (i = 0; i < 6; i++) {
--					val >>= 1;
- 					val |= ((he_cap->ppe_thres[bit / 8] >>
--						 (bit % 8)) & 0x1) << 5;
-+						 (bit % 8)) & 0x1) << i;
- 					bit++;
- 				}
- 				arg->peer_ppet.ppet16_ppet8_ru3_ru0[nss] |=
+ .../bindings/pinctrl/zhihe,a210-pinctrl.yaml       | 147 +++
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ drivers/pinctrl/Kconfig                            |  13 +
+ drivers/pinctrl/Makefile                           |   1 +
+ drivers/pinctrl/pinctrl-zhihe-a210.c               | 997 +++++++++++++++++++++
+ 5 files changed, 1160 insertions(+)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261107-a210-pinctrl-23807183ff68
 
--- 
-2.43.0
+Best regards,
+--  
+Han Gao <gaohan@iscas.ac.cn>
 
