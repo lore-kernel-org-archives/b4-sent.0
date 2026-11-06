@@ -1,101 +1,270 @@
-From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Fri, 06 Nov 2026 08:25:04 -0600
-Subject: [PATCH] wifi: ath11k: print each user's sounding counts in
- htt_stats
-MIME-Version: 1.0
+From: Jing Lin <kayano050408@gmail.com>
+To: syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com
+Cc: linux-usb@vger.kernel.org, syzkaller-bugs@googlegroups.com, kayano050408@gmail.com
+Subject: [PATCH RFC] usb: gadget: gadgetfs: dequeue pending ep0 request before freeing
+Date: Fri, 06 Nov 2026 23:55:16 +0900
+Message-ID: <179397691694.27761.9543494907127681190.gadgetfs-ep0-patch-test@gmail.com>
+In-Reply-To: <6a6944f5.e3659fcc.2a40b8.0021.GAE@google.com>
+References: <6a6944f5.e3659fcc.2a40b8.0021.GAE@google.com>
+X-Mailer: b4 0.16.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-ath11k-sounding-stats-per-user-v1-1-6aa8e62fddf7@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAD/j7WoC/yXNwQrCMAyA4VcZORtYhk7nq8gOaRu3KHSjaUUYe
- 3erHv/L929gklQMrs0GSV5qusQadGjAzxwnQQ21oWu7nqjtkfNM9ERbSgwaJ7TM2XCVhKVSOBz
- DwN5d3PnEUJE1yV3fv8Ft/LcV9xCfvyrs+weElegYggAAAA==
-X-Change-ID: 20261106-ath11k-sounding-stats-per-user-94d9acb8b75a
-To: Jeff Johnson <jjohnson@kernel.org>, Kalle Valo <kvalo@kernel.org>, 
- Baochen Qiang <baochen.qiang@oss.qualcomm.com>
-Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
- Christopher Griffin <christophergriffin05@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793975103; l=3065;
- i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=c89X/CZkTuy4umNZacZz4q0MYqGlGh/C+IYiRrx7/hI=;
- b=1L3ijR4PS3qnP2Nje9ciC8eMBRgDHYfAjTdV7FHasLRnzFQGgYENXqb2aUTOUzHwXE7yDpHsI
- sYQfftSKB9jBFp3wixheBQYWu1Rf1TL0D4Y/y4DyF9tM6+Cp4Q1/U6I
-X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
- pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
-X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
+MIME-Version: 1.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793976917; l=8547;
+ i=kayano050408@gmail.com; s=20261106-gadgetfs-gmail;
+ h=from:subject:message-id; bh=ZsZ5biew09cfhtwJZXclaOy5dDe90VlJtG365y91MM8=;
+ b=mLhfXvSdvDS0SCjI1dpw8a/bt4FAzniGCzHYiO5G9sC/hLi60xbXw4Lp5+y/coiwHl3uE+TXi
+ 5x0l1SWHmxSBN1Ndn4wvWNJXLDZMxTss5HmRBNC0Ch/Hx/X8bJRxuYH
+X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
+ pk=DtAI52kU3F0sVbAiS4n+5b4UKMnVF398eKHlj3H9KBY=
+X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/20261106-gadgetfs-gmail with auth_id=1433
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The TX sounding stats of htt_stats print a "Sounding User" line for
-each of the 4 (11ac) or 8 (11ax) users, but every line shows
-sounding[0] to sounding[3], the 20/40/80/160 MHz counts of user 0. The
-array holds the counts of all users, at sounding[user * max_bw + bw]
-as the comment in struct htt_tx_sounding_stats_tlv says, and ath12k
-prints it that way.
+Please test this gadgetfs ep0 request lifetime fix
+The unpatched base reproduces the warning and use-after-free locally
+on arm64 QEMU with dummy_hcd and KASAN
 
-Print each user's own counts. On an IPQ8074 AP that sounded one HE
-client at 40 MHz (392 SU CBF), all 8 lines showed 40 MHz: 404 before;
-after, user 0 shows 404 and users 1 to 7 show 0.
+#syz test: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git f66469d9905b39d2c260a15d7d6db450f4db67c1
 
-Tested-on: IPQ8074 hw2.0 AHB WLAN.HK.2.9.0.1-02146-QCAHKSWPL_SILICONZ-1
+gadgetfs_unbind() frees the preallocated ep0 request after disconnecting
+the gadget, assuming that no I/O remains active
 
-Fixes: d5c65159f289 ("ath11k: driver for Qualcomm IEEE 802.11ax devices")
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
+With dummy_hcd, disconnecting does not necessarily drain ep0, so a delayed
+userspace response can leave dev->req queued when it is freed
+This triggers the warning in dummy_free_request() and a use-after-free
+when dummy_udc_stop() subsequently drains the endpoint queue
+
+Track dev->req from submission through completion under dev->lock and
+reject reuse while it is busy
+After waiting for active UDC users to finish, dequeue a pending request
+before freeing it and clearing ep0->driver_data
+Drop dev->lock around dequeue because the completion callback takes it
+Only dequeue pending requests to avoid errors from UDCs that reject
+cancellation of an unqueued request
+
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Reported-by: syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=c73e1942197af9f54ca3
+Signed-off-by: Jing Lin <kayano050408@gmail.com>
 ---
-Found on an Arista C-360 (IPQ8074) while checking that beamforming
-sounding ran after enabling SU beamforming: every "Sounding User" line
-of htt_stats type 22 showed the same counts.
----
- drivers/net/wireless/ath/ath11k/debugfs_htt_stats.c | 18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+Local validation on arm64 QEMU with dummy_hcd, KASAN and lockdep:
+- The unpatched kernel reproduces the warning and use-after-free
+- The patched kernel runs the C reproducer and rebind/concurrency workload
+  without the warning, a KASAN report or a lockdep report
+- W=1 compilation of inode.o and the Image build completed successfully
 
-diff --git a/drivers/net/wireless/ath/ath11k/debugfs_htt_stats.c b/drivers/net/wireless/ath/ath11k/debugfs_htt_stats.c
-index 731f3ca867111..5ddc1ff8492f6 100644
---- a/drivers/net/wireless/ath/ath11k/debugfs_htt_stats.c
-+++ b/drivers/net/wireless/ath/ath11k/debugfs_htt_stats.c
-@@ -1235,13 +1235,12 @@ static inline void htt_print_tx_sounding_stats_tlv(const void *tag_buf,
- 				 cbf_160[HTT_EXPLICIT_TXBF_MU_RBO_STEER_STATS]);
+AI tools assisted with patch development, the commit description, review
+and local QEMU validation
+
+Related syzbot RFC:
+https://lore.kernel.org/all/161c70c4-a363-469d-8665-64f71763f84b@mail.kernel.org/
+This version tracks pending requests and guards reuse while they are busy
+---
+ drivers/usb/gadget/legacy/inode.c | 55 ++++++++++++++++++++++++++++++++-------
+ 1 file changed, 46 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/usb/gadget/legacy/inode.c b/drivers/usb/gadget/legacy/inode.c
+index 7f6d84601..d60df4ad3 100644
+--- a/drivers/usb/gadget/legacy/inode.c
++++ b/drivers/usb/gadget/legacy/inode.c
+@@ -140,6 +140,7 @@ struct dev_data {
+ 					setup_abort : 1,
+ 					gadget_registered : 1;
+ 	unsigned			setup_wLength;
++	bool				ep0_req_queued;
  
- 		for (i = 0; i < HTT_TX_PDEV_STATS_NUM_AC_MUMIMO_USER_STATS; i++) {
-+			const u32 *snd = htt_stats_buf->sounding +
-+					 i * HTT_TX_PDEV_STATS_NUM_BW_COUNTERS;
-+
- 			len += scnprintf(buf + len, buf_len - len,
- 					 "Sounding User %u = 20MHz: %u, 40MHz : %u, 80MHz: %u, 160MHz: %u\n",
--					 i,
--					 htt_stats_buf->sounding[0],
--					 htt_stats_buf->sounding[1],
--					 htt_stats_buf->sounding[2],
--					 htt_stats_buf->sounding[3]);
-+					 i, snd[0], snd[1], snd[2], snd[3]);
- 		}
- 	} else if (htt_stats_buf->tx_sounding_mode == HTT_TX_AX_SOUNDING_MODE) {
- 		len += scnprintf(buf + len, buf_len - len,
-@@ -1276,13 +1275,12 @@ static inline void htt_print_tx_sounding_stats_tlv(const void *tag_buf,
- 				 cbf_160[HTT_EXPLICIT_TXBF_MU_RBO_STEER_STATS]);
+ 	/* the rest is basically write-once */
+ 	struct usb_config_descriptor	*config, *hs_config;
+@@ -984,6 +985,16 @@ static inline void ep0_readable (struct dev_data *dev)
+ 	kill_fasync (&dev->fasync, SIGIO, POLL_IN);
+ }
  
- 		for (i = 0; i < HTT_TX_PDEV_STATS_NUM_AX_MUMIMO_USER_STATS; i++) {
-+			const u32 *snd = htt_stats_buf->sounding +
-+					 i * HTT_TX_PDEV_STATS_NUM_BW_COUNTERS;
++static void dev_req_complete(struct usb_ep *ep, struct usb_request *req)
++{
++	struct dev_data		*dev = ep->driver_data;
++	unsigned long		flags;
 +
- 			len += scnprintf(buf + len, buf_len - len,
- 					 "Sounding User %u = 20MHz: %u, 40MHz : %u, 80MHz: %u, 160MHz: %u\n",
--					 i,
--					 htt_stats_buf->sounding[0],
--					 htt_stats_buf->sounding[1],
--					 htt_stats_buf->sounding[2],
--					 htt_stats_buf->sounding[3]);
-+					 i, snd[0], snd[1], snd[2], snd[3]);
++	spin_lock_irqsave(&dev->lock, flags);
++	dev->ep0_req_queued = false;
++	spin_unlock_irqrestore(&dev->lock, flags);
++}
++
+ static void clean_req (struct usb_ep *ep, struct usb_request *req)
+ {
+ 	struct dev_data		*dev = ep->driver_data;
+@@ -992,7 +1003,7 @@ static void clean_req (struct usb_ep *ep, struct usb_request *req)
+ 		kfree(req->buf);
+ 		req->buf = dev->rbuf;
+ 	}
+-	req->complete = epio_complete;
++	req->complete = dev_req_complete;
+ 	dev->setup_out_ready = 0;
+ }
+ 
+@@ -1004,6 +1015,7 @@ static void ep0_complete (struct usb_ep *ep, struct usb_request *req)
+ 
+ 	/* for control OUT, data must still get to userspace */
+ 	spin_lock_irqsave(&dev->lock, flags);
++	dev->ep0_req_queued = false;
+ 	if (!dev->setup_in) {
+ 		dev->setup_out_error = (req->status != 0);
+ 		if (!dev->setup_out_error)
+@@ -1015,7 +1027,7 @@ static void ep0_complete (struct usb_ep *ep, struct usb_request *req)
+ 	/* clean up as appropriate */
+ 	if (free && req->buf != &dev->rbuf)
+ 		clean_req (ep, req);
+-	req->complete = epio_complete;
++	req->complete = dev_req_complete;
+ 	spin_unlock_irqrestore(&dev->lock, flags);
+ }
+ 
+@@ -1023,7 +1035,7 @@ static int setup_req (struct usb_ep *ep, struct usb_request *req, u16 len)
+ {
+ 	struct dev_data	*dev = ep->driver_data;
+ 
+-	if (dev->setup_out_ready) {
++	if (dev->setup_out_ready || dev->ep0_req_queued) {
+ 		DBG (dev, "ep0 request busy!\n");
+ 		return -EBUSY;
+ 	}
+@@ -1073,13 +1085,20 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
+ 			struct usb_request	*req = dev->req;
+ 
+ 			if ((retval = setup_req (ep, req, 0)) == 0) {
++				dev->state = STATE_DEV_CONNECTED;
++				dev->ep0_req_queued = true;
+ 				++dev->udc_usage;
+ 				spin_unlock_irq (&dev->lock);
+ 				retval = usb_ep_queue (ep, req, GFP_KERNEL);
+ 				spin_lock_irq (&dev->lock);
+ 				--dev->udc_usage;
++				if (retval < 0) {
++					dev->ep0_req_queued = false;
++					clean_req(ep, req);
++				}
++			} else {
++				dev->state = STATE_DEV_CONNECTED;
+ 			}
+-			dev->state = STATE_DEV_CONNECTED;
+ 
+ 			/* assume that was SET_CONFIGURATION */
+ 			if (dev->current_config) {
+@@ -1270,6 +1289,7 @@ ep0_write (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
+ 			retval = setup_req (dev->gadget->ep0, dev->req, len);
+ 			if (retval == 0) {
+ 				dev->state = STATE_DEV_CONNECTED;
++				dev->ep0_req_queued = true;
+ 				++dev->udc_usage;
+ 				spin_unlock_irq (&dev->lock);
+ 				if (copy_from_user (dev->req->buf, buf, len))
+@@ -1284,6 +1304,7 @@ ep0_write (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
+ 				spin_lock_irq(&dev->lock);
+ 				--dev->udc_usage;
+ 				if (retval < 0) {
++					dev->ep0_req_queued = false;
+ 					clean_req (dev->gadget->ep0, dev->req);
+ 				} else
+ 					retval = len;
+@@ -1508,6 +1529,11 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 	} else if (dev->state == STATE_DEV_SETUP)
+ 		dev->setup_abort = 1;
+ 
++	if (dev->ep0_req_queued) {
++		spin_unlock(&dev->lock);
++		return -EBUSY;
++	}
++
+ 	req->buf = dev->rbuf;
+ 	req->context = NULL;
+ 	switch (ctrl->bRequest) {
+@@ -1626,6 +1652,7 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 				if (value < 0)
+ 					break;
+ 
++				dev->ep0_req_queued = true;
+ 				++dev->udc_usage;
+ 				spin_unlock (&dev->lock);
+ 				value = usb_ep_queue (gadget->ep0, dev->req,
+@@ -1633,6 +1660,7 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 				spin_lock (&dev->lock);
+ 				--dev->udc_usage;
+ 				if (value < 0) {
++					dev->ep0_req_queued = false;
+ 					clean_req (gadget->ep0, dev->req);
+ 					break;
+ 				}
+@@ -1664,16 +1692,18 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 		req->length = value;
+ 		req->zero = value < w_length;
+ 
++		dev->ep0_req_queued = true;
+ 		++dev->udc_usage;
+ 		spin_unlock (&dev->lock);
+ 		value = usb_ep_queue (gadget->ep0, req, GFP_KERNEL);
+ 		spin_lock(&dev->lock);
+ 		--dev->udc_usage;
+-		spin_unlock(&dev->lock);
+ 		if (value < 0) {
++			dev->ep0_req_queued = false;
+ 			DBG (dev, "ep_queue --> %d\n", value);
+ 			req->status = 0;
  		}
++		spin_unlock(&dev->lock);
+ 		return value;
  	}
  
+@@ -1771,6 +1801,7 @@ static void
+ gadgetfs_unbind (struct usb_gadget *gadget)
+ {
+ 	struct dev_data		*dev = get_gadget_data (gadget);
++	bool			queued;
+ 
+ 	DBG (dev, "%s\n", __func__);
+ 
+@@ -1781,15 +1812,20 @@ gadgetfs_unbind (struct usb_gadget *gadget)
+ 		usleep_range(1000, 2000);
+ 		spin_lock_irq(&dev->lock);
+ 	}
++	queued = dev->ep0_req_queued;
+ 	spin_unlock_irq (&dev->lock);
+ 
++	if (dev->req) {
++		if (queued)
++			usb_ep_dequeue(gadget->ep0, dev->req);
++		usb_ep_free_request(gadget->ep0, dev->req);
++		dev->req = NULL;
++	}
++
+ 	destroy_ep_files (dev);
+ 	gadget->ep0->driver_data = NULL;
+ 	set_gadget_data (gadget, NULL);
+ 
+-	/* we've already been disconnected ... no i/o is active */
+-	if (dev->req)
+-		usb_ep_free_request (gadget->ep0, dev->req);
+ 	DBG (dev, "%s done\n", __func__);
+ 	put_dev (dev);
+ }
+@@ -1816,11 +1852,12 @@ static int gadgetfs_bind(struct usb_gadget *gadget,
+ 	get_dev (dev);
+ 
+ 	/* preallocate control response and buffer */
++	dev->ep0_req_queued = false;
+ 	dev->req = usb_ep_alloc_request (gadget->ep0, GFP_KERNEL);
+ 	if (!dev->req)
+ 		goto enomem;
+ 	dev->req->context = NULL;
+-	dev->req->complete = epio_complete;
++	dev->req->complete = dev_req_complete;
+ 
+ 	if (activate_ep_files (dev) < 0)
+ 		goto enomem;
 
 ---
-base-commit: 5c8eab13e391aaabd5a1ad58f3ee4bb10ce7573e
-change-id: 20261106-ath11k-sounding-stats-per-user-94d9acb8b75a
+base-commit: f66469d9905b39d2c260a15d7d6db450f4db67c1
+change-id: 20261106-b4-gadgetfs-ep0-f814c14717a9
 
 Best regards,
 --  
-Christopher Griffin <christophergriffin05@gmail.com>
+Jing Lin <kayano050408@gmail.com>
 
