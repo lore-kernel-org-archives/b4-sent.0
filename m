@@ -1,10 +1,10 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Fri, 06 Nov 2026 12:48:26 -0600
-Subject: [PATCH 1/2] wifi: ath11k: simplify copying a peer's PPE thresholds
+Date: Fri, 06 Nov 2026 12:48:27 -0600
+Subject: [PATCH 2/2] wifi: ath12k: simplify copying a peer's PPE thresholds
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-ath-peer-ppe-thres-loop-v1-1-f6bb5fe9ffb3@gmail.com>
+Message-Id: <20261106-ath-peer-ppe-thres-loop-v1-2-f6bb5fe9ffb3@gmail.com>
 References: <20261106-ath-peer-ppe-thres-loop-v1-0-f6bb5fe9ffb3@gmail.com>
 In-Reply-To: <20261106-ath-peer-ppe-thres-loop-v1-0-f6bb5fe9ffb3@gmail.com>
 To: Jeff Johnson <jjohnson@kernel.org>
@@ -17,15 +17,15 @@ Cc: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>,
 X-Mailer: b4 0.16.0
 X-Developer-Signature: v=1; a=ed25519-sha256; t=1793990906; l=1559;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=Fx0MoPhTsHoV7Mqo4RpE2ktBUJ4V6dxFpUHZthPxLf8=;
- b=B/Qqm/yjFtcACrMbciWL+jekNjj58CDkS6g0yK1GLR5WdeOX3Kej/ZhtjmYFeWPgJERADPfXt
- mRkrX/x5dL3BRbSL7RsY8bI+x5yD9sUhdtDRU2p5cD6I4+c7crQj6cb
+ bh=JLN7YicOXOFCr/vXZYPyTuLNZ3CcFDfpEDaO5w1TJNk=;
+ b=Pa8jp3EhLqfYJuIC7j4KkGCHkhfh1h+xKMZt9a6cFmdDX3spOspd8+5b5OhSlyFuwKhqyqXF2
+ ZHVoE/lhKZABcQNqO1MD6D7HrYmmogO93RLPDR6yKg0NyBvFKos6x/+
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ath11k_peer_assoc_h_he() copies each 6-bit PPE threshold of a peer's HE
+ath12k_peer_assoc_h_he() copies each 6-bit PPE threshold of a peer's HE
 capabilities into the WMI layout one bit at a time, shifting it in from
 the top: val >>= 1, then the new bit at bit 5, six times over. After the
 sixth bit, bit i of the field sits at bit i of val, so put it there
@@ -42,14 +42,14 @@ Suggested-by: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>
 Link: https://lore.kernel.org/all/b60c4c56-483b-406e-92ab-643b0fdf2dc8@oss.qualcomm.com/
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- drivers/net/wireless/ath/ath11k/mac.c | 3 +--
+ drivers/net/wireless/ath/ath12k/mac.c | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
-index 1a237adaa37d1..d7ae9e8747233 100644
---- a/drivers/net/wireless/ath/ath11k/mac.c
-+++ b/drivers/net/wireless/ath/ath11k/mac.c
-@@ -2496,9 +2496,8 @@ static void ath11k_peer_assoc_h_he(struct ath11k *ar,
+diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
+index 9fd3841f71b71..12dfac1d3b42c 100644
+--- a/drivers/net/wireless/ath/ath12k/mac.c
++++ b/drivers/net/wireless/ath/ath12k/mac.c
+@@ -2731,9 +2731,8 @@ static void ath12k_peer_assoc_h_he(struct ath12k *ar,
  				if ((arg->peer_ppet.ru_bit_mask & BIT(ru)) == 0)
  					continue;
  				for (i = 0; i < 6; i++) {
