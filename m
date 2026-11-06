@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Fri, 06 Nov 2026 15:18:52 -0800
-Subject: [PATCH net-next v10 06/11] net: ethernet: oa_tc6: Support for
- vendor specific MMS
+Date: Fri, 06 Nov 2026 15:18:53 -0800
+Subject: [PATCH net-next v10 07/11] net: phy: ncn26000: Enable enhanced
+ noise immunity
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-s2500-mac-phy-support-v10-6-31b5a69b85b7@onsemi.com>
+Message-Id: <20261106-s2500-mac-phy-support-v10-7-31b5a69b85b7@onsemi.com>
 References: <20261106-s2500-mac-phy-support-v10-0-31b5a69b85b7@onsemi.com>
 In-Reply-To: <20261106-s2500-mac-phy-support-v10-0-31b5a69b85b7@onsemi.com>
 To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
@@ -29,29 +29,26 @@ Cc: Selva Rajagopal <Selvamani.Rajagopal@onsemi.com>,
  Jerry Ray <jerry.ray@microchip.com>, 
  Ciprian Regus <ciprian.regus@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794007133; l=5213;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794007133; l=2274;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=ADbDwJZUXJpXDi7nCi09a1C9W5pYqfG/AwuaN/N5bAw=;
- b=MwF/jxvHsFpFTdYT88DRJtEdxAQrYUktNNrFOaNhzjpfUvWmHR0i3ckn9F6MCdp7ekLPeMiVn
- EH13LScNjDsD4HSUB+VVYkREY9uxoZV60X2//cYkyCC3pk8Vsbyk2Ss
+ bh=H6tvgds7/ddZV9HUqa7vkZm5OYeOKsREFlz8wj6rwKQ=;
+ b=JqZIvyUNei14ikHeZxLT24ksFs49jdB6a7APJWrMugbpxirIveaMh3+vkynk41ZYZhBnsOPbM
+ KXQ4RdwxzrxBaBTosM7ts1DsCx4IExLx0uK2n3aG6Qq8/eDH/VJ1f8i
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-OPEN Alliance 10BASE-T1x Serial Interface specification, table 6
-allows vendors to use any memory map select (MMS) value between
-10 and 15. This new API interface enables vendor to map one of
-thes MMS values to MDIO_MMD_VEND1.
+By setting ENI bit, noise immunity is improved and it is
+specifically meant for PLCA enabled nodes.
 
 Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
 changes in v10
-  - Moved the API documentation to this patch
+  - No change
 changes in v9
-  - Added the missing vend1_mms initializer to where it belonged
   - Added Reviewed tag
 changes in v8
   - No change
@@ -60,129 +57,64 @@ changes in v7
 changes in v6
   - No change
 changes in v5
-  - no change
+  - No changes
 changes in v4
-  - no change
+  - No changes
 changes in v3
-  - no change
-changes in v2
-  - Moved the handling of vendor specific MMS mapping to separate patch
-  - new patch
+  - Moved as a separate patch
 ---
- Documentation/networking/oa-tc6-framework.rst |  7 +++++++
- drivers/net/ethernet/oa_tc6/oa_tc6_main.c     | 21 ++++++++++++++++++---
- drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h  |  1 +
- include/linux/oa_tc6.h                        |  1 +
- 4 files changed, 27 insertions(+), 3 deletions(-)
+ drivers/net/phy/ncn26000.c | 24 +++++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
-index 23856c4bfd69..3cfe8cb7cf75 100644
---- a/Documentation/networking/oa-tc6-framework.rst
-+++ b/Documentation/networking/oa-tc6-framework.rst
-@@ -537,6 +537,13 @@ Provides hardware timestamp related traffic statistics for ethtool.
- Helper to set hardware timestamp configuration. Part of net_device_ops
- callbacks.
+diff --git a/drivers/net/phy/ncn26000.c b/drivers/net/phy/ncn26000.c
+index cabdd83c614f..6d433f4e2c45 100644
+--- a/drivers/net/phy/ncn26000.c
++++ b/drivers/net/phy/ncn26000.c
+@@ -35,6 +35,10 @@
  
-+.. c:function:: void oa_tc6_set_vend1_mms(struct oa_tc6 *tc6, int mms);
+ #define TO_TMR_DEFAULT			32
+ 
++#define NCN26000_REG_PHYCFG1		0x8001
++#define NCN26000_PHYCFG1_ENI		BIT(7)
++#define NCN26000_PHYCFG1_ENI_MASK	BIT(7)
 +
-+Helper to map MDIO_MMD_VEND1 command to vendor specific Memory Map Select
-+(MMS) value. This function offers flexibility for vendors that may have
-+used any MMS value between 10 and 15 as allowed by the specification.
-+MDIO_MMD_VEND2 is already mapped to MMS4 in the OA TC6 frame work code.
-+
- .. c:function:: int oa_tc6_write_register_mms(struct oa_tc6 *tc6, \
-                                               u8 mms, u16 address, \
-                                               u32 value);
-diff --git a/drivers/net/ethernet/oa_tc6/oa_tc6_main.c b/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
-index e793d7fb0635..5b2454b75974 100644
---- a/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
-+++ b/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
-@@ -266,6 +266,18 @@ static int oa_tc6_update_standard_capability(struct oa_tc6 *tc6)
+ static int ncn26000_config_init(struct phy_device *phydev)
+ {
+ 	/* HW bug workaround: the default value of the PLCA TO_TIMER should be
+@@ -100,6 +104,24 @@ static int ncn26000_read_status(struct phy_device *phydev)
  	return 0;
  }
  
-+/**
-+ * oa_tc6_set_vend1_mms - Add vendor specific MDIO_MMD to OA TC6 MMS
-+ * mapper value.
-+ * @tc6: oa_tc6 struct.
-+ * @mms: vendor defined MMS value for VEND1 mdio device.
++/* Intercept PLCA enable/disable request to
++ * set the proprietary, ENI mode accordingly
 + */
-+void oa_tc6_set_vend1_mms(struct oa_tc6 *tc6, int mms)
++static int ncn26000_c45_plca_set_cfg(struct phy_device *phydev,
++				     const struct phy_plca_cfg *plca_cfg)
 +{
-+	tc6->vend1_mms = mms;
-+}
-+EXPORT_SYMBOL_GPL(oa_tc6_set_vend1_mms);
++	int ret = genphy_c45_plca_set_cfg(phydev, plca_cfg);
++	u16 eni_cfg = 0;
 +
- static __be32 oa_tc6_prepare_ctrl_header(u32 addr, u8 length,
- 					 enum oa_tc6_register_op reg_op)
++	if (ret || plca_cfg->enabled < 0)
++		return ret;
++
++	eni_cfg = (plca_cfg->enabled) ? NCN26000_PHYCFG1_ENI : 0;
++	return phy_modify_mmd(phydev, MDIO_MMD_VEND2,
++			      NCN26000_REG_PHYCFG1,
++			      NCN26000_PHYCFG1_ENI_MASK, eni_cfg);
++}
++
+ static irqreturn_t ncn26000_handle_interrupt(struct phy_device *phydev)
  {
-@@ -593,7 +605,7 @@ static int oa_tc6_mdiobus_write(struct mii_bus *bus, int addr, int regnum,
- 				     val);
- }
- 
--static int oa_tc6_get_phy_c45_mms(int devnum)
-+static int oa_tc6_get_phy_c45_mms(struct oa_tc6 *tc6, int devnum)
- {
- 	switch (devnum) {
- 	case MDIO_MMD_PCS:
-@@ -606,6 +618,8 @@ static int oa_tc6_get_phy_c45_mms(int devnum)
- 		return OA_TC6_PHY_C45_AUTO_NEG_MMS5;
- 	case MDIO_MMD_POWER_UNIT:
- 		return OA_TC6_PHY_C45_POWER_UNIT_MMS6;
-+	case MDIO_MMD_VEND1:
-+		return tc6->vend1_mms;
- 	default:
- 		return -EOPNOTSUPP;
- 	}
-@@ -619,7 +633,7 @@ int oa_tc6_mdiobus_read_c45(struct mii_bus *bus, int addr, int devnum,
- 	int mms;
  	int ret;
- 
--	mms = oa_tc6_get_phy_c45_mms(devnum);
-+	mms = oa_tc6_get_phy_c45_mms(tc6, devnum);
- 	if (mms < 0)
- 		return mms;
- 
-@@ -637,7 +651,7 @@ int oa_tc6_mdiobus_write_c45(struct mii_bus *bus, int addr, int devnum,
- 	struct oa_tc6 *tc6 = bus->priv;
- 	int mms;
- 
--	mms = oa_tc6_get_phy_c45_mms(devnum);
-+	mms = oa_tc6_get_phy_c45_mms(tc6, devnum);
- 	if (mms < 0)
- 		return mms;
- 
-@@ -1658,6 +1672,7 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev,
- 	SET_NETDEV_DEV(netdev, &spi->dev);
- 	mutex_init(&tc6->spi_ctrl_lock);
- 	spin_lock_init(&tc6->tx_skb_lock);
-+	tc6->vend1_mms = -EOPNOTSUPP;
- 	tc6->ttsc_current_id = OA_TC6_TTSCA_REG_ID;
- 	INIT_LIST_HEAD(&tc6->tx_ts_skb_q);
- 
-diff --git a/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h b/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h
-index a4d269cd685f..3bb41873773f 100644
---- a/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h
-+++ b/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h
-@@ -140,6 +140,7 @@ struct oa_tc6 {
- 	u64 tx_hwtstamp_err;
- 	u8 ts_ttsc_pending;
- 	u8 ttsc_current_id;
-+	int vend1_mms;
- };
- 
- enum oa_tc6_header_type {
-diff --git a/include/linux/oa_tc6.h b/include/linux/oa_tc6.h
-index adfa83cd92ee..15d62e1b87a2 100644
---- a/include/linux/oa_tc6.h
-+++ b/include/linux/oa_tc6.h
-@@ -114,5 +114,6 @@ void oa_tc6_get_ts_stats(struct oa_tc6 *tc6,
- 			 struct ethtool_ts_stats *stats);
- int oa_tc6_hwtstamp_set(struct oa_tc6 *tc6,
- 			struct kernel_hwtstamp_config *cfg);
-+void oa_tc6_set_vend1_mms(struct oa_tc6 *tc6, int mms);
- void oa_tc6_ptp_unregister(struct oa_tc6 *tc6);
- #endif /* _LINUX_OA_TC6_H */
+@@ -151,7 +173,7 @@ static struct phy_driver ncn26000_driver[] = {
+ 		.read_status		= ncn26000_read_status,
+ 		.handle_interrupt       = ncn26000_handle_interrupt,
+ 		.get_plca_cfg		= genphy_c45_plca_get_cfg,
+-		.set_plca_cfg		= genphy_c45_plca_set_cfg,
++		.set_plca_cfg		= ncn26000_c45_plca_set_cfg,
+ 		.get_plca_status	= genphy_c45_plca_get_status,
+ 		.soft_reset             = genphy_soft_reset,
+ 	},
 
 -- 
 2.43.0
