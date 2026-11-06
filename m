@@ -1,11 +1,11 @@
 From: Angel Gabriel Crispin Valdivia <angelcrispinvaldivia@gmail.com>
-Date: Thu, 05 Nov 2026 21:34:33 -0500
-Subject: [PATCH RFC 1/4] drm/fl2000: Add USB driver with register and I2C
- access
+Date: Thu, 05 Nov 2026 21:34:34 -0500
+Subject: [PATCH RFC 2/4] drm/fl2000: Add ITE IT66121 HDMI transmitter
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261105-fl2000-upstream-v1-1-bb163ecb2309@gmail.com>
+Message-Id: <20261105-fl2000-upstream-v1-2-bb163ecb2309@gmail.com>
 References: <20261105-fl2000-upstream-v1-0-bb163ecb2309@gmail.com>
 In-Reply-To: <20261105-fl2000-upstream-v1-0-bb163ecb2309@gmail.com>
 To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -14,1171 +14,1504 @@ To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
  Angel Gabriel Crispin Valdivia <angelcrispinvaldivia@gmail.com>
 Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793932482; l=40703;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793932482; l=48633;
  i=angelcrispinvaldivia@gmail.com; s=20261106; h=from:subject:message-id;
- bh=JTHGCKQj0/0JHjDIQpllttA/ez67tTJv7hDjXfwm/sg=;
- b=fye7SSyc/0HDj5ds4k6ywum5Aaz0yF6moB5OAQdo0dKvxzwKtbx6YyhNGOQekPsy7m0u8ALA7
- wzVzwbS8mnKABGrB0z/H7vKPD7mEPZC5mqRCtBntgzgHc9CeaQHVKt9
+ bh=Fj5VgV9juAejavDk/+J1dH4LUjkBXl7w7Y1YoQHaRXY=;
+ b=wBR+YHrMvBeOyZdw48uzcZe3OnOaxWEyXfFPrE78mwB37P6XVrPlvDJk7HBIq3QL8OeWTstA0
+ fcQ/QQ90dJOAjJXXeKQaYrXpaAGEKZsoI36btP5wZfxBDoCMy+XMofZ
 X-Developer-Key: i=angelcrispinvaldivia@gmail.com; a=ed25519;
  pk=80bQU/p2R0pLIfdfJaB5I/2obI+RxQHondq5DEM0tbg=
 X-Endpoint-Received: by B4 Relay for angelcrispinvaldivia@gmail.com/20261106 with auth_id=1425
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Fresco Logic FL2000DX is a USB 3.0 display controller used in
-inexpensive USB to VGA and USB to HDMI adapters (USB ID 1d5c:2000). The
-FL2000 itself outputs parallel RGB/VGA; HDMI adapters pair it with an
-ITE IT66121 HDMI transmitter that sits on the FL2000's I2C bus.
+Probe the IT66121 on the FL2000 I2C bus and expose it as a DRM bridge.
+It attaches with DRM_BRIDGE_ATTACH_NO_CONNECTOR and reports the hot plug
+line and the EDID (DRM_BRIDGE_OP_DETECT and DRM_BRIDGE_OP_EDID), so the
+connector is the display driver's. The transmitter (input bus, AFE, AVI
+infoframe, HDMI/DVI mode) is programmed in atomic_enable, where the
+connector that tells HDMI from DVI is known. The EDID is kept while the
+monitor stays, since reading it over USB takes about a second.
 
-This first patch adds the USB side of the driver: it binds the three
-FL2000 interfaces, describes the FL2000 registers, provides a regmap on
-top of the vendor control transfers that access them, and registers an
-I2C adapter backed by the FL2000 I2C engine. The engine only transfers
-aligned 32-bit words, so byte accesses are done as read-modify-write of
-the containing word and the adapter advertises the matching quirks.
+EDID is first read through the IT66121 DDC engine. On the tested
+adapter, as on the Fresco Logic reference design, the monitor's DDC
+lines are wired to the FL2000 I2C bus instead and that engine never
+completes, so the driver falls back to reading the EDID at address 0x50
+directly with the FL2000 I2C engine.
 
-State shared by the interfaces is attached to the usb_device so that it
-survives the unbind/rebind cycles of usb_reset_device().
-
-The driver is based on the out-of-tree fl2000_drm driver by Artem
-Mygaiev, which carries code from the Fresco Logic reference driver.
+The bridge is registered as a component of the FL2000 I2C adapter and
+lives as long as the USB device: re-creating it on every bind would
+leave stale pointers in the component match data across USB resets.
 
 Signed-off-by: Angel Gabriel Crispin Valdivia <angelcrispinvaldivia@gmail.com>
 ---
- MAINTAINERS                               |   7 +
- drivers/gpu/drm/Kconfig                   |   1 +
- drivers/gpu/drm/Makefile                  |   1 +
- drivers/gpu/drm/fl2000/Kconfig            |  19 ++
- drivers/gpu/drm/fl2000/Makefile           |   8 +
- drivers/gpu/drm/fl2000/fl2000.h           |  88 ++++++++
- drivers/gpu/drm/fl2000/fl2000_drv.c       | 150 ++++++++++++++
- drivers/gpu/drm/fl2000/fl2000_i2c.c       | 182 +++++++++++++++++
- drivers/gpu/drm/fl2000/fl2000_registers.c | 320 ++++++++++++++++++++++++++++++
- drivers/gpu/drm/fl2000/fl2000_registers.h | 272 +++++++++++++++++++++++++
- 10 files changed, 1048 insertions(+)
+ drivers/gpu/drm/fl2000/Makefile              |    1 +
+ drivers/gpu/drm/fl2000/fl2000_drv.c          |   60 ++
+ drivers/gpu/drm/fl2000/fl2000_it66121.c      | 1030 ++++++++++++++++++++++++++
+ drivers/gpu/drm/fl2000/fl2000_it66121.h      |   19 +
+ drivers/gpu/drm/fl2000/fl2000_it66121_regs.h |  283 +++++++
+ 5 files changed, 1393 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index c10342aa3..6e74cb478 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -8324,6 +8324,13 @@ F:	include/linux/aperture.h
- F:	include/linux/sysfb.h
- F:	include/video/nomodeset.h
- 
-+DRM DRIVER FOR FRESCO LOGIC FL2000 USB DISPLAY ADAPTERS
-+M:	Angel Gabriel Crispin Valdivia <angelcrispinvaldivia@gmail.com>
-+L:	dri-devel@lists.freedesktop.org
-+S:	Maintained
-+T:	git https://gitlab.freedesktop.org/drm/misc/kernel.git
-+F:	drivers/gpu/drm/fl2000/
-+
- DRM DRIVER FOR GENERIC EDP PANELS
- R:	Douglas Anderson <dianders@chromium.org>
- F:	Documentation/devicetree/bindings/display/panel/panel-edp.yaml
-diff --git a/drivers/gpu/drm/Kconfig b/drivers/gpu/drm/Kconfig
-index 61111d50b..6ff093830 100644
---- a/drivers/gpu/drm/Kconfig
-+++ b/drivers/gpu/drm/Kconfig
-@@ -313,6 +313,7 @@ source "drivers/gpu/drm/atmel-hlcdc/Kconfig"
- source "drivers/gpu/drm/bridge/Kconfig"
- source "drivers/gpu/drm/etnaviv/Kconfig"
- source "drivers/gpu/drm/exynos/Kconfig"
-+source "drivers/gpu/drm/fl2000/Kconfig"
- source "drivers/gpu/drm/fsl-dcu/Kconfig"
- source "drivers/gpu/drm/gma500/Kconfig"
- source "drivers/gpu/drm/gud/Kconfig"
-diff --git a/drivers/gpu/drm/Makefile b/drivers/gpu/drm/Makefile
-index 2c6bc093a..a4a8a958a 100644
---- a/drivers/gpu/drm/Makefile
-+++ b/drivers/gpu/drm/Makefile
-@@ -190,6 +190,7 @@ obj-$(CONFIG_DRM_NOUVEAU) +=nouveau/
- obj-$(CONFIG_DRM_EXYNOS) +=exynos/
- obj-$(CONFIG_DRM_ROCKCHIP) +=rockchip/
- obj-$(CONFIG_DRM_GMA500) += gma500/
-+obj-$(CONFIG_DRM_FL2000) += fl2000/
- obj-$(CONFIG_DRM_UDL) += udl/
- obj-$(CONFIG_DRM_AST) += ast/
- obj-$(CONFIG_DRM_ARMADA) += armada/
-diff --git a/drivers/gpu/drm/fl2000/Kconfig b/drivers/gpu/drm/fl2000/Kconfig
-new file mode 100644
-index 000000000..bf1badc3e
---- /dev/null
-+++ b/drivers/gpu/drm/fl2000/Kconfig
-@@ -0,0 +1,19 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+config DRM_FL2000
-+	tristate "Fresco Logic FL2000 USB display adapters"
-+	depends on DRM && USB && MMU
-+	depends on USB_ARCH_HAS_HCD
-+	select DRM_BRIDGE_CONNECTOR
-+	select DRM_CLIENT_SELECTION
-+	select DRM_DISPLAY_HELPER
-+	select DRM_GEM_SHMEM_HELPER
-+	select DRM_KMS_HELPER
-+	select I2C
-+	select REGMAP
-+	select REGMAP_I2C
-+	help
-+	  This is a KMS driver for USB display adapters based on the
-+	  Fresco Logic FL2000DX USB 3.0 to VGA controller, paired with an
-+	  ITE IT66121 HDMI transmitter (USB ID 1d5c:2000).
-+
-+	  If M is selected the module will be called fl2000.
 diff --git a/drivers/gpu/drm/fl2000/Makefile b/drivers/gpu/drm/fl2000/Makefile
-new file mode 100644
-index 000000000..2b3a2f151
---- /dev/null
+index 2b3a2f151..f64057634 100644
+--- a/drivers/gpu/drm/fl2000/Makefile
 +++ b/drivers/gpu/drm/fl2000/Makefile
-@@ -0,0 +1,8 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+
-+fl2000-y := \
-+	fl2000_drv.o \
-+	fl2000_i2c.o \
-+	fl2000_registers.o
-+
-+obj-$(CONFIG_DRM_FL2000) += fl2000.o
-diff --git a/drivers/gpu/drm/fl2000/fl2000.h b/drivers/gpu/drm/fl2000/fl2000.h
-new file mode 100644
-index 000000000..956032479
---- /dev/null
-+++ b/drivers/gpu/drm/fl2000/fl2000.h
-@@ -0,0 +1,88 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * (C) Copyright 2017, Fresco Logic, Incorporated.
-+ * (C) Copyright 2018-2020, Artem Mygaiev
-+ */
-+
-+#ifndef FL2000_H
-+#define FL2000_H
-+
-+#include <linux/component.h>
-+#include <linux/device.h>
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/regmap.h>
-+#include <linux/types.h>
-+#include <linux/usb.h>
-+
-+#include <drm/drm_atomic_helper.h>
-+#include <drm/drm_bridge.h>
-+#include <drm/drm_crtc.h>
-+#include <drm/drm_damage_helper.h>
-+#include <drm/drm_device.h>
-+#include <drm/drm_drv.h>
-+#include <drm/drm_fourcc.h>
-+#include <drm/drm_framebuffer.h>
-+#include <drm/drm_gem_framebuffer_helper.h>
-+#include <drm/drm_gem_shmem_helper.h>
-+#include <drm/drm_print.h>
-+#include <drm/drm_probe_helper.h>
-+#include <drm/drm_crtc_helper.h>
-+#include <drm/drm_plane.h>
-+#include <drm/drm_encoder.h>
-+#include <drm/drm_modeset_helper_vtables.h>
-+#include <drm/drm_vblank.h>
-+
-+#include "fl2000_registers.h"
-+
-+/* Known USB interfaces of FL2000 */
-+enum fl2000_interface {
-+	FL2000_USBIF_AVCONTROL = 0,
-+	FL2000_USBIF_STREAMING = 1,
-+	FL2000_USBIF_INTERRUPT = 2,
-+};
-+
-+struct fl2000_timings {
-+	u32 hactive;
-+	u32 htotal;
-+	u32 hsync_width;
-+	u32 hstart;
-+	u32 vactive;
-+	u32 vtotal;
-+	u32 vsync_width;
-+	u32 vstart;
-+};
-+
-+struct fl2000_pll {
-+	u32 prescaler;
-+	u32 multiplier;
-+	u32 divisor;
-+	u32 function;
-+};
-+
-+/* Polling interval and timeout in us for I2C read/write operations */
-+#define I2C_RDWR_INTERVAL 200
-+#define I2C_RDWR_TIMEOUT  (256 * 1000)
-+
-+/* I2C adapter interface creation */
-+struct i2c_adapter *fl2000_i2c_init(struct usb_device *usb_dev);
-+int fl2000_ddc_read_block(struct i2c_adapter *adapter, u8 *buf, unsigned int block, size_t len);
-+
-+/* Register map creation */
-+struct regmap *fl2000_regmap_init(struct usb_device *usb_dev);
-+void fl2000_regmap_drop_cache(struct usb_device *usb_dev);
-+
-+/* Registers interface */
-+int fl2000_reset(struct usb_device *usb_dev);
-+int fl2000_usb_magic(struct usb_device *usb_dev);
-+int fl2000_afe_magic(struct usb_device *usb_dev);
-+int fl2000_set_transfers(struct usb_device *usb_dev);
-+int fl2000_set_pixfmt(struct usb_device *usb_dev, u32 bytes_pix);
-+int fl2000_set_timings(struct usb_device *usb_dev, struct fl2000_timings *timings);
-+int fl2000_set_pll(struct usb_device *usb_dev, struct fl2000_pll *pll);
-+int fl2000_force_connect(struct usb_device *usb_dev, bool force);
-+int fl2000_enable_interrupts(struct usb_device *usb_dev);
-+int fl2000_read_status(struct usb_device *usb_dev, u32 *status);
-+int fl2000_i2c_dword(struct usb_device *usb_dev, bool read, u16 addr, u8 offset, u32 *data);
-+
-+#endif /* FL2000_H */
+@@ -3,6 +3,7 @@
+ fl2000-y := \
+ 	fl2000_drv.o \
+ 	fl2000_i2c.o \
++	fl2000_it66121.o \
+ 	fl2000_registers.o
+ 
+ obj-$(CONFIG_DRM_FL2000) += fl2000.o
 diff --git a/drivers/gpu/drm/fl2000/fl2000_drv.c b/drivers/gpu/drm/fl2000/fl2000_drv.c
-new file mode 100644
-index 000000000..ea089d3c1
---- /dev/null
+index ea089d3c1..107eba92c 100644
+--- a/drivers/gpu/drm/fl2000/fl2000_drv.c
 +++ b/drivers/gpu/drm/fl2000/fl2000_drv.c
-@@ -0,0 +1,150 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * (C) Copyright 2017, Fresco Logic, Incorporated.
-+ * (C) Copyright 2018-2020, Artem Mygaiev
-+ */
-+
-+#include "fl2000.h"
-+
-+#define USB_CLASS_AV		0x10
-+#define USB_SUBCLASS_AV_CONTROL 0x01
-+#define USB_SUBCLASS_AV_VIDEO	0x02
-+#define USB_SUBCLASS_AV_AUDIO	0x03
-+
-+#define USB_VENDOR_FRESCO_LOGIC 0x1D5C
-+#define USB_PRODUCT_FL2000	0x2000
-+
-+static const struct usb_device_id fl2000_id_table[] = {
-+	{ USB_DEVICE_INTERFACE_CLASS(USB_VENDOR_FRESCO_LOGIC, USB_PRODUCT_FL2000, USB_CLASS_AV) },
-+	{},
-+};
-+MODULE_DEVICE_TABLE(usb, fl2000_id_table);
-+
-+/* Devices that are independent of interfaces, created for the lifetime of the USB device */
-+struct fl2000_devs {
-+	struct regmap *regmap;
-+	struct i2c_adapter *adapter;
-+	int active_if;
-+};
-+
-+static struct fl2000_devs *fl2000_get_devices(struct usb_device *usb_dev)
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include "fl2000.h"
++#include "fl2000_it66121.h"
+ 
+ #define USB_CLASS_AV		0x10
+ #define USB_SUBCLASS_AV_CONTROL 0x01
+@@ -24,6 +25,7 @@ MODULE_DEVICE_TABLE(usb, fl2000_id_table);
+ struct fl2000_devs {
+ 	struct regmap *regmap;
+ 	struct i2c_adapter *adapter;
++	struct i2c_client *bridge_client;
+ 	int active_if;
+ };
+ 
+@@ -52,6 +54,44 @@ static struct fl2000_devs *fl2000_get_devices(struct usb_device *usb_dev)
+ 	return devs;
+ }
+ 
++static void fl2000_bridge_release(struct device *dev, void *res)
 +{
-+	struct fl2000_devs *devs;
++	struct i2c_client **client = res;
 +
-+	devs = devm_kzalloc(&usb_dev->dev, sizeof(*devs), GFP_KERNEL);
-+	if (!devs)
-+		return ERR_PTR(-ENOMEM);
-+
-+	devs->regmap = fl2000_regmap_init(usb_dev);
-+	if (IS_ERR(devs->regmap)) {
-+		dev_err(&usb_dev->dev, "Cannot initialize regmap (%pe)\n", devs->regmap);
-+		return ERR_CAST(devs->regmap);
-+	}
-+
-+	devs->adapter = fl2000_i2c_init(usb_dev);
-+	if (IS_ERR(devs->adapter)) {
-+		dev_err(&usb_dev->dev, "Cannot initialize I2C adapter (%pe)\n", devs->adapter);
-+		return ERR_CAST(devs->adapter);
-+	}
-+
-+	dev_set_drvdata(&usb_dev->dev, devs);
-+
-+	return devs;
++	dev_dbg(dev, "Destroying IT66121 bridge\n");
++	it66121_destroy(*client);
 +}
 +
-+static int fl2000_probe(struct usb_interface *interface, const struct usb_device_id *usb_dev_id)
++/*
++ * Create the IT66121 bridge and tie its destruction to the usb_device
++ * lifetime: it must survive component master del/add cycles (USB resets) and
++ * die only when the USB device is actually gone. The devres is released
++ * before the I2C adapter devres (LIFO), so the client is destroyed while its
++ * adapter still exists.
++ */
++static int fl2000_bridge_create(struct usb_device *usb_dev, struct fl2000_devs *devs)
 +{
-+	int ret = 0;
-+	u8 iface_num = interface->cur_altsetting->desc.bInterfaceNumber;
-+	struct usb_device *usb_dev = interface_to_usbdev(interface);
-+	struct fl2000_devs *devs = dev_get_drvdata(&usb_dev->dev);
++	struct i2c_client *client;
++	struct i2c_client **holder;
 +
-+	if (usb_dev->speed < USB_SPEED_HIGH) {
-+		dev_err(&usb_dev->dev, "USB 1.1 is not supported\n");
++	holder = devres_alloc(fl2000_bridge_release, sizeof(*holder), GFP_KERNEL);
++	if (!holder)
++		return -ENOMEM;
++
++	client = it66121_create(devs->adapter);
++	if (IS_ERR(client)) {
++		dev_err(&usb_dev->dev, "Cannot create HDMI bridge (%pe)\n", client);
++		devres_free(holder);
 +		return -ENODEV;
 +	}
 +
-+	if (!devs) {
-+		devs = fl2000_get_devices(usb_dev);
-+		if (IS_ERR(devs))
-+			return PTR_ERR(devs);
-+	}
++	*holder = client;
++	devres_add(&usb_dev->dev, holder);
++	devs->bridge_client = client;
 +
-+	switch (iface_num) {
-+	case FL2000_USBIF_AVCONTROL:
-+	case FL2000_USBIF_STREAMING:
-+	case FL2000_USBIF_INTERRUPT:
-+		devs->active_if |= BIT(iface_num);
-+		break;
-+
-+	default:
-+		/* Device does not have any other interfaces */
-+		dev_warn(&interface->dev, "Unexpected interface %d\n", iface_num);
-+		ret = -ENODEV;
-+		break;
-+	}
-+
-+	return ret;
++	return 0;
 +}
 +
-+static void fl2000_disconnect(struct usb_interface *interface)
-+{
-+	u8 iface_num = interface->cur_altsetting->desc.bInterfaceNumber;
-+	struct usb_device *usb_dev = interface_to_usbdev(interface);
-+	struct fl2000_devs *devs = dev_get_drvdata(&usb_dev->dev);
-+
-+	if (!devs)
-+		return;
-+
-+	switch (iface_num) {
-+	case FL2000_USBIF_AVCONTROL:
-+	case FL2000_USBIF_STREAMING:
-+	case FL2000_USBIF_INTERRUPT:
-+		devs->active_if &= ~BIT(iface_num);
-+		break;
-+
-+	default:
-+		/* Device does not have any other interfaces */
-+		dev_warn(&interface->dev, "Unexpected interface %d\n", iface_num);
-+		break;
-+	}
-+}
-+
-+static int fl2000_suspend(struct usb_interface *interface, pm_message_t message)
-+{
-+	struct usb_device *usb_dev = interface_to_usbdev(interface);
-+
+ static int fl2000_probe(struct usb_interface *interface, const struct usb_device_id *usb_dev_id)
+ {
+ 	int ret = 0;
+@@ -70,6 +110,20 @@ static int fl2000_probe(struct usb_interface *interface, const struct usb_device
+ 			return PTR_ERR(devs);
+ 	}
+ 
 +	/*
-+	 * Nothing to save yet. Providing the callback keeps the USB core from
-+	 * unbinding the driver across system sleep.
++	 * Create the IT66121 bridge if it does not exist yet. Retrying from
++	 * every interface probe covers transient detection failures on cold
++	 * boot. Once created, the bridge component persists for the lifetime of
++	 * the usb_device (across usb_reset_device() unbind/rebind cycles):
++	 * destroying and re-creating it per bind cycle leaves dangling
++	 * component pointers in the aggregate match data and crashes on rebind.
 +	 */
-+	dev_dbg(&usb_dev->dev, "suspend\n");
++	if (!devs->bridge_client) {
++		ret = fl2000_bridge_create(usb_dev, devs);
++		if (ret)
++			return ret;
++	}
 +
-+	return 0;
-+}
-+
-+static int fl2000_resume(struct usb_interface *interface)
-+{
-+	struct usb_device *usb_dev = interface_to_usbdev(interface);
-+
-+	dev_dbg(&usb_dev->dev, "resume\n");
-+
-+	return 0;
-+}
-+
-+static struct usb_driver fl2000_driver = {
-+	.name = KBUILD_MODNAME,
-+	.probe = fl2000_probe,
-+	.disconnect = fl2000_disconnect,
-+	.suspend = fl2000_suspend,
-+	.resume = fl2000_resume,
-+	.id_table = fl2000_id_table,
-+	.supports_autosuspend = false,
-+	.disable_hub_initiated_lpm = true,
-+};
-+
-+module_usb_driver(fl2000_driver);
-+
-+MODULE_AUTHOR("Artem Mygaiev");
-+MODULE_DESCRIPTION("FL2000 USB display driver");
-+MODULE_LICENSE("GPL");
-diff --git a/drivers/gpu/drm/fl2000/fl2000_i2c.c b/drivers/gpu/drm/fl2000/fl2000_i2c.c
+ 	switch (iface_num) {
+ 	case FL2000_USBIF_AVCONTROL:
+ 	case FL2000_USBIF_STREAMING:
+@@ -96,6 +150,12 @@ static void fl2000_disconnect(struct usb_interface *interface)
+ 	if (!devs)
+ 		return;
+ 
++	/*
++	 * The IT66121 bridge is intentionally NOT destroyed here: disconnect
++	 * also runs for the transient unbind/rebind cycles of
++	 * usb_reset_device(), where the usb_device survives. Its destruction is
++	 * a devres of the usb_device, see fl2000_bridge_create().
++	 */
+ 	switch (iface_num) {
+ 	case FL2000_USBIF_AVCONTROL:
+ 	case FL2000_USBIF_STREAMING:
+diff --git a/drivers/gpu/drm/fl2000/fl2000_it66121.c b/drivers/gpu/drm/fl2000/fl2000_it66121.c
 new file mode 100644
-index 000000000..eadbe0f67
+index 000000000..208f92823
 --- /dev/null
-+++ b/drivers/gpu/drm/fl2000/fl2000_i2c.c
-@@ -0,0 +1,182 @@
++++ b/drivers/gpu/drm/fl2000/fl2000_it66121.c
+@@ -0,0 +1,1030 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * (C) Copyright 2017, Fresco Logic, Incorporated.
 + * (C) Copyright 2018-2019, Artem Mygaiev
 + */
 +
++#include <linux/delay.h>
++#include <linux/hdmi.h>
 +#include <linux/unaligned.h>
 +
++#include <drm/drm_atomic_state_helper.h>
 +#include <drm/drm_edid.h>
 +
 +#include "fl2000.h"
++#include "fl2000_it66121.h"
++#include "fl2000_it66121_regs.h"
 +
-+/*
-+ * The I2C controller requires a mandatory 8-bit sub-address for any read/write operation. Each
-+ * read or write operates on 8-bit data. Every exchange shall consist of 2 messages (sub-address +
-+ * data) combined. The USB transfer always aligns the address to a 4-byte boundary.
-+ */
-+#define I2C_CMESSAGES_NUM  2
-+#define I2C_REG_ADDR_SIZE  (sizeof(u8))
-+#define I2C_REG_DATA_SIZE  (sizeof(u8))
-+#define I2C_XFER_ADDR_MASK (~0x3ul)
++/* HW defect leading to losing 3 first bytes during EDID read operation */
++#define EDID_LOSS_LEN 3
 +
-+static inline int fl2000_i2c_read_dword(struct usb_device *usb_dev, u16 addr, u8 offset, u32 *data)
-+{
-+	return fl2000_i2c_dword(usb_dev, true, addr, offset, data);
-+}
++#define VENDOR_ID      0x4954
++#define DEVICE_ID      0x0612
++#define REVISION_MASK  0xF000
++#define REVISION_SHIFT 12
 +
-+static inline int fl2000_i2c_write_dword(struct usb_device *usb_dev, u16 addr, u8 offset, u32 *data)
-+{
-+	return fl2000_i2c_dword(usb_dev, false, addr, offset, data);
-+}
++#define IRQ_POLL_INTRVL 100
 +
-+static int fl2000_i2c_xfer(struct i2c_adapter *adapter, struct i2c_msg *msgs, int num)
-+{
-+	int ret;
-+	bool read;
-+	u16 addr;
-+	u8 idx;
-+	u8 offset;
-+	u32 data;
-+
-+	addr = msgs[0].addr;
-+	offset = msgs[0].buf[0] & I2C_XFER_ADDR_MASK;
-+	idx = msgs[0].buf[0] - offset;
-+
-+	/*
-+	 * We expect the following:
-+	 * - 2 messages, each 1 byte, first write then read
-+	 * - 1 message, 2 bytes, write
-+	 */
-+	if (num == 2) {
-+		read = true;
-+	} else if (num == 1) {
-+		if (msgs[0].len == 2 && !(msgs[0].flags & I2C_M_RD))
-+			read = false;
-+		else
-+			return -EOPNOTSUPP;
-+	} else {
-+		return -EOPNOTSUPP;
-+	}
-+
-+	/*
-+	 * The FL2000 I2C engine only transfers aligned dwords, so the offset is aligned down to a
-+	 * 4-byte boundary and the requested byte is picked out of (or merged into) the dword.
-+	 */
-+	if (read) {
-+		ret = fl2000_i2c_read_dword(adapter->algo_data, addr, offset, &data);
-+		if (ret)
-+			return ret;
-+
-+		msgs[1].buf[0] = data >> (idx * 8);
-+	} else {
-+		/*
-+		 * Since the FL2000 I2C engine always operates on 4-byte messages, we need to read
-+		 * before write in order not to corrupt the unrelated registers of the same dword.
-+		 */
-+		ret = fl2000_i2c_read_dword(adapter->algo_data, addr, offset, &data);
-+		if (ret)
-+			return ret;
-+
-+		data &= ~(0xffU << (idx * 8));
-+		data |= (u32)msgs[0].buf[1] << (idx * 8);
-+
-+		ret = fl2000_i2c_write_dword(adapter->algo_data, addr, offset, &data);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return num;
-+}
-+
-+/*
-+ * Monitor DDC on the FL2000 bus. The bridge's own EDID FIFO does not work on the tested boards, and
-+ * the VGA connector has no bridge at all, so EDID is read with the FL2000 I2C engine at address
-+ * 0x50, 4 bytes per operation with an 8-bit offset, which covers EDID blocks 0 and 1.
-+ */
-+#define FL2000_DDC_ADDR 0x50
-+
-+/**
-+ * fl2000_ddc_read_block() - read one EDID block through the FL2000 I2C engine
-+ * @adapter: the FL2000 I2C adapter
-+ * @buf: destination, @len bytes
-+ * @block: EDID block number (0 or 1)
-+ * @len: bytes to read, at most EDID_LENGTH
-+ *
-+ * The signature matches what drm_edid_read_custom() expects, with the adapter as context.
-+ *
-+ * Return: 0 on success, a negative error code otherwise
-+ */
-+int fl2000_ddc_read_block(struct i2c_adapter *adapter, u8 *buf, unsigned int block, size_t len)
-+{
-+	struct usb_device *usb_dev = adapter->algo_data;
-+	unsigned int start = block * EDID_LENGTH;
-+	int ret = 0;
-+
-+	if (block > 1 || len > EDID_LENGTH)
-+		return -EOPNOTSUPP;
-+
-+	/* One operation of the engine is a sequence of register accesses: keep others out */
-+	i2c_lock_bus(adapter, I2C_LOCK_SEGMENT);
-+	for (unsigned int i = 0; i < len; i += 4) {
-+		u32 data;
-+
-+		ret = fl2000_i2c_dword(usb_dev, true, FL2000_DDC_ADDR, start + i, &data);
-+		if (ret)
-+			break;
-+
-+		put_unaligned_le32(data, buf + i);
-+	}
-+	i2c_unlock_bus(adapter, I2C_LOCK_SEGMENT);
-+
-+	return ret;
-+}
-+
-+static u32 fl2000_i2c_func(struct i2c_adapter *adap)
-+{
-+	return I2C_FUNC_I2C | I2C_FUNC_NOSTART;
-+}
-+
-+static const struct i2c_algorithm fl2000_i2c_algorithm = {
-+	.xfer = fl2000_i2c_xfer,
-+	.functionality = fl2000_i2c_func,
-+};
-+
-+static const struct i2c_adapter_quirks fl2000_i2c_quirks = {
-+	/* Combined transfers only: an address write, then data, on the same address */
-+	.flags = I2C_AQ_COMB | I2C_AQ_COMB_WRITE_FIRST | I2C_AQ_COMB_SAME_ADDR,
-+	.max_num_msgs = I2C_CMESSAGES_NUM,
-+	.max_write_len = 2 * I2C_REG_DATA_SIZE,
-+	.max_read_len = I2C_REG_DATA_SIZE,
-+	.max_comb_1st_msg_len = I2C_REG_ADDR_SIZE,
-+	.max_comb_2nd_msg_len = I2C_REG_DATA_SIZE,
-+};
-+
-+struct i2c_adapter *fl2000_i2c_init(struct usb_device *usb_dev)
-+{
-+	int ret;
++struct it66121_priv {
 +	struct i2c_adapter *adapter;
-+	u8 usb_path[32];
++	struct i2c_client *client;
++	struct regmap *regmap;
++	struct drm_bridge bridge;
 +
-+	/* Adapter must be allocated before anything else */
-+	adapter = devm_kzalloc(&usb_dev->dev, sizeof(*adapter), GFP_KERNEL);
-+	if (!adapter)
-+		return ERR_PTR(-ENOMEM);
++	struct delayed_work work;
++	struct workqueue_struct *work_queue;
 +
-+	adapter->owner = THIS_MODULE;
-+	adapter->algo = &fl2000_i2c_algorithm;
-+	adapter->quirks = &fl2000_i2c_quirks;
-+	adapter->algo_data = usb_dev;
-+	adapter->dev.parent = &usb_dev->dev;
-+	strscpy(adapter->name, "FL2000 bridge I2C bus", sizeof(adapter->name));
++	/* Serializes users of the DDC engine (multi-step EDID FIFO reads) */
++	struct mutex ddc_lock;
++	/* The EDID is read through the FL2000 bus, not the IT66121 FIFO, on this board */
++	bool edid_direct;
++	/* Set when the monitor went away: the cached EDID is no longer valid */
++	bool edid_stale;
 +
-+	ret = devm_i2c_add_adapter(&usb_dev->dev, adapter);
-+	if (ret)
-+		return ERR_PTR(ret);
++	struct regmap_field *irq_pending;
++	struct regmap_field *hpd;
++	struct regmap_field *clr_irq;
 +
-+	usb_make_path(usb_dev, usb_path, sizeof(usb_path));
-+	dev_dbg(&usb_dev->dev, "Created FL2000 bridge I2C bus %d at interface %s\n",
-+		i2c_adapter_id(adapter), usb_path);
++	/* EDID of the monitor, kept for as long as it stays; NULL if it could not be read */
++	const struct drm_edid *drm_edid;
++};
 +
-+	return adapter;
-+}
-diff --git a/drivers/gpu/drm/fl2000/fl2000_registers.c b/drivers/gpu/drm/fl2000/fl2000_registers.c
-new file mode 100644
-index 000000000..231814471
---- /dev/null
-+++ b/drivers/gpu/drm/fl2000/fl2000_registers.c
-@@ -0,0 +1,320 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * (C) Copyright 2017, Fresco Logic, Incorporated.
-+ * (C) Copyright 2018-2019, Artem Mygaiev
-+ */
++static const struct regmap_range_cfg it66121_regmap_banks[] = {
++	/*
++	 * Do not put common registers to any range, this will lead to skipping "bank" configuration
++	 * when accessing those at addresses 0x00-0x2F.
++	 */
++	{
++		.name = "Banks",
++		.range_min = IT66121_BANK_START,
++		.range_max = IT66121_BANK_END,
++		.selector_reg = IT66121_SYS_CONTROL,
++		.selector_mask = IT66121_SYS_BANK_MASK,
++		.selector_shift = 0,
++		.window_start = IT66121_BANK_START,
++		.window_len = IT66121_BANK_SIZE,
++	},
++};
 +
-+#include <linux/bitfield.h>
-+#include <linux/delay.h>
-+
-+#include "fl2000.h"
-+
-+#define CONTROL_MSG_READ  64
-+#define CONTROL_MSG_WRITE 65
-+
-+#define FL2000_HW_RST_MDELAY 10
-+
-+static bool fl2000_reg_precious(struct device *dev, unsigned int reg)
++static bool it66121_reg_volatile(struct device *dev, unsigned int reg)
 +{
-+	return FL2000_REG_PRECIOUS(reg);
++	return IT66121_REG_VOLATILE(reg);
 +}
 +
-+static bool fl2000_reg_volatile(struct device *dev, unsigned int reg)
-+{
-+	return FL2000_REG_VOLATILE(reg);
-+}
-+
-+/* Protected by internal regmap mutex */
-+static int fl2000_reg_read(void *context, unsigned int reg, unsigned int *val)
-+{
-+	struct usb_device *usb_dev = context;
-+	__le32 data;
-+	int ret;
-+
-+	ret = usb_control_msg_recv(usb_dev, 0, CONTROL_MSG_READ, USB_DIR_IN | USB_TYPE_VENDOR, 0,
-+				   reg, &data, sizeof(data), USB_CTRL_GET_TIMEOUT, GFP_KERNEL);
-+	if (ret)
-+		return ret;
-+
-+	*val = le32_to_cpu(data);
-+
-+	return 0;
-+}
-+
-+/* Protected by internal regmap mutex */
-+static int fl2000_reg_write(void *context, unsigned int reg, unsigned int val)
-+{
-+	struct usb_device *usb_dev = context;
-+	__le32 data = cpu_to_le32(val);
-+
-+	return usb_control_msg_send(usb_dev, 0, CONTROL_MSG_WRITE, USB_DIR_OUT | USB_TYPE_VENDOR, 0,
-+				    reg, &data, sizeof(data), USB_CTRL_SET_TIMEOUT, GFP_KERNEL);
-+}
-+
-+/*
-+ * We do not use default values as per documentation because:
-+ *  a) somehow they differ from real HW
-+ *  b) on SW reset not all of them are cleared
-+ */
-+static const struct regmap_config fl2000_regmap_config = {
-+	.val_bits = 32,
-+	.reg_bits = 16,
-+	.reg_stride = 4,
-+	.max_register = 0xFFFF,
++static const struct regmap_config it66121_regmap_config = {
++	.val_bits = 8, /* 8-bit register size */
++	.reg_bits = 8, /* 8-bit register address space */
++	.reg_stride = 1,
++	.max_register = 2 * IT66121_BANK_SIZE - 1, /* 2 banks of registers */
 +
 +	.cache_type = REGCACHE_MAPLE,
 +
-+	.precious_reg = fl2000_reg_precious,
-+	.volatile_reg = fl2000_reg_volatile,
++	.volatile_reg = it66121_reg_volatile,
++
++	.ranges = it66121_regmap_banks,
++	.num_ranges = ARRAY_SIZE(it66121_regmap_banks),
 +
 +	.reg_format_endian = REGMAP_ENDIAN_BIG,
 +	.val_format_endian = REGMAP_ENDIAN_BIG,
-+
-+	.reg_read = fl2000_reg_read,
-+	.reg_write = fl2000_reg_write,
 +
 +	.use_single_read = true,
 +	.use_single_write = true,
 +};
 +
-+int fl2000_set_pll(struct usb_device *usb_dev, struct fl2000_pll *pll)
-+{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+	u32 val;
-+
-+	val = FIELD_PREP(FL2000_VGA_PLL_PRESCALER, pll->prescaler) |
-+	      FIELD_PREP(FL2000_VGA_PLL_MULTIPLIER, pll->multiplier) |
-+	      FIELD_PREP(FL2000_VGA_PLL_DIVISOR, pll->divisor) |
-+	      FIELD_PREP(FL2000_VGA_PLL_FUNCTION, pll->function);
-+	regmap_write(regmap, FL2000_VGA_PLL_REG, val);
-+
-+	val = FL2000_VGA_CTRL_ACLK_FORCE_PLL_UP;
-+	regmap_write_bits(regmap, FL2000_VGA_CTRL_REG_ACLK, val, val);
-+
-+	return 0;
-+}
-+
 +/*
-+ * Make the chip believe a monitor is connected whatever its own sense says. The HDMI path has
-+ * always run with this set, so it stays set while HDMI is driven. It must be clear while only VGA
-+ * is driven: it hides the cable being unplugged, and with it clear the chip powers its DAC and PLL
-+ * by itself whenever it senses a monitor.
++ * Poll sparsely: every status read is a transaction on the shared bus that
++ * competes with the DDC engine's own transfer.
 + */
-+int fl2000_force_connect(struct usb_device *usb_dev, bool force)
++#define EDID_SLEEP   5000
++#define EDID_TIMEOUT 500000
++
++#define EDID_HDCP_ADDR 0x74
++#define EDID_DDC_ADDR  0xA0
++
++#define EDID_FIFO_SIZE 32
++
++enum it66121_ddc_cmd {
++	DDC_CMD_BURST_READ = 0x0,
++	DDC_CMD_LINK_CHECK = 0x2,
++	DDC_CMD_EDID_READ = 0x3,
++	DDC_CMD_ASKV_WRITE = 0x4,
++	DDC_CMD_AINFO_WRITE = 0x5,
++	DDC_CMD_AN_WRITE = 0x6,
++	DDC_CMD_FIFO_CLEAR = 0x9,
++	DDC_CMD_SCL_PULSE = 0xA,
++	DDC_CMD_ABORT = 0xF,
++};
++
++static int it66121_configure_input(struct it66121_priv *priv)
 +{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+
-+	return regmap_write_bits(regmap, FL2000_VGA_CTRL_REG_ACLK,
-+				 FL2000_VGA_CTRL_ACLK_FORCE_VGA_CONNECT,
-+				 force ? FL2000_VGA_CTRL_ACLK_FORCE_VGA_CONNECT : 0);
-+}
-+
-+int fl2000_set_timings(struct usb_device *usb_dev, struct fl2000_timings *timings)
-+{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+
-+	regmap_write(regmap, FL2000_VGA_HSYNC_REG1,
-+		     FIELD_PREP(FL2000_VGA_HSYNC1_HACTIVE, timings->hactive) |
-+		     FIELD_PREP(FL2000_VGA_HSYNC1_HTOTAL, timings->htotal));
-+
-+	regmap_write(regmap, FL2000_VGA_HSYNC_REG2,
-+		     FIELD_PREP(FL2000_VGA_HSYNC2_HSYNC_WIDTH, timings->hsync_width) |
-+		     FIELD_PREP(FL2000_VGA_HSYNC2_HSTART, timings->hstart));
-+
-+	regmap_write(regmap, FL2000_VGA_VSYNC_REG1,
-+		     FIELD_PREP(FL2000_VGA_VSYNC1_VACTIVE, timings->vactive) |
-+		     FIELD_PREP(FL2000_VGA_VSYNC1_VTOTAL, timings->vtotal));
-+
-+	regmap_write(regmap, FL2000_VGA_VSYNC_REG2,
-+		     FIELD_PREP(FL2000_VGA_VSYNC2_VSYNC_WIDTH, timings->vsync_width) |
-+		     FIELD_PREP(FL2000_VGA_VSYNC2_VSTART, timings->vstart) |
-+		     FIELD_PREP(FL2000_VGA_VSYNC2_START_LATENCY, timings->vstart));
-+
-+	return 0;
-+}
-+
-+int fl2000_set_pixfmt(struct usb_device *usb_dev, u32 bytes_pix)
-+{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+	u32 mask, val;
-+
-+	mask = FL2000_VGA_CTRL_PXCLK_DAC_OUTPUT_EN | FL2000_VGA_CTRL_PXCLK_DROP_CNT |
-+	       FL2000_VGA_CTRL_PXCLK_VGA565_MODE | FL2000_VGA_CTRL_PXCLK_VGA332_MODE |
-+	       FL2000_VGA_CTRL_PXCLK_VGA555_MODE | FL2000_VGA_CTRL_PXCLK_VGA_COMPRESS |
-+	       FL2000_VGA_CTRL_PXCLK_CLEAR_WATERMARK;
-+	val = FL2000_VGA_CTRL_PXCLK_DAC_OUTPUT_EN | FL2000_VGA_CTRL_PXCLK_CLEAR_WATERMARK;
-+	if (bytes_pix == 2)
-+		val |= FL2000_VGA_CTRL_PXCLK_VGA565_MODE;
-+	regmap_write_bits(regmap, FL2000_VGA_CTRL_REG_PXCLK, mask, val);
-+
-+	return 0;
-+}
-+
-+int fl2000_set_transfers(struct usb_device *usb_dev)
-+{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+	u32 mask;
-+
-+	mask = FL2000_VGA_CTRL_ACLK_USE_PKT_PENDING | FL2000_VGA_CTRL_ACLK_USE_ZERO_TD |
-+	       FL2000_VGA_CTRL_ACLK_USE_ZERO_PKT_LEN;
-+	regmap_write_bits(regmap, FL2000_VGA_CTRL_REG_ACLK, mask,
-+			  FL2000_VGA_CTRL_ACLK_USE_ZERO_PKT_LEN);
-+
-+	regmap_write_bits(regmap, FL2000_VGA_ISOCH_REG, FL2000_VGA_ISOCH_MFRAME_CNT, 0);
-+
-+	return 0;
-+}
-+
-+int fl2000_reset(struct usb_device *usb_dev)
-+{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+
-+	regmap_write_bits(regmap, FL2000_RST_CTRL_REG, FL2000_RST_CTRL_SW_RESET,
-+			  FL2000_RST_CTRL_SW_RESET);
-+
-+	msleep(FL2000_HW_RST_MDELAY);
-+
-+	return 0;
-+}
-+
-+int fl2000_afe_magic(struct usb_device *usb_dev)
-+{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+
-+	regmap_write_bits(regmap, FL2000_USB_LPM_REG, FL2000_USB_LPM_MAGIC, FL2000_USB_LPM_MAGIC);
-+
-+	return 0;
-+}
-+
-+int fl2000_usb_magic(struct usb_device *usb_dev)
-+{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+	u32 val;
-+
-+	val = FL2000_VGA_I2C_SC_MONITOR_DETECT | FL2000_VGA_I2C_SC_EDID_DETECT;
-+	regmap_write_bits(regmap, FL2000_VGA_I2C_SC_REG, val, val);
-+
-+	regmap_write_bits(regmap, FL2000_VGA_CTRL_REG_3, FL2000_VGA_CTRL3_WAKEUP_CLR_EN, 0);
-+
-+	val = FL2000_USB_LPM_U1_REJECT | FL2000_USB_LPM_U2_REJECT;
-+	regmap_write_bits(regmap, FL2000_USB_LPM_REG, val, val);
-+
-+	regmap_write_bits(regmap, FL2000_USB_CTRL_REG, FL2000_USB_CTRL_WAKE_NRDY, 0);
-+
-+	return 0;
-+}
-+
-+int fl2000_enable_interrupts(struct usb_device *usb_dev)
-+{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+	u32 mask, val;
-+
-+	val = FL2000_VGA_CTRL_ACLK_VGA_ERR_INT_EN | FL2000_VGA_CTRL_ACLK_LBUF_ERR_INT_EN |
-+	      FL2000_VGA_CTRL_ACLK_EDID_MON_INT_EN;
-+	mask = val | FL2000_VGA_CTRL_ACLK_FEEDBACK_INT_EN;
-+	regmap_write_bits(regmap, FL2000_VGA_CTRL_REG_ACLK, mask, val);
-+
-+	regmap_write_bits(regmap, FL2000_VGA_CTRL2_REG_ACLK, FL2000_VGA_CTRL2_ACLK_HDMI_INT_EN,
-+			  FL2000_VGA_CTRL2_ACLK_HDMI_INT_EN);
-+
-+	return 0;
-+}
-+
-+/*
-+ * Read the status register. Its event bits clear on read, so whoever reads it owns the events it
-+ * returns: callers must not drop them.
-+ */
-+int fl2000_read_status(struct usb_device *usb_dev, u32 *status)
-+{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+	unsigned int val;
-+	u32 mask;
 +	int ret;
 +
-+	ret = regmap_read(regmap, FL2000_VGA_STATUS_REG, &val);
++	/*
++	 * This configures the bridge IC connection to the encoder IC, i.e. the
++	 * interface between IT66121 and FL2000. It is fixed by the board design,
++	 * so it is hardcoded:
++	 *   - input mode RGB
++	 *   - IO latch clock = TXCLK
++	 *   - CCIR656 disabled
++	 *   - embedded sync disabled
++	 *   - DDR mode disabled
++	 *   - 1 cycle input PCLK delay
++	 */
++	ret = regmap_write(priv->regmap, IT66121_INPUT_MODE,
++			   IT66121_INPUT_MODE_RGB | IT66121_INPUT_PCLKDELAY1);
 +	if (ret)
 +		return ret;
 +
-+	/* LBUF issues are recoverable */
-+	mask = val & (FL2000_VGA_STATUS_LBUF_OVERFLOW | FL2000_VGA_STATUS_LBUF_UNDERFLOW);
-+	if (mask)
-+		regmap_write_bits(regmap, FL2000_VGA_STATUS_REG, mask, val);
-+
-+	/* lbuf_halt and vga_error are not handled: no recovery sequence is known */
-+
-+	*status = val;
++	/*
++	 * No color space conversion: the input is RGB and so is the output, so the
++	 * conversion matrix and blank levels are left untouched.
++	 */
++	ret = regmap_write(priv->regmap, IT66121_INPUT_COLOR_CONV, IT66121_INPUT_NO_CONV);
++	if (ret)
++		return ret;
 +
 +	return 0;
 +}
 +
-+int fl2000_i2c_dword(struct usb_device *usb_dev, bool read, u16 addr, u8 offset, u32 *data)
++static int it66121_configure_afe(struct it66121_priv *priv, int clock_khz)
++{
++	int ret;
++
++	ret = regmap_write(priv->regmap, IT66121_AFE_DRV_CONTROL, IT66121_AFE_RST);
++	if (ret)
++		return ret;
++
++	/* Values from the vendor reference driver, the bits are undocumented */
++	if (clock_khz > 80000) {
++		ret = regmap_write_bits(priv->regmap, IT66121_AFE_XP_CONTROL, 0x90, 0x80);
++		if (ret)
++			return ret;
++		ret = regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_1, 0x89, 0x80);
++		if (ret)
++			return ret;
++		ret = regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_3, 0x10, 0x80);
++		if (ret)
++			return ret;
++	} else {
++		ret = regmap_write_bits(priv->regmap, IT66121_AFE_XP_CONTROL, 0x90, 0x10);
++		if (ret)
++			return ret;
++		ret = regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_1, 0x89, 0x09);
++		if (ret)
++			return ret;
++		ret = regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_3, 0x10, 0x10);
++		if (ret)
++			return ret;
++	}
++
++	/* Fire AFE */
++	ret = regmap_write(priv->regmap, IT66121_AFE_DRV_CONTROL, 0);
++	if (ret)
++		return ret;
++
++	return 0;
++}
++
++/* DDC status bits: done (7), active (6), noack/wait bus/arbitration lose (5:3) */
++#define DDC_STATUS_TX_DONE    BIT(7)
++#define DDC_STATUS_ACTIVE     BIT(6)
++#define DDC_STATUS_ERROR_MASK GENMASK(5, 3)
++
++static int it66121_wait_ddc_ready(struct it66121_priv *priv)
 +{
 +	int ret;
 +	unsigned int val;
-+	u32 mask;
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
-+
-+	if (!read) {
-+		ret = regmap_write(regmap, FL2000_VGA_I2C_WR_REG, *data);
-+		if (ret)
-+			return -EIO;
-+	}
 +
 +	/*
-+	 * The detection bits always read back as 0, so they need to be set again on every write.
-+	 * It is not clear whether the monitor detection circuit is needed at all for the HDMI use
-+	 * case.
++	 * Wait for completion only. On this hardware the FL2000 I2C master and
++	 * the IT66121 DDC master share the physical bus, so 'wait bus' and
++	 * 'arbitration lose' flags are live/latched transients of the engine
++	 * retrying on a contended bus, not terminal errors - the only reliable
++	 * terminal signal is TX_DONE (or the timeout).
 +	 */
-+	mask = FL2000_VGA_I2C_SC_MONITOR_DETECT | FL2000_VGA_I2C_SC_EDID_DETECT |
-+	       FL2000_VGA_I2C_SC_STATUS | FL2000_VGA_I2C_SC_ADDR | FL2000_VGA_I2C_SC_CMD |
-+	       FL2000_VGA_I2C_SC_OFFSET | FL2000_VGA_I2C_SC_DONE;
-+	val = FL2000_VGA_I2C_SC_MONITOR_DETECT | FL2000_VGA_I2C_SC_EDID_DETECT |
-+	      FIELD_PREP(FL2000_VGA_I2C_SC_ADDR, addr) |
-+	      FIELD_PREP(FL2000_VGA_I2C_SC_CMD, read) |
-+	      FIELD_PREP(FL2000_VGA_I2C_SC_OFFSET, offset);
-+
-+	ret = regmap_write_bits(regmap, FL2000_VGA_I2C_SC_REG, mask, val);
-+	if (ret)
-+		return -EIO;
-+
-+	ret = regmap_read_poll_timeout(regmap, FL2000_VGA_I2C_SC_REG, val,
-+				       val & FL2000_VGA_I2C_SC_DONE, I2C_RDWR_INTERVAL,
-+				       I2C_RDWR_TIMEOUT);
-+	/*
-+	 * This shouldn't normally happen: there's internal 256ms HW timeout on I2C operations and
-+	 * USB must be always available so no I/O errors. But if it happens we are probably facing
-+	 * an irreversible HW issue.
-+	 */
-+	if (ret || FIELD_GET(FL2000_VGA_I2C_SC_STATUS, val))
-+		return -EIO;
-+
-+	if (read) {
-+		ret = regmap_read(regmap, FL2000_VGA_I2C_RD_REG, data);
-+		if (ret)
-+			return -EIO;
++	ret = regmap_read_poll_timeout(priv->regmap, IT66121_DDC_STATUS, val,
++				       val & DDC_STATUS_TX_DONE, EDID_SLEEP, EDID_TIMEOUT);
++	if (ret) {
++		dev_err(&priv->client->dev, "DDC not done (%d), status 0x%02X\n", ret, val);
++		return ret;
 +	}
 +
 +	return 0;
 +}
 +
-+/*
-+ * The chip may have lost power (system sleep): forget the cached registers, so that the
-+ * read-modify-write updates that follow read the chip instead of skipping writes it still needs.
++static int it66121_clear_ddc_fifo(struct it66121_priv *priv)
++{
++	int ret;
++
++	ret = regmap_write(priv->regmap, IT66121_DDC_COMMAND, DDC_CMD_FIFO_CLEAR);
++	if (ret)
++		return ret;
++
++	return 0;
++}
++
++static int it66121_abort_ddc_ops(struct it66121_priv *priv)
++{
++	int ret;
++	unsigned int swreset, cpdesire;
++
++	/*
++	 * The HDCP engine shares the DDC master and holds the bus after chip
++	 * reset (DDC status reports 'wait bus' + 'arbitration lose', 0x1A).
++	 * Follow the ITE reference sequence, as the ite-it66121 driver does:
++	 * clear HDCP CP_DESIRE, reset the HDCP engine and re-select the host as
++	 * DDC master before issuing the abort command.
++	 */
++	ret = regmap_read(priv->regmap, IT66121_SW_RST, &swreset);
++	if (ret)
++		return ret;
++
++	ret = regmap_read(priv->regmap, IT66121_HDCP_CONTROL, &cpdesire);
++	if (ret)
++		return ret;
++
++	ret = regmap_write(priv->regmap, IT66121_HDCP_CONTROL,
++			   cpdesire & ~IT66121_HDCP_CP_DESIRE);
++	if (ret)
++		return ret;
++
++	ret = regmap_write(priv->regmap, IT66121_SW_RST, swreset | IT66121_SW_HDCP_RST);
++	if (ret)
++		return ret;
++
++	ret = regmap_write(priv->regmap, IT66121_DDC_CONTROL,
++			   IT66121_DDC_MASTER_DDC | IT66121_DDC_MASTER_HOST);
++	if (ret)
++		return ret;
++
++	/* The ITE reference driver issues the abort command twice */
++	for (int i = 0; i < 2; i++) {
++		ret = regmap_write(priv->regmap, IT66121_DDC_COMMAND, DDC_CMD_ABORT);
++		if (ret)
++			return ret;
++
++		ret = it66121_wait_ddc_ready(priv);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++
++/**
++ * it66121_hpd_connected() - live state of the HDMI hot plug detect line
++ * @bridge: the IT66121 bridge
++ *
++ * Return: 1 if an HDMI monitor is connected, 0 if not, a negative error code if the line cannot
++ * be read
 + */
-+void fl2000_regmap_drop_cache(struct usb_device *usb_dev)
++int it66121_hpd_connected(struct drm_bridge *bridge)
 +{
-+	struct regmap *regmap = dev_get_regmap(&usb_dev->dev, NULL);
++	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
++	unsigned int val;
++	int ret;
 +
-+	regcache_drop_region(regmap, 0, fl2000_regmap_config.max_register);
++	ret = regmap_field_read(priv->hpd, &val);
++	if (ret)
++		return ret;
++
++	return !!val;
 +}
 +
-+struct regmap *fl2000_regmap_init(struct usb_device *usb_dev)
++/*
++ * Acknowledges pending IT66121 interrupts. The IT66121 interrupt line is
++ * routed to the FL2000, which reports it on its own interrupt endpoint (see
++ * fl2000_interrupt.c); hotplug is handled from there, by re-probing the
++ * connector. The interrupt sources themselves are not decoded here.
++ */
++static void it66121_intr_work(struct work_struct *work_item)
 +{
-+	struct regmap *regmap;
++	int ret;
++	unsigned int val;
++	struct delayed_work *dwork = to_delayed_work(work_item);
++	struct it66121_priv *priv = container_of(dwork, struct it66121_priv, work);
++	/* Do not use bridge.dev here: it is NULL while the bridge is detached */
++	struct device *dev = &priv->client->dev;
 +
-+	regmap = devm_regmap_init(&usb_dev->dev, NULL, usb_dev, &fl2000_regmap_config);
-+	if (IS_ERR(regmap))
-+		dev_err(&usb_dev->dev, "Registers map failed (%pe)\n", regmap);
++	ret = regmap_field_read(priv->irq_pending, &val);
++	if (ret) {
++		dev_err(dev, "Cannot read interrupt status (%d)\n", ret);
++		return;
++	}
 +
-+	return regmap;
++	if (val) {
++		ret = regmap_read(priv->regmap, IT66121_INT_STATUS_1, &val);
++		if (ret) {
++			dev_err(dev, "Cannot read IT66121_INT_STATUS_1 (%d)\n", ret);
++			return;
++		}
++
++		regmap_field_write(priv->clr_irq, 1);
++	}
++
++	queue_delayed_work(priv->work_queue, &priv->work, msecs_to_jiffies(IRQ_POLL_INTRVL));
 +}
-diff --git a/drivers/gpu/drm/fl2000/fl2000_registers.h b/drivers/gpu/drm/fl2000/fl2000_registers.h
++
++/*
++ * EDID read through the IT66121 DDC master (EDID FIFO command), for boards
++ * where the monitor's DDC lines are wired to the IT66121.
++ */
++static int it66121_do_get_edid_block(struct it66121_priv *priv, u8 *buf, unsigned int block,
++				     size_t len)
++{
++	int ret;
++	size_t remain = len;
++	unsigned int val;
++	unsigned int segment = block >> 1;
++	unsigned int offset = (block & 1) ? 128 : 0;
++	static const u8 header[EDID_LOSS_LEN] = { 0x00, 0xFF, 0xFF };
++
++	/* Abort any ongoing DDC operation */
++	ret = it66121_abort_ddc_ops(priv);
++	if (ret)
++		return ret;
++
++	/*
++	 * Statically fill first 3 bytes (due to EDID reading HW bug they are
++	 * lost, but they are constant in any valid EDID header).
++	 */
++	while (offset < EDID_LOSS_LEN && remain > 0) {
++		*(buf++) = header[offset];
++		remain--;
++		offset++;
++	}
++
++	while (remain > 0) {
++		/* Add bytes that will be lost during EDID read */
++		size_t size = remain + EDID_LOSS_LEN;
++
++		/* ... and check size fits FIFO */
++		size = min_t(size_t, size, EDID_FIFO_SIZE);
++
++		ret = it66121_clear_ddc_fifo(priv);
++		if (ret)
++			return ret;
++
++		ret = regmap_write(priv->regmap, IT66121_DDC_ADDRESS, EDID_DDC_ADDR);
++		if (ret)
++			return ret;
++
++		/* Account 3 bytes that will be lost */
++		ret = regmap_write(priv->regmap, IT66121_DDC_OFFSET, offset - EDID_LOSS_LEN);
++		if (ret)
++			return ret;
++
++		ret = regmap_write(priv->regmap, IT66121_DDC_SIZE, (unsigned int)size);
++		if (ret)
++			return ret;
++
++		ret = regmap_write(priv->regmap, IT66121_DDC_SEGMENT, segment);
++		if (ret)
++			return ret;
++
++		ret = regmap_write(priv->regmap, IT66121_DDC_COMMAND, DDC_CMD_EDID_READ);
++		if (ret)
++			return ret;
++
++		ret = it66121_wait_ddc_ready(priv);
++		if (ret) {
++			it66121_abort_ddc_ops(priv);
++			return ret;
++		}
++
++		/* Deduct lost bytes when reading from FIFO */
++		size -= EDID_LOSS_LEN;
++
++		for (size_t i = 0; i < size; i++) {
++			ret = regmap_read(priv->regmap, IT66121_DDC_RD_FIFO, &val);
++			if (ret)
++				return ret;
++
++			*(buf++) = val & 0xFF;
++		}
++
++		remain -= size;
++		offset += size;
++	}
++
++	return 0;
++}
++
++static int it66121_get_edid_block(void *context, u8 *buf, unsigned int block, size_t len)
++{
++	struct it66121_priv *priv = context;
++	int ret;
++
++	mutex_lock(&priv->ddc_lock);
++	ret = it66121_do_get_edid_block(priv, buf, block, len);
++	mutex_unlock(&priv->ddc_lock);
++
++	if (ret)
++		dev_dbg(&priv->client->dev, "EDID block %u read failed (%d)\n", block, ret);
++
++	return ret;
++}
++
++/*
++ * Fallback EDID path: on Fresco reference designs the monitor's DDC lines hang
++ * directly off the FL2000 I2C bus, and the vendor driver reads EDID at address
++ * 0x50 with the FL2000's own dword I2C engine, bypassing the IT66121 DDC
++ * master entirely. The engine reads 4 bytes per operation with an 8-bit
++ * offset, which covers EDID blocks 0 and 1.
++ */
++static int it66121_get_edid_block_direct(void *context, u8 *buf, unsigned int block, size_t len)
++{
++	struct it66121_priv *priv = context;
++	int ret;
++
++	ret = fl2000_ddc_read_block(priv->adapter, buf, block, len);
++	if (ret)
++		dev_dbg(&priv->client->dev, "Direct EDID block %u read failed (%d)\n", block, ret);
++
++	return ret;
++}
++
++static void it66121_read_edid(struct it66121_priv *priv, struct drm_connector *connector)
++{
++	int (*first)(void *context, u8 *buf, unsigned int block, size_t len);
++	int (*second)(void *context, u8 *buf, unsigned int block, size_t len);
++
++	/*
++	 * Board wirings differ: try the direct FL2000-bus DDC read if the
++	 * IT66121 EDID FIFO path did not work, and start with whichever worked
++	 * last time so the FIFO path's timeouts are paid once.
++	 */
++	if (priv->edid_direct) {
++		first = it66121_get_edid_block_direct;
++		second = it66121_get_edid_block;
++	} else {
++		first = it66121_get_edid_block;
++		second = it66121_get_edid_block_direct;
++	}
++
++	drm_edid_free(priv->drm_edid);
++	priv->drm_edid = drm_edid_read_custom(connector, first, priv);
++	if (!priv->drm_edid) {
++		dev_dbg(&priv->client->dev, "EDID read failed, trying the other DDC path\n");
++		priv->drm_edid = drm_edid_read_custom(connector, second, priv);
++		if (priv->drm_edid)
++			priv->edid_direct = !priv->edid_direct;
++	}
++}
++
++static enum drm_connector_status it66121_bridge_detect(struct drm_bridge *bridge,
++						       struct drm_connector *connector)
++{
++	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
++	int ret = it66121_hpd_connected(bridge);
++
++	if (ret > 0)
++		return connector_status_connected;
++
++	/* Whatever comes next may be another monitor: its EDID must be read again */
++	WRITE_ONCE(priv->edid_stale, true);
++
++	if (ret < 0) {
++		/* Not bridge->dev: the chip, not the DRM device, failed to answer */
++		dev_err_ratelimited(&priv->client->dev, "Cannot get monitor status (%d)\n", ret);
++		return connector_status_unknown;
++	}
++
++	return connector_status_disconnected;
++}
++
++/*
++ * Reading the EDID takes about a second over USB, and the connector asks for it on every probe,
++ * with the mode config locked: keep it until the monitor goes away (see it66121_bridge_detect())
++ * and hand out copies. It must still be handed over every time: the DRM core drops the
++ * connector's copy when the connector goes through 'disconnected'.
++ */
++static const struct drm_edid *it66121_bridge_edid_read(struct drm_bridge *bridge,
++						       struct drm_connector *connector)
++{
++	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
++
++	if (!priv->drm_edid || READ_ONCE(priv->edid_stale)) {
++		WRITE_ONCE(priv->edid_stale, false);
++		it66121_read_edid(priv, connector);
++		if (!priv->drm_edid)
++			dev_warn(&priv->client->dev, "EDID read failed, using fallback modes\n");
++	}
++
++	return drm_edid_dup(priv->drm_edid);
++}
++
++static int it66121_bind(struct device *comp, struct device *master, void *master_data)
++{
++	int ret;
++	struct drm_bridge *bridge = dev_get_drvdata(comp);
++	struct drm_device *drm = master_data;
++	struct i2c_adapter *adapter = i2c_verify_adapter(master);
++	struct drm_encoder *encoder;
++
++	if (!adapter)
++		return -ENODEV;
++
++	/* The FL2000 has a single encoder */
++	encoder = list_first_entry_or_null(&drm->mode_config.encoder_list, struct drm_encoder,
++					   head);
++	if (!encoder)
++		return -ENODEV;
++
++	dev_dbg(comp, "Binding IT66121 component\n");
++
++	/* The display driver makes the connector, from what the bridge reports */
++	ret = drm_bridge_attach(encoder, bridge, NULL, DRM_BRIDGE_ATTACH_NO_CONNECTOR);
++	if (ret)
++		dev_err(comp, "Cannot attach IT66121 bridge (%d)\n", ret);
++
++	return ret;
++}
++
++static void it66121_unbind(struct device *comp, struct device *master, void *master_data)
++{
++	/* The bridge is detached by the DRM core when the encoder is cleaned up */
++	dev_dbg(comp, "Unbinding IT66121 component\n");
++}
++
++static const struct component_ops it66121_component_ops = {
++	.bind = it66121_bind,
++	.unbind = it66121_unbind,
++};
++
++/*
++ * Bring the transmitter out of reset into a known state, as the IT66121 manual and the vendor
++ * driver do: at attach, and again after system sleep, which may have cut the power.
++ */
++static void it66121_init_chip(struct it66121_priv *priv)
++{
++	/* Reset according to IT66121 manual */
++	regmap_write_bits(priv->regmap, IT66121_SW_RST, IT66121_SW_REF_RST_HDMITX,
++			  IT66121_SW_REF_RST_HDMITX);
++	msleep(50);
++
++	/* Power up GRCLK & power down IACLK, TxCLK, CRCLK */
++	regmap_write_bits(priv->regmap, IT66121_SYS_CONTROL, (0xf << 3), (7 << 3));
++
++	/* Continue according to IT66121 manual */
++	regmap_write_bits(priv->regmap, IT66121_INT_CONTROL, (1 << 0), (0 << 0));
++	regmap_write_bits(priv->regmap, IT66121_AFE_DRV_CONTROL, (1 << 5), (0 << 5));
++	regmap_write_bits(priv->regmap, IT66121_AFE_XP_CONTROL, (1 << 2) | (1 << 6),
++			  (0 << 2) | (0 << 6));
++	regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_1, (1 << 6), (0 << 6));
++	regmap_write_bits(priv->regmap, IT66121_AFE_DRV_CONTROL, (1 << 4), (0 << 4));
++	regmap_write_bits(priv->regmap, IT66121_AFE_XP_CONTROL, (1 << 3), (1 << 3));
++	regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_1, (1 << 2), (1 << 2));
++
++	/* Extra AFE steps from the vendor driver */
++	/* Whole register is defined as XP_TEST, values are undisclosed */
++	regmap_write_bits(priv->regmap, IT66121_AFE_XP_TEST, 0xFF, 0x70);
++	/* Lower 5 bits are undisclosed in manual */
++	regmap_write_bits(priv->regmap, IT66121_AFE_DRV_HS, 0xFF, 0x1F);
++	/*
++	 * DRV_ISW[5:3] value '011' is a default output current level swing, with change to '111' we
++	 * set output current level swing to maximum.
++	 */
++	regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_2, 0xFF, 0x38);
++
++	/* Power up IACLK, TxCLK */
++	regmap_write_bits(priv->regmap, IT66121_SYS_CONTROL, (3 << 4), (0 << 4));
++
++	/* Reset according to IT66121 manual */
++	regmap_write_bits(priv->regmap, IT66121_SW_RST, IT66121_SW_REF_RST_HDMITX,
++			  IT66121_SW_REF_RST_HDMITX);
++	msleep(50);
++
++	/* We do not support HDCP so its ok to statically set host controls */
++	regmap_write(priv->regmap, IT66121_DDC_CONTROL,
++		     IT66121_DDC_MASTER_DDC | IT66121_DDC_MASTER_HOST);
++}
++
++/* Unmask the DDC interrupt and start acknowledging the chip's interrupts */
++static void it66121_start_interrupts(struct it66121_priv *priv)
++{
++	regmap_write_bits(priv->regmap, IT66121_INT_MASK_1, IT66121_MASK_DDC, 0);
++	queue_delayed_work(priv->work_queue, &priv->work, msecs_to_jiffies(IRQ_POLL_INTRVL));
++}
++
++static int it66121_bridge_attach(struct drm_bridge *bridge, struct drm_encoder *encoder,
++				 enum drm_bridge_attach_flags flags)
++{
++	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
++
++	/* The connector is the display driver's (drm_bridge_connector_init()) */
++	if (!(flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)) {
++		drm_err(bridge->dev, "The IT66121 bridge does not create a connector\n");
++		return -EINVAL;
++	}
++
++	if (!bridge->encoder) {
++		drm_err(bridge->dev, "Parent encoder object not found\n");
++		return -ENODEV;
++	}
++
++	it66121_init_chip(priv);
++
++	it66121_start_interrupts(priv);
++
++	drm_dbg_kms(bridge->dev, "Bridge attached\n");
++
++	return 0;
++}
++
++static void it66121_bridge_detach(struct drm_bridge *bridge)
++{
++	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
++
++	/*
++	 * Stop the HPD polling work started by attach so it cannot notify a
++	 * bridge that is no longer attached to a DRM device.
++	 */
++	cancel_delayed_work_sync(&priv->work);
++}
++
++/**
++ * it66121_suspend() - stop talking to the IT66121 before system sleep
++ * @bridge: the IT66121 bridge
++ *
++ * Its interrupt polling would fail while the USB device sleeps, and a failed read ends it.
++ */
++void it66121_suspend(struct drm_bridge *bridge)
++{
++	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
++
++	cancel_delayed_work_sync(&priv->work);
++}
++
++/**
++ * it66121_resume() - set the IT66121 up again after system sleep
++ * @bridge: the IT66121 bridge
++ *
++ * The dongle is bus powered, and the test laptop resets its USB devices when it wakes from
++ * suspend to RAM: the chip may have lost every register. The register cache would then be wrong,
++ * and the read-modify-write updates of the initialisation would skip writes the chip still needs:
++ * drop it, so that values are read from the chip again. The mode is set again by the DRM core.
++ */
++void it66121_resume(struct drm_bridge *bridge)
++{
++	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
++
++	regcache_drop_region(priv->regmap, 0, it66121_regmap_config.max_register);
++	it66121_init_chip(priv);
++	it66121_start_interrupts(priv);
++
++	/* Another monitor may have been plugged in meanwhile */
++	WRITE_ONCE(priv->edid_stale, true);
++}
++
++/*
++ * Program the transmitter for @mode, as the monitor behind @connector wants it (HDMI, or DVI when
++ * its EDID says so or there is none). The FL2000 already clocks the input at this point.
++ */
++static void it66121_set_mode(struct it66121_priv *priv, struct drm_connector *connector,
++			     const struct drm_display_mode *mode)
++{
++	struct drm_bridge *bridge = &priv->bridge;
++	bool dvi = !connector->display_info.is_hdmi;
++	struct hdmi_avi_infoframe frame;
++	ssize_t frame_size;
++	u8 buf[HDMI_INFOFRAME_SIZE(AVI)];
++	int ret;
++	const u16 aviinfo_reg[HDMI_AVI_INFOFRAME_SIZE] = {
++		IT66121_HDMI_AVIINFO_DB1,  IT66121_HDMI_AVIINFO_DB2,  IT66121_HDMI_AVIINFO_DB3,
++		IT66121_HDMI_AVIINFO_DB4,  IT66121_HDMI_AVIINFO_DB5,  IT66121_HDMI_AVIINFO_DB6,
++		IT66121_HDMI_AVIINFO_DB7,  IT66121_HDMI_AVIINFO_DB8,  IT66121_HDMI_AVIINFO_DB9,
++		IT66121_HDMI_AVIINFO_DB10, IT66121_HDMI_AVIINFO_DB11, IT66121_HDMI_AVIINFO_DB12,
++		IT66121_HDMI_AVIINFO_DB13
++	};
++
++	drm_dbg_kms(bridge->dev, "Setting %s mode " DRM_MODE_FMT "\n", dvi ? "DVI" : "HDMI",
++		    DRM_MODE_ARG(mode));
++
++	ret = drm_hdmi_avi_infoframe_from_display_mode(&frame, connector, mode);
++	if (ret) {
++		drm_err(bridge->dev, "Cannot create AVI infoframe (%d)\n", ret);
++		return;
++	}
++
++	frame_size = hdmi_avi_infoframe_pack(&frame, buf, sizeof(buf));
++	if (frame_size < 0) {
++		drm_err(bridge->dev, "Cannot pack AVI infoframe (%zd)\n", frame_size);
++		return;
++	}
++
++	/* Set TX mode */
++	ret = regmap_write(priv->regmap, IT66121_HDMI_MODE,
++			   dvi ? IT66121_HDMI_MODE_DVI : IT66121_HDMI_MODE_HDMI);
++	if (ret) {
++		drm_err(bridge->dev, "Cannot set TX mode (%d)\n", ret);
++		return;
++	}
++
++	/* Enable HDMI packets, repeat for every data frame as recommended */
++	ret = regmap_write(priv->regmap, IT66121_HDMI_GEN_CTRL_PKT,
++			   IT66121_HDMI_GEN_CTRL_PKT_ON | IT66121_HDMI_GEN_CTRL_PKT_RPT);
++	if (ret) {
++		drm_err(bridge->dev, "Cannot enable HDMI packets\n");
++		return;
++	}
++
++	/* Mute AV */
++	ret = regmap_write(priv->regmap, IT66121_HDMI_AV_MUTE,
++			   IT66121_HDMI_AV_MUTE_ON | IT66121_HDMI_AV_MUTE_BLUE);
++	if (ret) {
++		drm_err(bridge->dev, "Cannot mute AV\n");
++		return;
++	}
++
++	/* Write new AVI infoframe packet */
++	for (int i = 0; i < HDMI_AVI_INFOFRAME_SIZE; i++) {
++		ret = regmap_write(priv->regmap, aviinfo_reg[i],
++				   buf[i + HDMI_INFOFRAME_HEADER_SIZE]);
++		if (ret) {
++			drm_err(bridge->dev, "Cannot write AVI infoframe byte %d (%d)\n", i, ret);
++			return;
++		}
++	}
++	ret = regmap_write(priv->regmap, IT66121_HDMI_AVIINFO_CSUM, buf[3]);
++	if (ret) {
++		drm_err(bridge->dev, "Cannot write AVI infoframe checksum (%d)\n", ret);
++		return;
++	}
++
++	/* Enable AVI infoframe */
++	ret = regmap_write(priv->regmap, IT66121_HDMI_AVI_INFO_PKT,
++			   IT66121_HDMI_AVI_INFO_PKT_ON | IT66121_HDMI_AVI_INFO_RPT);
++	if (ret) {
++		drm_err(bridge->dev, "Cannot enable AVI infoframe (%d)\n", ret);
++		return;
++	}
++
++	/* Set reset flags */
++	ret = regmap_write_bits(priv->regmap, IT66121_SW_RST,
++				IT66121_SW_REF_RST_HDMITX | IT66121_SW_HDMI_VID_RST,
++				IT66121_SW_REF_RST_HDMITX | IT66121_SW_HDMI_VID_RST);
++	if (ret)
++		return;
++
++	/* Disable TXCLK prior to configuration */
++	ret = regmap_write_bits(priv->regmap, IT66121_SYS_CONTROL, IT66121_SYS_TXCLK_OFF,
++				IT66121_SYS_TXCLK_OFF);
++	if (ret)
++		return;
++
++	/* Configure connection, conversions, etc. */
++	ret = it66121_configure_input(priv);
++	if (ret) {
++		drm_err(bridge->dev, "Cannot configure input bus (%d)\n", ret);
++		return;
++	}
++
++	/* Configure AFE */
++	ret = it66121_configure_afe(priv, mode->clock);
++	if (ret) {
++		drm_err(bridge->dev, "Cannot configure AFE (%d)\n", ret);
++		return;
++	}
++
++	/* Clear reset flags */
++	ret = regmap_write_bits(priv->regmap, IT66121_SW_RST,
++				IT66121_SW_REF_RST_HDMITX | IT66121_SW_HDMI_VID_RST, 0);
++	if (ret)
++		return;
++
++	/* Enable TXCLK */
++	ret = regmap_write_bits(priv->regmap, IT66121_SYS_CONTROL, IT66121_SYS_TXCLK_OFF, 0);
++	if (ret)
++		return;
++}
++
++/*
++ * The mode is programmed here rather than in .mode_set, which has no atomic state: the connector,
++ * which tells HDMI from DVI and goes into the AVI infoframe, is only known from the state.
++ */
++static void it66121_bridge_atomic_enable(struct drm_bridge *bridge,
++					 struct drm_atomic_commit *state)
++{
++	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
++	const struct drm_connector_state *conn_state;
++	const struct drm_crtc_state *crtc_state;
++	struct drm_connector *connector;
++
++	connector = drm_atomic_get_new_connector_for_encoder(state, bridge->encoder);
++	if (WARN_ON(!connector))
++		return;
++
++	conn_state = drm_atomic_get_new_connector_state(state, connector);
++	if (WARN_ON(!conn_state || !conn_state->crtc))
++		return;
++
++	crtc_state = drm_atomic_get_new_crtc_state(state, conn_state->crtc);
++	if (WARN_ON(!crtc_state))
++		return;
++
++	it66121_set_mode(priv, connector, &crtc_state->mode);
++
++	/* Unmute AV */
++	regmap_write(priv->regmap, IT66121_HDMI_AV_MUTE, 0);
++}
++
++static void it66121_bridge_atomic_disable(struct drm_bridge *bridge,
++					  struct drm_atomic_commit *state)
++{
++	int ret;
++	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
++
++	/* Mute AV */
++	ret = regmap_write_bits(priv->regmap, IT66121_HDMI_AV_MUTE, IT66121_HDMI_AV_MUTE_ON,
++				IT66121_HDMI_AV_MUTE_ON);
++	if (ret)
++		return;
++}
++
++static const struct drm_bridge_funcs it66121_bridge_funcs = {
++	.attach = it66121_bridge_attach,
++	.detach = it66121_bridge_detach,
++	.atomic_create_state = drm_atomic_helper_bridge_create_state,
++	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
++	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
++	.atomic_enable = it66121_bridge_atomic_enable,
++	.atomic_disable = it66121_bridge_atomic_disable,
++	.detect = it66121_bridge_detect,
++	.edid_read = it66121_bridge_edid_read,
++};
++
++static int it66121_regs_init(struct it66121_priv *priv, struct i2c_client *client)
++{
++	priv->regmap = devm_regmap_init_i2c(client, &it66121_regmap_config);
++	if (IS_ERR(priv->regmap))
++		return PTR_ERR(priv->regmap);
++
++	priv->irq_pending =
++		devm_regmap_field_alloc(&client->dev, priv->regmap, IT66121_SYS_STATUS_irq_pending);
++	priv->hpd = devm_regmap_field_alloc(&client->dev, priv->regmap, IT66121_SYS_STATUS_hpd);
++	priv->clr_irq =
++		devm_regmap_field_alloc(&client->dev, priv->regmap, IT66121_SYS_STATUS_clr_irq);
++	if (IS_ERR(priv->irq_pending) || IS_ERR(priv->hpd) || IS_ERR(priv->clr_irq))
++		return -ENOMEM;
++
++	return 0;
++}
++
++static int it66121_i2c_probe(struct i2c_adapter *adapter, unsigned short address)
++{
++	int ret;
++	u8 id_regs[] = { IT66121_VENDOR_ID_1, IT66121_VENDOR_ID_2, IT66121_DEVICE_ID_1,
++			 IT66121_DEVICE_ID_2 };
++	u8 id[ARRAY_SIZE(id_regs)];
++	u16 vendor, device;
++
++	dev_dbg(&adapter->dev, "Detecting IT66121 at address 0x%X on %s\n", address,
++		adapter->name);
++
++	/* We rely on full I2C protocol + 1 byte SMBUS read for detection */
++	ret = i2c_check_functionality(adapter, I2C_FUNC_I2C | I2C_FUNC_SMBUS_READ_BYTE);
++	if (!ret) {
++		dev_dbg(&adapter->dev, "Adapter does not support I2C functions properly\n");
++		return -ENODEV;
++	}
++
++	for (int i = 0; i < ARRAY_SIZE(id_regs); i++) {
++		struct i2c_msg msgs[] = {
++			{ .addr = address, .flags = 0, .len = 1, .buf = &id_regs[i] },
++			{ .addr = address, .flags = I2C_M_RD, .len = 1, .buf = &id[i] }
++		};
++
++		ret = i2c_transfer(adapter, msgs, ARRAY_SIZE(msgs));
++		if (ret < 0) {
++			dev_err(&adapter->dev, "I2C transfer failed (%d)\n", ret);
++			return -ENODEV;
++		}
++	}
++
++	vendor = get_unaligned_le16(&id[0]);
++	device = get_unaligned_le16(&id[2]);
++	if (vendor != VENDOR_ID || (device & ~REVISION_MASK) != DEVICE_ID) {
++		dev_dbg(&adapter->dev, "IT66121 not found (0x%X-0x%X)\n", vendor, device);
++		return -ENODEV;
++	}
++
++	dev_dbg(&adapter->dev, "IT66121 found, revision %d\n",
++		(device & REVISION_MASK) >> REVISION_SHIFT);
++
++	return 0;
++}
++
++static struct i2c_client *it66121_i2c_init(struct i2c_adapter *adapter)
++{
++	/*
++	 * Not "it66121": that name would make the ite-it66121 driver, if built,
++	 * try to bind this client and release our devres when its probe fails.
++	 */
++	struct i2c_board_info board_info = { I2C_BOARD_INFO("fl2000-it66121", 0) };
++
++	/* According to datasheet IT66121 addresses are 0x98 or 0x9A including cmd */
++	const unsigned short it66121_addr[] = { (0x98 >> 1), (0x9A >> 1), I2C_CLIENT_END };
++
++	return i2c_new_scanned_device(adapter, &board_info, it66121_addr, it66121_i2c_probe);
++}
++
++void it66121_destroy(struct i2c_client *client)
++{
++	struct drm_bridge *bridge;
++	struct it66121_priv *priv;
++
++	if (!client)
++		return;
++
++	bridge = dev_get_drvdata(&client->dev);
++	priv = container_of(bridge, struct it66121_priv, bridge);
++
++	cancel_delayed_work_sync(&priv->work);
++
++	destroy_workqueue(priv->work_queue);
++
++	component_del(&priv->client->dev, &it66121_component_ops);
++
++	drm_edid_free(priv->drm_edid);
++	priv->drm_edid = NULL;
++
++	drm_bridge_remove(&priv->bridge);
++
++	/*
++	 * Drops the devm reference to the bridge; priv is freed together with
++	 * the bridge once DRM releases the remaining references.
++	 */
++	i2c_unregister_device(priv->client);
++}
++
++struct i2c_client *it66121_create(struct i2c_adapter *adapter)
++{
++	int ret;
++	struct it66121_priv *priv;
++	struct i2c_client *client;
++
++	client = it66121_i2c_init(adapter);
++	if (IS_ERR(client)) {
++		dev_err(&adapter->dev, "Cannot find IT66121 I2C client\n");
++		return ERR_CAST(client);
++	}
++
++	/*
++	 * DRM core takes references on the bridge, so it must be allocated with
++	 * devm_drm_bridge_alloc(). Freeing happens automatically when the last
++	 * reference is dropped after i2c_unregister_device().
++	 */
++	priv = devm_drm_bridge_alloc(&client->dev, struct it66121_priv, bridge,
++				     &it66121_bridge_funcs);
++	if (IS_ERR(priv)) {
++		i2c_unregister_device(client);
++		return ERR_CAST(priv);
++	}
++
++	priv->client = client;
++	priv->adapter = adapter;
++
++	ret = it66121_regs_init(priv, priv->client);
++	if (ret) {
++		dev_err(&client->dev, "Cannot initialize registers (%d)\n", ret);
++		i2c_unregister_device(client);
++		return ERR_PTR(ret);
++	}
++
++	INIT_DELAYED_WORK(&priv->work, &it66121_intr_work);
++	mutex_init(&priv->ddc_lock);
++
++	/*
++	 * The chip's interrupt reaches the host only through the FL2000's, which sends a hotplug
++	 * event for the whole device (fl2000_drm_hotplug()). The bridge therefore reports no hot
++	 * plug of its own (DRM_BRIDGE_OP_HPD), and the connector also polls the line.
++	 */
++	priv->bridge.type = DRM_MODE_CONNECTOR_HDMIA;
++	priv->bridge.ops = DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_EDID;
++
++	drm_bridge_add(&priv->bridge);
++
++	/* Setup work queue for interrupt processing work */
++	priv->work_queue = alloc_ordered_workqueue("it66121_work", 0);
++	if (!priv->work_queue) {
++		drm_bridge_remove(&priv->bridge);
++		i2c_unregister_device(client);
++		return ERR_PTR(-ENOMEM);
++	}
++
++	/* Store bridge pointer at I2C client device for further binding */
++	dev_set_drvdata(&priv->client->dev, &priv->bridge);
++
++	/* Bind component of I2C client to master I2C adapter */
++	ret = component_add(&priv->client->dev, &it66121_component_ops);
++	if (ret) {
++		dev_err(&client->dev, "Cannot register IT66121 component (%d)\n", ret);
++		destroy_workqueue(priv->work_queue);
++		drm_bridge_remove(&priv->bridge);
++		i2c_unregister_device(client);
++		return ERR_PTR(ret);
++	}
++
++	return client;
++}
+diff --git a/drivers/gpu/drm/fl2000/fl2000_it66121.h b/drivers/gpu/drm/fl2000/fl2000_it66121.h
 new file mode 100644
-index 000000000..7ca977f1d
+index 000000000..72c0fe18b
 --- /dev/null
-+++ b/drivers/gpu/drm/fl2000/fl2000_registers.h
-@@ -0,0 +1,272 @@
++++ b/drivers/gpu/drm/fl2000/fl2000_it66121.h
+@@ -0,0 +1,19 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
-+ * Based on the official registers description from Fresco Logic
++ * (C) Copyright 2019, Artem Mygaiev
++ */
++
++#ifndef FL2000_IT66121_H
++#define FL2000_IT66121_H
++
++struct drm_bridge;
++struct i2c_adapter;
++struct i2c_client;
++
++struct i2c_client *it66121_create(struct i2c_adapter *adapter);
++void it66121_destroy(struct i2c_client *client);
++int it66121_hpd_connected(struct drm_bridge *bridge);
++void it66121_suspend(struct drm_bridge *bridge);
++void it66121_resume(struct drm_bridge *bridge);
++
++#endif /* FL2000_IT66121_H */
+diff --git a/drivers/gpu/drm/fl2000/fl2000_it66121_regs.h b/drivers/gpu/drm/fl2000/fl2000_it66121_regs.h
+new file mode 100644
+index 000000000..6f19fb2a1
+--- /dev/null
++++ b/drivers/gpu/drm/fl2000/fl2000_it66121_regs.h
+@@ -0,0 +1,283 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Based on the un-official documentation found on the net and registers
++ * description from source code:
++ *  - FL2000DX Linux driver on GitHub
++ *  - RK3188 Android driver on GitHub
 + *
 + * (C) Copyright 2019, Artem Mygaiev
 + */
 +
-+#ifndef FL2000_REGISTERS_H
-+#define FL2000_REGISTERS_H
++#ifndef FL2000_IT66121_REGS_H
++#define FL2000_IT66121_REGS_H
 +
-+#include <linux/bits.h>
-+#include <linux/types.h>
++#define IT66121_BANK_SIZE 0x100
 +
-+/* #### USB Control Registers Bank #### */
-+/* Some unknown & undocumented FL2000 USB settings */
++/* 000 - 02F Common registers, same as 100 - 12F */
++#define IT66121_VENDOR_ID_1	  0x00
++#define IT66121_VENDOR_ID_2	  0x01
++#define IT66121_DEVICE_ID_1	  0x02
++#define IT66121_DEVICE_ID_2	  0x03
++#define IT66121_SW_RST		  0x04
++#define IT66121_SW_ENTEST	  BIT(7)
++#define IT66121_SW_REF_RST_HDMITX BIT(5)
++#define IT66121_SW_AREF_RST	  BIT(4)
++#define IT66121_SW_HDMI_VID_RST	  BIT(3)
++#define IT66121_SW_HDMI_AUD_RST	  BIT(2)
++#define IT66121_SW_HDMI_RST	  BIT(1)
++#define IT66121_SW_HDCP_RST	  BIT(0)
 +
-+#define FL2000_USB_CONTROL_OFFSET 0x0000
++#define IT66121_INT_CONTROL  0x05
++#define IT66121_INT_STATUS_1 0x06
++#define IT66121_INT_STATUS_1_HPD		BIT(0)
++#define IT66121_INT_STATUS_1_RX_SENSE		BIT(1)
++#define IT66121_INT_STATUS_1_DDC_BUS_HANG	BIT(2)
++#define IT66121_INT_STATUS_1_ROMACQ_BUS_HANG	BIT(3)
++#define IT66121_INT_STATUS_1_DDC_FIFO_ERR	BIT(4)
++#define IT66121_INT_STATUS_1_DDC_NOACK		BIT(5)
++#define IT66121_INT_STATUS_1_ROMACQ_NOACK	BIT(6)
++#define IT66121_INT_STATUS_1_AUD_OVERFLOW	BIT(7)
 +
-+#define FL2000_USB_LPM_REG (FL2000_USB_CONTROL_OFFSET + 0x70)
-+#define  FL2000_USB_LPM_MAGIC				BIT(13)
-+#define  FL2000_USB_LPM_U2_REJECT			BIT(19)
-+#define  FL2000_USB_LPM_U1_REJECT			BIT(20)
++#define IT66121_INT_STATUS_2	 0x07
++#define IT66121_INT_STATUS_3	 0x08
++#define IT66121_INT_MASK_1	 0x09
++#define IT66121_MASK_DDC_NOACK	 BIT(5)
++#define IT66121_MASK_DDC_FIFOERR BIT(4)
++#define IT66121_MASK_DDC_BUSHANG BIT(2)
++#define IT66121_MASK_DDC	 GENMASK(5, 2)
 +
-+#define FL2000_USB_CTRL_REG (FL2000_USB_CONTROL_OFFSET + 0x78)
-+#define  FL2000_USB_CTRL_WAKE_NRDY			BIT(17)
++#define IT66121_INT_MASK_2  0x0A
++#define IT66121_INT_MASK_3  0x0B
++#define IT66121_INT_CLEAR_1 0x0C
++#define IT66121_INT_CLEAR_2 0x0D
++#define IT66121_SYS_STATUS  0x0E
++static const struct reg_field IT66121_SYS_STATUS_irq_pending = REG_FIELD(IT66121_SYS_STATUS, 7, 7);
++static const struct reg_field IT66121_SYS_STATUS_hpd = REG_FIELD(IT66121_SYS_STATUS, 6, 6);
++static const struct reg_field IT66121_SYS_STATUS_clr_irq = REG_FIELD(IT66121_SYS_STATUS, 0, 0);
 +
-+/* #### VGA Control Registers Bank #### */
-+/* Taken from the 'FL200DX Memory Mapped Address Space Registers' spec */
++#define IT66121_SYS_CONTROL   0x0F
++#define IT66121_SYS_RCLK_OFF  BIT(6)
++#define IT66121_SYS_IACLK_OFF BIT(5)
++#define IT66121_SYS_TXCLK_OFF BIT(4)
++#define IT66121_SYS_CRCLK_OFF BIT(3)
++#define IT66121_SYS_BANK_MASK 0x03
 +
-+#define FL2000_VGA_CONTROL_OFFSET 0x8000
++#define IT66121_DDC_CONTROL	0x10
++#define IT66121_DDC_MASTER_ROM	BIT(1)
++#define IT66121_DDC_MASTER_DDC	0
++#define IT66121_DDC_MASTER_HOST BIT(0)
++#define IT66121_DDC_MASTER_HDCP 0
 +
-+#define FL2000_VGA_STATUS_REG (FL2000_VGA_CONTROL_OFFSET + 0x00)
-+#define  FL2000_VGA_STATUS_VGA_STATUS			BIT(0)
-+#define  FL2000_VGA_STATUS_VGA_ERROR			BIT(1) /* read self clear */
-+#define  FL2000_VGA_STATUS_LBUF_HALT			BIT(2)
-+#define  FL2000_VGA_STATUS_ISO_ACK			BIT(3) /* read self clear */
-+#define  FL2000_VGA_STATUS_TD_DROP			BIT(4) /* read self clear */
-+#define  FL2000_VGA_STATUS_IRQ_PENDING			BIT(5) /* read self clear */
-+#define  FL2000_VGA_STATUS_PLL_STATUS			BIT(6)
-+#define  FL2000_VGA_STATUS_DAC_STATUS			BIT(7)
-+#define  FL2000_VGA_STATUS_LBUF_OVERFLOW		BIT(8)
-+#define  FL2000_VGA_STATUS_LBUF_UNDERFLOW		BIT(9)
-+#define  FL2000_VGA_STATUS_FRAME_CNT			GENMASK(25, 10)
-+#define  FL2000_VGA_STATUS_HDMI_EVENT			BIT(26) /* read self clear */
-+#define  FL2000_VGA_STATUS_HDMI_STATUS			BIT(27)
-+#define  FL2000_VGA_STATUS_EDID_STATUS			BIT(28)
-+#define  FL2000_VGA_STATUS_MONITOR_STATUS		BIT(29)
-+#define  FL2000_VGA_STATUS_MONITOR_EVENT		BIT(30) /* read self clear */
-+#define  FL2000_VGA_STATUS_EDID_EVENT			BIT(31) /* read self clear */
++#define IT66121_DDC_ADDRESS 0x11
++#define IT66121_DDC_OFFSET  0x12
++#define IT66121_DDC_SIZE    0x13
++#define IT66121_DDC_SEGMENT 0x14
++#define IT66121_DDC_COMMAND 0x15
++#define IT66121_DDC_STATUS  0x16
 +
-+#define FL2000_VGA_CTRL_REG_PXCLK (FL2000_VGA_CONTROL_OFFSET + 0x04)
-+#define  FL2000_VGA_CTRL_PXCLK_CLEAR_WATERMARK		BIT(0)
-+#define  FL2000_VGA_CTRL_PXCLK_FRAME_SYNC		BIT(1)
-+#define  FL2000_VGA_CTRL_PXCLK_HSYNC_POLARITY		BIT(2)
-+#define  FL2000_VGA_CTRL_PXCLK_VSYNC_POLARITY		BIT(3)
-+#define  FL2000_VGA_CTRL_PXCLK_DE_POLARITY		BIT(4)
-+#define  FL2000_VGA_CTRL_PXCLK_MIRROR_MODE		BIT(5)
-+#define  FL2000_VGA_CTRL_PXCLK_VGA565_MODE		BIT(6)
-+#define  FL2000_VGA_CTRL_PXCLK_DAC_OUTPUT_EN		BIT(7)
-+#define  FL2000_VGA_CTRL_PXCLK_VGA_TIMING_EN		BIT(8)
-+#define  FL2000_VGA_CTRL_PXCLK_USE_NEW_PKT_RETRY	BIT(9)
-+#define  FL2000_VGA_CTRL_PXCLK_REF_SELECT		BIT(10)
-+#define  FL2000_VGA_CTRL_PXCLK_DAC_PX_CLK_INVERT	BIT(11)
-+#define  FL2000_VGA_CTRL_PXCLK_CLEAR_LBUF_STATUS	BIT(12)
-+#define  FL2000_VGA_CTRL_PXCLK_DROP_CNT			BIT(13)
-+#define  FL2000_VGA_CTRL_PXCLK_USE_VDI_ITP_CNT		BIT(14)
-+#define  FL2000_VGA_CTRL_PXCLK_VGA_COMPRESS		BIT(24)
-+#define  FL2000_VGA_CTRL_PXCLK_VGA332_MODE		BIT(25)
-+#define  FL2000_VGA_CTRL_PXCLK_VGA_COLOR_PALETTE_EN	BIT(26)
-+#define  FL2000_VGA_CTRL_PXCLK_VGA_FIRST_BT_ENC_EN	BIT(27)
-+#define  FL2000_VGA_CTRL_PXCLK_CLEAR_125US_CNT		BIT(28)
-+#define  FL2000_VGA_CTRL_PXCLK_DISABLE_HALT		BIT(29)
-+#define  FL2000_VGA_CTRL_PXCLK_FORCE_DE_EN		BIT(30)
-+#define  FL2000_VGA_CTRL_PXCLK_VGA555_MODE		BIT(31)
++#define IT66121_DDC_RD_FIFO 0x17
++/* reserved */
++#define IT66121_HDCP_ADDRESS 0x19
 +
-+#define FL2000_VGA_HSYNC_REG1 (FL2000_VGA_CONTROL_OFFSET + 0x08)
-+#define  FL2000_VGA_HSYNC1_HTOTAL			GENMASK(11, 0)
-+#define  FL2000_VGA_HSYNC1_HACTIVE			GENMASK(27, 16)
++#define IT66121_HDCP_CONTROL   0x20
++#define IT66121_HDCP_CP_DESIRE BIT(0)
++/* reserved */
++#define IT66121_DDC_BUS_HOLD_TIME 0x1B
++#define IT66121_ROM_STATUS	  0x1C
++/* reserved */
++/* reserved */
++/* 01F - 2F HDCP registers, ignored */
 +
-+#define FL2000_VGA_HSYNC_REG2 (FL2000_VGA_CONTROL_OFFSET + 0x0C)
-+#define  FL2000_VGA_HSYNC2_HSTART			GENMASK(11, 0)
-+#define  FL2000_VGA_HSYNC2_HSYNC_WIDTH			GENMASK(23, 16)
++#define IT66121_BANK_START 0x30
 +
-+#define FL2000_VGA_VSYNC_REG1 (FL2000_VGA_CONTROL_OFFSET + 0x10)
-+#define  FL2000_VGA_VSYNC1_VTOTAL			GENMASK(11, 0)
-+#define  FL2000_VGA_VSYNC1_VACTIVE			GENMASK(27, 16)
++/* 030 - 0FF Bank 0 */
++/* 030 - 057 HDCP registers, ignored */
++#define IT66121_MCLK_CONTROL	  0x058
++#define IT66121_PLL_CONTROL	  0x059
++#define IT66121_CLK_POWER_CONTROL 0x05A
++#define IT66121_OS_FREQ_NUM_2	  0x05B
++#define IT66121_OS_FREQ_NUM_1	  0x05C
++/* reserved */
++#define IT66121_TX_CLK_COUNT	 0x05E
++#define IT66121_PLL_LOCK_STATUS	 0x05F
++#define IT66121_AUDIO_FREQ_COUNT 0x060
++#define IT66121_AFE_DRV_CONTROL	 0x061
++#define IT66121_AFE_DRV_PWD	 BIT(5)
++#define IT66121_AFE_RST		 BIT(4)
 +
-+#define FL2000_VGA_VSYNC_REG2 (FL2000_VGA_CONTROL_OFFSET + 0x14)
-+#define  FL2000_VGA_VSYNC2_VSTART			GENMASK(11, 0)
-+#define  FL2000_VGA_VSYNC2_VSYNC_WIDTH			GENMASK(18, 16)
-+#define  FL2000_VGA_VSYNC2_START_LATENCY		GENMASK(29, 20)
-+#define  FL2000_VGA_VSYNC2_BUF_ERROR_EN			BIT(31)
++#define IT66121_AFE_XP_CONTROL	 0x062
++#define IT66121_AFE_IP_CONTROL_2 0x063
++#define IT66121_AFE_IP_CONTROL_1 0x064
++#define IT66121_AFE_RING_CONTROL 0x065
++#define IT66121_AFE_DRV_HS	 0x066
++/* reserved */
++#define IT66121_AFE_IP_CONTROL_3 0x068
++#define IT66121_AFE_PAT_RSTB	 0x069
++#define IT66121_AFE_XP_TEST	 0x06A
++/* reserved */
++/* reserved */
++/* reserved */
++/* reserved */
++/* reserved */
++#define IT66121_INPUT_MODE	     0x070
++#define IT66121_INPUT_MODE_RGB	     0
++#define IT66121_INPUT_MODE_YUV444    BIT(7)
++#define IT66121_INPUT_MODE_YUV422    BIT(6)
++#define IT66121_INPUT_MODE_TXCLKDIV2 BIT(5)
++#define IT66121_INPUT_MODE_CCIR656   BIT(4)
++#define IT66121_INPUT_MODE_SYNCEMB   BIT(3)
++#define IT66121_INPUT_MODE_DDR	     BIT(2)
++#define IT66121_INPUT_PCLKDELAY1     1
++#define IT66121_INPUT_PCLKDELAY2     2
++#define IT66121_INPUT_PCLKDELAY3     3
 +
-+#define FL2000_VGA_TEST_REG  (FL2000_VGA_CONTROL_OFFSET + 0x18)
-+#define FL2000_VGA_ISOCH_REG (FL2000_VGA_CONTROL_OFFSET + 0x1C)
-+#define  FL2000_VGA_ISOCH_START_MFRAME_CNT		GENMASK(13, 0)
-+#define  FL2000_VGA_ISOCH_USE_MFRAME_MATCH		BIT(14)
-+#define  FL2000_VGA_ISOCH_USE_ZERO_LEN_FRAME		BIT(15)
-+#define  FL2000_VGA_ISOCH_MFRAME_CNT			GENMASK(29, 16)
-+#define  FL2000_VGA_ISOCH_MFRAME_CNT_UPDATE		BIT(30)
++#define IT66121_INPUT_IO_CONTROL 0x071
++#define IT66121_INPUT_COLOR_CONV 0x072
++#define IT66121_INPUT_DITHER	 BIT(7)
++#define IT66121_INPUT_UDFILTER	 BIT(6)
++#define IT66121_INPUT_DNFREE_GO	 BIT(5)
++#define IT66121_INPUT_BTAT1004	 BIT(2)
++#define IT66121_INPUT_RGB_TO_YUV 0x2
++#define IT66121_INPUT_YUV_TO_RGB 0x3
++#define IT66121_INPUT_NO_CONV	 0x0
 +
-+#define FL2000_VGA_I2C_SC_REG (FL2000_VGA_CONTROL_OFFSET + 0x20)
-+#define  FL2000_VGA_I2C_SC_ADDR				GENMASK(6, 0)
-+#define  FL2000_VGA_I2C_SC_CMD				BIT(7)
-+#define  FL2000_VGA_I2C_SC_OFFSET			GENMASK(15, 8)
-+#define  FL2000_VGA_I2C_SC_VGA_STATUS			GENMASK(23, 16)
-+#define  FL2000_VGA_I2C_SC_STATUS			GENMASK(27, 24)
-+#define  FL2000_VGA_I2C_SC_MONITOR_DETECT		BIT(28)
-+#define  FL2000_VGA_I2C_SC_READY			BIT(29)
-+#define  FL2000_VGA_I2C_SC_EDID_DETECT			BIT(30)
-+#define  FL2000_VGA_I2C_SC_DONE				BIT(31)
++#define IT66121_Y_BLANK_LEVEL	0x073
++#define IT66121_C_BLANK_LEVEL	0x074
++#define IT66121_RGB_BLANK_LEVEL 0x075
++#define IT66121_MATRIX_11V_1	0x076
++#define IT66121_MATRIX_11V_2	0x077
++#define IT66121_MATRIX_12V_1	0x078
++#define IT66121_MATRIX_12V_2	0x079
++#define IT66121_MATRIX_13V_1	0x07A
++#define IT66121_MATRIX_13V_2	0x07B
++#define IT66121_MATRIX_21V_1	0x07C
++#define IT66121_MATRIX_21V_2	0x07D
++#define IT66121_MATRIX_22V_1	0x07E
++#define IT66121_MATRIX_22V_2	0x07F
++#define IT66121_MATRIX_23V_1	0x080
++#define IT66121_MATRIX_23V_2	0x081
++#define IT66121_MATRIX_31V_1	0x082
++#define IT66121_MATRIX_31V_2	0x083
++#define IT66121_MATRIX_32V_1	0x084
++#define IT66121_MATRIX_32V_2	0x085
++#define IT66121_MATRIX_33V_1	0x086
++#define IT66121_MATRIX_33V_2	0x087
++/* reserved */
++/* reserved */
++/* reserved */
++/* reserved */
++/* reserved */
++#define IT66121_PCI2C_CEC_ADDRESS 0x08D
++/* reserved */
++/* reserved */
++/* 090 - 0B2 Pattern generation registers, ignored */
++/* reserved */
++#define IT66121_HDMI_DATA_SWAP 0x0BF
 +
-+#define FL2000_VGA_I2C_RD_REG (FL2000_VGA_CONTROL_OFFSET + 0x24)
-+#define FL2000_VGA_I2C_WR_REG (FL2000_VGA_CONTROL_OFFSET + 0x28)
++#define IT66121_HDMI_MODE      0x0C0
++#define IT66121_HDMI_MODE_HDMI BIT(0)
++#define IT66121_HDMI_MODE_DVI  0
 +
-+#define FL2000_VGA_PLL_REG (FL2000_VGA_CONTROL_OFFSET + 0x2C)
-+#define  FL2000_VGA_PLL_DIVISOR				GENMASK(7, 0)
-+#define  FL2000_VGA_PLL_PRESCALER			GENMASK(9, 8)
-+#define  FL2000_VGA_PLL_FUNCTION			GENMASK(14, 13)
-+#define  FL2000_VGA_PLL_MULTIPLIER			GENMASK(23, 16)
-+#define  FL2000_VGA_PLL_TEST_IO				BIT(24)
-+#define  FL2000_VGA_PLL_CFG_DAC_PWRDOWN			BIT(25)
-+#define  FL2000_VGA_PLL_FORCE_DAC_PWRUP			BIT(26)
++#define IT66121_HDMI_AV_MUTE	  0x0C1
++#define IT66121_HDMI_AV_MUTE_ON	  BIT(0)
++#define IT66121_HDMI_AV_MUTE_BLUE BIT(1)
 +
-+#define FL2000_VGA_LBUF_REG (FL2000_VGA_CONTROL_OFFSET + 0x30)
-+#define  FL2000_VGA_LBUF_WATERMARK_ASSERT_RDY		GENMASK(14, 0)
++#define IT66121_HDMI_BLACK_SRC	 0x0C2
++#define IT66121_HDMI_OESS_PREIOD 0x0C3
++/* reserved */
++#define IT66121_HDMI_AUDIO_CTS	      0x0C5
++#define IT66121_HDMI_GEN_CTRL_PKT     0x0C6
++#define IT66121_HDMI_GEN_CTRL_PKT_ON  BIT(0)
++#define IT66121_HDMI_GEN_CTRL_PKT_RPT BIT(1)
 +
-+#define FL2000_VGA_HI_MARK (FL2000_VGA_CONTROL_OFFSET + 0x34)
-+#define  FL2000_VGA_HI_MARK_HIGH_WATERMARK		GENMASK(16, 0)
++/* reserved */
++/* reserved */
++#define IT66121_HDMI_NULL_PKT 0x0C9
++#define IT66121_HDMI_ACP_PKT  0x0CA
++/* reserved */
++/* reserved */
++#define IT66121_HDMI_AVI_INFO_PKT    0x0CD
++#define IT66121_HDMI_AVI_INFO_PKT_ON BIT(0)
++#define IT66121_HDMI_AVI_INFO_RPT    BIT(1)
 +
-+#define FL2000_VGA_LO_MARK (FL2000_VGA_CONTROL_OFFSET + 0x38)
-+#define  FL2000_VGA_LO_MARK_LOW_WATERMARK		GENMASK(16, 0)
++#define IT66121_HDMI_AUD_INFO_PKT 0x0CE
++/* reserved */
++#define IT66121_HDMI_MPEG_INFO_PKT	0x0D0
++#define IT66121_HDMI_VIDEO_PARAM_STATUS 0x0D1
++#define IT66121_HDMI_3D_INFO_PKT	0x0D2
++/* reserved */
++/* reserved */
++/* reserved */
++/* reserved */
++#define IT66121_HDMI_PCLK_CONTROL 0x0D7
++#define IT66121_HDMI_PCLK_COUNT	  0x0D8
++/* reserved */
++/* reserved */
++/* reserved */
++/* reserved */
++/* reserved */
++/* reserved */
++/* reserved */
++/* E0 - E7 Audio channel registers, ignored */
++#define IT66121_EXT_INT_CONTROL 0x0E8
++/* reserved */
++/* reserved */
++/* reserved */
++#define IT66121_EXT_INT_MASK 0x0EC
++/* reserved */
++#define IT66121_EXT_INT_STATUS_1 0x0EE
++/* reserved */
++#define IT66121_EXT_INT_STATUS_2 0x0F0
++/* reserved */
++/* reserved */
++/* 0F3 - 0F8 Test registers, ignored */
++/* 0F9 - 0FF undefined*/
 +
-+#define FL2000_VGA_CTRL_REG_ACLK (FL2000_VGA_CONTROL_OFFSET + 0x3C)
-+#define  FL2000_VGA_CTRL_ACLK_CFG_TIMING_RESET_N	BIT(0)
-+#define  FL2000_VGA_CTRL_ACLK_PLH_BLOCK_EN		BIT(1)
-+#define  FL2000_VGA_CTRL_ACLK_EDID_MON_INT_EN		BIT(2)
-+#define  FL2000_VGA_CTRL_ACLK_EXT_MON_INT_EN		BIT(3)
-+#define  FL2000_VGA_CTRL_ACLK_VGA_STATUS_SELF_CLEAR	BIT(4)
-+#define  FL2000_VGA_CTRL_ACLK_PLL_LOCK_TIME		GENMASK(9, 5)
-+#define  FL2000_VGA_CTRL_ACLK_PLL_FAST_TIMEOUT_EN	BIT(10)
-+#define  FL2000_VGA_CTRL_ACLK_PPE_BLOCK_EM		BIT(11)
-+#define  FL2000_VGA_CTRL_ACLK_PLL_TIMER_EN		BIT(12)
-+#define  FL2000_VGA_CTRL_ACLK_FEEDBACK_INT_EN		BIT(13)
-+#define  FL2000_VGA_CTRL_ACLK_CLR_125US_COUNTER		BIT(14)
-+#define  FL2000_VGA_CTRL_ACLK_CCS_PD_DIS		BIT(15)
-+#define  FL2000_VGA_CTRL_ACLK_STANDBY_EN		BIT(16)
-+#define  FL2000_VGA_CTRL_ACLK_FORCE_LOOPBACK		BIT(17)
-+#define  FL2000_VGA_CTRL_ACLK_LBUF_DROP_FRAME_EN	BIT(18)
-+#define  FL2000_VGA_CTRL_ACLK_LBUF_VDE_RST_EN		BIT(19)
-+#define  FL2000_VGA_CTRL_ACLK_LBUF_SW_RST		BIT(20)
-+#define  FL2000_VGA_CTRL_ACLK_LBUF_ERR_INT_EN		BIT(21)
-+#define  FL2000_VGA_CTRL_ACLK_BIAC_EN			BIT(22)
-+#define  FL2000_VGA_CTRL_ACLK_PXCLK_IN_EN		BIT(23)
-+#define  FL2000_VGA_CTRL_ACLK_VGA_ERR_INT_EN		BIT(24)
-+#define  FL2000_VGA_CTRL_ACLK_FORCE_VGA_CONNECT		BIT(25)
-+#define  FL2000_VGA_CTRL_ACLK_FORCE_PLL_UP		BIT(26)
-+#define  FL2000_VGA_CTRL_ACLK_USE_ZERO_TD		BIT(27)
-+#define  FL2000_VGA_CTRL_ACLK_USE_ZERO_PKT_LEN		BIT(28)
-+#define  FL2000_VGA_CTRL_ACLK_USE_PKT_PENDING		BIT(29)
-+#define  FL2000_VGA_CTRL_ACLK_PLL_DAC_PD_USBP3_EN	BIT(30)
-+#define  FL2000_VGA_CTRL_ACLK_PLL_DAC_PD_NOVGA_EN	BIT(31)
++/* 130 - 1BF Bank 1 */
++/* 130 - 18F HDMI packet content registers, ignored except AVI InfoFrame */
++#define IT66121_HDMI_AVIINFO_DB1  0x158
++#define IT66121_HDMI_AVIINFO_DB2  0x159
++#define IT66121_HDMI_AVIINFO_DB3  0x15A
++#define IT66121_HDMI_AVIINFO_DB4  0x15B
++#define IT66121_HDMI_AVIINFO_DB5  0x15C
++#define IT66121_HDMI_AVIINFO_CSUM 0x15D
++#define IT66121_HDMI_AVIINFO_DB6  0x15E
++#define IT66121_HDMI_AVIINFO_DB7  0x15F
++#define IT66121_HDMI_AVIINFO_DB8  0x160
++#define IT66121_HDMI_AVIINFO_DB9  0x161
++#define IT66121_HDMI_AVIINFO_DB10 0x162
++#define IT66121_HDMI_AVIINFO_DB11 0x163
++#define IT66121_HDMI_AVIINFO_DB12 0x164
++#define IT66121_HDMI_AVIINFO_DB13 0x165
 +
-+#define FL2000_VGA_PXCLK_CNT_REG (FL2000_VGA_CONTROL_OFFSET + 0x40)
-+#define  FL2000_VGA_PXCLK_CNT_PIX_CLOCK_COUNT		GENMASK(27, 0)
++/* 190 - 1BF Audio channel status registers, ignored */
 +
-+#define FL2000_VGA_VCNT_REG (FL2000_VGA_CONTROL_OFFSET + 0x44)
-+#define  FL2000_VGA_VCNT_MAX_ACLK_COUNT			GENMASK(14, 0)
-+#define  FL2000_VGA_VCNT_MAX_ACLK_COUNT_HIT		BIT(15)
-+#define  FL2000_VGA_VCNT_MAX_LBUF_ACCUMULATE		GENMASK(31, 16)
++#define IT66121_BANK_END 0x1FF
 +
-+#define FL2000_RST_CTRL_REG (FL2000_VGA_CONTROL_OFFSET + 0x48)
-+#define  FL2000_RST_CTRL_DIS_HOT_RST2_PORT		BIT(0)
-+#define  FL2000_RST_CTRL_DIS_WARM_RST2_PORT		BIT(1)
-+#define  FL2000_RST_CTRL_DIS_HOT_RESET_PIPE		BIT(2)
-+#define  FL2000_RST_CTRL_DIS_WARM_RESET_PIPE		BIT(3)
-+#define  FL2000_RST_CTRL_DIS_HOT_RESET_PIX		BIT(4)
-+#define  FL2000_RST_CTRL_DIS_WARM_RESET_PIX		BIT(5)
-+#define  FL2000_RST_CTRL_DIS_USB2_RESET_PIX		BIT(6)
-+#define  FL2000_RST_CTRL_DIS_PLL_RESET_PIX		BIT(7)
-+#define  FL2000_RST_CTRL_DIS_SW_RESET_PIX		BIT(8)
-+#define  FL2000_RST_CTRL_DIS_USB2_RESET_BUF		BIT(9)
-+#define  FL2000_RST_CTRL_DIS_SW_RESET_BUF		BIT(10)
-+#define  FL2000_RST_CTRL_DIS_LBUF_RESET_PIX		BIT(11)
-+#define  FL2000_RST_CTRL_DIS_HOT_RESET_PORT		BIT(12)
-+#define  FL2000_RST_CTRL_DIS_WARM_RESET_PORT		BIT(13)
-+#define  FL2000_RST_CTRL_SET_SLOW_CLK_PREDFT		BIT(14)
-+#define  FL2000_RST_CTRL_SW_RESET			BIT(15)
-+#define  FL2000_RST_CTRL_FRAME_FIRST_ITP_WL		GENMASK(31, 16)
-+
-+#define FL2000_BIAC_CTRL1_REG (FL2000_VGA_CONTROL_OFFSET + 0x4C)
-+#define  FL2000_BIAC_CTRL1_CTRL_LO8			GENMASK(7, 0)
-+#define  FL2000_BIAC_CTRL1_FRAME_MULT			GENMASK(15, 8)
-+#define  FL2000_BIAC_CTRL1_125US_MULT			GENMASK(31, 16)
-+
-+#define FL2000_BIAC_CTRL2_REG (FL2000_VGA_CONTROL_OFFSET + 0x50)
-+#define  FL2000_BIAC_CTRL2_CTRL_HI16			GENMASK(15, 0)
-+
-+#define FL2000_BIAC_STATUS_REG (FL2000_VGA_CONTROL_OFFSET + 0x54)
-+#define  FL2000_BIAC_STATUS_CURRENT_STATUS		GENMASK(15, 0)
-+#define  FL2000_BIAC_STATUS_CURRENT_VALUE		GENMASK(31, 16)
-+
-+/* undefined				(FL2000_VGA_CONTROL_OFFSET + 0x58) */
-+
-+#define FL2000_VGA_PLT_REG_PXCLK (FL2000_VGA_CONTROL_OFFSET + 0x5C)
-+#define  FL2000_VGA_PLT_PXCLK_PALETTE_RAM_WR_DATA	GENMASK(23, 0)
-+
-+#define FL2000_VGA_PLT_RADDR_REG_PXCLK (FL2000_VGA_CONTROL_OFFSET + 0x60)
-+#define  FL2000_VGA_PLT_RADDR_PALETTE_RAM_RD_ADDR	GENMASK(7, 0)
-+#define  FL2000_VGA_PLT_RADDR_LAST_FRAME_LBUF_WATERMARK	GENMASK(23, 8)
-+
-+#define FL2000_VGA_CTRL2_REG_ACLK (FL2000_VGA_CONTROL_OFFSET + 0x64)
-+#define  FL2000_VGA_CTRL2_ACLK_PLL_POWERDOWN_DETECT_EN	BIT(0)
-+#define  FL2000_VGA_CTRL2_ACLK_MSTOR_BLKSIZE_PTR_WIDTH	GENMASK(3, 1)
-+#define  FL2000_VGA_CTRL2_ACLK_MSTOR_BLK_COUNT		GENMASK(15, 4)
-+#define  FL2000_VGA_CTRL2_ACLK_SPI_WR_EN		BIT(16)
-+#define  FL2000_VGA_CTRL2_ACLK_DETECT_PINS_DEBOUNCE_EN	BIT(17)
-+#define  FL2000_VGA_CTRL2_ACLK_HDMI_INT_EN		BIT(18)
-+#define  FL2000_VGA_CTRL2_ACLK_HDMI_INT_ACTIVE_HIGH	BIT(19)
-+#define  FL2000_VGA_CTRL2_ACLK_SPI_EN			BIT(20)
-+#define  FL2000_VGA_CTRL2_ACLK_SW_PROD_REV		GENMASK(30, 23)
-+
-+/* undefined				(FL2000_VGA_CONTROL_OFFSET + 0x68) */
-+/* undefined				(FL2000_VGA_CONTROL_OFFSET + 0x6C) */
-+
-+#define FL2000_TEST_CNTL_REG1 (FL2000_VGA_CONTROL_OFFSET + 0x70)
-+#define FL2000_TEST_CNTL_REG2 (FL2000_VGA_CONTROL_OFFSET + 0x74)
-+#define FL2000_TEST_CNTL_REG3 (FL2000_VGA_CONTROL_OFFSET + 0x78)
-+#define FL2000_TEST_STAT1     (FL2000_VGA_CONTROL_OFFSET + 0x7C)
-+#define FL2000_TEST_STAT2     (FL2000_VGA_CONTROL_OFFSET + 0x80)
-+#define FL2000_TEST_STAT3     (FL2000_VGA_CONTROL_OFFSET + 0x84)
-+
-+#define FL2000_VGA_CTRL_REG_3 (FL2000_VGA_CONTROL_OFFSET + 0x88)
-+#define  FL2000_VGA_CTRL3_WAKEUP_CLR_EN			BIT(10)
-+
-+/* undefined				(FL2000_VGA_CONTROL_OFFSET + 0x8C) */
-+
-+/*
-+ * List of registers that shall not be read automatically (e.g. for cache update) due to presence
-+ * of self-clear bits
-+ */
-+static inline bool FL2000_REG_PRECIOUS(u32 reg)
-+{
-+	return reg == FL2000_VGA_STATUS_REG;
-+}
++/* CEC registers ignored (must be configured as a separate regmap / device) */
 +
 +/* List of volatile registers that shall not be cached */
-+static inline bool FL2000_REG_VOLATILE(u32 reg)
++static inline bool IT66121_REG_VOLATILE(u32 reg)
 +{
 +	switch (reg) {
-+	case FL2000_VGA_STATUS_REG:
-+	case FL2000_VGA_CTRL_REG_PXCLK:
-+	case FL2000_VGA_ISOCH_REG:
-+	case FL2000_VGA_I2C_SC_REG:
-+	case FL2000_VGA_I2C_RD_REG:
-+	case FL2000_VGA_PXCLK_CNT_REG:
-+	case FL2000_VGA_VCNT_REG:
-+	case FL2000_RST_CTRL_REG:
-+	case FL2000_BIAC_STATUS_REG:
-+	case FL2000_VGA_PLT_RADDR_REG_PXCLK:
-+	case FL2000_TEST_CNTL_REG1:
-+	case FL2000_TEST_CNTL_REG2:
-+	case FL2000_TEST_STAT1:
-+	case FL2000_TEST_STAT2:
-+	case FL2000_TEST_STAT3:
++	case IT66121_INT_STATUS_1:
++	case IT66121_INT_STATUS_2:
++	case IT66121_INT_STATUS_3:
++	case IT66121_SYS_STATUS:
++	case IT66121_DDC_STATUS:
++	case IT66121_DDC_RD_FIFO:
++	case IT66121_ROM_STATUS:
++	case IT66121_OS_FREQ_NUM_2:
++	case IT66121_OS_FREQ_NUM_1:
++	case IT66121_TX_CLK_COUNT:
++	case IT66121_PLL_LOCK_STATUS:
++	case IT66121_AUDIO_FREQ_COUNT:
++	case IT66121_HDMI_PCLK_CONTROL:
++	case IT66121_HDMI_PCLK_COUNT:
 +		return true;
 +	default:
 +		return false;
 +	}
 +}
 +
-+#endif /* FL2000_REGISTERS_H */
++#endif /* FL2000_IT66121_REGS_H */
 
 -- 
 2.56.0
