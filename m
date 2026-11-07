@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:49 -0800
-Subject: [PATCH RFC v3 75/88] KVM: selftests: Verify VFIO MMIO read and
- write for igb device
+Date: Fri, 06 Nov 2026 16:37:50 -0800
+Subject: [PATCH RFC v3 76/88] KVM: selftests: Verify VFIO MMIO mmap access
+ for igb device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-75-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-76-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,67 +26,44 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=3042;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=2223;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=3rXXPklnl0jKOPE29y7ipXm7LsNh6MGUlvgjiF//KXQ=;
- b=xloQFGBoKJ2DqV21AvqSu5E1J/CpqtQbloSW0T3GvaqdUgvm8xoOH8M0ztGaadapQ2nhxCakj
- IhodY//gGI6CJqHf9PiPv1GyWySREMT+8pDpBuxA/6S9HQ3zZS/kyLY
+ bh=jzqW1Jjl/TdHDq92R8GBSwh+0N7VE+Z3IfJio0K3a6M=;
+ b=f9okZk6tF+33EEc7SQLegmp34Vb1lvk+kZzlENivyzjPi6JteKmB26YWjXUyVF37IjJG8C0Tk
+ 2GEFDMEETf7AmUmyoLD2UCbk907cEfoHL0cwp4KYGbpDQEbydtcIKgA
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a subtest verifying direct pread() and pwrite() operations on the
-device descriptor targeting BAR0 MMIO space.
+Add a subtest verifying memory-mapped I/O (mmap) access to BAR0.
 
-Enable memory decoding in the PCI Command register, verify that reading
-the device status register returns an accessible value, and verify that
-writing and reading back a scratch MAC register (RAL0) succeeds with
-expected data.
+Map BAR0 into userspace address space, read the device status register
+using a pointer dereference to confirm device responsiveness, and write
+and read back a scratch test pattern on RAL0.
 
-This validates that kernel-mediated MMIO operations over the VFIO device
-descriptor function properly, providing a baseline to compare against
-when guest_memfd wraps the BAR.
+This validates that direct CPU page table mappings to device MMIO via
+VFIO function properly, establishing an access baseline before wrapping
+the BAR inside guest_memfd.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- .../selftests/kvm/x86/guest_memfd_vfio_test.c      | 58 ++++++++++++++++++++++
- 1 file changed, 58 insertions(+)
+ .../selftests/kvm/x86/guest_memfd_vfio_test.c      | 37 ++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
 
 diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
-index 6525f392b3930..fa05b7cfb3185 100644
+index fa05b7cfb3185..4d5211b6acf79 100644
 --- a/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
 +++ b/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
-@@ -236,4 +236,62 @@ TEST_F(guest_memfd_vfio, get_irq_info)
- 	}
+@@ -294,4 +294,41 @@ TEST_F(guest_memfd_vfio, bar_rw)
+ 	ASSERT_EQ(0xdeadbeef, val);
  }
  
-+static void vfio_pci_enable_memory_and_bus_master(struct __test_metadata *_metadata,
-+						  int vfio_fd)
-+{
-+	struct vfio_region_info cfg_info = {};
-+	ssize_t ret_bytes;
-+	uint16_t cmd;
-+	int ret;
-+
-+	cfg_info.argsz = sizeof(cfg_info);
-+	cfg_info.index = VFIO_PCI_CONFIG_REGION_INDEX;
-+	ret = ioctl(vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &cfg_info);
-+	ASSERT_EQ(0, ret);
-+
-+	/* Enable Memory Space and Bus Master in PCI Command register */
-+	ret_bytes = pread(vfio_fd, &cmd, sizeof(cmd), cfg_info.offset + PCI_COMMAND);
-+	ASSERT_EQ(sizeof(cmd), ret_bytes);
-+	cmd |= (PCI_COMMAND_MEMORY | PCI_COMMAND_MASTER);
-+	ret_bytes = pwrite(vfio_fd, &cmd, sizeof(cmd), cfg_info.offset + PCI_COMMAND);
-+	ASSERT_EQ(sizeof(cmd), ret_bytes);
-+}
-+
-+TEST_F(guest_memfd_vfio, bar_rw)
++TEST_F(guest_memfd_vfio, bar_mmap)
 +{
 +	struct vfio_region_info bar0_info = {};
-+	ssize_t ret_bytes;
 +	uint32_t val;
++	void *bar0;
 +	int ret;
 +
 +	vfio_pci_enable_memory_and_bus_master(_metadata, self->vfio_fd);
@@ -95,28 +72,28 @@ index 6525f392b3930..fa05b7cfb3185 100644
 +	bar0_info.index = VFIO_PCI_BAR0_REGION_INDEX;
 +	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &bar0_info);
 +	ASSERT_EQ(0, ret);
++	ASSERT_TRUE(bar0_info.flags & VFIO_REGION_INFO_FLAG_MMAP);
++
++	bar0 = mmap(NULL, bar0_info.size, PROT_READ | PROT_WRITE, MAP_SHARED,
++		    self->vfio_fd, bar0_info.offset);
++	ASSERT_NE(MAP_FAILED, bar0);
 +
 +	/*
-+	 * Read Device Status (E1000_STATUS) via pread() at BAR0 offset.
-+	 * Confirm device is readable and does not return 0xFFFFFFFF.
++	 * Read Device Status (E1000_STATUS) via mapped pointer. Confirm device
++	 * is readable and does not return 0xFFFFFFFF.
 +	 */
-+	val = 0;
-+	ret_bytes = pread(self->vfio_fd, &val, sizeof(val), bar0_info.offset + E1000_STATUS);
-+	ASSERT_EQ(sizeof(val), ret_bytes);
++	val = READ_ONCE(*(uint32_t *)((char *)bar0 + E1000_STATUS));
 +	ASSERT_NE(0xFFFFFFFF, val);
 +
 +	/*
-+	 * Write a distinct scratch test pattern to RAL0 via pwrite() and read
-+	 * it back via pread().
++	 * Write a distinct scratch test pattern to RAL0 via mapped pointer and
++	 * read it back.
 +	 */
-+	val = 0xdeadbeef;
-+	ret_bytes = pwrite(self->vfio_fd, &val, sizeof(val), bar0_info.offset + E1000_RAL0);
-+	ASSERT_EQ(sizeof(val), ret_bytes);
-+
-+	val = 0;
-+	ret_bytes = pread(self->vfio_fd, &val, sizeof(val), bar0_info.offset + E1000_RAL0);
-+	ASSERT_EQ(sizeof(val), ret_bytes);
++	WRITE_ONCE(*(uint32_t *)((char *)bar0 + E1000_RAL0), 0xdeadbeef);
++	val = READ_ONCE(*(uint32_t *)((char *)bar0 + E1000_RAL0));
 +	ASSERT_EQ(0xdeadbeef, val);
++
++	ASSERT_EQ(0, munmap(bar0, bar0_info.size));
 +}
 +
  TEST_HARNESS_MAIN
