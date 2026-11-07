@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:17 -0800
-Subject: [PATCH RFC v3 43/88] KVM: selftests: Test flag dependency of
- PFN_MODE on USE_RESOURCE
+Date: Fri, 06 Nov 2026 16:37:18 -0800
+Subject: [PATCH RFC v3 44/88] samples/kvm: Implement attach and release
+ provider ops in sample provider
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-43-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-44-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,71 +26,103 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=2495;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=2754;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=EE/Gsp3+vkbnMZChnYBAJO/h7nnosq/HYGBfPtTEjSg=;
- b=QNfSEUjkf0mmaRJLidwIxGxZJjYboqSAt3/LrwLXP/KiV2nJmCAw/FG1dfUDbyKYK7iveNUQ3
- h7EkpJWjXFUD0P2174TJKMc5yyC09FzAG8K29bj7LwtBDRnjEvqoMxu
+ bh=wGkwYGWhWpUEbPcNoli9OVifhRpY95s9sJaKeYRfDoU=;
+ b=2zBY4/UyvI/wD4fxk5n+1zA8wC8jypJ2hvfyGQousryL2X4dafvdKSl/QarQac9uuatqZ3yC7
+ cRyw4A4lugaDN4Zps6HLSpdgi7cq6SIJHYldFyY/s718nvWW4wv8kWz
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Creating a guest_memfd with GUEST_MEMFD_FLAG_PFN_MODE requires
-GUEST_MEMFD_FLAG_USE_RESOURCE.
+Implement the guest_memfd provider operations in the sample memory
+provider module, providing .attach and .release callbacks.
 
-Skip testing GUEST_MEMFD_FLAG_PFN_MODE as an isolated flag in
-test_guest_memfd_flags() because creating a guest_memfd with PFN_MODE
-alone without USE_RESOURCE is rejected by KVM with EINVAL.
+In .attach, take a reference to the provider file (get_file) to keep the
+provider context alive while attached. In .release, release the file
+reference via fput.
 
-In test_resource_fd_invalid(), verify that attempting to create a
-guest_memfd with GUEST_MEMFD_FLAG_PFN_MODE without
-GUEST_MEMFD_FLAG_USE_RESOURCE fails with EINVAL.
+Attach the provider operations to mps_file_fops.gmem_provider_ops so that
+provider file descriptors created by the sample module can be passed as
+resource_fd to guest_memfd.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- tools/include/uapi/linux/kvm.h                 | 1 +
- tools/testing/selftests/kvm/guest_memfd_test.c | 8 +++++++-
- 2 files changed, 8 insertions(+), 1 deletion(-)
+ samples/kvm/memory_provider.c | 39 ++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 38 insertions(+), 1 deletion(-)
 
-diff --git a/tools/include/uapi/linux/kvm.h b/tools/include/uapi/linux/kvm.h
-index 66c1f40b50c29..3ef7bc37a7070 100644
---- a/tools/include/uapi/linux/kvm.h
-+++ b/tools/include/uapi/linux/kvm.h
-@@ -1655,6 +1655,7 @@ struct kvm_memory_attributes {
- #define GUEST_MEMFD_FLAG_MMAP		(1ULL << 0)
- #define GUEST_MEMFD_FLAG_INIT_SHARED	(1ULL << 1)
- #define GUEST_MEMFD_FLAG_USE_RESOURCE	(1ULL << 2)
-+#define GUEST_MEMFD_FLAG_PFN_MODE	(1ULL << 3)
+diff --git a/samples/kvm/memory_provider.c b/samples/kvm/memory_provider.c
+index 81ac94ae1a4e9..6f86e3e3262e3 100644
+--- a/samples/kvm/memory_provider.c
++++ b/samples/kvm/memory_provider.c
+@@ -17,6 +17,7 @@
+ #include <linux/file.h>
+ #include <linux/fs.h>
+ #include <linux/gfp.h>
++#include <linux/guest_memfd.h>
+ #include <linux/miscdevice.h>
+ #include <linux/mm.h>
+ #include <linux/module.h>
+@@ -34,9 +35,11 @@ struct mp_info {
+ 	unsigned long npages;
+ 	struct page *cma_pages;		/* from alloc_contig_pages() */
  
- struct kvm_create_guest_memfd {
- 	__u64 size;
-diff --git a/tools/testing/selftests/kvm/guest_memfd_test.c b/tools/testing/selftests/kvm/guest_memfd_test.c
-index cbc2f309664b2..fb9d50be2e3b6 100644
---- a/tools/testing/selftests/kvm/guest_memfd_test.c
-+++ b/tools/testing/selftests/kvm/guest_memfd_test.c
-@@ -407,7 +407,8 @@ static void test_guest_memfd_flags(struct kvm_vm *vm)
- 	int fd;
- 
- 	for (flag = BIT(0); flag; flag <<= 1) {
--		if (flag == GUEST_MEMFD_FLAG_USE_RESOURCE)
-+		if (flag == GUEST_MEMFD_FLAG_USE_RESOURCE ||
-+		    flag == GUEST_MEMFD_FLAG_PFN_MODE)
- 			continue;
- 		fd = __vm_create_guest_memfd(vm, page_size, flag);
- 		if (flag & valid_flags) {
-@@ -432,6 +433,11 @@ static void test_resource_fd_invalid(struct kvm_vm *vm)
- 	TEST_ASSERT(fd < 0, "guest_memfd with resource_fd but without flag should fail");
- 	TEST_ASSERT_EQ(errno, EINVAL);
- 
-+	/* PFN_MODE without GUEST_MEMFD_FLAG_USE_RESOURCE fails */
-+	fd = __vm_create_guest_memfd(vm, page_size, GUEST_MEMFD_FLAG_PFN_MODE);
-+	TEST_ASSERT(fd < 0, "guest_memfd with PFN_MODE without USE_RESOURCE should fail");
-+	TEST_ASSERT_EQ(errno, EINVAL);
+-	struct mutex lock;		/* the bitmaps */
++	struct mutex lock;		/* the bitmaps and gmem_inode */
+ 	unsigned long *absent;		/* taken away by MP_SET_PRESENT */
+ 	unsigned long *readonly;	/* marked read-only by MP_SET_READONLY */
 +
- 	/* Bad file descriptor with GUEST_MEMFD_FLAG_USE_RESOURCE fails */
- 	fd = __vm_create_guest_memfd_resource(vm, page_size,
- 					      GUEST_MEMFD_FLAG_USE_RESOURCE, -1);
++	struct inode *gmem_inode;
+ };
+ 
+ /* Byte range [offset, offset + len) of @info as page indices. */
+@@ -161,11 +164,45 @@ static long mp_file_ioctl(struct file *file, unsigned int cmd,
+ 	}
+ }
+ 
++static void *mp_gmem_attach(struct inode *gmem_inode,
++			    struct file *resource_file)
++{
++	struct mp_info *info = resource_file->private_data;
++
++	mutex_lock(&info->lock);
++	if (info->gmem_inode) {
++		mutex_unlock(&info->lock);
++		return ERR_PTR(-EBUSY);
++	}
++	info->gmem_inode = gmem_inode;
++	mutex_unlock(&info->lock);
++
++	return get_file(resource_file);
++}
++
++static void mp_gmem_release(void *provider)
++{
++	struct file *resource_file = provider;
++	struct mp_info *info = resource_file->private_data;
++
++	mutex_lock(&info->lock);
++	info->gmem_inode = NULL;
++	mutex_unlock(&info->lock);
++
++	fput(resource_file);
++}
++
++static const struct guest_memfd_provider_operations mp_gmem_provider_ops = {
++	.attach		= mp_gmem_attach,
++	.release	= mp_gmem_release,
++};
++
+ static const struct file_operations mp_file_fops = {
+ 	.owner		= THIS_MODULE,
+ 	.release	= mp_file_release,
+ 	.unlocked_ioctl	= mp_file_ioctl,
+ 	.compat_ioctl	= compat_ptr_ioctl,
++	.gmem_provider_ops = &mp_gmem_provider_ops,
+ };
+ 
+ static long mp_ctl_new_file(void __user *uarg)
 
 -- 
 2.56.0.455.g6c5a503b38-goog
