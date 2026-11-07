@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:04 -0800
-Subject: [PATCH RFC v3 30/88] KVM: guest_memfd: Refactor error handling in
- kvm_gmem_fault_user_mapping
+Date: Fri, 06 Nov 2026 16:37:05 -0800
+Subject: [PATCH RFC v3 31/88] KVM: guest_memfd: Set VM_PFNMAP on VMA in PFN
+ mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-30-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-31-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,69 +26,50 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011809; l=1832;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011809; l=1105;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=VKBzbTSyM8v25pj2OERwLhVUhvmGhWqrRwXpLizcOTo=;
- b=TNHQGkfJIKvSrJmsMJhLzh4Zf2IlSWb1GaDzeKt8ZF6I4gcbCyM3w70nbNY2BGZBmWj+BSlaL
- RGs8UwVSrcNDrzLDRtCrZvXA3lfyBNeELOimwZhBiqgNYheS6HmLA9N
+ bh=bgDskVh5mQ4qf8kZnnMpcc5wqYuHuhwtZVlrwhGpftw=;
+ b=bJSGIHIjI8Dun3pnzzwKMZBEVyIeNKBR6I98tBOsF6T1Tze7EzogHxlnUyHvxeFc6sylwP9tC
+ RStTsmb8zUGD1ktql3UfDaKz0Idd1TUrp9o5uPxLSI7y9s4cXsdLKOq
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Track the status of kvm_gmem_fault_user_mapping() using an explicit error
-code rather than encoding errors into the folio pointer.
+In PFN mode, guest_memfd memory is backed by raw PFNs rather than
+page-cache folios.
 
-This moves away from relying on the folio pointer holding error states,
-such as synthesizing ERR_PTR(-EACCES) when memory is not shared only to
-extract PTR_ERR afterwards, and prepares kvm_gmem_fault_user_mapping() for
-PFN mode in the next commit, where no folio is returned on success.
+Mark the VMA with VM_PFNMAP when setting up the VMA in PFN mode so that
+the core memory management subsystem recognizes the mapping as PFN-backed.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ virt/kvm/guest_memfd.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
 diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index eedf03df12c55..180418c65a1ae 100644
+index 180418c65a1ae..183e15775523f 100644
 --- a/virt/kvm/guest_memfd.c
 +++ b/virt/kvm/guest_memfd.c
-@@ -568,24 +568,28 @@ static bool kvm_gmem_supports_mmap(struct inode *inode)
- static vm_fault_t kvm_gmem_fault_user_mapping(struct vm_fault *vmf)
+@@ -652,6 +652,8 @@ static const struct vm_operations_struct kvm_gmem_vm_ops = {
+ 
+ static int kvm_gmem_mmap(struct file *file, struct vm_area_struct *vma)
  {
- 	struct inode *inode = file_inode(vmf->vma->vm_file);
--	struct folio *folio;
- 	vm_fault_t ret = VM_FAULT_LOCKED;
-+	struct folio *folio = NULL;
-+	int r = 0;
++	struct gmem_inode *gi = GMEM_I(file_inode(file));
++
+ 	if (!kvm_gmem_supports_mmap(file_inode(file)))
+ 		return -ENODEV;
  
- 	if (((loff_t)vmf->pgoff << PAGE_SHIFT) >= i_size_read(inode))
- 		return VM_FAULT_SIGBUS;
- 
- 	filemap_invalidate_lock_shared(inode->i_mapping);
--	if (kvm_gmem_is_shared_mem(inode, vmf->pgoff))
-+	if (!kvm_gmem_is_shared_mem(inode, vmf->pgoff)) {
-+		r = -EACCES;
-+	} else {
- 		folio = kvm_gmem_get_folio(inode, vmf->pgoff);
--	else
--		folio = ERR_PTR(-EACCES);
-+		if (IS_ERR(folio))
-+			r = PTR_ERR(folio);
-+	}
- 	filemap_invalidate_unlock_shared(inode->i_mapping);
- 
--	if (IS_ERR(folio)) {
--		if (PTR_ERR(folio) == -EAGAIN)
-+	if (r) {
-+		if (r == -EAGAIN)
- 			return VM_FAULT_RETRY;
- 
--		return vmf_error(PTR_ERR(folio));
-+		return vmf_error(r);
+@@ -660,6 +662,9 @@ static int kvm_gmem_mmap(struct file *file, struct vm_area_struct *vma)
+ 		return -EINVAL;
  	}
  
- 	if (WARN_ON_ONCE(folio_test_large(folio))) {
++	if (kvm_gmem_is_pfn_mode(gi))
++		vm_flags_set(vma, VM_PFNMAP);
++
+ 	vma->vm_ops = &kvm_gmem_vm_ops;
+ 
+ 	return 0;
 
 -- 
 2.56.0.455.g6c5a503b38-goog
