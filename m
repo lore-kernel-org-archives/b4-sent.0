@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:36:53 -0800
-Subject: [PATCH RFC v3 19/88] KVM: selftests: Test guest_memfd conversions
- with tmpfs backing
+Date: Fri, 06 Nov 2026 16:36:54 -0800
+Subject: [PATCH RFC v3 20/88] samples/kvm: Introduce memory provider module
+ skeleton
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-19-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-20-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,286 +26,117 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011809; l=9639;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011809; l=3200;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=Ywv4Awh60QVQXfJ42x/j6i2G3l1UGcU6b4v8gcyWpig=;
- b=EDb+BOFfQuAMKC477YknSboSYEtvDUgYLwNAzDBtxOPsFifr+qxx1Kgb2Sjumi6KnTOEoFdoN
- NlP5Q12K2NNCUhaXa9Jue3uo1cBdclLvjJJyIG6fbL7MBuPn4X5T/9n
+ bh=nt2cs3RpI5IUFgJs4dsgiWZl0HfyGKiOhLkBsycGpfo=;
+ b=4cdyeAJ7HccYK8NGv9Q29bFTAR/IcMhIOFe8+7RU78D738bkU/WshB9UbwT/KAILWqam4ykOd
+ CO6Tw3GiatGC9mriP8x0CMuJxG1AZn5inkS4uDdxzwnFtZL/sbetXox
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move create_tmpfs_pool_fd() into lib/test_util.c and declare it in
-include/test_util.h so it can be reused across selftests.
+From: Fred Griffoul <fgriffo@amazon.co.uk>
 
-Extend guest_memfd_conversions_test using fixture variants to run all
-conversion test cases against both native guest_memfd and tmpfs-backed
-guest_memfd instances.
+Introduce the memory provider sample module skeleton under samples/kvm/.
 
+The memory provider module will serve as a sample in-tree memory provider
+for guest_memfd and iommufd. Register a miscdevice at /dev/memory_provider
+upon module initialization and deregister it upon module exit.
+
+Co-developed-by: Ackerley Tng <ackerleytng@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
+Signed-off-by: Fred Griffoul <fgriffo@amazon.co.uk>
 ---
- tools/testing/selftests/kvm/guest_memfd_test.c     | 52 --------------------
- tools/testing/selftests/kvm/include/test_util.h    |  2 +
- tools/testing/selftests/kvm/lib/test_util.c        | 56 ++++++++++++++++++++++
- .../kvm/x86/guest_memfd_conversions_test.c         | 49 +++++++++++++++++--
- 4 files changed, 102 insertions(+), 57 deletions(-)
+ samples/Kconfig               | 11 +++++++++++
+ samples/Makefile              |  1 +
+ samples/kvm/Makefile          |  2 ++
+ samples/kvm/memory_provider.c | 35 +++++++++++++++++++++++++++++++++++
+ 4 files changed, 49 insertions(+)
 
-diff --git a/tools/testing/selftests/kvm/guest_memfd_test.c b/tools/testing/selftests/kvm/guest_memfd_test.c
-index fd249445ce3cc..cbc2f309664b2 100644
---- a/tools/testing/selftests/kvm/guest_memfd_test.c
-+++ b/tools/testing/selftests/kvm/guest_memfd_test.c
-@@ -481,58 +481,6 @@ static void test_resource_fd_memfd(struct kvm_vm *vm)
- 	close(file_fd);
- }
+diff --git a/samples/Kconfig b/samples/Kconfig
+index a75e8e78330da..d4e79e1a9286b 100644
+--- a/samples/Kconfig
++++ b/samples/Kconfig
+@@ -326,6 +326,17 @@ source "samples/rust/Kconfig"
  
--static int create_tmpfs_pool_fd(const char *huge, bool noswap, size_t size)
--{
--	char size_str[32];
--	char template[] = "/tmp/gmem_test_dir_XXXXXX";
--	char *mount_dir;
--	int fs_fd, mnt_fd, dir_fd;
--
--	TEST_ASSERT(size && IS_ALIGNED(size, page_size),
--		    "Pool size '0x%zx' must be positive and page-aligned", size);
--
--	fs_fd = syscall(__NR_fsopen, "tmpfs", FSOPEN_CLOEXEC);
--	TEST_ASSERT(fs_fd >= 0, "fsopen failed");
--
--	if (noswap)
--		TEST_ASSERT(!syscall(__NR_fsconfig, fs_fd, FSCONFIG_SET_FLAG,
--				     "noswap", NULL, 0), "fsconfig noswap failed");
--
--	if (huge)
--		TEST_ASSERT(!syscall(__NR_fsconfig, fs_fd, FSCONFIG_SET_STRING,
--				     "huge", huge, 0), "fsconfig huge failed");
--
--	snprintf(size_str, sizeof(size_str), "%zu", size);
--	TEST_ASSERT(!syscall(__NR_fsconfig, fs_fd, FSCONFIG_SET_STRING,
--			     "size", size_str, 0), "fsconfig size failed");
--
--	TEST_ASSERT(!syscall(__NR_fsconfig, fs_fd, FSCONFIG_CMD_CREATE,
--			     NULL, NULL, 0), "fsconfig create failed");
--
--	mnt_fd = syscall(__NR_fsmount, fs_fd, FSMOUNT_CLOEXEC, 0);
--	TEST_ASSERT(mnt_fd > 0, "fsmount failed");
--	close(fs_fd);
--
--	mount_dir = mkdtemp(template);
--	TEST_ASSERT(mount_dir, "mkdtemp failed");
--
--	TEST_ASSERT(!syscall(__NR_move_mount, mnt_fd, "", AT_FDCWD, mount_dir,
--			     MOVE_MOUNT_F_EMPTY_PATH), "move_mount failed");
--	close(mnt_fd);
--
--	dir_fd = open(mount_dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
--	TEST_ASSERT(dir_fd >= 0, "open tmpfs mount directory failed");
--
--	/*
--	 * Detach mount from namespace so removing mount_dir upon exit or
--	 * unmount doesn't conflict, while dir_fd retains the active mount.
--	 */
--	TEST_ASSERT(!umount2(mount_dir, MNT_DETACH), "umount2 failed");
--	TEST_ASSERT(!rmdir(mount_dir), "rmdir failed");
--
--	return dir_fd;
--}
--
- static void test_resource_fd_tmpfs_swap(struct kvm_vm *vm)
- {
- 	int pool_fd, fd;
-diff --git a/tools/testing/selftests/kvm/include/test_util.h b/tools/testing/selftests/kvm/include/test_util.h
-index c80019e24b2d0..e6707534f1951 100644
---- a/tools/testing/selftests/kvm/include/test_util.h
-+++ b/tools/testing/selftests/kvm/include/test_util.h
-@@ -244,4 +244,6 @@ char *strdup_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2), n
+ source "samples/damon/Kconfig"
  
- char *sys_get_cur_clocksource(void);
- 
-+int create_tmpfs_pool_fd(const char *huge, bool noswap, size_t size);
++config SAMPLE_KVM_MEMORY_PROVIDER
++	tristate "Build sample memory provider -- loadable module only"
++	depends on CONTIG_ALLOC && X86_64 && m
++	help
++	  This builds a sample memory provider.
++	  Its files can back a guest_memfd and be mapped by iommufd.
++	  It allocates a contiguous region with alloc_contig_pages()
++	  and carves out child provider files on the fly.
 +
- #endif /* SELFTEST_KVM_TEST_UTIL_H */
-diff --git a/tools/testing/selftests/kvm/lib/test_util.c b/tools/testing/selftests/kvm/lib/test_util.c
-index f5f7189f96a84..c5b264f533ad0 100644
---- a/tools/testing/selftests/kvm/lib/test_util.c
-+++ b/tools/testing/selftests/kvm/lib/test_util.c
-@@ -10,10 +10,14 @@
- #include <ctype.h>
- #include <limits.h>
- #include <stdlib.h>
-+#include <fcntl.h>
- #include <time.h>
-+#include <sys/mount.h>
- #include <sys/stat.h>
- #include <sys/syscall.h>
-+#include <linux/align.h>
- #include <linux/mman.h>
-+#include <linux/mount.h>
- #include "linux/kernel.h"
- 
- #include "test_util.h"
-@@ -483,3 +487,55 @@ char *sys_get_cur_clocksource(void)
- 
- 	return clk_name;
- }
++	  If unsure, say N.
 +
-+int create_tmpfs_pool_fd(const char *huge, bool noswap, size_t size)
+ endif # SAMPLES
+ 
+ config HAVE_SAMPLE_FTRACE_DIRECT
+diff --git a/samples/Makefile b/samples/Makefile
+index 07641e177bd8b..3933ef6a323ed 100644
+--- a/samples/Makefile
++++ b/samples/Makefile
+@@ -37,6 +37,7 @@ obj-$(CONFIG_SAMPLE_TPS6594_PFSM)	+= pfsm/
+ subdir-$(CONFIG_SAMPLE_WATCHDOG)	+= watchdog
+ subdir-$(CONFIG_SAMPLE_WATCH_QUEUE)	+= watch_queue
+ obj-$(CONFIG_SAMPLE_KMEMLEAK)		+= kmemleak/
++obj-$(CONFIG_SAMPLE_KVM_MEMORY_PROVIDER)	+= kvm/
+ obj-$(CONFIG_SAMPLE_CORESIGHT_SYSCFG)	+= coresight/
+ obj-$(CONFIG_SAMPLE_FPROBE)		+= fprobe/
+ obj-$(CONFIG_SAMPLES_RUST)		+= rust/
+diff --git a/samples/kvm/Makefile b/samples/kvm/Makefile
+new file mode 100644
+index 0000000000000..9668dc57aa458
+--- /dev/null
++++ b/samples/kvm/Makefile
+@@ -0,0 +1,2 @@
++# SPDX-License-Identifier: GPL-2.0
++obj-$(CONFIG_SAMPLE_KVM_MEMORY_PROVIDER) += memory_provider.o
+diff --git a/samples/kvm/memory_provider.c b/samples/kvm/memory_provider.c
+new file mode 100644
+index 0000000000000..d5272cb88b758
+--- /dev/null
++++ b/samples/kvm/memory_provider.c
+@@ -0,0 +1,35 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * memory_provider - a sample memory provider.
++ *
++ * Confidential VMs are not supported.
++ */
++
++#include <linux/fs.h>
++#include <linux/miscdevice.h>
++#include <linux/module.h>
++
++static const struct file_operations mp_ctl_fops = {
++	.owner		= THIS_MODULE,
++};
++
++static struct miscdevice mp_dev = {
++	.minor	= MISC_DYNAMIC_MINOR,
++	.name	= "memory_provider",
++	.fops	= &mp_ctl_fops,
++};
++
++static int __init mp_init(void)
 +{
-+	char size_str[32];
-+	char template[] = "/tmp/gmem_test_dir_XXXXXX";
-+	char *mount_dir;
-+	int fs_fd, mnt_fd, dir_fd;
-+
-+	TEST_ASSERT(size && IS_ALIGNED(size, getpagesize()),
-+		    "Pool size '0x%zx' must be positive and page-aligned", size);
-+
-+	fs_fd = syscall(__NR_fsopen, "tmpfs", FSOPEN_CLOEXEC);
-+	TEST_ASSERT(fs_fd >= 0, "fsopen failed");
-+
-+	if (noswap)
-+		TEST_ASSERT(!syscall(__NR_fsconfig, fs_fd, FSCONFIG_SET_FLAG,
-+				     "noswap", NULL, 0), "fsconfig noswap failed");
-+
-+	if (huge)
-+		TEST_ASSERT(!syscall(__NR_fsconfig, fs_fd, FSCONFIG_SET_STRING,
-+				     "huge", huge, 0), "fsconfig huge failed");
-+
-+	snprintf(size_str, sizeof(size_str), "%zu", size);
-+	TEST_ASSERT(!syscall(__NR_fsconfig, fs_fd, FSCONFIG_SET_STRING,
-+			     "size", size_str, 0), "fsconfig size failed");
-+
-+	TEST_ASSERT(!syscall(__NR_fsconfig, fs_fd, FSCONFIG_CMD_CREATE,
-+			     NULL, NULL, 0), "fsconfig create failed");
-+
-+	mnt_fd = syscall(__NR_fsmount, fs_fd, FSMOUNT_CLOEXEC, 0);
-+	TEST_ASSERT(mnt_fd > 0, "fsmount failed");
-+	close(fs_fd);
-+
-+	mount_dir = mkdtemp(template);
-+	TEST_ASSERT(mount_dir, "mkdtemp failed");
-+
-+	TEST_ASSERT(!syscall(__NR_move_mount, mnt_fd, "", AT_FDCWD, mount_dir,
-+			     MOVE_MOUNT_F_EMPTY_PATH), "move_mount failed");
-+	close(mnt_fd);
-+
-+	dir_fd = open(mount_dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-+	TEST_ASSERT(dir_fd >= 0, "open tmpfs mount directory failed");
-+
-+	/*
-+	 * Detach mount from namespace so removing mount_dir upon exit or
-+	 * unmount doesn't conflict, while dir_fd retains the active mount.
-+	 */
-+	TEST_ASSERT(!umount2(mount_dir, MNT_DETACH), "umount2 failed");
-+	TEST_ASSERT(!rmdir(mount_dir), "rmdir failed");
-+
-+	return dir_fd;
++	return misc_register(&mp_dev);
 +}
-diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-index e1c84df0f0596..023df9cb9d4a6 100644
---- a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-+++ b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-@@ -20,12 +20,30 @@
- FIXTURE(gmem_conversions) {
- 	struct kvm_vcpu *vcpu;
- 	int gmem_fd;
-+	int resource_fd;
- 	/* HVA of the first byte of the memory mmap()-ed from gmem_fd. */
- 	char *mem;
- };
- 
- typedef FIXTURE_DATA(gmem_conversions) test_data_t;
- 
-+FIXTURE_VARIANT(gmem_conversions) {
-+	int (*create_resource)(size_t size);
-+};
++module_init(mp_init);
 +
-+FIXTURE_VARIANT_ADD(gmem_conversions, native) {
-+	.create_resource = NULL,
-+};
-+
-+static int create_tmpfs_resource(size_t size)
++static void __exit mp_exit(void)
 +{
-+	return create_tmpfs_pool_fd("never", true, size);
++	misc_deregister(&mp_dev);
 +}
++module_exit(mp_exit);
 +
-+FIXTURE_VARIANT_ADD(gmem_conversions, tmpfs) {
-+	.create_resource = create_tmpfs_resource,
-+};
-+
- FIXTURE_SETUP(gmem_conversions) { }
- 
- static size_t page_size;
-@@ -37,8 +55,9 @@ static void guest_do_rmw(void);
-  * Defer setup until the individual test is invoked so that tests can specify
-  * the number of pages and flags for the guest_memfd instance.
-  */
--static void gmem_conversions_do_setup(test_data_t *t, int nr_pages,
--				      int gmem_flags)
-+static void gmem_conversions_do_setup(test_data_t *t,
-+				      const FIXTURE_VARIANT(gmem_conversions) * variant,
-+				      int nr_pages, int gmem_flags)
- {
- 	const struct vm_shape shape = {
- 		.mode = VM_MODE_DEFAULT,
-@@ -50,12 +69,27 @@ static void gmem_conversions_do_setup(test_data_t *t, int nr_pages,
- 	 */
- 	const gpa_t gpa = SZ_4G;
- 	const u32 slot = 1;
-+	size_t size = nr_pages * page_size;
- 	struct kvm_vm *vm;
-+	int gmem_fd = -1;
- 
- 	vm = __vm_create_shape_with_one_vcpu(shape, &t->vcpu, nr_pages, guest_do_rmw);
- 
-+	t->resource_fd = -1;
-+
-+	if (variant->create_resource) {
-+		uint64_t flags = gmem_flags | GUEST_MEMFD_FLAG_USE_RESOURCE;
-+
-+		t->resource_fd = variant->create_resource(size);
-+		TEST_ASSERT(t->resource_fd >= 0, "Failed to create backing resource");
-+
-+		gmem_fd = __vm_create_guest_memfd_resource(vm, size, flags,
-+							   t->resource_fd);
-+		TEST_ASSERT(gmem_fd >= 0, "Failed to create guest_memfd with resource");
-+	}
-+
- 	vm_mem_add(vm, VM_MEM_SRC_SHMEM, gpa, slot, nr_pages,
--		   KVM_MEM_GUEST_MEMFD, -1, 0, gmem_flags);
-+		   KVM_MEM_GUEST_MEMFD, gmem_fd, 0, gmem_flags);
- 
- 	t->gmem_fd = kvm_slot_to_fd(vm, slot);
- 	t->mem = addr_gpa2hva(vm, gpa);
-@@ -68,6 +102,11 @@ static void gmem_conversions_do_teardown(test_data_t *t)
- 	if (!t->vcpu)
- 		return;
- 
-+	if (t->resource_fd >= 0) {
-+		close(t->resource_fd);
-+		t->resource_fd = -1;
-+	}
-+
- 	/* No need to close gmem_fd, it's owned by the VM structure. */
- 	kvm_vm_free(t->vcpu->vm);
- 	t->vcpu = NULL;
-@@ -91,7 +130,7 @@ TEST_F(gmem_conversions, test)							\
- {										\
- 	const int nr = (__nr_pages);						\
- 										\
--	gmem_conversions_do_setup(self, nr, flags);				\
-+	gmem_conversions_do_setup(self, variant, nr, flags);			\
- 	__gmem_conversions_##test(self, nr);					\
- }										\
- static void __gmem_conversions_##test(test_data_t *t, int nr_pages)		\
-@@ -127,7 +166,7 @@ TEST_F(gmem_conversions, test)							\
- 	int i;									\
- 										\
- 	for (i = 0; i < nr; ++i) {						\
--		gmem_conversions_do_setup(self, nr, flags);			\
-+		gmem_conversions_do_setup(self, variant, nr, flags);		\
- 		__gmem_conversions_multipage_##test(self, nr, i);		\
- 		gmem_conversions_do_teardown(self);				\
- 	}									\
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("Sample memory provider for guest_memfd and iommufd");
 
 -- 
 2.56.0.455.g6c5a503b38-goog
