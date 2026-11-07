@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:22 -0800
-Subject: [PATCH RFC v3 48/88] samples/kvm: Support dynamic revocation via
- kvm_gmem_revoke
+Date: Fri, 06 Nov 2026 16:37:23 -0800
+Subject: [PATCH RFC v3 49/88] samples/kvm: Implement lookup_pfn_range
+ provider operation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-48-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-49-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,133 +26,68 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=4516;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=1753;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=GWH3fZv1Ui/TswUwJ0eqio5HJ+BvFDkQT9zu7ehqt4I=;
- b=AzFkXUuX7PNtNJifty2kmSEefU5ky/gpNA1rYMtkZbJqdZY+8jkZospKZCDvQPJBzQdF+Ml6U
- sLn4skqpPUYCfSurKhTcpsfj5F4tNftObwJOwhSniLRdBLcsP/8BjSF
+ bh=zF6/NHZXYKv9L/HYCXHQCrJDAKRuC7sUwZ4mNyf3Ilw=;
+ b=ahCkSRHzo9omVJZMhhE6rfmRR1w5YCbKaLV2veN+koHtwyTZEPMuUJDWA4vp4xnnxkooZ1qco
+ erjm1pX+7bACC1WV18Q1Je2NRoYM1uyGK8yLYYA8TUwGIp3C8gOY06l
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Support dynamic revocation in the sample memory provider module by
-calling kvm_gmem_revoke() when pages are marked absent via
-MPS_SET_PRESENT.
+Implement .lookup_pfn_range to allow looking up index -> pfn mappings to
+satisfy guest_memfd requirements and make this sample memory provider a
+valid PFN mode provider.
 
-Note down the attaching gmem inode during .attach() and disallow double
-attachment to the same provider file.
-
-Clear the revoked pages after kvm_gmem_revoke() using mps_zero_range()
-to ensure that stale data is wiped and cannot be observed when pages are
-later marked present or reused.
-
-Regarding locking and ordering:
-- In mps_set_present(), mark the absent bitmap first before revoking so
-  any concurrent page fault immediately sees the page as absent and
-  rejects the lookup with -EFAULT.
-- kvm_gmem_revoke() is called under info->lock to fully serialize
-  MPS_SET_PRESENT operations against each other and prevent races
-  between marking pages absent and present.
-- The PFN passed to kvm_gmem_revoke() is derived from info->base_pfn +
-  start. The mapping between page index and physical PFN is static and
-  immutable for the lifetime of the provider file, ensuring that the
-  pfn mapping remains completely stable across the revoke call.
-- Passing pfn directly to kvm_gmem_revoke() allows guest_memfd to
-  reclaim the physical range directly without calling back into the
-  provider. This keeps the lock hierarchy strictly top-down (info->lock
-  -> filemap_invalidate_lock -> mmu_lock) with no callbacks or deadlocks.
-
-For now, nothing needs to be done when setting a page present, since users
-should (re-)fault and (re-)obtain the PFN via .get_pfn(), to be added in a
-later patch.
-
-For users that don't support faulting, like the IOMMU, the counterpart to
-kvm_gmem_revoke() will be made available for the first user to indicate
-that the memory is now available. guest_memfd should then do the page table
-mappings as necessary, based on the shared/private status.
+This sample memory provider performs allocations upfront, so
+.lookup_pfn_range doesn't do any allocations anyway and is only slightly
+different from .get_pfn.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- samples/Kconfig               |  2 +-
- samples/kvm/memory_provider.c | 33 ++++++++++++++++++++++-----------
- 2 files changed, 23 insertions(+), 12 deletions(-)
+ samples/kvm/memory_provider.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
-diff --git a/samples/Kconfig b/samples/Kconfig
-index d4e79e1a9286b..4ef9328a91778 100644
---- a/samples/Kconfig
-+++ b/samples/Kconfig
-@@ -328,7 +328,7 @@ source "samples/damon/Kconfig"
- 
- config SAMPLE_KVM_MEMORY_PROVIDER
- 	tristate "Build sample memory provider -- loadable module only"
--	depends on CONTIG_ALLOC && X86_64 && m
-+	depends on CONTIG_ALLOC && X86_64 && m && KVM_GUEST_MEMFD
- 	help
- 	  This builds a sample memory provider.
- 	  Its files can back a guest_memfd and be mapped by iommufd.
 diff --git a/samples/kvm/memory_provider.c b/samples/kvm/memory_provider.c
-index 0a03623492f4c..926f3cf68ed49 100644
+index 926f3cf68ed49..7fb7365b65940 100644
 --- a/samples/kvm/memory_provider.c
 +++ b/samples/kvm/memory_provider.c
-@@ -43,6 +43,19 @@ struct mp_info {
- 	struct inode *gmem_inode;
- };
+@@ -249,10 +249,34 @@ static int mp_gmem_get_pfn(void *provider, pgoff_t index, unsigned long *pfn,
+ 	return 0;
+ }
  
-+static void mp_zero_range(struct mp_info *info, pgoff_t index,
-+			   size_t nr_pages)
++static int mp_gmem_lookup_pfn_range(void *provider, pgoff_t index,
++				     unsigned long *pfn, size_t *nr_pages)
 +{
-+	size_t i;
++	struct file *resource_file = provider;
++	struct mp_info *info = resource_file->private_data;
 +
 +	if (index >= info->npages)
-+		return;
++		return -EINVAL;
 +
-+	nr_pages = min_t(size_t, nr_pages, info->npages - index);
-+	for (i = 0; i < nr_pages; i++)
-+		clear_highpage(info->cma_pages + index + i);
++	if (test_bit(index, info->absent)) {
++		unsigned long next_present;
++
++		next_present = find_next_zero_bit(info->absent, info->npages,
++						  index + 1);
++		*nr_pages = next_present - index;
++		return -ENOENT;
++	}
++
++	*pfn = info->base_pfn + index;
++	*nr_pages = find_next_bit(info->absent, info->npages, index + 1) - index;
++	return 0;
 +}
 +
- /* Byte range [offset, offset + len) of @info as page indices. */
- static int mp_range(struct mp_info *info, u64 offset, u64 len,
- 		    unsigned long *start, unsigned long *end)
-@@ -82,12 +95,17 @@ static void mp_set_present(struct mp_info *info, unsigned long start,
- 			   unsigned long end, bool present)
- {
- 	mutex_lock(&info->lock);
--
--	if (present)
-+	if (present) {
- 		bitmap_clear(info->absent, start, end - start);
--	else
-+	} else {
- 		bitmap_set(info->absent, start, end - start);
-+		if (info->gmem_inode) {
-+			unsigned long pfn = info->base_pfn + start;
+ static const struct guest_memfd_provider_operations mp_gmem_provider_ops = {
+ 	.attach		= mp_gmem_attach,
+ 	.release	= mp_gmem_release,
+ 	.get_pfn	= mp_gmem_get_pfn,
++	.lookup_pfn_range = mp_gmem_lookup_pfn_range,
+ 	.put_pfn_range	= mp_gmem_put_pfn_range,
+ };
  
-+			kvm_gmem_revoke(info->gmem_inode, start, end - start, &pfn);
-+			mp_zero_range(info, start, end - start);
-+		}
-+	}
- 	mutex_unlock(&info->lock);
- }
- 
-@@ -203,15 +221,8 @@ static void mp_gmem_put_pfn_range(void *provider, pgoff_t index,
- 				   size_t nr_pages)
- {
- 	struct file *resource_file = provider;
--	struct mp_info *info = resource_file->private_data;
--	size_t i;
- 
--	if (index >= info->npages)
--		return;
--
--	nr_pages = min_t(size_t, nr_pages, info->npages - index);
--	for (i = 0; i < nr_pages; i++)
--		clear_highpage(info->cma_pages + index + i);
-+	mp_zero_range(resource_file->private_data, index, nr_pages);
- }
- 
- static int mp_gmem_get_pfn(void *provider, pgoff_t index, unsigned long *pfn,
 
 -- 
 2.56.0.455.g6c5a503b38-goog
