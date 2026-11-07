@@ -1,98 +1,397 @@
 From: Jing Lin <kayano050408@gmail.com>
-Subject: [PATCH v4 0/2] usb: gadget: gadgetfs: fix ep0 request lifetime and
- event counter
-Date: Sat, 07 Nov 2026 21:46:12 +0900
-Message-Id: <20261107-b4-gadgetfs-ep0-v4-0-86bdfd684b54@gmail.com>
+Date: Sat, 07 Nov 2026 21:46:13 +0900
+Subject: [PATCH v4 1/2] usb: gadget: gadgetfs: fix ep0 request lifetime on
+ disconnect
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJQd72oC/4WPy07EMAxFf2WUNS5xmknqWfEfiEWaetog+lASK
- tCo/05T2AwsWF7b5+j6JhLHwElcTjcReQ0pzNMe9MNJ+MFNPUPo9iyUVAZRGmg19K7rOV8T8CL
- h2qD2qC1aR2KnlsjX8HEYn1++c3pvX9nnoikXrUsMbXSTH8pojqEP0+PoUuZY9kNIeY6fR6UVi
- 0egpZqsITSkK2WtwYrOutakSVpU1jSIJKu7YovLfoDMKT/1owtvlZ9HURqt6nD+fGT/fLQqQOi
- ahgyj685of/P1P3wNEoySDXVespd3/LZtXyvFB0N0AQAA
-X-Change-ID: 20261106-b4-gadgetfs-ep0-f814c14717a9
+Message-Id: <20261107-b4-gadgetfs-ep0-v4-1-86bdfd684b54@gmail.com>
+References: <20261107-b4-gadgetfs-ep0-v4-0-86bdfd684b54@gmail.com>
+In-Reply-To: <20261107-b4-gadgetfs-ep0-v4-0-86bdfd684b54@gmail.com>
 To: Neill Kapron <nkapron@google.com>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
  syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com, 
  stable@vger.kernel.org, Jing Lin <kayano050408@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794055573; l=3518;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794055573; l=11648;
  i=kayano050408@gmail.com; s=20261106-gadgetfs-gmail;
- h=from:subject:message-id; bh=bTvVhVMcfu7sgkbgZWUCkfdoko52Ui4bE2y5k9oCIrY=;
- b=B21GKPrJNI7wrXIy8PZGYR0WU8eEgz9b72MBnJdaxqL0PTbYWb6FD7tTVMkhomnAc8MN35SL1
- soDvDVg6IJFD5Yn9iVZ2xDGp/FK8vHxAnWEPKdM1sK0gbgNwPyPcm1E
+ h=from:subject:message-id; bh=zpQOHmlQwRjGrBepJrO84PIIdbA+Tl6x07uSNmmbWB8=;
+ b=y/yXeU+hG/a855w85SqVRHROHpJWBAAx+RScz5tmAqh5ZQqe5z2QaObX7+98Idg+K2TTQI214
+ Nd2ZB43AzX5BEuPXCcvZ8ZQlghvIOqwxPbdRMG1MW8NJqI8c523P/ZC
 X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
  pk=DtAI52kU3F0sVbAiS4n+5b4UKMnVF398eKHlj3H9KBY=
 X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/20261106-gadgetfs-gmail with auth_id=1433
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 gadgetfs_unbind() frees the preallocated ep0 request after disconnecting
-the gadget, assuming that no I/O remains active. With dummy_hcd, a
-delayed userspace response can leave the request queued when it is freed,
-which triggers the warning in dummy_free_request() and a use-after-free
-when dummy_udc_stop() drains the endpoint queue.
+the gadget, assuming that no I/O remains active.
 
-gadgetfs_setup() and ep0_write() also race on dev->req and req->buf
+With dummy_hcd, disconnecting does not necessarily drain ep0, so a delayed
+userspace response can leave dev->req queued when it is freed. This
+triggers the warning in dummy_free_request() and a use-after-free when
+dummy_udc_stop() subsequently drains the endpoint queue.
+
+gadgetfs_setup() and ep0_write() can also race on dev->req and req->buf
 while a control transfer is in flight or while a completed delegated OUT
 transfer is waiting for ep0_read() to copy the payload to userspace.
-Overwriting req->buf with a descriptor pointer causes clean_req() to
-free the descriptor buffer instead of the request buffer.
+Overwriting req->buf with a descriptor pointer causes clean_req() to free
+the descriptor buffer instead of the request buffer.
 
-Copy completed OUT payloads into a separate setup_buf in ep0_complete(),
-copy IN payloads from userspace into a stack buffer before preparing
-dev->req in ep0_write(), reset req->buf when transfers finish, reject
-dev->req reuse while it is queued, and dequeue it before freeing in
-gadgetfs_unbind(). The second patch dequeues ep0 events into the local
-buffer under dev->lock before copy_to_user() to prevent event races,
-dropped GADGETFS_SETUP events, and counter underflow.
+Copy completed control OUT payloads into a separate setup_buf in
+ep0_complete(), copy control IN payloads from userspace into a stack
+buffer before preparing dev->req in ep0_write(), and reset req->buf when
+control transfers finish. Track whether dev->req is queued, reject reuse
+while it is queued, and dequeue it without dev->lock before freeing it in
+gadgetfs_unbind().
 
-Changes in v4:
-- Reject reusing dev->req in setup_req() and gadgetfs_setup() while
-  dev->ep0_req_queued is set, so an -EINVAL queue failure cannot clear
-  ep0_req_queued while dev->req remains on the endpoint queue.
-- Copy control IN payloads into a stack buffer before preparing dev->req
-  in ep0_write(), copy completed control OUT payloads into setup_buf in
-  ep0_complete(), and reset req->buf when control transfers complete so
-  clean_req() cannot free descriptor memory.
-- Dequeue ep0 events into the local buffer and update dev->ev_next under
-  dev->lock before copy_to_user() instead of using a generation counter,
-  avoiding unlocked dev->event[] reads and lost GADGETFS_SETUP events.
-- Link to v3: https://patch.msgid.link/20261107-b4-gadgetfs-ep0-v3-0-62089dc0ec07@gmail.com
-
-Changes in v3:
-- Replace the v2 -EBUSY rejection with a separate buffer for pending OUT
-  data, so a new SETUP can reuse dev->req without overwriting unread data
-  or leaving ep0 permanently busy after a zero-length status stage.
-- Dequeue a pending ep0 request before freeing it in gadgetfs_unbind().
-- Add a separate patch preventing the ep0 event counter underflow.
-- Link to v2: https://patch.msgid.link/20261107-b4-gadgetfs-ep0-v2-1-d8896e1ad517@gmail.com
-
-Changes in v2:
-- Also check dev->setup_out_ready in gadgetfs_setup() so a new SETUP
-  request cannot reuse dev->req or overwrite req->buf while ep0_read()
-  still has unread or in-progress control OUT data.
-- Reset req->buf to dev->rbuf in setup_req() when len <= sizeof(dev->rbuf)
-  and clean up unread control OUT buffer in gadgetfs_unbind().
-- Remove RFC syzbot test commands from the commit description and add the
-  syzbot Tested-by tag.
-- Link to v1: https://patch.msgid.link/179397691694.27761.9543494907127681190.gadgetfs-ep0-patch-test@gmail.com
-
+Fixes: 1da177e4c3f41 ("Linux-2.6.12-rc2")
+Reported-by: syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=c73e1942197af9f54ca3
+Cc: stable@vger.kernel.org
 Signed-off-by: Jing Lin <kayano050408@gmail.com>
-
 ---
-Jing Lin (2):
-      usb: gadget: gadgetfs: fix ep0 request lifetime on disconnect
-      usb: gadget: gadgetfs: prevent ep0 event counter underflow
+ drivers/usb/gadget/legacy/inode.c | 145 ++++++++++++++++++++++++++++----------
+ 1 file changed, 107 insertions(+), 38 deletions(-)
 
- drivers/usb/gadget/legacy/inode.c | 171 ++++++++++++++++++++++++++------------
- 1 file changed, 117 insertions(+), 54 deletions(-)
----
-base-commit: f66469d9905b39d2c260a15d7d6db450f4db67c1
-change-id: 20261106-b4-gadgetfs-ep0-f814c14717a9
+diff --git a/drivers/usb/gadget/legacy/inode.c b/drivers/usb/gadget/legacy/inode.c
+index 7f6d84601..31fc83427 100644
+--- a/drivers/usb/gadget/legacy/inode.c
++++ b/drivers/usb/gadget/legacy/inode.c
+@@ -140,6 +140,8 @@ struct dev_data {
+ 					setup_abort : 1,
+ 					gadget_registered : 1;
+ 	unsigned			setup_wLength;
++	unsigned int			setup_out_len;
++	bool				ep0_req_queued;
+ 
+ 	/* the rest is basically write-once */
+ 	struct usb_config_descriptor	*config, *hs_config;
+@@ -153,6 +155,7 @@ struct dev_data {
+ 
+ 	/* except this scratch i/o buffer for ep0 */
+ 	u8				rbuf[RBUF_SIZE];
++	u8				setup_buf[RBUF_SIZE];
+ };
+ 
+ static inline void get_dev (struct dev_data *data)
+@@ -984,6 +987,17 @@ static inline void ep0_readable (struct dev_data *dev)
+ 	kill_fasync (&dev->fasync, SIGIO, POLL_IN);
+ }
+ 
++static void dev_req_complete(struct usb_ep *ep, struct usb_request *req)
++{
++	struct dev_data		*dev = ep->driver_data;
++	unsigned long		flags;
++
++	spin_lock_irqsave(&dev->lock, flags);
++	req->buf = dev->rbuf;
++	dev->ep0_req_queued = false;
++	spin_unlock_irqrestore(&dev->lock, flags);
++}
++
+ static void clean_req (struct usb_ep *ep, struct usb_request *req)
+ {
+ 	struct dev_data		*dev = ep->driver_data;
+@@ -992,30 +1006,31 @@ static void clean_req (struct usb_ep *ep, struct usb_request *req)
+ 		kfree(req->buf);
+ 		req->buf = dev->rbuf;
+ 	}
+-	req->complete = epio_complete;
+-	dev->setup_out_ready = 0;
++	req->complete = dev_req_complete;
+ }
+ 
+ static void ep0_complete (struct usb_ep *ep, struct usb_request *req)
+ {
+ 	struct dev_data		*dev = ep->driver_data;
+ 	unsigned long		flags;
+-	int			free = 1;
+ 
+ 	/* for control OUT, data must still get to userspace */
+ 	spin_lock_irqsave(&dev->lock, flags);
+-	if (!dev->setup_in) {
++	dev->ep0_req_queued = false;
++	if (!dev->setup_in && dev->setup_wLength) {
+ 		dev->setup_out_error = (req->status != 0);
+-		if (!dev->setup_out_error)
+-			free = 0;
++		if (dev->setup_out_error) {
++			dev->setup_out_len = 0;
++		} else {
++			dev->setup_out_len = min_t(unsigned int, req->actual,
++						   sizeof(dev->setup_buf));
++			memcpy(dev->setup_buf, req->buf, dev->setup_out_len);
++		}
+ 		dev->setup_out_ready = 1;
+-		ep0_readable (dev);
++		ep0_readable(dev);
+ 	}
+ 
+-	/* clean up as appropriate */
+-	if (free && req->buf != &dev->rbuf)
+-		clean_req (ep, req);
+-	req->complete = epio_complete;
++	clean_req(ep, req);
+ 	spin_unlock_irqrestore(&dev->lock, flags);
+ }
+ 
+@@ -1023,12 +1038,14 @@ static int setup_req (struct usb_ep *ep, struct usb_request *req, u16 len)
+ {
+ 	struct dev_data	*dev = ep->driver_data;
+ 
+-	if (dev->setup_out_ready) {
++	if (dev->ep0_req_queued) {
+ 		DBG (dev, "ep0 request busy!\n");
+ 		return -EBUSY;
+ 	}
+ 	if (len > sizeof (dev->rbuf))
+ 		req->buf = kmalloc(len, GFP_ATOMIC);
++	else
++		req->buf = dev->rbuf;
+ 	if (req->buf == NULL) {
+ 		req->buf = dev->rbuf;
+ 		return -ENOMEM;
+@@ -1045,6 +1062,7 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
+ 	struct dev_data			*dev = fd->private_data;
+ 	ssize_t				retval;
+ 	enum ep0_state			state;
++	u8				tmp[RBUF_SIZE];
+ 
+ 	spin_lock_irq (&dev->lock);
+ 	if (dev->state <= STATE_DEV_OPENED) {
+@@ -1073,13 +1091,20 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
+ 			struct usb_request	*req = dev->req;
+ 
+ 			if ((retval = setup_req (ep, req, 0)) == 0) {
++				dev->state = STATE_DEV_CONNECTED;
+ 				++dev->udc_usage;
++				dev->ep0_req_queued = true;
+ 				spin_unlock_irq (&dev->lock);
+ 				retval = usb_ep_queue (ep, req, GFP_KERNEL);
+ 				spin_lock_irq (&dev->lock);
+ 				--dev->udc_usage;
++				if (retval < 0) {
++					dev->ep0_req_queued = false;
++					clean_req(ep, req);
++				}
++			} else {
++				dev->state = STATE_DEV_CONNECTED;
+ 			}
+-			dev->state = STATE_DEV_CONNECTED;
+ 
+ 			/* assume that was SET_CONFIGURATION */
+ 			if (dev->current_config) {
+@@ -1109,25 +1134,36 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
+ 			if (retval)
+ 				goto done;
+ 
+-			if (dev->state != STATE_DEV_SETUP) {
++			if (dev->setup_abort) {
++				dev->setup_abort = 0;
++				retval = -EIDRM;
++				goto done;
++			}
++			if (dev->state != STATE_DEV_SETUP ||
++			    dev->setup_in || !dev->setup_out_ready) {
+ 				retval = -ECANCELED;
+ 				goto done;
+ 			}
+ 			dev->state = STATE_DEV_CONNECTED;
+ 
+-			if (dev->setup_out_error)
++			if (dev->setup_out_error) {
++				dev->setup_out_ready = 0;
++				dev->setup_out_error = 0;
++				dev->setup_out_len = 0;
+ 				retval = -EIO;
+-			else {
+-				len = min (len, (size_t)dev->req->actual);
++			} else {
++				len = min_t(size_t, len, dev->setup_out_len);
++				memcpy(tmp, dev->setup_buf, len);
++				dev->setup_out_ready = 0;
++				dev->setup_out_len = 0;
+ 				++dev->udc_usage;
+ 				spin_unlock_irq(&dev->lock);
+-				if (copy_to_user (buf, dev->req->buf, len))
++				if (copy_to_user(buf, tmp, len))
+ 					retval = -EFAULT;
+ 				else
+ 					retval = len;
+ 				spin_lock_irq(&dev->lock);
+ 				--dev->udc_usage;
+-				clean_req (dev->gadget->ep0, dev->req);
+ 				/* NOTE userspace can't yet choose to stall */
+ 			}
+ 		}
+@@ -1267,29 +1303,41 @@ ep0_write (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
+ 
+ 		len = min_t(size_t, len, dev->setup_wLength);
+ 		if (dev->setup_in) {
+-			retval = setup_req (dev->gadget->ep0, dev->req, len);
++			u8	tmp[RBUF_SIZE];
++			bool	zero = len < dev->setup_wLength;
++
++			dev->state = STATE_DEV_CONNECTED;
++			spin_unlock_irq(&dev->lock);
++			if (copy_from_user(tmp, buf, len)) {
++				spin_lock_irq(&dev->lock);
++				return -EFAULT;
++			}
++			spin_lock_irq(&dev->lock);
++			if (dev->setup_abort) {
++				dev->setup_abort = 0;
++				return -EIDRM;
++			}
++			if (dev->state != STATE_DEV_CONNECTED)
++				return -ECANCELED;
++			retval = setup_req(dev->gadget->ep0, dev->req, len);
+ 			if (retval == 0) {
+-				dev->state = STATE_DEV_CONNECTED;
++				memcpy(dev->req->buf, tmp, len);
++				dev->req->zero = zero;
+ 				++dev->udc_usage;
+-				spin_unlock_irq (&dev->lock);
+-				if (copy_from_user (dev->req->buf, buf, len))
+-					retval = -EFAULT;
+-				else {
+-					if (len < dev->setup_wLength)
+-						dev->req->zero = 1;
+-					retval = usb_ep_queue (
+-						dev->gadget->ep0, dev->req,
+-						GFP_KERNEL);
+-				}
++				dev->ep0_req_queued = true;
++				spin_unlock_irq(&dev->lock);
++				retval = usb_ep_queue(
++					dev->gadget->ep0, dev->req,
++					GFP_KERNEL);
+ 				spin_lock_irq(&dev->lock);
+ 				--dev->udc_usage;
+ 				if (retval < 0) {
++					dev->ep0_req_queued = false;
+ 					clean_req (dev->gadget->ep0, dev->req);
+ 				} else
+ 					retval = len;
+-
+-				return retval;
+ 			}
++			return retval;
+ 
+ 		/* can stall some OUT transfers */
+ 		} else if (dev->setup_can_stall) {
+@@ -1483,6 +1531,10 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 	}
+ 
+ 	spin_lock (&dev->lock);
++	if (dev->ep0_req_queued) {
++		spin_unlock(&dev->lock);
++		return -EBUSY;
++	}
+ 	dev->setup_abort = 0;
+ 	if (dev->state == STATE_DEV_UNCONNECTED) {
+ 		if (gadget_is_dualspeed(gadget)
+@@ -1618,6 +1670,7 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 			dev->setup_wLength = w_length;
+ 			dev->setup_out_ready = 0;
+ 			dev->setup_out_error = 0;
++			dev->setup_out_len = 0;
+ 
+ 			/* read DATA stage for OUT right away */
+ 			if (unlikely (!dev->setup_in && w_length)) {
+@@ -1627,12 +1680,14 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 					break;
+ 
+ 				++dev->udc_usage;
++				dev->ep0_req_queued = true;
+ 				spin_unlock (&dev->lock);
+ 				value = usb_ep_queue (gadget->ep0, dev->req,
+ 							GFP_KERNEL);
+ 				spin_lock (&dev->lock);
+ 				--dev->udc_usage;
+ 				if (value < 0) {
++					dev->ep0_req_queued = false;
+ 					clean_req (gadget->ep0, dev->req);
+ 					break;
+ 				}
+@@ -1663,21 +1718,26 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 	if (value >= 0 && dev->state != STATE_DEV_SETUP) {
+ 		req->length = value;
+ 		req->zero = value < w_length;
++		req->complete = dev_req_complete;
+ 
+ 		++dev->udc_usage;
++		dev->ep0_req_queued = true;
+ 		spin_unlock (&dev->lock);
+ 		value = usb_ep_queue (gadget->ep0, req, GFP_KERNEL);
+ 		spin_lock(&dev->lock);
+ 		--dev->udc_usage;
+-		spin_unlock(&dev->lock);
+ 		if (value < 0) {
++			dev->ep0_req_queued = false;
++			req->buf = dev->rbuf;
+ 			DBG (dev, "ep_queue --> %d\n", value);
+ 			req->status = 0;
+ 		}
++		spin_unlock(&dev->lock);
+ 		return value;
+ 	}
+ 
+ 	/* device stalls when value < 0 */
++	req->buf = dev->rbuf;
+ 	spin_unlock (&dev->lock);
+ 	return value;
+ }
+@@ -1771,6 +1831,7 @@ static void
+ gadgetfs_unbind (struct usb_gadget *gadget)
+ {
+ 	struct dev_data		*dev = get_gadget_data (gadget);
++	bool			queued;
+ 
+ 	DBG (dev, "%s\n", __func__);
+ 
+@@ -1781,15 +1842,21 @@ gadgetfs_unbind (struct usb_gadget *gadget)
+ 		usleep_range(1000, 2000);
+ 		spin_lock_irq(&dev->lock);
+ 	}
++	queued = dev->ep0_req_queued;
+ 	spin_unlock_irq (&dev->lock);
+ 
++	if (dev->req) {
++		if (queued)
++			usb_ep_dequeue(gadget->ep0, dev->req);
++		clean_req(gadget->ep0, dev->req);
++		usb_ep_free_request(gadget->ep0, dev->req);
++		dev->req = NULL;
++	}
++
+ 	destroy_ep_files (dev);
+ 	gadget->ep0->driver_data = NULL;
+ 	set_gadget_data (gadget, NULL);
+ 
+-	/* we've already been disconnected ... no i/o is active */
+-	if (dev->req)
+-		usb_ep_free_request (gadget->ep0, dev->req);
+ 	DBG (dev, "%s done\n", __func__);
+ 	put_dev (dev);
+ }
+@@ -1816,11 +1883,13 @@ static int gadgetfs_bind(struct usb_gadget *gadget,
+ 	get_dev (dev);
+ 
+ 	/* preallocate control response and buffer */
++	dev->ep0_req_queued = false;
+ 	dev->req = usb_ep_alloc_request (gadget->ep0, GFP_KERNEL);
+ 	if (!dev->req)
+ 		goto enomem;
+ 	dev->req->context = NULL;
+-	dev->req->complete = epio_complete;
++	dev->req->complete = dev_req_complete;
++	dev->req->buf = dev->rbuf;
+ 
+ 	if (activate_ep_files (dev) < 0)
+ 		goto enomem;
 
-Best regards,
---  
-Jing Lin <kayano050408@gmail.com>
+-- 
+Git-155)
 
