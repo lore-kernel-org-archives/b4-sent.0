@@ -1,11 +1,10 @@
 From: Rui Cao <i@udp0.com>
-Date: Sat, 07 Nov 2026 20:21:58 +0800
-Subject: [PATCH 1/4] dt-bindings: arm: mediatek: Add MT6833 and the Xiaomi
- Redmi Note 13 5G
+Date: Sat, 07 Nov 2026 20:21:59 +0800
+Subject: [PATCH 2/4] dt-bindings: watchdog: mediatek,mtk-wdt: Add MT6833
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261107-mt6833-base-v1-1-bda21083e9f3@udp0.com>
+Message-Id: <20261107-mt6833-base-v1-2-bda21083e9f3@udp0.com>
 References: <20261107-mt6833-base-v1-0-bda21083e9f3@udp0.com>
 In-Reply-To: <20261107-mt6833-base-v1-0-bda21083e9f3@udp0.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -22,39 +21,36 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-watchdog@vger.kernel.org, linux-serial@vger.kernel.org, 
  Rui Cao <i@udp0.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794054121; l=875;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794054121; l=892;
  i=i@udp0.com; s=20261107; h=from:subject:message-id;
- bh=uNRP9WqNOZ9uVaqNn9d41dwM2xyX/yc6xIzymdwBqLg=;
- b=0UOOOfIfHwIQKYbayAqLFyPCAGDYBveCla4WK1KIfCJ9GeX3M+2VuO9cJQCJ0xAXcyRe522MB
- qiM+rDqx3wiDC/m8t3Uq+lQWZbO/Bhd7KZPE0pYxz38Xt6ebC7l7Uoi
+ bh=BmzvMDSSGsZ+iD74UsWjZpukUgHxSh4ohrYyIUhF5jE=;
+ b=F57GxYhOMBYbveCONM116XPFb4pK0L12+SfnY49y8GXm9fBg4NWCDOdE9k9AtF/ZThFPv++p0
+ yd0LKdZEn5wCoZw8LDCNADha3POq9r+6aEPlO5YwWRiGrxn6mZG+eXC
 X-Developer-Key: i=i@udp0.com; a=ed25519;
  pk=XZJKcKgnUUjjyw8KuKy7u2QeIX0JLY/L1Fxzwwje41w=
 X-Endpoint-Received: by B4 Relay for i@udp0.com/20261107 with auth_id=1443
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MediaTek's MT6833 (Dimensity 700) and the Xiaomi Redmi Note 13 5G,
-codenamed gold, which is built on it.
+Add MediaTek's MT6833 (Dimensity 700). Its watchdog works as MT6589's,
+which it falls back to.
 
 Signed-off-by: Rui Cao <i@udp0.com>
 ---
- Documentation/devicetree/bindings/arm/mediatek.yaml | 4 ++++
- 1 file changed, 4 insertions(+)
+ Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/mediatek.yaml b/Documentation/devicetree/bindings/arm/mediatek.yaml
-index 180e6e4948e..900f16b57dc 100644
---- a/Documentation/devicetree/bindings/arm/mediatek.yaml
-+++ b/Documentation/devicetree/bindings/arm/mediatek.yaml
-@@ -72,6 +72,10 @@ properties:
-               - archermind,mt6797-x20-dev
-               - mediatek,mt6797-evb
-           - const: mediatek,mt6797
-+      - items:
-+          - enum:
-+              - xiaomi,gold
-+          - const: mediatek,mt6833
-       - items:
-           - enum:
-               - bananapi,bpi-r64
+diff --git a/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml b/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml
+index f9b725592c2..dfdc06c758d 100644
+--- a/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml
++++ b/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml
+@@ -38,6 +38,7 @@ properties:
+               - mediatek,mt6572-wdt
+               - mediatek,mt6582-wdt
+               - mediatek,mt6797-wdt
++              - mediatek,mt6833-wdt
+               - mediatek,mt7622-wdt
+               - mediatek,mt7623-wdt
+               - mediatek,mt7629-wdt
 
 -- 
 Git-157)
