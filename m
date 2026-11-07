@@ -1,172 +1,286 @@
-From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Fri, 06 Nov 2026 15:18:57 -0800
-Subject: [PATCH net-next v10 11/11] net: phy: ncn26000: Support for
- loopback
+From: Jing Lin <kayano050408@gmail.com>
+Date: Sat, 07 Nov 2026 09:13:23 +0900
+Subject: [PATCH v2] usb: gadget: gadgetfs: dequeue pending ep0 request
+ before freeing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-s2500-mac-phy-support-v10-11-31b5a69b85b7@onsemi.com>
-References: <20261106-s2500-mac-phy-support-v10-0-31b5a69b85b7@onsemi.com>
-In-Reply-To: <20261106-s2500-mac-phy-support-v10-0-31b5a69b85b7@onsemi.com>
-To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
- Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, 
- Richard Cochran <richardcochran@gmail.com>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, Eric Dumazet <edumazet@kernel.org>, 
- Piergiorgio Beruto <piergiorgio.beruto@gmail.com>, 
- Eric Dumazet <edumazet@kernel.org>
-Cc: Selva Rajagopal <Selvamani.Rajagopal@onsemi.com>, 
- netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Jerry Ray <jerry.ray@microchip.com>, 
- Ciprian Regus <ciprian.regus@analog.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794007133; l=4702;
- i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=FSneJImmnVX4oXj9Hfm3wTCQItvR55UDG8WF8wwHYF4=;
- b=l/xBqtKQeNbFTGsHvUFItQdH4GGKPVfedvfNoW7y3brokWB7GZP8bPD/BFJ/KHkesE36pqoSp
- w+wsMy7XYgtDhH1S17vaZa/zzr+/7NqRZiawGxDioYejNOjEGCo3ENj
-X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
- pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
-X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
+Message-Id: <20261107-b4-gadgetfs-ep0-v2-1-d8896e1ad517@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACJt7moC/1WOS27DMAxErxJoXbmiokphV71HkYWs0DKL+gNRD
+ RIEvnutdNXlmyEf5qGECpOo98NDFbqy8DLvYF8OKo1xzqT5srOyxnoA43XvdI6XTHUQTavRwwl
+ cAhcgRFT711po4NvT+Hn+Y/npvyjVpmkXfRTSfYlzGlu0FM48v05RKpXWjyx1KffnpCs0j4KAR
+ wwewaPrbAgeOnxzR4cOTQAb/AkATfdv2BprGnUlqR95ivzdpWVS523bfgHeg3wP9AAAAA==
+X-Change-ID: 20261106-b4-gadgetfs-ep0-f814c14717a9
+To: Neill Kapron <nkapron@google.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com, 
+ syzkaller-bugs@googlegroups.com, stable@vger.kernel.org, 
+ Jing Lin <kayano050408@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794010402; l=8972;
+ i=kayano050408@gmail.com; s=20261106-gadgetfs-gmail;
+ h=from:subject:message-id; bh=6vi0zhlir65l8tCHpG2Hbu6i0egiQtfmgMHdAHBVI60=;
+ b=2AhwBgkaw9+i6uOU3HJV3zxkKZah8m+Wmhc0ntbqqzE+VWyDszoSL82vWzkGUMmx1VTYRuJzr
+ /pzUx02mYBIAeYpyd65QYlnPV+azjPkz2xkneWNWlXOxcFt1f79VtFe
+X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
+ pk=DtAI52kU3F0sVbAiS4n+5b4UKMnVF398eKHlj3H9KBY=
+X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/20261106-gadgetfs-gmail with auth_id=1433
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adding loopback support for S2500 internal PHY to help running
-loopback test through ethtool.
+gadgetfs_unbind() frees the preallocated ep0 request after disconnecting
+the gadget, assuming that no I/O remains active.
 
-This instance requires only manipulating the loopback bit in
-the PHY, without setting the speed. So, added a generic helper
-function to modify loopback bit of the PHY only. This will
-help the PHY drivers, like 10Base-T1S or any other PHYs that
-want to handle loopback bit only.
+With dummy_hcd, disconnecting does not necessarily drain ep0, so a delayed
+userspace response can leave dev->req queued when it is freed. This
+triggers the warning in dummy_free_request() and a use-after-free when
+dummy_udc_stop() subsequently drains the endpoint queue.
 
-Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+In addition, gadgetfs_setup() can reuse dev->req while a completed
+delegated control OUT transfer still has dev->setup_out_ready set waiting
+for ep0_read() to copy the payload to userspace and call clean_req(),
+which can overwrite req->buf with descriptor pointers and trigger an
+invalid kfree() in clean_req().
 
+Track dev->req from submission through completion under dev->lock and
+reject reuse in both setup_req() and gadgetfs_setup() while either
+dev->setup_out_ready or dev->ep0_req_queued is set. Reset req->buf to
+dev->rbuf in setup_req() when len fits in dev->rbuf. In gadgetfs_unbind(),
+after waiting for active UDC users to finish, dequeue a pending request
+with dev->lock dropped and clean up any unread control OUT buffer before
+freeing dev->req and clearing ep0->driver_data.
+
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Reported-by: syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=c73e1942197af9f54ca3
+Tested-by: syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com
+Cc: stable@vger.kernel.org
+Signed-off-by: Jing Lin <kayano050408@gmail.com>
 ---
-changes in v10
-  - No change
-changes in v9
-  - replaced "fixed_speed" with "no_speed" for the API.
-  - Improved the comments to be specific about not setting the
-    speed.
-changes in v8
-  - No code change. Changes were in two different patches.
-    Merged into one.
-changes in v7
-  - No change
-changes in v6
-  - No change
-changes in v5
-  - No change
-changes in v4
-  - Moved the onsemi implementation to a new, genphy API to
-    make it vendor agnostic.
-changes in v3
-  - Addd loopback functionality for onsemi's PHY driver
-  - First patch
+Changes in v2:
+- Also check dev->setup_out_ready in gadgetfs_setup() so a new SETUP
+  request cannot reuse dev->req or overwrite req->buf while ep0_read()
+  still has unread or in-progress control OUT data.
+- Reset req->buf to dev->rbuf in setup_req() when len <= sizeof(dev->rbuf)
+  and clean up unread control OUT buffer in gadgetfs_unbind().
+- Remove RFC syzbot test commands from the commit description and add the
+  syzbot Tested-by tag.
+- Link to v1: https://patch.msgid.link/179397691694.27761.9543494907127681190.gadgetfs-ep0-patch-test@gmail.com
 ---
- drivers/net/phy/dp83867.c    | 11 +----------
- drivers/net/phy/ncn26000.c   |  1 +
- drivers/net/phy/phy_device.c | 22 ++++++++++++++++++++++
- include/linux/phy.h          |  2 ++
- 4 files changed, 26 insertions(+), 10 deletions(-)
+ drivers/usb/gadget/legacy/inode.c | 59 +++++++++++++++++++++++++++++++++------
+ 1 file changed, 50 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/net/phy/dp83867.c b/drivers/net/phy/dp83867.c
-index a3cd5cb11ea0..a62667606422 100644
---- a/drivers/net/phy/dp83867.c
-+++ b/drivers/net/phy/dp83867.c
-@@ -1058,15 +1058,6 @@ static void dp83867_link_change_notify(struct phy_device *phydev)
- 	}
+diff --git a/drivers/usb/gadget/legacy/inode.c b/drivers/usb/gadget/legacy/inode.c
+index 7f6d84601..9b74476dd 100644
+--- a/drivers/usb/gadget/legacy/inode.c
++++ b/drivers/usb/gadget/legacy/inode.c
+@@ -140,6 +140,7 @@ struct dev_data {
+ 					setup_abort : 1,
+ 					gadget_registered : 1;
+ 	unsigned			setup_wLength;
++	bool				ep0_req_queued;
+ 
+ 	/* the rest is basically write-once */
+ 	struct usb_config_descriptor	*config, *hs_config;
+@@ -984,6 +985,16 @@ static inline void ep0_readable (struct dev_data *dev)
+ 	kill_fasync (&dev->fasync, SIGIO, POLL_IN);
  }
  
--static int dp83867_loopback(struct phy_device *phydev, bool enable, int speed)
--{
--	if (enable && speed)
--		return -EOPNOTSUPP;
--
--	return phy_modify(phydev, MII_BMCR, BMCR_LOOPBACK,
--			  enable ? BMCR_LOOPBACK : 0);
--}
--
- static int
- dp83867_led_brightness_set(struct phy_device *phydev,
- 			   u8 index, enum led_brightness brightness)
-@@ -1292,7 +1283,7 @@ static struct phy_driver dp83867_driver[] = {
- 		.resume		= dp83867_resume,
- 
- 		.link_change_notify = dp83867_link_change_notify,
--		.set_loopback	= dp83867_loopback,
-+		.set_loopback	= genphy_loopback_no_speed,
- 
- 		.led_brightness_set = dp83867_led_brightness_set,
- 		.led_hw_is_supported = dp83867_led_hw_is_supported,
-diff --git a/drivers/net/phy/ncn26000.c b/drivers/net/phy/ncn26000.c
-index 0006e157917d..c115af6eda33 100644
---- a/drivers/net/phy/ncn26000.c
-+++ b/drivers/net/phy/ncn26000.c
-@@ -176,6 +176,7 @@ static struct phy_driver ncn26000_driver[] = {
- 		.config_init           = ncn26000_config_init,
- 		.config_aneg           = ncn26000_config_aneg,
- 		.read_status           = ncn26000_read_status,
-+		.set_loopback          = genphy_loopback_no_speed,
- 		.set_plca_cfg          = ncn26000_c45_plca_set_cfg,
- 		.get_plca_cfg          = genphy_c45_plca_get_cfg,
- 		.get_plca_status       = genphy_c45_plca_get_status,
-diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
-index 06c5a8c8cc2a..ffb6845d5b03 100644
---- a/drivers/net/phy/phy_device.c
-+++ b/drivers/net/phy/phy_device.c
-@@ -2923,6 +2923,28 @@ int genphy_resume(struct phy_device *phydev)
- }
- EXPORT_SYMBOL(genphy_resume);
- 
-+/**
-+ * genphy_loopback_no_speed - Helper to modify the PHY loopback mode
-+ * without setting speed. Some PHYs, like 10Base-T1S, don't support
-+ * auto-negotiation and therefore setting the speed isn't supported.
-+ *
-+ * @phydev: The phy_device struct
-+ * @enable: Flag to enable or disable the PHY level loopback.
-+ * @speed: Speed setting. Not expected to be set. Error if it is set.
-+ *
-+ * Returns: 0 if successful, negative error code on failure.
-+ */
-+int genphy_loopback_no_speed(struct phy_device *phydev, bool enable,
-+			     int speed)
++static void dev_req_complete(struct usb_ep *ep, struct usb_request *req)
 +{
-+	if (enable && speed)
-+		return -EOPNOTSUPP;
++	struct dev_data		*dev = ep->driver_data;
++	unsigned long		flags;
 +
-+	return phy_modify(phydev, MII_BMCR, BMCR_LOOPBACK,
-+			  enable ? BMCR_LOOPBACK : 0);
++	spin_lock_irqsave(&dev->lock, flags);
++	dev->ep0_req_queued = false;
++	spin_unlock_irqrestore(&dev->lock, flags);
 +}
-+EXPORT_SYMBOL(genphy_loopback_no_speed);
 +
- int genphy_loopback(struct phy_device *phydev, bool enable, int speed)
+ static void clean_req (struct usb_ep *ep, struct usb_request *req)
  {
- 	if (enable) {
-diff --git a/include/linux/phy.h b/include/linux/phy.h
-index 21afc2082b17..6e57f83757bb 100644
---- a/include/linux/phy.h
-+++ b/include/linux/phy.h
-@@ -2317,6 +2317,8 @@ int genphy_read_status(struct phy_device *phydev);
- int genphy_read_master_slave(struct phy_device *phydev);
- int genphy_suspend(struct phy_device *phydev);
- int genphy_resume(struct phy_device *phydev);
-+int genphy_loopback_no_speed(struct phy_device *phydev, bool enable,
-+			     int speed);
- int genphy_loopback(struct phy_device *phydev, bool enable, int speed);
- int genphy_soft_reset(struct phy_device *phydev);
- irqreturn_t genphy_handle_interrupt_no_ack(struct phy_device *phydev);
+ 	struct dev_data		*dev = ep->driver_data;
+@@ -992,7 +1003,7 @@ static void clean_req (struct usb_ep *ep, struct usb_request *req)
+ 		kfree(req->buf);
+ 		req->buf = dev->rbuf;
+ 	}
+-	req->complete = epio_complete;
++	req->complete = dev_req_complete;
+ 	dev->setup_out_ready = 0;
+ }
+ 
+@@ -1004,6 +1015,7 @@ static void ep0_complete (struct usb_ep *ep, struct usb_request *req)
+ 
+ 	/* for control OUT, data must still get to userspace */
+ 	spin_lock_irqsave(&dev->lock, flags);
++	dev->ep0_req_queued = false;
+ 	if (!dev->setup_in) {
+ 		dev->setup_out_error = (req->status != 0);
+ 		if (!dev->setup_out_error)
+@@ -1015,7 +1027,7 @@ static void ep0_complete (struct usb_ep *ep, struct usb_request *req)
+ 	/* clean up as appropriate */
+ 	if (free && req->buf != &dev->rbuf)
+ 		clean_req (ep, req);
+-	req->complete = epio_complete;
++	req->complete = dev_req_complete;
+ 	spin_unlock_irqrestore(&dev->lock, flags);
+ }
+ 
+@@ -1023,12 +1035,14 @@ static int setup_req (struct usb_ep *ep, struct usb_request *req, u16 len)
+ {
+ 	struct dev_data	*dev = ep->driver_data;
+ 
+-	if (dev->setup_out_ready) {
++	if (dev->setup_out_ready || dev->ep0_req_queued) {
+ 		DBG (dev, "ep0 request busy!\n");
+ 		return -EBUSY;
+ 	}
+ 	if (len > sizeof (dev->rbuf))
+ 		req->buf = kmalloc(len, GFP_ATOMIC);
++	else
++		req->buf = dev->rbuf;
+ 	if (req->buf == NULL) {
+ 		req->buf = dev->rbuf;
+ 		return -ENOMEM;
+@@ -1073,13 +1087,20 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
+ 			struct usb_request	*req = dev->req;
+ 
+ 			if ((retval = setup_req (ep, req, 0)) == 0) {
++				dev->state = STATE_DEV_CONNECTED;
++				dev->ep0_req_queued = true;
+ 				++dev->udc_usage;
+ 				spin_unlock_irq (&dev->lock);
+ 				retval = usb_ep_queue (ep, req, GFP_KERNEL);
+ 				spin_lock_irq (&dev->lock);
+ 				--dev->udc_usage;
++				if (retval < 0) {
++					dev->ep0_req_queued = false;
++					clean_req(ep, req);
++				}
++			} else {
++				dev->state = STATE_DEV_CONNECTED;
+ 			}
+-			dev->state = STATE_DEV_CONNECTED;
+ 
+ 			/* assume that was SET_CONFIGURATION */
+ 			if (dev->current_config) {
+@@ -1270,6 +1291,7 @@ ep0_write (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
+ 			retval = setup_req (dev->gadget->ep0, dev->req, len);
+ 			if (retval == 0) {
+ 				dev->state = STATE_DEV_CONNECTED;
++				dev->ep0_req_queued = true;
+ 				++dev->udc_usage;
+ 				spin_unlock_irq (&dev->lock);
+ 				if (copy_from_user (dev->req->buf, buf, len))
+@@ -1284,6 +1306,7 @@ ep0_write (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
+ 				spin_lock_irq(&dev->lock);
+ 				--dev->udc_usage;
+ 				if (retval < 0) {
++					dev->ep0_req_queued = false;
+ 					clean_req (dev->gadget->ep0, dev->req);
+ 				} else
+ 					retval = len;
+@@ -1508,6 +1531,11 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 	} else if (dev->state == STATE_DEV_SETUP)
+ 		dev->setup_abort = 1;
+ 
++	if (dev->setup_out_ready || dev->ep0_req_queued) {
++		spin_unlock(&dev->lock);
++		return -EBUSY;
++	}
++
+ 	req->buf = dev->rbuf;
+ 	req->context = NULL;
+ 	switch (ctrl->bRequest) {
+@@ -1626,6 +1654,7 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 				if (value < 0)
+ 					break;
+ 
++				dev->ep0_req_queued = true;
+ 				++dev->udc_usage;
+ 				spin_unlock (&dev->lock);
+ 				value = usb_ep_queue (gadget->ep0, dev->req,
+@@ -1633,6 +1662,7 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 				spin_lock (&dev->lock);
+ 				--dev->udc_usage;
+ 				if (value < 0) {
++					dev->ep0_req_queued = false;
+ 					clean_req (gadget->ep0, dev->req);
+ 					break;
+ 				}
+@@ -1664,16 +1694,18 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 		req->length = value;
+ 		req->zero = value < w_length;
+ 
++		dev->ep0_req_queued = true;
+ 		++dev->udc_usage;
+ 		spin_unlock (&dev->lock);
+ 		value = usb_ep_queue (gadget->ep0, req, GFP_KERNEL);
+ 		spin_lock(&dev->lock);
+ 		--dev->udc_usage;
+-		spin_unlock(&dev->lock);
+ 		if (value < 0) {
++			dev->ep0_req_queued = false;
+ 			DBG (dev, "ep_queue --> %d\n", value);
+ 			req->status = 0;
+ 		}
++		spin_unlock(&dev->lock);
+ 		return value;
+ 	}
+ 
+@@ -1771,6 +1803,7 @@ static void
+ gadgetfs_unbind (struct usb_gadget *gadget)
+ {
+ 	struct dev_data		*dev = get_gadget_data (gadget);
++	bool			queued;
+ 
+ 	DBG (dev, "%s\n", __func__);
+ 
+@@ -1781,15 +1814,22 @@ gadgetfs_unbind (struct usb_gadget *gadget)
+ 		usleep_range(1000, 2000);
+ 		spin_lock_irq(&dev->lock);
+ 	}
++	queued = dev->ep0_req_queued;
+ 	spin_unlock_irq (&dev->lock);
+ 
++	if (dev->req) {
++		if (queued)
++			usb_ep_dequeue(gadget->ep0, dev->req);
++		if (dev->setup_out_ready)
++			clean_req(gadget->ep0, dev->req);
++		usb_ep_free_request(gadget->ep0, dev->req);
++		dev->req = NULL;
++	}
++
+ 	destroy_ep_files (dev);
+ 	gadget->ep0->driver_data = NULL;
+ 	set_gadget_data (gadget, NULL);
+ 
+-	/* we've already been disconnected ... no i/o is active */
+-	if (dev->req)
+-		usb_ep_free_request (gadget->ep0, dev->req);
+ 	DBG (dev, "%s done\n", __func__);
+ 	put_dev (dev);
+ }
+@@ -1816,11 +1856,12 @@ static int gadgetfs_bind(struct usb_gadget *gadget,
+ 	get_dev (dev);
+ 
+ 	/* preallocate control response and buffer */
++	dev->ep0_req_queued = false;
+ 	dev->req = usb_ep_alloc_request (gadget->ep0, GFP_KERNEL);
+ 	if (!dev->req)
+ 		goto enomem;
+ 	dev->req->context = NULL;
+-	dev->req->complete = epio_complete;
++	dev->req->complete = dev_req_complete;
+ 
+ 	if (activate_ep_files (dev) < 0)
+ 		goto enomem;
 
--- 
-2.43.0
+---
+base-commit: f66469d9905b39d2c260a15d7d6db450f4db67c1
+change-id: 20261106-b4-gadgetfs-ep0-f814c14717a9
+
+Best regards,
+--  
+Jing Lin <kayano050408@gmail.com>
 
