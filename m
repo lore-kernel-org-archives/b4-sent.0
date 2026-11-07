@@ -1,98 +1,146 @@
-From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-Date: Sat, 07 Nov 2026 09:52:10 -0600
-Subject: [PATCH] staging: octeon: fix race condition and log macro in
- ethernet-rgmii.c
+From: Younes Akhouayri <git@younes.io>
+Date: Sat, 07 Nov 2026 17:36:24 +0100
+Subject: [PATCH v2] rust: doctest: fix line numbers after crate-level
+ attributes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261107-octeon-rgmii-fixes-v1-1-3cd7734fd2ee@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3LQQqAIBBA0avIrBtwTAy6SrTImmoWaWhEEN49a
- fn4/BcyJ+EMvXoh8S1ZYqigRsG8T2FjlKUajDaOSHcY54tjwLQdIrjKwxknto6sbj15A3U8E/+
- hfsNYygehzEmMZAAAAA==
-X-Change-ID: 20261107-octeon-rgmii-fixes-ae461403b1b2
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794066731; l=2577;
- i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
- bh=DrxoTmYjSJi2uco1KKjsDaAerIlUruP9wlDfDiu5NnM=;
- b=BBI6s3s35XDFSbS2Qs7f4cj1adJOdDAd9JORcFBSunyGF0FefVDt3OVkGhTSalf1X2URDja6O
- YFW+tRVwFQYBQUDT0fPdLmgTtQdzg5+jiPDeV+OX3u01JeH9HyOnAAT
-X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
- pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
-X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261107-rust-doctest-line-fix-v2-1-a66528f0a7c3@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNTQ6CMBCFr2Jm7Zi2hIquvIdhAWWQMaY1nUIkh
+ Ltb8ACuXr6X97OAUGQSuB4WiDSxcPAZzPEAbmj8g5C7zGCUsVqZM8ZREnbBJcr6Yk/Y8wddq3p
+ rC2suPUHuviNle9+91z+WsX2SS9vYlhhYUojzfjzpLffvY9KoUTld6Kpsyqq1tzmMnuTEAep1X
+ b+sd//FzAAAAA==
+X-Change-ID: 20261027-rust-doctest-line-fix-cb0f663629fe
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Brendan Higgins <brendan.higgins@linux.dev>, David Gow <david@davidgow.net>, 
+ Rae Moar <raemoar63@gmail.com>, Shuah Khan <skhan@linuxfoundation.org>
+Cc: linux-kselftest@vger.kernel.org, kunit-dev@googlegroups.com, 
+ rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Younes Akhouayri <git@younes.io>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794069397; l=4560;
+ i=git@younes.io; s=20261027; h=from:subject:message-id;
+ bh=yODJlg7TFm3NgQtApP8hmB9DSotdMjoacbgECuGShSc=;
+ b=GimVZfWmQy4O6IvvPp1BMLOsh1yM/b+aIA2FtrbbAIuG9go4rlPd59FrXAspFvU34qwCphMrj
+ UA9Jr3BPOz6CrGcURhEnX7EGZNZVaUbc7MDm0l/uNojhOSX39dS2X7W
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=TavwxGPDBjl4XGNQyFLKEW7PKSY4qOWusc7yf6hjV0c=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20261027 with auth_id=1332
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix a race condition in cvm_oct_check_preamble_errors() by moving the
-read assignment of priv->link_info inside the global_register_lock
-protected critical section. This prevents unsynchronized read-accesses
-concurring with status mutations from concurrent polling contexts.
+When a doctest starts with a crate-level attribute such as
+`#![expect(...)]`, KUnit reports failures one line too early, and
+`line!()` returns a line number that is one too low.
 
-Additionally, modernize the message output by replacing the obsolete
-printk_ratelimited() call with netdev_notice_ratelimited().
+This happens because `rustdoc` moves those attribute lines out of the
+test body and puts them above the `main` function it generates. The
+generator works out where the body starts by counting the lines above
+`main`, but it does not know that some of those lines were moved there
+from the body. So every line after a moved attribute is mapped one line
+too early (or more, if there are several such attributes).
 
-Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
+For example, adding `assert_eq!(36, 0);` as line 36 of
+`rust/kernel/init.rs` (inside the doctest that starts with
+`# #![expect(clippy::undocumented_unsafe_blocks)]`) gives:
+
+    # rust_doctest_kernel_init_rs_2: ASSERTION FAILED at rust/kernel/init.rs:35
+
+Twelve in-tree doctests start like this, e.g. in `bits.rs`, `devres.rs`,
+`init.rs` and `std_vendor.rs`.
+
+Fix it by counting the attribute lines that `rustdoc` moved (every
+`#![...]` line above `main`, except the `#![allow(unused)]` that
+`rustdoc` adds itself) and taking them into account when computing
+where the body starts.
+
+`rustdoc` always starts its output with that `#![allow(unused)]`, so
+check for it before relying on the layout. If a future `rustdoc` (or a
+crate-level `#![doc(test(attr(...)))]`) changes it, print a warning once
+and keep the previous behaviour rather than failing the build: the tests
+still run, only the reported line numbers would be off.
+
+Only single-line attributes are handled, which covers every doctest in
+the tree today.
+
+With this change, the example above reports `rust/kernel/init.rs:36`,
+and doctests without such attributes keep reporting the same lines as
+before.
+
+Fixes: a66d733da801 ("rust: support running Rust documentation tests as KUnit ones")
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
- drivers/staging/octeon/ethernet-rgmii.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+Changes in v2:
+- Check that the generated test starts with `#![allow(unused)]` before
+  subtracting the moved lines; otherwise warn once and keep the old
+  behaviour, instead of clamping with `saturating_sub` (Miguel).
+- Note in the comment and commit message that only single-line
+  attributes are handled.
+- Link to v1: https://patch.msgid.link/20261027-rust-doctest-line-fix-v1-1-0c13185a58b6@younes.io
+---
+ scripts/rustdoc_test_gen.rs | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
 
-diff --git a/drivers/staging/octeon/ethernet-rgmii.c b/drivers/staging/octeon/ethernet-rgmii.c
-index 0c4fac31540a..a9a245b5580a 100644
---- a/drivers/staging/octeon/ethernet-rgmii.c
-+++ b/drivers/staging/octeon/ethernet-rgmii.c
-@@ -9,8 +9,6 @@
- #include <linux/netdevice.h>
- #include <linux/interrupt.h>
- #include <linux/phy.h>
--#include <linux/ratelimit.h>
--#include <net/dst.h>
+diff --git a/scripts/rustdoc_test_gen.rs b/scripts/rustdoc_test_gen.rs
+index 754c5aafcce4..01128d8c62f9 100644
+--- a/scripts/rustdoc_test_gen.rs
++++ b/scripts/rustdoc_test_gen.rs
+@@ -127,6 +127,7 @@ fn main() {
  
- #include "octeon-ethernet.h"
- #include "ethernet-defines.h"
-@@ -56,14 +54,14 @@ static void cvm_oct_check_preamble_errors(struct net_device *dev)
- 	union cvmx_helper_link_info link_info;
- 	unsigned long flags;
+     let mut tests = String::new();
+     let mut body = String::new();
++    let mut warned = false;
+     let mut last_file = String::new();
+     let mut number = 0;
+     let mut valid_paths: Vec<PathBuf> = Vec::new();
+@@ -168,6 +169,33 @@ fn main() {
+             .count()
+             + 1;
  
--	link_info.u64 = priv->link_info;
--
- 	/*
- 	 * Take the global register lock since we are going to
- 	 * touch registers that affect more than one port.
- 	 */
- 	spin_lock_irqsave(&global_register_lock, flags);
- 
-+	link_info.u64 = priv->link_info;
++        // `rustdoc` moves the crate-level attributes (`#![...]`) of the test out of its body and
++        // places them before `main`, after its own `#![allow(unused)]`. Subtract the moved lines,
++        // since the rest of the body is shifted by that amount with respect to the original source.
++        //
++        // Only single-line attributes are handled. If `rustdoc` stops starting its output with
++        // `#![allow(unused)]`, this computation needs to be revisited, so warn (once) rather than
++        // silently reporting wrong line numbers, but keep going since the tests themselves still
++        // work.
++        let hoisted_lines = if body.starts_with("#![allow(unused)]\n") {
++            body.lines()
++                .take(body_offset - 1)
++                .filter(|line| line.starts_with("#!["))
++                .count()
++                - 1
++        } else {
++            if !warned {
++                eprintln!(
++                    "warning: `{name}` does not start with `#![allow(unused)]`: line numbers \
++                    reported by doctests may be wrong, please update \
++                    `scripts/rustdoc_test_gen.rs`."
++                );
++                warned = true;
++            }
++            0
++        };
++        let body_offset = body_offset - hoisted_lines;
 +
- 	if (link_info.s.speed == 10 && priv->last_speed == 10) {
- 		/*
- 		 * Read the GMXX_RXX_INT_REG[PCTERR] bit and see if we are
-@@ -74,7 +72,7 @@ static void cvm_oct_check_preamble_errors(struct net_device *dev)
- 		union cvmx_gmxx_rxx_int_reg gmxx_rxx_int_reg;
- 
- 		gmxx_rxx_int_reg.u64 = cvmx_read_csr(CVMX_GMXX_RXX_INT_REG
--							(index, interface));
-+		(index, interface));
- 		if (gmxx_rxx_int_reg.s.pcterr) {
- 			/*
- 			 * We are getting preamble errors at 10Mbps. Most
-@@ -83,8 +81,8 @@ static void cvm_oct_check_preamble_errors(struct net_device *dev)
- 			 * disable preamble checking and do it in software.
- 			 */
- 			cvm_oct_set_hw_preamble(priv, false);
--			printk_ratelimited("%s: Using 10Mbps with software preamble removal\n",
--					   dev->name);
-+			net_notice_ratelimited("%s: Using 10Mbps with software preamble removal\n",
-+					       dev->name);
- 		}
- 	} else {
- 		/*
+         use std::fmt::Write;
+         write!(
+             tests,
 
 ---
-base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
-change-id: 20261107-octeon-rgmii-fixes-ae461403b1b2
+base-commit: 21a7f44fd0765fcc5194130b28767786eba1d1e7
+change-id: 20261027-rust-doctest-line-fix-cb0f663629fe
 
 Best regards,
--- 
-Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
+--  
+Younes Akhouayri <git@younes.io>
 
