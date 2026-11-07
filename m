@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:28 -0800
-Subject: [PATCH RFC v3 54/88] KVM: guest_memfd: Support read and write
- operations and provider callbacks
+Date: Fri, 06 Nov 2026 16:37:29 -0800
+Subject: [PATCH RFC v3 55/88] vfio: Track device file access mode with an
+ enum
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-54-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-55-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,215 +26,149 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=6435;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=5176;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=nv52q2gMdxzmaZix0sQpW+28+lbsXbZR5Bzi3YONHfM=;
- b=0Smvv2QfB+oDOaurG+jaFJgcG514sTC0qa6lYPTm/2BeRMYZZHkGuZX+04ozUeDdZmxbk+Jkx
- XdZPc9i4rl/DCPq1rqBcrjqqS0llXraTB6nFscVMeUJKbdfNyBSK/aL
+ bh=OPzfI8FY9YTnY7U//Qo2HO1R07AW0TxEMrDt75CQipU=;
+ b=yxGBfLn330m/QlZKxV56D9+INpmu/vb92BX3fIJN1BHK07X4RoQNHQmNHqFgxcPEyc9f3OrFI
+ TITTtiAfEvkBiWVgqH/0/MljlVFSh1dt4fWyaeiRAMfq00Gn4JmxuQ3
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Allow reading and writing to shared memory backed by guest_memfd
-descriptors.
+Device file operations currently track whether access has been granted
+using a boolean flag, assuming that binding a device always unlocks both
+control-plane operations and direct region access simultaneously.
 
-Consolidate locking, file offset bounds checking, and memory attribute
-validation into a shared kvm_gmem_rw helper used by both kvm_gmem_read
-and kvm_gmem_write.
+Upcoming support for control-only device bindings requires distinguishing
+unbound descriptors from descriptors bound with restricted vs. full
+access, without introducing multiple flags that could get out of sync or
+represent invalid combinations under lockless release-acquire ordering.
 
-To decouple low-level provider operations from userspace copy semantics
-and avoid AB-BA deadlocks between mapping.invalidate_lock and
-mm->mmap_lock, transfer data in chunks using a small stack bounce buffer:
-- For writes, copy from userspace into the bounce buffer outside
-  filemap_invalidate_lock_shared before invoking provider callbacks with
-  a kernel buffer.
-- For reads, invoke provider callbacks under filemap_invalidate_lock_shared
-  into the bounce buffer, release the lock, and copy out to userspace.
+Replace the boolean flag with an enum representing the access mode so
+that the entire access state continues to be published and read as a
+single release-acquire value.
 
-Verify while holding the shared filemap invalidation lock that the
-requested file offset range does not exceed inode size and consists
-solely of shared memory.
-
-Forward read and write calls to the provider via gmem_provider_read and
-gmem_provider_write, providing placeholder stubs for the native provider
-until reading and writing to native folios is implemented.
-
-Enable FMODE_PREAD and FMODE_PWRITE on guest_memfd file descriptors so
-pread64 and pwrite64 are permitted by the VFS.
+No functional change intended.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- include/linux/guest_memfd.h |   4 ++
- virt/kvm/guest_memfd.c      | 115 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 119 insertions(+)
+ drivers/vfio/device_cdev.c | 8 ++++----
+ drivers/vfio/group.c       | 2 +-
+ drivers/vfio/vfio.h        | 7 ++++++-
+ drivers/vfio/vfio_main.c   | 8 ++++----
+ 4 files changed, 15 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/guest_memfd.h b/include/linux/guest_memfd.h
-index cd634576c9af8..c85594b58112a 100644
---- a/include/linux/guest_memfd.h
-+++ b/include/linux/guest_memfd.h
-@@ -113,6 +113,10 @@ struct guest_memfd_provider_operations {
- 				unsigned long *pfn, size_t *nr_pages);
- 	void (*put_pfn_range)(void *provider, pgoff_t index, size_t nr_pages);
- 	int (*mmap)(void *provider, struct vm_area_struct *vma);
-+	ssize_t (*read)(void *provider, void *buf, size_t count,
-+			loff_t *ppos);
-+	ssize_t (*write)(void *provider, const void *buf, size_t count,
-+			 loff_t *ppos);
- 	int (*check_set_attributes)(void *provider, pgoff_t index,
- 				    size_t nr_pages, u64 attributes);
- };
-diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 61a3ff7fcd84c..385b517b49ed5 100644
---- a/virt/kvm/guest_memfd.c
-+++ b/virt/kvm/guest_memfd.c
-@@ -80,9 +80,25 @@ static struct folio *gmem_native_alloc_folio(void *provider, pgoff_t index,
- 	return folio;
- }
+diff --git a/drivers/vfio/device_cdev.c b/drivers/vfio/device_cdev.c
+index c1c26d7a9aec9..19be3947fc74a 100644
+--- a/drivers/vfio/device_cdev.c
++++ b/drivers/vfio/device_cdev.c
+@@ -125,7 +125,7 @@ long vfio_df_ioctl_bind_iommufd(struct vfio_device_file *df,
  
-+static ssize_t gmem_native_read(void *provider, void *buf, size_t count,
-+				loff_t *ppos)
-+{
-+	/* TODO: Support reading from native provider folios. */
-+	return -EINVAL;
-+}
-+
-+static ssize_t gmem_native_write(void *provider, const void *buf,
-+				 size_t count, loff_t *ppos)
-+{
-+	/* TODO: Support writing to native provider folios. */
-+	return -EINVAL;
-+}
-+
- static const struct guest_memfd_provider_operations gmem_native_provider_ops = {
- 	.attach = gmem_native_attach,
- 	.alloc_folio = gmem_native_alloc_folio,
-+	.read = gmem_native_read,
-+	.write = gmem_native_write,
- };
- 
- static bool gmem_provider_ops_valid(struct gmem_inode *gi,
-@@ -210,6 +226,25 @@ static int gmem_provider_mmap(struct gmem_inode *gi, struct vm_area_struct *vma)
+ 	mutex_lock(&device->dev_set->lock);
+ 	/* one device cannot be bound twice */
+-	if (df->access_granted) {
++	if (df->access_mode != VFIO_DF_ACCESS_NONE) {
+ 		ret = -EINVAL;
+ 		goto out_unlock;
+ 	}
+@@ -163,7 +163,7 @@ long vfio_df_ioctl_bind_iommufd(struct vfio_device_file *df,
+ 	 * Paired with smp_load_acquire() in vfio_device_fops::ioctl/
+ 	 * read/write/mmap
+ 	 */
+-	smp_store_release(&df->access_granted, true);
++	smp_store_release(&df->access_mode, VFIO_DF_ACCESS_FULL);
+ 	mutex_unlock(&device->dev_set->lock);
  	return 0;
- }
  
-+static ssize_t gmem_provider_read(struct gmem_inode *gi, void *buf,
-+				  size_t count, loff_t *ppos)
-+{
-+	if (gi->provider_ops && gi->provider_ops->read)
-+		return gi->provider_ops->read(gi->provider, buf, count, ppos);
-+
-+	return -EINVAL;
-+}
-+
-+static ssize_t gmem_provider_write(struct gmem_inode *gi,
-+				   const void *buf, size_t count,
-+				   loff_t *ppos)
-+{
-+	if (gi->provider_ops && gi->provider_ops->write)
-+		return gi->provider_ops->write(gi->provider, buf, count, ppos);
-+
-+	return -EINVAL;
-+}
-+
- static int gmem_provider_check_set_attributes(struct gmem_inode *gi, pgoff_t index,
- 					      size_t nr_pages, u64 attributes)
- {
-@@ -1204,7 +1239,86 @@ static long kvm_gmem_ioctl(struct file *file, unsigned int ioctl,
- 	}
- }
+@@ -185,10 +185,10 @@ void vfio_df_unbind_iommufd(struct vfio_device_file *df)
  
-+static ssize_t kvm_gmem_rw(struct file *file, void __user *buf, size_t count,
-+			   loff_t *ppos, bool is_write)
-+{
-+	struct inode *inode = file_inode(file);
-+	struct gmem_inode *gi = GMEM_I(inode);
-+	size_t total_done = 0;
-+	loff_t isize;
-+
-+	if (!count)
-+		return 0;
-+
-+	if (*ppos < 0)
-+		return -EINVAL;
-+
-+	isize = i_size_read(inode);
-+	if (*ppos >= isize)
-+		return 0;
-+
-+	count = min_t(size_t, count, isize - *ppos);
-+
-+	while (count) {
-+		u8 bounce[256];
-+		size_t chunk = min_t(size_t, count, sizeof(bounce));
-+		pgoff_t start = *ppos >> PAGE_SHIFT;
-+		pgoff_t end = (*ppos + chunk - 1) >> PAGE_SHIFT;
-+		pgoff_t nr_pages = end - start + 1;
-+		ssize_t ret;
-+
-+		if (is_write) {
-+			if (copy_from_user(bounce, (const char __user *)buf + total_done, chunk))
-+				return total_done ?: -EFAULT;
-+		}
-+
-+		filemap_invalidate_lock_shared(inode->i_mapping);
-+
-+		if (!kvm_gmem_range_has_attributes(inode, start, nr_pages, 0)) {
-+			filemap_invalidate_unlock_shared(inode->i_mapping);
-+			return total_done ?: -EFAULT;
-+		}
-+
-+		if (is_write)
-+			ret = gmem_provider_write(gi, bounce, chunk, ppos);
-+		else
-+			ret = gmem_provider_read(gi, bounce, chunk, ppos);
-+
-+		filemap_invalidate_unlock_shared(inode->i_mapping);
-+
-+		if (ret < 0)
-+			return total_done ?: ret;
-+
-+		if (!ret)
-+			break;
-+
-+		if (!is_write) {
-+			if (copy_to_user((char __user *)buf + total_done, bounce, ret))
-+				return total_done ?: -EFAULT;
-+		}
-+
-+		total_done += ret;
-+		count -= ret;
-+	}
-+
-+	return total_done;
-+}
-+
-+static ssize_t kvm_gmem_read(struct file *file, char __user *buf, size_t count,
-+			     loff_t *ppos)
-+{
-+	return kvm_gmem_rw(file, buf, count, ppos, false);
-+}
-+
-+static ssize_t kvm_gmem_write(struct file *file, const char __user *buf,
-+			      size_t count, loff_t *ppos)
-+{
-+	return kvm_gmem_rw(file, (void __user *)buf, count, ppos, true);
-+}
-+
- static struct file_operations kvm_gmem_fops = {
-+	.read		= kvm_gmem_read,
-+	.write		= kvm_gmem_write,
- 	.mmap		= kvm_gmem_mmap,
- 	.open		= generic_file_open,
- 	.release	= kvm_gmem_release,
-@@ -1395,6 +1509,7 @@ static int __kvm_gmem_create(struct kvm *kvm, loff_t size, u64 flags, int resour
- 		goto err_inode;
- 	}
+ 	/*
+ 	 * In the time of close, there is no contention with another one
+-	 * changing this flag.  So read df->access_granted without lock
++	 * changing this mode.  So read df->access_mode without lock
+ 	 * and no smp_load_acquire() is ok.
+ 	 */
+-	if (!df->access_granted)
++	if (df->access_mode == VFIO_DF_ACCESS_NONE)
+ 		return;
  
-+	file->f_mode |= FMODE_PREAD | FMODE_PWRITE;
- 	file->f_flags |= O_LARGEFILE;
- 	file->private_data = f;
+ 	mutex_lock(&device->dev_set->lock);
+diff --git a/drivers/vfio/group.c b/drivers/vfio/group.c
+index 185f359f75d38..0a33e0e025bd8 100644
+--- a/drivers/vfio/group.c
++++ b/drivers/vfio/group.c
+@@ -217,7 +217,7 @@ static int vfio_df_group_open(struct vfio_device_file *df)
+ 	 * Paired with smp_load_acquire() in vfio_device_fops::ioctl/
+ 	 * read/write/mmap and vfio_file_has_device_access()
+ 	 */
+-	smp_store_release(&df->access_granted, true);
++	smp_store_release(&df->access_mode, VFIO_DF_ACCESS_FULL);
  
+ 	mutex_unlock(&device->dev_set->lock);
+ 	mutex_unlock(&device->group->group_lock);
+diff --git a/drivers/vfio/vfio.h b/drivers/vfio/vfio.h
+index 2eeb526a8da58..af2b8158b40c0 100644
+--- a/drivers/vfio/vfio.h
++++ b/drivers/vfio/vfio.h
+@@ -16,11 +16,16 @@ struct iommufd_ctx;
+ struct iommu_group;
+ struct vfio_container;
+ 
++enum vfio_df_access_mode {
++	VFIO_DF_ACCESS_NONE = 0,
++	VFIO_DF_ACCESS_FULL,
++};
++
+ struct vfio_device_file {
+ 	struct vfio_device *device;
+ 	struct vfio_group *group;
+ 
+-	u8 access_granted;
++	enum vfio_df_access_mode access_mode;
+ 	u32 devid; /* only valid when iommufd is valid */
+ 	spinlock_t kvm_ref_lock; /* protect kvm field */
+ 	struct file *kvm;
+diff --git a/drivers/vfio/vfio_main.c b/drivers/vfio/vfio_main.c
+index ea8e6cc13c457..fe126e137d5ca 100644
+--- a/drivers/vfio/vfio_main.c
++++ b/drivers/vfio/vfio_main.c
+@@ -1349,7 +1349,7 @@ static long vfio_device_fops_unl_ioctl(struct file *filep,
+ 		return vfio_df_ioctl_bind_iommufd(df, uptr);
+ 
+ 	/* Paired with smp_store_release() following vfio_df_open() */
+-	if (!smp_load_acquire(&df->access_granted))
++	if (smp_load_acquire(&df->access_mode) == VFIO_DF_ACCESS_NONE)
+ 		return -EINVAL;
+ 
+ 	ret = vfio_device_pm_runtime_get(device);
+@@ -1397,7 +1397,7 @@ static ssize_t vfio_device_fops_read(struct file *filep, char __user *buf,
+ 	struct vfio_device *device = df->device;
+ 
+ 	/* Paired with smp_store_release() following vfio_df_open() */
+-	if (!smp_load_acquire(&df->access_granted))
++	if (smp_load_acquire(&df->access_mode) == VFIO_DF_ACCESS_NONE)
+ 		return -EINVAL;
+ 
+ 	if (unlikely(!device->ops->read))
+@@ -1414,7 +1414,7 @@ static ssize_t vfio_device_fops_write(struct file *filep,
+ 	struct vfio_device *device = df->device;
+ 
+ 	/* Paired with smp_store_release() following vfio_df_open() */
+-	if (!smp_load_acquire(&df->access_granted))
++	if (smp_load_acquire(&df->access_mode) == VFIO_DF_ACCESS_NONE)
+ 		return -EINVAL;
+ 
+ 	if (unlikely(!device->ops->write))
+@@ -1429,7 +1429,7 @@ static int vfio_device_fops_mmap(struct file *filep, struct vm_area_struct *vma)
+ 	struct vfio_device *device = df->device;
+ 
+ 	/* Paired with smp_store_release() following vfio_df_open() */
+-	if (!smp_load_acquire(&df->access_granted))
++	if (smp_load_acquire(&df->access_mode) == VFIO_DF_ACCESS_NONE)
+ 		return -EINVAL;
+ 
+ 	if (unlikely(!device->ops->mmap))
 
 -- 
 2.56.0.455.g6c5a503b38-goog
