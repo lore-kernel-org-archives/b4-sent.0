@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:36:57 -0800
-Subject: [PATCH RFC v3 23/88] samples/kvm: Support marking page ranges
- read-only
+Date: Fri, 06 Nov 2026 16:36:58 -0800
+Subject: [PATCH RFC v3 24/88] samples/kvm: Support querying provider file
+ statistics
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-23-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-24-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,11 +26,11 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011809; l=4397;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011809; l=2463;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=uCxFlNpPcP9FnzyIzy9Unrpwvcf5nvJn0X5xwMufqy8=;
- b=j/WL6hlQZXrm+u/S+eSzi3ytYlMwyAapZVonBbyI2r/4jUIzA2DkDcMAADCPlPG59GETbxOk6
- psB+vx5uu7fCus60Olkz15vVkR71H3wp11j9IPvnavrNQKVxAXemkYv
+ bh=EXFH+VGzYxLpiOlUm7+SXlMva0hegPehiKidAH67grc=;
+ b=7hVXjaGVJOqfQUrfhjyeyzSTfHIZXZzwulk8Vbz7CGvVDPIUBAJOG2RgnAgqms/2SVLnSXQAW
+ lqMSMLCfKWxDFL1pj/KHF5J/ocwGPTJlfOisEvzy/H2N3JF6+G9BW47
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
@@ -38,147 +38,73 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Fred Griffoul <fgriffo@amazon.co.uk>
 
-Support the MP_SET_READONLY ioctl on provider files to allow userspace to
-dynamically mark page-aligned ranges of a provider file as read-only or
-writable.
-
-Track read-only pages in a per-file bitmap that starts cleared so all pages
-default to writable upon creation.
+Support the MP_GET_STATS ioctl on provider files so userspace and selftests
+can inspect the total capacity, number of absent pages, and number of
+read-only pages of a provider file.
 
 Co-developed-by: Ackerley Tng <ackerleytng@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 Signed-off-by: Fred Griffoul <fgriffo@amazon.co.uk>
 ---
- samples/kvm/memory_provider.c | 45 ++++++++++++++++++++++++++++++++++++++++++-
- samples/kvm/memory_provider.h | 15 +++++++++++++++
- 2 files changed, 59 insertions(+), 1 deletion(-)
+ samples/kvm/memory_provider.c | 16 ++++++++++++++++
+ samples/kvm/memory_provider.h | 10 ++++++++++
+ 2 files changed, 26 insertions(+)
 
 diff --git a/samples/kvm/memory_provider.c b/samples/kvm/memory_provider.c
-index 6b8364afc5ed9..39aeb1a0b93f6 100644
+index 39aeb1a0b93f6..81ac94ae1a4e9 100644
 --- a/samples/kvm/memory_provider.c
 +++ b/samples/kvm/memory_provider.c
-@@ -36,6 +36,7 @@ struct mp_info {
- 
- 	struct mutex lock;		/* the bitmaps */
- 	unsigned long *absent;		/* taken away by MP_SET_PRESENT */
-+	unsigned long *readonly;	/* marked read-only by MP_SET_READONLY */
- };
- 
- /* Byte range [offset, offset + len) of @info as page indices. */
-@@ -54,6 +55,19 @@ static int mp_range(struct mp_info *info, u64 offset, u64 len,
- 	return 0;
+@@ -81,6 +81,20 @@ static void mp_set_present(struct mp_info *info, unsigned long start,
+ 	mutex_unlock(&info->lock);
  }
  
-+static void mp_set_readonly(struct mp_info *info, unsigned long start,
-+			    unsigned long end, bool readonly)
++static long mp_get_stats(struct mp_info *info, void __user *uarg)
 +{
++	struct mp_stats st = {
++		.size = (u64)info->npages << PAGE_SHIFT,
++	};
++
 +	mutex_lock(&info->lock);
-+
-+	if (readonly)
-+		bitmap_set(info->readonly, start, end - start);
-+	else
-+		bitmap_clear(info->readonly, start, end - start);
-+
++	st.absent_pages = bitmap_weight(info->absent, info->npages);
++	st.readonly_pages = bitmap_weight(info->readonly, info->npages);
 +	mutex_unlock(&info->lock);
++
++	return copy_to_user(uarg, &st, sizeof(st)) ? -EFAULT : 0;
 +}
 +
- static void mp_set_present(struct mp_info *info, unsigned long start,
- 			   unsigned long end, bool present)
+ static int mp_file_release(struct inode *inode, struct file *file)
  {
-@@ -73,11 +87,30 @@ static int mp_file_release(struct inode *inode, struct file *file)
+ 	struct mp_info *info = file->private_data;
+@@ -136,6 +150,8 @@ static long mp_file_ioctl(struct file *file, unsigned int cmd,
+ 	void __user *uarg = (void __user *)arg;
  
- 	if (info->cma_pages)
- 		free_contig_range(info->base_pfn, info->npages);
-+	bitmap_free(info->readonly);
- 	bitmap_free(info->absent);
- 	kfree(info);
- 	return 0;
- }
- 
-+static long mp_file_set_readonly(struct mp_info *info, void __user *uarg)
-+{
-+	struct mp_set_readonly sr;
-+	unsigned long start, end;
-+	int ret;
-+
-+	if (copy_from_user(&sr, uarg, sizeof(sr)))
-+		return -EFAULT;
-+	if (sr.value > 1 || sr.pad)
-+		return -EINVAL;
-+
-+	ret = mp_range(info, sr.offset, sr.len, &start, &end);
-+	if (!ret)
-+		mp_set_readonly(info, start, end, sr.value);
-+
-+	return ret;
-+}
-+
- static long mp_file_set_present(struct mp_info *info, void __user *uarg)
- {
- 	struct mp_set_present sp;
-@@ -105,6 +138,8 @@ static long mp_file_ioctl(struct file *file, unsigned int cmd,
  	switch (cmd) {
++	case MP_GET_STATS:
++		return mp_get_stats(info, uarg);
  	case MP_SET_PRESENT:
  		return mp_file_set_present(info, uarg);
-+	case MP_SET_READONLY:
-+		return mp_file_set_readonly(info, uarg);
- 	default:
- 		return -ENOTTY;
- 	}
-@@ -147,11 +182,17 @@ static long mp_ctl_new_file(void __user *uarg)
- 		goto err_free_info;
- 	}
- 
-+	info->readonly = bitmap_zalloc(npages, GFP_KERNEL);
-+	if (!info->readonly) {
-+		ret = -ENOMEM;
-+		goto err_free_absent;
-+	}
-+
- 	pages = alloc_contig_pages(npages, GFP_KERNEL | __GFP_ZERO,
- 				   numa_node_id(), NULL);
- 	if (!pages) {
- 		ret = -ENOMEM;
--		goto err_free_absent;
-+		goto err_free_readonly;
- 	}
- 
- 	info->cma_pages = pages;
-@@ -178,6 +219,8 @@ static long mp_ctl_new_file(void __user *uarg)
- 
- err_free_pages:
- 	free_contig_range(page_to_pfn(pages), npages);
-+err_free_readonly:
-+	bitmap_free(info->readonly);
- err_free_absent:
- 	bitmap_free(info->absent);
- err_free_info:
+ 	case MP_SET_READONLY:
 diff --git a/samples/kvm/memory_provider.h b/samples/kvm/memory_provider.h
-index de07ffa482283..f3772f57f5bf5 100644
+index f3772f57f5bf5..24a201a58e83b 100644
 --- a/samples/kvm/memory_provider.h
 +++ b/samples/kvm/memory_provider.h
-@@ -27,6 +27,21 @@ struct mp_new_file {
+@@ -27,6 +27,16 @@ struct mp_new_file {
  #define MP_NEW_FILE \
  	_IOW(MP_IOCTL_BASE, 5, struct mp_new_file)
  
-+/*
-+ * ioctl on a provider fd: SET_READONLY on [@offset, @offset + @len).
-+ * @value is the read-only value (1 = read-only, 0 = writable), and @offset
-+ * and @len are a byte range within the file, page aligned.
-+ */
-+struct mp_set_readonly {
-+	__u32 value;
-+	__u32 pad;
-+	__u64 offset;	/* bytes into the file, page aligned */
-+	__u64 len;	/* bytes, page aligned */
++/* ioctl on a provider fd: read the file's state, for tests. */
++struct mp_stats {
++	__u64 size;
++	__u64 absent_pages;	/* pages taken away by MP_SET_PRESENT */
++	__u64 readonly_pages;	/* pages marked read-only by MP_SET_READONLY */
 +};
 +
-+#define MP_SET_READONLY \
-+	_IOW(MP_IOCTL_BASE, 11, struct mp_set_readonly)
++#define MP_GET_STATS \
++	_IOR(MP_IOCTL_BASE, 10, struct mp_stats)
 +
  /*
-  * ioctl on a provider fd: SET_PRESENT on [@offset, @offset + @len).
-  * @value is the present value (1 = present, 0 = absent), and @offset
+  * ioctl on a provider fd: SET_READONLY on [@offset, @offset + @len).
+  * @value is the read-only value (1 = read-only, 0 = writable), and @offset
 
 -- 
 2.56.0.455.g6c5a503b38-goog
