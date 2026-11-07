@@ -1,82 +1,99 @@
 From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-Date: Sat, 07 Nov 2026 05:28:40 -0600
-Subject: [PATCH 1/2] staging: octeon: fix return type and void arithmetic
- in cvm_oct_xmit_pow()
+Date: Sat, 07 Nov 2026 05:28:41 -0600
+Subject: [PATCH 2/2] staging: octeon: prevent buffer overflow in
+ cvm_oct_xmit_pow()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261107-octeon-tx-fixes-v1-1-db03f73a6e6f@gmail.com>
+Message-Id: <20261107-octeon-tx-fixes-v1-2-db03f73a6e6f@gmail.com>
 References: <20261107-octeon-tx-fixes-v1-0-db03f73a6e6f@gmail.com>
 In-Reply-To: <20261107-octeon-tx-fixes-v1-0-db03f73a6e6f@gmail.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
  =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794050920; l=1936;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794050920; l=3088;
  i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
- bh=uv0ajB/v7UJ7qTX2q5slJYpaa4Ctj3c6fam5AwUuhec=;
- b=kN3EdoAHkeBaPGbtyCSYiHdNHJq+zHf4O/qvNIHN/mxnlEgt8pN18didbY8zff3ueC41Fj5cU
- mDq1W1/GR3VDGyqAARRP4XkeAi/o2yJJNxlxKazFusof4WQmysRTr4i
+ bh=A73cNrYJxl0LgvL86wV5fevUF4EgHv5VLNNXVCqJff4=;
+ b=8Ohcw2vIma8Mg7JGcXtgSkTTw2bGrzFslZyZUPh1Dc32Izwc+uKQjFsCQN1LmFjihMSUd16kl
+ wujqUh13KwFCFCp66N2MIoiHiPKMfemd5eYFM3ldJnuLKrYeMR53jXc
 X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
  pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
 X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cvm_oct_xmit_pow() returns netdev_tx_t, but currently uses naked '0'
-constants instead of the symbolic NETDEV_TX_OK value defined by the
-networking stack. Replace these with NETDEV_TX_OK.
+cvm_oct_xmit_pow() copies packet data into an allocated FPA packet pool
+buffer without checking if skb->len plus the header offset fits within
+CVMX_FPA_PACKET_POOL_SIZE, which can cause a buffer overflow. Drop
+oversized packets before allocating hardware buffers.
 
-Additionally, arithmetic on void pointers is a non-standard GCC
-extension. Change packet_buffer and copy_location from void * to u8 *
-to avoid -Wpointer-arith warnings.
+Additionally, fixed-size memcpys into work->packet_data read directly
+from skb->data without checking skb->len, risking out-of-bounds reads
+on short packets. Bound these copies using min_t().
 
 Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 ---
- drivers/staging/octeon/ethernet-tx.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ drivers/staging/octeon/ethernet-tx.c | 24 +++++++++++++++++-------
+ 1 file changed, 17 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/staging/octeon/ethernet-tx.c b/drivers/staging/octeon/ethernet-tx.c
-index 5e536827f87a..13a205648f8b 100644
+index 13a205648f8b..0a350faec591 100644
 --- a/drivers/staging/octeon/ethernet-tx.c
 +++ b/drivers/staging/octeon/ethernet-tx.c
-@@ -505,8 +505,8 @@ netdev_tx_t cvm_oct_xmit(struct sk_buff *skb, struct net_device *dev)
- netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
- {
+@@ -507,10 +507,18 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
  	struct octeon_ethernet *priv = netdev_priv(dev);
--	void *packet_buffer;
--	void *copy_location;
-+	u8 *packet_buffer;
-+	u8 *copy_location;
+ 	u8 *packet_buffer;
+ 	u8 *copy_location;
++	size_t header_skip = sizeof(u64) +
++			     ((CVMX_HELPER_FIRST_MBUFF_SKIP + 7) & 0xfff8) + 6;
++	struct cvmx_wqe *work;
  
- 	/* Get a work queue entry */
- 	struct cvmx_wqe *work = cvmx_fpa_alloc(CVMX_FPA_WQE_POOL);
-@@ -516,7 +516,7 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
+-	/* Get a work queue entry */
+-	struct cvmx_wqe *work = cvmx_fpa_alloc(CVMX_FPA_WQE_POOL);
++	if (unlikely(header_skip + skb->len > CVMX_FPA_PACKET_POOL_SIZE)) {
++		dev->stats.tx_dropped++;
++		dev_kfree_skb_any(skb);
++		return NETDEV_TX_OK;
++	}
+ 
++	/* Get a work queue entry */
++	work = cvmx_fpa_alloc(CVMX_FPA_WQE_POOL);
+ 	if (unlikely(!work)) {
+ 		printk_ratelimited("%s: Failed to allocate a work queue entry\n",
  				   dev->name);
- 		dev->stats.tx_dropped++;
- 		dev_kfree_skb_any(skb);
--		return 0;
-+		return NETDEV_TX_OK;
- 	}
- 
- 	/* Get a packet buffer */
-@@ -527,7 +527,7 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
- 		cvmx_fpa_free(work, CVMX_FPA_WQE_POOL, 1);
- 		dev->stats.tx_dropped++;
- 		dev_kfree_skb_any(skb);
--		return 0;
-+		return NETDEV_TX_OK;
- 	}
+@@ -538,8 +546,7 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
+ 	 * calculation may add a little extra, but that doesn't
+ 	 * hurt.
+ 	 */
+-	copy_location = packet_buffer + sizeof(u64);
+-	copy_location += ((CVMX_HELPER_FIRST_MBUFF_SKIP + 7) & 0xfff8) + 6;
++	copy_location = packet_buffer + header_skip;
  
  	/*
-@@ -605,7 +605,7 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
- 	dev->stats.tx_packets++;
- 	dev->stats.tx_bytes += skb->len;
- 	dev_consume_skb_any(skb);
--	return 0;
-+	return NETDEV_TX_OK;
- }
+ 	 * We have to copy the packet since whoever processes this
+@@ -586,8 +593,10 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
+ 		 * ethernet header to align the same way hardware
+ 		 * does.
+ 		 */
+-		memcpy(work->packet_data, skb->data + 10,
+-		       sizeof(work->packet_data));
++		if (skb->len > 10)
++			memcpy(work->packet_data, skb->data + 10,
++			       min_t(size_t, sizeof(work->packet_data),
++				     skb->len - 10));
+ 	} else {
+ 		work->word2.snoip.is_rarp = skb->protocol == htons(ETH_P_RARP);
+ 		work->word2.snoip.is_arp = skb->protocol == htons(ETH_P_ARP);
+@@ -596,7 +605,8 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
+ 		work->word2.snoip.is_mcast =
+ 		    (skb->pkt_type == PACKET_MULTICAST);
+ 		work->word2.snoip.not_IP = 1;	/* IP was done up above */
+-		memcpy(work->packet_data, skb->data, sizeof(work->packet_data));
++		memcpy(work->packet_data, skb->data,
++		       min_t(size_t, sizeof(work->packet_data), skb->len));
+ 	}
  
- /**
+ 	/* Submit the packet to the POW */
 
 -- 
 2.56.0
