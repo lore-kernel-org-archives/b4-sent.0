@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:33 -0800
-Subject: [PATCH RFC v3 59/88] vfio: Dispatch guest_memfd get_pfn provider
- op via vfio_device_ops
+Date: Fri, 06 Nov 2026 16:37:34 -0800
+Subject: [PATCH RFC v3 60/88] vfio/pci: Implement get_pfn provider op for
+ guest_memfd
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-59-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-60-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,77 +26,114 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=2331;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=3886;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=xvhk/B5cJ5UV/xewATDcSIWa/TiLlY+J1HVubbWHrTs=;
- b=o7/Mg1zgNXsxxe9h93PAmVT9+adieaG+XGvsvYOAGMQVbFhjEeQODEIVNBVomRcjlxVrpS+fC
- vD5PwxCvv4YA1qhXrdJYU5KtKYsUBP51tja93wBeyuXND0y2TJGrwT/
+ bh=csbHfwVQmJAIvOL3JkXMdnFfqy9AUj2CCzhFEzRs5Ek=;
+ b=WOkAJg7cFMQRQZBPquFwhsiqfmQ+MJXo+8XyVeu5y9SUxzhSHcejH5/SogBd1YAcut6NsIkjq
+ Wb9r8OuGmI2CKiK9HL0TQjRmrP6IA+Y54RW+x0R/lWeRZxEsEgvr07e
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When servicing guest stage-2 page faults or host userspace page faults
-on guest_memfd memory backed by a VFIO resource descriptor, guest_memfd
-invokes the .get_pfn provider operation under the shared filemap
-invalidation lock.
+Implement the .get_pfn provider operation in the generic PCI VFIO bus
+driver to translate guest_memfd page offsets to physical BAR frames.
 
-Implement .get_pfn on vfio_device_gmem_provider_ops to dispatch to the
-bus driver's .gmem_get_pfn callback on struct vfio_device_ops. Return
--EOPNOTSUPP if the bus driver does not implement the callback. The core
-dispatch path avoids acquiring dev_set->lock to satisfy the requirement
-that provider callbacks do not acquire locks held during revocation.
+Check the BAR availability flag locklessly via smp_load_acquire() to
+avoid acquiring the device memory lock on the fault path, returning
+-EFAULT if memory decoding is disabled or the device is in low-power D3.
+
+Decode the 40-bit VFIO region offset to identify the targeted BAR and
+offset within the BAR, validating that the BAR is a standard memory BAR,
+supports memory mapping, and the offset falls within the resource size.
+
+Compute the physical frame number from the PCI resource start address
+and report GUEST_MEMFD_PFN_ATTRS_CACHE_UC_ALLOW_WC as the frame's
+caching attribute so stage-2 mappings permit guest write-combining while
+host userspace mappings remain uncached.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- drivers/vfio/vfio_main.c | 16 ++++++++++++++++
- include/linux/vfio.h     |  3 +++
- 2 files changed, 19 insertions(+)
+ drivers/vfio/pci/vfio_pci.c      |  1 +
+ drivers/vfio/pci/vfio_pci_core.c | 38 ++++++++++++++++++++++++++++++++++++++
+ include/linux/vfio_pci_core.h    |  3 +++
+ 3 files changed, 42 insertions(+)
 
-diff --git a/drivers/vfio/vfio_main.c b/drivers/vfio/vfio_main.c
-index 618daf8bdaf80..93bd0a200ad22 100644
---- a/drivers/vfio/vfio_main.c
-+++ b/drivers/vfio/vfio_main.c
-@@ -1589,9 +1589,25 @@ static void vfio_device_gmem_release(void *provider)
- 	fput(file);
- }
- 
-+static int vfio_device_gmem_get_pfn(void *provider, pgoff_t index,
-+				    unsigned long *pfn, int *max_order,
-+				    u64 *pfn_attrs)
-+{
-+	struct file *file = provider;
-+	struct vfio_device_file *df = file->private_data;
-+	struct vfio_device *device = df->device;
-+
-+	if (!device->ops->gmem_get_pfn)
-+		return -EOPNOTSUPP;
-+
-+	return device->ops->gmem_get_pfn(device, index, pfn, max_order,
-+					 pfn_attrs);
-+}
-+
- static const struct guest_memfd_provider_operations vfio_device_gmem_provider_ops = {
- 	.attach  = vfio_device_gmem_attach,
- 	.release = vfio_device_gmem_release,
-+	.get_pfn = vfio_device_gmem_get_pfn,
+diff --git a/drivers/vfio/pci/vfio_pci.c b/drivers/vfio/pci/vfio_pci.c
+index 96f438671db29..9bc8009a9e766 100644
+--- a/drivers/vfio/pci/vfio_pci.c
++++ b/drivers/vfio/pci/vfio_pci.c
+@@ -171,6 +171,7 @@ static const struct vfio_device_ops vfio_pci_ops = {
+ #ifdef CONFIG_KVM_GUEST_MEMFD
+ 	.gmem_attach	= vfio_pci_core_gmem_attach,
+ 	.gmem_release	= vfio_pci_core_gmem_release,
++	.gmem_get_pfn	= vfio_pci_core_gmem_get_pfn,
+ #endif
  };
+ 
+diff --git a/drivers/vfio/pci/vfio_pci_core.c b/drivers/vfio/pci/vfio_pci_core.c
+index c7b67fbce4cae..9551a067b5689 100644
+--- a/drivers/vfio/pci/vfio_pci_core.c
++++ b/drivers/vfio/pci/vfio_pci_core.c
+@@ -2731,6 +2731,44 @@ void vfio_pci_core_gmem_release(struct vfio_device *core_vdev)
+ 	up_write(&vdev->memory_lock);
+ }
+ EXPORT_SYMBOL_GPL(vfio_pci_core_gmem_release);
++
++int vfio_pci_core_gmem_get_pfn(struct vfio_device *core_vdev, pgoff_t index,
++			       unsigned long *pfn, int *max_order,
++			       u64 *pfn_attrs)
++{
++	struct vfio_pci_core_device *vdev =
++		container_of(core_vdev, struct vfio_pci_core_device, vdev);
++	struct pci_dev *pdev = vdev->pdev;
++	unsigned int bar;
++	u64 pgoff;
++
++	/*
++	 * Lockless check: if memory decoding is disabled or the device is in
++	 * low-power D3, fail immediately without blocking on memory_lock.
++	 */
++	if (!smp_load_acquire(&vdev->bars_available))
++		return -EFAULT;
++
++	bar = index >> (VFIO_PCI_OFFSET_SHIFT - PAGE_SHIFT);
++	pgoff = index & ((1ULL << (VFIO_PCI_OFFSET_SHIFT - PAGE_SHIFT)) - 1);
++
++	if (bar >= PCI_STD_NUM_BARS || !vdev->bar_mmap_supported[bar])
++		return -EINVAL;
++
++	if (pgoff >= (pci_resource_len(pdev, bar) >> PAGE_SHIFT))
++		return -EINVAL;
++
++	*pfn = (pci_resource_start(pdev, bar) >> PAGE_SHIFT) + pgoff;
++
++	if (max_order)
++		*max_order = 0;
++
++	if (pfn_attrs)
++		*pfn_attrs = GUEST_MEMFD_PFN_ATTRS_CACHE_UC_ALLOW_WC;
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(vfio_pci_core_gmem_get_pfn);
  #endif
  
-diff --git a/include/linux/vfio.h b/include/linux/vfio.h
-index 65dc2cb523351..51e04b980a381 100644
---- a/include/linux/vfio.h
-+++ b/include/linux/vfio.h
-@@ -122,6 +122,9 @@ struct guest_memfd_provider_operations;
- struct vfio_device_ops {
- 	int (*gmem_attach)(struct vfio_device *device);
- 	void (*gmem_release)(struct vfio_device *device);
-+	int (*gmem_get_pfn)(struct vfio_device *device, pgoff_t index,
-+			    unsigned long *pfn, int *max_order,
-+			    u64 *pfn_attrs);
- 	char	*name;
- 	int	(*init)(struct vfio_device *vdev);
- 	void	(*release)(struct vfio_device *vdev);
+ module_init(vfio_pci_core_init);
+diff --git a/include/linux/vfio_pci_core.h b/include/linux/vfio_pci_core.h
+index c3c16459e14f4..3a6d039454472 100644
+--- a/include/linux/vfio_pci_core.h
++++ b/include/linux/vfio_pci_core.h
+@@ -172,6 +172,9 @@ void vfio_pci_core_unregister_device(struct vfio_pci_core_device *vdev);
+ #ifdef CONFIG_KVM_GUEST_MEMFD
+ int vfio_pci_core_gmem_attach(struct vfio_device *core_vdev);
+ void vfio_pci_core_gmem_release(struct vfio_device *core_vdev);
++int vfio_pci_core_gmem_get_pfn(struct vfio_device *core_vdev, pgoff_t index,
++			       unsigned long *pfn, int *max_order,
++			       u64 *pfn_attrs);
+ #endif
+ extern const struct pci_error_handlers vfio_pci_core_err_handlers;
+ int vfio_pci_core_sriov_configure(struct vfio_pci_core_device *vdev,
 
 -- 
 2.56.0.455.g6c5a503b38-goog
