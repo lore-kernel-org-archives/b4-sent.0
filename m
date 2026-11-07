@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:48 -0800
-Subject: [PATCH RFC v3 74/88] KVM: selftests: Verify VFIO IRQ info for igb
- device
+Date: Fri, 06 Nov 2026 16:37:49 -0800
+Subject: [PATCH RFC v3 75/88] KVM: selftests: Verify VFIO MMIO read and
+ write for igb device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-74-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-75-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -23,87 +23,100 @@ To: Alexey Kardashevskiy <aik@amd.com>,
  Xu Yilun <yilun.xu@linux.intel.com>, Fuad Tabba <fuad.tabba@linux.dev>
 Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, linux-mm@kvack.org
+ linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
+ Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=2686;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=3042;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=AQWLCgcApEEg/jyplbDhTDq5B3XgkxkLe0iSGXinQCc=;
- b=lzA7mjrnsoNNt6rCSt1o1c7XKjGh/b3RZ9f/ThL79ZgoHIg/TBQHg/cOHoFTJNTQBhv4Maxy/
- eIA9j9nVdKwBg73IhGl+U9b+AJRUyfp6pwsh2i/u1ti2HRsFODVqhyR
+ bh=3rXXPklnl0jKOPE29y7ipXm7LsNh6MGUlvgjiF//KXQ=;
+ b=xloQFGBoKJ2DqV21AvqSu5E1J/CpqtQbloSW0T3GvaqdUgvm8xoOH8M0ztGaadapQ2nhxCakj
+ IhodY//gGI6CJqHf9PiPv1GyWySREMT+8pDpBuxA/6S9HQ3zZS/kyLY
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a subtest to verify interrupt capability queries on the bound
-Intel 82576 device.
+Add a subtest verifying direct pread() and pwrite() operations on the
+device descriptor targeting BAR0 MMIO space.
 
-Check that MSI-X reports a positive vector count with eventfd signaling
-support, that MSI reports eventfd capability, and that INTx reports
-eventfd support along with maskable and auto-masked flags when present.
+Enable memory decoding in the PCI Command register, verify that reading
+the device status register returns an accessible value, and verify that
+writing and reading back a scratch MAC register (RAL0) succeeds with
+expected data.
 
-Testing multiple interrupt types establishes baseline checks on the
-underlying device descriptor so that when VFIO resources are later
-delegated to or wrapped by guest_memfd, native capability querying on
-the device descriptor remains unaffected.
+This validates that kernel-mediated MMIO operations over the VFIO device
+descriptor function properly, providing a baseline to compare against
+when guest_memfd wraps the BAR.
+
+Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- .../selftests/kvm/x86/guest_memfd_vfio_test.c      | 48 ++++++++++++++++++++++
- 1 file changed, 48 insertions(+)
+ .../selftests/kvm/x86/guest_memfd_vfio_test.c      | 58 ++++++++++++++++++++++
+ 1 file changed, 58 insertions(+)
 
 diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
-index c76abe6d45140..6525f392b3930 100644
+index 6525f392b3930..fa05b7cfb3185 100644
 --- a/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
 +++ b/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
-@@ -188,4 +188,52 @@ TEST_F(guest_memfd_vfio, get_region_info)
- 				    VFIO_REGION_INFO_FLAG_WRITE));
+@@ -236,4 +236,62 @@ TEST_F(guest_memfd_vfio, get_irq_info)
+ 	}
  }
  
-+TEST_F(guest_memfd_vfio, get_irq_info)
++static void vfio_pci_enable_memory_and_bus_master(struct __test_metadata *_metadata,
++						  int vfio_fd)
 +{
-+	struct vfio_irq_info irq_info = {};
++	struct vfio_region_info cfg_info = {};
++	ssize_t ret_bytes;
++	uint16_t cmd;
 +	int ret;
 +
-+	/*
-+	 * Test MSI-X interrupts (VFIO_PCI_MSIX_IRQ_INDEX):
-+	 * Intel 82576 supports up to 10 MSI-X vectors.
-+	 */
-+	irq_info.argsz = sizeof(irq_info);
-+	irq_info.index = VFIO_PCI_MSIX_IRQ_INDEX;
-+	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq_info);
++	cfg_info.argsz = sizeof(cfg_info);
++	cfg_info.index = VFIO_PCI_CONFIG_REGION_INDEX;
++	ret = ioctl(vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &cfg_info);
 +	ASSERT_EQ(0, ret);
-+	ASSERT_GT(irq_info.count, 0);
-+	ASSERT_TRUE(irq_info.flags & VFIO_IRQ_INFO_EVENTFD);
++
++	/* Enable Memory Space and Bus Master in PCI Command register */
++	ret_bytes = pread(vfio_fd, &cmd, sizeof(cmd), cfg_info.offset + PCI_COMMAND);
++	ASSERT_EQ(sizeof(cmd), ret_bytes);
++	cmd |= (PCI_COMMAND_MEMORY | PCI_COMMAND_MASTER);
++	ret_bytes = pwrite(vfio_fd, &cmd, sizeof(cmd), cfg_info.offset + PCI_COMMAND);
++	ASSERT_EQ(sizeof(cmd), ret_bytes);
++}
++
++TEST_F(guest_memfd_vfio, bar_rw)
++{
++	struct vfio_region_info bar0_info = {};
++	ssize_t ret_bytes;
++	uint32_t val;
++	int ret;
++
++	vfio_pci_enable_memory_and_bus_master(_metadata, self->vfio_fd);
++
++	bar0_info.argsz = sizeof(bar0_info);
++	bar0_info.index = VFIO_PCI_BAR0_REGION_INDEX;
++	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &bar0_info);
++	ASSERT_EQ(0, ret);
 +
 +	/*
-+	 * Test MSI interrupts (VFIO_PCI_MSI_IRQ_INDEX):
-+	 * Should report eventfd capability.
++	 * Read Device Status (E1000_STATUS) via pread() at BAR0 offset.
++	 * Confirm device is readable and does not return 0xFFFFFFFF.
 +	 */
-+	memset(&irq_info, 0, sizeof(irq_info));
-+	irq_info.argsz = sizeof(irq_info);
-+	irq_info.index = VFIO_PCI_MSI_IRQ_INDEX;
-+	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq_info);
-+	ASSERT_EQ(0, ret);
-+	ASSERT_GT(irq_info.count, 0);
-+	ASSERT_TRUE(irq_info.flags & VFIO_IRQ_INFO_EVENTFD);
++	val = 0;
++	ret_bytes = pread(self->vfio_fd, &val, sizeof(val), bar0_info.offset + E1000_STATUS);
++	ASSERT_EQ(sizeof(val), ret_bytes);
++	ASSERT_NE(0xFFFFFFFF, val);
 +
 +	/*
-+	 * Test legacy INTx interrupts (VFIO_PCI_INTX_IRQ_INDEX):
-+	 * Must support eventfd and masking when present.
++	 * Write a distinct scratch test pattern to RAL0 via pwrite() and read
++	 * it back via pread().
 +	 */
-+	memset(&irq_info, 0, sizeof(irq_info));
-+	irq_info.argsz = sizeof(irq_info);
-+	irq_info.index = VFIO_PCI_INTX_IRQ_INDEX;
-+	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq_info);
-+	ASSERT_EQ(0, ret);
-+	ASSERT_LE(irq_info.count, 1);
-+	if (irq_info.count == 1) {
-+		ASSERT_EQ(VFIO_IRQ_INFO_EVENTFD |
-+			  VFIO_IRQ_INFO_MASKABLE |
-+			  VFIO_IRQ_INFO_AUTOMASKED,
-+			  irq_info.flags & (VFIO_IRQ_INFO_EVENTFD |
-+					    VFIO_IRQ_INFO_MASKABLE |
-+					    VFIO_IRQ_INFO_AUTOMASKED));
-+	}
++	val = 0xdeadbeef;
++	ret_bytes = pwrite(self->vfio_fd, &val, sizeof(val), bar0_info.offset + E1000_RAL0);
++	ASSERT_EQ(sizeof(val), ret_bytes);
++
++	val = 0;
++	ret_bytes = pread(self->vfio_fd, &val, sizeof(val), bar0_info.offset + E1000_RAL0);
++	ASSERT_EQ(sizeof(val), ret_bytes);
++	ASSERT_EQ(0xdeadbeef, val);
 +}
 +
  TEST_HARNESS_MAIN
