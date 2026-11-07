@@ -1,198 +1,66 @@
-From: Prateekshit Jaiswal <prateekshitjaiswal73@gmail.com>
-Date: Sun, 08 Nov 2026 00:03:53 +0530
-Subject: [PATCH] docs: xforms_lists: handle
- __cacheline_group_{begin,end}_aligned()
+From: Nizat Mikayilli <nacht@dxdmail.cc>
+Subject: [PATCH 0/3] drm/panel: Add Anapass ANA38407 DDIC
+Date: Sat, 07 Nov 2026 20:47:23 +0100
+Message-Id: <20261107-b4-ana38407-v1-0-c8b33147110a@dxdmail.cc>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-kdoc-cacheline-aligned-v1-1-a79fa228a6f3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSwqAMAwA0atI1gYa8YdXERchjRqUKi2IIN7d4
- vItZh5IGk0TDMUDUS9LdoQMKguQlcOiaD4bKle1RK7DzR+CwrLqbkGRd1uCeuyamdg77oVqyPE
- Zdbb7H4/T+35In21PaAAAAA==
-X-Change-ID: 20261107-kdoc-cacheline-aligned-75f1ad0a8c14
-To: Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Prateekshit Jaiswal <prateekshitjaiswal73@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwNz3SQT3cS8RGMLEyDb2NDS1DQxOcnCJNFcCaijoCg1LbMCbFp0bG0
+ tAHtflIJdAAAA
+X-Change-ID: 20261107-b4-ana38407-31955acb84a7
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ dri-devel@lists.freedesktop.org, Nizat Mikayilli <nacht@dxdmail.cc>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794076433; l=6468;
- i=prateekshitjaiswal73@gmail.com; s=20261107; h=from:subject:message-id;
- bh=ROYKEloeeZcTp2FpiD1aadnaDyABF8WBF0CYdURa5n4=;
- b=pwZaypDYnIUNHZ0T8CnF7YvGVEr3v4aGJ1QCUyTkstOjqnLW+E5jyXh32zzayVSJxGZnjG+e7
- aQRecrjK2m4A2hUOhbMf+yI+AjuM5YkACo+hyKVi41N8JeG5VWrEVYN
-X-Developer-Key: i=prateekshitjaiswal73@gmail.com; a=ed25519;
- pk=Z9QqjsqOUk3AvD5zQ8B+Kufufuvk9wEO7eT9m1nMJdo=
-X-Endpoint-Received: by B4 Relay for prateekshitjaiswal73@gmail.com/20261107 with auth_id=1445
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794080847; l=1483;
+ i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
+ bh=5iANZuthwhrnKNfy6tUcJAQYLWP1DzL0/22RNTTPIDI=;
+ b=ot3qalUVbAQfEck7pHOOwZs4nwbYCpivVlB68oj5ZnOnsJjfRqBpHwVmdi2i1sqTTmfALx5GK
+ G8sZFJ7dKqVC6vDLFX2lnQ0qB5NV8hWgJjNJBUXVSJ6r+xuSCaJS4qu
+X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
+ pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
+X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-kernel-doc treats each __cacheline_group_{begin,end}_aligned() call as
-an undescribed struct member:
+This series adds a driver for the Samsung AMSA10FA01, the 2560x1600
+AMOLED panel of the Samsung Galaxy Tab S9 Wi-Fi (SM8550). It is a
+command mode DSI panel with DSC, driven by an Anapass ANA38407 DDIC.
+The binding and driver are named after the DDIC.
 
-  Warning: drivers/net/ethernet/intel/idpf/idpf_txrx.h:436 struct member '__cacheline_group_begin_aligned(read_mostly' not described in 'idpf_q_vector'
+Only the 120 Hz mode of panel revision D is supported. The init
+sequence comes from the vendor panel data, without the
+brightness-dependent gamma, HBM and ELVSS writes. A fixed delay
+replaces the vendor's wait on the TCON_RDY pin.
 
-Those markers are defined in include/linux/cache.h. A former special
-case in push_parameter() dropped any member whose name contained
-"__cacheline_group", which covered both the plain and _aligned forms.
-Commit 8b00d6fe9696 ("docs: kdoc: trim __cacheline_group_* with the
-other annotations") replaced that with a transform that only matches
-__cacheline_group_begin() and __cacheline_group_end().
+Tested on the tablet: cold and warm boot, hand-off from the bootloader
+splash, brightness and blank/unblank. The board DT follows separately.
 
-The pattern kept that shape when it later moved to CMatch, which
-requires a word boundary right after the name. Since "_aligned"
-continues the identifier, the suffix still cannot match.
-
-Make the suffix optional, keep the copy of the rule in test_cmatch.py
-in sync, and add a kdoc-test.yaml case based on struct idpf_q_vector
-that fails without this change. The expected definition still has the
-lone ';' that each stripped marker leaves behind, as the unaligned
-markers already do.
-
-Running "kernel-doc -none -Wall" over every file with kernel-doc
-comments on docs-next, this removes 34 distinct warnings, all in
-idpf_txrx.h, and adds none.
-
-The problem was found, and the fix and test drafted, with the help of
-an AI coding assistant (Claude Code); I have reviewed and tested the
-result.
-
-Fixes: 8b00d6fe9696 ("docs: kdoc: trim __cacheline_group_* with the other annotations")
-Signed-off-by: Prateekshit Jaiswal <prateekshitjaiswal73@gmail.com>
+Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
 ---
-Testing:
-- tools/unittests/run.py: all 125 tests pass; the new test fails when
-  only the xforms_lists.py change is reverted.
-- kernel-doc -none -Wall over all files with kernel-doc comments,
-  before and after: 34 warnings removed, none added.
+Nizat Mikayilli (3):
+      dt-bindings: vendor-prefixes: Add Anapass
+      dt-bindings: display: panel: Document Anapass ANA38407 DDIC
+      drm/panel: Add driver for Anapass ANA38407 DDIC
 
-This is based on docs-next. In linux-next, the kspp tree adds
-__require_explicit_initialization to struct_xforms three lines above
-the changed one, so the context differs there; the patch still applies
-with reduced context and the resolution is trivial.
-
-The lone ';' left in the rendered definition (also seen today for the
-plain markers, e.g. struct net_device) appeared with commit 7538df7a2d7d
-("docs: xforms_lists: use CMatch for all identifiers"). It is left for
-a separate change, which would then also update the new test.
+ .../bindings/display/panel/anapass,ana38407.yaml   |  69 +++++
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ MAINTAINERS                                        |   6 +
+ drivers/gpu/drm/panel/Kconfig                      |  15 +
+ drivers/gpu/drm/panel/Makefile                     |   1 +
+ drivers/gpu/drm/panel/panel-anapass-ana38407.c     | 320 +++++++++++++++++++++
+ 6 files changed, 413 insertions(+)
 ---
- tools/lib/python/kdoc/xforms_lists.py |  2 +-
- tools/unittests/kdoc-test.yaml        | 72 +++++++++++++++++++++++++++++++++++
- tools/unittests/test_cmatch.py        |  2 +-
- 3 files changed, 74 insertions(+), 2 deletions(-)
-
-diff --git a/tools/lib/python/kdoc/xforms_lists.py b/tools/lib/python/kdoc/xforms_lists.py
-index db23fb650ea8..fa380055191c 100644
---- a/tools/lib/python/kdoc/xforms_lists.py
-+++ b/tools/lib/python/kdoc/xforms_lists.py
-@@ -38,7 +38,7 @@ class CTransforms:
-         (CMatch("__rcu"), ""),
-         (CMatch("____cacheline_aligned_in_smp"), ""),
-         (CMatch("____cacheline_aligned"), ""),
--        (CMatch("__cacheline_group_(?:begin|end)"), ""),
-+        (CMatch("__cacheline_group_(?:begin|end)(?:_aligned)?"), ""),
-         (CMatch("__ETHTOOL_DECLARE_LINK_MODE_MASK"), r"DECLARE_BITMAP(\1, __ETHTOOL_LINK_MODE_MASK_NBITS)"),
-         (CMatch("DECLARE_PHY_INTERFACE_MASK",),r"DECLARE_BITMAP(\1, PHY_INTERFACE_MODE_MAX)"),
-         (CMatch("DECLARE_BITMAP"), r"unsigned long \1[BITS_TO_LONGS(\2)]"),
-diff --git a/tools/unittests/kdoc-test.yaml b/tools/unittests/kdoc-test.yaml
-index 14d36daa1bba..da396f975cb5 100644
---- a/tools/unittests/kdoc-test.yaml
-+++ b/tools/unittests/kdoc-test.yaml
-@@ -1696,3 +1696,75 @@ tests:
- 
-         ``spinlock_t *lock``
-           the spinlock
-+- name: struct_cacheline_group_aligned
-+  description: "Strip __cacheline_group_{begin,end}_aligned() markers from a struct"
-+  fname: drivers/net/ethernet/intel/idpf/idpf_txrx.h
-+  source: |
-+    /**
-+     * struct idpf_q_vector
-+     * @vport: Vport back pointer
-+     * @num_rxq: Number of RX queues
-+     * @napi: napi handler
-+     * @v_idx: Vector index
-+     */
-+    struct idpf_q_vector {
-+            __cacheline_group_begin_aligned(read_mostly);
-+            struct idpf_vport *vport;
-+
-+            u16 num_rxq;
-+            __cacheline_group_end_aligned(read_mostly);
-+
-+            __cacheline_group_begin_aligned(read_write);
-+            struct napi_struct napi;
-+            __cacheline_group_end_aligned(read_write);
-+
-+            __cacheline_group_begin_aligned(cold);
-+            u16 v_idx;
-+
-+            __cacheline_group_end_aligned(cold);
-+    };
-+  expected:
-+  - kdoc_item:
-+      name: idpf_q_vector
-+      type: struct
-+      declaration_start_line: 1
-+      sections: {}
-+      sections_start_lines: {}
-+      parameterlist:
-+      - vport
-+      - num_rxq
-+      - napi
-+      - v_idx
-+      parameterdesc_start_lines:
-+        vport: 2
-+        num_rxq: 3
-+        napi: 4
-+        v_idx: 5
-+      parameterdescs:
-+        vport: |
-+          Vport back pointer
-+        num_rxq: |
-+          Number of RX queues
-+        napi: |
-+          napi handler
-+        v_idx: |
-+          Vector index
-+      parametertypes:
-+        vport: struct idpf_vport *vport
-+        num_rxq: u16 num_rxq
-+        napi: struct napi_struct napi
-+        v_idx: u16 v_idx
-+      warnings: []
-+      other_stuff:
-+        definition: |
-+          ;
-+          struct idpf_vport *vport;
-+          u16 num_rxq;
-+          ;
-+          ;
-+          struct napi_struct napi;
-+          ;
-+          ;
-+          u16 v_idx;
-+          ;
-+        purpose: ''
-diff --git a/tools/unittests/test_cmatch.py b/tools/unittests/test_cmatch.py
-index 109141cd2ab8..02d63a51c05e 100755
---- a/tools/unittests/test_cmatch.py
-+++ b/tools/unittests/test_cmatch.py
-@@ -324,7 +324,7 @@ class TestSubWithLocalXforms(TestCaseDiff):
-         (CMatch('__guarded_by'), ' '),
-         (CMatch('__pt_guarded_by'), ' '),
- 
--        (CMatch('__cacheline_group_(begin|end)'), ''),
-+        (CMatch('__cacheline_group_(begin|end)(_aligned)?'), ''),
- 
-         (CMatch('struct_group'), r'\2'),
-         (CMatch('struct_group_attr'), r'\3'),
-
----
-base-commit: 2649344d20dfb13e30b560f06138229d8e40350a
-change-id: 20261107-kdoc-cacheline-aligned-75f1ad0a8c14
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261107-b4-ana38407-31955acb84a7
 
 Best regards,
 -- 
-Prateekshit Jaiswal <prateekshitjaiswal73@gmail.com>
+Nizat Mikayilli <nacht@dxdmail.cc>
 
