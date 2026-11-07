@@ -1,63 +1,69 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Sat, 07 Nov 2026 16:54:44 +0200
-Subject: [PATCH v3 3/3] usb: mtu3: add mt6595 support
+From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
+Date: Sat, 07 Nov 2026 09:06:37 -0600
+Subject: [PATCH] staging: octeon: fix OF node leak and kernel-doc in
+ ethernet-mdio.c
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261107-6595-mtu3-v3-3-f36bc569cb47@protonmail.com>
-References: <20261107-6595-mtu3-v3-0-f36bc569cb47@protonmail.com>
-In-Reply-To: <20261107-6595-mtu3-v3-0-f36bc569cb47@protonmail.com>
-To: Chunfeng Yun <chunfeng.yun@mediatek.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Roman Vivchar <rva333@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794063282; l=1155;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=MH/mAQtsGq6RAwp6c/enfc7ur+acQQpTl7FnupfzQkI=;
- b=mvwt455QhrE/7f4g4dyCBd2KF5jJ+28D7VdMketYUp6laKqvUH6dksPfr0Koand+BnCQYjGAp
- DOYS/KFdwz0DBrRoHo4fsg2KG5hNXj9JTWDpk/i7FsaDst2oWKKjdtL
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261107-octeon-mdio-fixes-v1-1-9620a30952eb@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3LQQqAIBBA0avIrBvQEo2uEi3EpppFGhoRiHdPW
+ j4+v0CmxJRhEgUSPZw5hgbVCfCHCzshr83Qy94oJS1Gf1MMeK4cceOXMtpBj8poPThnoX1Xoj+
+ 0bV5q/QDGU87uYwAAAA==
+X-Change-ID: 20261107-octeon-mdio-fixes-734816443aa7
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794063997; l=1411;
+ i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
+ bh=vNQzcWCw6v+GGPCU8kFndUmRbbBQdBJ6gMhfqAvp8Dc=;
+ b=FC+6l190WVFl95b+7mKRrFwTrjPz9j+cS6JFhICFLvALpgRLRoLfkU2CmJZ11q6sFVRCFjUEj
+ IktMsPrQelKBx6nMVvV9yTFTsTsqdH6t4Wrh3nN00qMNE+qMtbgmvSl
+X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
+ pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
+X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a platform data for the MediaTek mt6595 SoC MTU3 IP block with a
-quirk for single FIFO slot.
+Fix a reference count leak in cvm_oct_phy_setup_device() where the
+device_node pointer 'phy_node' was not released if of_phy_connect()
+returned NULL on a probe deferral scenario. Balance the reference count
+by calling of_node_put() within the error path block.
 
-Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+Additionally, correct the documentation style of the function by
+replacing 'Returns' with the standard 'Return:' keyword to comply with
+kernel-doc scripting requirements.
+
+Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 ---
- drivers/usb/mtu3/mtu3_plat.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ drivers/staging/octeon/ethernet-mdio.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/usb/mtu3/mtu3_plat.c b/drivers/usb/mtu3/mtu3_plat.c
-index bb67da4704b2..9d633695a9be 100644
---- a/drivers/usb/mtu3/mtu3_plat.c
-+++ b/drivers/usb/mtu3/mtu3_plat.c
-@@ -611,11 +611,16 @@ static const struct dev_pm_ops mtu3_pm_ops = {
+diff --git a/drivers/staging/octeon/ethernet-mdio.c b/drivers/staging/octeon/ethernet-mdio.c
+index 211423059e30..05bc536ebded 100644
+--- a/drivers/staging/octeon/ethernet-mdio.c
++++ b/drivers/staging/octeon/ethernet-mdio.c
+@@ -151,11 +151,13 @@ int cvm_oct_phy_setup_device(struct net_device *dev)
  
- #define DEV_PM_OPS (IS_ENABLED(CONFIG_PM) ? &mtu3_pm_ops : NULL)
+ 	phydev = of_phy_connect(dev, phy_node, cvm_oct_adjust_link, 0,
+ 				priv->phy_mode);
+-	of_node_put(phy_node);
  
-+static const struct mtu3_platform_data mt6595_platform_data = {
-+	.fifo_single_slot = true,
-+};
-+
- static const struct mtu3_platform_data mt8173_platform_data = {
- 	.fifo_single_slot = false,
- };
+-	if (!phydev)
++	if (!phydev) {
++		of_node_put(phy_node);
+ 		return -EPROBE_DEFER;
++	}
  
- static const struct of_device_id mtu3_of_match[] = {
-+	{ .compatible = "mediatek,mt6595-mtu3", .data = &mt6595_platform_data },
- 	{ .compatible = "mediatek,mt8173-mtu3", .data = &mt8173_platform_data },
- 	{ .compatible = "mediatek,mtu3", .data = &mt8173_platform_data },
- 	{},
++	of_node_put(phy_node);
+ 	priv->last_link = 0;
+ 	phy_start(phydev);
+ 
 
+---
+base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
+change-id: 20261107-octeon-mdio-fixes-734816443aa7
+
+Best regards,
 -- 
-2.56.0
+Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 
