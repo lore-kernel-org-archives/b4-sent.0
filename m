@@ -1,10 +1,11 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Date: Sat, 07 Nov 2026 16:54:42 +0200
-Subject: [PATCH v3 1/3] dt-bindings: usb: mtu3: add mt6595
+Date: Sat, 07 Nov 2026 16:54:43 +0200
+Subject: [PATCH v3 2/3] usb: mtu3: add SoC platform data for FIFO quirk
+ handling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261107-6595-mtu3-v3-1-f36bc569cb47@protonmail.com>
+Message-Id: <20261107-6595-mtu3-v3-2-f36bc569cb47@protonmail.com>
 References: <20261107-6595-mtu3-v3-0-f36bc569cb47@protonmail.com>
 In-Reply-To: <20261107-6595-mtu3-v3-0-f36bc569cb47@protonmail.com>
 To: Chunfeng Yun <chunfeng.yun@mediatek.com>, 
@@ -15,40 +16,124 @@ To: Chunfeng Yun <chunfeng.yun@mediatek.com>,
  AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Cc: linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Roman Vivchar <rva333@protonmail.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ linux-kernel@vger.kernel.org, Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794063282; l=938;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794063282; l=3866;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=6lNL8+H5yPn87h4OAqJ4JTDlIkabDJzqSIYmECK+Ohw=;
- b=11NQyOkxtXUeokO0Et/HXlv+SYZRAi1hV9g4eL0CVQdE+MqaOsnHiZuF31wHhipK08FhbRIh3
- VG62KWmULOaD48GOreLtoULia+8lBqD3ro6vw07hugciqa8P5BpCKS2
+ bh=auQPHvab1ZzrFsEkD3kyiLiuuk6+++iHHfze1wbJCXA=;
+ b=rZXp5qlTOcGBFK+aoKrYTcpaBANl+TuT7yMeU+HgrjWzoDkqG5Rbv45x4nraCZ3FuBud98D8L
+ URz7wWccYg0Dq52F9VtuVvauGz1DLZPiYJ5puQxwmtLab2xT0Lcfulu
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a compatible string for the MTU3 IP found on the MediaTek mt6595 SoC.
+Some SoCs, such as mt6595, require specific quirks for the MTU3 to
+function properly.
 
+The mt6595 IP block doesn't support multiple slots for the FIFO,
+resulting FIFO wrap.
+
+Fix this by adding platform data with a field to handle FIFO limitation.
+No functional changes for existing SoCs.
+
+Assisted-by: LLM (debugging)
 Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- Documentation/devicetree/bindings/usb/mediatek,mtu3.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/usb/mtu3/mtu3.h        | 9 +++++++++
+ drivers/usb/mtu3/mtu3_core.c   | 3 +++
+ drivers/usb/mtu3/mtu3_gadget.c | 8 ++++++--
+ drivers/usb/mtu3/mtu3_plat.c   | 8 ++++++--
+ 4 files changed, 24 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/usb/mediatek,mtu3.yaml b/Documentation/devicetree/bindings/usb/mediatek,mtu3.yaml
-index 21fc6bbe954f..4538df164a16 100644
---- a/Documentation/devicetree/bindings/usb/mediatek,mtu3.yaml
-+++ b/Documentation/devicetree/bindings/usb/mediatek,mtu3.yaml
-@@ -22,6 +22,7 @@ properties:
-     items:
-       - enum:
-           - mediatek,mt2712-mtu3
-+          - mediatek,mt6595-mtu3
-           - mediatek,mt8173-mtu3
-           - mediatek,mt8183-mtu3
-           - mediatek,mt8186-mtu3
+diff --git a/drivers/usb/mtu3/mtu3.h b/drivers/usb/mtu3/mtu3.h
+index ba5a63669e5f..349e5b20f285 100644
+--- a/drivers/usb/mtu3/mtu3.h
++++ b/drivers/usb/mtu3/mtu3.h
+@@ -315,6 +315,14 @@ static inline struct ssusb_mtk *dev_to_ssusb(struct device *dev)
+ 	return dev_get_drvdata(dev);
+ }
+ 
++/**
++ * struct mtu3_platform_data - platform data for the driver.
++ * @fifo_single_slot: the IP can handle only one buffer for bulk transfers
++ */
++struct mtu3_platform_data {
++	bool fifo_single_slot;
++};
++
+ /**
+  * struct mtu3 - device driver instance data.
+  * @slot: MTU3_U2_IP_SLOT_DEFAULT for U2 IP only,
+@@ -369,6 +377,7 @@ struct mtu3 {
+ 	unsigned connected:1;
+ 	unsigned async_callbacks:1;
+ 	unsigned separate_fifo:1;
++	unsigned fifo_single_slot:1;
+ 
+ 	u8 address;
+ 	u8 test_mode_nr;
+diff --git a/drivers/usb/mtu3/mtu3_core.c b/drivers/usb/mtu3/mtu3_core.c
+index 66dbfe1705d5..15f1b80fd0e2 100644
+--- a/drivers/usb/mtu3/mtu3_core.c
++++ b/drivers/usb/mtu3/mtu3_core.c
+@@ -922,6 +922,7 @@ static int mtu3_set_dma_mask(struct mtu3 *mtu)
+ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
+ {
+ 	struct device *dev = ssusb->dev;
++	const struct mtu3_platform_data *pdata = device_get_match_data(dev);
+ 	struct platform_device *pdev = to_platform_device(dev);
+ 	struct mtu3 *mtu = NULL;
+ 	int ret = -ENOMEM;
+@@ -930,6 +931,8 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
+ 	if (mtu == NULL)
+ 		return -ENOMEM;
+ 
++	mtu->fifo_single_slot = pdata->fifo_single_slot;
++
+ 	mtu->irq = platform_get_irq_byname_optional(pdev, "device");
+ 	if (mtu->irq < 0) {
+ 		if (mtu->irq == -EPROBE_DEFER)
+diff --git a/drivers/usb/mtu3/mtu3_gadget.c b/drivers/usb/mtu3/mtu3_gadget.c
+index f224f2ee379a..8ac244d40afd 100644
+--- a/drivers/usb/mtu3/mtu3_gadget.c
++++ b/drivers/usb/mtu3/mtu3_gadget.c
+@@ -112,8 +112,12 @@ static int mtu3_ep_enable(struct mtu3_ep *mep)
+ 	mep->ep.desc = desc;
+ 	mep->ep.comp_desc = comp_desc;
+ 
+-	/* slot mainly affects bulk/isoc transfer, so ignore int */
+-	mep->slot = usb_endpoint_xfer_int(desc) ? 0 : mtu->slot;
++	if (mtu->fifo_single_slot)
++		/* older IPs can handle only one slot reliably */
++		mep->slot = 0;
++	else
++		/* slot mainly affects bulk/isoc transfer, so ignore int */
++		mep->slot = usb_endpoint_xfer_int(desc) ? 0 : mtu->slot;
+ 
+ 	ret = mtu3_config_ep(mtu, mep, interval, burst, mult);
+ 	if (ret < 0)
+diff --git a/drivers/usb/mtu3/mtu3_plat.c b/drivers/usb/mtu3/mtu3_plat.c
+index cc8a864dbd63..bb67da4704b2 100644
+--- a/drivers/usb/mtu3/mtu3_plat.c
++++ b/drivers/usb/mtu3/mtu3_plat.c
+@@ -611,9 +611,13 @@ static const struct dev_pm_ops mtu3_pm_ops = {
+ 
+ #define DEV_PM_OPS (IS_ENABLED(CONFIG_PM) ? &mtu3_pm_ops : NULL)
+ 
++static const struct mtu3_platform_data mt8173_platform_data = {
++	.fifo_single_slot = false,
++};
++
+ static const struct of_device_id mtu3_of_match[] = {
+-	{.compatible = "mediatek,mt8173-mtu3",},
+-	{.compatible = "mediatek,mtu3",},
++	{ .compatible = "mediatek,mt8173-mtu3", .data = &mt8173_platform_data },
++	{ .compatible = "mediatek,mtu3", .data = &mt8173_platform_data },
+ 	{},
+ };
+ MODULE_DEVICE_TABLE(of, mtu3_of_match);
 
 -- 
 2.56.0
