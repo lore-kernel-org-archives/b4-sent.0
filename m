@@ -1,60 +1,92 @@
-From: Nizat Mikayilli <nacht@dxdmail.cc>
-Date: Sat, 07 Nov 2026 21:00:50 +0100
-Subject: [PATCH] iommu/arm-smmu-qcom: Add SM8550 MDSS compatible
+From: =?utf-8?q?Bekir_=C3=9Cn?= <bekiirun@gmail.com>
+Date: Sat, 07 Nov 2026 23:20:02 +0300
+Subject: [PATCH] platform/x86: acer-wmi: Add support for Acer Nitro AN16-51
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261107-b4-smmu-sm8550-v1-1-777d0a41170b@dxdmail.cc>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwNz3SQT3eLc3FIgYWFqaqBraWFqZJhiYpmanGKiBNRUUJSallkBNjA
- 6trYWACyoUvRgAAAA
-X-Change-ID: 20261107-b4-smmu-sm8550-98521d49ecd4
-To: Rob Clark <robin.clark@oss.qualcomm.com>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>, "Joerg Roedel (AMD)" <joro@8bytes.org>
-Cc: iommu@lists.linux.dev, linux-arm-msm@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Nizat Mikayilli <nacht@dxdmail.cc>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794081653; l=1170;
- i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
- bh=I+cZ1+xcU8CJV0qjts4gYWFK7UhBiDpGLpae4t5CYy0=;
- b=NkMED2aV/LYn6RCVXeu3yCrogjKaMuCYqOcoLgxBi5pmCjZKeQcmzjGxY5BtpSm6lapuAMURR
- NGRdTTK028QAJ5nW1ofTlnfor8Sr2Tw8Z9Ne1DmhB0Kp0Bl0ZxYUqr0
-X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
- pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
-X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261107-acer-nitro-an16-51-v1-1-456278eb4cd0@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMMQ6DMAxA0asgz1jCFBLBVRBDSA2YISAHqkqIu
+ zfQ8Q3/nxBZhSO02QnKH4myhgTKM/CzCxOjvJOhLEpDVFh0nhWD7LqiC2SwJmxMxdYM46uxFaR
+ wUx7l+0y7/u94DAv7/T7Bdf0Aj1HNdXYAAAA=
+X-Change-ID: 20261107-acer-nitro-an16-51-964e76bf3974
+To: "Lee, Chun-Yi" <jlee@suse.com>, Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
+Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Bekir_=C3=9Cn?= <bekiirun@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794082812; l=2537;
+ i=bekiirun@gmail.com; s=20261107; h=from:subject:message-id;
+ bh=XbyK8OmmCdT09eWFW+p/K32iqIhSXoUAvUuuLGPFTsE=;
+ b=gojpaeKoCAYDNWCaQNE0OspSdpAVSitkVKYPwY8SGeCEXT0VQYHUxMRQ7pdT46SYwViId1PtR
+ rhEnvaqLsf/CKcDbVewLxh9/tbLl0Kd38rauB21QaCDbOBeBt2038xV
+X-Developer-Key: i=bekiirun@gmail.com; a=ed25519;
+ pk=ThEeR1k91IQjKK+VVDMEgjG0h0zzy2D+IV65oEuWzxI=
+X-Endpoint-Received: by B4 Relay for bekiirun@gmail.com/20261107 with auth_id=1446
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the SM8550 MDSS compatible to the clients list, as it also needs an
-identity domain at boot. Otherwise the scanout of the bootloader's
-splash screen causes unhandled context faults and the screen goes
-black.
+The Acer Nitro AN16-51 supports the same gaming WMI interface as the
+Nitro AN515-58 and AN16-41. Its ACPI tables (WMBH method on GUID
+7A4DDFE7-5B5D-40B4-8595-4408E0CC7F56) handle the thermal profile misc
+setting 0x0B with the values quiet (0x00), balanced (0x01), performance
+(0x04), turbo (0x05) and eco (0x06), and report the supported sensors
+as 0x0227 (CPU/GPU temperature, CPU/GPU fan speed, external
+temperature 2).
 
-Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
----
-Found while bringing up the display on the Samsung Galaxy Tab S9 Wi-Fi.
----
- drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c | 1 +
- 1 file changed, 1 insertion(+)
+Add a DMI entry so that platform profile, hwmon and fan control are
+enabled without the predator_v4 module parameter.
 
-diff --git a/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c b/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
-index 795e8ec7e8fa..483e9e4147b3 100644
---- a/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
-+++ b/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
-@@ -426,6 +426,7 @@ static const struct of_device_id qcom_smmu_client_of_match[] __maybe_unused = {
- 	{ .compatible = "qcom,sm8150-mdss" },
- 	{ .compatible = "qcom,sm8250-mdss" },
- 	{ .compatible = "qcom,sm8450-mdss" },
-+	{ .compatible = "qcom,sm8550-mdss" },
- 	{ .compatible = "qcom,x1e80100-mdss" },
- 	{ }
- };
+Tested on an Acer Nitro AN16-51 (BIOS V1.12):
+ - All five platform profiles can be selected through sysfs and
+   power-profiles-daemon; the mode key cycles through them and the
+   key LED changes accordingly.
+ - fan1/fan2 and temp1/temp3 report plausible values; under full CPU
+   load in the turbo profile both fans ramp up to ~5850 RPM. temp2
+   (external temperature 2) always reads 0, the firmware advertises it
+   but the EC field it reads is not populated.
+ - pwm1/pwm2: pwm_enable 0 (max) gives ~6600 RPM, pwm_enable 1 with
+   pwm 128 gives ~4000 RPM, pwm_enable 2 returns to automatic control.
+
+Profiles and sensors were tested with predator_v4=1 on 7.2.14, fan
+control with this DMI entry applied to the 7.2.11 acer-wmi driver.
+
+The ACPI analysis, the change and this message were prepared with the
+help of an AI coding assistant (Claude, Anthropic) and tested by me on
+the hardware.
+
+Signed-off-by: Bekir Ün <bekiirun@gmail.com>
+---
+Single DMI entry for the Acer Nitro AN16-51, reusing the AN515-58
+quirk. Test details are in the commit message.
+---
+ drivers/platform/x86/acer-wmi.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/platform/x86/acer-wmi.c b/drivers/platform/x86/acer-wmi.c
+index 3a018fdf5..08f663fc6 100644
+--- a/drivers/platform/x86/acer-wmi.c
++++ b/drivers/platform/x86/acer-wmi.c
+@@ -690,6 +690,15 @@ static const struct dmi_system_id acer_quirks[] __initconst = {
+ 		},
+ 		.driver_data = &quirk_acer_nitro_an515_58,
+ 	},
++	{
++		.callback = dmi_matched,
++		.ident = "Acer Nitro AN16-51",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "Acer"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "Nitro AN16-51"),
++		},
++		.driver_data = &quirk_acer_nitro_an515_58,
++	},
+ 	{
+ 		.callback = dmi_matched,
+ 		.ident = "Acer Nitro AN515-58",
 
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261107-b4-smmu-sm8550-98521d49ecd4
+base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
+change-id: 20261107-acer-nitro-an16-51-964e76bf3974
 
 Best regards,
--- 
-Nizat Mikayilli <nacht@dxdmail.cc>
+--  
+Bekir Ün <bekiirun@gmail.com>
 
