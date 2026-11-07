@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:56 -0800
-Subject: [PATCH RFC v3 82/88] KVM: selftests: Verify VFIO dmabuf creation
- for igb device
+Date: Fri, 06 Nov 2026 16:37:57 -0800
+Subject: [PATCH RFC v3 83/88] KVM: selftests: Verify VFIO ioeventfd
+ creation for igb device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-82-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-83-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,118 +26,85 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=3911;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=2410;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=MbD33+QhDIw1sC8OkTEtVrBZ+IoL3RD4qfhKhPg8oKQ=;
- b=7iVZ9xRpmIAg6xpTbf7wls4Z/04O441wO1Vwt3NgTl0XIJAE2iswEYKcjFie8IMkCRGxXqAKQ
- 8/ywYYSClSZASYJSFTxZ80gUqe3p+BNGG16CJqQEWTaXedsT8K4Umdm
+ bh=lOTB0T1ZgH2qBwxbzF1p5KVxU2nrnnE76xPmcwyhgYk=;
+ b=dWWgKLHu4omBOrcbWgEzhyA8WgLPlocfMYQX0wM811XEqldFlmfdRwW/DSH6jtFRb5JzYUcHE
+ Z8Q/wpLQ65VBYUKMm9/i2vELQblt1W1Vak0UmJun4RPZLtCa7JjWqVb
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a subtest to verify dmabuf export via VFIO_DEVICE_FEATURE_DMA_BUF.
+Add a subtest to verify ioeventfd registration and unregistration on
+the bound Intel 82576 device.
 
-Probe device feature support using VFIO_DEVICE_FEATURE_PROBE, skipping
-the test cleanly when kernel dmabuf support is absent
-(CONFIG_VFIO_PCI_DMABUF or CONFIG_PCI_P2PDMA disabled).
+Allocate an eventfd and configure a VFIO_DEVICE_IOEVENTFD ioctl targeting
+the scratch receive address low (RAL0) register in BAR0 with 4-byte width
+and a test trigger value.
 
-Allocate and configure a vfio_device_feature request covering BAR0,
-requesting a dma_buf file descriptor export via
-VFIO_DEVICE_FEATURE_GET.
-
-Verify that in direct mode a valid file descriptor is returned, confirm
-that attempting to mmap the resulting dmabuf fd fails with -EINVAL (as
-VFIO PCI dmabufs provide peer-to-peer kernel DMA rather than userspace
-CPU mappings), and verify clean closure and resource release.
-In guest_memfd mode, verify that dmabuf creation is rejected with
+Assert that in direct mode registration succeeds and that unregistration
+(passing fd = -1 with matching register criteria) succeeds cleanly.
+In guest_memfd mode, verify that ioeventfd registration is rejected with
 -EOPNOTSUPP.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- .../selftests/kvm/x86/guest_memfd_vfio_test.c      | 74 ++++++++++++++++++++++
- 1 file changed, 74 insertions(+)
+ .../selftests/kvm/x86/guest_memfd_vfio_test.c      | 39 ++++++++++++++++++++++
+ 1 file changed, 39 insertions(+)
 
 diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
-index 0339794fb6dd3..46d325228bda3 100644
+index 46d325228bda3..dde249571ebc4 100644
 --- a/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
 +++ b/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
-@@ -651,4 +651,78 @@ TEST_F(guest_memfd_vfio, guest_mapping)
- 	ASSERT_EQ(0, munmap(bar0_mmap, bar0_info.size));
+@@ -10,6 +10,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
++#include <sys/eventfd.h>
+ #include <sys/ioctl.h>
+ #include <sys/mman.h>
+ #include <sys/types.h>
+@@ -725,4 +726,42 @@ TEST_F(guest_memfd_vfio, dmabuf_creation)
+ 	free(feat);
  }
  
-+TEST_F(guest_memfd_vfio, dmabuf_creation)
++TEST_F(guest_memfd_vfio, ioeventfd_creation)
 +{
-+	struct vfio_device_feature_dma_buf *dmabuf_feature;
-+	struct vfio_device_feature probe_feat = {};
++	struct vfio_device_ioeventfd ioeventfd = {};
 +	struct vfio_region_info bar0_info = {};
-+	struct vfio_device_feature *feat;
-+	size_t feat_size;
-+	int dmabuf_fd;
 +	int ret;
-+
-+	/*
-+	 * Probe support for VFIO_DEVICE_FEATURE_DMA_BUF. This requires kernel
-+	 * support for CONFIG_VFIO_PCI_DMABUF (CONFIG_PCI_P2PDMA). In guest_memfd
-+	 * mode, VFIO_DEVICE_BIND_FLAG_CTRL_ONLY is active, so the probe itself
-+	 * is rejected with -EOPNOTSUPP by the control-only allowlist.
-+	 */
-+	probe_feat.argsz = sizeof(probe_feat);
-+	probe_feat.flags = VFIO_DEVICE_FEATURE_PROBE |
-+			   VFIO_DEVICE_FEATURE_GET |
-+			   VFIO_DEVICE_FEATURE_DMA_BUF;
-+	ret = ioctl(self->vfio_fd, VFIO_DEVICE_FEATURE, &probe_feat);
-+	if (variant->use_gmem) {
-+		ASSERT_LT(ret, 0);
-+		ASSERT_EQ(EOPNOTSUPP, errno);
-+	} else if (ret != 0) {
-+		SKIP(return, "Kernel lacks CONFIG_VFIO_PCI_DMABUF support\n");
-+	}
++	int efd;
 +
 +	bar0_info.argsz = sizeof(bar0_info);
 +	bar0_info.index = VFIO_PCI_BAR0_REGION_INDEX;
 +	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &bar0_info);
 +	ASSERT_EQ(0, ret);
 +
-+	/*
-+	 * Allocate vfio_device_feature with trailing vfio_device_feature_dma_buf
-+	 * containing one dma_range covering BAR0.
-+	 */
-+	feat_size = sizeof(*feat) + sizeof(*dmabuf_feature) +
-+		    sizeof(struct vfio_region_dma_range);
-+	feat = calloc(1, feat_size);
-+	ASSERT_NE(NULL, feat);
++	efd = eventfd(0, EFD_CLOEXEC);
++	ASSERT_GE(efd, 0);
 +
-+	feat->argsz = feat_size;
-+	feat->flags = VFIO_DEVICE_FEATURE_GET | VFIO_DEVICE_FEATURE_DMA_BUF;
++	/* Register ioeventfd on BAR0 targeting RAL0 with 4-byte width */
++	ioeventfd.argsz = sizeof(ioeventfd);
++	ioeventfd.flags = VFIO_DEVICE_IOEVENTFD_32;
++	ioeventfd.offset = bar0_info.offset + E1000_RAL0;
++	ioeventfd.data = 0xdeadbeef;
++	ioeventfd.fd = efd;
 +
-+	dmabuf_feature = (struct vfio_device_feature_dma_buf *)feat->data;
-+	dmabuf_feature->region_index = VFIO_PCI_BAR0_REGION_INDEX;
-+	dmabuf_feature->open_flags = O_RDWR | O_CLOEXEC;
-+	dmabuf_feature->nr_ranges = 1;
-+	dmabuf_feature->dma_ranges[0].offset = 0;
-+	dmabuf_feature->dma_ranges[0].length = bar0_info.size;
-+
-+	dmabuf_fd = ioctl(self->vfio_fd, VFIO_DEVICE_FEATURE, feat);
++	ret = ioctl(self->vfio_fd, VFIO_DEVICE_IOEVENTFD, &ioeventfd);
 +	if (variant->use_gmem) {
-+		ASSERT_LT(dmabuf_fd, 0);
++		ASSERT_LT(ret, 0);
 +		ASSERT_EQ(EOPNOTSUPP, errno);
 +	} else {
-+		ASSERT_GE(dmabuf_fd, 0);
++		ASSERT_EQ(0, ret);
 +
-+		/*
-+		 * VFIO PCI dmabufs are intended for peer-to-peer kernel DMA and
-+		 * do not implement mmap or read operations. Verify mmap returns
-+		 * -EINVAL.
-+		 */
-+		ASSERT_EQ(MAP_FAILED, mmap(NULL, bar0_info.size,
-+					   PROT_READ | PROT_WRITE,
-+					   MAP_SHARED, dmabuf_fd, 0));
-+		ASSERT_EQ(EINVAL, errno);
-+		close(dmabuf_fd);
++		/* Unregister ioeventfd by passing fd = -1 with identical match criteria */
++		ioeventfd.fd = -1;
++		ret = ioctl(self->vfio_fd, VFIO_DEVICE_IOEVENTFD, &ioeventfd);
++		ASSERT_EQ(0, ret);
 +	}
 +
-+	free(feat);
++	close(efd);
 +}
 +
  TEST_HARNESS_MAIN
