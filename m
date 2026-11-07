@@ -1,146 +1,312 @@
-From: Younes Akhouayri <git@younes.io>
-Date: Sat, 07 Nov 2026 17:36:24 +0100
-Subject: [PATCH v2] rust: doctest: fix line numbers after crate-level
- attributes
+From: Sven Peter <sven@kernel.org>
+Date: Sat, 07 Nov 2026 17:57:06 +0100
+Subject: [PATCH] thunderbolt: Drop the DP tunnel activation callback data
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261107-rust-doctest-line-fix-v2-1-a66528f0a7c3@younes.io>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNTQ6CMBCFr2Jm7Zi2hIquvIdhAWWQMaY1nUIkh
- Ltb8ACuXr6X97OAUGQSuB4WiDSxcPAZzPEAbmj8g5C7zGCUsVqZM8ZREnbBJcr6Yk/Y8wddq3p
- rC2suPUHuviNle9+91z+WsX2SS9vYlhhYUojzfjzpLffvY9KoUTld6Kpsyqq1tzmMnuTEAep1X
- b+sd//FzAAAAA==
-X-Change-ID: 20261027-rust-doctest-line-fix-cb0f663629fe
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Brendan Higgins <brendan.higgins@linux.dev>, David Gow <david@davidgow.net>, 
- Rae Moar <raemoar63@gmail.com>, Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-kselftest@vger.kernel.org, kunit-dev@googlegroups.com, 
- rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Younes Akhouayri <git@younes.io>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794069397; l=4560;
- i=git@younes.io; s=20261027; h=from:subject:message-id;
- bh=yODJlg7TFm3NgQtApP8hmB9DSotdMjoacbgECuGShSc=;
- b=GimVZfWmQy4O6IvvPp1BMLOsh1yM/b+aIA2FtrbbAIuG9go4rlPd59FrXAspFvU34qwCphMrj
- UA9Jr3BPOz6CrGcURhEnX7EGZNZVaUbc7MDm0l/uNojhOSX39dS2X7W
-X-Developer-Key: i=git@younes.io; a=ed25519;
- pk=TavwxGPDBjl4XGNQyFLKEW7PKSY4qOWusc7yf6hjV0c=
-X-Endpoint-Received: by B4 Relay for git@younes.io/20261027 with auth_id=1332
+Message-Id: <20261107-b4-tbt-callback-v1-1-5ade9391461d@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDtgRE31KsVFJk50WrEliSKId
+ 2/U5Vv8v0NgLxygzXbwvEqQ75ygHhnY0cwDo/TJUORFrVSukUqMFNGaaSJjP6h15ahyz4ZrhlT
+ 9PDvZruOrux0WerON5waO4w8liXm6cwAAAA==
+X-Change-ID: 20261107-b4-tbt-callback-775fb5f89e6e
+To: Andreas Noever <andreas.noever@gmail.com>, 
+ Mika Westerberg <westeri@kernel.org>, 
+ Yehezkel Bernat <YehezkelShB@gmail.com>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Sven Peter <sven@kernel.org>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=11811; i=sven@kernel.org;
+ h=from:subject:message-id; bh=vpOtS+KsLpRwTvuWWGQUwIquEM0RjvCPrf3l3BXb0qE=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9b7iIzzrAH2y/s7JS34jyw8lbuYs/K3EGvd26ztkTOTL
+ qpsXqLRUcrCIMbFICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZjIz2xGhk0Wu23MvlwrYheR
+ eve4efUeb54MCROuy++5/x7iWXh/oggjw/x8GTYx4WXtN9c4vn4rYqY47Y8zU8cr1Ydz2Gosfs7
+ /ygAA
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a doctest starts with a crate-level attribute such as
-`#![expect(...)]`, KUnit reports failures one line too early, and
-`line!()` returns a line number that is one too low.
+The callback data is always the domain the tunnel belongs to which the
+callback can just take from the tunnel itself.
 
-This happens because `rustdoc` moves those attribute lines out of the
-test body and puts them above the `main` function it generates. The
-generator works out where the body starts by counting the lines above
-`main`, but it does not know that some of those lines were moved there
-from the body. So every line after a moved attribute is mapped one line
-too early (or more, if there are several such attributes).
-
-For example, adding `assert_eq!(36, 0);` as line 36 of
-`rust/kernel/init.rs` (inside the doctest that starts with
-`# #![expect(clippy::undocumented_unsafe_blocks)]`) gives:
-
-    # rust_doctest_kernel_init_rs_2: ASSERTION FAILED at rust/kernel/init.rs:35
-
-Twelve in-tree doctests start like this, e.g. in `bits.rs`, `devres.rs`,
-`init.rs` and `std_vendor.rs`.
-
-Fix it by counting the attribute lines that `rustdoc` moved (every
-`#![...]` line above `main`, except the `#![allow(unused)]` that
-`rustdoc` adds itself) and taking them into account when computing
-where the body starts.
-
-`rustdoc` always starts its output with that `#![allow(unused)]`, so
-check for it before relying on the layout. If a future `rustdoc` (or a
-crate-level `#![doc(test(attr(...)))]`) changes it, print a warning once
-and keep the previous behaviour rather than failing the build: the tests
-still run, only the reported line numbers would be off.
-
-Only single-line attributes are handled, which covers every doctest in
-the tree today.
-
-With this change, the example above reports `rust/kernel/init.rs:36`,
-and doctests without such attributes keep reporting the same lines as
-before.
-
-Fixes: a66d733da801 ("rust: support running Rust documentation tests as KUnit ones")
-Signed-off-by: Younes Akhouayri <git@younes.io>
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
-Changes in v2:
-- Check that the generated test starts with `#![allow(unused)]` before
-  subtracting the moved lines; otherwise warn once and keep the old
-  behaviour, instead of clamping with `saturating_sub` (Miguel).
-- Note in the comment and commit message that only single-line
-  attributes are handled.
-- Link to v1: https://patch.msgid.link/20261027-rust-doctest-line-fix-v1-1-0c13185a58b6@younes.io
----
- scripts/rustdoc_test_gen.rs | 28 ++++++++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+As requested in [1], here's the last patch now that -rc1 is out.
 
-diff --git a/scripts/rustdoc_test_gen.rs b/scripts/rustdoc_test_gen.rs
-index 754c5aafcce4..01128d8c62f9 100644
---- a/scripts/rustdoc_test_gen.rs
-+++ b/scripts/rustdoc_test_gen.rs
-@@ -127,6 +127,7 @@ fn main() {
+[1] https://lore.kernel.org/asahi/20260901081924.GA106095@black.igk.intel.com/
+---
+ drivers/thunderbolt/tb.c     | 10 +++++-----
+ drivers/thunderbolt/test.c   | 24 ++++++++++++------------
+ drivers/thunderbolt/tunnel.c | 12 +++---------
+ drivers/thunderbolt/tunnel.h | 10 +++-------
+ 4 files changed, 23 insertions(+), 33 deletions(-)
+
+diff --git a/drivers/thunderbolt/tb.c b/drivers/thunderbolt/tb.c
+index 57c11ba13459..418ad0a61a5d 100644
+--- a/drivers/thunderbolt/tb.c
++++ b/drivers/thunderbolt/tb.c
+@@ -89,7 +89,7 @@ static void tb_dp_resource_unavailable(struct tb *tb, struct tb_port *port,
+ 				       const char *reason);
+ static void tb_queue_dp_bandwidth_request(struct tb *tb, u64 route, u8 port,
+ 					  int retry, unsigned long delay);
+-static void tb_dp_tunnel_active(struct tb_tunnel *tunnel, void *data);
++static void tb_dp_tunnel_active(struct tb_tunnel *tunnel);
  
-     let mut tests = String::new();
-     let mut body = String::new();
-+    let mut warned = false;
-     let mut last_file = String::new();
-     let mut number = 0;
-     let mut valid_paths: Vec<PathBuf> = Vec::new();
-@@ -168,6 +169,33 @@ fn main() {
-             .count()
-             + 1;
+ static void tb_queue_hotplug(struct tb *tb, u64 route, u8 port, bool unplug)
+ {
+@@ -387,7 +387,7 @@ static void tb_switch_discover_tunnels(struct tb_switch *sw,
+ 		switch (port->config.type) {
+ 		case TB_TYPE_DP_HDMI_IN:
+ 			tunnel = tb_tunnel_discover_dp(tb, port, alloc_hopids,
+-						       tb_dp_tunnel_active, tb);
++						       tb_dp_tunnel_active);
+ 			tb_increase_tmu_accuracy(tunnel);
+ 			break;
  
-+        // `rustdoc` moves the crate-level attributes (`#![...]`) of the test out of its body and
-+        // places them before `main`, after its own `#![allow(unused)]`. Subtract the moved lines,
-+        // since the rest of the body is shifted by that amount with respect to the original source.
-+        //
-+        // Only single-line attributes are handled. If `rustdoc` stops starting its output with
-+        // `#![allow(unused)]`, this computation needs to be revisited, so warn (once) rather than
-+        // silently reporting wrong line numbers, but keep going since the tests themselves still
-+        // work.
-+        let hoisted_lines = if body.starts_with("#![allow(unused)]\n") {
-+            body.lines()
-+                .take(body_offset - 1)
-+                .filter(|line| line.starts_with("#!["))
-+                .count()
-+                - 1
-+        } else {
-+            if !warned {
-+                eprintln!(
-+                    "warning: `{name}` does not start with `#![allow(unused)]`: line numbers \
-+                    reported by doctests may be wrong, please update \
-+                    `scripts/rustdoc_test_gen.rs`."
-+                );
-+                warned = true;
-+            }
-+            0
-+        };
-+        let body_offset = body_offset - hoisted_lines;
-+
-         use std::fmt::Write;
-         write!(
-             tests,
+@@ -1905,11 +1905,11 @@ static struct tb_port *tb_find_dp_out(struct tb *tb, struct tb_port *in)
+ 	return NULL;
+ }
+ 
+-static void tb_dp_tunnel_active(struct tb_tunnel *tunnel, void *data)
++static void tb_dp_tunnel_active(struct tb_tunnel *tunnel)
+ {
+ 	struct tb_port *in = tunnel->src_port;
+ 	struct tb_port *out = tunnel->dst_port;
+-	struct tb *tb = data;
++	struct tb *tb = tunnel->tb;
+ 
+ 	mutex_lock(&tb->lock);
+ 
+@@ -2038,7 +2038,7 @@ static void tb_tunnel_one_dp(struct tb *tb, struct tb_port *in,
+ 	       available_up, available_down);
+ 
+ 	tunnel = tb_tunnel_alloc_dp(tb, in, out, link_nr, available_up,
+-				    available_down, tb_dp_tunnel_active, tb);
++				    available_down, tb_dp_tunnel_active);
+ 	if (!tunnel) {
+ 		tb_port_dbg(out, "could not allocate DP tunnel\n");
+ 		goto err_reclaim_usb;
+diff --git a/drivers/thunderbolt/test.c b/drivers/thunderbolt/test.c
+index c8c648f31107..a1f9dbb66940 100644
+--- a/drivers/thunderbolt/test.c
++++ b/drivers/thunderbolt/test.c
+@@ -1407,7 +1407,7 @@ static void tb_test_tunnel_pcie(struct kunit *test)
+ 	tb_tunnel_put(tunnel1);
+ }
+ 
+-static void tb_test_dp_tunnel_active(struct tb_tunnel *tunnel, void *data)
++static void tb_test_dp_tunnel_active(struct tb_tunnel *tunnel)
+ {
+ }
+ 
+@@ -1432,7 +1432,7 @@ static void tb_test_tunnel_dp(struct kunit *test)
+ 	out = &dev->ports[13];
+ 
+ 	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
+-				    tb_test_dp_tunnel_active, NULL);
++				    tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
+ 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
+@@ -1479,7 +1479,7 @@ static void tb_test_tunnel_dp_chain(struct kunit *test)
+ 	out = &dev4->ports[14];
+ 
+ 	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
+-				    tb_test_dp_tunnel_active, NULL);
++				    tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
+ 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
+@@ -1530,7 +1530,7 @@ static void tb_test_tunnel_dp_tree(struct kunit *test)
+ 	out = &dev5->ports[13];
+ 
+ 	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
+-				    tb_test_dp_tunnel_active, NULL);
++				    tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
+ 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
+@@ -1596,7 +1596,7 @@ static void tb_test_tunnel_dp_max_length(struct kunit *test)
+ 	out = &dev12->ports[13];
+ 
+ 	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
+-				    tb_test_dp_tunnel_active, NULL);
++				    tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
+ 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
+@@ -1667,7 +1667,7 @@ static void tb_test_tunnel_3dp(struct kunit *test)
+ 	out3 = &dev4->ports[14];
+ 
+ 	tunnel1 = tb_tunnel_alloc_dp(NULL, in1, out1, 1, 0, 0,
+-				     tb_test_dp_tunnel_active, NULL);
++				     tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_TRUE(test, tunnel1 != NULL);
+ 	KUNIT_EXPECT_EQ(test, tunnel1->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel1->src_port, in1);
+@@ -1676,7 +1676,7 @@ static void tb_test_tunnel_3dp(struct kunit *test)
+ 	KUNIT_ASSERT_EQ(test, tunnel1->paths[0]->path_length, 3);
+ 
+ 	tunnel2 = tb_tunnel_alloc_dp(NULL, in2, out2, 1, 0, 0,
+-				     tb_test_dp_tunnel_active, NULL);
++				     tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_TRUE(test, tunnel2 != NULL);
+ 	KUNIT_EXPECT_EQ(test, tunnel2->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel2->src_port, in2);
+@@ -1685,7 +1685,7 @@ static void tb_test_tunnel_3dp(struct kunit *test)
+ 	KUNIT_ASSERT_EQ(test, tunnel2->paths[0]->path_length, 4);
+ 
+ 	tunnel3 = tb_tunnel_alloc_dp(NULL, in3, out3, 1, 0, 0,
+-				     tb_test_dp_tunnel_active, NULL);
++				     tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_TRUE(test, tunnel3 != NULL);
+ 	KUNIT_EXPECT_EQ(test, tunnel3->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel3->src_port, in3);
+@@ -1784,7 +1784,7 @@ static void tb_test_tunnel_port_on_path(struct kunit *test)
+ 	out = &dev5->ports[13];
+ 
+ 	dp_tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
+-				       tb_test_dp_tunnel_active, NULL);
++				       tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_NOT_NULL(test, dp_tunnel);
+ 
+ 	KUNIT_EXPECT_TRUE(test, tb_tunnel_port_on_path(dp_tunnel, in));
+@@ -2217,7 +2217,7 @@ static void tb_test_credit_alloc_dp(struct kunit *test)
+ 	out = &dev->ports[14];
+ 
+ 	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
+-				    tb_test_dp_tunnel_active, NULL);
++				    tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
+ 	KUNIT_ASSERT_EQ(test, tunnel->npaths, (size_t)3);
+ 
+@@ -2454,7 +2454,7 @@ static struct tb_tunnel *TB_TEST_DP_TUNNEL1(struct kunit *test,
+ 	in = &host->ports[5];
+ 	out = &dev->ports[13];
+ 	dp_tunnel1 = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
+-					tb_test_dp_tunnel_active, NULL);
++					tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_NOT_NULL(test, dp_tunnel1);
+ 	KUNIT_ASSERT_EQ(test, dp_tunnel1->npaths, (size_t)3);
+ 
+@@ -2492,7 +2492,7 @@ static struct tb_tunnel *TB_TEST_DP_TUNNEL2(struct kunit *test,
+ 	in = &host->ports[6];
+ 	out = &dev->ports[14];
+ 	dp_tunnel2 = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
+-					tb_test_dp_tunnel_active, NULL);
++					tb_test_dp_tunnel_active);
+ 	KUNIT_ASSERT_NOT_NULL(test, dp_tunnel2);
+ 	KUNIT_ASSERT_EQ(test, dp_tunnel2->npaths, (size_t)3);
+ 
+diff --git a/drivers/thunderbolt/tunnel.c b/drivers/thunderbolt/tunnel.c
+index 2b911372001c..8145657835c5 100644
+--- a/drivers/thunderbolt/tunnel.c
++++ b/drivers/thunderbolt/tunnel.c
+@@ -1117,7 +1117,7 @@ static void tb_dp_dprx_work(struct work_struct *work)
+ 	}
+ 	mutex_unlock(&tb->lock);
+ 
+-	tunnel->callback(tunnel, tunnel->callback_data);
++	tunnel->callback(tunnel);
+ 	tb_tunnel_put(tunnel);
+ 	tb_domain_put(tb);
+ }
+@@ -1593,7 +1593,6 @@ static void tb_dp_dump(struct tb_tunnel *tunnel)
+  * @alloc_hopid: Allocate HopIDs from visited ports
+  * @callback: Callback that is called when the DP tunnel is fully
+  *	      activated (or there is an error)
+- * @callback_data: Data for @callback
+  *
+  * If @in adapter is active, follows the tunnel to the DP out adapter
+  * and back. Returns the discovered tunnel or %NULL if there was no
+@@ -1603,8 +1602,7 @@ static void tb_dp_dump(struct tb_tunnel *tunnel)
+  */
+ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
+ 					bool alloc_hopid,
+-					void (*callback)(struct tb_tunnel *, void *),
+-					void *callback_data)
++					void (*callback)(struct tb_tunnel *))
+ {
+ 	struct tb_tunnel *tunnel;
+ 	struct tb_port *port;
+@@ -1629,7 +1627,6 @@ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
+ 	tunnel->consumed_bandwidth = tb_dp_consumed_bandwidth;
+ 	tunnel->src_port = in;
+ 	tunnel->callback = callback;
+-	tunnel->callback_data = callback_data;
+ 	INIT_DELAYED_WORK(&tunnel->dprx_work, tb_dp_dprx_work);
+ 
+ 	path = tb_path_discover(in, TB_DP_VIDEO_HOPID, NULL, -1,
+@@ -1700,7 +1697,6 @@ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
+  *	      %0 if no available bandwidth.
+  * @callback: Callback that is called when the DP tunnel is fully
+  *	      activated (or there is an error)
+- * @callback_data: Data for @callback
+  *
+  * Allocates a tunnel between @in and @out that is capable of tunneling
+  * Display Port traffic. The @callback is called after tb_tunnel_activate()
+@@ -1714,8 +1710,7 @@ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
+ struct tb_tunnel *tb_tunnel_alloc_dp(struct tb *tb, struct tb_port *in,
+ 				     struct tb_port *out, int link_nr,
+ 				     int max_up, int max_down,
+-				     void (*callback)(struct tb_tunnel *, void *),
+-				     void *callback_data)
++				     void (*callback)(struct tb_tunnel *))
+ {
+ 	struct tb_tunnel *tunnel;
+ 	struct tb_path **paths;
+@@ -1741,7 +1736,6 @@ struct tb_tunnel *tb_tunnel_alloc_dp(struct tb *tb, struct tb_port *in,
+ 	tunnel->max_up = max_up;
+ 	tunnel->max_down = max_down;
+ 	tunnel->callback = callback;
+-	tunnel->callback_data = callback_data;
+ 	INIT_DELAYED_WORK(&tunnel->dprx_work, tb_dp_dprx_work);
+ 
+ 	paths = tunnel->paths;
+diff --git a/drivers/thunderbolt/tunnel.h b/drivers/thunderbolt/tunnel.h
+index 7d1d255ab5a7..28f49f7e9f56 100644
+--- a/drivers/thunderbolt/tunnel.h
++++ b/drivers/thunderbolt/tunnel.h
+@@ -67,7 +67,6 @@ enum tb_tunnel_state {
+  * @dprx_timeout: If set DPRX capabilities read poll work will timeout after this passes
+  * @dprx_work: Worker that is scheduled to poll completion of DPRX capabilities read
+  * @callback: Callback called when DP tunnel is fully activated
+- * @callback_data: Data for @callback
+  * @paths: All paths required by the tunnel
+  */
+ struct tb_tunnel {
+@@ -104,8 +103,7 @@ struct tb_tunnel {
+ 	bool dprx_canceled;
+ 	ktime_t dprx_timeout;
+ 	struct delayed_work dprx_work;
+-	void (*callback)(struct tb_tunnel *tunnel, void *data);
+-	void *callback_data;
++	void (*callback)(struct tb_tunnel *tunnel);
+ 
+ 	struct tb_path *paths[] __counted_by(npaths);
+ };
+@@ -118,13 +116,11 @@ bool tb_tunnel_reserved_pci(struct tb_port *port, int *reserved_up,
+ 			    int *reserved_down);
+ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
+ 					bool alloc_hopid,
+-					void (*callback)(struct tb_tunnel *, void *),
+-					void *callback_data);
++					void (*callback)(struct tb_tunnel *));
+ struct tb_tunnel *tb_tunnel_alloc_dp(struct tb *tb, struct tb_port *in,
+ 				     struct tb_port *out, int link_nr,
+ 				     int max_up, int max_down,
+-				     void (*callback)(struct tb_tunnel *, void *),
+-				     void *callback_data);
++				     void (*callback)(struct tb_tunnel *));
+ struct tb_tunnel *tb_tunnel_alloc_dma(struct tb *tb, struct tb_port *nhi,
+ 				      struct tb_port *dst, int transmit_path,
+ 				      int transmit_ring, int receive_path,
 
 ---
-base-commit: 21a7f44fd0765fcc5194130b28767786eba1d1e7
-change-id: 20261027-rust-doctest-line-fix-cb0f663629fe
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261107-b4-tbt-callback-775fb5f89e6e
 
 Best regards,
 --  
-Younes Akhouayri <git@younes.io>
+Sven Peter <sven@kernel.org>
 
