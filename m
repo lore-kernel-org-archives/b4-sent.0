@@ -1,106 +1,89 @@
-From: Jing Lin <kayano050408@gmail.com>
-Date: Sat, 07 Nov 2026 17:56:10 +0800
-Subject: [PATCH v3 2/2] usb: gadget: gadgetfs: prevent ep0 event counter
- underflow
+From: Michael Reeves <michael.reeves077@gmail.com>
+Date: Sat, 07 Nov 2026 10:06:17 +0000
+Subject: [PATCH] usb: typec: tipd: assign partner identity to persistent
+ memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261107-b4-gadgetfs-ep0-v3-2-62089dc0ec07@gmail.com>
-References: <20261107-b4-gadgetfs-ep0-v3-0-62089dc0ec07@gmail.com>
-In-Reply-To: <20261107-b4-gadgetfs-ep0-v3-0-62089dc0ec07@gmail.com>
-To: Neill Kapron <nkapron@google.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jing Lin <kayano050408@gmail.com>, stable@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794045369; l=2870;
- i=kayano050408@gmail.com; s=default; h=from:subject:message-id;
- bh=gg6AtEtNRozQ3dqRLHDDz9k+7o2eiciGbgBgfvIVd7I=;
- b=/jJ/G3VRaOusJLupXWFdQ1XqtIFzjosJwkBySKwNE4/Kvefe3k27vULCS9+lNwIdSqOBhuX25
- P8FwJf8VjJZDM+PRaDO6hAXhUAH9EPEsynQpG1IjtgWzi8QaXWwDGrY
-X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
- pk=pr6i8RN1WEON1jbXPdghSglxaBSzfuJjXNGFknX//+A=
-X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/default with auth_id=1441
+Message-Id: <20261107-tipd-stack-uaf-fix-v1-1-efcb517924ec@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABj47moC/x2MSQqAMAwAvyI5G2jc9SviobSpBkGlVRGKf7d4n
+ IGZCIG9cIAhi+D5liD7loDyDMyit5lRbGIoVNEQqRZPOSyGU5sVL+3QyYO2pKpTdW8UtZDCw3P
+ S/3Sc3vcDewcuVmQAAAA=
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Janne Grunau <j@jannau.net>, Sven Peter <sven@kernel.org>, 
+ Hector Martin <marcan@marcan.st>
+Cc: Neal Gompa <neal@gompa.dev>, linux-usb@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Nicole Mazzuca <nicole@streganil.no>, 
+ stable@vger.kernel.org, Michael Reeves <michael.reeves077@gmail.com>, 
+ asahi@lists.linux.dev
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794045978; l=2080;
+ i=michael.reeves077@gmail.com; s=20261107; h=from:subject:message-id;
+ bh=11jWNoNyYcLtaaM1fNLvBsJPDBw5EU5pTtOvCfnWMwo=;
+ b=G8zeiNyKG6OsjYAWHxwP2e7A8a0o4EJnDAxqrHOhnh3417IfBii0p81xO2n0aHm5VtGC5oEU+
+ uFXHj/X3vdEB84NUrq78FxoXHyWuPOrJIdBMg3CrPlL7H6qxZF9Q4MH
+X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
+ pk=ykwkLcuByJYb/cdLc2UuoYP03pIzwrscEZg30+4tJL8=
+X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20261107 with auth_id=1442
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ep0_read() snapshots dev->ev_next, drops dev->lock while copy_to_user()
-runs, and subtracts the snapshot afterwards. A concurrent disconnect,
-connect, or another reader can reset or consume the queue in that
-window. If the new value is smaller than the snapshot, the unsigned
-subtraction wraps and the next read walks past dev->event[N_EVENT] or
-the event purge memmove uses a huge length.
+cd321x_update_work() passes a pointer to a local stack variable
+(&st.partner_identity) to typec_register_partner(). The Type-C core
+caches this pointer, leading to a stack-use-after-free and a kernel
+Oops when accessed later (e.g., via get_pd_product_type()).
 
-Count queue purges with a generation counter and skip the consumption
-when the queue was purged while userspace was copying. Clamp the
-subtraction for any other concurrent decrease.
+Fix this by copying the identity to the heap-allocated cd321x struct
+and passing a pointer to that persistent memory instead. Move up
+the assignment to cd321x->cur_partner_identity, so this works.
 
-Fixes: 1da177e4c3f41 ("Linux-2.6.12-rc2")
+Reported-by: Nicole Mazzuca <nicole@streganil.no>
+Closes: https://github.com/AsahiLinux/linux/issues/668
+Fixes: 82432bbfb9e8 ("usb: typec: tipd: Handle mode transitions for CD321x")
 Cc: stable@vger.kernel.org
-Signed-off-by: Jing Lin <kayano050408@gmail.com>
+Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
- drivers/usb/gadget/legacy/inode.c | 19 +++++++++++++------
- 1 file changed, 13 insertions(+), 6 deletions(-)
+Cc: Nicole Mazzuca <nicole@streganil.no>
+Cc: asahi@lists.linux.dev
+---
+ drivers/usb/typec/tipd/core.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/usb/gadget/legacy/inode.c b/drivers/usb/gadget/legacy/inode.c
-index 87aff568a..6db3b7879 100644
---- a/drivers/usb/gadget/legacy/inode.c
-+++ b/drivers/usb/gadget/legacy/inode.c
-@@ -126,6 +126,7 @@ struct dev_data {
- 	enum ep0_state			state;		/* P: lock */
- 	struct usb_gadgetfs_event	event [N_EVENT];
- 	unsigned			ev_next;
-+	unsigned int			ev_generation;
- 	struct fasync_struct		*fasync;
- 	u8				current_config;
+diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
+index 02539378ffed..dce0aa8be5e0 100644
+--- a/drivers/usb/typec/tipd/core.c
++++ b/drivers/usb/typec/tipd/core.c
+@@ -855,8 +855,10 @@ static void cd321x_update_work(struct work_struct *work)
+ 		desc.usb_pd = is_pd;
+ 		desc.accessory = TYPEC_ACCESSORY_NONE; /* XXX: handle accessories */
  
-@@ -1174,7 +1175,7 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
- scan:
- 	/* return queued events right away */
- 	if (dev->ev_next != 0) {
--		unsigned		i, n;
-+		unsigned int		i, n, generation;
+-		if (desc.usb_pd)
+-			desc.identity = &st.partner_identity;
++		if (desc.usb_pd) {
++			cd321x->cur_partner_identity = st.partner_identity;
++			desc.identity = &cd321x->cur_partner_identity;
++		}
  
- 		n = len / sizeof (struct usb_gadgetfs_event);
- 		if (dev->ev_next < n)
-@@ -1188,6 +1189,7 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
- 				break;
- 			}
+ 		tps->partner = typec_register_partner(tps->port, &desc);
+ 		if (IS_ERR(tps->partner)) {
+@@ -864,10 +866,8 @@ static void cd321x_update_work(struct work_struct *work)
+ 			return;
  		}
-+		generation = dev->ev_generation;
- 		spin_unlock_irq (&dev->lock);
- 		len = n * sizeof (struct usb_gadgetfs_event);
- 		if (copy_to_user (buf, &dev->event, len))
-@@ -1199,12 +1201,16 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
- 			 * concurrent ep0 readers may lose events.
- 			 */
- 			spin_lock_irq (&dev->lock);
--			if (dev->ev_next > n) {
--				memmove(&dev->event[0], &dev->event[n],
--					sizeof (struct usb_gadgetfs_event)
--						* (dev->ev_next - n));
-+			if (dev->ev_generation == generation) {
-+				if (dev->ev_next > n) {
-+					memmove(&dev->event[0], &dev->event[n],
-+						sizeof(struct usb_gadgetfs_event)
-+							* (dev->ev_next - n));
-+					dev->ev_next -= n;
-+				} else {
-+					dev->ev_next = 0;
-+				}
- 			}
--			dev->ev_next -= n;
- 			spin_unlock_irq (&dev->lock);
- 		}
- 		return retval;
-@@ -1252,6 +1258,7 @@ next_event (struct dev_data *dev, enum usb_gadgetfs_event_type type)
- 		fallthrough;
- 	case GADGETFS_CONNECT:
- 		dev->ev_next = 0;
-+		dev->ev_generation++;
- 		break;
- 	case GADGETFS_SETUP:		/* previous request timed out */
- 	case GADGETFS_SUSPEND:		/* same effect */
+ 
+-		if (desc.identity) {
++		if (desc.identity)
+ 			typec_partner_set_identity(tps->partner);
+-			cd321x->cur_partner_identity = st.partner_identity;
+-		}
+ 	}
+ 
+ 	/* Update the TypeC MUX/PHY state */
 
+---
+base-commit: d48723711bae9b8cdc56719c448ba42fef28cbee
+change-id: 20261107-tipd-stack-uaf-fix-d3148059c017
+
+Best regards,
 -- 
-Git-155)
+Michael Reeves <michael.reeves077@gmail.com>
 
