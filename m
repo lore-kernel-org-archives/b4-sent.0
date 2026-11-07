@@ -1,100 +1,79 @@
-From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-Date: Sat, 07 Nov 2026 05:28:41 -0600
-Subject: [PATCH 2/2] staging: octeon: prevent buffer overflow in
- cvm_oct_xmit_pow()
+From: Michiel van Beers <michielvanbeers@gmail.com>
+Subject: [PATCH 0/2] backlight: lm3630a: Add a per-bank full-scale current
+ limit
+Date: Sat, 07 Nov 2026 13:13:53 +0100
+Message-Id: <20261107-lm3630a-led-max-microamp-v1-0-ec9e441d9b2c@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261107-octeon-tx-fixes-v1-2-db03f73a6e6f@gmail.com>
-References: <20261107-octeon-tx-fixes-v1-0-db03f73a6e6f@gmail.com>
-In-Reply-To: <20261107-octeon-tx-fixes-v1-0-db03f73a6e6f@gmail.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794050920; l=3088;
- i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
- bh=A73cNrYJxl0LgvL86wV5fevUF4EgHv5VLNNXVCqJff4=;
- b=8Ohcw2vIma8Mg7JGcXtgSkTTw2bGrzFslZyZUPh1Dc32Izwc+uKQjFsCQN1LmFjihMSUd16kl
- wujqUh13KwFCFCp66N2MIoiHiPKMfemd5eYFM3ldJnuLKrYeMR53jXc
-X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
- pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
-X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAEW72oC/yXMTQ6CMBBA4auQWTtJf9IavIpxMQ6jjqFAWjQkh
+ LtbZPkt3luhSFYpcGlWyPLVouNQYU8N8IuGp6B21eCMi9aaM/bJR28Ie+kw0YJJOY+UJuTYehc
+ 8tYED1HzK8tDlv77eDpfP/S087z/Yth88vuKufAAAAA==
+X-Change-ID: 20261107-lm3630a-led-max-microamp-c693253a95c5
+To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
+ Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
+ Griffin Kroah-Hartman <griffin@kroah.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>
+Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-fbdev@vger.kernel.org, Michiel van Beers <michielvanbeers@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794053659; l=2212;
+ i=michielvanbeers@gmail.com; s=20261107; h=from:subject:message-id;
+ bh=M8fM/pimHRx8tpjVsk5Qa5piBItoVw829MhvZQytYiY=;
+ b=Gp+M1tpl6Uxw25mEvIymG6qpZ0SfxBhMKPsshgAvw8ZW14OheuknsDPXJOABSPArSVTpM3oNI
+ 5E8agsqLbrHCkhDIvs1z+fbyG3B5uPxRpD5UocdI741zOZmoIoQbDI9
+X-Developer-Key: i=michielvanbeers@gmail.com; a=ed25519;
+ pk=C+lOje7u3+2x3o2NLMXrwz2veP2++eXfIi9MtYsUo4k=
+X-Endpoint-Received: by B4 Relay for michielvanbeers@gmail.com/20261107 with auth_id=1444
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cvm_oct_xmit_pow() copies packet data into an allocated FPA packet pool
-buffer without checking if skb->len plus the header offset fits within
-CVMX_FPA_PACKET_POOL_SIZE, which can cause a buffer overflow. Drop
-oversized packets before allocating hardware buffers.
+The LM3630A driver always programs the full-scale current of both
+control banks to the chip maximum of 28.25 mA. This series adds the
+common led-max-microamp property to the binding and makes the driver
+program it, so boards whose LEDs are rated for less can set a lower
+limit.
 
-Additionally, fixed-size memcpys into work->packet_data read directly
-from skb->data without checking skb->len, risking out-of-bounds reads
-on short packets. Bound these copies using min_t().
+My use case is the frontlight of the Onyx Boox Leaf e-reader (SDM636),
+where Onyx's Android kernel sets the full-scale current of both banks
+to 12.5 mA. The board devicetree is not upstream yet.
 
-Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
+Patch 1 documents the property, patch 2 implements it. Both are meant
+to go through the backlight tree.
+
+Testing:
+- Onyx Boox Leaf, 7.2.y kernel (sdm660-mainline) with patch 2 applied:
+  led-max-microamp = <12500> on both banks reads back as code 0x0a in
+  both full-scale registers, and the frontlight works normally. 5000
+  and 28250 give codes 0x00 and 0x1f, with bank A visibly dimmer at
+  5 mA; 28500 makes probe fail with -EINVAL. The driver in 7.4-rc1
+  differs from 7.2.y only by an unrelated change in lm3630a_remove().
+- dt_binding_check, and dtbs_check of all in-tree boards with an
+  LM3630A (rk3566-pinenote, the i.MX6 Kobo and Tolino e-readers,
+  Nexus 5, OnePlus One): no warnings for this binding.
+- arm64 build with W=1 and sparse: no new warnings.
+
+AI disclosure: I prepared this series with Claude Code (Anthropic,
+Claude Opus 5.5). It drafted the driver change and the commit messages
+from my description of the problem and the datasheet, and proposed the
+checks above; I ran the checks and the hardware test, reviewed every
+line, and take responsibility for the patches.
+
 ---
- drivers/staging/octeon/ethernet-tx.c | 24 +++++++++++++++++-------
- 1 file changed, 17 insertions(+), 7 deletions(-)
+Michiel van Beers (2):
+      dt-bindings: backlight: lm3630a: Add led-max-microamp
+      backlight: lm3630a: Allow setting the full-scale current per bank
 
-diff --git a/drivers/staging/octeon/ethernet-tx.c b/drivers/staging/octeon/ethernet-tx.c
-index 13a205648f8b..0a350faec591 100644
---- a/drivers/staging/octeon/ethernet-tx.c
-+++ b/drivers/staging/octeon/ethernet-tx.c
-@@ -507,10 +507,18 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
- 	struct octeon_ethernet *priv = netdev_priv(dev);
- 	u8 *packet_buffer;
- 	u8 *copy_location;
-+	size_t header_skip = sizeof(u64) +
-+			     ((CVMX_HELPER_FIRST_MBUFF_SKIP + 7) & 0xfff8) + 6;
-+	struct cvmx_wqe *work;
- 
--	/* Get a work queue entry */
--	struct cvmx_wqe *work = cvmx_fpa_alloc(CVMX_FPA_WQE_POOL);
-+	if (unlikely(header_skip + skb->len > CVMX_FPA_PACKET_POOL_SIZE)) {
-+		dev->stats.tx_dropped++;
-+		dev_kfree_skb_any(skb);
-+		return NETDEV_TX_OK;
-+	}
- 
-+	/* Get a work queue entry */
-+	work = cvmx_fpa_alloc(CVMX_FPA_WQE_POOL);
- 	if (unlikely(!work)) {
- 		printk_ratelimited("%s: Failed to allocate a work queue entry\n",
- 				   dev->name);
-@@ -538,8 +546,7 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
- 	 * calculation may add a little extra, but that doesn't
- 	 * hurt.
- 	 */
--	copy_location = packet_buffer + sizeof(u64);
--	copy_location += ((CVMX_HELPER_FIRST_MBUFF_SKIP + 7) & 0xfff8) + 6;
-+	copy_location = packet_buffer + header_skip;
- 
- 	/*
- 	 * We have to copy the packet since whoever processes this
-@@ -586,8 +593,10 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
- 		 * ethernet header to align the same way hardware
- 		 * does.
- 		 */
--		memcpy(work->packet_data, skb->data + 10,
--		       sizeof(work->packet_data));
-+		if (skb->len > 10)
-+			memcpy(work->packet_data, skb->data + 10,
-+			       min_t(size_t, sizeof(work->packet_data),
-+				     skb->len - 10));
- 	} else {
- 		work->word2.snoip.is_rarp = skb->protocol == htons(ETH_P_RARP);
- 		work->word2.snoip.is_arp = skb->protocol == htons(ETH_P_ARP);
-@@ -596,7 +605,8 @@ netdev_tx_t cvm_oct_xmit_pow(struct sk_buff *skb, struct net_device *dev)
- 		work->word2.snoip.is_mcast =
- 		    (skb->pkt_type == PACKET_MULTICAST);
- 		work->word2.snoip.not_IP = 1;	/* IP was done up above */
--		memcpy(work->packet_data, skb->data, sizeof(work->packet_data));
-+		memcpy(work->packet_data, skb->data,
-+		       min_t(size_t, sizeof(work->packet_data), skb->len));
- 	}
- 
- 	/* Submit the packet to the POW */
+ .../bindings/leds/backlight/lm3630a-backlight.yaml |  9 +++++
+ drivers/video/backlight/lm3630a_bl.c               | 40 +++++++++++++++++++---
+ include/linux/platform_data/lm3630a_bl.h           |  4 +++
+ 3 files changed, 49 insertions(+), 4 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261107-lm3630a-led-max-microamp-c693253a95c5
 
--- 
-2.56.0
+Best regards,
+--  
+Michiel van Beers <michielvanbeers@gmail.com>
 
