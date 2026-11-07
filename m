@@ -1,224 +1,98 @@
-From: Yongjian Wang <echoowall@gmail.com>
-Subject: [PATCH 6.12.y] Revert "net: advertise TCP MSS from the configured
- MTU, not the learned PMTU"
-To: stable@vger.kernel.org
-Cc: Sasha Levin <sashal@kernel.org>, Eric Dumazet <edumazet@kernel.org>, 
- Jiayuan Chen <jiayuan.chen@linux.dev>, Jakub Kicinski <kuba@kernel.org>
-In-Reply-To: <20261107052749-failed-6.12-564313447e54@kernel.org>
-References: <20261107052749-failed-6.12-564313447e54@kernel.org>
+From: Jing Lin <kayano050408@gmail.com>
+Subject: [PATCH v4 0/2] usb: gadget: gadgetfs: fix ep0 request lifetime and
+ event counter
+Date: Sat, 07 Nov 2026 21:46:12 +0900
+Message-Id: <20261107-b4-gadgetfs-ep0-v4-0-86bdfd684b54@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPEY72oC/y2MQQ6CQAxFr0K6tkgHg9GrGBcDdKAGBjMVhBDuL
- qMu38t/fwXlIKxwTVYIPInK4HegQwJVa33DKPXOYDJTEGVntPXUq2KBZHDB3kqHseM35uTy04V
- czc7B3j8DO5m/3zcoUjLpAvef17F8cPWKx3FZWmUsg/VVG9UQpBF/7MSPM/7DbfsALZd0uasAA
- AA=
-X-Change-ID: 20261107-advmss-6-12-y-mail-review-31f3491fdeff
-Date: Sat, 07 Nov 2026 12:35:13 -0000
-Message-ID: <179405491351.76470.8103187390766591824.advmss-backport-6.12@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAJQd72oC/4WPy07EMAxFf2WUNS5xmknqWfEfiEWaetog+lASK
+ tCo/05T2AwsWF7b5+j6JhLHwElcTjcReQ0pzNMe9MNJ+MFNPUPo9iyUVAZRGmg19K7rOV8T8CL
+ h2qD2qC1aR2KnlsjX8HEYn1++c3pvX9nnoikXrUsMbXSTH8pojqEP0+PoUuZY9kNIeY6fR6UVi
+ 0egpZqsITSkK2WtwYrOutakSVpU1jSIJKu7YovLfoDMKT/1owtvlZ9HURqt6nD+fGT/fLQqQOi
+ ahgyj685of/P1P3wNEoySDXVespd3/LZtXyvFB0N0AQAA
+X-Change-ID: 20261106-b4-gadgetfs-ep0-f814c14717a9
+To: Neill Kapron <nkapron@google.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com, 
+ stable@vger.kernel.org, Jing Lin <kayano050408@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794054927; l=7756;
- i=echoowall@gmail.com; s=20261026; h=from:subject:message-id;
- bh=8QAbP5yD6YPkNYQ3g/QDm59M0GX/ZLQvgLMgdW3Au4E=;
- b=kWyn0a1VjXgES7iWWcJfVZAE8CiJWGFrz8S+q2xHQTRCgiQFHASMnVNtqcG7WutdO6yVGau2A
- G8wudY4Eg6EBdLgOZeIvHQekiOn0Gn6tWo5cKbmviCdMbvHqeX0+B+I
-X-Developer-Key: i=echoowall@gmail.com; a=ed25519;
- pk=9XP6JhqjjPsHCF6UZZZTeqTRnXIa4+ufggnxXtTJ+no=
-X-Endpoint-Received: by B4 Relay for echoowall@gmail.com/20261026 with auth_id=1323
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794055573; l=3518;
+ i=kayano050408@gmail.com; s=20261106-gadgetfs-gmail;
+ h=from:subject:message-id; bh=bTvVhVMcfu7sgkbgZWUCkfdoko52Ui4bE2y5k9oCIrY=;
+ b=B21GKPrJNI7wrXIy8PZGYR0WU8eEgz9b72MBnJdaxqL0PTbYWb6FD7tTVMkhomnAc8MN35SL1
+ soDvDVg6IJFD5Yn9iVZ2xDGp/FK8vHxAnWEPKdM1sK0gbgNwPyPcm1E
+X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
+ pk=DtAI52kU3F0sVbAiS4n+5b4UKMnVF398eKHlj3H9KBY=
+X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/20261106-gadgetfs-gmail with auth_id=1433
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-[ Upstream commit 564313447e545eea13038f74ada9272ab129b3cb ]
+gadgetfs_unbind() frees the preallocated ep0 request after disconnecting
+the gadget, assuming that no I/O remains active. With dummy_hcd, a
+delayed userspace response can leave the request queued when it is freed,
+which triggers the warning in dummy_free_request() and a use-after-free
+when dummy_udc_stop() drains the endpoint queue.
 
-This reverts commit 2640e6419594 ("net: advertise TCP MSS from the
-configured MTU, not the learned PMTU").
+gadgetfs_setup() and ep0_write() also race on dev->req and req->buf
+while a control transfer is in flight or while a completed delegated OUT
+transfer is waiting for ep0_read() to copy the payload to userspace.
+Overwriting req->buf with a descriptor pointer causes clean_req() to
+free the descriptor buffer instead of the request buffer.
 
-That commit stopped the learned PMTU from lowering the MSS we advertise
-in SYN and SYN-ACK. For symmetric paths it argued that "the peer runs
-its own PMTU discovery and usually already knows the real path MTU".
-That only holds if ICMP "fragmentation needed" can reach the peer. When
-the peer sits behind a firewall that drops inbound ICMP, its PMTU
-discovery is a black hole (RFC 2923, section 2.1), and the smaller MSS
-we advertised was the only thing keeping its full-size segments off the
-narrow hop.
+Copy completed OUT payloads into a separate setup_buf in ep0_complete(),
+copy IN payloads from userspace into a stack buffer before preparing
+dev->req in ep0_write(), reset req->buf when transfers finish, reject
+dev->req reuse while it is queued, and dequeue it before freeing in
+gadgetfs_unbind(). The second patch dequeues ep0 events into the local
+buffer under dev->lock before copy_to_user() to prevent event races,
+dropped GADGETFS_SETUP events, and counter underflow.
 
-Inbound ICMP filtering is very common in enterprise and carrier
-networks, and it is pervasive in mainland China. We hit this in
-production after the commit was backported to 6.12.111: TCP connections
-that reach a server through a relay with a smaller-MTU hop complete the
-handshake, then stall as soon as the client sends full-size segments.
-Clients on networks that let ICMP through, and connections that bypass
-the relay, are unaffected, which made it hard to trace back to the
-kernel.
+Changes in v4:
+- Reject reusing dev->req in setup_req() and gadgetfs_setup() while
+  dev->ep0_req_queued is set, so an -EINVAL queue failure cannot clear
+  ep0_req_queued while dev->req remains on the endpoint queue.
+- Copy control IN payloads into a stack buffer before preparing dev->req
+  in ep0_write(), copy completed control OUT payloads into setup_buf in
+  ep0_complete(), and reset req->buf when control transfers complete so
+  clean_req() cannot free descriptor memory.
+- Dequeue ep0 events into the local buffer and update dev->ev_next under
+  dev->lock before copy_to_user() instead of using a generation counter,
+  avoiding unlocked dev->event[] reads and lost GADGETFS_SETUP events.
+- Link to v3: https://patch.msgid.link/20261107-b4-gadgetfs-ep0-v3-0-62089dc0ec07@gmail.com
 
-Reproducer, network namespaces on a single host:
+Changes in v3:
+- Replace the v2 -EBUSY rejection with a separate buffer for pending OUT
+  data, so a new SETUP can reuse dev->req without overwriting unread data
+  or leaving ep0 permanently busy after a zero-length status stage.
+- Dequeue a pending ep0 request before freeing it in gadgetfs_unbind().
+- Add a separate patch preventing the ep0 event counter underflow.
+- Link to v2: https://patch.msgid.link/20261107-b4-gadgetfs-ep0-v2-1-d8896e1ad517@gmail.com
 
-  cli --(1500)-- r1 --(1456)-- r2 --(1500)-- srv
+Changes in v2:
+- Also check dev->setup_out_ready in gadgetfs_setup() so a new SETUP
+  request cannot reuse dev->req or overwrite req->buf while ep0_read()
+  still has unread or in-progress control OUT data.
+- Reset req->buf to dev->rbuf in setup_req() when len <= sizeof(dev->rbuf)
+  and clean up unread control OUT buffer in gadgetfs_unbind().
+- Remove RFC syzbot test commands from the commit description and add the
+  syzbot Tested-by tag.
+- Link to v1: https://patch.msgid.link/179397691694.27761.9543494907127681190.gadgetfs-ep0-patch-test@gmail.com
 
-r1 drops ICMP frag-needed towards cli. srv has already learned PMTU
-1456 towards cli, then cli uploads 1 MB to srv:
+Signed-off-by: Jing Lin <kayano050408@gmail.com>
 
-  kernel                     SYN-ACK MSS   1 MB upload
-  6.12.107                   1416          OK
-  6.12.111                   1460          stalls, times out
-  7.3-rc7                    1460          stalls, times out
-  7.3-rc7 + this revert      1416          OK
-
-The asymmetric case the commit was written for does not need a new
-default: the advertised MSS can already be set per route with the
-advmss metric, which takes precedence over default_advmss(). With this
-revert applied, on an asymmetric path where srv learned PMTU 1456
-towards cli while cli->srv is 1500 end to end:
-
-  srv route to cli           SYN-ACK MSS   largest cli->srv segment
-  default                    1416          1404
-  advmss 1460                1460          1448
-
-So DSR-style setups can opt in with "ip route ... advmss <mss>", while
-hosts whose peers cannot complete PMTU discovery keep working by
-default.
-
-[ 6.12.y: reverse commit 7f84f07f54fa, the stable backport of
-  2640e6419594. Keep the local dst_dev() lookup and surrounding
-  context in ip6_default_advmss(). ]
-
-Fixes: 2640e6419594 ("net: advertise TCP MSS from the configured MTU, not the learned PMTU")
-Closes: https://lore.kernel.org/regressions/4F0FAEB6-A13B-47F3-BFF1-C706686C6F64@gmail.com/
-Cc: stable@vger.kernel.org
-Signed-off-by: Yongjian Wang <echoowall@gmail.com>
-Reviewed-by: Eric Dumazet <edumazet@kernel.org>
-Reviewed-by: Jiayuan Chen <jiayuan.chen@linux.dev>
-Link: https://patch.msgid.link/20261026-advmss-revert-v1-2-272fa4b7ecb6@gmail.com
-Signed-off-by: Jakub Kicinski <kuba@kernel.org>
 ---
+Jing Lin (2):
+      usb: gadget: gadgetfs: fix ep0 request lifetime on disconnect
+      usb: gadget: gadgetfs: prevent ep0 event counter underflow
 
-Tested on 6.12.116 in an x86_64 User Mode Linux guest using the IPv4
-reproducer above. With a learned PMTU of 1456, the unpatched kernel
-advertised MSS 1460 and the 1 MiB upload timed out. The backport
-advertised MSS 1416 and the upload completed. The IPv4 and IPv6
-route objects also compiled on x86_64.
+ drivers/usb/gadget/legacy/inode.c | 171 ++++++++++++++++++++++++++------------
+ 1 file changed, 117 insertions(+), 54 deletions(-)
+---
+base-commit: f66469d9905b39d2c260a15d7d6db450f4db67c1
+change-id: 20261106-b4-gadgetfs-ep0-f814c14717a9
 
- include/net/ip.h        | 25 -------------------------
- include/net/ip6_route.h | 37 -------------------------------------
- net/ipv4/route.c        |  4 ++--
- net/ipv6/route.c        |  2 +-
- 4 files changed, 3 insertions(+), 65 deletions(-)
-
-diff --git a/include/net/ip.h b/include/net/ip.h
-index 97c60b3..f00719e 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -515,31 +515,6 @@ out:
- 	return res;
- }
- 
--/* Configured/administrative MTU of a route, for advertising the TCP MSS.
-- *
-- * Unlike ip_dst_mtu_maybe_forward(), this deliberately ignores the
-- * ICMP-learned path MTU (rt->rt_pmtu).  The advertised MSS bounds what the
-- * peer may send to us and must reflect our receive capability (the device or
-- * route-configured MTU), not a path MTU learned on the reverse (send)
-- * direction, which may not apply to the peer->us path and outlives the fnhe
-- * for the whole connection.  See RFC 2923 section 2.3 and the comment above
-- * tcp_advertise_mss().
-- */
--static inline unsigned int ip_dst_mtu_configured(const struct dst_entry *dst)
--{
--	unsigned int mtu, res;
--
--	rcu_read_lock();
--	mtu = dst_metric_raw(dst, RTAX_MTU);
--	if (!mtu)
--		mtu = READ_ONCE(dst_dev_rcu(dst)->mtu);
--	mtu = min_t(unsigned int, mtu, IP_MAX_MTU);
--	res = mtu - lwtunnel_headroom(dst->lwtstate, mtu);
--	rcu_read_unlock();
--
--	return res;
--}
--
- static inline unsigned int ip_skb_dst_mtu(struct sock *sk,
- 					  const struct sk_buff *skb)
- {
-diff --git a/include/net/ip6_route.h b/include/net/ip6_route.h
-index 8be44dc..ad35c75 100644
---- a/include/net/ip6_route.h
-+++ b/include/net/ip6_route.h
-@@ -354,43 +354,6 @@ out:
- 	return mtu - lwtunnel_headroom(dst->lwtstate, mtu);
- }
- 
--/* Configured/administrative MTU of a route, for advertising the TCP MSS.
-- *
-- * Unlike ip6_dst_mtu_maybe_forward(), this ignores any ICMPv6-learned path
-- * MTU (which is kept on the RTF_CACHE exception route) and returns the MTU of
-- * the underlying route (fib6_pmtu) or the egress device.  The advertised MSS
-- * bounds what the peer may send to us and must reflect our receive
-- * capability, not a path MTU learned on the reverse (send) direction.  See
-- * RFC 2923 section 2.3 and the comment above tcp_advertise_mss().
-- */
--static inline unsigned int ip6_dst_mtu_configured(const struct dst_entry *dst)
--{
--	const struct rt6_info *rt = dst_rt6_info(dst);
--	const struct fib6_info *from;
--	struct inet6_dev *idev;
--	unsigned int mtu = 0;
--
--	rcu_read_lock();
--	/* IPv6 keeps the learned PMTU and the configured MTU in the same
--	 * RTAX_MTU slot: the learned value sits on this (possibly RTF_CACHE)
--	 * dst, the configured one on the underlying route.  Reach the latter
--	 * via ->from (fib6_pmtu), populated by ip6_route_info_create().
--	 */
--	from = rcu_dereference(rt->from);
--	if (from)
--		mtu = from->fib6_pmtu;
--	if (!mtu) {
--		mtu = IPV6_MIN_MTU;
--		idev = __in6_dev_get(dst_dev_rcu(dst));
--		if (idev)
--			mtu = max_t(unsigned int, mtu, READ_ONCE(idev->cnf.mtu6));
--	}
--	rcu_read_unlock();
--
--	mtu = min_t(unsigned int, mtu, IP6_MAX_MTU);
--	return mtu - lwtunnel_headroom(dst->lwtstate, mtu);
--}
--
- u32 ip6_mtu_from_fib6(const struct fib6_result *res,
- 		      const struct in6_addr *daddr,
- 		      const struct in6_addr *saddr);
-diff --git a/net/ipv4/route.c b/net/ipv4/route.c
-index 596c84f..f1b0ab7 100644
---- a/net/ipv4/route.c
-+++ b/net/ipv4/route.c
-@@ -1358,8 +1358,8 @@ static unsigned int ipv4_default_advmss(const struct dst_entry *dst)
- 
- 	rcu_read_lock();
- 	net = dst_dev_net_rcu(dst);
--	advmss = max_t(unsigned int, ip_dst_mtu_configured(dst) - header_size,
--		       net->ipv4.ip_rt_min_advmss);
-+	advmss = max_t(unsigned int, ipv4_mtu(dst) - header_size,
-+				   net->ipv4.ip_rt_min_advmss);
- 	rcu_read_unlock();
- 
- 	return min(advmss, IPV4_MAX_PMTU - header_size);
-diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-index 1294029..742dce3 100644
---- a/net/ipv6/route.c
-+++ b/net/ipv6/route.c
-@@ -3252,7 +3252,7 @@ EXPORT_SYMBOL_GPL(ip6_sk_redirect);
- static unsigned int ip6_default_advmss(const struct dst_entry *dst)
- {
- 	struct net_device *dev = dst_dev(dst);
--	unsigned int mtu = ip6_dst_mtu_configured(dst);
-+	unsigned int mtu = dst6_mtu(dst);
- 	struct net *net;
- 
- 	mtu -= sizeof(struct ipv6hdr) + sizeof(struct tcphdr);
-
-base-commit: 5c40a1750f44dd6c7292d8c8d0b4ffff1734576e
--- 
-2.54.0 (Apple Git-157)
-
-
+Best regards,
+--  
+Jing Lin <kayano050408@gmail.com>
 
