@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:47 -0800
-Subject: [PATCH RFC v3 73/88] KVM: selftests: Verify VFIO region info for
- igb device
+Date: Fri, 06 Nov 2026 16:37:48 -0800
+Subject: [PATCH RFC v3 74/88] KVM: selftests: Verify VFIO IRQ info for igb
+ device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-73-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-74-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -25,74 +25,85 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=2549;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=2686;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=mrWvs6FF7l4LpcTEng8nbYIsnoTAo2jJxDhGuJ9QU+g=;
- b=wY395FIuwjLW/oJNaiS8f/FOkSCxKWTmBujK/E4H3vKhDyLPEibe2RUJEOyL3f7zZZ6SQEXMe
- pVDqo0rakbqDQ8XO4K1/+VBsAUIcnImILMrQ/YDvpu/qskpIqC2kMNB
+ bh=AQWLCgcApEEg/jyplbDhTDq5B3XgkxkLe0iSGXinQCc=;
+ b=lzA7mjrnsoNNt6rCSt1o1c7XKjGh/b3RZ9f/ThL79ZgoHIg/TBQHg/cOHoFTJNTQBhv4Maxy/
+ eIA9j9nVdKwBg73IhGl+U9b+AJRUyfp6pwsh2i/u1ti2HRsFODVqhyR
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a subtest for VFIO region info queries on the bound device.
+Add a subtest to verify interrupt capability queries on the bound
+Intel 82576 device.
 
-Verify that the operational register MMIO space (128 KiB), MSI-X table
-and PBA space (16 KiB), and extended PCIe configuration space (4096 bytes)
-report their exact sizes and expected access capability flags.
+Check that MSI-X reports a positive vector count with eventfd signaling
+support, that MSI reports eventfd capability, and that INTx reports
+eventfd support along with maskable and auto-masked flags when present.
 
-Testing multiple regions establishes baseline checks on the underlying
-device descriptor so that when VFIO BARs are later delegated to or wrapped
-by guest_memfd, native region querying on the device descriptor is
-confirmed to remain unaffected.
+Testing multiple interrupt types establishes baseline checks on the
+underlying device descriptor so that when VFIO resources are later
+delegated to or wrapped by guest_memfd, native capability querying on
+the device descriptor remains unaffected.
 ---
- .../selftests/kvm/x86/guest_memfd_vfio_test.c      | 38 ++++++++++++++++++++++
- 1 file changed, 38 insertions(+)
+ .../selftests/kvm/x86/guest_memfd_vfio_test.c      | 48 ++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
 
 diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
-index 669acc6058b5b..c76abe6d45140 100644
+index c76abe6d45140..6525f392b3930 100644
 --- a/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
 +++ b/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
-@@ -150,4 +150,42 @@ TEST_F(guest_memfd_vfio, get_device_info)
- 	ASSERT_GT(dev_info.num_irqs, 0);
+@@ -188,4 +188,52 @@ TEST_F(guest_memfd_vfio, get_region_info)
+ 				    VFIO_REGION_INFO_FLAG_WRITE));
  }
  
-+TEST_F(guest_memfd_vfio, get_region_info)
++TEST_F(guest_memfd_vfio, get_irq_info)
 +{
-+	struct vfio_region_info reg_info = {};
++	struct vfio_irq_info irq_info = {};
 +	int ret;
 +
-+	/* Test BAR0: 128 KiB MMIO register space */
-+	reg_info.argsz = sizeof(reg_info);
-+	reg_info.index = VFIO_PCI_BAR0_REGION_INDEX;
-+	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info);
++	/*
++	 * Test MSI-X interrupts (VFIO_PCI_MSIX_IRQ_INDEX):
++	 * Intel 82576 supports up to 10 MSI-X vectors.
++	 */
++	irq_info.argsz = sizeof(irq_info);
++	irq_info.index = VFIO_PCI_MSIX_IRQ_INDEX;
++	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq_info);
 +	ASSERT_EQ(0, ret);
-+	ASSERT_EQ(0x20000, reg_info.size);
-+	ASSERT_EQ(VFIO_REGION_INFO_FLAG_READ |
-+		  VFIO_REGION_INFO_FLAG_WRITE |
-+		  VFIO_REGION_INFO_FLAG_MMAP,
-+		  reg_info.flags & (VFIO_REGION_INFO_FLAG_READ |
-+				    VFIO_REGION_INFO_FLAG_WRITE |
-+				    VFIO_REGION_INFO_FLAG_MMAP));
++	ASSERT_GT(irq_info.count, 0);
++	ASSERT_TRUE(irq_info.flags & VFIO_IRQ_INFO_EVENTFD);
 +
-+	/* Test BAR3: 16 KiB MSI-X table and PBA */
-+	memset(&reg_info, 0, sizeof(reg_info));
-+	reg_info.argsz = sizeof(reg_info);
-+	reg_info.index = VFIO_PCI_BAR3_REGION_INDEX;
-+	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info);
++	/*
++	 * Test MSI interrupts (VFIO_PCI_MSI_IRQ_INDEX):
++	 * Should report eventfd capability.
++	 */
++	memset(&irq_info, 0, sizeof(irq_info));
++	irq_info.argsz = sizeof(irq_info);
++	irq_info.index = VFIO_PCI_MSI_IRQ_INDEX;
++	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq_info);
 +	ASSERT_EQ(0, ret);
-+	ASSERT_EQ(0x4000, reg_info.size);
++	ASSERT_GT(irq_info.count, 0);
++	ASSERT_TRUE(irq_info.flags & VFIO_IRQ_INFO_EVENTFD);
 +
-+	/* Test PCIe Config Space: 4096 bytes extended config */
-+	memset(&reg_info, 0, sizeof(reg_info));
-+	reg_info.argsz = sizeof(reg_info);
-+	reg_info.index = VFIO_PCI_CONFIG_REGION_INDEX;
-+	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info);
++	/*
++	 * Test legacy INTx interrupts (VFIO_PCI_INTX_IRQ_INDEX):
++	 * Must support eventfd and masking when present.
++	 */
++	memset(&irq_info, 0, sizeof(irq_info));
++	irq_info.argsz = sizeof(irq_info);
++	irq_info.index = VFIO_PCI_INTX_IRQ_INDEX;
++	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq_info);
 +	ASSERT_EQ(0, ret);
-+	ASSERT_EQ(PCI_CFG_SPACE_EXP_SIZE, reg_info.size);
-+	ASSERT_EQ(VFIO_REGION_INFO_FLAG_READ | VFIO_REGION_INFO_FLAG_WRITE,
-+		  reg_info.flags & (VFIO_REGION_INFO_FLAG_READ |
-+				    VFIO_REGION_INFO_FLAG_WRITE));
++	ASSERT_LE(irq_info.count, 1);
++	if (irq_info.count == 1) {
++		ASSERT_EQ(VFIO_IRQ_INFO_EVENTFD |
++			  VFIO_IRQ_INFO_MASKABLE |
++			  VFIO_IRQ_INFO_AUTOMASKED,
++			  irq_info.flags & (VFIO_IRQ_INFO_EVENTFD |
++					    VFIO_IRQ_INFO_MASKABLE |
++					    VFIO_IRQ_INFO_AUTOMASKED));
++	}
 +}
 +
  TEST_HARNESS_MAIN
