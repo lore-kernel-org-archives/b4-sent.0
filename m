@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:31 -0800
-Subject: [PATCH RFC v3 57/88] vfio: Dispatch guest_memfd provider
- operations via vfio_device_ops
+Date: Fri, 06 Nov 2026 16:37:32 -0800
+Subject: [PATCH RFC v3 58/88] vfio/pci: Implement attach and release
+ provider ops for guest_memfd
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-57-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-58-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,149 +26,128 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=4501;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=4120;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=q2ITMkbAof/3UP+0FfKPWcVVHgQv4Rq4rRtRz04IELc=;
- b=dY2yZNw6w5h8twDc2KQFqIDSj+kEflkJIL6zIJOdYeI4Zfv9+RVf/WpjLyZjT9gdkhmx7PeRk
- h9/vQsv1G13CPj8w6oaoyFHRUaGfzC1xYGZ/akAfFW69XvPPrdEysLF
+ bh=BlUGE6K++nDiJr8qPUVvPATO+O8fe24pYgQMxNdL00c=;
+ b=NgSlL+6BQDukoZMQwJMCQVxrx2tW2tfdtYAwt2Mqe6zuF4vrIrK51yN6n7vJ+9KVephyFm5Wd
+ nI/Gwn7eHXYBu4/2kJhD2xUzUg8WGqxthiF+W0hHlwEEnmJsIIb2avw
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a guest_memfd instance is created using a VFIO device descriptor as
-its resource_fd, guest_memfd queries file_operations::gmem_provider_ops
-on the resource file to attach the external memory provider.
+Implement guest_memfd provider operations in the generic PCI VFIO bus
+driver to support attaching VFIO PCI devices to guest_memfd.
 
-Implement guest_memfd provider operations on vfio_device_fops to
-dispatch .attach and .release to the bus driver via vfio_device_ops.
+In the attachment path, acquire the device memory lock for write to
+initialize the BAR availability flag according to whether PCI memory
+decoding is active and runtime power management is not engaged. BAR
+resources are already mapped and reserved during device open at bind
+time.
 
-In .attach:
-- Verify that the device descriptor was bound with
-  VFIO_DEVICE_BIND_FLAG_CTRL_ONLY by checking that access_mode is
-  VFIO_DF_ACCESS_CTRL_ONLY, returning -EINVAL if the descriptor was
-  bound in full-access mode or has not been bound yet.
-- Check and record attachment state centrally in struct vfio_device
-  under dev_set->lock, rejecting attachment with -EBUSY if the device
-  is already attached to a guest_memfd instance.
-- Dispatch to the bus driver's .gmem_attach callback to let the driver
-  perform bus-specific validation and resource reservation.
-- Pin the device file across attachment via get_file(), dropping it on
-  .release via fput().
+In the release path, acquire the device memory lock for write and mark
+BARs unavailable.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- drivers/vfio/vfio_main.c | 63 ++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/vfio.h     |  7 ++++++
- 2 files changed, 70 insertions(+)
+ drivers/vfio/pci/vfio_pci.c      |  4 ++++
+ drivers/vfio/pci/vfio_pci_core.c | 37 +++++++++++++++++++++++++++++++++++++
+ include/linux/vfio_pci_core.h    |  5 +++++
+ 3 files changed, 46 insertions(+)
 
-diff --git a/drivers/vfio/vfio_main.c b/drivers/vfio/vfio_main.c
-index 8734ae9d06c2b..618daf8bdaf80 100644
---- a/drivers/vfio/vfio_main.c
-+++ b/drivers/vfio/vfio_main.c
-@@ -1535,6 +1535,66 @@ static void vfio_device_show_fdinfo(struct seq_file *m, struct file *filep)
- }
- #endif
- 
+diff --git a/drivers/vfio/pci/vfio_pci.c b/drivers/vfio/pci/vfio_pci.c
+index 3dc232ee65491..96f438671db29 100644
+--- a/drivers/vfio/pci/vfio_pci.c
++++ b/drivers/vfio/pci/vfio_pci.c
+@@ -168,6 +168,10 @@ static const struct vfio_device_ops vfio_pci_ops = {
+ 	.detach_ioas	= vfio_iommufd_physical_detach_ioas,
+ 	.pasid_attach_ioas	= vfio_iommufd_physical_pasid_attach_ioas,
+ 	.pasid_detach_ioas	= vfio_iommufd_physical_pasid_detach_ioas,
 +#ifdef CONFIG_KVM_GUEST_MEMFD
-+static void *vfio_device_gmem_attach(struct inode *inode, struct file *file)
-+{
-+	struct vfio_device_file *df = file->private_data;
-+	struct vfio_device *device = df->device;
-+	int ret;
-+
-+	/*
-+	 * Attachment is only permitted if the device descriptor was bound
-+	 * with VFIO_DEVICE_BIND_FLAG_CTRL_ONLY, ensuring direct region
-+	 * accesses (read, write, mmap) and side-channel exports (such as
-+	 * dma-buf or ioeventfd) were disabled from the outset.
-+	 */
-+	if (smp_load_acquire(&df->access_mode) != VFIO_DF_ACCESS_CTRL_ONLY)
-+		return ERR_PTR(-EINVAL);
-+
-+	if (!device->ops->gmem_attach)
-+		return ERR_PTR(-EOPNOTSUPP);
-+
-+	mutex_lock(&device->dev_set->lock);
-+	if (device->gmem_inode) {
-+		ret = -EBUSY;
-+		goto out_unlock;
-+	}
-+
-+	ret = device->ops->gmem_attach(device);
-+	if (ret)
-+		goto out_unlock;
-+
-+	device->gmem_inode = inode;
-+out_unlock:
-+	mutex_unlock(&device->dev_set->lock);
-+
-+	return ret ? ERR_PTR(ret) : get_file(file);
-+}
-+
-+static void vfio_device_gmem_release(void *provider)
-+{
-+	struct file *file = provider;
-+	struct vfio_device_file *df = file->private_data;
-+	struct vfio_device *device = df->device;
-+
-+	mutex_lock(&device->dev_set->lock);
-+
-+	if (device->ops->gmem_release)
-+		device->ops->gmem_release(device);
-+
-+	device->gmem_inode = NULL;
-+
-+	mutex_unlock(&device->dev_set->lock);
-+
-+	fput(file);
-+}
-+
-+static const struct guest_memfd_provider_operations vfio_device_gmem_provider_ops = {
-+	.attach  = vfio_device_gmem_attach,
-+	.release = vfio_device_gmem_release,
-+};
-+#endif
-+
- const struct file_operations vfio_device_fops = {
- 	.owner		= THIS_MODULE,
- 	.open		= vfio_device_fops_cdev_open,
-@@ -1547,6 +1607,9 @@ const struct file_operations vfio_device_fops = {
- #ifdef CONFIG_PROC_FS
- 	.show_fdinfo	= vfio_device_show_fdinfo,
- #endif
-+#ifdef CONFIG_KVM_GUEST_MEMFD
-+	.gmem_provider_ops = &vfio_device_gmem_provider_ops,
++	.gmem_attach	= vfio_pci_core_gmem_attach,
++	.gmem_release	= vfio_pci_core_gmem_release,
 +#endif
  };
  
- static struct vfio_device *vfio_device_from_file(struct file *file)
-diff --git a/include/linux/vfio.h b/include/linux/vfio.h
-index c81373ddf2a9c..65dc2cb523351 100644
---- a/include/linux/vfio.h
-+++ b/include/linux/vfio.h
-@@ -74,6 +74,9 @@ struct vfio_device {
- #endif
- 	u8 cdev_opened:1;
- 	u8 noiommu:1;
+ static const struct vfio_pci_device_ops vfio_pci_dev_ops = {
+diff --git a/drivers/vfio/pci/vfio_pci_core.c b/drivers/vfio/pci/vfio_pci_core.c
+index 907e6ab024acd..c7b67fbce4cae 100644
+--- a/drivers/vfio/pci/vfio_pci_core.c
++++ b/drivers/vfio/pci/vfio_pci_core.c
+@@ -15,6 +15,7 @@
+ #include <linux/device.h>
+ #include <linux/eventfd.h>
+ #include <linux/file.h>
++#include <linux/guest_memfd.h>
+ #include <linux/interrupt.h>
+ #include <linux/iommu.h>
+ #include <linux/module.h>
+@@ -2696,6 +2697,42 @@ static int __init vfio_pci_core_init(void)
+ 	return vfio_pci_init_perm_bits();
+ }
+ 
 +#ifdef CONFIG_KVM_GUEST_MEMFD
-+	struct inode *gmem_inode;
-+#endif
- 	/*
- 	 * debug_root is a static property of the vfio_device
- 	 * which must be set prior to registering the vfio_device.
-@@ -114,7 +117,11 @@ struct vfio_device {
-  *             this device is attached to.
-  * @device_feature: Optional, fill in the VFIO_DEVICE_FEATURE ioctl
-  */
-+struct guest_memfd_provider_operations;
++int vfio_pci_core_gmem_attach(struct vfio_device *core_vdev)
++{
++	struct vfio_pci_core_device *vdev =
++		container_of(core_vdev, struct vfio_pci_core_device, vdev);
++	bool bars_available;
 +
- struct vfio_device_ops {
-+	int (*gmem_attach)(struct vfio_device *device);
-+	void (*gmem_release)(struct vfio_device *device);
- 	char	*name;
- 	int	(*init)(struct vfio_device *vdev);
- 	void	(*release)(struct vfio_device *vdev);
++	down_write(&vdev->memory_lock);
++
++	bars_available = __vfio_pci_memory_enabled(vdev) &&
++			 !vdev->pm_runtime_engaged;
++
++	/* Pairs with smp_load_acquire() in provider operations */
++	smp_store_release(&vdev->bars_available, bars_available);
++
++	up_write(&vdev->memory_lock);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(vfio_pci_core_gmem_attach);
++
++void vfio_pci_core_gmem_release(struct vfio_device *core_vdev)
++{
++	struct vfio_pci_core_device *vdev =
++		container_of(core_vdev, struct vfio_pci_core_device, vdev);
++
++	down_write(&vdev->memory_lock);
++
++	/* Pairs with smp_load_acquire() in provider operations */
++	smp_store_release(&vdev->bars_available, false);
++
++	up_write(&vdev->memory_lock);
++}
++EXPORT_SYMBOL_GPL(vfio_pci_core_gmem_release);
++#endif
++
+ module_init(vfio_pci_core_init);
+ module_exit(vfio_pci_core_cleanup);
+ 
+diff --git a/include/linux/vfio_pci_core.h b/include/linux/vfio_pci_core.h
+index 1053774d2d659..c3c16459e14f4 100644
+--- a/include/linux/vfio_pci_core.h
++++ b/include/linux/vfio_pci_core.h
+@@ -149,6 +149,7 @@ struct vfio_pci_core_device {
+ 	struct notifier_block	nb;
+ 	struct rw_semaphore	memory_lock;
+ 	struct list_head	dmabufs;
++	bool			bars_available;
+ };
+ 
+ enum vfio_pci_io_width {
+@@ -168,6 +169,10 @@ int vfio_pci_core_init_dev(struct vfio_device *core_vdev);
+ void vfio_pci_core_release_dev(struct vfio_device *core_vdev);
+ int vfio_pci_core_register_device(struct vfio_pci_core_device *vdev);
+ void vfio_pci_core_unregister_device(struct vfio_pci_core_device *vdev);
++#ifdef CONFIG_KVM_GUEST_MEMFD
++int vfio_pci_core_gmem_attach(struct vfio_device *core_vdev);
++void vfio_pci_core_gmem_release(struct vfio_device *core_vdev);
++#endif
+ extern const struct pci_error_handlers vfio_pci_core_err_handlers;
+ int vfio_pci_core_sriov_configure(struct vfio_pci_core_device *vdev,
+ 				  int nr_virtfn);
 
 -- 
 2.56.0.455.g6c5a503b38-goog
