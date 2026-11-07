@@ -1,89 +1,93 @@
-From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Sat, 07 Nov 2026 10:06:17 +0000
-Subject: [PATCH] usb: typec: tipd: assign partner identity to persistent
- memory
+From: Rui Cao <i@udp0.com>
+Date: Sat, 07 Nov 2026 18:13:43 +0800
+Subject: [PATCH] spi: mt65xx: Remove the CPU latency QoS request when probe
+ fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261107-tipd-stack-uaf-fix-v1-1-efcb517924ec@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABj47moC/x2MSQqAMAwAvyI5G2jc9SviobSpBkGlVRGKf7d4n
- IGZCIG9cIAhi+D5liD7loDyDMyit5lRbGIoVNEQqRZPOSyGU5sVL+3QyYO2pKpTdW8UtZDCw3P
- S/3Sc3vcDewcuVmQAAAA=
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Janne Grunau <j@jannau.net>, Sven Peter <sven@kernel.org>, 
- Hector Martin <marcan@marcan.st>
-Cc: Neal Gompa <neal@gompa.dev>, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Nicole Mazzuca <nicole@streganil.no>, 
- stable@vger.kernel.org, Michael Reeves <michael.reeves077@gmail.com>, 
- asahi@lists.linux.dev
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794045978; l=2080;
- i=michael.reeves077@gmail.com; s=20261107; h=from:subject:message-id;
- bh=11jWNoNyYcLtaaM1fNLvBsJPDBw5EU5pTtOvCfnWMwo=;
- b=G8zeiNyKG6OsjYAWHxwP2e7A8a0o4EJnDAxqrHOhnh3417IfBii0p81xO2n0aHm5VtGC5oEU+
- uFXHj/X3vdEB84NUrq78FxoXHyWuPOrJIdBMg3CrPlL7H6qxZF9Q4MH
-X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
- pk=ykwkLcuByJYb/cdLc2UuoYP03pIzwrscEZg30+4tJL8=
-X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20261107 with auth_id=1442
+Message-Id: <20261107-mt65xx-qos-fix-v1-1-9d9c16a584e4@udp0.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwNz3dwSM9OKCt3C/GLdtMwKXWOjZBPDtBRjC9OURCWgpoKiVKAw2MD
+ oWAi/uDQpKzW5BGSKUm0tANz3mEtyAAAA
+X-Change-ID: 20261107-mt65xx-qos-fix-32c41fd385da
+To: Mark Brown <broonie@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Leilk Liu <leilk.liu@mediatek.com>
+Cc: linux-spi@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
+ stable@vger.kernel.org, Rui Cao <i@udp0.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794046428; l=2424;
+ i=i@udp0.com; s=20261107; h=from:subject:message-id;
+ bh=J9ck0Rmxdd1nbYdPYBN9FG+4oXVrAofA+j7Izp5hqPk=;
+ b=REkzO9qjpDLtQwUJ2L7TcXugkI2yWMutN5NdD7o8ySpatBLXAbAjyDeG80TTMDedIQn2d/x9A
+ T87E08PacYsCghHh8+DjFlPTrQv5tXsVOQTQ3KN19p0+P+wXDg8ZjGo
+X-Developer-Key: i=i@udp0.com; a=ed25519;
+ pk=XZJKcKgnUUjjyw8KuKy7u2QeIX0JLY/L1Fxzwwje41w=
+X-Endpoint-Received: by B4 Relay for i@udp0.com/20261107 with auth_id=1443
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cd321x_update_work() passes a pointer to a local stack variable
-(&st.partner_identity) to typec_register_partner(). The Type-C core
-caches this pointer, leading to a stack-use-after-free and a kernel
-Oops when accessed later (e.g., via get_pd_product_type()).
+mtk_spi_probe() adds its CPU latency QoS request before the chip select
+checks, the interrupt request and spi_register_controller(), and none of
+their error paths removes it again. The request is embedded in the
+driver's private data, which devres frees once the probe has failed, so
+the global CPU latency constraint list keeps a node in freed memory. The
+next cpu_latency_qos_add_request() from any driver walks into it.
 
-Fix this by copying the identity to the heap-allocated cd321x struct
-and passing a pointer to that persistent memory instead. Move up
-the assignment to cd321x->cur_partner_identity, so this works.
+On a Redmi Note 13 5G (MT6833), an SPI controller whose probe failed the
+pad_num/num_chipselect check left such a node behind, and the UFS host
+adding its own request a moment later oopsed in plist_add():
 
-Reported-by: Nicole Mazzuca <nicole@streganil.no>
-Closes: https://github.com/AsahiLinux/linux/issues/668
-Fixes: 82432bbfb9e8 ("usb: typec: tipd: Handle mode transitions for CD321x")
+Unable to handle kernel paging request at virtual address fffffffffffffff8
+
+The same happens whenever spi_register_controller() fails, which
+includes -EPROBE_DEFER while the chip select GPIOs are looked up.
+
+Nothing needs the request before the controller is registered: only the
+prepare_message() and unprepare_message() callbacks update it. Add it
+just before the registration and remove it if the registration fails.
+
+Fixes: 632556d5799a ("spi: mt65xx: add PM QoS support")
 Cc: stable@vger.kernel.org
-Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
+Signed-off-by: Rui Cao <i@udp0.com>
 ---
-Cc: Nicole Mazzuca <nicole@streganil.no>
-Cc: asahi@lists.linux.dev
----
- drivers/usb/typec/tipd/core.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ drivers/spi/spi-mt65xx.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
-index 02539378ffed..dce0aa8be5e0 100644
---- a/drivers/usb/typec/tipd/core.c
-+++ b/drivers/usb/typec/tipd/core.c
-@@ -855,8 +855,10 @@ static void cd321x_update_work(struct work_struct *work)
- 		desc.usb_pd = is_pd;
- 		desc.accessory = TYPEC_ACCESSORY_NONE; /* XXX: handle accessories */
- 
--		if (desc.usb_pd)
--			desc.identity = &st.partner_identity;
-+		if (desc.usb_pd) {
-+			cd321x->cur_partner_identity = st.partner_identity;
-+			desc.identity = &cd321x->cur_partner_identity;
-+		}
- 
- 		tps->partner = typec_register_partner(tps->port, &desc);
- 		if (IS_ERR(tps->partner)) {
-@@ -864,10 +866,8 @@ static void cd321x_update_work(struct work_struct *work)
- 			return;
- 		}
- 
--		if (desc.identity) {
-+		if (desc.identity)
- 			typec_partner_set_identity(tps->partner);
--			cd321x->cur_partner_identity = st.partner_identity;
--		}
+diff --git a/drivers/spi/spi-mt65xx.c b/drivers/spi/spi-mt65xx.c
+index b845a599f7c..49c31d4bd71 100644
+--- a/drivers/spi/spi-mt65xx.c
++++ b/drivers/spi/spi-mt65xx.c
+@@ -1295,8 +1295,6 @@ static int mtk_spi_probe(struct platform_device *pdev)
+ 		clk_disable_unprepare(mdata->spi_hclk);
  	}
  
- 	/* Update the TypeC MUX/PHY state */
+-	cpu_latency_qos_add_request(&mdata->qos_request, PM_QOS_DEFAULT_VALUE);
+-
+ 	if (mdata->dev_comp->need_pad_sel) {
+ 		if (mdata->pad_num != host->num_chipselect)
+ 			return dev_err_probe(dev, -EINVAL,
+@@ -1323,11 +1321,13 @@ static int mtk_spi_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return dev_err_probe(dev, ret, "failed to register irq\n");
+ 
++	cpu_latency_qos_add_request(&mdata->qos_request, PM_QOS_DEFAULT_VALUE);
+ 	pm_runtime_enable(dev);
+ 
+ 	ret = spi_register_controller(host);
+ 	if (ret) {
+ 		pm_runtime_disable(dev);
++		cpu_latency_qos_remove_request(&mdata->qos_request);
+ 		return dev_err_probe(dev, ret, "failed to register host\n");
+ 	}
+ 
 
 ---
 base-commit: d48723711bae9b8cdc56719c448ba42fef28cbee
-change-id: 20261107-tipd-stack-uaf-fix-d3148059c017
+change-id: 20261107-mt65xx-qos-fix-32c41fd385da
 
 Best regards,
--- 
-Michael Reeves <michael.reeves077@gmail.com>
+--  
+Rui Cao <i@udp0.com>
 
