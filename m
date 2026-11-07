@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:19 -0800
-Subject: [PATCH RFC v3 45/88] samples/kvm: Disallow MP_SET_READONLY after
- attach
+Date: Fri, 06 Nov 2026 16:37:20 -0800
+Subject: [PATCH RFC v3 46/88] samples/kvm: Implement get_pfn provider
+ operation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-45-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-46-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,65 +26,85 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=1622;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=2542;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=W6hpgZ/SuWeulozFQ+D1CrfcagL7NIynEtQGb/opNZw=;
- b=ILyPeR8Z4qzwmTsH228I3CTu1pFhQQ5MWMIByYFJpNmOGFiP/sRffFefkPZJvJJmQLFRCWCMe
- r5kLMeQnZa7CLlcRG/TOCMgsnzmWL3Yhl8aE192+9z9TDbTji6SwO+6
+ bh=tCKXiyHtpuefvmYVDpsKn5DHw0pcR3E0UpVIb8EHbec=;
+ b=XcS77Ehs2dDxmkzR+K+/PQQXHnS5i/ylsKXkNTcKFJYWNqfe/67XQ4asLhBTtPVhKbokfrsMk
+ 9fTuOHWRmeiB9cV4r08Y2XGxaZrDeKXDmooUisiB2STC9cUFglVZQI2
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Once a provider file is attached to guest_memfd, its physical attributes
-must remain constant throughout its lifetime.
+Implement the .get_pfn callback in mp_gmem_provider_ops to operate as a
+direct PFN provider for guest_memfd.
 
-Disallow changing page read-only state via MP_SET_READONLY if the provider
-file is currently attached to a guest_memfd inode, returning -EBUSY.
+Implementing .get_pfn satisfies guest_memfd's provider operations
+requirement, enabling memory_provider files to be attached as
+resource_fd memory providers for guest_memfd.
+
+In mp_gmem_get_pfn(), return the physical frame number corresponding to
+the requested index from the CMA reservation, returning -EFAULT if the
+page was marked absent via MP_SET_PRESENT. Also report
+GUEST_MEMFD_PFN_ATTRS_READONLY in pfn_attrs if the page was marked
+read-only via MP_SET_READONLY.
+
+Checking test_bit(index, info->absent) and info->read_only is done
+locklessly without holding info->lock:
+- test_bit() is an atomic memory read.
+- Locklessness prevents lock inversion and deadlocks. In guest_memfd,
+  the guest page fault path (kvm_gmem_get_pfn()) holds
+  filemap_invalidate_lock_shared while calling .get_pfn(). Avoiding
+  info->lock in .get_pfn() ensures no lock inversions exist between
+  filemap_invalidate_lock and info->lock.
+- Similarly, while kvm_gmem_revoke() now takes an explicit pfn and avoids
+  calling back into .get_pfn(), avoiding info->lock in .get_pfn() keeps
+  the lookup path completely lock-free and robust.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- samples/kvm/memory_provider.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ samples/kvm/memory_provider.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
 diff --git a/samples/kvm/memory_provider.c b/samples/kvm/memory_provider.c
-index 6f86e3e3262e3..168c1d90edacd 100644
+index 168c1d90edacd..1db69a8f58758 100644
 --- a/samples/kvm/memory_provider.c
 +++ b/samples/kvm/memory_provider.c
-@@ -58,17 +58,23 @@ static int mp_range(struct mp_info *info, u64 offset, u64 len,
- 	return 0;
+@@ -198,9 +198,34 @@ static void mp_gmem_release(void *provider)
+ 	fput(resource_file);
  }
  
--static void mp_set_readonly(struct mp_info *info, unsigned long start,
-+static int mp_set_readonly(struct mp_info *info, unsigned long start,
- 			    unsigned long end, bool readonly)
- {
- 	mutex_lock(&info->lock);
- 
-+	if (info->gmem_inode) {
-+		mutex_unlock(&info->lock);
-+		return -EBUSY;
++static int mp_gmem_get_pfn(void *provider, pgoff_t index, unsigned long *pfn,
++			   int *max_order, u64 *pfn_attrs)
++{
++	struct file *resource_file = provider;
++	struct mp_info *info = resource_file->private_data;
++
++	if (index >= info->npages)
++		return -EINVAL;
++
++	if (test_bit(index, info->absent))
++		return -EFAULT;
++
++	*pfn = info->base_pfn + index;
++	if (max_order)
++		*max_order = 0;
++	if (pfn_attrs) {
++		*pfn_attrs = 0;
++		if (test_bit(index, info->readonly))
++			*pfn_attrs |= GUEST_MEMFD_PFN_ATTRS_READONLY;
 +	}
 +
- 	if (readonly)
- 		bitmap_set(info->readonly, start, end - start);
- 	else
- 		bitmap_clear(info->readonly, start, end - start);
- 
- 	mutex_unlock(&info->lock);
 +	return 0;
- }
++}
++
+ static const struct guest_memfd_provider_operations mp_gmem_provider_ops = {
+ 	.attach		= mp_gmem_attach,
+ 	.release	= mp_gmem_release,
++	.get_pfn	= mp_gmem_get_pfn,
+ };
  
- static void mp_set_present(struct mp_info *info, unsigned long start,
-@@ -123,7 +129,7 @@ static long mp_file_set_readonly(struct mp_info *info, void __user *uarg)
- 
- 	ret = mp_range(info, sr.offset, sr.len, &start, &end);
- 	if (!ret)
--		mp_set_readonly(info, start, end, sr.value);
-+		ret = mp_set_readonly(info, start, end, sr.value);
- 
- 	return ret;
- }
+ static const struct file_operations mp_file_fops = {
 
 -- 
 2.56.0.455.g6c5a503b38-goog
