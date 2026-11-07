@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 06 Nov 2026 16:37:51 -0800
-Subject: [PATCH RFC v3 77/88] KVM: selftests: Verify VFIO device reset for
- igb device
+Date: Fri, 06 Nov 2026 16:37:52 -0800
+Subject: [PATCH RFC v3 78/88] KVM: selftests: Verify VFIO access directly
+ and via guest_memfd
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261106-gmem-alternative-providers-v3-77-8484dde66a7e@google.com>
+Message-Id: <20261106-gmem-alternative-providers-v3-78-8484dde66a7e@google.com>
 References: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 In-Reply-To: <20261106-gmem-alternative-providers-v3-0-8484dde66a7e@google.com>
 To: Alexey Kardashevskiy <aik@amd.com>, 
@@ -26,88 +26,194 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=2756;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794011810; l=6129;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=jIcxaC8x28xPsLi5SMudkDfabTx4GIIOp8BRTMbwoBw=;
- b=22zVgyg/vzsiW0zlhJ3ne60GqMpiyEfDMQk6bsvNnD6uIZt2eSXJ3foj8SNHHIzAaGagwcB/5
- y8itLkPWPqaCVForcElwYW6W+a1qYjsL6jumqYkGxAoeFuJhkUTZucc
+ bh=wMpfVe5pW5612uAirzjznbXSxcHXbU2mXBke4sAga64=;
+ b=tdBMo5bwX2Uer41RpQmN0GH50JgBfYlCVTon4eNRJWYkAyazzOurorg07KXh3Jb95H9HI98uP
+ YptA2UUYyosDFhRRnsmzi7EgQN+1UkGEJfe/r5Sb3/gVzYbH6wjyWS0
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a subtest for VFIO_DEVICE_RESET on the bound Intel 82576 device.
+Extend the VFIO igb device selftest suite to run across fixture variants
+testing both direct VFIO access and mediated access via guest_memfd.
 
-Configure PCI command space to enable memory decode, map BAR0, and write
-a distinct test pattern to the scratch receive address low (RAL0) register.
+Define two fixture variants:
+- direct: binds the device normally, exercising direct descriptor read,
+  write, mmap, and reset.
+- guest_memfd: binds with the control-only flag and attaches the device
+  as a backing resource for a guest_memfd instance, validating that BAR
+  read, write, mmap, and reset succeed through the guest_memfd
+  descriptor.
 
-Trigger a device reset via the VFIO device ioctl, handling potential lock
-contention with retry logic. Re-enable memory decode post-reset and assert
-that the scratch register pattern reverted to its hardware reset value.
-
-This verifies hardware reset lifecycle behavior, establishing a baseline
-to later confirm that resetting a device revokes access when BAR0 is
-wrapped by guest_memfd.
+Because guest_memfd delegation of VFIO regions relies on in-place
+conversion (per-gmem memory attributes) so the entire sparse region
+namespace can be initialized as shared via INIT_SHARED, require
+kvm_has_gmem_attributes when setting up the guest_memfd variant.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- .../selftests/kvm/x86/guest_memfd_vfio_test.c      | 45 ++++++++++++++++++++++
- 1 file changed, 45 insertions(+)
+ .../selftests/kvm/x86/guest_memfd_vfio_test.c      | 77 ++++++++++++++++++++--
+ 1 file changed, 72 insertions(+), 5 deletions(-)
 
 diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
-index 4d5211b6acf79..91cba359e4392 100644
+index 91cba359e4392..03c324f7f618d 100644
 --- a/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
 +++ b/tools/testing/selftests/kvm/x86/guest_memfd_vfio_test.c
-@@ -331,4 +331,49 @@ TEST_F(guest_memfd_vfio, bar_mmap)
- 	ASSERT_EQ(0, munmap(bar0, bar0_info.size));
+@@ -21,6 +21,7 @@
+ #include <linux/vfio.h>
+ 
+ #include "kselftest_harness.h"
++#include "kvm_util.h"
+ 
+ #define PCI_VENDOR_ID_INTEL 0x8086
+ #define PCI_DEVICE_ID_INTEL_82576 0x10C9
+@@ -96,10 +97,27 @@ static char *find_igb_cdev_path(void)
+ 	return NULL;
  }
  
-+TEST_F(guest_memfd_vfio, device_reset)
-+{
-+	struct vfio_region_info bar0_info = {};
-+	uint32_t val;
-+	void *bar0;
-+	int retries = 20;
-+	int ret;
++#define VFIO_PCI_OFFSET_SHIFT 40
 +
-+	vfio_pci_enable_memory_and_bus_master(_metadata, self->vfio_fd);
+ FIXTURE(guest_memfd_vfio) {
+ 	char *cdev_path;
++	struct kvm_vm *vm;
++	int gmem_fd;
+ 	int iommufd;
+ 	int vfio_fd;
++	int bar_fd;
++};
 +
-+	bar0_info.argsz = sizeof(bar0_info);
-+	bar0_info.index = VFIO_PCI_BAR0_REGION_INDEX;
-+	ret = ioctl(self->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &bar0_info);
-+	ASSERT_EQ(0, ret);
++FIXTURE_VARIANT(guest_memfd_vfio) {
++	bool use_gmem;
++};
 +
-+	bar0 = mmap(NULL, bar0_info.size, PROT_READ | PROT_WRITE, MAP_SHARED,
-+		    self->vfio_fd, bar0_info.offset);
-+	ASSERT_NE(MAP_FAILED, bar0);
++FIXTURE_VARIANT_ADD(guest_memfd_vfio, direct) {
++	.use_gmem = false,
++};
 +
-+	/* Write scratch test pattern to RAL0 */
-+	WRITE_ONCE(*(uint32_t *)((char *)bar0 + E1000_RAL0), 0xdeadbeef);
-+	val = READ_ONCE(*(uint32_t *)((char *)bar0 + E1000_RAL0));
-+	ASSERT_EQ(0xdeadbeef, val);
++FIXTURE_VARIANT_ADD(guest_memfd_vfio, guest_memfd) {
++	.use_gmem = true,
+ };
+ 
+ FIXTURE_SETUP(guest_memfd_vfio)
+@@ -107,6 +125,10 @@ FIXTURE_SETUP(guest_memfd_vfio)
+ 	struct vfio_device_bind_iommufd bind_args = {};
+ 	int ret;
+ 
++	self->vm = NULL;
++	self->gmem_fd = -1;
++	self->bar_fd = -1;
 +
-+	/* Trigger VFIO_DEVICE_RESET, handling possible lock contention (-EAGAIN) */
-+	do {
-+		ret = ioctl(self->vfio_fd, VFIO_DEVICE_RESET, NULL);
-+		if (ret != 0 && errno == EAGAIN)
-+			usleep(10000);
-+	} while (ret != 0 && errno == EAGAIN && retries-- > 0);
-+	ASSERT_EQ(0, ret);
+ 	self->cdev_path = find_igb_cdev_path();
+ 	if (!self->cdev_path)
+ 		SKIP(return, "Intel 82576 device bound to vfio not found\n");
+@@ -123,12 +145,50 @@ FIXTURE_SETUP(guest_memfd_vfio)
+ 
+ 	bind_args.argsz = sizeof(bind_args);
+ 	bind_args.iommufd = self->iommufd;
++	if (variant->use_gmem)
++		bind_args.flags = VFIO_DEVICE_BIND_FLAG_CTRL_ONLY;
++
+ 	ret = ioctl(self->vfio_fd, VFIO_DEVICE_BIND_IOMMUFD, &bind_args);
+ 	ASSERT_EQ(0, ret);
 +
 +	/*
-+	 * After device reset, PCI Command register memory decode is cleared by
-+	 * hardware. Re-enable it to access BAR0 registers again.
++	 * Create a SW_PROTECTED_VM with 1 runnable vCPU allocated for memslot0
++	 * and stack/page table allocation, so guest_mapping can execute vCPUs
++	 * and FIXTURE_TEARDOWN uniformly cleans up self->vm across both variants.
 +	 */
-+	vfio_pci_enable_memory_and_bus_master(_metadata, self->vfio_fd);
++	self->vm = __vm_create((struct vm_shape){ .mode = VM_MODE_DEFAULT,
++						  .type = KVM_X86_SW_PROTECTED_VM },
++			       1, 0);
 +
-+	/* Verify RAL0 was reset and reverted from scratch pattern */
-+	val = READ_ONCE(*(uint32_t *)((char *)bar0 + E1000_RAL0));
-+	ASSERT_NE(0xdeadbeef, val);
++	if (variant->use_gmem) {
++		uint64_t gmem_flags = GUEST_MEMFD_FLAG_USE_RESOURCE |
++				      GUEST_MEMFD_FLAG_PFN_MODE |
++				      GUEST_MEMFD_FLAG_MMAP |
++				      GUEST_MEMFD_FLAG_INIT_SHARED;
++		uint64_t gmem_size = (uint64_t)VFIO_PCI_NUM_REGIONS << VFIO_PCI_OFFSET_SHIFT;
 +
-+	ASSERT_EQ(0, munmap(bar0, bar0_info.size));
-+}
++		/*
++		 * guest_memfd providers (including VFIO) is only intended to be
++		 * used with gmem_in_place_conversion.
++		 */
++		TEST_REQUIRE(kvm_has_gmem_attributes);
 +
- TEST_HARNESS_MAIN
++		self->gmem_fd = vm_create_guest_memfd_resource(self->vm, gmem_size,
++							       gmem_flags,
++							       self->vfio_fd);
++		ASSERT_GE(self->gmem_fd, 0);
++		self->bar_fd = self->gmem_fd;
++	} else {
++		self->bar_fd = self->vfio_fd;
++	}
+ }
+ 
+ FIXTURE_TEARDOWN(guest_memfd_vfio)
+ {
++	if (self->gmem_fd >= 0)
++		close(self->gmem_fd);
++	if (self->vm)
++		kvm_vm_free(self->vm);
+ 	if (self->vfio_fd >= 0)
+ 		close(self->vfio_fd);
+ 	if (self->iommufd >= 0)
+@@ -236,6 +296,13 @@ TEST_F(guest_memfd_vfio, get_irq_info)
+ 	}
+ }
+ 
++/*
++ * PCI Command register configuration belongs to the PCI configuration space
++ * region (VFIO_PCI_CONFIG_REGION_INDEX), which is accessed via the underlying
++ * VFIO device descriptor (vfio_fd). In guest_memfd mode, bar_fd refers to the
++ * guest_memfd descriptor representing memory BARs and cannot be used to read or
++ * write PCI configuration space.
++ */
+ static void vfio_pci_enable_memory_and_bus_master(struct __test_metadata *_metadata,
+ 						  int vfio_fd)
+ {
+@@ -276,7 +343,7 @@ TEST_F(guest_memfd_vfio, bar_rw)
+ 	 * Confirm device is readable and does not return 0xFFFFFFFF.
+ 	 */
+ 	val = 0;
+-	ret_bytes = pread(self->vfio_fd, &val, sizeof(val), bar0_info.offset + E1000_STATUS);
++	ret_bytes = pread(self->bar_fd, &val, sizeof(val), bar0_info.offset + E1000_STATUS);
+ 	ASSERT_EQ(sizeof(val), ret_bytes);
+ 	ASSERT_NE(0xFFFFFFFF, val);
+ 
+@@ -285,11 +352,11 @@ TEST_F(guest_memfd_vfio, bar_rw)
+ 	 * it back via pread().
+ 	 */
+ 	val = 0xdeadbeef;
+-	ret_bytes = pwrite(self->vfio_fd, &val, sizeof(val), bar0_info.offset + E1000_RAL0);
++	ret_bytes = pwrite(self->bar_fd, &val, sizeof(val), bar0_info.offset + E1000_RAL0);
+ 	ASSERT_EQ(sizeof(val), ret_bytes);
+ 
+ 	val = 0;
+-	ret_bytes = pread(self->vfio_fd, &val, sizeof(val), bar0_info.offset + E1000_RAL0);
++	ret_bytes = pread(self->bar_fd, &val, sizeof(val), bar0_info.offset + E1000_RAL0);
+ 	ASSERT_EQ(sizeof(val), ret_bytes);
+ 	ASSERT_EQ(0xdeadbeef, val);
+ }
+@@ -310,7 +377,7 @@ TEST_F(guest_memfd_vfio, bar_mmap)
+ 	ASSERT_TRUE(bar0_info.flags & VFIO_REGION_INFO_FLAG_MMAP);
+ 
+ 	bar0 = mmap(NULL, bar0_info.size, PROT_READ | PROT_WRITE, MAP_SHARED,
+-		    self->vfio_fd, bar0_info.offset);
++		    self->bar_fd, bar0_info.offset);
+ 	ASSERT_NE(MAP_FAILED, bar0);
+ 
+ 	/*
+@@ -347,7 +414,7 @@ TEST_F(guest_memfd_vfio, device_reset)
+ 	ASSERT_EQ(0, ret);
+ 
+ 	bar0 = mmap(NULL, bar0_info.size, PROT_READ | PROT_WRITE, MAP_SHARED,
+-		    self->vfio_fd, bar0_info.offset);
++		    self->bar_fd, bar0_info.offset);
+ 	ASSERT_NE(MAP_FAILED, bar0);
+ 
+ 	/* Write scratch test pattern to RAL0 */
 
 -- 
 2.56.0.455.g6c5a503b38-goog
