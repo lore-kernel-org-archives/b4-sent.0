@@ -1,11 +1,11 @@
 From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Sun, 08 Nov 2026 07:25:06 +0000
-Subject: [PATCH v5 1/8] dt-bindings: mailbox: apple: Add DockChannel
- mailbox
+Date: Sun, 08 Nov 2026 07:25:07 +0000
+Subject: [PATCH v5 2/8] dt-bindings: input: apple: Add DockChannel HID
+ transport
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-b4-apple-mtp-keyboard-v5-1-e2c97b82669a@gmail.com>
+Message-Id: <20261108-b4-apple-mtp-keyboard-v5-2-e2c97b82669a@gmail.com>
 References: <20261108-b4-apple-mtp-keyboard-v5-0-e2c97b82669a@gmail.com>
 In-Reply-To: <20261108-b4-apple-mtp-keyboard-v5-0-e2c97b82669a@gmail.com>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
@@ -17,139 +17,143 @@ To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>,
  Michael Reeves <michael.reeves077@gmail.com>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-input@vger.kernel.org, Yureka Lilian <yureka@cyberchaos.dev>
+ linux-input@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794122710; l=4117;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794122710; l=4202;
  i=michael.reeves077@gmail.com; s=20261107; h=from:subject:message-id;
- bh=q8ZQCkixKuefi/vxbk7igJsaOCC31V/LgDgV4zCFnzo=;
- b=G/y6CarAnTtn4Yzb866F46SzwZVdrqfl5xBLJ2vYkbpRTmqPgF9IlhFYb330CUU31rNQgWyIZ
- rKtFg11n9TCBOWGJyUm5ZzzGc+XNe+y/LU7X3HFVJDv0UhKLCMAZyYu
+ bh=mRZFOVFEWZlmTQo/secoMGKBAQBA5BcBUwvtUqnYZBk=;
+ b=ITnYdgO+IbIaCMxxcMeaaK554tNgPqysgmMp2QCn84oEvcQuCKtp0H1CWfaB/kb5SC1/oy0TC
+ P06AnslxJ+kD+3TfvKznMIqnARnqz/Gl+9azSHX8pz1ffbGDiQMmoym
 X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
  pk=ykwkLcuByJYb/cdLc2UuoYP03pIzwrscEZg30+4tJL8=
 X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20261107 with auth_id=1442
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-DockChannel is a FIFO and interrupt block used by Apple coprocessors
-to exchange byte-stream traffic with the AP.
+Apple internal keyboards and trackpads behind MTP are exposed through a
+DockChannel HID transport.
 
-Describe it as a mailbox provider for HID and serial clients. The FIFO
-interrupt pair is configurable because MTP and DebugUSB use different
-pairs.
+Describe the transport's mailboxes, DART, and input properties. An
+optional apple,has-stm property indicates shared device identifiers and
+serial numbers are detectable. hid-country-code specifies the keyboard
+layout variant, which is filled by the bootloader, and is not prefixed
+as it is a generic HID property.
 
-Suggested-by: Yureka Lilian <yureka@cyberchaos.dev>
-Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
- .../bindings/mailbox/apple,t8112-dockchannel.yaml  | 88 ++++++++++++++++++++++
+ .../input/apple,t8112-dockchannel-hid.yaml         | 92 ++++++++++++++++++++++
  MAINTAINERS                                        |  1 +
- 2 files changed, 89 insertions(+)
+ 2 files changed, 93 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml b/Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml
+diff --git a/Documentation/devicetree/bindings/input/apple,t8112-dockchannel-hid.yaml b/Documentation/devicetree/bindings/input/apple,t8112-dockchannel-hid.yaml
 new file mode 100644
-index 000000000000..9afd58613074
+index 000000000000..55732cd59964
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml
-@@ -0,0 +1,88 @@
++++ b/Documentation/devicetree/bindings/input/apple,t8112-dockchannel-hid.yaml
+@@ -0,0 +1,92 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/mailbox/apple,t8112-dockchannel.yaml#
++$id: http://devicetree.org/schemas/input/apple,t8112-dockchannel-hid.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Apple DockChannel FIFO Mailbox
++title: Apple DockChannel HID Transport
 +
 +maintainers:
 +  - Michael Reeves <michael.reeves077@gmail.com>
 +
 +description:
-+  DockChannel is a hardware FIFO and interrupt block used on Apple SoCs for
-+  low-latency byte stream communication with co-processors.
++  HID transport for keyboard and trackpad devices connected via the
++  DockChannel FIFO mailbox on Apple Silicon SoCs. The endpoint includes a
++  small RTKit coprocessor called MTP which must be booted before the HID
++  transport becomes available.
 +
 +properties:
 +  compatible:
 +    oneOf:
 +      - items:
-+          - const: apple,t8112-dockchannel
++          - const: apple,t8112-dockchannel-hid
 +      - items:
 +          - enum:
-+              - apple,t6020-dockchannel
-+              - apple,t6030-dockchannel
-+              - apple,t6031-dockchannel
-+              - apple,t8122-dockchannel
-+          - const: apple,t8112-dockchannel
++              - apple,t6020-dockchannel-hid
++              - apple,t6030-dockchannel-hid
++              - apple,t6031-dockchannel-hid
++              - apple,t8122-dockchannel-hid
++          - const: apple,t8112-dockchannel-hid
 +
 +  reg:
 +    items:
-+      - description: Interrupt control registers
-+      - description: FIFO configuration registers
-+      - description: FIFO data registers
++      - description: Coprocessor ASC registers
++      - description: Coprocessor SRAM/mailbox registers
 +
 +  reg-names:
 +    items:
-+      - const: irq
-+      - const: config
-+      - const: data
++      - const: asc
++      - const: sram
 +
-+  interrupts:
++  mboxes:
++    items:
++      - description: ASC mailbox used for RTKit control
++      - description: DockChannel FIFO mailbox used for HID packets
++
++  mbox-names:
++    items:
++      - const: asc
++      - const: dockchannel
++
++  iommus:
 +    maxItems: 1
 +
-+  "#mbox-cells":
-+    const: 0
++  apple,has-stm:
++    type: boolean
++    description:
++      Specifies that the coprocessor provides STM device and serial
++      number query endpoints that must be ready before registering HID devices.
 +
-+  apple,irq-index:
++  hid-country-code:
 +    $ref: /schemas/types.yaml#/definitions/uint32
-+    maximum: 15
-+    default: 1
-+    description: |
-+      Index of the FIFO interrupt pair in the interrupt control registers.
-+      TX uses bit (2 * index) and RX uses bit (2 * index + 1). The configuration
-+      and data register resources must describe the corresponding FIFO.
-+      If absent, pair 1 is used for compatibility with older keyboard nodes.
-+
-+  nonposted-mmio: true
++    description:
++      HID country code for the keyboard layout variant.
 +
 +required:
 +  - compatible
 +  - reg
 +  - reg-names
-+  - interrupts
-+  - "#mbox-cells"
++  - mboxes
++  - mbox-names
++  - iommus
 +
 +additionalProperties: false
 +
 +examples:
 +  - |
-+    #include <dt-bindings/interrupt-controller/apple-aic.h>
-+    #include <dt-bindings/interrupt-controller/irq.h>
-+
 +    soc {
 +        #address-cells = <2>;
 +        #size-cells = <2>;
 +
-+        mailbox@24eb14000 {
-+            compatible = "apple,t8112-dockchannel";
-+            reg = <0x2 0x4eb14000 0x0 0x4000>,
-+                  <0x2 0x4eb30000 0x0 0x4000>,
-+                  <0x2 0x4eb34000 0x0 0x4000>;
-+            reg-names = "irq", "config", "data";
-+            interrupt-parent = <&aic>;
-+            interrupts = <AIC_IRQ 850 IRQ_TYPE_LEVEL_HIGH>;
-+            #mbox-cells = <0>;
-+            apple,irq-index = <1>;
++        hid@24e400000 {
++            compatible = "apple,t8112-dockchannel-hid";
++            reg = <0x2 0x4e400000 0x0 0x4000>,
++                  <0x2 0x4ec00000 0x0 0x100000>;
++            reg-names = "asc", "sram";
++            mboxes = <&mtp_mbox>, <&mtp_dockchannel>;
++            mbox-names = "asc", "dockchannel";
++            iommus = <&mtp_dart 1>;
++            apple,has-stm;
++            hid-country-code = <0>;
 +        };
 +    };
 diff --git a/MAINTAINERS b/MAINTAINERS
-index b2eaee98852f..0c1963150f04 100644
+index 0c1963150f04..41b12717c657 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -2720,6 +2720,7 @@ F:	Documentation/devicetree/bindings/iommu/apple,dart.yaml
- F:	Documentation/devicetree/bindings/iommu/apple,sart.yaml
- F:	Documentation/devicetree/bindings/leds/backlight/apple,dwi-bl.yaml
- F:	Documentation/devicetree/bindings/mailbox/apple,mailbox.yaml
-+F:	Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml
- F:	Documentation/devicetree/bindings/mfd/apple,smc.yaml
- F:	Documentation/devicetree/bindings/net/bluetooth/brcm,bcm4377-bluetooth.yaml
- F:	Documentation/devicetree/bindings/nvme/apple,nvme-ans.yaml
+@@ -2714,6 +2714,7 @@ F:	Documentation/devicetree/bindings/gpio/apple,smc-gpio.yaml
+ F:	Documentation/devicetree/bindings/gpu/apple,agx.yaml
+ F:	Documentation/devicetree/bindings/hwmon/apple,smc-hwmon.yaml
+ F:	Documentation/devicetree/bindings/i2c/apple,i2c.yaml
++F:	Documentation/devicetree/bindings/input/apple,t8112-dockchannel-hid.yaml
+ F:	Documentation/devicetree/bindings/input/touchscreen/apple,z2-multitouch.yaml
+ F:	Documentation/devicetree/bindings/interrupt-controller/apple,*
+ F:	Documentation/devicetree/bindings/iommu/apple,dart.yaml
 
 -- 
 2.56.0
