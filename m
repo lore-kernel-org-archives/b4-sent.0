@@ -1,232 +1,123 @@
 From: DelaySystem <DelaySystem@tubot.lat>
-Date: Sat, 07 Nov 2026 18:47:00 -0800
-Subject: [PATCH] media: staging: tegra-video: csi: use active state for
- frame interval
+Date: Sat, 07 Nov 2026 19:14:42 -0800
+Subject: [PATCH] staging: most: dim2: use atomic_t for channel state
+ counters
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261107-staging-csi-interval-v1-1-4860ac021065@tubot.lat>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDtgQo3VqxQXMU7TKRIlk4og3
- t2oy7f4fwOhyCTQFhtEWlh4ChnqUYD72uAJecgGXWqjVFmjJOs5eHTCyCFRXOyIjal19ewb44Y
- X5HSO9OH12r672/Lvf+TS+YJ9PwCILw1reAAAAA==
-X-Change-ID: 20261107-staging-csi-interval-967254b96cd8
-To: luca.ceresoli@bootlin.com, gregkh@linuxfoundation.org, 
- thierry.reding@kernel.org, skomatineni@nvidia.com, mchehab@kernel.org, 
- jonathanh@nvidia.com
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-staging@lists.linux.dev, linux-tegra@vger.kernel.org, 
+Message-Id: <20261107-staging-dim2-atomic-v1-1-6eb4e8f1f63a@tubot.lat>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDtgAo3Bq5QupnESRzCWTCwF8
+ e5N2+Vb/H+AchFWGLsDCr9EZcsN5tJBmCknRpmawfbWGdMPqJWS5ISTrBapbqsEdJ78NfrIFB2
+ 08lk4yvt3vd3/1v2xcKjfFZznBymVmeZ3AAAA
+X-Change-ID: 20261107-staging-dim2-atomic-68a85f8feaf6
+To: christian.gromm@microchip.com, rajveer.chaudhari.linux@gmail.com, 
+ gregkh@linuxfoundation.org, error27@gmail.com, 
+ parthiban.veerasooran@microchip.com, shyamsunderreddypadira@gmail.com, 
+ marusik.adamenko@gmail.com
+Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
  DelaySystem <DelaySystem@tubot.lat>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7208; i=DelaySystem@tubot.lat;
- h=from:subject:message-id; bh=RFWR0QKV3z3LtnLnQBGjQGyiW1c3/1+A78zjLwzdzP8=;
- b=owGbwMvMwCH2SNl4+SzWXm/G02pJDFnvHy2x/CDdoV5ypyZpyY8UJ5EawcRpNpc3Fc/bKZdis
- UrdksOgo5SFQYyDQVZMkUVMhud9/X2dOGurOSdg5rAygQxh4OIUgImUuTIyPJ//pfI+89ODqx4u
- 31aZVZORPuPOs0X3pK+3FebrrL+/q4aR4fgm51j9gq9+nM/FSuWaTZxvbIhqXVLQVm/wf5XN91I
- jNgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3065; i=DelaySystem@tubot.lat;
+ h=from:subject:message-id; bh=Ii9BCHVX5TgM8cAejB89bBMykIT8SDp5IxFLV81pPhs=;
+ b=owGbwMvMwCH2SNl4+SzWXm/G02pJDFnvXypmejyLT3GKnGHGu+GXwwQNIe6H0mGvu1L7fpxSC
+ XA/zb+ho5SFQYyDQVZMkUVMhud9/X2dOGurOSdg5rAygQxh4OIUgIlIJDD8D7Zhqf3NFRbAzVoz
+ 76/5qaBAXefeSh0np+0X121hqNMqY/hnVxD5PTTLqvhznszz+O0/TH3mmr3rzVZ7v3L3uv1VxmI
+ 8AA==
 X-Developer-Key: i=DelaySystem@tubot.lat; a=openpgp;
  fpr=161C0CEF7FDF2C5E3B3A9CC8E22333A79A058D4B
 X-Endpoint-Received: by B4 Relay for DelaySystem@tubot.lat/default with auth_id=1447
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert tegra_csi_{get,set}_frame_interval to the V4L2 subdev active
-state API, resolving the FIXME asking for TRY format support via the
-active state.
+Replace the volatile int channel state counters with atomic_t and
+convert all access sites to the atomic API.
 
-The interval now lives in the per-pad subdev state instead of the
-driver-private csi_chan->framerate field:
-- add csi_init_state() to seed each pad's interval from the TPG
-  framerate table at the channel's current format,
-- initialize the state with v4l2_subdev_init_finalize() in channel
-  probe and release it with v4l2_subdev_cleanup() on teardown,
-- re-sync the interval in csi_set_format() when the format changes,
-  matching the previous behavior where the format path refreshed the
-  stored framerate,
-- validate the pad index against the entity's num_pads in both the
-  get and set paths.
+request_counter is incremented in the AHB interrupt handler
+(channel_service_interrupt) and read from task context
+(channel_service), while service_counter is updated in task context.
+Plain volatile provides neither atomicity nor ordering for such
+cross-context sharing, see
+Documentation/process/volatile-considered-harmful.rst.
 
-With the state handling both ACTIVE and TRY buffers, the TRY path now
-works instead of returning -EINVAL, and the .set_frame_interval op
-(which wrongly pointed at the get helper) is fixed to the new set
-helper.
+Use atomic_set() at init, atomic_inc() for updates and atomic_read()
+for the comparison in channel_service().  No functional change is
+intended.  Unlike the earlier attempt that only dropped the
+qualifier, this converts the access sites as well.
 
-Non-TPG builds keep returning -ENOIOCTLCMD as before.
+Compile-tested only; I don't have this hardware, so testing on real
+hardware would be appreciated.
 
+Link: https://lore.kernel.org/linux-staging/2026072515-domestic-cardboard-f657@gregkh/
 Signed-off-by: DelaySystem <DelaySystem@tubot.lat>
 ---
- drivers/staging/media/tegra-video/csi.c | 80 ++++++++++++++++++++++++++++-----
- drivers/staging/media/tegra-video/csi.h |  2 -
- 2 files changed, 70 insertions(+), 12 deletions(-)
+ drivers/staging/most/dim2/hal.c | 11 ++++++-----
+ drivers/staging/most/dim2/hal.h |  5 +++--
+ 2 files changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/staging/media/tegra-video/csi.c b/drivers/staging/media/tegra-video/csi.c
-index 5a5fca378ae6..629b543c76c1 100644
---- a/drivers/staging/media/tegra-video/csi.c
-+++ b/drivers/staging/media/tegra-video/csi.c
-@@ -111,7 +111,6 @@ static void csi_chan_update_blank_intervals(struct tegra_csi_channel *csi_chan,
- 	if (index >= 0) {
- 		csi_chan->h_blank = frmrate[index].h_blank;
- 		csi_chan->v_blank = frmrate[index].v_blank;
--		csi_chan->framerate = frmrate[index].framerate;
- 	}
+diff --git a/drivers/staging/most/dim2/hal.c b/drivers/staging/most/dim2/hal.c
+index 4f137ef846a3..ca931782b06c 100644
+--- a/drivers/staging/most/dim2/hal.c
++++ b/drivers/staging/most/dim2/hal.c
+@@ -419,8 +419,8 @@ u16 dim_dbr_space(struct dim_channel *ch)
+ 
+ static void state_init(struct int_ch_state *state)
+ {
+-	state->request_counter = 0;
+-	state->service_counter = 0;
++	atomic_set(&state->request_counter, 0);
++	atomic_set(&state->service_counter, 0);
+ 
+ 	state->idx1 = 0;
+ 	state->idx2 = 0;
+@@ -634,7 +634,7 @@ static bool channel_service_interrupt(struct dim_channel *ch)
+ 		return false;
+ 
+ 	state->idx2 ^= 1;
+-	state->request_counter++;
++	atomic_inc(&state->request_counter);
+ 	return true;
  }
  
-@@ -178,6 +177,9 @@ static int csi_set_format(struct v4l2_subdev *subdev,
- 	struct v4l2_mbus_framefmt *format = &fmt->format;
- 	const struct v4l2_frmsize_discrete *sizes;
- 	unsigned int i;
-+	const struct tpg_framerate *frmrate;
-+	struct v4l2_fract *interval;
-+	int index;
- 
- 	if (!IS_ENABLED(CONFIG_VIDEO_TEGRA_TPG))
- 		return -ENOIOCTLCMD;
-@@ -199,6 +201,16 @@ static int csi_set_format(struct v4l2_subdev *subdev,
- 	format->code = tegra_csi_tpg_fmts[i].code;
- 	format->field = V4L2_FIELD_NONE;
- 
-+	/* keep the frame interval in sync with the format */
-+	frmrate = csi_chan->csi->soc->tpg_frmrate_table;
-+	index = csi_get_frmrate_table_index(csi_chan->csi, format->code,
-+					    format->width, format->height);
-+	if (index >= 0) {
-+		interval = v4l2_subdev_state_get_interval(sd_state, fmt->pad);
-+		interval->numerator = 1;
-+		interval->denominator = frmrate[index].framerate;
-+	}
-+
- 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY)
- 		return 0;
- 
-@@ -217,20 +229,53 @@ static int tegra_csi_get_frame_interval(struct v4l2_subdev *subdev,
- 					struct v4l2_subdev_state *sd_state,
- 					struct v4l2_subdev_frame_interval *vfi)
+@@ -682,8 +682,9 @@ static u8 channel_service(struct dim_channel *ch)
  {
--	struct tegra_csi_channel *csi_chan = to_csi_chan(subdev);
-+	if (!IS_ENABLED(CONFIG_VIDEO_TEGRA_TPG))
-+		return -ENOIOCTLCMD;
-+
-+	if (vfi->pad >= subdev->entity.num_pads)
-+		return -EINVAL;
+ 	struct int_ch_state *const state = &ch->state;
  
-+	vfi->interval = *v4l2_subdev_state_get_interval(sd_state, vfi->pad);
-+
-+	return 0;
-+}
-+
-+static int tegra_csi_set_frame_interval(struct v4l2_subdev *subdev,
-+					struct v4l2_subdev_state *sd_state,
-+					struct v4l2_subdev_frame_interval *vfi)
-+{
- 	if (!IS_ENABLED(CONFIG_VIDEO_TEGRA_TPG))
- 		return -ENOIOCTLCMD;
+-	if (state->service_counter != state->request_counter) {
+-		state->service_counter++;
++	if (atomic_read(&state->service_counter) !=
++	    atomic_read(&state->request_counter)) {
++		atomic_inc(&state->service_counter);
+ 		if (state->level == 0)
+ 			return DIM_ERR_UNDERFLOW;
  
--	/*
--	 * FIXME: Implement support for V4L2_SUBDEV_FORMAT_TRY, using the V4L2
--	 * subdev active state API.
--	 */
--	if (vfi->which != V4L2_SUBDEV_FORMAT_ACTIVE)
-+	if (vfi->pad >= subdev->entity.num_pads)
- 		return -EINVAL;
+diff --git a/drivers/staging/most/dim2/hal.h b/drivers/staging/most/dim2/hal.h
+index 5d69a5e7d299..70b10793cf84 100644
+--- a/drivers/staging/most/dim2/hal.h
++++ b/drivers/staging/most/dim2/hal.h
+@@ -9,6 +9,7 @@
+ #ifndef _DIM2_HAL_H
+ #define _DIM2_HAL_H
  
--	vfi->interval.numerator = 1;
--	vfi->interval.denominator = csi_chan->framerate;
-+	*v4l2_subdev_state_get_interval(sd_state, vfi->pad) = vfi->interval;
-+
-+	return 0;
-+}
-+
-+static int csi_init_state(struct v4l2_subdev *sd,
-+			  struct v4l2_subdev_state *state)
-+{
-+	struct tegra_csi_channel *csi_chan = to_csi_chan(sd);
-+	const struct tpg_framerate *frmrate;
-+	struct v4l2_fract *interval;
-+	unsigned int i;
-+	int index;
-+
-+	frmrate = csi_chan->csi->soc->tpg_frmrate_table;
-+	index = csi_get_frmrate_table_index(csi_chan->csi,
-+					    csi_chan->format.code,
-+					    csi_chan->format.width,
-+					    csi_chan->format.height);
-+
-+	for (i = 0; i < sd->entity.num_pads; i++) {
-+		interval = v4l2_subdev_state_get_interval(state, i);
-+		interval->numerator = 1;
-+		interval->denominator =
-+			index >= 0 ? frmrate[index].framerate : 0;
-+	}
++#include <linux/atomic.h>
+ #include <linux/types.h>
+ #include "reg.h"
  
- 	return 0;
- }
-@@ -438,7 +483,7 @@ static const struct v4l2_subdev_pad_ops tegra_csi_pad_ops = {
- 	.get_fmt		= csi_get_format,
- 	.set_fmt		= csi_set_format,
- 	.get_frame_interval	= tegra_csi_get_frame_interval,
--	.set_frame_interval	= tegra_csi_get_frame_interval,
-+	.set_frame_interval	= tegra_csi_set_frame_interval,
- };
+@@ -34,10 +35,10 @@ struct dim_ch_state {
  
- static const struct v4l2_subdev_ops tegra_csi_ops = {
-@@ -446,6 +491,10 @@ static const struct v4l2_subdev_ops tegra_csi_ops = {
- 	.pad    = &tegra_csi_pad_ops,
- };
+ struct int_ch_state {
+ 	/* changed only in interrupt context */
+-	volatile int request_counter;
++	atomic_t request_counter;
  
-+static const struct v4l2_subdev_internal_ops tegra_csi_internal_ops = {
-+	.init_state = csi_init_state,
-+};
-+
- struct v4l2_subdev *tegra_channel_get_remote_csi_subdev(struct tegra_vi_channel *chan)
- {
- 	struct media_pad *pad;
-@@ -642,6 +691,16 @@ static int tegra_csi_channel_init(struct tegra_csi_channel *chan)
- 		return ret;
- 	}
+ 	/* changed only in task context */
+-	volatile int service_counter;
++	atomic_t service_counter;
  
-+	subdev->internal_ops = &tegra_csi_internal_ops;
-+	ret = v4l2_subdev_init_finalize(subdev);
-+	if (ret < 0) {
-+		dev_err(csi->dev,
-+			"failed to initialize subdev state: %d\n", ret);
-+		media_entity_cleanup(&subdev->entity);
-+		subdev->dev = NULL;
-+		return ret;
-+	}
-+
- 	if (!IS_ENABLED(CONFIG_VIDEO_TEGRA_TPG)) {
- 		ret = v4l2_async_register_subdev(subdev);
- 		if (ret < 0) {
-@@ -696,6 +755,7 @@ static void tegra_csi_channels_cleanup(struct tegra_csi *csi)
- 		if (subdev->dev) {
- 			if (!IS_ENABLED(CONFIG_VIDEO_TEGRA_TPG))
- 				v4l2_async_unregister_subdev(subdev);
-+			v4l2_subdev_cleanup(subdev);
- 			media_entity_cleanup(&subdev->entity);
- 		}
- 
-diff --git a/drivers/staging/media/tegra-video/csi.h b/drivers/staging/media/tegra-video/csi.h
-index f0277cb42446..25aff2581f06 100644
---- a/drivers/staging/media/tegra-video/csi.h
-+++ b/drivers/staging/media/tegra-video/csi.h
-@@ -53,7 +53,6 @@ struct tegra_csi;
-  * @csi_port_nums: CSI channel port numbers
-  * @pg_mode: test pattern generator mode for channel
-  * @format: active format of the channel
-- * @framerate: active framerate for TPG
-  * @h_blank: horizontal blanking for TPG active format
-  * @v_blank: vertical blanking for TPG active format
-  * @mipi: mipi device for corresponding csi channel pads, or NULL if not applicable (TPG, error)
-@@ -71,7 +70,6 @@ struct tegra_csi_channel {
- 	u8 csi_port_nums[GANG_PORTS_MAX];
- 	u8 pg_mode;
- 	struct v4l2_mbus_framefmt format;
--	unsigned int framerate;
- 	unsigned int h_blank;
- 	unsigned int v_blank;
- 	struct tegra_mipi_device *mipi;
+ 	u8 idx1;
+ 	u8 idx2;
 
 ---
 base-commit: a41e364995bbcfa627418a70fe913c35b7510728
-change-id: 20261107-staging-csi-interval-967254b96cd8
+change-id: 20261107-staging-dim2-atomic-68a85f8feaf6
 
 Best regards,
 --  
