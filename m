@@ -1,105 +1,62 @@
-From: Cunhao Lu <1579567540@qq.com>
-Date: Sun, 08 Nov 2026 19:33:37 +0800
-Subject: [PATCH net v8 10/10] can: rockchip_canfd: serialize timecounter
- timestamp conversion
+From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
+Subject: [PATCH 0/3] Subject: [PATCH 0/3] staging: octeon: Fix
+ initialization pathways, parsing, and modernize statistics
+Date: Sun, 08 Nov 2026 05:48:59 -0600
+Message-Id: <20261108-octeon-init-pipeline-v1-v1-0-eb2c6c956279@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-rockchip-canfd-restart-close-v8-10-3e7a23fd9eae@qq.com>
-References: <20261108-rockchip-canfd-restart-close-v8-0-3e7a23fd9eae@qq.com>
-In-Reply-To: <20261108-rockchip-canfd-restart-close-v8-0-3e7a23fd9eae@qq.com>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, kernel@pengutronix.de, 
- Vincent Mailhol <mailhol@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Oliver Hartkopp <socketcan@hartkopp.net>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, 
- Wolfgang Grandegger <wg@grandegger.com>
-Cc: Cunhao Lu <1579567540@qq.com>, linux-can@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- linux-doc@vger.kernel.org, stable@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794137679; l=2957;
- i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=9VhCsHzQVgwKjVIZpuLTsjW3kBG025wPmIX2/tRYdvQ=;
- b=h+37yVex9KuC9pcGTXb3sYEez/gyJOACzqtpKUPAcVH9OPPoB+RvL9FOxd5jPxhnjx9X1p2Rm
- biQ+iWgKOeZBozIDHs5AJKfkJBOjgtf0mEDmU8BMmylAUsRgdd4Uh13
-X-Developer-Key: i=1579567540@qq.com; a=ed25519;
- pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
-X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MwQqDMBBF0V+RWXfARCu2v1K6KOmzfSCTkIgI4
+ r8bXJ7FvbsUZKLIs9klY2VhtAp3ayT8P/aD8lstvvWDc+2oMSyIpjQumpgw06CrU/g7wtBP/QO
+ d1DplTNyu8+t9HCedG/ndaQAAAA==
+X-Change-ID: 20261108-octeon-init-pipeline-v1-e25ec64f49e3
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794138540; l=1714;
+ i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
+ bh=w+LxKXpc5/OueBx6E2vSnL8lEwk3W2G5TdRTpGXBCVA=;
+ b=4IlX1Expen/V/qIyYipHD40SSx4qgmLDskV1to9gu6SYOp5F7ytQkD9/mHgUh8iHz41vEYbh4
+ w4V7QgSZJsOA60hYXKFZtCkYWrEZrkuymcg41qrzlL/gtDrBeYbFbOX
+X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
+ pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
+X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The timestamp worker advances the timecounter with timecounter_read()
-while RX, TX completion and error-frame paths use timecounter_cyc2time()
-to convert hardware timestamps without holding timestamp_lock.
+This series resolves critical initialization issues, structural edge cases 
+in string tokenization, and infrastructure modernizations within the core 
+ethernet interface logic of the Cavium Octeon staging driver (ethernet.c).
 
-timecounter_read() updates frac, cycle_last and nsec in separate steps.
-A concurrent conversion can observe the new cycle_last with the old
-nsec and produce an incorrect timestamp.
+1. Fix a missing hardware resource cleanup step in the cvm_oct_probe() error 
+   handling path by ensuring cvmx_pko_disable() is invoked dynamically prior 
+   to device detachment.
+2. Replace an unsafe prefix-matching strstr() evaluation within the 
+   pow_send_list check with accurate comma-separated tokenization using 
+   strsep() and strict strcmp() checking.
+3. Migrate the legacy 32-bit ndo_get_stats net_device_ops callback to the 
+   modern 64-bit ndo_get_stats64 atomic interface infrastructure to prevent 
+   counter wrap-around bugs on SMP platforms.
 
-Hold timestamp_lock across timecounter_cyc2time(), using the same lock
-as timecounter_read() and timecounter_init(). Keep the SKB timestamp
-assignment outside the critical section.
+Oscar Alejandro Sánchez Lucero (3):
+  staging: octeon: disable PKO before device removal in probe error path
+  staging: octeon: match exact interface names in pow_send_list
+  staging: octeon: convert from ndo_get_stats to ndo_get_stats64
 
-TX completion nests timestamp_lock inside tx_lock; no timestamp-lock
-holder acquires tx_lock.
-
-Fixes: 4e1a18bab124 ("can: rockchip_canfd: add hardware timestamping support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Cunhao Lu <1579567540@qq.com>
+Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 ---
- drivers/net/can/rockchip/rockchip_canfd-timestamp.c | 5 ++++-
- drivers/net/can/rockchip/rockchip_canfd.h           | 4 ++--
- 2 files changed, 6 insertions(+), 3 deletions(-)
+Oscar Alejandro Sánchez Lucero (3):
+      staging: octeon: disable PKO before device removal in probe error path
+      staging: octeon: convert from ndo_get_stats to ndo_get_stats64
+      staging: octeon: match exact interface names in pow_send_list
 
-diff --git a/drivers/net/can/rockchip/rockchip_canfd-timestamp.c b/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-index 1d2a122770dc..e255bb33a20d 100644
---- a/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-+++ b/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-@@ -15,13 +15,16 @@ static u64 rkcanfd_timestamp_read(struct cyclecounter *cc)
- 	return rkcanfd_get_timestamp(priv);
- }
- 
--void rkcanfd_skb_set_timestamp(const struct rkcanfd_priv *priv,
-+void rkcanfd_skb_set_timestamp(struct rkcanfd_priv *priv,
- 			       struct sk_buff *skb, const u32 timestamp)
- {
- 	struct skb_shared_hwtstamps *hwtstamps = skb_hwtstamps(skb);
-+	unsigned long flags;
- 	u64 ns;
- 
-+	spin_lock_irqsave(&priv->timestamp_lock, flags);
- 	ns = timecounter_cyc2time(&priv->tc, timestamp);
-+	spin_unlock_irqrestore(&priv->timestamp_lock, flags);
- 
- 	hwtstamps->hwtstamp = ns_to_ktime(ns);
- }
-diff --git a/drivers/net/can/rockchip/rockchip_canfd.h b/drivers/net/can/rockchip/rockchip_canfd.h
-index 078876769a05..ecb9e2d6aa19 100644
---- a/drivers/net/can/rockchip/rockchip_canfd.h
-+++ b/drivers/net/can/rockchip/rockchip_canfd.h
-@@ -477,7 +477,7 @@ struct rkcanfd_priv {
- 
- 	/* Serialize TX submission/completion with bus-off and restart. */
- 	spinlock_t tx_lock;
--	/* Protects timestamp_active and worker reads/requeueing. */
-+	/* Protects tc, timestamp_active and worker requeueing. */
- 	spinlock_t timestamp_lock;
- 	void __iomem *regs;
- 	unsigned int tx_head;
-@@ -557,7 +557,7 @@ void rkcanfd_ethtool_init(struct rkcanfd_priv *priv);
- 
- int rkcanfd_handle_rx_int(struct rkcanfd_priv *priv);
- 
--void rkcanfd_skb_set_timestamp(const struct rkcanfd_priv *priv,
-+void rkcanfd_skb_set_timestamp(struct rkcanfd_priv *priv,
- 			       struct sk_buff *skb, const u32 timestamp);
- void rkcanfd_timestamp_work_init(struct rkcanfd_priv *priv);
- void rkcanfd_timestamp_init(struct rkcanfd_priv *priv);
+ drivers/staging/octeon/ethernet.c | 55 +++++++++++++++++++++++++--------------
+ 1 file changed, 36 insertions(+), 19 deletions(-)
+---
+base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
+change-id: 20261108-octeon-init-pipeline-v1-e25ec64f49e3
 
+Best regards,
 -- 
-2.34.1
+Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 
