@@ -1,57 +1,56 @@
 From: DelaySystem <DelaySystem@tubot.lat>
-Date: Sat, 07 Nov 2026 21:16:11 -0800
-Subject: [PATCH] staging: media: imx: ic-prp: add FORMAT_TRY frame interval
- support
+Date: Sat, 07 Nov 2026 21:17:20 -0800
+Subject: [PATCH] staging: media: imx: ic-prpencvf: add FORMAT_TRY frame
+ interval support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261107-batch1-m1-prp-try-v1-1-56a08f54791b@tubot.lat>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ6CMAyA4VchPdukRYTEVzEetlGlJOLSDYIhv
- DtTj9/h/zdIYioJrtUGJosmfU8FfKogDG56CmpfDDXVLTN16F0OA+OLMVrEbB88d+ToQuKb3kP
- poslD19/zdv87zX6UkL8j2PcDkrMvbnUAAAA=
-X-Change-ID: 20261107-batch1-m1-prp-try-370a050eb4db
+Message-Id: <20261107-batch1-m2-prpencvf-try-v1-1-76bd9f505710@tubot.lat>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDvgRIixVyldaBx1hKZhkkqLe
+ PemdfkW/++QWIUTXKsdlDdJ8gwFdKnAL32YGWUsBlMbS1S3OPTZL4QPg1EjB79NmPWDDTlyjW2
+ dHTsocVSe5P0f3+6n02tY2effDY7jC/Ai2gZ6AAAA
+X-Change-ID: 20261107-batch1-m2-prpencvf-try-3181836786d9
 To: slongerbeam@gmail.com
-Cc: linux-kernel@vger.kernel.org, gregkh@linuxfoundation.org, 
- vickramk.207@gmail.com, linux-staging@lists.linux.dev, 
- linux-media@vger.kernel.org, mchehab@kernel.org, imx@lists.linux.dev, 
- p.zabel@pengutronix.de, DelaySystem <DelaySystem@tubot.lat>
+Cc: linux-media@vger.kernel.org, gregkh@linuxfoundation.org, 
+ mchehab@kernel.org, linux-kernel@vger.kernel.org, p.zabel@pengutronix.de, 
+ linux-staging@lists.linux.dev, imx@lists.linux.dev, 
+ DelaySystem <DelaySystem@tubot.lat>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5034; i=DelaySystem@tubot.lat;
- h=from:subject:message-id; bh=WVwUtRUjTKbxdRiEtnEo30aSNjX2ZGooES481TnxQgg=;
- b=owGbwMvMwCH2SNl4+SzWXm/G02pJDFkfWGd9fOqwyWtq5BOrH5nv1DU/vb/7omYJ/+TszM3r1
- mhZaXyX7ChlYRDjYJAVU2QRk+F5X39fJ87aas4JmDmsTCBDGLg4BWAij14yMmwO4DdmCFppdeZt
- 3zWtkF+P/rv9OcNbaPl0Z+PTJUlKn34w/A94EjT/0BobpxkrN/Y+8Res3C9p1r7QOz2Rs/fG+YV
- 1N5gB
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5259; i=DelaySystem@tubot.lat;
+ h=from:subject:message-id; bh=5HNjdHC/xxY5VCXD5VgvsdQGoGczC6JvCiyidff7vH4=;
+ b=owGbwMvMwCH2SNl4+SzWXm/G02pJDFkfWO+bm21Jdir2dl3r5mT283n1slhX+49NaznbKiuDp
+ yt+SbDtKGVhEONgkBVTZBGT4Xlff18nztpqzgmYOaxMIEMYuDgFYCKz7Rn+qR3wzs4N4qv+x5Bv
+ vWum/q38jm/cj0VaVf5qie5/X+n2mOE3a/aGyn3Lp6+2lJY2nuqtvU/sR6tdjcV6J4UXsyf88zB
+ gBwA=
 X-Developer-Key: i=DelaySystem@tubot.lat; a=openpgp;
  fpr=161C0CEF7FDF2C5E3B3A9CC8E22333A79A058D4B
 X-Endpoint-Received: by B4 Relay for DelaySystem@tubot.lat/default with auth_id=1447
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Vickram Kapoor <vickramk.207@gmail.com>
-
 Implement frame interval handling for V4L2_SUBDEV_FORMAT_TRY
-by storing and retrieving per-pad intervals from the subdev state.
-Also add a PRP-specific init_state callback to initialize TRY intervals
-from the active default, and move default interval initialization to
-prp_init().
+by storing and retrieving per-pad intervals from the subdev state,
+following the same pattern the driver already uses for TRY formats:
+ACTIVE intervals stay in priv->frame_interval while TRY intervals live
+in the subdev state.  Add a PRPENCVF-specific init_state callback to
+initialize TRY intervals from the active default, and move default
+interval initialization to prp_init(), which runs before any state can
+be initialized.
 
-Link: https://lore.kernel.org/all/20260426002659.119625-1-vickramk.207@gmail.com/
-Signed-off-by: Vickram Kapoor <vickramk.207@gmail.com>
 Signed-off-by: DelaySystem <DelaySystem@tubot.lat>
 ---
 Compile-tested only: x86_64, VIDEO_IMX_MEDIA=m via COMPILE_TEST, zero
 warnings. No i.MX hardware here for runtime testing; hardware testing
 by others is welcome.
 ---
- drivers/staging/media/imx/imx-ic-prp.c | 87 +++++++++++++++++++++++++---------
+ drivers/staging/media/imx/imx-ic-prpencvf.c | 87 +++++++++++++++++++++--------
  1 file changed, 64 insertions(+), 23 deletions(-)
 
-diff --git a/drivers/staging/media/imx/imx-ic-prp.c b/drivers/staging/media/imx/imx-ic-prp.c
-index b2c648149964..3f1690d22483 100644
---- a/drivers/staging/media/imx/imx-ic-prp.c
-+++ b/drivers/staging/media/imx/imx-ic-prp.c
-@@ -87,6 +87,18 @@ __prp_get_fmt(struct prp_priv *priv, struct v4l2_subdev_state *sd_state,
- 		return &priv->format_mbus;
+diff --git a/drivers/staging/media/imx/imx-ic-prpencvf.c b/drivers/staging/media/imx/imx-ic-prpencvf.c
+index 3430ddeac356..fd70c9a36f7e 100644
+--- a/drivers/staging/media/imx/imx-ic-prpencvf.c
++++ b/drivers/staging/media/imx/imx-ic-prpencvf.c
+@@ -795,6 +795,18 @@ __prp_get_fmt(struct prp_priv *priv, struct v4l2_subdev_state *sd_state,
+ 		return &priv->format_mbus[pad];
  }
  
 +static struct v4l2_fract *
@@ -67,9 +66,9 @@ index b2c648149964..3f1690d22483 100644
 +}
 +
  /*
-  * V4L2 subdev operations.
-  */
-@@ -398,22 +410,25 @@ static int prp_get_frame_interval(struct v4l2_subdev *sd,
+  * Applies IC resizer and IDMAC alignment restrictions to output
+  * rectangle given the input rectangle, and depending on given
+@@ -1208,22 +1220,25 @@ static int prp_get_frame_interval(struct v4l2_subdev *sd,
  				  struct v4l2_subdev_frame_interval *fi)
  {
  	struct prp_priv *priv = sd_to_priv(sd);
@@ -83,7 +82,7 @@ index b2c648149964..3f1690d22483 100644
 +	struct v4l2_fract *interval;
 +	int ret = 0;
  
- 	if (fi->pad >= PRP_NUM_PADS)
+ 	if (fi->pad >= PRPENCVF_NUM_PADS)
  		return -EINVAL;
  
  	mutex_lock(&priv->lock);
@@ -104,7 +103,7 @@ index b2c648149964..3f1690d22483 100644
  }
  
  static int prp_set_frame_interval(struct v4l2_subdev *sd,
-@@ -421,24 +436,50 @@ static int prp_set_frame_interval(struct v4l2_subdev *sd,
+@@ -1231,24 +1246,50 @@ static int prp_set_frame_interval(struct v4l2_subdev *sd,
  				  struct v4l2_subdev_frame_interval *fi)
  {
  	struct prp_priv *priv = sd_to_priv(sd);
@@ -118,7 +117,7 @@ index b2c648149964..3f1690d22483 100644
 +	struct v4l2_fract *interval;
 +	int ret = 0;
  
- 	if (fi->pad >= PRP_NUM_PADS)
+ 	if (fi->pad >= PRPENCVF_NUM_PADS)
  		return -EINVAL;
  
  	mutex_lock(&priv->lock);
@@ -156,7 +155,7 @@ index b2c648149964..3f1690d22483 100644
 +
 +	mutex_lock(&priv->lock);
 +
-+	for (pad = 0; pad < PRP_NUM_PADS; pad++) {
++	for (pad = 0; pad < PRPENCVF_NUM_PADS; pad++) {
 +		interval = v4l2_subdev_state_get_interval(sd_state, pad);
 +		if (interval)
 +			*interval = priv->frame_interval;
@@ -164,27 +163,27 @@ index b2c648149964..3f1690d22483 100644
  
  	mutex_unlock(&priv->lock);
  
-@@ -450,10 +491,6 @@ static int prp_registered(struct v4l2_subdev *sd)
- 	struct prp_priv *priv = sd_to_priv(sd);
- 	u32 code;
+@@ -1274,10 +1315,6 @@ static int prp_registered(struct v4l2_subdev *sd)
+ 			return ret;
+ 	}
  
 -	/* init default frame interval */
 -	priv->frame_interval.numerator = 1;
 -	priv->frame_interval.denominator = 30;
 -
- 	/* set a default mbus format  */
- 	imx_media_enum_ipu_formats(&code, 0, PIXFMT_SEL_YUV);
- 
-@@ -487,7 +524,7 @@ static const struct v4l2_subdev_ops prp_subdev_ops = {
+ 	priv->vdev = imx_media_capture_device_init(ic_priv->ipu_dev,
+ 						   &ic_priv->sd,
+ 						   PRPENCVF_SRC_PAD, true);
+@@ -1335,7 +1372,7 @@ static const struct v4l2_subdev_ops prp_subdev_ops = {
  };
  
  static const struct v4l2_subdev_internal_ops prp_internal_ops = {
 -	.init_state = imx_media_init_state,
 +	.init_state = prp_init_state,
  	.registered = prp_registered,
+ 	.unregistered = prp_unregistered,
  };
- 
-@@ -504,6 +541,10 @@ static int prp_init(struct imx_ic_priv *ic_priv)
+@@ -1352,6 +1389,10 @@ static int prp_init(struct imx_ic_priv *ic_priv)
  	ic_priv->task_priv = priv;
  	priv->ic_priv = ic_priv;
  
@@ -192,13 +191,13 @@ index b2c648149964..3f1690d22483 100644
 +	priv->frame_interval.numerator = 1;
 +	priv->frame_interval.denominator = 30;
 +
- 	for (i = 0; i < PRP_NUM_PADS; i++)
- 		priv->pad[i].flags = (i == PRP_SINK_PAD) ?
- 			MEDIA_PAD_FL_SINK : MEDIA_PAD_FL_SOURCE;
+ 	spin_lock_init(&priv->irqlock);
+ 	timer_setup(&priv->eof_timeout_timer, prp_eof_timeout, 0);
+ 
 
 ---
 base-commit: fa4ad798f6f681031775266044ba1b0cf3c670bd
-change-id: 20261107-batch1-m1-prp-try-370a050eb4db
+change-id: 20261107-batch1-m2-prpencvf-try-3181836786d9
 
 Best regards,
 --  
