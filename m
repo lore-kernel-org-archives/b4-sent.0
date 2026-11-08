@@ -1,318 +1,250 @@
-From: Nizat Mikayilli <nacht@dxdmail.cc>
-Date: Sun, 08 Nov 2026 12:22:26 +0100
-Subject: [PATCH 2/2] power: supply: Add Silicon Mitus SM5714 fuel gauge
- driver
+From: Cunhao Lu <1579567540@qq.com>
+Subject: [PATCH net v8 00/10] can: fix Rockchip TX stalls and bus-off
+ restart/close races
+Date: Sun, 08 Nov 2026 19:33:27 +0800
+Message-Id: <20261108-rockchip-canfd-restart-close-v8-0-3e7a23fd9eae@qq.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-b4-sm5714-fuel-gauge-v1-2-c659b6c0884a@dxdmail.cc>
-References: <20261108-b4-sm5714-fuel-gauge-v1-0-c659b6c0884a@dxdmail.cc>
-In-Reply-To: <20261108-b4-sm5714-fuel-gauge-v1-0-c659b6c0884a@dxdmail.cc>
-To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Nizat Mikayilli <nacht@dxdmail.cc>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794136945; l=8857;
- i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
- bh=0xZbLK5B8C7WzRBXVs40P3RdNG+1xfko7pbUx/2GRKE=;
- b=czDEglVhaTbT3dT6wmTTHnq1gpm/CZ8WZr/a3swN6UJy77X6ik5nE2/kZ3ikG/r8WYBbkNw2J
- tHQpJuxstbnDYjUy5Xcylj7hqqakoWrPUh5FD/ziie+luG1TGWsF+oc
-X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
- pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
-X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
+X-B4-Tracking: v=1; b=H4sIAAhe8GoC/5XPTU7DMBAF4KtUXmPkf8esuAdiEY/H1ECT1g4Rq
+ MrdcYIEySp0OaPR995cScGcsJCHw5VkHFNJfVeH5u5A4Nh2L0hTqDMRTBjOuKS5hzc4pjOFtou
+ BZixDmwcK731Bij6gdlpF7iOpxDljTJ8L/0Q6HMjzz7J8+FeEYYbns2MqQ5+/lhIjX47/lzdyy
+ qkV0IKKTgqIj5fLPfSnJWcUa0ntSIIyCk30IbaBN0xuJHmLJKsUGXrFmWNCiY2k1pLekVSVahv
+ lYrROabaR9C2SniW0VgrLpAW3kcxasjuSqRIGw3SsH3qDG8n+SZyZHcnOnQCC59xDo/SvNE3TN
+ /Q6fS2YAgAA
+X-Change-ID: 20261013-rockchip-canfd-restart-close-ebde5954f1bf
+To: Marc Kleine-Budde <mkl@pengutronix.de>, kernel@pengutronix.de, 
+ Vincent Mailhol <mailhol@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Oliver Hartkopp <socketcan@hartkopp.net>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, 
+ Wolfgang Grandegger <wg@grandegger.com>
+Cc: Cunhao Lu <1579567540@qq.com>, linux-can@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-doc@vger.kernel.org, stable@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794137678; l=10370;
+ i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
+ bh=AUqolhpdPrP0LIZPkeDY80MGWPP5QcafeJRXVEuQ/XQ=;
+ b=505SD/n6kbLWmXeAEwN0jC2PWh6H8v6wHd8RKSyENZXH5ikmA7MhoG5aUi8uqhm8LdVSrgtnv
+ /VX1efOSIgvDrRRxYD7/d1cWGULEe4pibRMDatKx9HYPVjdTr/ppYq6
+X-Developer-Key: i=1579567540@qq.com; a=ed25519;
+ pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
+X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a driver for the fuel gauge of the Silicon Mitus SM5714. The state
-of charge, voltage and current are read through an SRAM window, and the
-SRAM read address is the only register the driver writes. The status
-is derived from the battery current, as in s2mu005-battery. The driver
-does not load a battery model, so capacity is only reported once
-Samsung's software has initialized the gauge. The register layout and
-scaling come from Samsung's GPL driver for the Galaxy Tab S9.
+On a production robot using a LubanCat-5IO with an RK3588, the CAN TX
+queue remained stopped while RX continued, and subsequent sends returned
+ENOBUFS. The interface still reported ERROR-ACTIVE, with neither a
+hardware bus-off condition nor a pending TX request.
 
-Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
+During CAN traffic, the driver also repeatedly reported an inconsistent
+TX echo state:
+
+  rockchip_canfd fea60000.can can0: rkcanfd_tx_tail_is_eff:
+  echo_skb[0]=NULL tx_head=0x00060f7d tx_tail=0x00060f7c
+
+The Rockchip CAN-FD driver completes transmissions by matching
+self-received frames with entries in the echo skb ring. A race between its
+transmit and completion paths can expose a partially updated echo entry,
+dereference an skb queued for NAPI, or stop the TX queue without a later
+completion to wake it.
+
+While testing the echo-loss fix with fault injection, I discovered a
+separate race between bus-off restart and device close.
+
+Rockchip currently cancels restart_work in close_candev(), after freeing
+the IRQ, disabling RX offload and stopping the controller. A concurrent
+restart can re-enable the controller and interrupts after IRQ teardown,
+and requeue timestamp work that accesses registers after runtime suspend
+has disabled the controller clocks.
+
+The CAN core skips scheduling or starting recovery when its
+netif_running() check observes the interface down. A new
+close_candev_cancel_restart_sync() helper lets Rockchip wait for any
+restart already in progress before tearing down resources.
+The final close_candev() call retains cancellation and echo cleanup.
+
+Rockchip restart masks the device's interrupts and drains active IRQ
+handlers without disabling the shared interrupt line. It also drains
+timestamp work before reinitializing the controller and timecounter.
+The Rockchip IRQ handler stays suspended until initialization is complete.
+Timestamp locking prevents workers from rearming after deactivation and
+keeps timestamp conversions consistent with timecounter updates.
+
+The bus-off path drains TX submission and RX-side echo users before
+publishing BUS_OFF. Consumed RX FIFO entries are dropped while TX is
+disabled to prevent self-transmitted frames from reaching ordinary RX.
+Startup serializes carrier restoration, IRQ resumption and queue wake
+with a new bus-off. The series also fixes RX offload cleanup when
+request_irq() fails during open.
+
+The following issues remain outside this series:
+
+- Races in the Rockchip bus error counter cache.
+- Incomplete runtime PM clock cleanup during removal or failed registration.
+- Missing explicit interrupt-mask write completion before free_irq() in
+  the Rockchip close path.
+
+When I have time, I will send separate patches to fix them one by one.
+
+Hardware testing used a LubanCat-5IO running Linux 6.18 PREEMPT and
+PREEMPT_RT kernels with v7 and the applicable prerequisites backported.
+Tests on each kernel covered 600 seconds of bidirectional classic CAN
+traffic, plus CAN FD and CAN FD+BRS. Local echo and both software and
+hardware TX timestamps were also verified.
+
+All 1,000 socket-close iterations passed. Instrumentation captured
+1,150 cases where the last TX skb of a closed socket was destroyed,
+all after releasing tx_lock and with IRQs enabled.
+
+All 200 injected echo clone failures dropped the frame without
+submitting TX, advancing tx_head or adding BQL bytes; subsequent sends
+succeeded after removing the injection. BUSY, occupied slots, missing
+echo skbs and invalid indices were also tested, along with automatic and
+manual recovery from hardware bus-off triggered by bitrate mismatches.
+All passed.
+
+Test-only instrumentation captured 20 restart/close and 20 close/FIFO
+interleavings. No timestamp worker ran during about 300 seconds after
+close, and no WARN/Oops, deadlocks or persistent TX stalls were observed
+during CAN testing.
+
+Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- MAINTAINERS                           |   1 +
- drivers/power/supply/Kconfig          |  10 ++
- drivers/power/supply/Makefile         |   1 +
- drivers/power/supply/sm5714-battery.c | 221 ++++++++++++++++++++++++++++++++++
- 4 files changed, 233 insertions(+)
+Changes in v8:
+- Merge the previously submitted Rockchip TX fixes, with TX serialization
+  before the retry fix.
+- Move retained-skb handling and the missing-echo guard into the echo
+  failure fix, using the original skb as the frame-data source.
+- Establish the TX/RX critical sections and caller-held helper locking in
+  the TX serialization patch, covering queue updates, TX diagnostics and
+  RX pending checks, with assertions for command writes.
+- Reuse those critical sections in the bus-off/restart lifecycle patch.
+- Rebase onto the latest testing branch in the mkl/linux-can-next repository.
+- Link to the Rockchip TX fixes:
+  https://lore.kernel.org/linux-can/tencent_E25C9BE6689264E4138A464803B810FDFD09@qq.com
+- Link to v7:
+  https://patch.msgid.link/20261106-rockchip-canfd-restart-close-v7-0-accdb11bc845@qq.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 2875017d21c2..d9f37c040453 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -25718,6 +25718,7 @@ M:	Nizat Mikayilli <nacht@dxdmail.cc>
- L:	linux-pm@vger.kernel.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/power/supply/siliconmitus,sm5714-fuel-gauge.yaml
-+F:	drivers/power/supply/sm5714-battery.c
- 
- SILICON MOTION SM712 FRAME BUFFER DRIVER
- M:	Sudip Mukherjee <sudipm.mukherjee@gmail.com>
-diff --git a/drivers/power/supply/Kconfig b/drivers/power/supply/Kconfig
-index ee7dc5f2617a..c92d09a4f1c9 100644
---- a/drivers/power/supply/Kconfig
-+++ b/drivers/power/supply/Kconfig
-@@ -240,6 +240,16 @@ config BATTERY_S2MU005
- 
- 	  This driver, if built as a module, will be called s2mu005-fuel-gauge.
- 
-+config BATTERY_SM5714
-+	tristate "Silicon Mitus SM5714 fuel gauge driver"
-+	depends on I2C
-+	help
-+	  Say Y to enable support for the fuel gauge of the Silicon Mitus
-+	  SM5714, which reports the battery state of charge, voltage and
-+	  current.
-+
-+	  This driver, if built as a module, will be called sm5714-battery.
-+
- config BATTERY_COLLIE
- 	tristate "Sharp SL-5500 (collie) battery"
- 	depends on SA1100_COLLIE && MCP_UCB1200
-diff --git a/drivers/power/supply/Makefile b/drivers/power/supply/Makefile
-index f3c0d1006c1a..459f9cbe5f30 100644
---- a/drivers/power/supply/Makefile
-+++ b/drivers/power/supply/Makefile
-@@ -41,6 +41,7 @@ obj-$(CONFIG_BATTERY_QCOM_BATTMGR)	+= qcom_battmgr.o
- obj-$(CONFIG_BATTERY_OLPC)	+= olpc_battery.o
- obj-$(CONFIG_BATTERY_SAMSUNG_SDI)	+= samsung-sdi-battery.o
- obj-$(CONFIG_BATTERY_S2MU005)	+= s2mu005-battery.o
-+obj-$(CONFIG_BATTERY_SM5714)	+= sm5714-battery.o
- obj-$(CONFIG_BATTERY_COLLIE)	+= collie_battery.o
- obj-$(CONFIG_BATTERY_INGENIC)	+= ingenic-battery.o
- obj-$(CONFIG_BATTERY_INTEL_DC_TI) += intel_dc_ti_battery.o
-diff --git a/drivers/power/supply/sm5714-battery.c b/drivers/power/supply/sm5714-battery.c
-new file mode 100644
-index 000000000000..bd8cb97d81df
---- /dev/null
-+++ b/drivers/power/supply/sm5714-battery.c
-@@ -0,0 +1,221 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+
-+#include <linux/bits.h>
-+#include <linux/err.h>
-+#include <linux/i2c.h>
-+#include <linux/math.h>
-+#include <linux/minmax.h>
-+#include <linux/module.h>
-+#include <linux/mutex.h>
-+#include <linux/power_supply.h>
-+#include <linux/property.h>
-+#include <linux/units.h>
-+
-+#define SM5714_FG_REG_DEVICE_ID		0x00
-+#define SM5714_FG_REG_SYSTEM_STATUS	0x10
-+#define SM5714_FG_REG_AUX_STAT		0x22
-+#define SM5714_FG_REG_SRAM_RADDR	0x8c
-+#define SM5714_FG_REG_SRAM_RDATA	0x8d
-+
-+#define SM5714_FG_SYSTEM_STATUS_INIT	BIT(12)
-+#define SM5714_FG_AUX_STAT_CURRENT_X2_5	BIT(10)
-+
-+#define SM5714_FG_SRAM_SOC		0x00
-+#define SM5714_FG_SRAM_VBAT		0x03
-+#define SM5714_FG_SRAM_CURRENT		0x05
-+#define SM5714_FG_SRAM_VBAT_AVG		0x08
-+#define SM5714_FG_SRAM_CURRENT_AVG	0x09
-+
-+struct sm5714_fg {
-+	struct i2c_client *client;
-+	struct mutex lock; /* SRAM read address and data */
-+};
-+
-+static int sm5714_fg_read_sram(struct sm5714_fg *fg, u8 addr)
-+{
-+	int ret;
-+
-+	guard(mutex)(&fg->lock);
-+
-+	ret = i2c_smbus_write_word_data(fg->client, SM5714_FG_REG_SRAM_RADDR, addr);
-+	if (ret)
-+		return ret;
-+
-+	return i2c_smbus_read_word_data(fg->client, SM5714_FG_REG_SRAM_RDATA);
-+}
-+
-+static int sm5714_fg_sign_mag(int raw, int mul, int div)
-+{
-+	int val = mult_frac(raw & 0x7fff, mul, div);
-+
-+	return raw & BIT(15) ? -val : val;
-+}
-+
-+static int sm5714_fg_get_voltage(struct sm5714_fg *fg, u8 addr, int *val)
-+{
-+	int ret;
-+
-+	ret = sm5714_fg_read_sram(fg, addr);
-+	if (ret < 0)
-+		return ret;
-+
-+	*val = 2700000 + sm5714_fg_sign_mag(ret, 10000, 109);
-+
-+	return 0;
-+}
-+
-+static int sm5714_fg_get_current(struct sm5714_fg *fg, u8 addr, int *val)
-+{
-+	int aux, ret;
-+
-+	ret = sm5714_fg_read_sram(fg, addr);
-+	if (ret < 0)
-+		return ret;
-+
-+	aux = i2c_smbus_read_word_data(fg->client, SM5714_FG_REG_AUX_STAT);
-+	if (aux < 0)
-+		return aux;
-+
-+	*val = sm5714_fg_sign_mag(ret, MICRO, 2044);
-+	if (aux & SM5714_FG_AUX_STAT_CURRENT_X2_5)
-+		*val = *val * 5 / 2;
-+
-+	return 0;
-+}
-+
-+static int sm5714_fg_get_capacity(struct sm5714_fg *fg, int *val)
-+{
-+	int ret;
-+
-+	ret = i2c_smbus_read_word_data(fg->client, SM5714_FG_REG_SYSTEM_STATUS);
-+	if (ret < 0)
-+		return ret;
-+
-+	if (!(ret & SM5714_FG_SYSTEM_STATUS_INIT))
-+		return -ENODATA;
-+
-+	ret = sm5714_fg_read_sram(fg, SM5714_FG_SRAM_SOC);
-+	if (ret < 0)
-+		return ret;
-+
-+	*val = min(ret >> 8, 100);
-+
-+	return 0;
-+}
-+
-+static int sm5714_fg_get_status(struct sm5714_fg *fg, int *val)
-+{
-+	int now, avg, capacity, ret;
-+
-+	ret = sm5714_fg_get_current(fg, SM5714_FG_SRAM_CURRENT, &now);
-+	if (ret)
-+		return ret;
-+
-+	ret = sm5714_fg_get_current(fg, SM5714_FG_SRAM_CURRENT_AVG, &avg);
-+	if (ret)
-+		return ret;
-+
-+	/* Use the average as well, to ride out noise around 0 A */
-+	if (now < 0 && avg < 0)
-+		*val = POWER_SUPPLY_STATUS_DISCHARGING;
-+	else if (!now)
-+		*val = POWER_SUPPLY_STATUS_NOT_CHARGING;
-+	else if (!sm5714_fg_get_capacity(fg, &capacity) && capacity > 98)
-+		*val = POWER_SUPPLY_STATUS_FULL;
-+	else
-+		*val = POWER_SUPPLY_STATUS_CHARGING;
-+
-+	return 0;
-+}
-+
-+static const enum power_supply_property sm5714_fg_props[] = {
-+	POWER_SUPPLY_PROP_STATUS,
-+	POWER_SUPPLY_PROP_CAPACITY,
-+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
-+	POWER_SUPPLY_PROP_VOLTAGE_AVG,
-+	POWER_SUPPLY_PROP_CURRENT_NOW,
-+	POWER_SUPPLY_PROP_CURRENT_AVG,
-+};
-+
-+static int sm5714_fg_get_property(struct power_supply *psy,
-+				  enum power_supply_property psp,
-+				  union power_supply_propval *val)
-+{
-+	struct sm5714_fg *fg = power_supply_get_drvdata(psy);
-+
-+	switch (psp) {
-+	case POWER_SUPPLY_PROP_STATUS:
-+		return sm5714_fg_get_status(fg, &val->intval);
-+	case POWER_SUPPLY_PROP_CAPACITY:
-+		return sm5714_fg_get_capacity(fg, &val->intval);
-+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-+		return sm5714_fg_get_voltage(fg, SM5714_FG_SRAM_VBAT, &val->intval);
-+	case POWER_SUPPLY_PROP_VOLTAGE_AVG:
-+		return sm5714_fg_get_voltage(fg, SM5714_FG_SRAM_VBAT_AVG, &val->intval);
-+	case POWER_SUPPLY_PROP_CURRENT_NOW:
-+		return sm5714_fg_get_current(fg, SM5714_FG_SRAM_CURRENT, &val->intval);
-+	case POWER_SUPPLY_PROP_CURRENT_AVG:
-+		return sm5714_fg_get_current(fg, SM5714_FG_SRAM_CURRENT_AVG, &val->intval);
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static const struct power_supply_desc sm5714_fg_desc = {
-+	.name = "sm5714-fuel-gauge",
-+	.type = POWER_SUPPLY_TYPE_BATTERY,
-+	.properties = sm5714_fg_props,
-+	.num_properties = ARRAY_SIZE(sm5714_fg_props),
-+	.get_property = sm5714_fg_get_property,
-+};
-+
-+static int sm5714_fg_probe(struct i2c_client *client)
-+{
-+	struct power_supply_config psy_cfg = {};
-+	struct device *dev = &client->dev;
-+	struct power_supply *psy;
-+	struct sm5714_fg *fg;
-+	int ret;
-+
-+	fg = devm_kzalloc(dev, sizeof(*fg), GFP_KERNEL);
-+	if (!fg)
-+		return -ENOMEM;
-+
-+	fg->client = client;
-+
-+	ret = i2c_smbus_read_word_data(client, SM5714_FG_REG_DEVICE_ID);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "failed to read device ID\n");
-+
-+	ret = devm_mutex_init(dev, &fg->lock);
-+	if (ret)
-+		return ret;
-+
-+	psy_cfg.drv_data = fg;
-+	psy_cfg.fwnode = dev_fwnode(dev);
-+
-+	psy = devm_power_supply_register(dev, &sm5714_fg_desc, &psy_cfg);
-+	if (IS_ERR(psy))
-+		return dev_err_probe(dev, PTR_ERR(psy), "failed to register power supply\n");
-+
-+	return 0;
-+}
-+
-+static const struct of_device_id sm5714_fg_of_match[] = {
-+	{ .compatible = "siliconmitus,sm5714-fuel-gauge" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, sm5714_fg_of_match);
-+
-+static struct i2c_driver sm5714_fg_driver = {
-+	.driver = {
-+		.name = "sm5714-fuel-gauge",
-+		.of_match_table = sm5714_fg_of_match,
-+	},
-+	.probe = sm5714_fg_probe,
-+};
-+module_i2c_driver(sm5714_fg_driver);
-+
-+MODULE_AUTHOR("Nizat Mikayilli <nacht@dxdmail.cc>");
-+MODULE_DESCRIPTION("Silicon Mitus SM5714 fuel gauge driver");
-+MODULE_LICENSE("GPL");
+Changes in v7:
+- Clarify that running checks do not serialize recovery with close, and
+  keep the restart-ms example tied to configuration while down.
+- Introduce Rockchip restart/IRQ synchronization and TX protection
+  together, keeping close cancellation and open failure cleanup in
+  separate patches.
+- Build on the CAN skb and Rockchip TX fixes, reusing the TX lock and
+  adapting failure cleanup to the updated skb ownership contract.
+- Link to v6:
+  https://patch.msgid.link/20261017-rockchip-canfd-restart-close-v6-0-ed605feb4b6e@qq.com
 
--- 
-2.56.0
+Changes in v6:
+- Update the can_bus_off() comment and document the running-interface
+  requirement for automatic recovery.
+- Explain Rockchip's use of the cancellation helper.
+- Release the original TX skb after unlocking.
+- Abort TX submission if echo preparation fails.
+- Link to v5:
+  https://patch.msgid.link/20261015-rockchip-canfd-restart-close-v5-0-ae77327037c9@qq.com
+
+Changes in v5:
+- Drop consumed RX FIFO entries under tx_lock when TX is disabled
+  instead of only skipping echo filtering.
+- Link to v4:
+  https://patch.msgid.link/20261015-rockchip-canfd-restart-close-v4-0-ad149ff79450@qq.com
+
+Changes in v4:
+- Serialize timecounter_cyc2time() with the worker's timecounter_read()
+  and startup's timecounter_init() using timestamp_lock.
+- Update rkcanfd_skb_set_timestamp() to take a non-const private pointer
+  and document the expanded scope of timestamp_lock.
+- Link to v3:
+  https://patch.msgid.link/20261014-rockchip-canfd-restart-close-v3-0-f0eb41090242@qq.com
+
+Changes in v3:
+- Replace disable_irq()/enable_irq() in Rockchip restart with device
+  interrupt masking, mask readback, irq_suspended and synchronize_irq().
+- Use release/acquire ordering when resuming the IRQ handler.
+- Initialize timestamp delayed work once at probe and synchronously
+  cancel it before restart reinitializes the timecounter.
+- Balance RX offload enablement when request_irq() fails during open.
+- Prevent timestamp work from reading the counter or rearming after
+  deactivation, with cancellation outside the lock.
+- Drain TX submission and RX-side echo users before publishing BUS_OFF,
+  protecting the core's pre-restart echo flush.
+- Serialize carrier restoration, IRQ enablement and queue wake with a new
+  bus-off; suspend shared IRQ handling during open until startup finishes.
+- Link to v2:
+  https://lore.kernel.org/linux-can/tencent_82C93561D200C84C24608C80049C23EEF80A@qq.com/
+
+Changes in v2:
+- Split the series into the common checks, the cancellation helper, and
+  its use in Rockchip.
+- Check netif_running() after the do_set_mode capability check and before
+  the restart notification, echo cleanup, and carrier update.
+- Only queue automatic recovery for a running interface; keep reporting
+  bus-off and make the log message match the scheduling decision.
+- Add close_candev_cancel_restart_sync() in linux/can/dev.h and use it in
+  close_candev() without changing the existing cleanup order.
+- Replace the Rockchip mutex and closing flag with an early call to the
+  helper. Drop the extra close-path IRQ synchronization and mask readback.
+- Retain IRQ exclusion around hardware reinitialization in the restart
+  callback.
+- Link to v1:
+  https://lore.kernel.org/linux-can/tencent_5802EE88434010229EDF7A53084D994C6106@qq.com/
+
+To: Marc Kleine-Budde <mkl@pengutronix.de>
+To: kernel@pengutronix.de
+To: Vincent Mailhol <mailhol@kernel.org>
+To: Heiko Stuebner <heiko@sntech.de>
+To: Oliver Hartkopp <socketcan@hartkopp.net>
+To: "David S. Miller" <davem@davemloft.net>
+To: Eric Dumazet <edumazet@kernel.org>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Simon Horman <horms@kernel.org>
+To: Jonathan Corbet <corbet@lwn.net>
+To: Shuah Khan <skhan@linuxfoundation.org>
+To: Randy Dunlap <rdunlap@infradead.org>
+To: Wolfgang Grandegger <wg@grandegger.com>
+Cc: linux-can@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-rockchip@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Cc: linux-doc@vger.kernel.org
+
+---
+Cunhao Lu (10):
+      can: rockchip_canfd: prevent TX stall on echo skb failure
+      can: rockchip_canfd: serialize TX state and command writes
+      can: rockchip_canfd: retry the outstanding TX buffer
+      can: dev: check netif_running() before bus-off recovery
+      can: dev: add close_candev_cancel_restart_sync()
+      can: rockchip_canfd: cancel bus-off restart before closing the device
+      can: rockchip_canfd: disable RX offload on open failure
+      can: rockchip_canfd: serialize TX with bus-off and restart
+      can: rockchip_canfd: prevent timestamp work from rearming after bus-off
+      can: rockchip_canfd: serialize timecounter timestamp conversion
+
+ Documentation/networking/can.rst                   | 10 +++-
+ drivers/net/can/dev/dev.c                          | 17 ++++--
+ drivers/net/can/rockchip/rockchip_canfd-core.c     | 66 ++++++++++++++++++++--
+ drivers/net/can/rockchip/rockchip_canfd-rx.c       | 29 +++++++---
+ .../net/can/rockchip/rockchip_canfd-timestamp.c    | 43 ++++++++++++--
+ drivers/net/can/rockchip/rockchip_canfd-tx.c       | 51 ++++++++++++++---
+ drivers/net/can/rockchip/rockchip_canfd.h          | 11 +++-
+ include/linux/can/dev.h                            | 17 ++++++
+ 8 files changed, 209 insertions(+), 35 deletions(-)
+---
+base-commit: 26e74534310157d284fe9f2518c1503e055b6210
+change-id: 20261013-rockchip-canfd-restart-close-ebde5954f1bf
+
+Best regards,
+--  
+Cunhao Lu <1579567540@qq.com>
 
