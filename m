@@ -1,11 +1,11 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Sun, 08 Nov 2026 17:59:50 -0500
-Subject: [PATCH net-next v2 1/2] dt-bindings: net: dsa: lantiq,gswip: add
- reset-gpios
+Date: Sun, 08 Nov 2026 17:59:51 -0500
+Subject: [PATCH net-next v2 2/2] net: dsa: mxl-gsw1xx: reset the switch
+ through reset-gpios
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-mxl-gsw1xx-reset-v2-1-46c1da093893@telaak.dev>
+Message-Id: <20261108-mxl-gsw1xx-reset-v2-2-46c1da093893@telaak.dev>
 References: <20261108-mxl-gsw1xx-reset-v2-0-46c1da093893@telaak.dev>
 In-Reply-To: <20261108-mxl-gsw1xx-reset-v2-0-46c1da093893@telaak.dev>
 To: Hauke Mehrtens <hauke@hauke-m.de>, Andrew Lunn <andrew@lunn.ch>, 
@@ -18,50 +18,105 @@ Cc: Daniel Golle <daniel@makrotopia.org>, netdev@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794178811; l=1167;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794178811; l=3387;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=MOeFTVQJmsY5ws6zpmzjMuMLHXSYlILvnKcfHNWsxQY=;
- b=osGDcodit8YnTIe+0oCSL5ZBtLGrWLIaOrFzSIWFxkG7qnv2ShbSz72NP0596qN6ZkCXGbzLL
- TVqSLDl7euRDqyBhIKae7YPOdJbw+Mvm9HCkIMWsMSywrge1UVVTZLp
+ bh=xTEUcIE9O7Lvlm7PCL2ChxhTq2KKtfCbbxYcvy8dALU=;
+ b=xd3+dXoaRFn9bQGadtug07XLwPcs7wywu+21B2gVr+qS7gd08iwXUi5MwLK3UqJboWRgrkZaH
+ sSGallL3n9DD57DWvseVUJCEA9C/spHU89Uiql4YZQoxpjLh0ZjoYFj
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The standalone GSW1xx switches have a hardware reset input, and boards
-wire it to a SoC GPIO. Allow describing it. The SoC-integrated GSWIP
-variants have no such pin.
+The switch keeps the configuration the bootloader left in it, and the
+driver never resets it. The MDIO core asserts and releases reset-gpios
+only for PHY devices, so a reset line described on the switch node has
+no effect either.
 
-Acked-by: Rob Herring (Arm) <robh@kernel.org>
+On the GL.iNet GL-SFT1200 the bootloader leaves each internal PHY of
+the GSW150 one MDIO address above its port. Port 0 then fails with
+"failed to connect to PHY: -ENODEV", and the PHY that answers at a
+port's address belongs to the neighboring port. After a hardware reset
+every PHY is back at its port's address and all ports work.
+
+Get the reset through the reset controller API and pulse it before the
+first register access. The reset core hands a reset-gpios property to
+the reset-gpio driver, so a board that wires the reset this way needs
+CONFIG_RESET_GPIO; without it the reset is skipped. The timing follows
+the vendor's driver for the GSW150: asserted for 250 ms, then 1 s before
+the switch is accessed.
+
 Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
- Documentation/devicetree/bindings/net/dsa/lantiq,gswip.yaml | 6 ++++++
- 1 file changed, 6 insertions(+)
+ drivers/net/dsa/lantiq/mxl-gsw1xx.c | 25 +++++++++++++++++++++++++
+ drivers/net/dsa/lantiq/mxl-gsw1xx.h |  4 ++++
+ 2 files changed, 29 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/net/dsa/lantiq,gswip.yaml b/Documentation/devicetree/bindings/net/dsa/lantiq,gswip.yaml
-index 49af5573e4..9a74ea2a6d 100644
---- a/Documentation/devicetree/bindings/net/dsa/lantiq,gswip.yaml
-+++ b/Documentation/devicetree/bindings/net/dsa/lantiq,gswip.yaml
-@@ -40,6 +40,11 @@ properties:
-       - const: mdio
-       - const: mii
+diff --git a/drivers/net/dsa/lantiq/mxl-gsw1xx.c b/drivers/net/dsa/lantiq/mxl-gsw1xx.c
+index a26f78e1a4..94a7eff5e0 100644
+--- a/drivers/net/dsa/lantiq/mxl-gsw1xx.c
++++ b/drivers/net/dsa/lantiq/mxl-gsw1xx.c
+@@ -18,6 +18,7 @@
+ #include <linux/phy/phy-common-props.h>
+ #include <linux/property.h>
+ #include <linux/regmap.h>
++#include <linux/reset.h>
+ #include <linux/workqueue.h>
+ #include <net/dsa.h>
  
-+  reset-gpios:
-+    maxItems: 1
-+    description:
-+      GPIO connected to the hardware reset input of a standalone switch.
+@@ -719,6 +720,7 @@ static int gsw1xx_serdes_pcs_init(struct gsw1xx_priv *priv)
+ static int gsw1xx_probe(struct mdio_device *mdiodev)
+ {
+ 	struct device *dev = &mdiodev->dev;
++	struct reset_control *reset;
+ 	struct gsw1xx_priv *priv;
+ 	u32 version, val;
+ 	u8 shellver;
+@@ -737,6 +739,29 @@ static int gsw1xx_probe(struct mdio_device *mdiodev)
+ 	if (!priv->gswip.hw_info)
+ 		return -EINVAL;
+ 
++	/* The MDIO core handles reset-gpios only for PHYs. Reset the switch
++	 * here, so it does not run with whatever the bootloader configured.
++	 */
++	reset = devm_reset_control_get_optional_exclusive(dev, NULL);
++	if (IS_ERR(reset))
++		return dev_err_probe(dev, PTR_ERR(reset),
++				     "failed to get reset control\n");
 +
-   mdio:
-     $ref: /schemas/net/mdio.yaml#
-     unevaluatedProperties: false
-@@ -173,6 +178,7 @@ allOf:
-         mdio:
-           required:
-             - compatible
-+        reset-gpios: false
-     else:
-       properties:
-         reg:
++	if (reset) {
++		ret = reset_control_assert(reset);
++		if (ret)
++			return dev_err_probe(dev, ret, "failed to assert reset\n");
++
++		fsleep(GSW1XX_RESET_ASSERT_US);
++
++		ret = reset_control_deassert(reset);
++		if (ret)
++			return dev_err_probe(dev, ret,
++					     "failed to deassert reset\n");
++
++		fsleep(GSW1XX_RESET_DEASSERT_US);
++	}
++
+ 	priv->gswip.gswip = gsw1xx_regmap_init(priv, "switch",
+ 					       GSW1XX_SWITCH_BASE, 0xfff);
+ 	if (IS_ERR(priv->gswip.gswip))
+diff --git a/drivers/net/dsa/lantiq/mxl-gsw1xx.h b/drivers/net/dsa/lantiq/mxl-gsw1xx.h
+index 81bc00eabb..bca8e3223c 100644
+--- a/drivers/net/dsa/lantiq/mxl-gsw1xx.h
++++ b/drivers/net/dsa/lantiq/mxl-gsw1xx.h
+@@ -19,6 +19,10 @@
+ 
+ #define GSW1XX_SYS_CLK_FREQ			340000000
+ 
++/* Hardware reset timing of the vendor's driver for the GSW150 */
++#define GSW1XX_RESET_ASSERT_US			250000
++#define GSW1XX_RESET_DEASSERT_US		1000000
++
+ /* SMDIO switch register base address */
+ #define GSW1XX_SMDIO_BADR			0x1f
+ #define  GSW1XX_SMDIO_BADR_UNKNOWN		-1
 
 -- 
 Git-155)
