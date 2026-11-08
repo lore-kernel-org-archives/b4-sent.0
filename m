@@ -1,80 +1,70 @@
-From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Sun, 08 Nov 2026 18:07:13 +0000
-Subject: [PATCH] ntfs3: reject on-disk c_unit values that cause shift
- overflow
+From: Alban Munari <alban.kernel@gmail.com>
+Date: Sun, 08 Nov 2026 18:05:39 +0000
+Subject: [PATCH] tpm: Fix the value of TPM2_SE_TRIAL
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-ntfs3-cunit-fix-v1-1-fb8d02b3f8a2@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAFC68GoC/x2MQQqAIBAAvxJ7bsFVyugr0aFsrb1YaEUg/T3pO
- AMzGRJH4QR9lSHyLUn2UIDqCtw2hZVRlsKglW6JVIfh9Mmgu4Kc6OVBT460VWRm20CpjshF/8d
- hfN8PcvXE2mEAAAA=
-To: Konstantin Komarov <almaz.alexandrovich@paragon-software.com>, 
- joasantonio108@gmail.com
-Cc: linux-kernel@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794161232; l=1984;
- i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=+VpBC7rJJPtIcs1JV3jkHoT7tsNpQiBY1oYu00e37pw=;
- b=PVQJisUuA6eNNZUFtQw8suvtGByi8YYwcknEc984ulPxb9QyosF23DXcoVImT09ALmkDNyS1w
- XG0orKvnbuvCpJWxdbqEDblXdIEHE/1zcEnkEcbSSSY1LKsLhCQmuq9
-X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
- pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
-X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
+Message-Id: <20261108-tpm-se-trial-v1-1-492218f9de41@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwML3ZKCXN3iVN2SoszEHF1TC4Ok1DTLJJM0Q3MloJaCotS0zAqwcdG
+ xEH5xaVJWanIJyAyl2loA2450enAAAAA=
+X-Change-ID: 20261108-tpm-se-trial-580bef9b4f17
+To: Peter Huewe <peterhuewe@gmx.de>, Jarkko Sakkinen <jarkko@kernel.org>, 
+ Jason Gunthorpe <jgg@ziepe.ca>, 
+ James Bottomley <James.Bottomley@HansenPartnership.com>, 
+ Ard Biesheuvel <ardb@kernel.org>
+Cc: linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Alban Munari <alban.kernel@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794161265; l=1447;
+ i=alban.kernel@gmail.com; s=hephaestus; h=from:subject:message-id;
+ bh=oXjBD4XWIC/ZjW4m/+tswgFBCuflIPHtvzC/8fbK08o=;
+ b=rnhjKXXFmP/oNAF4G5smGF3owTZwVYlv7Fam4wDkci8AXwYUuHEwnNgwdB2Qzu9kQsIdWedUA
+ j6B8RlB09pACHIdSJWu10IRT+c6fJ1mVZYTKQnJAydA6WGepGio0RLJ
+X-Developer-Key: i=alban.kernel@gmail.com; a=ed25519;
+ pk=E4gTLxHRk8yuKicoDcjhUfRHnlctgbnlV9dmOwM5338=
+X-Endpoint-Received: by B4 Relay for alban.kernel@gmail.com/hephaestus with auth_id=1455
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The c_unit field of non-resident NTFS attributes controls frame size
-via shift expressions like 1u << c_unit throughout attrib.c. This
-field is read directly from the on-disk MFT record without bounds
-validation for extended (compressed/sparse) attributes.
+The TPM 2.0 Library specification, Part 2: Structures, defines the
+session types (TPM_SE) as TPM_SE_HMAC = 0x00, TPM_SE_POLICY = 0x01 and
+TPM_SE_TRIAL = 0x03. TPM2_SE_TRIAL is defined as 0x02, which is not a
+session type: TPM2_StartAuthSession with it fails with TPM_RC_VALUE on
+the sessionType parameter, as swtpm 0.11.0 shows.
 
-When c_unit >= 32, the expression 1u << c_unit is undefined behavior
-for 32-bit integers. On x86, the shift count is masked to 5 bits,
-producing wrong frame alignment (e.g., c_unit=32 yields 1u << 0 = 1
-instead of 2^32). On strict-alignment architectures this may trap.
+No code in the kernel uses TPM2_SE_TRIAL, so nothing changes at run
+time. The TPM 2.0 selftests already define it as 0x03 in
+tools/testing/selftests/tpm2/tpm2.py.
 
-The affected expressions in attrib.c include:
-  - 1u << attr_b->nres.c_unit (lines 1168, 1732)
-  - align <<= attr_b->nres.c_unit (line 501)
-  - sbi->cluster_size << attr_b->nres.c_unit (lines 2089, 2401, 2617)
+This change was found and written with an AI coding assistant (Claude
+Opus 5.5, Anthropic), while building trial sessions on an AMD fTPM with
+the value 0x03.
 
-Add a bounds check in mi_enum_attr() to reject attributes with
-c_unit > 31, which covers all downstream users. The existing
-validation in frecord.c (checking c_unit == NTFS_LZNT_CUNIT) only
-covers explicit compression read/write paths, not the attrib.c
-block mapping, truncate, fallocate, and punch_hole paths.
-
-A crafted NTFS image with c_unit=32 triggers the UB on mount when
-any compressed file is accessed.
-
-Found by LLM-assisted manual code review.
-
-Fixes: be71b5cba2e6 ("fs/ntfs3: Add attrib operations")
-Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
+Fixes: 699e3efd6c64 ("tpm: Add HMAC session start and end functions")
+Signed-off-by: Alban Munari <alban.kernel@gmail.com>
 ---
- fs/ntfs3/record.c | 3 +++
- 1 file changed, 3 insertions(+)
+ include/linux/tpm_command.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ntfs3/record.c b/fs/ntfs3/record.c
-index d7785f9e8..5344958ef 100644
---- a/fs/ntfs3/record.c
-+++ b/fs/ntfs3/record.c
-@@ -366,6 +366,9 @@ struct ATTRIB *mi_enum_attr(struct ntfs_inode *ni, struct mft_inode *mi,
+diff --git a/include/linux/tpm_command.h b/include/linux/tpm_command.h
+index fc446a1282e2..076ee8ce816c 100644
+--- a/include/linux/tpm_command.h
++++ b/include/linux/tpm_command.h
+@@ -171,7 +171,7 @@ struct tpm1_get_random_out {
+ enum tpm2_session_types {
+ 	TPM2_SE_HMAC	= 0x00,
+ 	TPM2_SE_POLICY	= 0x01,
+-	TPM2_SE_TRIAL	= 0x02,
++	TPM2_SE_TRIAL	= 0x03,
+ };
  
- 		if (tot_size > alloc_size)
- 			goto out;
-+
-+		if (attr->nres.c_unit > 31)
-+			goto out;
- 	} else {
- 		if (attr->nres.c_unit)
- 			goto out;
+ enum tpm2_timeouts {
 
 ---
 base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
-change-id: 20261108-ntfs3-cunit-fix-f1c127013b75
+change-id: 20261108-tpm-se-trial-580bef9b4f17
 
 Best regards,
--- 
-Joas Antonio dos Santos <joasantonio108@gmail.com>
+--  
+Alban Munari <alban.kernel@gmail.com>
 
