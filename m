@@ -1,203 +1,81 @@
 From: DelaySystem <DelaySystem@tubot.lat>
-Date: Sat, 07 Nov 2026 21:17:20 -0800
-Subject: [PATCH] staging: media: imx: ic-prpencvf: add FORMAT_TRY frame
- interval support
+Subject: [PATCH RFC 0/2] Uninterruptible host1x syncpoint wait for Tegra
+ video capture
+Date: Sat, 07 Nov 2026 21:21:45 -0800
+Message-Id: <20261107-batch1-b1-host1x-wait-v1-0-8c8198adf600@tubot.lat>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261107-batch1-m2-prpencvf-try-v1-1-76bd9f505710@tubot.lat>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDvgRIixVyldaBx1hKZhkkqLe
- PemdfkW/++QWIUTXKsdlDdJ8gwFdKnAL32YGWUsBlMbS1S3OPTZL4QPg1EjB79NmPWDDTlyjW2
- dHTsocVSe5P0f3+6n02tY2effDY7jC/Ai2gZ6AAAA
-X-Change-ID: 20261107-batch1-m2-prpencvf-try-3181836786d9
-To: slongerbeam@gmail.com
-Cc: linux-media@vger.kernel.org, gregkh@linuxfoundation.org, 
- mchehab@kernel.org, linux-kernel@vger.kernel.org, p.zabel@pengutronix.de, 
- linux-staging@lists.linux.dev, imx@lists.linux.dev, 
- DelaySystem <DelaySystem@tubot.lat>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCMBAAv1L27EI3BSVeBR/gtfSQjatZD61ko
+ y2U/t2oxxmYWcEkqxgcmxWyvNV0GivQroGYwngX1GtlcK3bE7UH5FBiImTCNFmhBeegBbvIHXs
+ nnryH2j6z3HT5fXu4nE8w/KW9+CGxfI+wbR+zXgVRfgAAAA==
+X-Change-ID: 20261107-batch1-b1-host1x-wait-3cb3b92e9199
+To: mperttunen@nvidia.com, thierry.reding@kernel.org
+Cc: DelaySystem <DelaySystem@tubot.lat>, dri-devel@lists.freedesktop.org, 
+ luca.ceresoli@bootlin.com, gregkh@linuxfoundation.org, mchehab@kernel.org, 
+ linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ clamor95@gmail.com, jonathanh@nvidia.com, linux-tegra@vger.kernel.org, 
+ skomatineni@nvidia.com, linux-media@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5259; i=DelaySystem@tubot.lat;
- h=from:subject:message-id; bh=5HNjdHC/xxY5VCXD5VgvsdQGoGczC6JvCiyidff7vH4=;
- b=owGbwMvMwCH2SNl4+SzWXm/G02pJDFkfWO+bm21Jdir2dl3r5mT283n1slhX+49NaznbKiuDp
- yt+SbDtKGVhEONgkBVTZBGT4Xlff18nztpqzgmYOaxMIEMYuDgFYCKz7Rn+qR3wzs4N4qv+x5Bv
- vWum/q38jm/cj0VaVf5qie5/X+n2mOE3a/aGyn3Lp6+2lJY2nuqtvU/sR6tdjcV6J4UXsyf88zB
- gBwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2521; i=DelaySystem@tubot.lat;
+ h=from:subject:message-id; bh=DLUckEgyR5Ni9ibN8qkK+UlCenVeIET585HOCl21B1Q=;
+ b=owGbwMvMwCH2SNl4+SzWXm/G02pJDFkf2F7NNQoS2/EpUWuyo8xRho7U69tnTPt5MWzywW1CP
+ I3nOx56d5SyMIhxMMiKKbKIyfC8r7+vE2dtNecEzBxWJpAhDFycAjCReB5Ghiff5mdefPm1PF32
+ XOykyKOvPQ1mTncoVv3YpfrKSG7Tmi2MDDMUnRZG5FvaXOP9E22qyOG+WF/mlVzW1YWTv8rHXVd
+ 15gIA
 X-Developer-Key: i=DelaySystem@tubot.lat; a=openpgp;
  fpr=161C0CEF7FDF2C5E3B3A9CC8E22333A79A058D4B
 X-Endpoint-Received: by B4 Relay for DelaySystem@tubot.lat/default with auth_id=1447
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement frame interval handling for V4L2_SUBDEV_FORMAT_TRY
-by storing and retrieving per-pad intervals from the subdev state,
-following the same pattern the driver already uses for TRY formats:
-ACTIVE intervals stay in priv->frame_interval while TRY intervals live
-in the subdev state.  Add a PRPENCVF-specific init_state callback to
-initialize TRY intervals from the active default, and move default
-interval initialization to prp_init(), which runs before any state can
-be initialized.
-
 Signed-off-by: DelaySystem <DelaySystem@tubot.lat>
----
-Compile-tested only: x86_64, VIDEO_IMX_MEDIA=m via COMPILE_TEST, zero
-warnings. No i.MX hardware here for runtime testing; hardware testing
-by others is welcome.
----
- drivers/staging/media/imx/imx-ic-prpencvf.c | 87 +++++++++++++++++++++--------
- 1 file changed, 64 insertions(+), 23 deletions(-)
+The Tegra20 video capture path runs in a kernel thread and waits on
+host1x syncpoints with host1x_syncpt_wait(), which is unconditionally
+interruptible: any signal aborts the wait with -ERESTARTSYS. At high
+resolutions and framerates these spurious failures are common, so the
+driver wraps both waits in do/while retry loops, with a TODO asking
+for an uninterruptible variant of the wait.
 
-diff --git a/drivers/staging/media/imx/imx-ic-prpencvf.c b/drivers/staging/media/imx/imx-ic-prpencvf.c
-index 3430ddeac356..fd70c9a36f7e 100644
---- a/drivers/staging/media/imx/imx-ic-prpencvf.c
-+++ b/drivers/staging/media/imx/imx-ic-prpencvf.c
-@@ -795,6 +795,18 @@ __prp_get_fmt(struct prp_priv *priv, struct v4l2_subdev_state *sd_state,
- 		return &priv->format_mbus[pad];
- }
- 
-+static struct v4l2_fract *
-+__prp_get_frame_interval(struct prp_priv *priv,
-+			 struct v4l2_subdev_state *sd_state,
-+			 unsigned int pad,
-+			 enum v4l2_subdev_format_whence which)
-+{
-+	if (which == V4L2_SUBDEV_FORMAT_TRY)
-+		return v4l2_subdev_state_get_interval(sd_state, pad);
-+
-+	return &priv->frame_interval;
-+}
-+
- /*
-  * Applies IC resizer and IDMAC alignment restrictions to output
-  * rectangle given the input rectangle, and depending on given
-@@ -1208,22 +1220,25 @@ static int prp_get_frame_interval(struct v4l2_subdev *sd,
- 				  struct v4l2_subdev_frame_interval *fi)
- {
- 	struct prp_priv *priv = sd_to_priv(sd);
--
--	/*
--	 * FIXME: Implement support for V4L2_SUBDEV_FORMAT_TRY, using the V4L2
--	 * subdev active state API.
--	 */
--	if (fi->which != V4L2_SUBDEV_FORMAT_ACTIVE)
--		return -EINVAL;
-+	struct v4l2_fract *interval;
-+	int ret = 0;
- 
- 	if (fi->pad >= PRPENCVF_NUM_PADS)
- 		return -EINVAL;
- 
- 	mutex_lock(&priv->lock);
--	fi->interval = priv->frame_interval;
-+	interval = __prp_get_frame_interval(priv, sd_state, fi->pad,
-+					    fi->which);
-+	if (!interval) {
-+		ret = -EINVAL;
-+		goto out;
-+	}
-+
-+	fi->interval = *interval;
-+out:
- 	mutex_unlock(&priv->lock);
- 
--	return 0;
-+	return ret;
- }
- 
- static int prp_set_frame_interval(struct v4l2_subdev *sd,
-@@ -1231,24 +1246,50 @@ static int prp_set_frame_interval(struct v4l2_subdev *sd,
- 				  struct v4l2_subdev_frame_interval *fi)
- {
- 	struct prp_priv *priv = sd_to_priv(sd);
--
--	/*
--	 * FIXME: Implement support for V4L2_SUBDEV_FORMAT_TRY, using the V4L2
--	 * subdev active state API.
--	 */
--	if (fi->which != V4L2_SUBDEV_FORMAT_ACTIVE)
--		return -EINVAL;
-+	struct v4l2_fract *interval;
-+	int ret = 0;
- 
- 	if (fi->pad >= PRPENCVF_NUM_PADS)
- 		return -EINVAL;
- 
- 	mutex_lock(&priv->lock);
-+	interval = __prp_get_frame_interval(priv, sd_state, fi->pad,
-+					    fi->which);
-+	if (!interval) {
-+		ret = -EINVAL;
-+		goto out;
-+	}
- 
- 	/* No limits on valid frame intervals */
- 	if (fi->interval.numerator == 0 || fi->interval.denominator == 0)
--		fi->interval = priv->frame_interval;
-+		fi->interval = *interval;
- 	else
--		priv->frame_interval = fi->interval;
-+		*interval = fi->interval;
-+out:
-+	mutex_unlock(&priv->lock);
-+
-+	return ret;
-+}
-+
-+static int prp_init_state(struct v4l2_subdev *sd,
-+			  struct v4l2_subdev_state *sd_state)
-+{
-+	struct prp_priv *priv = sd_to_priv(sd);
-+	struct v4l2_fract *interval;
-+	unsigned int pad;
-+	int ret;
-+
-+	ret = imx_media_init_state(sd, sd_state);
-+	if (ret)
-+		return ret;
-+
-+	mutex_lock(&priv->lock);
-+
-+	for (pad = 0; pad < PRPENCVF_NUM_PADS; pad++) {
-+		interval = v4l2_subdev_state_get_interval(sd_state, pad);
-+		if (interval)
-+			*interval = priv->frame_interval;
-+	}
- 
- 	mutex_unlock(&priv->lock);
- 
-@@ -1274,10 +1315,6 @@ static int prp_registered(struct v4l2_subdev *sd)
- 			return ret;
- 	}
- 
--	/* init default frame interval */
--	priv->frame_interval.numerator = 1;
--	priv->frame_interval.denominator = 30;
--
- 	priv->vdev = imx_media_capture_device_init(ic_priv->ipu_dev,
- 						   &ic_priv->sd,
- 						   PRPENCVF_SRC_PAD, true);
-@@ -1335,7 +1372,7 @@ static const struct v4l2_subdev_ops prp_subdev_ops = {
- };
- 
- static const struct v4l2_subdev_internal_ops prp_internal_ops = {
--	.init_state = imx_media_init_state,
-+	.init_state = prp_init_state,
- 	.registered = prp_registered,
- 	.unregistered = prp_unregistered,
- };
-@@ -1352,6 +1389,10 @@ static int prp_init(struct imx_ic_priv *ic_priv)
- 	ic_priv->task_priv = priv;
- 	priv->ic_priv = ic_priv;
- 
-+	/* init default frame interval */
-+	priv->frame_interval.numerator = 1;
-+	priv->frame_interval.denominator = 30;
-+
- 	spin_lock_init(&priv->irqlock);
- 	timer_setup(&priv->eof_timeout_timer, prp_eof_timeout, 0);
- 
+This series proposes one: patch 1 refactors host1x_syncpt_wait() so
+the interruptible behavior is preserved exactly for existing callers
+(including two DRM ioctls that are userspace ABI and must stay
+interruptible) and adds host1x_syncpt_wait_uninterruptible() for
+in-kernel users. Patch 2 converts the Tegra20 capture waits and drops
+the retry loops and the TODO.
 
+This is sent as an RFC because the API shape and the scope need
+agreement before a final series:
+
+1. Is a separate _uninterruptible() variant the shape host1x wants,
+   or would the maintainers prefer something else (for example an
+   internal helper with a flag, or a different name)?
+2. Tegra210's two waits (tegra210.c) have no retry loop: a spurious
+   -ERESTARTSYS currently fails the buffer. Should they convert to
+   the uninterruptible wait as well, or is failing on signal
+   intentional there?
+3. drivers/crypto/tegra/tegra-se-main.c also waits with
+   MAX_SCHEDULE_TIMEOUT; left out of scope here, but flagging in
+   case its maintainer wants the same treatment.
+
+drivers/staging/media/tegra-video with VIDEO_TEGRA=m, zero warnings).
+The tegra20.c change itself has no compile coverage here: that object
+builds only for 32-bit ARM (ARCH_TEGRA_2x_SOC/_3x_SOC) and no ARM
+toolchain is available, and there is no Tegra hardware for runtime
+testing. Hardware testing help is needed before any final series.
+
+Testing: compile-tested only (arm64: drivers/gpu/host1x and
+---
+DelaySystem (2):
+      gpu: host1x: add uninterruptible syncpoint wait variant
+      staging: media: tegra-video: uninterruptible syncpt wait for tegra20
+
+ drivers/gpu/host1x/syncpt.c                 | 46 ++++++++++++++++++++++-------
+ drivers/staging/media/tegra-video/tegra20.c | 37 +++++++----------------
+ include/linux/host1x.h                      |  2 ++
+ 3 files changed, 48 insertions(+), 37 deletions(-)
 ---
 base-commit: fa4ad798f6f681031775266044ba1b0cf3c670bd
-change-id: 20261107-batch1-m2-prpencvf-try-3181836786d9
+change-id: 20261107-batch1-b1-host1x-wait-3cb3b92e9199
 
 Best regards,
 --  
