@@ -1,42 +1,36 @@
 From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Sun, 08 Nov 2026 21:41:37 +0000
-Subject: [PATCH v2 1/2] nfc: st21nfca: add spinlock to serialize SE APDU
- request state
+Date: Sun, 08 Nov 2026 21:41:38 +0000
+Subject: [PATCH v2 2/2] nfc: st21nfca: prevent double completion of SE APDU
+ request
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-st21nfca-v2-v2-1-2d1efdf5ad58@gmail.com>
+Message-Id: <20261108-st21nfca-v2-v2-2-2d1efdf5ad58@gmail.com>
 References: <20261108-st21nfca-v2-v2-0-2d1efdf5ad58@gmail.com>
 In-Reply-To: <20261108-st21nfca-v2-v2-0-2d1efdf5ad58@gmail.com>
 To: joasantonio108@gmail.com, linux-nfc@lists.01.org
 Cc: horms@kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794174096; l=4902;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794174097; l=2162;
  i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=k58isJmh7ltf7V9+XlXFPuTvatjq6WcWzxPM38h55uI=;
- b=K4QysAw/PXJcK1tfoewuCbZe/oLWN6dW7VC69bm7m9gxykETiDm24i7D428S9p0/Rq1RENw+j
- bybNxNabyDTDnC/u7LdKaBGQI6mi/Vyxf5xHUZcxXFzlVP8QV2V5p5n
+ bh=vYVGANWXv26cO7Y50zgbWWgZmLC2TXZPMFXwRf7WGSc=;
+ b=+b25FV2ZfM/LFxzXaERxB31i0YH4H0FxYFCgjOeZNaMPCqo3Yuj4ToS3L5z8MTjACukkpODtc
+ vovfXxo9eqiD52GJtHKQypXfQEcX2hkIyIQYxtzkztGlls2P8IPjmrR
 X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
  pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
 X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The bwi_active flag, callback pointer (cb), and callback context
-(cb_context) in st21nfca_se_info are accessed concurrently from
-multiple contexts without synchronization:
+Use the spinlock added in the previous commit to prevent completing an
+SE APDU request more than once.  Without this, the timeout work handler
+(st21nfca_se_wt_work) and the EVT_TRANSMIT_DATA event handler can race
+and both invoke the callback, leading to a use-after-free or double-free
+of the callback context.
 
- - st21nfca_hci_se_io() sets them from the netlink/ioctl path
- - st21nfca_se_wt_work() reads/clears them from the timeout workqueue
- - st21nfca_apdu_reader_event_received() reads/clears them from the
-   HCI rx path
-
-Add a spinlock (se_lock) to serialize access to these fields.  The
-callback pointer and context are copied under the lock and invoked
-after releasing it, since both the callback and nfc_hci_send_event()
-may sleep.
-
-Also move the bwi_active = true assignment before mod_timer() so that
-the flag is always set before the timeout handler could observe it.
+Check bwi_active under the lock in both completion paths and bail out if
+the request was already completed.  Also reject a new SE APDU request in
+st21nfca_hci_se_io() while one is already in progress by returning
+-EBUSY.
 
 Found by LLM-assisted manual code review.
 
@@ -44,115 +38,46 @@ Fixes: 2130fb97fecf ("NFC: st21nfca: Adding support for secure element")
 Cc: Simon Horman <horms@kernel.org>
 Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
- drivers/nfc/st21nfca/se.c       | 24 ++++++++++++++++++++----
- drivers/nfc/st21nfca/st21nfca.h |  2 ++
- 2 files changed, 22 insertions(+), 4 deletions(-)
+ drivers/nfc/st21nfca/se.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
 diff --git a/drivers/nfc/st21nfca/se.c b/drivers/nfc/st21nfca/se.c
-index 7154bc1d6..03a30f797 100644
+index 03a30f797..3be77420e 100644
 --- a/drivers/nfc/st21nfca/se.c
 +++ b/drivers/nfc/st21nfca/se.c
-@@ -227,11 +227,13 @@ int st21nfca_hci_se_io(struct nfc_hci_dev *hdev, u32 se_idx,
- 
+@@ -228,6 +228,10 @@ int st21nfca_hci_se_io(struct nfc_hci_dev *hdev, u32 se_idx,
  	switch (se_idx) {
  	case ST21NFCA_ESE_HOST_ID:
-+		spin_lock(&info->se_info.se_lock);
+ 		spin_lock(&info->se_info.se_lock);
++		if (info->se_info.bwi_active) {
++			spin_unlock(&info->se_info.se_lock);
++			return -EBUSY;
++		}
  		info->se_info.cb = cb;
  		info->se_info.cb_context = cb_context;
-+		info->se_info.bwi_active = true;
-+		spin_unlock(&info->se_info.se_lock);
- 		mod_timer(&info->se_info.bwi_timer, jiffies +
- 			  msecs_to_jiffies(info->se_info.wt_timeout));
--		info->se_info.bwi_active = true;
- 		return nfc_hci_send_event(hdev, ST21NFCA_APDU_READER_GATE,
- 					ST21NFCA_EVT_TRANSMIT_DATA,
- 					apdu, apdu_length);
-@@ -260,11 +262,17 @@ static void st21nfca_se_wt_work(struct work_struct *work)
- 	 */
- 	/* hardware reset managed through VCC_UICC_OUT power supply */
- 	u8 param = 0x01;
-+	se_io_cb_t cb;
-+	void *cb_context;
- 	struct st21nfca_hci_info *info = container_of(work,
- 						struct st21nfca_hci_info,
+ 		info->se_info.bwi_active = true;
+@@ -269,6 +273,10 @@ static void st21nfca_se_wt_work(struct work_struct *work)
  						se_info.timeout_work);
  
-+	spin_lock(&info->se_info.se_lock);
- 	info->se_info.bwi_active = false;
-+	cb = info->se_info.cb;
-+	cb_context = info->se_info.cb_context;
-+	spin_unlock(&info->se_info.se_lock);
- 
- 	if (!info->se_info.xch_error) {
- 		info->se_info.xch_error = true;
-@@ -275,7 +283,7 @@ static void st21nfca_se_wt_work(struct work_struct *work)
- 		nfc_hci_send_event(info->hdev, ST21NFCA_DEVICE_MGNT_GATE,
- 				ST21NFCA_EVT_SE_HARD_RESET, &param, 1);
- 	}
--	info->se_info.cb(info->se_info.cb_context, NULL, 0, -ETIME);
-+	cb(cb_context, NULL, 0, -ETIME);
- }
- 
- static void st21nfca_se_wt_timeout(struct timer_list *t)
-@@ -375,6 +383,8 @@ int st21nfca_apdu_reader_event_received(struct nfc_hci_dev *hdev,
- 					u8 event, struct sk_buff *skb)
- {
- 	int r = 0;
-+	se_io_cb_t cb;
-+	void *cb_context;
- 	struct st21nfca_hci_info *info = nfc_hci_get_clientdata(hdev);
- 
- 	pr_debug("apdu reader gate event: %x\n", event);
-@@ -383,14 +393,19 @@ int st21nfca_apdu_reader_event_received(struct nfc_hci_dev *hdev,
- 	case ST21NFCA_EVT_TRANSMIT_DATA:
- 		timer_delete_sync(&info->se_info.bwi_timer);
- 		cancel_work_sync(&info->se_info.timeout_work);
-+
-+		spin_lock(&info->se_info.se_lock);
- 		info->se_info.bwi_active = false;
-+		cb = info->se_info.cb;
-+		cb_context = info->se_info.cb_context;
+ 	spin_lock(&info->se_info.se_lock);
++	if (!info->se_info.bwi_active) {
 +		spin_unlock(&info->se_info.se_lock);
-+
- 		r = nfc_hci_send_event(hdev, ST21NFCA_DEVICE_MGNT_GATE,
- 				ST21NFCA_EVT_SE_END_OF_APDU_TRANSFER, NULL, 0);
- 		if (r < 0)
- 			goto exit;
- 
--		info->se_info.cb(info->se_info.cb_context,
--			skb->data, skb->len, 0);
-+		cb(cb_context, skb->data, skb->len, 0);
- 		break;
- 	case ST21NFCA_EVT_WTX_REQUEST:
- 		mod_timer(&info->se_info.bwi_timer, jiffies +
-@@ -416,6 +431,7 @@ void st21nfca_se_init(struct nfc_hci_dev *hdev)
- 	/* initialize timers */
- 	timer_setup(&info->se_info.bwi_timer, st21nfca_se_wt_timeout, 0);
++		return;
++	}
  	info->se_info.bwi_active = false;
-+	spin_lock_init(&info->se_info.se_lock);
+ 	cb = info->se_info.cb;
+ 	cb_context = info->se_info.cb_context;
+@@ -395,6 +403,10 @@ int st21nfca_apdu_reader_event_received(struct nfc_hci_dev *hdev,
+ 		cancel_work_sync(&info->se_info.timeout_work);
  
- 	timer_setup(&info->se_info.se_active_timer,
- 		    st21nfca_se_activation_timeout, 0);
-diff --git a/drivers/nfc/st21nfca/st21nfca.h b/drivers/nfc/st21nfca/st21nfca.h
-index ae6771cc9..abcef1ee4 100644
---- a/drivers/nfc/st21nfca/st21nfca.h
-+++ b/drivers/nfc/st21nfca/st21nfca.h
-@@ -6,6 +6,7 @@
- #ifndef __LOCAL_ST21NFCA_H_
- #define __LOCAL_ST21NFCA_H_
- 
-+#include <linux/spinlock.h>
- #include <net/nfc/hci.h>
- #include <linux/skbuff.h>
- #include <linux/workqueue.h>
-@@ -131,6 +132,7 @@ struct st21nfca_se_info {
- 	struct timer_list bwi_timer;
- 	int wt_timeout; /* in msecs */
- 	bool bwi_active;
-+	spinlock_t se_lock;
- 
- 	struct timer_list se_active_timer;
- 	bool se_active;
+ 		spin_lock(&info->se_info.se_lock);
++		if (!info->se_info.bwi_active) {
++			spin_unlock(&info->se_info.se_lock);
++			break;
++		}
+ 		info->se_info.bwi_active = false;
+ 		cb = info->se_info.cb;
+ 		cb_context = info->se_info.cb_context;
 
 -- 
 2.43.0
