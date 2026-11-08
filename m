@@ -1,349 +1,60 @@
-From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Sun, 08 Nov 2026 07:25:13 +0000
-Subject: [PATCH v5 8/8] arm64: dts: apple: Enable DockChannel HID on M2 and
- M3 laptops
+From: Nizat Mikayilli <nacht@dxdmail.cc>
+Subject: [PATCH 0/5] Input: s6sy761 - add support for ST FTS1BA90A
+Date: Sun, 08 Nov 2026 09:33:52 +0100
+Message-Id: <20261108-b4-s6sy761-fts1ba90a-v1-0-999b3cfaf82d@dxdmail.cc>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-b4-apple-mtp-keyboard-v5-8-e2c97b82669a@gmail.com>
-References: <20261108-b4-apple-mtp-keyboard-v5-0-e2c97b82669a@gmail.com>
-In-Reply-To: <20261108-b4-apple-mtp-keyboard-v5-0-e2c97b82669a@gmail.com>
-To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
- Neal Gompa <neal@gompa.dev>, Jassi Brar <jassisinghbrar@gmail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, Jiri Kosina <jikos@kernel.org>, 
- Benjamin Tissoires <bentiss@kernel.org>, 
- Michael Reeves <michael.reeves077@gmail.com>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-input@vger.kernel.org, Hector Martin <marcan@marcan.st>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794122710; l=7011;
- i=michael.reeves077@gmail.com; s=20261107; h=from:subject:message-id;
- bh=zDBnGRKF6WdRKeYPVV1cRA9LKeT1joknp1YiOamAuYY=;
- b=7ih6zc2CRUNGW7YZSoHyM3WcE1c3TcQ48RNtmqYUpdjnnEIqMyrLYmtf5KlnK1OE7BIp2u85l
- +HtEF51PWMyDaJ0IrNrPn60Sw82yJPXZmYteimVwG23S1m6gcsvtCrA
-X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
- pk=ykwkLcuByJYb/cdLc2UuoYP03pIzwrscEZg30+4tJL8=
-X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20261107 with auth_id=1442
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqEMAxA4atI1gaaovXnKuIiapzJRqURcSjef
+ YrLb/FeApOoYtAXCaJcarpvGVQWMH95+wjqkg3e+UDkWpwqtGC/JhCup9HEnWP0PHcVN+0ivoa
+ cHlFWvd/tMD7PH0YeALRmAAAA
+X-Change-ID: 20261108-b4-s6sy761-fts1ba90a-2ac94a78de25
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Henrik Rydberg <rydberg@bitmath.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andi Shyti <andi.shyti@kernel.org>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
+ Nizat Mikayilli <nacht@dxdmail.cc>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794126835; l=1250;
+ i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
+ bh=83BF4liHZfdBCSQ5dI7Z0ukjQe4jgkXlwnqUiFvL+jU=;
+ b=bJaQIWdyyKYPeJTZwI5B/qd0c7K3R1yWORECZLNFSXHrSl8V6tQ+18NGeUBA9qHAGLmj4O03w
+ IGDq9tF6IrODjmrHkErFOj9mxPvCks+ZyfYy6hTbO17vGCp1odnkOgM
+X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
+ pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
+X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the MTP mailbox, DART, DockChannel mailbox, and HID transport on
-the M2 and M3 laptop device trees using this internal input path.
+The ST FTS1BA90A in the Samsung Galaxy Tab S9 Wi-Fi speaks the S6SY761
+protocol, so this series adds it to s6sy761. Patches 1 and 2 are
+standalone fixes.
 
-Add a keyboard alias and enable DockChannel HID on each machine so the
-transport can expose the internal keyboard.
+The touchscreen node for the tablet will be sent with its board series:
+https://lore.kernel.org/r/20261022-gts9wifi-dts-v4-0-a361428fe59c@dxdmail.cc
 
-Co-developed-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
+I tested it on the tablet. I don't have a device with an S6SY761, so
+for that chip it is only compile-tested.
+
+Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
 ---
- arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi | 24 ++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi | 19 +++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j413.dts       | 19 +++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j415.dts       | 19 +++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j493.dts       | 21 ++++++++++++++++++++-
- arch/arm64/boot/dts/apple/t8122-j504.dts       | 22 ++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8122-j613.dts       | 22 ++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8122-j615.dts       | 22 ++++++++++++++++++++++
- 8 files changed, 167 insertions(+), 1 deletion(-)
+Nizat Mikayilli (5):
+      Input: s6sy761 - apply the touchscreen inversion and swap properties
+      Input: s6sy761 - check the multitouch axis ranges
+      dt-bindings: input: samsung,s6sy761: Add ST FTS1BA90A
+      Input: s6sy761 - move chip differences into per-chip data
+      Input: s6sy761 - add support for ST FTS1BA90A
 
-diff --git a/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi b/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-index 0e806d8ddf81..98d58b340aee 100644
---- a/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-+++ b/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-@@ -16,6 +16,12 @@
- 
- #include "t600x-j314-j316.dtsi"
- 
-+/ {
-+	aliases {
-+		keyboard = &mtp_hid;
-+	};
-+};
-+
- &framebuffer0 {
- 	power-domains = <&ps_disp0_cpu0>, <&ps_dptx_phy_ps>;
- };
-@@ -43,3 +49,21 @@ &wifi0 {
- &bluetooth0 {
- 	compatible = "pci14e4,5f72";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+	apple,has-stm;
-+	hid-country-code = <0>;
-+};
-diff --git a/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi b/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi
-index bbee373044f9..555c160e6bd7 100644
---- a/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi
-+++ b/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi
-@@ -21,6 +21,7 @@ / {
- 	chassis-type = "laptop";
- 
- 	aliases {
-+		keyboard = &mtp_hid;
- 		serial0 = &serial0;
- 	};
- 
-@@ -67,3 +68,21 @@ &serial0 {
- &fpwm0 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+	apple,has-stm;
-+	hid-country-code = <0>;
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j413.dts b/arch/arm64/boot/dts/apple/t8112-j413.dts
-index 7ccfceb08093..04a394abf479 100644
---- a/arch/arm64/boot/dts/apple/t8112-j413.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j413.dts
-@@ -20,6 +20,7 @@ / {
- 
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &mtp_hid;
- 		wifi0 = &wifi0;
- 	};
- 
-@@ -93,3 +94,21 @@ &fpwm1 {
- };
- 
- #include "hwmon-laptop.dtsi"
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+	apple,has-stm;
-+	hid-country-code = <0>;
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j415.dts b/arch/arm64/boot/dts/apple/t8112-j415.dts
-index fdc3409d2e07..ae28c75e8f97 100644
---- a/arch/arm64/boot/dts/apple/t8112-j415.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j415.dts
-@@ -20,6 +20,7 @@ / {
- 
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &mtp_hid;
- 		wifi0 = &wifi0;
- 	};
- 
-@@ -93,3 +94,21 @@ &fpwm1 {
- };
- 
- #include "hwmon-laptop.dtsi"
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+	apple,has-stm;
-+	hid-country-code = <0>;
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
-index 7cea5c594810..8e29872ce907 100644
---- a/arch/arm64/boot/dts/apple/t8112-j493.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0+ OR MIT
- /*
-- * Apple MacBook Pro (13-inch, M1, 2022)
-+ * Apple MacBook Pro (13-inch, M2, 2022)
-  *
-  * target-type: J493
-  *
-@@ -24,6 +24,7 @@ / {
- 	 */
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &mtp_hid;
- 		touchbar0 = &touchbar0;
- 		wifi0 = &wifi0;
- 	};
-@@ -149,3 +150,21 @@ touchbar0: touchbar@0 {
- 
- #include "hwmon-laptop.dtsi"
- #include "hwmon-fan.dtsi"
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+	apple,has-stm;
-+	hid-country-code = <0>;
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j504.dts b/arch/arm64/boot/dts/apple/t8122-j504.dts
-index e60ec3039196..05ae01262c85 100644
---- a/arch/arm64/boot/dts/apple/t8122-j504.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j504.dts
-@@ -18,6 +18,10 @@ / {
- 	compatible = "apple,j504", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Pro (14-inch, M3, 2023)";
- 
-+	aliases {
-+		keyboard = &mtp_hid;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 
-@@ -35,3 +39,21 @@ led-0 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+	apple,has-stm;
-+	hid-country-code = <0>;
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j613.dts b/arch/arm64/boot/dts/apple/t8122-j613.dts
-index 40274a983849..c6070cc4aa42 100644
---- a/arch/arm64/boot/dts/apple/t8122-j613.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j613.dts
-@@ -17,6 +17,10 @@ / {
- 	compatible = "apple,j613", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Air (13-inch, M3, 2024)";
- 
-+	aliases {
-+		keyboard = &mtp_hid;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 
-@@ -34,3 +38,21 @@ led-0 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+	apple,has-stm;
-+	hid-country-code = <0>;
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j615.dts b/arch/arm64/boot/dts/apple/t8122-j615.dts
-index 61833f6d019b..71bf2949d8a6 100644
---- a/arch/arm64/boot/dts/apple/t8122-j615.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j615.dts
-@@ -17,6 +17,10 @@ / {
- 	compatible = "apple,j615", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Air (15-inch, M3, 2024)";
- 
-+	aliases {
-+		keyboard = &mtp_hid;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 
-@@ -34,3 +38,21 @@ led-0 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+	apple,has-stm;
-+	hid-country-code = <0>;
-+};
+ .../input/touchscreen/samsung,s6sy761.yaml         |   6 +-
+ drivers/input/touchscreen/Kconfig                  |   3 +-
+ drivers/input/touchscreen/s6sy761.c                | 190 ++++++++++++++++-----
+ 3 files changed, 156 insertions(+), 43 deletions(-)
+---
+base-commit: f7a8b89bc067fa1cbcd3312539bc0d61810d3280
+change-id: 20261108-b4-s6sy761-fts1ba90a-2ac94a78de25
 
+Best regards,
 -- 
-2.56.0
+Nizat Mikayilli <nacht@dxdmail.cc>
 
