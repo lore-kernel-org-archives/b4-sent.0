@@ -1,55 +1,56 @@
 From: Nizat Mikayilli <nacht@dxdmail.cc>
-Subject: [PATCH 0/2] Input: wacom_w9000 - add support for Wacom WEZ01
-Date: Sun, 08 Nov 2026 16:55:16 +0100
-Message-Id: <20261108-b4-wacom-w9000-wez01-v1-0-c2b5e3466187@dxdmail.cc>
+Date: Sun, 08 Nov 2026 16:55:17 +0100
+Subject: [PATCH 1/2] dt-bindings: input: touchscreen: wacom,w9007a-lt03:
+ Add Wacom WEZ01
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQrDIBBA0auEWWdgRoq0uUrIwtgxnUU1KMTQ4
- N0rWb7F/xcUySoFpuGCLIcWTbGDxwH8x8VNUN/dYMhYZnri+sDqfPpifRERVvkR4xpMEG+d42C
- hp3uWoOe9nZfW/vK+tM5mAAAA
-X-Change-ID: 20261108-b4-wacom-w9000-wez01-bf2fec6aa1f6
+Message-Id: <20261108-b4-wacom-w9000-wez01-v1-1-c2b5e3466187@dxdmail.cc>
+References: <20261108-b4-wacom-w9000-wez01-v1-0-c2b5e3466187@dxdmail.cc>
+In-Reply-To: <20261108-b4-wacom-w9000-wez01-v1-0-c2b5e3466187@dxdmail.cc>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Hendrik Noack <hendrik-noack@gmx.de>
 Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Nizat Mikayilli <nacht@dxdmail.cc>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794153317; l=1082;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794153317; l=1172;
  i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
- bh=8XkiUPix4eRLdqxcZAiV0Titd2an3O/18ecr23mOFlE=;
- b=0V0q+sHIVc9jvjTC76iCBVo2+++7cuTURsWSlDAmS7xlYDHvBH72lt4A6hKdUPReWmzTRnD7y
- 5TwdDJCnC1GA1CeapkWYaS7MgPAukdmd9FAWVLyjtPyrr+tHBYu9AD9
+ bh=zq0lqjUM9FPeexdWfMB8KmeYqsPCzR+RvN5Mv4EBnCA=;
+ b=Oyt4cvYMINkHSVaq/j/EVgTsYe+L1Dt788tUrL5ktHt2lFF/o29J9V5Gwo7bd5NL0OiWL6+3P
+ yON+NPF8H7CAnk9aTsKEutT+xIR6zZvBdbnq1Zu8TmsPyWzyhIYhJF2
 X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
  pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
 X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Samsung Galaxy Tab S9 Wi-Fi uses a Wacom WEZ01 for its S Pen. It
-has the same query and coordinate layout as the W9000 series, so these
-patches add it to wacom_w9000.
+The Wacom WEZ01 is the S Pen digitizer of the Samsung Galaxy Tab S9. It
+is not compatible with the W9002 or W9007A: it is queried with a plain
+32-byte read that returns the query at offset 16, and its 17-byte
+coordinate messages carry a packet type in the first byte.
 
-The digitizer node for the tablet will be sent with its board series:
-https://lore.kernel.org/r/20261022-gts9wifi-dts-v4-0-a361428fe59c@dxdmail.cc
-
-I tested it on the tablet. I don't have a device with a W9002 or W9007A,
-so for those it is only compile-tested.
+Its firmware differs between devices (the Galaxy Z Fold5 reports the
+buttons differently), so the compatible has the Tab S9 codename as a
+suffix, like the W9007A entries.
 
 Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
 ---
-Nizat Mikayilli (2):
-      dt-bindings: input: touchscreen: wacom,w9007a-lt03: Add Wacom WEZ01
-      Input: wacom_w9000 - add support for Wacom WEZ01
+ .../devicetree/bindings/input/touchscreen/wacom,w9007a-lt03.yaml         | 1 +
+ 1 file changed, 1 insertion(+)
 
- .../input/touchscreen/wacom,w9007a-lt03.yaml       |  1 +
- drivers/input/touchscreen/Kconfig                  |  2 +-
- drivers/input/touchscreen/wacom_w9000.c            | 53 ++++++++++++++++++----
- 3 files changed, 47 insertions(+), 9 deletions(-)
----
-base-commit: f7a8b89bc067fa1cbcd3312539bc0d61810d3280
-change-id: 20261108-b4-wacom-w9000-wez01-bf2fec6aa1f6
+diff --git a/Documentation/devicetree/bindings/input/touchscreen/wacom,w9007a-lt03.yaml b/Documentation/devicetree/bindings/input/touchscreen/wacom,w9007a-lt03.yaml
+index 6d1da6a435d3..7b541c91de36 100644
+--- a/Documentation/devicetree/bindings/input/touchscreen/wacom,w9007a-lt03.yaml
++++ b/Documentation/devicetree/bindings/input/touchscreen/wacom,w9007a-lt03.yaml
+@@ -24,6 +24,7 @@ properties:
+       - wacom,w9002
+       - wacom,w9007a-lt03
+       - wacom,w9007a-v1
++      - wacom,wez01-gts9
+ 
+   reg:
+     maxItems: 1
 
-Best regards,
 -- 
-Nizat Mikayilli <nacht@dxdmail.cc>
+2.56.0
 
