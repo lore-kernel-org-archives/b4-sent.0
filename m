@@ -1,101 +1,121 @@
-From: Ofri Zangi <ofriz@xsightlabs.com>
-Date: Sun, 08 Nov 2026 21:12:57 +0200
-Subject: [PATCH net] tls: fix async encryption race on weakly ordered
- architectures
+From: Vincent Jardin <vjardin@free.fr>
+Date: Sun, 08 Nov 2026 20:56:36 +0100
+Subject: [PATCH v2] hwmon: (pmbus/core) Add a vout_command debugfs entry
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-tls-async-tx-ordering-v1-1-f9a1844ca88e@xsightlabs.com>
-X-B4-Tracking: v=1; b=H4sIALjJ8GoC/x3MQQqDQAxA0atI1g1MBlukVxEXOok2ILFMhqKId
- 3fo8i/eP8Elqzi8mxOy/NR1sxr0aCB9RlsElWtDDPFFFJ5YVsfRD0tYdtwyV24LdhIDTUycWoZ
- qv1lm3f/fHkwKDNd1A46LG0lsAAAA
-X-Change-ID: 20261105-tls-async-tx-ordering-8e201bd1dc4d
-To: John Fastabend <john.fastabend@gmail.com>, 
- Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Vakul Garg <vakul.garg@nxp.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Guy Tzalik <guyt@xsightlabs.com>, Ofri Zangi <ofriz@xsightlabs.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794165214; l=2872;
- i=ofriz@xsightlabs.com; s=20261105; h=from:subject:message-id;
- bh=hcXcF7sxE609mzlFBuSNX0rkVPXJlsc5tyQKGD8S0wc=;
- b=ayXzZfMgnuQMW3NnzjfQ5jTuEsBo7LYME27Rl3fx9x5JicPgVp/2/Lcb6BPAx2gMQvgS9GPAl
- 2if/wONP5OODANNDt9nhRj3LWCaLg6RD9RMYDR2v2aGnFdPV8kZLLtu
-X-Developer-Key: i=ofriz@xsightlabs.com; a=ed25519;
- pk=pD06etcYUBGIxIDkICg6n7JJNuijXIPti5DrRX4CxuQ=
-X-Endpoint-Received: by B4 Relay for ofriz@xsightlabs.com/20261105 with auth_id=1416
+Message-Id: <20261108-for-upstream-pmbus-vout-command-debugfs-v1-v2-1-b19d6cd18aae@free.fr>
+X-B4-Tracking: v=1; b=H4sIAPPT8GoC/52NQQ6CMBBFr0Jm7RimJKCuvIdh0ZYpdFFKppRoC
+ He3cgSTv3lv8d8OicVzgke1g/Dmk49zAXWpwE56Hhn9UBhUrVqi+oYuCuYlrcI64BJMTrjFvKK
+ NIeh5wIFNHl2RhK3jhq1qOkMayuEi7Pz7jL36wpNPa5TP2d7oZ//KlBHaTtdtw87cyT6dMF+dQ
+ H8cxxeBJwe54gAAAA==
+To: Guenter Roeck <linux@roeck-us.net>
+Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Vincent Jardin <vjardin@free.fr>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794167798; l=3361;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=l2avR4NF3IpRrlXXb0U+qVa1eSKDj4CQ+L1XJurs3Eo=;
+ b=eeN1x5TdQ+68WCPSGVGXgMj0rrMOCEq4uf81HD/9CPbNDeS4NLrmnjE5z2ItRrWBBknC8v5ZE
+ tuImvQ2sl+dDF1rb6x5I3olYbuf8PaYAiO6CY7FtIrDsF1dXxAzn7Cb
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With async encryption, a record can be transmitted without its TLS
-header on weakly ordered architectures such as arm64, because the
-consumer may observe rec->tx_ready set while still seeing the old
-scatterlist entry.
+The vout hwmon attributes and the regulator get_voltage() callback
+both report READ_VOUT.
 
-tls_encrypt_done() restores the TLS header in the scatterlist entry
-(sge->offset -= prot->prepend_size, sge->length += prot->prepend_size)
-and then publishes the record with smp_store_mb(rec->tx_ready, true).
-On another CPU, tls_tx_records() checks rec->tx_ready with READ_ONCE()
-and then reads the entry in tls_push_sg().
+On a regulator whose configuration applies a load line (droop),
+READ_VOUT sits below the setpoint under load by design, so user space
+cannot see what the regulator was actually set to.
 
-Nothing orders these accesses. The barrier in smp_store_mb() comes
-after the tx_ready store, so it does not order the earlier scatterlist
-update before it. On the reader side, READ_ONCE() does not order the
-later loads of sge->offset and sge->length. The reader can therefore
-see tx_ready set together with the old offset and length, and pushes
-the record without its header.
+max20730 already exposes a driver-specific vout_command entry. Add
+vout<page>_command to the PMBus core debugfs, for every page with VOUT
+and a readable VOUT_COMMAND, in millivolts like the in*_input attributes.
 
-Publish tx_ready with smp_store_release() in tls_encrypt_done() and read
-it with smp_load_acquire() in tls_tx_records(), so that observing
-tx_ready guarantees the restored scatterlist entry is visible. Keep the
-full barrier that smp_store_mb() provided as an explicit smp_mb(), as
-it is still needed to order the tx_ready store before the tx_list head
-check.
-
-Fixes: a42055e8d2c3 ("net/tls: Add support for async encryption of records for performance")
-Signed-off-by: Ofri Zangi <ofriz@xsightlabs.com>
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- net/tls/tls_sw.c | 13 ++++++++++---
- 1 file changed, 10 insertions(+), 3 deletions(-)
+Changes in v2:
+- Use pmbus_vout_command_mv(), simpler (Guenter Roeck).
+- Link to v1: https://lore.kernel.org/r/20261108-for-upstream-pmbus-vout-command-debugfs-v1-v1-1-c7a063efb91c@free.fr
+---
+ drivers/hwmon/pmbus/pmbus_core.c | 39 +++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 37 insertions(+), 2 deletions(-)
 
-diff --git a/net/tls/tls_sw.c b/net/tls/tls_sw.c
-index 771e02bff519..c9d3b9eb22be 100644
---- a/net/tls/tls_sw.c
-+++ b/net/tls/tls_sw.c
-@@ -436,7 +436,8 @@ int tls_tx_records(struct sock *sk, int flags)
+diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
+index 37b650b85d1c..6fb91dc1c627 100644
+--- a/drivers/hwmon/pmbus/pmbus_core.c
++++ b/drivers/hwmon/pmbus/pmbus_core.c
+@@ -3833,6 +3833,30 @@ static int pmbus_debugfs_get_status(void *data, u64 *val)
+ DEFINE_DEBUGFS_ATTRIBUTE(pmbus_debugfs_ops_status, pmbus_debugfs_get_status,
+ 			 NULL, "0x%04llx\n");
  
- 	/* Tx all ready records */
- 	list_for_each_entry_safe(rec, tmp, &ctx->tx_list, list) {
--		if (READ_ONCE(rec->tx_ready)) {
-+		/* Pairs with smp_store_release() in tls_encrypt_done() */
-+		if (smp_load_acquire(&rec->tx_ready)) {
- 			if (flags == -1)
- 				tx_flags = rec->tx_flags;
- 			else
-@@ -504,8 +505,14 @@ static void tls_encrypt_done(void *data, int err)
- 	if (rec) {
- 		struct tls_rec *first_rec;
- 
--		/* Mark the record as ready for transmission */
--		smp_store_mb(rec->tx_ready, true);
-+		/* Mark the record as ready for transmission. Pairs with
-+		 * smp_load_acquire() in tls_tx_records(): the sge
-+		 * offset/length update above must be visible before tx_ready.
-+		 */
-+		smp_store_release(&rec->tx_ready, true);
++static int pmbus_debugfs_get_vout_command(void *data, u64 *val)
++{
++	struct pmbus_debugfs_entry *entry = data;
++	struct i2c_client *client = entry->client;
++	struct pmbus_data *pdata = i2c_get_clientdata(client);
++	int rc;
 +
-+		/* Order the tx_ready store before the tx_list head check */
-+		smp_mb();
++	guard(pmbus_lock)(client);
++
++	rc = _pmbus_read_word_data(client, entry->page, 0xff, entry->reg);
++	if (rc < 0)
++		return rc;
++
++	rc = pmbus_vout_command_mv(pdata, entry->page, rc);
++	if (rc < 0)
++		return rc;
++
++	*val = rc;
++
++	return 0;
++}
++DEFINE_DEBUGFS_ATTRIBUTE(pmbus_debugfs_ops_vout_command,
++			 pmbus_debugfs_get_vout_command, NULL, "%llu\n");
++
+ static ssize_t pmbus_debugfs_block_read(struct file *file, char __user *buf,
+ 					size_t count, loff_t *ppos)
+ {
+@@ -3940,11 +3964,11 @@ static void pmbus_init_debugfs(struct i2c_client *client,
+ 	 * device specific:
+ 	 *	ARRAY_SIZE(pmbus_debugfs_block_data) + 2
+ 	 * page specific:
+-	 *	ARRAY_SIZE(pmbus_debugfs_status_data) + 1
++	 *	ARRAY_SIZE(pmbus_debugfs_status_data) + 2
+ 	 */
+ 	entries = devm_kcalloc(data->dev,
+ 			       ARRAY_SIZE(pmbus_debugfs_block_data) + 2 +
+-			       data->info->pages * (ARRAY_SIZE(pmbus_debugfs_status_data) + 1),
++			       data->info->pages * (ARRAY_SIZE(pmbus_debugfs_status_data) + 2),
+ 			       sizeof(*entries), GFP_KERNEL);
+ 	if (!entries)
+ 		return;
+@@ -4013,6 +4037,17 @@ static void pmbus_init_debugfs(struct i2c_client *client,
+ 						    &pmbus_debugfs_ops);
+ 			}
+ 		}
++
++		if ((data->info->func[page] & PMBUS_HAVE_VOUT) &&
++		    pmbus_check_word_register(client, page, PMBUS_VOUT_COMMAND)) {
++			entries[idx].client = client;
++			entries[idx].page = page;
++			entries[idx].reg = PMBUS_VOUT_COMMAND;
++			scnprintf(name, PMBUS_NAME_SIZE, "vout%d_command", page);
++			debugfs_create_file(name, 0444, debugfs,
++					    &entries[idx++],
++					    &pmbus_debugfs_ops_vout_command);
++		}
+ 	}
+ }
  
- 		/* If received record is at head of tx_list, schedule tx */
- 		first_rec = list_first_entry(&ctx->tx_list,
 
 ---
-base-commit: 30c71476d842b094651bd7712f6c8ee8716147d0
-change-id: 20261105-tls-async-tx-ordering-8e201bd1dc4d
+base-commit: d4193d2a0ffa407478bce4a094e1ae085ceb38ec
+change-id: 20261108-for-upstream-pmbus-vout-command-debugfs-v1-6fe3ec237b1a
 
 Best regards,
 -- 
-Ofri Zangi <ofriz@xsightlabs.com>
+Vincent Jardin <vjardin@free.fr>
 
