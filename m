@@ -1,10 +1,10 @@
 From: Nizat Mikayilli <nacht@dxdmail.cc>
-Date: Sun, 08 Nov 2026 09:33:54 +0100
-Subject: [PATCH 2/5] Input: s6sy761 - check the multitouch axis ranges
+Date: Sun, 08 Nov 2026 09:33:55 +0100
+Subject: [PATCH 3/5] dt-bindings: input: samsung,s6sy761: Add ST FTS1BA90A
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-b4-s6sy761-fts1ba90a-v1-2-999b3cfaf82d@dxdmail.cc>
+Message-Id: <20261108-b4-s6sy761-fts1ba90a-v1-3-999b3cfaf82d@dxdmail.cc>
 References: <20261108-b4-s6sy761-fts1ba90a-v1-0-999b3cfaf82d@dxdmail.cc>
 In-Reply-To: <20261108-b4-s6sy761-fts1ba90a-v1-0-999b3cfaf82d@dxdmail.cc>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
@@ -15,41 +15,50 @@ Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org,
  devicetree@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
  Nizat Mikayilli <nacht@dxdmail.cc>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794126835; l=1089;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794126835; l=1350;
  i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
- bh=a/pLroNBJtz3o9lo3KhseD8iBVAsH+uHttUxd7UDP/Y=;
- b=HDWPyass2lu1SrTdwK3bIsGL+a9szaSH9KZOW10verBpSAF0TUy8ldGdqh3EZOQbTQ7buF9Y3
- yNjZ9fmjPdRDH4ahPgNth/xO+BvbDIoFNbMjpetwRcXhx8sOQhMHtmy
+ bh=Flhr418PQSRALX306tCmpNhdbdYHNpQZPYQ/lvdWiZk=;
+ b=449RXd/PIhn0/o9lzW3zF9HBXchOZUIIIoH6vVPIsTM6PIDM/KlRN/4uCLczLKWpD4d7Q8kwQ
+ h/s71c2adWGASBV+ss9hX4h4ahY24Z6BU3COhqciYyzp3lSxKeBsNAQ
 X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
  pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
 X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The axis check runs before input_mt_init_slots() copies the multitouch
-ranges to ABS_X and ABS_Y, so it warns on every probe. Check
-ABS_MT_POSITION_X and ABS_MT_POSITION_Y instead.
+The ST FTS1BA90A in the Samsung Galaxy Tab S9 Wi-Fi runs firmware that
+speaks the S6SY761 protocol rather than the ones of st,stmfts and
+st,stmfts5, and it has the same supplies as the S6SY761. Its event size
+and some commands differ, so there is no fallback compatible.
 
-Fixes: 0145a7141e59 ("Input: add support for the Samsung S6SY761 touchscreen")
 Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
 ---
- drivers/input/touchscreen/s6sy761.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ .../devicetree/bindings/input/touchscreen/samsung,s6sy761.yaml      | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/input/touchscreen/s6sy761.c b/drivers/input/touchscreen/s6sy761.c
-index 967fd222f0d6..59166865d397 100644
---- a/drivers/input/touchscreen/s6sy761.c
-+++ b/drivers/input/touchscreen/s6sy761.c
-@@ -449,8 +449,8 @@ static int s6sy761_probe(struct i2c_client *client)
+diff --git a/Documentation/devicetree/bindings/input/touchscreen/samsung,s6sy761.yaml b/Documentation/devicetree/bindings/input/touchscreen/samsung,s6sy761.yaml
+index 1ffd17af3c53..92d071852d71 100644
+--- a/Documentation/devicetree/bindings/input/touchscreen/samsung,s6sy761.yaml
++++ b/Documentation/devicetree/bindings/input/touchscreen/samsung,s6sy761.yaml
+@@ -4,7 +4,7 @@
+ $id: http://devicetree.org/schemas/input/touchscreen/samsung,s6sy761.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
  
- 	touchscreen_parse_properties(sdata->input, true, &sdata->prop);
+-title: Samsung S6SY761 touchscreen controller
++title: Samsung S6SY761 and ST FTS1BA90A touchscreen controllers
  
--	if (!input_abs_get_max(sdata->input, ABS_X) ||
--	    !input_abs_get_max(sdata->input, ABS_Y)) {
-+	if (!input_abs_get_max(sdata->input, ABS_MT_POSITION_X) ||
-+	    !input_abs_get_max(sdata->input, ABS_MT_POSITION_Y)) {
- 		dev_warn(&client->dev, "the axis have not been set\n");
- 	}
+ maintainers:
+   - Andi Shyti <andi.shyti@kernel.org>
+@@ -14,7 +14,9 @@ allOf:
  
+ properties:
+   compatible:
+-    const: samsung,s6sy761
++    enum:
++      - samsung,s6sy761
++      - st,fts1ba90a
+ 
+   reg:
+     maxItems: 1
 
 -- 
 2.56.0
