@@ -1,95 +1,293 @@
-From: Alban Munari <alban.kernel@gmail.com>
-Date: Sun, 08 Nov 2026 20:05:12 +0000
-Subject: [PATCH v2] tpm: Remove enum tpm2_session_types
+From: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
+Date: Sun, 08 Nov 2026 20:16:13 +0000
+Subject: [PATCH] iio: light: adux1020: use guard() to simplify lock
+ handling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261108-tpm-se-trial-v2-1-92c2090351d7@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6CMBBFr0Jm7RimQQVX3MOwKDCFMZSSthIN4
- e4Crl2+5P33FwjshQPckwU8zxLEjRuoUwJNr8eOUdqNQaXqSpTmGCeLgTF60QNe8rRmU9SZoRt
- sk8mzkfeRe1Q/Dq/6yU3cG7vRS4jOf46/mXbvT3omJMwKpSg3RcsZlZ3VMpwbZ6Fa1/UL9ajHA
- LoAAAA=
-X-Change-ID: 20261108-tpm-se-trial-580bef9b4f17
-To: Peter Huewe <peterhuewe@gmx.de>, Jarkko Sakkinen <jarkko@kernel.org>, 
- Jason Gunthorpe <jgg@ziepe.ca>, 
- James Bottomley <James.Bottomley@HansenPartnership.com>, 
- Ard Biesheuvel <ardb@kernel.org>
-Cc: linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Alban Munari <alban.kernel@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794168332; l=2277;
- i=alban.kernel@gmail.com; s=hephaestus; h=from:subject:message-id;
- bh=FiL44ygx4KhhpPRDazZwhl0/A0dCZenHQ3H9IagOC6Q=;
- b=X0eopT0lIsvtKricO5oVDqirkfAmYyAILXvY63PUg5+af7w6HbF4DfZC2LAiqWKAcIppx2ncj
- jcPliS4jvUJACDva0p4Vc8DnyhDSbCu2Qx/PKA7/vbc9mbs9GB6eD3V
-X-Developer-Key: i=alban.kernel@gmail.com; a=ed25519;
- pk=E4gTLxHRk8yuKicoDcjhUfRHnlctgbnlV9dmOwM5338=
-X-Endpoint-Received: by B4 Relay for alban.kernel@gmail.com/hephaestus with auth_id=1455
+Message-Id: <20261108-adux1020-guard-v1-1-db9c582f1eea@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ7CIBBA4as0sy7J8BPFXqVxgTDiuMAGimlCu
+ Luoy2/xXoNCmanAMjXI9ObCrzQg5wn8w6VIgsMwKFQnKdEKF+ohUaGI1eUgtFXo6Xwx1mgY0Zb
+ pzsdvuF7/LvX2JL9/L9D7B8SmqstyAAAA
+X-Change-ID: 20261108-adux1020-guard-3820ce794843
+To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux@analog.com, linux-iio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794168974; l=6978;
+ i=raffaele.tranfaglia@gmail.com; s=20261011; h=from:subject:message-id;
+ bh=55DgnX1l0P6Wx7Y7PSWErzxISKBLMVyhkL//RtenSVw=;
+ b=x3obLC4cZbut96blzDpJjPH6a2VtoPWL4w5PhctkC17cNEMyYBQ10YX1bzOLC3VbljvLQyLYU
+ NkhkLMIVm9xANai0c+R/QV84E50MuWQtdN2fCQTDtH4PKoqvw6tR10M
+X-Developer-Key: i=raffaele.tranfaglia@gmail.com; a=ed25519;
+ pk=mweuSGNM6vguCTdqa+aiHwMXdgk70suj2wolzCp6XGM=
+X-Endpoint-Received: by B4 Relay for raffaele.tranfaglia@gmail.com/20261011 with auth_id=1160
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-TPM2_SE_TRIAL is defined as 0x02, while the TPM 2.0 Library
-specification, Part 2: Structures, revision 01.83, section 6.11, Table
-21, defines TPM_SE_TRIAL as 0x03.
+Use guard(mutex) in adux1020_read_raw(), adux1020_write_raw() and
+adux1020_write_event_config() so the lock is released automatically on
+return. This allows returning directly instead of jumping to a common
+unlock label, and lets adux1020_write_raw() drop its ret variable.
 
-The only user of enum tpm2_session_types is tpm2_start_auth_session(),
-which starts an HMAC session. Remove the enum and pass the session type
-there as a literal, rather than fix a constant that nothing uses.
+No functional change intended.
 
-Suggested-by: Jarkko Sakkinen <jarkko@kernel.org>
-Signed-off-by: Alban Munari <alban.kernel@gmail.com>
+Suggested-by: Jonathan Cameron <jic23@kernel.org>
+Link: https://lore.kernel.org/all/20261107222957.5332237b@jic23-hlaptop/
+Signed-off-by: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
 ---
-Changes in v2:
-- Remove the enum instead of fixing TPM2_SE_TRIAL (Jarkko).
-- Refer to the section of the TCG specification.
-- Drop the Fixes tag: no code used the wrong value.
-- Link to v1: https://patch.msgid.link/20261108-tpm-se-trial-v1-1-492218f9de41@gmail.com
+This follows Jonathan's suggestion, made when applying the sampling
+frequency hardening patch. It applies on top of iio/testing.
 
-To: Peter Huewe <peterhuewe@gmx.de>
-To: Jarkko Sakkinen <jarkko@kernel.org>
-To: Jason Gunthorpe <jgg@ziepe.ca>
-Cc: linux-integrity@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+Tested on arm64 QEMU with i2c-stub and lockdep enabled: reading and
+writing the sampling frequency (valid and invalid values), reading the
+LED current, reading in_proximity_raw (error path) and enabling the
+threshold event. No lockdep warnings and no hangs after the error
+paths.
+
+I prepared this patch with the help of an AI coding assistant, and
+reviewed and tested it myself.
 ---
- drivers/char/tpm/tpm2-sessions.c | 2 +-
- include/linux/tpm_command.h      | 6 ------
- 2 files changed, 1 insertion(+), 7 deletions(-)
+ drivers/iio/light/adux1020.c | 104 ++++++++++++++++---------------------------
+ 1 file changed, 39 insertions(+), 65 deletions(-)
 
-diff --git a/drivers/char/tpm/tpm2-sessions.c b/drivers/char/tpm/tpm2-sessions.c
-index ca1e2bf424e1..63e1dd596bc5 100644
---- a/drivers/char/tpm/tpm2-sessions.c
-+++ b/drivers/char/tpm/tpm2-sessions.c
-@@ -1043,7 +1043,7 @@ int tpm2_start_auth_session(struct tpm_chip *chip)
- 		return rc;
+diff --git a/drivers/iio/light/adux1020.c b/drivers/iio/light/adux1020.c
+index d4281b9754c3..3e8f53e5a1a0 100644
+--- a/drivers/iio/light/adux1020.c
++++ b/drivers/iio/light/adux1020.c
+@@ -9,6 +9,7 @@
+  */
+ 
+ #include <linux/bitfield.h>
++#include <linux/cleanup.h>
+ #include <linux/delay.h>
+ #include <linux/err.h>
+ #include <linux/i2c.h>
+@@ -362,10 +363,10 @@ static int adux1020_read_raw(struct iio_dev *indio_dev,
+ {
+ 	struct adux1020_data *data = iio_priv(indio_dev);
+ 	u16 buf[3];
+-	int ret = -EINVAL;
++	int ret;
+ 	unsigned int regval;
+ 
+-	mutex_lock(&data->lock);
++	guard(mutex)(&data->lock);
+ 
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_RAW:
+@@ -373,69 +374,56 @@ static int adux1020_read_raw(struct iio_dev *indio_dev,
+ 		case IIO_PROXIMITY:
+ 			ret = adux1020_set_mode(data, ADUX1020_MODE_PROX_I);
+ 			if (ret < 0)
+-				goto fail;
++				return ret;
+ 
+ 			ret = adux1020_measure(data, ADUX1020_MODE_PROX_I, buf);
+ 			if (ret < 0)
+-				goto fail;
++				return ret;
+ 
+ 			*val = buf[0];
+-			ret = IIO_VAL_INT;
+-			break;
++			return IIO_VAL_INT;
+ 		default:
+-			break;
++			return -EINVAL;
+ 		}
+-		break;
+ 	case IIO_CHAN_INFO_PROCESSED:
+ 		switch (chan->type) {
+ 		case IIO_CURRENT:
+ 			ret = regmap_read(data->regmap,
+ 					  ADUX1020_REG_LED_CURRENT, &regval);
+ 			if (ret < 0)
+-				goto fail;
++				return ret;
+ 
+ 			regval = regval & ADUX1020_LED_CURRENT_MASK;
+ 
+ 			*val = adux1020_led_currents[regval][0];
+ 			*val2 = adux1020_led_currents[regval][1];
+ 
+-			ret = IIO_VAL_INT_PLUS_MICRO;
+-			break;
++			return IIO_VAL_INT_PLUS_MICRO;
+ 		default:
+-			break;
++			return -EINVAL;
+ 		}
+-		break;
+ 	case IIO_CHAN_INFO_SAMP_FREQ:
+ 		switch (chan->type) {
+ 		case IIO_PROXIMITY:
+ 			ret = regmap_read(data->regmap, ADUX1020_REG_FREQUENCY,
+ 					  &regval);
+ 			if (ret < 0)
+-				goto fail;
++				return ret;
+ 
+ 			regval = FIELD_GET(ADUX1020_PROX_FREQ_MASK, regval);
+-			if (regval >= ARRAY_SIZE(adux1020_rates)) {
+-				ret = -EINVAL;
+-				goto fail;
+-			}
++			if (regval >= ARRAY_SIZE(adux1020_rates))
++				return -EINVAL;
+ 
+ 			*val = adux1020_rates[regval][0];
+ 			*val2 = adux1020_rates[regval][1];
+ 
+-			ret = IIO_VAL_INT_PLUS_MICRO;
+-			break;
++			return IIO_VAL_INT_PLUS_MICRO;
+ 		default:
+-			break;
++			return -EINVAL;
+ 		}
+-		break;
+ 	default:
+-		break;
++		return -EINVAL;
  	}
- 	/* session type (HMAC, audit or policy) */
--	tpm_buf_append_u8(buf, TPM2_SE_HMAC);
-+	tpm_buf_append_u8(buf, 0x00 /* HMAC */);
- 
- 	/* symmetric encryption parameters */
- 	/* symmetric algorithm */
-diff --git a/include/linux/tpm_command.h b/include/linux/tpm_command.h
-index fc446a1282e2..c9988fcff916 100644
---- a/include/linux/tpm_command.h
-+++ b/include/linux/tpm_command.h
-@@ -168,12 +168,6 @@ struct tpm1_get_random_out {
- /* TPM2 specific constants. */
- #define TPM2_SPACE_BUFFER_SIZE		16384 /* 16 kB */
- 
--enum tpm2_session_types {
--	TPM2_SE_HMAC	= 0x00,
--	TPM2_SE_POLICY	= 0x01,
--	TPM2_SE_TRIAL	= 0x02,
--};
 -
- enum tpm2_timeouts {
- 	TPM2_TIMEOUT_A		= 750,
- 	TPM2_TIMEOUT_B		= 4000,
+-fail:
+-	mutex_unlock(&data->lock);
+-
+-	return ret;
+ };
+ 
+ static inline int adux1020_find_index(const int array[][2], int count, int val,
+@@ -455,9 +443,9 @@ static int adux1020_write_raw(struct iio_dev *indio_dev,
+ 			      int val, int val2, long mask)
+ {
+ 	struct adux1020_data *data = iio_priv(indio_dev);
+-	int i, ret = -EINVAL;
++	int i;
+ 
+-	mutex_lock(&data->lock);
++	guard(mutex)(&data->lock);
+ 
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_SAMP_FREQ:
+@@ -465,15 +453,13 @@ static int adux1020_write_raw(struct iio_dev *indio_dev,
+ 			i = adux1020_find_index(adux1020_rates,
+ 						ARRAY_SIZE(adux1020_rates),
+ 						val, val2);
+-			if (i < 0) {
+-				ret = i;
+-				goto fail;
+-			}
+-
+-			ret = regmap_update_bits(data->regmap,
+-						 ADUX1020_REG_FREQUENCY,
+-						 ADUX1020_PROX_FREQ_MASK,
+-						 ADUX1020_PROX_FREQ(i));
++			if (i < 0)
++				return i;
++
++			return regmap_update_bits(data->regmap,
++						  ADUX1020_REG_FREQUENCY,
++						  ADUX1020_PROX_FREQ_MASK,
++						  ADUX1020_PROX_FREQ(i));
+ 		}
+ 		break;
+ 	case IIO_CHAN_INFO_PROCESSED:
+@@ -481,24 +467,19 @@ static int adux1020_write_raw(struct iio_dev *indio_dev,
+ 			i = adux1020_find_index(adux1020_led_currents,
+ 					ARRAY_SIZE(adux1020_led_currents),
+ 					val, val2);
+-			if (i < 0) {
+-				ret = i;
+-				goto fail;
+-			}
+-
+-			ret = regmap_update_bits(data->regmap,
+-						 ADUX1020_REG_LED_CURRENT,
+-						 ADUX1020_LED_CURRENT_MASK, i);
++			if (i < 0)
++				return i;
++
++			return regmap_update_bits(data->regmap,
++						  ADUX1020_REG_LED_CURRENT,
++						  ADUX1020_LED_CURRENT_MASK, i);
+ 		}
+ 		break;
+ 	default:
+ 		break;
+ 	}
+ 
+-fail:
+-	mutex_unlock(&data->lock);
+-
+-	return ret;
++	return -EINVAL;
+ }
+ 
+ static int adux1020_write_event_config(struct iio_dev *indio_dev,
+@@ -510,16 +491,16 @@ static int adux1020_write_event_config(struct iio_dev *indio_dev,
+ 	struct adux1020_data *data = iio_priv(indio_dev);
+ 	int ret, mask;
+ 
+-	mutex_lock(&data->lock);
++	guard(mutex)(&data->lock);
+ 
+ 	ret = regmap_write(data->regmap, ADUX1020_REG_INT_ENABLE,
+ 			   ADUX1020_INT_ENABLE);
+ 	if (ret < 0)
+-		goto fail;
++		return ret;
+ 
+ 	ret = regmap_write(data->regmap, ADUX1020_REG_INT_POLARITY, 0);
+ 	if (ret < 0)
+-		goto fail;
++		return ret;
+ 
+ 	switch (chan->type) {
+ 	case IIO_PROXIMITY:
+@@ -535,7 +516,7 @@ static int adux1020_write_event_config(struct iio_dev *indio_dev,
+ 			ret = regmap_set_bits(data->regmap,
+ 					      ADUX1020_REG_INT_MASK, mask);
+ 		if (ret < 0)
+-			goto fail;
++			return ret;
+ 
+ 		/*
+ 		 * Trigger proximity interrupt when the intensity is above
+@@ -544,20 +525,13 @@ static int adux1020_write_event_config(struct iio_dev *indio_dev,
+ 		ret = regmap_set_bits(data->regmap, ADUX1020_REG_PROX_TYPE,
+ 				      ADUX1020_PROX_TYPE);
+ 		if (ret < 0)
+-			goto fail;
++			return ret;
+ 
+ 		/* Set proximity mode */
+-		ret = adux1020_set_mode(data, ADUX1020_MODE_PROX_I);
+-		break;
++		return adux1020_set_mode(data, ADUX1020_MODE_PROX_I);
+ 	default:
+-		ret = -EINVAL;
+-		break;
++		return -EINVAL;
+ 	}
+-
+-fail:
+-	mutex_unlock(&data->lock);
+-
+-	return ret;
+ }
+ 
+ static int adux1020_read_event_config(struct iio_dev *indio_dev,
 
 ---
-base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
-change-id: 20261108-tpm-se-trial-580bef9b4f17
+base-commit: ee79148f1586fb0a6d6918995cfc84da6feb35da
+change-id: 20261108-adux1020-guard-3820ce794843
 
 Best regards,
 --  
-Alban Munari <alban.kernel@gmail.com>
+Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
 
