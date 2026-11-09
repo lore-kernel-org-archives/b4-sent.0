@@ -1,86 +1,102 @@
 From: Gaurav Suman <gauravsuman007@gmail.com>
-Date: Mon, 09 Nov 2026 22:33:47 +0000
-Subject: [PATCH RFC] ASoC: codecs: wcd934x: keep MCLK enabled so init
- writes reach the codec
+Date: Mon, 09 Nov 2026 22:34:24 +0000
+Subject: [PATCH] drm/msm: align kernel-managed GPU VAs to 64 KiB
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-wcd934x-mclk-v1-1-ab86342e7ead@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEpK8moC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwNL3fLkFEtjkwrd3OScbN2UVFPLVEMzEzMLA3MloJaCotS0zAqwcdF
- KQW7OSrG1tQDvN9SUYwAAAA==
-X-Change-ID: 20261109-wcd934x-mclk-de59e1646807
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Gaurav Suman <gauravsuman007@gmail.com>
+Message-Id: <20261109-msm-va-align-v1-1-2e9b576d2e4e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAG9K8moC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwNL3dziXN2yRN3EnMz0PF0Dc6MkUwtTA2OLxEQloJaCotS0zAqwcdG
+ xtbUAN7gbFV4AAAA=
+X-Change-ID: 20261109-msm-va-align-072b585038aa
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Gaurav Suman <gauravsuman007@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794263638; l=2522;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794263665; l=3102;
  i=gauravsuman007@gmail.com; s=default; h=from:subject:message-id;
- bh=8u46K9MtmpC/yZH7MaaIGPTHQMOfd8OqvroqTAoIDKw=;
- b=w+dOp4lUMyGty2jZoxIvNtUcRjLUY05x9zhThT6au4LkhC/wFP6g5GWXIChw8BlQKGNbG0/pF
- Er7ssv0G9cDDRWxrnPbWM27XRwHOTpM9thMIDASkQgg2xY3u+SAXMii
+ bh=jgOwJ2FL7GTVl1ehT01v9Wyso8hTCmJQBXKc1hdLWFE=;
+ b=ZwtuXkntUilUgklhqwAwOwthlQCa5WxHHtyOfF7o8H8qaTEv5zMIZWw18/XTo6OaFTJUfuPPZ
+ oGRybGxy7EwB/fHyzPAkDe9tt5lR9XXh9ylBqqk1S9hnSZfGzNYe+1G
 X-Developer-Key: i=gauravsuman007@gmail.com; a=ed25519;
  pk=lnUC0mQfc0KyA0LE73pQ4+QWYVRaCD8Sd3XWxLZO+JY=
 X-Endpoint-Received: by B4 Relay for gauravsuman007@gmail.com/default with auth_id=1467
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On an LG G8x (SM8150, WCD9340 over SLIMbus) the microphones record
-digital silence on roughly half of all boots. Register dumps look
-correct because they are served from the regmap cache, but the
-writes never reached the hardware: the WCD934x digital core ignores
-register writes while its MCLK/sysclk is off.
+On an Adreno 640 (SM8150, LG G8x) GNOME Shell triggers SMMU
+translation faults with source=CCU, about ten per login, when
+freedreno uses GMEM (binning) rendering. FD_MESA_DEBUG=nogmem or
+=inorder hides them.
 
-wcd934x_comp_init() runs with MCLK off unless the SoundWire master
-happened to probe first and enabled the clock through
-wcd934x_swrm_clock(); __wcd934x_cdc_mclk_enable(false) then leaves it
-running because the SWR clock bit is set. Probe ordering is not
-deterministic, which matches the random good and bad boots.
+A stall-on-fault capture decoded with crashdec shows the faulting
+address at an exact 64 KiB boundary (FAR 0x110690000) while the pass
+drew to MRT0 at 0x110695000 and depth at 0x11069f000, all in that
+64 KiB block. The block start belonged to the unmapped tail of
+another buffer that was not part of the running submit. A ring
+buffer of pagetable operations confirmed this for every fault: the
+CCU reads the 64 KiB-aligned start of the block holding a bound
+render target, and msm packs kernel-managed VAs at 4 KiB, so that
+address often belongs to a different, unmapped buffer. Batch
+reordering makes this common, which is why inorder hides it.
 
-Enable MCLK before wcd934x_comp_init() and leave it enabled, which is
-what the good boots already do. With this change 8 of 8 boots had a
-working microphone (before: about 3 in 5 silent).
+Align kernel-managed VAs to 64 KiB, falling back to page alignment
+when the range is too tight (a6xx_gmu_init() fails with -ENOSPC
+otherwise).
 
-Enabling MCLK only around wcd934x_comp_init() (and disabling it
-again afterwards, as wcd934x_enable_efuse_sensing() does) was not
-enough: 2 of 4 boots were silent again, so later writes made while
-the clock is off are lost as well. An alternative would be to mark
-the cache dirty and resync whenever MCLK goes from off to on; this
-patch takes the simpler route at the cost of keeping MCLK running.
+Tested on the LG G8x with Mesa unchanged and GMEM enabled: in an A/B
+run in one boot, 4 KiB alignment gave 10 and 10 faults per login, 64
+KiB alignment 0, 0, 0 and 0. No faults in three further logins, a
+GMEM stress test or the full device test suite; glmark2 is unchanged
+within noise. Userspace-managed VMs (VM_BIND) are not changed; Mesa
+may want the same alignment there.
 
-The fault was found, the change written and the boot tests run with the
-help of an AI coding assistant (Claude Opus 5.5, Anthropic); I reviewed
-the change and the test results.
+This was investigated, written and tested with the help of an AI
+coding assistant (Claude Opus 5.5, Anthropic); I reviewed the change
+and the test results.
 
 Signed-off-by: Gaurav Suman <gauravsuman007@gmail.com>
 ---
 Tested on LG G8x ThinQ (SM8150).
 ---
- sound/soc/codecs/wcd934x.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ drivers/gpu/drm/msm/msm_gem_vma.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
-diff --git a/sound/soc/codecs/wcd934x.c b/sound/soc/codecs/wcd934x.c
-index 0ed24cca088f839263f015778e8281027392e51f..6b6ce5ba5d30da194db1b1570a58f0324956f96f 100644
---- a/sound/soc/codecs/wcd934x.c
-+++ b/sound/soc/codecs/wcd934x.c
-@@ -2995,6 +2995,12 @@ static int wcd934x_comp_probe(struct snd_soc_component *component)
- 	/* Default HPH Mode to Class-H Low HiFi */
- 	wcd->hph_mode = CLS_H_LOHIFI;
+diff --git a/drivers/gpu/drm/msm/msm_gem_vma.c b/drivers/gpu/drm/msm/msm_gem_vma.c
+index f687a629629d348b54ebb379d3a2fa956b8e472e..2af43291289945d54326287affeffa7e72645880 100644
+--- a/drivers/gpu/drm/msm/msm_gem_vma.c
++++ b/drivers/gpu/drm/msm/msm_gem_vma.c
+@@ -388,9 +388,20 @@ msm_gem_vma_new(struct drm_gpuvm *gpuvm, struct drm_gem_object *obj,
+ 	if (vm->managed) {
+ 		BUG_ON(offset != 0);
+ 		BUG_ON(!obj);  /* NULL mappings not valid for kernel managed VM */
++		/*
++		 * On a6xx (seen on A640) the CCU can read the 64 KiB-aligned
++		 * start of the block that holds a bound render target. Align
++		 * kernel-managed VAs to 64 KiB so that block start lies inside
++		 * the buffer itself; callers with a tight fixed window, such as
++		 * the GMU, fall back to page alignment.
++		 */
+ 		ret = drm_mm_insert_node_in_range(&vm->mm, &vma->node,
+-						obj->size, PAGE_SIZE, 0,
++						obj->size, SZ_64K, 0,
+ 						range_start, range_end, 0);
++		if (ret == -ENOSPC)
++			ret = drm_mm_insert_node_in_range(&vm->mm, &vma->node,
++							  obj->size, PAGE_SIZE, 0,
++							  range_start, range_end, 0);
  
-+	/*
-+	 * The digital core drops register writes while MCLK is off, but the
-+	 * regmap cache still records them. Keep MCLK running so the init
-+	 * sequence below and later mixer/DAPM writes actually reach the codec.
-+	 */
-+	__wcd934x_cdc_mclk_enable(wcd, true);
- 	wcd934x_comp_init(component);
- 
- 	for (i = 0; i < NUM_CODEC_DAIS; i++)
+ 		if (ret)
+ 			goto err_free_vma;
 
 ---
 base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
-change-id: 20261109-wcd934x-mclk-de59e1646807
+change-id: 20261109-msm-va-align-072b585038aa
 
 Best regards,
 -- 
