@@ -1,83 +1,74 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Mon, 09 Nov 2026 03:45:58 +0000
-Subject: [PATCH] arm64: dts: rockchip: Enable SDR104 on the Kobol Helios64
- SD card
+From: Ivan Verbovoy <ivanverbovoy@gmail.com>
+Date: Mon, 09 Nov 2026 06:21:11 +0200
+Subject: [PATCH] soundwire: qcom: enable CPU interrupts only for MMIO
+ controllers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-helios64-sd-uhs-v1-1-ef8fc370d282@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAPVB8WoC/x3MQQqAIBBA0avErBtIk8iuEi1CxxwIC4cikO6et
- HyL/wsIZSaBqSmQ6WbhI1WotgEX17QRsq8G3elBqc5ipJ0PGQyKxysKWqMNhV4F60ao1Zkp8PM
- f5+V9P9MS6/thAAAA
-To: Heiko Stuebner <heiko@sntech.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2313; i=iav@iav.lv;
- h=from:subject:message-id; bh=dC7wpDaNbCjkiANOAYK+QKZwUz9weOXO+ehiRLkJWy0=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkfHX9I/uZ4N0sia0uS55ILh0VNsmYbVFUmHvgnJ2pys
- NVwqu3KjlIWBjEuBlkxRZYJhzRuZSy5+tffw/wBzBxWJpAhDFycAjCRywEM/+OEa00n7HvzzvxX
- oMBxhck7s6OEUn5dXbKXy1lfkGv/tQcM/xRfRk9cMMnGicWyffGChzM+aQk0LZ1Q6dozrYBFImv
- TfSYA
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Message-Id: <20261109-swrm-mmio-irq-v1-1-570fc05f22d7@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwNL3eLyolzd3NzMfN3MokLdFAtLM3ML40RTk5REJaCegqLUtMwKsHn
+ RsRB+cWlSVmpyCcgQpdpaADAqLv5xAAAA
+X-Change-ID: 20261109-swrm-mmio-irq-d896783a54da
+To: Srinivas Kandagatla <srini@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
+ Bard Liao <yung-chuan.liao@linux.intel.com>, 
+ Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>, 
+ Mohammad Rafi Shaik <mohammad.rafi.shaik@oss.qualcomm.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-sound@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Ivan Verbovoy <ivanverbovoy@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794198071; l=1798;
+ i=ivanverbovoy@gmail.com; s=20261103; h=from:subject:message-id;
+ bh=QD1XMeeWI7Z+Najg0/8tSfdJNHSFsUN6oXfbw01Un7k=;
+ b=dyI7A28T5z0Pxt+gEo/x6FzCwS21fQFt9sHAz0v7PjOVIHBrMtGeSaaxFP6JY1DD21QwNFVtf
+ vZPEuFileqTCciP7rRaDs7T/qXhpT/vH1DtEUbqskwok039s09bRimJ
+X-Developer-Key: i=ivanverbovoy@gmail.com; a=ed25519;
+ pk=0AchqTH1hJFToIUeFfQRlVzzuaWQDs4e75SxT2y3s8c=
+X-Endpoint-Received: by B4 Relay for ivanverbovoy@gmail.com/20261103 with auth_id=1396
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SD card I/O supply vcc_sdio_s0 can switch between 1.8 V and 3.0 V and
-is already described as vqmmc-supply and as the sdmmc I/O domain supply,
-but the card only runs in high speed mode.
+Commit b27be5a85ed3 ("soundwire: qcom: add EE-aware register layout for
+Shikra") dropped the ctrl->mmio check around the CPU interrupt enable in
+qcom_swrm_init(), which its message does not mention. The enable has
+been written for MMIO controllers only since they were added in
+commit 82f5c70c2651 ("soundwire: qcom: add support for mmio soundwire
+master devices"); a controller inside a codec, reached over SLIMbus, was
+left alone.
 
-Allow SDR104. With a SanDisk 32 GB card it runs at 148.5 MHz, and direct
-read goes from 23 MB/s to 53-66 MB/s.
+On a Surface Duo (SM8150, a WCD9340 with one WSA8815 on its SoundWire)
+the amplifier no longer enumerates since: "SWR bus clsh detected" at
+boot, "link failed to connect" at each resume, and every stream fails
+with -110. With the check back it enumerates and plays again. Shikra's
+controller is MMIO and keeps the enable.
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Fixes: b27be5a85ed3 ("soundwire: qcom: add EE-aware register layout for Shikra")
+Signed-off-by: Ivan Verbovoy <ivanverbovoy@gmail.com>
 ---
-Tested on Helios64 with Linux 7.3, its device tree plus this property,
-and the U-Boot and .config of Armbian, PCIe host driver not loaded: 15
-warm reboots and 3 cold starts, SDR104 at 148.5 MHz each time, no SD
-errors in dmesg, a written file read back with the same checksum. One
-card only. Writes stay at about 11 MB/s.
+ drivers/soundwire/qcom.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-Armbian kernels carry this property with PCIe enabled. In their console
-logs tuning sometimes fails when it coincides with the PCIe probe, as on
-ROCK Pi 4, and the retry reaches SDR104 every time. The cause is not
-confirmed on this board; async probe, applied as
-https://lore.kernel.org/r/20261103-rockchip-pcie-async-v1-1-4dcadb94af64@iav.lv
-is not tested in this combination.
-
-A normal reboot powers the card off, but after a watchdog reset or a
-panic the card stays at 1.8 V. An SPL that does not set the SD I/O domain
-from vcc_sdio_s0 then fails to read the card until a power cycle. Armbian's
-U-Boot does this (such resets 8 of 8, on Armbian's DTB). The board is not
-in mainline U-Boot yet; v2 of
-https://lore.kernel.org/r/20261021-b4-helios64-v1-1-74afe8aa6d72@iav.lv
-will carry it. Kobol's U-Boot is not checked.
----
- arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-index f13ea2df7a30..35153e84f206 100644
---- a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-@@ -781,6 +781,7 @@ &sdmmc {
- 	disable-wp;
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_cd &sdmmc_bus4>;
-+	sd-uhs-sdr104;
- 	vmmc-supply = <&vcc3v0_sd>;
- 	vqmmc-supply = <&vcc_sdio_s0>;
- 	status = "okay";
+diff --git a/drivers/soundwire/qcom.c b/drivers/soundwire/qcom.c
+index 147e55b7a600..99c1b6398894 100644
+--- a/drivers/soundwire/qcom.c
++++ b/drivers/soundwire/qcom.c
+@@ -995,8 +995,9 @@ static int qcom_swrm_init(struct qcom_swrm_ctrl *ctrl)
+ 			0xFFFFFFFF);
+ 
+ 	/* enable CPU IRQs for the selected EE window */
+-	ctrl->reg_write(ctrl, ctrl->reg_layout[SWRM_REG_INTERRUPT_CPU_EN],
+-			SWRM_INTERRUPT_STATUS_RMSK);
++	if (ctrl->mmio)
++		ctrl->reg_write(ctrl, ctrl->reg_layout[SWRM_REG_INTERRUPT_CPU_EN],
++				SWRM_INTERRUPT_STATUS_RMSK);
+ 
+ 	/* Set IRQ to PULSE */
+ 	ctrl->reg_write(ctrl, SWRM_COMP_CFG_ADDR,
 
 ---
-base-commit: c3baae5f1a15645cddadcb2b9abddef5df291f59
-change-id: 20261109-helios64-sd-uhs-9424ef31f9c8
+base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
+change-id: 20261109-swrm-mmio-irq-d896783a54da
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Ivan Verbovoy <ivanverbovoy@gmail.com>
 
