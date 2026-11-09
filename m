@@ -1,11 +1,11 @@
 From: Xiubo Li <xiubo.li@clyso.com>
-Date: Mon, 09 Nov 2026 01:27:18 +0100
-Subject: [PATCH 1/2] ceph: count a dirty folio out wherever it stops being
- dirty
+Date: Mon, 09 Nov 2026 01:27:19 +0100
+Subject: [PATCH 2/2] ceph: drop the dirty folios that a shut down mount
+ cannot write back
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-ceph-shutdown-dirty-folios-v1-1-34600e8dab20@clyso.com>
+Message-Id: <20261109-ceph-shutdown-dirty-folios-v1-2-34600e8dab20@clyso.com>
 References: <20261109-ceph-shutdown-dirty-folios-v1-0-34600e8dab20@clyso.com>
 In-Reply-To: <20261109-ceph-shutdown-dirty-folios-v1-0-34600e8dab20@clyso.com>
 To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
@@ -14,102 +14,91 @@ To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>,
 Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794184042; l=3807;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794184042; l=3297;
  i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=INWE3Vox69f5KmDexh7azfR2ub5l95HDLYAiPuZXyAY=;
- b=eMbn3Nlh7jlWsIYwOUjO1Yw2xwCp1n3T5X1NFs7VVn6+/2kKTUtnkd9LmbWvT44WLBbfQqEkD
- 9wHwIqCpH0cAHKFfqZNdO5Qp4aqggqnQGbLQlS17ixsBXWRC7GL1s1r
+ bh=apUGUAugMMqkzlDQq7ZBOtMNcuBWkirzNCz7wqu3KjU=;
+ b=azC8ejpzs7pUV5FvwNmYgF0qXFQc6onGrB/Eo8qFBp+qNRpyI9JMZiVibAw0v0H918RqrmJgy
+ VPFIEa1hU1OANkmw04/+oFXbnlsfL4bn9DDtmxH0i3vV+8XKzg6soOz
 X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
  pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
 X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ceph_dirty_folio() counts every folio that becomes dirty in
-mdsc->dirty_folios, and ceph_kill_sb() waits for that count to reach
-zero before it goes on.  writepages_finish() takes a folio out of the
-count when it has been written, but two other places that end a
-folio's dirty state only put its snap context and Fb cap ref:
+When the MDS closes the session of a client (e.g. it evicts it), the
+caps go, with any dirty cap state, but the dirty folios stay in the
+page cache: the inode is not shut down then, so ceph_purge_inode_cap()
+does not have them invalidated, and they are left for writeback.  If
+the mount is then shut down by a forced umount before they were written
+back, they never are: ceph_writepages_start() only sets -EIO on the
+mapping and returns, so they stay dirty for good.  Each keeps its count
+in mdsc->dirty_folios and its Fb cap ref, which holds a reference to
+the inode, so umount waits until mount_timeout and then finds the inode
+busy:
 
- - ceph_invalidate_folio(), which drops a dirty folio when it is
-   truncated or invalidated as a whole;
- - write_folio_nounlock(), which writes back a single folio that is
-   dirty in an older snap context than the one a new write needs.
+  ceph: ... dropping dirty Fw state for ... 10000000001.fffffffffffffffe
+  ceph: ... 10000000001.fffffffffffffffe 1099511627777 forced umount
+  ceph: ... umount timed out, 0
+  VFS: Busy inodes after unmount of ceph (ceph)
+  kernel BUG at fs/super.c:731!
 
-Every such folio stays in the count for good, so after e.g. a truncate
-of dirty data, umount waits until mount_timeout:
+Have the page cache of such an inode invalidated there instead, which
+for a shut down inode truncates it, as ceph_purge_inode_cap() does.
+That has to happen from the inode work, not from writeback: putting the
+last Fb cap ref may put the last reference to the inode, and evicting
+it would wait for the writeback that does it.  Then ceph_kill_sb()
+flushes the inode work after syncing the fs, so that the folios and
+their references are gone before the inodes are evicted.
 
-  ceph: [<fsid> <client>]: umount timed out, 0
-
-Take the folio out of the count there too: ceph_invalidate_folio() now
-drops it with ceph_folio_drop_dirty(), which does all of it.
-
-Fixes: fd7449d937e7 ("ceph: fix generic/421 test failure")
 Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- fs/ceph/addr.c | 29 +++++++++++++++++++----------
- 1 file changed, 19 insertions(+), 10 deletions(-)
+ fs/ceph/addr.c  | 14 ++++++++++++++
+ fs/ceph/super.c |  8 ++++++++
+ 2 files changed, 22 insertions(+)
 
 diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-index b0f06d21ca72..2abed478a4ad 100644
+index 2abed478a4ad..2202906f4e18 100644
 --- a/fs/ceph/addr.c
 +++ b/fs/ceph/addr.c
-@@ -126,11 +126,14 @@ static struct ceph_snap_context *ceph_folio_detach_snapc(struct folio *folio)
- }
+@@ -2097,6 +2097,20 @@ static int ceph_writepages_start(struct address_space *mapping,
+ 	      (wbc->sync_mode == WB_SYNC_ALL ? "ALL" : "HOLD"));
  
- /*
-- * Every dirty byte of a lazy I/O folio lies beyond EOF now: there is
-- * nothing to write back, and the bytes in front of its dirty range are
-- * not this client's to send.  Drop the folio's dirty state, which the
-- * caller has already cleared, with the folio locked, and its count in
-- * the dirty folios that umount waits for.
-+ * Drop the dirty state of a folio that will not be written back, with
-+ * the folio locked: its snap context and dirty range, its Fb cap ref and
-+ * its count in the dirty folios that umount waits for.  The caller has
-+ * cleared the dirty flag already, or is about to (invalidate_folio).
-+ *
-+ * E.g. every dirty byte of a lazy I/O folio lies beyond EOF now: there
-+ * is nothing to write back, and the bytes in front of its dirty range
-+ * are not this client's to send.
-  */
- static void ceph_folio_drop_dirty(struct inode *inode, struct folio *folio)
- {
-@@ -304,8 +307,6 @@ static void ceph_invalidate_folio(struct folio *folio, size_t offset,
- 	struct inode *inode = folio->mapping->host;
- 	struct ceph_fs_client *fsc = ceph_inode_to_fs_client(inode);
- 	struct ceph_client *cl = ceph_inode_to_client(inode);
--	struct ceph_inode_info *ci = ceph_inode(inode);
--	struct ceph_snap_context *snapc;
- 	struct ceph_journal_info __ji;
- 
- 	ceph_blog_enter_gfp(fsc, &__ji, GFP_ATOMIC);
-@@ -339,9 +340,12 @@ static void ceph_invalidate_folio(struct folio *folio, size_t offset,
- 		boutc(cl, "%llx.%llx idx %lu full dirty page\n",
- 		      ceph_vinop(inode), folio->index);
- 
--		snapc = ceph_folio_detach_snapc(folio);
--		ceph_put_wrbuffer_cap_refs(ci, 1, snapc);
--		ceph_put_snap_context(snapc);
+ 	if (is_forced_umount(mapping)) {
 +		/*
-+		 * The folio goes away dirty (a truncate, or a shut down
-+		 * mount): it must leave the dirty folios count too, or
-+		 * umount waits for it until mount_timeout.
++		 * What is dirty here can never be written back now.  Left
++		 * dirty, each folio keeps its Fb cap ref, which holds the
++		 * inode, and its count in the dirty folios that umount
++		 * waits for.  ceph_purge_inode_cap() has them invalidated
++		 * when it removes the caps of a shut down inode, but the
++		 * session may have been closed (the client evicted), and
++		 * the caps removed, before the shut down.  Have them
++		 * dropped now, but not from here: putting the last Fb cap
++		 * ref may put the last reference to the inode, and its
++		 * eviction would wait for this writeback.
 +		 */
-+		ceph_folio_drop_dirty(inode, folio);
++		if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
++			ceph_queue_invalidate(inode);
+ 		ceph_blog_exit(&__ji);
+ 		return -EIO;
  	}
+diff --git a/fs/ceph/super.c b/fs/ceph/super.c
+index 40be4b16e486..bb5591c1e154 100644
+--- a/fs/ceph/super.c
++++ b/fs/ceph/super.c
+@@ -1634,6 +1634,14 @@ static void ceph_kill_sb(struct super_block *s)
+ 	 */
+ 	sync_filesystem(s);
  
- 	netfs_invalidate_folio(folio, offset, length);
-@@ -1211,6 +1215,11 @@ static int write_folio_nounlock(struct folio *folio,
- 	ceph_put_wrbuffer_cap_refs(ci, 1, snapc);
- 	ceph_put_snap_context(snapc);  /* page's reference */
- 
-+	if (atomic64_dec_return(&fsc->mdsc->dirty_folios) <= 0) {
-+		wake_up_all(&fsc->mdsc->flush_end_wq);
-+		WARN_ON(atomic64_read(&fsc->mdsc->dirty_folios) < 0);
-+	}
++	/*
++	 * A shut down mount can't write back its dirty folios, and
++	 * writeback queued their invalidation instead: let it drop them,
++	 * and the references they hold to the inodes, before the inodes
++	 * get evicted.
++	 */
++	flush_workqueue(fsc->inode_wq);
 +
- 	if (atomic_long_dec_return(&fsc->writeback_count) <
- 	    CONGESTION_OFF_THRESH(fsc->mount_options->congestion_kb))
- 		fsc->write_congested = false;
+ 	if (atomic64_read(&mdsc->dirty_folios) > 0) {
+ 		wait_queue_head_t *wq = &mdsc->flush_end_wq;
+ 		long timeleft = wait_event_killable_timeout(*wq,
 
 -- 
 2.53.0
