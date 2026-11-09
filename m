@@ -1,124 +1,170 @@
 From: Xuheng Li <xuheng@cs.columbia.edu>
-Date: Mon, 09 Nov 2026 22:13:35 +0000
-Subject: [PATCH v3] KVM: arm64: Don't replace a valid hyp block mapping
- with a table
+Date: Mon, 09 Nov 2026 22:13:36 +0000
+Subject: [PATCH v2] KVM: arm64: Order a later pinner's accesses after the
+ hyp mapping
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-hyp-block-map-v3-1-bd70e67eb0bf@cs.columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwNL3YzKAt2knPzkbN3cxAJdg2RDyzSLVEsTI5MkJaCegqLUtMwKsHn
- RsbW1AAtSsWxfAAAA
-X-Change-ID: 20261109-hyp-block-map-0c19f8e9424b
+Message-Id: <20261109-pin-barrier-v2-1-64ca73cae5e3@cs.columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22MQQ6CMBAAv0L2bEm3ihZO/sNwaMtWNtFCWmk0h
+ L9bOXucSWZWSBSZEnTVCpEyJ55CAXWowI0m3EnwUBiUVGdE2YiZg7AmliiKRnt1VK1rUSsoxRz
+ J83u/3frCI6fXFD/7POPP/v9kFCjkiaxH1HhpzNWl2k2P5WnZ1DQs0G/b9gUSPyAurAAAAA==
+X-Change-ID: 20261105-pin-barrier-58f2329c9182
 To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oupton@kernel.org>
-Cc: Vincent Donnefort <vdonnefort@google.com>, 
- Fuad Tabba <fuad.tabba@linux.dev>, Quentin Perret <qperret@google.com>, 
- Will Deacon <will@kernel.org>, Mostafa Saleh <smostafa@google.com>, 
+Cc: Quentin Perret <qperret@google.com>, Will Deacon <will@kernel.org>, 
  Catalin Marinas <catalin.marinas@arm.com>, 
- Mark Rutland <mark.rutland@arm.com>, Joey Gouly <joey.gouly@arm.com>, 
- Steffen Eiden <seiden@linux.ibm.com>, 
+ Mark Rutland <mark.rutland@arm.com>, Fuad Tabba <fuad.tabba@linux.dev>, 
+ Joey Gouly <joey.gouly@arm.com>, Steffen Eiden <seiden@linux.ibm.com>, 
  Suzuki K Poulose <suzuki.poulose@arm.com>, 
  Zenghui Yu <yuzenghui@huawei.com>, kvmarm@lists.linux.dev, 
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xuheng Li <xuheng@cs.columbia.edu>
+ stable@vger.kernel.org, Xuheng Li <xuheng@cs.columbia.edu>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794262414; l=3910;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794262415; l=5667;
  i=xuheng@cs.columbia.edu; s=20261028; h=from:subject:message-id;
- bh=RIFjoI85KP24Rv3faoa4T6ksq6aQB6AW6n6O+fZ4Jw8=;
- b=j9SVzqCiLPkNYh1JWfLZitE9GNR+YyVV3Ivtx30mdQziJtNsmwtvPjrAxpTl0xi4hvgf6t9DV
- V55yyGreT2AB+KHnSiw9xKu79OZs9NymAKLF9eebBOAkIIPPYE1xU6K
+ bh=fuEJKXd7OZH045MEhiyU1s2rzbiFjb8ltiEtBO6sALo=;
+ b=V618ePRfwdZZAW0Pe+S4sb9++ANEHkXDx1Ax0HhTJq2uWt5VDvp2qki7W/rqYoREcrssbVTdH
+ 7CRRVgGJ3JsDX7FqfVtXtz0282zcW+t5AkqW6SFLLdg9BlruAhnkscu
 X-Developer-Key: i=xuheng@cs.columbia.edu; a=ed25519;
  pk=L1HVV+goqxYmEMO/OXakL6uf9isSpgk2QrLlFqyZ2Qs=
 X-Endpoint-Received: by B4 Relay for xuheng@cs.columbia.edu/20261028 with auth_id=1349
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When kvm_pgtable_hyp_map() is asked to map part of a range that a valid
-block mapping already covers, hyp_map_walker_try_leaf() declines, as the
-request cannot be a leaf at the block's level.  hyp_map_walker() then
-allocates a zeroed table and stores it over the valid block entry.  The
-walk descends into the new table and maps the requested pages, but the
-rest of the block is now unmapped, and the valid block was replaced
-without break-before-make.
+Since commit 48d848882395 ("KVM: arm64: Defer EL2 stage-1 mapping on
+share"), hyp_pin_shared_mem() maps a shared page into the hypervisor's
+stage-1 only when its refcount goes from 0 to 1.  The CPU that maps it
+runs dsb(ishst); isb() in kvm_pgtable_hyp_map(), which orders that CPU's
+own accesses.  A CPU that pins the page later sees refcount >= 1, maps
+nothing and runs no barrier.  It then accesses the page through an
+address it computed before taking the locks, so nothing orders its
+translation after the other CPU's PTE write.  The access can use a
+translation performed while the entry was still invalid, and fault.
 
-No in-tree caller maps into an existing hyp block mapping today, so this
-cannot be triggered in mainline.  Fail such a request with -EEXIST
-instead, so that a future caller gets an error rather than silently
-losing the rest of the block.
+A host can do this with any pinning hypercall by passing the same page
+from two CPUs, for example __pkvm_init_vm() with the same struct kvm:
 
-The same check now catches a conflicting remap of an existing leaf, so
-drop the WARN_ON() from hyp_map_walker_try_leaf(): every caller checks
-the error, and a WARN is fatal at EL2.  Do the check before the
-last-level WARN_ON(), which is kept for internal errors, and update the
-kernel-doc of kvm_pgtable_hyp_map() to match.
+  CPU A                                CPU B
+  -----                                -----
+                                       host_kvm = kern_hyp_va_host(x1)
+                                       (host_kvm may be translated now,
+                                        while its entry is invalid)
+  __pkvm_init_vm(host_kvm)
+   hyp_pin_shared_mem()
+    host/hyp locks
+    refcount 0 -> 1
+    pkvm_create_mappings_locked()
+     kvm_pgtable_hyp_map()
+      write the valid PTE
+      dsb(ishst); isb()   <- CPU A only
+    unlock
+                                       __pkvm_init_vm(host_kvm)
+                                        hyp_pin_shared_mem()
+                                         host/hyp locks
+                                         refcount 1 -> 2: no mapping,
+                                         no barrier
+                                         unlock
+                                        READ_ONCE(host_kvm->created_vcpus)
+                                         uses the old translation:
+                                         translation fault -> hyp_panic()
 
+A well-behaved host can hit this too.  Since commit cf533b4d3630 ("KVM:
+arm64: Validate the host vCPU's VM before reading it under pKVM"),
+injecting an exception into a host vCPU that isn't loaded pins its
+struct kvm to read the VM's MTE flag.  On an MTE-capable host, two vCPUs
+of one VM that do this at the same time from __kvm_adjust_pc() take the
+same path as CPU B above.
+
+The lock hand-off orders CPU B's loads and stores after CPU A's PTE
+write, but not its translation table walks.  Arm's herd7 model with
+-variant vmsa allows the fault for this shape: a mapping made and
+completed with DSB; ISB on one CPU, handed over through a
+release/acquire, then used on another CPU through an address it already
+held.  It forbids the fault once the second CPU runs DSB; ISB after the
+acquire.
+
+Make every successful pin end with dsb(ish); isb(), so that the pinning
+CPU's later accesses through the range are ordered after the mapping,
+whichever pin installed it.
+
+Fixes: 48d848882395 ("KVM: arm64: Defer EL2 stage-1 mapping on share")
+Cc: stable@vger.kernel.org
+Reviewed-by: Fuad Tabba <fuad.tabba@linux.dev>
 Signed-off-by: Xuheng Li <xuheng@cs.columbia.edu>
 ---
-This is patch 3/3 of v2, sent alone: 1/3 is superseded by Mostafa's
-"KVM: arm64: Use consistent type for pool size" [1], and 2/3 is dropped.
+The fault was found with herd7 (herdtools7 7.58+1) and Arm's AArch64
+model with -variant vmsa,fatal.  The test reduces the host/hyp locks to
+an acquire of CPU A's release and the pin to its refcount check:
 
-With the WARN_ON() gone from hyp_map_walker_try_leaf(), a conflicting
-remap through the EL1 path (__create_hyp_mappings()) also returns
--EEXIST without a warning, where it used to warn and return -EINVAL.
+AArch64 pin-maps-nothing
+{
+pte_x=(valid:0);
+0:X2=pte_x; 0:X1=(oa:phy_y);
+y=1;
+pte_z=(af:1,db:1); pte_r=(af:1,db:1);
+0:X8=z; 1:X8=z;
+0:X9=r; 1:X9=r;
+1:X3=x;
+}
+ P0               | P1                ;
+ MOV W5,#1        | LDAR W7,[X8]      ;
+ STR W5,[X9]      | LDR W5,[X9]       ;
+ STLR X1,[X2]     | ADD W5,W5,#1      ;
+ DSB ISHST        | STR W5,[X9]       ;
+ ISB              | CMP W5,#1         ;
+ MOV W7,#1        | B.EQ LMAP         ;
+ STLR W7,[X8]     | MOV W6,#2         ;
+                  | STLR W6,[X8]      ;
+                  | L0: LDR W4,[X3]   ;
+                  | LMAP:             ;
+exists (1:X7=1 /\ 1:X5=2 /\ fault(P1:L0,x))
 
-[1] https://lore.kernel.org/r/20261106172750.2678873-1-smostafa@google.com
+P0 is the pin that maps x (refcount 0 -> 1, PTE store, dsb(ishst);
+isb(), unlock).  P1 takes the lock after P0's unlock, sees refcount 2,
+maps nothing, and then loads through the address it already held in X3.
+
+  $ herd7 -variant vmsa,fatal pin-maps-nothing.litmus
+  ...
+  1:X5=2; 1:X7=1; Fault(P1:L0,x,D-MMU:Translation);
+  ...
+  Observation pin-maps-nothing Sometimes 1 7
+
+With DSB ISH; ISB on P1 after its acquire and before L0, as this patch
+adds, the result is Never (0 6).  It is also Never with
+-variant vmsa,fatal,ets2, i.e. on CPUs with FEAT_ETS2.
 ---
-Changes in v3:
-- Drop the WARN_ON() from the new check and from
-  hyp_map_walker_try_leaf(), and update the kernel-doc of
-  kvm_pgtable_hyp_map() (Vincent, Fuad).
-- Do the check before the last-level WARN_ON(), so that a conflicting
-  page-level mapping returns -EEXIST instead of reaching it.
-- Link to v2: https://lore.kernel.org/r/20261105-hyp-pool-and-map-v2-3-44a6ca90190b@cs.columbia.edu
+Changes in v2:
+- Add a case that a well-behaved host can hit, from __kvm_adjust_pc()
+  (Fuad).
+- Collect Fuad's Reviewed-by.
+- Rebase onto v7.4-rc2.
+- Link to v1: https://lore.kernel.org/r/20261105-pin-barrier-v1-1-04ebf118175a@cs.columbia.edu
 ---
- arch/arm64/include/asm/kvm_pgtable.h |  2 +-
- arch/arm64/kvm/hyp/pgtable.c         | 10 +++++++++-
- 2 files changed, 10 insertions(+), 2 deletions(-)
+ arch/arm64/kvm/hyp/nvhe/mem_protect.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/arch/arm64/include/asm/kvm_pgtable.h b/arch/arm64/include/asm/kvm_pgtable.h
-index 1c9c57cd6..6d6ed8596 100644
---- a/arch/arm64/include/asm/kvm_pgtable.h
-+++ b/arch/arm64/include/asm/kvm_pgtable.h
-@@ -508,7 +508,7 @@ void kvm_pgtable_hyp_destroy(struct kvm_pgtable *pgt);
-  * If device attributes are not explicitly requested in @prot, then the
-  * mapping will be normal, cacheable. Attempts to install a new mapping
-  * for a virtual address that is already mapped will be rejected with an
-- * error and a WARN().
-+ * error.
-  *
-  * Return: 0 on success, negative error code on failure.
-  */
-diff --git a/arch/arm64/kvm/hyp/pgtable.c b/arch/arm64/kvm/hyp/pgtable.c
-index 9c83837b1..94a59f29a 100644
---- a/arch/arm64/kvm/hyp/pgtable.c
-+++ b/arch/arm64/kvm/hyp/pgtable.c
-@@ -414,7 +414,7 @@ static bool hyp_map_walker_try_leaf(const struct kvm_pgtable_visit_ctx *ctx,
- 		return true;
- 	if (!kvm_pte_valid(ctx->old))
- 		ctx->mm_ops->get_page(ctx->ptep);
--	else if (WARN_ON((ctx->old ^ new) & ~KVM_PTE_LEAF_ATTR_HI_SW))
-+	else if ((ctx->old ^ new) & ~KVM_PTE_LEAF_ATTR_HI_SW)
- 		return false;
- 
- 	smp_store_release(ctx->ptep, new);
-@@ -431,6 +431,14 @@ static int hyp_map_walker(const struct kvm_pgtable_visit_ctx *ctx,
- 	if (hyp_map_walker_try_leaf(ctx, data))
- 		return 0;
+diff --git a/arch/arm64/kvm/hyp/nvhe/mem_protect.c b/arch/arm64/kvm/hyp/nvhe/mem_protect.c
+index d4c332a91..5cb1a1e1f 100644
+--- a/arch/arm64/kvm/hyp/nvhe/mem_protect.c
++++ b/arch/arm64/kvm/hyp/nvhe/mem_protect.c
+@@ -1210,6 +1210,14 @@ int hyp_pin_shared_mem(void *from, void *to)
+ 							    PAGE_HYP));
+ 	}
  
 +	/*
-+	 * A valid entry here is a leaf that conflicts with the request.
-+	 * Replacing a block with a table would need break-before-make, and
-+	 * would leave the rest of the block unmapped.
++	 * Only the first pin of a page maps it, and that CPU's barriers order
++	 * only its own accesses. Order this CPU's accesses through the range
++	 * after the mapping, whichever pin made it.
 +	 */
-+	if (kvm_pte_valid(ctx->old))
-+		return -EEXIST;
++	dsb(ish);
++	isb();
 +
- 	if (WARN_ON(ctx->level == KVM_PGTABLE_LAST_LEVEL))
- 		return -EINVAL;
- 
+ unlock:
+ 	hyp_unlock_component();
+ 	host_unlock_component();
 
 ---
 base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261109-hyp-block-map-0c19f8e9424b
+change-id: 20261105-pin-barrier-58f2329c9182
 
 Best regards,
 -- 
