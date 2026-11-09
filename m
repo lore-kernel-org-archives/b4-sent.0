@@ -1,16 +1,13 @@
 From: Demeter Barna <me@fromdisposition.org>
-Subject: [PATCH v2 0/2] arm64: dts: qcom: sm8350: Add the inline crypto
- engine
-Date: Mon, 09 Nov 2026 13:55:28 +0000
-Message-Id: <20261109-b4-sm8350-ice-v2-0-fd5e84985e90@fromdisposition.org>
+Date: Mon, 09 Nov 2026 13:55:29 +0000
+Subject: [PATCH v2 1/2] dt-bindings: crypto: qcom,inline-crypto-engine: Add
+ SM8350
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WOwQqDMBBEf0Vy7pYkGrE9+R/FQ4wb3YJGslZax
- H9vtOceH8y8mU0wRkIW92wTEVdiClMCfcmEG+zUI1CXWGipS6WkgbYAHqvcSCCHgN52hcFbrks
- tUmeO6Ol9+h7Nj/nVPtEth+RIDMRLiJ9zcFVH7p97VSDBG4Ml2gqVs7WPYeyI58C0pJ/XEHvR7
- Pv+BRhzvH/GAAAA
-X-Change-ID: 20261105-b4-sm8350-ice-efad45e93262
+Message-Id: <20261109-b4-sm8350-ice-v2-1-fd5e84985e90@fromdisposition.org>
+References: <20261109-b4-sm8350-ice-v2-0-fd5e84985e90@fromdisposition.org>
+In-Reply-To: <20261109-b4-sm8350-ice-v2-0-fd5e84985e90@fromdisposition.org>
 To: Abel Vesa <abelvesa@kernel.org>, 
  Herbert Xu <herbert@gondor.apana.org.au>, 
  "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
@@ -21,53 +18,40 @@ Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Demeter Barna <me@fromdisposition.org>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794232535; l=1627;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794232535; l=1222;
  i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
- bh=iEvs/mRmPbkyFB2ueYR7aReCKd4lWIPF0+wKUolEjTM=;
- b=0eKFcFbHOOY66ttJSOqjNRwmxTPtozm6mbhfCF34b+vka5QQjZmzCFeRKeUWZ3WszvpZezeLz
- QOs2CFVgBtCCm9/rKi7XgKExoDxccLuVKfirFVALavSnnHulU+34MSr
+ bh=O8H9CShAkj9Ovw7qSKhxVxcXLgvKHLomuYV1vK0dxiU=;
+ b=XV+ZqkfTPsOnsrBbgAxWb88AQs2Y8b6HpCata6VLx6NmLxeWanvpCdCQLW5hpbxbYDLiiFm4Q
+ FsaaT4Em3M8Awf0aoi/gPY6gpCjMrpyvclMtURYmlt02wAi2vdnUOLV
 X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
  pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
 X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SM8350 has an inline crypto engine (ICE v3.2.0) next to its UFS host,
-but sm8350.dtsi does not describe it, so ufs-qcom runs without inline
-encryption. Add the compatible to the binding and the node to
-sm8350.dtsi, as on SM8450.
-
-The region covers the engine (0x1d88000, 0x8000) and its key manager
-(0x1d90000, 0x9000), as in Qualcomm's SM8350 device tree; the clocks and
-the power domain are those of SM8450. The TrustZone offers the raw-key
-SCM calls but not GENERATE/PREPARE/IMPORT_ICE_KEY, so qcom-ice uses raw
-keys.
-
-Tested on a Razer Edge 5G with fscrypt v2 on ext4: "AES-256-XTS using
-blk-crypto (native)", and files written with and without inlinecrypt
-read back correctly either way. dtbs_check is clean for all SM8350
-boards.
+SM8350's UFS host has an inline crypto engine, version 3.2.0, with a
+hardware key manager behind it, clocked by the UFS ICE core and AHB
+clocks and powered by the UFS PHY GDSC. Document the compatible. Being a
+new SoC, it stays off the legacy single-clock list, so both clocks and
+the power domain are required.
 
 Signed-off-by: Demeter Barna <me@fromdisposition.org>
 ---
-Changes in v2:
-- dt-bindings: drop SM8350 from the legacy single-clock list. It was
-  added there by mistake; SM8350 does not need the exemption, its node
-  has both clocks and the power domain.
-- Link to v1: https://patch.msgid.link/20261105-b4-sm8350-ice-v1-0-f55e6ea8e1ca@fromdisposition.org
+ Documentation/devicetree/bindings/crypto/qcom,inline-crypto-engine.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
----
-Demeter Barna (2):
-      dt-bindings: crypto: qcom,inline-crypto-engine: Add SM8350
-      arm64: dts: qcom: sm8350: Add the inline crypto engine
+diff --git a/Documentation/devicetree/bindings/crypto/qcom,inline-crypto-engine.yaml b/Documentation/devicetree/bindings/crypto/qcom,inline-crypto-engine.yaml
+index 23bf98c2b..2423fd846 100644
+--- a/Documentation/devicetree/bindings/crypto/qcom,inline-crypto-engine.yaml
++++ b/Documentation/devicetree/bindings/crypto/qcom,inline-crypto-engine.yaml
+@@ -24,6 +24,7 @@ properties:
+           - qcom,sc7180-inline-crypto-engine
+           - qcom,sc7280-inline-crypto-engine
+           - qcom,shikra-inline-crypto-engine
++          - qcom,sm8350-inline-crypto-engine
+           - qcom,sm8450-inline-crypto-engine
+           - qcom,sm8550-inline-crypto-engine
+           - qcom,sm8650-inline-crypto-engine
 
- .../bindings/crypto/qcom,inline-crypto-engine.yaml          |  1 +
- arch/arm64/boot/dts/qcom/sm8350.dtsi                        | 13 +++++++++++++
- 2 files changed, 14 insertions(+)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261105-b4-sm8350-ice-efad45e93262
-
-Best regards,
---  
-Demeter Barna <me@fromdisposition.org>
+-- 
+2.53.0
 
