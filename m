@@ -1,125 +1,102 @@
-From: Xuheng Li <xuheng@cs.columbia.edu>
-Date: Mon, 09 Nov 2026 21:36:54 +0000
-Subject: [PATCH] iommu/arm-smmu-v3: Invalidate a new level-1 stream table
- descriptor
+From: Kohei Otsuka <kohei@spacemachines.com>
+Subject: [PATCH v3 0/2] serial: 8250_of: RS-485 on Microchip Core16550
+Date: Tue, 10 Nov 2026 09:06:47 +1100
+Message-Id: <20261110-core16550-rs485-v3-0-4294334243fa@spacemachines.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-smmu-l1std-cfgi-v1-1-65e5203a6516@cs.columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSwqAMAwA0atI1gZMEaFeRVzUmtaAPxoVQby7x
- eVbzDygnIQV2uKBxJeobGsGlQX4ya2RUcZsMJVpiCqLuiwnzqTHiD5EQU+2HoxzgV0NudoTB7n
- /Y9e/7wcgNfKgYQAAAA==
-X-Change-ID: 20261109-smmu-l1std-cfgi-c194b2aafea4
-To: Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>
-Cc: Mostafa Saleh <smostafa@google.com>, 
- linux-arm-kernel@lists.infradead.org, iommu@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Jason Gunthorpe <jgg@ziepe.ca>, 
- Xuheng Li <xuheng@cs.columbia.edu>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794260213; l=3824;
- i=xuheng@cs.columbia.edu; s=20261028; h=from:subject:message-id;
- bh=6TD+iMSmEHTURQXKPmgovA2DklVq76Pc1pkuQOMeEKo=;
- b=1k5jj+Kwjxcu2v8X9yi/0dkZeyGsFFuU3+Q2/V+RSonETOk4CeMcKHKtpXGIAkWXMO1wlnahj
- RG4BqgB1G36AqKQfKR/zqARvxcwBEi91PQTmwBZnb9wWYjux//W+PU8
-X-Developer-Key: i=xuheng@cs.columbia.edu; a=ed25519;
- pk=L1HVV+goqxYmEMO/OXakL6uf9isSpgk2QrLlFqyZ2Qs=
-X-Endpoint-Received: by B4 Relay for xuheng@cs.columbia.edu/20261028 with auth_id=1349
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XNQQ7CIBQE0Ks0rMXwQVpx5T2MC6C/FhNLA5Vom
+ t5dqBsTdTnJzJuZRAwOIzlUMwmYXHR+yEFsKmJ7PVyQujZnwhmvAZig1geEWkpGQ9ztJZVM6o5
+ 1nUY0JK/GgJ17rOLp/M7xbq5op8KURu/i5MNzvUxQev/1BJTRugWJBgGlUcc4aos3bXs3YNxaf
+ yPlJfFPR307PDsapBLCNkax5pezLMsL/9CM5xABAAA=
+X-Change-ID: 20261103-core16550-rs485-505af0ffaeeb
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Lubomir Rintel <lkundrak@v3.sk>, 
+ devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ conor.dooley@microchip.com, Kohei Otsuka <kohei@spacemachines.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794262008; l=3104;
+ i=kohei@spacemachines.com; s=20261103; h=from:subject:message-id;
+ bh=2t/y+JgPR+YcsPrIb1nJlI+zK2fJ6JA0sGv09e5rrOA=;
+ b=hZzUdKg2K6uNjMYDff3C8oXouSGZf4MSIFlp63W0xXWUMs1PX4rxILMm+li+MtEhHAM9h7+Qj
+ FMbE2lKaNOvAUv5GLdl8sZb5PUv4IXmEqjUGdbQqOn/fU7zDUkKPlwe
+X-Developer-Key: i=kohei@spacemachines.com; a=ed25519;
+ pk=1kit/vmX5JiLGH9NPcqlvT55ISWaLmNipdL5VrriRt0=
+X-Endpoint-Received: by B4 Relay for kohei@spacemachines.com/20261103 with auth_id=1385
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-arm_smmu_init_l2_strtab() allocates a level-2 stream table when the first
-master in its range is added, and makes the level-1 descriptor valid. It
-issues no invalidation, and the attach that follows sends only the leaf
-form of CMD_CFGI_STE.
+Core16550 is a 16550-compatible UART soft IP for Microchip FPGAs. We use
+four of them in the fabric of a PolarFire SoC Icicle Kit as RS-485
+ports, described as "ns16550a" with linux,rs485-enabled-at-boot-time.
+With RS-485 enabled, RTS (the transceiver's driver enable) goes high at
+the start of the first transmission and never drops, and the port stops
+receiving. Core16550, like the original 16550A, raises no interrupt on
+TEMT, so __stop_tx() waits for one forever unless the port has
+UART_CAP_NOTEMT, which 8250_of never sets.
 
-IHI 0070 5.1.1 requires the non-leaf form of CMD_CFGI_STE when an L1STD
-changes, including when an inactive descriptor with Span == 0 becomes
-active. An SMMU that cached the inactive descriptor can keep terminating
-the master's transactions as if its StreamID were invalid.
+Testing, on a PolarFire SoC Icicle Kit with four Core16550 instances
+on FIC3 (PCLK 50 MHz), linux-mchp 6.18.17 with this series applied
+and the ports described as "microchip,core16550-rtl-v3",
+115200 8N1, against USB-RS485 (2-wire, half duplex) and USB-RS422
+(4-wire) converters:
+- All four ports transmit and receive correctly with both converters.
+- On RS-485, each port keeps receiving after transmitting, across
+  repeated request/response exchanges in both directions.
+- Without the series, RTS stays high after the first transmission and
+  nothing more is received.
 
-Issue a non-leaf CMD_CFGI_STE after writing the descriptor. The RMR path
-runs before the stream table is programmed into the SMMU, and
-arm_smmu_device_reset() then issues CMD_CFGI_ALL, so it needs none.
+This series was prepared with the help of an AI coding assistant
+(Claude, Anthropic): the analysis of __stop_tx(), both patches and
+these messages. I reviewed and tested the result and take
+responsibility for it.
 
-Fixes: 48ec83bcbcf5 ("iommu/arm-smmu: Add initial driver support for ARM SMMUv3 devices")
-Signed-off-by: Xuheng Li <xuheng@cs.columbia.edu>
+Link: https://github.com/linux4microchip/meta-mchp/issues/5
+
+Signed-off-by: Kohei Otsuka <kohei@spacemachines.com>
 ---
- drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c | 21 ++++++++++++++++-----
- 1 file changed, 16 insertions(+), 5 deletions(-)
+Changes in v3:
+- dt-bindings: drop the ns16550a fallback, as the generic driver leaves
+  RTS asserted in RS-485 mode (Conor)
+- 8250_of: match microchip,core16550-rtl-v3 directly, as a PORT_16550A,
+  and retitle the patch to match
+- Link to v2: https://patch.msgid.link/20261109-core16550-rs485-v2-0-a15933c7b907@spacemachines.com
 
-diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-index 6d4520c47..f61cc6d86 100644
---- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-+++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-@@ -2030,7 +2030,8 @@ static void arm_smmu_init_initial_stes(struct arm_smmu_ste *strtab,
- 	}
- }
- 
--static int arm_smmu_init_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
-+static int arm_smmu_init_l2_strtab(struct arm_smmu_device *smmu, u32 sid,
-+				   bool live)
- {
- 	dma_addr_t l2ptr_dma;
- 	struct arm_smmu_strtab_cfg *cfg = &smmu->strtab_cfg;
-@@ -2053,6 +2054,14 @@ static int arm_smmu_init_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
- 				   ARRAY_SIZE((*l2table)->stes));
- 	arm_smmu_write_strtab_l1_desc(&cfg->l2.l1tab[arm_smmu_strtab_l1_idx(sid)],
- 				      l2ptr_dma);
-+
-+	/*
-+	 * The SMMU may have cached the old, invalid L1 descriptor. Making it
-+	 * valid needs the non-leaf form of CMD_CFGI_STE (IHI 0070 5.1.1).
-+	 */
-+	if (live)
-+		arm_smmu_cmdq_issue_cmd_with_sync(smmu,
-+						  arm_smmu_make_cmd_cfgi_ste(sid, false));
- 	return 0;
- }
- 
-@@ -4261,7 +4270,8 @@ static bool arm_smmu_sid_in_range(struct arm_smmu_device *smmu, u32 sid)
- 	return sid < smmu->strtab_cfg.linear.num_ents;
- }
- 
--static int arm_smmu_init_sid_strtab(struct arm_smmu_device *smmu, u32 sid)
-+static int arm_smmu_init_sid_strtab(struct arm_smmu_device *smmu, u32 sid,
-+				    bool live)
- {
- 	/* Check the SIDs are in range of the SMMU and our stream table */
- 	if (!arm_smmu_sid_in_range(smmu, sid))
-@@ -4269,7 +4279,7 @@ static int arm_smmu_init_sid_strtab(struct arm_smmu_device *smmu, u32 sid)
- 
- 	/* Ensure l2 strtab is initialised */
- 	if (smmu->features & ARM_SMMU_FEAT_2_LVL_STRTAB)
--		return arm_smmu_init_l2_strtab(smmu, sid);
-+		return arm_smmu_init_l2_strtab(smmu, sid, live);
- 
- 	return 0;
- }
-@@ -4333,7 +4343,7 @@ static int arm_smmu_insert_master(struct arm_smmu_device *smmu,
- 		struct rb_node *existing;
- 		u32 sid = new_stream->id;
- 
--		ret = arm_smmu_init_sid_strtab(smmu, sid);
-+		ret = arm_smmu_init_sid_strtab(smmu, sid, true);
- 		if (ret)
- 			break;
- 
-@@ -5713,7 +5723,8 @@ static void arm_smmu_rmr_install_bypass_ste(struct arm_smmu_device *smmu)
- 
- 		rmr = container_of(e, struct iommu_iort_rmr_data, rr);
- 		for (i = 0; i < rmr->num_sids; i++) {
--			ret = arm_smmu_init_sid_strtab(smmu, rmr->sids[i]);
-+			/* The stream table is not programmed into the SMMU yet */
-+			ret = arm_smmu_init_sid_strtab(smmu, rmr->sids[i], false);
- 			if (ret) {
- 				dev_err(smmu->dev, "RMR SID(0x%x) bypass failed\n",
- 					rmr->sids[i]);
+Changes in v2:
+- dt-bindings: rename the compatible to microchip,core16550-rtl-v3,
+  following the -rtl-vN convention of Microchip's other fabric cores
+  (Conor)
+- dt-bindings: explain in the commit message why ns16550a remains a
+  valid fallback (Conor)
+- 8250_of: match microchip,core16550-rtl-v3
+- Dropped Krzysztof's Acked-by on 1/2, as the compatible changed
+- Link to v1: https://patch.msgid.link/20261103-core16550-rs485-v1-0-6d15ebe1e5b9@spacemachines.com
+
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: Jiri Slaby <jirislaby@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Lubomir Rintel <lkundrak@v3.sk>
+To: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-serial@vger.kernel.org
 
 ---
-base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
-change-id: 20261109-smmu-l1std-cfgi-c194b2aafea4
+Kohei Otsuka (2):
+      dt-bindings: serial: 8250: add Microchip Core16550
+      serial: 8250_of: add Microchip Core16550
+
+ Documentation/devicetree/bindings/serial/8250.yaml |  1 +
+ drivers/tty/serial/8250/8250_of.c                  | 12 ++++++++++++
+ 2 files changed, 13 insertions(+)
+---
+base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
+change-id: 20261103-core16550-rs485-505af0ffaeeb
 
 Best regards,
--- 
-Xuheng Li <xuheng@cs.columbia.edu>
+--  
+Kohei Otsuka <kohei@spacemachines.com>
 
