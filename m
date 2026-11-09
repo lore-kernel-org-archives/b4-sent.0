@@ -1,180 +1,96 @@
-From: Jerome Mohm <jrmmhm.kernel@eldare.de>
-Date: Mon, 09 Nov 2026 21:08:29 +0100
-Subject: [PATCH net v5] vsock/bpf: release sock lock while waiting for data
- in recvmsg
+From: Joseph Telaak <joseph@telaak.dev>
+Subject: [PATCH v2 0/2] gpio: Add the Siflower SF19A2890 GPIO controller
+Date: Mon, 09 Nov 2026 15:09:30 -0500
+Message-Id: <20261109-sf19a2890-gpio-v2-0-b885fbd84c4c@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-kbh3-1-022-fix-v2-v5-1-4d9af04f0fad@eldare.de>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NTU7EMAwF4KuMssbIdtK0nRX3QCzy49IA6qCkR
- KBR706mLBihEctnP38+qyI5SVHHw1llqamk09JCd3dQYXbLs0CKLStGtoRI8OpnDQTIDFP6hMo
- geiLDI1pDTrW79yxts5uPapFVPf0My4d/kbBetEttTmU95a/9c6W9/M+TSi2HycnYDY7G3j7IW
- 3RZ7qPsftVXAg+3BA0IPmDfseeoo/8rmF+B0N4STBNCH7XtUQ9k4rWwbds3J8/vrk0BAAA=
-X-Change-ID: 20261001-kbh3-1-022-fix-v2-e3f14290641a
-To: Stefano Garzarella <sgarzare@redhat.com>, 
- Bobby Eshleman <bobbyeshleman@meta.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, "Michael S. Tsirkin" <mst@redhat.com>, 
- Alexei Starovoitov <ast@kernel.org>
-Cc: Michal Luczaj <mhal@rbox.co>, virtualization@lists.linux.dev, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
- stable@vger.kernel.org, Jerome Mohm <jrmmhm.kernel@eldare.de>
+X-B4-Tracking: v=1; b=H4sIAHoo8moC/12OQQ6CMBBFr2K6tqYdCxZX3sOwKDDAqAFsS6Mh3
+ N2CGhOXb/L/fzMxh5bQseNmYhYDOeq7CLDdsLI1XYOcqsgMBKRSCuCulpkBnQneDNTzAmSSAiZ
+ Qa81iabBY02MdPOdvdmNxwdIvK5+ExfsYTf4Xa8n53j7XN4Jcrl+j+jcGyQVXCap0Xyp9AH3ye
+ DPmuqswsHye5xcPo6kw1AAAAA==
+X-Change-ID: 20261102-sf19a2890-gpio-b21562e52f88
+To: Linus Walleij <linusw@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: Chuanhong Guo <gch981213@gmail.com>, Qingfang Deng <dqfext@gmail.com>, 
+ linux-mips@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joseph Telaak <joseph@telaak.dev>, 
+ Qingfang Deng <qingfang.deng@siflower.com.cn>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794254908; l=5966;
- i=jrmmhm.kernel@eldare.de; s=20260928; h=from:subject:message-id;
- bh=gAMP05v48lA79FLWFALXd9zeaNzA0SUA1TvaXrc531E=;
- b=MuAaoC1faU7y/6OsXRinifDWmeyjxYlifpBjeMeeVMCUz5e3BmcfGP4S3n/tMEixejmsuZtB6
- 4LMrBMbv0c2BKMjd1OG1HqhbS0uPowujNLWIg2eCPSTIa1QrJh4yRPu
-X-Developer-Key: i=jrmmhm.kernel@eldare.de; a=ed25519;
- pk=xRCxNXbnNottaHpmvPDAOC9NuMJxqKo24abkehKRVlo=
-X-Endpoint-Received: by B4 Relay for jrmmhm.kernel@eldare.de/20260928 with auth_id=1075
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794254987; l=2936;
+ i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
+ bh=YNNuUIhjyiZTY0/u39z7F4DHkB1CR2mjqFrrVwxsTQw=;
+ b=aDWYDVEqbwGQOOzgeVDJcyo7dMkWGrTYnRUqmnnPNtCDyslKc9bZGlOK0oXMYMpUkLscHESvz
+ BkExt1y9aMJDu1qc+SzG0x1KhQeDIPeY/2ng/JusVy51kaqWLIHGlKZ
+X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
+ pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
+X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vsock_bpf_recvmsg() sleeps in vsock_msg_wait_data() with the socket lock
-held, so the virtio delivery worker, which needs that lock, deadlocks
-with the reader and all vsock rx on that worker stops.
+This series adds a binding and a driver for the GPIO controller of the
+Siflower SoCs, starting with the SF19A2890, a MIPS SoC for home routers.
+Each line has a register block of its own, and each group of 16 lines an
+interrupt.
 
-Release the lock around the wait. The reader can then wake without
-data, so the wait loops until data arrives, the timeout, a signal
-(wait_woken() returns at once while one is pending), or a state in
-which __vsock_recvmsg() would not wait. Those states, and zero-length,
-MSG_OOB and MSG_ERRQUEUE reads, go to __vsock_recvmsg(), as Alexei
-suggested; a non-blocking read now sees them before -EAGAIN. The loop
-and the zero-length check belong to the fix (without them the reader
-returns early or spins with the lock held), so this is one patch;
-MSG_OOB and MSG_ERRQUEUE just share that path. One tested difference
-remains: a reader asleep at a virtio transport reset gets -ENOTCONN,
-where a native socket gets -ECONNRESET (0 on seqpacket).
+The binding is Chuanhong Guo's and the driver Qingfang Deng's, both from
+Chuanhong's SF19A2890 branch [1], with my changes noted in each. The
+same controller is in Siflower's SF21 RISC-V SoCs; the binding has only
+the SF19A2890's compatible, the one I can test.
 
-The deadlock and the MSG_ERRQUEUE case were found with the help of
-Anthropic's Claude, the rest by the netdev Sashiko reviews and Alexei.
-Each was reproduced in a VM without kernel changes or error injection
-(the resets unbind the guest's virtio-vsock device), except one Sashiko
-case that was checked in the code; with this patch they behave as on a
-native socket apart from the reset case above. The vsock vmtest.sh
-single-VM tests and the BPF sockmap selftests still pass, though they
-never sleep in this wait.
+The SoC support itself (MACH_SIFLOWER_MIPS) goes through the MIPS tree;
+until then the driver builds with COMPILE_TEST.
 
-Fixes: 634f1a7110b4 ("vsock: support sockmap")
-Suggested-by: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: Jerome Mohm <jrmmhm.kernel@eldare.de>
----
-Changes in v5:
-- One patch, using Alexei's approach: in the states where
-  __vsock_recvmsg() does not wait, and for zero-length, MSG_OOB and
-  MSG_ERRQUEUE reads, fall back to __vsock_recvmsg() instead of
-  copying its return values (Alexei).
-- So after a reset, recv(), a zero-length read and MSG_OOB return
-  -ENOTCONN, and a peer shutdown with SO_INQ reports SCM_INQ, as on a
-  socket outside a sockmap. A reset while the reader sleeps now
-  returns -ENOTCONN instead of -ECONNRESET.
-- This also covers the netdev Sashiko review of v4: SEQPACKET after a
-  reset, MSG_OOB on a closed socket and SCM_INQ on a zero-length read;
-  SHUT_RD with a pending sk_err by code reading only. A SEQPACKET
-  reader asleep at a reset still gets -ENOTCONN (native 0).
-- Don't cite the selftests as coverage of the wait (Alexei).
-- Link to v4: https://patch.msgid.link/20261106-kbh3-1-022-fix-v2-v4-0-c7d36703814d@eldare.de
+Tested on a GL.iNet GL-SFT1200: gpio-keys sees both buttons on both
+edges (the reset button on GPIO 27 as KEY_RESTART, the mode slide switch
+on GPIO 1 as BTN_0, 1 and 0 per slide); /sys/kernel/debug/gpio lists the
+49 lines; the GSW150 switch comes out of reset through GPIO 0 and the
+SPI NAND uses GPIO 8 as its chip select.
 
-Not tested: virtio-mmio, repeated runs, a sockmap delete while a
-reader sleeps, a signal arriving in the same wakeup as the timeout
-(returns -EAGAIN, native -EINTR), and the vmtest.sh ns_* tests.
-Still left for separate patches, as in v4: data that sits only in
-psock->ingress_skb, and READ_ONCE()/WRITE_ONCE() for the lockless
-accesses.
-
-Changes in v4: comments, one data <= 0 check and message changes
-(Stefano); rebase; retest with a new dataless-wakeup reproducer.
-Changes in v3: split into two patches (Michal); end the wait after a
-reset read with SO_ERROR, and MSG_OOB returns -EOPNOTSUPP (Sashiko).
-Changes in v2: loop in the wait, len == 0 guard (Sashiko); MSG_ERRQUEUE
-to the native path.
----
- net/vmw_vsock/vsock_bpf.c | 43 ++++++++++++++++++++++++++++---------------
- 1 file changed, 28 insertions(+), 15 deletions(-)
-
-diff --git a/net/vmw_vsock/vsock_bpf.c b/net/vmw_vsock/vsock_bpf.c
-index 9049d2648646..c0c9e69860dc 100644
---- a/net/vmw_vsock/vsock_bpf.c
-+++ b/net/vmw_vsock/vsock_bpf.c
-@@ -34,24 +34,35 @@ static bool vsock_has_data(struct sock *sk, struct sk_psock *psock)
- 	return vsock_sk_has_data(sk, psock);
- }
- 
--static bool vsock_msg_wait_data(struct sock *sk, struct sk_psock *psock, long timeo)
-+/* __vsock_recvmsg() doesn't wait in these states and knows what to return. */
-+static bool vsock_rx_done(struct sock *sk)
- {
--	bool ret;
-+	return sk->sk_err || sk->sk_state != TCP_ESTABLISHED ||
-+	       (sk->sk_shutdown & RCV_SHUTDOWN) ||
-+	       (vsock_sk(sk)->peer_shutdown & SEND_SHUTDOWN);
-+}
-+
-+static int vsock_msg_wait_data(struct sock *sk, struct sk_psock *psock,
-+			       long timeo)
-+{
-+	int ret = 0;
- 
- 	DEFINE_WAIT_FUNC(wait, woken_wake_function);
- 
--	if (sk->sk_shutdown & RCV_SHUTDOWN)
--		return true;
--
--	if (!timeo)
--		return false;
--
- 	add_wait_queue(sk_sleep(sk), &wait);
- 	sk_set_bit(SOCKWQ_ASYNC_WAITDATA, sk);
--	ret = vsock_has_data(sk, psock);
--	if (!ret) {
--		wait_woken(&wait, TASK_INTERRUPTIBLE, timeo);
--		ret = vsock_has_data(sk, psock);
-+	while (!vsock_has_data(sk, psock) && !vsock_rx_done(sk)) {
-+		if (!timeo) {
-+			ret = -EAGAIN;
-+			break;
-+		}
-+		if (signal_pending(current)) {
-+			ret = sock_intr_errno(timeo);
-+			break;
-+		}
-+		release_sock(sk);
-+		timeo = wait_woken(&wait, TASK_INTERRUPTIBLE, timeo);
-+		lock_sock(sk);
- 	}
- 	sk_clear_bit(SOCKWQ_ASYNC_WAITDATA, sk);
- 	remove_wait_queue(sk_sleep(sk), &wait);
-@@ -80,6 +91,9 @@ static int vsock_bpf_recvmsg(struct sock *sk, struct msghdr *msg,
- 	struct vsock_sock *vsk;
- 	int copied;
- 
-+	if (unlikely(!len || (flags & (MSG_OOB | MSG_ERRQUEUE))))
-+		return __vsock_recvmsg(sk, msg, len, flags);
-+
- 	psock = sk_psock_get(sk);
- 	if (unlikely(!psock))
- 		return __vsock_recvmsg(sk, msg, len, flags);
-@@ -102,10 +116,9 @@ static int vsock_bpf_recvmsg(struct sock *sk, struct msghdr *msg,
- 	while (copied == 0) {
- 		long timeo = sock_rcvtimeo(sk, flags & MSG_DONTWAIT);
- 
--		if (!vsock_msg_wait_data(sk, psock, timeo)) {
--			copied = -EAGAIN;
-+		copied = vsock_msg_wait_data(sk, psock, timeo);
-+		if (copied)
- 			break;
--		}
- 
- 		if (sk_psock_queue_empty(psock)) {
- 			release_sock(sk);
+[1] https://github.com/981213/linux/commits/siflower-7.1
 
 ---
-base-commit: 6d2cf411aba2aa0bd641b49be5b1964ac5097a50
-change-id: 20261001-kbh3-1-022-fix-v2-e3f14290641a
+Changes in v2:
+- Write my notes on Chuanhong's and Qingfang's patches as lists, with
+  Co-developed-by on the driver (Bartosz).
+- Get priv with gpiochip_get_data(), drop the two else branches, and add
+  a blank line after the header comment (Bartosz).
+- Get the reset with devm_reset_control_get_exclusive_deasserted(), as a
+  local, not in priv (Philipp), and drop the OF_GPIO dependency.
+- Name only the SF19A2890 in the Kconfig help and the binding's commit
+  message, since the other SoCs need compatibles of their own (Conor).
+- Drop the ngpios property, which the compatible implies: the driver
+  takes the number of lines from its match data, and the binding takes
+  exactly four interrupts (Conor).
+- Order the binding's properties and its required list (Conor).
+- Add a MAINTAINERS entry for the driver and its binding.
+- Use GPL-2.0-or-later, not the deprecated GPL-2.0+ SPDX identifier.
+- Use readl() and writel() directly, without wrapper functions (Linus).
+- No comma after the match table's sentinel, as Uwe asked of the
+  clock driver.
+- Drop the unused linux/pinctrl/consumer.h include.
+- Link to v1: https://patch.msgid.link/20261104-sf19a2890-gpio-v1-0-45e463c48728@telaak.dev
+
+---
+Chuanhong Guo (1):
+      dt-bindings: gpio: Add Siflower SF19A2890 GPIO controller
+
+Qingfang Deng (1):
+      gpio: Add Siflower GPIO controller driver
+
+ .../bindings/gpio/siflower,sf19a2890-gpio.yaml     |  76 +++++
+ MAINTAINERS                                        |   7 +
+ drivers/gpio/Kconfig                               |  12 +
+ drivers/gpio/Makefile                              |   1 +
+ drivers/gpio/gpio-siflower.c                       | 310 +++++++++++++++++++++
+ 5 files changed, 406 insertions(+)
+---
+base-commit: d66b6b86d5a6278ca930112c634d03725beb7d9a
+change-id: 20261102-sf19a2890-gpio-b21562e52f88
 
 Best regards,
 --  
-Jerome Mohm <jrmmhm.kernel@eldare.de>
+Joseph Telaak <joseph@telaak.dev>
 
