@@ -1,77 +1,89 @@
 From: Ricardo Pardini <ricardo@pardini.net>
-Subject: [PATCH 0/3] rockchip: fix on-board SATA on RK3588 and RK356x
-Date: Mon, 09 Nov 2026 03:57:57 +0100
-Message-Id: <20261109-rk3588-sata-fixes-v2027-01-v1-0-e54ca8e68f18@pardini.net>
+Date: Mon, 09 Nov 2026 03:57:58 +0100
+Subject: [PATCH 1/3] ata: dwc_ahci: fall back to the PHY in the sata-port
+ subnode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALU28WoC/yWMQQ6CQAxFr0K6tsm0iI5ehbAYoGg1QTMFYkK4u
- 1WWL/+/t4JJVjG4FitkWdT0NTrQoYDunsaboPbOwIFPFPiI+VlWMaKlKeGgHzFcfDtjIIwXbgc
- KqayIwQPvLP+H+3Wzs83tQ7rpV4Rt+wJDovkDfgAAAA==
-X-Change-ID: 20261024-rk3588-sata-fixes-v2027-01-892bf10a3512
+Message-Id: <20261109-rk3588-sata-fixes-v2027-01-v1-1-e54ca8e68f18@pardini.net>
+References: <20261109-rk3588-sata-fixes-v2027-01-v1-0-e54ca8e68f18@pardini.net>
+In-Reply-To: <20261109-rk3588-sata-fixes-v2027-01-v1-0-e54ca8e68f18@pardini.net>
 To: u-boot@lists.u-boot-project.org, Simon Glass <sjg@chromium.org>, 
  Kever Yang <kever.yang@rock-chips.com>, Eugen Hristev <ehristev@kernel.org>, 
  Jon Lin <jon.lin@rock-chips.com>
 Cc: Tom Rini <trini@konsulko.com>, Peng Fan <peng.fan@nxp.com>, 
  Ricardo Pardini <ricardo@pardini.net>, Quentin Schulz <u-boot@0leil.net>, 
- Jonas Karlman <jonas@kwiboo.se>, Heiko Stuebner <heiko@sntech.de>, 
- Julius Lehmann <lehmanju@devpi.de>, 
- Yifeng Zhao <yifeng.zhao@rock-chips.com>
+ Jonas Karlman <jonas@kwiboo.se>, Heiko Stuebner <heiko@sntech.de>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2061; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=MSfvXvaN1DR4S2bn3IrJreOSPijm7cdZ9zFFwCNgR60=;
- b=owEBbQGS/pANAwAKATteP+Oex+3pAcsmYgBq8Ta2q0Xm/pIA8t68QYybo2hckYSbZ0NrqqZJw
- RHcq9yYhaCJATMEAAEKAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCavE2tgAKCRA7Xj/jnsft
- 6YJIB/9TbhQ9TqHz9M0RL3b3FE+d+URlHBnkIfgn/NifOmDW93f9gTQH44RKVNDfziXpxClw+uA
- QmmZKaeijQnrdBvcyhAWt8adpjphfnticNx4bSYDd5TezVvrRH15QfMXS9ZQMFkesaYvvFubCa3
- sv0MDVZQFfo+CYEj5Qj2Lcgn2Sote5dERN/np9g+2IdRxQL2sns6GBC52sKW7IrmqZTY7pNR5mL
- Hz/I3F/mi2Moyd3HtsrRjWlJFLEaR1TXu/FUrXApNoO9eF/G5r0OGPwxXkln2/knImVfMQP0r3T
- nw8BcDmKzWECrG/SlHXR2g1H+8e9vCLyPBfFzgmNqK7YIie3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2021; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=MaeLlyyV0DUNr5n18iGh2V4/rzNY16Gc/0SxdTgALc8=;
+ b=owEBbQGS/pANAwAKATteP+Oex+3pAcsmYgBq8Ta2QFu+kMlaujlh6/ILQtN8GTlD9BXkRahpn
+ LdtUN8+XEOJATMEAAEKAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCavE2tgAKCRA7Xj/jnsft
+ 6X+/B/9Eb49J9eYxjoh3TTf7jju87NXs2+0/mHdxdGH63pu2XpcUN/2bmw1fVBi5obe4+MwolyG
+ znD+sQDJ88egIFOXM9FD+LrSMK1KeeVbwk8hUqzF8SXq/K5pvwafbXboj1CMRDrAMhh/N0DrN6T
+ cCkWhT0mu8/1x4KiINqm5AIt0N9PgMWjK7D6kHyjNyRXZsMx8Xp2yjKJlA8vmrJ7/tx9jY/VKAB
+ ZYe/4inRUTwMQZ2AKORg4hMYuPNeL8SnuAzjDIxCpGXU20XmJdCy/SCUiZdXaZVJrqtFYflrPbw
+ YVFR4qQvcWZC0qKS2gN8uBejtw2LzOnP/JczBjUgSBLCOnFL
 X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
  fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
 X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This makes the on-board SATA controllers (dwc_ahci) work on RK3588,
-and on RK356x sata1/sata2 again. They currently fail to probe, and
-fixing that exposes two more problems once a disk is actually used:
+dwc_ahci_probe() only looks for a "sata-phy" PHY on the controller node.
+The RK3588 device tree, as synced from Linux, describes the PHY in the
+sata-port@0 subnode instead (the binding allows per-port PHYs, which is
+how Linux's libahci_platform consumes them), so probing every RK3588
+on-board SATA controller fails:
 
-1: dwc_ahci only looks for the PHY on the controller node, but the
-   RK3588 DT has it in the sata-port@0 subnode, so probe always fails.
-   RK356x sata1/sata2 have the same problem since the v7.1 DT sync.
-2: AHCI reports disks one sector too large since the scsi +1 fix [1],
-   which breaks e.g. UMS when the host reads the backup GPT.
-3: sata2 links at 1.5 Gb/s only, due to a wrong GRF offset (see the
-   RK3588 TRM); Rockchip fixed it in their BSP kernel [2], and the
-   same fix was sent for Linux [3].
+  => scsi scan
+  scanning bus for devices...
+  can't get the phy from DT
 
-The misplaced write in (3) lands in PHP_GRF_PHP_CON0[2:0], which are
-the PCIe link reset grant bits, and turns on the one for pcie3x2
-whenever a combphy is put in SATA mode. I don't know of any effect
-from that, but this series stops it too.
+RK3566/RK3568 sata1 and sata2 have been affected the same way since the
+v7.1 DT sync (d0a838bdc62), which brought in the Linux change "arm64:
+dts: rockchip: Add port subnodes to RK356x SATA controllers" (linked
+below). Only RK3568 sata0 still has the PHY on the controller node.
 
-Tested with an mSATA SSD on sata2 (combphy2_psu): scsi scan, booting
-via bootstd, and UMS all work, with the link at 6 Gb/s.
+If the controller node has no "sata-phy" in phy-names, use the first PHY
+of the first enabled subnode. A "sata-phy" that is declared but cannot
+be resolved still fails the probe. Only one PHY is brought up, as
+before; the RK3588 and RK356x controllers have a single port
+(ports-implemented = <0x1>).
 
-[1] https://lore.kernel.org/u-boot/20241026-fix-scsi-disksize-v2-1-bc6be9a6043d@devpi.de/
-[2] https://github.com/rockchip-linux/kernel/commit/2f5fe2c0bbd4fa95102aadd60da1100989103aa0
-[3] https://patch.msgid.link/20261109-rk3588-combphy-sata2-6g-v1-1-e9135c91de6a@pardini.net
+Only tested on RK3588.
 
+Link: https://patch.msgid.link/20260201191804.41421-2-heiko@sntech.de
+Cc: Jonas Karlman <jonas@kwiboo.se>
+Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
 ---
-Ricardo Pardini (3):
-      ata: dwc_ahci: fall back to the PHY in the sata-port subnode
-      ata: ahci: return the last LBA from emulated READ CAPACITY
-      phy: rockchip: naneng-combphy: fix RK3588 SATA pipe_con1 register offset
+ drivers/ata/dwc_ahci.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
- drivers/ata/ahci.c                                 |  8 +++++---
- drivers/ata/dwc_ahci.c                             | 13 +++++++++++++
- drivers/phy/rockchip/phy-rockchip-naneng-combphy.c |  2 +-
- 3 files changed, 19 insertions(+), 4 deletions(-)
----
-base-commit: 934995f642a21ca7f35fa9aed5f061394fcba243
-change-id: 20261024-rk3588-sata-fixes-v2027-01-892bf10a3512
+diff --git a/drivers/ata/dwc_ahci.c b/drivers/ata/dwc_ahci.c
+index 0431d370716..8192d2f5f34 100644
+--- a/drivers/ata/dwc_ahci.c
++++ b/drivers/ata/dwc_ahci.c
+@@ -57,6 +57,19 @@ static int dwc_ahci_probe(struct udevice *dev)
+ 	struct phy phy;
+ 
+ 	ret = generic_phy_get_by_name(dev, "sata-phy", &phy);
++	if (ret && dev_read_stringlist_search(dev, "phy-names",
++					      "sata-phy") < 0) {
++		ofnode node;
++
++		/* e.g. RK35xx: the phy is in the sata-port@N subnode */
++		dev_for_each_subnode(node, dev) {
++			if (!ofnode_is_enabled(node))
++				continue;
++			ret = generic_phy_get_by_index_nodev(node, 0, &phy);
++			if (!ret)
++				break;
++		}
++	}
+ 	if (ret) {
+ 		pr_err("can't get the phy from DT\n");
+ 		return ret;
 
-Best regards,
---  
-Ricardo Pardini <ricardo@pardini.net>
+-- 
+2.47.3
 
