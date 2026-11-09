@@ -1,10 +1,11 @@
 From: Gaurav Suman <gauravsuman007@gmail.com>
-Date: Mon, 09 Nov 2026 22:38:22 +0000
-Subject: [PATCH 4/8] media: i2c: Add Samsung S5K3M3 image sensor driver
+Date: Mon, 09 Nov 2026 22:38:23 +0000
+Subject: [PATCH 5/8] dt-bindings: media: i2c: Add Samsung S5KGD1 image
+ sensor
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-sm8150-camera-v1-4-3d2e7b407516@gmail.com>
+Message-Id: <20261109-sm8150-camera-v1-5-3d2e7b407516@gmail.com>
 References: <20261109-sm8150-camera-v1-0-3d2e7b407516@gmail.com>
 In-Reply-To: <20261109-sm8150-camera-v1-0-3d2e7b407516@gmail.com>
 To: Bryan O'Donoghue <bod@kernel.org>, 
@@ -18,628 +19,138 @@ To: Bryan O'Donoghue <bod@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, linux-media@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794263921; l=19255;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794263921; l=3549;
  i=gauravsuman007@gmail.com; s=default; h=from:subject:message-id;
- bh=MW/lZB2d9J59/nvTYnlHrxgm88h2+wER5oo/XbcwUgA=;
- b=zpUjyDTa0aksSkQ0+4jgYxBfNJkq5mIhywPWnyePIGgn5q1RqcgpaB3u2JC8EdhaN408LqgLR
- WuGNufJqEccBdRNXttTbVp+rnA4ULXQth4r7lpej/gRFC7Lx/dlcch8
+ bh=/uP5BNjbdyi1wf98CyTi3wc+sNFa7nqcCb/NOpDJ6F0=;
+ b=zXKjcD9GYO3wZMfX1wq+CxIBgPCXHoqFK3BIJ4HHoRBM0e5rHu3wagCrvCbzEwOA6sUfOB+NN
+ As5nCPUenKbAJsHwP4oo+gQj6I6r65J7G/dVjwQ8L80yy+yfKN/riyI
 X-Developer-Key: i=gauravsuman007@gmail.com; a=ed25519;
  pk=lnUC0mQfc0KyA0LE73pQ4+QWYVRaCD8Sd3XWxLZO+JY=
 X-Endpoint-Received: by B4 Relay for gauravsuman007@gmail.com/default with auth_id=1467
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a V4L2 sub-device driver for the Samsung S5K3M3 13MP sensor. It
-supports one mode, 4160x3120 RAW10 at 30 fps on four CSI-2 lanes at
-1190.4 Mbps per lane, from a 19.2 MHz MCLK, with exposure, analogue
-gain, vertical blanking and test pattern controls.
-
-The register settings come from the LG G8x ThinQ vendor camera
-module data (com.qti.sensormodule.s5k3m3.bin): a short initialisation
-sequence (soft reset, then 3 ms) and the full-resolution mode. The
-S5K3M5 driver's settings make the sensor stream but nothing reaches
-the CSI receiver, so a separate driver is used for now; folding it
-into s5k3m5.c as a variant could be done later.
-
-Tested on an LG G8x ThinQ (SM8150, CSIPHY1).
+Add bindings for the Samsung S5KGD1 (ISOCELL GD1) 32MP quad-Bayer
+sensor, used as the front camera of the LG G8x ThinQ.
 
 This was written and tested with the help of an AI coding assistant
 (Claude Opus 5.5, Anthropic); I reviewed the change and the results.
 
 Signed-off-by: Gaurav Suman <gauravsuman007@gmail.com>
 ---
- MAINTAINERS                     |   8 +
- drivers/media/i2c/Kconfig       |  10 +
- drivers/media/i2c/Makefile      |   1 +
- drivers/media/i2c/s5k3m3-regs.h |  71 +++++++
- drivers/media/i2c/s5k3m3.c      | 451 ++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 541 insertions(+)
+ .../bindings/media/i2c/samsung,s5kgd1.yaml         | 105 +++++++++++++++++++++
+ 1 file changed, 105 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index aa647f5d37ddbe68343b59eac64fe7831e219f04..fb12d4c0c22e957c6babb9d4b22105fa06047772 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -22009,6 +22009,14 @@ S:	Maintained
- F:	include/linux/delayacct.h
- F:	kernel/delayacct.c
- 
-+SAMSUNG S5K3M3 CAMERA DRIVER
-+M:	Gaurav Suman <gauravsuman007@gmail.com>
-+L:	linux-media@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/media/i2c/samsung,s5k3m3.yaml
-+F:	drivers/media/i2c/s5k3m3-regs.h
-+F:	drivers/media/i2c/s5k3m3.c
-+
- TASK DELAY MONITORING TOOLS
- M:	Andrew Morton <akpm@linux-foundation.org>
- M:	Wang Yaxin <wang.yaxin@zte.com.cn>
-diff --git a/drivers/media/i2c/Kconfig b/drivers/media/i2c/Kconfig
-index 11c30252540e9ceb0bef6c60f1d4a89a9e5928f4..9f797ab00fe7ef0b28080d1fd2b07c4f5d19402d 100644
---- a/drivers/media/i2c/Kconfig
-+++ b/drivers/media/i2c/Kconfig
-@@ -836,6 +836,16 @@ config VIDEO_S5C73M3
- 	  This is a V4L2 sensor driver for Samsung S5C73M3
- 	  8 Mpixel camera.
- 
-+config VIDEO_S5K3M3
-+	tristate "Samsung S5K3M3 sensor support"
-+	select V4L2_CCI_I2C
-+	help
-+	  This is a V4L2 sensor driver for Samsung S5K3M3 13MP raw
-+	  camera sensor.
-+
-+	  To compile this driver as a module, choose M here: the
-+	  module will be called s5k3m3.
-+
- config VIDEO_S5K3M5
- 	tristate "Samsung S5K3M5 sensor support"
- 	select V4L2_CCI_I2C
-diff --git a/drivers/media/i2c/Makefile b/drivers/media/i2c/Makefile
-index 59e31af457cd3e8bcc5c015b7a0ca9f3be0cff4f..2ecb65cf4fd036d9109abdf450f8ebe4b945de42 100644
---- a/drivers/media/i2c/Makefile
-+++ b/drivers/media/i2c/Makefile
-@@ -133,6 +133,7 @@ obj-$(CONFIG_VIDEO_RDACM20) += rdacm20.o
- obj-$(CONFIG_VIDEO_RDACM21) += rdacm21.o
- obj-$(CONFIG_VIDEO_RJ54N1) += rj54n1cb0c.o
- obj-$(CONFIG_VIDEO_S5C73M3) += s5c73m3/
-+obj-$(CONFIG_VIDEO_S5K3M3) += s5k3m3.o
- obj-$(CONFIG_VIDEO_S5K3M5) += s5k3m5.o
- obj-$(CONFIG_VIDEO_S5K5BAF) += s5k5baf.o
- obj-$(CONFIG_VIDEO_S5K6A3) += s5k6a3.o
-diff --git a/drivers/media/i2c/s5k3m3-regs.h b/drivers/media/i2c/s5k3m3-regs.h
+diff --git a/Documentation/devicetree/bindings/media/i2c/samsung,s5kgd1.yaml b/Documentation/devicetree/bindings/media/i2c/samsung,s5kgd1.yaml
 new file mode 100644
-index 0000000000000000000000000000000000000000..d21b6c9074e8e4f2cc18d57a6d0048bb0864d8a9
+index 0000000000000000000000000000000000000000..4b01f1057afe70665bb445c8395a6deaabc8bd9d
 --- /dev/null
-+++ b/drivers/media/i2c/s5k3m3-regs.h
-@@ -0,0 +1,71 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Register settings from the LG G8x ThinQ vendor camera module data
-+ * (com.qti.sensormodule.s5k3m3.bin). 16-bit address and data; the third
-+ * column is a delay in microseconds after the write.
-+ */
-+static const struct cam_reg s5k3m3_init_regs[] = {
-+	{ 0xfcfc, 0x4000, 0 },
-+	{ 0x6010, 0x0001, 3000 },
-+	{ 0xfcfc, 0x4000, 0 },
-+	{ 0x6214, 0x7971, 0 },
-+	{ 0x6218, 0x7150, 0 },
-+	{ 0x0300, 0x0004, 0 },
-+	{ 0x0302, 0x0001, 0 },
-+	{ 0x0304, 0x0006, 0 },
-+	{ 0x0308, 0x0008, 0 },
-+	{ 0x030a, 0x0001, 0 },
-+	{ 0x030c, 0x0004, 0 },
-+	{ 0x3644, 0x0060, 0 },
-+	{ 0x0216, 0x0000, 0 },
-+	{ 0xf496, 0x0048, 0 },
-+	{ 0x1118, 0x43c8, 0 },
-+	{ 0x1124, 0x43c8, 0 },
-+	{ 0x3058, 0x0000, 0 },
-+};
++++ b/Documentation/devicetree/bindings/media/i2c/samsung,s5kgd1.yaml
+@@ -0,0 +1,105 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/i2c/samsung,s5kgd1.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+static const struct cam_reg s5k3m3_mode_regs[] = {
-+	{ 0xfcfc, 0x4000, 0 },
-+	{ 0x6214, 0x7971, 0 },
-+	{ 0x6218, 0x7150, 0 },
-+	{ 0x0136, 0x1333, 0 },
-+	{ 0x0306, 0x0096, 0 },
-+	{ 0x030c, 0x0003, 0 },
-+	{ 0x030e, 0x005d, 0 },
-+	{ 0x0344, 0x0020, 0 },
-+	{ 0x0346, 0x0008, 0 },
-+	{ 0x0348, 0x105f, 0 },
-+	{ 0x034a, 0x0c37, 0 },
-+	{ 0x034c, 0x1040, 0 },
-+	{ 0x034e, 0x0c30, 0 },
-+	{ 0x0340, 0x0cbc, 0 },
-+	{ 0x0342, 0x1328, 0 },
-+	{ 0x3000, 0x0001, 0 },
-+	{ 0xf440, 0x002f, 0 },
-+	{ 0xf494, 0x0030, 0 },
-+	{ 0x3604, 0x0000, 0 },
-+	{ 0xf4cc, 0x0029, 0 },
-+	{ 0xf4ce, 0x002c, 0 },
-+	{ 0xf4d0, 0x0034, 0 },
-+	{ 0xf4d2, 0x0035, 0 },
-+	{ 0xf4d4, 0x0038, 0 },
-+	{ 0xf4d6, 0x0039, 0 },
-+	{ 0xf4d8, 0x0034, 0 },
-+	{ 0xf4da, 0x0035, 0 },
-+	{ 0xf4dc, 0x0038, 0 },
-+	{ 0xf4de, 0x0039, 0 },
-+	{ 0x0200, 0x0618, 0 },
-+	{ 0x0202, 0x0d27, 0 },
-+	{ 0x021e, 0x0400, 0 },
-+	{ 0x021c, 0x0000, 0 },
-+	{ 0x0900, 0x0011, 0 },
-+	{ 0x0380, 0x0001, 0 },
-+	{ 0x0382, 0x0001, 0 },
-+	{ 0x0384, 0x0001, 0 },
-+	{ 0x0386, 0x0001, 0 },
-+	{ 0x0400, 0x0000, 0 },
-+	{ 0x0404, 0x0010, 0 },
-+	{ 0x309c, 0x0001, 0 },
-+	{ 0x0114, 0x0300, 0 },
-+	{ 0x0216, 0x0000, 0 },
-+};
-diff --git a/drivers/media/i2c/s5k3m3.c b/drivers/media/i2c/s5k3m3.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..5436178c5e35538ab2bb8b162f4c2beb769a9c07
---- /dev/null
-+++ b/drivers/media/i2c/s5k3m3.c
-@@ -0,0 +1,451 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Samsung S5K3M3 13 MP sensor (LG G8x rear wide camera).
-+ * Only the full 4160x3120 @ 30 fps 4-lane RAW10 mode is supported.
-+ * Register tables come from LG's vendor CamX sensor module (see
-+ * s5k3m3-regs.h); the sensor runs from a 19.2 MHz MCLK.
-+ */
-+#include <linux/clk.h>
-+#include <linux/delay.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/pm_runtime.h>
-+#include <linux/regulator/consumer.h>
-+#include <media/v4l2-cci.h>
-+#include <media/v4l2-ctrls.h>
-+#include <media/v4l2-device.h>
-+#include <media/v4l2-fwnode.h>
++title: Samsung S5KGD1 Image Sensor
 +
-+struct cam_reg { u16 addr, val, delay_us; };
-+#include "s5k3m3-regs.h"
++description:
++  Samsung S5KGD1 (ISOCELL GD1) is a 32MP image sensor with a quad-Bayer
++  (tetracell) colour filter array, controlled over a serial camera control
++  bus. The driver supports the 2x2 binned 3264x2448 mode at 30 frames per
++  second, RAW10 over a 4-lane MIPI D-PHY interface.
 +
-+#define S5K3M3_REG_CHIP_ID	CCI_REG16(0x0000)
-+#define S5K3M3_CHIP_ID		0x30d3
-+#define S5K3M3_REG_MODE_SELECT	CCI_REG16(0x0100)
-+#define S5K3M3_REG_GROUP_HOLD	CCI_REG16(0x0104)
-+#define S5K3M3_REG_EXPOSURE	CCI_REG16(0x0202)
-+#define S5K3M3_REG_AGAIN	CCI_REG16(0x0204)
-+#define S5K3M3_REG_FLL		CCI_REG16(0x0340)
-+#define S5K3M3_REG_TEST_PATTERN	CCI_REG16(0x0600)
++maintainers:
++  - Gaurav Suman <gauravsuman007@gmail.com>
 +
-+#define S5K3M3_MCLK		19200000
-+#define S5K3M3_LINK_FREQ	595200000LL	/* 1190.4 Mbps per lane */
-+#define S5K3M3_WIDTH		4160
-+#define S5K3M3_HEIGHT		3120
-+#define S5K3M3_LLP		4904
-+#define S5K3M3_FLL		3260		/* 30 fps */
-+#define S5K3M3_PIXEL_RATE	((u64)S5K3M3_LLP * S5K3M3_FLL * 30)
-+#define S5K3M3_FLL_MAX		0xfff0
-+#define S5K3M3_EXP_MARGIN	8
-+#define S5K3M3_AGAIN_MIN	0x20		/* 1x */
-+#define S5K3M3_AGAIN_MAX	0x200		/* 16x */
-+#define S5K3M3_MBUS_CODE	MEDIA_BUS_FMT_SGRBG10_1X10
++allOf:
++  - $ref: /schemas/media/video-interface-devices.yaml#
 +
-+static const s64 s5k3m3_link_freqs[] = { S5K3M3_LINK_FREQ };
-+static const char * const s5k3m3_supplies[] = { "vddio", "vdda", "vddd" };
-+static const char * const s5k3m3_tp_menu[] = {
-+	"Disabled", "Solid Colour", "Colour Bars", "Fade to Grey", "PN9",
-+};
++properties:
++  compatible:
++    const: samsung,s5kgd1
 +
-+struct s5k3m3 {
-+	struct device *dev;
-+	struct regmap *regmap;
-+	struct v4l2_subdev sd;
-+	struct media_pad pad;
-+	struct clk *mclk;
-+	struct gpio_desc *reset;
-+	struct regulator_bulk_data supplies[ARRAY_SIZE(s5k3m3_supplies)];
-+	struct v4l2_ctrl_handler ctrls;
-+	struct v4l2_ctrl *exposure, *vblank;
-+};
++  reg:
++    maxItems: 1
 +
-+static inline struct s5k3m3 *to_s5k3m3(struct v4l2_subdev *sd)
-+{
-+	return container_of(sd, struct s5k3m3, sd);
-+}
++  clocks:
++    description: MCLK supply clock.
++    maxItems: 1
 +
-+static int s5k3m3_write_table(struct s5k3m3 *s, const struct cam_reg *t, size_t n)
-+{
-+	int ret = 0;
-+	size_t i;
++  reset-gpios:
++    description: Active low GPIO connected to RESET pad of the sensor.
++    maxItems: 1
 +
-+	for (i = 0; i < n && !ret; i++) {
-+		cci_write(s->regmap, CCI_REG16(t[i].addr), t[i].val, &ret);
-+		if (t[i].delay_us)
-+			fsleep(t[i].delay_us);
-+	}
-+	return ret;
-+}
++  vdda-supply:
++    description: Analogue voltage supply, 2.8 volts.
 +
-+static int s5k3m3_power_on(struct device *dev)
-+{
-+	struct s5k3m3 *s = to_s5k3m3(dev_get_drvdata(dev));
-+	int ret;
++  vddd-supply:
++    description: Digital core voltage supply.
 +
-+	ret = regulator_bulk_enable(ARRAY_SIZE(s->supplies), s->supplies);
-+	if (ret)
-+		return ret;
-+	ret = clk_prepare_enable(s->mclk);
-+	if (ret) {
-+		regulator_bulk_disable(ARRAY_SIZE(s->supplies), s->supplies);
-+		return ret;
-+	}
-+	usleep_range(1000, 1500);
-+	gpiod_set_value_cansleep(s->reset, 0);	/* out of reset */
-+	usleep_range(10000, 12000);
-+	return 0;
-+}
++  vddio-supply:
++    description: Digital I/O voltage supply, 1.8 volts.
 +
-+static int s5k3m3_power_off(struct device *dev)
-+{
-+	struct s5k3m3 *s = to_s5k3m3(dev_get_drvdata(dev));
++  port:
++    $ref: /schemas/graph.yaml#/$defs/port-base
++    additionalProperties: false
 +
-+	gpiod_set_value_cansleep(s->reset, 1);
-+	clk_disable_unprepare(s->mclk);
-+	regulator_bulk_disable(ARRAY_SIZE(s->supplies), s->supplies);
-+	return 0;
-+}
++    properties:
++      endpoint:
++        $ref: /schemas/media/video-interfaces.yaml#
++        unevaluatedProperties: false
 +
-+static int s5k3m3_set_ctrl(struct v4l2_ctrl *ctrl)
-+{
-+	struct s5k3m3 *s = container_of(ctrl->handler, struct s5k3m3, ctrls);
-+	int ret = 0;
++        properties:
++          data-lanes:
++            items:
++              - const: 1
++              - const: 2
++              - const: 3
++              - const: 4
 +
-+	if (ctrl->id == V4L2_CID_VBLANK) {
-+		s64 max = S5K3M3_HEIGHT + ctrl->val - S5K3M3_EXP_MARGIN;
++        required:
++          - data-lanes
++          - link-frequencies
 +
-+		__v4l2_ctrl_modify_range(s->exposure, s->exposure->minimum, max,
-+					 1, min(s->exposure->val, (s32)max));
-+	}
-+	if (!pm_runtime_get_if_in_use(s->dev))
-+		return 0;
++required:
++  - compatible
++  - reg
++  - clocks
++  - reset-gpios
++  - port
 +
-+	switch (ctrl->id) {
-+	case V4L2_CID_EXPOSURE:
-+		cci_write(s->regmap, S5K3M3_REG_EXPOSURE, ctrl->val, &ret);
-+		break;
-+	case V4L2_CID_ANALOGUE_GAIN:
-+		cci_write(s->regmap, S5K3M3_REG_AGAIN, ctrl->val, &ret);
-+		break;
-+	case V4L2_CID_VBLANK:
-+		cci_write(s->regmap, S5K3M3_REG_FLL, S5K3M3_HEIGHT + ctrl->val, &ret);
-+		break;
-+	case V4L2_CID_TEST_PATTERN:
-+		cci_write(s->regmap, S5K3M3_REG_TEST_PATTERN, ctrl->val, &ret);
-+		break;
-+	}
-+	pm_runtime_put(s->dev);
-+	return ret;
-+}
++unevaluatedProperties: false
 +
-+static const struct v4l2_ctrl_ops s5k3m3_ctrl_ops = { .s_ctrl = s5k3m3_set_ctrl };
++examples:
++  - |
++      #include <dt-bindings/gpio/gpio.h>
 +
-+static int s5k3m3_init_ctrls(struct s5k3m3 *s)
-+{
-+	struct v4l2_ctrl_handler *h = &s->ctrls;
-+	struct v4l2_fwnode_device_properties props;
-+	struct v4l2_ctrl *c;
-+	u32 vb = S5K3M3_FLL - S5K3M3_HEIGHT, hb = S5K3M3_LLP - S5K3M3_WIDTH;
-+	int ret;
++      i2c {
++          #address-cells = <1>;
++          #size-cells = <0>;
 +
-+	v4l2_ctrl_handler_init(h, 10);
-+	c = v4l2_ctrl_new_int_menu(h, &s5k3m3_ctrl_ops, V4L2_CID_LINK_FREQ, 0, 0,
-+				   s5k3m3_link_freqs);
-+	if (c)
-+		c->flags |= V4L2_CTRL_FLAG_READ_ONLY;
-+	v4l2_ctrl_new_std(h, &s5k3m3_ctrl_ops, V4L2_CID_PIXEL_RATE,
-+			  S5K3M3_PIXEL_RATE, S5K3M3_PIXEL_RATE, 1, S5K3M3_PIXEL_RATE);
-+	s->vblank = v4l2_ctrl_new_std(h, &s5k3m3_ctrl_ops, V4L2_CID_VBLANK, vb,
-+				      S5K3M3_FLL_MAX - S5K3M3_HEIGHT, 1, vb);
-+	c = v4l2_ctrl_new_std(h, &s5k3m3_ctrl_ops, V4L2_CID_HBLANK, hb, hb, 1, hb);
-+	if (c)
-+		c->flags |= V4L2_CTRL_FLAG_READ_ONLY;
-+	/* start at full-frame exposure, software AGC converges from there */
-+	s->exposure = v4l2_ctrl_new_std(h, &s5k3m3_ctrl_ops, V4L2_CID_EXPOSURE, 4,
-+					S5K3M3_FLL - S5K3M3_EXP_MARGIN, 1,
-+					S5K3M3_FLL - S5K3M3_EXP_MARGIN);
-+	v4l2_ctrl_new_std(h, &s5k3m3_ctrl_ops, V4L2_CID_ANALOGUE_GAIN,
-+			  S5K3M3_AGAIN_MIN, S5K3M3_AGAIN_MAX, 1, S5K3M3_AGAIN_MIN * 4);
-+	v4l2_ctrl_new_std_menu_items(h, &s5k3m3_ctrl_ops, V4L2_CID_TEST_PATTERN,
-+				     ARRAY_SIZE(s5k3m3_tp_menu) - 1, 0, 0, s5k3m3_tp_menu);
-+	ret = v4l2_fwnode_device_parse(s->dev, &props);
-+	if (!ret)
-+		v4l2_ctrl_new_fwnode_properties(h, &s5k3m3_ctrl_ops, &props);
-+	if (h->error)
-+		return h->error;
-+	s->sd.ctrl_handler = h;
-+	return 0;
-+}
++          camera@2d {
++              compatible = "samsung,s5kgd1";
++              reg = <0x2d>;
++              clocks = <&camera_mclk 0>;
++              assigned-clocks = <&camera_mclk 0>;
++              assigned-clock-rates = <19200000>;
++              reset-gpios = <&tlmm 9 GPIO_ACTIVE_LOW>;
++              vdda-supply = <&vreg_2p8>;
++              vddd-supply = <&vreg_1p05>;
++              vddio-supply = <&vreg_1p8>;
++              orientation = <0>;
++              rotation = <90>;
 +
-+static int s5k3m3_enable_streams(struct v4l2_subdev *sd, struct v4l2_subdev_state *st,
-+				 u32 pad, u64 streams)
-+{
-+	struct s5k3m3 *s = to_s5k3m3(sd);
-+	int ret;
-+
-+	ret = pm_runtime_resume_and_get(s->dev);
-+	if (ret)
-+		return ret;
-+	ret = s5k3m3_write_table(s, s5k3m3_init_regs, ARRAY_SIZE(s5k3m3_init_regs));
-+	if (!ret)
-+		ret = s5k3m3_write_table(s, s5k3m3_mode_regs,
-+					 ARRAY_SIZE(s5k3m3_mode_regs));
-+	if (!ret)
-+		ret = __v4l2_ctrl_handler_setup(&s->ctrls);
-+	if (!ret)
-+		ret = cci_write(s->regmap, S5K3M3_REG_MODE_SELECT, 0x0100, NULL);
-+	if (ret) {
-+		dev_err(s->dev, "stream on failed: %d\n", ret);
-+		pm_runtime_put(s->dev);
-+	}
-+	return ret;
-+}
-+
-+static int s5k3m3_disable_streams(struct v4l2_subdev *sd, struct v4l2_subdev_state *st,
-+				  u32 pad, u64 streams)
-+{
-+	struct s5k3m3 *s = to_s5k3m3(sd);
-+
-+	cci_write(s->regmap, S5K3M3_REG_MODE_SELECT, 0, NULL);
-+	pm_runtime_put(s->dev);
-+	return 0;
-+}
-+
-+static void s5k3m3_fill_fmt(struct v4l2_mbus_framefmt *f)
-+{
-+	f->code = S5K3M3_MBUS_CODE;
-+	f->width = S5K3M3_WIDTH;
-+	f->height = S5K3M3_HEIGHT;
-+	f->field = V4L2_FIELD_NONE;
-+	f->colorspace = V4L2_COLORSPACE_RAW;
-+	f->ycbcr_enc = V4L2_YCBCR_ENC_601;
-+	f->quantization = V4L2_QUANTIZATION_FULL_RANGE;
-+	f->xfer_func = V4L2_XFER_FUNC_NONE;
-+}
-+
-+static int s5k3m3_set_fmt(struct v4l2_subdev *sd,
-+			  const struct v4l2_subdev_client_info *ci,
-+			  struct v4l2_subdev_state *st,
-+			  struct v4l2_subdev_format *fmt)
-+{
-+	s5k3m3_fill_fmt(&fmt->format);
-+	*v4l2_subdev_state_get_format(st, 0) = fmt->format;
-+	return 0;
-+}
-+
-+static int s5k3m3_enum_mbus_code(struct v4l2_subdev *sd, struct v4l2_subdev_state *st,
-+				 struct v4l2_subdev_mbus_code_enum *code)
-+{
-+	if (code->index)
-+		return -EINVAL;
-+	code->code = S5K3M3_MBUS_CODE;
-+	return 0;
-+}
-+
-+static int s5k3m3_enum_frame_size(struct v4l2_subdev *sd, struct v4l2_subdev_state *st,
-+				  struct v4l2_subdev_frame_size_enum *fse)
-+{
-+	if (fse->index || fse->code != S5K3M3_MBUS_CODE)
-+		return -EINVAL;
-+	fse->min_width = S5K3M3_WIDTH;
-+	fse->max_width = S5K3M3_WIDTH;
-+	fse->min_height = S5K3M3_HEIGHT;
-+	fse->max_height = S5K3M3_HEIGHT;
-+	return 0;
-+}
-+
-+static int s5k3m3_get_selection(struct v4l2_subdev *sd,
-+				const struct v4l2_subdev_client_info *ci,
-+				struct v4l2_subdev_state *st,
-+				struct v4l2_subdev_selection *sel)
-+{
-+	switch (sel->target) {
-+	case V4L2_SEL_TGT_CROP:		/* analogue crop of the mode (0x0344..0x034a) */
-+		sel->r.left = 32;
-+		sel->r.top = 8;
-+		sel->r.width = 4160;
-+		sel->r.height = 3120;
-+		return 0;
-+	case V4L2_SEL_TGT_CROP_DEFAULT:
-+	case V4L2_SEL_TGT_CROP_BOUNDS:	/* active pixel array */
-+	case V4L2_SEL_TGT_NATIVE_SIZE:
-+		sel->r.left = 0;
-+		sel->r.top = 0;
-+		sel->r.width = 4224;
-+		sel->r.height = 3136;
-+		return 0;
-+	}
-+	return -EINVAL;
-+}
-+
-+static int s5k3m3_init_state(struct v4l2_subdev *sd, struct v4l2_subdev_state *st)
-+{
-+	s5k3m3_fill_fmt(v4l2_subdev_state_get_format(st, 0));
-+	return 0;
-+}
-+
-+static const struct v4l2_subdev_pad_ops s5k3m3_pad_ops = {
-+	.enum_mbus_code = s5k3m3_enum_mbus_code,
-+	.enum_frame_size = s5k3m3_enum_frame_size,
-+	.get_fmt = v4l2_subdev_get_fmt,
-+	.set_fmt = s5k3m3_set_fmt,
-+	.get_selection = s5k3m3_get_selection,
-+	.enable_streams = s5k3m3_enable_streams,
-+	.disable_streams = s5k3m3_disable_streams,
-+};
-+
-+static const struct v4l2_subdev_video_ops s5k3m3_video_ops = {
-+	.s_stream = v4l2_subdev_s_stream_helper,
-+};
-+
-+static const struct v4l2_subdev_ops s5k3m3_ops = {
-+	.video = &s5k3m3_video_ops,
-+	.pad = &s5k3m3_pad_ops,
-+};
-+
-+static const struct v4l2_subdev_internal_ops s5k3m3_internal_ops = {
-+	.init_state = s5k3m3_init_state,
-+};
-+
-+static int s5k3m3_check_hw(struct s5k3m3 *s)
-+{
-+	struct fwnode_handle *ep;
-+	struct v4l2_fwnode_endpoint bus = { .bus_type = V4L2_MBUS_CSI2_DPHY };
-+	u64 id = 0;
-+	int ret;
-+
-+	ep = fwnode_graph_get_next_endpoint(dev_fwnode(s->dev), NULL);
-+	if (!ep)
-+		return -EPROBE_DEFER;
-+	ret = v4l2_fwnode_endpoint_alloc_parse(ep, &bus);
-+	fwnode_handle_put(ep);
-+	if (ret)
-+		return ret;
-+	if (bus.bus.mipi_csi2.num_data_lanes != 4)
-+		ret = dev_err_probe(s->dev, -EINVAL, "need 4 data lanes\n");
-+	v4l2_fwnode_endpoint_free(&bus);
-+	if (ret)
-+		return ret;
-+
-+	ret = s5k3m3_power_on(s->dev);
-+	if (ret)
-+		return ret;
-+	cci_read(s->regmap, S5K3M3_REG_CHIP_ID, &id, &ret);
-+	if (!ret && id != S5K3M3_CHIP_ID)
-+		ret = -ENODEV;
-+	if (ret)
-+		dev_err(s->dev, "chip id 0x%llx, error %d\n", id, ret);
-+	return ret;
-+}
-+
-+static int s5k3m3_probe(struct i2c_client *client)
-+{
-+	struct device *dev = &client->dev;
-+	struct s5k3m3 *s;
-+	unsigned int i;
-+	int ret;
-+
-+	s = devm_kzalloc(dev, sizeof(*s), GFP_KERNEL);
-+	if (!s)
-+		return -ENOMEM;
-+	s->dev = dev;
-+	v4l2_i2c_subdev_init(&s->sd, client, &s5k3m3_ops);
-+	s->sd.internal_ops = &s5k3m3_internal_ops;
-+
-+	s->regmap = devm_cci_regmap_init_i2c(client, 16);
-+	if (IS_ERR(s->regmap))
-+		return PTR_ERR(s->regmap);
-+	s->mclk = devm_clk_get(dev, NULL);
-+	if (IS_ERR(s->mclk))
-+		return dev_err_probe(dev, PTR_ERR(s->mclk), "no clock\n");
-+	ret = clk_set_rate(s->mclk, S5K3M3_MCLK);
-+	if (ret)
-+		return ret;
-+	s->reset = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
-+	if (IS_ERR(s->reset))
-+		return dev_err_probe(dev, PTR_ERR(s->reset), "no reset gpio\n");
-+	for (i = 0; i < ARRAY_SIZE(s5k3m3_supplies); i++)
-+		s->supplies[i].supply = s5k3m3_supplies[i];
-+	ret = devm_regulator_bulk_get(dev, ARRAY_SIZE(s->supplies), s->supplies);
-+	if (ret)
-+		return ret;
-+
-+	ret = s5k3m3_check_hw(s);
-+	if (ret) {
-+		if (ret != -EPROBE_DEFER)
-+			s5k3m3_power_off(dev);
-+		return ret;
-+	}
-+
-+	ret = s5k3m3_init_ctrls(s);
-+	if (ret)
-+		goto err_power;
-+	s->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
-+	s->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
-+	s->pad.flags = MEDIA_PAD_FL_SOURCE;
-+	ret = media_entity_pads_init(&s->sd.entity, 1, &s->pad);
-+	if (ret)
-+		goto err_ctrls;
-+	s->sd.state_lock = s->ctrls.lock;
-+	ret = v4l2_subdev_init_finalize(&s->sd);
-+	if (ret)
-+		goto err_entity;
-+
-+	pm_runtime_set_active(dev);
-+	pm_runtime_enable(dev);
-+	ret = v4l2_async_register_subdev_sensor(&s->sd);
-+	if (ret)
-+		goto err_pm;
-+	pm_runtime_idle(dev);
-+	return 0;
-+
-+err_pm:
-+	pm_runtime_disable(dev);
-+	pm_runtime_set_suspended(dev);
-+	v4l2_subdev_cleanup(&s->sd);
-+err_entity:
-+	media_entity_cleanup(&s->sd.entity);
-+err_ctrls:
-+	v4l2_ctrl_handler_free(&s->ctrls);
-+err_power:
-+	s5k3m3_power_off(dev);
-+	return ret;
-+}
-+
-+static void s5k3m3_remove(struct i2c_client *client)
-+{
-+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-+	struct s5k3m3 *s = to_s5k3m3(sd);
-+
-+	v4l2_async_unregister_subdev(sd);
-+	v4l2_subdev_cleanup(sd);
-+	media_entity_cleanup(&sd->entity);
-+	v4l2_ctrl_handler_free(&s->ctrls);
-+	pm_runtime_disable(&client->dev);
-+	if (!pm_runtime_status_suspended(&client->dev))
-+		s5k3m3_power_off(&client->dev);
-+	pm_runtime_set_suspended(&client->dev);
-+}
-+
-+static DEFINE_RUNTIME_DEV_PM_OPS(s5k3m3_pm_ops, s5k3m3_power_off, s5k3m3_power_on, NULL);
-+
-+static const struct of_device_id s5k3m3_of_match[] = {
-+	{ .compatible = "samsung,s5k3m3" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, s5k3m3_of_match);
-+
-+static struct i2c_driver s5k3m3_driver = {
-+	.driver = {
-+		.name = "s5k3m3",
-+		.of_match_table = s5k3m3_of_match,
-+		.pm = pm_ptr(&s5k3m3_pm_ops),
-+	},
-+	.probe = s5k3m3_probe,
-+	.remove = s5k3m3_remove,
-+};
-+module_i2c_driver(s5k3m3_driver);
-+
-+MODULE_DESCRIPTION("Samsung S5K3M3 image sensor driver");
-+MODULE_LICENSE("GPL");
++              port {
++                  endpoint {
++                      data-lanes = <1 2 3 4>;
++                      link-frequencies = /bits/ 64 <380800000>;
++                      remote-endpoint = <&csiphy_ep>;
++                  };
++              };
++          };
++      };
++...
 
 -- 
 2.49.1
