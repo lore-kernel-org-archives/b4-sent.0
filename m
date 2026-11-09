@@ -1,24 +1,24 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Date: Mon, 09 Nov 2026 11:55:12 +0900
-Subject: [PATCH 6.6.y] jbd2: don't advance j_fc_off before the buffer is
+Date: Mon, 09 Nov 2026 11:55:17 +0900
+Subject: [PATCH 6.1.y] jbd2: don't advance j_fc_off before the buffer is
  recorded
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-jbd2-fcoff-6-6-y-v1-1-4ec879f3b004@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAA828WoC/x2MQQ5AMBAAvyJ7to1Ws8JXxIF2yzogbSJE/F0jc
- 5rDzAOJo3CCrngg8ilJ9i2LLgtwy7jNjOKzg6kMaV21uE7eYHB7CEiZG3VDvibnrJ0IcnZEDnL
- 9yx5IkbpheN8PDeEmAWkAAAA=
+Message-Id: <20261109-jbd2-fcoff-6-1-y-v1-1-e11d3a042ed9@samsung.com>
+X-B4-Tracking: v=1; b=H4sIABQ28WoC/x3MMQqAMAxA0atIZiNNhIJeRRxam2ocVFoQRby7x
+ fEN/z+QJalk6KsHkpyadd8KqK5gWtw2C2ooBjZsiUyHqw+McdpjRIuEN7JzPghZMi1DyY4kUa9
+ /OYBtqLlhfN8P/vbViGkAAAA=
 To: stable@vger.kernel.org
 Cc: stable@kernel.org, Yu Junzhe <junzheyu1@gmail.com>, 
  Daejun Park <daejun7.park@samsung.com>, Jan Kara <jack@suse.cz>, 
  Theodore Ts'o <tytso@mit.edu>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794192911; l=3811;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794192916; l=3811;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=Uu0LmmE04GoLGajdvXMq0EfJHZxjCivUpI5io4+iJvA=;
- b=q+xpgXV54Q7rBbSBqWi0bs3UY7UhttXJBrz946Mz+MRG0nxt8dB40JLNc9MAhP4jv5ohTufAe
- ZvW37qmgzLwBzYM73zsBkg3go9rFfoUCTItobwXH8HgniJe33a5Dqqd
+ bh=DB4jju35q/lOLZ1lgLy/or9OriED2O77j2nEtkbVCqI=;
+ b=ZsodZpVCCGe/ZdKzkj0PmsglfEtu/FrYZnegZ2AZrNfiNJh6yu0suf0Ox5nH7mpwINyHowffE
+ 8Q6XfUOQ80uDM83tes8DvajOEGcFm/6lj6sAEOzqDdSyCSw7HjRZpRs
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
@@ -64,7 +64,7 @@ the read of the never-written slot visible:
 With this patch the same run leaves j_fc_off at 0 across repeated
 __getblk() failures and completes cleanly.
 
-[ Context: in 6.6.y, jbd2_fc_get_buf() still advances j_fc_off inside
+[ Context: in 6.1.y, jbd2_fc_get_buf() still advances j_fc_off inside
   the if/else bounds check, so the increment is removed from there.
   The change is otherwise the same as upstream. ]
 
@@ -78,7 +78,7 @@ Link: https://patch.msgid.link/20260819060939epcms2p37bb8589b2f8a52a2b14bef38fad
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Tested on 6.6.162 with KASAN and slub_debug=P, using the reproducer
+Tested on 6.1.192 with KASAN and slub_debug=P, using the reproducer
 from the upstream commit. Without the patch the second fsync hits a
 KASAN wild-memory-access and a GPF in jbd2_fc_release_bufs(). With
 the patch all six fsyncs complete cleanly.
@@ -87,10 +87,10 @@ the patch all six fsyncs complete cleanly.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index e0d82f83ab..ad3f522101 100644
+index f54836c1da..4d26457f2e 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
-@@ -869,7 +869,6 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
+@@ -881,7 +881,6 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
  	if (journal->j_fc_off + journal->j_fc_first < journal->j_fc_last) {
  		fc_off = journal->j_fc_off;
  		blocknr = journal->j_fc_first + fc_off;
@@ -98,7 +98,7 @@ index e0d82f83ab..ad3f522101 100644
  	} else {
  		ret = -EINVAL;
  	}
-@@ -887,6 +886,7 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
+@@ -899,6 +898,7 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
  
  
  	journal->j_fc_wbuf[fc_off] = bh;
@@ -108,8 +108,8 @@ index e0d82f83ab..ad3f522101 100644
  
 
 ---
-base-commit: 5139929c698c273e07cb0635732f6a918a7b8e78
-change-id: 20261109-jbd2-fcoff-6-6-y-176d36cc44b6
+base-commit: c75b0cf0982c00cddfd88d1acf3872f79b40980c
+change-id: 20261109-jbd2-fcoff-6-1-y-2aabde161032
 
 Best regards,
 -- 
