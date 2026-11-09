@@ -1,105 +1,93 @@
 From: Xiubo Li <xiubo.li@clyso.com>
-Date: Mon, 09 Nov 2026 01:27:19 +0100
-Subject: [PATCH 2/2] ceph: drop the dirty folios that a shut down mount
- cannot write back
+Date: Mon, 09 Nov 2026 01:28:15 +0100
+Subject: [PATCH] ceph: write back a cap snap's dirty pages as soon as it is
+ finished
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-ceph-shutdown-dirty-folios-v1-2-34600e8dab20@clyso.com>
-References: <20261109-ceph-shutdown-dirty-folios-v1-0-34600e8dab20@clyso.com>
-In-Reply-To: <20261109-ceph-shutdown-dirty-folios-v1-0-34600e8dab20@clyso.com>
+Message-Id: <20261109-ceph-capsnap-writeback-v1-1-d2130bce504b@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQrCMBBA4auUWTuQBCLVqxQXk+nYjkIMmfoDp
+ Xc31uW3eG8Fk6picO5WqPJS00du8IcOeKY8CerYDMGFo/euR5YyI1OxTAXfVRdJxHeMXig4N8Y
+ UT9DiUuWqn308XP62Z7oJL78bbNsXODSi5noAAAA=
+X-Change-ID: 20261108-ceph-capsnap-writeback-51ea200d5b59
 To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
  Viacheslav Dubeyko <slava@dubeyko.com>, 
- Christian Brauner <brauner@kernel.org>
+ Milind Changire <mchangir@redhat.com>
 Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794184042; l=3297;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794184095; l=2794;
  i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=apUGUAugMMqkzlDQq7ZBOtMNcuBWkirzNCz7wqu3KjU=;
- b=azC8ejpzs7pUV5FvwNmYgF0qXFQc6onGrB/Eo8qFBp+qNRpyI9JMZiVibAw0v0H918RqrmJgy
- VPFIEa1hU1OANkmw04/+oFXbnlsfL4bn9DDtmxH0i3vV+8XKzg6soOz
+ bh=R6XqZSxdVxydzDKnNp2ga3kcSz7zsahaBCcIEPSGDXQ=;
+ b=VF1dnMWpYunG/+eQ1Ei5JrkO5cng3HsIWMoEYlJ8MoweHver5KuMGGStsKwC2YX1zckKdL61+
+ 5ZP1XxWV6/fDr8m5KSHLjNPTTmdCnNImUiOj0YpGiEZ371XwNwfcX1V
 X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
  pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
 X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the MDS closes the session of a client (e.g. it evicts it), the
-caps go, with any dirty cap state, but the dirty folios stay in the
-page cache: the inode is not shut down then, so ceph_purge_inode_cap()
-does not have them invalidated, and they are left for writeback.  If
-the mount is then shut down by a forced umount before they were written
-back, they never are: ceph_writepages_start() only sets -EIO on the
-mapping and returns, so they stay dirty for good.  Each keeps its count
-in mdsc->dirty_folios and its Fb cap ref, which holds a reference to
-the inode, so umount waits until mount_timeout and then finds the inode
-busy:
+When a snapshot is taken while an inode has dirty pages, the pages
+move to a cap snap, which can only be flushed to the MDS once they have
+been written back.  __ceph_finish_cap_snap() starts writeback at once
+when the cap snap has no dirty pages of its own but the inode still has
+some, but when the cap snap has some it starts nothing: its pages wait
+for periodic writeback, up to dirty_expire_centisecs, or for the next
+write to one of them.  ceph-fuse flushes the buffered data at once in
+both cases.
 
-  ceph: ... dropping dirty Fw state for ... 10000000001.fffffffffffffffe
-  ceph: ... 10000000001.fffffffffffffffe 1099511627777 forced umount
-  ceph: ... umount timed out, 0
-  VFS: Busy inodes after unmount of ceph (ceph)
-  kernel BUG at fs/super.c:731!
+With lazy I/O that loses data from the snapshot.  Several clients
+buffer writes to one file then, and when another one writes to the
+same object with the new snap context first, the OSD clones the object
+for the snapshot on that write; what this client writes with the old
+snap context after it goes to the head only.  With two lazy writers
+that each dirty a page, take a snapshot and write again, the snapshot
+had zeros instead of the first client's data whenever the second
+client's new write reached the OSD first, as the OSD op history shows:
 
-Have the page cache of such an inode invalidated there instead, which
-for a shut down inode truncates it, as ceph_purge_inode_cap() does.
-That has to happen from the inode work, not from writeback: putting the
-last Fb cap ref may put the last reference to the inode, and evicting
-it would wait for the writeback that does it.  Then ceph_kill_sb()
-flushes the inode work after syncing the fs, so that the folios and
-their references are gone before the inodes are evicted.
+  client.4157.0:4 [write 4096~2000] snapc 2=[2]
+  client.4156.0:3 [write 0~2000] snapc 1=[]
 
+Start writeback of the cap snap's pages at once, too, as ceph-fuse does.
+This also gets the cap snap to the MDS sooner without lazy I/O.
+
+Fixes: 2d12ad950b0c ("ceph: trigger to flush the buffer when making snapshot")
 Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- fs/ceph/addr.c  | 14 ++++++++++++++
- fs/ceph/super.c |  8 ++++++++
- 2 files changed, 22 insertions(+)
+When a snapshot is taken while an inode has dirty pages, the kernel
+client leaves the cap snap's pages for periodic writeback, while
+ceph-fuse flushes them at once.  With lazy I/O another client may write
+to the same objects with the new snap context first, and what this
+client writes with the old one afterwards misses the snapshot.
+---
+ fs/ceph/snap.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-index 2abed478a4ad..2202906f4e18 100644
---- a/fs/ceph/addr.c
-+++ b/fs/ceph/addr.c
-@@ -2097,6 +2097,20 @@ static int ceph_writepages_start(struct address_space *mapping,
- 	      (wbc->sync_mode == WB_SYNC_ALL ? "ALL" : "HOLD"));
- 
- 	if (is_forced_umount(mapping)) {
+diff --git a/fs/ceph/snap.c b/fs/ceph/snap.c
+index f59b83a97d52..e44378b07fd3 100644
+--- a/fs/ceph/snap.c
++++ b/fs/ceph/snap.c
+@@ -683,6 +683,15 @@ int __ceph_finish_cap_snap(struct ceph_inode_info *ci,
+ 		      capsnap->context->seq,
+ 		      ceph_cap_string(capsnap->dirty),
+ 		      capsnap->size, capsnap->dirty_pages);
 +		/*
-+		 * What is dirty here can never be written back now.  Left
-+		 * dirty, each folio keeps its Fb cap ref, which holds the
-+		 * inode, and its count in the dirty folios that umount
-+		 * waits for.  ceph_purge_inode_cap() has them invalidated
-+		 * when it removes the caps of a shut down inode, but the
-+		 * session may have been closed (the client evicted), and
-+		 * the caps removed, before the shut down.  Have them
-+		 * dropped now, but not from here: putting the last Fb cap
-+		 * ref may put the last reference to the inode, and its
-+		 * eviction would wait for this writeback.
++		 * Write them back now, not when writeback or the next
++		 * write to them gets to it: they belong to the snapshot,
++		 * and with lazy I/O another client may already write to
++		 * the same objects with the new snap context.  Its first
++		 * write clones the objects for the snapshot, and what we
++		 * write with the old one after that misses the snapshot.
 +		 */
-+		if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
-+			ceph_queue_invalidate(inode);
- 		ceph_blog_exit(&__ji);
- 		return -EIO;
++		ceph_queue_writeback(inode);
+ 		return 0;
  	}
-diff --git a/fs/ceph/super.c b/fs/ceph/super.c
-index 40be4b16e486..bb5591c1e154 100644
---- a/fs/ceph/super.c
-+++ b/fs/ceph/super.c
-@@ -1634,6 +1634,14 @@ static void ceph_kill_sb(struct super_block *s)
- 	 */
- 	sync_filesystem(s);
  
-+	/*
-+	 * A shut down mount can't write back its dirty folios, and
-+	 * writeback queued their invalidation instead: let it drop them,
-+	 * and the references they hold to the inodes, before the inodes
-+	 * get evicted.
-+	 */
-+	flush_workqueue(fsc->inode_wq);
-+
- 	if (atomic64_read(&mdsc->dirty_folios) > 0) {
- 		wait_queue_head_t *wq = &mdsc->flush_end_wq;
- 		long timeleft = wait_event_killable_timeout(*wq,
 
--- 
-2.53.0
+---
+base-commit: 5dcec86cc31f8144857c0d9bf2a7fa13b6e6f531
+change-id: 20261108-ceph-capsnap-writeback-51ea200d5b59
+
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
