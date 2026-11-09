@@ -1,111 +1,96 @@
-From: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
-Date: Mon, 09 Nov 2026 15:20:52 +0200
-Subject: [PATCH] iommu/vt-d: Set up scalable mode context entries for DMA
- aliases
+From: Sergei Khomenkov <shomenkow@gmail.com>
+Subject: [PATCH 0/3] media: verisilicon: fix VEPU1 JPEG encoder writes past
+ the CAPTURE buffer
+Date: Mon, 09 Nov 2026 16:43:50 +0300
+Message-Id: <20261109-hantro-buflimit-v1-0-f0b86ce61e66@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-iommu-vtd-sm-bridge-alias-v1-1-76704f658dc3@ahmedabdelfattah.dev>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4avIrB0wKhW9SnExSabtFKMloyKId
- zfV5Qfv/TsoR2GFLtsh8ioq05hg8gzch8Y3o/hkKIvyYUzRokwhLLjOHjWgjeLThAYhxZapcc4
- 3NVUW0v8X+SXb1X72t3WxX3bzPwjHcQL9pKzpfQAAAA==
-X-Change-ID: 20261109-iommu-vtd-sm-bridge-alias-9ea7ccd74a3b
-To: David Woodhouse <dwmw2@infradead.org>, 
- Lu Baolu <baolu.lu@linux.intel.com>, "Joerg Roedel (AMD)" <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- Kevin Tian <kevin.tian@intel.com>
-Cc: iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794230455; l=3605;
- i=me@ahmedabdelfattah.dev; s=20261106; h=from:subject:message-id;
- bh=dhz3rHJR7YOUo+roQBNF725wE94t53ubNOSPW8yLvDQ=;
- b=CCaCnLcMIkkJ833TNpgDHDuF6lqomjTQZdvFCQ9qy0RVezMbNjY5HwSKOoRlmEcmNnZBj92e/
- ozmQTn2f9TEDttmf2taiXGkoCtIP5IPgF1ywzfnbC822Hg12pULtuVB
-X-Developer-Key: i=me@ahmedabdelfattah.dev; a=ed25519;
- pk=DHEHKU4PddrkJ/iYMZpwyyXsFyIQ6ySjTttKLrt9YqI=
-X-Endpoint-Received: by B4 Relay for me@ahmedabdelfattah.dev/20261106 with auth_id=1438
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MSQqAMAwAv1JyNtBWFPUr4sElasCNVEWQ/t3gc
+ QZmXggkTAEq84LQzYH3TcElBvq53SZCHpTBW587Z3NUecqO3TUuvPKJNsuosL7syKeg1SE08vM
+ f6ybGD+G1YdFhAAAA
+X-Change-ID: 20261106-hantro-buflimit-055e8029be23
+To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Hans Verkuil <hverkuil@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
+ Chen-Yu Tsai <wenst@chromium.org>, 
+ Hugues Fruchet <hugues.fruchet@foss.st.com>, linux-media@vger.kernel.org, 
+ linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-stm32@st-md-mailman.stormreply.com, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Sergei Khomenkov <shomenkow@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794231837; l=3241;
+ i=shomenkow@gmail.com; s=20261104; h=from:subject:message-id;
+ bh=en/jn4YMqVb7Nenx7Rb8ix4nBUnrgggys7Qhs7eVdYc=;
+ b=Vzu8+WR8qtMz9STuQ8vNsgANjERJiMoL0jn3Kz0IB5o5qa5qjmePpUxxb375dpQGxFTRimMKP
+ T/vCqhTRomuBg/iauDBMz10oDcnBKdVSRsyoTRBpSaar41IE7Ta6eJ/
+X-Developer-Key: i=shomenkow@gmail.com; a=ed25519;
+ pk=FwuHDVe7aiISDMLmQEcMC+RflEIJ6kEp/ekwznWXmI8=
+X-Endpoint-Received: by B4 Relay for shomenkow@gmail.com/20261104 with auth_id=1409
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In scalable mode, devices behind a PCIe-to-PCI bridge can't do DMA at
-all. Their requests carry the bridge's alias requester ID, and the
-context entry for that ID is never written, so every request faults:
+The H1 JPEG encoder is given its stream buffer limit in bytes, but the
+register counts 64-bit words, so a stream that does not fit the CAPTURE
+buffer is written past its end, up to eight times the buffer size. A
+quality 100 frame of noise does not fit the default sizeimage, and
+userspace can also set a smaller one, so any client of the encoder node
+can get there. On an RK3026, which has no IOMMU in front of the VPU, the
+encoder wrote 230 KB past a default-sized 640x480 buffer and 1.6 MB
+past a 1920x1088 one.
 
-  DMAR: [DMA Read NO_PASID] Request device [0000:02:00.0] fault addr 0xfffff000 [fault reason 0x02] Present bit in context entry is clear
+Patch 2 writes the limit in the right unit, rounded down to the 64-byte
+write bursts measured on the RK3026. With it, a frame that does not fit
+ends with a buffer-full interrupt, which the driver turns into an ERROR
+buffer but which leaves the encoder paused, so the following jobs time
+out. Patch 1, which goes first, stops the VEPU1 encoder after such an
+interrupt. The encoder still writes one burst with a limit of 0, and the
+driver writes the 624-byte header itself, so patch 3 makes the smallest
+CAPTURE sizeimage the header plus one burst.
 
-pci_pasid_table_setup() and pci_pasid_table_teardown() only act when
-they are called for the device itself. pci_for_each_dma_alias() reports
-an alias that comes from an upstream bridge with the bridge as @pdev,
-so these aliases are skipped. An identity domain doesn't help either,
-as the device still needs the context entry.
+All three were tested on the RK3026 (VEPU1) only; the test paragraph of
+each patch has the numbers. v4l2-compliance 1.30.1 on the encoder node
+shows no new failures with the series; its one failure (the raw OUTPUT
+format's colorspace is not SRGB, v4l2-test-formats.cpp:892) fails
+without it as well. The VEPU2 JPEG encoder (rockchip_vpu2_hw_jpeg_enc.c,
+rockchip_vpu2_vepu_irq()) has the same code and the same limit in bytes,
+and the STM32MP25 VENC runs the H1 code that patch 2 changes but has its
+own interrupt handler without the stop of patch 1. I cannot test either,
+so this series leaves the VEPU2 and the STM32MP25 handler alone; a check
+there with a quality 100 noise frame and a default-sized CAPTURE buffer
+would be welcome, and the same change can follow.
 
-Legacy mode is fine, because domain_context_mapping_cb() and
-domain_context_clear_one_cb() have no such check, and the same check
-was already removed from the pass-through path in commit 64f792981e35
-("iommu/vt-d: Remove device comparison in context_setup_pass_through_cb").
+Not changed here: after a watchdog timeout, rockchip_vpu1_enc_reset()
+sets H1_REG_INTERRUPT_DIS_BIT and the JPEG encoder path never clears
+it, so every later job times out until the module is reloaded. That
+can be a follow-up.
 
-Drop it from both callbacks, so the alias context entry points to the
-device's PASID table and is cleared again when the device is released.
+Before v5.18 (dc8bfe1e482d, "media: hantro: output encoded JPEG
+content directly to capture buffers") the stream went to a bounce
+buffer; patches 2 and 3 do not apply there and those trees would need a
+separate backport.
 
-Fixes: 301f1a80487f ("iommu/vt-d: Setup scalable mode context entry in probe path")
-Fixes: 81e921fd3216 ("iommu/vt-d: Fix NULL domain on device release")
-Cc: stable@vger.kernel.org
-Signed-off-by: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
----
-This showed up with a USB controller behind QEMU's pcie-pci-bridge in a
-q35 guest using intel-iommu with scalable-mode=on: the USB tablet behind
-it never enumerates.
-
-Tested on v7.4-rc2 in that guest (x86_64_defconfig + kvm_guest.config,
-INTEL_IOMMU with scalable mode on by default), with an EHCI controller
-and an e1000 behind the bridge, in scalable mode with second-stage
-tables, with first-stage tables (fsts=on) and with iommu=pt. Without
-the patch both devices fault on 02:00.0, the tablet never shows up and
-the e1000 hits Tx unit hangs. With it the tablet enumerates, the e1000
-passes traffic and no DMAR faults are logged. Removing the EHCI
-controller through sysfs and rescanning brings it back without faults,
-which exercises the teardown side. Legacy mode behaves the same with
-and without the patch.
-
-Devices that share an alias always end up in the same IOMMU group, so
-whichever device's PASID table the alias entry points to, it translates
-with the group's domain. As in legacy mode, releasing one of them also
-clears the alias entry the other one uses, so its DMA is blocked until it
-is probed again (see the comment above domain_context_clear()).
----
- drivers/iommu/intel/pasid.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
-
-diff --git a/drivers/iommu/intel/pasid.c b/drivers/iommu/intel/pasid.c
-index e4f24d3f19a6..e72b6e972cfb 100644
---- a/drivers/iommu/intel/pasid.c
-+++ b/drivers/iommu/intel/pasid.c
-@@ -760,8 +760,7 @@ static int pci_pasid_table_teardown(struct pci_dev *pdev, u16 alias, void *data)
- {
- 	struct device *dev = data;
- 
--	if (dev == &pdev->dev)
--		device_pasid_table_teardown(dev, PCI_BUS_NUM(alias), alias & 0xff);
-+	device_pasid_table_teardown(dev, PCI_BUS_NUM(alias), alias & 0xff);
- 
- 	return 0;
- }
-@@ -897,9 +896,6 @@ static int pci_pasid_table_setup(struct pci_dev *pdev, u16 alias, void *data)
- {
- 	struct device *dev = data;
- 
--	if (dev != &pdev->dev)
--		return 0;
--
- 	return device_pasid_table_setup(dev, PCI_BUS_NUM(alias), alias & 0xff);
- }
- 
+The bugs were found and the patches drafted with an LLM coding
+assistant while porting mainline Linux to an RK3026 board; every claim
+in the messages was checked against the code or measured on the board.
 
 ---
-base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261109-iommu-vtd-sm-bridge-alias-9ea7ccd74a3b
+Sergei Khomenkov (3):
+      media: verisilicon: stop the VEPU1 JPEG encoder after an unfinished frame
+      media: verisilicon: program the H1 JPEG stream limit in 64-bit words
+      media: verisilicon: leave room for the JPEG header and one stream burst
+
+ drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c | 10 +++++++++-
+ drivers/media/platform/verisilicon/hantro_v4l2.c        | 10 ++++++++++
+ drivers/media/platform/verisilicon/rockchip_vpu_hw.c    |  9 +++++++++
+ 3 files changed, 28 insertions(+), 1 deletion(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261106-hantro-buflimit-055e8029be23
 
 Best regards,
---  
-Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+-- 
+Sergei Khomenkov <shomenkow@gmail.com>
 
