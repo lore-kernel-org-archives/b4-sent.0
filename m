@@ -1,10 +1,11 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Mon, 09 Nov 2026 14:03:44 -0500
-Subject: [PATCH v2 08/11] leds: rgb: ktd202x: Add hardware pattern support
+Date: Mon, 09 Nov 2026 14:03:45 -0500
+Subject: [PATCH v2 09/11] leds: rgb: ktd202x: Limit the LED current to
+ led-max-microamp
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-ktd202x-et6326-v2-8-56e97c226658@telaak.dev>
+Message-Id: <20261109-ktd202x-et6326-v2-9-56e97c226658@telaak.dev>
 References: <20261109-ktd202x-et6326-v2-0-56e97c226658@telaak.dev>
 In-Reply-To: <20261109-ktd202x-et6326-v2-0-56e97c226658@telaak.dev>
 To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
@@ -19,352 +20,100 @@ Cc: linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-hardening@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-doc@vger.kernel.org, Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794251062; l=11640;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794251062; l=3266;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=VCc1UbAA68VW67UbLbUqqvij8U3cSOw+UZUYQqNWdYc=;
- b=3TCcHcF5jL4o91RPUmP/0LIPt3e1NY6Kj0OYyCzG/qfuk7K5eZA9Tq/jlfKfkF05mdSQe7SB2
- Ip8Jn+Y48X4CEVaLHrR1UlTDK1aXAT0JIkTX1LTG7Zg9RSCU4D5VUI+
+ bh=Om04kvjSybh2LIV5nsthyIAjGxULubhGOcKugy5aQ+s=;
+ b=QC6BpJR2NzdSpd4gx6fOOFld+6tJ/1M0JMw1UUzo2h4/HFvoWQvc4OFGrgdQoL+YYH5aN7WNi
+ +Rb+yhGBqTnB27xBLLfAuJ8v4jgDE24PmnZXBsAbSXPzyekD05Xl56B
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The KTD202x and the ET6326 can ramp the LED current up and down on
-their own: the flash timer that already does blink_set also has rise
-and fall times of up to 1.92 s. Without them, a breathing light needs
-the software pattern trigger, which is an I2C write every 50 ms.
+The full brightness of 192 is 24 mA, which is more than many indicator
+LEDs are made for, and a channel may drive several LEDs in parallel. The
+GL.iNet GL-SFT1200 firmware, for example, runs each of its two channels,
+three LEDs each, at 1.375 mA.
 
-Implement pattern_set and pattern_clear for the pattern trigger's
-hw_pattern. A pattern is the one breathing cycle the hardware has,
-"0 rise brightness high brightness fall 0 low", which the software
-pattern trigger plays as the same breath, repeated forever.
+Honor the common led-max-microamp property for single color LEDs by
+lowering max_brightness, since each brightness step adds 0.125 mA. Set
+max_brightness before the LED is registered, and blink at max_brightness
+rather than at the chip maximum.
 
-blink_set now clears the ramp times, so a blink after a pattern stays
-sharp.
+Multicolor LEDs are left as they are: the LED core already bounds each
+color intensity, and the hardware this was tested on has none.
 
 Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
- Documentation/leds/index.rst        |   1 +
- Documentation/leds/leds-ktd202x.rst |  41 ++++++++
- drivers/leds/rgb/leds-ktd202x.c     | 191 ++++++++++++++++++++++++++++++++++--
- 3 files changed, 226 insertions(+), 7 deletions(-)
+ drivers/leds/rgb/leds-ktd202x.c | 20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/leds/index.rst b/Documentation/leds/index.rst
-index 23fa9ff7aaf4..54d1c73684ad 100644
---- a/Documentation/leds/index.rst
-+++ b/Documentation/leds/index.rst
-@@ -19,6 +19,7 @@ LEDs
-    leds-blinkm
-    leds-cht-wcove
-    leds-el15203000
-+   leds-ktd202x
-    leds-lm3556
-    leds-lp3944
-    leds-lp5521
-diff --git a/Documentation/leds/leds-ktd202x.rst b/Documentation/leds/leds-ktd202x.rst
-new file mode 100644
-index 000000000000..cb9bc9326241
---- /dev/null
-+++ b/Documentation/leds/leds-ktd202x.rst
-@@ -0,0 +1,41 @@
-+.. SPDX-License-Identifier: GPL-2.0-only
-+
-+=============================================
-+Kinetic KTD2026/7 and Etek ET6326 LED driver
-+=============================================
-+
-+The chips have a hardware timer that blinks or breathes the LEDs without the
-+CPU. The timer trigger uses it for blinking, and the pattern trigger uses it
-+for breathing through the ``hw_pattern`` file.
-+
-+The hardware pattern is one breathing cycle of four steps, which repeats
-+forever::
-+
-+    "0 rise brightness high brightness fall 0 low"
-+
-+rise
-+    Ramp-up time in ms, from 0 to 1920 in steps of 128 ms.
-+
-+high
-+    Time spent at the brightness in ms.
-+
-+fall
-+    Ramp-down time in ms, from 0 to 1920 in steps of 128 ms.
-+
-+low
-+    Time spent off in ms.
-+
-+The first and the last brightness must be 0, and the two in the middle must be
-+equal and not 0. ``repeat`` must be -1, its default.
-+
-+The sum of the four times is the flash period. The driver rounds it up to the
-+next step of 128 ms, between 256 ms (128 ms on the ET6326) and 16384 ms.
-+
-+The flash period, the on time and the ramp times are shared by all LEDs of a
-+chip. When several LEDs blink or breathe at once, they all follow the timing
-+that was set last.
-+
-+For example, to breathe with a period of 4 seconds::
-+
-+    echo pattern > /sys/class/leds/blue:status/trigger
-+    echo "0 1000 192 1000 192 1000 0 1000" > /sys/class/leds/blue:status/hw_pattern
 diff --git a/drivers/leds/rgb/leds-ktd202x.c b/drivers/leds/rgb/leds-ktd202x.c
-index 2650573b6c5a..daa04f8ecefd 100644
+index daa04f8ecefd..2a3fda860e68 100644
 --- a/drivers/leds/rgb/leds-ktd202x.c
 +++ b/drivers/leds/rgb/leds-ktd202x.c
-@@ -62,12 +62,20 @@
- 
- /* Register 5 */
- #define KTD202X_RAMP_TIMES_2_MS			0x00
-+#define KTD202X_RAMP_TRISE(x)			(x)
-+#define KTD202X_RAMP_TFALL(x)			((x) << 4)
- 
- /* Register 6-9 */
- #define KTD202X_LED_CURRENT_10_mA		0x4f
- 
- #define KTD202X_FLASH_PERIOD_STEP_MS 128
- #define KTD202X_FLASH_ON_MAX 256
-+#define KTD202X_RAMP_STEP_MS 128
-+#define KTD202X_RAMP_MAX_STEPS 15
-+
-+/* rise, high, fall and low */
-+#define KTD202X_PATTERN_LEN 4
-+#define KTD202X_PATTERN_MAX_MS 16384
+@@ -78,6 +78,7 @@
+ #define KTD202X_PATTERN_MAX_MS 16384
  
  #define KTD202X_MAX_BRIGHTNESS 192
++#define KTD202X_LED_CURRENT_STEP_uA 125
  
-@@ -294,6 +302,23 @@ static int ktd202x_brightness_mc_set(struct led_classdev *cdev,
- 	return ret;
+ static const struct reg_default ktd202x_reg_defaults[] = {
+ 	{ KTD202X_REG_RESET_CONTROL, KTD202X_TIMER_SLOT_CONTROL_TSLOT1 |
+@@ -408,7 +409,7 @@ static int ktd202x_blink_single_set(struct led_classdev *cdev,
+ 	int ret;
+ 
+ 	if (!cdev->brightness) {
+-		ret = ktd202x_brightness_single_set(cdev, KTD202X_MAX_BRIGHTNESS);
++		ret = ktd202x_brightness_single_set(cdev, cdev->max_brightness);
+ 		if (ret)
+ 			return ret;
+ 	}
+@@ -604,6 +605,18 @@ static int ktd202x_pattern_mc_clear(struct led_classdev *cdev)
+ 	return ktd202x_brightness_mc_set(cdev, LED_OFF);
  }
  
-+static unsigned int ktd202x_flash_period_steps(const struct ktd202x_info *info,
-+					       unsigned long period_ms)
++/* The current limit of a LED in brightness steps, each of which adds 0.125 mA */
++static unsigned int ktd202x_max_brightness(struct fwnode_handle *fwnode)
 +{
-+	if (period_ms < info->flash_period_min_ms)
-+		return 0;
++	u32 max_microamp;
 +
-+	return min_t(unsigned long, info->flash_period_max_steps,
-+		     (period_ms - info->flash_period_min_ms) /
-+		     KTD202X_FLASH_PERIOD_STEP_MS);
-+}
++	if (fwnode_property_read_u32(fwnode, "led-max-microamp", &max_microamp))
++		return KTD202X_MAX_BRIGHTNESS;
 +
-+static unsigned long ktd202x_flash_period_ms(const struct ktd202x_info *info,
-+					     unsigned int num_steps)
-+{
-+	return num_steps * KTD202X_FLASH_PERIOD_STEP_MS + info->flash_period_min_ms;
-+}
-+
- static int ktd202x_blink_set(struct ktd202x_led *led, unsigned long *delay_on,
- 			     unsigned long *delay_off, struct mc_subled *subleds,
- 			     unsigned int num_channels)
-@@ -332,12 +357,7 @@ static int ktd202x_blink_set(struct ktd202x_led *led, unsigned long *delay_on,
- 	/* Integer representation of time of flash period */
- 	if (check_add_overflow(*delay_on, *delay_off, &delay_total_ms))
- 		delay_total_ms = ULONG_MAX;
--	if (delay_total_ms < info->flash_period_min_ms)
--		num_steps = 0;
--	else
--		num_steps = min_t(unsigned long, info->flash_period_max_steps,
--				  (delay_total_ms - info->flash_period_min_ms) /
--				  KTD202X_FLASH_PERIOD_STEP_MS);
-+	num_steps = ktd202x_flash_period_steps(info, delay_total_ms);
- 
- 	/*
- 	 * Integer representation of percentage of LED ON time. A value of 0
-@@ -347,7 +367,7 @@ static int ktd202x_blink_set(struct ktd202x_led *led, unsigned long *delay_on,
- 	on = clamp(on, 1, KTD202X_FLASH_ON_MAX - 1);
- 
- 	/* Actually used delay_{on,off} values */
--	delay_total_ms = num_steps * KTD202X_FLASH_PERIOD_STEP_MS + info->flash_period_min_ms;
-+	delay_total_ms = ktd202x_flash_period_ms(info, num_steps);
- 	/*
- 	 * Rounded to the nearest ms, so that the delays give the same on time
- 	 * when written back. Rounded down, 1/256 of the 128 ms ET6326 period
-@@ -366,6 +386,12 @@ static int ktd202x_blink_set(struct ktd202x_led *led, unsigned long *delay_on,
- 	if (ret)
- 		goto out;
- 
-+	/* Drop the ramps a hardware pattern may have left behind */
-+	ret = regmap_write(led->chip->regmap, KTD202X_REG_TRISE_FALL,
-+			   KTD202X_RAMP_TIMES_2_MS);
-+	if (ret)
-+		goto out;
-+
- 	ret = regmap_update_bits(led->chip->regmap, KTD202X_REG_CHANNEL_CTRL,
- 				 ctrl_mask, ctrl_pwm1);
- out:
-@@ -431,6 +457,153 @@ static int ktd202x_blink_mc_set(struct led_classdev *cdev,
- 				 mc->num_colors);
- }
- 
-+/*
-+ * The hardware pattern is a single breathing cycle that repeats forever:
-+ *
-+ *   "0 rise brightness high brightness fall 0 low"
-+ *
-+ * The LED ramps up for the rise time, stays at the brightness for the high
-+ * time, ramps down for the fall time and stays off for the low time.
-+ */
-+static int ktd202x_pattern_check(struct led_classdev *cdev,
-+				 struct led_pattern *pattern, u32 len,
-+				 int repeat)
-+{
-+	/*
-+	 * Only forever: the pattern trigger passes -1, or 0 when repeat
-+	 * has not been written since the trigger was set.
-+	 */
-+	if (len != KTD202X_PATTERN_LEN || repeat > 0)
-+		return -EINVAL;
-+
-+	if (pattern[0].brightness || pattern[3].brightness ||
-+	    pattern[1].brightness != pattern[2].brightness ||
-+	    pattern[1].brightness <= 0 ||
-+	    pattern[1].brightness > cdev->max_brightness)
-+		return -EINVAL;
-+
-+	return 0;
-+}
-+
-+static int ktd202x_pattern_program(struct ktd202x_led *led,
-+				   struct led_pattern *pattern,
-+				   struct mc_subled *subleds,
-+				   unsigned int num_channels)
-+{
-+	const struct ktd202x_info *info = led->chip->info;
-+	unsigned int t[KTD202X_PATTERN_LEN];
-+	unsigned int rise, fall, num_steps, on;
-+	unsigned long period_ms, ton_ms;
-+	u8 ctrl_mask = 0;
-+	u8 ctrl_pwm1 = 0;
-+	int ret;
-+	int i;
-+
-+	for (i = 0; i < KTD202X_PATTERN_LEN; i++)
-+		t[i] = min_t(u32, pattern[i].delta_t, KTD202X_PATTERN_MAX_MS);
-+
-+	rise = min_t(unsigned int, KTD202X_RAMP_MAX_STEPS,
-+		     DIV_ROUND_CLOSEST(t[0], KTD202X_RAMP_STEP_MS));
-+	fall = min_t(unsigned int, KTD202X_RAMP_MAX_STEPS,
-+		     DIV_ROUND_CLOSEST(t[2], KTD202X_RAMP_STEP_MS));
-+
-+	/* Round the period up so that the fall ramp is not cut short */
-+	period_ms = t[0] + t[1] + t[2] + t[3];
-+	num_steps = ktd202x_flash_period_steps(info, period_ms +
-+					       KTD202X_FLASH_PERIOD_STEP_MS - 1);
-+	period_ms = ktd202x_flash_period_ms(info, num_steps);
-+
-+	/* The on time includes the rise time */
-+	ton_ms = t[0] + t[1];
-+	on = clamp_t(unsigned long,
-+		     DIV_ROUND_CLOSEST(ton_ms * KTD202X_FLASH_ON_MAX, period_ms),
-+		     1, KTD202X_FLASH_ON_MAX - 1);
-+
-+	mutex_lock(&led->chip->mutex);
-+
-+	for (i = 0; i < num_channels; i++) {
-+		int channel = subleds[i].channel;
-+
-+		ctrl_mask |= KTD202X_CHANNEL_CTRL_MASK(channel);
-+		/* A color with no brightness stays off */
-+		if (!subleds[i].brightness)
-+			continue;
-+
-+		ctrl_pwm1 |= KTD202X_CHANNEL_CTRL_PWM1(channel);
-+	}
-+
-+	ret = regmap_write(led->chip->regmap, KTD202X_REG_FLASH_PERIOD, num_steps);
-+	if (ret)
-+		goto out;
-+
-+	ret = regmap_write(led->chip->regmap, KTD202X_REG_PWM1_TIMER, on);
-+	if (ret)
-+		goto out;
-+
-+	ret = regmap_write(led->chip->regmap, KTD202X_REG_TRISE_FALL,
-+			   KTD202X_RAMP_TFALL(fall) | KTD202X_RAMP_TRISE(rise));
-+	if (ret)
-+		goto out;
-+
-+	ret = regmap_update_bits(led->chip->regmap, KTD202X_REG_CHANNEL_CTRL,
-+				 ctrl_mask, ctrl_pwm1);
-+out:
-+	mutex_unlock(&led->chip->mutex);
-+	return ret;
-+}
-+
-+static int ktd202x_pattern_single_set(struct led_classdev *cdev,
-+				      struct led_pattern *pattern, u32 len,
-+				      int repeat)
-+{
-+	struct ktd202x_led *led = container_of(cdev, struct ktd202x_led, cdev);
-+	struct mc_subled info;
-+	int ret;
-+
-+	ret = ktd202x_pattern_check(cdev, pattern, len, repeat);
-+	if (ret)
-+		return ret;
-+
-+	ret = ktd202x_brightness_single_set(cdev, pattern[1].brightness);
-+	if (ret)
-+		return ret;
-+
-+	info.brightness = cdev->brightness;
-+	info.channel = led->index;
-+
-+	return ktd202x_pattern_program(led, pattern, &info, 1);
-+}
-+
-+static int ktd202x_pattern_single_clear(struct led_classdev *cdev)
-+{
-+	return ktd202x_brightness_single_set(cdev, LED_OFF);
-+}
-+
-+static int ktd202x_pattern_mc_set(struct led_classdev *cdev,
-+				  struct led_pattern *pattern, u32 len,
-+				  int repeat)
-+{
-+	struct led_classdev_mc *mc = lcdev_to_mccdev(cdev);
-+	struct ktd202x_led *led = container_of(mc, struct ktd202x_led, mcdev);
-+	int ret;
-+
-+	ret = ktd202x_pattern_check(cdev, pattern, len, repeat);
-+	if (ret)
-+		return ret;
-+
-+	ret = ktd202x_brightness_mc_set(cdev, pattern[1].brightness);
-+	if (ret)
-+		return ret;
-+
-+	return ktd202x_pattern_program(led, pattern, mc->subled_info,
-+				       mc->num_colors);
-+}
-+
-+static int ktd202x_pattern_mc_clear(struct led_classdev *cdev)
-+{
-+	return ktd202x_brightness_mc_set(cdev, LED_OFF);
++	return clamp_t(u32, max_microamp / KTD202X_LED_CURRENT_STEP_uA, 1,
++		       KTD202X_MAX_BRIGHTNESS);
 +}
 +
  static int ktd202x_setup_led_rgb(struct ktd202x *chip, struct fwnode_handle *fwnode,
  				 struct ktd202x_led *led, struct led_init_data *init_data)
  {
-@@ -482,6 +655,8 @@ static int ktd202x_setup_led_rgb(struct ktd202x *chip, struct fwnode_handle *fwn
+@@ -653,6 +666,7 @@ static int ktd202x_setup_led_rgb(struct ktd202x *chip, struct fwnode_handle *fwn
+ 	led->mcdev.num_colors = num_channels;
+ 
  	cdev = &led->mcdev.led_cdev;
++	cdev->max_brightness = KTD202X_MAX_BRIGHTNESS;
  	cdev->brightness_set_blocking = ktd202x_brightness_mc_set;
  	cdev->blink_set = ktd202x_blink_mc_set;
-+	cdev->pattern_set = ktd202x_pattern_mc_set;
-+	cdev->pattern_clear = ktd202x_pattern_mc_clear;
+ 	cdev->pattern_set = ktd202x_pattern_mc_set;
+@@ -676,6 +690,8 @@ static int ktd202x_setup_led_single(struct ktd202x *chip, struct fwnode_handle *
+ 	led->index = reg;
  
- 	return devm_led_classdev_multicolor_register_ext(chip->dev, &led->mcdev, init_data);
- }
-@@ -503,6 +678,8 @@ static int ktd202x_setup_led_single(struct ktd202x *chip, struct fwnode_handle *
  	cdev = &led->cdev;
++	cdev->max_brightness = ktd202x_max_brightness(fwnode);
++
  	cdev->brightness_set_blocking = ktd202x_brightness_single_set;
  	cdev->blink_set = ktd202x_blink_single_set;
-+	cdev->pattern_set = ktd202x_pattern_single_set;
-+	cdev->pattern_clear = ktd202x_pattern_single_clear;
+ 	cdev->pattern_set = ktd202x_pattern_single_set;
+@@ -715,8 +731,6 @@ static int ktd202x_add_led(struct ktd202x *chip, struct fwnode_handle *fwnode, u
+ 		return ret;
+ 	}
  
- 	return devm_led_classdev_register_ext(chip->dev, &led->cdev, init_data);
+-	cdev->max_brightness = KTD202X_MAX_BRIGHTNESS;
+-
+ 	return 0;
  }
+ 
 
 -- 
 Git-155)
