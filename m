@@ -1,155 +1,96 @@
-From: Ricardo Pardini <ricardo@pardini.net>
-Date: Mon, 09 Nov 2026 02:53:47 +0100
-Subject: [PATCH net-next] dt-bindings: net: add Realtek RTL8125 PCIe
- Ethernet
+From: Dave Airlie <airlied@redhat.com>
+Subject: [PATCH v6 0/2] nova-core: add initial support for gpu timer (v6)
+Date: Mon, 09 Nov 2026 11:55:57 +1000
+Message-Id: <20261109-nova-timer-v6-0-5544a3bd8b28@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-dt-bindings-net-realtek-rtl8125-v1-1-cff4b8a8be66@pardini.net>
-X-B4-Tracking: v=1; b=H4sIAKon8WoC/yWNQQ6CQAxFr0K6tgkdIoJXMS5gpmCVVDNTDQnh7
- gy4fPn57y2QOAonuBYLRP5JkrdmoFMB/tHpyCghM7jS1URlg8GwFw2iY0Jlw8jdZPzCaFND7ox
- tS87Vni5VNUC2fCIPMh+FG+wH5dng/l/St3+ytz0A67oBqUu5Do0AAAA=
-X-Change-ID: 20261108-dt-bindings-net-realtek-rtl8125-991226c1733f
-To: Heiner Kallweit <hkallweit1@gmail.com>, nic_swsd@realtek.com, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: Sebastian Reichel <sebastian.reichel@collabora.com>, 
- netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, Ricardo Pardini <ricardo@pardini.net>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4350; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=7nlD6uY1u4F0mRBPPEUBKpIYrlmDUFHO6at2lmifh/s=;
- b=owEBbQGS/pANAwAKATteP+Oex+3pAcsmYgBq8SeuO6zb9eCJ6q8FtHOjt+bOOtHzf7xobZ4Yv
- OGicDy6heCJATMEAAEKAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCavEnrgAKCRA7Xj/jnsft
- 6XLNB/9Bw77ejpGM8LhzEykrl+tF+nUiOG35uGPYS4dZ8xPFx7G7xNQ2S0r2IIG3rj5RMbgcw5V
- vQvGZ9yBx/Ua1WVRrmQR4kEHWEr9xR6JdnUMZ6h6NLqof5GwES+wDjiodYS0M49rYgeiLDfjX9J
- tC5HcEYbyzBvBvVsv4bFdmHLACkeSC3mKh2DcLrcuH+/N1+ny7mvxjbn/YbZ9AlqWUdqj3v9Xlu
- 40lySG5btGdRNqZJyA8H4AP+m6R4U8eE/1mTUNSWt75dtCMtHgcY1lyr2Mrnu1Hen6dHaY0lSpL
- +6G+94wjy2dCIb1FeEcGETp6gTlsRo8FLwo3LXxOcb1fVe9S
-X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
- fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
-X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23MSw6DIBSF4a0YxqXhcUHtqPtoOkC4VAZqg4a0M
+ e696Ehjh+ck3z+TEWPAkdyKmURMYQxDn4e+FMS2pn8hDS5vIpjQnDNB+yEZOoUOI/XQ1A6lKMF
+ wksE7og+fLfZ45t2GcRrid2snvr5/M4lTRhsJJRqnAXR9j+haM13t0JG1k+TeyoOV2TLr66YxW
+ Hl3trC36mAhW1CmtFxwBw5PVu2tPliVrWHWCeUlIq8OdlmWH0zG/YJZAQAA
+X-Change-ID: 20261102-nova-timer-f4b9de3274a1
+To: Andreas Hindborg <a.hindborg@kernel.org>, 
+ FUJITA Tomonori <fujita.tomonori@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Alexandre Courbot <acourbot@nvidia.com>
+Cc: nova-gpu@lists.linux.dev, dri-devel@lists.freedesktop.org, 
+ Dave Airlie <airlied@redhat.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2139; i=airlied@redhat.com;
+ h=from:subject:message-id; bh=58uDrof2lXfwgFKv4lkz79VwDp7ch5NW6erIJginW+k=;
+ b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBq8SgxbzAzC/vkgvo57Ut9h8pVYRlJxM5p70MfQ
+ C0TkGeAuxCJAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCavEoMQAKCRAMdPNZecSG
+ vvgREACJ4gM7F9/nIXF0y01cro2sv9TaG6+LEmRwfx4B9JiVQg9QXdzMgz7Uw/BwLnG1FReCKZ0
+ GVjgKJWR5Yo/g4+ViW94rqrmClK73ajCTUMlWMNC0ShmR1FhpGiJkoJfmbgjjqgedabSbjhgB8r
+ kxC7UcMh82OAIrRdUi278AR4u20V4OeAFuRwdjenahbcfeTnQEjR/qtR+BocVQP0gPDMOqey8wS
+ 045JEPf/6dwIm34e0QneNge4/9Xyh1OZxhlcK+g7475jyXufvbsLELtLfAAr9XCqhk8XOnLTTun
+ vGu5sQxRY9T7G/SO/2AEbG0aLl+2JTu5TYlb3llK1McHnEKWiAJDAsjaUJR0z9KgPsfNk0DrOJg
+ 7Yzl7qF+SawRcrl+W7QeYrxCmumrwNp44V9Pghvyj9Ng5tqt20xXP/OWqeykh3kTPp9yvAkR70+
+ yBIDYVvg6txY1kOX4PTkrzTeeLC2rkPe2XyIjxR6TKQCrrs8vUCAJe7jL3Pkj6MPrInNNBYx5sq
+ DvoXcMfcRiipTmfnWvRa4AY35+6Td49IDpOkKTJW/76xh3VliULARmTjyeDrhiBKYz0/w0qxQMG
+ YbtNY27HDvK1//y3ux/kbcU/m3va1ABdGwE+tlYriYp07kLgaqrrLkGWensdpAacoIJIotQMVit
+ 5mhmc28RbLeaGWw==
+X-Developer-Key: i=airlied@redhat.com; a=openpgp;
+ fpr=10A6D91DA1B05BD29F6DEBAC0C74F35979C486BE
+X-Endpoint-Received: by B4 Relay for airlied@redhat.com/default with auth_id=1321
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a binding for fixed/soldered Realtek RTL8125 PCIe Ethernet
-controller. As a PCIe device, its "pci10ec,8125" compatible is the
-Open Firmware spelling auto-derived from its PCI-SIG vendor/device IDs
-and is already covered by the generic dtschema pci-device.yaml. The
-compatible itself therefore needs no binding to be valid.
+The GPU has a timer, one of the pieces of information
+we need to pass into GSP init later is the timer offset.
+    
+This series just adds support for setting up the timer
+on Turing+, with hals for Turing and Hopper.
+    
+Right now it calculates the value to send to GSP but
+the code to send it will be added later.
+    
+For some hardware variants sending a proper value
+is required for GSP init to succeed.
 
-A dedicated binding is needed because board DTs describe these
-soldered function nodes in order to attach ethernet-controller
-properties to them: a placeholder local-mac-address that the bootloader
-fills in today, and potentially nvmem-cells, phy-handle, etc. in the
-future. This binding references ethernet-controller.yaml so those
-properties are validated on the RTL8125 PCI function nodes.
-
-Suggested-by: Sebastian Reichel <sebastian.reichel@collabora.com>
-Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
-Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+Signed-off-by: Dave Airlie <airlied@redhat.com>
 ---
-Add a DT binding for the Realtek RTL8125 2.5GbE PCIe Ethernet
-controller, so that board DTs describing soldered RTL8125 PCI function
-nodes get their ethernet-controller properties (local-mac-address,
-nvmem-cells, ...) validated.
+Changes in v6:
+- Alexandre's review comment handled
+- fsp hal stores in fsp
+- register cleanups
+- Link to v5: https://lore.kernel.org/r/20261106-nova-timer-v5-0-a0cd25f3ee18@redhat.com
 
-This was previously patch 1/7 of the series "describe RTL8125 PCIe
-NICs on Rockchip boards (and add DT binding)", up to v5 [1]. Per
-Heiko's review [2] it is now sent on its own via net-next; the board
-DT patches continue separately in that series (v6+). There is no
-build-time dependency between the two: "pci10ec,8125" is already
-covered by dtschema's pci-device.yaml, so the board DTs validate
-without this binding.
+Changes in v5:
+- Alexandre's review comments handled
+- reworked registers/workaround logic into fsp
+- fixed all the timer register handling to be non-falling.
+- Link to v4: https://lore.kernel.org/r/20261105-nova-timer-v4-0-45a7c121d4de@redhat.com
 
-The need for the binding (and for the compatible at all, since the
-kernel binds these nodes by their reg) was discussed with Heiner in
-v3 [3] and v4 [4]; the outcome, per Krzysztof, is reflected in the
-commit message.
-
-The patch is unchanged since v5 1/7, apart from the rebase onto
-net-next; Rob's Reviewed-by from v5 [5] is carried over.
-
-[1] https://patch.msgid.link/20260910-rk3588-dts-rtl-eth-describe-dt-alias-v5-0-c1b9e5f10cd6@pardini.net
-[2] https://lore.kernel.org/all/1971659.CQOukoFCf9@phil/
-[3] https://lore.kernel.org/all/b7cc8eba-ff6e-417d-8e74-b3bb24e08a26@gmail.com/T/#u
-[4] https://lore.kernel.org/all/876a38f8-75ea-4b32-bb65-216cb3adb436@gmail.com/T/#u
-[5] https://lore.kernel.org/all/178976078089.1640411.4176382061491076376.robh@kernel.org/
----
- .../devicetree/bindings/net/realtek,rtl8125.yaml   | 43 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 2 files changed, 44 insertions(+)
-
-diff --git a/Documentation/devicetree/bindings/net/realtek,rtl8125.yaml b/Documentation/devicetree/bindings/net/realtek,rtl8125.yaml
-new file mode 100644
-index 000000000000..eee13fbc1e6a
---- /dev/null
-+++ b/Documentation/devicetree/bindings/net/realtek,rtl8125.yaml
-@@ -0,0 +1,43 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/net/realtek,rtl8125.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Realtek RTL8125 2.5 Gigabit PCIe Ethernet Controller
-+
-+maintainers:
-+  - Heiner Kallweit <hkallweit1@gmail.com>
-+
-+description:
-+  The Realtek RTL8125 is a 2.5GBASE-T Ethernet controller with a PCIe host
-+  interface.
-+
-+allOf:
-+  - $ref: ethernet-controller.yaml#
-+
-+properties:
-+  compatible:
-+    const: pci10ec,8125
-+
-+  reg:
-+    maxItems: 1
-+
-+required:
-+  - compatible
-+  - reg
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    pcie {
-+        #address-cells = <3>;
-+        #size-cells = <2>;
-+
-+        ethernet@0,0 {
-+            compatible = "pci10ec,8125";
-+            reg = <0x10000 0 0 0 0>;
-+            local-mac-address = [00 00 00 00 00 00];
-+        };
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index fe23913b1e43..afe9bff92936 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -134,6 +134,7 @@ M:	Heiner Kallweit <hkallweit1@gmail.com>
- M:	nic_swsd@realtek.com
- L:	netdev@vger.kernel.org
- S:	Maintained
-+F:	Documentation/devicetree/bindings/net/realtek,rtl8125.yaml
- F:	drivers/net/ethernet/realtek/r8169*
- 
- 8250/16?50 (AND CLONE UARTS) SERIAL DRIVER
+Changes in v4:
+- reworked register handling
+- used a timerstate.
+- Link to v3: https://lore.kernel.org/r/20261103-nova-timer-v3-0-0cf9bbae8fd9@redhat.com
 
 ---
-base-commit: fa5196392691051963726787944db872420dfa75
-change-id: 20261108-dt-bindings-net-realtek-rtl8125-991226c1733f
+Dave Airlie (2):
+      rust: time: expose as_nanos for clock sources.
+      gpu: nova-core: add support for GPU timer block. (v6)
+
+ drivers/gpu/nova-core/fsp.rs             | 16 +++++-
+ drivers/gpu/nova-core/fsp/hal.rs         |  7 ++-
+ drivers/gpu/nova-core/fsp/hal/gh100.rs   |  5 ++
+ drivers/gpu/nova-core/fsp/regs.rs        | 31 ++++++++++
+ drivers/gpu/nova-core/gpu.rs             |  8 +++
+ drivers/gpu/nova-core/nova_core.rs       |  1 +
+ drivers/gpu/nova-core/timer.rs           | 38 +++++++++++++
+ drivers/gpu/nova-core/timer/hal.rs       | 31 ++++++++++
+ drivers/gpu/nova-core/timer/hal/gh100.rs | 63 ++++++++++++++++++++
+ drivers/gpu/nova-core/timer/hal/tu102.rs | 41 +++++++++++++
+ drivers/gpu/nova-core/timer/regs.rs      | 98 ++++++++++++++++++++++++++++++++
+ rust/kernel/time.rs                      |  3 +-
+ 12 files changed, 337 insertions(+), 5 deletions(-)
+---
+base-commit: 7a6bc132f1b51437063c9203e7221067b40a791e
+change-id: 20261102-nova-timer-f4b9de3274a1
 
 Best regards,
---  
-Ricardo Pardini <ricardo@pardini.net>
+-- 
+Dave Airlie <airlied@redhat.com>
 
