@@ -1,81 +1,88 @@
-From: Ivan Verbovoy <ivanverbovoy@gmail.com>
-Date: Tue, 10 Nov 2026 00:33:18 +0200
-Subject: [PATCH] ASoC: codecs: wcd934x: drop the MCLK on every disable
+From: Gaurav Suman <gauravsuman007@gmail.com>
+Date: Mon, 09 Nov 2026 22:33:47 +0000
+Subject: [PATCH RFC] ASoC: codecs: wcd934x: keep MCLK enabled so init
+ writes reach the codec
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-wcd934x-mclk-v1-1-c62956792a3f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwNL3fLkFEtjkwrd3OScbF0jQyPDtEQDE3Njw0QloJaCotS0zAqwcdG
- xEH5xaVJWanIJyAyl2loAfQOIoHAAAAA=
-X-Change-ID: 20261109-wcd934x-mclk-2121fa04731a
+Message-Id: <20261109-wcd934x-mclk-v1-1-ab86342e7ead@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAEpK8moC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwNL3fLkFEtjkwrd3OScbN2UVFPLVEMzEzMLA3MloJaCotS0zAqwcdF
+ KQW7OSrG1tQDvN9SUYwAAAA==
+X-Change-ID: 20261109-wcd934x-mclk-de59e1646807
 To: Srinivas Kandagatla <srini@kernel.org>, 
  Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
 Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ivan Verbovoy <ivanverbovoy@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794263597; l=2005;
- i=ivanverbovoy@gmail.com; s=20261103; h=from:subject:message-id;
- bh=+8TND5x7ORkQtuZzYM2DXIkWaXwiQXUX8dcdq40ah4g=;
- b=V/UsTHBZK8oO3woRtBITahsylO2KUvicFIWJMfYn5kV/n4IV0n56VyK40mVg/z7b3hwiZ28Zx
- K4UZcPd8YKCCsPfvgfqYObjxUt6SPl1t2VHew7/ftVgIE6t+sYIi+iI
-X-Developer-Key: i=ivanverbovoy@gmail.com; a=ed25519;
- pk=0AchqTH1hJFToIUeFfQRlVzzuaWQDs4e75SxT2y3s8c=
-X-Endpoint-Received: by B4 Relay for ivanverbovoy@gmail.com/20261103 with auth_id=1396
+ linux-kernel@vger.kernel.org, Gaurav Suman <gauravsuman007@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794263638; l=2522;
+ i=gauravsuman007@gmail.com; s=default; h=from:subject:message-id;
+ bh=8u46K9MtmpC/yZH7MaaIGPTHQMOfd8OqvroqTAoIDKw=;
+ b=w+dOp4lUMyGty2jZoxIvNtUcRjLUY05x9zhThT6au4LkhC/wFP6g5GWXIChw8BlQKGNbG0/pF
+ Er7ssv0G9cDDRWxrnPbWM27XRwHOTpM9thMIDASkQgg2xY3u+SAXMii
+X-Developer-Key: i=gauravsuman007@gmail.com; a=ed25519;
+ pk=lnUC0mQfc0KyA0LE73pQ4+QWYVRaCD8Sd3XWxLZO+JY=
+X-Endpoint-Received: by B4 Relay for gauravsuman007@gmail.com/default with auth_id=1467
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__wcd934x_cdc_mclk_enable() takes a reference on every enable: it
-prepares and enables the external clock and counts a user of the
-analog bias and system clock (sysclk_users). On disable it returns
-early while the SoundWire controller's clock is enabled, so neither is
-dropped. Each DAPM MCLK power-down or MBHC micbias release during
-SoundWire activity therefore leaks one reference, and the MCLK stays on
-for good.
+On an LG G8x (SM8150, WCD9340 over SLIMbus) the microphones record
+digital silence on roughly half of all boots. Register dumps look
+correct because they are served from the regmap cache, but the
+writes never reached the hardware: the WCD934x digital core ignores
+register writes while its MCLK/sysclk is off.
 
-The early return is not needed: wcd934x_swrm_clock() takes its own
-reference before it enables the SoundWire clock and clears that clock
-before it drops the reference, and sysclk_users keeps the bias and the
-system clock on while any user remains. Drop the check.
+wcd934x_comp_init() runs with MCLK off unless the SoundWire master
+happened to probe first and enabled the clock through
+wcd934x_swrm_clock(); __wcd934x_cdc_mclk_enable(false) then leaves it
+running because the SWR clock bit is set. Probe ordering is not
+deterministic, which matches the random good and bad boots.
 
-On a Surface Duo (SM8150, WCD9340) the codec's external clock,
-ln_bb_clk2 (an RPMh XO buffer vote), was found prepared five times at
-suspend, which kept the SoC's XO on. With the check dropped, its enable
-and prepare counts are back to zero once playback stops.
+Enable MCLK before wcd934x_comp_init() and leave it enabled, which is
+what the good boots already do. With this change 8 of 8 boots had a
+working microphone (before: about 3 in 5 silent).
 
-Fixes: a61f3b4f476e ("ASoC: wcd934x: add support to wcd9340/wcd9341 codec")
-Signed-off-by: Ivan Verbovoy <ivanverbovoy@gmail.com>
+Enabling MCLK only around wcd934x_comp_init() (and disabling it
+again afterwards, as wcd934x_enable_efuse_sensing() does) was not
+enough: 2 of 4 boots were silent again, so later writes made while
+the clock is off are lost as well. An alternative would be to mark
+the cache dirty and resync whenever MCLK goes from off to on; this
+patch takes the simpler route at the cost of keeping MCLK running.
+
+The fault was found, the change written and the boot tests run with the
+help of an AI coding assistant (Claude Opus 5.5, Anthropic); I reviewed
+the change and the test results.
+
+Signed-off-by: Gaurav Suman <gauravsuman007@gmail.com>
 ---
- sound/soc/codecs/wcd934x.c | 9 ---------
- 1 file changed, 9 deletions(-)
+Tested on LG G8x ThinQ (SM8150).
+---
+ sound/soc/codecs/wcd934x.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/sound/soc/codecs/wcd934x.c b/sound/soc/codecs/wcd934x.c
-index 5cd30a5ed69c..043061558225 100644
+index 0ed24cca088f839263f015778e8281027392e51f..6b6ce5ba5d30da194db1b1570a58f0324956f96f 100644
 --- a/sound/soc/codecs/wcd934x.c
 +++ b/sound/soc/codecs/wcd934x.c
-@@ -1355,15 +1355,6 @@ static int __wcd934x_cdc_mclk_enable(struct wcd934x_codec *wcd, bool enable)
- 		}
- 		ret = wcd934x_enable_ana_bias_and_sysclk(wcd);
- 	} else {
--		int val;
--
--		regmap_read(wcd->regmap, WCD934X_CDC_CLK_RST_CTRL_SWR_CONTROL,
--			    &val);
--
--		/* Don't disable clock if soundwire using it.*/
--		if (val & WCD934X_CDC_SWR_CLK_EN_MASK)
--			return 0;
--
- 		wcd934x_disable_ana_bias_and_syclk(wcd);
- 		clk_disable_unprepare(wcd->extclk);
- 	}
+@@ -2995,6 +2995,12 @@ static int wcd934x_comp_probe(struct snd_soc_component *component)
+ 	/* Default HPH Mode to Class-H Low HiFi */
+ 	wcd->hph_mode = CLS_H_LOHIFI;
+ 
++	/*
++	 * The digital core drops register writes while MCLK is off, but the
++	 * regmap cache still records them. Keep MCLK running so the init
++	 * sequence below and later mixer/DAPM writes actually reach the codec.
++	 */
++	__wcd934x_cdc_mclk_enable(wcd, true);
+ 	wcd934x_comp_init(component);
+ 
+ 	for (i = 0; i < NUM_CODEC_DAIS; i++)
 
 ---
-base-commit: 630059a5a632377b9b7b487baccde92b7ae1dd47
-change-id: 20261109-wcd934x-mclk-2121fa04731a
+base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
+change-id: 20261109-wcd934x-mclk-de59e1646807
 
 Best regards,
---  
-Ivan Verbovoy <ivanverbovoy@gmail.com>
+-- 
+Gaurav Suman <gauravsuman007@gmail.com>
 
