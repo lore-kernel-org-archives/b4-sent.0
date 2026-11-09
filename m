@@ -1,84 +1,126 @@
-From: Kohei Otsuka <kohei@spacemachines.com>
-Date: Tue, 10 Nov 2026 09:06:49 +1100
-Subject: [PATCH v3 2/2] serial: 8250_of: add Microchip Core16550
+From: Xuheng Li <xuheng@cs.columbia.edu>
+Date: Mon, 09 Nov 2026 22:13:35 +0000
+Subject: [PATCH v3] KVM: arm64: Don't replace a valid hyp block mapping
+ with a table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-core16550-rs485-v3-2-4294334243fa@spacemachines.com>
-References: <20261110-core16550-rs485-v3-0-4294334243fa@spacemachines.com>
-In-Reply-To: <20261110-core16550-rs485-v3-0-4294334243fa@spacemachines.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Lubomir Rintel <lkundrak@v3.sk>, 
- devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- conor.dooley@microchip.com, Kohei Otsuka <kohei@spacemachines.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794262008; l=2575;
- i=kohei@spacemachines.com; s=20261103; h=from:subject:message-id;
- bh=zw6B/PavfryyAkr5F76dLB1vCpTk6rfbRbKI/quiOS4=;
- b=Q5KAvlN1aGWnoanfzyUKb6886RNpVg3+PVf36DX2HSFw3ULoRJ5czTEAnA3SBRQhq5H3Mj/ln
- ciajBlIn1snCtnHDmWEmw3nOtNbLvcxsLpRkQQ1Ba+yEBl1gJmRbvcm
-X-Developer-Key: i=kohei@spacemachines.com; a=ed25519;
- pk=1kit/vmX5JiLGH9NPcqlvT55ISWaLmNipdL5VrriRt0=
-X-Endpoint-Received: by B4 Relay for kohei@spacemachines.com/20261103 with auth_id=1385
+Message-Id: <20261109-hyp-block-map-v3-1-bd70e67eb0bf@cs.columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwNL3YzKAt2knPzkbN3cxAJdg2RDyzSLVEsTI5MkJaCegqLUtMwKsHn
+ RsbW1AAtSsWxfAAAA
+X-Change-ID: 20261109-hyp-block-map-0c19f8e9424b
+To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oupton@kernel.org>
+Cc: Vincent Donnefort <vdonnefort@google.com>, 
+ Fuad Tabba <fuad.tabba@linux.dev>, Quentin Perret <qperret@google.com>, 
+ Will Deacon <will@kernel.org>, Mostafa Saleh <smostafa@google.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, 
+ Mark Rutland <mark.rutland@arm.com>, Joey Gouly <joey.gouly@arm.com>, 
+ Steffen Eiden <seiden@linux.ibm.com>, 
+ Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Zenghui Yu <yuzenghui@huawei.com>, kvmarm@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Xuheng Li <xuheng@cs.columbia.edu>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794262414; l=3910;
+ i=xuheng@cs.columbia.edu; s=20261028; h=from:subject:message-id;
+ bh=RIFjoI85KP24Rv3faoa4T6ksq6aQB6AW6n6O+fZ4Jw8=;
+ b=j9SVzqCiLPkNYh1JWfLZitE9GNR+YyVV3Ivtx30mdQziJtNsmwtvPjrAxpTl0xi4hvgf6t9DV
+ V55yyGreT2AB+KHnSiw9xKu79OZs9NymAKLF9eebBOAkIIPPYE1xU6K
+X-Developer-Key: i=xuheng@cs.columbia.edu; a=ed25519;
+ pk=L1HVV+goqxYmEMO/OXakL6uf9isSpgk2QrLlFqyZ2Qs=
+X-Endpoint-Received: by B4 Relay for xuheng@cs.columbia.edu/20261028 with auth_id=1349
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Core16550, a 16550-compatible UART for Microchip FPGAs, interrupts on
-THRE but not on TEMT. When the last character moves from the FIFO into
-the shift register, the THRE interrupt calls __stop_tx(), which finds
-TEMT clear and, without UART_CAP_NOTEMT, returns to wait for a TEMT
-interrupt that never comes. RTS, and with it the RS-485 driver enable,
-then stays asserted after the frame, and receive interrupts, disabled
-for the half-duplex transmission, stay off.
+When kvm_pgtable_hyp_map() is asked to map part of a range that a valid
+block mapping already covers, hyp_map_walker_try_leaf() declines, as the
+request cannot be a leaf at the block's level.  hyp_map_walker() then
+allocates a zeroed table and stores it over the valid block entry.  The
+walk descends into the new table and maps the requested pages, but the
+rest of the block is now unmapped, and the valid block was replaced
+without break-before-make.
 
-Match "microchip,core16550-rtl-v3" as a PORT_16550A, and set
-UART_CAP_NOTEMT for it, so em485 drops RTS from its stop timer one
-frame time (plus 1/7) after THRE, as it does for DesignWare UARTs.
+No in-tree caller maps into an existing hyp block mapping today, so this
+cannot be triggered in mainline.  Fail such a request with -EEXIST
+instead, so that a future caller gets an error rather than silently
+losing the rest of the block.
 
-Set UART_CAP_FIFO as well: with the capabilities already non-zero,
-serial8250_do_startup() no longer fills in the PORT_16550A default,
-and without UART_CAP_FIFO serial8250_clear_fifos() does nothing, so
-the RX FIFO is not flushed at the end of a half-duplex transmission.
+The same check now catches a conflicting remap of an existing leaf, so
+drop the WARN_ON() from hyp_map_walker_try_leaf(): every caller checks
+the error, and a WARN is fatal at EL2.  Do the check before the
+last-level WARN_ON(), which is kept for internal errors, and update the
+kernel-doc of kvm_pgtable_hyp_map() to match.
 
-Link: https://github.com/linux4microchip/meta-mchp/issues/5
-Signed-off-by: Kohei Otsuka <kohei@spacemachines.com>
+Signed-off-by: Xuheng Li <xuheng@cs.columbia.edu>
 ---
- drivers/tty/serial/8250/8250_of.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+This is patch 3/3 of v2, sent alone: 1/3 is superseded by Mostafa's
+"KVM: arm64: Use consistent type for pool size" [1], and 2/3 is dropped.
 
-diff --git a/drivers/tty/serial/8250/8250_of.c b/drivers/tty/serial/8250/8250_of.c
-index b41ca604083f..9d92668d7772 100644
---- a/drivers/tty/serial/8250/8250_of.c
-+++ b/drivers/tty/serial/8250/8250_of.c
-@@ -278,6 +278,16 @@ static int of_platform_serial_probe(struct platform_device *ofdev)
- 	if (port8250.port.fifosize)
- 		port8250.capabilities = UART_CAP_FIFO;
+With the WARN_ON() gone from hyp_map_walker_try_leaf(), a conflicting
+remap through the EL1 path (__create_hyp_mappings()) also returns
+-EEXIST without a warning, where it used to warn and return -EINVAL.
+
+[1] https://lore.kernel.org/r/20261106172750.2678873-1-smostafa@google.com
+---
+Changes in v3:
+- Drop the WARN_ON() from the new check and from
+  hyp_map_walker_try_leaf(), and update the kernel-doc of
+  kvm_pgtable_hyp_map() (Vincent, Fuad).
+- Do the check before the last-level WARN_ON(), so that a conflicting
+  page-level mapping returns -EEXIST instead of reaching it.
+- Link to v2: https://lore.kernel.org/r/20261105-hyp-pool-and-map-v2-3-44a6ca90190b@cs.columbia.edu
+---
+ arch/arm64/include/asm/kvm_pgtable.h |  2 +-
+ arch/arm64/kvm/hyp/pgtable.c         | 10 +++++++++-
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/include/asm/kvm_pgtable.h b/arch/arm64/include/asm/kvm_pgtable.h
+index 1c9c57cd6..6d6ed8596 100644
+--- a/arch/arm64/include/asm/kvm_pgtable.h
++++ b/arch/arm64/include/asm/kvm_pgtable.h
+@@ -508,7 +508,7 @@ void kvm_pgtable_hyp_destroy(struct kvm_pgtable *pgt);
+  * If device attributes are not explicitly requested in @prot, then the
+  * mapping will be normal, cacheable. Attempts to install a new mapping
+  * for a virtual address that is already mapped will be rejected with an
+- * error and a WARN().
++ * error.
+  *
+  * Return: 0 on success, negative error code on failure.
+  */
+diff --git a/arch/arm64/kvm/hyp/pgtable.c b/arch/arm64/kvm/hyp/pgtable.c
+index 9c83837b1..94a59f29a 100644
+--- a/arch/arm64/kvm/hyp/pgtable.c
++++ b/arch/arm64/kvm/hyp/pgtable.c
+@@ -414,7 +414,7 @@ static bool hyp_map_walker_try_leaf(const struct kvm_pgtable_visit_ctx *ctx,
+ 		return true;
+ 	if (!kvm_pte_valid(ctx->old))
+ 		ctx->mm_ops->get_page(ctx->ptep);
+-	else if (WARN_ON((ctx->old ^ new) & ~KVM_PTE_LEAF_ATTR_HI_SW))
++	else if ((ctx->old ^ new) & ~KVM_PTE_LEAF_ATTR_HI_SW)
+ 		return false;
+ 
+ 	smp_store_release(ctx->ptep, new);
+@@ -431,6 +431,14 @@ static int hyp_map_walker(const struct kvm_pgtable_visit_ctx *ctx,
+ 	if (hyp_map_walker_try_leaf(ctx, data))
+ 		return 0;
  
 +	/*
-+	 * Core16550 has no TEMT interrupt: without UART_CAP_NOTEMT the em485
-+	 * code waits for one after the last THRE interrupt and never drops RTS.
-+	 * Set UART_CAP_FIFO too, because a non-zero value stops
-+	 * serial8250_do_startup() filling in the PORT_16550A default.
++	 * A valid entry here is a leaf that conflicts with the request.
++	 * Replacing a block with a table would need break-before-make, and
++	 * would leave the rest of the block unmapped.
 +	 */
-+	if (of_device_is_compatible(ofdev->dev.of_node,
-+				    "microchip,core16550-rtl-v3"))
-+		port8250.capabilities |= UART_CAP_FIFO | UART_CAP_NOTEMT;
++	if (kvm_pte_valid(ctx->old))
++		return -EEXIST;
 +
- 	/* Check for TX FIFO threshold & set tx_loadsz */
- 	if ((of_property_read_u32(ofdev->dev.of_node, "tx-threshold",
- 				  &tx_threshold) == 0) &&
-@@ -398,6 +408,8 @@ static const struct of_device_id of_platform_serial_table[] = {
- 		.data = (void *)PORT_16550A_FSL64, },
- 	{ .compatible = "mediatek,mtk-btif",
- 		.data = (void *)PORT_MTK_BTIF, },
-+	{ .compatible = "microchip,core16550-rtl-v3",
-+		.data = (void *)PORT_16550A, },
- 	{ .compatible = "mrvl,mmp-uart",
- 		.data = (void *)PORT_XSCALE, },
- 	{ .compatible = "ti,da830-uart", .data = (void *)PORT_DA830, },
+ 	if (WARN_ON(ctx->level == KVM_PGTABLE_LAST_LEVEL))
+ 		return -EINVAL;
+ 
 
+---
+base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
+change-id: 20261109-hyp-block-map-0c19f8e9424b
+
+Best regards,
 -- 
-2.53.0
+Xuheng Li <xuheng@cs.columbia.edu>
 
