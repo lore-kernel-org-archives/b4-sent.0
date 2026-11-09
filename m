@@ -1,11 +1,11 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Mon, 09 Nov 2026 14:03:45 -0500
-Subject: [PATCH v2 09/11] leds: rgb: ktd202x: Limit the LED current to
- led-max-microamp
+Date: Mon, 09 Nov 2026 14:03:46 -0500
+Subject: [PATCH v2 10/11] leds: rgb: ktd202x: Fail the probe when the chip
+ does not answer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-ktd202x-et6326-v2-9-56e97c226658@telaak.dev>
+Message-Id: <20261109-ktd202x-et6326-v2-10-56e97c226658@telaak.dev>
 References: <20261109-ktd202x-et6326-v2-0-56e97c226658@telaak.dev>
 In-Reply-To: <20261109-ktd202x-et6326-v2-0-56e97c226658@telaak.dev>
 To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
@@ -20,99 +20,65 @@ Cc: linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-hardening@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-doc@vger.kernel.org, Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794251062; l=3266;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794251062; l=1869;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=Om04kvjSybh2LIV5nsthyIAjGxULubhGOcKugy5aQ+s=;
- b=QC6BpJR2NzdSpd4gx6fOOFld+6tJ/1M0JMw1UUzo2h4/HFvoWQvc4OFGrgdQoL+YYH5aN7WNi
- +Rb+yhGBqTnB27xBLLfAuJ8v4jgDE24PmnZXBsAbSXPzyekD05Xl56B
+ bh=33Zn/F7Xphg4ctn6H/G5Lu7rMFXNNK5SWJKIHAWvAZY=;
+ b=htRnK0RlYXjrx6Qh6BAVp0Ley8xZqZUnpahsbB0rAtx7YoUkKhYHdZ3R/xlqmWt4K2VmNvfZ1
+ YMtTHcx/DMuA5sTI423AQwgXbYOqqfENOsu9+fxJj/1IXUbGN8QH68V
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The full brightness of 192 is 24 mA, which is more than many indicator
-LEDs are made for, and a channel may drive several LEDs in parallel. The
-GL.iNet GL-SFT1200 firmware, for example, runs each of its two channels,
-three LEDs each, at 1.375 mA.
+The driver never reads from the chip: the register cache starts from the
+defaults. So with a wrong address, or no chip at all, the LEDs get
+registered anyway, and every later write fails.
 
-Honor the common led-max-microamp property for single color LEDs by
-lowering max_brightness, since each brightness step adds 0.125 mA. Set
-max_brightness before the LED is registered, and blink at max_brightness
-rather than at the chip maximum.
-
-Multicolor LEDs are left as they are: the LED core already bounds each
-color intensity, and the hardware this was tested on has none.
+The reset write can't tell: the KTD202x does not ACK the byte that
+resets it, and its data sheet says to ignore that. So once the reset
+is done, put the chip to sleep, as ktd202x_chip_disable() does, and
+fail the probe when that write fails.
 
 Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
- drivers/leds/rgb/leds-ktd202x.c | 20 +++++++++++++++++---
- 1 file changed, 17 insertions(+), 3 deletions(-)
+ drivers/leds/rgb/leds-ktd202x.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/leds/rgb/leds-ktd202x.c b/drivers/leds/rgb/leds-ktd202x.c
-index daa04f8ecefd..2a3fda860e68 100644
+index 2a3fda860e68..0cc2ec3f6a7f 100644
 --- a/drivers/leds/rgb/leds-ktd202x.c
 +++ b/drivers/leds/rgb/leds-ktd202x.c
-@@ -78,6 +78,7 @@
- #define KTD202X_PATTERN_MAX_MS 16384
+@@ -738,20 +738,29 @@ static int ktd202x_probe_fw(struct ktd202x *chip)
+ {
+ 	struct device *dev = chip->dev;
+ 	int count;
++	int ret;
+ 	int i = 0;
  
- #define KTD202X_MAX_BRIGHTNESS 192
-+#define KTD202X_LED_CURRENT_STEP_uA 125
+ 	count = device_get_child_node_count(dev);
+ 	if (!count || count > chip->num_leds)
+ 		return -EINVAL;
  
- static const struct reg_default ktd202x_reg_defaults[] = {
- 	{ KTD202X_REG_RESET_CONTROL, KTD202X_TIMER_SLOT_CONTROL_TSLOT1 |
-@@ -408,7 +409,7 @@ static int ktd202x_blink_single_set(struct led_classdev *cdev,
- 	int ret;
++	/* The KTD202x does not ACK the byte that resets it, so ignore the result */
+ 	regmap_write(chip->regmap, KTD202X_REG_RESET_CONTROL, KTD202X_RSTR_RESET);
  
- 	if (!cdev->brightness) {
--		ret = ktd202x_brightness_single_set(cdev, KTD202X_MAX_BRIGHTNESS);
-+		ret = ktd202x_brightness_single_set(cdev, cdev->max_brightness);
+ 	/* Allow the device to execute the complete reset */
+ 	usleep_range(200, 300);
+ 
+-	device_for_each_child_node_scoped(dev, child) {
+-		int ret = ktd202x_add_led(chip, child, i);
++	/*
++	 * Nothing is read back, so a failed write is the only sign of a missing
++	 * chip. Leave it asleep until a LED is turned on.
++	 */
++	ret = regmap_write(chip->regmap, KTD202X_REG_RESET_CONTROL, KTD202X_ENABLE_CTRL_SLEEP);
++	if (ret)
++		return dev_err_probe(dev, ret, "Failed to reach the chip\n");
+ 
++	device_for_each_child_node_scoped(dev, child) {
++		ret = ktd202x_add_led(chip, child, i);
  		if (ret)
  			return ret;
- 	}
-@@ -604,6 +605,18 @@ static int ktd202x_pattern_mc_clear(struct led_classdev *cdev)
- 	return ktd202x_brightness_mc_set(cdev, LED_OFF);
- }
- 
-+/* The current limit of a LED in brightness steps, each of which adds 0.125 mA */
-+static unsigned int ktd202x_max_brightness(struct fwnode_handle *fwnode)
-+{
-+	u32 max_microamp;
-+
-+	if (fwnode_property_read_u32(fwnode, "led-max-microamp", &max_microamp))
-+		return KTD202X_MAX_BRIGHTNESS;
-+
-+	return clamp_t(u32, max_microamp / KTD202X_LED_CURRENT_STEP_uA, 1,
-+		       KTD202X_MAX_BRIGHTNESS);
-+}
-+
- static int ktd202x_setup_led_rgb(struct ktd202x *chip, struct fwnode_handle *fwnode,
- 				 struct ktd202x_led *led, struct led_init_data *init_data)
- {
-@@ -653,6 +666,7 @@ static int ktd202x_setup_led_rgb(struct ktd202x *chip, struct fwnode_handle *fwn
- 	led->mcdev.num_colors = num_channels;
- 
- 	cdev = &led->mcdev.led_cdev;
-+	cdev->max_brightness = KTD202X_MAX_BRIGHTNESS;
- 	cdev->brightness_set_blocking = ktd202x_brightness_mc_set;
- 	cdev->blink_set = ktd202x_blink_mc_set;
- 	cdev->pattern_set = ktd202x_pattern_mc_set;
-@@ -676,6 +690,8 @@ static int ktd202x_setup_led_single(struct ktd202x *chip, struct fwnode_handle *
- 	led->index = reg;
- 
- 	cdev = &led->cdev;
-+	cdev->max_brightness = ktd202x_max_brightness(fwnode);
-+
- 	cdev->brightness_set_blocking = ktd202x_brightness_single_set;
- 	cdev->blink_set = ktd202x_blink_single_set;
- 	cdev->pattern_set = ktd202x_pattern_single_set;
-@@ -715,8 +731,6 @@ static int ktd202x_add_led(struct ktd202x *chip, struct fwnode_handle *fwnode, u
- 		return ret;
- 	}
- 
--	cdev->max_brightness = KTD202X_MAX_BRIGHTNESS;
--
- 	return 0;
- }
  
 
 -- 
