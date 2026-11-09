@@ -1,70 +1,91 @@
-From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-Date: Mon, 09 Nov 2026 15:41:00 +0100
-Subject: [PATCH 2/2] serial: 8250_dw: Select U6_16550A for 64-byte FIFO
+From: Lukas Hahn <lukas.hahn@codewrights.de>
+Date: Mon, 09 Nov 2026 17:43:37 +0100
+Subject: [PATCH wireless-next] wifi: wilc1000: skip RSSI query in
+ dump_station() before firmware load
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261109-8250-select-u6-64bit-v1-2-04bc8332fa34@gmail.com>
-References: <20261109-8250-select-u6-64bit-v1-0-04bc8332fa34@gmail.com>
-In-Reply-To: <20261109-8250-select-u6-64bit-v1-0-04bc8332fa34@gmail.com>
-To: Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>, 
- Miroslav Ondra <ondra@faster.cz>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261109-wilc1000-dump-station-v1-1-501094b8e786@codewrights.de>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywrCMBAAf6Xs2YVNCy3xV8RDm111pcaSTR9Q+
+ u9GPQ7DzA4mScXgXO2QZFHTdyzgThWERx/vgsqFoaa6dY48rjoGR0TI82tCy30uBXLXeN813Ia
+ BobRTkptuv+8FVk0yihlG2TJc/9rm4Skhf99wHB+LGxSniAAAAA==
+X-Change-ID: 20261109-wilc1000-dump-station-d739973d6cbd
+To: Ajay Singh <ajay.kathat@microchip.com>, 
+ Claudiu Beznea <claudiu.beznea@tuxon.dev>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Lukas Hahn <lukas.hahn@codewrights.de>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794235482; l=1747;
- i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
- bh=tbchbKgf4kvxbU+PFwpYUbA6/5DTF0wZIBoRBHeTq0o=;
- b=orLP3TrrB5XbdCVxNkTqhcupcoB3GSd2j6ojGBCGcI5BM8ZlnWV2XkvAZBQ9gF2MXQEi7dB93
- bzVu4JHI50IDYkkU6Rog+KjlWtj92H5Gl/jhz+nmPZdLGYmi7SZsbtx
-X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
- pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
-X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794242618; l=2855;
+ i=lukas.hahn@codewrights.de; s=20261109; h=from:subject:message-id;
+ bh=w74s3Tm5Fitkvt7/EPKLuvfTmHfa4AYDV30NGcrNsQg=;
+ b=gTuaQjBKrkzC6ldqTIGCi0Z1yIy3wJ5LPWrwqEai6jiyBSXAQFYTQp4IlCKm7jwJZc016MHR4
+ Ow3XgSNbL7ED9gFXFVlT8WpWZWfnkdHUndj6Z9tFthxkjjgham2V2Ee
+X-Developer-Key: i=lukas.hahn@codewrights.de; a=ed25519;
+ pk=Mg1ixrNH7vyHiaMBzg5Dc0STeZSinfuImTLfUFEjR5s=
+X-Endpoint-Received: by B4 Relay for lukas.hahn@codewrights.de/20261109 with auth_id=1462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-DesignWare 8250 ports that describe their FIFO in the CPR register are
-always configured as PORT_16550A, regardless of the FIFO depth. On
-UARTs with a 64-byte FIFO, such as those on the Rockchip RK3328, this
-selects the 16-byte rxtrig_bytes table {1, 4, 8, 14}. The rx_trig_bytes
-sysfs attribute then reports 8 bytes while the hardware triggers at 32,
-and writes to it program the wrong trigger level.
+The firmware is only downloaded and started when the first interface is
+brought up (wilc_wlan_initialize()), which then sets wilc->initialized.
+dump_station() does not check this and always sends a WID_RSSI query to
+the chip. Before the interface has been opened for the first time,
+nothing processes the queued config packet, so wilc_get_rssi() only
+returns after WILC_CFG_PKTS_TIMEOUT (3 s), logs "Failed to get RSSI
+value" and the station dump fails with -ETIMEDOUT.
 
-Select PORT_U6_16550A when the CPR reports a 64-byte FIFO. Generic
-autoconfig already assigns this type to a 16550A with a 64-byte FIFO,
-and its rxtrig_bytes table matches the DesignWare FCR RT encoding.
+systemd-networkd hits exactly this window: while enumerating links at
+start-up it sends an NL80211_CMD_GET_STATION dump request for every
+interface in station mode, typically before wpa_supplicant has opened
+the interface. This was observed on an STM32MP157 board with a WILC1000
+on SDIO, running Microchip's vendor driver, which has the same
+dump_station() implementation: systemd-networkd, and every unit ordered
+after it, was delayed by about 3 s on each boot.
 
-The FIFO size, TX load size and capabilities are still taken from the
-CPR, and the default FCR value is the same for both types, so the
-hardware is programmed exactly as before. The port type reported to
-userspace changes from 16550A to U6_16550A.
+get_station() already returns early in station mode while the firmware
+is not initialized. Do the same in dump_station(): without running
+firmware there can't be an association, so end the dump with -ENOENT,
+which nl80211 reports to user space as an empty station list.
 
-Co-developed-by: Miroslav Ondra <ondra@faster.cz>
-Signed-off-by: Miroslav Ondra <ondra@faster.cz>
-Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
+The problem was analysed and this patch was prepared with the help of
+an AI coding assistant (Claude, Anthropic).
+
+Fixes: 5625f965d764 ("wilc1000: move wilc driver out of staging")
+Signed-off-by: Lukas Hahn <lukas.hahn@codewrights.de>
 ---
- drivers/tty/serial/8250/8250_dwlib.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Build-tested on wireless-next: ARCH=arm multi_v7_defconfig (gcc 15.3)
+and x86_64_defconfig (gcc 12.2) with WILC1000_SDIO=m and
+WILC1000_SPI=m, both with W=1, no new warnings.
 
-diff --git a/drivers/tty/serial/8250/8250_dwlib.c b/drivers/tty/serial/8250/8250_dwlib.c
-index 9bb02a4ab11f..ae556b06b03a 100644
---- a/drivers/tty/serial/8250/8250_dwlib.c
-+++ b/drivers/tty/serial/8250/8250_dwlib.c
-@@ -236,9 +236,9 @@ void dw8250_setup_port(struct uart_port *p)
- 
- 	/* Select the type based on FIFO */
- 	if (reg & DW_UART_CPR_FIFO_MODE) {
--		p->type = PORT_16550A;
- 		p->flags |= UPF_FIXED_TYPE;
- 		p->fifosize = DW_UART_CPR_FIFO_SIZE(reg);
-+		p->type = (p->fifosize == 64) ? PORT_U6_16550A : PORT_16550A;
- 		up->capabilities = UART_CAP_FIFO | UART_CAP_NOTEMT;
- 	}
- 
+Runtime-tested with the equivalent change on Microchip's linux-6.6-mchp
+vendor driver on an STM32MP157 board (WILC1000 on SDIO): "Failed to get
+RSSI value" no longer appears at boot and the boot is about 3 s faster.
+The mainline driver itself has not been runtime-tested, as the board
+runs the vendor driver.
+---
+ drivers/net/wireless/microchip/wilc1000/cfg80211.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
--- 
-2.47.3
+diff --git a/drivers/net/wireless/microchip/wilc1000/cfg80211.c b/drivers/net/wireless/microchip/wilc1000/cfg80211.c
+index 3db290875..7fd165241 100644
+--- a/drivers/net/wireless/microchip/wilc1000/cfg80211.c
++++ b/drivers/net/wireless/microchip/wilc1000/cfg80211.c
+@@ -1335,6 +1335,10 @@ static int dump_station(struct wiphy *wiphy, struct wireless_dev *wdev,
+ 	if (idx != 0)
+ 		return -ENOENT;
+ 
++	/* Firmware is not running yet, so there can't be an association */
++	if (!vif->wilc->initialized)
++		return -ENOENT;
++
+ 	ret = wilc_get_rssi(vif, &sinfo->signal);
+ 	if (ret)
+ 		return ret;
+
+---
+base-commit: b8e5b0ae8ff47240366d38e5d12c65f878724316
+change-id: 20261109-wilc1000-dump-station-d739973d6cbd
+
+Best regards,
+--  
+Lukas Hahn <lukas.hahn@codewrights.de>
 
