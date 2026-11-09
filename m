@@ -1,142 +1,117 @@
-From: Jerome Mohm <jrmmhm.kernel@eldare.de>
-Date: Mon, 09 Nov 2026 20:39:24 +0100
-Subject: [PATCH net v4] vsock/virtio: clear vqs[] to avoid a UAF on a
- failed PM restore
+From: Andreas Claesson <andreas@aclaesson.com>
+Date: Mon, 09 Nov 2026 19:55:52 +0000
+Subject: [PATCH] HID: corsair: cancel LED work again after unregistering
+ the LED
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-vsock-restore-uaf-send-v4-1-1df8dfb5d5de@eldare.de>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XNQW6DMBAF0KtEXsfVjAGbZNV7RFkYZty4iaCyw
- UqEuHsNXRRFirL8oz/vTyJy8BzFcTeJwMlH33c5lPudaC+2+2LpKWehQGkEQJli315l4Dj0geV
- onYzckUTXmuKgncWGRH7+Cez8fYVPouNBnP+OcWy+uR0Wcqld/OI81vmEa/ndUkKJsiKrwRkwF
- ehPvpEN/EG8jiS1YVT9klGZ0aayljRZg+UzU/wzCOVLpsgMaSDQZV03ldky8zz/AjpYukFhAQA
- A
-X-Change-ID: 20261001-vsock-restore-uaf-send-1fc7396fa1bd
-To: Stefan Hajnoczi <stefanha@redhat.com>, 
- Stefano Garzarella <sgarzare@redhat.com>, 
- Bobby Eshleman <bobbyeshleman@meta.com>, 
- "Michael S. Tsirkin" <mst@redhat.com>, Jason Wang <jasowangio@gmail.com>, 
- =?utf-8?q?Eugenio_P=C3=A9rez?= <eperezma@redhat.com>, 
- Xuan Zhuo <xuanzhuo@linux.alibaba.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: virtualization@lists.linux.dev, kvm@vger.kernel.org, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Jerome Mohm <jrmmhm.kernel@eldare.de>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794253170; l=4147;
- i=jrmmhm.kernel@eldare.de; s=20260928; h=from:subject:message-id;
- bh=5YFXaOW8KllonSsjF6SOnB8HkwciO73pZwsUjT72k8E=;
- b=o5Ui0yGmlrlsv7s3vDR3Ic3XgYduWqet+IqPcVhgBKc2puHQzgL+jxfeHT/pgfs6jWrU82E9J
- /7KX0+ab2xgBwU5CsrABnE3TPB51T8iCBoYthWQ/phU9iNUse8McHiX
-X-Developer-Key: i=jrmmhm.kernel@eldare.de; a=ed25519;
- pk=xRCxNXbnNottaHpmvPDAOC9NuMJxqKo24abkehKRVlo=
-X-Endpoint-Received: by B4 Relay for jrmmhm.kernel@eldare.de/20260928 with auth_id=1075
+Message-Id: <20261109-hid-corsair-k90-uaf-v1-1-0621c2c5c451@aclaesson.com>
+X-B4-Tracking: v=1; b=H4sIAEcl8moC/yXMQQqDQAxA0atI1gYmCpXpVUoX0xg1LWhJtAji3
+ R3r8i3+38DFVBzuxQYmP3WdxgwqC+Ahjb2gttlQhepGFCIO2iJP5kkNPzHgkjoM3BBRbFhqgVx
+ +TTpd/9fH87Ivr7fwfK5g3w9+suEldwAAAA==
+X-Change-ID: 20261109-hid-corsair-k90-uaf-0c711197ce3e
+To: Benjamin Tissoires <bentiss@kernel.org>, 
+ Chen Changcheng <chenchangcheng@kylinos.cn>, Jiri Kosina <jikos@kernel.org>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794254152; l=4132;
+ i=andreas@aclaesson.com; s=20261109; h=from:subject:message-id;
+ bh=OH06v+FHNPldYATurhUtH3EMaR24kIgI5PheNIJyWHI=;
+ b=67wwBo9EE2Opk/wXvX8JtEQkwIRYSLop3Kp9pZzHqtgd7u7iJhkdVOeRUZNfR/gzfDBAxFa7v
+ LusorGfeDgZARwBhZRjKpYuWTAqJa1UuWRwA6PPNg3FwV53Q3grBdpN
+X-Developer-Key: i=andreas@aclaesson.com; a=ed25519;
+ pk=oC+38UX0rqcrEjNMgnKAF1zmrTUMbQ2aH/P5Z4TZOIQ=
+X-Endpoint-Received: by B4 Relay for andreas@aclaesson.com/20261109 with auth_id=1465
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-virtio_vsock_vqs_del() frees the virtqueues but leaves vsock->vqs[]
-pointing at them. If virtio_vsock_restore() then fails, the driver
-stays bound with a dangling vqs[], and the next freeze or unbind
-passes a freed virtqueue to virtqueue_detach_unused_buf():
+Commit eb51c9f8cb4f ("HID: corsair: cancel worker before unregistering
+LED to fix use-after-free") moved cancel_work_sync() in front of
+led_classdev_unregister() in k90_cleanup_backlight() and
+k90_cleanup_macro_functions().
 
-  BUG: KASAN: slab-use-after-free in virtqueue_detach_unused_buf
-   virtio_vsock_vqs_del (net/vmw_vsock/virtio_transport.c:785)
-   virtio_vsock_remove
-  Freed by task ...:
-   vp_del_vqs
-   virtio_vsock_freeze
+led_classdev_unregister() turns the LED off unless
+LED_RETAIN_AT_SHUTDOWN is set. That calls k90_brightness_set(), which
+unconditionally does schedule_work() on the same work item. The work is
+therefore queued again after it was cancelled, and the structure that
+embeds it is freed right afterwards:
 
-Clear vqs[] after del_vqs() and when virtio_find_vqs() fails. Return
-early from virtio_vsock_vqs_del() when vqs[] is empty: the detach
-loops would pass NULL to virtqueue_detach_unused_buf(), and a second
-del_vqs() would free virtio-mmio's IRQ again, which only WARNs in
-free_irq() ("Trying to free already-free IRQ").
+  k90_cleanup_macro_functions()
+    cancel_work_sync(&k90->record_led.work)
+    led_classdev_unregister(&k90->record_led.cdev)
+      led_set_brightness(LED_OFF)
+        k90_brightness_set()
+          schedule_work(&led->work)        <-- re-queued
+    kfree(k90)                             <-- frees the queued work_struct
 
-Found with the help of Anthropic's Claude and reproduced on virtio-pci
-and virtio-mmio by failing the restore with failslab, without other
-kernel changes; the virtio-mmio WARN was found by the netdev Sashiko
-review and reproduced with v1 of this patch. With this patch neither
-report appears on virtio-pci or virtio-mmio guests, and the vsock
-vmtest.sh single-VM tests pass. A find_vqs() failure after some
-virtqueues were set up was not exercised.
+When the work later runs, the workqueue dereferences the freed
+work_struct and k90_record_led_work() reads led->removed from freed
+memory. A USB device that enumerates as a K90 and is then unplugged
+triggers this reliably. With CONFIG_DEBUG_OBJECTS_WORK it shows up as:
 
-Fixes: bd50c5dc182b ("vsock/virtio: add support for device suspend/resume")
+  ODEBUG: free active (active state 0) object: ffff88803b8772c8 object type: work_struct hint: k90_record_led_work+0x0/0x1e0
+  WARNING: lib/debugobjects.c:632 at debug_print_object+0xec/0x230
+  Workqueue: usb_hub_wq hub_event
+  Call Trace:
+   debug_check_no_obj_freed+0x2e3/0x450 lib/debugobjects.c:1201
+   kfree+0x13e/0x650 mm/slub.c:6923
+   k90_cleanup_macro_functions drivers/hid/hid-corsair.c:547 [inline]
+   corsair_remove+0xfd/0x260 drivers/hid/hid-corsair.c:602
+   hid_device_remove+0xc5/0x1c0 drivers/hid/hid-core.c:2897
+   ...
+   usbhid_disconnect+0x9f/0xc0 drivers/hid/usbhid/hid-core.c:1486
+
+(with ODEBUG enabled, work_fixup_free() cancels the work and hides the
+use-after-free. Without it, the freed work item is executed.)
+
+Keep the existing cancel_work_sync() before unregistering, which waits
+for a worker that may already be past the 'removed' check, and cancel
+the work once more after led_classdev_unregister() so the work queued
+by the LED-off request is gone before the memory is freed. A re-queued
+work that manages to run before the second cancel still sees
+'removed == true' while the structure is alive and returns early.
+
+Fixes: eb51c9f8cb4f ("HID: corsair: cancel worker before unregistering LED to fix use-after-free")
 Cc: stable@vger.kernel.org
-Signed-off-by: Jerome Mohm <jrmmhm.kernel@eldare.de>
+Signed-off-by: Andreas Claesson <andreas@aclaesson.com>
 ---
-Changes in v4:
-- Say why the early return is needed: the detach loops would pass NULL
-  to virtqueue_detach_unused_buf() (answering Stefano).
-- Say in the message and the comment that freeing virtio-mmio's IRQ
-  again only WARNs (Stefano).
-- Move the send queue purge before virtio_reset_device() (Stefano).
-- Message: the use-after-free also reproduces on virtio-mmio.
-- Rebase onto current net; rebuilt and retested on virtio-pci and
-  virtio-mmio, and the vmtest.sh single-VM tests rerun on this version.
-  The moved purge ran with an empty send queue only; the ns_* tests of
-  vmtest.sh were not run (they need root on the host). The reproducers
-  are available on request.
-- Link to v3: https://patch.msgid.link/20261104-vsock-restore-uaf-send-v3-1-d60d06488b57@eldare.de
+Found with syzkaller (USB emulation, KASAN + ODEBUG) on mainline
+f66469d9905b. Both the record LED and the backlight paths reproduce
+(hint: k90_record_led_work / k90_backlight_work); a minimised
+3-call syzkaller reproducer is available on request. With this patch,
+200 probe/removal cycles per path gave no ODEBUG or KASAN reports,
+against ODEBUG on roughly half of removals without it.
 ---
- net/vmw_vsock/virtio_transport.c | 16 +++++++++++++---
- 1 file changed, 13 insertions(+), 3 deletions(-)
+ drivers/hid/hid-corsair.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/net/vmw_vsock/virtio_transport.c b/net/vmw_vsock/virtio_transport.c
-index 4f9aa9c4c3aa..cf63bc99f3cc 100644
---- a/net/vmw_vsock/virtio_transport.c
-+++ b/net/vmw_vsock/virtio_transport.c
-@@ -714,8 +714,10 @@ static int virtio_vsock_vqs_init(struct virtio_vsock *vsock)
- 	atomic_set(&vsock->queued_replies, 0);
+diff --git a/drivers/hid/hid-corsair.c b/drivers/hid/hid-corsair.c
+index 278c6efb565d..75c862f5f783 100644
+--- a/drivers/hid/hid-corsair.c
++++ b/drivers/hid/hid-corsair.c
+@@ -526,6 +526,8 @@ static void k90_cleanup_backlight(struct hid_device *dev)
+ 		drvdata->backlight->removed = true;
+ 		cancel_work_sync(&drvdata->backlight->work);
+ 		led_classdev_unregister(&drvdata->backlight->cdev);
++		/* unregister turns the LED off, which re-queues the work */
++		cancel_work_sync(&drvdata->backlight->work);
+ 		kfree(drvdata->backlight->cdev.name);
+ 		kfree(drvdata->backlight);
+ 	}
+@@ -542,6 +544,8 @@ static void k90_cleanup_macro_functions(struct hid_device *dev)
+ 		k90->record_led.removed = true;
+ 		cancel_work_sync(&k90->record_led.work);
+ 		led_classdev_unregister(&k90->record_led.cdev);
++		/* unregister turns the LED off, which re-queues the work */
++		cancel_work_sync(&k90->record_led.work);
+ 		kfree(k90->record_led.cdev.name);
  
- 	ret = virtio_find_vqs(vdev, VSOCK_VQ_MAX, vsock->vqs, vqs_info, NULL);
--	if (ret < 0)
-+	if (ret < 0) {
-+		memset(vsock->vqs, 0, sizeof(vsock->vqs));
- 		return ret;
-+	}
- 
- 	virtio_vsock_update_guest_cid(vsock);
- 
-@@ -776,11 +778,19 @@ static void virtio_vsock_vqs_del(struct virtio_vsock *vsock)
- 	vsock->event_run = false;
- 	mutex_unlock(&vsock->event_lock);
- 
-+	virtio_vsock_skb_queue_purge(&vsock->send_pkt_queue);
-+
- 	/* Flush all device writes and interrupts, device will not use any
- 	 * more buffers.
- 	 */
- 	virtio_reset_device(vdev);
- 
-+	/* After a failed restore no virtqueues are live, and a second
-+	 * del_vqs() would free virtio-mmio's IRQ again (a WARN in free_irq()).
-+	 */
-+	if (!vsock->vqs[VSOCK_VQ_RX])
-+		return;
-+
- 	mutex_lock(&vsock->rx_lock);
- 	while ((skb = virtqueue_detach_unused_buf(vsock->vqs[VSOCK_VQ_RX])))
- 		kfree_skb(skb);
-@@ -791,10 +801,10 @@ static void virtio_vsock_vqs_del(struct virtio_vsock *vsock)
- 		kfree_skb(skb);
- 	mutex_unlock(&vsock->tx_lock);
- 
--	virtio_vsock_skb_queue_purge(&vsock->send_pkt_queue);
--
- 	/* Delete virtqueues and flush outstanding callbacks if any */
- 	vdev->config->del_vqs(vdev);
-+
-+	memset(vsock->vqs, 0, sizeof(vsock->vqs));
- }
- 
- static int virtio_vsock_probe(struct virtio_device *vdev)
+ 		kfree(k90);
 
 ---
-base-commit: 1d5e2c57e9ffc134e14b3f837c8d7c53b508bd22
-change-id: 20261001-vsock-restore-uaf-send-1fc7396fa1bd
+base-commit: f66469d9905b39d2c260a15d7d6db450f4db67c1
+change-id: 20261109-hid-corsair-k90-uaf-0c711197ce3e
 
 Best regards,
 --  
-Jerome Mohm <jrmmhm.kernel@eldare.de>
+Andreas Claesson <andreas@aclaesson.com>
 
