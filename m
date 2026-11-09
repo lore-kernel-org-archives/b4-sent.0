@@ -1,434 +1,78 @@
-From: Joseph Telaak <joseph@telaak.dev>
-Date: Mon, 09 Nov 2026 15:09:32 -0500
-Subject: [PATCH v2 2/2] gpio: Add Siflower GPIO controller driver
+From: Umer Uddin <umer.uddin@mentallysanemainliners.org>
+Subject: [PATCH v2 0/2] Add support for Samsung Galaxy Tab A 10.1 (2019,
+ 4G)
+Date: Mon, 09 Nov 2026 21:02:01 +0000
+Message-Id: <20261109-gta3xllte-support-v2-0-85c31b6efebd@mentallysanemainliners.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-sf19a2890-gpio-v2-2-b885fbd84c4c@telaak.dev>
-References: <20261109-sf19a2890-gpio-v2-0-b885fbd84c4c@telaak.dev>
-In-Reply-To: <20261109-sf19a2890-gpio-v2-0-b885fbd84c4c@telaak.dev>
-To: Linus Walleij <linusw@kernel.org>, 
- Bartosz Golaszewski <brgl@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: Chuanhong Guo <gch981213@gmail.com>, Qingfang Deng <dqfext@gmail.com>, 
- linux-mips@vger.kernel.org, linux-gpio@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32Nyw6DIBQFf8WwLg0ooY9V/6NxgXBRGgTDRaMx/
+ nvV7rucZM6clSAkB0iexUoSTA5dDDuUl4LoToUWqDM7k5KVknP2oG1W1ex9BorjMMSUqZXCWHG
+ TptKS7LshgXXz2XzXP8ax+YDOR+gwOoc5puU8nfjh/etPnDJqNNOisereCPHqIWTl/YIqQK9c8
+ C5AwmtMLam3bfsCD+HNL9UAAAA=
+X-Change-ID: 20261109-gta3xllte-support-f64df476d3c6
+To: Krzysztof Kozlowski <krzk@kernel.org>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>, Rob Herring <robh@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Qingfang Deng <qingfang.deng@siflower.com.cn>, 
- Joseph Telaak <joseph@telaak.dev>
+ Umer Uddin <umer.uddin@mentallysanemainliners.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794254988; l=12083;
- i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=mqbjDOWPMhY4iBG3cQePNaKpIlyeef23uSc1bYB6gIs=;
- b=7MncLPaI/pXntJ2l7QKghvSVAMn40fsz0LLdsvkD6F7HBotdJWIC6O/midmaM/R8Fe65HwDBx
- yjSFmqE+ywIC0bJS2AmpywlgHiAus1+j2CkYUasaj4+SQzAGfA3IpyK
-X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
- pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
-X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794258123; l=1578;
+ i=umer.uddin@mentallysanemainliners.org; s=20261109;
+ h=from:subject:message-id; bh=agqWjBLMvEse0eu1plUAKimZM+XtZzwOh/y90EL/9AY=;
+ b=9onZelZpLaXYd6RnSVn5XhXY5jMFeZzxh9Kme4kcVPNeUPmqcwl1ca/2BCLee1Pj0m0HMWxtF
+ VQFrfwzVOl0BhYFfR1zeC6zjgyBK5mimt26TUQifjzlvtY/cshDbcpd
+X-Developer-Key: i=umer.uddin@mentallysanemainliners.org; a=ed25519;
+ pk=Hsgrt4A72CFTe27AI1AAWlnLsiQrlb4+T+cbrfWDhUA=
+X-Endpoint-Received: by B4 Relay for umer.uddin@mentallysanemainliners.org/20261109 with auth_id=1466
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Qingfang Deng <qingfang.deng@siflower.com.cn>
+Hi guys,
 
-Add a driver for the GPIO controller on Siflower SoCs.
-This controller is found on all current Siflower MIPS and RISC-V
-chips including SF19A2890, SF21A6826 and SF21H8898.
+This series adds support for Samsung Galaxy Tab A 10.1 (2019, 4G).
 
-Signed-off-by: Qingfang Deng <qingfang.deng@siflower.com.cn>
-Signed-off-by: Chuanhong Guo <gch981213@gmail.com>
-[Joseph Telaak:
-  - take it from Chuanhong's siflower-7.1 branch
-  - depend on MACH_SIFLOWER_MIPS instead of OF_GPIO, longer Kconfig help
-  - get the reset with devm_reset_control_get_exclusive_deasserted(),
-    so it is asserted again only after the GPIO chip is removed, not in
-    a .remove that ran first
-  - drop .owner and the unused drvdata, and get priv with
-    gpiochip_get_data()
-  - drop the irq_set_affinity callback, which reached the parent
-    through irq_to_desc(), not exported with SPARSE_IRQ
-  - call gpiochip_disable_irq() and gpiochip_enable_irq() from mask
-    and unmask, as an immutable irqchip must
-  - find the group by its parent IRQ instead of assuming consecutive
-    numbers
-  - return 0 or 1 from .get
-  - use readl() and writel() directly, without wrapper functions
-  - take the number of lines from the match data, not from an
-    ngpios property
-  - include linux/math64.h, drop the unused linux/pinctrl/consumer.h,
-    sort the includes, spell it "Siflower"
-  - subject]
-Co-developed-by: Joseph Telaak <joseph@telaak.dev>
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+The device trees have been tested with dtbs_check W=1 and scripts/dtc/dt-check-style
+with --mode strict flag and both results in no warnings.
+
+This initial bringup consists of:
+ * pinctrl
+ * internal eMMC
+ * gpio-keys
+ * simple-framebuffer
+
+This is enough to reach a shell in an initramfs. More platform support
+will be added in the future.
+
+The preferred way to boot kernel is by using a shim bootloader called
+uniLoader [1], which works around some issues with the stock bootloader,
+primarily the decon trigger control quirk, causing the framebuffer to not
+refresh.
+
+[1] https://github.com/ivoszbg/uniLoader
+
+Signed-off-by: Umer Uddin <umer.uddin@mentallysanemainliners.org>
 ---
- MAINTAINERS                  |   1 +
- drivers/gpio/Kconfig         |  12 ++
- drivers/gpio/Makefile        |   1 +
- drivers/gpio/gpio-siflower.c | 310 +++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 324 insertions(+)
+Changes in v2:
+- Fixed dts oversights pointed out via Sashiko.
+- Link to v1: https://patch.msgid.link/20261109-gta3xllte-support-v1-0-dc0c4bfa8b44@mentallysanemainliners.org
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 4193b433c..0a3f91844 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -25711,6 +25711,7 @@ M:	Joseph Telaak <joseph@telaak.dev>
- L:	linux-gpio@vger.kernel.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/gpio/siflower,sf19a2890-gpio.yaml
-+F:	drivers/gpio/gpio-siflower.c
- 
- SILEAD TOUCHSCREEN DRIVER
- M:	Hans de Goede <hansg@kernel.org>
-diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
-index 55e428002..623c09832 100644
---- a/drivers/gpio/Kconfig
-+++ b/drivers/gpio/Kconfig
-@@ -721,6 +721,18 @@ config GPIO_SIFIVE
- 	help
- 	  Say yes here to support the GPIO device on SiFive SoCs.
- 
-+config GPIO_SIFLOWER
-+	tristate "Siflower GPIO support"
-+	depends on MACH_SIFLOWER_MIPS || COMPILE_TEST
-+	select GPIOLIB_IRQCHIP
-+	help
-+	  GPIO controller driver for the Siflower SF19A2890. Each line can be
-+	  an input or an output and raise an interrupt on either edge or
-+	  level, and inputs can be debounced in hardware.
-+
-+	  To compile this driver as a module, choose M here: the module will
-+	  be called gpio-siflower.
-+
- config GPIO_SIOX
- 	tristate "SIOX GPIO support"
- 	depends on SIOX
-diff --git a/drivers/gpio/Makefile b/drivers/gpio/Makefile
-index 88f748846..bde618108 100644
---- a/drivers/gpio/Makefile
-+++ b/drivers/gpio/Makefile
-@@ -171,6 +171,7 @@ obj-$(CONFIG_GPIO_SCH311X)		+= gpio-sch311x.o
- obj-$(CONFIG_GPIO_SCH)			+= gpio-sch.o
- obj-$(CONFIG_GPIO_SHARED_PROXY)		+= gpio-shared-proxy.o
- obj-$(CONFIG_GPIO_SIFIVE)		+= gpio-sifive.o
-+obj-$(CONFIG_GPIO_SIFLOWER)		+= gpio-siflower.o
- obj-$(CONFIG_GPIO_SIM)			+= gpio-sim.o
- obj-$(CONFIG_GPIO_SIOX)			+= gpio-siox.o
- obj-$(CONFIG_GPIO_SL28CPLD)		+= gpio-sl28cpld.o
-diff --git a/drivers/gpio/gpio-siflower.c b/drivers/gpio/gpio-siflower.c
-new file mode 100644
-index 000000000..3fde9a287
---- /dev/null
-+++ b/drivers/gpio/gpio-siflower.c
-@@ -0,0 +1,310 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * GPIO controller driver for Siflower MIPS and RISC-V SoCs including:
-+ *  Siflower SF19A2890
-+ *  Siflower SF21A6826
-+ *  Siflower SF21H8898
-+ */
-+
-+#include <linux/clk.h>
-+#include <linux/gpio/driver.h>
-+#include <linux/irqchip/chained_irq.h>
-+#include <linux/math64.h>
-+#include <linux/module.h>
-+#include <linux/platform_device.h>
-+#include <linux/property.h>
-+#include <linux/reset.h>
-+
-+#define GPIO_IR(n)	(0x40 * (n) + 0x00)
-+#define GPIO_OR(n)	(0x40 * (n) + 0x04)
-+#define GPIO_OEN(n)	(0x40 * (n) + 0x08)
-+#define GPIO_IMR(n)	(0x40 * (n) + 0x0c)
-+#define GPIO_GPIMR(n)	(0x40 * (n) + 0x10)
-+#define GPIO_PIR(n)	(0x40 * (n) + 0x14)
-+#define GPIO_ITR(n)	(0x40 * (n) + 0x18)
-+#define GPIO_IFR(n)	(0x40 * (n) + 0x1c)
-+#define GPIO_ICR(n)	(0x40 * (n) + 0x20)
-+#define GPIO_GPxIR(n)	(0x4 * (n) + 0x4000)
-+
-+#define GPIOS_PER_GROUP	16
-+
-+struct sf_gpio_soc_data {
-+	unsigned int ngpios;
-+};
-+
-+struct sf_gpio_priv {
-+	struct gpio_chip gc;
-+	void __iomem *base;
-+	struct clk *clk;
-+	unsigned int irq[];
-+};
-+
-+static int sf_gpio_get_value(struct gpio_chip *gc, unsigned int offset)
-+{
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+
-+	return !!readl(priv->base + GPIO_IR(offset));
-+}
-+
-+static int sf_gpio_set_value(struct gpio_chip *gc, unsigned int offset,
-+			     int value)
-+{
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+
-+	writel(value, priv->base + GPIO_OR(offset));
-+	return 0;
-+}
-+
-+static int sf_gpio_get_direction(struct gpio_chip *gc, unsigned int offset)
-+{
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+
-+	if (readl(priv->base + GPIO_OEN(offset)))
-+		return GPIO_LINE_DIRECTION_IN;
-+
-+	return GPIO_LINE_DIRECTION_OUT;
-+}
-+
-+static int sf_gpio_direction_input(struct gpio_chip *gc, unsigned int offset)
-+{
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+
-+	writel(1, priv->base + GPIO_OEN(offset));
-+	return 0;
-+}
-+
-+static int sf_gpio_direction_output(struct gpio_chip *gc, unsigned int offset,
-+				    int value)
-+{
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+
-+	writel(value, priv->base + GPIO_OR(offset));
-+	writel(0, priv->base + GPIO_OEN(offset));
-+	return 0;
-+}
-+
-+static int sf_gpio_set_debounce(struct gpio_chip *gc, unsigned int offset,
-+				u32 debounce)
-+{
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+	unsigned long freq = clk_get_rate(priv->clk);
-+	u64 mul;
-+
-+	/* (ICR + 1) * IFR = debounce_us * clkfreq_mhz / 4 */
-+	mul = (u64)debounce * freq;
-+	do_div(mul, 1000000 * 4);
-+	if (mul > 0xff00)
-+		return -EINVAL;
-+
-+	writel(0xff, priv->base + GPIO_ICR(offset));
-+	writel(DIV_ROUND_UP(mul, 0x100), priv->base + GPIO_IFR(offset));
-+
-+	return 0;
-+}
-+
-+static int sf_gpio_set_config(struct gpio_chip *gc, unsigned int offset,
-+			      unsigned long config)
-+{
-+	switch (pinconf_to_config_param(config)) {
-+	case PIN_CONFIG_INPUT_DEBOUNCE:
-+		return sf_gpio_set_debounce(gc, offset,
-+			pinconf_to_config_argument(config));
-+	default:
-+		return gpiochip_generic_config(gc, offset, config);
-+	}
-+}
-+
-+static void sf_gpio_irq_ack(struct irq_data *data)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(data);
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+	unsigned long offset = irqd_to_hwirq(data);
-+
-+	writel(0, priv->base + GPIO_PIR(offset));
-+}
-+
-+static void sf_gpio_irq_mask(struct irq_data *data)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(data);
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+	unsigned long offset = irqd_to_hwirq(data);
-+
-+	writel(1, priv->base + GPIO_IMR(offset));
-+	writel(1, priv->base + GPIO_GPIMR(offset));
-+	gpiochip_disable_irq(gc, offset);
-+}
-+
-+static void sf_gpio_irq_unmask(struct irq_data *data)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(data);
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+	unsigned long offset = irqd_to_hwirq(data);
-+
-+	gpiochip_enable_irq(gc, offset);
-+	writel(0, priv->base + GPIO_IMR(offset));
-+	writel(0, priv->base + GPIO_GPIMR(offset));
-+}
-+
-+static int sf_gpio_irq_set_type(struct irq_data *data, unsigned int flow_type)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(data);
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+	unsigned long offset = irqd_to_hwirq(data);
-+	u32 val;
-+
-+	switch (flow_type) {
-+	case IRQ_TYPE_EDGE_RISING:
-+		val = 4;
-+		break;
-+	case IRQ_TYPE_EDGE_FALLING:
-+		val = 2;
-+		break;
-+	case IRQ_TYPE_EDGE_BOTH:
-+		val = 6;
-+		break;
-+	case IRQ_TYPE_LEVEL_HIGH:
-+		val = 1;
-+		break;
-+	case IRQ_TYPE_LEVEL_LOW:
-+		val = 0;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+	writel(val, priv->base + GPIO_ITR(offset));
-+
-+	if (flow_type & IRQ_TYPE_LEVEL_MASK) {
-+		irq_set_handler_locked(data, handle_level_irq);
-+		return 0;
-+	}
-+
-+	irq_set_handler_locked(data, handle_edge_irq);
-+
-+	return 0;
-+}
-+
-+static const struct irq_chip sf_gpio_irqchip = {
-+	.name			= KBUILD_MODNAME,
-+	.irq_ack		= sf_gpio_irq_ack,
-+	.irq_mask		= sf_gpio_irq_mask,
-+	.irq_unmask		= sf_gpio_irq_unmask,
-+	.irq_set_type		= sf_gpio_irq_set_type,
-+	.flags			= IRQCHIP_IMMUTABLE,
-+	GPIOCHIP_IRQ_RESOURCE_HELPERS,
-+};
-+
-+static void sf_gpio_irq_handler(struct irq_desc *desc)
-+{
-+	struct gpio_chip *gc = irq_desc_get_handler_data(desc);
-+	struct irq_chip *ic = irq_desc_get_chip(desc);
-+	struct sf_gpio_priv *priv = gpiochip_get_data(gc);
-+	unsigned int irq = irq_desc_get_irq(desc);
-+	unsigned long pending;
-+	unsigned int group, n;
-+
-+	for (group = 0; group < gc->irq.num_parents; group++)
-+		if (priv->irq[group] == irq)
-+			break;
-+	if (WARN_ON_ONCE(group == gc->irq.num_parents))
-+		return;
-+
-+	chained_irq_enter(ic, desc);
-+
-+	pending = readl(priv->base + GPIO_GPxIR(group));
-+	for_each_set_bit(n, &pending, GPIOS_PER_GROUP) {
-+		generic_handle_domain_irq(gc->irq.domain,
-+					  n + group * GPIOS_PER_GROUP);
-+	}
-+
-+	chained_irq_exit(ic, desc);
-+}
-+
-+static int sf_gpio_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	const struct sf_gpio_soc_data *soc;
-+	struct reset_control *rstc;
-+	struct sf_gpio_priv *priv;
-+	struct gpio_irq_chip *girq;
-+	struct gpio_chip *gc;
-+	u32 ngpios, ngroups;
-+	int ret, i;
-+
-+	soc = device_get_match_data(dev);
-+	if (!soc)
-+		return -ENODEV;
-+
-+	ngpios = soc->ngpios;
-+	ngroups = DIV_ROUND_UP(ngpios, GPIOS_PER_GROUP);
-+	priv = devm_kzalloc(dev, struct_size(priv, irq, ngroups), GFP_KERNEL);
-+	if (!priv)
-+		return -ENOMEM;
-+
-+	priv->base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(priv->base))
-+		return PTR_ERR(priv->base);
-+
-+	priv->clk = devm_clk_get_enabled(dev, NULL);
-+	if (IS_ERR(priv->clk))
-+		return PTR_ERR(priv->clk);
-+
-+	rstc = devm_reset_control_get_exclusive_deasserted(dev, NULL);
-+	if (IS_ERR(rstc))
-+		return PTR_ERR(rstc);
-+
-+	for (i = 0; i < ngroups; i++) {
-+		ret = platform_get_irq(pdev, i);
-+		if (ret < 0)
-+			return ret;
-+
-+		priv->irq[i] = ret;
-+	}
-+
-+	gc = &priv->gc;
-+	gc->label = KBUILD_MODNAME;
-+	gc->parent = dev;
-+	gc->owner = THIS_MODULE;
-+	gc->request = gpiochip_generic_request;
-+	gc->free = gpiochip_generic_free;
-+	gc->get_direction = sf_gpio_get_direction;
-+	gc->direction_input = sf_gpio_direction_input;
-+	gc->direction_output = sf_gpio_direction_output;
-+	gc->get = sf_gpio_get_value;
-+	gc->set = sf_gpio_set_value;
-+	gc->set_config = sf_gpio_set_config;
-+	gc->base = -1;
-+	gc->ngpio = ngpios;
-+
-+	girq = &gc->irq;
-+	gpio_irq_chip_set_chip(girq, &sf_gpio_irqchip);
-+	girq->num_parents = ngroups;
-+	girq->parents = priv->irq;
-+	girq->parent_handler = sf_gpio_irq_handler;
-+	girq->default_type = IRQ_TYPE_NONE;
-+	girq->handler = handle_bad_irq;
-+
-+	return devm_gpiochip_add_data(dev, gc, priv);
-+}
-+
-+static const struct sf_gpio_soc_data sf19a2890_gpio_data = {
-+	.ngpios = 49,
-+};
-+
-+static const struct of_device_id sf_gpio_ids[] = {
-+	{ .compatible = "siflower,sf19a2890-gpio", .data = &sf19a2890_gpio_data },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, sf_gpio_ids);
-+
-+static struct platform_driver sf_gpio_driver = {
-+	.probe		= sf_gpio_probe,
-+	.driver = {
-+		.name		= "siflower_gpio",
-+		.of_match_table	= sf_gpio_ids,
-+	},
-+};
-+module_platform_driver(sf_gpio_driver);
-+
-+MODULE_LICENSE("GPL");
-+MODULE_AUTHOR("Qingfang Deng <qingfang.deng@siflower.com.cn>");
-+MODULE_DESCRIPTION("GPIO driver for Siflower SoCs");
+---
+Umer Uddin (2):
+      dt-bindings: arm: samsung: samsung-boards: Add bindings for SM-T515 board
+      arm64: exynos: Add initial support for Samsung Galaxy Tab A 10.1 (2019, 4G)
 
--- 
-Git-155)
+ .../bindings/arm/samsung/samsung-boards.yaml       |   1 +
+ arch/arm64/boot/dts/exynos/Makefile                |   1 +
+ .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 129 +++++++++++++++++++++
+ 3 files changed, 131 insertions(+)
+---
+base-commit: c916d326360966fa41b1d9c3fb659215053387f5
+change-id: 20261109-gta3xllte-support-f64df476d3c6
+
+Best regards,
+--  
+Umer Uddin <umer.uddin@mentallysanemainliners.org>
 
