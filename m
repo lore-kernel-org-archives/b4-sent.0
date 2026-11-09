@@ -1,102 +1,111 @@
-From: Ricardo Pardini <ricardo@pardini.net>
-Date: Mon, 09 Nov 2026 13:32:21 +0100
-Subject: [PATCH v6 6/6] arm64: dts: rockchip: describe PCIe RTL8125
- Ethernet on ROCK 5 ITX
+From: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+Date: Mon, 09 Nov 2026 15:20:52 +0200
+Subject: [PATCH] iommu/vt-d: Set up scalable mode context entries for DMA
+ aliases
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-rk3588-dts-rtl-eth-describe-dt-alias-v6-6-91f1efefba0b@pardini.net>
-References: <20261109-rk3588-dts-rtl-eth-describe-dt-alias-v6-0-91f1efefba0b@pardini.net>
-In-Reply-To: <20261109-rk3588-dts-rtl-eth-describe-dt-alias-v6-0-91f1efefba0b@pardini.net>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: Sebastian Reichel <sebastian.reichel@collabora.com>, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Ricardo Pardini <ricardo@pardini.net>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1839; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=wCLAexHdVkD0jpxkUE9ppJGf4g2Tzpw3hn/wf3LCfHA=;
- b=owEBbQGS/pANAwAKATteP+Oex+3pAcsmYgBq8b1TWy6Z8ypuZjA136KddZ2dUSBysSOVhFyWT
- 2MthJcSKISJATMEAAEKAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCavG9UwAKCRA7Xj/jnsft
- 6ZseB/9DPncY7tXNZ1Pc+fRxccZBkMS/xty8tA8bsrQ1Gm3LUiwmVVWcUVmuPmMUYx1XCF5VjkR
- oITtKrxpJlugGtCGHkScPy/X0WzmabA9Csz58gqrPhmi4NoK6InzzV9BRs9V+6+oa8rOLF6Rjp5
- Z2tvUE+oNWxzHzJz09o8Gdh/gNi3dAzHY7dgU6l12jKciOQyV4yu/ovK7I3DbuGY/ysQwcL8kih
- oC+rmL7i4eidMAkaspJKUqlBwc+11muQyBj29KidP/NxIk2AcKisGEN15e/VzehklW5S1ToOPnm
- 5cCMFjLK4OJwnyVzJJYxL2QHzlMDTQzi6QeuVISb2LSIf2QW
-X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
- fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
-X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
+Message-Id: <20261109-iommu-vtd-sm-bridge-alias-v1-1-76704f658dc3@ahmedabdelfattah.dev>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4avIrB0wKhW9SnExSabtFKMloyKId
+ zfV5Qfv/TsoR2GFLtsh8ioq05hg8gzch8Y3o/hkKIvyYUzRokwhLLjOHjWgjeLThAYhxZapcc4
+ 3NVUW0v8X+SXb1X72t3WxX3bzPwjHcQL9pKzpfQAAAA==
+X-Change-ID: 20261109-iommu-vtd-sm-bridge-alias-9ea7ccd74a3b
+To: David Woodhouse <dwmw2@infradead.org>, 
+ Lu Baolu <baolu.lu@linux.intel.com>, "Joerg Roedel (AMD)" <joro@8bytes.org>, 
+ Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
+ Kevin Tian <kevin.tian@intel.com>
+Cc: iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794230455; l=3605;
+ i=me@ahmedabdelfattah.dev; s=20261106; h=from:subject:message-id;
+ bh=dhz3rHJR7YOUo+roQBNF725wE94t53ubNOSPW8yLvDQ=;
+ b=CCaCnLcMIkkJ833TNpgDHDuF6lqomjTQZdvFCQ9qy0RVezMbNjY5HwSKOoRlmEcmNnZBj92e/
+ ozmQTn2f9TEDttmf2taiXGkoCtIP5IPgF1ywzfnbC822Hg12pULtuVB
+X-Developer-Key: i=me@ahmedabdelfattah.dev; a=ed25519;
+ pk=DHEHKU4PddrkJ/iYMZpwyyXsFyIQ6ySjTttKLrt9YqI=
+X-Endpoint-Received: by B4 Relay for me@ahmedabdelfattah.dev/20261106 with auth_id=1438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Radxa ROCK 5 ITX carries two on-board Realtek RTL8125 NICs behind
-pcie2x1l1 and pcie2x1l2.
+In scalable mode, devices behind a PCIe-to-PCI bridge can't do DMA at
+all. Their requests carry the bridge's alias requester ID, and the
+context entry for that ID is never written, so every request faults:
 
-Describe the PCI function nodes and attach ethernet0/ethernet1
-aliases, so that U-Boot's fdt_fixup_ethernet() can fill in their MAC
-addresses from its ethaddr/eth1addr environment.
+  DMAR: [DMA Read NO_PASID] Request device [0000:02:00.0] fault addr 0xfffff000 [fault reason 0x02] Present bit in context entry is clear
 
-Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
+pci_pasid_table_setup() and pci_pasid_table_teardown() only act when
+they are called for the device itself. pci_for_each_dma_alias() reports
+an alias that comes from an upstream bridge with the bridge as @pdev,
+so these aliases are skipped. An identity domain doesn't help either,
+as the device still needs the context entry.
+
+Legacy mode is fine, because domain_context_mapping_cb() and
+domain_context_clear_one_cb() have no such check, and the same check
+was already removed from the pass-through path in commit 64f792981e35
+("iommu/vt-d: Remove device comparison in context_setup_pass_through_cb").
+
+Drop it from both callbacks, so the alias context entry points to the
+device's PASID table and is cleared again when the device is released.
+
+Fixes: 301f1a80487f ("iommu/vt-d: Setup scalable mode context entry in probe path")
+Fixes: 81e921fd3216 ("iommu/vt-d: Fix NULL domain on device release")
+Cc: stable@vger.kernel.org
+Signed-off-by: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 ---
- arch/arm64/boot/dts/rockchip/rk3588-rock-5-itx.dts | 30 ++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+This showed up with a USB controller behind QEMU's pcie-pci-bridge in a
+q35 guest using intel-iommu with scalable-mode=on: the USB tablet behind
+it never enumerates.
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-rock-5-itx.dts b/arch/arm64/boot/dts/rockchip/rk3588-rock-5-itx.dts
-index 9d3d26d4600b..dd9767edd42c 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-rock-5-itx.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5-itx.dts
-@@ -20,6 +20,8 @@ / {
- 	compatible = "radxa,rock-5-itx", "rockchip,rk3588";
- 
- 	aliases {
-+		ethernet0 = &rtl_eth0;
-+		ethernet1 = &rtl_eth1;
- 		mmc0 = &sdhci;
- 		mmc1 = &sdmmc;
- 		mmc2 = &sdio;
-@@ -631,6 +633,20 @@ &pcie2x1l1 {
- 	reset-gpios = <&gpio4 RK_PA2 GPIO_ACTIVE_HIGH>;
- 	vpcie3v3-supply = <&vcc3v3_lan>;
- 	status = "okay";
-+
-+	pcie@0,0 {
-+		reg = <0x300000 0 0 0 0>;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		ranges;
-+		device_type = "pci";
-+		bus-range = <0x31 0x3f>;
-+
-+		rtl_eth0: ethernet@0,0 {
-+			compatible = "pci10ec,8125";
-+			reg = <0x310000 0 0 0 0>;
-+		};
-+	};
- };
- 
- /* RTL8125B_2 */
-@@ -640,6 +656,20 @@ &pcie2x1l2 {
- 	reset-gpios = <&gpio3 RK_PB0 GPIO_ACTIVE_HIGH>;
- 	vpcie3v3-supply = <&vcc3v3_lan_phy2>;
- 	status = "okay";
-+
-+	pcie@0,0 {
-+		reg = <0x400000 0 0 0 0>;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		ranges;
-+		device_type = "pci";
-+		bus-range = <0x41 0x4f>;
-+
-+		rtl_eth1: ethernet@0,0 {
-+			compatible = "pci10ec,8125";
-+			reg = <0x410000 0 0 0 0>;
-+		};
-+	};
- };
- 
- &pcie30phy {
+Tested on v7.4-rc2 in that guest (x86_64_defconfig + kvm_guest.config,
+INTEL_IOMMU with scalable mode on by default), with an EHCI controller
+and an e1000 behind the bridge, in scalable mode with second-stage
+tables, with first-stage tables (fsts=on) and with iommu=pt. Without
+the patch both devices fault on 02:00.0, the tablet never shows up and
+the e1000 hits Tx unit hangs. With it the tablet enumerates, the e1000
+passes traffic and no DMAR faults are logged. Removing the EHCI
+controller through sysfs and rescanning brings it back without faults,
+which exercises the teardown side. Legacy mode behaves the same with
+and without the patch.
 
--- 
-2.47.3
+Devices that share an alias always end up in the same IOMMU group, so
+whichever device's PASID table the alias entry points to, it translates
+with the group's domain. As in legacy mode, releasing one of them also
+clears the alias entry the other one uses, so its DMA is blocked until it
+is probed again (see the comment above domain_context_clear()).
+---
+ drivers/iommu/intel/pasid.c | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/drivers/iommu/intel/pasid.c b/drivers/iommu/intel/pasid.c
+index e4f24d3f19a6..e72b6e972cfb 100644
+--- a/drivers/iommu/intel/pasid.c
++++ b/drivers/iommu/intel/pasid.c
+@@ -760,8 +760,7 @@ static int pci_pasid_table_teardown(struct pci_dev *pdev, u16 alias, void *data)
+ {
+ 	struct device *dev = data;
+ 
+-	if (dev == &pdev->dev)
+-		device_pasid_table_teardown(dev, PCI_BUS_NUM(alias), alias & 0xff);
++	device_pasid_table_teardown(dev, PCI_BUS_NUM(alias), alias & 0xff);
+ 
+ 	return 0;
+ }
+@@ -897,9 +896,6 @@ static int pci_pasid_table_setup(struct pci_dev *pdev, u16 alias, void *data)
+ {
+ 	struct device *dev = data;
+ 
+-	if (dev != &pdev->dev)
+-		return 0;
+-
+ 	return device_pasid_table_setup(dev, PCI_BUS_NUM(alias), alias & 0xff);
+ }
+ 
+
+---
+base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
+change-id: 20261109-iommu-vtd-sm-bridge-alias-9ea7ccd74a3b
+
+Best regards,
+--  
+Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 
