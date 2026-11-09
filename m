@@ -1,11 +1,11 @@
 From: Gaurav Suman <gauravsuman007@gmail.com>
-Date: Mon, 09 Nov 2026 22:38:25 +0000
-Subject: [PATCH 7/8] dt-bindings: media: i2c: Add ON Semiconductor
- LC898123F40
+Date: Mon, 09 Nov 2026 22:38:26 +0000
+Subject: [PATCH 8/8] media: i2c: Add ON Semiconductor LC898123F40 lens
+ autofocus driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-sm8150-camera-v1-7-3d2e7b407516@gmail.com>
+Message-Id: <20261109-sm8150-camera-v1-8-3d2e7b407516@gmail.com>
 References: <20261109-sm8150-camera-v1-0-3d2e7b407516@gmail.com>
 In-Reply-To: <20261109-sm8150-camera-v1-0-3d2e7b407516@gmail.com>
 To: Bryan O'Donoghue <bod@kernel.org>, 
@@ -19,80 +19,232 @@ To: Bryan O'Donoghue <bod@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, linux-media@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794263921; l=2002;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794263921; l=7472;
  i=gauravsuman007@gmail.com; s=default; h=from:subject:message-id;
- bh=rigIVBWMlVSOi77vfy3OEmUXyFuzk+Zl0xoBupe283Y=;
- b=AcNLWQdV2Cmi4kv8K7vud0KowSrdcDTaYl35bDVKPaCgiM9C1Poe50W+E7i+Ho17AfHNdAOlo
- V3ypeD68riEAQxRTMNIEl+uePxteBWXook54qLua9zf4P08X7oqK1c5
+ bh=aXld3phNDaFjb9XBLc+lkcUeUGkLUlYruxuB+5QHU0Q=;
+ b=sATE1weRvLYnW21DnVXmSGRhsvo6h4uhzitB7inax8Gq8QKq5U9fdfJc1M3yNAcytlgzq8jpq
+ f2djMqzQY4FD5XYucDpZK18g3gLoXsVZpVgnHkZ4P75+Wn24Gkl2oe/
 X-Developer-Key: i=gauravsuman007@gmail.com; a=ed25519;
  pk=lnUC0mQfc0KyA0LE73pQ4+QWYVRaCD8Sd3XWxLZO+JY=
 X-Endpoint-Received: by B4 Relay for gauravsuman007@gmail.com/default with auth_id=1467
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add bindings for the LC898123F40 optical image stabilisation and
-autofocus controller, used in the main camera module of the LG G8x
-ThinQ.
+Add a V4L2 lens sub-device driver for the autofocus function of the
+LC898123F40 OIS/AF controller. The controller runs firmware from its
+own flash; the lens position is a 32-bit value written to register
+0xf01a, and 0xf012 = 1 enables the servo, as in the LG G8x ThinQ
+vendor camera data. Only V4L2_CID_FOCUS_ABSOLUTE (0..2047) is
+supported; image stabilisation is not.
+
+Tested on an LG G8x ThinQ: sweeping the position visibly moves focus
+on the IMX363 main camera.
 
 This was written and tested with the help of an AI coding assistant
 (Claude Opus 5.5, Anthropic); I reviewed the change and the results.
 
 Signed-off-by: Gaurav Suman <gauravsuman007@gmail.com>
 ---
- .../bindings/media/i2c/onnn,lc898123f40.yaml       | 46 ++++++++++++++++++++++
- 1 file changed, 46 insertions(+)
+ MAINTAINERS                  |   7 +++
+ drivers/media/i2c/Kconfig    |  10 ++++
+ drivers/media/i2c/Makefile   |   1 +
+ drivers/media/i2c/lc898123.c | 138 +++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 156 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/media/i2c/onnn,lc898123f40.yaml b/Documentation/devicetree/bindings/media/i2c/onnn,lc898123f40.yaml
+diff --git a/MAINTAINERS b/MAINTAINERS
+index b13cf3ad43a185802b31a89176fd85d5ba2c6d1b..ab3d82598865973241112a0e5636e3679ea8d35d 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -20984,6 +20984,13 @@ S:	Maintained
+ T:	git git://linuxtv.org/media.git
+ F:	drivers/media/i2c/ov9734.c
+ 
++ON SEMICONDUCTOR LC898123 LENS DRIVER
++M:	Gaurav Suman <gauravsuman007@gmail.com>
++L:	linux-media@vger.kernel.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/media/i2c/onnn,lc898123f40.yaml
++F:	drivers/media/i2c/lc898123.c
++
+ ONBOARD USB HUB DRIVER
+ M:	Matthias Kaehlcke <mka@chromium.org>
+ L:	linux-usb@vger.kernel.org
+diff --git a/drivers/media/i2c/Kconfig b/drivers/media/i2c/Kconfig
+index 2477db9a17fac4d5278e2428f9b840a0698e56af..fa4d26a27381bd23eafc88dd0af0facbe2fc8ac4 100644
+--- a/drivers/media/i2c/Kconfig
++++ b/drivers/media/i2c/Kconfig
+@@ -1022,6 +1022,16 @@ config VIDEO_DW9807_VCM
+ 	  capability. This is designed for linear control of
+ 	  voice coil motors, controlled via I2C serial interface.
+ 
++config VIDEO_LC898123
++	tristate "LC898123F40 lens autofocus support"
++	select V4L2_CCI_I2C
++	help
++	  This is a driver for the autofocus function of the ON
++	  Semiconductor LC898123F40 optical image stabilisation and
++	  autofocus controller, controlled via I2C serial interface.
++	  Only the lens position is controlled; image stabilisation is
++	  not supported. The controller runs firmware from its own flash.
++
+ endif
+ 
+ menu "Flash devices"
+diff --git a/drivers/media/i2c/Makefile b/drivers/media/i2c/Makefile
+index 7e714dbcbf69d55576be1abe76311c3478511201..836bf5b8a44e260567b34977b191c1f0f6e3667e 100644
+--- a/drivers/media/i2c/Makefile
++++ b/drivers/media/i2c/Makefile
+@@ -36,6 +36,7 @@ obj-$(CONFIG_VIDEO_DW9714) += dw9714.o
+ obj-$(CONFIG_VIDEO_DW9719) += dw9719.o
+ obj-$(CONFIG_VIDEO_DW9768) += dw9768.o
+ obj-$(CONFIG_VIDEO_DW9807_VCM) += dw9807-vcm.o
++obj-$(CONFIG_VIDEO_LC898123) += lc898123.o
+ obj-$(CONFIG_VIDEO_ET8EK8) += et8ek8/
+ obj-$(CONFIG_VIDEO_GC0308) += gc0308.o
+ obj-$(CONFIG_VIDEO_GC0310) += gc0310.o
+diff --git a/drivers/media/i2c/lc898123.c b/drivers/media/i2c/lc898123.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..ac0ab6a8793547a5a3617b75bcc590a1e01af602
+index 0000000000000000000000000000000000000000..69516ad964d6035e8b2db91ad9fc9c95fa8c9b80
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/media/i2c/onnn,lc898123f40.yaml
-@@ -0,0 +1,46 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/media/i2c/onnn,lc898123f40.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
++++ b/drivers/media/i2c/lc898123.c
+@@ -0,0 +1,138 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * ON Semiconductor LC898123F40 OIS/AF controller, autofocus part only
++ * (LG G8x rear main camera). The controller runs its own factory-flashed
++ * firmware; the lens position is a 32-bit big-endian value in 0xF01A and
++ * 0xF012 = 1 enables the servo, as LG's CamX module data does.
++ */
++#include <linux/delay.h>
++#include <linux/i2c.h>
++#include <linux/module.h>
++#include <linux/pm_runtime.h>
++#include <linux/regulator/consumer.h>
++#include <media/v4l2-cci.h>
++#include <media/v4l2-ctrls.h>
++#include <media/v4l2-device.h>
 +
-+title: ON Semiconductor LC898123F40 OIS and autofocus controller
++#define LC898123_REG_SERVO	CCI_REG32(0xf012)
++#define LC898123_REG_AF_POS	CCI_REG32(0xf01a)
++#define LC898123_REG_OIS_CTRL	CCI_REG8(0xf100)
++#define LC898123_POS_MAX	2047
++#define LC898123_POS_DEFAULT	1024
 +
-+maintainers:
-+  - Gaurav Suman <gauravsuman007@gmail.com>
++struct lc898123 {
++	struct regmap *regmap;
++	struct v4l2_subdev sd;
++	struct v4l2_ctrl_handler ctrls;
++	struct v4l2_ctrl *focus;
++};
 +
-+description:
-+  The LC898123F40 is an optical image stabilisation and autofocus
-+  controller with built-in flash memory for its firmware, controlled over
-+  I2C. It drives the voice coil motors of a camera module. Only the
-+  autofocus (lens position) function is described here.
++static int lc898123_set_ctrl(struct v4l2_ctrl *ctrl)
++{
++	struct lc898123 *lc = container_of(ctrl->handler, struct lc898123, ctrls);
 +
-+properties:
-+  compatible:
-+    const: onnn,lc898123f40
++	if (ctrl->id != V4L2_CID_FOCUS_ABSOLUTE)
++		return -EINVAL;
++	return cci_write(lc->regmap, LC898123_REG_AF_POS, ctrl->val, NULL);
++}
 +
-+  reg:
-+    maxItems: 1
++static const struct v4l2_ctrl_ops lc898123_ctrl_ops = { .s_ctrl = lc898123_set_ctrl };
 +
-+  vdd-supply:
-+    description: Supply for the controller and the voice coil motors.
++static int lc898123_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
++{
++	struct lc898123 *lc = container_of(sd, struct lc898123, sd);
++	int ret = 0;
 +
-+required:
-+  - compatible
-+  - reg
++	cci_write(lc->regmap, LC898123_REG_OIS_CTRL, 0, &ret);
++	cci_write(lc->regmap, LC898123_REG_SERVO, 1, &ret);
++	if (!ret)
++		ret = __v4l2_ctrl_handler_setup(&lc->ctrls);
++	return ret;
++}
 +
-+additionalProperties: false
++static const struct v4l2_subdev_internal_ops lc898123_internal_ops = {
++	.open = lc898123_open,
++};
 +
-+examples:
-+  - |
-+    i2c {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
++static const struct v4l2_subdev_ops lc898123_ops = { };
 +
-+        camera-lens@3e {
-+            compatible = "onnn,lc898123f40";
-+            reg = <0x3e>;
-+            vdd-supply = <&vreg_2p8>;
-+        };
-+    };
-+...
++static int lc898123_probe(struct i2c_client *client)
++{
++	struct lc898123 *lc;
++	u64 val;
++	int ret;
++
++	lc = devm_kzalloc(&client->dev, sizeof(*lc), GFP_KERNEL);
++	if (!lc)
++		return -ENOMEM;
++	ret = devm_regulator_get_enable_optional(&client->dev, "vdd");
++	if (ret && ret != -ENODEV)
++		return dev_err_probe(&client->dev, ret, "vdd supply\n");
++	if (!ret)
++		usleep_range(10000, 12000);	/* controller boot from flash */
++
++	lc->regmap = devm_cci_regmap_init_i2c(client, 16);
++	if (IS_ERR(lc->regmap))
++		return PTR_ERR(lc->regmap);
++	ret = cci_read(lc->regmap, LC898123_REG_AF_POS, &val, NULL);
++	if (ret)
++		return dev_err_probe(&client->dev, ret, "no response\n");
++	cci_write(lc->regmap, LC898123_REG_SERVO, 1, NULL);
++
++	v4l2_i2c_subdev_init(&lc->sd, client, &lc898123_ops);
++	lc->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
++	lc->sd.internal_ops = &lc898123_internal_ops;
++	lc->sd.entity.function = MEDIA_ENT_F_LENS;
++
++	v4l2_ctrl_handler_init(&lc->ctrls, 1);
++	lc->focus = v4l2_ctrl_new_std(&lc->ctrls, &lc898123_ctrl_ops,
++				      V4L2_CID_FOCUS_ABSOLUTE, 0, LC898123_POS_MAX,
++				      1, LC898123_POS_DEFAULT);
++	if (lc->ctrls.error) {
++		ret = lc->ctrls.error;
++		goto err;
++	}
++	lc->sd.ctrl_handler = &lc->ctrls;
++	ret = media_entity_pads_init(&lc->sd.entity, 0, NULL);
++	if (ret)
++		goto err;
++	ret = v4l2_async_register_subdev(&lc->sd);
++	if (ret)
++		goto err_entity;
++	return 0;
++
++err_entity:
++	media_entity_cleanup(&lc->sd.entity);
++err:
++	v4l2_ctrl_handler_free(&lc->ctrls);
++	return ret;
++}
++
++static void lc898123_remove(struct i2c_client *client)
++{
++	struct v4l2_subdev *sd = i2c_get_clientdata(client);
++	struct lc898123 *lc = container_of(sd, struct lc898123, sd);
++
++	v4l2_async_unregister_subdev(sd);
++	media_entity_cleanup(&sd->entity);
++	v4l2_ctrl_handler_free(&lc->ctrls);
++}
++
++static const struct of_device_id lc898123_of_match[] = {
++	{ .compatible = "onnn,lc898123f40" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, lc898123_of_match);
++
++static struct i2c_driver lc898123_driver = {
++	.driver = {
++		.name = "lc898123",
++		.of_match_table = lc898123_of_match,
++	},
++	.probe = lc898123_probe,
++	.remove = lc898123_remove,
++};
++module_i2c_driver(lc898123_driver);
++
++MODULE_DESCRIPTION("LC898123F40 autofocus driver");
++MODULE_LICENSE("GPL");
 
 -- 
 2.49.1
