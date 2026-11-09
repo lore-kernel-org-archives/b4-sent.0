@@ -1,197 +1,180 @@
-From: Umer Uddin <umer.uddin@mentallysanemainliners.org>
-Date: Mon, 09 Nov 2026 20:07:06 +0000
-Subject: [PATCH 2/2] arm64: exynos: Add initial support for Samsung Galaxy
- Tab A 10.1 (2019, 4G)
+From: Jerome Mohm <jrmmhm.kernel@eldare.de>
+Date: Mon, 09 Nov 2026 21:08:29 +0100
+Subject: [PATCH net v5] vsock/bpf: release sock lock while waiting for data
+ in recvmsg
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-gta3xllte-support-v1-2-dc0c4bfa8b44@mentallysanemainliners.org>
-References: <20261109-gta3xllte-support-v1-0-dc0c4bfa8b44@mentallysanemainliners.org>
-In-Reply-To: <20261109-gta3xllte-support-v1-0-dc0c4bfa8b44@mentallysanemainliners.org>
-To: Krzysztof Kozlowski <krzk@kernel.org>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>, Rob Herring <robh@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Umer Uddin <umer.uddin@mentallysanemainliners.org>
+Message-Id: <20261109-kbh3-1-022-fix-v2-v5-1-4d9af04f0fad@eldare.de>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NTU7EMAwF4KuMssbIdtK0nRX3QCzy49IA6qCkR
+ KBR706mLBihEctnP38+qyI5SVHHw1llqamk09JCd3dQYXbLs0CKLStGtoRI8OpnDQTIDFP6hMo
+ geiLDI1pDTrW79yxts5uPapFVPf0My4d/kbBetEttTmU95a/9c6W9/M+TSi2HycnYDY7G3j7IW
+ 3RZ7qPsftVXAg+3BA0IPmDfseeoo/8rmF+B0N4STBNCH7XtUQ9k4rWwbds3J8/vrk0BAAA=
+X-Change-ID: 20261001-kbh3-1-022-fix-v2-e3f14290641a
+To: Stefano Garzarella <sgarzare@redhat.com>, 
+ Bobby Eshleman <bobbyeshleman@meta.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, "Michael S. Tsirkin" <mst@redhat.com>, 
+ Alexei Starovoitov <ast@kernel.org>
+Cc: Michal Luczaj <mhal@rbox.co>, virtualization@lists.linux.dev, 
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
+ stable@vger.kernel.org, Jerome Mohm <jrmmhm.kernel@eldare.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794254826; l=4320;
- i=umer.uddin@mentallysanemainliners.org; s=20261109;
- h=from:subject:message-id; bh=+LL3c8/ipkqWVv9r1KZLMf00kFeNiLI3tGaS/IhfK9M=;
- b=1kcjAI2er2E/jruRzNf2zvKZqzyiw+XYus1gGcAgQ2acyyMcd1aNiyOmUIXlsCD2XHRwvi2Iz
- Qkz61dJ2YHIC5f5Xxk/8vUV3LDCgTxMrvwqS7Z3qwA+FGzR1DS7nJYb
-X-Developer-Key: i=umer.uddin@mentallysanemainliners.org; a=ed25519;
- pk=Hsgrt4A72CFTe27AI1AAWlnLsiQrlb4+T+cbrfWDhUA=
-X-Endpoint-Received: by B4 Relay for umer.uddin@mentallysanemainliners.org/20261109 with auth_id=1466
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794254908; l=5966;
+ i=jrmmhm.kernel@eldare.de; s=20260928; h=from:subject:message-id;
+ bh=gAMP05v48lA79FLWFALXd9zeaNzA0SUA1TvaXrc531E=;
+ b=MuAaoC1faU7y/6OsXRinifDWmeyjxYlifpBjeMeeVMCUz5e3BmcfGP4S3n/tMEixejmsuZtB6
+ 4LMrBMbv0c2BKMjd1OG1HqhbS0uPowujNLWIg2eCPSTIa1QrJh4yRPu
+X-Developer-Key: i=jrmmhm.kernel@eldare.de; a=ed25519;
+ pk=xRCxNXbnNottaHpmvPDAOC9NuMJxqKo24abkehKRVlo=
+X-Endpoint-Received: by B4 Relay for jrmmhm.kernel@eldare.de/20260928 with auth_id=1075
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add initial support for Samsung Galaxy Tab A 10.1 (2019) is a tablet that
-is based on Exynos7885, this patch adds support for the LTE variant.
+vsock_bpf_recvmsg() sleeps in vsock_msg_wait_data() with the socket lock
+held, so the virtio delivery worker, which needs that lock, deadlocks
+with the reader and all vsock rx on that worker stops.
 
-This device tree adds support for the following:
+Release the lock around the wait. The reader can then wake without
+data, so the wait loops until data arrives, the timeout, a signal
+(wait_woken() returns at once while one is pending), or a state in
+which __vsock_recvmsg() would not wait. Those states, and zero-length,
+MSG_OOB and MSG_ERRQUEUE reads, go to __vsock_recvmsg(), as Alexei
+suggested; a non-blocking read now sees them before -EAGAIN. The loop
+and the zero-length check belong to the fix (without them the reader
+returns early or spins with the lock held), so this is one patch;
+MSG_OOB and MSG_ERRQUEUE just share that path. One tested difference
+remains: a reader asleep at a virtio transport reset gets -ENOTCONN,
+where a native socket gets -ECONNRESET (0 on seqpacket).
 
-- SimpleFB
-- 2GB RAM
-- Buttons
-- Internal eMMC
+The deadlock and the MSG_ERRQUEUE case were found with the help of
+Anthropic's Claude, the rest by the netdev Sashiko reviews and Alexei.
+Each was reproduced in a VM without kernel changes or error injection
+(the resets unbind the guest's virtio-vsock device), except one Sashiko
+case that was checked in the code; with this patch they behave as on a
+native socket apart from the reset case above. The vsock vmtest.sh
+single-VM tests and the BPF sockmap selftests still pass, though they
+never sleep in this wait.
 
-Signed-off-by: Umer Uddin <umer.uddin@mentallysanemainliners.org>
+Fixes: 634f1a7110b4 ("vsock: support sockmap")
+Suggested-by: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: Jerome Mohm <jrmmhm.kernel@eldare.de>
 ---
- arch/arm64/boot/dts/exynos/Makefile                |   1 +
- .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 130 +++++++++++++++++++++
- 2 files changed, 131 insertions(+)
+Changes in v5:
+- One patch, using Alexei's approach: in the states where
+  __vsock_recvmsg() does not wait, and for zero-length, MSG_OOB and
+  MSG_ERRQUEUE reads, fall back to __vsock_recvmsg() instead of
+  copying its return values (Alexei).
+- So after a reset, recv(), a zero-length read and MSG_OOB return
+  -ENOTCONN, and a peer shutdown with SO_INQ reports SCM_INQ, as on a
+  socket outside a sockmap. A reset while the reader sleeps now
+  returns -ENOTCONN instead of -ECONNRESET.
+- This also covers the netdev Sashiko review of v4: SEQPACKET after a
+  reset, MSG_OOB on a closed socket and SCM_INQ on a zero-length read;
+  SHUT_RD with a pending sk_err by code reading only. A SEQPACKET
+  reader asleep at a reset still gets -ENOTCONN (native 0).
+- Don't cite the selftests as coverage of the wait (Alexei).
+- Link to v4: https://patch.msgid.link/20261106-kbh3-1-022-fix-v2-v4-0-c7d36703814d@eldare.de
 
-diff --git a/arch/arm64/boot/dts/exynos/Makefile b/arch/arm64/boot/dts/exynos/Makefile
-index 7534b773d28f..f1946a95cb42 100644
---- a/arch/arm64/boot/dts/exynos/Makefile
-+++ b/arch/arm64/boot/dts/exynos/Makefile
-@@ -12,6 +12,7 @@ dtb-$(CONFIG_ARCH_EXYNOS) += \
- 	exynos7870-j6lte.dtb		\
- 	exynos7870-j7xelte.dtb		\
- 	exynos7870-on7xelte.dtb		\
-+	exynos7885-gta3xllte.dtb	\
- 	exynos7885-jackpotlte.dtb	\
- 	exynos850-a217f.dtb		\
- 	exynos850-e850-96.dtb		\
-diff --git a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
-new file mode 100644
-index 000000000000..0e4e6c0b20e1
---- /dev/null
-+++ b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
-@@ -0,0 +1,130 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Samsung Galaxy Tab A 10.1 (2019, 4G) (gta3xllte/SM-T515) device tree source
-+ *
-+ * Copyright (c) 2026, Umer Uddin <umer.uddin@mentallysanemainliners.org>
-+ */
-+
-+/dts-v1/;
-+#include "exynos7885.dtsi"
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+
-+/ {
-+	model = "Samsung Galaxy Tab A 10.1 (2019, 4G)";
-+	compatible = "samsung,gta3xllte", "samsung,exynos7885";
-+	chassis-type = "handset";
-+
-+	aliases {
-+		mmc0 = &mmc_0;
-+		serial0 = &serial_0;
-+		serial1 = &serial_1;
-+		serial2 = &serial_2;
-+	};
-+
-+	chosen {
-+		#address-cells = <2>;
-+		#size-cells = <1>;
-+		ranges;
-+
-+		framebuffer0: framebuffer@ec000000 {
-+			compatible = "simple-framebuffer";
-+			reg = <0 0xec000000 0x01400000>;
-+			width = <1200>;
-+			height = <1920>;
-+			stride = <(1200 * 4)>;
-+			format = "a8r8g8b8";
-+		};
-+	};
-+
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <1>;
-+		ranges;
-+
-+		cont_splash_mem: framebuffer@ec000000 {
-+			reg = <0 0xec000000 0x01400000>;
-+			no-map;
-+		};
-+	};
-+
-+	memory@80000000 {
-+		device_type = "memory";
-+		reg = <0x0 0x80000000 0x3dd00000>,
-+		      <0x0 0xc0000000 0x40000000>;
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&key_volup &key_voldown &key_power>;
-+
-+		volup-key {
-+			label = "Volume Up";
-+			linux,code = <KEY_VOLUMEUP>;
-+			gpios = <&gpa1 5 GPIO_ACTIVE_LOW>;
-+		};
-+
-+		voldown-key {
-+			label = "Volume Down";
-+			linux,code = <KEY_VOLUMEDOWN>;
-+			gpios = <&gpa1 6 GPIO_ACTIVE_LOW>;
-+		};
-+
-+		power-key {
-+			label = "Power";
-+			linux,code = <KEY_POWER>;
-+			gpios = <&gpa1 7 GPIO_ACTIVE_LOW>;
-+			wakeup-source;
-+		};
-+	};
-+};
-+
-+&mmc_0 {
-+	mmc-hs200-1_8v;
-+	mmc-hs400-1_8v;
-+	cap-mmc-highspeed;
-+	non-removable;
-+	mmc-hs400-enhanced-strobe;
-+	card-detect-delay = <200>;
-+	clock-frequency = <800000000>;
-+	bus-width = <8>;
-+	samsung,dw-mshc-ciu-div = <3>;
-+	samsung,dw-mshc-sdr-timing = <0 4>;
-+	samsung,dw-mshc-ddr-timing = <2 4>;
-+	samsung,dw-mshc-hs400-timing = <0 2>;
-+
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&sd0_clk_fast_slew_rate_3x &sd0_cmd &sd0_rdqs
-+		     &sd0_bus1 &sd0_bus4 &sd0_bus8>;
-+
-+	status = "okay";
-+};
-+
-+&oscclk {
-+	clock-frequency = <26000000>;
-+};
-+
-+&pinctrl_alive {
-+	key_volup: key-volup-pins {
-+		samsung,pins = "gpa1-5";
-+		samsung,pin-function = <EXYNOS_PIN_FUNC_F>;
-+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
-+		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
-+	};
-+
-+	key_voldown: key-voldown-pins {
-+		samsung,pins = "gpa1-6";
-+		samsung,pin-function = <EXYNOS_PIN_FUNC_F>;
-+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
-+		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
-+	};
-+
-+	key_power: key-power-pins {
-+		samsung,pins = "gpa1-7";
-+		samsung,pin-function = <EXYNOS_PIN_FUNC_F>;
-+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
-+		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
-+	};
-+};
+Not tested: virtio-mmio, repeated runs, a sockmap delete while a
+reader sleeps, a signal arriving in the same wakeup as the timeout
+(returns -EAGAIN, native -EINTR), and the vmtest.sh ns_* tests.
+Still left for separate patches, as in v4: data that sits only in
+psock->ingress_skb, and READ_ONCE()/WRITE_ONCE() for the lockless
+accesses.
 
--- 
-2.56.0
+Changes in v4: comments, one data <= 0 check and message changes
+(Stefano); rebase; retest with a new dataless-wakeup reproducer.
+Changes in v3: split into two patches (Michal); end the wait after a
+reset read with SO_ERROR, and MSG_OOB returns -EOPNOTSUPP (Sashiko).
+Changes in v2: loop in the wait, len == 0 guard (Sashiko); MSG_ERRQUEUE
+to the native path.
+---
+ net/vmw_vsock/vsock_bpf.c | 43 ++++++++++++++++++++++++++++---------------
+ 1 file changed, 28 insertions(+), 15 deletions(-)
+
+diff --git a/net/vmw_vsock/vsock_bpf.c b/net/vmw_vsock/vsock_bpf.c
+index 9049d2648646..c0c9e69860dc 100644
+--- a/net/vmw_vsock/vsock_bpf.c
++++ b/net/vmw_vsock/vsock_bpf.c
+@@ -34,24 +34,35 @@ static bool vsock_has_data(struct sock *sk, struct sk_psock *psock)
+ 	return vsock_sk_has_data(sk, psock);
+ }
+ 
+-static bool vsock_msg_wait_data(struct sock *sk, struct sk_psock *psock, long timeo)
++/* __vsock_recvmsg() doesn't wait in these states and knows what to return. */
++static bool vsock_rx_done(struct sock *sk)
+ {
+-	bool ret;
++	return sk->sk_err || sk->sk_state != TCP_ESTABLISHED ||
++	       (sk->sk_shutdown & RCV_SHUTDOWN) ||
++	       (vsock_sk(sk)->peer_shutdown & SEND_SHUTDOWN);
++}
++
++static int vsock_msg_wait_data(struct sock *sk, struct sk_psock *psock,
++			       long timeo)
++{
++	int ret = 0;
+ 
+ 	DEFINE_WAIT_FUNC(wait, woken_wake_function);
+ 
+-	if (sk->sk_shutdown & RCV_SHUTDOWN)
+-		return true;
+-
+-	if (!timeo)
+-		return false;
+-
+ 	add_wait_queue(sk_sleep(sk), &wait);
+ 	sk_set_bit(SOCKWQ_ASYNC_WAITDATA, sk);
+-	ret = vsock_has_data(sk, psock);
+-	if (!ret) {
+-		wait_woken(&wait, TASK_INTERRUPTIBLE, timeo);
+-		ret = vsock_has_data(sk, psock);
++	while (!vsock_has_data(sk, psock) && !vsock_rx_done(sk)) {
++		if (!timeo) {
++			ret = -EAGAIN;
++			break;
++		}
++		if (signal_pending(current)) {
++			ret = sock_intr_errno(timeo);
++			break;
++		}
++		release_sock(sk);
++		timeo = wait_woken(&wait, TASK_INTERRUPTIBLE, timeo);
++		lock_sock(sk);
+ 	}
+ 	sk_clear_bit(SOCKWQ_ASYNC_WAITDATA, sk);
+ 	remove_wait_queue(sk_sleep(sk), &wait);
+@@ -80,6 +91,9 @@ static int vsock_bpf_recvmsg(struct sock *sk, struct msghdr *msg,
+ 	struct vsock_sock *vsk;
+ 	int copied;
+ 
++	if (unlikely(!len || (flags & (MSG_OOB | MSG_ERRQUEUE))))
++		return __vsock_recvmsg(sk, msg, len, flags);
++
+ 	psock = sk_psock_get(sk);
+ 	if (unlikely(!psock))
+ 		return __vsock_recvmsg(sk, msg, len, flags);
+@@ -102,10 +116,9 @@ static int vsock_bpf_recvmsg(struct sock *sk, struct msghdr *msg,
+ 	while (copied == 0) {
+ 		long timeo = sock_rcvtimeo(sk, flags & MSG_DONTWAIT);
+ 
+-		if (!vsock_msg_wait_data(sk, psock, timeo)) {
+-			copied = -EAGAIN;
++		copied = vsock_msg_wait_data(sk, psock, timeo);
++		if (copied)
+ 			break;
+-		}
+ 
+ 		if (sk_psock_queue_empty(psock)) {
+ 			release_sock(sk);
+
+---
+base-commit: 6d2cf411aba2aa0bd641b49be5b1964ac5097a50
+change-id: 20261001-kbh3-1-022-fix-v2-e3f14290641a
+
+Best regards,
+--  
+Jerome Mohm <jrmmhm.kernel@eldare.de>
 
