@@ -1,251 +1,115 @@
-From: Gaurav Suman <gauravsuman007@gmail.com>
-Date: Mon, 09 Nov 2026 22:38:26 +0000
-Subject: [PATCH 8/8] media: i2c: Add ON Semiconductor LC898123F40 lens
- autofocus driver
+From: Ciro Pedrini <ciro.pedrini@gmail.com>
+Subject: [PATCH RFC 0/2] Keyboard lighting for the Lenovo Legion Pro 7 Gen
+ 10
+Date: Mon, 09 Nov 2026 22:50:20 +0000
+Message-Id: <20261109-legion-lighting-rfc-v1-0-a87e1db8c5e3@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-sm8150-camera-v1-8-3d2e7b407516@gmail.com>
-References: <20261109-sm8150-camera-v1-0-3d2e7b407516@gmail.com>
-In-Reply-To: <20261109-sm8150-camera-v1-0-3d2e7b407516@gmail.com>
-To: Bryan O'Donoghue <bod@kernel.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Gaurav Suman <gauravsuman007@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-media@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794263921; l=7472;
- i=gauravsuman007@gmail.com; s=default; h=from:subject:message-id;
- bh=aXld3phNDaFjb9XBLc+lkcUeUGkLUlYruxuB+5QHU0Q=;
- b=sATE1weRvLYnW21DnVXmSGRhsvo6h4uhzitB7inax8Gq8QKq5U9fdfJc1M3yNAcytlgzq8jpq
- f2djMqzQY4FD5XYucDpZK18g3gLoXsVZpVgnHkZ4P75+Wn24Gkl2oe/
-X-Developer-Key: i=gauravsuman007@gmail.com; a=ed25519;
- pk=lnUC0mQfc0KyA0LE73pQ4+QWYVRaCD8Sd3XWxLZO+JY=
-X-Endpoint-Received: by B4 Relay for gauravsuman007@gmail.com/default with auth_id=1467
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQrCMBBFr1Jm7UATaUG3ggdwKy7SZJIMlKlMi
+ hRK7+7o8n3+ezs0UqYG124HpQ83XsTAnTqINUgh5GQMvvejc/0FZyp2wZlLXVkKao6Y4tm7cUh
+ 58AnMfCtl3v7VJzzuN3jZOIVGOGmQWH/BvCgKbSscxxfMPDwlhQAAAA==
+X-Change-ID: 20261109-legion-lighting-rfc-dc32165df52d
+To: Mark Pearson <mpearson-lenovo@squebb.ca>, 
+ "Derek J. Clark" <derekjohn.clark@gmail.com>, Rong Zhang <i@rong.moe>, 
+ Ike Panhc <ikepanhc@gmail.com>, Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
+Cc: Werner Sembach <wse@tuxedocomputers.com>, 
+ Aaron Erhardt <aer@tuxedocomputers.com>, 
+ platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-input@vger.kernel.org, Ciro Pedrini <ciro.pedrini@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794264688; l=4129;
+ i=ciro.pedrini@gmail.com; h=from:subject:message-id;
+ bh=NVJmw8/xUXqWPd+UKqSe+SQ9Beve4dYcB85vbCBj+pk=;
+ b=XJ/ql3sKNq4B/mbUrZoZbODwcOHmfXH4WZOHZhVvUNZQbZ1YAvAvmcHcP9302GE+oOZrB/y4m
+ g8bVpugl+cNDnNCNP7IQYhLF2x3mqF1nPOtj9nukFshTTlUec19Mrve
+X-Developer-Key: i=ciro.pedrini@gmail.com; a=ed25519;
+ pk=TOSFlPBon1xBHfTrhODxatabgwEJdgKEzG3jMoMQcbc=
+X-Endpoint-Received: by B4 Relay for ciro.pedrini@gmail.com/default with auth_id=1468
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a V4L2 lens sub-device driver for the autofocus function of the
-LC898123F40 OIS/AF controller. The controller runs firmware from its
-own flash; the lens position is a 32-bit value written to register
-0xf01a, and 0xf012 = 1 enables the servo, as in the LG G8x ThinQ
-vendor camera data. Only V4L2_CID_FOCUS_ABSOLUTE (0..2047) is
-supported; image stabilisation is not.
+The keyboard and chassis lighting of the Lenovo Legion Pro 7 16IAX10H
+(2025) has no Linux support today: on my unit nothing ever lit, because
+the keyboard controller's brightness was 0 from the factory and nothing on
+Linux exposes it. This series makes it a regular keyboard backlight.
 
-Tested on an LG G8x ThinQ: sweeping the position visibly moves focus
-on the IMX363 main camera.
+The lighting is two USB HID devices:
 
-This was written and tested with the help of an AI coding assistant
-(Claude Opus 5.5, Anthropic); I reviewed the change and the results.
+- 048d:c197, the ITE 8258 keyboard controller: the built-in keyboard,
+  plus a vendor protocol on feature report 0x07 (960 bytes) with a
+  hardware brightness (0..9, stored), the controller's own effects
+  (stored profiles), and a switch that hands the LEDs to the LampArray
+  below (also stored). Fn+Up/Down/Space are handled by the controller,
+  which reports the result on a vendor input report.
 
-Signed-off-by: Gaurav Suman <gauravsuman007@gmail.com>
+- 048d:c193 interface 1, a standard HID LampArray: 319 lamps (keys, front
+  strip, rear vents, lid logo) with positions and key usages. It shows
+  nothing until the controller hands the LEDs over, its colours are scaled
+  by the controller's brightness, and after resume from S3 the kernel
+  resets it and it comes back in autonomous mode.
+
+Patch 1 makes ideapad-laptop ignore the EC's copies of those three
+hotkeys, which reach userspace as KEY_UNKNOWN today.
+
+Patch 2 adds hid-lenovo-legion, binding both devices: one multicolor LED
+(<name>:rgb:kbd_backlight) whose brightness is the controller's, with
+brightness_hw_changed from the hotkeys, and whose colour goes to every
+lamp. lighting_mode selects "firmware" (default: the controller's effects;
+the driver leaves the LEDs alone, so a userspace tool can drive the
+LampArray over hidraw) or "color". Per-key control stays in userspace.
+
+This is an RFC because of its shape: one driver spanning two USB devices,
+paired by their USB bus. Is that acceptable, or would you rather have it
+differently, e.g. a vendor hook in the generic LampArray helper that Aaron
+and Werner are working on ("HID: generic: add LampArray support", v7),
+which on this machine would register a kbd_backlight that does nothing
+visible? The two patches touch two subsystems; I'm happy to split them.
+
+Tested on the 16IAX10H (83F5, BIOS Q7CN77WW, Spanish ISO keyboard) with
+7.2, as modules: brightness from sysfs and KDE, the hotkeys' OSD, colours
+on every zone, suspend/resume in both modes, a userspace LampArray client
+in "firmware" mode, unbinding back to hid-generic. The series is based on
+v7.4-rc2 and builds there with W=1.
+
+I worked out the protocol from the device itself (usbmon captures, the
+LampArray's attributes) and from analysing the vendor's Windows software
+for interoperability. The patches were prepared with Claude Code (Claude
+Opus 5.5), see the Assisted-by tags; I reviewed and tested them.
+checkpatch reports those tags (non-standard signature, no email address),
+and a MAINTAINERS hint for the new files that patch 2 already adds.
+
+To: Mark Pearson <mpearson-lenovo@squebb.ca>
+To: Derek J. Clark <derekjohn.clark@gmail.com>
+To: Rong Zhang <i@rong.moe>
+To: Ike Panhc <ikepanhc@gmail.com>
+To: Hans de Goede <hansg@kernel.org>
+To: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+To: Jiri Kosina <jikos@kernel.org>
+To: Benjamin Tissoires <bentiss@kernel.org>
+Cc: platform-driver-x86@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-input@vger.kernel.org
+
 ---
- MAINTAINERS                  |   7 +++
- drivers/media/i2c/Kconfig    |  10 ++++
- drivers/media/i2c/Makefile   |   1 +
- drivers/media/i2c/lc898123.c | 138 +++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 156 insertions(+)
+Ciro Pedrini (2):
+      platform/x86: ideapad-laptop: Ignore keyboard backlight hotkeys
+      HID: lenovo-legion: Add keyboard lighting driver for Legion Gen 10
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index b13cf3ad43a185802b31a89176fd85d5ba2c6d1b..ab3d82598865973241112a0e5636e3679ea8d35d 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -20984,6 +20984,13 @@ S:	Maintained
- T:	git git://linuxtv.org/media.git
- F:	drivers/media/i2c/ov9734.c
- 
-+ON SEMICONDUCTOR LC898123 LENS DRIVER
-+M:	Gaurav Suman <gauravsuman007@gmail.com>
-+L:	linux-media@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/media/i2c/onnn,lc898123f40.yaml
-+F:	drivers/media/i2c/lc898123.c
-+
- ONBOARD USB HUB DRIVER
- M:	Matthias Kaehlcke <mka@chromium.org>
- L:	linux-usb@vger.kernel.org
-diff --git a/drivers/media/i2c/Kconfig b/drivers/media/i2c/Kconfig
-index 2477db9a17fac4d5278e2428f9b840a0698e56af..fa4d26a27381bd23eafc88dd0af0facbe2fc8ac4 100644
---- a/drivers/media/i2c/Kconfig
-+++ b/drivers/media/i2c/Kconfig
-@@ -1022,6 +1022,16 @@ config VIDEO_DW9807_VCM
- 	  capability. This is designed for linear control of
- 	  voice coil motors, controlled via I2C serial interface.
- 
-+config VIDEO_LC898123
-+	tristate "LC898123F40 lens autofocus support"
-+	select V4L2_CCI_I2C
-+	help
-+	  This is a driver for the autofocus function of the ON
-+	  Semiconductor LC898123F40 optical image stabilisation and
-+	  autofocus controller, controlled via I2C serial interface.
-+	  Only the lens position is controlled; image stabilisation is
-+	  not supported. The controller runs firmware from its own flash.
-+
- endif
- 
- menu "Flash devices"
-diff --git a/drivers/media/i2c/Makefile b/drivers/media/i2c/Makefile
-index 7e714dbcbf69d55576be1abe76311c3478511201..836bf5b8a44e260567b34977b191c1f0f6e3667e 100644
---- a/drivers/media/i2c/Makefile
-+++ b/drivers/media/i2c/Makefile
-@@ -36,6 +36,7 @@ obj-$(CONFIG_VIDEO_DW9714) += dw9714.o
- obj-$(CONFIG_VIDEO_DW9719) += dw9719.o
- obj-$(CONFIG_VIDEO_DW9768) += dw9768.o
- obj-$(CONFIG_VIDEO_DW9807_VCM) += dw9807-vcm.o
-+obj-$(CONFIG_VIDEO_LC898123) += lc898123.o
- obj-$(CONFIG_VIDEO_ET8EK8) += et8ek8/
- obj-$(CONFIG_VIDEO_GC0308) += gc0308.o
- obj-$(CONFIG_VIDEO_GC0310) += gc0310.o
-diff --git a/drivers/media/i2c/lc898123.c b/drivers/media/i2c/lc898123.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..69516ad964d6035e8b2db91ad9fc9c95fa8c9b80
---- /dev/null
-+++ b/drivers/media/i2c/lc898123.c
-@@ -0,0 +1,138 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * ON Semiconductor LC898123F40 OIS/AF controller, autofocus part only
-+ * (LG G8x rear main camera). The controller runs its own factory-flashed
-+ * firmware; the lens position is a 32-bit big-endian value in 0xF01A and
-+ * 0xF012 = 1 enables the servo, as LG's CamX module data does.
-+ */
-+#include <linux/delay.h>
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/pm_runtime.h>
-+#include <linux/regulator/consumer.h>
-+#include <media/v4l2-cci.h>
-+#include <media/v4l2-ctrls.h>
-+#include <media/v4l2-device.h>
-+
-+#define LC898123_REG_SERVO	CCI_REG32(0xf012)
-+#define LC898123_REG_AF_POS	CCI_REG32(0xf01a)
-+#define LC898123_REG_OIS_CTRL	CCI_REG8(0xf100)
-+#define LC898123_POS_MAX	2047
-+#define LC898123_POS_DEFAULT	1024
-+
-+struct lc898123 {
-+	struct regmap *regmap;
-+	struct v4l2_subdev sd;
-+	struct v4l2_ctrl_handler ctrls;
-+	struct v4l2_ctrl *focus;
-+};
-+
-+static int lc898123_set_ctrl(struct v4l2_ctrl *ctrl)
-+{
-+	struct lc898123 *lc = container_of(ctrl->handler, struct lc898123, ctrls);
-+
-+	if (ctrl->id != V4L2_CID_FOCUS_ABSOLUTE)
-+		return -EINVAL;
-+	return cci_write(lc->regmap, LC898123_REG_AF_POS, ctrl->val, NULL);
-+}
-+
-+static const struct v4l2_ctrl_ops lc898123_ctrl_ops = { .s_ctrl = lc898123_set_ctrl };
-+
-+static int lc898123_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
-+{
-+	struct lc898123 *lc = container_of(sd, struct lc898123, sd);
-+	int ret = 0;
-+
-+	cci_write(lc->regmap, LC898123_REG_OIS_CTRL, 0, &ret);
-+	cci_write(lc->regmap, LC898123_REG_SERVO, 1, &ret);
-+	if (!ret)
-+		ret = __v4l2_ctrl_handler_setup(&lc->ctrls);
-+	return ret;
-+}
-+
-+static const struct v4l2_subdev_internal_ops lc898123_internal_ops = {
-+	.open = lc898123_open,
-+};
-+
-+static const struct v4l2_subdev_ops lc898123_ops = { };
-+
-+static int lc898123_probe(struct i2c_client *client)
-+{
-+	struct lc898123 *lc;
-+	u64 val;
-+	int ret;
-+
-+	lc = devm_kzalloc(&client->dev, sizeof(*lc), GFP_KERNEL);
-+	if (!lc)
-+		return -ENOMEM;
-+	ret = devm_regulator_get_enable_optional(&client->dev, "vdd");
-+	if (ret && ret != -ENODEV)
-+		return dev_err_probe(&client->dev, ret, "vdd supply\n");
-+	if (!ret)
-+		usleep_range(10000, 12000);	/* controller boot from flash */
-+
-+	lc->regmap = devm_cci_regmap_init_i2c(client, 16);
-+	if (IS_ERR(lc->regmap))
-+		return PTR_ERR(lc->regmap);
-+	ret = cci_read(lc->regmap, LC898123_REG_AF_POS, &val, NULL);
-+	if (ret)
-+		return dev_err_probe(&client->dev, ret, "no response\n");
-+	cci_write(lc->regmap, LC898123_REG_SERVO, 1, NULL);
-+
-+	v4l2_i2c_subdev_init(&lc->sd, client, &lc898123_ops);
-+	lc->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
-+	lc->sd.internal_ops = &lc898123_internal_ops;
-+	lc->sd.entity.function = MEDIA_ENT_F_LENS;
-+
-+	v4l2_ctrl_handler_init(&lc->ctrls, 1);
-+	lc->focus = v4l2_ctrl_new_std(&lc->ctrls, &lc898123_ctrl_ops,
-+				      V4L2_CID_FOCUS_ABSOLUTE, 0, LC898123_POS_MAX,
-+				      1, LC898123_POS_DEFAULT);
-+	if (lc->ctrls.error) {
-+		ret = lc->ctrls.error;
-+		goto err;
-+	}
-+	lc->sd.ctrl_handler = &lc->ctrls;
-+	ret = media_entity_pads_init(&lc->sd.entity, 0, NULL);
-+	if (ret)
-+		goto err;
-+	ret = v4l2_async_register_subdev(&lc->sd);
-+	if (ret)
-+		goto err_entity;
-+	return 0;
-+
-+err_entity:
-+	media_entity_cleanup(&lc->sd.entity);
-+err:
-+	v4l2_ctrl_handler_free(&lc->ctrls);
-+	return ret;
-+}
-+
-+static void lc898123_remove(struct i2c_client *client)
-+{
-+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-+	struct lc898123 *lc = container_of(sd, struct lc898123, sd);
-+
-+	v4l2_async_unregister_subdev(sd);
-+	media_entity_cleanup(&sd->entity);
-+	v4l2_ctrl_handler_free(&lc->ctrls);
-+}
-+
-+static const struct of_device_id lc898123_of_match[] = {
-+	{ .compatible = "onnn,lc898123f40" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, lc898123_of_match);
-+
-+static struct i2c_driver lc898123_driver = {
-+	.driver = {
-+		.name = "lc898123",
-+		.of_match_table = lc898123_of_match,
-+	},
-+	.probe = lc898123_probe,
-+	.remove = lc898123_remove,
-+};
-+module_i2c_driver(lc898123_driver);
-+
-+MODULE_DESCRIPTION("LC898123F40 autofocus driver");
-+MODULE_LICENSE("GPL");
+ .../testing/sysfs-class-led-driver-lenovo-legion   |  20 +
+ MAINTAINERS                                        |   2 +
+ drivers/hid/Kconfig                                |  13 +
+ drivers/hid/Makefile                               |   1 +
+ drivers/hid/hid-ids.h                              |   2 +
+ drivers/hid/hid-lenovo-legion.c                    | 662 +++++++++++++++++++++
+ drivers/platform/x86/lenovo/ideapad-laptop.c       |   4 +
+ 7 files changed, 704 insertions(+)
+---
+base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
+change-id: 20261109-legion-lighting-rfc-dc32165df52d
 
+Best regards,
 -- 
-2.49.1
+Ciro Pedrini <ciro.pedrini@gmail.com>
 
