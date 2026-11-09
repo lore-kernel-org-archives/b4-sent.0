@@ -1,109 +1,153 @@
 From: Ricardo Pardini <ricardo@pardini.net>
-Date: Mon, 09 Nov 2026 02:12:47 +0100
-Subject: [PATCH] phy: rockchip: naneng-combphy: fix RK3588 SATA pipe_con1
- register offset
+Date: Mon, 09 Nov 2026 02:53:47 +0100
+Subject: [PATCH net-next] dt-bindings: net: add Realtek RTL8125 PCIe
+ Ethernet
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-rk3588-combphy-sata2-6g-v1-1-e9135c91de6a@pardini.net>
-X-B4-Tracking: v=1; b=H4sIAA4e8WoC/yXMQQ6CMBBA0auQWTtJO7WEeBXjoq0jDEYgHTQQw
- t2tsnyL/zdQzsIKl2qDzB9RGYcCe6ogdWFoGeVeDGSotobOmJ/ONw2m8RWnbkUNcyCsWzQuRme
- st94TlHrK/JDlf77eDus79pzm3w72/QseLD3mewAAAA==
-X-Change-ID: 20261024-rk3588-combphy-sata2-6g-03bb30151552
-To: Vinod Koul <vkoul@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Andrew Powers-Holmes <aholmes@omnom.net>, 
- Lucas Tanure <lucas.tanure@collabora.com>
-Cc: linux-phy@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Yifeng Zhao <yifeng.zhao@rock-chips.com>, 
- Ricardo Pardini <ricardo@pardini.net>
+Message-Id: <20261109-dt-bindings-net-realtek-rtl8125-v1-1-cff4b8a8be66@pardini.net>
+X-B4-Tracking: v=1; b=H4sIAKon8WoC/yWNQQ6CQAxFr0K6tgkdIoJXMS5gpmCVVDNTDQnh7
+ gy4fPn57y2QOAonuBYLRP5JkrdmoFMB/tHpyCghM7jS1URlg8GwFw2iY0Jlw8jdZPzCaFND7ox
+ tS87Vni5VNUC2fCIPMh+FG+wH5dng/l/St3+ytz0A67oBqUu5Do0AAAA=
+X-Change-ID: 20261108-dt-bindings-net-realtek-rtl8125-991226c1733f
+To: Heiner Kallweit <hkallweit1@gmail.com>, nic_swsd@realtek.com, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, Ricardo Pardini <ricardo@pardini.net>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3342; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=jlST7yEBtCPASzfQnAPw8q1ZkwqNOjqfjEA41xMvY/o=;
- b=owEBbQGS/pANAwAKATteP+Oex+3pAcsmYgBq8R4jm7OV4UEZAdR8JkXG5eZsGJPwj1sBnGC/K
- PdtxEN5/k2JATMEAAEKAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCavEeIwAKCRA7Xj/jnsft
- 6WQWCACpnX6vXbIOFFGIjGte8vXc9/ErH0o2XWlf2nqbLvgp3rSw6bTjqbhrhX2OuywVjojnqh/
- 6khuk8OfiBwqUFDKqwYmRTGWr4BoABoM87ivNn5mXU8R6p1EugVNX5uNqfvYHzXGp1kRDtZWEcG
- DHJ2gacTWr5D86YdFw3279g8y+yn1/hXblWc/9e8TR36+3deh/cODH5k8diskaURtUdcMgCseDP
- j4W0w21u2FWlsKGALXGoTfaHR/H0NgGohEW+dYv59PxHSvnCqUOXy/Fso9MjgvVaF/tfwXWeO2k
- dPzwqX2nK64jpCTrxJDlRrSJJ+FOFvHLR3KobzP7R+bVxTuv
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4350; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=7nlD6uY1u4F0mRBPPEUBKpIYrlmDUFHO6at2lmifh/s=;
+ b=owEBbQGS/pANAwAKATteP+Oex+3pAcsmYgBq8SeuO6zb9eCJ6q8FtHOjt+bOOtHzf7xobZ4Yv
+ OGicDy6heCJATMEAAEKAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCavEnrgAKCRA7Xj/jnsft
+ 6XLNB/9Bw77ejpGM8LhzEykrl+tF+nUiOG35uGPYS4dZ8xPFx7G7xNQ2S0r2IIG3rj5RMbgcw5V
+ vQvGZ9yBx/Ua1WVRrmQR4kEHWEr9xR6JdnUMZ6h6NLqof5GwES+wDjiodYS0M49rYgeiLDfjX9J
+ tC5HcEYbyzBvBvVsv4bFdmHLACkeSC3mKh2DcLrcuH+/N1+ny7mvxjbn/YbZ9AlqWUdqj3v9Xlu
+ 40lySG5btGdRNqZJyA8H4AP+m6R4U8eE/1mTUNSWt75dtCMtHgcY1lyr2Mrnu1Hen6dHaY0lSpL
+ +6G+94wjy2dCIb1FeEcGETp6gTlsRo8FLwo3LXxOcb1fVe9S
 X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
  fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
 X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On RK3588, the sata2 PHY speed is selected by sata2_phy_spdmode in
-PHP_GRF_PHP_CON1[1:0] (offset 0x0004), with sata2_phy_rx_err in bit 2.
-rk3588_combphy_grfcfgs has pipe_con1_for_sata at offset 0x0000 though,
-so the value 0x2 (6.0 Gb/s, rx_err cleared) ends up in PHP_GRF_PHP_CON0
-and CON1 is never written.
+Add a binding for fixed/soldered Realtek RTL8125 PCIe Ethernet
+controller. As a PCIe device, its "pci10ec,8125" compatible is the
+Open Firmware spelling auto-derived from its PCI-SIG vendor/device IDs
+and is already covered by the generic dtschema pci-device.yaml. The
+compatible itself therefore needs no binding to be valid.
 
-This leaves sata2 at its 1.5 Gb/s reset value, so the link only trains
-at 1.5 Gb/s, even with a 6 Gb/s capable disk and no SControl speed
-limit. sata0 and sata1 are not affected: their speed fields are in
-PHP_GRF_PHP_CON0 and are set by pipe_con0_for_sata.
+A dedicated binding is needed because board DTs describe these
+soldered function nodes in order to attach ethernet-controller
+properties to them: a placeholder local-mac-address that the bootloader
+fills in today, and potentially nvmem-cells, phy-handle, etc. in the
+future. This binding references ethernet-controller.yaml so those
+properties are validated on the RTL8125 PCI function nodes.
 
-The register layout is described in the RK3588 TRM V1.0 Part1, section
-6.17 "PHP_GRF Register Description". Rockchip fixed this in their BSP
-kernel in 2022 by moving pipe_con1_for_sata to offset 0x0004.
-
-Tested with an mSATA SSD on sata2 (combphy2_psu). Before:
-
-  ata2: SATA link up 1.5 Gbps (SStatus 113 SControl 300)
-  Timing O_DIRECT disk reads: 374 MB in 3.01 seconds = 124.45 MB/sec
-
-After:
-
-  ata2: SATA link up 6.0 Gbps (SStatus 133 SControl 300)
-  Timing O_DIRECT disk reads: 1266 MB in 3.00 seconds = 421.78 MB/sec
-
-Fixes: a03c44277253 ("phy: rockchip: Add naneng combo phy support for RK3588")
-Cc: stable@vger.kernel.org
-Link: https://github.com/rockchip-linux/kernel/commit/2f5fe2c0bbd4fa95102aadd60da1100989103aa0
-Cc: Yifeng Zhao <yifeng.zhao@rock-chips.com>
+Suggested-by: Sebastian Reichel <sebastian.reichel@collabora.com>
 Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 ---
-This fixes the pipe_con1 GRF offset for SATA in the RK3588 combphy
-table, so sata2 links train at 6 Gb/s instead of being stuck at
-1.5 Gb/s.
+Add a DT binding for the Realtek RTL8125 2.5GbE PCIe Ethernet
+controller, so that board DTs describing soldered RTL8125 PCI function
+nodes get their ethernet-controller properties (local-mac-address,
+nvmem-cells, ...) validated.
 
-I found it when an mSATA SSD on sata2 would only link at 1.5 Gb/s,
-and traced it to Rockchip's BSP kernel, which fixed the same offset in
-2022 in a commit titled "config sata2 rate to 6G for rk3588" (linked
-in the patch). The RK3588 TRM V1.0 Part1 (section 6.17) agrees:
-sata2_phy_spdmode is in PHP_GRF_PHP_CON1, while the sata0/sata1 speed
-fields are in PHP_GRF_PHP_CON0 and already set correctly.
+This was previously patch 1/7 of the series "describe RTL8125 PCIe
+NICs on Rockchip boards (and add DT binding)", up to v5 [1]. Per
+Heiko's review [2] it is now sent on its own via net-next; the board
+DT patches continue separately in that series (v6+). There is no
+build-time dependency between the two: "pci10ec,8125" is already
+covered by dtschema's pci-device.yaml, so the board DTs validate
+without this binding.
 
-The misplaced write lands in PHP_GRF_PHP_CON0[2:0], which are the PCIe
-link reset grant bits, and turns on the one for pcie3x2 whenever a
-combphy is put in SATA mode. I don't know of any effect from that, but
-this patch stops it too.
+The need for the binding (and for the compatible at all, since the
+kernel binds these nodes by their reg) was discussed with Heiner in
+v3 [3] and v4 [4]; the outcome, per Krzysztof, is reflected in the
+commit message.
 
-Only sata2 was tested. U-Boot has the same table and the same problem;
-a fix is being sent there separately.
+The patch is unchanged since v5 1/7, apart from the rebase onto
+net-next; Rob's Reviewed-by from v5 [5] is carried over.
+
+[1] https://patch.msgid.link/20260910-rk3588-dts-rtl-eth-describe-dt-alias-v5-0-c1b9e5f10cd6@pardini.net
+[2] https://lore.kernel.org/all/1971659.CQOukoFCf9@phil/
+[3] https://lore.kernel.org/all/b7cc8eba-ff6e-417d-8e74-b3bb24e08a26@gmail.com/T/#u
+[4] https://lore.kernel.org/all/876a38f8-75ea-4b32-bb65-216cb3adb436@gmail.com/T/#u
+[5] https://lore.kernel.org/all/178976078089.1640411.4176382061491076376.robh@kernel.org/
 ---
- drivers/phy/rockchip/phy-rockchip-naneng-combphy.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ .../devicetree/bindings/net/realtek,rtl8125.yaml   | 43 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 2 files changed, 44 insertions(+)
 
-diff --git a/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c b/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
-index 3102a99128f6..c469222dba8b 100644
---- a/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
-+++ b/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
-@@ -1395,7 +1395,7 @@ static const struct rockchip_combphy_grfcfg rk3588_combphy_grfcfgs = {
- 	.con3_for_sata		= { 0x000c, 15, 0, 0x00, 0x0407 },
- 	/* pipe-grf */
- 	.pipe_con0_for_sata	= { 0x0000, 11, 5, 0x00, 0x22 },
--	.pipe_con1_for_sata	= { 0x0000, 2, 0, 0x00, 0x2 },
-+	.pipe_con1_for_sata	= { 0x0004, 2, 0, 0x00, 0x2 },
- 	.pipe_pcie1l0_sel	= { 0x0100, 0, 0, 0x01, 0x0 },
- 	.pipe_pcie1l1_sel	= { 0x0100, 1, 1, 0x01, 0x0 },
- };
+diff --git a/Documentation/devicetree/bindings/net/realtek,rtl8125.yaml b/Documentation/devicetree/bindings/net/realtek,rtl8125.yaml
+new file mode 100644
+index 000000000000..eee13fbc1e6a
+--- /dev/null
++++ b/Documentation/devicetree/bindings/net/realtek,rtl8125.yaml
+@@ -0,0 +1,43 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/realtek,rtl8125.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Realtek RTL8125 2.5 Gigabit PCIe Ethernet Controller
++
++maintainers:
++  - Heiner Kallweit <hkallweit1@gmail.com>
++
++description:
++  The Realtek RTL8125 is a 2.5GBASE-T Ethernet controller with a PCIe host
++  interface.
++
++allOf:
++  - $ref: ethernet-controller.yaml#
++
++properties:
++  compatible:
++    const: pci10ec,8125
++
++  reg:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    pcie {
++        #address-cells = <3>;
++        #size-cells = <2>;
++
++        ethernet@0,0 {
++            compatible = "pci10ec,8125";
++            reg = <0x10000 0 0 0 0>;
++            local-mac-address = [00 00 00 00 00 00];
++        };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index fe23913b1e43..afe9bff92936 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -134,6 +134,7 @@ M:	Heiner Kallweit <hkallweit1@gmail.com>
+ M:	nic_swsd@realtek.com
+ L:	netdev@vger.kernel.org
+ S:	Maintained
++F:	Documentation/devicetree/bindings/net/realtek,rtl8125.yaml
+ F:	drivers/net/ethernet/realtek/r8169*
+ 
+ 8250/16?50 (AND CLONE UARTS) SERIAL DRIVER
 
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261024-rk3588-combphy-sata2-6g-03bb30151552
+base-commit: fa5196392691051963726787944db872420dfa75
+change-id: 20261108-dt-bindings-net-realtek-rtl8125-991226c1733f
 
 Best regards,
 --  
