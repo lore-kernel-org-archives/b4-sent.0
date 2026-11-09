@@ -1,170 +1,142 @@
-From: Martin Belanger <martin.nvme.dev@gmail.com>
-Date: Mon, 09 Nov 2026 14:04:54 -0500
-Subject: [PATCH 2/2] nvme-tcp: consume TLS records without application data
+From: Jerome Mohm <jrmmhm.kernel@eldare.de>
+Date: Mon, 09 Nov 2026 20:39:24 +0100
+Subject: [PATCH net v4] vsock/virtio: clear vqs[] to avoid a UAF on a
+ failed PM restore
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-nvme-tcp-live-ctrlrec-v1-2-47ba61670e65@gmail.com>
-References: <20261109-nvme-tcp-live-ctrlrec-v1-0-47ba61670e65@gmail.com>
-In-Reply-To: <20261109-nvme-tcp-live-ctrlrec-v1-0-47ba61670e65@gmail.com>
-To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
- Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
- Hannes Reinecke <hare@kernel.org>
-Cc: Martin Belanger <martin.nvme.dev@gmail.com>, 
- linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Martin Belanger <martin.belanger@dell.com>, stable@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794251097; l=4643;
- i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
- bh=Cd79eqDVxaXiCrNFtCelJMTLFVctD6vS8rdx4/D7gB8=;
- b=QSToNQCLWHhIuqtqk68fhuSC59RXxcR+UQ0FxGYxYlvVUBu+tFZfXe6eRd6RNlTeNV56bkHLB
- dNV8LD/mtMoCI6KuYbXMtjXEqumExVfopwXN6gyP52kumoEKMZJCpde
-X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
- pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
-X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
+Message-Id: <20261109-vsock-restore-uaf-send-v4-1-1df8dfb5d5de@eldare.de>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XNQW6DMBAF0KtEXsfVjAGbZNV7RFkYZty4iaCyw
+ UqEuHsNXRRFirL8oz/vTyJy8BzFcTeJwMlH33c5lPudaC+2+2LpKWehQGkEQJli315l4Dj0geV
+ onYzckUTXmuKgncWGRH7+Cez8fYVPouNBnP+OcWy+uR0Wcqld/OI81vmEa/ndUkKJsiKrwRkwF
+ ehPvpEN/EG8jiS1YVT9klGZ0aayljRZg+UzU/wzCOVLpsgMaSDQZV03ldky8zz/AjpYukFhAQA
+ A
+X-Change-ID: 20261001-vsock-restore-uaf-send-1fc7396fa1bd
+To: Stefan Hajnoczi <stefanha@redhat.com>, 
+ Stefano Garzarella <sgarzare@redhat.com>, 
+ Bobby Eshleman <bobbyeshleman@meta.com>, 
+ "Michael S. Tsirkin" <mst@redhat.com>, Jason Wang <jasowangio@gmail.com>, 
+ =?utf-8?q?Eugenio_P=C3=A9rez?= <eperezma@redhat.com>, 
+ Xuan Zhuo <xuanzhuo@linux.alibaba.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: virtualization@lists.linux.dev, kvm@vger.kernel.org, 
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Jerome Mohm <jrmmhm.kernel@eldare.de>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794253170; l=4147;
+ i=jrmmhm.kernel@eldare.de; s=20260928; h=from:subject:message-id;
+ bh=5YFXaOW8KllonSsjF6SOnB8HkwciO73pZwsUjT72k8E=;
+ b=o5Ui0yGmlrlsv7s3vDR3Ic3XgYduWqet+IqPcVhgBKc2puHQzgL+jxfeHT/pgfs6jWrU82E9J
+ /7KX0+ab2xgBwU5CsrABnE3TPB51T8iCBoYthWQ/phU9iNUse8McHiX
+X-Developer-Key: i=jrmmhm.kernel@eldare.de; a=ed25519;
+ pk=xRCxNXbnNottaHpmvPDAOC9NuMJxqKo24abkehKRVlo=
+X-Endpoint-Received: by B4 Relay for jrmmhm.kernel@eldare.de/20260928 with auth_id=1075
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Martin Belanger <martin.belanger@dell.com>
+virtio_vsock_vqs_del() frees the virtqueues but leaves vsock->vqs[]
+pointing at them. If virtio_vsock_restore() then fails, the driver
+stays bound with a dangling vqs[], and the next freeze or unbind
+passes a freed virtqueue to virtqueue_detach_unused_buf():
 
-A peer may send a TLS record without application data at any time
-after the handshake: a NewSessionTicket, a KeyUpdate or an alert.
-tls_sw_read_sock() cannot pass such a record to nvme_tcp_recv_skb().
-It returns -EINVAL and leaves the record at the head of the receive
-queue. nvme_tcp_try_recv() then starts error recovery, and the
-controller reconnects.
+  BUG: KASAN: slab-use-after-free in virtqueue_detach_unused_buf
+   virtio_vsock_vqs_del (net/vmw_vsock/virtio_transport.c:785)
+   virtio_vsock_remove
+  Freed by task ...:
+   vp_del_vqs
+   virtio_vsock_freeze
 
-TLS 1.3 allows a server to send a NewSessionTicket at any time after
-the handshake (RFC 8446, section 4.6.1). Alerts can also arrive at any
-time.
+Clear vqs[] after del_vqs() and when virtio_find_vqs() fails. Return
+early from virtio_vsock_vqs_del() when vqs[] is empty: the detach
+loops would pass NULL to virtqueue_detach_unused_buf(), and a second
+del_vqs() would free virtio-mmio's IRQ again, which only WARNs in
+free_irq() ("Trying to free already-free IRQ").
 
-On -EINVAL, read the record with recvmsg(), which reports the record
-type. Discard handshake messages other than KeyUpdate. Log alerts, and
-fail the queue on a fatal alert. Fail the queue on a KeyUpdate, which
-nvme-tcp cannot answer, and on any other record type. recvmsg() takes
-the socket lock, so release it around the read.
+Found with the help of Anthropic's Claude and reproduced on virtio-pci
+and virtio-mmio by failing the restore with failslab, without other
+kernel changes; the virtio-mmio WARN was found by the netdev Sashiko
+review and reproduced with v1 of this patch. With this patch neither
+report appears on virtio-pci or virtio-mmio guests, and the vsock
+vmtest.sh single-VM tests pass. A find_vqs() failure after some
+virtqueues were set up was not exercised.
 
-svc_tcp_recvfrom() in sunrpc handles -EINVAL from read_sock() the same
-way.
-
-Fixes: be8e82caa685 ("nvme-tcp: enable TLS handshake upcall")
+Fixes: bd50c5dc182b ("vsock/virtio: add support for device suspend/resume")
 Cc: stable@vger.kernel.org
-Signed-off-by: Martin Belanger <martin.belanger@dell.com>
+Signed-off-by: Jerome Mohm <jrmmhm.kernel@eldare.de>
 ---
- drivers/nvme/host/tcp.c | 86 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 86 insertions(+)
+Changes in v4:
+- Say why the early return is needed: the detach loops would pass NULL
+  to virtqueue_detach_unused_buf() (answering Stefano).
+- Say in the message and the comment that freeing virtio-mmio's IRQ
+  again only WARNs (Stefano).
+- Move the send queue purge before virtio_reset_device() (Stefano).
+- Message: the use-after-free also reproduces on virtio-mmio.
+- Rebase onto current net; rebuilt and retested on virtio-pci and
+  virtio-mmio, and the vmtest.sh single-VM tests rerun on this version.
+  The moved purge ran with an empty send queue only; the ns_* tests of
+  vmtest.sh were not run (they need root on the host). The reproducers
+  are available on request.
+- Link to v3: https://patch.msgid.link/20261104-vsock-restore-uaf-send-v3-1-d60d06488b57@eldare.de
+---
+ net/vmw_vsock/virtio_transport.c | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index bf71e6f6a6ef..d460273a328a 100644
---- a/drivers/nvme/host/tcp.c
-+++ b/drivers/nvme/host/tcp.c
-@@ -1444,6 +1444,8 @@ static int nvme_tcp_try_send(struct nvme_tcp_queue *queue)
- 	return ret;
- }
+diff --git a/net/vmw_vsock/virtio_transport.c b/net/vmw_vsock/virtio_transport.c
+index 4f9aa9c4c3aa..cf63bc99f3cc 100644
+--- a/net/vmw_vsock/virtio_transport.c
++++ b/net/vmw_vsock/virtio_transport.c
+@@ -714,8 +714,10 @@ static int virtio_vsock_vqs_init(struct virtio_vsock *vsock)
+ 	atomic_set(&vsock->queued_replies, 0);
  
-+static int nvme_tcp_recv_tls_record(struct nvme_tcp_queue *queue);
-+
- static int nvme_tcp_try_recv(struct nvme_tcp_queue *queue)
- {
- 	struct socket *sock = queue->sock;
-@@ -1456,6 +1458,18 @@ static int nvme_tcp_try_recv(struct nvme_tcp_queue *queue)
- 	lock_sock(sk);
- 	queue->nr_cqe = 0;
- 	consumed = sock->ops->read_sock(sk, &rd_desc, nvme_tcp_recv_skb);
-+	/*
-+	 * kTLS cannot pass a TLS record without application data to
-+	 * nvme_tcp_recv_skb(). It returns -EINVAL and leaves the record at
-+	 * the head of the receive queue. recvmsg() takes the socket lock,
-+	 * so read the record without it.
-+	 */
-+	if (unlikely(consumed == -EINVAL && nvme_tcp_queue_tls(queue) &&
-+		     queue->rd_enabled)) {
-+		release_sock(sk);
-+		consumed = nvme_tcp_recv_tls_record(queue);
-+		lock_sock(sk);
-+	}
- 	/*
- 	 * nvme_tcp_recv_skb() handles its own errors, so a queue that is
- 	 * still enabled failed inside read_sock(). Handle it before
-@@ -1659,6 +1673,78 @@ static int nvme_tcp_drain_tls_record(struct nvme_tcp_queue *queue,
- 	return drained;
- }
- 
-+/*
-+ * Read the TLS record that read_sock() could not pass to
-+ * nvme_tcp_recv_skb(). The caller must not hold the socket lock.
-+ *
-+ * A KeyUpdate needs new keys that nothing here can supply. Other handshake
-+ * messages, such as a NewSessionTicket, are discarded.
-+ *
-+ * Returns the bytes consumed, or a negative errno if the connection cannot
-+ * continue.
-+ */
-+static int nvme_tcp_recv_tls_record(struct nvme_tcp_queue *queue)
-+{
-+	u8 buf[NVME_TCP_TLS_REC_CHUNK];
-+	char cbuf[CMSG_LEN(sizeof(char))] = {};
-+	struct kvec iov = {
-+		.iov_base = buf,
-+		.iov_len = sizeof(buf),
-+	};
-+	struct msghdr msg = {
-+		.msg_control = cbuf,
-+		.msg_controllen = sizeof(cbuf),
-+	};
-+	int len, ret;
-+	u8 ctype;
-+
-+	len = kernel_recvmsg(queue->sock, &msg, &iov, 1, sizeof(buf),
-+			     MSG_DONTWAIT);
-+	if (len <= 0) {
-+		dev_err(queue->ctrl->ctrl.device,
-+			"queue %d: failed to read TLS record: %d\n",
-+			nvme_tcp_queue_id(queue), len);
-+		goto fail;
-+	}
-+
-+	ctype = tls_get_record_type(queue->sock->sk, (struct cmsghdr *)cbuf);
-+	switch (ctype) {
-+	case TLS_RECORD_TYPE_HANDSHAKE:
-+		if (buf[0] == TLS_HANDSHAKE_KEYUPDATE) {
-+			dev_err(queue->ctrl->ctrl.device,
-+				"queue %d: peer sent a TLS KeyUpdate, which is not supported\n",
-+				nvme_tcp_queue_id(queue));
-+			return -EKEYEXPIRED;
-+		}
-+		break;
-+	case TLS_RECORD_TYPE_ALERT:
-+		ret = nvme_tcp_recv_tls_alert(queue, &msg, len);
-+		if (ret)
-+			return ret;
-+		break;
-+	default:
-+		dev_err(queue->ctrl->ctrl.device,
-+			"queue %d: unexpected TLS record %u\n",
-+			nvme_tcp_queue_id(queue), ctype);
-+		return -EPROTO;
-+	}
-+
-+	ret = nvme_tcp_drain_tls_record(queue, &msg, MSG_DONTWAIT);
+ 	ret = virtio_find_vqs(vdev, VSOCK_VQ_MAX, vsock->vqs, vqs_info, NULL);
+-	if (ret < 0)
 +	if (ret < 0) {
-+		len = ret;
-+		goto fail;
++		memset(vsock->vqs, 0, sizeof(vsock->vqs));
+ 		return ret;
 +	}
+ 
+ 	virtio_vsock_update_guest_cid(vsock);
+ 
+@@ -776,11 +778,19 @@ static void virtio_vsock_vqs_del(struct virtio_vsock *vsock)
+ 	vsock->event_run = false;
+ 	mutex_unlock(&vsock->event_lock);
+ 
++	virtio_vsock_skb_queue_purge(&vsock->send_pkt_queue);
 +
-+	return len + ret;
+ 	/* Flush all device writes and interrupts, device will not use any
+ 	 * more buffers.
+ 	 */
+ 	virtio_reset_device(vdev);
+ 
++	/* After a failed restore no virtqueues are live, and a second
++	 * del_vqs() would free virtio-mmio's IRQ again (a WARN in free_irq()).
++	 */
++	if (!vsock->vqs[VSOCK_VQ_RX])
++		return;
 +
-+fail:
-+	/* read_sock() left a whole record, so none of it can be missing */
-+	if (len == -EAGAIN)
-+		return -EPROTO;
+ 	mutex_lock(&vsock->rx_lock);
+ 	while ((skb = virtqueue_detach_unused_buf(vsock->vqs[VSOCK_VQ_RX])))
+ 		kfree_skb(skb);
+@@ -791,10 +801,10 @@ static void virtio_vsock_vqs_del(struct virtio_vsock *vsock)
+ 		kfree_skb(skb);
+ 	mutex_unlock(&vsock->tx_lock);
+ 
+-	virtio_vsock_skb_queue_purge(&vsock->send_pkt_queue);
+-
+ 	/* Delete virtqueues and flush outstanding callbacks if any */
+ 	vdev->config->del_vqs(vdev);
 +
-+	return len ? : -ECONNRESET;
-+}
-+
- /*
-  * Discard a TLS record that arrived in place of the ICResp. A peer may send
-  * a NewSessionTicket as soon as the handshake completes.
++	memset(vsock->vqs, 0, sizeof(vsock->vqs));
+ }
+ 
+ static int virtio_vsock_probe(struct virtio_device *vdev)
 
--- 
-2.53.0
+---
+base-commit: 1d5e2c57e9ffc134e14b3f837c8d7c53b508bd22
+change-id: 20261001-vsock-restore-uaf-send-1fc7396fa1bd
+
+Best regards,
+--  
+Jerome Mohm <jrmmhm.kernel@eldare.de>
 
