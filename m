@@ -1,76 +1,117 @@
-From: Kohei Otsuka <kohei@spacemachines.com>
-Date: Mon, 09 Nov 2026 13:55:06 +1100
-Subject: [PATCH v2 2/2] serial: 8250_of: drop RS-485 RTS on Microchip
- Core16550
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Mon, 09 Nov 2026 11:55:12 +0900
+Subject: [PATCH 6.6.y] jbd2: don't advance j_fc_off before the buffer is
+ recorded
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-core16550-rs485-v2-2-a15933c7b907@spacemachines.com>
-References: <20261109-core16550-rs485-v2-0-a15933c7b907@spacemachines.com>
-In-Reply-To: <20261109-core16550-rs485-v2-0-a15933c7b907@spacemachines.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Lubomir Rintel <lkundrak@v3.sk>, 
- devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- conor.dooley@microchip.com, Kohei Otsuka <kohei@spacemachines.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794192905; l=2135;
- i=kohei@spacemachines.com; s=20261103; h=from:subject:message-id;
- bh=zB2zzCjY5jGdBW3bz8SbL+SIiy1mkD1eN/4HcK9U8ig=;
- b=ikHWkWqXRfD6U4iTaFAtEZY2wJSVCDiHhxCGbkCs0FjWMkuRay/J+3i1gyFsThiAEzWWoDevG
- ZTYnB7S2hdYCfgm7NuIAq/SiYzTjpYUqggc+E3W/3EEnjZKWRiG6v6C
-X-Developer-Key: i=kohei@spacemachines.com; a=ed25519;
- pk=1kit/vmX5JiLGH9NPcqlvT55ISWaLmNipdL5VrriRt0=
-X-Endpoint-Received: by B4 Relay for kohei@spacemachines.com/20261103 with auth_id=1385
+Message-Id: <20261109-jbd2-fcoff-6-6-y-v1-1-4ec879f3b004@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAA828WoC/x2MQQ5AMBAAvyJ7to1Ws8JXxIF2yzogbSJE/F0jc
+ 5rDzAOJo3CCrngg8ilJ9i2LLgtwy7jNjOKzg6kMaV21uE7eYHB7CEiZG3VDvibnrJ0IcnZEDnL
+ 9yx5IkbpheN8PDeEmAWkAAAA=
+To: stable@vger.kernel.org
+Cc: stable@kernel.org, Yu Junzhe <junzheyu1@gmail.com>, 
+ Daejun Park <daejun7.park@samsung.com>, Jan Kara <jack@suse.cz>, 
+ Theodore Ts'o <tytso@mit.edu>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794192911; l=3811;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=Uu0LmmE04GoLGajdvXMq0EfJHZxjCivUpI5io4+iJvA=;
+ b=q+xpgXV54Q7rBbSBqWi0bs3UY7UhttXJBrz946Mz+MRG0nxt8dB40JLNc9MAhP4jv5ohTufAe
+ ZvW37qmgzLwBzYM73zsBkg3go9rFfoUCTItobwXH8HgniJe33a5Dqqd
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Core16550, a 16550-compatible UART for Microchip FPGAs, interrupts on
-THRE but not on TEMT. When the last character moves from the FIFO into
-the shift register, the THRE interrupt calls __stop_tx(), which finds
-TEMT clear and, without UART_CAP_NOTEMT, returns to wait for a TEMT
-interrupt that never comes. RTS, and with it the RS-485 driver enable,
-then stays asserted after the frame, and receive interrupts, disabled
-for the half-duplex transmission, stay off.
+commit 9f359c031885bb50add7d23c7a5a0e9755b134c9 upstream.
 
-Set UART_CAP_NOTEMT for nodes compatible with
-"microchip,core16550-rtl-v3", so em485 drops RTS from its stop timer
-one frame time (plus 1/7) after THRE, as it does for DesignWare UARTs.
+jbd2_fc_get_buf() increments journal->j_fc_off before jbd2_journal_bmap()
+and __getblk() have had a chance to fail.  When either does, the slot
+j_fc_wbuf[fc_off] is never assigned, but j_fc_off already counts it.
 
-Set UART_CAP_FIFO as well: with the capabilities already non-zero,
-serial8250_do_startup() no longer fills in the PORT_16550A default,
-and without UART_CAP_FIFO serial8250_clear_fifos() does nothing, so
-the RX FIFO is not flushed at the end of a half-duplex transmission.
+ext4 then fails the fast commit and falls back, and the fallback path
+reaches jbd2_fc_release_bufs() via ext4_fc_commit ->
+jbd2_fc_end_commit_fallback -> __jbd2_fc_end_commit -> ext4_fc_cleanup.
+That walks down from j_fc_off - 1 and put_bh()es every slot until it
+sees NULL, so it also touches the slot that was never written.
+j_fc_wbuf comes from a plain kmalloc() and is never zeroed, so a slot
+used for the first time holds uninitialised heap data.
 
-Link: https://github.com/linux4microchip/meta-mchp/issues/5
-Signed-off-by: Kohei Otsuka <kohei@spacemachines.com>
+Advance j_fc_off only after the buffer head has been stored.  That
+restores the invariant that j_fc_off covers exactly the filled slots,
+which is what jbd2_fc_release_bufs() relies on: the live buffers of the
+current fast commit sit above the NULLs the previous one released, so
+stopping at the first NULL is correct.
+
+Reproduced on a KASAN kernel with an ext4 fast_commit filesystem on a
+loop device, truncating the backing file under the live mount so that
+only the journal's fast-commit region falls past the end of the device.
+__getblk() then fails for the first fast-commit block while the rest of
+the journal is still addressable, so the journal is not aborted and the
+fast commit reaches the fallback path.  j_fc_wbuf was poisoned to make
+the read of the never-written slot visible:
+
+  BUG: KASAN: wild-memory-access in jbd2_fc_release_bufs+0x6b/0xd0
+  Write of size 4 at addr 5a5a5a5a5a5a5ab2 by task sync/961
+   jbd2_fc_release_bufs+0x6b/0xd0
+   ext4_fc_cleanup+0x97/0x830
+   __jbd2_fc_end_commit+0x37/0xc0
+   ext4_fc_commit+0x524/0x560
+   ext4_sync_file+0x3c4/0x4b0
+   __x64_sys_fsync+0x20/0x30
+
+With this patch the same run leaves j_fc_off at 0 across repeated
+__getblk() failures and completes cleanly.
+
+[ Context: in 6.6.y, jbd2_fc_get_buf() still advances j_fc_off inside
+  the if/else bounds check, so the increment is removed from there.
+  The change is otherwise the same as upstream. ]
+
+Fixes: ff780b91efe9 ("jbd2: add fast commit machinery")
+Cc: stable@kernel.org
+Reported-by: Yu Junzhe <junzheyu1@gmail.com>
+Closes: https://lore.kernel.org/linux-ext4/7e4b109d-64c3-444f-a5dc-93c2ca4576cc@gmail.com/
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Link: https://patch.msgid.link/20260819060939epcms2p37bb8589b2f8a52a2b14bef38fadcf69d@epcms2p3
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- drivers/tty/serial/8250/8250_of.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Tested on 6.6.162 with KASAN and slub_debug=P, using the reproducer
+from the upstream commit. Without the patch the second fsync hits a
+KASAN wild-memory-access and a GPF in jbd2_fc_release_bufs(). With
+the patch all six fsyncs complete cleanly.
+---
+ fs/jbd2/journal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/tty/serial/8250/8250_of.c b/drivers/tty/serial/8250/8250_of.c
-index b41ca604083f..e23539b2fda3 100644
---- a/drivers/tty/serial/8250/8250_of.c
-+++ b/drivers/tty/serial/8250/8250_of.c
-@@ -278,6 +278,16 @@ static int of_platform_serial_probe(struct platform_device *ofdev)
- 	if (port8250.port.fifosize)
- 		port8250.capabilities = UART_CAP_FIFO;
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index e0d82f83ab..ad3f522101 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -869,7 +869,6 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
+ 	if (journal->j_fc_off + journal->j_fc_first < journal->j_fc_last) {
+ 		fc_off = journal->j_fc_off;
+ 		blocknr = journal->j_fc_first + fc_off;
+-		journal->j_fc_off++;
+ 	} else {
+ 		ret = -EINVAL;
+ 	}
+@@ -887,6 +886,7 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
  
-+	/*
-+	 * Core16550 has no TEMT interrupt: without UART_CAP_NOTEMT the em485
-+	 * code waits for one after the last THRE interrupt and never drops RTS.
-+	 * Set UART_CAP_FIFO too, because a non-zero value stops
-+	 * serial8250_do_startup() filling in the PORT_16550A default.
-+	 */
-+	if (of_device_is_compatible(ofdev->dev.of_node,
-+				    "microchip,core16550-rtl-v3"))
-+		port8250.capabilities |= UART_CAP_FIFO | UART_CAP_NOTEMT;
-+
- 	/* Check for TX FIFO threshold & set tx_loadsz */
- 	if ((of_property_read_u32(ofdev->dev.of_node, "tx-threshold",
- 				  &tx_threshold) == 0) &&
+ 
+ 	journal->j_fc_wbuf[fc_off] = bh;
++	journal->j_fc_off++;
+ 
+ 	*bh_out = bh;
+ 
 
+---
+base-commit: 5139929c698c273e07cb0635732f6a918a7b8e78
+change-id: 20261109-jbd2-fcoff-6-6-y-176d36cc44b6
+
+Best regards,
 -- 
-2.53.0
+Daejun Park <daejun7.park@samsung.com>
 
