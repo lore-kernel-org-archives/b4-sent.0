@@ -1,11 +1,11 @@
 From: Ricardo Pardini <ricardo@pardini.net>
-Date: Mon, 09 Nov 2026 03:57:59 +0100
-Subject: [PATCH 2/3] ata: ahci: return the last LBA from emulated READ
- CAPACITY
+Date: Mon, 09 Nov 2026 03:58:00 +0100
+Subject: [PATCH 3/3] phy: rockchip: naneng-combphy: fix RK3588 SATA
+ pipe_con1 register offset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-rk3588-sata-fixes-v2027-01-v1-2-e54ca8e68f18@pardini.net>
+Message-Id: <20261109-rk3588-sata-fixes-v2027-01-v1-3-e54ca8e68f18@pardini.net>
 References: <20261109-rk3588-sata-fixes-v2027-01-v1-0-e54ca8e68f18@pardini.net>
 In-Reply-To: <20261109-rk3588-sata-fixes-v2027-01-v1-0-e54ca8e68f18@pardini.net>
 To: u-boot@lists.u-boot-project.org, Simon Glass <sjg@chromium.org>, 
@@ -14,68 +14,63 @@ To: u-boot@lists.u-boot-project.org, Simon Glass <sjg@chromium.org>,
 Cc: Tom Rini <trini@konsulko.com>, Peng Fan <peng.fan@nxp.com>, 
  Ricardo Pardini <ricardo@pardini.net>, Quentin Schulz <u-boot@0leil.net>, 
  Jonas Karlman <jonas@kwiboo.se>, Heiko Stuebner <heiko@sntech.de>, 
- Julius Lehmann <lehmanju@devpi.de>
+ Yifeng Zhao <yifeng.zhao@rock-chips.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1753; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=TpqtpTeordKsp8pC6pBN2hKI/3qXUwYzN0QB8smmshU=;
- b=owGbwMvMwMVoHWf/eN7xty8ZT6slMWR9NNu+MUzaKeyqY4/lKqnCsARzPbsXM5y/P0+f2Pgk+
- omtrPGuTkZjFgZGLgZZMUWWNRLKPN/Wvzp1x6NjMswgViaQKQxcnAIwETkV9v8RZfaXJnP6K6ed
- 2rFq+xXW+4uNGK9z3jPxWf8pZaeK4CW3L27Jd6O91pY9qTgSr+xTE/gp8YzH6ov/F4jMvzq1OMt
- VdvJPjjoR/a+yche+a71U+1RifHXj3eLdYqEqk/RW+9Y7rr91IdmzuLUn6czRTYsyLDcHp0UJ60
- 2vn8JxtszGc6Nwxf+X34yDeyYKGTPKvZzq8Mtycb6JWx5H/UX+LK/PevoyL1SMWm2mHgwv4Iksb
- baJy7gRLmSg8eV2WejtVKGm4E0O9ZHvWB+b5O0+ws0tN2HF7KICma8pXapN4ZnPFDWr23iZ5kia
- RG+If21lGiz6bo6Dc8Bj6aOTU9+6vf2/2bWIMfMOR8l5AA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2126; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=Q3Cve4zvVjlX4+VTW+xM72LErIs4mz3VhCpxoPE6y/4=;
+ b=owEBbQGS/pANAwAKATteP+Oex+3pAcsmYgBq8Ta3M7L0/Nl8Tc5vBtggHZLTrmXK/So4jVgWX
+ mdPhxH+Ac2JATMEAAEKAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCavE2twAKCRA7Xj/jnsft
+ 6bEyB/4sTpXpmQEwMi8gaXfvQf53SrWReltxgZ7peZ+wKfSXW7YtOlVnuRLRPTP2a2otGDI/oQP
+ Uf1GMjuDwAmt19N/7r22Uz89D4gs1BLNIpwXfm4TFZt9DDkXlSgnbCYbu4c06t5aaAjgz2N+1sd
+ smbzYfCjncXzl2rNwPo6xk3PBOB8YmkfY2H1NjWu75QBh4JyXqqjB9mhvqViHfo2zW3sGDJ2xD1
+ JxtEiXVDNSMEAL+H5CGskw9ESLwQ7842ce+LJEnU95vDrAtHunkLe0nz9olfNZFViYH6p/i8CaI
+ zGK/U4uYhTjho6tVAXxMHL2TDlNwPUCHbRunCPkiAM+ZdG6i
 X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
  fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
 X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SCSI READ CAPACITY returns the address of the last block, and since
-commit 5f7c06bdc3c6 ("scsi: fix disk capacity too small by one sector")
-scsi_read_capacity() adds one to get the block count. The AHCI emulation
-returns the sector count instead, so AHCI disks are now reported one
-sector too large.
+On RK3588, the sata2 PHY speed is selected by sata2_phy_spdmode in
+PHP_GRF_PHP_CON1[1:0] (offset 0x0004), with sata2_phy_rx_err in bit 2.
+rk3588_combphy_grfcfgs has pipe_con1_for_sata at offset 0x0000 though,
+so the value 0x2 (6.0 Gb/s, rx_err cleared) ends up in PHP_GRF_PHP_CON0
+and CON1 is never written.
 
-Reading that non-existent sector ends in a 10 s AHCI timeout. With
-"ums 0 scsi 0" this happens as soon as the host looks for the backup
-GPT, and UMS exits.
+This leaves sata2 at its 1.5 Gb/s reset value, so the link only trains
+at 1.5 Gb/s, even with a 6 Gb/s capable disk. sata0 and sata1 are not
+affected: their speed fields are in PHP_GRF_PHP_CON0 and are set by
+pipe_con0_for_sata.
 
-Return n_sectors - 1 from both handlers, keeping the READ CAPACITY (10)
-clamp.
+The register layout is described in the RK3588 TRM V1.0 Part1, section
+6.17 "PHP_GRF Register Description". Rockchip fixed this in their BSP
+kernel in 2022 by moving pipe_con1_for_sata to offset 0x0004; the same
+fix was sent for Linux.
 
-Fixes: 5f7c06bdc3c6 ("scsi: fix disk capacity too small by one sector")
-Cc: Julius Lehmann <lehmanju@devpi.de>
+Tested with an mSATA SSD on sata2 (combphy2_psu): PxSSTS (0xfe230128)
+reads 0x113 (1.5 Gb/s) before and 0x133 (6.0 Gb/s) after.
+
+Fixes: c5b4a012bca8 ("phy: rockchip: naneng-combphy: Support rk3588")
+Link: https://github.com/rockchip-linux/kernel/commit/2f5fe2c0bbd4fa95102aadd60da1100989103aa0
+Link: https://patch.msgid.link/20261109-rk3588-combphy-sata2-6g-v1-1-e9135c91de6a@pardini.net
+Cc: Yifeng Zhao <yifeng.zhao@rock-chips.com>
 Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
 ---
- drivers/ata/ahci.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+ drivers/phy/rockchip/phy-rockchip-naneng-combphy.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/ata/ahci.c b/drivers/ata/ahci.c
-index 38e953ee79c..c806ee55d70 100644
---- a/drivers/ata/ahci.c
-+++ b/drivers/ata/ahci.c
-@@ -759,8 +759,9 @@ static int ata_scsiop_read_capacity10(struct ahci_uc_priv *uc_priv,
- 		return -EPERM;
- 	}
- 
--	cap64 = ata_id_n_sectors(uc_priv->ataid[pccb->target]);
--	if (cap64 > 0x100000000ULL)
-+	/* READ CAPACITY returns the address of the last block */
-+	cap64 = ata_id_n_sectors(uc_priv->ataid[pccb->target]) - 1;
-+	if (cap64 > 0xffffffffULL)
- 		cap64 = 0xffffffff;
- 
- 	cap = cpu_to_be32(cap64);
-@@ -788,7 +789,8 @@ static int ata_scsiop_read_capacity16(struct ahci_uc_priv *uc_priv,
- 		return -EPERM;
- 	}
- 
--	cap = ata_id_n_sectors(uc_priv->ataid[pccb->target]);
-+	/* READ CAPACITY returns the address of the last block */
-+	cap = ata_id_n_sectors(uc_priv->ataid[pccb->target]) - 1;
- 	cap = cpu_to_be64(cap);
- 	memcpy(pccb->pdata, &cap, sizeof(cap));
- 
+diff --git a/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c b/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
+index 82353ae7678..675401e085f 100644
+--- a/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
++++ b/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
+@@ -727,7 +727,7 @@ static const struct rockchip_combphy_grfcfg rk3588_combphy_grfcfgs = {
+ 	.con3_for_sata		= { 0x000c, 15, 0, 0x00, 0x0407 },
+ 	/* pipe-grf */
+ 	.pipe_con0_for_sata	= { 0x0000, 11, 5, 0x00, 0x22 },
+-	.pipe_con1_for_sata	= { 0x0000, 2, 0, 0x00, 0x2 },
++	.pipe_con1_for_sata	= { 0x0004, 2, 0, 0x00, 0x2 },
+ 	.pipe_pcie1l0_sel	= { 0x0100, 0, 0, 0x01, 0x0 },
+ 	.pipe_pcie1l1_sel	= { 0x0100, 1, 1, 0x01, 0x0 },
+ };
 
 -- 
 2.47.3
