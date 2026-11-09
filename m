@@ -1,117 +1,77 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Mon, 09 Nov 2026 11:55:28 +0900
-Subject: [PATCH 5.10.y] jbd2: don't advance j_fc_off before the buffer is
- recorded
+From: Ricardo Pardini <ricardo@pardini.net>
+Subject: [PATCH 0/3] rockchip: fix on-board SATA on RK3588 and RK356x
+Date: Mon, 09 Nov 2026 03:57:57 +0100
+Message-Id: <20261109-rk3588-sata-fixes-v2027-01-v1-0-e54ca8e68f18@pardini.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-jbd2-fcoff-5-10-y-v1-1-7e8776914093@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAB828WoC/x3MQQ5AMBBA0avIrI3MVBCuIha0U8YCaRMh4u4ay
- 7f4/4EoQSVClz0Q5NSo+5bAeQZ2GbdZUF0yGDI1M7W4Ts6gt7v3WCET3jiyWEdiGykZUncE8Xr
- 9zx6qgqm4YXjfD4vhPNprAAAA
-To: stable@vger.kernel.org
-Cc: stable@kernel.org, Yu Junzhe <junzheyu1@gmail.com>, 
- Daejun Park <daejun7.park@samsung.com>, Jan Kara <jack@suse.cz>, 
- Theodore Ts'o <tytso@mit.edu>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794192927; l=3814;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=jNg7fCEqlITeuBHL8iWeTRYL2C6UibsFVXsTp24IYfQ=;
- b=S8BkF0GcE8dW8jMlbLmBFuPe8TI2qRvK8lr5iyPd2HTgdKg/xe3jzKV4WXTP+aoteVi7uYIQf
- Xob7BI3k8QGA/U+3AmjrYC2lJJN0ntrkoww0Qwg+3lIefyHIl7TOEVH
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-B4-Tracking: v=1; b=H4sIALU28WoC/yWMQQ6CQAxFr0K6tsm0iI5ehbAYoGg1QTMFYkK4u
+ 1WWL/+/t4JJVjG4FitkWdT0NTrQoYDunsaboPbOwIFPFPiI+VlWMaKlKeGgHzFcfDtjIIwXbgc
+ KqayIwQPvLP+H+3Wzs83tQ7rpV4Rt+wJDovkDfgAAAA==
+X-Change-ID: 20261024-rk3588-sata-fixes-v2027-01-892bf10a3512
+To: u-boot@lists.u-boot-project.org, Simon Glass <sjg@chromium.org>, 
+ Kever Yang <kever.yang@rock-chips.com>, Eugen Hristev <ehristev@kernel.org>, 
+ Jon Lin <jon.lin@rock-chips.com>
+Cc: Tom Rini <trini@konsulko.com>, Peng Fan <peng.fan@nxp.com>, 
+ Ricardo Pardini <ricardo@pardini.net>, Quentin Schulz <u-boot@0leil.net>, 
+ Jonas Karlman <jonas@kwiboo.se>, Heiko Stuebner <heiko@sntech.de>, 
+ Julius Lehmann <lehmanju@devpi.de>, 
+ Yifeng Zhao <yifeng.zhao@rock-chips.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2061; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=MSfvXvaN1DR4S2bn3IrJreOSPijm7cdZ9zFFwCNgR60=;
+ b=owEBbQGS/pANAwAKATteP+Oex+3pAcsmYgBq8Ta2q0Xm/pIA8t68QYybo2hckYSbZ0NrqqZJw
+ RHcq9yYhaCJATMEAAEKAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCavE2tgAKCRA7Xj/jnsft
+ 6YJIB/9TbhQ9TqHz9M0RL3b3FE+d+URlHBnkIfgn/NifOmDW93f9gTQH44RKVNDfziXpxClw+uA
+ QmmZKaeijQnrdBvcyhAWt8adpjphfnticNx4bSYDd5TezVvrRH15QfMXS9ZQMFkesaYvvFubCa3
+ sv0MDVZQFfo+CYEj5Qj2Lcgn2Sote5dERN/np9g+2IdRxQL2sns6GBC52sKW7IrmqZTY7pNR5mL
+ Hz/I3F/mi2Moyd3HtsrRjWlJFLEaR1TXu/FUrXApNoO9eF/G5r0OGPwxXkln2/knImVfMQP0r3T
+ nw8BcDmKzWECrG/SlHXR2g1H+8e9vCLyPBfFzgmNqK7YIie3
+X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
+ fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
+X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-commit 9f359c031885bb50add7d23c7a5a0e9755b134c9 upstream.
+This makes the on-board SATA controllers (dwc_ahci) work on RK3588,
+and on RK356x sata1/sata2 again. They currently fail to probe, and
+fixing that exposes two more problems once a disk is actually used:
 
-jbd2_fc_get_buf() increments journal->j_fc_off before jbd2_journal_bmap()
-and __getblk() have had a chance to fail.  When either does, the slot
-j_fc_wbuf[fc_off] is never assigned, but j_fc_off already counts it.
+1: dwc_ahci only looks for the PHY on the controller node, but the
+   RK3588 DT has it in the sata-port@0 subnode, so probe always fails.
+   RK356x sata1/sata2 have the same problem since the v7.1 DT sync.
+2: AHCI reports disks one sector too large since the scsi +1 fix [1],
+   which breaks e.g. UMS when the host reads the backup GPT.
+3: sata2 links at 1.5 Gb/s only, due to a wrong GRF offset (see the
+   RK3588 TRM); Rockchip fixed it in their BSP kernel [2], and the
+   same fix was sent for Linux [3].
 
-ext4 then fails the fast commit and falls back, and the fallback path
-reaches jbd2_fc_release_bufs() via ext4_fc_commit ->
-jbd2_fc_end_commit_fallback -> __jbd2_fc_end_commit -> ext4_fc_cleanup.
-That walks down from j_fc_off - 1 and put_bh()es every slot until it
-sees NULL, so it also touches the slot that was never written.
-j_fc_wbuf comes from a plain kmalloc() and is never zeroed, so a slot
-used for the first time holds uninitialised heap data.
+The misplaced write in (3) lands in PHP_GRF_PHP_CON0[2:0], which are
+the PCIe link reset grant bits, and turns on the one for pcie3x2
+whenever a combphy is put in SATA mode. I don't know of any effect
+from that, but this series stops it too.
 
-Advance j_fc_off only after the buffer head has been stored.  That
-restores the invariant that j_fc_off covers exactly the filled slots,
-which is what jbd2_fc_release_bufs() relies on: the live buffers of the
-current fast commit sit above the NULLs the previous one released, so
-stopping at the first NULL is correct.
+Tested with an mSATA SSD on sata2 (combphy2_psu): scsi scan, booting
+via bootstd, and UMS all work, with the link at 6 Gb/s.
 
-Reproduced on a KASAN kernel with an ext4 fast_commit filesystem on a
-loop device, truncating the backing file under the live mount so that
-only the journal's fast-commit region falls past the end of the device.
-__getblk() then fails for the first fast-commit block while the rest of
-the journal is still addressable, so the journal is not aborted and the
-fast commit reaches the fallback path.  j_fc_wbuf was poisoned to make
-the read of the never-written slot visible:
-
-  BUG: KASAN: wild-memory-access in jbd2_fc_release_bufs+0x6b/0xd0
-  Write of size 4 at addr 5a5a5a5a5a5a5ab2 by task sync/961
-   jbd2_fc_release_bufs+0x6b/0xd0
-   ext4_fc_cleanup+0x97/0x830
-   __jbd2_fc_end_commit+0x37/0xc0
-   ext4_fc_commit+0x524/0x560
-   ext4_sync_file+0x3c4/0x4b0
-   __x64_sys_fsync+0x20/0x30
-
-With this patch the same run leaves j_fc_off at 0 across repeated
-__getblk() failures and completes cleanly.
-
-[ Context: in 5.10.y, jbd2_fc_get_buf() still advances j_fc_off inside
-  the if/else bounds check, so the increment is removed from there.
-  The change is otherwise the same as upstream. ]
-
-Fixes: ff780b91efe9 ("jbd2: add fast commit machinery")
-Cc: stable@kernel.org
-Reported-by: Yu Junzhe <junzheyu1@gmail.com>
-Closes: https://lore.kernel.org/linux-ext4/7e4b109d-64c3-444f-a5dc-93c2ca4576cc@gmail.com/
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://patch.msgid.link/20260819060939epcms2p37bb8589b2f8a52a2b14bef38fadcf69d@epcms2p3
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
-Tested on 5.10.274 with KASAN and slub_debug=P, using the reproducer
-from the upstream commit. Without the patch the second fsync hits a
-KASAN wild-memory-access and a GPF in jbd2_fc_release_bufs(). With
-the patch all six fsyncs complete cleanly.
----
- fs/jbd2/journal.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 526d2971f1..cc2d3209a4 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -884,7 +884,6 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
- 	if (journal->j_fc_off + journal->j_fc_first < journal->j_fc_last) {
- 		fc_off = journal->j_fc_off;
- 		blocknr = journal->j_fc_first + fc_off;
--		journal->j_fc_off++;
- 	} else {
- 		ret = -EINVAL;
- 	}
-@@ -902,6 +901,7 @@ int jbd2_fc_get_buf(journal_t *journal, struct buffer_head **bh_out)
- 
- 
- 	journal->j_fc_wbuf[fc_off] = bh;
-+	journal->j_fc_off++;
- 
- 	*bh_out = bh;
- 
+[1] https://lore.kernel.org/u-boot/20241026-fix-scsi-disksize-v2-1-bc6be9a6043d@devpi.de/
+[2] https://github.com/rockchip-linux/kernel/commit/2f5fe2c0bbd4fa95102aadd60da1100989103aa0
+[3] https://patch.msgid.link/20261109-rk3588-combphy-sata2-6g-v1-1-e9135c91de6a@pardini.net
 
 ---
-base-commit: 3a323bc22b881a5bdc1646080f93f5ecb22850bf
-change-id: 20261109-jbd2-fcoff-5-10-y-a1ecd0ec7e31
+Ricardo Pardini (3):
+      ata: dwc_ahci: fall back to the PHY in the sata-port subnode
+      ata: ahci: return the last LBA from emulated READ CAPACITY
+      phy: rockchip: naneng-combphy: fix RK3588 SATA pipe_con1 register offset
+
+ drivers/ata/ahci.c                                 |  8 +++++---
+ drivers/ata/dwc_ahci.c                             | 13 +++++++++++++
+ drivers/phy/rockchip/phy-rockchip-naneng-combphy.c |  2 +-
+ 3 files changed, 19 insertions(+), 4 deletions(-)
+---
+base-commit: 934995f642a21ca7f35fa9aed5f061394fcba243
+change-id: 20261024-rk3588-sata-fixes-v2027-01-892bf10a3512
 
 Best regards,
--- 
-Daejun Park <daejun7.park@samsung.com>
+--  
+Ricardo Pardini <ricardo@pardini.net>
 
