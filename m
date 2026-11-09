@@ -1,90 +1,84 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Mon, 09 Nov 2026 17:26:56 +0900
-Subject: [PATCH] xfs: break layouts before swapping extents
+From: Yu Yang <yuyang@kylinos.cn>
+Date: Mon, 09 Nov 2026 17:24:28 +0800
+Subject: [PATCH] PCI/MSI: Skip address mask check for MSI-X entries
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-xfs-swapext-break-layout-v1-1-7f6f137d18bb@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAM+D8WoC/x3MQQ5EQBBA0atIrVWiOwiuIhbNVFEhSJcZPRF31
- 7F8i/8vUPJCCk1ygaefqGxrhEkTGCa3joTyiQab2dKYrMbAinq6ncKBvSc34+L+2/fAqubB5lz
- 0VDHEfPfEEt512933A+YM3WxqAAAA
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>, 
- "Darrick J. Wong" <djwong@kernel.org>, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794212815; l=2472;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=CaEz7uBoybLqkkBn52P/NyxwhKH05LuHzbS9Eqv03SQ=;
- b=VPEoMQhIVld/k5YkvBH0AmoaVyqS9gkXEFvSLrjzHvbtu6mNXWyDh3wo6FhDsy6jKs0aYJQya
- 2BYjMR7naZFAAH8bvnhjLivZQ4J/AU5u8wSaXH7hsKTkYBawyIGnFaz
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+Message-Id: <20261109-pci-fix-msix-alloc-failure-v1-1-6370c0b84354@kylinos.cn>
+X-B4-Tracking: v=1; b=H4sIAEuR8WoC/x2MSQqAMAwAvyI5G7A9uH1FPJQ20UBdaFGE4t8NX
+ gYGhimQKQllGKsCiW7Jcuwqpq7Ar25fCCWog21sa0wz4OkFWR7cssLFeHhkJ/FKhD4wU+Cho96
+ CDs5EWv7zaX7fDxH2mldsAAAA
+X-Change-ID: 20261109-pci-fix-msix-alloc-failure-cdffedf97e82
+To: Bjorn Helgaas <bhelgaas@google.com>
+Cc: linux-pci@vger.kernel.org, Thomas Gleixner <tglx@kernel.org>, 
+ Michael Ellerman <mpe@ellerman.id.au>, 
+ Brett Creeley <brett.creeley@amd.com>, Shannon Nelson <sln@onemain.com>, 
+ linux-kernel@vger.kernel.org, Yu Yang <yuyang@kylinos.cn>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794216287; l=2146;
+ i=yuyang@kylinos.cn; s=20261109; h=from:subject:message-id;
+ bh=fq57q40/5O4bXqj13wzHAYXlVx1mOt/jNhP7ggzzvwU=;
+ b=HmUWeekm6t09OjI/k6Xpy3e41nbV6rOobI0E6lAx7TjPCaJo+xung/OaZDLhu3v8VVnLnWEs4
+ 9y7toDvn/GbC1cDslIZz2I/OGVc06h4NcnugXpxwzH14DUZ6oz8TcZj
+X-Developer-Key: i=yuyang@kylinos.cn; a=ed25519;
+ pk=LQAY8k9sUwvjwxS9P2CQE0GbrKw/MJPJbDHlapWOZ8A=
+X-Endpoint-Received: by B4 Relay for yuyang@kylinos.cn/20261109 with auth_id=1458
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-XFS_IOC_SWAPEXT does not break pNFS layouts. A client can keep writing
-to blocks that the swap moved to the temporary file. xfs_fsr frees
-those blocks when it closes that file. The writes then land in whatever
-reuses them.
+The AHCI controller on Zhaoxin ZX-200 platforms supports only 32-bit
+MSI addresses, but its MSI-X capability uses 64-bit message addresses.
+pci_msi_init() therefore sets dev->msi_addr_mask to DMA_BIT_MASK(32)
+based on the MSI capability.
 
-Lock with xfs_ilock2_io_mmap(), as the exchange-range ioctls do.
+msi_verify_entries() is shared between the MSI and MSI-X setup paths.
+When the irq domain assigns an MSI-X message address above 4GB, the
+32-bit mask inherited from the MSI capability causes MSI-X setup to
+fail with -EIO:
 
-Fixes: 781355c6e5ae ("xfs: recall pNFS layouts on conflicting access")
-Cc: stable@vger.kernel.org
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+  ahci 0000:09:0f.0: arch assigned 64-bit MSI address 0x8002a030040
+  above device MSI address mask 0xffffffff.
+  ...
+  ahci: probe of 0000:09:0f.0 failed with error -22.
+
+MSI-X table entries have a 64-bit message address field, so the 32-bit
+limit derived from the MSI capability does not apply to them.
+Platforms that use msi_addr_mask to constrain MSI-X allocation, e.g.
+powerpc pseries/powernv and ionic on PPC64, already allocate addresses
+that satisfy the mask, so the verification is redundant for MSI-X.
+
+Skip the address mask check for MSI-X descriptors.
+
+Fixes: f144d1496b47 ("PCI/MSI: Add device flag indicating that 64-bit MSIs don't work")
+
+Signed-off-by: Yu Yang <yuyang@kylinos.cn>
 ---
-xfs_fsr uses SWAPEXT on kernels without XFS_IOC_COMMIT_RANGE, on
-filesystems without exchange-range, and in all xfsprogs before 6.12.
+ drivers/pci/msi/msi.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-When both files are DAX, xfs_ilock2_io_mmap() also breaks DAX layouts.
-With two DAX files whose pages had been faulted in, SWAPEXT hit the
-WARN_ON_ONCE in truncate_folio_batch_exceptionals() in 3 of 3 boots
-before this patch and in 0 of 3 after it. A DAX file swapped with a
-non-DAX file still hits it.
-
-Tested with a pynfs client holding an RW block layout while the MDS ran
-"xfs_io -c swapext". Before, the client's writes overwrote other files'
-data and a directory block. After, the swap recalls the layout first.
-The fstests fsr and swapext tests pass with and without the patch.
----
- fs/xfs/xfs_bmap_util.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
-
-diff --git a/fs/xfs/xfs_bmap_util.c b/fs/xfs/xfs_bmap_util.c
-index 865aec3ae5a..595b7ea3ac9 100644
---- a/fs/xfs/xfs_bmap_util.c
-+++ b/fs/xfs/xfs_bmap_util.c
-@@ -1554,9 +1554,9 @@ xfs_swap_extents(
- 	 * page cache safely. Once we have done this we can take the ilocks and
- 	 * do the rest of the checks.
- 	 */
--	lock_two_nondirectories(VFS_I(ip), VFS_I(tip));
--	filemap_invalidate_lock_two(VFS_I(ip)->i_mapping,
--				    VFS_I(tip)->i_mapping);
-+	error = xfs_ilock2_io_mmap(ip, tip);
-+	if (error)
-+		return error;
+diff --git a/drivers/pci/msi/msi.c b/drivers/pci/msi/msi.c
+index 8a0133a6a286..7f34bccc8248 100644
+--- a/drivers/pci/msi/msi.c
++++ b/drivers/pci/msi/msi.c
+@@ -338,6 +338,13 @@ static int msi_verify_entries(struct pci_dev *dev)
+ 		return 0;
  
- 	/* Verify that both files have the same format */
- 	if ((VFS_I(ip)->i_mode & S_IFMT) != (VFS_I(tip)->i_mode & S_IFMT)) {
-@@ -1762,9 +1762,7 @@ xfs_swap_extents(
- 	xfs_iunlock(ip, XFS_ILOCK_EXCL);
- 	xfs_iunlock(tip, XFS_ILOCK_EXCL);
- out_unlock:
--	filemap_invalidate_unlock_two(VFS_I(ip)->i_mapping,
--				      VFS_I(tip)->i_mapping);
--	unlock_two_nondirectories(VFS_I(ip), VFS_I(tip));
-+	xfs_iunlock2_io_mmap(ip, tip);
- 	return error;
- 
- out_trans_cancel:
+ 	msi_for_each_desc(entry, &dev->dev, MSI_DESC_ALL) {
++		/*
++		 * MSI-X entries always use a 64-bit address, so the address
++		 * limit for MSI capability does not apply for MSI-X.
++		 */
++		if (entry->pci.msi_attrib.is_msix)
++			continue;
++
+ 		address = (u64)entry->msg.address_hi << 32 | entry->msg.address_lo;
+ 		if (address & ~dev->msi_addr_mask) {
+ 			pci_err(dev, "arch assigned 64-bit MSI address %#llx above device MSI address mask %#llx\n",
 
 ---
-base-commit: 1e17fc56469d62d1c1ac45c137a2456d14456f1d
-change-id: 20261109-xfs-swapext-break-layout-89fc24f5be8f
+base-commit: 996a59519af2ef3d8f47479685616bb2278c6cfa
+change-id: 20261109-pci-fix-msix-alloc-failure-cdffedf97e82
 
 Best regards,
 -- 
-Daejun Park <daejun7.park@samsung.com>
+Yu Yang <yuyang@kylinos.cn>
 
