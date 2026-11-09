@@ -1,11 +1,11 @@
 From: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-Date: Mon, 09 Nov 2026 11:39:02 +0000
-Subject: [PATCH 1/2] iio: light: adux1020: fix interrupt clear value on
- SMBus-only adapters
+Date: Mon, 09 Nov 2026 11:39:03 +0000
+Subject: [PATCH 2/2] iio: light: adux1020: extract the FIFO byte count with
+ FIELD_GET()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-adux1020-measure-fixes-v1-1-fe1ba63f28bc@gmail.com>
+Message-Id: <20261109-adux1020-measure-fixes-v1-2-fe1ba63f28bc@gmail.com>
 References: <20261109-adux1020-measure-fixes-v1-0-fe1ba63f28bc@gmail.com>
 In-Reply-To: <20261109-adux1020-measure-fixes-v1-0-fe1ba63f28bc@gmail.com>
 To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -16,48 +16,45 @@ Cc: linux@analog.com, linux-iio@vger.kernel.org,
  linux-kernel@vger.kernel.org, 
  Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794224343; l=1379;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794224343; l=1221;
  i=raffaele.tranfaglia@gmail.com; s=20261011; h=from:subject:message-id;
- bh=r0ZSbO/Ld4MVFSPmXF2iaVAjnoCBKisOgRdgkZhMCRw=;
- b=Lv77MYIhtCIDIjnpPc9VCu9My+u0Qn91R1RGUysL3NaIsmiXtHiDCQ42UFSCBZ2Ncph52XTl0
- 1EgtEa/iXfOC5Ef15NlRhdop9O8WTPmIbbIYcj7wNb3HZyOIXszNGUs
+ bh=XsuW70+va29sa1QD4DljbLTZAicup6mt3PPzvSsELWA=;
+ b=MJsbFtOFSHMT74bZQ616PxNSEXPCHJ0tPpLBe58Yv6A/JDUNhapnFPjXmA4zGP4VgGD35jLQ6
+ /sl6iNXwG4WCbOf62Lj+f2Tps8hrv5nlPmnrUKDfkshsGhbp2OFwCCo
 X-Developer-Key: i=raffaele.tranfaglia@gmail.com; a=ed25519;
  pk=mweuSGNM6vguCTdqa+aiHwMXdgk70suj2wolzCp6XGM=
 X-Endpoint-Received: by B4 Relay for raffaele.tranfaglia@gmail.com/20261011 with auth_id=1160
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-adux1020_measure() clears the mode interrupt by writing the inverted
-interrupt enable mask to INT_STATUS. The mask is a u16, but integer
-promotion makes ~0x00f0 evaluate to 0xffffff0f, which does not fit in
-the 16-bit register.
+adux1020_measure() masks INT_STATUS with ADUX1020_FIFO_STATUS_MASK but
+does not shift the result down, so it compares 256 times the FIFO byte
+count against the packet size. A count of 1 would thus be treated as a
+complete 2-byte proximity packet.
 
-On adapters supporting plain I2C, regmap formats the value with
-put_unaligned_be16() and silently truncates it to 0xff0f. On adapters
-that only support SMBus word transfers, regmap_smbus_word_write_swapped()
-rejects values above 0xffff with -EINVAL, so every proximity read fails.
+This does not happen on a correctly working device, because the FIFO
+only stores complete packets and the driver always reads complete
+packets, so the count is always a multiple of the packet size. Still,
+use FIELD_GET() so the comparison matches the datasheet's polling
+procedure and does not depend on that.
 
-Mask the value to 16 bits so that SMBus-only adapters send the same
-0xff0f that has always been written on plain I2C adapters.
-
-Fixes: 356543545576 ("iio: light: Add support for ADUX1020 sensor")
 Signed-off-by: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
 ---
  drivers/iio/light/adux1020.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/iio/light/adux1020.c b/drivers/iio/light/adux1020.c
-index d4281b9754c3..cccd509dd18a 100644
+index cccd509dd18a..dd5230c6dceb 100644
 --- a/drivers/iio/light/adux1020.c
 +++ b/drivers/iio/light/adux1020.c
-@@ -346,7 +346,7 @@ static int adux1020_measure(struct adux1020_data *data,
+@@ -331,7 +331,7 @@ static int adux1020_measure(struct adux1020_data *data,
+ 		if (ret < 0)
+ 			return ret;
  
- 	/* Clear mode interrupt */
- 	ret = regmap_write(data->regmap, ADUX1020_REG_INT_STATUS,
--			   (~adux1020_modes[mode].int_en));
-+			   ~adux1020_modes[mode].int_en & 0xffff);
- 	if (ret < 0)
- 		return ret;
- 
+-		status &= ADUX1020_FIFO_STATUS_MASK;
++		status = FIELD_GET(ADUX1020_FIFO_STATUS_MASK, status);
+ 		if (status >= adux1020_modes[mode].bytes)
+ 			break;
+ 		msleep(20);
 
 -- 
 2.56.0
