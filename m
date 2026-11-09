@@ -1,11 +1,11 @@
 From: Jing Lin <kayano050408@gmail.com>
-Date: Mon, 09 Nov 2026 13:55:40 +0800
-Subject: [PATCH v5 2/3] usb: gadget: gadgetfs: prevent ep0 event counter
- underflow
+Date: Mon, 09 Nov 2026 13:55:41 +0800
+Subject: [PATCH v5 3/3] usb: gadget: gadgetfs: avoid writing through the
+ const setup pointer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-b4-gadgetfs-ep0-v5-2-f16d0b648bc2@gmail.com>
+Message-Id: <20261109-b4-gadgetfs-ep0-v5-3-f16d0b648bc2@gmail.com>
 References: <20261109-b4-gadgetfs-ep0-v5-0-f16d0b648bc2@gmail.com>
 In-Reply-To: <20261109-b4-gadgetfs-ep0-v5-0-f16d0b648bc2@gmail.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -15,73 +15,56 @@ Cc: Jing Lin <kayano050408@gmail.com>,
  Alan Stern <stern@rowland.harvard.edu>, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org, linux-usb@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794203739; l=2063;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794203739; l=1685;
  i=kayano050408@gmail.com; s=default; h=from:subject:message-id;
- bh=vqwB+Wlcpj/WeJeMyvBHLGgJ+JSJZK1Q6iHMWRJUsu0=;
- b=jP/KXYyXBBEv1X8X/NIF7qL7n36OvBHWCi/dJEuX/gS8U9WtJygerBK8rmYPA14uTGd2i1xZ9
- yyjiZof0HrADZslBDPG3A+P6v1IjQvfb0iS13CVMQn20Duy8MEex7A1
+ bh=b6MoNxME4f44lJnt8mP7Bi+ISns5QSLf02GNPFd9pf4=;
+ b=ippID2JFWPISCSEuMYPgtr32/xjHzFRd56V+ja8sr0eTSIw1bsTRCyHB2YPmak+ot9LGZ7vNc
+ vw/8H2pC0N6DZFkBz/vCPszw7xGWWvwgiSww3DxRTFalt+mmKpsxg7I
 X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
  pk=pr6i8RN1WEON1jbXPdghSglxaBSzfuJjXNGFknX//+A=
 X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/default with auth_id=1441
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ep0_read() snapshots dev->ev_next, drops dev->lock while copy_to_user()
-runs directly from dev->event[], and subtracts the snapshot afterwards.
-A concurrent disconnect, connect, setup, or another reader can reset,
-deduplicate, or consume the queue in that window. This races on
-dev->event[], can drop newly arrived GADGETFS_SETUP events, and wraps
-dev->ev_next if the queue shrinks below the snapshot.
+gadgetfs_setup() receives the setup packet as const, but clamps an
+oversized control IN request by casting away the constness and writing
+the truncated length back into the caller's wLength field.
 
-Dequeue the events into the local buffer and update dev->ev_next before
-dropping dev->lock for copy_to_user().
+The setup() callback has no business modifying the setup packet.  Use a
+local copy of the request for the clamped length instead.  Userspace
+still observes the truncated wLength in the GADGETFS_SETUP event, and
+the queued request length is unchanged.
 
-Fixes: 1da177e4c3f41 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
+Suggested-by: Alan Stern <stern@rowland.harvard.edu>
 Signed-off-by: Jing Lin <kayano050408@gmail.com>
 ---
- drivers/usb/gadget/legacy/inode.c | 26 ++++++++++----------------
- 1 file changed, 10 insertions(+), 16 deletions(-)
+ drivers/usb/gadget/legacy/inode.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/usb/gadget/legacy/inode.c b/drivers/usb/gadget/legacy/inode.c
-index e9380538e..4635a603e 100644
+index 4635a603e..23a36d556 100644
 --- a/drivers/usb/gadget/legacy/inode.c
 +++ b/drivers/usb/gadget/legacy/inode.c
-@@ -1196,25 +1196,19 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
- 				break;
- 			}
- 		}
--		spin_unlock_irq (&dev->lock);
--		len = n * sizeof (struct usb_gadgetfs_event);
--		if (copy_to_user (buf, &dev->event, len))
-+		len = n * sizeof(struct usb_gadgetfs_event);
-+		memcpy(tmp, &dev->event, len);
-+		if (dev->ev_next > n) {
-+			memmove(&dev->event[0], &dev->event[n],
-+				sizeof(struct usb_gadgetfs_event)
-+					* (dev->ev_next - n));
-+		}
-+		dev->ev_next -= n;
-+		spin_unlock_irq(&dev->lock);
-+		if (copy_to_user(buf, tmp, len))
- 			retval = -EFAULT;
- 		else
- 			retval = len;
--		if (len > 0) {
--			/* NOTE this doesn't guard against broken drivers;
--			 * concurrent ep0 readers may lose events.
--			 */
--			spin_lock_irq (&dev->lock);
--			if (dev->ev_next > n) {
--				memmove(&dev->event[0], &dev->event[n],
--					sizeof (struct usb_gadgetfs_event)
--						* (dev->ev_next - n));
--			}
--			dev->ev_next -= n;
--			spin_unlock_irq (&dev->lock);
--		}
- 		return retval;
- 	}
- 	if (fd->f_flags & O_NONBLOCK) {
+@@ -1510,15 +1510,16 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 	struct usb_request		*req = dev->req;
+ 	int				value = -EOPNOTSUPP;
+ 	struct usb_gadgetfs_event	*event;
++	struct usb_ctrlrequest		ctrl_buf;
+ 	u16				w_value = le16_to_cpu(ctrl->wValue);
+ 	u16				w_length = le16_to_cpu(ctrl->wLength);
+ 
+ 	if (w_length > RBUF_SIZE) {
+ 		if (ctrl->bRequestType & USB_DIR_IN) {
+-			/* Cast away the const, we are going to overwrite on purpose. */
+-			__le16 *temp = (__le16 *)&ctrl->wLength;
+-
+-			*temp = cpu_to_le16(RBUF_SIZE);
++			/* Report the length we can actually handle to userspace. */
++			ctrl_buf = *ctrl;
++			ctrl_buf.wLength = cpu_to_le16(RBUF_SIZE);
++			ctrl = &ctrl_buf;
+ 			w_length = RBUF_SIZE;
+ 		} else {
+ 			return value;
 
 -- 
 Git-155)
