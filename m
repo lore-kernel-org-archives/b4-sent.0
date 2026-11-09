@@ -1,340 +1,114 @@
-From: Geoffrey Beausire <g.beausire@criteo.com>
-Date: Mon, 09 Nov 2026 10:31:13 +0100
-Subject: [PATCH nf-next] netfilter: nf_socket: avoid UDP socket refcounting
- in socket match
+From: Takahiro Kuwano <takahiro.kuwano@infineon.com>
+Subject: [PATCH v4 0/5] mtd: spi-nor: split SFDP, ID database, and fixups
+Date: Mon, 09 Nov 2026 18:39:40 +0900
+Message-Id: <20261109-split-sfdp-id-v3-v4-0-7270c9d82fd3@infineon.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-udp_rcu_b4-v1-1-1103f12d0a04@criteo.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/yWMQQrCMBQFr1Le2kBTpIpXESlN/ot+F7EkjRRK7
- 95Ul8MwsyIzKTNuzYrEr2b9xAr21MC/xvikUamMru16a9veFJmG5MvgzkZ4ucoYgggdajAlBl1
- +sztiMJHLjMdf5OLe9POxwrbt7H8xF3cAAAA=
-X-Change-ID: 20261106-udp_rcu_b4-de78daffddeb
-To: Pablo Neira Ayuso <pablo@netfilter.org>, 
- Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, 
- Willem de Bruijn <willemdebruijn.kernel@gmail.com>
-Cc: netfilter-devel@vger.kernel.org, coreteam@netfilter.org, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, geobeausire@gmail.com, 
- Geoffrey Beausire <g.beausire@criteo.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794216674; l=11285;
- i=g.beausire@criteo.com; s=20261106; h=from:subject:message-id;
- bh=Bxs85xPWmCulUnJklXbG79UXIkW/V7342donIrEKj8E=;
- b=iUS53Y2/3T+3To7xQAkbvkwv1FGa57XbfswA23zIxk3uEMzOdwpZqhsPjQogpLQbc3fmFPMkw
- lQQyVhqr58iBrab6fd7oHm5UhPmvrkPExM5ucxKoS/Fsk4S0sr2Ehvk
-X-Developer-Key: i=g.beausire@criteo.com; a=ed25519;
- pk=/sNso7Ag23yofC+89g8V5KjCpFJry4fQAZIzaohF0VU=
-X-Endpoint-Received: by B4 Relay for g.beausire@criteo.com/20261106 with auth_id=1434
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ7CIBREr9L8tRhKAbUr72G6QAr2JwqE3xBNw
+ 93FHsBkNm8mM7MBuYyOYOw2yK4gYQwN5KEDu5jwcAznxiC40D3vNaP0xJWRn1NLWBmYV5oLOSi
+ jJIdWS9l5fO+Tt6nxgrTG/NkfyvBz/4w1cSaNPN3P3l6kMlcMHoOL4WjjC6Za6xeBChAEswAAA
+ A==
+X-Change-ID: 20261016-split-sfdp-id-v3-f5602435a540
+To: u-boot@lists.u-boot-project.org
+Cc: Tom Rini <trini@konsulko.com>, Vignesh R <vigneshr@ti.com>, 
+ Raymond Mao <raymond.mao@riscstar.com>, Vincent Jardin <vjardin@free.fr>, 
+ Fabio Estevam <festevam@nabladev.com>, Eugen Hristev <ehristev@kernel.org>, 
+ Bastien Curutchet <bastien.curutchet@bootlin.com>, 
+ Takahiro Kuwano <takahiro.kuwano@infineon.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794217192; l=3697;
+ i=takahiro.kuwano@infineon.com; s=20261016-2; h=from:subject:message-id;
+ bh=bIq6ZaahP+3kiESB3cK50by3HMWQLrcf+ZaQXKb08Rk=;
+ b=gWD6B+n9Y1l1Fh+OYX6jT13TlQzIsfvysApFyWbFeLGRzorOtdKtwTfrTaKyNwGtlE1OH1z6E
+ NOKasGkSo1VCO8jPFJ5R3RdVO09ql4gkMm0k9/dVP8DyDKJzZzex7aP
+X-Developer-Key: i=takahiro.kuwano@infineon.com; a=ed25519;
+ pk=pp4mpJAHIqhV2MvdSGbIzKRk3ujhk+tSlGjyTursr4E=
+X-Endpoint-Received: by B4 Relay for takahiro.kuwano@infineon.com/20261016-2 with auth_id=1202
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Similar to commit 08842c43d016 ("udp: no longer touch sk->sk_refcnt in
-early demux") and after commit ca065d0cf80f ("udp: no longer use
-SLAB_DESTROY_BY_RCU"), the socket match no longer needs to grab a
-refcount on UDP sockets, as xt_socket and nft_socket only use the
-socket inside the netfilter hook, which runs under rcu_read_lock().
+The spi-nor-core.c contains optional logics like SFDP and manufcaturer
+specific fixups. The spi-nor-ids.c has single large ID database. There
+are many #ifdef directives in those files and that negatively affects
+readability and maintainability.
 
-The release path is shared with TCP, where sockets are still returned
-with a reference. Add a refcounted out-parameter to
-nf_sk_lookup_slow_v4() and nf_sk_lookup_slow_v6() and put the socket
-only when it is set, as commit 3b24d854cb35 ("tcp/dccp: do not touch
-listener sk_refcnt under synflood") did for TCP listeners.
+This series, as the first step of cleanup, move SFDP logic, IDs, and
+fixups to newly source files. Reworking, renaming, and reformating
+existing code is not a scope of this series and further cleanup will be
+taken place in follow-up patches.
 
-nf_socket no longer calls udp4_lib_lookup() and udp6_lib_lookup(), so
-drop CONFIG_NF_SOCKET_IPV{4,6} from their #if.
+To mitigate the size increase due to these changes, drop one of the
+page size parameter from struct flash_info. The resulting size is
+smaller than it was before the patch was applied (see below).
 
-The impact of the change was measured with a simple UDP load generator
-aimed at a single UDP socket. It was tested on a host with dual Intel
-Xeon 6787P sockets, where the RX was spread across all NUMA nodes and
-both packages.
+Here is the code size impact when applying this series.
+Measured by my AMD Zynq-7000 (ARM32) environment with SFDP and all
+manufcaturers are enabled.
 
-+--------+------------+------------+-------+
-| Family | baseline   | patched    | Gain  |
-+--------+------------+------------+-------+
-| IPv4   |  4.47 Mpps | 27.22 Mpps | +509% |
-| IPv6   |  4.19 Mpps | 25.27 Mpps | +503% |
-+--------+------------+------------+-------+
+SPI-NOR:
+            text    data     bss     dec     hex filename
+BEFORE    722344   14100       0  736444   b3cbc u-boot
+AFTER     722196   14188       0  736384   b3c80 u-boot
+DELTA       -148     +88             -60
 
-This was seen in production when routing traffic through Cilium's
-VXLAN, where all of the server's traffic goes through a single UDP
-socket. Softirq threads spent most of their time in udp4_lib_lookup()
-and sock_gen_put(). Softirq were saturated at 2M UDP packets/s. After
-this patch, the servers were able to handle the full production traffic
-of 5M UDP packets/s with headroom left. This patch has been deployed on
-the wider fleet of servers for the last 2 months without issues. The
-synthetic benchmark above models the extreme case where the CPUs only
-process UDP traffic.
+TINY:
+            text    data     bss     dec     hex filename
+BEFORE     77490    3128     248   80866   13be2 spl/u-boot-spl
+AFTER      76342    3200     248   79790   137ae spl/u-boot-spl
+DELTA      -1148     +72           -1076
 
-Signed-off-by: Geoffrey Beausire <g.beausire@criteo.com>
+Changes in v4:
+- Rebase to v2027.01-rc1
+- Add patch 5 to reduce the size of device ID database
+- Link to v3: https://lore.kernel.org/r/20261016-split-sfdp-id-v3-v3-0-4a47b8fc945a@infineon.com
+Changes in v3:
+- Expose manufacturers table so that sandbox can look up
+- Update sandbox to handle manufacturers table
+- Link to v2: https://lore.kernel.org/u-boot/20260924-split-sfdp-id-v2-0-aafc70e0b657@infineon.com/
+Changes in v2:
+- Rebase on top of next
+- Link to v1: https://lore.kernel.org/u-boot/20260612-split-id-table-into-vendor-files-v1-0-dfaaa82cc6f0@infineon.com/
+
+Signed-off-by: Takahiro Kuwano <takahiro.kuwano@infineon.com>
 ---
- include/net/netfilter/nf_socket.h   |  6 ++++--
- net/ipv4/netfilter/nf_socket_ipv4.c | 14 +++++++++-----
- net/ipv4/udp.c                      |  2 +-
- net/ipv6/netfilter/nf_socket_ipv6.c | 14 +++++++++-----
- net/ipv6/udp.c                      |  2 +-
- net/netfilter/nft_socket.c          | 12 +++++++-----
- net/netfilter/xt_socket.c           | 12 ++++++++----
- 7 files changed, 39 insertions(+), 23 deletions(-)
+Takahiro Kuwano (5):
+      mtd: spi-nor: move SFDP logic out of the core
+      mtd: spi-nor: import manufacturer driver concept from Linux
+      mtd: spi-nor: move flash info entries to manufacturer drivers
+      mtd: spi-nor: move fixups to manufacturer drivers
+      mtd: spi-nor: remove page_size from struct flash_info
 
-diff --git a/include/net/netfilter/nf_socket.h b/include/net/netfilter/nf_socket.h
-index f9d7bee9bd4e..5a5ddf4e820a 100644
---- a/include/net/netfilter/nf_socket.h
-+++ b/include/net/netfilter/nf_socket.h
-@@ -5,9 +5,11 @@
- #include <net/sock.h>
- 
- struct sock *nf_sk_lookup_slow_v4(struct net *net, const struct sk_buff *skb,
--				  const struct net_device *indev);
-+				  const struct net_device *indev,
-+				  bool *refcounted);
- 
- struct sock *nf_sk_lookup_slow_v6(struct net *net, const struct sk_buff *skb,
--				  const struct net_device *indev);
-+				  const struct net_device *indev,
-+				  bool *refcounted);
- 
- #endif
-diff --git a/net/ipv4/netfilter/nf_socket_ipv4.c b/net/ipv4/netfilter/nf_socket_ipv4.c
-index f9c6755f5ec5..0609f31e4082 100644
---- a/net/ipv4/netfilter/nf_socket_ipv4.c
-+++ b/net/ipv4/netfilter/nf_socket_ipv4.c
-@@ -67,21 +67,23 @@ nf_socket_get_sock_v4(struct net *net, struct sk_buff *skb, const int doff,
- 		      const u8 protocol,
- 		      const __be32 saddr, const __be32 daddr,
- 		      const __be16 sport, const __be16 dport,
--		      const struct net_device *in)
-+		      const struct net_device *in, bool *refcounted)
- {
- 	switch (protocol) {
- 	case IPPROTO_TCP:
-+		*refcounted = true;
- 		return inet_lookup(net, skb, doff, saddr, sport, daddr, dport,
- 				   in->ifindex);
- 	case IPPROTO_UDP:
--		return udp4_lib_lookup(net, saddr, sport, daddr, dport,
--				       in->ifindex);
-+		return __udp4_lib_lookup(net, saddr, sport, daddr, dport,
-+					 in->ifindex, 0, NULL);
- 	}
- 	return NULL;
- }
- 
- struct sock *nf_sk_lookup_slow_v4(struct net *net, const struct sk_buff *skb,
--				  const struct net_device *indev)
-+				  const struct net_device *indev,
-+				  bool *refcounted)
- {
- 	__be32 daddr, saddr;
- 	__be16 dport, sport;
-@@ -94,6 +96,8 @@ struct sock *nf_sk_lookup_slow_v4(struct net *net, const struct sk_buff *skb,
- #endif
- 	int doff = 0;
- 
-+	*refcounted = false;
-+
- 	if (ntohs(iph->frag_off) & IP_OFFSET)
- 		return NULL;
- 
-@@ -146,7 +150,7 @@ struct sock *nf_sk_lookup_slow_v4(struct net *net, const struct sk_buff *skb,
- #endif
- 
- 	return nf_socket_get_sock_v4(net, data_skb, doff, protocol, saddr,
--				     daddr, sport, dport, indev);
-+				     daddr, sport, dport, indev, refcounted);
- }
- EXPORT_SYMBOL_GPL(nf_sk_lookup_slow_v4);
- 
-diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
-index 303d0102519a..c8966b755cd0 100644
---- a/net/ipv4/udp.c
-+++ b/net/ipv4/udp.c
-@@ -770,7 +770,7 @@ struct sock *udp4_lib_lookup_skb(const struct sk_buff *skb,
- /* Must be called under rcu_read_lock().
-  * Does increment socket refcount.
-  */
--#if IS_ENABLED(CONFIG_NF_TPROXY_IPV4) || IS_ENABLED(CONFIG_NF_SOCKET_IPV4)
-+#if IS_ENABLED(CONFIG_NF_TPROXY_IPV4)
- struct sock *udp4_lib_lookup(const struct net *net, __be32 saddr, __be16 sport,
- 			     __be32 daddr, __be16 dport, int dif)
- {
-diff --git a/net/ipv6/netfilter/nf_socket_ipv6.c b/net/ipv6/netfilter/nf_socket_ipv6.c
-index 893f2aeb4711..4f5bd635fd4a 100644
---- a/net/ipv6/netfilter/nf_socket_ipv6.c
-+++ b/net/ipv6/netfilter/nf_socket_ipv6.c
-@@ -79,22 +79,24 @@ nf_socket_get_sock_v6(struct net *net, struct sk_buff *skb, int doff,
- 		      const u8 protocol,
- 		      const struct in6_addr *saddr, const struct in6_addr *daddr,
- 		      const __be16 sport, const __be16 dport,
--		      const struct net_device *in)
-+		      const struct net_device *in, bool *refcounted)
- {
- 	switch (protocol) {
- 	case IPPROTO_TCP:
-+		*refcounted = true;
- 		return inet6_lookup(net, skb, doff, saddr, sport, daddr, dport,
- 				    in->ifindex);
- 	case IPPROTO_UDP:
--		return udp6_lib_lookup(net, saddr, sport, daddr, dport,
--				       in->ifindex);
-+		return __udp6_lib_lookup(net, saddr, sport, daddr, dport,
-+					 in->ifindex, 0, NULL);
- 	}
- 
- 	return NULL;
- }
- 
- struct sock *nf_sk_lookup_slow_v6(struct net *net, const struct sk_buff *skb,
--				  const struct net_device *indev)
-+				  const struct net_device *indev,
-+				  bool *refcounted)
- {
- 	__be16 dport, sport;
- 	const struct in6_addr *daddr = NULL, *saddr = NULL;
-@@ -108,6 +110,8 @@ struct sock *nf_sk_lookup_slow_v6(struct net *net, const struct sk_buff *skb,
- 	struct nf_conn const *ct;
- #endif
- 
-+	*refcounted = false;
-+
- 	tproto = ipv6_find_hdr(skb, &thoff, -1, &fragoff, NULL);
- 	if (tproto < 0 || fragoff) {
- 		pr_debug("unable to find transport header in IPv6 packet, dropping\n");
-@@ -160,7 +164,7 @@ struct sock *nf_sk_lookup_slow_v6(struct net *net, const struct sk_buff *skb,
- #endif
- 
- 	return nf_socket_get_sock_v6(net, data_skb, doff, tproto, saddr, daddr,
--				     sport, dport, indev);
-+				     sport, dport, indev, refcounted);
- }
- EXPORT_SYMBOL_GPL(nf_sk_lookup_slow_v6);
- 
-diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
-index 59f9872c3552..bd2abfd00271 100644
---- a/net/ipv6/udp.c
-+++ b/net/ipv6/udp.c
-@@ -432,7 +432,7 @@ struct sock *udp6_lib_lookup_skb(const struct sk_buff *skb,
- /* Must be called under rcu_read_lock().
-  * Does increment socket refcount.
-  */
--#if IS_ENABLED(CONFIG_NF_TPROXY_IPV6) || IS_ENABLED(CONFIG_NF_SOCKET_IPV6)
-+#if IS_ENABLED(CONFIG_NF_TPROXY_IPV6)
- struct sock *udp6_lib_lookup(const struct net *net, const struct in6_addr *saddr, __be16 sport,
- 			     const struct in6_addr *daddr, __be16 dport, int dif)
- {
-diff --git a/net/netfilter/nft_socket.c b/net/netfilter/nft_socket.c
-index 52d892e04261..23b7a66c2b57 100644
---- a/net/netfilter/nft_socket.c
-+++ b/net/netfilter/nft_socket.c
-@@ -80,7 +80,8 @@ static noinline int nft_socket_cgroup_subtree_level(void)
- }
- #endif
- 
--static struct sock *nft_socket_do_lookup(const struct nft_pktinfo *pkt)
-+static struct sock *nft_socket_do_lookup(const struct nft_pktinfo *pkt,
-+					 bool *refcounted)
- {
- 	const struct net_device *indev = nft_in(pkt);
- 	const struct sk_buff *skb = pkt->skb;
-@@ -91,11 +92,11 @@ static struct sock *nft_socket_do_lookup(const struct nft_pktinfo *pkt)
- 
- 	switch (nft_pf(pkt)) {
- 	case NFPROTO_IPV4:
--		sk = nf_sk_lookup_slow_v4(nft_net(pkt), skb, indev);
-+		sk = nf_sk_lookup_slow_v4(nft_net(pkt), skb, indev, refcounted);
- 		break;
- #if IS_ENABLED(CONFIG_NF_TABLES_IPV6)
- 	case NFPROTO_IPV6:
--		sk = nf_sk_lookup_slow_v6(nft_net(pkt), skb, indev);
-+		sk = nf_sk_lookup_slow_v6(nft_net(pkt), skb, indev, refcounted);
- 		break;
- #endif
- 	default:
-@@ -114,12 +115,13 @@ static void nft_socket_eval(const struct nft_expr *expr,
- 	struct sk_buff *skb = pkt->skb;
- 	struct sock *sk = skb->sk;
- 	u32 *dest = &regs->data[priv->dreg];
-+	bool refcounted = false;
- 
- 	if (sk && !net_eq(nft_net(pkt), sock_net(sk)))
- 		sk = NULL;
- 
- 	if (!sk)
--		sk = nft_socket_do_lookup(pkt);
-+		sk = nft_socket_do_lookup(pkt, &refcounted);
- 
- 	if (!sk) {
- 		regs->verdict.code = NFT_BREAK;
-@@ -159,7 +161,7 @@ static void nft_socket_eval(const struct nft_expr *expr,
- 	}
- 
- out_put_sk:
--	if (sk != skb->sk)
-+	if (refcounted)
- 		sock_gen_put(sk);
- }
- 
-diff --git a/net/netfilter/xt_socket.c b/net/netfilter/xt_socket.c
-index 811e53bee408..a4232744c13e 100644
---- a/net/netfilter/xt_socket.c
-+++ b/net/netfilter/xt_socket.c
-@@ -51,12 +51,14 @@ socket_match(const struct sk_buff *skb, struct xt_action_param *par,
- {
- 	struct sk_buff *pskb = (struct sk_buff *)skb;
- 	struct sock *sk = skb->sk;
-+	bool refcounted = false;
- 
- 	if (sk && !net_eq(xt_net(par), sock_net(sk)))
- 		sk = NULL;
- 
- 	if (!sk)
--		sk = nf_sk_lookup_slow_v4(xt_net(par), skb, xt_in(par));
-+		sk = nf_sk_lookup_slow_v4(xt_net(par), skb, xt_in(par),
-+					  &refcounted);
- 
- 	if (sk) {
- 		bool wildcard;
-@@ -79,7 +81,7 @@ socket_match(const struct sk_buff *skb, struct xt_action_param *par,
- 		    transparent && sk_fullsock(sk))
- 			pskb->mark = READ_ONCE(sk->sk_mark);
- 
--		if (sk != skb->sk)
-+		if (refcounted)
- 			sock_gen_put(sk);
- 
- 		if (wildcard || !transparent)
-@@ -112,12 +114,14 @@ socket_mt6_v1_v2_v3(const struct sk_buff *skb, struct xt_action_param *par)
- 	const struct xt_socket_mtinfo1 *info = (struct xt_socket_mtinfo1 *) par->matchinfo;
- 	struct sk_buff *pskb = (struct sk_buff *)skb;
- 	struct sock *sk = skb->sk;
-+	bool refcounted = false;
- 
- 	if (sk && !net_eq(xt_net(par), sock_net(sk)))
- 		sk = NULL;
- 
- 	if (!sk)
--		sk = nf_sk_lookup_slow_v6(xt_net(par), skb, xt_in(par));
-+		sk = nf_sk_lookup_slow_v6(xt_net(par), skb, xt_in(par),
-+					  &refcounted);
- 
- 	if (sk) {
- 		bool wildcard;
-@@ -140,7 +144,7 @@ socket_mt6_v1_v2_v3(const struct sk_buff *skb, struct xt_action_param *par)
- 		    transparent && sk_fullsock(sk))
- 			pskb->mark = READ_ONCE(sk->sk_mark);
- 
--		if (sk != skb->sk)
-+		if (refcounted)
- 			sock_gen_put(sk);
- 
- 		if (wildcard || !transparent)
-
+ drivers/mtd/spi/Makefile        |   18 +
+ drivers/mtd/spi/atmel.c         |   28 +
+ drivers/mtd/spi/dosilicon.c     |   27 +
+ drivers/mtd/spi/eon.c           |   23 +
+ drivers/mtd/spi/fujitsu.c       |   47 +
+ drivers/mtd/spi/gigadevice.c    |  141 ++
+ drivers/mtd/spi/issi.c          |   84 ++
+ drivers/mtd/spi/macronix.c      |  154 +++
+ drivers/mtd/spi/micron-st.c     |  169 +++
+ drivers/mtd/spi/puya.c          |   56 +
+ drivers/mtd/spi/sandbox.c       |   33 +-
+ drivers/mtd/spi/sf_internal.h   |  137 +-
+ drivers/mtd/spi/sfdp.c          |  720 ++++++++++
+ drivers/mtd/spi/sfdp.h          |  152 +++
+ drivers/mtd/spi/siliconkaiser.c |   18 +
+ drivers/mtd/spi/spansion.c      |  700 ++++++++++
+ drivers/mtd/spi/spi-nor-core.c  | 2753 +++++++--------------------------------
+ drivers/mtd/spi/spi-nor-ids.c   |  756 +----------
+ drivers/mtd/spi/spi-nor-tiny.c  |   11 +-
+ drivers/mtd/spi/sst.c           |   34 +
+ drivers/mtd/spi/winbond.c       |  250 ++++
+ drivers/mtd/spi/xmc.c           |   27 +
+ drivers/mtd/spi/xtx.c           |   54 +
+ drivers/mtd/spi/zbit.c          |   19 +
+ include/linux/mtd/spi-nor.h     |    2 +
+ 25 files changed, 3428 insertions(+), 2985 deletions(-)
 ---
-base-commit: 734bef548a96e8774d6eef5dfa2026c6edc4e80b
-change-id: 20261106-udp_rcu_b4-de78daffddeb
+base-commit: 709a97a05df66e394f40d249105d0baade46f107
+change-id: 20261016-split-sfdp-id-v3-f5602435a540
 
 Best regards,
---  
-Geoffrey Beausire <g.beausire@criteo.com>
+-- 
+Takahiro Kuwano <takahiro.kuwano@infineon.com>
 
