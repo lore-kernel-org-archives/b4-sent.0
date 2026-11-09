@@ -1,96 +1,105 @@
-From: Yongjian Wang <echoowall@gmail.com>
-Date: Tue, 10 Nov 2026 00:44:38 +0800
-Subject: [PATCH net-next v3 4/4] selftests/net: packetdrill: add TCP MTU
- probing test
+From: Blake Alexander <blake.alexander@airbus.com>
+Date: Mon, 09 Nov 2026 17:56:30 +0100
+Subject: [PATCH net-next] net: usb: name usb ethernet mdio buses reliably
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-mtu-probing-series-v3-4-dedfab25d641@gmail.com>
-References: <20261110-mtu-probing-series-v3-0-dedfab25d641@gmail.com>
-In-Reply-To: <20261110-mtu-probing-series-v3-0-dedfab25d641@gmail.com>
-To: davem@davemloft.net, edumazet@kernel.org, pabeni@redhat.com, 
- shuah@kernel.org, kuniyu@google.com, horms@kernel.org, ncardwell@google.com, 
- kuba@kernel.org
-Cc: netdev@vger.kernel.org, panweiping3@gmail.com, 
- linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- Yongjian Wang <echoowall@gmail.com>
+Message-Id: <20261109-net-usb-mdio-naming-v1-1-f4cca6737784@airbus.com>
+X-B4-Tracking: v=1; b=H4sIAD378WoC/yWNQQqEMBAEvyJzdiCJbHD3K+JB46hzcNQkiiD+f
+ aMei6K6TwjkmQL8shM87Rx4lgQ6z8CNjQyE3CUGo4zVWn1RKOIWWpw6nlGaiWVA1xamt6X6uMJ
+ CKhdPPR/PagV3IHREqF/jad3STXx1fV1/74gEGYQAAAA=
+X-Change-ID: 20261109-net-usb-mdio-naming-cb32f6805c36
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Thangaraj Samynathan <Thangaraj.S@microchip.com>, 
+ UNGLinuxDriver@microchip.com
+Cc: linux-usb@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Blake Alexander <blake.alexander@airbus.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794242675; l=2652;
- i=echoowall@gmail.com; s=20261026; h=from:subject:message-id;
- bh=Mz0+KsqQBxhWJlyZhAiEUnDL/oZgfrLTgEwG3eDqtks=;
- b=E8pA1CIFCPMSMACXvS3bo4oPEIcOU1Q7aC5PE1l2aLEI7sUb8F92AtXZAmhcsrhJebjW/TiP1
- YmVX1Z+xl2WDlLnWgDNxa8bRYay/hON/Sere9+7/vdGdBfcWEd/rElO
-X-Developer-Key: i=echoowall@gmail.com; a=ed25519;
- pk=9XP6JhqjjPsHCF6UZZZTeqTRnXIa4+ufggnxXtTJ+no=
-X-Endpoint-Received: by B4 Relay for echoowall@gmail.com/20261026 with auth_id=1323
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794243402; l=3082;
+ i=blake.alexander@airbus.com; s=20261109; h=from:subject:message-id;
+ bh=Aq+iM0Hh6B0JDL8TaEt+jovCKbEtmkgqtg3fnPSTJ7g=;
+ b=zQtsDUC3IQ/9zbR59Oke/23oXkcipe+Aoo0hYfR0yshRy6+pJHAYpnxqU6DhpgCnfUZ9j4sO6
+ creHUuquyHCC2m7dmNf0wVECO2+pfqkrStd6/TlvRj0bQ5/4SNqnNdh
+X-Developer-Key: i=blake.alexander@airbus.com; a=ed25519;
+ pk=cfpa2FQbYHF1zxIJuHbr8W+NR9T4DK/baAknnTv2I68=
+X-Endpoint-Received: by B4 Relay for blake.alexander@airbus.com/20261109 with auth_id=1461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Packetization layer path MTU discovery (net.ipv4.tcp_mtu_probing=2) has
-no selftest coverage.
+Embedded systems may utilize fixed USB ethernet controllers (such as the
+LAN78xx series) which are soldered directly onto the board. Currently,
+the MDIO bus names for USB ethernet devices are non-deterministic as
+they rely on the USB bus and device numbers (e.g.
+"usb-${bus_num}:${dev_num}").
 
-Add a test for an active connection. Check that it starts at
-tcp_base_mss, that it sends the first probe half way between
-tcp_base_mss and the peer's MSS once cwnd allows it, and that an
-acknowledged probe raises the MSS and leads to a larger probe.
+For hot-pluggable devices a stable MDIO bus name cannot be assumed.
+However, for systems using fixed devices, user-space configuration
+scripts and tools require predictable bus names.
 
-The SYN offers timestamps and the scripted SYN-ACK declines them.
-This also checks that MTU probing uses the negotiated header length
-for the initial send MSS.
+Use usb_make_path() to generate the MDIO bus name instead, ensuring a
+predictable and deterministic bus naming scheme when attached at the
+same position within the USB hierarchy.
 
-Signed-off-by: Yongjian Wang <echoowall@gmail.com>
+Signed-off-by: Blake Alexander <blake.alexander@airbus.com>
 ---
- .../net/packetdrill/tcp_mtu_probing_search.pkt     | 42 ++++++++++++++++++++++
- 1 file changed, 42 insertions(+)
+ drivers/net/usb/asix_devices.c | 5 ++---
+ drivers/net/usb/ax88172a.c     | 5 ++---
+ drivers/net/usb/lan78xx.c      | 3 +--
+ 3 files changed, 5 insertions(+), 8 deletions(-)
 
-diff --git a/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_search.pkt b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_search.pkt
-new file mode 100644
-index 000000000000..a48acff8685e
---- /dev/null
-+++ b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_search.pkt
-@@ -0,0 +1,42 @@
-+// SPDX-License-Identifier: GPL-2.0
-+// Test packetization layer path MTU discovery with tcp_mtu_probing=2: an
-+// active connection starts at tcp_base_mss and raises its MSS by binary search
-+// as probes are acknowledged.
+diff --git a/drivers/net/usb/asix_devices.c b/drivers/net/usb/asix_devices.c
+index 293ef80c4e30..c752fa3868b8 100644
+--- a/drivers/net/usb/asix_devices.c
++++ b/drivers/net/usb/asix_devices.c
+@@ -680,9 +680,8 @@ static int ax88772_init_mdio(struct usbnet *dev)
+ 	priv->mdio->write = &asix_mdio_bus_write;
+ 	priv->mdio->name = "Asix MDIO Bus";
+ 	priv->mdio->phy_mask = ~(BIT(priv->phy_addr & 0x1f) | BIT(AX_EMBD_PHY_ADDR));
+-	/* mii bus name is usb-<usb bus number>-<usb device number> */
+-	snprintf(priv->mdio->id, MII_BUS_ID_SIZE, "usb-%03d:%03d",
+-		 dev->udev->bus->busnum, dev->udev->devnum);
 +
-+`./defaults.sh
-+sysctl -q net.ipv4.tcp_mtu_probing=2
-+sysctl -q net.ipv4.tcp_base_mss=1024`
++	usb_make_path(dev->udev, priv->mdio->id, MII_BUS_ID_SIZE);
+ 
+ 	ret = mdiobus_register(priv->mdio);
+ 	if (ret) {
+diff --git a/drivers/net/usb/ax88172a.c b/drivers/net/usb/ax88172a.c
+index f5036451f086..9f050de0cddb 100644
+--- a/drivers/net/usb/ax88172a.c
++++ b/drivers/net/usb/ax88172a.c
+@@ -73,9 +73,8 @@ static int ax88172a_init_mdio(struct usbnet *dev)
+ 	priv->mdio->read = &asix_mdio_bus_read;
+ 	priv->mdio->write = &asix_mdio_bus_write;
+ 	priv->mdio->name = "Asix MDIO Bus";
+-	/* mii bus name is usb-<usb bus number>-<usb device number> */
+-	snprintf(priv->mdio->id, MII_BUS_ID_SIZE, "usb-%03d:%03d",
+-		 dev->udev->bus->busnum, dev->udev->devnum);
 +
-+    0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
-+   +0 fcntl(3, F_SETFL, O_RDWR|O_NONBLOCK) = 0
-+   +0 connect(3, ..., ...) = -1 EINPROGRESS (Operation is now in progress)
-+   +0 > S 0:0(0) <...>
-+  +.1 < S. 0:0(0) ack 1 win 65535 <mss 1460,nop,nop,sackOK>
-+   +0 > . 1:1(0) ack 1
-+   +0 fcntl(3, F_SETFL, O_RDWR) = 0
-+
-+// The initial window is sent with tcp_base_mss. No probe yet, cwnd is below 11.
-+   +0 write(3, ..., 40000) = 40000
-+   +0 > P. 1:2049(2048) ack 1
-+   +0 > P. 2049:4097(2048) ack 1
-+   +0 > P. 4097:6145(2048) ack 1
-+   +0 > P. 6145:8193(2048) ack 1
-+   +0 > P. 8193:10241(2048) ack 1
-+
-+// The first probe is half way between tcp_base_mss and the peer's MSS.
-+  +.1 < . 1:1(0) ack 10241 win 65535
-+   +0 > . 10241:11483(1242) ack 1
-+   +0 > P. 11483:13531(2048) ack 1
-+   +0 > P. 13531:15579(2048) ack 1
-+   +0 > P. 15579:17627(2048) ack 1
-+   +0 > P. 17627:19675(2048) ack 1
-+   +0 > P. 19675:21723(2048) ack 1
-+   +0 > P. 21723:23771(2048) ack 1
-+   +0 > P. 23771:25819(2048) ack 1
-+   +0 > P. 25819:27867(2048) ack 1
-+   +0 > P. 27867:29915(2048) ack 1
-+
-+// Acknowledging the probe raises the MSS, and the next probe is larger.
-+  +.1 < . 1:1(0) ack 29915 win 65535
-+   +0 > . 29915:31266(1351) ack 1
-+   +0 > P. 31266:33750(2484) ack 1
++	usb_make_path(dev->udev, priv->mdio->id, MII_BUS_ID_SIZE);
+ 
+ 	ret = mdiobus_register(priv->mdio);
+ 	if (ret) {
+diff --git a/drivers/net/usb/lan78xx.c b/drivers/net/usb/lan78xx.c
+index d73002b2c21a..153aa56b8e68 100644
+--- a/drivers/net/usb/lan78xx.c
++++ b/drivers/net/usb/lan78xx.c
+@@ -2117,8 +2117,7 @@ static int lan78xx_mdio_init(struct lan78xx_net *dev)
+ 	dev->mdiobus->name = "lan78xx-mdiobus";
+ 	dev->mdiobus->parent = &dev->udev->dev;
+ 
+-	snprintf(dev->mdiobus->id, MII_BUS_ID_SIZE, "usb-%03d:%03d",
+-		 dev->udev->bus->busnum, dev->udev->devnum);
++	usb_make_path(dev->udev, dev->mdiobus->id, MII_BUS_ID_SIZE);
+ 
+ 	switch (dev->chipid) {
+ 	case ID_REV_CHIP_ID_7800_:
 
--- 
-Git-157)
+---
+base-commit: fa5196392691051963726787944db872420dfa75
+change-id: 20261109-net-usb-mdio-naming-cb32f6805c36
+
+Best regards,
+--  
+Blake Alexander <blake.alexander@airbus.com>
 
