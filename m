@@ -1,232 +1,178 @@
-From: Patrick Vogelaar <patrick.vogelaar@belden.com>
-Date: Mon, 09 Nov 2026 08:46:39 +0100
-Subject: [PATCH 3/3] toaster: take build times from the events
+From: Moad Tarrih <tarrihmoad@proton.me>
+Date: Mon, 09 Nov 2026 08:17:40 +0000
+Subject: [PATCH v2] platform/x86: asus-wmi: Ignore unusable kbd backlight
+ WMI device on ROG Strix G814FP
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-toaster-projects-nobuild-v1-3-7e65cadc2d39@belden.com>
-References: <20261109-toaster-projects-nobuild-v1-0-7e65cadc2d39@belden.com>
-In-Reply-To: <20261109-toaster-projects-nobuild-v1-0-7e65cadc2d39@belden.com>
-To: bitbake-devel@lists.openembedded.org
-Cc: Patrick Vogelaar <patrick.vogelaar@belden.com>, 
- patrick.vogelaar.dev@mailbox.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794210409; l=8373;
- i=patrick.vogelaar@belden.com; s=20240201; h=from:subject:message-id;
- bh=1+rb0U/ViAKhPSGmYnDFoRt6HqkQtQj6qm/fr/2doic=;
- b=W0vruMpuTECAFtgxqsp3gypMkCDi7cHRBOJeuAOnXx7XopS5jxY1Cl1LnqgTGm1dbYAGBo5jM
- tZZnJHFGz2UCi6DtVsXPDmhASYJc+dQZ/IcPLhhLn83MR+hyj+qV4z5
-X-Developer-Key: i=patrick.vogelaar@belden.com; a=ed25519;
- pk=w0QU8RmOR3hQv1DxMcz6KmySeE8yqbvO0xC1ZSSUNqY=
-X-Endpoint-Received: by B4 Relay for patrick.vogelaar@belden.com/20240201 with auth_id=125
+Message-Id: <20261109-asus-wmi-kbd-readback-v2-1-c048fc53d8ee@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WPQQ6CMBREr2K69pu2IGlceQ/DoqUfqQSK/QU1h
+ LtbwL3Ll8zMy8yMMDgkdjnMLODkyPk+gTweWNXo/o7gbGImuSyE4Ao0jQSvzkFrLATU1uiqBZk
+ VMj+jkhYVS90hYO3e2+6t3JlG88AqrmNronEUffhs4kmsuX+OSYAAU2eqLnLOtcXrEHz0/alDV
+ i67JOBzTB/iz7wsX9gEnnnhAAAA
+X-Change-ID: 20261108-asus-wmi-kbd-readback-236245e82de8
+To: Corentin Chary <corentin.chary@gmail.com>, 
+ "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
+ Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Antheas Kapenekakis <lkml@antheas.dev>, 
+ Benjamin Tissoires <bentiss@kernel.org>
+Cc: Sercan GOKMEN <gokmensercan@gmail.com>, 
+ Burak Goncu <burakgon12@gmail.com>, Denis Benato <benato.denis96@gmail.com>, 
+ platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Moad Tarrih <tarrihmoad@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794212264; l=6275;
+ i=tarrihmoad@proton.me; s=20261108; h=from:subject:message-id;
+ bh=YC6708aPnllJ505YNKrXbdPIH5G4EWcQfflTfwu8cJE=;
+ b=ey79igGTqzypZ4XKkZfSWtawSMixEVllsZv8pZ89a6a9K2s7kU98nx1Z8K5tPgYwq4ycmwwxX
+ 212cfI1qkeVCXhJelgyuadPiB+kwFKZ9CvhIWdLTvNKmHcM8zdFo5VM
+X-Developer-Key: i=tarrihmoad@proton.me; a=ed25519;
+ pk=wtwpmYxZldK7Qebavgtx7P5WmSQOiWjicK0506NOKLg=
+X-Endpoint-Received: by B4 Relay for tarrihmoad@proton.me/20261108 with auth_id=1453
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Toaster sets the start and end time of a build to the time it processes
-the build's first and last event. For live builds this is the build
-time, but an event log replayed with toaster-eventreplay gets the time
-of the replay, so all replayed builds show when they were imported and
-how long the import took.
+On the ASUS ROG Strix G18 G814FP, writing a level to the keyboard
+backlight brightness in sysfs works, but reading it back always gives
+0, and the read makes the Fn brightness keys misbehave.
 
-Remember the time of the latest event that carries one (log records and
-task events) and use it for the start and end of the build. Live builds
-get the time of the latest log or task event, which is at most seconds
-earlier than before. If no such event has been seen yet, the current
-time is used as before. Task times already come from the build
-statistics.
+The firmware reports the keyboard backlight WMI device as present but
+doesn't implement it. DSTS(0x00050021) always returns 0x50000, which
+is level 0 regardless of what the actual level is, and every
+DEVS(0x00050021) write is rejected as an unsupported method. The
+keyboard backlight is actually driven by hid-asus. asus-wmi saves the 0
+as the current level on every read, and the brightness keys step from
+the saved level. So after any read, for example by the desktop or by
+systemd-backlight, the brightness-up key sets the keyboard to the
+lowest level instead of one step higher.
 
-Add tests/buildinfohelper/test_build_time.py.
+Add a kbd_led_no_wmi quirk that makes asus-wmi treat the keyboard
+backlight WMI device as absent, and set it for this board, matched on
+the DMI board name. asus-wmi then keeps the LED registered for hid-asus
+and no longer reads from or writes to the WMI device. The entry also
+sets wmi_backlight_set_devstate which the board currently gets from
+the default quirk_asus_unknown, so nothing else changes for it.
 
-AI-Generated: Uses Kiro (claude-opus-5.5)
-Signed-off-by: Patrick Vogelaar <patrick.vogelaar@belden.com>
+As a side effect, the kbd_rgb_mode and kbd_rgb_mode_index attributes are
+no longer created on this board, they never worked here since the firmware
+rejects those writes as well.
+
+This patch was written with the help of an AI coding assistant (Claude
+Code, Claude Opus 5.5). I reviewed it and tested it on my affected laptop.
+
+Fixes: fac55d29581f ("platform/x86: asus-wmi: Add support for multiple kbd led handlers")
+Suggested-by: Antheas Kapenekakis <lkml@antheas.dev>
+Suggested-by: Denis Benato <denis.benato@linux.dev>
+Cc: stable@vger.kernel.org
+Signed-off-by: Moad Tarrih <tarrihmoad@proton.me>
 ---
- lib/bb/ui/buildinfohelper.py                       | 32 ++++++++---
- lib/bb/ui/toasterui.py                             |  1 +
- .../tests/buildinfohelper/test_build_time.py       | 62 ++++++++++++++++++++++
- 3 files changed, 88 insertions(+), 7 deletions(-)
+Tested on an ASUS ROG Strix G18 (board G814FP, BIOS G814FP.317,
+keyboard 0b05:19b6) on 7.2.14, built as DKMS modules. The keyboard
+backlight is still registered and driven by hid-asus, the attribute
+reads back the level that was set, the brightness keys step from the
+real level, and the level survives suspend/resume and reboots.
+Build-tested with W=1 against pdx86 for-next (c339f4010dea): no
+warnings. checkpatch --strict is clean.
 
-diff --git a/lib/bb/ui/buildinfohelper.py b/lib/bb/ui/buildinfohelper.py
-index 787cab952..7cc8229d5 100644
---- a/lib/bb/ui/buildinfohelper.py
-+++ b/lib/bb/ui/buildinfohelper.py
-@@ -43,7 +43,7 @@ from bb.msg import BBLogFormatter as formatter
- from django.db import models
- from pprint import pformat
- import logging
--from datetime import datetime, timedelta
-+from datetime import datetime, timedelta, timezone as dt_timezone
- 
- from django.db import transaction
- 
-@@ -143,10 +143,12 @@ class ORMWrapper(object):
-     # pylint: disable=bad-continuation
-     # we do not follow the python conventions for continuation indentation due to long lines here
- 
--    def get_or_create_build_object(self, brbe, project_name=None):
-+    def get_or_create_build_object(self, brbe, project_name=None,
-+                                   started_on=None):
-         """
-         project_name: for command line builds, the project to put the build
-         into (created if needed); None or empty for the default project
-+        started_on: start time of a new Build object; defaults to now
-         """
-         project_name = project_name.strip() if project_name else None
-         prj = None
-@@ -175,7 +177,7 @@ class ORMWrapper(object):
-             build.save()
-         else:
-             # create new Build object
--            now = timezone.now()
-+            now = started_on or timezone.now()
-             build = Build.objects.create(
-                 project=prj,
-                 started_on=now,
-@@ -217,7 +219,8 @@ class ORMWrapper(object):
-             result.append(obj)
-         return result
- 
--    def update_build_stats_and_outcome(self, build, errors, warnings, taskfailures):
-+    def update_build_stats_and_outcome(self, build, errors, warnings, taskfailures,
-+                                       completed_on=None):
-         assert isinstance(build,Build)
-         assert isinstance(errors, int)
-         assert isinstance(warnings, int)
-@@ -235,7 +238,7 @@ class ORMWrapper(object):
-         if errors or taskfailures:
-             outcome = Build.FAILED
- 
--        build.completed_on = timezone.now()
-+        build.completed_on = completed_on or timezone.now()
-         build.outcome = outcome
-         build.save()
- 
-@@ -922,6 +925,10 @@ class BuildInfoHelper(object):
- 
-         self.project = None
- 
-+        # time of the latest event that has one; event logs can be replayed
-+        # long after the build, so build times are taken from the events
-+        self.event_time = None
-+
-         logger.debug("buildinfohelper: Build info helper inited %s" % vars(self))
- 
- 
-@@ -940,7 +947,8 @@ class BuildInfoHelper(object):
-             if self.brbe is None:
-                 project_name, _ = self.server.runCommand(["getVariable", "TOASTER_PROJECT"])
-             self.internal_state['build'] = \
--                self.orm_wrapper.get_or_create_build_object(self.brbe, project_name)
-+                self.orm_wrapper.get_or_create_build_object(
-+                    self.brbe, project_name, self.event_time)
- 
-         build = self.internal_state['build']
- 
-@@ -1103,6 +1111,15 @@ class BuildInfoHelper(object):
-             except NotExisting as nee:
-                 logger.warning("buildinfohelper: cannot identify layer exception:%s ", nee)
- 
-+    def update_event_time(self, event):
-+        """Remember the time of events that carry one"""
-+        if isinstance(event, logging.LogRecord):
-+            secs = event.created
-+        else:
-+            secs = getattr(event, 'time', None)
-+        if isinstance(secs, (int, float)):
-+            self.event_time = datetime.fromtimestamp(secs, dt_timezone.utc)
-+
-     def store_started_build(self):
-         self._ensure_build()
- 
-@@ -1210,7 +1227,8 @@ class BuildInfoHelper(object):
-     def update_build_information(self, event, errors, warnings, taskfailures):
-         self._ensure_build()
-         self.orm_wrapper.update_build_stats_and_outcome(
--            self.internal_state['build'], errors, warnings, taskfailures)
-+            self.internal_state['build'], errors, warnings, taskfailures,
-+            self.event_time)
- 
-     def store_started_task(self, event):
-         assert isinstance(event, (bb.runqueue.sceneQueueTaskStarted, bb.runqueue.runQueueTaskStarted, bb.runqueue.runQueueTaskSkipped))
-diff --git a/lib/bb/ui/toasterui.py b/lib/bb/ui/toasterui.py
-index 6bd21f184..971d06c03 100644
---- a/lib/bb/ui/toasterui.py
-+++ b/lib/bb/ui/toasterui.py
-@@ -224,6 +224,7 @@ def main(server, eventHandler, params):
-                 continue
- 
-             helper.eventHandler(event)
-+            buildinfohelper.update_event_time(event)
- 
-             # pylint: disable=protected-access
-             # the code will look into the protected variables of the event; no easy way around this
-diff --git a/lib/toaster/tests/buildinfohelper/test_build_time.py b/lib/toaster/tests/buildinfohelper/test_build_time.py
-new file mode 100644
-index 000000000..363eeeee3
---- /dev/null
-+++ b/lib/toaster/tests/buildinfohelper/test_build_time.py
-@@ -0,0 +1,62 @@
-+#! /usr/bin/env python3
-+#
-+# BitBake Toaster Implementation
-+#
-+# SPDX-License-Identifier: GPL-2.0-only
-+#
-+
-+"""Build start and end times are taken from the events."""
-+
-+import logging
-+from datetime import datetime, timezone
-+
-+import bb.build
-+import bb.data
-+import bb.event
-+from django.test import TransactionTestCase
-+
-+from bb.ui.buildinfohelper import BuildInfoHelper
-+from bb.ui.eventreplay import EventPlayer
-+from orm.models import Build
-+
-+START = 1700000000.5
-+END = 1700001500.25
-+
-+
-+def utc(secs):
-+    return datetime.fromtimestamp(secs, timezone.utc)
-+
-+
-+class BuildTimeTests(TransactionTestCase):
-+    """A replayed event log keeps the times of the original build"""
-+
-+    def setUp(self):
-+        variables = {name: {'v': name.lower()} for name in
-+                     ('BUILDNAME', 'MACHINE', 'DISTRO', 'DISTRO_VERSION',
-+                      'BB_VERSION', 'TMPDIR')}
-+        server = EventPlayer(None, variables)
-+        self.helper = BuildInfoHelper(server)
-+
-+    def test_times_from_events(self):
-+        record = logging.LogRecord('BitBake', logging.INFO, '', 0, 'msg',
-+                                   None, None)
-+        record.created = START
-+        self.helper.update_event_time(record)
-+        self.helper.store_started_build()
-+
-+        task = bb.build.TaskSucceeded('do_build', 'test.bb', None,
-+                                      bb.data.init())
-+        task.time = END
-+        self.helper.update_event_time(task)
-+        self.helper.update_build_information(None, 0, 0, [])
-+
-+        build = Build.objects.get()
-+        self.assertEqual(build.started_on, utc(START))
-+        self.assertEqual(build.completed_on, utc(END))
-+        self.assertEqual(build.outcome, Build.SUCCEEDED)
-+
-+    def test_events_without_time_keep_the_clock(self):
-+        before = datetime.now(timezone.utc)
-+        self.helper.update_event_time(bb.event.BuildStarted('build', []))
-+        self.helper.store_started_build()
-+        self.assertGreaterEqual(Build.objects.get().started_on, before)
+The kbd_rgb_mode and kbd_rgb_mode_index attributes are no longer
+created on this board. They never worked here: writes to kbd_rgb_mode
+are rejected by the firmware with -ENODEV, like the brightness writes.
 
--- 
-2.43.0
+To answer Denis's questions on v1, the bug this patch fixes happens on
+the latest BIOS for this board as of writing, which is version 317.
+I only have the G814FP, so I don't know if other 2025 G814 models
+are affected, the quirk only matches G814FP.
+
+This no longer depends on Sercan GOKMEN's kbd_led_no_readback patch.
+Both patches add a field to struct quirk_entry and a DMI entry, so
+whichever lands second may need a trivial rebase.
+
+AI assistance: Claude Code was used to trace the keyboard backlight
+code in asus-wmi, run the debugfs DSTS/DEVS probes, write the patch and
+draft this message. Testing and final review were done by me on the
+hardware.
+---
+Changes in v2:
+- Add a quirk that makes asus-wmi skip the keyboard backlight WMI
+  device on this board instead of detecting rejected writes at
+  runtime (Antheas), so no more WMI writes that are known to fail
+  are issued (Denis).
+- Link to v1: https://patch.msgid.link/20261108-asus-wmi-kbd-readback-v1-1-bf38f6400ade@proton.me
+---
+ drivers/platform/x86/asus-nb-wmi.c | 14 ++++++++++++++
+ drivers/platform/x86/asus-wmi.c    |  3 ++-
+ drivers/platform/x86/asus-wmi.h    |  6 ++++++
+ 3 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/platform/x86/asus-nb-wmi.c b/drivers/platform/x86/asus-nb-wmi.c
+index 3b0f3346dc60..fbdb00248be5 100644
+--- a/drivers/platform/x86/asus-nb-wmi.c
++++ b/drivers/platform/x86/asus-nb-wmi.c
+@@ -93,6 +93,11 @@ static struct quirk_entry quirk_asus_unknown = {
+ 	.wmi_backlight_set_devstate = true,
+ };
+ 
++static struct quirk_entry quirk_asus_g814fp = {
++	.wmi_backlight_set_devstate = true,
++	.kbd_led_no_wmi = true,
++};
++
+ static struct quirk_entry quirk_asus_q500a = {
+ 	.filter_i8042_e1_extended_codes = true,
+ 	.wmi_backlight_set_devstate = true,
+@@ -167,6 +172,15 @@ static int dmi_matched(const struct dmi_system_id *dmi)
+ }
+ 
+ static const struct dmi_system_id asus_quirks[] = {
++	{
++		.callback = dmi_matched,
++		.ident = "ASUS ROG Strix G18 G814FP",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
++			DMI_MATCH(DMI_BOARD_NAME, "G814FP"),
++		},
++		.driver_data = &quirk_asus_g814fp,
++	},
+ 	{
+ 		.callback = dmi_matched,
+ 		.ident = "ASUSTeK COMPUTER INC. Q500A",
+diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
+index b33ebdb21aa2..51fea21ff247 100644
+--- a/drivers/platform/x86/asus-wmi.c
++++ b/drivers/platform/x86/asus-wmi.c
+@@ -2165,7 +2165,8 @@ static int asus_wmi_led_init(struct asus_wmi *asus)
+ 	asus->kbd_led.brightness_set_blocking = kbd_led_set;
+ 	asus->kbd_led.brightness_get = kbd_led_get;
+ 	asus->kbd_led.max_brightness = ASUS_EV_MAX_BRIGHTNESS;
+-	asus->kbd_led_avail = !kbd_led_read(asus, &led_val, NULL);
++	asus->kbd_led_avail = !asus->driver->quirks->kbd_led_no_wmi &&
++			      !kbd_led_read(asus, &led_val, NULL);
+ 	INIT_WORK(&asus->kbd_led_work, kbd_led_update_all);
+ 
+ 	if (asus->kbd_led_avail) {
+diff --git a/drivers/platform/x86/asus-wmi.h b/drivers/platform/x86/asus-wmi.h
+index b45f81b38a47..9f3769fc82f7 100644
+--- a/drivers/platform/x86/asus-wmi.h
++++ b/drivers/platform/x86/asus-wmi.h
+@@ -41,6 +41,12 @@ struct quirk_entry {
+ 	bool wmi_force_als_set;
+ 	bool wmi_ignore_fan;
+ 	bool filter_i8042_e1_extended_codes;
++	/*
++	 * The keyboard backlight WMI device reports itself as present, but the
++	 * firmware does not implement it: reads return level 0 and writes are
++	 * rejected. Leave the backlight to hid-asus.
++	 */
++	bool kbd_led_no_wmi;
+ 	int key_wlan_event;
+ 	enum asus_wmi_tablet_switch_mode tablet_switch_mode;
+ 	int wapf;
+
+---
+base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
+change-id: 20261108-asus-wmi-kbd-readback-236245e82de8
+
+Best regards,
+--  
+Moad Tarrih <tarrihmoad@proton.me>
 
