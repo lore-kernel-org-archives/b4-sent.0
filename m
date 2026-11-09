@@ -1,11 +1,11 @@
 From: Umer Uddin <umer.uddin@mentallysanemainliners.org>
-Date: Mon, 09 Nov 2026 21:02:02 +0000
-Subject: [PATCH v2 1/2] dt-bindings: arm: samsung: samsung-boards: Add
- bindings for SM-T515 board
+Date: Mon, 09 Nov 2026 21:02:03 +0000
+Subject: [PATCH v2 2/2] arm64: exynos: Add initial support for Samsung
+ Galaxy Tab A 10.1 (2019, 4G)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-gta3xllte-support-v2-1-85c31b6efebd@mentallysanemainliners.org>
+Message-Id: <20261109-gta3xllte-support-v2-2-85c31b6efebd@mentallysanemainliners.org>
 References: <20261109-gta3xllte-support-v2-0-85c31b6efebd@mentallysanemainliners.org>
 In-Reply-To: <20261109-gta3xllte-support-v2-0-85c31b6efebd@mentallysanemainliners.org>
 To: Krzysztof Kozlowski <krzk@kernel.org>, 
@@ -17,35 +17,179 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Umer Uddin <umer.uddin@mentallysanemainliners.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794258123; l=932;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794258123; l=4267;
  i=umer.uddin@mentallysanemainliners.org; s=20261109;
- h=from:subject:message-id; bh=rPHV+1f50EZ85D3csJMso8rMA1UhcD9FsDkCoV1Wx3o=;
- b=zUnWIrqvadiWfBOS7sVKmVI09UnbwQgEzT1TCWU/YJA2x+FMIDqrTIJwAk0MNH0+YVgWpLN9l
- xhuGqB0AkYwDYLxonFJPW+ZK1pX9fkNKksjEeJaueAvFfRf/pf93k2I
+ h=from:subject:message-id; bh=eEsZaspggx8BPKN712bRu9JrPSLF48OkOU10L6YuavM=;
+ b=0vHH1hvp7TgGIuMg2ilVfQYx133OOp+vlddohJYFReaI+hUvfkoslhBKcnfMF+fuTTlBcAO5K
+ xAVEoapDqnwCSwEKDv1138rw/WwlAwZda808714wUsC2tSAlz7OBa2Q
 X-Developer-Key: i=umer.uddin@mentallysanemainliners.org; a=ed25519;
  pk=Hsgrt4A72CFTe27AI1AAWlnLsiQrlb4+T+cbrfWDhUA=
 X-Endpoint-Received: by B4 Relay for umer.uddin@mentallysanemainliners.org/20261109 with auth_id=1466
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add devicetree bindings for Samsung Galaxy Tab A 10.1 (2019, 4G) board.
+Add initial support for Samsung Galaxy Tab A 10.1 (2019) is a tablet that
+is based on Exynos7885, this patch adds support for the LTE variant.
+
+This device tree adds support for the following:
+
+- SimpleFB
+- 2GB RAM
+- Buttons
+- Internal eMMC
 
 Signed-off-by: Umer Uddin <umer.uddin@mentallysanemainliners.org>
 ---
- Documentation/devicetree/bindings/arm/samsung/samsung-boards.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ arch/arm64/boot/dts/exynos/Makefile                |   1 +
+ .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 129 +++++++++++++++++++++
+ 2 files changed, 130 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/samsung/samsung-boards.yaml b/Documentation/devicetree/bindings/arm/samsung/samsung-boards.yaml
-index db19a686f490..6ac7f895351e 100644
---- a/Documentation/devicetree/bindings/arm/samsung/samsung-boards.yaml
-+++ b/Documentation/devicetree/bindings/arm/samsung/samsung-boards.yaml
-@@ -226,6 +226,7 @@ properties:
-       - description: Exynos7885 based boards
-         items:
-           - enum:
-+              - samsung,gta3xllte               # Samsung Galaxy Tab A 10.1 (2019, 4G)
-               - samsung,jackpotlte              # Samsung Galaxy A8 (2018)
-           - const: samsung,exynos7885
- 
+diff --git a/arch/arm64/boot/dts/exynos/Makefile b/arch/arm64/boot/dts/exynos/Makefile
+index 7534b773d28f..f1946a95cb42 100644
+--- a/arch/arm64/boot/dts/exynos/Makefile
++++ b/arch/arm64/boot/dts/exynos/Makefile
+@@ -12,6 +12,7 @@ dtb-$(CONFIG_ARCH_EXYNOS) += \
+ 	exynos7870-j6lte.dtb		\
+ 	exynos7870-j7xelte.dtb		\
+ 	exynos7870-on7xelte.dtb		\
++	exynos7885-gta3xllte.dtb	\
+ 	exynos7885-jackpotlte.dtb	\
+ 	exynos850-a217f.dtb		\
+ 	exynos850-e850-96.dtb		\
+diff --git a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
+new file mode 100644
+index 000000000000..03476f8b1200
+--- /dev/null
++++ b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
+@@ -0,0 +1,129 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Samsung Galaxy Tab A 10.1 (2019, 4G) (gta3xllte/SM-T515) device tree source
++ *
++ * Copyright (c) 2026, Umer Uddin <umer.uddin@mentallysanemainliners.org>
++ */
++
++/dts-v1/;
++#include "exynos7885.dtsi"
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++
++/ {
++	model = "Samsung Galaxy Tab A 10.1 (2019, 4G)";
++	compatible = "samsung,gta3xllte", "samsung,exynos7885";
++	chassis-type = "tablet";
++
++	aliases {
++		mmc0 = &mmc_0;
++		serial0 = &serial_0;
++		serial1 = &serial_1;
++		serial2 = &serial_2;
++	};
++
++	chosen {
++		ranges;
++		#address-cells = <2>;
++		#size-cells = <1>;
++
++		framebuffer0: framebuffer@ec000000 {
++			compatible = "simple-framebuffer";
++			reg = <0 0xec000000 0x01400000>;
++			width = <1200>;
++			height = <1920>;
++			stride = <(1200 * 4)>;
++			format = "a8r8g8b8";
++		};
++	};
++
++	gpio-keys {
++		compatible = "gpio-keys";
++		pinctrl-0 = <&key_volup &key_voldown &key_power>;
++		pinctrl-names = "default";
++
++		power-key {
++			gpios = <&gpa1 7 GPIO_ACTIVE_LOW>;
++			label = "Power";
++			wakeup-source;
++			linux,code = <KEY_POWER>;
++		};
++
++		voldown-key {
++			gpios = <&gpa1 6 GPIO_ACTIVE_LOW>;
++			label = "Volume Down";
++			linux,code = <KEY_VOLUMEDOWN>;
++		};
++
++		volup-key {
++			gpios = <&gpa1 5 GPIO_ACTIVE_LOW>;
++			label = "Volume Up";
++			linux,code = <KEY_VOLUMEUP>;
++		};
++	};
++
++	memory@80000000 {
++		device_type = "memory";
++		reg = <0x0 0x80000000 0x3dd00000>,
++		      <0x0 0xc0000000 0x40000000>;
++	};
++
++	reserved-memory {
++		ranges;
++		#address-cells = <2>;
++		#size-cells = <1>;
++
++		cont_splash_mem: framebuffer@ec000000 {
++			reg = <0 0xec000000 0x01400000>;
++			no-map;
++		};
++	};
++};
++
++&mmc_0 {
++	bus-width = <8>;
++	cap-mmc-highspeed;
++	card-detect-delay = <200>;
++	clock-frequency = <800000000>;
++	mmc-hs200-1_8v;
++	mmc-hs400-1_8v;
++	mmc-hs400-enhanced-strobe;
++	non-removable;
++	pinctrl-0 = <&sd0_clk_fast_slew_rate_3x &sd0_cmd &sd0_rdqs
++		     &sd0_bus1 &sd0_bus4 &sd0_bus8>;
++	pinctrl-names = "default";
++
++	samsung,dw-mshc-ciu-div = <3>;
++	samsung,dw-mshc-ddr-timing = <2 4>;
++	samsung,dw-mshc-hs400-timing = <0 2>;
++	samsung,dw-mshc-sdr-timing = <0 4>;
++
++	status = "okay";
++};
++
++&oscclk {
++	clock-frequency = <26000000>;
++};
++
++&pinctrl_alive {
++	key_power: key-power-pins {
++		samsung,pins = "gpa1-7";
++		samsung,pin-function = <EXYNOS_PIN_FUNC_F>;
++		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
++		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
++	};
++
++	key_voldown: key-voldown-pins {
++		samsung,pins = "gpa1-6";
++		samsung,pin-function = <EXYNOS_PIN_FUNC_F>;
++		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
++		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
++	};
++
++	key_volup: key-volup-pins {
++		samsung,pins = "gpa1-5";
++		samsung,pin-function = <EXYNOS_PIN_FUNC_F>;
++		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
++		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
++	};
++};
 
 -- 
 2.56.0
