@@ -1,172 +1,81 @@
-From: Xuheng Li <xuheng@cs.columbia.edu>
-Date: Mon, 09 Nov 2026 22:13:36 +0000
-Subject: [PATCH v2] KVM: arm64: Order a later pinner's accesses after the
- hyp mapping
+From: Ivan Verbovoy <ivanverbovoy@gmail.com>
+Date: Tue, 10 Nov 2026 00:33:18 +0200
+Subject: [PATCH] ASoC: codecs: wcd934x: drop the MCLK on every disable
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-pin-barrier-v2-1-64ca73cae5e3@cs.columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22MQQ6CMBAAv0L2bEm3ihZO/sNwaMtWNtFCWmk0h
- L9bOXucSWZWSBSZEnTVCpEyJ55CAXWowI0m3EnwUBiUVGdE2YiZg7AmliiKRnt1VK1rUSsoxRz
- J83u/3frCI6fXFD/7POPP/v9kFCjkiaxH1HhpzNWl2k2P5WnZ1DQs0G/b9gUSPyAurAAAAA==
-X-Change-ID: 20261105-pin-barrier-58f2329c9182
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oupton@kernel.org>
-Cc: Quentin Perret <qperret@google.com>, Will Deacon <will@kernel.org>, 
- Catalin Marinas <catalin.marinas@arm.com>, 
- Mark Rutland <mark.rutland@arm.com>, Fuad Tabba <fuad.tabba@linux.dev>, 
- Joey Gouly <joey.gouly@arm.com>, Steffen Eiden <seiden@linux.ibm.com>, 
- Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, kvmarm@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Xuheng Li <xuheng@cs.columbia.edu>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794262415; l=5667;
- i=xuheng@cs.columbia.edu; s=20261028; h=from:subject:message-id;
- bh=fuEJKXd7OZH045MEhiyU1s2rzbiFjb8ltiEtBO6sALo=;
- b=V618ePRfwdZZAW0Pe+S4sb9++ANEHkXDx1Ax0HhTJq2uWt5VDvp2qki7W/rqYoREcrssbVTdH
- 7CRRVgGJ3JsDX7FqfVtXtz0282zcW+t5AkqW6SFLLdg9BlruAhnkscu
-X-Developer-Key: i=xuheng@cs.columbia.edu; a=ed25519;
- pk=L1HVV+goqxYmEMO/OXakL6uf9isSpgk2QrLlFqyZ2Qs=
-X-Endpoint-Received: by B4 Relay for xuheng@cs.columbia.edu/20261028 with auth_id=1349
+Message-Id: <20261110-wcd934x-mclk-v1-1-c62956792a3f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwNL3fLkFEtjkwrd3OScbF0jQyPDtEQDE3Njw0QloJaCotS0zAqwcdG
+ xEH5xaVJWanIJyAyl2loAfQOIoHAAAAA=
+X-Change-ID: 20261109-wcd934x-mclk-2121fa04731a
+To: Srinivas Kandagatla <srini@kernel.org>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>
+Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Ivan Verbovoy <ivanverbovoy@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794263597; l=2005;
+ i=ivanverbovoy@gmail.com; s=20261103; h=from:subject:message-id;
+ bh=+8TND5x7ORkQtuZzYM2DXIkWaXwiQXUX8dcdq40ah4g=;
+ b=V/UsTHBZK8oO3woRtBITahsylO2KUvicFIWJMfYn5kV/n4IV0n56VyK40mVg/z7b3hwiZ28Zx
+ K4UZcPd8YKCCsPfvgfqYObjxUt6SPl1t2VHew7/ftVgIE6t+sYIi+iI
+X-Developer-Key: i=ivanverbovoy@gmail.com; a=ed25519;
+ pk=0AchqTH1hJFToIUeFfQRlVzzuaWQDs4e75SxT2y3s8c=
+X-Endpoint-Received: by B4 Relay for ivanverbovoy@gmail.com/20261103 with auth_id=1396
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 48d848882395 ("KVM: arm64: Defer EL2 stage-1 mapping on
-share"), hyp_pin_shared_mem() maps a shared page into the hypervisor's
-stage-1 only when its refcount goes from 0 to 1.  The CPU that maps it
-runs dsb(ishst); isb() in kvm_pgtable_hyp_map(), which orders that CPU's
-own accesses.  A CPU that pins the page later sees refcount >= 1, maps
-nothing and runs no barrier.  It then accesses the page through an
-address it computed before taking the locks, so nothing orders its
-translation after the other CPU's PTE write.  The access can use a
-translation performed while the entry was still invalid, and fault.
+__wcd934x_cdc_mclk_enable() takes a reference on every enable: it
+prepares and enables the external clock and counts a user of the
+analog bias and system clock (sysclk_users). On disable it returns
+early while the SoundWire controller's clock is enabled, so neither is
+dropped. Each DAPM MCLK power-down or MBHC micbias release during
+SoundWire activity therefore leaks one reference, and the MCLK stays on
+for good.
 
-A host can do this with any pinning hypercall by passing the same page
-from two CPUs, for example __pkvm_init_vm() with the same struct kvm:
+The early return is not needed: wcd934x_swrm_clock() takes its own
+reference before it enables the SoundWire clock and clears that clock
+before it drops the reference, and sysclk_users keeps the bias and the
+system clock on while any user remains. Drop the check.
 
-  CPU A                                CPU B
-  -----                                -----
-                                       host_kvm = kern_hyp_va_host(x1)
-                                       (host_kvm may be translated now,
-                                        while its entry is invalid)
-  __pkvm_init_vm(host_kvm)
-   hyp_pin_shared_mem()
-    host/hyp locks
-    refcount 0 -> 1
-    pkvm_create_mappings_locked()
-     kvm_pgtable_hyp_map()
-      write the valid PTE
-      dsb(ishst); isb()   <- CPU A only
-    unlock
-                                       __pkvm_init_vm(host_kvm)
-                                        hyp_pin_shared_mem()
-                                         host/hyp locks
-                                         refcount 1 -> 2: no mapping,
-                                         no barrier
-                                         unlock
-                                        READ_ONCE(host_kvm->created_vcpus)
-                                         uses the old translation:
-                                         translation fault -> hyp_panic()
+On a Surface Duo (SM8150, WCD9340) the codec's external clock,
+ln_bb_clk2 (an RPMh XO buffer vote), was found prepared five times at
+suspend, which kept the SoC's XO on. With the check dropped, its enable
+and prepare counts are back to zero once playback stops.
 
-A well-behaved host can hit this too.  Since commit cf533b4d3630 ("KVM:
-arm64: Validate the host vCPU's VM before reading it under pKVM"),
-injecting an exception into a host vCPU that isn't loaded pins its
-struct kvm to read the VM's MTE flag.  On an MTE-capable host, two vCPUs
-of one VM that do this at the same time from __kvm_adjust_pc() take the
-same path as CPU B above.
-
-The lock hand-off orders CPU B's loads and stores after CPU A's PTE
-write, but not its translation table walks.  Arm's herd7 model with
--variant vmsa allows the fault for this shape: a mapping made and
-completed with DSB; ISB on one CPU, handed over through a
-release/acquire, then used on another CPU through an address it already
-held.  It forbids the fault once the second CPU runs DSB; ISB after the
-acquire.
-
-Make every successful pin end with dsb(ish); isb(), so that the pinning
-CPU's later accesses through the range are ordered after the mapping,
-whichever pin installed it.
-
-Fixes: 48d848882395 ("KVM: arm64: Defer EL2 stage-1 mapping on share")
-Cc: stable@vger.kernel.org
-Reviewed-by: Fuad Tabba <fuad.tabba@linux.dev>
-Signed-off-by: Xuheng Li <xuheng@cs.columbia.edu>
+Fixes: a61f3b4f476e ("ASoC: wcd934x: add support to wcd9340/wcd9341 codec")
+Signed-off-by: Ivan Verbovoy <ivanverbovoy@gmail.com>
 ---
-The fault was found with herd7 (herdtools7 7.58+1) and Arm's AArch64
-model with -variant vmsa,fatal.  The test reduces the host/hyp locks to
-an acquire of CPU A's release and the pin to its refcount check:
+ sound/soc/codecs/wcd934x.c | 9 ---------
+ 1 file changed, 9 deletions(-)
 
-AArch64 pin-maps-nothing
-{
-pte_x=(valid:0);
-0:X2=pte_x; 0:X1=(oa:phy_y);
-y=1;
-pte_z=(af:1,db:1); pte_r=(af:1,db:1);
-0:X8=z; 1:X8=z;
-0:X9=r; 1:X9=r;
-1:X3=x;
-}
- P0               | P1                ;
- MOV W5,#1        | LDAR W7,[X8]      ;
- STR W5,[X9]      | LDR W5,[X9]       ;
- STLR X1,[X2]     | ADD W5,W5,#1      ;
- DSB ISHST        | STR W5,[X9]       ;
- ISB              | CMP W5,#1         ;
- MOV W7,#1        | B.EQ LMAP         ;
- STLR W7,[X8]     | MOV W6,#2         ;
-                  | STLR W6,[X8]      ;
-                  | L0: LDR W4,[X3]   ;
-                  | LMAP:             ;
-exists (1:X7=1 /\ 1:X5=2 /\ fault(P1:L0,x))
-
-P0 is the pin that maps x (refcount 0 -> 1, PTE store, dsb(ishst);
-isb(), unlock).  P1 takes the lock after P0's unlock, sees refcount 2,
-maps nothing, and then loads through the address it already held in X3.
-
-  $ herd7 -variant vmsa,fatal pin-maps-nothing.litmus
-  ...
-  1:X5=2; 1:X7=1; Fault(P1:L0,x,D-MMU:Translation);
-  ...
-  Observation pin-maps-nothing Sometimes 1 7
-
-With DSB ISH; ISB on P1 after its acquire and before L0, as this patch
-adds, the result is Never (0 6).  It is also Never with
--variant vmsa,fatal,ets2, i.e. on CPUs with FEAT_ETS2.
----
-Changes in v2:
-- Add a case that a well-behaved host can hit, from __kvm_adjust_pc()
-  (Fuad).
-- Collect Fuad's Reviewed-by.
-- Rebase onto v7.4-rc2.
-- Link to v1: https://lore.kernel.org/r/20261105-pin-barrier-v1-1-04ebf118175a@cs.columbia.edu
----
- arch/arm64/kvm/hyp/nvhe/mem_protect.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/arch/arm64/kvm/hyp/nvhe/mem_protect.c b/arch/arm64/kvm/hyp/nvhe/mem_protect.c
-index d4c332a91..5cb1a1e1f 100644
---- a/arch/arm64/kvm/hyp/nvhe/mem_protect.c
-+++ b/arch/arm64/kvm/hyp/nvhe/mem_protect.c
-@@ -1210,6 +1210,14 @@ int hyp_pin_shared_mem(void *from, void *to)
- 							    PAGE_HYP));
+diff --git a/sound/soc/codecs/wcd934x.c b/sound/soc/codecs/wcd934x.c
+index 5cd30a5ed69c..043061558225 100644
+--- a/sound/soc/codecs/wcd934x.c
++++ b/sound/soc/codecs/wcd934x.c
+@@ -1355,15 +1355,6 @@ static int __wcd934x_cdc_mclk_enable(struct wcd934x_codec *wcd, bool enable)
+ 		}
+ 		ret = wcd934x_enable_ana_bias_and_sysclk(wcd);
+ 	} else {
+-		int val;
+-
+-		regmap_read(wcd->regmap, WCD934X_CDC_CLK_RST_CTRL_SWR_CONTROL,
+-			    &val);
+-
+-		/* Don't disable clock if soundwire using it.*/
+-		if (val & WCD934X_CDC_SWR_CLK_EN_MASK)
+-			return 0;
+-
+ 		wcd934x_disable_ana_bias_and_syclk(wcd);
+ 		clk_disable_unprepare(wcd->extclk);
  	}
- 
-+	/*
-+	 * Only the first pin of a page maps it, and that CPU's barriers order
-+	 * only its own accesses. Order this CPU's accesses through the range
-+	 * after the mapping, whichever pin made it.
-+	 */
-+	dsb(ish);
-+	isb();
-+
- unlock:
- 	hyp_unlock_component();
- 	host_unlock_component();
 
 ---
-base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261105-pin-barrier-58f2329c9182
+base-commit: 630059a5a632377b9b7b487baccde92b7ae1dd47
+change-id: 20261109-wcd934x-mclk-2121fa04731a
 
 Best regards,
--- 
-Xuheng Li <xuheng@cs.columbia.edu>
+--  
+Ivan Verbovoy <ivanverbovoy@gmail.com>
 
