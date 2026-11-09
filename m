@@ -1,10 +1,11 @@
 From: Kohei Otsuka <kohei@spacemachines.com>
-Date: Mon, 09 Nov 2026 13:55:05 +1100
-Subject: [PATCH v2 1/2] dt-bindings: serial: 8250: add Microchip Core16550
+Date: Mon, 09 Nov 2026 13:55:06 +1100
+Subject: [PATCH v2 2/2] serial: 8250_of: drop RS-485 RTS on Microchip
+ Core16550
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-core16550-rs485-v2-1-a15933c7b907@spacemachines.com>
+Message-Id: <20261109-core16550-rs485-v2-2-a15933c7b907@spacemachines.com>
 References: <20261109-core16550-rs485-v2-0-a15933c7b907@spacemachines.com>
 In-Reply-To: <20261109-core16550-rs485-v2-0-a15933c7b907@spacemachines.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -15,48 +16,60 @@ To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
 Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
  conor.dooley@microchip.com, Kohei Otsuka <kohei@spacemachines.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794192905; l=1517;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794192905; l=2135;
  i=kohei@spacemachines.com; s=20261103; h=from:subject:message-id;
- bh=tVquJwmRACDuh480fTmlsHeIfkSp7Ofs4+cTK3nRbqo=;
- b=VIyOrtl+nYTF1R05LAEuQP9NoK+Lhy2kJMg60Iib8Tz2NG5p9x1VmbIxgETfVKy9VrJL4lkNK
- qKdH4GvU05TCp9YAFJA24IQhfht6sfutY8om5D/nbBZcVtoApSO8ExK
+ bh=zB2zzCjY5jGdBW3bz8SbL+SIiy1mkD1eN/4HcK9U8ig=;
+ b=ikHWkWqXRfD6U4iTaFAtEZY2wJSVCDiHhxCGbkCs0FjWMkuRay/J+3i1gyFsThiAEzWWoDevG
+ ZTYnB7S2hdYCfgm7NuIAq/SiYzTjpYUqggc+E3W/3EEnjZKWRiG6v6C
 X-Developer-Key: i=kohei@spacemachines.com; a=ed25519;
  pk=1kit/vmX5JiLGH9NPcqlvT55ISWaLmNipdL5VrriRt0=
 X-Endpoint-Received: by B4 Relay for kohei@spacemachines.com/20261103 with auth_id=1385
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Core16550 is a 16550-compatible UART soft IP core for Microchip FPGAs,
-including the fabric of PolarFire SoC. Its registers, interrupts and
-baud rate divisor follow the 16550A, so a driver that knows only
-ns16550a operates it fully: transmit, receive, FIFOs and modem control
-all work. What the generic driver cannot know is that the core raises
-no interrupt on TEMT, which it needs to drop RTS after a frame in
-software RS-485 mode (em485). ns16550a therefore stays a valid
-fallback, with RS-485 RTS control the one feature that needs the
-specific compatible.
+Core16550, a 16550-compatible UART for Microchip FPGAs, interrupts on
+THRE but not on TEMT. When the last character moves from the FIFO into
+the shift register, the THRE interrupt calls __stop_tx(), which finds
+TEMT clear and, without UART_CAP_NOTEMT, returns to wait for a TEMT
+interrupt that never comes. RTS, and with it the RS-485 driver enable,
+then stays asserted after the frame, and receive interrupts, disabled
+for the half-duplex transmission, stay off.
 
-Add microchip,core16550-rtl-v3 with ns16550a as the fallback. As for
-Microchip's other FPGA fabric cores, the -rtl-v3 suffix is the major
-RTL version of the IP, Core16550 3.x.
+Set UART_CAP_NOTEMT for nodes compatible with
+"microchip,core16550-rtl-v3", so em485 drops RTS from its stop timer
+one frame time (plus 1/7) after THRE, as it does for DesignWare UARTs.
+
+Set UART_CAP_FIFO as well: with the capabilities already non-zero,
+serial8250_do_startup() no longer fills in the PORT_16550A default,
+and without UART_CAP_FIFO serial8250_clear_fifos() does nothing, so
+the RX FIFO is not flushed at the end of a half-duplex transmission.
 
 Link: https://github.com/linux4microchip/meta-mchp/issues/5
 Signed-off-by: Kohei Otsuka <kohei@spacemachines.com>
 ---
- Documentation/devicetree/bindings/serial/8250.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/tty/serial/8250/8250_of.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/serial/8250.yaml b/Documentation/devicetree/bindings/serial/8250.yaml
-index 50d5c977afa3..6f806b972f5c 100644
---- a/Documentation/devicetree/bindings/serial/8250.yaml
-+++ b/Documentation/devicetree/bindings/serial/8250.yaml
-@@ -137,6 +137,7 @@ properties:
-               - ti,da830-uart
-               - loongson,ls2k0500-uart
-               - loongson,ls2k1500-uart
-+              - microchip,core16550-rtl-v3
-           - const: ns16550a
-       - items:
-           - enum:
+diff --git a/drivers/tty/serial/8250/8250_of.c b/drivers/tty/serial/8250/8250_of.c
+index b41ca604083f..e23539b2fda3 100644
+--- a/drivers/tty/serial/8250/8250_of.c
++++ b/drivers/tty/serial/8250/8250_of.c
+@@ -278,6 +278,16 @@ static int of_platform_serial_probe(struct platform_device *ofdev)
+ 	if (port8250.port.fifosize)
+ 		port8250.capabilities = UART_CAP_FIFO;
+ 
++	/*
++	 * Core16550 has no TEMT interrupt: without UART_CAP_NOTEMT the em485
++	 * code waits for one after the last THRE interrupt and never drops RTS.
++	 * Set UART_CAP_FIFO too, because a non-zero value stops
++	 * serial8250_do_startup() filling in the PORT_16550A default.
++	 */
++	if (of_device_is_compatible(ofdev->dev.of_node,
++				    "microchip,core16550-rtl-v3"))
++		port8250.capabilities |= UART_CAP_FIFO | UART_CAP_NOTEMT;
++
+ 	/* Check for TX FIFO threshold & set tx_loadsz */
+ 	if ((of_property_read_u32(ofdev->dev.of_node, "tx-threshold",
+ 				  &tx_threshold) == 0) &&
 
 -- 
 2.53.0
