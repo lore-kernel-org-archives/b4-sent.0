@@ -1,80 +1,196 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Mon, 09 Nov 2026 00:57:49 +0000
-Subject: [PATCH] arm64: dts: amlogic: meson-sm1-odroid: mark the Ethernet
- PHY as a wakeup source
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Mon, 09 Nov 2026 10:00:56 +0900
+Subject: [PATCH v3] mm/readahead: align the async window in
+ page_cache_ra_order()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-hc4-phy-wakeup-v1-1-d98784ecac88@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAIwa8WoC/x3MSQqAMAxA0atI1gYaJ6hXERe1RhsELS1OiHe3u
- HyL/x+IHIQjtNkDgQ+Jsq0JlGdgnVlnRhmToVBFQ6Q0OluhdzeeZuHdo7ZU82BMScSQIh94kus
- fdv37flgHcaZgAAAA
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
+Message-Id: <20261109-mm-readahead-async-align-v3-1-1567d87b1858@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAEcb8WoC/33NTQrCMBAF4KuUrI3kpw3GlfcQF9NJ2gZMKokGS
+ +ndTYsgLpSBgfdgvplJstHZRI7VTKLNLrkxlCB3FcEBQm+pMyUTwYTiTGjqPY0WDAxlUUhTQAp
+ X1wdqa81baZArUKSc36Lt3HOjz5eSB5fuY5y2T5mv7RuV7DeaOS3DtLGgDg3v8JTAp0fo9zh6s
+ rJZfKhi/aFEoVCiZDW2CI3+ppZleQG2u9AdDQEAAA==
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ "Matthew Wilcox (Oracle)" <willy@infradead.org>, Jan Kara <jack@suse.cz>
+Cc: Ryan Roberts <ryan.roberts@arm.com>, linux-fsdevel@vger.kernel.org, 
+ linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1953; i=iav@iav.lv;
- h=from:subject:message-id; bh=th9XEIxslt9+U3iOsvDowXn3pt6YXgBXd1xZpRrr4n4=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkfpfry3jIbvs9Z9Uatelmny21OjdLSH79fPbD2nPIzI
- mF67HyGjlIWBjEuBlkxRZYJhzRuZSy5+tffw/wBzBxWJpAhDFycAjCRMCOGf7ofCvuMDwa/vHVx
- zlTZbeVOSdWZE/2Nv/j83z819/luTRuG/6VWdbxz7a99TLhh3Ngh/o//ywEJu7TgQx/uaf9m9Wi
- sZgMA
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794186055; l=6482;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=TvHvnVH31GT9hKp4I2jjZznNd6BXKJMMPl//bejzAgQ=;
+ b=vhzld0CvUYOjFuiyUmo53Sq4vh0jPPHbl8KqVFO/yzG4x4ECknVS/IZ9cgypWuOoHMcBLWp7r
+ abZeA1MYs/EBimBM2+CCk/xDQNgRZsO3vOqBSnTEHVoicXHBfc2Q3Os
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RTL8211F interrupt is wired to GPIOZ_14 and described in the PHY
-node, but the node does not declare that it can wake the board. Without
-wakeup-source the Realtek driver does not make the PHY wakeup capable,
-so phylink leaves Wake-on-LAN to the MAC, and a magic packet does not
-wake the board from s2idle.
+page_cache_async_ra() rounds each window end down to a folio boundary
+before page_cache_ra_order() picks the folio order. A window that
+starts just below a boundary shrinks to a few pages.
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Let page_cache_ra_order() end the window instead. 1 MiB reads after a
+4 KiB read (read_ahead_kb=128, max_sectors_kb=512) take 0.121 s
+instead of 0.237 s.
+
+Windows that start halfway into their largest folio, or are not a
+multiple of it, can end shorter. 512 KiB reads from offset 384 KiB
+take 0.183 s instead of 0.162 s.
+
+Fixes: 18ebe55a9236 ("mm/readahead: terminate async readahead on natural boundary")
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Tested on ODROID-HC4 with Linux 7.4-rc1 and the U-Boot and .config of
-Armbian: s2idle, Wake-on-LAN set with ethtool after the link is up. With
-this change a magic packet woke the board 5 of 5 times, in 8 s, with
-pm_wakeup_irq pointing at the PHY. Without it, 0 of 2: the RTC alarm
-woke the board.
+Changes in v3:
+End the window in the allocation loop of page_cache_ra_order(), as Jan
+suggested. Testing his sketch led to three changes:
 
-The test DTB had two other changes: the RTC alarm interrupt [1] and PCIe
-disabled. With PCIe enabled the board did not resume 2 of 2. In the one
-console capture resume starts when the packet is sent, then a hard LOCKUP
-and a panic follow while pci_pm_resume_noirq() of the root port runs;
-pci-meson has no system PM. So on the HC4 with its stock DT this property
-alone does not give working Wake-on-LAN yet.
+1. Stop when the rest of the window is no larger than the last folio,
+   not only when it is smaller. A window that starts halfway into a
+   folio then ends on a folio boundary. 4 KiB reads (read_ahead_kb=128)
+   keep 4094 order-5 folios as before, instead of 8190 of order 4, and
+   the 1 MiB reads above reach order 7.
 
-Not tested on ODROID-C4, which shares this node.
+2. Test the order before the EOF loop lowers it, which the first
+   change needs. With min_order > 0 the loop then also stops before a
+   min-order folio past the window end.
 
-[1] https://lore.kernel.org/r/20261019-hc4-rtc-alarm-irq-v1-1-078fc79e596f@iav.lv
+3. Do not cut a window that reaches EOF. It has no PG_readahead
+   marker, so the cut tail would be read synchronously (92 instead of
+   50 sync readaheads over 50 cold files).
+
+Windows of mappings without large folios are no longer trimmed.
+
+Result for the 1 MiB reads above (512 MiB file): 1021 of 1039 folios
+are order 7, against none of 9721 before.
+
+Costs, with max_sectors_kb=2048 unless noted:
+
+1. Reads larger than ra_pages that start inside a folio lose I/O size.
+   2 MiB reads from 44 KiB (read_ahead_kb=64) take 508 device reads,
+   266 before, in the same time.
+
+2. Change 1 adds to this when a window starts halfway into a folio.
+   In these cases it does not raise the folio order, and the window
+   stays at the cut size until EOF.
+   - 512 KiB reads from 384 KiB: 0.183 s, 0.162 s before (0.126 s
+     with Jan's sketch).
+   - 64 KiB-block XFS on a buffered loop file (max_sectors_kb=1280;
+     the backing file's readahead runs this code too), 256 KiB reads
+     after a 4 KiB read: 0.304 s, 0.19-0.25 s before (0.186 s with
+     Jan's sketch).
+
+3. A window that is not a multiple of its largest folio loses its tail
+   on every trigger.
+   - read_ahead_kb=768, 128 KiB reads: 0.130 s instead of 0.115 s.
+   - 768 KiB reads (max_sectors_kb=1024): 0.125 s instead of 0.117 s.
+   - USB 2.0 storage (read_ahead_kb=240), in simulation: 87% more
+     device reads.
+   - md RAID with 3 data disks (read_ahead_kb=3072): 506 instead of
+     342 device reads with max_sectors_kb=1536 (simulation), 260
+     instead of 342 with 2048 (measured).
+
+No stable backport is requested. QEMU guest, XFS on emulated NVMe,
+cold cache, 4 KiB pages, medians of 10 to 45 runs. Also run with
+KASAN, lockdep and DEBUG_VM.
 ---
- arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi | 1 +
- 1 file changed, 1 insertion(+)
+ include/linux/pagemap.h |  1 +
+ mm/readahead.c          | 26 ++++++++++++++++++++------
+ 2 files changed, 21 insertions(+), 6 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
-index e6f02d738a21..9a4684dfbde3 100644
---- a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
-@@ -277,6 +277,7 @@ external_phy: ethernet-phy@0 {
- 		interrupt-parent = <&gpio_intc>;
- 		/* MAC_INTR on GPIOZ_14 */
- 		interrupts = <IRQID_GPIOZ_14 IRQ_TYPE_LEVEL_LOW>;
-+		wakeup-source;
- 	};
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 73af18a373..669d296edd 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -1413,6 +1413,7 @@ struct readahead_control {
+ 	bool _workingset;
+ 	unsigned long _pflags;
+ 	bool _forward;
++	bool _align_end;
  };
  
+ #define DEFINE_READAHEAD(ractl, f, r, m, i)				\
+diff --git a/mm/readahead.c b/mm/readahead.c
+index 6e55632902..46bee515aa 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -491,6 +491,8 @@ void page_cache_ra_order(struct readahead_control *ractl,
+ 	int err = 0;
+ 	gfp_t gfp = readahead_gfp_mask(mapping);
+ 	unsigned int new_order = ra->order;
++	bool align_end = false;
++	unsigned long last_nr = 0;
+ 
+ 	trace_page_cache_ra_order(mapping->host, start, ra);
+ 	if (!mapping_large_folio_support(mapping)) {
+@@ -501,6 +503,8 @@ void page_cache_ra_order(struct readahead_control *ractl,
+ 	if (limit > index + ra->size - 1) {
+ 		limit = index + ra->size - 1;
+ 		mark = index + ra->size - ra->async_size;
++		/* Only a window that ends before EOF may be cut short */
++		align_end = ractl->_align_end;
+ 	} else {
+ 		/* We've reached the end, so don't set a readahead marker. */
+ 		mark = ULONG_MAX;
+@@ -529,6 +533,19 @@ void page_cache_ra_order(struct readahead_control *ractl,
+ 		/* Align with smaller pages if needed */
+ 		if (index & ((1UL << order) - 1))
+ 			order = __ffs(index);
++		/*
++		 * The caller lets us cut the window short. Stop at the
++		 * first folio that does not fit before the window end,
++		 * once the rest of the window is no larger than the folio
++		 * added last. The next window then starts on a boundary
++		 * of that folio.
++		 */
++		if (align_end && index + (1UL << order) - 1 > limit &&
++		    limit - index < last_nr) {
++			ra->size = index - start;
++			ra->async_size = min(ra->async_size, ra->size);
++			break;
++		}
+ 		/* Don't allocate pages past EOF */
+ 		while (order > min_order && index + (1UL << order) - 1 > limit)
+ 			order--;
+@@ -536,6 +553,7 @@ void page_cache_ra_order(struct readahead_control *ractl,
+ 		if (err)
+ 			break;
+ 		index += 1UL << order;
++		last_nr = 1UL << order;
+ 	}
+ 
+ 	read_pages(ractl);
+@@ -656,7 +674,7 @@ void page_cache_async_ra(struct readahead_control *ractl,
+ 	unsigned long max_pages;
+ 	struct file_ra_state *ra = ractl->ra;
+ 	pgoff_t index = readahead_index(ractl);
+-	pgoff_t expected, start, end, aligned_end, align;
++	pgoff_t expected, start;
+ 
+ 	/* no readahead */
+ 	if (!ra->ra_pages)
+@@ -710,13 +728,9 @@ void page_cache_async_ra(struct readahead_control *ractl,
+ 	ra->size = get_next_ra_size(ra, max_pages);
+ readit:
+ 	ra->order += 2;
+-	align = 1UL << min(ra->order, ffs(max_pages) - 1);
+-	end = ra->start + ra->size;
+-	aligned_end = round_down(end, align);
+-	if (aligned_end > ra->start)
+-		ra->size -= end - aligned_end;
+ 	ra->async_size = ra->size;
+ 	ractl->_index = ra->start;
++	ractl->_align_end = true;
+ 	page_cache_ra_order(ractl, ra);
+ }
+ EXPORT_SYMBOL_GPL(page_cache_async_ra);
 
 ---
-base-commit: 81e55899e134541583a4e611ff750e1868671c67
-change-id: 20261109-hc4-phy-wakeup-9c15ebaa311e
+base-commit: b95f8bb86713c860ce8536d22a988b949b884d5f
+change-id: 20261029-mm-readahead-async-align-e491b3dc16a6
 
 Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+Daejun Park <daejun7.park@samsung.com>
 
