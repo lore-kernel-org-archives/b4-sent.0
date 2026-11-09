@@ -1,93 +1,73 @@
-From: Sergei Khomenkov <shomenkow@gmail.com>
-Date: Mon, 09 Nov 2026 16:43:53 +0300
-Subject: [PATCH 3/3] media: verisilicon: leave room for the JPEG header and
- one stream burst
+From: Demeter Barna <me@fromdisposition.org>
+Subject: [PATCH v2 0/2] arm64: dts: qcom: sm8350: Add the inline crypto
+ engine
+Date: Mon, 09 Nov 2026 13:55:28 +0000
+Message-Id: <20261109-b4-sm8350-ice-v2-0-fd5e84985e90@fromdisposition.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-hantro-buflimit-v1-3-f0b86ce61e66@gmail.com>
-References: <20261109-hantro-buflimit-v1-0-f0b86ce61e66@gmail.com>
-In-Reply-To: <20261109-hantro-buflimit-v1-0-f0b86ce61e66@gmail.com>
-To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Hans Verkuil <hverkuil@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
- Chen-Yu Tsai <wenst@chromium.org>, 
- Hugues Fruchet <hugues.fruchet@foss.st.com>, linux-media@vger.kernel.org, 
- linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
- linux-stm32@st-md-mailman.stormreply.com, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Sergei Khomenkov <shomenkow@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794231837; l=2875;
- i=shomenkow@gmail.com; s=20261104; h=from:subject:message-id;
- bh=WFzfE2RiWdT+i+qq0glggXPv17AxZu0PiVwPxE5rxXQ=;
- b=pPK6FLWKeibNzXyvohaaL0PsnBvzKTougQAG6KwXp2yfxpo4tasR1lz+/mNE91PalLZ0uU93p
- 0Pp3dUaw9zCAA3hw1AA6gCnAy32OCAfz/TuRbgsnNesnOQZWA78mcPb
-X-Developer-Key: i=shomenkow@gmail.com; a=ed25519;
- pk=FwuHDVe7aiISDMLmQEcMC+RflEIJ6kEp/ekwznWXmI8=
-X-Endpoint-Received: by B4 Relay for shomenkow@gmail.com/20261104 with auth_id=1409
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WOwQqDMBBEf0Vy7pYkGrE9+R/FQ4wb3YJGslZax
+ H9vtOceH8y8mU0wRkIW92wTEVdiClMCfcmEG+zUI1CXWGipS6WkgbYAHqvcSCCHgN52hcFbrks
+ tUmeO6Ol9+h7Nj/nVPtEth+RIDMRLiJ9zcFVH7p97VSDBG4Ml2gqVs7WPYeyI58C0pJ/XEHvR7
+ Pv+BRhzvH/GAAAA
+X-Change-ID: 20261105-b4-sm8350-ice-efad45e93262
+To: Abel Vesa <abelvesa@kernel.org>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Demeter Barna <me@fromdisposition.org>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794232535; l=1627;
+ i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
+ bh=iEvs/mRmPbkyFB2ueYR7aReCKd4lWIPF0+wKUolEjTM=;
+ b=0eKFcFbHOOY66ttJSOqjNRwmxTPtozm6mbhfCF34b+vka5QQjZmzCFeRKeUWZ3WszvpZezeLz
+ QOs2CFVgBtCCm9/rKi7XgKExoDxccLuVKfirFVALavSnnHulU+34MSr
+X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
+ pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
+X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hantro_try_fmt() keeps any non-zero sizeimage on the JPEG encoder's
-CAPTURE queue, however small, and hantro_buf_prepare() then accepts a
-plane of that size. hantro_jpeg_header_assemble() writes the 624-byte
-header into the plane with the CPU before the hardware starts, and a
-plane smaller than the header also makes the WARN_ON() in
-hantro_h1_jpeg_enc_set_buffers() and
-rockchip_vpu2_jpeg_enc_set_buffers() fire on every job, which userspace
-can trigger at will. After the header the encoder writes its stream in
-bursts, one of them even when the stream limit is 0; on the RK3026
-VEPU1 a burst is 64 bytes. A plane smaller than the header plus 64 bytes
-is therefore written past its end.
+SM8350 has an inline crypto engine (ICE v3.2.0) next to its UFS host,
+but sm8350.dtsi does not describe it, so ufs-qcom runs without inline
+encryption. Add the compatible to the binding and the node to
+sm8350.dtsi, as on SM8450.
 
-Raise a smaller request to header_size + 64, so that every plane the
-driver accepts holds the header and at least one such burst.
+The region covers the engine (0x1d88000, 0x8000) and its key manager
+(0x1d90000, 0x9000), as in Qualcomm's SM8350 device tree; the clocks and
+the power domain are those of SM8450. The TrustZone offers the raw-key
+SCM calls but not GENERATE/PREPARE/IMPORT_ICE_KEY, so qcom-ice uses raw
+keys.
 
-Found with an LLM coding assistant while porting mainline Linux to a
-Rockchip RK3026 board (VEPU1); the assistant also drafted the code and
-this message. Tested on that board: a 640x480 CAPTURE format set with
-sizeimage 1, 600, 656 and 689 reads back 688, 688, 688 and 689, a
-656-byte DMABUF plane is then refused with EINVAL, and frames that do
-not fit a 688-byte plane stop exactly at its end and come back with the
-ERROR flag. A request of 600, now raised to 688, encodes with no
-warning; before this change it was kept, and the encode hit the
-WARN_ON() at hantro_h1_jpeg_enc.c:50 (hantro_h1_jpeg_enc_set_buffers(),
-reported in hantro_h1_jpeg_enc_run()). Also before it, with 32 and 8
-bytes after the header (a stream limit of 0), the encoder wrote one
-burst, 32 and 56 bytes past the plane. The burst size is measured there
-only; not tested on other SoCs.
+Tested on a Razer Edge 5G with fscrypt v2 on ext4: "AES-256-XTS using
+blk-crypto (native)", and files written with and without inlinecrypt
+read back correctly either way. dtbs_check is clean for all SM8350
+boards.
 
-Fixes: 775fec69008d ("media: add Rockchip VPU JPEG encoder driver")
-Cc: stable@vger.kernel.org
-Signed-off-by: Sergei Khomenkov <shomenkow@gmail.com>
+Signed-off-by: Demeter Barna <me@fromdisposition.org>
 ---
- drivers/media/platform/verisilicon/hantro_v4l2.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Changes in v2:
+- dt-bindings: drop SM8350 from the legacy single-clock list. It was
+  added there by mistake; SM8350 does not need the exemption, its node
+  has both clocks and the power domain.
+- Link to v1: https://patch.msgid.link/20261105-b4-sm8350-ice-v1-0-f55e6ea8e1ca@fromdisposition.org
 
-diff --git a/drivers/media/platform/verisilicon/hantro_v4l2.c b/drivers/media/platform/verisilicon/hantro_v4l2.c
-index 83af9fa1ce94..cc35beac8338 100644
---- a/drivers/media/platform/verisilicon/hantro_v4l2.c
-+++ b/drivers/media/platform/verisilicon/hantro_v4l2.c
-@@ -394,6 +394,16 @@ static int hantro_try_fmt(const struct hantro_ctx *ctx,
- 		 */
- 		pix_mp->plane_fmt[0].sizeimage = fmt->header_size +
- 			pix_mp->width * pix_mp->height * fmt->max_depth;
-+	} else if (fmt->codec_mode == HANTRO_MODE_JPEG_ENC) {
-+		/*
-+		 * The JPEG encoder writes the header with the CPU, then the
-+		 * stream in bursts, one of them even when the stream limit
-+		 * is 0. Leave room for both; a burst is 64 bytes on the
-+		 * RK3026 VEPU1.
-+		 */
-+		pix_mp->plane_fmt[0].sizeimage =
-+			max_t(u32, pix_mp->plane_fmt[0].sizeimage,
-+			      fmt->header_size + 64);
- 	}
- 
- 	return 0;
+---
+Demeter Barna (2):
+      dt-bindings: crypto: qcom,inline-crypto-engine: Add SM8350
+      arm64: dts: qcom: sm8350: Add the inline crypto engine
 
--- 
-2.53.0
+ .../bindings/crypto/qcom,inline-crypto-engine.yaml          |  1 +
+ arch/arm64/boot/dts/qcom/sm8350.dtsi                        | 13 +++++++++++++
+ 2 files changed, 14 insertions(+)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261105-b4-sm8350-ice-efad45e93262
+
+Best regards,
+--  
+Demeter Barna <me@fromdisposition.org>
 
