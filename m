@@ -1,196 +1,80 @@
-From: Ke Sun <sunke@kylinos.cn>
-Date: Mon, 09 Nov 2026 08:36:53 +0800
-Subject: [PATCH v6 10/10] drm/tyr: add BO-related ioctls
+From: Igor Velkov <iav@iav.lv>
+Date: Mon, 09 Nov 2026 00:57:49 +0000
+Subject: [PATCH] arm64: dts: amlogic: meson-sm1-odroid: mark the Ethernet
+ PHY as a wakeup source
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-tyr-ioctls-v6-10-b2896bf2b3c9@kylinos.cn>
-References: <20261109-tyr-ioctls-v6-0-b2896bf2b3c9@kylinos.cn>
-In-Reply-To: <20261109-tyr-ioctls-v6-0-b2896bf2b3c9@kylinos.cn>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Lyude Paul <lyude@redhat.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Johan Hovold <johan@kernel.org>
-Cc: Sami Tolvanen <samitolvanen@google.com>, rust-for-linux@vger.kernel.org, 
- dri-devel@lists.freedesktop.org, driver-core@lists.linux.dev, 
- Ke Sun <sunke@kylinos.cn>, Alvin Sun <alvin.sun@linux.dev>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794184620; l=5762;
- i=sunke@kylinos.cn; s=20260317; h=from:subject:message-id;
- bh=N2yXC7mHsGjQmcLK9nwxkMu+MQF7HgRnplVlBwq7BBE=;
- b=nB4NJ7KcU2Mg0kC+7vV/UXiCEZGub3Rm6NO69MjaLCaf3Nq1okwgFO7PquzG1QFU4WjiH1Rqy
- h3e/B13lf0TDt7rMVvWkZ+iWb5r8QcVnK3KvE1UAMFCAS5Lyz/T1Wou
-X-Developer-Key: i=sunke@kylinos.cn; a=ed25519;
- pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
-X-Endpoint-Received: by B4 Relay for sunke@kylinos.cn/20260317 with auth_id=950
+Message-Id: <20261109-hc4-phy-wakeup-v1-1-d98784ecac88@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAIwa8WoC/x3MSQqAMAxA0atI1gYaJ6hXERe1RhsELS1OiHe3u
+ HyL/x+IHIQjtNkDgQ+Jsq0JlGdgnVlnRhmToVBFQ6Q0OluhdzeeZuHdo7ZU82BMScSQIh94kus
+ fdv37flgHcaZgAAAA
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1953; i=iav@iav.lv;
+ h=from:subject:message-id; bh=th9XEIxslt9+U3iOsvDowXn3pt6YXgBXd1xZpRrr4n4=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkfpfry3jIbvs9Z9Uatelmny21OjdLSH79fPbD2nPIzI
+ mF67HyGjlIWBjEuBlkxRZYJhzRuZSy5+tffw/wBzBxWJpAhDFycAjCRMCOGf7ofCvuMDwa/vHVx
+ zlTZbeVOSdWZE/2Nv/j83z819/luTRuG/6VWdbxz7a99TLhh3Ngh/o//ywEJu7TgQx/uaf9m9Wi
+ sZgMA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Alvin Sun <alvin.sun@linux.dev>
+The RTL8211F interrupt is wired to GPIOZ_14 and described in the PHY
+node, but the node does not declare that it can wake the board. Without
+wakeup-source the Realtek driver does not make the PHY wakeup capable,
+so phylink leaves Wake-on-LAN to the MAC, and a magic packet does not
+wake the board from s2idle.
 
-Implement BO_CREATE and BO_MMAP_OFFSET so userspace can allocate GPU
-buffers and obtain a DRM mmap offset for the generic mmap path.
-BO_CREATE page-aligns the requested size and accepts NO_MMAP or WB_MMAP,
-which are mutually exclusive; an exclusive VM returns EOPNOTSUPP.
-BO_MMAP_OFFSET rejects NO_MMAP objects, which must never be CPU-mapped.
-
-Co-developed-by: Sami Tolvanen <samitolvanen@google.com>
-Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
-Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- drivers/gpu/drm/tyr/driver.rs |  2 +
- drivers/gpu/drm/tyr/file.rs   | 94 +++++++++++++++++++++++++++++++++++++++++++
- drivers/gpu/drm/tyr/gem.rs    |  2 -
- 3 files changed, 96 insertions(+), 2 deletions(-)
+Tested on ODROID-HC4 with Linux 7.4-rc1 and the U-Boot and .config of
+Armbian: s2idle, Wake-on-LAN set with ethtool after the link is up. With
+this change a magic packet woke the board 5 of 5 times, in 8 s, with
+pm_wakeup_irq pointing at the PHY. Without it, 0 of 2: the RTC alarm
+woke the board.
 
-diff --git a/drivers/gpu/drm/tyr/driver.rs b/drivers/gpu/drm/tyr/driver.rs
-index 6869ab345d8fd..8632e6e820c97 100644
---- a/drivers/gpu/drm/tyr/driver.rs
-+++ b/drivers/gpu/drm/tyr/driver.rs
-@@ -237,6 +237,8 @@ impl drm::Driver for TyrDrmDriver {
-         (PANTHOR_VM_DESTROY, drm_panthor_vm_destroy, ioctl::RENDER_ALLOW, TyrDrmFileData::vm_destroy),
-         (PANTHOR_VM_BIND, drm_panthor_vm_bind, ioctl::RENDER_ALLOW, TyrDrmFileData::vm_bind),
-         (PANTHOR_VM_GET_STATE, drm_panthor_vm_get_state, ioctl::RENDER_ALLOW, TyrDrmFileData::vm_get_state),
-+        (PANTHOR_BO_CREATE, drm_panthor_bo_create, ioctl::RENDER_ALLOW, TyrDrmFileData::bo_create),
-+        (PANTHOR_BO_MMAP_OFFSET, drm_panthor_bo_mmap_offset, ioctl::RENDER_ALLOW, TyrDrmFileData::bo_mmap_offset),
-     }
- }
- 
-diff --git a/drivers/gpu/drm/tyr/file.rs b/drivers/gpu/drm/tyr/file.rs
-index b982e8db2c4c1..f99bb2992d87a 100644
---- a/drivers/gpu/drm/tyr/file.rs
-+++ b/drivers/gpu/drm/tyr/file.rs
-@@ -242,6 +242,100 @@ pub(crate) fn vm_get_state(
-             Ok(0)
-         })
-     }
-+
-+    pub(crate) fn bo_create(
-+        ddev: &TyrDrmDevice<Registered>,
-+        reg_data: &TyrDrmRegistrationData<'_>,
-+        bocreate: &mut uapi::drm_panthor_bo_create,
-+        file: &TyrDrmFile,
-+    ) -> Result<u32> {
-+        if bocreate.size == 0 || bocreate.pad != 0 {
-+            dev_dbg!(
-+                ddev.as_ref(),
-+                "Invalid BO_CREATE params: size={}, pad={}\n",
-+                bocreate.size,
-+                bocreate.pad
-+            );
-+            return Err(EINVAL);
-+        }
-+
-+        let no_mmap = uapi::drm_panthor_bo_flags_DRM_PANTHOR_BO_NO_MMAP;
-+        let wb_mmap = uapi::drm_panthor_bo_flags_DRM_PANTHOR_BO_WB_MMAP;
-+        let valid_flags = no_mmap | wb_mmap;
-+
-+        if bocreate.flags & !valid_flags != 0 {
-+            dev_dbg!(
-+                ddev.as_ref(),
-+                "Invalid BO_CREATE flags: {:#x}\n",
-+                bocreate.flags
-+            );
-+            return Err(EINVAL);
-+        }
-+        if bocreate.flags & no_mmap != 0 && bocreate.flags & wb_mmap != 0 {
-+            dev_dbg!(ddev.as_ref(), "BO_CREATE: NO_MMAP conflicts with WB_MMAP\n");
-+            return Err(EINVAL);
-+        }
-+
-+        if bocreate.exclusive_vm_id != 0 {
-+            dev_dbg!(ddev.as_ref(), "BO_CREATE: exclusive_vm_id not supported\n");
-+            return Err(EOPNOTSUPP);
-+        }
-+
-+        let size = usize::try_from(bocreate.size).map_err(|_| {
-+            dev_dbg!(
-+                ddev.as_ref(),
-+                "BO_CREATE size {:#x} too large\n",
-+                bocreate.size
-+            );
-+            EINVAL
-+        })?;
-+        let bo = file.inner_with(|pfile| {
-+            crate::gem::new_object(
-+                ddev,
-+                pfile.reg.pdev.as_ref(),
-+                size,
-+                bocreate.flags,
-+                reg_data.coherent,
-+            )
-+        })?;
-+        bocreate.handle = bo.create_handle(file)?;
-+        bocreate.size = u64::from_safe_cast(bo.size());
-+
-+        Ok(0)
-+    }
-+
-+    pub(crate) fn bo_mmap_offset(
-+        ddev: &TyrDrmDevice<Registered>,
-+        _reg_data: &TyrDrmRegistrationData<'_>,
-+        bommap: &mut uapi::drm_panthor_bo_mmap_offset,
-+        file: &TyrDrmFile,
-+    ) -> Result<u32> {
-+        if bommap.pad != 0 {
-+            dev_dbg!(
-+                ddev.as_ref(),
-+                "BO mmap offset pad not zero: {}\n",
-+                bommap.pad
-+            );
-+            return Err(EINVAL);
-+        }
-+
-+        let bo = crate::gem::lookup_handle(file, bommap.handle).inspect_err(|_| {
-+            dev_dbg!(ddev.as_ref(), "Invalid BO mmap handle: {}\n", bommap.handle);
-+        })?;
-+        if bo.flags() & uapi::drm_panthor_bo_flags_DRM_PANTHOR_BO_NO_MMAP != 0 {
-+            dev_dbg!(ddev.as_ref(), "BO mmap offset on NO_MMAP object\n");
-+            return Err(EPERM);
-+        }
-+        bommap.offset = bo.create_mmap_offset().inspect_err(|_| {
-+            dev_err!(
-+                ddev.as_ref(),
-+                "Failed to create mmap offset for handle {}\n",
-+                bommap.handle
-+            );
-+        })?;
-+
-+        Ok(0)
-+    }
- }
- 
- fn vm_bind_exec_op(vm: &Vm<'_>, file: &TyrDrmFile, op: &VmBindOp) -> Result {
-diff --git a/drivers/gpu/drm/tyr/gem.rs b/drivers/gpu/drm/tyr/gem.rs
-index 55e2d67b96d98..d2ef121c8b1b6 100644
---- a/drivers/gpu/drm/tyr/gem.rs
-+++ b/drivers/gpu/drm/tyr/gem.rs
-@@ -45,7 +45,6 @@ pub(crate) struct BoData {
- 
- impl BoData {
-     /// Returns the flags the BO was created with.
--    #[expect(dead_code)]
-     pub(crate) fn flags(&self) -> u32 {
-         self.flags
-     }
-@@ -83,7 +82,6 @@ pub(crate) fn should_map_wc(coherent: bool, flags: u32) -> bool {
- }
- 
- /// Create a new GEM buffer object.
--#[expect(dead_code)]
- pub(crate) fn new_object(
-     ddev: &TyrDrmDevice,
-     pdev: &Device<Bound>,
+The test DTB had two other changes: the RTC alarm interrupt [1] and PCIe
+disabled. With PCIe enabled the board did not resume 2 of 2. In the one
+console capture resume starts when the packet is sent, then a hard LOCKUP
+and a panic follow while pci_pm_resume_noirq() of the root port runs;
+pci-meson has no system PM. So on the HC4 with its stock DT this property
+alone does not give working Wake-on-LAN yet.
 
+Not tested on ODROID-C4, which shares this node.
+
+[1] https://lore.kernel.org/r/20261019-hc4-rtc-alarm-irq-v1-1-078fc79e596f@iav.lv
+---
+ arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
+index e6f02d738a21..9a4684dfbde3 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
++++ b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
+@@ -277,6 +277,7 @@ external_phy: ethernet-phy@0 {
+ 		interrupt-parent = <&gpio_intc>;
+ 		/* MAC_INTR on GPIOZ_14 */
+ 		interrupts = <IRQID_GPIOZ_14 IRQ_TYPE_LEVEL_LOW>;
++		wakeup-source;
+ 	};
+ };
+ 
+
+---
+base-commit: 81e55899e134541583a4e611ff750e1868671c67
+change-id: 20261109-hc4-phy-wakeup-9c15ebaa311e
+
+Best regards,
 -- 
-2.43.0
+Igor Velkov <iav@iav.lv>
 
