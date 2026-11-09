@@ -1,197 +1,125 @@
-From: Alireza Haddadi <alireza.haddadi@it.uu.se>
-Date: Mon, 09 Nov 2026 15:23:24 +0100
-Subject: [PATCH] mm/filemap: let sequential faults restart mmap readahead
+From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+Subject: [PATCH 0/2] serial: 8250_dw: Fix RX trigger levels for 64-byte
+ FIFOs
+Date: Mon, 09 Nov 2026 15:40:58 +0100
+Message-Id: <20261109-8250-select-u6-64bit-v1-0-04bc8332fa34@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-mmap-miss-v1-1-8b44b33f3358@it.uu.se>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwML3dzcxALd3MziYt2kNNNEUwOgmEVqkhJQfUFRalpmBdis6NjaWgB
- ICNwhWwAAAA==
-X-Change-ID: 20261108-mmap-miss-bf5a501088eb
-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
- Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>, 
- Vishal Moola <vishal.moola@gmail.com>, fujunjie <fujunjie1@qq.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, 
- linux-kernel@vger.kernel.org, Alireza Haddadi <alireza.haddadi@it.uu.se>, 
- Roman Gushchin <roman.gushchin@linux.dev>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAHrb8WoC/yXMTQqDQAxA4atI1g1kRp2pvYp04U/USNEy0SKId
+ 3esy2/x3g7KQVjhlewQ+Ccq8xRhHgk0QzX1jNJGgyXrDKWET5sTKn+4WXB16LJaFvTeeDZVUZB
+ NIabfwJ1s/235vq1rPcbmesFxnGmESPp4AAAA
+X-Change-ID: 20261030-8250-select-u6-64bit-7717e1a99023
+To: Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>, 
+ Miroslav Ondra <ondra@faster.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794234210; l=6499;
- i=alireza.haddadi@it.uu.se; s=20261109; h=from:subject:message-id;
- bh=VesPRu4IT/ZtoA3aVaKTwKE/1K7QAS1jhjR+g2t6EGk=;
- b=Sy7KY/luAQ5Aohpe/Z/EdT8wc3l94GWWHUgSNGSFsVIL63SJOdCymXf/zizlciRttGQrO8eZW
- QildE77yaXXDKJY58RkrHHDCcxJV9LG1Qmi8uh3KQ4O3K/+lJ6jKbF+
-X-Developer-Key: i=alireza.haddadi@it.uu.se; a=ed25519;
- pk=xbyB5yIjo8Ef+o8CJo4XbAn95znJPGlxM66RW0Y71Wk=
-X-Endpoint-Received: by B4 Relay for alireza.haddadi@it.uu.se/20261109 with auth_id=1460
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794235482; l=4142;
+ i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
+ bh=j7wsNWKLOu8PU6y8Iijjhk75JExmK+N8BPwkouuO6/4=;
+ b=j33Bj/JLEw5tU/jtXgoDEE6XPG5xL5NLdO5eBUw/pzIKsWldf4BLZxfpNUT2XARmmBnE29HHP
+ iwu6BkgbdpjAHPQHQs8PwHl9YcEADD/JNz4ILRDb4PAW+fpU5fqG1d4
+X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
+ pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
+X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After commit 0b9c0aeba938 ("mm/filemap: count only the faulting address
-as a mmap hit"), once a file's mmap_miss goes over MMAP_LOTSAMISS it can
-stay there until the file is closed.
+DesignWare UARTs that report their FIFO through the CPR register are
+always registered as PORT_16550A. For a 64-byte FIFO, as found on the
+Rockchip RK3328, the rx_trig_bytes sysfs attribute therefore uses the
+16-byte table: it reports 8 bytes while the hardware triggers at 32,
+and writing it programs a different level than requested.
 
-With mmap_miss over the limit, do_sync_mmap_readahead() reads only the
-page that faulted. Since nothing gets read ahead, no later fault can
-land on a page that readahead brought in. In turn filemap_map_pages()
-never counts a hit, and the counter never comes back down. From then
-on every fault on the file reads only a single page, even when the
-access has become sequential.
+Generic autoconfig already classifies a 16550A with a 64-byte FIFO as
+PORT_U6_16550A. DesignWare ports without a usable CPR are probed this
+way, so the same 64-byte core is registered as U6_16550A or as 16550A
+depending on whether its CPR can be read. This series makes the CPR
+path pick U6_16550A as well, after first giving PORT_U6_16550A an
+rxtrig_bytes table that matches the DesignWare FCR RT encoding.
 
-I ran into this on v7.3 with llama.cpp, where a model larger than its
-memory limit sometimes ended up being read 4 KiB at a time, but other
-programs hit it as well. Anything that does some random reads and then
-reads the same open file in order faces the same problem. I tested the
-following:
+Patch 1 adds the table to the core. It has to come first: without it,
+patch 2 would make the rx_trig_bytes attribute disappear on the
+affected ports.
 
- - SQLite with mmap_size set, 300 random lookups followed by a full scan
-   of a 1.8 GiB table. The scan took 9.3-14.2 s instead of 2.1 s in 8 of
-   10 runs.
+Patch 2 switches 8250_dw to the new type for 64-byte FIFOs.
 
- - numpy.memmap, 1000 random rows sampled from the first 75% of a 4 GiB
-   array and then the last 25% read sequentially, as a training and
-   evaluation loop would do. The sequential part took 3.3 s instead of
-   0.3 s in 5 of 5 runs.
+Things worth reviewing:
 
-Give a sequential reader a way back. When readahead is off and the page
-before the faulting one is in the page cache, read the next page too
-and mark it with PG_readahead. A sequential reader faults on that page
-next, which starts async readahead. That path is not gated by mmap_miss,
-and the pages it brings in count as hits again, so the counter drops
-and readahead resumes. A random reader, however, rarely has the previous
-page cached, so it keeps reading one page per fault, or at most two.
-Forced THP readahead is left as it is.
+- The register programming does not change. FIFO size, TX load size and
+  capabilities still come from CPR, and both types use the same default
+  FCR value.
 
-This reproducer takes 100 random faults on a file of at least 4 GiB
-and then reads 1 GiB of it in order:
+- The port type visible to userspace changes from 16550A (4) to
+  U6_16550A (19) for these ports, in TIOCGSERIAL, /proc/tty/driver/serial
+  and the boot log.
 
-	#define _GNU_SOURCE
-	#include <fcntl.h>
-	#include <stdio.h>
-	#include <stdlib.h>
-	#include <unistd.h>
-	#include <sys/mman.h>
-	#include <sys/resource.h>
+- dw8250_setup_port() is also used by 8250_lpss, so Intel LPSS UARTs with
+  a 64-byte FIFO are affected the same way. I could not test on LPSS
+  hardware.
 
-	/* ./a.out FILE N: N random faults, then read 1 GiB in order */
-	int main(int argc, char **argv)
-	{
-		long G = 1L << 30, i, flt, size;
-		struct rusage ru;
-		volatile char *p;
-		int fd;
+- Ports detected as U6_16550A by autoconfig gain the rx_trig_bytes
+  attribute. Its highest level, FIFO size - 2, follows the DesignWare
+  encoding and may not match non-DesignWare hardware detected this way.
 
-		if (argc != 3 || (fd = open(argv[1], O_RDONLY)) < 0)
-			return 2;
-		size = lseek(fd, 0, SEEK_END);
-		posix_fadvise(fd, 0, 0, POSIX_FADV_DONTNEED);
-		p = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+- Only 64-byte FIFOs are handled. DesignWare FIFOs of other depths keep
+  using the 16-byte table. Deriving the levels from the FIFO size would
+  cover them as well, but needs a new hook in the core. I am happy to go
+  that way instead if it is preferred.
 
-		/* N random faults beyond 3 GiB */
-		for (i = 0; i < atol(argv[2]); i++)
-			p[3 * G + random() % (size - 3 * G) / 4096 * 4096];
+Testing:
 
-		/* then read [2 GiB, 3 GiB) in order */
-		getrusage(RUSAGE_SELF, &ru);
-		flt = ru.ru_majflt;
-		for (i = 2 * G; i < 3 * G; i += 4096)
-			p[i];
-		getrusage(RUSAGE_SELF, &ru);
-		printf("%ld major faults for %ld pages\n",
-		       ru.ru_majflt - flt, G / 4096);
-		return 0;
-	}
+Tested on a Unipi G110 controller with a Rockchip RK3328, on ttyS1 and
+ttyS2, with next-20261029 and with 6.12.114-cip34, each without and
+with this series. Both ports have a 64-byte FIFO, and both kernels and
+both ports gave identical results.
 
-	$ ./a.out FILE 100
-	before: 262144 major faults for 262144 pages
-	after:       2 major faults for 262144 pages
+With the UART in internal loopback at 9600 baud, each value was written
+to rx_trig_bytes and 640 bytes were sent. The largest chunk delivered
+to userspace shows the trigger level the hardware actually used:
 
-I also ran the access patterns from that commit's changelog (random,
-strides of 1021, 1024, 2053, and 4099 pages, and sequential, on a
-20 GiB and a 4 GiB file in an 8 GiB guest). With this change, bytes
-read stay within 0.1% and times within 3% in all cases, so its gains
-are kept.
+                 without series         with series
+  written        reads   hw level       reads   hw level
+  1              1       1              1       1
+  4              4       16             1       1
+  8              8       32             1       1
+  16             14      62             16      16
+  32             14      62             32      32
+  62             14      62             62      62
 
-Fixes: 0b9c0aeba938 ("mm/filemap: count only the faulting address as a mmap hit")
-Signed-off-by: Alireza Haddadi <alireza.haddadi@it.uu.se>
-Cc: fujunjie <fujunjie1@qq.com>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Vishal Moola <vishal.moola@gmail.com>
-Cc: Matthew Wilcox (Oracle) <willy@infradead.org>
-Cc: Roman Gushchin <roman.gushchin@linux.dev>
+Without the series the ports register as 16550A and rx_trig_bytes
+reports 8 by default, while the default FCR value is the one written
+for 8 above, i.e. 32 bytes. With the series they register as
+U6_16550A and report 32. Values in between round down to the nearest
+level, for example 31 reads back as 16, 40 as 32 and 255 as 62. At
+level 62 the TX-empty interrupt also drains the RX FIFO, so 2-byte
+chunks appear between the 62-byte ones.
+
+The series was also build-tested with W=1 for arm64 defconfig and for
+an x86_64 config with 8250_lpss, at each patch. It was not tested on
+Intel LPSS hardware.
+
+The commit messages and this cover letter were drafted with help
+from an AI assistant. The changes are used in downstream Unipi kernel.
+
+Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
 ---
-Tested on mm-new (x86-64):
+Kryštof Černý (2):
+      serial: 8250: Add RX trigger levels for U6_16550A
+      serial: 8250_dw: Select U6_16550A for 64-byte FIFO
 
- - With the patch, no run gets stuck: the SQLite scan (10 runs) and
-   the numpy pass (5 runs) take as long as their controls.
- - mm selftests: no new failures. droppable fails about once in 20
-   runs, with and without this patch.
- - A KVM guest with KASAN, lockdep and DEBUG_VM ran the reproducer
-   above, strided and interleaved access, and a 4-thread test: after
-   200 random faults, 4 threads read the same file in order through
-   one mapping, so they all take the new path at once; the file is
-   twice the guest's memory, so this runs under reclaim. No reports,
-   with or without the patch.
- - W=1 and sparse are clean, also with THP or LRU_GEN disabled.
-
-The cost for random readers, once readahead is off: when every third
-page is cached and each access lands just after a cached page, 1.77
-pages are read per access instead of 0.89. Strided access reads the
-same as before.
-
-Forced THP readahead has a similar problem with mmap_miss. I left it
-out to keep this change small and will look at it separately.
-
-I can share the benchmark scripts (SQLite, numpy, the access patterns
-of 0b9c0aeba938) if that helps.
+ drivers/tty/serial/8250/8250_dwlib.c | 2 +-
+ drivers/tty/serial/8250/8250_port.c  | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 ---
- mm/filemap.c | 27 ++++++++++++++++++++++++++-
- 1 file changed, 26 insertions(+), 1 deletion(-)
-
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 93db8fc60ae0..0930aacee9fe 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -3403,8 +3403,33 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
- 		 * Do we miss much more than hit in this file? If so,
- 		 * stop bothering with read-ahead. It will only hurt.
- 		 */
--		if (mmap_miss > MMAP_LOTSAMISS)
-+		if (mmap_miss > MMAP_LOTSAMISS) {
-+			struct folio *prev = NULL;
-+
-+			/*
-+			 * Nothing is read ahead now, so mmap_miss stays high
-+			 * forever.  If the previous page is cached, this may be
-+			 * a sequential read: read the next page as well and
-+			 * mark it, so that async readahead, which does not
-+			 * check mmap_miss, restarts when the mark is hit.  The
-+			 * pages it reads then count as hits and lower
-+			 * mmap_miss.  A random reader rarely has the previous
-+			 * page cached and keeps reading one page per fault.
-+			 */
-+			if (!force_thp_readahead && vmf->pgoff)
-+				prev = xa_load(&mapping->i_pages,
-+					       vmf->pgoff - 1);
-+			if (prev && !xa_is_value(prev)) {
-+				fpin = maybe_unlock_mmap_for_io(vmf, fpin);
-+				ra->start = vmf->pgoff;
-+				ra->size = 2;
-+				ra->async_size = 1;
-+				ra->order = 0;
-+				ractl._index = ra->start;
-+				page_cache_ra_order(&ractl, ra);
-+			}
- 			return fpin;
-+		}
- 	}
- 
- 	if (force_thp_readahead) {
-
----
-base-commit: b95f8bb86713c860ce8536d22a988b949b884d5f
-change-id: 20261108-mmap-miss-bf5a501088eb
+base-commit: a39c950806213f6861d00f90729acaaa21f2d95a
+change-id: 20261030-8250-select-u6-64bit-7717e1a99023
 
 Best regards,
 --  
-Alireza Haddadi <alireza.haddadi@it.uu.se>
+Kryštof Černý <cleverline1mc@gmail.com>
 
