@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 10:05:19 +0000
-Subject: [PATCH RFC 05/11] media: v4l2-core: Move the H.264 encode CBR rate
- control to a helper
+Date: Tue, 10 Nov 2026 10:05:20 +0000
+Subject: [PATCH RFC 06/11] media: v4l2-core: Bound the I picture size in
+ the encode CBR rate control
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-h264-encode-fixes-v1-5-7a64486df499@gmail.com>
+Message-Id: <20261110-h264-encode-fixes-v1-6-7a64486df499@gmail.com>
 References: <20261110-h264-encode-fixes-v1-0-7a64486df499@gmail.com>
 In-Reply-To: <20261110-h264-encode-fixes-v1-0-7a64486df499@gmail.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -16,797 +16,251 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  Michael Tretter <m.tretter@pengutronix.de>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305116; l=26466;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305116; l=9619;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Pz4sB2i2X5pOAiqOU4ONU1OTjJWXNROdpcz4H007SRo=;
- b=Mph5HOfv94/lYy/h6ZX+WaNPvegNTHnpcQjwMvmNYqLxcFhzvpvI0NE+H/ImVeXzDf6CH43G5
- glPrfPLPgG1AcLAF+zmq7MVRMWlVuZKgy7cJDXS1AvkiBf4iCpbuTA4
+ bh=YS6Z381I0eqa6cgdBfWgmwtIwZkhdIpklFlbUIrYFtE=;
+ b=TaRgevff76CqvLjGMdOHEoZ6Ltqb6e8dQqMSW06bm2j8x+l+mH03aDDrwOMfmwZBc87insqqr
+ TcwP2JAKip6BAAMdg4ZVhBoS1q9SOlXVUYBDBVog70PZeJe6GuResva
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The constant bitrate mode of the H.264 encode core does not depend on the
-codec: it plans picture sizes over the GOP from the measured I/P size
-ratio and IDR period, and moves one QP state by the QP error 6 *
-log2(size / target), which holds for HEVC as well. Only the QP delta of
-the I pictures differs between the codecs.
+The constant bitrate rate control codes I pictures a fixed QP delta below
+the current QP state of the P pictures, whatever their size target. On
+content whose P pictures get very cheap (static scenes), the state drifts
+down over a GOP and the next IDR picture comes out far above its plan:
+up to 33 times the nominal picture size at 1080p60 and 2 Mbit/s with
+HEVC, 2.6 times its target and a third over its share of the GOP at the
+largest I/P size ratio the plan allows. The P pictures of the GOP pay for
+it in the end, but the bitrate over one second rises to 1.5 times the
+target, and IDR sizes swing by up to 3 times from one GOP to the next.
 
-Move it to v4l2-enc-cbr, with the I picture QP delta as a parameter, so
-that the HEVC encode core can use the same model. The H.264 core keeps
-its mode callbacks and uses a QP delta of 2, as before. No functional
-change.
+Do what the Rockchip MPP library does for both codecs:
+
+- code an I picture at the mean of the QP state now and at the previous
+  I picture (weighing the current state 70% when it rose from 33 or below
+  to 35 or above), so that a drift of the state over a GOP moves the next
+  I picture by half as much;
+- after an I picture larger than its share of the GOP at the largest I/P
+  ratio (30), raise the QP of the following I pictures by up to 4 QP per
+  picture, in all at most a quarter QP per QP step below 45, and take the
+  increase back as I pictures come out below that share.
+
+All-intra streams are unchanged: their QP state follows the I pictures
+directly.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/v4l2-core/Kconfig            |   5 +
- drivers/media/v4l2-core/Makefile           |   1 +
- drivers/media/v4l2-core/v4l2-enc-cbr.c     | 300 +++++++++++++++++++++++++++++
- drivers/media/v4l2-core/v4l2-h264-enc-rc.c | 246 ++---------------------
- include/media/v4l2-enc-cbr.h               |  64 ++++++
- include/media/v4l2-h264-enc-rc.h           |  35 +---
- 6 files changed, 387 insertions(+), 264 deletions(-)
+ drivers/media/v4l2-core/v4l2-enc-cbr.c | 98 +++++++++++++++++++++++++++++-----
+ include/media/v4l2-enc-cbr.h           |  8 +++
+ 2 files changed, 93 insertions(+), 13 deletions(-)
 
-diff --git a/drivers/media/v4l2-core/Kconfig b/drivers/media/v4l2-core/Kconfig
-index a88eaf8af48c..b8b849a44abd 100644
---- a/drivers/media/v4l2-core/Kconfig
-+++ b/drivers/media/v4l2-core/Kconfig
-@@ -44,9 +44,14 @@ config V4L2_JPEG_HELPER
- config V4L2_H264
- 	tristate
- 
-+# Used by the stateless encode cores that need v4l2-enc-cbr.ko
-+config V4L2_ENC_CBR
-+	tristate
-+
- # Used by drivers that need v4l2-h264-enc.ko
- config V4L2_H264_ENC
- 	tristate
-+	select V4L2_ENC_CBR
- 
- # Used by drivers that need v4l2-vp9.ko
- config V4L2_VP9
-diff --git a/drivers/media/v4l2-core/Makefile b/drivers/media/v4l2-core/Makefile
-index 81c5582d6a34..3aa0855d7be7 100644
---- a/drivers/media/v4l2-core/Makefile
-+++ b/drivers/media/v4l2-core/Makefile
-@@ -26,6 +26,7 @@ videodev-$(CONFIG_VIDEO_V4L2_I2C) += v4l2-i2c.o
- 
- obj-$(CONFIG_V4L2_ASYNC) += v4l2-async.o
- obj-$(CONFIG_V4L2_CCI) += v4l2-cci.o
-+obj-$(CONFIG_V4L2_ENC_CBR) += v4l2-enc-cbr.o
- obj-$(CONFIG_V4L2_FLASH_LED_CLASS) += v4l2-flash-led-class.o
- obj-$(CONFIG_V4L2_FWNODE) += v4l2-fwnode.o
- obj-$(CONFIG_V4L2_H264) += v4l2-h264.o
 diff --git a/drivers/media/v4l2-core/v4l2-enc-cbr.c b/drivers/media/v4l2-core/v4l2-enc-cbr.c
-new file mode 100644
-index 000000000000..5bd10d494054
---- /dev/null
+index 5bd10d494054..32f98052e981 100644
+--- a/drivers/media/v4l2-core/v4l2-enc-cbr.c
 +++ b/drivers/media/v4l2-core/v4l2-enc-cbr.c
-@@ -0,0 +1,300 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
+@@ -4,7 +4,12 @@
+  *
+  * One QP state is kept for the stream: it is the QP of the P (and B)
+  * pictures, and I pictures are coded a fixed number of steps below it, so
+- * that the quality of the reference pictures stays even across GOPs. Each
++ * that the quality of the reference pictures stays even across GOPs. The
++ * I pictures take the mean of the state now and at the previous I picture,
++ * so that a drift of the state over a GOP (static content, where P pictures
++ * are cheap) moves the size of the next I picture by half as much, and an
++ * I picture that exceeded its share of the GOP at the largest I/P size
++ * ratio raises the QP of the following I pictures until they fit. Each
+  * picture gets a size target from a GOP plan, in which an I picture is
+  * "ratio" times the size of a P picture, with the ratio and the IDR period
+  * measured on the stream. The difference between the coded size so far and
+@@ -39,6 +44,15 @@
+ #define CBR_RATIO_INIT		160
+ #define CBR_RATIO_MIN		24
+ #define CBR_RATIO_MAX		480
 +/*
-+ * V4L2 stateless encoder constant bitrate rate control
-+ *
-+ * One QP state is kept for the stream: it is the QP of the P (and B)
-+ * pictures, and I pictures are coded a fixed number of steps below it, so
-+ * that the quality of the reference pictures stays even across GOPs. Each
-+ * picture gets a size target from a GOP plan, in which an I picture is
-+ * "ratio" times the size of a P picture, with the ratio and the IDR period
-+ * measured on the stream. The difference between the coded size so far and
-+ * the size the plan expects at this point of the GOP is spread over the next
-+ * pictures, so that the bitrate converges to the target.
-+ *
-+ * After each picture the QP state moves by a fraction of the QP error
-+ * 6 * log2(size / target) (a QP step of 6 halves the size): slowly for small
-+ * errors, so that the QP does not follow the size noise from picture to
-+ * picture, and quickly for errors of several QP steps (a scene change, a
-+ * poor start).
-+ *
-+ * The QP to size relation (6 QP steps per halving) is the same for H.264
-+ * and HEVC, so the model does not depend on the codec. Only the QP delta of
-+ * the I pictures is a parameter.
++ * The I QP increase after oversized I pictures: at most 4 QP (1/256 units)
++ * per I picture for an I picture twice its largest share, and in all at most
++ * a quarter QP per QP step below 45, up to 6 QP (more where the QP is low,
++ * where a QP step changes the size by fewer bits).
 + */
-+
-+#include <linux/export.h>
-+#include <linux/int_log.h>
-+#include <linux/math64.h>
-+#include <linux/minmax.h>
-+#include <linux/module.h>
-+#include <linux/printk.h>
-+#include <linux/string.h>
-+#include <media/v4l2-enc-cbr.h>
-+
-+/* The accumulated size error is spread over this many pictures. */
-+#define CBR_WINDOW		8
-+/* Limit of the accumulated size error, in seconds of the bitrate */
-+#define CBR_BUFFER_SECONDS	3
-+/* I/P size ratio, 1/16 units: initial value (10x) and limits (1.5x .. 30x) */
-+#define CBR_RATIO_INIT		160
-+#define CBR_RATIO_MIN		24
-+#define CBR_RATIO_MAX		480
-+/* P pictures after an I picture when the I/P size ratio is measured */
-+#define CBR_RATIO_PICS		4
-+/* QP errors up to this are corrected by 1/8 per picture, 1/256 units */
-+#define CBR_ERR_SLOW		(3 * 256)
-+/*
-+ * Largest QP increase and decrease per picture, 1/256 units. Decreases are
-+ * slower, so that pictures that are much smaller than their target, such as
-+ * repeated pictures, don't pull the QP down far.
-+ */
-+#define CBR_STEP_UP_MAX		(4 * 256)
-+#define CBR_STEP_DOWN_MAX	(2 * 256)
-+
-+/* log2(x) in 8.8 fixed point */
-+static int cbr_log2_q8(u64 x)
-+{
-+	unsigned int shift = 0;
-+
-+	if (!x)
-+		return 0;
-+
-+	while (x > U32_MAX) {
-+		x >>= 1;
-+		shift++;
-+	}
-+
-+	return (int)(intlog2(x) >> 16) + shift * 256;
-+}
-+
-+static unsigned int cbr_fps(const struct v4l2_fract *timeperframe)
-+{
-+	if (!timeperframe->numerator || !timeperframe->denominator)
-+		return 30;
-+
-+	return max(DIV_ROUND_CLOSEST(timeperframe->denominator,
-+				     timeperframe->numerator), 1U);
-+}
-+
-+static u64 cbr_nominal(u32 bitrate, const struct v4l2_fract *timeperframe)
-+{
-+	if (!timeperframe->numerator || !timeperframe->denominator)
-+		return max(bitrate / 30, 1U);
-+
-+	return max_t(u64, div_u64((u64)bitrate * timeperframe->numerator,
-+				  timeperframe->denominator), 1);
-+}
-+
-+/* Planned size of an I or P picture of the current GOP */
++#define CBR_INTRA_ADD_STEP	(4 * 256)
++#define CBR_INTRA_ADD_QP_END	45
++#define CBR_INTRA_ADD_MAX	(6 * 256)
+ /* P pictures after an I picture when the I/P size ratio is measured */
+ #define CBR_RATIO_PICS		4
+ /* QP errors up to this are corrected by 1/8 per picture, 1/256 units */
+@@ -85,9 +99,9 @@ static u64 cbr_nominal(u32 bitrate, const struct v4l2_fract *timeperframe)
+ 				  timeperframe->denominator), 1);
+ }
+ 
+-/* Planned size of an I or P picture of the current GOP */
+-static u64 cbr_plan(const struct v4l2_enc_cbr *cbr, unsigned int fps,
+-		    bool intra)
++/* Planned size of an I or P picture of the current GOP at an I/P ratio */
++static u64 cbr_plan_ratio(const struct v4l2_enc_cbr *cbr, unsigned int fps,
++			  bool intra, unsigned int ratio)
+ {
+ 	unsigned int gop = cbr->gop;
+ 	u64 p;
+@@ -98,13 +112,43 @@ static u64 cbr_plan(const struct v4l2_enc_cbr *cbr, unsigned int fps,
+ 	if (gop <= 1)
+ 		return cbr->nominal;
+ 
+-	p = div_u64(cbr->nominal * gop * 16, cbr->ratio + 16 * (gop - 1));
++	p = div_u64(cbr->nominal * gop * 16, ratio + 16 * (gop - 1));
+ 	if (intra)
+-		p = div_u64(p * cbr->ratio, 16);
++		p = div_u64(p * ratio, 16);
+ 
+ 	return max_t(u64, p, 1);
+ }
+ 
 +static u64 cbr_plan(const struct v4l2_enc_cbr *cbr, unsigned int fps,
 +		    bool intra)
 +{
-+	unsigned int gop = cbr->gop;
-+	u64 p;
-+
-+	/* Until the second I picture, assume at least two seconds. */
-+	if (!gop)
-+		gop = max(cbr->since_i + 1, 2 * fps);
-+	if (gop <= 1)
-+		return cbr->nominal;
-+
-+	p = div_u64(cbr->nominal * gop * 16, cbr->ratio + 16 * (gop - 1));
-+	if (intra)
-+		p = div_u64(p * cbr->ratio, 16);
-+
-+	return max_t(u64, p, 1);
++	return cbr_plan_ratio(cbr, fps, intra, cbr->ratio);
 +}
 +
 +/*
-+ * Start QP of an I picture from its size in bits per luma sample:
-+ * 20.3 - 6 * log2(bits per sample), clipped to 15..45. This is the relation
-+ * the Rockchip MPP library uses for its first picture at 1080p, for H.264
-+ * and HEVC alike.
++ * QP of an I picture: the mean of the QP state now and at the previous I
++ * picture (the current state weighs 70% when it rose from 33 or below to 35
++ * or above: content that got much harder), plus the increase after
++ * oversized I pictures, less the I QP delta. All-intra streams use the
++ * state alone, which then follows the I pictures fully.
 + */
-+static int cbr_qp_initial(u64 bits, unsigned int samples)
++static int cbr_qp_intra(const struct v4l2_enc_cbr *cbr)
 +{
-+	int qp_q8 = 20 * 256 + 77 +
-+		    6 * (cbr_log2_q8(samples) - cbr_log2_q8(max_t(u64, bits, 1)));
++	int cur = cbr->qp_q8, ref = cbr->qp_intra_ref_q8, q8;
 +
-+	return clamp(DIV_ROUND_CLOSEST(qp_q8, 256), 15, 45);
++	if (cbr->gop == 1 || ref < 0)
++		q8 = cur;
++	else if (cur >= 35 * 256 && ref <= 33 * 256)
++		q8 = (3 * ref + 7 * cur) / 10;
++	else
++		q8 = (ref + cur) / 2;
++
++	if (cbr->gop != 1)
++		q8 += cbr->qp_intra_add_q8;
++
++	return DIV_ROUND_CLOSEST(q8, 256) - cbr->qp_delta_intra;
 +}
 +
-+/**
-+ * v4l2_enc_cbr_reset() - reset the rate control state
-+ * @cbr: the rate control state
-+ * @qp_delta_intra: QP of the I pictures below the QP of the P pictures
-+ *
-+ * The next picture starts the rate control afresh.
-+ */
-+void v4l2_enc_cbr_reset(struct v4l2_enc_cbr *cbr, int qp_delta_intra)
-+{
-+	memset(cbr, 0, sizeof(*cbr));
-+	cbr->qp_delta_intra = qp_delta_intra;
-+}
-+EXPORT_SYMBOL_GPL(v4l2_enc_cbr_reset);
-+
-+/**
-+ * v4l2_enc_cbr_begin() - set up the size target of the next picture
-+ * @cbr: the rate control state
-+ * @bitrate: target bitrate in bits per second
-+ * @timeperframe: frame interval
-+ * @samples: number of luma samples of a picture
-+ * @intra: the picture is an I picture
-+ * @qp_min: lowest QP
-+ * @qp_max: highest QP
-+ *
-+ * Sets @cbr->target_bits. The QP of the picture is then given by
-+ * v4l2_enc_cbr_qp(). A change of the bitrate keeps the QP state and the
-+ * measured statistics.
-+ *
-+ * Return: 0, or -EINVAL if @bitrate is 0.
-+ */
-+int v4l2_enc_cbr_begin(struct v4l2_enc_cbr *cbr, u32 bitrate,
-+		       const struct v4l2_fract *timeperframe,
-+		       unsigned int samples, bool intra, int qp_min,
-+		       int qp_max)
-+{
-+	unsigned int fps = cbr_fps(timeperframe);
-+	u64 nominal = cbr_nominal(bitrate, timeperframe);
-+	s64 target, expected = 0;
-+	int qp;
-+
-+	if (!bitrate)
-+		return -EINVAL;
-+
-+	if (!cbr->bitrate) {
-+		cbr->ratio = CBR_RATIO_INIT;
-+		cbr->qp_q8 = -1;
-+	}
-+
-+	if (cbr->bitrate != bitrate || cbr->nominal != nominal) {
-+		cbr->bitrate = bitrate;
-+		cbr->nominal = nominal;
-+		cbr->buffer_bits = 0;
-+	}
-+
-+	if (intra) {
-+		/* An I picture closes the GOP: its length is the IDR period. */
-+		if (cbr->seen_i)
-+			cbr->gop = cbr->since_i + 1;
-+		cbr->since_i = 0;
-+		cbr->seen_i = true;
-+	}
-+
-+	cbr->plan_bits = cbr_plan(cbr, fps, intra);
-+
-+	if (cbr->qp_q8 < 0) {
-+		/* First picture: start QP from the bits per sample. */
-+		qp = cbr_qp_initial(cbr_plan(cbr, fps, true), samples) +
-+		     cbr->qp_delta_intra;
-+		cbr->qp_q8 = clamp_t(int, qp, qp_min, qp_max) * 256;
-+	}
-+
-+	/*
-+	 * The buffer holds the coded minus the nominal sizes. Within a GOP the
-+	 * plan expects it to go up by the excess of the I picture and back
-+	 * down to zero by the savings of the P pictures until the next I
-+	 * picture. Spread the difference to that over the next pictures.
-+	 */
-+	if (!intra && cbr->seen_i)
-+		expected = (s64)cbr_plan(cbr, fps, true) - (s64)nominal +
-+			   (s64)cbr->since_i *
-+			   ((s64)cbr->plan_bits - (s64)nominal);
-+
-+	target = (s64)cbr->plan_bits -
-+		 div_s64(cbr->buffer_bits - max_t(s64, expected, 0),
-+			 CBR_WINDOW);
-+	cbr->target_bits = clamp_t(s64, target,
-+				   max_t(u64, cbr->plan_bits / 4, 8),
-+				   cbr->plan_bits * 2);
-+	cbr->intra = intra;
-+
-+	pr_debug("+ v4l2-enc-cbr: begin");
-+	pr_debug("  nominal: %llu bits, plan: %llu bits, target: %llu bits",
-+		 cbr->nominal, cbr->plan_bits, cbr->target_bits);
-+	pr_debug("  buffer: %lld bits, expected: %lld bits, gop: %u, ratio: %u",
-+		 cbr->buffer_bits, expected, cbr->gop, cbr->ratio);
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(v4l2_enc_cbr_begin);
-+
-+/**
-+ * v4l2_enc_cbr_qp() - QP of the picture set up by v4l2_enc_cbr_begin()
-+ * @cbr: the rate control state
-+ *
-+ * Return: the QP, not limited to the QP range of the codec.
-+ */
-+int v4l2_enc_cbr_qp(const struct v4l2_enc_cbr *cbr)
-+{
-+	int qp = DIV_ROUND_CLOSEST(cbr->qp_q8, 256);
-+
-+	if (cbr->intra)
-+		qp -= cbr->qp_delta_intra;
-+
-+	return qp;
-+}
-+EXPORT_SYMBOL_GPL(v4l2_enc_cbr_qp);
-+
-+/**
-+ * v4l2_enc_cbr_end() - account for a coded picture
-+ * @cbr: the rate control state
-+ * @bits: size of the coded picture in bits
-+ * @timeperframe: frame interval
-+ * @qp_min: lowest QP
-+ * @qp_max: highest QP
-+ */
-+void v4l2_enc_cbr_end(struct v4l2_enc_cbr *cbr, u64 bits,
-+		      const struct v4l2_fract *timeperframe, int qp_min,
-+		      int qp_max)
-+{
-+	s64 limit = cbr->nominal * CBR_BUFFER_SECONDS * cbr_fps(timeperframe);
-+	unsigned int ratio;
-+	int err, step;
-+
-+	if (!cbr->bitrate || !cbr->target_bits)
-+		return;
-+
-+	cbr->buffer_bits = clamp_t(s64, cbr->buffer_bits + (s64)bits -
-+				   (s64)cbr->nominal, -limit, limit);
-+
-+	/* QP error of the picture, 1/256 units */
-+	err = 6 * (cbr_log2_q8(bits) - cbr_log2_q8(cbr->target_bits));
-+
-+	step = err / 8;
-+	if (err > CBR_ERR_SLOW)
-+		step += (err - CBR_ERR_SLOW) / 2;
-+	else if (err < -CBR_ERR_SLOW)
-+		step += (err + CBR_ERR_SLOW) / 2;
-+	step = clamp(step, -CBR_STEP_DOWN_MAX, CBR_STEP_UP_MAX);
-+
-+	if (!cbr->intra) {
-+		cbr->qp_q8 += step;
-+		cbr->p_bits = cbr->p_bits ? (7 * cbr->p_bits + bits) / 8 : bits;
-+		cbr->since_i++;
-+
-+		/* I/P size ratio, once a few P pictures were coded */
-+		if (cbr->since_i == CBR_RATIO_PICS && cbr->i_bits) {
-+			ratio = div64_u64(cbr->i_bits * 16, cbr->p_bits);
-+			ratio = clamp(ratio, CBR_RATIO_MIN, CBR_RATIO_MAX);
-+			cbr->ratio = (cbr->ratio + ratio + 1) / 2;
-+		}
-+	} else {
-+		/*
-+		 * The size of an I picture mostly reflects the I/P ratio
-+		 * estimate: only all-intra streams steer the QP fully with it.
-+		 */
-+		cbr->i_bits = bits;
-+		cbr->qp_q8 += cbr->gop == 1 ? step : step / 4;
-+	}
-+
-+	cbr->qp_q8 = clamp_t(int, cbr->qp_q8, qp_min * 256, qp_max * 256);
-+
-+	pr_debug("+ v4l2-enc-cbr: end");
-+	pr_debug("  size: %llu bits, target: %llu bits, qp error: %d/256, qp: %d/256",
-+		 bits, cbr->target_bits, err, cbr->qp_q8);
-+}
-+EXPORT_SYMBOL_GPL(v4l2_enc_cbr_end);
-+
-+MODULE_DESCRIPTION("V4L2 stateless encoder constant bitrate rate control");
-+MODULE_LICENSE("GPL");
-diff --git a/drivers/media/v4l2-core/v4l2-h264-enc-rc.c b/drivers/media/v4l2-core/v4l2-h264-enc-rc.c
-index bbfe03febac8..c4f1718ead0e 100644
---- a/drivers/media/v4l2-core/v4l2-h264-enc-rc.c
-+++ b/drivers/media/v4l2-core/v4l2-h264-enc-rc.c
-@@ -5,7 +5,6 @@
-  * Copyright (C) 2025-2026 Paul Kocialkowski <paulk@sys-base.io>
-  */
- 
--#include <linux/int_log.h>
- #include <linux/math64.h>
- #include <linux/minmax.h>
- #include <linux/module.h>
-@@ -162,116 +161,15 @@ static const struct v4l2_h264_enc_rc_mode cq_mode = {
- };
- 
  /*
-- * Constant bitrate mode
-- *
-- * One QP state is kept for the stream: it is the QP of the P (and B)
-- * pictures, and I pictures are coded a fixed number of steps below it, so
-- * that the quality of the reference pictures stays even across GOPs. Each
-- * picture gets a size target from a GOP plan, in which an I picture is
-- * "ratio" times the size of a P picture, with the ratio and the IDR period
-- * measured on the stream. The difference between the coded size so far and
-- * the size the plan expects at this point of the GOP is spread over the next
-- * pictures, so that the bitrate converges to the target.
-- *
-- * After each picture the QP state moves by a fraction of the QP error
-- * 6 * log2(size / target) (a QP step of 6 halves the size): slowly for small
-- * errors, so that the QP does not follow the size noise from picture to
-- * picture, and quickly for errors of several QP steps (a scene change, a
-- * poor start).
-+ * Constant bitrate mode, with the codec independent rate control of
-+ * v4l2-enc-cbr: I pictures 2 QP below the P pictures (the default of the
-+ * Rockchip MPP library for H.264).
+  * Start QP of an I picture from its size in bits per luma sample:
+  * 20.3 - 6 * log2(bits per sample), clipped to 15..45. This is the relation
+@@ -165,6 +209,7 @@ int v4l2_enc_cbr_begin(struct v4l2_enc_cbr *cbr, u32 bitrate,
+ 	if (!cbr->bitrate) {
+ 		cbr->ratio = CBR_RATIO_INIT;
+ 		cbr->qp_q8 = -1;
++		cbr->qp_intra_ref_q8 = -1;
+ 	}
+ 
+ 	if (cbr->bitrate != bitrate || cbr->nominal != nominal) {
+@@ -190,6 +235,9 @@ int v4l2_enc_cbr_begin(struct v4l2_enc_cbr *cbr, u32 bitrate,
+ 		cbr->qp_q8 = clamp_t(int, qp, qp_min, qp_max) * 256;
+ 	}
+ 
++	cbr->qp_pic = intra ? cbr_qp_intra(cbr) :
++			      DIV_ROUND_CLOSEST(cbr->qp_q8, 256);
++
+ 	/*
+ 	 * The buffer holds the coded minus the nominal sizes. Within a GOP the
+ 	 * plan expects it to go up by the excess of the I picture and back
+@@ -214,6 +262,9 @@ int v4l2_enc_cbr_begin(struct v4l2_enc_cbr *cbr, u32 bitrate,
+ 		 cbr->nominal, cbr->plan_bits, cbr->target_bits);
+ 	pr_debug("  buffer: %lld bits, expected: %lld bits, gop: %u, ratio: %u",
+ 		 cbr->buffer_bits, expected, cbr->gop, cbr->ratio);
++	pr_debug("  intra: %d, picture QP %d, I state ref %d/256, I add %d/256",
++		 intra, cbr->qp_pic, cbr->qp_intra_ref_q8,
++		 cbr->qp_intra_add_q8);
+ 
+ 	return 0;
+ }
+@@ -227,12 +278,7 @@ EXPORT_SYMBOL_GPL(v4l2_enc_cbr_begin);
   */
--
--/* The accumulated size error is spread over this many pictures. */
--#define CBR_WINDOW		8
--/* Limit of the accumulated size error, in seconds of the bitrate */
--#define CBR_BUFFER_SECONDS	3
--/* I/P size ratio, 1/16 units: initial value (10x) and limits (1.5x .. 30x) */
--#define CBR_RATIO_INIT		160
--#define CBR_RATIO_MIN		24
--#define CBR_RATIO_MAX		480
--/* P pictures after an I picture when the I/P size ratio is measured */
--#define CBR_RATIO_PICS		4
--/* QP of the I pictures below the QP of the P pictures */
- #define CBR_QP_DELTA_INTRA	2
--/* QP errors up to this are corrected by 1/8 per picture, 1/256 units */
--#define CBR_ERR_SLOW		(3 * 256)
--/*
-- * Largest QP increase and decrease per picture, 1/256 units. Decreases are
-- * slower, so that pictures that are much smaller than their target, such as
-- * repeated pictures, don't pull the QP down far.
-- */
--#define CBR_STEP_UP_MAX		(4 * 256)
--#define CBR_STEP_DOWN_MAX	(2 * 256)
--
--/* log2(x) in 8.8 fixed point */
--static int cbr_log2_q8(u64 x)
--{
--	unsigned int shift = 0;
--
--	if (!x)
--		return 0;
--
--	while (x > U32_MAX) {
--		x >>= 1;
--		shift++;
--	}
--
--	return (int)(intlog2(x) >> 16) + shift * 256;
--}
--
--static unsigned int cbr_fps(const struct v4l2_fract *timeperframe)
--{
--	if (!timeperframe->numerator || !timeperframe->denominator)
--		return 30;
--
--	return max(DIV_ROUND_CLOSEST(timeperframe->denominator,
--				     timeperframe->numerator), 1U);
--}
--
--static u64 cbr_nominal(u32 bitrate, const struct v4l2_fract *timeperframe)
--{
--	if (!timeperframe->numerator || !timeperframe->denominator)
--		return max(bitrate / 30, 1U);
--
--	return max_t(u64, div_u64((u64)bitrate * timeperframe->numerator,
--				  timeperframe->denominator), 1);
--}
--
--/* Planned size of an I or P picture of the current GOP */
--static u64 cbr_plan(const struct v4l2_h264_enc_rc_cbr *cbr, unsigned int fps,
--		    bool intra)
--{
--	unsigned int gop = cbr->gop;
--	u64 p;
--
--	/* Until the second I picture, assume at least two seconds. */
--	if (!gop)
--		gop = max(cbr->since_i + 1, 2 * fps);
--	if (gop <= 1)
--		return cbr->nominal;
--
--	p = div_u64(cbr->nominal * gop * 16, cbr->ratio + 16 * (gop - 1));
--	if (intra)
--		p = div_u64(p * cbr->ratio, 16);
--
--	return max_t(u64, p, 1);
--}
--
--/*
-- * Start QP of an I picture from its size in bits per luma sample:
-- * 20.3 - 6 * log2(bits per sample), clipped to 15..45. This is the relation
-- * the Rockchip MPP library uses for its first picture at 1080p.
-- */
--static int cbr_qp_initial(u64 bits, unsigned int samples)
--{
--	int qp_q8 = 20 * 256 + 77 +
--		    6 * (cbr_log2_q8(samples) - cbr_log2_q8(max_t(u64, bits, 1)));
--
--	return clamp(DIV_ROUND_CLOSEST(qp_q8, 256), 15, 45);
--}
- 
- static int cbr_init(struct v4l2_h264_enc_rc *rc)
+ int v4l2_enc_cbr_qp(const struct v4l2_enc_cbr *cbr)
  {
--	memset(&rc->cbr, 0, sizeof(rc->cbr));
-+	v4l2_enc_cbr_reset(&rc->cbr, CBR_QP_DELTA_INTRA);
- 
- 	return 0;
- }
-@@ -279,148 +177,34 @@ static int cbr_init(struct v4l2_h264_enc_rc *rc)
- static int cbr_measure(struct v4l2_h264_enc_rc *rc, unsigned long *size)
- {
- 	struct v4l2_h264_enc_state *state = rc->state;
--	struct v4l2_h264_enc_rc_cbr *cbr = &rc->cbr;
--	struct v4l2_fract *timeperframe = &state->timeperframe;
- 	bool intra = state->encode.slice_type == V4L2_H264_SLICE_TYPE_I;
--	unsigned int fps = cbr_fps(timeperframe);
--	u64 nominal = cbr_nominal(state->bitrate, timeperframe);
- 	unsigned int samples = state->width_mbs * state->height_mbs * 256;
--	s64 target, expected = 0;
--	int qp;
+-	int qp = DIV_ROUND_CLOSEST(cbr->qp_q8, 256);
 -
--	if (!state->bitrate)
--		return -EINVAL;
--
--	if (!cbr->bitrate) {
--		cbr->ratio = CBR_RATIO_INIT;
--		cbr->qp_q8 = -1;
--	}
--
--	/* A new bitrate keeps the QP state and the measured statistics. */
--	if (cbr->bitrate != state->bitrate || cbr->nominal != nominal) {
--		cbr->bitrate = state->bitrate;
--		cbr->nominal = nominal;
--		cbr->buffer_bits = 0;
--	}
--
--	if (intra) {
--		/* An I picture closes the GOP: its length is the IDR period. */
--		if (cbr->seen_i)
--			cbr->gop = cbr->since_i + 1;
--		cbr->since_i = 0;
--		cbr->seen_i = true;
--	}
--
--	cbr->plan_bits = cbr_plan(cbr, fps, intra);
-+	int ret;
- 
--	if (cbr->qp_q8 < 0) {
--		/* First picture: start QP from the bits per sample. */
--		qp = cbr_qp_initial(cbr_plan(cbr, fps, true), samples) +
--		     CBR_QP_DELTA_INTRA;
--		cbr->qp_q8 = clamp_t(int, qp, state->qp_min, state->qp_max) *
--			     256;
--	}
-+	ret = v4l2_enc_cbr_begin(&rc->cbr, state->bitrate,
-+				 &state->timeperframe, samples, intra,
-+				 state->qp_min, state->qp_max);
-+	if (ret)
-+		return ret;
- 
--	/*
--	 * The buffer holds the coded minus the nominal sizes. Within a GOP the
--	 * plan expects it to go up by the excess of the I picture and back
--	 * down to zero by the savings of the P pictures until the next I
--	 * picture. Spread the difference to that over the next pictures.
--	 */
--	if (!intra && cbr->seen_i)
--		expected = (s64)cbr_plan(cbr, fps, true) - (s64)nominal +
--			   (s64)cbr->since_i *
--			   ((s64)cbr->plan_bits - (s64)nominal);
--
--	target = (s64)cbr->plan_bits -
--		 div_s64(cbr->buffer_bits - max_t(s64, expected, 0),
--			 CBR_WINDOW);
--	cbr->target_bits = clamp_t(s64, target,
--				   max_t(u64, cbr->plan_bits / 4, 8),
--				   cbr->plan_bits * 2);
--	cbr->intra = intra;
--
--	pr_debug("+ v4l2-h264-enc-rc: cbr measure");
--	pr_debug("  nominal: %llu bits, plan: %llu bits, target: %llu bits",
--		 cbr->nominal, cbr->plan_bits, cbr->target_bits);
--	pr_debug("  buffer: %lld bits, expected: %lld bits, gop: %u, ratio: %u",
--		 cbr->buffer_bits, expected, cbr->gop, cbr->ratio);
--
--	*size = max_t(unsigned long, cbr->target_bits / 8, 1);
-+	*size = max_t(unsigned long, rc->cbr.target_bits / 8, 1);
- 
- 	return 0;
- }
- 
- static int cbr_estimate(struct v4l2_h264_enc_rc *rc, unsigned int *qp)
- {
--	struct v4l2_h264_enc_rc_cbr *cbr = &rc->cbr;
--	int value;
--
--	value = DIV_ROUND_CLOSEST(cbr->qp_q8, 256);
 -	if (cbr->intra)
--		value -= CBR_QP_DELTA_INTRA;
+-		qp -= cbr->qp_delta_intra;
 -
--	*qp = clamp(value, 0, 51);
-+	*qp = clamp(v4l2_enc_cbr_qp(&rc->cbr), 0, 51);
- 
- 	return 0;
+-	return qp;
++	return cbr->qp_pic;
  }
+ EXPORT_SYMBOL_GPL(v4l2_enc_cbr_qp);
  
--static void cbr_update(struct v4l2_h264_enc_rc *rc, u64 bits)
-+static int cbr_complete(struct v4l2_h264_enc_rc *rc, unsigned long bytesused)
+@@ -248,9 +294,11 @@ void v4l2_enc_cbr_end(struct v4l2_enc_cbr *cbr, u64 bits,
+ 		      const struct v4l2_fract *timeperframe, int qp_min,
+ 		      int qp_max)
  {
- 	struct v4l2_h264_enc_state *state = rc->state;
--	struct v4l2_h264_enc_rc_cbr *cbr = &rc->cbr;
--	s64 limit = cbr->nominal * CBR_BUFFER_SECONDS *
--		    cbr_fps(&state->timeperframe);
--	unsigned int ratio;
--	int err, step;
--
--	if (!cbr->bitrate || !cbr->target_bits)
--		return;
--
--	cbr->buffer_bits = clamp_t(s64, cbr->buffer_bits + (s64)bits -
--				   (s64)cbr->nominal, -limit, limit);
--
--	/* QP error of the picture, 1/256 units */
--	err = 6 * (cbr_log2_q8(bits) - cbr_log2_q8(cbr->target_bits));
--
--	step = err / 8;
--	if (err > CBR_ERR_SLOW)
--		step += (err - CBR_ERR_SLOW) / 2;
--	else if (err < -CBR_ERR_SLOW)
--		step += (err + CBR_ERR_SLOW) / 2;
--	step = clamp(step, -CBR_STEP_DOWN_MAX, CBR_STEP_UP_MAX);
--
--	if (!cbr->intra) {
--		cbr->qp_q8 += step;
--		cbr->p_bits = cbr->p_bits ? (7 * cbr->p_bits + bits) / 8 : bits;
--		cbr->since_i++;
--
--		/* I/P size ratio, once a few P pictures were coded */
--		if (cbr->since_i == CBR_RATIO_PICS && cbr->i_bits) {
--			ratio = div64_u64(cbr->i_bits * 16, cbr->p_bits);
--			ratio = clamp(ratio, CBR_RATIO_MIN, CBR_RATIO_MAX);
--			cbr->ratio = (cbr->ratio + ratio + 1) / 2;
--		}
--	} else {
--		/*
--		 * The size of an I picture mostly reflects the I/P ratio
--		 * estimate: only all-intra streams steer the QP fully with it.
--		 */
--		cbr->i_bits = bits;
--		cbr->qp_q8 += cbr->gop == 1 ? step : step / 4;
--	}
+-	s64 limit = cbr->nominal * CBR_BUFFER_SECONDS * cbr_fps(timeperframe);
++	unsigned int fps = cbr_fps(timeperframe);
++	s64 limit = cbr->nominal * CBR_BUFFER_SECONDS * fps;
+ 	unsigned int ratio;
+ 	int err, step;
++	s64 cap, add;
  
--	cbr->qp_q8 = clamp_t(int, cbr->qp_q8, state->qp_min * 256,
--			     state->qp_max * 256);
--
--	pr_debug("+ v4l2-h264-enc-rc: cbr update");
--	pr_debug("  size: %llu bits, target: %llu bits, qp error: %d/256, qp: %d/256",
--		 bits, cbr->target_bits, err, cbr->qp_q8);
--}
--
--static int cbr_complete(struct v4l2_h264_enc_rc *rc, unsigned long bytesused)
--{
--	cbr_update(rc, (u64)bytesused * 8);
-+	v4l2_enc_cbr_end(&rc->cbr, (u64)bytesused * 8, &state->timeperframe,
-+			 state->qp_min, state->qp_max);
+ 	if (!cbr->bitrate || !cbr->target_bits)
+ 		return;
+@@ -285,6 +333,30 @@ void v4l2_enc_cbr_end(struct v4l2_enc_cbr *cbr, u64 bits,
+ 		 * estimate: only all-intra streams steer the QP fully with it.
+ 		 */
+ 		cbr->i_bits = bits;
++
++		/*
++		 * Above its share of the GOP at the largest I/P ratio, an I
++		 * picture is more than the P pictures of the plan can make
++		 * up for: raise the QP of the next I pictures by up to 4 QP
++		 * per picture (at twice the share), and lower the increase
++		 * again as I pictures come out below the share.
++		 */
++		cap = cbr_plan_ratio(cbr, fps, true, CBR_RATIO_MAX);
++		if (cbr->gop != 1 && (bits > cap || cbr->qp_intra_add_q8)) {
++			add = div64_s64(((s64)bits - cap) * CBR_INTRA_ADD_STEP,
++					cap);
++			add = clamp_t(s64, add, -CBR_INTRA_ADD_STEP,
++				      CBR_INTRA_ADD_STEP) +
++			      cbr->qp_intra_add_q8;
++			cbr->qp_intra_add_q8 =
++				clamp_t(s64, add, 0,
++					clamp((CBR_INTRA_ADD_QP_END -
++					       cbr->qp_pic) * 64, 0,
++					      CBR_INTRA_ADD_MAX));
++		}
++
++		/* The state the next I picture takes the mean with */
++		cbr->qp_intra_ref_q8 = cbr->qp_q8;
+ 		cbr->qp_q8 += cbr->gop == 1 ? step : step / 4;
+ 	}
  
- 	return v4l2_h264_enc_rc_stats_collect(rc, bytesused);
- }
 diff --git a/include/media/v4l2-enc-cbr.h b/include/media/v4l2-enc-cbr.h
-new file mode 100644
-index 000000000000..6b66d121b0cc
---- /dev/null
+index 6b66d121b0cc..c47e459a1d1e 100644
+--- a/include/media/v4l2-enc-cbr.h
 +++ b/include/media/v4l2-enc-cbr.h
-@@ -0,0 +1,64 @@
-+/* SPDX-License-Identifier: GPL-2.0-or-later */
-+/*
-+ * V4L2 stateless encoder constant bitrate rate control
-+ *
-+ * A codec independent frame-level rate control for the constant bitrate
-+ * mode of the stateless encode cores.
-+ */
-+
-+#ifndef _MEDIA_V4L2_ENC_CBR_H
-+#define _MEDIA_V4L2_ENC_CBR_H
-+
-+#include <linux/types.h>
-+#include <linux/videodev2.h>
-+
-+/**
-+ * struct v4l2_enc_cbr - constant bitrate rate control state
-+ * @qp_delta_intra: QP of the I pictures below the QP of the P pictures
-+ * @bitrate: bitrate the state was set up for, 0 before the first picture
-+ * @nominal: nominal picture size in bits (bitrate times frame interval)
-+ * @qp_q8: QP of the P pictures in 1/256 units, -1 before the first picture
-+ * @ratio: I/P picture size ratio in 1/16 units
-+ * @gop: measured IDR period in pictures, 0 until two I pictures were seen
-+ * @since_i: pictures coded since the last I picture
-+ * @seen_i: an I picture was coded
-+ * @intra: the current picture is an I picture
-+ * @p_bits: running mean of the P picture sizes
-+ * @i_bits: size of the last I picture
-+ * @buffer_bits: accumulated difference between the coded and nominal sizes
-+ * @plan_bits: planned size of the current picture
-+ * @target_bits: size target of the current picture
-+ *
-+ * Only @qp_delta_intra is set by the user, after v4l2_enc_cbr_reset().
-+ * @target_bits is valid from v4l2_enc_cbr_begin() of a picture until its
-+ * v4l2_enc_cbr_end().
-+ */
-+struct v4l2_enc_cbr {
-+	int qp_delta_intra;
-+
-+	u32 bitrate;
-+	u64 nominal;
-+	int qp_q8;
-+	unsigned int ratio;
-+	unsigned int gop;
-+	unsigned int since_i;
-+	bool seen_i;
-+	bool intra;
-+	u64 p_bits;
-+	u64 i_bits;
-+	s64 buffer_bits;
-+	u64 plan_bits;
-+	u64 target_bits;
-+};
-+
-+void v4l2_enc_cbr_reset(struct v4l2_enc_cbr *cbr, int qp_delta_intra);
-+int v4l2_enc_cbr_begin(struct v4l2_enc_cbr *cbr, u32 bitrate,
-+		       const struct v4l2_fract *timeperframe,
-+		       unsigned int samples, bool intra, int qp_min,
-+		       int qp_max);
-+int v4l2_enc_cbr_qp(const struct v4l2_enc_cbr *cbr);
-+void v4l2_enc_cbr_end(struct v4l2_enc_cbr *cbr, u64 bits,
-+		      const struct v4l2_fract *timeperframe, int qp_min,
-+		      int qp_max);
-+
-+#endif
-diff --git a/include/media/v4l2-h264-enc-rc.h b/include/media/v4l2-h264-enc-rc.h
-index 72d78a594e40..76781fe2d844 100644
---- a/include/media/v4l2-h264-enc-rc.h
-+++ b/include/media/v4l2-h264-enc-rc.h
-@@ -10,6 +10,7 @@
- 
- #include <linux/types.h>
- #include <linux/v4l2-controls.h>
-+#include <media/v4l2-enc-cbr.h>
- #include <media/v4l2-h264.h>
- 
- #define V4L2_H264_ENC_RC_STATS_TYPE_COUNT	10
-@@ -83,38 +84,6 @@ struct v4l2_h264_enc_rc_stats {
- 	unsigned int index;
- };
- 
--/**
-- * struct v4l2_h264_enc_rc_cbr - constant bitrate mode state
-- * @bitrate: bitrate the state was set up for, 0 before the first picture
-- * @nominal: nominal picture size in bits (bitrate times frame interval)
-- * @qp_q8: QP of the P pictures in 1/256 units, -1 before the first picture
-- * @ratio: I/P picture size ratio in 1/16 units
-- * @gop: measured IDR period in pictures, 0 until two I pictures were seen
-- * @since_i: pictures coded since the last I picture
-- * @seen_i: an I picture was coded
-- * @intra: the current picture is an I picture
-- * @p_bits: running mean of the P picture sizes
-- * @i_bits: size of the last I picture
-- * @buffer_bits: accumulated difference between the coded and nominal sizes
-- * @plan_bits: planned size of the current picture
-- * @target_bits: size target of the current picture
-- */
--struct v4l2_h264_enc_rc_cbr {
--	u32 bitrate;
--	u64 nominal;
--	int qp_q8;
--	unsigned int ratio;
--	unsigned int gop;
--	unsigned int since_i;
--	bool seen_i;
--	bool intra;
--	u64 p_bits;
--	u64 i_bits;
--	s64 buffer_bits;
--	u64 plan_bits;
--	u64 target_bits;
--};
--
- struct v4l2_h264_enc_rc {
- 	const struct v4l2_h264_enc_rc_ops *ops;
- 	void *private_data;
-@@ -124,7 +93,7 @@ struct v4l2_h264_enc_rc {
- 	void *mode_data;
- 
- 	struct v4l2_h264_enc_rc_stats stats;
--	struct v4l2_h264_enc_rc_cbr cbr;
-+	struct v4l2_enc_cbr cbr;
- 	unsigned long size;
- 	unsigned int qp;
- };
+@@ -18,6 +18,11 @@
+  * @bitrate: bitrate the state was set up for, 0 before the first picture
+  * @nominal: nominal picture size in bits (bitrate times frame interval)
+  * @qp_q8: QP of the P pictures in 1/256 units, -1 before the first picture
++ * @qp_intra_ref_q8: @qp_q8 when the previous I picture was coded, -1 before
++ *		     the first I picture
++ * @qp_intra_add_q8: QP increase of the I pictures after I pictures larger
++ *		     than their share of the GOP at the largest I/P ratio
++ * @qp_pic: QP of the current picture
+  * @ratio: I/P picture size ratio in 1/16 units
+  * @gop: measured IDR period in pictures, 0 until two I pictures were seen
+  * @since_i: pictures coded since the last I picture
+@@ -39,6 +44,9 @@ struct v4l2_enc_cbr {
+ 	u32 bitrate;
+ 	u64 nominal;
+ 	int qp_q8;
++	int qp_intra_ref_q8;
++	int qp_intra_add_q8;
++	int qp_pic;
+ 	unsigned int ratio;
+ 	unsigned int gop;
+ 	unsigned int since_i;
 
 -- 
 2.55.0
