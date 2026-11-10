@@ -1,188 +1,251 @@
-From: Moad Tarrih <tarrihmoad@proton.me>
-Date: Tue, 10 Nov 2026 16:50:27 +0000
-Subject: [PATCH v3] platform/x86: asus-wmi: Ignore unusable kbd backlight
- WMI device on ROG Strix G814FP
+From: Alex Ousherovitch <aousherovitch@rambus.com>
+Subject: [PATCH v8 0/5] crypto: cmh - add Rambus CryptoManager Hub core
+ driver and AES
+Date: Tue, 10 Nov 2026 08:52:26 -0800
+Message-Id: <20261110-cmh-b4-a-v8-v8-0-4cea8ebc1d40@rambus.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-asus-wmi-kbd-readback-v3-1-646adf2b8629@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WQyw6CMBBFf4V07Zg+gFRX/odxUdpBKpFiC6gh/
- LsFXOjCuDzJnXNvZiQBvcVA9slIPA42WNdEEJuE6Eo1ZwRrIhNOec4YlaBCH+B+tVAXBjwqUyh
- dAxc5TzOU3KAk8bb1WNrH4j2eVg59cUHdzbI5UdnQOf9cigc25/51DAwYFKWQZZ5SqgweWu861
- 2yvSOaOgX9adr8sPFo0TWWpM2EkflmmdarHWx8/0b33T9MLzLTyFScBAAA=
-X-Change-ID: 20261108-asus-wmi-kbd-readback-236245e82de8
-To: Corentin Chary <corentin.chary@gmail.com>, 
- "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
- Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Antheas Kapenekakis <lkml@antheas.dev>, 
- Benjamin Tissoires <bentiss@kernel.org>
-Cc: Sercan GOKMEN <gokmensercan@gmail.com>, 
- Burak Goncu <burakgon12@gmail.com>, Denis Benato <benato.denis96@gmail.com>, 
- platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Moad Tarrih <tarrihmoad@proton.me>
+X-B4-Tracking: v=1; b=H4sIAMpL82oC/yXMyw5AMBBA0V+RWZukRWj8ilj0MRiJR1pEIv5ds
+ TyLey8I5JkC1MkFng4OvMwRKk3ADnruCdlFQyayUkop0E4DmgI1Hgp17oRTOi9VRRCL1VPH53d
+ r2t9hNyPZ7V3AfT82kkD+bwAAAA==
+X-Change-ID: 20261110-cmh-b4-a-v8-a3d0d8a3687e
+To: Saravanakrishnan Krishnamoorthy <skrishnamoorthy@rambus.com>, 
+ Joel Wittenauer <Joel.Wittenauer@cryptography.com>, 
+ Thi Nguyen <thin@rambus.com>, Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>
+Cc: linux-crypto@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Alex Ousherovitch <aousherovitch@rambus.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794329442; l=6707;
- i=tarrihmoad@proton.me; s=20261108; h=from:subject:message-id;
- bh=A3fueH7Mo+YXF19QBqh02BggMGzJGEqb1H2dxfXbUzs=;
- b=EgOWtgnOXN8ILC2KNlnypnxCwNuXPv14xQwsFYQDmH9bt1huHP1ulHAmbkshuahmbM/Gf6rQ9
- GOpVx0gxDJeCPUdFLb4+Xfp+J61edy6yMFpZhIkbDU0us2vymM2TVgj
-X-Developer-Key: i=tarrihmoad@proton.me; a=ed25519;
- pk=wtwpmYxZldK7Qebavgtx7P5WmSQOiWjicK0506NOKLg=
-X-Endpoint-Received: by B4 Relay for tarrihmoad@proton.me/20261108 with auth_id=1453
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794329557; l=12469;
+ i=aousherovitch@rambus.com; s=20261026; h=from:subject:message-id;
+ bh=OPjcdwl0aItTqUSrkHnKVvcAq8MljzyQ3KTBqVVBsX8=;
+ b=rsodRVrG7u4Z6O1i9aqPazKtcSFXmyPT7O+eMVkGH9LP2FQRk5g5aWQxGQ9HdIBfP2sl3tBnn
+ 8KQ4Jf28l36ApELH4/MQS7Vg6opnvcv96cJFylidM0aPSPEmf9X69iU
+X-Developer-Key: i=aousherovitch@rambus.com; a=ed25519;
+ pk=ECFtTdQUPAolK+qGZ6v7Xm3sRf7rnM7wxpTeFzbqpmA=
+X-Endpoint-Received: by B4 Relay for aousherovitch@rambus.com/20261026 with auth_id=1330
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the ASUS ROG Strix G18 G814FP, writing a level to the keyboard
-backlight brightness in sysfs works, but reading it back always gives
-0, and the read makes the Fn brightness keys misbehave.
+The Rambus CryptoManager Hub (CMH) is a hardware cryptographic
+accelerator accessed through a mailbox-based VCQ (Virtual Command Queue)
+interface.  This part, the first of the split posting (lineage and
+changelog below), adds the core platform driver, the shared
+key/datastore layer and the AES transforms, plus the device-tree binding
+and the MAINTAINERS entry.  AES is the first and least-problematic
+algorithm family, so the core has a user and the VCQ/DMA/completion data
+path is reviewable end to end.  Later parts add the remaining symmetric
+ciphers (SM4, ChaCha20-Poly1305) and the hwrng, the hashes and MACs,
+and finally the asymmetric and post-quantum algorithms together with the
+/dev/cmh_mgmt management interface.
 
-The firmware reports the keyboard backlight WMI device as present but
-doesn't implement it. DSTS(0x00050021) always returns 0x50000, which
-is level 0 regardless of what the actual level is, and every
-DEVS(0x00050021) write is rejected as an unsupported method. The
-keyboard backlight is actually driven by hid-asus. asus-wmi saves the 0
-as the current level on every read, and the brightness keys step from
-the saved level. So after any read, for example by the desktop or by
-systemd-backlight, the brightness-up key sets the keyboard to the
-lowest level instead of one step higher.
+The core driver binds the device, parses its device-tree description,
+sets up DMA, the mailbox queue interface and the transaction manager,
+and exposes sysfs/debugfs instrumentation.  The key/datastore patch adds
+the raw-key handling and the datastore (SYS) command helpers that the AES
+driver in this series, and the algorithm drivers in the following series,
+build on.
 
-Add a kbd_led_no_wmi quirk that makes asus-wmi treat the keyboard
-backlight WMI device as absent, and set it for this board, matched on
-the DMI board name. asus-wmi then keeps the LED registered for hid-asus
-and no longer reads from or writes to the WMI device.
+The transaction manager runs as a kthread that packs VCQ entries and
+submits each request to the mailbox its core is bound to; completion is
+handled by per-mailbox threaded IRQs, or a watchdog poll without them.
+The data path is asynchronous: requests return -EINPROGRESS, and on a
+full queue a CRYPTO_TFM_REQ_MAY_BACKLOG request is backlogged (-EBUSY)
+while any other gets -ENOSPC.
+The CMH eSW is loaded independently by the hardware before probe; the
+driver loads no firmware.
 
-With its own quirk entry, the board no longer gets
-wmi_backlight_set_devstate from the default quirk_asus_unknown. That
-flag makes asus-wmi write DEVS(0x00050012, 2) at probe, but this
-firmware rejects both DSTS and DEVS on 0x00050012 as unsupported
-methods, so the write never did anything here.
+The CMH is a platform device matched via device tree (compatible
+"rambus,cmh-v1030").  Following the inside-secure,eip93 binding model
+and the DT maintainer's guidance, the schema requires a SoC-specific
+compatible ahead of the IP fallback and therefore carries no example.
 
-As a side effect, the kbd_rgb_mode and kbd_rgb_mode_index attributes are
-no longer created on this board, they never worked here since the firmware
-rejects those writes as well.
+Public hardware documentation:
+  Product overview: https://www.rambus.com/security/crypto-hub/
+  No public datasheets or downloadable briefs are currently available.
+  The driver was developed against the Rambus CryptoManager Hub Hardware
+  Reference Manual (Rambus Inc. confidential).  Detailed hardware
+  reference is available under NDA from Rambus Inc.; contact the
+  maintainers listed in MAINTAINERS for access during review.
 
-This patch was written with the help of an AI coding assistant (Claude
-Code, Claude Opus 5.5). I reviewed it and tested it on my affected laptop.
+Developed against Herbert Xu's cryptodev tree.  checkpatch.pl --strict,
+sparse (C=2) and a W=1 -Werror build are clean, and dtschema's
+dt-doc-validate accepts the binding.  Exercised on riscv64 and arm64 --
+QEMU with the CMH hardware model and a Xilinx VMK180 FPGA with the CMH
+IP -- under lockdep/PROVE_LOCKING, DEBUG_OBJECTS,
+KASAN/UBSAN/KMEMLEAK/KFENCE and (arm64) KCSAN with no findings;
+worst-case stack stays under 1 KB.
 
-Fixes: fac55d29581f ("platform/x86: asus-wmi: Add support for multiple kbd led handlers")
-Suggested-by: Antheas Kapenekakis <lkml@antheas.dev>
-Suggested-by: Denis Benato <denis.benato@linux.dev>
-Cc: stable@vger.kernel.org
-Signed-off-by: Moad Tarrih <tarrihmoad@proton.me>
-Reviewed-by: Antheas Kapenekakis <lkml@antheas.dev>
----
-Tested on an ASUS ROG Strix G18 (board G814FP, BIOS G814FP.317,
-keyboard 0b05:19b6) on 7.2.14, built as DKMS modules. The keyboard
-backlight is still registered and driven by hid-asus, the attribute
-reads back the level that was set, the brightness keys step from the
-real level, and the level survives suspend/resume and reboots. v3
-was retested the same way, and the screen backlight
-(nvidia_wmi_ec_backlight) still works without
-wmi_backlight_set_devstate.
-Build-tested with W=1 against pdx86 for-next (c339f4010dea): no
-warnings. checkpatch --strict is clean.
+Changes in v8:
+ - dt-bindings: rambus,slot-stride-bytes is 512 or 1024; reword
+   rambus,cores for cores that no mailbox lists.
+ - crypto: cmh: harden mailbox error recovery against concurrent
+   interrupt and watchdog activity.
+ - crypto: cmh: close transaction-manager races in timeout arming,
+   doorbell ringing and backlog promotion, and wake the manager for a
+   backlogged request.
+ - crypto: cmh: never free memory the device may still write: DMA memory
+   is freed or allocated only behind an acknowledged mailbox FLUSH, a
+   mailbox that never acknowledges is retired with its buffers kept, and
+   suspend is refused with -EBUSY instead of cancelling in-flight work.
+ - crypto: cmh: crypto API conformance: MAY_BACKLOG requests are never
+   refused (unbounded backlog), others get -ENOSPC on a full queue, final
+   completions run with BH disabled, CRYPTO_ALG_ALLOCATES_MEMORY is set,
+   and sysfs bind/unbind is disabled.
+ - crypto: cmh: error codes: -EIO only for a device failure, -ECANCELED
+   after recovery, -ENODEV on a retired mailbox, -EBADMSG for an AEAD tag
+   mismatch.
+ - crypto: cmh: AES: drop cfb(aes); zero-length xts(aes) returns -EINVAL;
+   out-of-place AEAD no longer writes the destination AAD; an oversized
+   CCM payload returns -EOVERFLOW; the empty CCM tag uses the AES
+   library; the second leg of a counter-wrap CTR request is backlogged.
+ - crypto: cmh: assorted small fixes and comment corrections.
+ - Documentation and patch split: each patch documents and adds only
+   what it needs; the PQC command sizes moved to the PQC series.
+ - Rebased onto cryptodev-2.6 (7.4.0-rc1).
 
-The kbd_rgb_mode and kbd_rgb_mode_index attributes are no longer
-created on this board. They never worked here: writes to kbd_rgb_mode
-are rejected by the firmware with -ENODEV, like the brightness writes.
+Changes in v7:
+ - Corrected the DCO sign-off chain so the co-developer attribution is
+   immediately followed by that author's own sign-off and the submitting
+   author signs last (the DCO point first raised on v3).
+ - crypto: cmh: close a debugfs force-drain vs teardown use-after-free --
+   the response-handler lock now also covers freeing the per-mailbox state
+   on teardown, so a force-drain can no longer race it.
+ - crypto: cmh: reclaim abandoned mailbox scratch with a non-destructive
+   flush ordered in the host command stream instead of a destructive
+   per-mailbox MBX_COMMAND_FLUSH -- removing the cmh_tm_flush_mbx helper
+   and its drain-wait -- so reclaiming scratch no longer cancels a crypto
+   VCQ that shares the mailbox.
+ - Added the per-revision changelog and the prior-posting links below.
+   The previous posting was sent untagged as "[PATCH 0/5]" and was the
+   sixth revision (v6), so this is v7.
 
-To answer Denis's questions on v1, the bug this patch fixes happens on
-the latest BIOS for this board as of writing, which is version 317.
-I only have the G814FP, so I don't know if other 2025 G814 models
-are affected, the quirk only matches G814FP.
+Changes in v6:
+ - Restructured the single v1-v5 series into smaller, independently
+   reviewable per-maintainer chunks.  This first series is the core
+   driver, the shared key/datastore layer and AES; later series add the
+   remaining algorithms and the management ioctl interface.
+ - dt-bindings: simplified the clock-names schema -- the oneOf collapses
+   to a single items list (core, an optional core-div2 or rt, then rt,
+   minItems: 1) -- and bounded the per-mailbox queue reg to the hardware
+   range (maximum: 63), following the v5 DT review.
+ - crypto: cmh: the response handler accumulates the IRQ status bits
+   before clearing the pending flag and releases its mailbox IRQs on
+   teardown even after a suspend; a wedged pinned mailbox now fails with
+   -EIO instead of head-of-line blocking; a second probe is rejected; and
+   debugfs ABORT injection and force-drain take the response-handler lock.
+ - crypto: cmh: AES-CMAC hardware-accelerates the one-shot .digest()
+   only and forwards the incremental and virtual-address paths to a
+   generic cmac(aes) transform the driver allocates in .init_tfm()
+   (CRYPTO_ALG_NO_FALLBACK + CRYPTO_ALG_REQ_VIRT, as the generic
+   cmac(aes) shash has no export_core and cannot back crypto_ahash_fb()).
+ - crypto: cmh: moved the datastore-type-to-core-id mapping into the
+   management layer so the key/datastore code no longer depends on the
+   management UAPI header; that header now lands with the ioctl
+   implementation in a later series.
 
-This no longer depends on Sercan GOKMEN's kbd_led_no_readback patch.
-Both patches add a field to struct quirk_entry and a DMI entry, so
-whichever lands second may need a trivial rebase.
+Changes in v5:
+ - dt-bindings: reworked the compatible and rambus,cores per DT review --
+   require a SoC-specific compatible ahead of the "rambus,cmh-v1030" IP
+   fallback via the inside-secure,eip93 "not: {}" idiom (no example can
+   validate until a real SoC is upstreamed), switch rambus,cores to a
+   string-array of core names, and replace the positional clocks list with
+   a count-bounded description.
+ - crypto: cmh: transaction-manager / response-handler race fixes -- FLUSH
+   and drain instead of restarting the eSW into freed slots, serialise the
+   mailbox TAIL doorbell, ABORT a sync timeout only at the mailbox HEAD,
+   and reject an over-large num_vcqs.
 
-AI assistance: Claude Code was used to trace the keyboard backlight
-code in asus-wmi, run the debugfs DSTS/DEVS probes, write the patch and
-draft this message. Testing and final review were done by me on the
-hardware.
----
+Changes in v4:
+ - dt-bindings: renamed the per-mailbox child to queue@N and described its
+   ring geometry as plain counts (rambus,num-slots / rambus,slot-stride-
+   bytes) rather than log2; renamed the binding to rambus,cmh-v1030.yaml.
+ - crypto: cmh: convert to module_platform_driver() + dev_err_probe() and
+   drop the single-instance guard; remove informational probe logging; and
+   drop the production module parameters (built-in constants, with
+   debug-only knobs under debugfs).
+
 Changes in v3:
-- Drop the comment on kbd_led_no_wmi (Antheas).
-- Don't set wmi_backlight_set_devstate for this board: the firmware
-  rejects both DSTS and DEVS on 0x00050012, so the write did nothing
-  (Antheas).
-- Add Antheas's Reviewed-by.
-- Link to v2: https://patch.msgid.link/20261109-asus-wmi-kbd-readback-v2-1-c048fc53d8ee@proton.me
+ - dt-bindings: reworked the mailbox topology per DT review -- mailbox@N
+   child nodes, with cores discovered from CORE_ENABLE rather than the DT
+   -- and adopted the "rambus" vendor prefix with a device-specific
+   "rambus,cmh-v1030" compatible (the IP revision).
 
 Changes in v2:
-- Add a quirk that makes asus-wmi skip the keyboard backlight WMI
-  device on this board instead of detecting rejected writes at
-  runtime (Antheas), so no more WMI writes that are known to fail
-  are issued (Denis).
-- Link to v1: https://patch.msgid.link/20261108-asus-wmi-kbd-readback-v1-1-bf38f6400ade@proton.me
----
- drivers/platform/x86/asus-nb-wmi.c | 13 +++++++++++++
- drivers/platform/x86/asus-wmi.c    |  3 ++-
- drivers/platform/x86/asus-wmi.h    |  1 +
- 3 files changed, 16 insertions(+), 1 deletion(-)
+ - crypto: cmh: gate probe on both eSW readiness bits (MISSION and
+   MISSION2) so an operation offloaded to the sidecar engine cannot race an
+   engine that is not yet up.
 
-diff --git a/drivers/platform/x86/asus-nb-wmi.c b/drivers/platform/x86/asus-nb-wmi.c
-index 3b0f3346dc60..9b2a4b829885 100644
---- a/drivers/platform/x86/asus-nb-wmi.c
-+++ b/drivers/platform/x86/asus-nb-wmi.c
-@@ -93,6 +93,10 @@ static struct quirk_entry quirk_asus_unknown = {
- 	.wmi_backlight_set_devstate = true,
- };
- 
-+static struct quirk_entry quirk_asus_g814fp = {
-+	.kbd_led_no_wmi = true,
-+};
-+
- static struct quirk_entry quirk_asus_q500a = {
- 	.filter_i8042_e1_extended_codes = true,
- 	.wmi_backlight_set_devstate = true,
-@@ -167,6 +171,15 @@ static int dmi_matched(const struct dmi_system_id *dmi)
- }
- 
- static const struct dmi_system_id asus_quirks[] = {
-+	{
-+		.callback = dmi_matched,
-+		.ident = "ASUS ROG Strix G18 G814FP",
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
-+			DMI_MATCH(DMI_BOARD_NAME, "G814FP"),
-+		},
-+		.driver_data = &quirk_asus_g814fp,
-+	},
- 	{
- 		.callback = dmi_matched,
- 		.ident = "ASUSTeK COMPUTER INC. Q500A",
-diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
-index b33ebdb21aa2..51fea21ff247 100644
---- a/drivers/platform/x86/asus-wmi.c
-+++ b/drivers/platform/x86/asus-wmi.c
-@@ -2165,7 +2165,8 @@ static int asus_wmi_led_init(struct asus_wmi *asus)
- 	asus->kbd_led.brightness_set_blocking = kbd_led_set;
- 	asus->kbd_led.brightness_get = kbd_led_get;
- 	asus->kbd_led.max_brightness = ASUS_EV_MAX_BRIGHTNESS;
--	asus->kbd_led_avail = !kbd_led_read(asus, &led_val, NULL);
-+	asus->kbd_led_avail = !asus->driver->quirks->kbd_led_no_wmi &&
-+			      !kbd_led_read(asus, &led_val, NULL);
- 	INIT_WORK(&asus->kbd_led_work, kbd_led_update_all);
- 
- 	if (asus->kbd_led_avail) {
-diff --git a/drivers/platform/x86/asus-wmi.h b/drivers/platform/x86/asus-wmi.h
-index b45f81b38a47..e53c6b3fc619 100644
---- a/drivers/platform/x86/asus-wmi.h
-+++ b/drivers/platform/x86/asus-wmi.h
-@@ -41,6 +41,7 @@ struct quirk_entry {
- 	bool wmi_force_als_set;
- 	bool wmi_ignore_fan;
- 	bool filter_i8042_e1_extended_codes;
-+	bool kbd_led_no_wmi;
- 	int key_wlan_event;
- 	enum asus_wmi_tablet_switch_mode tablet_switch_mode;
- 	int wapf;
+The CMH driver was first posted as a single series; following
+maintainer feedback it is now split into smaller, independently reviewable
+parts, numbered continuously across the split.  Earlier postings:
+  v1: https://lore.kernel.org/linux-crypto/20260625173328.1140487-1-skrishnamoorthy@rambus.com/
+  v2: https://lore.kernel.org/linux-crypto/20260709203037.1884436-1-skrishnamoorthy@rambus.com/
+  v3: https://lore.kernel.org/linux-crypto/20260806195519.2703224-1-skrishnamoorthy@rambus.com/
+  v4: https://lore.kernel.org/linux-crypto/20260825221539.255951-1-aousherovitch@rambus.com/
+  v5: https://lore.kernel.org/linux-crypto/20260917225929.2494111-1-aousherovitch@rambus.com/
+  v6: https://lore.kernel.org/linux-crypto/20261013174847.2192609-1-aousherovitch@rambus.com/
+  v7: https://lore.kernel.org/linux-crypto/20261026-cmh-b4-a-v7-v7-0-500a83faf500@rambus.com/
 
+Signed-off-by: Alex Ousherovitch <aousherovitch@rambus.com>
 ---
-base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
-change-id: 20261108-asus-wmi-kbd-readback-236245e82de8
+Alex Ousherovitch (5):
+      dt-bindings: crypto: add Rambus CryptoManager Hub
+      crypto: cmh - add core platform driver
+      crypto: cmh - add key/datastore infrastructure
+      crypto: cmh - add AES skcipher/aead/cmac
+      MAINTAINERS: add Rambus CryptoManager Hub (CMH)
+
+ Documentation/ABI/testing/debugfs-driver-cmh       |  145 ++
+ Documentation/ABI/testing/sysfs-driver-cmh         |   62 +
+ Documentation/crypto/device_drivers/cmh.rst        |  308 +++
+ Documentation/crypto/device_drivers/index.rst      |    1 +
+ .../bindings/crypto/rambus,cmh-v1030.yaml          |  145 ++
+ .../devicetree/bindings/vendor-prefixes.yaml       |    2 +
+ MAINTAINERS                                        |   13 +
+ drivers/crypto/Kconfig                             |    1 +
+ drivers/crypto/Makefile                            |    1 +
+ drivers/crypto/cmh/Kconfig                         |   48 +
+ drivers/crypto/cmh/Makefile                        |   30 +
+ drivers/crypto/cmh/cmh_aes.c                       |  705 ++++++
+ drivers/crypto/cmh/cmh_aes_aead.c                  |  934 ++++++++
+ drivers/crypto/cmh/cmh_aes_cmac.c                  |  459 ++++
+ drivers/crypto/cmh/cmh_config.c                    |  625 +++++
+ drivers/crypto/cmh/cmh_debugfs.c                   |  309 +++
+ drivers/crypto/cmh/cmh_dma.c                       |  354 +++
+ drivers/crypto/cmh/cmh_key.c                       |  138 ++
+ drivers/crypto/cmh/cmh_main.c                      |  413 ++++
+ drivers/crypto/cmh/cmh_mqi.c                       |  457 ++++
+ drivers/crypto/cmh/cmh_rh.c                        | 1434 +++++++++++
+ drivers/crypto/cmh/cmh_sys.c                       |   56 +
+ drivers/crypto/cmh/cmh_sysfs.c                     |  108 +
+ drivers/crypto/cmh/cmh_txn.c                       | 2531 ++++++++++++++++++++
+ drivers/crypto/cmh/include/cmh.h                   |   24 +
+ drivers/crypto/cmh/include/cmh_aes.h               |   24 +
+ drivers/crypto/cmh/include/cmh_aes_abi.h           |   98 +
+ drivers/crypto/cmh/include/cmh_config.h            |  110 +
+ drivers/crypto/cmh/include/cmh_debugfs.h           |   94 +
+ drivers/crypto/cmh/include/cmh_dma.h               |  195 ++
+ drivers/crypto/cmh/include/cmh_key.h               |   76 +
+ drivers/crypto/cmh/include/cmh_mqi.h               |   59 +
+ drivers/crypto/cmh/include/cmh_registers.h         |  147 ++
+ drivers/crypto/cmh/include/cmh_rh.h                |   98 +
+ drivers/crypto/cmh/include/cmh_sys.h               |   23 +
+ drivers/crypto/cmh/include/cmh_sys_abi.h           |  148 ++
+ drivers/crypto/cmh/include/cmh_sysfs.h             |   14 +
+ drivers/crypto/cmh/include/cmh_txn.h               |  666 +++++
+ drivers/crypto/cmh/include/cmh_vcq.h               |  203 ++
+ 39 files changed, 11258 insertions(+)
+---
+base-commit: 82e91fe19fb838f235f7c8829afc1eb389c93bdf
+change-id: 20261110-cmh-b4-a-v8-a3d0d8a3687e
 
 Best regards,
 --  
-Moad Tarrih <tarrihmoad@proton.me>
+Alex Ousherovitch <aousherovitch@rambus.com>
 
