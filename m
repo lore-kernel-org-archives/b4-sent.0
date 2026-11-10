@@ -1,305 +1,133 @@
 From: Eric Davis <eric.davis@broadcom.com>
-Date: Mon, 09 Nov 2026 20:00:35 -0800
-Subject: [PATCH rdma-next v3 02/13] RDMA/core: add the UET GID types
+Date: Mon, 09 Nov 2026 20:00:36 -0800
+Subject: [PATCH rdma-next v3 03/13] RDMA/core: report the reliable
+ unconnected device capabilities
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-uet-ib-core-v3-2-3e7e7ffed2e9@broadcom.com>
+Message-Id: <20261109-uet-ib-core-v3-3-3e7e7ffed2e9@broadcom.com>
 References: <20261109-uet-ib-core-v3-0-3e7e7ffed2e9@broadcom.com>
 In-Reply-To: <20261109-uet-ib-core-v3-0-3e7e7ffed2e9@broadcom.com>
 To: Jason Gunthorpe <jgg@ziepe.ca>, Leon Romanovsky <leon@kernel.org>
 Cc: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Eric Davis <eric.davis@broadcom.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794283250; l=11233;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794283250; l=4668;
  i=eric.davis@broadcom.com; s=20261014; h=from:subject:message-id;
- bh=atYJ36/YY1k5Pp9gS3XTF4QURcSue6mTxl2cvhNkKAM=;
- b=641tRpEO5vTMq6xye82mmxnELiydQCOzVrQLofGzGq8wk/RWXAY0R4ab6O67wyshWSyPmsJ8m
- 1THpd6bYEA6C/pJk8FQsGAU2rGJ4vUHuTI77vzVcmMPHYaMwMeCO/jM
+ bh=/23nLQczVlMf+hykewDRjOk06ky6wwzSdo1klVIpgIM=;
+ b=FEOTDrE9MW7BeNSfKgSdgbupwq7zwhpBam3Cd32xREQuPx0suVgGyNbI34JBQg4ut2QI95g5k
+ ft1gZFP8RiBDNMW/ZpXQhwXW3eWo8secyoZbaevJS/cS7OgewIAbzn5
 X-Developer-Key: i=eric.davis@broadcom.com; a=ed25519;
  pk=uy3oCTOYBipIPjryXGMynBmtPvbO6qN2FOrduzpiI4A=
 X-Endpoint-Received: by B4 Relay for eric.davis@broadcom.com/20261014 with auth_id=1186
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Ultra Ethernet runs over two encapsulations: UDP and IP. Each becomes
-a new GID type. A port can then hold both UET and RoCE GIDs, with the
-transport following from the GID a queue pair is given; the driver
-enforces that.
+Add the capability bits a device uses to advertise reliable unconnected
+support alongside additional features: the transport itself, 64-bit
+immediate data, 64-bit memory keys, caller-chosen keys, and the four
+memory region access restrictions.
 
-These UET ports build their GID table from a netdev, as RoCE does. Added
-rdma_port_gids_from_netdev() and use it where the code tested for RoCE
-alone. The CM has no use for a UET GID, so RDMA-CM never makes one a
-port's default GID type.
+Report the job, job key, and address table limits through the extended
+query_device response so userspace can size against them.
 
 Signed-off-by: Eric Davis <eric.davis@broadcom.com>
 ---
- drivers/infiniband/core/cache.c         | 12 +++++----
- drivers/infiniband/core/cma.c           |  9 ++++++-
- drivers/infiniband/core/device.c        |  2 +-
- drivers/infiniband/core/nldev.c         |  2 ++
- drivers/infiniband/core/roce_gid_mgmt.c |  6 +++--
- drivers/infiniband/core/verbs.c         |  4 +++
- include/rdma/ib_verbs.h                 | 48 ++++++++++++++++++++++++++++++---
- include/uapi/rdma/ib_user_ioctl_verbs.h |  2 ++
- 8 files changed, 73 insertions(+), 12 deletions(-)
+ drivers/infiniband/core/uverbs_cmd.c |  3 +++
+ include/rdma/ib_verbs.h              | 14 ++++++++++++++
+ include/uapi/rdma/ib_user_verbs.h    | 27 +++++++++++++++++++++++++++
+ 3 files changed, 44 insertions(+)
 
-diff --git a/drivers/infiniband/core/cache.c b/drivers/infiniband/core/cache.c
-index 647a547e2d7f..d5e17a36f186 100644
---- a/drivers/infiniband/core/cache.c
-+++ b/drivers/infiniband/core/cache.c
-@@ -139,6 +139,8 @@ static const char * const gid_type_str[] = {
- 	[IB_GID_TYPE_IB]	= "IB/RoCE v1",
- 	[IB_GID_TYPE_ROCE]	= "IB/RoCE v1",
- 	[IB_GID_TYPE_ROCE_UDP_ENCAP]	= "RoCE v2",
-+	[IB_GID_TYPE_UET_UDP]		= "UET UDP",
-+	[IB_GID_TYPE_UET_IP]		= "UET IP",
- };
+diff --git a/drivers/infiniband/core/uverbs_cmd.c b/drivers/infiniband/core/uverbs_cmd.c
+index aca7c6ab55cd..ed55fbbdfc18 100644
+--- a/drivers/infiniband/core/uverbs_cmd.c
++++ b/drivers/infiniband/core/uverbs_cmd.c
+@@ -3597,6 +3597,9 @@ static int ib_uverbs_ex_query_device(struct uverbs_attr_bundle *attrs)
+ 	resp.cq_moderation_caps.max_cq_moderation_period =
+ 		attr.cq_caps.max_cq_moderation_period;
+ 	resp.max_dm_size = attr.max_dm_size;
++	resp.max_job_ids = attr.max_job_ids;
++	resp.max_job_keys = attr.max_job_keys;
++	resp.max_addr_entries = attr.max_addr_entries;
+ 	resp.response_length = uverbs_response_length(attrs, sizeof(resp));
  
- const char *ib_cache_gid_type_str(enum ib_gid_type gid_type)
-@@ -392,10 +394,10 @@ static void del_gid(struct ib_device *ib_dev, u32 port,
- 	write_lock_irq(&table->rwlock);
- 	entry = table->data_vec[ix];
- 	entry->state = GID_TABLE_ENTRY_PENDING_DEL;
--	/*
--	 * For non RoCE protocol, GID entry slot is ready to use.
-+	/* Where the GID table is not derived from a netdev, the entry slot is
-+	 * ready to use.
- 	 */
--	if (!rdma_protocol_roce(ib_dev, port))
-+	if (!rdma_port_gids_from_netdev(ib_dev, port))
- 		table->data_vec[ix] = NULL;
- 	write_unlock_irq(&table->rwlock);
- 
-@@ -447,7 +449,7 @@ static int add_modify_gid(struct ib_gid_table *table,
- 	if (!entry)
- 		return -ENOMEM;
- 
--	if (rdma_protocol_roce(attr->device, attr->port_num)) {
-+	if (rdma_port_gids_from_netdev(attr->device, attr->port_num)) {
- 		ret = add_roce_gid(entry);
- 		if (ret)
- 			goto done;
-@@ -1459,7 +1461,7 @@ ib_cache_update(struct ib_device *device, u32 port, bool update_gids,
- 		goto err;
- 	}
- 
--	if (!rdma_protocol_roce(device, port) && update_gids) {
-+	if (!rdma_port_gids_from_netdev(device, port) && update_gids) {
- 		ret = config_non_roce_gid_cache(device, port,
- 						tprops);
- 		if (ret)
-diff --git a/drivers/infiniband/core/cma.c b/drivers/infiniband/core/cma.c
-index 337a49d1acf7..59cb526fe2a2 100644
---- a/drivers/infiniband/core/cma.c
-+++ b/drivers/infiniband/core/cma.c
-@@ -293,6 +293,10 @@ int cma_set_default_gid_type(struct cma_device *cma_dev,
- 	if (!rdma_is_port_valid(cma_dev->device, port))
- 		return -EINVAL;
- 
-+	if (default_gid_type == IB_GID_TYPE_UET_UDP ||
-+	    default_gid_type == IB_GID_TYPE_UET_IP)
-+		return -EINVAL;
-+
- 	if (default_gid_type == IB_GID_TYPE_IB &&
- 	    rdma_protocol_roce_eth_encap(cma_dev->device, port))
- 		default_gid_type = IB_GID_TYPE_ROCE;
-@@ -5425,10 +5429,13 @@ static int cma_add_one(struct ib_device *device)
- 	rdma_for_each_port (device, i) {
- 		supported_gids = roce_gid_type_mask_support(device, i);
- 		WARN_ON(!supported_gids);
-+		/* the CM has no use for a UET GID, so a UET-only port keeps 0 */
-+		supported_gids &= ~(BIT(IB_GID_TYPE_UET_UDP) |
-+				    BIT(IB_GID_TYPE_UET_IP));
- 		if (supported_gids & (1 << CMA_PREFERRED_ROCE_GID_TYPE))
- 			cma_dev->default_gid_type[i - rdma_start_port(device)] =
- 				CMA_PREFERRED_ROCE_GID_TYPE;
--		else
-+		else if (supported_gids)
- 			cma_dev->default_gid_type[i - rdma_start_port(device)] =
- 				find_first_bit(&supported_gids, BITS_PER_LONG);
- 		cma_dev->default_roce_tos[i - rdma_start_port(device)] = 0;
-diff --git a/drivers/infiniband/core/device.c b/drivers/infiniband/core/device.c
-index 29af9fe860e2..7c65a9373701 100644
---- a/drivers/infiniband/core/device.c
-+++ b/drivers/infiniband/core/device.c
-@@ -2567,7 +2567,7 @@ void ib_enum_roce_netdev(struct ib_device *ib_dev,
- 	u32 port;
- 
- 	rdma_for_each_port (ib_dev, port)
--		if (rdma_protocol_roce(ib_dev, port)) {
-+		if (rdma_port_gids_from_netdev(ib_dev, port)) {
- 			struct net_device *idev =
- 				ib_device_get_netdev(ib_dev, port);
- 
-diff --git a/drivers/infiniband/core/nldev.c b/drivers/infiniband/core/nldev.c
-index 849a5db54e1c..91b7be84b15f 100644
---- a/drivers/infiniband/core/nldev.c
-+++ b/drivers/infiniband/core/nldev.c
-@@ -350,6 +350,8 @@ static int fill_dev_info(struct sk_buff *msg, struct ib_device *device)
- 		ret = nla_put_string(msg, RDMA_NLDEV_ATTR_DEV_PROTOCOL, "iw");
- 	else if (rdma_protocol_roce(device, port))
- 		ret = nla_put_string(msg, RDMA_NLDEV_ATTR_DEV_PROTOCOL, "roce");
-+	else if (rdma_protocol_uet(device, port))
-+		ret = nla_put_string(msg, RDMA_NLDEV_ATTR_DEV_PROTOCOL, "uet");
- 	else if (rdma_protocol_usnic(device, port))
- 		ret = nla_put_string(msg, RDMA_NLDEV_ATTR_DEV_PROTOCOL,
- 				     "usnic");
-diff --git a/drivers/infiniband/core/roce_gid_mgmt.c b/drivers/infiniband/core/roce_gid_mgmt.c
-index 4a2a4638b476..214af921341a 100644
---- a/drivers/infiniband/core/roce_gid_mgmt.c
-+++ b/drivers/infiniband/core/roce_gid_mgmt.c
-@@ -75,6 +75,8 @@ static const struct {
- } PORT_CAP_TO_GID_TYPE[] = {
- 	{rdma_protocol_roce_eth_encap, IB_GID_TYPE_ROCE},
- 	{rdma_protocol_roce_udp_encap, IB_GID_TYPE_ROCE_UDP_ENCAP},
-+	{rdma_protocol_uet_udp, IB_GID_TYPE_UET_UDP},
-+	{rdma_protocol_uet_ip, IB_GID_TYPE_UET_IP},
- };
- 
- #define CAP_TO_GID_TABLE_SIZE	ARRAY_SIZE(PORT_CAP_TO_GID_TYPE)
-@@ -84,7 +86,7 @@ unsigned long roce_gid_type_mask_support(struct ib_device *ib_dev, u32 port)
- 	int i;
- 	unsigned int ret_flags = 0;
- 
--	if (!rdma_protocol_roce(ib_dev, port))
-+	if (!rdma_port_gids_from_netdev(ib_dev, port))
- 		return 1UL << IB_GID_TYPE_IB;
- 
- 	for (i = 0; i < CAP_TO_GID_TABLE_SIZE; i++)
-@@ -526,7 +528,7 @@ void rdma_roce_rescan_port(struct ib_device *ib_dev, u32 port)
- {
- 	struct net_device *ndev = NULL;
- 
--	if (rdma_protocol_roce(ib_dev, port)) {
-+	if (rdma_port_gids_from_netdev(ib_dev, port)) {
- 		ndev = ib_device_get_netdev(ib_dev, port);
- 		if (!ndev)
- 			return;
-diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
-index 7d52d3036208..1299125752d8 100644
---- a/drivers/infiniband/core/verbs.c
-+++ b/drivers/infiniband/core/verbs.c
-@@ -862,6 +862,10 @@ int ib_init_ah_attr_from_wc(struct ib_device *device, u32 port_num,
- 
- 	might_sleep();
- 
-+	if (rdma_protocol_uet(device, port_num) &&
-+	    !rdma_protocol_roce(device, port_num))
-+		return -EPROTONOSUPPORT;
-+
- 	memset(ah_attr, 0, sizeof *ah_attr);
- 	ah_attr->type = rdma_ah_find_type(device, port_num);
- 	if (rdma_cap_eth_ah(device, port_num)) {
+ 	return uverbs_response(attrs, &resp, sizeof(resp));
 diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index d6eaa3fee66e..4e3a5c38cbe8 100644
+index 4e3a5c38cbe8..02f3312c7cf2 100644
 --- a/include/rdma/ib_verbs.h
 +++ b/include/rdma/ib_verbs.h
-@@ -145,6 +145,8 @@ enum ib_gid_type {
- 	IB_GID_TYPE_IB = IB_UVERBS_GID_TYPE_IB,
- 	IB_GID_TYPE_ROCE = IB_UVERBS_GID_TYPE_ROCE_V1,
- 	IB_GID_TYPE_ROCE_UDP_ENCAP = IB_UVERBS_GID_TYPE_ROCE_V2,
-+	IB_GID_TYPE_UET_UDP = IB_UVERBS_GID_TYPE_UET_UDP,
-+	IB_GID_TYPE_UET_IP = IB_UVERBS_GID_TYPE_UET_IP,
- 	IB_GID_TYPE_SIZE
+@@ -278,6 +278,14 @@ enum ib_device_cap_flags {
+ 	IB_DEVICE_FLUSH_PERSISTENT = IB_UVERBS_DEVICE_FLUSH_PERSISTENT,
+ 	IB_DEVICE_ATOMIC_WRITE = IB_UVERBS_DEVICE_ATOMIC_WRITE,
+ 	IB_DEVICE_CC_DMA_BOUNCE = IB_UVERBS_DEVICE_CC_DMA_BOUNCE,
++	IB_DEVICE_RU = IB_UVERBS_DEVICE_RU,
++	IB_DEVICE_IMM64 = IB_UVERBS_DEVICE_IMM64,
++	IB_DEVICE_KEY64 = IB_UVERBS_DEVICE_KEY64,
++	IB_DEVICE_USER_RKEY = IB_UVERBS_DEVICE_USER_RKEY,
++	IB_DEVICE_MR_UNRESTRICTED = IB_UVERBS_DEVICE_MR_UNRESTRICTED,
++	IB_DEVICE_MR_JOB_RESTRICTED = IB_UVERBS_DEVICE_MR_JOB_RESTRICTED,
++	IB_DEVICE_MR_QP_RESTRICTED = IB_UVERBS_DEVICE_MR_QP_RESTRICTED,
++	IB_DEVICE_MR_QP_JOB_RESTRICTED = IB_UVERBS_DEVICE_MR_QP_JOB_RESTRICTED,
  };
  
-@@ -664,10 +666,16 @@ void rdma_free_hw_stats_struct(struct rdma_hw_stats *stats);
- #define RDMA_CORE_CAP_PROT_ROCE_UDP_ENCAP 0x00800000
- #define RDMA_CORE_CAP_PROT_RAW_PACKET   0x01000000
- #define RDMA_CORE_CAP_PROT_USNIC        0x02000000
-+#define RDMA_CORE_CAP_PROT_UET_UDP      0x04000000
-+#define RDMA_CORE_CAP_PROT_UET_IP       0x08000000
-+
-+#define RDMA_CORE_CAP_PROT_UET         (RDMA_CORE_CAP_PROT_UET_UDP \
-+					| RDMA_CORE_CAP_PROT_UET_IP)
- 
- #define RDMA_CORE_PORT_IB_GRH_REQUIRED (RDMA_CORE_CAP_IB_GRH_REQUIRED \
- 					| RDMA_CORE_CAP_PROT_ROCE     \
--					| RDMA_CORE_CAP_PROT_ROCE_UDP_ENCAP)
-+					| RDMA_CORE_CAP_PROT_ROCE_UDP_ENCAP \
-+					| RDMA_CORE_CAP_PROT_UET)
- 
- #define RDMA_CORE_PORT_IBA_IB          (RDMA_CORE_CAP_PROT_IB  \
- 					| RDMA_CORE_CAP_IB_MAD \
-@@ -691,6 +699,11 @@ void rdma_free_hw_stats_struct(struct rdma_hw_stats *stats);
- #define RDMA_CORE_PORT_INTEL_OPA       (RDMA_CORE_PORT_IBA_IB  \
- 					| RDMA_CORE_CAP_OPA_MAD)
- 
-+#define RDMA_CORE_PORT_UET_UDP		(RDMA_CORE_CAP_PROT_UET_UDP \
-+					| RDMA_CORE_CAP_ETH_AH)
-+#define RDMA_CORE_PORT_UET_IP		(RDMA_CORE_CAP_PROT_UET_IP \
-+					| RDMA_CORE_CAP_ETH_AH)
-+
- #define RDMA_CORE_PORT_RAW_PACKET	(RDMA_CORE_CAP_PROT_RAW_PACKET)
- 
- #define RDMA_CORE_PORT_USNIC		(RDMA_CORE_CAP_PROT_USNIC)
-@@ -3407,6 +3420,34 @@ static inline bool rdma_protocol_roce_eth_encap(const struct ib_device *device,
- 	       RDMA_CORE_CAP_PROT_ROCE;
- }
- 
-+static inline bool rdma_protocol_uet(const struct ib_device *device,
-+				     u32 port_num)
-+{
-+	return device->port_data[port_num].immutable.core_cap_flags &
-+	       RDMA_CORE_CAP_PROT_UET;
-+}
-+
-+static inline bool rdma_protocol_uet_udp(const struct ib_device *device,
-+					 u32 port_num)
-+{
-+	return device->port_data[port_num].immutable.core_cap_flags &
-+	       RDMA_CORE_CAP_PROT_UET_UDP;
-+}
-+
-+static inline bool rdma_protocol_uet_ip(const struct ib_device *device,
-+					u32 port_num)
-+{
-+	return device->port_data[port_num].immutable.core_cap_flags &
-+	       RDMA_CORE_CAP_PROT_UET_IP;
-+}
-+
-+static inline bool rdma_port_gids_from_netdev(const struct ib_device *device,
-+					      u32 port_num)
-+{
-+	return rdma_protocol_roce(device, port_num) ||
-+	       rdma_protocol_uet(device, port_num);
-+}
-+
- static inline bool rdma_protocol_iwarp(const struct ib_device *device,
- 				       u32 port_num)
- {
-@@ -3677,7 +3718,7 @@ static inline size_t rdma_max_mad_size(const struct ib_device *device,
- static inline bool rdma_cap_roce_gid_table(const struct ib_device *device,
- 					   u32 port_num)
- {
--	return rdma_protocol_roce(device, port_num) &&
-+	return rdma_port_gids_from_netdev(device, port_num) &&
- 		device->ops.add_gid && device->ops.del_gid;
- }
- 
-@@ -4984,7 +5025,8 @@ void rdma_move_ah_attr(struct rdma_ah_attr *dest, struct rdma_ah_attr *src);
- static inline enum rdma_ah_attr_type rdma_ah_find_type(struct ib_device *dev,
- 						       u32 port_num)
- {
--	if (rdma_protocol_roce(dev, port_num))
-+	if (rdma_protocol_roce(dev, port_num) ||
-+	    rdma_protocol_uet(dev, port_num))
- 		return RDMA_AH_ATTR_TYPE_ROCE;
- 	if (rdma_protocol_ib(dev, port_num)) {
- 		if (rdma_cap_opa_ah(dev, port_num))
-diff --git a/include/uapi/rdma/ib_user_ioctl_verbs.h b/include/uapi/rdma/ib_user_ioctl_verbs.h
-index 21f86cc7bb1f..ed72f48960f8 100644
---- a/include/uapi/rdma/ib_user_ioctl_verbs.h
-+++ b/include/uapi/rdma/ib_user_ioctl_verbs.h
-@@ -263,6 +263,8 @@ enum ib_uverbs_gid_type {
- 	IB_UVERBS_GID_TYPE_IB,
- 	IB_UVERBS_GID_TYPE_ROCE_V1,
- 	IB_UVERBS_GID_TYPE_ROCE_V2,
-+	IB_UVERBS_GID_TYPE_UET_UDP,
-+	IB_UVERBS_GID_TYPE_UET_IP,
+ enum ib_kernel_cap_flags {
+@@ -456,6 +464,12 @@ struct ib_device_attr {
+ 	u64			max_dm_size;
+ 	/* Max entries for sgl for optimized performance per READ */
+ 	u32			max_sgl_rd;
++	/* Jobs allocated at once, not the largest JobID */
++	u32			max_job_ids;
++	/* Job keys allocated at once */
++	u32			max_job_keys;
++	/* Largest address table a single job may have */
++	u32			max_addr_entries;
  };
  
- struct ib_uverbs_gid_entry {
+ enum ib_mtu {
+diff --git a/include/uapi/rdma/ib_user_verbs.h b/include/uapi/rdma/ib_user_verbs.h
+index 565301594634..df3e72aee9a8 100644
+--- a/include/uapi/rdma/ib_user_verbs.h
++++ b/include/uapi/rdma/ib_user_verbs.h
+@@ -300,6 +300,10 @@ struct ib_uverbs_ex_query_device_resp {
+ 	__aligned_u64 max_dm_size;
+ 	__u32 xrc_odp_caps;
+ 	__u32 reserved;
++	__u32 max_job_ids; /* jobs allocated at once, not a JobID */
++	__u32 max_job_keys; /* job keys allocated at once */
++	__u32 max_addr_entries; /* largest address table of one job */
++	__u32 reserved2;
+ };
+ 
+ struct ib_uverbs_query_port {
+@@ -1370,6 +1374,29 @@ enum ib_uverbs_device_cap_flags {
+ 	IB_UVERBS_DEVICE_ATOMIC_WRITE = 1ULL << 40,
+ 	/* CoCo guest with DMA bounce buffering required */
+ 	IB_UVERBS_DEVICE_CC_DMA_BOUNCE = 1ULL << 41,
++	/* Reliable unconnected QPs, jobs, job keys and address tables */
++	IB_UVERBS_DEVICE_RU = 1ULL << 42,
++	/* 64-bit immediate data on at least one QP type */
++	IB_UVERBS_DEVICE_IMM64 = 1ULL << 43,
++	/* An MR may carry 64-bit keys as a second name beside its 32-bit ones */
++	IB_UVERBS_DEVICE_KEY64 = 1ULL << 44,
++	/* MR registration with a caller-chosen rkey */
++	IB_UVERBS_DEVICE_USER_RKEY = 1ULL << 45,
++	/*
++	 * MR access restrictions, meaningful only with IB_UVERBS_DEVICE_RU.
++	 * Each names what an incoming request must match, and each is its own
++	 * match: supporting two does not imply their combination. A region in
++	 * a class the device does not advertise, such as one waiting to be
++	 * attached to a QP or detached from one, is reachable by no peer.
++	 */
++	/* PD: any QP */
++	IB_UVERBS_DEVICE_MR_UNRESTRICTED = 1ULL << 46,
++	/* PD and JobID: any QP, one job */
++	IB_UVERBS_DEVICE_MR_JOB_RESTRICTED = 1ULL << 47,
++	/* PD and QP: the QP the MR is attached to */
++	IB_UVERBS_DEVICE_MR_QP_RESTRICTED = 1ULL << 48,
++	/* PD, QP and JobID: the attached QP, one job */
++	IB_UVERBS_DEVICE_MR_QP_JOB_RESTRICTED = 1ULL << 49,
+ };
+ 
+ enum ib_uverbs_raw_packet_caps {
 
 -- 
 2.56.0
