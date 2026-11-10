@@ -1,75 +1,107 @@
-From: Long Zhao <longzhao@ambarella.com>
-Date: Tue, 10 Nov 2026 12:32:39 +0800
-Subject: [PATCH v14 14/14] gpio: pl061: use string_choices helpers for IRQ
- trigger logging
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Date: Tue, 10 Nov 2026 05:09:12 +0000
+Subject: [PATCH v2] pinctrl: amlogic: a4: Allow functions without groups
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-cv75-gpio-v14-14-e586aad0467a@ambarella.com>
-References: <20261110-cv75-gpio-v14-0-e586aad0467a@ambarella.com>
-In-Reply-To: <20261110-cv75-gpio-v14-0-e586aad0467a@ambarella.com>
-To: Bartosz Golaszewski <brgl@kernel.org>, linux-gpio@vger.kernel.org
-Cc: Linus Walleij <linusw@kernel.org>, Michael Walle <mwalle@kernel.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
- Conor Dooley <conor+dt@kernel.org>, Mika Westerberg <westeri@kernel.org>, 
- devicetree@vger.kernel.org, Long Zhao <longzhao@ambarella.com>, 
- Long Zhao <zl020895@163.com>, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794285162; l=1466;
- i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=zQWRi0fgwIaty3vp0IahahK3JC0SGC12QCtYzwVUqX4=;
- b=zsCAuUjcqcBhE4/IUMhwikNV+XTsAvvXwqzIHpVPk+uxwMwBNY+6quMtoEU6rnyhoKiaH5xyN
- dTESRinK4yhBquV3uCg5eDt9rQZWxRwf29/N1POh31DFAUOplb/y/rf
-X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
- pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
-X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
+Message-Id: <20261110-debug-info-v2-1-73ad7aa0874b@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAPim8moC/22MQQ6CMBAAv0L27Bq22hI9+Q/DgZYtbCKUtEo0p
+ H+3cvY4k8xskDgKJ7hWG0ReJUmYC6hDBW7s5oFR+sKgamWIaoM929eAMvuA1uri+GQaaqAES2Q
+ v7312bwuPkp4hfvb3Sj/7d7MSEtamcdppffYXunXTIwziji5M0Oacv4gh8L2mAAAA
+X-Change-ID: 20261106-debug-info-bb5611e36717
+To: Linus Walleij <linusw@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794287355; l=2644;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=sWD7zbg1mSXOEg9K8sOVvNf5EChgrS2CCVGEpGmu0uo=;
+ b=Bn+UorY0bcUbavYtuQe7WCJiVKPEGNSMK8QgR2s6loKCX7ROkp3eRi8Rgestk9kEQdi97vDnV
+ gPVKPwqjHjMCFU6ZIImK8Ma4yH99sq5pnmF1eeZVaotV47oXxU4ZJuA
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use str_high_low() and str_rising_falling() for the level and edge
-debug lines.
+Allow function nodes without child groups during device tree
+parsing instead of returning an error.
 
-Suggested-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Signed-off-by: Long Zhao <longzhao@ambarella.com>
+Only count and parse nodes with the "func-" prefix as pinctrl
+functions, ignoring other non-GPIO child nodes.
+
+This allows the driver to support function nodes without
+groups and avoid treating unrelated device tree nodes as
+pinctrl functions.
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/gpio/gpio-pl061.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+Add debugging information for error dts and Error pinctrl config not affect normal pin work.
+---
+Changes in v2:
+- Reserve banks nfunctions and ngroups no-zero judgement and update commit message simultaneously.
+- Link to v1: https://lore.kernel.org/r/20261106-debug-info-v1-1-067c5c554f91@amlogic.com
+---
+ drivers/pinctrl/meson/pinctrl-amlogic-a4.c | 23 +++++++++++++++--------
+ 1 file changed, 15 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/gpio/gpio-pl061.c b/drivers/gpio/gpio-pl061.c
-index 63ec5363dd5f..86c22378e759 100644
---- a/drivers/gpio/gpio-pl061.c
-+++ b/drivers/gpio/gpio-pl061.c
-@@ -26,6 +26,7 @@
- #include <linux/regmap.h>
- #include <linux/seq_file.h>
- #include <linux/spinlock.h>
-+#include <linux/string_choices.h>
+diff --git a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
+index 39eb8cc7fc0d..bd12f6fa3d4d 100644
+--- a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
++++ b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
+@@ -821,8 +821,10 @@ static int aml_pctl_parse_functions(struct device_node *np,
+ 	func = &info->functions[index];
+ 	func->name = np->name;
+ 	func->ngroups = of_get_child_count(np);
+-	if (func->ngroups == 0)
+-		return dev_err_probe(dev, -EINVAL, "No groups defined\n");
++	if (func->ngroups == 0) {
++		dev_dbg(dev, "func %s No groups defined\n", func->name);
++		return  0;
++	}
  
- #define GPIODIR 0x400
- #define GPIOIS  0x404
-@@ -195,8 +196,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
- 			gpioiev &= ~bit;
- 		irq_set_handler_locked(d, handle_level_irq);
- 		dev_dbg(parent, "line %d: IRQ on %s level\n",
--			offset,
--			polarity ? "HIGH" : "LOW");
-+			offset, str_high_low(polarity));
- 	} else if ((trigger & IRQ_TYPE_EDGE_BOTH) == IRQ_TYPE_EDGE_BOTH) {
- 		/* Disable level detection */
- 		gpiois &= ~bit;
-@@ -219,8 +219,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
- 			gpioiev &= ~bit;
- 		irq_set_handler_locked(d, handle_edge_irq);
- 		dev_dbg(parent, "line %d: IRQ on %s edge\n",
--			offset,
--			rising ? "RISING" : "FALLING");
-+			offset, str_rising_falling(rising));
- 	} else {
- 		/* No trigger: disable everything */
- 		gpiois &= ~bit;
+ 	func->groups = devm_kcalloc(dev, func->ngroups, sizeof(*func->groups), GFP_KERNEL);
+ 	if (!func->groups)
+@@ -899,8 +901,12 @@ static void aml_pctl_dt_child_count(struct aml_pinctrl *info,
+ 		if (of_property_read_bool(child, "gpio-controller")) {
+ 			info->nbanks++;
+ 		} else {
+-			info->nfunctions++;
+-			info->ngroups += of_get_child_count(child);
++			if (!strncmp(child->name, "func-", 5)) {
++				info->nfunctions++;
++				info->ngroups += of_get_child_count(child);
++			} else {
++				dev_dbg(info->dev, "func node defined err %s\n", child->name);
++			}
+ 		}
+ 	}
+ }
+@@ -1166,10 +1172,11 @@ static int aml_pctl_probe_dt(struct platform_device *pdev,
+ 			}
+ 			bank++;
+ 		} else {
+-			ret = aml_pctl_parse_functions(child, info,
+-						       i++, &grp_index);
+-			if (ret)
+-				return ret;
++			if (!strncmp(child->name, "func-", 5)) {
++				ret = aml_pctl_parse_functions(child, info, i++, &grp_index);
++				if (ret)
++					return ret;
++			}
+ 		}
+ 	}
+ 
 
+---
+base-commit: 89edcad9f23925f5706b7555b02165d1990444d5
+change-id: 20261106-debug-info-bb5611e36717
+
+Best regards,
 -- 
-2.34.1
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
