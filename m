@@ -1,10 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:11:03 +0000
-Subject: [PATCH 2/5] iommu/rockchip: Rate-limit the page fault reports
+Date: Tue, 10 Nov 2026 07:11:04 +0000
+Subject: [PATCH 3/5] iommu/rockchip: Fix the poll period and timeout of
+ FORCE_RESET
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-iommu-rockchip-faults-v1-2-b1dda574dbb8@gmail.com>
+Message-Id: <20261110-iommu-rockchip-faults-v1-3-b1dda574dbb8@gmail.com>
 References: <20261110-iommu-rockchip-faults-v1-0-b1dda574dbb8@gmail.com>
 In-Reply-To: <20261110-iommu-rockchip-faults-v1-0-b1dda574dbb8@gmail.com>
 To: "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
@@ -13,121 +14,52 @@ To: "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>,
 Cc: iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294661; l=4219;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294661; l=1742;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Mh9yYDG5bU5JM98WHSJZQsM8WG0/aD2uijwgqmqZNAQ=;
- b=hvRoaQcV/e2QkSmbd5XIjnuU5jTIsV8joll+zB/7lLnUC4EgLhCL//AZveTkRCYTL/aG+IjfQ
- yKDQwU5454GC9FcA5kvpFHC4OYoIFqgd4AnAOhpwWaMfFJYB4N0O+lc
+ bh=nPVNHDZ+CDRxiNb/IqnaxZQXvvuV8CI49hLDqkwewpE=;
+ b=WzWCv7WLGixEoP4OJ7zV5BgW7MvrXj2jmuzY8q54KYytIqKY9SYiHiFkKtedF1rmd1wefiwuK
+ w6yAOC/svD4A0ipzTeyHxRsCoue3hxg4J3ZNppWf9KMWclGOU9lCHrz
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rk_iommu_irq() prints three lines for every page fault (the fault, and
-log_iova()'s two lines with the page table walk) from the hard interrupt
-handler. A master that keeps accessing unmapped memory faults again as
-soon as the fault is acknowledged, and on a board with a serial console
-the handler then spends its time waiting for the console.
+rk_iommu_force_reset() passes RK_MMU_FORCE_RESET_TIMEOUT_US (100 ms) as
+the sleep between two reads of the reset status and RK_MMU_POLL_TIMEOUT_US
+(1 ms) as the timeout, the other way round from what the names and every
+other poll in the driver say. A reset that is not done at the first read
+makes readx_poll_timeout() sleep for 25 to 100 ms, read once more and
+give up, so the reset is both slower than needed when it succeeds and
+not polled for the 100 ms the driver meant to allow when it is slow.
 
-On an Orange Pi 5 (RK3588S, 115200 baud console), a VEPU121 JPEG encoder
-core given an unmapped input address took 149 faults during its 2 s
-timeout; the irq_handler_entry/exit trace events put 2.02 s of that in
-rk_iommu_irq(), up to 17 ms for one call, and single faults took 18 to
-27 ms each. The core's own timeout work could run only between faults.
+When the reset is done by the first read, as is normal (rk_iommu_resume()
+of an RK3588 video decoder IOMMU takes 9 to 18 us), nothing changes; the
+swap matters when a reset is slow or never completes, as on an RK3588
+video decoder IOMMU whose master has not gone idle.
 
-Print at most DEFAULT_RATELIMIT_BURST reports per
-DEFAULT_RATELIMIT_INTERVAL and IOMMU. report_iommu_fault() is still
-called for every fault, so its io_page_fault trace event keeps the full
-record.
+Poll every RK_MMU_POLL_PERIOD_US for up to RK_MMU_FORCE_RESET_TIMEOUT_US.
 
+Fixes: 0416bf6479ac ("iommu/rockchip: Use iopoll helpers to wait for hardware")
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/iommu/rockchip-iommu.c | 31 ++++++++++++++++++++++++-------
- 1 file changed, 24 insertions(+), 7 deletions(-)
+ drivers/iommu/rockchip-iommu.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/iommu/rockchip-iommu.c b/drivers/iommu/rockchip-iommu.c
-index d40e2a26b7be..c3c3502db27d 100644
+index c3c3502db27d..a81da8115085 100644
 --- a/drivers/iommu/rockchip-iommu.c
 +++ b/drivers/iommu/rockchip-iommu.c
-@@ -23,6 +23,7 @@
- #include <linux/of_platform.h>
- #include <linux/platform_device.h>
- #include <linux/pm_runtime.h>
-+#include <linux/ratelimit.h>
- #include <linux/slab.h>
- #include <linux/spinlock.h>
- #include <linux/string_choices.h>
-@@ -116,6 +117,7 @@ struct rk_iommu {
- 	struct list_head node; /* entry in rk_iommu_domain.iommus */
- 	struct iommu_domain *domain; /* domain to which iommu is attached */
- 	const struct rk_iommu_ops *rk_ops;
-+	struct ratelimit_state fault_rs; /* for the fault reports */
- };
+@@ -535,8 +535,8 @@ static int rk_iommu_force_reset(struct rk_iommu *iommu)
+ 	rk_iommu_command(iommu, RK_MMU_CMD_FORCE_RESET);
  
- struct rk_iommudata {
-@@ -608,6 +610,7 @@ static irqreturn_t rk_iommu_irq(int irq, void *dev_id)
- 	u32 int_status;
- 	dma_addr_t iova;
- 	irqreturn_t ret = IRQ_NONE;
-+	bool print;
- 	int i, err;
- 
- 	err = pm_runtime_get_if_in_use(iommu->dev);
-@@ -632,11 +635,22 @@ static irqreturn_t rk_iommu_irq(int irq, void *dev_id)
- 			flags = (status & RK_MMU_STATUS_PAGE_FAULT_IS_WRITE) ?
- 					IOMMU_FAULT_WRITE : IOMMU_FAULT_READ;
- 
--			dev_err(iommu->dev, "Page fault at %pad of type %s\n",
--				&iova,
--				str_write_read(flags == IOMMU_FAULT_WRITE));
--
--			log_iova(iommu, i, iova);
-+			/*
-+			 * PAGE_FAULT_DONE below lets the master go on, and a
-+			 * master that keeps accessing unmapped addresses faults
-+			 * again at once, until its own driver stops it. Printing
-+			 * every one of those faults from this handler keeps the
-+			 * CPU in hard interrupt context for as long as the
-+			 * console takes to print them. The trace event of
-+			 * report_iommu_fault() still records every fault.
-+			 */
-+			print = __ratelimit(&iommu->fault_rs);
-+			if (print) {
-+				dev_err(iommu->dev, "Page fault at %pad of type %s\n",
-+					&iova,
-+					str_write_read(flags == IOMMU_FAULT_WRITE));
-+				log_iova(iommu, i, iova);
-+			}
- 
- 			/*
- 			 * Report page fault to any installed handlers.
-@@ -646,14 +660,15 @@ static irqreturn_t rk_iommu_irq(int irq, void *dev_id)
- 			if (iommu->domain != &rk_identity_domain)
- 				report_iommu_fault(iommu->domain, iommu->dev, iova,
- 						   flags);
--			else
-+			else if (print)
- 				dev_err(iommu->dev, "Page fault while iommu not attached to domain?\n");
- 
- 			rk_iommu_base_command(iommu->bases[i], RK_MMU_CMD_ZAP_CACHE);
- 			rk_iommu_base_command(iommu->bases[i], RK_MMU_CMD_PAGE_FAULT_DONE);
- 		}
- 
--		if (int_status & RK_MMU_IRQ_BUS_ERROR)
-+		if ((int_status & RK_MMU_IRQ_BUS_ERROR) &&
-+		    __ratelimit(&iommu->fault_rs))
- 			dev_err(iommu->dev, "BUS_ERROR occurred at %pad\n", &iova);
- 
- 		if (int_status & ~RK_MMU_IRQ_MASK)
-@@ -1270,6 +1285,8 @@ static int rk_iommu_probe(struct platform_device *pdev)
- 
- 	iommu->reset_disabled = device_property_read_bool(dev,
- 					"rockchip,disable-mmu-reset");
-+	ratelimit_state_init(&iommu->fault_rs, DEFAULT_RATELIMIT_INTERVAL,
-+			     DEFAULT_RATELIMIT_BURST);
- 
- 	/*
- 	 * Take every clock the devicetree provides.  Most IOMMU instances
+ 	ret = readx_poll_timeout(rk_iommu_is_reset_done, iommu, val,
+-				 val, RK_MMU_FORCE_RESET_TIMEOUT_US,
+-				 RK_MMU_POLL_TIMEOUT_US);
++				 val, RK_MMU_POLL_PERIOD_US,
++				 RK_MMU_FORCE_RESET_TIMEOUT_US);
+ 	if (ret) {
+ 		dev_err(iommu->dev, "FORCE_RESET command timed out\n");
+ 		return ret;
 
 -- 
 2.55.0
