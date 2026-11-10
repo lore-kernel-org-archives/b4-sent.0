@@ -1,92 +1,70 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 06:07:02 +0000
-Subject: [PATCH] clocksource/drivers/sun5i: Allow enabling the driver on
- 64-bit sunxi
+Subject: [PATCH 0/2] sunxi: H6/H616: SPL PMIC access over RSB, use it on
+ the OrangePi Zero2
+Date: Tue, 10 Nov 2026 06:19:35 +0000
+Message-Id: <20261110-h616-rsb-spl-v1-0-bf91cc26507e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-sun5i-hstimer-arch-sunxi-v1-1-9016f63e186f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QqDMAyF4VeRXC9gCir4KmMXbc1shHUjURHEd
- 7fOy+/A+XcwVmGDvtpBeRWTby6gRwUx+TwyylAMrnYtEdVoS24Ek83yYUWvMV3TJkhtx95xiGH
- ooNx/ym/Z/unn67YtYeI4Xz04jhMsPfcIfAAAAA==
-X-Change-ID: 20261110-sun5i-hstimer-arch-sunxi-167ea2ebcbd7
-To: Daniel Lezcano <daniel.lezcano@kernel.org>, 
- Thomas Gleixner <tglx@kernel.org>
-Cc: linux-kernel@vger.kernel.org, Chen-Yu Tsai <wens@kernel.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, 
- Michal Piekos <michal.piekos@mmpsystems.pl>, 
- linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0MD3QwzQzPdouIk3eKCHN0kS9NE4ySLFFMzk1QloJaCotS0zAqwcdG
+ xEH5xaVJWanIJyAyl2loArw6r7HAAAAA=
+X-Change-ID: 20261110-h616-rsb-spl-b95a3b8d564e
+To: u-boot@lists.u-boot-project.org
+Cc: Andre Przywara <andre.przywara@arm.com>, Tom Rini <trini@konsulko.com>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
+ Heiko Schocher <hs@nabladev.com>, Arun Iyengar <aiyengar1990@gmail.com>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794290821; l=2552;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794291575; l=2079;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=JuIHgoMW4UEdB04flY1z4eCSsxuIeVm+zZ4kA091Ln8=;
- b=qT9bZuPBCA4Hv8LzVHeLlQ9t6bZS2UTSiDBMfA2GoO3ow4Zi8c5uqjz0rwUkGwKsLY4zchDjQ
- uZVIryz/vz7Buw5w8euq7lOs32V14cdbWJEkLjIeTxYh5nSCXywOtA8
+ bh=aMnnAG5SZDw5T5D+CG0C0FFS+7JltfHPunUls57Ms9s=;
+ b=rkt142fKq14S+nlyY8UKKi9kg/xHaSRtg28hoLPj1YLFEQUGedg+fO3EJFLjGhONPXtGDsmJU
+ ekh4JWuEUHUCBaryzrixcUZFsmZI8pqKxxK4MO19tUFL93TTPfqNTO4
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The high-speed timer driver binds "allwinner,sun20i-d1-hstimer", which
-the H616 device tree uses as the fallback compatible of its
-"allwinner,sun50i-h616-hstimer" node and the D1/T113 device tree uses
-directly. SUN5I_HSTIMER, however, only has a prompt under COMPILE_TEST
-and is selected by the 32-bit sunxi machine Kconfig alone, so arm64 and
-RISC-V sunxi kernels cannot enable it and these nodes never probe.
+On H6/H616 boards the AXP305/AXP805/AXP806 PMIC can be wired to R_RSB,
+as on the OrangePi Zero2. TF-A then switches the PMIC to RSB mode (Linux
+uses RSB too), and it stays there until it loses power. The SPL can only
+reach it over R_I2C on these SoCs, so after every warm reboot axp_init()
+fails with "Failed to set core voltage! Can't set CPU frequency" and the
+CPU stays at 408 MHz until Linux cpufreq takes over.
 
-Make the prompt visible on ARCH_SUNXI. The driver registers its
-clocksource and clockevent at rating 340: below the architected timer's
-clocksource (400) and below the sun4i timer (350), which ARCH_SUNXI
-already selects on arm64 and RISC-V. Enabling it therefore adds a
-second hardware time base without changing which one the kernel uses.
+Patch 1 adds the H6 generation to the SPL part of the sun8i RSB driver
+and uses the RSB address of the AXP305/805/806. Nothing changes for
+boards that do not select CONFIG_SYS_I2C_SUN8I_RSB.
+Patch 2 switches the OrangePi Zero2 SPL to RSB.
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
----
-The H616 and D1/T113 hstimer nodes and the D1 driver support were merged
-for 7.2, but the driver still cannot be enabled outside COMPILE_TEST on
-arm64 and RISC-V.
+Tested on an OrangePi Zero2 (H616, AXP305): cold boot and warm reboots
+come up without the core voltage error, TF-A and Linux still find the
+PMIC on RSB. A v2027.01-rc2 build with these patches (together with my
+sunxi DRAM and USB hub series) also came up from a warm reboot without
+the error and with 1 GiB. Build-tested for orangepi_zero2,
+orangepi_zero3, x96_mate, orangepi_3, pine_h64 and Cubieboard4 (sun9i,
+the other SPL RSB user) with no new warnings.
 
-Tested on an Orange Pi Zero2 (H616) with a 7.3 kernel carrying this
-patch and CONFIG_SUN5I_HSTIMER=y: the hstimer node at 0x3005000
-probes and available_clocksource lists "arch_sys_counter timer
-hstimer".
-
-This patch was developed with Claude (Anthropic) as a coding
-assistant. It investigated the problem and wrote the code and the commit
-message; I reviewed it, and it was tested on an Orange Pi Zero2 (H616)
-as described above.
----
- drivers/clocksource/Kconfig | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/clocksource/Kconfig b/drivers/clocksource/Kconfig
-index da83483296d5..971491d2e584 100644
---- a/drivers/clocksource/Kconfig
-+++ b/drivers/clocksource/Kconfig
-@@ -172,12 +172,17 @@ config SUN4I_TIMER
- 	  Enables support for the Sun4i timer.
- 
- config SUN5I_HSTIMER
--	bool "Sun5i timer driver" if COMPILE_TEST
-+	bool "Sun5i timer driver" if COMPILE_TEST || ARCH_SUNXI
- 	select CLKSRC_MMIO
- 	depends on COMMON_CLK
- 	help
- 	  Enables support the Sun5i timer.
- 
-+	  The 32-bit sunxi platforms that have this timer select it. On
-+	  64-bit (ARM64, RISC-V) sunxi SoCs such as the H616 and D1 it
-+	  registers an additional clocksource and clockevent device, rated
-+	  below the ones the kernel already uses there.
-+
- config TEGRA_TIMER
- 	bool "Tegra timer driver" if COMPILE_TEST
- 	select CLKSRC_MMIO
+These patches were developed with Claude (Anthropic) as a
+coding assistant: it investigated the problems, wrote the code and the
+commit messages. I reviewed them, and they were tested on an Orange Pi
+Zero2 (H616) as described above.
 
 ---
-base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261110-sun5i-hstimer-arch-sunxi-167ea2ebcbd7
+Arun Iyengar (2):
+      sunxi: H6/H616: support the RSB bus for the SPL PMIC access
+      sunxi: configs: OrangePi Zero2: talk to the AXP305 over RSB
+
+ arch/arm/include/asm/arch-sunxi/cpu_sun50i_h6.h |  1 +
+ arch/arm/include/asm/arch-sunxi/prcm_sun50i.h   |  3 +++
+ arch/arm/mach-sunxi/pmic_bus.c                  | 22 ++++++++++++++++++----
+ configs/orangepi_zero2_defconfig                |  6 +-----
+ drivers/i2c/sun8i_rsb.c                         | 10 ++++++++++
+ 5 files changed, 33 insertions(+), 9 deletions(-)
+---
+base-commit: ecdcf9e365df6249a57cd8cc946e7026804ff4ae
+change-id: 20261110-h616-rsb-spl-b95a3b8d564e
 
 Best regards,
 --  
