@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:18:52 +0000
-Subject: [PATCH 4/8] drm/rockchip: vop2: Balance window fetches across both
- AXI ports on RK3588
+Date: Tue, 10 Nov 2026 07:18:53 +0000
+Subject: [PATCH 5/8] drm/rockchip: vop2: Report POST_BUF_EMPTY at most once
+ per frame
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-vop2-fixes-v1-4-d336e9dd90d3@gmail.com>
+Message-Id: <20261110-vop2-fixes-v1-5-d336e9dd90d3@gmail.com>
 References: <20261110-vop2-fixes-v1-0-d336e9dd90d3@gmail.com>
 In-Reply-To: <20261110-vop2-fixes-v1-0-d336e9dd90d3@gmail.com>
 To: Sandy Huang <hjc@rock-chips.com>, 
@@ -18,250 +18,198 @@ To: Sandy Huang <hjc@rock-chips.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-rockchip@lists.infradead.org, 
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295129; l=9192;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295129; l=6832;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=PqCMoE45UUS/U/tVsrTv37SKSpBk4qVPNpLOW0m/y+w=;
- b=X0+PGJX1ejzvyeAtKbs8uLHG1u+p+kPxwpmC2TUu96hQB9rvsUiVvPpUitlMBB9qZFEBzvsxp
- jMi34UItgHHAZWFuWN86bnVAhEowkAvzb46jbq+z2hAgFTwLueQwE9Y
+ bh=+tkjwCkgUpSm5bDKcbgtDSlyT6K0gvv9mrt7/xcFUtg=;
+ b=goO2Sk/a5wy8w43IPzdwu3qAeffjt9xkbsl/NDU57bCSowmq8MAIlGz236xyFJ50Ut4Vz8p6a
+ nFwMx7BX110BNMwy/swbdy85qUWjiSWjc4YCVhPv+zlZw07TsS9xv0s
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3588 VOP2 fetches through two AXI read ports. Every window has a
-fixed default port in rk3588_vop_win_data: Cluster0/1 and Esmart0/1 use
-AXI0, Cluster2/3 and Esmart2/3 use AXI1. The port is chosen by a per
-window register (CLUSTER_CTRL[13] / ESMART_AXI_CTRL[1]), though, and it
-is programmed on every plane update.
+POST_BUF_EMPTY is raised for every line on which the post processing
+stage of a video port finds no data. The interrupt handler only
+rate-limits the error message and leaves the interrupt enabled, so an
+underflowing video port keeps the CPU in the interrupt handler 50000 to
+300000 times per second, for as long as the configuration that causes
+the underflow stays in place (e.g. 120000 interrupts per second for
+3840x2160@120 with two full screen layers on one AXI port).
 
-One port can't sustain two full screen 4K@120Hz layers. With the
-console on Cluster0 (the primary plane of video port 0) and a video on
-Esmart0 (its overlay plane), both on AXI0, HDMI 3840x2160@120 reports
-POST_BUF_EMPTY on about half of all lines (~120000 per second) and the
-picture is scrambled. The VOP read rate measured with the DDR PMU drops
-from the expected 6.3 GB/s to 3.2 GB/s: the fetch collapses instead of
-merely saturating. Measured at 4K@120Hz, XR24 primary plane:
-
-  Cluster0 + Esmart0 (AXI0 + AXI0)	~120k POST_BUF_EMPTY/s
-  Cluster2 + Esmart2 (AXI1 + AXI1)	~100k/s
-  Esmart0 + Esmart1  (AXI0 + AXI0)	~90k/s (XR24 both)
-  Cluster0 + Esmart2 (AXI0 + AXI1)	0, 9.2 GB/s read
-  Cluster0 + Cluster2 (AXI0 + AXI1)	0, 8.6 GB/s read
-
-Moving Esmart0 to AXI1 at runtime (with no other change) makes the
-first case clean. Raising ACLK_VOP from 750 to 850 MHz, or changing
-the NoC QoS priority or mode of the VOP ports, makes no difference,
-and neither does the buffer placement (both planes scanning out the
-same buffer fail the same way). So the limit is per port, and the
-fixed assignment puts both layers of the most common configuration on
-the same port while the other one sits idle. Lower modes are affected
-too: the same port also carries Cluster1 for a second display, and
-under DDR contention from other masters a 4K@60Hz port with the
-console, an overlay and a second display underflows for short bursts.
-
-Choose the port of a window when it starts fetching instead: estimate
-the fetch rate of each active window (source size x bpp x refresh),
-and put the new window on the port that leaves the busier port least
-loaded, preferring the default one on a tie. A window must not share
-an AXI read ID with another active window on the same port; the IDs in
-the table are unique per default port, and mirrored between the two
-ports (Cluster0/Cluster2, Esmart0/Esmart2, ...), so a window can always
-use the port its mirror isn't on. A window keeps its port while it
-stays enabled, so an active layer is never moved.
-
-This is only enabled for RK3588, where it was measured.
+Mask POST_BUF_EMPTY when it fires and unmask it at the next frame start.
+The frame start (FS) interrupt is enabled for that frame even when
+vblank reporting is off, and disabled again once POST_BUF_EMPTY is
+re-armed. A new per video port lock serialises the interrupt enable
+bookkeeping between the interrupt handler and the vblank callbacks.
+The error is still reported, now at most once per frame and video port.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 99 +++++++++++++++++++++++++++-
- drivers/gpu/drm/rockchip/rockchip_drm_vop2.h | 14 ++++
- drivers/gpu/drm/rockchip/rockchip_vop2_reg.c |  3 +-
- 3 files changed, 114 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 63 ++++++++++++++++++++++++++--
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.h | 10 +++++
+ 2 files changed, 70 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-index 629ea7f11250..9aeb90c6aa4b 100644
+index 9aeb90c6aa4b..3323e50224c5 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
 +++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-@@ -1231,6 +1231,98 @@ static int vop2_plane_atomic_check(struct drm_plane *plane,
- 	return 0;
+@@ -841,6 +841,48 @@ static void vop2_crtc_disable_irq(struct vop2_video_port *vp, u32 irq)
+ 	vop2_writel(vop2, RK3568_VP_INT_EN(vp->id), irq << 16);
  }
  
-+static bool vop2_win_axi_ids_clash(const struct vop2_win *a, const struct vop2_win *b)
-+{
-+	u8 ida[] = { a->data->axi_yrgb_r_id, a->data->axi_uv_r_id };
-+	u8 idb[] = { b->data->axi_yrgb_r_id, b->data->axi_uv_r_id };
-+	int i, j;
-+
-+	for (i = 0; i < ARRAY_SIZE(ida); i++)
-+		for (j = 0; j < ARRAY_SIZE(idb); j++)
-+			if (ida[i] == idb[j])
-+				return true;
-+
-+	return false;
-+}
-+
 +/*
-+ * The VOP2 on RK3588 has two AXI read ports. Each window has a default port
-+ * (&vop2_win_data.axi_bus_id), but the port is selected by a per window
-+ * register, so any window can fetch through either one as long as its read
-+ * IDs are unique on that port.
-+ *
-+ * A single port can't sustain much more than one full screen 4K@120Hz
-+ * layer: two such layers on the same port (e.g. Cluster0 and Esmart0, the
-+ * default primary and overlay planes of video port 0) make the window
-+ * line buffers run dry, the fetch rate collapses and the video port
-+ * reports POST_BUF_EMPTY on most lines, which scrambles the picture. The
-+ * same layers fetched through different ports are fine. Raising ACLK or
-+ * the NoC priority of the VOP doesn't help, the limit is per port.
-+ *
-+ * So pick the port of a window when it starts fetching: use the port that
-+ * leaves the busier of the two ports least loaded, preferring the default
-+ * one, and never a port on which another active window already uses one of
-+ * its read IDs. A window keeps its port while it stays enabled.
++ * POST_BUF_EMPTY is raised for every line the post processing stage finds
++ * no data for, so an underflowing video port can raise it 100000 times per
++ * second. Report it at most once per frame: mask it when it fires and
++ * unmask it at the next frame start, using the FS interrupt even when
++ * vblank reporting is off.
 + */
-+static u8 vop2_win_get_axi_bus(struct vop2_win *win, u64 load)
++static void vop2_crtc_enable_post_buf_empty_irq(struct vop2_video_port *vp)
 +{
-+	struct vop2 *vop2 = win->vop2;
-+	u64 bus_load[VOP2_SYS_AXI_BUS_NUM] = { };
-+	bool clash[VOP2_SYS_AXI_BUS_NUM] = { };
-+	u8 def = win->data->axi_bus_id;
-+	unsigned long flags;
-+	u8 bus = def;
-+	int i;
-+
-+	if (!(vop2->data->feature & VOP2_FEATURE_AXI_BALANCE))
-+		return def;
-+
-+	spin_lock_irqsave(&vop2->axi_lock, flags);
-+
-+	if (win->axi_active) {
-+		win->axi_load = load;
-+		bus = win->axi_bus;
-+		goto out;
-+	}
-+
-+	for (i = 0; i < vop2->registered_num_wins; i++) {
-+		struct vop2_win *w = &vop2->win[i];
-+
-+		if (w == win || !w->axi_active)
-+			continue;
-+
-+		bus_load[w->axi_bus] += w->axi_load;
-+		if (vop2_win_axi_ids_clash(win, w))
-+			clash[w->axi_bus] = true;
-+	}
-+
-+	if (!clash[def ^ 1] &&
-+	    (clash[def] || max(bus_load[def ^ 1] + load, bus_load[def]) <
-+			   max(bus_load[def] + load, bus_load[def ^ 1])))
-+		bus = def ^ 1;
-+
-+	WARN_ON_ONCE(clash[bus]);
-+
-+	win->axi_bus = bus;
-+	win->axi_load = load;
-+	win->axi_active = true;
-+out:
-+	spin_unlock_irqrestore(&vop2->axi_lock, flags);
-+
-+	return bus;
-+}
-+
-+static void vop2_win_put_axi_bus(struct vop2_win *win)
-+{
-+	struct vop2 *vop2 = win->vop2;
 +	unsigned long flags;
 +
-+	spin_lock_irqsave(&vop2->axi_lock, flags);
-+	win->axi_active = false;
-+	win->axi_load = 0;
-+	spin_unlock_irqrestore(&vop2->axi_lock, flags);
++	spin_lock_irqsave(&vp->irq_lock, flags);
++	vp->post_buf_empty_masked = false;
++	vop2_crtc_enable_irq(vp, VP_INT_POST_BUF_EMPTY);
++	spin_unlock_irqrestore(&vp->irq_lock, flags);
 +}
 +
- static void vop2_plane_atomic_disable(struct drm_plane *plane,
- 				      struct drm_atomic_commit *state)
++static void vop2_crtc_handle_post_buf_empty(struct vop2_video_port *vp)
++{
++	struct vop2 *vop2 = vp->vop2;
++
++	spin_lock(&vp->irq_lock);
++	vop2_crtc_disable_irq(vp, VP_INT_POST_BUF_EMPTY);
++	vp->post_buf_empty_masked = true;
++	/* don't clear a pending FS, it may carry a vblank event */
++	vop2_writel(vop2, RK3568_VP_INT_EN(vp->id),
++		    VP_INT_FS_FIELD << 16 | VP_INT_FS_FIELD);
++	spin_unlock(&vp->irq_lock);
++}
++
++static void vop2_crtc_rearm_post_buf_empty(struct vop2_video_port *vp)
++{
++	spin_lock(&vp->irq_lock);
++	if (vp->post_buf_empty_masked) {
++		vp->post_buf_empty_masked = false;
++		vop2_crtc_enable_irq(vp, VP_INT_POST_BUF_EMPTY);
++		if (!vp->vblank_enabled)
++			vop2_crtc_disable_irq(vp, VP_INT_FS_FIELD);
++	}
++	spin_unlock(&vp->irq_lock);
++}
++
+ static int vop2_core_clks_prepare_enable(struct vop2 *vop2)
  {
-@@ -1241,6 +1333,8 @@ static void vop2_plane_atomic_disable(struct drm_plane *plane,
+ 	int ret;
+@@ -1668,8 +1710,12 @@ static const struct drm_plane_funcs vop2_plane_funcs = {
+ static int vop2_crtc_enable_vblank(struct drm_crtc *crtc)
+ {
+ 	struct vop2_video_port *vp = to_vop2_video_port(crtc);
++	unsigned long flags;
  
- 	drm_dbg(vop2->drm, "%s disable\n", win->data->name);
++	spin_lock_irqsave(&vp->irq_lock, flags);
++	vp->vblank_enabled = true;
+ 	vop2_crtc_enable_irq(vp, VP_INT_FS_FIELD);
++	spin_unlock_irqrestore(&vp->irq_lock, flags);
  
-+	vop2_win_put_axi_bus(win);
-+
- 	if (state)
- 		old_pstate = drm_atomic_get_old_plane_state(state, plane);
+ 	return 0;
+ }
+@@ -1677,8 +1723,13 @@ static int vop2_crtc_enable_vblank(struct drm_crtc *crtc)
+ static void vop2_crtc_disable_vblank(struct drm_crtc *crtc)
+ {
+ 	struct vop2_video_port *vp = to_vop2_video_port(crtc);
++	unsigned long flags;
  
-@@ -1416,7 +1510,9 @@ static void vop2_plane_atomic_update(struct drm_plane *plane,
- 		afbc_en ? "AFBC" : "", &yrgb_mst);
+-	vop2_crtc_disable_irq(vp, VP_INT_FS_FIELD);
++	spin_lock_irqsave(&vp->irq_lock, flags);
++	vp->vblank_enabled = false;
++	if (!vp->post_buf_empty_masked)
++		vop2_crtc_disable_irq(vp, VP_INT_FS_FIELD);
++	spin_unlock_irqrestore(&vp->irq_lock, flags);
+ }
  
- 	if (vop2->version > VOP_VERSION_RK3568) {
--		vop2_win_write(win, VOP2_WIN_AXI_BUS_ID, win->data->axi_bus_id);
-+		u64 load = (u64)src_w * src_h * bpp / 8 * drm_mode_vrefresh(adjusted_mode);
-+
-+		vop2_win_write(win, VOP2_WIN_AXI_BUS_ID, vop2_win_get_axi_bus(win, load));
- 		vop2_win_write(win, VOP2_WIN_AXI_YRGB_R_ID, win->data->axi_yrgb_r_id);
- 		vop2_win_write(win, VOP2_WIN_AXI_UV_R_ID, win->data->axi_uv_r_id);
+ static enum drm_mode_status vop2_crtc_mode_valid(struct drm_crtc *crtc,
+@@ -1977,7 +2028,7 @@ static void vop2_crtc_atomic_enable(struct drm_crtc *crtc,
+ 
+ 	vcstate->yuv_overlay = is_yuv_output(vcstate->bus_format);
+ 
+-	vop2_crtc_enable_irq(vp, VP_INT_POST_BUF_EMPTY);
++	vop2_crtc_enable_post_buf_empty_irq(vp);
+ 
+ 	polflags = 0;
+ 	if (vcstate->bus_flags & DRM_BUS_FLAG_PIXDATA_DRIVE_NEGEDGE)
+@@ -2535,6 +2586,7 @@ static irqreturn_t rk3576_vp_isr(int irq, void *data)
  	}
-@@ -3005,6 +3101,7 @@ static int vop2_bind(struct device *dev, struct device *master, void *data)
  
+ 	if (irqs & VP_INT_FS_FIELD) {
++		vop2_crtc_rearm_post_buf_empty(vp);
+ 		drm_crtc_handle_vblank(crtc);
+ 		spin_lock(&crtc->dev->event_lock);
+ 		if (vp->event) {
+@@ -2552,6 +2604,7 @@ static irqreturn_t rk3576_vp_isr(int irq, void *data)
+ 	}
+ 
+ 	if (irqs & VP_INT_POST_BUF_EMPTY) {
++		vop2_crtc_handle_post_buf_empty(vp);
+ 		drm_err_ratelimited(vop2->drm, "POST_BUF_EMPTY irq err at vp%d\n", vp->id);
+ 		ret = IRQ_HANDLED;
+ 	}
+@@ -2591,6 +2644,7 @@ static irqreturn_t vop2_isr(int irq, void *data)
+ 			}
+ 
+ 			if (irqs & VP_INT_FS_FIELD) {
++				vop2_crtc_rearm_post_buf_empty(vp);
+ 				drm_crtc_handle_vblank(crtc);
+ 				spin_lock(&crtc->dev->event_lock);
+ 				if (vp->event) {
+@@ -2608,6 +2662,7 @@ static irqreturn_t vop2_isr(int irq, void *data)
+ 			}
+ 
+ 			if (irqs & VP_INT_POST_BUF_EMPTY) {
++				vop2_crtc_handle_post_buf_empty(vp);
+ 				drm_err_ratelimited(vop2->drm,
+ 						    "POST_BUF_EMPTY irq err at vp%d\n",
+ 						    vp->id);
+@@ -2984,7 +3039,7 @@ static int vop2_bind(struct device *dev, struct device *master, void *data)
+ 	struct vop2 *vop2;
+ 	struct resource *res;
+ 	size_t alloc_size;
+-	int ret;
++	int ret, i;
+ 
+ 	vop2_data = of_device_get_match_data(dev);
+ 	if (!vop2_data)
+@@ -3102,6 +3157,8 @@ static int vop2_bind(struct device *dev, struct device *master, void *data)
  	mutex_init(&vop2->vop2_lock);
  	mutex_init(&vop2->ovl_lock);
-+	spin_lock_init(&vop2->axi_lock);
+ 	spin_lock_init(&vop2->axi_lock);
++	for (i = 0; i < ARRAY_SIZE(vop2->vps); i++)
++		spin_lock_init(&vop2->vps[i].irq_lock);
  
  	ret = devm_request_irq(dev, vop2->irq, vop2_isr, IRQF_SHARED, dev_name(dev), vop2);
  	if (ret)
 diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.h b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.h
-index 1c2d7d97a6c2..f1e35967e67f 100644
+index f1e35967e67f..7de32bef8d7b 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.h
 +++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.h
-@@ -29,6 +29,7 @@
- #define VOP2_FEATURE_HAS_VO1_GRF	BIT(2)
- #define VOP2_FEATURE_HAS_VOP_GRF	BIT(3)
- #define VOP2_FEATURE_HAS_SYS_PMU	BIT(4)
-+#define VOP2_FEATURE_AXI_BALANCE	BIT(5)
+@@ -272,6 +272,16 @@ struct vop2_video_port {
+ 	struct drm_pending_vblank_event *event;
  
- #define WIN_FEATURE_AFBDC		BIT(0)
- #define WIN_FEATURE_CLUSTER		BIT(1)
-@@ -219,6 +220,16 @@ struct vop2_win {
- 	u32 offset;
- 
- 	enum drm_plane_type type;
+ 	unsigned int nlayers;
 +
++	/** @irq_lock: protects @vblank_enabled and @post_buf_empty_masked */
++	spinlock_t irq_lock;
++	/** @vblank_enabled: the FS interrupt is enabled for vblank reporting */
++	bool vblank_enabled;
 +	/**
-+	 * @axi_bus: AXI read port the window currently fetches through,
-+	 * protected by &vop2.axi_lock.
++	 * @post_buf_empty_masked: POST_BUF_EMPTY is masked until the next
++	 * frame start
 +	 */
-+	u8 axi_bus;
-+	/** @axi_active: the window is fetching, protected by &vop2.axi_lock */
-+	bool axi_active;
-+	/** @axi_load: estimated fetch rate in bytes/s, protected by &vop2.axi_lock */
-+	u64 axi_load;
++	bool post_buf_empty_masked;
  };
  
- struct vop2_video_port_data {
-@@ -356,6 +367,9 @@ struct vop2 {
- 	 */
- 	struct mutex ovl_lock;
- 
-+	/* protects the AXI port assignment of all windows (&vop2_win.axi_bus) */
-+	spinlock_t axi_lock;
-+
- 	/* must be put at the end of the struct */
- 	struct vop2_win win[];
- };
-diff --git a/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c b/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c
-index 7c48b440cb29..83203d18865b 100644
---- a/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c
-+++ b/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c
-@@ -2577,7 +2577,8 @@ static const struct vop2_data rk3576_vop = {
- static const struct vop2_data rk3588_vop = {
- 	.version = VOP_VERSION_RK3588,
- 	.feature = VOP2_FEATURE_HAS_SYS_GRF | VOP2_FEATURE_HAS_VO1_GRF |
--		   VOP2_FEATURE_HAS_VOP_GRF | VOP2_FEATURE_HAS_SYS_PMU,
-+		   VOP2_FEATURE_HAS_VOP_GRF | VOP2_FEATURE_HAS_SYS_PMU |
-+		   VOP2_FEATURE_AXI_BALANCE,
- 	.nr_vps = 4,
- 	.max_input = { 4096, 4320 },
- 	.max_output = { 4096, 4320 },
+ /**
 
 -- 
 2.55.0
