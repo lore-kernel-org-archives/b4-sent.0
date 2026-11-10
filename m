@@ -1,10 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:11:50 +0000
-Subject: [PATCH 3/5] iommu/arm-smmu-v3: enable optional clocks
+Date: Tue, 10 Nov 2026 07:11:51 +0000
+Subject: [PATCH 4/5] arm64: dts: rockchip: add the PCIe power domain to the
+ RK3588 PCIe SMMU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-smmu-v3-pcie-pd-v1-3-628819ca44b9@gmail.com>
+Message-Id: <20261110-smmu-v3-pcie-pd-v1-4-628819ca44b9@gmail.com>
 References: <20261110-smmu-v3-pcie-pd-v1-0-628819ca44b9@gmail.com>
 In-Reply-To: <20261110-smmu-v3-pcie-pd-v1-0-628819ca44b9@gmail.com>
 To: Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
@@ -16,63 +17,50 @@ Cc: linux-arm-kernel@lists.infradead.org, iommu@lists.linux.dev,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-rockchip@lists.infradead.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294708; l=1852;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294708; l=1589;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=1jSKUYxMXlwd6GjaT82AOfCUOwP/umlQOFLtJr1OQVY=;
- b=NrU8nzbqEB6wQaUAemybLdDL7kdPwIu8BxlTC7zaLyd7fjp+gpXYyH0f5a1eD0GhcLxN6zqQW
- UGlU3FMVIS+CZDY6N1NEw78+vVRiw0iJPL/wm35Eu334rP7gbRSahB3
+ bh=XjCTjW7WX2P6Yil1lroIFdMhtw3N6JLNEl/nbTe3Rtc=;
+ b=KT3JAHOImp1NNVgBlK1O+84HkPyq2khzDT/ZgpgGMhXk6Q8ZUnIvjXRkQhFMFSDOZHumy00Z7
+ ROfIwWwGlmIC+fICCGyWRiAcj/Z0XCId4AlPvl96YptG5dDrNNRRMd9
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On some platforms the SMMU's clock is controlled by the OS, and without a
-consumer the clock framework gates it as unused late in boot. Any later
-register access, for example the CR0 write in the shutdown path, then
-stalls the interconnect. This happens on the RK3588 when no PCIe
-controller keeps the PCIe MMU-600 clock running.
+The MMU-600 for the PCIe controllers (mmu600_pcie) is enabled for every
+RK3588 board, but its node does not describe that it lives in
+RK3588_PD_PCIE. It only works today because TF-A leaves the domain on at
+boot and, on most boards, an enabled PCIe controller holds it on later.
 
-Get and enable all clocks described in the firmware node before the
-registers are first accessed, and keep them enabled while the driver is
-bound. Nodes without clocks are not affected.
+On a board that disables all PCIe controllers using that domain (the
+Orange Pi 5 with its M.2 slot in SATA mode is one), genpd powers
+PD_PCIE off as unused after boot while arm-smmu-v3 is still bound. Then
+at reboot arm_smmu_device_shutdown() writes CR0 and polls CR0ACK on the
+unpowered block, which stalls the bus: the kernel never reaches
+"reboot: Restarting system" and the board only comes back once the
+watchdog fires.
 
+Describe the power domain, so genpd keeps it on for as long as the SMMU
+is bound.
+
+Fixes: da92d3dfc871 ("arm64: dts: rockchip: enable the mmu600_pcie IOMMU on the rk3588 SoC")
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-index 6d4520c47308..cce66db93219 100644
---- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-+++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-@@ -12,6 +12,7 @@
- #include <linux/acpi.h>
- #include <linux/acpi_iort.h>
- #include <linux/bitops.h>
-+#include <linux/clk.h>
- #include <linux/crash_dump.h>
- #include <linux/delay.h>
- #include <linux/err.h>
-@@ -5786,6 +5787,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
- 	resource_size_t ioaddr;
- 	struct arm_smmu_device *smmu;
- 	struct device *dev = &pdev->dev;
-+	struct clk_bulk_data *clks;
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+index aa69fd3793fd..bcd342c025c9 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+@@ -560,6 +560,7 @@ mmu600_pcie: iommu@fc900000 {
+ 			     <GIC_SPI 367 IRQ_TYPE_EDGE_RISING 0>;
+ 		interrupt-names = "eventq", "gerror", "priq", "cmdq-sync";
+ 		#iommu-cells = <1>;
++		power-domains = <&power RK3588_PD_PCIE>;
+ 	};
  
- 	smmu = devm_kzalloc(dev, sizeof(*smmu), GFP_KERNEL);
- 	if (!smmu)
-@@ -5800,6 +5802,11 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
- 	if (ret)
- 		return ret;
- 
-+	/* Optional clocks: keep them running for as long as we are bound */
-+	ret = devm_clk_bulk_get_all_enabled(dev, &clks);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "failed to enable clocks\n");
-+
- 	smmu = arm_smmu_impl_probe(smmu);
- 	if (IS_ERR(smmu))
- 		return PTR_ERR(smmu);
+ 	mmu600_php: iommu@fcb00000 {
 
 -- 
 2.55.0
