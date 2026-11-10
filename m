@@ -1,15 +1,13 @@
 From: Sergei Khomenkov <shomenkow@gmail.com>
-Subject: [PATCH v2 0/3] media: verisilicon: fix VEPU1 JPEG encoder writes
- past the CAPTURE buffer
-Date: Tue, 10 Nov 2026 15:41:43 +0300
-Message-Id: <20261110-hantro-buflimit-v2-0-ff7790def9fc@gmail.com>
+Date: Tue, 10 Nov 2026 15:41:44 +0300
+Subject: [PATCH v2 1/3] media: verisilicon: stop the VEPU1 JPEG encoder
+ after an unfinished frame
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WNwQrDIBAFfyXsuRa1RJKe+h8hh2jXZCHGolZag
- v9eG+ipxxl483aIGAgjXJsdAmaK5LcK8tSAWaZtRkb3yiC5VEJwxapMwTP9tCs5Soy3LXZc9hr
- lBerqEdDS6ygOY+WFYvLhfRxk8bW/Vv/XyoJxZrnulEElUKnb7CZaz8Y7GEspHxsD73quAAAA
-X-Change-ID: 20261106-hantro-buflimit-055e8029be23
+Message-Id: <20261110-hantro-buflimit-v2-1-ff7790def9fc@gmail.com>
+References: <20261110-hantro-buflimit-v2-0-ff7790def9fc@gmail.com>
+In-Reply-To: <20261110-hantro-buflimit-v2-0-ff7790def9fc@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
  Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
  Philipp Zabel <p.zabel@pengutronix.de>
@@ -22,72 +20,84 @@ Cc: Mauro Carvalho Chehab <mchehab@kernel.org>,
  linux-stm32@st-md-mailman.stormreply.com, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org, Sergei Khomenkov <shomenkow@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794314506; l=2924;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794314506; l=3084;
  i=shomenkow@gmail.com; s=20261104; h=from:subject:message-id;
- bh=Au9m2ZyJsM3rdkYmqexDG3q3feqvM6j21m3H6c6K1c0=;
- b=vmeArtTiWleE0liax4kfCT491w/QAjEfFTub6oVHTQqfEiqvH9AVODBQI7koxcvGyZdbFrIdp
- inI0naDjH4tA5WgSDPPtmKjthKVj4CqHjnIVuwKy3olsRRsJJQOp54U
+ bh=YHxh7pOb2K0qV8FuiClIzJFZEkYN6AmWKtxTo6KANAk=;
+ b=uZxJGwVHOcWH3jWGfP8L1xLnMi7Sr/GSOL1WEVuW+C2Pi3WQsnfDvXgw2aoDxwWAs2rHNKOSz
+ 9v92gCbP2MfBnlUnTVUb6/Ye4SVCdcNY0Jwxh/vRozR2gp33+BJcSbd
 X-Developer-Key: i=shomenkow@gmail.com; a=ed25519;
  pk=FwuHDVe7aiISDMLmQEcMC+RflEIJ6kEp/ekwznWXmI8=
 X-Endpoint-Received: by B4 Relay for shomenkow@gmail.com/20261104 with auth_id=1409
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The H1 JPEG encoder is given its stream buffer limit in bytes, but the
-register counts 64-bit words, so a stream that does not fit the CAPTURE
-buffer is written past its end, up to eight times the buffer size. A
-quality 100 frame of noise does not fit the default sizeimage, and
-userspace can also set a smaller one.
+When the JPEG stream reaches the stream buffer limit, the H1 raises a
+buffer-full interrupt and pauses with the enable bit of H1_REG_ENC_CTRL
+still set. rockchip_vpu1_vepu_irq() does not stop it, so the next job is
+programmed into the paused encoder and times out.
 
-Patch 1 stops the VEPU1 encoder after a buffer-full interrupt, which
-leaves it paused. Patch 2 programs the limit in 64-bit words, rounded
-down to whole 64-byte bursts. Patch 3 makes the smallest CAPTURE
-sizeimage the 624-byte header plus one burst.
+Clear only the enable bit when an interrupt does not report a finished
+frame, and warn (rate limited) about each fault bit that is set, as
+hantro_g2_irq() does.
 
-Testing, on an RK3026 (VEPU1) only: without the series the encoder
-wrote 230 KB past a default-sized 640x480 buffer and 1.6 MB past a
-1920x1088 one. With it, 17 overflowing frames, four of them queued back
-to back, stopped at the programmed limit without writing past the plane
-and came back with the ERROR flag, one interrupt each and no timeout;
-the jobs after them completed, and frames that fit are byte for byte the
-same as before. A sizeimage of 1 or 600 now reads back 688.
-v4l2-compliance 1.30.1 on the encoder node shows no new failures.
+Found with an LLM coding assistant while porting mainline Linux to a
+Rockchip RK3026 board; the assistant also drafted this change. Tested
+on that board, with the next patch applied: a frame that does not fit
+now ends with the ERROR flag and one interrupt, and the following jobs
+complete. Not tested on other SoCs.
 
-The VEPU2 JPEG encoder writes its limit in bytes the same way, but I
-cannot test it, so its limit and interrupt handler are unchanged; the
-common patch 3 applies to it as well. The STM32MP25 VENC runs the H1
-code of patch 2 and gets patch 3, but not the stop of patch 1. Neither
-is tested.
-
-The bugs were found and the patches drafted with an LLM coding
-assistant while porting mainline Linux to an RK3026 board.
-
+Fixes: 775fec69008d ("media: add Rockchip VPU JPEG encoder driver")
+Cc: stable@vger.kernel.org
+Signed-off-by: Sergei Khomenkov <shomenkow@gmail.com>
 ---
-Changes in v2:
-- Trim the commit messages and code comments (Nicolas).
-- 1/3: clear only the enable bit of H1_REG_ENC_CTRL instead of writing
-  0 to the register, and add a rate-limited warning per fault bit, as
-  hantro_g2_irq() does; add the H1_REG_INTERRUPT_* fault bits (Nicolas).
-- 3/3: keep max(): it is a floor of header + one burst, the 64-byte
-  rounding is on the stream limit in 2/3 (Nicolas).
-- Move the test numbers from the commit messages to this cover letter.
-- Link to v1: https://lore.kernel.org/r/20261109-hantro-buflimit-v1-0-f0b86ce61e66@gmail.com
+ drivers/media/platform/verisilicon/hantro_h1_regs.h  |  4 ++++
+ drivers/media/platform/verisilicon/rockchip_vpu_hw.c | 18 ++++++++++++++++++
+ 2 files changed, 22 insertions(+)
 
----
-Sergei Khomenkov (3):
-      media: verisilicon: stop the VEPU1 JPEG encoder after an unfinished frame
-      media: verisilicon: program the H1 JPEG stream limit in 64-bit words
-      media: verisilicon: leave room for the JPEG header and one stream burst
+diff --git a/drivers/media/platform/verisilicon/hantro_h1_regs.h b/drivers/media/platform/verisilicon/hantro_h1_regs.h
+index 8650cc489392..a7f18683dac1 100644
+--- a/drivers/media/platform/verisilicon/hantro_h1_regs.h
++++ b/drivers/media/platform/verisilicon/hantro_h1_regs.h
+@@ -11,6 +11,10 @@
+ 
+ /* Encoder registers. */
+ #define H1_REG_INTERRUPT				0x004
++#define     H1_REG_INTERRUPT_TIMEOUT			BIT(6)
++#define     H1_REG_INTERRUPT_BUFFER_FULL		BIT(5)
++#define     H1_REG_INTERRUPT_RESET			BIT(4)
++#define     H1_REG_INTERRUPT_BUS_ERROR			BIT(3)
+ #define     H1_REG_INTERRUPT_FRAME_RDY			BIT(2)
+ #define     H1_REG_INTERRUPT_DIS_BIT			BIT(1)
+ #define     H1_REG_INTERRUPT_BIT			BIT(0)
+diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
+index 02673be9878e..d201b058e5e8 100644
+--- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
++++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
+@@ -376,6 +376,24 @@ static irqreturn_t rockchip_vpu1_vepu_irq(int irq, void *dev_id)
+ 	state = (status & H1_REG_INTERRUPT_FRAME_RDY) ?
+ 		VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR;
+ 
++	if (status & H1_REG_INTERRUPT_BUFFER_FULL)
++		dev_warn_ratelimited(vpu->dev, "stream buffer full\n");
++	if (status & H1_REG_INTERRUPT_BUS_ERROR)
++		dev_warn_ratelimited(vpu->dev, "bus error detected\n");
++	if (status & H1_REG_INTERRUPT_TIMEOUT)
++		dev_warn_ratelimited(vpu->dev, "frame encode timed out\n");
++	if (status & H1_REG_INTERRUPT_RESET)
++		dev_warn_ratelimited(vpu->dev, "encoder reset\n");
++
++	/* After a buffer full the encoder pauses, still enabled: stop it. */
++	if (!(status & H1_REG_INTERRUPT_FRAME_RDY)) {
++		u32 ctrl = vepu_read(vpu, H1_REG_ENC_CTRL);
++
++		if (ctrl & H1_REG_ENC_CTRL_EN_BIT)
++			vepu_write(vpu, ctrl & ~H1_REG_ENC_CTRL_EN_BIT,
++				   H1_REG_ENC_CTRL);
++	}
++
+ 	vepu_write(vpu, 0, H1_REG_INTERRUPT);
+ 	vepu_write(vpu, 0, H1_REG_AXI_CTRL);
+ 
 
- .../media/platform/verisilicon/hantro_h1_jpeg_enc.c    |  7 ++++++-
- drivers/media/platform/verisilicon/hantro_h1_regs.h    |  4 ++++
- drivers/media/platform/verisilicon/hantro_v4l2.c       |  9 +++++++++
- drivers/media/platform/verisilicon/rockchip_vpu_hw.c   | 18 ++++++++++++++++++
- 4 files changed, 37 insertions(+), 1 deletion(-)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261106-hantro-buflimit-055e8029be23
-
-Best regards,
 -- 
-Sergei Khomenkov <shomenkow@gmail.com>
+2.53.0
 
