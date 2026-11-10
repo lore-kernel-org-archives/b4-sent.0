@@ -1,97 +1,72 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 05:57:45 +0000
-Subject: [PATCH] PM / devfreq: Resume at the frequency from before suspend
+Subject: [PATCH 0/2] clk: sunxi-ng: h616: Fix the EMAC 25 MHz and S/PDIF
+ clocks
+Date: Tue, 10 Nov 2026 06:02:59 +0000
+Message-Id: <20261110-h616-clk-emac-spdif-v1-0-e5e36e8963e4@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-devfreq-resume-freq-v1-1-90de450ccbd0@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ5EQBCE4VeRPpvETETEq2wcGDW0hLXdSyTi3
- Q1u9R3qP0ghDKUqOUiwsfJ3jrBpQn5o5h6Gu2hymSustZnpsAXBzwh0nWCejdyhQVuEMpQUn4s
- g8P5UP/VrXdsR/n+n6DwvjWdj2ncAAAA=
-X-Change-ID: 20261110-devfreq-resume-freq-e42eaeb6f8f8
-To: MyungJoo Ham <myungjoo.ham@samsung.com>, 
- Kyungmin Park <kyungmin.park@samsung.com>, 
- Chanwoo Choi <cw00.choi@samsung.com>, Dong Aisheng <aisheng.dong@nxp.com>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Arun Iyengar <aiyengar1990@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMAyA4VeRnBcwRQr6KrKDpumMOifNNgbFd
+ 7fbjt/h/zOYJBWDrsqQ5K2mj62ALhXwNGw3QQ3F4GrniajGyZNHXheU+8Boe9CIDRG3PsQxiIN
+ S7kmifn7X/vq3vcZZ+PldwXGc14sRa3cAAAA=
+X-Change-ID: 20261110-h616-clk-emac-spdif-411c96dfbde2
+To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Chen-Yu Tsai <wens@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>, 
+ Andre Przywara <andre.przywara@arm.com>
+Cc: linux-clk@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794290264; l=2896;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794290580; l=1811;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=tdlutxMME+GnXd+M6y/2TwHqtzvKQ3bamAdqTwwxsDk=;
- b=/P0AlERKNeMv1oK1rQ9ScANECsCNBtd20fQ+QTuJVNIhjjR+2oRX3S8mzeF6DN85r7uIEXRt6
- D+sclVwSoGcA/oxPBAyDjs1RGYKWO/3ti1RlG4PrSyDGbGCzBc0tWZG
+ bh=IFyI7JJ8fJLP5Ef3+9F0FXrHqe21a7ZPZU1S9cQpPE0=;
+ b=7owWMhF0E+ULMOrWbnsnk0mKjC9hdboYHaGDF3wJNwiCdTE7p9ICpEEDXmeEk4EgPmnUT4xre
+ P2q6cD2d5QxDg5AHxmameUabWmzoFT/46s8Ummp7LZinICao/MP2pvL
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-devfreq_suspend_device() moves a device that has a suspend OPP to that
-frequency with devfreq_set_target(). Since commit 62453f1ba5d5 ("PM /
-devfreq: Use more accurate returned new_freq as resume_freq"),
-devfreq_set_target() records the frequency it has just set as
-resume_freq, so the suspend transition itself overwrites the frequency
-to resume at with the suspend frequency. devfreq_resume_device() then
-"restores" the suspend frequency and the device stays there until the
-governor next re-evaluates it.
+Two small fixes for the H616 CCU, found while checking the clock tree of
+an Orange Pi Zero2 against the H616 user manual.
 
-For system suspend that only costs one polling interval. For a driver
-that calls devfreq_suspend_device() from runtime PM, such as panthor,
-every runtime resume starts at the lowest OPP: with a 50 ms autosuspend
-delay and a 50 ms polling interval, short bursts of GPU work after an
-idle period run at the suspend frequency.
+Patch 1 models the EPHY 25 MHz clock as PLL_PERI0 / 24, as the manual
+describes it. Only the parent and the reported rate change; the register
+writes are the same.
 
-Save the frequency the device ran at before the suspend transition and
-use that as resume_freq, as the code did before that commit. Requests
-made while the device is suspended still update resume_freq through
-devfreq_set_target(), as before.
+Patch 2 lets the S/PDIF clock change the audio PLL rate, so the 44.1 kHz
+and 48 kHz families both get the right module clock. It is the H616
+counterpart of the H6 patch that was just applied [1].
 
-Fixes: 62453f1ba5d5 ("PM / devfreq: Use more accurate returned new_freq as resume_freq")
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
----
-The bug was found on an RK3588 board (panthor, runtime PM through
-devfreq_suspend_device()). The patch runs in that board's v7.3-based
-kernel. I could not test it on a second platform: my Allwinner H616
-board has no suspend OPP, so the changed path is not taken there.
+Tested on an Orange Pi Zero2 (H616) with a 7.3 kernel carrying both
+patches:
+- clk_summary shows emac-25m at 25000000 with pll-periph0 (600 MHz) as
+  its parent (200000000 below ahb3 before). The Zero2 uses an external
+  RGMII PHY on EMAC0, so nothing on this board consumes the clock; only
+  the clock tree was checked.
+- With the S/PDIF output enabled, the spdif clock is 24576000 Hz under
+  aplay at 48 kHz and 22579200 Hz at 44.1 kHz. I have no S/PDIF receiver,
+  so the output itself was not checked on the wire.
 
-This patch was developed with Claude (Anthropic) as a coding
-assistant: it wrote the code and the commit message.
-I reviewed it and tested it as described above.
----
- drivers/devfreq/devfreq.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+These patches were developed with Claude (Anthropic) as a coding
+assistant. It investigated the problem and wrote the code and the commit
+messages; I reviewed them, and they were tested on an Orange Pi Zero2
+(H616) as described above.
 
-diff --git a/drivers/devfreq/devfreq.c b/drivers/devfreq/devfreq.c
-index f08fc6966eae..043cdc37bd0b 100644
---- a/drivers/devfreq/devfreq.c
-+++ b/drivers/devfreq/devfreq.c
-@@ -1146,6 +1146,7 @@ EXPORT_SYMBOL(devm_devfreq_remove_device);
-  */
- int devfreq_suspend_device(struct devfreq *devfreq)
- {
-+	unsigned long resume_freq;
- 	int ret;
- 
- 	if (!devfreq)
-@@ -1163,7 +1164,15 @@ int devfreq_suspend_device(struct devfreq *devfreq)
- 
- 	if (devfreq->suspend_freq) {
- 		mutex_lock(&devfreq->lock);
-+		/*
-+		 * devfreq_set_target() records the frequency it sets as the
-+		 * one to resume at. Keep the frequency from before suspend
-+		 * instead, so that the device does not resume at its suspend
-+		 * frequency.
-+		 */
-+		resume_freq = devfreq->previous_freq;
- 		ret = devfreq_set_target(devfreq, devfreq->suspend_freq, 0);
-+		devfreq->resume_freq = resume_freq;
- 		mutex_unlock(&devfreq->lock);
- 		if (ret)
- 			return ret;
+[1] https://lore.kernel.org/all/20261104185027.883011-1-jernej.skrabec@gmail.com/
 
 ---
-base-commit: 9a222650d9e70d0027126e4df5b00b1b5b678a97
-change-id: 20261110-devfreq-resume-freq-e42eaeb6f8f8
+Arun Iyengar (2):
+      clk: sunxi-ng: h616: Fix the EMAC 25 MHz clock parent and divider
+      clk: sunxi-ng: h616: Let the S/PDIF clock set the audio PLL rate
+
+ drivers/clk/sunxi-ng/ccu-sun50i-h616.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
+---
+base-commit: 280af24c860569000b375edda6436ba8e3ee4b3a
+change-id: 20261110-h616-clk-emac-spdif-411c96dfbde2
 
 Best regards,
 --  
