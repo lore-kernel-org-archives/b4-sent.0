@@ -1,11 +1,11 @@
 From: Yongjian Wang <echoowall@gmail.com>
-Date: Wed, 11 Nov 2026 00:45:57 +0800
-Subject: [PATCH net-next v4 3/4] selftests/net: packetdrill: add TCP black
- hole detection tests
+Date: Wed, 11 Nov 2026 00:45:58 +0800
+Subject: [PATCH net-next v4 4/4] selftests/net: packetdrill: add TCP MTU
+ probing test
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-mtu-probing-series-v4-3-6f2e484ca8ea@gmail.com>
+Message-Id: <20261111-mtu-probing-series-v4-4-6f2e484ca8ea@gmail.com>
 References: <20261111-mtu-probing-series-v4-0-6f2e484ca8ea@gmail.com>
 In-Reply-To: <20261111-mtu-probing-series-v4-0-6f2e484ca8ea@gmail.com>
 To: pabeni@redhat.com, kuba@kernel.org, shuah@kernel.org, 
@@ -15,123 +15,81 @@ Cc: linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org,
  netdev@vger.kernel.org, panweiping3@gmail.com, 
  Yongjian Wang <echoowall@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794329156; l=4124;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794329156; l=2652;
  i=echoowall@gmail.com; s=20261026; h=from:subject:message-id;
- bh=+yXa+nBg9+47003kOzkfKLT4ELxoq9V9aPGcdqcFMpM=;
- b=IQkfUZhuhzXRnrmF05eHjVxDMIzJsZaDAOHq9rsSFqa4TCE0LrqaQmnruR2Al7Or3YM+Irc/7
- Tk6PnTL2fbFATQ8eAVy41bIpcCtAHGUB7lJ+AEx3+jLGFFTKb2MFswl
+ bh=Mz0+KsqQBxhWJlyZhAiEUnDL/oZgfrLTgEwG3eDqtks=;
+ b=lOpdu2t1/HknQKiDM/kdhS7CxpI1N/KpY8LGOPTA4RpuY8k9oW0b5KlqX4DjyPun0QyF1jm0b
+ jbQmw4a57rlDT03JuPtCt9xKnT40UwcTC3Kf5/gdWkkx7L9O/JPHXKk
 X-Developer-Key: i=echoowall@gmail.com; a=ed25519;
  pk=9XP6JhqjjPsHCF6UZZZTeqTRnXIa4+ufggnxXtTJ+no=
 X-Endpoint-Received: by B4 Relay for echoowall@gmail.com/20261026 with auth_id=1323
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Black hole detection (net.ipv4.tcp_mtu_probing=1) has no selftest
-coverage.
+Packetization layer path MTU discovery (net.ipv4.tcp_mtu_probing=2) has
+no selftest coverage.
 
-Add a test that only sets tcp_mtu_probing=1 on top of the default
-settings. A full-sized segment keeps timing out without any ICMP
-feedback. Check that the MSS drops to tcp_base_mss once tcp_retries1
-is exceeded, and that the smaller MSS is also used for new data after
-the retransmission is acknowledged.
+Add a test for an active connection. Check that it starts at
+tcp_base_mss, that it sends the first probe half way between
+tcp_base_mss and the peer's MSS once cwnd allows it, and that an
+acknowledged probe raises the MSS and leads to a larger probe.
 
-Add a shorter variant with tcp_retries1=1 and TLP disabled, so that
-every retransmission comes from the RTO timer, which is what
-tcp_write_timeout() counts.
+The SYN offers timestamps and the scripted SYN-ACK declines them.
+This also checks that MTU probing uses the negotiated header length
+for the initial send MSS.
 
 Signed-off-by: Yongjian Wang <echoowall@gmail.com>
 ---
- .../net/packetdrill/tcp_mtu_probing_blackhole.pkt  | 38 ++++++++++++++++++++++
- ..._mtu_probing_blackhole_no_tlp_retries1_is_1.pkt | 38 ++++++++++++++++++++++
- 2 files changed, 76 insertions(+)
+ .../net/packetdrill/tcp_mtu_probing_search.pkt     | 42 ++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
 
-diff --git a/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole.pkt b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole.pkt
+diff --git a/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_search.pkt b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_search.pkt
 new file mode 100644
-index 000000000000..95309cb4d872
+index 000000000000..a48acff8685e
 --- /dev/null
-+++ b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole.pkt
-@@ -0,0 +1,38 @@
++++ b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_search.pkt
+@@ -0,0 +1,42 @@
 +// SPDX-License-Identifier: GPL-2.0
-+// Test black hole detection with default settings and tcp_mtu_probing=1: when
-+// full-sized segments keep timing out and no ICMP arrives, TCP falls back to
-+// tcp_base_mss.
++// Test packetization layer path MTU discovery with tcp_mtu_probing=2: an
++// active connection starts at tcp_base_mss and raises its MSS by binary search
++// as probes are acknowledged.
 +
 +`./defaults.sh
-+sysctl -q net.ipv4.tcp_mtu_probing=1`
++sysctl -q net.ipv4.tcp_mtu_probing=2
++sysctl -q net.ipv4.tcp_base_mss=1024`
 +
 +    0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
-+   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
-+   +0 bind(3, ..., ...) = 0
-+   +0 listen(3, 1) = 0
++   +0 fcntl(3, F_SETFL, O_RDWR|O_NONBLOCK) = 0
++   +0 connect(3, ..., ...) = -1 EINPROGRESS (Operation is now in progress)
++   +0 > S 0:0(0) <...>
++  +.1 < S. 0:0(0) ack 1 win 65535 <mss 1460,nop,nop,sackOK>
++   +0 > . 1:1(0) ack 1
++   +0 fcntl(3, F_SETFL, O_RDWR) = 0
 +
-+   +0 < S 0:0(0) win 65535 <mss 1460,nop,nop,sackOK>
-+   +0 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK>
-+  +.1 < . 1:1(0) ack 1 win 65535
-+   +0 accept(3, ..., ...) = 4
++// The initial window is sent with tcp_base_mss. No probe yet, cwnd is below 11.
++   +0 write(3, ..., 40000) = 40000
++   +0 > P. 1:2049(2048) ack 1
++   +0 > P. 2049:4097(2048) ack 1
++   +0 > P. 4097:6145(2048) ack 1
++   +0 > P. 6145:8193(2048) ack 1
++   +0 > P. 8193:10241(2048) ack 1
 +
-+   +0 write(4, ..., 1460) = 1460
-+   +0 > P. 1:1461(1460) ack 1
++// The first probe is half way between tcp_base_mss and the peer's MSS.
++  +.1 < . 1:1(0) ack 10241 win 65535
++   +0 > . 10241:11483(1242) ack 1
++   +0 > P. 11483:13531(2048) ack 1
++   +0 > P. 13531:15579(2048) ack 1
++   +0 > P. 15579:17627(2048) ack 1
++   +0 > P. 17627:19675(2048) ack 1
++   +0 > P. 19675:21723(2048) ack 1
++   +0 > P. 21723:23771(2048) ack 1
++   +0 > P. 23771:25819(2048) ack 1
++   +0 > P. 25819:27867(2048) ack 1
++   +0 > P. 27867:29915(2048) ack 1
 +
-+// TLP and the first RTO retransmissions keep the full size.
-+  +.3 > P. 1:1461(1460) ack 1
-+  +.3 > P. 1:1461(1460) ack 1
-+  +.6 > P. 1:1461(1460) ack 1
-+ +1.2 > P. 1:1461(1460) ack 1
-+
-+// Once tcp_retries1 is exceeded the MSS drops to tcp_base_mss.
-+ +2.4 > . 1:1025(1024) ack 1
-+  +.1 < . 1:1(0) ack 1025 win 65535
-+   +0 > P. 1025:1461(436) ack 1
-+  +.1 < . 1:1(0) ack 1461 win 65535
-+
-+// New data keeps using the smaller MSS.
-+   +0 write(4, ..., 1460) = 1460
-+   +0 > . 1461:2485(1024) ack 1
-+   +0 > P. 2485:2921(436) ack 1
-+  +.1 < . 1:1(0) ack 2921 win 65535
-diff --git a/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole_no_tlp_retries1_is_1.pkt b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole_no_tlp_retries1_is_1.pkt
-new file mode 100644
-index 000000000000..0421458fba45
---- /dev/null
-+++ b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole_no_tlp_retries1_is_1.pkt
-@@ -0,0 +1,38 @@
-+// SPDX-License-Identifier: GPL-2.0
-+// Test black hole detection with tcp_mtu_probing=1, tcp_retries1=1 and TLP
-+// disabled: when full-sized segments keep timing out and no ICMP arrives, TCP
-+// falls back to tcp_base_mss.
-+
-+`./defaults.sh
-+sysctl -q net.ipv4.tcp_mtu_probing=1
-+sysctl -q net.ipv4.tcp_base_mss=1024
-+sysctl -q net.ipv4.tcp_retries1=1
-+sysctl -q net.ipv4.tcp_early_retrans=0`
-+
-+    0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
-+   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
-+   +0 bind(3, ..., ...) = 0
-+   +0 listen(3, 1) = 0
-+
-+   +0 < S 0:0(0) win 65535 <mss 1460,nop,nop,sackOK>
-+   +0 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK>
-+  +.1 < . 1:1(0) ack 1 win 65535
-+   +0 accept(3, ..., ...) = 4
-+
-+   +0 write(4, ..., 1460) = 1460
-+   +0 > P. 1:1461(1460) ack 1
-+
-+// The first retransmission keeps the full size.
-+  +.3 > P. 1:1461(1460) ack 1
-+
-+// Once tcp_retries1 is exceeded the MSS drops to tcp_base_mss.
-+  +.6 > . 1:1025(1024) ack 1
-+  +.1 < . 1:1(0) ack 1025 win 65535
-+   +0 > P. 1025:1461(436) ack 1
-+  +.1 < . 1:1(0) ack 1461 win 65535
-+
-+// New data keeps using the smaller MSS.
-+   +0 write(4, ..., 1460) = 1460
-+   +0 > . 1461:2485(1024) ack 1
-+   +0 > P. 2485:2921(436) ack 1
-+  +.1 < . 1:1(0) ack 2921 win 65535
++// Acknowledging the probe raises the MSS, and the next probe is larger.
++  +.1 < . 1:1(0) ack 29915 win 65535
++   +0 > . 29915:31266(1351) ack 1
++   +0 > P. 31266:33750(2484) ack 1
 
 -- 
 Git-157)
