@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:20:08 +0000
-Subject: [PATCH 3/4] usb: hub: Retry SuperSpeed for a device stuck on its
- USB 2.0 peer
+Date: Tue, 10 Nov 2026 07:20:09 +0000
+Subject: [PATCH 4/4] arm64: dts: rockchip: Describe the USB3 Type-A
+ connector on Orange Pi 5/5B
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-usb-port-pairing-v1-3-9307e29d2ed2@gmail.com>
+Message-Id: <20261110-usb-port-pairing-v1-4-9307e29d2ed2@gmail.com>
 References: <20261110-usb-port-pairing-v1-0-9307e29d2ed2@gmail.com>
 In-Reply-To: <20261110-usb-port-pairing-v1-0-9307e29d2ed2@gmail.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -16,167 +16,115 @@ Cc: linux-usb@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295206; l=5559;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295206; l=2457;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=o0TEY94Lcp0G4zfSWLAFe2ufVpMSLEacQDZB/y37oPQ=;
- b=SAwJ8WxdcJNxSs9HdlxNCXBiK4s2DP/RyvnvOBbIpfqRaFLyzlkN8IT7ZlCQk7i8hPeESE7i1
- BUaWybOwT0sCpzeP+b7aNer3ul+HumRiCZRBm8ruzOuYei28D9CzYag
+ bh=IakzDRMMsFFpDM3Pul0+4jHnnMQtQ7ZuE6Fs1yH1Zm0=;
+ b=OC5rK3ua1Qy61UygXep+9kHnO/LjV0yc7VK/6IzFLGy4eDROvGHeMgLZVAzetF4NpO4zIsFsu
+ APSMfEOXhHYCanl/ineaEsILKjg1A+WWtbUbBnyJ14hejnch1PTuXCi
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A SuperSpeed device looks for a SuperSpeed link first when it sees
-VBUS, and connects at high speed when the link doesn't come up. It
-looks again only when VBUS is cycled or after a USB 2.0 bus reset.
+The upper Type-A port of the Orange Pi 5 and 5B has its USB 2.0 lines
+on USB 2.0 host 1 (EHCI/OHCI) and its SuperSpeed lanes on the
+SuperSpeed-only USB 3.0 host 2 (xHCI). The lower Type-A port is USB 2.0
+only, on host 0.
 
-When a connector's two halves belong to different host controllers,
-the USB 2.0 host can start first. On the Orange Pi 5 (RK3588S), whose
-USB 3 Type-A port has VBUS on from power-up, a USB 3 flash drive
-plugged in at boot was reset by the EHCI about 10 ms before the
-SuperSpeed-only xHCI registered, so it came up at 480 Mb/s on the EHCI
-in every one of 6 boots, while plugging it in after boot gave
-5 Gb/s. It stays at high speed until it is unplugged.
+Describe the upper port as a usb-a-connector linked to both
+controllers, so that the USB core pairs the EHCI root hub port with the
+xHCI SuperSpeed port. Without that, a USB 3 device plugged in at boot
+is enumerated by the EHCI before the xHCI is up and stays at high
+speed.
 
-When a SuperSpeed hub with ports paired through a connector starts, or
-comes back from a reset or reset-resume, check those ports' USB 2.0
-peers. If a SuperSpeed-capable device is connected at high speed there,
-reset it once, so that it can connect at SuperSpeed now that the link
-can train. Lock the peer hub first, so an enumeration that is under way
-completes before the check. A device that still can't train its
-SuperSpeed link stays connected at high speed after that one reset.
+VBUS of the port is not switched (the vendor DT has it on an always-on
+5 V rail), so it is described as coming from vcc5v0_sys.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/usb/core/hub.c | 88 ++++++++++++++++++++++++++++++++++++++++++++++++++
- drivers/usb/core/hub.h |  1 +
- 2 files changed, 89 insertions(+)
+ .../boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi   | 60 ++++++++++++++++++++++
+ 1 file changed, 60 insertions(+)
 
-diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
-index 199d3f535a89..df88de5bbf54 100644
---- a/drivers/usb/core/hub.c
-+++ b/drivers/usb/core/hub.c
-@@ -1076,6 +1076,89 @@ int usb_remove_device(struct usb_device *udev)
- 	return 0;
- }
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi b/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi
+index 6e081bc06cfe..2049adc9be62 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi
+@@ -56,6 +56,38 @@ led {
+ 		};
+ 	};
  
-+/*
-+ * A SuperSpeed port paired through a connector with a port of another host
-+ * controller can start after a SuperSpeed-capable device has connected at
-+ * high speed on that peer: with VBUS always on, the device looks for a
-+ * SuperSpeed link while the SuperSpeed host is still down, gives up, and
-+ * connects at high speed. It only tries SuperSpeed again after VBUS is cycled
-+ * or after a USB 2.0 bus reset, so reset it now that the link can train.
-+ */
-+static void hub_reset_peer_child(struct usb_device *peer_hdev, int peer_port1)
-+{
-+	struct usb_hub *peer_hub;
-+	struct usb_device *udev;
++	/*
++	 * The upper Type-A port: its USB 2.0 lines go to USB 2.0 host 1
++	 * (EHCI/OHCI), its SuperSpeed lanes to the SuperSpeed-only USB 3.0
++	 * host 2 (xHCI).
++	 */
++	usb3_con: connector-usb3 {
++		compatible = "usb-a-connector";
++		label = "USB3";
++		vbus-supply = <&vcc5v0_sys>;
 +
-+	/* Wait for an enumeration in progress on the peer port to finish */
-+	usb_lock_device(peer_hdev);
-+	peer_hub = usb_hub_to_struct_hub(peer_hdev);
-+	if (!peer_hub || peer_port1 > peer_hdev->maxchild)
-+		goto out;
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
 +
-+	udev = peer_hub->ports[peer_port1 - 1]->child;
-+	if (!udev || udev->speed != USB_SPEED_HIGH)
-+		goto out;
++			port@0 {
++				reg = <0>;
 +
-+	usb_lock_device(udev);
-+	if (udev->state != USB_STATE_NOTATTACHED &&
-+	    udev->bos && udev->bos->ss_cap) {
-+		dev_info(&udev->dev,
-+			 "SuperSpeed peer port available, resetting\n");
-+		usb_reset_device(udev);
-+	}
-+	usb_unlock_device(udev);
-+out:
-+	usb_unlock_device(peer_hdev);
-+}
++				usb3_con_hs: endpoint {
++					remote-endpoint = <&usb_host1_ehci_port1>;
++				};
++			};
 +
-+static void hub_peer_reset_work(struct work_struct *ws)
-+{
-+	struct usb_hub *hub = container_of(ws, struct usb_hub, peer_reset_work);
-+	struct usb_device *hdev = hub->hdev;
-+	int port1;
++			port@1 {
++				reg = <1>;
 +
-+	for (port1 = 1; ; port1++) {
-+		struct usb_device *peer_hdev = NULL;
-+		struct usb_port *port_dev;
-+		int peer_port1 = 0;
++				usb3_con_ss: endpoint {
++					remote-endpoint = <&usb_host2_xhci_ss>;
++				};
++			};
++		};
++	};
 +
-+		mutex_lock(&usb_port_peer_mutex);
-+		if (port1 > hdev->maxchild) {
-+			mutex_unlock(&usb_port_peer_mutex);
-+			break;
-+		}
-+		port_dev = hub->ports[port1 - 1];
-+		if (port_dev->connector_peer && port_dev->peer) {
-+			peer_hdev = to_usb_device(port_dev->peer->dev.parent->parent);
-+			peer_port1 = port_dev->peer->portnum;
-+			usb_get_dev(peer_hdev);
-+		}
-+		mutex_unlock(&usb_port_peer_mutex);
-+
-+		if (peer_hdev) {
-+			hub_reset_peer_child(peer_hdev, peer_port1);
-+			usb_put_dev(peer_hdev);
-+		}
-+	}
-+
-+	hub_put(hub);
-+}
-+
-+static void hub_queue_peer_reset(struct usb_hub *hub)
-+{
-+	int port1;
-+
-+	for (port1 = 1; port1 <= hub->hdev->maxchild; port1++) {
-+		if (hub->ports[port1 - 1]->connector_peer) {
-+			hub_get(hub);
-+			if (!queue_work(system_power_efficient_wq,
-+					&hub->peer_reset_work))
-+				hub_put(hub);
-+			return;
-+		}
-+	}
-+}
-+
- enum hub_activation_type {
- 	HUB_INIT, HUB_INIT2, HUB_INIT3,		/* INITs must come first */
- 	HUB_POST_RESET, HUB_RESUME, HUB_RESET_RESUME,
-@@ -1346,6 +1429,10 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
+ 	vbus_typec: regulator-vbus-typec {
+ 		compatible = "regulator-fixed";
+ 		enable-active-high;
+@@ -229,8 +261,36 @@ usb_host0_xhci_drd_sw: endpoint {
+ 	};
+ };
  
- 	/* Scan all ports that need attention */
- 	kick_hub_wq(hub);
++&usb_host1_ehci {
++	ports {
++		#address-cells = <1>;
++		#size-cells = <0>;
 +
-+	/* Let devices stuck at high speed on a connector peer move over */
-+	if (hub_is_superspeed(hdev) && type != HUB_RESUME)
-+		hub_queue_peer_reset(hub);
-  abort:
- 	if (type == HUB_INIT2 || type == HUB_INIT3) {
- 		/* Allow autosuspend if it was suppressed */
-@@ -1978,6 +2065,7 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
- 	INIT_DELAYED_WORK(&hub->leds, led_work);
- 	INIT_DELAYED_WORK(&hub->init_work, NULL);
- 	INIT_DELAYED_WORK(&hub->post_resume_work, hub_post_resume);
-+	INIT_WORK(&hub->peer_reset_work, hub_peer_reset_work);
- 	INIT_WORK(&hub->events, hub_event);
- 	INIT_LIST_HEAD(&hub->onboard_devs);
- 	spin_lock_init(&hub->irq_urb_lock);
-diff --git a/drivers/usb/core/hub.h b/drivers/usb/core/hub.h
-index 78382839be48..edce19d7bf13 100644
---- a/drivers/usb/core/hub.h
-+++ b/drivers/usb/core/hub.h
-@@ -71,6 +71,7 @@ struct usb_hub {
- 	struct delayed_work	leds;
- 	struct delayed_work	init_work;
- 	struct delayed_work	post_resume_work;
-+	struct work_struct	peer_reset_work;
- 	struct work_struct      events;
- 	spinlock_t		irq_urb_lock;
- 	struct timer_list	irq_urb_retry;
++		port@1 {
++			reg = <1>;
++
++			usb_host1_ehci_port1: endpoint {
++				remote-endpoint = <&usb3_con_hs>;
++			};
++		};
++	};
++};
++
+ &usb_host2_xhci {
+ 	status = "okay";
++
++	ports {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		port@1 {
++			reg = <1>;
++
++			usb_host2_xhci_ss: endpoint {
++				remote-endpoint = <&usb3_con_ss>;
++			};
++		};
++	};
+ };
+ 
+ &usbdp_phy0 {
 
 -- 
 2.55.0
