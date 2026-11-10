@@ -1,80 +1,76 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Subject: [PATCH 0/5] iommu/rockchip: page fault and reset handling fixes
-Date: Tue, 10 Nov 2026 07:11:01 +0000
-Message-Id: <20261110-iommu-rockchip-faults-v1-0-b1dda574dbb8@gmail.com>
+Date: Tue, 10 Nov 2026 07:11:02 +0000
+Subject: [PATCH 1/5] iommu/rockchip: Don't walk a page table that a reset
+ took away
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDQAxA0atI1gYmWlrwKuJCY6xp1ZGJIwXx7
- p3a5Vv8f4BJUDGosgOC7GrqlwTKM+CxXZ6C2idD4Yo7ETlUP88Rg+c3j7ri0MZpM3RMciMuS+k
- fkNo1yKCf61s3f1vsXsLbbwbn+QVgbv1SeQAAAA==
-X-Change-ID: 20261110-iommu-rockchip-faults-0c1e41c33ed7
+Message-Id: <20261110-iommu-rockchip-faults-v1-1-b1dda574dbb8@gmail.com>
+References: <20261110-iommu-rockchip-faults-v1-0-b1dda574dbb8@gmail.com>
+In-Reply-To: <20261110-iommu-rockchip-faults-v1-0-b1dda574dbb8@gmail.com>
 To: "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
  Robin Murphy <robin.murphy@arm.com>, Heiko Stuebner <heiko@sntech.de>, 
  Jeffy Chen <jeffy.chen@rock-chips.com>, Tomasz Figa <tfiga@chromium.org>
 Cc: iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294661; l=2716;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294661; l=2142;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=EVE6rslJ+MxVLh2zqLrK9ywoULAK+Ds7e7R8Zqqqths=;
- b=9bGcN+GIhtCncaZ8ZLHC53JlkjNg3jVgIgvQEQAkW4iSUdfYezFR7FGwUR8NRUoZnzZEL+Yid
- iB8ETkxsDd3DIUTh0Ydv54S7RXFOQry1UXqIuXxjBHL/4bqaizplv0U
+ bh=ToGf1ObH2yGo1OMq0C57Okydv2han7Kmp00MrNYUTIY=;
+ b=vqEYjTZrW9gc7C8emgS8qlnnnYJOcO/kFRASz5eG+NVNvNmDn9iyaZcTnYLO1wAW6NxEhyFRS
+ 44usyRyEK44ADSHnskRvuD6Y5MDdVSpbvtbO18Lq7pWquTbkZBnC2+D
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fixes for the Rockchip IOMMU found on an Orange Pi 5 (RK3588S) while
-making the video codec drivers recover from bad jobs (Hantro VEPU121
-JPEG encoder, rkvdec VDPU381 decoder):
+When a page fault is reported, log_iova() reads the directory address
+back from the MMU_DTE_ADDR register of the IOMMU and dereferences it
+through phys_to_virt() to log the page table entries of the faulting
+IOVA. The IOMMU of an RK3588 video decoder core is reset with the core:
+by the core's own soft reset, which the hardware also does by itself
+when a job times out, and by the core's AXI reset line. A fault taken
+just before such a reset is handled with MMU_DTE_ADDR reading 0, and
+log_iova() dereferences the physical address 4 * dte_index:
 
-1. log_iova() walked a page table that a master's own reset had taken
-   away (DTE_ADDR read as 0) and oopsed under KASAN.
-2. A master that keeps faulting on unmapped memory printed three lines
-   per fault from the hard interrupt handler; on a 115200 baud console
-   one bad job kept the CPU in rk_iommu_irq() for 2 s. Rate-limit it.
-3. FORCE_RESET swapped the poll period and the timeout.
-4. The stall/paging helpers skipped a bank whose state differed from
-   the other bank; the two banks of an RK3588 decoder IOMMU were read
-   back in different states after a reset that timed out.
-5. In a page fault storm the IOMMU now leaves the fault pending (which
-   holds the master) and masks the interrupt until the master's driver
-   resets and re-attaches it, or 100 ms pass. Before, one bad JPEG
-   encode job kept CPU0 in interrupt context until the soft lockup
-   detector and then the hardware watchdog reset the board.
+rk_iommu fdc38700.iommu: Page fault at 0x0000000013400200 of type read
+Unable to handle kernel paging request at virtual address ffff600000000026
+KASAN: probably wild-memory-access in range [...0130-...0137]
+...
+rk_iommu_irq+0x490/0x758
 
-Tested on an Orange Pi 5 (RK3588S): patch 1 with an rkvdec fault
-injection run under KASAN (the "page table lost to a reset" path taken
-14 times in 3178 decoder recoveries and 96 injected faults, no other
-report); patches 2 and 5 with a VEPU121 JPEG encode job given an
-unmapped input address, ten times (the storm held after 65 faults,
-rk_iommu_irq() 0.8 to 1.7 ms per bad job instead of 2.02 s, the
-encoder's timeout reset the core every time, and the GStreamer pipeline
-that used to lock the board up ran to its end ten times). The whole
-series has been in the board's kernel since, including MPEG-4 and VP9
-decoder bring-up runs that hit page fault storms and recovered.
-
-This series was developed with Claude (Anthropic) as a coding assistant:
-it wrote the code and the commit messages, and I reviewed and tested
-every change as described above.
+Only walk the directory if the register holds the address of memory, and
+say that the page table was lost to a reset otherwise. The fault is
+still acknowledged (zap, PAGE_FAULT_DONE, INT_CLEAR) as before.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Arun Iyengar (5):
-      iommu/rockchip: Don't walk a page table that a reset took away
-      iommu/rockchip: Rate-limit the page fault reports
-      iommu/rockchip: Fix the poll period and timeout of FORCE_RESET
-      iommu/rockchip: Don't skip a bank whose state differs from the others
-      iommu/rockchip: Hold the master in a page fault storm
+ drivers/iommu/rockchip-iommu.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
- drivers/iommu/rockchip-iommu.c | 217 ++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 192 insertions(+), 25 deletions(-)
----
-base-commit: 2cf4be57b301ed2d7af82e70cff5dfd96894d8de
-change-id: 20261110-iommu-rockchip-faults-0c1e41c33ed7
+diff --git a/drivers/iommu/rockchip-iommu.c b/drivers/iommu/rockchip-iommu.c
+index 21af2f621c76..d40e2a26b7be 100644
+--- a/drivers/iommu/rockchip-iommu.c
++++ b/drivers/iommu/rockchip-iommu.c
+@@ -564,6 +564,17 @@ static void log_iova(struct rk_iommu *iommu, int index, dma_addr_t iova)
+ 	mmu_dte_addr = rk_iommu_read(base, RK_MMU_DTE_ADDR);
+ 	mmu_dte_addr_phys = iommu->rk_ops->pt_address(mmu_dte_addr);
+ 
++	/*
++	 * A reset of the master can reset its IOMMU too, between the fault and
++	 * this handler: DTE_ADDR then reads 0. Don't walk a directory that
++	 * isn't in memory; the caller still acknowledges the fault.
++	 */
++	if (!mmu_dte_addr || !pfn_valid(PHYS_PFN(mmu_dte_addr_phys))) {
++		dev_err(iommu->dev, "iova = %pad: fault while page table lost to reset (MMU_DTE_ADDR %#08x)\n",
++			&iova, mmu_dte_addr);
++		return;
++	}
++
+ 	dte_addr_phys = mmu_dte_addr_phys + (4 * dte_index);
+ 	dte_addr = phys_to_virt(dte_addr_phys);
+ 	dte = *dte_addr;
 
-Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+2.55.0
 
