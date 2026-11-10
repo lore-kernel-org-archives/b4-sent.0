@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:17:33 +0000
-Subject: [PATCH 3/5] media: verisilicon: Reset the Rockchip encoder cores
- on timeout
+Date: Tue, 10 Nov 2026 07:17:34 +0000
+Subject: [PATCH 4/5] media: verisilicon: Reinitialize the IOMMU after a
+ timeout
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-hantro-robust-v1-3-6b6269c05bfa@gmail.com>
+Message-Id: <20261110-hantro-robust-v1-4-6b6269c05bfa@gmail.com>
 References: <20261110-hantro-robust-v1-0-6b6269c05bfa@gmail.com>
 In-Reply-To: <20261110-hantro-robust-v1-0-6b6269c05bfa@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -23,103 +23,159 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295050; l=3365;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295050; l=5083;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Ii56p0k233FnBuEWff4kj2GpZgLraSVcrE/YwPM2NZ8=;
- b=gvRF3RYSL3I78/jmqutif7iFPrK/2wtDBeN8PTyTuznOd0brf54ppGYrxucEH87bv1WSi/g9j
- 8ndax84LyTiAf7w39CtfRb99VJN0uYyVUTR4wlPoqOoY08r2UspBpnn
+ bh=1ILVc0XxI2PCAfgk0ngwYRC2RkfgL6hHoTl0K6AyZXI=;
+ b=/vXdujryk4/fhNdDurtKbtU0Mls3+jpCuWaYnmlCPGnFOykuvqaa3ssG3OMSgEjBPcivukbcn
+ tyZ4STiUmTKCsmAqnbu7Kpjlg08zMIgaPK+1+GlXdgPzkAcId1Vlpxy
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On a job timeout, the Rockchip VEPU1 and VEPU2 reset operations mask the
-interrupt and clear the encode enable and AXI control registers. That
-only stops a core that is still responsive. On RK3588, when a VEPU121
-core reads an IOVA that isn't mapped, the IOMMU reports a page fault and
-the core never becomes idle again: its AXI transactions stay
-outstanding, the IOMMU can't be stalled anymore ("Enable stall request
-timed out", then "Disable paging request timed out" on runtime
-suspend), every later job times out as well, and unbinding the driver
-can lock up the system.
+A job that times out can leave the IOMMU of the VPU in a bad state: a
+core that faulted on an unmapped IOVA leaves the IOMMU with a page fault
+pending, and resetting the core can leave the IOMMU out of sync with
+what its driver expects. The IOMMU is only reinitialized when it runtime
+suspends and resumes, which doesn't happen between back-to-back jobs, so
+the next jobs run with a broken IOMMU and time out as well.
 
-The driver already gets the optional reset lines of the device and
-deasserts them at probe. Pulse them in the encoder reset operations,
-after stopping the core through its registers, to return it to a clean
-idle state. The clocks are still enabled at that point, as the job that
-timed out holds them. This is a no-op on device trees that don't
-describe the resets, which is the case for all of them so far.
+Do like rkvdec: allocate an empty paging domain at probe, and after a
+timeout attach it and detach it again, which returns the device to its
+default DMA domain. The IOMMU driver disables the IOMMU and fully
+reinitializes it on each domain change (on Rockchip: stall, force reset,
+program the directory table and enable paging), and the default domain
+keeps all the existing mappings. This is done from the watchdog work,
+in process context, after the codec reset operation stopped the core
+and while the job still holds the runtime PM reference, so the IOMMU is
+powered.
 
-The Rockchip BSP MPP driver resets these cores the same way, through
-their AXI and AHB reset lines.
+Devices without an IOMMU, and IOMMUs that can't allocate a paging
+domain, are left alone.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- .../media/platform/verisilicon/rockchip_vpu_hw.c   | 30 ++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+ drivers/media/platform/verisilicon/hantro.h     |  3 ++
+ drivers/media/platform/verisilicon/hantro_drv.c | 57 +++++++++++++++++++++++++
+ 2 files changed, 60 insertions(+)
 
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-index 02673be9878e..0dced7515833 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-@@ -7,6 +7,7 @@
+diff --git a/drivers/media/platform/verisilicon/hantro.h b/drivers/media/platform/verisilicon/hantro.h
+index 0353de154a1e..51bc40668c6f 100644
+--- a/drivers/media/platform/verisilicon/hantro.h
++++ b/drivers/media/platform/verisilicon/hantro.h
+@@ -193,6 +193,8 @@ hantro_vdev_to_func(struct video_device *vdev)
+  *			shared with interrupt handlers.
+  * @variant:		Hardware variant-specific parameters.
+  * @watchdog_work:	Delayed work for hardware timeout handling.
++ * @empty_domain:	Empty IOMMU domain, used to reinitialize the IOMMU after
++ *			a timeout. NULL if the VPU isn't behind an IOMMU.
+  */
+ struct hantro_dev {
+ 	struct v4l2_device v4l2_dev;
+@@ -213,6 +215,7 @@ struct hantro_dev {
+ 	spinlock_t irqlock;
+ 	const struct hantro_variant *variant;
+ 	struct delayed_work watchdog_work;
++	struct iommu_domain *empty_domain;
+ };
+ 
+ /**
+diff --git a/drivers/media/platform/verisilicon/hantro_drv.c b/drivers/media/platform/verisilicon/hantro_drv.c
+index 702d878c7b50..c85c8f07db34 100644
+--- a/drivers/media/platform/verisilicon/hantro_drv.c
++++ b/drivers/media/platform/verisilicon/hantro_drv.c
+@@ -11,6 +11,7 @@
   */
  
  #include <linux/clk.h>
-+#include <linux/delay.h>
- 
- #include "hantro.h"
- #include "hantro_jpeg.h"
-@@ -468,6 +469,33 @@ static void rk3066_vpu_dec_reset(struct hantro_ctx *ctx)
- 	vdpu_write(vpu, G1_REG_CONFIG_DEC_CLK_GATE_E, G1_REG_CONFIG);
++#include <linux/iommu.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/of_platform.h>
+@@ -112,6 +113,31 @@ void hantro_irq_done(struct hantro_dev *vpu,
+ 	}
  }
  
 +/*
-+ * Stopping the encoder through its registers isn't enough when it is stuck
-+ * on the bus, for instance after a translation fault in its IOMMU: it keeps
-+ * AXI transactions outstanding and never becomes idle, which also prevents
-+ * the IOMMU from stalling. Pulse the reset lines of the core, if the device
-+ * tree describes them, to return it to its idle state.
++ * A job that timed out can leave the IOMMU stalled, for instance on a page
++ * fault the core never recovered from, and a hardware reset of the core can
++ * leave the IOMMU state out of sync with its driver. Attach the empty domain
++ * and detach it again to return to the default DMA domain: the IOMMU driver
++ * then disables and fully reinitializes the IOMMU, which keeps all the
++ * mappings of the default domain.
 + */
-+static void rockchip_vpu_enc_hw_reset(struct hantro_dev *vpu)
++static void hantro_iommu_restore(struct hantro_dev *vpu)
 +{
 +	int ret;
 +
-+	if (!vpu->resets)
++	if (!vpu->empty_domain)
 +		return;
 +
-+	ret = reset_control_assert(vpu->resets);
++	ret = iommu_attach_device(vpu->empty_domain, vpu->dev);
 +	if (ret) {
-+		dev_warn(vpu->dev, "Failed to assert resets: %d\n", ret);
++		dev_warn(vpu->dev, "Failed to attach the empty IOMMU domain: %d\n",
++			 ret);
 +		return;
 +	}
 +
-+	udelay(5);
-+
-+	ret = reset_control_deassert(vpu->resets);
-+	if (ret)
-+		dev_err(vpu->dev, "Failed to deassert resets: %d\n", ret);
++	iommu_detach_device(vpu->empty_domain, vpu->dev);
 +}
 +
- static void rockchip_vpu1_enc_reset(struct hantro_ctx *ctx)
+ void hantro_watchdog(struct work_struct *work)
  {
- 	struct hantro_dev *vpu = ctx->dev;
-@@ -475,6 +503,7 @@ static void rockchip_vpu1_enc_reset(struct hantro_ctx *ctx)
- 	vepu_write(vpu, H1_REG_INTERRUPT_DIS_BIT, H1_REG_INTERRUPT);
- 	vepu_write(vpu, 0, H1_REG_ENC_CTRL);
- 	vepu_write(vpu, 0, H1_REG_AXI_CTRL);
-+	rockchip_vpu_enc_hw_reset(vpu);
+ 	struct hantro_dev *vpu;
+@@ -124,6 +150,7 @@ void hantro_watchdog(struct work_struct *work)
+ 		vpu_err("frame processing timed out!\n");
+ 		if (ctx->codec_ops->reset)
+ 			ctx->codec_ops->reset(ctx);
++		hantro_iommu_restore(vpu);
+ 		hantro_job_finish(ctx, VB2_BUF_STATE_ERROR);
+ 	}
+ }
+@@ -1085,6 +1112,32 @@ static void hantro_reset_assert(struct hantro_dev *vpu)
+ 	reset_control_assert(vpu->resets);
  }
  
- static void rockchip_vpu2_dec_reset(struct hantro_ctx *ctx)
-@@ -493,6 +522,7 @@ static void rockchip_vpu2_enc_reset(struct hantro_ctx *ctx)
- 	vepu_write(vpu, VEPU_REG_INTERRUPT_DIS_BIT, VEPU_REG_INTERRUPT);
- 	vepu_write(vpu, 0, VEPU_REG_ENCODE_START);
- 	vepu_write(vpu, 0, VEPU_REG_AXI_CTRL);
-+	rockchip_vpu_enc_hw_reset(vpu);
- }
++static void hantro_free_empty_domain(void *data)
++{
++	iommu_domain_free(data);
++}
++
++static int hantro_alloc_empty_domain(struct hantro_dev *vpu)
++{
++	struct iommu_domain *domain;
++
++	if (!iommu_get_domain_for_dev(vpu->dev))
++		return 0;
++
++	domain = iommu_paging_domain_alloc(vpu->dev);
++	if (IS_ERR(domain)) {
++		/* Not fatal, the IOMMU just won't be restored on timeouts. */
++		dev_warn(vpu->dev, "Failed to allocate an empty IOMMU domain: %pe\n",
++			 domain);
++		return 0;
++	}
++
++	vpu->empty_domain = domain;
++
++	return devm_add_action_or_reset(vpu->dev, hantro_free_empty_domain,
++					domain);
++}
++
+ static int hantro_probe(struct platform_device *pdev)
+ {
+ 	const struct of_device_id *match;
+@@ -1146,6 +1199,10 @@ static int hantro_probe(struct platform_device *pdev)
+ 	if (IS_ERR(vpu->resets))
+ 		return PTR_ERR(vpu->resets);
  
- /*
++	ret = hantro_alloc_empty_domain(vpu);
++	if (ret)
++		return ret;
++
+ 	num_bases = vpu->variant->num_regs ?: 1;
+ 	vpu->reg_bases = devm_kcalloc(&pdev->dev, num_bases,
+ 				      sizeof(*vpu->reg_bases), GFP_KERNEL);
 
 -- 
 2.55.0
