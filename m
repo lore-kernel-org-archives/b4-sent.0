@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 06:03:00 +0000
-Subject: [PATCH 1/2] clk: sunxi-ng: h616: Fix the EMAC 25 MHz clock parent
- and divider
+Date: Tue, 10 Nov 2026 06:03:01 +0000
+Subject: [PATCH 2/2] clk: sunxi-ng: h616: Let the S/PDIF clock set the
+ audio PLL rate
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-h616-clk-emac-spdif-v1-1-e5e36e8963e4@gmail.com>
+Message-Id: <20261110-h616-clk-emac-spdif-v1-2-e5e36e8963e4@gmail.com>
 References: <20261110-h616-clk-emac-spdif-v1-0-e5e36e8963e4@gmail.com>
 In-Reply-To: <20261110-h616-clk-emac-spdif-v1-0-e5e36e8963e4@gmail.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -14,60 +14,52 @@ To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>,
  Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>, 
  Andre Przywara <andre.przywara@arm.com>
 Cc: linux-clk@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794290580; l=2089;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794290580; l=1435;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=3R8NOHaq8WoHe/ITqSr7/Mvs3yLBB/Q5F/fqBEKvzFI=;
- b=jzSAMX5MGax6j/Mgiufd6pZI7rdjq+ZZuAkF5zVH/+HvL4wamDRRPeN1VUPK/621DM58gISNj
- SyCW5lxUvqJBU2BHhv0egJCBCxYqLjGQzir3oElj7XrOaxwf9M6FO3a
+ bh=uVt5p9JtVDMkgUlUZbZagSzjVS3EEVHXWn6aQwkqLrw=;
+ b=kyMvMV20BqetCpzD8DhhjOaPMNYBc6IvDDTj5ZZGpdi3HSJMYV5oXMWuEqnn44dsbYCkeVEBP
+ oquoJsXrKj8Dp4E5xE8a1X/8YjlP2M+IRWPHyU1Gt919aOwQnKRLddx
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The H616 user manual (v1.0, 3.3.5.86 EPHY_25M_CLK_REG, 0x0970) gives the
-EPHY 25 MHz clock as PLL_PERI0(1X) / 24, with bit 31 gating the output
-and bit 30 gating the PLL_PERI0 input. The driver models it as a plain
-gate below ahb3, so the clock framework reports the AHB3 rate (200 MHz)
-for a clock that runs at 25 MHz, and the clock tree does not show that
-the PHY clock depends on pll-periph0 rather than on the AHB3 bus.
+sun4i-spdif asks for 22.5792 or 24.576 MHz on the S/PDIF (OWA) module
+clock, depending on the sample rate family. The spdif clock has no
+CLK_SET_RATE_PARENT, so it can only divide down the rate pll-audio
+already runs at. Unless another audio device has already set the PLL for
+the right family, the power-of-two divider rounds down and the request
+succeeds at a wrong rate: about 12.3 MHz from the reset PLL value, so
+48 kHz content is sent at about 24 kHz.
 
-Model it like the D1 driver does: a gate with a fixed /24 pre-divider
-below pll-periph0. The register writes do not change, only the parent
-and the reported rate do. On an Orange Pi Zero2, emac-25m now reads
-25000000 with pll-periph0 (600 MHz) as its parent.
+Propagate rate changes to the parent, like the audio codec clocks
+already do. This is the same change as the one just applied for the H6
+[1].
 
+Link: https://lore.kernel.org/all/20261104185027.883011-1-jernej.skrabec@gmail.com/ [1]
 Fixes: 88dde5e23da1 ("clk: sunxi-ng: Add support for the Allwinner H616 CCU")
+Cc: stable@vger.kernel.org
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/clk/sunxi-ng/ccu-sun50i-h616.c | 13 +++++++++++--
- 1 file changed, 11 insertions(+), 2 deletions(-)
+ drivers/clk/sunxi-ng/ccu-sun50i-h616.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/clk/sunxi-ng/ccu-sun50i-h616.c b/drivers/clk/sunxi-ng/ccu-sun50i-h616.c
-index 955c614830fa..d2625fec651a 100644
+index d2625fec651a..f703d690a563 100644
 --- a/drivers/clk/sunxi-ng/ccu-sun50i-h616.c
 +++ b/drivers/clk/sunxi-ng/ccu-sun50i-h616.c
-@@ -489,8 +489,17 @@ static SUNXI_CCU_MP_WITH_MUX_GATE(spi1_clk, "spi1", nand_spi_parents, 0x944,
- static SUNXI_CCU_GATE(bus_spi0_clk, "bus-spi0", "ahb3", 0x96c, BIT(0), 0);
- static SUNXI_CCU_GATE(bus_spi1_clk, "bus-spi1", "ahb3", 0x96c, BIT(1), 0);
+@@ -529,7 +529,7 @@ static struct ccu_div spdif_clk = {
+ 		.hw.init	= CLK_HW_INIT_PARENTS("spdif",
+ 						      audio_parents,
+ 						      &ccu_div_ops,
+-						      0),
++						      CLK_SET_RATE_PARENT),
+ 	},
+ };
  
--static SUNXI_CCU_GATE(emac_25m_clk, "emac-25m", "ahb3", 0x970,
--		      BIT(31) | BIT(30), 0);
-+/*
-+ * The EPHY 25 MHz clock is PLL_PERI0(1X) / 24, gated by both the special
-+ * clock gate (bit 31) and the PLL_PERI0 input gate (bit 30).
-+ */
-+static const struct clk_hw *emac_25m_parents[] = {
-+	&pll_periph0_clk.common.hw
-+};
-+
-+static SUNXI_CCU_GATE_HWS_WITH_PREDIV(emac_25m_clk, "emac-25m",
-+				      emac_25m_parents, 0x970,
-+				      BIT(31) | BIT(30), 24, 0);
- 
- static SUNXI_CCU_GATE(bus_emac0_clk, "bus-emac0", "ahb3", 0x97c, BIT(0), 0);
- static SUNXI_CCU_GATE(bus_emac1_clk, "bus-emac1", "ahb3", 0x97c, BIT(1), 0);
 
 -- 
 2.55.0
