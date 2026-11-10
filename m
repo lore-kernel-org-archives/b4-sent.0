@@ -1,11 +1,11 @@
 From: Sergei Khomenkov <shomenkow@gmail.com>
-Date: Tue, 10 Nov 2026 15:41:44 +0300
-Subject: [PATCH v2 1/3] media: verisilicon: stop the VEPU1 JPEG encoder
- after an unfinished frame
+Date: Tue, 10 Nov 2026 15:41:45 +0300
+Subject: [PATCH v2 2/3] media: verisilicon: program the H1 JPEG stream
+ limit in 64-bit words
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-hantro-buflimit-v2-1-ff7790def9fc@gmail.com>
+Message-Id: <20261110-hantro-buflimit-v2-2-ff7790def9fc@gmail.com>
 References: <20261110-hantro-buflimit-v2-0-ff7790def9fc@gmail.com>
 In-Reply-To: <20261110-hantro-buflimit-v2-0-ff7790def9fc@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -20,83 +20,57 @@ Cc: Mauro Carvalho Chehab <mchehab@kernel.org>,
  linux-stm32@st-md-mailman.stormreply.com, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org, Sergei Khomenkov <shomenkow@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794314506; l=3084;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794314506; l=2059;
  i=shomenkow@gmail.com; s=20261104; h=from:subject:message-id;
- bh=YHxh7pOb2K0qV8FuiClIzJFZEkYN6AmWKtxTo6KANAk=;
- b=uZxJGwVHOcWH3jWGfP8L1xLnMi7Sr/GSOL1WEVuW+C2Pi3WQsnfDvXgw2aoDxwWAs2rHNKOSz
- 9v92gCbP2MfBnlUnTVUb6/Ye4SVCdcNY0Jwxh/vRozR2gp33+BJcSbd
+ bh=rSixJW+4SIvnxSyMoeLcNv71TQPTVPSPPdIZPn8IhxE=;
+ b=rZnn4NFdWljPtdenIbYFVQCzkOroyvKYlmdGUI5ooGa+U4zK58oD4WfY32zIqxq2Hfq4rWxuN
+ 8s+/6csbyvVA6SX20juy4wkJtJWVLjQoFbNCblknsk6EKf4Mi32K267
 X-Developer-Key: i=shomenkow@gmail.com; a=ed25519;
  pk=FwuHDVe7aiISDMLmQEcMC+RflEIJ6kEp/ekwznWXmI8=
 X-Endpoint-Received: by B4 Relay for shomenkow@gmail.com/20261104 with auth_id=1409
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the JPEG stream reaches the stream buffer limit, the H1 raises a
-buffer-full interrupt and pauses with the enable bit of H1_REG_ENC_CTRL
-still set. rockchip_vpu1_vepu_irq() does not stop it, so the next job is
-programmed into the paused encoder and times out.
+H1_REG_STR_BUF_LIMIT counts 64-bit words, but the driver writes the room
+left in the CAPTURE plane in bytes. A stream that does not fit, such as
+a quality 100 frame of noise in a default-sized buffer, is then written
+past the end of the plane, up to eight times its size.
 
-Clear only the enable bit when an interrupt does not report a finished
-frame, and warn (rate limited) about each fault bit that is set, as
-hantro_g2_irq() does.
+Write the limit in 64-bit words, rounded down to whole 64-byte bursts:
+the encoder finishes a burst it has started, so an unrounded limit lets
+it write up to 56 bytes past it.
 
 Found with an LLM coding assistant while porting mainline Linux to a
 Rockchip RK3026 board; the assistant also drafted this change. Tested
-on that board, with the next patch applied: a frame that does not fit
-now ends with the ERROR flag and one interrupt, and the following jobs
-complete. Not tested on other SoCs.
+on that board: overflowing frames now stop at the programmed limit
+without writing past the plane, and frames that fit are byte for byte
+the same as before. Not tested on other SoCs, including the STM32MP25,
+which shares this code.
 
 Fixes: 775fec69008d ("media: add Rockchip VPU JPEG encoder driver")
 Cc: stable@vger.kernel.org
 Signed-off-by: Sergei Khomenkov <shomenkow@gmail.com>
 ---
- drivers/media/platform/verisilicon/hantro_h1_regs.h  |  4 ++++
- drivers/media/platform/verisilicon/rockchip_vpu_hw.c | 18 ++++++++++++++++++
- 2 files changed, 22 insertions(+)
+ drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/media/platform/verisilicon/hantro_h1_regs.h b/drivers/media/platform/verisilicon/hantro_h1_regs.h
-index 8650cc489392..a7f18683dac1 100644
---- a/drivers/media/platform/verisilicon/hantro_h1_regs.h
-+++ b/drivers/media/platform/verisilicon/hantro_h1_regs.h
-@@ -11,6 +11,10 @@
+diff --git a/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c b/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c
+index 86cc1a07026f..665a87e9fe92 100644
+--- a/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c
++++ b/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c
+@@ -55,7 +55,12 @@ static void hantro_h1_jpeg_enc_set_buffers(struct hantro_dev *vpu,
+ 	vepu_write_relaxed(vpu, vb2_dma_contig_plane_dma_addr(dst_buf, 0) +
+ 				ctx->vpu_dst_fmt->header_size,
+ 			   H1_REG_ADDR_OUTPUT_STREAM);
+-	vepu_write_relaxed(vpu, size_left, H1_REG_STR_BUF_LIMIT);
++	/*
++	 * The limit is in 64-bit words. The encoder finishes a 64-byte burst
++	 * it has started (measured on the RK3026), so give it whole bursts.
++	 */
++	vepu_write_relaxed(vpu, round_down(size_left, 64) / 8,
++			   H1_REG_STR_BUF_LIMIT);
  
- /* Encoder registers. */
- #define H1_REG_INTERRUPT				0x004
-+#define     H1_REG_INTERRUPT_TIMEOUT			BIT(6)
-+#define     H1_REG_INTERRUPT_BUFFER_FULL		BIT(5)
-+#define     H1_REG_INTERRUPT_RESET			BIT(4)
-+#define     H1_REG_INTERRUPT_BUS_ERROR			BIT(3)
- #define     H1_REG_INTERRUPT_FRAME_RDY			BIT(2)
- #define     H1_REG_INTERRUPT_DIS_BIT			BIT(1)
- #define     H1_REG_INTERRUPT_BIT			BIT(0)
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-index 02673be9878e..d201b058e5e8 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-@@ -376,6 +376,24 @@ static irqreturn_t rockchip_vpu1_vepu_irq(int irq, void *dev_id)
- 	state = (status & H1_REG_INTERRUPT_FRAME_RDY) ?
- 		VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR;
- 
-+	if (status & H1_REG_INTERRUPT_BUFFER_FULL)
-+		dev_warn_ratelimited(vpu->dev, "stream buffer full\n");
-+	if (status & H1_REG_INTERRUPT_BUS_ERROR)
-+		dev_warn_ratelimited(vpu->dev, "bus error detected\n");
-+	if (status & H1_REG_INTERRUPT_TIMEOUT)
-+		dev_warn_ratelimited(vpu->dev, "frame encode timed out\n");
-+	if (status & H1_REG_INTERRUPT_RESET)
-+		dev_warn_ratelimited(vpu->dev, "encoder reset\n");
-+
-+	/* After a buffer full the encoder pauses, still enabled: stop it. */
-+	if (!(status & H1_REG_INTERRUPT_FRAME_RDY)) {
-+		u32 ctrl = vepu_read(vpu, H1_REG_ENC_CTRL);
-+
-+		if (ctrl & H1_REG_ENC_CTRL_EN_BIT)
-+			vepu_write(vpu, ctrl & ~H1_REG_ENC_CTRL_EN_BIT,
-+				   H1_REG_ENC_CTRL);
-+	}
-+
- 	vepu_write(vpu, 0, H1_REG_INTERRUPT);
- 	vepu_write(vpu, 0, H1_REG_AXI_CTRL);
- 
+ 	if (pix_fmt->num_planes == 1) {
+ 		src[0] = vb2_dma_contig_plane_dma_addr(src_buf, 0);
 
 -- 
 2.53.0
