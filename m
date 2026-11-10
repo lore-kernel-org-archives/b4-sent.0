@@ -1,11 +1,10 @@
 From: Jiebing Chen <jiebing.chen@amlogic.com>
-Date: Tue, 10 Nov 2026 10:28:24 +0800
-Subject: [PATCH v8 1/5] dt-bindings: clock: meson: Add audio power domain
- for S4 soc
+Date: Tue, 10 Nov 2026 10:28:25 +0800
+Subject: [PATCH v8 2/5] dt-bindings: Asoc: axg-audio: Add S4 audio tocodec
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-audio_drvier-v8-1-1489241e4c83@amlogic.com>
+Message-Id: <20261110-audio_drvier-v8-2-1489241e4c83@amlogic.com>
 References: <20261110-audio_drvier-v8-0-1489241e4c83@amlogic.com>
 In-Reply-To: <20261110-audio_drvier-v8-0-1489241e4c83@amlogic.com>
 To: Jerome Brunet <jbrunet@baylibre.com>, 
@@ -23,72 +22,35 @@ Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org,
  jian.xu@amlogic.com, shuai.li@amlogic.com, zhe.wang@amlogic.com, 
  jiebing chen <jiebing.chen@amlogic.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794277720; l=1619;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794277720; l=851;
  i=jiebing.chen@amlogic.com; s=20250110; h=from:subject:message-id;
- bh=8FHHLcJZtu8lo09r1PD8utgqmy2N7M4R5lGLzc1tkrA=;
- b=tU/7TKYYoslaBsaQeijapfVxmsVy8JtS0rrkc3CACnkHRYQIyBFT6kbd87jVYfci8R7Fzh/mK
- iGSeam7mSKGB88BQb+YABi60uAmQ164s7cm9IZfsUgqZrgENxe5Nh23
+ bh=DMgqU4dy+C9otoBnz7xzg+U2RUB122T3zVnjUiL76gQ=;
+ b=6BQpXVkZnsnNKIesQNk5sWSYdBPvE4chX1wqGNXC/6aZi1VS4vlh+/fkXxe8bpTFUBhCNLdjo
+ GWyvxOJOZxrBIdhDKK21mqV4ENPhzDR8XlYZzv81+/Mz7VQ8r6x9o7m
 X-Developer-Key: i=jiebing.chen@amlogic.com; a=ed25519;
  pk=6rFvvF45A84pLNRy03hfUHeROxHCnZ+1KAGw/DoqKic=
 X-Endpoint-Received: by B4 Relay for jiebing.chen@amlogic.com/20250110 with auth_id=316
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The audio power domain has been found on S4 device.
-It must be enabled prior to audio operations.
+Add S4 SoC tocodec compatibility support.
 
+Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Jiebing Chen <jiebing.chen@amlogic.com>
 ---
- .../bindings/clock/amlogic,axg-audio-clkc.yaml          | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+ Documentation/devicetree/bindings/sound/amlogic,g12a-toacodec.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yaml b/Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yaml
-index fd7982dd4cea..75ddaf8d8091 100644
---- a/Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yaml
-+++ b/Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yaml
-@@ -20,6 +20,7 @@ properties:
-     enum:
-       - amlogic,axg-audio-clkc
-       - amlogic,g12a-audio-clkc
-+      - amlogic,s4-audio-clkc
-       - amlogic,sm1-audio-clkc
- 
-   '#clock-cells':
-@@ -100,6 +101,9 @@ properties:
-   resets:
-     description: internal reset line
- 
-+  power-domains:
-+    maxItems: 1
-+
- required:
-   - compatible
-   - '#clock-cells'
-@@ -115,6 +119,7 @@ allOf:
-           contains:
-             enum:
-               - amlogic,g12a-audio-clkc
-+              - amlogic,s4-audio-clkc
-               - amlogic,sm1-audio-clkc
-     then:
-       required:
-@@ -122,6 +127,18 @@ allOf:
-     else:
-       properties:
-         '#reset-cells': false
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - amlogic,s4-audio-clkc
-+    then:
-+      required:
-+        - power-domains
-+    else:
-+      properties:
-+        power-domains: false
- 
- additionalProperties: false
+diff --git a/Documentation/devicetree/bindings/sound/amlogic,g12a-toacodec.yaml b/Documentation/devicetree/bindings/sound/amlogic,g12a-toacodec.yaml
+index 23f82bb89750..7e053aaa0f59 100644
+--- a/Documentation/devicetree/bindings/sound/amlogic,g12a-toacodec.yaml
++++ b/Documentation/devicetree/bindings/sound/amlogic,g12a-toacodec.yaml
+@@ -25,6 +25,7 @@ properties:
+           - const: amlogic,g12a-toacodec
+       - items:
+           - enum:
++              - amlogic,s4-toacodec
+               - amlogic,sm1-toacodec
+           - const: amlogic,g12a-toacodec
  
 
 -- 
