@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 10:08:09 +0000
-Subject: [PATCH RFC 07/12] media: rockchip: rkvenc: Encode pictures wider
- than 4096 pixels
+Date: Tue, 10 Nov 2026 10:08:10 +0000
+Subject: [PATCH RFC 08/12] media: rockchip: rkvenc: Encode HEVC wider than
+ 4096 pixels in tile columns
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-rkvenc-v1-7-ea8b47122d8c@gmail.com>
+Message-Id: <20261110-rkvenc-v1-8-ea8b47122d8c@gmail.com>
 References: <20261110-rkvenc-v1-0-ea8b47122d8c@gmail.com>
 In-Reply-To: <20261110-rkvenc-v1-0-ea8b47122d8c@gmail.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -21,184 +21,607 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  Hans Verkuil <hverkuil@kernel.org>, Jiaxing Hu <gahing@gahingwoo.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305283; l=7132;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305283; l=23523;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=56b7J5fUEmfLr8Fj+TP9yyNIRX3fqgMQpuiuYDuQe0k=;
- b=YJG7IIZbn+1H7XmugCQJIpUWIBMUzPf7b49krYrJy0urWaN0yXq8LYI6DaUPP67KT3MVcgAeq
- uE9PlWt7NEOCgM1xRnPHoKIdw9GWDg3ET8rmfAYlIJ6VcVHiz3PaIjg
+ bh=89/Op4fZCDF7xacQvbvnx79h+b/4y5P/38+J6gzxjWc=;
+ b=8ArWAXXmeTlTiukxzA0oMrToDHJOk1jjA+mTg78cuqQirXtSfN5pSkPSl2pbqhWACqjzJcv39
+ D0bDPbIAoDJACDuG43MKdUXhVEKxrlK7k7rOXjXvgrcZwwo0xCPGBZv
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The internal line buffers of the VEPU580 cover pictures up to 4096
-pixels wide. Wider pictures need an external line buffer of 480 bytes per
-64-pixel column, given to the encoder by its bottom address and its
-(exclusive) top address in ADR_ELBB and ADR_ELBT. Both registers hold
-address bits 31:8.
+The VEPU580 HEVC encoder does not keep the state of the CTU row above in
+the external line buffer: with it, HEVC pictures wider than 4096 pixels
+come out corrupted all over, with CABAC desynchronisation in the decoder,
+while H.264 pictures of the same sizes are fine. Rockchip's MPP never uses
+the line buffer for HEVC on this encoder either; it splits wider pictures
+into tile columns of at most 4096 pixels and encodes each with its own
+hardware pass.
 
-Allocate that buffer per context at stream start when the encoded width
-is above 4096, program it for every picture, and raise the frame size
-limits of both codecs to the 16384x8192 the encoder supports.
+Do the same: above 4096 pixels, signal ceil(width / 4096) uniformly
+spaced tile columns, with loop filtering across them, in the PPS, and
+encode the picture in one pass per tile column. Each pass gets the size
+and position of its tile, the motion search cache for the CTU columns its
+search window can reach, the CTUs per row of the row rate control, and
+the buffers that carry the loop filter data of the tile edges from one
+tile to the next. It continues the bitstream after the previous one as a
+slice of its own; the status of the passes is summed for the picture.
+
+Keep the default L2 cache mapping for pictures wider than 4096, as MPP
+does (the 4x4096 mapping covers at most 4096 columns), and allocate the
+external line buffer for H.264 only.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- .../media/platform/rockchip/rkvenc/rkvenc-h264.c   |  6 ++--
- .../media/platform/rockchip/rkvenc/rkvenc-hevc.c   |  6 ++--
- .../media/platform/rockchip/rkvenc/rkvenc-regs.h   |  2 ++
- .../platform/rockchip/rkvenc/rkvenc-vepu580.c      | 38 ++++++++++++++++++++--
- drivers/media/platform/rockchip/rkvenc/rkvenc.c    |  8 ++++-
- drivers/media/platform/rockchip/rkvenc/rkvenc.h    |  4 +++
- 6 files changed, 54 insertions(+), 10 deletions(-)
+ .../media/platform/rockchip/rkvenc/rkvenc-h264.c   |   1 +
+ .../media/platform/rockchip/rkvenc/rkvenc-hevc.c   | 141 ++++++++++++++++++++-
+ .../media/platform/rockchip/rkvenc/rkvenc-regs.h   |   2 +
+ .../platform/rockchip/rkvenc/rkvenc-vepu580.c      | 100 +++++++++------
+ drivers/media/platform/rockchip/rkvenc/rkvenc.c    |  48 +++++++
+ drivers/media/platform/rockchip/rkvenc/rkvenc.h    |  31 +++++
+ 6 files changed, 281 insertions(+), 42 deletions(-)
 
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc-h264.c b/drivers/media/platform/rockchip/rkvenc/rkvenc-h264.c
-index 665c54278029..11051aea43b4 100644
+index 11051aea43b4..fcb8c070ab30 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc-h264.c
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc-h264.c
-@@ -501,11 +501,11 @@ const struct rkvenc_coded_fmt_desc rkvenc_h264_fmt_desc = {
+@@ -499,6 +499,7 @@ static const struct rkvenc_ctrls rkvenc_h264_ctrls = {
+ const struct rkvenc_coded_fmt_desc rkvenc_h264_fmt_desc = {
+ 	.fourcc = V4L2_PIX_FMT_H264_SLICE,
  	.size_align = 16,
++	.ext_line_buf = true,
  	.frmsize = {
  		.min_width = 64,
--		/* The external line buffer for wider pictures is not handled. */
--		.max_width = 4096,
-+		/* Wider than 4096 with the external line buffer. */
-+		.max_width = 16384,
- 		.step_width = 2,
- 		.min_height = 64,
--		.max_height = 4096,
-+		.max_height = 8192,
- 		.step_height = 2,
- 	},
- 	.ctrls = &rkvenc_h264_ctrls,
+ 		/* Wider than 4096 with the external line buffer. */
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c b/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c
-index a3d35a7fdc3f..638b13d6642a 100644
+index 638b13d6642a..27006e393121 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c
-@@ -689,11 +689,11 @@ const struct rkvenc_coded_fmt_desc rkvenc_hevc_fmt_desc = {
+@@ -28,6 +28,8 @@
+ #include "rkvenc.h"
+ 
+ #define RKVENC_HEVC_CTB_SIZE		64
++/* Widest tile column, in CTUs, the internal line buffers cover */
++#define RKVENC_HEVC_TILE_MAX_CTBS	(VEPU580_LINE_BUF_MAX_WIDTH / RKVENC_HEVC_CTB_SIZE)
+ /* max_mrg_cnd is a 2-bit field: MaxNumMergeCand 1..3 */
+ #define RKVENC_HEVC_MAX_MERGE_CAND	3
+ 
+@@ -47,6 +49,23 @@ static const struct vepu580_row_rc rkvenc_hevc_row_rc = {
+ 	.dthd_outer = 2,
+ };
+ 
++/*
++ * The HEVC encoder does not use the external line buffer: as in MPP,
++ * pictures wider than 4096 pixels are split into uniformly spaced tile
++ * columns of at most 4096 pixels, each encoded by its own hardware pass.
++ */
++static unsigned int rkvenc_hevc_tile_cols(unsigned int width_ctbs)
++{
++	return DIV_ROUND_UP(width_ctbs, RKVENC_HEVC_TILE_MAX_CTBS);
++}
++
++/* First CTU column of tile column @i, the uniform spacing of (6-3). */
++static unsigned int rkvenc_hevc_tile_start(unsigned int width_ctbs,
++					   unsigned int cols, unsigned int i)
++{
++	return i * width_ctbs / cols;
++}
++
+ static int rkvenc_hevc_state_constrain(struct v4l2_hevc_enc *enc,
+ 				       struct v4l2_hevc_enc_state *state)
+ {
+@@ -119,6 +138,13 @@ static int rkvenc_hevc_state_constrain(struct v4l2_hevc_enc *enc,
+ 			V4L2_HEVC_PPS_FLAG_SLICE_SEGMENT_HEADER_EXTENSION_PRESENT);
+ 	pps->num_tile_columns_minus1 = 0;
+ 	pps->num_tile_rows_minus1 = 0;
++	if (rkvenc_hevc_tile_cols(state->width_ctbs) > 1) {
++		pps->flags |= V4L2_HEVC_PPS_FLAG_TILES_ENABLED |
++			      V4L2_HEVC_PPS_FLAG_UNIFORM_SPACING |
++			      V4L2_HEVC_PPS_FLAG_LOOP_FILTER_ACROSS_TILES_ENABLED;
++		pps->num_tile_columns_minus1 =
++			rkvenc_hevc_tile_cols(state->width_ctbs) - 1;
++	}
+ 	pps->num_extra_slice_header_bits = 0;
+ 	pps->log2_parallel_merge_level_minus2 = 0;
+ 
+@@ -213,6 +239,27 @@ static const struct v4l2_hevc_enc_ops rkvenc_hevc_enc_ops = {
+ 
+ /* ---- codec ops ---- */
+ 
++/*
++ * Each tile column but the last stores the loop filter and frame buffer
++ * compression data of its right edge for the next one: one CTU row more than
++ * the TRM's 2 KiB per CTU row, as in MPP, in 1 KiB aligned parts.
++ */
++static int rkvenc_hevc_tile_buf_alloc(struct rkvenc_ctx *ctx,
++				      struct rkvenc_hevc_ctx *hevc)
++{
++	const struct v4l2_pix_format_mplane *pix = &ctx->coded_fmt.fmt.pix_mp;
++	unsigned int width_ctbs = DIV_ROUND_UP(pix->width, RKVENC_HEVC_CTB_SIZE);
++	unsigned int height_ctbs = DIV_ROUND_UP(pix->height, RKVENC_HEVC_CTB_SIZE);
++	unsigned int cols = rkvenc_hevc_tile_cols(width_ctbs);
++
++	if (cols < 2)
++		return 0;
++
++	hevc->tile_buf_size = ALIGN((height_ctbs + 1) * SZ_2K, SZ_1K);
++	return rkvenc_alloc_aux(ctx->dev, &hevc->tile_buf,
++				hevc->tile_buf_size * cols, false);
++}
++
+ static int rkvenc_hevc_start(struct rkvenc_ctx *ctx)
+ {
+ 	struct rkvenc_hevc_ctx *hevc;
+@@ -236,8 +283,15 @@ static int rkvenc_hevc_start(struct rkvenc_ctx *ctx)
+ 	enc->flags = V4L2_HEVC_ENC_FLAG_INTER_PRED |
+ 		     V4L2_HEVC_ENC_FLAG_HW_SLICE_HEADER;
+ 
++	ret = rkvenc_hevc_tile_buf_alloc(ctx, hevc);
++	if (ret) {
++		kfree(hevc);
++		return ret;
++	}
++
+ 	ret = v4l2_hevc_enc_init(enc);
+ 	if (ret) {
++		rkvenc_free_aux(ctx->dev, &hevc->tile_buf);
+ 		kfree(hevc);
+ 		return ret;
+ 	}
+@@ -254,6 +308,7 @@ static void rkvenc_hevc_stop(struct rkvenc_ctx *ctx)
+ 		return;
+ 
+ 	v4l2_hevc_enc_exit(&hevc->enc);
++	rkvenc_free_aux(ctx->dev, &hevc->tile_buf);
+ 	kfree(hevc);
+ 	ctx->priv = NULL;
+ }
+@@ -355,6 +410,8 @@ static void rkvenc_hevc_setup_syntax(struct v4l2_hevc_enc *enc,
+ 		val |= VEPU580_HEVC_PPS_LP_FLTR_ACRS_SLI;
+ 	if (pps->flags & V4L2_HEVC_PPS_FLAG_DEBLOCKING_FILTER_OVERRIDE_ENABLED)
+ 		val |= VEPU580_HEVC_PPS_DBLK_FLTR_OVRD_EN;
++	if (pps->flags & V4L2_HEVC_PPS_FLAG_LOOP_FILTER_ACROSS_TILES_ENABLED)
++		val |= VEPU580_HEVC_PPS_LPF_FLTR_ACRS_TIL;
+ 	rkvenc_set(core, VEPU580_HEVC_SYNT_PPS, val);
+ 
+ 	val = FIELD_PREP(VEPU580_HEVC_SLI0_SLI_TYPE, sh->slice_type) |
+@@ -456,10 +513,58 @@ static void rkvenc_hevc_setup_syntax(struct v4l2_hevc_enc *enc,
+ 		   FIELD_PREP(VEPU580_HEVC_RDO_CFG_CU_INTER_E, 0x6db) |
+ 		   FIELD_PREP(VEPU580_HEVC_RDO_CFG_CU_INTRA_E, 0xf) |
+ 		   VEPU580_HEVC_RDO_CFG_CCWA_E);
++}
+ 
+-	/* 0x3f0 is tile_cfg for HEVC: a single tile. */
+-	rkvenc_set(core, VEPU580_HEVC_TILE_CFG, 0);
+-	rkvenc_set(core, VEPU580_TILE_POS, 0);
++/*
++ * Program the tile column @tile of the picture: its size and position, the
++ * motion search cache for the columns it can reach, the CTUs per row of the
++ * row rate control and the loop filter buffers of its left (read) and right
++ * (written) edges. The other registers are the same for all the tiles.
++ */
++static void rkvenc_hevc_setup_tile(struct rkvenc_hevc_ctx *hevc,
++				   struct rkvenc_core *core, unsigned int tile)
++{
++	const struct v4l2_hevc_enc_state *state = &hevc->enc.state_active;
++	const struct v4l2_ctrl_hevc_pps *pps = &state->pps;
++	unsigned int cols = pps->num_tile_columns_minus1 + 1;
++	unsigned int width = state->sps.pic_width_in_luma_samples;
++	unsigned int x, w;
++	dma_addr_t buf;
++
++	hevc->tile = tile;
++	if (!(pps->flags & V4L2_HEVC_PPS_FLAG_TILES_ENABLED)) {
++		/* 0x3f0 is tile_cfg for HEVC: a single tile. */
++		rkvenc_set(core, VEPU580_HEVC_TILE_CFG, 0);
++		rkvenc_set(core, VEPU580_TILE_POS, 0);
++		rkvenc_set(core, VEPU580_LPFW_ADDR, 0);
++		rkvenc_set(core, VEPU580_LPFR_ADDR, 0);
++		vepu580_setup_hevc_cime(core, width, 0, state->width_ctbs);
++		return;
++	}
++
++	x = rkvenc_hevc_tile_start(state->width_ctbs, cols, tile);
++	w = rkvenc_hevc_tile_start(state->width_ctbs, cols, tile + 1) - x;
++
++	rkvenc_set(core, VEPU580_HEVC_TILE_CFG,
++		   FIELD_PREP(VEPU580_HEVC_TILE_CFG_TILE_W_M1, w - 1) |
++		   FIELD_PREP(VEPU580_HEVC_TILE_CFG_TILE_H_M1,
++			      state->height_ctbs - 1) |
++		   VEPU580_HEVC_TILE_CFG_TILE_EN);
++	rkvenc_set(core, VEPU580_TILE_POS,
++		   FIELD_PREP(VEPU580_TILE_POS_TILE_X, x) |
++		   FIELD_PREP(VEPU580_TILE_POS_TILE_Y, 0));
++
++	vepu580_setup_hevc_cime(core, width, x, w);
++
++	if (hevc->hw_rc)
++		rkvenc_update(core, VEPU580_RC_CFG, VEPU580_RC_CFG_RC_CTU_NUM,
++			      FIELD_PREP(VEPU580_RC_CFG_RC_CTU_NUM, w));
++
++	/* The first tile reads nothing, the last one writes nothing. */
++	buf = hevc->tile_buf.dma;
++	rkvenc_set(core, VEPU580_LPFW_ADDR, buf + tile * hevc->tile_buf_size);
++	rkvenc_set(core, VEPU580_LPFR_ADDR,
++		   buf + (tile ? tile - 1 : 1) * hevc->tile_buf_size);
+ }
+ 
+ static int rkvenc_hevc_run(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
+@@ -558,9 +663,36 @@ static int rkvenc_hevc_run(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
+ 	else
+ 		vepu580_setup_fixed_qp(core, enc->qp);
+ 
++	rkvenc_hevc_setup_tile(hevc, core, 0);
++
+ 	return 0;
+ }
+ 
++/*
++ * The next tile column continues the bitstream right after the previous
++ * one, as a slice of its own (the hardware writes its slice header).
++ */
++static int rkvenc_hevc_next_pass(struct rkvenc_ctx *ctx,
++				 struct rkvenc_core *core,
++				 struct rkvenc_run *run)
++{
++	struct rkvenc_hevc_ctx *hevc = ctx->priv;
++	const struct v4l2_ctrl_hevc_pps *pps = &hevc->enc.state_active.pps;
++	u64 offset = run->hdr_bytes + run->fb.bs_len;
++
++	if (!(pps->flags & V4L2_HEVC_PPS_FLAG_TILES_ENABLED) ||
++	    hevc->tile >= pps->num_tile_columns_minus1)
++		return 0;
++
++	if (!run->fb.bs_len || offset + SZ_4K > rkvenc_dst_size(run))
++		return -ENOSPC;
++
++	rkvenc_set(core, VEPU580_ADR_BSBS, rkvenc_dst_addr(run) + offset);
++	rkvenc_hevc_setup_tile(hevc, core, hevc->tile + 1);
++
++	return 1;
++}
++
+ static void rkvenc_hevc_done(struct rkvenc_ctx *ctx, struct rkvenc_run *run,
+ 			     const struct rkvenc_feedback *fb,
+ 			     enum vb2_buffer_state *state)
+@@ -628,6 +760,7 @@ static const struct rkvenc_codec_ops rkvenc_hevc_ops = {
+ 	.start = rkvenc_hevc_start,
+ 	.stop = rkvenc_hevc_stop,
+ 	.run = rkvenc_hevc_run,
++	.next_pass = rkvenc_hevc_next_pass,
+ 	.done = rkvenc_hevc_done,
+ };
+ 
+@@ -689,7 +822,7 @@ const struct rkvenc_coded_fmt_desc rkvenc_hevc_fmt_desc = {
  	.size_align = 8,
  	.frmsize = {
  		.min_width = 64,
--		/* Wider pictures need tiles, which are not implemented. */
--		.max_width = 4096,
-+		/* Wider than 4096 with the external line buffer. */
-+		.max_width = 16384,
+-		/* Wider than 4096 with the external line buffer. */
++		/* Wider than 4096 in tile columns of up to 4096. */
+ 		.max_width = 16384,
  		.step_width = 2,
  		.min_height = 64,
--		.max_height = 4096,
-+		.max_height = 8192,
- 		.step_height = 2,
- 	},
- 	.ctrls = &rkvenc_hevc_ctrls,
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc-regs.h b/drivers/media/platform/rockchip/rkvenc/rkvenc-regs.h
-index e8e7ce045f90..dd91004e31cf 100644
+index dd91004e31cf..e3843aee69cc 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc-regs.h
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc-regs.h
-@@ -82,6 +82,8 @@
- #define VEPU580_LPFR_ADDR			0x02c4
- #define VEPU580_EBUFT_ADDR			0x02d8
- #define VEPU580_EBUFB_ADDR			0x02dc
-+/* Widest picture the internal line buffers cover. */
-+#define VEPU580_LINE_BUF_MAX_WIDTH		4096
+@@ -354,6 +354,8 @@
+ #define VEPU580_SLI_CFG				0x03f0
+ #define   VEPU580_SLI_CFG_SLI_CRS_EN		BIT(31)
+ #define VEPU580_TILE_POS			0x03f4
++#define   VEPU580_TILE_POS_TILE_X		GENMASK(7, 0)
++#define   VEPU580_TILE_POS_TILE_Y		GENMASK(23, 16)
+ #define VEPU580_FRAME_START			0x0280
+ #define VEPU580_FRAME_END			0x03f8
  
- /* Frame class: control */
- #define VEPU580_ENC_PIC				0x0300
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc-vepu580.c b/drivers/media/platform/rockchip/rkvenc/rkvenc-vepu580.c
-index f14d5ae0b7f7..adb1372dff57 100644
+index adb1372dff57..3b52b56e8dfa 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc-vepu580.c
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc-vepu580.c
-@@ -179,9 +179,41 @@ void vepu580_setup_common(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
- 	rkvenc_set(core, VEPU580_SLI_SPLT, 0);
- 	rkvenc_set(core, VEPU580_SLI_CFG, VEPU580_SLI_CFG_SLI_CRS_EN);
+@@ -203,7 +203,8 @@ int vepu580_alloc_line_buf(struct rkvenc_ctx *ctx)
+ 	unsigned int width = ALIGN(ctx->coded_fmt.fmt.pix_mp.width,
+ 				   ctx->coded_fmt_desc->size_align);
  
--	/* No external line buffer: widths above 4096 are rejected for now. */
--	rkvenc_set(core, VEPU580_EBUFT_ADDR, 0);
--	rkvenc_set(core, VEPU580_EBUFB_ADDR, 0);
-+	/* The external line buffer: top is the exclusive end, 0 when unused. */
-+	if (ctx->line_buf.cpu) {
-+		rkvenc_set(core, VEPU580_EBUFT_ADDR,
-+			   ctx->line_buf.dma + ctx->line_buf.size);
-+		rkvenc_set(core, VEPU580_EBUFB_ADDR, ctx->line_buf.dma);
-+	} else {
-+		rkvenc_set(core, VEPU580_EBUFT_ADDR, 0);
-+		rkvenc_set(core, VEPU580_EBUFB_ADDR, 0);
-+	}
-+}
-+
-+/*
-+ * The internal line buffers cover pictures up to 4096 pixels wide. Wider
-+ * pictures need an external one of 480 bytes per 64-pixel column. Its
-+ * address registers hold bits 31:8 only, hence the 256-byte rounding (the
-+ * DMA allocation itself is page aligned). The content does not outlive a
-+ * picture, and a context runs one picture at a time, so one buffer per
-+ * context is enough.
-+ */
-+int vepu580_alloc_line_buf(struct rkvenc_ctx *ctx)
-+{
-+	unsigned int width = ALIGN(ctx->coded_fmt.fmt.pix_mp.width,
-+				   ctx->coded_fmt_desc->size_align);
-+
-+	if (width <= VEPU580_LINE_BUF_MAX_WIDTH)
-+		return 0;
-+
-+	return rkvenc_alloc_aux(ctx->dev, &ctx->line_buf,
-+				ALIGN(DIV_ROUND_UP(width, 64) * 480, 256),
-+				false);
-+}
-+
-+void vepu580_free_line_buf(struct rkvenc_ctx *ctx)
-+{
-+	rkvenc_free_aux(ctx->dev, &ctx->line_buf);
+-	if (width <= VEPU580_LINE_BUF_MAX_WIDTH)
++	if (!ctx->coded_fmt_desc->ext_line_buf ||
++	    width <= VEPU580_LINE_BUF_MAX_WIDTH)
+ 		return 0;
+ 
+ 	return rkvenc_alloc_aux(ctx->dev, &ctx->line_buf,
+@@ -490,45 +491,29 @@ void vepu580_setup_h264_tuning(struct rkvenc_dev *rkvenc,
  }
  
  /*
+- * HEVC motion estimation: the same search window as H.264 (+-44 x +-28
+- * pixels), with the CIME cache sized in 64x64 CTU columns and 4-line row
+- * groups.
++ * HEVC coarse integer motion estimation (CIME) cache, sized in 64x64 CTU
++ * columns and 4-line row groups, for the CTU columns the search window can
++ * reach from a tile of @tile_w CTU columns starting at column @tile_x (the
++ * whole picture when it is not split into tiles).
+  */
+-void vepu580_setup_hevc_me(struct rkvenc_core *core, unsigned int width,
+-			   unsigned int height, bool colmv_stor, bool colmv_load)
++void vepu580_setup_hevc_cime(struct rkvenc_core *core, unsigned int width,
++			     unsigned int tile_x, unsigned int tile_w)
+ {
+ 	const unsigned int cache_max = 2464;
+-	unsigned int width_mbs = DIV_ROUND_UP(width, 16);
+-	unsigned int height_mbs = DIV_ROUND_UP(height, 16);
+-	unsigned int cols = DIV_ROUND_UP(width, 64);
+-	unsigned int blk_w = 44, blk_h = 28, hal;
+-	unsigned int srch_w, srch_h, rx, ry, cur_w, rows, rows_max;
++	u32 rnge = core->shadow[VEPU580_ME_RNGE / 4];
++	unsigned int srch_w = FIELD_GET(VEPU580_ME_RNGE_CME_SRCH_H, rnge) * 4;
++	unsigned int srch_h = FIELD_GET(VEPU580_ME_RNGE_CME_SRCH_V, rnge) * 4;
++	unsigned int pic_cols = DIV_ROUND_UP(width, 64);
++	unsigned int reach = DIV_ROUND_UP(srch_w, 16);
++	unsigned int first, last, cols;
++	unsigned int rx, ry, cur_w, rows, rows_max;
+ 	unsigned int rama_h, ramb_h, l2_tag;
+ 
+-	if (blk_w / 4 * 2 > (width_mbs * 2 + 1) / 2)
+-		blk_w = (width_mbs * 2 + 1) / 2 / 2 * 4;
+-
+-	hal = ALIGN(height_mbs * 16, 64);
+-	if (blk_h / 4 > hal / 128 * 4)
+-		blk_h = hal / 128 * 16;
+-
+-	rkvenc_set(core, VEPU580_ME_RNGE,
+-		   FIELD_PREP(VEPU580_ME_RNGE_CME_SRCH_H, blk_w / 4) |
+-		   FIELD_PREP(VEPU580_ME_RNGE_CME_SRCH_V, blk_h / 4) |
+-		   FIELD_PREP(VEPU580_ME_RNGE_RME_SRCH_H, 7) |
+-		   FIELD_PREP(VEPU580_ME_RNGE_RME_SRCH_V, 5) |
+-		   FIELD_PREP(VEPU580_ME_RNGE_DLT_FRM_NUM, 1));
+-
+-	rkvenc_set(core, VEPU580_ME_CFG,
+-		   FIELD_PREP(VEPU580_ME_CFG_PMV_MDST_H, 5) |
+-		   FIELD_PREP(VEPU580_ME_CFG_PMV_MDST_V, 5) |
+-		   FIELD_PREP(VEPU580_ME_CFG_PMV_NUM, 2) |
+-		   (colmv_stor ? VEPU580_ME_CFG_COLMV_STOR : 0) |
+-		   (colmv_load ? VEPU580_ME_CFG_COLMV_LOAD : 0));
+-
+ 	/* Search window in pixels, with a zero global motion vector. */
+-	srch_w = blk_w;
+-	srch_h = blk_h;
++	first = tile_x > reach ? tile_x - reach : 0;
++	last = min(tile_x + tile_w - 1 + reach, pic_cols - 1);
++	cols = last - first + 1;
++
+ 	rx = (16 - srch_w % 16) % 16;
+ 	ry = (4 - srch_h % 4) % 4;
+ 	cur_w = min(DIV_ROUND_UP(rx + 2 * srch_w, 16) + 1, cols);
+@@ -551,14 +536,20 @@ void vepu580_setup_hevc_me(struct rkvenc_core *core, unsigned int width,
+ 	if (cache_max < (rama_h - 4) * cols * 4 + ramb_h * 4 * cur_w)
+ 		rama_h -= 4;
+ 
+-	if (cols <= 8)
++	/*
++	 * The L2 cache maps at most 4096 pixel columns: wider pictures (which
++	 * are split into tiles) keep the default mapping, as in MPP.
++	 */
++	if (pic_cols <= 8)
+ 		l2_tag = 0;
+-	else if (cols <= 16)
++	else if (pic_cols <= 16)
+ 		l2_tag = 1;
+-	else if (cols <= 32)
++	else if (pic_cols <= 32)
+ 		l2_tag = 2;
+-	else
++	else if (pic_cols <= 64)
+ 		l2_tag = 3;
++	else
++		l2_tag = 0;
+ 
+ 	rkvenc_set(core, VEPU580_ME_CACH,
+ 		   FIELD_PREP(VEPU580_ME_CACH_CME_RAMA_MAX,
+@@ -568,6 +559,39 @@ void vepu580_setup_hevc_me(struct rkvenc_core *core, unsigned int width,
+ 		   FIELD_PREP(VEPU580_ME_CACH_CME_LINEBUF_W, cols));
+ }
+ 
++/*
++ * HEVC motion estimation: the same search window as H.264 (+-44 x +-28
++ * pixels). The CIME cache depends on the tile, see vepu580_setup_hevc_cime().
++ */
++void vepu580_setup_hevc_me(struct rkvenc_core *core, unsigned int width,
++			   unsigned int height, bool colmv_stor, bool colmv_load)
++{
++	unsigned int width_mbs = DIV_ROUND_UP(width, 16);
++	unsigned int height_mbs = DIV_ROUND_UP(height, 16);
++	unsigned int blk_w = 44, blk_h = 28, hal;
++
++	if (blk_w / 4 * 2 > (width_mbs * 2 + 1) / 2)
++		blk_w = (width_mbs * 2 + 1) / 2 / 2 * 4;
++
++	hal = ALIGN(height_mbs * 16, 64);
++	if (blk_h / 4 > hal / 128 * 4)
++		blk_h = hal / 128 * 16;
++
++	rkvenc_set(core, VEPU580_ME_RNGE,
++		   FIELD_PREP(VEPU580_ME_RNGE_CME_SRCH_H, blk_w / 4) |
++		   FIELD_PREP(VEPU580_ME_RNGE_CME_SRCH_V, blk_h / 4) |
++		   FIELD_PREP(VEPU580_ME_RNGE_RME_SRCH_H, 7) |
++		   FIELD_PREP(VEPU580_ME_RNGE_RME_SRCH_V, 5) |
++		   FIELD_PREP(VEPU580_ME_RNGE_DLT_FRM_NUM, 1));
++
++	rkvenc_set(core, VEPU580_ME_CFG,
++		   FIELD_PREP(VEPU580_ME_CFG_PMV_MDST_H, 5) |
++		   FIELD_PREP(VEPU580_ME_CFG_PMV_MDST_V, 5) |
++		   FIELD_PREP(VEPU580_ME_CFG_PMV_NUM, 2) |
++		   (colmv_stor ? VEPU580_ME_CFG_COLMV_STOR : 0) |
++		   (colmv_load ? VEPU580_ME_CFG_COLMV_LOAD : 0));
++}
++
+ /*
+  * Scale a lambda table entry: base[] holds three (or six) consecutive
+  * entries starting at QP @first, and the table doubles every @period QPs.
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc.c b/drivers/media/platform/rockchip/rkvenc/rkvenc.c
-index 26bee08d4c2d..61c745994da9 100644
+index 61c745994da9..a82a22137488 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc.c
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc.c
-@@ -505,7 +505,12 @@ static int rkvenc_start_streaming(struct vb2_queue *q, unsigned int count)
- 	    ctx->src_fmt.fmt.pix_mp.height != ctx->coded_fmt.fmt.pix_mp.height)
- 		ret = -EINVAL;
- 	else
--		ret = desc->ops->start ? desc->ops->start(ctx) : 0;
-+		ret = vepu580_alloc_line_buf(ctx);
-+	if (!ret && desc->ops->start) {
-+		ret = desc->ops->start(ctx);
-+		if (ret)
-+			vepu580_free_line_buf(ctx);
+@@ -757,6 +757,33 @@ static void rkvenc_read_feedback(struct rkvenc_core *core,
+ 	fb->cycles = readl_relaxed(r + VEPU580_DBG_FRAME_CYC);
+ }
+ 
++/* Add the status of one hardware pass to that of the earlier ones. */
++static void rkvenc_add_feedback(struct rkvenc_feedback *sum,
++				const struct rkvenc_feedback *fb, bool first)
++{
++	unsigned int i;
++
++	if (first) {
++		*sum = *fb;
++		return;
 +	}
- 	if (ret) {
- 		rkvenc_queue_cleanup(q, VB2_BUF_STATE_QUEUED);
- 		return ret;
-@@ -524,6 +529,7 @@ static void rkvenc_stop_streaming(struct vb2_queue *q)
- 	if (ctx->started) {
- 		if (desc->ops->stop)
- 			desc->ops->stop(ctx);
-+		vepu580_free_line_buf(ctx);
- 		ctx->started = false;
++
++	sum->int_sta |= fb->int_sta;
++	sum->bs_len += fb->bs_len;
++	sum->sse += fb->sse;
++	sum->qp_sum += fb->qp_sum;
++	sum->madi += fb->madi;
++	sum->madp += fb->madp;
++	sum->intra_blocks += fb->intra_blocks;
++	for (i = 0; i < RKVENC_PNUM_COUNT; i++)
++		sum->pnum[i] += fb->pnum[i];
++	if (fb->qp_min >= 0 && (sum->qp_min < 0 || fb->qp_min < sum->qp_min))
++		sum->qp_min = fb->qp_min;
++	if (fb->qp_max > sum->qp_max)
++		sum->qp_max = fb->qp_max;
++	sum->cycles += fb->cycles;
++}
++
+ static void rkvenc_release_core(struct rkvenc_core *core)
+ {
+ 	struct rkvenc_dev *rkvenc = core->rkvenc;
+@@ -850,6 +877,8 @@ static void rkvenc_device_run(void *priv)
+ 	core->run.src = src;
+ 	core->run.dst = dst;
+ 	core->run.hdr_bytes = 0;
++	core->run.pass = 0;
++	memset(&core->run.fb, 0, sizeof(core->run.fb));
+ 
+ 	req = src->vb2_buf.req_obj.req;
+ 	if (req)
+@@ -925,6 +954,25 @@ static irqreturn_t rkvenc_irq_thread(int irq, void *priv)
+ 		dev_err(core->dev, "encode error, irq status %#x\n", sta);
+ 		state = VB2_BUF_STATE_ERROR;
+ 		rkvenc_hw_reset(core);
++	} else {
++		const struct rkvenc_codec_ops *ops =
++			core->curr_ctx->coded_fmt_desc->ops;
++		int ret = 0;
++
++		rkvenc_add_feedback(&core->run.fb, &fb, !core->run.pass);
++
++		/* Pictures encoded in several passes, e.g. HEVC tile columns */
++		if (ops->next_pass)
++			ret = ops->next_pass(core->curr_ctx, core, &core->run);
++		if (ret > 0) {
++			core->run.pass++;
++			rkvenc_hw_start(core);
++			pm_runtime_put_noidle(core->dev);
++			return IRQ_HANDLED;
++		}
++		if (ret < 0)
++			state = VB2_BUF_STATE_ERROR;
++		fb = core->run.fb;
  	}
  
+ 	pm_runtime_put_noidle(core->dev);
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc.h b/drivers/media/platform/rockchip/rkvenc/rkvenc.h
-index c2dd0bb91c51..ec6a955921b8 100644
+index ec6a955921b8..c1dce59d8308 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc.h
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc.h
-@@ -226,6 +226,8 @@ struct rkvenc_ctx {
- 	struct v4l2_ctrl_handler ctrl_hdl;
- 	struct rkvenc_core *core;
- 	struct v4l2_ctrl *avg_qp_ctrl;
-+	/* External line buffer, only for pictures wider than 4096 pixels. */
-+	struct rkvenc_aux_buf line_buf;
- 	void *priv;
- 	bool started;
+@@ -98,6 +98,10 @@ struct rkvenc_run {
+ 	struct vb2_v4l2_buffer *dst;
+ 	/* Bytes written by software at the start of @dst (parameter sets). */
+ 	unsigned int hdr_bytes;
++	/* Hardware pass of the picture, counted from 0. */
++	unsigned int pass;
++	/* Status read-back of the finished passes, summed. */
++	struct rkvenc_feedback fb;
  };
-@@ -249,6 +251,8 @@ static inline void rkvenc_or(struct rkvenc_core *core, u32 reg, u32 val)
+ 
+ /**
+@@ -107,6 +111,11 @@ struct rkvenc_run {
+  * @stop: called on STREAMOFF, frees codec state
+  * @run: prepare the job: produce software headers and fill @core's shadow
+  *	 registers (codec syntax, rate control and references)
++ * @next_pass: optional, called after each hardware pass that finished without
++ *	       error, with the status of the passes so far summed in @run->fb.
++ *	       Returns 1 after updating @core's shadow registers for another
++ *	       pass of the same picture, 0 when the picture is complete, or a
++ *	       negative error code.
+  * @done: called after the hardware finished; @fb holds the status read-back.
+  *	  The backend sets the CAPTURE payload and may change @state.
+  */
+@@ -116,6 +125,8 @@ struct rkvenc_codec_ops {
+ 	void (*stop)(struct rkvenc_ctx *ctx);
+ 	int (*run)(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
+ 		   struct rkvenc_run *run);
++	int (*next_pass)(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
++			 struct rkvenc_run *run);
+ 	void (*done)(struct rkvenc_ctx *ctx, struct rkvenc_run *run,
+ 		     const struct rkvenc_feedback *fb,
+ 		     enum vb2_buffer_state *state);
+@@ -130,10 +141,13 @@ struct rkvenc_ctrls {
+  * struct rkvenc_coded_fmt_desc - coded (CAPTURE) format description
+  * @size_align: alignment of the encoded picture size (enc_rsl), the
+  *		hardware pads the source up to it
++ * @ext_line_buf: pictures wider than 4096 pixels are encoded in one pass
++ *		  with the external line buffer
+  */
+ struct rkvenc_coded_fmt_desc {
+ 	u32 fourcc;
+ 	unsigned int size_align;
++	bool ext_line_buf;
+ 	struct v4l2_frmsize_stepwise frmsize;
+ 	const struct rkvenc_ctrls *ctrls;
+ 	const struct rkvenc_codec_ops *ops;
+@@ -209,10 +223,19 @@ struct rkvenc_h264_ctx {
+ 
+ /**
+  * struct rkvenc_hevc_ctx - HEVC per-context state
++ * @enc: HEVC stateless encode core
++ * @hw_rc: the current picture uses the hardware row rate control
++ * @tile_buf: loop filter data at the tile column boundaries, one part of
++ *	      @tile_buf_size bytes per tile column (pictures wider than 4096)
++ * @tile_buf_size: size of one part of @tile_buf
++ * @tile: tile column the current hardware pass encodes
+  */
+ struct rkvenc_hevc_ctx {
+ 	struct v4l2_hevc_enc enc;
+ 	bool hw_rc;
++	struct rkvenc_aux_buf tile_buf;
++	size_t tile_buf_size;
++	unsigned int tile;
+ };
+ 
+ struct rkvenc_ctx {
+@@ -247,6 +270,12 @@ static inline void rkvenc_or(struct rkvenc_core *core, u32 reg, u32 val)
+ 	core->shadow[reg / 4] |= val;
+ }
+ 
++static inline void rkvenc_update(struct rkvenc_core *core, u32 reg, u32 mask,
++				 u32 val)
++{
++	core->shadow[reg / 4] = (core->shadow[reg / 4] & ~mask) | (val & mask);
++}
++
+ /* Shared VEPU580 programming helpers (rkvenc-vepu580.c). */
  int rkvenc_alloc_aux(struct rkvenc_dev *rkvenc, struct rkvenc_aux_buf *buf,
  		     size_t size, bool kernel_mapping);
- void rkvenc_free_aux(struct rkvenc_dev *rkvenc, struct rkvenc_aux_buf *buf);
-+int vepu580_alloc_line_buf(struct rkvenc_ctx *ctx);
-+void vepu580_free_line_buf(struct rkvenc_ctx *ctx);
- void vepu580_setup_common(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
- 			  struct rkvenc_run *run);
- void vepu580_setup_me(struct rkvenc_core *core, unsigned int width_mbs,
+@@ -262,6 +291,8 @@ void vepu580_setup_h264_tuning(struct rkvenc_dev *rkvenc,
+ 			       struct rkvenc_core *core, bool intra);
+ void vepu580_setup_hevc_me(struct rkvenc_core *core, unsigned int width,
+ 			   unsigned int height, bool colmv_stor, bool colmv_load);
++void vepu580_setup_hevc_cime(struct rkvenc_core *core, unsigned int width,
++			     unsigned int tile_x, unsigned int tile_w);
+ void vepu580_setup_hevc_tuning(struct rkvenc_core *core, bool intra);
+ 
+ /**
 
 -- 
 2.55.0
