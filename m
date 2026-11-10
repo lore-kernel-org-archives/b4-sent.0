@@ -1,77 +1,85 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Tue, 10 Nov 2026 16:57:17 +0100
-Subject: [PATCH v2] iio: imu: inv_icm42600: update gyro start and stop
- delay
+From: Yongjian Wang <echoowall@gmail.com>
+Subject: [PATCH net-next v4 0/4] tcp: fix tcp_base_mss on passive
+ connections and test MTU probing
+Date: Wed, 11 Nov 2026 00:45:54 +0800
+Message-Id: <20261111-mtu-probing-series-v4-0-6f2e484ca8ea@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261110-iio-imu-inv-icm42600-update-gyro-start-stop-delay-v2-1-c6f5d35290d4@tdk.com>
-X-B4-Tracking: v=1; b=H4sIANw+82oC/52OQQ6CMBBFr0K6dkzbYCOuvIdhUdsBRoWStjQSw
- t0t6Anc/OQlf+b9hQX0hIFdioV5TBTIDRnkoWCm00OLQDYzk1wqwUUFRA6on4CGBGT6UirOYRq
- tjgjt7B2EqH3M6Uaw+NIzqLPVDQrFpeAs/x09NvTenbf6y2G6P9DETbQ1Osrnft5HJbH1fn7J/
- /AnAQLQnqSsuC6NLq/RPo/G9axe1/UDm5J4ogIBAAA=
-X-Change-ID: 20261019-iio-imu-inv-icm42600-update-gyro-start-stop-delay-68dafe160210
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794326247; l=1876;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=wbjCfT8lL7PclacDYR3DRKYlOUIY87724PnXNhJLve8=;
- b=6wUpx8Kg5KkPuhX+hmbhxqIfwB80/mW6VjatkPKupXnqAS8x+G1WNdRGgYGtZGokSNi1LlGeL
- ndBOIuVJGPTAS0HS9n7AEKQuqulhEyV6/C+LgEbILYyqdHWOb5Lwn3+
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAEJK82oC/33PywqDMBAF0F+RrJuSh8+u+h+li8SMmlKjJFEs4
+ r836kaKdDnM3HOZGTmwGhy6RTOyMGqnOxOG+BKhshGmBqxVmBEjLKWUcNz6Afe2k9rUeM9ikWe
+ SF5WSoCoUgr2FSk8b+kAGPDYwefTcN26QLyj9aq63jXa+s5+tf6Rb4l/VSDHBguWkgIwlQoh73
+ Qr9vpZduxWM7EjkpwQLBE8SlcYFKbmSvwQ/EJScEjwQKnwrJFsdeiSWZfkCoAZjh1YBAAA=
+X-Change-ID: 20261103-mtu-probing-series-a87b39fdbedf
+To: pabeni@redhat.com, kuba@kernel.org, shuah@kernel.org, 
+ edumazet@kernel.org, horms@kernel.org, kuniyu@google.com, 
+ ncardwell@google.com, davem@davemloft.net
+Cc: linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ netdev@vger.kernel.org, panweiping3@gmail.com, 
+ Yongjian Wang <echoowall@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794329156; l=2591;
+ i=echoowall@gmail.com; s=20261026; h=from:subject:message-id;
+ bh=S4Re5/ONNr+x1/wp/J9VFbiypqePCo68XyhS83zfVnY=;
+ b=Lk/TrL3KGYJaH2dJNyRWBnpDgGzuq5SFRj8zqIqYznmEVK7sdELtgaazUWLNjBKn4bwkFCi4j
+ HB2kwLyICT7BVDFBm+U2z5+1Hb/k7qKi/yTbKvxWJ31Gk5lNinQy6Hm
+X-Developer-Key: i=echoowall@gmail.com; a=ed25519;
+ pk=9XP6JhqjjPsHCF6UZZZTeqTRnXIa4+ufggnxXtTJ+no=
+X-Endpoint-Received: by B4 Relay for echoowall@gmail.com/20261026 with auth_id=1323
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From internal specifications maximum start time for gyroscope is 45ms.
-Stop time is required for letting gyroscope mechanical structure settle
-down before enabling it back. 50ms is a sufficient value for that.
+With tcp_mtu_probing=2, passive TCP connections can start at the full
+MSS because they sync MSS before initializing MTU probing. Patch 1
+moves initialization next to the existing MSS sync in the passive
+paths and in the active SYN-ACK path. Patch 2 adds a regression test.
 
-Update values to these numbers.
+Patches 3 and 4 add coverage for black hole detection and the MTU
+search on active connections.
 
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+On x86_64 KVM, the revised MTU search test passed in IPv4, IPv6 and
+IPv4-mapped IPv6 with patch 1 applied. Without patch 1, it failed in
+all three modes. The first TSO packet carried 2072 bytes of TCP
+payload, and the test expected 2048.
+
 ---
+Changes in v4:
+- Rename the existing black hole test to show its non-default settings.
+- Add a black hole test that only sets tcp_mtu_probing=1 (Neal, patch 3).
+- Link to v3: https://lore.kernel.org/r/20261110-mtu-probing-series-v3-0-dedfab25d641@gmail.com
+
+Changes in v3:
+- Document how the passive MSS issue was discovered (patch 1).
+- Let the SYN offer timestamps in the MTU search test so it also
+  covers the active-open change in patch 1 (Neal, patch 4).
+- Link to v2: https://lore.kernel.org/r/20261108-mtu-probing-series-v2-0-355d6490c3db@gmail.com
+
 Changes in v2:
-- Do not refer to datasheet since these values are not available.
-- Link to v1: https://patch.msgid.link/20261020-iio-imu-inv-icm42600-update-gyro-start-stop-delay-v1-1-ed52290a4ca4@tdk.com
-
-To: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-To: Jonathan Cameron <jic23@kernel.org>
-To: David Lechner <dlechner@baylibre.com>
-To: Nuno Sá <nuno.sa@analog.com>
-To: Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- drivers/iio/imu/inv_icm42600/inv_icm42600.h | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-index 3737e79dbcc1..c4a928fd3b8a 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-@@ -439,8 +439,8 @@ struct inv_icm42600_sensor_state {
- #define INV_ICM42600_POWER_UP_TIME_MS		100
- #define INV_ICM42600_RESET_TIME_MS		1
- #define INV_ICM42600_ACCEL_STARTUP_TIME_MS	20
--#define INV_ICM42600_GYRO_STARTUP_TIME_MS	60
--#define INV_ICM42600_GYRO_STOP_TIME_MS		150
-+#define INV_ICM42600_GYRO_STARTUP_TIME_MS	45
-+#define INV_ICM42600_GYRO_STOP_TIME_MS		50
- #define INV_ICM42600_TEMP_STARTUP_TIME_MS	14
- #define INV_ICM42600_SUSPEND_DELAY_MS		2000
- 
+- Move tcp_mtup_init() before the existing MSS sync in IPv4 and IPv6
+  passive opens and in the active SYN-ACK path. Remove the late
+  initialization from tcp_init_transfer() (Kuniyuki and Neal).
+- Keep the three packetdrill patches unchanged.
+- Link to v1: https://lore.kernel.org/netdev/20261103-mtu-probing-series-v1-0-a2809e725aaa@gmail.com/
 
 ---
-base-commit: 43ffda3c7f8456bbe641ae8249a077a361b97880
-change-id: 20261019-iio-imu-inv-icm42600-update-gyro-start-stop-delay-68dafe160210
+Yongjian Wang (4):
+      tcp: initialize MTU probing before syncing MSS at connection setup
+      selftests/net: packetdrill: test tcp_base_mss on passive connections
+      selftests/net: packetdrill: add TCP black hole detection tests
+      selftests/net: packetdrill: add TCP MTU probing test
+
+ net/ipv4/tcp_input.c                               |  2 +-
+ net/ipv4/tcp_ipv4.c                                |  1 +
+ net/ipv6/tcp_ipv6.c                                |  1 +
+ .../net/packetdrill/tcp_mtu_probing_blackhole.pkt  | 38 ++++++++++++++++++++
+ ..._mtu_probing_blackhole_no_tlp_retries1_is_1.pkt | 38 ++++++++++++++++++++
+ .../net/packetdrill/tcp_mtu_probing_passive.pkt    | 27 ++++++++++++++
+ .../net/packetdrill/tcp_mtu_probing_search.pkt     | 42 ++++++++++++++++++++++
+ 7 files changed, 148 insertions(+), 1 deletion(-)
+---
+base-commit: fa5196392691051963726787944db872420dfa75
+change-id: 20261103-mtu-probing-series-a87b39fdbedf
 
 Best regards,
 --  
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Yongjian Wang <echoowall@gmail.com>
 
