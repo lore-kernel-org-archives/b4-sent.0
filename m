@@ -1,16 +1,13 @@
 From: Yongjian Wang <echoowall@gmail.com>
-Subject: [PATCH net-next v4 0/4] tcp: fix tcp_base_mss on passive
- connections and test MTU probing
-Date: Wed, 11 Nov 2026 00:45:54 +0800
-Message-Id: <20261111-mtu-probing-series-v4-0-6f2e484ca8ea@gmail.com>
+Date: Wed, 11 Nov 2026 00:45:55 +0800
+Subject: [PATCH net-next v4 1/4] tcp: initialize MTU probing before syncing
+ MSS at connection setup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEJK82oC/33PywqDMBAF0F+RrJuSh8+u+h+li8SMmlKjJFEs4
- r836kaKdDnM3HOZGTmwGhy6RTOyMGqnOxOG+BKhshGmBqxVmBEjLKWUcNz6Afe2k9rUeM9ikWe
- SF5WSoCoUgr2FSk8b+kAGPDYwefTcN26QLyj9aq63jXa+s5+tf6Rb4l/VSDHBguWkgIwlQoh73
- Qr9vpZduxWM7EjkpwQLBE8SlcYFKbmSvwQ/EJScEjwQKnwrJFsdeiSWZfkCoAZjh1YBAAA=
-X-Change-ID: 20261103-mtu-probing-series-a87b39fdbedf
+Message-Id: <20261111-mtu-probing-series-v4-1-6f2e484ca8ea@gmail.com>
+References: <20261111-mtu-probing-series-v4-0-6f2e484ca8ea@gmail.com>
+In-Reply-To: <20261111-mtu-probing-series-v4-0-6f2e484ca8ea@gmail.com>
 To: pabeni@redhat.com, kuba@kernel.org, shuah@kernel.org, 
  edumazet@kernel.org, horms@kernel.org, kuniyu@google.com, 
  ncardwell@google.com, davem@davemloft.net
@@ -18,68 +15,97 @@ Cc: linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org,
  netdev@vger.kernel.org, panweiping3@gmail.com, 
  Yongjian Wang <echoowall@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794329156; l=2591;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794329156; l=3243;
  i=echoowall@gmail.com; s=20261026; h=from:subject:message-id;
- bh=S4Re5/ONNr+x1/wp/J9VFbiypqePCo68XyhS83zfVnY=;
- b=Lk/TrL3KGYJaH2dJNyRWBnpDgGzuq5SFRj8zqIqYznmEVK7sdELtgaazUWLNjBKn4bwkFCi4j
- HB2kwLyICT7BVDFBm+U2z5+1Hb/k7qKi/yTbKvxWJ31Gk5lNinQy6Hm
+ bh=fc7GUdhcvf9vRkZ3ScF2x8cdgOAMENFCNY8ojAS8WTM=;
+ b=wKZ+Ok+q/a8mkHceG56FgZXCEjtucb1MXa1ZWmh9WCQ+d8VksNSwEGcZ+i6rhSDL1yQz+RJzb
+ 25sZVzwNdUaA6i/v5L1Qu+XEtsUlr2UYzCj6luNe0+EjO0xGqUZmsKT
 X-Developer-Key: i=echoowall@gmail.com; a=ed25519;
  pk=9XP6JhqjjPsHCF6UZZZTeqTRnXIa4+ufggnxXtTJ+no=
 X-Endpoint-Received: by B4 Relay for echoowall@gmail.com/20261026 with auth_id=1323
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With tcp_mtu_probing=2, passive TCP connections can start at the full
-MSS because they sync MSS before initializing MTU probing. Patch 1
-moves initialization next to the existing MSS sync in the passive
-paths and in the active SYN-ACK path. Patch 2 adds a regression test.
+With tcp_mtu_probing=2, a passive connection starts at the full MSS
+rather than tcp_base_mss. The IPv4 and IPv6 syn_recv_sock() paths
+call tcp_sync_mss() before tcp_init_transfer() enables MTU probing.
+With tcp_base_mss=1024, the first successful probe can therefore lower
+the MSS from 1460 to 1242. On a black hole path, the first reduction
+skips 1024 and goes straight to 512.
 
-Patches 3 and 4 add coverage for black hole detection and the MTU
-search on active connections.
+The issue surfaced while developing packetdrill coverage for MTU
+probing and comparing the initial send MSS on active and passive
+IPv4 connections.
 
-On x86_64 KVM, the revised MTU search test passed in IPv4, IPv6 and
-IPv4-mapped IPv6 with patch 1 applied. Without patch 1, it failed in
-all three modes. The first TSO packet carried 2072 bytes of TCP
-payload, and the test expected 2048.
+Commit 4d83e1773031 ("tcp: delete redundant calls of tcp_mtup_init()")
+removed tcp_mtup_init() from the passive setup paths.
+Commit 27204aaa9dc6
+("tcp: uniform the set up of sockets after successful connection")
+later moved MTU probing initialization into tcp_init_transfer(),
+away from tcp_sync_mss().
 
+Initialize MTU probing immediately before the existing tcp_sync_mss()
+calls in the IPv4 and IPv6 passive setup paths and when processing
+a SYN-ACK for an active connection. Remove the late initialization
+from tcp_init_transfer(). This lets tcp_sync_mss() apply tcp_base_mss
+without adding another MSS calculation to connection setup. The
+crossed-SYN path already uses this order.
+
+Fixes: 4d83e1773031 ("tcp: delete redundant calls of tcp_mtup_init()")
+Suggested-by: Kuniyuki Iwashima <kuniyu@google.com>
+Suggested-by: Neal Cardwell <ncardwell@google.com>
+Signed-off-by: Yongjian Wang <echoowall@gmail.com>
+Reviewed-by: Kuniyuki Iwashima <kuniyu@google.com>
 ---
-Changes in v4:
-- Rename the existing black hole test to show its non-default settings.
-- Add a black hole test that only sets tcp_mtu_probing=1 (Neal, patch 3).
-- Link to v3: https://lore.kernel.org/r/20261110-mtu-probing-series-v3-0-dedfab25d641@gmail.com
+ net/ipv4/tcp_input.c | 2 +-
+ net/ipv4/tcp_ipv4.c  | 1 +
+ net/ipv6/tcp_ipv6.c  | 1 +
+ 3 files changed, 3 insertions(+), 1 deletion(-)
 
-Changes in v3:
-- Document how the passive MSS issue was discovered (patch 1).
-- Let the SYN offer timestamps in the MTU search test so it also
-  covers the active-open change in patch 1 (Neal, patch 4).
-- Link to v2: https://lore.kernel.org/r/20261108-mtu-probing-series-v2-0-355d6490c3db@gmail.com
+diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
+index 3fd0e215324d..2b54b99f1f45 100644
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -6763,7 +6763,6 @@ void tcp_init_transfer(struct sock *sk, int bpf_op, struct sk_buff *skb)
+ 	struct inet_connection_sock *icsk = inet_csk(sk);
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 
+-	tcp_mtup_init(sk);
+ 	icsk->icsk_af_ops->rebuild_header(sk);
+ 	tcp_init_metrics(sk);
+ 
+@@ -7020,6 +7019,7 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
+ 			tp->tcp_header_len = sizeof(struct tcphdr);
+ 		}
+ 
++		tcp_mtup_init(sk);
+ 		tcp_sync_mss(sk, icsk->icsk_pmtu_cookie);
+ 		tcp_initialize_rcv_mss(sk);
+ 
+diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
+index 0dc3b087665d..fb968798be36 100644
+--- a/net/ipv4/tcp_ipv4.c
++++ b/net/ipv4/tcp_ipv4.c
+@@ -1740,6 +1740,7 @@ struct sock *tcp_v4_syn_recv_sock(const struct sock *sk, struct sk_buff *skb,
+ 
+ 	tcp_ca_openreq_child(newsk, dst);
+ 
++	tcp_mtup_init(newsk);
+ 	tcp_sync_mss(newsk, dst4_mtu(dst));
+ 	newtp->advmss = tcp_mss_clamp(tcp_sk(sk), tcp_dst_advmss(dst));
+ 
+diff --git a/net/ipv6/tcp_ipv6.c b/net/ipv6/tcp_ipv6.c
+index b1dec5d86d63..8ea1ae1ad2b2 100644
+--- a/net/ipv6/tcp_ipv6.c
++++ b/net/ipv6/tcp_ipv6.c
+@@ -1490,6 +1490,7 @@ static struct sock *tcp_v6_syn_recv_sock(const struct sock *sk, struct sk_buff *
+ 
+ 	tcp_ca_openreq_child(newsk, dst);
+ 
++	tcp_mtup_init(newsk);
+ 	tcp_sync_mss(newsk, dst6_mtu(dst));
+ 	newtp->advmss = tcp_mss_clamp(tcp_sk(sk), tcp_dst_advmss(dst));
+ 
 
-Changes in v2:
-- Move tcp_mtup_init() before the existing MSS sync in IPv4 and IPv6
-  passive opens and in the active SYN-ACK path. Remove the late
-  initialization from tcp_init_transfer() (Kuniyuki and Neal).
-- Keep the three packetdrill patches unchanged.
-- Link to v1: https://lore.kernel.org/netdev/20261103-mtu-probing-series-v1-0-a2809e725aaa@gmail.com/
-
----
-Yongjian Wang (4):
-      tcp: initialize MTU probing before syncing MSS at connection setup
-      selftests/net: packetdrill: test tcp_base_mss on passive connections
-      selftests/net: packetdrill: add TCP black hole detection tests
-      selftests/net: packetdrill: add TCP MTU probing test
-
- net/ipv4/tcp_input.c                               |  2 +-
- net/ipv4/tcp_ipv4.c                                |  1 +
- net/ipv6/tcp_ipv6.c                                |  1 +
- .../net/packetdrill/tcp_mtu_probing_blackhole.pkt  | 38 ++++++++++++++++++++
- ..._mtu_probing_blackhole_no_tlp_retries1_is_1.pkt | 38 ++++++++++++++++++++
- .../net/packetdrill/tcp_mtu_probing_passive.pkt    | 27 ++++++++++++++
- .../net/packetdrill/tcp_mtu_probing_search.pkt     | 42 ++++++++++++++++++++++
- 7 files changed, 148 insertions(+), 1 deletion(-)
----
-base-commit: fa5196392691051963726787944db872420dfa75
-change-id: 20261103-mtu-probing-series-a87b39fdbedf
-
-Best regards,
---  
-Yongjian Wang <echoowall@gmail.com>
+-- 
+Git-157)
 
