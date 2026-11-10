@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 10:08:11 +0000
-Subject: [PATCH RFC 09/12] media: rockchip: rkvenc: Limit the QP of the
- HEVC I pictures to 15..51
+Date: Tue, 10 Nov 2026 10:08:12 +0000
+Subject: [PATCH RFC 10/12] media: rockchip: rkvenc: Re-encode oversized
+ HEVC pictures
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-rkvenc-v1-9-ea8b47122d8c@gmail.com>
+Message-Id: <20261110-rkvenc-v1-10-ea8b47122d8c@gmail.com>
 References: <20261110-rkvenc-v1-0-ea8b47122d8c@gmail.com>
 In-Reply-To: <20261110-rkvenc-v1-0-ea8b47122d8c@gmail.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -21,128 +21,127 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  Hans Verkuil <hverkuil@kernel.org>, Jiaxing Hu <gahing@gahingwoo.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305283; l=4902;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305283; l=5197;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=nzRroLyTR3LHObcUYhvHk+s1nb5TLThp8XYLPeVz9WI=;
- b=l9yS0DDt5begQJkokDdkchuL6PbD2r0zXcU8kfYrOM/QTLy7cq8lOqkaCeRafnQOwf8MxJkEU
- UJGE4M3QSrRDorWFMp+xJFpx/fOAK7Ck2mD1M6LuBnpWm0+K1dxasfc
+ bh=CnTD9k51xhPhovXec4M42UtPMZ1lQDg4WDx349udodE=;
+ b=UUJtPAINCYJCxhN14fvrq/KWdnnGuiFyM242OcxpOY2HMHNMedmUAWZzgTaGaG52znL8+nheO
+ 08PQMiNgBj7CcwkIcVJUEdjeOGvHzzmaf2OEqHI1G2Jdb8oCd+yozUP
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As the Rockchip MPP library does by default for HEVC, keep the I pictures
-of the frame rate control at QP 15 or above, while the P pictures may go
-down to 10: add the I picture QP limit controls, with the defaults 15 and
-51. The hardware row rate control of an I picture gets the same limits.
+Let the constant bitrate mode of the HEVC encode core code a picture far
+above its size target a second time, as the Rockchip MPP library does:
+once the last pass of the picture finished, ask v4l2_hevc_enc_reencode()
+and run the whole picture again with the new QP, writing the slice data
+over that of the first pass. The hardware writes the slice header, so the
+software headers stay as they are.
 
-Move the QP setup of the picture to a function of its own.
+A codec backend now returns RKVENC_PASS_AGAIN from next_pass to encode the
+whole picture again, which restarts the summed status of the passes, and
+RKVENC_PASS_NEXT for the next pass of the same picture.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- .../media/platform/rockchip/rkvenc/rkvenc-hevc.c   | 61 +++++++++++++++-------
- 1 file changed, 41 insertions(+), 20 deletions(-)
+ .../media/platform/rockchip/rkvenc/rkvenc-hevc.c   | 24 +++++++++++++++++-----
+ drivers/media/platform/rockchip/rkvenc/rkvenc.c    |  6 +++++-
+ drivers/media/platform/rockchip/rkvenc/rkvenc.h    | 11 +++++++---
+ 3 files changed, 32 insertions(+), 9 deletions(-)
 
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c b/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c
-index 27006e393121..9baf76f7fc43 100644
+index 9baf76f7fc43..acbbfdd3f613 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c
-@@ -567,6 +567,43 @@ static void rkvenc_hevc_setup_tile(struct rkvenc_hevc_ctx *hevc,
- 		   buf + (tile ? tile - 1 : 1) * hevc->tile_buf_size);
+@@ -688,19 +688,33 @@ static int rkvenc_hevc_run(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
+ 
+ /*
+  * The next tile column continues the bitstream right after the previous
+- * one, as a slice of its own (the hardware writes its slice header).
++ * one, as a slice of its own (the hardware writes its slice header). Once
++ * the picture is complete, the rate control may have it encoded again with
++ * a higher QP, from the first tile column, over the slice data of the first
++ * encode.
+  */
+ static int rkvenc_hevc_next_pass(struct rkvenc_ctx *ctx,
+ 				 struct rkvenc_core *core,
+ 				 struct rkvenc_run *run)
+ {
+ 	struct rkvenc_hevc_ctx *hevc = ctx->priv;
+-	const struct v4l2_ctrl_hevc_pps *pps = &hevc->enc.state_active.pps;
++	struct v4l2_hevc_enc *enc = &hevc->enc;
++	const struct v4l2_ctrl_hevc_pps *pps = &enc->state_active.pps;
+ 	u64 offset = run->hdr_bytes + run->fb.bs_len;
+ 
+ 	if (!(pps->flags & V4L2_HEVC_PPS_FLAG_TILES_ENABLED) ||
+-	    hevc->tile >= pps->num_tile_columns_minus1)
+-		return 0;
++	    hevc->tile >= pps->num_tile_columns_minus1) {
++		if (!run->fb.bs_len || offset > rkvenc_dst_size(run) ||
++		    !v4l2_hevc_enc_reencode(enc, offset))
++			return 0;
++
++		rkvenc_set(core, VEPU580_ADR_BSBS,
++			   rkvenc_dst_addr(run) + run->hdr_bytes);
++		rkvenc_hevc_setup_qp(hevc, core);
++		rkvenc_hevc_setup_tile(hevc, core, 0);
++
++		return RKVENC_PASS_AGAIN;
++	}
+ 
+ 	if (!run->fb.bs_len || offset + SZ_4K > rkvenc_dst_size(run))
+ 		return -ENOSPC;
+@@ -708,7 +722,7 @@ static int rkvenc_hevc_next_pass(struct rkvenc_ctx *ctx,
+ 	rkvenc_set(core, VEPU580_ADR_BSBS, rkvenc_dst_addr(run) + offset);
+ 	rkvenc_hevc_setup_tile(hevc, core, hevc->tile + 1);
+ 
+-	return 1;
++	return RKVENC_PASS_NEXT;
  }
  
-+/*
-+ * QP of the picture. In CBR mode the size target of the frame rate control
-+ * is handed to the hardware CTU row rate control, which adapts the QP of
-+ * each CTU row by up to the row_rc_qp_range parameter, within the QP limits
-+ * of the picture type.
-+ */
-+static void rkvenc_hevc_setup_qp(struct rkvenc_hevc_ctx *hevc,
-+				 struct rkvenc_core *core)
-+{
-+	struct v4l2_hevc_enc *enc = &hevc->enc;
-+	const struct v4l2_hevc_enc_state *state = &enc->state_active;
-+	bool intra = state->encode.slice_type == V4L2_HEVC_SLICE_TYPE_I;
-+	unsigned int qp_range;
-+	int qp_min, qp_max;
+ static void rkvenc_hevc_done(struct rkvenc_ctx *ctx, struct rkvenc_run *run,
+diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc.c b/drivers/media/platform/rockchip/rkvenc/rkvenc.c
+index a82a22137488..7313523af6b3 100644
+--- a/drivers/media/platform/rockchip/rkvenc/rkvenc.c
++++ b/drivers/media/platform/rockchip/rkvenc/rkvenc.c
+@@ -965,7 +965,11 @@ static irqreturn_t rkvenc_irq_thread(int irq, void *priv)
+ 		if (ops->next_pass)
+ 			ret = ops->next_pass(core->curr_ctx, core, &core->run);
+ 		if (ret > 0) {
+-			core->run.pass++;
++			/* A picture encoded again starts a new status sum. */
++			if (ret == RKVENC_PASS_AGAIN)
++				core->run.pass = 0;
++			else
++				core->run.pass++;
+ 			rkvenc_hw_start(core);
+ 			pm_runtime_put_noidle(core->dev);
+ 			return IRQ_HANDLED;
+diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc.h b/drivers/media/platform/rockchip/rkvenc/rkvenc.h
+index c1dce59d8308..8fae10e2c69d 100644
+--- a/drivers/media/platform/rockchip/rkvenc/rkvenc.h
++++ b/drivers/media/platform/rockchip/rkvenc/rkvenc.h
+@@ -113,12 +113,17 @@ struct rkvenc_run {
+  *	 registers (codec syntax, rate control and references)
+  * @next_pass: optional, called after each hardware pass that finished without
+  *	       error, with the status of the passes so far summed in @run->fb.
+- *	       Returns 1 after updating @core's shadow registers for another
+- *	       pass of the same picture, 0 when the picture is complete, or a
+- *	       negative error code.
++ *	       Returns RKVENC_PASS_NEXT after updating @core's shadow registers
++ *	       for another pass of the same picture, RKVENC_PASS_AGAIN after
++ *	       setting them up to encode the whole picture again (the status
++ *	       of the passes so far is dropped), 0 when the picture is
++ *	       complete, or a negative error code.
+  * @done: called after the hardware finished; @fb holds the status read-back.
+  *	  The backend sets the CAPTURE payload and may change @state.
+  */
++#define RKVENC_PASS_NEXT	1
++#define RKVENC_PASS_AGAIN	2
 +
-+	rkvenc_update(core, VEPU580_ENC_PIC, VEPU580_ENC_PIC_PIC_QP, 0);
-+	rkvenc_update(core, VEPU580_HEVC_SYNT_SLI1, VEPU580_HEVC_SLI1_SLI_QP,
-+		      FIELD_PREP(VEPU580_HEVC_SLI1_SLI_QP, enc->qp));
-+
-+	qp_range = min(READ_ONCE(rkvenc_row_rc_qp_range), 15U);
-+	hevc->hw_rc = state->frame_rc_enable &&
-+		      state->bitrate_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_CBR &&
-+		      qp_range;
-+	if (!hevc->hw_rc) {
-+		vepu580_setup_fixed_qp(core, enc->qp);
-+		return;
-+	}
-+
-+	qp_min = intra ? state->qp_min_i : state->qp_min;
-+	qp_max = intra ? state->qp_max_i : state->qp_max;
-+	vepu580_setup_row_rc(core, &rkvenc_hevc_row_rc, enc->qp,
-+			     clamp(qp_min, 0, 51), clamp(qp_max, 0, 51),
-+			     qp_range, enc->cbr.target_bits,
-+			     state->width_ctbs * state->height_ctbs,
-+			     state->width_ctbs);
-+}
-+
- static int rkvenc_hevc_run(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
- 			   struct rkvenc_run *run)
- {
-@@ -574,7 +611,6 @@ static int rkvenc_hevc_run(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
- 	struct v4l2_hevc_enc *enc = &hevc->enc;
- 	const struct v4l2_hevc_enc_state *state = &enc->state_active;
- 	struct rkvenc_rec_buf *rec, *refr = NULL, *col = NULL;
--	unsigned int ctus, qp_range;
- 	bool intra, tmvp, colmv_stor;
- 	int ret;
- 
-@@ -591,7 +627,6 @@ static int rkvenc_hevc_run(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
- 		return -ENOSPC;
- 
- 	intra = state->encode.slice_type == V4L2_HEVC_SLICE_TYPE_I;
--	ctus = state->width_ctbs * state->height_ctbs;
- 
- 	rec = enc->ref.buffer_current.private_data;
- 	if (!rec)
-@@ -645,24 +680,7 @@ static int rkvenc_hevc_run(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
- 			      colmv_stor, col && col->colmv_valid);
- 	vepu580_setup_hevc_tuning(core, intra);
- 
--	/*
--	 * In CBR mode the size target of the frame rate control is handed to
--	 * the hardware CTU row rate control, which adapts the QP of each CTU
--	 * row by up to the row_rc_qp_range parameter.
--	 */
--	qp_range = min(READ_ONCE(rkvenc_row_rc_qp_range), 15U);
--	hevc->hw_rc = state->frame_rc_enable &&
--		      state->bitrate_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_CBR &&
--		      qp_range;
--	if (hevc->hw_rc)
--		vepu580_setup_row_rc(core, &rkvenc_hevc_row_rc, enc->qp,
--				     clamp(state->qp_min, 0, 51),
--				     clamp(state->qp_max, 0, 51), qp_range,
--				     enc->cbr.target_bits, ctus,
--				     state->width_ctbs);
--	else
--		vepu580_setup_fixed_qp(core, enc->qp);
--
-+	rkvenc_hevc_setup_qp(hevc, core);
- 	rkvenc_hevc_setup_tile(hevc, core, 0);
- 
- 	return 0;
-@@ -807,6 +825,9 @@ static const struct v4l2_ctrl_config rkvenc_hevc_ctrl_cfgs[] = {
- 	},
- 	{ .id = V4L2_CID_MPEG_VIDEO_HEVC_MIN_QP, .max = 51, .step = 1, .def = 10, },
- 	{ .id = V4L2_CID_MPEG_VIDEO_HEVC_MAX_QP, .max = 51, .step = 1, .def = 51, },
-+	/* I pictures of the frame rate control: 15..51 as in MPP */
-+	{ .id = V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_MIN_QP, .max = 51, .step = 1, .def = 15, },
-+	{ .id = V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_MAX_QP, .max = 51, .step = 1, .def = 51, },
- 	{ .id = V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_QP, .max = 51, .step = 1, .def = 30, },
- 	{ .id = V4L2_CID_MPEG_VIDEO_HEVC_P_FRAME_QP, .max = 51, .step = 1, .def = 32, },
- 	{ .id = V4L2_CID_MPEG_VIDEO_AVERAGE_QP, .max = 51, .step = 1, },
+ struct rkvenc_codec_ops {
+ 	int (*adjust_fmt)(struct rkvenc_ctx *ctx, struct v4l2_format *f);
+ 	int (*start)(struct rkvenc_ctx *ctx);
 
 -- 
 2.55.0
