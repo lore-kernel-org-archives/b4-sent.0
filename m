@@ -1,11 +1,10 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 10:08:05 +0000
-Subject: [PATCH RFC 03/12] media: rockchip: rkvenc: Prepare the VEPU580
- helpers for a second codec
+Date: Tue, 10 Nov 2026 10:08:06 +0000
+Subject: [PATCH RFC 04/12] media: rockchip: rkvenc: Add HEVC encoding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-rkvenc-v1-3-ea8b47122d8c@gmail.com>
+Message-Id: <20261110-rkvenc-v1-4-ea8b47122d8c@gmail.com>
 References: <20261110-rkvenc-v1-0-ea8b47122d8c@gmail.com>
 In-Reply-To: <20261110-rkvenc-v1-0-ea8b47122d8c@gmail.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -21,348 +20,1437 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  Hans Verkuil <hverkuil@kernel.org>, Jiaxing Hu <gahing@gahingwoo.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305283; l=14020;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305283; l=57965;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=2iM36112RbghY9B9VIRnOIpKw7ji7d2ivVWmz4kYfgU=;
- b=9q/xxio0FdMlQWDIBAi4OFbgD94TcCxgcIhF2QQnCNlIlaJEOrRLKuZ8kI/MvhNd1lC2tQXfI
- YxishvArS7BBnW5vz3J0Hgxr97YYyv030/yPLUF8Wk/nxoLUL2Ubxtb
+ bh=VDaRWctJMg2+q6SgPucM1ctRAQi9Dodz4YafjC5+gjg=;
+ b=RhyLfvBgB7e2WF8dyWP0cdklttiAu4RyAIWJT/IbaUoLK5TMa4kKnmCfEB3WW2KnsMNrCO/iB
+ Tl7U++YFvYVDaPmWgpdoMcL+57V8GFcZXbrAe1LBm6OlQRFhI1fWXEC
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make the codec-independent VEPU580 programming usable by the coming HEVC
-backend, without changing the H.264 programming:
+Add an HEVC backend to the VEPU580 stateless encoder, on top of the V4L2
+HEVC stateless encode core. The CAPTURE format is
+V4L2_PIX_FMT_HEVC_SLICE, one access unit per buffer, Annex B.
 
-- The encoded picture size alignment (enc_rsl and src_fill) comes from
-  the coded format: 16 for H.264, while HEVC uses 8.
-- The hardware row rate control takes its codec-specific parameters (QP
-  adjustment per deviation bucket, outer threshold multiple, AQ mode)
-  from a table. The H.264 one holds the values used so far.
-- The row_rc_qp_range module parameter moves to the shared code so that
-  both codecs honour it. Its name and default are unchanged.
-- Controls shared by several coded formats are registered once.
-- The status read-back also collects the inter and intra block counts
-  per block size and the lowest and highest QP of the 8x8 block QP
-  histogram, for the per-frame statistics.
+The core writes the VPS, SPS and PPS at the start of the CAPTURE buffer;
+the hardware writes the slice segment NAL unit and header from the HEVC
+syntax registers, and the core patches nuh_temporal_id_plus1 afterwards,
+which the hardware cannot write.
+
+- Main profile, 8-bit 4:2:0, I and P pictures with one reference read
+  port (max_l0_refs = 1), single slice and tile, up to 4096x4096.
+- The SPS is forced to the fixed coding structure of the hardware:
+  64x64 CTBs, 8x8 minimum CBs, 4x4 to 32x32 TBs with
+  max_transform_hierarchy_depth_inter/intra = 0 (MPP's TU depth 1 is
+  HM's QuadtreeTUMaxDepth, coded minus 1; found on the board), no AMP,
+  PCM, scaling lists, transform skip, transquant bypass,
+  constrained intra prediction, tiles or WPP. cu_qp_delta is always
+  enabled (as in MPP), so the row rate control and AQ can change the QP.
+  The hardware has one chroma QP offset, so Cr follows Cb.
+- Inline short-term RPS of up to four negative pictures and up to three
+  long-term pictures, as the core resolves them; the reference picture
+  is the first entry of list 0. TMVP with collocated motion vector
+  buffers that are stored with each reference picture; motion vectors of
+  an intra collocated picture are not loaded. TMVP is not used with
+  long-term pictures.
+- Recon/reference slots are FBC header + body, a 1/4 thumbnail and the
+  collocated MVs, sized per CTU with one extra CTU row.
+- Fixed QP, constant quality and constant bitrate come from the core.
+  In the constant bitrate mode, the picture size target of the core
+  drives the hardware CTU row rate control (MPP's HEVC deviation
+  thresholds, row_rc_qp_range).
+- Per-picture statistics (QP sum, count and range, luma SSE, intra and
+  inter block counts in 8x8 units) are passed to the core, which reports
+  them in V4L2_CID_STATELESS_HEVC_ENCODE_FEEDBACK. The request is
+  completed after that, as before.
+- HEVC tuning: RDO thresholds and weights per CU size, segment and smear
+  thresholds, pre-intra and Sobel edge weights, intra cost thresholds,
+  CIME/RIME/FME settings, AQ steps, the quantisation dead zone and the
+  lambda tables (generated from their 2^(1/3) and 2^(1/6) progressions)
+  use the values of MPP's default configuration. The scaling list block
+  stays zero (scl_lst_sel = 0, flat).
+
+The register layout and the default values were derived from the Rockchip
+MPP library (hal_h265e_vepu580.c, hal_h265e_vepu580_reg.h,
+hal_h265e_vepu580_tune.c, vepu5xx_common.c, h265e_ps.c, h265e_api.c,
+Apache-2.0), read as documentation; no code was copied.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- .../media/platform/rockchip/rkvenc/rkvenc-h264.c   | 22 +++++-------
- .../media/platform/rockchip/rkvenc/rkvenc-regs.h   |  7 ++++
- .../platform/rockchip/rkvenc/rkvenc-vepu580.c      | 41 +++++++++++++++-------
- drivers/media/platform/rockchip/rkvenc/rkvenc.c    | 24 ++++++++++---
- drivers/media/platform/rockchip/rkvenc/rkvenc.h    | 41 +++++++++++++++++++++-
- 5 files changed, 103 insertions(+), 32 deletions(-)
+ drivers/media/platform/rockchip/rkvenc/Kconfig     |   5 +-
+ drivers/media/platform/rockchip/rkvenc/Makefile    |   1 +
+ .../media/platform/rockchip/rkvenc/rkvenc-hevc.c   | 702 +++++++++++++++++++++
+ .../media/platform/rockchip/rkvenc/rkvenc-regs.h   | 151 ++++-
+ .../platform/rockchip/rkvenc/rkvenc-vepu580.c      | 343 +++++++++-
+ drivers/media/platform/rockchip/rkvenc/rkvenc.c    |   5 +
+ drivers/media/platform/rockchip/rkvenc/rkvenc.h    |  16 +
+ 7 files changed, 1218 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc-h264.c b/drivers/media/platform/rockchip/rkvenc/rkvenc-h264.c
-index c669a6322f29..227d341d060b 100644
---- a/drivers/media/platform/rockchip/rkvenc/rkvenc-h264.c
-+++ b/drivers/media/platform/rockchip/rkvenc/rkvenc-h264.c
-@@ -12,20 +12,12 @@
-  */
+diff --git a/drivers/media/platform/rockchip/rkvenc/Kconfig b/drivers/media/platform/rockchip/rkvenc/Kconfig
+index 62bb1c7d5cc0..5398c4a77afa 100644
+--- a/drivers/media/platform/rockchip/rkvenc/Kconfig
++++ b/drivers/media/platform/rockchip/rkvenc/Kconfig
+@@ -8,10 +8,11 @@ config VIDEO_ROCKCHIP_VENC
+ 	select V4L2_MEM2MEM_DEV
+ 	select V4L2_H264
+ 	select V4L2_H264_ENC
++	select V4L2_HEVC_ENC
+ 	help
+ 	  Support for the VEPU580 (RKVENC) video encoder of the Rockchip
+-	  RK3588, using the V4L2 stateless encoder interface. H.264 is
+-	  supported.
++	  RK3588, using the V4L2 stateless encoder interface. H.264 and
++	  HEVC are supported.
  
- #include <linux/bitfield.h>
--#include <linux/moduleparam.h>
- #include <linux/sizes.h>
- #include <linux/slab.h>
- #include <media/v4l2-h264-enc.h>
- 
- #include "rkvenc.h"
- 
--#define RKVENC_H264_ROW_QP_RANGE	2
--
--static unsigned int row_rc_qp_range = RKVENC_H264_ROW_QP_RANGE;
--module_param(row_rc_qp_range, uint, 0644);
--MODULE_PARM_DESC(row_rc_qp_range,
--		 "CBR: maximum per-row QP change by the hardware rate control (0 = frame-level rate control only)");
--
- #define RKVENC_H264_PROFILE_BASELINE	66
- #define RKVENC_H264_PROFILE_MAIN	77
- #define RKVENC_H264_PROFILE_HIGH	100
-@@ -390,15 +382,16 @@ static int rkvenc_h264_run(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
- 	vepu580_setup_h264_tuning(ctx->dev, core, intra);
- 
- 	/*
--	 * In CBR mode the frame size target from the common rate control is
--	 * handed to the hardware row rate control, which adapts the QP of
--	 * each macroblock row by up to RKVENC_H264_ROW_QP_RANGE.
-+	 * In CBR mode the frame size target of the rate control is handed to
-+	 * the hardware row rate control, which adapts the QP of each
-+	 * macroblock row by up to the row_rc_qp_range parameter.
- 	 */
- 	h264->hw_rc = rc->mode && rc->mode->type == V4L2_H264_ENC_RC_TYPE_CBR &&
--		      READ_ONCE(row_rc_qp_range);
-+		      READ_ONCE(rkvenc_row_rc_qp_range);
- 	if (h264->hw_rc)
--		vepu580_setup_row_rc(core, rc->qp, state->qp_min, state->qp_max,
--				     min(READ_ONCE(row_rc_qp_range), 15U),
-+		vepu580_setup_row_rc(core, &vepu580_h264_row_rc, rc->qp,
-+				     state->qp_min, state->qp_max,
-+				     min(READ_ONCE(rkvenc_row_rc_qp_range), 15U),
- 				     (u64)rc->size * 8,
- 				     mbs, state->width_mbs);
- 	else
-@@ -506,6 +499,7 @@ static const struct rkvenc_ctrls rkvenc_h264_ctrls = {
- 
- const struct rkvenc_coded_fmt_desc rkvenc_h264_fmt_desc = {
- 	.fourcc = V4L2_PIX_FMT_H264_SLICE,
-+	.size_align = 16,
- 	.frmsize = {
- 		.min_width = 64,
- 		/* The external line buffer for wider pictures is not handled. */
+ 	  To compile this driver as a module, choose M here: the module
+ 	  will be called rockchip-venc.
+diff --git a/drivers/media/platform/rockchip/rkvenc/Makefile b/drivers/media/platform/rockchip/rkvenc/Makefile
+index f41e2d2afdeb..d092543e339b 100644
+--- a/drivers/media/platform/rockchip/rkvenc/Makefile
++++ b/drivers/media/platform/rockchip/rkvenc/Makefile
+@@ -4,4 +4,5 @@ obj-$(CONFIG_VIDEO_ROCKCHIP_VENC) += rockchip-venc.o
+ rockchip-venc-y += \
+ 		rkvenc.o \
+ 		rkvenc-h264.o \
++		rkvenc-hevc.o \
+ 		rkvenc-vepu580.o
+diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c b/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c
+new file mode 100644
+index 000000000000..5bc6960a521a
+--- /dev/null
++++ b/drivers/media/platform/rockchip/rkvenc/rkvenc-hevc.c
+@@ -0,0 +1,702 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Rockchip VEPU580 (RKVENC) HEVC encoding backend
++ *
++ * The video, sequence and picture parameter sets are generated by the V4L2
++ * HEVC stateless encode core and written by the CPU at the start of the
++ * CAPTURE buffer. The hardware writes the start code, NAL unit header and
++ * slice segment header from the syntax registers, followed by the slice
++ * data. It cannot write nuh_temporal_id_plus1, which the core patches
++ * after the run.
++ *
++ * The hardware reads exactly one reference picture per frame and has a
++ * fixed coding structure: 64x64 CTBs, 8x8 to 64x64 CBs, 4x4 to 32x32 TBs
++ * without explicit transform splits, no AMP, 8-bit 4:2:0. The SPS is forced
++ * to match it.
++ *
++ * Register meanings and default values come from the Rockchip MPP library
++ * (hal_h265e_vepu580.c, hal_h265e_vepu580_reg.h, h265e_ps.c).
++ */
++
++#include <linux/bitfield.h>
++#include <linux/bitops.h>
++#include <linux/log2.h>
++#include <linux/sizes.h>
++#include <linux/slab.h>
++#include <media/v4l2-hevc-enc.h>
++
++#include "rkvenc.h"
++
++#define RKVENC_HEVC_CTB_SIZE		64
++/* max_mrg_cnd is a 2-bit field: MaxNumMergeCand 1..3 */
++#define RKVENC_HEVC_MAX_MERGE_CAND	3
++
++/* Inline short-term RPS: dlt_poc_s0_m10..m13, poc_lsb_lt0..2 */
++static const struct v4l2_hevc_enc_rps_limits rkvenc_hevc_rps_limits = {
++	.num_negative_pics = 4,
++	.num_positive_pics = 0,
++	.num_long_term_pics = 3,
++};
++
++/*
++ * Row rate control: MPP's HEVC deviation thresholds are {2n, n, p, 2p}
++ * with the adjustments {-2, -1, 0, 1, 2} and AQ mode 1.
++ */
++static const struct vepu580_row_rc rkvenc_hevc_row_rc = {
++	.qp_adj = { -2, -1, 0, 1, 2, 0, 0, 0, 0 },
++	.dthd_outer = 2,
++	.aq_mode = true,
++};
++
++static int rkvenc_hevc_state_constrain(struct v4l2_hevc_enc *enc,
++				       struct v4l2_hevc_enc_state *state)
++{
++	struct rkvenc_ctx *ctx = enc->private_data;
++	const struct v4l2_pix_format_mplane *pix = &ctx->coded_fmt.fmt.pix_mp;
++	struct v4l2_ctrl_hevc_sps *sps = &state->sps;
++	struct v4l2_hevc_sps_video *video = &state->sps_video;
++	struct v4l2_ctrl_hevc_pps *pps = &state->pps;
++	struct v4l2_ctrl_hevc_encode_params *encode = &state->encode;
++	unsigned int coded_width = ALIGN(pix->width, 8);
++	unsigned int coded_height = ALIGN(pix->height, 8);
++
++	/* SPS: the coding structure of the hardware, Main profile. */
++	sps->bit_depth_luma_minus8 = 0;
++	sps->bit_depth_chroma_minus8 = 0;
++	sps->log2_min_luma_coding_block_size_minus3 = 0;
++	sps->log2_diff_max_min_luma_coding_block_size = 3;
++	sps->log2_min_luma_transform_block_size_minus2 = 0;
++	sps->log2_diff_max_min_luma_transform_block_size = 3;
++	/*
++	 * MPP's "TU depth 1" is HM's QuadtreeTUMaxDepth, coded as depth - 1:
++	 * the hardware never splits a transform tree beyond the implicit
++	 * 64x64 -> 32x32 split (checked on the board, any other value makes
++	 * the decoder misparse the residual).
++	 */
++	sps->max_transform_hierarchy_depth_inter = 0;
++	sps->max_transform_hierarchy_depth_intra = 0;
++	sps->flags &= ~(V4L2_HEVC_SPS_FLAG_SEPARATE_COLOUR_PLANE |
++			V4L2_HEVC_SPS_FLAG_SCALING_LIST_ENABLED |
++			V4L2_HEVC_SPS_FLAG_AMP_ENABLED |
++			V4L2_HEVC_SPS_FLAG_PCM_ENABLED |
++			V4L2_HEVC_SPS_FLAG_PCM_LOOP_FILTER_DISABLED);
++
++	/* Collocated long-term pictures are not handled, as in MPP. */
++	if (sps->flags & V4L2_HEVC_SPS_FLAG_LONG_TERM_REF_PICS_PRESENT) {
++		sps->flags &= ~V4L2_HEVC_SPS_FLAG_SPS_TEMPORAL_MVP_ENABLED;
++		encode->flags &= ~V4L2_HEVC_ENCODE_FLAG_SLICE_TEMPORAL_MVP_ENABLED;
++	}
++
++	/*
++	 * The core aligned the coded size to the minimum CB size it was given:
++	 * redo it for 8x8 CBs, which is also the enc_rsl granularity.
++	 */
++	sps->pic_width_in_luma_samples = coded_width;
++	sps->pic_height_in_luma_samples = coded_height;
++	state->ctb_log2_size = ilog2(RKVENC_HEVC_CTB_SIZE);
++	state->width_ctbs = DIV_ROUND_UP(coded_width, RKVENC_HEVC_CTB_SIZE);
++	state->height_ctbs = DIV_ROUND_UP(coded_height, RKVENC_HEVC_CTB_SIZE);
++
++	video->conf_win_left_offset = 0;
++	video->conf_win_top_offset = 0;
++	video->conf_win_right_offset = (coded_width - pix->width) / 2;
++	video->conf_win_bottom_offset = (coded_height - pix->height) / 2;
++	if (video->conf_win_right_offset || video->conf_win_bottom_offset)
++		video->flags |= V4L2_HEVC_SPS_VIDEO_FLAG_CONFORMANCE_WINDOW;
++	else
++		video->flags &= ~V4L2_HEVC_SPS_VIDEO_FLAG_CONFORMANCE_WINDOW;
++
++	/* PPS: tools without a register are off. */
++	pps->flags &= ~(V4L2_HEVC_PPS_FLAG_DEPENDENT_SLICE_SEGMENT_ENABLED |
++			V4L2_HEVC_PPS_FLAG_CONSTRAINED_INTRA_PRED |
++			V4L2_HEVC_PPS_FLAG_TRANSFORM_SKIP_ENABLED |
++			V4L2_HEVC_PPS_FLAG_PPS_SLICE_CHROMA_QP_OFFSETS_PRESENT |
++			V4L2_HEVC_PPS_FLAG_TRANSQUANT_BYPASS_ENABLED |
++			V4L2_HEVC_PPS_FLAG_TILES_ENABLED |
++			V4L2_HEVC_PPS_FLAG_ENTROPY_CODING_SYNC_ENABLED |
++			V4L2_HEVC_PPS_FLAG_LOOP_FILTER_ACROSS_TILES_ENABLED |
++			V4L2_HEVC_PPS_FLAG_UNIFORM_SPACING |
++			V4L2_HEVC_PPS_FLAG_LISTS_MODIFICATION_PRESENT |
++			V4L2_HEVC_PPS_FLAG_SLICE_SEGMENT_HEADER_EXTENSION_PRESENT);
++	pps->num_tile_columns_minus1 = 0;
++	pps->num_tile_rows_minus1 = 0;
++	pps->num_extra_slice_header_bits = 0;
++	pps->log2_parallel_merge_level_minus2 = 0;
++
++	/*
++	 * The row rate control and adaptive quantisation change the QP within
++	 * the picture: cu_qp_delta is always enabled, as MPP does.
++	 */
++	pps->flags |= V4L2_HEVC_PPS_FLAG_CU_QP_DELTA_ENABLED;
++	pps->diff_cu_qp_delta_depth = min_t(u8, pps->diff_cu_qp_delta_depth, 2);
++
++	/* There is a single chroma QP offset register, for Cb and Cr. */
++	pps->pps_cb_qp_offset = clamp_t(s8, pps->pps_cb_qp_offset, -12, 12);
++	pps->pps_cr_qp_offset = pps->pps_cb_qp_offset;
++
++	/* Encode parameters */
++	encode->slice_cb_qp_offset = 0;
++	encode->slice_cr_qp_offset = 0;
++	if (encode->five_minus_max_num_merge_cand < 5 - RKVENC_HEVC_MAX_MERGE_CAND)
++		encode->five_minus_max_num_merge_cand =
++			5 - RKVENC_HEVC_MAX_MERGE_CAND;
++	encode->flags &= ~V4L2_HEVC_ENCODE_FLAG_MVD_L1_ZERO;
++
++	return 0;
++}
++
++static int rkvenc_hevc_rec_buffer_alloc(struct v4l2_hevc_enc *enc,
++					struct v4l2_hevc_enc_rec_buffer *buffer)
++{
++	struct rkvenc_ctx *ctx = enc->private_data;
++	const struct v4l2_pix_format_mplane *pix = &ctx->coded_fmt.fmt.pix_mp;
++	/* FBC data needs one extra CTU row for the hardware I/O. */
++	size_t ctus = DIV_ROUND_UP(pix->width, RKVENC_HEVC_CTB_SIZE) *
++		      (DIV_ROUND_UP(pix->height, RKVENC_HEVC_CTB_SIZE) + 1);
++	size_t hdr = ALIGN(ctus * 64, SZ_8K);
++	size_t body = ctus * 64 * 64 * 3 / 2;
++	struct rkvenc_rec_buf *rec;
++	int ret;
++
++	rec = kzalloc_obj(*rec);
++	if (!rec)
++		return -ENOMEM;
++
++	rec->fbc_hdr_size = hdr;
++
++	ret = rkvenc_alloc_aux(ctx->dev, &rec->pixel, hdr + body, false);
++	if (ret)
++		goto err_free;
++
++	ret = rkvenc_alloc_aux(ctx->dev, &rec->thumb, ALIGN(ctus * 256, SZ_4K),
++			       false);
++	if (ret)
++		goto err_free_pixel;
++
++	ret = rkvenc_alloc_aux(ctx->dev, &rec->colmv, ALIGN(ctus * 96, SZ_4K),
++			       false);
++	if (ret)
++		goto err_free_thumb;
++
++	buffer->private_data = rec;
++	return 0;
++
++err_free_thumb:
++	rkvenc_free_aux(ctx->dev, &rec->thumb);
++err_free_pixel:
++	rkvenc_free_aux(ctx->dev, &rec->pixel);
++err_free:
++	kfree(rec);
++	return ret;
++}
++
++static void rkvenc_hevc_rec_buffer_free(struct v4l2_hevc_enc *enc,
++					struct v4l2_hevc_enc_rec_buffer *buffer)
++{
++	struct rkvenc_ctx *ctx = enc->private_data;
++	struct rkvenc_rec_buf *rec = buffer->private_data;
++
++	if (!rec)
++		return;
++
++	rkvenc_free_aux(ctx->dev, &rec->colmv);
++	rkvenc_free_aux(ctx->dev, &rec->thumb);
++	rkvenc_free_aux(ctx->dev, &rec->pixel);
++	kfree(rec);
++	buffer->private_data = NULL;
++}
++
++static const struct v4l2_hevc_enc_ops rkvenc_hevc_enc_ops = {
++	.state_constrain = rkvenc_hevc_state_constrain,
++	.rec_buffer_alloc = rkvenc_hevc_rec_buffer_alloc,
++	.rec_buffer_free = rkvenc_hevc_rec_buffer_free,
++};
++
++/* ---- codec ops ---- */
++
++static int rkvenc_hevc_start(struct rkvenc_ctx *ctx)
++{
++	struct rkvenc_hevc_ctx *hevc;
++	struct v4l2_hevc_enc *enc;
++	int ret;
++
++	hevc = kzalloc_obj(*hevc);
++	if (!hevc)
++		return -ENOMEM;
++
++	enc = &hevc->enc;
++	enc->ops = &rkvenc_hevc_enc_ops;
++	enc->private_data = ctx;
++	enc->format_mplane = &ctx->coded_fmt.fmt.pix_mp;
++	enc->timeperframe = &ctx->timeperframe;
++	enc->ctrl_handler = &ctx->ctrl_hdl;
++	enc->ref_slots_count_init = 1;
++	enc->max_l0_refs = 1;
++	enc->max_l1_refs = 1;
++	enc->rps_limits = &rkvenc_hevc_rps_limits;
++	enc->flags = V4L2_HEVC_ENC_FLAG_INTER_PRED |
++		     V4L2_HEVC_ENC_FLAG_HW_SLICE_HEADER;
++
++	ret = v4l2_hevc_enc_init(enc);
++	if (ret) {
++		kfree(hevc);
++		return ret;
++	}
++
++	ctx->priv = hevc;
++	return 0;
++}
++
++static void rkvenc_hevc_stop(struct rkvenc_ctx *ctx)
++{
++	struct rkvenc_hevc_ctx *hevc = ctx->priv;
++
++	if (!hevc)
++		return;
++
++	v4l2_hevc_enc_exit(&hevc->enc);
++	kfree(hevc);
++	ctx->priv = NULL;
++}
++
++static struct rkvenc_rec_buf *
++rkvenc_hevc_slot(struct v4l2_hevc_enc *enc, unsigned int index)
++{
++	return v4l2_hevc_enc_ref_buffer(enc, index)->private_data;
++}
++
++static bool rkvenc_hevc_ref_is_lt(struct v4l2_hevc_enc *enc)
++{
++	const struct v4l2_ctrl_hevc_encode_params *encode =
++		&enc->state_active.encode;
++	u8 idx;
++
++	if (!enc->ref.l0_count)
++		return false;
++
++	idx = enc->feedback.ref_idx_l0[0];
++	return idx < encode->num_refs &&
++	       encode->refs[idx].flags & V4L2_HEVC_ENCODE_REF_FLAG_LONG_TERM;
++}
++
++/*
++ * The slice flags the active SPS allows: the core checks them against the
++ * SPS of the controls, which only becomes active at the next IRAP picture.
++ */
++static u64 rkvenc_hevc_slice_flags(const struct v4l2_hevc_enc_state *state,
++				   const struct v4l2_hevc_slice_header *sh)
++{
++	u64 flags = sh->flags;
++
++	if (!(state->sps.flags & V4L2_HEVC_SPS_FLAG_SAMPLE_ADAPTIVE_OFFSET))
++		flags &= ~(V4L2_HEVC_ENCODE_FLAG_SLICE_SAO_LUMA |
++			   V4L2_HEVC_ENCODE_FLAG_SLICE_SAO_CHROMA);
++	if (!(state->sps.flags & V4L2_HEVC_SPS_FLAG_SPS_TEMPORAL_MVP_ENABLED))
++		flags &= ~V4L2_HEVC_ENCODE_FLAG_SLICE_TEMPORAL_MVP_ENABLED;
++
++	return flags;
++}
++
++static void rkvenc_hevc_setup_syntax(struct v4l2_hevc_enc *enc,
++				     struct rkvenc_core *core)
++{
++	const struct v4l2_hevc_enc_state *state = &enc->state_active;
++	const struct v4l2_ctrl_hevc_sps *sps = &state->sps;
++	const struct v4l2_ctrl_hevc_pps *pps = &state->pps;
++	const struct v4l2_hevc_slice_header *sh = &enc->slice;
++	const struct v4l2_hevc_st_rps *st = &sh->st_rps;
++	u64 flags = rkvenc_hevc_slice_flags(state, sh);
++	unsigned int num_lt = min_t(unsigned int, sh->num_long_term_pics, 3);
++	unsigned int tot_cur, i;
++	bool dblk_dis;
++	s8 beta, tc;
++	u32 val;
++
++	tot_cur = hweight16(st->used_by_curr_pic_s0) +
++		  hweight16(st->used_by_curr_pic_s1);
++	for (i = 0; i < num_lt; i++)
++		tot_cur += sh->lt[i].used_by_curr_pic_lt;
++
++	rkvenc_or(core, VEPU580_ENC_PIC,
++		  FIELD_PREP(VEPU580_ENC_PIC_ENC_STND, VEPU580_ENC_STND_HEVC) |
++		  ((state->encode.flags & V4L2_HEVC_ENCODE_FLAG_REFERENCE) ?
++		   VEPU580_ENC_PIC_CUR_FRM_REF : 0) |
++		  VEPU580_ENC_PIC_BS_SCP |
++		  FIELD_PREP(VEPU580_ENC_PIC_NUM_PIC_TOT_CUR, tot_cur) |
++		  FIELD_PREP(VEPU580_ENC_PIC_LOG2_CTU_NUM,
++			     order_base_2(state->width_ctbs * state->height_ctbs)));
++
++	rkvenc_set(core, VEPU580_HEVC_SYNT_NAL,
++		   FIELD_PREP(VEPU580_HEVC_NAL_UNIT_TYPE, sh->nal_unit_type));
++
++	val = FIELD_PREP(VEPU580_HEVC_SPS_LOG2_MAX_POC_LSB,
++			 sps->log2_max_pic_order_cnt_lsb_minus4);
++	if (sps->flags & V4L2_HEVC_SPS_FLAG_SAMPLE_ADAPTIVE_OFFSET)
++		val |= VEPU580_HEVC_SPS_SAO_EN;
++	if (sps->flags & V4L2_HEVC_SPS_FLAG_LONG_TERM_REF_PICS_PRESENT)
++		val |= VEPU580_HEVC_SPS_LT_REF_PIC_PRSNT;
++	if (sps->flags & V4L2_HEVC_SPS_FLAG_SPS_TEMPORAL_MVP_ENABLED)
++		val |= VEPU580_HEVC_SPS_TMVP_EN;
++	if (sps->flags & V4L2_HEVC_SPS_FLAG_STRONG_INTRA_SMOOTHING_ENABLED)
++		val |= VEPU580_HEVC_SPS_STRG_INTRA_SMTH;
++	rkvenc_set(core, VEPU580_HEVC_SYNT_SPS, val);
++
++	val = FIELD_PREP(VEPU580_HEVC_PPS_PIC_INIT_QP, pps->init_qp_minus26 + 26) |
++	      FIELD_PREP(VEPU580_HEVC_PPS_CU_QP_DLT_DEPTH,
++			 pps->diff_cu_qp_delta_depth);
++	if (pps->flags & V4L2_HEVC_PPS_FLAG_OUTPUT_FLAG_PRESENT)
++		val |= VEPU580_HEVC_PPS_OUT_FLG_PRSNT;
++	if (pps->flags & V4L2_HEVC_PPS_FLAG_SIGN_DATA_HIDING_ENABLED)
++		val |= VEPU580_HEVC_PPS_SGN_DAT_HID_EN;
++	if (pps->flags & V4L2_HEVC_PPS_FLAG_CABAC_INIT_PRESENT)
++		val |= VEPU580_HEVC_PPS_CBC_INIT_PRSNT;
++	if (pps->flags & V4L2_HEVC_PPS_FLAG_CU_QP_DELTA_ENABLED)
++		val |= VEPU580_HEVC_PPS_CU_QP_DLT_EN;
++	if (pps->flags & V4L2_HEVC_PPS_FLAG_PPS_LOOP_FILTER_ACROSS_SLICES_ENABLED)
++		val |= VEPU580_HEVC_PPS_LP_FLTR_ACRS_SLI;
++	if (pps->flags & V4L2_HEVC_PPS_FLAG_DEBLOCKING_FILTER_OVERRIDE_ENABLED)
++		val |= VEPU580_HEVC_PPS_DBLK_FLTR_OVRD_EN;
++	rkvenc_set(core, VEPU580_HEVC_SYNT_PPS, val);
++
++	val = FIELD_PREP(VEPU580_HEVC_SLI0_SLI_TYPE, sh->slice_type) |
++	      FIELD_PREP(VEPU580_HEVC_SLI0_SLI_PPS_ID, pps->pic_parameter_set_id) |
++	      FIELD_PREP(VEPU580_HEVC_SLI0_NUM_REFIDX_L0_ACT,
++			 sh->num_ref_idx_l0_active_minus1) |
++	      VEPU580_HEVC_SLI0_MRG_UP_FLG | VEPU580_HEVC_SLI0_MRG_LFT_FLG;
++	if (flags & V4L2_HEVC_ENCODE_FLAG_CABAC_INIT)
++		val |= VEPU580_HEVC_SLI0_CBC_INIT_FLG;
++	if (flags & V4L2_HEVC_ENCODE_FLAG_NUM_REF_IDX_ACTIVE_OVERRIDE)
++		val |= VEPU580_HEVC_SLI0_NUM_REFIDX_ACT_OVRD;
++	if (flags & V4L2_HEVC_ENCODE_FLAG_SLICE_SAO_CHROMA)
++		val |= VEPU580_HEVC_SLI0_SAO_CHRM_FLG;
++	if (flags & V4L2_HEVC_ENCODE_FLAG_SLICE_SAO_LUMA)
++		val |= VEPU580_HEVC_SLI0_SAO_LUMA_FLG;
++	if (flags & V4L2_HEVC_ENCODE_FLAG_SLICE_TEMPORAL_MVP_ENABLED)
++		val |= VEPU580_HEVC_SLI0_TMPRL_MVP_E;
++	if (!(flags & V4L2_HEVC_ENCODE_FLAG_NO_PIC_OUTPUT))
++		val |= VEPU580_HEVC_SLI0_PIC_OUT_FLG;
++	if (flags & V4L2_HEVC_ENCODE_FLAG_NO_OUTPUT_OF_PRIOR_PICS)
++		val |= VEPU580_HEVC_SLI0_NO_OUT_PRI_PIC;
++	rkvenc_set(core, VEPU580_HEVC_SYNT_SLI0, val);
++
++	/*
++	 * The deblocking registers hold the values in effect, which are the
++	 * PPS ones when the slice does not override them.
++	 */
++	if (flags & V4L2_HEVC_ENCODE_FLAG_DEBLOCKING_FILTER_OVERRIDE) {
++		dblk_dis = flags & V4L2_HEVC_ENCODE_FLAG_SLICE_DEBLOCKING_FILTER_DISABLED;
++		beta = sh->slice_beta_offset_div2;
++		tc = sh->slice_tc_offset_div2;
++	} else {
++		dblk_dis = pps->flags & V4L2_HEVC_PPS_FLAG_PPS_DISABLE_DEBLOCKING_FILTER;
++		beta = pps->pps_beta_offset_div2;
++		tc = pps->pps_tc_offset_div2;
++	}
++
++	val = FIELD_PREP(VEPU580_HEVC_SLI1_TC_OFST_DIV2, tc & 0xf) |
++	      FIELD_PREP(VEPU580_HEVC_SLI1_BETA_OFST_DIV2, beta & 0xf) |
++	      FIELD_PREP(VEPU580_HEVC_SLI1_CB_QP_OFST, pps->pps_cb_qp_offset & 0x1f) |
++	      FIELD_PREP(VEPU580_HEVC_SLI1_SLI_QP, enc->qp) |
++	      FIELD_PREP(VEPU580_HEVC_SLI1_MAX_MRG_CND,
++			 5 - sh->five_minus_max_num_merge_cand) |
++	      FIELD_PREP(VEPU580_HEVC_SLI1_COL_REF_IDX, sh->collocated_ref_idx);
++	if (flags & V4L2_HEVC_ENCODE_FLAG_SLICE_LOOP_FILTER_ACROSS_SLICES_ENABLED)
++		val |= VEPU580_HEVC_SLI1_LP_FLTR_ACRS_SLI;
++	if (dblk_dis)
++		val |= VEPU580_HEVC_SLI1_DBLK_FLTR_DIS;
++	if (flags & V4L2_HEVC_ENCODE_FLAG_DEBLOCKING_FILTER_OVERRIDE)
++		val |= VEPU580_HEVC_SLI1_DBLK_FLTR_OVRD_FLG;
++	if (sh->slice_type != V4L2_HEVC_SLICE_TYPE_B ||
++	    flags & V4L2_HEVC_ENCODE_FLAG_COLLOCATED_FROM_L0)
++		val |= VEPU580_HEVC_SLI1_COL_FRM_L0_FLG;
++	rkvenc_set(core, VEPU580_HEVC_SYNT_SLI1, val);
++
++	rkvenc_set(core, VEPU580_HEVC_SYNT_SLI2,
++		   FIELD_PREP(VEPU580_HEVC_SLI2_POC_LSB,
++			      sh->slice_pic_order_cnt_lsb));
++
++	/* Inline short-term RPS (st_ref_pic_set_sps_flag = 0) and LT pictures */
++	rkvenc_set(core, VEPU580_HEVC_SYNT_REFM0,
++		   FIELD_PREP(VEPU580_HEVC_REFM0_POC_LSB_LT0,
++			      num_lt > 0 ? sh->lt[0].poc_lsb_lt : 0) |
++		   FIELD_PREP(VEPU580_HEVC_REFM0_NUM_LT_PIC, num_lt));
++
++	val = FIELD_PREP(VEPU580_HEVC_REFM1_USED_BY_S0,
++			 st->used_by_curr_pic_s0) |
++	      FIELD_PREP(VEPU580_HEVC_REFM1_NUM_NEG_PICS, st->num_negative_pics);
++	if (num_lt > 0)
++		val |= FIELD_PREP(VEPU580_HEVC_REFM1_DLT_POC_MSB_CYCL0,
++				  sh->lt[0].delta_poc_msb_cycle_lt);
++	for (i = 0; i < num_lt; i++) {
++		if (sh->lt[i].delta_poc_msb_present)
++			val |= VEPU580_HEVC_REFM1_DLT_POC_MSB_PRSNT(i);
++		if (sh->lt[i].used_by_curr_pic_lt)
++			val |= VEPU580_HEVC_REFM1_USED_BY_LT(i);
++	}
++	rkvenc_set(core, VEPU580_HEVC_SYNT_REFM1, val);
++
++	rkvenc_set(core, VEPU580_HEVC_SYNT_REFM2,
++		   st->delta_poc_s0_minus1[0] | st->delta_poc_s0_minus1[1] << 16);
++	rkvenc_set(core, VEPU580_HEVC_SYNT_REFM3,
++		   st->delta_poc_s0_minus1[2] | st->delta_poc_s0_minus1[3] << 16);
++	rkvenc_set(core, VEPU580_HEVC_SYNT_LONG_REFM0,
++		   FIELD_PREP(VEPU580_HEVC_LONG_REFM0_POC_LSB_LT1,
++			      num_lt > 1 ? sh->lt[1].poc_lsb_lt : 0) |
++		   FIELD_PREP(VEPU580_HEVC_LONG_REFM0_POC_LSB_LT2,
++			      num_lt > 2 ? sh->lt[2].poc_lsb_lt : 0));
++	rkvenc_set(core, VEPU580_HEVC_SYNT_LONG_REFM1,
++		   FIELD_PREP(VEPU580_HEVC_LONG_REFM1_MSB_CYCL1,
++			      num_lt > 1 ? sh->lt[1].delta_poc_msb_cycle_lt : 0) |
++		   FIELD_PREP(VEPU580_HEVC_LONG_REFM1_MSB_CYCL2,
++			      num_lt > 2 ? sh->lt[2].delta_poc_msb_cycle_lt : 0));
++
++	/* RDO: MPP's CU and intra mode enables */
++	rkvenc_set(core, VEPU580_RDO_CFG,
++		   (rkvenc_hevc_ref_is_lt(enc) ? VEPU580_HEVC_RDO_CFG_LTM_IDX0L0 : 0) |
++		   VEPU580_HEVC_RDO_CFG_CHRM_SPCL |
++		   FIELD_PREP(VEPU580_HEVC_RDO_CFG_CU_INTER_E, 0x6db) |
++		   FIELD_PREP(VEPU580_HEVC_RDO_CFG_CU_INTRA_E, 0xf) |
++		   VEPU580_HEVC_RDO_CFG_CCWA_E);
++
++	/* 0x3f0 is tile_cfg for HEVC: a single tile. */
++	rkvenc_set(core, VEPU580_HEVC_TILE_CFG, 0);
++	rkvenc_set(core, VEPU580_TILE_POS, 0);
++}
++
++static int rkvenc_hevc_run(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
++			   struct rkvenc_run *run)
++{
++	struct rkvenc_hevc_ctx *hevc = ctx->priv;
++	struct v4l2_hevc_enc *enc = &hevc->enc;
++	const struct v4l2_hevc_enc_state *state = &enc->state_active;
++	struct rkvenc_rec_buf *rec, *refr = NULL, *col = NULL;
++	unsigned int ctus, qp_range;
++	bool intra, tmvp, colmv_stor;
++	int ret;
++
++	/* The parameter sets are written through the kernel mapping. */
++	if (!vb2_plane_vaddr(&run->dst->vb2_buf, 0))
++		return -ENOMEM;
++
++	ret = v4l2_hevc_enc_step(enc, run->dst);
++	if (ret)
++		return ret;
++
++	run->hdr_bytes = enc->header_size;
++	if (run->hdr_bytes + SZ_4K > rkvenc_dst_size(run))
++		return -ENOSPC;
++
++	intra = state->encode.slice_type == V4L2_HEVC_SLICE_TYPE_I;
++	ctus = state->width_ctbs * state->height_ctbs;
++
++	rec = enc->ref.buffer_current.private_data;
++	if (!rec)
++		return -EINVAL;
++
++	/* A P picture must have a reconstructed reference to read. */
++	if (!intra) {
++		if (!enc->ref.l0_count)
++			return -EINVAL;
++		refr = rkvenc_hevc_slot(enc, enc->ref.l0[0]);
++		if (!refr)
++			return -EINVAL;
++	}
++
++	tmvp = rkvenc_hevc_slice_flags(state, &enc->slice) &
++	       V4L2_HEVC_ENCODE_FLAG_SLICE_TEMPORAL_MVP_ENABLED;
++	if (tmvp && enc->ref.collocated >= 0)
++		col = rkvenc_hevc_slot(enc, enc->ref.collocated);
++
++	/*
++	 * As in MPP, only inter pictures store their motion vectors; those of
++	 * an intra collocated picture are not loaded (they are unavailable).
++	 */
++	colmv_stor = !intra &&
++		     state->sps.flags & V4L2_HEVC_SPS_FLAG_SPS_TEMPORAL_MVP_ENABLED;
++	rec->colmv_valid = colmv_stor;
++
++	vepu580_setup_common(ctx, core, run);
++
++	rkvenc_set(core, VEPU580_DTRNS_CFG, intra ? 0 : VEPU580_DTRNS_CFG_DSPR_OTSD);
++	rkvenc_set(core, VEPU580_SRC_PROC, VEPU580_SRC_PROC_TXA_EN);
++
++	rkvenc_hevc_setup_syntax(enc, core);
++
++	/* Reconstruction (written only for reference pictures) and reference */
++	rkvenc_set(core, VEPU580_RFPW_H_ADDR, rec->pixel.dma);
++	rkvenc_set(core, VEPU580_RFPW_B_ADDR, rec->pixel.dma + rec->fbc_hdr_size);
++	rkvenc_set(core, VEPU580_DSPW_ADDR, rec->thumb.dma);
++	rkvenc_set(core, VEPU580_CMVW_ADDR, rec->colmv.dma);
++	if (refr) {
++		rkvenc_set(core, VEPU580_RFPR_H_ADDR, refr->pixel.dma);
++		rkvenc_set(core, VEPU580_RFPR_B_ADDR,
++			   refr->pixel.dma + refr->fbc_hdr_size);
++		rkvenc_set(core, VEPU580_DSPR_ADDR, refr->thumb.dma);
++	}
++	if (col)
++		rkvenc_set(core, VEPU580_CMVR_ADDR, col->colmv.dma);
++
++	vepu580_setup_hevc_me(core, state->sps.pic_width_in_luma_samples,
++			      state->sps.pic_height_in_luma_samples,
++			      colmv_stor, col && col->colmv_valid);
++	vepu580_setup_hevc_tuning(core, intra);
++
++	/*
++	 * In CBR mode the size target of the frame rate control is handed to
++	 * the hardware CTU row rate control, which adapts the QP of each CTU
++	 * row by up to the row_rc_qp_range parameter.
++	 */
++	qp_range = min(READ_ONCE(rkvenc_row_rc_qp_range), 15U);
++	hevc->hw_rc = state->frame_rc_enable &&
++		      state->bitrate_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_CBR &&
++		      qp_range;
++	if (hevc->hw_rc)
++		vepu580_setup_row_rc(core, &rkvenc_hevc_row_rc, enc->qp,
++				     clamp(state->qp_min, 0, 51),
++				     clamp(state->qp_max, 0, 51), qp_range,
++				     enc->cbr.target_bits, ctus,
++				     state->width_ctbs);
++	else
++		vepu580_setup_fixed_qp(core, enc->qp);
++
++	return 0;
++}
++
++static void rkvenc_hevc_done(struct rkvenc_ctx *ctx, struct rkvenc_run *run,
++			     const struct rkvenc_feedback *fb,
++			     enum vb2_buffer_state *state)
++{
++	struct rkvenc_hevc_ctx *hevc = ctx->priv;
++	struct v4l2_stateless_encode_stats stats = { };
++	const u32 *pnum = fb->pnum;
++	struct v4l2_hevc_enc *enc;
++	unsigned int blocks;
++	u64 bytes;
++
++	if (!hevc || *state != VB2_BUF_STATE_DONE)
++		return;
++
++	enc = &hevc->enc;
++	bytes = run->hdr_bytes + fb->bs_len;
++	if (!fb->bs_len || bytes > rkvenc_dst_size(run)) {
++		*state = VB2_BUF_STATE_ERROR;
++		return;
++	}
++
++	vb2_set_plane_payload(&run->dst->vb2_buf, 0, bytes);
++
++	/* qp_sum counts the 8x8 blocks of the CTU-aligned picture. */
++	blocks = enc->state_active.width_ctbs * enc->state_active.height_ctbs *
++		 (RKVENC_HEVC_CTB_SIZE / 8) * (RKVENC_HEVC_CTB_SIZE / 8);
++
++	stats.flags = V4L2_STATELESS_ENCODE_STATS_FLAG_QP |
++		      V4L2_STATELESS_ENCODE_STATS_FLAG_SSE_LUMA |
++		      V4L2_STATELESS_ENCODE_STATS_FLAG_BLOCKS;
++	stats.qp_sum = fb->qp_sum;
++	stats.qp_count = blocks;
++	if (fb->qp_min >= 0) {
++		stats.qp_min = fb->qp_min;
++		stats.qp_max = fb->qp_max;
++	} else {
++		stats.qp_min = enc->qp;
++		stats.qp_max = enc->qp;
++	}
++	stats.sse_luma = fb->sse;
++	/* In 8x8 units; I8 and I4 both count 8x8 CUs. */
++	stats.num_intra_blocks = pnum[RKVENC_PNUM_I32] * 16 +
++				 pnum[RKVENC_PNUM_I16] * 4 +
++				 pnum[RKVENC_PNUM_I8] + pnum[RKVENC_PNUM_I4];
++	stats.num_inter_blocks = pnum[RKVENC_PNUM_P64] * 64 +
++				 pnum[RKVENC_PNUM_P32] * 16 +
++				 pnum[RKVENC_PNUM_P16] * 4 + pnum[RKVENC_PNUM_P8];
++
++	if (ctx->avg_qp_ctrl && blocks)
++		v4l2_ctrl_s_ctrl(ctx->avg_qp_ctrl,
++				 min(DIV_ROUND_CLOSEST(fb->qp_sum, blocks), 51U));
++
++	/* DPB update, TemporalId patch, buffer flags and the feedback control */
++	if (v4l2_hevc_enc_complete(enc, run->dst, &stats))
++		*state = VB2_BUF_STATE_ERROR;
++}
++
++static int rkvenc_hevc_adjust_fmt(struct rkvenc_ctx *ctx, struct v4l2_format *f)
++{
++	return 0;
++}
++
++static const struct rkvenc_codec_ops rkvenc_hevc_ops = {
++	.adjust_fmt = rkvenc_hevc_adjust_fmt,
++	.start = rkvenc_hevc_start,
++	.stop = rkvenc_hevc_stop,
++	.run = rkvenc_hevc_run,
++	.done = rkvenc_hevc_done,
++};
++
++static const struct v4l2_ctrl_config rkvenc_hevc_ctrl_cfgs[] = {
++	{ .id = V4L2_CID_STATELESS_HEVC_SPS, },
++	{ .id = V4L2_CID_STATELESS_HEVC_PPS, },
++	{ .id = V4L2_CID_STATELESS_HEVC_ENCODE_PARAMS, },
++	/* Read-only, set by the core when a picture completes */
++	{ .id = V4L2_CID_STATELESS_HEVC_ENCODE_FEEDBACK, },
++	{
++		.id = V4L2_CID_STATELESS_HEVC_START_CODE,
++		.min = V4L2_STATELESS_HEVC_START_CODE_ANNEX_B,
++		.max = V4L2_STATELESS_HEVC_START_CODE_ANNEX_B,
++		.def = V4L2_STATELESS_HEVC_START_CODE_ANNEX_B,
++	},
++	{
++		.id = V4L2_CID_MPEG_VIDEO_HEVC_PROFILE,
++		.min = V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN,
++		.max = V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN,
++		.def = V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN,
++	},
++	{
++		.id = V4L2_CID_MPEG_VIDEO_HEVC_TIER,
++		.max = V4L2_MPEG_VIDEO_HEVC_TIER_HIGH,
++		.def = V4L2_MPEG_VIDEO_HEVC_TIER_MAIN,
++	},
++	{ .id = V4L2_CID_MPEG_VIDEO_AU_DELIMITER, .max = 1, .step = 1, },
++	{ .id = V4L2_CID_MPEG_VIDEO_PREPEND_SPSPPS_TO_IDR, .max = 1, .step = 1, },
++	{ .id = V4L2_CID_MPEG_VIDEO_FRAME_RC_ENABLE, .max = 1, .step = 1, },
++	{
++		.id = V4L2_CID_MPEG_VIDEO_BITRATE_MODE,
++		.min = V4L2_MPEG_VIDEO_BITRATE_MODE_VBR,
++		.max = V4L2_MPEG_VIDEO_BITRATE_MODE_CQ,
++		.def = V4L2_MPEG_VIDEO_BITRATE_MODE_CBR,
++		.menu_skip_mask = BIT(V4L2_MPEG_VIDEO_BITRATE_MODE_VBR),
++	},
++	{
++		.id = V4L2_CID_MPEG_VIDEO_BITRATE,
++		.min = 10000, .max = 200000000, .step = 1, .def = 10000000,
++	},
++	{
++		.id = V4L2_CID_MPEG_VIDEO_CONSTANT_QUALITY,
++		.min = 1, .max = 100, .step = 1, .def = 50,
++	},
++	{ .id = V4L2_CID_MPEG_VIDEO_HEVC_MIN_QP, .max = 51, .step = 1, .def = 10, },
++	{ .id = V4L2_CID_MPEG_VIDEO_HEVC_MAX_QP, .max = 51, .step = 1, .def = 51, },
++	{ .id = V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_QP, .max = 51, .step = 1, .def = 30, },
++	{ .id = V4L2_CID_MPEG_VIDEO_HEVC_P_FRAME_QP, .max = 51, .step = 1, .def = 32, },
++	{ .id = V4L2_CID_MPEG_VIDEO_AVERAGE_QP, .max = 51, .step = 1, },
++};
++
++static const struct rkvenc_ctrls rkvenc_hevc_ctrls = {
++	.ctrls = rkvenc_hevc_ctrl_cfgs,
++	.num_ctrls = ARRAY_SIZE(rkvenc_hevc_ctrl_cfgs),
++};
++
++const struct rkvenc_coded_fmt_desc rkvenc_hevc_fmt_desc = {
++	.fourcc = V4L2_PIX_FMT_HEVC_SLICE,
++	.size_align = 8,
++	.frmsize = {
++		.min_width = 64,
++		/* Wider pictures need tiles, which are not implemented. */
++		.max_width = 4096,
++		.step_width = 2,
++		.min_height = 64,
++		.max_height = 4096,
++		.step_height = 2,
++	},
++	.ctrls = &rkvenc_hevc_ctrls,
++	.ops = &rkvenc_hevc_ops,
++};
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc-regs.h b/drivers/media/platform/rockchip/rkvenc/rkvenc-regs.h
-index 6957cdf53446..8103bfdf7151 100644
+index 8103bfdf7151..e8e7ce045f90 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc-regs.h
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc-regs.h
-@@ -360,6 +360,11 @@
- #define VEPU580_ST_BUS				0x4030
- #define VEPU580_ST_SNUM				0x4034
- #define VEPU580_ST_SLEN				0x4038
-+#define VEPU580_ST_PNUM_P64			0x4100
-+#define VEPU580_ST_PNUM_P32			0x4104
-+#define VEPU580_ST_PNUM_P16			0x4108
-+#define VEPU580_ST_PNUM_P8			0x410c
-+#define VEPU580_ST_PNUM_I32			0x4110
- #define VEPU580_ST_PNUM_I16			0x4114
- #define VEPU580_ST_PNUM_I8			0x4118
- #define VEPU580_ST_PNUM_I4			0x411c
-@@ -367,6 +372,8 @@
- #define VEPU580_ST_BNUM_CME			0x4124
- #define VEPU580_ST_MADI				0x4128
- #define VEPU580_ST_BNUM_B16			0x412c
-+/* Histogram of the QP of the 8x8 blocks, one counter per QP 0..51 */
-+#define VEPU580_ST_B8_QP(qp)			(0x4200 + 4 * (qp))
+@@ -4,7 +4,8 @@
+  *
+  * The register meanings and field layouts were taken from the Rockchip MPP
+  * user space library register structures (vepu580_common.h,
+- * hal_h264e_vepu580_reg.h). No TRM chapter was available.
++ * hal_h264e_vepu580_reg.h, hal_h265e_vepu580_reg.h). No TRM chapter was
++ * available.
+  */
  
- /* Debug class */
- #define VEPU580_DBG_FRAME_CYC			0x5200
+ #ifndef RKVENC_REGS_H_
+@@ -248,6 +249,106 @@
+ #define   VEPU580_H264_REFM0_ARPM_FLG		BIT(2)
+ #define VEPU580_H264_SYNT_REFM1			0x03cc
+ #define VEPU580_H264_SYNT_REFM2			0x03d0
++/* Frame class: HEVC variants of the shared registers */
++#define   VEPU580_HEVC_ME_CFG_RME_DIS		GENMASK(26, 23)
++#define   VEPU580_HEVC_ME_CFG_FME_DIS		GENMASK(31, 28)
++#define   VEPU580_HEVC_RDO_CFG_LTM_COL		BIT(0)
++#define   VEPU580_HEVC_RDO_CFG_LTM_IDX0L0	BIT(1)
++#define   VEPU580_HEVC_RDO_CFG_CHRM_SPCL	BIT(2)
++#define   VEPU580_HEVC_RDO_CFG_CU_INTER_E	GENMASK(14, 3)
++#define   VEPU580_HEVC_RDO_CFG_CU_INTRA_E	GENMASK(22, 19)
++#define   VEPU580_HEVC_RDO_CFG_CCWA_E		BIT(23)
++#define   VEPU580_HEVC_RDO_CFG_SCL_LST_SEL	GENMASK(25, 24)
++#define   VEPU580_HEVC_RDO_CFG_SATD_BYPS	GENMASK(31, 28)
++
++/* Frame class: HEVC syntax */
++#define VEPU580_HEVC_SYNT_NAL			0x03b0
++#define   VEPU580_HEVC_NAL_UNIT_TYPE		GENMASK(5, 0)
++#define VEPU580_HEVC_SYNT_SPS			0x03b4
++#define   VEPU580_HEVC_SPS_SAO_EN		BIT(0)
++#define   VEPU580_HEVC_SPS_NUM_ST_REF_PIC	GENMASK(7, 1)
++#define   VEPU580_HEVC_SPS_LT_REF_PIC_PRSNT	BIT(8)
++#define   VEPU580_HEVC_SPS_NUM_LT_REF_PIC	GENMASK(14, 9)
++#define   VEPU580_HEVC_SPS_TMVP_EN		BIT(15)
++#define   VEPU580_HEVC_SPS_LOG2_MAX_POC_LSB	GENMASK(19, 16)
++#define   VEPU580_HEVC_SPS_STRG_INTRA_SMTH	BIT(20)
++#define VEPU580_HEVC_SYNT_PPS			0x03b8
++#define   VEPU580_HEVC_PPS_DPDNT_SLI_SEG_EN	BIT(0)
++#define   VEPU580_HEVC_PPS_OUT_FLG_PRSNT	BIT(1)
++#define   VEPU580_HEVC_PPS_NUM_EXTR_SLI_HDR	GENMASK(4, 2)
++#define   VEPU580_HEVC_PPS_SGN_DAT_HID_EN	BIT(5)
++#define   VEPU580_HEVC_PPS_CBC_INIT_PRSNT	BIT(6)
++#define   VEPU580_HEVC_PPS_PIC_INIT_QP		GENMASK(12, 7)
++#define   VEPU580_HEVC_PPS_CU_QP_DLT_EN		BIT(13)
++#define   VEPU580_HEVC_PPS_CHRM_QP_OFST_PRSN	BIT(14)
++#define   VEPU580_HEVC_PPS_LP_FLTR_ACRS_SLI	BIT(15)
++#define   VEPU580_HEVC_PPS_DBLK_FLTR_OVRD_EN	BIT(16)
++#define   VEPU580_HEVC_PPS_LST_MDFY_PRSNT	BIT(17)
++#define   VEPU580_HEVC_PPS_SLI_SEG_HDR_EXTN	BIT(18)
++#define   VEPU580_HEVC_PPS_CU_QP_DLT_DEPTH	GENMASK(20, 19)
++#define   VEPU580_HEVC_PPS_LPF_FLTR_ACRS_TIL	BIT(21)
++#define VEPU580_HEVC_SYNT_SLI0			0x03bc
++#define   VEPU580_HEVC_SLI0_CBC_INIT_FLG	BIT(0)
++#define   VEPU580_HEVC_SLI0_MVD_L1_ZERO_FLG	BIT(1)
++#define   VEPU580_HEVC_SLI0_MRG_UP_FLG		BIT(2)
++#define   VEPU580_HEVC_SLI0_MRG_LFT_FLG		BIT(3)
++#define   VEPU580_HEVC_SLI0_REF_PIC_LST_MDF_L0	BIT(5)
++#define   VEPU580_HEVC_SLI0_NUM_REFIDX_L1_ACT	GENMASK(7, 6)
++#define   VEPU580_HEVC_SLI0_NUM_REFIDX_L0_ACT	GENMASK(9, 8)
++#define   VEPU580_HEVC_SLI0_NUM_REFIDX_ACT_OVRD	BIT(10)
++#define   VEPU580_HEVC_SLI0_SAO_CHRM_FLG	BIT(11)
++#define   VEPU580_HEVC_SLI0_SAO_LUMA_FLG	BIT(12)
++#define   VEPU580_HEVC_SLI0_TMPRL_MVP_E		BIT(13)
++#define   VEPU580_HEVC_SLI0_PIC_OUT_FLG		BIT(14)
++#define   VEPU580_HEVC_SLI0_SLI_TYPE		GENMASK(16, 15)
++#define   VEPU580_HEVC_SLI0_SLI_RSRV_FLG	GENMASK(23, 17)
++#define   VEPU580_HEVC_SLI0_DPDNT_SLI_SEG_FLG	BIT(24)
++#define   VEPU580_HEVC_SLI0_SLI_PPS_ID		GENMASK(30, 25)
++#define   VEPU580_HEVC_SLI0_NO_OUT_PRI_PIC	BIT(31)
++#define VEPU580_HEVC_SYNT_SLI1			0x03c0
++#define   VEPU580_HEVC_SLI1_TC_OFST_DIV2	GENMASK(3, 0)
++#define   VEPU580_HEVC_SLI1_BETA_OFST_DIV2	GENMASK(7, 4)
++#define   VEPU580_HEVC_SLI1_LP_FLTR_ACRS_SLI	BIT(8)
++#define   VEPU580_HEVC_SLI1_DBLK_FLTR_DIS	BIT(9)
++#define   VEPU580_HEVC_SLI1_DBLK_FLTR_OVRD_FLG	BIT(10)
++#define   VEPU580_HEVC_SLI1_CB_QP_OFST		GENMASK(15, 11)
++#define   VEPU580_HEVC_SLI1_SLI_QP		GENMASK(21, 16)
++#define   VEPU580_HEVC_SLI1_MAX_MRG_CND		GENMASK(23, 22)
++#define   VEPU580_HEVC_SLI1_COL_REF_IDX		BIT(25)
++#define   VEPU580_HEVC_SLI1_COL_FRM_L0_FLG	BIT(26)
++#define   VEPU580_HEVC_SLI1_LST_ENTRY_L0	GENMASK(30, 27)
++#define VEPU580_HEVC_SYNT_SLI2			0x03c4
++#define   VEPU580_HEVC_SLI2_POC_LSB		GENMASK(15, 0)
++#define   VEPU580_HEVC_SLI2_HDR_EXT_LEN		GENMASK(24, 16)
++#define VEPU580_HEVC_SYNT_REFM0			0x03c8
++#define   VEPU580_HEVC_REFM0_ST_REF_PIC_FLG	BIT(0)
++#define   VEPU580_HEVC_REFM0_POC_LSB_LT0	GENMASK(16, 1)
++#define   VEPU580_HEVC_REFM0_LT_IDX_SPS		GENMASK(21, 17)
++#define   VEPU580_HEVC_REFM0_NUM_LT_PIC		GENMASK(23, 22)
++#define   VEPU580_HEVC_REFM0_ST_REF_PIC_IDX	GENMASK(29, 24)
++#define   VEPU580_HEVC_REFM0_NUM_LT_SPS		GENMASK(31, 30)
++#define VEPU580_HEVC_SYNT_REFM1			0x03cc
++#define   VEPU580_HEVC_REFM1_USED_BY_S0		GENMASK(3, 0)
++#define   VEPU580_HEVC_REFM1_NUM_POS_PIC	BIT(4)
++#define   VEPU580_HEVC_REFM1_NUM_NEG_PICS	GENMASK(9, 5)
++#define   VEPU580_HEVC_REFM1_DLT_POC_MSB_CYCL0	GENMASK(25, 10)
++#define   VEPU580_HEVC_REFM1_DLT_POC_MSB_PRSNT(n) BIT(26 + (n))
++#define   VEPU580_HEVC_REFM1_USED_BY_LT(n)	BIT(29 + (n))
++/* Two delta_poc_s0_minus1 values per register, s0[0] in the low half. */
++#define VEPU580_HEVC_SYNT_REFM2			0x03d0
++#define VEPU580_HEVC_SYNT_REFM3			0x03d4
++#define VEPU580_HEVC_SYNT_LONG_REFM0		0x03d8
++#define   VEPU580_HEVC_LONG_REFM0_POC_LSB_LT1	GENMASK(15, 0)
++#define   VEPU580_HEVC_LONG_REFM0_POC_LSB_LT2	GENMASK(31, 16)
++#define VEPU580_HEVC_SYNT_LONG_REFM1		0x03dc
++#define   VEPU580_HEVC_LONG_REFM1_MSB_CYCL1	GENMASK(15, 0)
++#define   VEPU580_HEVC_LONG_REFM1_MSB_CYCL2	GENMASK(31, 16)
++/* 0x3f0 is sli_cfg for H.264 but tile_cfg for HEVC. */
++#define VEPU580_HEVC_TILE_CFG			0x03f0
++#define   VEPU580_HEVC_TILE_CFG_TILE_W_M1	GENMASK(7, 0)
++#define   VEPU580_HEVC_TILE_CFG_TILE_H_M1	GENMASK(23, 16)
++#define   VEPU580_HEVC_TILE_CFG_TILE_EN		BIT(31)
++
+ #define VEPU580_SLI_CFG				0x03f0
+ #define   VEPU580_SLI_CFG_SLI_CRS_EN		BIT(31)
+ #define VEPU580_TILE_POS			0x03f4
+@@ -329,6 +430,24 @@
+ #define VEPU580_PARAM_START			0x1700
+ #define VEPU580_PARAM_END			0x19d0
+ 
++/* Parameter class, HEVC intra pre-selection (written for HEVC only) */
++#define VEPU580_HEVC_PRE_INTRA_CLA(n, b)	(0x1b00 + 8 * (n) + 4 * (b))
++#define VEPU580_HEVC_PRE_INTRA_CLA_NUM		17
++#define VEPU580_HEVC_I16_SOBEL_T		0x1c00
++#define VEPU580_HEVC_I16_SOBEL_A(n)		(0x1c04 + 4 * (n))
++#define VEPU580_HEVC_I16_SOBEL_B(n)		(0x1c0c + 4 * (n))
++#define VEPU580_HEVC_I16_SOBEL_C(n)		(0x1c20 + 4 * (n))
++#define VEPU580_HEVC_I16_SOBEL_D(n)		(0x1c28 + 4 * (n))
++#define VEPU580_HEVC_I16_SOBEL_E_LOW(qp)	(0x1c3c + 8 * (qp))
++#define VEPU580_HEVC_I32_SOBEL_T(n)		(0x1c84 + 4 * (n))
++#define VEPU580_HEVC_I32_SOBEL_A		0x1c90
++#define VEPU580_HEVC_I32_SOBEL_B(n)		(0x1c94 + 4 * (n))
++#define VEPU580_HEVC_I32_SOBEL_C		0x1ca0
++#define VEPU580_HEVC_I32_SOBEL_D(n)		(0x1ca4 + 4 * (n))
++#define VEPU580_HEVC_I32_SOBEL_E_LOW(qp)	(0x1cb0 + 8 * (qp))
++#define VEPU580_HEVC_WGT_START			0x1b00
++#define VEPU580_HEVC_WGT_END			0x1cd8
++
+ /* RDO (SQI) class, H.264 subset */
+ #define VEPU580_RDO_SQI_CFG			0x2000
+ #define   VEPU580_RDO_SQI_CFG_ATF_PSKIP_EN	BIT(0)
+@@ -340,6 +459,36 @@
+ #define VEPU580_RDO_SKIP_CIME_THD1		0x2120
+ #define VEPU580_RDO_SKIP_VAR_THD(n)		(0x2124 + 4 * (n))
+ #define VEPU580_RDO_SKIP_ATF_WGT(n)		(0x2134 + 4 * (n))
++/*
++ * RDO thresholds and weights per CU size, as ten-word blocks: inter/intra
++ * blocks (CIME thresholds 0-2, four variance threshold pairs, four rows of
++ * three weights) and skip blocks (CIME thresholds 0-3, four variance
++ * threshold pairs, weight 00 and rows 1-4).
++ */
++#define VEPU580_HEVC_RDO_B64_INTER		0x2004
++#define VEPU580_HEVC_RDO_B64_SKIP		0x202c
++#define VEPU580_HEVC_RDO_B32_INTRA		0x2054
++#define VEPU580_HEVC_RDO_B32_INTER		0x207c
++#define VEPU580_HEVC_RDO_B32_SKIP		0x20a4
++#define VEPU580_HEVC_RDO_B16_INTRA		0x20cc
++#define VEPU580_HEVC_RDO_B16_INTER		0x20f4
++#define VEPU580_HEVC_RDO_B16_SKIP		0x211c
++#define VEPU580_HEVC_RDO_B8_INTRA		0x2144
++#define VEPU580_HEVC_RDO_B8_INTER		0x216c
++#define VEPU580_HEVC_RDO_B8_SKIP		0x2194
++#define   VEPU580_HEVC_RDO_SQI_CFG_SEGMENT_EN	BIT(0)
++#define   VEPU580_HEVC_RDO_SQI_CFG_SMEAR_EN	BIT(1)
++#define VEPU580_HEVC_RDO_SEGMENT_B64_THD0	0x21bc
++#define VEPU580_HEVC_RDO_SEGMENT_B64_THD1	0x21c0
++#define VEPU580_HEVC_RDO_SEGMENT_B32_THD0	0x21c4
++#define VEPU580_HEVC_RDO_SEGMENT_B32_THD1	0x21c8
++#define VEPU580_HEVC_RDO_SEGMENT_MULTI		0x21cc
++#define VEPU580_HEVC_RDO_B16_SMEAR_THD0		0x21d0
++#define VEPU580_HEVC_RDO_B16_SMEAR_THD1		0x21d4
++#define VEPU580_HEVC_PREINTRA_B32_CST_VAR_THD	0x21d8
++#define VEPU580_HEVC_PREINTRA_B32_CST_WGT	0x21dc
++#define VEPU580_HEVC_PREINTRA_B16_CST_VAR_THD	0x21e0
++#define VEPU580_HEVC_PREINTRA_B16_CST_WGT	0x21e4
+ #define VEPU580_RDO_START			0x2000
+ #define VEPU580_RDO_END				0x21e8
+ 
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc-vepu580.c b/drivers/media/platform/rockchip/rkvenc/rkvenc-vepu580.c
-index 33d5154ef8da..3a32caad2216 100644
+index 3a32caad2216..ab23845a288d 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc-vepu580.c
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc-vepu580.c
-@@ -12,10 +12,16 @@
- #include <linux/bitfield.h>
- #include <linux/dma-mapping.h>
- #include <linux/minmax.h>
-+#include <linux/moduleparam.h>
- #include <linux/slab.h>
+@@ -4,8 +4,8 @@
+  *
+  * The register meanings and the default tuning values below were derived
+  * from the Rockchip MPP user space library (hal_h264e_vepu580.c,
+- * vepu5xx_common.c, hal_h264e_vepu580_tune.c), which is the only
+- * documentation of this block. The values are expressed as named fields
++ * vepu5xx_common.c, hal_h264e_vepu580_tune.c, hal_h265e_vepu580.c), which
++ * is the only documentation of this block. The values are expressed as named fields
+  * or as formulas instead of register dumps.
+  */
  
- #include "rkvenc.h"
- 
-+unsigned int rkvenc_row_rc_qp_range = 2;
-+module_param_named(row_rc_qp_range, rkvenc_row_rc_qp_range, uint, 0644);
-+MODULE_PARM_DESC(row_rc_qp_range,
-+		 "CBR: maximum per-row QP change by the hardware rate control (0 = frame-level rate control only)");
-+
- int rkvenc_alloc_aux(struct rkvenc_dev *rkvenc, struct rkvenc_aux_buf *buf,
- 		     size_t size, bool kernel_mapping)
- {
-@@ -74,17 +80,18 @@ static void vepu580_setup_src(struct rkvenc_ctx *ctx, struct rkvenc_core *core,
- 	struct vb2_buffer *vb = &run->src->vb2_buf;
- 	unsigned int width = ctx->coded_fmt.fmt.pix_mp.width;
- 	unsigned int height = ctx->coded_fmt.fmt.pix_mp.height;
-+	unsigned int align = ctx->coded_fmt_desc->size_align;
- 	unsigned int ystride = pix->plane_fmt[0].bytesperline;
- 	unsigned int cstride = 0;
- 	dma_addr_t addr[3] = { 0 };
- 	unsigned int i;
- 
- 	rkvenc_set(core, VEPU580_ENC_RSL,
--		   FIELD_PREP(VEPU580_ENC_RSL_PIC_WD8_M1, ALIGN(width, 16) / 8 - 1) |
--		   FIELD_PREP(VEPU580_ENC_RSL_PIC_HD8_M1, ALIGN(height, 16) / 8 - 1));
-+		   FIELD_PREP(VEPU580_ENC_RSL_PIC_WD8_M1, ALIGN(width, align) / 8 - 1) |
-+		   FIELD_PREP(VEPU580_ENC_RSL_PIC_HD8_M1, ALIGN(height, align) / 8 - 1));
- 	rkvenc_set(core, VEPU580_SRC_FILL,
--		   FIELD_PREP(VEPU580_SRC_FILL_PIC_WFILL, ALIGN(width, 16) - width) |
--		   FIELD_PREP(VEPU580_SRC_FILL_PIC_HFILL, ALIGN(height, 16) - height));
-+		   FIELD_PREP(VEPU580_SRC_FILL_PIC_WFILL, ALIGN(width, align) - width) |
-+		   FIELD_PREP(VEPU580_SRC_FILL_PIC_HFILL, ALIGN(height, align) - height));
- 
- 	/* MPP sets src_range for every YUV input; out_fmt selects 4:2:0. */
- 	rkvenc_set(core, VEPU580_SRC_FMT,
-@@ -450,17 +457,24 @@ void vepu580_setup_h264_tuning(struct rkvenc_dev *rkvenc,
+@@ -456,6 +456,345 @@ void vepu580_setup_h264_tuning(struct rkvenc_dev *rkvenc,
+ 	       VEPU580_SCL_H264_WORDS * sizeof(u32));
  }
  
- /*
-- * Frame-level QP with the hardware row rate control: each macroblock row
-- * gets target_bits / num_blocks bits per block; the cumulative deviation
-- * from that target selects one of nine QP adjustments, bounded by
-- * qp_range around the frame QP and by [qp_min, qp_max].
-+ * Frame-level QP with the hardware row rate control: each block row
-+ * (macroblock row for H.264, CTU row for HEVC) gets target_bits /
-+ * num_blocks bits per block; the cumulative deviation from that target
-+ * selects one of nine QP adjustments, bounded by qp_range around the frame
-+ * QP and by [qp_min, qp_max].
-  */
--void vepu580_setup_row_rc(struct rkvenc_core *core, unsigned int qp,
-+const struct vepu580_row_rc vepu580_h264_row_rc = {
-+	.qp_adj = { -2, -1, 0, 1, 2, 0, 0, 0, 1 },
-+	.dthd_outer = 4,
-+	.aq_mode = false,
++/*
++ * HEVC motion estimation: the same search window as H.264 (+-44 x +-28
++ * pixels), with the CIME cache sized in 64x64 CTU columns and 4-line row
++ * groups.
++ */
++void vepu580_setup_hevc_me(struct rkvenc_core *core, unsigned int width,
++			   unsigned int height, bool colmv_stor, bool colmv_load)
++{
++	const unsigned int cache_max = 2464;
++	unsigned int width_mbs = DIV_ROUND_UP(width, 16);
++	unsigned int height_mbs = DIV_ROUND_UP(height, 16);
++	unsigned int cols = DIV_ROUND_UP(width, 64);
++	unsigned int blk_w = 44, blk_h = 28, hal;
++	unsigned int srch_w, srch_h, rx, ry, cur_w, rows, rows_max;
++	unsigned int rama_h, ramb_h, l2_tag;
++
++	if (blk_w / 4 * 2 > (width_mbs * 2 + 1) / 2)
++		blk_w = (width_mbs * 2 + 1) / 2 / 2 * 4;
++
++	hal = ALIGN(height_mbs * 16, 64);
++	if (blk_h / 4 > hal / 128 * 4)
++		blk_h = hal / 128 * 16;
++
++	rkvenc_set(core, VEPU580_ME_RNGE,
++		   FIELD_PREP(VEPU580_ME_RNGE_CME_SRCH_H, blk_w / 4) |
++		   FIELD_PREP(VEPU580_ME_RNGE_CME_SRCH_V, blk_h / 4) |
++		   FIELD_PREP(VEPU580_ME_RNGE_RME_SRCH_H, 7) |
++		   FIELD_PREP(VEPU580_ME_RNGE_RME_SRCH_V, 5) |
++		   FIELD_PREP(VEPU580_ME_RNGE_DLT_FRM_NUM, 1));
++
++	rkvenc_set(core, VEPU580_ME_CFG,
++		   FIELD_PREP(VEPU580_ME_CFG_PMV_MDST_H, 5) |
++		   FIELD_PREP(VEPU580_ME_CFG_PMV_MDST_V, 5) |
++		   FIELD_PREP(VEPU580_ME_CFG_PMV_NUM, 2) |
++		   (colmv_stor ? VEPU580_ME_CFG_COLMV_STOR : 0) |
++		   (colmv_load ? VEPU580_ME_CFG_COLMV_LOAD : 0));
++
++	/* Search window in pixels, with a zero global motion vector. */
++	srch_w = blk_w;
++	srch_h = blk_h;
++	rx = (16 - srch_w % 16) % 16;
++	ry = (4 - srch_h % 4) % 4;
++	cur_w = min(DIV_ROUND_UP(rx + 2 * srch_w, 16) + 1, cols);
++	rows = DIV_ROUND_UP(ry + 2 * srch_h, 4) + 4;
++	rows_max = ALIGN(rows, 4);
++
++	rama_h = 4;
++	ramb_h = rows;
++	while (rama_h < rows_max &&
++	       cache_max > (rama_h - 4) * cols * 4 + ramb_h * 4 * cur_w) {
++		rama_h += 4;
++		ramb_h = max(ramb_h, 8U) - 4;
++	}
++
++	if (rows == 4) {
++		rama_h += 4;
++		ramb_h = 0;
++	}
++
++	if (cache_max < (rama_h - 4) * cols * 4 + ramb_h * 4 * cur_w)
++		rama_h -= 4;
++
++	if (cols <= 8)
++		l2_tag = 0;
++	else if (cols <= 16)
++		l2_tag = 1;
++	else if (cols <= 32)
++		l2_tag = 2;
++	else
++		l2_tag = 3;
++
++	rkvenc_set(core, VEPU580_ME_CACH,
++		   FIELD_PREP(VEPU580_ME_CACH_CME_RAMA_MAX,
++			      (rama_h - 4) / 4 * cols + cur_w) |
++		   FIELD_PREP(VEPU580_ME_CACH_CME_RAMA_H, rama_h) |
++		   FIELD_PREP(VEPU580_ME_CACH_CACH_L2_TAG, l2_tag) |
++		   FIELD_PREP(VEPU580_ME_CACH_CME_LINEBUF_W, cols));
++}
++
++/*
++ * Scale a lambda table entry: base[] holds three (or six) consecutive
++ * entries starting at QP @first, and the table doubles every @period QPs.
++ */
++static u32 vepu580_lambda(const u32 *base, unsigned int period,
++			  unsigned int first, unsigned int qp)
++{
++	int shift = (int)(qp / period) - (int)(first / period);
++	u32 v = base[qp % period];
++
++	if (shift >= 0)
++		return v << shift;
++
++	return (v + BIT(-shift - 1)) >> -shift;
++}
++
++/* HEVC RDO lambdas (mode decision, intra and inter) and SATD weights. */
++static const u32 vepu580_hevc_lambda_intra[3] = { 0x48f5c3, 0x5bec81, 0x73d119 };
++static const u32 vepu580_hevc_lambda_inter[3] = { 112, 137, 176 };
++static const u32 vepu580_hevc_lambda_satd[6] = {
++	0xc147, 0xd8f2, 0xf383, 0x11155, 0x132ce, 0x15861,
 +};
 +
-+void vepu580_setup_row_rc(struct rkvenc_core *core,
-+			  const struct vepu580_row_rc *cfg, unsigned int qp,
- 			  unsigned int qp_min, unsigned int qp_max,
- 			  unsigned int qp_range, u64 target_bits,
- 			  unsigned int num_blocks, unsigned int blocks_per_row)
- {
--	static const s8 qp_adj[9] = { -2, -1, 0, 1, 2, 0, 0, 0, 1 };
- 	u64 ebit16 = div_u64(target_bits << 4, num_blocks);
- 	s32 row_bits, thd;
- 	unsigned int i;
-@@ -474,6 +488,7 @@ void vepu580_setup_row_rc(struct rkvenc_core *core, unsigned int qp,
- 	rkvenc_or(core, VEPU580_ENC_PIC, FIELD_PREP(VEPU580_ENC_PIC_PIC_QP, qp));
- 	rkvenc_set(core, VEPU580_RC_CFG,
- 		   VEPU580_RC_CFG_RC_EN | VEPU580_RC_CFG_AQ_EN |
-+		   (cfg->aq_mode ? VEPU580_RC_CFG_AQ_MODE : 0) |
- 		   FIELD_PREP(VEPU580_RC_CFG_RC_CTU_NUM, blocks_per_row));
- 	rkvenc_set(core, VEPU580_RC_QP,
- 		   FIELD_PREP(VEPU580_RC_QP_RANGE, qp_range) |
-@@ -485,12 +500,12 @@ void vepu580_setup_row_rc(struct rkvenc_core *core, unsigned int qp,
- 	rkvenc_set(core, VEPU580_RC_ADJ1, 0);
- 	for (i = 0; i < 9; i++)
- 		rkvenc_or(core, i < 5 ? VEPU580_RC_ADJ0 : VEPU580_RC_ADJ1,
--			  VEPU580_RC_ADJ_QP(i < 5 ? i : i - 5, qp_adj[i]));
-+			  VEPU580_RC_ADJ_QP(i < 5 ? i : i - 5, cfg->qp_adj[i]));
- 
--	rkvenc_set(core, VEPU580_RC_DTHD(0), -4 * thd);
-+	rkvenc_set(core, VEPU580_RC_DTHD(0), -cfg->dthd_outer * thd);
- 	rkvenc_set(core, VEPU580_RC_DTHD(1), -thd);
- 	rkvenc_set(core, VEPU580_RC_DTHD(2), thd);
--	rkvenc_set(core, VEPU580_RC_DTHD(3), 4 * thd);
-+	rkvenc_set(core, VEPU580_RC_DTHD(3), cfg->dthd_outer * thd);
- 	for (i = 4; i < 9; i++)
- 		rkvenc_set(core, VEPU580_RC_DTHD(i), 0x7fffffff);
- 
++/* AQ QP steps (the same for I and P pictures) */
++static const s8 vepu580_hevc_aq_step[16] = {
++	-8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 5, 7, 8, 9,
++};
++
++/* Intra pre-selection: candidate directions m0..m9 per edge class */
++static const u8 vepu580_hevc_pre_intra_cla[9][10] = {
++	{ 10, 11, 12, 13, 14,  9, 15,  8, 16,  7 },
++	{ 10,  9,  8,  7,  6, 11,  5, 12,  4, 13 },
++	{ 18, 17, 16, 15, 14, 19, 13, 20, 12, 21 },
++	{ 18, 19, 20, 21, 22, 17, 23, 16, 24, 15 },
++	{ 25, 26, 24, 23, 22, 27, 21, 28, 20, 29 },
++	{ 27, 26, 28, 29, 30, 25, 31, 24, 32, 23 },
++	{ 34, 33, 32, 31, 30,  2, 29,  3, 28,  4 },
++	{ 34,  2,  3,  4,  5, 33,  6, 32,  7, 31 },
++	{ 10, 26, 18, 34,  6, 14, 22, 30,  2, 24 },
++};
++
++static u32 pack5x6(const u8 *v)
++{
++	return (v[0] & 0x3f) | (v[1] & 0x3f) << 6 | (v[2] & 0x3f) << 12 |
++	       (v[3] & 0x3f) << 18 | (v[4] & 0x3f) << 24;
++}
++
++static u32 pack2x15(u32 lo, u32 hi)
++{
++	return (lo & 0x7fff) | (hi & 0x7fff) << 16;
++}
++
++/* RDO weights of a CU size: four rows of three */
++struct vepu580_hevc_atf {
++	u16 cime[4];
++	u8 wgt00;
++	u8 wgt[4][3];
++};
++
++static const struct vepu580_hevc_atf vepu580_hevc_atf_inter = {
++	.cime = { 32, 144, 300 },
++	.wgt = { { 16, 16, 16 }, { 16, 16, 16 }, { 16, 16, 16 }, { 16, 16, 16 } },
++};
++
++static const struct vepu580_hevc_atf vepu580_hevc_atf_intra = {
++	.cime = { 24, 48, 64 },
++	.wgt = { { 26, 25, 25 }, { 25, 24, 23 }, { 21, 19, 18 }, { 16, 16, 16 } },
++};
++
++static const struct vepu580_hevc_atf vepu580_hevc_atf_skip64 = {
++	.cime = { 24, 4, 6, 8 },
++	.wgt00 = 16,
++	.wgt = { { 10, 10, 10 }, { 14, 14, 15 }, { 15, 15, 16 }, { 16, 16, 16 } },
++};
++
++static const struct vepu580_hevc_atf vepu580_hevc_atf_skip32 = {
++	.cime = { 24, 4, 6, 8 },
++	.wgt00 = 18,
++	.wgt = { { 11, 11, 11 }, { 13, 13, 13 }, { 15, 15, 15 }, { 16, 16, 16 } },
++};
++
++static const struct vepu580_hevc_atf vepu580_hevc_atf_skip16 = {
++	.cime = { 24, 24, 48, 96 },
++	.wgt00 = 16,
++	.wgt = { { 16, 16, 16 }, { 16, 16, 16 }, { 16, 16, 16 }, { 16, 16, 16 } },
++};
++
++static void vepu580_hevc_set_atf(struct rkvenc_core *core, u32 base,
++				 const struct vepu580_hevc_atf *atf, bool skip)
++{
++	unsigned int i;
++
++	rkvenc_set(core, base, pack2x12(atf->cime[0], atf->cime[1]));
++	rkvenc_set(core, base + 4, skip ? pack2x12(atf->cime[2], atf->cime[3]) :
++					  atf->cime[2]);
++	/* Variance thresholds */
++	for (i = 0; i < 4; i++)
++		rkvenc_set(core, base + 8 + 4 * i, pack2x12(31, 400));
++
++	for (i = 0; i < 4; i++) {
++		const u8 *w = atf->wgt[i];
++
++		if (skip && !i)
++			rkvenc_set(core, base + 24,
++				   pack4(atf->wgt00, w[0], w[1], w[2]));
++		else
++			rkvenc_set(core, base + 24 + 4 * i,
++				   pack4(w[0], w[1], w[2], 0));
++	}
++}
++
++void vepu580_setup_hevc_tuning(struct rkvenc_core *core, bool intra)
++{
++	static const u8 sobel_a16[5] = { 32, 32, 32, 32, 32 };
++	static const u8 sobel_c16[5] = { 13, 13, 13, 13, 13 };
++	static const u8 sobel_a32[5] = { 18, 18, 18, 18, 18 };
++	static const u8 sobel_c32[5] = { 16, 16, 16, 16, 16 };
++	unsigned int i;
++
++	vepu580_setup_klut(core, intra);
++
++	/* Texture statistics and adaptive QP */
++	rkvenc_set(core, VEPU580_MADI_CFG, FIELD_PREP(VEPU580_MADI_CFG_MADI_THD, 25));
++	rkvenc_set(core, VEPU580_MD_SAD_THD, pack4(20, 30, 40, 0));
++	rkvenc_set(core, VEPU580_MADI_THD, pack4(25, 35, 45, 0));
++	for (i = 0; i < 4; i++) {
++		const s8 *st = &vepu580_hevc_aq_step[4 * i];
++
++		rkvenc_set(core, VEPU580_AQ_TTHD(i),
++			   pack4(vepu580_aq_tthd[4 * i], vepu580_aq_tthd[4 * i + 1],
++				 vepu580_aq_tthd[4 * i + 2], vepu580_aq_tthd[4 * i + 3]));
++		rkvenc_set(core, VEPU580_AQ_STEP(i),
++			   pack4(st[0] & 0x3f, st[1] & 0x3f, st[2] & 0x3f,
++				 st[3] & 0x3f));
++	}
++
++	/* Intra cost thresholds (2, 6, 16, 36) and weights of 32x32 and 16x16 */
++	rkvenc_set(core, VEPU580_LVL32_INTRA_CST_THD0, pack2x12(2, 6));
++	rkvenc_set(core, VEPU580_LVL32_INTRA_CST_THD1, pack2x12(16, 36));
++	rkvenc_set(core, VEPU580_LVL16_INTRA_CST_THD0, pack2x12(2, 6));
++	rkvenc_set(core, VEPU580_LVL16_INTRA_CST_THD1, pack2x12(16, 36));
++	rkvenc_set(core, VEPU580_LVL32_INTRA_CST_WGT0, pack4(23, 22, 21, 20));
++	rkvenc_set(core, VEPU580_LVL32_INTRA_CST_WGT1, pack4(22, 24, 26, 0));
++	rkvenc_set(core, VEPU580_LVL16_INTRA_CST_WGT0, pack4(17, 17, 17, 18));
++	rkvenc_set(core, VEPU580_LVL16_INTRA_CST_WGT1, pack4(17, 18, 18, 0));
++
++	/* Quantisation dead zone: 171/1024 (I), 85/1024 (P) */
++	rkvenc_set(core, VEPU580_RDO_QUANT,
++		   FIELD_PREP(VEPU580_RDO_QUANT_F_BIAS_I, 171) |
++		   FIELD_PREP(VEPU580_RDO_QUANT_F_BIAS_P, 85));
++
++	/* Motion search quality / cost multipliers */
++	rkvenc_set(core, VEPU580_CIME_SQI_CFG,
++		   VEPU580_CIME_SQI_CFG_PMV_SET_ZERO |
++		   FIELD_PREP(VEPU580_CIME_SQI_CFG_PMV_NUM, 3));
++	rkvenc_set(core, VEPU580_CIME_SQI_THD,
++		   FIELD_PREP(VEPU580_CIME_SQI_THD_MVD_TH0, 32) |
++		   FIELD_PREP(VEPU580_CIME_SQI_THD_MVD_TH1, 80) |
++		   FIELD_PREP(VEPU580_CIME_SQI_THD_MVD_TH2, 128));
++	rkvenc_set(core, VEPU580_CIME_SQI_MULTI0,
++		   FIELD_PREP(VEPU580_CIME_SQI_MULTI_LO, 16) |
++		   FIELD_PREP(VEPU580_CIME_SQI_MULTI_HI, 32));
++	rkvenc_set(core, VEPU580_CIME_SQI_MULTI1,
++		   FIELD_PREP(VEPU580_CIME_SQI_MULTI_LO, 96) |
++		   FIELD_PREP(VEPU580_CIME_SQI_MULTI_HI, 96));
++	rkvenc_set(core, VEPU580_RIME_SQI_THD,
++		   FIELD_PREP(VEPU580_RIME_SQI_THD_CIME_SAD_TH0, 48) |
++		   FIELD_PREP(VEPU580_RIME_SQI_THD_MVD_TH0, 3) |
++		   FIELD_PREP(VEPU580_RIME_SQI_THD_MVD_TH1, 8));
++	rkvenc_set(core, VEPU580_RIME_SQI_MULTI,
++		   FIELD_PREP(VEPU580_RIME_SQI_MULTI0, 16) |
++		   FIELD_PREP(VEPU580_RIME_SQI_MULTI1, 16) |
++		   FIELD_PREP(VEPU580_RIME_SQI_MULTI2, 128));
++	rkvenc_set(core, VEPU580_FME_SQI_THD0,
++		   FIELD_PREP(VEPU580_FME_SQI_THD0_PU16_TH, 16) |
++		   FIELD_PREP(VEPU580_FME_SQI_THD0_PU32_TH, 16));
++	rkvenc_set(core, VEPU580_FME_SQI_THD1,
++		   FIELD_PREP(VEPU580_FME_SQI_THD1_PU64_TH, 16) |
++		   FIELD_PREP(VEPU580_FME_SQI_THD1_MOVE_LAMBDA, 1));
++
++	/*
++	 * Lambdas: SATD weights grow by 2^(1/6) per QP, mode decision lambdas
++	 * by 2^(1/3).
++	 */
++	for (i = 0; i < 52; i++) {
++		rkvenc_set(core, VEPU580_IPRD_WGT_QP(i),
++			   vepu580_lambda(vepu580_hevc_lambda_satd, 6, 42, i));
++		rkvenc_set(core, VEPU580_RDO_WGTA_QP(i),
++			   intra ? vepu580_lambda(vepu580_hevc_lambda_intra, 3, 48, i) :
++				   vepu580_lambda(vepu580_hevc_lambda_inter, 3, 0, i));
++	}
++
++	/* Intra pre-selection classes and Sobel edge weights */
++	for (i = 0; i < ARRAY_SIZE(vepu580_hevc_pre_intra_cla); i++) {
++		rkvenc_set(core, VEPU580_HEVC_PRE_INTRA_CLA(i, 0),
++			   pack5x6(&vepu580_hevc_pre_intra_cla[i][0]));
++		rkvenc_set(core, VEPU580_HEVC_PRE_INTRA_CLA(i, 1),
++			   pack5x6(&vepu580_hevc_pre_intra_cla[i][5]));
++	}
++
++	rkvenc_set(core, VEPU580_HEVC_I16_SOBEL_T, pack2x12(64, 200));
++	rkvenc_set(core, VEPU580_HEVC_I16_SOBEL_A(0), pack5x6(sobel_a16));
++	rkvenc_set(core, VEPU580_HEVC_I16_SOBEL_A(1), pack5x6(sobel_a16) & 0xffffff);
++	rkvenc_set(core, VEPU580_HEVC_I16_SOBEL_C(0), pack5x6(sobel_c16));
++	rkvenc_set(core, VEPU580_HEVC_I16_SOBEL_C(1), pack5x6(sobel_c16) & 0xffffff);
++	for (i = 0; i < 4; i++)
++		rkvenc_set(core, VEPU580_HEVC_I16_SOBEL_D(i), pack2x15(23750, 23750));
++	rkvenc_set(core, VEPU580_HEVC_I16_SOBEL_D(4), pack2x15(23750, 0));
++	for (i = 0; i < 9; i++)
++		rkvenc_set(core, VEPU580_HEVC_I16_SOBEL_E_LOW(i), 20000);
++
++	rkvenc_set(core, VEPU580_HEVC_I32_SOBEL_T(0), pack2x12(64, 400));
++	rkvenc_set(core, VEPU580_HEVC_I32_SOBEL_T(1), 8);
++	rkvenc_set(core, VEPU580_HEVC_I32_SOBEL_T(2), pack2x12(100, 100));
++	rkvenc_set(core, VEPU580_HEVC_I32_SOBEL_A, pack5x6(sobel_a32));
++	rkvenc_set(core, VEPU580_HEVC_I32_SOBEL_C, pack5x6(sobel_c32));
++	for (i = 0; i < 5; i++)
++		rkvenc_set(core, VEPU580_HEVC_I32_SOBEL_E_LOW(i), 20000);
++
++	/* RDO thresholds and weights per CU size */
++	rkvenc_set(core, VEPU580_RDO_SQI_CFG,
++		   VEPU580_HEVC_RDO_SQI_CFG_SEGMENT_EN |
++		   VEPU580_HEVC_RDO_SQI_CFG_SMEAR_EN);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B64_INTER, &vepu580_hevc_atf_inter, false);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B64_SKIP, &vepu580_hevc_atf_skip64, true);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B32_INTRA, &vepu580_hevc_atf_intra, false);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B32_INTER, &vepu580_hevc_atf_inter, false);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B32_SKIP, &vepu580_hevc_atf_skip32, true);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B16_INTRA, &vepu580_hevc_atf_intra, false);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B16_INTER, &vepu580_hevc_atf_inter, false);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B16_SKIP, &vepu580_hevc_atf_skip16, true);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B8_INTRA, &vepu580_hevc_atf_intra, false);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B8_INTER, &vepu580_hevc_atf_inter, false);
++	vepu580_hevc_set_atf(core, VEPU580_HEVC_RDO_B8_SKIP, &vepu580_hevc_atf_skip16, true);
++
++	/* Segment (th3..th6 are 4-bit fields for CU64, 2-bit for CU32) */
++	rkvenc_set(core, VEPU580_HEVC_RDO_SEGMENT_B64_THD0, pack2x12(160, 96));
++	rkvenc_set(core, VEPU580_HEVC_RDO_SEGMENT_B64_THD1,
++		   30 | 0 << 16 | 1 << 20 | 4 << 24 | 11 << 28);
++	rkvenc_set(core, VEPU580_HEVC_RDO_SEGMENT_B32_THD0, pack2x12(160, 96));
++	rkvenc_set(core, VEPU580_HEVC_RDO_SEGMENT_B32_THD1,
++		   30 | 0 << 16 | 1 << 20 | 2 << 24 | 3 << 28);
++	rkvenc_set(core, VEPU580_HEVC_RDO_SEGMENT_MULTI, pack4(22, 22, 6, 0));
++	rkvenc_set(core, VEPU580_HEVC_RDO_B16_SMEAR_THD0, pack2x12(64, 32));
++	rkvenc_set(core, VEPU580_HEVC_RDO_B16_SMEAR_THD1, pack2x12(36, 64));
++
++	/* Pre-intra: variance thresholds 9/4, mode threshold 5, weights 31/25 */
++	rkvenc_set(core, VEPU580_HEVC_PREINTRA_B32_CST_VAR_THD,
++		   pack2x12(9, 4) | 5 << 29);
++	rkvenc_set(core, VEPU580_HEVC_PREINTRA_B32_CST_WGT, 31 | 25 << 16);
++	rkvenc_set(core, VEPU580_HEVC_PREINTRA_B16_CST_VAR_THD,
++		   pack2x12(9, 4) | 5 << 29);
++	rkvenc_set(core, VEPU580_HEVC_PREINTRA_B16_CST_WGT, 31 | 25 << 16);
++
++	/*
++	 * The scaling list block is left at zero: with scl_lst_sel = 0 the
++	 * hardware quantises with flat matrices.
++	 */
++}
++
+ /*
+  * Frame-level QP with the hardware row rate control: each block row
+  * (macroblock row for H.264, CTU row for HEVC) gets target_bits /
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc.c b/drivers/media/platform/rockchip/rkvenc/rkvenc.c
-index 0e5afaefc0dd..623c50db25a8 100644
+index 623c50db25a8..26bee08d4c2d 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc.c
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc.c
-@@ -720,6 +720,7 @@ static void rkvenc_read_feedback(struct rkvenc_core *core,
- {
- 	void __iomem *r = core->regs;
- 	u32 sse_bsl = readl_relaxed(r + VEPU580_ST_SSE_BSL);
-+	unsigned int i;
+@@ -43,6 +43,7 @@ static const struct rkvenc_raw_fmt rkvenc_raw_fmts[] = {
  
- 	fb->bs_len = readl_relaxed(r + VEPU580_ST_BS_LGTH_L32) |
- 		     (u64)FIELD_GET(VEPU580_ST_BS_LGTH_H8, sse_bsl) << 32;
-@@ -728,9 +729,20 @@ static void rkvenc_read_feedback(struct rkvenc_core *core,
- 	fb->qp_sum = readl_relaxed(r + VEPU580_ST_QP_SUM);
- 	fb->madi = readl_relaxed(r + VEPU580_ST_MADI);
- 	fb->madp = readl_relaxed(r + VEPU580_ST_MADP);
--	fb->intra_blocks = readl_relaxed(r + VEPU580_ST_PNUM_I16) +
--			   readl_relaxed(r + VEPU580_ST_PNUM_I8) +
--			   readl_relaxed(r + VEPU580_ST_PNUM_I4);
-+	for (i = 0; i < RKVENC_PNUM_COUNT; i++)
-+		fb->pnum[i] = readl_relaxed(r + VEPU580_ST_PNUM_P64 + 4 * i);
-+	fb->intra_blocks = fb->pnum[RKVENC_PNUM_I16] + fb->pnum[RKVENC_PNUM_I8] +
-+			   fb->pnum[RKVENC_PNUM_I4];
-+
-+	fb->qp_min = -1;
-+	fb->qp_max = -1;
-+	for (i = 0; i < 52; i++) {
-+		if (!readl_relaxed(r + VEPU580_ST_B8_QP(i)))
-+			continue;
-+		if (fb->qp_min < 0)
-+			fb->qp_min = i;
-+		fb->qp_max = i;
-+	}
- 	fb->cycles = readl_relaxed(r + VEPU580_DBG_FRAME_CYC);
- }
+ static const struct rkvenc_coded_fmt_desc *rkvenc_coded_fmts[] = {
+ 	&rkvenc_h264_fmt_desc,
++	&rkvenc_hevc_fmt_desc,
+ };
  
-@@ -941,8 +953,12 @@ static int rkvenc_init_ctrls(struct rkvenc_ctx *ctx)
- 	for (i = 0; i < ARRAY_SIZE(rkvenc_coded_fmts); i++) {
- 		const struct rkvenc_ctrls *ctrls = rkvenc_coded_fmts[i]->ctrls;
+ static const struct rkvenc_coded_fmt_desc *rkvenc_find_coded_fmt(u32 fourcc)
+@@ -655,6 +656,10 @@ static void rkvenc_hw_start(struct rkvenc_core *core)
+ 	rkvenc_write_range(core, VEPU580_FRAME_START, VEPU580_FRAME_END);
+ 	rkvenc_write_range(core, VEPU580_KLUT_START, VEPU580_KLUT_END);
+ 	rkvenc_write_range(core, VEPU580_PARAM_START, VEPU580_PARAM_END);
++	if (FIELD_GET(VEPU580_ENC_PIC_ENC_STND, core->shadow[VEPU580_ENC_PIC / 4]) ==
++	    VEPU580_ENC_STND_HEVC)
++		rkvenc_write_range(core, VEPU580_HEVC_WGT_START,
++				   VEPU580_HEVC_WGT_END);
+ 	rkvenc_write_range(core, VEPU580_RDO_START, VEPU580_RDO_END);
+ 	rkvenc_write_range(core, VEPU580_SCL_START, VEPU580_SCL_END);
  
--		for (j = 0; j < ctrls->num_ctrls; j++)
-+		for (j = 0; j < ctrls->num_ctrls; j++) {
-+			/* Controls shared by several codecs are added once. */
-+			if (v4l2_ctrl_find(hdl, ctrls->ctrls[j].id))
-+				continue;
- 			v4l2_ctrl_new_custom(hdl, &ctrls->ctrls[j], NULL);
-+		}
- 	}
- 
- 	ctx->avg_qp_ctrl = v4l2_ctrl_find(hdl, V4L2_CID_MPEG_VIDEO_AVERAGE_QP);
 diff --git a/drivers/media/platform/rockchip/rkvenc/rkvenc.h b/drivers/media/platform/rockchip/rkvenc/rkvenc.h
-index 83a6084fc084..5bc365101600 100644
+index 5bc365101600..3515ffc2b490 100644
 --- a/drivers/media/platform/rockchip/rkvenc/rkvenc.h
 +++ b/drivers/media/platform/rockchip/rkvenc/rkvenc.h
-@@ -53,8 +53,24 @@ struct rkvenc_rec_buf {
+@@ -15,6 +15,7 @@
+ #include <media/v4l2-ctrls.h>
+ #include <media/v4l2-device.h>
+ #include <media/v4l2-h264-enc.h>
++#include <media/v4l2-hevc-enc.h>
+ #include <media/v4l2-ioctl.h>
+ #include <media/v4l2-mem2mem.h>
+ #include <media/videobuf2-core.h>
+@@ -45,12 +46,15 @@ struct rkvenc_aux_buf {
+  * @thumb: 1/4 x 1/4 down-scaled luma used by the coarse motion search
+  * @colmv: collocated motion vectors (HEVC TMVP only)
+  * @fbc_hdr_size: offset of the FBC body inside @pixel
++ * @colmv_valid: the hardware stored the motion vectors of the picture in
++ *		 @colmv (HEVC, inter pictures only)
+  */
+ struct rkvenc_rec_buf {
+ 	struct rkvenc_aux_buf pixel;
+ 	struct rkvenc_aux_buf thumb;
+ 	struct rkvenc_aux_buf colmv;
  	size_t fbc_hdr_size;
++	bool colmv_valid;
  };
  
-+enum rkvenc_pnum {
-+	RKVENC_PNUM_P64,
-+	RKVENC_PNUM_P32,
-+	RKVENC_PNUM_P16,
-+	RKVENC_PNUM_P8,
-+	RKVENC_PNUM_I32,
-+	RKVENC_PNUM_I16,
-+	RKVENC_PNUM_I8,
-+	RKVENC_PNUM_I4,
-+	RKVENC_PNUM_COUNT,
+ enum rkvenc_pnum {
+@@ -203,6 +207,14 @@ struct rkvenc_h264_ctx {
+ 	bool hw_rc;
+ };
+ 
++/**
++ * struct rkvenc_hevc_ctx - HEVC per-context state
++ */
++struct rkvenc_hevc_ctx {
++	struct v4l2_hevc_enc enc;
++	bool hw_rc;
 +};
 +
- /**
-  * struct rkvenc_feedback - per-frame values read back from the status block
-+ * @pnum: number of inter (P64..P8) and intra (I32..I4) coded blocks per
-+ *	  block size, see &enum rkvenc_pnum
-+ * @qp_min: lowest QP of an 8x8 block, -1 when the histogram is empty
-+ * @qp_max: highest QP of an 8x8 block, -1 when the histogram is empty
-  */
- struct rkvenc_feedback {
- 	u32 int_sta;
-@@ -64,6 +80,9 @@ struct rkvenc_feedback {
- 	u32 madi;
- 	u32 madp;
- 	u32 intra_blocks;
-+	u32 pnum[RKVENC_PNUM_COUNT];
-+	int qp_min;
-+	int qp_max;
- 	u32 cycles;
- };
- 
-@@ -105,9 +124,12 @@ struct rkvenc_ctrls {
- 
- /**
-  * struct rkvenc_coded_fmt_desc - coded (CAPTURE) format description
-+ * @size_align: alignment of the encoded picture size (enc_rsl), the
-+ *		hardware pads the source up to it
-  */
- struct rkvenc_coded_fmt_desc {
- 	u32 fourcc;
-+	unsigned int size_align;
- 	struct v4l2_frmsize_stepwise frmsize;
- 	const struct rkvenc_ctrls *ctrls;
- 	const struct rkvenc_codec_ops *ops;
-@@ -222,7 +244,24 @@ void vepu580_setup_me(struct rkvenc_core *core, unsigned int width_mbs,
+ struct rkvenc_ctx {
+ 	struct v4l2_fh fh;
+ 	struct rkvenc_dev *dev;
+@@ -244,6 +256,9 @@ void vepu580_setup_me(struct rkvenc_core *core, unsigned int width_mbs,
  		      bool intra);
  void vepu580_setup_h264_tuning(struct rkvenc_dev *rkvenc,
  			       struct rkvenc_core *core, bool intra);
--void vepu580_setup_row_rc(struct rkvenc_core *core, unsigned int qp,
-+
-+/**
-+ * struct vepu580_row_rc - codec-specific row rate control parameters
-+ * @qp_adj: QP adjustment for each of the nine deviation buckets
-+ * @dthd_outer: multiple of the base threshold for the outer buckets
-+ * @aq_mode: value of rc_cfg.aq_mode
-+ */
-+struct vepu580_row_rc {
-+	s8 qp_adj[9];
-+	unsigned int dthd_outer;
-+	bool aq_mode;
-+};
-+
-+extern const struct vepu580_row_rc vepu580_h264_row_rc;
-+extern unsigned int rkvenc_row_rc_qp_range;
-+
-+void vepu580_setup_row_rc(struct rkvenc_core *core,
-+			  const struct vepu580_row_rc *cfg, unsigned int qp,
- 			  unsigned int qp_min, unsigned int qp_max,
- 			  unsigned int qp_range, u64 target_bits,
- 			  unsigned int num_blocks, unsigned int blocks_per_row);
++void vepu580_setup_hevc_me(struct rkvenc_core *core, unsigned int width,
++			   unsigned int height, bool colmv_stor, bool colmv_load);
++void vepu580_setup_hevc_tuning(struct rkvenc_core *core, bool intra);
+ 
+ /**
+  * struct vepu580_row_rc - codec-specific row rate control parameters
+@@ -271,5 +286,6 @@ dma_addr_t rkvenc_dst_addr(struct rkvenc_run *run);
+ size_t rkvenc_dst_size(struct rkvenc_run *run);
+ 
+ extern const struct rkvenc_coded_fmt_desc rkvenc_h264_fmt_desc;
++extern const struct rkvenc_coded_fmt_desc rkvenc_hevc_fmt_desc;
+ 
+ #endif /* RKVENC_H_ */
 
 -- 
 2.55.0
