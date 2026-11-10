@@ -1,139 +1,82 @@
-From: Richard Leitner <richard.leitner@linux.dev>
-Date: Tue, 10 Nov 2026 14:10:17 +0100
-Subject: [PATCH v3 8/8] media: i2c: ov9282: harmonize dev_err_probe usage
+From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
+Date: Tue, 10 Nov 2026 07:28:25 -0600
+Subject: [PATCH v3] staging: octeon: fix OF node and fixed-link leaks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-ov9282-fixes-v3-8-cb6df80cbc22@linux.dev>
-References: <20261110-ov9282-fixes-v3-0-cb6df80cbc22@linux.dev>
-In-Reply-To: <20261110-ov9282-fixes-v3-0-cb6df80cbc22@linux.dev>
-To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Dave Stevenson <dave.stevenson@raspberrypi.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Daniele Alessandrelli <daniele.alessandrelli@gmail.com>, 
- "Paul J. Murphy" <paul.j.murphy@intel.com>, 
- Martina Krasteva <martinax.krasteva@intel.com>, 
- Richard Leitner <richard.leitner@linux.dev>, 
- Hans Verkuil <hverkuil+cisco@kernel.org>, Bryan O'Donoghue <bod@kernel.org>, 
- Jacopo Mondi <jacopo@jmondi.org>
-Cc: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>, 
- Gyula Kelemen <gyula.kelemen@advasolutions.com>, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794316220; l=3822;
- i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=AdqD65jRSys4ZCILKgwTUAa4BvnkFI00p9DtzkspV4U=;
- b=vY6obKzzB7mkF9EVat+K65QhCPlMcS2aBpZNjG+iXyj/bbb046O7I8bIrhZ81c99VnApqRL6x
- yR3YbrKwzFVBn09mzPYpJ76CT5MpIqpZrhB0vgngDsVnEoCaQ+1Gbmb
-X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
- pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
-X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261110-octeon-of-node-leak-fix-v3-1-9cdd7e1d48fa@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7Zi2pCiuvIdhUcoUGqFjWkI0p
+ He3cgGX7yX//R0SRU8JbtUOkTafPIcC9akCO5kwEvqhMCihGinFBdmuxAHZYeCBcCbzROffeNW
+ 16G1vlBIEZf2KVPRRfnSFJ59Wjp/jaJM/+7+5SZSotNOtdH3bWH0fF+Pns+UFupzzF8XjBrS+A
+ AAA
+X-Change-ID: 20261107-octeon-of-node-leak-fix-8530bcba220e
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794317305; l=1834;
+ i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
+ bh=jl1zaHvHGKs1nPczUORm41xcESZsx9ReVkyvB9xAjJ8=;
+ b=wcq4qyYEf6+zZd6aBylkQJrPRqr6AWFbWWGX6sThGne0nm2+1AkoNb+krQ4VFyS0rh54QeCWz
+ vVnVMZmaWxkDbrQfEthwB27z4oaDKvpe+HA7u19OHwv0vHx3yQXO28T
+X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
+ pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
+X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use dev_err_probe() for all error messages during probing. This ensures
-there's a common "look-and-feel" in the drivers source code as well as
-the system log.
+Deregister fixed link and put OF node on probe failure and device removal
+to prevent memory leaks.
 
-Reviewed-by: Dave Stevenson <dave.stevenson@raspberrypi.com>
-Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
+Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 ---
- drivers/media/i2c/ov9282.c | 32 +++++++++++++++-----------------
- 1 file changed, 15 insertions(+), 17 deletions(-)
+Oscar Alejandro Sánchez Lucero (1):
+  staging: octeon: fix OF node and fixed-link leaks on error and teardown
+---
+Changes in v3:
+- Rebase into mainline and perform cross compilation validation for MIPS64.
+---
+ drivers/staging/octeon/ethernet.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/drivers/media/i2c/ov9282.c b/drivers/media/i2c/ov9282.c
-index d24fcdd4bcc33..59443b18d83cc 100644
---- a/drivers/media/i2c/ov9282.c
-+++ b/drivers/media/i2c/ov9282.c
-@@ -1079,9 +1079,8 @@ static int ov9282_parse_hw_config(struct ov9282 *ov9282)
- 	ov9282->reset_gpio = devm_gpiod_get_optional(ov9282->dev, "reset",
- 						     GPIOD_OUT_LOW);
- 	if (IS_ERR(ov9282->reset_gpio)) {
--		dev_err(ov9282->dev, "failed to get reset gpio %pe",
--			ov9282->reset_gpio);
--		return PTR_ERR(ov9282->reset_gpio);
-+		return dev_err_probe(ov9282->dev, PTR_ERR(ov9282->reset_gpio),
-+				     "failed to get reset gpio\n");
+diff --git a/drivers/staging/octeon/ethernet.c b/drivers/staging/octeon/ethernet.c
+index 42ec4b8324a8..13df64d3f498 100644
+--- a/drivers/staging/octeon/ethernet.c
++++ b/drivers/staging/octeon/ethernet.c
+@@ -114,6 +114,11 @@ static void cvm_oct_remove_device(int port)
+ 
+ 		cvm_oct_tx_shutdown_dev(dev);
+ 		unregister_netdev(dev);
++		if (priv->of_node) {
++			if (of_phy_is_fixed_link(priv->of_node))
++				of_phy_deregister_fixed_link(priv->of_node);
++			of_node_put(priv->of_node);
++		}
+ 		free_netdev(dev);
+ 		cvm_oct_device[port] = NULL;
  	}
+@@ -919,10 +924,16 @@ static int cvm_oct_probe(struct platform_device *pdev)
+ 			}
  
- 	/* Get sensor input clock */
-@@ -1097,8 +1096,8 @@ static int ov9282_parse_hw_config(struct ov9282 *ov9282)
- 
- 	rate = clk_get_rate(ov9282->inclk);
- 	if (rate != OV9282_INCLK_RATE) {
--		dev_err(ov9282->dev, "inclk frequency mismatch");
--		return -EINVAL;
-+		return dev_err_probe(ov9282->dev, -EINVAL,
-+				     "inclk frequency mismatch\n");
- 	}
- 
- 	ep = fwnode_graph_get_next_endpoint(fwnode, NULL);
-@@ -1114,16 +1113,15 @@ static int ov9282_parse_hw_config(struct ov9282 *ov9282)
- 		bus_cfg.bus.mipi_csi2.flags & V4L2_MBUS_CSI2_NONCONTINUOUS_CLOCK;
- 
- 	if (bus_cfg.bus.mipi_csi2.num_data_lanes != OV9282_NUM_DATA_LANES) {
--		dev_err(ov9282->dev,
--			"number of CSI2 data lanes %d is not supported",
--			bus_cfg.bus.mipi_csi2.num_data_lanes);
--		ret = -EINVAL;
-+		ret = dev_err_probe(ov9282->dev, -EINVAL,
-+				    "number of CSI2 data lanes %d is not supported\n",
-+				    bus_cfg.bus.mipi_csi2.num_data_lanes);
- 		goto done_endpoint_free;
- 	}
- 
- 	if (!bus_cfg.nr_of_link_frequencies) {
--		dev_err(ov9282->dev, "no link frequencies defined");
--		ret = -EINVAL;
-+		ret = dev_err_probe(ov9282->dev, -EINVAL,
-+				    "no link frequencies defined\n");
- 		goto done_endpoint_free;
- 	}
- 
-@@ -1354,8 +1352,8 @@ static int ov9282_probe(struct i2c_client *client)
- 
- 	ret = ov9282_parse_hw_config(ov9282);
- 	if (ret) {
--		dev_err(ov9282->dev, "HW configuration is not supported");
--		return ret;
-+		return dev_err_probe(ov9282->dev, ret,
-+				     "HW configuration is not supported\n");
- 	}
- 
- 	ov9282->regmap = devm_cci_regmap_init_i2c(client, 16);
-@@ -1366,12 +1364,12 @@ static int ov9282_probe(struct i2c_client *client)
- 	ret = ov9282_power_on(ov9282->dev);
- 	if (ret)
- 		return dev_err_probe(ov9282->dev, ret,
--				     "failed to power-on the sensor");
-+				     "failed to power-on the sensor\n");
- 
- 	/* Check module identity */
- 	ret = ov9282_detect(ov9282);
- 	if (ret) {
--		dev_err(ov9282->dev, "failed to find sensor: %d", ret);
-+		dev_err_probe(ov9282->dev, ret, "failed to find sensor\n");
- 		goto error_power_off;
- 	}
- 
-@@ -1381,7 +1379,7 @@ static int ov9282_probe(struct i2c_client *client)
- 
- 	ret = ov9282_init_controls(ov9282);
- 	if (ret) {
--		dev_err(ov9282->dev, "failed to init controls: %d", ret);
-+		dev_err_probe(ov9282->dev, ret, "failed to init controls\n");
- 		goto error_power_off;
- 	}
- 
-@@ -1394,7 +1392,7 @@ static int ov9282_probe(struct i2c_client *client)
- 	ov9282->pad.flags = MEDIA_PAD_FL_SOURCE;
- 	ret = media_entity_pads_init(&ov9282->sd.entity, 1, &ov9282->pad);
- 	if (ret) {
--		dev_err(ov9282->dev, "failed to init entity pads: %d", ret);
-+		dev_err_probe(ov9282->dev, ret, "failed to init entity pads\n");
- 		goto error_handler_free;
- 	}
- 
+ 			if (!dev->netdev_ops) {
++				of_node_put(priv->of_node);
+ 				free_netdev(dev);
+ 			} else if (register_netdev(dev) < 0) {
+ 				netdev_err(dev, "Failed to register ethernet device for interface %d, port %d\n",
+ 					   interface, priv->port);
++				if (priv->of_node) {
++					if (of_phy_is_fixed_link(priv->of_node))
++						of_phy_deregister_fixed_link(priv->of_node);
++					of_node_put(priv->of_node);
++				}
+ 				free_netdev(dev);
+ 			} else {
+ 				cvm_oct_device[priv->port] = dev;
 
+---
+base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
+change-id: 20261107-octeon-of-node-leak-fix-8530bcba220e
+
+Best regards,
 -- 
-2.53.0
+Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 
