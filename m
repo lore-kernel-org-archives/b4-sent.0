@@ -1,52 +1,69 @@
 From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Tue, 10 Nov 2026 09:03:21 +0000
-Subject: [PATCH net] net: usb: smsc75xx: reject frames shorter than the FCS
+Date: Tue, 10 Nov 2026 09:03:23 +0000
+Subject: [PATCH wpan] mac802154: llsec: reject secured frames with security
+ level 0
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-smsc75xx-rx-fcs-v1-1-4e048bfc28f3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIANjd8moC/x2MuwqAMAwAf6VkNmAKPn9FHKRNNYNVGpGC+O8Wh
- xtuuHtAOQkrjOaBxLeoHLEIVQbctsSVUXxxsLVtiahG3dV1Tc6YMganhWVoex/IO4ZSnYmD5P8
- 4QeQL5vf9AAyj1IhmAAAA
-To: joasantonio108@gmail.com, steve.glendinning@shawell.net, 
- andrew+netdev@lunn.ch, davem@davemloft.net, edumazet@kernel.org, 
- kuba@kernel.org, pabeni@redhat.com
-Cc: netdev@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Message-Id: <20261110-llsec-seclevel-none-v1-1-06ef143e467f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIANrd8moC/x2MSwqEMBAFryK9tiEJOH6uIi5i5qkNoZUEVBDvP
+ mEWtahF1UMZSZBpqB5KOCXLrkVsXVHYvK5g+RYnZ9zHWms4xozAhYgTkXVXcB+6pXFm9q1pqZR
+ HwiL3/zrSdXil6X1/TSPEBmsAAAA=
+To: alex.aring@gmail.com, stefan@datenfreihafen.org, 
+ miquel.raynal@bootlin.com, joasantonio108@gmail.com
+Cc: davem@davemloft.net, edumazet@kernel.org, kuba@kernel.org, 
+ pabeni@redhat.com, horms@kernel.org, linux-wpan@vger.kernel.org, 
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794301400; l=2363;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794301402; l=2972;
  i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=G1cAL4e/Pmr3AzCsbxnGrjhhPlyOjfRjUMp1/pULOYE=;
- b=p47NHnLvmlqjWX1hzQxuofh7VEdXnFhY3NCjZj6MpBzk3zeO8NcmasCQR8/uUCoyO2fKF92W7
- aHXxY9fV06dAOPQfEnMx8MrmlR/DWsrO407E5TgGXibSp0E65RTRccb
+ bh=D5EaJBjC8M7RHA6vb/0t+xHzBpEctd0lgATfGQnGuqA=;
+ b=AvenG5SdRGme9uWM1JQXBb23fS5x4xf0jrQTz85B6HBZqxGbSsPXPzg0f/YdjhL4nm/a7ahLI
+ L0RJfiznDZlCixkBjbh0cLzFuYGNmpUKOiVuM9ZIZpIYKtlREw0yxhs
 X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
  pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
 X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smsc75xx_rx_fixup() takes the frame length from the RX command word
-supplied by the device and strips the FCS by using "size - 4" for the
-allocation, skb_put() and memcpy() of each frame that is not the last
-one in the URB.  The length is only checked against an upper bound and
-against skb->len, so a device can report a length field of 2..5, which
-gives a size of 0..3 after RXW_PADDING is subtracted.
+mac802154_llsec_decrypt() handles every received frame that has the
+Security Enabled bit set.  The security level is taken from the
+auxiliary security header of the frame and is not required to be
+non-zero.  The only check that looks at level 0 rejects the frame only
+if level 0 is not allowed by the matching seclevel entry, the entry has
+device_override set and the device is not seclevel_exempt:
 
-size is a u32, so "size - 4" then wraps to 0xfffffffc..0xffffffff.
-__netdev_alloc_skb() adds NET_SKB_PAD to the unsigned length, which
-wraps back to a small value and the allocation succeeds.  skb_put()
-adds the length to the 32-bit skb->tail and skb->len, which also wrap,
-so the skb_over_panic() check does not fire.  The following memcpy()
-then tries to copy almost 4 GiB from the URB buffer into that small
-allocation and writes far beyond it.
+	if (!(seclevel.sec_levels & BIT(hdr.sec.level)) &&
+	    (hdr.sec.level == 0 && seclevel.device_override &&
+	     !dev->dev.seclevel_exempt)) {
 
-A malicious or malfunctioning USB device can use this to corrupt
-kernel memory or crash the machine.
+Otherwise the frame reaches llsec_do_decrypt(), which sends every level
+other than IEEE802154_SCF_SECLEVEL_ENC to llsec_do_decrypt_auth().
+There ieee802154_sechdr_authtag_len() returns 0 for level 0 and
 
-Reject frames that are too short to hold an FCS, as lan78xx_rx() does.
+	req = aead_request_alloc(llsec_tfm_by_len(key, authlen), GFP_ATOMIC);
+
+looks for a transform with an authentication tag size of 0.  The key
+only has transforms for tag sizes 4, 8 and 16, so llsec_tfm_by_len()
+runs into its BUG().
+
+The frame is not authenticated at that point.  A station in radio range
+can crash a node that has llsec enabled if it sends a frame that matches
+a configured key entry and a device table entry (source address, key id
+mode and key id are sent in the clear and can be observed), uses a frame
+type that has a seclevel entry and carries a frame counter that is not
+lower than the stored one.  No key material is needed.  The frame
+counter of that device is also updated before the BUG() is reached.
+
+A frame with the Security Enabled bit set and security level 0 carries
+no protection and cannot be processed by the incoming security
+procedure.  Reject it before any key or device state is looked up.  The
+transmit side already leaves such frames alone in
+mac802154_llsec_encrypt().
 
 Found by LLM-assisted source review.
 
-Fixes: 1b3b2d9e772b ("net: usb: smsc75xx: stop lying about skb->truesize")
+Fixes: 4c14a2fb5d14 ("mac802154: add llsec decryption method")
 Cc: stable@vger.kernel.org
 Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
@@ -55,31 +72,26 @@ This issue was found with the help of an LLM-based code review tool
 reviewed the fix myself.  It is build-tested only (W=1, arm64); I do
 not have the hardware to test it at runtime.
 ---
- drivers/net/usb/smsc75xx.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ net/mac802154/llsec.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/net/usb/smsc75xx.c b/drivers/net/usb/smsc75xx.c
-index 6f72a3f15907..e923fa6c1785 100644
---- a/drivers/net/usb/smsc75xx.c
-+++ b/drivers/net/usb/smsc75xx.c
-@@ -2217,6 +2217,13 @@ static int smsc75xx_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
- 				return 0;
- 			}
+diff --git a/net/mac802154/llsec.c b/net/mac802154/llsec.c
+index 85452ef9a58c..32565f18897e 100644
+--- a/net/mac802154/llsec.c
++++ b/net/mac802154/llsec.c
+@@ -1019,6 +1019,8 @@ int mac802154_llsec_decrypt(struct mac802154_llsec *sec, struct sk_buff *skb)
+ 		return 0;
+ 	if (hdr.fc.version == 0)
+ 		return -EINVAL;
++	if (hdr.sec.level == IEEE802154_SCF_SECLEVEL_NONE)
++		return -EINVAL;
  
-+			if (unlikely(size < ETH_FCS_LEN)) {
-+				netif_dbg(dev, rx_err, dev->net,
-+					  "size err rx_cmd_a=0x%08x\n",
-+					  rx_cmd_a);
-+				return 0;
-+			}
-+
- 			/* last frame in this batch */
- 			if (skb->len == size) {
- 				smsc75xx_rx_csum_offload(dev, skb, rx_cmd_a,
+ 	read_lock_bh(&sec->lock);
+ 	if (!sec->params.enabled) {
 
 ---
 base-commit: b3dfbde62cf1981c4638939c159dfd087b7a72e9
-change-id: 20261110-smsc75xx-rx-fcs-fca968df1dce
+change-id: 20261110-llsec-seclevel-none-9c8f520ba707
 
 Best regards,
 -- 
