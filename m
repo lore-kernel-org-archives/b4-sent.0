@@ -1,55 +1,85 @@
 From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Subject: [PATCH 0/2] can: kvaser_usb: validate values received from the
- device
-Date: Tue, 10 Nov 2026 03:56:41 +0000
-Message-Id: <20261110-kvaser-usb-validate-v1-0-f266b85aa908@gmail.com>
+Date: Tue, 10 Nov 2026 03:56:42 +0000
+Subject: [PATCH 1/2] can: kvaser_usb: hydra: reject commands shorter than
+ the header
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPmV8moC/x3MTQqAIBBA4avIrBvwJ1p0lWihNtVQWGhJEN49a
- fkW33shUWRK0IsXImVOfIQaqhHgVxsWQp5qg5a6U0pJ3LKtBO/kMNudJ3sRGuM1mdZ1xs1Q5Rl
- p5ue/DmMpH243goJlAAAA
+Message-Id: <20261110-kvaser-usb-validate-v1-1-f266b85aa908@gmail.com>
+References: <20261110-kvaser-usb-validate-v1-0-f266b85aa908@gmail.com>
+In-Reply-To: <20261110-kvaser-usb-validate-v1-0-f266b85aa908@gmail.com>
 To: mkl@pengutronix.de, mailhol@kernel.org, joasantonio108@gmail.com
 Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794283001; l=1136;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794283001; l=2462;
  i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=EPk1ni/Kaeh4ujfokyWdtrgUBNNRLNvf/WMEh31WoiY=;
- b=nkNiEMfXBkaVQ/nlluzDvnFqTBmhnBLKAMCzqrXuFqIE/imjRTn1LgKkuRcSHdQhGvzcbuHrE
- jdVyAqsUB13BICwH3ukTIUxgLf0vob/yTcOIz8AX/cl3KEUxgnS7uqE
+ bh=WQBZhSAEzA9EWg/6IUMTZ+5l64+D6iO6t2jMkcYHrcE=;
+ b=ng14H4NFwqtau2GbY5NiuCX/iT5hnlpAX9ifCs98whCYgnYAJrWT+AIcUZy8C0/5A0YRDe1L9
+ x10OoQtrEG/Bjci/MEbYlRuOCwcE4MDTnf9z9/2p/DRznsU4WRBih4H
 X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
  pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
 X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Two fixes for values that kvaser_usb takes from the USB device without
-checking them.
+kvaser_usb_hydra_cmd_size() returns the length field supplied by the
+device for extended commands.  Both command parsers advance through the
+received buffer by that length:
 
-Patch 1 rejects hydra commands whose length is shorter than the command
-header, which otherwise stall the command loops.
+  kvaser_usb_hydra_wait_cmd()            pos += cmd_len;
+  kvaser_usb_hydra_read_bulk_callback()  pos += cmd_len;
 
-Patch 2 rejects devices that report zero max outstanding tx, which
-otherwise leads to a division by zero.
+Neither checks that the length is non-zero.  A device that sends an
+extended command (cmd_no == CMD_EXTENDED) with a length of zero keeps
+pos unchanged, so the loop never terminates.  In
+kvaser_usb_hydra_read_bulk_callback() this happens in the URB completion
+handler, which also calls kvaser_usb_hydra_handle_cmd() on the same
+command in every iteration, and locks up the CPU.  In
+kvaser_usb_hydra_wait_cmd() the loop spins in process context without
+ever reaching the timeout check.
 
-These issues were found with the help of an LLM-based code review tool
-(Claude).  I checked the code paths by hand against v7.4-rc3 and
-reviewed the fixes myself.  They are build-tested only (W=1, arm64); I
-do not have the hardware to test them at runtime.
+A command can never be shorter than its header, so treat a shorter
+length as a format error in both parsers.
 
+A similar infinite loop in the leaf command parsers was fixed in
+commit 0c73772cd2b8 ("can: kvaser_usb: leaf: Fix potential infinite loop in command parsers").
+
+Found by LLM-assisted source review.
+
+Fixes: aec5fb2268b7 ("can: kvaser_usb: Add support for Kvaser USB hydra family")
+Cc: stable@vger.kernel.org
+Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
-Joas Antonio dos Santos (2):
-      can: kvaser_usb: hydra: reject commands shorter than the header
-      can: kvaser_usb: reject devices reporting zero max outstanding tx
-
- drivers/net/can/usb/kvaser_usb/kvaser_usb_core.c  | 6 ++++++
  drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c | 8 +++++++-
- 2 files changed, 13 insertions(+), 1 deletion(-)
----
-base-commit: b3dfbde62cf1981c4638939c159dfd087b7a72e9
-change-id: 20261110-kvaser-usb-validate-33c2e34b63bf
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-Best regards,
+diff --git a/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c b/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c
+index 687911d764de..92bfdcb04b01 100644
+--- a/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c
++++ b/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c
+@@ -676,7 +676,8 @@ static int kvaser_usb_hydra_wait_cmd(const struct kvaser_usb *dev, u8 cmd_no,
+ 
+ 			tmp_cmd = buf + pos;
+ 			cmd_len = kvaser_usb_hydra_cmd_size(tmp_cmd);
+-			if (pos + cmd_len > actual_len) {
++			if (cmd_len < sizeof(struct kvaser_cmd_header) ||
++			    pos + cmd_len > actual_len) {
+ 				dev_err_ratelimited(&dev->intf->dev,
+ 						    "Format error\n");
+ 				break;
+@@ -2156,6 +2157,11 @@ static void kvaser_usb_hydra_read_bulk_callback(struct kvaser_usb *dev,
+ 
+ 		cmd_len = kvaser_usb_hydra_cmd_size(cmd);
+ 
++		if (cmd_len < sizeof(struct kvaser_cmd_header)) {
++			dev_err(&dev->intf->dev, "Format error\n");
++			return;
++		}
++
+ 		if (pos + cmd_len > len) {
+ 			/* We got first part of a command */
+ 			int leftover_bytes;
+
 -- 
-Joas Antonio dos Santos <joasantonio108@gmail.com>
+2.43.0
 
