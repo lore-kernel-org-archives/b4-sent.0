@@ -1,69 +1,73 @@
-From: Jing Lin <kayano050408@gmail.com>
-Date: Tue, 10 Nov 2026 11:40:50 +0900
-Subject: [PATCH v7 4/4] usb: gadget: gadgetfs: avoid writing through the
- const setup pointer
+From: Igor Velkov <iav@iav.lv>
+Date: Tue, 10 Nov 2026 02:50:01 +0000
+Subject: [PATCH] arm64: dts: rockchip: Enable SDR104 on the ODROID-M1 SD
+ card
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-gadgetfs-v7-v7-4-6d05409cc61a@gmail.com>
-References: <20261110-gadgetfs-v7-v7-0-6d05409cc61a@gmail.com>
-In-Reply-To: <20261110-gadgetfs-v7-v7-0-6d05409cc61a@gmail.com>
-To: Neill Kapron <nkapron@google.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Jing Lin <kayano050408@gmail.com>, stable@vger.kernel.org, 
- linux-usb@vger.kernel.org, 
- syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com, 
- Alan Stern <stern@rowland.harvard.edu>, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794278513; l=1583;
- i=kayano050408@gmail.com; s=p600; h=from:subject:message-id;
- bh=BRGg0GeWE86bbv0IxEfBEmu9UWVpi4xtBx5TMnNOtNU=;
- b=zuIrGohD8/uC8cnt9yxToCKhQ7355VL5yMElq3Lw6aC1pOLx7emjXeBOgWaubXzz1uJFjoA+P
- zjyVNzGRgXmBuwGLaqMMZhICmqw1EJByQv1KTVFStBk1ncBS4+yDsCJ
-X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
- pk=DtAI52kU3F0sVbAiS4n+5b4UKMnVF398eKHlj3H9KBY=
-X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/p600 with auth_id=1475
+Message-Id: <20261110-odroid-m1-sdr104-v1-1-8edc6d5c1bf6@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAFqG8moC/x3MPQqAMAxA4atIZgOJf6BXEYfSRs2glRREkN7d4
+ vgN772QxFQSTNULJrcmjWcB1xX43Z2boIZiaKgZmJkwBosa8GBMwZg6XAeh1pHvnR+hZJfJqs+
+ /nJecP7EZavRiAAAA
+To: Heiko Stuebner <heiko@sntech.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1796; i=iav@iav.lv;
+ h=from:subject:message-id; bh=qnYQwjnRjrYCEMA3SHfY2+DFHlJaSH/TMsn5Af6nh14=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmf2qInZi0x0TBUjGFZfEd0j8Vikydvzr+ZEWZx+0Daj
+ ReMh3+XdZSyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJtFgxMmwxtXqmcaHfyfmt
+ WtfeFasLt5424FNcwX/snvzEilnvvCwZGXb6Pb90ZsqCt+zXziwLDdVQdFlz76vypO9nOvoPOO1
+ IvcsHAA==
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-gadgetfs_setup() receives the setup packet as const, but clamps an
-oversized control IN request by casting away the constness and writing
-the truncated length back into the caller's wLength field.
+The SD card already switches to 1.8 V, but only SDR50 is allowed, and
+clk_sdmmc0 on RK3568 is a mux without a divider: dw_mmc-rockchip asks
+it for twice the card clock, 200 MHz for SDR50, the mux rounds down to
+the 100 MHz parent and the card runs at 50 MHz.
 
-The setup() callback has no business modifying the setup packet, and
-ctrl->wLength is only used afterwards when initializing event->u.setup.
-Store the clamped w_length into event->u.setup.wLength directly instead.
+Allow SDR104 instead; the MMC core still falls back to SDR50 for cards
+without SDR104. With the 150 MHz max-frequency from rk356x-base.dtsi
+the clock comes from the 300 MHz parent and the card runs at 150 MHz.
+Hardkernel's vendor kernel already uses sd-uhs-sdr104 on this board.
+With a SanDisk 128 GB card, direct read goes from 22 MB/s to
+58-64 MB/s and direct write from 20 MB/s to 47-50 MB/s.
 
-Suggested-by: Alan Stern <stern@rowland.harvard.edu>
-Signed-off-by: Jing Lin <kayano050408@gmail.com>
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- drivers/usb/gadget/legacy/inode.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+Tested with an Armbian 7.3.3 kernel (rockchip64), the property added to
+the DTB with fdtput: reboot, sysrq-b, watchdog reset, poweroff, s2idle,
+deep, hibernate, hybrid-sleep and suspend-then-hibernate; the card
+re-tuned and came back in SDR104 at 150 MHz in all 29 runs.
+---
+ arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/usb/gadget/legacy/inode.c b/drivers/usb/gadget/legacy/inode.c
-index 0b3210f87..5970f0c85 100644
---- a/drivers/usb/gadget/legacy/inode.c
-+++ b/drivers/usb/gadget/legacy/inode.c
-@@ -1600,10 +1600,6 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
- 
- 	if (w_length > RBUF_SIZE) {
- 		if (ctrl->bRequestType & USB_DIR_IN) {
--			/* Cast away the const, we are going to overwrite on purpose. */
--			__le16 *temp = (__le16 *)&ctrl->wLength;
--
--			*temp = cpu_to_le16(RBUF_SIZE);
- 			w_length = RBUF_SIZE;
- 		} else {
- 			spin_unlock(&dev->lock);
-@@ -1761,6 +1757,8 @@ delegate:
- 			/* state changes when reader collects event */
- 			event = next_event (dev, GADGETFS_SETUP);
- 			event->u.setup = *ctrl;
-+			/* Report the length we can actually handle */
-+			event->u.setup.wLength = cpu_to_le16(w_length);
- 			ep0_readable (dev);
- 			spin_unlock (&dev->lock);
- 			/*
+diff --git a/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts b/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts
+index ec43dee18094..6f77e73abc8e 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts
+@@ -610,7 +610,7 @@ &sdmmc0 {
+ 	disable-wp;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&sdmmc0_bus4 &sdmmc0_clk &sdmmc0_cmd &sdmmc0_det>;
+-	sd-uhs-sdr50;
++	sd-uhs-sdr104;
+ 	vmmc-supply = <&vcc3v3_sd>;
+ 	vqmmc-supply = <&vccio_sd>;
+ 	status = "okay";
 
+---
+base-commit: c3baae5f1a15645cddadcb2b9abddef5df291f59
+change-id: 20261110-odroid-m1-sdr104-f6e03a0c5ac9
+
+Best regards,
 -- 
-Git-155)
+Igor Velkov <iav@iav.lv>
 
