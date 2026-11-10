@@ -1,162 +1,68 @@
-From: Kameron Markham <kameron.markham@gmail.com>
-Date: Mon, 09 Nov 2026 16:34:26 -0800
-Subject: [PATCH] PCI: Don't add failed disabled ROM BARs to fail_head
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Tue, 10 Nov 2026 09:38:17 +0900
+Subject: [PATCH] xfs: wait for direct I/O before swapping extents
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-r730-disabled-rom-fail-head-v1-1-88ef813d125e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAJFm8moC/yXMwQrCMAwA0F8ZORtoO3Dqr4iHdEldZG6STBHG/
- t2qx3d5K7iYisOpWcHkpa7zVBF3DfQDTVdB5WpIIe1jDEe0rg3I6pRHYbT5joV0xEGIsZUgh0S
- ly1ygDg+Tou/ffr787c98k375lrBtH/dC6JB/AAAA
-X-Change-ID: 20261109-r730-disabled-rom-fail-head-3e0e82af7bdf
-To: Bjorn Helgaas <bhelgaas@google.com>
-Cc: linux-kernel@vger.kernel.org, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- linux-pci@vger.kernel.org, regressions@lists.linux.dev
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794270877; l=6291;
- i=kameron.markham@gmail.com; s=kameron-wsl; h=from:subject:message-id;
- bh=S9URQyCNdcnam0CBqF71fXBw/t0UmK4Lo+/6b3bh+NA=;
- b=FPKw5AKmp9jixVuwNr6ltPkJoxna5KGLHvhoWP9jqF7kE7fouwNngkDCU2FFH6cB4LR2RTqxX
- EWU/oPAEkeSBDpzyenoOlgM1im84Li4riv0WZrD0jn9xBcfaZRq96pc
-X-Developer-Key: i=kameron.markham@gmail.com; a=ed25519;
- pk=L2HWL2ipoxbiQNcyRjFYout0zPIWDXvYaMwgw7T8G1Q=
-X-Endpoint-Received: by B4 Relay for kameron.markham@gmail.com/kameron-wsl with auth_id=1470
+Message-Id: <20261110-xfs-swapext-dio-wait-v1-1-b8ccc5d5ef3c@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAHhn8moC/x3MMQ6AIAxA0auYzjYBBhWvYhwQi3ZRQ42SEO4uc
+ XzD/xmEIpPA2GSI9LDweVTotgG/u2Mj5LUajDKd1spiCoLyuovSjSuf+Dq+sVt6pbxxdtAENb0
+ iBU7/dppL+QBEvDAdZgAAAA==
+To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>, 
+ "Darrick J. Wong" <djwong@kernel.org>, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794271096; l=1421;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=grxFvx5J+h49fGNJIZy/14ToLYlTBOdKLe89d7TYHY4=;
+ b=B51sfxA0+dz3DqeZ+HRW/V1/hxt+LhhEHxydxcXybSn6BwVKeZsYRYTVhyEbN1Z446A40ukcB
+ M770yk8DukNC2y8v4PlXy9orTllGOoVeeB6+FsoewycphEKwIN6cB/8
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On Dell PowerEdge R730 servers with "SR-IOV Global Enable" disabled in
-the BIOS setup, kernels since v6.15 hard-reset while igb probes the
-on-board Intel I350 NIC. The iDRAC logs PWR2262 ("The Intel Management
-Engine has reported an internal system error"), CPU0000 (IERR) and a
-CPU machine check, and the BIOS sometimes halts in POST afterwards
-(PST0208). v6.14 boots fine on the same machine.
+An AIO direct write drops the iolock before its bios complete.
+XFS_IOC_SWAPEXT does not wait for it. The write can land in blocks that
+the swap moved to the temporary file. Once xfs_fsr frees them, the
+write corrupts whatever reuses them.
 
-With SR-IOV Global Enable disabled, the firmware does not assign the VF
-BARs of the on-board 82599 NIC, so pci_realloc_detect() enables
-resource reallocation automatically. On the first assignment pass the
-disabled Expansion ROM BARs of three devices cannot be assigned:
+Wait for direct I/O first, as exchange-range does.
 
-  pci 0000:02:00.0: ROM [mem size 0x00100000 pref]: can't assign; no space
-  pci 0000:01:00.1: ROM [mem size 0x00080000 pref]: can't assign; no space
-  pci 0000:07:00.1: ROM [mem size 0x00080000 pref]: can't assign; no space
-
-Before commit 96336ec70264 ("PCI: Perform reset_resource() and build
-fail list in sync"), __assign_resources_sorted() did not put a failed
-disabled ROM BAR on fail_head ("If the failed resource is a ROM BAR and
-it will be enabled later, don't add it to the list."). That commit moved
-the check into the new loop at the end of the function, but passes an
-idx that is not computed for the resource being checked, so the check
-no longer recognizes ROM BARs. Commit 2499f5348431 ("PCI: Rework
-optional resource handling") then removed the check.
-
-The failed disabled ROM BARs therefore end up on fail_head, and
-pci_assign_unassigned_root_bus_resources() starts another round that
-releases and reassigns bridge windows the firmware set up, including
-the window of the PCH root port 00:1c.4 and the I350 behind it:
-
-  PCI: No. 2 try to assign unassigned res
-  pci 0000:00:1c.4: resource 14 [mem 0x91a00000-0x91bfffff] released
-  pci 0000:00:1c.4: bridge window [mem 0x92200000-0x924fffff]: assigned
-  pci 0000:07:00.0: BAR 0 [mem 0x92200000-0x9227ffff]: assigned
-
-The machine resets when igb then accesses the I350 at the new address.
-Why the platform does not tolerate the move is not known.
-
-Restore the old behavior: add pci_resource_is_disabled_rom(), the
-helper the first of these commits already called, and don't put a
-failed disabled ROM BAR on fail_head. Such a BAR is still reset as before.
-Other failed resources, including optional SR-IOV BARs, are still added
-to fail_head, so reallocation can still make room for them.
-
-Tested on a Dell PowerEdge R730 (BIOS 2.19.0, SR-IOV Global Enable
-disabled): v6.17 and v7.4-rc2 hard-reset on every boot without this
-patch and boot normally with it; no second assignment round happens and
-the I350 keeps its firmware-assigned window. Enabling SR-IOV Global
-Enable in the BIOS, or booting with pci=realloc=off, also avoids the
-problem.
-
-The bisection, the analysis, this patch and this changelog were done
-with the help of an AI coding assistant (Claude, by Anthropic). All
-testing was done on the hardware described above.
-
-Fixes: 96336ec70264 ("PCI: Perform reset_resource() and build fail list in sync")
-Closes: https://bugzilla.kernel.org/show_bug.cgi?id=222253
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 Cc: stable@vger.kernel.org
-Signed-off-by: Kameron Markham <kameron.markham@gmail.com>
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Notes for reviewers (not part of the changelog):
+Tested with an AIO direct write held back by cgroup io.max. Before, the
+write reached files that reused the freed blocks in 7 of 7 runs. After,
+those files were intact. The new fstests case "xfs: test that swapext
+waits for in-flight direct I/O" fails before and passes after. Running
+fstests -g fsr shows no change.
 
-- Bisected between v6.14 (good) and v6.17 (bad) on the affected machine
-  with test kernels booted from RAM over PXE. 96336ec70264 does not
-  build on its own (pci_resource_is_disabled_rom() is not defined by any
-  commit), so for the bisect it was built with a one-line definition
-  identical to the open-coded check it replaced. Its parent e89df6d2beae
-  boots; 96336ec70264 resets.
-
-- Only the SR-IOV Global Enable BIOS switch matters: stock v6.17 boots
-  with only that switch enabled, and still resets with X2APIC and I/OAT
-  enabled but SR-IOV disabled. (User reports often recommend all three.)
-
-- Alternative considered: make pci_assign_unassigned_root_bus_resources()
-  retry only when a required resource failed. That would also change how
-  failed optional SR-IOV BARs drive reallocation, so this patch restores
-  the pre-v6.15 behavior for disabled ROM BARs only.
-
-- Serial console logs of good and bad boots, the bisect log, the BIOS
-  switch matrix and the test scripts are attached to the bugzilla entry
-  in the Closes: tag.
-
-- Tool use, per Documentation/process/generated-content.rst: Claude
-  (Anthropic) running in Claude Code, driven by the submitter, ran the
-  automated bisection on the hardware, read the PCI resource assignment
-  code, proposed this change and drafted this message. The submitter
-  reviewed the change and the analysis.
+Applies with or without "xfs: break layouts before swapping extents".
 ---
- drivers/pci/setup-bus.c | 18 +++++++++++++++++-
- 1 file changed, 17 insertions(+), 1 deletion(-)
+ fs/xfs/xfs_bmap_util.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/pci/setup-bus.c b/drivers/pci/setup-bus.c
-index ed16ef7c26..6506e44866 100644
---- a/drivers/pci/setup-bus.c
-+++ b/drivers/pci/setup-bus.c
-@@ -377,6 +377,17 @@ static void pdev_sort_resources(struct pci_dev *dev, struct list_head *head)
- 	}
- }
- 
-+/*
-+ * A disabled Expansion ROM BAR is only enabled later if it is needed, so
-+ * failing to assign it does not leave the device unusable.
-+ */
-+static bool pci_resource_is_disabled_rom(const struct pci_dev *dev,
-+					 const struct resource *res)
-+{
-+	return pci_resource_num(dev, res) == PCI_ROM_RESOURCE &&
-+	       !(res->flags & IORESOURCE_ROM_ENABLE);
-+}
-+
- bool pci_resource_is_optional(const struct pci_dev *dev, int resno)
+diff --git a/fs/xfs/xfs_bmap_util.c b/fs/xfs/xfs_bmap_util.c
+index 865aec3ae5a..4d214708f9c 100644
+--- a/fs/xfs/xfs_bmap_util.c
++++ b/fs/xfs/xfs_bmap_util.c
+@@ -1257,6 +1257,7 @@ xfs_swap_extent_flush(
  {
- 	const struct resource *res = pci_resource_n(dev, resno);
-@@ -743,7 +754,12 @@ static void __assign_resources_sorted(struct list_head *head,
- 		if (resource_assigned(res))
- 			continue;
+ 	int	error;
  
--		if (fail_head) {
-+		/*
-+		 * Don't put a disabled ROM BAR on fail_head: failing to
-+		 * assign it must not trigger the release and reassignment
-+		 * of bridge windows that are already in use.
-+		 */
-+		if (fail_head && !pci_resource_is_disabled_rom(dev, res)) {
- 			pci_dev_res_add_to_list(fail_head, dev, res,
- 						0 /* don't care */,
- 						0 /* don't care */);
++	inode_dio_wait(VFS_I(ip));
+ 	error = filemap_write_and_wait(VFS_I(ip)->i_mapping);
+ 	if (error)
+ 		return error;
 
 ---
-base-commit: 6633c535abc356ff868e72025ecd65aa0106630d
-change-id: 20261109-r730-disabled-rom-fail-head-3e0e82af7bdf
+base-commit: 1e17fc56469d62d1c1ac45c137a2456d14456f1d
+change-id: 20261109-xfs-swapext-dio-wait-6b700c2a981e
 
 Best regards,
---  
-Kameron Markham <kameron.markham@gmail.com>
+-- 
+Daejun Park <daejun7.park@samsung.com>
 
