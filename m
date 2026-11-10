@@ -1,136 +1,118 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Tue, 10 Nov 2026 04:30:24 +0000
-Subject: [PATCH] clk: rockchip: rk356x: Set twice the SD/SDIO card clock
+From: Long Zhao <longzhao@ambarella.com>
+Subject: [PATCH v14 00/14] gpio: add Ambarella CV75 PL061 support
+Date: Tue, 10 Nov 2026 12:32:25 +0800
+Message-Id: <20261110-cv75-gpio-v14-0-e586aad0467a@ambarella.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-rk3568-sdmmc-clk-v1-1-482eeb42f571@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAN+d8moC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQ0MD3aJsY1MzC93ilNzcZN3knGxdS9Ok5OTEVHMjI3NzJaC2gqLUtMw
- KsJHRsbW1ANN1e+hiAAAA
-To: Kever Yang <kever.yang@rock-chips.com>, 
- Quentin Schulz <u-boot@0leil.net>
-Cc: Simon Glass <sjg@chromium.org>, Lukasz Majewski <lukma@nabladev.com>, 
- Tom Rini <trini@konsulko.com>, Elaine Zhang <zhangqing@rock-chips.com>, 
- Jonas Karlman <jonas@kwiboo.se>, u-boot@lists.u-boot-project.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3285; i=iav@iav.lv;
- h=from:subject:message-id; bh=R2OKm69sEn6Alznt2gmTcH5ZSpX61IlnRP6pIL+WazA=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmf5j5I7Vh+ziZF11Lp3h6ZSPlkUT2l5QuUjn2q5Vj8Y
- gc/p/rijlIWBjEuBlkxRZYJhzRuZSy5+tffw/wBzBxWJpAhDFycAjCRNe4M//PiT7768bac/ezU
- M+vnM/zebL9GNml1xP81eS6Nma3TvJQY/lklpr0M07OXqRJQCj7kduD2uceXbul1rO3iuiFafaX
- jISsA
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAFqe8moC/23PwW7DIAwG4FepOI8JAy5hp73H1AMQp2Vqmwo61
+ KnKuw9aTUumSFwM/n6bO8uUImX2trmzRCXmOJ5rAfplw8LBnffEY18vmBRyC0IYHopBvr/EkSu
+ lehOgHwiA1f5LoiHeHmEfu2edv/wnhWsLaB2HmK9j+n5MK7b1/ebCM7fUY7ngutuGIDvrtO/e3
+ cm7RMejew3jibXkAmKGAWdL1afq1UCKvAJ0iKseZl6KhYfqSWDnHYFFA6tezr1ZeFl9kBIRtRA
+ E6/urP18DFl61/w9WAWhyUuj/fpqmH6leRYi3AQAA
+X-Change-ID: 20261007-cv75-gpio-333d7c1dfe11
+To: Bartosz Golaszewski <brgl@kernel.org>, linux-gpio@vger.kernel.org
+Cc: Linus Walleij <linusw@kernel.org>, Michael Walle <mwalle@kernel.org>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Conor Dooley <conor+dt@kernel.org>, Mika Westerberg <westeri@kernel.org>, 
+ devicetree@vger.kernel.org, Long Zhao <longzhao@ambarella.com>, 
+ Long Zhao <zl020895@163.com>, linux-kernel@vger.kernel.org, 
+ Conor Dooley <conor.dooley@microchip.com>, Chanho Min <chanho.min@lge.com>, 
+ linux-acpi@vger.kernel.org, Kees Cook <kees@kernel.org>, 
+ linux-hardening@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794285162; l=3845;
+ i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
+ bh=hmwRhAwOQJERpqRYoCVynFOKAyLDk16JB4f8XUUoDj8=;
+ b=h3+5ODRX6nWu5dlFxXml1metUGEOTL16pLIa0yxWO3XH6RlNdjfHHvoSICKluqkKTY57HupDc
+ E8LBtcJHkeEB9rQRJ5vpeIbxtgGieB39KwMHMLQeNoqSxmsKceix9+Z
+X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
+ pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
+X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The dw_mmc controllers divide their input clock by 2, but
-rk3568_sdmmc_set_clk() selects a parent equal to the requested card
-clock, so the card runs at half of it: 25 MHz instead of 50 MHz in high
-speed mode. The RK3399 and RK3328 clock drivers already set twice the
-rate for their dw_mmc controllers.
+Please take this series through the GPIO tree. The quirk, the PL061
+conversion and the Ambarella layout belong together.
 
-Select the fastest parent that does not exceed twice the requested
-rate, or the slowest one, and report half of the parent rate.
+These patches convert the ARM PL061 data path to regmap, then add
+the CV75 layout. They also request ACPI GPIO events for an external
+irq domain, and remove the gpiochip before tearing down its irqchip.
 
-On ODROID-M1 with a SanDisk 128 GB card in high speed mode, reading
-512 MiB with mmc read takes 22 s instead of 44 s.
+The data path uses gpio-regmap with two layouts, ARM PrimeCell and
+Ambarella. ARM PL061 sets GPIO_REGMAP_QUIRK_SET_AFTER_DIR. IRQ stays
+a custom PL061 irqchip, attached through gpio-regmap. regmap-irq is
+not used.
 
-Fixes: 4a262feba3a5 ("rockchip: rk3568: add clock driver")
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Tested with lockdep enabled on the CV75 EVK. The board boots.
+gpio-hammer toggles gpiochip0 line 26 ten times, and gpio-event-mon
+on line 27 records alternating rising and falling edges. unbind and
+bind work; the chip re-registers and both tools work again after
+the rebind.
+
+The registration error-path leak fix is already applied in the GPIO
+tree as 80415a6ff295 ("gpio: regmap: free the irqchip if adding the
+irq domain fails"). Apply this series on top of that commit.
+
+Changes in v14:
+- lib/string_choices: add str_rising_falling() and use it in pl061. (Andy)
+- gpio: regmap: keep removing the gpiochip before the irqchip. (Sashiko)
+- gpio: regmap: rename the SET_AFTER_DIR subject from gpiolib:. (Michael)
+- gpiolib: collect Mika's Acked-by and move linux-acpi below ---. (Mika)
+- gpio: pl061: collect Andy's Reviewed-by on the IRQ logging patch. (Andy)
+- gpio: pl061: collect Linus's Reviewed-by on the parent local. (Linus)
+- Link to v13: https://patch.msgid.link/20261102-cv75-gpio-v13-0-4f93114ea204@ambarella.com
+
+To: Bartosz Golaszewski <brgl@kernel.org>
+To: linux-gpio@vger.kernel.org
+Cc: Linus Walleij <linusw@kernel.org>
+Cc: Michael Walle <mwalle@kernel.org>
+Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: Rob Herring <robh@kernel.org>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>
+Cc: Krzysztof Kozlowski <krzk+dt@kernel.org>
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Cc: Conor Dooley <conor+dt@kernel.org>
+Cc: Mika Westerberg <westeri@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: Long Zhao <longzhao@ambarella.com>
+Cc: Long Zhao <zl020895@163.com>
+Cc: linux-kernel@vger.kernel.org
+
+Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
-Tested on ODROID-M1 with this change on v2026.07: CLKSEL_CON(30) selects
-the 100 MHz parent for a 50 MHz card clock. The CRC32 of a 512 MiB block
-read with mmc read is the same at 25 and 50 MHz, and the CRC32 of another
-block is the same as computed in Linux. With the SPL erased from SPI, SPL
-and U-Boot load from the SD card, also after two resets with sysrq-b.
----
- drivers/clk/rockchip/clk_rk3568.c | 43 +++++++++++++++------------------------
- 1 file changed, 16 insertions(+), 27 deletions(-)
+Long Zhao (14):
+      dt-bindings: gpio: pl061: add Ambarella CV75 variant
+      gpio: regmap: add GPIO_REGMAP_QUIRK_SET_AFTER_DIR
+      gpio: regmap: remove gpiochip before tearing down irqchip
+      gpio: pl061: drop redundant pending check in the IRQ handler
+      gpio: pl061: convert register access to regmap
+      gpio: pl061: use IRQ_TYPE_LEVEL_MASK and IRQ_TYPE_EDGE_BOTH
+      gpio: pl061: use cleanup helpers for locks
+      gpio: pl061: keep the parent device in a local
+      gpiolib: request ACPI GPIO events for external IRQ domains
+      gpio: pl061: switch data path to gpio-regmap
+      gpio: pl061: add Ambarella register-layout variant
+      gpio: pl061: tidy up IRQ trigger logging
+      lib/string_choices: add str_rising_falling()
+      gpio: pl061: use string_choices helpers for IRQ trigger logging
 
-diff --git a/drivers/clk/rockchip/clk_rk3568.c b/drivers/clk/rockchip/clk_rk3568.c
-index 181917cf92a..06d7d4741c6 100644
---- a/drivers/clk/rockchip/clk_rk3568.c
-+++ b/drivers/clk/rockchip/clk_rk3568.c
-@@ -1426,19 +1426,20 @@ static ulong rk3568_sdmmc_get_clk(struct rk3568_clk_priv *priv, ulong clk_id)
- 		return -ENOENT;
- 	}
- 
-+	/* The card clock is half of the parent: dw_mmc divides it by 2 */
- 	switch (sel) {
- 	case CLK_SDMMC_SEL_24M:
--		return OSC_HZ;
-+		return OSC_HZ / 2;
- 	case CLK_SDMMC_SEL_400M:
--		return 400 * MHz;
-+		return 400 * MHz / 2;
- 	case CLK_SDMMC_SEL_300M:
--		return 300 * MHz;
-+		return 300 * MHz / 2;
- 	case CLK_SDMMC_SEL_100M:
--		return 100 * MHz;
-+		return 100 * MHz / 2;
- 	case CLK_SDMMC_SEL_50M:
--		return 50 * MHz;
-+		return 50 * MHz / 2;
- 	case CLK_SDMMC_SEL_750K:
--		return 750 * KHz;
-+		return 750 * KHz / 2;
- 	default:
- 		return -ENOENT;
- 	}
-@@ -1448,34 +1449,22 @@ static ulong rk3568_sdmmc_set_clk(struct rk3568_clk_priv *priv,
- 				  ulong clk_id, ulong rate)
- {
- 	struct rk3568_cru *cru = priv->cru;
-+	ulong parent = rate * 2;
- 	int src_clk;
- 
--	switch (rate) {
--	case OSC_HZ:
--	case 26 * MHz:
--	case 25 * MHz:
--		src_clk = CLK_SDMMC_SEL_24M;
--		break;
--	case 400 * MHz:
-+	/* Fastest parent not above twice the card clock, or the slowest one */
-+	if (parent >= 400 * MHz)
- 		src_clk = CLK_SDMMC_SEL_400M;
--		break;
--	case 300 * MHz:
-+	else if (parent >= 300 * MHz)
- 		src_clk = CLK_SDMMC_SEL_300M;
--		break;
--	case 100 * MHz:
-+	else if (parent >= 100 * MHz)
- 		src_clk = CLK_SDMMC_SEL_100M;
--		break;
--	case 52 * MHz:
--	case 50 * MHz:
-+	else if (parent >= 50 * MHz)
- 		src_clk = CLK_SDMMC_SEL_50M;
--		break;
--	case 750 * KHz:
--	case 400 * KHz:
-+	else if (parent >= OSC_HZ)
-+		src_clk = CLK_SDMMC_SEL_24M;
-+	else
- 		src_clk = CLK_SDMMC_SEL_750K;
--		break;
--	default:
--		return -ENOENT;
--	}
- 
- 	switch (clk_id) {
- 	case HCLK_SDMMC0:
-
+ .../devicetree/bindings/gpio/pl061-gpio.yaml       |  25 +-
+ drivers/gpio/Kconfig                               |   2 +
+ drivers/gpio/gpio-pl061.c                          | 548 +++++++++++++--------
+ drivers/gpio/gpio-regmap.c                         |  24 +-
+ drivers/gpio/gpiolib.c                             |   9 +-
+ include/linux/amba/bus.h                           |   1 +
+ include/linux/gpio/regmap.h                        |  14 +
+ include/linux/string_choices.h                     |   6 +
+ 8 files changed, 430 insertions(+), 199 deletions(-)
 ---
-base-commit: ecdcf9e365df6249a57cd8cc946e7026804ff4ae
-change-id: 20261110-rk3568-sdmmc-clk-95bccae72277
+base-commit: 34cf6dafc47441dfb6b356a095b89c3585a93714
+change-id: 20261007-cv75-gpio-333d7c1dfe11
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Long Zhao <longzhao@ambarella.com>
 
