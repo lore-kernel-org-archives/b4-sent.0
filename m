@@ -1,211 +1,194 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Subject: [PATCH RFC 00/10] media: Add a V4L2 HEVC stateless encode uAPI and
- helpers
-Date: Tue, 10 Nov 2026 10:07:30 +0000
-Message-Id: <20261110-hevc-encode-uapi-v1-0-38ae9fcfedd4@gmail.com>
+Date: Tue, 10 Nov 2026 10:07:31 +0000
+Subject: [PATCH RFC 01/10] media: hevc: Add H.265 syntax definitions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/11Ty24cOQz8FWPOGYCUKJLKdYH9gL0GOUh8xBMgt
- tdjBwGC/PvS3iDA9FFqVhVVVf3zdI3nS1xPH+9+np7j++V6eXyoA364O9n9evgS54vX+dSgMSL
- C+T6+2zke7NHj/LqeLufVeE7Yfejup4I9PUdefrxTfjr98/dfp8//X15f99ewlzey32PP8e9rC
- b78nn1aL3Zfch/v0hETZ2OWQY7bCXYyug9HX0IL3LBbe+f5gxKTcJNONKf6aBC5UjZ1sAlZFzU
- AZHKLItbpIQKxcVvxju68w1eLPpuDBWdR+i0KVrpZI50tlol06OwwXHMAxTArP2LzYcMwU5q79
- 6ZOfXJXSLC03kuVDdlbgDe9RRnXGmUJC7BRYbnRJFUohZbqslvrK+CgNUe5NRh6OghAp8mwsHM
- LUhZriY2c58FDrq3JZTbw8iIb68rFid0TyXI6zo522JAHWTmwOGbQ6ggac8XcYnMt0ZxjazOwW
- 9TkJIES0d1sac80ervDeqv0mG1gvRHwFpWrV6JpkQDcZW+lnAS49wQa7sQ4qc3Dhr6Y2SM1vO3
- RJvtSj8AdXcs/Rd2rm/WDGzF6M+XcFYBsrwTGMkocRFtcvCq1rfGhGzNQO+9GDKyd9izMKnod6
- H3m4DIy8oDK6o6ZkNDQGO2tcilviclmFCpC3Ln3wQ3VHpGZS2IJFLv3IcQiCrYp2+Zp6v2gtRa
- g2pSRc2PCGAMrdGKi8qi+OVcQ2g5uuDr3atpAkeSN9WcwLuWIodWPMXZlP+S9h3td42yP375dX
- qoe3DTEycqTUeugVp9oRF/VsobaqiUhQafPv379B0kygumRBAAA
-X-Change-ID: 20261110-hevc-encode-uapi-a26990b358b3
+Message-Id: <20261110-hevc-encode-uapi-v1-1-38ae9fcfedd4@gmail.com>
+References: <20261110-hevc-encode-uapi-v1-0-38ae9fcfedd4@gmail.com>
+In-Reply-To: <20261110-hevc-encode-uapi-v1-0-38ae9fcfedd4@gmail.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>
 Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Paul Kocialkowski <paulk@sys-base.io>, 
  Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
  Hans Verkuil <hverkuil@kernel.org>, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305251; l=9759;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305251; l=5826;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Z1BQ5cXyaAhXO6BO5tRHmO1fyC4asnDS7NBf/na01e4=;
- b=G6HaDXA+sokBZheUQDioslIeodxaAwEoCNsz+BVlG/yQOd1YoP3tKwv64VSJUDoGUn73wVW5j
- AfgCymQ4DAYCN/+pJvSr9ajYQBwYH/goUOpxb6Z/ryIxcS4iF0q6/AO
+ bh=ARtrdOY71bgjOX863jlEeMj4jngoondHMmdlHpEGOOQ=;
+ b=/CP7h1Y9LF9/fyKgkLEDbHpQN/Ug/7330HdsaDxP2EpVUw5JmKcCYVli1RghdWf/1agCO2UAg
+ +aBwhslsRlkDLE69AFxmwgQTbjQ93xgiyK1Mj6EQ9HmlKYvGQIVEhE8
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi everyone,
+Add the ITU-T Rec. H.265 constants that a stateless HEVC encoder needs
+to produce a bitstream: NAL unit type codes (Table 7-1), profile IDCs
+(Annex A), access unit delimiter picture types (Table 7-2) and the VUI
+colour description code points (Tables E.3 to E.5, shared with ITU-T
+H.273).
 
-This RFC proposes a V4L2 uAPI for stateless HEVC (H.265) encoders, built
-on the kernel-driven design of Paul Kocialkowski's H.264 stateless
-encode series, "[PATCH 00/14] media: Add V4L2 H.264 stateless encode and
-VC8000E support" (v1, 2026-05-22):
-https://lore.kernel.org/all/20260522101653.2565125-1-paulk@sys-base.io/
-(https://patchwork.kernel.org/project/linux-media/list/?series=1099281)
+Also add small helpers that classify NAL unit types (IRAP, IDR, BLA,
+leading and sub-layer non-reference pictures), since the reference
+picture set and picture order count rules depend on them.
 
-It applies on media next 6628e7d4c6b2 (v7.4-rc1) with, in this order,
-patches 1-7 of that series and my "[PATCH RFC 00/11] media: h264:
-Stateless encode core follow-ups" applied first (the prerequisite lines
-below). Only patches 7-9 here need them: they use the codec-independent
-constant bitrate helper (v4l2-enc-cbr) of the follow-ups; patches 1-6
-and 10 only share Kconfig/Makefile context. As far as I can tell, this is
-the first HEVC stateless encode proposal. It is meant to help the H.264
-discussion as much as to add HEVC: HEVC makes one answer to reference
-handling concrete. I expect to adapt it to the rework of the H.264 core helpers
-that Paul announced for v2.
-
-What it reuses from the H.264 design:
-- V4L2_PIX_FMT_HEVC_SLICE on the CAPTURE queue, with one access unit per
-  buffer;
-- the existing V4L2_CID_STATELESS_HEVC_SPS/PPS controls and structures
-  for the coding tools. The parts a decoder never needed (profile, tier
-  and level, conformance window, VUI, VPS) are derived in the kernel
-  from the format, S_PARM, S_SELECTION and the stateful HEVC
-  profile/level/tier controls;
-- the kernel writes the VPS, SPS, PPS, AUD and, unless the hardware does
-  it, the slice segment header;
-- the QP comes from the stateful QP/rate control controls: direct QP,
-  constant quality and constant bitrate in the core;
-- the driver API: init/step/complete/exit, state_constrain and
-  reconstruction buffer callbacks.
-
-What is new:
-- V4L2_CID_STATELESS_HEVC_ENCODE_PARAMS: the NAL unit type, TemporalId,
-  slice type and POC of the picture, the slice header syntax elements
-  that the SPS/PPS enable, and its reference picture set, given as a
-  list of OUTPUT buffer timestamps, each marked used-by-current-picture
-  and/or long-term. The kernel keeps the reconstructed pictures,
-  computes the POC deltas, codes the RPS, builds the default reference
-  lists and drops every picture that is not listed, exactly as a decoder
-  does (8.3.2). Userspace keeps full control of the GOP structure,
-  long-term references and temporal layers without any MMCO-like
-  syntax. Hardware with one reference read port uses the single entry
-  marked as used.
-- V4L2_CID_STATELESS_HEVC_ENCODE_FEEDBACK, read-only: the values the
-  kernel settled on (QP, resolved reference lists) and hardware
-  statistics, in a codec-agnostic struct v4l2_stateless_encode_stats
-  (QP sum/min/max, luma SSE, block counts) that H.264 could share.
-  Applications never set it, so v4l2_ctrl_request_complete() stores the
-  value the driver set at the end of the run in the request, and it can
-  be read per request today, without read-only requests.
-- A kernel HEVC NAL unit writer (v4l2-hevc-enc-rbsp) with byte-wise
-  emulation prevention, and an encode core (v4l2-hevc-enc) for the
-  RPS/DPB, accommodation, headers and feedback.
-- KUnit tests for both: byte-exact VPS/SPS/PPS/AUD/slice headers for
-  three configurations (vectors from an independent reference
-  implementation, see the commit message), and GOP sequences through
-  the core.
-- Patches 7-9: the constant bitrate mode of the core on v4l2-enc-cbr,
-  QP limits for I pictures and a re-encode hook for drivers whose
-  hardware writes the slice header.
-
-The uAPI was checked against two unrelated encoders: the Rockchip
-VEPU580 (RK3588; its driver is posted separately as an RFC) and the
-VeriSilicon VC8000E (its HEVC registers are in Paul's series). Both
-write slice headers from registers and take CPU-written parameter sets,
-and both map one-to-one onto the resolved slice header structure.
-
-Questions where I would particularly like feedback:
-1. Explicit references for HEVC versus the sliding window of the H.264
-   v1 series: is the asymmetry fine, or should H.264 go explicit too?
-2. Should the H.264 and HEVC bit writers become one shared helper, as
-   the rate control now is?
-3. Is a read-only feedback control the right pattern, and should the
-   stats be their own codec-agnostic control?
-4. Capability discovery: reject-on-use plus written-back accommodation,
-   or a dedicated caps control?
-5. HEVC_SLICE reuse, or HEVC_SL alongside the H264_SL rename?
-
-Not covered yet: multi-slice, tiles/WPP with kernel-written headers
-(a driver can still signal uniform tile columns, as the VEPU580 driver
-does above 4096 pixels), RPS candidates in the SPS, custom scaling
-lists, weighted prediction, SEI/HRD, 4:2:2/4:4:4 and 10-bit beyond what
-the SPS can express (Main 10 is signalled but untested).
-
-Testing: the touched files build with W=1 on arm64. The KUnit tests
-pass on UML (23 tests: 19 for the RBSP writer, 4 for the core).
-"make SPHINXDIRS=userspace-api/media htmldocs" gives no new warnings.
-On hardware, the uAPI and helpers ran on an Orange Pi 5 (RK3588S)
-through the VEPU580 driver, on a v7.3-based kernel whose HEVC encode
-files are byte-identical to this series:
-- constant bitrate, IDR period 120: 1080p60 (300 pictures of two clips)
-  at 2, 4, 8 and 16 Mbit/s and 2160p30 (120 pictures of two clips) at
-  20 and 40 Mbit/s, within 3.4% of the target, the largest one second
-  window at most 1.35 times the bitrate; PSNR at equal bitrate against
-  the driver's earlier private rate control: +0.27 to +1.0 dB on the
-  animation clips, -0.05 to -0.13 dB on the natural ones (+0.27 dB on
-  average); 4104x2160, 5120x2880 and 8192x4320 in tile columns; every
-  stream decodes in FFmpeg;
-- with earlier revisions of these patches: 1080p and 4K at
-  fixed QP and constant quality with GOP 1/10/30, long-term references,
-  TMVP on/off and SAO off, plus two 4K streams in parallel, decode in
-  FFmpeg without errors at 38-59 dB PSNR, and the feedback control
-  matched the expected NAL type, POC, QP and reference list on every
-  picture.
-
-This series was developed with Claude (Anthropic) as a coding assistant:
-it wrote the code, the documentation and the commit messages, and I
-reviewed and tested every change as described above.
+These are kernel-internal definitions: the uAPI carries nal_unit_type as
+the raw H.265 value, like the HEVC decoding controls already do.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Arun Iyengar (10):
-      media: hevc: Add H.265 syntax definitions
-      media: uapi: Add HEVC stateless encode support
-      media: hevc: Add stateless encode RBSP writer
-      media: hevc: Add KUnit tests for the stateless encode RBSP writer
-      media: hevc: Add stateless encode core
-      media: hevc: Add KUnit tests for the stateless encode core
-      media: v4l2-hevc-enc: Add a constant bitrate mode
-      media: v4l2-hevc-enc: Add QP limits for the I pictures
-      media: v4l2-hevc-enc: Re-encode oversized pictures
-      media: docs: Document the HEVC stateless encode uAPI
+ include/media/v4l2-hevc.h | 132 +++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 131 insertions(+), 1 deletion(-)
 
- .../media/v4l/ext-ctrls-codec-stateless.rst        |  411 ++++++
- .../userspace-api/media/v4l/pixfmt-compressed.rst  |    3 +
- .../media/v4l/videodev2.h.rst.exceptions           |    2 +
- .../userspace-api/media/v4l/vidioc-g-ext-ctrls.rst |    8 +
- .../userspace-api/media/v4l/vidioc-queryctrl.rst   |   12 +
- drivers/media/v4l2-core/.kunitconfig               |    6 +
- drivers/media/v4l2-core/Kconfig                    |   37 +
- drivers/media/v4l2-core/Makefile                   |    4 +
- drivers/media/v4l2-core/v4l2-ctrls-core.c          |  194 +++
- drivers/media/v4l2-core/v4l2-ctrls-defs.c          |    9 +
- drivers/media/v4l2-core/v4l2-hevc-enc-kunit.c      |  554 +++++++
- drivers/media/v4l2-core/v4l2-hevc-enc-rbsp-kunit.c |  696 +++++++++
- drivers/media/v4l2-core/v4l2-hevc-enc-rbsp.c       |  977 +++++++++++++
- drivers/media/v4l2-core/v4l2-hevc-enc.c            | 1510 ++++++++++++++++++++
- include/media/v4l2-ctrls.h                         |    4 +
- include/media/v4l2-hevc-enc-rbsp.h                 |  279 ++++
- include/media/v4l2-hevc-enc.h                      |  300 ++++
- include/media/v4l2-hevc.h                          |  132 +-
- include/uapi/linux/v4l2-controls.h                 |  188 +++
- include/uapi/linux/videodev2.h                     |    2 +
- 20 files changed, 5327 insertions(+), 1 deletion(-)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261110-hevc-encode-uapi-a26990b358b3
-prerequisite-patch-id: fd11f19266754d1bd40bf61dd5d1da74a0dc13c2
-prerequisite-patch-id: 7c7edc7344998d520efaf7b430c90fd527c704c7
-prerequisite-patch-id: 4689de770eb1bcdc153d6beda2e392d0ce6f344d
-prerequisite-patch-id: 0afdcc24892eac773036d05d8f504e5ccb35eb62
-prerequisite-patch-id: ecc849b3328d4396380f0cfc331536c16d2e0d28
-prerequisite-patch-id: c62d0fd16706c4328624948805eb2f8d7b223ae0
-prerequisite-patch-id: e955d15603fd070034960a1362e4867c2f124d69
-prerequisite-patch-id: 76eb64d7920ddc1f268afa6f13df14cf9d1931c8
-prerequisite-patch-id: 654c303a6e9e4a3108e9ae9b7c9aa78f95b82c0c
-prerequisite-patch-id: 96f470c1f8b2ca83ffc496f41fd173e925180501
-prerequisite-patch-id: fa3430fcef00637bb84f9401bb9045dd46194298
-prerequisite-patch-id: da666def8ed2b5296da8dee1be387b2818ba3cc3
-prerequisite-patch-id: 7e532c86fbd0f7bd6705ac4f1544b7d7d27cbc26
-prerequisite-patch-id: 09e1836b24606834b9ac4aa3c851d39f564cfef6
-prerequisite-patch-id: fd8fcc747458e52344df760a17b61748361bfbb1
-prerequisite-patch-id: 883eefffa7ea70d39d357467780cb4f2b69c8d36
-prerequisite-patch-id: aa018c975f9b1f0555164d46446dea01d6496823
-prerequisite-patch-id: d8d6323a5177f6b1ce661a86ee5813d55b4a3570
+diff --git a/include/media/v4l2-hevc.h b/include/media/v4l2-hevc.h
+index 973c96be16be..cc649b212a6d 100644
+--- a/include/media/v4l2-hevc.h
++++ b/include/media/v4l2-hevc.h
+@@ -1,6 +1,7 @@
+ /* SPDX-License-Identifier: GPL-2.0-or-later */
+ /*
+- * Helper functions for HEVC stateless codecs.
++ * Helper functions and ITU-T Rec. H.265 syntax definitions for HEVC stateless
++ * codecs.
+  */
+ 
+ #ifndef _MEDIA_V4L2_HEVC_H
+@@ -38,4 +39,133 @@ v4l2_hevc_pps_num_tile_rows(const struct v4l2_ctrl_hevc_pps *pps)
+ 		     ARRAY_SIZE(pps->row_height_minus1));
+ }
+ 
++/* ITU-T Rec. H.265 Table 7-1: NAL unit type codes */
++#define V4L2_HEVC_NAL_TRAIL_N		0
++#define V4L2_HEVC_NAL_TRAIL_R		1
++#define V4L2_HEVC_NAL_TSA_N		2
++#define V4L2_HEVC_NAL_TSA_R		3
++#define V4L2_HEVC_NAL_STSA_N		4
++#define V4L2_HEVC_NAL_STSA_R		5
++#define V4L2_HEVC_NAL_RADL_N		6
++#define V4L2_HEVC_NAL_RADL_R		7
++#define V4L2_HEVC_NAL_RASL_N		8
++#define V4L2_HEVC_NAL_RASL_R		9
++#define V4L2_HEVC_NAL_RSV_VCL_N14	14
++#define V4L2_HEVC_NAL_BLA_W_LP		16
++#define V4L2_HEVC_NAL_BLA_W_RADL	17
++#define V4L2_HEVC_NAL_BLA_N_LP		18
++#define V4L2_HEVC_NAL_IDR_W_RADL	19
++#define V4L2_HEVC_NAL_IDR_N_LP		20
++#define V4L2_HEVC_NAL_CRA_NUT		21
++#define V4L2_HEVC_NAL_RSV_IRAP_VCL23	23
++#define V4L2_HEVC_NAL_VPS		32
++#define V4L2_HEVC_NAL_SPS		33
++#define V4L2_HEVC_NAL_PPS		34
++#define V4L2_HEVC_NAL_AUD		35
++#define V4L2_HEVC_NAL_EOS		36
++#define V4L2_HEVC_NAL_EOB		37
++#define V4L2_HEVC_NAL_FD		38
++#define V4L2_HEVC_NAL_PREFIX_SEI	39
++#define V4L2_HEVC_NAL_SUFFIX_SEI	40
++
++/* ITU-T Rec. H.265 Annex A: general_profile_idc */
++#define V4L2_HEVC_PROFILE_IDC_MAIN		1
++#define V4L2_HEVC_PROFILE_IDC_MAIN_10		2
++#define V4L2_HEVC_PROFILE_IDC_MAIN_STILL_PICTURE	3
++#define V4L2_HEVC_PROFILE_IDC_RANGE_EXTENSIONS	4
++
++/* ITU-T Rec. H.265 Table 7-2: pic_type in access unit delimiters */
++#define V4L2_HEVC_AUD_PIC_TYPE_I	0
++#define V4L2_HEVC_AUD_PIC_TYPE_PI	1
++#define V4L2_HEVC_AUD_PIC_TYPE_BPI	2
++
++/* ITU-T Rec. H.265 Table E.1: aspect_ratio_idc */
++#define V4L2_HEVC_VUI_ASPECT_RATIO_IDC_EXTENDED	255
++
++/* ITU-T Rec. H.265 Table E.2: video_format */
++#define V4L2_HEVC_VUI_VIDEO_FORMAT_UNSPECIFIED	5
++
++/* ITU-T Rec. H.265 Tables E.3 to E.5 (ITU-T H.273 code points) */
++#define V4L2_HEVC_VUI_COLOUR_BT709		1
++#define V4L2_HEVC_VUI_COLOUR_UNSPECIFIED	2
++#define V4L2_HEVC_VUI_COLOUR_BT470_SYSTEM_M	4
++#define V4L2_HEVC_VUI_COLOUR_BT470_SYSTEM_BG	5
++#define V4L2_HEVC_VUI_COLOUR_SMPTE170M		6
++#define V4L2_HEVC_VUI_COLOUR_SMPTE240M		7
++#define V4L2_HEVC_VUI_COLOUR_BT2020		9
++#define V4L2_HEVC_VUI_COLOUR_SMPTE431		11
++
++#define V4L2_HEVC_VUI_TRANSFER_BT709		1
++#define V4L2_HEVC_VUI_TRANSFER_UNSPECIFIED	2
++#define V4L2_HEVC_VUI_TRANSFER_SMPTE170M	6
++#define V4L2_HEVC_VUI_TRANSFER_SMPTE240M	7
++#define V4L2_HEVC_VUI_TRANSFER_LINEAR		8
++#define V4L2_HEVC_VUI_TRANSFER_SRGB		13
++#define V4L2_HEVC_VUI_TRANSFER_SMPTE2084	16
++
++#define V4L2_HEVC_VUI_MATRIX_BT709		1
++#define V4L2_HEVC_VUI_MATRIX_UNSPECIFIED	2
++#define V4L2_HEVC_VUI_MATRIX_BT470_SYSTEM_BG	5
++#define V4L2_HEVC_VUI_MATRIX_SMPTE170M		6
++#define V4L2_HEVC_VUI_MATRIX_SMPTE240M		7
++#define V4L2_HEVC_VUI_MATRIX_BT2020_NCL		9
++#define V4L2_HEVC_VUI_MATRIX_BT2020_CL		10
++
++/* Maximum number of temporal sub-layers (sps_max_sub_layers_minus1 + 1) */
++#define V4L2_HEVC_MAX_SUB_LAYERS	7
++
++/* Maximum number of pictures in a short-term RPS (7.4.8) */
++#define V4L2_HEVC_MAX_ST_RPS_PICS	16
++
++/* Maximum number of long-term pictures signalled in a slice header */
++#define V4L2_HEVC_MAX_LT_PICS		16
++
++static inline bool v4l2_hevc_nal_is_irap(unsigned int nal_unit_type)
++{
++	return nal_unit_type >= V4L2_HEVC_NAL_BLA_W_LP &&
++	       nal_unit_type <= V4L2_HEVC_NAL_RSV_IRAP_VCL23;
++}
++
++static inline bool v4l2_hevc_nal_is_idr(unsigned int nal_unit_type)
++{
++	return nal_unit_type == V4L2_HEVC_NAL_IDR_W_RADL ||
++	       nal_unit_type == V4L2_HEVC_NAL_IDR_N_LP;
++}
++
++static inline bool v4l2_hevc_nal_is_bla(unsigned int nal_unit_type)
++{
++	return nal_unit_type >= V4L2_HEVC_NAL_BLA_W_LP &&
++	       nal_unit_type <= V4L2_HEVC_NAL_BLA_N_LP;
++}
++
++/*
++ * Sub-layer non-reference picture (3.132): even nal_unit_type values in the
++ * VCL range below RSV_VCL_N14.
++ */
++static inline bool v4l2_hevc_nal_is_sub_layer_non_ref(unsigned int nal_unit_type)
++{
++	return nal_unit_type <= V4L2_HEVC_NAL_RSV_VCL_N14 &&
++	       !(nal_unit_type & 1);
++}
++
++static inline bool v4l2_hevc_nal_is_leading(unsigned int nal_unit_type)
++{
++	return nal_unit_type >= V4L2_HEVC_NAL_RADL_N &&
++	       nal_unit_type <= V4L2_HEVC_NAL_RASL_R;
++}
++
++static inline char v4l2_hevc_slice_type_char(unsigned char slice_type)
++{
++	switch (slice_type) {
++	case V4L2_HEVC_SLICE_TYPE_B:
++		return 'B';
++	case V4L2_HEVC_SLICE_TYPE_P:
++		return 'P';
++	case V4L2_HEVC_SLICE_TYPE_I:
++		return 'I';
++	default:
++		return 'X';
++	}
++}
++
+ #endif /* _MEDIA_V4L2_HEVC_H */
 
-Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+2.55.0
 
