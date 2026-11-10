@@ -1,11 +1,11 @@
 From: Sergei Khomenkov <shomenkow@gmail.com>
-Date: Tue, 10 Nov 2026 15:41:45 +0300
-Subject: [PATCH v2 2/3] media: verisilicon: program the H1 JPEG stream
- limit in 64-bit words
+Date: Tue, 10 Nov 2026 15:41:46 +0300
+Subject: [PATCH v2 3/3] media: verisilicon: leave room for the JPEG header
+ and one stream burst
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-hantro-buflimit-v2-2-ff7790def9fc@gmail.com>
+Message-Id: <20261110-hantro-buflimit-v2-3-ff7790def9fc@gmail.com>
 References: <20261110-hantro-buflimit-v2-0-ff7790def9fc@gmail.com>
 In-Reply-To: <20261110-hantro-buflimit-v2-0-ff7790def9fc@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -20,57 +20,58 @@ Cc: Mauro Carvalho Chehab <mchehab@kernel.org>,
  linux-stm32@st-md-mailman.stormreply.com, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org, Sergei Khomenkov <shomenkow@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794314506; l=2059;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794314506; l=1858;
  i=shomenkow@gmail.com; s=20261104; h=from:subject:message-id;
- bh=rSixJW+4SIvnxSyMoeLcNv71TQPTVPSPPdIZPn8IhxE=;
- b=rZnn4NFdWljPtdenIbYFVQCzkOroyvKYlmdGUI5ooGa+U4zK58oD4WfY32zIqxq2Hfq4rWxuN
- 8s+/6csbyvVA6SX20juy4wkJtJWVLjQoFbNCblknsk6EKf4Mi32K267
+ bh=CeJV7WTdl8YyEt6UT/A5SLtk2CJudxLaFIgLvsKKuB8=;
+ b=a6Kl0B0YyzxhYqxv/b89jliXBQrKiAALwDgE0BamEs0dxGx9Dj/wZSns3/8hB3anPmZ4cp3a/
+ WDD3Wbae9U3DCBHdA8Zs+B3G/zVCgIKLABK1qhp6RWL8uvwdivejO63
 X-Developer-Key: i=shomenkow@gmail.com; a=ed25519;
  pk=FwuHDVe7aiISDMLmQEcMC+RflEIJ6kEp/ekwznWXmI8=
 X-Endpoint-Received: by B4 Relay for shomenkow@gmail.com/20261104 with auth_id=1409
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-H1_REG_STR_BUF_LIMIT counts 64-bit words, but the driver writes the room
-left in the CAPTURE plane in bytes. A stream that does not fit, such as
-a quality 100 frame of noise in a default-sized buffer, is then written
-past the end of the plane, up to eight times its size.
+hantro_try_fmt() keeps any non-zero CAPTURE sizeimage of the JPEG
+encoder, however small. The CPU writes the 624-byte header into the
+plane, and on the RK3026 VEPU1 the encoder then writes at least one
+64-byte burst even with a stream limit of 0, so a smaller plane is
+written past its end. A plane smaller than the header also makes the
+WARN_ON() in hantro_h1_jpeg_enc_set_buffers() fire on every job.
 
-Write the limit in 64-bit words, rounded down to whole 64-byte bursts:
-the encoder finishes a burst it has started, so an unrounded limit lets
-it write up to 56 bytes past it.
+Raise a smaller request to header_size + 64.
 
 Found with an LLM coding assistant while porting mainline Linux to a
 Rockchip RK3026 board; the assistant also drafted this change. Tested
-on that board: overflowing frames now stop at the programmed limit
-without writing past the plane, and frames that fit are byte for byte
-the same as before. Not tested on other SoCs, including the STM32MP25,
-which shares this code.
+on that board: a sizeimage of 1 or 600 now reads back 688, and frames
+that do not fit a 688-byte plane stop exactly at its end. Not tested on
+other SoCs.
 
 Fixes: 775fec69008d ("media: add Rockchip VPU JPEG encoder driver")
 Cc: stable@vger.kernel.org
 Signed-off-by: Sergei Khomenkov <shomenkow@gmail.com>
 ---
- drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ drivers/media/platform/verisilicon/hantro_v4l2.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c b/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c
-index 86cc1a07026f..665a87e9fe92 100644
---- a/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c
-+++ b/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c
-@@ -55,7 +55,12 @@ static void hantro_h1_jpeg_enc_set_buffers(struct hantro_dev *vpu,
- 	vepu_write_relaxed(vpu, vb2_dma_contig_plane_dma_addr(dst_buf, 0) +
- 				ctx->vpu_dst_fmt->header_size,
- 			   H1_REG_ADDR_OUTPUT_STREAM);
--	vepu_write_relaxed(vpu, size_left, H1_REG_STR_BUF_LIMIT);
-+	/*
-+	 * The limit is in 64-bit words. The encoder finishes a 64-byte burst
-+	 * it has started (measured on the RK3026), so give it whole bursts.
-+	 */
-+	vepu_write_relaxed(vpu, round_down(size_left, 64) / 8,
-+			   H1_REG_STR_BUF_LIMIT);
+diff --git a/drivers/media/platform/verisilicon/hantro_v4l2.c b/drivers/media/platform/verisilicon/hantro_v4l2.c
+index 83af9fa1ce94..6a6d27443a5e 100644
+--- a/drivers/media/platform/verisilicon/hantro_v4l2.c
++++ b/drivers/media/platform/verisilicon/hantro_v4l2.c
+@@ -394,6 +394,15 @@ static int hantro_try_fmt(const struct hantro_ctx *ctx,
+ 		 */
+ 		pix_mp->plane_fmt[0].sizeimage = fmt->header_size +
+ 			pix_mp->width * pix_mp->height * fmt->max_depth;
++	} else if (fmt->codec_mode == HANTRO_MODE_JPEG_ENC) {
++		/*
++		 * Room for the header and one stream burst (64 bytes on the
++		 * RK3026 VEPU1), which the encoder writes even with a stream
++		 * limit of 0.
++		 */
++		pix_mp->plane_fmt[0].sizeimage =
++			max_t(u32, pix_mp->plane_fmt[0].sizeimage,
++			      fmt->header_size + 64);
+ 	}
  
- 	if (pix_fmt->num_planes == 1) {
- 		src[0] = vb2_dma_contig_plane_dma_addr(src_buf, 0);
+ 	return 0;
 
 -- 
 2.53.0
