@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 10:07:37 +0000
-Subject: [PATCH RFC 07/10] media: v4l2-hevc-enc: Add a constant bitrate
- mode
+Date: Tue, 10 Nov 2026 10:07:38 +0000
+Subject: [PATCH RFC 08/10] media: v4l2-hevc-enc: Add QP limits for the I
+ pictures
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-hevc-encode-uapi-v1-7-38ae9fcfedd4@gmail.com>
+Message-Id: <20261110-hevc-encode-uapi-v1-8-38ae9fcfedd4@gmail.com>
 References: <20261110-hevc-encode-uapi-v1-0-38ae9fcfedd4@gmail.com>
 In-Reply-To: <20261110-hevc-encode-uapi-v1-0-38ae9fcfedd4@gmail.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>
@@ -14,173 +14,109 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
  Hans Verkuil <hverkuil@kernel.org>, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305251; l=6157;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305251; l=3795;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=23ba8LskleVLZZbBxcmsP87XKCLHrF2u42oZjR6n+6k=;
- b=Gttsa90tsSGrgff3Gw4/JqPdfDS28JuD0I+laEZgjKtrfsmHsfMtHkft+VDMK/mlBnQ3tsbcZ
- RTR6ruVgS3zAAYtAn0bOnbMPX+dCinf+dBHktpxIbP41GibMUIX/rIZ
+ bh=AE4kglGiR5u7/pgWxx7FMl4jnb/lWjlmJsY7hLn1kAM=;
+ b=VLX/BGi7saL9KOTcpT5V6O7pX9fdNr0GoOZRt7wCU3xHbiW6aYEvcFaHsQnXZgxO4sMrgIMEw
+ C/ZhaQo7CJTDHRp7AmwMKg+LeiLa/C0reqCPgbF6AfMAv81KEzRQ92m
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HEVC encode core leaves the constant bitrate mode to the drivers, so
-each driver needs its own frame rate control.
+The frame rate control of the core limits all pictures to the range of
+V4L2_CID_MPEG_VIDEO_HEVC_MIN_QP and V4L2_CID_MPEG_VIDEO_HEVC_MAX_QP. The
+I pictures, coded several QP steps below the P pictures, then reach very
+low QP values at high bitrates, where they cost many bits for little
+quality.
 
-Provide the mode in the core with the codec independent rate control of
-the H.264 encode core (v4l2-enc-cbr): one QP state for the stream, I
-pictures 4 QP below the P pictures (the default of the Rockchip MPP
-library for HEVC), picture size targets from a GOP plan with the I/P
-size ratio and IDR period measured on the stream, and the deviation from
-that plan spread over the next pictures. The size target of the current
-picture is available to drivers whose hardware also controls the rate
-within a picture.
-
-A driver rate control with an estimate callback still replaces the mode.
+Take the limits of the I pictures from V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_MIN_QP
+and V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_MAX_QP when the driver has them, with
+a frame rate control. Without these controls, nothing changes.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/v4l2-core/Kconfig         |  1 +
- drivers/media/v4l2-core/v4l2-hevc-enc.c | 35 +++++++++++++++++++++++++++++++++
- include/media/v4l2-hevc-enc.h           | 11 +++++++++--
- 3 files changed, 45 insertions(+), 2 deletions(-)
+ drivers/media/v4l2-core/v4l2-hevc-enc.c | 24 +++++++++++++++++++++---
+ include/media/v4l2-hevc-enc.h           |  7 +++++++
+ 2 files changed, 28 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/media/v4l2-core/Kconfig b/drivers/media/v4l2-core/Kconfig
-index eb245deb4622..0de0bad58791 100644
---- a/drivers/media/v4l2-core/Kconfig
-+++ b/drivers/media/v4l2-core/Kconfig
-@@ -60,6 +60,7 @@ config V4L2_HEVC_ENC_RBSP
- # Used by drivers that need v4l2-hevc-enc.ko
- config V4L2_HEVC_ENC
- 	tristate
-+	select V4L2_ENC_CBR
- 	select V4L2_HEVC_ENC_RBSP
- 
- config V4L2_HEVC_ENC_RBSP_KUNIT_TEST
 diff --git a/drivers/media/v4l2-core/v4l2-hevc-enc.c b/drivers/media/v4l2-core/v4l2-hevc-enc.c
-index e2aa7d2da96c..a167c4af6288 100644
+index a167c4af6288..2e0ba832b868 100644
 --- a/drivers/media/v4l2-core/v4l2-hevc-enc.c
 +++ b/drivers/media/v4l2-core/v4l2-hevc-enc.c
-@@ -18,6 +18,7 @@
- #include <linux/sort.h>
- #include <linux/v4l2-controls.h>
- #include <media/v4l2-ctrls.h>
-+#include <media/v4l2-enc-cbr.h>
- #include <media/v4l2-hevc.h>
- #include <media/v4l2-hevc-enc.h>
- #include <media/v4l2-hevc-enc-rbsp.h>
-@@ -26,6 +27,12 @@
- #define RBSP_UPDATE_AUD			BIT(0)
- #define RBSP_UPDATE_PARAMETER_SETS	BIT(1)
- 
-+/*
-+ * Constant bitrate mode: I pictures 4 QP below the P pictures, the default
-+ * of the Rockchip MPP library for HEVC.
-+ */
-+#define RC_CBR_QP_DELTA_INTRA		4
-+
- /* Table A.8: MaxLumaPs and MaxLumaSr (main tier is enough to pick a level) */
- static const struct {
- 	u8 level_idc;
-@@ -150,6 +157,7 @@ int v4l2_hevc_enc_init(struct v4l2_hevc_enc *enc)
- 	memset(&enc->state_next, 0, sizeof(enc->state_next));
- 	memset(&enc->ref, 0, sizeof(enc->ref));
- 	enc->state_serial = 0;
-+	v4l2_enc_cbr_reset(&enc->cbr, RC_CBR_QP_DELTA_INTRA);
- 
- 	if (!enc->max_l0_refs)
- 		enc->max_l0_refs = 1;
-@@ -1052,6 +1060,18 @@ static int ref_step(struct v4l2_hevc_enc *enc)
- 	return 0;
+@@ -645,6 +645,12 @@ static void prepare_rc(struct v4l2_hevc_enc *enc,
+ 	state->qp_min = enc_ctrl_val(enc, V4L2_CID_MPEG_VIDEO_HEVC_MIN_QP,
+ 				     -qp_bd_offset);
+ 	state->qp_max = enc_ctrl_val(enc, V4L2_CID_MPEG_VIDEO_HEVC_MAX_QP, 51);
++	state->qp_min_i = enc_ctrl_val(enc,
++				       V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_MIN_QP,
++				       state->qp_min);
++	state->qp_max_i = enc_ctrl_val(enc,
++				       V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_MAX_QP,
++				       state->qp_max);
+ 	state->qp_i = enc_ctrl_val(enc, V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_QP, 30);
+ 	state->qp_p = enc_ctrl_val(enc, V4L2_CID_MPEG_VIDEO_HEVC_P_FRAME_QP,
+ 				   state->qp_i);
+@@ -1072,10 +1078,23 @@ static bool rc_core_cbr(const struct v4l2_hevc_enc *enc,
+ 	       !(enc->rc_ops && enc->rc_ops->estimate);
  }
  
-+/*
-+ * The core provides the constant bitrate mode unless the driver has its own
-+ * rate control.
-+ */
-+static bool rc_core_cbr(const struct v4l2_hevc_enc *enc,
-+			const struct v4l2_hevc_enc_state *state)
++/* QP limits of the picture: the I picture ones with a frame rate control */
++static int rc_clamp_qp(const struct v4l2_hevc_enc_state *state, int qp)
 +{
-+	return state->frame_rc_enable &&
-+	       state->bitrate_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_CBR &&
-+	       !(enc->rc_ops && enc->rc_ops->estimate);
++	int qp_bd_offset = 6 * state->sps.bit_depth_luma_minus8;
++
++	if (state->frame_rc_enable &&
++	    state->encode.slice_type == V4L2_HEVC_SLICE_TYPE_I)
++		qp = clamp(qp, state->qp_min_i, state->qp_max_i);
++	else
++		qp = clamp(qp, state->qp_min, state->qp_max);
++
++	return clamp(qp, -qp_bd_offset, 51);
 +}
 +
  static int rc_step(struct v4l2_hevc_enc *enc)
  {
  	struct v4l2_hevc_enc_state *state = &enc->state_active;
-@@ -1074,6 +1094,17 @@ static int rc_step(struct v4l2_hevc_enc *enc)
- 		if (range)
- 			qp -= (state->quality - state->quality_min) *
- 			      (state->qp_max - state->qp_min) / range;
-+	} else if (rc_core_cbr(enc, state)) {
-+		ret = v4l2_enc_cbr_begin(&enc->cbr, state->bitrate,
-+					 &state->timeperframe,
-+					 state->sps.pic_width_in_luma_samples *
-+					 state->sps.pic_height_in_luma_samples,
-+					 slice_type == V4L2_HEVC_SLICE_TYPE_I,
-+					 state->qp_min, state->qp_max);
-+		if (ret)
-+			return ret;
-+
-+		qp = v4l2_enc_cbr_qp(&enc->cbr);
- 	} else {
- 		if (!enc->rc_ops || !enc->rc_ops->estimate)
- 			return -EOPNOTSUPP;
-@@ -1382,6 +1413,10 @@ int v4l2_hevc_enc_complete(struct v4l2_hevc_enc *enc,
- 	    !v4l2_hevc_nal_is_sub_layer_non_ref(nal_unit_type))
- 		enc->ref.prev_tid0_poc = encode->pic_order_cnt_val;
+-	int qp_bd_offset = 6 * state->sps.bit_depth_luma_minus8;
+ 	u8 slice_type = state->encode.slice_type;
+ 	unsigned int range;
+ 	int qp, ret;
+@@ -1114,8 +1133,7 @@ static int rc_step(struct v4l2_hevc_enc *enc)
+ 			return ret;
+ 	}
  
-+	if (rc_core_cbr(enc, state))
-+		v4l2_enc_cbr_end(&enc->cbr, (u64)bytesused * 8,
-+				 &state->timeperframe, state->qp_min,
-+				 state->qp_max);
- 	if (enc->rc_ops && enc->rc_ops->complete)
- 		enc->rc_ops->complete(enc, state, bytesused, stats);
+-	qp = clamp(qp, state->qp_min, state->qp_max);
+-	enc->qp = clamp(qp, -qp_bd_offset, 51);
++	enc->qp = rc_clamp_qp(state, qp);
  
+ 	return 0;
+ }
 diff --git a/include/media/v4l2-hevc-enc.h b/include/media/v4l2-hevc-enc.h
-index 4797102e34b3..3db131370c56 100644
+index 3db131370c56..f1d3da3269f1 100644
 --- a/include/media/v4l2-hevc-enc.h
 +++ b/include/media/v4l2-hevc-enc.h
-@@ -9,6 +9,7 @@
- #include <linux/types.h>
- #include <linux/v4l2-controls.h>
- #include <linux/videodev2.h>
-+#include <media/v4l2-enc-cbr.h>
- #include <media/v4l2-hevc-enc-rbsp.h>
- 
- struct v4l2_ctrl_handler;
-@@ -186,8 +187,10 @@ struct v4l2_hevc_enc_ops {
- /**
-  * struct v4l2_hevc_enc_rc_ops - driver rate control
-  *
-- * The core selects the QP itself for the direct QP and constant quality
-- * modes. These callbacks provide the constant and variable bitrate modes.
-+ * The core selects the QP itself for the direct QP, constant quality and
-+ * constant bitrate modes. These callbacks replace the constant bitrate
-+ * mode of the core (if @estimate is set) and provide the variable bitrate
-+ * mode.
-  *
-  * @estimate: return the QP of the next picture in @qp
-  * @complete: account for a completed picture
-@@ -231,6 +234,9 @@ struct v4l2_hevc_enc_rc_ops {
-  * @rbsp: NAL unit writer
-  * @slice: slice segment header of the current picture
-  * @qp: SliceQpY of the current picture
-+ * @cbr: constant bitrate rate control of the core. In that mode,
-+ *	 @cbr.target_bits is the size target of the current picture in bits,
-+ *	 for hardware with a rate control within the picture.
-  * @header_size: number of bytes the core wrote at the start of the
-  *		 CAPTURE buffer. The hardware writes from that offset.
-  * @parameter_sets_pending: parameter sets were written for a picture that
-@@ -261,6 +267,7 @@ struct v4l2_hevc_enc {
- 	struct v4l2_hevc_enc_rbsp rbsp;
- 	struct v4l2_hevc_slice_header slice;
- 	int qp;
-+	struct v4l2_enc_cbr cbr;
- 	unsigned int header_size;
- 	bool parameter_sets_pending;
- 
+@@ -128,6 +128,11 @@ struct v4l2_hevc_enc_ref {
+  * @frame_rc_enable: V4L2_CID_MPEG_VIDEO_FRAME_RC_ENABLE
+  * @qp_min: V4L2_CID_MPEG_VIDEO_HEVC_MIN_QP
+  * @qp_max: V4L2_CID_MPEG_VIDEO_HEVC_MAX_QP
++ * @qp_min_i: V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_MIN_QP, @qp_min if the driver
++ *	      has no such control. Limits the I pictures with a frame rate
++ *	      control instead of @qp_min.
++ * @qp_max_i: V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_MAX_QP, @qp_max if the driver
++ *	      has no such control
+  * @qp_i: V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_QP
+  * @qp_p: V4L2_CID_MPEG_VIDEO_HEVC_P_FRAME_QP
+  * @qp_b: V4L2_CID_MPEG_VIDEO_HEVC_B_FRAME_QP
+@@ -153,6 +158,8 @@ struct v4l2_hevc_enc_state {
+ 	bool frame_rc_enable;
+ 	int qp_min;
+ 	int qp_max;
++	int qp_min_i;
++	int qp_max_i;
+ 	int qp_i;
+ 	int qp_p;
+ 	int qp_b;
 
 -- 
 2.55.0
