@@ -1,97 +1,131 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Tue, 10 Nov 2026 13:11:53 +0100
-Subject: [PATCH v2 2/2] ceph: do not hold a LAZYIO revoke for pages that
- CACHE covers
+From: Richard Leitner <richard.leitner@linux.dev>
+Date: Tue, 10 Nov 2026 13:29:08 +0100
+Subject: [PATCH] remoteproc: imx_rproc: revert channel freeing order in
+ imx_rproc_free_mbox
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-ceph-lazyio-noread-v2-2-259775214b39@clyso.com>
-References: <20261110-ceph-lazyio-noread-v2-0-259775214b39@clyso.com>
-In-Reply-To: <20261110-ceph-lazyio-noread-v2-0-259775214b39@clyso.com>
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794312723; l=3142;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=Sl0LxPrKAtHetqfgc/TKI9v6Rg/tbvwlkGhYdSOWqMI=;
- b=oRGjDdp80KOgLWfgVhpTNHFJSYrByfMDdn4K2erJkJtw8iTqyin5FNJq/wsnk1EhjMnqkcBCd
- VsAJDgQNoOZDf7THRBy/8uNArNjHKNPLZ0mMKGpTzRl8ASqfFRim6j3
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+Message-Id: <20261110-imx-rproc-free-mbox-v1-1-3e33ff98570d@linux.dev>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQBBHSq4iLGCc6BROZtBIQ7
+ 260y7f4/4BMwpTh3RwgtHPmFCv0qwG/uDgT8lQNRplOa2WR14KySfIYhAjXMRV0Thk7ta23RkM
+ tN6HA5bn2w9/5N37If+8VnOcFBhEig3cAAAA=
+X-Change-ID: 20261109-imx-rproc-free-mbox-aa029d44c921
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Mathieu Poirier <mathieu.poirier@linaro.org>, Frank Li <Frank.Li@nxp.com>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Peng Fan <peng.fan@nxp.com>
+Cc: linux-remoteproc@vger.kernel.org, imx@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ weinshec@holodeck2.de, stable@vger.kernel.org, 
+ Richard Leitner <richard.leitner@linux.dev>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794313767; l=4029;
+ i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
+ bh=rNNJZEDgaW7DJ4fiz5yErnGrwanLKG16YmYo4n8oobc=;
+ b=lM3N39GVUUMurY+eD75Pypflu4aRSAT1B8iVo7IH+Qj9zTH0nazkdyFmU6YAeo5NHOgpAQdH9
+ 4MuKUHhmeiRDWufv8cIUK2p2C+fuOS6+WsPXZ3VHLbozgvV5jEGyIFR
+X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
+ pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
+X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ceph_adjust_caps_used_for_lazyio() reports LAZYIO as used in place of
-CACHE or BUFFER when that cap is not issued.  It does so even when the
-used set does not contain the cap at all: with BUFFER not issued, a
-file that only has clean pages cached (CACHE used and still issued)
-is reported as using LAZYIO too.
+The imx_rproc driver is affected by a race condition in the shutdown
+ordering in imx_rproc_free_mbox(). A received message might cause a
+virtqueue_kick resulting in tx_ch access. When imx_rproc_free_mbox() is
+triggered between the if (!priv->tx_ch) check and the mbox_send_message()
+call in the imx_rproc_kick() function the mbox_send_message() then tries
+to dereference a NULL pointer on the tx_ch (as seen in the call trace
+below).
 
-When the MDS then revokes LAZYIO and leaves CACHE issued, e.g. from a
-writer that has closed the file, (revoking & used) stays non-zero.
-handle_cap_grant() checks the caps with CHECK_CAPS_NOINVAL and there
-are no dirty pages to write back, so nothing acks the revoke until the
-delayed cap check runs, up to caps_wanted_delay_max (60 s) later.  The
-MDS request that needed the revoke, such as a getattr from another
-client, waits that long.
+Therefore fix this behaviour by first freeing the rx channel, so no new
+messages are received and therefore no kicking on tx_ch can happen.
+Afterwards release the tx channel.
 
-Only move a use to LAZYIO when it is in the used set and its cap is
-not issued.
+This problem was encountered on a fleet of i.MX8MP devices on about 1 in
+500 system shutdowns, resulting in Oops below. This Oops was recorded
+from a v7.3.0 kernel before the work-queue removal.
 
-Reproducer, 5 lazyio mounts: 4 create ~174k files of 3901 bytes in
-one directory, a 5th lstats them all, then a 4th mount opens and
-writes 5000 files of the 1st one.  Mean of 4 runs (open+write: 2):
+    remoteproc remoteproc0: stopped remote processor imx8mp-cm7
+    Unable to handle kernel NULL pointer dereference at virtual address 0000000000000008
+    Internal error: Oops: 0000000096000004 [#1]  SMP
+    CPU: 0 UID: 0 PID: 32710 Comm: kworker/0:1 Not tainted 7.3.0-XXX #1 PREEMPT
+    Hardware name: XXX (DT)
+    Workqueue: imx8mp-cm7 imx_rproc_vq_work [imx_rproc]
+    pstate: 40000005 (nZcv daif -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+    pc : mbox_send_message+0x8c/0x178
+    lr : mbox_send_message+0x88/0x178
+    sp : ffff8000897f3b70
+    x29: ffff8000897f3b70 x28: ffff80007a07b248 x27: ffff0000d90e1a20
+    x26: ffff80007a07b328 x25: ffff0000c1d31300 x24: ffff0000d90e1a40
+    x23: 0000000000000001 x22: 0000000000000005 x21: ffff8000897f3ba4
+    x20: 000000000000000b x19: ffff0000c1b24240 x18: 0000000000000000
+    x17: ffff80006a453000 x16: ffff800081ac8000 x15: 0000000000000000
+    x14: 0000000000000040 x13: 0000000000000228 x12: ffff0000c115a3e8
+    x11: 0000000000000000 x10: 0000000000000001 x9 : ffff800080cd6570
+    x8 : ffff8000897f3ba0 x7 : 0000000000000002 x6 : 0000000000000000
+    x5 : 000000000000000c x4 : 0000000004400000 x3 : 0000000000000000
+    x2 : 0000000000000000 x1 : ffff0000cb268000 x0 : 0000000000000000
+    Call trace:
+     mbox_send_message+0x8c/0x178 (P)
+     imx_rproc_kick+0x50/0xc0 [imx_rproc]
+     rproc_virtio_notify+0x3c/0xa0
+     virtqueue_kick+0x4c/0x68
+     rpmsg_recv_done+0x224/0x658 [virtio_rpmsg_bus]
+     vring_interrupt+0xbc/0x158
+     rproc_vq_interrupt+0x40/0xb0
+     imx_rproc_notified_idr_cb+0x20/0x40 [imx_rproc]
+     idr_for_each+0x74/0x100
+     imx_rproc_vq_work+0x2c/0x40 [imx_rproc]
+     process_one_work+0x194/0x520
+     worker_thread+0x19c/0x320
+     kthread+0x134/0x148
+     ret_from_fork+0x10/0x20
+    Code: 37f80574 aa1303e0 97ffff39 f9400a60 (39402001)
 
-+--------------------------------+---------+---------+
-| metric                         |    base |   patch |
-+--------------------------------+---------+---------+
-| unacked revokes after lstat    |    7355 |      10 |
-| lstat walk time (s)            |   27.69 |   25.19 |
-| open+write p50 (ms)            |    2.70 |    2.89 |
-| open+write p99 (ms)            |    3.26 |    3.53 |
-| open+write max (ms)            |  5325.8 |    51.9 |
-| open+write calls > 1 s         |       1 |       0 |
-+--------------------------------+---------+---------+
-
-In a parallel walk that stats every file with 4 clients and 3 active
-MDS ranks, right after other lazy I/O clients wrote the files, the walk
-no longer stalls on such revokes: its worst time over the runs went
-from 90.2 s to 42.4 s, and its mean from 51.7 s to 41.5 s.
-
-Fixes: 488ffbdd99d8 ("ceph: add 'lazyio' mount option to kclient")
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+Fixes: 99b142cf7191 ("remoteproc: imx_rproc: Request mbox channel later")
+Cc: stable@vger.kernel.org
+Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- fs/ceph/caps.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+Backport notice: For kernel versions before the work queue removal
+(<=7.3.y) a cancel_work_sync() should be called on the queue after
+freeing the rx_ch.
+---
+ drivers/remoteproc/imx_rproc.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
-index aca09351a094..5669e458f287 100644
---- a/fs/ceph/caps.c
-+++ b/fs/ceph/caps.c
-@@ -1112,11 +1112,18 @@ static inline int ceph_adjust_caps_used_for_lazyio(struct ceph_inode_info *ci,
- 	 */
- 	if ((issued & CEPH_CAP_FILE_LAZYIO) && !__ceph_all_opens_lazy(ci))
- 		return used;
--	if (!(issued & CEPH_CAP_FILE_CACHE)) {
-+	/*
-+	 * Only a use that the issued caps no longer cover moves to LAZYIO.
-+	 * Clean pages under an issued CACHE are not using LAZYIO, so a
-+	 * revoke of LAZYIO that leaves CACHE issued must not count them;
-+	 * otherwise it is never acked from handle_cap_grant() and waits
-+	 * for the delayed cap check.
-+	 */
-+	if ((used & CEPH_CAP_FILE_CACHE) && !(issued & CEPH_CAP_FILE_CACHE)) {
- 		used &= ~CEPH_CAP_FILE_CACHE;
- 		used |= CEPH_CAP_FILE_LAZYIO;
+diff --git a/drivers/remoteproc/imx_rproc.c b/drivers/remoteproc/imx_rproc.c
+index 581bb07f5893f..232da31a56ebe 100644
+--- a/drivers/remoteproc/imx_rproc.c
++++ b/drivers/remoteproc/imx_rproc.c
+@@ -920,15 +920,16 @@ static void imx_rproc_free_mbox(void *data)
+ 	struct rproc *rproc = data;
+ 	struct imx_rproc *priv = rproc->priv;
+ 
+-	if (priv->tx_ch) {
+-		mbox_free_channel(priv->tx_ch);
+-		priv->tx_ch = NULL;
+-	}
+-
++	/* First release rx channel as its callback may kick vqs via tx_ch. */
+ 	if (priv->rx_ch) {
+ 		mbox_free_channel(priv->rx_ch);
+ 		priv->rx_ch = NULL;
  	}
--	if (!(issued & CEPH_CAP_FILE_BUFFER)) {
-+	if ((used & CEPH_CAP_FILE_BUFFER) && !(issued & CEPH_CAP_FILE_BUFFER)) {
- 		used &= ~CEPH_CAP_FILE_BUFFER;
- 		used |= CEPH_CAP_FILE_LAZYIO;
- 	}
++
++	if (priv->tx_ch) {
++		mbox_free_channel(priv->tx_ch);
++		priv->tx_ch = NULL;
++	}
+ }
+ 
+ static void imx_rproc_put_scu(void *data)
 
--- 
-2.53.0
+---
+base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
+change-id: 20261109-imx-rproc-free-mbox-aa029d44c921
+
+Best regards,
+--  
+Richard Leitner <richard.leitner@linux.dev>
 
