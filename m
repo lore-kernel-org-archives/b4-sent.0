@@ -1,15 +1,13 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Subject: [PATCH 0/2] ASoC: rockchip: i2s-tdm: register the PCM before the
+Date: Tue, 10 Nov 2026 07:16:58 +0000
+Subject: [PATCH 1/2] ASoC: rockchip: i2s-tdm: Register the PCM before the
  DAI
-Date: Tue, 10 Nov 2026 07:16:57 +0000
-Message-Id: <20261110-asoc-rockchip-i2s-tdm-v1-0-f32951b3c527@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMMQ6DMAxA0asgz7WEM0TAVaoOqWPAVCUoBoSEu
- HvTdnzD/yeYZBWDrjohy66maS6gWwU8hnkQ1FgMrnaeiGoMlhhz4hePuqA6wzW+Mfrg+8ZLQ6G
- F0i5Zej1+3/vjb9uek/D6ncF1fQCxBFb3eQAAAA==
-X-Change-ID: 20261110-asoc-rockchip-i2s-tdm-d6a6f86e81a9
+Message-Id: <20261110-asoc-rockchip-i2s-tdm-v1-1-f32951b3c527@gmail.com>
+References: <20261110-asoc-rockchip-i2s-tdm-v1-0-f32951b3c527@gmail.com>
+In-Reply-To: <20261110-asoc-rockchip-i2s-tdm-v1-0-f32951b3c527@gmail.com>
 To: Nicolas Frattaroli <frattaroli.nicolas@gmail.com>, 
  Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
  Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
@@ -17,59 +15,67 @@ To: Nicolas Frattaroli <frattaroli.nicolas@gmail.com>,
 Cc: linux-rockchip@lists.infradead.org, linux-sound@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295018; l=2133;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295018; l=2286;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=fwtymsovofR1O3F9W5rqYLeo/TK8Hr6MiEo7/hJuKEE=;
- b=Eoei1XstvuoctnMT5F4uX9OmuONHsAC3pwbJT55sfLRkBX/FP2npyYSgUi8pCG8GBa5ap4vSV
- tX2RMrltZWSAXGsWglSG6yXbav1QNF1YAW3u9vbBLrHe9ogyuLn3o5+
+ bh=18X4gDoDBalS2YNh4G/P0K7m7mnHS2iod12BwMjjV5A=;
+ b=sOQmVjwZd4x1ZJ52gHSqxjkg+olv7zyeAxLb5RGz+5Kw1subi7A69KGH3veHzNI0V69UAsCPw
+ bKN6z1fU26VDXVcLkifXLiwBYOdCGMIv3nhshlv+xOkEYy1reJ22w+3
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Rockchip I2S-TDM driver registers its DAI component before the
-dmaengine PCM component. A sound card that was registered earlier and
-waits for the CPU DAI is bound by snd_soc_component_register() as soon
-as the DAI component appears, which also satisfies the DAI link's
-platform (it defaults to the CPU of_node), so the card binds without the
-PCM component. Every open of the PCM then fails with -EINVAL from
-snd_pcm_hw_constraints_complete(), silently. On RK3588 this happens to
-the HDMI sound card whenever the HDMI codec probes before the I2S
-controller. Patch 1 registers the PCM first, as rockchip_spdif already
-does.
+A card that was registered before its CPU DAI is put on the unbind list
+by snd_soc_bind_card(), and snd_soc_component_register() retries the
+bind as soon as any component is added. The DAI component of the I2S
+controller satisfies the DAI link's platform, which defaults to the CPU
+of_node, so the card binds right after the DAI is registered and before
+the dmaengine PCM component of the same device exists. The PCM component
+is then never added to the runtime, runtime->hw stays empty and every
+open of the PCM fails with -EINVAL from
+snd_pcm_hw_constraints_complete(), without any error being logged.
 
-Patch 2 adds the missing regmap default for I2S_XFER, which otherwise
-warns "using zero-initialized flat cache" on its first cached access.
+This is seen on RK3588 when the HDMI codec probes before the I2S
+controller of the HDMI sound card: the card has no "dma:fddf0000.i2s"
+component and "aplay -D hw:0,0" fails with "Invalid argument".
 
-The non-TDM rockchip_i2s driver has the same registration order; the
-same change for it will follow once it is tested on a board that uses
-that controller (the RK3588 board here only has I2S-TDM instances).
+Register the dmaengine PCM first, as rockchip_spdif already does, so the
+card finds both components when the DAI appears.
 
-Tested on an Orange Pi 5 (RK3588S): with patch 1 the HDMI card has its
-dma:fddf0000.i2s component (debugfs asoc/hdmi0), speaker-test on
-plughw:CARD=hdmi0 plays, and "aplay -D hw:<hdmi>,0" no longer fails
-with "Invalid argument" (traced before the fix to
-snd_pcm_hw_constraint_mask returning -22 with no dmaengine component on
-the runtime). With patch 2 the flat-cache warning for fddf0000.i2s is
-gone and HDMI playback is unchanged.
-
-This series was developed with Claude (Anthropic) as a coding assistant:
-it wrote the code and the commit messages, and I reviewed and tested
-every change as described above.
-
+Fixes: 081068fd6414 ("ASoC: rockchip: add support for i2s-tdm controller")
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Arun Iyengar (2):
-      ASoC: rockchip: i2s-tdm: Register the PCM before the DAI
-      ASoC: rockchip: i2s-tdm: add the reset value of XFER to the regmap defaults
+ sound/soc/rockchip/rockchip_i2s_tdm.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
- sound/soc/rockchip/rockchip_i2s_tdm.c | 14 ++++++++++----
- 1 file changed, 10 insertions(+), 4 deletions(-)
----
-base-commit: cde5523c75f1320a55ac1d55a717ccbb566557f0
-change-id: 20261110-asoc-rockchip-i2s-tdm-d6a6f86e81a9
+diff --git a/sound/soc/rockchip/rockchip_i2s_tdm.c b/sound/soc/rockchip/rockchip_i2s_tdm.c
+index 983319a538b1..0abd200a4268 100644
+--- a/sound/soc/rockchip/rockchip_i2s_tdm.c
++++ b/sound/soc/rockchip/rockchip_i2s_tdm.c
+@@ -1371,13 +1371,18 @@ static int rockchip_i2s_tdm_probe(struct platform_device *pdev)
+ 	if (i2s_tdm->soc_data && i2s_tdm->soc_data->init)
+ 		i2s_tdm->soc_data->init(&pdev->dev, res->start);
+ 
+-	ret = devm_snd_soc_register_component(&pdev->dev,
+-					      &rockchip_i2s_tdm_component,
+-					      i2s_tdm->dai, 1);
++	/*
++	 * Register the PCM before the DAI: adding the DAI component can bind a
++	 * waiting card right away, and the card must find the PCM component
++	 * then or its DAI link ends up without one.
++	 */
++	ret = devm_snd_dmaengine_pcm_register(&pdev->dev, NULL, 0);
+ 	if (ret)
+ 		goto err_suspend;
+ 
+-	ret = devm_snd_dmaengine_pcm_register(&pdev->dev, NULL, 0);
++	ret = devm_snd_soc_register_component(&pdev->dev,
++					      &rockchip_i2s_tdm_component,
++					      i2s_tdm->dai, 1);
+ 	if (ret)
+ 		goto err_suspend;
+ 
 
-Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+2.55.0
 
