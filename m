@@ -1,239 +1,81 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:11:06 +0000
-Subject: [PATCH 5/5] iommu/rockchip: Hold the master in a page fault storm
+Subject: [PATCH 0/3] pmdomain: rockchip: fix the probe error and deferral
+ paths
+Date: Tue, 10 Nov 2026 07:11:27 +0000
+Message-Id: <20261110-pmdomain-rockchip-v1-0-6b9fa6ebaa86@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-iommu-rockchip-faults-v1-5-b1dda574dbb8@gmail.com>
-References: <20261110-iommu-rockchip-faults-v1-0-b1dda574dbb8@gmail.com>
-In-Reply-To: <20261110-iommu-rockchip-faults-v1-0-b1dda574dbb8@gmail.com>
-To: "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>, Heiko Stuebner <heiko@sntech.de>, 
- Jeffy Chen <jeffy.chen@rock-chips.com>, Tomasz Figa <tfiga@chromium.org>
-Cc: iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw7CIBBA0V9pZl0SwAfRX2m6QBhkbHgE1JgQ/
+ l2qy7O4t0HFQljhOjUo+KZKKQ6IeQLjdbwjIzsMksuzEIKzHGwKmiIryWzGU2aH40VpicpZd4L
+ R5YKOPr/nsv5dX7cHmuc+gt6/gIeeoHUAAAA=
+X-Change-ID: 20261110-pmdomain-rockchip-3497a2e7fdf5
+To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Shawn Lin <shawn.lin@rock-chips.com>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Kevin Hilman <khilman@linaro.org>, Caesar Wang <wxt@rock-chips.com>, 
+ Elaine Zhang <zhangqing@rock-chips.com>
+Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Pecovnik <igor@armbian.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294661; l=8444;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294687; l=2416;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=4zp/VLFVCPilsQkwznLyGs+jzibbKfJs9/IdoQHukWg=;
- b=7P8CMZwYh5IypdW41trMvO/0Qo4fGylRl6TRRoQ0zmjrh3N638KrKMyTgGcqdFZ3wr9i+rgf/
- hNf+bGbu3X4Bmp1L+MGCdORKREL8MqkMXc29QDOLcbbb1AvpBy3aib4
+ bh=QoAWdAEzgzL2QuwNz+wZsYoa/Z9SPuRCylTlgEE4RjA=;
+ b=hCUZhEAiVVHPN/W3DReqR0LhracBQIiJ4fAnU+xZMyzjHjLbDahebbYCC/AKHaoQzU/BzHuRw
+ ZlMANOkzg5rDQdFKewNmpFmG51NPTFrZVQtx0WuhpcE1gMJ81cTt/D8
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rk_iommu_irq() acknowledges every page fault with PAGE_FAULT_DONE at
-once, which lets the master go on. A master whose job points at
-unmapped memory keeps accessing it and faults again right away, until
-its own driver stops it. On RK3588, a VEPU121 JPEG encoder core given an
-unmapped input address retried the same few addresses (16 IOVAs in
-0x1000000-0x1007080) for more than five minutes after one bad job:
+Three fixes for what happens when a Rockchip power domain clock is not
+available yet and rockchip_pm_domain_probe() defers:
 
-  rk_iommu fdba0800.iommu: Page fault at 0x0000000001005280 of type read
-  ...
-  watchdog: BUG: soft lockup - CPU#0 stuck for 317s! [kworker/0:1:11]
+1. (Igor Pecovnik) Only the clocks that were obtained are put; the
+   ERR_PTR() of the failing one triggered the WARN_ON_ONCE() in
+   __clk_put(), and the deferral reason was not recorded.
+2. The error cleanup removes the parent/child links before the domains.
+   pm_genpd_remove() refuses a domain that is still a parent, and on
+   RK3588 (RKVDEC0/1 are children of both VDEC and VDPU) no ordering
+   avoids that, so devm freed domains that were still on gpd_list.
+3. A deferral is no longer printed as an error by the callers, once
+   per probe attempt and twice for a nested domain.
 
-The interrupt storm kept CPU0 in hard interrupt context, so the
-encoder's own timeout work, queued on that CPU, never ran to reset the
-core, and the board was reset by its hardware watchdog.
+Tested on an Orange Pi 5 (RK3588S) with test device trees that give a
+power domain a clock which only appears about 26 s into boot, once on
+PD_NPU (a top level domain) and once on PD_FEC (nested under PD_VI,
+after 18 domains and their links were registered). With the series,
+devices_deferred shows "failed to get clk at index 5", there is no
+"failed to remove domain", list or slab corruption report (booted with
+page_poison=1 init_on_free=1), no "-517" error lines, and the controller
+binds later with each of the 26 domains listed once in
+pm_genpd_summary. A host-side model of the probe and cleanup on the
+board's DTB, deferring at each domain in turn, leaves freed domains on
+gpd_list at 24 of 26 failure points without patch 2 and at none with
+it. Normal boots are unchanged.
 
-Count the faults of an IOMMU, and when more than 64 arrive within
-100 ms, don't acknowledge the next one: the bank stays in
-PAGE_FAULT_ACTIVE, which holds the master at its faulting access, and
-its fault interrupt is masked. rk_iommu_enable() already acknowledges a
-pending fault (see rk_iommu_enable_stall()) and sets the interrupt mask,
-so a driver that resets its core and reattaches it (as the Hantro and
-rkvdec drivers do after a timeout), and a runtime resume, end the hold.
-If nothing does within 100 ms, a delayed work releases the master and
-unmasks the interrupt, so that a master whose driver has no recovery is
-throttled rather than stopped for good. A single fault, or a few, is
-handled as before.
-
-Measured with the same bad job, ten times: a storm was held after 65
-faults, rk_iommu_irq() took 0.8 to 1.7 ms in total per bad job (2.02 s
-without this change and the rate limit), and the encoder's timeout
-reset the core every time; ten runs of the GStreamer pipeline that had
-locked up the board ran to their end.
-
-This is what the Rockchip BSP does for its video codecs, which mask the
-IOMMU interrupt in their fault handler and leave the fault pending until
-the hardware timeout and reset, but needs no help from the master driver.
+This series was developed with Claude (Anthropic) as a coding assistant:
+it wrote the code of patches 2 and 3 and the commit messages, and I
+reviewed and tested every change as described above. Patch 1 is Igor's
+change with a rewritten commit message.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/iommu/rockchip-iommu.c | 108 ++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 106 insertions(+), 2 deletions(-)
+Arun Iyengar (2):
+      pmdomain: rockchip: remove subdomain links before the domains on error
+      pmdomain: rockchip: do not report probe deferral of a domain as an error
 
-diff --git a/drivers/iommu/rockchip-iommu.c b/drivers/iommu/rockchip-iommu.c
-index c57a1f8941c5..cbf9f81a775a 100644
---- a/drivers/iommu/rockchip-iommu.c
-+++ b/drivers/iommu/rockchip-iommu.c
-@@ -27,6 +27,7 @@
- #include <linux/slab.h>
- #include <linux/spinlock.h>
- #include <linux/string_choices.h>
-+#include <linux/workqueue.h>
- 
- #include "iommu-pages.h"
- 
-@@ -48,6 +49,15 @@
- #define RK_MMU_FORCE_RESET_TIMEOUT_US	100000
- #define RK_MMU_POLL_TIMEOUT_US		1000
- 
-+/*
-+ * More page faults than RK_MMU_FAULT_STORM_COUNT within
-+ * RK_MMU_FAULT_STORM_MS make a storm: the next fault is held for
-+ * RK_MMU_FAULT_HOLD_MS, with the interrupt masked.
-+ */
-+#define RK_MMU_FAULT_STORM_COUNT	64
-+#define RK_MMU_FAULT_STORM_MS		100
-+#define RK_MMU_FAULT_HOLD_MS		100
-+
- /* RK_MMU_STATUS fields */
- #define RK_MMU_STATUS_PAGING_ENABLED       BIT(0)
- #define RK_MMU_STATUS_PAGE_FAULT_ACTIVE    BIT(1)
-@@ -118,6 +128,10 @@ struct rk_iommu {
- 	struct iommu_domain *domain; /* domain to which iommu is attached */
- 	const struct rk_iommu_ops *rk_ops;
- 	struct ratelimit_state fault_rs; /* for the fault reports */
-+	unsigned long fault_window; /* jiffies: start of the storm window */
-+	unsigned int fault_count; /* faults in the storm window */
-+	unsigned long held_banks; /* banks holding a fault, interrupt masked */
-+	struct delayed_work release_work; /* releases the held faults */
- };
- 
- struct rk_iommudata {
-@@ -638,6 +652,88 @@ static void log_iova(struct rk_iommu *iommu, int index, dma_addr_t iova)
- 		rk_pte_is_page_valid(pte), &page_addr_phys, page_flags);
- }
- 
-+/*
-+ * PAGE_FAULT_DONE lets the faulting master go on. A master whose job points
-+ * at unmapped memory, such as a codec core given a bad address, keeps
-+ * accessing it and faults again right away, many thousands of times a
-+ * second, until its own driver resets it; and an encoder core was seen to
-+ * retry the same few addresses for minutes. That interrupt storm keeps one
-+ * CPU in hard interrupt context, which can also keep the master's driver
-+ * from ever running the timeout that would stop it.
-+ *
-+ * In a storm, don't acknowledge the fault: the master is held at its
-+ * faulting access, as the bank stays in PAGE_FAULT_ACTIVE, and the fault
-+ * interrupt of the bank is masked. rk_iommu_enable() (an attach, as done by
-+ * a driver that resets its core, or a runtime resume) acknowledges the
-+ * fault and unmasks the interrupt, and so does release_work after
-+ * RK_MMU_FAULT_HOLD_MS if nothing did, so that a master whose driver has no
-+ * recovery isn't stopped for good.
-+ */
-+static bool rk_iommu_fault_storm(struct rk_iommu *iommu)
-+{
-+	unsigned long now = jiffies;
-+
-+	if (time_after(now, iommu->fault_window +
-+		       msecs_to_jiffies(RK_MMU_FAULT_STORM_MS))) {
-+		iommu->fault_window = now;
-+		iommu->fault_count = 0;
-+	}
-+
-+	return ++iommu->fault_count > RK_MMU_FAULT_STORM_COUNT;
-+}
-+
-+static void rk_iommu_hold_fault(struct rk_iommu *iommu, int index)
-+{
-+	rk_iommu_write(iommu->bases[index], RK_MMU_INT_MASK, 0);
-+	if (!test_and_set_bit(index, &iommu->held_banks))
-+		dev_warn_ratelimited(iommu->dev,
-+				     "page fault storm: holding the master for %u ms\n",
-+				     RK_MMU_FAULT_HOLD_MS);
-+	mod_delayed_work(system_wq, &iommu->release_work,
-+			 msecs_to_jiffies(RK_MMU_FAULT_HOLD_MS));
-+}
-+
-+static void rk_iommu_release_work(struct work_struct *work)
-+{
-+	struct rk_iommu *iommu = container_of(to_delayed_work(work),
-+					      struct rk_iommu, release_work);
-+	void __iomem *base;
-+	int i, ret;
-+
-+	ret = pm_runtime_get_if_in_use(iommu->dev);
-+	if (ret <= 0) {
-+		/* a runtime resume reprograms the IOMMU */
-+		WRITE_ONCE(iommu->held_banks, 0);
-+		return;
-+	}
-+
-+	if (WARN_ON(clk_bulk_enable(iommu->num_clocks, iommu->clocks)))
-+		goto out;
-+
-+	for (i = 0; i < iommu->num_mmu; i++) {
-+		if (!test_and_clear_bit(i, &iommu->held_banks))
-+			continue;
-+
-+		/* Nothing to do if the IOMMU was enabled or disabled since */
-+		base = iommu->bases[i];
-+		if (rk_iommu_read(base, RK_MMU_INT_MASK) ||
-+		    !(rk_iommu_read(base, RK_MMU_STATUS) &
-+		      RK_MMU_STATUS_PAGING_ENABLED))
-+			continue;
-+
-+		if (rk_iommu_read(base, RK_MMU_STATUS) &
-+		    RK_MMU_STATUS_PAGE_FAULT_ACTIVE) {
-+			rk_iommu_base_command(base, RK_MMU_CMD_ZAP_CACHE);
-+			rk_iommu_base_command(base, RK_MMU_CMD_PAGE_FAULT_DONE);
-+		}
-+		rk_iommu_write(base, RK_MMU_INT_MASK, RK_MMU_IRQ_MASK);
-+	}
-+
-+	clk_bulk_disable(iommu->num_clocks, iommu->clocks);
-+out:
-+	pm_runtime_put(iommu->dev);
-+}
-+
- static irqreturn_t rk_iommu_irq(int irq, void *dev_id)
- {
- 	struct rk_iommu *iommu = dev_id;
-@@ -698,8 +794,12 @@ static irqreturn_t rk_iommu_irq(int irq, void *dev_id)
- 			else if (print)
- 				dev_err(iommu->dev, "Page fault while iommu not attached to domain?\n");
- 
--			rk_iommu_base_command(iommu->bases[i], RK_MMU_CMD_ZAP_CACHE);
--			rk_iommu_base_command(iommu->bases[i], RK_MMU_CMD_PAGE_FAULT_DONE);
-+			if (rk_iommu_fault_storm(iommu)) {
-+				rk_iommu_hold_fault(iommu, i);
-+			} else {
-+				rk_iommu_base_command(iommu->bases[i], RK_MMU_CMD_ZAP_CACHE);
-+				rk_iommu_base_command(iommu->bases[i], RK_MMU_CMD_PAGE_FAULT_DONE);
-+			}
- 		}
- 
- 		if ((int_status & RK_MMU_IRQ_BUS_ERROR) &&
-@@ -1029,6 +1129,8 @@ static int rk_iommu_enable(struct rk_iommu *iommu)
- 	}
- 
- 	ret = rk_iommu_enable_paging(iommu);
-+	/* enable_stall() acknowledged any held fault, INT_MASK is set again */
-+	WRITE_ONCE(iommu->held_banks, 0);
- 
- out_disable_stall:
- 	rk_iommu_disable_stall(iommu);
-@@ -1322,6 +1424,7 @@ static int rk_iommu_probe(struct platform_device *pdev)
- 					"rockchip,disable-mmu-reset");
- 	ratelimit_state_init(&iommu->fault_rs, DEFAULT_RATELIMIT_INTERVAL,
- 			     DEFAULT_RATELIMIT_BURST);
-+	INIT_DELAYED_WORK(&iommu->release_work, rk_iommu_release_work);
- 
- 	/*
- 	 * Take every clock the devicetree provides.  Most IOMMU instances
-@@ -1387,6 +1490,7 @@ static void rk_iommu_shutdown(struct platform_device *pdev)
- 
- 		devm_free_irq(iommu->dev, irq, iommu);
- 	}
-+	cancel_delayed_work_sync(&iommu->release_work);
- 
- 	pm_runtime_force_suspend(&pdev->dev);
- }
+Igor Pecovnik (1):
+      pmdomain: rockchip: put only the clocks that were got on error
 
--- 
-2.55.0
+ drivers/pmdomain/rockchip/pm-domains.c | 73 +++++++++++++++++++++++++++++-----
+ 1 file changed, 62 insertions(+), 11 deletions(-)
+---
+base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
+change-id: 20261110-pmdomain-rockchip-3497a2e7fdf5
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
