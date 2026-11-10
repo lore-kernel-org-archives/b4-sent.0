@@ -1,542 +1,214 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 10:07:40 +0000
-Subject: [PATCH RFC 10/10] media: docs: Document the HEVC stateless encode
- uAPI
+Subject: [PATCH RFC 00/12] media: rockchip: Add a VEPU580 stateless
+ H.264/HEVC encoder driver for the RK3588
+Date: Tue, 10 Nov 2026 10:08:02 +0000
+Message-Id: <20261110-rkvenc-v1-0-ea8b47122d8c@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-hevc-encode-uapi-v1-10-38ae9fcfedd4@gmail.com>
-References: <20261110-hevc-encode-uapi-v1-0-38ae9fcfedd4@gmail.com>
-In-Reply-To: <20261110-hevc-encode-uapi-v1-0-38ae9fcfedd4@gmail.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Paul Kocialkowski <paulk@sys-base.io>, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/11VSY5cNwy9ilHrNEBSFEl5GyAHyDbwQuIQdwIP6
+ baNAIbvHpZtBOi/LH1x0Jvq6+05nx7z+fb61dfbU355fH788L5/4C+vbv52v/8zHx6jf98ISBA
+ RHp7+/pLv/SGh0AUdYNOtL398ynr893ujP26///br7c2Pw+fP56/0T/cWP6895T+fe8ynn3c/7
+ k/+toe8flWBWLhIRCcHnmA4JRgxA2MrbwjH4T/G/V+lrhmug3kti0mQtUsPD/AF1Qd9Adj1ZRW
+ LrUhVyIPHu+8cISdjU45FAZ5S3TJeVsGucCe2RblddcCQgBlWEzin+xkzj1w2THfjdcYgCx5Lh
+ kGBl4/RU8VRghKC7GWVS6/RkIiCOHetEC82g55AZaGHaOyEy6w1G60pMCpAAQYvgY1DKNlEnQq
+ JQ9YFQ+mtOXQRRGNRJLZrS+GIQvZagWugXzaUyd4IbMmVvAeC5dq5jvraW63WPEYO/rJqSbFCD
+ 7FDvm1UOd/PsN+qIxdN7DcCvqyqPZrR8iwAGXqOcS0GPGcBzwgWXEzrsmFsEYksy6AzaUlsi0w
+ 8OazxM7Szh/u4oJFzkJvUaQL0RDMwt3PhZD4aGi2p4yQXbaxEG3KIBcQGn9U1u9vbxBirpjSQW
+ Zeqau24KytPy0l3yZXeGdMjqNwN8dQ5FzTMRmZVbc2t0N1jTGVRNfDDRUeWW4zLrL0BzZfOWgc
+ L5pzYpLMwN0b9LaSJMLqgERYyWmkTVUsOtjMEt0nmtNbHnKe5n3rRIU2f3ukgutoiA8chcDLt4
+ mgqW1w+qeDilNB9ZiM8kHm23WWD7AGzACcIJOamfsXFldL0Dsi5o9+lAduKmyBzJjU/h7a1Xa/
+ v6qZMP1fcULMF4SE0UlZojb2pjc2el9zIUXkMkTEXtKJo9kErdkV03TGPu1H5uiERnX3HkJo43
+ CdOzxkJBAumnNXWiXmpCpGtnqTUDGOn7T0RwIys4a5Okv627Jps4Q1h+7md2ZoFXeyid1v2Yze
+ jE1iDjJcEmONEAhscNUXMjohOzXvStO9OJ3L1xmCXWeIFnS8Ondveq87+g8Bl6kNltLOTkKH1d
+ qlqouaEWrIzw9q2Olq50CFSLjnmSfKRF5aZaDaGk2K5zLtesXpJHGumwnLnUyX2HcOzn/PBP7x
+ 79/ipxwlZalPZ3pxtC7TONZ45muEgNOq0Sk2+vfn27T9Xf+LODwcAAA==
+X-Change-ID: 20261110-rkvenc-e0f1c61c00a2
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Paul Kocialkowski <paulk@sys-base.io>, 
+ =?utf-8?q?Sven_P=C3=BCschel?= <s.pueschel@pengutronix.de>, 
  Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Hans Verkuil <hverkuil@kernel.org>, Arun Iyengar <aiyengar1990@gmail.com>
+ Detlev Casanova <detlev.casanova@collabora.com>, 
+ Hans Verkuil <hverkuil@kernel.org>, Jiaxing Hu <gahing@gahingwoo.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305251; l=22881;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305283; l=9591;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=UZys/F/CdxHPzt3fAbOth3r1tKO5RLfRFaMupnn/Opg=;
- b=44cAJgm/VawVn4VXu6qUJ9cDmd/yuILvHTvbQWsQg6YQ1GMcay1lXGR5XN4ryjJ/wdkoqTDJT
- VEiSVkcHA2xBnjSwHIIw6mxXplo7Nj2/chZqvJvTD2bAbYUdM91PHXP
+ bh=ZAT0wBXyyAUYNvuDNGERTIQu8xp4Lu6oc4UsNxSc1ZA=;
+ b=dCUzZ1YoJi3kGTk14s7KuFvWLxUQnuzAXxm/cOHewA14+tyeJYYUlA34D0HBJUWbdK/M7MXfX
+ 0sQJGZg4p9oCRmMKLlmjzAWxHbJiIiLNuQiOzCy9fv+c8cUk79gklnr
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe how a stateless HEVC encoder is used: the CAPTURE format and
-what each buffer receives, which parts of the parameter sets the kernel
-derives from the format, frame interval and stateful codec controls, how
-the QP is selected, how reference pictures are identified and kept, and
-how per-picture feedback is read back from completed requests.
+Hi,
 
-Document the V4L2_CID_STATELESS_HEVC_ENCODE_PARAMS and
-V4L2_CID_STATELESS_HEVC_ENCODE_FEEDBACK controls with their structures
-and flags, and the codec-agnostic struct v4l2_stateless_encode_stats, and
-add the new control types to the VIDIOC_QUERYCTRL and VIDIOC_G_EXT_CTRLS
-references.
+This RFC adds a V4L2 stateless encoder driver for the VEPU580 (RKVENC)
+of the Rockchip RK3588, the H.264/HEVC encoder block with two cores
+that the vendor kernel drives through its "mpp" framework. It is a
+non-Hantro user of Paul Kocialkowski's H.264 stateless encode uAPI, and
+the first user of the HEVC stateless encode uAPI I am proposing in a
+separate RFC.
+
+It depends on unmerged work and is sent for review of the approach. It
+applies on media next 6628e7d4c6b2 (v7.4-rc1) with, in this order:
+- patches 1-7 of "[PATCH 00/14] media: Add V4L2 H.264 stateless encode
+  and VC8000E support" v1 (Paul Kocialkowski, 2026-05-22):
+  https://lore.kernel.org/all/20260522101653.2565125-1-paulk@sys-base.io/
+  (https://patchwork.kernel.org/project/linux-media/list/?series=1099281)
+- my "[PATCH RFC 00/11] media: h264: Stateless encode core follow-ups"
+  (the SPS/PPS fix, the CBR rework on v4l2-enc-cbr and VBR);
+- my "[PATCH RFC 00/10] media: Add a V4L2 HEVC stateless encode uAPI
+  and helpers", for the HEVC patches;
+- patches 6 and 7 of "[PATCH v2 00/17] media: rockchip: rga: Add
+  multi-core support" (Sven Püschel, 2026-09-16), for
+  v4l2_m2m_set_max_parallel_jobs():
+  https://lore.kernel.org/all/20260916-spu-rga3multicore-v2-0-23aa2cb74e61@pengutronix.de/
+Paul has announced a rework of the H.264 core helpers for v2; the
+driver will follow it.
+
+Patches 1-4 add the binding, the driver with H.264, and HEVC. Both
+cores are independent DT nodes (nothing in the hardware ties them
+together) bound as components of one m2m device, sharing the first
+core's IOMMU domain; jobs of different contexts run on both cores in
+parallel. The one-stream-on-two-cores handshake of the vendor driver is
+not used. Patches 5-6 change the defaults the driver took from MPP
+(no texture adaptive QP, MPP's moving-scene H.264 tuning), with the
+measurements in the commit messages. Patches 7-8 encode pictures wider
+than 4096 pixels (HEVC in tile columns, as MPP does), patches 9-10 add
+MPP's I picture QP limits and re-encoding of oversized pictures for
+HEVC, patch 11 offers VBR for H.264. Patch 12 adds the device tree
+nodes and can go through the Rockchip tree once the binding is
+accepted.
+
+H.264: Baseline/Main/High, CAVLC/CABAC, 8x8 transform, I and P pictures
+with one reference (the hardware has a single reference read port),
+single slice. HEVC: Main profile, I and P pictures, inline short-term
+RPS and long-term pictures as resolved by the core, TMVP. Both up to
+16384x8192. For both, the core writes the parameter sets at the start
+of the CAPTURE buffer and the hardware writes the slice header and data
+from its syntax registers. Reconstructed/reference pictures are
+driver-internal FBC buffers. Fixed QP, constant quality and constant
+bitrate come from the cores, whose picture size target drives the
+hardware row rate control; the measured per-picture statistics are
+reported back (V4L2_CID_MPEG_VIDEO_AVERAGE_QP for H.264, the HEVC
+feedback control for HEVC).
+
+There is no public documentation of this block. The register layout,
+meanings and default tuning values were derived from the Rockchip MPP
+userspace library (Apache-2.0), read as documentation and written as
+named fields and formulas; the power, watchdog and reset/IOMMU recovery
+sequences follow the vendor kernel driver. No code was copied.
+
+Related: Jiaxing Hu's RFC for the VEPU510 of the RK3576 (a stateful
+H.264 driver) is a different generation of this block:
+https://lore.kernel.org/all/20260722073417.2064667-1-gahing@gahingwoo.com/
+
+Tested on an Orange Pi 5 (RK3588S), on a v7.3-based kernel whose
+rkvenc files and binding are byte-identical to this series, with a
+request-API test client and GStreamer (local patches), decoding every
+stream with FFmpeg and measuring PSNR against the source:
+- H.264, 1080p60, 300 pictures of two clips (Big Buck Bunny and a
+  natural one): CBR at 4 Mbit/s with an IDR period of 120, 8 Mbit/s
+  with 10 and 20 Mbit/s all-intra within 2.2% of the target, the
+  largest one second window at most 1.37 times the bitrate (a scene
+  change in a P picture); VBR with the peak at 1.5 times the bitrate
+  in the same cases and at 8 Mbit/s with an IDR period of 120
+  within 3.2% of the target, every one second window
+  within the peak (at most 0.94 of it);
+- HEVC, CBR with an IDR period of 120: 1080p60 at 2-16 Mbit/s and
+  2160p30 at 20 and 40 Mbit/s within 3.4% of the target, the largest
+  one second window at most 1.35 times the bitrate; 4104x2160,
+  5120x2880 and 8192x4320 in tile columns, PSNR-Y 43-52 dB.
+With earlier revisions of patches 2-4: both cores probe and bind,
+v4l2-compliance 1.32 44/49 with 0 warnings (the 5 failures are the
+tool not knowing stateless encoders); H.264 and HEVC at 1080p and 4K,
+fixed QP 22-37 with GOP 1/10/30, the three H.264 profiles with CAVLC and
+CABAC, HEVC TMVP on/off, SAO off, long-term references, CQ and odd
+sizes with a conformance window, decode with 0 errors at 38-59 dB PSNR,
+and the HEVC feedback control matched the expected NAL type, POC, QP
+and reference list on every picture; two parallel 4K streams run one
+on each core at about twice the single-stream rate with outputs
+identical to single-stream runs; both cores runtime-suspend after the
+last job; H.264 up to 16384x2048 and 8192x4320 through the external
+line buffer. The error, watchdog and IOMMU recovery paths have not been
+exercised on hardware.
+
+This series was developed with Claude (Anthropic) as a coding assistant:
+it wrote the code and the commit messages, and I reviewed and tested
+every change as described above.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- .../media/v4l/ext-ctrls-codec-stateless.rst        | 411 +++++++++++++++++++++
- .../userspace-api/media/v4l/pixfmt-compressed.rst  |   3 +
- .../media/v4l/videodev2.h.rst.exceptions           |   2 +
- .../userspace-api/media/v4l/vidioc-g-ext-ctrls.rst |   8 +
- .../userspace-api/media/v4l/vidioc-queryctrl.rst   |  12 +
- 5 files changed, 436 insertions(+)
+Arun Iyengar (12):
+      dt-bindings: media: Add the Rockchip VEPU580 video encoder
+      media: rockchip: Add a VEPU580 stateless video encoder driver
+      media: rockchip: rkvenc: Prepare the VEPU580 helpers for a second codec
+      media: rockchip: rkvenc: Add HEVC encoding
+      media: rockchip: rkvenc: Don't enable adaptive QP with the row rate control
+      media: rockchip: rkvenc: Use MPP's moving-scene H.264 RDO tuning
+      media: rockchip: rkvenc: Encode pictures wider than 4096 pixels
+      media: rockchip: rkvenc: Encode HEVC wider than 4096 pixels in tile columns
+      media: rockchip: rkvenc: Limit the QP of the HEVC I pictures to 15..51
+      media: rockchip: rkvenc: Re-encode oversized HEVC pictures
+      media: rockchip: rkvenc: Offer VBR for H.264 encoding
+      arm64: dts: rockchip: Add the VEPU580 encoder cores to the RK3588
 
-diff --git a/Documentation/userspace-api/media/v4l/ext-ctrls-codec-stateless.rst b/Documentation/userspace-api/media/v4l/ext-ctrls-codec-stateless.rst
-index d7a3b8ef03a7..177940a6f987 100644
---- a/Documentation/userspace-api/media/v4l/ext-ctrls-codec-stateless.rst
-+++ b/Documentation/userspace-api/media/v4l/ext-ctrls-codec-stateless.rst
-@@ -3079,6 +3079,417 @@ This structure contains all loop filter related parameters. See sections
-       - Specifies if the short-term RPS is predicted from another short term RPS. See details in
-         section 7.4.8 "Short-term reference picture set semantics" of the specification.
- 
-+.. _v4l2-codec-stateless-hevc-encode:
-+
-+.. rubric:: HEVC stateless encoding
-+
-+A stateless HEVC encoder exposes ``V4L2_PIX_FMT_HEVC_SLICE`` on its CAPTURE
-+queue. Each CAPTURE buffer receives one complete access unit, with the start
-+codes selected by ``V4L2_CID_STATELESS_HEVC_START_CODE``. Applications set
-+the sequence and picture parameters with the ``V4L2_CID_STATELESS_HEVC_SPS``
-+and ``V4L2_CID_STATELESS_HEVC_PPS`` controls, and the parameters of each
-+picture with ``V4L2_CID_STATELESS_HEVC_ENCODE_PARAMS``, in the request of the
-+OUTPUT buffer that holds the picture to encode.
-+
-+The kernel writes the video, sequence and picture parameter sets, and the
-+slice segment headers, unless the hardware writes them itself. It derives the
-+parts of the parameter sets that the SPS and PPS controls do not carry from
-+the rest of the configuration:
-+
-+- the coded size from the CAPTURE format, aligned to the minimum coding block
-+  size, and the conformance window from the difference with the visible size;
-+- the profile, tier and level from ``V4L2_CID_MPEG_VIDEO_HEVC_PROFILE``,
-+  ``V4L2_CID_MPEG_VIDEO_HEVC_TIER`` and ``V4L2_CID_MPEG_VIDEO_HEVC_LEVEL``
-+  when the encoder exposes them (otherwise the lowest level that fits the
-+  coded size and frame rate);
-+- the VUI timing information from the frame interval set with
-+  :ref:`VIDIOC_S_PARM <VIDIOC_G_PARM>`, and the colour description from the
-+  colorimetry of the format.
-+
-+The values of the SPS and PPS controls are adjusted to what the encoder
-+supports, and can be read back after the encode run. A changed SPS only takes
-+effect with the next IRAP picture.
-+
-+The quantisation parameter comes from the stateful codec controls: from
-+``V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_QP``, ``V4L2_CID_MPEG_VIDEO_HEVC_P_FRAME_QP``
-+and ``V4L2_CID_MPEG_VIDEO_HEVC_B_FRAME_QP`` when
-+``V4L2_CID_MPEG_VIDEO_FRAME_RC_ENABLE`` is 0, otherwise from the rate control
-+mode selected by ``V4L2_CID_MPEG_VIDEO_BITRATE_MODE``, within
-+``V4L2_CID_MPEG_VIDEO_HEVC_MIN_QP`` and ``V4L2_CID_MPEG_VIDEO_HEVC_MAX_QP``.
-+These controls can be part of the request too.
-+
-+Reference pictures are identified by the timestamp of the OUTPUT buffer they
-+were encoded from. The encoder keeps the reconstructed pictures internally:
-+a picture is kept when it is encoded with
-+``V4L2_HEVC_ENCODE_FLAG_REFERENCE`` and as long as each following picture
-+lists it in its reference picture set. When an encode run fails, the set of
-+kept pictures does not change.
-+
-+How each picture was encoded is reported by the read-only
-+``V4L2_CID_STATELESS_HEVC_ENCODE_FEEDBACK`` control. Applications do not set
-+it in requests, so its value at the end of the encode run is stored in the
-+request, and can be read with :ref:`VIDIOC_G_EXT_CTRLS <VIDIOC_G_EXT_CTRLS>`
-+once the request completed.
-+
-+``V4L2_CID_STATELESS_HEVC_ENCODE_PARAMS (struct)``
-+    Specifies the parameters of the picture to encode: its NAL unit header,
-+    the slice segment header syntax elements that are not derived from other
-+    controls, and its reference picture set. These parameters are defined
-+    according to :ref:`hevc`, sections 7.3.1.2 "NAL unit header syntax" and
-+    7.3.6 "Slice segment header syntax". When the picture is encoded as
-+    several slices, all of them use these parameters.
-+
-+.. c:type:: v4l2_ctrl_hevc_encode_params
-+
-+.. cssclass:: longtable
-+
-+.. flat-table:: struct v4l2_ctrl_hevc_encode_params
-+    :header-rows:  0
-+    :stub-columns: 0
-+    :widths:       1 1 2
-+
-+    * - __u8
-+      - ``nal_unit_type``
-+      - NAL unit type of the slice segments of the picture, from Table 7-1 of
-+        the specification: one of the VCL types 0 (TRAIL_N) to 9 (RASL_R)
-+        and 16 (BLA_W_LP) to 21 (CRA_NUT). The first picture is an IRAP
-+        picture (16 to 21).
-+    * - __u8
-+      - ``nuh_temporal_id_plus1``
-+      - TemporalId of the picture plus 1, from 1 to
-+        ``sps_max_sub_layers_minus1`` + 1. It is 1 for IRAP pictures and
-+        greater than 1 for TSA and STSA pictures.
-+    * - __u8
-+      - ``slice_type``
-+      - ``V4L2_HEVC_SLICE_TYPE_I``, ``V4L2_HEVC_SLICE_TYPE_P`` or
-+        ``V4L2_HEVC_SLICE_TYPE_B``. IRAP pictures are I pictures. An encoder
-+        that cannot encode P pictures encodes them as I pictures; one that
-+        cannot encode B pictures rejects them.
-+    * - __u8
-+      - ``pic_parameter_set_id``
-+      - Identifies the PPS in use. The encoder supports a single PPS and
-+        sets the value of the PPS control.
-+    * - __s32
-+      - ``pic_order_cnt_val``
-+      - PicOrderCntVal of the picture, as described in section 8.3.1
-+        "Decoding process for picture order count". It is 0 for IDR
-+        pictures, and from 0 to MaxPicOrderCntLsb - 1 for BLA pictures and
-+        for a CRA picture that starts the bitstream. Otherwise it differs by
-+        less than MaxPicOrderCntLsb / 2 from the picture order count of the
-+        previous picture with TemporalId 0 that is not a RASL, RADL or
-+        sub-layer non-reference picture, so that a decoder can derive it.
-+    * - __u8
-+      - ``num_ref_idx_l0_active_minus1``
-+      - Number of entries of reference picture list 0, minus 1, used with
-+        ``V4L2_HEVC_ENCODE_FLAG_NUM_REF_IDX_ACTIVE_OVERRIDE``. Otherwise the
-+        PPS default applies. The encoder limits it to what it supports.
-+    * - __u8
-+      - ``num_ref_idx_l1_active_minus1``
-+      - Same for reference picture list 1.
-+    * - __u8
-+      - ``collocated_ref_idx``
-+      - Reference index of the collocated picture used for temporal motion
-+        vector prediction, in list 0 when
-+        ``V4L2_HEVC_ENCODE_FLAG_COLLOCATED_FROM_L0`` is set, in list 1
-+        otherwise.
-+    * - __u8
-+      - ``five_minus_max_num_merge_cand``
-+      - Maximum number of merging motion vector prediction candidates
-+        subtracted from 5.
-+    * - __s8
-+      - ``slice_cb_qp_offset``
-+      - Difference added to ``pps_cb_qp_offset``, used when the PPS has
-+        ``V4L2_HEVC_PPS_FLAG_PPS_SLICE_CHROMA_QP_OFFSETS_PRESENT``.
-+    * - __s8
-+      - ``slice_cr_qp_offset``
-+      - Difference added to ``pps_cr_qp_offset``, used likewise.
-+    * - __s8
-+      - ``slice_beta_offset_div2``
-+      - Deblocking parameter offset for beta divided by 2, used with
-+        ``V4L2_HEVC_ENCODE_FLAG_DEBLOCKING_FILTER_OVERRIDE``.
-+    * - __s8
-+      - ``slice_tc_offset_div2``
-+      - Deblocking parameter offset for tC divided by 2, used likewise.
-+    * - __u8
-+      - ``num_refs``
-+      - Number of valid entries in ``refs``, up to
-+        ``sps_max_dec_pic_buffering_minus1``.
-+    * - __u8
-+      - ``reserved[7]``
-+      - Applications and drivers must set this to zero.
-+    * - struct :c:type:`v4l2_hevc_encode_ref`
-+      - ``refs[V4L2_HEVC_DPB_ENTRIES_NUM_MAX]``
-+      - The reference picture set of the picture: every previously encoded
-+        picture that the current picture or a following picture uses for
-+        prediction, in any order. The encoder computes the picture order
-+        count differences, codes the RPS and builds the reference picture
-+        lists without modification, as described in section 8.3.4. Pictures
-+        that are not listed are removed from the decoded picture buffer.
-+        IDR pictures have no reference picture set and BLA pictures discard
-+        it. An encoder that uses a single reference picture uses the one
-+        entry that is used by the current picture.
-+    * - __u64
-+      - ``flags``
-+      - See :ref:`HEVC Encode Parameters Flags <hevc_encode_params_flags>`
-+
-+.. c:type:: v4l2_hevc_encode_ref
-+
-+.. flat-table:: struct v4l2_hevc_encode_ref
-+    :header-rows:  0
-+    :stub-columns: 0
-+    :widths:       1 1 2
-+
-+    * - __u64
-+      - ``timestamp``
-+      - Timestamp of the OUTPUT buffer from which the reference picture was
-+        encoded. Use the :c:func:`v4l2_timeval_to_ns()` function to convert
-+        the struct :c:type:`timeval` in struct :c:type:`v4l2_buffer` to a
-+        __u64.
-+    * - __u8
-+      - ``flags``
-+      - See :ref:`HEVC Encode Reference Flags <hevc_encode_ref_flags>`
-+    * - __u8
-+      - ``reserved[7]``
-+      - Applications and drivers must set this to zero.
-+
-+.. _hevc_encode_ref_flags:
-+
-+``HEVC Encode Reference Flags``
-+
-+.. cssclass:: longtable
-+
-+.. flat-table::
-+    :header-rows:  0
-+    :stub-columns: 0
-+    :widths:       1 1 2
-+
-+    * - ``V4L2_HEVC_ENCODE_REF_FLAG_USED_BY_CURR_PIC``
-+      - 0x01
-+      - The current picture uses the reference picture for inter prediction
-+        (it is in PocStCurrBefore, PocStCurrAfter or PocLtCurr). Otherwise it
-+        is only kept for following pictures. P and B pictures have at least
-+        one used reference, IRAP pictures have none.
-+    * - ``V4L2_HEVC_ENCODE_REF_FLAG_LONG_TERM``
-+      - 0x02
-+      - The reference picture is a long-term reference picture. This
-+        requires ``V4L2_HEVC_SPS_FLAG_LONG_TERM_REF_PICS_PRESENT``. Once a
-+        picture is a long-term reference picture, it stays one.
-+
-+.. _hevc_encode_params_flags:
-+
-+``HEVC Encode Parameters Flags``
-+
-+.. cssclass:: longtable
-+
-+.. flat-table::
-+    :header-rows:  0
-+    :stub-columns: 0
-+    :widths:       1 1 2
-+
-+    * - ``V4L2_HEVC_ENCODE_FLAG_SLICE_SAO_LUMA``
-+      - 0x00000001
-+      - slice_sao_luma_flag. Ignored unless the SPS enables SAO.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_SLICE_SAO_CHROMA``
-+      - 0x00000002
-+      - slice_sao_chroma_flag. Ignored unless the SPS enables SAO.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_SLICE_TEMPORAL_MVP_ENABLED``
-+      - 0x00000004
-+      - slice_temporal_mvp_enabled_flag. Ignored unless the SPS enables
-+        temporal motion vector prediction.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_MVD_L1_ZERO``
-+      - 0x00000008
-+      - mvd_l1_zero_flag, for B pictures.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_CABAC_INIT``
-+      - 0x00000010
-+      - cabac_init_flag, used when the PPS has
-+        ``V4L2_HEVC_PPS_FLAG_CABAC_INIT_PRESENT``.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_COLLOCATED_FROM_L0``
-+      - 0x00000020
-+      - collocated_from_l0_flag, for B pictures. Always set for P pictures.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_SLICE_DEBLOCKING_FILTER_DISABLED``
-+      - 0x00000080
-+      - slice_deblocking_filter_disabled_flag, used with
-+        ``V4L2_HEVC_ENCODE_FLAG_DEBLOCKING_FILTER_OVERRIDE``.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_SLICE_LOOP_FILTER_ACROSS_SLICES_ENABLED``
-+      - 0x00000100
-+      - slice_loop_filter_across_slices_enabled_flag.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_REFERENCE``
-+      - 0x00010000
-+      - Keep the reconstructed picture so that following pictures can
-+        reference it. Without this flag, the encoder may not store the
-+        reconstruction at all.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_NO_OUTPUT_OF_PRIOR_PICS``
-+      - 0x00020000
-+      - no_output_of_prior_pics_flag, for IRAP pictures.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_NO_PIC_OUTPUT``
-+      - 0x00040000
-+      - pic_output_flag is 0, when the PPS has
-+        ``V4L2_HEVC_PPS_FLAG_OUTPUT_FLAG_PRESENT``.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_NUM_REF_IDX_ACTIVE_OVERRIDE``
-+      - 0x00080000
-+      - Use ``num_ref_idx_l0_active_minus1`` and
-+        ``num_ref_idx_l1_active_minus1`` instead of the PPS defaults.
-+    * - ``V4L2_HEVC_ENCODE_FLAG_DEBLOCKING_FILTER_OVERRIDE``
-+      - 0x00100000
-+      - deblocking_filter_override_flag, used when the PPS has
-+        ``V4L2_HEVC_PPS_FLAG_DEBLOCKING_FILTER_OVERRIDE_ENABLED``.
-+
-+The flags that carry a slice header syntax element have the same values as
-+the ``V4L2_HEVC_SLICE_PARAMS_FLAG_*`` flags of the same element.
-+
-+``V4L2_CID_STATELESS_HEVC_ENCODE_FEEDBACK (struct)``
-+    Read-only. Describes how a picture was encoded: the values the encoder
-+    used where it adjusted or derived them, and statistics measured while
-+    encoding. The encoder sets it when the encode run completes, so that it
-+    is stored in the request.
-+
-+.. c:type:: v4l2_ctrl_hevc_encode_feedback
-+
-+.. cssclass:: longtable
-+
-+.. flat-table:: struct v4l2_ctrl_hevc_encode_feedback
-+    :header-rows:  0
-+    :stub-columns: 0
-+    :widths:       1 1 2
-+
-+    * - __u64
-+      - ``timestamp``
-+      - Timestamp of the OUTPUT buffer that was encoded.
-+    * - __s32
-+      - ``pic_order_cnt_val``
-+      - Picture order count of the picture.
-+    * - __u8
-+      - ``nal_unit_type``
-+      - NAL unit type of the slice segments.
-+    * - __u8
-+      - ``nuh_temporal_id_plus1``
-+      - TemporalId of the picture plus 1.
-+    * - __u8
-+      - ``slice_type``
-+      - Slice type that was used.
-+    * - __s8
-+      - ``slice_qp``
-+      - Luma quantisation parameter of the first slice (SliceQpY).
-+    * - __u8
-+      - ``num_ref_idx_l0_active``
-+      - Number of entries in reference picture list 0.
-+    * - __u8
-+      - ``num_ref_idx_l1_active``
-+      - Number of entries in reference picture list 1.
-+    * - __u8
-+      - ``reserved0[2]``
-+      - Applications and drivers must set this to zero.
-+    * - __u8
-+      - ``ref_idx_l0[V4L2_HEVC_DPB_ENTRIES_NUM_MAX]``
-+      - For each entry of reference picture list 0, its index in the
-+        ``refs`` array of the encode parameters.
-+    * - __u8
-+      - ``ref_idx_l1[V4L2_HEVC_DPB_ENTRIES_NUM_MAX]``
-+      - Same for reference picture list 1.
-+    * - __u8
-+      - ``reserved1[4]``
-+      - Applications and drivers must set this to zero.
-+    * - struct :c:type:`v4l2_stateless_encode_stats`
-+      - ``stats``
-+      - Statistics measured while encoding the picture.
-+    * - __u64
-+      - ``flags``
-+      - See :ref:`HEVC Encode Feedback Flags <hevc_encode_feedback_flags>`
-+
-+.. _hevc_encode_feedback_flags:
-+
-+``HEVC Encode Feedback Flags``
-+
-+.. cssclass:: longtable
-+
-+.. flat-table::
-+    :header-rows:  0
-+    :stub-columns: 0
-+    :widths:       1 1 2
-+
-+    * - ``V4L2_HEVC_ENCODE_FEEDBACK_FLAG_REFERENCE``
-+      - 0x00000001
-+      - The reconstructed picture was kept for reference.
-+
-+.. c:type:: v4l2_stateless_encode_stats
-+
-+.. cssclass:: longtable
-+
-+.. flat-table:: struct v4l2_stateless_encode_stats
-+    :header-rows:  0
-+    :stub-columns: 0
-+    :widths:       1 1 2
-+
-+    * - __u32
-+      - ``flags``
-+      - Which statistics are valid, see
-+        :ref:`Stateless Encode Statistics Flags <stateless_encode_stats_flags>`.
-+        The fields of the statistics that are not valid are zero.
-+    * - __u32
-+      - ``header_size``
-+      - Number of bytes written by the kernel at the start of the CAPTURE
-+        buffer (parameter sets, access unit delimiter, slice header) before
-+        the data produced by the hardware. Always valid.
-+    * - __u32
-+      - ``qp_sum``
-+      - Sum of the luma quantisation parameters of the blocks counted in
-+        ``qp_count``.
-+    * - __u32
-+      - ``qp_count``
-+      - Number of blocks summed in ``qp_sum``: ``qp_sum`` / ``qp_count`` is
-+        the average QP of the picture.
-+    * - __s8
-+      - ``qp_min``
-+      - Smallest luma quantisation parameter used in the picture.
-+    * - __s8
-+      - ``qp_max``
-+      - Largest luma quantisation parameter used in the picture.
-+    * - __u8
-+      - ``reserved0[6]``
-+      - Applications and drivers must set this to zero.
-+    * - __u64
-+      - ``sse_luma``
-+      - Sum of squared errors between the source and reconstructed luma
-+        samples, from which the PSNR of the picture can be computed.
-+    * - __u32
-+      - ``num_intra_blocks``
-+      - Number of 8x8 luma blocks coded with intra prediction.
-+    * - __u32
-+      - ``num_inter_blocks``
-+      - Number of 8x8 luma blocks coded with inter prediction, skipped
-+        blocks included.
-+    * - __u32
-+      - ``num_skip_blocks``
-+      - Number of 8x8 luma blocks coded in skip mode, counted in
-+        ``num_inter_blocks`` too.
-+    * - __u32
-+      - ``reserved1``
-+      - Applications and drivers must set this to zero.
-+
-+.. _stateless_encode_stats_flags:
-+
-+``Stateless Encode Statistics Flags``
-+
-+.. cssclass:: longtable
-+
-+.. flat-table::
-+    :header-rows:  0
-+    :stub-columns: 0
-+    :widths:       1 1 2
-+
-+    * - ``V4L2_STATELESS_ENCODE_STATS_FLAG_QP``
-+      - 0x00000001
-+      - ``qp_sum``, ``qp_count``, ``qp_min`` and ``qp_max`` are valid.
-+    * - ``V4L2_STATELESS_ENCODE_STATS_FLAG_SSE_LUMA``
-+      - 0x00000002
-+      - ``sse_luma`` is valid.
-+    * - ``V4L2_STATELESS_ENCODE_STATS_FLAG_BLOCKS``
-+      - 0x00000004
-+      - ``num_intra_blocks`` and ``num_inter_blocks`` are valid.
-+    * - ``V4L2_STATELESS_ENCODE_STATS_FLAG_SKIP_BLOCKS``
-+      - 0x00000008
-+      - ``num_skip_blocks`` is valid.
-+
- .. _v4l2-codec-stateless-av1:
- 
- ``V4L2_CID_STATELESS_AV1_SEQUENCE (struct)``
-diff --git a/Documentation/userspace-api/media/v4l/pixfmt-compressed.rst b/Documentation/userspace-api/media/v4l/pixfmt-compressed.rst
-index 235f955d3cd5..7483444ec823 100644
---- a/Documentation/userspace-api/media/v4l/pixfmt-compressed.rst
-+++ b/Documentation/userspace-api/media/v4l/pixfmt-compressed.rst
-@@ -221,6 +221,9 @@ Compressed Formats
- 	See the :ref:`associated Codec Control IDs <v4l2-codec-stateless-hevc>`.
- 	Buffers associated with this pixel format must contain the appropriate
- 	number of macroblocks to decode a full corresponding frame.
-+	Stateless video encoders use this pixel format on their CAPTURE queue:
-+	each buffer then receives one complete access unit, as described in
-+	:ref:`HEVC stateless encoding <v4l2-codec-stateless-hevc-encode>`.
-     * .. _V4L2-PIX-FMT-FWHT:
- 
-       - ``V4L2_PIX_FMT_FWHT``
-diff --git a/Documentation/userspace-api/media/v4l/videodev2.h.rst.exceptions b/Documentation/userspace-api/media/v4l/videodev2.h.rst.exceptions
-index 6182b4e2d2ee..6c8ac563413f 100644
---- a/Documentation/userspace-api/media/v4l/videodev2.h.rst.exceptions
-+++ b/Documentation/userspace-api/media/v4l/videodev2.h.rst.exceptions
-@@ -168,6 +168,8 @@ replace symbol V4L2_CTRL_TYPE_HEVC_PPS :c:type:`V4L.v4l2_ctrl_type`
- replace symbol V4L2_CTRL_TYPE_HEVC_SLICE_PARAMS :c:type:`V4L.v4l2_ctrl_type`
- replace symbol V4L2_CTRL_TYPE_HEVC_SCALING_MATRIX :c:type:`V4L.v4l2_ctrl_type`
- replace symbol V4L2_CTRL_TYPE_HEVC_DECODE_PARAMS :c:type:`V4L.v4l2_ctrl_type`
-+replace symbol V4L2_CTRL_TYPE_HEVC_ENCODE_PARAMS :c:type:`V4L.v4l2_ctrl_type`
-+replace symbol V4L2_CTRL_TYPE_HEVC_ENCODE_FEEDBACK :c:type:`V4L.v4l2_ctrl_type`
- replace symbol V4L2_CTRL_TYPE_AV1_SEQUENCE :c:type:`V4L.v4l2_ctrl_type`
- replace symbol V4L2_CTRL_TYPE_AV1_TILE_GROUP_ENTRY :c:type:`V4L.v4l2_ctrl_type`
- replace symbol V4L2_CTRL_TYPE_AV1_FRAME :c:type:`V4L.v4l2_ctrl_type`
-diff --git a/Documentation/userspace-api/media/v4l/vidioc-g-ext-ctrls.rst b/Documentation/userspace-api/media/v4l/vidioc-g-ext-ctrls.rst
-index d78328152b75..0cc67e210359 100644
---- a/Documentation/userspace-api/media/v4l/vidioc-g-ext-ctrls.rst
-+++ b/Documentation/userspace-api/media/v4l/vidioc-g-ext-ctrls.rst
-@@ -286,6 +286,14 @@ still cause this situation.
-       - ``p_hevc_decode_params``
-       - A pointer to a struct :c:type:`v4l2_ctrl_hevc_decode_params`. Valid if this
-         control is of type ``V4L2_CTRL_TYPE_HEVC_DECODE_PARAMS``.
-+    * - struct :c:type:`v4l2_ctrl_hevc_encode_params` *
-+      - ``p_hevc_encode_params``
-+      - A pointer to a struct :c:type:`v4l2_ctrl_hevc_encode_params`. Valid if this
-+        control is of type ``V4L2_CTRL_TYPE_HEVC_ENCODE_PARAMS``.
-+    * - struct :c:type:`v4l2_ctrl_hevc_encode_feedback` *
-+      - ``p_hevc_encode_feedback``
-+      - A pointer to a struct :c:type:`v4l2_ctrl_hevc_encode_feedback`. Valid if this
-+        control is of type ``V4L2_CTRL_TYPE_HEVC_ENCODE_FEEDBACK``.
-     * - struct :c:type:`v4l2_ctrl_av1_sequence` *
-       - ``p_av1_sequence``
-       - A pointer to a struct :c:type:`v4l2_ctrl_av1_sequence`. Valid if this control is
-diff --git a/Documentation/userspace-api/media/v4l/vidioc-queryctrl.rst b/Documentation/userspace-api/media/v4l/vidioc-queryctrl.rst
-index 82c8b52e771c..cd9ef6b559a4 100644
---- a/Documentation/userspace-api/media/v4l/vidioc-queryctrl.rst
-+++ b/Documentation/userspace-api/media/v4l/vidioc-queryctrl.rst
-@@ -543,6 +543,18 @@ See also the examples in :ref:`control`.
-       - n/a
-       - A struct :c:type:`v4l2_ctrl_hevc_ext_sps_st_rps`, containing HEVC
- 	extended Short-Term RPS for stateless video decoders.
-+    * - ``V4L2_CTRL_TYPE_HEVC_ENCODE_PARAMS``
-+      - n/a
-+      - n/a
-+      - n/a
-+      - A struct :c:type:`v4l2_ctrl_hevc_encode_params`, containing HEVC
-+	encoding parameters for stateless video encoders.
-+    * - ``V4L2_CTRL_TYPE_HEVC_ENCODE_FEEDBACK``
-+      - n/a
-+      - n/a
-+      - n/a
-+      - A struct :c:type:`v4l2_ctrl_hevc_encode_feedback`, containing HEVC
-+	encoding feedback from stateless video encoders.
-     * - ``V4L2_CTRL_TYPE_VP9_COMPRESSED_HDR``
-       - n/a
-       - n/a
+ .../bindings/media/rockchip,rk3588-vepu580.yaml    |   93 ++
+ MAINTAINERS                                        |    8 +
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      |   56 +
+ drivers/media/platform/rockchip/Kconfig            |    1 +
+ drivers/media/platform/rockchip/Makefile           |    1 +
+ drivers/media/platform/rockchip/rkvenc/Kconfig     |   18 +
+ drivers/media/platform/rockchip/rkvenc/Makefile    |    8 +
+ .../media/platform/rockchip/rkvenc/rkvenc-h264.c   |  519 +++++++
+ .../media/platform/rockchip/rkvenc/rkvenc-hevc.c   |  869 +++++++++++
+ .../media/platform/rockchip/rkvenc/rkvenc-regs.h   |  539 +++++++
+ .../platform/rockchip/rkvenc/rkvenc-vepu580.c      |  999 +++++++++++++
+ drivers/media/platform/rockchip/rkvenc/rkvenc.c    | 1581 ++++++++++++++++++++
+ drivers/media/platform/rockchip/rkvenc/rkvenc.h    |  329 ++++
+ 13 files changed, 5021 insertions(+)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261110-rkvenc-e0f1c61c00a2
+prerequisite-patch-id: fd11f19266754d1bd40bf61dd5d1da74a0dc13c2
+prerequisite-patch-id: 7c7edc7344998d520efaf7b430c90fd527c704c7
+prerequisite-patch-id: 4689de770eb1bcdc153d6beda2e392d0ce6f344d
+prerequisite-patch-id: 0afdcc24892eac773036d05d8f504e5ccb35eb62
+prerequisite-patch-id: ecc849b3328d4396380f0cfc331536c16d2e0d28
+prerequisite-patch-id: c62d0fd16706c4328624948805eb2f8d7b223ae0
+prerequisite-patch-id: e955d15603fd070034960a1362e4867c2f124d69
+prerequisite-patch-id: 76eb64d7920ddc1f268afa6f13df14cf9d1931c8
+prerequisite-patch-id: 654c303a6e9e4a3108e9ae9b7c9aa78f95b82c0c
+prerequisite-patch-id: 96f470c1f8b2ca83ffc496f41fd173e925180501
+prerequisite-patch-id: fa3430fcef00637bb84f9401bb9045dd46194298
+prerequisite-patch-id: da666def8ed2b5296da8dee1be387b2818ba3cc3
+prerequisite-patch-id: 7e532c86fbd0f7bd6705ac4f1544b7d7d27cbc26
+prerequisite-patch-id: 09e1836b24606834b9ac4aa3c851d39f564cfef6
+prerequisite-patch-id: fd8fcc747458e52344df760a17b61748361bfbb1
+prerequisite-patch-id: 883eefffa7ea70d39d357467780cb4f2b69c8d36
+prerequisite-patch-id: aa018c975f9b1f0555164d46446dea01d6496823
+prerequisite-patch-id: d8d6323a5177f6b1ce661a86ee5813d55b4a3570
+prerequisite-patch-id: 25c5c1c067936d313b20c287e66da34fa6c52f02
+prerequisite-patch-id: d7ab57d731445a0d6a06a305f015060e1ea2aa0d
+prerequisite-patch-id: 68ed30e5ad9b17d0a8f4cbc8c4278cbb2a82ea23
+prerequisite-patch-id: 5f042c1c0679a0f587bcd623e69d7f3aa205d4ce
+prerequisite-patch-id: 4e3feb81141e90296253fe1809dd9d7b8cd86244
+prerequisite-patch-id: 68222baa5172eef1abdbe693e0209056b98e9d54
+prerequisite-patch-id: d66a7ce272d3911c662d008828570f439ce298c7
+prerequisite-patch-id: dcb576eb303c4f0794c67ae9b2c1a41c208ab519
+prerequisite-patch-id: 53bde0480b78711ed69704eb2f343b667fdbe087
+prerequisite-patch-id: 6cf0960c01f1c7ce51101987c37633ffe214075f
+prerequisite-patch-id: 6ad9550f96aeed8429737800e4afc6e35be2c3ed
+prerequisite-patch-id: 42252ba52d9c65ea011f6971395e709cc4bff684
 
--- 
-2.55.0
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
