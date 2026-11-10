@@ -1,11 +1,11 @@
 From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Tue, 10 Nov 2026 03:56:28 +0000
-Subject: [PATCH 1/2] can: esd_usb: limit the number of nets reported by the
- device
+Date: Tue, 10 Nov 2026 03:56:29 +0000
+Subject: [PATCH 2/2] can: esd_usb: validate the message length in the rx
+ path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-esd-usb-validate-v1-1-7ee499b4926d@gmail.com>
+Message-Id: <20261110-esd-usb-validate-v1-2-7ee499b4926d@gmail.com>
 References: <20261110-esd-usb-validate-v1-0-7ee499b4926d@gmail.com>
 In-Reply-To: <20261110-esd-usb-validate-v1-0-7ee499b4926d@gmail.com>
 To: mkl@pengutronix.de, mailhol@kernel.org, frank.jungclaus@esd.eu, 
@@ -13,32 +13,36 @@ To: mkl@pengutronix.de, mailhol@kernel.org, frank.jungclaus@esd.eu,
 Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794282987; l=1647;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794282987; l=2262;
  i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=xaRFfiQi+LE78/iydRbgfL5xgKrJdnS3XrPXYUllshg=;
- b=pFELmjGayKDc9q2M+73NCZukOJtkYOTlUlrwLtLE6l3tJCBXCpfk6w40WpxU6W8QIB66Gr3GK
- v9KnqMm8GcuBA823tfFxrAVElIsoHCmA7Uor2D5b917ySTqYupZT9UB
+ bh=pV/Sdz7aRtptMVVSSDZWKUxUjOppcKrFNiTGGsGPRAM=;
+ b=SSGJExKFCETEo3C8HhdXj534u3ZYyx3Iue+QM6jolsbMwZq2EMNVZdAtZoOQLd7C23P1sL087
+ C/fyZE3eEbAAyvWaswu2b+TINscMtUJ0jKrU0EyQM6a3pF6Uk5Axo4s
 X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
  pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
 X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-esd_usb_probe() takes the number of CAN nets from the version reply
-sent by the device and uses it unchecked as the loop bound for
-esd_usb_probe_one_net(), which stores the new private data pointer in
-dev->nets[index].  The nets array only has ESD_USB_MAX_NETS (2)
-entries, while the device controlled u8 can be up to 255.
+esd_usb_read_bulk_callback() walks the messages in a received buffer
+using the length byte from each message header:
 
-A device that reports more than two nets makes the driver write
-pointers past the end of the array, first over the following members
-of struct esd_usb and then beyond the end of the allocation.  The
-loops in esd_usb_read_bulk_callback(), unlink_all_urbs() and
-esd_usb_disconnect() read dev->nets[] with the same bound.
+	pos += msg->hdr.len * sizeof(u32); /* convert to # of bytes */
 
-A malicious USB device can use this to corrupt kernel heap memory
-just by being plugged in.
+	if (pos > urb->actual_length) {
 
-Clamp the count to the size of the array.
+The length is supplied by the device and is not checked against zero.
+A message with hdr.len == 0 leaves pos unchanged, so the loop never
+terminates and keeps handling the same message in the URB completion
+handler, which locks up the CPU.
+
+The check that the declared length lies within the received data is
+also done only after the message has been handled.
+
+Compute the message length first and reject a message that is empty or
+whose declared length does not fit into the remaining data before it is
+handled.  The handlers still rely on the fixed layout of the message
+they are given; checking the declared length against the layout of each
+command is left for a separate change.
 
 Found by LLM-assisted source review.
 
@@ -46,22 +50,43 @@ Fixes: 96d8e90382dc ("can: Add driver for esd CAN-USB/2 device")
 Cc: stable@vger.kernel.org
 Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
- drivers/net/can/usb/esd_usb.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/net/can/usb/esd_usb.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/net/can/usb/esd_usb.c b/drivers/net/can/usb/esd_usb.c
-index f41d4a0d140f..f26a8780686f 100644
+index f26a8780686f..67dba118ce9e 100644
 --- a/drivers/net/can/usb/esd_usb.c
 +++ b/drivers/net/can/usb/esd_usb.c
-@@ -1343,7 +1343,7 @@ static int esd_usb_probe(struct usb_interface *intf,
- 		goto free_msg;
+@@ -507,8 +507,15 @@ static void esd_usb_read_bulk_callback(struct urb *urb)
+ 
+ 	while (pos < urb->actual_length) {
+ 		union esd_usb_msg *msg;
++		unsigned int msg_len;
+ 
+ 		msg = (union esd_usb_msg *)(urb->transfer_buffer + pos);
++		msg_len = msg->hdr.len * sizeof(u32); /* convert to # of bytes */
++
++		if (!msg_len || msg_len > urb->actual_length - pos) {
++			dev_err(dev->udev->dev.parent, "format error\n");
++			break;
++		}
+ 
+ 		switch (msg->hdr.cmd) {
+ 		case ESD_USB_CMD_CAN_RX:
+@@ -531,12 +538,7 @@ static void esd_usb_read_bulk_callback(struct urb *urb)
+ 			break;
+ 		}
+ 
+-		pos += msg->hdr.len * sizeof(u32); /* convert to # of bytes */
+-
+-		if (pos > urb->actual_length) {
+-			dev_err(dev->udev->dev.parent, "format error\n");
+-			break;
+-		}
++		pos += msg_len;
  	}
  
--	dev->net_count = (int)msg->version_reply.nets;
-+	dev->net_count = min_t(int, msg->version_reply.nets, ESD_USB_MAX_NETS);
- 	dev->version = le32_to_cpu(msg->version_reply.version);
- 
- 	if (device_create_file(&intf->dev, &dev_attr_firmware))
+ resubmit_urb:
 
 -- 
 2.43.0
