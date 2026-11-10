@@ -1,67 +1,98 @@
-From: Jing Lin <kayano050408@gmail.com>
-Date: Tue, 10 Nov 2026 12:13:25 +0800
-Subject: [PATCH v8 4/4] usb: gadget: gadgetfs: avoid writing through the
- const setup pointer
+From: =?utf-8?q?Eren_=C3=96zen?= <erenozen@protonmail.com>
+Subject: [PATCH 0/3] drm/amd/display: Fix FRL status polling work lifetime
+Date: Tue, 10 Nov 2026 07:21:55 +0300
+Message-Id: <20261110-frl-polling-wq-teardown-v1-0-0ff028d5c35b@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-gadgetfs-ep0-v8-v8-4-8f90434574fe@gmail.com>
-References: <20261110-gadgetfs-ep0-v8-v8-0-8f90434574fe@gmail.com>
-In-Reply-To: <20261110-gadgetfs-ep0-v8-v8-0-8f90434574fe@gmail.com>
-To: Neill Kapron <nkapron@google.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Jing Lin <kayano050408@gmail.com>, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Alan Stern <stern@rowland.harvard.edu>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794284002; l=1652;
- i=kayano050408@gmail.com; s=default; h=from:subject:message-id;
- bh=si1G1+f7e2FG0Kdc6yaUjRpBdhJGWuq2tBRVF9N7SWs=;
- b=4X2b14KJGYKqkiqdu1sgSPXlx+ejPt1MvYgZojmzkj8+bKmetmZyJvGRKuWPwo9/t34QG+Djr
- gEv13KDn/IgA92rZ+4fThWONhvQFYcja0z3yRk8HU1MroZ96sovS6ty
-X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
- pk=pr6i8RN1WEON1jbXPdghSglxaBSzfuJjXNGFknX//+A=
-X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/default with auth_id=1441
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MQQqDMBAF0KsMf+2ASSDQXKV0YeNoB0JiJ6UK4
+ t0LfQd4J7qYSkeiEyZf7doqErmBkF9TXYV1RiL40Ufn3MiLFd5aKVpX3t/8kcnmtlf2zxBCzFl
+ uEjEQNpNFj/98f1zXD1EbqQ1pAAAA
+X-Change-ID: 20261110-frl-polling-wq-teardown-2b3336cce9e6
+To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
+ Rodrigo Siqueira <siqueira@igalia.com>, 
+ Alex Deucher <alexander.deucher@amd.com>, 
+ =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Fangzhi Zuo <Jerry.Zuo@amd.com>
+Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Eren_=C3=96zen?= <erenozen@protonmail.com>, 
+ timur.kristof@gmail.com
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794284542; l=3048;
+ i=erenozen@protonmail.com; s=20261110; h=from:subject:message-id;
+ bh=YcYq/sMmQ2Dt4zDzYoXhOXb5tw84PZDjWw85HQWmBF8=;
+ b=JNJJ3FzZnLlnZp3PU0D/iAnSIMslTMd9PMPyeRy9A+SR5djYV2JIAwAC3CRzmsa3sFkVweZ7W
+ qqlhjon2/GpBccJifSiYV6fU46ifzuTQ4U1eXb/BPm9fNF/tXHte9AE
+X-Developer-Key: i=erenozen@protonmail.com; a=ed25519;
+ pk=tPAwfVmIbYF3QziJ3LcoTIZDU12BsjVK+EkAB9nN1gA=
+X-Endpoint-Received: by B4 Relay for erenozen@protonmail.com/20261110 with auth_id=1479
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-gadgetfs_setup() receives the setup packet as const, but clamps an
-oversized control IN request by casting away the constness and writing
-the truncated length back into the caller's wLength field.
+The HDMI FRL status polling work and its workqueue, added in commit
+5c9b8b27a883 ("drm/amd/display: Tie FRL support into amdgpu_dm"), have
+three lifetime problems:
 
-The setup() callback has no business modifying the setup packet, and
-ctrl->wLength is only used afterwards when initializing event->u.setup.
-Store the clamped w_length into event->u.setup.wLength directly instead.
+1. The delayed work is initialized in amdgpu_dm_connector_init_helper(),
+   which also runs at runtime for every new MST connector. A hotplug
+   while FRL polling is armed re-initializes a pending delayed work.
 
-Suggested-by: Alan Stern <stern@rowland.harvard.edu>
-Signed-off-by: Jing Lin <kayano050408@gmail.com>
+2. amdgpu_dm_fini() never cancels the self-rearming work and never
+   destroys the workqueue, so the workqueue and its rescuer thread
+   leak on every unbind, and the work can run after dc_destroy().
+
+3. If the workqueue allocation fails, amdgpu_dm_atomic_commit_tail()
+   still passes the NULL workqueue to queue_delayed_work().
+
+Patch 1 moves the initialization to amdgpu_dm_init(). Patch 2 tears
+the work and workqueue down in amdgpu_dm_fini(), and depends on
+patch 1. Patch 3 skips queueing when the workqueue does not exist.
+
+These issues were pointed out by an automated review of the
+workqueue rename patch earlier this year.
+
+This series should combine cleanly with Timur's pending "Check HDMI
+FRL support before creating polling workqueue". With that patch, the
+workqueue is NULL on hardware without FRL, and the NULL checks in
+patches 2 and 3 handle that case. If his patch lands first, patch 1
+needs a trivial rebase because both touch the same context.
+
+Testing:
+- Built for x86_64 with GCC 16, no new warnings with W=1 on the
+  changed files.
+- amdgpu_dm KUnit suite (UML): 1910/1912 pass both with and without
+  this series. The two failures are pre-existing
+  (dm_test_detect_hides_secondary_tile and
+  dm_test_dmub_sw_init_gtt_only_asic).
+- Booted on a Cezanne (DCN 2.1) laptop with
+  CONFIG_DEBUG_OBJECTS_WORK and CONFIG_DEBUG_OBJECTS_TIMERS: one
+  polling workqueue thread, no ODEBUG warnings, and a clean s2idle
+  suspend/resume.
+- Unbinding amdgpu through sysfs on the same laptop, then counting the
+  hdmi_frl_status_polling rescuer threads:
+    without this series (Fedora 7.2.15): 1 before, 1 after (leaked)
+    with this series:                    1 before, 0 after
+  No ODEBUG warnings or splats during the unbind with this series.
+- Not tested: MST hotplug with an active HDMI FRL stream, since I
+  have no FRL sink or MST hub. Cezanne has no HDMI FRL, so the
+  polling work itself never runs on my machine.
+
+Signed-off-by: Eren Özen <erenozen@protonmail.com>
 ---
- drivers/usb/gadget/legacy/inode.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+Eren Özen (3):
+      drm/amd/display: Initialize FRL status polling work once at DM init
+      drm/amd/display: Destroy FRL status polling workqueue in amdgpu_dm_fini()
+      drm/amd/display: Don't queue FRL status polling on a NULL workqueue
 
-diff --git a/drivers/usb/gadget/legacy/inode.c b/drivers/usb/gadget/legacy/inode.c
-index d15739df2..12f04329b 100644
---- a/drivers/usb/gadget/legacy/inode.c
-+++ b/drivers/usb/gadget/legacy/inode.c
-@@ -1616,10 +1616,6 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
- 
- 	if (w_length > RBUF_SIZE) {
- 		if (ctrl->bRequestType & USB_DIR_IN) {
--			/* Cast away the const, we are going to overwrite on purpose. */
--			__le16 *temp = (__le16 *)&ctrl->wLength;
--
--			*temp = cpu_to_le16(RBUF_SIZE);
- 			w_length = RBUF_SIZE;
- 		} else {
- 			spin_unlock(&dev->lock);
-@@ -1777,6 +1773,8 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
- 			/* state changes when reader collects event */
- 			event = next_event (dev, GADGETFS_SETUP);
- 			event->u.setup = *ctrl;
-+			/* Report the length we can actually handle */
-+			event->u.setup.wLength = cpu_to_le16(w_length);
- 			ep0_readable (dev);
- 			spin_unlock (&dev->lock);
- 			/*
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c           | 12 +++++++++++-
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.c |  2 --
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+---
+base-commit: 47df73aa49d1988c8f684b7caf8be6570e966844
+change-id: 20261110-frl-polling-wq-teardown-2b3336cce9e6
 
+Best regards,
 -- 
-Git-155)
+Eren Özen <erenozen@protonmail.com>
 
