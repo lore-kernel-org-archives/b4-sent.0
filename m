@@ -1,82 +1,71 @@
-From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-Date: Tue, 10 Nov 2026 07:28:25 -0600
-Subject: [PATCH v3] staging: octeon: fix OF node and fixed-link leaks
+From: Christopher Griffin <christophergriffin05@gmail.com>
+Subject: [PATCH v2 0/2] wifi: ath: simplify copying a peer's PPE thresholds
+Date: Tue, 10 Nov 2026 08:37:51 -0600
+Message-Id: <20261110-ath-peer-ppe-thres-loop-v2-0-fced87507920@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261110-octeon-of-node-leak-fix-v3-1-9cdd7e1d48fa@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7Zi2pCiuvIdhUcoUGqFjWkI0p
- He3cgGX7yX//R0SRU8JbtUOkTafPIcC9akCO5kwEvqhMCihGinFBdmuxAHZYeCBcCbzROffeNW
- 16G1vlBIEZf2KVPRRfnSFJ59Wjp/jaJM/+7+5SZSotNOtdH3bWH0fF+Pns+UFupzzF8XjBrS+A
- AAA
-X-Change-ID: 20261107-octeon-of-node-leak-fix-8530bcba220e
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794317305; l=1834;
- i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
- bh=jl1zaHvHGKs1nPczUORm41xcESZsx9ReVkyvB9xAjJ8=;
- b=wcq4qyYEf6+zZd6aBylkQJrPRqr6AWFbWWGX6sThGne0nm2+1AkoNb+krQ4VFyS0rh54QeCWz
- vVnVMZmaWxkDbrQfEthwB27z4oaDKvpe+HA7u19OHwv0vHx3yQXO28T
-X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
- pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
-X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAEAs82oC/4WNQQ6CMBBFr0Jm7RhaQ6OuvIdhQeuUjgHatJVoS
+ O8u4AFcvuT99xdIFJkSXKsFIs2c2E8ryEMFxnVTT8iPlUHWUglRK+yyw0AUMQTC7CIlHLwPaKg
+ xUktSZxKwrkMky++9fG9/nF76SSZvuc1wnLKPn/16Fpv3/2UWWKNVWjeWLtbq060fOx6Oxo/Ql
+ lK+7y0Yc9AAAAA=
+X-Change-ID: 20261106-ath-peer-ppe-thres-loop-ce5c2b2e68e1
+To: Jeff Johnson <jjohnson@kernel.org>
+Cc: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>, 
+ Baochen Qiang <baochen.qiang@oss.qualcomm.com>, 
+ linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
+ ath12k@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
+ Christopher Griffin <christophergriffin05@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794321472; l=1569;
+ i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
+ bh=vBZaf4TEYAxqUGlg0dDE1mpIQ9acO6vuybyJLRWS5LY=;
+ b=K3soglbfb5eqqDMtq403mFJS21XB1PNr0p0+UHvGArEQGIwyy5Q0ExUHlR90T7sYQW/hT+d0v
+ cEM9AiHHq3yCORTiPfc/yPhD+4WLjFX3VRYXP7sbvfUr8IkHKCoSkeq
+X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
+ pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
+X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Deregister fixed link and put OF node on probe failure and device removal
-to prevent memory leaks.
+Rameshkumar suggested this while reviewing the PPE threshold bit-order
+fix [1]: the loop that copies a peer's PPE thresholds into the WMI
+layout shifts each bit in from the top, where it can put it in place.
+ath11k and ath12k carry the same loop, so one patch each. No functional
+change; the patches don't depend on the bit-order series.
 
-Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
----
-Oscar Alejandro Sánchez Lucero (1):
-  staging: octeon: fix OF node and fixed-link leaks on error and teardown
----
-Changes in v3:
-- Rebase into mainline and perform cross compilation validation for MIPS64.
----
- drivers/staging/octeon/ethernet.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+Compile tested only (W=1, both drivers). A userspace copy of the old
+and the new loop gives the same output for every 6-bit value in every
+RU slot.
 
-diff --git a/drivers/staging/octeon/ethernet.c b/drivers/staging/octeon/ethernet.c
-index 42ec4b8324a8..13df64d3f498 100644
---- a/drivers/staging/octeon/ethernet.c
-+++ b/drivers/staging/octeon/ethernet.c
-@@ -114,6 +114,11 @@ static void cvm_oct_remove_device(int port)
- 
- 		cvm_oct_tx_shutdown_dev(dev);
- 		unregister_netdev(dev);
-+		if (priv->of_node) {
-+			if (of_phy_is_fixed_link(priv->of_node))
-+				of_phy_deregister_fixed_link(priv->of_node);
-+			of_node_put(priv->of_node);
-+		}
- 		free_netdev(dev);
- 		cvm_oct_device[port] = NULL;
- 	}
-@@ -919,10 +924,16 @@ static int cvm_oct_probe(struct platform_device *pdev)
- 			}
- 
- 			if (!dev->netdev_ops) {
-+				of_node_put(priv->of_node);
- 				free_netdev(dev);
- 			} else if (register_netdev(dev) < 0) {
- 				netdev_err(dev, "Failed to register ethernet device for interface %d, port %d\n",
- 					   interface, priv->port);
-+				if (priv->of_node) {
-+					if (of_phy_is_fixed_link(priv->of_node))
-+						of_phy_deregister_fixed_link(priv->of_node);
-+					of_node_put(priv->of_node);
-+				}
- 				free_netdev(dev);
- 			} else {
- 				cvm_oct_device[priv->port] = dev;
+The patches, this letter and that test were written with Claude, an AI
+coding assistant.
+
+[1] https://lore.kernel.org/all/b60c4c56-483b-406e-92ab-643b0fdf2dc8@oss.qualcomm.com/
 
 ---
-base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
-change-id: 20261107-octeon-of-node-leak-fix-8530bcba220e
+Changes in v2:
+- Dropped the paragraph about the equivalence test from both changelogs
+  (Rameshkumar).
+- Kept the one-line note on AI use in the changelogs:
+  Documentation/process/generated-content.rst asks for it in changelogs
+  and cover letters.
+- Rebased on ath-next.
+- Link to v1: https://patch.msgid.link/20261106-ath-peer-ppe-thres-loop-v1-0-f6bb5fe9ffb3@gmail.com
+
+---
+Christopher Griffin (2):
+      wifi: ath11k: simplify copying a peer's PPE thresholds
+      wifi: ath12k: simplify copying a peer's PPE thresholds
+
+ drivers/net/wireless/ath/ath11k/mac.c | 3 +--
+ drivers/net/wireless/ath/ath12k/mac.c | 3 +--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
+---
+base-commit: d0fbb39d65dc9dcb4175fa6b23e473dec3670f4d
+change-id: 20261106-ath-peer-ppe-thres-loop-ce5c2b2e68e1
 
 Best regards,
--- 
-Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
+--  
+Christopher Griffin <christophergriffin05@gmail.com>
 
