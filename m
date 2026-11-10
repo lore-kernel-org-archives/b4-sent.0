@@ -1,11 +1,11 @@
 From: Yongjian Wang <echoowall@gmail.com>
-Date: Wed, 11 Nov 2026 00:45:55 +0800
-Subject: [PATCH net-next v4 1/4] tcp: initialize MTU probing before syncing
- MSS at connection setup
+Date: Wed, 11 Nov 2026 00:45:56 +0800
+Subject: [PATCH net-next v4 2/4] selftests/net: packetdrill: test
+ tcp_base_mss on passive connections
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-mtu-probing-series-v4-1-6f2e484ca8ea@gmail.com>
+Message-Id: <20261111-mtu-probing-series-v4-2-6f2e484ca8ea@gmail.com>
 References: <20261111-mtu-probing-series-v4-0-6f2e484ca8ea@gmail.com>
 In-Reply-To: <20261111-mtu-probing-series-v4-0-6f2e484ca8ea@gmail.com>
 To: pabeni@redhat.com, kuba@kernel.org, shuah@kernel.org, 
@@ -15,96 +15,57 @@ Cc: linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org,
  netdev@vger.kernel.org, panweiping3@gmail.com, 
  Yongjian Wang <echoowall@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794329156; l=3243;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794329156; l=1599;
  i=echoowall@gmail.com; s=20261026; h=from:subject:message-id;
- bh=fc7GUdhcvf9vRkZ3ScF2x8cdgOAMENFCNY8ojAS8WTM=;
- b=wKZ+Ok+q/a8mkHceG56FgZXCEjtucb1MXa1ZWmh9WCQ+d8VksNSwEGcZ+i6rhSDL1yQz+RJzb
- 25sZVzwNdUaA6i/v5L1Qu+XEtsUlr2UYzCj6luNe0+EjO0xGqUZmsKT
+ bh=3lQsY78vSTiBOpqp4bdac9scSAkC/asJAFx3o/C4nk4=;
+ b=KlldzqTr+zVzxlntQk6qL3845h9aSVYsDMJB7yZ+xOEeVyu5/nQTgumE/1UvAkJnrWzaeoJsI
+ dv651n3WLjlA4RQ3jCzJFjwofZsYaDxxIZUSau/vUpeDfmsPiP2xN3+
 X-Developer-Key: i=echoowall@gmail.com; a=ed25519;
  pk=9XP6JhqjjPsHCF6UZZZTeqTRnXIa4+ufggnxXtTJ+no=
 X-Endpoint-Received: by B4 Relay for echoowall@gmail.com/20261026 with auth_id=1323
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With tcp_mtu_probing=2, a passive connection starts at the full MSS
-rather than tcp_base_mss. The IPv4 and IPv6 syn_recv_sock() paths
-call tcp_sync_mss() before tcp_init_transfer() enables MTU probing.
-With tcp_base_mss=1024, the first successful probe can therefore lower
-the MSS from 1460 to 1242. On a black hole path, the first reduction
-skips 1024 and goes straight to 512.
+Check that a passive connection starts at tcp_base_mss with
+net.ipv4.tcp_mtu_probing=2, as an active connection does.
 
-The issue surfaced while developing packetdrill coverage for MTU
-probing and comparing the initial send MSS on active and passive
-IPv4 connections.
-
-Commit 4d83e1773031 ("tcp: delete redundant calls of tcp_mtup_init()")
-removed tcp_mtup_init() from the passive setup paths.
-Commit 27204aaa9dc6
-("tcp: uniform the set up of sockets after successful connection")
-later moved MTU probing initialization into tcp_init_transfer(),
-away from tcp_sync_mss().
-
-Initialize MTU probing immediately before the existing tcp_sync_mss()
-calls in the IPv4 and IPv6 passive setup paths and when processing
-a SYN-ACK for an active connection. Remove the late initialization
-from tcp_init_transfer(). This lets tcp_sync_mss() apply tcp_base_mss
-without adding another MSS calculation to connection setup. The
-crossed-SYN path already uses this order.
-
-Fixes: 4d83e1773031 ("tcp: delete redundant calls of tcp_mtup_init()")
-Suggested-by: Kuniyuki Iwashima <kuniyu@google.com>
-Suggested-by: Neal Cardwell <ncardwell@google.com>
 Signed-off-by: Yongjian Wang <echoowall@gmail.com>
-Reviewed-by: Kuniyuki Iwashima <kuniyu@google.com>
 ---
- net/ipv4/tcp_input.c | 2 +-
- net/ipv4/tcp_ipv4.c  | 1 +
- net/ipv6/tcp_ipv6.c  | 1 +
- 3 files changed, 3 insertions(+), 1 deletion(-)
+ .../net/packetdrill/tcp_mtu_probing_passive.pkt    | 27 ++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
-diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
-index 3fd0e215324d..2b54b99f1f45 100644
---- a/net/ipv4/tcp_input.c
-+++ b/net/ipv4/tcp_input.c
-@@ -6763,7 +6763,6 @@ void tcp_init_transfer(struct sock *sk, int bpf_op, struct sk_buff *skb)
- 	struct inet_connection_sock *icsk = inet_csk(sk);
- 	struct tcp_sock *tp = tcp_sk(sk);
- 
--	tcp_mtup_init(sk);
- 	icsk->icsk_af_ops->rebuild_header(sk);
- 	tcp_init_metrics(sk);
- 
-@@ -7020,6 +7019,7 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
- 			tp->tcp_header_len = sizeof(struct tcphdr);
- 		}
- 
-+		tcp_mtup_init(sk);
- 		tcp_sync_mss(sk, icsk->icsk_pmtu_cookie);
- 		tcp_initialize_rcv_mss(sk);
- 
-diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
-index 0dc3b087665d..fb968798be36 100644
---- a/net/ipv4/tcp_ipv4.c
-+++ b/net/ipv4/tcp_ipv4.c
-@@ -1740,6 +1740,7 @@ struct sock *tcp_v4_syn_recv_sock(const struct sock *sk, struct sk_buff *skb,
- 
- 	tcp_ca_openreq_child(newsk, dst);
- 
-+	tcp_mtup_init(newsk);
- 	tcp_sync_mss(newsk, dst4_mtu(dst));
- 	newtp->advmss = tcp_mss_clamp(tcp_sk(sk), tcp_dst_advmss(dst));
- 
-diff --git a/net/ipv6/tcp_ipv6.c b/net/ipv6/tcp_ipv6.c
-index b1dec5d86d63..8ea1ae1ad2b2 100644
---- a/net/ipv6/tcp_ipv6.c
-+++ b/net/ipv6/tcp_ipv6.c
-@@ -1490,6 +1490,7 @@ static struct sock *tcp_v6_syn_recv_sock(const struct sock *sk, struct sk_buff *
- 
- 	tcp_ca_openreq_child(newsk, dst);
- 
-+	tcp_mtup_init(newsk);
- 	tcp_sync_mss(newsk, dst6_mtu(dst));
- 	newtp->advmss = tcp_mss_clamp(tcp_sk(sk), tcp_dst_advmss(dst));
- 
+diff --git a/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_passive.pkt b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_passive.pkt
+new file mode 100644
+index 000000000000..14bae144cce2
+--- /dev/null
++++ b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_passive.pkt
+@@ -0,0 +1,27 @@
++// SPDX-License-Identifier: GPL-2.0
++// Test that a passive connection starts at tcp_base_mss with tcp_mtu_probing=2,
++// the same way as an active connection.
++
++`./defaults.sh
++sysctl -q net.ipv4.tcp_mtu_probing=2
++sysctl -q net.ipv4.tcp_base_mss=1024
++sysctl -q net.ipv4.tcp_timestamps=0`
++
++    0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
++   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
++   +0 bind(3, ..., ...) = 0
++   +0 listen(3, 1) = 0
++
++   +0 < S 0:0(0) win 65535 <mss 1460,nop,nop,sackOK>
++   +0 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK>
++  +.1 < . 1:1(0) ack 1 win 65535
++   +0 accept(3, ..., ...) = 4
++
++// The initial window is sent with tcp_base_mss, not the peer's MSS.
++   +0 write(4, ..., 10240) = 10240
++   +0 > P. 1:2049(2048) ack 1
++   +0 > P. 2049:4097(2048) ack 1
++   +0 > P. 4097:6145(2048) ack 1
++   +0 > P. 6145:8193(2048) ack 1
++   +0 > P. 8193:10241(2048) ack 1
++  +.1 < . 1:1(0) ack 10241 win 65535
 
 -- 
 Git-157)
