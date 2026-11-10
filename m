@@ -1,159 +1,79 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:45:02 +0000
-Subject: [PATCH 7/7] drm/panfrost: Name the BOs around an unhandled page
- fault
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Tue, 10 Nov 2026 17:00:57 +0900
+Subject: [PATCH] xfs: check the disk address for hardware atomic writes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-panfrost-long-jobs-v1-7-24508939ae8d@gmail.com>
-References: <20261110-panfrost-long-jobs-v1-0-24508939ae8d@gmail.com>
-In-Reply-To: <20261110-panfrost-long-jobs-v1-0-24508939ae8d@gmail.com>
-To: David Airlie <airlied@gmail.com>, 
- Thomas Zimmermann <tzimmermann@suse.de>, 
- =?utf-8?q?Adri=C3=A1n_Larumbe?= <adrian.larumbe@collabora.com>, 
- Steven Price <steven.price@arm.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Rob Herring <robh@kernel.org>, Simona Vetter <simona@ffwll.ch>, 
- Maxime Ripard <mripard@kernel.org>, 
- Boris Brezillon <boris.brezillon@collabora.com>
-Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794296695; l=4912;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=9pt+9zxspvcPYoCvJUbuQTbXv7CjJ23ldIGjznYrXko=;
- b=20c9Asou0gkJSeCspFzbAB/rV/bY4dYlFVnBFG4iz2cujTFukeTUQnoNjIuiQYonBmSs3tZ2X
- ghlJ9YHCD/DAkXcNHf/EbkLUG/hscnxePuPCODy2Q/ek7e+iQcwDCbN
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+Message-Id: <20261110-xfs-hw-atomic-align-v1-1-2274b169c32e@samsung.com>
+X-B4-Tracking: v=1; b=H4sIADjP8moC/x3MQQ5AMBBA0avIrE3S0iCuIhaDwSSUtEKTxt01l
+ m/xfwTPTthDm0VwfIuXwyboPINxJbswypQMhSoqrbXCMHtcH6Tr2GVE2mSxqJiGqilLY2qCVJ6
+ OZwn/tevf9wPrfuLTZQAAAA==
+To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
+Cc: Pankaj Raghav <p.raghav@samsung.com>, 
+ Pankaj Raghav <pankaj.raghav@linux.dev>, John Garry <john.garry@linux.dev>, 
+ "Darrick J. Wong" <djwong@kernel.org>, Christoph Hellwig <hch@lst.de>, 
+ Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794297656; l=2023;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=F8iIbd6Eszp+I6y7W1YZ0heXUAQ4Tct/8s2wppk82FQ=;
+ b=kS+BsKaUWKZesCUse7dkx23u/LG0MNFq7np4APEH+yrpLvythgqWsOXGgFYwtntkZPK591kGu
+ v94W6w3YdiwDUe3qCVwGnLxZoPZwqBgp9MZY+WsfZJEXYYp08dsI/Op
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-An unhandled GPU page fault only reports the faulting VA. That does not
-tell a GPU access just past the end of a buffer (a userspace or hardware
-overrun) from an access to a buffer that is no longer mapped (a kernel
-bug) or from a garbage pointer.
+xfs_bmap_hw_atomic_write_possible() checks the alignment of the encoded
+br_startblock, not of the disk address. The two can differ outside the
+first group.
 
-After the fault report, look the address up in the faulting address
-space and print the BO that contains it, or else the nearest BO below
-and above it: VA range, size, the distance of the fault from it, whether
-it is still mapped, heap/noexec, and the label userspace gave it (Mesa
-labels its BOs with their use, format and size). For an OpenCL image
-read on a Mali-G31 this gave:
+Since commit ec8f62cc109a ("xfs: don't limit software atomic writes by
+the group alignment"), a misaligned write can reach the hardware path.
+The block layer can fail it with -EINVAL, and XFS does not retry it
+through the COW path.
 
-  panfrost 1800000.gpu: Unhandled Page fault in AS0 at VA 0x000000000A181000
-  ...
-  panfrost 1800000.gpu: fault bo: below: VA [0xa041000-0xa181000) size 0x140000, fault at end+0x0, mapped, noexec, label "Texture format=r32g32b32_sint extent=25x128x32 array_size=1 mip_count=0 samples=0 modifier=0x0"
+Check the disk address instead.
 
-that is, the texture unit reading past the end of a 96-bit-per-texel
-texture, which userspace can avoid by padding such textures.
-
-Only the unhandled fault path is affected; heap growth faults are not.
-
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Fixes: ec8f62cc109a ("xfs: don't limit software atomic writes by the group alignment")
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- drivers/gpu/drm/panfrost/panfrost_mmu.c | 81 +++++++++++++++++++++++++++++++++
- 1 file changed, 81 insertions(+)
+Affects a group size that is not a multiple of the device's atomic
+write unit max. mkfs.xfs 6.16+ rounds agsize to it, not rgsize.
 
-diff --git a/drivers/gpu/drm/panfrost/panfrost_mmu.c b/drivers/gpu/drm/panfrost/panfrost_mmu.c
-index 13728b0c4..b0319d680 100644
---- a/drivers/gpu/drm/panfrost/panfrost_mmu.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_mmu.c
-@@ -595,6 +595,86 @@ addr_to_mapping(struct panfrost_device *pfdev, int as, u64 addr)
- 	return mapping;
- }
- 
-+static void panfrost_mmu_print_fault_bo(struct panfrost_device *pfdev,
-+					struct panfrost_gem_mapping *m,
-+					u64 addr, const char *where)
-+{
-+	struct panfrost_gem_object *bo = m->obj;
-+	u64 start = m->mmnode.start << PAGE_SHIFT;
-+	u64 end = (m->mmnode.start + m->mmnode.size) << PAGE_SHIFT;
-+	u64 dist = addr < start ? start - addr : addr >= end ? addr - end : addr - start;
-+
-+	mutex_lock(&bo->label.lock);
-+	dev_err(pfdev->base.dev,
-+		"fault bo: %s: VA [0x%llx-0x%llx) size 0x%zx, fault at %s0x%llx, %s%s%s, label \"%s\"\n",
-+		where, start, end, bo->base.base.size,
-+		addr < start ? "-" : addr >= end ? "end+" : "start+", dist,
-+		m->active ? "mapped" : "NOT mapped",
-+		bo->is_heap ? ", heap" : "", bo->noexec ? ", noexec" : "",
-+		bo->label.str ? bo->label.str : "");
-+	mutex_unlock(&bo->label.lock);
-+}
-+
-+/*
-+ * Report the BOs around an unhandled fault address in the faulting address
-+ * space: the one containing it (if any), else the nearest one below and above.
-+ * An access just past the end of a BO that a hole follows is a GPU overrun of
-+ * that BO (userspace or hardware), a fault inside a BO whose mapping is gone
-+ * points at the kernel, an address far from any BO at a stale or garbage
-+ * pointer.
-+ */
-+static void panfrost_mmu_report_fault_bos(struct panfrost_device *pfdev,
-+					  int as, u64 addr)
-+{
-+	struct panfrost_gem_mapping *below = NULL, *above = NULL;
-+	u64 offset = addr >> PAGE_SHIFT;
-+	struct drm_mm_node *node;
-+	struct panfrost_mmu *mmu;
-+	bool inside = false;
-+
-+	spin_lock(&pfdev->as_lock);
-+	list_for_each_entry(mmu, &pfdev->as_lru_list, list) {
-+		if (as == mmu->as)
-+			goto found_mmu;
-+	}
-+	spin_unlock(&pfdev->as_lock);
-+	dev_err(pfdev->base.dev, "fault bo: no context holds AS%d\n", as);
-+	return;
-+
-+found_mmu:
-+	spin_lock(&mmu->mm_lock);
-+	/* The node list is sorted by address. */
-+	drm_mm_for_each_node(node, &mmu->mm) {
-+		if (node->start > offset) {
-+			above = drm_mm_node_to_panfrost_mapping(node);
-+			break;
-+		}
-+		below = drm_mm_node_to_panfrost_mapping(node);
-+	}
-+	if (below) {
-+		inside = offset < below->mmnode.start + below->mmnode.size;
-+		kref_get(&below->refcount);
-+		if (inside)
-+			above = NULL;
-+	}
-+	if (above)
-+		kref_get(&above->refcount);
-+	spin_unlock(&mmu->mm_lock);
-+	spin_unlock(&pfdev->as_lock);
-+
-+	if (!below && !above)
-+		dev_err(pfdev->base.dev, "fault bo: AS%d has no BO\n", as);
-+	if (below) {
-+		panfrost_mmu_print_fault_bo(pfdev, below, addr,
-+					    inside ? "inside" : "below");
-+		panfrost_gem_mapping_put(below);
-+	}
-+	if (above) {
-+		panfrost_mmu_print_fault_bo(pfdev, above, addr, "above");
-+		panfrost_gem_mapping_put(above);
-+	}
-+}
-+
- #define NUM_FAULT_PAGES (SZ_2M / PAGE_SIZE)
- 
- static void panfrost_heap_put_chunk(struct page **pages, pgoff_t start,
-@@ -965,6 +1045,7 @@ static irqreturn_t panfrost_mmu_irq_handler_thread(int irq, void *data)
- 				exception_type, panfrost_exception_name(exception_type),
- 				access_type, access_type_name(pfdev, fault_status),
- 				source_id);
-+			panfrost_mmu_report_fault_bos(pfdev, as, addr);
- 
- 			spin_lock(&pfdev->as_lock);
- 			/* Ignore MMU interrupts on this AS until it's been
+Tested on emulated NVMe, 64 KiB atomic unit and boundary: 64 KiB
+atomic overwrites in AG 1-3 (mkfs.xfs 6.6.0, agsize=262142b) and
+rtgroups 1-7 (xfsprogs 7ebfc20eb88e, rgsize=65534b) failed with EINVAL
+before and use COW after. fstests -g atomicwrites, xfs/838 (rt): no
+change.
+---
+ fs/xfs/xfs_iomap.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
+diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+index c3465204b8d..cfa2f7ac03a 100644
+--- a/fs/xfs/xfs_iomap.c
++++ b/fs/xfs/xfs_iomap.c
+@@ -848,8 +848,11 @@ xfs_bmap_hw_atomic_write_possible(
+ 	 * atomic writes are required to be naturally aligned for disk blocks,
+ 	 * which ensures that we adhere to block layer rules that we won't
+ 	 * straddle any boundary or violate write alignment requirement.
++	 * Check the disk address: br_startblock carries the group number in
++	 * its high bits, so it can be aligned when the disk address is not.
+ 	 */
+-	if (!IS_ALIGNED(imap->br_startblock, imap->br_blockcount))
++	if (!IS_ALIGNED(xfs_fsb_to_db(ip, imap->br_startblock),
++			XFS_FSB_TO_BB(mp, imap->br_blockcount)))
+ 		return false;
+ 
+ 	/*
+
+---
+base-commit: 48326a2382d80715475d10ce98734ac65d2d2150
+change-id: 20261110-xfs-hw-atomic-align-0eab6833447a
+
+Best regards,
 -- 
-2.55.0
+Daejun Park <daejun7.park@samsung.com>
 
