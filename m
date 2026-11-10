@@ -1,129 +1,80 @@
-From: Rajan Yadav <rajanyadav0307@gmail.com>
-Date: Tue, 10 Nov 2026 01:08:53 -0600
-Subject: [PATCH 2/2] usb: musb: sunxi: Unregister the extcon notifier in
- sunxi_musb_exit()
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Subject: [PATCH 0/5] iommu/rockchip: page fault and reset handling fixes
+Date: Tue, 10 Nov 2026 07:11:01 +0000
+Message-Id: <20261110-iommu-rockchip-faults-v1-0-b1dda574dbb8@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-musb-sunxi-unbind-v1-2-d821584fc4a4@gmail.com>
-References: <20261110-musb-sunxi-unbind-v1-0-d821584fc4a4@gmail.com>
-In-Reply-To: <20261110-musb-sunxi-unbind-v1-0-d821584fc4a4@gmail.com>
-To: Bin Liu <b-liu@ti.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>
-Cc: regressions@lists.linux.dev, Zijun Hu <zijun.hu@oss.qualcomm.com>, 
- linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
- Rajan Yadav <rajanyadav0307@gmail.com>, stable@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDQAxA0atI1gYmWlrwKuJCY6xp1ZGJIwXx7
+ p3a5Vv8f4BJUDGosgOC7GrqlwTKM+CxXZ6C2idD4Yo7ETlUP88Rg+c3j7ri0MZpM3RMciMuS+k
+ fkNo1yKCf61s3f1vsXsLbbwbn+QVgbv1SeQAAAA==
+X-Change-ID: 20261110-iommu-rockchip-faults-0c1e41c33ed7
+To: "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
+ Robin Murphy <robin.murphy@arm.com>, Heiko Stuebner <heiko@sntech.de>, 
+ Jeffy Chen <jeffy.chen@rock-chips.com>, Tomasz Figa <tfiga@chromium.org>
+Cc: iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294532; l=4095;
- i=rajanyadav0307@gmail.com; s=20261103; h=from:subject:message-id;
- bh=bZWjWO4qmuHUgam6/ZPpcz8gwogqcCZCYDKe6vCCA9A=;
- b=wKfVzErbcdvcU83jM0aWxFQUbpAvri86BapqOpv41VUu7uUe2s3QOfZlTfgzIOIHtY4aGTvN9
- fQaPbIuNbO1DVwzeAdvDg8JvZAjYrwKGdVNw7Ac2JDL2HNhsMSVU0G4
-X-Developer-Key: i=rajanyadav0307@gmail.com; a=ed25519;
- pk=4ZPeiP5qrv2b44q/Obxi2koUS70Q6npbttJnpUoTlgg=
-X-Endpoint-Received: by B4 Relay for rajanyadav0307@gmail.com/20261103 with auth_id=1391
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294661; l=2716;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=EVE6rslJ+MxVLh2zqLrK9ywoULAK+Ds7e7R8Zqqqths=;
+ b=9bGcN+GIhtCncaZ8ZLHC53JlkjNg3jVgIgvQEQAkW4iSUdfYezFR7FGwUR8NRUoZnzZEL+Yid
+ iB8ETkxsDd3DIUTh0Ydv54S7RXFOQry1UXqIuXxjBHL/4bqaizplv0U
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Binding the musb-hdrc child again after it was unbound fails on v7.4-rc1
-(KickPi K5C, Allwinner A133):
+Fixes for the Rockchip IOMMU found on an Orange Pi 5 (RK3588S) while
+making the video codec drivers recover from bad jobs (Hantro VEPU121
+JPEG encoder, rkvdec VDPU381 decoder):
 
-  # echo musb-hdrc.1.auto > /sys/bus/platform/drivers/musb-hdrc/unbind
-  # echo musb-hdrc.1.auto > /sys/bus/platform/drivers/musb-hdrc/bind
-  notifier callback sunxi_musb_host_notifier already registered
-  WARNING: kernel/notifier.c:24 at notifier_chain_register+0x98/0xf8, CPU#1: sh/312
-  ...
-   notifier_chain_register+0x98/0xf8 (P)
-   raw_notifier_chain_register+0x14/0x20
-   extcon_register_notifier+0xa4/0xe0
-   devm_extcon_register_notifier+0x64/0xe0
-   sunxi_musb_init+0x170/0x280
-   musb_probe+0x330/0x125c
-  ...
-  musb-hdrc musb-hdrc.1.auto: error -EEXIST: musb_init_controller failed
-  musb-hdrc musb-hdrc.1.auto: probe with driver musb-hdrc failed with error -17
+1. log_iova() walked a page table that a master's own reset had taken
+   away (DTE_ADDR read as 0) and oopsed under KASAN.
+2. A master that keeps faulting on unmapped memory printed three lines
+   per fault from the hard interrupt handler; on a 115200 baud console
+   one bad job kept the CPU in rk_iommu_irq() for 2 s. Rate-limit it.
+3. FORCE_RESET swapped the poll period and the timeout.
+4. The stall/paging helpers skipped a bank whose state differed from
+   the other bank; the two banks of an RK3588 decoder IOMMU were read
+   back in different states after a reset that timed out.
+5. In a page fault storm the IOMMU now leaves the fault pending (which
+   holds the master) and masks the interrupt until the master's driver
+   resets and re-attaches it, or 100 ms pass. Before, one bad JPEG
+   encode job kept CPU0 in interrupt context until the soft lockup
+   detector and then the hardware watchdog reset the board.
 
-sunxi_musb_init() runs each time the child is probed, but it registers
-the extcon notifier with devm_extcon_register_notifier() on the glue
-device. The notifier stays registered after the child is unbound, and
-the next sunxi_musb_init() registers the same notifier_block again. It
-also stays registered while no musb exists, so an extcon event can
-still queue glue->work after sunxi_musb_exit() cancelled it.
+Tested on an Orange Pi 5 (RK3588S): patch 1 with an rkvdec fault
+injection run under KASAN (the "page table lost to a reset" path taken
+14 times in 3178 decoder recoveries and 96 injected faults, no other
+report); patches 2 and 5 with a VEPU121 JPEG encode job given an
+unmapped input address, ten times (the storm held after 65 faults,
+rk_iommu_irq() 0.8 to 1.7 ms per bad job instead of 2.02 s, the
+encoder's timeout reset the core every time, and the GStreamer pipeline
+that used to lock the board up ran to its end ten times). The whole
+series has been in the board's kernel since, including MPEG-4 and VP9
+decoder bring-up runs that hit page fault storms and recovered.
 
-Commit bb1d1ce8c74e ("usb: musb: sunxi: Uses the resource-managed
-extcon API when registering extcon notifier") introduced this; before
-it, the notifier was unregistered in sunxi_musb_exit() and on the
-sunxi_musb_init() error path. Restore that, and unregister it before
-cancel_work_sync() so that the notifier cannot queue the work again.
+This series was developed with Claude (Anthropic) as a coding assistant:
+it wrote the code and the commit messages, and I reviewed and tested
+every change as described above.
 
-Tested on the K5C with v7.4-rc1 and KASAN. The bind failed as above
-both without and with the previous patch. With both patches, three
-unbind/bind cycles of musb-hdrc bring back the UDC each time, without
-warnings or KASAN reports, and unbinding the glue device afterwards is
-clean as well. This patch was not tested without the previous one, and
-the sunxi_musb_init() error path was not exercised.
-
-Claude Code (Anthropic) found the cause, wrote this fix and the commit
-message, and helped with the tests; I reviewed the fix and ran the
-tests on the board.
-
-Fixes: bb1d1ce8c74e ("usb: musb: sunxi: Uses the resource-managed extcon API when registering extcon notifier")
-Cc: stable@vger.kernel.org
-Signed-off-by: Rajan Yadav <rajanyadav0307@gmail.com>
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/usb/musb/sunxi.c | 18 ++++++++++++++----
- 1 file changed, 14 insertions(+), 4 deletions(-)
+Arun Iyengar (5):
+      iommu/rockchip: Don't walk a page table that a reset took away
+      iommu/rockchip: Rate-limit the page fault reports
+      iommu/rockchip: Fix the poll period and timeout of FORCE_RESET
+      iommu/rockchip: Don't skip a bank whose state differs from the others
+      iommu/rockchip: Hold the master in a page fault storm
 
-diff --git a/drivers/usb/musb/sunxi.c b/drivers/usb/musb/sunxi.c
-index d880c3758c9..e9107ae9d34 100644
---- a/drivers/usb/musb/sunxi.c
-+++ b/drivers/usb/musb/sunxi.c
-@@ -246,15 +246,19 @@ static int sunxi_musb_init(struct musb *musb)
- 
- 	writeb(SUNXI_MUSB_VEND0_PIO_MODE, musb->mregs + SUNXI_MUSB_VEND0);
- 
--	/* Register notifier before calling phy_init() */
--	ret = devm_extcon_register_notifier(glue->dev, glue->extcon,
--					EXTCON_USB_HOST, &glue->host_nb);
-+	/*
-+	 * Register notifier before calling phy_init(). It is unregistered in
-+	 * sunxi_musb_exit(), as this runs again each time the musb-hdrc child
-+	 * is bound.
-+	 */
-+	ret = extcon_register_notifier(glue->extcon, EXTCON_USB_HOST,
-+				       &glue->host_nb);
- 	if (ret)
- 		goto error_reset_assert;
- 
- 	ret = phy_init(glue->phy);
- 	if (ret)
--		goto error_reset_assert;
-+		goto error_unregister_notifier;
- 
- 	musb->isr = sunxi_musb_interrupt;
- 
-@@ -263,6 +267,9 @@ static int sunxi_musb_init(struct musb *musb)
- 
- 	return 0;
- 
-+error_unregister_notifier:
-+	extcon_unregister_notifier(glue->extcon, EXTCON_USB_HOST,
-+				   &glue->host_nb);
- error_reset_assert:
- 	if (test_bit(SUNXI_MUSB_FL_HAS_RESET, &glue->flags))
- 		reset_control_assert(glue->rst);
-@@ -280,6 +287,9 @@ static int sunxi_musb_exit(struct musb *musb)
- 
- 	pm_runtime_put(musb->controller);
- 
-+	/* Before cancel_work_sync(), so the notifier cannot requeue the work */
-+	extcon_unregister_notifier(glue->extcon, EXTCON_USB_HOST,
-+				   &glue->host_nb);
- 	cancel_work_sync(&glue->work);
- 	if (test_bit(SUNXI_MUSB_FL_PHY_ON, &glue->flags))
- 		phy_power_off(glue->phy);
+ drivers/iommu/rockchip-iommu.c | 217 ++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 192 insertions(+), 25 deletions(-)
+---
+base-commit: 2cf4be57b301ed2d7af82e70cff5dfd96894d8de
+change-id: 20261110-iommu-rockchip-faults-0c1e41c33ed7
 
--- 
-2.34.1
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
