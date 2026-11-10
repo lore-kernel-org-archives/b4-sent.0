@@ -1,228 +1,343 @@
 From: Eric Davis <eric.davis@broadcom.com>
-Date: Mon, 09 Nov 2026 20:00:42 -0800
-Subject: [PATCH rdma-next v3 09/13] RDMA/core: create a queue pair ready to
- send
+Date: Mon, 09 Nov 2026 20:00:43 -0800
+Subject: [PATCH rdma-next v3 10/13] RDMA/core: queue pair attributes for
+ unconnected transports
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-uet-ib-core-v3-9-3e7e7ffed2e9@broadcom.com>
+Message-Id: <20261109-uet-ib-core-v3-10-3e7e7ffed2e9@broadcom.com>
 References: <20261109-uet-ib-core-v3-0-3e7e7ffed2e9@broadcom.com>
 In-Reply-To: <20261109-uet-ib-core-v3-0-3e7e7ffed2e9@broadcom.com>
 To: Jason Gunthorpe <jgg@ziepe.ca>, Leon Romanovsky <leon@kernel.org>
 Cc: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Eric Davis <eric.davis@broadcom.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794283250; l=7643;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794283250; l=11059;
  i=eric.davis@broadcom.com; s=20261014; h=from:subject:message-id;
- bh=RLqM2vMCS4FzK/n1c8OJ0ZmKdIsM7d9SdyGOyBsW8m4=;
- b=yailhHz+PLGtGlY0fXCISgclHO3lsz6T1G8hfmJIcTq+o9fVYQ6bAU627EBMyzEU3cbhu5Tgw
- QRinXm7NoLpCEl3rTHM5QlUFBbKHvglIJFfiptfQQ/Se2ZZy0+2q1p+
+ bh=46nf8vmxA5cvwFWLk+XCkPpml52wE+g/uOVrDjI7OKk=;
+ b=YxFSH7qDsk3nBwQO2XdrGkkBJEbYwsHHP9vzQnu4behDa0toJnLI/Pv5wnlLeGBiJE0oIAvMb
+ iV7PAu1znRVCRAHve+erCCA4s55aau3CAhshZd+lqRbhva7BjeXuQV0
 X-Developer-Key: i=eric.davis@broadcom.com; a=ed25519;
  pk=uy3oCTOYBipIPjryXGMynBmtPvbO6qN2FOrduzpiI4A=
 X-Endpoint-Received: by B4 Relay for eric.davis@broadcom.com/20261014 with auth_id=1186
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some transports have nothing to negotiate, so a queue pair can be ready
-to send the moment it exists and the modify sequence carries no useful
-information. Let a reliable unconnected queue pair be created with the
-attributes that sequence would have supplied, in the same form the
-modify command uses, and apply them as that modify to RTS once the
-queue pair exists, so its checks run. A queue pair whose modify fails
-is destroyed, and a later modify may change no more than those
-attributes.
+A queue pair on an unconnected transport is created with more than the
+connected attributes. A job key authorizing it to act within a job, the
+initiator identity it sends under, and the ordering guarantees the caller
+wants it to keep.
 
-Note that the QP handle field is refused, since the create is what makes
-the handle.
+The QP holds a reference to its job key for as long as it lives, so the
+job cannot go away underneath it.
 
 Signed-off-by: Eric Davis <eric.davis@broadcom.com>
 ---
- drivers/infiniband/core/uverbs.h              |  7 +++
- drivers/infiniband/core/uverbs_cmd.c          |  6 +++
- drivers/infiniband/core/uverbs_std_types_qp.c | 74 +++++++++++++++++++++++++++
- drivers/infiniband/core/verbs.c               |  7 ++-
- include/uapi/rdma/ib_user_ioctl_cmds.h        |  1 +
- 5 files changed, 93 insertions(+), 2 deletions(-)
+ drivers/infiniband/core/uverbs_std_types_qp.c | 173 ++++++++++++++++++++++++++
+ drivers/infiniband/core/verbs.c               |   5 +
+ include/rdma/ib_verbs.h                       |  14 +++
+ include/uapi/rdma/ib_user_ioctl_cmds.h        |   3 +
+ 4 files changed, 195 insertions(+)
 
-diff --git a/drivers/infiniband/core/uverbs.h b/drivers/infiniband/core/uverbs.h
-index 65a217bf65b5..59015a7a52f6 100644
---- a/drivers/infiniband/core/uverbs.h
-+++ b/drivers/infiniband/core/uverbs.h
-@@ -325,6 +325,13 @@ int ib_uverbs_copy_qp_attr(struct uverbs_attr_bundle *attrs,
- 			   const struct ib_uverbs_ex_modify_qp *src,
- 			   u32 mask);
- 
-+/* what a reliable unconnected QP is created ready to send with, and all a
-+ * later modify may change
-+ */
-+#define QP_ATTR_RU_MASK		(IB_QP_STATE | IB_QP_PKEY_INDEX |	\
-+				 IB_QP_PORT | IB_QP_ACCESS_FLAGS |	\
-+				 IB_QP_PATH_MTU)
-+
- int ib_uverbs_kern_spec_to_ib_spec_filter(enum ib_flow_spec_type type,
- 					  const void *kern_spec_mask,
- 					  const void *kern_spec_val,
-diff --git a/drivers/infiniband/core/uverbs_cmd.c b/drivers/infiniband/core/uverbs_cmd.c
-index 140f1cf91527..afe891e7b42d 100644
---- a/drivers/infiniband/core/uverbs_cmd.c
-+++ b/drivers/infiniband/core/uverbs_cmd.c
-@@ -1913,6 +1913,12 @@ static int modify_qp(struct uverbs_attr_bundle *attrs,
- 		goto out;
- 	}
- 
-+	if (qp->qp_type == IB_QPT_RU &&
-+	    (cmd->base.attr_mask & ~QP_ATTR_RU_MASK)) {
-+		ret = -EINVAL;
-+		goto release_qp;
-+	}
-+
- 	if ((cmd->base.attr_mask & IB_QP_AV)) {
- 		if (cmd->base.attr_mask & IB_QP_STATE &&
- 		    cmd->base.qp_state == IB_QPS_RTR) {
 diff --git a/drivers/infiniband/core/uverbs_std_types_qp.c b/drivers/infiniband/core/uverbs_std_types_qp.c
-index 30fc20fb251f..249206d2992f 100644
+index 249206d2992f..a1112083fb73 100644
 --- a/drivers/infiniband/core/uverbs_std_types_qp.c
 +++ b/drivers/infiniband/core/uverbs_std_types_qp.c
-@@ -79,6 +79,55 @@ static void set_caps(struct ib_qp_init_attr *attr,
+@@ -79,6 +79,157 @@ static void set_caps(struct ib_qp_init_attr *attr,
  	}
  }
  
-+/* The attributes the QP would be modified with via modify_qp calls. Used for
-+ * implementations that support having QPs be in RTS immediately after QP
-+ * creation. These attributes arrive in the same format the modify command
-+ * uses so that converter serves both, and they are applied as that modify
-+ * to RTS, once the QP exists.
++/* A QP may relax what its type guarantees on this device, but not ask for
++ * more than the device advertises for it.
 + */
-+static int create_qp_attr_set(struct uverbs_attr_bundle *attrs,
-+			      struct ib_device *device,
-+			      struct ib_qp_init_attr *attr,
-+			      struct ib_qp_attr *qp_attr, u32 *mask)
++static int create_qp_semantics_check(struct ib_device *device,
++				     const struct ib_qp_semantics *req)
 +{
-+	struct ib_uverbs_ex_modify_qp uqpa = {};
++	struct ib_qp_semantics adv = {};
++	u32 m = req->comp_mask;
 +	int ret;
 +
-+	*mask = 0;
-+
-+	if (!uverbs_attr_is_valid(attrs, UVERBS_ATTR_CREATE_QP_ATTR))
-+		return 0;
-+
-+	if (attr->qp_type != IB_QPT_RU)
++	if (!device->ops.query_qp_semantics)
 +		return -EOPNOTSUPP;
 +
-+	ret = uverbs_copy_from_or_zero(&uqpa, attrs,
-+				       UVERBS_ATTR_CREATE_QP_ATTR);
++	ret = device->ops.query_qp_semantics(device, IB_QPT_RU, &adv);
 +	if (ret)
 +		return ret;
 +
-+	/* the create is what makes the handle, can't be one specified */
-+	if (uqpa.base.qp_handle)
++	if (m & ~adv.comp_mask)
 +		return -EINVAL;
 +
-+	if (uqpa.reserved || uqpa.base.reserved[0] || uqpa.base.reserved[1])
++	if (((m & IB_UVERBS_QP_SEMANTICS_MASK_MSG_ORDER) &&
++	     (req->msg_order & ~adv.msg_order)) ||
++	    ((m & IB_UVERBS_QP_SEMANTICS_MASK_RAW) &&
++	     req->max_rdma_raw_size > adv.max_rdma_raw_size) ||
++	    ((m & IB_UVERBS_QP_SEMANTICS_MASK_WAR) &&
++	     req->max_rdma_war_size > adv.max_rdma_war_size) ||
++	    ((m & IB_UVERBS_QP_SEMANTICS_MASK_WAW) &&
++	     req->max_rdma_waw_size > adv.max_rdma_waw_size) ||
++	    ((m & IB_UVERBS_QP_SEMANTICS_MASK_PDU) &&
++	     req->max_pdu > adv.max_pdu) ||
++	    ((m & IB_UVERBS_QP_SEMANTICS_MASK_IMM) &&
++	     req->imm_data_size > adv.imm_data_size) ||
++	    ((m & IB_UVERBS_QP_SEMANTICS_MASK_USAGE) &&
++	     (req->usage_flags & ~adv.usage_flags)))
 +		return -EINVAL;
-+
-+	if ((uqpa.base.attr_mask & ~QP_ATTR_RU_MASK) ||
-+	    ((uqpa.base.attr_mask & IB_QP_STATE) &&
-+	     uqpa.base.qp_state != IB_QPS_RTS))
-+		return -EINVAL;
-+
-+	ret = ib_uverbs_copy_qp_attr(attrs, device, qp_attr, &uqpa,
-+				     uqpa.base.attr_mask);
-+	if (ret)
-+		return ret;
-+
-+	*mask = uqpa.base.attr_mask;
 +
 +	return 0;
 +}
 +
- static int UVERBS_HANDLER(UVERBS_METHOD_QP_CREATE)(
- 	struct uverbs_attr_bundle *attrs)
- {
-@@ -86,6 +135,8 @@ static int UVERBS_HANDLER(UVERBS_METHOD_QP_CREATE)(
- 		uverbs_attr_get_uobject(attrs, UVERBS_ATTR_CREATE_QP_HANDLE),
- 		typeof(*obj), uevent.uobject);
- 	struct ib_qp_init_attr attr = {};
-+	struct ib_qp_attr qp_attr = {};
-+	u32 qp_attr_mask;
- 	struct ib_uverbs_qp_cap cap = {};
- 	struct ib_rwq_ind_table *rwq_ind_tbl = NULL;
- 	struct ib_qp *qp;
-@@ -214,6 +265,11 @@ static int UVERBS_HANDLER(UVERBS_METHOD_QP_CREATE)(
- 		attr.create_flags |= IB_QP_CREATE_SOURCE_QPN;
- 	}
- 
-+	ret = create_qp_attr_set(attrs, device, &attr, &qp_attr,
-+				 &qp_attr_mask);
-+	if (ret)
-+		return ret;
++/* Process the optional creation attributes. A job to act within, a source
++ * identity, a set of ordering guarantees to ask for. They and the checks on
++ * a requested QP number belong to a reliable unconnected QP.
++ */
++static int create_qp_opt_attrs(struct uverbs_attr_bundle *attrs,
++			       struct ib_device *device, struct ib_pd *pd,
++			       struct ib_qp_init_attr *attr,
++			       struct ib_qp_semantics *sem)
++{
++	struct ib_uverbs_qp_semantics usem = {};
++	struct ib_jkey *jkey;
++	bool has_semantics;
++	u32 m;
++	int ret;
 +
- 	srq = uverbs_attr_get_obj(attrs,
- 				  UVERBS_ATTR_CREATE_QP_SRQ_HANDLE);
- 	if (!IS_ERR(srq)) {
-@@ -264,6 +320,20 @@ static int UVERBS_HANDLER(UVERBS_METHOD_QP_CREATE)(
- 	obj->uevent.uobject.object = qp;
- 	uverbs_finalize_uobj_create(attrs, UVERBS_ATTR_CREATE_QP_HANDLE);
- 
-+	/* A reliable unconnected QP is ready to send once created. What the
-+	 * caller passed is applied as the modify to RTS it stands in for, so
-+	 * the modify's checks run. A failure here destroys the QP.
-+	 */
-+	if (attr.qp_type == IB_QPT_RU) {
-+		qp_attr.qp_state = IB_QPS_RTS;
-+		/* the driver's data was for create, there is none for this */
-+		ret = ib_modify_qp_with_udata(qp, &qp_attr,
-+					      qp_attr_mask | IB_QP_STATE,
-+					      uverbs_get_cleared_udata(attrs));
++	has_semantics = uverbs_attr_is_valid(attrs,
++					     UVERBS_ATTR_CREATE_QP_SEMANTICS);
++
++	if (attr->qp_type != IB_QPT_RU) {
++		if (has_semantics ||
++		    uverbs_attr_is_valid(attrs, UVERBS_ATTR_CREATE_QP_SRC_ID) ||
++		    uverbs_attr_is_valid(attrs, UVERBS_ATTR_CREATE_QP_JOB_KEY))
++			return -EOPNOTSUPP;
++
++		return 0;
++	}
++
++	if (uverbs_attr_is_valid(attrs, UVERBS_ATTR_CREATE_QP_SRC_ID)) {
++		ret = uverbs_copy_from(&attr->src_id, attrs,
++				       UVERBS_ATTR_CREATE_QP_SRC_ID);
 +		if (ret)
 +			return ret;
 +	}
 +
- 	set_caps(&attr, &cap, false);
- 	ret = uverbs_copy_to_struct_or_zero(attrs,
- 					UVERBS_ATTR_CREATE_QP_RESP_CAP, &cap,
-@@ -325,6 +395,10 @@ DECLARE_UVERBS_NAMED_METHOD(
++	if (uverbs_attr_is_valid(attrs, UVERBS_ATTR_CREATE_QP_JOB_KEY)) {
++		jkey = uverbs_attr_get_obj(attrs,
++					   UVERBS_ATTR_CREATE_QP_JOB_KEY);
++		if (IS_ERR(jkey))
++			return PTR_ERR(jkey);
++
++		/* a key acts within the PD it was made on */
++		if (jkey->pd != pd)
++			return -EINVAL;
++
++		attr->jkey = jkey;
++	}
++
++	if (attr->create_flags & IB_QP_CREATE_SOURCE_QPN) {
++		if (attr->source_qpn & IB_UVERBS_QPN_UET_RESERVED_MASK)
++			return -EINVAL;
++
++		/* a relative QP is named within a job, so it needs a key */
++		if (!(attr->source_qpn &
++		      IB_UVERBS_QPN_UET_ABSOLUTE_ADDR_BIT) &&
++		    !attr->jkey)
++			return -EINVAL;
++	}
++
++	if (has_semantics) {
++		ret = uverbs_copy_from_or_zero(&usem, attrs,
++					       UVERBS_ATTR_CREATE_QP_SEMANTICS);
++		if (ret)
++			return ret;
++
++		m = usem.comp_mask;
++		if ((m & ~QP_SEMANTICS_MASK_ALL) ||
++		    ((m & IB_UVERBS_QP_SEMANTICS_MASK_MSG_ORDER) &&
++		     (usem.msg_order & ~QP_ORDER_ALL)) ||
++		    ((m & IB_UVERBS_QP_SEMANTICS_MASK_USAGE) &&
++		     (usem.usage_flags & ~QP_USAGE_ALL)) ||
++		    memchr_inv(usem.reserved, 0, sizeof(usem.reserved)))
++			return -EINVAL;
++
++		/* only the fields comp_mask selects reach the driver */
++		sem->comp_mask = m;
++		if (m & IB_UVERBS_QP_SEMANTICS_MASK_MSG_ORDER)
++			sem->msg_order = usem.msg_order;
++		if (m & IB_UVERBS_QP_SEMANTICS_MASK_RAW)
++			sem->max_rdma_raw_size = usem.max_rdma_raw_size;
++		if (m & IB_UVERBS_QP_SEMANTICS_MASK_WAR)
++			sem->max_rdma_war_size = usem.max_rdma_war_size;
++		if (m & IB_UVERBS_QP_SEMANTICS_MASK_WAW)
++			sem->max_rdma_waw_size = usem.max_rdma_waw_size;
++		if (m & IB_UVERBS_QP_SEMANTICS_MASK_PDU)
++			sem->max_pdu = usem.max_pdu;
++		if (m & IB_UVERBS_QP_SEMANTICS_MASK_USAGE)
++			sem->usage_flags = usem.usage_flags;
++		if (m & IB_UVERBS_QP_SEMANTICS_MASK_IMM)
++			sem->imm_data_size = usem.imm_data_size;
++
++		/* nor an ordering whose data-ordering size it gives as 0 */
++		if (((m & IB_UVERBS_QP_SEMANTICS_MASK_RAW) &&
++		     !sem->max_rdma_raw_size &&
++		     (sem->msg_order & QP_ORDER_RAW_SIZED)) ||
++		    ((m & IB_UVERBS_QP_SEMANTICS_MASK_WAR) &&
++		     !sem->max_rdma_war_size &&
++		     (sem->msg_order & QP_ORDER_WAR_SIZED)) ||
++		    ((m & IB_UVERBS_QP_SEMANTICS_MASK_WAW) &&
++		     !sem->max_rdma_waw_size &&
++		     (sem->msg_order & QP_ORDER_WAW_SIZED)))
++			return -EINVAL;
++
++		ret = create_qp_semantics_check(device, sem);
++		if (ret)
++			return ret;
++
++		attr->qp_semantics = sem;
++	}
++
++	return 0;
++}
++
+ /* The attributes the QP would be modified with via modify_qp calls. Used for
+  * implementations that support having QPs be in RTS immediately after QP
+  * creation. These attributes arrive in the same format the modify command
+@@ -137,6 +288,7 @@ static int UVERBS_HANDLER(UVERBS_METHOD_QP_CREATE)(
+ 	struct ib_qp_init_attr attr = {};
+ 	struct ib_qp_attr qp_attr = {};
+ 	u32 qp_attr_mask;
++	struct ib_qp_semantics qp_semantics = {};
+ 	struct ib_uverbs_qp_cap cap = {};
+ 	struct ib_rwq_ind_table *rwq_ind_tbl = NULL;
+ 	struct ib_qp *qp;
+@@ -191,6 +343,7 @@ static int UVERBS_HANDLER(UVERBS_METHOD_QP_CREATE)(
+ 	case IB_UVERBS_QPT_UC:
+ 	case IB_UVERBS_QPT_UD:
+ 	case IB_UVERBS_QPT_XRC_INI:
++	case IB_UVERBS_QPT_RU:
+ 	case IB_UVERBS_QPT_DRIVER:
+ 		if (uverbs_attr_is_valid(attrs,
+ 					 UVERBS_ATTR_CREATE_QP_XRCD_HANDLE) ||
+@@ -242,6 +395,11 @@ static int UVERBS_HANDLER(UVERBS_METHOD_QP_CREATE)(
+ 		return -EINVAL;
+ 	}
+ 
++	/* only a device that implements the transport takes an RU QP */
++	if (attr.qp_type == IB_QPT_RU &&
++	    !(device->attrs.device_cap_flags & IB_DEVICE_RU))
++		return -EOPNOTSUPP;
++
+ 	ret = uverbs_get_flags32(&attr.create_flags, attrs,
+ 			 UVERBS_ATTR_CREATE_QP_FLAGS,
+ 			 IB_UVERBS_QP_CREATE_BLOCK_MULTICAST_LOOPBACK |
+@@ -265,6 +423,10 @@ static int UVERBS_HANDLER(UVERBS_METHOD_QP_CREATE)(
+ 		attr.create_flags |= IB_QP_CREATE_SOURCE_QPN;
+ 	}
+ 
++	ret = create_qp_opt_attrs(attrs, device, pd, &attr, &qp_semantics);
++	if (ret)
++		return ret;
++
+ 	ret = create_qp_attr_set(attrs, device, &attr, &qp_attr,
+ 				 &qp_attr_mask);
+ 	if (ret)
+@@ -395,6 +557,17 @@ DECLARE_UVERBS_NAMED_METHOD(
  	UVERBS_ATTR_FLAGS_IN(UVERBS_ATTR_CREATE_QP_FLAGS,
  			     enum ib_uverbs_qp_create_flags,
  			     UA_OPTIONAL),
-+	UVERBS_ATTR_PTR_IN(UVERBS_ATTR_CREATE_QP_ATTR,
-+			   UVERBS_ATTR_STRUCT(struct ib_uverbs_ex_modify_qp,
-+					      reserved),
++	UVERBS_ATTR_PTR_IN(UVERBS_ATTR_CREATE_QP_SRC_ID,
++			   UVERBS_ATTR_TYPE(u32),
 +			   UA_OPTIONAL),
- 	UVERBS_ATTR_PTR_IN(UVERBS_ATTR_CREATE_QP_SOURCE_QPN,
- 			   UVERBS_ATTR_TYPE(u32),
- 			   UA_OPTIONAL),
++	UVERBS_ATTR_PTR_IN(UVERBS_ATTR_CREATE_QP_SEMANTICS,
++			   UVERBS_ATTR_STRUCT(struct ib_uverbs_qp_semantics,
++					      imm_data_size),
++			   UA_OPTIONAL),
++	UVERBS_ATTR_IDR(UVERBS_ATTR_CREATE_QP_JOB_KEY,
++			UVERBS_OBJECT_JKEY,
++			UVERBS_ACCESS_READ,
++			UA_OPTIONAL),
+ 	UVERBS_ATTR_PTR_IN(UVERBS_ATTR_CREATE_QP_ATTR,
+ 			   UVERBS_ATTR_STRUCT(struct ib_uverbs_ex_modify_qp,
+ 					      reserved),
 diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
-index 09b247462e65..3b551979e52f 100644
+index 3b551979e52f..9359318141b7 100644
 --- a/drivers/infiniband/core/verbs.c
 +++ b/drivers/infiniband/core/verbs.c
-@@ -1973,10 +1973,13 @@ static int _ib_modify_qp(struct ib_qp *qp, struct ib_qp_attr *attr,
+@@ -1343,6 +1343,7 @@ static struct ib_qp *create_qp(struct ib_device *dev, struct ib_pd *pd,
+ 	qp->qp_type = attr->qp_type;
+ 	qp->rwq_ind_tbl = attr->rwq_ind_tbl;
+ 	qp->srq = attr->srq;
++	qp->jkey = attr->jkey;
+ 	qp->event_handler = __ib_qp_event_handler;
+ 	qp->registered_event_handler = attr->event_handler;
+ 	qp->port = attr->port_num;
+@@ -1451,11 +1452,15 @@ void ib_qp_usecnt_inc(struct ib_qp *qp)
+ 		atomic_inc(&qp->srq->usecnt);
+ 	if (qp->rwq_ind_tbl)
+ 		atomic_inc(&qp->rwq_ind_tbl->usecnt);
++	if (qp->jkey)
++		atomic_inc(&qp->jkey->usecnt);
+ }
+ EXPORT_SYMBOL(ib_qp_usecnt_inc);
  
- 	/*
- 	 * Bind this qp to a counter automatically based on the rdma counter
--	 * rules. This only set in RST2INIT with port specified
-+	 * rules. This only set in RST2INIT with port specified, or in the
-+	 * RST2RTS an RU QP is created with
- 	 */
- 	if (!qp->counter && (attr_mask & IB_QP_PORT) &&
--	    ((attr_mask & IB_QP_STATE) && attr->qp_state == IB_QPS_INIT))
-+	    (attr_mask & IB_QP_STATE) &&
-+	    (attr->qp_state == IB_QPS_INIT ||
-+	     (qp->qp_type == IB_QPT_RU && attr->qp_state == IB_QPS_RTS)))
- 		rdma_counter_bind_qp_auto(qp, attr->port_num);
+ void ib_qp_usecnt_dec(struct ib_qp *qp)
+ {
++	if (qp->jkey)
++		atomic_dec(&qp->jkey->usecnt);
+ 	if (qp->rwq_ind_tbl)
+ 		atomic_dec(&qp->rwq_ind_tbl->usecnt);
+ 	if (qp->srq)
+diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
+index ce6707160a12..8be766b80ce0 100644
+--- a/include/rdma/ib_verbs.h
++++ b/include/rdma/ib_verbs.h
+@@ -1243,6 +1243,9 @@ enum ib_qp_create_flags {
+  * callback to destroy the passed in QP.
+  */
  
- 	ret = ib_security_modify_qp(qp, attr, attr_mask, udata);
++struct ib_jkey;
++struct ib_qp_semantics;
++
+ struct ib_qp_init_attr {
+ 	/* This callback occurs in workqueue context */
+ 	void                  (*event_handler)(struct ib_event *, void *);
+@@ -1263,6 +1266,15 @@ struct ib_qp_init_attr {
+ 	u32			port_num;
+ 	struct ib_rwq_ind_table *rwq_ind_tbl;
+ 	u32			source_qpn;
++
++	/* The initiator ID this QP sends with, the caller's rank in its job.
++	 * UET lets the caller choose it; the JobID is what is trusted.
++	 */
++	u32			src_id;
++	/* the job this QP belongs to */
++	struct ib_jkey		*jkey;
++	/* what the caller asked the QP to guarantee, NULL if it didn't ask */
++	struct ib_qp_semantics	*qp_semantics;
+ };
+ 
+ struct ib_qp_open_attr {
+@@ -2009,6 +2021,8 @@ struct ib_qp {
+ 	enum ib_qp_type		qp_type;
+ 	struct ib_rwq_ind_table *rwq_ind_tbl;
+ 	struct ib_qp_security  *qp_sec;
++	/* the job key this pair was created within, NULL if none */
++	struct ib_jkey	       *jkey;
+ 	u32			port;
+ 
+ 	bool			integrity_en;
 diff --git a/include/uapi/rdma/ib_user_ioctl_cmds.h b/include/uapi/rdma/ib_user_ioctl_cmds.h
-index 70de1e4001c3..b2bf8ca92397 100644
+index b2bf8ca92397..1de6a1ffd92c 100644
 --- a/include/uapi/rdma/ib_user_ioctl_cmds.h
 +++ b/include/uapi/rdma/ib_user_ioctl_cmds.h
-@@ -179,6 +179,7 @@ enum uverbs_attrs_create_qp_cmd_attr_ids {
+@@ -179,6 +179,9 @@ enum uverbs_attrs_create_qp_cmd_attr_ids {
  	UVERBS_ATTR_CREATE_QP_BUF_UMEM,
  	UVERBS_ATTR_CREATE_QP_RQ_BUF_UMEM,
  	UVERBS_ATTR_CREATE_QP_SQ_BUF_UMEM,
-+	UVERBS_ATTR_CREATE_QP_ATTR,
++	UVERBS_ATTR_CREATE_QP_SRC_ID,
++	UVERBS_ATTR_CREATE_QP_SEMANTICS,
++	UVERBS_ATTR_CREATE_QP_JOB_KEY,
+ 	UVERBS_ATTR_CREATE_QP_ATTR,
  };
  
- enum uverbs_attrs_destroy_qp_cmd_attr_ids {
 
 -- 
 2.56.0
