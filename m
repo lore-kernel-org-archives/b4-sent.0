@@ -1,175 +1,73 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:18:30 +0000
-Subject: [PATCH 4/4] media: verisilicon: Check every VPU981 AV1 tile column
- buffer before reusing them
+Subject: [PATCH 0/2] media: rkvdec: vdpu381: compress the co-located motion
+ vectors
+Date: Tue, 10 Nov 2026 07:18:29 +0000
+Message-Id: <20261110-rkvdec-colmv-v1-0-012b84ea43f7@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-hantro-codec-fixes-v1-4-0fd5372ce831@gmail.com>
-References: <20261110-hantro-codec-fixes-v1-0-0fd5372ce831@gmail.com>
-In-Reply-To: <20261110-hantro-codec-fixes-v1-0-0fd5372ce831@gmail.com>
-To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Sebastian Fricke <sebastian.fricke@collabora.com>, 
- Hans Verkuil <hverkuil@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Boris Brezillon <boris.brezillon@collabora.com>, 
- Jonas Karlman <jonas@kwiboo.se>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0MD3aLsspTUZN3k/JzcMl0TU1MDU/PkJGNLcxMloJaCotS0zAqwcdG
+ xEH5xaVJWanIJyAyl2loA275TMHAAAAA=
+X-Change-ID: 20261110-rkvdec-colmv-455057cb3974
+To: Detlev Casanova <detlev.casanova@collabora.com>, 
  Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
- Jeffy Chen <jeffy.chen@rock-chips.com>, Tomasz Figa <tfiga@chromium.org>
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>
 Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- stable@vger.kernel.org
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295107; l=6292;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295110; l=2112;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=BT2F0TOczjHLd2TsiRpWYPl5wVI3/1gtJ6eyqTMB414=;
- b=v4IAwZbaCF/kbVOqenuZfLekQ3xkKDPJl21NkrEYoTBY+s050lQ+/1k7ECSi1FPQJflLnwfi5
- lATQjf4DhExBxFOTMfwV/VVDzS7cIbI0g9g7iZUsEhVIyWS0POeu8VR
+ bh=ek8nnlo2Z+H0om9KAswdYQk2Ei8TtpDwU/E3AzwDn9U=;
+ b=pkad0colCQyFDuzCw0zt4yr4BdNBS2eYZJAuJmgk0HrbZkevIZyWUDS8CWoRVfxzbA2JsOYug
+ cNwLsCysTI7CYDnH5IzBQqrdjpAwbA1YLhJ0YweiGOOTs5w03K2Y0U/
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rockchip_vpu981_av1_dec_tiles_reallocate() keeps the five tile column
-buffers (deblocking data and control, CDEF, super-res, loop restoration)
-when the deblocking data buffer is big enough for the current frame. The
-buffers don't scale the same way: the deblocking data one grows with the
-frame height and the bit depth, the super-res one only with the number of
-64 pixel rows, and the loop restoration one with the number of
-restoration stripes, which is one more than the number of superblock
-rows. A frame can therefore fit in the old deblocking data buffer and
-still need a larger buffer of another kind. For example, after a 10-bit
-1088 line frame with 4 tile columns, an 8-bit frame of the same height
-with 5 tile columns needs 65280 bytes of deblocking data (65536
-allocated) but 367360 bytes of super-res column data (293888 allocated);
-an 8-bit 128 line frame with 4 columns followed by a 64 line frame with 8
-columns has the same problem with the loop restoration buffer. The
-decoder then writes past the end of the smaller buffer.
+The VDPU381 can store the co-located motion vectors of a frame
+compressed (colmv_compress_en in register 12). The Rockchip MPP enables
+it for H.264 streams without field pictures or MBAFF and always for
+HEVC; mainline never does. B-frames are what limits H.264 decoding at
+4K on one core, and the motion vector traffic is part of that.
 
-The sizes are also not reset when the buffers are freed, so after a
-failed allocation the stale size of the deblocking data buffer lets the
-next frame skip the allocation and run with NULL buffers.
+Patch 1 enables it for H.264 and reserves the worst case of the
+compressed layout, which can be larger than the uncompressed one (the
+hardware wrote up to 556128 bytes compressed against 522240
+uncompressed for the motion vectors of a 4K HEVC stream): a 4K CAPTURE
+buffer gets 8.3 MB instead of 4.1 MB of motion vector space on VDPU381.
+Patch 2 enables it for HEVC.
 
-Compare each buffer with the size the current frame needs and clear the
-sizes together with the buffers.
+Tested on an Orange Pi 5 (RK3588S), GStreamer into fakevideosink,
+240-frame clips: H.264 3840x2160 65.4 -> 68.4 fps, 1920x1080 214 -> 234
+fps, HEVC 3840x2160 98.6-102.8 -> 104.6 fps. Every frame's checksum is
+the same with compression off and on, the decoded frames are bit-exact
+with FFmpeg's software decoders, and fluster is unchanged
+(JCT-VC-HEVC_V1 146/147, JVT-AVC_V1 129/135, JVT-FR-EXT 65/69). The
+bytes the hardware writes into the motion vector area were measured
+with a poisoned buffer to size the compressed layout.
 
-Fixes: 727a400686a2 ("media: verisilicon: Add Rockchip AV1 decoder")
-Cc: stable@vger.kernel.org
+This series was developed with Claude (Anthropic) as a coding assistant:
+it wrote the code and the commit messages, and I reviewed and tested
+every change as described above.
+
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- .../verisilicon/rockchip_vpu981_hw_av1_dec.c       | 34 +++++++++++++++++-----
- 1 file changed, 27 insertions(+), 7 deletions(-)
+Arun Iyengar (2):
+      media: rkvdec: vdpu381: Compress the co-located motion vectors of H.264
+      media: rkvdec: vdpu381: Compress the co-located motion vectors of HEVC
 
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c b/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
-index 2a145433e6d1..e817c91224d3 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
-@@ -236,27 +236,32 @@ static void rockchip_vpu981_av1_dec_tiles_free(struct hantro_ctx *ctx)
- 				  av1_dec->db_data_col.cpu,
- 				  av1_dec->db_data_col.dma);
- 	av1_dec->db_data_col.cpu = NULL;
-+	av1_dec->db_data_col.size = 0;
- 
- 	if (av1_dec->db_ctrl_col.cpu)
- 		dma_free_coherent(vpu->dev, av1_dec->db_ctrl_col.size,
- 				  av1_dec->db_ctrl_col.cpu,
- 				  av1_dec->db_ctrl_col.dma);
- 	av1_dec->db_ctrl_col.cpu = NULL;
-+	av1_dec->db_ctrl_col.size = 0;
- 
- 	if (av1_dec->cdef_col.cpu)
- 		dma_free_coherent(vpu->dev, av1_dec->cdef_col.size,
- 				  av1_dec->cdef_col.cpu, av1_dec->cdef_col.dma);
- 	av1_dec->cdef_col.cpu = NULL;
-+	av1_dec->cdef_col.size = 0;
- 
- 	if (av1_dec->sr_col.cpu)
- 		dma_free_coherent(vpu->dev, av1_dec->sr_col.size,
- 				  av1_dec->sr_col.cpu, av1_dec->sr_col.dma);
- 	av1_dec->sr_col.cpu = NULL;
-+	av1_dec->sr_col.size = 0;
- 
- 	if (av1_dec->lr_col.cpu)
- 		dma_free_coherent(vpu->dev, av1_dec->lr_col.size,
- 				  av1_dec->lr_col.cpu, av1_dec->lr_col.dma);
- 	av1_dec->lr_col.cpu = NULL;
-+	av1_dec->lr_col.size = 0;
- }
- 
- static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
-@@ -269,15 +274,30 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
- 	unsigned int height = ALIGN(ctrls->frame->frame_height_minus_1 + 1, 64);
- 	unsigned int height_in_sb = height / 64;
- 	unsigned int stripe_num = ((height + 8) + 63) / 64;
-+	size_t db_data_size, db_ctrl_size, cdef_size, sr_size, lr_size;
- 	size_t size;
- 
--	if (av1_dec->db_data_col.size >=
--	    ALIGN(height * 12 * ctx->bit_depth / 8, 128) * num_tile_cols)
-+	db_data_size = ALIGN(height * 12 * ctx->bit_depth / 8, 128) * num_tile_cols;
-+	db_ctrl_size = ALIGN(height * 2 * 16 / 4, 128) * num_tile_cols;
-+	cdef_size = ALIGN(height_in_sb * 44 * ctx->bit_depth * 16 / 8, 128) * num_tile_cols;
-+	sr_size = ALIGN(height_in_sb * (3040 + 1280), 128) * num_tile_cols;
-+	lr_size = ALIGN(stripe_num * 1536 * ctx->bit_depth / 8, 128) * num_tile_cols;
-+
-+	/*
-+	 * The five buffers scale differently with the frame height, the
-+	 * number of tile columns and the bit depth, so each of them has to be
-+	 * big enough for the current frame, not only the deblocking data one.
-+	 */
-+	if (av1_dec->db_data_col.size >= db_data_size &&
-+	    av1_dec->db_ctrl_col.size >= db_ctrl_size &&
-+	    av1_dec->cdef_col.size >= cdef_size &&
-+	    av1_dec->sr_col.size >= sr_size &&
-+	    av1_dec->lr_col.size >= lr_size)
- 		return 0;
- 
- 	rockchip_vpu981_av1_dec_tiles_free(ctx);
- 
--	size = ALIGN(height * 12 * ctx->bit_depth / 8, 128) * num_tile_cols;
-+	size = db_data_size;
- 	av1_dec->db_data_col.cpu = dma_alloc_coherent(vpu->dev, size,
- 						      &av1_dec->db_data_col.dma,
- 						      GFP_KERNEL);
-@@ -285,7 +305,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
- 		goto buffer_allocation_error;
- 	av1_dec->db_data_col.size = size;
- 
--	size = ALIGN(height * 2 * 16 / 4, 128) * num_tile_cols;
-+	size = db_ctrl_size;
- 	av1_dec->db_ctrl_col.cpu = dma_alloc_coherent(vpu->dev, size,
- 						      &av1_dec->db_ctrl_col.dma,
- 						      GFP_KERNEL);
-@@ -293,7 +313,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
- 		goto buffer_allocation_error;
- 	av1_dec->db_ctrl_col.size = size;
- 
--	size = ALIGN(height_in_sb * 44 * ctx->bit_depth * 16 / 8, 128) * num_tile_cols;
-+	size = cdef_size;
- 	av1_dec->cdef_col.cpu = dma_alloc_coherent(vpu->dev, size,
- 						   &av1_dec->cdef_col.dma,
- 						   GFP_KERNEL);
-@@ -301,7 +321,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
- 		goto buffer_allocation_error;
- 	av1_dec->cdef_col.size = size;
- 
--	size = ALIGN(height_in_sb * (3040 + 1280), 128) * num_tile_cols;
-+	size = sr_size;
- 	av1_dec->sr_col.cpu = dma_alloc_coherent(vpu->dev, size,
- 						 &av1_dec->sr_col.dma,
- 						 GFP_KERNEL);
-@@ -309,7 +329,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
- 		goto buffer_allocation_error;
- 	av1_dec->sr_col.size = size;
- 
--	size = ALIGN(stripe_num * 1536 * ctx->bit_depth / 8, 128) * num_tile_cols;
-+	size = lr_size;
- 	av1_dec->lr_col.cpu = dma_alloc_coherent(vpu->dev, size,
- 						 &av1_dec->lr_col.dma,
- 						 GFP_KERNEL);
+ .../platform/rockchip/rkvdec/rkvdec-vdpu381-h264.c     | 10 ++++++++++
+ .../platform/rockchip/rkvdec/rkvdec-vdpu381-hevc.c     |  3 +++
+ drivers/media/platform/rockchip/rkvdec/rkvdec.c        | 18 +++++++++++++++++-
+ 3 files changed, 30 insertions(+), 1 deletion(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261110-rkvdec-colmv-455057cb3974
 
--- 
-2.55.0
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
