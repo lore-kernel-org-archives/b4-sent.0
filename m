@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 10:05:16 +0000
-Subject: [PATCH RFC 02/11] media: h264: Support picture order count type 2
- in stateless encode
+Date: Tue, 10 Nov 2026 10:05:17 +0000
+Subject: [PATCH RFC 03/11] media: h264: Write the stateless encode SPS and
+ PPS with nal_ref_idc 3
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-h264-encode-fixes-v1-2-7a64486df499@gmail.com>
+Message-Id: <20261110-h264-encode-fixes-v1-3-7a64486df499@gmail.com>
 References: <20261110-h264-encode-fixes-v1-0-7a64486df499@gmail.com>
 In-Reply-To: <20261110-h264-encode-fixes-v1-0-7a64486df499@gmail.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -16,149 +16,54 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  Michael Tretter <m.tretter@pengutronix.de>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305116; l=5092;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305116; l=1645;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=PCwKK6nMmQCe8KJ/MFG/ebErqC3wgGPpYaNKYiqCq2Y=;
- b=+DTLMzGqQ3mfZO8FkeJLj6mTAKM+p9Ms1EHrowHNkQK95kdabC/Jr6ourZ1eWabG9iHt9UHqa
- fFCw8AlTbfYBcJv3re77MGPpYwY97BTGDFWRSUTkxrZMRCR8vIBQnwf
+ bh=zXcv0YCbY9QS6/mK5AO05SvWHKGBxnD43EKlSGfUjz8=;
+ b=wd8cdQ/TIylNSiaZgPRwRMIhpf4DXaAbjvBJxq8z+MDCmZaixkRI/Ow+2oE2SktxbD/vBYG1x
+ /RVUlF+nuTbBZqZK0AlmoLs4c2TIdO1zPaE5/T4DEIqlV2bdTqe4k6q
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some encoders write the slice header in hardware and can't put a
-pic_order_cnt_lsb in it: the Hantro H1 and Rockchip VEPU1/VEPU2 encoders
-only produce slice headers for pic_order_cnt_type 2, where the picture
-order count is derived from frame_num.
+The sequence and picture parameter set NAL units are written with
+nal_ref_idc 0, which ITU-T H.264 section 7.4.1 forbids: "nal_ref_idc
+shall not be equal to 0 for sequence parameter set or sequence parameter
+set extension or subset sequence parameter set or picture parameter set
+NAL units". FFmpeg's H.264 probe rejects such streams (an Annex B file
+from the encoder is "detected only with low score of 1"), and stricter
+decoders may drop the parameter sets.
 
-Accept pic_order_cnt_type 2, which drivers can then select in their
-state_constrain operation, and compute the picture order count as
-specified in ITU-T H.264 section 8.2.1.3. This needs the frame_num and
-FrameNumOffset of the previous picture in decoding order, which are now
-tracked for every picture, reference or not.
-
-Type 2 implies that the output order is the decoding order, which is
-always the case without B frames. Type 1 is still rejected.
+Write them with nal_ref_idc 3, as other encoders do. Access unit
+delimiters keep 0, which the specification requires for them.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/v4l2-core/v4l2-h264-enc-rbsp.c |  3 +-
- drivers/media/v4l2-core/v4l2-h264-enc.c      | 51 +++++++++++++++++++++++++---
- include/media/v4l2-h264-enc.h                |  3 ++
- 3 files changed, 52 insertions(+), 5 deletions(-)
+ drivers/media/v4l2-core/v4l2-h264-enc-rbsp.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/media/v4l2-core/v4l2-h264-enc-rbsp.c b/drivers/media/v4l2-core/v4l2-h264-enc-rbsp.c
-index a165f8114ce9..2d751855195b 100644
+index 2d751855195b..fa5857b77d76 100644
 --- a/drivers/media/v4l2-core/v4l2-h264-enc-rbsp.c
 +++ b/drivers/media/v4l2-core/v4l2-h264-enc-rbsp.c
-@@ -758,7 +758,8 @@ int v4l2_h264_enc_rbsp_sps(struct v4l2_h264_enc_rbsp *rbsp,
- 			if (ret)
- 				return ret;
- 		}
--	} else {
-+	} else if (sps->pic_order_cnt_type != 2) {
-+		/* Type 2 has no further syntax elements. */
- 		return -EINVAL;
- 	}
- 
-diff --git a/drivers/media/v4l2-core/v4l2-h264-enc.c b/drivers/media/v4l2-core/v4l2-h264-enc.c
-index af925b6626cf..9745c0e85ee5 100644
---- a/drivers/media/v4l2-core/v4l2-h264-enc.c
-+++ b/drivers/media/v4l2-core/v4l2-h264-enc.c
-@@ -200,10 +200,11 @@ static int state_prepare_params(struct v4l2_h264_enc *enc)
- 	sps->pic_height_in_map_units_minus1 = state->height_mbs - 1;
- 
- 	/*
--	 * Only pic_order_cnt_type = 0 is currently supported.
--	 * Error out since no pic_order_cnt_lsb was provided.
-+	 * Only pic_order_cnt_type 0 and 2 are currently supported. Type 2
-+	 * derives the picture order count from frame_num, for hardware that
-+	 * can't write pic_order_cnt_lsb in the slice header.
- 	 */
--	if (sps->pic_order_cnt_type)
-+	if (sps->pic_order_cnt_type == 1)
- 		return -EINVAL;
- 
- 	/* SPS Video */
-@@ -933,6 +934,41 @@ static int ref_step_buffers(struct v4l2_h264_enc *enc)
- 	return 0;
- }
- 
-+/* Picture order count type 2, see ITU-T H.264 section 8.2.1.3. */
-+static int ref_step_poc_type2(struct v4l2_h264_enc *enc)
-+{
-+	struct v4l2_h264_enc_state *state = &enc->state_active;
-+	struct v4l2_ctrl_h264_sps *sps = &state->sps;
-+	struct v4l2_ctrl_h264_encode_params *encode = &state->encode;
-+	struct v4l2_h264_enc_ref *ref = &enc->ref;
-+	unsigned int max_frame_num = BIT(sps->log2_max_frame_num_minus4 + 4);
-+	unsigned int frame_num_offset;
-+	unsigned int pic_order_cnt;
-+
-+	if (encode->flags & V4L2_H264_ENCODE_FLAG_IDR_PIC)
-+		frame_num_offset = 0;
-+	else if (ref->prev_frame_num > encode->frame_num)
-+		frame_num_offset = ref->prev_frame_num_offset + max_frame_num;
-+	else
-+		frame_num_offset = ref->prev_frame_num_offset;
-+
-+	if (encode->flags & V4L2_H264_ENCODE_FLAG_IDR_PIC)
-+		pic_order_cnt = 0;
-+	else if (!encode->nal_ref_idc)
-+		pic_order_cnt = 2 * (frame_num_offset + encode->frame_num) - 1;
-+	else
-+		pic_order_cnt = 2 * (frame_num_offset + encode->frame_num);
-+
-+	ref->frame_num_offset = frame_num_offset;
-+	ref->pic_order_cnt_msb = 0;
-+	ref->pic_order_cnt_lsb = 0;
-+	ref->top_field_order_cnt = pic_order_cnt;
-+	ref->bottom_field_order_cnt = pic_order_cnt;
-+	ref->pic_order_cnt = pic_order_cnt;
-+
-+	return 0;
-+}
-+
- static int ref_step_poc(struct v4l2_h264_enc *enc)
- {
- 	struct v4l2_h264_enc_state *state = &enc->state_active;
-@@ -949,7 +985,10 @@ static int ref_step_poc(struct v4l2_h264_enc *enc)
- 	unsigned int top_field_order_cnt;
- 	unsigned int bottom_field_order_cnt;
- 
--	/* Only pic_order_cnt_type = 0 is currently supported. */
-+	if (sps->pic_order_cnt_type == 2)
-+		return ref_step_poc_type2(enc);
-+
-+	/* Only pic_order_cnt_type 0 and 2 are currently supported. */
- 	if (sps->pic_order_cnt_type)
- 		return -EINVAL;
- 
-@@ -1174,6 +1213,10 @@ static int ref_complete(struct v4l2_h264_enc *enc,
- 	unsigned int index;
+@@ -654,7 +654,7 @@ int v4l2_h264_enc_rbsp_sps(struct v4l2_h264_enc_rbsp *rbsp,
+ 	unsigned int i;
  	int ret;
  
-+	/* Keep the frame number of the previous picture for POC type 2. */
-+	ref->prev_frame_num = encode->frame_num;
-+	ref->prev_frame_num_offset = ref->frame_num_offset;
-+
- 	if (!encode->nal_ref_idc)
- 		return 0;
+-	ret = v4l2_h264_enc_rbsp_nalu_begin(rbsp, 0, V4L2_H264_NALU_TYPE_SPS);
++	ret = v4l2_h264_enc_rbsp_nalu_begin(rbsp, 3, V4L2_H264_NALU_TYPE_SPS);
+ 	if (ret)
+ 		return ret;
  
-diff --git a/include/media/v4l2-h264-enc.h b/include/media/v4l2-h264-enc.h
-index 6debdc95232c..ff7166109551 100644
---- a/include/media/v4l2-h264-enc.h
-+++ b/include/media/v4l2-h264-enc.h
-@@ -54,6 +54,9 @@ struct v4l2_h264_enc_ref {
+@@ -845,7 +845,7 @@ int v4l2_h264_enc_rbsp_pps(struct v4l2_h264_enc_rbsp *rbsp,
+ 	u8 pic_scaling_matrix_present_flag = 0;
+ 	int ret;
  
- 	struct v4l2_h264_reflist_builder builder;
+-	ret = v4l2_h264_enc_rbsp_nalu_begin(rbsp, 0, V4L2_H264_NALU_TYPE_PPS);
++	ret = v4l2_h264_enc_rbsp_nalu_begin(rbsp, 3, V4L2_H264_NALU_TYPE_PPS);
+ 	if (ret)
+ 		return ret;
  
-+	unsigned int prev_frame_num;
-+	unsigned int prev_frame_num_offset;
-+	unsigned int frame_num_offset;
- 	unsigned int prev_pic_order_cnt_msb;
- 	unsigned int prev_pic_order_cnt_lsb;
- 	unsigned int pic_order_cnt_msb;
 
 -- 
 2.55.0
