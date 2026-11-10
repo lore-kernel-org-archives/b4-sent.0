@@ -1,88 +1,108 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 05:34:25 +0000
-Subject: [PATCH] spi: sun6i: Add dual read support for the H616
+Date: Tue, 10 Nov 2026 05:34:54 +0000
+Subject: [PATCH] i2c: slave-eeprom: Add an OF match table for module
+ autoload
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-spi-sun6i-h616-dual-read-v1-1-59bea5a897d4@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMAyA4VcZORto6oziq4iHro0uInU0qwhj7
- 76qx+/w/wuYFBWDc7dAkbeavnID7TqIY8h3QU3N4J1nInJok6LVzIojE2Oq4YlFQsID+1O/H6J
- 36Qgtn4rc9PNbX65/Wx0eEufvD9Z1A3MFpoh8AAAA
-X-Change-ID: 20261110-spi-sun6i-h616-dual-read-562843bc20d7
-To: Mark Brown <broonie@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>
-Cc: linux-spi@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+Message-Id: <20261110-i2c-slave-eeprom-of-match-v1-1-8f762bf06205@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQpGC1VyldTOJER6qRjEpBv
+ HvTdvkW/x+gnIUV7tUBmXdRSXOBvVQQBpp7RumKwRlXW2sNiguoL9oZmZecJkwRJ1rDgJ7a2Pn
+ 6Rs3VQOmXzFHev/fj+bdufuSwfodwnh9v7hfcfQAAAA==
+X-Change-ID: 20261110-i2c-slave-eeprom-of-match-ba9fdb67a830
+To: Andi Shyti <andi.shyti@kernel.org>
+Cc: Wolfram Sang <wsa+renesas@sang-engineering.com>, 
+ linux-i2c@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794288866; l=2702;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794288894; l=3226;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=tZGT7ZjHdId9r6BpMj+RA8BeDisXnRX+tnPmmh0C0Bc=;
- b=JQoe49yHNtyNnSQIFDzWoChjblFpYLtLOMljJsURSgpAJkp/VHvmdUU3GdI2MtVLx950u7Sv5
- CUuT5ewN6PRCOmrX6+9aL9hk09MET/uGHpH3so2UnyRvdoLds2y82kP
+ bh=+qcDKxFvuppZ5+abhrsTQv7e2tAroi0xdMF1879SZxg=;
+ b=pm0iwkmNmpUWmwlTZ2MwsyckhAzbSKCamcj+JRKNzWGeYPeOuzMQeknDip50mM8/cPhSwpjFf
+ F1boVCkr0loBcJXeYnO7ZXwzWxuwcLjPuUWC0b3/HCppgjejGqz5R+x
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The H616 SPI controllers are bound through the "allwinner,sun8i-h3-spi"
-fallback, whose configuration advertises no dual or quad modes. The
-H616 user manual (v1.0, SPI_BCC register at 0x38) documents the same
-dual read (DRM, bit 28) and quad (Quad_EN, bit 29) controls that the
-driver already programs for the R329, while the controller keeps the
-H3-style clock control register (SPI_CCR at 0x24).
+A backend instantiated from the device tree (compatible "slave-24c02",
+reg = <(0x64 | I2C_OWN_SLAVE_ADDRESS)>) gets an i2c client, but the
+uevent of a client with an of_node carries an of: modalias
+(of:N...Cslave-24c02). The module only declares i2c: aliases, so udev
+never loads it and the client stays unbound: there is no slave-eeprom
+file and no target is registered, with nothing in the log. Only the
+sysfs new_device path (i2c: modalias) or a manual modprobe works.
 
-Add an H616 configuration that combines the H3 clock control with dual
-reads, matched on the existing "allwinner,sun50i-h616-spi" compatible,
-so SPI NOR flashes can use 1-1-2 reads where the board wires both data
-lines. Only dual reads are advertised: dual writes and quad mode use the
-same register bits but have not been tested on the H616.
+Declare the same names as an OF table and export it, so the module
+autoloads for DT and overlay clients. Matching and probe are unchanged:
+the client name is the compatible without a vendor prefix, so
+i2c_client_get_device_id() still finds the size and flags.
 
-Tested on an Orange Pi Zero2 with its 2 MiB Macronix SPI NOR and
-spi-rx-bus-width = <2> on the flash node: spi-nor reads with 1S-1S-2S
-(opcode 0x3b), reading the whole flash takes 0.30 s instead of 0.52 s,
-and repeated reads return identical data with a valid boot0 header.
+Tested on an Orange Pi Zero2 (H616) with a slave-24c02 node under TWI3
+from a DT overlay, using a local target-mode patch for i2c-mv64xxx:
+without this change the client stays unbound after boot; with it the
+module autoloads, binds to 3-1064 and creates the 256-byte slave-eeprom
+file.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
+The slave backends have no DT binding (they are debug devices, as
+Documentation/i2c/slave-testunit-backend.rst says), so checkpatch reports
+the compatibles as undocumented.
+
 This patch was developed with Claude (Anthropic) as a coding assistant:
 it investigated the problem, wrote the code and the commit message. I
 reviewed it, and it was tested on an Orange Pi Zero2 (H616) as described
 above.
 ---
- drivers/spi/spi-sun6i.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/i2c/i2c-slave-eeprom.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-diff --git a/drivers/spi/spi-sun6i.c b/drivers/spi/spi-sun6i.c
-index e9fce8618299..2798b9c198c6 100644
---- a/drivers/spi/spi-sun6i.c
-+++ b/drivers/spi/spi-sun6i.c
-@@ -777,6 +777,12 @@ static const struct sun6i_spi_cfg sun8i_h3_spi_cfg = {
- 	.has_clk_ctl	= true,
+diff --git a/drivers/i2c/i2c-slave-eeprom.c b/drivers/i2c/i2c-slave-eeprom.c
+index 226d722af662..a08abd895412 100644
+--- a/drivers/i2c/i2c-slave-eeprom.c
++++ b/drivers/i2c/i2c-slave-eeprom.c
+@@ -20,6 +20,7 @@
+ #include <linux/firmware.h>
+ #include <linux/i2c.h>
+ #include <linux/init.h>
++#include <linux/mod_devicetable.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/slab.h>
+@@ -203,9 +204,28 @@ static const struct i2c_device_id i2c_slave_eeprom_id[] = {
  };
+ MODULE_DEVICE_TABLE(i2c, i2c_slave_eeprom_id);
  
-+static const struct sun6i_spi_cfg sun50i_h616_spi_cfg = {
-+	.fifo_depth	= SUN8I_FIFO_DEPTH,
-+	.has_clk_ctl	= true,
-+	.mode_bits	= SPI_RX_DUAL,
++/*
++ * A backend instantiated from the device tree, with the I2C id as
++ * compatible and I2C_OWN_SLAVE_ADDRESS in reg, announces an of: modalias.
++ * List the same names here so that the module autoloads for it.
++ */
++static const struct of_device_id i2c_slave_eeprom_of_match[] = {
++	{ .compatible = "slave-24c02" },
++	{ .compatible = "slave-24c02ro" },
++	{ .compatible = "slave-24c32" },
++	{ .compatible = "slave-24c32ro" },
++	{ .compatible = "slave-24c64" },
++	{ .compatible = "slave-24c64ro" },
++	{ .compatible = "slave-24c512" },
++	{ .compatible = "slave-24c512ro" },
++	{ }
 +};
++MODULE_DEVICE_TABLE(of, i2c_slave_eeprom_of_match);
 +
- static const struct sun6i_spi_cfg sun50i_r329_spi_cfg = {
- 	.fifo_depth	= SUN8I_FIFO_DEPTH,
- 	.mode_bits	= SPI_RX_DUAL | SPI_TX_DUAL | SPI_RX_QUAD | SPI_TX_QUAD,
-@@ -785,6 +791,7 @@ static const struct sun6i_spi_cfg sun50i_r329_spi_cfg = {
- static const struct of_device_id sun6i_spi_match[] = {
- 	{ .compatible = "allwinner,sun6i-a31-spi", .data = &sun6i_a31_spi_cfg },
- 	{ .compatible = "allwinner,sun8i-h3-spi",  .data = &sun8i_h3_spi_cfg },
-+	{ .compatible = "allwinner,sun50i-h616-spi", .data = &sun50i_h616_spi_cfg },
- 	{ .compatible = "allwinner,sun50i-r329-spi", .data = &sun50i_r329_spi_cfg },
- 	/*
- 	 * A523's SPI controller has a combined RX buffer + FIFO counter
+ static struct i2c_driver i2c_slave_eeprom_driver = {
+ 	.driver = {
+ 		.name = "i2c-slave-eeprom",
++		.of_match_table = i2c_slave_eeprom_of_match,
+ 	},
+ 	.probe = i2c_slave_eeprom_probe,
+ 	.remove = i2c_slave_eeprom_remove,
 
 ---
-base-commit: 429c9a10b3811ca2581f88c05a58bb1fd23229a7
-change-id: 20261110-spi-sun6i-h616-dual-read-562843bc20d7
+base-commit: 00fb8097ca5a4fcf0e0cc1550075aa7313bbd32a
+change-id: 20261110-i2c-slave-eeprom-of-match-ba9fdb67a830
 
 Best regards,
 --  
