@@ -1,58 +1,108 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:18:31 +0000
-Subject: [PATCH 2/2] media: rkvdec: vdpu381: Compress the co-located motion
- vectors of HEVC
+Subject: [PATCH 0/8] drm/rockchip: vop2: RK3588 clocking, sync polarity,
+ AXI port and window fixes
+Date: Tue, 10 Nov 2026 07:18:48 +0000
+Message-Id: <20261110-vop2-fixes-v1-0-d336e9dd90d3@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-rkvdec-colmv-v1-2-012b84ea43f7@gmail.com>
-References: <20261110-rkvdec-colmv-v1-0-012b84ea43f7@gmail.com>
-In-Reply-To: <20261110-rkvdec-colmv-v1-0-012b84ea43f7@gmail.com>
-To: Detlev Casanova <detlev.casanova@collabora.com>, 
- Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Heiko Stuebner <heiko@sntech.de>
-Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSw5AMBAG4KvIrDUxjUe4ilhQU8YC6dBIGndXL
+ L/8jwBCjkmgSQI48iy8rRGYJmDmfp1I8RgNOtMlImbKb7tWli8SZfu8wFxXdW0Q4mB39AWx33a
+ /5RwWMsf7APf9AJQbo+1uAAAA
+X-Change-ID: 20261110-vop2-fixes-fa45142799c1
+To: Sandy Huang <hjc@rock-chips.com>, 
+ =?utf-8?q?Heiko_St=C3=BCbner?= <heiko@sntech.de>, 
+ Andy Yan <andyshrk@163.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Sascha Hauer <s.hauer@pengutronix.de>
+Cc: dri-devel@lists.freedesktop.org, linux-rockchip@lists.infradead.org, 
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295110; l=1292;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295129; l=4031;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=aR2E6mm8VmFdhqxcYYQcTYrdQAfdhAGApJk/FfwVCSs=;
- b=Nvipk1pBnacMtoHPhiijMXW93iXUPSvrqtmt0lMr1tJZacZiL4eED7FMRpbuGsIKUa1Msib3t
- TFp4Pa0RMT0Duq3WRTpwMMWQ0EvjVbUxGJdFEv3Dw+olWBZPvBj1N1O
+ bh=fo7rQJTAOXCeB/21ZdTRGQqHaTQfZ2L5wF/0HI3nMtM=;
+ b=r9LUei76hUrXdgmi2KacbwxDOIS0mEAd6hhWFCzVEP8Kf+EaRuAqe+KnA0v7jAtuB075BZ9b/
+ cS5y2FN73XiBanfNEpqhxB3lgYYK8/uGBsuHj824b0xFBnb7nvKN9/Y
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Like for H.264, store the co-located motion vectors of HEVC frames
-compressed, which the vendor code (MPP, hal_h265d_vdpu34x.c) always
-does. The previous commit reserved space for the compressed layout.
+This series collects fixes for the RK3588 VOP2 found while bringing up
+HDMI and DisplayPort output on an Orange Pi 5 (RK3588S).
 
-On RK3588, a 24 Mbit/s 3840x2160 HEVC stream (240 frames, x265
-ultrafast) decodes at 104.6 fps instead of 98.6-102.8 fps, and the
-decoded frames are identical.
+Patches 1 and 2 fix the RK3588 interface setup: rk3588_calc_cru_cfg()
+leaves dividers it does not use uninitialised and the garbage ends up in
+VP_CLK_CTRL, and rk3588_get_hdmi_pol() decodes the POLFLAG bits it is
+handed as DRM mode flags, so the GRF sync polarity bits are wrong for
+most modes.
+
+Patch 3 stops the RK3588 Cluster windows from advertising AFBC with the
+lossless colour transform (YTR) for RGB565/BGR565, which the decoder
+cannot display (black picture plus POST_BUF_EMPTY).
+
+Patches 4 and 5 deal with POST_BUF_EMPTY underflows. The VOP2 fetches
+through two AXI read ports but the port of each window is fixed in the
+window table, so the usual primary plane plus overlay configuration of
+a video port puts both layers on one port while the other sits idle.
+One port cannot sustain two full screen 4K@120Hz layers (measured: the
+fetch rate collapses from ~6 GB/s to ~3 GB/s and about half of all
+lines underflow). Patch 4 assigns the port when a window starts
+fetching, balancing the estimated load; patch 5 rate-limits the
+POST_BUF_EMPTY interrupt to once per frame, since an underflowing port
+otherwise keeps the CPU in the interrupt handler 50000 to 300000 times
+per second.
+
+Patches 6 to 8 are smaller fixes: the start mixer search skipped
+Esmart3 (for_each_set_bit() was given the highest window id as the bit
+count), a gamma LUT update cleared the other fields of LUT_PORT_SEL
+(the VP0/VP2 dclk source selection and the VP0/VP1 merge enable), and
+the AFBC tile count and transform offset were wrong for a source that
+starts inside a 16 pixel superblock.
+
+Tested on an Orange Pi 5 (RK3588S) with an HDMI 2.1 TV and a
+DisplayPort monitor, pictures judged with a camera. Patches 1 and 2:
+VP0_CLK_CTRL reads back without the garbage dclk_out divider, the sync
+polarities seen by the HDMI controller (VIDEO_INTERFACE_STATUS0) match
+the mode flags for +/+ (1080p, 2160p) and -/- (720x480, 640x480) modes,
+and the picture is correct over TMDS and FRL modes from 27 to
+1188 MHz. Patch 3: RGB565 is offered on the Cluster windows only
+without YTR, and those planes scan out correctly on three Cluster
+windows. Patches 4 and 5: 3840x2160@120 with a full screen overlay
+(previously ~120000 POST_BUF_EMPTY per second and a scrambled picture)
+and a dual-display session (HDMI 4K@60 plus DP 4K@30, two video players,
+ten minutes) run with zero underflows. Patches 6 to 8 were found while
+driving Esmart3 and partial AFBC overlays: an AFBC overlay placed at
+x=1001 shows correctly. All eight have been in the board's kernel for
+the display test runs since.
+
+This series was developed with Claude (Anthropic) as a coding assistant:
+it wrote the code and the commit messages, and I reviewed and tested
+every change as described above.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu381-hevc.c | 3 +++
- 1 file changed, 3 insertions(+)
+Arun Iyengar (8):
+      drm/rockchip: vop2: Don't use uninitialised dividers on RK3588
+      drm/rockchip: vop2: Fix the HDMI sync polarity on RK3588
+      drm/rockchip: vop2: Don't accept AFBC YTR for RGB565 on RK3588
+      drm/rockchip: vop2: Balance window fetches across both AXI ports on RK3588
+      drm/rockchip: vop2: Report POST_BUF_EMPTY at most once per frame
+      drm/rockchip: vop2: Find the first mixer of a video port with Esmart3 too
+      drm/rockchip: vop2: Keep the other LUT_PORT_SEL fields on gamma LUT updates
+      drm/rockchip: vop2: Fix the AFBC offsets of a source that starts inside a superblock
 
-diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu381-hevc.c b/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu381-hevc.c
-index e1936e87f45b..2473c176b319 100644
---- a/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu381-hevc.c
-+++ b/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu381-hevc.c
-@@ -404,6 +404,9 @@ static void config_registers(struct rkvdec_ctx *ctx,
- 	/* Set HEVC mode */
- 	regs->common.reg009_dec_mode.dec_mode = VDPU381_MODE_HEVC;
- 
-+	/* Store the co-located motion vectors compressed, as for H.264 */
-+	regs->common.reg012_secondary_en.colmv_compress_en = 1;
-+
- 	/* Set config */
- 	regs->common.reg011_important_en.buf_empty_en = 1;
- 	regs->common.reg011_important_en.dec_clkgate_e = 1;
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 186 +++++++++++++++++++++++++--
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.h |  24 ++++
+ drivers/gpu/drm/rockchip/rockchip_vop2_reg.c |  27 +++-
+ 3 files changed, 223 insertions(+), 14 deletions(-)
+---
+base-commit: 8deaade4a5a4ff635df91e246e42139ab2b33f6d
+change-id: 20261110-vop2-fixes-fa45142799c1
 
--- 
-2.55.0
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
