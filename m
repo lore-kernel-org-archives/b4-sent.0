@@ -1,63 +1,100 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:16:59 +0000
-Subject: [PATCH 2/2] ASoC: rockchip: i2s-tdm: add the reset value of XFER
- to the regmap defaults
+Subject: [PATCH 0/5] media: verisilicon: Recover the Rockchip VPUs from
+ faults and timeouts
+Date: Tue, 10 Nov 2026 07:17:30 +0000
+Message-Id: <20261110-hantro-robust-v1-0-6b6269c05bfa@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-asoc-rockchip-i2s-tdm-v1-2-f32951b3c527@gmail.com>
-References: <20261110-asoc-rockchip-i2s-tdm-v1-0-f32951b3c527@gmail.com>
-In-Reply-To: <20261110-asoc-rockchip-i2s-tdm-v1-0-f32951b3c527@gmail.com>
-To: Nicolas Frattaroli <frattaroli.nicolas@gmail.com>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Heiko Stuebner <heiko@sntech.de>
-Cc: linux-rockchip@lists.infradead.org, linux-sound@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqAIBCF4avErBM0QqKrRIu0qaZFxoxFIN09q
+ +X34P0JBJlQoC0SMJ4kFLYMUxbgl2GbUdGYDZWurDFGqzxGDoqDOyQqO1jf1BM6py3kz8440fX
+ 1uv63HG5FH98I3PcD4e6x4nEAAAA=
+X-Change-ID: 20261110-hantro-robust-6a6c84febb06
+To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Nicolas Frattaroli <frattaroli.nicolas@gmail.com>, 
+ Andrzej Pietrasiewicz <andrzej.p@collabora.com>, 
+ Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
+ Hans Verkuil <hverkuil@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>
+Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295018; l=1378;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794295050; l=3200;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=tfT+jEvZfGZPAFf1LpE7sgBjWqRXKwyeQFTfBhDpaGw=;
- b=YA1G5nxGLOCp90pxzz2hYjwcZlCjhLKo+suxmsn7T/GVXpGZfLXsiynDfnogWAhXP0lSCYmGE
- t0A4QEnH8I6A19D8HzUVF2nvpDc/Trndk0VEaZToOuTFuXSLZQMgCw+
+ bh=wAHE9TDB5EG/9Ciyb0qAJrepsYx4Tb9hG3yp7P255Ic=;
+ b=145Zthse/3N7R1g8+D/6hOlCSMrtdtj1ta8EQGhHIpXiRPZt2zdJm7WbMxu2+bgoy3WgIDM/E
+ gXyzQ9AKt+vCDIO+YXjJqRbZ980WvBuiiqR62ih0aZZnwqxaADOYfr1
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-I2S_XFER (0x1c) is writeable and not volatile, so it is cached, but it
-has no entry in rockchip_i2s_tdm_reg_defaults[]. The flat cache then
-treats it as uninitialised, and the first cached access of it -- the
-regmap_update_bits() in the trigger and stop paths, or regcache_sync()
-after a runtime suspend -- warns
+This series makes the Hantro driver recover from a job that times out
+on the Rockchip VPUs, and fixes a panic on module unload on the RK3588.
 
-  rockchip-i2s-tdm fddf0000.i2s: using zero-initialized flat cache, this may cause unexpected behavior
+On the RK3588, a VEPU121 JPEG encoder core that reads an unmapped IOVA
+faults in its IOMMU and never becomes idle again: the register-level
+stop in the encoder reset operation isn't enough, the IOMMU can't be
+stalled anymore ("Enable stall request timed out"), every later job
+times out and unbinding the driver can lock up the system. Patches 3
+and 4 pulse the reset lines of the core on a timeout and reinitialize
+the IOMMU afterwards, the way rkvdec does. Patches 1 and 5 describe the
+AXI/AHB reset lines of the four VEPU121 cores in the binding and in the
+RK3588 device tree; the driver already handles optional resets, so
+device trees without them keep working.
 
-It is the only cached register without a default: TXFIFOLR, INTSR, CLR,
-TXDR, RXDR and RXFIFOLR are volatile and all other registers have one.
+Patch 2 fixes a panic on module unload: the AV1 decoder resets of the
+RK3588 also cover the bus interface of its IOMMU, and holding them
+asserted after remove makes the IOMMU driver's runtime suspend hit
+registers in reset (SError).
 
-Add XFER with its reset value of 0 (TX and RX stopped), which is also
-what the zero-initialised cache assumed so far, so no register value
-written to the hardware changes.
+Patch 5 touches arch/arm64 only and can go through the Rockchip tree
+independently of the driver patches; it is only useful together with
+patch 3.
+
+Tested on an Orange Pi 5 (RK3588S). Patch 2 was verified by unloading
+and reloading the module with the AV1 decoder bound and a 1 s gap, which
+panicked before the change and is clean with it. Patches 3 and 4 ran on
+every encoder timeout since: a trace of a wedged VEPU121 job shows
+hantro_watchdog() -> rockchip_vpu2_enc_reset() -> the IOMMU re-attach
+with no stall or paging timeout, the next jobs on the same core succeed,
+and the IOMMU runtime-suspends cleanly afterwards; later, ten JPEG
+encode jobs with an unmapped input address were each reset by the
+timeout and the following jobs encoded normally. The reset lines of
+patches 1 and 5 are present on all four VEPU121 nodes of the live
+device tree, dt_binding_check and CHECK_DTBS are clean, and the encoder
+keeps working with them.
+
+This series was developed with Claude (Anthropic) as a coding assistant:
+it wrote the code and the commit messages, and I reviewed and tested
+every change as described above.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- sound/soc/rockchip/rockchip_i2s_tdm.c | 1 +
- 1 file changed, 1 insertion(+)
+Arun Iyengar (5):
+      dt-bindings: media: rockchip,rk3568-vepu: Add the reset lines
+      media: verisilicon: Don't hold a VPU behind an IOMMU in reset after remove
+      media: verisilicon: Reset the Rockchip encoder cores on timeout
+      media: verisilicon: Reinitialize the IOMMU after a timeout
+      arm64: dts: rockchip: Add the reset lines of the RK3588 VEPU121 cores
 
-diff --git a/sound/soc/rockchip/rockchip_i2s_tdm.c b/sound/soc/rockchip/rockchip_i2s_tdm.c
-index 0abd200a4268..63ef7f676a75 100644
---- a/sound/soc/rockchip/rockchip_i2s_tdm.c
-+++ b/sound/soc/rockchip/rockchip_i2s_tdm.c
-@@ -926,6 +926,7 @@ static const struct reg_default rockchip_i2s_tdm_reg_defaults[] = {
- 	{0x08, 0x00001f1f},
- 	{0x10, 0x001f0000},
- 	{0x14, 0x01f00000},
-+	{0x1c, 0x00000000},
- 	{0x30, 0x00003eff},
- 	{0x34, 0x00003eff},
- 	{0x38, 0x00000707},
+ .../bindings/media/rockchip,rk3568-vepu.yaml       | 10 +++
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      |  8 +++
+ drivers/media/platform/verisilicon/hantro.h        |  3 +
+ drivers/media/platform/verisilicon/hantro_drv.c    | 77 +++++++++++++++++++++-
+ .../media/platform/verisilicon/rockchip_vpu_hw.c   | 30 +++++++++
+ 5 files changed, 126 insertions(+), 2 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261110-hantro-robust-6a6c84febb06
 
--- 
-2.55.0
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
