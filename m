@@ -1,108 +1,97 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 05:34:54 +0000
-Subject: [PATCH] i2c: slave-eeprom: Add an OF match table for module
- autoload
+Subject: [PATCH 0/8] arm64: dts: allwinner: h616: Orange Pi Zero2 fixes,
+ GPU DVFS and GPU cooling
+Date: Tue, 10 Nov 2026 05:36:54 +0000
+Message-Id: <20261110-h616-zero2-dt-v1-0-05506d760f21@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-i2c-slave-eeprom-of-match-v1-1-8f762bf06205@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQpGC1VyldTOJER6qRjEpBv
- HvTdvkW/x+gnIUV7tUBmXdRSXOBvVQQBpp7RumKwRlXW2sNiguoL9oZmZecJkwRJ1rDgJ7a2Pn
- 6Rs3VQOmXzFHev/fj+bdufuSwfodwnh9v7hfcfQAAAA==
-X-Change-ID: 20261110-i2c-slave-eeprom-of-match-ba9fdb67a830
-To: Andi Shyti <andi.shyti@kernel.org>
-Cc: Wolfram Sang <wsa+renesas@sang-engineering.com>, 
- linux-i2c@vger.kernel.org, linux-kernel@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBBA0avIrE3SaaQLVxGLGoOxQFpEiLsrl
+ m/x/wVRgkqEMrsgyK5R5ymB8gx48FMvqG0yWGMdERkcHDk8JcwW2xU9NwWzsPemg9QsQTo9vl9
+ V/45bMwqv7wTu+wFFE0y1cQAAAA==
+X-Change-ID: 20261110-h616-zero2-dt-acb4ccecaa0f
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, Ryan Walklin <ryan@testtoast.com>, 
+ Andre Przywara <andre.przywara@arm.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794288894; l=3226;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794289015; l=3358;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=+qcDKxFvuppZ5+abhrsTQv7e2tAroi0xdMF1879SZxg=;
- b=pm0iwkmNmpUWmwlTZ2MwsyckhAzbSKCamcj+JRKNzWGeYPeOuzMQeknDip50mM8/cPhSwpjFf
- F1boVCkr0loBcJXeYnO7ZXwzWxuwcLjPuUWC0b3/HCppgjejGqz5R+x
+ bh=u9LHr4/rzVM9FYZD+x2eGBKLMGq7N3wvsXaVbUEYayk=;
+ b=pZbSwu/DgRU9u5qYgcYAYrAobT+MeCHW+t7fPQ2K2o4sB4/ZK20rgX4vruqWDB/HvjMAtbPs8
+ YwtM5gHxaQtDpkqdyip56x/UCQKYd9OTWoR1EFR9UrCMgept5j2mcBm
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A backend instantiated from the device tree (compatible "slave-24c02",
-reg = <(0x64 | I2C_OWN_SLAVE_ADDRESS)>) gets an i2c client, but the
-uevent of a client with an of_node carries an of: modalias
-(of:N...Cslave-24c02). The module only declares i2c: aliases, so udev
-never loads it and the client stays unbound: there is no slave-eeprom
-file and no target is registered, with nothing in the log. Only the
-sysfs new_device path (i2c: modalias) or a manual modprobe works.
+This series collects the device tree changes we carry for the Orange
+Pi Zero2 (H616):
 
-Declare the same names as an OF table and export it, so the module
-autoloads for DT and overlay clients. Matching and probe are unchanged:
-the client name is the compatible without a vendor prefix, so
-i2c_client_get_device_id() still finds the size and flags.
+- Patch 1 makes the H616 codec node cover the DAC RAMP register that
+  the driver uses (it currently works only because ioremap() rounds up).
+- Patch 2 fixes intermittent dead-RX boots of the Zero2's Ethernet by
+  letting the RTL8211F add the RX delay ("rgmii-rxid"), as the Zero3
+  already does.
+- Patches 3 and 4 add an H616 GPU OPP table and make the Mali-G31 a
+  cooling device of the GPU thermal zone, with a passive trip point.
+- Patches 5 and 6 enable GPU DVFS on the Zero2. Patch 5 first raises the
+  floor of the GPU supply to 900 mV, because on this board the rail is
+  shared with VDD-SYS and the video engine corrupts decoded frames at
+  810 mV.
+- Patch 7 describes the SPI NOR supply, patch 8 adds i2c aliases so the
+  header buses keep the controller's number.
 
-Tested on an Orange Pi Zero2 (H616) with a slave-24c02 node under TWI3
-from a DT overlay, using a local target-mode patch for i2c-mv64xxx:
-without this change the client stays unbound after boot; with it the
-module autoloads, binds to 3-1064 and creates the 256-byte slave-eeprom
-file.
+Testing, on an Orange Pi Zero2 with a v7.3-based kernel carrying the
+same DT content:
+- RGMII: 10 of 10 cold boots with a working receive path (the problem
+  showed up as intermittent dead-RX boots before); iperf3 853/873 Mbit/s
+  and 86 minutes of traffic without loss.
+- VDD-SYS: with the VE at 600 MHz, only 6 of 13 4K H.265 decodes were
+  bit-exact with the rail at 810 mV; 3 of 3 at 890 mV and 3 of 3 at
+  950 mV. With the 900 mV floor, a 70-minute decode soak (H.265 and VP9)
+  had 42 of 42 runs correct.
+- GPU DVFS: panfrost devfreq scales 306-600 MHz and the vdd-gpu-sys
+  voltage follows the OPPs within [900, 990] mV.
+- GPU cooling: the gpu-thermal zone binds the panfrost devfreq cooling
+  device. The 85 C trip itself was not reached on this board (it peaked
+  at about 70 C).
+- SPI NOR: the "supply vcc not found, using dummy regulator" message is
+  gone; the flash reads back correctly.
+- i2c aliases: TWI3 enabled by an overlay shows up as i2c-3.
+- Codec: analog line-out playback works.
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
----
-The slave backends have no DT binding (they are debug devices, as
-Documentation/i2c/slave-testunit-backend.rst says), so checkpatch reports
-the compatibles as undocumented.
+The series is based on sunxi/dt-for-7.5. "make CHECK_DTBS=y W=1" gives
+no new warnings for the H616/H618 boards. The Zero3 shares the GPU
+supply design, but I have no Zero3 to test, so it is left out.
 
-This patch was developed with Claude (Anthropic) as a coding assistant:
-it investigated the problem, wrote the code and the commit message. I
-reviewed it, and it was tested on an Orange Pi Zero2 (H616) as described
-above.
----
- drivers/i2c/i2c-slave-eeprom.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
-
-diff --git a/drivers/i2c/i2c-slave-eeprom.c b/drivers/i2c/i2c-slave-eeprom.c
-index 226d722af662..a08abd895412 100644
---- a/drivers/i2c/i2c-slave-eeprom.c
-+++ b/drivers/i2c/i2c-slave-eeprom.c
-@@ -20,6 +20,7 @@
- #include <linux/firmware.h>
- #include <linux/i2c.h>
- #include <linux/init.h>
-+#include <linux/mod_devicetable.h>
- #include <linux/module.h>
- #include <linux/of.h>
- #include <linux/slab.h>
-@@ -203,9 +204,28 @@ static const struct i2c_device_id i2c_slave_eeprom_id[] = {
- };
- MODULE_DEVICE_TABLE(i2c, i2c_slave_eeprom_id);
- 
-+/*
-+ * A backend instantiated from the device tree, with the I2C id as
-+ * compatible and I2C_OWN_SLAVE_ADDRESS in reg, announces an of: modalias.
-+ * List the same names here so that the module autoloads for it.
-+ */
-+static const struct of_device_id i2c_slave_eeprom_of_match[] = {
-+	{ .compatible = "slave-24c02" },
-+	{ .compatible = "slave-24c02ro" },
-+	{ .compatible = "slave-24c32" },
-+	{ .compatible = "slave-24c32ro" },
-+	{ .compatible = "slave-24c64" },
-+	{ .compatible = "slave-24c64ro" },
-+	{ .compatible = "slave-24c512" },
-+	{ .compatible = "slave-24c512ro" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, i2c_slave_eeprom_of_match);
-+
- static struct i2c_driver i2c_slave_eeprom_driver = {
- 	.driver = {
- 		.name = "i2c-slave-eeprom",
-+		.of_match_table = i2c_slave_eeprom_of_match,
- 	},
- 	.probe = i2c_slave_eeprom_probe,
- 	.remove = i2c_slave_eeprom_remove,
+These patches were developed with Claude (Anthropic) as a
+coding assistant: it investigated the problem, wrote the code and
+the commit messages. I reviewed them, and they were tested on an
+Orange Pi Zero2 (H616) as described above.
 
 ---
-base-commit: 00fb8097ca5a4fcf0e0cc1550075aa7313bbd32a
-change-id: 20261110-i2c-slave-eeprom-of-match-ba9fdb67a830
+Arun Iyengar (8):
+      arm64: dts: allwinner: h616: Cover the codec RAMP register
+      arm64: dts: allwinner: orangepi-zero2: Let the PHY add the RX delay
+      arm64: dts: allwinner: h616: Add GPU OPP table
+      arm64: dts: allwinner: h616: Throttle the GPU from the GPU thermal zone
+      arm64: dts: allwinner: orangepi-zero2: Keep VDD-SYS at or above 900 mV
+      arm64: dts: allwinner: orangepi-zero2: Enable GPU DVFS
+      arm64: dts: allwinner: orangepi-zero2: Describe the SPI NOR supply
+      arm64: dts: allwinner: orangepi-zero2: Add i2c aliases
+
+ .../boot/dts/allwinner/sun50i-h616-gpu-opp.dtsi    | 62 ++++++++++++++++++++++
+ .../dts/allwinner/sun50i-h616-orangepi-zero2.dts   | 22 ++++++--
+ arch/arm64/boot/dts/allwinner/sun50i-h616.dtsi     | 17 +++++-
+ 3 files changed, 96 insertions(+), 5 deletions(-)
+---
+base-commit: a7f6e476aaedba0d8ec575acaeb3257f900a592f
+change-id: 20261110-h616-zero2-dt-acb4ccecaa0f
 
 Best regards,
 --  
