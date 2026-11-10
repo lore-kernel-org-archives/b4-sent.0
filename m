@@ -1,15 +1,13 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Subject: [PATCH 0/3] pmdomain: rockchip: fix the probe error and deferral
- paths
-Date: Tue, 10 Nov 2026 07:11:27 +0000
-Message-Id: <20261110-pmdomain-rockchip-v1-0-6b9fa6ebaa86@gmail.com>
+Date: Tue, 10 Nov 2026 07:11:28 +0000
+Subject: [PATCH 1/3] pmdomain: rockchip: put only the clocks that were got
+ on error
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw7CIBBA0V9pZl0SwAfRX2m6QBhkbHgE1JgQ/
- l2qy7O4t0HFQljhOjUo+KZKKQ6IeQLjdbwjIzsMksuzEIKzHGwKmiIryWzGU2aH40VpicpZd4L
- R5YKOPr/nsv5dX7cHmuc+gt6/gIeeoHUAAAA=
-X-Change-ID: 20261110-pmdomain-rockchip-3497a2e7fdf5
+Message-Id: <20261110-pmdomain-rockchip-v1-1-6b9fa6ebaa86@gmail.com>
+References: <20261110-pmdomain-rockchip-v1-0-6b9fa6ebaa86@gmail.com>
+In-Reply-To: <20261110-pmdomain-rockchip-v1-0-6b9fa6ebaa86@gmail.com>
 To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
  Shawn Lin <shawn.lin@rock-chips.com>, 
  Sebastian Reichel <sebastian.reichel@collabora.com>, 
@@ -19,63 +17,66 @@ Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Igor Pecovnik <igor@armbian.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294687; l=2416;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294687; l=2026;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=QoAWdAEzgzL2QuwNz+wZsYoa/Z9SPuRCylTlgEE4RjA=;
- b=hCUZhEAiVVHPN/W3DReqR0LhracBQIiJ4fAnU+xZMyzjHjLbDahebbYCC/AKHaoQzU/BzHuRw
- ZlMANOkzg5rDQdFKewNmpFmG51NPTFrZVQtx0WuhpcE1gMJ81cTt/D8
+ bh=AWNB6l2jcN6MKFzvoLZq759tpOEfOEsNFO9JurbdzAQ=;
+ b=QHMOwsrRbvV+Aiyiv88LewtSOVi1XCHYN77Ad7CvvDlcYGBdCa3/ygAp6IkD7/C+5oDlFjjQP
+ 0VE1cTPmxj8DkLfICTZ3ADwT0hxogSj8xwSNuZv7TaJmgf4qpSfzCAv
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Three fixes for what happens when a Rockchip power domain clock is not
-available yet and rockchip_pm_domain_probe() defers:
+From: Igor Pecovnik <igor@armbian.com>
 
-1. (Igor Pecovnik) Only the clocks that were obtained are put; the
-   ERR_PTR() of the failing one triggered the WARN_ON_ONCE() in
-   __clk_put(), and the deferral reason was not recorded.
-2. The error cleanup removes the parent/child links before the domains.
-   pm_genpd_remove() refuses a domain that is still a parent, and on
-   RK3588 (RKVDEC0/1 are children of both VDEC and VDPU) no ordering
-   avoids that, so devm freed domains that were still on gpd_list.
-3. A deferral is no longer printed as an error by the callers, once
-   per probe attempt and twice for a nested domain.
+When of_clk_get() fails for clock i of a power domain,
+rockchip_pm_add_one_domain() jumps to err_put_clocks, which calls
+clk_bulk_put() on all pd->num_clks entries. That includes the
+ERR_PTR() just stored in pd->clks[i] (clk_put() warns on it) and
+the NULL entries after it (harmless, clk_put(NULL) is a no-op).
 
-Tested on an Orange Pi 5 (RK3588S) with test device trees that give a
-power domain a clock which only appears about 26 s into boot, once on
-PD_NPU (a top level domain) and once on PD_FEC (nested under PD_VI,
-after 18 domains and their links were registered). With the series,
-devices_deferred shows "failed to get clk at index 5", there is no
-"failed to remove domain", list or slab corruption report (booted with
-page_poison=1 init_on_free=1), no "-517" error lines, and the controller
-binds later with each of the 26 domains listed once in
-pm_genpd_summary. A host-side model of the probe and cleanup on the
-board's DTB, deferring at each domain in turn, leaves freed domains on
-gpd_list at 24 of 26 failure points without patch 2 and at none with
-it. Normal boots are unchanged.
+This is hit when a domain clock is not available yet and the probe is
+deferred: the first deferral triggers the WARN_ON_ONCE() in __clk_put(),
+and the failure is reported with dev_err() instead of being recorded as
+the deferral reason shown in devices_deferred.
 
-This series was developed with Claude (Anthropic) as a coding assistant:
-it wrote the code of patches 2 and 3 and the commit messages, and I
-reviewed and tested every change as described above. Patch 1 is Igor's
-change with a rewritten commit message.
+Put only the i clocks that were obtained, and report the failure with
+dev_err_probe().
 
+Fixes: d8b384777066 ("pmdomain: rockchip: fix clock leak on domain probe failure")
+Cc: stable@vger.kernel.org
+Link: https://github.com/armbian/build/commit/814ab46114eb18832e18d1f94f2d279680a308d7
+Signed-off-by: Igor Pecovnik <igor@armbian.com>
+[arun: rewrote the commit message for upstream]
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Arun Iyengar (2):
-      pmdomain: rockchip: remove subdomain links before the domains on error
-      pmdomain: rockchip: do not report probe deferral of a domain as an error
+ drivers/pmdomain/rockchip/pm-domains.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-Igor Pecovnik (1):
-      pmdomain: rockchip: put only the clocks that were got on error
+diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
+index 6eca21e0bb12..3b39b231ca0e 100644
+--- a/drivers/pmdomain/rockchip/pm-domains.c
++++ b/drivers/pmdomain/rockchip/pm-domains.c
+@@ -849,11 +849,13 @@ static int rockchip_pm_add_one_domain(struct rockchip_pmu *pmu,
+ 	for (i = 0; i < pd->num_clks; i++) {
+ 		pd->clks[i].clk = of_clk_get(node, i);
+ 		if (IS_ERR(pd->clks[i].clk)) {
+-			error = PTR_ERR(pd->clks[i].clk);
+-			dev_err(pmu->dev,
+-				"%pOFn: failed to get clk at index %d: %d\n",
+-				node, i, error);
+-			goto err_put_clocks;
++			error = dev_err_probe(pmu->dev,
++					      PTR_ERR(pd->clks[i].clk),
++					      "%pOFn: failed to get clk at index %d\n",
++					      node, i);
++			/* Only the clocks before index i were got */
++			clk_bulk_put(i, pd->clks);
++			return error;
+ 		}
+ 	}
+ 
 
- drivers/pmdomain/rockchip/pm-domains.c | 73 +++++++++++++++++++++++++++++-----
- 1 file changed, 62 insertions(+), 11 deletions(-)
----
-base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261110-pmdomain-rockchip-3497a2e7fdf5
-
-Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+2.55.0
 
