@@ -1,120 +1,136 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:13:47 +0000
-Subject: [PATCH] rtc: Don't lose a minute-resolution alarm that rounds down
- into the past
+Date: Tue, 10 Nov 2026 07:13:55 +0000
+Subject: [PATCH net-next] net: stmmac: dwmac-rk: only read the delays the
+ MAC applies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-rtc-minute-alarm-v1-1-be9d7c5227a1@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB1wUhD1KsVFTEY7RdMyiVIQ7
- 26qy7f4f4fIKhyhK3ZQ3iTKJ2RQWYB72TAxis8GU5maiCrU5HCRsCZGO1tdkHxjx7ZuWm8ekLO
- v8ii/a/nsb8d1eLNL/w8cxwmebj5FdAAAAA==
-X-Change-ID: 20261110-rtc-minute-alarm-1d8af9689d23
-To: Alexandre Belloni <alexandre.belloni@bootlin.com>
-Cc: linux-rtc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org
+Message-Id: <20261110-stmmac-dwmac-rk-delays-v1-1-87abb6592921@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMSw7CMAwFr1J5jaU4VOVzFcQiJC4YaEBxoK2q3
+ r0pbJ40epqZQDkJKxyrCRJ/ReUVC9CmAn9z8coooTBYYxsiMqi565zH0K+bHhj46UbFmpzZ7ne
+ Nrf0BivxO3MrwC58gcsbIQ4bz/9HP5c4+r12Y5wWXMDVLhAAAAA==
+X-Change-ID: 20261110-stmmac-dwmac-rk-delays-41a0387624c9
+To: Heiko Stuebner <heiko@sntech.de>, 
+ Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>
+Cc: linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, netdev@vger.kernel.org, 
+ linux-stm32@st-md-mailman.stormreply.com, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294826; l=3842;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294835; l=4046;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=hx7EEY3IfQIk7dUR86H3++IsY8ALA3UcN3TSCzhHjd0=;
- b=jsAqaqf+rioQFbEmgC1MQTpbqOEw0nvDj0vKgQlAUhFxbXy8FVL42jE+0/0dIMuRh6fr1HkQO
- am01n5PFKwOBB5dwYkgDj/243VL/DH6EvsecEk05+o3OeEOoJZMcA9t
+ bh=QQNrpXBNV3rRDNQu9MSMqZkKJ0F2a8WJAor/zaH4Dzs=;
+ b=/C7vRZ019UGX9xEoKZox6IV8k6tffQB9VzApV8qqosMVT1iLXR/1PDjegWS5Hdu7X7RjjaWaU
+ YUuaeZtNgpXD+xcNDzz7bUfPLAHBcBOQ1lGwJhWyMw7CR3dHdeNQqcn
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For an RTC with RTC_FEATURE_ALARM_RES_MINUTE, rtc_set_alarm() rounds the
-alarm down to the start of its minute, so that it never fires late. When
-the alarm is less than a minute away and in the same minute as the
-current time, the rounded time is already in the past.
-rtc_timer_enqueue() then gets -ETIME from __rtc_set_alarm() and expires
-the timer from the irq work right away, and the hardware alarm is never
-armed.
+The tx_delay and rx_delay properties are only used for the directions in
+which the MAC inserts the RGMII clock delay itself: both for "rgmii",
+TX for "rgmii-rxid" and RX for "rgmii-txid". For "rgmii-id" (the PHY
+adds both delays, the recommended setup) and for RMII they are ignored
+by rk_gmac_powerup().
 
-That loses every short wake alarm. With a HYM8563, which has minute
-resolution, "rtcwake -m freeze -s 15" sets an alarm that expires in
-software before the system suspends, so nothing wakes it: with the
-alarm set at 17:55:00 for 17:55:17, /proc/driver/rtc reads back
-"alrm_time: 17:55:00, alarm_IRQ: no", and the system stays in
-suspend-to-idle until something else wakes it.
+The driver nevertheless parses both properties unconditionally and logs
+an error, plus the default it picks, for each one that is missing. A
+correct device tree using "rgmii-rxid" therefore gets
 
-Round the alarm up to the next minute when rounding down would put an
-alarm that is still in the future into the past. It then fires at most
-59 seconds late instead of never. Alarms that are already in the past,
-or that round down to a time still in the future, are handled as before.
+  Can not read property: rx_delay.
+  set rx_delay to 0x10
 
-Fixes: d87f741dddab ("rtc: handle alarms with a minute resolution")
-Cc: stable@vger.kernel.org
+and one using "rgmii-id" gets the same pair for tx_delay as well, for a
+value that is never programmed.
+
+Only parse the delay values that will actually be used, so the error is
+reserved for device trees that really lack a required delay. Behaviour
+for "rgmii", "rgmii-rxid" and "rgmii-txid" is unchanged.
+
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Tested on an Orange Pi 5 (RK3588S) with a HYM8563: "rtcwake -m no -s 15"
-now reads back the alarm at the next full minute with "alarm_IRQ: yes",
-and 47 consecutive "rtcwake -m freeze -s 15" cycles all woke from the
-RTC interrupt. Before the fix the alarm was lost whenever the 15 s
-stayed inside the current minute, and the system never woke.
+Tested on an Orange Pi 5 (RK3588S, Motorcomm YT8531C on gmac1) with its
+device tree using "rgmii-id": the probe log has "init for RGMII_ID" and
+no "Can not read property" lines any more, the link comes up at
+1000/Full and transfers run at line rate (940 Mbit/s receive, 0 errors).
+The "rgmii", "rgmii-rxid" and "rgmii-txid" paths are unchanged and were
+not re-tested.
 
 This patch was developed with Claude (Anthropic) as a coding assistant:
 it wrote the code and the commit message, and I reviewed and tested it
 as described above.
 ---
- drivers/rtc/interface.c | 33 +++++++++++++++++++++++++++------
- 1 file changed, 27 insertions(+), 6 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c | 47 ++++++++++++++++----------
+ 1 file changed, 29 insertions(+), 18 deletions(-)
 
-diff --git a/drivers/rtc/interface.c b/drivers/rtc/interface.c
-index 96626f8068f9..004819c9a846 100644
---- a/drivers/rtc/interface.c
-+++ b/drivers/rtc/interface.c
-@@ -535,18 +535,39 @@ int rtc_set_alarm(struct rtc_device *rtc, struct rtc_wkalrm *alarm)
- 		rtc_timer_remove(rtc, &rtc->aie_timer);
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+index c4db919ec164..f06428ce3cfc 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+@@ -1331,26 +1331,37 @@ static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
+ 			bsp_priv->clock_input = false;
+ 	}
  
- 	alarm_time = rtc_tm_to_ktime(alarm->time);
--	/*
--	 * Round down so we never miss a deadline, checking for past deadline is
--	 * done in __rtc_set_alarm
--	 */
--	if (test_bit(RTC_FEATURE_ALARM_RES_MINUTE, rtc->features))
--		alarm_time = ktime_sub_ns(alarm_time, (u64)alarm->time.tm_sec * NSEC_PER_SEC);
-+	if (test_bit(RTC_FEATURE_ALARM_RES_MINUTE, rtc->features) &&
-+	    alarm->time.tm_sec) {
-+		ktime_t down = ktime_sub_ns(alarm_time,
-+					    (u64)alarm->time.tm_sec * NSEC_PER_SEC);
-+		struct rtc_time tm;
-+		ktime_t now;
-+
-+		err = __rtc_read_time(rtc, &tm);
-+		if (err)
-+			goto unlock;
-+		now = rtc_tm_to_ktime(tm);
-+
-+		/*
-+		 * Round down so we never miss a deadline. If that puts an alarm
-+		 * that is still in the future into the past, the timer would
-+		 * expire right away and the hardware alarm would never be
-+		 * armed: whoever relies on it, e.g. to wake the system from
-+		 * suspend, would wait forever. Round up to the next minute
-+		 * instead. An alarm already in the past is left alone, it is
-+		 * handled by __rtc_set_alarm.
-+		 */
-+		if (ktime_after(down, now) || !ktime_after(alarm_time, now))
-+			alarm_time = down;
-+		else
-+			alarm_time = ktime_add_ns(down, 60 * NSEC_PER_SEC);
-+	}
+-	ret = of_property_read_u32(dev->of_node, "tx_delay", &value);
+-	if (ret) {
+-		bsp_priv->tx_delay = 0x30;
+-		dev_err(dev, "Can not read property: tx_delay.");
+-		dev_err(dev, "set tx_delay to 0x%x\n",
+-			bsp_priv->tx_delay);
+-	} else {
+-		dev_info(dev, "TX delay(0x%x).\n", value);
+-		bsp_priv->tx_delay = value;
++	/*
++	 * The MAC only inserts the delays which neither the PCB nor the PHY
++	 * provide (see rk_gmac_powerup()), so only the delay values for
++	 * those directions are needed.
++	 */
++	if (bsp_priv->phy_iface == PHY_INTERFACE_MODE_RGMII ||
++	    bsp_priv->phy_iface == PHY_INTERFACE_MODE_RGMII_RXID) {
++		ret = of_property_read_u32(dev->of_node, "tx_delay", &value);
++		if (ret) {
++			bsp_priv->tx_delay = 0x30;
++			dev_err(dev, "Can not read property: tx_delay.");
++			dev_err(dev, "set tx_delay to 0x%x\n",
++				bsp_priv->tx_delay);
++		} else {
++			dev_info(dev, "TX delay(0x%x).\n", value);
++			bsp_priv->tx_delay = value;
++		}
+ 	}
  
- 	rtc->aie_timer.node.expires = alarm_time;
- 	rtc->aie_timer.period = 0;
- 	if (alarm->enabled)
- 		err = rtc_timer_enqueue(rtc, &rtc->aie_timer);
+-	ret = of_property_read_u32(dev->of_node, "rx_delay", &value);
+-	if (ret) {
+-		bsp_priv->rx_delay = 0x10;
+-		dev_err(dev, "Can not read property: rx_delay.");
+-		dev_err(dev, "set rx_delay to 0x%x\n",
+-			bsp_priv->rx_delay);
+-	} else {
+-		dev_info(dev, "RX delay(0x%x).\n", value);
+-		bsp_priv->rx_delay = value;
++	if (bsp_priv->phy_iface == PHY_INTERFACE_MODE_RGMII ||
++	    bsp_priv->phy_iface == PHY_INTERFACE_MODE_RGMII_TXID) {
++		ret = of_property_read_u32(dev->of_node, "rx_delay", &value);
++		if (ret) {
++			bsp_priv->rx_delay = 0x10;
++			dev_err(dev, "Can not read property: rx_delay.");
++			dev_err(dev, "set rx_delay to 0x%x\n",
++				bsp_priv->rx_delay);
++		} else {
++			dev_info(dev, "RX delay(0x%x).\n", value);
++			bsp_priv->rx_delay = value;
++		}
+ 	}
  
-+unlock:
- 	mutex_unlock(&rtc->ops_lock);
- 
- 	return err;
+ 	bsp_priv->grf = syscon_regmap_lookup_by_phandle(dev->of_node,
 
 ---
-base-commit: 7485659ecb81d5fce3a3edf2cae9fcb29c17b1cd
-change-id: 20261110-rtc-minute-alarm-1d8af9689d23
+base-commit: d26955e57475434b59d43ba372b2a50d33d5e0ed
+change-id: 20261110-stmmac-dwmac-rk-delays-41a0387624c9
 
 Best regards,
 --  
