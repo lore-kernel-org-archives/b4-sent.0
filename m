@@ -1,95 +1,96 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:11:30 +0000
-Subject: [PATCH 3/3] pmdomain: rockchip: do not report probe deferral of a
- domain as an error
+Subject: [PATCH 0/5] iommu/arm-smmu-v3: power domain and clock of the
+ RK3588 PCIe SMMU
+Date: Tue, 10 Nov 2026 07:11:47 +0000
+Message-Id: <20261110-smmu-v3-pcie-pd-v1-0-628819ca44b9@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-pmdomain-rockchip-v1-3-6b9fa6ebaa86@gmail.com>
-References: <20261110-pmdomain-rockchip-v1-0-6b9fa6ebaa86@gmail.com>
-In-Reply-To: <20261110-pmdomain-rockchip-v1-0-6b9fa6ebaa86@gmail.com>
-To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Shawn Lin <shawn.lin@rock-chips.com>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Kevin Hilman <khilman@linaro.org>, Caesar Wang <wxt@rock-chips.com>, 
- Elaine Zhang <zhangqing@rock-chips.com>
-Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQSUHFq5QuNJnoCLEhU0UQ7
+ 95Yl2/x/wHKWVihqw7IvInKZymgRwVu6peRUXwxWGNrIjKoMa64PTE5YUweexvINkNLvg1QqpQ
+ 5yP4/vt63dR1mdt9rA+f5A0Mz+z1zAAAA
+X-Change-ID: 20261110-smmu-v3-pcie-pd-a2f127b81d8f
+To: Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
+ "Joerg Roedel (AMD)" <joro@8bytes.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Niklas Cassel <cassel@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, iommu@lists.linux.dev, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-rockchip@lists.infradead.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294687; l=2616;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294708; l=3396;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=qCJHjn4ARWllWuHF/3iUyLeU1dBEpnl7ug6sZBC3HTs=;
- b=8X1ybrV4e6PsuLq/Pxx6EQ2FHsA73qXCewhBYjwkiMJXLmo6XYpqrrBDeFmWuCs7wg1xr8Atc
- qjKCZLA33M7DM0Pe0fSNxZsscSShW/5/Z1vnho6mDSZn6ki5VYFy+KC
+ bh=YiFHdqWNwSB3JLobSnfZFcEq0DBZVx3dfBcT0SvTUnA=;
+ b=vGVSbQIptB7q8Knk0YRw8Xy7JTTyVesyHrwcLDjVnBHlNDkoSbwifjktratUfAvNDDUMpG4+p
+ v5zjYVT9qWFBXsurhLTIIauP1umEiJlnI1RR2u8dugIBvvQ5oXERsZW
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a power domain clock is not available yet,
-rockchip_pm_add_one_domain() records the reason with dev_err_probe() and
-returns -EPROBE_DEFER, but its callers rockchip_pm_domain_probe() and
-rockchip_pm_add_subdomain() still print it with dev_err():
+The MMU-600 in front of the PCIe controllers of the Rockchip RK3588
+(mmu600_pcie) is enabled for every RK3588 board, but its node describes
+neither the power domain it lives in (RK3588_PD_PCIE) nor its clock
+(ACLK_MMU_PCIE). Both are held by any enabled PCIe controller, which is
+why nobody noticed: on a board that enables no PCIe controller in that
+domain (an Orange Pi 5 with its M.2 slot in SATA mode, or any RK3588
+board without PCIe), genpd powers the domain off and the clock framework
+gates the clock as unused after boot, while arm-smmu-v3 stays bound.
+At reboot, arm_smmu_device_shutdown() then writes CR0 and polls CR0ACK on
+the dead block, the interconnect stalls, "reboot: Restarting system" is
+never reached and the board only comes back ~90 s later when the
+watchdog fires.
 
-  rockchip-pm-domain ...: failed to handle node power-domain: -517
+Patches 1 and 2 allow power-domains and clocks in the arm,smmu-v3
+binding (arm,smmu.yaml already allows both for the earlier SMMUs).
+Patch 3 makes the driver get and enable the clocks of its firmware node
+before the first register access, for as long as it is bound; nodes
+without clocks (and ACPI/IORT systems) are unaffected. Patches 4 and 5
+describe the power domain and the clock in rk3588-base.dtsi. Both DT
+patches are needed: with the power domain alone the clock is still
+gated and the shutdown still hangs.
 
-once per probe attempt, and twice for a nested domain. On an RK3588
-board whose NPU domain clock appears late this is more than 20 error
-lines before the domain finally probes.
+Related: Pranjal Shrivastava's "iommu/arm-smmu-v3: Add runtime PM
+support" v11 (2026-09-29, 20260929034510.2023173-1-praan@google.com,
+not merged) adds pm_domain-based runtime PM and resumes the SMMU around
+shutdown, but has no clock handling. This series is compatible with it:
+once it lands, the clocks from patch 3 should move into its runtime
+suspend/resume callbacks.
 
-Only rockchip_pm_add_one_domain() can return -EPROBE_DEFER here, and it
-already records the deferral reason, so skip the message in the callers
-for -EPROBE_DEFER and keep it for real errors. dev_err_probe() is not
-used in the callers because it would replace the reason recorded for
-/sys/kernel/debug/devices_deferred ("failed to get clk at index 1") with
-the less specific "failed to handle node power-domain".
+Tested on an Orange Pi 5 (RK3588S) with the M.2 slot in SATA mode and
+the root filesystem on the SATA SSD, where every reboot used to hang:
+three consecutive reboots printed "reboot: Restarting system" and the
+boot loader started 0.6 s later (previously ~89 s, from the watchdog);
+clk_summary shows aclk_mmu_pcie enabled with iommu@fc900000 as consumer
+and pm_genpd_summary shows PD_PCIE on; the SMMU probes as before and
+SATA keeps running at 6.0 Gbps without errors. With patch 4 alone
+(power domain, clock still gated) the reboot still hung at
+"arm-smmu-v3 fc900000.iommu: shutdown" on the serial console. Boards
+with PCIe enabled are already in the state these patches describe.
 
-Fixes: 7c696693a4f5 ("soc: rockchip: power-domain: Add power domain driver")
-Fixes: 6be05b5ec161 ("soc: rockchip: power-domain: add support for sub-power domains")
+This series was developed with Claude (Anthropic) as a coding assistant:
+it wrote the code and the commit messages, and I reviewed and tested
+every change as described above.
+
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/pmdomain/rockchip/pm-domains.c | 15 +++++++++------
- 1 file changed, 9 insertions(+), 6 deletions(-)
+Arun Iyengar (5):
+      dt-bindings: iommu: arm,smmu-v3: allow a power domain
+      dt-bindings: iommu: arm,smmu-v3: allow clocks
+      iommu/arm-smmu-v3: enable optional clocks
+      arm64: dts: rockchip: add the PCIe power domain to the RK3588 PCIe SMMU
+      arm64: dts: rockchip: add the clock of the RK3588 PCIe SMMU
 
-diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
-index d7df19e10000..70ebe5696b39 100644
---- a/drivers/pmdomain/rockchip/pm-domains.c
-+++ b/drivers/pmdomain/rockchip/pm-domains.c
-@@ -1050,8 +1050,9 @@ static int rockchip_pm_add_subdomain(struct rockchip_pmu *pmu,
- 
- 		error = rockchip_pm_add_one_domain(pmu, np);
- 		if (error) {
--			dev_err(pmu->dev, "failed to handle node %pOFn: %d\n",
--				np, error);
-+			if (error != -EPROBE_DEFER)
-+				dev_err(pmu->dev, "failed to handle node %pOFn: %d\n",
-+					np, error);
- 			return error;
- 		}
- 
-@@ -1144,15 +1145,17 @@ static int rockchip_pm_domain_probe(struct platform_device *pdev)
- 	for_each_available_child_of_node_scoped(np, node) {
- 		error = rockchip_pm_add_one_domain(pmu, node);
- 		if (error) {
--			dev_err(dev, "failed to handle node %pOFn: %d\n",
--				node, error);
-+			if (error != -EPROBE_DEFER)
-+				dev_err(dev, "failed to handle node %pOFn: %d\n",
-+					node, error);
- 			goto err_out;
- 		}
- 
- 		error = rockchip_pm_add_subdomain(pmu, node);
- 		if (error < 0) {
--			dev_err(dev, "failed to handle subdomain node %pOFn: %d\n",
--				node, error);
-+			if (error != -EPROBE_DEFER)
-+				dev_err(dev, "failed to handle subdomain node %pOFn: %d\n",
-+					node, error);
- 			goto err_out;
- 		}
- 	}
+ Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml | 10 ++++++++++
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi            |  2 ++
+ drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c              |  7 +++++++
+ 3 files changed, 19 insertions(+)
+---
+base-commit: 2cf4be57b301ed2d7af82e70cff5dfd96894d8de
+change-id: 20261110-smmu-v3-pcie-pd-a2f127b81d8f
 
--- 
-2.55.0
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
