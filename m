@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 07:11:29 +0000
-Subject: [PATCH 2/3] pmdomain: rockchip: remove subdomain links before the
- domains on error
+Date: Tue, 10 Nov 2026 07:11:30 +0000
+Subject: [PATCH 3/3] pmdomain: rockchip: do not report probe deferral of a
+ domain as an error
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-pmdomain-rockchip-v1-2-6b9fa6ebaa86@gmail.com>
+Message-Id: <20261110-pmdomain-rockchip-v1-3-6b9fa6ebaa86@gmail.com>
 References: <20261110-pmdomain-rockchip-v1-0-6b9fa6ebaa86@gmail.com>
 In-Reply-To: <20261110-pmdomain-rockchip-v1-0-6b9fa6ebaa86@gmail.com>
 To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
@@ -14,114 +14,81 @@ To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>,
  Kevin Hilman <khilman@linaro.org>, Caesar Wang <wxt@rock-chips.com>, 
  Elaine Zhang <zhangqing@rock-chips.com>
 Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294687; l=4093;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794294687; l=2616;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=dHO39ZDWV/KiynPjCX8DIPyBCclsXy+H+T79g0o69nI=;
- b=FFzN4q78FMlY70uZGAMhsLAd44pNMH5/Fp7RNwf+nYNlyKGSPKSu/By7MPSUvIquosiNFfIVv
- eLAwEl1GuJqCDwK9Y6vYCfyPUevloLjeK0yPkHt6uxEvUgGCTNxZn24
+ bh=qCJHjn4ARWllWuHF/3iUyLeU1dBEpnl7ug6sZBC3HTs=;
+ b=8X1ybrV4e6PsuLq/Pxx6EQ2FHsA73qXCewhBYjwkiMJXLmo6XYpqrrBDeFmWuCs7wg1xr8Atc
+ qjKCZLA33M7DM0Pe0fSNxZsscSShW/5/Z1vnho6mDSZn6ki5VYFy+KC
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When rockchip_pm_domain_probe() fails after some domains were
-registered, for example because a clock of a nested domain is not
-available yet and returns -EPROBE_DEFER, rockchip_pm_domain_cleanup()
-calls pm_genpd_remove() for every registered domain in domain id order.
+When a power domain clock is not available yet,
+rockchip_pm_add_one_domain() records the reason with dev_err_probe() and
+returns -EPROBE_DEFER, but its callers rockchip_pm_domain_probe() and
+rockchip_pm_add_subdomain() still print it with dev_err():
 
-pm_genpd_remove() refuses a domain that is still the parent of another
-domain and returns -EBUSY. The cleanup walks parents before their
-children in id order, and on RK3588 RKVDEC0/RKVDEC1 (ids 14 and 15) are
-also children of VDPU (id 21), so no ordering of the domain array lets
-every removal succeed. Each refused parent only gets the "state may be
-inconsistent" message, and on return devm frees its struct
-rockchip_pm_domain, the embedded generic_pm_domain included, while it
-is still linked on the global gpd_list. The next registration, the
-unused domain power off at late_initcall and the genpd debugfs files
-then walk freed memory.
+  rockchip-pm-domain ...: failed to handle node power-domain: -517
 
-Remove the parent/child links first, walking the power domain nodes
-depth first in the same way rockchip_pm_add_subdomain() added them, so
-that each child no longer has subdomains of its own when its link is
-removed. With no links left, and no provider or devices attached in the
-probe error path, pm_genpd_remove() succeeds for every domain before
-devm frees it. pm_genpd_remove_subdomain() also drops the parent's
-subdomain count, which removing the child with pm_genpd_remove() alone
-does not.
+once per probe attempt, and twice for a nested domain. On an RK3588
+board whose NPU domain clock appears late this is more than 20 error
+lines before the domain finally probes.
 
-Fixes: 79d12b7a7f22 ("soc: rockchip: power-domain: use pm_genpd_remove in error cleanup")
-Cc: stable@vger.kernel.org
+Only rockchip_pm_add_one_domain() can return -EPROBE_DEFER here, and it
+already records the deferral reason, so skip the message in the callers
+for -EPROBE_DEFER and keep it for real errors. dev_err_probe() is not
+used in the callers because it would replace the reason recorded for
+/sys/kernel/debug/devices_deferred ("failed to get clk at index 1") with
+the less specific "failed to handle node power-domain".
+
+Fixes: 7c696693a4f5 ("soc: rockchip: power-domain: Add power domain driver")
+Fixes: 6be05b5ec161 ("soc: rockchip: power-domain: add support for sub-power domains")
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/pmdomain/rockchip/pm-domains.c | 46 ++++++++++++++++++++++++++++++++++
- 1 file changed, 46 insertions(+)
+ drivers/pmdomain/rockchip/pm-domains.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
-index 3b39b231ca0e..d7df19e10000 100644
+index d7df19e10000..70ebe5696b39 100644
 --- a/drivers/pmdomain/rockchip/pm-domains.c
 +++ b/drivers/pmdomain/rockchip/pm-domains.c
-@@ -957,12 +957,58 @@ static void rockchip_pm_remove_one_domain(struct rockchip_pm_domain *pd)
- 	/* devm will free our memory */
- }
+@@ -1050,8 +1050,9 @@ static int rockchip_pm_add_subdomain(struct rockchip_pmu *pmu,
  
-+static struct generic_pm_domain *
-+rockchip_pm_node_to_genpd(struct rockchip_pmu *pmu, struct device_node *node)
-+{
-+	u32 id;
-+
-+	if (of_property_read_u32(node, "reg", &id) ||
-+	    id >= pmu->genpd_data.num_domains)
-+		return NULL;
-+
-+	return pmu->genpd_data.domains[id];
-+}
-+
-+/*
-+ * Undo the pm_genpd_add_subdomain() calls of rockchip_pm_add_subdomain().
-+ * Links are only ever added between a DT node and its children, so walking
-+ * the tree depth first and removing the links of the children before the
-+ * link to their parent always finds the subdomain without subdomains of its
-+ * own, as pm_genpd_remove_subdomain() requires. This also covers domains with
-+ * more than one parent (RKVDEC0/RKVDEC1 on RK3588), which a walk in domain id
-+ * or registration order does not.
-+ */
-+static void rockchip_pm_remove_subdomains(struct rockchip_pmu *pmu,
-+					  struct device_node *parent)
-+{
-+	struct generic_pm_domain *parent_domain, *child_domain;
-+
-+	parent_domain = rockchip_pm_node_to_genpd(pmu, parent);
-+
-+	for_each_child_of_node_scoped(parent, np) {
-+		rockchip_pm_remove_subdomains(pmu, np);
-+
-+		child_domain = rockchip_pm_node_to_genpd(pmu, np);
-+		if (parent_domain && child_domain)
-+			pm_genpd_remove_subdomain(parent_domain, child_domain);
-+	}
-+}
-+
- static void rockchip_pm_domain_cleanup(struct rockchip_pmu *pmu)
- {
- 	struct generic_pm_domain *genpd;
- 	struct rockchip_pm_domain *pd;
- 	int i;
+ 		error = rockchip_pm_add_one_domain(pmu, np);
+ 		if (error) {
+-			dev_err(pmu->dev, "failed to handle node %pOFn: %d\n",
+-				np, error);
++			if (error != -EPROBE_DEFER)
++				dev_err(pmu->dev, "failed to handle node %pOFn: %d\n",
++					np, error);
+ 			return error;
+ 		}
  
-+	/*
-+	 * pm_genpd_remove() refuses a domain that still has subdomains, and
-+	 * devm frees the domains on return whether or not they were removed,
-+	 * which would leave freed memory on the global genpd list. Remove all
-+	 * parent/child links first, so every domain can be removed.
-+	 */
-+	for_each_available_child_of_node_scoped(pmu->dev->of_node, np)
-+		rockchip_pm_remove_subdomains(pmu, np);
-+
- 	for (i = 0; i < pmu->genpd_data.num_domains; i++) {
- 		genpd = pmu->genpd_data.domains[i];
- 		if (genpd) {
+@@ -1144,15 +1145,17 @@ static int rockchip_pm_domain_probe(struct platform_device *pdev)
+ 	for_each_available_child_of_node_scoped(np, node) {
+ 		error = rockchip_pm_add_one_domain(pmu, node);
+ 		if (error) {
+-			dev_err(dev, "failed to handle node %pOFn: %d\n",
+-				node, error);
++			if (error != -EPROBE_DEFER)
++				dev_err(dev, "failed to handle node %pOFn: %d\n",
++					node, error);
+ 			goto err_out;
+ 		}
+ 
+ 		error = rockchip_pm_add_subdomain(pmu, node);
+ 		if (error < 0) {
+-			dev_err(dev, "failed to handle subdomain node %pOFn: %d\n",
+-				node, error);
++			if (error != -EPROBE_DEFER)
++				dev_err(dev, "failed to handle subdomain node %pOFn: %d\n",
++					node, error);
+ 			goto err_out;
+ 		}
+ 	}
 
 -- 
 2.55.0
