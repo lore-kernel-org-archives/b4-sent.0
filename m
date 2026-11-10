@@ -1,73 +1,94 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Tue, 10 Nov 2026 02:50:01 +0000
-Subject: [PATCH] arm64: dts: rockchip: Enable SDR104 on the ODROID-M1 SD
- card
+From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Date: Tue, 10 Nov 2026 11:04:59 +0800
+Subject: [PATCH] perf parse-events: Don't report unreadable tracepoint
+ globs as unknown
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-odroid-m1-sdr104-v1-1-8edc6d5c1bf6@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAFqG8moC/x3MPQqAMAxA4atIZgOJf6BXEYfSRs2glRREkN7d4
- vgN772QxFQSTNULJrcmjWcB1xX43Z2boIZiaKgZmJkwBosa8GBMwZg6XAeh1pHvnR+hZJfJqs+
- /nJecP7EZavRiAAAA
-To: Heiko Stuebner <heiko@sntech.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1796; i=iav@iav.lv;
- h=from:subject:message-id; bh=qnYQwjnRjrYCEMA3SHfY2+DFHlJaSH/TMsn5Af6nh14=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmf2qInZi0x0TBUjGFZfEd0j8Vikydvzr+ZEWZx+0Daj
- ReMh3+XdZSyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJtFgxMmwxtXqmcaHfyfmt
- WtfeFasLt5424FNcwX/snvzEilnvvCwZGXb6Pb90ZsqCt+zXziwLDdVQdFlz76vypO9nOvoPOO1
- IvcsHAA==
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Message-Id: <20261110-tp-glob-errno-v1-1-6c2cb609c590@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MMQqAMAxA0atIZgNNh1a8ijhYjRqQVlIRQXp3i
+ +Mb/n8hswpn6JsXlG/JkmIFtQ3M+xQ3RlmqwRrriMjgdeJ2pICsGhM6b3kiDr5zAWpzKq/y/L9
+ hLOUDxtgMZV8AAAA=
+X-Change-ID: 20261110-tp-glob-errno-672ea1eb786b
+To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ James Clark <james.clark@linaro.org>
+Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Hang Zhengyang <hang.zhengyang1010@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794279900; l=2440;
+ i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
+ bh=Z9hAImHuDRxUoABhn8rkY6eaA7NrOxV85HdeeidRhWg=;
+ b=oEMG3CJWJVJ6V6xWRWQ+xm27XiPnWV0rDQ0DoRdyme5FYv07EkjpJK+G1VWdGqTW9BQg0BhdR
+ mUh0IjxB4ilCbxHELMbXP4SC6lD3BUX1q/rOxu6Uy1WP8IPc765LZGY
+X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
+ pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
+X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SD card already switches to 1.8 V, but only SDR50 is allowed, and
-clk_sdmmc0 on RK3568 is a mux without a divider: dw_mmc-rockchip asks
-it for twice the card clock, 200 MHz for SDR50, the mux rounds down to
-the 100 MHz parent and the card runs at 50 MHz.
+When the events directory can't be read, a tracepoint glob like
+'syscalls:*' is reported as an unknown tracepoint, with a hint about a
+missing CONFIG_ option.  A plain tracepoint name reports the permission
+problem instead:
 
-Allow SDR104 instead; the MMC core still falls back to SDR50 for cards
-without SDR104. With the 150 MHz max-frequency from rk356x-base.dtsi
-the clock comes from the 300 MHz parent and the card runs at 150 MHz.
-Hardkernel's vendor kernel already uses sd-uhs-sdr104 on this board.
-With a SanDisk 128 GB card, direct read goes from 22 MB/s to
-58-64 MB/s and direct write from 20 MB/s to 47-50 MB/s.
+  $ perf stat -e 'syscalls:*' true
+  event syntax error: 'syscalls:*'
+                       \___ unknown tracepoint
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
+  Error:  File /sys/kernel/tracing//events/syscalls/* not found.
+
+add_tracepoint_multi_sys() reports ENOENT whenever nothing matched and
+ignores the error returned while reading the directories, which got
+lost when this code moved to tp_pmu.c.  Report that error when there
+is one.  As a normal user 'syscalls:*' now gets "can't access trace
+events" and the remount hint, and perf test 5.1 is skipped again
+instead of failing.
+
+Fixes: d002aab87de8 ("perf tp_pmu: Factor existing tracepoint logic to new file")
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Hang Zhengyang <hang.zhengyang1010@gmail.com>
 ---
-Tested with an Armbian 7.3.3 kernel (rockchip64), the property added to
-the DTB with fdtput: reboot, sysrq-b, watchdog reset, poweroff, s2idle,
-deep, hibernate, hybrid-sleep and suspend-then-hibernate; the card
-re-tuned and came back in SDR104 at 150 MHz in all 29 runs.
----
- arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Found running perf test as a normal user.  Tested on perf-tools-next
+13a8d580433a.  As a normal user, 'syscalls:*', 'sched:*',
+'syscalls:sys_enter_open*' and '*:sys_enter_openat' now report the
+permission problem, perf test 5 passes with 5.1 skipped, and the rest
+of perf test is unchanged.  As root, 'nosuchsys:*' still reports an
+unknown tracepoint, 'syscalls:sys_enter_open*' counts, and perf test
+5.1 passes.
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts b/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts
-index ec43dee18094..6f77e73abc8e 100644
---- a/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts
-@@ -610,7 +610,7 @@ &sdmmc0 {
- 	disable-wp;
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&sdmmc0_bus4 &sdmmc0_clk &sdmmc0_cmd &sdmmc0_det>;
--	sd-uhs-sdr50;
-+	sd-uhs-sdr104;
- 	vmmc-supply = <&vcc3v3_sd>;
- 	vqmmc-supply = <&vccio_sd>;
- 	status = "okay";
+The issue was found and the fix and changelog drafted with Claude; I
+reproduced the issue and reviewed and tested the change.
+---
+ tools/perf/util/parse-events.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/tools/perf/util/parse-events.c b/tools/perf/util/parse-events.c
+index f3ba70d4f76b..8a6d5a13863d 100644
+--- a/tools/perf/util/parse-events.c
++++ b/tools/perf/util/parse-events.c
+@@ -572,8 +572,10 @@ static int add_tracepoint_multi_sys(struct parse_events_state *parse_state,
+ 		ret = tp_pmu__for_each_tp_sys(&args, add_tracepoint_multi_sys_cb);
+ 	}
+ 	if (args.found == 0) {
+-		tracepoint_error(err, ENOENT, sys_glob, evt_glob, loc->first_column);
+-		return -ENOENT;
++		if (!ret)
++			ret = -ENOENT;
++		tracepoint_error(err, ret, sys_glob, evt_glob, loc->first_column);
++		return ret;
+ 	}
+ 	return ret;
+ }
 
 ---
-base-commit: c3baae5f1a15645cddadcb2b9abddef5df291f59
-change-id: 20261110-odroid-m1-sdr104-f6e03a0c5ac9
+base-commit: 13a8d580433a3b72b10be34f0e26787fe5659d3c
+change-id: 20261110-tp-glob-errno-672ea1eb786b
 
 Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+Hang Zhengyang <hang.zhengyang1010@gmail.com>
 
