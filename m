@@ -1,157 +1,97 @@
 From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Tue, 10 Nov 2026 03:23:08 +0000
-Subject: [PATCH RESEND v2] nfc: s3fwrn5: validate firmware header pointers
- against file size
+Date: Tue, 10 Nov 2026 03:26:03 +0000
+Subject: [PATCH bluetooth-next v2] Bluetooth: L2CAP: validate MPS and MTU
+ in ECRED connection response
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-s3fwrn5-v2-v2-1-e8f154a5613e@gmail.com>
-To: joasantonio108@gmail.com, david@ixit.cz, krzk@kernel.org
-Cc: oe-linux-nfc@lists.linux.dev, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Message-Id: <20261110-bt-ecred-mps-fix-v2-1-48c5ee28fd8a@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMqO8moC/3WNTQ6CMBCFr0Jm7RimCoIr72FYQJnCJEBJWwmG9
+ O427F2+v+8d4NkJe3hmBzjexItdklCXDPTYLgOj9EmDylVJlFfYBWTtuMd59Whkx7YwVPU6L2+
+ qhjRbHSf7RL6hmz4crA0jLrwHaFI+ig/Wfc/Hjc7Wf/hGSMiPO9WdMSVz8RrmVqartjM0McYft
+ ExJTMAAAAA=
+To: joasantonio108@gmail.com, luiz.dentz@gmail.com, marcel@holtmann.org
+Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794280987; l=4877;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794281162; l=2807;
  i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=dxYNaHNtIiX2P2fjyRdVjd+WIyE9HNkEJiNNzya94jE=;
- b=J/wuNCjog6Vx3vtgf987hnzfOkLQu2fNFol5fIMuQrETBU6OQNPiTF+y6UbESV7JDU42on+in
- GFl2A7NttqNAuKi7SnnmkARJp/PscAnrnzy0z88t7SWKEbkY2EHPlr2
+ bh=41c1pMO3EYoT9jgOM2ha+yJ4QeOIoB1nBmapQHpxbjA=;
+ b=xcFp+YVZoXkpoInhPt0D+YQxpcGwAPodG0vle5zTsQrrORzV6s5BVdGGGhmGYgWTTTk/n7iKM
+ K+yAGwUSaLbBPEG1F6Bin5TDOEr/ynsOMcViu1mRKVLWjl9SaXZxJVF
 X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
  pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
 X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-s3fwrn5_fw_request_firmware() reads six offsets and sizes from the
-firmware file header and uses them to set pointers and lengths without
-checking that they fall within the file:
+l2cap_ecred_conn_rsp() stores the MTU and MPS from the peer without
+checking them against the minimums required for enhanced credit based
+channels.  The other LE and ECRED handlers (l2cap_le_connect_req(),
+l2cap_le_connect_rsp(), l2cap_ecred_conn_req(), l2cap_ecred_reconf_req())
+all reject values below the minimum.
 
-  sig_off / sig_size       (0x14 / 0x18)
-  image_off / image_sectors (0x1C / 0x20)
-  custom_sig_off / custom_sig_size (0x24 / 0x28)
+With an MPS below L2CAP_SDULEN_SIZE, the pdu_len computation in
+l2cap_segment_le_sdu() wraps:
 
-s3fwrn5_fw_enter_update_mode() then sends sig_size bytes starting at
-sig_off through skb_put_data(), and s3fwrn5_fw_download() hashes and
-sends sector_size * image_sectors bytes starting at image_off.  A
-crafted firmware file with out-of-range offsets causes heap buffer
-over-reads.
+	pdu_len = chan->remote_mps - L2CAP_SDULEN_SIZE;
 
-Validate that every offset + size pair fits within the firmware file
-before setting the pointers, using check_add_overflow() to prevent
-u32 wraparound.  Also check that the GET_BOOTINFO response is long
-enough before copying boot information out of it, and that the total
-image area (including the 16 * 256 bytes per sector that
-s3fwrn5_fw_update_sector() sends) lies within the file.
+pdu_len is then clamped to the SDU length, which l2cap_chan_send() has
+already limited to chan->omtu, so nothing is over-allocated and there is
+no memory safety issue.  The result is that the whole SDU is sent as a
+single PDU, larger than the MPS the peer announced, and a channel is
+established with parameters the specification does not allow.
 
-Found by LLM-assisted source review.
+Apply the same L2CAP_ECRED_MIN_MTU / L2CAP_ECRED_MIN_MPS checks that
+l2cap_ecred_conn_req() uses and drop the channel when the response
+carries smaller values.
 
-Fixes: c04c674fadeb ("nfc: s3fwrn5: Add driver for Samsung S3FWRN5 NFC Chip")
-Cc: stable@vger.kernel.org
+Found by LLM-assisted manual code review.
+
+Fixes: 15f02b910562 ("Bluetooth: L2CAP: Add initial code for Enhanced Credit Based Mode")
 Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
-s3fwrn5_fw_request_firmware() reads six offsets and sizes from the
-firmware file header and uses them to set pointers and lengths without
-checking that they fall within the file.  A crafted firmware file with
-out-of-range offsets causes heap buffer over-reads.
-
-Validate that every offset + size pair fits within the firmware file
-before setting the pointers, using check_add_overflow() to prevent
-u32 wraparound.
-
-    file size (sashiko); restructure request_firmware() to read all header
-    fields first, then validate, then set pointers
-
-v2: validate sig_off+sig_size and custom_sig_off+custom_sig_size against
+v1 claimed that a peer-supplied MPS of 0 leads to an oversized skb
+allocation and potential memory corruption.  That was wrong, and I
+apologize for the noise: in l2cap_segment_le_sdu() the wrapped pdu_len
+is clamped to the SDU length, which l2cap_chan_send() has already
+limited to chan->omtu, so there is no memory safety impact.  The
+remaining problem is conformance only (PDUs larger than the MPS the
+peer announced, and inconsistency with the other LE/ECRED handlers).
 ---
- drivers/nfc/s3fwrn5/firmware.c | 33 ++++++++++++++++++++++++++++-----
- 1 file changed, 28 insertions(+), 5 deletions(-)
+Changes in v2:
+- Correct the commit message: no memory safety impact, drop the
+  overstated claim from v1
+- No code change
+- Cc linux-bluetooth, which v1 missed
+- Link to v1: https://lore.kernel.org/r/20261108-bt-ecred-mps-fix-v1-1-e7419bff6ee5@gmail.com
+---
+ net/bluetooth/l2cap_core.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/drivers/nfc/s3fwrn5/firmware.c b/drivers/nfc/s3fwrn5/firmware.c
-index 9145deec7f6c..e2b1c932e039 100644
---- a/drivers/nfc/s3fwrn5/firmware.c
-+++ b/drivers/nfc/s3fwrn5/firmware.c
-@@ -12,6 +12,7 @@
+diff --git a/net/bluetooth/l2cap_core.c b/net/bluetooth/l2cap_core.c
+index 4dd56e007..c3b8f0f46 100644
+--- a/net/bluetooth/l2cap_core.c
++++ b/net/bluetooth/l2cap_core.c
+@@ -5711,6 +5711,16 @@ static inline int l2cap_ecred_conn_rsp(struct l2cap_conn *conn,
+ 				break;
+ 			}
  
- #include "s3fwrn5.h"
- #include "firmware.h"
-+#include <linux/overflow.h>
- 
- struct s3fwrn5_fw_version {
- 	__u8 major;
-@@ -93,7 +94,8 @@ static int s3fwrn5_fw_get_bootinfo(struct s3fwrn5_fw_info *fw_info,
- 		return ret;
- 
- 	hdr = (struct s3fwrn5_fw_header *) rsp->data;
--	if (hdr->code != S3FWRN5_FW_RET_SUCCESS) {
-+	if (hdr->code != S3FWRN5_FW_RET_SUCCESS ||
-+	    rsp->len < S3FWRN5_FW_HDR_SIZE + 10) {
- 		ret = -EINVAL;
- 		goto out;
- 	}
-@@ -285,6 +287,7 @@ int s3fwrn5_fw_request_firmware(struct s3fwrn5_fw_info *fw_info)
- 	u32 sig_off;
- 	u32 image_off;
- 	u32 custom_sig_off;
-+	u32 end;
- 	int ret;
- 
- 	ret = request_firmware(&fw->fw, fw_info->fw_name,
-@@ -303,17 +306,27 @@ int s3fwrn5_fw_request_firmware(struct s3fwrn5_fw_info *fw_info)
- 	memcpy(&fw->version, fw->fw->data + 0x10, 4);
- 
- 	memcpy(&sig_off, fw->fw->data + 0x14, 4);
--	fw->sig = fw->fw->data + sig_off;
- 	memcpy(&fw->sig_size, fw->fw->data + 0x18, 4);
- 
- 	memcpy(&image_off, fw->fw->data + 0x1C, 4);
--	fw->image = fw->fw->data + image_off;
- 	memcpy(&fw->image_sectors, fw->fw->data + 0x20, 4);
- 
- 	memcpy(&custom_sig_off, fw->fw->data + 0x24, 4);
--	fw->custom_sig = fw->fw->data + custom_sig_off;
- 	memcpy(&fw->custom_sig_size, fw->fw->data + 0x28, 4);
- 
-+	if (check_add_overflow(sig_off, fw->sig_size, &end) ||
-+	    end > fw->fw->size ||
-+	    image_off > fw->fw->size ||
-+	    check_add_overflow(custom_sig_off, fw->custom_sig_size, &end) ||
-+	    end > fw->fw->size) {
-+		release_firmware(fw->fw);
-+		return -EINVAL;
-+	}
++			/*
++			 * Validate MPS and MTU per BT Core Spec
++			 * Vol 3 Part A Sec 10.2
++			 */
++			if (mtu < L2CAP_ECRED_MIN_MTU ||
++			    mps < L2CAP_ECRED_MIN_MPS) {
++				l2cap_chan_del(chan, ECONNREFUSED);
++				break;
++			}
 +
-+	fw->sig = fw->fw->data + sig_off;
-+	fw->image = fw->fw->data + image_off;
-+	fw->custom_sig = fw->fw->data + custom_sig_off;
-+
- 	return 0;
- }
- 
-@@ -409,11 +422,21 @@ int s3fwrn5_fw_download(struct s3fwrn5_fw_info *fw_info)
- {
- 	struct device *dev = &fw_info->ndev->nfc_dev->dev;
- 	struct s3fwrn5_fw_image *fw = &fw_info->fw;
-+	size_t image_avail = fw->fw->data + fw->fw->size -
-+			     (const u8 *)fw->image;
-+	u64 total = (u64)fw_info->sector_size * fw->image_sectors;
- 	u8 hash_data[SHA1_DIGEST_SIZE];
- 	u32 image_size, off;
- 	int ret;
- 
--	image_size = fw_info->sector_size * fw->image_sectors;
-+	if (!fw_info->sector_size || total > image_avail ||
-+	    (fw->image_sectors &&
-+	     total - fw_info->sector_size + 16 * 256 > image_avail)) {
-+		dev_err(dev, "Invalid firmware image size\n");
-+		return -EINVAL;
-+	}
-+
-+	image_size = total;
- 
- 	/* Compute SHA of firmware data */
- 	sha1(fw->image, image_size, hash_data);
+ 			chan->ident = 0;
+ 			chan->dcid = dcid;
+ 			chan->omtu = mtu;
 
 ---
-base-commit: 602042bf29f6efde39cfb5fdd9289bf4854bc0c5
-change-id: 20261108-s3fwrn5-v2-001b98a2b6ac
+base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
+change-id: 20261108-bt-ecred-mps-fix-a5f18dc06329
 
 Best regards,
 -- 
