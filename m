@@ -1,106 +1,154 @@
-From: Joshua Horne <hornejd@etsu.edu>
-Date: Mon, 09 Nov 2026 21:01:45 -0500
-Subject: [PATCH] drm/amd/pm: send smu8 sclk level indices, not the level
- mask
+From: Jiebing Chen <jiebing.chen@amlogic.com>
+Subject: [PATCH v8 0/5] Add support for S4 audio
+Date: Tue, 10 Nov 2026 10:28:23 +0800
+Message-Id: <20261110-audio_drvier-v8-0-1489241e4c83@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261109-smu8-sclk-fix-v1-1-47c6c0c8c2c9@etsu.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQwNL3eLcUgvd4uScbN20zApdo9TE5KREo+SktGQDJaCegqJUoDDYvOh
- YCL+4NCkrNbkEZIhSbS0A6099aHEAAAA=
-X-Change-ID: 20261109-smu8-sclk-fix-2eacba2cbfc0
-To: Kenneth Feng <kenneth.feng@amd.com>, 
- Alex Deucher <alexander.deucher@amd.com>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Eric Huang <JinHuiEric.Huang@amd.com>
-Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Joshua Horne <hornejd@etsu.edu>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794276267; l=3289;
- i=hornejd@etsu.edu; s=20261109; h=from:subject:message-id;
- bh=58O5MHeXCEaVD9HsyyZFkQq4n4nbwD/ow9aQHlfmGAI=;
- b=7NCjH5LDUPWBhzAljm0F65Im6wf9GUvisZyEkg17V/rX8UK+kyCSlYt68xZyk4rCmJRF7jaLM
- Uw13hNjQa9bD3HQbVNQ4VUXfHUjJlhwfDY+OtCcgmAqm6N/JfXh4qna
-X-Developer-Key: i=hornejd@etsu.edu; a=ed25519;
- pk=HNOtiwerBbrJhfhzLHLxj3GDsUH9udRXflqnaI8sQmQ=
-X-Endpoint-Received: by B4 Relay for hornejd@etsu.edu/20261109 with auth_id=1469
+X-B4-Tracking: v=1; b=H4sIAEeB8moC/2XQ3UoDMRAF4FcpuXYlk79JvPI9RCSbTNqA7UpWg
+ 1L23c0Wam2WuToD3xmYM5upZJrZ0+7MCtU85+nUgn3YsXDwpz0NObbMBBeaA/DBf8U8vcVSM5W
+ Bo9fSQlBOjayRj0Ipf1/qXl5bPuT5cyo/l/YK6/ZaJO+LKgx8sAEUIk/Sev7sj+/TPofHMB3ZW
+ lXFjQtQHReNS7QWkpcYHG25/MeF7bhsPI4pSq45kgpbrm5cguu4atzYNph8RHBbrm8c+ydWvV5
+ XoHUCQmXUlpsrNxyE6bhp3DmSmlutxyC2HP84tN91HBsXo/PkyYXR+nu+LMsv6TZNmyQCAAA=
+X-Change-ID: 20250110-audio_drvier-07a5381c494b
+To: Jerome Brunet <jbrunet@baylibre.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
+ Takashi Iwai <tiwai@suse.com>, Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ jian.xu@amlogic.com, shuai.li@amlogic.com, zhe.wang@amlogic.com, 
+ jiebing chen <jiebing.chen@amlogic.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794277720; l=5902;
+ i=jiebing.chen@amlogic.com; s=20250110; h=from:subject:message-id;
+ bh=1IdD/x6+9H2DA3RNvBtQLVmSshzcx8N4zmIF2uAhX+Q=;
+ b=iAgcOXLuH6BggNRoyiFrLKN+7qA4360Uw+cKC0YrkpK7ifL5t8b+4BK9u9MeJ2i1FW37kLBV5
+ weB8Qqjgu+TA/vGIEk0rZEaHWK3C04S2+g/6PUe8Sb/vI6FMi8zGYYR
+X-Developer-Key: i=jiebing.chen@amlogic.com; a=ed25519;
+ pk=6rFvvF45A84pLNRy03hfUHeROxHCnZ+1KAGw/DoqKic=
+X-Endpoint-Received: by B4 Relay for jiebing.chen@amlogic.com/20250110 with auth_id=316
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smu8_force_clock_level() passes the pp_dpm_sclk level mask straight to
-PPSMC_MSG_SetSclkSoftMin and PPSMC_MSG_SetSclkSoftMax, which take a
-level index, as the other smu8 callers do through smu8_get_sclk_level().
-In manual mode, "echo 0 > pp_dpm_sclk" thus selects level 1, "echo 2"
-selects level 4, and masks above the highest level index are out of
-range for the SMU, so e.g. "echo 3", "echo 7" or "echo 0 1 2 3 4 5 6 7"
-do not select the requested levels. The original single level version
-sent 1 << level and had the same problem.
+This series completes the end-to-end audio support
+for S4 SoC from hardware bindings to driver implementation
+and system integration.
 
-Send the lowest and highest level in the mask, as smu10 does, and reject
-levels above those the SMU has enabled, as smu10 and vega20 do.
+1 Device Tree Bindings Updates 
+Added audio power domain and S4 audio clock support for S4 SoC.
+Added S4 audio tocodec binding support.
 
-Fixes: d7341ef66870 ("drm/amd/powerplay: add some hwmgr functions for sysfs interface on Carrizo")
-Signed-off-by: Joshua Horne <hornejd@etsu.edu>
+2 Driver Implementation
+Implemented S4 tocodec driver for G12A architecture.
+Added S4 audio clock support in AXG audio clock 
+
+3 Device Tree Integration
+Add Amlogic S4 audio subsystem support in arm64 DTS.
+
+Signed-off-by: jiebing chen <jiebing.chen@amlogic.com>
 ---
-I found this while working on overdrive support for Carrizo/Stoney on my
-laptop (ASUS X555DA, A10-8700P); that series will follow separately.
+Changes in v8: 
+- The S4 clock-enable macros now have an _S4 suffix, and S4 uses its own source mux at the correct bit instead of the SM1 one.
+- Align the new CTRL0_BCLK_ENABLE_SHIFT and CTRL0_MCLK_ENABLE_SHIFT macros with the existing style: two spaces after #define, 
+  and the values lined up with the other CTRL0_* macros.
+- Rename the DAPM supplies from I2S BCLK Gate and I2S MCLK Gate to I2S BCLK EN and I2S MCLK EN.
+- Connect both clock supplies directly to OUT EN. They are no longer chained, so the audio path does not pass through them. 
+  OUT EN enables BCLK and MCLK when it is powered on. The audio path remains IN -> SRC -> OUT EN -> OUT Capture.
+- 5 V regulator. Drop regulator-boot-on and regulator-always-on from vcc5v_reg. It stays the amplifier VCC-supply and is enabled only when the amplifier is in use.
+- Unused codec. Remove the dmics node. Nothing referenced it.
+- Amplifier name. Change sound-name-prefix from 10U2 to Analog_PA, and update the audio-routing entries to Analog_PA INL, 
+  Analog_PA INR, Analog_PA OUTL, and Analog_PA OUTR.
+- 64 kHz clocks. Keep CLKID_HIFI_PLL at 1179648000 for the 48 kHz family and CLKID_MPLL0 at 270950400 for the 44.1 kHz family. Add CLKID_MPLL1 at 393216000 for the 64 kHz family.
+- Coaxial SPDIF output. Add spdif_out_h_pins in meson-s4.dtsi. GPIOH_4 is muxed as spdif_out_h / spdif_out, with a 3 mA drive and the bias disabled. 
+  &spdifout_a uses that pinctrl so the coaxial output can be enabled.
+- Disabled by default. Mark the audio controllers, the audio clock controller, and the audio arbiter as status = "disabled" in meson-s4.dtsi. AQ222 enables only the instances it uses.
+- Codec supply. Move AVDD-supply = <&vddio_ao1v8> out of the SoC dtsi and onto the board-level &acodec node.
+- Add the missing blank lines after the new power-domains property and after the new allOf conditional block.
+- Link to v7: https://patch.msgid.link/20261021-audio_drvier-v7-0-2b9aeae9cb8a@amlogic.com
 
-Tested on that laptop, 7.3.1 with this patch applied to amdgpu. In manual
-mode:
-- "echo N > pp_dpm_sclk" for each N from 0 to 7 moves the current level
-  marker to N
-- under GPU load, "echo 2 3 4 5" keeps the clock between levels 2 and 5,
-  and "echo 0 1 2 3 4 5 6 7" lets it reach level 7 again
-- "echo 8" and "echo 0 8" fail with -EINVAL and leave the level unchanged
-Without the patch, "echo 0" selected level 1, "echo 3" and "echo 7" did not
-select the requested level, and "echo 8" was accepted.
-On amd-staging-drm-next the patch applies unchanged and builds without new
-warnings with W=1, sparse and smatch.
+Changes in v7:
+- Use the supply widget to manage the tocodec clock enable signal.
+- Remove redundant MPLL frequencies.
+- Fixed dt_binding warning
+- Link to v6: https://lore.kernel.org/r/20260126-audio_drvier-v6-0-99e350855bc2@amlogic.com
 
-I used an AI coding assistant (Claude Code) while working on this. It
-found the bug, wrote the change and a draft of the changelog, and wrote
-and ran the build checks and test scripts. I reviewed the change and the
-changelog, ran the tests on my hardware, and I am responsible for the
-patch.
+Changes in v6:
+- Fix the problem of string for Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yaml
+- Remove clock pad register, and it will be submitted as an independent patch.
+- Redescribe sound/soc/meson/g12a-toacodec.c
+- Link to v5: https://lore.kernel.org/r/20250710-audio_drvier-v5-0-d4155f1e7464@amlogic.com
+
+Changes in v5:
+- Fix warning Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yam when make dt_binding_check
+- The audio reg is mounted below the APB bus in dts file.
+- Deal with pad clock in a distinct controller.
+- Fix warning for sound/soc/meson/g12a-toacodec.c
+- Link to v4: https://lore.kernel.org/r/20250319-audio_drvier-v4-0-686867fad719@amlogic.com
+
+Changes in v4:
+- fix dtb check warning 
+- add maxItems of power domain for dt-bindings
+- fixed audio clock pads regmap base and reg offset 
+- use dapm widget to control tocodec bclk and mclk enable
+- Link to v3: https://lore.kernel.org/r/20250228-audio_drvier-v3-0-dbfd30507e4c@amlogic.com
+
+Changes in v3:
+- remove g12a tocodec switch event
+- Modify the incorrect title for dt-bindings
+- Link to v2: https://lore.kernel.org/r/20250214-audio_drvier-v2-0-37881fa37c9e@amlogic.com
+
+Changes in v2:
+- remove tdm pad control and change tocodec base on g12a
+- change hifipll rate to support 24bit
+- add s4 audio clock
+- Link to v1: https://lore.kernel.org/r/20250113-audio_drvier-v1-0-8c14770f38a0@amlogic.com
+
+To: Neil Armstrong <neil.armstrong@linaro.org>
+To: Jerome Brunet <jbrunet@baylibre.com>
+To: Michael Turquette <mturquette@baylibre.com>
+To: Stephen Boyd <sboyd@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Liam Girdwood <lgirdwood@gmail.com>
+To: Mark Brown <broonie@kernel.org>
+To: Jaroslav Kysela <perex@perex.cz>
+To: Takashi Iwai <tiwai@suse.com>
+To: Kevin Hilman <khilman@baylibre.com>
+To: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org
+Cc: linux-clk@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-sound@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+
 ---
- drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c | 14 ++++++++++++--
- 1 file changed, 12 insertions(+), 2 deletions(-)
+Jiebing Chen (5):
+      dt-bindings: clock: meson: Add audio power domain for S4 soc
+      dt-bindings: Asoc: axg-audio: Add S4 audio tocodec
+      ASoC: meson: g12a-toacodec: Add S4 tocodec driver
+      clk: meson: axg_audio: add S4 support
+      arm64: dts: amlogic: Add Amlogic S4 Audio
 
-diff --git a/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c b/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c
-index 8f82d7c07e8c..5a3f697a37a2 100644
---- a/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c
-+++ b/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c
-@@ -1483,15 +1483,25 @@ static int smu8_store_cc6_data(struct pp_hwmgr *hwmgr, uint32_t separation_time,
- static int smu8_force_clock_level(struct pp_hwmgr *hwmgr,
- 		enum pp_clock_type type, uint32_t mask)
- {
-+	struct phm_clock_voltage_dependency_table *table =
-+				hwmgr->dyn_state.vddc_dependency_on_sclk;
-+	uint32_t low, high;
-+
- 	switch (type) {
- 	case PP_SCLK:
-+		/* the SMU takes level indices, not a mask of levels */
-+		low = mask ? (ffs(mask) - 1) : 0;
-+		high = mask ? (fls(mask) - 1) : 0;
-+		if (high >= min(table->count, smu8_get_max_sclk_level(hwmgr)))
-+			return -EINVAL;
-+
- 		smum_send_msg_to_smc_with_parameter(hwmgr,
- 				PPSMC_MSG_SetSclkSoftMin,
--				mask,
-+				low,
- 				NULL);
- 		smum_send_msg_to_smc_with_parameter(hwmgr,
- 				PPSMC_MSG_SetSclkSoftMax,
--				mask,
-+				high,
- 				NULL);
- 		break;
- 	default:
-
+ .../bindings/clock/amlogic,axg-audio-clkc.yaml     |  17 +
+ .../bindings/sound/amlogic,g12a-toacodec.yaml      |   1 +
+ .../boot/dts/amlogic/meson-s4-s805x2-aq222.dts     | 311 ++++++++++++++++
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi          | 396 +++++++++++++++++++++
+ drivers/clk/meson/axg-audio.c                      | 165 +++++++++
+ sound/soc/meson/g12a-toacodec.c                    |  64 ++++
+ 6 files changed, 954 insertions(+)
 ---
-base-commit: 47df73aa49d1988c8f684b7caf8be6570e966844
-change-id: 20261109-smu8-sclk-fix-2eacba2cbfc0
+base-commit: a0c666c25aeefd16f4b088c6549a6fb6b65a8a1d
+change-id: 20250110-audio_drvier-07a5381c494b
+
+Best regards,
+--  
+Jiebing Chen <jiebing.chen@amlogic.com>
 
