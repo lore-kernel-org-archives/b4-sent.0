@@ -1,10 +1,10 @@
 From: Long Zhao <longzhao@ambarella.com>
-Date: Tue, 10 Nov 2026 12:32:37 +0800
-Subject: [PATCH v14 12/14] gpio: pl061: tidy up IRQ trigger logging
+Date: Tue, 10 Nov 2026 12:32:38 +0800
+Subject: [PATCH v14 13/14] lib/string_choices: add str_rising_falling()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-cv75-gpio-v14-12-e586aad0467a@ambarella.com>
+Message-Id: <20261110-cv75-gpio-v14-13-e586aad0467a@ambarella.com>
 References: <20261110-cv75-gpio-v14-0-e586aad0467a@ambarella.com>
 In-Reply-To: <20261110-cv75-gpio-v14-0-e586aad0467a@ambarella.com>
 To: Bartosz Golaszewski <brgl@kernel.org>, linux-gpio@vger.kernel.org
@@ -15,42 +15,49 @@ Cc: Linus Walleij <linusw@kernel.org>, Michael Walle <mwalle@kernel.org>,
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
  Conor Dooley <conor+dt@kernel.org>, Mika Westerberg <westeri@kernel.org>, 
  devicetree@vger.kernel.org, Long Zhao <longzhao@ambarella.com>, 
- Long Zhao <zl020895@163.com>, linux-kernel@vger.kernel.org
+ Long Zhao <zl020895@163.com>, linux-kernel@vger.kernel.org, 
+ Kees Cook <kees@kernel.org>, linux-hardening@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794285162; l=970;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794285162; l=959;
  i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=NH6oHUs4Wq4OKHpVbaA3cH3G5q6ygkmHpl5qjy7ZpOc=;
- b=7l3FQdyf0Imyw5EhO+e9op6POfCTzVptpLZE11bVQyfd7EaL8Xz3zLP9MXhleKZm0EDwGoseK
- zbRqTaiDG2nDGDc6sFRfrlsqr870iGLQMz7E+I6M+XCsCwILym3an5R
+ bh=wyB82tzUGO+6Su8wsiZ1PCnlZE8C1WY1st0J3Yh3blM=;
+ b=ujWayqqQBdxFq5SKSKgXak3dYThVTLR5XGPpoFdHd0TQW3ngeSzAXibkTrG+AXd0Oyf2AbZT7
+ yuiDKQz51EzB/SZO0I77rOUkeopsiattzaFAsIuzsW1XVFy6UYFfjmL
 X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
  pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
 X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Join the level-and-edge dev_err() into one string literal so a grep
-for "edge detection" finds it.
+Add str_rising_falling() and str_falling_rising() for code that
+prints an IRQ trigger edge.
 
 Suggested-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Reviewed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 Signed-off-by: Long Zhao <longzhao@ambarella.com>
----
- drivers/gpio/gpio-pl061.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/gpio/gpio-pl061.c b/drivers/gpio/gpio-pl061.c
-index ff9215447bbb..63ec5363dd5f 100644
---- a/drivers/gpio/gpio-pl061.c
-+++ b/drivers/gpio/gpio-pl061.c
-@@ -170,8 +170,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
+---
+Cc: Kees Cook <kees@kernel.org>
+Cc: linux-hardening@vger.kernel.org
+---
+ include/linux/string_choices.h | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/include/linux/string_choices.h b/include/linux/string_choices.h
+index ee84087d4b26..c3a0360334d6 100644
+--- a/include/linux/string_choices.h
++++ b/include/linux/string_choices.h
+@@ -65,6 +65,12 @@ static inline const char *str_read_write(bool v)
+ }
+ #define str_write_read(v)		str_read_write(!(v))
  
- 	if ((trigger & IRQ_TYPE_LEVEL_MASK) && (trigger & IRQ_TYPE_EDGE_BOTH)) {
- 		dev_err(parent,
--			"trying to configure line %d for both level and edge "
--			"detection, choose one!\n",
-+			"trying to configure line %d for both level and edge detection, choose one!\n",
- 			offset);
- 		return -EINVAL;
- 	}
++static inline const char *str_rising_falling(bool v)
++{
++	return v ? "rising" : "falling";
++}
++#define str_falling_rising(v)		str_rising_falling(!(v))
++
+ static inline const char *str_true_false(bool v)
+ {
+ 	return v ? "true" : "false";
 
 -- 
 2.34.1
