@@ -1,116 +1,98 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 10:08:14 +0000
-Subject: [PATCH RFC 12/12] arm64: dts: rockchip: Add the VEPU580 encoder
- cores to the RK3588
+Subject: [PATCH 0/3] usb: typec: Find a Type-C partner after a warm reboot
+ on the Orange Pi 5
+Date: Tue, 10 Nov 2026 10:39:03 +0000
+Message-Id: <20261110-tcpm-attach-reboot-v1-0-7657cc1e2dca@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-rkvenc-v1-12-ea8b47122d8c@gmail.com>
-References: <20261110-rkvenc-v1-0-ea8b47122d8c@gmail.com>
-In-Reply-To: <20261110-rkvenc-v1-0-ea8b47122d8c@gmail.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrDuQmCroVaSL/Iw6Qo0kowji3
+ Zu2y2/x3gWZElOGvrog0cGZ41qgHxX42a4TIYdiqFXdaq0Vit/eaEWsnzGRi1EwdCY0o2mfyjg
+ o4ZZo5PM3HV5/590t5OV7gvv+AGKCFY12AAAA
+X-Change-ID: 20261110-tcpm-attach-reboot-d93d5f36403b
+To: Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Paul Kocialkowski <paulk@sys-base.io>, 
- =?utf-8?q?Sven_P=C3=BCschel?= <s.pueschel@pengutronix.de>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Detlev Casanova <detlev.casanova@collabora.com>, 
- Hans Verkuil <hverkuil@kernel.org>, Jiaxing Hu <gahing@gahingwoo.com>, 
- Arun Iyengar <aiyengar1990@gmail.com>
+ linux-rockchip@lists.infradead.org, Arun Iyengar <aiyengar1990@gmail.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794305283; l=3181;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794307143; l=3436;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=kagifa6Lmg0J/Xo2eD/GKAYer7IvTfvqdz6aGlCXzQU=;
- b=Z55zyJzLXjk5M0iOHQBuQmkiC3qqZVinOuzqIhqBgV9OAHTjmiFRh0C7Jcn5sf5tp6ip/f6hn
- dUnPCBOY7WSCOjYQ4VM4zLV2TEaEVljLIwKq9tLlNcHjTz+3XVBALkU
+ bh=iGPQ954ODCaz+2pIX0GxmrENRgHVatfGiGCahDtE+GM=;
+ b=nGR6DIkFNsf6kRM8uWdYzOdsBCNyoOpAc44KAMwDdS41o8nk4dhn65CoIsEK9OkpUeJHJW0my
+ tqQhYt+fWPjB1vnMrS5oq7kcyeSyQOvqVT5cjhkpuc4tdukMhi/hDo6
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the two VEPU580 (RKVENC) video encoder cores and their IOMMUs.
+After a warm reboot, an Orange Pi 5 (RK3588S, FUSB302) often did not
+see a Genesys Logic based USB-C to DisplayPort cable that stayed
+plugged in: tcpm toggled in SRC_UNATTACHED, the FUSB302 raised no
+interrupt at all, and only a replug at the board brought DisplayPort
+back. Three changes fix it:
 
-Interrupts, clocks, resets, power domains and the clock rates (500 MHz
-AXI, 800 MHz core) are taken from the Rockchip BSP rk3588s.dtsi. Each
-IOMMU has two register banks and two interrupts, and keeps the BSP's
-rockchip,disable-mmu-reset.
+  1. tcpm: tcpm_init() sets two states back to back with the port lock
+     held, so the state machine work is queued twice, and the second
+     run applies the PORT_RESET -> PORT_RESET_WAIT_OFF transition at
+     once: tErrorRecovery (100 ms) took 6 us. A pending delay is now
+     re-armed for the time left. This is generic, with Fixes: and
+     Cc: stable.
+  2. fusb302: toggle with the default Rp current. The FUSB302 found
+     the cable within seconds when it toggled with the default current
+     (after another device was detached), never while it toggled with
+     Rp 3.0A. tcpm still sets the configured Rp level through set_cc()
+     once the port is attached.
+  3. arm64: dts: rockchip: the Orange Pi 5/5B Type-C port is
+     self-powered (its VBUS comes from vcc5v0_sys, the board runs from
+     a separate power input), so tcpm opens CC during error recovery
+     and the partner sees a real detach at boot. This one is for the
+     Rockchip tree; it does not depend on 1 and 2 to build, but without
+     patch 1 the open-CC period at boot is cut short. It is based on
+     usb-next; on top of my pending "arm64: dts: rockchip: Add USB-C DP
+     AltMode for Orange Pi 5/5B", which adds a node next to the same
+     line, it needs git am -3 (no conflict). I can resend it rebased.
+
+Testing, on an Orange Pi 5 with 7.3-based kernels: before, after a
+warm reboot the cable was not detected (0 FUSB302 interrupts since
+boot) until it was replugged at the board. With the three patches it
+was detected on 4/4 boots, the first one starting from that stuck
+state, with DP connected 1-2 s after boot; the three were tested
+together, not one at a time. The patches have been in every kernel I
+have run since; in a later run of 30 reboots with a USB-C DisplayPort
+monitor, the partner was attached on 30/30 boots, and the tcpm log of
+every boot shows CC opened in PORT_RESET and 100-112 ms spent there
+before PORT_RESET_WAIT_OFF. Not tested: other TCPCs (patch 1 is
+generic, patch 2 only changes fusb302), and the Orange Pi 5B (same
+dtsi). W=1 arm64 builds of drivers/usb/typec at every patch,
+CHECK_DTBS for the Orange Pi 5 and 5B and checkpatch --strict are
+clean.
+
+This series was developed with Claude (Anthropic) as a coding
+assistant: it wrote the code and the commit messages, and I reviewed
+and tested every change as described above.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 56 +++++++++++++++++++++++++++
- 1 file changed, 56 insertions(+)
+Arun Iyengar (3):
+      usb: typec: tcpm: Don't cut a pending state delay short on a re-queue
+      usb: typec: fusb302: Toggle with the default Rp current
+      arm64: dts: rockchip: Mark the Orange Pi 5/5B Type-C port self-powered
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-index aa69fd3793fd..9c813e6475c5 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-@@ -1397,6 +1397,62 @@ vepu121_3_mmu: iommu@fdbac800 {
- 		#iommu-cells = <0>;
- 	};
- 
-+	vepu580_0: video-codec@fdbd0000 {
-+		compatible = "rockchip,rk3588-vepu580";
-+		reg = <0x0 0xfdbd0000 0x0 0x6000>;
-+		interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH 0>;
-+		clocks = <&cru ACLK_RKVENC0>, <&cru HCLK_RKVENC0>,
-+			 <&cru CLK_RKVENC0_CORE>;
-+		clock-names = "aclk", "hclk", "core";
-+		assigned-clocks = <&cru ACLK_RKVENC0>, <&cru CLK_RKVENC0_CORE>;
-+		assigned-clock-rates = <500000000>, <800000000>;
-+		resets = <&cru SRST_A_RKVENC0>, <&cru SRST_H_RKVENC0>,
-+			 <&cru SRST_RKVENC0_CORE>;
-+		reset-names = "aclk", "hclk", "core";
-+		iommus = <&vepu580_0_mmu>;
-+		power-domains = <&power RK3588_PD_VENC0>;
-+	};
-+
-+	vepu580_0_mmu: iommu@fdbdf000 {
-+		compatible = "rockchip,rk3588-iommu", "rockchip,rk3568-iommu";
-+		reg = <0x0 0xfdbdf000 0x0 0x40>, <0x0 0xfdbdf040 0x0 0x40>;
-+		interrupts = <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH 0>,
-+			     <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH 0>;
-+		clocks = <&cru ACLK_RKVENC0>, <&cru HCLK_RKVENC0>;
-+		clock-names = "aclk", "iface";
-+		power-domains = <&power RK3588_PD_VENC0>;
-+		rockchip,disable-mmu-reset;
-+		#iommu-cells = <0>;
-+	};
-+
-+	vepu580_1: video-codec@fdbe0000 {
-+		compatible = "rockchip,rk3588-vepu580";
-+		reg = <0x0 0xfdbe0000 0x0 0x6000>;
-+		interrupts = <GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH 0>;
-+		clocks = <&cru ACLK_RKVENC1>, <&cru HCLK_RKVENC1>,
-+			 <&cru CLK_RKVENC1_CORE>;
-+		clock-names = "aclk", "hclk", "core";
-+		assigned-clocks = <&cru ACLK_RKVENC1>, <&cru CLK_RKVENC1_CORE>;
-+		assigned-clock-rates = <500000000>, <800000000>;
-+		resets = <&cru SRST_A_RKVENC1>, <&cru SRST_H_RKVENC1>,
-+			 <&cru SRST_RKVENC1_CORE>;
-+		reset-names = "aclk", "hclk", "core";
-+		iommus = <&vepu580_1_mmu>;
-+		power-domains = <&power RK3588_PD_VENC1>;
-+	};
-+
-+	vepu580_1_mmu: iommu@fdbef000 {
-+		compatible = "rockchip,rk3588-iommu", "rockchip,rk3568-iommu";
-+		reg = <0x0 0xfdbef000 0x0 0x40>, <0x0 0xfdbef040 0x0 0x40>;
-+		interrupts = <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH 0>,
-+			     <GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH 0>;
-+		clocks = <&cru ACLK_RKVENC1>, <&cru HCLK_RKVENC1>;
-+		clock-names = "aclk", "iface";
-+		power-domains = <&power RK3588_PD_VENC1>;
-+		rockchip,disable-mmu-reset;
-+		#iommu-cells = <0>;
-+	};
-+
- 	vdec0: video-codec@fdc38000 {
- 		compatible = "rockchip,rk3588-vdec";
- 		reg = <0x0 0xfdc38000 0x0 0x100>,
+ arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi |  1 +
+ drivers/usb/typec/tcpm/fusb302.c                        | 13 +++++++++++--
+ drivers/usb/typec/tcpm/tcpm.c                           | 12 ++++++++++++
+ 3 files changed, 24 insertions(+), 2 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261110-tcpm-attach-reboot-d93d5f36403b
 
--- 
-2.55.0
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
