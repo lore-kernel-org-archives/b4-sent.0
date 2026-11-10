@@ -1,71 +1,81 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 06:19:37 +0000
-Subject: [PATCH 2/2] sunxi: configs: OrangePi Zero2: talk to the AXP305
- over RSB
+Subject: [PATCH 0/2] sunxi: dram: H616 DDR3 init delays, retry transient
+ training failures
+Date: Tue, 10 Nov 2026 06:20:09 +0000
+Message-Id: <20261110-h616-dram-retry-v1-0-ccaa6d7a6ef1@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-h616-rsb-spl-v1-2-bf91cc26507e@gmail.com>
-References: <20261110-h616-rsb-spl-v1-0-bf91cc26507e@gmail.com>
-In-Reply-To: <20261110-h616-rsb-spl-v1-0-bf91cc26507e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQEYzaq5QuopnoCNoy0VIR7
+ 27U5Vv8v0FkFY7wzDZQ/kmUz5RAjwza3k0do/hkyE1uichgb8miVzei8qwrVsFVvqhDaYyHVH2
+ Vg/yv4+t9Oy7NwO18bmDfDx8fKAlzAAAA
+X-Change-ID: 20261110-h616-dram-retry-8fa8d59f700d
 To: u-boot@lists.u-boot-project.org
 Cc: Andre Przywara <andre.przywara@arm.com>, Tom Rini <trini@konsulko.com>, 
  Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Heiko Schocher <hs@nabladev.com>, Arun Iyengar <aiyengar1990@gmail.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>, 
  Jernej Skrabec <jernej.skrabec@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794291575; l=1611;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794291609; l=2503;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Sm82lPYxuOnv7tZpazlI8lKhm1309USyRmkrQQsHfic=;
- b=biMMnyS/UxsM1i2pruGtOwcJoUclia474RqNm9ujXwIJXq2dAKydTP4WLhGkAsrFLtj4MdB2r
- eLREDXBHZx8Bfg9hCIt5cf8At7kZbJzbb4Y3ay8J8h5HQbETXsgGbih
+ bh=QbVBUcLtTolOgmS2ZIiW8adEurzeeDNLLJm66LF81es=;
+ b=fEO6n6g9+e3XT9y7P9BiN4kHKrOWJenKom4Kc+jawwTQ8CgOBHZBp8c4mSwkyPTKuSaJFxkYO
+ twHItDBp+rkBknpi9rOm7o9N9PE8yIb9a+bnExCvlySYgR1XcDEe6+F
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The OrangePi Zero2 device tree puts the AXP305 on r_rsb (pmic@745).
-TF-A and Linux use RSB, and the PMIC stays in RSB mode across warm
-reboots, so the SPL's R_I2C access fails on every reboot ("Failed to set
-core voltage! Can't set CPU frequency", CPU left at 408 MHz until Linux
-cpufreq takes over).
+On an OrangePi Zero2 (H616, 1 GiB DDR3, 720 MHz) a hardware watchdog
+reset taken while the DRAM was busy (a system thrashing under OOM, or
+stress-ng loading the memory at about 75 C) sometimes leaves the DRAM
+untrainable for up to about three seconds. The SPL then either panics
+with "This DRAM setup is currently not supported." or, after the reset
+that the panic causes, settles for a 16-bit bus and boots with 512 MiB
+until the next reboot. Idle reboots, cold boots and idle watchdog
+resets never showed it.
 
-Use the RSB controller in the SPL instead and drop the now unused legacy
-mvtwsi R_I2C setup. CONFIG_SPL_I2C stays: it builds drivers/i2c, and so
-the RSB driver, into the SPL.
+Patch 1 makes the H616 DDR3 init use the JEDEC RESET#/CKE delays. It is
+a compliance fix; on its own it did not measurably change the failure
+rate.
 
-Tested on an OrangePi Zero2: before this change a cold boot was clean
-and every warm reboot printed the error; with it neither does. U-Boot
-proper still finds the PMIC on RSB through the DM driver.
+Patch 2 makes the rank/width detection keep the best combination that
+trained in any pass, retries with an exponential backoff (12 passes,
+about 2.5 s) while nothing trains, and retries the size probe and the
+final init the same way. A board that trains first time pays for a
+couple of quickly failing attempts; a retry is reported in the DRAM line
+of the SPL. The final init helper is shared, so H6 and A523 get the
+retry for that step too.
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Testing on the OrangePi Zero2 is in the commit messages: with both
+patches, 60 hot watchdog resets came up with 1 GiB (21 of them needed a
+retry, the longest 1.7 s), and the board has since done 316 logged boots
+with 1 GiB and no retry. Build-tested for orangepi_zero2, orangepi_3
+(H6) and orangepi_4a (A523) with no new warnings; H6 and A523 are not
+run-tested.
+
+These patches were developed with Claude (Anthropic) as a
+coding assistant: it investigated the problems, wrote the code and the
+commit messages. I reviewed them, and they were tested on an Orange Pi
+Zero2 (H616) as described above.
+
 ---
- configs/orangepi_zero2_defconfig | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+Arun Iyengar (2):
+      sunxi: H616: dram: DDR3: use the JEDEC reset and CKE init delays
+      sunxi: dram: retry transient DRAM training failures
 
-diff --git a/configs/orangepi_zero2_defconfig b/configs/orangepi_zero2_defconfig
-index 371398fb70f..a45402e5ba8 100644
---- a/configs/orangepi_zero2_defconfig
-+++ b/configs/orangepi_zero2_defconfig
-@@ -9,16 +9,12 @@ CONFIG_DRAM_SUNXI_TPR6=0x33808080
- CONFIG_DRAM_SUNXI_TPR10=0xf83438
- CONFIG_MACH_SUN50I_H616=y
- CONFIG_SUNXI_DRAM_H616_DDR3_1333=y
--CONFIG_R_I2C_ENABLE=y
- CONFIG_SPL_SPI_SUNXI=y
- CONFIG_SPL_SUNXI_LED_STATUS=y
- CONFIG_SPL_SUNXI_LED_STATUS_GPIO=76
- # CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
- CONFIG_SPL_I2C=y
--CONFIG_SPL_SYS_I2C_LEGACY=y
--CONFIG_SYS_I2C_MVTWSI=y
--CONFIG_SYS_I2C_SLAVE=0x7f
--CONFIG_SYS_I2C_SPEED=400000
-+CONFIG_SYS_I2C_SUN8I_RSB=y
- CONFIG_MTD=y
- CONFIG_SPI_FLASH_MACRONIX=y
- CONFIG_SUN8I_EMAC=y
+ arch/arm/include/asm/arch-sunxi/dram_dw_helpers.h |   2 +
+ arch/arm/mach-sunxi/dram_dw_helpers.c             | 167 +++++++++++++++++-----
+ arch/arm/mach-sunxi/dram_sun50i_h6.c              |   2 +-
+ arch/arm/mach-sunxi/dram_sun50i_h616.c            |   2 +-
+ arch/arm/mach-sunxi/dram_sun55i_a523.c            |   2 +-
+ arch/arm/mach-sunxi/dram_timings/h616_ddr3_1333.c |  11 +-
+ 6 files changed, 147 insertions(+), 39 deletions(-)
+---
+base-commit: ecdcf9e365df6249a57cd8cc946e7026804ff4ae
+change-id: 20261110-h616-dram-retry-8fa8d59f700d
 
--- 
-2.55.0
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
