@@ -1,66 +1,136 @@
-From: =?utf-8?q?Eren_=C3=96zen?= <erenozen@protonmail.com>
-Date: Tue, 10 Nov 2026 07:21:58 +0300
-Subject: [PATCH 3/3] drm/amd/display: Don't queue FRL status polling on a
- NULL workqueue
+From: Igor Velkov <iav@iav.lv>
+Date: Tue, 10 Nov 2026 04:30:24 +0000
+Subject: [PATCH] clk: rockchip: rk356x: Set twice the SD/SDIO card clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261110-frl-polling-wq-teardown-v1-3-0ff028d5c35b@protonmail.com>
-References: <20261110-frl-polling-wq-teardown-v1-0-0ff028d5c35b@protonmail.com>
-In-Reply-To: <20261110-frl-polling-wq-teardown-v1-0-0ff028d5c35b@protonmail.com>
-To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
- Rodrigo Siqueira <siqueira@igalia.com>, 
- Alex Deucher <alexander.deucher@amd.com>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Fangzhi Zuo <Jerry.Zuo@amd.com>
-Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?Eren_=C3=96zen?= <erenozen@protonmail.com>, 
- timur.kristof@gmail.com
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794284542; l=1442;
- i=erenozen@protonmail.com; s=20261110; h=from:subject:message-id;
- bh=wLsy0qXzGivFIS3RenLXXCnUX13c+lf2i/HaM9PsxK8=;
- b=mR+ljlJwk2WHYubtbTwRbaDnmBRskhXtjq5q620BGufNFrws1x9+Eh96bJeVCjWQqvlfWV7ME
- 7k6oDP58V+lAirwDZ3KlPRpCE5oku0XdIw3J8IiZEdO+cDrVPMbRbFD
-X-Developer-Key: i=erenozen@protonmail.com; a=ed25519;
- pk=tPAwfVmIbYF3QziJ3LcoTIZDU12BsjVK+EkAB9nN1gA=
-X-Endpoint-Received: by B4 Relay for erenozen@protonmail.com/20261110 with auth_id=1479
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261110-rk3568-sdmmc-clk-v1-1-482eeb42f571@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAN+d8moC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0MD3aJsY1MzC93ilNzcZN3knGxdS9Ok5OTEVHMjI3NzJaC2gqLUtMw
+ KsJHRsbW1ANN1e+hiAAAA
+To: Kever Yang <kever.yang@rock-chips.com>, 
+ Quentin Schulz <u-boot@0leil.net>
+Cc: Simon Glass <sjg@chromium.org>, Lukasz Majewski <lukma@nabladev.com>, 
+ Tom Rini <trini@konsulko.com>, Elaine Zhang <zhangqing@rock-chips.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, u-boot@lists.u-boot-project.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3285; i=iav@iav.lv;
+ h=from:subject:message-id; bh=R2OKm69sEn6Alznt2gmTcH5ZSpX61IlnRP6pIL+WazA=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmf5j5I7Vh+ziZF11Lp3h6ZSPlkUT2l5QuUjn2q5Vj8Y
+ gc/p/rijlIWBjEuBlkxRZYJhzRuZSy5+tffw/wBzBxWJpAhDFycAjCRNe4M//PiT7768bac/ezU
+ M+vnM/zebL9GNml1xP81eS6Nma3TvJQY/lklpr0M07OXqRJQCj7kduD2uceXbul1rO3iuiFafaX
+ jISsA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If create_singlethread_workqueue() fails in amdgpu_dm_init(), the
-driver only logs an error and continues with
-hdmi_frl_status_polling_wq set to NULL. The next atomic commit that
-enables an HDMI FRL stream then passes that NULL pointer to
-queue_delayed_work() and crashes.
+The dw_mmc controllers divide their input clock by 2, but
+rk3568_sdmmc_set_clk() selects a parent equal to the requested card
+clock, so the card runs at half of it: 25 MHz instead of 50 MHz in high
+speed mode. The RK3399 and RK3328 clock drivers already set twice the
+rate for their dw_mmc controllers.
 
-Skip the polling when the workqueue is missing, the same way
-amdgpu_dm_atomic_commit_tail() already checks vblank_control_workqueue
-before using it. FRL link status is then not polled, but the display
-keeps working.
+Select the fastest parent that does not exceed twice the requested
+rate, or the slowest one, and report half of the parent rate.
 
-Fixes: 5c9b8b27a883 ("drm/amd/display: Tie FRL support into amdgpu_dm")
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Eren Özen <erenozen@protonmail.com>
+On ODROID-M1 with a SanDisk 128 GB card in high speed mode, reading
+512 MiB with mmc read takes 22 s instead of 44 s.
+
+Fixes: 4a262feba3a5 ("rockchip: rk3568: add clock driver")
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Tested on ODROID-M1 with this change on v2026.07: CLKSEL_CON(30) selects
+the 100 MHz parent for a 50 MHz card clock. The CRC32 of a 512 MiB block
+read with mmc read is the same at 25 and 50 MHz, and the CRC32 of another
+block is the same as computed in Linux. With the SPL erased from SPI, SPL
+and U-Boot load from the SD card, also after two resets with sysrq-b.
+---
+ drivers/clk/rockchip/clk_rk3568.c | 43 +++++++++++++++------------------------
+ 1 file changed, 16 insertions(+), 27 deletions(-)
 
-diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-index fed1893d2f..798e4401fe 100644
---- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-+++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-@@ -4769,7 +4769,7 @@ static void amdgpu_dm_commit_streams(struct drm_atomic_commit *state,
- 			break;
- 		}
+diff --git a/drivers/clk/rockchip/clk_rk3568.c b/drivers/clk/rockchip/clk_rk3568.c
+index 181917cf92a..06d7d4741c6 100644
+--- a/drivers/clk/rockchip/clk_rk3568.c
++++ b/drivers/clk/rockchip/clk_rk3568.c
+@@ -1426,19 +1426,20 @@ static ulong rk3568_sdmmc_get_clk(struct rk3568_clk_priv *priv, ulong clk_id)
+ 		return -ENOENT;
  	}
--	if (frl_stream_found) {
-+	if (frl_stream_found && dm->hdmi_frl_status_polling_wq) {
- 		if (queue_delayed_work(dm->hdmi_frl_status_polling_wq,
- 				       &dm->hdmi_frl_status_polling_work,
- 				       msecs_to_jiffies(dm->hdmi_frl_status_polling_delay_ms)))
+ 
++	/* The card clock is half of the parent: dw_mmc divides it by 2 */
+ 	switch (sel) {
+ 	case CLK_SDMMC_SEL_24M:
+-		return OSC_HZ;
++		return OSC_HZ / 2;
+ 	case CLK_SDMMC_SEL_400M:
+-		return 400 * MHz;
++		return 400 * MHz / 2;
+ 	case CLK_SDMMC_SEL_300M:
+-		return 300 * MHz;
++		return 300 * MHz / 2;
+ 	case CLK_SDMMC_SEL_100M:
+-		return 100 * MHz;
++		return 100 * MHz / 2;
+ 	case CLK_SDMMC_SEL_50M:
+-		return 50 * MHz;
++		return 50 * MHz / 2;
+ 	case CLK_SDMMC_SEL_750K:
+-		return 750 * KHz;
++		return 750 * KHz / 2;
+ 	default:
+ 		return -ENOENT;
+ 	}
+@@ -1448,34 +1449,22 @@ static ulong rk3568_sdmmc_set_clk(struct rk3568_clk_priv *priv,
+ 				  ulong clk_id, ulong rate)
+ {
+ 	struct rk3568_cru *cru = priv->cru;
++	ulong parent = rate * 2;
+ 	int src_clk;
+ 
+-	switch (rate) {
+-	case OSC_HZ:
+-	case 26 * MHz:
+-	case 25 * MHz:
+-		src_clk = CLK_SDMMC_SEL_24M;
+-		break;
+-	case 400 * MHz:
++	/* Fastest parent not above twice the card clock, or the slowest one */
++	if (parent >= 400 * MHz)
+ 		src_clk = CLK_SDMMC_SEL_400M;
+-		break;
+-	case 300 * MHz:
++	else if (parent >= 300 * MHz)
+ 		src_clk = CLK_SDMMC_SEL_300M;
+-		break;
+-	case 100 * MHz:
++	else if (parent >= 100 * MHz)
+ 		src_clk = CLK_SDMMC_SEL_100M;
+-		break;
+-	case 52 * MHz:
+-	case 50 * MHz:
++	else if (parent >= 50 * MHz)
+ 		src_clk = CLK_SDMMC_SEL_50M;
+-		break;
+-	case 750 * KHz:
+-	case 400 * KHz:
++	else if (parent >= OSC_HZ)
++		src_clk = CLK_SDMMC_SEL_24M;
++	else
+ 		src_clk = CLK_SDMMC_SEL_750K;
+-		break;
+-	default:
+-		return -ENOENT;
+-	}
+ 
+ 	switch (clk_id) {
+ 	case HCLK_SDMMC0:
 
+---
+base-commit: ecdcf9e365df6249a57cd8cc946e7026804ff4ae
+change-id: 20261110-rk3568-sdmmc-clk-95bccae72277
+
+Best regards,
 -- 
-2.56.0
+Igor Velkov <iav@iav.lv>
 
