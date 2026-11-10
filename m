@@ -1,66 +1,75 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Tue, 10 Nov 2026 06:03:01 +0000
-Subject: [PATCH 2/2] clk: sunxi-ng: h616: Let the S/PDIF clock set the
- audio PLL rate
+Subject: [PATCH net-next 0/2] net: stmmac: dwmac-sun8i: Jumbo frames and an
+ RX_TH fix
+Date: Tue, 10 Nov 2026 06:03:34 +0000
+Message-Id: <20261110-sun8i-emac-jumbo-v1-0-84bf00e9ffa3@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-h616-clk-emac-spdif-v1-2-e5e36e8963e4@gmail.com>
-References: <20261110-h616-clk-emac-spdif-v1-0-e5e36e8963e4@gmail.com>
-In-Reply-To: <20261110-h616-clk-emac-spdif-v1-0-e5e36e8963e4@gmail.com>
-To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, Chen-Yu Tsai <wens@kernel.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>, 
- Andre Przywara <andre.przywara@arm.com>
-Cc: linux-clk@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQqDMBAAvyJ77oJRkaRfKT3EdNUVXEs2EUH8e
+ 9P2OAwzJyhFJoV7dUKknZU3KWBuFYTZy0TIr8LQ1E1vjKlRs1hGWn3AJa/Dhp1t3ehs53vvoGT
+ vSCMfv+UDhBIKHQmef6N5WCik7xGu6wO3KepFfgAAAA==
+X-Change-ID: 20261110-sun8i-emac-jumbo-4839f984a6a9
+To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>
+Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794290580; l=1435;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794290614; l=1822;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=uVt5p9JtVDMkgUlUZbZagSzjVS3EEVHXWn6aQwkqLrw=;
- b=kyMvMV20BqetCpzD8DhhjOaPMNYBc6IvDDTj5ZZGpdi3HSJMYV5oXMWuEqnn44dsbYCkeVEBP
- oquoJsXrKj8Dp4E5xE8a1X/8YjlP2M+IRWPHyU1Gt919aOwQnKRLddx
+ bh=fve8G7g52w2v6vFX62vTvr/RCrFjlLHllgVlfUFu2aI=;
+ b=yiASFtAaGQrGGu4XHXlG2h+pF+Hzb/UBBEhAtLY9NC58E0ylgDSaZ1CZuUKHzwRDxRzWB69fK
+ xYjfYUjP8yuCPmZ059HUcJ++lca+DRT9JEoJp5/2I9MfGgy3MpRZQmU
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sun4i-spdif asks for 22.5792 or 24.576 MHz on the S/PDIF (OWA) module
-clock, depending on the sample rate family. The spdif clock has no
-CLK_SET_RATE_PARENT, so it can only divide down the rate pll-audio
-already runs at. Unless another audio device has already set the PLL for
-the right family, the power-of-two divider rounds down and the request
-succeeds at a wrong rate: about 12.3 MHz from the reset PLL value, so
-48 kHz content is sent at about 24 kHz.
+The sun8i EMAC advertises a maximum MTU of 3712, but drops every frame
+longer than 1518 bytes. Patch 2 sets the receiver's jumbo frame enable
+bit and limits the MTU to what fits in one normal descriptor buffer
+(2018). Patch 1 corrects two swapped RX threshold values; it has no
+effect on current configurations, hence no Fixes: tag.
 
-Propagate rate changes to the parent, like the audio codec clocks
-already do. This is the same change as the one just applied for the H6
-[1].
+Tested on an Orange Pi Zero2 (H616, RTL8211F over RGMII) at 1 Gbit/s,
+with a 7.3 kernel carrying both patches:
+- MTU 2000 and 2018: pings with DF set up to the full MTU pass in both
+  directions, iperf3 gives 955 Mbit/s to the board and 905 Mbit/s from
+  it, and the rx_length and rx_crc_errors counters stay at 0.
+- Setting MTU 2019 is refused.
+- At MTU 1500, a 90 minute run (bulk transfers up to 256 MiB both ways,
+  iperf3 853/873 Mbit/s, 1000 pings each of 56, 1472 and 8000 bytes)
+  had no loss and no new error counters.
 
-Link: https://lore.kernel.org/all/20261104185027.883011-1-jernej.skrabec@gmail.com/ [1]
-Fixes: 88dde5e23da1 ("clk: sunxi-ng: Add support for the Allwinner H616 CCU")
-Cc: stable@vger.kernel.org
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+In that 7.3 kernel, frames longer than 2044 bytes were dropped by a
+local norm_desc change; v7.4-rc2 does the same through commit
+834ec9530832 ("net: stmmac: drop split frames on AF_XDP zero-copy RX"),
+which patch 2 now relies on.
+
+These patches were developed with Claude (Anthropic) as a coding
+assistant. It investigated the problem and wrote the code and the commit
+messages; I reviewed them, and they were tested on an Orange Pi Zero2
+(H616) as described above.
+
 ---
- drivers/clk/sunxi-ng/ccu-sun50i-h616.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Arun Iyengar (2):
+      net: stmmac: dwmac-sun8i: Fix the RX_TH threshold encoding
+      net: stmmac: dwmac-sun8i: Enable jumbo frames up to MTU 2018
 
-diff --git a/drivers/clk/sunxi-ng/ccu-sun50i-h616.c b/drivers/clk/sunxi-ng/ccu-sun50i-h616.c
-index d2625fec651a..f703d690a563 100644
---- a/drivers/clk/sunxi-ng/ccu-sun50i-h616.c
-+++ b/drivers/clk/sunxi-ng/ccu-sun50i-h616.c
-@@ -529,7 +529,7 @@ static struct ccu_div spdif_clk = {
- 		.hw.init	= CLK_HW_INIT_PARENTS("spdif",
- 						      audio_parents,
- 						      &ccu_div_ops,
--						      0),
-+						      CLK_SET_RATE_PARENT),
- 	},
- };
- 
+ drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c | 29 +++++++++++++++++++++--
+ 1 file changed, 27 insertions(+), 2 deletions(-)
+---
+base-commit: d26955e57475434b59d43ba372b2a50d33d5e0ed
+change-id: 20261110-sun8i-emac-jumbo-4839f984a6a9
 
--- 
-2.55.0
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
