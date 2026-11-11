@@ -1,199 +1,111 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Wed, 11 Nov 2026 12:17:12 +0900
-Subject: [PATCH v2 2/2] xfs: skip the fsync flush when a later flush has
- completed
+From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Date: Wed, 11 Nov 2026 11:54:59 +0800
+Subject: [PATCH] perf stat: Count kernel events in a group led by a tool
+ event
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-xfs-fsync-flush-seq-v2-2-b5c00c25d276@samsung.com>
-References: <20261111-xfs-fsync-flush-seq-v2-0-b5c00c25d276@samsung.com>
-In-Reply-To: <20261111-xfs-fsync-flush-seq-v2-0-b5c00c25d276@samsung.com>
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>, 
- "Darrick J. Wong" <djwong@kernel.org>, Amir Goldstein <amir73il@gmail.com>, 
- Brian Foster <bfoster@redhat.com>, linux-kernel@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794367030; l=6060;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=Bu2pX8WdvM2qQVP0L3dIEdFR9WG+YEt77lCKNNzn4Xs=;
- b=KkcbXmFSJU5ZJu6JFzfDkJZtrAPNcre9rxyAPMvJ9SsVlNcByyHo+0jwhbwvIGh2bJWXb3biL
- uK/Tk5l7xILA01rC+HOb3GwG9Ybw1skcrMaJE2B8wu3+IMOUokRVKKS
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+Message-Id: <20261111-tool-pmu-leader-v1-1-6173b5569f59@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNwQ7CIAyA4VdZOIsBNhAWY3wPs0MHnRLHmLAZE
+ +O7i7O3v0m/vknG5DGTtnqThE+ffZxK8F1F7A2mK1LvShPBhOJl6BLjSOew0hHBYaJOyAE1l7U
+ 0hpSrOeHgX5t46f6d8LEWePkvScCcYYPb6ri5TNRMSyXMnivTmIbT8gfuMMVanK8B/Li3MZx+f
+ A8ZaYngl7ay1jAJXINqDqCxBtcI67g0qgdgyPTQg1DYk+7z+QIJ9nYQ6gAAAA==
+X-Change-ID: 20261111-tool-pmu-leader-d25fe8153599
+To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ James Clark <james.clark@linaro.org>
+Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ TAKANO Mitsuhiro <takano32@gmail.com>, 
+ Hang Zhengyang <hang.zhengyang1010@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794369299; l=2997;
+ i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
+ bh=VvW12yxTCrB+KnTAFdjmOLOxHwodDVDySkgBau//oek=;
+ b=n/Id/pDpNke3bFPw6iGLKQYWvbdCMJGdvHqkDEFmZ2pvyMptXkZ69OZPcSq/GdzE3dlsmmnfa
+ Eh8jrX+40duAKZuTY85C568pvrEUK3EX8tIXfEWtgkUoPdAU8TS/vDr
+X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
+ pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
+X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 47c7d0b19502 ("xfs: fix incorrect log_flushed on
-fsync"), fsync sends its own cache flush whenever another task wrote
-out the iclog it waited for. With concurrent fsyncs, these flushes can
-limit throughput.
+A tool event like user_time has no perf event in the kernel, but
+get_group_fd() still passes its fd, the /proc/stat fd, as the group_fd
+of the members.  The kernel rejects each member with EBADF and nothing
+is counted:
 
-Skip the flush when a flush submitted after the data writes completed
-has finished. DAX files keep the old behavior.
+  $ perf stat -a -e '{user_time,cycles,instructions}' -- sleep 0.05
+                   0      user_time
+     <not supported>      cycles
+     <not supported>      instructions
 
-fio 4k append + fsync in a QEMU guest, virtio-blk (cache=none) on a
-Samsung 990 PRO NVMe SSD without power loss protection, before ->
-after:
+Open the members with group_fd = -1, as the enable/disable code already
+assumes, and don't give them PERF_FORMAT_GROUP since they are now read
+on their own:
 
-  16 jobs: 1111 -> 4498 fsyncs/s, mean fsync latency 14.4 -> 3.6 ms
-   1 job:  399 -> 396 fsyncs/s
+  $ perf stat -a -e '{user_time,cycles,instructions}' -- sleep 0.05
+                   0      user_time
+            42637254      cycles
+            28279395      instructions
 
-Suggested-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+The kernel events in such a group are no longer scheduled together.
+perf only builds these groups when the user writes them; metrics move
+tool events out of their groups.
+
+Fixes: 6828d6929b76 ("perf evsel: Refactor tool events")
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Hang Zhengyang <hang.zhengyang1010@gmail.com>
 ---
-Christoph's 2017 mail with the sequence counter idea:
-https://lore.kernel.org/20170830142134.GA650@lst.de
+This goes on top of TAKANO's segfault fix, as asked in that thread.
 
-A dm-log-writes test written for this series (8 fsync writers,
-internal log) lost no fsync-ed block in 528 replays. At least 33319
-of 48048 fsyncs skipped their flush through the new check. A variant
-that samples before the writeback loses 16 of 528. The test needs
-"dm-log-writes: log earlier flushes' writes when a later flush
-completes", sent to dm-devel.
-
-With an internal log, an fsync that takes the new skip can miss a
-failed flush on bio-based dm. dm drops the error of a preflush sent
-with data, unless the table is linear or stripe on a single device.
-The skip trusts the status of the iclog bio, as the log and the fsync
-that wrote the iclog already do. Before this patch the other fsyncs
-sent their own flush and returned its result. With 8 writers on a
-two-device linear table whose second device fails every flush, 2590
-of 4000 fsyncs returned EIO before and 37 do now. From the code,
-bcache in writeback mode drops that error too. md reports no flush
-error at all. Neither was tested.
+With -a, this counted before 6828d6929b76 too, because the cpu mismatch
+check split the group up, so the kernel events weren't scheduled
+together then either.  Ian, is that fine, or would you rather have the
+first kernel event lead the rest?
 ---
- fs/xfs/xfs_buf.c  | 27 +++++++++++++++++++++++++++
- fs/xfs/xfs_buf.h  | 22 ++++++++++++++++++++++
- fs/xfs/xfs_file.c | 18 +++++++++++++++---
- 3 files changed, 64 insertions(+), 3 deletions(-)
+ tools/perf/builtin-stat.c | 2 +-
+ tools/perf/util/evsel.c   | 4 ++++
+ 2 files changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-index 9025b177931..2862cbdeda4 100644
---- a/fs/xfs/xfs_buf.c
-+++ b/fs/xfs/xfs_buf.c
-@@ -1785,6 +1785,33 @@ xfs_buftarg_flush_done(
- 		;
- }
- 
-+/*
-+ * Return true if a flush has been submitted and completed since @submit_seq
-+ * was sampled. If so, all writes that completed before @submit_seq was sampled
-+ * are on stable storage.
-+ */
-+bool
-+xfs_buftarg_flushed_since(
-+	struct xfs_buftarg	*btp,
-+	s64			submit_seq)
-+{
-+	return atomic64_read(&btp->bt_flush_completed) > submit_seq;
-+}
-+
-+/* Flush the device cache and record it. */
-+int
-+xfs_buftarg_flush(
-+	struct xfs_buftarg	*btp)
-+{
-+	s64			seq = xfs_buftarg_flush_start(btp);
-+	int			error;
-+
-+	error = blkdev_issue_flush(btp->bt_bdev);
-+	if (!error)
-+		xfs_buftarg_flush_done(btp, seq);
-+	return error;
-+}
-+
- struct xfs_buftarg *
- xfs_alloc_buftarg(
- 	struct xfs_mount	*mp,
-diff --git a/fs/xfs/xfs_buf.h b/fs/xfs/xfs_buf.h
-index 6e6f0dbfef6..08282e1b3c8 100644
---- a/fs/xfs/xfs_buf.h
-+++ b/fs/xfs/xfs_buf.h
-@@ -368,6 +368,26 @@ struct xfs_buftarg *xfs_alloc_buftarg(struct xfs_mount *mp,
- 		struct file *bdev_file);
- extern void xfs_free_buftarg(struct xfs_buftarg *);
- 
-+/*
-+ * Sample the flush submit counter of @btp. Call this after the writes that a
-+ * flush must cover have completed. Flushes take their number before they are
-+ * submitted, so a flush numbered above the sample was submitted after it and
-+ * covers those writes once it succeeds. xfs_buftarg_flushed_since() checks
-+ * for such a flush.
-+ */
-+static inline s64
-+xfs_buftarg_flush_seq(
-+	struct xfs_buftarg	*btp)
-+{
-+	/*
-+	 * Order the read after the write completions the caller waited for.
-+	 * Pairs with the fully ordered atomic64_inc_return() that
-+	 * xfs_buftarg_flush_start() does before the flush is submitted.
-+	 */
-+	smp_mb();
-+	return atomic64_read(&btp->bt_flush_submitted);
-+}
-+
- /* Call right before submitting a cache flush to @btp. */
- static inline s64
- xfs_buftarg_flush_start(
-@@ -377,6 +397,8 @@ xfs_buftarg_flush_start(
- }
- 
- void xfs_buftarg_flush_done(struct xfs_buftarg *btp, s64 seq);
-+bool xfs_buftarg_flushed_since(struct xfs_buftarg *btp, s64 submit_seq);
-+int xfs_buftarg_flush(struct xfs_buftarg *btp);
- extern void xfs_buftarg_wait(struct xfs_buftarg *);
- extern void xfs_buftarg_drain(struct xfs_buftarg *);
- int xfs_configure_buftarg(struct xfs_buftarg *btp, unsigned int sectorsize,
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 396aca8c66a..5af00520cbe 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -87,7 +87,9 @@ xfs_file_fsync(
- 	int			datasync)
- {
- 	struct xfs_inode	*ip = XFS_I(file->f_mapping->host);
-+	struct xfs_buftarg	*btp = xfs_inode_buftarg(ip);
- 	int			log_flushed = 0;
-+	s64			submit_seq;
- 	int			error;
- 
- 	trace_xfs_file_fsync(ip);
-@@ -95,6 +97,7 @@ xfs_file_fsync(
- 	error = file_write_and_wait_range(file, start, end);
- 	if (error)
- 		return error;
-+	submit_seq = xfs_buftarg_flush_seq(btp);
- 
- 	if (xfs_is_shutdown(ip->i_mount))
- 		return -EIO;
-@@ -119,12 +122,21 @@ xfs_file_fsync(
- 	 * file data target cache here. This can happen for fdatasync/O_DSYNC
- 	 * when no metadata needed to be committed.
- 	 *
-+	 * Flush the file data target unless a flush submitted to it after the
-+	 * data writes above completed has already finished. That is usually
-+	 * the flush before an iclog written out by this log force or by
-+	 * another task, or another fsync's flush.
-+	 *
-+	 * DAX writes are not block I/O, so DAX only skips the flush when
-+	 * this log force flushed, as before.
-+	 *
- 	 * Use the inode's actual file data target rather than assuming the
- 	 * main data device.
+diff --git a/tools/perf/builtin-stat.c b/tools/perf/builtin-stat.c
+index 37752d6bfef4..59890916dcc4 100644
+--- a/tools/perf/builtin-stat.c
++++ b/tools/perf/builtin-stat.c
+@@ -721,7 +721,7 @@ static int create_perf_stat_counter(struct evsel *evsel,
+ 	 * the group read (for leader) and ID retrieval for all
+ 	 * members.
  	 */
--	if (!log_flushed)
--		return blkdev_issue_flush(xfs_inode_buftarg(ip)->bt_bdev);
--	return 0;
-+	if (log_flushed ||
-+	    (!IS_DAX(VFS_I(ip)) && xfs_buftarg_flushed_since(btp, submit_seq)))
-+		return 0;
-+	return xfs_buftarg_flush(btp);
- }
+-	if (leader->core.nr_members > 1)
++	if (leader->core.nr_members > 1 && !evsel__is_non_perf_event_open_pmu(leader))
+ 		attr->read_format |= PERF_FORMAT_ID|PERF_FORMAT_GROUP;
  
- static int
+ 	attr->inherit = !config->no_inherit && list_empty(&evsel->bpf_counter_list);
+diff --git a/tools/perf/util/evsel.c b/tools/perf/util/evsel.c
+index 560741d9599d..5a919303562a 100644
+--- a/tools/perf/util/evsel.c
++++ b/tools/perf/util/evsel.c
+@@ -2378,6 +2378,10 @@ static int get_group_fd(struct evsel *evsel, int cpu_map_idx, int thread)
+ 	if (!evsel->supported || evsel__is_group_leader(evsel))
+ 		return -1;
+ 
++	/* A userspace PMU leader has no perf event to group with */
++	if (evsel__is_non_perf_event_open_pmu(leader))
++		return -1;
++
+ 	/*
+ 	 * Leader must be already processed/open,
+ 	 * if not it's a bug.
 
+---
+base-commit: cc905a18a647a8e3ad42cd1596baa0e08fba26eb
+change-id: 20261111-tool-pmu-leader-d25fe8153599
+prerequisite-message-id: <20261023085629.1694941-1-takano32@gmail.com>
+prerequisite-patch-id: b92ce8b0c6248a4af182670458912b760b98a410
+
+Best regards,
 -- 
-2.43.0
+Hang Zhengyang <hang.zhengyang1010@gmail.com>
 
