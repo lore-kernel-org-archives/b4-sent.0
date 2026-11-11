@@ -1,149 +1,106 @@
-From: Haipeng Lin <jimmie.lin@gmail.com>
-Date: Tue, 10 Nov 2026 20:06:30 -0500
-Subject: [PATCH RFC v2] bus: mhi: host: pci_generic: Add MBIM-mode config
- for generic SDX65
+From: Charlie Jenkins <charjenkins@tesla.com>
+Date: Tue, 10 Nov 2026 17:48:05 -0800
+Subject: [PATCH] scsi: ufs: exynos: Access HCI regs only while core_clk is
+ enabled
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-mhi-sdx65-mbim-rfc-v2-1-f1d71a5ac9ab@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NTQrCMBSEr1Le2idJa9voShA8gFvpIn9tH5hGE
- gmV0rsbcgCX3wzzzQbRBrIRLtUGwSaK5JcM9aECPctlskgmM9Ss7jjjHN1MGM3ategUOQyjRiG
- 1UJKZvhcS8vAd7EhrkT7hcb/BkMOZ4seHbzlKvFT/nIkjR8HEWZ1M05hWXScn6XXU3sGw7/sPr
- DEQQLkAAAA=
-X-Change-ID: 20261011-mhi-sdx65-mbim-rfc-8ac8ba0d778a
-To: Manivannan Sadhasivam <mani@kernel.org>, 
- Jeff Hugo <jeff.hugo@oss.qualcomm.com>
-Cc: mhi@lists.linux.dev, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, daleyo@gmail.com, 
- Johan Hovold <johan@kernel.org>, Haipeng Lin <jimmie.lin@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794359216; l=4467;
- i=jimmie.lin@gmail.com; s=20261011; h=from:subject:message-id;
- bh=ZLVxxQwkggsrloBrxJyjFyMexniwKJn2AL6lIKjlQ4w=;
- b=QboCyMkwfvriVeAw1+gALoE8intbzqfiWahZTM9uJq33pOwZ/IHc2Yt5cJW6tboFn5cL8/ey3
- J/ycjjJzXIhAcJLA4TBrt4m78+WfpJzLBmsDfnmRpbyr/pvzebI9x+A
-X-Developer-Key: i=jimmie.lin@gmail.com; a=ed25519;
- pk=3KDRF1RQ/9A7ZUVTdRVEZnVrGltdmq1bRocsOYeXezI=
-X-Endpoint-Received: by B4 Relay for jimmie.lin@gmail.com/20261011 with auth_id=1164
+Message-Id: <20261110-ufs_exynos_hci_order-v1-1-ce3cf68a74d5@tesla.com>
+X-B4-Tracking: v=1; b=H4sIAFTJ82oC/yXMyw6CMBBG4Vchs7ZJC95fhZgGyl8ZF62ZEYIhv
+ LtVl9/inJUUwlC6VisJZlbOqcDtKgpjl+4wPBRTbeujc86aKarH8k5Z/RjYZxkgxqK79GfbHOL
+ +RCV9CiIvv217+1un/oHw+r5o2z7Z+44JeAAAAA==
+X-Change-ID: 20261110-ufs_exynos_hci_order-0ea9b8035f47
+To: Alim Akhtar <alim.akhtar@samsung.com>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <mkp@kernel.org>, 
+ Krzysztof Kozlowski <krzk@kernel.org>, 
+ Chanho Park <chanho61.park@samsung.com>
+Cc: linux-samsung-soc@vger.kernel.org, linux-scsi@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Charlie Jenkins <charjenkins@tesla.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794361735; l=2641;
+ i=charjenkins@tesla.com; s=20261111; h=from:subject:message-id;
+ bh=LAh4uxWJEJlM8NfNlEbxljfVuT2qoU7HqStq10W2Hns=;
+ b=haIPNM/jxHhhj/GSLWYwPRTnUfCL/f3zCVGefXGiNVccdK//pUwTS3Lc0hUuzWhloFIVkRzL2
+ GZ1rf3a9tJkDF7Dr5ZTJtqe18buZ0G92aaoVtxpEGl/wjADim/B72k5
+X-Developer-Key: i=charjenkins@tesla.com; a=ed25519;
+ pk=UcHY2MxMlGrG4OWEpbHAPZ2iB7xhVAktL8U7+7y1MhU=
+X-Endpoint-Received: by B4 Relay for charjenkins@tesla.com/20261111 with auth_id=1484
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Surface Pro 11 5G carries an SDX65 that enumerates with Qualcomm's
-generic IDs (17cb:0308, subsystem 17cb:0308) but runs the MBIM-mode
-firmware it ships with for Windows.
+The current clock setup attempts to program the HCI clock-stop registers
+after the core clock has already been brought down. With this ordering
+on a reboot, the HCI bus clock is stopped before the clock-stop
+accesses, triggering an SError on the power-down path.
 
-Control is MBIM only (the QMI channel never answers), and data on
-channels 100/101 is framed as MBIM NTBs: the modem reports a WDA data
-format of raw IP with MBIM aggregation, up to 32 KiB downlink.
+SError Interrupt on CPU5, code 0x00000000bf000002 -- SError
+pc : readl+0x4/0x18
+lr : hci_readl.isra.0+0x14/0x20
+Kernel panic - not syncing: Asynchronous SError Interrupt
+Call trace:
+ readl+0x4/0x18
+ exynos_ufs_ctrl_clkstop+0x30/0xac
+ exynos_ufs_setup_clocks+0x8c/0xa4
+ ufshcd_setup_clocks+0x1c8/0x2a0
+ ufshcd_suspend+0x4c/0xa8
+ ufshcd_wl_shutdown+0x88/0xd4
+ device_shutdown+0x158/0x1d8
+ kernel_restart_prepare+0x40/0x4c
+ kernel_restart+0x20/0x88
+ __do_sys_reboot+0x198/0x218
 
-The generic qcom-sdx65m entry names channels 100/101 "IP_HW0", which
-binds mhi_net. mhi_net expects raw IP, so no data session can work.
-The MBIM-mode modules in this driver name them "IP_HW0_MBIM" instead
-which binds mhi_wwan_mbim.
+This is visible on FSD, where the CMU gates are in manual mode so
+disabling core_clk really stops the clock.
 
-Boards with a Qualcomm-ID modem in MBIM mode have so far been told
-apart by subsystem ID, like the SC8280XP CRD's SDX55 (17cb:010c).
-This modem carries the generic subsystem ID, so select an MBIM
-configuration by machine compatible instead.
+Ungate in POST_CHANGE when turning clocks on and gate in PRE_CHANGE
+when turning them off, so the HCI registers are only accessed while
+core_clk is running.
 
-Like the SC8280XP CRD entry, reuse the Foxconn SDX55 channel config
-which works with this firmware. The MRU is 32 KiB to match the
-modem's downlink aggregation size.
-
-Tested on a Surface Pro 11 5G (Surface_Pro_with_5G_11th_Edition_2077,
-modem firmware 251216-DE-dc49bb9-00197) on a v7.2.11-based kernel:
-ModemManager registers the modem on wwan0mbim0, uses wwan0 for data and
-wwan0at0 for AT commands, and connects over LTE and 5G NR.
-
-Assisted-by: LLM
-Signed-off-by: Haipeng Lin <jimmie.lin@gmail.com>
+Fixes: 91c49e7e82d7 ("scsi: ufs: ufs-exynos: Add setup_clocks callback")
+Signed-off-by: Charlie Jenkins <charjenkins@tesla.com>
 ---
-Hi Mani and Jeff,
-
-A follow-up to the RFC I sent last month (linked below). 
-
-I tested the Foxconn SDX55 channel configuration on this modem and it
-works, so v2 reuses it like the SC8280XP CRD entry does, and only the
-selection is new. Hope this makes the patch clearer.
-
-I would appreciate comments on whether matching the machine compatible
-in probe is the acceptable approach, or if you would prefer a property
-on the PCIe endpoint's DT node (although that would be a bigger patch)
-
-Thanks.
+Found on a Tesla FSD board.
 ---
-Changes in v2:
-- Reuse modem_foxconn_sdx55_config instead of adding a channel table.
-  This adds the DUN channel (tested: answers AT commands) and drops
-  IPCR which is unused by the Surface Pro 11.
-- Link to v1: https://lore.kernel.org/r/20261011-mhi-sdx65-mbim-rfc-v1-1-8089b4d33d5b@gmail.com
----
- drivers/bus/mhi/host/pci_generic.c | 33 +++++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+ drivers/ufs/host/ufs-exynos.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/bus/mhi/host/pci_generic.c b/drivers/bus/mhi/host/pci_generic.c
-index 7193a384cca4..29b275572603 100644
---- a/drivers/bus/mhi/host/pci_generic.c
-+++ b/drivers/bus/mhi/host/pci_generic.c
-@@ -12,6 +12,7 @@
- #include <linux/device.h>
- #include <linux/mhi.h>
- #include <linux/module.h>
-+#include <linux/of.h>
- #include <linux/pci.h>
- #include <linux/pm_runtime.h>
- #include <linux/timer.h>
-@@ -582,6 +583,34 @@ static const struct mhi_pci_dev_info mhi_foxconn_sdx55_info = {
- 	.sideband_wake = false,
- };
+diff --git a/drivers/ufs/host/ufs-exynos.c b/drivers/ufs/host/ufs-exynos.c
+index 3bcbc9ebbb283..d2a79ebf193e3 100644
+--- a/drivers/ufs/host/ufs-exynos.c
++++ b/drivers/ufs/host/ufs-exynos.c
+@@ -1116,11 +1116,11 @@ static int exynos_ufs_setup_clocks(struct ufs_hba *hba, bool on,
+ 	if (!ufs)
+ 		return 0;
  
-+/*
-+ * Some machines have an SDX65 with the generic Qualcomm IDs
-+ * (17cb:0308, subsystem 17cb:0308) running MBIM-mode firmware
-+ * they ship with for Windows.
-+ * The exact channel configuration is not known but the Foxconn SDX55
-+ * configuration works with this firmware.
-+ */
-+static const struct mhi_pci_dev_info mhi_qcom_sdx65_mbim_info = {
-+	.name = "qcom-sdx65m-mbim",
-+	.fw = "qcom/sdx65m/xbl.elf",
-+	.edl = "qcom/sdx65m/edl.mbn",
-+	.edl_trigger = true,
-+	.config = &modem_foxconn_sdx55_config,
-+	.bar_num = MHI_PCI_DEFAULT_BAR_NUM,
-+	.dma_data_width = 32,
-+	.mru_default = 32768,
-+	.sideband_wake = false,
-+};
-+
-+/*
-+ * The PCI IDs cannot tell these modems apart from QMI-mode modules,
-+ * so match the machine instead.
-+ */
-+static const char *const mhi_qcom_sdx65_mbim_machines[] = {
-+	"microsoft,denali",
-+	NULL
-+};
-+
- static const struct mhi_pci_dev_info mhi_foxconn_t99w175_info = {
- 	.name = "foxconn-t99w175",
- 	.edl = "qcom/sdx55m/foxconn/prog_firehose_sdx55.mbn",
-@@ -1389,6 +1418,10 @@ static int mhi_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
- 	unsigned int dma_data_width;
- 	int err;
+-	if (on && status == PRE_CHANGE) {
++	if (on && status == POST_CHANGE) {
+ 		if (ufs->opts & EXYNOS_UFS_OPT_BROKEN_AUTO_CLK_CTRL)
+ 			exynos_ufs_disable_auto_ctrl_hcc(ufs);
+ 		exynos_ufs_ungate_clks(ufs);
+-	} else if (!on && status == POST_CHANGE) {
++	} else if (!on && status == PRE_CHANGE) {
+ 		exynos_ufs_gate_clks(ufs);
+ 		if (ufs->opts & EXYNOS_UFS_OPT_BROKEN_AUTO_CLK_CTRL)
+ 			exynos_ufs_enable_auto_ctrl_hcc(ufs);
+@@ -1139,7 +1139,9 @@ static int exynos_ufs_pre_link(struct ufs_hba *hba)
+ 	exynos_ufs_config_intr(ufs, DFES_DEF_L4_ERRS, UNIPRO_L4);
+ 	exynos_ufs_set_unipro_pclk_div(ufs);
  
-+	if (info == &mhi_qcom_sdx65_info &&
-+	    of_machine_compatible_match(mhi_qcom_sdx65_mbim_machines))
-+		info = &mhi_qcom_sdx65_mbim_info;
-+
- 	dev_info(&pdev->dev, "MHI PCI device found: %s\n", info->name);
+-	exynos_ufs_setup_clocks(hba, true, PRE_CHANGE);
++	if (ufs->opts & EXYNOS_UFS_OPT_BROKEN_AUTO_CLK_CTRL)
++		exynos_ufs_disable_auto_ctrl_hcc(ufs);
++	exynos_ufs_ungate_clks(ufs);
  
- 	/* mhi_pdev.mhi_cntrl must be zero-initialized */
+ 	/* unipro */
+ 	exynos_ufs_config_unipro(ufs);
 
 ---
-base-commit: 0b1883ca75c0005ab5ca52c7bc1a26329bc39746
-change-id: 20261011-mhi-sdx65-mbim-rfc-8ac8ba0d778a
+base-commit: e550f2b2b4aab4c5f12db89d04d8978ce4ed7b4e
+change-id: 20261110-ufs_exynos_hci_order-0ea9b8035f47
 
 Best regards,
--- 
-Haipeng Lin <jimmie.lin@gmail.com>
+--  
+Charlie Jenkins <charjenkins@tesla.com>
 
