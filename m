@@ -1,117 +1,113 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Wed, 11 Nov 2026 03:26:03 -0500
-Subject: [PATCH v2 3/3] usb: dwc2: Handle OTG interrupts that GINTSTS does
- not flag
+Subject: [PATCH v2 0/4] MIPS: Add support for the Siflower SF19A2890
+Date: Wed, 11 Nov 2026 03:27:14 -0500
+Message-Id: <20261111-sf19a2890-mips-v2-0-36730fa4f5a6@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-sf19a2890-dwc2-v2-3-cba9dd4a4256@telaak.dev>
-References: <20261111-sf19a2890-dwc2-v2-0-cba9dd4a4256@telaak.dev>
-In-Reply-To: <20261111-sf19a2890-dwc2-v2-0-cba9dd4a4256@telaak.dev>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+X-B4-Tracking: v=1; b=H4sIAOQm9GoC/12Nyw6CMBBFf4V0bU07MdC68j8MiwGmMj6AdLDRE
+ P5dwLhxeZJzz52UUGQSdcwmFSmxcN8tALtM1S12F9LcLKzAQG6tAS3BegTnjX7wIBqrAhrvMRS
+ +UMtoiBT4tQXP5ZflWV2pHtfKarQsYx/f22Oyq/eLH/7jyWqjCckZBwZD7k4j3RFv+4aSKud5/
+ gDvcMjFvwAAAA==
+X-Change-ID: 20261102-sf19a2890-mips-ab72d99af797
+To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Minas Harutyunyan <hminas@synopsys.com>
-Cc: Chuanhong Guo <gch981213@gmail.com>, linux-mips@vger.kernel.org, 
- linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Joseph Telaak <joseph@telaak.dev>
+ Conor Dooley <conor+dt@kernel.org>, Paul Burton <paulburton@kernel.org>
+Cc: Jiaxun Yang <jiaxun.yang@flygoat.com>, 
+ Chuanhong Guo <gch981213@gmail.com>, linux-mips@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794385586; l=3430;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794385651; l=3973;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=3UAHpfU9cll1318+mjWwjmjX3xQ60+nlO78HrMckino=;
- b=SpTKA9gjirIKNpqRGZNeePe6ZW+chIAjUwzLJsJISUXD6OPgrmowd9okcUzpG8aCQs9qC92fB
- LWVOB0pkYUrAktrJhmSiINBrqrp40staPQvVh3LJY7Y+XqhwQyfBeph
+ bh=fNtQMrwhc9IhmMCGlFC3FW2vYrQH+RedPZ5jVpQML1I=;
+ b=smHLuaml02zJCWo1iJnWieATlWapyzVeI2ZtFjFL7HhhE3x35AaeM0Mr0YvIYECQA1ncqbWxW
+ IrHSGo1QAYbA/7Dx3AjeCEqTmxwz4lhOeyZqeExoUQUOfP4Go7S271z
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Chuanhong Guo <gch981213@gmail.com>
+This series adds basic support for the Siflower SF19A2890, a MIPS
+interAptiv SoC (two cores, two VPEs each) for home routers, and for the
+GL.iNet GL-SFT1200 ("Opal") travel router built on it. It boots to a
+shell on the PL011 console with all four CPUs up.
 
-The DWC OTG 3.30a of the Siflower SF19A2890 has battery charger support
-enabled. It raises the MultValIpChng interrupt (bit 20 of GOTGINT)
-without setting OTGInt in GINTSTS, so the interrupt is never handled
-and the kernel disables the USB interrupt because nobody cared.
+Patch 2 is Chuanhong Guo's patch from January 2025 [1], rebased. Jiaxun
+asked then why it does not use MIPS_GENERIC. It does: MACH_SIFLOWER_MIPS
+selects MIPS_GENERIC and MACH_GENERIC_CORE and boots through
+arch/mips/generic, the way MACH_REALTEK_RTL and MACH_INGENIC_SOC do. What
+it avoids is MIPS_GENERIC_KERNEL, which selects MIPS_L1_CACHE_SHIFT_7 and
+takes ARCH_DMA_MINALIGN 128 from mach-generic/kmalloc.h, so that with
+DMA_NONCOHERENT no kmalloc cache below 128 bytes exists. The interAptiv's
+L1 and L2 lines are 32 bytes (the boot log reports both).
 
-On a GL.iNet GL-SFT1200 it shows differently: after a few replugs of a
-USB stick the system stops making progress, the console repeating its
-last message with the same timestamp, until a power cycle.
+On a GL-SFT1200 (128 MB) booted to an idle initramfs, 62 s after boot:
 
-Add an otg_int_unflagged parameter for such cores. With it set, the
-common interrupt handler also reads GOTGINT on every interrupt and
-handles any OTG interrupt it finds there, as it does when OTGInt is
-set. The SF19A2890 sets it; other cores are unchanged.
+                                       MemFree   Slab   kmalloc-128 objs
+  this series (MACH_SIFLOWER_MIPS)     107444    4832   1497
+  MIPS_GENERIC_KERNEL                  106442    5252   5538
+  MIPS_GENERIC_KERNEL, DMA_MINALIGN 32 107660    4732   1497
 
-Signed-off-by: Chuanhong Guo <gch981213@gmail.com>
-[Joseph Telaak:
-  - handle the unflagged OTG interrupts only on cores with the new
-    otg_int_unflagged parameter, which the SF19A2890 sets
-  - do it in the one place that already handles flagged OTG
-    interrupts, and return IRQ_HANDLED
-  - describe what a GL-SFT1200 does without the patch, and the fix as
-    it is now
-  - subject]
-Co-developed-by: Joseph Telaak <joseph@telaak.dev>
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+(kB, means of two boots.) So the whole difference, about 1 MB, comes
+from the 128-byte kmalloc alignment; the larger L1_CACHE_SHIFT costs
+nothing measurable. If the generic kernel sized its kmalloc alignment
+from the probed cache lines at run time, as arm64 does, this board could
+use MIPS_GENERIC_KERNEL, and I can send that change in place of a
+platform of its own if you prefer.
+
+The SoC's clock controller has a driver of its own, sent to the clk tree.
+Until it is merged, the dtsi describes the clock rates the bootloader
+programs with fixed clocks; a later patch replaces them. The pin
+controller, GPIO, USB PHY, DWC2 and GMAC drivers go to their own trees.
+
+Patch 1 adds a MAINTAINERS entry for the SoC. Its "N: sf19a2890" also
+matches the SoC's drivers in other trees, which add entries of their
+own.
+
+Tested on a GL-SFT1200, booted from U-Boot over TFTP: the initramfs
+shell on ttyAMA0; four CPUs, with CPUs 1-3 taken offline and back
+online; the GIC timer within 0.06 s of a reference clock over 298 s; and
+the UART divisors U-Boot programs (IBRD 0x43, FBRD 0x34), which confirm
+the 125 MHz UART clock in the device tree.
+
+[1] https://lore.kernel.org/r/20250120015254.124447-1-gch981213@gmail.com
+
 ---
- drivers/usb/dwc2/core.h      | 6 ++++++
- drivers/usb/dwc2/core_intr.c | 5 ++++-
- drivers/usb/dwc2/params.c    | 1 +
- 3 files changed, 11 insertions(+), 1 deletion(-)
+Changes in v2:
+- Write my note on Chuanhong's patch as a list.
+- Drop drivers/gpio/gpio-siflower.c from the MAINTAINERS entry; the GPIO
+  series now adds an entry of its own (Conor).
+- Use the current SPDX identifiers in the new files.
+- Order the dtsi's nodes and properties as dt-check-style --mode=strict
+  expects, with a blank line before status.
+- Link to v1: https://patch.msgid.link/20261104-sf19a2890-mips-v1-0-eae80820af68@telaak.dev
 
-diff --git a/drivers/usb/dwc2/core.h b/drivers/usb/dwc2/core.h
-index 015a5fb7842d..288baaaf4736 100644
---- a/drivers/usb/dwc2/core.h
-+++ b/drivers/usb/dwc2/core.h
-@@ -367,6 +367,11 @@ enum dwc2_ep0_state {
-  * @no_clock_gating:	Specifies whether to avoid clock gating feature.
-  *			0 - No (use clock gating)
-  *			1 - Yes (avoid it)
-+ * @otg_int_unflagged:	Specifies whether the core raises OTG interrupts
-+ *			without setting OTGINT in GINTSTS, so that GOTGINT
-+ *			has to be checked on every interrupt.
-+ *			0 - No
-+ *			1 - Yes
-  * @lpm:		Enable LPM support.
-  *			0 - No
-  *			1 - Yes
-@@ -466,6 +471,7 @@ struct dwc2_core_params {
- #define DWC2_POWER_DOWN_PARAM_PARTIAL		1
- #define DWC2_POWER_DOWN_PARAM_HIBERNATION	2
- 	bool no_clock_gating;
-+	bool otg_int_unflagged;
- 
- 	bool lpm;
- 	bool lpm_clock_gating;
-diff --git a/drivers/usb/dwc2/core_intr.c b/drivers/usb/dwc2/core_intr.c
-index 9565e6a52725..e7bb9709c985 100644
---- a/drivers/usb/dwc2/core_intr.c
-+++ b/drivers/usb/dwc2/core_intr.c
-@@ -874,8 +874,11 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
- 
- 	if (gintsts & GINTSTS_MODEMIS)
- 		dwc2_handle_mode_mismatch_intr(hsotg);
--	if (gintsts & GINTSTS_OTGINT)
-+	if ((gintsts & GINTSTS_OTGINT) ||
-+	    (hsotg->params.otg_int_unflagged && dwc2_readl(hsotg, GOTGINT))) {
- 		dwc2_handle_otg_intr(hsotg);
-+		retval = IRQ_HANDLED;
-+	}
- 	if (gintsts & GINTSTS_CONIDSTSCHNG)
- 		dwc2_handle_conn_id_status_change_intr(hsotg);
- 	if (gintsts & GINTSTS_DISCONNINT)
-diff --git a/drivers/usb/dwc2/params.c b/drivers/usb/dwc2/params.c
-index b31fa1f5ad64..8e814a925dd1 100644
---- a/drivers/usb/dwc2/params.c
-+++ b/drivers/usb/dwc2/params.c
-@@ -243,6 +243,7 @@ static void dwc2_set_sf19a2890_params(struct dwc2_hsotg *hsotg)
- 
- 	p->max_transfer_size = 65535;
- 	p->ahbcfg = GAHBCFG_HBSTLEN_INCR4 << GAHBCFG_HBSTLEN_SHIFT;
-+	p->otg_int_unflagged = true;
- }
- 
- static void dwc2_set_stm32f4x9_fsotg_params(struct dwc2_hsotg *hsotg)
+---
+Chuanhong Guo (1):
+      MIPS: Add support for Siflower MIPS SoCs
 
--- 
-Git-155)
+Joseph Telaak (3):
+      dt-bindings: mips: Add Siflower SF19A2890 based boards
+      MIPS: dts: Add Siflower SF19A2890 and GL.iNet GL-SFT1200
+      MIPS: configs: Add sf19a2890_defconfig
+
+ .../devicetree/bindings/mips/siflower.yaml         | 26 ++++++
+ MAINTAINERS                                        | 10 +++
+ arch/mips/Kconfig                                  | 32 +++++++
+ arch/mips/boot/dts/Makefile                        |  1 +
+ arch/mips/boot/dts/siflower/Makefile               |  2 +
+ .../dts/siflower/sf19a2890-glinet-gl-sft1200.dts   | 27 ++++++
+ arch/mips/boot/dts/siflower/sf19a2890.dtsi         | 97 ++++++++++++++++++++++
+ arch/mips/configs/sf19a2890_defconfig              | 15 ++++
+ arch/mips/generic/Platform                         |  1 +
+ arch/mips/include/asm/mach-siflower/kmalloc.h      |  9 ++
+ 10 files changed, 220 insertions(+)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261102-sf19a2890-mips-ab72d99af797
+
+Best regards,
+--  
+Joseph Telaak <joseph@telaak.dev>
 
