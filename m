@@ -1,110 +1,86 @@
-From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-Date: Wed, 11 Nov 2026 17:00:53 -0600
-Subject: [PATCH v3] staging: octeon: clean up RX groups on request_irq()
- failure
+From: Mani Tofigh <mt4022@columbia.edu>
+Subject: [PATCH 0/3] ext4: fix counts left by fast commit replay of a mkdir
+Date: Wed, 11 Nov 2026 18:02:44 -0500
+Message-Id: <20261111-ext4-fc-replay-mkdir-v1-0-4b20be29aed8@columbia.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261111-octeon-rx-fixes-v3-1-a0f0dc40460f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNwQqDMBBEf0X23C1JWo321P8oHkJcdaEaSSRYx
- H/v1nuPb4Y3s0OiyJTgUewQKXPiMAvcLgX40c0DIXfCYJSptFYWg18pzBg37HmjhN29s5W0Ze0
- bEGuJdBYivVrhkdMa4uc8yPqX/t/KGhX2pTO6UdbXrn8Ok+P31YcJ2uM4voSf2D+uAAAA
-X-Change-ID: 20261107-octeon-rx-fixes-d4d7620258c9
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794438054; l=2648;
- i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
- bh=feZBSqgjCCOTQMrEkcv/uvbFiG3VcgYBGhrXWs8srLQ=;
- b=dclUB8kWbnACr8T1uS6cXq5hVmi5AKo9LW48Mi0iRMaNRx7OG9x8+K/OTmUHXaLeVBd0PbgzI
- G9P6yol3+wcDKmOkPy8yrhoZhIgCDmlb9lJvfxV/PCVhrDppGnME5OU
-X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
- pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
-X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSw6DMAxF0a0gj7FEKEXQraAOQuKA+RU5tAIh9
+ t4Ab3YG7+7gSZg8vKIdhH7s+TMFqDgC0+qpIWQbDGmS5ioMaV0ydAaF5kFvOPaWBR8m0dYV2VO
+ rEsJ1FnK8Xtnqfdt/647McrbgOP45FbLPeAAAAA==
+X-Change-ID: 20261111-ext4-fc-replay-mkdir-3c0adf845a19
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, 
+ Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+ Zhang Yi <yi.zhang@huawei.com>, 
+ Harshad Shirwadkar <harshadshirwadkar@gmail.com>, 
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ tz2294@columbia.edu, stable@vger.kernel.org, 
+ Mani Tofigh <mt4022@columbia.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794438165; l=1985;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=s9EkpYwpSolR0KtDZVkWqHGcJwk8MoygE6T++8LQ7sM=;
+ b=VpVkrzKAvefNpNbgr52Wh3U42SQ1jXdqRJVWgknqB+j4rUFcniNknG2d4PR+K9EcFf4bmjAp+
+ JUeAJX8X0RrAjkLkqVT/I9tj7H8ePv9G1bBNCu4oJ3rwYZnU47qSNRO
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If request_irq() fails in cvm_oct_rx_initialize(), the function returns
-early without removing the current NAPI context or freeing the IRQs and
-NAPI instances from earlier iterations.
+On ext4 with fast_commit, a crash after an fsync of a file in a new
+directory leaves counts that e2fsck has to fix.  The mount works, but
+e2fsck -fn reports:
 
-Clean up the failed NAPI context and release the previously registered
-RX groups in the error path.
+  Inode 14, i_blocks is 0, should be 8.  Fix? no
+  Inode 2 ref count is 3, should be 4.  Fix? no
+  Inode 14 ref count is 1, should be 2.  Fix? no
+  Directories count wrong for group #0 (2, counted=3).
 
-Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
----
-Oscar Alejandro Sánchez Lucero (1):
-  staging: octeon: clean up RX groups on request_irq() failure
----
-Changes in v3:
-- Drop the void pointer arithmetic patch.
-- Clarify commit message and validate MIPS64 cross-compilation.
----
- drivers/staging/octeon/ethernet-rx.c | 24 ++++++++++++++++++++----
- 1 file changed, 20 insertions(+), 4 deletions(-)
+All it takes is
 
-diff --git a/drivers/staging/octeon/ethernet-rx.c b/drivers/staging/octeon/ethernet-rx.c
-index 5be43bbf6a1d..f3d2a764d920 100644
---- a/drivers/staging/octeon/ethernet-rx.c
-+++ b/drivers/staging/octeon/ethernet-rx.c
-@@ -449,7 +449,7 @@ void cvm_oct_poll_controller(struct net_device *dev)
- 
- int cvm_oct_rx_initialize(struct platform_device *pdev)
- {
--	int i;
-+	int i, ret;
- 	struct net_device *dev_for_napi = NULL;
- 	struct octeon_ethernet_platform *plat = platform_get_drvdata(pdev);
- 	struct oct_rx_group *rx_group = plat->rx_group;
-@@ -467,8 +467,6 @@ int cvm_oct_rx_initialize(struct platform_device *pdev)
- 	}
- 
- 	for (i = 0; i < ARRAY_SIZE(plat->rx_group); i++) {
--		int ret;
--
- 		if (!(pow_receive_groups & BIT(i)))
- 			continue;
- 
-@@ -485,7 +483,9 @@ int cvm_oct_rx_initialize(struct platform_device *pdev)
- 				  "Ethernet", &rx_group[i].napi);
- 		if (ret) {
- 			dev_err(&pdev->dev, "Could not acquire Ethernet IRQ %d\n", rx_group[i].irq);
--			return ret;
-+			napi_disable(&rx_group[i].napi);
-+			netif_napi_del(&rx_group[i].napi);
-+			goto err_rollback;
- 		}
- 
- 		disable_irq_nosync(rx_group[i].irq);
-@@ -524,6 +524,22 @@ int cvm_oct_rx_initialize(struct platform_device *pdev)
- 	}
- 	atomic_inc(&oct_rx_ready);
- 	return 0;
-+
-+err_rollback:
-+	while (--i >= 0) {
-+		if (!(pow_receive_groups & BIT(i)))
-+			continue;
-+
-+		if (OCTEON_IS_MODEL(OCTEON_CN68XX))
-+			cvmx_write_csr(CVMX_SSO_WQ_INT_THRX(i), 0);
-+		else
-+			cvmx_write_csr(CVMX_POW_WQ_INT_THRX(i), 0);
-+
-+		napi_disable(&rx_group[i].napi);
-+		free_irq(rx_group[i].irq, &rx_group[i].napi);
-+		netif_napi_del(&rx_group[i].napi);
-+	}
-+	return ret;
- }
- 
- void cvm_oct_rx_shutdown(struct platform_device *pdev)
+  mkdir a
+  fd = creat a/f0
+  fsync(fd)
+  <crash>
+
+Fast commits don't track directories, so the replay of a CREAT tag has
+to redo what ext4_mkdir() does and misses each of these counts.  The
+replay of an rmdir has the opposite problem with the link counts.
+There's one patch per count.  Patch 1 has to go before patch 3, since
+with patch 3 the replay of an rmdir frees the directory and lowers the
+directory count.
+
+Baokun has the same fix as patch 1 in his LBS RFC [1], plus a flex_bg
+update that never runs during replay since s_log_groups_per_flex is
+still 0 then.  Baokun, happy to drop patch 1 if you'd rather send yours.
+
+This bug was identified and confirmed with the help of a deterministic
+hypervisor currently under development.  The C reproducer below however
+hits it every time.
+
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/ext4fcmkdir.c
+
+[1] https://lore.kernel.org/linux-ext4/20260508121539.4174601-12-libaokun@linux.alibaba.com/
 
 ---
-base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
-change-id: 20261107-octeon-rx-fixes-d4d7620258c9
+Mani Tofigh (3):
+      ext4: fix directory count after fast commit replay
+      ext4: fix directory i_blocks after fast commit replay
+      ext4: fix directory link counts after fast commit replay
+
+ fs/ext4/ext4.h        |  4 +++-
+ fs/ext4/fast_commit.c | 34 ++++++++++++++++++++++++++--------
+ fs/ext4/ialloc.c      |  4 +++-
+ fs/ext4/namei.c       |  4 ++--
+ 4 files changed, 34 insertions(+), 12 deletions(-)
+---
+base-commit: 067c5c24cef23d913b67eaaf71ae67e7169a6620
+change-id: 20261111-ext4-fc-replay-mkdir-3c0adf845a19
 
 Best regards,
--- 
-Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
+--  
+Mani Tofigh <mt4022@columbia.edu>
 
