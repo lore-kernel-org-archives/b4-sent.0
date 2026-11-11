@@ -1,215 +1,204 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 11 Nov 2026 18:41:21 +0100
-Subject: [PATCH v7 2/2] arm64: dts: qcom: sdm845-google: Add WCD9340 codec
- and microphone capture
+From: Christopher Griffin <christophergriffin05@gmail.com>
+Date: Wed, 11 Nov 2026 11:53:58 -0600
+Subject: [PATCH ath-next] wifi: ath12k: stop a running station vdev before
+ starting it again
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-pixel3-audio-v7-2-ecf28efc5c33@ixit.cz>
-References: <20261111-pixel3-audio-v7-0-ecf28efc5c33@ixit.cz>
-In-Reply-To: <20261111-pixel3-audio-v7-0-ecf28efc5c33@ixit.cz>
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- David Rhodes <david.rhodes@cirrus.com>, 
- Richard Fitzgerald <rf@opensource.cirrus.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- David Rhodes <drhodes@opensource.cirrus.com>, 
- Conor Dooley <conor+dt@kernel.org>, Abel Vesa <abelvesa@kernel.org>
-Cc: Viken Dadhaniya <viken.dadhaniya@oss.qualcomm.com>, 
- linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, patches@opensource.cirrus.com, 
- devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
+Message-Id: <20261111-ath12k-sta-vdev-start-once-v1-1-a01ed78d5460@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALWr9GoC/yWMwQqDMBBEf0X23IUkNCL9ldJDGjd1W4gl2QZB/
+ PeuOqd5DPNWqFSYKty6FQo1rjxnBXvpIE4hvwh5VAZnXG81GGSy7oNVAraR2l6K4Jwjoe8Hk4x
+ P/jokUMG3UOLlkN9Bf5hpEXicS/093xRld8O2/QFG75JjiAAAAA==
+X-Change-ID: 20261111-ath12k-sta-vdev-start-once-5680f05f548f
+To: Jeff Johnson <jjohnson@kernel.org>, ath12k@lists.infradead.org
+Cc: linux-wireless@vger.kernel.org, 
+ Baochen Qiang <baochen.qiang@oss.qualcomm.com>, 
+ Kang Yang <kang.yang@oss.qualcomm.com>, Birk Skyum <birk.skyum@pm.me>, 
+ Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4077; i=david@ixit.cz;
- h=from:subject:message-id; bh=uuakIZu6Wy/NrugWd1DLRLYP2J4loRYGwzYovA75Huc=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq9KjBE6O2BocYEO+M7shiFBskLapAfjCKS9MYF
- QuxhcjixPyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCavSowQAKCRBgAj/E00kg
- cnN3EADA25mhVpQJMStudgdTqNBMfDMGsD47VSdLZmJkOnZNpKJ9WHRWPVsgpHNExpZNyi7PMoG
- VE2vcIDgfN51It3Dn3roS81kyOsu3V/L/GFHJ03jwfQ6UbTU3nw53TQh5V1LTH5F6gHx02Dp0sA
- u4GcZwaeNSA9+EL1oopde46oatPuIDV/7xP0TVhiMmKptt/Hjb6aaPtPN4PQ4OfumQhOPr/34cJ
- YmLcw0HxcKmU7z1uJWWkCTES78/ofNuRZHROxQrI/HcesNRv8bCam9s2hRSZOpUHkLJkwbQUBsX
- /lfkzMtnrXaIOqwDXYS/E5+WVq812O983RkGynOvXaj7nxvmf2wabiWOFA0tfW24943TkBvNyr4
- /WgOSqitN1S13Vyd98dXmXXBH55RlmIBbcpiekuAeLMFTwzO6ms6oVFAHRe/SgyQ0Jwx6p05HZe
- cQsR4nKHkBNTVYOiu6VI0woFElfImpQ1enr1a2+PNsfxBoe3JkjlB/OQHzxtQMLm+D4tb92VcLt
- cOUKhd9gkCiO/da4/0G4HjTAQnBwEobxX12Xik66D12VOGaoGojytcxZ3IY4hGTZr1XgFJXZf7P
- qRf1X6Mv9BZIUrg6C5S1GykYwD6+4P8wVyfSCPMAkcs6waAdJEB0wXeoMg8IlZQadp6wAmeGabi
- MzQPUeewHYDl5wg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794419637; l=7666;
+ i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
+ bh=l2LS9+T8qV8NYnA/lIgTTemFYDi2ceLGxFaTVuPBUcw=;
+ b=cFc035yZthsCIT/0FQxznEnY8NvaWI3Ocs7j2puvt6/R4RtIzJkmvrW8Xa8hR3hRPX7ZsFqqm
+ YJHjdu0cUBQCdIdjOvNL4BBUeVUaRvap6lFS0+y91iQPCKEt6WT18Q9
+X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
+ pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
+X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Pixel 3 sound card so far only drove the two CS35L36 speaker
-amplifiers. Wire in the WCD9340 codec, add a SLIMbus capture link
-for it and route the three digital microphones
+A station vdev is not stopped when mac80211 unassigns its channel
+context. Since commit c9e4e41e71ff ("wifi: ath12k: move peer delete
+after vdev stop of station for WCN7850") it is stopped when the BSS
+peer is removed instead, so that firmware gets the vdev stop before
+the peer delete. ath12k_mac_op_unassign_vif_chanctx() still clears
+is_started for it, and nothing else records that the vdev is running
+in firmware.
 
-Based on work done by Casey Tunturi.
+mac80211 can move a station to another channel context while the BSS
+peer exists. It does so between authentication and association when
+it associates with a narrower width than it authenticated with, for
+example when a station with EHT disabled (wpa_supplicant disable_eht=1)
+connects to an AP operating EHT at 320 MHz: authentication runs on a
+320 MHz channel context, association on a 160 MHz one. The vdev was
+started for the first context (by ath12k_mac_op_assign_vif_chanctx(),
+or when the peer was created on hardware with vdev_start_delay), and
+ath12k_mac_op_assign_vif_chanctx() starts it again for the second one.
+Firmware gets a second vdev start with no stop in between, and
+ar->num_started_vdevs counts the vdev twice. The stop on disconnect
+takes only one of the two back.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Since commit 18ae7d0cdd76 ("wifi: ath12k: Avoid CPU busy-wait by
+handling VDEV_STAT and BCN_STAT"), ath12k_wmi_fw_stats_process()
+completes a WMI_REQUEST_VDEV_STAT request only after one stats event
+for each started vdev. With the count too high that never happens:
+from then on every station statistics request that needs the beacon
+RSSI waits the full 3 seconds in ath12k_mac_get_fw_stats() with the
+wiphy lock held, logs "time out while waiting for fw stats done" and
+reports no signal, until the driver is reloaded.
+
+Record in each link vif whether its vdev is running in firmware.
+ath12k_mac_vdev_start() now stops a vdev that is still running before
+it starts it, as ath12k_mac_update_vif_chan() already does for a vdev
+that is not up, and ath12k_mac_vdev_stop() takes a vdev out of
+num_started_vdevs only if it was running. Firmware then sees start,
+stop and start for such a connection, and the vdev is counted once.
+AP vdevs are still stopped on unassign, so in practice only station
+vdevs take the new stop.
+
+This was found by tracing ath12k_mac_vdev_start_restart(),
+ath12k_mac_vdev_stop() and the mac80211 channel context and station
+state trace events on a WCN7850 station: the first HE connection
+(disable_eht=1) to an EHT 320 MHz AP after the driver was loaded
+started the vdev twice, and the timeouts began right after it.
+
+The change and this message were written with Claude, an AI coding
+assistant.
+
+Tested-on: WCN7850 hw2.0 PCI WLAN.HMT.1.1.c7-00108-QCAHMTSWPL_V1.0_V2.0_SILICONZ_UPSTREAM-3
+
+Fixes: c9e4e41e71ff ("wifi: ath12k: move peer delete after vdev stop of station for WCN7850")
+Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 56 ++++++++++++++++++++++
- 1 file changed, 56 insertions(+)
+There are two ways ar->num_started_vdevs ends up too high. The other
+one, counting a vdev restart as a start, is the one Baochen diagnosed
+in Mike Garuccio's report [1] and that Birk Skyum's pending patch [2]
+fixes. This patch fixes only the station case described above and does
+not touch the line [2] changes, so it applies to ath-next with or
+without [2].
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index fa327ff156b86..7020bbddbcff2 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -4,18 +4,20 @@
+How it was tested. The station was a Quectel NCM865 (WCN7850) on
+Ubuntu's 7.3.0-1004-oem kernel, with ath12k built from that kernel's
+source, connecting on 6 GHz to a RUCKUS R670 that runs EHT at 320 MHz.
+Without the change, the first connection with disable_eht=1 started
+the timeouts, one every 3 seconds, until the module was reloaded. With
+the change, six cycles of EHT, HE and EHT connections (13 in all) and
+20 more EHT reconnects gave no timeout, and every station query
+returned a signal value in about 10 ms. Tracing showed start, stop and
+start for each HE connection, one start for each EHT connection, and
+one stop for each disconnect.
+
+The build tested on hardware was one change for both cases: this
+station part, written slightly differently, plus a restart part with
+the same effect as [2]. With [2] and this patch applied, the code
+behaves the same way. On ath-next this exact patch is compile-tested
+only (x86_64, W=1, with and without [2]).
+
+[1] https://lore.kernel.org/all/f9d0a06d-b7b0-4e51-8173-c53104c2a096@oss.qualcomm.com/
+[2] https://lore.kernel.org/all/20261020213505.31624-1-birk.skyum@pm.me/
+
+The change and this message were written, and the tests run, with
+Claude, an AI coding assistant.
+---
+ drivers/net/wireless/ath/ath12k/core.h |  2 ++
+ drivers/net/wireless/ath/ath12k/mac.c  | 34 +++++++++++++++++++++++++++++++---
+ 2 files changed, 33 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/ath/ath12k/core.h b/drivers/net/wireless/ath/ath12k/core.h
+index 3a92a4b033599..1c0cdf75a22bb 100644
+--- a/drivers/net/wireless/ath/ath12k/core.h
++++ b/drivers/net/wireless/ath/ath12k/core.h
+@@ -330,6 +330,8 @@ struct ath12k_link_vif {
  
- #include <dt-bindings/arm/qcom,ids.h>
- #include <dt-bindings/dma/qcom-gpi.h>
- #include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/interrupt-controller/irq.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- #include <dt-bindings/sound/qcom,q6afe.h>
- #include <dt-bindings/sound/qcom,q6asm.h>
-+#include <dt-bindings/sound/qcom,wcd934x.h>
+ 	bool is_created;
+ 	bool is_started;
++	/* vdev is running in firmware and counted in ar->num_started_vdevs */
++	bool vdev_started;
+ 	bool is_up;
+ 	u8 bssid[ETH_ALEN];
+ 	struct cfg80211_bitrate_mask bitrate_mask;
+diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
+index 4cb41b8b1d3be..65486383ea9f1 100644
+--- a/drivers/net/wireless/ath/ath12k/mac.c
++++ b/drivers/net/wireless/ath/ath12k/mac.c
+@@ -1565,9 +1565,12 @@ int ath12k_mac_vdev_stop(struct ath12k_link_vif *arvif)
+ 		goto err;
+ 	}
  
- #include "sdm845.dtsi"
-+#include "sdm845-wcd9340.dtsi"
- #include "pm8998.dtsi"
- #include "pmi8998.dtsi"
+-	WARN_ON(ar->num_started_vdevs == 0);
++	if (arvif->vdev_started) {
++		arvif->vdev_started = false;
++		WARN_ON(ar->num_started_vdevs == 0);
++		ar->num_started_vdevs--;
++	}
  
- /delete-node/ &mpss_region;
- /delete-node/ &venus_mem;
- /delete-node/ &cdsp_mem;
- /delete-node/ &mba_region;
- /delete-node/ &slpi_mem;
-@@ -512,16 +514,20 @@ dai@72 {
- 		qcom,tdm-data-align = <0>;
- 	};
- };
+-	ar->num_started_vdevs--;
+ 	ath12k_dbg(ar->ab, ATH12K_DBG_MAC, "vdev %pM stopped, vdev_id %d\n",
+ 		   ahvif->vif->addr, arvif->vdev_id);
  
- &q6asmdai {
- 	dai@0 {
- 		reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
- 	};
+@@ -10722,6 +10725,7 @@ int ath12k_mac_vdev_create(struct ath12k *ar, struct ath12k_link_vif *arvif)
+ 
+ err:
+ 	arvif->is_created = false;
++	arvif->vdev_started = false;
+ 	arvif->ar = NULL;
+ 	return ret;
+ }
+@@ -11032,6 +11036,7 @@ static int ath12k_mac_vdev_delete(struct ath12k *ar, struct ath12k_link_vif *arv
+ 
+ 	/* TODO: recal traffic pause state based on the available vdevs */
+ 	arvif->is_created = false;
++	arvif->vdev_started = false;
+ 	arvif->ar = NULL;
+ 
+ 	return ret;
+@@ -11544,7 +11549,30 @@ ath12k_mac_vdev_start_restart(struct ath12k_link_vif *arvif,
+ static int ath12k_mac_vdev_start(struct ath12k_link_vif *arvif,
+ 				 struct ieee80211_chanctx_conf *ctx)
+ {
+-	return ath12k_mac_vdev_start_restart(arvif, ctx, false);
++	int ret;
 +
-+	dai@1 {
-+		reg = <MSM_FRONTEND_DAI_MULTIMEDIA2>;
-+	};
- };
- 
- &qupv3_id_0 {
- 	status = "okay";
- };
- 
- &qupv3_id_1 {
- 	status = "okay";
-@@ -544,40 +550,79 @@ &qup_uart9_tx {
- 
- &sound {
- 	compatible = "qcom,sdm845-sndcard";
- 	model = "Pixel 3";
- 	pinctrl-0 = <&quat_mi2s_active>, <&quat_mi2s_sd0_active>,
- 		    <&quat_mi2s_sd1_active>;
- 	pinctrl-names = "default";
- 
-+	audio-routing = "DMIC0", "MCLK", /* Top mic */
-+			"DMIC0", "MIC BIAS1",
-+			"DMIC3", "MCLK", /* Top-edge mic */
-+			"DMIC3", "MIC BIAS3",
-+			"DMIC4", "MCLK", /* Bottom mic */
-+			"DMIC4", "MIC BIAS4";
-+
- 	/* mm[0-9]-dai-link nodes must be positioned first regardless of sorting */
- 	mm1-dai-link {
- 		link-name = "MultiMedia1";
- 
- 		cpu {
- 			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
- 		};
- 	};
- 
-+	mm2-dai-link {
-+		link-name = "MultiMedia2";
-+
-+		cpu {
-+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA2>;
-+		};
-+	};
-+
- 	cs35l36-dai-link {
- 		link-name = "Speaker Playback";
- 
- 		codec {
- 			sound-dai = <&cs35l36_bottom>, <&cs35l36_top>;
- 		};
- 
- 		cpu {
- 			sound-dai = <&q6afedai QUATERNARY_TDM_RX_0>;
- 		};
- 
- 		platform {
- 			sound-dai = <&q6routing>;
- 		};
- 	};
-+
-+	slimcap-dai-link {
-+		link-name = "SLIM Capture 1";
-+
-+		codec {
-+			sound-dai = <&wcd9340 AIF1_CAP>;
-+		};
-+
-+		cpu {
-+			sound-dai = <&q6afedai SLIMBUS_0_TX>;
-+		};
-+
-+		platform {
-+			sound-dai = <&q6routing>;
-+		};
-+	};
-+};
-+
-+&swm {
-+	/*
-+	 * Nothing hangs off the codec's SoundWire bus on this board: the
-+	 * speakers are CS35L36 amplifiers on QUAT_TDM.
++	/* A station vdev is stopped when its BSS peer is removed, not when
++	 * its channel context is unassigned. If mac80211 moves the station
++	 * to another channel context while the peer exists, the vdev is
++	 * still running here: stop it before starting it again, so that
++	 * firmware does not get a second start and the vdev is counted once.
 +	 */
-+	status = "disabled";
- };
- 
- &tlmm {
- 	gpio-reserved-ranges = < 0 4>, /* SPI (Intel MNH Pixel Visual Core) */
- 			       <81 4>; /* SPI (most likely Fingerprint Cards FPC1075) */
- 
- 	panel_default: panel-default-state {
- 		reset-pins {
-@@ -732,16 +777,27 @@ &usb_1_qmpphy {
- };
- 
- &venus {
- 	firmware-name = "qcom/sdm845/Google/blueline/venus.mbn";
- 
- 	status = "okay";
- };
- 
-+&wcd9340 {
-+	/* PM8998 LN_BB_CLK2 feeds the Pixel Visual Core on this board */
-+	clocks = <&rpmhcc RPMH_LN_BB_CLK3>;
-+	reset-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
-+	vdd-buck-supply = <&vreg_s4a_1p8>;
-+	vdd-buck-sido-supply = <&vreg_s4a_1p8>;
-+	vdd-tx-supply = <&vreg_s4a_1p8>;
-+	vdd-rx-supply = <&vreg_s4a_1p8>;
-+	vdd-io-supply = <&vreg_s4a_1p8>;
-+};
++	if (arvif->vdev_started) {
++		ath12k_dbg(arvif->ar->ab, ATH12K_DBG_MAC,
++			   "vdev %d still running, stopping it before start\n",
++			   arvif->vdev_id);
++		ret = ath12k_mac_vdev_stop(arvif);
++		if (ret)
++			return ret;
++	}
 +
- &wifi {
- 	vdd-0.8-cx-mx-supply = <&vreg_l5a_0p8>;
- 	vdd-1.8-xo-supply = <&vreg_pmu_xo>;
- 	vdd-1.3-rfa-supply = <&vreg_pmu_rf>;
- 	vdd-3.3-ch0-supply = <&vreg_pmu_ch0>;
++	ret = ath12k_mac_vdev_start_restart(arvif, ctx, false);
++	if (ret)
++		return ret;
++
++	arvif->vdev_started = true;
++
++	return 0;
+ }
  
- 	qcom,snoc-host-cap-8bit-quirk;
- 
+ static int ath12k_mac_vdev_restart(struct ath12k_link_vif *arvif,
 
--- 
-2.55.0
+---
+base-commit: ff4c7359e310744a7abe53cf66d921fa2969eb19
+change-id: 20261111-ath12k-sta-vdev-start-once-5680f05f548f
+
+Best regards,
+--  
+Christopher Griffin <christophergriffin05@gmail.com>
 
