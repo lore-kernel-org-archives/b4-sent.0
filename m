@@ -1,204 +1,86 @@
-From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Wed, 11 Nov 2026 11:53:58 -0600
-Subject: [PATCH ath-next] wifi: ath12k: stop a running station vdev before
- starting it again
+From: Andrew Gigena <mail@andrewgigena.dev>
+Subject: [PATCH v4 0/3] arm64: dts: qcom: sm8150: Add standalone ICE node
+ for UFS
+Date: Wed, 11 Nov 2026 17:53:20 +0000
+Message-Id: <20261111-sm8150-ice-rfc-v4-0-0311eac35609@andrewgigena.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-ath12k-sta-vdev-start-once-v1-1-a01ed78d5460@gmail.com>
-X-B4-Tracking: v=1; b=H4sIALWr9GoC/yWMwQqDMBBEf0X23IUkNCL9ldJDGjd1W4gl2QZB/
- PeuOqd5DPNWqFSYKty6FQo1rjxnBXvpIE4hvwh5VAZnXG81GGSy7oNVAraR2l6K4Jwjoe8Hk4x
- P/jokUMG3UOLlkN9Bf5hpEXicS/093xRld8O2/QFG75JjiAAAAA==
-X-Change-ID: 20261111-ath12k-sta-vdev-start-once-5680f05f548f
-To: Jeff Johnson <jjohnson@kernel.org>, ath12k@lists.infradead.org
-Cc: linux-wireless@vger.kernel.org, 
- Baochen Qiang <baochen.qiang@oss.qualcomm.com>, 
- Kang Yang <kang.yang@oss.qualcomm.com>, Birk Skyum <birk.skyum@pm.me>, 
- Christopher Griffin <christophergriffin05@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794419637; l=7666;
- i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=l2LS9+T8qV8NYnA/lIgTTemFYDi2ceLGxFaTVuPBUcw=;
- b=cFc035yZthsCIT/0FQxznEnY8NvaWI3Ocs7j2puvt6/R4RtIzJkmvrW8Xa8hR3hRPX7ZsFqqm
- YJHjdu0cUBQCdIdjOvNL4BBUeVUaRvap6lFS0+y91iQPCKEt6WT18Q9
-X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
- pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
-X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NzQ6CMBAE4FcxPVuzLZQfT76H8UC3C9REMC1WD
+ eHdLXgxUTxOMvPNyDw5S57tNyNzFKy3fRdDut0wbKuuIW5NzEyCzISAlPtLIRRwi8RdjRx0qiV
+ CoqgAFkdXR7V9LODx9M7+ps+Ew6zMjdb6oXfP5TGIubeKB8GBqzzJdYaSEOFQdcbRvbENddXOU
+ GDzR5D/FRkVk5W51kgg82JFST4UIb6UJCp1aVRVQFZjqX4o0zS9AJRozkJRAQAA
+X-Change-ID: 20261104-sm8150-ice-rfc-0b4b2c035e80
+To: Abel Vesa <abelvesa@kernel.org>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>, Bart Van Assche <bvanassche@acm.org>, 
+ Bean Huo <beanhuo@micron.com>, Stanley Jhu <stanleyjhu@google.com>, 
+ Bjorn Andersson <andersson@kernel.org>, Andy Gross <agross@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-scsi@vger.kernel.org, Andrew Gigena <mail@andrewgigena.dev>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794419696; l=1891;
+ i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
+ bh=ToMZN0TBCRPcQcR7ja+7EuF65OVoNHPNyts1YrPHW3E=;
+ b=xdt1PgjbVpCJks9hfSRRbhxiZnBh2Ei4/7a75ITpnTDZzb2Ts2bJ/VHHmDyqoCR1pFF8MjdCE
+ PvyQdHlDBFBCiRg8wcnEPRR7c4dZznU90qrNZhUIEpOmrsyv9wRWanL
+X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
+ pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
+X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A station vdev is not stopped when mac80211 unassigns its channel
-context. Since commit c9e4e41e71ff ("wifi: ath12k: move peer delete
-after vdev stop of station for WCN7850") it is stopped when the BSS
-peer is removed instead, so that firmware gets the vdev stop before
-the peer delete. ath12k_mac_op_unassign_vif_chanctx() still clears
-is_started for it, and nothing else records that the vdev is running
-in firmware.
+Hi everyone,
 
-mac80211 can move a station to another channel context while the BSS
-peer exists. It does so between authentication and association when
-it associates with a narrower width than it authenticated with, for
-example when a station with EHT disabled (wpa_supplicant disable_eht=1)
-connects to an AP operating EHT at 320 MHz: authentication runs on a
-320 MHz channel context, association on a 160 MHz one. The vdev was
-started for the first context (by ath12k_mac_op_assign_vif_chanctx(),
-or when the peer was created on hardware with vdev_start_delay), and
-ath12k_mac_op_assign_vif_chanctx() starts it again for the second one.
-Firmware gets a second vdev start with no stop in between, and
-ar->num_started_vdevs counts the vdev twice. The stop on disconnect
-takes only one of the two back.
+This series adds standalone ICE support to SM8150 (Snapdragon 855),
+matching newer Qualcomm platforms.
 
-Since commit 18ae7d0cdd76 ("wifi: ath12k: Avoid CPU busy-wait by
-handling VDEV_STAT and BCN_STAT"), ath12k_wmi_fw_stats_process()
-completes a WMI_REQUEST_VDEV_STAT request only after one stats event
-for each started vdev. With the count too high that never happens:
-from then on every station statistics request that needs the beacon
-RSSI waits the full 3 seconds in ath12k_mac_get_fw_stats() with the
-wiphy lock held, logs "time out while waiting for fw stats done" and
-reports no signal, until the driver is reloaded.
+Patch 1 documents the sm8150 ICE compatible.
+Patch 2 moves sm8150-ufshc to the standalone-ICE UFS binding.
+Patch 3 converts the UFS node to use a dedicated ICE node.
 
-Record in each link vif whether its vdev is running in firmware.
-ath12k_mac_vdev_start() now stops a vdev that is still running before
-it starts it, as ath12k_mac_update_vif_chan() already does for a vdev
-that is not up, and ath12k_mac_vdev_stop() takes a vdev out of
-num_started_vdevs only if it was running. Firmware then sees start,
-stop and start for such a connection, and the vdev is counted once.
-AP vdevs are still stopped on unassign, so in practice only station
-vdevs take the new stop.
+Tested on a Google Pixel 4 (google-flame): AES-256-XTS advertised,
+ext4 encryption supported, ICE self-test passes.
 
-This was found by tracing ath12k_mac_vdev_start_restart(),
-ath12k_mac_vdev_stop() and the mac80211 channel context and station
-state trace events on a WCN7850 station: the first HE connection
-(disable_eht=1) to an EHT 320 MHz AP after the driver was loaded
-started the vdev twice, and the timeouts began right after it.
+Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
 
-The change and this message were written with Claude, an AI coding
-assistant.
+Changes in v4:
+- Add Krzysztof's Reviewed-by to patch 1.
+- Document the transient dtbs_check warning for embedded-ICE DTs and why
+  it has no practical impact (patch 2).
+- Link to v3: https://patch.msgid.link/20261111-sm8150-ice-rfc-v3-0-f9d5a806fc95@andrewgigena.dev
 
-Tested-on: WCN7850 hw2.0 PCI WLAN.HMT.1.1.c7-00108-QCAHMTSWPL_V1.0_V2.0_SILICONZ_UPSTREAM-3
+Changes in v3:
+- Split bindings into two commits (compatible + standalone-ICE move).
+- Drop author Tested-by from DTS patch.
+- Link to v2: https://patch.msgid.link/20261104-sm8150-ice-rfc-v2-0-d697bbce0278@andrewgigena.dev
 
-Fixes: c9e4e41e71ff ("wifi: ath12k: move peer delete after vdev stop of station for WCN7850")
-Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
----
-There are two ways ar->num_started_vdevs ends up too high. The other
-one, counting a vdev restart as a start, is the one Baochen diagnosed
-in Mike Garuccio's report [1] and that Birk Skyum's pending patch [2]
-fixes. This patch fixes only the station case described above and does
-not touch the line [2] changes, so it applies to ath-next with or
-without [2].
-
-How it was tested. The station was a Quectel NCM865 (WCN7850) on
-Ubuntu's 7.3.0-1004-oem kernel, with ath12k built from that kernel's
-source, connecting on 6 GHz to a RUCKUS R670 that runs EHT at 320 MHz.
-Without the change, the first connection with disable_eht=1 started
-the timeouts, one every 3 seconds, until the module was reloaded. With
-the change, six cycles of EHT, HE and EHT connections (13 in all) and
-20 more EHT reconnects gave no timeout, and every station query
-returned a signal value in about 10 ms. Tracing showed start, stop and
-start for each HE connection, one start for each EHT connection, and
-one stop for each disconnect.
-
-The build tested on hardware was one change for both cases: this
-station part, written slightly differently, plus a restart part with
-the same effect as [2]. With [2] and this patch applied, the code
-behaves the same way. On ath-next this exact patch is compile-tested
-only (x86_64, W=1, with and without [2]).
-
-[1] https://lore.kernel.org/all/f9d0a06d-b7b0-4e51-8173-c53104c2a096@oss.qualcomm.com/
-[2] https://lore.kernel.org/all/20261020213505.31624-1-birk.skyum@pm.me/
-
-The change and this message were written, and the tests run, with
-Claude, an AI coding assistant.
----
- drivers/net/wireless/ath/ath12k/core.h |  2 ++
- drivers/net/wireless/ath/ath12k/mac.c  | 34 +++++++++++++++++++++++++++++++---
- 2 files changed, 33 insertions(+), 3 deletions(-)
-
-diff --git a/drivers/net/wireless/ath/ath12k/core.h b/drivers/net/wireless/ath/ath12k/core.h
-index 3a92a4b033599..1c0cdf75a22bb 100644
---- a/drivers/net/wireless/ath/ath12k/core.h
-+++ b/drivers/net/wireless/ath/ath12k/core.h
-@@ -330,6 +330,8 @@ struct ath12k_link_vif {
- 
- 	bool is_created;
- 	bool is_started;
-+	/* vdev is running in firmware and counted in ar->num_started_vdevs */
-+	bool vdev_started;
- 	bool is_up;
- 	u8 bssid[ETH_ALEN];
- 	struct cfg80211_bitrate_mask bitrate_mask;
-diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
-index 4cb41b8b1d3be..65486383ea9f1 100644
---- a/drivers/net/wireless/ath/ath12k/mac.c
-+++ b/drivers/net/wireless/ath/ath12k/mac.c
-@@ -1565,9 +1565,12 @@ int ath12k_mac_vdev_stop(struct ath12k_link_vif *arvif)
- 		goto err;
- 	}
- 
--	WARN_ON(ar->num_started_vdevs == 0);
-+	if (arvif->vdev_started) {
-+		arvif->vdev_started = false;
-+		WARN_ON(ar->num_started_vdevs == 0);
-+		ar->num_started_vdevs--;
-+	}
- 
--	ar->num_started_vdevs--;
- 	ath12k_dbg(ar->ab, ATH12K_DBG_MAC, "vdev %pM stopped, vdev_id %d\n",
- 		   ahvif->vif->addr, arvif->vdev_id);
- 
-@@ -10722,6 +10725,7 @@ int ath12k_mac_vdev_create(struct ath12k *ar, struct ath12k_link_vif *arvif)
- 
- err:
- 	arvif->is_created = false;
-+	arvif->vdev_started = false;
- 	arvif->ar = NULL;
- 	return ret;
- }
-@@ -11032,6 +11036,7 @@ static int ath12k_mac_vdev_delete(struct ath12k *ar, struct ath12k_link_vif *arv
- 
- 	/* TODO: recal traffic pause state based on the available vdevs */
- 	arvif->is_created = false;
-+	arvif->vdev_started = false;
- 	arvif->ar = NULL;
- 
- 	return ret;
-@@ -11544,7 +11549,30 @@ ath12k_mac_vdev_start_restart(struct ath12k_link_vif *arvif,
- static int ath12k_mac_vdev_start(struct ath12k_link_vif *arvif,
- 				 struct ieee80211_chanctx_conf *ctx)
- {
--	return ath12k_mac_vdev_start_restart(arvif, ctx, false);
-+	int ret;
-+
-+	/* A station vdev is stopped when its BSS peer is removed, not when
-+	 * its channel context is unassigned. If mac80211 moves the station
-+	 * to another channel context while the peer exists, the vdev is
-+	 * still running here: stop it before starting it again, so that
-+	 * firmware does not get a second start and the vdev is counted once.
-+	 */
-+	if (arvif->vdev_started) {
-+		ath12k_dbg(arvif->ar->ab, ATH12K_DBG_MAC,
-+			   "vdev %d still running, stopping it before start\n",
-+			   arvif->vdev_id);
-+		ret = ath12k_mac_vdev_stop(arvif);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	ret = ath12k_mac_vdev_start_restart(arvif, ctx, false);
-+	if (ret)
-+		return ret;
-+
-+	arvif->vdev_started = true;
-+
-+	return 0;
- }
- 
- static int ath12k_mac_vdev_restart(struct ath12k_link_vif *arvif,
+Changes in v2:
+- Move sm8150-ufshc to the standalone-ICE binding.
+- Keep the ICE compatible sorted.
+- Link to v1: https://patch.msgid.link/20261104-sm8150-ice-rfc-v1-0-5737b6c2ecc0@andrewgigena.dev
 
 ---
-base-commit: ff4c7359e310744a7abe53cf66d921fa2969eb19
-change-id: 20261111-ath12k-sta-vdev-start-once-5680f05f548f
+Andrew Gigena (3):
+      dt-bindings: crypto: ice: document sm8150 compatible
+      dt-bindings: ufs: qcom: classify sm8150-ufshc as standalone ICE
+      arm64: dts: qcom: sm8150: use standalone ICE for UFS
+
+ .../bindings/crypto/qcom,inline-crypto-engine.yaml |  1 +
+ .../devicetree/bindings/ufs/qcom,sc7180-ufshc.yaml |  2 ++
+ .../devicetree/bindings/ufs/qcom,ufs.yaml          | 11 ++++------
+ arch/arm64/boot/dts/qcom/sm8150.dtsi               | 25 ++++++++++++++--------
+ 4 files changed, 23 insertions(+), 16 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261104-sm8150-ice-rfc-0b4b2c035e80
 
 Best regards,
 --  
-Christopher Griffin <christophergriffin05@gmail.com>
+Andrew Gigena <mail@andrewgigena.dev>
 
