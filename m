@@ -1,164 +1,150 @@
-From: Moad Tarrih <tarrihmoad@proton.me>
-Date: Wed, 11 Nov 2026 23:36:26 +0000
-Subject: [PATCH v4] platform/x86: asus-wmi: Ignore unusable kbd backlight
- WMI device on ROG Strix G814FP
+From: Igor Velkov <iav@iav.lv>
+Subject: [PATCH net v5 0/4] net: phy: postpone PHY interrupts during sleep
+ with MAC-managed PM
+Date: Wed, 11 Nov 2026 23:48:18 +0000
+Message-Id: <20261111-b4-phylib-mac-pm-irq-v3-v5-0-bbfdb5afb7d3@iav.lv>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-asus-wmi-kbd-readback-v4-1-79df1567476d@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XQTQ7CIBAF4KsY1mJgQIKuvIdxwc+gaGwrtFVje
- nepumhijMuXzHwvMw+SMUXMZD17kIR9zLGuSpDzGXEHU+2RRl8yAQaKc6apyV2m13OkJ+tpQuO
- tcScKQoFcogaPmpTdJmGIt5e73b1z7uwRXTti48Qh5rZO91dxz8e5fx09p5zaIHRQkjHjcdOku
- q2rxRnJ2NHDVFn9UqAojkkd3FJ4jV+KmCic/VJEUZRUxgewWsFqqgzvgxNeuvLP9vOFYXgCZ4/
- i6G0BAAA=
-X-Change-ID: 20261108-asus-wmi-kbd-readback-236245e82de8
-To: Corentin Chary <corentin.chary@gmail.com>, 
- "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
- Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Antheas Kapenekakis <lkml@antheas.dev>, 
- Benjamin Tissoires <bentiss@kernel.org>
-Cc: Sercan GOKMEN <gokmensercan@gmail.com>, 
- Burak Goncu <burakgon12@gmail.com>, Denis Benato <benato.denis96@gmail.com>, 
- platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Moad Tarrih <tarrihmoad@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794440189; l=5327;
- i=tarrihmoad@proton.me; s=20261108; h=from:subject:message-id;
- bh=2DuMrNPPbmG4EK58GjRCWYX3JTlzq8zk3x5L5iXO+R4=;
- b=DbfGtdQqmZnbH4vi8ozqbeJ1yzktm11TKJN/TvPIGdcGufMdLcRthxvFIiwFN4hfWw5zlLrk5
- kLi6/0+BDieD2VqhRZ2b+G9sGC2eVtj5ajvv4kwbykYP/MDb7KTdTX4
-X-Developer-Key: i=tarrihmoad@proton.me; a=ed25519;
- pk=wtwpmYxZldK7Qebavgtx7P5WmSQOiWjicK0506NOKLg=
-X-Endpoint-Received: by B4 Relay for tarrihmoad@proton.me/20261108 with auth_id=1453
+X-B4-Tracking: v=1; b=H4sIAML+9GoC/4XNywrCMBAF0F8pWTuSt9SV/yEukjaxA32ZlGAp/
+ XdjFuJGhNncucyZjUQX0EVyrjYSXMKI05iDOlSk6cx4d4BtzoRTrhnlNVgJc7f2aGEwDcwDYHh
+ AEuC10q10rNHSk3w9B+fxWeQrGd1CbnnZYVymsJZvSZTqL5yHgqrpiUrlBWf0giYd+1TAJL8Qw
+ X4j8o1Yw4UV3tdGfpB9318XLeJ9BQEAAA==
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Lukas Wunner <lukas@wunner.de>, 
+ "Rafael J. Wysocki" <rafael.j.wysocki@intel.com>, 
+ Wei Fang <wei.fang@nxp.com>, 
+ =?utf-8?q?Niklas_S=C3=B6derlund?= <niklas.soderlund@ragnatech.se>, 
+ Paul Barker <paul@pbarker.dev>, 
+ Florian Fainelli <florian.fainelli@broadcom.com>, 
+ Doug Berger <opendmb@gmail.com>, 
+ Thangaraj Samynathan <Thangaraj.S@microchip.com>, 
+ Shenwei Wang <shenwei.wang@nxp.com>, 
+ Haoning Cheng <Haoning.CHENG@cn.bosch.com>, netdev@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5635; i=iav@iav.lv;
+ h=from:subject:message-id; bh=HfX1jf3NSg3omI4ZglWLxQwe7oK6Rg2xu5oqUFPBLQU=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFlf/h2RWbycV7E84fXDLYe1X6+ZUCnsY36LucPo/uojx
+ XyJl/v2dZSyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJ7G1h+M12KHfPZFnORCPN
+ JJUmyb6ZTtsdpuZPsWFYouRvc7QnJ4qRYXLGBp5/eXPa3zn1R/ulxtRM8mrsveVlGJdW0pbxJcm
+ bCwA=
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the ASUS ROG Strix G18 G814FP, writing a level to the keyboard
-backlight brightness in sysfs works, but reading it back always gives
-0, and the read makes the Fn brightness keys misbehave.
+When the MAC driver manages PHY PM, phylib never sets irq_suspended, and
+a PHY interrupt during the sleep transition runs the PHY driver's
+handler while the MDIO bus may be powered down. On Helios64 (dwmac-rk)
+this hangs the board on suspend as well as on resume.
 
-The firmware reports the keyboard backlight WMI device as present
-without implementing it, and the backlight is actually driven by
-hid-asus. DSTS(0x00050021) always returns 0x50000, which is level 0
-regardless of what the actual level is, and every DEVS(0x00050021)
-write is rejected as an unsupported method.
+mac_managed_pm hands phy_suspend(), phy_resume() and the state machine
+to the MAC driver, since commit fba863b81604 ("net: phy: make PHY PM
+ops a no-op if MAC driver manages PHY PM"); the PHY interrupt stays
+with phylib, and so does postponing it.
 
-Add a kbd_led_no_wmi quirk that makes asus-wmi treat the keyboard
-backlight WMI device as absent, and set it for this board, matched on
-the DMI board name. asus-wmi then keeps the LED registered for hid-asus
-and no longer reads from or writes to the WMI device.
+Patches 1-3 fix the postponing that phylib applies to other PHYs, so
+that patch 4 can extend it to MAC-managed ones. Patch 1 moves the two
+flags out of a bitfield they share with the link state written under
+phydev->lock. Patch 2 keeps the line of a postponed interrupt balanced
+when an edge reruns the IRQ thread or phy_free_interrupt() runs during
+the transition. Patch 3 undoes the postponing when phy_suspend() fails
+and ends it when the PHY fails to resume. Patch 4 sets irq_suspended
+for MAC-managed PHYs too and decides the wakeup event of a postponed
+interrupt before the device that owns the MDIO bus suspends.
 
-As a side effect, the kbd_rgb_mode and kbd_rgb_mode_index attributes are
-no longer created on this board, they never worked here since the firmware
-rejects those writes as well.
+Not covered: MDIO accesses from closing or opening the interface during
+the transition, and a MAC resume that fails to power the bus up. On a
+shared line, a postponed PHY interrupt disables the line for its other
+users until the PHY resumes; patch 4 extends that to MAC-managed PHYs. A
+nested threaded PHY interrupt is not replayed (irq_wake_thread() has no
+thread to wake), and mdio_bus_phy_may_suspend() does not ask
+phy_may_wakeup() about an attached PHY.
 
-Fixes: fac55d29581f ("platform/x86: asus-wmi: Add support for multiple kbd led handlers")
-Suggested-by: Antheas Kapenekakis <lkml@antheas.dev>
-Suggested-by: Denis Benato <denis.benato@linux.dev>
-Cc: stable@vger.kernel.org
-Signed-off-by: Moad Tarrih <tarrihmoad@proton.me>
-Reviewed-by: Antheas Kapenekakis <lkml@antheas.dev>
----
-Tested on an ASUS ROG Strix G18 (board G814FP, BIOS G814FP.317) on
-7.2.14: the brightness attribute reads back the level that was set, the
-Fn keys step from it, and this survives suspend and reboot. W=1 and
-checkpatch --strict are clean. v4 only changes the commit message.
+With MAC-managed PM, a postponed interrupt reports a system wakeup only
+when Wake-on-LAN is enabled in the PHY. A PHY that leaves its link
+interrupt unmasked while armed for Wake-on-LAN can then abort suspend
+when the MAC changes the link. Going by their suspend code, BCM54210E
+leaves it unmasked, while RTL8211F and AN8801R mask it. Tested on
+Helios64 (dwmac-rk, RTL8211F); Haoning Cheng tested v4 on i.MX6 (fec).
 
-Sercan GOKMEN's B9406CAA patch also adds a field to struct quirk_entry
-and a DMI entry, so whichever lands second may need a trivial rebase.
+Changes in v5:
+- v4 patch 2 alone could leave irq_rerun set across
+  phy_free_interrupt() and a new request, after which a postponed
+  level interrupt fired without end; it is merged with v4 patch 3 into
+  patch 2. phy_free_interrupt() re-enables the line after free_irq(),
+  not before, and only while other users of a shared line remain, so
+  the handler cannot keep running on a source it cannot quiet;
+  irq_rerun stays a bool (Sashiko on v4)
+- patch 3: when the PHY fails to resume, the line a postponed
+  interrupt disabled stays off, as before this series, instead of
+  rerunning a handler that may not reach the PHY (Sashiko on v4)
+- patch 4: with mac_managed_pm, only Wake-on-LAN in the PHY makes a
+  postponed interrupt a wakeup; the ethtool flag may describe
+  Wake-on-LAN in the MAC, as with fec (Sashiko on v4); for a PHY that
+  phy_suspend() already suspended, the PHY part of its Wake-on-LAN
+  state is kept in the new wol_phy
+- patch 4: Fixes: now points at 1758bde2e4aa, which added the
+  postponing after the early return for MAC-managed PHY PM
+- comments say that postponing lasts until the transition ends
+- Haoning Cheng's Tested-by on v4 kept on patch 1 only: patches 2-4
+  changed
+- rebased on net
+- tests rerun on v5
+- Link to v4: https://lore.kernel.org/r/20261031-b4-phylib-mac-pm-irq-v3-v4-0-5ba23b3ff9a4@iav.lv
 
-AI assistance: Claude Code (Claude Opus 5.5) was used to trace the
-asus-wmi code, write the patch and draft the commit message. I reviewed
-it and tested it on the hardware.
----
 Changes in v4:
-- Trim the commit message and move the AI assistance note below the
-  --- line (Ilpo).
-- Link to v3: https://patch.msgid.link/20261110-asus-wmi-kbd-readback-v3-1-646adf2b8629@proton.me
+- new patches 2-4, one pre-existing defect each
+- patch 2: an edge that reruns the IRQ thread no longer disables the
+  line twice
+- patch 3: phy_free_interrupt() during the transition keeps the line
+  balanced (Sashiko on v3)
+- patch 4: a failing PHY PM callback no longer leaves the interrupt
+  postponed (Sashiko on v2 and v3)
+- patch 5: the wakeup event is decided in mdio_bus_phy_suspend(), where
+  phy_may_wakeup() can still read the PHY (Sashiko on v3); Fixes: now
+  points at the stmmac commit that took its PHYs out of postponing
+- v3 asked phylib or phylink_suspend(): phylib, as macb sets
+  mac_managed_pm but suspends with phylink_stop()
+- tests rerun on v4
+- Link to v3: https://lore.kernel.org/r/20261029-b4-phylib-mac-pm-irq-v3-v3-0-5907045f3210@iav.lv
 
 Changes in v3:
-- Drop the comment on kbd_led_no_wmi (Antheas).
-- Don't set wmi_backlight_set_devstate for this board: the firmware
-  rejects both DSTS and DEVS on 0x00050012, so the write did nothing
-  (Antheas).
-- Add Antheas's Reviewed-by.
-- Link to v2: https://patch.msgid.link/20261109-asus-wmi-kbd-readback-v2-1-c048fc53d8ee@proton.me
+- with mac_managed_pm, a postponed interrupt signals a wakeup event only
+  with Wake-on-LAN; with MAC power/wakeup enabled and no WoL, v2 aborted
+  s2idle on Helios64 3 of 3 times, v3 0 of 3 (reported by Sashiko)
+- phy_free_interrupt(): stop postponing and re-enable the line before
+  free_irq(), not after it (reported by Sashiko)
+- mdio_bus_phy_suspend() comment narrowed to the MDIO bus (reported by
+  Sashiko)
+- patch 1: Andrew suggested taking phydev->lock in phy_interrupt();
+  the commit message says why that does not close the race
+- tests rerun on v3
+- Link to v2: https://lore.kernel.org/r/20261026045343.837889-1-iav@iav.lv
 
-Changes in v2:
-- Add a quirk that makes asus-wmi skip the keyboard backlight WMI
-  device on this board instead of detecting rejected writes at
-  runtime (Antheas), so no more WMI writes that are known to fail
-  are issued (Denis).
-- Link to v1: https://patch.msgid.link/20261108-asus-wmi-kbd-readback-v1-1-bf38f6400ade@proton.me
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- drivers/platform/x86/asus-nb-wmi.c | 13 +++++++++++++
- drivers/platform/x86/asus-wmi.c    |  3 ++-
- drivers/platform/x86/asus-wmi.h    |  1 +
- 3 files changed, 16 insertions(+), 1 deletion(-)
+Igor Velkov (4):
+      net: phy: move irq_suspended and irq_rerun out of the bitfield
+      net: phy: keep the line of a postponed PHY interrupt balanced
+      net: phy: stop postponing PHY interrupts when a PHY PM callback fails
+      net: phy: postpone PHY interrupts during sleep with MAC-managed PM
 
-diff --git a/drivers/platform/x86/asus-nb-wmi.c b/drivers/platform/x86/asus-nb-wmi.c
-index 3b0f3346dc60..9b2a4b829885 100644
---- a/drivers/platform/x86/asus-nb-wmi.c
-+++ b/drivers/platform/x86/asus-nb-wmi.c
-@@ -93,6 +93,10 @@ static struct quirk_entry quirk_asus_unknown = {
- 	.wmi_backlight_set_devstate = true,
- };
- 
-+static struct quirk_entry quirk_asus_g814fp = {
-+	.kbd_led_no_wmi = true,
-+};
-+
- static struct quirk_entry quirk_asus_q500a = {
- 	.filter_i8042_e1_extended_codes = true,
- 	.wmi_backlight_set_devstate = true,
-@@ -167,6 +171,15 @@ static int dmi_matched(const struct dmi_system_id *dmi)
- }
- 
- static const struct dmi_system_id asus_quirks[] = {
-+	{
-+		.callback = dmi_matched,
-+		.ident = "ASUS ROG Strix G18 G814FP",
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
-+			DMI_MATCH(DMI_BOARD_NAME, "G814FP"),
-+		},
-+		.driver_data = &quirk_asus_g814fp,
-+	},
- 	{
- 		.callback = dmi_matched,
- 		.ident = "ASUSTeK COMPUTER INC. Q500A",
-diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
-index b33ebdb21aa2..51fea21ff247 100644
---- a/drivers/platform/x86/asus-wmi.c
-+++ b/drivers/platform/x86/asus-wmi.c
-@@ -2165,7 +2165,8 @@ static int asus_wmi_led_init(struct asus_wmi *asus)
- 	asus->kbd_led.brightness_set_blocking = kbd_led_set;
- 	asus->kbd_led.brightness_get = kbd_led_get;
- 	asus->kbd_led.max_brightness = ASUS_EV_MAX_BRIGHTNESS;
--	asus->kbd_led_avail = !kbd_led_read(asus, &led_val, NULL);
-+	asus->kbd_led_avail = !asus->driver->quirks->kbd_led_no_wmi &&
-+			      !kbd_led_read(asus, &led_val, NULL);
- 	INIT_WORK(&asus->kbd_led_work, kbd_led_update_all);
- 
- 	if (asus->kbd_led_avail) {
-diff --git a/drivers/platform/x86/asus-wmi.h b/drivers/platform/x86/asus-wmi.h
-index b45f81b38a47..e53c6b3fc619 100644
---- a/drivers/platform/x86/asus-wmi.h
-+++ b/drivers/platform/x86/asus-wmi.h
-@@ -41,6 +41,7 @@ struct quirk_entry {
- 	bool wmi_force_als_set;
- 	bool wmi_ignore_fan;
- 	bool filter_i8042_e1_extended_codes;
-+	bool kbd_led_no_wmi;
- 	int key_wlan_event;
- 	enum asus_wmi_tablet_switch_mode tablet_switch_mode;
- 	int wapf;
-
+ drivers/net/phy/phy.c        |  45 +++++++++++----
+ drivers/net/phy/phy_device.c | 134 ++++++++++++++++++++++++++++++++++---------
+ include/linux/phy.h          |  35 +++++++++--
+ 3 files changed, 169 insertions(+), 45 deletions(-)
 ---
-base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
-change-id: 20261108-asus-wmi-kbd-readback-236245e82de8
+base-commit: 8d5ce4751fad9499ea408163af7f410f18a85782
+change-id: 20261029-b4-phylib-mac-pm-irq-v3-f656d4e1c64f
 
 Best regards,
---  
-Moad Tarrih <tarrihmoad@proton.me>
+-- 
+Igor Velkov <iav@iav.lv>
 
