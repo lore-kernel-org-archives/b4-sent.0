@@ -1,74 +1,285 @@
-From: Joseph Telaak <joseph@telaak.dev>
-Date: Wed, 11 Nov 2026 03:27:18 -0500
-Subject: [PATCH v2 4/4] MIPS: configs: Add sf19a2890_defconfig
+From: Sercan GOKMEN <gokmensercan@gmail.com>
+Date: Wed, 11 Nov 2026 11:36:16 +0300
+Subject: [PATCH 7.3.y] ASoC: cs35l56: Wait for firmware timer expiry before
+ system suspend
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-sf19a2890-mips-v2-4-36730fa4f5a6@telaak.dev>
-References: <20261111-sf19a2890-mips-v2-0-36730fa4f5a6@telaak.dev>
-In-Reply-To: <20261111-sf19a2890-mips-v2-0-36730fa4f5a6@telaak.dev>
-To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Paul Burton <paulburton@kernel.org>
-Cc: Jiaxun Yang <jiaxun.yang@flygoat.com>, 
- Chuanhong Guo <gch981213@gmail.com>, linux-mips@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joseph Telaak <joseph@telaak.dev>
+Message-Id: <20261111-cs35l56-fw-timer-7-3-y-v1-1-43fc95730c11@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMyw6CQAxFf4V0bYkzDZD4K8YF1hZqFM0UH4Tw7
+ wx6d+cm58zgkkwcDsUMSd7m9hgyhF0B3LdDJ2iXzBD3sQ55yE7VrapRPzjaXRI2SDghiQYmVtb
+ YQpafSdS+v/ARmpLKCU7/21/nq/C4RWFZVs9S4DGBAAAA
+X-Change-ID: 20261111-cs35l56-fw-timer-7-3-y-3ef1c3cfcf2a
+To: stable@vger.kernel.org
+Cc: Richard Fitzgerald <rf@opensource.cirrus.com>, 
+ patches@opensource.cirrus.com, Mark Brown <broonie@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794385652; l=1372;
- i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=jrZFDuNOVQSJQnzMtSdYByrN6lytb/mj6TbF+QbIufc=;
- b=fRtO233xcWqqziTzm7CZbFUCGAVR2y5D3Xox+oMdW8p/mwK5zwVUX5a6KRuQOxjRy6kUw8vgI
- z9/NHHJC0mRBBDIume8oj2+9/DTpSrNYE++HxTwRz0LVsRNbKyuYsL6
-X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
- pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
-X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794386176; l=9575;
+ i=gokmensercan@gmail.com; s=20261022; h=from:subject:message-id;
+ bh=rnyqu+zmhrHDhKxyszYRh7pDkoBuPfjqjnpyOWKDTT4=;
+ b=XZCoUlHohbouAQaDHgw6W0MhFYKoeC9bWtcDd5LOOhMdgLTqelO1AOKZV/HOTTUXQgKnAQrpC
+ 9dkYu3owYyDBJV2yrIEboHWvzQ5D8JZ/0M0Wx5srBZQSc80a1k26LQs
+X-Developer-Key: i=gokmensercan@gmail.com; a=ed25519;
+ pk=nFIlLCcGouUfBov8xxW0K4qUtEjdhJniMOO8WCSqghU=
+X-Endpoint-Received: by B4 Relay for gokmensercan@gmail.com/20261022 with auth_id=1282
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a defconfig for boards with the Siflower SF19A2890. It boots with
-the device tree appended to the kernel, as the GL.iNet GL-SFT1200's
-U-Boot passes none.
+From: Richard Fitzgerald <rf@opensource.cirrus.com>
 
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+commit 6cc7db9fdd06c992ee38793b2d556524fc0cf574 upstream.
+
+On CS35L5x firmware older than 3.13.7 (B0 silicon) and 4.7.16 (B2 silicon)
+a SoundWire bus reset is not allowed within 250ms of the last firmware
+timer start.
+
+This is already avoided during runtime suspend by the various idle
+timeouts. System suspend can happen at any time so needs special
+protection. The driver cannot cancel the firmware timer, so it must wait
+long enough for the timer to expire.
+
+The delay is placed in the suspend stage because typically this has less
+impact on end users than delays in resuming. The amp is in PS3 power
+state when suspending and no new timers will be started in this state.
+An extra 10ms is added to the delay to avoid a race on the exact instant
+the firmware timer expires.
+
+There is no need to have the delay for every driver instance. The timers
+on each amp will expire in parallel, so the delay is only needed once.
+A global flag is used so that the first instance to reach its suspend()
+callback will delay and then clear the flag. The cs35l56_fw_idle_wait_lock
+mutex is to ensure this is still safe if async_suspend was ever enabled
+for SoundWire devices.
+
+Fixes: e496112529006 ("ASoC: cs35l56: Add driver for Cirrus Logic CS35L56")
+Reported-by: Ferenc Lengyel <leferi99@gmail.com>
+Closes: https://github.com/thesofproject/linux/issues/5898
+Signed-off-by: Richard Fitzgerald <rf@opensource.cirrus.com>
+Link: https://patch.msgid.link/20261020135706.3573260-1-rf@opensource.cirrus.com
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Sercan GOKMEN <gokmensercan@gmail.com>
 ---
- MAINTAINERS                           |  1 +
- arch/mips/configs/sf19a2890_defconfig | 15 +++++++++++++++
- 2 files changed, 16 insertions(+)
+Please consider this for 7.3.y. The upstream commit, 6cc7db9fdd06, is in
+mainline for 7.4 and carries a Fixes: tag for the original CS35L56
+driver, but it has no Cc: stable and is not in 7.3.4.
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 23ad08c7d8d1..4c8daaae5501 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -25704,6 +25704,7 @@ L:	linux-mips@vger.kernel.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/mips/siflower.yaml
- F:	arch/mips/boot/dts/siflower/
-+F:	arch/mips/configs/sf19a2890_defconfig
- F:	arch/mips/include/asm/mach-siflower/
- N:	sf19a2890
+On CS35L56 B0 amps running firmware older than 3.13.7, a SoundWire bus
+reset within 250 ms of a firmware timer start is not allowed. System
+suspend can trigger one at any time. The ASUS ExpertBook Ultra B9406CAA
+has two CS35L56 B0 amps on SoundWire link 2, loading firmware 3.13.4
+from linux-firmware. Owners of that laptop have reported speakers
+losing their bass after s2idle resume, with repeated parity errors and
+bus clashes on link 2:
+https://github.com/burakgon/asus-expertbook-linux/issues/17
+
+The commit cherry-picks cleanly onto v7.3.4, with no follow-up fixes in
+mainline. With it applied, cs35l56.o, cs35l56-sdw.o and
+cs35l56-shared.o build without warnings at W=1 (clang, ThinLTO, CachyOS
+7.3 config). I have not checked older stable trees.
+---
+ include/sound/cs35l56.h           |  4 ++++
+ sound/soc/codecs/cs35l56-sdw.c    | 27 ++++++++++++++++++++++++++-
+ sound/soc/codecs/cs35l56-shared.c | 38 ++++++++++++++++++++++++++++++++++++++
+ sound/soc/codecs/cs35l56.c        | 17 +++++++++++++++++
+ sound/soc/codecs/cs35l56.h        |  1 +
+ 5 files changed, 86 insertions(+), 1 deletion(-)
+
+diff --git a/include/sound/cs35l56.h b/include/sound/cs35l56.h
+index 747e10ec1a..ce6383c2c6 100644
+--- a/include/sound/cs35l56.h
++++ b/include/sound/cs35l56.h
+@@ -209,6 +209,9 @@ struct snd_ctl_elem_value;
  
-diff --git a/arch/mips/configs/sf19a2890_defconfig b/arch/mips/configs/sf19a2890_defconfig
-new file mode 100644
-index 000000000000..ec0992ac6340
---- /dev/null
-+++ b/arch/mips/configs/sf19a2890_defconfig
-@@ -0,0 +1,15 @@
-+CONFIG_SYSVIPC=y
-+CONFIG_NO_HZ_IDLE=y
-+CONFIG_HIGH_RES_TIMERS=y
-+CONFIG_BLK_DEV_INITRD=y
-+CONFIG_CC_OPTIMIZE_FOR_SIZE=y
-+CONFIG_MACH_SIFLOWER_MIPS=y
-+CONFIG_MIPS_CPS=y
-+CONFIG_NR_CPUS=4
-+CONFIG_MIPS_RAW_APPENDED_DTB=y
-+CONFIG_DEVTMPFS=y
-+CONFIG_DEVTMPFS_MOUNT=y
-+CONFIG_SERIAL_AMBA_PL011=y
-+CONFIG_SERIAL_AMBA_PL011_CONSOLE=y
-+CONFIG_TMPFS=y
-+CONFIG_PRINTK_TIME=y
+ #define CS35L56_GPIO_FN_GPIO				0x00000001
+ 
++/* DSP1_FW_VER */
++#define CS35L56_FW_MAIN_VERSION_MASK			GENMASK(19, 0)
++
+ /* Mixer input sources */
+ #define CS35L56_INPUT_SRC_NONE				0x00
+ #define CS35L56_INPUT_SRC_ASP1RX1			0x08
+@@ -446,6 +449,7 @@ int cs35l56_cal_set_status_get(struct cs35l56_base *cs35l56_base,
+ int cs35l56_read_prot_status(struct cs35l56_base *cs35l56_base,
+ 			     bool *fw_missing, unsigned int *fw_version);
+ void cs35l56_warn_if_firmware_missing(struct cs35l56_base *cs35l56_base);
++bool cs35l56_needs_wait_for_firmware_timer_expiry(struct cs35l56_base *cs35l56_base);
+ void cs35l56_log_tuning(struct cs35l56_base *cs35l56_base, struct cs_dsp *cs_dsp);
+ int cs35l56_hw_init(struct cs35l56_base *cs35l56_base);
+ int cs35l56_get_speaker_id(struct cs35l56_base *cs35l56_base);
+diff --git a/sound/soc/codecs/cs35l56-sdw.c b/sound/soc/codecs/cs35l56-sdw.c
+index e10f04d677..a49ad69644 100644
+--- a/sound/soc/codecs/cs35l56-sdw.c
++++ b/sound/soc/codecs/cs35l56-sdw.c
+@@ -9,6 +9,7 @@
+ #include <linux/device.h>
+ #include <linux/err.h>
+ #include <linux/module.h>
++#include <linux/mutex.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/regmap.h>
+ #include <linux/soundwire/sdw.h>
+@@ -36,6 +37,9 @@
+ #define CS35L56_LATE_READ_POLL_US	10
+ #define CS35L56_LATE_READ_TIMEOUT_US	1000
+ 
++static DEFINE_MUTEX(cs35l56_fw_idle_wait_lock);
++static bool cs35l56_fw_idle_wait_pending;
++
+ static int cs35l56_sdw_poll_mem_status(struct sdw_slave *peripheral,
+ 				       unsigned int mask,
+ 				       unsigned int match)
+@@ -387,14 +391,34 @@ static int __maybe_unused cs35l56_sdw_runtime_resume(struct device *dev)
+ 	return 0;
+ }
+ 
++static int cs35l56_sdw_system_suspend_prepare(struct device *dev)
++{
++	cs35l56_fw_idle_wait_pending = true;
++
++	return 0;
++}
++
+ static int __maybe_unused cs35l56_sdw_system_suspend(struct device *dev)
+ {
+ 	struct cs35l56_private *cs35l56 = dev_get_drvdata(dev);
++	int ret;
+ 
+ 	if (cs35l56->sdw_attached)
+ 		cs35l56_mask_soundwire_interrupts(cs35l56);
+ 
+-	return cs35l56_system_suspend(dev);
++	ret = cs35l56_system_suspend(dev);
++	if (ret < 0)
++		return ret;
++
++	scoped_guard(mutex, &cs35l56_fw_idle_wait_lock) {
++		if (cs35l56_fw_idle_wait_pending && cs35l56->needs_wait_for_fw_idle) {
++			dev_dbg(cs35l56->base.dev, "Wait for FW timer expiry\n");
++			msleep(CS35L56_FW_REQ_ACTIVE_TIMEOUT_MS + 10);
++			cs35l56_fw_idle_wait_pending = false;
++		}
++	}
++
++	return 0;
+ }
+ 
+ static int cs35l56_sdw_probe(struct sdw_slave *peripheral, const struct sdw_device_id *id)
+@@ -460,6 +484,7 @@ static void cs35l56_sdw_remove(struct sdw_slave *peripheral)
+ }
+ 
+ static const struct dev_pm_ops cs35l56_sdw_pm = {
++	.prepare = cs35l56_sdw_system_suspend_prepare,
+ 	SET_RUNTIME_PM_OPS(cs35l56_sdw_runtime_suspend, cs35l56_sdw_runtime_resume, NULL)
+ 	SYSTEM_SLEEP_PM_OPS(cs35l56_sdw_system_suspend, cs35l56_system_resume)
+ 	LATE_SYSTEM_SLEEP_PM_OPS(cs35l56_system_suspend_late, cs35l56_system_resume_early)
+diff --git a/sound/soc/codecs/cs35l56-shared.c b/sound/soc/codecs/cs35l56-shared.c
+index 7b3e37d462..b37f65cd4d 100644
+--- a/sound/soc/codecs/cs35l56-shared.c
++++ b/sound/soc/codecs/cs35l56-shared.c
+@@ -1379,6 +1379,44 @@ void cs35l56_warn_if_firmware_missing(struct cs35l56_base *cs35l56_base)
+ }
+ EXPORT_SYMBOL_NS_GPL(cs35l56_warn_if_firmware_missing, "SND_SOC_CS35L56_SHARED");
+ 
++bool cs35l56_needs_wait_for_firmware_timer_expiry(struct cs35l56_base *cs35l56_base)
++{
++	unsigned int fw_ver;
++	bool prot_sts;
++	int ret;
++
++	switch (cs35l56_base->type) {
++	case 0x54:
++	case 0x56:
++	case 0x57:
++		switch (cs35l56_base->rev) {
++		case 0xb0:
++			ret = cs35l56_read_prot_status(cs35l56_base, &prot_sts, &fw_ver);
++			if (ret)
++				return true;
++
++			if ((fw_ver & CS35L56_FW_MAIN_VERSION_MASK) < 0x30d07)
++				return true;
++
++			return false;
++		case 0xb2:
++			ret = cs35l56_read_prot_status(cs35l56_base, &prot_sts, &fw_ver);
++			if (ret)
++				return true;
++
++			if ((fw_ver & CS35L56_FW_MAIN_VERSION_MASK) < 0x40710)
++				return true;
++
++			return false;
++		default:
++			return false;
++		}
++	default:
++		return false;
++	}
++}
++EXPORT_SYMBOL_NS_GPL(cs35l56_needs_wait_for_firmware_timer_expiry, "SND_SOC_CS35L56_SHARED");
++
+ void cs35l56_log_tuning(struct cs35l56_base *cs35l56_base, struct cs_dsp *cs_dsp)
+ {
+ 	__be32 pid, sid, tid;
+diff --git a/sound/soc/codecs/cs35l56.c b/sound/soc/codecs/cs35l56.c
+index 279db3f13f..573cc71a19 100644
+--- a/sound/soc/codecs/cs35l56.c
++++ b/sound/soc/codecs/cs35l56.c
+@@ -1693,6 +1693,10 @@ int cs35l56_system_resume(struct device *dev)
+ 
+ 	dev_dbg(dev, "system_resume\n");
+ 
++	/* Assume the firmware reset to default until we can check it */
++	if (cs35l56->base.init_done)
++		cs35l56->needs_wait_for_fw_idle = true;
++
+ 	/*
+ 	 * We might have done a hard reset or the CS35L56 was power-cycled
+ 	 * so wait for control port to be ready.
+@@ -1707,6 +1711,16 @@ int cs35l56_system_resume(struct device *dev)
+ 	if (ret)
+ 		return ret;
+ 
++	if (cs35l56->sdw_peripheral && cs35l56->base.init_done) {
++		ret = pm_runtime_resume_and_get(cs35l56->base.dev);
++		if (ret < 0)
++			return ret;
++
++		cs35l56->needs_wait_for_fw_idle =
++			cs35l56_needs_wait_for_firmware_timer_expiry(&cs35l56->base);
++		pm_runtime_put_autosuspend(cs35l56->base.dev);
++	}
++
+ 	/* Firmware won't have been loaded if the component hasn't probed */
+ 	if (!cs35l56->component)
+ 		return 0;
+@@ -2231,6 +2245,9 @@ int cs35l56_init(struct cs35l56_private *cs35l56)
+ 	if (ret)
+ 		return dev_err_probe(cs35l56->base.dev, ret, "Failed to write ASP1_CONTROL3\n");
+ 
++	cs35l56->needs_wait_for_fw_idle =
++		cs35l56_needs_wait_for_firmware_timer_expiry(&cs35l56->base);
++
+ 	cs35l56->base.init_done = true;
+ 	complete_all(&cs35l56->init_completion);
+ 
+diff --git a/sound/soc/codecs/cs35l56.h b/sound/soc/codecs/cs35l56.h
+index f7cf8aa653..b46f410f0e 100644
+--- a/sound/soc/codecs/cs35l56.h
++++ b/sound/soc/codecs/cs35l56.h
+@@ -43,6 +43,7 @@ struct cs35l56_private {
+ 	bool soft_resetting;
+ 	bool sdw_attached;
+ 	bool component_registered;
++	bool needs_wait_for_fw_idle;
+ 	struct completion init_completion;
+ 
+ 	int speaker_id;
 
--- 
-Git-155)
+---
+base-commit: 7595a62d45ee1a2297eafa5f2ef5d0a45142d84d
+change-id: 20261111-cs35l56-fw-timer-7-3-y-3ef1c3cfcf2a
+
+Best regards,
+--  
+Sercan GOKMEN <gokmensercan@gmail.com>
 
