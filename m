@@ -1,11 +1,11 @@
 From: Marc Herrero <marcht@proton.me>
-Date: Wed, 11 Nov 2026 10:54:17 +0000
-Subject: [PATCH 1/2] ASoC: qcom: audioreach: use a 32-bit container for
- S24_LE PCM
+Date: Wed, 11 Nov 2026 10:54:18 +0000
+Subject: [PATCH 2/2] ASoC: qcom: audioreach: only disconnect the route a
+ mixer control owns
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-q6apm-fixes-v1-1-1beb5702b372@proton.me>
+Message-Id: <20261111-q6apm-fixes-v1-2-1beb5702b372@proton.me>
 References: <20261111-q6apm-fixes-v1-0-1beb5702b372@proton.me>
 In-Reply-To: <20261111-q6apm-fixes-v1-0-1beb5702b372@proton.me>
 To: Srinivas Kandagatla <srini@kernel.org>, 
@@ -16,68 +16,58 @@ Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Marc Herrero <marcht@proton.me>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794394460; l=2662;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794394460; l=2173;
  i=marcht@proton.me; s=20261111; h=from:subject:message-id;
- bh=9fJzhmYUq3LyiOGxgqaMh+RyxTe6x0FH/AqCa9i1ZJM=;
- b=NtdgL1f71BjOhvSO6cGEs3Y0JCeTj7nkuY/GfIZ8t79gXECCYHSjzYDo0uZRZv7MAS9Tw2yc3
- 9Lyi4UzXau6AZvA0ybFKjLsuIRUx4d8yHM9uan0px5Qi7g04YJJFc84
+ bh=uwHreXeheF+PY4xZ0ZasSUnOSnlXrONYE6C8uZecUBM=;
+ b=bLkWe0qoIIXe4vR/PnbDWg1bBcDb3ZcqkOH4+4smFjsy+J+H3bp+7RMSHR6hsb0g8jz20cm6Y
+ IZlTr6OAuUaBpTR2JKIdOEDdty12wfeTZAMyPw/715ULBSQFkVIhSYd
 X-Developer-Key: i=marcht@proton.me; a=ed25519;
  pk=pIPy6L+INgiuJt7L7umVilPgpzy/Ni3QS77ToLj/H9c=
 X-Endpoint-Received: by B4 Relay for marcht@proton.me/20261111 with auth_id=1490
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SNDRV_PCM_FORMAT_S24_LE carries 24 valid bits in a 32-bit container, but
-audioreach_shmem_set_media_format() and audioreach_pcm_set_media_format()
-set bits_per_sample = bit_width = 24 in PARAM_ID_MEDIA_FORMAT and
-PARAM_ID_PCM_OUTPUT_FORMAT_CFG, which tells the DSP that the samples are
-packed 3-byte words.
+Each AudioReach virtual mixer route control ("<BE> Audio Mixer <FE>")
+connects a front-end stream graph to a back-end device graph by storing
+the source module in the device graph's audioreach_graph_info. Writing 0
+to any of these controls clears that link unconditionally, even when the
+device graph is connected to a different front end.
 
-q6apm-dai advertises S24_LE, so with a topology that allows it on a
-playback front end the DSP walks the buffer with the wrong stride. On
-QCS6490 (Radxa Dragon Q6A) this crashes the ADSP audio_process:
+When two front ends can feed the same back end the result therefore
+depends on write order. On QCS6490 (Radxa Dragon Q6A):
 
-  PDM: service 'audio_process' crash: 'EX:audio_process:0x2:...'
-  q6apm-lpass-dais ...: Failed to start APM port 113
-  remoteproc remoteproc0: crash detected in adsp: type fatal error
+ - alsactl restore writes 'DISPLAY_PORT_RX_0 Audio Mixer MultiMedia2' = 1
+   and then 'DISPLAY_PORT_RX_0 Audio Mixer MultiMedia1' = 0, which leaves
+   DisplayPort disconnected although the saved state has it connected;
+ - the UCM HDMI enable sequence writes
+   'RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia2' = 0, which disconnects
+   MultiMedia1 from the headphones. A PCM started on MultiMedia1 after
+   that never advances (hw_ptr stays at 0).
 
-Use the container size (32) for 24-bit data and keep bit_width = 24,
-alignment = PCM_LSB_ALIGNED and q_factor = 23. With this change S24_LE
-playback works on the headphone path (codec DMA RX -> LPASS RX macro ->
-WCD9385), tested with the back end at S16_LE, S24_LE and S32_LE and at
-48, 96 and 192 kHz.
+Only drop the link when it belongs to the control being cleared, that is
+when audioreach_is_vmixer_connected() reports it as connected. Writing 0
+to a control that is not the active route becomes a no-op, which matches
+what its get() callback already returns.
 
-The DSP then reads each 32-bit word as Q23, so S24_LE samples must be
-sign-extended into the top byte, as alsa-lib's conversions do.
-
-Fixes: 25ab80db6b13 ("ASoC: qdsp6: audioreach: add module configuration command helpers")
+Fixes: e4977b91cff8 ("ASoC: qdsp6: audioreach: Simplify handing FE and BE graph connections")
 Cc: stable@vger.kernel.org
 Signed-off-by: Marc Herrero <marcht@proton.me>
 ---
- sound/soc/qcom/qdsp6/audioreach.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ sound/soc/qcom/qdsp6/topology.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/sound/soc/qcom/qdsp6/audioreach.c b/sound/soc/qcom/qdsp6/audioreach.c
-index d2dc5d37bccf..937506edf34a 100644
---- a/sound/soc/qcom/qdsp6/audioreach.c
-+++ b/sound/soc/qcom/qdsp6/audioreach.c
-@@ -1216,7 +1216,7 @@ static int audioreach_pcm_set_media_format(struct q6apm_graph *graph,
- 	media_cfg->interleaved = module->interleave_type;
- 	media_cfg->num_channels = mcfg->num_channels;
- 	media_cfg->q_factor = mcfg->bit_width - 1;
--	media_cfg->bits_per_sample = mcfg->bit_width;
-+	media_cfg->bits_per_sample = mcfg->bit_width == 24 ? 32 : mcfg->bit_width;
- 	/* Convert the physical mapping to a logical mapping of the channels */
- 	for (i = 0, j = 0; i < AR_PCM_MAX_NUM_CHANNEL && j < mcfg->num_channels; i++) {
- 		if (!mcfg->channel_map[i])
-@@ -1308,7 +1308,7 @@ static int audioreach_shmem_set_media_format(struct q6apm_graph *graph,
- 		cfg->sample_rate = mcfg->sample_rate;
- 		cfg->bit_width = mcfg->bit_width;
- 		cfg->alignment = PCM_LSB_ALIGNED;
--		cfg->bits_per_sample = mcfg->bit_width;
-+		cfg->bits_per_sample = mcfg->bit_width == 24 ? 32 : mcfg->bit_width;
- 		cfg->q_factor = mcfg->bit_width - 1;
- 		cfg->endianness = PCM_LITTLE_ENDIAN;
- 		cfg->num_channels = mcfg->num_channels;
+diff --git a/sound/soc/qcom/qdsp6/topology.c b/sound/soc/qcom/qdsp6/topology.c
+index 612d8f03e6e9..e92408e09bac 100644
+--- a/sound/soc/qcom/qdsp6/topology.c
++++ b/sound/soc/qcom/qdsp6/topology.c
+@@ -1300,7 +1300,7 @@ static int audioreach_put_audio_mixer(struct snd_kcontrol *kcontrol,
+ 	if (ucontrol->value.integer.value[0]) {
+ 		audioreach_connect_sub_graphs(data, scontrol, dapm_scontrol, true);
+ 		snd_soc_dapm_mixer_update_power(dapm, kcontrol, 1, NULL);
+-	} else {
++	} else if (audioreach_is_vmixer_connected(data, scontrol, dapm_scontrol)) {
+ 		audioreach_connect_sub_graphs(data, scontrol, dapm_scontrol, false);
+ 		snd_soc_dapm_mixer_update_power(dapm, kcontrol, 0, NULL);
+ 	}
 
 -- 
 2.53.0
