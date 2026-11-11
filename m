@@ -1,16 +1,13 @@
 From: Andrew Gigena <mail@andrewgigena.dev>
-Subject: [PATCH v4 0/3] arm64: dts: qcom: sm8150: Add standalone ICE node
- for UFS
-Date: Wed, 11 Nov 2026 17:53:20 +0000
-Message-Id: <20261111-sm8150-ice-rfc-v4-0-0311eac35609@andrewgigena.dev>
+Date: Wed, 11 Nov 2026 17:53:21 +0000
+Subject: [PATCH v4 1/3] dt-bindings: crypto: ice: document sm8150
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NzQ6CMBAE4FcxPVuzLZQfT76H8UC3C9REMC1WD
- eHdLXgxUTxOMvPNyDw5S57tNyNzFKy3fRdDut0wbKuuIW5NzEyCzISAlPtLIRRwi8RdjRx0qiV
- CoqgAFkdXR7V9LODx9M7+ps+Ew6zMjdb6oXfP5TGIubeKB8GBqzzJdYaSEOFQdcbRvbENddXOU
- GDzR5D/FRkVk5W51kgg82JFST4UIb6UJCp1aVRVQFZjqX4o0zS9AJRozkJRAQAA
-X-Change-ID: 20261104-sm8150-ice-rfc-0b4b2c035e80
+Message-Id: <20261111-sm8150-ice-rfc-v4-1-0311eac35609@andrewgigena.dev>
+References: <20261111-sm8150-ice-rfc-v4-0-0311eac35609@andrewgigena.dev>
+In-Reply-To: <20261111-sm8150-ice-rfc-v4-0-0311eac35609@andrewgigena.dev>
 To: Abel Vesa <abelvesa@kernel.org>, 
  Herbert Xu <herbert@gondor.apana.org.au>, 
  "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
@@ -25,62 +22,37 @@ Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org,
  linux-scsi@vger.kernel.org, Andrew Gigena <mail@andrewgigena.dev>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794419696; l=1891;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794419696; l=1053;
  i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
- bh=ToMZN0TBCRPcQcR7ja+7EuF65OVoNHPNyts1YrPHW3E=;
- b=xdt1PgjbVpCJks9hfSRRbhxiZnBh2Ei4/7a75ITpnTDZzb2Ts2bJ/VHHmDyqoCR1pFF8MjdCE
- PvyQdHlDBFBCiRg8wcnEPRR7c4dZznU90qrNZhUIEpOmrsyv9wRWanL
+ bh=AZyQa1xPjB5Gxi3pBSVqotBeeabkfFnGEnkOG7wcOK8=;
+ b=4uPPTIRqeMpSFoVpWeElmYVc6SgePfgPkOA129L7lfEDmGkeOdycv6NTEheXUtRPpBQqJbhA0
+ eedXHFEaXzwDG4pOv3Salt1si5z8GbexYLsWIWsD/CZQG2czw392pkr
 X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
  pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
 X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi everyone,
+SM8150 uses a standalone ICE node, so its compatible must be listed.
 
-This series adds standalone ICE support to SM8150 (Snapdragon 855),
-matching newer Qualcomm platforms.
-
-Patch 1 documents the sm8150 ICE compatible.
-Patch 2 moves sm8150-ufshc to the standalone-ICE UFS binding.
-Patch 3 converts the UFS node to use a dedicated ICE node.
-
-Tested on a Google Pixel 4 (google-flame): AES-256-XTS advertised,
-ext4 encryption supported, ICE self-test passes.
-
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
-
-Changes in v4:
-- Add Krzysztof's Reviewed-by to patch 1.
-- Document the transient dtbs_check warning for embedded-ICE DTs and why
-  it has no practical impact (patch 2).
-- Link to v3: https://patch.msgid.link/20261111-sm8150-ice-rfc-v3-0-f9d5a806fc95@andrewgigena.dev
-
-Changes in v3:
-- Split bindings into two commits (compatible + standalone-ICE move).
-- Drop author Tested-by from DTS patch.
-- Link to v2: https://patch.msgid.link/20261104-sm8150-ice-rfc-v2-0-d697bbce0278@andrewgigena.dev
-
-Changes in v2:
-- Move sm8150-ufshc to the standalone-ICE binding.
-- Keep the ICE compatible sorted.
-- Link to v1: https://patch.msgid.link/20261104-sm8150-ice-rfc-v1-0-5737b6c2ecc0@andrewgigena.dev
-
 ---
-Andrew Gigena (3):
-      dt-bindings: crypto: ice: document sm8150 compatible
-      dt-bindings: ufs: qcom: classify sm8150-ufshc as standalone ICE
-      arm64: dts: qcom: sm8150: use standalone ICE for UFS
+ Documentation/devicetree/bindings/crypto/qcom,inline-crypto-engine.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
- .../bindings/crypto/qcom,inline-crypto-engine.yaml |  1 +
- .../devicetree/bindings/ufs/qcom,sc7180-ufshc.yaml |  2 ++
- .../devicetree/bindings/ufs/qcom,ufs.yaml          | 11 ++++------
- arch/arm64/boot/dts/qcom/sm8150.dtsi               | 25 ++++++++++++++--------
- 4 files changed, 23 insertions(+), 16 deletions(-)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261104-sm8150-ice-rfc-0b4b2c035e80
+diff --git a/Documentation/devicetree/bindings/crypto/qcom,inline-crypto-engine.yaml b/Documentation/devicetree/bindings/crypto/qcom,inline-crypto-engine.yaml
+index 23bf98c2b9fa..0d73e4581e6e 100644
+--- a/Documentation/devicetree/bindings/crypto/qcom,inline-crypto-engine.yaml
++++ b/Documentation/devicetree/bindings/crypto/qcom,inline-crypto-engine.yaml
+@@ -24,6 +24,7 @@ properties:
+           - qcom,sc7180-inline-crypto-engine
+           - qcom,sc7280-inline-crypto-engine
+           - qcom,shikra-inline-crypto-engine
++          - qcom,sm8150-inline-crypto-engine
+           - qcom,sm8450-inline-crypto-engine
+           - qcom,sm8550-inline-crypto-engine
+           - qcom,sm8650-inline-crypto-engine
 
-Best regards,
---  
-Andrew Gigena <mail@andrewgigena.dev>
+-- 
+2.56.0
 
