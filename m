@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Wed, 11 Nov 2026 06:00:10 +0000
-Subject: [PATCH v2 4/8] arm64: dts: allwinner: h616: Throttle the GPU from
- the GPU thermal zone
+Date: Wed, 11 Nov 2026 06:00:11 +0000
+Subject: [PATCH v2 5/8] arm64: dts: allwinner: orangepi-zero2: Keep VDD-SYS
+ at or above 900 mV
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-h616-zero2-dt-v2-4-88d8030fc975@gmail.com>
+Message-Id: <20261111-h616-zero2-dt-v2-5-88d8030fc975@gmail.com>
 References: <20261111-h616-zero2-dt-v2-0-88d8030fc975@gmail.com>
 In-Reply-To: <20261111-h616-zero2-dt-v2-0-88d8030fc975@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,73 +17,50 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794376807; l=1929;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794376807; l=1740;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=teKOTEf4Ehrd6NI/Dk5AeKkHXxd5JXaOLzoyVTpHUvU=;
- b=yLFaEEpDYwt79KRRJlMNs77BbAvA+Grb6wuXB1bpgzTknfwSRX7R7k2NrV9OPxRVVmj+4GjOV
- YQAEUhYQFk/B9ziyWUJ5X2FmVKg5IMjlBU/FfcSV7WSMg3MK6v7HKah
+ bh=7dRmuEnXweiSK3ig6SjcXECMwYZqvp9fut5LB8gZugM=;
+ b=hY+KOq6luqxLRdLmdChUvRel0o0EzwvWoP1PFOXHMKZi8Q2seKhI3U3A//ubeLw0X2zftgor3
+ eIDcUKPTHHpBUiX6cl2udnWxHNrSjwOgiXRjcaC+ZcH10ryAhZ7oJVu
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The gpu-thermal zone only has the 110 C critical trip point, and the
-GPU node is not a cooling device. Once a board describes GPU operating
-points (panfrost devfreq), the only reaction to a hot Mali-G31 is
-therefore a shutdown.
+On the Orange Pi Zero2 the AXP305 DCDCC "vdd-gpu-sys" rail feeds both
+the Mali-G31 and the SoC's VDD-SYS domain, which includes the video
+engine. Its regulator range starts at 810 mV, the lowest GPU operating
+point, so once GPU DVFS is enabled the rail drops to 810 mV whenever
+the GPU is idle. The video engine does not tolerate that: with the VE
+at 600 MHz, 4K H.265 decodes intermittently produce a few corrupted
+CTBs, without any kernel message. Only 6 of 13 runs were bit-exact at
+810 mV, against 3 of 3 at 890 mV, 3 of 3 at 950 mV, and 3 of 3 at
+810 mV with the VE clocked down to 432 MHz. The vendor BSP runs every
+GPU operating point at 950 mV, so it never lowers this rail.
 
-Make the GPU a cooling device and add a passive trip point at 85 C
-(2 C hysteresis) that lets the thermal core lower the GPU OPP. 85 C is
-the CPU alert level mainline uses on the H6 (same thermal sensor
-generation), and is below the 90 C at which the vendor BSP for the
-H616 throttles the GPU (it maps the GPU to its CPU "target" trip).
-
-Boards without a GPU OPP table are not affected: panfrost then
-registers no devfreq cooling device and the map stays unbound.
+Raise the regulator minimum to 900 mV before GPU DVFS is enabled. The
+H616 GPU operating points use <target min max> triplets with a 990 mV
+maximum, so the regulator core clamps the low-frequency requests into
+[900, 990] mV and devfreq still scales the GPU clock.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- arch/arm64/boot/dts/allwinner/sun50i-h616.dtsi | 15 ++++++++++++++-
- 1 file changed, 14 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h616.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-h616.dtsi
-index 68bd6137c316..93c3b8279241 100644
---- a/arch/arm64/boot/dts/allwinner/sun50i-h616.dtsi
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h616.dtsi
-@@ -162,6 +162,7 @@ gpu: gpu@1800000 {
- 			clock-names = "core", "bus";
- 			power-domains = <&prcm_ppu 2>;
- 			resets = <&ccu RST_BUS_GPU>;
-+			#cooling-cells = <2>;
- 			status = "disabled";
- 		};
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
+index 1fdf2d3c1a87..719d6dadf7bf 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
+@@ -114,7 +114,7 @@ reg_dcdca: dcdca {
  
-@@ -1124,12 +1125,24 @@ gpu-thermal {
- 			sustainable-power = <1100>;
- 
- 			trips {
--				gpu_temp_critical: gpu-trip-0 {
-+				gpu_alert: gpu-trip-0 {
-+					temperature = <85000>;
-+					type = "passive";
-+					hysteresis = <2000>;
-+				};
-+				gpu_temp_critical: gpu-trip-1 {
- 					temperature = <110000>;
- 					type = "critical";
- 					hysteresis = <0>;
- 				};
+ 			reg_dcdcc: dcdcc {
+ 				regulator-always-on;
+-				regulator-min-microvolt = <810000>;
++				regulator-min-microvolt = <900000>;
+ 				regulator-max-microvolt = <990000>;
+ 				regulator-name = "vdd-gpu-sys";
  			};
-+
-+			cooling-maps {
-+				map0 {
-+					trip = <&gpu_alert>;
-+					cooling-device = <&gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
-+				};
-+			};
- 		};
- 
- 		ve-thermal {
 
 -- 
 2.55.0
