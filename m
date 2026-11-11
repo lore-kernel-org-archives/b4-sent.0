@@ -1,16 +1,13 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Subject: [PATCH v2 0/4] clk: Add the Siflower SF19A2890 clock manager and
- peripheral clock and reset managers
-Date: Wed, 11 Nov 2026 03:18:59 -0500
-Message-Id: <20261111-sf19a2890-sysm-v2-0-d2fcb723e4f1@telaak.dev>
+Date: Wed, 11 Nov 2026 03:19:00 -0500
+Subject: [PATCH v2 1/4] dt-bindings: clock: Add Siflower SF19A2890 clock
+ manager
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPQk9GoC/12Oyw6CMBBFf8V0bU1bUcGV/2FYDO1U6gO0UxoJ4
- d8tqDFxeSb33jMDI/QOie0XA/MYHbm2SaCWC6ZraE7InUnMlFBbKYXiZGUBKi8Ep55uHLS0la6
- UNGbDUunu0brnPHgs30xddUYdppVPwuOjS6bwi9WOQuv7+Y0op+vXmP0bo+SCQ2ZBi52xuVofA
- l4BLiuDkZXjOL4AM5GkotQAAAA=
-X-Change-ID: 20261102-sf19a2890-sysm-ac1fbcb21dd5
+Message-Id: <20261111-sf19a2890-sysm-v2-1-d2fcb723e4f1@telaak.dev>
+References: <20261111-sf19a2890-sysm-v2-0-d2fcb723e4f1@telaak.dev>
+In-Reply-To: <20261111-sf19a2890-sysm-v2-0-d2fcb723e4f1@telaak.dev>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
  Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -22,100 +19,147 @@ Cc: Chuanhong Guo <gch981213@gmail.com>, Yao Zi <me@ziyao.cc>,
  Conor Dooley <conor.dooley@microchip.com>, 
  Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794385307; l=4303;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794385307; l=4120;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=HkAdTr0yGZ2/sgV90XoJlVTobOT6ff+qpF7El7nvuMk=;
- b=TRifMZVGTFZYkTTlHZ+ZBeQjq/IQFWCC4K0nWGAURZORsFk+kQDBqxD39MvZ/M8GQcJkZ51d+
- zfucitSD2dICIp0X2i0opEQBuzWaUDN0VIpy486ghG7LmvMKardZkCo
+ bh=7SegKlwW9WQlRjtItUJxbjVoSnEsOCaTcCC7t6eqzUw=;
+ b=eUyVWjNa11YVFscgxKW6Wjv1AJ8TOTV3VBeJR+iK2CzTXITnWjg2O2jDfbQF8fys0YfJou0sh
+ jST3wNLX9l7CrB8rnSez/yJClK9dnkWkv5u8Z25SxySMIlfH5+wxVp8
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Siflower SF19A2890, a MIPS SoC for home routers, has a clock manager
-with its PLLs and the muxes and dividers that feed the CPU, the buses
-and the peripherals, and for each peripheral block a small clock and
-reset manager with its gates, its resets and a bus output enable. This
-series adds bindings and drivers for both.
+The clock manager of the Siflower SF19A2890 holds the SoC's PLLs and
+the muxes and dividers that derive the bus, CPU and peripheral clocks
+from them. The peripherals' own gates and resets are in separate
+blocks.
 
-Both drivers are Chuanhong Guo's, from his SF19A2890 branch [1], with
-his authorship kept and my changes noted in each. The clock manager's
-driver is unchanged apart from fixes. The peripheral managers' binding
-is rewritten: Chuanhong's described every block with one compatible and
-its bit layout in properties (siflower,valid-gates, siflower,reset-masks
-and so on); here each block has its own compatible and the layouts are
-tables in the driver. Clock N of a block is its input clock N, gated.
+The header is Chuanhong Guo's, from his SF19A2890 branch, without the
+count at its end.
 
-Following Conor's review of Chuanhong's SF21 clock binding, the header
-has no count at its end.
-
-The clock manager registers from CLK_OF_DECLARE because the GIC timer
-runs from the CPU clock. The SoC support itself (MACH_SIFLOWER_MIPS)
-goes through the MIPS tree; until then the drivers build with
-COMPILE_TEST.
-
-Tested on a GL.iNet GL-SFT1200: the rates in clk_summary match the
-vendor firmware's (CMN PLL 1.5 GHz, buses 300, 300 and 375 MHz, PBUS
-100 MHz, UART 125 MHz, GMAC reference 125 MHz, USB PHY reference
-50 MHz), and the CPU clock reads 800 MHz, the rate the GIC timer was
-checked at against a reference clock with the MIPS series; the console,
-DDR and buses survive the unused clock sweep; the UART, SPI NAND, I2C,
-GPIO, GMAC, USB and watchdog drivers probe with these clocks and resets;
-and the I2C controller works again after an unbind and bind, which
-cycles its reset.
-
-[1] https://github.com/981213/linux/commits/siflower-7.1
-
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
-Changes in v2:
-- Write my notes on Chuanhong's patches as lists, with Co-developed-by.
-- Use GPL-2.0-only, not the deprecated GPL-2.0 identifier, in the clock
-  header's SPDX line.
-- Add a MAINTAINERS entry for the drivers, their bindings and the
-  headers, with an F: line per driver, since drivers/clk/siflower/ will
-  also hold the SF21 drivers.
-- Include <linux/device-id/of.h> instead of <linux/mod_devicetable.h>
-  (Uwe).
-- Word the error messages the same way, and use the current SPDX
-  identifiers in the new files.
-- Explain in the commit message why some resets cover more than one bit
-  (Philipp, Chuanhong).
-- Patch 1: add Conor's Ack.
-- Patch 2: with the PLL's fractional modulator on, scale the fraction by
-  the reference rate, not by the integer VCO rate; and reject a rate of 0
-  in the mux dividers instead of dividing by it.
-- Patch 3: add include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h,
-  naming the clocks and resets of each manager, instead of listing the
-  resets in the description; patch 4 indexes its tables by it (Conor).
-- Patch 4: no comma after the match table's sentinel (Uwe).
-- Link to v1: https://patch.msgid.link/20261104-sf19a2890-sysm-v1-0-a4fac07df823@telaak.dev
+ .../bindings/clock/siflower,sf19a2890-clk.yaml     | 57 ++++++++++++++++++++++
+ MAINTAINERS                                        |  7 +++
+ include/dt-bindings/clock/siflower,sf19a2890-clk.h | 27 ++++++++++
+ 3 files changed, 91 insertions(+)
 
----
-Chuanhong Guo (2):
-      clk: siflower: Add SF19A2890 clock manager driver
-      clk: siflower: Add SF19A2890 peripheral clock and reset manager driver
+diff --git a/Documentation/devicetree/bindings/clock/siflower,sf19a2890-clk.yaml b/Documentation/devicetree/bindings/clock/siflower,sf19a2890-clk.yaml
+new file mode 100644
+index 000000000000..9b72f14c2bd9
+--- /dev/null
++++ b/Documentation/devicetree/bindings/clock/siflower,sf19a2890-clk.yaml
+@@ -0,0 +1,57 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/clock/siflower,sf19a2890-clk.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Siflower SF19A2890 clock manager
++
++maintainers:
++  - Joseph Telaak <joseph@telaak.dev>
++
++description: |
++  The clock manager of the Siflower SF19A2890 holds the SoC's three PLLs
++  (CPU, DDR and common) and the clock muxes with dividers that derive the
++  bus, CPU and peripheral clocks from them. The peripherals' own clock
++  gates and resets are in separate peripheral clock and reset managers.
++
++  The clocks are defined in include/dt-bindings/clock/siflower,sf19a2890-clk.h.
++
++properties:
++  compatible:
++    const: siflower,sf19a2890-clk
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    items:
++      - description: 12 MHz oscillator
++      - description: 40 MHz oscillator
++
++  clock-names:
++    items:
++      - const: osc12m
++      - const: osc40m
++
++  "#clock-cells":
++    const: 1
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - clock-names
++  - "#clock-cells"
++
++additionalProperties: false
++
++examples:
++  - |
++    clock-controller@19e01000 {
++        compatible = "siflower,sf19a2890-clk";
++        reg = <0x19e01000 0x800>;
++        clocks = <&osc12m>, <&osc40m>;
++        clock-names = "osc12m", "osc40m";
++        #clock-cells = <1>;
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 93abbb315065..ce8d0596939c 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -25698,6 +25698,13 @@ N:	sifive
+ K:	fu[57]40
+ K:	[^@]sifive
+ 
++SIFLOWER SF19A2890 CLOCK DRIVERS
++M:	Joseph Telaak <joseph@telaak.dev>
++L:	linux-clk@vger.kernel.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/clock/siflower,sf19a2890-clk.yaml
++F:	include/dt-bindings/clock/siflower,sf19a2890-clk.h
++
+ SILEAD TOUCHSCREEN DRIVER
+ M:	Hans de Goede <hansg@kernel.org>
+ L:	linux-input@vger.kernel.org
+diff --git a/include/dt-bindings/clock/siflower,sf19a2890-clk.h b/include/dt-bindings/clock/siflower,sf19a2890-clk.h
+new file mode 100644
+index 000000000000..a9fc9ecf4520
+--- /dev/null
++++ b/include/dt-bindings/clock/siflower,sf19a2890-clk.h
+@@ -0,0 +1,27 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
++#ifndef __DT_BINDINGS_CLOCK_SIFLOWER_SF19A2890_CLK_H
++#define __DT_BINDINGS_CLOCK_SIFLOWER_SF19A2890_CLK_H
++
++#define CLK_PLL_CPU		0
++#define CLK_PLL_DDR		1
++#define CLK_PLL_CMN		2
++#define CLK_MUXDIV_BUS1		3
++#define CLK_MUXDIV_BUS2		4
++#define CLK_MUXDIV_BUS3		5
++#define CLK_MUXDIV_CPU		6
++#define CLK_MUXDIV_PBUS		7
++#define CLK_MUXDIV_MEM_PHY	8
++#define CLK_MUXDIV_UART		9
++#define CLK_MUXDIV_ETH_REF	10
++#define CLK_MUXDIV_ETH_BYP_REF	11
++#define CLK_MUXDIV_ETH_TSU	12
++#define CLK_MUXDIV_GMAC_BYP_REF	13
++#define CLK_MUXDIV_M6250_0	14
++#define CLK_MUXDIV_M6250_1	15
++#define CLK_MUXDIV_WLAN24_PLF	16
++#define CLK_MUXDIV_WLAN5_PLF	17
++#define CLK_MUXDIV_USBPHY_REF	18
++#define CLK_MUXDIV_TCLK		19
++#define CLK_MUXDIV_NPU_PE_CLK	20
++
++#endif /* __DT_BINDINGS_CLOCK_SIFLOWER_SF19A2890_CLK_H */
 
-Joseph Telaak (2):
-      dt-bindings: clock: Add Siflower SF19A2890 clock manager
-      dt-bindings: clock: Add Siflower SF19A2890 peripheral clock/reset managers
-
- .../bindings/clock/siflower,sf19a2890-clk.yaml     |  57 +++
- .../clock/siflower,sf19a2890-periph-crm.yaml       | 166 ++++++++
- MAINTAINERS                                        |  11 +
- drivers/clk/Kconfig                                |   1 +
- drivers/clk/Makefile                               |   1 +
- drivers/clk/siflower/Kconfig                       |  22 ++
- drivers/clk/siflower/Makefile                      |   3 +
- drivers/clk/siflower/clk-sf19a2890-periphcrm.c     | 368 ++++++++++++++++++
- drivers/clk/siflower/clk-sf19a2890.c               | 419 +++++++++++++++++++++
- include/dt-bindings/clock/siflower,sf19a2890-clk.h |  27 ++
- .../clock/siflower,sf19a2890-periph-crm.h          |  87 +++++
- 11 files changed, 1162 insertions(+)
----
-base-commit: fc1f8f0ceb3b949b58c2f7819976644f5cf84249
-change-id: 20261102-sf19a2890-sysm-ac1fbcb21dd5
-
-Best regards,
---  
-Joseph Telaak <joseph@telaak.dev>
+-- 
+Git-155)
 
