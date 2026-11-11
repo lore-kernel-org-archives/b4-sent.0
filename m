@@ -1,11 +1,11 @@
 From: Andrew Gigena <mail@andrewgigena.dev>
-Date: Wed, 11 Nov 2026 04:17:50 +0000
-Subject: [PATCH v3 2/3] dt-bindings: ufs: qcom: classify sm8150-ufshc as
- standalone ICE
+Date: Wed, 11 Nov 2026 04:17:51 +0000
+Subject: [PATCH v3 3/3] arm64: dts: qcom: sm8150: use standalone ICE for
+ UFS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-sm8150-ice-rfc-v3-2-f9d5a806fc95@andrewgigena.dev>
+Message-Id: <20261111-sm8150-ice-rfc-v3-3-f9d5a806fc95@andrewgigena.dev>
 References: <20261111-sm8150-ice-rfc-v3-0-f9d5a806fc95@andrewgigena.dev>
 In-Reply-To: <20261111-sm8150-ice-rfc-v3-0-f9d5a806fc95@andrewgigena.dev>
 To: Abel Vesa <abelvesa@kernel.org>, 
@@ -21,104 +21,88 @@ Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-scsi@vger.kernel.org, Andrew Gigena <mail@andrewgigena.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794370671; l=3303;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794370671; l=2347;
  i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
- bh=um317s7SwNuXS9cpZHu3oF3R2T/4rDqhpUaOv3O7yfw=;
- b=HOY6WH5dJoIQV/02opNZZi8icx3u0Pla5SAaDYTSU6TbEjjGsZJTlafaN+w2k2c7W+S42zuMS
- MnOuaOc8yglCwlxDP6YFPkCUSNg/87JbPHWtD52jTeGoPIG/6CqJwbj
+ bh=5ojOLo8hWLDK0hV2yglUJhrUv/sb3CLr9di70RGzFCA=;
+ b=fYh/wnOjTAhn9em3DNVhlUH56Virjz5sZPm4HyxwD2C0/aw3IssZBPyFgRnsaQITow4T7Ovq8
+ 3+M+kZvHIPjCyalquq6BFaIzxHn8MJ6Hzp0XNvakSNUYBWfy2DrPmIG
 X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
  pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
 X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SM8150 UFS uses a standalone ICE node, so its compatible belongs to the
-standalone-ICE binding rather than the embedded-ICE one.
+Align SM8150 with the standalone ICE representation used on newer
+platforms instead of embedding ICE registers in the UFS node.
 
 Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
 ---
- Documentation/devicetree/bindings/ufs/qcom,sc7180-ufshc.yaml |  2 ++
- Documentation/devicetree/bindings/ufs/qcom,ufs.yaml          | 11 ++++-------
- 2 files changed, 6 insertions(+), 7 deletions(-)
+ arch/arm64/boot/dts/qcom/sm8150.dtsi | 25 ++++++++++++++++---------
+ 1 file changed, 16 insertions(+), 9 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/ufs/qcom,sc7180-ufshc.yaml b/Documentation/devicetree/bindings/ufs/qcom,sc7180-ufshc.yaml
-index 3c407426d697..572eec814a60 100644
---- a/Documentation/devicetree/bindings/ufs/qcom,sc7180-ufshc.yaml
-+++ b/Documentation/devicetree/bindings/ufs/qcom,sc7180-ufshc.yaml
-@@ -23,6 +23,7 @@ select:
-           - qcom,sc7280-ufshc
-           - qcom,sc8180x-ufshc
-           - qcom,sc8280xp-ufshc
-+          - qcom,sm8150-ufshc
-           - qcom,sm8250-ufshc
-           - qcom,sm8350-ufshc
-           - qcom,sm8450-ufshc
-@@ -48,6 +49,7 @@ properties:
-               - qcom,sc7280-ufshc
-               - qcom,sc8180x-ufshc
-               - qcom,sc8280xp-ufshc
-+              - qcom,sm8150-ufshc
-               - qcom,sm8250-ufshc
-               - qcom,sm8350-ufshc
-               - qcom,sm8450-ufshc
-diff --git a/Documentation/devicetree/bindings/ufs/qcom,ufs.yaml b/Documentation/devicetree/bindings/ufs/qcom,ufs.yaml
-index 516bb61a4624..ef4d1d055169 100644
---- a/Documentation/devicetree/bindings/ufs/qcom,ufs.yaml
-+++ b/Documentation/devicetree/bindings/ufs/qcom,ufs.yaml
-@@ -23,7 +23,6 @@ select:
-           - qcom,sm6115-ufshc
-           - qcom,sm6125-ufshc
-           - qcom,sm6350-ufshc
--          - qcom,sm8150-ufshc
-   required:
-     - compatible
+diff --git a/arch/arm64/boot/dts/qcom/sm8150.dtsi b/arch/arm64/boot/dts/qcom/sm8150.dtsi
+index 293fcbacff34..b3d6f3d92395 100644
+--- a/arch/arm64/boot/dts/qcom/sm8150.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8150.dtsi
+@@ -2071,9 +2071,7 @@ pcie1_phy: phy@1c0e000 {
+ 		ufs_mem_hc: ufshc@1d84000 {
+ 			compatible = "qcom,sm8150-ufshc", "qcom,ufshc",
+ 				     "jedec,ufs-2.0";
+-			reg = <0 0x01d84000 0 0x2500>,
+-			      <0 0x01d90000 0 0x8000>;
+-			reg-names = "std", "ice";
++			reg = <0 0x01d84000 0 0x2500>;
+ 			interrupts = <GIC_SPI 265 IRQ_TYPE_LEVEL_HIGH>;
+ 			phys = <&ufs_mem_phy>;
+ 			phy-names = "ufsphy";
+@@ -2092,8 +2090,7 @@ ufs_mem_hc: ufshc@1d84000 {
+ 				"ref_clk",
+ 				"tx_lane0_sync_clk",
+ 				"rx_lane0_sync_clk",
+-				"rx_lane1_sync_clk",
+-				"ice_core_clk";
++				"rx_lane1_sync_clk";
+ 			clocks =
+ 				<&gcc GCC_UFS_PHY_AXI_CLK>,
+ 				<&gcc GCC_AGGRE_UFS_PHY_AXI_CLK>,
+@@ -2102,8 +2099,7 @@ ufs_mem_hc: ufshc@1d84000 {
+ 				<&rpmhcc RPMH_CXO_CLK>,
+ 				<&gcc GCC_UFS_PHY_TX_SYMBOL_0_CLK>,
+ 				<&gcc GCC_UFS_PHY_RX_SYMBOL_0_CLK>,
+-				<&gcc GCC_UFS_PHY_RX_SYMBOL_1_CLK>,
+-				<&gcc GCC_UFS_PHY_ICE_CORE_CLK>;
++				<&gcc GCC_UFS_PHY_RX_SYMBOL_1_CLK>;
+ 			freq-table-hz =
+ 				<37500000 300000000>,
+ 				<0 0>,
+@@ -2112,8 +2108,8 @@ ufs_mem_hc: ufshc@1d84000 {
+ 				<0 0>,
+ 				<0 0>,
+ 				<0 0>,
+-				<0 0>,
+-				<0 300000000>;
++				<0 0>;
++			qcom,ice = <&ice>;
  
-@@ -38,7 +37,6 @@ properties:
-           - qcom,sm6115-ufshc
-           - qcom,sm6125-ufshc
-           - qcom,sm6350-ufshc
--          - qcom,sm8150-ufshc
-       - const: qcom,ufshc
-       - const: jedec,ufs-2.0
+ 			status = "disabled";
+ 		};
+@@ -2139,6 +2135,17 @@ ufs_mem_phy: phy@1d87000 {
+ 			status = "disabled";
+ 		};
  
-@@ -69,7 +67,6 @@ allOf:
-             enum:
-               - qcom,sdm845-ufshc
-               - qcom,sm6350-ufshc
--              - qcom,sm8150-ufshc
-     then:
-       properties:
-         clocks:
-@@ -175,10 +172,10 @@ unevaluatedProperties: false
- 
- examples:
-   - |
--    #include <dt-bindings/clock/qcom,gcc-sm8150.h>
-+    #include <dt-bindings/clock/qcom,gcc-sdm845.h>
-     #include <dt-bindings/clock/qcom,rpmh.h>
-     #include <dt-bindings/gpio/gpio.h>
--    #include <dt-bindings/interconnect/qcom,sm8150.h>
-+    #include <dt-bindings/interconnect/qcom,sdm845.h>
-     #include <dt-bindings/interrupt-controller/arm-gic.h>
- 
-     soc {
-@@ -186,7 +183,7 @@ examples:
-         #size-cells = <2>;
- 
-         ufs@1d84000 {
--            compatible = "qcom,sm8150-ufshc", "qcom,ufshc",
-+            compatible = "qcom,sdm845-ufshc", "qcom,ufshc",
-                          "jedec,ufs-2.0";
-             reg = <0x0 0x01d84000 0x0 0x2500>,
-                   <0x0 0x01d90000 0x0 0x8000>;
-@@ -207,7 +204,7 @@ examples:
-             vccq-max-microamp = <1200000>;
- 
-             power-domains = <&gcc UFS_PHY_GDSC>;
--            iommus = <&apps_smmu 0x300 0>;
-+            iommus = <&apps_smmu 0x100 0xf>;
- 
-             clocks = <&gcc GCC_UFS_PHY_AXI_CLK>,
-                      <&gcc GCC_AGGRE_UFS_PHY_AXI_CLK>,
++		ice: crypto@1d90000 {
++			compatible = "qcom,sm8150-inline-crypto-engine",
++				     "qcom,inline-crypto-engine";
++			reg = <0 0x01d90000 0 0x8000>;
++			clocks = <&gcc GCC_UFS_PHY_ICE_CORE_CLK>,
++				 <&gcc GCC_UFS_PHY_AHB_CLK>;
++			clock-names = "core",
++				      "iface";
++			power-domains = <&gcc UFS_PHY_GDSC>;
++		};
++
+ 		cryptobam: dma-controller@1dc4000 {
+ 			compatible = "qcom,bam-v1.7.4", "qcom,bam-v1.7.0";
+ 			reg = <0 0x01dc4000 0 0x24000>;
 
 -- 
 2.56.0
