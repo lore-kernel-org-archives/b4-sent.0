@@ -1,143 +1,243 @@
-From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
-Date: Wed, 11 Nov 2026 14:04:41 +0800
-Subject: [PATCH v2] perf stat: Count kernel events in a group led by a tool
- event
+From: Cunhao Lu <1579567540@qq.com>
+Subject: [PATCH net v9 00/10] can: fix Rockchip TX stalls and bus-off
+ restart/close races
+Date: Wed, 11 Nov 2026 14:17:54 +0800
+Message-Id: <20261111-rockchip-canfd-restart-close-v9-0-6643f3825ba3@qq.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-tool-pmu-leader-v2-1-3faa0fb98c51@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WPy27DIBBFf8ViXSIehhirqvofURYDHieoxqTgW
- Kki/3sxWXTV2d2R5sy5T5Ixecykb54k4eqzj3MJ4q0h7grzBakfSiaCCc3L0CXGid7CnU4IAyY
- 6CDVix5VUxpBydUs4+kclns6vnPD7XsDLa0kC5gwV3DfvlcuEZJ3Swhy4Nq1pOS1/4AvmKMXnJ
- YCfDi6Gjx1vISMtIfilb5wzTAHvQLdH6FDC0Ao3cGW0BWDIutGC0GjJLnL1eYnppzZdeTX5t9S
- 6G2h+lFYpbUZl/izIedu2X9zanL83AQAA
-X-Change-ID: 20261111-tool-pmu-leader-d25fe8153599
-To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- James Clark <james.clark@linaro.org>
-Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
- TAKANO Mitsuhiro <takano32@gmail.com>, 
- Hang Zhengyang <hang.zhengyang1010@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794377083; l=4370;
- i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
- bh=M1/caRbl8ok29UtGPD8dLXYXGCUc8+9tdV+yKMNQmW4=;
- b=9CUe61prZppY25kmgHtgvIcuxAisnPFupsBvenXEB6mnjX7FEqiKvPiY/zzfMuho0cI/SWkcQ
- 6eiEGejZMAFApW8oBY1KR20V5bHxrNJnXcMhpAl2gxSOl62eMPhz7DG
-X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
- pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
-X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
+X-B4-Tracking: v=1; b=H4sIAJMI9GoC/5XPTU7DMBAF4KtUXmPk3zhmxT0QC3s8pgaatHaIQ
+ FXujhMWTVahyxmNvvfmSgrmhIU8Ha4k45hK6rs62IcDgaPr3pCmUGcimGg445LmHj7gmM4UXBc
+ DzVgGlwcKn31Bij6gtlpF7iOpxDljTN8L/0I6HMjr37J8+XeEYYbns2MqQ59/lhIjX47/lzdyy
+ qkR4EBFKwXE58vlEfrTkjOKtaR2JEEZhTb6EF3gLZMbSd4jySpFhl5xZplQYiOptaR3JFWl2kb
+ ZGI1Vmm0kfY+kZwmNkcIwacBupGYtmR2pqRKGhulYP/QNbiRzkzhrdiQzdwIInnMPrdIbqV1L7
+ Y7UVkmicULGYNHdOk3T9AuobrYT4gIAAA==
+X-Change-ID: 20261013-rockchip-canfd-restart-close-ebde5954f1bf
+To: Marc Kleine-Budde <mkl@pengutronix.de>, kernel@pengutronix.de, 
+ Vincent Mailhol <mailhol@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Oliver Hartkopp <socketcan@hartkopp.net>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, 
+ Wolfgang Grandegger <wg@grandegger.com>
+Cc: linux-can@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-doc@vger.kernel.org, Cunhao Lu <1579567540@qq.com>, 
+ stable@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794377925; l=10236;
+ i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
+ bh=Amomz+nHrv4Q9NyPNqiWjetTpWptJamXH0fOpt2Nsmw=;
+ b=VDRtSaFh8Ojhu7+3CLXQ04z+7ehf+3XNypp4/lQ90tjzjLOHG26EW8inUCXeG0wYaux67tsBJ
+ cF9RrPyTbjiDVv8AdV50694Tke/d+NDijT3rQPJcbxj7m71TXdND4Fd
+X-Developer-Key: i=1579567540@qq.com; a=ed25519;
+ pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
+X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A tool event like user_time has no perf event in the kernel, but
-get_group_fd() still passes its fd, the /proc/stat fd, as the group_fd
-of the members.  The kernel rejects each member with EBADF and nothing
-is counted:
+On a production robot using a LubanCat-5IO with an RK3588, the CAN TX
+queue remained stopped while RX continued, and subsequent sends returned
+ENOBUFS. The interface still reported ERROR-ACTIVE, with neither a
+hardware bus-off condition nor a pending TX request.
 
-  $ perf stat -a -e '{user_time,cycles,instructions}' -- sleep 0.05
-                   0      user_time
-     <not supported>      cycles
-     <not supported>      instructions
+During CAN traffic, the driver also repeatedly reported an inconsistent
+TX echo state:
 
-Open the members with group_fd = -1, as the enable/disable code already
-assumes.  They are then on their own, so read them without
-PERF_FORMAT_GROUP and open them disabled like a leader, so that -D,
---control and enable_on_exec still apply.  Keep reporting a broken
-group when the leader failed to open.
+  rockchip_canfd fea60000.can can0: rkcanfd_tx_tail_is_eff:
+  echo_skb[0]=NULL tx_head=0x00060f7d tx_tail=0x00060f7c
 
-  $ perf stat -a -e '{user_time,cycles,instructions}' -- sleep 0.05
-                   0      user_time
-            38257394      cycles
-            21228043      instructions
+The Rockchip CAN-FD driver completes transmissions by matching
+self-received frames with entries in the echo skb ring. A race between its
+transmit and completion paths can expose a partially updated echo entry,
+dereference an skb queued for NAPI, or stop the TX queue without a later
+completion to wake it.
 
-The kernel events in such a group are no longer scheduled together.
+While testing the echo-loss fix with fault injection, I discovered a
+separate race between bus-off restart and device close.
 
-Fixes: 6828d6929b76 ("perf evsel: Refactor tool events")
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Rockchip currently cancels restart_work in close_candev(), after freeing
+the IRQ, disabling RX offload and stopping the controller. A concurrent
+restart can re-enable the controller and interrupts after IRQ teardown,
+and requeue timestamp work that accesses registers after runtime suspend
+has disabled the controller clocks.
+
+The CAN core skips scheduling or starting recovery when its
+netif_running() check observes the interface down. A new
+close_candev_cancel_restart_sync() helper lets Rockchip wait for any
+restart already in progress before tearing down resources.
+The final close_candev() call retains cancellation and echo cleanup.
+
+Rockchip restart masks the device's interrupts and drains active IRQ
+handlers without disabling the shared interrupt line. It also drains
+timestamp work before reinitializing the controller and timecounter.
+The reset path restores and flushes the interrupt mask immediately after
+reset deassertion.
+The Rockchip IRQ handler stays suspended until initialization is complete.
+Disabling timestamp work prevents workers from rearming after bus-off.
+Timestamp locking keeps timestamp conversions consistent with timecounter
+updates.
+
+The bus-off path drains TX submission and RX-side echo users before
+publishing BUS_OFF. Consumed RX FIFO entries are dropped while TX is
+disabled to prevent self-transmitted frames from reaching ordinary RX.
+Startup serializes carrier restoration, IRQ resumption and queue wake
+with a new bus-off. The series also fixes RX offload cleanup when
+request_irq() fails during open.
+
+The following issues remain outside this series:
+
+- Races in the Rockchip bus error counter cache.
+- Incomplete runtime PM clock cleanup during removal or failed registration.
+- Missing explicit interrupt-mask write completion before free_irq() in
+  the Rockchip close path.
+
+When I have time, I will send separate patches to fix them one by one.
+
+Hardware testing used a LubanCat-5IO running Linux 6.18 PREEMPT and
+PREEMPT_RT kernels with v7 and the applicable prerequisites backported.
+Tests on each kernel covered 600 seconds of bidirectional classic CAN
+traffic, plus CAN FD and CAN FD+BRS. Local echo and both software and
+hardware TX timestamps were also verified.
+
+All 1,000 socket-close iterations passed. Instrumentation captured
+1,150 cases where the last TX skb of a closed socket was destroyed,
+all after releasing tx_lock and with IRQs enabled.
+
+All 200 injected echo clone failures dropped the frame without
+submitting TX, advancing tx_head or adding BQL bytes; subsequent sends
+succeeded after removing the injection. BUSY, occupied slots, missing
+echo skbs and invalid indices were also tested, along with automatic and
+manual recovery from hardware bus-off triggered by bitrate mismatches.
+All passed.
+
+Test-only instrumentation captured 20 restart/close and 20 close/FIFO
+interleavings. No timestamp worker ran during about 300 seconds after
+close, and no WARN/Oops, deadlocks or persistent TX stalls were observed
+during CAN testing.
+
+Signed-off-by: Cunhao Lu <1579567540@qq.com>
+
 ---
-This goes on top of TAKANO's segfault fix, as asked in that thread.
-A tool event as a member, as in '{cycles,user_time}', is still not
-counted; I'll send that separately.
+Changes in v9:
+- Use workqueue disable/enable operations to prevent timestamp work from
+  rearming after bus-off, balancing repeated stop calls.
+- Move worker requeueing and initial scheduling outside timestamp_lock.
+- Restore and flush device interrupt masking immediately after hardware
+  reset, before the remaining controller configuration.
+- Count consumed RX FIFO entries discarded while TX is disabled.
+- Link to v8:
+  https://patch.msgid.link/20261108-rockchip-canfd-restart-close-v8-0-3e7a23fd9eae@qq.com
 
-Ian, the other way is to take tool events out of such groups in perf
-stat with a warning, the way mismatched cpus are handled, which also
-covers the member case.  I went with the group_fd = -1 that
-0b18bced5444 describes; happy to switch if you'd rather split them.
----
+Changes in v8:
+- Merge the previously submitted Rockchip TX fixes, with TX serialization
+  before the retry fix.
+- Move retained-skb handling and the missing-echo guard into the echo
+  failure fix, using the original skb as the frame-data source.
+- Establish the TX/RX critical sections and caller-held helper locking in
+  the TX serialization patch, covering queue updates, TX diagnostics and
+  RX pending checks, with assertions for command writes.
+- Reuse those critical sections in the bus-off/restart lifecycle patch.
+- Rebase onto the latest testing branch in the mkl/linux-can-next repository.
+- Link to the Rockchip TX fixes:
+  https://lore.kernel.org/linux-can/tencent_E25C9BE6689264E4138A464803B810FDFD09@qq.com
+- Link to v7:
+  https://patch.msgid.link/20261106-rockchip-canfd-restart-close-v7-0-accdb11bc845@qq.com
+
+Changes in v7:
+- Clarify that running checks do not serialize recovery with close, and
+  keep the restart-ms example tied to configuration while down.
+- Introduce Rockchip restart/IRQ synchronization and TX protection
+  together, keeping close cancellation and open failure cleanup in
+  separate patches.
+- Build on the CAN skb and Rockchip TX fixes, reusing the TX lock and
+  adapting failure cleanup to the updated skb ownership contract.
+- Link to v6:
+  https://patch.msgid.link/20261017-rockchip-canfd-restart-close-v6-0-ed605feb4b6e@qq.com
+
+Changes in v6:
+- Update the can_bus_off() comment and document the running-interface
+  requirement for automatic recovery.
+- Explain Rockchip's use of the cancellation helper.
+- Release the original TX skb after unlocking.
+- Abort TX submission if echo preparation fails.
+- Link to v5:
+  https://patch.msgid.link/20261015-rockchip-canfd-restart-close-v5-0-ae77327037c9@qq.com
+
+Changes in v5:
+- Drop consumed RX FIFO entries under tx_lock when TX is disabled
+  instead of only skipping echo filtering.
+- Link to v4:
+  https://patch.msgid.link/20261015-rockchip-canfd-restart-close-v4-0-ad149ff79450@qq.com
+
+Changes in v4:
+- Serialize timecounter_cyc2time() with the worker's timecounter_read()
+  and startup's timecounter_init() using timestamp_lock.
+- Update rkcanfd_skb_set_timestamp() to take a non-const private pointer
+  and document the expanded scope of timestamp_lock.
+- Link to v3:
+  https://patch.msgid.link/20261014-rockchip-canfd-restart-close-v3-0-f0eb41090242@qq.com
+
+Changes in v3:
+- Replace disable_irq()/enable_irq() in Rockchip restart with device
+  interrupt masking, mask readback, irq_suspended and synchronize_irq().
+- Use release/acquire ordering when resuming the IRQ handler.
+- Initialize timestamp delayed work once at probe and synchronously
+  cancel it before restart reinitializes the timecounter.
+- Balance RX offload enablement when request_irq() fails during open.
+- Prevent timestamp work from reading the counter or rearming after
+  deactivation, with cancellation outside the lock.
+- Drain TX submission and RX-side echo users before publishing BUS_OFF,
+  protecting the core's pre-restart echo flush.
+- Serialize carrier restoration, IRQ enablement and queue wake with a new
+  bus-off; suspend shared IRQ handling during open until startup finishes.
+- Link to v2:
+  https://lore.kernel.org/linux-can/tencent_82C93561D200C84C24608C80049C23EEF80A@qq.com/
+
 Changes in v2:
-- Open the members disabled like a leader, so -D, --control and
-  enable_on_exec apply to them (sashiko)
-- Report a broken group when the leader failed to open, as before, so
-  perf record is unchanged (sashiko)
-- Limit to tool event leaders: a hwmon leader can't enable its members
-- Link to v1: https://lore.kernel.org/r/20261111-tool-pmu-leader-v1-1-6173b5569f59@gmail.com
----
- tools/perf/builtin-stat.c | 10 ++++++----
- tools/perf/util/evsel.c   |  8 ++++++++
- 2 files changed, 14 insertions(+), 4 deletions(-)
-
-diff --git a/tools/perf/builtin-stat.c b/tools/perf/builtin-stat.c
-index 37752d6bfef4..07d01028bdea 100644
---- a/tools/perf/builtin-stat.c
-+++ b/tools/perf/builtin-stat.c
-@@ -719,9 +719,10 @@ static int create_perf_stat_counter(struct evsel *evsel,
- 	/*
- 	 * The event is part of non trivial group, let's enable
- 	 * the group read (for leader) and ID retrieval for all
--	 * members.
-+	 * members.  Members of a tool event leader are opened and
-+	 * read on their own.
- 	 */
--	if (leader->core.nr_members > 1)
-+	if (leader->core.nr_members > 1 && !evsel__is_tool(leader))
- 		attr->read_format |= PERF_FORMAT_ID|PERF_FORMAT_GROUP;
- 
- 	attr->inherit = !config->no_inherit && list_empty(&evsel->bpf_counter_list);
-@@ -748,9 +749,10 @@ static int create_perf_stat_counter(struct evsel *evsel,
- 	/*
- 	 * Disabling all counters initially, they will be enabled
- 	 * either manually by us or by kernel via enable_on_exec
--	 * set later.
-+	 * set later.  Members of a tool event leader are opened on
-+	 * their own and enabled with it, so they need it too.
- 	 */
--	if (evsel__is_group_leader(evsel)) {
-+	if (evsel__is_group_leader(evsel) || evsel__is_tool(leader)) {
- 		attr->disabled = 1;
- 
- 		if (target__enable_on_exec(&target))
-diff --git a/tools/perf/util/evsel.c b/tools/perf/util/evsel.c
-index 560741d9599d..e3ed645cc289 100644
---- a/tools/perf/util/evsel.c
-+++ b/tools/perf/util/evsel.c
-@@ -2378,6 +2378,14 @@ static int get_group_fd(struct evsel *evsel, int cpu_map_idx, int thread)
- 	if (!evsel->supported || evsel__is_group_leader(evsel))
- 		return -1;
- 
-+	/*
-+	 * A tool event leader has no perf event to group with, so open
-+	 * the member on its own, or report the group as broken (-2) if
-+	 * the leader failed to open.
-+	 */
-+	if (evsel__is_tool(leader))
-+		return leader->supported ? -1 : -2;
-+
- 	/*
- 	 * Leader must be already processed/open,
- 	 * if not it's a bug.
+- Split the series into the common checks, the cancellation helper, and
+  its use in Rockchip.
+- Check netif_running() after the do_set_mode capability check and before
+  the restart notification, echo cleanup, and carrier update.
+- Only queue automatic recovery for a running interface; keep reporting
+  bus-off and make the log message match the scheduling decision.
+- Add close_candev_cancel_restart_sync() in linux/can/dev.h and use it in
+  close_candev() without changing the existing cleanup order.
+- Replace the Rockchip mutex and closing flag with an early call to the
+  helper. Drop the extra close-path IRQ synchronization and mask readback.
+- Retain IRQ exclusion around hardware reinitialization in the restart
+  callback.
+- Link to v1:
+  https://lore.kernel.org/linux-can/tencent_5802EE88434010229EDF7A53084D994C6106@qq.com/
 
 ---
-base-commit: cc905a18a647a8e3ad42cd1596baa0e08fba26eb
-change-id: 20261111-tool-pmu-leader-d25fe8153599
-prerequisite-message-id: <20261023085629.1694941-1-takano32@gmail.com>
-prerequisite-patch-id: b92ce8b0c6248a4af182670458912b760b98a410
+Cunhao Lu (10):
+      can: rockchip_canfd: prevent TX stall on echo skb failure
+      can: rockchip_canfd: serialize TX state and command writes
+      can: rockchip_canfd: retry the outstanding TX buffer
+      can: dev: check netif_running() before bus-off recovery
+      can: dev: add close_candev_cancel_restart_sync()
+      can: rockchip_canfd: cancel bus-off restart before closing the device
+      can: rockchip_canfd: disable RX offload on open failure
+      can: rockchip_canfd: serialize TX with bus-off and restart
+      can: rockchip_canfd: prevent timestamp work from rearming after bus-off
+      can: rockchip_canfd: serialize timecounter timestamp conversion
+
+ Documentation/networking/can.rst                   | 10 +++-
+ drivers/net/can/dev/dev.c                          | 17 ++++--
+ drivers/net/can/rockchip/rockchip_canfd-core.c     | 69 ++++++++++++++++++++--
+ drivers/net/can/rockchip/rockchip_canfd-rx.c       | 30 +++++++---
+ .../net/can/rockchip/rockchip_canfd-timestamp.c    | 41 +++++++++++--
+ drivers/net/can/rockchip/rockchip_canfd-tx.c       | 51 +++++++++++++---
+ drivers/net/can/rockchip/rockchip_canfd.h          | 12 +++-
+ include/linux/can/dev.h                            | 17 ++++++
+ 8 files changed, 213 insertions(+), 34 deletions(-)
+---
+base-commit: ae842166410d5f42ed3257c735dd2ea3de931f5c
+change-id: 20261013-rockchip-canfd-restart-close-ebde5954f1bf
 
 Best regards,
--- 
-Hang Zhengyang <hang.zhengyang1010@gmail.com>
+--  
+Cunhao Lu <1579567540@qq.com>
 
