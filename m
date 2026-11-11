@@ -1,135 +1,87 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Wed, 11 Nov 2026 07:19:41 +0000
-Subject: [PATCH v2] drm/bridge: Fail an unsatisfiable bus format
- negotiation with -EINVAL
+Subject: [PATCH v2 0/3] arm64: dts: rockchip: Orange Pi 5/5B ethernet, SPI
+ NOR supply and USB-C DP
+Date: Wed, 11 Nov 2026 07:19:48 +0000
+Message-Id: <20261111-opi5-dts-v2-0-821f666418a6@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-drm-bridge-busfmt-einval-v2-1-fbb74905614b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NTQ6CMBBGr0Jm7RimEKKuvIdhQdsBxlAwLTQaw
- t0teAGXL9/PWyGwFw5wy1bwHCXINCZQpwxM34wdo9jEoHJVEVGO1jvUXmxK9BJaNyPLGJsBlTE
- XXVjKy2sBaf7y3Mr7uH7UPw6LfrKZ97+90UuYJ/853JH23h+aSEhokqTUVhWqKu+da2Q4m8lBv
- W3bF9Z/s8LSAAAA
-X-Change-ID: 20261110-drm-bridge-busfmt-einval-2cc8b3d10493
-To: Andrzej Hajda <andrzej.hajda@intel.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
- Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
- Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Luca Ceresoli <luca.ceresoli@bootlin.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Nicolas Frattaroli <nicolas.frattaroli@collabora.com>, 
- Boris Brezillon <boris.brezillon@collabora.com>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NwQ6CMBAFf4Xs2Zq2lIKc/A/DgZYV1gglbSUaw
+ r9L8epxknnzVgjoCQPU2QoeFwrkph3kKQM7tFOPjLqdQXKphRCcuZkK1sXAlKlydRFWl1zDrs8
+ e7/Q+Urfmx+FlHmhj2idjoBCd/xxfi0jen+wiGGdFJY3OO14qg9d+bOl5tm6EZtu2L2ThTmOyA
+ AAA
+X-Change-ID: 20261110-opi5-dts-4b83491c6706
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794381580; l=4655;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794381589; l=2877;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Ziyi2IZLgbKXw37gKHjsH70kDZh1z3mkpnBpz48qVjs=;
- b=CTIsg0OH7JUFZHae3BOEI0lTa03NHzsUj5+AJYyeUAkZXBYalcoBcTWtAguxGRZ2EpGL2Qucv
- 5Xtku29gr03C7dzC4uZ1Sz8P/z6KDmNLgM9vJDlwzeeE3DIKfNGMmX/
+ bh=415eeljqGNLq4ZK/3uBjgk+J8UfR3jvxbnBfmkS6B8c=;
+ b=X9l+smzA8X4BIIIaehsCojbXz6seaLG1tWy8KFhT27mk89+u17gqsRsneWwk08F7iAOv0OXJA
+ xSXciD+gSVCCB+X5NTwnXJ8RyC41Cla3+TmrNOqHj7orVD3Y/0Z5+yF
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-drm_atomic_bridge_chain_select_bus_fmts() reports that no chain of bus
-formats fits with -ENOTSUPP, and drm_atomic_bridge_chain_check() passes
-that straight back through drm_atomic_helper_check_modeset() to the
-atomic and legacy modeset ioctls. -ENOTSUPP (524) is a kernel-internal
-code that userspace does not know; for a configuration the hardware
-cannot do the atomic API returns -EINVAL. Since the connector "color
-format" property makes the negotiation fail for any requested format a
-bridge chain cannot output, userspace now hits this routinely: a DW DP
-connector asked for YCbCr 4:2:0 on a sink without 4:2:0 support gets
-here with no matching format and would fail the atomic commit with
-errno 524, where an HDMI connector asked for the same returns EINVAL
-from the HDMI state helper.
+Three device tree changes for the Orange Pi 5 and 5B:
 
-Return -EINVAL when the negotiation finds no chain, with a debug
-message naming the encoder, and make the drm_bridge KUnit test of a
-chain with no bus format path, drm_test_bridge_rgb_yuv_no_path(),
-expect -EINVAL from the atomic commit.
+1. The YT8531C PHY on gmac1 is described as "rgmii-rxid" with a MAC TX
+   delay copied from the vendor kernel; the PCB adds no delay, so the
+   correct description is "rgmii-id" (as the Orange Pi CM5 already
+   uses), with both delays in the PHY.
+2. The SPI NOR flash gets its real 1.8 V supply instead of a dummy
+   regulator.
+3. The USB-C port gets DP Alt Mode: the FUSB302 connector advertises
+   the DisplayPort alternate mode and the graph links the connector,
+   the USBDP PHY and the DP0 controller. It uses only bindings already
+   in mainline.
 
-Fixes: f32df58acc68 ("drm/bridge: Add the necessary bits to support bus format negotiation")
+Tested on an Orange Pi 5 (RK3588S, PCB v1.2): with "rgmii-id" the link
+comes up at 1000/Full and receives at 940 Mbit/s with no errors (with
+"net: stmmac: dwmac-rk: only read the delays the MAC applies", sent
+separately, the "Can not read property" warnings are gone too); the
+regulator summary lists the flash supply under vcc_1v8_s3 and the dummy
+regulator message is gone. With patch 3, a USB-C dock (DP-to-HDMI
+converter, USB3 hub) enters DP Alt Mode in pin assignment D (2 lanes
+HBR2) and its monitor runs at 3840x2160@30 next to HDMI at 4K60, pin
+assignment D -> C -> D switches work, 100 of 100 attach cycles
+configured DP Alt Mode, and the dock's USB3 devices keep working. The
+driver stack used for that test carried the pending "USBDP PHY cleanup
+part 3" and dw-dp HPD/Alt Mode patches; the description itself does
+not depend on them. CHECK_DTBS is clean for both boards. The Orange
+Pi 5B was not tested (no board at hand); it shares the changed .dtsi.
+
+This series was developed with Claude (Anthropic) as a coding assistant:
+it wrote the code and the commit messages, and I reviewed and tested
+every change as described above.
+
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Found while making the DW DP bridge honour the "color format" connector
-property on an Orange Pi 5 (RK3588S): once dw-dp only offers the bus
-formats of the requested colour format, a request the sink or the mode
-cannot take leaves the chain with no format, and the atomic check
-returns the kernel-internal -ENOTSUPP.
-
-Tested on that board with this patch and that dw-dp change, with a
-DisplayPort monitor whose EDID has no YCbCr 4:2:0 support: all 74
-commits asking for YCbCr 4:2:0 over the monitor's modes and depths are
-refused with EINVAL, as the same request on the HDMI connector is; the
-296 RGB, YCbCr 4:4:4/4:2:2 and automatic cases still get their format,
-with the picture checked by a camera.
-
-This patch was developed with Claude (Anthropic) as a coding assistant:
-it wrote the code and the commit message, and I reviewed and tested it
-as described above.
----
 Changes in v2:
-- Make drm_test_bridge_rgb_yuv_no_path() expect -EINVAL instead of
-  -ENOTSUPP; v1 broke it, and I had not run the DRM KUnit tests. All
-  drivers/gpu/drm/tests suites pass with v2 (UML). Reported by Sashiko.
-  The colour format series added that check to record the value the
-  negotiation already returned; I found no review comment about the
-  error code on the test's postings (v6 to v17), and the atomic uAPI
-  reports a state the hardware cannot do with -EINVAL, as the HDMI state
-  helper does for the same colour format request.
-- Add the Fixes tag, for the commit that made the atomic check return
-  -ENOTSUPP. Suggested by Sashiko.
-- Cc Nicolas Frattaroli (author of the test) and Boris Brezillon
-  (author of the commit in Fixes).
-- Link to v1: https://patch.msgid.link/20261110-drm-bridge-busfmt-einval-v1-1-c0494bd23264@gmail.com
----
- drivers/gpu/drm/drm_bridge.c            | 11 +++++++++++
- drivers/gpu/drm/tests/drm_bridge_test.c |  2 +-
- 2 files changed, 12 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/gpu/drm/drm_bridge.c b/drivers/gpu/drm/drm_bridge.c
-index 8ae2f9b1db44..6a97b579c604 100644
---- a/drivers/gpu/drm/drm_bridge.c
-+++ b/drivers/gpu/drm/drm_bridge.c
-@@ -1437,6 +1437,17 @@ int drm_atomic_bridge_chain_check(struct drm_bridge *bridge,
- 
- 	ret = drm_atomic_bridge_chain_select_bus_fmts(bridge, crtc_state,
- 						      conn_state);
-+	/*
-+	 * -ENOTSUPP is the internal "no bus format chain" code of the
-+	 * negotiation. It is not a valid userspace error code; an atomic
-+	 * check that cannot be satisfied fails with -EINVAL.
-+	 */
-+	if (ret == -ENOTSUPP) {
-+		drm_dbg_atomic(bridge->dev,
-+			       "[ENCODER:%d:%s] no bus format chain found\n",
-+			       bridge->encoder->base.id, bridge->encoder->name);
-+		return -EINVAL;
-+	}
- 	if (ret)
- 		return ret;
- 
-diff --git a/drivers/gpu/drm/tests/drm_bridge_test.c b/drivers/gpu/drm/tests/drm_bridge_test.c
-index 15583ade8494..792dbd035501 100644
---- a/drivers/gpu/drm/tests/drm_bridge_test.c
-+++ b/drivers/gpu/drm/tests/drm_bridge_test.c
-@@ -1351,7 +1351,7 @@ static void drm_test_bridge_rgb_yuv_no_path(struct kunit *test)
- 		drm_modeset_backoff(&ctx);
- 		goto retry_commit;
- 	}
--	KUNIT_EXPECT_EQ(test, ret, -ENOTSUPP);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
- 
- 	drm_modeset_drop_locks(&ctx);
- 	drm_modeset_acquire_fini(&ctx);
+- Patch 2: put vcc-supply on the existing flash@0 node in
+  rk3588s-orangepi-5.dtsi instead of splitting the node across the .dtsi
+  and the Orange Pi 5 .dts (found by the Sashiko AI review). The Orange
+  Pi 5 DTB is unchanged from v1; on the 5B and 5 Pro the controller stays
+  disabled.
+- Patches 1 and 3 are unchanged.
+- Link to v1: https://patch.msgid.link/20261110-opi5-dts-v1-0-582b63d074be@gmail.com
 
 ---
-base-commit: 8deaade4a5a4ff635df91e246e42139ab2b33f6d
-change-id: 20261110-drm-bridge-busfmt-einval-2cc8b3d10493
+Arun Iyengar (3):
+      arm64: dts: rockchip: use rgmii-id for the Orange Pi 5/5B ethernet PHY
+      arm64: dts: rockchip: add the SPI NOR flash supply on Orange Pi 5
+      arm64: dts: rockchip: Add USB-C DP AltMode for Orange Pi 5/5B
+
+ .../boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi   | 92 +++++++++++++++++++---
+ .../boot/dts/rockchip/rk3588s-orangepi-5.dtsi      |  1 +
+ 2 files changed, 80 insertions(+), 13 deletions(-)
+---
+base-commit: c3baae5f1a15645cddadcb2b9abddef5df291f59
+change-id: 20261110-opi5-dts-4b83491c6706
 
 Best regards,
 --  
