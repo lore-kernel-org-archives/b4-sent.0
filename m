@@ -1,146 +1,265 @@
-From: Mani Tofigh <mt4022@columbia.edu>
-Date: Wed, 11 Nov 2026 18:02:47 -0500
-Subject: [PATCH 3/3] ext4: fix directory link counts after fast commit
- replay
+From: =?utf-8?q?Tom=C3=A1s_Senart?= <ts@perfloop.ai>
+Date: Thu, 12 Nov 2026 00:23:13 +0100
+Subject: [PATCH] mm: zswap: honor zero cgroup limits after successful
+ reclaim
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-ext4-fc-replay-mkdir-v1-3-4b20be29aed8@columbia.edu>
-References: <20261111-ext4-fc-replay-mkdir-v1-0-4b20be29aed8@columbia.edu>
-In-Reply-To: <20261111-ext4-fc-replay-mkdir-v1-0-4b20be29aed8@columbia.edu>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>, 
- Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
- Zhang Yi <yi.zhang@huawei.com>, 
- Harshad Shirwadkar <harshadshirwadkar@gmail.com>, 
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
- tz2294@columbia.edu, stable@vger.kernel.org, 
- Mani Tofigh <mt4022@columbia.edu>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261112-zswap-zero-limit-v1-1-19f33081b09e@perfloop.ai>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/yWMwQ6CMBBEf4Xs2U0A00b9FeOhLYuswUJ2AQmEf
+ 7fVub3JzNtBSZgUbsUOQgsrDzFBdSogdC4+CblJDHVZ2yoFN/24ETeSAXt+84TOmEt7vtrSNgb
+ SbRRqef0p748/6+xfFKbsyQvvlNCLi6HLVc9xXjGXcBxfTwK4rJEAAAA=
+X-Change-ID: 20261111-zswap-zero-limit-a558f39606d5
+To: akpm@linux-foundation.org, yosry@kernel.org, hannes@cmpxchg.org, 
+ nphamcs@gmail.com
+Cc: roman.gushchin@linux.dev, tj@kernel.org, chengming.zhou@linux.dev, 
+ mkoutny@suse.com, linux-kernel@vger.kernel.org, linux-mm@kvack.org, 
+ mhocko@kernel.org, shakeel.butt@linux.dev, muchun.song@linux.dev, 
+ cerasuolodomenico@gmail.com, linux-kselftest@vger.kernel.org, 
+ shuah@kernel.org, cgroups@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794438165; l=4343;
- i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=ko9jihQar3KC04k0y1s+IAb/JAl7cuqapNyj3EQe9W8=;
- b=pLF4nS+byIWUaB8xt4EXjyOCgmelhl43uGRAj8BFCJFxgSKfonNRmPjwuWpRD3AoANnISTRj3
- Awv9AMvH+7HCnen9i8X+7vQwYezUn2ZCBvEq7XbkHa0L6WZztb1REBo
-X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
- pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
-X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794439392; l=8065;
+ i=ts@perfloop.ai; s=linux-zswap-send; h=from:subject:message-id;
+ bh=hFoFA37/xPMSR9gx/RxcnOaVQHs9U2AHzWcDrxEi6Ls=;
+ b=KH9964zzP1eOc4pd4uA+hh/AtHL3SDkaaIbkZR1HDNd7DnO/Opx+CWiMuhnE9oRrNEze3lj5z
+ 3pw2bW4hYupBF1Ql+ufpYl/jifbVbje1YooETPBo6snUJ/2u43gd4+F
+X-Developer-Key: i=ts@perfloop.ai; a=ed25519;
+ pk=b+DBayzsW8pO9vRMlsrjlegfP4eogiqFEXM4mEKusH8=
+X-Endpoint-Received: by B4 Relay for ts@perfloop.ai/linux-zswap-send with auth_id=1492
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After a crash, the fast commit replay of a mkdir leaves the new
-directory with one link and its parent with one link too few.  e2fsck
-then reports:
+Commit a65b0e7607cc ("zswap: make shrinking memcg-aware") lets a store
+proceed after a successful cgroup reclaim. That also lets a cgroup
+whose memory.zswap.max was lowered to zero replace an old entry with a
+newly compressed page, although zswap is disabled for that hierarchy.
 
-  Inode 2 ref count is 3, should be 4.
-  Inode 14 ref count is 1, should be 2.
+Check for a zero limit again after a successful reclaim, before
+compression. Use a zero-only hierarchy check rather than repeating
+obj_cgroup_may_zswap(): a nonzero limit must still allow replacing cold
+entries even when one reclaim batch leaves usage above the limit. Keep
+the existing reference release and stale-entry invalidation paths.
 
-Fast commits don't track directories, so the replay of a CREAT tag has
-to redo what ext4_mkdir() does.  ext4_fc_replay_create() sets the
-link count of the new inode to 1 even for a directory, and nothing
-counts the new ".." in the parent.  The replay of an rmdir has the
-opposite problem.  __ext4_unlink() drops only one link of the directory
-and the parent keeps the link of the removed "..":
+Add a regression test to the cgroup zswap selftests. It seeds an old
+entry, lowers either the leaf or the ancestor limit to zero, and pages
+out fresh memfd pages. It counts written-back entries as well as
+retained ones and verifies the data on readback. The test fails without
+this change and passes with it, and the other test_zswap tests still
+pass.
 
-  Inode 2 ref count is 4, should be 3.
+Limit updates that race with a store remain non-atomic. This change
+does not make nonzero limits exact.
 
-Give a new directory 2 links and count it in its parent once its entry
-is added.  When an UNLINK tag removes a directory, drop all its links
-and one link of the parent like ext4_rmdir() does.  Both halves have to
-go together since today a mkdir and an rmdir replayed in sequence
-cancel out.
+The problem was found, and the fix, the test and this changelog were
+drafted, by Perfloop, an AI coding agent.
 
-With the fix, e2fsck doesn't find wrong link counts after the replay
-anymore.
-
-Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
-Cc: stable@vger.kernel.org
-Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
+Fixes: a65b0e7607cc ("zswap: make shrinking memcg-aware")
+Assisted-by: Perfloop Agent <agent@perfloop.ai>
+Signed-off-by: Tomás Senart <ts@perfloop.ai>
 ---
- fs/ext4/ext4.h        |  2 ++
- fs/ext4/fast_commit.c | 16 ++++++++++++++--
- fs/ext4/namei.c       |  4 ++--
- 3 files changed, 18 insertions(+), 4 deletions(-)
+Tested with the cgroup zswap selftests (tools/testing/selftests/cgroup/
+test_zswap) in QEMU with TCG only, not on hardware. The patch also
+applies cleanly to mm-new.
+---
+ include/linux/memcontrol.h                  |   5 ++
+ mm/memcontrol.c                             |  17 +++++
+ mm/zswap.c                                  |   2 +-
+ tools/testing/selftests/cgroup/test_zswap.c | 101 ++++++++++++++++++++++++++++
+ 4 files changed, 124 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c5044aaddb69..bdba38062e83 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3897,6 +3897,8 @@ extern int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
- 			 struct inode *inode, struct dentry *dentry);
- extern int __ext4_link(struct inode *dir, struct inode *inode,
- 		       const struct qstr *d_name, struct dentry *dentry);
-+void ext4_inc_count(struct inode *inode);
-+void ext4_dec_count(struct inode *inode);
+diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
+index 69e1bcc67..948bc5b1b 100644
+--- a/include/linux/memcontrol.h
++++ b/include/linux/memcontrol.h
+@@ -1944,11 +1944,16 @@ static inline void mem_cgroup_calculate_protection_path(struct mem_cgroup *root,
+ #endif
  
- #define S_SHIFT 12
- static const unsigned char ext4_type_by_mode[(S_IFMT >> S_SHIFT) + 1] = {
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 9c170986f0b2..3f864ebab1c8 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -1824,8 +1824,15 @@ static int ext4_fc_replay_unlink(struct super_block *sb,
+ #if defined(CONFIG_MEMCG) && defined(CONFIG_ZSWAP)
++bool mem_cgroup_zswap_disabled(struct mem_cgroup *memcg);
+ bool obj_cgroup_may_zswap(struct obj_cgroup *objcg);
+ void obj_cgroup_charge_zswap(struct obj_cgroup *objcg, size_t size);
+ void obj_cgroup_uncharge_zswap(struct obj_cgroup *objcg, size_t size);
+ bool mem_cgroup_zswap_writeback_enabled(const struct mem_cgroup *memcg);
+ #else
++static inline bool mem_cgroup_zswap_disabled(struct mem_cgroup *memcg)
++{
++	return false;
++}
+ static inline bool obj_cgroup_may_zswap(struct obj_cgroup *objcg)
+ {
+ 	return true;
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index 84f4a8fd4..448955327 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -6267,6 +6267,23 @@ static struct cftype swap_files[] = {
+ };
  
- 	ret = __ext4_unlink(old_parent, &entry, inode, NULL);
- 	/* -ENOENT ok coz it might not exist anymore. */
--	if (ret == -ENOENT)
-+	if (ret == -ENOENT) {
- 		ret = 0;
-+	} else if (!ret && S_ISDIR(inode->i_mode)) {
-+		/* Like ext4_rmdir(), drop all links of the dir and its ".." */
-+		clear_nlink(inode);
-+		ext4_mark_inode_dirty(NULL, inode);
-+		ext4_dec_count(old_parent);
-+		ext4_mark_inode_dirty(NULL, old_parent);
-+	}
- 	iput(old_parent);
- 	iput(inode);
+ #ifdef CONFIG_ZSWAP
++/**
++ * mem_cgroup_zswap_disabled - check if a zero limit disables zswap
++ * @memcg: the memory cgroup
++ *
++ * Unlike obj_cgroup_may_zswap(), this ignores nonzero limits so that reclaim
++ * can replace cold entries even if usage is still above a nonzero limit.
++ */
++bool mem_cgroup_zswap_disabled(struct mem_cgroup *memcg)
++{
++	for (; !mem_cgroup_is_root(memcg);
++	     memcg = parent_mem_cgroup(memcg))
++		if (!READ_ONCE(memcg->zswap_max))
++			return true;
++
++	return false;
++}
++
+ /**
+  * obj_cgroup_may_zswap - check if this cgroup can zswap
+  * @objcg: the object cgroup
+diff --git a/mm/zswap.c b/mm/zswap.c
+index ae19e301f..60a725680 100644
+--- a/mm/zswap.c
++++ b/mm/zswap.c
+@@ -1542,7 +1542,7 @@ bool zswap_store(struct folio *folio)
+ 	objcg = get_obj_cgroup_from_folio(folio);
+ 	if (objcg && !obj_cgroup_may_zswap(objcg)) {
+ 		memcg = get_mem_cgroup_from_objcg(objcg);
+-		if (shrink_memcg(memcg)) {
++		if (shrink_memcg(memcg) || mem_cgroup_zswap_disabled(memcg)) {
+ 			mem_cgroup_put(memcg);
+ 			goto put_objcg;
+ 		}
+diff --git a/tools/testing/selftests/cgroup/test_zswap.c b/tools/testing/selftests/cgroup/test_zswap.c
+index d50acc1b8..7632aadd8 100644
+--- a/tools/testing/selftests/cgroup/test_zswap.c
++++ b/tools/testing/selftests/cgroup/test_zswap.c
+@@ -22,6 +22,7 @@ static int page_size;
+ #define PATH_ZSWAP_ENABLED "/sys/module/zswap/parameters/enabled"
+ #define PATH_ZSWAP_SHRINKER_ENABLED "/sys/module/zswap/parameters/shrinker_enabled"
+ #define PATH_ZSWAP_STORED_PAGES "/sys/kernel/debug/zswap/stored_pages"
++#define PATH_ZSWAP_WRITTEN_BACK_PAGES "/sys/kernel/debug/zswap/written_back_pages"
+ 
+ static int read_int(const char *path, size_t *value)
+ {
+@@ -244,6 +245,105 @@ static int test_swapin_nozswap(const char *root)
  	return ret;
-@@ -1858,6 +1865,11 @@ static int ext4_fc_replay_link_internal(struct super_block *sb,
- 		goto out;
- 	}
+ }
  
-+	/* Like ext4_mkdir(), count the new dir's ".." in its parent */
-+	if (!ret && S_ISDIR(inode->i_mode)) {
-+		ext4_inc_count(dir);
-+		ext4_mark_inode_dirty(NULL, dir);
++/* Lowering the limit must also stop stores when old entries can be reclaimed. */
++static int pageout_zero_limit(const char *cgroup, void *arg)
++{
++	const char *limit_group = arg;
++	size_t stored_before, stored_after, wb_before, wb_after;
++	size_t size = 3 * page_size;
++	int fd, ret = -1;
++	char *mem;
++
++	fd = memfd_create("zswap_max_zero", 0);
++	if (fd < 0)
++		return -1;
++	if (ftruncate(fd, size))
++		goto out_close;
++	mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++	if (mem == MAP_FAILED)
++		goto out_close;
++	for (int i = 0; i < size; i++)
++		mem[i] = 'a' + i / page_size;
++
++	if (get_zswap_stored_pages(&stored_before))
++		goto out;
++	if (madvise(mem, page_size, MADV_PAGEOUT))
++		goto out;
++	if (get_zswap_stored_pages(&stored_after))
++		goto out;
++	if (stored_after != stored_before + 1) {
++		ksft_print_msg("Failed to seed an old zswap entry\n");
++		goto out;
 +	}
- 	/* The replay allocator doesn't count blocks added to the dir */
- 	if (!ret && !ext4_test_inode_flag(dir, EXT4_INODE_INLINE_DATA))
- 		ext4_ext_replay_set_iblocks(dir);
-@@ -2080,7 +2092,7 @@ static int ext4_fc_replay_create(struct super_block *sb,
- 	ret = ext4_fc_replay_link_internal(sb, &darg, inode);
- 	if (ret)
- 		goto out;
--	set_nlink(inode, 1);
-+	set_nlink(inode, S_ISDIR(inode->i_mode) ? 2 : 1);
- 	ext4_mark_inode_dirty(NULL, inode);
- out:
- 	iput(inode);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 354fc2d22df1..7e58f3c609e1 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2758,7 +2758,7 @@ static int ext4_delete_entry(handle_t *handle,
-  * for checking S_ISDIR(inode) (since the INODE_INDEX feature will not be set
-  * on regular files) and to avoid creating huge/slow non-HTREE directories.
-  */
--static void ext4_inc_count(struct inode *inode)
-+void ext4_inc_count(struct inode *inode)
++	stored_before = stored_after;
++	if (read_int(PATH_ZSWAP_WRITTEN_BACK_PAGES, &wb_before))
++		goto out;
++	if (cg_write(limit_group, "memory.zswap.max", "0"))
++		goto out;
++
++	/* The first attempt can give the old entry a second chance. */
++	for (int i = 1; i < 3; i++)
++		if (madvise(mem + i * page_size, page_size, MADV_PAGEOUT))
++			goto out;
++
++	if (get_zswap_stored_pages(&stored_after))
++		goto out;
++	if (read_int(PATH_ZSWAP_WRITTEN_BACK_PAGES, &wb_after))
++		goto out;
++	/* Writing back old entries must not hide newly admitted entries. */
++	if (stored_after + wb_after != stored_before + wb_before) {
++		ksft_print_msg("New zswap entry after setting memory.zswap.max to zero\n");
++		goto out;
++	}
++	for (int i = 0; i < size; i++) {
++		if (mem[i] != 'a' + i / page_size) {
++			ksft_print_msg("Invalid data after zero-limit pageout\n");
++			goto out;
++		}
++	}
++	ret = 0;
++out:
++	munmap(mem, size);
++out_close:
++	close(fd);
++	return ret;
++}
++
++static int test_zswap_max_zero(const char *root)
++{
++	char *group = NULL, *child = NULL;
++	int ret = KSFT_FAIL;
++
++	if (access(PATH_ZSWAP_STORED_PAGES, R_OK) ||
++	    access(PATH_ZSWAP_WRITTEN_BACK_PAGES, R_OK))
++		return KSFT_SKIP;
++	if (cg_read_strcmp(root, "memory.zswap.writeback", "1"))
++		return KSFT_SKIP;
++
++	group = cg_name(root, "zswap_max_zero_test");
++	if (!group || cg_create(group))
++		goto out;
++	if (cg_run(group, pageout_zero_limit, group))
++		goto out;
++
++	if (cg_write(group, "memory.zswap.max", "max"))
++		goto out;
++	if (cg_write(group, "cgroup.subtree_control", "+memory"))
++		goto out;
++	child = cg_name(group, "child");
++	if (!child || cg_create(child))
++		goto out;
++	if (cg_run(child, pageout_zero_limit, group))
++		goto out;
++	ret = KSFT_PASS;
++out:
++	cg_destroy(child);
++	free(child);
++	cg_destroy(group);
++	free(group);
++	return ret;
++}
++
+ /* Simple test to verify the (z)swapin code paths */
+ static int test_zswapin(const char *root)
  {
- 	inc_nlink(inode);
- 	if (is_dx(inode) &&
-@@ -2770,7 +2770,7 @@ static void ext4_inc_count(struct inode *inode)
-  * If a directory had nlink == 1, then we should let it be 1. This indicates
-  * directory has >EXT4_LINK_MAX subdirs.
-  */
--static void ext4_dec_count(struct inode *inode)
-+void ext4_dec_count(struct inode *inode)
- {
- 	if (!S_ISDIR(inode->i_mode) || inode->i_nlink > 2)
- 		drop_nlink(inode);
+@@ -824,6 +924,7 @@ struct zswap_test {
+ } tests[] = {
+ 	T(test_zswap_usage),
+ 	T(test_swapin_nozswap),
++	T(test_zswap_max_zero),
+ 	T(test_zswapin),
+ 	T(test_zswap_writeback_enabled),
+ 	T(test_zswap_writeback_disabled),
 
--- 
-2.53.0
+---
+base-commit: b3dfbde62cf1981c4638939c159dfd087b7a72e9
+change-id: 20261111-zswap-zero-limit-a558f39606d5
+
+Best regards,
+--  
+Tomás Senart <ts@perfloop.ai>
 
