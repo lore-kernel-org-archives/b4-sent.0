@@ -1,90 +1,79 @@
-From: Hunter Laux <hunterlaux@gmail.com>
-Date: Tue, 10 Nov 2026 21:09:03 -0700
-Subject: [PATCH] MIPS: ingenic: Let Config.VI tell whether the icache is
- virtual
+From: Andrew Gigena <mail@andrewgigena.dev>
+Subject: [PATCH v3 0/3] arm64: dts: qcom: sm8150: Add standalone ICE node
+ for UFS
+Date: Wed, 11 Nov 2026 04:17:48 +0000
+Message-Id: <20261111-sm8150-ice-rfc-v3-0-f9d5a806fc95@andrewgigena.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261110-mips-xburst-icache-vi-v1-1-efba689606dd@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAF7q82oC/x3MPQqAMAxA4atIZgONgohXEYfaRM3gD42KULy7x
- fEb3ktgElUMuiJBlFtN9y2DygLC4rdZUDkbKlc1RORw1cPwGa9oJ2rwYRG8FXkk51t2NXMDuT2
- iTPr833543w+ofuiIZwAAAA==
-To: Paul Cercueil <paul@crapouillou.net>, 
- Thomas Bogendoerfer <tsbogend@alpha.franken.de>
-Cc: linux-mips@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Lars-Peter Clausen <lars@metafoo.de>, Hunter Laux <hunterlaux@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794370145; l=2681;
- i=hunterlaux@gmail.com; s=20261109; h=from:subject:message-id;
- bh=cXFr6wRPxVPgKvzA/Ve7zSz/KJTDwuu+N1xApA/N3xY=;
- b=UKlZ8oi6sWqvZJ0m3xZeRfzwO8CcyCPNgl6B2IiUpljtQGdiBROaXejpdWeYKhZKvsPCgwTZl
- uovwasrpm1wDmmpxs++CRRWRW1mguTLQ7oPxp8YAZeAAvOUpqYo7Rvp
-X-Developer-Key: i=hunterlaux@gmail.com; a=ed25519;
- pk=Z5VTsE4CAwditt0CNeG+rpPk7xDUVh+oHWDZlNNm8FI=
-X-Endpoint-Received: by B4 Relay for hunterlaux@gmail.com/20261109 with auth_id=1476
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NzQ7CIBAE4FcxnMUs9IfqyfcwHsqybTGRGqioa
+ fruQr2qx0lmvplZIG8psMNmZp6iDXZ0KRTbDcOhdT1xa1JmEmQtBJQ8XBtRAbdI3HfIQZdaIhQ
+ VNcDS6Oaps88VPJ0/Odz1hXDKSm4MNkyjf62PUeTeTzwKDrxShdI1SkKEY+uMp0dve3LtzlBk+
+ SPK/4pMiqn3SmskkKr5oizL8gZT9hPeCwEAAA==
+X-Change-ID: 20261104-sm8150-ice-rfc-0b4b2c035e80
+To: Abel Vesa <abelvesa@kernel.org>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>, Bart Van Assche <bvanassche@acm.org>, 
+ Bean Huo <beanhuo@micron.com>, Stanley Jhu <stanleyjhu@google.com>, 
+ Bjorn Andersson <andersson@kernel.org>, Andy Gross <agross@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-scsi@vger.kernel.org, Andrew Gigena <mail@andrewgigena.dev>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794370671; l=1616;
+ i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
+ bh=NHGynmgOiipnILRN3zymO9/V/g0czzvFXIX8dUVTA7I=;
+ b=EobBK5mlbAGMRTZuxz4hOl8C39fcDlZ4QOSoLYV0HNQre/Zg1i9DwCqxNZ5pjw0hp5SqaGOeC
+ 9OWrgWkOK7tBbpHuOXLqPlQLLuYUMG3ZS5NFUZ56ouzykTgCnAYUWm+
+X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
+ pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
+X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Ingenic CPU support treats every XBurst instruction cache as
-virtually tagged: the feature overrides fix cpu_has_vtag_icache to 1,
-and the probe sets MIPS_CACHE_VTAG. The setting came in with the JZ4740
-feature overrides in commit 83ccf69d8f11 ("MIPS: JZ4740: Add base
-support for Ingenic JZ4740 System-on-a-Chip") without a stated reason,
-and Ingenic's own kernels treat the icache as physically tagged.
+Hi everyone,
 
-Neither XBurst1 nor XBurst II has a virtually tagged icache. Both
-programming manuals describe a physically tagged one and hardwire
-Config.VI to 0, which the cache probe already reads. On the X2600, code
-at a virtual address remapped to another page through the TLB alone
-runs the new page, while the old line is still in the icache. XBurst1
-has not been tested. Treating the icache as virtually tagged is
-incorrect and costs needless icache flushes.
+This series adds standalone ICE support to SM8150 (Snapdragon 855),
+matching newer Qualcomm platforms.
 
-Drop both and leave it to Config.VI.
+Patch 1 documents the sm8150 ICE compatible.
+Patch 2 moves sm8150-ufshc to the standalone-ICE UFS binding.
+Patch 3 converts the UFS node to use a dedicated ICE node.
 
-Cc: Lars-Peter Clausen <lars@metafoo.de>
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Hunter Laux <hunterlaux@gmail.com>
----
-Lars, the override came with your JZ4740 support in 2010. On the off
-chance you remember a reason for setting cpu_has_vtag_icache to 1,
-I'd like to hear it.
----
- arch/mips/include/asm/mach-ingenic/cpu-feature-overrides.h | 1 -
- arch/mips/kernel/cpu-probe.c                               | 3 ---
- 2 files changed, 4 deletions(-)
+Tested on a Google Pixel 4 (google-flame): AES-256-XTS advertised,
+ext4 encryption supported, ICE self-test passes.
 
-diff --git a/arch/mips/include/asm/mach-ingenic/cpu-feature-overrides.h b/arch/mips/include/asm/mach-ingenic/cpu-feature-overrides.h
-index 7ace50127f..71c03f1dd4 100644
---- a/arch/mips/include/asm/mach-ingenic/cpu-feature-overrides.h
-+++ b/arch/mips/include/asm/mach-ingenic/cpu-feature-overrides.h
-@@ -27,7 +27,6 @@
- #define cpu_has_mips3d 0
- #define cpu_has_smartmips 0
- #define kernel_uses_llsc	1
--#define cpu_has_vtag_icache	1
- #define cpu_has_dc_aliases	0
- #define cpu_has_ic_fills_f_dc	0
- #define cpu_has_pindexed_dcache 0
-diff --git a/arch/mips/kernel/cpu-probe.c b/arch/mips/kernel/cpu-probe.c
-index 489612ed9d..bef92e6cd6 100644
---- a/arch/mips/kernel/cpu-probe.c
-+++ b/arch/mips/kernel/cpu-probe.c
-@@ -1763,9 +1763,6 @@ static inline void cpu_probe_ingenic(struct cpuinfo_mips *c, unsigned int cpu)
- 	c->options &= ~MIPS_CPU_COUNTER;
- 	BUG_ON(__builtin_constant_p(cpu_has_counter) && cpu_has_counter);
- 
--	/* XBurst has virtually tagged icache */
--	c->icache.flags |= MIPS_CACHE_VTAG;
--
- 	switch (c->processor_id & PRID_IMP_MASK) {
- 
- 	/* XBurst®1 with MXU1.0/MXU1.1 SIMD ISA */
+Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
+
+Changes in v3:
+- Split bindings into two commits (compatible + standalone-ICE move).
+- Drop author Tested-by from DTS patch.
+- Link to v2: https://patch.msgid.link/20261104-sm8150-ice-rfc-v2-0-d697bbce0278@andrewgigena.dev
+
+Changes in v2:
+- Move sm8150-ufshc to the standalone-ICE binding.
+- Keep the ICE compatible sorted.
+- Link to v1: https://patch.msgid.link/20261104-sm8150-ice-rfc-v1-0-5737b6c2ecc0@andrewgigena.dev
 
 ---
-base-commit: b3dfbde62cf1981c4638939c159dfd087b7a72e9
-change-id: 20261110-mips-xburst-icache-vi-db10a8d03dd6
+Andrew Gigena (3):
+      dt-bindings: crypto: ice: document sm8150 compatible
+      dt-bindings: ufs: qcom: classify sm8150-ufshc as standalone ICE
+      arm64: dts: qcom: sm8150: use standalone ICE for UFS
+
+ .../bindings/crypto/qcom,inline-crypto-engine.yaml |  1 +
+ .../devicetree/bindings/ufs/qcom,sc7180-ufshc.yaml |  2 ++
+ .../devicetree/bindings/ufs/qcom,ufs.yaml          | 11 ++++------
+ arch/arm64/boot/dts/qcom/sm8150.dtsi               | 25 ++++++++++++++--------
+ 4 files changed, 23 insertions(+), 16 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261104-sm8150-ice-rfc-0b4b2c035e80
 
 Best regards,
--- 
-Hunter Laux <hunterlaux@gmail.com>
+--  
+Andrew Gigena <mail@andrewgigena.dev>
 
