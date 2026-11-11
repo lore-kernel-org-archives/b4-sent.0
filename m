@@ -1,66 +1,96 @@
 From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Subject: [PATCH v2 0/2] can: kvaser_usb: validate values received from the
- device
-Date: Wed, 11 Nov 2026 17:23:57 +0000
-Message-Id: <20261111-kvaser-usb-validate-v2-0-193dc10ca19b@gmail.com>
+Date: Wed, 11 Nov 2026 17:23:58 +0000
+Subject: [PATCH v2 1/2] can: kvaser_usb: hydra: reject commands shorter
+ than a standard command
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAK2k9GoC/32NSw6CQBAFr0J6bZv56ARdeQ/Dogca6MjHzOBEQ
- 7i7IwdwWS+peitEDsIRrsUKgZNEmacM5lBA3dPUMUqTGYwyTmut8JEoK/iKHhMN0tDCaG1t2J6
- 8s76FbD4Dt/Leq/cqcy9xmcNnP0n6t/7vJY0KW+OcL89EF1XeupFkONbzCNW2bV9ZfaaetgAAA
- A==
+Message-Id: <20261111-kvaser-usb-validate-v2-1-193dc10ca19b@gmail.com>
+References: <20261111-kvaser-usb-validate-v2-0-193dc10ca19b@gmail.com>
+In-Reply-To: <20261111-kvaser-usb-validate-v2-0-193dc10ca19b@gmail.com>
 To: mkl@pengutronix.de, mailhol@kernel.org, joasantonio108@gmail.com
 Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794417838; l=1654;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794417838; l=3068;
  i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=xx6KoRG8pHta6iZo+MzyuW/1BziusnRXyXorD/1oFmM=;
- b=jO7IM++jqzS8buM6ErxiVZmK1Ojp+dt0W8rNGZYFRHnpaOXp/XUc2R+p49nGR32/Eyo6bnDrj
- qot04vOMFDwCa4/fF9AQeh9JWzUxWs40baGH858bVwdNDwUC7KBEpPv
+ bh=2FOyrmwYW2SkcrDKPo4yzypedyTsO5ugueU8GtgBM1k=;
+ b=vKFH6qpUghmLa7rLBGqIk9d++ppksgy7ubAleVHuLrzsAxXjbja4eCdMgABxDVHkPUORiyLcv
+ iwyUxoFl+PoCcPl5a2vuwV/te+0q2TyKYcZi33r5xMu9vvEDGx0Rv97
 X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
  pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
 X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Two fixes for values that kvaser_usb takes from the USB device without
-checking them.
+kvaser_usb_hydra_cmd_size() returns the length field supplied by the
+device for extended commands.  Both command parsers advance through the
+received buffer by that length:
 
-Patch 1 rejects hydra commands whose length is shorter than a standard
-command.  A length of zero otherwise stalls the command loops, and a
-short extended command makes the handlers read past the command.
+  kvaser_usb_hydra_wait_cmd()            pos += cmd_len;
+  kvaser_usb_hydra_read_bulk_callback()  pos += cmd_len;
 
-Patch 2 rejects devices that report zero max outstanding tx, which
-otherwise leads to a division by zero.
+Neither checks that the length is non-zero.  A device that sends an
+extended command (cmd_no == CMD_EXTENDED) with a length of zero keeps
+pos unchanged, so the loop never terminates.  In
+kvaser_usb_hydra_read_bulk_callback() this happens in the URB completion
+handler, which also calls kvaser_usb_hydra_handle_cmd() on the same
+command in every iteration, and locks up the CPU.  In
+kvaser_usb_hydra_wait_cmd() the loop spins in process context without
+ever reaching the timeout check.
 
-These issues were found with the help of an LLM-based code review tool
-(Claude).  I checked the code paths by hand against v7.4-rc3 and
-reviewed the fixes myself.  They are build-tested only (W=1, arm64); I
-do not have the hardware to test them at runtime.
+A non-zero length that is too small is not valid either.  The parsers
+only check that cmd_len bytes are available, but the handlers of the
+extended commands read the fixed part of the command without looking at
+the length again: cmd_no_ext, the flags and timestamp of
+struct kvaser_cmd_ext_tx_ack and the fields of
+struct kvaser_cmd_ext_rx_can in front of the payload.  That fixed part
+ends at byte 32 in both cases, so a shorter extended command makes the
+handlers read bytes that are not part of the command.
 
+Standard commands are sizeof(struct kvaser_cmd), 32 bytes, and the
+extended commands that the driver handles or sends are never shorter
+than that.  Treat a shorter length as a format error in both parsers.
+
+A similar infinite loop in the leaf command parsers was fixed in
+commit 0c73772cd2b8 ("can: kvaser_usb: leaf: Fix potential infinite loop
+in command parsers").
+
+Found by LLM-assisted source review.
+
+Fixes: aec5fb2268b7 ("can: kvaser_usb: Add support for Kvaser USB hydra family")
+Cc: stable@vger.kernel.org
+Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
-Changes in v2:
-- Patch 1: require at least sizeof(struct kvaser_cmd) instead of the
-  4-byte header, so that the extended command handlers do not read past
-  a short command (sashiko review of v1).  Subject changed, it was
-  "can: kvaser_usb: hydra: reject commands shorter than the header".
-- Patch 2: unchanged.
-- Link to v1: https://lore.kernel.org/r/20261110-kvaser-usb-validate-v1-0-f266b85aa908@gmail.com
-
----
-Joas Antonio dos Santos (2):
-      can: kvaser_usb: hydra: reject commands shorter than a standard command
-      can: kvaser_usb: reject devices reporting zero max outstanding tx
-
- drivers/net/can/usb/kvaser_usb/kvaser_usb_core.c  | 6 ++++++
  drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c | 8 +++++++-
- 2 files changed, 13 insertions(+), 1 deletion(-)
----
-base-commit: b3dfbde62cf1981c4638939c159dfd087b7a72e9
-change-id: 20261110-kvaser-usb-validate-33c2e34b63bf
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-Best regards,
+diff --git a/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c b/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c
+index 687911d764de..9adb4eb36e39 100644
+--- a/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c
++++ b/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c
+@@ -676,7 +676,8 @@ static int kvaser_usb_hydra_wait_cmd(const struct kvaser_usb *dev, u8 cmd_no,
+ 
+ 			tmp_cmd = buf + pos;
+ 			cmd_len = kvaser_usb_hydra_cmd_size(tmp_cmd);
+-			if (pos + cmd_len > actual_len) {
++			if (cmd_len < sizeof(struct kvaser_cmd) ||
++			    pos + cmd_len > actual_len) {
+ 				dev_err_ratelimited(&dev->intf->dev,
+ 						    "Format error\n");
+ 				break;
+@@ -2156,6 +2157,11 @@ static void kvaser_usb_hydra_read_bulk_callback(struct kvaser_usb *dev,
+ 
+ 		cmd_len = kvaser_usb_hydra_cmd_size(cmd);
+ 
++		if (cmd_len < sizeof(struct kvaser_cmd)) {
++			dev_err(&dev->intf->dev, "Format error\n");
++			return;
++		}
++
+ 		if (pos + cmd_len > len) {
+ 			/* We got first part of a command */
+ 			int leftover_bytes;
+
 -- 
-Joas Antonio dos Santos <joasantonio108@gmail.com>
+2.43.0
 
