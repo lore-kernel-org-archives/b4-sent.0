@@ -1,138 +1,121 @@
-From: yzddMr6 <yzddmr6@gmail.com>
-Date: Wed, 11 Nov 2026 15:21:13 +0800
-Subject: [PATCH] soc: qcom: llcc-qcom: Reserve ISLAND1 ways on SM8750
+From: Joseph Telaak <joseph@telaak.dev>
+Subject: [PATCH v2 0/4] clk: Add the Siflower SF19A2890 clock manager and
+ peripheral clock and reset managers
+Date: Wed, 11 Nov 2026 03:18:59 -0500
+Message-Id: <20261111-sf19a2890-sysm-v2-0-d2fcb723e4f1@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-sm8750-llcc-island1-v1-1-64055702ca3f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAGgX9GoC/yWMTQ6CMBBGr0Jm7cTSqCVexbBoh6nUlEo6YEwId
- 7fF5ft+3gbCObDAvdkg8ydIeKcC7akBGm16MoahMGilb63SHcrUmavCGIkwSLRpaFErfzHGk3f
- aQnnOmX34HtZH/2dZ3Ytpqaq6cFYYXbaJxhqtsyyZ7XQ+tLWEff8B3LN9qpwAAAA=
-X-Change-ID: 20261028-sm8750-llcc-island1-20f477fcfb2a
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: Abel Vesa <abelvesa@kernel.org>, 
- Melody Olvera <melody.olvera@oss.qualcomm.com>, 
- Ajay Kumar Nandam <ajay.nandam@oss.qualcomm.com>, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, yzddMr6 <yzddmr6@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794381693; l=5561;
- i=yzddmr6@gmail.com; s=20261028; h=from:subject:message-id;
- bh=u1722Y2/33+v6rnFwy/S7BVP2WhypCsiB/i4KfmJGt8=;
- b=D9elJKqXuPeYSa4NxF/CsBm3PukIBJzMoOEY/ZeyL8lGbrvpokMybh1i20zfMNynBl6f9Y0lv
- lT2t2biCAXsBfCi28O0IYw2uSN5egtABSKE0LkxmHgyu/xS+ThvVrMc
-X-Developer-Key: i=yzddmr6@gmail.com; a=ed25519;
- pk=QLT2mwairk4R38oU379hkHynqjoLrlqd0Cl1ERUqIqY=
-X-Endpoint-Received: by B4 Relay for yzddmr6@gmail.com/20261028 with auth_id=1489
+X-B4-Tracking: v=1; b=H4sIAPQk9GoC/12Oyw6CMBBFf8V0bU1bUcGV/2FYDO1U6gO0UxoJ4
+ d8tqDFxeSb33jMDI/QOie0XA/MYHbm2SaCWC6ZraE7InUnMlFBbKYXiZGUBKi8Ep55uHLS0la6
+ UNGbDUunu0brnPHgs30xddUYdppVPwuOjS6bwi9WOQuv7+Y0op+vXmP0bo+SCQ2ZBi52xuVofA
+ l4BLiuDkZXjOL4AM5GkotQAAAA=
+X-Change-ID: 20261102-sf19a2890-sysm-ac1fbcb21dd5
+To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: Chuanhong Guo <gch981213@gmail.com>, Yao Zi <me@ziyao.cc>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+ linux-mips@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Joseph Telaak <joseph@telaak.dev>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794385307; l=4303;
+ i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
+ bh=HkAdTr0yGZ2/sgV90XoJlVTobOT6ff+qpF7El7nvuMk=;
+ b=TRifMZVGTFZYkTTlHZ+ZBeQjq/IQFWCC4K0nWGAURZORsFk+kQDBqxD39MvZ/M8GQcJkZ51d+
+ zfucitSD2dICIp0X2i0opEQBuzWaUDN0VIpy486ghG7LmvMKardZkCo
+X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
+ pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
+X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SM8750 table gives the island slice (LLCC_ISLAND1, SCID 12) its way
-mask 0x7fffffff as bonus ways and reserves none. Bonus ways are only
-allocated when no other slice has reserved them, while reserved ways
-belong to the slice alone. The first posting of the SM8750 support [1]
-had these ways reserved, as the downstream table shipped for this SoC
-still has them (res_ways = 0x7fffffff, no bonus ways). They became bonus
-ways when v2 converted the table to designated initializers, and v3,
-which refreshed the table, kept them.
+The Siflower SF19A2890, a MIPS SoC for home routers, has a clock manager
+with its PLLs and the muxes and dividers that feed the CPU, the buses
+and the peripherals, and for each peripheral block a small clock and
+reset manager with its gates, its resets and a bus output enable. This
+series adds bindings and drivers for both.
 
-With this table, system suspend can reset the SoC once nothing votes
-for the LPASS core. On a Xiaomi Pad 8 Pro with the LPASS_HW_MACRO_VOTE
-and LPASS_HW_DCODEC_VOTE votes released, 16 suspend attempts (15 with
-s2idle, one with PSCI system suspend) ended in a reset. The PMIC PON log
-shows only PS_HOLD-triggered resets and no PMIC fault. Holding
-LPASS_HW_MACRO_VOTE or LPASS_HW_LPR_VOTE across suspend let one s2idle
-cycle each resume, but cxsd did not increase in either case.
+Both drivers are Chuanhong Guo's, from his SF19A2890 branch [1], with
+his authorship kept and my changes noted in each. The clock manager's
+driver is unchanged apart from fixes. The peripheral managers' binding
+is rewritten: Chuanhong's described every block with one compatible and
+its bit layout in properties (siflower,valid-gates, siflower,reset-masks
+and so on); here each block has its own compatible and the layouts are
+tables in the driver. Clock N of a block is its input clock N, gated.
 
-The reset stayed hidden while the LPASS macro codecs took both votes at
-probe and held them until removal, as they did before v7.3. Since v7.3
-the codecs manage these votes through the PM clock framework and drop
-them when they runtime suspend.
+Following Conor's review of Chuanhong's SF21 clock binding, the header
+has no count at its end.
 
-Reserve the ways again. With that, all six s2idle cycles that went to
-sleep (48 to 60 s each, no LPASS vote held) resumed normally, with the
-cxsd and ddr residencies in qcom_stats within 0.1 s of the time spent
-asleep. The ADSP island counter increases at runtime with either
-table. The mechanism behind the suspend reset is not yet understood.
+The clock manager registers from CLK_OF_DECLARE because the GIC timer
+runs from the CPU clock. The SoC support itself (MACH_SIFLOWER_MIPS)
+goes through the MIPS tree; until then the drivers build with
+COMPILE_TEST.
 
-The mismatch was found with the help of an AI coding assistant.
+Tested on a GL.iNet GL-SFT1200: the rates in clk_summary match the
+vendor firmware's (CMN PLL 1.5 GHz, buses 300, 300 and 375 MHz, PBUS
+100 MHz, UART 125 MHz, GMAC reference 125 MHz, USB PHY reference
+50 MHz), and the CPU clock reads 800 MHz, the rate the GIC timer was
+checked at against a reference clock with the MIPS series; the console,
+DDR and buses survive the unused clock sweep; the UART, SPI NAND, I2C,
+GPIO, GMAC, USB and watchdog drivers probe with these clocks and resets;
+and the I2C controller works again after an unbind and bind, which
+cycles its reset.
 
-Fixes: 2c04e58e30ce ("soc: qcom: llcc-qcom: Add support for SM8750")
-Link: https://lore.kernel.org/r/20250113-sm8750_llcc_master-v1-3-5389b92e2d7a@quicinc.com [1]
-Cc: stable@vger.kernel.org
-Signed-off-by: yzddMr6 <yzddmr6@gmail.com>
----
-Tested on a Xiaomi Pad 8 Pro (SM8750) running v7.4-rc1 with out-of-tree
-board support and the TX/VA patches of Ajay's "manage clocks in runtime
-PM" series [2], which replace the PM clock handling with explicit clock
-management and also force the macros into runtime suspend for system
-sleep. For the comparison I set these two fields back to the current
-values in a copy of the same kernel image; DT, initramfs and root file
-system were the same. With the current values, the first s2idle attempt
-ended in a reset, and the PMIC PON log again shows only
-PS_HOLD-triggered resets. With this patch, three s2idle cycles (38, 46
-and 59 s) resumed normally, with the cxsd and ddr residencies within
-0.01 s of the time spent asleep.
-
-The numbers in the changelog come from earlier runs on a v7.2-based
-kernel with the v7.3 TX and VA macro runtime PM conversions backported
-and the same patches of [2] on top. Not counted there on either side:
-attempts that exited at once because of a debug setting (two before the
-fix with CX collapse blocked, two after it with console_suspend=N).
-
-All of these suspend tests were done with a USB cable connected.
-Build-tested on the base commit below (arm64 defconfig, W=1); in the
-object only these two fields of sm8750_data change.
-
-v1 had {LLCC_ISLAND1, 12, 7936, 7, 1, 0, 0x7FFFFFFF, ...}, the same
-values as the downstream sun_data, e.g. in the OnePlus 13 kernel
-release [3]. The downstream driver writes res_ways to TRP_ATTR0_CFGn and
-bonus_ways to TRP_ATTR1_CFGn, as _qcom_llcc_cfg_program_v6() does here.
-
-The final table also differs from v1 and downstream elsewhere: v2
-changed CVP from ovcap_en to vict_prio and the CAMRTRF priority from 3
-to 1, and v3 set ovcap_prio where v1 and downstream set ovcap_en for
-VIDDEC, CAMOFE, CAMRTIP, CAMSRTIP, CAMRTRF and CAMSRTRF. I can't test
-those and left them alone.
-
-Downstream moved the SM8550 island slices from bonus to reserved ways in
-2023 ("as per design recommendation") [4]; upstream sm8550_data still
-has the earlier bonus values. I have no SM8550 hardware to test that.
-
-Kaanapali also uses bonus ways for ISLAND1, but that matches its
-downstream table [5], so I left it alone.
-
-I used an AI coding assistant for this work. It ran the suspend
-experiments on the tablet, found the table mismatch and drafted this
-patch and changelog. I have reviewed the change and the measurements.
-
-[2] https://lore.kernel.org/r/20260928-xo-sd-runtimepm-v1-final-v1-0-e3ebade3aeb7@oss.qualcomm.com
-[3] https://github.com/OnePlusOSS/android_kernel_oneplus_sm8750/blob/6028f47faddaa27700f8dd3a1d83906ea8f27170/drivers/soc/qcom/llcc-qcom.c#L479
-[4] https://git.codelinaro.org/clo/la/kernel/msm-5.15/-/commit/adec35fd4cf84dca253eca06d9a4960f1eb85db0
-[5] https://github.com/OnePlusOSS/android_kernel_oneplus_sm8850/blob/fc30e54174d254ff7f33622a9278e4435f6718d2/drivers/soc/qcom/llcc-qcom.c#L665
----
- drivers/soc/qcom/llcc-qcom.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/soc/qcom/llcc-qcom.c b/drivers/soc/qcom/llcc-qcom.c
-index d7a42a8040a1..007593d1e951 100644
---- a/drivers/soc/qcom/llcc-qcom.c
-+++ b/drivers/soc/qcom/llcc-qcom.c
-@@ -3923,7 +3923,7 @@ static const struct llcc_slice_config sm8750_data[] = {
- 		.max_cap = 7936,
- 		.priority = 7,
- 		.fixed_size = true,
--		.bonus_ways = 0x7fffffff,
-+		.res_ways = 0x7fffffff,
- 	}, {
- 		.usecase_id = LLCC_DISP_WB,
- 		.slice_id = 23,
+[1] https://github.com/981213/linux/commits/siflower-7.1
 
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261028-sm8750-llcc-island1-20f477fcfb2a
+Changes in v2:
+- Write my notes on Chuanhong's patches as lists, with Co-developed-by.
+- Use GPL-2.0-only, not the deprecated GPL-2.0 identifier, in the clock
+  header's SPDX line.
+- Add a MAINTAINERS entry for the drivers, their bindings and the
+  headers, with an F: line per driver, since drivers/clk/siflower/ will
+  also hold the SF21 drivers.
+- Include <linux/device-id/of.h> instead of <linux/mod_devicetable.h>
+  (Uwe).
+- Word the error messages the same way, and use the current SPDX
+  identifiers in the new files.
+- Explain in the commit message why some resets cover more than one bit
+  (Philipp, Chuanhong).
+- Patch 1: add Conor's Ack.
+- Patch 2: with the PLL's fractional modulator on, scale the fraction by
+  the reference rate, not by the integer VCO rate; and reject a rate of 0
+  in the mux dividers instead of dividing by it.
+- Patch 3: add include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h,
+  naming the clocks and resets of each manager, instead of listing the
+  resets in the description; patch 4 indexes its tables by it (Conor).
+- Patch 4: no comma after the match table's sentinel (Uwe).
+- Link to v1: https://patch.msgid.link/20261104-sf19a2890-sysm-v1-0-a4fac07df823@telaak.dev
+
+---
+Chuanhong Guo (2):
+      clk: siflower: Add SF19A2890 clock manager driver
+      clk: siflower: Add SF19A2890 peripheral clock and reset manager driver
+
+Joseph Telaak (2):
+      dt-bindings: clock: Add Siflower SF19A2890 clock manager
+      dt-bindings: clock: Add Siflower SF19A2890 peripheral clock/reset managers
+
+ .../bindings/clock/siflower,sf19a2890-clk.yaml     |  57 +++
+ .../clock/siflower,sf19a2890-periph-crm.yaml       | 166 ++++++++
+ MAINTAINERS                                        |  11 +
+ drivers/clk/Kconfig                                |   1 +
+ drivers/clk/Makefile                               |   1 +
+ drivers/clk/siflower/Kconfig                       |  22 ++
+ drivers/clk/siflower/Makefile                      |   3 +
+ drivers/clk/siflower/clk-sf19a2890-periphcrm.c     | 368 ++++++++++++++++++
+ drivers/clk/siflower/clk-sf19a2890.c               | 419 +++++++++++++++++++++
+ include/dt-bindings/clock/siflower,sf19a2890-clk.h |  27 ++
+ .../clock/siflower,sf19a2890-periph-crm.h          |  87 +++++
+ 11 files changed, 1162 insertions(+)
+---
+base-commit: fc1f8f0ceb3b949b58c2f7819976644f5cf84249
+change-id: 20261102-sf19a2890-sysm-ac1fbcb21dd5
 
 Best regards,
 --  
-yzddMr6 <yzddmr6@gmail.com>
+Joseph Telaak <joseph@telaak.dev>
 
