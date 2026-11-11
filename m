@@ -1,97 +1,109 @@
-From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-Date: Wed, 11 Nov 2026 16:36:11 -0600
-Subject: [PATCH v3] staging: octeon: fix FPA output buffer pool leak on
- teardown
+From: Mani Tofigh <mt4022@columbia.edu>
+Date: Wed, 11 Nov 2026 17:46:31 -0500
+Subject: [PATCH] nvme: fix deadlock on nvme_subsystems_lock in
+ nvme_init_subsystem()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261111-octeon-fpa-leak-fix-v1-v3-1-17a3bd578f76@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNwQqDMBBEf0X23C1uFI099T+KhzSuulSNJCItk
- n9v6g8U5vJmmJkDAnvhALfsAM+7BHFLguKSgR3NMjBKlxhUriqiXKOzG7sF+9XgxOaFvbxxJzT
- UFcRNra1WkMqr55Scw4828Shhc/5z/uz0c/9OJhFqNuWzbOqKc3UfZiPT1boZ2hjjFxj1wjS8A
- AAA
-X-Change-ID: 20261108-octeon-fpa-leak-fix-v1-a1d31e978c82
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794436571; l=2498;
- i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
- bh=VsRJsJ5u/AeZd4M/f4kMGa+p6KbxKOVR4bmA4sspaeo=;
- b=FkRMy4Coc2K/wSuYzU3NxfRtZMrUSizT1i/oaecJONEppMZYrctq5AYVw7Lr4Er+HAApXep7P
- R0VPTcgJ7J3Cn+wVT1/vKfgen06NzscdWWuU5Rwf7/8kVnzhkxl4aYI
-X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
- pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
-X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261111-nvme-subsys-lock-deadlock-v1-1-1837b8e9076f@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMSw7CMAwFr1J5jaU2Aiq4CmIR4kdrPimKoQJVv
+ TumvNWbxcxEhqIw2lcTFYxqOmSHZlVR6mPuwCrOFOqwbXycxzvYXif7GN+GdGVBlOW06wCBiGx
+ 2kdx/FJz1vbQPxz+7d0F6/oI0z1+LO4dAfQAAAA==
+X-Change-ID: 20261111-nvme-subsys-lock-deadlock-742ededdd59a
+To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
+ Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>
+Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ tz2294@columbia.edu, stable@vger.kernel.org, 
+ Mani Tofigh <mt4022@columbia.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794437191; l=2940;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=cOZLSGE+OmO3+XZiW2AyMoXiLb0mQ0fDaQF1JNZtd3I=;
+ b=DFCsz9vJwyVkdjRUdcJS1+RgfZoeSSZgklxln7oPkWlolfNySJO2nXIEmKzRhVDzA1zS+lXKZ
+ M3QEdsuQ0g2BRHGDCojYiG0FWbXULh3Y8n+Fdf2bPkfZM6ohEJRIE1B
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cvm_oct_configure_common_hw() fills CVMX_FPA_OUTPUT_BUFFER_POOL with
-1024 buffers, but cvm_oct_probe() and cvm_oct_remove() only empty 128
-buffers, leaking the remaining 896.
+Connecting a controller to a new subsystem deadlocks when
+sysfs_create_link() fails in nvme_init_subsystem(), e.g., on an
+allocation failure.  The error path drops the last subsystem reference
+with nvme_subsystems_lock held and nvme_destroy_subsystem() takes the
+same lock again:
 
-Introduce OCTEON_NUM_OUTPUT_BUFFERS to fill and empty all 1024 buffers
-consistently.
+  nvme nvme0: failed to create sysfs link from subsystem.
+  ============================================
+  WARNING: possible recursive locking detected
+  ...
+  nvmesubsys/95 is trying to acquire lock:
+  (nvme_subsystems_lock){+.+.}-{4:4}, at: nvme_destroy_subsystem+0x1b/0x1e0
 
-Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
----
-Oscar Alejandro Sánchez Lucero (1):
-  staging: octeon: fix FPA output buffer pool leak on teardown
----
-Changes in v3:
-- Clarify commit message.
-- Validate cross-compilation for MIPS64.
----
- drivers/staging/octeon/ethernet.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+  but task is already holding lock:
+  (nvme_subsystems_lock){+.+.}-{4:4}, at: nvme_init_identify+0x81e/0x34b0
+  ...
+  Call Trace:
+   __mutex_lock+0x1a2/0x26e0
+   nvme_destroy_subsystem+0x1b/0x1e0
+   nvme_init_identify.cold+0x3bc/0x56f
+   nvme_init_ctrl_finish+0x1bc/0x7a0
+   nvme_loop_configure_admin_queue+0x205/0x2b0
+   nvme_loop_create_ctrl+0x480/0xd10
+   nvmf_dev_write+0x365/0x650
+   vfs_write+0x1e3/0x1250
+   ksys_write+0xfa/0x200
+   do_syscall_64+0xfb/0x590
+   entry_SYSCALL_64_after_hwframe+0x77/0x7f
+  ...
+  INFO: task nvmesubsys:95 blocked for more than 20 seconds.
+  INFO: task nvmesubsys:95 is blocked on a mutex likely owned by task nvmesubsys:95.
 
-diff --git a/drivers/staging/octeon/ethernet.c b/drivers/staging/octeon/ethernet.c
-index 42ec4b8324a8..a74d122d9bb1 100644
---- a/drivers/staging/octeon/ethernet.c
-+++ b/drivers/staging/octeon/ethernet.c
-@@ -29,6 +29,7 @@
- #include "ethernet-util.h"
+Every later controller setup or removal then waits for the lock too.
+The nvme_validate_cntlid() error path for an existing subsystem does the
+same put, and deadlocks the same way if the other references go away in
+between.
+
+Drop the lock before the put.  For a new subsystem, take it off the list
+first so another controller can't find it in between.  With the fix,
+the connect fails and the next connect works.
+
+This bug was identified and confirmed with the help of a deterministic
+hypervisor currently under development.  The C reproducer below however
+hits it within about 30s.
+
+Fixes: 32fd90c40768 ("nvme: change locking for the per-subsystem controller list")
+Cc: stable@vger.kernel.org
+Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
+---
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/nvmesubsys.c
+
+It uses nvme-loop and fault injection to fail the sysfs link.
+---
+ drivers/nvme/host/core.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
+index cd0df9b03806..f43582e5f6c4 100644
+--- a/drivers/nvme/host/core.c
++++ b/drivers/nvme/host/core.c
+@@ -3413,7 +3413,11 @@ static int nvme_init_subsystem(struct nvme_ctrl *ctrl, struct nvme_id_ctrl *id)
+ 	return 0;
  
- #define OCTEON_MAX_MTU 65392
-+#define OCTEON_NUM_OUTPUT_BUFFERS 1024
- 
- static int num_packet_buffers = 1024;
- module_param(num_packet_buffers, int, 0444);
-@@ -162,7 +163,8 @@ static void cvm_oct_configure_common_hw(struct platform_device *pdev)
- 			     num_packet_buffers);
- 	if (CVMX_FPA_OUTPUT_BUFFER_POOL != CVMX_FPA_PACKET_POOL)
- 		cvm_oct_mem_fill_fpa(pdev, CVMX_FPA_OUTPUT_BUFFER_POOL,
--				     CVMX_FPA_OUTPUT_BUFFER_POOL_SIZE, 1024);
-+				     CVMX_FPA_OUTPUT_BUFFER_POOL_SIZE,
-+				     OCTEON_NUM_OUTPUT_BUFFERS);
- 
- #ifdef __LITTLE_ENDIAN
- 	{
-@@ -974,7 +976,8 @@ static int cvm_oct_probe(struct platform_device *pdev)
- 			      num_packet_buffers);
- 	if (CVMX_FPA_OUTPUT_BUFFER_POOL != CVMX_FPA_PACKET_POOL)
- 		cvm_oct_mem_empty_fpa(pdev, CVMX_FPA_OUTPUT_BUFFER_POOL,
--				      CVMX_FPA_OUTPUT_BUFFER_POOL_SIZE, 128);
-+				      CVMX_FPA_OUTPUT_BUFFER_POOL_SIZE,
-+				      OCTEON_NUM_OUTPUT_BUFFERS);
- 
+ out_put_subsystem:
++	if (!found)
++		list_del_init(&subsys->entry);
++	mutex_unlock(&nvme_subsystems_lock);
+ 	nvme_put_subsystem(subsys);
++	return ret;
+ out_unlock:
+ 	mutex_unlock(&nvme_subsystems_lock);
  	return ret;
- }
-@@ -1009,7 +1012,8 @@ static void cvm_oct_remove(struct platform_device *pdev)
- 			      num_packet_buffers);
- 	if (CVMX_FPA_OUTPUT_BUFFER_POOL != CVMX_FPA_PACKET_POOL)
- 		cvm_oct_mem_empty_fpa(pdev, CVMX_FPA_OUTPUT_BUFFER_POOL,
--				      CVMX_FPA_OUTPUT_BUFFER_POOL_SIZE, 128);
-+				      CVMX_FPA_OUTPUT_BUFFER_POOL_SIZE,
-+				      OCTEON_NUM_OUTPUT_BUFFERS);
- }
- 
- static const struct of_device_id cvm_oct_match[] = {
 
 ---
-base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
-change-id: 20261108-octeon-fpa-leak-fix-v1-a1d31e978c82
+base-commit: f92fe8dea19c743eb9e4d998ae0384344dd40091
+change-id: 20261111-nvme-subsys-lock-deadlock-742ededdd59a
 
 Best regards,
--- 
-Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
+--  
+Mani Tofigh <mt4022@columbia.edu>
 
