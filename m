@@ -1,109 +1,92 @@
-From: Andrew Gigena <mail@andrewgigena.dev>
-Date: Wed, 11 Nov 2026 17:53:23 +0000
-Subject: [PATCH v4 3/3] arm64: dts: qcom: sm8150: use standalone ICE for
- UFS
+From: Darren Worrall <darren.worrall@shopify.com>
+Date: Wed, 11 Nov 2026 19:31:39 +0000
+Subject: [PATCH iwl-net] idpf: select AUXILIARY_BUS to fix link failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-sm8150-ice-rfc-v4-3-0311eac35609@andrewgigena.dev>
-References: <20261111-sm8150-ice-rfc-v4-0-0311eac35609@andrewgigena.dev>
-In-Reply-To: <20261111-sm8150-ice-rfc-v4-0-0311eac35609@andrewgigena.dev>
-To: Abel Vesa <abelvesa@kernel.org>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>, Bart Van Assche <bvanassche@acm.org>, 
- Bean Huo <beanhuo@micron.com>, Stanley Jhu <stanleyjhu@google.com>, 
- Bjorn Andersson <andersson@kernel.org>, Andy Gross <agross@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-scsi@vger.kernel.org, Andrew Gigena <mail@andrewgigena.dev>
+Message-Id: <20261111-idpf-auxiliary-bus-v1-1-e76b940fc929@shopify.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMSQ6DMAxFr4K8rtUQqeNVKhYZDLhCgcaEUiHu3
+ qT9u/enDYQik8C92iDSwsJjyFAfKnC9CR0h+8yglT7XWRmnFk1aeWATP2iToFPqdCV9cf7mIQ+
+ nSC2vv9MH8HvAQDM0/0CSfZKby2WpWiOENprg+mKNkTsOR08LvhIlgn3/AmLEkuGiAAAA
+X-Change-ID: 20261111-idpf-auxiliary-bus-c0058e27cd9d
+To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
+ Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Madhu Chittim <madhu.chittim@intel.com>, 
+ Joshua Hay <joshua.a.hay@intel.com>, 
+ Tatyana Nikolova <tatyana.e.nikolova@intel.com>
+Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Darren Worrall <darren.worrall@shopify.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794419696; l=2347;
- i=mail@andrewgigena.dev; s=20261104; h=from:subject:message-id;
- bh=5ojOLo8hWLDK0hV2yglUJhrUv/sb3CLr9di70RGzFCA=;
- b=bAwBBdu9JMvmNabnEDVyXMeyhN7JwGVt3GX5ECEqowubBcL6QLE6oqUfVaLsbk2VfFDZEo76W
- CEersWwrsTuD9hMcEqClkKWlmLDY11pdCteuW+1EgrdTaxZJmSPrQMX
-X-Developer-Key: i=mail@andrewgigena.dev; a=ed25519;
- pk=OMhlYIBaOEC8g4mJ4JCKy7kbg+lrwRxuujieZF8Ne6U=
-X-Endpoint-Received: by B4 Relay for mail@andrewgigena.dev/20261104 with auth_id=1402
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2450;
+ i=darren.worrall@shopify.com; h=from:subject:message-id;
+ bh=RbjW4ti8gsuFIX9ZjzwA73lhgVe0TsMd8tFgxZGXUIc=;
+ b=owGbwMvMwCX2T4mx4WrYUgPG02pJDFlfDi1K9b6aINvzofyiZEOjge+28g0e39h3vWQV6XC4+
+ NLgt9qbjlIWBjEuBlkxRZZJ28v+mU1q+VUe1bULZg4rE8gQBi5OAZjIBwGG/zmqa/U2nFimHeLt
+ Fvcmu3CP2V2N1JI3lYLL1FgsLs1e4MzI8P3FuYc1cy/sZZJTuBTKY7a/aP7m5bMtItdqLI/ab+R
+ yjwcA
+X-Developer-Key: i=darren.worrall@shopify.com; a=openpgp;
+ fpr=92B776FE369284FA775A8ABAFE220180D556A530
+X-Endpoint-Received: by B4 Relay for darren.worrall@shopify.com/default with auth_id=1491
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Align SM8150 with the standalone ICE representation used on newer
-platforms instead of embedding ICE registers in the UFS node.
+The build can currently fail with
 
-Signed-off-by: Andrew Gigena <mail@andrewgigena.dev>
+    ld: vmlinux.o: in function `idpf_plug_vport_aux_dev':
+    drivers/net/ethernet/intel/idpf/idpf_idc.c:82: undefined reference to `auxiliary_device_init'
+    ld: drivers/net/ethernet/intel/idpf/idpf_idc.c:86: undefined reference to `__auxiliary_device_add'
+    ld: vmlinux.o: in function `idpf_plug_core_aux_dev':
+    drivers/net/ethernet/intel/idpf/idpf_idc.c:223: undefined reference to `auxiliary_device_init'
+    ld: drivers/net/ethernet/intel/idpf/idpf_idc.c:227: undefined reference to `__auxiliary_device_add'
+
+if IDPF is enabled but no other driver pulls in AUXILIARY_BUS. We hit
+this building a minimal kernel for hosts with IDPF NICs. It can be
+reproduced on x86_64 from allnoconfig by enabling PCI, PCI_MSI, NET,
+NETDEVICES, ETHERNET, NET_VENDOR_INTEL and IDPF.
+
+Select AUXILIARY_BUS in IDPF, as ICE and I40E already do. The same
+link failure was fixed for BNGE in commit d7065436e8a0 ("net: bnge: add
+AUXILIARY_BUS to Kconfig dependencies").
+
+Build-tested with that configuration on net-queue (dev-queue,
+34a70a40c954) and on mainline (067c5c24cef2): vmlinux fails to link
+without this patch and links with it. Boot-tested on bare metal (AMD
+EPYC) with a Google Cloud IDPF NIC, using a 6.18.60 kernel carrying the
+same change and IDPF built in: idpf probes the NIC and its link comes
+up.
+
+Fixes: f4312e6bfa2a ("idpf: implement core RDMA auxiliary dev create, init, and destroy")
+Cc: stable@vger.kernel.org # 6.17+
+Signed-off-by: Darren Worrall <darren.worrall@shopify.com>
 ---
- arch/arm64/boot/dts/qcom/sm8150.dtsi | 25 ++++++++++++++++---------
- 1 file changed, 16 insertions(+), 9 deletions(-)
+The link failure was diagnosed, this patch drafted and the tests above
+run with the help of an AI coding assistant. I reviewed the patch and
+the test results.
+---
+ drivers/net/ethernet/intel/idpf/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8150.dtsi b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-index 293fcbacff34..b3d6f3d92395 100644
---- a/arch/arm64/boot/dts/qcom/sm8150.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-@@ -2071,9 +2071,7 @@ pcie1_phy: phy@1c0e000 {
- 		ufs_mem_hc: ufshc@1d84000 {
- 			compatible = "qcom,sm8150-ufshc", "qcom,ufshc",
- 				     "jedec,ufs-2.0";
--			reg = <0 0x01d84000 0 0x2500>,
--			      <0 0x01d90000 0 0x8000>;
--			reg-names = "std", "ice";
-+			reg = <0 0x01d84000 0 0x2500>;
- 			interrupts = <GIC_SPI 265 IRQ_TYPE_LEVEL_HIGH>;
- 			phys = <&ufs_mem_phy>;
- 			phy-names = "ufsphy";
-@@ -2092,8 +2090,7 @@ ufs_mem_hc: ufshc@1d84000 {
- 				"ref_clk",
- 				"tx_lane0_sync_clk",
- 				"rx_lane0_sync_clk",
--				"rx_lane1_sync_clk",
--				"ice_core_clk";
-+				"rx_lane1_sync_clk";
- 			clocks =
- 				<&gcc GCC_UFS_PHY_AXI_CLK>,
- 				<&gcc GCC_AGGRE_UFS_PHY_AXI_CLK>,
-@@ -2102,8 +2099,7 @@ ufs_mem_hc: ufshc@1d84000 {
- 				<&rpmhcc RPMH_CXO_CLK>,
- 				<&gcc GCC_UFS_PHY_TX_SYMBOL_0_CLK>,
- 				<&gcc GCC_UFS_PHY_RX_SYMBOL_0_CLK>,
--				<&gcc GCC_UFS_PHY_RX_SYMBOL_1_CLK>,
--				<&gcc GCC_UFS_PHY_ICE_CORE_CLK>;
-+				<&gcc GCC_UFS_PHY_RX_SYMBOL_1_CLK>;
- 			freq-table-hz =
- 				<37500000 300000000>,
- 				<0 0>,
-@@ -2112,8 +2108,8 @@ ufs_mem_hc: ufshc@1d84000 {
- 				<0 0>,
- 				<0 0>,
- 				<0 0>,
--				<0 0>,
--				<0 300000000>;
-+				<0 0>;
-+			qcom,ice = <&ice>;
- 
- 			status = "disabled";
- 		};
-@@ -2139,6 +2135,17 @@ ufs_mem_phy: phy@1d87000 {
- 			status = "disabled";
- 		};
- 
-+		ice: crypto@1d90000 {
-+			compatible = "qcom,sm8150-inline-crypto-engine",
-+				     "qcom,inline-crypto-engine";
-+			reg = <0 0x01d90000 0 0x8000>;
-+			clocks = <&gcc GCC_UFS_PHY_ICE_CORE_CLK>,
-+				 <&gcc GCC_UFS_PHY_AHB_CLK>;
-+			clock-names = "core",
-+				      "iface";
-+			power-domains = <&gcc UFS_PHY_GDSC>;
-+		};
-+
- 		cryptobam: dma-controller@1dc4000 {
- 			compatible = "qcom,bam-v1.7.4", "qcom,bam-v1.7.0";
- 			reg = <0 0x01dc4000 0 0x24000>;
+diff --git a/drivers/net/ethernet/intel/idpf/Kconfig b/drivers/net/ethernet/intel/idpf/Kconfig
+index 586df3a4af..6b59173e0d 100644
+--- a/drivers/net/ethernet/intel/idpf/Kconfig
++++ b/drivers/net/ethernet/intel/idpf/Kconfig
+@@ -5,6 +5,7 @@ config IDPF
+ 	tristate "Intel(R) Infrastructure Data Path Function Support"
+ 	depends on PCI_MSI
+ 	depends on PTP_1588_CLOCK_OPTIONAL
++	select AUXILIARY_BUS
+ 	select DIMLIB
+ 	select LIBIE_CP
+ 	select LIBETH_XDP
 
--- 
-2.56.0
+---
+base-commit: 34a70a40c954fb8044ecd124840a2c38cd3aa4cc
+change-id: 20261111-idpf-auxiliary-bus-c0058e27cd9d
+
+Best regards,
+--  
+Darren Worrall <darren.worrall@shopify.com>
 
