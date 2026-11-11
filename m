@@ -1,123 +1,119 @@
-From: Weidong Wang <weidongw@illinois.edu>
-Date: Wed, 11 Nov 2026 14:27:28 -0600
-Subject: [PATCH net] net/rds: tcp: bound the message length announced by
- the peer
+From: Martin Belanger <martin.nvme.dev@gmail.com>
+Subject: [PATCH v2 0/3] nvme-tcp: consume TLS records without application
+ data on a live queue
+Date: Wed, 11 Nov 2026 15:42:38 -0500
+Message-Id: <20261111-nvme-tcp-live-ctrlrec-v2-0-6295202b84de@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-h047-send-v1-1-2727a38dbfcd@illinois.edu>
-X-B4-Tracking: v=1; b=H4sIALDP9GoC/yWMQQ7CIBQFr0LeWhKgoMarGBdt+S3fBRp+NSakd
- y+2y5lMpkKoMAluqqLQl4VfuYE9KYypzzNpjo3hjDtba41Oxl+0UI46NBei9+7qOrT+XWji3/6
- 6I9OCxyHlMzxpXP4XrOsGARgGNHIAAAA=
-X-Change-ID: 20261110-h047-send-52025d442823
-To: Allison Henderson <achender@kernel.org>
-Cc: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- netdev@vger.kernel.org, linux-rdma@vger.kernel.org, 
- rds-devel@oss.oracle.com, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Zijie Zhao <zijie4@illinois.edu>, 
- Weidong Wang <weidongw@illinois.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNyw6CMBBFf4XM2jEtj5K68j8Mi1JHGMMrbW00p
+ P8u4Ae4PMm5567gyTF5uGQrOIrseZ42yE8Z2N5MHSHfN4Zc5EpKoXGKI2GwCw4cCW1wgyOLZVX
+ oVhdaFELCtl0cPfh9dG/Nj/2rfZINe2w3evZhdp/jOMrd+/cRJQos69YoqWpBqrp2o+HhbOcRm
+ pTSFzrVZGnMAAAA
+X-Change-ID: 20261109-nvme-tcp-live-ctrlrec-4539b9390301
+To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
+ Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
+ Hannes Reinecke <hare@kernel.org>
+Cc: Martin Belanger <martin.nvme.dev@gmail.com>, 
+ linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Martin Belanger <martin.belanger@dell.com>, stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794428911; l=3897;
- i=weidongw@illinois.edu; s=20261108; h=from:subject:message-id;
- bh=1rMOxnrBK7wy6KAVesScdDJ1MghCm+cPgQRTPaFaXQk=;
- b=VbzedWxmkJGCPF1wkXLDwAkKq6e+6vzQkgf60JbkS/QnFUdwExDzi+sEynvRmZIazgJr+hAUm
- zNPE4eTD8fdDAPomMgp9MWq9GHCrxhcxnQHdRYj14lPjYILvT/GJmto
-X-Developer-Key: i=weidongw@illinois.edu; a=ed25519;
- pk=DR2S1xPEa5sELrWPfOpvUphJQ2VHC+MDc/wJavE/ifg=
-X-Endpoint-Received: by B4 Relay for weidongw@illinois.edu/20261108 with auth_id=1449
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794429760; l=3589;
+ i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
+ bh=hXXbItxrwv78xxvvG5U42pKUfzgkaD4CVGRVQghqOfE=;
+ b=uUgeHVoq6upcSqsLQTRCBiHyy6V7OpTLIhbE1iuAKvsd7x//4JeG41nwTbFP9gxBJe7lRmNAn
+ eESbXznFiNtAW+EUYZn+tHxzIyyl4PfOIzvZRTu6uei7Al5uEn3+4QL
+X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
+ pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
+X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rds_tcp_data_recv() takes the payload length of an incoming message from
-the peer's header and queues pskb_extract() clones of the received data
-on the incoming message until that many bytes have arrived. Nothing
-checks the length, so a peer that announces h_len = 0xffffffff and keeps
-sending makes the receiver hold up to 4 GiB per connection. The clones
-are no longer on the socket's receive queue, so they are not charged to
-the socket and TCP keeps the receive window open.
+After the TLS handshake, a peer may send records that carry no
+application data: a NewSessionTicket, a KeyUpdate or an alert.
+tls_sw_read_sock() cannot pass such a record to nvme_tcp_recv_skb().
+It returns -EINVAL and leaves the record at the head of the receive
+queue. Since commit 288cfa187208 ("nvme-tcp: start error recovery when
+read_sock fails"), nvme-tcp then starts error recovery, and the
+controller reconnects.
 
-Senders are limited to RDS_MAX_MSG_SIZE in rds_sendmsg(). Apply the same
-limit on receive and drop the connection when a header exceeds it. That
-limit has been enforced on send since v4.11; a peer running an older
-kernel could still send larger messages over TCP, and such connections
-are now dropped.
+TLS 1.3 allows a server to send a NewSessionTicket at any time after
+the handshake (RFC 8446, section 4.6.1). Alerts can also arrive at any
+time.
 
-The issue was discovered by an AI code review agent (an LLM-based
-bug-finding tool developed by Zijie Zhao and the submitter) and
-confirmed by triggering it on an unmodified kernel, without error
-injection, on x86_64 under QEMU: a plain TCP client in a second network
-namespace connects to the rds_tcp listener (port 16385), sends one RDS
-header with h_len = 0xffffffff and then 1 GiB of payload. The receiver
-held about 1.1 GiB until the connection was closed; the same 1 GiB sent
-as 1 MiB messages held about 60 MiB.
+Patch 1 aligns the control message buffer that receives the record
+type.
 
-With this patch the connection is dropped right after the header and
-nothing is held, while the 1 MiB messages are processed as before. The
-RDS selftest (tools/testing/selftests/net/rds, rds_run.sh -T tcp, also
-with -l 10 -c 10 -u 10) passes with the patch applied.
+Patch 2 moves the TLS record read loop into a helper. No functional
+change.
 
-The reproducer, fix and changelog were drafted with AI assistance
-(Claude), then reviewed and tested by the submitter.
+Patch 3 reads the record with recvmsg() when read_sock() returns
+-EINVAL, and handles it by type. Handshake messages other than
+KeyUpdate are discarded and alerts are logged. A fatal alert, a
+KeyUpdate or another record type fails the queue.
 
-Fixes: 70041088e3b9 ("RDS: Add TCP transport to RDS")
-Cc: stable@vger.kernel.org
-Cc: Zijie Zhao <zijie4@illinois.edu>
-Signed-off-by: Weidong Wang <weidongw@illinois.edu>
+Patch 3 detects a KeyUpdate only when it is the first handshake
+message of the record. A KeyUpdate that follows another message in the
+same record is discarded with it. The next record then fails to
+decrypt, and the queue fails as it does today.
+
+All patches are tagged for stable, because 288cfa187208 is in 6.12.117,
+6.18.63 and 7.3.4.
+
+Tool use
+========
+
+I developed this series with the help of an LLM coding assistant. It
+drafted code, tests and changelogs, and helped with analysis of the
+kTLS and sunrpc sources. I reviewed, edited and tested all of it, and
+I am responsible for the content.
+
+Testing
+=======
+
+Host and target in one VM (virtme-ng), on 7.4-rc2. A test-only change
+to net/tls makes the target send records on a live I/O queue during
+I/O. Each case writes data and reads it back with O_DIRECT.
+
+  Records sent by the target   7.4-rc2     With this series
+  ---------------------------  ----------  --------------------------
+  NewSessionTicket, 64 bytes   reconnect   queue stays live
+  2 x 300, 2 x 1000, 6 x 64    reconnect   queue stays live
+  close_notify alert           reconnect   queue stays live
+  warning alert (90)           reconnect   queue stays live, logged
+  fatal alert (40)             reconnect   reconnect, logged
+  KeyUpdate                    reconnect   reconnect, logged
+
+Data was correct in all cases. Also built with W=1, with and without
+CONFIG_NVME_TCP_TLS.
+
+Poll queues are not tested. Polled I/O hangs in my test VM, also on
+7.4-rc2 without this series.
+
+Signed-off-by: Martin Belanger <martin.belanger@dell.com>
 ---
-Tested on v7.4-rc1 (05441d697f7f) and on net (ae89f2724e), x86_64,
-KASAN, QEMU/KVM, 3 GiB guest. Setup: rds_tcp listener in the initial
-netns (10.0.0.2); a plain TCP client (no AF_RDS) in a second netns
-(10.0.0.1) over a veth pair.
-
-                   1 GiB after one header     1 GiB as 1 MiB
-                   with h_len = 0xffffffff    messages (control)
-  unpatched        ~1.1 GiB held until close  ~60 MiB
-  patched          connection reset after     ~60 MiB, processed
-                   the header, nothing held   as before
-
-selftests/net/rds: rds_run.sh -T tcp and rds_run.sh -T tcp -l 10 -c 10
--u 10 pass on both trees with the patch. No KASAN/UBSAN reports;
-checkpatch clean.
-
-The limit is per connection; a peer with several source addresses gets
-one connection per address. The reproducer is not attached (AI-found
-issue, see security-bugs.rst) and can be shared on request.
----
- net/rds/tcp_recv.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
-
-diff --git a/net/rds/tcp_recv.c b/net/rds/tcp_recv.c
-index ffe843ca2..29db73df8 100644
---- a/net/rds/tcp_recv.c
-+++ b/net/rds/tcp_recv.c
-@@ -213,6 +213,20 @@ static int rds_tcp_data_recv(read_descriptor_t *desc, struct sk_buff *skb,
- 			}
- 		}
- 
-+		/*
-+		 * The payload is queued on tinc until the whole message has
-+		 * arrived, so a peer must not announce more than a sender is
-+		 * allowed to send. Check on every pass, not only when the
-+		 * header completes: the drop is asynchronous and more data
-+		 * can arrive before the connection is shut down.
-+		 */
-+		if (!tc->t_tinc_hdr_rem &&
-+		    tc->t_tinc_data_rem > RDS_MAX_MSG_SIZE) {
-+			rds_conn_path_drop(cp, false);
-+			desc->error = -EPROTO;
-+			goto out;
-+		}
-+
- 		if (left && tc->t_tinc_data_rem) {
- 			to_copy = min(tc->t_tinc_data_rem, left);
- 
+Changes in v2:
+- New patch 1: use a union with struct cmsghdr for the record type
+  buffer, as sunrpc does. (Sashiko)
+- Patch 3: on a poll queue, nvme_tcp_poll() and nvme_tcp_io_work()
+  could both read the same record. A queue flag lets only one of them
+  read it. (Sashiko)
+- Patch 3: drop a log line that repeated the error of
+  nvme_tcp_try_recv().
+- Link to v1: https://patch.msgid.link/20261109-nvme-tcp-live-ctrlrec-v1-0-47ba61670e65@gmail.com
 
 ---
-base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
-change-id: 20261110-h047-send-52025d442823
+Martin Belanger (3):
+      nvme-tcp: use an aligned buffer for the TLS record type
+      nvme-tcp: move the TLS record read loop into a helper
+      nvme-tcp: consume TLS records without application data
+
+ drivers/nvme/host/tcp.c | 175 +++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 144 insertions(+), 31 deletions(-)
+---
+base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
+change-id: 20261109-nvme-tcp-live-ctrlrec-4539b9390301
 
 Best regards,
 --  
-Weidong Wang <weidongw@illinois.edu>
+Martin Belanger <martin.nvme.dev@gmail.com>
 
