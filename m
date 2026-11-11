@@ -1,11 +1,11 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Wed, 11 Nov 2026 14:18:00 +0800
-Subject: [PATCH net v9 06/10] can: rockchip_canfd: cancel bus-off restart
- before closing the device
+Date: Wed, 11 Nov 2026 14:18:01 +0800
+Subject: [PATCH net v9 07/10] can: rockchip_canfd: disable RX offload on
+ open failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-rockchip-canfd-restart-close-v9-6-6643f3825ba3@qq.com>
+Message-Id: <20261111-rockchip-canfd-restart-close-v9-7-6643f3825ba3@qq.com>
 References: <20261111-rockchip-canfd-restart-close-v9-0-6643f3825ba3@qq.com>
 In-Reply-To: <20261111-rockchip-canfd-restart-close-v9-0-6643f3825ba3@qq.com>
 To: Marc Kleine-Budde <mkl@pengutronix.de>, kernel@pengutronix.de, 
@@ -22,25 +22,22 @@ Cc: linux-can@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-doc@vger.kernel.org, Cunhao Lu <1579567540@qq.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794377925; l=1424;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794377925; l=1266;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=FqCrBu6JrjmPJcQNJBNICwgHwS2YwinHx4qtGS13N34=;
- b=NLBEFk8Dzy95cokydtlZ19Ep8PEioLeT3ycyxJpuYcp+8tPLjfp6JuZxhKe1RAB3uYJSrsfFH
- fZxio7G7OohAfN062PEnpiYXsq6OClIiba0x1erH5w1rmUcLB2Z3QL7
+ bh=cT3cBscQt29TWUgsPQ2sU0B4DpllcnyjvFZowBvWmU4=;
+ b=yj9CFU1T9ZoIcbtEbKptVpCa4LLjpRt9oyMuLEGibgfcaOOV0Ojsn7RzSfcIjNTGcJaI26OlG
+ GN2mXBQ0wM8DWXos0S9508BXiEL2xB6YY5ALn2mcghjj2H3Y3RNrFXy
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The close path cancels restart_work in close_candev() only after freeing
-the IRQ, disabling RX offload and stopping the controller. A concurrent
-restart can re-enable the controller and interrupts after IRQ teardown,
-or requeue timestamp work that accesses registers after runtime suspend
-has disabled the controller clocks.
+rkcanfd_open() enables RX offload before requesting the IRQ. If
+request_irq() fails, the error path leaves the offload enabled. A later
+open calls napi_enable() on an already enabled NAPI instance.
 
-Call close_candev_cancel_restart_sync() at the start of ndo_stop(), while
-the resources needed by a running restart are still available. Keep
-close_candev() after IRQ teardown for final cancellation and echo cleanup.
+Disable RX offload on that error path before stopping the controller and
+releasing the runtime PM reference.
 
 Fixes: ff60bfbaf67f ("can: rockchip_canfd: add driver for Rockchip CAN-FD controller")
 Cc: stable@vger.kernel.org
@@ -48,23 +45,26 @@ Signed-off-by: Cunhao Lu <1579567540@qq.com>
 
 ---
 Changes in v7:
-- Keep close cancellation separate from restart and open error handling.
+- Split the open error cleanup into a separate patch.
+
+Changes in v3:
+- Disable RX offload when request_irq() fails during open.
 ---
  drivers/net/can/rockchip/rockchip_canfd-core.c | 1 +
  1 file changed, 1 insertion(+)
 
 diff --git a/drivers/net/can/rockchip/rockchip_canfd-core.c b/drivers/net/can/rockchip/rockchip_canfd-core.c
-index 1cae86973da5..59a79fe057e6 100644
+index 59a79fe057e6..d05264605efc 100644
 --- a/drivers/net/can/rockchip/rockchip_canfd-core.c
 +++ b/drivers/net/can/rockchip/rockchip_canfd-core.c
-@@ -758,6 +758,7 @@ static int rkcanfd_stop(struct net_device *ndev)
- {
- 	struct rkcanfd_priv *priv = netdev_priv(ndev);
+@@ -747,6 +747,7 @@ static int rkcanfd_open(struct net_device *ndev)
+ 	return 0;
  
-+	close_candev_cancel_restart_sync(ndev);
- 	netif_stop_queue(ndev);
- 
- 	rkcanfd_chip_interrupts_disable(priv);
+ out_rkcanfd_chip_stop:
++	can_rx_offload_disable(&priv->offload);
+ 	rkcanfd_chip_stop_sync(priv, CAN_STATE_STOPPED);
+ 	pm_runtime_put(ndev->dev.parent);
+ out_close_candev:
 
 -- 
 2.34.1
