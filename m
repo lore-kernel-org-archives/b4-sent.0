@@ -1,227 +1,269 @@
-From: Mike Bazov <mikeba@sentinelone.com>
-Date: Wed, 11 Nov 2026 21:39:51 +0200
-Subject: [PATCH bpf-next v2 5/5] selftests/bpf: Test syscall tracepoint
- programs under preemption
+From: Martin Belanger <martin.nvme.dev@gmail.com>
+Date: Wed, 11 Nov 2026 15:19:55 -0500
+Subject: [PATCH 7.3.y] nvme-tcp: skip TLS control records while waiting for
+ the ICResp
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-bpf-preempt-v2-r2-v2-5-9d8f6b952ad2@sentinelone.com>
-References: <20261111-bpf-preempt-v2-r2-v2-0-9d8f6b952ad2@sentinelone.com>
-In-Reply-To: <20261111-bpf-preempt-v2-r2-v2-0-9d8f6b952ad2@sentinelone.com>
-To: bpf@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>
-Cc: Martin KaFai Lau <martin.lau@linux.dev>, 
- Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- John Fastabend <john.fastabend@gmail.com>, 
- Emil Tsalapatis <emil@etsalapatis.com>, 
- Ihor Solodrai <ihor.solodrai@linux.dev>, 
- Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- JP Kobryn <jp.kobryn@linux.dev>, linux-trace-kernel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Mike Bazov <mikeba@sentinelone.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794425986; l=5984;
- i=mikeba@sentinelone.com; s=20261022; h=from:subject:message-id;
- bh=tZ3h3zlk5gZewJOcwTZGC4amQ/qD5S2tjhbroNJXdXY=;
- b=HN1crOzSpxHdzxcK5fDb6DdVngujp0zKQb13Vx/Ms1+8BGezDElI2FaTiIHp2RSDzM+iowa0y
- kcOR0NlmXZ7Cj/JPKgkSJkYeT0id2Msa8Cn7VdaS97m4Hvx2fPlzN9f
-X-Developer-Key: i=mikeba@sentinelone.com; a=ed25519;
- pk=DBXcQ0qoCkgacRsRwT1JU7oOWpWSYuTyLiXMfNLcP+A=
-X-Endpoint-Received: by B4 Relay for mikeba@sentinelone.com/20261022 with auth_id=1284
+Message-Id: <20261111-icresp-stable-7-3-v1-1-c9157e951b3f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0Q6CMBAEf4Xss0faAjb6K8aHUg49QpD00GgI/
+ 27FfZtNZlYoJ2HFuViR+CUqjymDPRSI9zDdmKTLDGfc0eaRxMQ6ky6hHZk8VdQZV5+Mb/pgG2R
+ vTtzLe29e4Muq/OD6v/XZDhyXXw/b9gUrXF2RfAAAAA==
+X-Change-ID: 20261111-icresp-stable-7-3-d0249075fa15
+To: stable@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, linux-nvme@lists.infradead.org, 
+ Martin Belanger <martin.nvme.dev@gmail.com>, 
+ Keith Busch <kbusch@kernel.org>, Hannes Reinecke <hare@kernel.org>, 
+ Jens Axboe <axboe@kernel.dk>, Sagi Grimberg <sagi@grimberg.me>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794428396; l=7585;
+ i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
+ bh=y4qvjQvefNgN22weaVN+ZwHY2rvrb6aJx8IrJ8atttk=;
+ b=fOxl56Lz4C2MsmVbmO+WOcVM0JU1wU6PHJUoGC0Yghu7ecu1NLV+fMiRSxThQYC4dN8IZ3N4A
+ 0DY7vuIF5icDKHEaQv7BMuSUri18ubR28jmaD7mJ7oPTy+mTvQrTNcd
+X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
+ pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
+X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add subtests for classic tracepoint programs on sys_enter_prctl, which
-run preemptibly:
+From: Martin Belanger <martin.belanger@dell.com>
 
-- tp_syscall: the same two-thread scenario as the other subtests.
-- tailcall_tp: a tracepoint dispatcher tail-calls a large-stack handler.
-- tp_dual: one program attached to sys_enter_prctl and to the regular
-  task_rename tracepoint, told apart by their attach cookies. A enters
-  it through the syscall tracepoint, B through task_rename.
+commit 12c20e2903563acfb949342967adb900310a24d4 upstream.
 
-Without the per-task check, every subtest counts recursion misses:
-tp_syscall and tailcall_tp drop B's run, and tp_dual drops B's run
-through sys_enter_prctl. Without the private-stack change, tailcall_tp
-and tp_dual corrupt A's stack.
+A peer may send a NewSessionTicket as soon as the handshake completes,
+ahead of the ICResp. nvme_tcp_init_connection() fails the connection on
+any record that is not application data, so such a target cannot be
+reached at all. An OpenSSL-based target does this by default.
 
-Signed-off-by: Mike Bazov <mikeba@sentinelone.com>
+RFC 9846 section 4.7.1 requires a client that does not support session
+resumption to ignore a NewSessionTicket. Discard such a record and read
+again, up to a fixed number of records. Report an alert, and fail the
+connection for any other record type.
+
+The record type is now checked before the length. A control record
+shorter than the ICResp was reported as -ECONNRESET, which hid the real
+cause.
+
+Fixes: 2837966ab2a8 ("nvme-tcp: control message handling for recvmsg()")
+Assisted-by: LLM
+Reviewed-by: Hannes Reinecke <hare@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Martin Belanger <martin.belanger@dell.com>
+Signed-off-by: Keith Busch <kbusch@kernel.org>
+[ Martin: resolved a context conflict next to nvme_tcp_cpu_queues ]
+Signed-off-by: Martin Belanger <martin.belanger@dell.com>
 ---
- .../selftests/bpf/prog_tests/trampoline_preempt.c  | 43 ++++++++++++++++++++--
- .../selftests/bpf/progs/trampoline_preempt.c       | 37 +++++++++++++++++++
- 2 files changed, 76 insertions(+), 4 deletions(-)
+Upstream has no Cc: stable. Tested on v7.3.4: NewSessionTickets of 64
+to 1000 bytes ahead of the ICResp now connect; without the patch the
+connect fails.
+---
+ drivers/nvme/host/tcp.c | 162 +++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 140 insertions(+), 22 deletions(-)
 
-diff --git a/tools/testing/selftests/bpf/prog_tests/trampoline_preempt.c b/tools/testing/selftests/bpf/prog_tests/trampoline_preempt.c
-index e01a2ba8916a..a8109290e88d 100644
---- a/tools/testing/selftests/bpf/prog_tests/trampoline_preempt.c
-+++ b/tools/testing/selftests/bpf/prog_tests/trampoline_preempt.c
-@@ -25,8 +25,11 @@ enum subtest_kind {
- 	SUBTEST_RAW_TP_S,
- 	SUBTEST_TP_BTF,
- 	SUBTEST_FSESSION,
-+	SUBTEST_TP_SYSCALL,
- 	SUBTEST_TAILCALL_RAW_TP,
-+	SUBTEST_TAILCALL_TP,
- 	SUBTEST_TWO_DISPATCHERS,
-+	SUBTEST_TP_DUAL,
- 	SUBTEST_NESTED_PROG,
- };
+diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
+index ce28c9b03817..2c7e9cfa2253 100644
+--- a/drivers/nvme/host/tcp.c
++++ b/drivers/nvme/host/tcp.c
+@@ -70,6 +70,12 @@ MODULE_PARM_DESC(tls_handshake_timeout,
+ 		 "nvme TLS handshake timeout in seconds (default 10)");
+ #endif
  
-@@ -158,7 +161,7 @@ static void run_subtest(enum subtest_kind kind)
- 	sigset_t oldset;
- 	pthread_t ta, tb;
- 	bool ta_started = false, tb_started = false, sigmask_set = false;
--	bool via_map;
-+	bool via_map, dual = false;
- 	__u32 zero = 0;
- 	int tail_fd;
- 	char ch;
-@@ -193,17 +196,29 @@ static void run_subtest(enum subtest_kind kind)
- 	case SUBTEST_FSESSION:
- 		prog = c.skel->progs.on_fsession;
- 		break;
-+	case SUBTEST_TP_SYSCALL:
-+		prog = c.skel->progs.on_tp_syscall;
-+		break;
- 	case SUBTEST_TAILCALL_RAW_TP:
- 		prog = c.skel->progs.dispatcher_raw_tp;
- 		tail = c.skel->progs.handler_raw_tp;
- 		jmp = c.skel->maps.jmp_raw_tp;
- 		break;
-+	case SUBTEST_TAILCALL_TP:
-+		prog = c.skel->progs.dispatcher_tp;
-+		tail = c.skel->progs.handler_tp;
-+		jmp = c.skel->maps.jmp_tp;
-+		break;
- 	case SUBTEST_TWO_DISPATCHERS:
- 		prog = c.skel->progs.dispatcher_a;
- 		extra = c.skel->progs.dispatcher_b;
- 		tail = c.skel->progs.handler_raw_tp;
- 		jmp = c.skel->maps.jmp_raw_tp;
- 		break;
-+	case SUBTEST_TP_DUAL:
-+		prog = c.skel->progs.on_tp_dual;
-+		dual = true;
-+		break;
- 	case SUBTEST_NESTED_PROG:
- 		prog = c.skel->progs.on_raw_tp_nested;
- 		break;
-@@ -242,9 +257,23 @@ static void run_subtest(enum subtest_kind kind)
- 		if (!ASSERT_OK_PTR(wakeup_link, "attach_wakeup"))
- 			goto out;
- 	}
--	link = bpf_program__attach(prog);
--	if (!ASSERT_OK_PTR(link, "attach"))
--		goto out;
-+	if (dual) {
-+		LIBBPF_OPTS(bpf_tracepoint_opts, topts, .bpf_cookie = 1);
++/* read a TLS control record in chunks of this size */
++#define NVME_TCP_TLS_REC_CHUNK 256
 +
-+		link = bpf_program__attach_tracepoint_opts(prog, "syscalls",
-+							   "sys_enter_prctl", &topts);
-+		if (!ASSERT_OK_PTR(link, "attach_sys_enter"))
-+			goto out;
-+		topts.bpf_cookie = 2;
-+		link2 = bpf_program__attach_tracepoint_opts(prog, "task",
-+							    "task_rename", &topts);
-+		if (!ASSERT_OK_PTR(link2, "attach_task_rename"))
-+			goto out;
-+	} else {
-+		link = bpf_program__attach(prog);
-+		if (!ASSERT_OK_PTR(link, "attach"))
-+			goto out;
++/* TLS records read while waiting for the ICResp, the ICResp included */
++#define NVME_TCP_ICRESP_MAX_RECORDS 8
++
+ static atomic_t nvme_tcp_cpu_queues[NR_CPUS];
+ 
+ enum nvme_tcp_send_state {
+@@ -1561,12 +1567,143 @@ static void nvme_tcp_free_queue(struct nvme_ctrl *nctrl, int qid)
+ 	mutex_destroy(&queue->pf_cache_lock);
+ }
+ 
++static int nvme_tcp_recv_tls_alert(struct nvme_tcp_queue *queue,
++				   struct msghdr *msg, int len)
++{
++	struct sock *sk = queue->sock->sk;
++	u8 level, description;
++
++	if (len < 2) {
++		dev_err(queue->ctrl->ctrl.device,
++			"queue %d: truncated TLS alert\n",
++			nvme_tcp_queue_id(queue));
++		return -ENOTCONN;
 +	}
- 	if (extra) {
- 		link2 = bpf_program__attach(extra);
- 		if (!ASSERT_OK_PTR(link2, "attach_extra"))
-@@ -412,10 +441,16 @@ void test_trampoline_preempt(void)
- 		run_subtest(SUBTEST_TP_BTF);
- 	if (test__start_subtest("fsession"))
- 		run_subtest(SUBTEST_FSESSION);
-+	if (test__start_subtest("tp_syscall"))
-+		run_subtest(SUBTEST_TP_SYSCALL);
- 	if (test__start_subtest("tailcall_raw_tp"))
- 		run_subtest(SUBTEST_TAILCALL_RAW_TP);
-+	if (test__start_subtest("tailcall_tp"))
-+		run_subtest(SUBTEST_TAILCALL_TP);
- 	if (test__start_subtest("two_dispatchers"))
- 		run_subtest(SUBTEST_TWO_DISPATCHERS);
-+	if (test__start_subtest("tp_dual"))
-+		run_subtest(SUBTEST_TP_DUAL);
- 	if (test__start_subtest("nested_prog"))
- 		run_subtest(SUBTEST_NESTED_PROG);
- 	if (test__start_subtest("recursion_raw_tp"))
-diff --git a/tools/testing/selftests/bpf/progs/trampoline_preempt.c b/tools/testing/selftests/bpf/progs/trampoline_preempt.c
-index 78ed74627a79..e8e610fc885e 100644
---- a/tools/testing/selftests/bpf/progs/trampoline_preempt.c
-+++ b/tools/testing/selftests/bpf/progs/trampoline_preempt.c
-@@ -27,6 +27,13 @@ struct {
- 	__type(value, __u32);
- } jmp_raw_tp SEC(".maps");
- 
-+struct {
-+	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
-+	__uint(max_entries, 1);
-+	__type(key, __u32);
-+	__type(value, __u32);
-+} jmp_tp SEC(".maps");
 +
- int tid_a;
- int tid_b;
- int sig;
-@@ -184,6 +191,12 @@ int BPF_PROG(on_fsession)
- 	return handle_comm(false);
- }
- 
-+SEC("tp/syscalls/sys_enter_prctl")
-+int on_tp_syscall(void *ctx)
-+{
-+	return handle_comm(false);
-+}
++	/* tls_alert_recv() reads through the iterator */
++	iov_iter_revert(&msg->msg_iter, len);
++	tls_alert_recv(sk, msg, &level, &description);
 +
- SEC("raw_tp/task_rename")
- int dispatcher_raw_tp(void *ctx)
- {
-@@ -197,6 +210,19 @@ int handler_raw_tp(void *ctx)
- 	return handle_comm(false);
- }
- 
-+SEC("tp/syscalls/sys_enter_prctl")
-+int dispatcher_tp(void *ctx)
-+{
-+	bpf_tail_call(ctx, &jmp_tp, 0);
++	if (level == TLS_ALERT_LEVEL_FATAL) {
++		dev_err(queue->ctrl->ctrl.device,
++			"queue %d: fatal TLS alert %u\n",
++			nvme_tcp_queue_id(queue), description);
++		return -ENOTCONN;
++	}
++
++	/* a peer shutting down normally is not worth a warning */
++	if (description == TLS_ALERT_DESC_CLOSE_NOTIFY)
++		dev_dbg(queue->ctrl->ctrl.device,
++			"queue %d: TLS close_notify\n",
++			nvme_tcp_queue_id(queue));
++	else
++		dev_warn(queue->ctrl->ctrl.device,
++			 "queue %d: TLS alert %u\n",
++			 nvme_tcp_queue_id(queue), description);
++
 +	return 0;
 +}
 +
-+SEC("tp/syscalls/sys_enter_prctl")
-+int handler_tp(void *ctx)
++/*
++ * Discard a TLS record that arrived in place of the ICResp. A peer may send
++ * a NewSessionTicket as soon as the handshake completes.
++ *
++ * Returns 0 when the record was discarded and the ICResp can be read, or a
++ * negative errno if the connection cannot continue.
++ */
++static int nvme_tcp_skip_tls_record(struct nvme_tcp_queue *queue,
++				    struct msghdr *msg, u8 ctype, int len)
 +{
-+	return handle_comm(false);
++	u8 buf[NVME_TCP_TLS_REC_CHUNK];
++	int ret;
++
++	switch (ctype) {
++	case TLS_RECORD_TYPE_HANDSHAKE:
++		break;
++	case TLS_RECORD_TYPE_ALERT:
++		ret = nvme_tcp_recv_tls_alert(queue, msg, len);
++		return ret ? : -ENOTCONN;
++	default:
++		pr_err("queue %d: unhandled TLS record %u\n",
++		       nvme_tcp_queue_id(queue), ctype);
++		return -ENOTCONN;
++	}
++
++	/* the ICResp is in a later record, drain this one first */
++	while (!(msg->msg_flags & MSG_EOR)) {
++		struct kvec iov = {
++			.iov_base = buf,
++			.iov_len = sizeof(buf),
++		};
++		char cbuf[CMSG_LEN(sizeof(char))] = {};
++		/* kTLS fails a control record read without a cmsg buffer */
++		struct msghdr drain = {
++			.msg_control = cbuf,
++			.msg_controllen = sizeof(cbuf),
++		};
++
++		ret = kernel_recvmsg(queue->sock, &drain, &iov, 1, sizeof(buf),
++				     0);
++		if (ret <= 0) {
++			pr_warn("queue %d: failed to drain TLS record: %d\n",
++				nvme_tcp_queue_id(queue), ret);
++			return ret ? : -ECONNRESET;
++		}
++		msg->msg_flags = drain.msg_flags;
++	}
++
++	return 0;
 +}
 +
- SEC("raw_tp/task_rename")
- int dispatcher_a(void *ctx)
++/*
++ * Receive the ICResp. Over TLS, skip the records that a peer may send
++ * ahead of it.
++ *
++ * Returns the length received, or a negative errno.
++ */
++static int nvme_tcp_recv_icresp(struct nvme_tcp_queue *queue,
++				struct nvme_tcp_icresp_pdu *icresp)
++{
++	char cbuf[CMSG_LEN(sizeof(char))];
++	struct msghdr msg;
++	struct kvec iov;
++	u8 ctype;
++	int i, ret;
++
++	for (i = 0; i < NVME_TCP_ICRESP_MAX_RECORDS; i++) {
++		memset(&msg, 0, sizeof(msg));
++		memset(cbuf, 0, sizeof(cbuf));
++		iov.iov_base = icresp;
++		iov.iov_len = sizeof(*icresp);
++		if (nvme_tcp_queue_tls(queue)) {
++			msg.msg_control = cbuf;
++			msg.msg_controllen = sizeof(cbuf);
++		}
++		msg.msg_flags = MSG_WAITALL;
++		ret = kernel_recvmsg(queue->sock, &msg, &iov, 1,
++				     iov.iov_len, msg.msg_flags);
++		if (ret <= 0 || !nvme_tcp_queue_tls(queue))
++			return ret;
++
++		ctype = tls_get_record_type(queue->sock->sk,
++					    (struct cmsghdr *)cbuf);
++		if (ctype == TLS_RECORD_TYPE_DATA)
++			return ret;
++
++		ret = nvme_tcp_skip_tls_record(queue, &msg, ctype, ret);
++		if (ret < 0)
++			return ret;
++	}
++
++	pr_err("queue %d: too many TLS records before the ICResp\n",
++	       nvme_tcp_queue_id(queue));
++	return -EPROTO;
++}
++
+ static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
  {
-@@ -213,6 +239,17 @@ int BPF_PROG(dispatcher_b, struct pt_regs *regs, long id)
- 	return 0;
- }
+ 	struct nvme_tcp_icreq_pdu *icreq;
+ 	struct nvme_tcp_icresp_pdu *icresp;
+-	char cbuf[CMSG_LEN(sizeof(char))] = {};
+-	u8 ctype;
+ 	struct msghdr msg = {};
+ 	struct kvec iov;
+ 	bool ctrl_hdgst, ctrl_ddgst;
+@@ -1604,16 +1741,7 @@ static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
+ 		goto free_icresp;
+ 	}
  
-+SEC("tp/syscalls/sys_enter_prctl")
-+int on_tp_dual(void *ctx)
-+{
-+	__u32 tid = (__u32)bpf_get_current_pid_tgid();
-+	__u64 cookie = bpf_get_attach_cookie(ctx);
-+
-+	if ((tid == tid_a && cookie != 1) || (tid == tid_b && cookie != 2))
-+		return 0;
-+	return handle_comm(false);
-+}
-+
- SEC("raw_tp/bpf_trace_printk")
- int recur_raw_tp(void *ctx)
- {
+-	memset(&msg, 0, sizeof(msg));
+-	iov.iov_base = icresp;
+-	iov.iov_len = sizeof(*icresp);
+-	if (nvme_tcp_queue_tls(queue)) {
+-		msg.msg_control = cbuf;
+-		msg.msg_controllen = sizeof(cbuf);
+-	}
+-	msg.msg_flags = MSG_WAITALL;
+-	ret = kernel_recvmsg(queue->sock, &msg, &iov, 1,
+-			iov.iov_len, msg.msg_flags);
++	ret = nvme_tcp_recv_icresp(queue, icresp);
+ 	if (ret >= 0 && ret < sizeof(*icresp))
+ 		ret = -ECONNRESET;
+ 	if (ret < 0) {
+@@ -1621,16 +1749,6 @@ static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
+ 			nvme_tcp_queue_id(queue), ret);
+ 		goto free_icresp;
+ 	}
+-	ret = -ENOTCONN;
+-	if (nvme_tcp_queue_tls(queue)) {
+-		ctype = tls_get_record_type(queue->sock->sk,
+-					    (struct cmsghdr *)cbuf);
+-		if (ctype != TLS_RECORD_TYPE_DATA) {
+-			pr_err("queue %d: unhandled TLS record %d\n",
+-			       nvme_tcp_queue_id(queue), ctype);
+-			goto free_icresp;
+-		}
+-	}
+ 	ret = -EINVAL;
+ 	if (icresp->hdr.type != nvme_tcp_icresp) {
+ 		pr_err("queue %d: bad type returned %d\n",
 
--- 
-2.43.0
+---
+base-commit: 7595a62d45ee1a2297eafa5f2ef5d0a45142d84d
+change-id: 20261111-icresp-stable-7-3-d0249075fa15
+
+Best regards,
+--  
+Martin Belanger <martin.nvme.dev@gmail.com>
 
