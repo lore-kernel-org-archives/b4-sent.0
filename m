@@ -1,26 +1,26 @@
 From: Martin Belanger <martin.nvme.dev@gmail.com>
-Date: Wed, 11 Nov 2026 15:20:54 -0500
-Subject: [PATCH 6.18.y] nvme-tcp: skip TLS control records while waiting
+Date: Wed, 11 Nov 2026 15:21:34 -0500
+Subject: [PATCH 6.12.y] nvme-tcp: skip TLS control records while waiting
  for the ICResp
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-icresp-stable-6-18-v1-1-ccf02268f76a@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0QqDMBAEf0XuuScm0ij9leKDSVc9KVZytijiv
- 5u2+zYLMzspokDplu0U8RGV15TAXDIKQzv1YHkkJltYZ9JYQoTOrEvrn2DHpmaU1l47VL6oSkr
- iHNHJ+oveyeWmzjdq/r++/YiwfIt0HCd+StLffgAAAA==
-X-Change-ID: 20261111-icresp-stable-6-18-e3225fe7b073
+Message-Id: <20261111-icresp-stable-6-12-v1-1-d0b44764f745@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0Q6CMBAEf4Xcs0fsRQvhV4wPtG71DAHSQ6Mh/
+ LtV9202mVnJkBVGXbVSxlNNp7GA21UUb/14BeulMMlevCtjjRk2sy19GMCenXBzOCK0knxMDRV
+ xzkj6+kVP5Gsn9ZvO/98e4Y64fIu0bR90FmDAfgAAAA==
+X-Change-ID: 20261111-icresp-stable-6-12-745eb82f6cf7
 To: stable@vger.kernel.org
 Cc: Keith Busch <kbusch@kernel.org>, Christoph Hellwig <hch@lst.de>, 
- Sagi Grimberg <sagi@grimberg.me>, Hannes Reinecke <hare@kernel.org>, 
  Martin Belanger <martin.nvme.dev@gmail.com>, linux-nvme@lists.infradead.org, 
+ Hannes Reinecke <hare@kernel.org>, Sagi Grimberg <sagi@grimberg.me>, 
  Jens Axboe <axboe@kernel.dk>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794428456; l=7592;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794428496; l=7593;
  i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
- bh=fFcBJ8BcvPYxw3eQJ+fJa/dnr9zY8euGzsjwV6YDuNE=;
- b=hMNlSnVTE8oJblKJYQMgVcwCUlTaR5UFRSLWZCw+b8C+ulcgk6yjujA7KADEPamFRv1aAZjyo
- VoIzjuTyIuWBPZOuSak8KV6TWpwT8lIspYGHnPI2GNtexw4Sf4BRrgp
+ bh=a6B0KKV/akMjIUlylU413V+vvxVF5j8imkqly0d087A=;
+ b=7XyOU2Zr0DC4wC/ojBdxfx+1y8bFMvEGvitA72aClDW7KkF+4uSWewsZ3dHfFAI3Y4Qy+/hW0
+ 9U5EEYnAJNWChyEKfLrcikZYx6tfrFdwGlS/ltW3rQG0NYqA7KfY7tm
 X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
  pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
 X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
@@ -53,7 +53,7 @@ Signed-off-by: Keith Busch <kbusch@kernel.org>
 [ Martin: resolved a context conflict next to nvme_tcp_cpu_queues ]
 Signed-off-by: Martin Belanger <martin.belanger@dell.com>
 ---
-Upstream has no Cc: stable. Tested on v6.18.63: NewSessionTickets of 64
+Upstream has no Cc: stable. Tested on v6.12.117: NewSessionTickets of 64
 to 1000 bytes ahead of the ICResp now connect; without the patch the
 connect fails.
 ---
@@ -61,10 +61,10 @@ connect fails.
  1 file changed, 140 insertions(+), 22 deletions(-)
 
 diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index 94495b022871..190eac661e7d 100644
+index 67d02cfb47ec..7c1ebac54a50 100644
 --- a/drivers/nvme/host/tcp.c
 +++ b/drivers/nvme/host/tcp.c
-@@ -53,6 +53,12 @@ MODULE_PARM_DESC(tls_handshake_timeout,
+@@ -54,6 +54,12 @@ MODULE_PARM_DESC(tls_handshake_timeout,
  		 "nvme TLS handshake timeout in seconds (default 10)");
  #endif
  
@@ -77,7 +77,7 @@ index 94495b022871..190eac661e7d 100644
  static atomic_t nvme_tcp_cpu_queues[NR_CPUS];
  
  #ifdef CONFIG_DEBUG_LOCK_ALLOC
-@@ -1535,12 +1541,143 @@ static void nvme_tcp_free_queue(struct nvme_ctrl *nctrl, int qid)
+@@ -1562,12 +1568,143 @@ static void nvme_tcp_free_queue(struct nvme_ctrl *nctrl, int qid)
  	mutex_destroy(&queue->pf_cache_lock);
  }
  
@@ -223,7 +223,7 @@ index 94495b022871..190eac661e7d 100644
  	struct msghdr msg = {};
  	struct kvec iov;
  	bool ctrl_hdgst, ctrl_ddgst;
-@@ -1578,16 +1715,7 @@ static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
+@@ -1605,16 +1742,7 @@ static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
  		goto free_icresp;
  	}
  
@@ -241,7 +241,7 @@ index 94495b022871..190eac661e7d 100644
  	if (ret >= 0 && ret < sizeof(*icresp))
  		ret = -ECONNRESET;
  	if (ret < 0) {
-@@ -1595,16 +1723,6 @@ static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
+@@ -1622,16 +1750,6 @@ static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
  			nvme_tcp_queue_id(queue), ret);
  		goto free_icresp;
  	}
@@ -260,8 +260,8 @@ index 94495b022871..190eac661e7d 100644
  		pr_err("queue %d: bad type returned %d\n",
 
 ---
-base-commit: 1cdda838e8475edf89b73ff0cc952005dd0b1fa7
-change-id: 20261111-icresp-stable-6-18-e3225fe7b073
+base-commit: d3417611a3b40b7f04a29e558cebac2bf69889d7
+change-id: 20261111-icresp-stable-6-12-745eb82f6cf7
 
 Best regards,
 --  
