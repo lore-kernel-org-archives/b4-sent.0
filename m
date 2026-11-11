@@ -1,14 +1,13 @@
 From: Vishal Balasubramanian <vishal.bala.nps@gmail.com>
-Subject: [PATCH 0/2] (no cover subject)
-Date: Wed, 11 Nov 2026 09:35:31 +0530
-Message-Id: <20261111-master-v1-0-07b4f06a9dd5@gmail.com>
+Date: Wed, 11 Nov 2026 09:35:32 +0530
+Subject: [PATCH 1/2] dt-bindings: arm: qcom: Add Samsung Galaxy Tab S7 FE
+ LTE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIvp82oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDINDNTSwuSS3SNTdJMjZNtjRIMzFJVgIqLihKTcusABsUHVtbCwABg2f
- AWAAAAA==
-X-Change-ID: 20261111-master-74b35c90f44c
+Message-Id: <20261111-master-v1-1-07b4f06a9dd5@gmail.com>
+References: <20261111-master-v1-0-07b4f06a9dd5@gmail.com>
+In-Reply-To: <20261111-master-v1-0-07b4f06a9dd5@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,42 +18,38 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, 
  Vishal Balasubramanian <vishal.bala.nps@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794369932; l=986;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794369932; l=832;
  i=vishal.bala.nps@gmail.com; s=20261111; h=from:subject:message-id;
- bh=KiusWAhSK4OQ0JyY8lYHbC/AU+upoKs1lAbK8klr2jE=;
- b=7pIQL4mHz0R9KgBAWaTCzFrikBumWNR5t+7mupL34uYw+c034KWw6nGylSvp1QVRl6FDZ1rqZ
- SjPD0enwYxjAL4KlOLT3tgtYkAiocR4MZbLDBHFYdbjQIwGZvSdPn6R
+ bh=9F7my3xYNlAFa6L6qVff7o9I+F4ahR3qE81wL7FFgR8=;
+ b=OKB2c6qC2SCWiX0QbLY4z8qZKZM/EVzelrhV8+f6qvymkSuNki3z7c+hJdkUTVS0B4yzhVGmn
+ xG49wzVP0JPAkKC0o3StZ69ewcSbpimGJTc5wUTEAALu+gOYZz6QiOj
 X-Developer-Key: i=vishal.bala.nps@gmail.com; a=ed25519;
  pk=GDcoc+SAK+BHD1Eq17X/BJa9U2HZkBW+dmxS8s1xMAY=
 X-Endpoint-Received: by B4 Relay for vishal.bala.nps@gmail.com/20261111 with auth_id=1486
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds initial support for the Samsung Galaxy Tab S7 FE LTE
-(SM-T735), a tablet based on the Qualcomm SM7225 SoC.
-
-Supported in this initial version:
-- Display via simple-framebuffer
-- Volume keys and power button
-- UFS and microSD
-- USB
-- Wi-Fi and Bluetooth (WCN3991)
-- ADSP, CDSP and modem, including mobile data
+Document the compatible for the Samsung Galaxy Tab S7 FE LTE
+(SM-T735, codename gts7xllite), a tablet based on the Qualcomm
+SM7225 SoC.
 
 Signed-off-by: Vishal Balasubramanian <vishal.bala.nps@gmail.com>
 ---
-Vishal Balasubramanian (2):
-      dt-bindings: arm: qcom: Add Samsung Galaxy Tab S7 FE LTE
-      arm64: dts: qcom: sm7225: Add Samsung Galaxy Tab S7 FE LTE
+ Documentation/devicetree/bindings/arm/qcom.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
- Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../boot/dts/qcom/sm7225-samsung-gts7xllite.dts    | 575 +++++++++++++++++++++
- 3 files changed, 577 insertions(+)
----
-base-commit: 630059a5a632377b9b7b487baccde92b7ae1dd47
-change-id: 20261111-master-74b35c90f44c
+diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
+index 121ca557ce1effdc95e9e97210bd9a63673f8ba4..abc3c0f53cc14b02d06b68aba3bfd8425ea4fb07 100644
+--- a/Documentation/devicetree/bindings/arm/qcom.yaml
++++ b/Documentation/devicetree/bindings/arm/qcom.yaml
+@@ -1118,6 +1118,7 @@ properties:
+       - items:
+           - enum:
+               - fairphone,fp4
++              - samsung,gts7xllite
+           - const: qcom,sm7225
+ 
+       - items:
 
-Best regards,
 -- 
-Vishal Balasubramanian <vishal.bala.nps@gmail.com>
+2.47.3
 
