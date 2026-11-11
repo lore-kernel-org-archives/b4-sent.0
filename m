@@ -1,10 +1,11 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Wed, 11 Nov 2026 03:26:02 -0500
-Subject: [PATCH v2 2/3] usb: dwc2: Add Siflower SF19A2890 support
+Date: Wed, 11 Nov 2026 03:26:03 -0500
+Subject: [PATCH v2 3/3] usb: dwc2: Handle OTG interrupts that GINTSTS does
+ not flag
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-sf19a2890-dwc2-v2-2-cba9dd4a4256@telaak.dev>
+Message-Id: <20261111-sf19a2890-dwc2-v2-3-cba9dd4a4256@telaak.dev>
 References: <20261111-sf19a2890-dwc2-v2-0-cba9dd4a4256@telaak.dev>
 In-Reply-To: <20261111-sf19a2890-dwc2-v2-0-cba9dd4a4256@telaak.dev>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -14,11 +15,11 @@ Cc: Chuanhong Guo <gch981213@gmail.com>, linux-mips@vger.kernel.org,
  linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794385586; l=1619;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794385586; l=3430;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=nQKb53x4kS6TUNVquwYjce7H9GBsH2tS7RH2pY4HKw8=;
- b=a8hF7jD8+wGLj45IBtGTJ6U3mPI2ivMNDb9cwpRa6nTl63O35D19TalR4isiXM9W34IRBFU4s
- iUlgq61tyEXBbnDCcFABnU7zAuxunQJbFyQg0cG8Yk3QCNztzuMPWJX
+ bh=3UAHpfU9cll1318+mjWwjmjX3xQ60+nlO78HrMckino=;
+ b=SpTKA9gjirIKNpqRGZNeePe6ZW+chIAjUwzLJsJISUXD6OPgrmowd9okcUzpG8aCQs9qC92fB
+ LWVOB0pkYUrAktrJhmSiINBrqrp40staPQvVh3LJY7Y+XqhwQyfBeph
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
@@ -26,47 +27,90 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Chuanhong Guo <gch981213@gmail.com>
 
-The Siflower SF19A2890 has a DWC OTG 3.30a controller. Limit its
-transfers to 65535 bytes and its AHB bursts to INCR4, the settings the
-OpenWrt port has run it with.
+The DWC OTG 3.30a of the Siflower SF19A2890 has battery charger support
+enabled. It raises the MultValIpChng interrupt (bit 20 of GOTGINT)
+without setting OTGInt in GINTSTS, so the interrupt is never handled
+and the kernel disables the USB interrupt because nobody cared.
+
+On a GL.iNet GL-SFT1200 it shows differently: after a few replugs of a
+USB stick the system stops making progress, the console repeating its
+last message with the same timestamp, until a power cycle.
+
+Add an otg_int_unflagged parameter for such cores. With it set, the
+common interrupt handler also reads GOTGINT on every interrupt and
+handles any OTG interrupt it finds there, as it does when OTGInt is
+set. The SF19A2890 sets it; other cores are unchanged.
 
 Signed-off-by: Chuanhong Guo <gch981213@gmail.com>
 [Joseph Telaak:
-  - take it from OpenWrt's siflower target and rebase on v7.4-rc1
-  - commit message and subject]
+  - handle the unflagged OTG interrupts only on cores with the new
+    otg_int_unflagged parameter, which the SF19A2890 sets
+  - do it in the one place that already handles flagged OTG
+    interrupts, and return IRQ_HANDLED
+  - describe what a GL-SFT1200 does without the patch, and the fix as
+    it is now
+  - subject]
+Co-developed-by: Joseph Telaak <joseph@telaak.dev>
 Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
- drivers/usb/dwc2/params.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ drivers/usb/dwc2/core.h      | 6 ++++++
+ drivers/usb/dwc2/core_intr.c | 5 ++++-
+ drivers/usb/dwc2/params.c    | 1 +
+ 3 files changed, 11 insertions(+), 1 deletion(-)
 
+diff --git a/drivers/usb/dwc2/core.h b/drivers/usb/dwc2/core.h
+index 015a5fb7842d..288baaaf4736 100644
+--- a/drivers/usb/dwc2/core.h
++++ b/drivers/usb/dwc2/core.h
+@@ -367,6 +367,11 @@ enum dwc2_ep0_state {
+  * @no_clock_gating:	Specifies whether to avoid clock gating feature.
+  *			0 - No (use clock gating)
+  *			1 - Yes (avoid it)
++ * @otg_int_unflagged:	Specifies whether the core raises OTG interrupts
++ *			without setting OTGINT in GINTSTS, so that GOTGINT
++ *			has to be checked on every interrupt.
++ *			0 - No
++ *			1 - Yes
+  * @lpm:		Enable LPM support.
+  *			0 - No
+  *			1 - Yes
+@@ -466,6 +471,7 @@ struct dwc2_core_params {
+ #define DWC2_POWER_DOWN_PARAM_PARTIAL		1
+ #define DWC2_POWER_DOWN_PARAM_HIBERNATION	2
+ 	bool no_clock_gating;
++	bool otg_int_unflagged;
+ 
+ 	bool lpm;
+ 	bool lpm_clock_gating;
+diff --git a/drivers/usb/dwc2/core_intr.c b/drivers/usb/dwc2/core_intr.c
+index 9565e6a52725..e7bb9709c985 100644
+--- a/drivers/usb/dwc2/core_intr.c
++++ b/drivers/usb/dwc2/core_intr.c
+@@ -874,8 +874,11 @@ irqreturn_t dwc2_handle_common_intr(int irq, void *dev)
+ 
+ 	if (gintsts & GINTSTS_MODEMIS)
+ 		dwc2_handle_mode_mismatch_intr(hsotg);
+-	if (gintsts & GINTSTS_OTGINT)
++	if ((gintsts & GINTSTS_OTGINT) ||
++	    (hsotg->params.otg_int_unflagged && dwc2_readl(hsotg, GOTGINT))) {
+ 		dwc2_handle_otg_intr(hsotg);
++		retval = IRQ_HANDLED;
++	}
+ 	if (gintsts & GINTSTS_CONIDSTSCHNG)
+ 		dwc2_handle_conn_id_status_change_intr(hsotg);
+ 	if (gintsts & GINTSTS_DISCONNINT)
 diff --git a/drivers/usb/dwc2/params.c b/drivers/usb/dwc2/params.c
-index 091bfcfef753..b31fa1f5ad64 100644
+index b31fa1f5ad64..8e814a925dd1 100644
 --- a/drivers/usb/dwc2/params.c
 +++ b/drivers/usb/dwc2/params.c
-@@ -237,6 +237,14 @@ static void dwc2_set_cv1800_params(struct dwc2_hsotg *hsotg)
- 	p->power_down = DWC2_POWER_DOWN_PARAM_NONE;
+@@ -243,6 +243,7 @@ static void dwc2_set_sf19a2890_params(struct dwc2_hsotg *hsotg)
+ 
+ 	p->max_transfer_size = 65535;
+ 	p->ahbcfg = GAHBCFG_HBSTLEN_INCR4 << GAHBCFG_HBSTLEN_SHIFT;
++	p->otg_int_unflagged = true;
  }
  
-+static void dwc2_set_sf19a2890_params(struct dwc2_hsotg *hsotg)
-+{
-+	struct dwc2_core_params *p = &hsotg->params;
-+
-+	p->max_transfer_size = 65535;
-+	p->ahbcfg = GAHBCFG_HBSTLEN_INCR4 << GAHBCFG_HBSTLEN_SHIFT;
-+}
-+
  static void dwc2_set_stm32f4x9_fsotg_params(struct dwc2_hsotg *hsotg)
- {
- 	struct dwc2_core_params *p = &hsotg->params;
-@@ -334,6 +342,8 @@ const struct of_device_id dwc2_of_match_table[] = {
- 	  .data = dwc2_set_amlogic_a1_params },
- 	{ .compatible = "amcc,dwc-otg", .data = dwc2_set_amcc_params },
- 	{ .compatible = "apm,apm82181-dwc-otg", .data = dwc2_set_amcc_params },
-+	{ .compatible = "siflower,sf19a2890-usb",
-+	  .data = dwc2_set_sf19a2890_params },
- 	{ .compatible = "sophgo,cv1800b-usb",
- 	  .data = dwc2_set_cv1800_params },
- 	{ .compatible = "st,stm32f4x9-fsotg",
 
 -- 
 Git-155)
