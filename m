@@ -1,14 +1,13 @@
 From: Florian Bauckholt <florian.bauckholt@cispa.de>
-Subject: [PATCH 0/2] KEYS: two fixes for the asymmetric keyctl operations
-Date: Wed, 11 Nov 2026 16:56:06 +0100
-Message-Id: <20261111-keyctl-pkey-fixes-v1-0-934ebaa267a7@cispa.de>
+Date: Wed, 11 Nov 2026 16:56:07 +0100
+Subject: [PATCH 1/2] KEYS: fix signature length passed to
+ KEYCTL_PKEY_VERIFY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDINDNTq1MLsnRLQDSummZFanFukZmxqYWiRbmBuZJZkpAfQVFqWAJoLb
- oWAi/uDQpKzW5BGSQUm0tAM4iKAB1AAAA
-X-Change-ID: 20261111-keyctl-pkey-fixes-26358a8707b6
+Message-Id: <20261111-keyctl-pkey-fixes-v1-1-934ebaa267a7@cispa.de>
+References: <20261111-keyctl-pkey-fixes-v1-0-934ebaa267a7@cispa.de>
+In-Reply-To: <20261111-keyctl-pkey-fixes-v1-0-934ebaa267a7@cispa.de>
 To: David Howells <dhowells@redhat.com>, 
  Jarkko Sakkinen <jarkko@kernel.org>, Lukas Wunner <lukas@wunner.de>, 
  Ignat Korchagin <ignat@linux.win>, Herbert Xu <herbert@gondor.apana.org.au>, 
@@ -19,53 +18,59 @@ Cc: Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>,
  linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org, Florian Bauckholt <florian.bauckholt@cispa.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794412620; l=1414;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794412620; l=1884;
  i=florian.bauckholt@cispa.de; s=20261105; h=from:subject:message-id;
- bh=GOMrVRBSeE8hLfYs6YtkMRfH5HXSdleUYoeN7mchAzM=;
- b=ttCpoRZ+CbmvpkYf413TemwqzcVJRwcmDQFBw0RzMU4Y567p7HmCNsBTbuz39K5A+kzj5pEPC
- UY6g6KZOvd/CwiN08BuJKpNjqRuza+FpOi7QwafT0wnivIQ2G0SvzMu
+ bh=LVmuxaZSH2taEYfRhlXMhvvv8Nox03oxmZ6NpX/Ry9M=;
+ b=qYKEFVkNM/BmDKGEExfP2pA+Ye2Q6kqKInfaNFuLLB8Vn82lJSXEmc/WIbxgoUJIyTVq9z/df
+ O7aBXzk7K35BtmDlJN0trkPlZkr7hXktWxP/vJYeyK0/hBt8Jz5YQF0
 X-Developer-Key: i=florian.bauckholt@cispa.de; a=ed25519;
  pk=n9klXQ+dI45FWy0qWLrGpQfXU5ylIA0SN+uWSmOx3ok=
 X-Endpoint-Received: by B4 Relay for florian.bauckholt@cispa.de/20261105 with auth_id=1420
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+Commit cb481e59ea6c ("KEYS: fix overflow in keyctl_pkey_params_get_2()")
+made keyctl_pkey_params_get_2() set params->out_len to the maximum
+output size of the operation instead of the size provided by the caller.
+It does so for KEYCTL_PKEY_VERIFY as well, but verify has no output
+buffer: out_len shares a union with in2_len, the length of the
+signature.
 
-two small fixes for KEYCTL_PKEY_VERIFY and KEYCTL_PKEY_DECRYPT that I
-ran into while doing differential testing of crypto implementations
-with the kernel hooked up via UML:
+As a result keyctl_pkey_verify() ignores the signature length passed by
+the caller. It copies max_sig_size bytes from the signature pointer and
+passes max_sig_size as the signature size to the verification.
 
-Patch 1 fixes a regression from commit cb481e59ea6c ("KEYS: fix overflow
-in keyctl_pkey_params_get_2()"), which was tagged for stable:
-KEYCTL_PKEY_VERIFY ignores the signature length passed by the caller.
-It also is a prerequisite for making the x962 ECDSA template reject
-signatures that are not DER-encoded, which I'm posting separately to
-linux-crypto.
+This makes no difference for signatures that are always max_sig_size
+bytes long, such as RSA. A shorter signature, e.g. a DER-encoded ECDSA
+signature, is followed by whatever is behind it in the caller's memory,
+or the call fails with -EFAULT if that memory is not readable. The
+x962 ECDSA template currently ignores data following the signature,
+which hides the problem.
 
-Patch 2 fixes PKCS#1 decryption of an empty message returning the
-ciphertext.
+Use the length provided by the caller, which has already been checked
+against max_sig_size.
 
-Both changes were part of a patch posted by Hui Peng in September that
-did not get a reply [1]. That patch also changed the out_len checks in
-keyctl_pkey_params_get_2(), which is not included here.
-
-Thanks!
-
-[1] https://lore.kernel.org/all/20260919221742.3709658-1-benquike@gmail.com/
-
+Fixes: cb481e59ea6c ("KEYS: fix overflow in keyctl_pkey_params_get_2()")
+Cc: stable@vger.kernel.org
+Link: https://lore.kernel.org/all/20260919221742.3709658-1-benquike@gmail.com/
+Signed-off-by: Florian Bauckholt <florian.bauckholt@cispa.de>
 ---
-Florian Bauckholt (2):
-      KEYS: fix signature length passed to KEYCTL_PKEY_VERIFY
-      KEYS: asymmetric: Fix PKCS#1 decryption of an empty message
+ security/keys/keyctl_pkey.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- crypto/asymmetric_keys/public_key.c | 6 +++---
- security/keys/keyctl_pkey.c         | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261111-keyctl-pkey-fixes-26358a8707b6
+diff --git a/security/keys/keyctl_pkey.c b/security/keys/keyctl_pkey.c
+index 15b6bf6399b5..794fa3d01911 100644
+--- a/security/keys/keyctl_pkey.c
++++ b/security/keys/keyctl_pkey.c
+@@ -160,7 +160,7 @@ static int keyctl_pkey_params_get_2(const struct keyctl_pkey_params __user *_par
+ 		    uparams.in2_len > info.max_sig_size)
+ 			return -EINVAL;
+ 
+-		params->out_len = info.max_sig_size;
++		params->in2_len = uparams.in2_len;
+ 		break;
+ 	default:
+ 		return -EOPNOTSUPP;
 
-Best regards,
---  
-Florian Bauckholt <florian.bauckholt@cispa.de>
+-- 
+2.56.0
 
