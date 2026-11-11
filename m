@@ -1,123 +1,222 @@
-From: Cunhao Lu <1579567540@qq.com>
-Date: Wed, 11 Nov 2026 17:56:29 +0800
-Subject: [PATCH net-next v2 2/2] net: stmmac: dwmac-rk: Add RK3572 support
+From: Eric Yang <eric.yang.wiwynn@gmail.com>
+Date: Wed, 11 Nov 2026 10:04:03 +0000
+Subject: [PATCH v2] ARM: dts: aspeed: yosemite4: Remove Floating Falls
+ board nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-add-board-ok3572-c-net-v2-2-304466394970@qq.com>
-References: <20261111-add-board-ok3572-c-net-v2-0-304466394970@qq.com>
-In-Reply-To: <20261111-add-board-ok3572-c-net-v2-0-304466394970@qq.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- David Wu <david.wu@rock-chips.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Giuseppe Cavallaro <peppe.cavallaro@st.com>, 
- Jose Abreu <joabreu@synopsys.com>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>
-Cc: Cunhao Lu <1579567540@qq.com>, netdev@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-stm32@st-md-mailman.stormreply.com
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794391206; l=3142;
- i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=bJZr2jTjg4023AjgAd/Zj2CWJraJeUFEaOgI88A3Cbk=;
- b=jEQpmIjRN58KDsmIItARMWGBR9/tQFG9sLJdgCnv3tiEkLj98mJUEUUC9c0t/JiC7ZJXHDEJN
- se60OOE7HDgBwGvEfdETUlLxU6Ep4JJ/F8R1aNpxxWA3irkjAbFxbXR
-X-Developer-Key: i=1579567540@qq.com; a=ed25519;
- pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
-X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
+Message-Id: <20261111-yv4-remove-ff-nodes-v2-1-aab5516c4305@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAJI99GoC/22NywrCMBBFf6XM2pEkfYS68j+ki9hM2gHbSCLBU
+ vLvxoI7l+fAPXeHSIEpwqXaIVDiyH4toE4VjLNZJ0K2hUEJ1UkpatxSg4EWnwidw9VbitiTElI
+ 0VtWdgrJ8BnL8Pqq3ofDM8eXDdpwk+bW/Xvu3lyRKNEYLbfpW67u+Tovhx3n0Cww55w+UQAn4t
+ gAAAA==
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>, 
+ Ryan Chen <ryan_chen@aspeedtech.com>, 
+ Billy Tsai <billy_tsai@aspeedtech.com>, patrick@stwcx.xyz
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ Sean He <sean.he.wiwynn@gmail.com>, Eric Yang <eric.yang.wiwynn@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794391442; l=4734;
+ i=eric.yang.wiwynn@gmail.com; s=20260911; h=from:subject:message-id;
+ bh=jDtTAj/Xi/uCMH8VnoQE52JIB7Rtfet3e3fs7uQ9GG0=;
+ b=6j7fFHyE16rD+I6wFBU7rNrZH/Pwk6/JFc/Y3u8ad9ZoOEw7fAPq7vrc5Bz0zsEb6/Y5QpAIa
+ 1QFhsb/whLGBRd3X59J73KJHRCK+S8p23PaaS/yGQggi07DZxhbFqCW
+X-Developer-Key: i=eric.yang.wiwynn@gmail.com; a=ed25519;
+ pk=XYQiwgPZNUCt1JCbsO7zX8ODEiRKocz7fYwt+aWnXBs=
+X-Endpoint-Received: by B4 Relay for eric.yang.wiwynn@gmail.com/20260911 with auth_id=1023
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3572 has two GMAC controllers with separate mode and clock control
-registers in the PHP and NVM0 GRFs. RGMII delay lines are configured
-through the IOC.
+From: Sean He <sean.he.wiwynn@gmail.com>
 
-Add the register layout and delay callback for both controllers so the
-Rockchip glue driver can configure their RGMII and RMII interfaces and
-select the appropriate clocks for each link speed.
+The Floating Falls (FF) board connects to the Sentinel Dome through a
+connector and carries a PCA9537 GPIO expander at address 0x49 and a FRU
+EEPROM at address 0x50 on each slot I2C bus. No system currently in use
+has an FF board, and its connector on the Sentinel Dome is not populated,
+so these addresses never acknowledge: the pca953x driver fails to probe
+the eight PCA9537 nodes on every boot and the at24 driver does not bind
+to the eight EEPROM nodes. Remove the nodes so that the devicetree
+matches the actual hardware.
 
-Signed-off-by: Cunhao Lu <1579567540@qq.com>
+Signed-off-by: Sean He <sean.he.wiwynn@gmail.com>
+Signed-off-by: Eric Yang <eric.yang.wiwynn@gmail.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c | 53 ++++++++++++++++++++++++++
- 1 file changed, 53 insertions(+)
+The changelog was drafted with an AI assistant (Claude Code) and
+reviewed by the submitter.
+---
+Changes in v2:
+- Reworded the commit message: the FF board is a separate board, no
+  system in use has it, and its connector is not populated
+- Dropped the verification paragraph
+- Link to v1: https://lore.kernel.org/r/20261105-yv4-remove-ff-nodes-v1-1-aa707a9577b7@gmail.com
+---
+ .../dts/aspeed/aspeed-bmc-facebook-yosemite4.dts   | 96 ----------------------
+ 1 file changed, 96 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-index a37df5767d84..c9d8d8bf51f7 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-@@ -900,6 +900,58 @@ static const struct rk_gmac_ops rk3568_ops = {
- 	},
- };
- 
-+#define RK3572_VCCIO0_3_VO_IOC_CON1		0x10608
-+#define RK3572_VCCIO1_2_4_VI_IOC_CON1		0x12604
-+#define RK3572_VCCIO5_6_IOC_MISC0		0x14630
-+#define RK3572_PHP_GRF_GMAC0_CON		0x0070
-+#define RK3572_NVM0_GRF_GMAC1_CON		0x0020
-+
-+static int rk3572_init(struct rk_priv_data *bsp_priv)
-+{
-+	switch (bsp_priv->id) {
-+	case 0:
-+		bsp_priv->gmac_grf_reg = RK3572_PHP_GRF_GMAC0_CON;
-+		break;
-+	case 1:
-+		bsp_priv->gmac_grf_reg = RK3572_NVM0_GRF_GMAC1_CON;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	bsp_priv->clock_grf_reg = bsp_priv->gmac_grf_reg;
-+	return 0;
-+}
-+
-+static void rk3572_set_to_rgmii(struct rk_priv_data *bsp_priv,
-+				int tx_delay, int rx_delay)
-+{
-+	u32 val = GRF_FIELD(14, 8, rx_delay) | GRF_FIELD(6, 0, tx_delay) |
-+		  GRF_FIELD(15, 15, !!rx_delay) | GRF_FIELD(7, 7, !!tx_delay);
-+
-+	if (bsp_priv->id == 1) {
-+		regmap_write(bsp_priv->php_grf, RK3572_VCCIO0_3_VO_IOC_CON1, val);
-+		regmap_write(bsp_priv->php_grf, RK3572_VCCIO5_6_IOC_MISC0, val);
-+	} else {
-+		regmap_write(bsp_priv->php_grf, RK3572_VCCIO1_2_4_VI_IOC_CON1, val);
-+	}
-+}
-+
-+static const struct rk_gmac_ops rk3572_ops = {
-+	.init = rk3572_init,
-+	.set_to_rgmii = rk3572_set_to_rgmii,
-+	.gmac_phy_intf_sel_mask = GENMASK_U16(11, 9),
-+	.gmac_rmii_mode_mask = BIT_U16(3),
-+	.clock.io_clksel_io_mask = BIT_U16(7),
-+	.clock.gmii_clk_sel_mask = GENMASK_U16(6, 5),
-+	.clock.rmii_clk_sel_mask = BIT_U16(5),
-+	.clock.rmii_gate_en_mask = BIT_U16(4),
-+	.supports_rmii = true,
-+	.php_grf_required = true,
-+	.regs_valid = true,
-+	.regs = { 0x29d20000, 0x2a040000, 0 },
-+};
-+
- /* VCCIO0_1_3_IOC */
- #define RK3576_VCCIO0_1_3_IOC_CON2		0X6408
- #define RK3576_VCCIO0_1_3_IOC_CON3		0X640c
-@@ -1720,6 +1772,7 @@ static const struct of_device_id rk_gmac_dwmac_match[] = {
- 	{ .compatible = "rockchip,rk3506-gmac", .data = &rk3506_ops },
- 	{ .compatible = "rockchip,rk3528-gmac", .data = &rk3528_ops },
- 	{ .compatible = "rockchip,rk3568-gmac", .data = &rk3568_ops },
-+	{ .compatible = "rockchip,rk3572-gmac", .data = &rk3572_ops },
- 	{ .compatible = "rockchip,rk3576-gmac", .data = &rk3576_ops },
- 	{ .compatible = "rockchip,rk3588-gmac", .data = &rk3588_ops },
- 	{ .compatible = "rockchip,rv1108-gmac", .data = &rv1108_ops },
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-yosemite4.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-yosemite4.dts
+index e4172be84..4c7c96ce4 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-yosemite4.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-yosemite4.dts
+@@ -604,18 +604,6 @@ imux16: i2c@0 {
+ 			reg = <0>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+-			gpio@49 {
+-				compatible = "nxp,pca9537";
+-				reg = <0x49>;
+-				gpio-controller;
+-				#gpio-cells = <2>;
+-			};
+-
+-			eeprom@50 {
+-				compatible = "atmel,24c128";
+-				reg = <0x50>;
+-			};
+-
+ 			eeprom@51 {
+ 				compatible = "atmel,24c128";
+ 				reg = <0x51>;
+@@ -631,18 +619,6 @@ imux17: i2c@1 {
+ 			reg = <1>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+-			gpio@49 {
+-				compatible = "nxp,pca9537";
+-				reg = <0x49>;
+-				gpio-controller;
+-				#gpio-cells = <2>;
+-			};
+-
+-			eeprom@50 {
+-				compatible = "atmel,24c128";
+-				reg = <0x50>;
+-			};
+-
+ 			eeprom@51 {
+ 				compatible = "atmel,24c128";
+ 				reg = <0x51>;
+@@ -658,18 +634,6 @@ imux18: i2c@2 {
+ 			reg = <2>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+-			gpio@49 {
+-				compatible = "nxp,pca9537";
+-				reg = <0x49>;
+-				gpio-controller;
+-				#gpio-cells = <2>;
+-			};
+-
+-			eeprom@50 {
+-				compatible = "atmel,24c128";
+-				reg = <0x50>;
+-			};
+-
+ 			eeprom@51 {
+ 				compatible = "atmel,24c128";
+ 				reg = <0x51>;
+@@ -685,18 +649,6 @@ imux19: i2c@3 {
+ 			reg = <3>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+-			gpio@49 {
+-				compatible = "nxp,pca9537";
+-				reg = <0x49>;
+-				gpio-controller;
+-				#gpio-cells = <2>;
+-			};
+-
+-			eeprom@50 {
+-				compatible = "atmel,24c128";
+-				reg = <0x50>;
+-			};
+-
+ 			eeprom@51 {
+ 				compatible = "atmel,24c128";
+ 				reg = <0x51>;
+@@ -726,18 +678,6 @@ imux20: i2c@0 {
+ 			reg = <0>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+-			gpio@49 {
+-				compatible = "nxp,pca9537";
+-				reg = <0x49>;
+-				gpio-controller;
+-				#gpio-cells = <2>;
+-			};
+-
+-			eeprom@50 {
+-				compatible = "atmel,24c128";
+-				reg = <0x50>;
+-			};
+-
+ 			eeprom@51 {
+ 				compatible = "atmel,24c128";
+ 				reg = <0x51>;
+@@ -753,18 +693,6 @@ imux21: i2c@1 {
+ 			reg = <1>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+-			gpio@49 {
+-				compatible = "nxp,pca9537";
+-				reg = <0x49>;
+-				gpio-controller;
+-				#gpio-cells = <2>;
+-			};
+-
+-			eeprom@50 {
+-				compatible = "atmel,24c128";
+-				reg = <0x50>;
+-			};
+-
+ 			eeprom@51 {
+ 				compatible = "atmel,24c128";
+ 				reg = <0x51>;
+@@ -780,18 +708,6 @@ imux22: i2c@2 {
+ 			reg = <2>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+-			gpio@49 {
+-				compatible = "nxp,pca9537";
+-				reg = <0x49>;
+-				gpio-controller;
+-				#gpio-cells = <2>;
+-			};
+-
+-			eeprom@50 {
+-				compatible = "atmel,24c128";
+-				reg = <0x50>;
+-			};
+-
+ 			eeprom@51 {
+ 				compatible = "atmel,24c128";
+ 				reg = <0x51>;
+@@ -807,18 +723,6 @@ imux23: i2c@3 {
+ 			reg = <3>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+-			gpio@49 {
+-				compatible = "nxp,pca9537";
+-				reg = <0x49>;
+-				gpio-controller;
+-				#gpio-cells = <2>;
+-			};
+-
+-			eeprom@50 {
+-				compatible = "atmel,24c128";
+-				reg = <0x50>;
+-			};
+-
+ 			eeprom@51 {
+ 				compatible = "atmel,24c128";
+ 				reg = <0x51>;
 
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261103-yv4-remove-ff-nodes-9e20104d2362
+
+Best regards,
 -- 
-2.34.1
+Eric Yang <eric.yang.wiwynn@gmail.com>
 
