@@ -1,17 +1,13 @@
 From: Tjerk Kusters <tkusters@aweta.nl>
-Subject: [PATCH net v6 0/3] igb: only strip the Rx timestamp header from
- the first buffer of a frame
-Date: Wed, 11 Nov 2026 07:51:03 +0100
-Message-Id: <20261111-igb-rx-ts-fix-v6-0-ba5b9903859c@aweta.nl>
+Date: Wed, 11 Nov 2026 07:51:04 +0100
+Subject: [PATCH net v6 1/3] igb: do not let XDP frames span more than one
+ Rx buffer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFcQ9GoC/3XNy2rDMBAF0F8JWneKNHpY7qr/EbrQY5yoFKdIq
- pMS/O9VXChG0OVc5tx7Z4VyosJeDneWaUklXeZ2mKcDC2c3nwhSbDdDjoYbMUI6ecg3qAWmdIM
- QB66tJpLCsGY+M7V46zuymSp7+w3Ll3+nUB9Nj7dzKvWSv7fVBbfnfwYWBAFRehsN18EZfHVXq
- u55/tiqF7nDqHssGx5HL2ly3MbgOqz+sBAce6yAgx2sFqiCjig7rPdY9Vg37CfllTSDwHG/vK7
- rD2Qa+Bl3AQAA
-X-Change-ID: 20260619-igb-rx-ts-fix-cd70585ee316
+Message-Id: <20261111-igb-rx-ts-fix-v6-1-ba5b9903859c@aweta.nl>
+References: <20261111-igb-rx-ts-fix-v6-0-ba5b9903859c@aweta.nl>
+In-Reply-To: <20261111-igb-rx-ts-fix-v6-0-ba5b9903859c@aweta.nl>
 To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
  Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
  Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -28,234 +24,367 @@ To: Tony Nguyen <anthony.l.nguyen@intel.com>,
 Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
  linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
  Maciej Fijalkowski <maciej.fijalkowski@intel.com>, Paul Moses <p@1g4.org>, 
- stable@vger.kernel.org, Tjerk Kusters <tkusters@aweta.nl>, 
- Piotr Kwapulinski <piotr.kwapulinski@intel.com>, 
- Aleksandr Loktionov <aleksandr.loktionov@intel.com>, 
- Alexander Nowlin <alexander.nowlin@intel.com>
+ stable@vger.kernel.org, Tjerk Kusters <tkusters@aweta.nl>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794379866; l=11383;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794379866; l=14921;
  i=tkusters@aweta.nl; s=20260619; h=from:subject:message-id;
- bh=95tIkOQw9FnM4n+SnhGTWV0sfDwV/J7vTj7aJ4SuGn8=;
- b=S7ld3btc1petNC80UgSdCnbNyUkcWV6CSPuirvKb2tG70Jeou3bvWL8FXMZjOSgCc7PMAitbK
- PkllId5slK0ADtAl/rwsxMm2NAtkfUZK/S7I1edXFkCxpjaZVYwcA3U
+ bh=/1X3W0XTIg0dSxPNaaBrsYUdi1tbbhB17j02lXwsPfc=;
+ b=/Df1AYYv7SNqfbJ7TE8YA6yr87OtcStFOR4IiBhpyIQZw3eATP5yWPsXhdQNMRv7Vih+/nbpo
+ HzphgrNlQqOBgjXJBAJD44Y1gwOV/sUEl93snFlXcQnrsyeRjqLkB6/
 X-Developer-Key: i=tkusters@aweta.nl; a=ed25519;
  pk=JYRpYQ3+LrphEabgnxcbiOUpwvNP8WDDMcLzz+cwKsk=
 X-Endpoint-Received: by B4 Relay for tkusters@aweta.nl/20260619 with auth_id=831
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With Rx hardware timestamping enabled (e.g. by ptp4l), igb strips the
-16-byte inline timestamp header from every Rx buffer of a frame instead
-of only from the first one. A continuation buffer that starts with 8
-zero bytes loses 16 bytes, so jumbo frames with zero payload arrive
-short and are dropped.
+igb does not support XDP multi-buffer: igb_xdp_setup() only accepts an
+MTU whose frame fits in one Rx buffer, and the XDP program only sees
+the first buffer of a frame. The maximum receive length is not limited
+accordingly, though. RLPML is only lowered when the frame fits a
+build_skb buffer on systems with PAGE_SIZE < 8192 and no VFs. Otherwise
+the MAC still accepts frames of up to MAX_JUMBO_FRAME_SIZE while XDP is
+attached, for example at MTU 3000 on 3 KiB buffers, and at any MTU when
+PAGE_SIZE >= 8192. With VFs allocated, RLPML always stays at
+MAX_JUMBO_FRAME_SIZE and the PF pool limit in VMOLR is only lowered for
+frames that fit a build_skb buffer, so the same happens at MTU 3000.
 
-v3 used skb == NULL to find the first buffer of a frame. The Sashiko
-AI review pointed out that this does not hold when an XDP program
-consumes the first buffer of a frame that spans several buffers, so v3
-was sent back for rework.
+Such frames span several descriptors. When the program does not return
+XDP_PASS for the first buffer, no skb is built, and igb_clean_rx_irq()
+handles the next buffer of the same frame as the start of a new frame:
+it runs the program on it and may pass it to the stack as a bogus frame
+made from the middle of the original payload.
 
-The same question came up for igc. There, Maciej suggested not to track
-frame boundaries in the data path, but to make sure that frames never
-span several buffers while XDP is attached [1]. Paul Moses' igc v3 does
-that [2]. This version follows the same approach for igb:
+Limit the receive length to the configured maximum frame size while XDP
+is attached: in RLPML when no VFs are allocated, and in the PF pool's
+VMOLR otherwise, as RLPML then has to stay large for the VFs. Larger
+frames are dropped by the MAC.
 
-  1/3 limits the receive length (RLPML, or the PF pool's VMOLR with VFs)
-      to the configured frame size while XDP is attached, and leaves
-      room for the timestamp header in the XDP buffer size checks for
-      3 KiB, legacy-rx and PAGE_SIZE >= 8192 buffers. It also refuses
-      XDP with rx-all and legacy-rx changes while XDP is attached, as
-      both would break the limit. The limit is now set from
-      igb_configure() instead of igb_set_rx_mode(). With VFs, the PF
-      pool limit is also written on i354.
-  2/3 is v3, unchanged in code, with a note that it relies on 1/3.
-      The Reviewed-by and Tested-by tags of v3 are kept for that reason.
-  3/3 gives AF_XDP zero-copy rings a 2 KiB or 3 KiB hardware buffer
-      instead of rounding the XSK frame size down to 1 KiB. It refuses
-      XSK pools that cannot hold the current maximum frame plus the
-      timestamp header, and MTU changes that would no longer fit a bound
-      pool. Unlike the igc patch in [2], which checks against the
-      largest XDP MTU, this checks the current MTU, as igb allows XDP up
-      to MTU 3030 and a fixed check would rule out 2 KiB chunks.
-      Enabling VFs, which takes queues from the PF, is refused with
-      -EBUSY while an XSK pool is bound to a queue the PF would lose; the
-      core refuses ethtool -L in the same case. A pool on a queue hidden
-      in another way, for example after a fallback to MSI, is checked
-      again when its ring is set up.
+Also make sure that the limit holds:
 
-As in igc, 1/3 moves the RLPML programming out of igb_set_rx_mode(),
-which can run without RTNL, into igb_configure(), which runs when the
-interface is (re)configured, before Rx is enabled. This includes the PF
-pool limit in VMOLR, which igb_set_rx_mode() now leaves as it is.
-Attaching or removing XDP on a running interface goes through
-igb_close() and igb_open(), and an MTU change through igb_down() and
-igb_up(), so the limit is updated before Rx is enabled again.
+- Leave room for the inline Rx timestamp header when checking that the
+  frame fits in one Rx buffer, on XDP setup and on MTU change, where the
+  limit is the hardware buffer size. This lowers the largest MTU
+  accepted with XDP by 16 bytes: from 3046 to 3030 on 3 KiB buffers,
+  and from 2022 to 2006 with legacy-rx or PAGE_SIZE >= 8192. Setups that
+  use XDP at those MTUs will have to lower the MTU. The build_skb frame
+  limit used with 2 KiB buffers is kept, so XDP still attaches up to MTU
+  1510 on x86. The header is only prepended by 82580 and later MACs; the
+  room is reserved on all MACs for simplicity.
+- Base that check on the buffer size that igb_set_rx_buffer_len() will
+  select, not on the ring flags, which are only updated when the rings
+  are configured and can be stale on an interface that is down. As a
+  result, an MTU change with XDP attached can now also move from 2 KiB
+  to 3 KiB buffers. The check is skipped when XDP is removed.
+- Refuse XDP while rx-all is enabled, and keep rx-all off while XDP is
+  attached, as the MAC then also stores frames longer than RLPML. If
+  rx-all was requested meanwhile, it is turned on when XDP is removed.
+- Refuse to change the legacy-rx private flag while XDP is attached, as
+  that changes the Rx buffer size without checking it against the MTU.
+- Program both limits from igb_configure(), which runs when the
+  interface is (re)configured, before Rx is enabled, and no longer from
+  igb_set_rx_mode(), which can also run without RTNL, for example on an
+  IPv6 multicast join or a VF mailbox request. Otherwise such a call
+  during an XDP removal or an MTU change could apply the new limit while
+  the rings still use the old buffers.
+  Attaching or removing an XDP program on a running interface goes
+  through igb_close() and igb_open(), and an MTU change through
+  igb_down() and igb_up(), so igb_configure() runs in both cases.
+  igb_set_rx_mode() still updates other bits of the PF pool's VMOLR. The
+  core calls it under the address lock, so the limit is changed under
+  that lock. The VF mailbox path calls it from the interrupt handler
+  without the lock, but interrupts are masked while igb_configure()
+  runs.
 
-The Sashiko reviews of v4 and v5 also point out three older issues
-that this series does not change:
+This follows the same approach as the igc fix that limits RLPML while
+XDP is attached. igb_set_rx_mode() does not touch VMOLR on i354, but
+i354 can have VFs, and then the PF pool limit is the only one. So it is
+also written on i354 when VFs are allocated, with or without XDP.
 
-- On 2 KiB build_skb rings, igb_skb_pad() leaves exactly
-  IGB_MAX_FRAME_BUILD_SKB bytes before skb_shared_info, with no room for
-  the 16-byte timestamp header. With Rx timestamping on, frame and
-  header can overlap skb_shared_info by up to 12 bytes, or 2 bytes at
-  the XDP limit at MTU 1500. This dates from 9cbc948b5a20 ("igb: add XDP
-  support"). I left it out of this series: it is a separate problem from
-  the one fixed here, and a fix changes the buffer layout and the XDP
-  headroom for all igb users, so it needs its own review and testing.
-- igb_set_vf_rlpml() let a VF set other VMOLR bits of its own pool. That
-  is fixed separately: https://lore.kernel.org/all/20261104-igb-vf-rlpml-v1-1-729621b60eee@aweta.nl/
-- igb_alloc_rx_buffers_zc() does not clear the length of the next
-  descriptor after a partial refill at the end of the ring, so
-  igb_clean_rx_irq_zc() can read a stale descriptor. igc clears it in
-  that case. This is a separate zero-copy problem as well.
+Tested on an I350 at MTU 3000 with Rx timestamping on and xdp-filter
+dropping all IPv4 from the peer: 8242-byte frames are now dropped by the
+MAC (rx_long_length_errors), instead of their last two buffers being
+delivered as a separate frame. XDP attach at MTU 1500 and 3030 still
+works, at MTU 3046 it is refused, as is an MTU change from 3030 to 3046
+with XDP attached; an MTU change from 1500 to 3000 with XDP attached
+now works. With XDP attached, rx-all stays off and the legacy-rx flag
+cannot be changed. XDP attach is refused with rx-all on, and at MTU
+3000 with legacy-rx on, also when the flag was set while the interface
+was down. MTU changes between 1500 and 3000 with XDP attached, while
+the peer sent 3000-byte zero-payload frames, let no frame through as a
+separate frame.
 
-How to reproduce
-----------------
-Receiver with igb (eth0), peer with MTU 8228. hwstamp_ctl turns on Rx
-timestamping with filter ALL, no ptp4l needed; this ping method is
-taken from Paul's igc report. One host with two ports also works if
-the sending port is moved into its own network namespace.
+With two VFs allocated, the same frames are counted by the MAC but
+dropped by the PF pool limit in VMOLR before they reach the Rx queue;
+without this patch their last two buffers are again delivered as a
+separate frame. Read back from the registers, RLPML then stays at 9728
+and the PF pool limit is 3026 at MTU 3000 and 1526 at MTU 1500 with XDP
+attached. In repeated runs of about 200 MTU changes each, the limit was
+right after every change, except for one read in one run, where the
+value was not logged; eight reruns showed no mismatch.
 
-1) Truncated jumbo frames (patch 2)
+The i354 path was checked with the driver built so that the I350 takes
+the i354 branches for VMOLR. With two VFs and XDP attached, the PF pool
+limit kept its old value of 9728 when the VMOLR write was skipped on
+i354, and read back as 3026 at MTU 3000 and 1526 at MTU 1500 with this
+patch. Only the registers were checked; I have no i354 to test on.
 
-  receiver:  ip link set eth0 mtu 8228
-             hwstamp_ctl -i eth0 -r 1
-  peer:      ping -c 5 -M do -s 8200 -p 00 <receiver>
-
-  Without the series there are no replies, and IpExtInTruncatedPkts
-  goes up by one per frame. With the series all requests are answered.
-
-2) XDP consumes the first buffer (patch 1)
-
-  receiver:  ip link set eth0 mtu 3000
-             hwstamp_ctl -i eth0 -r 1
-             xdp-filter load -m native eth0
-             xdp-filter ip <peer> -m src
-             tcpdump -nn -e -i eth0 'ether src 00:00:00:00:00:00'
-  peer:      ping -c 3 -M do -s 8200 -p 00 <receiver>
-
-  At MTU 3000 XDP can attach, but without patch 1 the MAC still accepts
-  the 8242-byte frames, which then span three Rx buffers. xdp-filter
-  drops the first one, and the rest reaches the stack as a separate
-  frame with all-zero MAC addresses:
-
-    without the series    5154 bytes (header stripped twice)
-    v3 alone              5170 bytes (stripped once)
-    this series           no frame; rx_long_length_errors +1 per frame
-
-3) AF_XDP zero-copy with 2 KiB chunks (patch 3)
-
-  receiver:  ip link set eth0 mtu 1500
-             ethtool -L eth0 combined 1
-             hwstamp_ctl -i eth0 -r 1
-             xdpsock -i eth0 -q 0 -r -z -N -f 2048
-  peer:      ping -c 50 -i 0.02 -s 1472 <receiver>
-
-  xdpsock is from xdp-project/bpf-examples (AF_XDP-example). It also
-  takes ARP, so the peer needs a fresh ARP entry before it starts.
-  Compare rx_packets (MAC) with rx_queue_0_packets in ethtool -S:
-
-    without the series    68 frames, 118 descriptors
-    this series           64 frames, 64 descriptors
-
-  At MTU 3000, -f 4096 receives 3014-byte frames in one buffer. Binding
-  with -f 2048 at MTU 3000 was refused with EOPNOTSUPP by the new check
-  on the 6.14.9 test kernel; current kernels refuse it earlier, in
-  xp_assign_dev(), with EINVAL.
-
-Tested on an I350 with these patches applied to the igb driver of
-kernel 6.14.9 (the series itself is against v7.1-rc7), with the steps
-above: results as listed. The v3 line is from an earlier run with an
-XDP program dropping ICMP. Also checked: XDP attach at MTU 1500 and
-3030 works, at MTU 3046 it is refused, as is an MTU change to 3046
-with XDP attached. With two VFs allocated (booted with pci=realloc),
-step 2 gives the same picture: three leftover frames without the
-series, none with it, as the PF pool limit in VMOLR drops the frames.
-In step 3, 98-byte frames and 4 KiB chunks take one descriptor per
-frame with and without the series. With XDP attached, rx-all stays off
-and legacy-rx cannot be changed, and XDP attach is refused with rx-all
-on, or with legacy-rx on at MTU 3000, also when it was set while the
-interface was down. RLPML and the PF pool's VMOLR limit read back as
-expected with and without XDP and VFs. In repeated runs of about 200 MTU
-changes each with XDP and two VFs, the limit was right after every
-change, except for one read in one run, where the value was not logged;
-eight reruns showed no mismatch.
-
-The steps above were repeated on kernel 7.3.1 with the series applied
-to the v7.3 igb driver, with the same results, including step 2 with
-VFs. There, enabling two VFs while xdpsock was bound to queue 1 was
-refused with EBUSY; with the socket on queue 0 it worked. With the
-driver built so that the I350 keeps two Rx queues with VFs, as an 82576
-does, the VF enable with the socket on queue 1 was refused as well. The
-i354 path was checked with the driver built so that the I350 takes the
-i354 branches for VMOLR: with two VFs and XDP attached, the PF pool
-limit kept its old value of 9728 with v5, which skipped i354, and read
-back as 3026 at MTU 3000 and 1526 at MTU 1500 with v6. Only the
-registers were checked; I have no i354 to test on.
-Not tested: PAGE_SIZE >= 8192.
-
-The patches, their descriptions and this cover letter were prepared
-with the help of an AI coding assistant (Claude). I reviewed them and
-ran the tests above on my test bench.
-
-[1] https://lore.kernel.org/all/20261025065154.2037149-1-p@1g4.org/
-[2] https://lore.kernel.org/all/20261028083344.3047350-1-p@1g4.org/
-
-Changes in v6:
-- Patch 1: with VFs, also write the PF pool limit on i354 (Sashiko).
-- Patch 3: refuse to enable VFs with -EBUSY while an XSK pool is bound
-  to a queue the PF would lose (Maciej). Restore the DMA coalescing flag
-  on that error. Keep the frame size check in igb_xsk_pool() only for
-  queues hidden in another way, such as a fallback to MSI.
-- Patch 4 dropped: with patch 3 the hardware does not split frames in
-  zero-copy mode, so it only added dead code to the hot path (Maciej).
-- Link to v5: https://patch.msgid.link/20261104-igb-rx-ts-fix-v5-0-bf4b4367129a@aweta.nl
-
-Changes in v5:
-- Patch 1: v4 also subtracted the timestamp header from the build_skb
-  frame limit, so XDP no longer attached at MTU 1495-1510 on x86
-  (1493-1508 where NET_IP_ALIGN is 2), including the default MTU 1500.
-  Only subtract the header where the limit is the hardware buffer size,
-  and compute it from the adapter state instead of the ring flags. Skip
-  the check when XDP is removed, so a program can always be detached.
-- Patch 1: refuse XDP with rx-all and legacy-rx changes with XDP
-  attached, and turn rx-all back on after XDP removal if it was
-  requested meanwhile. Program RLPML and the PF pool limit from
-  igb_configure() instead of igb_set_rx_mode(). With XDP attached, an
-  MTU change can now move from 2 KiB to 3 KiB buffers. Added
-  Suggested-by: Maciej.
-- Patch 1: the issues above were also reported by the Sashiko review
-  of v4.
-- Patch 2: no code change. Commit message: igc is fixed by Paul's
-  series, not by this patch; the loss is per continuation buffer, not
-  only at the tail; the possible size wrap is described (Sashiko).
-- New patch 3: AF_XDP zero-copy Rx buffer size, as asked by Maciej.
-- New patch 4: drop zero-copy frames that span several descriptors;
-  depends on patch 3.
-- Link to v4: https://patch.msgid.link/20261102-igb-rx-ts-fix-v4-0-8785124c5d23@aweta.nl
-
-Changes in v4:
-- New patch 1: limit the receive length while XDP is attached, so that
-  skb == NULL reliably marks the first buffer (Sashiko review), as
-  done for igc.
-- Patch 2: no code change; added a note that it relies on patch 1.
-- Link to v3: https://patch.msgid.link/20260625-igb-rx-ts-fix-v3-1-99b3efa08dca@aweta.nl
-
+Link: https://lore.kernel.org/all/20261028083344.3047350-3-p@1g4.org/
+Fixes: 9cbc948b5a20 ("igb: add XDP support")
+Cc: stable@vger.kernel.org
+Suggested-by: Maciej Fijalkowski <maciej.fijalkowski@intel.com>
+Signed-off-by: Tjerk Kusters <tkusters@aweta.nl>
 ---
-Tjerk Kusters (3):
-      igb: do not let XDP frames span more than one Rx buffer
-      igb: only strip Rx timestamp header on the first buffer of a frame
-      igb: do not split AF_XDP zero-copy frames over several Rx buffers
-
- drivers/net/ethernet/intel/igb/igb.h         |   9 ++
  drivers/net/ethernet/intel/igb/igb_ethtool.c |   9 ++
- drivers/net/ethernet/intel/igb/igb_main.c    | 207 +++++++++++++++++++++------
- drivers/net/ethernet/intel/igb/igb_xsk.c     |  20 ++-
- 4 files changed, 197 insertions(+), 48 deletions(-)
----
-base-commit: 2d3090a8aeb596a26935db0955d46c9a5db5c6ce
-change-id: 20260619-igb-rx-ts-fix-cd70585ee316
+ drivers/net/ethernet/intel/igb/igb_main.c    | 149 +++++++++++++++++++--------
+ 2 files changed, 116 insertions(+), 42 deletions(-)
 
-Best regards,
---  
-Tjerk Kusters <tkusters@aweta.nl>
+diff --git a/drivers/net/ethernet/intel/igb/igb_ethtool.c b/drivers/net/ethernet/intel/igb/igb_ethtool.c
+index f7938c1da835..4f2891fca282 100644
+--- a/drivers/net/ethernet/intel/igb/igb_ethtool.c
++++ b/drivers/net/ethernet/intel/igb/igb_ethtool.c
+@@ -3438,6 +3438,15 @@ static int igb_set_priv_flags(struct net_device *netdev, u32 priv_flags)
+ 		flags |= IGB_FLAG_RX_LEGACY;
+ 
+ 	if (flags != adapter->flags) {
++		/* the Rx buffer size depends on this flag, see
++		 * igb_xdp_setup()
++		 */
++		if (igb_xdp_is_enabled(adapter)) {
++			netdev_warn(netdev,
++				    "Cannot change legacy-rx while XDP is attached\n");
++			return -EOPNOTSUPP;
++		}
++
+ 		adapter->flags = flags;
+ 
+ 		/* reset interface to repopulate queues */
+diff --git a/drivers/net/ethernet/intel/igb/igb_main.c b/drivers/net/ethernet/intel/igb/igb_main.c
+index ce91dda00ec0..711a67f0bd80 100644
+--- a/drivers/net/ethernet/intel/igb/igb_main.c
++++ b/drivers/net/ethernet/intel/igb/igb_main.c
+@@ -1964,6 +1964,57 @@ static void igb_setup_tx_mode(struct igb_adapter *adapter)
+ 		   "enabled" : "disabled");
+ }
+ 
++/**
++ *  igb_set_rlpml - set the receive length limits
++ *  @adapter: private board structure
++ *
++ *  Called from igb_configure(), before Rx is enabled. igb_set_rx_mode() can
++ *  also run without RTNL, so it does not change these limits.
++ **/
++static void igb_set_rlpml(struct igb_adapter *adapter)
++{
++	u32 rlpml = MAX_JUMBO_FRAME_SIZE, pool_rlpml = MAX_JUMBO_FRAME_SIZE;
++	unsigned int vfn = adapter->vfs_allocated_count;
++	struct e1000_hw *hw = &adapter->hw;
++	u32 vmolr;
++
++#if (PAGE_SIZE < 8192)
++	/* restrict as needed to support build_skb */
++	if (adapter->max_frame_size <= IGB_MAX_FRAME_BUILD_SKB) {
++		pool_rlpml = IGB_MAX_FRAME_BUILD_SKB;
++		if (!vfn)
++			rlpml = IGB_MAX_FRAME_BUILD_SKB;
++	}
++#endif
++	/* XDP does not support frames that span more than one Rx buffer.
++	 * With VFs the global limit stays large and the PF pool is limited
++	 * through VMOLR.
++	 */
++	if (igb_xdp_is_enabled(adapter)) {
++		pool_rlpml = min(pool_rlpml, adapter->max_frame_size);
++		if (!vfn)
++			rlpml = min(rlpml, adapter->max_frame_size);
++	}
++	wr32(E1000_RLPML, rlpml);
++
++	/* the PF pool's VMOLR is used on these MACs, see igb_set_rx_mode(),
++	 * and with VFs it carries the only limit for the PF, also on i354
++	 */
++	if (hw->mac.type < e1000_82576 ||
++	    (hw->mac.type > e1000_i350 && !vfn))
++		return;
++
++	/* igb_set_rx_mode() also updates this register, and the core calls
++	 * it under the address lock
++	 */
++	netif_addr_lock_bh(adapter->netdev);
++	vmolr = rd32(E1000_VMOLR(vfn));
++	vmolr &= ~E1000_VMOLR_RLPML_MASK;
++	vmolr |= pool_rlpml | E1000_VMOLR_LPE;
++	wr32(E1000_VMOLR(vfn), vmolr);
++	netif_addr_unlock_bh(adapter->netdev);
++}
++
+ /**
+  *  igb_configure - configure the hardware for RX and TX
+  *  @adapter: private board structure
+@@ -1981,6 +2032,7 @@ static void igb_configure(struct igb_adapter *adapter)
+ 
+ 	igb_setup_tctl(adapter);
+ 	igb_setup_mrqc(adapter);
++	igb_set_rlpml(adapter);
+ 	igb_setup_rctl(adapter);
+ 
+ 	igb_nfc_filter_restore(adapter);
+@@ -2468,6 +2520,14 @@ void igb_reset(struct igb_adapter *adapter)
+ static netdev_features_t igb_fix_features(struct net_device *netdev,
+ 	netdev_features_t features)
+ {
++	struct igb_adapter *adapter = netdev_priv(netdev);
++
++	/* with rx-all the MAC also stores frames longer than RLPML, which
++	 * XDP cannot handle
++	 */
++	if (igb_xdp_is_enabled(adapter))
++		features &= ~NETIF_F_RXALL;
++
+ 	/* Since there is no support for separate Rx/Tx vlan accel
+ 	 * enable/disable make sure Tx flag is always in same state as Rx.
+ 	 */
+@@ -2886,6 +2946,27 @@ static int igb_setup_tc(struct net_device *dev, enum tc_setup_type type,
+ 	}
+ }
+ 
++/* Check that a frame fits in one Rx buffer together with the inline Rx
++ * timestamp header, for the buffer size igb_set_rx_buffer_len() selects.
++ * The ring flags are only updated when the rings are configured, so they
++ * are not used here. For build_skb rings the frame is limited to
++ * IGB_MAX_FRAME_BUILD_SKB, which is below the 2 KiB hardware buffer size
++ * even with the header.
++ */
++static bool igb_xdp_frame_fits(struct igb_adapter *adapter, int max_frame)
++{
++#if (PAGE_SIZE < 8192)
++	if (!(adapter->flags & IGB_FLAG_RX_LEGACY)) {
++		if (max_frame <= IGB_MAX_FRAME_BUILD_SKB &&
++		    !IGB_2K_TOO_SMALL_WITH_PADDING)
++			return true;
++
++		return max_frame + IGB_TS_HDR_LEN <= IGB_RXBUFFER_3072;
++	}
++#endif
++	return max_frame + IGB_TS_HDR_LEN <= IGB_RXBUFFER_2048;
++}
++
+ static int igb_xdp_setup(struct net_device *dev, struct netdev_bpf *bpf)
+ {
+ 	int i, frame_size = dev->mtu + IGB_ETH_PKT_HDR_PAD;
+@@ -2894,17 +2975,21 @@ static int igb_xdp_setup(struct net_device *dev, struct netdev_bpf *bpf)
+ 	bool running = netif_running(dev);
+ 	bool need_reset;
+ 
+-	/* verify igb ring attributes are sufficient for XDP */
+-	for (i = 0; i < adapter->num_rx_queues; i++) {
+-		struct igb_ring *ring = adapter->rx_ring[i];
++	/* with rx-all the MAC also stores frames longer than RLPML */
++	if (prog && (dev->features & NETIF_F_RXALL)) {
++		NL_SET_ERR_MSG_MOD(bpf->extack, "XDP is not supported with rx-all");
++		return -EOPNOTSUPP;
++	}
+ 
+-		if (frame_size > igb_rx_bufsz(ring)) {
+-			NL_SET_ERR_MSG_MOD(bpf->extack,
+-					   "The RX buffer size is too small for the frame size");
+-			netdev_warn(dev, "XDP RX buffer size %d is too small for the frame size %d\n",
+-				    igb_rx_bufsz(ring), frame_size);
+-			return -EINVAL;
+-		}
++	/* verify igb ring attributes are sufficient for XDP, leaving room
++	 * for the inline Rx timestamp header
++	 */
++	if (prog && !igb_xdp_frame_fits(adapter, frame_size)) {
++		NL_SET_ERR_MSG_MOD(bpf->extack,
++				   "The RX buffer size is too small for the frame size");
++		netdev_warn(dev, "XDP RX buffer size is too small for the frame size %d\n",
++			    frame_size);
++		return -EINVAL;
+ 	}
+ 
+ 	old_prog = xchg(&adapter->xdp_prog, prog);
+@@ -2935,6 +3020,10 @@ static int igb_xdp_setup(struct net_device *dev, struct netdev_bpf *bpf)
+ 	if (running)
+ 		igb_open(dev);
+ 
++	/* rx-all may have been requested while XDP was attached */
++	if (!prog && (dev->wanted_features & NETIF_F_RXALL))
++		netdev_update_features(dev);
++
+ 	return 0;
+ }
+ 
+@@ -5323,7 +5412,7 @@ static void igb_set_rx_mode(struct net_device *netdev)
+ 	struct igb_adapter *adapter = netdev_priv(netdev);
+ 	struct e1000_hw *hw = &adapter->hw;
+ 	unsigned int vfn = adapter->vfs_allocated_count;
+-	u32 rctl = 0, vmolr = 0, rlpml = MAX_JUMBO_FRAME_SIZE;
++	u32 rctl = 0, vmolr = 0;
+ 	int count;
+ 
+ 	/* Check for Promiscuous and All Multicast modes */
+@@ -5380,14 +5469,6 @@ static void igb_set_rx_mode(struct net_device *netdev)
+ 				     E1000_RCTL_VFE);
+ 	wr32(E1000_RCTL, rctl);
+ 
+-#if (PAGE_SIZE < 8192)
+-	if (!adapter->vfs_allocated_count) {
+-		if (adapter->max_frame_size <= IGB_MAX_FRAME_BUILD_SKB)
+-			rlpml = IGB_MAX_FRAME_BUILD_SKB;
+-	}
+-#endif
+-	wr32(E1000_RLPML, rlpml);
+-
+ 	/* In order to support SR-IOV and eventually VMDq it is necessary to set
+ 	 * the VMOLR to enable the appropriate modes.  Without this workaround
+ 	 * we will have issues with VLAN tag stripping not being done for frames
+@@ -5399,19 +5480,10 @@ static void igb_set_rx_mode(struct net_device *netdev)
+ 	/* set UTA to appropriate mode */
+ 	igb_set_uta(adapter, !!(vmolr & E1000_VMOLR_ROPE));
+ 
++	/* keep the receive length limit set by igb_set_rlpml() */
+ 	vmolr |= rd32(E1000_VMOLR(vfn)) &
+ 		 ~(E1000_VMOLR_ROPE | E1000_VMOLR_MPME | E1000_VMOLR_ROMPE);
+ 
+-	/* enable Rx jumbo frames, restrict as needed to support build_skb */
+-	vmolr &= ~E1000_VMOLR_RLPML_MASK;
+-#if (PAGE_SIZE < 8192)
+-	if (adapter->max_frame_size <= IGB_MAX_FRAME_BUILD_SKB)
+-		vmolr |= IGB_MAX_FRAME_BUILD_SKB;
+-	else
+-#endif
+-		vmolr |= MAX_JUMBO_FRAME_SIZE;
+-	vmolr |= E1000_VMOLR_LPE;
+-
+ 	wr32(E1000_VMOLR(vfn), vmolr);
+ 
+ 	igb_restore_vf_multicasts(adapter);
+@@ -6707,19 +6779,12 @@ static int igb_change_mtu(struct net_device *netdev, int new_mtu)
+ 	struct igb_adapter *adapter = netdev_priv(netdev);
+ 	int max_frame = new_mtu + IGB_ETH_PKT_HDR_PAD;
+ 
+-	if (igb_xdp_is_enabled(adapter)) {
+-		int i;
+-
+-		for (i = 0; i < adapter->num_rx_queues; i++) {
+-			struct igb_ring *ring = adapter->rx_ring[i];
+-
+-			if (max_frame > igb_rx_bufsz(ring)) {
+-				netdev_warn(adapter->netdev,
+-					    "Requested MTU size is not supported with XDP. Max frame size is %d\n",
+-					    max_frame);
+-				return -EINVAL;
+-			}
+-		}
++	if (igb_xdp_is_enabled(adapter) &&
++	    !igb_xdp_frame_fits(adapter, max_frame)) {
++		netdev_warn(adapter->netdev,
++			    "Requested MTU size is not supported with XDP. Frame size is %d\n",
++			    max_frame);
++		return -EINVAL;
+ 	}
+ 
+ 	/* adjust max frame to be at least the size of a standard frame */
+
+-- 
+2.27.0
 
