@@ -1,91 +1,67 @@
-From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
-Date: Wed, 11 Nov 2026 09:48:50 +0800
-Subject: [PATCH v2] perf parse-events: Don't report unreadable tracepoint
- globs as unknown
+From: Igor Velkov <iav@iav.lv>
+Date: Wed, 11 Nov 2026 04:05:28 +0200
+Subject: [PATCH] pinctrl: rk805: Add the platform module alias
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-tp-glob-errno-v2-1-ca45efb07d31@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMQQrCMBCF4auUWTuSCZhaV95Dumji2A60SUlKU
- Erubuze5f/gfTskjsIJbs0OkbMkCb6GPjXgpsGPjPKsDVppQ0QKtxXHOVjkGH1A02oeiG17NRb
- qZ438kvfhPfrak6QtxM/BZ/qt/6RMSGicdtaozl06dR+XQeazCwv0pZQvcthdzqoAAAA=
-X-Change-ID: 20261110-tp-glob-errno-672ea1eb786b
-To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- James Clark <james.clark@linaro.org>
-Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Hang Zhengyang <hang.zhengyang1010@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794361735; l=2091;
- i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
- bh=oKOhzpzzihzjzROHP90IK3skpmdwiZ3od9qtUe5u8x0=;
- b=X16E1srTe/q4EZ1klblgXdNEd7t6M0s9GxwKTspiFMc3meJyyDw7zwYCiW72kql09RdtaBgze
- FAH1G29AinGAnydJqtp1/bdG2+cEBUnrugBG89z7HnMtlYT7dfFzdwa
-X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
- pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
-X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
+Message-Id: <20261111-rk805-pinctrl-alias-v1-1-e0c6cdd5b823@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAGfN82oC/x2M0QpAQBAAf0X7bOtcHPkVeVhnsdHRnqTk313mb
+ R5mHoiswhHa7AHlS6LsIUmRZ+AXCjOjjMnBGuuKBOramAoPCf7UDWkTiliPpqHSOucHglQeypP
+ c/7Xr3/cDlZuxA2UAAAA=
+To: Linus Walleij <linusw@kernel.org>
+Cc: Heiko Stuebner <heiko@sntech.de>, linux-gpio@vger.kernel.org, 
+ linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>, 
+ stable@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1626; i=iav@iav.lv;
+ h=from:subject:message-id; bh=Zndba/YdME6GY+mxEHq0lf95NjIbiNPv7gf3rw4Jcj4=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmfz2Z2pj24epDrzR62HVc+Wr7yZ/Bw37x9jeT+b6/tH
+ TKT5a4zdpSyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJzBJh+MV86o3L96szfuwu
+ kg+7F35kY5XC8bgWv9bNs2O3cbddvL+HkWGJ14Zf3UsfTMkPuLS8LPP06eW2XMbas2c6H9Kf/m/
+ i4SAmAA==
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As a normal user, a tracepoint glob gets the wrong error:
+The rk8xx MFD core registers the pin controller of the RK805, RK806 and
+RK816 as a platform device named "rk805-pinctrl", but the driver has
+neither a MODULE_ALIAS nor a platform_device_id table. Built as a module
+it is never loaded on its own, and everything that uses the PMIC GPIOs
+waits for it: on the Pine64 ROCK64 the gpio-leds device with both
+LEDs stays in deferred probe.
 
-  $ perf stat -e 'syscalls:*' true
-  event syntax error: 'syscalls:*'
-                       \___ unknown tracepoint
+The other rk8xx cell drivers (rk805-pwrkey, rk808-regulator, rtc-rk808,
+clk-rk808) carry such an alias. Add one here as well.
 
-  Error:  File /sys/kernel/tracing//events/syscalls/* not found.
-  Hint:   Perhaps this kernel misses some CONFIG_ setting to enable this feature?.
-
-add_tracepoint_multi_sys() returns ENOENT when nothing matched and
-drops the error from reading the directories.  Return that error
-instead, so the glob reports what a plain tracepoint name does:
-
-  $ perf stat -e 'syscalls:*' true
-  event syntax error: 'syscalls:*'
-                       \___ can't access trace events
-
-  Error:  No permissions to read /sys/kernel/tracing//events/syscalls/*
-  Hint:   Try 'sudo mount -o remount,mode=755 /sys/kernel/tracing/'
-
-Fixes: d002aab87de8 ("perf tp_pmu: Factor existing tracepoint logic to new file")
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Fixes: ea479996c79b ("pinctrl: Add pinctrl driver for the RK805 PMIC")
+Cc: stable@vger.kernel.org
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-Thanks for the review, Ian.
+Tested on a Pine64 ROCK64 (RK805) with v7.3.4 and CONFIG_PINCTRL_RK805=m:
+without the alias the module is not loaded and both LEDs stay in
+deferred probe over three boots; with it the module loads at boot, both
+LEDs register and the deferred list is empty.
 ---
-Changes in v2:
-- Show the output after the fix (Ian)
-- Link to v1: https://lore.kernel.org/r/20261110-tp-glob-errno-v1-1-6c2cb609c590@gmail.com
----
- tools/perf/util/parse-events.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ drivers/pinctrl/pinctrl-rk805.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/tools/perf/util/parse-events.c b/tools/perf/util/parse-events.c
-index f3ba70d4f76b..8a6d5a13863d 100644
---- a/tools/perf/util/parse-events.c
-+++ b/tools/perf/util/parse-events.c
-@@ -572,8 +572,10 @@ static int add_tracepoint_multi_sys(struct parse_events_state *parse_state,
- 		ret = tp_pmu__for_each_tp_sys(&args, add_tracepoint_multi_sys_cb);
- 	}
- 	if (args.found == 0) {
--		tracepoint_error(err, ENOENT, sys_glob, evt_glob, loc->first_column);
--		return -ENOENT;
-+		if (!ret)
-+			ret = -ENOENT;
-+		tracepoint_error(err, ret, sys_glob, evt_glob, loc->first_column);
-+		return ret;
- 	}
- 	return ret;
- }
+diff --git a/drivers/pinctrl/pinctrl-rk805.c b/drivers/pinctrl/pinctrl-rk805.c
+index 22f576337faa..694a47d95e17 100644
+--- a/drivers/pinctrl/pinctrl-rk805.c
++++ b/drivers/pinctrl/pinctrl-rk805.c
+@@ -700,3 +700,4 @@ MODULE_DESCRIPTION("RK805 pin control and GPIO driver");
+ MODULE_AUTHOR("Xu Shengfei <xsf@rock-chips.com>");
+ MODULE_AUTHOR("Joseph Chen <chenjh@rock-chips.com>");
+ MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform:rk805-pinctrl");
 
 ---
-base-commit: 13a8d580433a3b72b10be34f0e26787fe5659d3c
-change-id: 20261110-tp-glob-errno-672ea1eb786b
+base-commit: 4bc88b10a232db13219667e69616f6d2250d5e5f
+change-id: 20261111-rk805-pinctrl-alias-7d08a4266cba
 
 Best regards,
 -- 
-Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Igor Velkov <iav@iav.lv>
 
