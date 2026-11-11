@@ -1,261 +1,114 @@
-From: =?utf-8?q?Eren_=C3=96zen?= <erenozen@protonmail.com>
-Date: Thu, 12 Nov 2026 00:42:01 +0300
-Subject: [PATCH] platform/x86: huawei-wmi: Set battery charge thresholds
- through \SBCM
+From: Mani Tofigh <mt4022@columbia.edu>
+Date: Wed, 11 Nov 2026 16:51:43 -0500
+Subject: [PATCH] f2fs: don't fall back to the older checkpoint on a read
+ error
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261112-huawei-wmi-charge-mode-v1-1-89974ab1e859@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MQQqDMBAF0KsMf+2Ak4rSXKV0EZKJmYVaEloF8
- e4F3wHeiabVtMHTiao/a7at8CQdIZawzsqW4Amud6OIOC7fsKvxvhjHEuqsvGxJecpDjs9xkEe
- f0BE+VbMdd/x6X9cfbHNpbWgAAAA=
-X-Change-ID: 20261112-huawei-wmi-charge-mode-7f4fc964130d
-To: Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
-Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Eren_=C3=96zen?= <erenozen@protonmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794433329; l=8844;
- i=erenozen@protonmail.com; s=20261110; h=from:subject:message-id;
- bh=nxTo3yrgLY39Tbu/qZyO+niDlk6IopPlQicF8+c6U5M=;
- b=qt6MLNtiiC8TzEN0lqM6cRvjvS3dlAAcp3BQ6SCu3pKDkwNXypDRCE61VRGqVmmmVjxTXD1Sz
- J86/ulgdSe5AG7sfDiKazdSJpn8X4b/nZnhtiD5eJEtR6qUBfSSsFZb
-X-Developer-Key: i=erenozen@protonmail.com; a=ed25519;
- pk=tPAwfVmIbYF3QziJ3LcoTIZDU12BsjVK+EkAB9nN1gA=
-X-Endpoint-Received: by B4 Relay for erenozen@protonmail.com/20261110 with auth_id=1479
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261111-f2fs-cp-read-error-v1-1-a30ede66e589@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMOw6DQAxF0a0g17HETPgo2UqUAowNTgHIJggJs
+ fdM4HWneHcHZ1N2eGY7GK/qOo0J4ZYBDc3YM2qXDDGPVUhDieJIMxo3HbLZZCj3R1tToKqQEtJ
+ xNhbdzujrfdm/7Ydp+ZfgOH5OPmHEdgAAAA==
+X-Change-ID: 20261111-f2fs-cp-read-error-f39b7c1c64f5
+To: Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>
+Cc: linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org, 
+ tz2294@columbia.edu, stable@kernel.org, Mani Tofigh <mt4022@columbia.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794433902; l=3204;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=XjX2qFti2q+oUj8LyAqSc1Ajj/P6RtOkjfwWfSeWPYg=;
+ b=uWMZPqjz0pg/OiaLYsHX47sNdInhj4oH1koQiqWYRL6KI2YMQwvz5qlixoz9L39oAbk09Vqv3
+ rkZRDjTRdzlCW0fofOTdYcvkxxuU5JPtxryOEPhjR20GrcPBoPF5+dF
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Newer Huawei firmware implements \GBCM/\SBCM ("battery charge mode",
-HWMI functions 0x1603 and 0x1503) next to \GBTT/\SBTT. Besides a pair
-of thresholds, they hold a charge mode and a parameter byte of unknown
-meaning.
+One read error on the newest checkpoint pack at mount rolls f2fs back to
+the older checkpoint for good.  Everything synced since then is lost,
+even if the error was transient.
 
-On the HUAWEI MateBook 16 (CREM-WXX9, BIOS 2.32), the charge mode
-decides whether the EC uses the thresholds returned by \GBTT. With the
-charger connected and the battery above the end threshold, the battery
-discharged in charge modes 1, 2 and 3, but charged in modes 0 and 4.
+get_checkpoint_version() returns -EIO when a cp block can't be read, and
+validate_checkpoint() treats that like a bad CRC.
+f2fs_get_valid_checkpoint() then mounts the other pack, and the next
+checkpoint overwrites the pack it couldn't read.  E.g., with a dm error
+target over the first block of the newest pack for the mount only:
 
-The driver disables the limit by writing 0/100 through \SBTT, which
-stores it as 0/0. On this machine that switches the EC to charge mode 4
-("smart charge" in Huawei's PC Manager), after which \GBTT reports
-40/70 and so does the driver. In this mode, with the charger connected,
-the battery charged from 75% to 87% in 20 minutes and was still
-charging (at 81% it had not started charging).
+  write OLD; sync; write NEW; sync; <power cut>
+  mount /dev/mapper/err /mnt   # mounts the older checkpoint
+  umount /mnt
+  mount /dev/ram0 /mnt         # NEW is missing
 
-A later \SBTT write does not necessarily leave charge mode 4. 40/70
-switched the EC back to charge mode 1, but with 75/80, a pair UPower
-writes on this machine, the EC stayed in charge mode 4 and the battery
-kept charging at 88% while the driver reported 75/80. So once GNOME's
-"Preserve Battery Health" setting has been turned off, turning it back
-on can leave the battery charging past the limit.
+Return -EIO from validate_checkpoint() and fail the mount instead, as we
+already do when a payload block of the chosen pack can't be read.  We
+can't tell which pack is newer without reading it, so a read error on
+the older pack fails the mount too.  A bad CRC or version mismatch still
+falls back to the other pack.  With the fix, the mount fails and NEW is
+there on the next mount.
 
-When the firmware provides \GBCM and \SBCM, write the thresholds
-through \SBCM in charge mode 1, keeping the parameter byte reported by
-the firmware, and write 0/100 as 0/0. Thresholds set through \SBCM are
-also reported by \GBTT, so keep reading them from there, but report
-0/100 while the EC is in a charge mode other than 1 to 3, which may
-have been set by another OS or an older kernel. Report an end threshold
-of 0 as 100.
+This bug was identified and confirmed with the help of a deterministic
+hypervisor currently under development.  The C reproducer below however
+hits it every time.
 
-The new interface is only used if both methods exist and \GBCM returns
-a zero status, so other firmware keeps using \GBTT/\SBTT unchanged.
-
-Link: https://github.com/aymanbagabas/Huawei-WMI/issues/55
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Eren Özen <erenozen@protonmail.com>
+Fixes: 7735730d39d7 ("f2fs: fix to propagate error from __get_meta_page()")
+Cc: stable@kernel.org
+Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
-Tested on a HUAWEI MateBook 16 (CREM-WXX9, AMD, BIOS 2.32) running
-Fedora's 7.2.15 kernel. This huawei-wmi.c was built out of tree (W=1
-and C=2 clean) and loaded in place of the in-tree module. The charger
-was connected, the battery was at 83-84%, and the EC state was read
-with raw HWMI calls:
-
-  mode 1 or 2 with \GBTT 40/70             -> reads 40/70
-  mode 0 or 4 with \GBTT 40/70             -> reads 0/100
-  in-tree driver state (mode 1, 40/70 in
-    \GBTT, 0/0 in \GBCM)                   -> reads 40/70
-  mode 4, then write 75/80                 -> mode 1, discharging
-  GNOME off (UPower)                       -> mode 1 0/0, charging
-  GNOME on (UPower)                        -> mode 1 75/80, discharging
-
-With the same write path in an earlier revision, I also tested writing
-only the start or end attribute, 0/80, 40/100 (charging at 84%),
-rejected invalid values, and a 4.5 minute s2idle with the limit kept.
-In charge mode 1, a 1 hour lid-closed s2idle did not charge either.
-
-The start threshold does not seem to be used by this EC: with 79/83, once
-charging had stopped at 83%, unplugging until 82% and reconnecting the
-charger made it charge back to 83% right away. This is not changed by
-this patch. While connected, the EC holds the battery at the end
-threshold ("Not charging", 0 A) or discharges it when it is above it.
-
-Not tested: other models, and firmware without \GBCM. For the latter,
-I only checked in this machine's AML that the HWMI dispatcher returns a
-non-zero status for unknown functions. The acpi_has_method() checks
-follow what the driver already does for \GFRS/\SFRS. The get-then-set
-in the sysfs store callbacks predates this patch and is left alone.
-Tested-by from other Huawei/Honor owners is welcome.
-
-I found this because the battery kept charging to 100% with "Preserve
-Battery Health" enabled. The ACPI/EC analysis, the test module used for
-raw HWMI calls and this patch were done with an AI coding assistant
-(Claude) under my direction, and tested on my machine. I reviewed the
-change and can explain it.
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/f2fscpeio.c
 ---
- drivers/platform/x86/huawei-wmi.c | 94 +++++++++++++++++++++++++++++++++++++++
- 1 file changed, 94 insertions(+)
+ fs/f2fs/checkpoint.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-diff --git a/drivers/platform/x86/huawei-wmi.c b/drivers/platform/x86/huawei-wmi.c
-index 96ee9a97c..917fb2fa8 100644
---- a/drivers/platform/x86/huawei-wmi.c
-+++ b/drivers/platform/x86/huawei-wmi.c
-@@ -36,6 +36,8 @@
- enum {
- 	BATTERY_THRESH_GET		= 0x00001103, /* \GBTT */
- 	BATTERY_THRESH_SET		= 0x00001003, /* \SBTT */
-+	BATTERY_CHARGE_MODE_GET		= 0x00001603, /* \GBCM */
-+	BATTERY_CHARGE_MODE_SET		= 0x00001503, /* \SBCM */
- 	FN_LOCK_GET			= 0x00000604, /* \GFRS */
- 	FN_LOCK_SET			= 0x00000704, /* \SFRS */
- 	MICMUTE_LED_SET			= 0x00000b04, /* \SMLS */
-@@ -61,6 +63,7 @@ struct huawei_wmi_debug {
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index a9a2b9d93231..cbedd3e1399f 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -1178,6 +1178,8 @@ static struct f2fs_cached_block *validate_checkpoint(struct f2fs_sb_info *sbi,
  
- struct huawei_wmi {
- 	bool battery_available;
-+	bool charge_mode_available;
- 	bool fn_lock_available;
- 
- 	struct huawei_wmi_debug debug;
-@@ -324,11 +327,87 @@ static void huawei_wmi_leds_setup(struct device *dev)
- 
- /* Battery protection */
- 
-+/*
-+ * Newer firmware also implements \GBCM and \SBCM ("battery charge mode").
-+ * \GBCM returns the charge mode in byte 1, a parameter of unknown meaning
-+ * in byte 2 and a pair of thresholds in bytes 3 and 4, and \SBCM takes the
-+ * same four values in bytes 2 to 5 of its argument. Thresholds set through
-+ * \SBCM are also returned by \GBTT, but \SBTT does not update the ones
-+ * returned by \GBCM.
-+ *
-+ * In charge modes 1 to 3 the EC does not charge above the end threshold
-+ * returned by \GBTT, and a 0/0 pair means that charging is not limited.
-+ * In charge modes 0 and 4 it charges past the end threshold. \SBTT,
-+ * which turns a 0/100 request into 0/0, switches the EC to charge mode 4
-+ * ("smart charge") in that case, and a later \SBTT write does not
-+ * necessarily switch it back. So write the thresholds through \SBCM in
-+ * charge mode 1 instead.
-+ */
-+#define HWMI_CHARGE_MODE_THRESHOLDS	1
-+#define HWMI_CHARGE_MODE_PRESET_LAST	3
-+
-+static int huawei_wmi_charge_mode_get(u8 *mode, u8 *param)
-+{
-+	u8 ret[0x100] = {};
-+	int err;
-+
-+	err = huawei_wmi_cmd(BATTERY_CHARGE_MODE_GET, ret, sizeof(ret));
-+	if (err)
-+		return err;
-+
-+	if (mode)
-+		*mode = ret[1];
-+	if (param)
-+		*param = ret[2];
-+
-+	return 0;
-+}
-+
-+static int huawei_wmi_charge_mode_set(int start, int end)
-+{
-+	union hwmi_arg arg;
-+	u8 param;
-+	int err;
-+
-+	err = huawei_wmi_charge_mode_get(NULL, &param);
-+	if (err)
-+		return err;
-+
-+	if (start == 0 && end == 100)
-+		end = 0;
-+
-+	arg.cmd = BATTERY_CHARGE_MODE_SET;
-+	arg.args[2] = HWMI_CHARGE_MODE_THRESHOLDS;
-+	arg.args[3] = param;
-+	arg.args[4] = start;
-+	arg.args[5] = end;
-+
-+	return huawei_wmi_cmd(arg.cmd, NULL, 0);
-+}
-+
- static int huawei_wmi_battery_get(int *start, int *end)
- {
- 	u8 ret[0x100];
- 	int err, i;
- 
-+	if (huawei_wmi->charge_mode_available) {
-+		u8 mode;
-+
-+		err = huawei_wmi_charge_mode_get(&mode, NULL);
-+		if (err)
-+			return err;
-+
-+		/* The thresholds are not used in the other charge modes. */
-+		if (mode < HWMI_CHARGE_MODE_THRESHOLDS ||
-+		    mode > HWMI_CHARGE_MODE_PRESET_LAST) {
-+			if (start)
-+				*start = 0;
-+			if (end)
-+				*end = 100;
-+			return 0;
-+		}
-+	}
-+
- 	err = huawei_wmi_cmd(BATTERY_THRESH_GET, ret, sizeof(ret));
+ 	err = get_checkpoint_version(sbi, cp_addr, &cp_block,
+ 					&cp_entry_1, version);
++	if (err == -EIO)
++		return ERR_PTR(err);
  	if (err)
- 		return err;
-@@ -342,6 +421,10 @@ static int huawei_wmi_battery_get(int *start, int *end)
- 			*end = ret[i];
- 	} while (i > 2 && !ret[i--]);
+ 		return NULL;
  
-+	/* A 0/0 pair means that charging is not limited. */
-+	if (huawei_wmi->charge_mode_available && end && !*end)
-+		*end = 100;
-+
- 	return 0;
- }
+@@ -1193,6 +1195,10 @@ static struct f2fs_cached_block *validate_checkpoint(struct f2fs_sb_info *sbi,
+ 	cp_addr += cp_blocks - 1;
+ 	err = get_checkpoint_version(sbi, cp_addr, &cp_block,
+ 					&cp_entry_2, version);
++	if (err == -EIO) {
++		f2fs_put_cache(cp_entry_1, true);
++		return ERR_PTR(err);
++	}
+ 	if (err)
+ 		goto invalid_cp;
+ 	cur_version = *version;
+@@ -1231,11 +1237,19 @@ int f2fs_get_valid_checkpoint(struct f2fs_sb_info *sbi)
+ 	 */
+ 	cp_start_blk_no = le32_to_cpu(fsb->cp_blkaddr);
+ 	cp1 = validate_checkpoint(sbi, cp_start_blk_no, &cp1_version);
++	if (IS_ERR(cp1)) {
++		err = PTR_ERR(cp1);
++		goto free_fail_no_cp;
++	}
  
-@@ -353,6 +436,9 @@ static int huawei_wmi_battery_set(int start, int end)
- 	if (start < 0 || end < 0 || start > 100 || end > 100)
- 		return -EINVAL;
+ 	/* The second checkpoint pack should start at the next segment */
+ 	cp_start_blk_no += ((unsigned long long)1) <<
+ 				le32_to_cpu(fsb->log_blocks_per_seg);
+ 	cp2 = validate_checkpoint(sbi, cp_start_blk_no, &cp2_version);
++	if (IS_ERR(cp2)) {
++		err = PTR_ERR(cp2);
++		goto free_fail_no_cp;
++	}
  
-+	if (huawei_wmi->charge_mode_available)
-+		return huawei_wmi_charge_mode_set(start, end);
-+
- 	arg.cmd = BATTERY_THRESH_SET;
- 	arg.args[2] = start;
- 	arg.args[3] = end;
-@@ -507,6 +593,14 @@ static void huawei_wmi_battery_setup(struct device *dev)
- {
- 	struct huawei_wmi *huawei = dev_get_drvdata(dev);
- 
-+	/*
-+	 * Only trust the \GBCM status if the firmware actually implements the
-+	 * methods, in case the HWMI dispatcher of some model reports success
-+	 * for unknown functions.
-+	 */
-+	huawei->charge_mode_available = acpi_has_method(NULL, "\\GBCM") &&
-+					acpi_has_method(NULL, "\\SBCM") &&
-+					!huawei_wmi_charge_mode_get(NULL, NULL);
- 	huawei->battery_available = true;
- 	if (huawei_wmi_battery_get(NULL, NULL)) {
- 		huawei->battery_available = false;
+ 	if (cp1 && cp2) {
+ 		if (ver_after(cp2_version, cp1_version))
 
 ---
-base-commit: a514d723595bd8e5ce926a7fea148ceb3c26915c
-change-id: 20261112-huawei-wmi-charge-mode-7f4fc964130d
+base-commit: 648bdfa9bae3850908df31617e5922e0683d5fff
+change-id: 20261111-f2fs-cp-read-error-f39b7c1c64f5
 
 Best regards,
--- 
-Eren Özen <erenozen@protonmail.com>
+--  
+Mani Tofigh <mt4022@columbia.edu>
 
