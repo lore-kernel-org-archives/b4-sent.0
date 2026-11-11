@@ -1,117 +1,123 @@
-From: Alban Munari <alban.kernel@gmail.com>
-Date: Wed, 11 Nov 2026 20:24:48 +0000
-Subject: [PATCH] ALSA: hda: cs35l41: Fix hibernation deadlock with the
- firmware reload
+From: Weidong Wang <weidongw@illinois.edu>
+Date: Wed, 11 Nov 2026 14:27:28 -0600
+Subject: [PATCH net] net/rds: tcp: bound the message length announced by
+ the peer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-cs35l41-freezable-fw-load-v1-1-ebcaf549b2f7@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw6CMBCF4Vchs3YSW8DbqxgW7XSqYxowHUED4
- d2penbf4vwLKGdhhUu1QOZJVIa+wOwqoLvrb4wSisHu7cGUIWndpsZgzMyz84kxvjENLiCd28Z
- SPPngjlD+z8xRPr/2tftbR/9gen2DsK4bNq2gkn0AAAA=
-X-Change-ID: 20261111-cs35l41-freezable-fw-load-c9542cf8bda7
-To: David Rhodes <david.rhodes@cirrus.com>, 
- Richard Fitzgerald <rf@opensource.cirrus.com>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Stefan Binding <sbinding@opensource.cirrus.com>
-Cc: linux-sound@vger.kernel.org, patches@opensource.cirrus.com, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Alban Munari <alban.kernel@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794428707; l=3724;
- i=alban.kernel@gmail.com; s=hephaestus; h=from:subject:message-id;
- bh=IXzrGoSena48kpecVx+KFjQckzRH8kQoM0LZy+B5cYI=;
- b=E5phtmV4Gn6aVvUFA1LPzfdPdrfTyxdtNb1tewiRSAM7gAMZoN6x9nLViSuPmIycTBlW6fX24
- CbOSxRcbkjoDPIc+y3A/0AyHUAkvqEX9YXllN36Fv3zd/1vHTr0wrow
-X-Developer-Key: i=alban.kernel@gmail.com; a=ed25519;
- pk=E4gTLxHRk8yuKicoDcjhUfRHnlctgbnlV9dmOwM5338=
-X-Endpoint-Received: by B4 Relay for alban.kernel@gmail.com/hephaestus with auth_id=1455
+Message-Id: <20261111-h047-send-v1-1-2727a38dbfcd@illinois.edu>
+X-B4-Tracking: v=1; b=H4sIALDP9GoC/yWMQQ7CIBQFr0LeWhKgoMarGBdt+S3fBRp+NSakd
+ y+2y5lMpkKoMAluqqLQl4VfuYE9KYypzzNpjo3hjDtba41Oxl+0UI46NBei9+7qOrT+XWji3/6
+ 6I9OCxyHlMzxpXP4XrOsGARgGNHIAAAA=
+X-Change-ID: 20261110-h047-send-52025d442823
+To: Allison Henderson <achender@kernel.org>
+Cc: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ netdev@vger.kernel.org, linux-rdma@vger.kernel.org, 
+ rds-devel@oss.oracle.com, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Zijie Zhao <zijie4@illinois.edu>, 
+ Weidong Wang <weidongw@illinois.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794428911; l=3897;
+ i=weidongw@illinois.edu; s=20261108; h=from:subject:message-id;
+ bh=1rMOxnrBK7wy6KAVesScdDJ1MghCm+cPgQRTPaFaXQk=;
+ b=VbzedWxmkJGCPF1wkXLDwAkKq6e+6vzQkgf60JbkS/QnFUdwExDzi+sEynvRmZIazgJr+hAUm
+ zNPE4eTD8fdDAPomMgp9MWq9GHCrxhcxnQHdRYj14lPjYILvT/GJmto
+X-Developer-Key: i=weidongw@illinois.edu; a=ed25519;
+ pk=DR2S1xPEa5sELrWPfOpvUphJQ2VHC+MDc/wJavE/ifg=
+X-Endpoint-Received: by B4 Relay for weidongw@illinois.edu/20261108 with auth_id=1449
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cs35l41_system_resume() is also the .thaw and .restore callback, and it
-schedules fw_load_work on system_wq. During hibernation, .thaw runs
-right after the snapshot is created, while tasks and freezable
-workqueues stay frozen until the system powers off. The work calls
-request_firmware() with fw_mutex held. When the firmware files are not
-cached, the lookup waits for filesystem I/O whose completion runs on a
-freezable workqueue (btrfs completes reads on its endio workqueues,
-which are WQ_FREEZABLE), so it never returns. The next step of
-hibernation then waits for fw_mutex in cs35l41_system_suspend_prep(),
-and the machine stays on after the image has been written.
+rds_tcp_data_recv() takes the payload length of an incoming message from
+the peer's header and queues pskb_extract() clones of the received data
+on the incoming message until that many bytes have arrived. Nothing
+checks the length, so a peer that announces h_len = 0xffffffff and keeps
+sending makes the receiver hold up to 4 GiB per connection. The clones
+are no longer on the socket's receive queue, so they are not charged to
+the socket and TCP keeps the receive window open.
 
-Blocked tasks on an ASUS ROG Strix G17 (G713PI) after the image was
-saved, from SysRq-W:
+Senders are limited to RDS_MAX_MSG_SIZE in rds_sendmsg(). Apply the same
+limit on receive and drop the connection when a header exceeds it. That
+limit has been enforced on send since v4.11; a peer running an older
+kernel could still send larger messages over TCP, and such connections
+are now dropped.
 
-  task:systemd-sleep state:D
-   __mutex_lock.constprop.0
-   cs35l41_system_suspend_prep [snd_hda_scodec_cs35l41]
-   dpm_prepare
-   dpm_suspend_start
-   hibernation_platform_enter
-   hibernate.cold
+The issue was discovered by an AI code review agent (an LLM-based
+bug-finding tool developed by Zijie Zhao and the submitter) and
+confirmed by triggering it on an unmodified kernel, without error
+injection, on x86_64 under QEMU: a plain TCP client in a second network
+namespace connects to the rds_tcp listener (port 16385), sends one RDS
+header with h_len = 0xffffffff and then 1 GiB of payload. The receiver
+held about 1.1 GiB until the connection was closed; the same 1 GiB sent
+as 1 MiB messages held about 60 MiB.
 
-  task:kworker/15:2 state:D
-  Workqueue: events cs35l41_fw_load_work [snd_hda_scodec_cs35l41]
-   bit_wait_io
-   read_extent_buffer_pages [btrfs]
-   btrfs_lookup [btrfs]
-   path_openat
-   kernel_read_file_from_path_initns
-   fw_get_filesystem_firmware
-   _request_firmware
-   cs35l41_request_firmware_file [snd_hda_scodec_cs35l41]
-   cs35l41_smart_amp [snd_hda_scodec_cs35l41]
-   cs35l41_fw_load_work [snd_hda_scodec_cs35l41]
+With this patch the connection is dropped right after the header and
+nothing is held, while the 1 MiB messages are processed as before. The
+RDS selftest (tools/testing/selftests/net/rds, rds_run.sh -T tcp, also
+with -l 10 -c 10 -u 10) passes with the patch applied.
 
-Queue the work on system_freezable_wq. After .thaw it then stays
-pending until the system powers off, and on resume it runs once tasks
-are thawed and the firmware files can be read.
+The reproducer, fix and changelog were drafted with AI assistance
+(Claude), then reviewed and tested by the submitter.
 
-Fixes: 88672826e2a4 ("ALSA: hda: cs35l41: Support System Suspend")
+Fixes: 70041088e3b9 ("RDS: Add TCP transport to RDS")
 Cc: stable@vger.kernel.org
-Signed-off-by: Alban Munari <alban.kernel@gmail.com>
+Cc: Zijie Zhao <zijie4@illinois.edu>
+Signed-off-by: Weidong Wang <weidongw@illinois.edu>
 ---
-Testing: ASUS ROG Strix G17 (G713PI), two CS35L41 amplifiers (CSC3551),
-7.2.14-zen1 with this change applied. Before it, every hibernation since
-2026-11-02 left the machine on after writing the image; with it, three
-hibernations powered off, on mains and on battery, and both amplifiers
-reloaded their firmware about one second after tasks restarted. Without
-the change, setting "L0 DSP1 Firmware Load" and "R0 DSP1 Firmware Load"
-to off before hibernating also avoided the hang. On sound/for-next the
-change was build-tested only.
+Tested on v7.4-rc1 (05441d697f7f) and on net (ae89f2724e), x86_64,
+KASAN, QEMU/KVM, 3 GiB guest. Setup: rds_tcp listener in the initial
+netns (10.0.0.2); a plain TCP client (no AF_RDS) in a second netns
+(10.0.0.1) over a veth pair.
 
-AI assistance: the fix was developed in an interactive session with
-Claude Code (Claude Opus 5.5, Anthropic). The model read the journals
-and the kernel source, proposed hypotheses and experiments, decoded the
-pm_trace value and the pstore records, and wrote the change, the
-changelog and these notes. I directed the investigation with a
-troubleshooting procedure I wrote for the assistant (research before
-experiments, one variable per test), supplied the observations, ran
-every experiment on the machine, reviewed the change and tested it as
-described above.
+                   1 GiB after one header     1 GiB as 1 MiB
+                   with h_len = 0xffffffff    messages (control)
+  unpatched        ~1.1 GiB held until close  ~60 MiB
+  patched          connection reset after     ~60 MiB, processed
+                   the header, nothing held   as before
+
+selftests/net/rds: rds_run.sh -T tcp and rds_run.sh -T tcp -l 10 -c 10
+-u 10 pass on both trees with the patch. No KASAN/UBSAN reports;
+checkpatch clean.
+
+The limit is per connection; a peer with several source addresses gets
+one connection per address. The reproducer is not attached (AI-found
+issue, see security-bugs.rst) and can be shared on request.
 ---
- sound/hda/codecs/side-codecs/cs35l41_hda.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/rds/tcp_recv.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-diff --git a/sound/hda/codecs/side-codecs/cs35l41_hda.c b/sound/hda/codecs/side-codecs/cs35l41_hda.c
-index 6fbc194d3347..efe937d18330 100644
---- a/sound/hda/codecs/side-codecs/cs35l41_hda.c
-+++ b/sound/hda/codecs/side-codecs/cs35l41_hda.c
-@@ -1012,7 +1012,7 @@ static int cs35l41_system_resume(struct device *dev)
+diff --git a/net/rds/tcp_recv.c b/net/rds/tcp_recv.c
+index ffe843ca2..29db73df8 100644
+--- a/net/rds/tcp_recv.c
++++ b/net/rds/tcp_recv.c
+@@ -213,6 +213,20 @@ static int rds_tcp_data_recv(read_descriptor_t *desc, struct sk_buff *skb,
+ 			}
+ 		}
  
- 	if (cs35l41->request_fw_load && !cs35l41->fw_request_ongoing) {
- 		cs35l41->fw_request_ongoing = true;
--		schedule_work(&cs35l41->fw_load_work);
-+		queue_work(system_freezable_wq, &cs35l41->fw_load_work);
- 	}
++		/*
++		 * The payload is queued on tinc until the whole message has
++		 * arrived, so a peer must not announce more than a sender is
++		 * allowed to send. Check on every pass, not only when the
++		 * header completes: the drop is asynchronous and more data
++		 * can arrive before the connection is shut down.
++		 */
++		if (!tc->t_tinc_hdr_rem &&
++		    tc->t_tinc_data_rem > RDS_MAX_MSG_SIZE) {
++			rds_conn_path_drop(cp, false);
++			desc->error = -EPROTO;
++			goto out;
++		}
++
+ 		if (left && tc->t_tinc_data_rem) {
+ 			to_copy = min(tc->t_tinc_data_rem, left);
  
- 	return ret;
 
 ---
-base-commit: 291d8707fa439ed4ec72552e7770177f6b6514e4
-change-id: 20261111-cs35l41-freezable-fw-load-c9542cf8bda7
+base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
+change-id: 20261110-h047-send-52025d442823
 
 Best regards,
 --  
-Alban Munari <alban.kernel@gmail.com>
+Weidong Wang <weidongw@illinois.edu>
 
