@@ -1,106 +1,72 @@
-From: Mizuno Miotsuki <founder@crepuse.com>
-To: heiko@sntech.de
-Cc: broonie@kernel.org, conor+dt@kernel.org, devicetree@vger.kernel.org, 
- krzk+dt@kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-sound@vger.kernel.org, luca.ceresoli@bootlin.com, robh@kernel.org
-Subject: [PATCH v2 RESEND 1/1] arm64: dts: rockchip: Enable audio on
- DFRobot UNIHIKER M10 V1.2
-Date: Wed, 11 Nov 2026 12:14:34 +0000
-Message-ID: <179439927464.86676.4421939132317972846.audio-v2-resend-1@crepuse.com>
-In-Reply-To: <179439927463.86676.9537625579963969157.audio-v2-resend-0@crepuse.com>
-References: <179439927463.86676.9537625579963969157.audio-v2-resend-0@crepuse.com>
+From: Vishal Balasubramanian <vishal.bala.nps@gmail.com>
+Subject: [PATCH v2 0/2] Add Samsung Galaxy Tab S7 FE LTE (gts7xllite)
+Date: Wed, 11 Nov 2026 17:54:49 +0530
+Message-Id: <20261111-master-v2-0-5eb864e9f38d@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Mailer: b4 0.16.0
 Content-Type: text/plain; charset="utf-8"
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2172; i=founder@crepuse.com;
- s=20261012; h=from:subject:message-id;
- bh=xlzLLRAxNlPSYq2hZGjl4gVBzWPQJrF0KJ1HKORoHvI=;
- b=owGbwMvMwCUmds2G2fVJ/hLG02pJDFlfYrRWp7M7Bbz8FX1Y9Of1eUeDDNKyq5buPKV+jX9p7
- JnaaXvtOyayMIhxMViKKbLMFmUvP9S84trcCU12MHNYmUCGSIs0MAABCwNfbmJeqZGOkZ6ptqGe
- oZGOgY4xAxenAEx17ilGhoaAyctLXF/v3VAs3eeY+vlTd+meF4lN3RWzBPtijPNOCDMynHNq3fH
- 8fZt/hvKOJstrk5jOrvrZbz2tXCLzxImQiTWyHAA=
-X-Developer-Key: i=founder@crepuse.com; a=openpgp;
- fpr=9B150777C283A8D69D90823E16D63C0345E46FA4
-X-Endpoint-Received: by B4 Relay for founder@crepuse.com/20261012 with auth_id=1166
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAJFe9GoC/2WMwQ6DIBAFf8XsuTRAUWNP/Y/GA8KimxQxYEgbw
+ 7+Xeu27zctkDkgYCRPcmwMiZkoU1gry0oBZ9DojI1sZJJedqGNepx0j69V0a83AnVIGqrxFdPQ
+ +Q8+x8kJpD/FzdrP4vX+JLBhnvJ+U450erG0fs9f0uprgYSylfAHEl89mnAAAAA==
+X-Change-ID: 20261111-master-74b35c90f44c
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
+ Tony Luck <tony.luck@intel.com>, 
+ "Guilherme G. Piccoli" <gpiccoli@igalia.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Vishal Balasubramanian <vishal.bala.nps@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794399891; l=1585;
+ i=vishal.bala.nps@gmail.com; s=20261111; h=from:subject:message-id;
+ bh=1CzGOPtoQOQ5ftnC93rBD5AZUNBTmg/XmuRqFrI/w+Y=;
+ b=t3z2R7aYNTWMCQNkyyCGEwyoK1suv1Lr6YnXtI/4XCtA9tPksBJKx19gpJMoJewJPxRI0q1RK
+ RJxp18GCGA0CZKNFBWYhZ4Phuj6nWPe2B4Vcm/wLNa3xj945Fz3wjAa
+X-Developer-Key: i=vishal.bala.nps@gmail.com; a=ed25519;
+ pk=GDcoc+SAK+BHD1Eq17X/BJa9U2HZkBW+dmxS8s1xMAY=
+X-Endpoint-Received: by B4 Relay for vishal.bala.nps@gmail.com/20261111 with auth_id=1486
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Mizuno Miotsuki <founder@crepuse.com>
+This series adds initial support for the Samsung Galaxy Tab S7 FE LTE
+(SM-T735), a tablet based on the Qualcomm SM7225 SoC.
 
-Enable the internal RK3308 codec and its I2S2 interface, and add a
-simple-audio-card. Route the onboard microphone to MIC1 and supply it
-from MICBIAS1, with the bias set to 85 percent of AVDD as used during
-board bring-up.
+Supported in this initial version:
+- Display via simple-framebuffer
+- Volume keys and power button
+- UFS and microSD
+- USB
+- Wi-Fi and Bluetooth (WCN3991)
+- ADSP, CDSP and modem, including mobile data
 
-The board does not expose a speaker interface, so no speaker routing
-is added.
-
-The board uses codec revision B. Support has been accepted in the ASoC
-for-7.4 branch as commit 157f7cba77a9 ("ASoC: codecs: rk3308: add support
-for codec revision B"). This is a runtime dependency; the DTS uses the
-existing codec compatible and bindings.
-
-Signed-off-by: Mizuno Miotsuki <founder@crepuse.com>
+Signed-off-by: Vishal Balasubramanian <vishal.bala.nps@gmail.com>
 ---
- .../dts/rockchip/rk3308-unihiker-m10-v1.2.dts | 30 +++++++++++++++++++
- 1 file changed, 30 insertions(+)
+Changes in v2:
+- Add cover letter (v1 was sent without one)
+- Set PMK8350_SID to 6 and disable pmk8350_pon (Sashiko)
+- Fix swapped vdda-phy/vdda-pll supplies on usb_1_qmpphy (Sashiko)
+- Drop unresolvable stdout-path and unused cells from /chosen (Sashiko)
+- Use cont_splash_memory for the framebuffer instead of a duplicate region (Sashiko)
+- Add sd-cd pin configuration for gpio94 (Sashiko)
+- Drop IPA properties already set in sm6350.dtsi (Sashiko)
+- Rename knox_reserved to fastuh_mem (Sashiko)
+- Link to v1: https://lore.kernel.org/r/20261111-master-v1-0-07b4f06a9dd5@gmail.com
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3308-unihiker-m10-v1.2.dts b/arch/arm64/boot/dts/rockchip/rk3308-unihiker-m10-v1.2.dts
-index 270ea970c95a..7adef454ea89 100644
---- a/arch/arm64/boot/dts/rockchip/rk3308-unihiker-m10-v1.2.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3308-unihiker-m10-v1.2.dts
-@@ -54,6 +54,26 @@ sdio_pwrseq: sdio-pwrseq {
- 		reset-gpios = <&gpio0 RK_PA2 GPIO_ACTIVE_LOW>;
- 	};
- 
-+	sound {
-+		compatible = "simple-audio-card";
-+		simple-audio-card,name = "UNIHIKER M10 RK3308 codec";
-+		simple-audio-card,format = "i2s";
-+		simple-audio-card,mclk-fs = <256>;
-+		simple-audio-card,widgets =
-+			"Microphone", "Internal Microphone";
-+		simple-audio-card,routing =
-+			"Internal Microphone", "MICBIAS1",
-+			"MIC1", "Internal Microphone";
-+
-+		simple-audio-card,cpu {
-+			sound-dai = <&i2s_8ch_2>;
-+		};
-+
-+		simple-audio-card,codec {
-+			sound-dai = <&codec>;
-+		};
-+	};
-+
- 	vcc_1v8: regulator-vcc-1v8 {
- 		compatible = "regulator-fixed";
- 		regulator-name = "vcc_1v8";
-@@ -117,6 +137,11 @@ vdd_core: regulator-vdd-core {
- 	};
- };
- 
-+&codec {
-+	rockchip,micbias-avdd-percent = <85>;
-+	status = "okay";
-+};
-+
- &cpu0 {
- 	cpu-supply = <&vdd_core>;
- };
-@@ -131,6 +156,11 @@ &emmc {
- 	status = "okay";
- };
- 
-+&i2s_8ch_2 {
-+	#sound-dai-cells = <0>;
-+	status = "okay";
-+};
-+
- &io_domains {
- 	vccio0-supply = <&vcc_io>;
- 	vccio1-supply = <&vcc_io>;
+---
+Vishal Balasubramanian (2):
+      dt-bindings: arm: qcom: Add Samsung Galaxy Tab S7 FE LTE
+      arm64: dts: qcom: sm7225: Add Samsung Galaxy Tab S7 FE LTE
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ .../boot/dts/qcom/sm7225-samsung-gts7xllite.dts    | 586 +++++++++++++++++++++
+ 3 files changed, 588 insertions(+)
+---
+base-commit: 630059a5a632377b9b7b487baccde92b7ae1dd47
+change-id: 20261111-master-74b35c90f44c
+
+Best regards,
 -- 
-2.56.0
+Vishal Balasubramanian <vishal.bala.nps@gmail.com>
 
