@@ -1,92 +1,100 @@
-From: Marc Herrero <marcht@proton.me>
-Date: Wed, 11 Nov 2026 13:49:27 +0000
-Subject: [PATCH] ASoC: qcom: audioreach: apply volume changes to a running
- graph
+From: Asdlerto Korry <korryasdlerto@gmail.com>
+Subject: [PATCH v2 0/4] arm64: dts: qcom: Add Samsung Galaxy M52 5G
+Date: Wed, 11 Nov 2026 17:07:44 +0200
+Message-Id: <20261111-m52xq-dts-v2-0-063289405882@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-q6apm-vol-live-v1-1-be85eef649c1@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MywqAIBAAfyX23EJ6MOpXooOPrRbMSkEC8d+T5
- jaHmQKJIlOCuSsQKXPiKzQRfQf20GEnZNcc5CCVaOCj9H1ivjx6zoROGSOcITvaCVp0R9r4/Yf
- LWusHTawBiGAAAAA=
-X-Change-ID: 20261111-q6apm-vol-live-d6bb1dbec7c9
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Marc Herrero <marcht@proton.me>
+X-B4-Tracking: v=1; b=H4sIAMGE9GoC/23MQQ6CMBCF4auQWVvTGdFQV97DsIDSwiSWYksaD
+ Ondraxd/i8v3w7RBDYR7tUOwSSO7OcSdKpAT908GsFDaSBJN0RZC3el7S2GNQpqLtpIq3tdKyj
+ /JRjL22E929ITx9WHz0En/K3/lIRCih5VYyUpJGsfo+v4ddbeQZtz/gKBjxXKogAAAA==
+X-Change-ID: 20261104-m52xq-dts-283ce0fcbc49
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
+ Tony Luck <tony.luck@intel.com>, 
+ "Guilherme G. Piccoli" <gpiccoli@igalia.com>, 
+ Krzysztof Kozlowski <krzk@kernel.org>, David Heidelberg <david@ixit.cz>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, oe-linux-nfc@lists.linux.dev, 
+ netdev@vger.kernel.org, Asdlerto Korry <korryasdlerto@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794404968; l=2295;
- i=marcht@proton.me; s=20261111; h=from:subject:message-id;
- bh=SqVgjL7+4cci4LPqvCK4Yw6wIkE/kOA+SDqD9jR9pW8=;
- b=FX1Y+Wi7BB5DpHA+0W6yE2XKgDCznVqlJos0UpJ8hstQWnTb3zNutOendQ72+lQoI638F5yi4
- 7XppBorHE+kCr74otdQVCgfAsNs5c2orZsVM06hNcGbVazYVy6NqYr/
-X-Developer-Key: i=marcht@proton.me; a=ed25519;
- pk=pIPy6L+INgiuJt7L7umVilPgpzy/Ni3QS77ToLj/H9c=
-X-Endpoint-Received: by B4 Relay for marcht@proton.me/20261111 with auth_id=1490
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794409665; l=3039;
+ i=korryasdlerto@gmail.com; s=20261104; h=from:subject:message-id;
+ bh=XfNua7PAV4kckWXtmCx56IqauZbV+Xj3aih6wYA69X0=;
+ b=hlEHBlU91uiogwNELsRP1uTsAlQH/qJAfSeJKUVyPS7aTgJKc/kwJW15queGzapffIldwXd1C
+ qNHldpxRX87Cd05qWSEa7vqMolfGCelWeAQ+1HzFvdauVKW6LhZ2Fry
+X-Developer-Key: i=korryasdlerto@gmail.com; a=ed25519;
+ pk=RqttIGkm2XZ8NhLQBzPgpXXawOdVa1uODGsk+sagbxs=
+X-Endpoint-Received: by B4 Relay for korryasdlerto@gmail.com/20261104 with auth_id=1411
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-audioreach_put_vol_ctrl_audio_mixer() only stores the new gain in the
-module. The gain reaches the DSP from audioreach_pga_event() on
-SND_SOC_DAPM_POST_PMU, that is when a stream starts, so changing the
-"<stream> Playback Volume" control while playing has no effect until the
-next stream.
+This series adds initial support for the Samsung Galaxy M52 5G
+(SM-M526B, codename m52xq), a smartphone based on the Qualcomm SM7325
+SoC.
 
-On QCS6490 (Radxa Dragon Q6A) shairport-sync uses this control as its
-hardware volume: the volume set when an AirPlay session starts is
-applied, but every later change from the phone is ignored.
+Tested on next-20261030 with only this series applied: the device boots
+to a postmarketOS userspace from UFS. ADSP, MPSS and WPSS come up, WiFi
+connects, Venus probes, the microSD card is detected and readable, and
+USB peripheral mode works in both plug orientations. The kernel log
+shows no errors from the nodes described here. Bluetooth, NFC, IPA
+mobile data and the GPU were tested with the same nodes on a 7.1
+kernel.
 
-Send the gain to the DSP right away when the widget is powered, and
-report no change when the value is the same.
+Not included yet: the display panel, touchscreen, cameras, audio, the
+fuel gauge/charger and the USB Type-C controller (SM5714). They need
+drivers that are not upstream yet. The display works through
+simple-framebuffer for now.
 
-Fixes: 36ad9bf1d93d ("ASoC: qdsp6: audioreach: add topology support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Marc Herrero <marcht@proton.me>
+Notes:
+* The stock ABL picks the DTB by qcom,msm-id/qcom,board-id. These
+  properties are left out as required for new SM7325 boards, so users
+  add them when packaging the boot image.
+* The reserved memory map follows the stock device tree. The removed
+  region is larger than on other SM7325 devices (0x5f00000). With the
+  common size, the kernel livelocks when it touches the memory the
+  hypervisor keeps.
+* Several regulators need a fixed voltage or must stay always-on (UFS
+  VCC on L7b, the ADSP-managed sensors on L12c). With the stock ranges
+  Linux sets the minimum and UFS or the ADSP fail.
+
+Signed-off-by: Asdlerto Korry <korryasdlerto@gmail.com>
 ---
-Found on the Radxa Dragon Q6A together with the two fixes in
-"[PATCH 0/2] ASoC: qcom: audioreach: fix S24_LE playback and route mixer
-disconnects", sent earlier today. This one is independent of them.
-
-Tested on 7.2.9: with the patch, moving the AirPlay volume while
-playing changes the output immediately; without it nothing changes
-until the next stream. Builds on asoc/for-next.
----
- sound/soc/qcom/qdsp6/topology.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
-
-diff --git a/sound/soc/qcom/qdsp6/topology.c b/sound/soc/qcom/qdsp6/topology.c
-index 612d8f03e6e9..5b3378fd29fc 100644
---- a/sound/soc/qcom/qdsp6/topology.c
-+++ b/sound/soc/qcom/qdsp6/topology.c
-@@ -1323,8 +1323,19 @@ static int audioreach_put_vol_ctrl_audio_mixer(struct snd_kcontrol *kcontrol,
- {
- 	struct snd_soc_dapm_widget *dw = snd_soc_dapm_kcontrol_to_widget(kcontrol);
- 	struct audioreach_module *mod = dw->dobj.private;
-+	long gain = ucontrol->value.integer.value[0];
- 
--	mod->gain = ucontrol->value.integer.value[0];
-+	if (mod->gain == gain)
-+		return 0;
-+
-+	mod->gain = gain;
-+
-+	/* The PGA event only applies the gain when the widget powers up */
-+	if (dw->power) {
-+		struct snd_soc_component *c = snd_soc_dapm_to_component(dw->dapm);
-+
-+		audioreach_gain_set_vol_ctrl(dev_get_drvdata(c->dev), mod, gain);
-+	}
- 
- 	return 1;
- }
+Changes in v2:
+- framebuffer: drop reg and unit address, memory-region is enough (Konrad)
+- dt-bindings: nfc: samsung,s3fwrn5: add pvdd-supply; the s3fwrn5 driver
+  enables it, so the NFC regulator is no longer always-on (Konrad)
+- enable qupv3_id_0, it holds uart7 for Bluetooth (Sashiko)
+- reserved memory: drop cdsp_mem/remoteproc_cdsp, the ADSP region covers
+  them; replace the overlapping video region with camera_mem (Sashiko)
+- Bluetooth: fix the vddrfa1p2/vddrfa2p2 supplies (Sashiko)
+- NFC: edge-triggered interrupt (Sashiko)
+- raise the minimum voltage of S1b/S7b/S8b to the stock levels, lower
+  values starve the LDOs and the touchscreen loses touches
+- Link to v1: https://lore.kernel.org/r/20261104-m52xq-dts-v1-0-b198f02912ff@gmail.com
 
 ---
-base-commit: cde5523c75f1320a55ac1d55a717ccbb566557f0
-change-id: 20261111-q6apm-vol-live-d6bb1dbec7c9
+Asdlerto Korry (4):
+      dt-bindings: arm: qcom: Add Samsung Galaxy M52 5G
+      dt-bindings: net: nfc: samsung,s3fwrn5: Add pvdd-supply
+      nfc: s3fwrn5: i2c: Enable the pvdd supply
+      arm64: dts: qcom: sm7325: Add Samsung Galaxy M52 5G
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
+ .../bindings/net/nfc/samsung,s3fwrn5.yaml          |   5 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ arch/arm64/boot/dts/qcom/sm7325-samsung-m52xq.dts  | 839 +++++++++++++++++++++
+ drivers/nfc/s3fwrn5/i2c.c                          |   7 +
+ 5 files changed, 853 insertions(+)
+---
+base-commit: 7649ba73f9e7e1e04d0b46213e39c79ae09dd55c
+change-id: 20261104-m52xq-dts-283ce0fcbc49
 
 Best regards,
 -- 
-Marc Herrero <marcht@proton.me>
+Asdlerto Korry <korryasdlerto@gmail.com>
 
