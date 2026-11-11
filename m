@@ -1,11 +1,11 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Tue, 10 Nov 2026 23:44:28 -0500
-Subject: [PATCH RFC net v3 3/7] net/iucv: run recvmsg() under the socket
- lock
+Date: Tue, 10 Nov 2026 23:44:29 -0500
+Subject: [PATCH RFC net v3 4/7] net/iucv: factor out the HiperSockets frame
+ dispatch and state changes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261110-b4-disp-2a6b4364-v3-3-35677b68e697@proton.me>
+Message-Id: <20261110-b4-disp-2a6b4364-v3-4-35677b68e697@proton.me>
 References: <20261110-b4-disp-2a6b4364-v3-0-35677b68e697@proton.me>
 In-Reply-To: <20261110-b4-disp-2a6b4364-v3-0-35677b68e697@proton.me>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -17,241 +17,259 @@ Cc: linux-kernel@vger.kernel.org, Thorsten Winkler <twinkler@linux.ibm.com>,
  Nagamani PV <nagamani@linux.ibm.com>, Simon Horman <horms@kernel.org>, 
  netdev@vger.kernel.org, linux-s390@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794372266; l=8262;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794372266; l=7470;
  i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=l2qPWJX7A9pU8hsYefmLea43Ws4Vqj5D4r/jJtZd4uk=;
- b=7sGQPYEp78btGAOLd6+Rrle6sH45P5vvzyVP7KfdcE0C8wKsS4PopIg1uLCugIUuIg+xx1bKt
- Li1ZZ8yCyg8AxxO4wYfaP/ht4WT1heDdgmwLUKgWgJsSc9KO7JZ9fVW
+ bh=E/tt6JkYGTDUvYsiwbELgDF0AcXX188RCpdMDzsGh2c=;
+ b=vAgf0hEPR7Zg3xhUxPJQElRP6TlUPEBKyi4FX9R+xMz+UyzgqZTon16rny5E9Lra0J0CUe8P7
+ bf9J+Jx+2VEB6XAFHx7Y+rterT6PUp1bs3xENwfrCZj9w+oAEv2eHaP
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-recvmsg() takes no socket lock, on either transport:
+Move the switch on the frame type out of afiucv_hs_rcv() into
+afiucv_hs_dispatch(), and the state changes a SYN|ACK, a SYN|FIN and a
+FIN make into afiucv_hs_synack(), afiucv_hs_synfin() and
+afiucv_hs_fin(). The three are still called under the bh_lock_sock() of
+their callbacks, which now test sk where they tested iucv_sk(sk), a
+cast of it. They are defined ahead of iucv_proto: the next patch
+reaches them from proto->release_cb. afiucv_hs_synfin() and
+afiucv_hs_fin() are the same for now and stay two: a later patch sets
+RCV_SHUTDOWN in the second only.
 
-- Two threads reading one socket get its data out of order.
-- A read that races shutdown() can write back an older sk_shutdown and
-  lose the bit shutdown() set, so a shutdown() that returned 0 has no
-  effect.
-- A MSG_PEEK read leaves its skb on the receive queue and holds a
-  reference to it. When a second reader consumes the skb meanwhile,
-  that reference is the last one and skb_unref() frees nothing: the skb
-  and its receive memory leak, and iucv_sock_destruct() warns.
+No functional change. The next patch runs the dispatch from a second
+place and the three state changes from the task that owns the socket.
 
-All three need only a second thread at the wrong moment. No
-memory-safety report is known from any of them.
-
-Take lock_sock() in recvmsg(). It sleeps for data without the lock, in
-sk_wait_event(), so a reader with nothing to read keeps no other call
-on the socket waiting.
-
-sendmsg() now waits for send memory without the socket lock as well:
-recvmsg() needs that lock, and over z/VM the memory comes back only when
-the peer reads, which may wait for our own reader. That wait is one more
-point at which shutdown(SHUT_WR) can find the send memory used up:
-iucv_send_ctrl() then has no room for the SHT and the peer reads no EOF,
-as before this patch whenever the memory is used up when shutdown()
-runs.
-
-Fixes: eac3731bd04c ("[S390]: Add AF_IUCV socket support")
-Suggested-by: Alexandra Winter <wintera@linux.ibm.com>
-Link: https://lore.kernel.org/all/20260724222917.134769-1-hexlabsecurity@proton.me/
-Cc: stable@vger.kernel.org # 6.18.x: aa5ec571b93f: net/iucv: Add lock nesting annotation in iucv_sock_close()
-Cc: stable@vger.kernel.org # 6.18.x
+Cc: stable@vger.kernel.org # 6.18.x, needed by the next patch
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-New in v3 as a patch of its own: the half of v2's lock patch that does
-not touch the softirq side. Without 5/7 the softirq still changes
-sk_state under a task that owns the socket, as on net.
+New in v3: v2 moved this code and changed it in one diff. Here it only
+moves, so that 5/7 shows what changes.
 
-In the emulated setup: two readers on one socket under MTTCG, three
-runs of 838 messages each. On net and with 1/7 and 2/7 every run has
-reads that go backwards, 9 to 18 of them; from 3/7 on there are none.
+checkpatch asks for a Fixes: tag because of the stable line. There is
+none to give: the patch fixes nothing and is marked for stable only so
+that 5/7 applies there.
 
-The lost bit: a task reads on a socket shut down for sending, with a
-window of 2 so that nearly every read sends a window update, and
-another calls shutdown(SHUT_RD). Over four runs of 200 cycles poll()
-then shows no EPOLLRDHUP in 15 to 53 cycles of a run on net and with
-1/7 and 2/7, and in none from 3/7 on.
-
-Repro of the MSG_PEEK item: one process is parked in the copy of a
-recv(MSG_PEEK), its buffer a userfaultfd page, and a second one reads
-the same message. On net, and with 1/7 and 2/7, the second read returns
-the byte while the first is still parked; once both are back the socket
-has receive memory charged and nothing to read, and iucv_sock_destruct()
-takes its WARN_ON() at close. From 3/7 on the second reader waits for
-the first, then reads the byte, and nothing stays charged. With the two
-reads one after the other every kernel is clean.
-
-sendmsg()'s memory wait: with it left under the socket lock, a
-non-blocking read is held up for as long as a writer waits for send
-memory, 6 s in the test.
-
-The prerequisite on the stable line, aa5ec571b93f, brings
-__iucv_sock_close(), which recvmsg() now calls with the lock held where
-it used to close the socket on a peer that overran its window.
-
-By inspection: the memory wait now runs without the socket lock, so
-iucv_send_ctrl() clearing SEND_SHUTDOWN around its allocation, e.g. for
-recvmsg()'s window update, can make that wait miss the wake-up of a
-shutdown(SHUT_WR). The writer then sleeps on until memory comes back,
-where 2/7's test fails the call, or SO_SNDTIMEO runs out. No data goes
-out after the SHT.
-
-Hidayath's 19 KCSAN reports of recvmsg() against shutdown() on
-net-next, and the 2 of iucv_send_ctrl() against shutdown(), are what
-this patch should end.
+The kernel with 1/7 to 4/7 gives the result of the one with 1/7 to 3/7
+in every test: the 53 default ones and the 28 opt-in ones (window,
+strays, connect(), leaks).
 ---
- net/iucv/af_iucv.c | 94 ++++++++++++++++++++++++++++++++++++++++++++----------
- 1 file changed, 78 insertions(+), 16 deletions(-)
+ net/iucv/af_iucv.c | 151 ++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 97 insertions(+), 54 deletions(-)
 
 diff --git a/net/iucv/af_iucv.c b/net/iucv/af_iucv.c
-index 133c1d1886b2..639725917f3f 100644
+index 639725917f3f..1677cc65ad06 100644
 --- a/net/iucv/af_iucv.c
 +++ b/net/iucv/af_iucv.c
-@@ -1041,7 +1041,17 @@ static int iucv_sock_sendmsg(struct socket *sock, struct msghdr *msg,
- 		}
+@@ -39,6 +39,44 @@
+ 
+ static char iucv_userid[80];
+ 
++/**
++ * afiucv_hs_synack() - connect a socket, on the SYN|ACK to its SYN
++ * @sk:		the socket, in IUCV_BOUND
++ * @window:	the window in the SYN|ACK: the frames the peer takes from us
++ *
++ * Context: Softirq, under bh_lock_sock().
++ */
++static void afiucv_hs_synack(struct sock *sk, u16 window)
++{
++	iucv_sk(sk)->msglimit_peer = window;
++	sk->sk_state = IUCV_CONNECTED;
++	sk->sk_state_change(sk);
++}
++
++/**
++ * afiucv_hs_synfin() - refuse a socket, on the SYN|FIN to its SYN
++ * @sk:		the socket, in IUCV_BOUND
++ *
++ * Context: As afiucv_hs_synack().
++ */
++static void afiucv_hs_synfin(struct sock *sk)
++{
++	sk->sk_state = IUCV_DISCONN;
++	sk->sk_state_change(sk);
++}
++
++/**
++ * afiucv_hs_fin() - disconnect a socket, on the FIN of its peer
++ * @sk:		the socket, in IUCV_CONNECTED
++ *
++ * Context: As afiucv_hs_synack().
++ */
++static void afiucv_hs_fin(struct sock *sk)
++{
++	sk->sk_state = IUCV_DISCONN;
++	sk->sk_state_change(sk);
++}
++
+ static struct proto iucv_proto = {
+ 	.name		= "AF_IUCV",
+ 	.owner		= THIS_MODULE,
+@@ -2032,17 +2070,13 @@ static int afiucv_hs_callback_syn(struct sock *sk, struct sk_buff *skb)
+  */
+ static int afiucv_hs_callback_synack(struct sock *sk, struct sk_buff *skb)
+ {
+-	struct iucv_sock *iucv = iucv_sk(sk);
+-
+-	if (!iucv || sk->sk_state != IUCV_BOUND) {
++	if (!sk || sk->sk_state != IUCV_BOUND) {
+ 		kfree_skb(skb);
+ 		return NET_RX_SUCCESS;
  	}
- 	skb = sock_alloc_send_pskb(sk, headroom + linear, len - linear,
--				   noblock, &err, 0);
-+				   1, &err, 0);
-+	if (!skb && err == -EAGAIN && !noblock) {
-+		/* Wait without the socket lock: recvmsg() takes it, and over
-+		 * z/VM the memory comes back only when the peer reads, which
-+		 * may wait for our own reader.
-+		 */
-+		release_sock(sk);
-+		skb = sock_alloc_send_pskb(sk, headroom + linear,
-+					   len - linear, 0, &err, 0);
-+		lock_sock(sk);
-+	}
- 	if (!skb)
- 		goto out;
- 	if (headroom)
-@@ -1268,6 +1278,54 @@ static void iucv_process_message_q(struct sock *sk)
+ 
+ 	bh_lock_sock(sk);
+-	iucv->msglimit_peer = iucv_trans_hdr(skb)->window;
+-	sk->sk_state = IUCV_CONNECTED;
+-	sk->sk_state_change(sk);
++	afiucv_hs_synack(sk, iucv_trans_hdr(skb)->window);
+ 	bh_unlock_sock(sk);
+ 	consume_skb(skb);
+ 	return NET_RX_SUCCESS;
+@@ -2053,16 +2087,13 @@ static int afiucv_hs_callback_synack(struct sock *sk, struct sk_buff *skb)
+  */
+ static int afiucv_hs_callback_synfin(struct sock *sk, struct sk_buff *skb)
+ {
+-	struct iucv_sock *iucv = iucv_sk(sk);
+-
+-	if (!iucv || sk->sk_state != IUCV_BOUND) {
++	if (!sk || sk->sk_state != IUCV_BOUND) {
+ 		kfree_skb(skb);
+ 		return NET_RX_SUCCESS;
  	}
+ 
+ 	bh_lock_sock(sk);
+-	sk->sk_state = IUCV_DISCONN;
+-	sk->sk_state_change(sk);
++	afiucv_hs_synfin(sk);
+ 	bh_unlock_sock(sk);
+ 	consume_skb(skb);
+ 	return NET_RX_SUCCESS;
+@@ -2073,19 +2104,15 @@ static int afiucv_hs_callback_synfin(struct sock *sk, struct sk_buff *skb)
+  */
+ static int afiucv_hs_callback_fin(struct sock *sk, struct sk_buff *skb)
+ {
+-	struct iucv_sock *iucv = iucv_sk(sk);
+-
+ 	/* other end of connection closed */
+-	if (!iucv) {
++	if (!sk) {
+ 		kfree_skb(skb);
+ 		return NET_RX_SUCCESS;
+ 	}
+ 
+ 	bh_lock_sock(sk);
+-	if (sk->sk_state == IUCV_CONNECTED) {
+-		sk->sk_state = IUCV_DISCONN;
+-		sk->sk_state_change(sk);
+-	}
++	if (sk->sk_state == IUCV_CONNECTED)
++		afiucv_hs_fin(sk);
+ 	bh_unlock_sock(sk);
+ 	consume_skb(skb);
+ 	return NET_RX_SUCCESS;
+@@ -2153,6 +2180,57 @@ static int afiucv_hs_callback_rx(struct sock *sk, struct sk_buff *skb)
+ 	return NET_RX_SUCCESS;
  }
  
 +/**
-+ * iucv_sock_recv_skb() - get the next skb for recvmsg(), waiting for one
-+ * @sk:		the socket, locked by the caller
-+ * @flags:	recvmsg() flags; MSG_PEEK leaves the skb queued and returns
-+ *		it with a reference
-+ * @err:	set when no skb is returned
++ * afiucv_hs_dispatch() - run the callback of a frame
++ * @sk:		the socket the frame is for, or NULL if there is none
++ * @skb:	the frame
 + *
-+ * skb_recv_datagram() would sleep with the socket lock held. This sleeps in
-+ * sk_wait_event(), which drops it.
-+ *
-+ * Context: Process context, socket lock held; sleeps with it released.
-+ * Return: the skb, or NULL with @err set. At RCV_SHUTDOWN the caller
-+ * returns EOF whatever @err is.
++ * Context: Softirq.
++ * Return: NET_RX_SUCCESS.
 + */
-+static struct sk_buff *iucv_sock_recv_skb(struct sock *sk, int flags, int *err)
++static int afiucv_hs_dispatch(struct sock *sk, struct sk_buff *skb)
 +{
-+	long timeo = sock_rcvtimeo(sk, flags & MSG_DONTWAIT);
-+	struct sk_buff_head *queue = &sk->sk_receive_queue;
-+	DEFINE_WAIT_FUNC(wait, woken_wake_function);
-+	struct sk_buff *skb;
++	struct af_iucv_trans_hdr *trans_hdr = iucv_trans_hdr(skb);
++	int err = NET_RX_SUCCESS;
 +
-+	for (;;) {
-+		skb = skb_recv_datagram(sk, flags | MSG_DONTWAIT, err);
-+		if (skb || *err != -EAGAIN)
-+			break;
-+		if (sk->sk_shutdown & RCV_SHUTDOWN)
-+			break;
-+		if (!timeo)
-+			break;
-+		if (sk->sk_state != IUCV_CONNECTED) {
-+			*err = -ENOTCONN;
++	switch (trans_hdr->flags) {
++	case AF_IUCV_FLAG_SYN:
++		/* connect request */
++		err = afiucv_hs_callback_syn(sk, skb);
++		break;
++	case (AF_IUCV_FLAG_SYN | AF_IUCV_FLAG_ACK):
++		/* connect request confirmed */
++		err = afiucv_hs_callback_synack(sk, skb);
++		break;
++	case (AF_IUCV_FLAG_SYN | AF_IUCV_FLAG_FIN):
++		/* connect request refused */
++		err = afiucv_hs_callback_synfin(sk, skb);
++		break;
++	case (AF_IUCV_FLAG_FIN):
++		/* close request */
++		err = afiucv_hs_callback_fin(sk, skb);
++		break;
++	case (AF_IUCV_FLAG_WIN):
++		err = afiucv_hs_callback_win(sk, skb);
++		if (skb->len == sizeof(struct af_iucv_trans_hdr)) {
++			consume_skb(skb);
 +			break;
 +		}
-+		if (signal_pending(current)) {
-+			*err = sock_intr_errno(timeo);
-+			break;
-+		}
-+		add_wait_queue(sk_sleep(sk), &wait);
-+		sk_wait_event(sk, &timeo,
-+			      !skb_queue_empty_lockless(queue) ||
-+			      READ_ONCE(sk->sk_err) ||
-+			      (READ_ONCE(sk->sk_shutdown) & RCV_SHUTDOWN) ||
-+			      sk->sk_state != IUCV_CONNECTED, &wait);
-+		remove_wait_queue(sk_sleep(sk), &wait);
++		fallthrough;	/* and receive non-zero length data */
++	case (AF_IUCV_FLAG_SHT):
++		/* shutdown request */
++		fallthrough;	/* and receive zero length data */
++	case 0:
++		/* plain data frame */
++		IUCV_SKB_CB(skb)->class = trans_hdr->iucv_hdr.class;
++		err = afiucv_hs_callback_rx(sk, skb);
++		break;
++	default:
++		kfree_skb(skb);
 +	}
-+	return skb;
++	return err;
 +}
 +
- static int iucv_sock_recvmsg(struct socket *sock, struct msghdr *msg,
- 			     size_t len, int flags)
- {
-@@ -1279,24 +1337,25 @@ static int iucv_sock_recvmsg(struct socket *sock, struct msghdr *msg,
- 	int err = 0;
- 	u32 offset;
+ /*
+  * afiucv_hs_rcv() - base function for arriving data through HiperSockets
+  *                   transport
+@@ -2233,42 +2311,7 @@ static int afiucv_hs_rcv(struct sk_buff *skb, struct net_device *dev,
+ 	 data -> send FIN
+ 	 SYN|ACK, SYN|FIN, FIN -> no action? */
  
-+	lock_sock(sk);
- 	if ((sk->sk_state == IUCV_DISCONN) &&
- 	    skb_queue_empty(&iucv->backlog_skb_q) &&
- 	    skb_queue_empty(&sk->sk_receive_queue) &&
--	    list_empty(&iucv->message_q.list))
--		return 0;
-+	    list_empty(&iucv->message_q.list)) {
-+		copied = 0;
-+		goto unlock;
-+	}
- 
--	if (flags & (MSG_OOB))
--		return -EOPNOTSUPP;
-+	if (flags & (MSG_OOB)) {
-+		err = -EOPNOTSUPP;
-+		goto err_unlock;
-+	}
- 
--	/* receive/dequeue next skb:
--	 * the function understands MSG_PEEK and, thus, does not dequeue skb
--	 * only refcount is increased.
--	 */
--	skb = skb_recv_datagram(sk, flags, &err);
-+	skb = iucv_sock_recv_skb(sk, flags, &err);
- 	if (!skb) {
- 		if (sk->sk_shutdown & RCV_SHUTDOWN)
--			return 0;
--		return err;
-+			err = 0;
-+		goto err_unlock;
- 	}
- 
- 	offset = IUCV_SKB_CB(skb)->offset;
-@@ -1346,8 +1405,9 @@ static int iucv_sock_recvmsg(struct socket *sock, struct msghdr *msg,
- 			if (atomic_read(&iucv->msg_recv) >
- 			    afiucv_hs_window(iucv)) {
- 				WARN_ON(1);
--				iucv_sock_close(sk);
--				return -EFAULT;
-+				__iucv_sock_close(sk);
-+				err = -EFAULT;
-+				goto err_unlock;
- 			}
- 		}
- 
-@@ -1389,7 +1449,8 @@ static int iucv_sock_recvmsg(struct socket *sock, struct msghdr *msg,
- 		copied = rlen;
- 	if (flags & MSG_PEEK)
- 		skb_unref(skb);
+-	switch (trans_hdr->flags) {
+-	case AF_IUCV_FLAG_SYN:
+-		/* connect request */
+-		err = afiucv_hs_callback_syn(sk, skb);
+-		break;
+-	case (AF_IUCV_FLAG_SYN | AF_IUCV_FLAG_ACK):
+-		/* connect request confirmed */
+-		err = afiucv_hs_callback_synack(sk, skb);
+-		break;
+-	case (AF_IUCV_FLAG_SYN | AF_IUCV_FLAG_FIN):
+-		/* connect request refused */
+-		err = afiucv_hs_callback_synfin(sk, skb);
+-		break;
+-	case (AF_IUCV_FLAG_FIN):
+-		/* close request */
+-		err = afiucv_hs_callback_fin(sk, skb);
+-		break;
+-	case (AF_IUCV_FLAG_WIN):
+-		err = afiucv_hs_callback_win(sk, skb);
+-		if (skb->len == sizeof(struct af_iucv_trans_hdr)) {
+-			consume_skb(skb);
+-			break;
+-		}
+-		fallthrough;	/* and receive non-zero length data */
+-	case (AF_IUCV_FLAG_SHT):
+-		/* shutdown request */
+-		fallthrough;	/* and receive zero length data */
+-	case 0:
+-		/* plain data frame */
+-		IUCV_SKB_CB(skb)->class = trans_hdr->iucv_hdr.class;
+-		err = afiucv_hs_callback_rx(sk, skb);
+-		break;
+-	default:
+-		kfree_skb(skb);
+-	}
 -
-+unlock:
-+	release_sock(sk);
- 	return copied;
- 
- err_out:
-@@ -1397,7 +1458,8 @@ static int iucv_sock_recvmsg(struct socket *sock, struct msghdr *msg,
- 		skb_queue_head(&sk->sk_receive_queue, skb);
- 	else
- 		skb_unref(skb);
--
-+err_unlock:
-+	release_sock(sk);
++	err = afiucv_hs_dispatch(sk, skb);
+ 	if (sk)
+ 		sock_put(sk);
  	return err;
- }
- 
 
 -- 
 2.56.0
