@@ -1,95 +1,76 @@
 From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Wed, 11 Nov 2026 17:23:58 +0000
-Subject: [PATCH v2 1/2] can: kvaser_usb: hydra: reject commands shorter
- than a standard command
+Date: Wed, 11 Nov 2026 17:23:59 +0000
+Subject: [PATCH v2 2/2] can: kvaser_usb: reject devices reporting zero max
+ outstanding tx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-kvaser-usb-validate-v2-1-193dc10ca19b@gmail.com>
+Message-Id: <20261111-kvaser-usb-validate-v2-2-193dc10ca19b@gmail.com>
 References: <20261111-kvaser-usb-validate-v2-0-193dc10ca19b@gmail.com>
 In-Reply-To: <20261111-kvaser-usb-validate-v2-0-193dc10ca19b@gmail.com>
 To: mkl@pengutronix.de, mailhol@kernel.org, joasantonio108@gmail.com
 Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794417838; l=3068;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794417838; l=1920;
  i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=2FOyrmwYW2SkcrDKPo4yzypedyTsO5ugueU8GtgBM1k=;
- b=vKFH6qpUghmLa7rLBGqIk9d++ppksgy7ubAleVHuLrzsAxXjbja4eCdMgABxDVHkPUORiyLcv
- iwyUxoFl+PoCcPl5a2vuwV/te+0q2TyKYcZi33r5xMu9vvEDGx0Rv97
+ bh=CWXGNrvsTmGzERh91MhkIoNvIPE1iZLcRy1k5EnUGBw=;
+ b=vNchyjTBxRedrlTdKJ6+cU4oyOinGs+bICZ4Dj/cr5o1SicqzOQ5RNWhk/MrIOzNlJMffsBPb
+ pAQists5UFkAnpLhpAFmyC50h0rgx410feYgy03MlyL5MZHUzHpyyio
 X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
  pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
 X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-kvaser_usb_hydra_cmd_size() returns the length field supplied by the
-device for extended commands.  Both command parsers advance through the
-received buffer by that length:
+The number of tx contexts is taken from the max_outstanding_tx field of
+the software info reply sent by the device.  The leaf driver uses the
+value as is and the hydra driver only limits it to
+KVASER_USB_MAX_TX_URBS, so a device can report zero.
 
-  kvaser_usb_hydra_wait_cmd()            pos += cmd_len;
-  kvaser_usb_hydra_read_bulk_callback()  pos += cmd_len;
+dev->max_tx_urbs is then used as a divisor when a tx acknowledge is
+received:
 
-Neither checks that the length is non-zero.  A device that sends an
-extended command (cmd_no == CMD_EXTENDED) with a length of zero keeps
-pos unchanged, so the loop never terminates.  In
-kvaser_usb_hydra_read_bulk_callback() this happens in the URB completion
-handler, which also calls kvaser_usb_hydra_handle_cmd() on the same
-command in every iteration, and locks up the CPU.  In
-kvaser_usb_hydra_wait_cmd() the loop spins in process context without
-ever reaching the timeout check.
+  kvaser_usb_leaf_tx_acknowledge()
+	context = &priv->tx_contexts[tid % dev->max_tx_urbs];
 
-A non-zero length that is too small is not valid either.  The parsers
-only check that cmd_len bytes are available, but the handlers of the
-extended commands read the fixed part of the command without looking at
-the length again: cmd_no_ext, the flags and timestamp of
-struct kvaser_cmd_ext_tx_ack and the fields of
-struct kvaser_cmd_ext_rx_can in front of the payload.  That fixed part
-ends at byte 32 in both cases, so a shorter extended command makes the
-handlers read bytes that are not part of the command.
+  kvaser_usb_hydra_tx_acknowledge()
+	context = &priv->tx_contexts[transid % dev->max_tx_urbs];
 
-Standard commands are sizeof(struct kvaser_cmd), 32 bytes, and the
-extended commands that the driver handles or sends are never shorter
-than that.  Treat a shorter length as a format error in both parsers.
+With max_tx_urbs == 0 a tx acknowledge sent by the device while the
+interface is up is a division by zero in the URB completion handler on
+architectures that trap on it.  On architectures that do not
+trap, the index is not reduced at all and tx_contexts[], which was
+allocated with zero elements, is accessed out of bounds.
 
-A similar infinite loop in the leaf command parsers was fixed in
-commit 0c73772cd2b8 ("can: kvaser_usb: leaf: Fix potential infinite loop
-in command parsers").
+A device that cannot accept any outstanding tx frame is not usable, so
+fail the probe when it reports zero.
 
 Found by LLM-assisted source review.
 
-Fixes: aec5fb2268b7 ("can: kvaser_usb: Add support for Kvaser USB hydra family")
+Fixes: 082d70b6142f ("can: kvaser_usb: Comply with firmware max tx URBs value")
 Cc: stable@vger.kernel.org
 Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
- drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ drivers/net/can/usb/kvaser_usb/kvaser_usb_core.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c b/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c
-index 687911d764de..9adb4eb36e39 100644
---- a/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c
-+++ b/drivers/net/can/usb/kvaser_usb/kvaser_usb_hydra.c
-@@ -676,7 +676,8 @@ static int kvaser_usb_hydra_wait_cmd(const struct kvaser_usb *dev, u8 cmd_no,
+diff --git a/drivers/net/can/usb/kvaser_usb/kvaser_usb_core.c b/drivers/net/can/usb/kvaser_usb/kvaser_usb_core.c
+index d0a2a2a33c1c..a915e529290b 100644
+--- a/drivers/net/can/usb/kvaser_usb/kvaser_usb_core.c
++++ b/drivers/net/can/usb/kvaser_usb/kvaser_usb_core.c
+@@ -977,6 +977,12 @@ static int kvaser_usb_probe(struct usb_interface *intf,
+ 		goto free_devlink;
+ 	}
  
- 			tmp_cmd = buf + pos;
- 			cmd_len = kvaser_usb_hydra_cmd_size(tmp_cmd);
--			if (pos + cmd_len > actual_len) {
-+			if (cmd_len < sizeof(struct kvaser_cmd) ||
-+			    pos + cmd_len > actual_len) {
- 				dev_err_ratelimited(&dev->intf->dev,
- 						    "Format error\n");
- 				break;
-@@ -2156,6 +2157,11 @@ static void kvaser_usb_hydra_read_bulk_callback(struct kvaser_usb *dev,
- 
- 		cmd_len = kvaser_usb_hydra_cmd_size(cmd);
- 
-+		if (cmd_len < sizeof(struct kvaser_cmd)) {
-+			dev_err(&dev->intf->dev, "Format error\n");
-+			return;
-+		}
++	if (!dev->max_tx_urbs) {
++		dev_err(&intf->dev, "Invalid max outstanding tx (0)\n");
++		err = -ENODEV;
++		goto free_devlink;
++	}
 +
- 		if (pos + cmd_len > len) {
- 			/* We got first part of a command */
- 			int leftover_bytes;
+ 	if (ops->dev_get_software_details) {
+ 		err = ops->dev_get_software_details(dev);
+ 		if (err) {
 
 -- 
 2.43.0
