@@ -1,194 +1,116 @@
-From: Martin Belanger <martin.nvme.dev@gmail.com>
-Date: Wed, 11 Nov 2026 15:42:41 -0500
-Subject: [PATCH v2 3/3] nvme-tcp: consume TLS records without application
- data
+From: Mani Tofigh <mt4022@columbia.edu>
+Date: Wed, 11 Nov 2026 16:02:25 -0500
+Subject: [PATCH] pipe: keep per-write wakeups for EPOLLEXCLUSIVE consumers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-nvme-tcp-live-ctrlrec-v2-3-6295202b84de@gmail.com>
-References: <20261111-nvme-tcp-live-ctrlrec-v2-0-6295202b84de@gmail.com>
-In-Reply-To: <20261111-nvme-tcp-live-ctrlrec-v2-0-6295202b84de@gmail.com>
-To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
- Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
- Hannes Reinecke <hare@kernel.org>
-Cc: Martin Belanger <martin.nvme.dev@gmail.com>, 
- linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Martin Belanger <martin.belanger@dell.com>, stable@vger.kernel.org
+Message-Id: <20261111-pipe-epollexclusive-wakeup-v1-1-0af6283e9fda@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTsJbdCgVzEuoPzqaAOTjkUSw
+ t2t+nbf5q1kSAKjU7VSwiwm01jgdhWFezfewDIUk6/9wZVYRcHQKUYsIWaTGfzunsjKx9btfVs
+ 3rm8GKgNNuMrym58vf1vuHwiv75G27QObfYctfgAAAA==
+X-Change-ID: 20261111-pipe-epollexclusive-wakeup-981528041b4d
+To: Christian Brauner <brauner@kernel.org>, 
+ Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Jan Kara <jack@suse.cz>, Oleg Nesterov <oleg@redhat.com>, 
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ tz2294@columbia.edu, stable@vger.kernel.org, 
+ Mani Tofigh <mt4022@columbia.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794429760; l=5497;
- i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
- bh=m228vdxP3ZzFl+gT3m3W5yTlx4aQ1XbuGpyRUHeWzeg=;
- b=tjSB6muxQQMw6dnrZQgd+BNhSPHA4JJ0d9L3x048ettB5iD72O5kJEeqM0fK0kMBsBy43jg4v
- lXszNakTBErA8ajamBX5FF/aZ93Vk4/0WZBoDwPkDuG1pdDByi2tb4p
-X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
- pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
-X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794430945; l=3875;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=AMo3CuUQRFmmdnadGKZpp80pX6RvxZnQfgMh8Vg/BZs=;
+ b=vKagOaquZDeNf8CRSF5BrdESHWSEON6SGjDwk4FBb4Vfz1qkjFSxsKl31j4K60lWFb24/LumK
+ fWzBA7CejUbDqSjbFj6mS+PWDVzPdCQJYxe3tDV+kqpfafvnMpEKd7r
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Martin Belanger <martin.belanger@dell.com>
+A task blocked in read() on a pipe can sleep while the pipe holds data,
+when an epoll(EPOLLEXCLUSIVE) watcher of the read end was added before
+it.  The watcher's entry on ->rd_wait is exclusive and sits ahead of the
+reader, so a write into an empty pipe wakes only the watcher.  The
+watcher reads without sleeping in anon_pipe_read() and doesn't pass the
+wakeup on.  Since commit f1cebdec9739 ("pipe: only enable the extra
+wake_up(rd_wait) for EPOLLET consumers") the next writes into the
+non-empty pipe don't wake anyone anymore:
 
-A peer may send a TLS record without application data at any time
-after the handshake: a NewSessionTicket, a KeyUpdate or an alert.
-tls_sw_read_sock() cannot pass such a record to nvme_tcp_recv_skb().
-It returns -EINVAL and leaves the record at the head of the receive
-queue. nvme_tcp_try_recv() then starts error recovery, and the
-controller reconnects.
+  Task E                   Task A                 Task C
+  epoll_wait(ep, -1)
+    /* EPOLLEXCLUSIVE */
+                           read(p[0])
+                                                  write(p[1], "1")
+                                                    /* wakes E only */
+                                                  write(p[1], "2")
+                                                    /* no wakeup */
+  read(p[0], 1 byte)
+  exit()
+                           /* still asleep, "2" is in the pipe */
 
-TLS 1.3 allows a server to send a NewSessionTicket at any time after
-the handshake (RFC 8446, section 4.6.1). Alerts can also arrive at any
-time.
+A then sleeps until the next write into an empty pipe, if ever.  Before
+that commit any pipe_poll() enabled the per-write wakeups.  Those
+reached A because an EPOLLEXCLUSIVE entry only takes a wakeup while a
+task sleeps in epoll_wait().
 
-On -EINVAL, read the record with recvmsg(), which reports the record
-type. Discard handshake messages other than KeyUpdate. Log alerts, and
-fail the queue on a fatal alert. Fail the queue on a KeyUpdate, which
-nvme-tcp cannot answer, and on any other record type. recvmsg() takes
-the socket lock, so release it around the read.
+So EPOLLEXCLUSIVE consumers depend on the per-write wakeups too, for a
+different reason than EPOLLET.  Enable them for EPOLLEXCLUSIVE as well
+and say why in the comment.  With the fix, A reads the second byte.
 
-On a poll queue, nvme_tcp_poll() and nvme_tcp_io_work() can both see
-the record while the socket lock is released. A queue flag makes sure
-that only one of them reads it.
+This bug was identified and confirmed with the help of a deterministic
+hypervisor currently under development.  The C reproducer below however
+hits it within about 2s.
 
-svc_tcp_recvfrom() in sunrpc handles -EINVAL from read_sock() the same
-way.
-
-Fixes: be8e82caa685 ("nvme-tcp: enable TLS handshake upcall")
+Fixes: f1cebdec9739 ("pipe: only enable the extra wake_up(rd_wait) for EPOLLET consumers")
 Cc: stable@vger.kernel.org
-Signed-off-by: Martin Belanger <martin.belanger@dell.com>
+Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
- drivers/nvme/host/tcp.c | 96 +++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 94 insertions(+), 2 deletions(-)
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/pipeexcl.c
 
-diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index c3bf345c4e92..cc6a46f118b2 100644
---- a/drivers/nvme/host/tcp.c
-+++ b/drivers/nvme/host/tcp.c
-@@ -123,6 +123,7 @@ enum nvme_tcp_queue_flags {
- 	NVME_TCP_Q_LIVE		= 1,
- 	NVME_TCP_Q_POLLING	= 2,
- 	NVME_TCP_Q_IO_CPU_SET	= 3,
-+	NVME_TCP_Q_TLS_RECORD	= 4,
- };
- 
- #define NVME_TCP_OPT_NR_QUEUES(opts) ((opts)->nr_io_queues + \
-@@ -1450,6 +1451,8 @@ static int nvme_tcp_try_send(struct nvme_tcp_queue *queue)
- 	return ret;
- }
- 
-+static int nvme_tcp_recv_tls_record(struct nvme_tcp_queue *queue);
-+
- static int nvme_tcp_try_recv(struct nvme_tcp_queue *queue)
- {
- 	struct socket *sock = queue->sock;
-@@ -1462,10 +1465,31 @@ static int nvme_tcp_try_recv(struct nvme_tcp_queue *queue)
- 	lock_sock(sk);
- 	queue->nr_cqe = 0;
- 	consumed = sock->ops->read_sock(sk, &rd_desc, nvme_tcp_recv_skb);
-+	/*
-+	 * kTLS cannot pass a TLS record without application data to
-+	 * nvme_tcp_recv_skb(). It returns -EINVAL and leaves the record at
-+	 * the head of the receive queue. recvmsg() takes the socket lock,
-+	 * so read the record without it.
-+	 */
-+	if (unlikely(consumed == -EINVAL && nvme_tcp_queue_tls(queue) &&
-+		     queue->rd_enabled)) {
-+		/*
-+		 * On a poll queue, nvme_tcp_poll() and nvme_tcp_io_work() can
-+		 * both get here for the same record. Only one of them reads it.
-+		 */
-+		if (test_and_set_bit(NVME_TCP_Q_TLS_RECORD, &queue->flags)) {
-+			consumed = 0;
-+		} else {
-+			release_sock(sk);
-+			consumed = nvme_tcp_recv_tls_record(queue);
-+			lock_sock(sk);
-+			clear_bit(NVME_TCP_Q_TLS_RECORD, &queue->flags);
-+		}
-+	}
- 	/*
- 	 * nvme_tcp_recv_skb() handles its own errors, so a queue that is
--	 * still enabled failed inside read_sock(). Handle it before
--	 * release_sock() processes the backlog.
-+	 * still enabled failed inside read_sock() or while reading a TLS
-+	 * record. Handle it before release_sock() processes the backlog.
+There are a couple of older gaps like this (a single write, and the
+write side with EPOLLOUT|EPOLLEXCLUSIVE).  I left both alone here though.
+---
+ fs/pipe.c                 | 6 +++++-
+ include/linux/pipe_fs_i.h | 2 +-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/fs/pipe.c b/fs/pipe.c
+index 4c1122597a3c..8ad792d300c9 100644
+--- a/fs/pipe.c
++++ b/fs/pipe.c
+@@ -700,9 +700,13 @@ pipe_poll(struct file *filp, poll_table *wait)
+ 	 * and the ->pseudo_edgetrigger check in anon_pipe_write().
+ 	 * Currently io_uring sets EPOLLET for multishot polls, so it gets the
+ 	 * same behaviour.
++	 *
++	 * EPOLLEXCLUSIVE needs them too.  Its entry is an exclusive waiter on
++	 * ->rd_wait that can take the wakeup meant for a blocked reader, and
++	 * unlike a woken reader in anon_pipe_read() it doesn't pass it on.
  	 */
- 	if (unlikely(consumed < 0 && consumed != -EAGAIN &&
- 		     queue->rd_enabled)) {
-@@ -1665,6 +1689,74 @@ static int nvme_tcp_drain_tls_record(struct nvme_tcp_queue *queue,
- 	return drained;
- }
+ 	if ((filp->f_mode & FMODE_READ) &&
+-	    wait && (wait->_key & EPOLLET) &&
++	    wait && (wait->_key & (EPOLLET | EPOLLEXCLUSIVE)) &&
+ 	    unlikely(!READ_ONCE(pipe->pseudo_edgetrigger)))
+ 		WRITE_ONCE(pipe->pseudo_edgetrigger, true);
  
-+/*
-+ * Read the TLS record that read_sock() could not pass to
-+ * nvme_tcp_recv_skb(). The caller must not hold the socket lock.
-+ *
-+ * A KeyUpdate needs new keys that nothing here can supply. Other handshake
-+ * messages, such as a NewSessionTicket, are discarded.
-+ *
-+ * Returns the bytes consumed, or a negative errno if the connection cannot
-+ * continue.
-+ */
-+static int nvme_tcp_recv_tls_record(struct nvme_tcp_queue *queue)
-+{
-+	u8 buf[NVME_TCP_TLS_REC_CHUNK];
-+	union nvme_tcp_tls_cmsg u = {};
-+	struct kvec iov = {
-+		.iov_base = buf,
-+		.iov_len = sizeof(buf),
-+	};
-+	struct msghdr msg = {
-+		.msg_control = &u,
-+		.msg_controllen = sizeof(u),
-+	};
-+	int len, ret;
-+	u8 ctype;
-+
-+	len = kernel_recvmsg(queue->sock, &msg, &iov, 1, sizeof(buf),
-+			     MSG_DONTWAIT);
-+	if (len <= 0)
-+		goto fail;
-+
-+	ctype = tls_get_record_type(queue->sock->sk, &u.cmsg);
-+	switch (ctype) {
-+	case TLS_RECORD_TYPE_HANDSHAKE:
-+		if (buf[0] == TLS_HANDSHAKE_KEYUPDATE) {
-+			dev_err(queue->ctrl->ctrl.device,
-+				"queue %d: peer sent a TLS KeyUpdate, which is not supported\n",
-+				nvme_tcp_queue_id(queue));
-+			return -EKEYEXPIRED;
-+		}
-+		break;
-+	case TLS_RECORD_TYPE_ALERT:
-+		ret = nvme_tcp_recv_tls_alert(queue, &msg, len);
-+		if (ret)
-+			return ret;
-+		break;
-+	default:
-+		dev_err(queue->ctrl->ctrl.device,
-+			"queue %d: unexpected TLS record %u\n",
-+			nvme_tcp_queue_id(queue), ctype);
-+		return -EPROTO;
-+	}
-+
-+	ret = nvme_tcp_drain_tls_record(queue, &msg, MSG_DONTWAIT);
-+	if (ret < 0) {
-+		len = ret;
-+		goto fail;
-+	}
-+
-+	return len + ret;
-+
-+fail:
-+	/* read_sock() left a whole record, so none of it can be missing */
-+	if (len == -EAGAIN)
-+		return -EPROTO;
-+
-+	return len ? : -ECONNRESET;
-+}
-+
- /*
-  * Discard a TLS record that arrived in place of the ICResp. A peer may send
-  * a NewSessionTicket as soon as the handshake completes.
+diff --git a/include/linux/pipe_fs_i.h b/include/linux/pipe_fs_i.h
+index 95f6236c5c5b..6b2e14ec6ef8 100644
+--- a/include/linux/pipe_fs_i.h
++++ b/include/linux/pipe_fs_i.h
+@@ -90,7 +90,7 @@ struct anon_pipe_prealloc {
+  *	@files: number of struct file referring this pipe (protected by ->i_lock)
+  *	@r_counter: reader counter
+  *	@w_counter: writer counter
+- *	@pseudo_edgetrigger: has an EPOLLET consumer, enable per-write wakeups
++ *	@pseudo_edgetrigger: enable per-write wakeups for EPOLLET/EPOLLEXCLUSIVE
+  *	@fasync_readers: reader side fasync
+  *	@fasync_writers: writer side fasync
+  *	@bufs: the circular array of pipe buffers
 
--- 
-2.53.0
+---
+base-commit: b0993210e420f2f1d61e6719fbcd3966b96ff9ed
+change-id: 20261111-pipe-epollexclusive-wakeup-981528041b4d
+
+Best regards,
+--  
+Mani Tofigh <mt4022@columbia.edu>
 
