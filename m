@@ -1,103 +1,85 @@
-From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Wed, 11 Nov 2026 16:22:26 +0000
-Subject: [PATCH net v2] net: usb: smsc75xx: reject frames without a full
- header and FCS
+From: Michiel van Beers <michielvanbeers@gmail.com>
+Subject: [PATCH v2 0/2] backlight: lm3630a: Add a per-bank full-scale
+ current limit
+Date: Wed, 11 Nov 2026 17:21:40 +0100
+Message-Id: <20261111-lm3630a-led-max-microamp-v2-0-aff11756e7be@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-smsc75xx-rx-fcs-v2-1-216a5f26842a@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEGW9GoC/3WNvQ7CMBCDX6W6maBeKCUw8R6oQ0ku7Un0R7kqC
- qr67kTZGTx8tmzvIBSYBB7VDoEiCy9zBn2qwI79PJBilxl0rVtErJVMYm/XlFRIylvJ6u+tcR6
- dJcitNZDnVBZfMNMGXTZHlm0J3/ISsUR/ByMqVA3VjXl7q42/PIep58/ZLhN0x3H8AOCp+x+zA
- AAA
-To: steve.glendinning@shawell.net, andrew+netdev@lunn.ch, 
- davem@davemloft.net, edumazet@kernel.org, kuba@kernel.org, 
- pabeni@redhat.com, joasantonio108@gmail.com
-Cc: netdev@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794414145; l=3049;
- i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=UakfyXge5Z7dCorT5L2tCidbQJeCZJFs6IXcWJSAcH0=;
- b=X3LdGQ0gmxyYqtbCxoFYV/DavCK6B5PoaonNbH+/qj6xL6UcK7taMtAk6ZVCvgO6LnrJkQk1K
- DShzMr0btrABu3f+q47WR8v7Vh5Qo+iUn+I5TZWfi4bCr6YBhITayeo
-X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
- pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
-X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
+X-B4-Tracking: v=1; b=H4sIABSW9GoC/42NTQ6CMBBGr0K6dkx/AFNX3sOwKMMIY6glLRIM4
+ e4CXsDlS973vkUkikxJXLNFRJo4cXhtoE+ZwM69WgJuNhZa6lIpeYHem9JIBz014N0MnjEG5wf
+ A0hpdGGcLLMQ2HyI9eD7S9+rH6V0/Cce9txsdpzHEz/E9qd3742ZSIIHQUp6rxtYab6133J8xe
+ FGt6/oFs9SgQ9IAAAA=
+X-Change-ID: 20261107-lm3630a-led-max-microamp-c693253a95c5
+To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
+ Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
+ Griffin Kroah-Hartman <griffin@kroah.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>
+Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-fbdev@vger.kernel.org, Michiel van Beers <michielvanbeers@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794414160; l=2412;
+ i=michielvanbeers@gmail.com; s=20261107; h=from:subject:message-id;
+ bh=M9hBpT4MU3HGwwOvZOZkX2+eRbE95B0Ckdvhl25nIHw=;
+ b=NbVP5964O0uRfIoPM7KNrt3JXDt0Zso+PDJcuKUxXOJKdh4pglDmpklTNOQUexAmVeGbN0GLL
+ yjRQJ6E5DcaAF83UeKzqE7PJl2aCcOiw1CyERwixGrjY8K8TZ5j0EE3
+X-Developer-Key: i=michielvanbeers@gmail.com; a=ed25519;
+ pk=C+lOje7u3+2x3o2NLMXrwz2veP2++eXfIi9MtYsUo4k=
+X-Endpoint-Received: by B4 Relay for michielvanbeers@gmail.com/20261107 with auth_id=1444
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smsc75xx_rx_fixup() takes the frame length from the RX command word
-supplied by the device and strips the FCS by using "size - 4" for the
-allocation, skb_put() and memcpy() of each frame that is not the last
-one in the URB.  The length is only checked against an upper bound and
-against skb->len, so a device can report a length field of 2..5, which
-gives a size of 0..3 after RXW_PADDING is subtracted.
+The LM3630A driver always programs the full-scale current of both
+control banks to the chip maximum of 28.25 mA. This series adds the
+common led-max-microamp property to the binding and makes the driver
+program it, so boards whose LEDs are rated for less can set a lower
+limit.
 
-size is a u32, so "size - 4" then wraps to 0xfffffffc..0xffffffff.
-__netdev_alloc_skb() adds NET_SKB_PAD to the unsigned length, which
-wraps back to a small value and the allocation succeeds.  skb_put()
-adds the length to the 32-bit skb->tail and skb->len, which also wrap,
-so the skb_over_panic() check does not fire.  The following memcpy()
-then tries to copy almost 4 GiB from the URB buffer into that small
-allocation and writes far beyond it.
+My use case is the frontlight of the Onyx Boox Leaf e-reader (SDM636),
+where Onyx's Android kernel sets the full-scale current of both banks
+to 12.5 mA. The board devicetree is not upstream yet.
 
-A malicious or malfunctioning USB device can use this to corrupt
-kernel memory or crash the machine.
+Patch 1 documents the property, patch 2 implements it. Both are meant
+to go through the backlight tree.
 
-A frame that holds an FCS but less than an Ethernet header is not
-valid either.  usbnet drops it when it is the last frame in the URB,
-but the other frames go straight to usbnet_skb_return(), where
-eth_type_trans() reads an Ethernet header that was never copied into
-the new skb.
+Testing:
+- Onyx Boox Leaf, 7.2.y kernel (sdm660-mainline) with patch 2 applied:
+  led-max-microamp = <12500> on both banks reads back as code 0x0a in
+  both full-scale registers, and the frontlight works normally. 5000
+  and 28250 give codes 0x00 and 0x1f, with bank A visibly dimmer at
+  5 mA; 28500 makes probe fail with -EINVAL. The driver in 7.4-rc1
+  differs from 7.2.y only by an unrelated change in lm3630a_remove().
+- dt_binding_check, and dtbs_check of all in-tree boards with an
+  LM3630A (rk3566-pinenote, the i.MX6 Kobo and Tolino e-readers,
+  Nexus 5, OnePlus One): no warnings for this binding.
+- arm64 build with W=1 and sparse: no new warnings.
 
-Reject frames that are too short to hold an Ethernet header and an
-FCS, which covers both cases with one check.
+AI disclosure: I prepared this series with Claude Code (Anthropic,
+Claude Opus 5.5). It drafted the driver change and the commit messages
+from my description of the problem and the datasheet, and proposed the
+checks above; I ran the checks and the hardware test, reviewed every
+line, and take responsibility for the patches.
 
-Found by LLM-assisted source review.
-
-Fixes: 1b3b2d9e772b ("net: usb: smsc75xx: stop lying about skb->truesize")
-Cc: stable@vger.kernel.org
-Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
----
-This issue was found with the help of an LLM-based code review tool
-(Claude).  I checked the code paths by hand against v7.4-rc3 and
-reviewed the fix myself.  It is build-tested only (W=1, arm64); I do
-not have the hardware to test it at runtime.
 ---
 Changes in v2:
-- Also reject frames too short for an Ethernet header, combined with
-  the FCS check into a single test (review feedback on v1).
-- Subject changed accordingly; it was "net: usb: smsc75xx: reject
-  frames shorter than the FCS".
-- Link to v1: https://lore.kernel.org/r/20261110-smsc75xx-rx-fcs-v1-1-4e048bfc28f3@gmail.com
----
- drivers/net/usb/smsc75xx.c | 7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/drivers/net/usb/smsc75xx.c b/drivers/net/usb/smsc75xx.c
-index 6f72a3f15907..893de273adef 100644
---- a/drivers/net/usb/smsc75xx.c
-+++ b/drivers/net/usb/smsc75xx.c
-@@ -2217,6 +2217,13 @@ static int smsc75xx_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
- 				return 0;
- 			}
- 
-+			if (unlikely(size < ETH_HLEN + ETH_FCS_LEN)) {
-+				netif_dbg(dev, rx_err, dev->net,
-+					  "size err rx_cmd_a=0x%08x\n",
-+					  rx_cmd_a);
-+				return 0;
-+			}
-+
- 			/* last frame in this batch */
- 			if (skb->len == size) {
- 				smsc75xx_rx_csum_offload(dev, skb, rx_cmd_a,
+- Patch 1: reference leds/common.yaml from the led@[01] node (Krzysztof)
+- Link to v1: https://patch.msgid.link/20261107-lm3630a-led-max-microamp-v1-0-ec9e441d9b2c@gmail.com
 
 ---
-base-commit: b3dfbde62cf1981c4638939c159dfd087b7a72e9
-change-id: 20261110-smsc75xx-rx-fcs-fca968df1dce
+Michiel van Beers (2):
+      dt-bindings: backlight: lm3630a: Add led-max-microamp
+      backlight: lm3630a: Allow setting the full-scale current per bank
+
+ .../bindings/leds/backlight/lm3630a-backlight.yaml | 10 ++++++
+ drivers/video/backlight/lm3630a_bl.c               | 40 +++++++++++++++++++---
+ include/linux/platform_data/lm3630a_bl.h           |  4 +++
+ 3 files changed, 50 insertions(+), 4 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261107-lm3630a-led-max-microamp-c693253a95c5
 
 Best regards,
--- 
-Joas Antonio dos Santos <joasantonio108@gmail.com>
+--  
+Michiel van Beers <michielvanbeers@gmail.com>
 
