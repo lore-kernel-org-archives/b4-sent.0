@@ -1,16 +1,13 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Subject: [PATCH net-next v2 0/2] net: stmmac: dwmac-sun8i: Jumbo frames and
- an RX_TH fix
-Date: Thu, 12 Nov 2026 08:41:46 +0000
-Message-Id: <20261112-sun8i-emac-jumbo-v2-0-aca0cf23cf17@gmail.com>
+Date: Thu, 12 Nov 2026 08:41:47 +0000
+Subject: [PATCH net-next v2 1/2] net: stmmac: dwmac-sun8i: Fix the RX_TH
+ threshold encoding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6DIBREr2L+ur8BNQa66j0aF0g/iinQABob4
- 92rdt3ly8y8WSFRtJTgVqwQabbJBr9DeSlAD8r3hPa5M5SsbDjnDNPkhUVySuM4uS5gLSpppKh
- VoyTss3ckY5dT+QBPGT0tGdpfkqZuJJ0P49EdbMohfs73mZ+L/0czR4ai7gxjJI1R1b13yr6uO
- jhot237Alda2frMAAAA
-X-Change-ID: 20261110-sun8i-emac-jumbo-4839f984a6a9
+Message-Id: <20261112-sun8i-emac-jumbo-v2-1-aca0cf23cf17@gmail.com>
+References: <20261112-sun8i-emac-jumbo-v2-0-aca0cf23cf17@gmail.com>
+In-Reply-To: <20261112-sun8i-emac-jumbo-v2-0-aca0cf23cf17@gmail.com>
 To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
  Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
@@ -24,63 +21,47 @@ Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-kernel@vger.kernel.org, Corentin Labbe <clabbe.montjoie@gmail.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794472906; l=2223;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794472906; l=1409;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=4lSOCGIxuhr5scVSNymqWxWTq8eeBYQM5ER9DID9Zyk=;
- b=8f+Qdim9xm+qJ7Nqsq62ye44HOsAZgiddAr0jN0CQpUvgGKZYonOGdxtlRWyHja9k02ORMRlz
- 1VDwiIjldWeC16DzPzfuMVXbGC6rEq1jOCRMrrKL1v98YFevFuiQsCz
+ bh=kKoyz2jSo9MVW4lEE52oWjQ6i8jVq1b7o2hmZSQuCoE=;
+ b=g8/W7nlPeZfYmpu56asT03d91iiJSKK5MO6rRapGGZ4M0mZcYBIwI++ufmrkm7msjELJkc4ZP
+ xOnoSwueTxHDS9gfJKD91a9yncVGseAqgU+tyhpEWbNQMSzzSsbFplb
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The sun8i EMAC advertises a maximum MTU of 3712, but drops every frame
-longer than 1518 bytes. Patch 2 sets the receiver's jumbo frame enable
-bit and limits the MTU to what fits in one normal descriptor buffer
-(2018). Patch 1 corrects two swapped RX threshold values; no in-tree
-Allwinner board uses RX threshold mode, so none is affected.
+The EMAC RX_CTL1 RX_TH field (bits 5:4) encodes 00 = 64 bytes and
+01 = 32 bytes (H616 user manual v1.0, 6.5.10; 10 = 96 and 11 = 128 bytes
+as in the driver). The driver has the first two swapped.
 
-Tested on an Orange Pi Zero2 (H616, RTL8211F over RGMII) at 1 Gbit/s,
-with a 7.3 kernel carrying both patches:
-- MTU 2000 and 2018: pings with DF set up to the full MTU pass in both
-  directions, iperf3 gives 955 Mbit/s to the board and 905 Mbit/s from
-  it, and the rx_length and rx_crc_errors counters stay at 0.
-- Setting MTU 2019 is refused.
-- At MTU 1500, a 90 minute run (bulk transfers up to 256 MiB both ways,
-  iperf3 853/873 Mbit/s, 1000 pings each of 56, 1472 and 8000 bytes)
-  had no loss and no new error counters.
+The values are only used in RX threshold mode, which stmmac selects only
+when the snps,force_thresh_dma_mode property is set. No Allwinner device
+tree sets it, so no in-tree board is affected.
 
-In that 7.3 kernel, frames longer than 2044 bytes were dropped by a
-local norm_desc change; v7.4-rc2 does the same through commit
-834ec9530832 ("net: stmmac: drop split frames on AF_XDP zero-copy RX"),
-which patch 2 now relies on.
-
-These patches were developed with Claude (Anthropic) as a coding
-assistant. It investigated the problem and wrote the code and the commit
-messages; I reviewed them, and they were tested on an Orange Pi Zero2
-(H616) as described above.
-
+Fixes: 9f93ac8d4085 ("net-next: stmmac: Add dwmac-sun8i")
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Changes in v2:
-- Patch 1: add the Fixes: tag, and correct the commit message: RX
-  threshold mode depends on snps,force_thresh_dma_mode, not on RX
-  checksum offload (Sashiko AI review)
-- Cc Corentin Labbe (author of the Fixes: target)
-- Rebased onto current net-next; patch 2 unchanged
-- Link to v1: https://patch.msgid.link/20261110-sun8i-emac-jumbo-v1-0-84bf00e9ffa3@gmail.com
+ drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
----
-Arun Iyengar (2):
-      net: stmmac: dwmac-sun8i: Fix the RX_TH threshold encoding
-      net: stmmac: dwmac-sun8i: Enable jumbo frames up to MTU 2018
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
+index 47954537b29e..0c82662fbe6e 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
+@@ -198,8 +198,9 @@ static const struct emac_variant emac_variant_h616_emac1 = {
+ /* Used in RX_CTL1*/
+ #define EMAC_RX_MD              BIT(1)
+ #define EMAC_RX_TH_MASK		GENMASK(5, 4)
+-#define EMAC_RX_TH_32		0
+-#define EMAC_RX_TH_64		(0x1 << 4)
++/* RX_CTL1 RX_TH encoding (H616 UM 6.5.10): 00 = 64, 01 = 32 bytes */
++#define EMAC_RX_TH_32		(0x1 << 4)
++#define EMAC_RX_TH_64		0
+ #define EMAC_RX_TH_96		(0x2 << 4)
+ #define EMAC_RX_TH_128		(0x3 << 4)
+ #define EMAC_RX_DMA_EN  BIT(30)
 
- drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c | 29 +++++++++++++++++++++--
- 1 file changed, 27 insertions(+), 2 deletions(-)
----
-base-commit: c88fd6989aea9237a60a4859139a265bfb7ddc0b
-change-id: 20261110-sun8i-emac-jumbo-4839f984a6a9
-
-Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+2.55.0
 
