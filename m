@@ -1,11 +1,10 @@
 From: Angel Gabriel Crispin Valdivia <angelcrispinvaldivia@gmail.com>
-Date: Wed, 11 Nov 2026 22:34:09 -0500
-Subject: [PATCH v2 2/4] drm/fl2000: Add ITE IT66121 HDMI transmitter
- support
+Date: Wed, 11 Nov 2026 22:34:10 -0500
+Subject: [PATCH v2 3/4] drm/fl2000: Add frame streaming
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-fl2000-upstream-v2-2-201f87708cb0@gmail.com>
+Message-Id: <20261111-fl2000-upstream-v2-3-201f87708cb0@gmail.com>
 References: <20261111-fl2000-upstream-v2-0-201f87708cb0@gmail.com>
 In-Reply-To: <20261111-fl2000-upstream-v2-0-201f87708cb0@gmail.com>
 To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -14,1234 +13,929 @@ To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
  Angel Gabriel Crispin Valdivia <angelcrispinvaldivia@gmail.com>
 Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794454449; l=40578;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794454449; l=30979;
  i=angelcrispinvaldivia@gmail.com; s=20261106; h=from:subject:message-id;
- bh=Be02BkO1Or3symGl9LTgoOh5FC4YQ3xu7REBRVANWMg=;
- b=LYp/QgVm7Ty5zKJWu68QeQn7eBOvUQh2GFHkpfjwtTIOg1Xjwibpyxm+X3dXIFr2rtYYEO8+g
- mn9B+OktwmBClIp6acChDeoGc3dbR3tAqfJoT5aJHMMpKaB9mgdc9+w
+ bh=xfT9VJcW0X4yVVFpyDfSJvg8xPrIREV1dOXUML+kK0I=;
+ b=HH4uARV9NDgmn2eeJQbafPILuKmCdaLMF5fRvA0AEP3T4Vqc/Eef1cfwn/S9ANdTPGM/Q55HC
+ xkbI3BTqNq3CfiqKXVktOb8tSRNjfJME4Z5KdfUUM+kCSe5iHBSr/uq
 X-Developer-Key: i=angelcrispinvaldivia@gmail.com; a=ed25519;
  pk=80bQU/p2R0pLIfdfJaB5I/2obI+RxQHondq5DEM0tbg=
 X-Endpoint-Received: by B4 Relay for angelcrispinvaldivia@gmail.com/20261106 with auth_id=1425
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Probe the IT66121 on the FL2000 I2C bus and expose it as a DRM bridge.
-It attaches with DRM_BRIDGE_ATTACH_NO_CONNECTOR and reports the hot plug
-line and the EDID (DRM_BRIDGE_OP_DETECT and DRM_BRIDGE_OP_EDID), so the
-connector is the display driver's. The transmitter (input bus, AFE, AVI
-infoframe, HDMI/DVI mode) is programmed in atomic_enable, where the
-connector that tells HDMI from DVI is known. The EDID is kept while the
-monitor stays, since reading it over USB takes about a second.
+Frames are sent as one bulk transfer per frame on endpoint 1 OUT, of
+altsetting 1 of the AV control interface. Three URBs are kept
+in flight from a pool of six scatter-gather buffers, and when no new
+frame is ready the current one is sent again, so the FL2000 always has
+data to scan out.
 
-The EDID is read at address 0x50 with the FL2000 I2C engine. On the
-tested adapter, as on the Fresco Logic reference design, the monitor's
-DDC lines are wired to the FL2000 I2C bus, and the IT66121 DDC engine
-never completes. It could not work behind this I2C engine anyway, which
-transfers aligned dwords: every read of the DDC status register also
-pops a byte from the DDC FIFO, which is in the same dword. The HDCP
-engine holds that bus after a chip reset, so the driver releases it
-once before reading.
+The current frame is kept in a shadow buffer in the device's pixel
+format. Only the damaged rectangle of the part of the framebuffer that
+the plane selects is converted, into the shadow, and each outgoing
+buffer is brought up to date from it just before it is submitted, by
+replaying the damage rectangles it missed or with a full copy when it is
+too far behind. The send path never waits for a conversion in progress:
+it resends the newest complete frame instead.
 
-The bridge is created and destroyed with the binding of the USB device.
-It is guarded with drm_bridge_enter(), since a DRM device that userspace
-keeps open after an unplug still has it in its encoder's chain.
+The framebuffer is often a buffer imported from the primary GPU and
+lives in its VRAM, mapped write-combined. It is read a scanline at a
+time with drm_memcpy_from_wc(), which uses streaming loads: a 1080p
+frame then converts in about 8 ms instead of the ~88 ms of
+memcpy_fromio(). The FL2000 wants the two 32-bit halves of every 64-bit
+word swapped, which the converters do as they write. Copies run with the
+buffer taken off the lists, so list_lock, which is also taken from URB
+completion, is never held across multi-megabyte work.
+
+The stream is wired up to KMS in the next patch.
 
 Signed-off-by: Angel Gabriel Crispin Valdivia <angelcrispinvaldivia@gmail.com>
 ---
- drivers/gpu/drm/fl2000/Makefile              |   1 +
- drivers/gpu/drm/fl2000/fl2000_drv.c          |  19 +-
- drivers/gpu/drm/fl2000/fl2000_it66121.c      | 799 +++++++++++++++++++++++++++
- drivers/gpu/drm/fl2000/fl2000_it66121.h      |  18 +
- drivers/gpu/drm/fl2000/fl2000_it66121_regs.h | 284 ++++++++++
- 5 files changed, 1120 insertions(+), 1 deletion(-)
+ drivers/gpu/drm/fl2000/Makefile           |   3 +-
+ drivers/gpu/drm/fl2000/fl2000.h           |  37 ++
+ drivers/gpu/drm/fl2000/fl2000_streaming.c | 807 ++++++++++++++++++++++++++++++
+ 3 files changed, 846 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/gpu/drm/fl2000/Makefile b/drivers/gpu/drm/fl2000/Makefile
-index 2b3a2f151..f64057634 100644
+index f64057634..0671c867e 100644
 --- a/drivers/gpu/drm/fl2000/Makefile
 +++ b/drivers/gpu/drm/fl2000/Makefile
-@@ -3,6 +3,7 @@
- fl2000-y := \
+@@ -4,6 +4,7 @@ fl2000-y := \
  	fl2000_drv.o \
  	fl2000_i2c.o \
-+	fl2000_it66121.o \
- 	fl2000_registers.o
+ 	fl2000_it66121.o \
+-	fl2000_registers.o
++	fl2000_registers.o \
++	fl2000_streaming.o
  
  obj-$(CONFIG_DRM_FL2000) += fl2000.o
-diff --git a/drivers/gpu/drm/fl2000/fl2000_drv.c b/drivers/gpu/drm/fl2000/fl2000_drv.c
-index 8e41de8f5..31d153553 100644
---- a/drivers/gpu/drm/fl2000/fl2000_drv.c
-+++ b/drivers/gpu/drm/fl2000/fl2000_drv.c
-@@ -5,6 +5,7 @@
-  */
- 
- #include "fl2000.h"
-+#include "fl2000_it66121.h"
- 
- #define USB_VENDOR_FRESCO_LOGIC 0x1D5C
- #define USB_PRODUCT_FL2000	0x2000
-@@ -33,6 +34,7 @@ MODULE_DEVICE_TABLE(usb, fl2000_id_table);
- struct fl2000_devs {
- 	struct regmap *regmap;
- 	struct i2c_adapter *adapter;
-+	struct drm_bridge *bridge;
+diff --git a/drivers/gpu/drm/fl2000/fl2000.h b/drivers/gpu/drm/fl2000/fl2000.h
+index 9b903e68c..e6a7de0f7 100644
+--- a/drivers/gpu/drm/fl2000/fl2000.h
++++ b/drivers/gpu/drm/fl2000/fl2000.h
+@@ -41,6 +41,24 @@ enum fl2000_interface {
+ 	FL2000_USBIF_NUM,
  };
  
- /* Interface 0 is what the driver is probing: claim the others */
-@@ -102,13 +104,26 @@ static int fl2000_probe(struct usb_interface *interface, const struct usb_device
- 		return PTR_ERR(devs->adapter);
- 	}
- 
-+	/* The IT66121 is looked for with the I2C engine, ready as for reading the EDID */
-+	fl2000_reset(devs->regmap);
-+	fl2000_usb_magic(devs->regmap);
++/* Called from URB completion handlers, i.e. in atomic context */
++static inline int fl2000_urb_status(struct usb_device *usb_dev, int status)
++{
++	switch (status) {
++	case 0:
++	case -ECONNRESET:
++	case -ENOENT:
++	case -ESHUTDOWN:
++		/* Success, or the URB was unlinked / the device is going away */
++		break;
++	default:
++		dev_err_ratelimited(&usb_dev->dev, "Nonzero urb status, %d\n", status);
++		break;
++	}
 +
-+	devs->bridge = it66121_create(devs->adapter);
-+	if (IS_ERR(devs->bridge))
-+		return PTR_ERR(devs->bridge);
++	return status;
++}
 +
- 	ret = fl2000_claim_interfaces(usb_dev, devs);
- 	if (ret)
--		return ret;
-+		goto err_destroy_bridge;
+ struct fl2000_timings {
+ 	u32 hactive;
+ 	u32 htotal;
+@@ -63,6 +81,25 @@ struct fl2000_pll {
+ #define I2C_RDWR_INTERVAL 200
+ #define I2C_RDWR_TIMEOUT  (256 * 1000)
  
- 	usb_set_intfdata(interface, devs);
- 
- 	return 0;
++/* Streaming transfer task */
++struct fl2000_stream;
++struct fl2000_stream *fl2000_stream_create(struct usb_device *usb_dev);
++void fl2000_stream_destroy(struct fl2000_stream *stream);
 +
-+err_destroy_bridge:
-+	it66121_destroy(devs->bridge);
++/* Streaming interface */
++int fl2000_stream_mode_set(struct fl2000_stream *stream, unsigned int width,
++			   unsigned int height, u32 bytes_pix);
++struct drm_rect;
++struct iosys_map;
++void fl2000_stream_compress(struct fl2000_stream *stream, const struct iosys_map *src_map,
++			    bool imported, unsigned int pitch,
++			    const struct drm_rect *src, const struct drm_rect *clip);
++void fl2000_stream_note_render(struct fl2000_stream *stream, unsigned int conv_us,
++			       unsigned int damage_px);
 +
-+	return ret;
- }
- 
- static void fl2000_disconnect(struct usb_interface *interface)
-@@ -123,6 +138,8 @@ static void fl2000_disconnect(struct usb_interface *interface)
- 	for (int i = 0; i < FL2000_USBIF_NUM; i++)
- 		usb_set_intfdata(usb_ifnum_to_if(usb_dev, i), NULL);
- 
-+	it66121_destroy(devs->bridge);
++int fl2000_stream_enable(struct fl2000_stream *stream);
++void fl2000_stream_disable(struct fl2000_stream *stream);
 +
- 	/* Last, as devs goes with interface 0, which may be one of these */
- 	fl2000_release_interfaces(usb_dev, interface);
- }
-diff --git a/drivers/gpu/drm/fl2000/fl2000_it66121.c b/drivers/gpu/drm/fl2000/fl2000_it66121.c
+ /* I2C adapter interface creation */
+ struct i2c_adapter *fl2000_i2c_init(struct usb_interface *interface, struct regmap *regmap);
+ int fl2000_ddc_read_block(struct i2c_adapter *adapter, u8 *buf, unsigned int block, size_t len);
+diff --git a/drivers/gpu/drm/fl2000/fl2000_streaming.c b/drivers/gpu/drm/fl2000/fl2000_streaming.c
 new file mode 100644
-index 000000000..7235317b0
+index 000000000..dad640de5
 --- /dev/null
-+++ b/drivers/gpu/drm/fl2000/fl2000_it66121.c
-@@ -0,0 +1,799 @@
++++ b/drivers/gpu/drm/fl2000/fl2000_streaming.c
+@@ -0,0 +1,807 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
++ * Frame streaming. The pixel data is sent as one bulk transfer per frame on
++ * endpoint 1 OUT, followed by a zero-length packet that ends the frame, after
++ * switching the AV control interface (#0) to altsetting 1. The hardware
++ * exposes endpoint #1 on more than one interface, which the USB specification
++ * only allows across alternate settings.
++ *
++ * The current frame lives in a shadow buffer, already in the device's pixel
++ * format. Damage is converted into the shadow and nowhere else, and every
++ * outgoing URB buffer is brought up to date from it just before it is sent.
++ *
 + * (C) Copyright 2017, Fresco Logic, Incorporated.
-+ * (C) Copyright 2018-2019, Artem Mygaiev
++ * (C) Copyright 2018-2020, Artem Mygaiev
 + */
 +
-+#include <linux/delay.h>
-+#include <linux/hdmi.h>
-+#include <linux/unaligned.h>
++#include <linux/highmem.h>
++#include <linux/iosys-map.h>
++#include <linux/scatterlist.h>
++#include <linux/vmalloc.h>
 +
-+#include <drm/drm_atomic_state_helper.h>
-+#include <drm/drm_edid.h>
++#include <drm/drm_cache.h>
++#include <drm/drm_rect.h>
 +
 +#include "fl2000.h"
-+#include "fl2000_it66121.h"
-+#include "fl2000_it66121_regs.h"
 +
-+#define VENDOR_ID      0x4954
-+#define DEVICE_ID      0x0612
-+#define REVISION_MASK  0xF000
-+#define REVISION_SHIFT 12
++/*
++ * FL2000_SB_MIN URBs are kept in flight; the rest are spares the send path
++ * draws from. Damage does not depend on this pool - it lands in the shadow
++ * frame - so an empty pool only delays a send, it can never lose an update.
++ */
++#define FL2000_SB_MIN 3
++#define FL2000_SB_NUM (FL2000_SB_MIN * 2)
 +
-+/* How often, and how far apart, to look for the chip on the bus */
-+#define IT66121_DETECT_TRIES	5
-+#define IT66121_DETECT_DELAY_MS	50
++#define FL2000_SUBMIT_ATTEMPTS 10
 +
-+struct it66121_priv {
-+	struct i2c_adapter *adapter;
-+	struct i2c_client *client;
-+	struct regmap *regmap;
-+	struct drm_bridge bridge;
++/*
++ * How many shadow generations of damage history are kept. A buffer further
++ * behind than this is refreshed with a full copy.
++ */
++#define FL2000_DAMAGE_LOG 16
 +
-+	/* The chip was reset and its HDCP engine may be holding the DDC bus */
-+	bool ddc_held;
++/* Must cover FL2000_MAX_WIDTH from fl2000_drm.c */
++#define FL2000_MAX_LINE_PIXELS 4096
 +
-+	struct regmap_field *irq_pending;
-+	struct regmap_field *hpd;
-+	struct regmap_field *clr_irq;
++struct fl2000_stream;
++
++struct fl2000_stream_buf {
++	struct fl2000_stream *stream;
++	struct list_head list;
++	/* Generation of the content it was built from: if current, it is resent as it is */
++	u32 seq;
++	struct sg_table sgt;
++	struct page **pages;
++	unsigned int nr_pages;
++	void *vaddr;
 +};
 +
-+static const struct regmap_range_cfg it66121_regmap_banks[] = {
++struct fl2000_stream {
++	struct usb_device *usb_dev;
++	/* Each buffer journey: render (free) -> wait (in flight) -> render */
++	struct list_head render_list;
++	struct list_head wait_list;
++	spinlock_t list_lock; /* Protects the lists, taken from URB completion */
++	size_t buf_size;
++	u32 bytes_pix;
++	unsigned int width;
++	unsigned int height;
 +	/*
-+	 * Do not put common registers to any range, this will lead to skipping "bank" configuration
-+	 * when accessing those at addresses 0x00-0x2F.
++	 * The authoritative copy of the current frame, in the device's pixel
++	 * format. Damage lands here and nowhere else, and every outgoing URB
++	 * buffer is a copy of it.
 +	 */
-+	{
-+		.name = "Banks",
-+		.range_min = IT66121_BANK_START,
-+		.range_max = IT66121_BANK_END,
-+		.selector_reg = IT66121_SYS_CONTROL,
-+		.selector_mask = IT66121_SYS_BANK_MASK,
-+		.selector_shift = 0,
-+		.window_start = IT66121_BANK_START,
-+		.window_len = IT66121_BANK_SIZE,
-+	},
-+};
-+
-+static bool it66121_reg_volatile(struct device *dev, unsigned int reg)
-+{
-+	return IT66121_REG_VOLATILE(reg);
-+}
-+
-+static const struct regmap_config it66121_regmap_config = {
-+	.val_bits = 8, /* 8-bit register size */
-+	.reg_bits = 8, /* 8-bit register address space */
-+	.reg_stride = 1,
-+	.max_register = 2 * IT66121_BANK_SIZE - 1, /* 2 banks of registers */
-+
-+	.cache_type = REGCACHE_MAPLE,
-+
-+	.volatile_reg = it66121_reg_volatile,
-+
-+	.ranges = it66121_regmap_banks,
-+	.num_ranges = ARRAY_SIZE(it66121_regmap_banks),
-+
-+	.reg_format_endian = REGMAP_ENDIAN_BIG,
-+	.val_format_endian = REGMAP_ENDIAN_BIG,
-+
-+	.use_single_read = true,
-+	.use_single_write = true,
++	void *shadow;
++	struct mutex shadow_lock; /* Serialises the shadow against the send path */
++	u32 shadow_seq;
++	/*
++	 * What changed at each shadow generation. A buffer that is only a few
++	 * generations behind is caught up by replaying these rectangles
++	 * instead of copying the whole frame.
++	 */
++	struct drm_rect damage_log[FL2000_DAMAGE_LOG];
++	/*
++	 * The buffer that carries the most recent content. Only the send path
++	 * writes a buffer, and never one that is in flight, so it can be
++	 * copied from without a lock.
++	 */
++	struct fl2000_stream_buf *newest_sb;
++	struct work_struct work;
++	struct workqueue_struct *work_queue;
++	/* URBs the work may still submit: limits the frames in flight */
++	atomic_t credits;
++	wait_queue_head_t credits_wq;
++	bool enabled;
++	struct usb_anchor anchor;
++	/* Throughput accounting, see fl2000_stream_report() */
++	atomic_t frames;
++	atomic_t rendered;
++	atomic_t stalled;
++	atomic_t conv_us_total;
++	atomic_t conv_us_max;
++	atomic_t damage_px_total;
++	ktime_t last_report;
++	/* Cached staging buffer for one scanline of source pixels */
++	u32 *line_buf;
 +};
 +
 +/*
-+ * Poll sparsely: every status read is a transaction on the shared bus that
-+ * competes with the DDC engine's own transfer.
-+ */
-+#define DDC_POLL_SLEEP_US   5000
-+#define DDC_POLL_TIMEOUT_US 500000
-+
-+#define DDC_CMD_ABORT 0xF
-+
-+static int it66121_configure_input(struct it66121_priv *priv)
-+{
-+	int ret;
-+
-+	/*
-+	 * This configures the bridge IC connection to the encoder IC, i.e. the
-+	 * interface between IT66121 and FL2000. It is fixed by the board design,
-+	 * so it is hardcoded:
-+	 *   - input mode RGB
-+	 *   - IO latch clock = TXCLK
-+	 *   - CCIR656 disabled
-+	 *   - embedded sync disabled
-+	 *   - DDR mode disabled
-+	 *   - 1 cycle input PCLK delay
-+	 */
-+	ret = regmap_write(priv->regmap, IT66121_INPUT_MODE,
-+			   IT66121_INPUT_MODE_RGB | IT66121_INPUT_PCLKDELAY1);
-+	if (ret)
-+		return ret;
-+
-+	/*
-+	 * No color space conversion: the input is RGB and so is the output, so the
-+	 * conversion matrix and blank levels are left untouched.
-+	 */
-+	ret = regmap_write(priv->regmap, IT66121_INPUT_COLOR_CONV, IT66121_INPUT_NO_CONV);
-+	if (ret)
-+		return ret;
-+
-+	return 0;
-+}
-+
-+static int it66121_configure_afe(struct it66121_priv *priv, int clock_khz)
-+{
-+	int ret;
-+
-+	ret = regmap_write(priv->regmap, IT66121_AFE_DRV_CONTROL, IT66121_AFE_RST);
-+	if (ret)
-+		return ret;
-+
-+	/* Values from the vendor reference driver, the bits are undocumented */
-+	if (clock_khz > 80000) {
-+		ret = regmap_write_bits(priv->regmap, IT66121_AFE_XP_CONTROL, 0x90, 0x80);
-+		if (ret)
-+			return ret;
-+		ret = regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_1, 0x89, 0x80);
-+		if (ret)
-+			return ret;
-+		ret = regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_3, 0x10, 0);
-+		if (ret)
-+			return ret;
-+	} else {
-+		ret = regmap_write_bits(priv->regmap, IT66121_AFE_XP_CONTROL, 0x90, 0x10);
-+		if (ret)
-+			return ret;
-+		ret = regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_1, 0x89, 0x09);
-+		if (ret)
-+			return ret;
-+		ret = regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_3, 0x10, 0x10);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	/* Fire AFE */
-+	ret = regmap_write(priv->regmap, IT66121_AFE_DRV_CONTROL, 0);
-+	if (ret)
-+		return ret;
-+
-+	return 0;
-+}
-+
-+/* DDC status bits: done (7), active (6), noack/wait bus/arbitration lose (5:3) */
-+#define DDC_STATUS_TX_DONE BIT(7)
-+
-+static int it66121_wait_ddc_ready(struct it66121_priv *priv)
-+{
-+	unsigned int val = 0;
-+	int ret;
-+
-+	/*
-+	 * Wait for completion only. On this hardware the FL2000 I2C master and
-+	 * the IT66121 DDC master share the physical bus, so 'wait bus' and
-+	 * 'arbitration lose' flags are live/latched transients of the engine
-+	 * retrying on a contended bus, not terminal errors - the only reliable
-+	 * terminal signal is TX_DONE (or the timeout).
-+	 */
-+	ret = regmap_read_poll_timeout(priv->regmap, IT66121_DDC_STATUS, val,
-+				       val & DDC_STATUS_TX_DONE, DDC_POLL_SLEEP_US,
-+				       DDC_POLL_TIMEOUT_US);
-+	if (ret)
-+		dev_dbg(&priv->client->dev, "DDC not done (%d), status 0x%02X\n", ret, val);
-+
-+	return ret;
-+}
-+
-+/*
-+ * The HDCP engine shares the DDC master and holds the bus after chip reset (DDC status reports
-+ * 'wait bus' + 'arbitration lose', 0x1A), and that bus is the one the monitor's DDC is on. Follow
-+ * the ITE reference sequence, as the ite-it66121 driver does: clear HDCP CP_DESIRE, reset the HDCP
-+ * engine and re-select the host as DDC master before issuing the abort command.
-+ */
-+static int it66121_release_ddc(struct it66121_priv *priv)
-+{
-+	int ret;
-+
-+	ret = regmap_write_bits(priv->regmap, IT66121_HDCP_CONTROL, IT66121_HDCP_CP_DESIRE, 0);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_write_bits(priv->regmap, IT66121_SW_RST, IT66121_SW_HDCP_RST,
-+				IT66121_SW_HDCP_RST);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_write(priv->regmap, IT66121_DDC_CONTROL,
-+			   IT66121_DDC_MASTER_DDC | IT66121_DDC_MASTER_HOST);
-+	if (ret)
-+		return ret;
-+
-+	/* The ITE reference driver issues the abort command twice */
-+	for (int i = 0; i < 2; i++) {
-+		ret = regmap_write(priv->regmap, IT66121_DDC_COMMAND, DDC_CMD_ABORT);
-+		if (ret)
-+			return ret;
-+
-+		ret = it66121_wait_ddc_ready(priv);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+/**
-+ * it66121_hpd_connected() - live state of the HDMI hot plug detect line
-+ * @bridge: the IT66121 bridge
++ * Periodic throughput line:
 + *
-+ * Return: 1 if an HDMI monitor is connected, 0 if not, a negative error code if the line cannot
-+ * be read
++ *  sent     - URBs completed, new frames and resends alike: the link rate.
++ *  rendered - frames the compositor actually handed over: what the eye sees.
++ *  stalled  - sends that could not use the shadow because no buffer was free
++ *             or a conversion held it. No update is lost, the frame that goes
++ *             out is one generation older.
++ *  conv     - time converting pixels, and the average damaged area it covered.
 + */
-+int it66121_hpd_connected(struct drm_bridge *bridge)
++#define FL2000_REPORT_INTERVAL_MS 5000
++
++static void fl2000_stream_report(struct fl2000_stream *stream)
 +{
-+	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
-+	unsigned int val;
-+	int idx, ret;
++	ktime_t now = ktime_get();
++	s64 elapsed_ms = ktime_ms_delta(now, stream->last_report);
++	unsigned int frames, rendered, stalled;
++	unsigned int conv_us, conv_max, damage_px;
 +
-+	if (!drm_bridge_enter(bridge, &idx))
-+		return -ENODEV;
++	if (elapsed_ms < FL2000_REPORT_INTERVAL_MS)
++		return;
 +
-+	ret = regmap_field_read(priv->hpd, &val);
-+	drm_bridge_exit(idx);
-+	if (ret)
-+		return ret;
++	stream->last_report = now;
++	frames = atomic_xchg(&stream->frames, 0);
++	rendered = atomic_xchg(&stream->rendered, 0);
++	stalled = atomic_xchg(&stream->stalled, 0);
++	conv_us = atomic_xchg(&stream->conv_us_total, 0);
++	conv_max = atomic_xchg(&stream->conv_us_max, 0);
++	damage_px = atomic_xchg(&stream->damage_px_total, 0);
 +
-+	return !!val;
++	/* div64_u64(): the MB/s divisor does not fit in 32 bits */
++	dev_dbg(&stream->usb_dev->dev,
++		"Stream: %llu sent/s, %llu rendered/s, %llu MB/s, %u stalled, conv %u us (max %u) over %u px\n",
++		div64_u64((u64)frames * 1000, elapsed_ms),
++		div64_u64((u64)rendered * 1000, elapsed_ms),
++		div64_u64((u64)frames * stream->buf_size * 1000, (u64)elapsed_ms * 1024 * 1024),
++		stalled, rendered ? conv_us / rendered : 0, conv_max,
++		rendered ? damage_px / rendered : 0);
 +}
 +
-+/**
-+ * it66121_ack_interrupts() - acknowledge what is pending in the IT66121
-+ * @bridge: the IT66121 bridge
-+ *
-+ * Its interrupt line is routed to the FL2000, which reports it on its own interrupt endpoint (see
-+ * fl2000_interrupt.c): called from there, and hotplug is handled by probing the connector. The
-+ * interrupt sources themselves are not decoded here. An interrupt left pending would keep the line
-+ * from changing again.
-+ *
-+ * Return: 0 on success, a negative error code otherwise
-+ */
-+int it66121_ack_interrupts(struct drm_bridge *bridge)
++/* Called by the primary plane update with the cost of one damage update */
++void fl2000_stream_note_render(struct fl2000_stream *stream, unsigned int conv_us,
++			       unsigned int damage_px)
 +{
-+	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
-+	unsigned int val;
++	atomic_inc(&stream->rendered);
++	atomic_add(conv_us, &stream->conv_us_total);
++	atomic_add(damage_px, &stream->damage_px_total);
++	if (conv_us > (unsigned int)atomic_read(&stream->conv_us_max))
++		atomic_set(&stream->conv_us_max, conv_us);
++}
++
++static void fl2000_free_sb(struct fl2000_stream_buf *sb)
++{
++	vunmap(sb->vaddr);
++
++	sg_free_table(&sb->sgt);
++
++	for (int i = 0; i < sb->nr_pages && sb->pages[i]; i++)
++		__free_page(sb->pages[i]);
++
++	kfree(sb->pages);
++
++	kfree(sb);
++}
++
++static struct fl2000_stream_buf *fl2000_alloc_sb(struct fl2000_stream *stream, unsigned int size)
++{
 +	int ret;
++	struct fl2000_stream_buf *sb;
++	unsigned int nr_pages = PAGE_ALIGN(size) >> PAGE_SHIFT;
 +
-+	ret = regmap_field_read(priv->irq_pending, &val);
-+	if (ret || !val)
-+		return ret;
-+
-+	ret = regmap_read(priv->regmap, IT66121_INT_STATUS_1, &val);
-+	if (ret)
-+		return ret;
-+
-+	/* The only two sources with the same bit in both registers, and the only ones unmasked */
-+	val &= IT66121_INT_STATUS_1_HPD | IT66121_INT_STATUS_1_RX_SENSE;
-+	if (val) {
-+		ret = regmap_write(priv->regmap, IT66121_INT_CLEAR_1, val);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	/* Forced: when the bit happens to read as set, a plain update would not write it */
-+	return regmap_field_force_write(priv->clr_irq, 1);
-+}
-+
-+/*
-+ * The EDID is read with the FL2000's own I2C engine. On the Fresco reference designs the monitor's
-+ * DDC lines hang off the FL2000 I2C bus and the vendor driver reads the EDID at address 0x50 this
-+ * way. The IT66121's own EDID command cannot be used: it never completes on these boards, and
-+ * could not work behind this I2C engine anyway, which transfers aligned dwords: every read of the
-+ * DDC status register (0x16) also reads, and so pops, the DDC FIFO (0x17).
-+ */
-+static int it66121_get_edid_block(void *context, u8 *buf, unsigned int block, size_t len)
-+{
-+	struct it66121_priv *priv = context;
-+	int ret;
-+
-+	ret = fl2000_ddc_read_block(priv->adapter, buf, block, len);
-+	if (ret)
-+		dev_dbg(&priv->client->dev, "EDID block %u read failed (%d)\n", block, ret);
-+
-+	return ret;
-+}
-+
-+static enum drm_connector_status it66121_bridge_detect(struct drm_bridge *bridge,
-+						       struct drm_connector *connector)
-+{
-+	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
-+	int ret = it66121_hpd_connected(bridge);
-+
-+	if (ret > 0)
-+		return connector_status_connected;
-+
-+	/* Gone with the USB device */
-+	if (ret == -ENODEV)
-+		return connector_status_disconnected;
-+
-+	if (ret < 0) {
-+		/* Not bridge->dev: the chip, not the DRM device, failed to answer */
-+		dev_err_ratelimited(&priv->client->dev, "Cannot get monitor status (%d)\n", ret);
-+		return connector_status_unknown;
-+	}
-+
-+	return connector_status_disconnected;
-+}
-+
-+static const struct drm_edid *it66121_bridge_edid_read(struct drm_bridge *bridge,
-+						       struct drm_connector *connector)
-+{
-+	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
-+	const struct drm_edid *drm_edid;
-+	int idx, ret;
-+
-+	if (!drm_bridge_enter(bridge, &idx))
++	sb = kzalloc_obj(*sb);
++	if (!sb)
 +		return NULL;
 +
-+	if (priv->ddc_held) {
-+		/* Not fatal: the read tells whether the bus is free */
-+		ret = it66121_release_ddc(priv);
-+		if (ret)
-+			dev_dbg(&priv->client->dev, "Cannot release the DDC bus (%d)\n", ret);
-+		priv->ddc_held = false;
++	sb->stream = stream;
++
++	sb->pages = kzalloc_objs(*sb->pages, nr_pages);
++	if (!sb->pages)
++		goto error;
++
++	sb->nr_pages = nr_pages;
++
++	for (int i = 0; i < nr_pages; i++) {
++		sb->pages[i] = alloc_page(GFP_KERNEL);
++		if (!sb->pages[i])
++			goto error;
 +	}
 +
-+	drm_edid = drm_edid_read_custom(connector, it66121_get_edid_block, priv);
-+	if (!drm_edid)
-+		dev_warn(&priv->client->dev, "EDID read failed, using fallback modes\n");
++	ret = sg_alloc_table_from_pages(&sb->sgt, sb->pages, nr_pages, 0, size, GFP_KERNEL);
++	if (ret != 0)
++		goto error;
 +
-+	drm_bridge_exit(idx);
++	sb->vaddr = vmap(sb->pages, nr_pages, VM_MAP, PAGE_KERNEL);
++	if (!sb->vaddr)
++		goto error;
 +
-+	return drm_edid;
++	INIT_LIST_HEAD(&sb->list);
++	memset(sb->vaddr, 0, nr_pages << PAGE_SHIFT);
++
++	return sb;
++
++error:
++	fl2000_free_sb(sb);
++
++	return NULL;
 +}
 +
-+/*
-+ * Bring the transmitter out of reset into a known state, as the IT66121 manual and the vendor
-+ * driver do: at attach, and again after system sleep, which may have cut the power.
-+ */
-+static void it66121_init_chip(struct it66121_priv *priv)
++static void fl2000_stream_put_buffers(struct fl2000_stream *stream)
 +{
-+	/* Reset according to IT66121 manual */
-+	regmap_write_bits(priv->regmap, IT66121_SW_RST, IT66121_SW_REF_RST_HDMITX,
-+			  IT66121_SW_REF_RST_HDMITX);
-+	msleep(50);
++	struct fl2000_stream_buf *cur_sb;
++	struct fl2000_stream_buf *temp_sb;
 +
-+	/* Power up GRCLK & power down IACLK, TxCLK, CRCLK */
-+	regmap_write_bits(priv->regmap, IT66121_SYS_CONTROL, (0xf << 3), (7 << 3));
-+
-+	/* Continue according to IT66121 manual */
-+	regmap_write_bits(priv->regmap, IT66121_INT_CONTROL, (1 << 0), (0 << 0));
-+	regmap_write_bits(priv->regmap, IT66121_AFE_DRV_CONTROL, (1 << 5), (0 << 5));
-+	regmap_write_bits(priv->regmap, IT66121_AFE_XP_CONTROL, (1 << 2) | (1 << 6),
-+			  (0 << 2) | (0 << 6));
-+	regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_1, (1 << 6), (0 << 6));
-+	regmap_write_bits(priv->regmap, IT66121_AFE_DRV_CONTROL, (1 << 4), (0 << 4));
-+	regmap_write_bits(priv->regmap, IT66121_AFE_XP_CONTROL, (1 << 3), (1 << 3));
-+	regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_1, (1 << 2), (1 << 2));
-+
-+	/* Extra AFE steps from the vendor driver */
-+	/* Whole register is defined as XP_TEST, values are undisclosed */
-+	regmap_write_bits(priv->regmap, IT66121_AFE_XP_TEST, 0xFF, 0x70);
-+	/* Lower 5 bits are undisclosed in manual */
-+	regmap_write_bits(priv->regmap, IT66121_AFE_DRV_HS, 0xFF, 0x1F);
-+	/*
-+	 * DRV_ISW[5:3] value '011' is a default output current level swing, with change to '111' we
-+	 * set output current level swing to maximum.
-+	 */
-+	regmap_write_bits(priv->regmap, IT66121_AFE_IP_CONTROL_2, 0xFF, 0x38);
-+
-+	/* Power up IACLK, TxCLK */
-+	regmap_write_bits(priv->regmap, IT66121_SYS_CONTROL, (3 << 4), (0 << 4));
-+
-+	/* Reset according to IT66121 manual */
-+	regmap_write_bits(priv->regmap, IT66121_SW_RST, IT66121_SW_REF_RST_HDMITX,
-+			  IT66121_SW_REF_RST_HDMITX);
-+	msleep(50);
-+
-+	/* We do not support HDCP so its ok to statically set host controls */
-+	regmap_write(priv->regmap, IT66121_DDC_CONTROL,
-+		     IT66121_DDC_MASTER_DDC | IT66121_DDC_MASTER_HOST);
-+
-+	priv->ddc_held = true;
-+}
-+
-+/*
-+ * Unmask the hot plug interrupt, the one that means something here. DDC errors have nobody to read
-+ * them: the DDC engine is not used.
-+ */
-+static void it66121_start_interrupts(struct it66121_priv *priv)
-+{
-+	regmap_write_bits(priv->regmap, IT66121_INT_MASK_1, IT66121_MASK_DDC | IT66121_MASK_HPD,
-+			  IT66121_MASK_DDC);
-+	it66121_ack_interrupts(&priv->bridge);
-+}
-+
-+static int it66121_bridge_attach(struct drm_bridge *bridge, struct drm_encoder *encoder,
-+				 enum drm_bridge_attach_flags flags)
-+{
-+	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
-+
-+	/* The connector is the display driver's (drm_bridge_connector_init()) */
-+	if (!(flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)) {
-+		drm_err(bridge->dev, "The IT66121 bridge does not create a connector\n");
-+		return -EINVAL;
++	list_for_each_entry_safe(cur_sb, temp_sb, &stream->render_list, list) {
++		list_del(&cur_sb->list);
++		fl2000_free_sb(cur_sb);
 +	}
 +
-+	if (!bridge->encoder) {
-+		drm_err(bridge->dev, "Parent encoder object not found\n");
-+		return -ENODEV;
++	/* These are gone; the send path must not copy from one of them */
++	stream->newest_sb = NULL;
++}
++
++static int fl2000_stream_get_buffers(struct fl2000_stream *stream, unsigned int size)
++{
++	int ret;
++	struct fl2000_stream_buf *cur_sb;
++
++	if (WARN_ON(!list_empty(&stream->render_list)))
++		return -EBUSY;
++
++	for (int i = 0; i < FL2000_SB_NUM; i++) {
++		cur_sb = fl2000_alloc_sb(stream, size);
++		if (!cur_sb) {
++			ret = -ENOMEM;
++			goto error;
++		}
++
++		list_add(&cur_sb->list, &stream->render_list);
 +	}
-+
-+	it66121_init_chip(priv);
-+
-+	it66121_start_interrupts(priv);
-+
-+	drm_dbg(bridge->dev, "Bridge attached\n");
 +
 +	return 0;
++
++error:
++	fl2000_stream_put_buffers(stream);
++	return ret;
 +}
 +
-+/**
-+ * it66121_resume() - set the IT66121 up again after system sleep
-+ * @bridge: the IT66121 bridge
-+ *
-+ * The dongle is bus powered, and the test laptop resets its USB devices when it wakes from
-+ * suspend to RAM: the chip may have lost every register. The register cache would then be wrong,
-+ * and the read-modify-write updates of the initialisation would skip writes the chip still needs:
-+ * drop it, so that values are read from the chip again. The mode is set again by the DRM core.
-+ */
-+void it66121_resume(struct drm_bridge *bridge)
++static void fl2000_stream_data_completion(struct urb *urb)
 +{
-+	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
++	struct fl2000_stream_buf *cur_sb = urb->context;
++	struct fl2000_stream *stream = cur_sb->stream;
++	unsigned long flags;
 +
-+	regcache_drop_region(priv->regmap, 0, it66121_regmap_config.max_register);
-+	it66121_init_chip(priv);
-+	it66121_start_interrupts(priv);
++	spin_lock_irqsave(&stream->list_lock, flags);
++	list_move_tail(&cur_sb->list, &stream->render_list);
++	spin_unlock_irqrestore(&stream->list_lock, flags);
++
++	atomic_inc(&stream->frames);
++
++	/* Return the credit and kick the transmit work */
++	atomic_inc(&stream->credits);
++	wake_up(&stream->credits_wq);
++
++	fl2000_urb_status(urb->dev, urb->status);
++
++	usb_free_urb(urb);
++}
++
++/* The end-of-frame packet carries no buffer: only its errors matter */
++static void fl2000_stream_eof_completion(struct urb *urb)
++{
++	fl2000_urb_status(urb->dev, urb->status);
++
++	usb_free_urb(urb);
 +}
 +
 +/*
-+ * Program the transmitter for @mode, as the monitor behind @connector wants it (HDMI, or DVI when
-+ * its EDID says so or there is none). The FL2000 already clocks the input at this point.
++ * Anchor and submit one URB. Its completion frees it; one that could not be
++ * submitted is freed here. Process context only: it sleeps between retries of
++ * what can go away by itself, no memory (-ENOMEM) or no DMA mapping (-EAGAIN).
 + */
-+static void it66121_set_mode(struct it66121_priv *priv, struct drm_connector *connector,
-+			     const struct drm_display_mode *mode)
++static int fl2000_stream_submit(struct fl2000_stream *stream, struct urb *urb)
 +{
-+	struct drm_bridge *bridge = &priv->bridge;
-+	bool dvi = !connector->display_info.is_hdmi;
-+	struct hdmi_avi_infoframe frame;
-+	ssize_t frame_size;
-+	u8 buf[HDMI_INFOFRAME_SIZE(AVI)];
++	int attempts = FL2000_SUBMIT_ATTEMPTS;
 +	int ret;
-+	const u16 aviinfo_reg[HDMI_AVI_INFOFRAME_SIZE] = {
-+		IT66121_HDMI_AVIINFO_DB1,  IT66121_HDMI_AVIINFO_DB2,  IT66121_HDMI_AVIINFO_DB3,
-+		IT66121_HDMI_AVIINFO_DB4,  IT66121_HDMI_AVIINFO_DB5,  IT66121_HDMI_AVIINFO_DB6,
-+		IT66121_HDMI_AVIINFO_DB7,  IT66121_HDMI_AVIINFO_DB8,  IT66121_HDMI_AVIINFO_DB9,
-+		IT66121_HDMI_AVIINFO_DB10, IT66121_HDMI_AVIINFO_DB11, IT66121_HDMI_AVIINFO_DB12,
-+		IT66121_HDMI_AVIINFO_DB13
-+	};
 +
-+	drm_dbg(bridge->dev, "Setting %s mode " DRM_MODE_FMT "\n", dvi ? "DVI" : "HDMI",
-+		DRM_MODE_ARG(mode));
-+
-+	ret = drm_hdmi_avi_infoframe_from_display_mode(&frame, connector, mode);
++	usb_anchor_urb(urb, &stream->anchor);
++	for (;;) {
++		ret = usb_submit_urb(urb, GFP_KERNEL);
++		if ((ret != -ENOMEM && ret != -EAGAIN) || !--attempts)
++			break;
++		usleep_range(1000, 2000);
++	}
 +	if (ret) {
-+		drm_err(bridge->dev, "Cannot create AVI infoframe (%d)\n", ret);
++		/*
++		 * A URB that was never submitted stays on the anchor. Freeing
++		 * it there leaves a dangling entry that
++		 * usb_kill_anchored_urbs() would spin on forever, which hangs
++		 * the machine when the adapter is unplugged while streaming.
++		 */
++		usb_unanchor_urb(urb);
++		usb_free_urb(urb);
++	}
++
++	return ret;
++}
++
++/*
++ * Frame layout. The FL2000 expects the two 32-bit halves of every 64-bit word
++ * of the frame swapped, and the frame is one flat stream: a line does not start
++ * on a word boundary unless its length is a multiple of 8 bytes (1366 pixels at
++ * 3 bytes per pixel is 4098). Every writer below therefore applies the swizzle
++ * ('^ 4' on bytes for 24bpp, '^ 2' on 16-bit words for 16bpp) to the offset
++ * from the start of the FRAME, which is why they take the frame base and the
++ * offset of the line in it, never a pointer to the line.
++ */
++
++/*
++ * Copy one rectangle of the shadow into an outgoing buffer. The pixels of a
++ * line sit in 64-bit words whose halves are swapped, so a pixel's bytes can lie
++ * up to 4 bytes outside the plain byte range of the pixel: copy whole words.
++ */
++static void fl2000_copy_rect(struct fl2000_stream *stream, void *dst, const struct drm_rect *r)
++{
++	u32 line_len = stream->width * stream->bytes_pix;
++	size_t off, span;
++	int x1, x2, y1, y2;
++
++	/*
++	 * A rectangle can outlive the geometry it was recorded under: a mode
++	 * change that keeps the buffer size keeps the buffers too.
++	 */
++	x1 = clamp(r->x1, 0, (int)stream->width);
++	x2 = clamp(r->x2, 0, (int)stream->width);
++	y1 = clamp(r->y1, 0, (int)stream->height);
++	y2 = clamp(r->y2, 0, (int)stream->height);
++	if (x1 >= x2 || y1 >= y2)
++		return;
++
++	off = (size_t)x1 * stream->bytes_pix;
++	span = (size_t)(x2 - x1) * stream->bytes_pix;
++
++	for (int y = y1; y < y2; y++) {
++		size_t start = round_down((size_t)y * line_len + off, 8);
++		size_t end = min_t(size_t, round_up((size_t)y * line_len + off + span, 8),
++				   stream->buf_size);
++
++		memcpy(dst + start, stream->shadow + start, end - start);
++	}
++}
++
++/*
++ * Fill one URB buffer with what should be on screen now, the shadow frame. A
++ * buffer that is only a few generations behind replays the damage rectangles
++ * since, rather than copying the whole frame.
++ */
++static void fl2000_stream_build(struct fl2000_stream *stream, struct fl2000_stream_buf *sb)
++{
++	/*
++	 * Never block here. fl2000_stream_compress() holds the mutex for as
++	 * long as one conversion takes, and waiting for it stops URB
++	 * submission for that whole time: the device runs out of data and the
++	 * monitor blinks. Resend instead, but never a frame older than the
++	 * newest one already sent, or the picture would step back in time.
++	 */
++	if (!mutex_trylock(&stream->shadow_lock)) {
++		struct fl2000_stream_buf *newest = stream->newest_sb;
++
++		atomic_inc(&stream->stalled);
++
++		if (newest && newest != sb && sb->seq != newest->seq) {
++			memcpy(sb->vaddr, newest->vaddr, stream->buf_size);
++			sb->seq = newest->seq;
++		}
++
 +		return;
 +	}
 +
-+	frame_size = hdmi_avi_infoframe_pack(&frame, buf, sizeof(buf));
-+	if (frame_size < 0) {
-+		drm_err(bridge->dev, "Cannot pack AVI infoframe (%zd)\n", frame_size);
++	if (!stream->shadow) {
++		mutex_unlock(&stream->shadow_lock);
 +		return;
 +	}
 +
-+	/* Set TX mode */
-+	ret = regmap_write(priv->regmap, IT66121_HDMI_MODE,
-+			   dvi ? IT66121_HDMI_MODE_DVI : IT66121_HDMI_MODE_HDMI);
-+	if (ret) {
-+		drm_err(bridge->dev, "Cannot set TX mode (%d)\n", ret);
-+		return;
++	if (sb->seq != stream->shadow_seq) {
++		u32 behind = stream->shadow_seq - sb->seq;
++
++		if (!sb->seq || behind >= FL2000_DAMAGE_LOG) {
++			memcpy(sb->vaddr, stream->shadow, stream->buf_size);
++		} else {
++			/*
++			 * Replay the rectangles one by one rather than their
++			 * bounding box: damage in two opposite corners would
++			 * otherwise cost a full-frame copy.
++			 */
++			for (u32 seq = sb->seq + 1; seq != stream->shadow_seq + 1; seq++)
++				fl2000_copy_rect(stream, sb->vaddr,
++						 &stream->damage_log[seq % FL2000_DAMAGE_LOG]);
++		}
++
++		sb->seq = stream->shadow_seq;
 +	}
 +
-+	/* Enable HDMI packets, repeat for every data frame as recommended */
-+	ret = regmap_write(priv->regmap, IT66121_HDMI_GEN_CTRL_PKT,
-+			   IT66121_HDMI_GEN_CTRL_PKT_ON | IT66121_HDMI_GEN_CTRL_PKT_RPT);
-+	if (ret) {
-+		drm_err(bridge->dev, "Cannot enable HDMI packets\n");
-+		return;
-+	}
++	stream->newest_sb = sb;
++	mutex_unlock(&stream->shadow_lock);
++}
 +
-+	/* Mute AV */
-+	ret = regmap_write(priv->regmap, IT66121_HDMI_AV_MUTE,
-+			   IT66121_HDMI_AV_MUTE_ON | IT66121_HDMI_AV_MUTE_BLUE);
-+	if (ret) {
-+		drm_err(bridge->dev, "Cannot mute AV\n");
-+		return;
-+	}
++static void fl2000_stream_work(struct work_struct *work)
++{
++	int ret;
++	struct fl2000_stream *stream = container_of(work, struct fl2000_stream, work);
++	struct usb_device *usb_dev = stream->usb_dev;
++	struct fl2000_stream_buf *cur_sb;
++	struct urb *data_urb, *eof_urb;
 +
-+	/* Write new AVI infoframe packet */
-+	for (int i = 0; i < HDMI_AVI_INFOFRAME_SIZE; i++) {
-+		ret = regmap_write(priv->regmap, aviinfo_reg[i],
-+				   buf[i + HDMI_INFOFRAME_HEADER_SIZE]);
++	while (READ_ONCE(stream->enabled)) {
++		/* Interruptible sleep: an idle stream may wait here indefinitely */
++		ret = wait_event_interruptible(stream->credits_wq, !READ_ONCE(stream->enabled) ||
++					       atomic_add_unless(&stream->credits, -1, 0));
 +		if (ret) {
-+			drm_err(bridge->dev, "Cannot write AVI infoframe byte %d (%d)\n", i, ret);
++			dev_err(&usb_dev->dev, "Work interrupt error %d\n", ret);
++			WRITE_ONCE(stream->enabled, false);
 +			return;
 +		}
++		if (!READ_ONCE(stream->enabled))
++			break;
++
++		fl2000_stream_report(stream);
++
++		spin_lock_irq(&stream->list_lock);
++		if (list_empty(&stream->render_list)) {
++			/*
++			 * No buffer available - should not happen. Give the
++			 * credit back: only completions replenish them, so one
++			 * taken without submitting a URB is lost for good.
++			 */
++			spin_unlock_irq(&stream->list_lock);
++			atomic_inc(&stream->stalled);
++			atomic_inc(&stream->credits);
++			usleep_range(1000, 2000);
++			continue;
++		}
++		cur_sb = list_first_entry(&stream->render_list, struct fl2000_stream_buf, list);
++		list_del_init(&cur_sb->list);
++		spin_unlock_irq(&stream->list_lock);
++
++		/*
++		 * Building the frame copies up to several MB and must run with
++		 * interrupts enabled, so cur_sb is owned (off all lists) for
++		 * the duration. Holding list_lock (which disables IRQs) across
++		 * it starves the whole system.
++		 */
++		fl2000_stream_build(stream, cur_sb);
++
++		spin_lock_irq(&stream->list_lock);
++		list_add_tail(&cur_sb->list, &stream->wait_list);
++		spin_unlock_irq(&stream->list_lock);
++
++		data_urb = usb_alloc_urb(0, GFP_KERNEL);
++		eof_urb = usb_alloc_urb(0, GFP_KERNEL);
++		if (!data_urb || !eof_urb) {
++			usb_free_urb(data_urb);
++			usb_free_urb(eof_urb);
++			dev_err(&usb_dev->dev, "Data URB allocation error\n");
++			WRITE_ONCE(stream->enabled, false);
++			return;
++		}
++
++		/*
++		 * The frame was written through the vmap of the pages the URB sends: where
++		 * caches can alias, DMA mapping the pages does not see those writes.
++		 */
++		flush_kernel_vmap_range(cur_sb->vaddr, stream->buf_size);
++
++		/* Endpoint 1 bulk out, the data is in the scatterlist */
++		usb_fill_bulk_urb(data_urb, usb_dev, usb_sndbulkpipe(usb_dev, 1), NULL,
++				  (int)stream->buf_size, fl2000_stream_data_completion, cur_sb);
++		data_urb->interval = 0;
++		data_urb->sg = cur_sb->sgt.sgl;
++		data_urb->num_sgs = cur_sb->sgt.nents;
++
++		/*
++		 * The device ends a frame at a zero-length packet
++		 * (FL2000_VGA_CTRL_ACLK_USE_ZERO_PKT_LEN), so send one of its
++		 * own after every frame, as the vendor driver does.
++		 * URB_ZERO_PACKET is not enough: it only adds the packet when
++		 * the frame is a whole number of packets. Any other frame
++		 * (1366x768 at 3 bytes per pixel is 3073.5 packets of 1024
++		 * bytes) ends in a short packet, the device never sees the end
++		 * of the frame, and the screen stays black while the device
++		 * drains data at one pixel per clock, blanking included.
++		 */
++		usb_fill_bulk_urb(eof_urb, usb_dev, usb_sndbulkpipe(usb_dev, 1), NULL, 0,
++				  fl2000_stream_eof_completion, NULL);
++
++		ret = fl2000_stream_submit(stream, data_urb);
++		if (ret)
++			usb_free_urb(eof_urb);
++		else
++			ret = fl2000_stream_submit(stream, eof_urb);
++		if (ret) {
++			/* The USB core disables the endpoint before the disconnect callback */
++			if (ret != -ENODEV && ret != -ENOENT && ret != -ESHUTDOWN)
++				dev_err(&usb_dev->dev, "Data URB error %d\n", ret);
++			WRITE_ONCE(stream->enabled, false);
++		}
 +	}
-+	ret = regmap_write(priv->regmap, IT66121_HDMI_AVIINFO_CSUM, buf[3]);
-+	if (ret) {
-+		drm_err(bridge->dev, "Cannot write AVI infoframe checksum (%d)\n", ret);
-+		return;
-+	}
-+
-+	/* Enable AVI infoframe */
-+	ret = regmap_write(priv->regmap, IT66121_HDMI_AVI_INFO_PKT,
-+			   IT66121_HDMI_AVI_INFO_PKT_ON | IT66121_HDMI_AVI_INFO_RPT);
-+	if (ret) {
-+		drm_err(bridge->dev, "Cannot enable AVI infoframe (%d)\n", ret);
-+		return;
-+	}
-+
-+	/* Set reset flags */
-+	ret = regmap_write_bits(priv->regmap, IT66121_SW_RST,
-+				IT66121_SW_REF_RST_HDMITX | IT66121_SW_HDMI_VID_RST,
-+				IT66121_SW_REF_RST_HDMITX | IT66121_SW_HDMI_VID_RST);
-+	if (ret)
-+		return;
-+
-+	/* Disable TXCLK prior to configuration */
-+	ret = regmap_write_bits(priv->regmap, IT66121_SYS_CONTROL, IT66121_SYS_TXCLK_OFF,
-+				IT66121_SYS_TXCLK_OFF);
-+	if (ret)
-+		return;
-+
-+	/* Configure connection, conversions, etc. */
-+	ret = it66121_configure_input(priv);
-+	if (ret) {
-+		drm_err(bridge->dev, "Cannot configure input bus (%d)\n", ret);
-+		return;
-+	}
-+
-+	/* Configure AFE */
-+	ret = it66121_configure_afe(priv, mode->clock);
-+	if (ret) {
-+		drm_err(bridge->dev, "Cannot configure AFE (%d)\n", ret);
-+		return;
-+	}
-+
-+	/* Clear reset flags */
-+	ret = regmap_write_bits(priv->regmap, IT66121_SW_RST,
-+				IT66121_SW_REF_RST_HDMITX | IT66121_SW_HDMI_VID_RST, 0);
-+	if (ret)
-+		return;
-+
-+	/* Enable TXCLK */
-+	ret = regmap_write_bits(priv->regmap, IT66121_SYS_CONTROL, IT66121_SYS_TXCLK_OFF, 0);
-+	if (ret)
-+		return;
 +}
 +
 +/*
-+ * The mode is programmed here rather than in .mode_set, which has no atomic state: the connector,
-+ * which tells HDMI from DVI and goes into the AVI infoframe, is only known from the state.
++ * The converters write through the frame swizzle described above. 'frame' is
++ * the start of the destination frame, 'line' the offset of the destination line
++ * in it (in bytes for 24bpp, in 16-bit words for 16bpp) and the x range is
++ * absolute. 'sbuf' points at the first pixel of the span in the staging line.
 + */
-+static void it66121_bridge_atomic_enable(struct drm_bridge *bridge,
-+					 struct drm_atomic_commit *state)
++static void fl2000_xrgb8888_to_rgb888_line(u8 *frame, size_t line, const u32 *sbuf, u32 x_start,
++					   u32 x_end)
 +{
-+	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
-+	const struct drm_connector_state *conn_state;
-+	const struct drm_crtc_state *crtc_state;
-+	struct drm_connector *connector;
-+	int idx;
++	size_t xx = line + (size_t)x_start * 3;
 +
-+	connector = drm_atomic_get_new_connector_for_encoder(state, bridge->encoder);
-+	if (WARN_ON(!connector))
-+		return;
++	for (unsigned int x = x_start; x < x_end; x++) {
++		u32 pix = *sbuf++;
 +
-+	conn_state = drm_atomic_get_new_connector_state(state, connector);
-+	if (WARN_ON(!conn_state || !conn_state->crtc))
-+		return;
-+
-+	crtc_state = drm_atomic_get_new_crtc_state(state, conn_state->crtc);
-+	if (WARN_ON(!crtc_state))
-+		return;
-+
-+	if (!drm_bridge_enter(bridge, &idx))
-+		return;
-+
-+	it66121_set_mode(priv, connector, &crtc_state->mode);
-+
-+	/* Unmute AV */
-+	regmap_write(priv->regmap, IT66121_HDMI_AV_MUTE, 0);
-+
-+	drm_bridge_exit(idx);
++		frame[xx++ ^ 4] = (pix & 0x000000FF) >> 0;
++		frame[xx++ ^ 4] = (pix & 0x0000FF00) >> 8;
++		frame[xx++ ^ 4] = (pix & 0x00FF0000) >> 16;
++	}
 +}
 +
-+static void it66121_bridge_atomic_disable(struct drm_bridge *bridge,
-+					  struct drm_atomic_commit *state)
++static void fl2000_rgb565_to_frame_line(u16 *frame, size_t line, const u16 *sbuf, u32 x_start,
++					u32 x_end)
 +{
-+	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
-+	int idx;
-+
-+	if (!drm_bridge_enter(bridge, &idx))
-+		return;
-+
-+	/* Mute AV */
-+	regmap_write_bits(priv->regmap, IT66121_HDMI_AV_MUTE, IT66121_HDMI_AV_MUTE_ON,
-+			  IT66121_HDMI_AV_MUTE_ON);
-+
-+	drm_bridge_exit(idx);
++	for (unsigned int x = x_start; x < x_end; x++)
++		frame[(line + x) ^ 2] = *sbuf++;
 +}
 +
-+static const struct drm_bridge_funcs it66121_bridge_funcs = {
-+	.attach = it66121_bridge_attach,
-+	.atomic_create_state = drm_atomic_helper_bridge_create_state,
-+	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
-+	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
-+	.atomic_enable = it66121_bridge_atomic_enable,
-+	.atomic_disable = it66121_bridge_atomic_disable,
-+	.detect = it66121_bridge_detect,
-+	.edid_read = it66121_bridge_edid_read,
-+};
-+
-+static int it66121_regs_init(struct it66121_priv *priv, struct i2c_client *client)
++/*
++ * Pull one span of source pixels into the cached line buffer.
++ *
++ * A framebuffer imported from the primary GPU is mapped write-combining,
++ * whether it sits in VRAM (I/O memory) or in system memory pinned for us,
++ * and a plain memcpy reads it at ~100 MB/s: every access is a partial
++ * cache-line transaction. drm_memcpy_from_wc() uses streaming loads to fetch
++ * whole lines, about ten times faster. On our own cached shmem buffers a
++ * non-temporal load is slower than a plain memcpy, so choose per source.
++ *
++ * Streaming loads move whole 16 bytes and fall back to the slow plain read for
++ * any other length, and a line of 1366 pixels is 5464 bytes (78 ms instead of
++ * 8 ms per frame). From a 16-byte aligned address the length can be rounded
++ * up without leaving the buffer, whose size is whole pages; the pixels past
++ * the span land in the line buffer but are not converted.
++ */
++static void fl2000_read_span(struct fl2000_stream *stream, const struct iosys_map *src_map,
++			     bool wc, size_t offset, size_t len)
 +{
-+	priv->regmap = devm_regmap_init_i2c(client, &it66121_regmap_config);
-+	if (IS_ERR(priv->regmap))
-+		return PTR_ERR(priv->regmap);
++	struct iosys_map dst = IOSYS_MAP_INIT_VADDR(stream->line_buf);
++	struct iosys_map src = *src_map;
++	uintptr_t addr;
 +
-+	priv->irq_pending =
-+		devm_regmap_field_alloc(&client->dev, priv->regmap, IT66121_SYS_STATUS_irq_pending);
-+	priv->hpd = devm_regmap_field_alloc(&client->dev, priv->regmap, IT66121_SYS_STATUS_hpd);
-+	priv->clr_irq =
-+		devm_regmap_field_alloc(&client->dev, priv->regmap, IT66121_SYS_STATUS_clr_irq);
-+	if (IS_ERR(priv->irq_pending) || IS_ERR(priv->hpd) || IS_ERR(priv->clr_irq))
-+		return -ENOMEM;
++	if (!wc) {
++		iosys_map_memcpy_from(stream->line_buf, src_map, offset, len);
++		return;
++	}
++
++	iosys_map_incr(&src, offset);
++	addr = src.is_iomem ? (uintptr_t)src.vaddr_iomem : (uintptr_t)src.vaddr;
++	if (IS_ALIGNED(addr, 16))
++		len = ALIGN(len, 16);
++	drm_memcpy_from_wc(&dst, &src, len);
++}
++
++/*
++ * Convert one damaged rectangle of the source framebuffer into the shadow
++ * frame, from RGB565 if the device is sent that and from XRGB8888 otherwise.
++ * The shadow is the only thing written here, so it is always the
++ * complete current frame: an update can never be lost because no URB buffer
++ * happened to be free.
++ *
++ * @src is the part of the framebuffer that the mode shows, as the framebuffer
++ * can be larger than the mode, and @clip the damage. Both are in whole pixels of
++ * the framebuffer.
++ */
++void fl2000_stream_compress(struct fl2000_stream *stream, const struct iosys_map *src_map,
++			    bool imported, unsigned int pitch,
++			    const struct drm_rect *src, const struct drm_rect *clip)
++{
++	unsigned int src_cpp = stream->bytes_pix == 2 ? 2 : sizeof(u32);
++	unsigned int line_px = 16 / src_cpp;
++	bool wc = imported || src_map->is_iomem;
++	struct drm_rect rect = *clip;
++	u32 dst_line_len;
++	u32 x_start, x_end, y_start, y_end;
++	size_t span;
++	int x1, x2;
++
++	if (!drm_rect_intersect(&rect, src))
++		return;
++
++	guard(mutex)(&stream->shadow_lock);
++
++	if (!stream->shadow || drm_rect_width(src) != stream->width ||
++	    drm_rect_height(src) != stream->height)
++		return;
++
++	/*
++	 * Streaming loads need 16-byte alignment, so the read may start and end
++	 * a few pixels out of the damage. Those pixels are not converted: only
++	 * the damage is known to be current.
++	 */
++	x1 = rect.x1 & ~(line_px - 1);
++	if (x1 < src->x1)
++		x1 = rect.x1;
++	x2 = min_t(int, ALIGN(rect.x2, line_px), src->x2);
++
++	/* From here on the coordinates are those of the frame */
++	x_start = rect.x1 - src->x1;
++	x_end = rect.x2 - src->x1;
++	y_start = rect.y1 - src->y1;
++	y_end = rect.y2 - src->y1;
++
++	dst_line_len = stream->width * stream->bytes_pix;
++	span = (x2 - x1) * src_cpp;
++
++	for (unsigned int y = y_start; y < y_end; y++) {
++		/*
++		 * Pull the span into a cached line buffer in one bulk transfer
++		 * and convert from there: converting straight from an uncached
++		 * source issues one read per pixel.
++		 */
++		fl2000_read_span(stream, src_map, wc,
++				 (size_t)(y + src->y1) * pitch + (size_t)x1 * src_cpp, span);
++
++		switch (stream->bytes_pix) {
++		case 2:
++			fl2000_rgb565_to_frame_line(stream->shadow, (size_t)y * stream->width,
++						    (const u16 *)stream->line_buf + rect.x1 - x1,
++						    x_start, x_end);
++			break;
++		case 3:
++			fl2000_xrgb8888_to_rgb888_line(stream->shadow, (size_t)y * dst_line_len,
++						       stream->line_buf + (rect.x1 - x1),
++						       x_start, x_end);
++			break;
++		default:
++			break;
++		}
++	}
++
++	stream->shadow_seq++;
++	stream->damage_log[stream->shadow_seq % FL2000_DAMAGE_LOG] =
++		(struct drm_rect){ x_start, y_start, x_end, y_end };
++}
++
++int fl2000_stream_mode_set(struct fl2000_stream *stream, unsigned int width,
++			   unsigned int height, u32 bytes_pix)
++{
++	int ret;
++	unsigned int size;
++
++	/* Round buffer size up to multiple of 8 to meet HW expectations */
++	size = ALIGN(width * height * bytes_pix, 8);
++
++	guard(mutex)(&stream->shadow_lock);
++
++	/* If there are buffers with same size - keep them */
++	if (stream->buf_size != size) {
++		/*
++		 * Without a shadow nothing writes a frame, and an allocation that fails below
++		 * must not leave the old, smaller one to be written with the new geometry.
++		 */
++		fl2000_stream_put_buffers(stream);
++		vfree(stream->shadow);
++		stream->shadow = NULL;
++		stream->buf_size = 0;
++
++		ret = fl2000_stream_get_buffers(stream, size);
++		if (ret)
++			return ret;
++
++		/* One full frame in the device format; only the CPU ever reads it */
++		stream->shadow = vzalloc(size);
++		if (!stream->shadow) {
++			fl2000_stream_put_buffers(stream);
++			return -ENOMEM;
++		}
++
++		/* A buffer carrying zero has never been built and takes the full-copy path */
++		stream->shadow_seq++;
++
++		stream->buf_size = size;
++	}
++
++	stream->bytes_pix = bytes_pix;
++	stream->width = width;
++	stream->height = height;
 +
 +	return 0;
 +}
 +
-+/*
-+ * The callback of i2c_new_scanned_device(): nonzero if the device is there. It reads the IDs with
-+ * the same transfers as the regmap, which is all this adapter can do (see its quirks).
-+ */
-+static int it66121_i2c_probe(struct i2c_adapter *adapter, unsigned short address)
++int fl2000_stream_enable(struct fl2000_stream *stream)
 +{
-+	int ret;
-+	u8 id_regs[] = { IT66121_VENDOR_ID_1, IT66121_VENDOR_ID_2, IT66121_DEVICE_ID_1,
-+			 IT66121_DEVICE_ID_2 };
-+	u8 id[ARRAY_SIZE(id_regs)];
-+	u16 vendor, device;
++	/* The mode set could not allocate the buffers, and has said so */
++	if (list_empty(&stream->render_list))
++		return -ENOMEM;
 +
-+	dev_dbg(&adapter->dev, "Detecting IT66121 at address 0x%X on %s\n", address,
-+		adapter->name);
++	stream->last_report = ktime_get();
++	atomic_set(&stream->frames, 0);
++	atomic_set(&stream->rendered, 0);
++	atomic_set(&stream->stalled, 0);
++	atomic_set(&stream->conv_us_total, 0);
++	atomic_set(&stream->conv_us_max, 0);
++	atomic_set(&stream->damage_px_total, 0);
 +
-+	for (int i = 0; i < ARRAY_SIZE(id_regs); i++) {
-+		struct i2c_msg msgs[] = {
-+			{ .addr = address, .flags = 0, .len = 1, .buf = &id_regs[i] },
-+			{ .addr = address, .flags = I2C_M_RD, .len = 1, .buf = &id[i] }
-+		};
++	/* Start the transmit work with the minimum number of buffers in flight */
++	atomic_set(&stream->credits, FL2000_SB_MIN);
++	WRITE_ONCE(stream->enabled, true);
++	queue_work(stream->work_queue, &stream->work);
 +
-+		ret = i2c_transfer(adapter, msgs, ARRAY_SIZE(msgs));
-+		if (ret != ARRAY_SIZE(msgs)) {
-+			dev_dbg(&adapter->dev, "No answer at address 0x%X (%d)\n", address, ret);
-+			return 0;
-+		}
-+	}
-+
-+	vendor = get_unaligned_le16(&id[0]);
-+	device = get_unaligned_le16(&id[2]);
-+	if (vendor != VENDOR_ID || (device & ~REVISION_MASK) != DEVICE_ID) {
-+		dev_warn(&adapter->dev, "Not an IT66121 at address 0x%X (0x%04X-0x%04X)\n", address,
-+			 vendor, device);
-+		return 0;
-+	}
-+
-+	dev_dbg(&adapter->dev, "IT66121 found, revision %d\n",
-+		(device & REVISION_MASK) >> REVISION_SHIFT);
-+
-+	return 1;
++	return 0;
 +}
 +
-+static struct i2c_client *it66121_i2c_init(struct i2c_adapter *adapter)
++void fl2000_stream_disable(struct fl2000_stream *stream)
 +{
-+	/*
-+	 * Not "it66121": that name would make the ite-it66121 driver, if built,
-+	 * try to bind this client and release our devres when its probe fails.
-+	 */
-+	struct i2c_board_info board_info = { I2C_BOARD_INFO("fl2000-it66121", 0) };
++	struct fl2000_stream_buf *cur_sb;
 +
-+	/* According to datasheet IT66121 addresses are 0x98 or 0x9A including cmd */
-+	const unsigned short it66121_addr[] = { (0x98 >> 1), (0x9A >> 1), I2C_CLIENT_END };
-+	struct i2c_client *client;
++	/* Wake the work up even when no URB is in flight to complete */
++	WRITE_ONCE(stream->enabled, false);
++	wake_up(&stream->credits_wq);
 +
-+	/* The chip may still be waking up when the USB device has just enumerated */
-+	for (int i = 0; i < IT66121_DETECT_TRIES; i++) {
-+		if (i)
-+			msleep(IT66121_DETECT_DELAY_MS);
++	drain_workqueue(stream->work_queue);
 +
-+		client = i2c_new_scanned_device(adapter, &board_info, it66121_addr,
-+						it66121_i2c_probe);
-+		if (!IS_ERR(client))
-+			break;
++	if (!usb_wait_anchor_empty_timeout(&stream->anchor, 1000))
++		usb_kill_anchored_urbs(&stream->anchor);
++
++	spin_lock_irq(&stream->list_lock);
++	while (!list_empty(&stream->wait_list)) {
++		cur_sb = list_first_entry(&stream->wait_list, struct fl2000_stream_buf, list);
++		list_move_tail(&cur_sb->list, &stream->render_list);
 +	}
-+
-+	return client;
++	spin_unlock_irq(&stream->list_lock);
 +}
 +
 +/**
-+ * it66121_destroy() - remove the bridge
-+ * @bridge: the IT66121 bridge
++ * fl2000_stream_create() - streaming processing context creation
++ * @usb_dev: FL2000 USB device
 + *
-+ * A DRM device that userspace keeps open still has the bridge in its encoder's chain, and frees it
-+ * with the last reference, but nothing gets past drm_bridge_enter() any more.
-+ */
-+void it66121_destroy(struct drm_bridge *bridge)
-+{
-+	struct it66121_priv *priv = container_of(bridge, struct it66121_priv, bridge);
-+
-+	drm_bridge_unplug(bridge);
-+
-+	/*
-+	 * Releases what is managed on the client, its regmap included, and drops the devm reference
-+	 * to the bridge.
-+	 */
-+	i2c_unregister_device(priv->client);
-+}
-+
-+/**
-+ * it66121_create() - find the IT66121 on the FL2000 I2C bus and make a bridge of it
-+ * @adapter: the FL2000 I2C adapter
++ * Called when the DRM device is set up. It does not initiate any USB transfers:
++ * buffers and URBs are allocated later, once the mode (and thus the frame size) is
++ * known.
 + *
-+ * Return: the bridge, to attach to the encoder, or an ERR_PTR() on failure
++ * Return: stream context, or an ERR_PTR() on failure
 + */
-+struct drm_bridge *it66121_create(struct i2c_adapter *adapter)
++struct fl2000_stream *fl2000_stream_create(struct usb_device *usb_dev)
 +{
 +	int ret;
-+	struct it66121_priv *priv;
-+	struct i2c_client *client;
++	struct fl2000_stream *stream;
 +
-+	client = it66121_i2c_init(adapter);
-+	if (IS_ERR(client)) {
-+		dev_err(&adapter->dev, "No IT66121 found (%pe): adapters without one are not supported\n",
-+			client);
-+		return ERR_CAST(client);
-+	}
-+
-+	/*
-+	 * DRM core takes references on the bridge, so it must be allocated with
-+	 * devm_drm_bridge_alloc(). Freeing happens automatically when the last
-+	 * reference is dropped after i2c_unregister_device().
-+	 */
-+	priv = devm_drm_bridge_alloc(&client->dev, struct it66121_priv, bridge,
-+				     &it66121_bridge_funcs);
-+	if (IS_ERR(priv)) {
-+		i2c_unregister_device(client);
-+		return ERR_CAST(priv);
-+	}
-+
-+	priv->client = client;
-+	priv->adapter = adapter;
-+
-+	ret = it66121_regs_init(priv, priv->client);
++	/* The probe selected altsetting 1 on interface 0 */
++	ret = usb_pipe_type_check(usb_dev, usb_sndbulkpipe(usb_dev, 1));
 +	if (ret) {
-+		dev_err(&client->dev, "Cannot initialize registers (%d)\n", ret);
-+		i2c_unregister_device(client);
++		dev_err(&usb_dev->dev, "No bulk endpoint to send frames to\n");
 +		return ERR_PTR(ret);
 +	}
 +
-+	/*
-+	 * The chip's interrupt reaches the host only through the FL2000's, which sends a hotplug
-+	 * event for the whole device (fl2000_drm_hotplug()). The bridge therefore reports no hot
-+	 * plug of its own (DRM_BRIDGE_OP_HPD), and the connector also polls the line.
-+	 */
-+	priv->bridge.type = DRM_MODE_CONNECTOR_HDMIA;
-+	priv->bridge.ops = DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_EDID;
++	stream = kzalloc_obj(*stream);
++	if (!stream)
++		return ERR_PTR(-ENOMEM);
 +
-+	drm_bridge_add(&priv->bridge);
++	INIT_WORK(&stream->work, &fl2000_stream_work);
++	INIT_LIST_HEAD(&stream->render_list);
++	INIT_LIST_HEAD(&stream->wait_list);
++	spin_lock_init(&stream->list_lock);
++	mutex_init(&stream->shadow_lock);
++	init_usb_anchor(&stream->anchor);
++	atomic_set(&stream->credits, 0);
++	init_waitqueue_head(&stream->credits_wq);
++	stream->usb_dev = usb_dev;
 +
-+	return &priv->bridge;
-+}
-diff --git a/drivers/gpu/drm/fl2000/fl2000_it66121.h b/drivers/gpu/drm/fl2000/fl2000_it66121.h
-new file mode 100644
-index 000000000..568d3cd60
---- /dev/null
-+++ b/drivers/gpu/drm/fl2000/fl2000_it66121.h
-@@ -0,0 +1,18 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * (C) Copyright 2019, Artem Mygaiev
-+ */
-+
-+#ifndef FL2000_IT66121_H
-+#define FL2000_IT66121_H
-+
-+struct drm_bridge;
-+struct i2c_adapter;
-+
-+struct drm_bridge *it66121_create(struct i2c_adapter *adapter);
-+void it66121_destroy(struct drm_bridge *bridge);
-+int it66121_hpd_connected(struct drm_bridge *bridge);
-+int it66121_ack_interrupts(struct drm_bridge *bridge);
-+void it66121_resume(struct drm_bridge *bridge);
-+
-+#endif /* FL2000_IT66121_H */
-diff --git a/drivers/gpu/drm/fl2000/fl2000_it66121_regs.h b/drivers/gpu/drm/fl2000/fl2000_it66121_regs.h
-new file mode 100644
-index 000000000..de784cd71
---- /dev/null
-+++ b/drivers/gpu/drm/fl2000/fl2000_it66121_regs.h
-@@ -0,0 +1,284 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Based on the un-official documentation found on the net and registers
-+ * description from source code:
-+ *  - FL2000DX Linux driver on GitHub
-+ *  - RK3188 Android driver on GitHub
-+ *
-+ * (C) Copyright 2019, Artem Mygaiev
-+ */
-+
-+#ifndef FL2000_IT66121_REGS_H
-+#define FL2000_IT66121_REGS_H
-+
-+#define IT66121_BANK_SIZE 0x100
-+
-+/* 000 - 02F Common registers, same as 100 - 12F */
-+#define IT66121_VENDOR_ID_1	  0x00
-+#define IT66121_VENDOR_ID_2	  0x01
-+#define IT66121_DEVICE_ID_1	  0x02
-+#define IT66121_DEVICE_ID_2	  0x03
-+#define IT66121_SW_RST		  0x04
-+#define IT66121_SW_ENTEST	  BIT(7)
-+#define IT66121_SW_REF_RST_HDMITX BIT(5)
-+#define IT66121_SW_AREF_RST	  BIT(4)
-+#define IT66121_SW_HDMI_VID_RST	  BIT(3)
-+#define IT66121_SW_HDMI_AUD_RST	  BIT(2)
-+#define IT66121_SW_HDMI_RST	  BIT(1)
-+#define IT66121_SW_HDCP_RST	  BIT(0)
-+
-+#define IT66121_INT_CONTROL  0x05
-+#define IT66121_INT_STATUS_1 0x06
-+#define IT66121_INT_STATUS_1_HPD		BIT(0)
-+#define IT66121_INT_STATUS_1_RX_SENSE		BIT(1)
-+#define IT66121_INT_STATUS_1_DDC_BUS_HANG	BIT(2)
-+#define IT66121_INT_STATUS_1_ROMACQ_BUS_HANG	BIT(3)
-+#define IT66121_INT_STATUS_1_DDC_FIFO_ERR	BIT(4)
-+#define IT66121_INT_STATUS_1_DDC_NOACK		BIT(5)
-+#define IT66121_INT_STATUS_1_ROMACQ_NOACK	BIT(6)
-+#define IT66121_INT_STATUS_1_AUD_OVERFLOW	BIT(7)
-+
-+#define IT66121_INT_STATUS_2	 0x07
-+#define IT66121_INT_STATUS_3	 0x08
-+#define IT66121_INT_MASK_1	 0x09
-+#define IT66121_MASK_DDC_NOACK	 BIT(5)
-+#define IT66121_MASK_DDC_FIFOERR BIT(4)
-+#define IT66121_MASK_DDC_BUSHANG BIT(2)
-+#define IT66121_MASK_DDC	 GENMASK(5, 2)
-+#define IT66121_MASK_HPD	 BIT(0)
-+
-+#define IT66121_INT_MASK_2  0x0A
-+#define IT66121_INT_MASK_3  0x0B
-+#define IT66121_INT_CLEAR_1 0x0C
-+#define IT66121_INT_CLEAR_2 0x0D
-+#define IT66121_SYS_STATUS  0x0E
-+static const struct reg_field IT66121_SYS_STATUS_irq_pending = REG_FIELD(IT66121_SYS_STATUS, 7, 7);
-+static const struct reg_field IT66121_SYS_STATUS_hpd = REG_FIELD(IT66121_SYS_STATUS, 6, 6);
-+static const struct reg_field IT66121_SYS_STATUS_clr_irq = REG_FIELD(IT66121_SYS_STATUS, 0, 0);
-+
-+#define IT66121_SYS_CONTROL   0x0F
-+#define IT66121_SYS_RCLK_OFF  BIT(6)
-+#define IT66121_SYS_IACLK_OFF BIT(5)
-+#define IT66121_SYS_TXCLK_OFF BIT(4)
-+#define IT66121_SYS_CRCLK_OFF BIT(3)
-+#define IT66121_SYS_BANK_MASK 0x03
-+
-+#define IT66121_DDC_CONTROL	0x10
-+#define IT66121_DDC_MASTER_ROM	BIT(1)
-+#define IT66121_DDC_MASTER_DDC	0
-+#define IT66121_DDC_MASTER_HOST BIT(0)
-+#define IT66121_DDC_MASTER_HDCP 0
-+
-+#define IT66121_DDC_ADDRESS 0x11
-+#define IT66121_DDC_OFFSET  0x12
-+#define IT66121_DDC_SIZE    0x13
-+#define IT66121_DDC_SEGMENT 0x14
-+#define IT66121_DDC_COMMAND 0x15
-+#define IT66121_DDC_STATUS  0x16
-+
-+#define IT66121_DDC_RD_FIFO 0x17
-+/* reserved */
-+#define IT66121_HDCP_ADDRESS 0x19
-+
-+#define IT66121_HDCP_CONTROL   0x20
-+#define IT66121_HDCP_CP_DESIRE BIT(0)
-+/* reserved */
-+#define IT66121_DDC_BUS_HOLD_TIME 0x1B
-+#define IT66121_ROM_STATUS	  0x1C
-+/* reserved */
-+/* reserved */
-+/* 01F - 2F HDCP registers, ignored */
-+
-+#define IT66121_BANK_START 0x30
-+
-+/* 030 - 0FF Bank 0 */
-+/* 030 - 057 HDCP registers, ignored */
-+#define IT66121_MCLK_CONTROL	  0x058
-+#define IT66121_PLL_CONTROL	  0x059
-+#define IT66121_CLK_POWER_CONTROL 0x05A
-+#define IT66121_OS_FREQ_NUM_2	  0x05B
-+#define IT66121_OS_FREQ_NUM_1	  0x05C
-+/* reserved */
-+#define IT66121_TX_CLK_COUNT	 0x05E
-+#define IT66121_PLL_LOCK_STATUS	 0x05F
-+#define IT66121_AUDIO_FREQ_COUNT 0x060
-+#define IT66121_AFE_DRV_CONTROL	 0x061
-+#define IT66121_AFE_DRV_PWD	 BIT(5)
-+#define IT66121_AFE_RST		 BIT(4)
-+
-+#define IT66121_AFE_XP_CONTROL	 0x062
-+#define IT66121_AFE_IP_CONTROL_2 0x063
-+#define IT66121_AFE_IP_CONTROL_1 0x064
-+#define IT66121_AFE_RING_CONTROL 0x065
-+#define IT66121_AFE_DRV_HS	 0x066
-+/* reserved */
-+#define IT66121_AFE_IP_CONTROL_3 0x068
-+#define IT66121_AFE_PAT_RSTB	 0x069
-+#define IT66121_AFE_XP_TEST	 0x06A
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+#define IT66121_INPUT_MODE	     0x070
-+#define IT66121_INPUT_MODE_RGB	     0
-+#define IT66121_INPUT_MODE_YUV444    BIT(7)
-+#define IT66121_INPUT_MODE_YUV422    BIT(6)
-+#define IT66121_INPUT_MODE_TXCLKDIV2 BIT(5)
-+#define IT66121_INPUT_MODE_CCIR656   BIT(4)
-+#define IT66121_INPUT_MODE_SYNCEMB   BIT(3)
-+#define IT66121_INPUT_MODE_DDR	     BIT(2)
-+#define IT66121_INPUT_PCLKDELAY1     1
-+#define IT66121_INPUT_PCLKDELAY2     2
-+#define IT66121_INPUT_PCLKDELAY3     3
-+
-+#define IT66121_INPUT_IO_CONTROL 0x071
-+#define IT66121_INPUT_COLOR_CONV 0x072
-+#define IT66121_INPUT_DITHER	 BIT(7)
-+#define IT66121_INPUT_UDFILTER	 BIT(6)
-+#define IT66121_INPUT_DNFREE_GO	 BIT(5)
-+#define IT66121_INPUT_BTAT1004	 BIT(2)
-+#define IT66121_INPUT_RGB_TO_YUV 0x2
-+#define IT66121_INPUT_YUV_TO_RGB 0x3
-+#define IT66121_INPUT_NO_CONV	 0x0
-+
-+#define IT66121_Y_BLANK_LEVEL	0x073
-+#define IT66121_C_BLANK_LEVEL	0x074
-+#define IT66121_RGB_BLANK_LEVEL 0x075
-+#define IT66121_MATRIX_11V_1	0x076
-+#define IT66121_MATRIX_11V_2	0x077
-+#define IT66121_MATRIX_12V_1	0x078
-+#define IT66121_MATRIX_12V_2	0x079
-+#define IT66121_MATRIX_13V_1	0x07A
-+#define IT66121_MATRIX_13V_2	0x07B
-+#define IT66121_MATRIX_21V_1	0x07C
-+#define IT66121_MATRIX_21V_2	0x07D
-+#define IT66121_MATRIX_22V_1	0x07E
-+#define IT66121_MATRIX_22V_2	0x07F
-+#define IT66121_MATRIX_23V_1	0x080
-+#define IT66121_MATRIX_23V_2	0x081
-+#define IT66121_MATRIX_31V_1	0x082
-+#define IT66121_MATRIX_31V_2	0x083
-+#define IT66121_MATRIX_32V_1	0x084
-+#define IT66121_MATRIX_32V_2	0x085
-+#define IT66121_MATRIX_33V_1	0x086
-+#define IT66121_MATRIX_33V_2	0x087
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+#define IT66121_PCI2C_CEC_ADDRESS 0x08D
-+/* reserved */
-+/* reserved */
-+/* 090 - 0B2 Pattern generation registers, ignored */
-+/* reserved */
-+#define IT66121_HDMI_DATA_SWAP 0x0BF
-+
-+#define IT66121_HDMI_MODE      0x0C0
-+#define IT66121_HDMI_MODE_HDMI BIT(0)
-+#define IT66121_HDMI_MODE_DVI  0
-+
-+#define IT66121_HDMI_AV_MUTE	  0x0C1
-+#define IT66121_HDMI_AV_MUTE_ON	  BIT(0)
-+#define IT66121_HDMI_AV_MUTE_BLUE BIT(1)
-+
-+#define IT66121_HDMI_BLACK_SRC	 0x0C2
-+#define IT66121_HDMI_OESS_PREIOD 0x0C3
-+/* reserved */
-+#define IT66121_HDMI_AUDIO_CTS	      0x0C5
-+#define IT66121_HDMI_GEN_CTRL_PKT     0x0C6
-+#define IT66121_HDMI_GEN_CTRL_PKT_ON  BIT(0)
-+#define IT66121_HDMI_GEN_CTRL_PKT_RPT BIT(1)
-+
-+/* reserved */
-+/* reserved */
-+#define IT66121_HDMI_NULL_PKT 0x0C9
-+#define IT66121_HDMI_ACP_PKT  0x0CA
-+/* reserved */
-+/* reserved */
-+#define IT66121_HDMI_AVI_INFO_PKT    0x0CD
-+#define IT66121_HDMI_AVI_INFO_PKT_ON BIT(0)
-+#define IT66121_HDMI_AVI_INFO_RPT    BIT(1)
-+
-+#define IT66121_HDMI_AUD_INFO_PKT 0x0CE
-+/* reserved */
-+#define IT66121_HDMI_MPEG_INFO_PKT	0x0D0
-+#define IT66121_HDMI_VIDEO_PARAM_STATUS 0x0D1
-+#define IT66121_HDMI_3D_INFO_PKT	0x0D2
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+#define IT66121_HDMI_PCLK_CONTROL 0x0D7
-+#define IT66121_HDMI_PCLK_COUNT	  0x0D8
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+/* E0 - E7 Audio channel registers, ignored */
-+#define IT66121_EXT_INT_CONTROL 0x0E8
-+/* reserved */
-+/* reserved */
-+/* reserved */
-+#define IT66121_EXT_INT_MASK 0x0EC
-+/* reserved */
-+#define IT66121_EXT_INT_STATUS_1 0x0EE
-+/* reserved */
-+#define IT66121_EXT_INT_STATUS_2 0x0F0
-+/* reserved */
-+/* reserved */
-+/* 0F3 - 0F8 Test registers, ignored */
-+/* 0F9 - 0FF undefined*/
-+
-+/* 130 - 1BF Bank 1 */
-+/* 130 - 18F HDMI packet content registers, ignored except AVI InfoFrame */
-+#define IT66121_HDMI_AVIINFO_DB1  0x158
-+#define IT66121_HDMI_AVIINFO_DB2  0x159
-+#define IT66121_HDMI_AVIINFO_DB3  0x15A
-+#define IT66121_HDMI_AVIINFO_DB4  0x15B
-+#define IT66121_HDMI_AVIINFO_DB5  0x15C
-+#define IT66121_HDMI_AVIINFO_CSUM 0x15D
-+#define IT66121_HDMI_AVIINFO_DB6  0x15E
-+#define IT66121_HDMI_AVIINFO_DB7  0x15F
-+#define IT66121_HDMI_AVIINFO_DB8  0x160
-+#define IT66121_HDMI_AVIINFO_DB9  0x161
-+#define IT66121_HDMI_AVIINFO_DB10 0x162
-+#define IT66121_HDMI_AVIINFO_DB11 0x163
-+#define IT66121_HDMI_AVIINFO_DB12 0x164
-+#define IT66121_HDMI_AVIINFO_DB13 0x165
-+
-+/* 190 - 1BF Audio channel status registers, ignored */
-+
-+#define IT66121_BANK_END 0x1FF
-+
-+/* CEC registers ignored (must be configured as a separate regmap / device) */
-+
-+/* List of volatile registers that shall not be cached */
-+static inline bool IT66121_REG_VOLATILE(u32 reg)
-+{
-+	switch (reg) {
-+	case IT66121_INT_STATUS_1:
-+	case IT66121_INT_STATUS_2:
-+	case IT66121_INT_STATUS_3:
-+	case IT66121_SYS_STATUS:
-+	case IT66121_DDC_STATUS:
-+	case IT66121_DDC_RD_FIFO:
-+	case IT66121_ROM_STATUS:
-+	case IT66121_OS_FREQ_NUM_2:
-+	case IT66121_OS_FREQ_NUM_1:
-+	case IT66121_TX_CLK_COUNT:
-+	case IT66121_PLL_LOCK_STATUS:
-+	case IT66121_AUDIO_FREQ_COUNT:
-+	case IT66121_HDMI_PCLK_CONTROL:
-+	case IT66121_HDMI_PCLK_COUNT:
-+		return true;
-+	default:
-+		return false;
++	/* One scanline of source pixels, for the widest mode we advertise */
++	stream->line_buf = kmalloc_objs(*stream->line_buf, FL2000_MAX_LINE_PIXELS);
++	stream->work_queue = alloc_ordered_workqueue("fl2000_stream", 0);
++	if (!stream->line_buf || !stream->work_queue) {
++		fl2000_stream_destroy(stream);
++		return ERR_PTR(-ENOMEM);
 +	}
++
++	return stream;
 +}
 +
-+#endif /* FL2000_IT66121_REGS_H */
++void fl2000_stream_destroy(struct fl2000_stream *stream)
++{
++	if (stream->work_queue) {
++		fl2000_stream_disable(stream);
++		destroy_workqueue(stream->work_queue);
++	}
++	fl2000_stream_put_buffers(stream);
++	vfree(stream->shadow);
++	kfree(stream->line_buf);
++	mutex_destroy(&stream->shadow_lock);
++	kfree(stream);
++}
 
 -- 
 2.56.0
