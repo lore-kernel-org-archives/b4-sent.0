@@ -1,110 +1,109 @@
-From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Thu, 12 Nov 2026 13:39:30 +0000
-Subject: [PATCH net v3 2/2] nfc: st21nfca: prevent double completion of SE
- APDU request
+From: Manuel Levi <mlevif@gmail.com>
+Date: Thu, 12 Nov 2026 15:39:29 +0000
+Subject: [PATCH] media: atomisp: csi2-bridge: Only change the PMC clock
+ rate when needed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-st21nfca-v2-v3-2-c81702269e01@gmail.com>
-References: <20261112-st21nfca-v2-v3-0-c81702269e01@gmail.com>
-In-Reply-To: <20261112-st21nfca-v2-v3-0-c81702269e01@gmail.com>
-To: david@ixit.cz, krzk@kernel.org, joasantonio108@gmail.com
-Cc: oe-linux-nfc@lists.linux.dev, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, horms@kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794490768; l=3240;
- i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=vqHaopVgmvBm60zL9N9NShO0nqLNUceOzRe4TpLFHXE=;
- b=aOASxBBDF+J49IECQQPB6r/37593fsh0gpF67cWJQhtGpM6W4vvqwtg8wq87QCpiYLbNpLlNg
- 5cascdw5MWQA70BDjszptYvxSBe6BEZ3ItpftG8pYyChuSp1Um1mz1t
-X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
- pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
-X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
+Message-Id: <20261112-atomisp-pmc-clk-rate-v1-1-d6b3ef392ccf@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALDd9WoC/x3MwQrCMAyA4VcZORtYiozhq4iHtGZb0HUlKTIYe
+ 3erx+/w/we4mIrDrTvA5KOuW26gSwdp4TwL6rMZQh8GIgrIdVvVC5Y1YXq/0LgKTv3IMVxpiML
+ Q0mIy6f7f3h/NkV0wGue0/GZZ9grn+QWM7hVBfQAAAA==
+X-Change-ID: 20261112-atomisp-pmc-clk-rate-f08ab2416bea
+To: Hans de Goede <hansg@kernel.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-staging@lists.linux.dev, Manuel Levi <mlevif@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794497984; l=3543;
+ i=mlevif@gmail.com; s=miix320; h=from:subject:message-id;
+ bh=bZ4amSOmRbtAS3Gr8P2aAqXS4SXIOeSbgHibbWxJNVQ=;
+ b=XHQlZE7IQvJaBMbwVCXE+DVjs4tIS+XLX3oenO4E1v9bdHGrf86jTe1w360DmpP+FkmUb0Ejv
+ lZfJur3dG0vBDwHRNkXKxeLu2gAv1Q5hh7f1fzevRbNzFczXQo3ez7G
+X-Developer-Key: i=mlevif@gmail.com; a=ed25519;
+ pk=Ich6VcjyjXrqkJedoL17cXSlYNA9kK/oKhBxDM9IYyA=
+X-Endpoint-Received: by B4 Relay for mlevif@gmail.com/miix320 with auth_id=1501
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use the spinlock added in the previous commit to prevent completing an
-SE APDU request more than once.  Without this, the timeout work handler
-(st21nfca_se_wt_work) and the EVT_TRANSMIT_DATA event handler can both
-invoke the callback for the same request.  The callback frees its
-context, so the second call is a use-after-free followed by a double
-free.
+atomisp_csi2_set_pmc_clk_freq() enables and then disables the sensor's
+PMC platform clock before setting its rate to 19.2 MHz, which leaves the
+clock forced off in hardware.
 
-Check bwi_active under the lock in both completion paths and only
-complete a request that is still pending.  A response that arrives
-after the timeout still gets its EVT_SE_END_OF_APDU_TRANSFER, as
-before, but no callback.
+The sensor's clock is also controlled by ACPI: the CLKn power resource
+in the sensor's _PR0 writes the same PMC clock control field that
+clk-pmc-atom writes (1 = force on, 2 = force off), and the two do not
+coordinate. If the sensor is in D0 while the bridge runs, the clock is
+switched off under it and the sensor stops responding on I2C.
 
-Also reject a new SE APDU request in st21nfca_hci_se_io() with -EBUSY
-while one is in progress, instead of overwriting the callback and
-context of the pending request.  The callback is not called in that
-case, so free the context like the -ENODEV path does; nfc_se_io() does
-not free it once the driver has been called.
+This happens when the sensor driver probes at the same time as the
+bridge: the i2c core powers the sensor to D0 for every probe attempt,
+including those that end in -EPROBE_DEFER while waiting for the bridge's
+fwnode graph. On a Lenovo Miix 320-10ICR (Cherry Trail) the ov2680 probe
+then fails to read the chip ID in about 1 out of 10 boots:
 
-Found by LLM-assisted manual code review.
+  ov2680 i2c-OVTI2680:00: Error reading reg 0x300a: -121
+  ov2680 i2c-OVTI2680:00: failed to read chip id
 
-Fixes: 2130fb97fecf ("NFC: st21nfca: Adding support for secure element")
-Cc: Simon Horman <horms@kernel.org>
-Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
+The sensor never binds, so atomisp registers no camera at all.
+
+This can be reproduced on demand: with the ov2680 runtime-resumed
+(CLK2 on, chip ID reads fine), running the same clk_prepare_enable(),
+clk_disable_unprepare(), clk_set_rate() sequence on pmc_plt_clk_2 from
+a test module makes the sensor NAK (-EREMOTEIO) until its power
+resources are cycled.
+
+The enable/disable sequence is only needed to change the rate, which can
+default to 25 MHz on Bay Trail. On Cherry Trail the clocks already run at
+19.2 MHz. Skip the sequence when the clock already has the right rate,
+so that the bridge leaves the clock state to ACPI.
+
+Tested on a Lenovo Miix 320-10ICR with the atomisp driver from Debian's
+6.12.116 kernel (this function is unchanged in mainline): with this
+patch pmc_plt_clk_2 and pmc_plt_clk_4 are no longer switched off during
+bridge init (checked with clk trace events), and both sensors were
+registered on all 10 test boots.
+
+Fixes: 0af9078315c1 ("media: atomisp: csi2-bridge: Set PMC clk-rate for sensors to 19.2 MHz")
+Signed-off-by: Manuel Levi <mlevif@gmail.com>
 ---
- drivers/nfc/st21nfca/se.c | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+I can test further changes on the Lenovo Miix 320 if useful.
+---
+ drivers/staging/media/atomisp/pci/atomisp_csi2_bridge.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/drivers/nfc/st21nfca/se.c b/drivers/nfc/st21nfca/se.c
-index 03a30f797ff8..63a88a61d310 100644
---- a/drivers/nfc/st21nfca/se.c
-+++ b/drivers/nfc/st21nfca/se.c
-@@ -228,6 +228,12 @@ int st21nfca_hci_se_io(struct nfc_hci_dev *hdev, u32 se_idx,
- 	switch (se_idx) {
- 	case ST21NFCA_ESE_HOST_ID:
- 		spin_lock(&info->se_info.se_lock);
-+		if (info->se_info.bwi_active) {
-+			spin_unlock(&info->se_info.se_lock);
-+			/* The callback is not called, see the comment below */
-+			kfree(cb_context);
-+			return -EBUSY;
-+		}
- 		info->se_info.cb = cb;
- 		info->se_info.cb_context = cb_context;
- 		info->se_info.bwi_active = true;
-@@ -269,6 +275,10 @@ static void st21nfca_se_wt_work(struct work_struct *work)
- 						se_info.timeout_work);
+diff --git a/drivers/staging/media/atomisp/pci/atomisp_csi2_bridge.c b/drivers/staging/media/atomisp/pci/atomisp_csi2_bridge.c
+index cca91c6d71a596594425a6401292a82bb4f8db12..06340533ee87b972c2ca577f73960d00a15ac135 100644
+--- a/drivers/staging/media/atomisp/pci/atomisp_csi2_bridge.c
++++ b/drivers/staging/media/atomisp/pci/atomisp_csi2_bridge.c
+@@ -257,6 +257,19 @@ static int atomisp_csi2_set_pmc_clk_freq(struct acpi_device *adev, int clock_num
+ 		return ret;
+ 	}
  
- 	spin_lock(&info->se_info.se_lock);
-+	if (!info->se_info.bwi_active) {
-+		spin_unlock(&info->se_info.se_lock);
-+		return;
++	/*
++	 * Only touch the clock when its rate needs changing (on BYT it may
++	 * default to 25 MHz). The enable + disable below leaves the clock
++	 * forced off, while ACPI controls the same clock through the CLKn
++	 * power resource in the sensor's _PR0. If the sensor is powered up at
++	 * this point, e.g. by a concurrent probe of its driver, it would lose
++	 * its clock and stop responding.
++	 */
++	if (clk_get_rate(clk) == PMC_CLK_RATE_19_2MHZ) {
++		clk_put(clk);
++		return 0;
 +	}
- 	info->se_info.bwi_active = false;
- 	cb = info->se_info.cb;
- 	cb_context = info->se_info.cb_context;
-@@ -383,6 +393,7 @@ int st21nfca_apdu_reader_event_received(struct nfc_hci_dev *hdev,
- 					u8 event, struct sk_buff *skb)
- {
- 	int r = 0;
-+	bool active;
- 	se_io_cb_t cb;
- 	void *cb_context;
- 	struct st21nfca_hci_info *info = nfc_hci_get_clientdata(hdev);
-@@ -395,6 +406,7 @@ int st21nfca_apdu_reader_event_received(struct nfc_hci_dev *hdev,
- 		cancel_work_sync(&info->se_info.timeout_work);
- 
- 		spin_lock(&info->se_info.se_lock);
-+		active = info->se_info.bwi_active;
- 		info->se_info.bwi_active = false;
- 		cb = info->se_info.cb;
- 		cb_context = info->se_info.cb_context;
-@@ -405,7 +417,9 @@ int st21nfca_apdu_reader_event_received(struct nfc_hci_dev *hdev,
- 		if (r < 0)
- 			goto exit;
- 
--		cb(cb_context, skb->data, skb->len, 0);
-+		/* The request may have been completed by the timeout already */
-+		if (active)
-+			cb(cb_context, skb->data, skb->len, 0);
- 		break;
- 	case ST21NFCA_EVT_WTX_REQUEST:
- 		mod_timer(&info->se_info.bwi_timer, jiffies +
++
+ 	/*
+ 	 * The firmware might enable the clock at boot, to change
+ 	 * the rate we must ensure the clock is disabled.
 
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261112-atomisp-pmc-clk-rate-f08ab2416bea
+
+Best regards,
 -- 
-2.43.0
+Manuel Levi <mlevif@gmail.com>
 
