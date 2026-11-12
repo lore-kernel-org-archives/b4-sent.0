@@ -1,85 +1,78 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 10:44:59 +0000
-Subject: [PATCH] drm/debugfs: Accept "reset" with a trailing newline in
- edid_override
+From: Gopi Chandra Sekhar Reddy Kanala <gopi.kanala@oss.qualcomm.com>
+Date: Thu, 12 Nov 2026 16:17:42 +0530
+Subject: [PATCH] soundwire: qcom: force runtime suspend across system sleep
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-drm-debugfs-edid-reset-v1-1-4cd19d83cd22@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCQAxG4auUrA1kBq3gVcRFO/lbI1glaUUov
- bujLr/FeysF3BB0alZyvCzsMVWkXUPl2k0j2LSasuQ2pSSsfmdFv4xDMNSUHYGZ5SD7Lktpj5q
- oxk/HYO/f+Hz5O5b+hjJ/b7RtHyvh3QV6AAAA
-X-Change-ID: 20261110-drm-debugfs-edid-reset-0504a20c67d1
-To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Jani Nikula <jani.nikula@linux.intel.com>, 
- Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794480299; l=2159;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=q9OBm8AG1wALzNkA2iDL4Ckkgs47X7jT9hCbulBfsn4=;
- b=keagsGyaqUeHySKh+LwDiP92tHC1f78fQ47av3Plpx/nKzMNDn0IEVDiy9T1pC99dh+CH2lM5
- eHHLirfi9NSBqjuKaVQy9r9IyGuD68thYQjHso7mtgqDOqh70X64/yr
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+Message-Id: <20261112-qcom-swr-system-sleep-v1-1-a61a83f6475d@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAE2Z9WoC/x2MSwqDQBAFryK9ToM9DIJeJWRhxqc2+J0OfhDv7
+ pBd1aLqIkNUGFXZRRGbms5TEnllFPp66sDaJCeXu0JEHK9hHtn2yHbaDwkHYGF4J943RYnwpdQ
+ uEa0e/+/7c98Pjrm7s2cAAAA=
+To: Srinivas Kandagatla <srini@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
+ Bard Liao <yung-chuan.liao@linux.intel.com>, 
+ Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>
+Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Gopi Chandra Sekhar Reddy Kanala <gopi.kanala@oss.qualcomm.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794480478; l=2222;
+ i=gopi.kanala@oss.qualcomm.com; s=default; h=from:subject:message-id;
+ bh=PuQRJiq95loOQNMnfaO3Q8ngHy49cFz9em3LNzvhvDU=;
+ b=KOc2VRthYaO2bun1MamwCsbJdgIeg4y9kZf9evD3HS8vfA2KlKz14lKS9JjT8zJmkmkL/h5AG
+ CTPp69Lf6QyDFnhROwDofNz8IkKZ20XkJsQscEBSqM5dowRWzaLjHEk
+X-Developer-Key: i=gopi.kanala@oss.qualcomm.com; a=ed25519;
+ pk=4bCmbkbT6dfZt13k29qAL6yx8zUQ6p+yOdkRBH8lzXQ=
+X-Endpoint-Received: by B4 Relay for gopi.kanala@oss.qualcomm.com/default with auth_id=1499
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Writing "reset" to a connector's edid_override debugfs file removes the
-override, but only when exactly those five bytes are written. The
-obvious
+The controller only implements runtime PM callbacks and relies on
+runtime suspend to stop the bus clock, gate hclk and arm the wake IRQ.
+That is not enough across system suspend: from the prepare phase until
+the complete phase the PM core holds a runtime PM usage count on every
+device, so a controller that is runtime active at that point stays
+active until the system resumes. This happens when suspend is entered
+within the 3 second autosuspend delay after bus activity, or when a
+peripheral driver resumes its device from its own system suspend
+callback, as the SDCA class function driver does to quiesce its
+interrupts.
 
-  echo reset > /sys/kernel/debug/dri/0/HDMI-A-1/edid_override
+The bus clock then keeps running and hclk stays enabled for the whole
+suspend. On Qualcomm platforms the LPASS clock votes behind it are held
+as well, which keeps CX and DDR from collapsing in s2idle.
 
-writes "reset\n", which is handed to drm_edid_override_set() as an EDID
-and rejected with -EINVAL, leaving the override in place. A test
-harness that cleared its override this way kept running on the
-overridden EDID until the next reboot.
+Use pm_runtime_force_suspend() and pm_runtime_force_resume() as the
+system sleep callbacks, so the runtime suspend path always runs at
+system suspend and is undone on resume. Peripherals are children of the
+bus, so they are suspended before the controller and resumed after it.
 
-Accept a single trailing newline as well. An EDID is at least 128
-bytes, so a six-byte "reset\n" can't be a valid override.
-
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Signed-off-by: Gopi Chandra Sekhar Reddy Kanala <gopi.kanala@oss.qualcomm.com>
 ---
-Found and tested on an Orange Pi 5 (RK3588S), with this change on a 7.3
-based kernel: with the HDMI connector's own EDID written to
-edid_override, "echo reset > edid_override" succeeds and edid_override
-reads back empty, and "printf reset" (no newline) still succeeds. On
-drm-misc-next the patch is build-tested only (arm64 and x86_64, W=1).
-
-This patch was developed with Claude (Anthropic) as a coding assistant:
-it wrote the code and the commit message, and I reviewed and tested it
-as described above.
+Tested on Glymur CRD (WSA884x speakers on two controllers) with
+next-20261110. When s2idle is entered within the autosuspend delay
+after playback, both controllers now stop the bus clock and gate hclk
+during suspend, and playback works after resume.
 ---
- drivers/gpu/drm/drm_debugfs.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ drivers/soundwire/qcom.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/gpu/drm/drm_debugfs.c b/drivers/gpu/drm/drm_debugfs.c
-index a72f9723d3a9..3c6290457fa3 100644
---- a/drivers/gpu/drm/drm_debugfs.c
-+++ b/drivers/gpu/drm/drm_debugfs.c
-@@ -569,7 +569,12 @@ static ssize_t edid_write(struct file *file, const char __user *ubuf,
- 	if (IS_ERR(buf))
- 		return PTR_ERR(buf);
+diff --git a/drivers/soundwire/qcom.c b/drivers/soundwire/qcom.c
+index a4cb62897192..6884ddbe69b3 100644
+--- a/drivers/soundwire/qcom.c
++++ b/drivers/soundwire/qcom.c
+@@ -1902,6 +1902,7 @@ static int __maybe_unused swrm_runtime_suspend(struct device *dev)
+ }
  
--	if (len == 5 && !strncmp(buf, "reset", 5))
-+	/*
-+	 * An EDID is at least 128 bytes, so "reset" with the trailing newline
-+	 * that "echo reset" adds can't be mistaken for one.
-+	 */
-+	if ((len == 5 || (len == 6 && buf[5] == '\n')) &&
-+	    !strncmp(buf, "reset", 5))
- 		ret = drm_edid_override_reset(connector);
- 	else
- 		ret = drm_edid_override_set(connector, buf, len);
+ static const struct dev_pm_ops swrm_dev_pm_ops = {
++	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend, pm_runtime_force_resume)
+ 	SET_RUNTIME_PM_OPS(swrm_runtime_suspend, swrm_runtime_resume, NULL)
+ };
+ 
 
 ---
-base-commit: cb0a63f0c96e8ecb90199eeb99cc2a7fcfa703d4
-change-id: 20261110-drm-debugfs-edid-reset-0504a20c67d1
+base-commit: 793807ca13bf3072fc6d16ce6d90e9ab9beff2a5
+change-id: 20261112-qcom-swr-system-sleep-e42144d69ecb
 
 Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+Gopi Chandra Sekhar Reddy Kanala <gopi.kanala@oss.qualcomm.com>
 
