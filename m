@@ -1,113 +1,186 @@
-From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Thu, 12 Nov 2026 16:23:27 +0000
-Subject: [PATCH net v3] net: usb: smsc75xx: reject frames without a full
- header and FCS
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Date: Thu, 12 Nov 2026 17:19:27 +0000
+Subject: [PATCH] iommu: Don't let a driver bind while bus_iommu_probe()
+ still probes its device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-smsc75xx-rx-fcs-v3-1-6ad0378d0384@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAP7n9WoC/3WNQQrCMBBFryKzNtKZtjG68h7iIqaTNmBbSUqIl
- N7dkFVBXMzi/897s0Jg7zjA9bCC5+iCm6cc6uMBzKCnnoXrcgaqSCJiJcIYzLlNSfgkrAn59EW
- qzmJnGDL19mxdKsY7TLzAI5eDC8vsP+VLxDL9FUYUKBquGvW0hpStb/2o3etk5rG4Iu15/OUp8
- 4RSt5akakjv+W3bvhOXSvnzAAAA
-To: joasantonio108@gmail.com, steve.glendinning@shawell.net, 
- andrew+netdev@lunn.ch, davem@davemloft.net, kuba@kernel.org, 
- pabeni@redhat.com, mim@microchip.com, Eric Dumazet <edumazet@kernel.org>
-Cc: netdev@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794500606; l=3488;
- i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=rUwS80b4pePMA3lfNfGIdy/LrPjLf6uFSScwd46/NRk=;
- b=PjXJ+J6T52qsH1PoEBA5N2iSUdmlYhsSAul/hw6JU6yWLyzYTWSvTnAmiKua1jYn+m/UF91/+
- hW0xqfGGr9rDJRoT4dGflYVEkjbo1Rwtl4SLnTI/KMbuPSXeJatgpsZ
-X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
- pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
-X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
+Message-Id: <20261112-iommu-probe-race-v1-1-8c0b986b7e6e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBG4avIrDuQZGFKr1JcmPjbTkEjExVBv
+ LvRLr/FeztlqCDTq9pJsUqWNBbYR0Xx244fsHTF5IyrrbWOJQ3DwpOmANY2gjsTzRPee+MDlWx
+ S9LLdy3fzd17CD3G+PnQcJxrsoAh0AAAA
+X-Change-ID: 20261112-iommu-probe-race-d0c08e77707b
+To: "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
+ Robin Murphy <robin.murphy@arm.com>
+Cc: Jason Gunthorpe <jgg@ziepe.ca>, "Rob Herring (Arm)" <robh@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, iommu@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794503967; l=7366;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=8JR6AmMLM7PRkZrhVhsNPrKtTe/yhLbk9BSVJV4P3Rc=;
+ b=ZOTtA6myjmY2zdQeuWVsG1/cwKTDmjPPlM2OallkitwgFsANImTg+0ke9LvyITo/CNjKL7gDM
+ tXKyJTFih/ACOOM+7LFhzicYP9Zpe75Fw/qj6o9XIFxfDQQm8kLxGvY
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smsc75xx_rx_fixup() takes the frame length from the RX command word
-supplied by the device and strips the FCS by using "size - 4" for the
-allocation, skb_put() and memcpy() of each frame that is not the last
-one in the URB.  The length is only checked against an upper bound and
-against skb->len, so a device can report a length field of 2..5, which
-gives a size of 0..3 after RXW_PADDING is subtracted.
+When an IOMMU driver is a module, udev can load it while the driver of
+one of its client devices is loading too. On an Orange Pi 5 (RK3588)
+with CONFIG_VSI_IOMMU=m and CONFIG_VIDEO_HANTRO=m, 1 of 30 boots gives:
 
-size is a u32, so "size - 4" then wraps to 0xfffffffc..0xffffffff.
-__netdev_alloc_skb() adds NET_SKB_PAD to the unsigned length, which
-wraps back to a small value and the allocation succeeds.  skb_put()
-adds the length to the 32-bit skb->tail and skb->len, which also wrap,
-so the skb_over_panic() check does not fire.  The following memcpy()
-then tries to copy almost 4 GiB from the URB buffer into that small
-allocation and writes far beyond it.
+  hantro-vpu fdc70000.video-codec: late IOMMU probe at driver bind, something fishy here!
+  WARNING: drivers/iommu/iommu.c:654 at __iommu_probe_device+0x234/0x5e0
+  Call trace:
+   __iommu_probe_device+0x234/0x5e0 (P)
+   probe_iommu_group+0x40/0x80
+   bus_for_each_dev+0x88/0x110
+   iommu_device_register+0x10c/0x2d8
+   vsi_iommu_probe+0x244/0x280 [vsi_iommu]
 
-A malicious or malfunctioning USB device can use this to corrupt
-kernel memory or crash the machine.
+"iommus" is an optional fw_devlink supplier, so nothing orders the
+client's bind after the IOMMU's probe; that is left to the readiness
+check in iommu_fwspec_init(). That check is skipped when dev->iommu is
+already set, which is meant to identify the bus_iommu_probe() replay of
+dma_configure. But iommu_init_device() allocates dev->iommu and then
+drops iommu_probe_device_lock for the replay, so a driver binding the
+same device in another context sees it too:
 
-A frame that holds an FCS but less than an Ethernet header is not
-valid either.  usbnet drops it when it is the last frame in the URB,
-but the other frames go straight to usbnet_skb_return(), where
-eth_type_trans() reads an Ethernet header that was never copied into
-the new skb.
+  iommu_device_register()            really_probe(client)
+    bus_iommu_probe()
+      iommu_init_device()
+        dev_iommu_get()
+        dev->driver == NULL: replay,
+        unlock                         device_set_driver()
+        dma_configure()                dma_configure()
+                                         of_iommu_configure()
+                                           dev->iommu set, or fwspec
+                                           set by the replay: return 0
+        lock                             iommu_device_use_default_domain()
+      dev->driver set: WARN                no group yet: return 0
+      group, default domain,           call_driver_probe()
+      DMA ops set up under the
+      running driver
 
-Reject frames that are too short to hold an Ethernet header and an
-FCS, which covers both cases with one check.
+So the warning is right that something is fishy: the client driver
+probes before its device is in a group, with no default domain and with
+dma-direct ops that bus_iommu_probe() replaces later. If the client gets
+dev->driver set before the replay check instead, bus_iommu_probe() skips
+the device, the client defers on the readiness check and its retry does
+the probe from the bind path, which warns as well.
 
-The driver does not set FLAG_RX_ASSEMBLE, so usbnet already counts
-rx_errors when smsc75xx_rx_fixup() returns 0.  Also count
-rx_length_errors for these frames, as usbnet does for the short frames
-it drops itself.
+Close the window in the pre-probe hook that every bus dma_configure
+already calls: in iommu_device_use_default_domain(), a device that has a
+fwspec but no group is still being probed (a failed probe frees the
+fwspec), so defer the driver as is already done for a group without a
+default domain. The driver core retries it once the IOMMU driver has
+bound. With that, a driver that is binding but not bound can no longer
+run against a half-probed device, so let bus_iommu_probe() replay
+dma_configure for it and warn there only for a device that is already
+bound. The bind path (iommu_probe_device() from of_iommu_configure())
+keeps warning whenever dev->driver is set.
 
-Found by LLM-assisted source review.
-
-Fixes: 1b3b2d9e772b ("net: usb: smsc75xx: stop lying about skb->truesize")
+Fixes: bcb81ac6ae3c ("iommu: Get DT/ACPI parsing into the proper probe path")
 Cc: stable@vger.kernel.org
-Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-This issue was found with the help of an LLM-based code review tool
-(Claude).  I checked the code paths by hand against v7.4-rc3 and
-reviewed the fix myself.  It is build-tested only (W=1, arm64); I do
-not have the hardware to test it at runtime.
----
-Changes in v3:
-- Count rx_length_errors for the rejected frames (Andrew Lunn).
-- Link to v2: https://lore.kernel.org/r/20261111-smsc75xx-rx-fcs-v2-1-216a5f26842a@gmail.com
+The warning was seen once in 30 boots of an Orange Pi 5 (RK3588) with
+the Verisilicon IOMMU and the Hantro decoder built as modules, with
+udev loading both at the same time. The trace in the commit message is
+from that boot.
 
-Changes in v2:
-- Also reject frames too short for an Ethernet header, combined with
-  the FCS check into a single test (review feedback on v1).
-- Subject changed accordingly; it was "net: usb: smsc75xx: reject
-  frames shorter than the FCS".
-- Link to v1: https://lore.kernel.org/r/20261110-smsc75xx-rx-fcs-v1-1-4e048bfc28f3@gmail.com
----
- drivers/net/usb/smsc75xx.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Testing: this change on a v7.3 based kernel (drivers/iommu/iommu.c
+there is the same as in iommu/next apart from an unrelated
+iommu_dma_prepare_msi() hunk) booted 60 times on the same board with
+the same modules: no "late IOMMU probe" warning and no other
+WARNING/BUG, and in every boot the AV1 and VPU121 decoders were bound
+to hantro-vpu and in an IOMMU group, the AV1 decoder's IOMMU was bound
+to vsi_iommu, nothing was left in devices_deferred, and the log had no
+IOMMU or decoder errors. As the race hit only 1 boot in 30 before, 60
+clean boots are weak evidence that it is closed; they mainly show that
+IOMMU and client binding still work. The logs do not show whether the
+new -EPROBE_DEFER path ran in any boot. No decoding was run in those
+boots.
 
-diff --git a/drivers/net/usb/smsc75xx.c b/drivers/net/usb/smsc75xx.c
-index 6f72a3f15907..d1eca6bf7770 100644
---- a/drivers/net/usb/smsc75xx.c
-+++ b/drivers/net/usb/smsc75xx.c
-@@ -2217,6 +2217,14 @@ static int smsc75xx_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
- 				return 0;
- 			}
+This patch was developed with Claude (Anthropic) as a coding assistant:
+it analysed the race and wrote the code and the commit message, and I
+reviewed it and tested it as described above.
+---
+ drivers/iommu/iommu.c | 33 +++++++++++++++++++++++++++++----
+ 1 file changed, 29 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/iommu/iommu.c b/drivers/iommu/iommu.c
+index b486b8bbd1fc..ec68fb7dbe04 100644
+--- a/drivers/iommu/iommu.c
++++ b/drivers/iommu/iommu.c
+@@ -481,8 +481,12 @@ static int iommu_init_device(struct device *dev)
+ 	 * still a big job, so for now just invoke the whole thing. The device
+ 	 * already having a driver bound means dma_configure has already run and
+ 	 * found no IOMMU to wait for, so there's no point calling it again.
++	 * A driver that is still binding in another context (dev->driver set,
++	 * but not bound yet) has not got that far: its own dma_configure will
++	 * defer in iommu_device_use_default_domain() until we are done here.
+ 	 */
+-	if (!dev->iommu->fwspec && !dev->driver && dev->bus->dma_configure) {
++	if (!dev->iommu->fwspec && !device_is_bound(dev) &&
++	    dev->bus->dma_configure) {
+ 		mutex_unlock(&iommu_probe_device_lock);
+ 		dev->bus->dma_configure(dev);
+ 		mutex_lock(&iommu_probe_device_lock);
+@@ -648,9 +652,13 @@ static int __iommu_probe_device(struct device *dev, struct list_head *group_list
+ 		return ret;
+ 	/*
+ 	 * And if we do now see any replay calls, they would indicate someone
+-	 * misusing the dma_configure path outside bus code.
++	 * misusing the dma_configure path outside bus code. For bus_iommu_probe()
++	 * (@group_list set) dev->driver may also be set by a driver which is
++	 * binding concurrently in another context; that driver will defer in
++	 * iommu_device_use_default_domain(), so only a driver that is already
++	 * bound is a late probe there.
+ 	 */
+-	if (dev->driver)
++	if (group_list ? device_is_bound(dev) : !!dev->driver)
+ 		dev_WARN(dev, "late IOMMU probe at driver bind, something fishy here!\n");
  
-+			if (unlikely(size < ETH_HLEN + ETH_FCS_LEN)) {
-+				netif_dbg(dev, rx_err, dev->net,
-+					  "size err rx_cmd_a=0x%08x\n",
-+					  rx_cmd_a);
-+				dev->net->stats.rx_length_errors++;
-+				return 0;
-+			}
+ 	group = dev->iommu_group;
+@@ -3316,9 +3324,26 @@ static ssize_t iommu_group_store_type(struct iommu_group *group,
+ int iommu_device_use_default_domain(struct device *dev)
+ {
+ 	/* Caller is the driver core during the pre-probe path */
+-	struct iommu_group *group = dev->iommu_group;
++	struct iommu_group *group;
++	bool probing;
+ 	int ret = 0;
+ 
++	/*
++	 * bus_iommu_probe() in another context may be probing the device right
++	 * now, with iommu_probe_device_lock dropped while it replays
++	 * dma_configure. Our own dma_configure can then see its dev->iommu or
++	 * fwspec and return early, although the device is not in a group yet
++	 * and has no default domain or DMA ops. A fwspec without a group means
++	 * exactly that (a failed probe frees the fwspec), so make the driver
++	 * wait until the probe has finished.
++	 */
++	mutex_lock(&iommu_probe_device_lock);
++	group = dev->iommu_group;
++	probing = !group && dev->iommu && dev->iommu->fwspec;
++	mutex_unlock(&iommu_probe_device_lock);
 +
- 			/* last frame in this batch */
- 			if (skb->len == size) {
- 				smsc75xx_rx_csum_offload(dev, skb, rx_cmd_a,
++	if (probing)
++		return -EPROBE_DEFER;
+ 	if (!group)
+ 		return 0;
+ 
 
 ---
-base-commit: b3dfbde62cf1981c4638939c159dfd087b7a72e9
-change-id: 20261110-smsc75xx-rx-fcs-fca968df1dce
+base-commit: 2cf4be57b301ed2d7af82e70cff5dfd96894d8de
+change-id: 20261112-iommu-probe-race-d0c08e77707b
 
 Best regards,
--- 
-Joas Antonio dos Santos <joasantonio108@gmail.com>
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
