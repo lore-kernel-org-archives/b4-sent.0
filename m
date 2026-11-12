@@ -1,65 +1,116 @@
-From: Yusuke Hayashi <yusuke8h@gmail.com>
-Date: Thu, 12 Nov 2026 04:29:55 +0000
-Subject: [PATCH] staging: bcm2835-audio: remove unused
- bcm2835_audio_retrieve_buffers() declaration
+From: Ishu Brar <patches@brar.si>
+Subject: [PATCH v2 0/6] drm/msm/dpu: Add SM7250 display support
+Date: Thu, 12 Nov 2026 10:06:28 +0530
+Message-Id: <20261112-dpu-sm7250-v2-0-8e925a3a8a7d@brar.si>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-bcm2835-audio-unused-decl-v1-1-3b63a24b033b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMJA9WoC/x2MQQqAIBAAvxJ7biHXiugr0cF0q4WyUIwg+nvSc
- WBmHogchCP0xQOBL4ly+AyqLMCuxi+M4jIDVdQqpQgnu1OnGzTJyYHJp8gOHdsNa2pNNvSkuYP
- cn4Fnuf/3ML7vB0o0Dc1rAAAA
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Florian Fainelli <florian.fainelli@broadcom.com>, 
- Ray Jui <rjui@broadcom.com>, Scott Branden <sbranden@broadcom.com>, 
- Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>
-Cc: linux-staging@lists.linux.dev, linux-rpi-kernel@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Yusuke Hayashi <yusuke8h@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794457795; l=1434;
- i=yusuke8h@gmail.com; s=20261112; h=from:subject:message-id;
- bh=a+TgyUI6wkUkFO2I4cpqAGWsRWGHAWy+RkqW/CQr8tE=;
- b=bFuG0CHsUqIN8TsqRDo45PNlrMwwZoe6/DklH1Tqgyl9UR6UthH5+qMZ4VkD64Y1ybu8lGEc6
- BozwNImwss8CQG4yK414WsNFnI5f7Fz6qGtJvrZ1v3leU9tHGXi/E20
-X-Developer-Key: i=yusuke8h@gmail.com; a=ed25519;
- pk=7SzYbbTWl4u1a0gmKeMxAqo7g7F1K7tnWWGWQ+LnNNs=
-X-Endpoint-Received: by B4 Relay for yusuke8h@gmail.com/20261112 with auth_id=1495
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02NQQ6CQAxFr0K6dkw7MBpdcQ/DYmCK1EQgUyAaw
+ t0FdOHyJe+/P4NyFFa4JjNEnkSla1ewhwSqxrd3NhJWBov2RGhTE/rR6PNsHRqP5L0LTMFnsA7
+ 6yLW89tit+LKO5YOrYStsRiM6dPG9v020eb9wSv/hiQwacpc6w5SrDF1eRh+PKlAsy/IBxsLuv
+ 7QAAAA=
+X-Change-ID: 20261023-dpu-sm7250-a01aa5de1da4
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Krishna Manikandan <quic_mkrishn@quicinc.com>, Ishu Brar <patches@brar.si>, 
+ Kuogee Hsieh <quic_khsieh@quicinc.com>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794458192; l=3160;
+ i=patches@brar.si; h=from:subject:message-id;
+ bh=048jFxiMI7k+1fd8eRDyGOsTRUB4oqqepK6hCevhTJ0=;
+ b=Tp8wnwliFkY7UtEQXW0T72bcA51cB5628CB+DZTSnQ206r+tfX9kalU7qfPG6c34zvZAMAGOU
+ khYMziMNuB4AhKX0B65H2GCtv4/daktEayULlh0bIH5lljyWxfT6taZ
+X-Developer-Key: i=patches@brar.si; a=ed25519;
+ pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
+X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-bcm2835_audio_retrieve_buffers() is declared in bcm2835.h, but its
-definition and sole caller were removed in commit d7ca3a71545b
-("staging: bcm2835-audio: Operate non-atomic PCM ops").
+Add display support for the SM7250 (Snapdragon 765/765G/768G), which
+has a DPU 6.1. The DPU node matches the SM8150/SM8250 schema, so only
+its compatible is added there; the MDSS gets its own binding, modeled
+on the SM8250 one.
 
-Remove the orphaned function declaration.
+The MDSS driver needs the SM7250 UBWC entry, already applied to the
+Qualcomm tree:
+https://lore.kernel.org/all/20261027-ubwc-sm7250-v1-1-e766b1e264cf@brar.si/
 
-Signed-off-by: Yusuke Hayashi <yusuke8h@gmail.com>
----
-Found while scanning staging headers for declarations without definitions
-with an AI coding assistant, verified against commit d7ca3a71545b, and
-compile-tested with Clang 18 (LLVM=1 W=1 C=2) and GCC 13 (W=1 C=2) with
-CONFIG_SND_BCM2835=m.
----
- drivers/staging/vc04_services/bcm2835-audio/bcm2835.h | 1 -
- 1 file changed, 1 deletion(-)
-
-diff --git a/drivers/staging/vc04_services/bcm2835-audio/bcm2835.h b/drivers/staging/vc04_services/bcm2835-audio/bcm2835.h
-index 5a1348747ff4..54ad749129fc 100644
---- a/drivers/staging/vc04_services/bcm2835-audio/bcm2835.h
-+++ b/drivers/staging/vc04_services/bcm2835-audio/bcm2835.h
-@@ -107,6 +107,5 @@ int bcm2835_audio_write(struct bcm2835_alsa_stream *alsa_stream,
- 			void *src);
- void bcm2835_playback_fifo(struct bcm2835_alsa_stream *alsa_stream,
- 			   unsigned int size);
--unsigned int bcm2835_audio_retrieve_buffers(struct bcm2835_alsa_stream *alsa_stream);
- 
- #endif /* __SOUND_ARM_BCM2835_H */
+Tested on a OnePlus Nord (a 7.3 based tree).
 
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261112-bcm2835-audio-unused-decl-426a1123b3e8
+Changes in v2:
+- Use dpu_vig_sblk_qseed3_3_0 for the VIG SSPPs, as the other DPU 6.x
+  catalogs do (Dmitry)
+- Drop max_hdeci_exp and max_vdeci_exp from the caps, as the other DPU 6.x
+  catalogs do (reported by sashiko-bot)
+- New patch: add the SM7250 DP compatible to dp-controller.yaml, as the
+  SoC has a single DisplayPort controller (Krzysztof, Konrad)
+- MDSS binding: add the displayport-controller child, fix the
+  description, drop blank lines (Krzysztof)
+- Collect review tags
+- v1 was sent three times by mistake, sorry for the noise; the reviews
+  are on the last copy, linked below
+- Link to v1: https://patch.msgid.link/20261031-dpu-sm7250-v1-0-159f403ec405@brar.si
+
+To: Rob Clark <robin.clark@oss.qualcomm.com>
+To: Dmitry Baryshkov <lumag@kernel.org>
+To: Abhinav Kumar <abhinav.kumar@linux.dev>
+To: Jessica Zhang <jesszhan0024@gmail.com>
+To: Sean Paul <sean@poorly.run>
+To: Marijn Suijten <marijn.suijten@somainline.org>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+To: Maxime Ripard <mripard@kernel.org>
+To: Thomas Zimmermann <tzimmermann@suse.de>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Krishna Manikandan <quic_mkrishn@quicinc.com>
+To: Kuogee Hsieh <quic_khsieh@quicinc.com>
+To: Ishu Brar <patches@brar.si>
+Cc: linux-arm-msm@vger.kernel.org
+Cc: dri-devel@lists.freedesktop.org
+Cc: freedreno@lists.freedesktop.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Ishu Brar (6):
+      dt-bindings: display/msm: dsi-controller-main: Add SM7250
+      dt-bindings: display/msm: dpu: Document SM7250
+      dt-bindings: display/msm: dp-controller: Add SM7250
+      dt-bindings: display/msm: Add SM7250 MDSS
+      drm/msm/dpu: Add SM7250 support
+      drm/msm: mdss: Add SM7250 support
+
+ .../bindings/display/msm/dp-controller.yaml        |   1 +
+ .../bindings/display/msm/dsi-controller-main.yaml  |   2 +
+ .../bindings/display/msm/qcom,sm7250-mdss.yaml     | 357 +++++++++++++++++++++
+ .../bindings/display/msm/qcom,sm8150-dpu.yaml      |   1 +
+ .../gpu/drm/msm/disp/dpu1/catalog/dpu_6_1_sm7250.h | 309 ++++++++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c     |   1 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h     |   1 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c            |   1 +
+ drivers/gpu/drm/msm/msm_mdss.c                     |   1 +
+ 9 files changed, 674 insertions(+)
+---
+base-commit: 198acaed3b84c91030a039ac5ab833432ec166ea
+change-id: 20261023-dpu-sm7250-a01aa5de1da4
 
 Best regards,
--- 
-Yusuke Hayashi <yusuke8h@gmail.com>
+--  
+Ishu Brar <patches@brar.si>
 
