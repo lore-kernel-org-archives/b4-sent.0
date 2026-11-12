@@ -1,11 +1,11 @@
 From: Dave Airlie <airlied@redhat.com>
-Date: Thu, 12 Nov 2026 11:43:44 +1000
-Subject: [PATCH 09/19] drm/amd/display/amdgpu_dm: Use DC accessors in
- debugfs paths
+Date: Thu, 12 Nov 2026 11:43:45 +1000
+Subject: [PATCH 10/19] drm/amd/display/amdgpu_dm: Use DC accessors in the
+ DM core paths
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-amdgpu-dc-cleanup-v1-9-0fae41718ad2@redhat.com>
+Message-Id: <20261112-amdgpu-dc-cleanup-v1-10-0fae41718ad2@redhat.com>
 References: <20261112-amdgpu-dc-cleanup-v1-0-0fae41718ad2@redhat.com>
 In-Reply-To: <20261112-amdgpu-dc-cleanup-v1-0-0fae41718ad2@redhat.com>
 To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
@@ -17,555 +17,471 @@ To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>,
 Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
  Dave Airlie <airlied@redhat.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=20611; i=airlied@redhat.com;
- h=from:subject:message-id; bh=teTvwAJBoooONFPtPUVVYPA5nnxZ+ozX7no2u7o4vqw=;
- b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBq9RnP4KY6lRk2A0hjk/vO4GW7BF3PeBIfWRsrw
- gol5nFLHO6JAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCavUZzwAKCRAMdPNZecSG
- vnwjD/9uvlOaftz4+KAFAnIIZY/P0skCmW6jyL9C8CugXKIl7JJFd9aPAdBnYmcKVcAfKuIliQJ
- HfCHucLH1HjblSB407wMJiFV3RtSSfZjV+uwSw8FvRF+Bd8K85YP1CRwbKZCfGlsYvY7wK/qx/y
- pp/qkstT5XRZ80bqnba8vtHcLiaaydatJgtct646qbX8YNwuE6egc3kqpA1ctpA//PxLyriv2Kd
- wg/b6pV6cmj54qYINmA41gcbj7nQhvomJgs1JGzPxWVm2EOZeoQXekGlhQdHAsu35NFhtBNyT/P
- 5jYUi0EMLSRqWoA0dUKpZSSn21V0vWbNXQjlgKGzaTDOQEb9SSnQl7A2AAQDPU4BKHxLaSu2Ozs
- NlwD1nt2ZjzJutUQehpMG0Goq4LjPfP8xsLkwxfPeXOohzKmkwHwq82PZ1rYuPZqy2VNZ2WoIRY
- Qy6X28cWvrje04dYrFMtqib+QePBMe6fIjjW8eTrbt+87MN1f2XAa1ZNoyo+/c9HRRMfGZrBzke
- 98zPdv/w9WY1bY0PRouOKzt1xH/g99bXmLnd88tZn6GcaQ8j3Ux1gLwZs0ZuvHmEdB+yi7Kn0iV
- o3H7HzlFTDyWlkyb/zyvL7gFrHV24WXvzQA6JizmCAVXeylrWng43YX4Jc+XSzlO6mKJwOEnvkR
- S+fj9ai/h567ggQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=18158; i=airlied@redhat.com;
+ h=from:subject:message-id; bh=t+KQpPhNQQ89vABgyW9SfxyEZpMxPkveh1H937vVcz8=;
+ b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBq9RnPhUjQM7SNZz+ftBiL7E8G8loc0VwmAEIDp
+ /zgVjbjltSJAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCavUZzwAKCRAMdPNZecSG
+ vghCEACaXfSSWB1rloHdRd8nWji5d54MALvfJb06CZsyXRqaqYTawQsUUFdfb+8XbBdayfQYZrg
+ wSwGdIOPORKzoWmxGyQsXIejFdzDU90+WW5GDeu+QiBvhRlgZgXgeHcD9ZkjPIMRus++GOjXko4
+ 6tXHMuHsqxmkQwKhBWWrNdrPWfia/JHZzsh86F1nX3d7VIS22IpPTxjtSBInlctu4+Pa1Y3VlZR
+ SjFVZvCTY9cgH1iG76OnOKgR/RBLpacx6ZpCdyVoJ1KAKeMPPGJUxp1jjum54i++ePR3sPLhUsK
+ Q64g4NW9n08vf0S+x8no4rvCbPEg4MdGSzVp/Wo95kfY0sp/l1XsPPhanxigk488ljrEAWZTg6O
+ M7uUpXsDrPYiJfWMli/1UbPczK4ucjxYVvVQ9rkh4iekIvvDFjDoLx6DzNaKXPsdDrIokyMCwM8
+ UeWV2GwnBtRpL2MzcMWH+kJ86ZrPaiOsMregfVmwGBBs6rx5ofzYdJMs/bx+eWPuTBJNFvO0gaL
+ ExLN3STy+ifqjjGEFbxjU5hPWa52uhUGFb5hRSI60tbL/Q3o/DlSmn/a/6295xMMJYi4J5AzyGI
+ YHqpj2dUJvVuK1Lj/fxLiFqDjAbVrw/QjkzDG8PvXKofYeM+2FJK6gd4XsTVZuC4bt5XhPXpEB4
+ jyepcGymxq2+JwA==
 X-Developer-Key: i=airlied@redhat.com; a=openpgp;
  fpr=10A6D91DA1B05BD29F6DEBAC0C74F35979C486BE
 X-Endpoint-Received: by B4 Relay for airlied@redhat.com/default with auth_id=1321
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Replace direct struct dc member dereferences with the DC accessor
-layer in amdgpu_dm_debugfs.c: dmub context access, current_state and
-pipe enumeration, IPS config/idle optimization reads, PSR/Panel
-Replay residency queries, hwss state dumps (dc_log_hw_state,
-dc_get_dcc_en_bits), the SubVP query and the debug option writes.
+layer in amdgpu_dm.c: dmub context access, caps reads (cursor size,
+plane/stream/link counts, IPS, planes array), the module parameter
+debug overrides, current_state access across suspend/resume and
+master-sync, link iteration, and the DMCU/ABM resource pool reads.
 
-Add a purpose-specific setter for the eDP hotplug detection mode
-(dc_set_allow_edp_hotplug_detection) instead of writing through
-dc->config.
+With this, no production code outside DC dereferences struct dc
+members anymore; only the amdgpu_dm KUnit tests remain.
 
 Part of making struct dc private to DC.
 
 Signed-off-by: Dave Airlie <airlied@redhat.com>
 ---
- .../drm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c  | 123 ++++++++++-----------
- drivers/gpu/drm/amd/display/dc/core/dc_accessors.c |   6 +
- drivers/gpu/drm/amd/display/dc/dc.h                |   7 ++
- 3 files changed, 73 insertions(+), 63 deletions(-)
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c | 141 ++++++++++++----------
+ 1 file changed, 74 insertions(+), 67 deletions(-)
 
-diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c
-index 68356cb8e4de..fddb47a32fb9 100644
---- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c
-+++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_debugfs.c
-@@ -1028,9 +1028,9 @@ static int replay_capability_show(struct seq_file *m, void *data)
- 		struct dc *dc = link->ctx->dc;
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+index 94d45e5d2a3b..cab39aa4d41f 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+@@ -150,7 +150,7 @@ static int amdgpu_dm_atomic_check(struct drm_device *dev,
  
- 		sink_support_replay = amdgpu_dm_link_supports_replay(link, aconnector);
--		if (dc->ctx->dmub_srv && dc->ctx->dmub_srv->dmub)
-+		if (dc_get_ctx(dc)->dmub_srv && dc_get_ctx(dc)->dmub_srv->dmub)
- 			driver_support_replay =
--				(bool)dc->ctx->dmub_srv->dmub->feature_caps.replay_supported;
-+				(bool)dc_get_ctx(dc)->dmub_srv->dmub->feature_caps.replay_supported;
- 	}
- 
- 	seq_printf(m, "Sink support: %s\n", str_yes_no(sink_support_replay));
-@@ -1295,7 +1295,7 @@ static int max_downscale_src_width_show(struct seq_file *m, void *unused)
- 	if (!link)
- 		return -ENODEV;
- 
--	seq_printf(m, "%d\n", link->dc->debug.max_downscale_src_width);
-+	seq_printf(m, "%d\n", dc_get_debug_options(link->dc)->max_downscale_src_width);
- 
- 	return 0;
+ static inline void amdgpu_dm_exit_ips_for_hw_access(struct dc *dc)
+ {
+-	if (dc->ctx->dmub_srv && !dc->ctx->dmub_srv->idle_exit_counter)
++	if (dc_get_ctx(dc)->dmub_srv && !dc_get_ctx(dc)->dmub_srv->idle_exit_counter)
+ 		dc_exit_ips_for_hw_access(dc);
  }
-@@ -1313,7 +1313,7 @@ static int odm_combine_segments_show(struct seq_file *m, void *unused)
- 	int i, segments = -EOPNOTSUPP;
  
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == link)
- 			break;
-@@ -1594,7 +1594,7 @@ static ssize_t dp_dsc_clock_en_read(struct file *f, char __user *buf,
- 		return -ENOMEM;
- 
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -1696,7 +1696,7 @@ static ssize_t dp_dsc_clock_en_write(struct file *f, const char __user *buf,
+@@ -204,7 +204,7 @@ STATIC_IFN_KUNIT int dm_crtc_get_scanoutpos(struct amdgpu_device *adev, int crtc
+ 		return 0;
  	}
  
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -1780,7 +1780,7 @@ static ssize_t dp_dsc_slice_width_read(struct file *f, char __user *buf,
- 		return -ENOMEM;
+-	if (dc && dc->caps.ips_support && dc->idle_optimizations_allowed)
++	if (dc && dc_get_caps(dc)->ips_support && dc_is_idle_optimizations_allowed(dc))
+ 		dc_allow_idle_optimizations(dc, false);
  
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -1880,7 +1880,7 @@ static ssize_t dp_dsc_slice_width_write(struct file *f, const char __user *buf,
- 	}
+ 	/*
+@@ -486,6 +486,7 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
+ {
+ 	struct dc_init_data init_data;
+ 	struct dc_callback_init init_params;
++	struct dc_debug_options *debug_opts;
+ 	int r;
  
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -1964,7 +1964,7 @@ static ssize_t dp_dsc_slice_height_read(struct file *f, char __user *buf,
- 		return -ENOMEM;
+ 	adev->dm.ddev = adev_to_drm(adev);
+@@ -650,62 +651,65 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
  
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -2064,7 +2064,7 @@ static ssize_t dp_dsc_slice_height_write(struct file *f, const char __user *buf,
- 	}
- 
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -2144,7 +2144,7 @@ static ssize_t dp_dsc_bits_per_pixel_read(struct file *f, char __user *buf,
- 		return -ENOMEM;
- 
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -2241,7 +2241,7 @@ static ssize_t dp_dsc_bits_per_pixel_write(struct file *f, const char __user *bu
- 	}
- 
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -2319,7 +2319,7 @@ static ssize_t dp_dsc_pic_width_read(struct file *f, char __user *buf,
- 		return -ENOMEM;
- 
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -2373,7 +2373,7 @@ static ssize_t dp_dsc_pic_height_read(struct file *f, char __user *buf,
- 		return -ENOMEM;
- 
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -2442,7 +2442,7 @@ static ssize_t dp_dsc_chunk_size_read(struct file *f, char __user *buf,
- 		return -ENOMEM;
- 
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -2511,7 +2511,7 @@ static ssize_t dp_dsc_slice_bpg_offset_read(struct file *f, char __user *buf,
- 		return -ENOMEM;
- 
- 	for (i = 0; i < MAX_PIPES; i++) {
--		pipe_ctx = &aconnector->dc_link->dc->current_state->res_ctx.pipe_ctx[i];
-+		pipe_ctx = &dc_get_current_state(aconnector->dc_link->dc)->res_ctx.pipe_ctx[i];
- 		if (pipe_ctx->stream &&
- 		    pipe_ctx->stream->link == aconnector->dc_link &&
- 		    pipe_ctx->stream->sink &&
-@@ -2701,15 +2701,15 @@ static int ips_status_show(struct seq_file *m, void *unused)
- 	struct dc *dc = adev->dm.dc;
- 	struct dc_dmub_srv *dc_dmub_srv;
- 
--	seq_printf(m, "IPS config: %d\n", dc->config.disable_ips);
--	seq_printf(m, "Idle optimization: %d\n", dc->idle_optimizations_allowed);
-+	seq_printf(m, "IPS config: %d\n", dc_get_config(dc)->disable_ips);
-+	seq_printf(m, "Idle optimization: %d\n", dc_is_idle_optimizations_allowed(dc));
- 
- 	if (adev->dm.idle_workqueue) {
- 		seq_printf(m, "Idle workqueue - enabled: %d\n", adev->dm.idle_workqueue->enable);
- 		seq_printf(m, "Idle workqueue - running: %d\n", adev->dm.idle_workqueue->running);
- 	}
- 
--	dc_dmub_srv = dc->ctx->dmub_srv;
-+	dc_dmub_srv = dc_get_ctx(dc)->dmub_srv;
- 	if (dc_dmub_srv && dc_dmub_srv->dmub) {
- 		uint32_t rcg_count, ips1_count, ips2_count;
- 		volatile const struct dmub_shared_state_ips_fw *ips_fw =
-@@ -2752,7 +2752,7 @@ static int ips_residency_show(struct seq_file *m, void *unused)
- 	mutex_lock(&adev->dm.dc_lock);
- 
- 	mode = IPS_RESIDENCY__IPS1_RCG;
--	if (!dc_dmub_srv_ips_query_residency_info(dc->ctx, panel_inst, &info, mode)) {
-+	if (!dc_dmub_srv_ips_query_residency_info(dc_get_ctx(dc), panel_inst, &info, mode)) {
- 		seq_printf(m, "ISP query failed\n");
+ 	if (adev->dm.dc) {
+ 		drm_info(adev_to_drm(adev), "Display Core v%s initialized on %s\n", DC_VER,
+-			 dce_version_to_string(adev->dm.dc->ctx->dce_version));
++			 dce_version_to_string(dc_get_dce_version(adev->dm.dc)));
  	} else {
- 		unsigned int pct, frac;
-@@ -2785,7 +2785,7 @@ static int ips_residency_cntl_set(void *data, u64 val)
- 	int ret = 0;
- 
- 	mutex_lock(&adev->dm.dc_lock);
--	if (!dc_dmub_srv_ips_residency_cntl(dc->ctx, panel_inst, !!val))
-+	if (!dc_dmub_srv_ips_residency_cntl(dc_get_ctx(dc), panel_inst, !!val))
- 		ret = -EIO;
- 	mutex_unlock(&adev->dm.dc_lock);
- 
-@@ -3231,7 +3231,7 @@ static int replay_get_state(void *data, u64 *val)
- 
- 	mutex_lock(&adev->dm.dc_lock);
- 
--	if (dc->idle_optimizations_allowed) {
-+	if (dc_is_idle_optimizations_allowed(dc)) {
- 		dc_allow_idle_optimizations(dc, false);
- 		reallow_idle = true;
- 	}
-@@ -3263,12 +3263,12 @@ static int replay_set_residency(void *data, u64 val)
- 
- 	mutex_lock(&adev->dm.dc_lock);
- 
--	if (dc->idle_optimizations_allowed) {
-+	if (dc_is_idle_optimizations_allowed(dc)) {
- 		dc_allow_idle_optimizations(dc, false);
- 		reallow_idle = true;
+ 		drm_info(adev_to_drm(adev), "Display Core failed to initialize with v%s!\n", DC_VER);
+ 		goto error;
  	}
  
--	link->dc->link_srv->edp_replay_residency(link, &residency, is_start, PR_RESIDENCY_MODE_PHY);
-+	dc_link_edp_replay_residency(link, &residency, is_start, PR_RESIDENCY_MODE_PHY);
- 
- 	if (reallow_idle)
- 		dc_allow_idle_optimizations(dc, true);
-@@ -3292,12 +3292,12 @@ static int replay_get_residency(void *data, u64 *val)
- 
- 	mutex_lock(&adev->dm.dc_lock);
- 
--	if (dc->idle_optimizations_allowed) {
-+	if (dc_is_idle_optimizations_allowed(dc)) {
- 		dc_allow_idle_optimizations(dc, false);
- 		reallow_idle = true;
++	debug_opts = dc_get_debug_options_mutable(adev->dm.dc);
++
+ 	if (amdgpu_dc_debug_mask & DC_DISABLE_PIPE_SPLIT) {
+-		adev->dm.dc->debug.force_single_disp_pipe_split = false;
+-		adev->dm.dc->debug.pipe_split_policy = MPC_SPLIT_AVOID;
++		debug_opts->force_single_disp_pipe_split = false;
++		debug_opts->pipe_split_policy = MPC_SPLIT_AVOID;
  	}
  
--	link->dc->link_srv->edp_replay_residency(link, &residency, false, PR_RESIDENCY_MODE_PHY);
-+	dc_link_edp_replay_residency(link, &residency, false, PR_RESIDENCY_MODE_PHY);
+ 	if (adev->asic_type != CHIP_CARRIZO && adev->asic_type != CHIP_STONEY)
+-		adev->dm.dc->debug.disable_stutter = amdgpu_pp_feature_mask & PP_STUTTER_MODE ? false : true;
++		debug_opts->disable_stutter =
++			amdgpu_pp_feature_mask & PP_STUTTER_MODE ? false : true;
+ 	if (dm_should_disable_stutter(adev->pdev))
+-		adev->dm.dc->debug.disable_stutter = true;
++		debug_opts->disable_stutter = true;
  
- 	if (reallow_idle)
- 		dc_allow_idle_optimizations(dc, true);
-@@ -3323,7 +3323,7 @@ static int psr_get(void *data, u64 *val)
+ 	if (amdgpu_dc_debug_mask & DC_DISABLE_STUTTER)
+-		adev->dm.dc->debug.disable_stutter = true;
++		debug_opts->disable_stutter = true;
  
- 	mutex_lock(&adev->dm.dc_lock);
+ 	if (amdgpu_dc_debug_mask & DC_DISABLE_DSC)
+-		adev->dm.dc->debug.disable_dsc = true;
++		debug_opts->disable_dsc = true;
  
--	if (dc->idle_optimizations_allowed) {
-+	if (dc_is_idle_optimizations_allowed(dc)) {
- 		dc_allow_idle_optimizations(dc, false);
- 		reallow_idle = true;
+ 	if (amdgpu_dc_debug_mask & DC_DISABLE_CLOCK_GATING)
+-		adev->dm.dc->debug.disable_clock_gate = true;
++		debug_opts->disable_clock_gate = true;
+ 
+ 	if (amdgpu_dc_debug_mask & DC_FORCE_SUBVP_MCLK_SWITCH)
+-		adev->dm.dc->debug.force_subvp_mclk_switch = true;
++		debug_opts->force_subvp_mclk_switch = true;
+ 
+ 	if (amdgpu_dc_debug_mask & DC_DISABLE_SUBVP_FAMS) {
+-		adev->dm.dc->debug.force_disable_subvp = true;
+-		adev->dm.dc->debug.fams2_config.bits.enable = false;
++		debug_opts->force_disable_subvp = true;
++		debug_opts->fams2_config.bits.enable = false;
  	}
-@@ -3354,12 +3354,12 @@ static int psr_read_residency(void *data, u64 *val)
  
- 	mutex_lock(&adev->dm.dc_lock);
- 
--	if (dc->idle_optimizations_allowed) {
-+	if (dc_is_idle_optimizations_allowed(dc)) {
- 		dc_allow_idle_optimizations(dc, false);
- 		reallow_idle = true;
+ 	if (amdgpu_dc_debug_mask & DC_ENABLE_DML2) {
+-		adev->dm.dc->debug.using_dml2 = true;
+-		adev->dm.dc->debug.using_dml21 = true;
++		debug_opts->using_dml2 = true;
++		debug_opts->using_dml21 = true;
  	}
  
--	link->dc->link_srv->edp_get_psr_residency(link, &residency, PSR_RESIDENCY_MODE_PHY);
-+	dc_link_edp_get_psr_residency(link, &residency, PSR_RESIDENCY_MODE_PHY);
+ 	if (amdgpu_dc_debug_mask & DC_HDCP_LC_FORCE_FW_ENABLE)
+-		adev->dm.dc->debug.hdcp_lc_force_fw_enable = true;
++		debug_opts->hdcp_lc_force_fw_enable = true;
  
- 	if (reallow_idle)
- 		dc_allow_idle_optimizations(dc, true);
-@@ -3379,7 +3379,7 @@ static int allow_edp_hotplug_detection_get(void *data, u64 *val)
- 	struct drm_device *dev = connector->dev;
- 	struct amdgpu_device *adev = drm_to_adev(dev);
+ 	if (amdgpu_dc_debug_mask & DC_HDCP_LC_ENABLE_SW_FALLBACK)
+-		adev->dm.dc->debug.hdcp_lc_enable_sw_fallback = true;
++		debug_opts->hdcp_lc_enable_sw_fallback = true;
  
--	*val = adev->dm.dc->config.allow_edp_hotplug_detection;
-+	*val = dc_get_config(adev->dm.dc)->allow_edp_hotplug_detection;
+ 	if (amdgpu_dc_debug_mask & DC_SKIP_DETECTION_LT)
+-		adev->dm.dc->debug.skip_detection_link_training = true;
++		debug_opts->skip_detection_link_training = true;
  
- 	return 0;
- }
-@@ -3392,7 +3392,7 @@ static int allow_edp_hotplug_detection_set(void *data, u64 val)
- 	struct drm_device *dev = connector->dev;
- 	struct amdgpu_device *adev = drm_to_adev(dev);
+-	adev->dm.dc->debug.visual_confirm = amdgpu_dc_visual_confirm;
++	debug_opts->visual_confirm = amdgpu_dc_visual_confirm;
  
--	adev->dm.dc->config.allow_edp_hotplug_detection = (uint32_t) val;
-+	dc_set_allow_edp_hotplug_detection(adev->dm.dc, (enum dc_hpd_enable_select)val);
+ 	/* TODO: Remove after DP2 receiver gets proper support of Cable ID feature */
+-	adev->dm.dc->debug.ignore_cable_id = true;
++	debug_opts->ignore_cable_id = true;
  
- 	return 0;
- }
-@@ -3532,10 +3532,10 @@ static int dmub_trace_mask_set(void *data, u64 val)
- 	u32 res;
+ 	/* temporary enable immediate restore for FAMS2 */
+-	adev->dm.dc->debug.fams2_imm_restore_drr = true;
++	debug_opts->fams2_imm_restore_drr = true;
+ 
+-	if (adev->dm.dc->caps.dp_hdmi21_pcon_support)
++	if (dc_get_caps(adev->dm.dc)->dp_hdmi21_pcon_support)
+ 		drm_info(adev_to_drm(adev), "DP-HDMI FRL PCON supported\n");
+ 
+ 	r = dm_dmub_hw_init(adev);
+@@ -749,18 +753,18 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
+ 
+ 	amdgpu_dm_init_color_mod();
+ 
+-	if (adev->dm.dc->caps.max_links > 0) {
++	if (dc_get_caps(adev->dm.dc)->max_links > 0) {
+ 		adev->dm.vblank_control_workqueue =
+ 			create_singlethread_workqueue("dm_vblank_control_workqueue");
+ 		if (!adev->dm.vblank_control_workqueue)
+ 			drm_err(adev_to_drm(adev), "failed to initialize vblank_workqueue.\n");
+ 	}
+ 
+-	if (adev->dm.dc->caps.ips_support &&
+-	    adev->dm.dc->config.disable_ips != DMUB_IPS_DISABLE_ALL)
++	if (dc_get_caps(adev->dm.dc)->ips_support &&
++	    dc_get_config(adev->dm.dc)->disable_ips != DMUB_IPS_DISABLE_ALL)
+ 		adev->dm.idle_workqueue = idle_create_workqueue(adev);
+ 
+-	if (adev->dm.dc->caps.max_links > 0 && adev->family >= AMDGPU_FAMILY_RV) {
++	if (dc_get_caps(adev->dm.dc)->max_links > 0 && adev->family >= AMDGPU_FAMILY_RV) {
+ 		adev->dm.hdcp_workqueue = hdcp_create_workqueue(adev, &init_params.cp_psp, adev->dm.dc);
+ 
+ 		if (!adev->dm.hdcp_workqueue)
+@@ -772,7 +776,7 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
+ 
+ 		dc_init_callbacks(adev->dm.dc, &init_params);
+ 	}
+-	if (adev->dm.dc->caps.max_links > 0) {
++	if (dc_get_caps(adev->dm.dc)->max_links > 0) {
+ 		adev->dm.hdmi_frl_status_polling_wq =
+ 			create_singlethread_workqueue("hdmi_frl_status_polling_wq");
+ 		if (!adev->dm.hdmi_frl_status_polling_wq)
+@@ -836,8 +840,8 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
+ 	/* TODO: Add_display_info? */
+ 
+ 	/* TODO use dynamic cursor width */
+-	adev_to_drm(adev)->mode_config.cursor_width = adev->dm.dc->caps.max_cursor_size;
+-	adev_to_drm(adev)->mode_config.cursor_height = adev->dm.dc->caps.max_cursor_size;
++	adev_to_drm(adev)->mode_config.cursor_width = dc_get_caps(adev->dm.dc)->max_cursor_size;
++	adev_to_drm(adev)->mode_config.cursor_height = dc_get_caps(adev->dm.dc)->max_cursor_size;
+ 
+ 	if (drm_vblank_init(adev_to_drm(adev), adev->dm.display_indexes_num)) {
+ 		drm_err(adev_to_drm(adev),
+@@ -925,7 +929,7 @@ static void amdgpu_dm_fini(struct amdgpu_device *adev)
+ 
+ 	if (adev->dm.dc) {
+ 		dc_deinit_callbacks(adev->dm.dc);
+-		dc_dmub_srv_destroy(&adev->dm.dc->ctx->dmub_srv);
++		dc_dmub_srv_destroy(&dc_get_ctx(adev->dm.dc)->dmub_srv);
+ 		if (dc_enable_dmub_notifications(adev->dm.dc)) {
+ 			kfree(adev->dm.dmub_notify);
+ 			adev->dm.dmub_notify = NULL;
+@@ -945,7 +949,7 @@ static void amdgpu_dm_fini(struct amdgpu_device *adev)
+ 					&adev->dm.boot_time_crc_info.cpu_addr);
+ 
+ 	if (adev->dm.hpd_rx_offload_wq && adev->dm.dc) {
+-		for (i = 0; i < adev->dm.dc->caps.max_links; i++) {
++		for (i = 0; i < dc_get_caps(adev->dm.dc)->max_links; i++) {
+ 			if (adev->dm.hpd_rx_offload_wq[i].wq) {
+ 				destroy_workqueue(adev->dm.hpd_rx_offload_wq[i].wq);
+ 				adev->dm.hpd_rx_offload_wq[i].wq = NULL;
+@@ -1157,11 +1161,11 @@ static void amdgpu_dm_boot_time_crc_init(struct amdgpu_device *adev)
+ 	const uint32_t fb_size = 3 * 1024 * 1024;	/* 3MB for DCC pattern */
+ 
+ 	if (!adev || !adev->dm.dc || !adev->dm.dc->ctx ||
+-		!adev->dm.dc->ctx->dmub_srv) {
++		!dc_get_ctx(adev->dm.dc)->dmub_srv) {
+ 		return;
+ 	}
+ 
+-	dmub = adev->dm.dc->ctx->dmub_srv->dmub;
++	dmub = dc_get_ctx(adev->dm.dc)->dmub_srv->dmub;
+ 	bootcrc_info = &adev->dm.boot_time_crc_info;
+ 
+ 	if (!dmub || !dmub->hw_funcs.get_fw_boot_option) {
+@@ -1205,7 +1209,7 @@ STATIC_IFN_KUNIT int dm_late_init(struct amdgpu_ip_block *ip_block)
  	int i;
+ 	struct dmcu *dmcu = NULL;
  
--	if (!adev->dm.dc || !adev->dm.dc->ctx || !adev->dm.dc->ctx->dmub_srv)
-+	if (!adev->dm.dc || !dc_get_ctx(adev->dm.dc) || !dc_get_ctx(adev->dm.dc)->dmub_srv)
- 		return -EINVAL;
+-	dmcu = adev->dm.dc->res_pool->dmcu;
++	dmcu = dc_get_res_pool(adev->dm.dc)->dmcu;
  
--	dc_dmub_srv = adev->dm.dc->ctx->dmub_srv;
-+	dc_dmub_srv = dc_get_ctx(adev->dm.dc)->dmub_srv;
- 	srv = dc_dmub_srv->dmub;
- 	if (!srv || !srv->fw_version)
- 		return -EINVAL;
-@@ -3558,7 +3558,8 @@ static int dmub_trace_mask_set(void *data, u64 val)
- 			break;
+ 	/* Init the boot time CRC (skip in resume) */
+ 	if ((adev->in_suspend == 0) &&
+@@ -1233,13 +1237,13 @@ STATIC_IFN_KUNIT int dm_late_init(struct amdgpu_ip_block *ip_block)
+ 	if (dmcu) {
+ 		if (!dmcu_load_iram(dmcu, params))
+ 			return -EINVAL;
+-	} else if (adev->dm.dc->ctx->dmub_srv) {
++	} else if (dc_get_ctx(adev->dm.dc)->dmub_srv) {
+ 		struct dc_link *edp_links[MAX_NUM_EDP];
+ 		int edp_num;
+ 
+ 		dc_get_edp_links(adev->dm.dc, edp_links, &edp_num);
+ 		for (i = 0; i < edp_num; i++) {
+-			if (!dmub_init_abm_config(adev->dm.dc->res_pool, params, i))
++			if (!dmub_init_abm_config(dc_get_res_pool(adev->dm.dc), params, i))
+ 				return -EINVAL;
+ 		}
+ 	}
+@@ -1460,7 +1464,7 @@ STATIC_IFN_KUNIT void dm_gpureset_toggle_interrupts(struct amdgpu_device *adev,
+ 				drm_warn(adev_to_drm(adev), "Failed to %s pflip interrupts\n",
+ 					 enable ? "enable" : "disable");
+ 
+-			if (dc_supports_vrr(adev->dm.dc->ctx->dce_version)) {
++			if (dc_supports_vrr(dc_get_dce_version(adev->dm.dc))) {
+ 				if (enable) {
+ 					if (amdgpu_dm_crtc_vrr_active(
+ 							to_dm_crtc_state(acrtc->base.state)))
+@@ -1620,7 +1624,7 @@ static int dm_suspend(struct amdgpu_ip_block *ip_block)
+ 		amdgpu_dm_ism_force_full_power(dm);
+ 		dc_allow_idle_optimizations(adev->dm.dc, false);
+ 
+-		dm->cached_dc_state = dc_state_create_copy(dm->dc->current_state);
++		dm->cached_dc_state = dc_state_create_copy(dc_get_current_state(dm->dc));
+ 		if (!dm->cached_dc_state) {
+ 			drm_err(adev_to_drm(adev),
+ 				"Failed to allocate cached DC state during suspend\n");
+@@ -1671,10 +1675,10 @@ static int dm_suspend(struct amdgpu_ip_block *ip_block)
+ 
+ 	dc_set_power_state(dm->dc, DC_ACPI_CM_POWER_STATE_D3);
+ 
+-	if (dm->dc->caps.ips_support && adev->in_s0ix)
++	if (dc_get_caps(dm->dc)->ips_support && adev->in_s0ix)
+ 		dc_allow_idle_optimizations(dm->dc, true);
+ 
+-	dc_dmub_srv_set_power_state(dm->dc->ctx->dmub_srv, DC_ACPI_CM_POWER_STATE_D3);
++	dc_dmub_srv_set_power_state(dc_get_ctx(dm->dc)->dmub_srv, DC_ACPI_CM_POWER_STATE_D3);
+ 
+ 	return 0;
+ }
+@@ -1837,8 +1841,8 @@ STATIC_IFN_KUNIT void amdgpu_dm_dump_links_and_sinks(struct amdgpu_device *adev)
+ 	if (!dc)
+ 		return;
+ 
+-	for (li = 0; li < dc->link_count; li++) {
+-		struct dc_link *l = dc->links[li];
++	for (li = 0; li < dc_get_link_count(dc); li++) {
++		struct dc_link *l = dc_get_link_at_index(dc, li);
+ 		const char *name = NULL;
+ 		int rs;
+ 
+@@ -1896,14 +1900,15 @@ static int dm_resume(struct amdgpu_ip_block *ip_block)
+ 	int i, r, j;
+ 	struct dc_commit_streams_params commit_params = {};
+ 
+-	if (dm->dc->caps.ips_support) {
++	if (dc_get_caps(dm->dc)->ips_support) {
+ 		if (!amdgpu_in_reset(adev))
+ 			mutex_lock(&dm->dc_lock);
+ 
+ 		/* Need to set POWER_STATE_D0 first or it will not execute
+ 		 * idle_power_optimizations command to DMUB.
+ 		 */
+-		dc_dmub_srv_set_power_state(dm->dc->ctx->dmub_srv, DC_ACPI_CM_POWER_STATE_D0);
++		dc_dmub_srv_set_power_state(dc_get_ctx(dm->dc)->dmub_srv,
++					 DC_ACPI_CM_POWER_STATE_D0);
+ 		dc_dmub_srv_apply_idle_power_optimizations(dm->dc, false);
+ 
+ 		if (!amdgpu_in_reset(adev))
+@@ -1914,7 +1919,7 @@ static int dm_resume(struct amdgpu_ip_block *ip_block)
+ 		dc_state = dm->cached_dc_state;
+ 
+ 		/*
+-		 * The dc->current_state is backed up into dm->cached_dc_state
++		 * The dc_get_current_state(dc) is backed up into dm->cached_dc_state
+ 		 * before we commit 0 streams.
+ 		 *
+ 		 * DC will clear link encoder assignments on the real state
+@@ -1928,7 +1933,7 @@ static int dm_resume(struct amdgpu_ip_block *ip_block)
+ 		 * We lose the previous assignments, but we had already
+ 		 * commit 0 streams anyway.
+ 		 */
+-		link_enc_cfg_copy(adev->dm.dc->current_state, dc_state);
++		link_enc_cfg_copy(dc_get_current_state(adev->dm.dc), dc_state);
+ 
+ 		r = dm_dmub_hw_init(adev);
+ 		if (r) {
+@@ -1939,7 +1944,8 @@ static int dm_resume(struct amdgpu_ip_block *ip_block)
+ 			return r;
  		}
  
--		if (!dc_wake_and_execute_gpint(adev->dm.dc->ctx, cmd, res, NULL, DM_DMUB_WAIT_TYPE_WAIT))
-+		if (!dc_wake_and_execute_gpint(dc_get_ctx(adev->dm.dc), cmd, res,
-+					      NULL, DM_DMUB_WAIT_TYPE_WAIT))
- 			return -EIO;
+-		dc_dmub_srv_set_power_state(dm->dc->ctx->dmub_srv, DC_ACPI_CM_POWER_STATE_D0);
++		dc_dmub_srv_set_power_state(dc_get_ctx(dm->dc)->dmub_srv,
++					 DC_ACPI_CM_POWER_STATE_D0);
+ 		dc_set_power_state(dm->dc, DC_ACPI_CM_POWER_STATE_D0);
  
- 		usleep_range(100, 1000);
-@@ -3581,10 +3582,10 @@ static int dmub_trace_mask_show(void *data, u64 *val)
- 	u64 res = 0;
- 	int i = 0;
+ 		dc_resume(dm->dc);
+@@ -1998,7 +2004,7 @@ static int dm_resume(struct amdgpu_ip_block *ip_block)
+ 	}
  
--	if (!adev->dm.dc || !adev->dm.dc->ctx || !adev->dm.dc->ctx->dmub_srv)
-+	if (!adev->dm.dc || !dc_get_ctx(adev->dm.dc) || !dc_get_ctx(adev->dm.dc)->dmub_srv)
+ 	/* power on hardware */
+-	dc_dmub_srv_set_power_state(dm->dc->ctx->dmub_srv, DC_ACPI_CM_POWER_STATE_D0);
++	dc_dmub_srv_set_power_state(dc_get_ctx(dm->dc)->dmub_srv, DC_ACPI_CM_POWER_STATE_D0);
+ 	dc_set_power_state(dm->dc, DC_ACPI_CM_POWER_STATE_D0);
+ 
+ 	/* program HPD filter */
+@@ -2340,7 +2346,7 @@ STATIC_IFN_KUNIT int initialize_plane(struct amdgpu_display_manager *dm,
+ 	 * for a CRTC - like overlay or underlay planes.
+ 	 */
+ 	possible_crtcs = 1 << plane_id;
+-	if (plane_id >= dm->dc->caps.max_streams)
++	if (plane_id >= dc_get_caps(dm->dc)->max_streams)
+ 		possible_crtcs = 0xff;
+ 
+ 	ret = amdgpu_dm_plane_init(dm, plane, possible_crtcs, plane_cap);
+@@ -2380,22 +2386,22 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
+ 	const struct dc_plane_cap *plane;
+ 	bool psr_feature_enabled = false;
+ 	bool replay_feature_enabled = false;
+-	int max_overlay = dm->dc->caps.max_slave_planes;
++	int max_overlay = dc_get_caps(dm->dc)->max_slave_planes;
+ 
+-	dm->display_indexes_num = dm->dc->caps.max_streams;
++	dm->display_indexes_num = dc_get_caps(dm->dc)->max_streams;
+ 	/* Update the actual used number of crtc */
+ 	adev->mode_info.num_crtc = adev->dm.display_indexes_num;
+ 
+ 	amdgpu_dm_set_irq_funcs(adev);
+ 
+-	link_cnt = dm->dc->caps.max_links;
++	link_cnt = dc_get_caps(dm->dc)->max_links;
+ 	if (amdgpu_dm_mode_config_init(dm->adev)) {
+ 		drm_err(adev_to_drm(adev), "DM: Failed to initialize mode config\n");
  		return -EINVAL;
+ 	}
  
--	dc_dmub_srv = adev->dm.dc->ctx->dmub_srv;
-+	dc_dmub_srv = dc_get_ctx(adev->dm.dc)->dmub_srv;
- 	srv = dc_dmub_srv->dmub;
- 	if (!srv || !srv->fw_version)
+ 	/* There is one primary plane per CRTC */
+-	primary_planes = dm->dc->caps.max_streams;
++	primary_planes = dc_get_caps(dm->dc)->max_streams;
+ 	if (primary_planes > AMDGPU_MAX_PLANES) {
+ 		drm_err(adev_to_drm(adev), "DM: Plane nums out of 6 planes\n");
  		return -EINVAL;
-@@ -3592,7 +3593,9 @@ static int dmub_trace_mask_show(void *data, u64 *val)
- 	while (i < 4) {
- 		uint32_t response;
+@@ -2406,7 +2412,7 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
+ 	 * Order is reversed to match iteration order in atomic check.
+ 	 */
+ 	for (i = (primary_planes - 1); i >= 0; i--) {
+-		plane = &dm->dc->caps.planes[i];
++		plane = &dc_get_caps(dm->dc)->planes[i];
  
--		if (!dc_wake_and_execute_gpint(adev->dm.dc->ctx, cmd, 0, &response, DM_DMUB_WAIT_TYPE_WAIT_WITH_REPLY))
-+		if (!dc_wake_and_execute_gpint(dc_get_ctx(adev->dm.dc), cmd, 0,
-+					      &response,
-+					      DM_DMUB_WAIT_TYPE_WAIT_WITH_REPLY))
- 			return -EIO;
+ 		if (initialize_plane(dm, mode_info, i,
+ 				     DRM_PLANE_TYPE_PRIMARY, plane)) {
+@@ -2424,8 +2430,8 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
+ 	 * Only support DCN for now, and only expose one so we don't encourage
+ 	 * userspace to use up all the pipes.
+ 	 */
+-	for (i = 0; i < dm->dc->caps.max_planes; ++i) {
+-		struct dc_plane_cap *plane = &dm->dc->caps.planes[i];
++	for (i = 0; i < dc_get_caps(dm->dc)->max_planes; ++i) {
++		const struct dc_plane_cap *plane = &dc_get_caps(dm->dc)->planes[i];
  
- 		raw = response;
-@@ -3715,12 +3718,12 @@ static int cacp_ace_curve_area_show(struct seq_file *m, void *unused)
+ 		/* Do not create overlay if MPO disabled */
+ 		if (amdgpu_dc_debug_mask & DC_DISABLE_MPO)
+@@ -2447,7 +2453,7 @@ static int amdgpu_dm_initialize_drm_device(struct amdgpu_device *adev)
+ 		}
+ 	}
+ 
+-	for (i = 0; i < dm->dc->caps.max_streams; i++)
++	for (i = 0; i < dc_get_caps(dm->dc)->max_streams; i++)
+ 		if (amdgpu_dm_crtc_init(dm, mode_info->planes[i], i)) {
+ 			drm_err(adev_to_drm(adev), "KMS: Failed to initialize crtc\n");
+ 			goto fail;
+@@ -3717,7 +3723,7 @@ STATIC_IFN_KUNIT void amdgpu_dm_update_cursor(struct drm_plane *plane,
+ 	 * legacy gamma setup.
+ 	 */
+ 	if (crtc_state->cm_is_degamma_srgb &&
+-	    adev->dm.dc->caps.color.dpp.gamma_corr)
++	    dc_get_caps(adev->dm.dc)->color.dpp.gamma_corr)
+ 		attributes.attribute_flags.bits.ENABLE_CURSOR_DEGAMMA = 1;
+ 
+ 	if (afb)
+@@ -4843,8 +4849,9 @@ dm_set_writeback(struct amdgpu_display_manager *dm,
+ 	}
+ 
+ 	for (i = 0; i < MAX_PIPES; i++) {
+-		if (dm->dc->current_state->res_ctx.pipe_ctx[i].stream == crtc_state->stream) {
+-			pipe = &dm->dc->current_state->res_ctx.pipe_ctx[i];
++		if (dc_get_current_state(dm->dc)->res_ctx.pipe_ctx[i].stream ==
++		    crtc_state->stream) {
++			pipe = &dc_get_current_state(dm->dc)->res_ctx.pipe_ctx[i];
+ 			break;
+ 		}
+ 	}
+@@ -6795,14 +6802,14 @@ void amdgpu_dm_trigger_timing_sync(struct drm_device *dev)
+ 	int i;
  
  	mutex_lock(&adev->dm.dc_lock);
+-	if (dc->current_state) {
+-		for (i = 0; i < dc->current_state->stream_count; ++i)
+-			dc->current_state->streams[i]
++	if (dc_get_current_state(dc)) {
++		for (i = 0; i < dc_get_current_state(dc)->stream_count; ++i)
++			dc_get_current_state(dc)->streams[i]
+ 				->triggered_crtc_reset.enabled =
+ 				adev->dm.force_timing_sync;
  
--	if (dc->idle_optimizations_allowed) {
-+	if (dc_is_idle_optimizations_allowed(dc)) {
- 		dc_allow_idle_optimizations(dc, false);
- 		reallow_idle = true;
+-		dm_enable_per_frame_crtc_master_sync(dc->current_state);
+-		dc_trigger_sync(dc, dc->current_state);
++		dm_enable_per_frame_crtc_master_sync(dc_get_current_state(dc));
++		dc_trigger_sync(dc, dc_get_current_state(dc));
  	}
- 
--	if (!dc_wake_and_execute_dmub_cmd(dc->ctx, &cmd,
-+	if (!dc_wake_and_execute_dmub_cmd(dc_get_ctx(dc), &cmd,
- 					  DM_DMUB_WAIT_TYPE_WAIT_WITH_REPLY) ||
- 	    cmd.cacp_get_ace_curve_area.header.ret_status)
- 		ret = -EIO;
-@@ -4243,11 +4246,9 @@ static ssize_t dtn_log_read(
- 	if (!buf || !size)
- 		return -EINVAL;
- 
--	if (!dc->hwss.log_hw_state)
-+	if (!dc_log_hw_state(dc, &log_ctx))
- 		return 0;
- 
--	dc->hwss.log_hw_state(dc, &log_ctx);
--
- 	if (*pos < log_ctx.pos) {
- 		size_t to_copy = log_ctx.pos - *pos;
- 
-@@ -4281,8 +4282,7 @@ static ssize_t dtn_log_write(
- 	if (size == 0)
- 		return 0;
- 
--	if (dc->hwss.log_hw_state)
--		dc->hwss.log_hw_state(dc, NULL);
-+	dc_log_hw_state(dc, NULL);
- 
- 	return size;
+ 	mutex_unlock(&adev->dm.dc_lock);
  }
-@@ -4459,18 +4459,17 @@ static int capabilities_show(struct seq_file *m, void *unused)
- {
- 	struct amdgpu_device *adev = (struct amdgpu_device *)m->private;
- 	struct dc *dc = adev->dm.dc;
--	bool mall_supported = dc->caps.mall_size_total;
--	bool subvp_supported = dc->caps.subvp_fw_processing_delay_us;
-+	bool mall_supported = dc_get_caps(dc)->mall_size_total;
-+	bool subvp_supported = dc_get_caps(dc)->subvp_fw_processing_delay_us;
- 	unsigned int mall_in_use = false;
- 	unsigned int subvp_in_use = false;
+@@ -6872,8 +6879,8 @@ void amdgpu_dm_update_memclk_states(struct amdgpu_device *adev)
+ 	if (!dc)
+ 		return;
  
--	struct hubbub *hubbub = dc->res_pool->hubbub;
-+	struct hubbub *hubbub = dc_get_res_pool(dc)->hubbub;
+-	if (dc->ctx->dce_version != DCN_VERSION_3_2 &&
+-	    dc->ctx->dce_version != DCN_VERSION_3_21)
++	if (dc_get_dce_version(dc) != DCN_VERSION_3_2 &&
++	    dc_get_dce_version(dc) != DCN_VERSION_3_21)
+ 		return;
  
- 	if (hubbub && hubbub->funcs->get_mall_en)
- 		hubbub->funcs->get_mall_en(hubbub, &mall_in_use);
- 
--	if (dc->cap_funcs.get_subvp_en)
--		subvp_in_use = dc->cap_funcs.get_subvp_en(dc, dc->current_state);
-+	subvp_in_use = dc_get_subvp_en(dc, dc_get_current_state(dc));
- 
- 	seq_printf(m, "mall supported: %s, enabled: %s\n",
- 			   mall_supported ? "yes" : "no", mall_in_use ? "yes" : "no");
-@@ -4490,7 +4489,7 @@ static int dp_force_sst_set(void *data, u64 val)
- {
- 	struct amdgpu_device *adev = data;
- 
--	adev->dm.dc->debug.set_mst_en_for_sst = val;
-+	dc_get_debug_options_mutable(adev->dm.dc)->set_mst_en_for_sst = val;
- 
- 	return 0;
- }
-@@ -4499,7 +4498,7 @@ static int dp_force_sst_get(void *data, u64 *val)
- {
- 	struct amdgpu_device *adev = data;
- 
--	*val = adev->dm.dc->debug.set_mst_en_for_sst;
-+	*val = dc_get_debug_options(adev->dm.dc)->set_mst_en_for_sst;
- 
- 	return 0;
- }
-@@ -4514,7 +4513,7 @@ static int dp_ignore_cable_id_set(void *data, u64 val)
- {
- 	struct amdgpu_device *adev = data;
- 
--	adev->dm.dc->debug.ignore_cable_id = val;
-+	dc_get_debug_options_mutable(adev->dm.dc)->ignore_cable_id = val;
- 
- 	return 0;
- }
-@@ -4523,7 +4522,7 @@ static int dp_ignore_cable_id_get(void *data, u64 *val)
- {
- 	struct amdgpu_device *adev = data;
- 
--	*val = adev->dm.dc->debug.ignore_cable_id;
-+	*val = dc_get_debug_options(adev->dm.dc)->ignore_cable_id;
- 
- 	return 0;
- }
-@@ -4538,7 +4537,7 @@ static int visual_confirm_set(void *data, u64 val)
- {
- 	struct amdgpu_device *adev = data;
- 
--	adev->dm.dc->debug.visual_confirm = (enum visual_confirm)val;
-+	dc_get_debug_options_mutable(adev->dm.dc)->visual_confirm = (enum visual_confirm)val;
- 
- 	return 0;
- }
-@@ -4551,7 +4550,7 @@ static int visual_confirm_get(void *data, u64 *val)
- {
- 	struct amdgpu_device *adev = data;
- 
--	*val = adev->dm.dc->debug.visual_confirm;
-+	*val = dc_get_debug_options(adev->dm.dc)->visual_confirm;
- 
- 	return 0;
- }
-@@ -4570,9 +4569,9 @@ static int skip_detection_link_training_set(void *data, u64 val)
- 	struct amdgpu_device *adev = data;
- 
- 	if (val == 0)
--		adev->dm.dc->debug.skip_detection_link_training = false;
-+		dc_get_debug_options_mutable(adev->dm.dc)->skip_detection_link_training = false;
- 	else
--		adev->dm.dc->debug.skip_detection_link_training = true;
-+		dc_get_debug_options_mutable(adev->dm.dc)->skip_detection_link_training = true;
- 
- 	return 0;
- }
-@@ -4585,7 +4584,7 @@ static int skip_detection_link_training_get(void *data, u64 *val)
- {
- 	struct amdgpu_device *adev = data;
- 
--	*val = adev->dm.dc->debug.skip_detection_link_training;
-+	*val = dc_get_debug_options(adev->dm.dc)->skip_detection_link_training;
- 
- 	return 0;
- }
-@@ -4610,7 +4609,7 @@ static ssize_t dcc_en_bits_read(
- 	const uint32_t rd_buf_size = 32;
- 	uint32_t result = 0;
- 	int offset = 0;
--	int num_pipes = dc->res_pool->pipe_count;
-+	int num_pipes = dc_get_res_pool(dc)->pipe_count;
- 	int *dcc_en_bits;
- 	int i, r;
- 
-@@ -4618,13 +4617,11 @@ static ssize_t dcc_en_bits_read(
- 	if (!dcc_en_bits)
- 		return -ENOMEM;
- 
--	if (!dc->hwss.get_dcc_en_bits) {
-+	if (!dc_get_dcc_en_bits(dc, dcc_en_bits)) {
- 		kfree(dcc_en_bits);
- 		return 0;
- 	}
- 
--	dc->hwss.get_dcc_en_bits(dc, dcc_en_bits);
--
- 	rd_buf = kcalloc(rd_buf_size, sizeof(char), GFP_KERNEL);
- 	if (!rd_buf) {
- 		kfree(dcc_en_bits);
-@@ -4714,7 +4711,7 @@ void dtn_debugfs_init(struct amdgpu_device *adev)
- 	debugfs_create_file_unsafe("amdgpu_dm_disable_hpd", 0644, root, adev,
- 				   &disable_hpd_ops);
- 
--	if (adev->dm.dc->caps.ips_support) {
-+	if (dc_get_caps(adev->dm.dc)->ips_support) {
- 		debugfs_create_file_unsafe("amdgpu_dm_ips_status", 0644, root, adev,
- 					   &ips_status_fops);
- 
-diff --git a/drivers/gpu/drm/amd/display/dc/core/dc_accessors.c b/drivers/gpu/drm/amd/display/dc/core/dc_accessors.c
-index 15a203fbae81..2803471d7333 100644
---- a/drivers/gpu/drm/amd/display/dc/core/dc_accessors.c
-+++ b/drivers/gpu/drm/amd/display/dc/core/dc_accessors.c
-@@ -57,6 +57,12 @@ const struct dc_config *dc_get_config(const struct dc *dc)
- 	return &dc->config;
- }
- 
-+void dc_set_allow_edp_hotplug_detection(struct dc *dc,
-+		enum dc_hpd_enable_select hpd_select)
-+{
-+	dc->config.allow_edp_hotplug_detection = hpd_select;
-+}
-+
- const struct dc_debug_options *dc_get_debug_options(const struct dc *dc)
- {
- 	return &dc->debug;
-diff --git a/drivers/gpu/drm/amd/display/dc/dc.h b/drivers/gpu/drm/amd/display/dc/dc.h
-index 9592a95544ea..082435846ee9 100644
---- a/drivers/gpu/drm/amd/display/dc/dc.h
-+++ b/drivers/gpu/drm/amd/display/dc/dc.h
-@@ -2488,6 +2488,13 @@ const struct dc_caps *dc_get_caps(const struct dc *dc);
- /* Configuration captured at dc_create() time. Read-only. */
- const struct dc_config *dc_get_config(const struct dc *dc);
- 
-+/*
-+ * Select which eDP connectors get hotplug detection enabled; see
-+ * enum dc_hpd_enable_select. Runtime configurable (debugfs).
-+ */
-+void dc_set_allow_edp_hotplug_detection(struct dc *dc,
-+		enum dc_hpd_enable_select hpd_select);
-+
- /* Debug overrides (module parameters, debugfs). Read-only view. */
- const struct dc_debug_options *dc_get_debug_options(const struct dc *dc);
- 
+ 	mutex_lock(&adev->dm.dc_lock);
 
 -- 
 2.56.0
