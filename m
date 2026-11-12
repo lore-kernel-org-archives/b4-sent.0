@@ -1,162 +1,90 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 12 Nov 2026 16:00:25 +0530
-Subject: [PATCH] arm64: dts: qcom: hamoa: Move the PCIe and UART graph
- nodes to the board DTs
+From: =?utf-8?q?St=C3=A9phane_Grosjean?= <s.grosjean@peak-system.fr>
+Date: Thu, 12 Nov 2026 11:35:28 +0100
+Subject: [PATCH v2] MAINTAINERS: add entry for PEAK-System CAN drivers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261112-hamoa-dt-fix-v1-1-55efbac840f4@oss.qualcomm.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQ0Mj3YzE3PxE3ZQS3bTMCt3kNMPUFHOLFNPkFFMloJaColSgMNi46Fg
- Iv7g0KSs1uQRkhlJtLQAsnzSWcAAAAA==
-X-Change-ID: 20261112-hamoa-dt-fix-cf1ed78d5cd5
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Wei Deng <wei.deng@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, mani@kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3438;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=iCfDZaL8nz6DHQyS69tVEpDrn39W3So5QT0E2mCMxdo=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBq9ZVFyu6UOClUClpU70LbBWy61mYBJlM9dAtMI
- esfIXKYx12JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCavWVRQAKCRBVnxHm/pHO
- 9ejrCACm5a7HRjI1e4yu4369/mzDsID7D5YIhQL3rvcD5tEdkqPS1ZNUSzg/k3wWNzgylJs7B7/
- DdiCX6LIQaDIYnD8b8PKGVnWFYJ+DMfBuZPPRpmuBkLseC14epmUCMtPApVC/bGL1V/36w3H+/d
- 39+Ke6dxtKgH4KqS9k/Z6rzIKObv6aIr7EeI3zHjHpuJUP+6HTrSVJYS9lUz1ClFN5UihpAwk0i
- Re/srQZyNsctb1jzyqYQfcP4uzid6+uK9rMZkMY9Pxwp3yyNNQcGdyhfZPMje8qE2ZPNTb4SLGG
- DT2KFOayvvAkJ6olkAr/hURjp93HstKnS45UFupGEnbU+YHn
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+Message-Id: <20261112-new_maintainers-v2-1-794b73ce8685@peak-system.fr>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw6CMBREf4XctTV9hIKu/A9DTIGLVEMhvRUlp
+ P9uwbWLWZxk5swKhN4iwTlbweNsyY4ugTxk0PTG3ZHZNjFILrXgvGAO37fBWBdS0BNrZZFLpWr
+ NTQ5pNXns7Gc3Xqsf06t+YBM2zdboLYXRL/vlLLbef/ssmGDqVKJGpYUsm8uE5slooYDDsfNQx
+ Ri/etExQcUAAAA=
+X-Change-ID: 20261007-new_maintainers-d275233b60a5
+To: Marc Kleine-Budde <mkl@pengutronix.de>, 
+ Vincent Mailhol <mailhol@kernel.org>, linux-can@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, 
+ =?utf-8?q?St=C3=A9phane_Grosjean?= <s.grosjean@peak-system.fr>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794479737; l=2400;
+ i=s.grosjean@peak-system.fr; s=20261020; h=from:subject:message-id;
+ bh=OB+db2VoIi21gwz8pTexgzVANUMGkfO2rHGDfSfD5rA=;
+ b=BFO1K/zjXKNNQZ6aHOr3bbIhTVShLtYDnzTeYuT2rVQ5psBcW94pwOXAjGVHHUA/1v+JIuw9S
+ E90kTVgDzeHAOsIiTS/PijrUphG7FIkUJ2neTdD/ox3hbNVvTtr6VLX
+X-Developer-Key: i=s.grosjean@peak-system.fr; a=ed25519;
+ pk=bP7QV2zvvAKAfConZlUOGKGEcXL64SNUpVUm++Ai+/c=
+X-Endpoint-Received: by B4 Relay for s.grosjean@peak-system.fr/20261020 with auth_id=1250
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hamoa.dtsi describes an empty port/endpoint pair under the pcie4 Root Port
-and another one under uart14 node. Both belong to the M.2 Key E connector
-and only the Hamoa and Purwa IoT EVKs ever wire them up. Every other board
-including hamoa.dtsi inherits two dead nodes they never connect.
+The PEAK-System CAN drivers (peak_canfd, peak_pci, peak_pcmcia and
+peak_usb) are only covered by the generic CAN NETWORK DRIVERS entry, so
+get_maintainer.pl doesn't Cc their author on patches and bug reports
+touching them.
 
-Apart from the dead nodes, the change also confuses the pwrctrl driver.
+Add a dedicated entry. I wrote these drivers and maintain them as part
+of my work at PEAK-System, where I have the hardware and the firmware
+documentation needed to review and test changes. Patches keep going
+through the CAN tree, the entry only makes sure they reach me.
 
-So drop both pairs from the SoC dtsi and describe them in the two board
-DTs, next to the connector they belong to.
+Also list the PEAK-System Linux support address as a reviewer, so that
+reports keep reaching the company if my own address ever goes stale.
 
-Fixes: 014501d141ed ("arm64: dts: qcom: hamoa: Add graph port/endpoint anchors to pcie4_port0 and uart14")
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Assisted-by: LLM
+Signed-off-by: Stéphane Grosjean <s.grosjean@peak-system.fr>
 ---
- arch/arm64/boot/dts/qcom/hamoa-iot-evk.dts | 16 ++++++++++------
- arch/arm64/boot/dts/qcom/hamoa.dtsi        | 10 ----------
- arch/arm64/boot/dts/qcom/purwa-iot-evk.dts | 16 ++++++++++------
- 3 files changed, 20 insertions(+), 22 deletions(-)
+v1 was only sent to LKML, because get_maintainer.pl returns nothing
+else for a patch touching MAINTAINERS alone. Sorry for that; this
+version is addressed to the CAN maintainers and list.
+---
+Changes in v2:
+- Send to the CAN maintainers and linux-can (v1 only went to LKML).
+- List socketcan@peak-system.fr as R: instead of M:, since it is a
+  company role address kept for continuity.
+- Add the peak_usb sysfs ABI documentation file.
+- Reword the commit message to explain why the entry is needed.
+- Link to v1: https://patch.msgid.link/20261007-new_maintainers-v1-1-398e6e36128c@peak-system.fr
+---
+ MAINTAINERS | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/hamoa-iot-evk.dts b/arch/arm64/boot/dts/qcom/hamoa-iot-evk.dts
-index d0433cc3623f..dd6920461323 100644
---- a/arch/arm64/boot/dts/qcom/hamoa-iot-evk.dts
-+++ b/arch/arm64/boot/dts/qcom/hamoa-iot-evk.dts
-@@ -1033,10 +1033,12 @@ &pcie3_port0 {
- &pcie4_port0 {
- 	reset-gpios = <&tlmm 146 GPIO_ACTIVE_LOW>;
- 	wake-gpios = <&tlmm 148 GPIO_ACTIVE_LOW>;
--};
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 09713dc4c6a7..567358d57d79 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -21780,6 +21780,18 @@ PDS DSC VIRTIO DATA PATH ACCELERATOR
+ R:	Brett Creeley <brett.creeley@amd.com>
+ F:	drivers/vdpa/pds/
  
--&pcie4_port0_ep {
--	remote-endpoint = <&m2_e_pcie_ep>;
-+	port {
-+		pcie4_port0_ep: endpoint {
-+			remote-endpoint = <&m2_e_pcie_ep>;
-+		};
-+	};
- };
- 
- &pcie5 {
-@@ -1504,10 +1506,12 @@ wcn_usb_sw_n: wcn-usb-sw-n-state {
- 
- &uart14 {
- 	status = "okay";
--};
- 
--&uart14_ep {
--	remote-endpoint = <&m2_e_uart_ep>;
-+	port {
-+		uart14_ep: endpoint {
-+			remote-endpoint = <&m2_e_uart_ep>;
-+		};
-+	};
- };
- 
- &uart21 {
-diff --git a/arch/arm64/boot/dts/qcom/hamoa.dtsi b/arch/arm64/boot/dts/qcom/hamoa.dtsi
-index 48f47aa6ba3c..3f773b1409aa 100644
---- a/arch/arm64/boot/dts/qcom/hamoa.dtsi
-+++ b/arch/arm64/boot/dts/qcom/hamoa.dtsi
-@@ -2032,11 +2032,6 @@ &clk_virt SLAVE_QUP_CORE_1 QCOM_ICC_TAG_ALWAYS>,
- 				pinctrl-names = "default";
- 
- 				status = "disabled";
--
--				port {
--					uart14_ep: endpoint {
--					};
--				};
- 			};
- 
- 			i2c15: i2c@a9c000 {
-@@ -3813,11 +3808,6 @@ pcie4_port0: pcie@0 {
- 				#address-cells = <3>;
- 				#size-cells = <2>;
- 				ranges;
--
--				port {
--					pcie4_port0_ep: endpoint {
--					};
--				};
- 			};
- 		};
- 
-diff --git a/arch/arm64/boot/dts/qcom/purwa-iot-evk.dts b/arch/arm64/boot/dts/qcom/purwa-iot-evk.dts
-index a811d8ca2dbf..5600c5523421 100644
---- a/arch/arm64/boot/dts/qcom/purwa-iot-evk.dts
-+++ b/arch/arm64/boot/dts/qcom/purwa-iot-evk.dts
-@@ -1016,10 +1016,12 @@ &pcie3_port0 {
- &pcie4_port0 {
- 	reset-gpios = <&tlmm 146 GPIO_ACTIVE_LOW>;
- 	wake-gpios = <&tlmm 148 GPIO_ACTIVE_LOW>;
--};
- 
--&pcie4_port0_ep {
--	remote-endpoint = <&m2_e_pcie_ep>;
-+	port {
-+		pcie4_port0_ep: endpoint {
-+			remote-endpoint = <&m2_e_pcie_ep>;
-+		};
-+	};
- };
- 
- &pcie5 {
-@@ -1524,10 +1526,12 @@ wcn_usb_sw_n: wcn-usb-sw-n-state {
- 
- &uart14 {
- 	status = "okay";
--};
- 
--&uart14_ep {
--	remote-endpoint = <&m2_e_uart_ep>;
-+	port {
-+		uart14_ep: endpoint {
-+			remote-endpoint = <&m2_e_uart_ep>;
-+		};
-+	};
- };
- 
- &uart21 {
++PEAK-SYSTEM CAN DRIVERS
++M:	Stéphane Grosjean <s.grosjean@peak-system.fr>
++R:	PEAK-System Linux support <socketcan@peak-system.fr>
++L:	linux-can@vger.kernel.org
++S:	Supported
++F:	Documentation/ABI/testing/sysfs-class-net-peak_usb
++F:	drivers/net/can/peak_canfd/
++F:	drivers/net/can/sja1000/peak_pci.c
++F:	drivers/net/can/sja1000/peak_pcmcia.c
++F:	drivers/net/can/usb/peak_usb/
++F:	include/linux/can/dev/peak_canfd.h
++
+ PECI HARDWARE MONITORING DRIVERS
+ M:	Iwona Winiarska <iwona.winiarska@intel.com>
+ L:	linux-hwmon@vger.kernel.org
 
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261112-hamoa-dt-fix-cf1ed78d5cd5
+base-commit: 647b81ddefc6364290e67bf33c89d54971f8995e
+change-id: 20261007-new_maintainers-d275233b60a5
 
 Best regards,
---  
-மணிவண்ணன் சதாசிவம்
+-- 
+Stéphane Grosjean <s.grosjean@peak-system.fr>
 
