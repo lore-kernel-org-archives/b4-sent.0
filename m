@@ -1,222 +1,175 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:26:17 +0000
-Subject: [PATCH v2 2/2] usb: hub: Retry SuperSpeed for a device stuck on
- its USB 2.0 peer
+Subject: [PATCH v2 0/6] media: verisilicon: Recover the Rockchip VPUs from
+ faults and timeouts
+Date: Thu, 12 Nov 2026 08:30:46 +0000
+Message-Id: <20261112-hantro-robust-v2-0-18561fd48838@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-usb-port-pairing-v2-2-45f5a1a29f1f@gmail.com>
-References: <20261112-usb-port-pairing-v2-0-45f5a1a29f1f@gmail.com>
-In-Reply-To: <20261112-usb-port-pairing-v2-0-45f5a1a29f1f@gmail.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Rob Herring <robh@kernel.org>, Alan Stern <stern@rowland.harvard.edu>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Mathias Nyman <mathias.nyman@intel.com>, Chen-Yu Tsai <wenst@chromium.org>, 
- Chen-Yu Tsai <wens@kernel.org>, Arun Iyengar <aiyengar1990@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNwQ7CIBBEf6XZsxggulFP/ofpAXBp19higBJN0
+ 3+X1rPHN5l5M0OiyJTg0swQqXDiMFbQuwZcb8aOBN8rg5YalVJS1DDHIGKwU8oCDbrTwZO1EqF
+ uXpE8vzffrf1xmuyDXF4la6PnlEP8bIdFrb1/7qKEFGhR49nJo/Xm2g2Gn3sXBmiXZfkCyBWcG
+ bwAAAA=
+X-Change-ID: 20261110-hantro-robust-6a6c84febb06
+To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Nicolas Frattaroli <frattaroli.nicolas@gmail.com>, 
+ Andrzej Pietrasiewicz <andrzej.p@collabora.com>, 
+ Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
+ Hans Verkuil <hverkuil@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>
+Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Sergei Khomenkov <shomenkow@gmail.com>, 
+ Tharit Tangkijwanichakul <tharitt97@gmail.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794471975; l=7334;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794472247; l=7383;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Nu/LkGkyqDhkWbKSDg45ZNOB49lda93sr3AtuvilO00=;
- b=tfV/NLT3B5EkcIebPT7kiq79NrKQ1AX/h59WIHKfhKnnUcTyCP8za420DYu3bvI2TyOFySAX1
- +JoEdavoveLD30ECNVV3WBnkYhKuc5sLSWEw84Ib/lSbU4jN0Vh+sWP
+ bh=m+13bdShTWeHrSiZD216tmi9lGJSIdBZ/1vqbkocIZg=;
+ b=Kso7ZS+UtrZ2ZE3zhCKTvb2uz3i2nS4D0DH4M+OHRde87WIrqQowlY5rVeubZt89EwoVq0/Re
+ ubjTXyh2c6eCKE2MYQXx0W48byJbYWUmMKzY1DCbyqO+a+rzLmdHZdI
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A SuperSpeed device looks for a SuperSpeed link first when it sees
-VBUS, and connects at high speed when the link doesn't come up. It
-looks again only when VBUS is cycled or after a USB 2.0 bus reset.
+This series makes the Hantro driver recover from a job that times out on
+the Rockchip VPUs, and stops it from holding a VPU in reset after
+remove.
 
-When a connector's two halves belong to different host controllers,
-the USB 2.0 host can start first. On the Orange Pi 5 (RK3588S), whose
-USB 3 Type-A port has VBUS on from power-up, a USB 3 flash drive
-plugged in at boot was reset by the EHCI about 10 ms before the
-SuperSpeed-only xHCI registered, so it came up at 480 Mb/s on the EHCI
-in every one of 6 boots, while plugging it in after boot gave
-5 Gb/s. It stays at high speed until it is unplugged.
+On the RK3588, a VEPU121 JPEG encoder core that reads an unmapped IOVA
+faults in its IOMMU and never becomes idle again: the register-level
+stop in the encoder reset operation isn't enough, the IOMMU can't be
+stalled anymore ("Enable stall request timed out"), every later job
+times out and unbinding the driver can lock up the system. Patch 4
+pulses the reset lines of the core on a timeout, and patch 5
+reinitializes the IOMMU afterwards the way rkvdec does. Patches 1 and 6
+describe the AXI/AHB reset lines of the four VEPU121 cores in the
+binding and in the RK3588 device tree; the driver already handles
+optional resets, so device trees without them keep working.
 
-When a SuperSpeed root hub with ports paired through a connector to a
-root hub port of another host controller has started, check those
-USB 2.0 peers. If a SuperSpeed-capable device that is not a hub is
-connected at high speed there, reset it once, so that it can connect
-at SuperSpeed now that the link can train. Lock the peer root hub
-first, so an enumeration that is under way completes before the check.
-A device that still can't train its SuperSpeed link stays connected at
-high speed after that one reset.
+Patch 3 clears the encoder interrupt register at the end of the reset
+operation: only the interrupt handler ever clears it, so after a reset
+that skipped the handler (a timeout) the interrupt stays disabled and
+every later job on the core times out. On a core with reset lines the
+reset pulse of patch 4 also clears it, but a VEPU1/VEPU2 core without
+them (the older SoCs) relies on this.
 
-Only the start of the root hub does this, not a resume or a reset of
-it: a device that is suspended with the system can't be reset, and the
-problem is the start-up order of the two controllers. Hubs are left
-alone, because the USB 2.0 half of a USB 3 hub stays at high speed next
-to its SuperSpeed half. The work runs on the freezable hub_wq, holds a
-runtime PM reference on the SuperSpeed hub and is cancelled when the
-hub is quiesced.
+Patch 2 stops asserting the resets on remove and on the probe error
+path: the AV1 decoder resets of the RK3588 also cover the bus interface
+of its IOMMU, and holding them asserted while the IOMMU driver
+runtime-suspends hits registers in reset (SError).
+
+Patch 2 leaves the rest of hantro_remove() alone. Since 556ab0b2741d
+("media: hantro: release runtime resources when device_run fails"), the
+runtime suspend that hantro_remove() triggers runs after the driver data
+was cleared and the clocks were unprepared. "media: verisilicon: suspend
+the device before unregistering it on remove" from Sergei Khomenkov [1]
+fixes that. Patch 2 doesn't depend on it, but both change the last lines
+of hantro_remove(), so the one that is applied second needs a trivial
+context update.
+
+Patch 6 touches arch/arm64 only and can go through the Rockchip tree
+independently of the driver patches; it is only useful together with
+patches 4 and 5.
+
+Tested on an Orange Pi 5 (RK3588S) with the series on a v7.3 based
+kernel with other out-of-tree Hantro patches, which has neither
+556ab0b2741d nor 8e26d4c20ed2 ("media: hantro: disable runtime PM before
+hardware teardown"), so its hantro_remove() still asserted the resets
+before the runtime PM teardown. On v7.4-rc1 the series is only
+build-tested, and I haven't run the unbind path there. The results below
+are from v1. Unbinding and rebinding the driver with the AV1 decoder
+bound and a 1 s gap hit the SError before patch 2 and was clean with it.
+The reset and the IOMMU restore ran on every encoder timeout: a trace of
+a wedged VEPU121 job shows hantro_watchdog() ->
+rockchip_vpu2_enc_reset() -> the IOMMU re-attach with no stall or paging
+timeout, the next jobs on the same core succeed, and the IOMMU
+runtime-suspends cleanly afterwards; ten JPEG encode jobs with an
+unmapped input address were each reset by the timeout and the following
+jobs encoded normally. The reset lines of patches 1 and 6 are present on
+all four VEPU121 nodes of the live device tree; dt_binding_check and
+CHECK_DTBS are clean.
+
+The v2 recovery was reorganized from v1 (the IOMMU restore now runs from
+the encoder hardware reset, the interrupt re-enable is its own patch,
+the remove path no longer asserts the resets), so it was tested again
+on the board with v2, on the same v7.3 based kernel: a provoked encoder
+timeout was reset and the next encode succeeded, a job with an unmapped
+input address logged an IOMMU page fault, timed out and was recovered
+the same way, and unbinding and rebinding the driver gave no WARN, BUG
+or Oops (on that kernel the unbind runs through the out-of-tree
+teardown).
+
+This series was developed with Claude (Anthropic) as a coding assistant:
+it wrote the code and the commit messages, and I reviewed and tested
+every change as described above.
+
+[1] https://lore.kernel.org/r/20261106-hantro-remove-v1-1-d0a4678886d7@gmail.com
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/usb/core/hub.c | 113 +++++++++++++++++++++++++++++++++++++++++++++++++
- drivers/usb/core/hub.h |   1 +
- 2 files changed, 114 insertions(+)
+Changes in v2:
+- Patch 2: don't assert the resets on remove or on the probe error path
+  at all, rather than only for a device behind an IOMMU; the AV1 BIU
+  resets must not be asserted while the device is not IOMMU-mapped
+  either (Sashiko). The hantro_reset_assert() helper is gone, and the
+  subject changed with it
+- New patch 3: clear the encoder interrupt register at the end of the
+  VEPU1/VEPU2 reset, so a core without reset lines re-enables its
+  interrupt after a timeout (Sashiko: the H1/VEPU2 reset left the
+  interrupt-disable bit set)
+- Patch 5 (was patch 4), IOMMU restore redesigned after the Sashiko
+  review of the restore path, with a new subject:
+  - run it from the Rockchip encoder hardware reset, right after the
+    reset pulse, where the core is known idle, not generically from the
+    watchdog (Sashiko: the watchdog restored the IOMMU without stopping
+    an AV1 core). It no longer runs on the AV1 decoder and its
+    vsi-iommu, where Sashiko found a race with concurrent mappings, nor
+    on the Allwinner H6; rockchip-iommu changes and walks the IOMMU list
+    of a domain under its iommus_lock
+  - only with reset lines and a DMA default domain to return to, via
+    iommu_is_dma_domain(); not with an identity or ARM32 dma-iommu
+    domain (Sashiko: unconditional domain swap, -EBUSY on ARM32, check
+    iommu_is_dma_domain() in hantro_alloc_empty_domain())
+  - on a failed attach, mark the core so every later job is refused
+    rather than running through a bypassed IOMMU (Sashiko: a failed
+    attach left the IOMMU detached)
+- Patch 6 (was patch 5): the commit message follows the new subject of
+  patch 2
+- Patches 1 and 4 (was patch 3), the bindings and the timeout reset,
+  unchanged
+- Not addressed: the NULL match->data dereference in hantro_probe() that
+  Sashiko reported on patch 2 as a pre-existing issue (a forced bind to
+  a device without a matching OF node); it is independent of this series
+- Link to v1: https://patch.msgid.link/20261110-hantro-robust-v1-0-6b6269c05bfa@gmail.com
 
-diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
-index 199d3f535a89..eaa2a5b6aba0 100644
---- a/drivers/usb/core/hub.c
-+++ b/drivers/usb/core/hub.c
-@@ -1076,6 +1076,109 @@ int usb_remove_device(struct usb_device *udev)
- 	return 0;
- }
- 
-+/*
-+ * A SuperSpeed root hub port can be paired through a connector with a USB 2.0
-+ * root hub port of another host controller. With VBUS always on, a device
-+ * present at boot looks for a SuperSpeed link while the SuperSpeed host is
-+ * still down, gives up and connects at high speed to the USB 2.0 host. It
-+ * only tries SuperSpeed again after VBUS is cycled or after a USB 2.0 bus
-+ * reset, so reset it once when the SuperSpeed root hub has started.
-+ */
-+static void hub_reset_peer_child(struct usb_device *peer_hdev, int peer_port1)
-+{
-+	struct usb_hub *peer_hub;
-+	struct usb_device *udev;
-+
-+	/* Wait for an enumeration in progress on the peer port to finish */
-+	usb_lock_device(peer_hdev);
-+	peer_hub = usb_hub_to_struct_hub(peer_hdev);
-+	if (!peer_hub || peer_port1 > peer_hdev->maxchild)
-+		goto out;
-+
-+	udev = peer_hub->ports[peer_port1 - 1]->child;
-+	if (!udev || udev->speed != USB_SPEED_HIGH)
-+		goto out;
-+
-+	/*
-+	 * The USB 2.0 half of a USB 3 hub stays at high speed next to its
-+	 * SuperSpeed half, and resetting it would disconnect its children.
-+	 */
-+	if (udev->descriptor.bDeviceClass == USB_CLASS_HUB)
-+		goto out;
-+
-+	usb_lock_device(udev);
-+	if (udev->state != USB_STATE_NOTATTACHED &&
-+	    udev->bos && udev->bos->ss_cap) {
-+		dev_info(&udev->dev,
-+			 "SuperSpeed peer port available, resetting\n");
-+		usb_reset_device(udev);
-+	}
-+	usb_unlock_device(udev);
-+out:
-+	usb_unlock_device(peer_hdev);
-+}
-+
-+static void hub_peer_reset_work(struct work_struct *ws)
-+{
-+	struct usb_hub *hub = container_of(ws, struct usb_hub, peer_reset_work);
-+	struct usb_device *hdev = hub->hdev;
-+	int port1;
-+
-+	for (port1 = 1; ; port1++) {
-+		struct usb_device *peer_hdev = NULL;
-+		struct usb_port *port_dev;
-+		int peer_port1 = 0;
-+
-+		mutex_lock(&usb_port_peer_mutex);
-+		if (port1 > hdev->maxchild) {
-+			mutex_unlock(&usb_port_peer_mutex);
-+			break;
-+		}
-+		port_dev = hub->ports[port1 - 1];
-+		if (port_dev->connector_peer && port_dev->peer) {
-+			peer_hdev = to_usb_device(port_dev->peer->dev.parent->parent);
-+			peer_port1 = port_dev->peer->portnum;
-+			/* Only root hub ports of another host controller */
-+			if (peer_hdev->parent ||
-+			    peer_hdev->bus->controller == hdev->bus->controller)
-+				peer_hdev = NULL;
-+			else
-+				usb_get_dev(peer_hdev);
-+		}
-+		mutex_unlock(&usb_port_peer_mutex);
-+
-+		if (peer_hdev) {
-+			hub_reset_peer_child(peer_hdev, peer_port1);
-+			usb_put_dev(peer_hdev);
-+		}
-+	}
-+
-+	usb_autopm_put_interface_async(to_usb_interface(hub->intfdev));
-+	hub_put(hub);
-+}
-+
-+/* Called when a SuperSpeed root hub has started */
-+static void hub_queue_peer_reset(struct usb_hub *hub)
-+{
-+	struct usb_interface *intf = to_usb_interface(hub->intfdev);
-+	int port1;
-+
-+	for (port1 = 1; port1 <= hub->hdev->maxchild; port1++) {
-+		if (hub->ports[port1 - 1]->connector_peer)
-+			break;
-+	}
-+	if (port1 > hub->hdev->maxchild)
-+		return;
-+
-+	/* Keep the hub active until the work is done; hub_quiesce() cancels it */
-+	usb_autopm_get_interface_no_resume(intf);
-+	hub_get(hub);
-+	if (!queue_work(hub_wq, &hub->peer_reset_work)) {
-+		usb_autopm_put_interface_async(intf);
-+		hub_put(hub);
-+	}
-+}
-+
- enum hub_activation_type {
- 	HUB_INIT, HUB_INIT2, HUB_INIT3,		/* INITs must come first */
- 	HUB_POST_RESET, HUB_RESUME, HUB_RESET_RESUME,
-@@ -1346,6 +1449,11 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
- 
- 	/* Scan all ports that need attention */
- 	kick_hub_wq(hub);
-+
-+	/* Let devices stuck at high speed on a connector peer move over */
-+	if (!hdev->parent && hub_is_superspeed(hdev) &&
-+	    (type == HUB_INIT2 || type == HUB_INIT3))
-+		hub_queue_peer_reset(hub);
-  abort:
- 	if (type == HUB_INIT2 || type == HUB_INIT3) {
- 		/* Allow autosuspend if it was suppressed */
-@@ -1419,6 +1527,10 @@ static void hub_quiesce(struct usb_hub *hub, enum hub_quiescing_type type)
- 	/* Stop hub_wq and related activity */
- 	timer_delete_sync(&hub->irq_urb_retry);
- 	flush_delayed_work(&hub->post_resume_work);
-+	if (cancel_work_sync(&hub->peer_reset_work)) {
-+		usb_autopm_put_interface_no_suspend(to_usb_interface(hub->intfdev));
-+		hub_put(hub);
-+	}
- 	usb_kill_urb(hub->urb);
- 	if (hub->has_indicators)
- 		cancel_delayed_work_sync(&hub->leds);
-@@ -1978,6 +2090,7 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
- 	INIT_DELAYED_WORK(&hub->leds, led_work);
- 	INIT_DELAYED_WORK(&hub->init_work, NULL);
- 	INIT_DELAYED_WORK(&hub->post_resume_work, hub_post_resume);
-+	INIT_WORK(&hub->peer_reset_work, hub_peer_reset_work);
- 	INIT_WORK(&hub->events, hub_event);
- 	INIT_LIST_HEAD(&hub->onboard_devs);
- 	spin_lock_init(&hub->irq_urb_lock);
-diff --git a/drivers/usb/core/hub.h b/drivers/usb/core/hub.h
-index 78382839be48..edce19d7bf13 100644
---- a/drivers/usb/core/hub.h
-+++ b/drivers/usb/core/hub.h
-@@ -71,6 +71,7 @@ struct usb_hub {
- 	struct delayed_work	leds;
- 	struct delayed_work	init_work;
- 	struct delayed_work	post_resume_work;
-+	struct work_struct	peer_reset_work;
- 	struct work_struct      events;
- 	spinlock_t		irq_urb_lock;
- 	struct timer_list	irq_urb_retry;
+---
+Arun Iyengar (6):
+      dt-bindings: media: rockchip,rk3568-vepu: Add the reset lines
+      media: verisilicon: Don't hold the VPU in reset after remove
+      media: verisilicon: Enable the Rockchip encoder interrupt again after a reset
+      media: verisilicon: Reset the Rockchip encoder cores on timeout
+      media: verisilicon: Reinitialize the IOMMU after resetting an encoder core
+      arm64: dts: rockchip: Add the reset lines of the RK3588 VEPU121 cores
 
--- 
-2.55.0
+ .../bindings/media/rockchip,rk3568-vepu.yaml       | 10 +++
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      |  8 +++
+ drivers/media/platform/verisilicon/hantro.h        |  5 ++
+ drivers/media/platform/verisilicon/hantro_drv.c    | 81 ++++++++++++++++++++--
+ drivers/media/platform/verisilicon/hantro_hw.h     |  1 +
+ .../media/platform/verisilicon/rockchip_vpu_hw.c   | 46 ++++++++++++
+ 6 files changed, 144 insertions(+), 7 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261110-hantro-robust-6a6c84febb06
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
