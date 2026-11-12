@@ -1,70 +1,130 @@
-From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-Date: Wed, 11 Nov 2026 21:48:33 -0600
-Subject: [PATCH v4 2/2] staging: octeon: match exact interface names in
- pow_send_list
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Thu, 12 Nov 2026 12:58:09 +0900
+Subject: [PATCH] ovl: bump the impure dir version when linking a file with
+ origin
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261111-octeon-init-pipeline-v1-v4-2-5b4f8e613ae1@gmail.com>
-References: <20261111-octeon-init-pipeline-v1-v4-0-5b4f8e613ae1@gmail.com>
-In-Reply-To: <20261111-octeon-init-pipeline-v1-v4-0-5b4f8e613ae1@gmail.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794455321; l=1426;
- i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
- bh=8E71kLdZrxiYjTNdPeIwjDJ9PhrdCS1LH+eWfrSvIbA=;
- b=5g1uRcEn9QC+kz9cnr5UIiKq5g/821Pxcu80xa98/BNR7PEqrYT612KWrPM53S8JJcA/8Yr61
- TjpDoPqjNOtAV+DN6YORQkkenMJdcOAZfYcJrlskPMcUXR8eL93uL8I
-X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
- pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
-X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261112-ovl-link-impure-v1-1-7804905610a9@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAFA59WoC/x3MQQqAIBBA0avErBtopES6SrSInGqoVJQkiO6et
+ HyL/x9IHIUT9NUDkbMk8a6A6grmbXIro9hiUI3SRKTQ5wMPcTvKGa7IaLRqDTXUaWugVCHyIvd
+ /HMb3/QAmDAOQYQAAAA==
+To: Miklos Szeredi <miklos@szeredi.hu>, Amir Goldstein <amir73il@gmail.com>
+Cc: linux-unionfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Sashiko <sashiko-bot@kernel.org>, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794455888; l=4013;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=KL4nutV0WdP0jvfIHdlIIHren54/dSp9jeM8NnkBbQ8=;
+ b=4tIZe/ic11x6dFKJ6OaClDWqN40yI94UC+AbRPlyd3ElduWhwW/8/ITGrDjl7U7/2I/k/o0bf
+ yzNoRM2imq6Ac29GzZYFO6Xt3X3KzDu8LpYdGUHPWFAnTxeiPmJ+GhH
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cvm_oct_common_init() searches pow_send_list using strstr(), which matches
-substrings instead of exact interface names.
+Linking a file with copy up origin into a non-merge impure dir does
+not bump the dir version. readdir then reuses the impure dir cache
+built before the link. It reports the upper inode number as d_ino of
+the new link, not st_ino.
 
-Split a local copy of pow_send_list on comas with strsep() and compare
-each entry using strcmp().
+Pass whether the linked file has an origin to ovl_dir_modified(), as
+rename and unlink do.
 
-Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
+Fixes: 4edb83bb1041 ("ovl: constant d_ino for non-merge dirs")
+Reported-by: Sashiko <sashiko-bot@kernel.org>
+Closes: https://sashiko.dev/#/bug/linux-98f207b6-3936-48e9-a40f-88f20be4db7b
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- drivers/staging/octeon/ethernet.c | 20 +++++++++++++++++---
- 1 file changed, 17 insertions(+), 3 deletions(-)
+Tested on ext4 and xfs with default overlay options: the new fstests
+test overlay/013 fails without this patch and passes with it. So does
+a script that puts a whiteout in a non-merge upper dir before mount
+and links over it (ovl_create_over_whiteout()). Apart from
+overlay/013, only 079, 085 and 088 fail in overlay/auto on ovl-fixes,
+with and without this patch.
+---
+ fs/overlayfs/dir.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/staging/octeon/ethernet.c b/drivers/staging/octeon/ethernet.c
-index c77678cb351f..653cf3727ba7 100644
---- a/drivers/staging/octeon/ethernet.c
-+++ b/drivers/staging/octeon/ethernet.c
-@@ -431,9 +431,23 @@ int cvm_oct_common_init(struct net_device *dev)
- 	 * Force the interface to use the POW send if always_use_pow
- 	 * was specified or it is in the pow send list.
- 	 */
--	if ((pow_send_group != -1) &&
--	    (always_use_pow || strstr(pow_send_list, dev->name)))
--		priv->queue = -1;
-+	if (pow_send_group != -1) {
-+		if (always_use_pow) {
-+			priv->queue = -1;
-+		} else if (pow_send_list[0]) {
-+			char list[sizeof(pow_send_list)];
-+			char *p = list;
-+			char *token;
-+
-+			strscpy(list, pow_send_list, sizeof(list));
-+			while ((token = strsep(&p, ",")) != NULL) {
-+				if (!strcmp(token, dev->name)) {
-+					priv->queue = -1;
-+					break;
-+				}
-+			}
-+		}
-+	}
+diff --git a/fs/overlayfs/dir.c b/fs/overlayfs/dir.c
+index e0a164e22d67..8fec18dc5fc7 100644
+--- a/fs/overlayfs/dir.c
++++ b/fs/overlayfs/dir.c
+@@ -368,7 +368,7 @@ static bool ovl_type_origin(struct dentry *dentry)
+ }
  
- 	if (priv->queue != -1)
- 		dev->features |= NETIF_F_SG | NETIF_F_IP_CSUM;
+ static int ovl_create_upper(struct dentry *dentry, struct inode *inode,
+-			    struct ovl_cattr *attr)
++			    struct ovl_cattr *attr, bool origin)
+ {
+ 	struct ovl_fs *ofs = OVL_FS(dentry->d_sb);
+ 	struct dentry *upperdir = ovl_dentry_upper(dentry->d_parent);
+@@ -393,7 +393,7 @@ static int ovl_create_upper(struct dentry *dentry, struct inode *inode,
+ 		ovl_set_opaque(dentry, newdentry);
+ 	}
+ 
+-	ovl_dir_modified(dentry->d_parent, false);
++	ovl_dir_modified(dentry->d_parent, origin);
+ 	err = ovl_instantiate(dentry, inode, newdentry, !!attr->hardlink, NULL);
+ 	if (err)
+ 		goto out_cleanup;
+@@ -491,7 +491,7 @@ static int ovl_set_upper_acl(struct ovl_fs *ofs, struct dentry *upperdentry,
+ }
+ 
+ static int ovl_create_over_whiteout(struct dentry *dentry, struct inode *inode,
+-				    struct ovl_cattr *cattr)
++				    struct ovl_cattr *cattr, bool origin)
+ {
+ 	struct ovl_fs *ofs = OVL_FS(dentry->d_sb);
+ 	struct dentry *workdir = ovl_workdir(dentry);
+@@ -582,7 +582,7 @@ static int ovl_create_over_whiteout(struct dentry *dentry, struct inode *inode,
+ 		if (err)
+ 			goto out_cleanup_unlocked;
+ 	}
+-	ovl_dir_modified(dentry->d_parent, false);
++	ovl_dir_modified(dentry->d_parent, origin);
+ 	err = ovl_instantiate(dentry, inode, newdentry, hardlink, NULL);
+ 	if (err) {
+ 		ovl_cleanup(ofs, upperdir, newdentry);
+@@ -647,12 +647,12 @@ DEFINE_CLASS(ovl_override_creator_creds,
+ 
+ static int ovl_create_handle_whiteouts(struct dentry *dentry,
+ 				       struct inode *inode,
+-				       struct ovl_cattr *attr)
++				       struct ovl_cattr *attr, bool origin)
+ {
+ 	if (!ovl_dentry_is_whiteout(dentry))
+-		return ovl_create_upper(dentry, inode, attr);
++		return ovl_create_upper(dentry, inode, attr, origin);
+ 
+-	return ovl_create_over_whiteout(dentry, inode, attr);
++	return ovl_create_over_whiteout(dentry, inode, attr, origin);
+ }
+ 
+ static int ovl_create_or_link(struct dentry *dentry, struct inode *inode,
+@@ -687,12 +687,14 @@ static int ovl_create_or_link(struct dentry *dentry, struct inode *inode,
+ 		 */
+ 
+ 		if (attr->hardlink)
+-			return ovl_create_handle_whiteouts(dentry, inode, attr);
++			return ovl_create_handle_whiteouts(dentry, inode, attr,
++							   origin);
+ 
+ 		scoped_class(ovl_override_creator_creds, cred, original_creds, dentry, inode, attr->mode) {
+ 			if (IS_ERR(cred))
+ 				return PTR_ERR(cred);
+-			return ovl_create_handle_whiteouts(dentry, inode, attr);
++			return ovl_create_handle_whiteouts(dentry, inode, attr,
++							   origin);
+ 		}
+ 	}
+ 	return err;
 
+---
+base-commit: 0d5e729c515f4ae4eacc179dbcf350d9b499a161
+change-id: 20261112-ovl-link-impure-8624810156d8
+
+Best regards,
 -- 
-2.56.0
+Daejun Park <daejun7.park@samsung.com>
 
