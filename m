@@ -1,10 +1,11 @@
 From: Dave Airlie <airlied@redhat.com>
-Date: Thu, 12 Nov 2026 11:43:36 +1000
-Subject: [PATCH 01/19] drm/amd/display: Drop the dead vmid module
+Date: Thu, 12 Nov 2026 11:43:37 +1000
+Subject: [PATCH 02/19] drm/amd/display: Add DC accessors as the first step
+ to opaque struct dc
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-amdgpu-dc-cleanup-v1-1-0fae41718ad2@redhat.com>
+Message-Id: <20261112-amdgpu-dc-cleanup-v1-2-0fae41718ad2@redhat.com>
 References: <20261112-amdgpu-dc-cleanup-v1-0-0fae41718ad2@redhat.com>
 In-Reply-To: <20261112-amdgpu-dc-cleanup-v1-0-0fae41718ad2@redhat.com>
 To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
@@ -16,352 +17,492 @@ To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>,
 Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
  Dave Airlie <airlied@redhat.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=10509; i=airlied@redhat.com;
- h=from:subject:message-id; bh=Z77uIEbPQQ+PkqyBmNyns6HBPtpxtwV5U1KNXIgj/gE=;
- b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBq9RnODLIeTXgwyWE26dO3007EzASOhPJoR8Jsd
- BSlp46BPMGJAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCavUZzgAKCRAMdPNZecSG
- vlbBD/9d0yLki0kqOZ4Q8oc8BphoCz6ObrFdVU+ecDdczmFx7wgupYFV5vN7P6938WU89xiOwHT
- l+f6wUgnf+5jTMW5vvPhb5INaQ4GoOV8811z9ebIkPGHrjMMWj+6vif+1tHnTEqm1wXSDAcBlyp
- R9ON6L+SJy8mBDnnRYJqJ0LPEP/uAZYTCL8wL5UNeMhWaxya/ymkj5pH4wGE2ye5JXWJmh0gpxV
- F/zVdQ+q7mR6V9zxs2Oq4y+TTyF85G+Iunh9bdebEs4ZkeM+/H4kfXpPXap6jAmPIOuO50UsOF8
- VrLAIKe4mvo0a/rcBvmzItnZbfn0/ekaxw2K8kDH/wiNQveQyhcHt+mMJWvFnW9LKUZdw5JhsM/
- KgaAVnp0gaXvGSAB/KJT8TZYIh4yT9ewiybfekD1MRfo6thWAJ4YnI7K+URdeL/M6XNfM7NREGI
- 6eoGHn+E5CzF9jxA10arOrcXjJ1S3CsTPcUXx0TCkCmBZXWExsXJDrbLhgJY9xrgeWqv2ZkHrUS
- kp/IFglzZmvMg1ktIfJwI/Phk5OXceNsFP0bFxaLz0z0pCaZyWP1jUUKBcLYCubNFfIlISBRWqw
- yrECfuVxwxfPNHwgRBVHlRrxQ3sVRxcsvg+73YlAyVnIvdgr3he6zoc2JTJCb9Lmt4eAUz0mHVw
- F28gXjMNKa4Fm4A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=15743; i=airlied@redhat.com;
+ h=from:subject:message-id; bh=1LtED0nwoQ8ppce0T0uuihoA1JhOh04sCVHjlh+aSNk=;
+ b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBq9RnOJAvPFh+I4llhXBABZTtTi59S/OSHkZmkS
+ eE1pdZJp3qJAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCavUZzgAKCRAMdPNZecSG
+ vg91EACdC6ohVepgbNzs2or/fhyh2rtWU87Y78wXOJ5yZ8daAy0YDWSOKEXFgqRoqL2GlFJ7Wit
+ GFS73vJ7nw/EwlRjmJMEmnWbpDNL/BtSFd67IXySWZ7YP9JEj2yMXL47dh7Hs8M55V5+o2/78Vn
+ WIHzwyZPc8SLXiPUdHbUqKQMdHaBnHOykgnxqiBFsGCvskma6Y8UYOSwindv//JMsqtTD2JW3PD
+ nPZwnoNT+/nzA9jCh+xd0B/klDaFjflC9q1rO/qo3Yu4oEVPhIoSKl4L+NOIeoJqViNWYz5LRuN
+ +8nzB33UbSP7TY4wJ7Ea2XwPDKQlpI5xMYjpflsrImNpq2qpefg8R/3Bdh04oQpTizY5wKBasNv
+ MW15mGBawcJU9UN90BwC1hDi9yJnQubkUNhzr1UP3IGTrAZEvDVxA2BDjJtZ41e1tjP+UQoLrmy
+ xZmSyyhVCxil9E7NBQ2dgUHDnlbvb7NdfDCH41WeSEDrRqpHjkhULMqc+aZZc3am/x/20tUo8Ez
+ xK4rJ5mRpPdR9U4ENNmVui7ZvXpDTonNap9NU8ZnvAduZw1d5wpFjR/hdiwej678Bz+Mif/5Vb3
+ oEybsmLAmCzaPVFNiyZ3atssdEgltcf5SEWhVBqXjsPIcCwV4ZBGtk4BvJ1aSHhe0XQ8KhkATT6
+ HO8xueJ/9NzI1Nw==
 X-Developer-Key: i=airlied@redhat.com; a=openpgp;
  fpr=10A6D91DA1B05BD29F6DEBAC0C74F35979C486BE
 X-Endpoint-Received: by B4 Relay for airlied@redhat.com/default with auth_id=1321
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-modules/vmid, mod_vmid.h and mod_stats.h are not referenced by any
-Makefile; remove the dead code.
+struct dc is defined in dc.h which is included by DM and DAL modules,
+so any of them can dereference dc members directly. As a first step
+towards making struct dc private to DC, add an accessor layer:
+
+- Introspection accessors (link count, ctx, caps, config, debug
+  options, current state, idle optimizations, resource pool, clock
+  manager) implemented in a new dc/core/dc_accessors.c which is the
+  single place mapping accessor names onto struct dc fields.
+- hwss/cap_funcs wrappers for log_hw_state, get_dcc_en_bits,
+  prepare_ddc, get_dcc_compression_cap and get_subvp_en.
+- FBC and DML2 alternate channel configuration helpers.
+- link_service wrappers in dc/core/dc_link_exports.c for the entry
+  points that DM and DAL modules reach through dc->link_srv today,
+  violating the link_service.h usage policy.
+
+The accessors are additive; no consumer is migrated yet.
 
 Signed-off-by: Dave Airlie <airlied@redhat.com>
 ---
- .../gpu/drm/amd/display/modules/inc/mod_stats.h    |  75 ---------
- drivers/gpu/drm/amd/display/modules/inc/mod_vmid.h |  46 ------
- drivers/gpu/drm/amd/display/modules/vmid/vmid.c    | 178 ---------------------
- 3 files changed, 299 deletions(-)
+ drivers/gpu/drm/amd/display/dc/Makefile            |   1 +
+ drivers/gpu/drm/amd/display/dc/core/dc_accessors.c | 136 ++++++++++++++++
+ .../gpu/drm/amd/display/dc/core/dc_link_exports.c  |  85 ++++++++++
+ drivers/gpu/drm/amd/display/dc/dc.h                | 174 +++++++++++++++++++++
+ 4 files changed, 396 insertions(+)
 
-diff --git a/drivers/gpu/drm/amd/display/modules/inc/mod_stats.h b/drivers/gpu/drm/amd/display/modules/inc/mod_stats.h
-deleted file mode 100644
-index 8ce6c22e5d04..000000000000
---- a/drivers/gpu/drm/amd/display/modules/inc/mod_stats.h
-+++ /dev/null
-@@ -1,75 +0,0 @@
--/*
-- * Copyright 2016 Advanced Micro Devices, Inc.
-- *
-- * Permission is hereby granted, free of charge, to any person obtaining a
-- * copy of this software and associated documentation files (the "Software"),
-- * to deal in the Software without restriction, including without limitation
-- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
-- * and/or sell copies of the Software, and to permit persons to whom the
-- * Software is furnished to do so, subject to the following conditions:
-- *
-- * The above copyright notice and this permission notice shall be included in
-- * all copies or substantial portions of the Software.
-- *
-- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-- * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
-- * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-- * OTHER DEALINGS IN THE SOFTWARE.
-- *
-- * Authors: AMD
-- *
-- */
--
--#ifndef MODULES_INC_MOD_STATS_H_
--#define MODULES_INC_MOD_STATS_H_
--
--#include "dm_services.h"
--
--struct mod_stats {
--	int dummy;
--};
--
--struct mod_stats_caps {
--	bool dummy;
--};
--
--struct mod_stats_init_params {
--	unsigned int stats_enable;
--	unsigned int stats_entries;
--};
--
--struct mod_stats *mod_stats_create(struct dc *dc,
--		struct mod_stats_init_params *init_params);
--
--void mod_stats_destroy(struct mod_stats *mod_stats);
--
--bool mod_stats_init(struct mod_stats *mod_stats);
--
--void mod_stats_dump(struct mod_stats *mod_stats);
--
--void mod_stats_reset_data(struct mod_stats *mod_stats);
--
--void mod_stats_update_event(struct mod_stats *mod_stats,
--		const char *event_string,
--		unsigned int length);
--
--void mod_stats_update_flip(struct mod_stats *mod_stats,
--		unsigned long long timestamp_in_ns);
--
--void mod_stats_update_vupdate(struct mod_stats *mod_stats,
--		unsigned long long timestamp_in_ns);
--
--void mod_stats_update_freesync(struct mod_stats *mod_stats,
--		unsigned int v_total_min,
--		unsigned int v_total_max,
--		unsigned int event_triggers,
--		unsigned int window_min,
--		unsigned int window_max,
--		unsigned int lfc_mid_point_in_us,
--		unsigned int inserted_frames,
--		unsigned int inserted_frame_duration_in_us);
--
--#endif /* MODULES_INC_MOD_STATS_H_ */
-diff --git a/drivers/gpu/drm/amd/display/modules/inc/mod_vmid.h b/drivers/gpu/drm/amd/display/modules/inc/mod_vmid.h
-deleted file mode 100644
-index a3787fdf0c08..000000000000
---- a/drivers/gpu/drm/amd/display/modules/inc/mod_vmid.h
-+++ /dev/null
-@@ -1,46 +0,0 @@
--/*
-- * Copyright 2019 Advanced Micro Devices, Inc.
-- *
-- * Permission is hereby granted, free of charge, to any person obtaining a
-- * copy of this software and associated documentation files (the "Software"),
-- * to deal in the Software without restriction, including without limitation
-- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
-- * and/or sell copies of the Software, and to permit persons to whom the
-- * Software is furnished to do so, subject to the following conditions:
-- *
-- * The above copyright notice and this permission notice shall be included in
-- * all copies or substantial portions of the Software.
-- *
-- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-- * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
-- * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-- * OTHER DEALINGS IN THE SOFTWARE.
-- *
-- * Authors: AMD
-- *
-- */
--
--#ifndef MOD_VMID_H_
--#define MOD_VMID_H_
--
--#define MAX_VMID 16
--
--#include "dc.h"
--
--struct mod_vmid {
--	int dummy;
--};
--
--uint8_t mod_vmid_get_for_ptb(struct mod_vmid *mod_vmid, uint64_t ptb);
--void mod_vmid_reset(struct mod_vmid *mod_vmid);
--struct mod_vmid *mod_vmid_create(
--		struct dc *dc,
--		unsigned int num_vmid,
--		struct dc_virtual_addr_space_config *va_config);
--
--void mod_vmid_destroy(struct mod_vmid *mod_vmid);
--
--#endif /* MOD_VMID_H_ */
-diff --git a/drivers/gpu/drm/amd/display/modules/vmid/vmid.c b/drivers/gpu/drm/amd/display/modules/vmid/vmid.c
-deleted file mode 100644
-index 32617893ffb2..000000000000
---- a/drivers/gpu/drm/amd/display/modules/vmid/vmid.c
-+++ /dev/null
-@@ -1,178 +0,0 @@
--/*
-- * Copyright 2019 Advanced Micro Devices, Inc.
-- *
-- * Permission is hereby granted, free of charge, to any person obtaining a
-- * copy of this software and associated documentation files (the "Software"),
-- * to deal in the Software without restriction, including without limitation
-- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
-- * and/or sell copies of the Software, and to permit persons to whom the
-- * Software is furnished to do so, subject to the following conditions:
-- *
-- * The above copyright notice and this permission notice shall be included in
-- * all copies or substantial portions of the Software.
-- *
-- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-- * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
-- * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-- * OTHER DEALINGS IN THE SOFTWARE.
-- *
-- * Authors: AMD
-- *
-- */
--
--#include "mod_vmid.h"
--
--struct core_vmid {
--	struct mod_vmid public;
--	struct dc *dc;
--
--	unsigned int num_vmid;
--	unsigned int num_vmids_available;
--	uint64_t ptb_assigned_to_vmid[MAX_VMID];
--	struct dc_virtual_addr_space_config base_config;
--};
--
--#define MOD_VMID_TO_CORE(mod_vmid)\
--		container_of(mod_vmid, struct core_vmid, public)
--
--static void add_ptb_to_table(struct core_vmid *core_vmid, unsigned int vmid, uint64_t ptb)
--{
--	if (vmid < MAX_VMID) {
--		core_vmid->ptb_assigned_to_vmid[vmid] = ptb;
--		core_vmid->num_vmids_available--;
--	}
--}
--
--static void clear_entry_from_vmid_table(struct core_vmid *core_vmid, unsigned int vmid)
--{
--	if (vmid < MAX_VMID) {
--		core_vmid->ptb_assigned_to_vmid[vmid] = 0;
--		core_vmid->num_vmids_available++;
--	}
--}
--
--static void evict_vmids(struct core_vmid *core_vmid)
--{
--	unsigned int i;
--	int ord_int = dc_get_vmid_use_vector(core_vmid->dc);
--
--	ASSERT(ord_int >= 0 && ord_int <= 0xFFFF);
--	uint16_t ord = (uint16_t)ord_int;
--
--	// At this point any positions with value 0 are unused vmids, evict them
--	for (i = 1; i < core_vmid->num_vmid; i++) {
--		if (!(ord & (1u << i)))
--			clear_entry_from_vmid_table(core_vmid, i);
--	}
--}
--
--// Return value of -1 indicates vmid table uninitialized or ptb dne in the table
--static int get_existing_vmid_for_ptb(struct core_vmid *core_vmid, uint64_t ptb)
--{
--	unsigned int i;
--
--	for (i = 0; i < core_vmid->num_vmid; i++) {
--		if (core_vmid->ptb_assigned_to_vmid[i] == ptb)
--			return i;
--	}
--
--	return -1;
--}
--
--// Expected to be called only when there's an available vmid
--static int get_next_available_vmid(struct core_vmid *core_vmid)
--{
--	unsigned int i;
--
--	for (i = 1; i < core_vmid->num_vmid; i++) {
--		if (core_vmid->ptb_assigned_to_vmid[i] == 0)
--			return i;
--	}
--
--	return -1;
--}
--
--uint8_t mod_vmid_get_for_ptb(struct mod_vmid *mod_vmid, uint64_t ptb)
--{
--	struct core_vmid *core_vmid = MOD_VMID_TO_CORE(mod_vmid);
--	int vmid = 0;
--
--	// Physical address gets vmid 0
--	if (ptb == 0)
--		return 0;
--
--	vmid = get_existing_vmid_for_ptb(core_vmid, ptb);
--
--	if (vmid == -1) {
--		struct dc_virtual_addr_space_config va_config = core_vmid->base_config;
--
--		va_config.page_table_base_addr = ptb;
--
--		if (core_vmid->num_vmids_available == 0)
--			evict_vmids(core_vmid);
--
--		vmid = get_next_available_vmid(core_vmid);
--		if (vmid != -1) {
--			add_ptb_to_table(core_vmid, vmid, ptb);
--
--			dc_setup_vm_context(core_vmid->dc, &va_config, vmid);
--		} else
--			ASSERT(0);
--	}
--
--	ASSERT(vmid >= 0 && vmid <= 0xFF);
--	return (uint8_t)vmid;
--}
--
--void mod_vmid_reset(struct mod_vmid *mod_vmid)
--{
--	struct core_vmid *core_vmid = MOD_VMID_TO_CORE(mod_vmid);
--
--	core_vmid->num_vmids_available = core_vmid->num_vmid - 1;
--	memset(core_vmid->ptb_assigned_to_vmid, 0, sizeof(core_vmid->ptb_assigned_to_vmid[0]) * MAX_VMID);
--}
--
--struct mod_vmid *mod_vmid_create(
--		struct dc *dc,
--		unsigned int num_vmid,
--		struct dc_virtual_addr_space_config *va_config)
--{
--	struct core_vmid *core_vmid;
--
--	if (num_vmid <= 1)
--		goto fail_no_vm_ctx;
--
--	if (dc == NULL)
--		goto fail_dc_null;
--
--	core_vmid = kzalloc_obj(struct core_vmid);
--
--	if (core_vmid == NULL)
--		goto fail_alloc_context;
--
--	core_vmid->dc = dc;
--	core_vmid->num_vmid = num_vmid;
--	core_vmid->num_vmids_available = num_vmid - 1;
--	core_vmid->base_config = *va_config;
--
--	memset(core_vmid->ptb_assigned_to_vmid, 0, sizeof(core_vmid->ptb_assigned_to_vmid[0]) * MAX_VMID);
--
--	return &core_vmid->public;
--
--fail_no_vm_ctx:
--fail_alloc_context:
--fail_dc_null:
--	return NULL;
--}
--
--void mod_vmid_destroy(struct mod_vmid *mod_vmid)
--{
--	if (mod_vmid != NULL) {
--		struct core_vmid *core_vmid = MOD_VMID_TO_CORE(mod_vmid);
--
--		kfree(core_vmid);
--	}
--}
+diff --git a/drivers/gpu/drm/amd/display/dc/Makefile b/drivers/gpu/drm/amd/display/dc/Makefile
+index 84c68b87210f..0f39a15dfc60 100644
+--- a/drivers/gpu/drm/amd/display/dc/Makefile
++++ b/drivers/gpu/drm/amd/display/dc/Makefile
+@@ -68,6 +68,7 @@ FILES += dc_fused_io.o
+ FILES += dc_helper.o
+ FILES += dc_memory_pool.o
+ FILES += core/dc.o
++FILES += core/dc_accessors.o
+ FILES += dc_api_dispatch/api_shim.o
+ FILES += core/dc_debug.o
+ FILES += core/dc_hw_sequencer.o
+diff --git a/drivers/gpu/drm/amd/display/dc/core/dc_accessors.c b/drivers/gpu/drm/amd/display/dc/core/dc_accessors.c
+new file mode 100644
+index 000000000000..8aa2364b714e
+--- /dev/null
++++ b/drivers/gpu/drm/amd/display/dc/core/dc_accessors.c
+@@ -0,0 +1,136 @@
++// SPDX-License-Identifier: MIT
++/*
++ * Copyright 2026 Advanced Micro Devices, Inc.
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
++ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
++ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
++ * OTHER DEALINGS IN THE SOFTWARE.
++ *
++ * Authors: AMD
++ *
++ */
++
++/* FILE POLICY AND INTENDED USAGE:
++ * This file implements the struct dc accessors declared in dc.h. struct dc
++ * is private to DC; this file is the single place that maps public accessor
++ * names onto struct dc fields. Keep it free of functional behavior so the
++ * mapping stays obvious and auditable.
++ */
++#include "dc.h"
++
++uint8_t dc_get_link_count(const struct dc *dc)
++{
++	return dc->link_count;
++}
++
++struct dc_context *dc_get_ctx(const struct dc *dc)
++{
++	return dc->ctx;
++}
++
++const struct dc_caps *dc_get_caps(const struct dc *dc)
++{
++	return &dc->caps;
++}
++
++const struct dc_config *dc_get_config(const struct dc *dc)
++{
++	return &dc->config;
++}
++
++struct dc_debug_options *dc_get_debug_options(struct dc *dc)
++{
++	return &dc->debug;
++}
++
++struct dc_state *dc_get_current_state(const struct dc *dc)
++{
++	return dc->current_state;
++}
++
++bool dc_is_idle_optimizations_allowed(const struct dc *dc)
++{
++	return dc->idle_optimizations_allowed;
++}
++
++struct resource_pool *dc_get_res_pool(const struct dc *dc)
++{
++	return dc->res_pool;
++}
++
++struct clk_mgr *dc_get_clk_mgr(struct dc *dc)
++{
++	return dc->clk_mgr;
++}
++
++bool dc_get_dcc_compression_cap(const struct dc *dc,
++		const struct dc_dcc_surface_param *input,
++		struct dc_surface_dcc_cap *output)
++{
++	if (!dc->cap_funcs.get_dcc_compression_cap)
++		return false;
++
++	return dc->cap_funcs.get_dcc_compression_cap(dc, input, output);
++}
++
++bool dc_get_subvp_en(struct dc *dc, struct dc_state *context)
++{
++	if (!dc->cap_funcs.get_subvp_en)
++		return false;
++
++	return dc->cap_funcs.get_subvp_en(dc, context);
++}
++
++bool dc_log_hw_state(struct dc *dc, struct dc_log_buffer_ctx *log_ctx)
++{
++	if (!dc->hwss.log_hw_state)
++		return false;
++
++	dc->hwss.log_hw_state(dc, log_ctx);
++	return true;
++}
++
++bool dc_get_dcc_en_bits(struct dc *dc, int *dcc_en_bits)
++{
++	if (!dc->hwss.get_dcc_en_bits)
++		return false;
++
++	dc->hwss.get_dcc_en_bits(dc, dcc_en_bits);
++	return true;
++}
++
++void dc_prepare_ddc(struct dc_link *link)
++{
++	if (link->dc->hwss.prepare_ddc)
++		link->dc->hwss.prepare_ddc(link);
++}
++
++bool dc_is_fbc_compressor_available(const struct dc *dc)
++{
++	return dc->fbc_compressor != NULL;
++}
++
++void dc_set_fbc_gpu_addr(struct dc *dc, uint64_t gpu_addr)
++{
++	dc->ctx->fbc_gpu_addr = gpu_addr;
++}
++
++void dc_set_dml2_alt_ch_cfg(struct dc *dc,
++		const struct dml2_soc_alt_ch_info *alt_ch_cfg)
++{
++	dc->dml2_options.alt_ch_cfg = *alt_ch_cfg;
++}
+diff --git a/drivers/gpu/drm/amd/display/dc/core/dc_link_exports.c b/drivers/gpu/drm/amd/display/dc/core/dc_link_exports.c
+index 5926e8a4f95a..d2f52e4839fe 100644
+--- a/drivers/gpu/drm/amd/display/dc/core/dc_link_exports.c
++++ b/drivers/gpu/drm/amd/display/dc/core/dc_link_exports.c
+@@ -545,6 +545,91 @@ void dc_link_edp_replay_residency(const struct dc_link *link,
+ 		link->dc->link_srv->edp_replay_residency(link, residency, is_start, mode);
+ }
+ 
++void dc_link_edp_get_psr_residency(const struct dc_link *link,
++		uint32_t *residency, enum psr_residency_mode mode)
++{
++	if (link && link->dc && link->dc->link_srv)
++		link->dc->link_srv->edp_get_psr_residency(link, residency, mode);
++}
++
++bool dc_link_edp_set_sink_vtotal_in_psr_active(const struct dc_link *link,
++		uint16_t psr_vtotal_idle, uint16_t psr_vtotal_su)
++{
++	if (!link || !link->dc || !link->dc->link_srv)
++		return false;
++
++	return link->dc->link_srv->edp_set_sink_vtotal_in_psr_active(
++			link, psr_vtotal_idle, psr_vtotal_su);
++}
++
++bool dc_link_edp_send_replay_cmd(struct dc_link *link,
++		enum replay_FW_Message_type msg,
++		union dmub_replay_cmd_set *cmd_data)
++{
++	if (!link || !link->dc || !link->dc->link_srv)
++		return false;
++
++	return link->dc->link_srv->edp_send_replay_cmd(link, msg, cmd_data);
++}
++
++bool dc_link_edp_set_coasting_vtotal(struct dc_link *link,
++		uint32_t coasting_vtotal, uint16_t frame_skip_number)
++{
++	if (!link || !link->dc || !link->dc->link_srv)
++		return false;
++
++	return link->dc->link_srv->edp_set_coasting_vtotal(
++			link, coasting_vtotal, frame_skip_number);
++}
++
++bool dc_link_edp_replay_get_cumulative_residency(const struct dc_link *link,
++		uint32_t *residency_milli_pct)
++{
++	if (!link || !link->dc || !link->dc->link_srv)
++		return false;
++
++	return link->dc->link_srv->edp_replay_get_cumulative_residency(
++			link, residency_milli_pct);
++}
++
++bool dc_link_edp_set_replay_power_opt_and_coasting_vtotal(
++		struct dc_link *link, const unsigned int *power_opts,
++		uint32_t coasting_vtotal, uint16_t frame_skip_number)
++{
++	if (!link || !link->dc || !link->dc->link_srv)
++		return false;
++
++	return link->dc->link_srv->edp_set_replay_power_opt_and_coasting_vtotal(
++			link, power_opts, coasting_vtotal, frame_skip_number);
++}
++
++bool dc_link_dp_setup_replay(struct dc_link *link,
++		const struct dc_stream_state *stream)
++{
++	if (!link || !link->dc || !link->dc->link_srv)
++		return false;
++
++	return link->dc->link_srv->dp_setup_replay(link, stream);
++}
++
++uint8_t dc_link_get_ddc_aux_inst(const struct dc_link *link)
++{
++	if (!link || !link->dc || !link->dc->link_srv)
++		return 0;
++
++	return link->dc->link_srv->get_ddc_aux_inst(link);
++}
++
++enum dp_link_encoding dc_link_dp_get_encoding_format(
++		const struct dc_link *link)
++{
++	if (!link || !link->dc || !link->dc->link_srv)
++		return DP_8b_10b_ENCODING;
++
++	return link->dc->link_srv->dp_get_encoding_format(
++			&link->verified_link_cap);
++}
++
+ bool dc_link_get_pr_state(const struct dc_link *link, uint64_t *state)
+ {
+ 	return link->dc->link_srv->dp_pr_get_state(link, state);
+diff --git a/drivers/gpu/drm/amd/display/dc/dc.h b/drivers/gpu/drm/amd/display/dc/dc.h
+index 916fa87d0dbc..f0c84abab0fb 100644
+--- a/drivers/gpu/drm/amd/display/dc/dc.h
++++ b/drivers/gpu/drm/amd/display/dc/dc.h
+@@ -2464,6 +2464,92 @@ uint32_t dc_bandwidth_in_kbps_from_timing(
+ 		const struct dc_crtc_timing *timing,
+ 		const enum dc_link_encoding_format link_encoding);
+ 
++/*
++ * DC accessors.
++ *
++ * struct dc is private to DC. These accessors are the supported way for
++ * DM and DAL modules to query DC-wide state. Some of them return pointers
++ * to still-public sub-structures; treat those as read-only unless the
++ * documentation says otherwise.
++ */
++
++/* Number of links; valid indices for dc_get_link_at_index(). */
++uint8_t dc_get_link_count(const struct dc *dc);
++
++/* The DC context (logging, register access, dmub service). */
++struct dc_context *dc_get_ctx(const struct dc *dc);
++
++/* Capabilities detected at dc_create() time. Read-only. */
++const struct dc_caps *dc_get_caps(const struct dc *dc);
++
++/* Configuration captured at dc_create() time. Read-only. */
++const struct dc_config *dc_get_config(const struct dc *dc);
++
++/* Debug overrides (module parameters, debugfs). Writable. */
++struct dc_debug_options *dc_get_debug_options(struct dc *dc);
++
++/* The currently committed state. Owned by DC; read-only for DM. */
++struct dc_state *dc_get_current_state(const struct dc *dc);
++
++/* Whether DC may enter idle power optimizations right now. */
++bool dc_is_idle_optimizations_allowed(const struct dc *dc);
++
++/*
++ * The hardware resource pool (DSC engines, audio instances, DMCU/ABM...).
++ * Interim accessor; prefer purpose-built DC interfaces where available.
++ */
++struct resource_pool *dc_get_res_pool(const struct dc *dc);
++
++/* The clock manager. Interim accessor. */
++struct clk_mgr *dc_get_clk_mgr(struct dc *dc);
++
++/*
++ * Query DCC compression support for a surface.
++ * return false - when the asic does not implement the query.
++ */
++bool dc_get_dcc_compression_cap(const struct dc *dc,
++		const struct dc_dcc_surface_param *input,
++		struct dc_surface_dcc_cap *output);
++
++/*
++ * Whether SubVP is enabled in the given state.
++ * return false - when the asic does not support SubVP.
++ */
++bool dc_get_subvp_en(struct dc *dc, struct dc_state *context);
++
++/*
++ * Dump hardware state into the log buffer, or into the kernel log when
++ * log_ctx is NULL.
++ * return false - when the asic does not implement the dump.
++ */
++bool dc_log_hw_state(struct dc *dc, struct dc_log_buffer_ctx *log_ctx);
++
++/*
++ * Read the per-pipe DCC enable bits.
++ * return false - when the asic does not implement the query.
++ */
++bool dc_get_dcc_en_bits(struct dc *dc, int *dcc_en_bits);
++
++/*
++ * Run the DDC prepare sequence on the link ahead of aux transactions that
++ * require a prepared DDC line. Optional; silently skipped when the asic
++ * does not implement it.
++ */
++void dc_prepare_ddc(struct dc_link *link);
++
++/* Whether an FBC compressor is instantiated for this DC. */
++bool dc_is_fbc_compressor_available(const struct dc *dc);
++
++/*
++ * Provide the GPU address of the FBC compression buffer that DM allocated.
++ * Only meaningful while an FBC compressor is instantiated.
++ */
++void dc_set_fbc_gpu_addr(struct dc *dc, uint64_t gpu_addr);
++
++/* Configure the alternate channel aperture consumed by DML2. */
++void dc_set_dml2_alt_ch_cfg(struct dc *dc,
++		const struct dml2_soc_alt_ch_info *alt_ch_cfg);
++
+ /* Link Interfaces */
+ /* Return an enumerated dc_link.
+  * dc_link order is constant and determined at
+@@ -3019,6 +3105,94 @@ bool dc_link_set_pr_general_cmd(struct dc_link *link,
+ void dc_link_edp_replay_residency(const struct dc_link *link,
+ 		unsigned int *residency, bool is_start, enum pr_residency_mode mode);
+ 
++/*
++ * Measure PSR residency for the given link.
++ * mode: PSR_RESIDENCY_MODE_PHY, PSR_RESIDENCY_MODE_ALPM, or
++ *       PSR_RESIDENCY_MODE_ENABLEMENT_PERIOD
++ */
++void dc_link_edp_get_psr_residency(const struct dc_link *link,
++		uint32_t *residency, enum psr_residency_mode mode);
++
++/*
++ * Set the sink vtotal in psr active to restore sink timing after
++ * exit psr with firmware initiated mode switching.
++ * return false - if the setting is not applied by firmware.
++ */
++bool dc_link_edp_set_sink_vtotal_in_psr_active(const struct dc_link *link,
++		uint16_t psr_vtotal_idle, uint16_t psr_vtotal_su);
++
++/*
++ * Send general command to Panel Replay firmware:
++ *
++ * @link: link to send the replay command on
++ * @msg: message type which indicates the variable passed to DMUB
++ * @cmd_data: payload for message types that carry one
++ *
++ * return: true if successful, false otherwise
++ */
++bool dc_link_edp_send_replay_cmd(struct dc_link *link,
++		enum replay_FW_Message_type msg,
++		union dmub_replay_cmd_set *cmd_data);
++
++/*
++ * Set panel replay coasting vtotal.
++ *
++ * @link: link to set the coasting vtotal on
++ * @coasting_vtotal: coasting vtotal to program
++ * @frame_skip_number: number of frames to skip
++ *
++ * return: true if successful, false otherwise
++ */
++bool dc_link_edp_set_coasting_vtotal(struct dc_link *link,
++		uint32_t coasting_vtotal, uint16_t frame_skip_number);
++
++/*
++ * Measure cumulative Panel Replay residency for the given link.
++ *
++ * @link: pointer to the dc_link struct instance
++ * @residency_milli_pct: residency in milli-percentage
++ *
++ * return: true if successful, false otherwise
++ */
++bool dc_link_edp_replay_get_cumulative_residency(const struct dc_link *link,
++		uint32_t *residency_milli_pct);
++
++/*
++ * Set panel replay power optimization and coasting vtotal together.
++ *
++ * @link: link to configure
++ * @power_opts: power optimization bits to enable
++ * @coasting_vtotal: coasting vtotal to program
++ * @frame_skip_number: number of frames to skip
++ *
++ * return: true if successful, false otherwise
++ */
++bool dc_link_edp_set_replay_power_opt_and_coasting_vtotal(
++		struct dc_link *link, const unsigned int *power_opts,
++		uint32_t coasting_vtotal, uint16_t frame_skip_number);
++
++/*
++ * Set up the link for panel replay.
++ *
++ * @link: link to configure
++ * @stream: stream to enable panel replay for
++ *
++ * return: true if successful, false otherwise
++ */
++bool dc_link_dp_setup_replay(struct dc_link *link,
++		const struct dc_stream_state *stream);
++
++/*
++ * Get the instance id of the DDC aux service backing the link.
++ */
++uint8_t dc_link_get_ddc_aux_inst(const struct dc_link *link);
++
++/*
++ * Get the DP link encoding format of the link's verified link settings.
++ */
++enum dp_link_encoding dc_link_dp_get_encoding_format(
++		const struct dc_link *link);
++
+ /*
+  * Get Panel Replay state:
+  *
 
 -- 
 2.56.0
