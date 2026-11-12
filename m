@@ -1,91 +1,147 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Thu, 12 Nov 2026 09:41:56 +0900
-Subject: [PATCH v2] xfs: check the disk address for hardware atomic writes
+From: Igor Velkov <iav@iav.lv>
+Date: Thu, 12 Nov 2026 01:18:15 +0000
+Subject: [PATCH] arm64: dts: rockchip: Name the GPIO lines on Kobol
+ Helios64
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-xfs-hw-atomic-align-v2-1-c90394805e7b@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAFML9WoC/32NQQ6CMBBFr0Jm7RimEFBX3sOwKHWASaQ1HUQM4
- e5WDuDyveS/v4JyFFa4ZCtEnkUl+ATmkIEbrO8Z5Z4YTG4qIspx6RSHN9opjOLQPqT3mLNtq1N
- RlGVtIS2fkTtZ9uqtSTyITiF+9pOZfvZ/byYkNKYuW6rOrjB8VTvqy/dHF0Zotm37AlqwMIy4A
- AAA
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Pankaj Raghav <p.raghav@samsung.com>, 
- Pankaj Raghav <pankaj.raghav@linux.dev>, John Garry <john.garry@linux.dev>, 
- "Darrick J. Wong" <djwong@kernel.org>, Christoph Hellwig <hch@lst.de>, 
- Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
+Message-Id: <20261112-helios64-gpio-line-names-v1-1-2ce53756753f@iav.lv>
+X-B4-Tracking: v=1; b=H4sIANYT9WoC/x3MQQqEMAxG4atI1hMwRUS8irjo1F8NaCsNiCC9+
+ 5RZfov3XjJkhdHYvJRxq2mKFfJpKOw+bmBdqsm1rhcRxzsOTdZ3vF2a+NAIjv6EcfDfYZAOi7h
+ ANb8yVn3+62ku5QfPO7juagAAAA==
+To: Heiko Stuebner <heiko@sntech.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794444115; l=2519;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=/KQlHm9zqOvC9vqKeC5B3c3hAccfr9ecgZJuujouvUg=;
- b=+lSElbUv0ZC1/gr/jZ2ThAFPuMnQ1/1sWHgTm4Nzwg96uKMPQ4ue2HxEOB/GH1spDUmkZxtpU
- L3mz5mjt69BB+UtzwNCmLcdPj8VQv1FL3xfUyfwI1AGVPNhIxHWOnC4
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4082; i=iav@iav.lv;
+ h=from:subject:message-id; bh=mxfTsSDkWYOFNeIUFLUD6qD7wTrjLsl+OXjto3i0uRA=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFlfha9nyr0qPrqV6fH2LaHnvsw23ecXeWbZ+g/idxaU6
+ l1qWKYd1lHKwiDGxSArpsgy4ZDGrYwlV//6e5g/gJnDygQyhIGLUwAm8k2akWHuGimJPXIajY/3
+ V8ZZFcnOlUrrv8uXbLLgjcrNhbcXnGJh+Cvaw9JhWs+yWfG4UOyJSaKyKz06z909X+u8p6PS5bE
+ 0KzcA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-xfs_bmap_hw_atomic_write_possible() checks the alignment of the encoded
-br_startblock, not of the disk address. This was harmless while atomic
-writes were capped at the greatest power-of-two factor of the group
-size.
+Name the SoC GPIO lines after the nets on the Helios64 Rev1.2
+schematic, so that user space can find a line by name. The auto
+power-on latch (U23, an SN74LVC1G79 flip-flop), for one, has no kernel
+driver: user space sets it at shutdown through AUTO_ON_EN_D and
+AUTO_ON_EN_CLK.
 
-Commit ec8f62cc109a ("xfs: don't limit software atomic writes by the
-group alignment") lifted that cap. The block layer can now fail a
-misaligned write with -EINVAL, and XFS does not fall back to COW.
-Unaligned AGs, such as those made by mkfs.xfs before 6.16, and rtgroups
-made by any version can hit this.
+A line that reaches a named net through a series resistor takes that
+net's name. The SD card lines, whose nets are not named, take the SoC
+pin function, and the two board revision straps are named after the
+schematic's "Board Revision ID" block. Lines that go only to a test
+point or are not connected stay unnamed.
 
-Check the disk address instead.
-
-Fixes: ec8f62cc109a ("xfs: don't limit software atomic writes by the group alignment")
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+Link: https://wiki.kobol.io/helios64/files/schematics/Helios64_Schematics_Rev1.2.pdf
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-The bug needs a group size that is not a multiple of the device's
-atomic write unit max. mkfs.xfs 6.16+ rounds agsize to a multiple
-of it if the device reports one at mkfs time, but never rounds
-rgsize. Before 6.16, a single device of 4 TB or more got an odd
-agsize.
-
-Tested on emulated NVMe with a 64 KiB atomic unit and boundary.
-64 KiB atomic overwrites in AG 1-3 (mkfs.xfs 6.6.0 -d agsize=262142b)
-and rtgroups 1-7 (xfsprogs 7ebfc20eb88e -r rgsize=65534b) failed with
-EINVAL before and used COW after. fstests -g atomicwrites and xfs/838
-(rt) give the same results before and after (generic/773 fails with
-ENOSPC on both).
-
-Changes in v2:
-- Explain why the check was harmless before ec8f62cc109a and which
-  filesystems are affected (Pankaj).
-- Reword the comment: an fsbno is not always a linear disk address
-  (Pankaj).
+Tested on Helios64 with the names added by fdtput to the DTB of an
+Armbian 7.3.4 kernel: gpioinfo lists them, and every line it shows as
+requested by a driver (LEDs, buttons, regulators, beeper, charger, SD
+card detect, Ethernet PHY reset) carries the name of the net it drives
+or reads.
 ---
- fs/xfs/xfs_iomap.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ .../boot/dts/rockchip/rk3399-kobol-helios64.dts    | 74 ++++++++++++++++++++++
+ 1 file changed, 74 insertions(+)
 
-diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-index c3465204b8d..119ff8e4c95 100644
---- a/fs/xfs/xfs_iomap.c
-+++ b/fs/xfs/xfs_iomap.c
-@@ -848,8 +848,10 @@ xfs_bmap_hw_atomic_write_possible(
- 	 * atomic writes are required to be naturally aligned for disk blocks,
- 	 * which ensures that we adhere to block layer rules that we won't
- 	 * straddle any boundary or violate write alignment requirement.
-+	 * Check the disk address: an fsbno is not always a linear disk address.
- 	 */
--	if (!IS_ALIGNED(imap->br_startblock, imap->br_blockcount))
-+	if (!IS_ALIGNED(xfs_fsb_to_db(ip, imap->br_startblock),
-+			XFS_FSB_TO_BB(mp, imap->br_blockcount)))
- 		return false;
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
+index f13ea2df7a30..329116e2074b 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
+@@ -421,6 +421,80 @@ &gmac {
+ 	status = "okay";
+ };
  
- 	/*
++/* Line names follow the Helios64 Rev1.2 schematic */
++&gpio0 {
++	gpio-line-names =
++		/* GPIO0 A0-A7 */
++		"RTC_CLK0_SOC", "SDMMC0_PWR_H", "VCC12V_DCIN_GOOD", "USR1_SWITCH#",
++		"NETW_ACT_LED_ON", "PWR_KEY_L", "PWR_LED_OFF", "SDMMC0_DET_L",
++		/* GPIO0 B0-B5 */
++		"LAN_WAKE#", "EXP16_INT#", "PMIC_INT#", "USB3_ACT_LED_ON",
++		"SYS_GRN_LED_ON", "SYS_RED_LED_ON";
++};
++
++&gpio1 {
++	gpio-line-names =
++		/* GPIO1 A0-A7 */
++		"HDD_A_ON", "HDD_B_ON", "TYPEC0_CC_INT_L", "VCC5V0_TYPEC0_EN",
++		"USB_MUX_HS", "PMIC_SLEEP_H", "OTP_OUT_H", "SOC_SO",
++		/* GPIO1 B0-B7 */
++		"SOC_SI", "SOC_CK", "SOC_CE#", "I2C4_SDA_TYPEC",
++		"I2C4_SCL_TYPEC", "USB_MUX_OE", "GPU_SLEEP_H", "I2C0_SDA_PMIC",
++		/* GPIO1 C0-C7 */
++		"I2C0_SCL_PMIC", "CPU_SLEEP_B_H", "SOC_WP#", "LOG_DVS_PWM",
++		"I2C8_SDA", "I2C8_SCL", "USB3_EN", "USB3LAN_PWR",
++		/* GPIO1 D0 */
++		"PCIE_PWR";
++};
++
++&gpio2 {
++	gpio-line-names =
++		/* GPIO2 A0-A7 */
++		"I2C2_SDA_TEMP_EXP", "I2C2_SCL_TEMP_EXP", "SATA_ERR0", "SATA_ERR1",
++		"SATA_ERR2", "SATA_ERR3", "SATA_ERR4", "I2C7_SDA",
++		/* GPIO2 B0-B7 */
++		"I2C7_SCL", "SPI2_RXD", "SPI2_TXD", "SPI2_CLK",
++		"SPI2_CSN0", "", "", "",
++		/* GPIO2 C0-C7 */
++		"UART0_RX", "UART0_TX", "", "",
++		"SATA_SO_LV", "SATA_SI_LV", "SATA_CK_LV", "SATA_CE#_LV",
++		/* GPIO2 D0-D4 */
++		"SATA_WP#_LV", "PCIE_CLKREQ_L", "", "CHARGER_STATUS#",
++		"PCIE_PERST_L";
++};
++
++&gpio3 {
++	gpio-line-names =
++		/* GPIO3 A0-A7 */
++		"RGMII_TXD2", "RGMII_TXD3", "RGMII_RXD2", "RGMII_RXD3",
++		"RGMII_TXD0", "RGMII_TXD1", "RGMII_RXD0", "RGMII_RXD1",
++		/* GPIO3 B0-B7 */
++		"GMAC_MDC", "RGMII_RXCTL", "", "GMAC_CLK",
++		"RGMII_TXCTL", "GMAC_MDIO", "RGMII_RXC", "GPHY_RST#",
++		/* GPIO3 C0-C7 */
++		"", "RGMII_TXC", "", "",
++		"", "", "", "",
++		/* GPIO3 D0-D7 */
++		"", "", "", "",
++		"", "", "ERR1_B", "ERR1_A";
++};
++
++&gpio4 {
++	gpio-line-names =
++		/* GPIO4 A0-A7 */
++		"", "ERR0_B", "", "",
++		"", "ERR0_A", "", "",
++		/* GPIO4 B0-B7 */
++		"SDMMC0_D0", "SDMMC0_D1", "SDMMC0_D2", "SDMMC0_D3",
++		"SDMMC0_CLKOUT", "SDMMC0_CMD", "", "",
++		/* GPIO4 C0-C7 */
++		"", "", "FAN1_PWM", "UART2DBG_RX",
++		"UART2DBG_TX", "FAN1_SENSE", "FAN2_PWM", "FAN2_SENSE",
++		/* GPIO4 D0-D6 */
++		"SATA_SPI_FLSH", "AUTO_ON_EN_D", "AUTO_ON_EN_CLK", "BUZZER_ON",
++		"SATA_ACT_LED", "BOARD_REV_ID0", "BOARD_REV_ID1";
++};
++
+ &gpu {
+ 	mali-supply = <&vdd_gpu>;
+ 	status = "okay";
 
 ---
-base-commit: 48326a2382d80715475d10ce98734ac65d2d2150
-change-id: 20261110-xfs-hw-atomic-align-0eab6833447a
+base-commit: c3baae5f1a15645cddadcb2b9abddef5df291f59
+change-id: 20261112-helios64-gpio-line-names-cab8814ed12c
 
 Best regards,
 -- 
-Daejun Park <daejun7.park@samsung.com>
+Igor Velkov <iav@iav.lv>
 
