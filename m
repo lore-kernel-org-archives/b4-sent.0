@@ -1,90 +1,85 @@
-From: =?utf-8?q?St=C3=A9phane_Grosjean?= <s.grosjean@peak-system.fr>
-Date: Thu, 12 Nov 2026 11:35:28 +0100
-Subject: [PATCH v2] MAINTAINERS: add entry for PEAK-System CAN drivers
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Date: Thu, 12 Nov 2026 10:44:59 +0000
+Subject: [PATCH] drm/debugfs: Accept "reset" with a trailing newline in
+ edid_override
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261112-new_maintainers-v2-1-794b73ce8685@peak-system.fr>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw6CMBREf4XctTV9hIKu/A9DTIGLVEMhvRUlp
- P9uwbWLWZxk5swKhN4iwTlbweNsyY4ugTxk0PTG3ZHZNjFILrXgvGAO37fBWBdS0BNrZZFLpWr
- NTQ5pNXns7Gc3Xqsf06t+YBM2zdboLYXRL/vlLLbef/ssmGDqVKJGpYUsm8uE5slooYDDsfNQx
- Ri/etExQcUAAAA=
-X-Change-ID: 20261007-new_maintainers-d275233b60a5
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol@kernel.org>, linux-can@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, 
- =?utf-8?q?St=C3=A9phane_Grosjean?= <s.grosjean@peak-system.fr>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794479737; l=2400;
- i=s.grosjean@peak-system.fr; s=20261020; h=from:subject:message-id;
- bh=OB+db2VoIi21gwz8pTexgzVANUMGkfO2rHGDfSfD5rA=;
- b=BFO1K/zjXKNNQZ6aHOr3bbIhTVShLtYDnzTeYuT2rVQ5psBcW94pwOXAjGVHHUA/1v+JIuw9S
- E90kTVgDzeHAOsIiTS/PijrUphG7FIkUJ2neTdD/ox3hbNVvTtr6VLX
-X-Developer-Key: i=s.grosjean@peak-system.fr; a=ed25519;
- pk=bP7QV2zvvAKAfConZlUOGKGEcXL64SNUpVUm++Ai+/c=
-X-Endpoint-Received: by B4 Relay for s.grosjean@peak-system.fr/20261020 with auth_id=1250
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261112-drm-debugfs-edid-reset-v1-1-4cd19d83cd22@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCQAxG4auUrA1kBq3gVcRFO/lbI1glaUUov
+ bujLr/FeysF3BB0alZyvCzsMVWkXUPl2k0j2LSasuQ2pSSsfmdFv4xDMNSUHYGZ5SD7Lktpj5q
+ oxk/HYO/f+Hz5O5b+hjJ/b7RtHyvh3QV6AAAA
+X-Change-ID: 20261110-drm-debugfs-edid-reset-0504a20c67d1
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Jani Nikula <jani.nikula@linux.intel.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794480299; l=2159;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=q9OBm8AG1wALzNkA2iDL4Ckkgs47X7jT9hCbulBfsn4=;
+ b=keagsGyaqUeHySKh+LwDiP92tHC1f78fQ47av3Plpx/nKzMNDn0IEVDiy9T1pC99dh+CH2lM5
+ eHHLirfi9NSBqjuKaVQy9r9IyGuD68thYQjHso7mtgqDOqh70X64/yr
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PEAK-System CAN drivers (peak_canfd, peak_pci, peak_pcmcia and
-peak_usb) are only covered by the generic CAN NETWORK DRIVERS entry, so
-get_maintainer.pl doesn't Cc their author on patches and bug reports
-touching them.
+Writing "reset" to a connector's edid_override debugfs file removes the
+override, but only when exactly those five bytes are written. The
+obvious
 
-Add a dedicated entry. I wrote these drivers and maintain them as part
-of my work at PEAK-System, where I have the hardware and the firmware
-documentation needed to review and test changes. Patches keep going
-through the CAN tree, the entry only makes sure they reach me.
+  echo reset > /sys/kernel/debug/dri/0/HDMI-A-1/edid_override
 
-Also list the PEAK-System Linux support address as a reviewer, so that
-reports keep reaching the company if my own address ever goes stale.
+writes "reset\n", which is handed to drm_edid_override_set() as an EDID
+and rejected with -EINVAL, leaving the override in place. A test
+harness that cleared its override this way kept running on the
+overridden EDID until the next reboot.
 
-Assisted-by: LLM
-Signed-off-by: Stéphane Grosjean <s.grosjean@peak-system.fr>
+Accept a single trailing newline as well. An EDID is at least 128
+bytes, so a six-byte "reset\n" can't be a valid override.
+
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-v1 was only sent to LKML, because get_maintainer.pl returns nothing
-else for a patch touching MAINTAINERS alone. Sorry for that; this
-version is addressed to the CAN maintainers and list.
----
-Changes in v2:
-- Send to the CAN maintainers and linux-can (v1 only went to LKML).
-- List socketcan@peak-system.fr as R: instead of M:, since it is a
-  company role address kept for continuity.
-- Add the peak_usb sysfs ABI documentation file.
-- Reword the commit message to explain why the entry is needed.
-- Link to v1: https://patch.msgid.link/20261007-new_maintainers-v1-1-398e6e36128c@peak-system.fr
----
- MAINTAINERS | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+Found and tested on an Orange Pi 5 (RK3588S), with this change on a 7.3
+based kernel: with the HDMI connector's own EDID written to
+edid_override, "echo reset > edid_override" succeeds and edid_override
+reads back empty, and "printf reset" (no newline) still succeeds. On
+drm-misc-next the patch is build-tested only (arm64 and x86_64, W=1).
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 09713dc4c6a7..567358d57d79 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -21780,6 +21780,18 @@ PDS DSC VIRTIO DATA PATH ACCELERATOR
- R:	Brett Creeley <brett.creeley@amd.com>
- F:	drivers/vdpa/pds/
+This patch was developed with Claude (Anthropic) as a coding assistant:
+it wrote the code and the commit message, and I reviewed and tested it
+as described above.
+---
+ drivers/gpu/drm/drm_debugfs.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/drm_debugfs.c b/drivers/gpu/drm/drm_debugfs.c
+index a72f9723d3a9..3c6290457fa3 100644
+--- a/drivers/gpu/drm/drm_debugfs.c
++++ b/drivers/gpu/drm/drm_debugfs.c
+@@ -569,7 +569,12 @@ static ssize_t edid_write(struct file *file, const char __user *ubuf,
+ 	if (IS_ERR(buf))
+ 		return PTR_ERR(buf);
  
-+PEAK-SYSTEM CAN DRIVERS
-+M:	Stéphane Grosjean <s.grosjean@peak-system.fr>
-+R:	PEAK-System Linux support <socketcan@peak-system.fr>
-+L:	linux-can@vger.kernel.org
-+S:	Supported
-+F:	Documentation/ABI/testing/sysfs-class-net-peak_usb
-+F:	drivers/net/can/peak_canfd/
-+F:	drivers/net/can/sja1000/peak_pci.c
-+F:	drivers/net/can/sja1000/peak_pcmcia.c
-+F:	drivers/net/can/usb/peak_usb/
-+F:	include/linux/can/dev/peak_canfd.h
-+
- PECI HARDWARE MONITORING DRIVERS
- M:	Iwona Winiarska <iwona.winiarska@intel.com>
- L:	linux-hwmon@vger.kernel.org
+-	if (len == 5 && !strncmp(buf, "reset", 5))
++	/*
++	 * An EDID is at least 128 bytes, so "reset" with the trailing newline
++	 * that "echo reset" adds can't be mistaken for one.
++	 */
++	if ((len == 5 || (len == 6 && buf[5] == '\n')) &&
++	    !strncmp(buf, "reset", 5))
+ 		ret = drm_edid_override_reset(connector);
+ 	else
+ 		ret = drm_edid_override_set(connector, buf, len);
 
 ---
-base-commit: 647b81ddefc6364290e67bf33c89d54971f8995e
-change-id: 20261007-new_maintainers-d275233b60a5
+base-commit: cb0a63f0c96e8ecb90199eeb99cc2a7fcfa703d4
+change-id: 20261110-drm-debugfs-edid-reset-0504a20c67d1
 
 Best regards,
--- 
-Stéphane Grosjean <s.grosjean@peak-system.fr>
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
