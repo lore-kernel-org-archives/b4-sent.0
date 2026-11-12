@@ -1,11 +1,10 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:20:22 +0000
-Subject: [PATCH v2 1/4] dt-bindings: iommu: arm,smmu-v3: Allow a clock and
- a reset
+Date: Thu, 12 Nov 2026 08:20:23 +0000
+Subject: [PATCH v2 2/4] iommu/arm-smmu-v3: Enable an optional clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-smmu-v3-pcie-pd-v2-1-3a77bbb6b2c4@gmail.com>
+Message-Id: <20261112-smmu-v3-pcie-pd-v2-2-3a77bbb6b2c4@gmail.com>
 References: <20261112-smmu-v3-pcie-pd-v2-0-3a77bbb6b2c4@gmail.com>
 In-Reply-To: <20261112-smmu-v3-pcie-pd-v2-0-3a77bbb6b2c4@gmail.com>
 To: Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
@@ -22,57 +21,69 @@ Cc: Pranjal Shrivastava <praan@google.com>,
  Finley Xiao <finley.xiao@rock-chips.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794471621; l=1761;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794471621; l=2032;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=JzTX29/TpR9nxeGBdiZSgKclV4i70sBR/P9CmAq8ikE=;
- b=meanwe78j5XeCWZ+lc3cXV+gk13lyQBfIrhT/Usf6uvGl6Qs3NxLqmQXwoOl4CPLYS3YZIBO6
- bAOb6gHoUQuA6jkHrGNmy7DV00xKs/7FY55AnihnTg3kBZxeuBP4R/9
+ bh=sJ/1T4TQH7HIakh+cuflQkZ6tzYIS2gsfdSYOl7hZ+Y=;
+ b=H500ud9qPCPMJSugqUltI0yK9Gocnq+zYWonE3swUcr625R3P4UqW9uqkvDsFZ9wstUfIZel9
+ lJ9xjQERFFsDyMYqo1ri0FLsS/7vRZ0Bb/NJBPbvfQd1PYHhogpB/JN
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some SoCs feed the SMMUv3 from a clock that the OS controls. On the
-Rockchip RK3588 the MMU-600 for PCIe runs from ACLK_MMU_PCIE, whose only
-other consumers are the PCIe controllers. When no PCIe controller is
-enabled, the clock framework gates it as unused, and the SMMU can no
-longer be accessed. The same SMMU also has a reset line in the CRU,
-SRST_A_MMU_PCIE.
+On some platforms the SMMU's clock is controlled by the OS, and without a
+consumer the clock framework gates it as unused late in boot. Any later
+register access, for example the CR0 write in the shutdown path, then
+hangs. This happens on the RK3588 when no PCIe controller keeps the PCIe
+MMU-600 clock running.
 
-Allow a single clock and a single reset, so that both can be described.
-The architecture defines no clock or reset inputs; the MMU-600 TRM lists
-one clock and one reset signal, and the one integration that needs this
-has one of each. An implementation with more clocks or resets can add
-them with names and a specific compatible.
+Get and enable the clock described in the firmware node, if there is
+one, and keep it enabled while the driver is bound. Do it first in
+probe: the firmware probe may take a reference on the Tegra CMDQV device
+that only arm_smmu_impl_probe() releases, so a failure (or deferral)
+between the two would leak it. Nodes without a clock and ACPI systems
+are not affected.
 
-Link: https://support.arm.com/documentation/100310/0202/Signal-descriptions/Clock-and-reset-signals
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml | 11 +++++++++++
+ drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c | 11 +++++++++++
  1 file changed, 11 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml b/Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml
-index 3c044e4f03d4..29b81b4fb650 100644
---- a/Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml
-+++ b/Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml
-@@ -63,6 +63,17 @@ properties:
+diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
+index 6d4520c47308..d3f42316b0d6 100644
+--- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
++++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
+@@ -12,6 +12,7 @@
+ #include <linux/acpi.h>
+ #include <linux/acpi_iort.h>
+ #include <linux/bitops.h>
++#include <linux/clk.h>
+ #include <linux/crash_dump.h>
+ #include <linux/delay.h>
+ #include <linux/err.h>
+@@ -5786,12 +5787,22 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
+ 	resource_size_t ioaddr;
+ 	struct arm_smmu_device *smmu;
+ 	struct device *dev = &pdev->dev;
++	struct clk *clk;
  
-   msi-parent: true
+ 	smmu = devm_kzalloc(dev, sizeof(*smmu), GFP_KERNEL);
+ 	if (!smmu)
+ 		return -ENOMEM;
+ 	smmu->dev = dev;
  
-+  clocks:
-+    maxItems: 1
-+    description:
-+      Clock of the SMMU's register and memory interfaces, on SoCs where the
-+      OS has to keep it running.
++	/*
++	 * Before the firmware probe: it may take a reference on the Tegra
++	 * CMDQV device that only arm_smmu_impl_probe() releases.
++	 */
++	clk = devm_clk_get_optional_enabled(dev, NULL);
++	if (IS_ERR(clk))
++		return dev_err_probe(dev, PTR_ERR(clk),
++				     "failed to enable clock\n");
 +
-+  resets:
-+    maxItems: 1
-+    description:
-+      Reset of the SMMU, on SoCs where it is controlled by the OS.
-+
-   nvidia,cmdqv:
-     description: |
-       A phandle to its pairing CMDQV extension for an implementation on NVIDIA
+ 	if (dev->of_node) {
+ 		ret = arm_smmu_device_dt_probe(pdev, smmu);
+ 	} else {
 
 -- 
 2.55.0
