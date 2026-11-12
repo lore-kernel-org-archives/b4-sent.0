@@ -1,65 +1,91 @@
-From: Xincheng Ji <jixincheng@ultrarisc.com>
-Date: Thu, 12 Nov 2026 10:01:07 +0800
-Subject: [PATCH v8 8/8] MAINTAINERS: Update UltraRISC platform maintainer
- and tree
+From: Zi-Hao Huang <zi-hao.huang@mediatek.com>
+Date: Thu, 12 Nov 2026 10:16:45 +0800
+Subject: [PATCH] block: fix PF_BLOCK_TS/current->plug ordering in
+ blk_finish_plug()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-ultrarisc-dts-v8-8-14fa0834cac4@ultrarisc.com>
-References: <20261112-ultrarisc-dts-v8-0-14fa0834cac4@ultrarisc.com>
-In-Reply-To: <20261112-ultrarisc-dts-v8-0-14fa0834cac4@ultrarisc.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>, Andrew Lunn <andrew@lunn.ch>, 
- Jia Wang <wangjia@ultrarisc.com>, Xincheng Ji <jixincheng@ultrarisc.com>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, 
- Thomas Gleixner <tglx@kernel.org>, 
- Samuel Holland <samuel.holland@sifive.com>, 
- Anup Patel <anup@brainfault.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@sifive.com>, Conor Dooley <conor@kernel.org>, 
- linux-riscv@lists.infradead.org
-X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794448869; l=1040;
- i=jixincheng@ultrarisc.com; s=20260922; h=from:subject:message-id;
- bh=zzbzfVX2pHKjlzmFHTGwjk6Q4jGYy9Bm9HpLwCsOw8U=;
- b=2iQS3anfVEQo5/QZ4GHyJmpaKBXwQ5QlnDN75lLOfZURdhnA3hll1agaX7JCqLgox4KoiwCVN
- LftIjGMayl2CLv2xDGPW05MkMKn/d1R9nsZaeHBU2RggGCQcqEng9D8
-X-Developer-Key: i=jixincheng@ultrarisc.com; a=ed25519;
- pk=n848dcS5D6g0vLad/rjp4Gf/1eedTe1a3pYUrkt2260=
-X-Endpoint-Received: by B4 Relay for jixincheng@ultrarisc.com/20260922 with auth_id=1046
+Message-Id: <20261112-blk-plug-fix-v1-1-7fa2a6215b8d@mediatek.com>
+X-B4-Tracking: v=1; b=H4sIAIwh9WoC/x2MQQqAIBAAvyJ7bkE3COkr0SFrsyWpUIpA/HvSc
+ QZmMiSOwgl6lSHyI0nOo4JpFMzbdHhGWSoDaeqMMYQu7HiF2+MqL666s04Ttc5qqMkVuep/N4y
+ lfLI0MNNeAAAA
+X-Change-ID: 20261112-blk-plug-fix-f068b0223b80
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Zi-Hao Huang <zi-hao.huang@mediatek.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794449870; l=2373;
+ i=zi-hao.huang@mediatek.com; s=20261112; h=from:subject:message-id;
+ bh=DSlAJhYD9b51DNkmYc4nFsWMsjAUVzpJL8gmeV8NUTI=;
+ b=m+EwD6l34QlcaXVjnEekIZcWqqZn31q4Zy44HLlVzHKLacaYxyRPGRbpj9clW1DitiCgSrHUr
+ HC7yeFeW3cPCofwB22Q+zt77gqTdpjrtb7SB2b0MLxpB+9+y9xEctQk
+X-Developer-Key: i=zi-hao.huang@mediatek.com; a=ed25519;
+ pk=tbMIVegYSSBtz5MaQSUCX9RJO88MA/AI5cbmQKbaoIc=
+X-Endpoint-Received: by B4 Relay for zi-hao.huang@mediatek.com/20261112 with auth_id=1493
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Jia Wang has left UltraRISC. Take over maintenance of the UltraRISC
-platform and use Conor Dooley's tree for platform changes during the
-handover, as requested by Conor.
+blk_plug_invalidate_ts() runs on context switch and assumes that
+PF_BLOCK_TS set implies current->plug != NULL. blk_finish_plug() breaks
+this: it clears PF_BLOCK_TS in __blk_flush_plug() and then sets
+current->plug = NULL, with plain accesses.
 
-Link: https://lore.kernel.org/all/20261110-amused-strobe-d6cf2bf24861@spud/
-Signed-off-by: Xincheng Ji <jixincheng@ultrarisc.com>
+clang inlines __blk_flush_plug() and emits the store to current->plug
+before the store that clears the flag (arm64, Android common kernel):
+
+  ldr  w8, [x20, #0x44]     // w8 = current->flags
+  str  xzr, [x20, #0xaa8]   // current->plug = NULL
+  and  w8, w8, #0xdfffffff  // w8 &= ~PF_BLOCK_TS  <- preempted here
+  str  w8, [x20, #0x44]     // current->flags = w8
+
+If an interrupt hits there and preempts the task, the task is later
+scheduled back in with PF_BLOCK_TS set and no plug, and
+blk_plug_invalidate_ts() writes to NULL + 0x20 (plug->cur_ktime):
+
+  Unable to handle kernel NULL pointer dereference at 0000000000000020
+  pc : __schedule+0x108c
+   preempt_schedule_irq+0x48/0xa8
+   el1_interrupt+0x48/0x8c
+   blk_finish_plug+0x6c/0x18c
+   ext4_do_writepages+0xd3c/0xef8
+
+The window is only a few instructions wide, so this is rare. It was hit
+at cycle 127 of a warm reboot stress test.
+
+Add a compiler barrier so the flag is cleared before the plug is
+dropped. A compiler barrier is enough because the race is with
+preemption of the same task on the same CPU. With the barrier, the same
+build stores current->flags before current->plug.
+
+Fixes: 06b23f92af87 ("block: update cached timestamp post schedule/preemption")
+Cc: stable@vger.kernel.org # v6.9+
+Signed-off-by: Zi-Hao Huang <zi-hao.huang@mediatek.com>
 ---
- MAINTAINERS | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ block/blk-core.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index a97926dadba4..67bf01e20560 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -23640,10 +23640,10 @@ F:	include/dt-bindings/reset/thead,th1520-reset.h
- F:	include/linux/firmware/thead/thead,th1520-aon.h
- 
- RISC-V ULTRARISC SoC SUPPORT
--M:	Jia Wang <wangjia@ultrarisc.com>
-+M:	Xincheng Ji <jixincheng@ultrarisc.com>
- L:	linux-riscv@lists.infradead.org
- S:	Supported
--T:	git https://github.com/ultrarisc/linux.git
-+T:	git https://git.kernel.org/pub/scm/linux/kernel/git/conor/linux.git/
- F:	Documentation/devicetree/bindings/riscv/ultrarisc.yaml
- F:	arch/riscv/boot/dts/ultrarisc/
- 
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 8836c7028568..ad2a8e4fe7a8 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -1299,6 +1299,12 @@ void blk_finish_plug(struct blk_plug *plug)
+ {
+ 	if (plug == current->plug) {
+ 		__blk_flush_plug(plug, false);
++		/*
++		 * blk_plug_invalidate_ts() runs on context switch and expects a
++		 * plug whenever PF_BLOCK_TS is set, so clear the flag (done in
++		 * __blk_flush_plug()) before dropping the plug.
++		 */
++		barrier();
+ 		current->plug = NULL;
+ 	}
+ }
 
+---
+base-commit: 067c5c24cef23d913b67eaaf71ae67e7169a6620
+change-id: 20261112-blk-plug-fix-f068b0223b80
+
+Best regards,
 -- 
-2.34.1
+Zi-Hao Huang <zi-hao.huang@mediatek.com>
 
