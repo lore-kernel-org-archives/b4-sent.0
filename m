@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:31:25 +0000
-Subject: [PATCH v2 3/7] media: verisilicon: Keep the encoder coded size in
- sync with OUTPUT
+Date: Thu, 12 Nov 2026 08:31:26 +0000
+Subject: [PATCH v2 4/7] media: verisilicon: Refuse JPEG encode jobs with
+ inconsistent geometry
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-hantro-jpeg-enc-fixes-v2-3-de03e643c75d@gmail.com>
+Message-Id: <20261112-hantro-jpeg-enc-fixes-v2-4-de03e643c75d@gmail.com>
 References: <20261112-hantro-jpeg-enc-fixes-v2-0-de03e643c75d@gmail.com>
 In-Reply-To: <20261112-hantro-jpeg-enc-fixes-v2-0-de03e643c75d@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -22,106 +22,159 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  Sergei Khomenkov <shomenkow@gmail.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794472282; l=3589;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794472282; l=5619;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=OJEFqjdZC2EJLo/FyCqrvkQ+A2FOxXjkcSLl5BADKq4=;
- b=3mR9MSso6c0lCPdo4Pm1XntRNu/w47veV1nzKGxRCeSVTaIrZCaTkXVGh8v0BXujR3b5NTRWK
- SwD7iMBGyhmAuiQj7iJIe2l8Id92B6LUIy1q25J9Iy5KtB5q9XQtXIA
+ bh=HnY0cQme+yKx81BYUIEIgWDelP7AzCPV47XBmGayUB8=;
+ b=MWG0AkNPWMTpprRQThbzgpKVzGfQKzFhVLMfc8fXUgIYDHehJCg0HG6jIXvFZMtmPhSK7rWXu
+ txCtJCza+2SAV+jyLZg8mqk+leAeqMR1OlaaLoVre8KHI6Z/ZAFsdz5
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the encoder, setting the CAPTURE (coded) format resets the OUTPUT
-(raw) format to the same size, but setting the OUTPUT format never
-updates the CAPTURE format. Following the order mandated by the
-stateful encoder specification (CAPTURE first, then OUTPUT) therefore
-leaves the coded size at whatever it was before, e.g. the 96x32
-default:
+The JPEG encoders program the hardware with the macroblock count of the
+OUTPUT format and treat the difference between the OUTPUT and CAPTURE
+sizes as the crop inside the last macroblock, which is written into
+narrow register fields. They also write the JPEG header into the
+CAPTURE buffer without checking its size.
 
-  v4l2-ctl --set-fmt-video-out=width=1920,height=1080,pixelformat=NM12 \
-           --set-fmt-video=pixelformat=JPEG --stream-out-mmap ...
+When the two formats disagree beyond that, as could happen before the
+coded size was kept in sync with the OUTPUT format, the encoder on
+RK3588 generated IOMMU page faults close to address 0, timed out, and
+left the IOMMU unable to stall, requiring a reboot.
 
-ends up with a 1920x1088 OUTPUT format and a 96x32 CAPTURE format with
-a 96x32 sized buffer. The JPEG encoders treat the difference between
-the two as the crop inside the last macroblock, which is expected to be
-below 16 pixels, and program the hardware with the full OUTPUT frame
-size. On RK3588 this results in IOMMU page faults, a frame processing
-timeout and a wedged encoder.
+The format ioctls are now expected to keep the formats consistent, but
+as getting this wrong takes down the whole encoder, check the geometry
+and the CAPTURE buffer size before programming the hardware and fail
+the job instead.
 
-The specification says that the CAPTURE width and height are set by the
-encoder from the OUTPUT format and selection rectangles, and that
-setting the OUTPUT format resets the crop rectangle to the full frame.
-Do that in hantro_set_fmt_out(): derive the coded format from the new
-OUTPUT size, re-applying the CAPTURE constraints, including the minimum
-sizeimage. As the coded format can now change from an OUTPUT S_FMT,
-return -EBUSY if this would require bigger CAPTURE buffers than the
-ones already allocated.
-
-With this, the coded size can only differ from the OUTPUT size by the
-crop set through VIDIOC_S_SELECTION, which is restricted to the last
-macroblock.
-
-Fixes: 953aaa1492c5 ("media: rockchip/vpu: Prepare things to support decoders")
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/platform/verisilicon/hantro_v4l2.c | 26 ++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+ .../platform/verisilicon/hantro_h1_jpeg_enc.c      |  9 ++++++
+ drivers/media/platform/verisilicon/hantro_jpeg.c   | 37 ++++++++++++++++++++++
+ drivers/media/platform/verisilicon/hantro_jpeg.h   |  5 +++
+ .../verisilicon/rockchip_vpu2_hw_jpeg_enc.c        |  9 ++++++
+ 4 files changed, 60 insertions(+)
 
-diff --git a/drivers/media/platform/verisilicon/hantro_v4l2.c b/drivers/media/platform/verisilicon/hantro_v4l2.c
-index c4e36a79eecc..e9d91504fab2 100644
---- a/drivers/media/platform/verisilicon/hantro_v4l2.c
-+++ b/drivers/media/platform/verisilicon/hantro_v4l2.c
-@@ -542,6 +542,7 @@ static int hantro_set_fmt_out(struct hantro_ctx *ctx,
- 			      struct v4l2_pix_format_mplane *pix_mp,
- 			      bool need_postproc)
- {
-+	struct v4l2_pix_format_mplane coded_fmt;
- 	struct vb2_queue *vq;
- 	int ret;
+diff --git a/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c b/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c
+index 86cc1a07026f..b2f97f45e0ac 100644
+--- a/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c
++++ b/drivers/media/platform/verisilicon/hantro_h1_jpeg_enc.c
+@@ -109,10 +109,19 @@ int hantro_h1_jpeg_enc_run(struct hantro_ctx *ctx)
+ 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
+ 	struct hantro_jpeg_ctx jpeg_ctx;
+ 	u32 reg;
++	int ret;
  
-@@ -561,16 +562,41 @@ static int hantro_set_fmt_out(struct hantro_ctx *ctx,
- 			return -EBUSY;
- 		}
- 	} else {
-+		struct vb2_queue *peer_vq;
-+
- 		/*
- 		 * The encoder doesn't admit a format change if
- 		 * there are OUTPUT buffers allocated.
- 		 */
- 		if (vb2_is_busy(vq))
- 			return -EBUSY;
-+
-+		/*
-+		 * Setting the OUTPUT format resets the crop rectangle to
-+		 * the full frame, so the coded size becomes the OUTPUT
-+		 * size. Refuse the change if it would need bigger
-+		 * CAPTURE buffers than the ones already allocated.
-+		 */
-+		coded_fmt = ctx->dst_fmt;
-+		coded_fmt.width = pix_mp->width;
-+		coded_fmt.height = pix_mp->height;
-+		ret = hantro_try_fmt(ctx, &coded_fmt,
-+				     V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
-+		if (ret)
-+			return ret;
-+
-+		peer_vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx,
-+					  V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
-+		if (vb2_is_busy(peer_vq) &&
-+		    coded_fmt.plane_fmt[0].sizeimage >
-+		    ctx->dst_fmt.plane_fmt[0].sizeimage)
-+			return -EBUSY;
- 	}
+ 	src_buf = hantro_get_src_buf(ctx);
+ 	dst_buf = hantro_get_dst_buf(ctx);
  
- 	ctx->vpu_src_fmt = hantro_find_format(ctx, pix_mp->pixelformat);
- 	ctx->src_fmt = *pix_mp;
-+	if (ctx->is_encoder)
-+		ctx->dst_fmt = coded_fmt;
++	ret = hantro_jpeg_enc_check_job(ctx, &dst_buf->vb2_buf);
++	if (ret) {
++		/* Complete the controls of the request, the job is not run */
++		v4l2_ctrl_request_complete(src_buf->vb2_buf.req_obj.req,
++					   &ctx->ctrl_handler);
++		return ret;
++	}
++
+ 	hantro_start_prepare_run(ctx);
  
- 	/*
- 	 * Current raw format might have become invalid with newly
+ 	memset(&jpeg_ctx, 0, sizeof(jpeg_ctx));
+diff --git a/drivers/media/platform/verisilicon/hantro_jpeg.c b/drivers/media/platform/verisilicon/hantro_jpeg.c
+index 13a60638e43f..2f2afd632c1b 100644
+--- a/drivers/media/platform/verisilicon/hantro_jpeg.c
++++ b/drivers/media/platform/verisilicon/hantro_jpeg.c
+@@ -14,6 +14,7 @@
+ #include <media/v4l2-jpeg.h>
+ #include "hantro_jpeg.h"
+ #include "hantro.h"
++#include "hantro_hw.h"
+ 
+ #define LUMA_QUANT_OFF		25
+ #define CHROMA_QUANT_OFF	90
+@@ -243,3 +244,39 @@ void hantro_jpeg_header_assemble(struct hantro_jpeg_ctx *ctx)
+ 
+ 	jpeg_set_quality(ctx);
+ }
++
++/*
++ * Check that the formats describe a frame the JPEG encoders can be
++ * programmed with: the coded size may only crop the OUTPUT frame inside
++ * the right-most and bottom-most macroblocks, and the CAPTURE buffer
++ * must have room for the header and some payload. The V4L2 ioctls are
++ * expected to guarantee this, but programming the hardware with
++ * anything else makes it access memory outside the buffers, so refuse
++ * the job instead.
++ */
++int hantro_jpeg_enc_check_job(struct hantro_ctx *ctx,
++			      struct vb2_buffer *dst_buf)
++{
++	const struct v4l2_pix_format_mplane *src = &ctx->src_fmt;
++	const struct v4l2_pix_format_mplane *dst = &ctx->dst_fmt;
++
++	if (!dst->width || !dst->height ||
++	    !IS_ALIGNED(src->width, MB_DIM) ||
++	    !IS_ALIGNED(src->height, MB_DIM) ||
++	    dst->width > src->width || dst->height > src->height ||
++	    src->width - dst->width >= MB_DIM ||
++	    src->height - dst->height >= MB_DIM ||
++	    !IS_ALIGNED(src->width - dst->width, 4)) {
++		vpu_err("inconsistent geometry: OUTPUT %ux%u, CAPTURE %ux%u\n",
++			src->width, src->height, dst->width, dst->height);
++		return -EINVAL;
++	}
++
++	if (vb2_plane_size(dst_buf, 0) <= ctx->vpu_dst_fmt->header_size) {
++		vpu_err("CAPTURE buffer too small: %lu bytes\n",
++			vb2_plane_size(dst_buf, 0));
++		return -EINVAL;
++	}
++
++	return 0;
++}
+diff --git a/drivers/media/platform/verisilicon/hantro_jpeg.h b/drivers/media/platform/verisilicon/hantro_jpeg.h
+index 0b49d0b82caa..296ad1e821c7 100644
+--- a/drivers/media/platform/verisilicon/hantro_jpeg.h
++++ b/drivers/media/platform/verisilicon/hantro_jpeg.h
+@@ -1,5 +1,8 @@
+ /* SPDX-License-Identifier: GPL-2.0+ */
+ 
++struct hantro_ctx;
++struct vb2_buffer;
++
+ #define JPEG_HEADER_SIZE	624
+ #define JPEG_QUANT_SIZE		64
+ 
+@@ -13,3 +16,5 @@ struct hantro_jpeg_ctx {
+ };
+ 
+ void hantro_jpeg_header_assemble(struct hantro_jpeg_ctx *ctx);
++int hantro_jpeg_enc_check_job(struct hantro_ctx *ctx,
++			      struct vb2_buffer *dst_buf);
+diff --git a/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c b/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c
+index 61621b1be8a2..c7a1323506f5 100644
+--- a/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c
++++ b/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c
+@@ -135,10 +135,19 @@ int rockchip_vpu2_jpeg_enc_run(struct hantro_ctx *ctx)
+ 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
+ 	struct hantro_jpeg_ctx jpeg_ctx;
+ 	u32 reg;
++	int ret;
+ 
+ 	src_buf = hantro_get_src_buf(ctx);
+ 	dst_buf = hantro_get_dst_buf(ctx);
+ 
++	ret = hantro_jpeg_enc_check_job(ctx, &dst_buf->vb2_buf);
++	if (ret) {
++		/* Complete the controls of the request, the job is not run */
++		v4l2_ctrl_request_complete(src_buf->vb2_buf.req_obj.req,
++					   &ctx->ctrl_handler);
++		return ret;
++	}
++
+ 	hantro_start_prepare_run(ctx);
+ 
+ 	memset(&jpeg_ctx, 0, sizeof(jpeg_ctx));
 
 -- 
 2.55.0
