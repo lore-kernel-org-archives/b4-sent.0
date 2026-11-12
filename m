@@ -1,23 +1,23 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Date: Thu, 12 Nov 2026 12:58:09 +0900
-Subject: [PATCH] ovl: bump the impure dir version when linking a file with
- origin
+Date: Thu, 12 Nov 2026 12:58:15 +0900
+Subject: [PATCH] overlay: test d_ino of hard links in an impure dir
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-ovl-link-impure-v1-1-7804905610a9@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAFA59WoC/x3MQQqAIBBA0avErBtopES6SrSInGqoVJQkiO6et
- HyL/x9IHIUT9NUDkbMk8a6A6grmbXIro9hiUI3SRKTQ5wMPcTvKGa7IaLRqDTXUaWugVCHyIvd
- /HMb3/QAmDAOQYQAAAA==
-To: Miklos Szeredi <miklos@szeredi.hu>, Amir Goldstein <amir73il@gmail.com>
-Cc: linux-unionfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sashiko <sashiko-bot@kernel.org>, Daejun Park <daejun7.park@samsung.com>
+Message-Id: <20261112-ovl013-hlink-v1-1-4bf8f44050e9@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAFY59WoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0Mj3fyyHANDY92MnMy8bF3z5DRzk0Rzc9MUI2MloJaCotS0zAqwcdG
+ xtbUAmgg6GV4AAAA=
+To: fstests@vger.kernel.org
+Cc: Zorro Lang <zlang@kernel.org>, Amir Goldstein <amir73il@gmail.com>, 
+ Miklos Szeredi <miklos@szeredi.hu>, linux-unionfs@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794455888; l=4013;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794455894; l=3144;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=KL4nutV0WdP0jvfIHdlIIHren54/dSp9jeM8NnkBbQ8=;
- b=4tIZe/ic11x6dFKJ6OaClDWqN40yI94UC+AbRPlyd3ElduWhwW/8/ITGrDjl7U7/2I/k/o0bf
- yzNoRM2imq6Ac29GzZYFO6Xt3X3KzDu8LpYdGUHPWFAnTxeiPmJ+GhH
+ bh=plEjgCid8fULCglbzGD9W9G0YpAuKpPG535Rx0K4cHg=;
+ b=BNtS5aXvEsUM7uuXY9t2ozHIW284VzT+V96eupm58pb/Xld0SobXUpDoOExFLiP5k6uCqw6A3
+ jT4lelpus3/B0oV9drObKKupqWxN2Oms6zXJTaEfPDrp63VeadfyZRi
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
@@ -25,104 +25,100 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Linking a file with copy up origin into a non-merge impure dir does
 not bump the dir version. readdir then reuses the impure dir cache
-built before the link. It reports the upper inode number as d_ino of
-the new link, not st_ino.
+built before the link. The new link is not in that cache. readdir
+reports its upper inode number as d_ino instead of st_ino.
 
-Pass whether the linked file has an origin to ovl_dir_modified(), as
-rename and unlink do.
+The test builds the cache, then links two files with origin into the
+dir: one from the dir itself and one from the overlay root. It checks
+that readdir finds each new link by its st_ino.
 
-Fixes: 4edb83bb1041 ("ovl: constant d_ino for non-merge dirs")
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://sashiko.dev/#/bug/linux-98f207b6-3936-48e9-a40f-88f20be4db7b
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Tested on ext4 and xfs with default overlay options: the new fstests
-test overlay/013 fails without this patch and passes with it. So does
-a script that puts a whiteout in a non-merge upper dir before mount
-and links over it (ovl_create_over_whiteout()). Apart from
-overlay/013, only 079, 085 and 088 fail in overlay/auto on ovl-fixes,
-with and without this patch.
+On the overlayfs ovl-fixes branch (0d5e729c515f) with default overlay
+mount options, the test fails in 3 of 3 runs on ext4 and on xfs. With
+the kernel patch "ovl: bump the impure dir version when linking a file
+with origin", it passes in 3 of 3 runs on each.
 ---
- fs/overlayfs/dir.c | 20 +++++++++++---------
- 1 file changed, 11 insertions(+), 9 deletions(-)
+ tests/overlay/013     | 58 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/overlay/013.out |  2 ++
+ 2 files changed, 60 insertions(+)
 
-diff --git a/fs/overlayfs/dir.c b/fs/overlayfs/dir.c
-index e0a164e22d67..8fec18dc5fc7 100644
---- a/fs/overlayfs/dir.c
-+++ b/fs/overlayfs/dir.c
-@@ -368,7 +368,7 @@ static bool ovl_type_origin(struct dentry *dentry)
- }
- 
- static int ovl_create_upper(struct dentry *dentry, struct inode *inode,
--			    struct ovl_cattr *attr)
-+			    struct ovl_cattr *attr, bool origin)
- {
- 	struct ovl_fs *ofs = OVL_FS(dentry->d_sb);
- 	struct dentry *upperdir = ovl_dentry_upper(dentry->d_parent);
-@@ -393,7 +393,7 @@ static int ovl_create_upper(struct dentry *dentry, struct inode *inode,
- 		ovl_set_opaque(dentry, newdentry);
- 	}
- 
--	ovl_dir_modified(dentry->d_parent, false);
-+	ovl_dir_modified(dentry->d_parent, origin);
- 	err = ovl_instantiate(dentry, inode, newdentry, !!attr->hardlink, NULL);
- 	if (err)
- 		goto out_cleanup;
-@@ -491,7 +491,7 @@ static int ovl_set_upper_acl(struct ovl_fs *ofs, struct dentry *upperdentry,
- }
- 
- static int ovl_create_over_whiteout(struct dentry *dentry, struct inode *inode,
--				    struct ovl_cattr *cattr)
-+				    struct ovl_cattr *cattr, bool origin)
- {
- 	struct ovl_fs *ofs = OVL_FS(dentry->d_sb);
- 	struct dentry *workdir = ovl_workdir(dentry);
-@@ -582,7 +582,7 @@ static int ovl_create_over_whiteout(struct dentry *dentry, struct inode *inode,
- 		if (err)
- 			goto out_cleanup_unlocked;
- 	}
--	ovl_dir_modified(dentry->d_parent, false);
-+	ovl_dir_modified(dentry->d_parent, origin);
- 	err = ovl_instantiate(dentry, inode, newdentry, hardlink, NULL);
- 	if (err) {
- 		ovl_cleanup(ofs, upperdir, newdentry);
-@@ -647,12 +647,12 @@ DEFINE_CLASS(ovl_override_creator_creds,
- 
- static int ovl_create_handle_whiteouts(struct dentry *dentry,
- 				       struct inode *inode,
--				       struct ovl_cattr *attr)
-+				       struct ovl_cattr *attr, bool origin)
- {
- 	if (!ovl_dentry_is_whiteout(dentry))
--		return ovl_create_upper(dentry, inode, attr);
-+		return ovl_create_upper(dentry, inode, attr, origin);
- 
--	return ovl_create_over_whiteout(dentry, inode, attr);
-+	return ovl_create_over_whiteout(dentry, inode, attr, origin);
- }
- 
- static int ovl_create_or_link(struct dentry *dentry, struct inode *inode,
-@@ -687,12 +687,14 @@ static int ovl_create_or_link(struct dentry *dentry, struct inode *inode,
- 		 */
- 
- 		if (attr->hardlink)
--			return ovl_create_handle_whiteouts(dentry, inode, attr);
-+			return ovl_create_handle_whiteouts(dentry, inode, attr,
-+							   origin);
- 
- 		scoped_class(ovl_override_creator_creds, cred, original_creds, dentry, inode, attr->mode) {
- 			if (IS_ERR(cred))
- 				return PTR_ERR(cred);
--			return ovl_create_handle_whiteouts(dentry, inode, attr);
-+			return ovl_create_handle_whiteouts(dentry, inode, attr,
-+							   origin);
- 		}
- 	}
- 	return err;
+diff --git a/tests/overlay/013 b/tests/overlay/013
+new file mode 100755
+index 00000000..bc65076c
+--- /dev/null
++++ b/tests/overlay/013
+@@ -0,0 +1,58 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Copyright (c) 2026 Samsung Electronics. All Rights Reserved.
++#
++# FS QA Test 013
++#
++# Test consistent d_ino of hard links in an impure dir.
++#
++# Overlayfs caches the d_ino of the entries with a copy up origin in a
++# non-merge impure dir. Linking a file with copy up origin into the dir
++# must invalidate that cache, so that readdir reports the new link with
++# the same inode number as stat.
++#
++. ./common/preamble
++_begin_fstest auto quick copyup hardlink
++
++_fixed_by_kernel_commit xxxxxxxxxxxx \
++	"ovl: bump the impure dir version when linking a file with origin"
++
++_require_scratch
++_require_test_program "t_dir_type"
++
++_scratch_mkfs >>$seqres.full 2>&1
++
++lowerdir=$OVL_BASE_SCRATCH_MNT/$OVL_LOWER
++mkdir -p $lowerdir
++touch $lowerdir/foo $lowerdir/bar
++
++_scratch_mount
++
++impure_dir=$SCRATCH_MNT/impure_dir
++mkdir $impure_dir
++
++# Expect readdir of $impure_dir to find <name> by the st_ino of <name>
++check_d_ino()
++{
++	local name=$1
++	local ino=$(stat -c '%i' $impure_dir/$name)
++
++	$here/src/t_dir_type $impure_dir $ino | grep -q "^$name f$" || \
++		echo "readdir d_ino of $name does not match st_ino $ino"
++}
++
++# Copy up foo and link it into the pure upper dir, which makes the dir
++# impure. Then read the dir, so its impure entries get cached.
++ln $SCRATCH_MNT/foo $impure_dir/foo
++check_d_ino foo
++
++# Link foo again inside the dir
++ln $impure_dir/foo $impure_dir/foo_link
++check_d_ino foo_link
++
++# Copy up bar and link it into the dir
++ln $SCRATCH_MNT/bar $impure_dir/bar
++check_d_ino bar
++
++echo "Silence is golden"
++_exit 0
+diff --git a/tests/overlay/013.out b/tests/overlay/013.out
+new file mode 100644
+index 00000000..3e66423b
+--- /dev/null
++++ b/tests/overlay/013.out
+@@ -0,0 +1,2 @@
++QA output created by 013
++Silence is golden
 
 ---
-base-commit: 0d5e729c515f4ae4eacc179dbcf350d9b499a161
-change-id: 20261112-ovl-link-impure-8624810156d8
+base-commit: 71641219a506ac62bfa231592394265ca812670e
+change-id: 20261112-ovl013-hlink-7cf74a775d23
 
 Best regards,
 -- 
