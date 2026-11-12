@@ -1,119 +1,65 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 04:28:13 +0000
-Subject: [PATCH] usb: typec: tcpm: Cancel the timers before destroying the
- worker too
+From: Yusuke Hayashi <yusuke8h@gmail.com>
+Date: Thu, 12 Nov 2026 04:29:55 +0000
+Subject: [PATCH] staging: bcm2835-audio: remove unused
+ bcm2835_audio_retrieve_buffers() declaration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-tcpm-unregister-timers-v1-1-7230fda5612b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCQAxG4auUrA00g4rjVcRFnf6tETqWZCpC6
- d0ddfkt3lvJYQqnc7OS4aWuz1whu4bSvcsjWPtqCm04ikjgkuaJl2wY1QuMi04w5zD0coj7Uxt
- jpBrPhkHfv/Hl+rcvtwdS+d5o2z4PaLCIegAAAA==
-X-Change-ID: 20261112-tcpm-unregister-timers-2fd159480999
-To: Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Guenter Roeck <linux@roeck-us.net>, Xu Yang <xu.yang_2@nxp.com>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794457692; l=3576;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=uO7oLFJ9U2ade7oBvcd7yir9nsFmvPybpTlJOuoRoAM=;
- b=12OwEeV8fEQtCgyW1E7aRWtRJbppNwN/xgiR2qmXBfUwQldX0xlNfYjZAL3iuCnkAOaajjTJV
- gO/caxTbEwSBO/Und6USQU0+xqw8TQo1001UkPihPbgv2oWHVqWPt23
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+Message-Id: <20261112-bcm2835-audio-unused-decl-v1-1-3b63a24b033b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMJA9WoC/x2MQQqAIBAAvxJ7biHXiugr0cF0q4WyUIwg+nvSc
+ WBmHogchCP0xQOBL4ly+AyqLMCuxi+M4jIDVdQqpQgnu1OnGzTJyYHJp8gOHdsNa2pNNvSkuYP
+ cn4Fnuf/3ML7vB0o0Dc1rAAAA
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Florian Fainelli <florian.fainelli@broadcom.com>, 
+ Ray Jui <rjui@broadcom.com>, Scott Branden <sbranden@broadcom.com>, 
+ Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>
+Cc: linux-staging@lists.linux.dev, linux-rpi-kernel@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Yusuke Hayashi <yusuke8h@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794457795; l=1434;
+ i=yusuke8h@gmail.com; s=20261112; h=from:subject:message-id;
+ bh=a+TgyUI6wkUkFO2I4cpqAGWsRWGHAWy+RkqW/CQr8tE=;
+ b=bFuG0CHsUqIN8TsqRDo45PNlrMwwZoe6/DklH1Tqgyl9UR6UthH5+qMZ4VkD64Y1ybu8lGEc6
+ BozwNImwss8CQG4yK414WsNFnI5f7Fz6qGtJvrZ1v3leU9tHGXi/E20
+X-Developer-Key: i=yusuke8h@gmail.com; a=ed25519;
+ pk=7SzYbbTWl4u1a0gmKeMxAqo7g7F1K7tnWWGWQ+LnNNs=
+X-Endpoint-Received: by B4 Relay for yusuke8h@gmail.com/20261112 with auth_id=1495
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tcpm_unregister_port() clears port->registered, destroys the kthread
-worker and only then cancels the hrtimers. A timer handler running on
-another CPU that has already seen port->registered set can still call
-kthread_queue_work() once the worker is freed, or with port->wq
-already NULL:
+bcm2835_audio_retrieve_buffers() is declared in bcm2835.h, but its
+definition and sole caller were removed in commit d7ca3a71545b
+("staging: bcm2835-audio: Operate non-atomic PCM ops").
 
-  CPU0                           CPU1
-  tcpm_unregister_port()         state_machine_timer_handler()
-                                   if (port->registered)
-    port->registered = false;
-    kthread_destroy_worker(port->wq);
-    port->wq = NULL;
-                                   kthread_queue_work(port->wq, ...);
+Remove the orphaned function declaration.
 
-The timers are cancelled after the worker is destroyed on purpose:
-works that run while the worker is flushed can start a timer again
-(see the commit in Fixes). Cancelling only before would bring that
-back, so cancel them on both sides. hrtimer_cancel() waits for a
-handler that is running, so after the first round no handler that
-missed the cleared flag is left; the second round removes a timer that
-a work started during the flush. tcpm_reset_port(), called later, only
-cancels.
-
-Fixes: ca4d8344a72b ("usb: typec: tcpm: fix tcpm unregister port but leave a pending timer")
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/sashiko-outbox-206898@kernel.org/
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Signed-off-by: Yusuke Hayashi <yusuke8h@gmail.com>
 ---
-Sashiko found this while reviewing an unrelated tcpm patch of mine:
-https://lore.kernel.org/all/sashiko-outbox-206898@kernel.org/
-Its suggestion was to cancel the timers before destroying the worker
-instead of after; that would undo the commit in Fixes, hence both.
-
-Compile-tested only (arm64 W=1): the window is a few instructions in
-the unbind path and I have no reproducer.
-
-This patch was developed with Claude (Anthropic) as a coding assistant:
-it wrote the change and the commit message, and I reviewed it.
+Found while scanning staging headers for declarations without definitions
+with an AI coding assistant, verified against commit d7ca3a71545b, and
+compile-tested with Clang 18 (LLVM=1 W=1 C=2) and GCC 13 (W=1 C=2) with
+CONFIG_SND_BCM2835=m.
 ---
- drivers/usb/typec/tcpm/tcpm.c | 21 ++++++++++++++++-----
- 1 file changed, 16 insertions(+), 5 deletions(-)
+ drivers/staging/vc04_services/bcm2835-audio/bcm2835.h | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
-index d721baef5210..c7e0e09b1cbe 100644
---- a/drivers/usb/typec/tcpm/tcpm.c
-+++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -8987,18 +8987,29 @@ struct tcpm_port *tcpm_register_port(struct device *dev, struct tcpc_dev *tcpc)
- }
- EXPORT_SYMBOL_GPL(tcpm_register_port);
+diff --git a/drivers/staging/vc04_services/bcm2835-audio/bcm2835.h b/drivers/staging/vc04_services/bcm2835-audio/bcm2835.h
+index 5a1348747ff4..54ad749129fc 100644
+--- a/drivers/staging/vc04_services/bcm2835-audio/bcm2835.h
++++ b/drivers/staging/vc04_services/bcm2835-audio/bcm2835.h
+@@ -107,6 +107,5 @@ int bcm2835_audio_write(struct bcm2835_alsa_stream *alsa_stream,
+ 			void *src);
+ void bcm2835_playback_fifo(struct bcm2835_alsa_stream *alsa_stream,
+ 			   unsigned int size);
+-unsigned int bcm2835_audio_retrieve_buffers(struct bcm2835_alsa_stream *alsa_stream);
  
-+static void tcpm_cancel_timers(struct tcpm_port *port)
-+{
-+	hrtimer_cancel(&port->vdm_discovery_timer);
-+	hrtimer_cancel(&port->enable_frs_timer);
-+	hrtimer_cancel(&port->vdm_state_machine_timer);
-+	hrtimer_cancel(&port->state_machine_timer);
-+}
-+
- void tcpm_unregister_port(struct tcpm_port *port)
- {
- 	int i;
- 
- 	port->registered = false;
-+	/*
-+	 * A timer handler that saw port->registered still set may queue
-+	 * work: wait for it before the worker goes away. Works that run
-+	 * while the worker is flushed may start a timer again, so cancel
-+	 * the timers once more afterwards.
-+	 */
-+	tcpm_cancel_timers(port);
- 	kthread_destroy_worker(port->wq);
- 	port->wq = NULL;
--
--	hrtimer_cancel(&port->vdm_discovery_timer);
--	hrtimer_cancel(&port->enable_frs_timer);
--	hrtimer_cancel(&port->vdm_state_machine_timer);
--	hrtimer_cancel(&port->state_machine_timer);
-+	tcpm_cancel_timers(port);
- 
- 	power_supply_put_system_batteries(port->fixed_batt, port->fixed_batt_cnt);
- 	tcpm_reset_port(port);
+ #endif /* __SOUND_ARM_BCM2835_H */
 
 ---
 base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261112-tcpm-unregister-timers-2fd159480999
+change-id: 20261112-bcm2835-audio-unused-decl-426a1123b3e8
 
 Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+Yusuke Hayashi <yusuke8h@gmail.com>
 
