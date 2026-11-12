@@ -1,59 +1,52 @@
 From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
-Subject: [PATCH v4 0/2] staging: octeon: fix probe error path and
- pow_send_list matching
-Date: Wed, 11 Nov 2026 21:48:31 -0600
-Message-Id: <20261111-octeon-init-pipeline-v1-v4-0-5b4f8e613ae1@gmail.com>
+Date: Wed, 11 Nov 2026 21:48:32 -0600
+Subject: [PATCH v4 1/2] staging: octeon: disable PKO before device removal
+ in probe error path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XNwQqDMAyA4VeRnNdha1vtTnuPsYProgZcK62UD
- fHdVz15GYNc/kC+LBAxEEa4FAsETBTJuxzyVIAdWtcjo2duEKXQnJcN83ZG7xg5mtlEE47kkCX
- OUCi0WnbSYAX5egrY0XuXb/fcA8XZh8/+KPFt+9/MUzJ8CKutUVrU5tq/WhrP1r9gM1N1cDj/7
- VSbo1TDTS27FuXRWdf1CzsENboGAQAA
-X-Change-ID: 20261108-octeon-init-pipeline-v1-e25ec64f49e3
+Message-Id: <20261111-octeon-init-pipeline-v1-v4-1-5b4f8e613ae1@gmail.com>
+References: <20261111-octeon-init-pipeline-v1-v4-0-5b4f8e613ae1@gmail.com>
+In-Reply-To: <20261111-octeon-init-pipeline-v1-v4-0-5b4f8e613ae1@gmail.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
  =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794455321; l=1217;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794455321; l=895;
  i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
- bh=pfWq9ciDcNTGRqmqjjmBm1Xv8yHjO6TCvax7c9j/9Ic=;
- b=/dqSCqxog6vMel5jfAcPKvMGn2qelPeRikBEBJDEhqQKuyLWo5BUM++uzPbZEP6q26FW0J4u+
- sgU5qXdMn9GAbDR8v3kDJleOFHHjH+zxBXfERnnlKiWX1uuUll0PlX8
+ bh=VKtuoP+mIA1EKBGbewR+SjFHAmuHlZPHPWfuOFozPpc=;
+ b=F1Mnp1QMroNoVn8WzCbauFa49XqfvyXkl0iE1Y5QLr0PV+0/Qws99GuZRBZcml1OTMSXafk8y
+ y3rX/5VUCFbCMQ5JR5IHS5sga9AUuX2MX63rAY/a/CC+BIvDIWEClzO
 X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
  pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
 X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fixed two bugs in drivers/staging/octeon/ethernet.c:
+cvm_oct_remove() calls cvmx_pko_disable() before removing devices and
+shutting down PKO. The err_tx error path in cvm_oct_probe() omits this
+call.
 
-1. Call cvmx_pko_disable() in the cvm_oct_probe() error path to match the
-   teardown sequence in cvm_oct_remove().
-2. Split pow_send_list on commas using strsep() instead of matching
-   substrings with strstr().
-
-Oscar Alejandro Sánchez Lucero (2):
-  staging: octeon: disable PKO before device removal in probe error path
-  staging: octeon: match exact interface names in pow_send_list
+Add cvmx_pko_disable() to the probe error path to match cvm_oct_remove().
 
 Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 ---
-Changes in v4:
-- Build tested on mips64 (cavium_octeon_defconfig) with W=1.
-- Link to v3: https://lore.kernel.org/r/20261111-octeon-init-pipeline-v1-v3-0-e5581974fae4@gmail.com
+ drivers/staging/octeon/ethernet.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
----
-Oscar Alejandro Sánchez Lucero (2):
-      staging: octeon: disable PKO before device removal in probe error path
-      staging: octeon: match exact interface names in pow_send_list
+diff --git a/drivers/staging/octeon/ethernet.c b/drivers/staging/octeon/ethernet.c
+index 42ec4b8324a8..c77678cb351f 100644
+--- a/drivers/staging/octeon/ethernet.c
++++ b/drivers/staging/octeon/ethernet.c
+@@ -959,6 +959,8 @@ static int cvm_oct_probe(struct platform_device *pdev)
+ 
+ 	atomic_inc_return(&cvm_oct_poll_queue_stopping);
+ 
++	cvmx_pko_disable();
++
+ 	/* Free the ethernet devices */
+ 	for (int port = 0; port < TOTAL_NUMBER_OF_PORTS; port++)
+ 		cvm_oct_remove_device(port);
 
- drivers/staging/octeon/ethernet.c | 22 +++++++++++++++++++---
- 1 file changed, 19 insertions(+), 3 deletions(-)
----
-base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
-change-id: 20261108-octeon-init-pipeline-v1-e25ec64f49e3
-
-Best regards,
 -- 
-Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
+2.56.0
 
