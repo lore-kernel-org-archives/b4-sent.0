@@ -1,49 +1,82 @@
 From: Marian Poltak <marianpoltak@gmail.com>
-Subject: [PATCH bluez 0/2] shared/gatt-client: Fix init when Service
+Date: Thu, 12 Nov 2026 18:40:53 +0100
+Subject: [PATCH bluez 1/2] shared/gatt-client: Fix init when Service
  Changed lacks Indicate
-Date: Thu, 12 Nov 2026 18:40:52 +0100
-Message-Id: <20261112-svc-chngd-notify-only-v1-0-c7db7ac47acf@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MwQqDMAyA4VeRnA0sVQb6KuLBNakGJJV2kznx3
- Vc8fof/PyFLUsnQVyck2TVrtAKqK/DLZLOgcjG4h3sSkcO8e/SLzYwW3xoOjLYeGIiJu46b0LR
- Q2i1J0O/9HeC1fuQH43X9AU98HdRuAAAA
-X-Change-ID: 20261112-svc-chngd-notify-only-f1d1d99d3f34
+Message-Id: <20261112-svc-chngd-notify-only-v1-1-c7db7ac47acf@gmail.com>
+References: <20261112-svc-chngd-notify-only-v1-0-c7db7ac47acf@gmail.com>
+In-Reply-To: <20261112-svc-chngd-notify-only-v1-0-c7db7ac47acf@gmail.com>
 To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794505252; l=923;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794505252; l=2178;
  i=marianpoltak@gmail.com; s=20261112; h=from:subject:message-id;
- bh=A66skHcAAlDfhvBqoejBHvaNOhKROvLL9YnYeX/oPI4=;
- b=eq5rpINfsdVrWv+ryg9t6cZl0lvGMi3CaZGG6MXfCcDKMd2EvKJVzjD9jGlazGuwCiutaJjFN
- gJS62XMtZ9zBTqPCLp4ims6qslSWWw9wyfyWtQT60yse+Gg4Eol7eoK
+ bh=1/TTqObs78ywj9niQGB3b4pnlfDX7RjHY1NjRlkW48Q=;
+ b=MkQQUNlMjgzknCyj5N1zjnf6HN4pazJ+BJpmWad0KJ//uRPaaOV9cp4Bu0/ciyHBDBmdrYsSv
+ x28NsT4JwPaCfLLXxJhuhvu5ahlzBJXj3XX1ypMCk621e9HXUqARfdA
 X-Developer-Key: i=marianpoltak@gmail.com; a=ed25519;
  pk=VPxSnAMaNkyjfVbKo8tQ1gFPwqOoZoPqtVZ8znSiAiA=
 X-Endpoint-Received: by B4 Relay for marianpoltak@gmail.com/20261112 with auth_id=1502
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some devices, e.g. the Aqara Presence Sensor P2 in Matter commissioning
-mode, declare the Service Changed characteristic as Read | Notify only.
-The client initialization then fails because indications are requested
-explicitly, so no services are exported although ServicesResolved is
-set.
+register_service_changed() requests indications explicitly and
+register_notify() rejects this when the characteristic does not declare
+the Indicate property. Some devices, e.g. the Aqara Presence Sensor P2
+in Matter commissioning mode, declare Service Changed as Read | Notify
+only, so the client initialization fails and no services are exported,
+although ServicesResolved is set.
 
-Patch 1 requests indications only when the characteristic supports
-them. Patch 2 adds unit tests for both cases.
+Request indications only when they are supported, and otherwise pick
+the CCC value from the properties as before.
 
+Fixes: 52fdca35b8e7 ("shared/gatt-client: Allow registering notify with explicit CCC value")
+Assisted-by: Claude:claude-opus-5-5
 ---
-Marian Poltak (2):
-      shared/gatt-client: Fix init when Service Changed lacks Indicate
-      unit/test-gatt: Add Service Changed registration tests
-
  src/shared/gatt-client.c | 15 ++++++++++++++-
- unit/test-gatt.c         | 39 +++++++++++++++++++++++++++++++++++++++
- 2 files changed, 53 insertions(+), 1 deletion(-)
----
-base-commit: 9659adb6819d7e0284d0d2ba226a3894423d8db4
-change-id: 20261112-svc-chngd-notify-only-f1d1d99d3f34
+ 1 file changed, 14 insertions(+), 1 deletion(-)
 
-Best regards,
+diff --git a/src/shared/gatt-client.c b/src/shared/gatt-client.c
+index 7bebc50dc..ea9f7167c 100644
+--- a/src/shared/gatt-client.c
++++ b/src/shared/gatt-client.c
+@@ -1887,6 +1887,8 @@ static bool register_service_changed(struct bt_gatt_client *client)
+ {
+ 	bt_uuid_t uuid;
+ 	struct gatt_db_attribute *attr = NULL;
++	uint8_t properties;
++	uint16_t ccc_value = 0;
+ 
+ 	bt_uuid16_create(&uuid, SVC_CHNGD_UUID);
+ 
+@@ -1898,6 +1900,17 @@ static bool register_service_changed(struct bt_gatt_client *client)
+ 	if (!attr)
+ 		return true;
+ 
++	/*
++	 * "Service Changed" shall be indicated, but some devices only
++	 * declare the notify property. Request indications only when they
++	 * are supported, otherwise let register_notify() pick the CCC value
++	 * from the properties.
++	 */
++	if (gatt_db_attribute_get_char_data(attr, NULL, NULL, &properties,
++							NULL, NULL) &&
++				(properties & BT_GATT_CHRC_PROP_INDICATE))
++		ccc_value = 0x0002;
++
+ 	/*
+ 	 * Register an indication handler for the "Service Changed"
+ 	 * characteristic and report ready only if the handler is registered
+@@ -1905,7 +1918,7 @@ static bool register_service_changed(struct bt_gatt_client *client)
+ 	 */
+ 	client->svc_chngd_ind_id = register_notify(client,
+ 					gatt_db_attribute_get_handle(attr),
+-					0x0002,
++					ccc_value,
+ 					service_changed_register_cb,
+ 					service_changed_cb,
+ 					client, NULL);
+
 -- 
-Marian Poltak <marianpoltak@gmail.com>
+2.56.0
 
