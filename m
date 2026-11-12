@@ -1,109 +1,92 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:23:34 +0000
-Subject: [PATCH v2 2/2] usb: typec: fusb302: Toggle with the default Rp
- current
+Date: Thu, 12 Nov 2026 08:25:10 +0000
+Subject: [PATCH v2] arm64: dts: rockchip: Mark the Orange Pi 5/5B Type-C
+ port self-powered
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-tcpm-attach-reboot-v2-2-b4bc6ca83490@gmail.com>
-References: <20261112-tcpm-attach-reboot-v2-0-b4bc6ca83490@gmail.com>
-In-Reply-To: <20261112-tcpm-attach-reboot-v2-0-b4bc6ca83490@gmail.com>
-To: Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Guenter Roeck <linux@roeck-us.net>, Heiko Stuebner <heiko@sntech.de>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+Message-Id: <20261112-opi5-typec-self-powered-v2-1-751906d65b70@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMywrCMBBG4Vcps3bADGqKryIuNPmjI9KETOuF0
+ nc36vJbnDOToSqM9t1MFQ81zUODrDoK19NwAWtsJlnLzjknnItueXwXBDbcE5f8REXk5KMX9Kn
+ feE+tLhVJX7/z4fi3Tecbwvjd0bJ8AOfJKHV7AAAA
+X-Change-ID: 20261112-opi5-typec-self-powered-f7d72e8f8477
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794471812; l=3585;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794471910; l=2783;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=tD7FYH82nlIArIvaQxvwuexRhWGTOTfnEzwgYwR8d8U=;
- b=spjM5HPPpWe+lrfW7WRU681uie2NR8dc4+wxVo2n+3xwGB6vSqQ1bU1/Os7tSe3znFz4XI8W2
- 2ONr7RyGZJ1CXPtw6TxihfctXruTMpLrgQehwYMr6XuEBm3iocDr10+
+ bh=mTmto45zL5e2iy6mJQ65zZtp+JqwhKT47UOcR9QvZRQ=;
+ b=Gtwhzcqebs2Kpwt08HAdD8Qmf1L/z6vUvuOwPX1Ky3oxf+oEt+2w3jJEJo88J2CuUBKldcwSc
+ KQGJEpMdbAPAfO9D10xRFhsNrlq7dKTKXsCPtvqWU4evetVlaPJ2oQk
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tcpm_start_toggling() programs the Rp current that tcpm asks for, which
-is the current of the source PDO (Rp 3.0A on boards that can source
-3A) when the port starts toggling from Unattached.SRC, and the default
-current when it starts from Unattached.SNK after a detach.
+The board is powered from its separate power-only USB-C input. The
+FUSB302 port's VBUS comes from vcc5v0_sys through a load switch, so the
+board never runs from this port's VBUS.
 
-A Genesys Logic based USB-C to DisplayPort cable connected to the
-Orange Pi 5 is often not detected after a warm reboot: the FUSB302
-toggle state machine raises no interrupt with it while it drives the
-high Rp current, but finds it within seconds once toggling restarts
-with the default current after another device was detached.
+Without self-powered, tcpm keeps Rp on CC during PORT_RESET (error
+recovery), because opening CC on a port-powered device would remove its
+own supply. With self-powered, the port opens CC for tErrorRecovery
+whenever it resets, including at boot. A partner left in a stale state
+by a warm reboot then sees a real detach.
 
-Toggle with the default current, and switch to the requested one when
-toggling stops on a sink, before tcpm is told about the attach, so the
-sink sees the configured level from the start of the connection as
-before. tcpm does not set it again after attach on every path (not on
-ports without PD, for instance). The Rd detection threshold used for
-unplug detection follows the restored current.
-
-The FUSB302B datasheet sets the toggle up the same way: under "Toggle
-Functionality" the processor writes HOST_CUR for the default current
-before it sets TOGGLE, and a HOST_CUR change after attach is applied to
-the CC line immediately ("HOST_CUR Changed After Attach").
-
-Fixes: c034a43e72dd ("staging: typec: Fairchild FUSB302 Type-c chip driver")
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/usb/typec/tcpm/fusb302.c | 21 +++++++++++++++++++--
- 1 file changed, 19 insertions(+), 2 deletions(-)
+This was patch 3 of the series "usb: typec: Find a Type-C partner
+after a warm reboot on the Orange Pi 5"; it is split out of v2 of that
+series so that it goes through the Rockchip tree. It does not depend on
+that series to build, but without its tcpm patch ("usb: typec: tcpm:
+Don't cut a pending state delay short on a re-queue" [1]) the open-CC
+period at boot is cut short.
 
-diff --git a/drivers/usb/typec/tcpm/fusb302.c b/drivers/usb/typec/tcpm/fusb302.c
-index 3319f6a2b0c9..44aa05fd4ba2 100644
---- a/drivers/usb/typec/tcpm/fusb302.c
-+++ b/drivers/usb/typec/tcpm/fusb302.c
-@@ -97,6 +97,7 @@ struct fusb302_chip {
- 	/* chip status */
- 	enum toggling_mode toggling_mode;
- 	enum src_current_status src_current_status;
-+	enum src_current_status toggling_src_current;
- 	bool intr_togdone;
- 	bool intr_bc_lvl;
- 	bool intr_comp_chng;
-@@ -942,10 +943,19 @@ static int tcpm_start_toggling(struct tcpc_dev *dev,
- 	}
+It touches the line next to the one my "arm64: dts: rockchip: Add
+USB-C DP AltMode for Orange Pi 5/5B" (opi5-dts v2) adds a node to;
+applying both needs git am -3 (no conflict). I can resend it rebased.
+
+Tested on an Orange Pi 5 together with that series (v1): after a warm
+reboot the USB-C DisplayPort cable was detected on 4/4 boots, and in a
+later run of 30 reboots the partner was attached on 30/30, with CC
+opened in PORT_RESET for 100-112 ms on every boot. Not tested on the
+Orange Pi 5B (same dtsi). CHECK_DTBS for the Orange Pi 5 and 5B shows
+no new warnings.
+
+This patch was developed with Claude (Anthropic) as a coding assistant:
+it wrote the change and the commit message, and I reviewed and tested
+it as described above.
+
+[1] https://lore.kernel.org/r/20261112-tcpm-attach-reboot-v2-1-b4bc6ca83490@gmail.com
+
+Changes in v2:
+- Split out of the USB series, where it was patch 3/3; unchanged
+- Link to v1: https://patch.msgid.link/20261110-tcpm-attach-reboot-v1-3-7657cc1e2dca@gmail.com
+---
+ arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi b/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi
+index c153e7248727..04cc0b4ff661 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-5b.dtsi
+@@ -142,6 +142,7 @@ usb_con: connector {
+ 				<PDO_FIXED(5000, 1000, PDO_FIXED_USB_COMM)>;
+ 			source-pdos =
+ 				<PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
++			self-powered;
+ 			try-power-role = "source";
  
- 	mutex_lock(&chip->lock);
--	ret = fusb302_set_src_current(chip, cc_src_current[cc]);
-+	/*
-+	 * Look for a partner with the default USB current advertisement.
-+	 * Some sinks (seen with a Genesys Logic based USB-C to DisplayPort
-+	 * cable) present an Rd that the FUSB302 toggle state machine does
-+	 * not detect while it drives the high (3.0 A) Rp current, so they
-+	 * are only found when toggling starts from the sink side. The
-+	 * requested current is restored when toggling finds a sink.
-+	 */
-+	chip->toggling_src_current = cc_src_current[cc];
-+	ret = fusb302_set_src_current(chip, SRC_CURRENT_DEFAULT);
- 	if (ret < 0) {
- 		fusb302_log(chip, "unable to set src current %s, ret=%d",
--			    typec_cc_status_name[cc], ret);
-+			    typec_cc_status_name[TYPEC_CC_RP_DEF], ret);
- 		goto done;
- 	}
- 	ret = fusb302_set_toggling(chip, mode);
-@@ -1357,6 +1367,13 @@ static int fusb302_handle_togdone_src(struct fusb302_chip *chip,
- 			    typec_cc_status_name[cc2]);
- 		return fusb302_set_toggling(chip, toggling_mode);
- 	}
-+	/* advertise the requested Rp current now that a sink is attached */
-+	ret = fusb302_set_src_current(chip, chip->toggling_src_current);
-+	if (ret < 0) {
-+		fusb302_log(chip, "cannot set src current, ret=%d", ret);
-+		return ret;
-+	}
-+	rd_mda = rd_mda_value[chip->src_current_status];
- 	/* set polarity and pull_up, pull_down */
- 	ret = fusb302_set_cc_polarity_and_pull(chip, cc_polarity, true, false);
- 	if (ret < 0) {
+ 			ports {
 
--- 
-2.55.0
+---
+base-commit: c3baae5f1a15645cddadcb2b9abddef5df291f59
+change-id: 20261112-opi5-typec-self-powered-f7d72e8f8477
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
