@@ -1,50 +1,94 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Subject: [PATCH 0/2] xfs/438: test the dquot retry again
-Date: Thu, 12 Nov 2026 10:37:16 +0900
-Message-Id: <20261112-xfs-438-dquot-retry-v1-0-73149b823246@samsung.com>
+Date: Thu, 12 Nov 2026 10:37:17 +0900
+Subject: [PATCH 1/2] xfs/438: retry failed metadata writes again
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEwY9WoC/x2Myw5AMBAAf0X2bBNKpPEr4tDqLnvx2CJE/LvG3
- OYw80AkFYrQZg8onRJlmZOUeQbD5OaRUEJyMIVpygReHLGuLIbtWHZU2vVGH5itsc437CCVqxL
- L9V+7/n0/hFAkFGUAAAA=
+Message-Id: <20261112-xfs-438-dquot-retry-v1-1-73149b823246@samsung.com>
+References: <20261112-xfs-438-dquot-retry-v1-0-73149b823246@samsung.com>
+In-Reply-To: <20261112-xfs-438-dquot-retry-v1-0-73149b823246@samsung.com>
 To: Zorro Lang <zlang@kernel.org>, fstests@vger.kernel.org
 Cc: "Darrick J. Wong" <djwong@kernel.org>, Christoph Hellwig <hch@lst.de>, 
  Brian Foster <bfoster@redhat.com>, Dave Chinner <dgc@kernel.org>, 
  linux-xfs@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794447436; l=977;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794447436; l=2680;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=E0VfzmCyAWgh/Gvr3G6DLo1ndFYwT69Y0tx9eVlLLBk=;
- b=ELg40/h4+AaY+cTKceRIrpCylbe44bs9h1gcrXH6nLKmlIurixHHSwmst3pk2xPJ0SildIS51
- kBpyH3DDcQVCf6fD2DUrs4OFsAdbjnJ1YPL+jPgIV9SWxq3KbDwWxMa
+ bh=OBUGkimxrIsMu9LAjPKmqMotfyRv2/Jb4lKdfqxdUxA=;
+ b=O7yMa1AHBoHyfBwnXp0F9FgRVKpxALdUSNQ7MUI3cqrBT+0WTFAecWuYEvaJzeith1G4Y92tt
+ thBhwpnJVhzAEzGlUcx775GxhTgOfh8DR+eLYstW94fiuPjngonTaRJ
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Because fstests turns off metadata write retries for XFS scratch
-mounts, xfs/438 passes on a kernel that has the bug. Its dm-flakey
-table also relies on dm dropping a flush error, and the dm patch [1]
-fixes that. Patch 1 turns the retries back on. Patch 2 moves the test
-to the buf_ioerror error tag. Tested with an internal and an external
-log on v7.4-rc2, with and without [1], and on a kernel with the bug
-brought back.
+xfs/438 checks that a dquot buffer write that keeps failing does not
+hang the unmount (kernel commit 373b0589dc8d). Commit eb2ad950ea90
+moved the test to _scratch_mount. Since commit 1a49022fab9b,
+_scratch_mount sets the metadata EIO retries to 0. XFS then shuts
+down on the second failure, before the AIL can retry the write. The
+test passes even with the bug.
 
-[1] https://lore.kernel.org/r/20261112-dm-flush-data-error-v1-1-c83d3f8f3ac4@samsung.com
+Turn the retries back on after the mount. Fail the test if XFS has
+shut down before the unmount.
 
+Fixes: eb2ad950ea90 ("dmflakey: override SCRATCH_DEV in _init_flakey")
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Daejun Park (2):
-      xfs/438: retry failed metadata writes again
-      xfs/438: fail metadata writes with the buf_ioerror error tag
+Tested on kernels with and without XFS_DEBUG. Patch 1 gives the same
+results on both. With an internal log, v7.4-rc2 passes 3 of 3. A TEST
+ONLY kernel that skips the resubmission of failed AIL items hangs at
+unmount (1 of 1). Without patch 2, the new check fails in three cases:
 
- tests/xfs/438 | 89 ++++++++++++++---------------------------------------------
- 1 file changed, 20 insertions(+), 69 deletions(-)
+- with the dm patch and a write cache (3 of 3)
+- with an external log (1 of 1)
+- with an rt device that has a write cache (from the code, not run)
+
+In each, XFS shuts down on a log error before the unmount. Patch 2
+passes in the first two cases.
 ---
-base-commit: 71641219a506ac62bfa231592394265ca812670e
-change-id: 20261111-xfs-438-dquot-retry-bdff828ab6fa
+ tests/xfs/438 | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-Best regards,
+diff --git a/tests/xfs/438 b/tests/xfs/438
+index 4cd0b26..e4850ff 100755
+--- a/tests/xfs/438
++++ b/tests/xfs/438
+@@ -95,6 +95,9 @@ _require_flakey_with_error_writes
+ _require_user
+ _require_xfs_quota
+ _require_freeze
++_require_test_sysfs_dev_attr error/fail_at_unmount
++_require_test_sysfs_dev_attr error/metadata/EIO/max_retries
++_require_test_sysfs_dev_attr error/metadata/EIO/retry_timeout_seconds
+ 
+ echo "Silence is golden"
+ 
+@@ -117,6 +120,12 @@ sysctl -w fs.xfs.xfssyncd_centisecs=100 >> $seqres.full 2>&1
+ _qmount_option "usrquota"
+ _scratch_mount
+ 
++# _scratch_mount turns off the retries of failed metadata writes.
++# Go back to the kernel defaults, so that the failed dquot buffer
++# write is retried from the AIL until unmount. fail_at_unmount
++# stays on, so the unmount ends the retries on a fixed kernel.
++_reset_xfs_sysfs_error_handling $SCRATCH_DEV >> $seqres.full
++
+ # We need to set the quota limitation twice, and inject the write error
+ # after the second setting. If we try to inject the write error after
+ # the first setting, the initialization of the dquota buffer will get
+@@ -145,6 +154,10 @@ _scratch_sync
+ # the completion of the retried write of dquota buffer
+ sleep 2
+ 
++# The dquot buffer write must still be failing and retried here. A shut
++# down filesystem means that the test missed the hang it checks.
++stat $SCRATCH_MNT > /dev/null
++
+ _scratch_unmount
+ 
+ _cleanup_flakey
+
 -- 
-Daejun Park <daejun7.park@samsung.com>
+2.43.0
 
