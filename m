@@ -1,11 +1,10 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 12 Nov 2026 07:59:35 -0500
-Subject: [PATCH net v9 1/6] net/smc: bound the wire-controlled producer
- cursor to the RMB
+Date: Thu, 12 Nov 2026 07:59:36 -0500
+Subject: [PATCH net v9 2/6] net/smc: bound the receive length to the RMB
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-b4-disp-0287c16e-v9-1-e5e8fa688177@proton.me>
+Message-Id: <20261112-b4-disp-0287c16e-v9-2-e5e8fa688177@proton.me>
 References: <20261112-b4-disp-0287c16e-v9-0-e5e8fa688177@proton.me>
 In-Reply-To: <20261112-b4-disp-0287c16e-v9-0-e5e8fa688177@proton.me>
 To: Mahanta Jambigi <mjambigi@linux.ibm.com>, 
@@ -22,87 +21,185 @@ Cc: Ursula Braun <ubraun@linux.ibm.com>,
  linux-rdma@vger.kernel.org, netdev@vger.kernel.org, 
  Hidayath Khan <hidayath@linux.ibm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794488375; l=3046;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794488375; l=7328;
  i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=9ja5JoT+O2VUsGXhvlsOd1Bx55l6YLeZkBRApwlhPSc=;
- b=BK996OxiMePiy0poiokFLsk4hlFCtR1AhzXkg4ZUawq4cbA2Jttg3YCn7cT2pGbopacW6AxC+
- wmlNjg+qlIYA+XT4dcuD3rV80W3jSXD8nRYGAtI+soEvQXMLExk3Jqk
+ bh=L04qSXw7HxPjxskjaVdA+heWOrdU6VRxVTt4ADzW71k=;
+ b=MHldl2jRMuehMOviHeXXwU87Dt56cbbB5lIWm+FP2yZznslhbjt/TyuNhNwNMMAevTsGJfQrr
+ 2k9b/y85lwhAmtx39+WM8fyzfDh4gHrpFAtRb7vfZAxHQ9Eho3dFNvl
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smcr_cdc_msg_to_host() and smcd_cdc_msg_to_host() import the peer's
-producer cursor from the wire into conn->local_rx_ctrl.prod without
-bounding it to the RMB. smc_cdc_handle_urg_data_arrival() then uses its
-count as a raw index into the RMB, so a producer cursor past
-rmb_desc->len makes the receive tasklet read past the RMB, and
-recv(MSG_OOB) hands that byte to the application.
+smc_rx_recvmsg() sizes the copy from bytes_to_rcv and starts it past the
+bytes MSG_PEEK or splice() already took. A forged producer cursor drives
+bytes_to_rcv past the RMB or negative, and with a conforming peer it
+drops below the peeked count when a MSG_PEEK|MSG_WAITALL reader sleeps
+while another recv() consumes what it peeked. Either way the copy reads
+past the RMB into the reader's buffer. poll(), SIOCINQ and the deferred
+accept read the same raw count.
 
-Bound the producer cursor count to rmb_desc->len when it comes off the
-wire, for SMC-R and SMC-D. Leave the consumer cursor alone: it indexes
-the peer's RMB, which can be larger than ours, so clamping it to our
-RMB would under-credit peer_rmbe_space and could stall sending to that
-peer. Conforming peers are unaffected.
+Make smc_rx_data_available() report at most what fits in the RMB behind
+the peeked and spliced bytes, never a negative count, and use it in all
+of these. Cache the RMB length for the unlocked wait, where rmb_desc may
+already be freed, and drop released bytes from splice_pending under the
+socket lock, with the consumer cursor update, so a reader cannot run
+between the two and count them twice.
 
-Fixes: de8474eb9d50 ("net/smc: urgent data support")
+Fixes: 952310ccf2d8 ("smc: receive data from RMBE")
+Fixes: 9014db202cb7 ("smc: add support for splice()")
+Fixes: a4b6539038c1 ("net/smc: fix data error when recvmsg with MSG_PEEK flag")
+Reported-by: Sashiko <sashiko-bot@kernel.org>
+Closes: https://sashiko.dev/#/patchset/20261008-b4-disp-f7cd3d96-v6-0-fba616c0920c@proton.me?part=2
+Closes: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261008-b4-disp-f7cd3d96-v6-0-fba616c0920c%40proton.me?part=2
+Closes: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261008-b4-disp-f7cd3d96-v6-0-fba616c0920c%40proton.me?part=1
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
-Reviewed-by: Dust Li <dust.li@linux.alibaba.com>
-Reviewed-by: Sidraya Jayagond <sidraya@linux.ibm.com>
 ---
- net/smc/smc_cdc.h | 17 ++++++++++++++---
- 1 file changed, 14 insertions(+), 3 deletions(-)
+The wait predicates run unlocked, where a link group termination may
+already have freed rmb_desc, hence the cached length; v9 reads and
+writes it with READ_ONCE()/WRITE_ONCE(). With the old splice_pending
+order, a reader that took the lock between the cursor update and the
+drop counted the bytes twice, and the next splice() returned stale bytes
+in place of unread data. 1/6 bounds the producer count, but wrap bumps
+still grow bytes_to_rcv past the RMB (see the cover).
+---
+ net/smc/af_smc.c   |  6 +++---
+ net/smc/smc.h      |  3 +++
+ net/smc/smc_cdc.c  |  2 +-
+ net/smc/smc_core.c |  1 +
+ net/smc/smc_rx.c   |  9 +++++++--
+ net/smc/smc_rx.h   | 12 +++++++++++-
+ 6 files changed, 26 insertions(+), 7 deletions(-)
 
-diff --git a/net/smc/smc_cdc.h b/net/smc/smc_cdc.h
-index 696cc11f2303..4d630a305118 100644
---- a/net/smc/smc_cdc.h
-+++ b/net/smc/smc_cdc.h
-@@ -221,7 +221,8 @@ static inline void smc_host_msg_to_cdc(struct smc_cdc_msg *peer,
+diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c
+index ec5980add7a9..90e7d0d2e398 100644
+--- a/net/smc/af_smc.c
++++ b/net/smc/af_smc.c
+@@ -2774,7 +2774,7 @@ int smc_accept(struct socket *sock, struct socket *new_sock,
+ 			if (skb_queue_empty(&clcsk->sk_receive_queue))
+ 				sk_wait_data(clcsk, &timeo, NULL);
+ 			release_sock(clcsk);
+-		} else if (!atomic_read(&smc_sk(nsk)->conn.bytes_to_rcv)) {
++		} else if (!smc_rx_data_available(&smc_sk(nsk)->conn, 0)) {
+ 			lock_sock(nsk);
+ 			smc_rx_wait(smc_sk(nsk), &timeo, 0, smc_rx_data_available);
+ 			release_sock(nsk);
+@@ -2939,7 +2939,7 @@ __poll_t smc_poll(struct file *file, struct socket *sock,
+ 						mask |= EPOLLOUT | EPOLLWRNORM;
+ 				}
+ 			}
+-			if (atomic_read(&smc->conn.bytes_to_rcv))
++			if (smc_rx_data_available(&smc->conn, 0))
+ 				mask |= EPOLLIN | EPOLLRDNORM;
+ 			if (sk->sk_shutdown & RCV_SHUTDOWN)
+ 				mask |= EPOLLIN | EPOLLRDNORM | EPOLLRDHUP;
+@@ -3237,7 +3237,7 @@ int smc_ioctl(struct socket *sock, unsigned int cmd,
+ 		    smc->sk.sk_state == SMC_CLOSED)
+ 			answ = 0;
+ 		else
+-			answ = atomic_read(&smc->conn.bytes_to_rcv);
++			answ = smc_rx_data_available(&smc->conn, 0);
+ 		break;
+ 	case SIOCOUTQ:
+ 		/* output queue size (not send + not acked) */
+diff --git a/net/smc/smc.h b/net/smc/smc.h
+index 36b243b34a9a..8601304b3c06 100644
+--- a/net/smc/smc.h
++++ b/net/smc/smc.h
+@@ -204,6 +204,9 @@ struct smc_connection {
+ 						 * rmbe
+ 						 */
+ 	int			rtoken_idx;	/* idx to peer RMB rkey/addr */
++	int			rmb_len;	/* rmb_desc->len, still valid
++						 * after rmb_desc is freed
++						 */
  
- static inline void smc_cdc_cursor_to_host(union smc_host_cursor *local,
- 					  union smc_cdc_cursor *peer,
--					  struct smc_connection *conn)
-+					  struct smc_connection *conn,
-+					  int max_count)
- {
- 	union smc_host_cursor temp, old;
- 	union smc_cdc_cursor net;
-@@ -235,6 +236,12 @@ static inline void smc_cdc_cursor_to_host(union smc_host_cursor *local,
- 	if ((old.wrap == temp.wrap) &&
- 	    (old.count > temp.count))
- 		return;
-+	/* The urgent path uses the producer count as a raw index into our
-+	 * RMB, so bound it. max_count == 0 leaves the consumer cursor alone:
-+	 * it indexes the peer's RMB, which can be larger than ours.
+ 	struct smc_buf_desc	*sndbuf_desc;	/* send buffer descriptor */
+ 	struct smc_buf_desc	*rmb_desc;	/* RMBE descriptor */
+diff --git a/net/smc/smc_cdc.c b/net/smc/smc_cdc.c
+index 32d6d03df321..e2c765ff2ba3 100644
+--- a/net/smc/smc_cdc.c
++++ b/net/smc/smc_cdc.c
+@@ -381,7 +381,7 @@ static void smc_cdc_msg_recv_action(struct smc_sock *smc,
+ 		/* bytes_to_rcv is decreased in smc_recvmsg */
+ 		smp_mb__before_atomic();
+ 		atomic_add(diff_prod, &conn->bytes_to_rcv);
+-		/* guarantee 0 <= bytes_to_rcv <= rmb_desc->len */
++		/* can be out of range, see smc_rx_data_available() */
+ 		smp_mb__after_atomic();
+ 		smc->sk.sk_data_ready(&smc->sk);
+ 	} else {
+diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
+index 0a9f5418329a..0edbe6106c1a 100644
+--- a/net/smc/smc_core.c
++++ b/net/smc/smc_core.c
+@@ -2511,6 +2511,7 @@ static int __smc_buf_create(struct smc_sock *smc, bool is_smcd, bool is_rmb)
+ 
+ 	if (is_rmb) {
+ 		conn->rmb_desc = buf_desc;
++		WRITE_ONCE(conn->rmb_len, buf_desc->len);
+ 		conn->rmbe_size_comp = bufsize_comp;
+ 		smc->sk.sk_rcvbuf = bufsize * 2;
+ 		atomic_set(&conn->bytes_to_rcv, 0);
+diff --git a/net/smc/smc_rx.c b/net/smc/smc_rx.c
+index 63c178c10bf1..78ab3df1689c 100644
+--- a/net/smc/smc_rx.c
++++ b/net/smc/smc_rx.c
+@@ -118,15 +118,20 @@ static void smc_rx_pipe_buf_release(struct pipe_inode_info *pipe,
+ 	struct smc_connection *conn = &priv->smc->conn;
+ 	struct smc_sock *smc = priv->smc;
+ 	struct sock *sk = &smc->sk;
++	bool drained;
+ 
+ 	lock_sock(sk);
+ 	if (conn->freed) {
+ 		release_sock(sk);
+ 		goto out;
+ 	}
++	/* lower splice_pending under the socket lock, with the cons update, or
++	 * a reader running between the two counts the released bytes twice
 +	 */
-+	if (max_count && temp.count > max_count)
-+		temp.count = max_count;
- 	smc_curs_copy(local, &temp, conn);
++	drained = atomic_sub_and_test(priv->len, &conn->splice_pending);
+ 	smc_rx_update_cons(smc, priv->len);
+ 	release_sock(sk);
+-	if (atomic_sub_and_test(priv->len, &conn->splice_pending))
++	if (drained)
+ 		smc_rx_wake_up(sk);
+ out:
+ 	kfree(priv);
+@@ -543,7 +548,7 @@ int smc_rx_recvmsg(struct smc_sock *smc, struct msghdr *msg,
+ 			/* increased in recv tasklet smc_cdc_msg_rcv() */
+ 			smp_mb__before_atomic();
+ 			atomic_sub(copylen, &conn->bytes_to_rcv);
+-			/* guarantee 0 <= bytes_to_rcv <= rmb_desc->len */
++			/* can be out of range, see smc_rx_data_available() */
+ 			smp_mb__after_atomic();
+ 			if (msg && smc_rx_update_consumer(smc, cons, copylen))
+ 				goto out;
+diff --git a/net/smc/smc_rx.h b/net/smc/smc_rx.h
+index 994f5e42d1ba..1833eca15bfb 100644
+--- a/net/smc/smc_rx.h
++++ b/net/smc/smc_rx.h
+@@ -25,7 +25,17 @@ int smc_rx_wait(struct smc_sock *smc, long *timeo, size_t peeked,
+ 		int (*fcrit)(struct smc_connection *conn, size_t baseline));
+ static inline int smc_rx_data_available(struct smc_connection *conn, size_t peeked)
+ {
+-	return atomic_read(&conn->bytes_to_rcv) - peeked;
++	int avail = atomic_read(&conn->bytes_to_rcv);
++
++	/* bytes_to_rcv follows the peer's producer cursor and can be past
++	 * the RMB or negative. Report no more than fits in the RMB behind the
++	 * bytes already spliced or peeked. Compare before subtracting: near
++	 * INT_MIN, avail - peeked wraps. This also runs unlocked, possibly
++	 * after rmb_desc was freed, hence rmb_len.
++	 */
++	avail = min(avail, READ_ONCE(conn->rmb_len) -
++			   atomic_read(&conn->splice_pending));
++	return avail > (int)peeked ? avail - (int)peeked : 0;
  }
  
-@@ -246,8 +253,9 @@ static inline void smcr_cdc_msg_to_host(struct smc_host_cdc_msg *local,
- 	local->len = peer->len;
- 	local->seqno = ntohs(peer->seqno);
- 	local->token = ntohl(peer->token);
--	smc_cdc_cursor_to_host(&local->prod, &peer->prod, conn);
--	smc_cdc_cursor_to_host(&local->cons, &peer->cons, conn);
-+	smc_cdc_cursor_to_host(&local->prod, &peer->prod, conn,
-+			       conn->rmb_desc->len);
-+	smc_cdc_cursor_to_host(&local->cons, &peer->cons, conn, 0);
- 	local->prod_flags = peer->prod_flags;
- 	local->conn_state_flags = peer->conn_state_flags;
- }
-@@ -260,6 +268,9 @@ static inline void smcd_cdc_msg_to_host(struct smc_host_cdc_msg *local,
- 
- 	temp.wrap = peer->prod.wrap;
- 	temp.count = peer->prod.count;
-+	/* as in smc_cdc_cursor_to_host(): bound prod, not cons */
-+	if (temp.count > conn->rmb_desc->len)
-+		temp.count = conn->rmb_desc->len;
- 	smc_curs_copy(&local->prod, &temp, conn);
- 
- 	temp.wrap = peer->cons.wrap;
+ #endif /* SMC_RX_H */
 
 -- 
 2.56.0
