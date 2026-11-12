@@ -1,239 +1,150 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:06:53 +0000
-Subject: [PATCH] PM / devfreq: Do not change the frequency of a suspended
- device
+Date: Thu, 12 Nov 2026 08:10:39 +0000
+Subject: [PATCH v2] drm/panthor: Suspend devfreq until the GPU is first
+ resumed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-devfreq-suspend-sync-v1-1-af64603ef43e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/0WN2w6CMBBEf4X02SbbDW2BXzE89LLVmoDaAtEY/
- 90CRt9mkplzXixTipRZV71YoiXmeB1LEYeKubMZT8SjL50hoBJCIPe0hER3nud8o9Hz/Bwd184
- 0wUkhJRhWrrdEIT427LHfe57thdy0sr6LQpmLb9pnf11XfWXwk633gfiWqUYyZFVoQtMtYoVZk
- 4m76zDEqatag4hKgm9JgwdALVBR7YO0AFZYaZVuTKtZ/35/AAf60MP/AAAA
-X-Change-ID: 20261112-devfreq-suspend-sync-7ca8fc51550a
-To: MyungJoo Ham <myungjoo.ham@samsung.com>, 
- Kyungmin Park <kyungmin.park@samsung.com>, 
- Chanwoo Choi <cw00.choi@samsung.com>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Boris Brezillon <boris.brezillon@collabora.com>, 
+Message-Id: <20261112-panthor-suspend-clk-v2-1-62e1b168052d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32OS47CMBBErxJ5jUfdSZyMWXGPEQu70yYeyAfbi
+ QYh7o5D9rN86qp6/RSRg+cojsVTBF599NOYoTwUgnozXlj6LrMooWwQEeRsxtRPQcYlzjx2km5
+ XidipBmrHyrLIzTmw83+f1Z/zznGxv0xpm9oSvY9pCo+PdsUt979hRYlSVbVqQQEr5NNlMP72R
+ dMgzq9dEfi+5P/T7hXWRJb5Pvh0LMiCaSoHpBv+ZrIaUGtmqzVRaVpHzrRQdXUee70BaxZKHhQ
+ BAAA=
+X-Change-ID: 20261110-panthor-suspend-clk-11d5604fe5be
+To: Boris Brezillon <boris.brezillon@collabora.com>, 
  Steven Price <steven.price@arm.com>, Liviu Dudau <liviu.dudau@arm.com>, 
+ Akash Goel <akash.goel@arm.com>, Karunika Choo <karunika.choo@arm.com>, 
+ Lukas Zapolskas <lukas.zapolskas@arm.com>, 
+ Chris Diamand <chris.diamand@arm.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Heiko Stuebner <heiko@sntech.de>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  Jonas Karlman <jonas@kwiboo.se>, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794470812; l=9265;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794471038; l=6121;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=sz4IHAsVIZYsbyOu7vGLOdfU1fixm3Q4YunFaWxkBUc=;
- b=dEIp4QPrEY6u/zn+ul1s1SnwIzq4SO8WsKH7FsNXztXT7CnHqu6Hu1NhNQudXDJ1tA49kbIHW
- wMCHAfImJNPA95df51Wft15W9Sa+fDTCrMZb6hKmmyFQnbFBoEnH/Jd
+ bh=uiwyQooI2QqdHVVbIj2tbEKcTWRM+G3FzfbhcKof+kg=;
+ b=wivOOwJ/7GTvbZBbl834segCag1oFnqKSy2+v8GXNHok6K8gnpd49EQDjqRZ2Ifr4AEJT7Xg3
+ pSZ8BrJXh9wBSgatVc/kYmttND3QH/F7PLPS1qxGYtybmlz9/HqCGC5
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Once a driver has called devfreq_suspend_device(), its device may be
-clock gated or powered down, but devfreq can still call ->target() for
-it: a PM QoS or sysfs min_freq/max_freq change, a devfreq cooling state
-change, the userspace governor's set_freq, an OPP notifier or a change of
-the passive governor's parent all end up in devfreq_update_target()
-whatever the device state. DEVFREQ_GOV_SUSPEND only stops the load
-monitoring of the governors that poll.
+panthor_devfreq_init() adds the devfreq device while the GPU is still
+suspended, and the first panthor_device_resume() then calls
+devfreq_resume_device() without a matching devfreq_suspend_device(). The
+devfreq suspend count stays off by one for the lifetime of the device:
+-1 while the GPU is active, 0 while it is runtime suspended.
 
-This is fatal where the clock is managed by firmware that has to access
-the device's power domain to change the rate. On RK3588 with the GPU
-core clock on SCMI_CLK_GPU, TF-A programs the GPU GRF to set the rate,
-and with the GPU power domain off that ends in an asynchronous SError.
+devfreq_suspend() and devfreq_resume() around a system suspend therefore
+treat a runtime suspended GPU as an active one: devfreq_suspend()
+applies the suspend OPP, if there is one, and devfreq_resume() restarts
+the polling of the simple_ondemand governor, which then sets GPU rates
+while the GPU is still runtime suspended, until its next runtime resume
+and suspend. With the devfreq core keeping a suspended device's
+frequency alone ("PM / devfreq: Do not change the frequency of a
+suspended device"), the unbalanced devfreq_resume() also marks the
+device resumed while the GPU is powered down.
 
-Drivers cannot filter these calls reliably in ->target(): the suspend
-count changes without devfreq->lock, and devfreq_suspend_device() and
-devfreq_resume_device() only take the lock around the suspend and resume
-frequency changes, so an update can run between a driver's check and its
-clocks going off, or be overwritten by the resume frequency. Returning 0
-from ->target() without changing the rate makes devfreq record a
-frequency the device does not run at, and returning an error loses the
-request.
+Suspend devfreq right after adding it, as msm_devfreq_init() does, so
+that the devfreq suspend and resume calls pair up.
 
-Track the suspended state under devfreq->lock. devfreq_suspend_device()
-sets it in the critical section that applies the suspend frequency, and
-devfreq_resume_device() clears it in the one that restores the resume
-frequency. While it is set, devfreq_update_target() neither evaluates the
-governor nor calls ->target(). It records that an update was asked for,
-and devfreq_resume_device() runs that update instead of restoring the
-resume frequency, which may lie outside limits set in the meantime. So
-requests made while the device is suspended take effect on resume. If
-the governor was removed in the meantime, it restores the resume
-frequency as before.
-
-Suggested-by: Boris Brezillon <boris.brezillon@collabora.com>
-Link: https://lore.kernel.org/r/20261110140232.061d6844@fedora1.home
+Fixes: fac9b22df4b1 ("drm/panthor: Add the devfreq logical block")
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-This comes from the review of a panthor patch [1] that kept devfreq from
-changing the RK3588 GPU clock rate while the GPU is suspended by
-filtering the calls in its ->target(). Boris Brezillon pointed out that a
-driver cannot do that without races, and that the devfreq core should not
-call ->target() between devfreq_suspend_device() and
-devfreq_resume_device(). This patch does that in
-devfreq_update_target(), which every governor and every core path (PM
-QoS, sysfs, OPP notifier, passive parent) goes through, so no governor
-needs a change.
-
-It applies on top of "PM / devfreq: Resume at the frequency from before
-suspend" [2], which changes the same lines of devfreq_suspend_device().
-The panthor side, "drm/panthor: Suspend devfreq until the GPU is first
-resumed" (dri-devel), pairs panthor's devfreq suspend and resume calls,
-which this change relies on across a system suspend.
-
-ufshcd already skips rate changes in its ->target() while its clock
-scaling is suspended; with this patch devfreq stops calling it in that
-state. No other driver was tested.
-
-One change of behaviour to point out: a device on the passive governor no
-longer follows its parent once it is suspended itself. devfreq_suspend()
-walks the device list newest first, so it usually suspends a passive
-device before its devfreq parent, and cpufreq_suspend() runs after
-devfreq_suspend(). What the parent does after that, such as an
-exynos-bus parent going to its suspend frequency, was followed by the
-passive device so far and is now deferred until devfreq_resume(). I
-have no such hardware to test on. If a passive device should keep
-following its parent there, the passive governor's notifiers could be
-exempted; please tell me if you want that.
-
-Concurrent devfreq_suspend_device() and devfreq_resume_device() calls
-for one device (a driver's runtime PM against devfreq_suspend() and
-devfreq_resume()) are still only ordered by the atomic suspend count, as
-before. This patch does not change that.
+v1 kept devfreq from changing the GPU clock rate while the GPU is
+suspended by filtering the calls in panthor_devfreq_target(). As Boris
+pointed out, that cannot be done race-free in the driver, so v2 moves it
+to the devfreq core: "PM / devfreq: Do not change the frequency of a
+suspended device" (linux-pm [1]) keeps devfreq from calling
+->target() between devfreq_suspend_device() and devfreq_resume_device()
+and applies the requests made in between on resume. The SError fix
+needs that patch. What is left for panthor is this patch, which makes
+panthor's devfreq suspend and resume calls pair up; it does not depend
+on the devfreq patch to build or to be correct.
 
 Tested on an Orange Pi 5 (RK3588S) running a v7.3-based kernel with
-this patch, [2] and the panthor patch, with the GPU core clock on the
-firmware-managed SCMI_CLK_GPU and a 200 MHz opp-suspend: min_freq,
+this patch and the devfreq patch, with the GPU core clock on the
+firmware-managed SCMI_CLK_GPU and a 200 MHz opp-suspend (the
+configuration of Jonas Karlman's RFC, not in mainline): min_freq,
 max_freq, the userspace governor's set_freq and the devfreq cooling
 state written while the GPU was runtime suspended, also right after a
 suspend-to-idle cycle, no longer end in an SError and take effect on
 the next GPU job; 200 runtime suspend/resume cycles with max_freq
 toggling every ~35 ms and a 3 minute sustained load ran without an
-SError or WARN.
-The governor check in devfreq_resume_device() was added after these
-runs; it only matters when the governor is removed while an update is
-pending.
+SError, WARN or panthor fault.
 
 This patch was developed with Claude (Anthropic) as a coding assistant:
 it wrote the code and the commit message, and I reviewed it and tested
 it as described above.
 
-[1] https://lore.kernel.org/r/20261110-panthor-suspend-clk-v1-1-53457050e51e@gmail.com
-[2] https://lore.kernel.org/r/20261110-devfreq-resume-freq-v1-1-90de450ccbd0@gmail.com
+[1] https://lore.kernel.org/r/20261112-devfreq-suspend-sync-v1-1-af64603ef43e@gmail.com
 ---
- drivers/devfreq/devfreq.c | 40 ++++++++++++++++++++++++++++++----------
- include/linux/devfreq.h   |  7 +++++++
- 2 files changed, 37 insertions(+), 10 deletions(-)
+Changes in v2:
+- Dropped the check in panthor_devfreq_target() (Boris): neither
+  pm.state nor devfreq::suspend_count can be read there without racing
+  with devfreq_suspend_device() and devfreq_resume_device(), which only
+  take devfreq->lock around the suspend and resume frequency changes.
+  The devfreq core now tracks the suspended state under devfreq->lock
+  and does not call ->target() while it is set, as Boris suggested.
+- New patch: start with devfreq suspended. The first runtime resume
+  called devfreq_resume_device() without a matching suspend, so the
+  suspend count was -1 while the GPU was active and 0 while it was
+  suspended (the reason v1 did not use it). Without this, the devfreq
+  core change would not hold across a system suspend taken while the
+  GPU is runtime suspended.
+- Liviu, on returning 0 instead of -EINVAL: returning 0 was wrong, devfreq
+  then records a rate the GPU does not run at (Boris). An error is
+  better than 0, but -EINVAL reports a valid request as invalid (-EBUSY
+  fits better), and either way nothing retries the request on resume:
+  the userspace and performance governors never re-evaluate, and
+  simple_ondemand only at its next poll. With the core change panthor
+  never gets these calls, so there is nothing left to reject.
+- Liviu, on disabling the clock when the power domain goes down: the
+  clocks are already disabled in panthor_device_suspend() before the
+  domain goes down, and the SError happens in that state. On RK3588 a
+  rate change on the disabled SCMI clock still goes to TF-A, which
+  programs the PVTPLL through the GPU GRF in the powered-down domain.
+  So the rate change itself has to be held back while suspended.
+- Liviu, on the comment length: the remaining comment is two lines.
+- Sashiko's findings on v1 (a rate requested while suspended was lost
+  without a suspend OPP or with a non-polling governor; the lockless
+  state check could race with the clocks going off; Fixes: tag) are
+  covered by the devfreq core change, which applies deferred requests on
+  resume and keeps the state under devfreq->lock. Thanks to Sashiko for
+  them. The new patch has Fixes: fac9b22df4b1, the commit Sashiko named:
+  the unbalanced count is a mainline bug, independent of the SCMI clock.
+- Link to v1: https://patch.msgid.link/20261110-panthor-suspend-clk-v1-1-53457050e51e@gmail.com
+---
+ drivers/gpu/drm/panthor/panthor_devfreq.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/drivers/devfreq/devfreq.c b/drivers/devfreq/devfreq.c
-index 043cdc37bd0b..45588de327dd 100644
---- a/drivers/devfreq/devfreq.c
-+++ b/drivers/devfreq/devfreq.c
-@@ -408,6 +408,16 @@ int devfreq_update_target(struct devfreq *devfreq, unsigned long freq)
- 	if (!devfreq->governor)
- 		return -EINVAL;
+diff --git a/drivers/gpu/drm/panthor/panthor_devfreq.c b/drivers/gpu/drm/panthor/panthor_devfreq.c
+index 2249b41ca4af..45ae42dacdcb 100644
+--- a/drivers/gpu/drm/panthor/panthor_devfreq.c
++++ b/drivers/gpu/drm/panthor/panthor_devfreq.c
+@@ -256,6 +256,12 @@ int panthor_devfreq_init(struct panthor_device *ptdev)
+ 		return ret;
+ 	}
  
 +	/*
-+	 * The device may be powered down while it is suspended. Leave it
-+	 * alone, devfreq_resume_device() does the update.
++	 * The GPU stays suspended until the first panthor_device_resume(),
++	 * which resumes devfreq. Suspend devfreq to match.
 +	 */
-+	if (devfreq->suspended) {
-+		devfreq->update_pending = true;
-+		devfreq->pending_freq = freq;
-+		return 0;
-+	}
++	panthor_devfreq_suspend(ptdev);
 +
- 	/* Reevaluate the proper frequency */
- 	err = devfreq->governor->get_target_freq(devfreq, &freq);
- 	if (err)
-@@ -1162,8 +1172,11 @@ int devfreq_suspend_device(struct devfreq *devfreq)
- 			return ret;
- 	}
- 
-+	mutex_lock(&devfreq->lock);
-+	devfreq->suspended = true;
-+	devfreq->update_pending = false;
-+	ret = 0;
- 	if (devfreq->suspend_freq) {
--		mutex_lock(&devfreq->lock);
- 		/*
- 		 * devfreq_set_target() records the frequency it sets as the
- 		 * one to resume at. Keep the frequency from before suspend
-@@ -1173,12 +1186,10 @@ int devfreq_suspend_device(struct devfreq *devfreq)
- 		resume_freq = devfreq->previous_freq;
- 		ret = devfreq_set_target(devfreq, devfreq->suspend_freq, 0);
- 		devfreq->resume_freq = resume_freq;
--		mutex_unlock(&devfreq->lock);
--		if (ret)
--			return ret;
- 	}
-+	mutex_unlock(&devfreq->lock);
- 
--	return 0;
-+	return ret;
- }
- EXPORT_SYMBOL(devfreq_suspend_device);
- 
-@@ -1200,13 +1211,22 @@ int devfreq_resume_device(struct devfreq *devfreq)
- 	if (atomic_dec_return(&devfreq->suspend_count) >= 1)
- 		return 0;
- 
--	if (devfreq->resume_freq) {
--		mutex_lock(&devfreq->lock);
-+	mutex_lock(&devfreq->lock);
-+	devfreq->suspended = false;
-+	ret = 0;
-+	if (devfreq->update_pending && devfreq->governor) {
-+		/*
-+		 * Run the update deferred while suspended. It takes the
-+		 * limits set meanwhile into account, unlike resume_freq.
-+		 */
-+		devfreq->update_pending = false;
-+		ret = devfreq_update_target(devfreq, devfreq->pending_freq);
-+	} else if (devfreq->resume_freq) {
- 		ret = devfreq_set_target(devfreq, devfreq->resume_freq, 0);
--		mutex_unlock(&devfreq->lock);
--		if (ret)
--			return ret;
- 	}
-+	mutex_unlock(&devfreq->lock);
-+	if (ret)
-+		return ret;
- 
- 	if (devfreq->governor) {
- 		ret = devfreq->governor->event_handler(devfreq,
-diff --git a/include/linux/devfreq.h b/include/linux/devfreq.h
-index dc1075dc3446..71b5193673f7 100644
---- a/include/linux/devfreq.h
-+++ b/include/linux/devfreq.h
-@@ -167,6 +167,10 @@ struct devfreq_stats {
-  * @suspend_freq:	 frequency of a device set during suspend phase.
-  * @resume_freq:	 frequency of a device set in resume phase.
-  * @suspend_count:	 suspend requests counter for a device.
-+ * @suspended:	 the device is suspended, frequency updates are deferred
-+ *		 until it is resumed. Protected by @lock.
-+ * @update_pending:	 a frequency update was deferred while suspended.
-+ * @pending_freq:	 the frequency argument of the deferred update.
-  * @stats:	Statistics of devfreq device behavior
-  * @transition_notifier_list: list head of DEVFREQ_TRANSITION_NOTIFIER notifier
-  * @cdev:	Cooling device pointer if the devfreq has cooling property
-@@ -210,6 +214,9 @@ struct devfreq {
- 	unsigned long suspend_freq;
- 	unsigned long resume_freq;
- 	atomic_t suspend_count;
-+	bool suspended;
-+	bool update_pending;
-+	unsigned long pending_freq;
- 
- 	/* information for device frequency transitions */
- 	struct devfreq_stats stats;
+ 	cooling = devfreq_cooling_em_register(pdevfreq->devfreq, NULL);
+ 	if (IS_ERR(cooling))
+ 		DRM_DEV_INFO(dev, "Failed to register cooling device\n");
 
 ---
-base-commit: 9a222650d9e70d0027126e4df5b00b1b5b678a97
-change-id: 20261112-devfreq-suspend-sync-7ca8fc51550a
-prerequisite-change-id: 20261110-devfreq-resume-freq-e42eaeb6f8f8:v1
-prerequisite-patch-id: 36df3d7446ebdbd5093a58ba2aa8a83d2ecf9cf2
+base-commit: cb0a63f0c96e8ecb90199eeb99cc2a7fcfa703d4
+change-id: 20261110-panthor-suspend-clk-11d5604fe5be
 
 Best regards,
 --  
