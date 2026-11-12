@@ -1,11 +1,10 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 09:22:32 +0000
-Subject: [PATCH v3 2/7] arm64: dts: allwinner: orangepi-zero2: Let the PHY
- add the RX delay
+Date: Thu, 12 Nov 2026 09:22:33 +0000
+Subject: [PATCH v3 3/7] arm64: dts: allwinner: h616: Add GPU OPP table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-h616-zero2-dt-v3-2-1cd2664230c8@gmail.com>
+Message-Id: <20261112-h616-zero2-dt-v3-3-1cd2664230c8@gmail.com>
 References: <20261112-h616-zero2-dt-v3-0-1cd2664230c8@gmail.com>
 In-Reply-To: <20261112-h616-zero2-dt-v3-0-1cd2664230c8@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,57 +16,102 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794475350; l=1923;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794475350; l=2569;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=hgTnawt6aimtaYNRLXqSLgWoRIBtKR4Hz80cKcd5MZQ=;
- b=vJ2ZDnQf7m9n3JuujGCr6FMtzvczqPGcrm49X9AJCXNCBYfWtNBiezVwEh6ut7LnS+yt/zY2F
- olwUXyzpPADD9lT6n1X1l8Fc+mdovKmAkS6TuCgJkmdT05OuP/k0O6H
+ bh=lGUm88hkiiCwsS06lh6tLUaHZIc5LqI3MybFyqamLeE=;
+ b=NNHfUxaBp6U38XVr62s7katLARU3VInN0NB/LtDM+gBcF1BJaDXPS6YDshlF6a0LUOtGY13VG
+ PZBwBqZkhduCinkjvQU9wBng+dEFstW+mLL7uCCD/D+KqN62rqJFJwT
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Orange Pi Zero2 describes its RTL8211F link as "rgmii", with the
-whole RX clock delay (3100 ps, the maximum the H616 EMAC syscon can
-add) inserted by the MAC. With "rgmii" the Realtek PHY driver also
-clears the PHY's own RX delay bit, so RX sampling relies on the MAC
-delay alone and sits at the edge of the window.
+Add the operating points of the H616/H618 Mali-G31, so that boards can
+enable GPU DVFS through panfrost devfreq: 306 to 600 MHz at 810 to
+950 mV. The table is the one of the vendor images (as recovered from a
+KickPi K2B image, also carried by Armbian). Like the H6 GPU OPP table,
+it uses <target target max> voltage triplets with a common 990 mV
+maximum: a board whose GPU supply cannot reach an OPP's target voltage
+loses that OPP, while a board whose supply minimum is above the target
+of the lower OPPs keeps them, as their [target, max] range still
+overlaps the supply's range.
 
-On the board this shows up as intermittent boots with a dead receive
-path, after cold and warm resets alike: the link comes up at
-1000/full and frames are transmitted and seen by the peer, but nothing
-is ever received and the EMAC raises no RX interrupt. All EMAC clock,
-pinmux, drive strength and syscon registers are the same on good and
-bad boots. On a bad boot, setting the PHY RX delay bit and clearing
-the syscon RX delay restores reception at once, without a link reset.
+Like sun50i-h616-cpu-opp.dtsi, the table is in a separate file that
+boards include once their GPU supply is described.
 
-Use "rgmii-rxid" (RX delay in the PHY, none in the MAC), as the Orange
-Pi Zero3 with the same PHY already does, and as the vendor BSP does.
-The 700 ps MAC TX delay is kept. With this change 10 of 10 cold boots
-had a working receive path.
-
-Fixes: 5a378f9f2b15 ("arm64: dts: allwinner: h616: Add OrangePi Zero 2 board support")
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ .../boot/dts/allwinner/sun50i-h616-gpu-opp.dtsi    | 62 ++++++++++++++++++++++
+ 1 file changed, 62 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
-index f2e3300e078a..1fdf2d3c1a87 100644
---- a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
-@@ -18,9 +18,9 @@ &cpu0 {
- };
- 
- &emac0 {
--	allwinner,rx-delay-ps = <3100>;
- 	allwinner,tx-delay-ps = <700>;
--	phy-mode = "rgmii";
-+	/* RX delay is added by the PHY, TX delay by the EMAC */
-+	phy-mode = "rgmii-rxid";
- 	phy-supply = <&reg_dcdce>;
- };
- 
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h616-gpu-opp.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-h616-gpu-opp.dtsi
+new file mode 100644
+index 000000000000..18989d11c832
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h616-gpu-opp.dtsi
+@@ -0,0 +1,62 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++// Copyright (C) 2026 Arun Iyengar <aiyengar1990@gmail.com>
++
++/ {
++	gpu_opp_table: opp-table-gpu {
++		compatible = "operating-points-v2";
++
++		opp-306000000 {
++			opp-hz = /bits/ 64 <306000000>;
++			opp-microvolt = <810000 810000 990000>;
++		};
++
++		opp-336000000 {
++			opp-hz = /bits/ 64 <336000000>;
++			opp-microvolt = <810000 810000 990000>;
++		};
++
++		opp-360000000 {
++			opp-hz = /bits/ 64 <360000000>;
++			opp-microvolt = <820000 820000 990000>;
++		};
++
++		opp-384000000 {
++			opp-hz = /bits/ 64 <384000000>;
++			opp-microvolt = <830000 830000 990000>;
++		};
++
++		opp-420000000 {
++			opp-hz = /bits/ 64 <420000000>;
++			opp-microvolt = <850000 850000 990000>;
++		};
++
++		opp-456000000 {
++			opp-hz = /bits/ 64 <456000000>;
++			opp-microvolt = <870000 870000 990000>;
++		};
++
++		opp-504000000 {
++			opp-hz = /bits/ 64 <504000000>;
++			opp-microvolt = <890000 890000 990000>;
++		};
++
++		opp-540000000 {
++			opp-hz = /bits/ 64 <540000000>;
++			opp-microvolt = <910000 910000 990000>;
++		};
++
++		opp-576000000 {
++			opp-hz = /bits/ 64 <576000000>;
++			opp-microvolt = <930000 930000 990000>;
++		};
++
++		opp-600000000 {
++			opp-hz = /bits/ 64 <600000000>;
++			opp-microvolt = <950000 950000 990000>;
++		};
++	};
++};
++
++&gpu {
++	operating-points-v2 = <&gpu_opp_table>;
++};
 
 -- 
 2.55.0
