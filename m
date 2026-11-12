@@ -1,97 +1,120 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 05:28:05 +0000
-Subject: [PATCH net] net: stmmac: dwmac-sun8i: Fix use-after-free in the
- MDIO mux error path
+From: Weidong Wang <weidongw@illinois.edu>
+Date: Wed, 11 Nov 2026 23:30:25 -0600
+Subject: [PATCH] remoteproc: elf_loader: Bound the program header table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-sun8i-emac-mux-uaf-v1-1-308ae7e6fcf2@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6Xs2QU3YIn+inhI44uu0CjZphRK/
- 91UjzMws5KhKIwu3UoFs5q+cwM5dBSfIT/Aem9M7uh6EXFsNXtljCHyWBeuIbEMwfuTk3MCqIW
- fgqTLb3qljIluf2l1eCFO+4627QucXK9qewAAAA==
-X-Change-ID: 20261112-sun8i-emac-mux-uaf-1ba885219fee
-To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, linux-stm32@st-md-mailman.stormreply.com, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794461284; l=2672;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=NsburT4Rs6TuKeRLvNh9ntKMBycWNUHji+Gwj+018cs=;
- b=KuvZTvy/m2KLD0YOLU883uIqDNTznxKHAhJWD8davNR1BvQqXeosLyiPNYJbDYPG6qKvJDQdR
- LcFJgmVCqFeAlJD1ouD1bdILIdSCBHTVE1tYyniSitGLJ+rn/Vi2tK2
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+Message-Id: <20261111-c3-n021-v1-1-17c9151d0245@illinois.edu>
+X-B4-Tracking: v=1; b=H4sIAPBO9WoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDINBNNtbNMzAy1DU3MzC3NDFJNbJINFMCqi4oSk3LrACbFB0L4ReXJmW
+ lJpeAtCvV1gIAFv8ZXWsAAAA=
+X-Change-ID: 20261111-c3-n021-7607944e28a6
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Mathieu Poirier <mathieu.poirier@linaro.org>
+Cc: linux-remoteproc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Zijie Zhao <zijie4@illinois.edu>, 
+ Weidong Wang <weidongw@illinois.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794461450; l=3782;
+ i=weidongw@illinois.edu; s=20261108; h=from:subject:message-id;
+ bh=1+dxp4TSkvo99vpszS33ptcnuh7ZLO8mxAuiCbEJZ2s=;
+ b=bVPFLFW4TgQVG01rb6iT1GKoLw3UEMEXZT1PQ1ti01+uV1i5KUnacemlHqoDQKt+eKN/EjRiQ
+ AdOjFspT8u7BJPxCdT1GZ+ecwgUOIhE8YRUWHLAIt+jqJQKGZCwSdUX
+X-Developer-Key: i=weidongw@illinois.edu; a=ed25519;
+ pk=DR2S1xPEa5sELrWPfOpvUphJQ2VHC+MDc/wJavE/ifg=
+X-Endpoint-Received: by B4 Relay for weidongw@illinois.edu/20261108 with auth_id=1449
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mdio_mux_init() registers the child MDIO buses one after the other.
-Scanning the internal bus makes mdio_mux_syscon_switch_fn() select the
-internal PHY and power it, which sets gmac->internal_phy_powered. If
-mdio_mux_init() then fails without switching away from the internal
-bus, for example because registering the external bus returns
--EPROBE_DEFER before any access to it, or because an allocation for it
-fails, sun8i_dwmac_probe() jumps to dwmac_mux with the PHY still
-powered.
+rproc_elf_sanity_check() checks that e_phoff lies inside the image, but
+not that the e_phnum program headers after it do.
+rproc_elf_load_segments() then walks all of them, so an image that
+declares more program headers than it contains is read past the end of
+the firmware buffer. Both fields come from the image.
 
-That error path releases gmac->rst_ephy and gmac->ephy_clk and only
-then calls stmmac_pltfr_remove(), which ends in sun8i_dwmac_exit().
-Since the PHY is still marked as powered, sun8i_dwmac_exit() calls
-sun8i_dwmac_unpower_internal_phy(), which passes the clock and the
-reset control that were just freed to clk_disable_unprepare() and
-reset_control_assert().
+Commit b32177ead5f8 ("remoteproc: elf_loader: Bound the section header
+table") added the same bound for section headers. Do the same for the
+program header table.
 
-Unpower the internal PHY before releasing its clock and reset control,
-as sun8i_dwmac_remove() does. The later call from sun8i_dwmac_exit()
-then does nothing because internal_phy_powered is already cleared.
+Found by an AI code review agent (an LLM-based bug-finding tool
+developed by Zijie Zhao and the submitter) and confirmed on an
+unmodified kernel, without error injection, on x86_64 under QEMU with
+KASAN, using an out-of-tree test module that registers a remote
+processor with the stock ELF helpers (rproc_elf_sanity_check,
+rproc_elf_load_segments, rproc_elf_get_boot_addr) and a da_to_va backed
+by a kernel buffer. Booting it with a 120-byte ELF64 image whose header
+claims 64 program headers at e_phoff 64 gives
 
-Fixes: 529254216773 ("net: stmmac: dwmac-sun8i: Balance internal PHY resource references")
+  BUG: KASAN: vmalloc-out-of-bounds in rproc_elf_load_segments+0x4e5/0x6a0
+  Read of size 4 at addr ffffc90000035078 by task run/72
+
+i.e. the first byte past the image, in the buffer allocated by
+kernel_read_file(). The same image with e_phnum 1 boots cleanly.
+
+With this patch the oversized image is rejected with "Program headers
+are out of bounds", and the e_phnum 1 image still boots.
+
+The reproducer, fix and changelog were drafted with AI assistance
+(Claude), then reviewed and tested by the submitter.
+
+Fixes: 400e64df6b23 ("remoteproc: add framework for controlling remote processors")
 Cc: stable@vger.kernel.org
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Cc: Zijie Zhao <zijie4@illinois.edu>
+Signed-off-by: Weidong Wang <weidongw@illinois.edu>
 ---
-The problem was pointed out by the Sashiko AI review of an unrelated
-dwmac-sun8i series of mine. It holds against the code: clk_put() and
-reset_control_put() free the per-consumer struct clk and the exclusive
-reset control, and nothing between the dwmac_mux label and
-sun8i_dwmac_exit() clears internal_phy_powered.
+Tested on v7.4-rc1 (05441d697f7f), x86_64, KASAN, QEMU/KVM, with an
+out-of-tree test module that registers a remote processor using the
+stock ELF helpers and a da_to_va backed by a kernel buffer. Firmware
+is a 120-byte ELF64 image, program headers at e_phoff 64:
 
-This is build-tested only (arm64 and arm, W=1). I have no board with the
-internal PHY (H3, H5 or V3s), so the error path was not exercised.
+               e_phnum 64                      e_phnum 1 (control)
+  unpatched    KASAN vmalloc-out-of-bounds     boots
+               read in rproc_elf_load_segments,
+               first byte past the image
+  patched      "Program headers are out of     boots
+               bounds", -EINVAL
 
-This patch was developed with Claude (Anthropic) as a coding assistant:
-it checked the report against the code and wrote the fix and the commit
-message. I reviewed it.
+No KASAN/UBSAN reports on the patched kernel. The code is unchanged in
+mainline, linux-next (next-20261111) and rproc-next.
+
+The reproducer is not attached (AI-found issue, see security-bugs.rst)
+and can be shared on request.
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/remoteproc/remoteproc_elf_loader.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-index 47954537b29e..4436532af2dc 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-@@ -1245,6 +1245,7 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
- 	return 0;
+diff --git a/drivers/remoteproc/remoteproc_elf_loader.c b/drivers/remoteproc/remoteproc_elf_loader.c
+index da3cddbe7..54e1fd4bd 100644
+--- a/drivers/remoteproc/remoteproc_elf_loader.c
++++ b/drivers/remoteproc/remoteproc_elf_loader.c
+@@ -46,7 +46,7 @@ int rproc_elf_sanity_check(struct rproc *rproc, const struct firmware *fw)
+ 	struct elf32_hdr *ehdr;
+ 	u32 elf_shdr_get_size;
+ 	u64 phoff, shoff;
+-	size_t shend;
++	size_t shend, phend;
+ 	char class;
+ 	u16 phnum, shnum, shstrndx;
  
- dwmac_mux:
-+	sun8i_dwmac_unpower_internal_phy(gmac);
- 	reset_control_put(gmac->rst_ephy);
- 	clk_put(gmac->ephy_clk);
- dwmac_remove:
+@@ -126,6 +126,13 @@ int rproc_elf_sanity_check(struct rproc *rproc, const struct firmware *fw)
+ 		return -EINVAL;
+ 	}
+ 
++	/* rproc_elf_load_segments() walks all e_phnum program headers */
++	phend = size_add(size_mul(elf_size_of_phdr(class), phnum), phoff);
++	if (phend > fw->size) {
++		dev_err(dev, "Program headers are out of bounds\n");
++		return -EINVAL;
++	}
++
+ 	dev_dbg(dev, "Firmware is an elf%d file\n",
+ 		class == ELFCLASS32 ? 32 : 64);
+ 
 
 ---
-base-commit: 145480b28ca82e9fae789427cc4569e596515a32
-change-id: 20261112-sun8i-emac-mux-uaf-1ba885219fee
+base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
+change-id: 20261111-c3-n021-7607944e28a6
 
 Best regards,
 --  
-Arun Iyengar <aiyengar1990@gmail.com>
+Weidong Wang <weidongw@illinois.edu>
 
