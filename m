@@ -1,11 +1,11 @@
 From: Suyuan Wang <shyckless@gmail.com>
-Date: Thu, 12 Nov 2026 10:04:48 +0000
-Subject: [PATCH net 1/2] nfc: llcp: Clone LSM attributes to newly created
- child sockets
+Date: Thu, 12 Nov 2026 10:04:49 +0000
+Subject: [PATCH net 2/2] nfc: st21nfca: Free the ATR_REQ skb after sending
+ it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-nfc-v1-1-ab0ef166f382@gmail.com>
+Message-Id: <20261112-nfc-v1-2-ab0ef166f382@gmail.com>
 References: <20261112-nfc-v1-0-ab0ef166f382@gmail.com>
 In-Reply-To: <20261112-nfc-v1-0-ab0ef166f382@gmail.com>
 To: netdev@vger.kernel.org, david@ixit.cz
@@ -13,11 +13,11 @@ Cc: edumazet@kernel.org, kuba@kernel.org, horms@kernel.org,
  oe-linux-nfc@lists.linux.dev, linux-kernel@vger.kernel.org, 
  pabeni@redhat.com, davem@davemloft.net
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794477891; l=2145;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794477891; l=2188;
  i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=WtUcNIlZr5Of/JlHVB20yKuPFijC05MSrsd3vsPG3W8=;
- b=zMw8c+OS45UQNMuaqZc67YledF6y0cUGl05rZNtlvgXdt1L5mMoMp6tk96v8l8sV16YCN32KP
- 70btJpatg0sDcOKNDDmKNvciQra+NiAFoZKiwGy6Wntc5uvinHafvfu
+ bh=+RGyFbOPiqFDpQv7ZHyszj7XEOri6aHfSCc39zfhtRs=;
+ b=v4Q5/lkOcsxVMVNcmaaspSv/zDgC3XTBcWhvnWhrbELGF9dTgrptheGZdcFIJhpfGv6haKGzY
+ uI2rZzK9QrzD68wZ9yNInIGzjnqBilkb6ThDTTqi+GTfybqECLuKdLU
 X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
  pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
 X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
@@ -25,63 +25,60 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Suyuan Wang <stevewong@hust.edu.cn>
 
-nfc_llcp_recv_connect() creates the child socket for an incoming
-CONNECT and queues it for accept(), but never calls security_sk_clone():
+st21nfca_im_send_atr_req() allocates an skb for the ATR_REQ, passes
+its data to the HCI layer and then forgets about it:
 
-    new_sk = nfc_llcp_sock_alloc(NULL, parent->sk_type, GFP_ATOMIC, 0);
-    ...
-    new_sock = nfc_llcp_sock(new_sk);
+    return nfc_hci_send_cmd_async(hdev, ST21NFCA_RF_READER_F_GATE,
+                            ST21NFCA_WR_XCHG_DATA, skb->data,
+                            skb->len, info->async_cb, info);
 
-So the accepted socket doesn't inherit the LSM state of the listening
-socket. With SELinux, its sock keeps the unlabeled SID. The
-sock_has_perm() checks on it (sendmsg, recvmsg and so on) still run,
-but against that SID instead of the server's. Depending on the policy,
-this can deny a confined server on its own accepted sockets, or allow
-something the server's own label wouldn't.
+nfc_hci_send_cmd_async() copies the payload into its own fragments, so
+the skb is still ours to free. As it is, one skb leaks on every ATR_REQ
+sent in initiator mode, whether or not the command was queued.
 
-Call security_sk_clone() right after the child is allocated, before it
-is set up and queued for accept(). Bluetooth, iucv and vsock fixed the
-same problem the same way, in commit 6230c9b4f895 ("bluetooth: Properly
-clone LSM attributes to newly created child connections"),
-commit 02f06918156b ("iucv: properly clone LSM attributes to newly
-created child sockets") and commit 1f935e8e72ec ("selinux: vsock: Set
-SID for socket returned by accept()").
+Free it right after the call, on success and on error, as
+st21nfca_tx_work() does for the same call.
 
 Found with a static analysis tool and checked by hand.
 
-Fixes: d646960f7986 ("NFC: Initial LLCP support")
+Fixes: 1892bf844ea0 ("NFC: st21nfca: Adding P2P support to st21nfca in Initiator & Target mode")
 Cc: stable@vger.kernel.org
 Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
 Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
 Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-Compile tested only, I haven't tried it with an SELinux policy and a
-real LLCP peer.
+Compile tested only, I don't have ST21NFCA hardware.
 ---
- net/nfc/llcp_core.c | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/nfc/st21nfca/dep.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/net/nfc/llcp_core.c b/net/nfc/llcp_core.c
-index 74bf817007cf..0f54548a47cc 100644
---- a/net/nfc/llcp_core.c
-+++ b/net/nfc/llcp_core.c
-@@ -10,6 +10,7 @@
- #include <linux/kernel.h>
- #include <linux/list.h>
- #include <linux/nfc.h>
-+#include <linux/security.h>
+diff --git a/drivers/nfc/st21nfca/dep.c b/drivers/nfc/st21nfca/dep.c
+index a5fab4fd5129..4b9054eb0208 100644
+--- a/drivers/nfc/st21nfca/dep.c
++++ b/drivers/nfc/st21nfca/dep.c
+@@ -496,6 +496,7 @@ int st21nfca_im_send_atr_req(struct nfc_hci_dev *hdev, u8 *gb, size_t gb_len)
+ 	struct st21nfca_atr_req *atr_req;
+ 	struct nfc_target *target;
+ 	uint size;
++	int r;
  
- #include "nfc.h"
- #include "llcp.h"
-@@ -1006,6 +1007,8 @@ static void nfc_llcp_recv_connect(struct nfc_llcp_local *local,
- 		goto fail;
- 	}
+ 	info->dep_info.to = ST21NFCA_DEFAULT_TIMEOUT;
+ 	size = ST21NFCA_ATR_REQ_MIN_SIZE + gb_len;
+@@ -547,9 +548,11 @@ int st21nfca_im_send_atr_req(struct nfc_hci_dev *hdev, u8 *gb, size_t gb_len)
+ 	info->dep_info.bsi = atr_req->bsi;
+ 	info->dep_info.lri = ST21NFCA_PP2LRI(atr_req->ppi);
  
-+	security_sk_clone(parent, new_sk);
-+
- 	new_sock = nfc_llcp_sock(new_sk);
+-	return nfc_hci_send_cmd_async(hdev, ST21NFCA_RF_READER_F_GATE,
+-				ST21NFCA_WR_XCHG_DATA, skb->data,
+-				skb->len, info->async_cb, info);
++	r = nfc_hci_send_cmd_async(hdev, ST21NFCA_RF_READER_F_GATE,
++				   ST21NFCA_WR_XCHG_DATA, skb->data,
++				   skb->len, info->async_cb, info);
++	kfree_skb(skb);
++	return r;
+ }
+ EXPORT_SYMBOL(st21nfca_im_send_atr_req);
  
- 	new_sock->local = nfc_llcp_local_get(local);
 
 -- 
 2.34.1
