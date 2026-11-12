@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:48:35 +0000
-Subject: [PATCH v2 02/11] drm/panfrost: Refuse to sync the CPU caches of a
- heap BO
+Date: Thu, 12 Nov 2026 08:48:36 +0000
+Subject: [PATCH v2 03/11] drm/panfrost: Don't take a reference on a mapping
+ that is being freed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-panfrost-long-jobs-v2-2-a06830da3d99@gmail.com>
+Message-Id: <20261112-panfrost-long-jobs-v2-3-a06830da3d99@gmail.com>
 References: <20261112-panfrost-long-jobs-v2-0-a06830da3d99@gmail.com>
 In-Reply-To: <20261112-panfrost-long-jobs-v2-0-a06830da3d99@gmail.com>
 To: Boris Brezillon <boris.brezillon@collabora.com>, 
@@ -17,62 +17,64 @@ To: Boris Brezillon <boris.brezillon@collabora.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794473314; l=2148;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794473314; l=2240;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=sabqZXiqcOVlHYAJg0avzqnHVWyyC8nVoD/l1btGZFM=;
- b=EZaFwvzELyUZIeDpHLBigkeb0f38sxfR+QENoZ2o+SujrdnYH8BpvXs9ae9t/9l/ldZOF276x
- YSfTG2G0puWDNT6nGnOkBYQFT6SpvtrNj4eOEBTq5fOfdol2A12jwoK
+ bh=rqdqg/OAAoy83+50ChQ3aQoU7NkR4pnj4DQAb5ccFxY=;
+ b=Oyzab45fRaSg0gCSQpPedyAhPZ8VSqJ25maLTpFnmx5Sm1cIpV2KK+zz9i9BzB0yVnH1IDLF8
+ yc4H6gxvNvOAAyev8HEdZIcS8xMq+JnKj0NcBoeE8duLrwihorKerVC
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-panfrost_gem_sync() calls drm_gem_shmem_get_pages_sgt() on any BO that is
-not write-combined. Heap BOs are write-combined only on non-coherent
-GPUs; on a coherent one, a PANFROST_SYNC_BO on a heap BO reaches
-drm_gem_shmem_get_pages_sgt() with bo->base.pages being the sparse page
-array of the GPU fault handler, and drm_prime_pages_to_sg() dereferences
-the NULL entries of the chunks not faulted in yet. On a heap BO with no
-chunk faulted in yet, it instead pins the whole heap and leaves
-bo->base.pages set without bo->sgts, and the next GPU fault on the heap
-dereferences the NULL bo->sgts.
+addr_to_mapping() looks up the mapping that contains a faulting GPU
+address in the address space's drm_mm and takes a reference on it with
+kref_get(). But panfrost_gem_mapping_put() drops the last reference
+before panfrost_gem_mapping_release() -> panfrost_gem_teardown_mapping()
+unmaps the BO and removes its node from the drm_mm under mm_lock, so the
+lookup can find a mapping whose refcount is already zero. kref_get()
+then revives it (refcount_t warns about the addition on zero), the
+release goes on and frees the mapping and drops the BO, and the fault
+handler maps pages into a BO that is being freed.
 
-Heap BOs are not CPU-mappable (panfrost_ioctl_mmap_bo() refuses them, and
-panfrost_gem_create() refuses PANFROST_BO_WB_MMAP for them), so there is
-nothing to sync: return -EINVAL, as for imported BOs.
+This takes a GPU fault on a heap BO's address while the last handle and
+the last job reference to that BO go away. Jobs hold a reference on the
+mappings of the BOs they list, so it takes a job that uses a heap BO it
+does not list; userspace on the render node can submit that.
 
-Found by code review (Sashiko). Not tested on a coherent GPU: the
-Mali-G31 here is not coherent, so a heap BO is write-combined and the
-sync returned early before.
+Use kref_get_unless_zero() and treat a mapping that is being freed as
+absent: the fault is then reported as unhandled.
 
-Fixes: 7be45f548976 ("drm/panfrost: Add a PANFROST_SYNC_BO ioctl")
+Found by code review: the same pattern in new code of this series was
+reported by Sashiko. Not reproduced.
+
+Fixes: bdefca2d8dc0 ("drm/panfrost: Add the panfrost_gem_mapping concept")
 Cc: stable@vger.kernel.org
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/sashiko-outbox-206561@kernel.org/
+Link: https://lore.kernel.org/all/sashiko-outbox-206570@kernel.org/
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/gpu/drm/panfrost/panfrost_gem.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ drivers/gpu/drm/panfrost/panfrost_mmu.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/gpu/drm/panfrost/panfrost_gem.c b/drivers/gpu/drm/panfrost/panfrost_gem.c
-index 518f24549..5d3925abd 100644
---- a/drivers/gpu/drm/panfrost/panfrost_gem.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_gem.c
-@@ -569,6 +569,14 @@ panfrost_gem_sync(struct drm_gem_object *obj, u32 type, u32 offset, u32 size)
- 	if (drm_gem_is_imported(&shmem->base))
- 		return -EINVAL;
+diff --git a/drivers/gpu/drm/panfrost/panfrost_mmu.c b/drivers/gpu/drm/panfrost/panfrost_mmu.c
+index faa62643c..eaf94d47d 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_mmu.c
++++ b/drivers/gpu/drm/panfrost/panfrost_mmu.c
+@@ -576,7 +576,13 @@ addr_to_mapping(struct panfrost_device *pfdev, int as, u64 addr)
+ 		    offset < (node->start + node->size)) {
+ 			mapping = drm_mm_node_to_panfrost_mapping(node);
  
-+	/* Heap BOs are not CPU-mappable, and their pages are populated by the
-+	 * GPU fault handler, one 2 MB chunk at a time, with a page array and
-+	 * sg tables of its own: drm_gem_shmem_get_pages_sgt() must not touch
-+	 * them.
-+	 */
-+	if (bo->is_heap)
-+		return -EINVAL;
-+
- 	switch (type) {
- 	case PANFROST_BO_SYNC_CPU_CACHE_FLUSH:
- 	case PANFROST_BO_SYNC_CPU_CACHE_FLUSH_AND_INVALIDATE:
+-			kref_get(&mapping->refcount);
++			/* The last reference to a mapping is dropped before
++			 * panfrost_gem_teardown_mapping() takes its node out
++			 * of the address space: don't revive one that is
++			 * being freed.
++			 */
++			if (!kref_get_unless_zero(&mapping->refcount))
++				mapping = NULL;
+ 			break;
+ 		}
+ 	}
 
 -- 
 2.55.0
