@@ -1,238 +1,116 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:23:30 +0000
-Subject: [PATCH v2 2/2] pmdomain: rockchip: report domain errors once, with
- dev_err_probe()
+Subject: [PATCH v2 0/2] usb: typec: Find a Type-C partner after a warm
+ reboot on the Orange Pi 5
+Date: Thu, 12 Nov 2026 08:23:32 +0000
+Message-Id: <20261112-tcpm-attach-reboot-v2-0-b4bc6ca83490@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-pmdomain-rockchip-v2-2-5cd942a23df7@gmail.com>
-References: <20261112-pmdomain-rockchip-v2-0-5cd942a23df7@gmail.com>
-In-Reply-To: <20261112-pmdomain-rockchip-v2-0-5cd942a23df7@gmail.com>
-To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Shawn Lin <shawn.lin@rock-chips.com>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Kevin Hilman <khilman@linaro.org>, Caesar Wang <wxt@rock-chips.com>, 
- Elaine Zhang <zhangqing@rock-chips.com>
-Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Yao Zi <me@ziyao.cc>, Igor Pecovnik <igor@armbian.com>, 
- Arun Iyengar <aiyengar1990@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7Zi2CERX3sOwKNMBxoglbSUaw
+ t0F3Lt8yfvvzxA5CEe4ZDMEniSKf65gDhlQb58do7iVwShTaq0VJhoHtClZ6jFw431Cd85d0eb
+ lSeUNrMMxcCvvPXqrfxxfzZ0pbaXN6CUmHz7766Q37+/BpFFhVRYVkWbjyF67wcrjSH6AelmWL
+ 1L3KSXGAAAA
+X-Change-ID: 20261110-tcpm-attach-reboot-d93d5f36403b
+To: Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Guenter Roeck <linux@roeck-us.net>, Heiko Stuebner <heiko@sntech.de>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794471809; l=7366;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794471812; l=4299;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=NjDgN0qxUNb8P6mWj/gQ4TDMTDd100w9vcSH2E4Nnws=;
- b=uCNgNWReaauPLf0MyoPtleQYM2BzI10ZFEpvl6R03KZd4/DcFIva5RZJU8iUeSG0tN/b2CUrr
- dHYBRH+bmoAAaOSJG2J8OpsPMJGNdyxyhJOehfNBhVULRcqM4WsYcC/
+ bh=NXoRow5VcVQww5nLiutGQN5/V1+lopLZ2pLFYOB0EcE=;
+ b=gweINCXVaFsfWvdDUDRv+bl2hLeAzzJxHEMtI/yKW9mw+LbfV9dTa53yskxM9+gkOdrCKfFO6
+ fb+isu7BQsQCPxpusNeLy+ePVu5zFPONAm3bvqz2nQeVlPlxYFxMWny
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a power domain clock is not available yet,
-rockchip_pm_add_one_domain() returns -EPROBE_DEFER, and both it and its
-callers rockchip_pm_domain_probe() and rockchip_pm_add_subdomain() print
-that with dev_err():
+After a warm reboot, an Orange Pi 5 (RK3588S, FUSB302) often did not
+see a Genesys Logic based USB-C to DisplayPort cable that stayed
+plugged in: tcpm toggled in SRC_UNATTACHED, the FUSB302 raised no
+interrupt at all, and only a replug at the board brought DisplayPort
+back. Two changes in this series and one device tree change fix it:
 
-  rockchip-pm-domain ...: power-domain: failed to get clk at index 1: -517
-  rockchip-pm-domain ...: failed to handle node power-domain: -517
+  1. tcpm: tcpm_init() sets two states back to back with the port lock
+     held, so the state machine work is queued twice, and the second
+     run applies the PORT_RESET -> PORT_RESET_WAIT_OFF transition at
+     once: tErrorRecovery (100 ms) took 6 us. A pending delay is now
+     re-armed for the time left. This is generic, with Fixes: and
+     Cc: stable.
+  2. fusb302: toggle with the default Rp current. The FUSB302 found
+     the cable within seconds when it toggled with the default current
+     (after another device was detached), never while it toggled with
+     Rp 3.0A. Once toggling stops on a sink, the driver switches to the
+     configured Rp current before it reports the attach, so the sink
+     sees that level from the start, as before.
 
-once per probe attempt, and the second line twice for a nested domain.
-On an RK3588 board whose NPU domain clock appears late this is more than
-20 error lines before the domain finally probes, and the reason of the
-deferral is not recorded. Other failures are reported twice (once where
-they happen and once by the callers), or only by the callers, which name
-the node but not what failed: a missing pm_qos phandle and a pm_qos node
-without a regmap print nothing in rockchip_pm_add_one_domain(), and a
-failed clk_bulk_prepare() only has the message of the clk core, which
-names neither the device nor the domain.
+The device tree change, "arm64: dts: rockchip: Mark the Orange Pi 5/5B
+Type-C port self-powered" (patch 3 of v1), now goes separately to the
+Rockchip tree: the port's VBUS comes from vcc5v0_sys and the board
+runs from a separate power input, so tcpm opens CC during error
+recovery and the partner sees a real detach at boot. It does not
+depend on this series to build, but without patch 1 the open-CC period
+at boot is cut short.
 
-Report every error once, where it happens, with dev_err_probe(), and
-drop the "failed to handle (subdomain) node" messages from the callers.
-A deferral is then quiet and keeps its specific reason in
-/sys/kernel/debug/devices_deferred, such as "failed to get clk at index
-1", and -ENOMEM, which the callers used to print, is quiet as well. The
-return values are unchanged, except that a failed
-syscon_node_to_regmap() for a pm_qos node now returns its own error
-instead of -ENODEV: it can be -EPROBE_DEFER (a syscon regmap that is
-not registered yet, or a syscon clock or hwlock that is not available
-yet), which must not turn into a probe failure.
+Testing, on an Orange Pi 5 with 7.3-based kernels: before, after a
+warm reboot the cable was not detected (0 FUSB302 interrupts since
+boot) until it was replugged at the board. With the three v1 patches it
+was detected on 4/4 boots, the first one starting from that stuck
+state, with DP connected 1-2 s after boot; the three were tested
+together, not one at a time. The patches have been in every kernel I
+have run since; in a later run of 30 reboots with a USB-C DisplayPort
+monitor, the partner was attached on 30/30 boots, and the tcpm log of
+every boot shows CC opened in PORT_RESET and 100-112 ms spent there
+before PORT_RESET_WAIT_OFF. Not tested: other TCPCs (patch 1 is
+generic, patch 2 only changes fusb302), and the Orange Pi 5B (same
+dtsi).
 
-Fixes: 7c696693a4f5 ("soc: rockchip: power-domain: Add power domain driver")
-Fixes: 6be05b5ec161 ("soc: rockchip: power-domain: add support for sub-power domains")
-Suggested-by: Sebastian Reichel <sebastian.reichel@collabora.com>
+v2 was tested on the same board with a kernel carrying exactly the v2
+changes: on 16/16 warm reboots the partner was attached and DP alt mode
+configured, CC was open in PORT_RESET for 100 ms each time, there were
+no kernel warnings, and the FUSB302 HOST_CUR field matched the Rp level
+of tcpm's last set_cc() on every boot. Three role changes (dual -> sink
+-> dual) with the monitor attached each re-attached the partner and DP.
+This is a PD port, so the non-PD path that the v2 change to patch 2 is
+about was not exercised.
+
+W=1 arm64 builds of drivers/usb/typec at every patch,
+and checkpatch --strict are clean.
+
+This series was developed with Claude (Anthropic) as a coding
+assistant: it wrote the code and the commit messages, and I reviewed
+and tested every change as described above.
+
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/pmdomain/rockchip/pm-domains.c | 98 +++++++++++++++-------------------
- 1 file changed, 43 insertions(+), 55 deletions(-)
+Changes in v2:
+- Patch 2: switch to the requested Rp current when toggling stops on a
+  sink, before the attach is reported; tcpm does not set it again on
+  every path (ports without PD) (Sashiko). Fixes: tag added (Sashiko)
+- Patch 1 unchanged. Sashiko's pre-existing tcpm_unregister_port()
+  race is fixed separately:
+  https://lore.kernel.org/all/20261112-tcpm-unregister-timers-v1-1-7230fda5612b@gmail.com/
+- Patch 3 (Orange Pi 5/5B DTS) split out; it goes to the Rockchip
+  tree on its own
+- Link to v1: https://patch.msgid.link/20261110-tcpm-attach-reboot-v1-0-7657cc1e2dca@gmail.com
 
-diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
-index 00c7e78f89b5..be077fb52f40 100644
---- a/drivers/pmdomain/rockchip/pm-domains.c
-+++ b/drivers/pmdomain/rockchip/pm-domains.c
-@@ -804,28 +804,22 @@ static int rockchip_pm_add_one_domain(struct rockchip_pmu *pmu,
- 	int error;
- 
- 	error = of_property_read_u32(node, "reg", &id);
--	if (error) {
--		dev_err(pmu->dev,
--			"%pOFn: failed to retrieve domain id (reg): %d\n",
--			node, error);
--		return -EINVAL;
--	}
-+	if (error)
-+		return dev_err_probe(pmu->dev, -EINVAL,
-+				     "%pOFn: failed to retrieve domain id (reg)\n",
-+				     node);
- 
--	if (id >= pmu->info->num_domains) {
--		dev_err(pmu->dev, "%pOFn: invalid domain id %d\n",
--			node, id);
--		return -EINVAL;
--	}
-+	if (id >= pmu->info->num_domains)
-+		return dev_err_probe(pmu->dev, -EINVAL,
-+				     "%pOFn: invalid domain id %d\n", node, id);
- 	/* RK3588 has domains with two parents (RKVDEC0/RKVDEC1) */
- 	if (pmu->genpd_data.domains[id])
- 		return 0;
- 
- 	pd_info = &pmu->info->domain_info[id];
--	if (!pd_info->pwr_mask && !pd_info->req_mask) {
--		dev_err(pmu->dev, "%pOFn: undefined domain id %d\n",
--			node, id);
--		return -EINVAL;
--	}
-+	if (!pd_info->pwr_mask && !pd_info->req_mask)
-+		return dev_err_probe(pmu->dev, -EINVAL,
-+				     "%pOFn: undefined domain id %d\n", node, id);
- 
- 	pd = devm_kzalloc_obj(pmu->dev, *pd);
- 	if (!pd)
-@@ -849,17 +843,20 @@ static int rockchip_pm_add_one_domain(struct rockchip_pmu *pmu,
- 	for (i = 0; i < pd->num_clks; i++) {
- 		pd->clks[i].clk = of_clk_get(node, i);
- 		if (IS_ERR(pd->clks[i].clk)) {
--			error = PTR_ERR(pd->clks[i].clk);
--			dev_err(pmu->dev,
--				"%pOFn: failed to get clk at index %d: %d\n",
--				node, i, error);
-+			error = dev_err_probe(pmu->dev,
-+					      PTR_ERR(pd->clks[i].clk),
-+					      "%pOFn: failed to get clk at index %d\n",
-+					      node, i);
- 			goto err_put_clocks;
- 		}
- 	}
- 
- 	error = clk_bulk_prepare(pd->num_clks, pd->clks);
--	if (error)
-+	if (error) {
-+		dev_err_probe(pmu->dev, error,
-+			      "%pOFn: failed to prepare clocks\n", node);
- 		goto err_put_clocks;
-+	}
- 
- 	pd->num_qos = of_count_phandle_with_args(node, "pm_qos",
- 						 NULL);
-@@ -884,13 +881,18 @@ static int rockchip_pm_add_one_domain(struct rockchip_pmu *pmu,
- 		for (j = 0; j < pd->num_qos; j++) {
- 			qos_node = of_parse_phandle(node, "pm_qos", j);
- 			if (!qos_node) {
--				error = -ENODEV;
-+				error = dev_err_probe(pmu->dev, -ENODEV,
-+						      "%pOFn: failed to get pm_qos %d\n",
-+						      node, j);
- 				goto err_unprepare_clocks;
- 			}
- 			pd->qos_regmap[j] = syscon_node_to_regmap(qos_node);
- 			of_node_put(qos_node);
- 			if (IS_ERR(pd->qos_regmap[j])) {
--				error = -ENODEV;
-+				error = dev_err_probe(pmu->dev,
-+						      PTR_ERR(pd->qos_regmap[j]),
-+						      "%pOFn: failed to get pm_qos %d regmap\n",
-+						      node, j);
- 				goto err_unprepare_clocks;
- 			}
- 		}
-@@ -1038,39 +1040,31 @@ static int rockchip_pm_add_subdomain(struct rockchip_pmu *pmu,
- 		u32 idx;
- 
- 		error = of_property_read_u32(parent, "reg", &idx);
--		if (error) {
--			dev_err(pmu->dev,
--				"%pOFn: failed to retrieve domain id (reg): %d\n",
--				parent, error);
--			return error;
--		}
-+		if (error)
-+			return dev_err_probe(pmu->dev, error,
-+					     "%pOFn: failed to retrieve domain id (reg)\n",
-+					     parent);
- 		parent_domain = pmu->genpd_data.domains[idx];
- 
- 		error = rockchip_pm_add_one_domain(pmu, np);
--		if (error) {
--			dev_err(pmu->dev, "failed to handle node %pOFn: %d\n",
--				np, error);
-+		if (error)
- 			return error;
--		}
- 
- 		error = of_property_read_u32(np, "reg", &idx);
--		if (error) {
--			dev_err(pmu->dev,
--				"%pOFn: failed to retrieve domain id (reg): %d\n",
--				np, error);
--			return error;
--		}
-+		if (error)
-+			return dev_err_probe(pmu->dev, error,
-+					     "%pOFn: failed to retrieve domain id (reg)\n",
-+					     np);
- 		child_domain = pmu->genpd_data.domains[idx];
- 
- 		error = pm_genpd_add_subdomain(parent_domain, child_domain);
--		if (error) {
--			dev_err(pmu->dev, "%s failed to add subdomain %s: %d\n",
--				parent_domain->name, child_domain->name, error);
--			return error;
--		} else {
--			dev_dbg(pmu->dev, "%s add subdomain: %s\n",
--				parent_domain->name, child_domain->name);
--		}
-+		if (error)
-+			return dev_err_probe(pmu->dev, error,
-+					     "%s failed to add subdomain %s\n",
-+					     parent_domain->name, child_domain->name);
-+
-+		dev_dbg(pmu->dev, "%s add subdomain: %s\n",
-+			parent_domain->name, child_domain->name);
- 
- 		error = rockchip_pm_add_subdomain(pmu, np);
- 		if (error)
-@@ -1141,18 +1135,12 @@ static int rockchip_pm_domain_probe(struct platform_device *pdev)
- 
- 	for_each_available_child_of_node_scoped(np, node) {
- 		error = rockchip_pm_add_one_domain(pmu, node);
--		if (error) {
--			dev_err(dev, "failed to handle node %pOFn: %d\n",
--				node, error);
-+		if (error)
- 			goto err_out;
--		}
- 
- 		error = rockchip_pm_add_subdomain(pmu, node);
--		if (error < 0) {
--			dev_err(dev, "failed to handle subdomain node %pOFn: %d\n",
--				node, error);
-+		if (error < 0)
- 			goto err_out;
--		}
- 	}
- 
- 	if (error) {
+---
+Arun Iyengar (2):
+      usb: typec: tcpm: Don't cut a pending state delay short on a re-queue
+      usb: typec: fusb302: Toggle with the default Rp current
 
--- 
-2.55.0
+ drivers/usb/typec/tcpm/fusb302.c | 21 +++++++++++++++++++--
+ drivers/usb/typec/tcpm/tcpm.c    | 12 ++++++++++++
+ 2 files changed, 31 insertions(+), 2 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261110-tcpm-attach-reboot-d93d5f36403b
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
