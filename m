@@ -1,103 +1,137 @@
-From: Mustafa Bayar <mbayar@gitlab.com>
-Date: Thu, 12 Nov 2026 10:48:41 +0100
-Subject: [PATCH] ref-filter: fix double free when an object is missing
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Thu, 12 Nov 2026 09:57:03 +0000
+Subject: [PATCH] thunderbolt: Keep the USB4 port when component_add() fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-mb-ref-filter-missing-object-double-free-maint-v1-1-d6d56a3c8dbe@gitlab.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/yWNwQ7CIBAFf6XZs5u4HDT6K8YDlEddU8AANSZN/
- 12sxznMzEoVRVHpOqxU8NaqOXWQw0Djw6YJrL4zmaM5iYjh6LggcNC5oXDUWjVNnN0TY2OfFze
- DQwE4Wk2NL7DeBYjgLNSjry7rZx/e7n+uyy7/LrRtX9M8mmCSAAAA
-X-Change-ID: 20261112-mb-ref-filter-missing-object-double-free-maint-9eadbfe11e71
-To: git@vger.kernel.org
-Cc: Patrick Steinhardt <ps@pks.im>, Mustafa Bayar <mbayar@gitlab.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794476930; l=3161;
- i=mbayar@gitlab.com; s=20261112; h=from:subject:message-id;
- bh=17NMEKwQrzxXBwY9i9TNeZiPlUzKGWgLZuhnC15Ryjc=;
- b=iOM2yA0Rlz2Y/aVunYcpa7j2Vu5sBTK24l/YZ3uKX58eHG78qV83Hj3cdIXkn0PKrekuny9/h
- alrxfQt9MgFDeysVvKsLvY8Dj9oiYORmaXLoCuBT0aX1IOBRItMoqAK
-X-Developer-Key: i=mbayar@gitlab.com; a=ed25519;
- pk=y0gEEr1TaZuk0b9DG9SOBVMs0YNrf+G51ueJbMsIBCc=
-X-Endpoint-Received: by B4 Relay for mbayar@gitlab.com/20261112 with auth_id=1496
+Message-Id: <20261112-thunderbolt-v1-1-fc30057cb7cd@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAG6N9WoC/yXMSwqEMBBF0a1IjTtgZeBvK+KgY55aIlGSKIK4d
+ 2P38AzuvSjACwI12UUehwRZXQJ/MuqnrxuhxCaTznXBzFrFaXcW3qxLVKVlmNoUFbimVGweg5y
+ /W9v9HXYzo4/vgu77AQjJtbFvAAAA
+X-Change-ID: 20261112-thunderbolt-7d1eb9b68e19
+To: andreas.noever@gmail.com, YehezkelShB@gmail.com, westeri@kernel.org
+Cc: heikki.krogerus@linux.intel.com, linux-kernel@vger.kernel.org, 
+ alok.a.tiwari@oracle.com, linux-usb@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794477425; l=4179;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=ki/sIY/g7xSk0EAREsQF/l4ZOt4JaXBRGwX2+sn3T8U=;
+ b=4LDAM163qsvP4HlzHvmtX2k/wcdBdvgGPl2BALV8K6VUgwrm8O60yNfau0R9Wemt/4GblZWBS
+ JsS/lKdTq63AOy1zQXc/Fcni4Hj6WJIGaJoSNqnGcNBspWJNcnx+0i0
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a ref points to a missing object, git-for-each-ref(1) may abort
-with a double free instead of reporting the missing object:
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-    free(): double free detected in tcache 2
+When component_add() fails, usb4_port_device_add() unregisters the
+device but doesn't return:
 
-get_object() frees `oi->content` but leaves the pointer unchanged. Since
-the expand_data structures are reused across refs, a later call can
-start with `content` pointing to a freed buffer. Then, if the object
-lookup in that call fails before it overwrites the pointer, the cleanup
-path frees the buffer a second time.
+    ret = component_add(&usb4->dev, &connector_ops);
+    if (ret) {
+            dev_err(&usb4->dev, "failed to add component\n");
+            device_unregister(&usb4->dev);
+    }
 
-a29e2e8fe (ref-filter: parse objects on demand, 2025-10-23) introduced
-this by making object lookup failures jump to the cleanup label.
-bea37f1d6 (ref-filter: fix stale parsed objects, 2025-11-04) later fixed
-a related stale-state bug by resetting `maybe_object`.
+The port was registered just before, so device_unregister() normally
+drops the last reference and usb4_port_device_release() frees usb4.
+The function still goes on to set up runtime PM on usb4->dev and
+returns usb4 to usb4_switch_add_ports(), which stores the stale pointer
+in port->usb4. When the router is removed later,
+usb4_switch_remove_ports() calls component_del() and
+device_unregister() on that pointer again.
 
-Similar to `maybe_object`, reset `content` at the start of get_object().
-Add a regression test that exercises this path.
+component_add() can fail on allocation, or when binding the aggregate
+driver fails. It isn't common, but when it happens the result is a
+use-after-free and a double unregister.
 
-Signed-off-by: Mustafa Bayar <mbayar@gitlab.com>
+The USB4 port can keep working without the component link. Keep the
+port registered when component_add() fails, and track whether the
+component was added, so that usb4_port_device_remove() only calls
+component_del() for a registered component. Otherwise component_del()
+would hit its WARN_ON().
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: 5dddb4169284 ("thunderbolt: Link USB4 ports to their USB Type-C connectors")
+Reported-by: Alok Tiwari <alok.a.tiwari@oracle.com>
+Closes: https://lore.kernel.org/all/20250622140455.2884518-1-alok.a.tiwari@oracle.com/
+Suggested-by: Mika Westerberg <mika.westerberg@linux.intel.com>
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-This is based on maint, since the bug first appeared in v2.53.0.
+Alok asked about the missing return in 2025, and a one-line return
+patch was posted in May. In both threads Mika said he'd rather keep the
+port, so this does that instead.
 
-We ran into this on GitLab.com, where a repository with a tag pointing
-to a missing object made `git for-each-ref` abort instead of reporting
-the missing object.
+https://lore.kernel.org/all/20260517142923.80585-1-darknessshayder@gmail.com/
 
-A note on the test: the double free only happens when a valid annotated
-tag is processed before the broken ref, so that an earlier get_object()
-call has already freed its content buffer. The test therefore names the
-refs `annotated` and `missing`, which sort in that order.
+Compile tested only, I didn't try to force component_add() to fail.
 ---
- ref-filter.c                   |  1 +
- t/t6301-for-each-ref-errors.sh | 15 +++++++++++++++
- 2 files changed, 16 insertions(+)
+ drivers/thunderbolt/tb.h        |  2 ++
+ drivers/thunderbolt/usb4_port.c | 12 +++++++-----
+ 2 files changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/ref-filter.c b/ref-filter.c
-index bdf54f6f..6c4df521 100644
---- a/ref-filter.c
-+++ b/ref-filter.c
-@@ -2349,6 +2349,7 @@ static int get_object(struct ref_array_item *ref, int deref,
- 	int ret;
+diff --git a/drivers/thunderbolt/tb.h b/drivers/thunderbolt/tb.h
+index e86845762e22..8ed373e94b65 100644
+--- a/drivers/thunderbolt/tb.h
++++ b/drivers/thunderbolt/tb.h
+@@ -314,6 +314,7 @@ struct tb_port {
+  * @can_offline: Does the port have necessary platform support to move
+  *		 it into offline mode and back
+  * @offline: The port is currently in offline mode
++ * @component_added: The port was added to the component framework
+  * @margining: Pointer to margining structure if enabled
+  */
+ struct usb4_port {
+@@ -321,6 +322,7 @@ struct usb4_port {
+ 	struct tb_port *port;
+ 	bool can_offline;
+ 	bool offline;
++	bool component_added;
+ #ifdef CONFIG_USB4_DEBUGFS_MARGINING
+ 	struct tb_margining *margining;
+ #endif
+diff --git a/drivers/thunderbolt/usb4_port.c b/drivers/thunderbolt/usb4_port.c
+index 890de530debc..7582acadf37c 100644
+--- a/drivers/thunderbolt/usb4_port.c
++++ b/drivers/thunderbolt/usb4_port.c
+@@ -320,11 +320,12 @@ struct usb4_port *usb4_port_device_add(struct tb_port *port)
+ 		return ERR_PTR(ret);
+ 	}
  
- 	oi->maybe_object = NULL;
-+	oi->content = NULL;
++	/* The port works fine without the component, so don't fail here */
+ 	ret = component_add(&usb4->dev, &connector_ops);
+-	if (ret) {
+-		dev_err(&usb4->dev, "failed to add component\n");
+-		device_unregister(&usb4->dev);
+-	}
++	if (ret)
++		dev_err(&usb4->dev, "failed to add component: %d\n", ret);
++	else
++		usb4->component_added = true;
  
- 	if (oi->info.contentp) {
- 		/* We need to know that to use parse_object_buffer properly */
-diff --git a/t/t6301-for-each-ref-errors.sh b/t/t6301-for-each-ref-errors.sh
-index 72b27c8b..e955f66a 100755
---- a/t/t6301-for-each-ref-errors.sh
-+++ b/t/t6301-for-each-ref-errors.sh
-@@ -52,6 +52,21 @@ test_expect_success 'Missing objects are reported correctly' '
- 	test_must_be_empty brief-err
- '
+ 	if (!tb_is_upstream_port(port))
+ 		device_set_wakeup_capable(&usb4->dev, true);
+@@ -348,7 +349,8 @@ struct usb4_port *usb4_port_device_add(struct tb_port *port)
+  */
+ void usb4_port_device_remove(struct usb4_port *usb4)
+ {
+-	component_del(&usb4->dev, &connector_ops);
++	if (usb4->component_added)
++		component_del(&usb4->dev, &connector_ops);
+ 	device_unregister(&usb4->dev);
+ }
  
-+test_expect_success 'missing objects after a tag are reported correctly' '
-+	test_when_finished "rm -rf repo" &&
-+	git init repo &&
-+	(
-+		cd repo &&
-+		test_commit --no-tag initial &&
-+		git tag -a -m annotated annotated &&
-+		test-tool ref-store main update-ref msg refs/tags/missing "$MISSING" "$ZERO_OID" REF_SKIP_OID_VERIFICATION &&
-+		git rev-parse HEAD >expect &&
-+		test_must_fail git for-each-ref --format="%(*objectname)" refs/tags/ >actual 2>err &&
-+		test_cmp expect actual &&
-+		test_grep "fatal: missing object $MISSING for refs/tags/missing" err
-+	)
-+'
-+
- test_expect_success 'missing ancestors are reported by contains filters' '
- 	test_when_finished "git update-ref -d refs/heads/missing-parent" &&
- 	{
 
 ---
-base-commit: 03b41523c576f26ad34085378717a0c1b287470f
-change-id: 20261112-mb-ref-filter-missing-object-double-free-maint-9eadbfe11e71
+base-commit: 630059a5a632377b9b7b487baccde92b7ae1dd47
+change-id: 20261112-thunderbolt-7d1eb9b68e19
+
+Best regards,
+--  
+Suyuan Wang <shyckless@gmail.com>
 
