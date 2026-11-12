@@ -1,79 +1,86 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:35:56 +0000
-Subject: [PATCH RFC 2/2] usb: dwc3: rockchip: Keep the host bus across
- suspend-to-idle on RK3588
+Subject: [PATCH net-next v2 0/2] net: stmmac: dwmac-sun8i: Jumbo frames and
+ an RX_TH fix
+Date: Thu, 12 Nov 2026 08:41:46 +0000
+Message-Id: <20261112-sun8i-emac-jumbo-v2-0-aca0cf23cf17@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-dwc3-s2idle-optin-v1-2-842e3f8413d0@gmail.com>
-References: <20261112-dwc3-s2idle-optin-v1-0-842e3f8413d0@gmail.com>
-In-Reply-To: <20261112-dwc3-s2idle-optin-v1-0-842e3f8413d0@gmail.com>
-To: Thinh Nguyen <Thinh.Nguyen@synopsys.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Heiko Stuebner <heiko@sntech.de>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Joonhoe Kim <26rote@gmail.com>, Vladyslav Tymoshchuk <tvlad744@gmail.com>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6DIBREr2L+ur8BNQa66j0aF0g/iinQABob4
+ 92rdt3ly8y8WSFRtJTgVqwQabbJBr9DeSlAD8r3hPa5M5SsbDjnDNPkhUVySuM4uS5gLSpppKh
+ VoyTss3ckY5dT+QBPGT0tGdpfkqZuJJ0P49EdbMohfs73mZ+L/0czR4ai7gxjJI1R1b13yr6uO
+ jhot237Alda2frMAAAA
+X-Change-ID: 20261110-sun8i-emac-jumbo-4839f984a6a9
+To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>
+Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-kernel@vger.kernel.org, Corentin Labbe <clabbe.montjoie@gmail.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794472554; l=1952;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794472906; l=2223;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=4m0AQqWpGKPZoBJEUVc5orPxlJLCumo8flIRD0Jhzsg=;
- b=1Rei5oJ+08YlofUig3fWgdtvOgiGxs4NW+SWHbbWBF2YWA5RUY2o/c/uuwbP54D2cn4Agdcu9
- 3QSGOtXzFlTAWSd5UjP6SG8QkQzPfFOfk5MYpaFOdFQP6HgWvwdCMYE
+ bh=4lSOCGIxuhr5scVSNymqWxWTq8eeBYQM5ER9DID9Zyk=;
+ b=8f+Qdim9xm+qJ7Nqsq62ye44HOsAZgiddAr0jN0CQpUvgGKZYonOGdxtlRWyHja9k02ORMRlz
+ 1VDwiIjldWeC16DzPzfuMVXbGC6rEq1jOCRMrrKL1v98YFevFuiQsCz
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On RK3588 nothing powers the USB3 controllers down in suspend-to-idle:
-this glue has no system sleep work of its own, the controllers are
-either in PD_USB, which has GENPD_FLAG_ACTIVE_WAKEUP and so stays on for
-a device on the awake path, or (USB3OTG2) in no power domain at all.
-Tearing the core down there only ends the power sessions of the
-suspended devices: on an Orange Pi 5 a SanDisk Extreme drive and a card
-reader behind a USB3 hub are disconnected and enumerated again after
-every resume, which kills a filesystem mounted on them.
+The sun8i EMAC advertises a maximum MTU of 3712, but drops every frame
+longer than 1518 bytes. Patch 2 sets the receiver's jumbo frame enable
+bit and limits the MTU to what fits in one normal descriptor buffer
+(2018). Patch 1 corrects two swapped RX threshold values; no in-tree
+Allwinner board uses RX threshold mode, so none is affected.
 
-Set keep_host_bus_in_s2idle for RK3588, so the core keeps the suspended
-bus in suspend-to-idle. RK3576 is left as it is: its second controller
-is in PD_PHP, which is switched off in suspend-to-idle.
+Tested on an Orange Pi Zero2 (H616, RTL8211F over RGMII) at 1 Gbit/s,
+with a 7.3 kernel carrying both patches:
+- MTU 2000 and 2018: pings with DF set up to the full MTU pass in both
+  directions, iperf3 gives 955 Mbit/s to the board and 905 Mbit/s from
+  it, and the rx_length and rx_crc_errors counters stay at 0.
+- Setting MTU 2019 is refused.
+- At MTU 1500, a 90 minute run (bulk transfers up to 256 MiB both ways,
+  iperf3 853/873 Mbit/s, 1000 pings each of 56, 1472 and 8000 bytes)
+  had no loss and no new error counters.
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+In that 7.3 kernel, frames longer than 2044 bytes were dropped by a
+local norm_desc change; v7.4-rc2 does the same through commit
+834ec9530832 ("net: stmmac: drop split frames on AF_XDP zero-copy RX"),
+which patch 2 now relies on.
+
+These patches were developed with Claude (Anthropic) as a coding
+assistant. It investigated the problem and wrote the code and the commit
+messages; I reviewed them, and they were tested on an Orange Pi Zero2
+(H616) as described above.
+
 ---
- drivers/usb/dwc3/dwc3-rockchip.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Changes in v2:
+- Patch 1: add the Fixes: tag, and correct the commit message: RX
+  threshold mode depends on snps,force_thresh_dma_mode, not on RX
+  checksum offload (Sashiko AI review)
+- Cc Corentin Labbe (author of the Fixes: target)
+- Rebased onto current net-next; patch 2 unchanged
+- Link to v1: https://patch.msgid.link/20261110-sun8i-emac-jumbo-v1-0-84bf00e9ffa3@gmail.com
 
-diff --git a/drivers/usb/dwc3/dwc3-rockchip.c b/drivers/usb/dwc3/dwc3-rockchip.c
-index 65d17536af14..c96b2ac1a62d 100644
---- a/drivers/usb/dwc3/dwc3-rockchip.c
-+++ b/drivers/usb/dwc3/dwc3-rockchip.c
-@@ -4,6 +4,7 @@
- #include <linux/platform_device.h>
- #include <linux/phy/rockchip-usbdp.h>
- #include <linux/pm_runtime.h>
-+#include <linux/property.h>
- #include "glue.h"
- #include "io.h"
- 
-@@ -153,6 +154,15 @@ static int dwc3_rockchip_probe(struct platform_device *pdev)
- 	probe_data.res = res;
- 	probe_data.properties = DWC3_DEFAULT_PROPERTIES;
- 
-+	/*
-+	 * On RK3588 nothing powers the controllers down in suspend-to-idle:
-+	 * this glue does not touch them, and they are either in PD_USB, which
-+	 * stays on for a device on the awake path, or in no power domain.
-+	 * (On RK3576 the second controller is in PD_PHP, which does not.)
-+	 */
-+	if (device_is_compatible(&pdev->dev, "rockchip,rk3588-dwc3"))
-+		probe_data.properties.keep_host_bus_in_s2idle = true;
-+
- 	return dwc3_core_probe(&probe_data);
- }
- 
+---
+Arun Iyengar (2):
+      net: stmmac: dwmac-sun8i: Fix the RX_TH threshold encoding
+      net: stmmac: dwmac-sun8i: Enable jumbo frames up to MTU 2018
 
--- 
-2.55.0
+ drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c | 29 +++++++++++++++++++++--
+ 1 file changed, 27 insertions(+), 2 deletions(-)
+---
+base-commit: c88fd6989aea9237a60a4859139a265bfb7ddc0b
+change-id: 20261110-sun8i-emac-jumbo-4839f984a6a9
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
