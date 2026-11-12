@@ -1,236 +1,111 @@
-From: Martin Belanger <martin.nvme.dev@gmail.com>
-Date: Thu, 12 Nov 2026 16:13:36 -0500
-Subject: [PATCH v3 3/3] nvme-tcp: consume TLS records without application
- data
+From: Paul Sajna <sajattack@postmarketos.org>
+Subject: [PATCH v5 0/3] leds: aw2013: Add AW2027 support
+Date: Thu, 12 Nov 2026 14:22:55 -0700
+Message-Id: <20261112-aw2013-aw20xx-rename-v5-0-b2c5e323a90a@postmarketos.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-nvme-tcp-live-ctrlrec-v3-3-49760bd9eaa8@gmail.com>
-References: <20261112-nvme-tcp-live-ctrlrec-v3-0-49760bd9eaa8@gmail.com>
-In-Reply-To: <20261112-nvme-tcp-live-ctrlrec-v3-0-49760bd9eaa8@gmail.com>
-To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
- Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
- Hannes Reinecke <hare@kernel.org>
-Cc: Martin Belanger <martin.nvme.dev@gmail.com>, 
- linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Martin Belanger <martin.belanger@dell.com>, stable@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794518014; l=7069;
- i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
- bh=BXkzTnuE1CdiV8DxLxpXS4wtJqzfrr8MfvY7b3eLfds=;
- b=tMT7D7LfgIfbDrB4BZFfVXM1SOfBdkNW1WY14QcdsyoQsFYX9OtBuhYi9yEJaVDppjF7ZkbrS
- 0+7coV9v28BAQZYb91DiLOxb7kd90UWAprZJc5gnPdsutALk3UIpDlC
-X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
- pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
-X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XRwU7DMAwG4FeZcibIdpZm3Yn3QBySxt0itGYkp
+ RRNfXfSgoADESfrt5TPlnMTmVPgLI67m0g8hRziUIK+24nubIcTy+BLFgTUQAtG2jcCVFuZZ5l
+ 4sBeWvielOt0Sdo0oT6+J+zBv7ONTyeeQx5jetykTrt1/wAklyK61xvdI1gA+XGMeLzY98xjzf
+ UwnsboTfVsIoCsWFQvhwJ0rexqjK5b6ZSFVLLXuZR323oMG11Ss/Y9VJlesvUR5oEZT65idpj+
+ s5fOYiV9ey9eMXxddlg/hLym1uAEAAA==
+X-Change-ID: 20260907-aw2013-aw20xx-rename-df233c5921c6
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Nikita Travkin <nikitos.tr@gmail.com>, 
+ Alexey Min <alexeymin@minlexx.ru>, David Heidelberg <david@ixit.cz>, 
+ Griffin Kroah-Hartman <griffin@kroah.com>
+Cc: Nikita Travkin <nikita@trvn.ru>, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ Paul Sajna <sajattack@postmarketos.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794518585; l=3073;
+ i=sajattack@postmarketos.org; s=20250413; h=from:subject:message-id;
+ bh=ghx1yKBekh/GVJRfqOPS1UW6mRfmE2JnepEDR+3pOo8=;
+ b=JaySK5geGCYVAKF4nLZ1ABXHCv8UM0ihMNy1g7Hb1AL8yHFBjBHVyZDGo8rO338MrgSSoA78J
+ ZD4QUvo53bQBD9PaQNvvgtk+2bK7sfQSsAa6QaF8aXyfIWwd/JEX6tV
+X-Developer-Key: i=sajattack@postmarketos.org; a=ed25519;
+ pk=ZFE/UBqiz9Wr8b+zBL27opOjw5x5ket5JFqks/VQGeM=
+X-Endpoint-Received: by B4 Relay for sajattack@postmarketos.org/20250413 with auth_id=1505
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Martin Belanger <martin.belanger@dell.com>
+Refer to PATCH 2 for a full description of the similarities and
+differences between AW2013 and AW2027.
 
-A peer may send a TLS record without application data at any time
-after the handshake: a NewSessionTicket, a KeyUpdate or an alert.
-tls_sw_read_sock() cannot pass such a record to nvme_tcp_recv_skb().
-It returns -EINVAL and leaves the record at the head of the receive
-queue. nvme_tcp_try_recv() then starts error recovery, and the
-controller reconnects.
+I'm hoping the sashiko reviews about unbalanced regulators that I was
+struggling to fix are covered by
+https://lore.kernel.org/linux-leds/20261021123406.3163547-1-lee@kernel.org/
+and I can drop my failed attempts to fix them.
+Let me know if I misunderstood.
 
-TLS 1.3 allows a server to send a NewSessionTicket at any time after
-the handshake (RFC 8446, section 4.6.1). Alerts can also arrive at any
-time.
+I'll do my best to address all of Sashiko's comments, but it might take
+me some time to circle back, don't bother reviewing until I've done
+this.
 
-On -EINVAL, read the record with recvmsg(), which reports the record
-type. Discard handshake messages other than KeyUpdate. Log alerts, and
-fail the queue on a fatal alert. Fail the queue on a KeyUpdate, which
-nvme-tcp cannot answer, and on any other record type. recvmsg() takes
-the socket lock, so release it around the read.
+This PATCH resulted out of discussions pertaining to
+sdm660-mainline/linux, a close-to-mainline fork for Qualcomm Snapdragon 660
+devices, specifically for the BlackBerry KEY2 Keyboard Backlight,
+in the following GitHub PR: https://github.com/sdm660-mainline/linux/pull/218
 
-Handle these records in one helper, also for the records that arrive
-ahead of the ICResp. A warning alert ahead of the ICResp no longer fails
-the connection.
-
-On a poll queue, nvme_tcp_poll() and nvme_tcp_io_work() can both see
-the record while the socket lock is released. A queue flag makes sure
-that only one of them reads it.
-
-svc_tcp_recvfrom() in sunrpc handles -EINVAL from read_sock() the same
-way.
-
-Fixes: be8e82caa685 ("nvme-tcp: enable TLS handshake upcall")
-Cc: stable@vger.kernel.org
-Signed-off-by: Martin Belanger <martin.belanger@dell.com>
+Signed-off-by: Paul Sajna <sajattack@postmarketos.org>
 ---
- drivers/nvme/host/tcp.c | 113 +++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 97 insertions(+), 16 deletions(-)
+Changes in v5:
+- Drop move of chip->num_leds
+- Make aw2013_microamp_to_imax more readable
+- rebase to next-20261112 for Lee's changes
+- Link to v4: https://lore.kernel.org/linux-leds/20261108-aw2013-aw20xx-rename-v4-0-826529beeb52@postmarketos.org/
 
-diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index c3bf345c4e92..45e66adcf57d 100644
---- a/drivers/nvme/host/tcp.c
-+++ b/drivers/nvme/host/tcp.c
-@@ -123,6 +123,7 @@ enum nvme_tcp_queue_flags {
- 	NVME_TCP_Q_LIVE		= 1,
- 	NVME_TCP_Q_POLLING	= 2,
- 	NVME_TCP_Q_IO_CPU_SET	= 3,
-+	NVME_TCP_Q_TLS_RECORD	= 4,
- };
- 
- #define NVME_TCP_OPT_NR_QUEUES(opts) ((opts)->nr_io_queues + \
-@@ -1450,6 +1451,8 @@ static int nvme_tcp_try_send(struct nvme_tcp_queue *queue)
- 	return ret;
- }
- 
-+static int nvme_tcp_recv_tls_record(struct nvme_tcp_queue *queue);
-+
- static int nvme_tcp_try_recv(struct nvme_tcp_queue *queue)
- {
- 	struct socket *sock = queue->sock;
-@@ -1462,10 +1465,31 @@ static int nvme_tcp_try_recv(struct nvme_tcp_queue *queue)
- 	lock_sock(sk);
- 	queue->nr_cqe = 0;
- 	consumed = sock->ops->read_sock(sk, &rd_desc, nvme_tcp_recv_skb);
-+	/*
-+	 * kTLS cannot pass a TLS record without application data to
-+	 * nvme_tcp_recv_skb(). It returns -EINVAL and leaves the record at
-+	 * the head of the receive queue. recvmsg() takes the socket lock,
-+	 * so read the record without it.
-+	 */
-+	if (unlikely(consumed == -EINVAL && nvme_tcp_queue_tls(queue) &&
-+		     queue->rd_enabled)) {
-+		/*
-+		 * On a poll queue, nvme_tcp_poll() and nvme_tcp_io_work() can
-+		 * both get here for the same record. Only one of them reads it.
-+		 */
-+		if (test_and_set_bit(NVME_TCP_Q_TLS_RECORD, &queue->flags)) {
-+			consumed = 0;
-+		} else {
-+			release_sock(sk);
-+			consumed = nvme_tcp_recv_tls_record(queue);
-+			lock_sock(sk);
-+			clear_bit(NVME_TCP_Q_TLS_RECORD, &queue->flags);
-+		}
-+	}
- 	/*
- 	 * nvme_tcp_recv_skb() handles its own errors, so a queue that is
--	 * still enabled failed inside read_sock(). Handle it before
--	 * release_sock() processes the backlog.
-+	 * still enabled failed inside read_sock() or while reading a TLS
-+	 * record. Handle it before release_sock() processes the backlog.
- 	 */
- 	if (unlikely(consumed < 0 && consumed != -EAGAIN &&
- 		     queue->rd_enabled)) {
-@@ -1666,33 +1690,88 @@ static int nvme_tcp_drain_tls_record(struct nvme_tcp_queue *queue,
- }
- 
- /*
-- * Discard a TLS record that arrived in place of the ICResp. A peer may send
-- * a NewSessionTicket as soon as the handshake completes.
-+ * Consume a TLS record without application data. The first @len bytes of
-+ * the record were read into @msg and @data.
-  *
-- * Returns 0 when the record was discarded and the ICResp can be read, or a
-- * negative errno if the connection cannot continue.
-+ * A KeyUpdate needs new keys that nothing here can supply. Other handshake
-+ * messages, such as a NewSessionTicket, are discarded.
-+ *
-+ * Returns the bytes read after the first @len, or a negative errno if the
-+ * connection cannot continue.
-  */
--static int nvme_tcp_skip_tls_record(struct nvme_tcp_queue *queue,
--				    struct msghdr *msg, u8 ctype, int len)
-+static int nvme_tcp_consume_tls_record(struct nvme_tcp_queue *queue,
-+				       struct msghdr *msg, u8 ctype,
-+				       const u8 *data, int len, int flags)
- {
- 	int ret;
- 
- 	switch (ctype) {
- 	case TLS_RECORD_TYPE_HANDSHAKE:
-+		if (data[0] == TLS_HANDSHAKE_KEYUPDATE) {
-+			dev_err(queue->ctrl->ctrl.device,
-+				"queue %d: TLS KeyUpdate is not supported\n",
-+				nvme_tcp_queue_id(queue));
-+			return -EKEYEXPIRED;
-+		}
- 		break;
- 	case TLS_RECORD_TYPE_ALERT:
- 		ret = nvme_tcp_recv_tls_alert(queue, msg, len);
--		return ret ? : -ENOTCONN;
-+		if (ret)
-+			return ret;
-+		break;
- 	default:
--		pr_err("queue %d: unhandled TLS record %u\n",
--		       nvme_tcp_queue_id(queue), ctype);
--		return -ENOTCONN;
-+		dev_err(queue->ctrl->ctrl.device,
-+			"queue %d: unexpected TLS record %u\n",
-+			nvme_tcp_queue_id(queue), ctype);
-+		return -EPROTO;
- 	}
- 
--	/* the ICResp is in a later record, drain this one first */
--	ret = nvme_tcp_drain_tls_record(queue, msg, 0);
-+	return nvme_tcp_drain_tls_record(queue, msg, flags);
-+}
-+
-+/*
-+ * Read the TLS record that read_sock() could not pass to
-+ * nvme_tcp_recv_skb(). The caller must not hold the socket lock.
-+ *
-+ * Returns the bytes consumed, or a negative errno if the connection cannot
-+ * continue.
-+ */
-+static int nvme_tcp_recv_tls_record(struct nvme_tcp_queue *queue)
-+{
-+	u8 buf[NVME_TCP_TLS_REC_CHUNK];
-+	union nvme_tcp_tls_cmsg u = {};
-+	struct kvec iov = {
-+		.iov_base = buf,
-+		.iov_len = sizeof(buf),
-+	};
-+	struct msghdr msg = {
-+		.msg_control = &u,
-+		.msg_controllen = sizeof(u),
-+	};
-+	int len, ret;
-+	u8 ctype;
-+
-+	len = kernel_recvmsg(queue->sock, &msg, &iov, 1, sizeof(buf),
-+			     MSG_DONTWAIT);
-+	if (len <= 0)
-+		goto fail;
-+
-+	ctype = tls_get_record_type(queue->sock->sk, &u.cmsg);
-+	ret = nvme_tcp_consume_tls_record(queue, &msg, ctype, buf, len,
-+					  MSG_DONTWAIT);
-+	if (ret < 0) {
-+		len = ret;
-+		goto fail;
-+	}
-+
-+	return len + ret;
-+
-+fail:
-+	/* read_sock() left a whole record, so none of it can be missing */
-+	if (len == -EAGAIN)
-+		return -EPROTO;
- 
--	return ret < 0 ? ret : 0;
-+	return len ? : -ECONNRESET;
- }
- 
- /*
-@@ -1729,7 +1808,9 @@ static int nvme_tcp_recv_icresp(struct nvme_tcp_queue *queue,
- 		if (ctype == TLS_RECORD_TYPE_DATA)
- 			return ret;
- 
--		ret = nvme_tcp_skip_tls_record(queue, &msg, ctype, ret);
-+		/* the ICResp is in a later record */
-+		ret = nvme_tcp_consume_tls_record(queue, &msg, ctype,
-+						  (const u8 *)icresp, ret, 0);
- 		if (ret < 0)
- 			return ret;
- 	}
+Changes in v4:
+- Drop sashiko fixes covered by https://lore.kernel.org/linux-leds/20261021123406.3163547-1-lee@kernel.org/
+- Rename the chip id register value to reflect that it covers more chips
+  (https://www.awinic.com/en/driver/AW2027DNR/640)
+- Address preliminary review comments from Lee Jones
+- Link to v3: https://lore.kernel.org/r/20261012-aw2013-aw20xx-rename-v3-0-cab1fdd050b6@postmarketos.org
 
--- 
-2.53.0
+Changes in v3:
+- Drop rename
+- Capitalize commit subject
+- Extra tweaks to cleanup patches (preventing more unbalanced regulator
+  stuff)
+- Whitespace fiddling
+- Link to v2: https://lore.kernel.org/r/20261005-aw2013-aw20xx-rename-v2-0-108ecbdf2775@postmarketos.org
+
+Changes in v2:
+- Reduce renames to internal driver scope, to prevent breaking compat
+- Address Sashiko Review Comments
+- Split renames into a separate commit to make the actual changes easier
+to identify
+- Change from RFC to PATCH
+- Link to v1: https://lore.kernel.org/r/20260907-aw2013-aw20xx-rename-v1-0-c9a7df12a701@postmarketos.org
+
+To: Lee Jones <lee@kernel.org>
+To: Pavel Machek <pavel@kernel.org>
+To: Griffin Kroah-Hartman <griffin@kroah.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Nikita Travkin <nikitos.tr@gmail.com>
+Cc: linux-leds@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Paul Sajna (3):
+      dt-bindings: leds: aw2013: Add awinic,aw2027 compatible
+      leds: aw2013: Add AW2027 support
+      leds: aw2013: Use dev_err_probe
+
+ .../devicetree/bindings/leds/leds-aw2013.yaml      |   6 +-
+ drivers/leds/leds-aw2013.c                         | 175 +++++++++++++++++----
+ 2 files changed, 146 insertions(+), 35 deletions(-)
+---
+base-commit: 6d582d78fad9d828e575ca0cdcff8ea47a77220b
+change-id: 20260907-aw2013-aw20xx-rename-df233c5921c6
+
+Best regards,
+--  
+Paul Sajna <sajattack@postmarketos.org>
 
