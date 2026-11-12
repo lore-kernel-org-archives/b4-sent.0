@@ -1,10 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:54:59 +0000
-Subject: [PATCH v2 5/6] media: verisilicon: Reject AV1 frames without tiles
+Date: Thu, 12 Nov 2026 08:55:00 +0000
+Subject: [PATCH v2 6/6] media: verisilicon: Reject AV1 frames larger than
+ the CAPTURE format
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-hantro-codec-fixes-v2-5-f44424df585b@gmail.com>
+Message-Id: <20261112-hantro-codec-fixes-v2-6-f44424df585b@gmail.com>
 References: <20261112-hantro-codec-fixes-v2-0-f44424df585b@gmail.com>
 In-Reply-To: <20261112-hantro-codec-fixes-v2-0-f44424df585b@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -21,48 +22,65 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794473695; l=1803;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794473695; l=2755;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=w0RsTz4T3CdOdGdBS9xKk8Iq1upmKZ/s7yYs4Iwwoq4=;
- b=1jIzt0YpSLyNUN1i3u8sdgp/pwRCteGQqy10eDWnlsJ1plRYZEtzBS5wV1vYcztYvLdYwST2j
- YQ95e/YnnimD6li5/hGlc7vLZxUI7uJdnpN1//BScgKO9mR+lG0n3qq
+ bh=F0sBvLxC1b6DWpic9ac/w+3lxIegpPEHIfh/PZ7x1mA=;
+ b=fZk80umJ9nhQFUKVcYAIaAf4QJ5vg4VBbgr3VYDUCzayQiz8NtBQ48aAKvoBnkUWy5eGamjKK
+ /fGPWQavH7vBh6ZyfY8TNUDzW8N+a6EJaOMlTxeuQpjzcV+W+aCA9YH
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The AV1 control validation only checks the upper bounds of tile_cols
-and tile_rows, and rockchip_vpu981_av1_dec_prepare_run() only checks the
-number of tiles against the tile group entries and the tile buffer, so
-a frame with tile_cols or tile_rows set to 0 is accepted. With no tile
-columns, rockchip_vpu981_av1_dec_tiles_reallocate() computes a size of
-0 for each of the five tile column buffers, which the buffers it has
-always satisfy, so it allocates nothing. On the first frame of a context
-the decoder is then started without tile column buffers (DMA address 0),
-and after a failed allocation with the addresses of the freed ones.
+frame_width_minus_1, frame_height_minus_1 and upscaled_width of the AV1
+frame control are not validated against anything, and the decoder is
+programmed with them.
 
-Every AV1 frame has at least one tile, reject frames without any.
+The decoder writes the luma, the chroma and the motion vectors of a
+frame into one buffer. The size of that buffer and the offsets of the
+chroma and of the motion vectors in it are computed from the width and
+height of the CAPTURE format, so a frame that is larger than the format
+does not fit in the buffer the decoder is given.
 
-Fixes: 65e9f52ffdc8 ("media: verisilicon: Fix auxiliary buffer allocation size")
+rockchip_vpu981_av1_dec_tiles_reallocate() also sizes the tile column
+buffers from the frame height in 32-bit arithmetic, which wraps around
+for large heights, while the hardware is given the height as a 13-bit
+number of 8-pixel blocks. The buffers can then be smaller than the
+programmed height needs. For instance, frame_height_minus_1 = 0xffffffc0
+rounds up to a height of 0, so the buffers of the previous frame are
+found big enough and kept, and the decoder is started with a picture
+height of 8185 blocks, 65480 lines.
+
+Reject frames that are wider or taller than the CAPTURE format. The
+format is never larger than the decoder supports, 4096x2304, so this
+covers the heights that wrap as well. Frames that are smaller than the
+format, as streams with spatial layers have, are still accepted.
+
+Fixes: 727a400686a2 ("media: verisilicon: Add Rockchip AV1 decoder")
 Cc: stable@vger.kernel.org
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ .../media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c  | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
 diff --git a/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c b/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
-index e817c91224d3..8154b405ca63 100644
+index 8154b405ca63..016f11f04a80 100644
 --- a/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
 +++ b/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
-@@ -526,6 +526,13 @@ static int rockchip_vpu981_av1_dec_prepare_run(struct hantro_ctx *ctx)
- 	if (num_tiles > tge->elems || num_tiles > AV1_MAX_TILES)
+@@ -533,6 +533,18 @@ static int rockchip_vpu981_av1_dec_prepare_run(struct hantro_ctx *ctx)
+ 	if (!num_tiles)
  		return -EINVAL;
  
 +	/*
-+	 * Every AV1 frame has at least one tile. Without tile columns, the
-+	 * tile column buffers would be sized to zero and not allocated.
++	 * The frame size comes from userspace. The decoder writes a frame of
++	 * that size, upscaled to upscaled_width, into buffers that are made
++	 * for the CAPTURE format, so the frame has to fit in that format. As
++	 * the format is within the limits of the decoder, this also keeps the
++	 * frame height in the range the tile column buffers can be sized for.
 +	 */
-+	if (!num_tiles)
++	if (ctrls->frame->frame_width_minus_1 >= ctx->dst_fmt.width ||
++	    ctrls->frame->frame_height_minus_1 >= ctx->dst_fmt.height ||
++	    ctrls->frame->upscaled_width > ctx->dst_fmt.width)
 +		return -EINVAL;
 +
  	ctrls->film_grain =
