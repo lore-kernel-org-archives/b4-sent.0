@@ -1,75 +1,59 @@
-From: Samuel Wheeler <swheel33@gmail.com>
-Date: Wed, 11 Nov 2026 21:54:27 -0500
-Subject: [PATCH 2/2] platform/x86: hp-wmi: Add charge_behaviour quirk for
- OmniBook Ultra 14
+From: =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
+Subject: [PATCH v3 0/2] staging: octeon: fix probe error path and
+ pow_send_list matching
+Date: Wed, 11 Nov 2026 21:29:56 -0600
+Message-Id: <20261111-octeon-init-pipeline-v1-v3-0-e5581974fae4@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261111-omnibook-8eb4-v1-2-3127f45cc338@gmail.com>
-References: <20261111-omnibook-8eb4-v1-0-3127f45cc338@gmail.com>
-In-Reply-To: <20261111-omnibook-8eb4-v1-0-3127f45cc338@gmail.com>
-To: Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
-Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Shang En Sim <sim@shangen.org>, Samuel Wheeler <swheel33@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794452066; l=1792;
- i=swheel33@gmail.com; s=20261112; h=from:subject:message-id;
- bh=3rQb4zPlj81vHDH6Pp13jpcbbVrpCBIEniSdrYQoMtg=;
- b=PruIecKRs9hMdB5lPPcLRHS//QndOA5nh3ZOQuca7TklY/SWlW4q67BbEKQ23VkKn0OJMBMLK
- TDxpOa5VSJcB+ITfWLrSm0ok57jjCUkpJFmJKkkqeBpiLWF6F42kkj1
-X-Developer-Key: i=swheel33@gmail.com; a=ed25519;
- pk=cokeT6B31W84o+Gc4wuP2okLF8wShbbGQ7pb5h5JPXg=
-X-Endpoint-Received: by B4 Relay for swheel33@gmail.com/20261112 with auth_id=1494
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7Zi2QLWuvIdhgXWASaBtWtJoC
+ He3cgGTv3k/+e9vkCgyJbhVG0TKnNi7AvWpAjv1biTkV2FQQmkpxRW9Xck7ZMcrBg40syPMEkm
+ 1ZHUzNIZqKOsQaeD3YX50hSdOq4+f4yjLX/vfWSKQnspqa1qtLuY+Lj3PZ+sX6PZ9/wKyG1pWv
+ gAAAA==
+X-Change-ID: 20261108-octeon-init-pipeline-v1-e25ec64f49e3
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Oscar_Alejandro_S=C3=A1nchez_Lucero?= <aleszlucero@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794454208; l=1128;
+ i=aleszlucero@gmail.com; s=20261104; h=from:subject:message-id;
+ bh=PijAdS24DSrt7xT4IEtyGgaWqpoeAF70HEZmMy9AdhA=;
+ b=+jJNtraHj5wgm/m6oXx/umJWMJZWKSOEjQA6rHckRVEeZI0awqH3L4CjDQU0QJAuN8Am2VXfx
+ 0ZMH5bBEsPMD8HdVw47QYUgXNqUWbXtElud+Dvn+hZZQX8a8fCGRrsY
+X-Developer-Key: i=aleszlucero@gmail.com; a=ed25519;
+ pk=zRzEBMID7l1FXqr2CjfnlIn++3m3N05FuNYb5zPA3cw=
+X-Endpoint-Received: by B4 Relay for aleszlucero@gmail.com/20261104 with auth_id=1410
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HP OmniBook Ultra Laptop 14-kd0xxx (board 8EB4) implements the same
-battery charge mode interface as the Spectre x360 boards supported since
-commit 929433336e0a ("platform/x86: hp-wmi: add charge_behaviour support
-for Spectre 8C15/8C17").
+Fixed two bugs in drivers/staging/octeon/ethernet.c:
 
-Reading HPWMI_BATTERY_CHARGE_MODE returns the mode in byte 0
-(00 ff 01 ff with automatic charging). The write handler (SBCC in the
-SSDT that defines \_SB.WMID) takes the mode from byte 1, accepts values
-0-7 and passes it to EC command 0xbb. That matches the layout the driver
-already uses.
+1. Call cvmx_pko_disable() in the cvm_oct_probe() error path to match the
+   teardown sequence in cvm_oct_remove().
+2. Split pow_send_list on commas using strsep() instead of matching
+   substrings with strstr().
 
-Add the board to hp_wmi_charge_control_quirks.
+Oscar Alejandro Sánchez Lucero (2):
+  staging: octeon: disable PKO before device removal in probe error path
+  staging: octeon: match exact interface names in pow_send_list
 
-Tested on the OmniBook Ultra 14-kd0xxx (BIOS F.06) with AC connected:
-writing inhibit-charge to charge_behaviour changes the battery status to
-"Not charging" with zero current, and writing auto resumes charging.
-force-discharge was not tested.
-
-This patch was prepared with an AI coding assistant (Claude, by
-Anthropic). It read the firmware's WMI methods, wrote the change and this
-description, and ran the tests on my laptop under my direction. I
-reviewed the change and the test results.
-
-Signed-off-by: Samuel Wheeler <swheel33@gmail.com>
+Signed-off-by: Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 ---
- drivers/platform/x86/hp/hp-wmi.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v3:
+- Drop the ndo_get_stats64 conversion patch
+- Change commit description.
 
-diff --git a/drivers/platform/x86/hp/hp-wmi.c b/drivers/platform/x86/hp/hp-wmi.c
-index 46c9a5a532ba..bf68a1c46c03 100644
---- a/drivers/platform/x86/hp/hp-wmi.c
-+++ b/drivers/platform/x86/hp/hp-wmi.c
-@@ -634,6 +634,13 @@ static const struct dmi_system_id hp_wmi_charge_control_quirks[] __initconst = {
- 			DMI_MATCH(DMI_BOARD_NAME, "8C15"),
- 		},
- 	},
-+	{
-+		/* HP OmniBook Ultra Laptop 14-kd0xxx */
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_VENDOR, "HP"),
-+			DMI_MATCH(DMI_BOARD_NAME, "8EB4"),
-+		},
-+	},
- 	{}
- };
- #endif
+---
+Oscar Alejandro Sánchez Lucero (2):
+      staging: octeon: disable PKO before device removal in probe error path
+      staging: octeon: match exact interface names in pow_send_list
 
+ drivers/staging/octeon/ethernet.c | 22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
+---
+base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
+change-id: 20261108-octeon-init-pipeline-v1-e25ec64f49e3
+
+Best regards,
 -- 
-2.56.0
+Oscar Alejandro Sánchez Lucero <aleszlucero@gmail.com>
 
