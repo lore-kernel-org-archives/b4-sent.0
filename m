@@ -1,116 +1,95 @@
-From: Paul Sajna <sajattack@postmarketos.org>
-Date: Thu, 12 Nov 2026 14:22:58 -0700
-Subject: [PATCH v5 3/3] leds: aw2013: Use dev_err_probe
+From: Joseph Telaak <joseph@telaak.dev>
+Subject: [PATCH net-next v3 0/2] net: dsa: mxl-gsw1xx: reset the switch
+ through reset-gpios
+Date: Thu, 12 Nov 2026 16:39:39 -0500
+Message-Id: <20261112-mxl-gsw1xx-reset-v3-0-863e82074893@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-aw2013-aw20xx-rename-v5-3-b2c5e323a90a@postmarketos.org>
-References: <20261112-aw2013-aw20xx-rename-v5-0-b2c5e323a90a@postmarketos.org>
-In-Reply-To: <20261112-aw2013-aw20xx-rename-v5-0-b2c5e323a90a@postmarketos.org>
-To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIABwy9moC/23NwRKCIBQF0F9xWEcjoIat+o+mBeLTKMMGiGgc/
+ z2kFjW1vPPePXdCFowCi7bZhAx4ZdWoY2CrDMmj0D1g1caMaE4rQnKKL2HAvb2TELABCw6zjZC
+ cVQ0jHaBYuxroVEjkHun4oCE4dHhd7K05gXSLuPwelXWjeaR1T1LjPVT8DnmCc1wyzuqmKyXns
+ HMwCHFet+CT7+mnwP8INApFJUkr8prxmn0J8zw/AeTpEAMPAQAA
+X-Change-ID: 20261102-mxl-gsw1xx-reset-37ac836b31fe
+To: Hauke Mehrtens <hauke@hauke-m.de>, Andrew Lunn <andrew@lunn.ch>, 
+ Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Nikita Travkin <nikitos.tr@gmail.com>, 
- Alexey Min <alexeymin@minlexx.ru>, David Heidelberg <david@ixit.cz>, 
- Griffin Kroah-Hartman <griffin@kroah.com>
-Cc: Nikita Travkin <nikita@trvn.ru>, linux-leds@vger.kernel.org, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Daniel Golle <daniel@makrotopia.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, netdev@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- Paul Sajna <sajattack@postmarketos.org>
+ Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794518585; l=2778;
- i=sajattack@postmarketos.org; s=20250413; h=from:subject:message-id;
- bh=jA6dkrp3HDWJJ31CT1UG2jCfBBnLdM10Gs8DL8EBTfI=;
- b=FdHMdjKquEZAmX/5gvC+6Z0996BwbYqm/EU703N6Q/7G+gKA5Vnpy39CIjGuJSi5NR7683cuL
- gYLNvMFMZC2CGh88ILKmdc76QP2ZmSI6jB0RdUQ4m5YjuZbiQuhK7n8
-X-Developer-Key: i=sajattack@postmarketos.org; a=ed25519;
- pk=ZFE/UBqiz9Wr8b+zBL27opOjw5x5ket5JFqks/VQGeM=
-X-Endpoint-Received: by B4 Relay for sajattack@postmarketos.org/20250413 with auth_id=1505
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794519588; l=2698;
+ i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
+ bh=PzNRMlJ8hydRxArSVgRXqNp71nKnYMNDOQPUVvecNEo=;
+ b=a/6ZOcXYhMZ8lCx79LgPFkxA+8lKA+mZAtP7QE5uKXknU76dDCX18N1XMKnYkf7oYfnTzmVp6
+ oTxqcQLpZM+AECGw5uA5OCyfE5A2zIyUSjwGOhHfhaMPLdEEqsMV3YX
+X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
+ pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
+X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Failure to use dev_err_probe() for regulator requests violates
-LED subsystem guidelines. (At least according to sashiko [1])
+The GSW1xx driver never resets the switch, and the MDIO core does not
+handle reset-gpios for non-PHY devices, so the driver works with whatever
+the bootloader configured. On the GL.iNet GL-SFT1200 (Siflower SF19A2890 +
+GSW150) the bootloader leaves the internal PHYs one MDIO address too high,
+and the WAN port has no PHY.
 
-The original driver didn't use it, but it's worth cleaning up
-while I'm here.
+Patch 1 allows reset-gpios in the binding for the standalone switches.
+Patch 2 pulses it at probe.
 
-[1]: https://github.com/sashiko-dev/sashiko/blob/main/third_party/prompts/kernel/subsystem/leds.md?plain=1#L71
+This is separate from commit 82e2c7db0830 ("net: dsa: mxl-gsw1xx: force
+internal PHYs into a known reset state"), which only programs the PHY
+bits of RST_REQ. On this board that commit is applied, and the PHYs still
+sit at the shifted addresses; only a hardware reset of the switch moves
+them back.
 
-Reviewed-by: Griffin Kroah-Hartman <griffin@kroah.com>
-Reviewed-by: David Heidelberg <david@ixit.cz>
+Tested on a GL.iNet GL-SFT1200 (Intel GSW150 / PEB7084 at SMI address
+0x1f, reset on an active-low SoC GPIO), on v7.4-rc1 with
+CONFIG_RESET_GPIO=y: after a warm reboot and after a cold power-on, all
+three ports find their PHYs at addresses 0 to 2 and link at 1 Gbit/s.
+Without the patch, port 0 fails with -ENODEV after every boot.
 
-Signed-off-by: Paul Sajna <sajattack@postmarketos.org>
+There is no in-tree user yet: the GL-SFT1200's device tree is under
+review on linux-mips without the switch, which follows once the SoC's
+GMAC is supported.
+
 ---
- drivers/leds/leds-aw2013.c | 28 +++++++++++++---------------
- 1 file changed, 13 insertions(+), 15 deletions(-)
+Changes in v3:
+- Patch 1: say in the slew-rate descriptions that, without the
+  properties, a reset through reset-gpios leaves the power-on defaults.
+  Rob's Ack is kept: reset-gpios itself is unchanged.
+- Patch 2: say the same in the commit message, and wrap a line over 80
+  columns.
+- Cc Philipp Zabel for the reset controller API.
+- Link to v2: https://patch.msgid.link/20261108-mxl-gsw1xx-reset-v2-0-46c1da093893@telaak.dev
 
-diff --git a/drivers/leds/leds-aw2013.c b/drivers/leds/leds-aw2013.c
-index d3858b06e594..7ff7167b6612 100644
---- a/drivers/leds/leds-aw2013.c
-+++ b/drivers/leds/leds-aw2013.c
-@@ -472,9 +472,8 @@ static int aw2013_probe(struct i2c_client *client)
- 
- 	chip->regmap = devm_regmap_init_i2c(client, chip->cdef->regmap_cfg);
- 	if (IS_ERR(chip->regmap)) {
--		ret = PTR_ERR(chip->regmap);
--		dev_err(&client->dev, "Failed to allocate register map: %d\n",
--			ret);
-+		ret = dev_err_probe(&client->dev, PTR_ERR(chip->regmap),
-+				    "Failed to allocate register map\n");
- 		goto error;
- 	}
- 
-@@ -484,30 +483,29 @@ static int aw2013_probe(struct i2c_client *client)
- 				      ARRAY_SIZE(chip->regulators),
- 				      chip->regulators);
- 	if (ret < 0) {
--		if (ret != -EPROBE_DEFER)
--			dev_err(&client->dev,
--				"Failed to request regulators: %d\n", ret);
-+		ret = dev_err_probe(&client->dev, ret,
-+				    "Failed to request regulators\n");
- 		goto error;
- 	}
- 
- 	ret = regulator_bulk_enable(ARRAY_SIZE(chip->regulators),
- 				    chip->regulators);
- 	if (ret) {
--		dev_err(&client->dev,
--			"Failed to enable regulators: %d\n", ret);
-+		ret = dev_err_probe(&client->dev, ret,
-+				    "Failed to enable regulators\n");
- 		goto error;
- 	}
- 
- 	ret = regmap_read(chip->regmap, AW2013_RSTR, &chipid);
- 	if (ret) {
--		dev_err(&client->dev, "Failed to read chip ID: %d\n",
--			ret);
-+		ret = dev_err_probe(&client->dev, ret,
-+				    "Failed to read chip ID\n");
- 		goto error_reg;
- 	}
- 	if (chipid != chip->cdef->chip_id) {
--		dev_err(&client->dev, "Chip reported wrong ID: %x\n",
--			chipid);
--		ret = -ENODEV;
-+		ret = dev_err_probe(&client->dev, -ENODEV,
-+				    "Chip reported wrong ID: %x\n",
-+				     chipid);
- 		goto error_reg;
- 	}
- 
-@@ -520,8 +518,8 @@ static int aw2013_probe(struct i2c_client *client)
- 	ret = regulator_bulk_disable(ARRAY_SIZE(chip->regulators),
- 				     chip->regulators);
- 	if (ret) {
--		dev_err(&client->dev,
--			"Failed to disable regulators: %d\n", ret);
-+		ret = dev_err_probe(&client->dev, ret,
-+				    "Failed to disable regulators\n");
- 		goto error;
- 	}
- 
+Changes in v2:
+- Use the reset controller API, so reset-gpios goes through reset-gpio,
+  instead of driving the GPIO from the driver (Daniel).
+- Use the vendor driver's reset timing, 250 ms asserted and 1 s before
+  the first access. v1 gave 2 ms and 100 ms as the vendor's, which they
+  are not.
+- Patch 1: add Rob's Ack.
+- Link to v1: https://patch.msgid.link/20261104-mxl-gsw1xx-reset-v1-0-53839bf5c88e@telaak.dev
 
--- 
-2.56.0
+---
+Joseph Telaak (2):
+      dt-bindings: net: dsa: lantiq,gswip: add reset-gpios
+      net: dsa: mxl-gsw1xx: reset the switch through reset-gpios
+
+ .../devicetree/bindings/net/dsa/lantiq,gswip.yaml  | 12 ++++++++--
+ drivers/net/dsa/lantiq/mxl-gsw1xx.c                | 26 ++++++++++++++++++++++
+ drivers/net/dsa/lantiq/mxl-gsw1xx.h                |  4 ++++
+ 3 files changed, 40 insertions(+), 2 deletions(-)
+---
+base-commit: 4dd16e31135ea8437a720222df34e8745f385d6d
+change-id: 20261102-mxl-gsw1xx-reset-37ac836b31fe
+
+Best regards,
+--  
+Joseph Telaak <joseph@telaak.dev>
 
