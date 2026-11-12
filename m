@@ -1,11 +1,10 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:54:58 +0000
-Subject: [PATCH v2 4/6] media: verisilicon: Check every VPU981 AV1 tile
- column buffer before reusing them
+Date: Thu, 12 Nov 2026 08:54:59 +0000
+Subject: [PATCH v2 5/6] media: verisilicon: Reject AV1 frames without tiles
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-hantro-codec-fixes-v2-4-f44424df585b@gmail.com>
+Message-Id: <20261112-hantro-codec-fixes-v2-5-f44424df585b@gmail.com>
 References: <20261112-hantro-codec-fixes-v2-0-f44424df585b@gmail.com>
 In-Reply-To: <20261112-hantro-codec-fixes-v2-0-f44424df585b@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -22,153 +21,53 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794473695; l=6292;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794473695; l=1803;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=BT2F0TOczjHLd2TsiRpWYPl5wVI3/1gtJ6eyqTMB414=;
- b=5qAFPZ2X7x/mB4guhj/l6YFbtBJPsa29419lVc0kEuJGe/lecc39ZEHCozNBUXAl4Jl+HfG1K
- bXUwkGJjYUxChMrY+tO3fYSj9CFPo1M/SlTsyFUszqNQ/4Gbz/ZVWBb
+ bh=w0RsTz4T3CdOdGdBS9xKk8Iq1upmKZ/s7yYs4Iwwoq4=;
+ b=1jIzt0YpSLyNUN1i3u8sdgp/pwRCteGQqy10eDWnlsJ1plRYZEtzBS5wV1vYcztYvLdYwST2j
+ YQ95e/YnnimD6li5/hGlc7vLZxUI7uJdnpN1//BScgKO9mR+lG0n3qq
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rockchip_vpu981_av1_dec_tiles_reallocate() keeps the five tile column
-buffers (deblocking data and control, CDEF, super-res, loop restoration)
-when the deblocking data buffer is big enough for the current frame. The
-buffers don't scale the same way: the deblocking data one grows with the
-frame height and the bit depth, the super-res one only with the number of
-64 pixel rows, and the loop restoration one with the number of
-restoration stripes, which is one more than the number of superblock
-rows. A frame can therefore fit in the old deblocking data buffer and
-still need a larger buffer of another kind. For example, after a 10-bit
-1088 line frame with 4 tile columns, an 8-bit frame of the same height
-with 5 tile columns needs 65280 bytes of deblocking data (65536
-allocated) but 367360 bytes of super-res column data (293888 allocated);
-an 8-bit 128 line frame with 4 columns followed by a 64 line frame with 8
-columns has the same problem with the loop restoration buffer. The
-decoder then writes past the end of the smaller buffer.
+The AV1 control validation only checks the upper bounds of tile_cols
+and tile_rows, and rockchip_vpu981_av1_dec_prepare_run() only checks the
+number of tiles against the tile group entries and the tile buffer, so
+a frame with tile_cols or tile_rows set to 0 is accepted. With no tile
+columns, rockchip_vpu981_av1_dec_tiles_reallocate() computes a size of
+0 for each of the five tile column buffers, which the buffers it has
+always satisfy, so it allocates nothing. On the first frame of a context
+the decoder is then started without tile column buffers (DMA address 0),
+and after a failed allocation with the addresses of the freed ones.
 
-The sizes are also not reset when the buffers are freed, so after a
-failed allocation the stale size of the deblocking data buffer lets the
-next frame skip the allocation and run with NULL buffers.
+Every AV1 frame has at least one tile, reject frames without any.
 
-Compare each buffer with the size the current frame needs and clear the
-sizes together with the buffers.
-
-Fixes: 727a400686a2 ("media: verisilicon: Add Rockchip AV1 decoder")
+Fixes: 65e9f52ffdc8 ("media: verisilicon: Fix auxiliary buffer allocation size")
 Cc: stable@vger.kernel.org
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- .../verisilicon/rockchip_vpu981_hw_av1_dec.c       | 34 +++++++++++++++++-----
- 1 file changed, 27 insertions(+), 7 deletions(-)
+ drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
 diff --git a/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c b/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
-index 2a145433e6d1..e817c91224d3 100644
+index e817c91224d3..8154b405ca63 100644
 --- a/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
 +++ b/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
-@@ -236,27 +236,32 @@ static void rockchip_vpu981_av1_dec_tiles_free(struct hantro_ctx *ctx)
- 				  av1_dec->db_data_col.cpu,
- 				  av1_dec->db_data_col.dma);
- 	av1_dec->db_data_col.cpu = NULL;
-+	av1_dec->db_data_col.size = 0;
+@@ -526,6 +526,13 @@ static int rockchip_vpu981_av1_dec_prepare_run(struct hantro_ctx *ctx)
+ 	if (num_tiles > tge->elems || num_tiles > AV1_MAX_TILES)
+ 		return -EINVAL;
  
- 	if (av1_dec->db_ctrl_col.cpu)
- 		dma_free_coherent(vpu->dev, av1_dec->db_ctrl_col.size,
- 				  av1_dec->db_ctrl_col.cpu,
- 				  av1_dec->db_ctrl_col.dma);
- 	av1_dec->db_ctrl_col.cpu = NULL;
-+	av1_dec->db_ctrl_col.size = 0;
- 
- 	if (av1_dec->cdef_col.cpu)
- 		dma_free_coherent(vpu->dev, av1_dec->cdef_col.size,
- 				  av1_dec->cdef_col.cpu, av1_dec->cdef_col.dma);
- 	av1_dec->cdef_col.cpu = NULL;
-+	av1_dec->cdef_col.size = 0;
- 
- 	if (av1_dec->sr_col.cpu)
- 		dma_free_coherent(vpu->dev, av1_dec->sr_col.size,
- 				  av1_dec->sr_col.cpu, av1_dec->sr_col.dma);
- 	av1_dec->sr_col.cpu = NULL;
-+	av1_dec->sr_col.size = 0;
- 
- 	if (av1_dec->lr_col.cpu)
- 		dma_free_coherent(vpu->dev, av1_dec->lr_col.size,
- 				  av1_dec->lr_col.cpu, av1_dec->lr_col.dma);
- 	av1_dec->lr_col.cpu = NULL;
-+	av1_dec->lr_col.size = 0;
- }
- 
- static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
-@@ -269,15 +274,30 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
- 	unsigned int height = ALIGN(ctrls->frame->frame_height_minus_1 + 1, 64);
- 	unsigned int height_in_sb = height / 64;
- 	unsigned int stripe_num = ((height + 8) + 63) / 64;
-+	size_t db_data_size, db_ctrl_size, cdef_size, sr_size, lr_size;
- 	size_t size;
- 
--	if (av1_dec->db_data_col.size >=
--	    ALIGN(height * 12 * ctx->bit_depth / 8, 128) * num_tile_cols)
-+	db_data_size = ALIGN(height * 12 * ctx->bit_depth / 8, 128) * num_tile_cols;
-+	db_ctrl_size = ALIGN(height * 2 * 16 / 4, 128) * num_tile_cols;
-+	cdef_size = ALIGN(height_in_sb * 44 * ctx->bit_depth * 16 / 8, 128) * num_tile_cols;
-+	sr_size = ALIGN(height_in_sb * (3040 + 1280), 128) * num_tile_cols;
-+	lr_size = ALIGN(stripe_num * 1536 * ctx->bit_depth / 8, 128) * num_tile_cols;
-+
 +	/*
-+	 * The five buffers scale differently with the frame height, the
-+	 * number of tile columns and the bit depth, so each of them has to be
-+	 * big enough for the current frame, not only the deblocking data one.
++	 * Every AV1 frame has at least one tile. Without tile columns, the
++	 * tile column buffers would be sized to zero and not allocated.
 +	 */
-+	if (av1_dec->db_data_col.size >= db_data_size &&
-+	    av1_dec->db_ctrl_col.size >= db_ctrl_size &&
-+	    av1_dec->cdef_col.size >= cdef_size &&
-+	    av1_dec->sr_col.size >= sr_size &&
-+	    av1_dec->lr_col.size >= lr_size)
- 		return 0;
++	if (!num_tiles)
++		return -EINVAL;
++
+ 	ctrls->film_grain =
+ 	    hantro_get_ctrl(ctx, V4L2_CID_STATELESS_AV1_FILM_GRAIN);
  
- 	rockchip_vpu981_av1_dec_tiles_free(ctx);
- 
--	size = ALIGN(height * 12 * ctx->bit_depth / 8, 128) * num_tile_cols;
-+	size = db_data_size;
- 	av1_dec->db_data_col.cpu = dma_alloc_coherent(vpu->dev, size,
- 						      &av1_dec->db_data_col.dma,
- 						      GFP_KERNEL);
-@@ -285,7 +305,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
- 		goto buffer_allocation_error;
- 	av1_dec->db_data_col.size = size;
- 
--	size = ALIGN(height * 2 * 16 / 4, 128) * num_tile_cols;
-+	size = db_ctrl_size;
- 	av1_dec->db_ctrl_col.cpu = dma_alloc_coherent(vpu->dev, size,
- 						      &av1_dec->db_ctrl_col.dma,
- 						      GFP_KERNEL);
-@@ -293,7 +313,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
- 		goto buffer_allocation_error;
- 	av1_dec->db_ctrl_col.size = size;
- 
--	size = ALIGN(height_in_sb * 44 * ctx->bit_depth * 16 / 8, 128) * num_tile_cols;
-+	size = cdef_size;
- 	av1_dec->cdef_col.cpu = dma_alloc_coherent(vpu->dev, size,
- 						   &av1_dec->cdef_col.dma,
- 						   GFP_KERNEL);
-@@ -301,7 +321,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
- 		goto buffer_allocation_error;
- 	av1_dec->cdef_col.size = size;
- 
--	size = ALIGN(height_in_sb * (3040 + 1280), 128) * num_tile_cols;
-+	size = sr_size;
- 	av1_dec->sr_col.cpu = dma_alloc_coherent(vpu->dev, size,
- 						 &av1_dec->sr_col.dma,
- 						 GFP_KERNEL);
-@@ -309,7 +329,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
- 		goto buffer_allocation_error;
- 	av1_dec->sr_col.size = size;
- 
--	size = ALIGN(stripe_num * 1536 * ctx->bit_depth / 8, 128) * num_tile_cols;
-+	size = lr_size;
- 	av1_dec->lr_col.cpu = dma_alloc_coherent(vpu->dev, size,
- 						 &av1_dec->lr_col.dma,
- 						 GFP_KERNEL);
 
 -- 
 2.55.0
