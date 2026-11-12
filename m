@@ -1,91 +1,65 @@
-From: Zi-Hao Huang <zi-hao.huang@mediatek.com>
-Date: Thu, 12 Nov 2026 10:16:45 +0800
-Subject: [PATCH] block: fix PF_BLOCK_TS/current->plug ordering in
- blk_finish_plug()
+From: Samuel Wheeler <swheel33@gmail.com>
+Subject: [PATCH 0/2] platform/x86: hp-wmi: HP OmniBook Ultra 14-kd0xxx
+ (8EB4) fixes
+Date: Wed, 11 Nov 2026 21:54:25 -0500
+Message-Id: <20261111-omnibook-8eb4-v1-0-3127f45cc338@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-blk-plug-fix-v1-1-7fa2a6215b8d@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIAIwh9WoC/x2MQQqAIBAAvyJ7bkE3COkr0SFrsyWpUIpA/HvSc
- QZmMiSOwgl6lSHyI0nOo4JpFMzbdHhGWSoDaeqMMYQu7HiF2+MqL666s04Ttc5qqMkVuep/N4y
- lfLI0MNNeAAAA
-X-Change-ID: 20261112-blk-plug-fix-f068b0223b80
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Zi-Hao Huang <zi-hao.huang@mediatek.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794449870; l=2373;
- i=zi-hao.huang@mediatek.com; s=20261112; h=from:subject:message-id;
- bh=DSlAJhYD9b51DNkmYc4nFsWMsjAUVzpJL8gmeV8NUTI=;
- b=m+EwD6l34QlcaXVjnEekIZcWqqZn31q4Zy44HLlVzHKLacaYxyRPGRbpj9clW1DitiCgSrHUr
- HC7yeFeW3cPCofwB22Q+zt77gqTdpjrtb7SB2b0MLxpB+9+y9xEctQk
-X-Developer-Key: i=zi-hao.huang@mediatek.com; a=ed25519;
- pk=tbMIVegYSSBtz5MaQSUCX9RJO88MA/AI5cbmQKbaoIc=
-X-Endpoint-Received: by B4 Relay for zi-hao.huang@mediatek.com/20261112 with auth_id=1493
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBCF4avIrDVREcpVxKJlMEQrLSJpenfF2
+ 32L93twaAkdNIkHixc5MjqCpwn0s9QTMhqiIc/ykscxs2lSxqxMoCpYJUTNMasKyUeIn93iSPf
+ Xa7vf7lQL9scbgRAeA9uN6HEAAAA=
+X-Change-ID: 20261111-omnibook-8eb4-78891e074a1f
+To: Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
+Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Shang En Sim <sim@shangen.org>, Samuel Wheeler <swheel33@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794452066; l=1572;
+ i=swheel33@gmail.com; s=20261112; h=from:subject:message-id;
+ bh=Y4xTG+8RxmiuTXb8mMsG5seOcwWC4EfIZOX+4VckSBk=;
+ b=HwgbCzhMGJBDO+FlTWk1qVHPMAeJTtMjNLT0MBjnDZpGXIPHT5YyytGhU+TdHhBb0PwdJHMrX
+ ex1CXT+aqiWAJH/GNnnmm1cKE/uGnTDnhX51ZpSmkLjDV4f6sI3xOge
+X-Developer-Key: i=swheel33@gmail.com; a=ed25519;
+ pk=cokeT6B31W84o+Gc4wuP2okLF8wShbbGQ7pb5h5JPXg=
+X-Endpoint-Received: by B4 Relay for swheel33@gmail.com/20261112 with auth_id=1494
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-blk_plug_invalidate_ts() runs on context switch and assumes that
-PF_BLOCK_TS set implies current->plug != NULL. blk_finish_plug() breaks
-this: it clears PF_BLOCK_TS in __blk_flush_plug() and then sets
-current->plug = NULL, with plain accesses.
+Two small hp-wmi changes for the HP OmniBook Ultra Laptop 14-kd0xxx
+(board 8EB4, BIOS F.06, Panther Lake):
 
-clang inlines __blk_flush_plug() and emits the store to current->plug
-before the store that clears the flag (arm64, Android common kernel):
+1. The thermal profile query returns status flags in its upper bytes,
+   so reading the platform profile always fails with -EINVAL. Use only
+   the low byte.
+2. The laptop has the same battery charge mode interface as the
+   Spectre 8C15/8C17. Add it to the charge_behaviour quirk list.
 
-  ldr  w8, [x20, #0x44]     // w8 = current->flags
-  str  xzr, [x20, #0xaa8]   // current->plug = NULL
-  and  w8, w8, #0xdfffffff  // w8 &= ~PF_BLOCK_TS  <- preempted here
-  str  w8, [x20, #0x44]     // current->flags = w8
+Both were tested on the laptop with the same code changes applied to the
+hp-wmi of a 7.2.15-based distribution kernel. The patches themselves are
+against pdx86 for-next and build there with W=1 without warnings;
+checkpatch --strict is clean.
 
-If an interrupt hits there and preempts the task, the task is later
-scheduled back in with PF_BLOCK_TS set and no plug, and
-blk_plug_invalidate_ts() writes to NULL + 0x20 (plug->cur_ktime):
+Patch 2 touches the same quirk table as the pending "platform/x86:
+hp-wmi: Add OmniBook 7 14-fr0xxx to charge_behaviour quirks"
+(https://lore.kernel.org/r/20261102155409.3061761-1-taranarmo@gmail.com),
+so whichever is applied second will need a trivial rebase.
 
-  Unable to handle kernel NULL pointer dereference at 0000000000000020
-  pc : __schedule+0x108c
-   preempt_schedule_irq+0x48/0xa8
-   el1_interrupt+0x48/0x8c
-   blk_finish_plug+0x6c/0x18c
-   ext4_do_writepages+0xd3c/0xef8
-
-The window is only a few instructions wide, so this is rare. It was hit
-at cycle 127 of a warm reboot stress test.
-
-Add a compiler barrier so the flag is cleared before the plug is
-dropped. A compiler barrier is enough because the race is with
-preemption of the same task on the same CPU. With the barrier, the same
-build stores current->flags before current->plug.
-
-Fixes: 06b23f92af87 ("block: update cached timestamp post schedule/preemption")
-Cc: stable@vger.kernel.org # v6.9+
-Signed-off-by: Zi-Hao Huang <zi-hao.huang@mediatek.com>
----
- block/blk-core.c | 6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/block/blk-core.c b/block/blk-core.c
-index 8836c7028568..ad2a8e4fe7a8 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -1299,6 +1299,12 @@ void blk_finish_plug(struct blk_plug *plug)
- {
- 	if (plug == current->plug) {
- 		__blk_flush_plug(plug, false);
-+		/*
-+		 * blk_plug_invalidate_ts() runs on context switch and expects a
-+		 * plug whenever PF_BLOCK_TS is set, so clear the flag (done in
-+		 * __blk_flush_plug()) before dropping the plug.
-+		 */
-+		barrier();
- 		current->plug = NULL;
- 	}
- }
+The ACPI analysis, the changes and these descriptions were prepared with
+an AI coding assistant (Claude, by Anthropic), as described in each
+patch. I reviewed them and ran the tests myself.
 
 ---
-base-commit: 067c5c24cef23d913b67eaaf71ae67e7169a6620
-change-id: 20261112-blk-plug-fix-f068b0223b80
+Samuel Wheeler (2):
+      platform/x86: hp-wmi: Only use the low byte of the thermal profile
+      platform/x86: hp-wmi: Add charge_behaviour quirk for OmniBook Ultra 14
+
+ drivers/platform/x86/hp/hp-wmi.c | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
+---
+base-commit: a514d723595bd8e5ce926a7fea148ceb3c26915c
+change-id: 20261111-omnibook-8eb4-78891e074a1f
 
 Best regards,
--- 
-Zi-Hao Huang <zi-hao.huang@mediatek.com>
+--  
+Samuel Wheeler <swheel33@gmail.com>
 
