@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:33:05 +0000
-Subject: [PATCH v2 1/9] drm/rockchip: vop2: Take the UV plane address from
- the second GEM object
+Date: Thu, 12 Nov 2026 08:33:06 +0000
+Subject: [PATCH v2 2/9] drm/rockchip: vop2: Don't use uninitialised
+ dividers on RK3588
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-vop2-fixes-v2-1-8218c1cf8ac8@gmail.com>
+Message-Id: <20261112-vop2-fixes-v2-2-8218c1cf8ac8@gmail.com>
 References: <20261112-vop2-fixes-v2-0-8218c1cf8ac8@gmail.com>
 In-Reply-To: <20261112-vop2-fixes-v2-0-8218c1cf8ac8@gmail.com>
 To: Sandy Huang <hjc@rock-chips.com>, 
@@ -18,56 +18,66 @@ To: Sandy Huang <hjc@rock-chips.com>,
 Cc: Piotr Zalewski <pZ010001011111@proton.me>, 
  Chaoyi Chen <chaoyi.chen@rock-chips.com>, dri-devel@lists.freedesktop.org, 
  linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>, 
- stable@vger.kernel.org
+ linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794472385; l=1838;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794472385; l=2150;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=c6L45VmSkCBmk0ERX5lNSIXdj9a2eckfk+73qA8sDb8=;
- b=bNeTudL523j6Oh7G+s25KWoAvRH5h9NVLNWYV+GSaMqLiTaDWtX4j2lI+02qf8Y5TtY6yHfN3
- 3AEArtFHBkpAOJZNZx6SmuxwHhXYzW9/VSt7E2jNe1ayGQUaGNQSjax
+ bh=+pfuSp1M99YrjvoyOVjakpSrJdneJ0OxzWPX/oIDiA8=;
+ b=0BgDQWF1kBoGdrpcP5kaQ6tsQPCIUaT39TeoawJASLmg159mIIeOABJjhO2G+1Cjo09Y14D6r
+ 3uEyW7rU/13Az+oPwNYDFyYRkgHyggR5gOwfp+vo/xQGD3/UFy3jKLi
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vop2_plane_atomic_update() computes the address of the chroma plane of a
-multi-planar YUV framebuffer from fb->obj[0], the object of the luma
-plane, plus the offset of the chroma plane. A framebuffer may have its
-planes in different GEM objects though (DRM_IOCTL_MODE_ADDFB2 with two
-handles, as with an NV12M buffer from a V4L2 decoder imported as two
-DMA-BUFs). The window then fetches the chroma plane from the luma buffer,
-at an offset meant for another buffer, which shows a wrong picture or
-reads past the end of the luma buffer.
+rk3588_calc_cru_cfg() converts all four dividers to their register
+encoding with ilog2(), but only sets the ones the interface uses:
+dclk_out_div is left uninitialised for HDMI, eDP and DPI, and
+if_pixclk_div/if_dclk_div for DP and DPI. The garbage is then written to
+RK3588_VP_CLK_CTRL; on an Orange Pi 5 the dclk_out divider of the HDMI
+video port reads back as 3 (/8) in every mode.
 
-Use fb->obj[1] for the chroma plane. Single plane YUV formats like
-DRM_FORMAT_YUV420_8BIT have no second object and keep using fb->obj[0].
-This is also what the vendor kernel does.
+Start all dividers at 1. dclk_out only feeds DP and MIPI (and HDMI with
+DSC, which is not supported), so for the other interfaces keep it at the
+dclk_core rate, as the vendor kernel does for HDMI with DSC, instead of
+letting it run at the full DCLK rate.
 
-Fixes: 604be85547ce ("drm/rockchip: Add VOP2 driver")
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/sashiko-outbox-206550@kernel.org/
-Cc: stable@vger.kernel.org
+Fixes: 5a028e8f062f ("drm/rockchip: vop2: Add support for rk3588")
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ drivers/gpu/drm/rockchip/rockchip_vop2_reg.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-index 76d151b8bc52..ea8d837d661f 100644
---- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-+++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-@@ -1369,7 +1369,9 @@ static void vop2_plane_atomic_update(struct drm_plane *plane,
- 		if ((pstate->rotation & DRM_MODE_REFLECT_Y) && !afbc_en)
- 			offset += fb->pitches[1] * ((pstate->src_h >> 16) - 2) / vsub;
+diff --git a/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c b/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c
+index c44648e1bc0d..659fd0a3ab63 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c
++++ b/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c
+@@ -1579,6 +1579,15 @@ static unsigned long rk3588_calc_cru_cfg(struct vop2_video_port *vp, int id,
+ 	unsigned long if_pixclk_rate;
+ 	int K = 1;
  
--		rk_obj = to_rockchip_obj(fb->obj[0]);
-+		/* Single plane formats like YUV420_8BIT have no second object */
-+		if (fb->format->num_planes > 1)
-+			rk_obj = to_rockchip_obj(fb->obj[1]);
- 		uv_mst = rk_obj->dma_addr + offset + fb->offsets[1];
++	/*
++	 * Not every interface uses every divider: dclk_out only feeds DP and
++	 * MIPI, the interface dividers are unused for DP. Start from 1 so that
++	 * no divider is left uninitialised when its value is converted below.
++	 */
++	*dclk_out_div = 1;
++	*if_pixclk_div = 1;
++	*if_dclk_div = 1;
++
+ 	if (vop2_output_if_is_hdmi(id)) {
+ 		/*
+ 		 * K = 2: dclk_core = if_pixclk_rate > if_dclk_rate
+@@ -1648,6 +1657,9 @@ static unsigned long rk3588_calc_cru_cfg(struct vop2_video_port *vp, int id,
  	}
  
+ 	*dclk_core_div = dclk_rate / dclk_core_rate;
++	/* An unused dclk_out must not run faster than dclk_core */
++	if (!vop2_output_if_is_dp(id) && !vop2_output_if_is_mipi(id))
++		*dclk_out_div = *dclk_core_div;
+ 	*if_pixclk_div = ilog2(*if_pixclk_div);
+ 	*if_dclk_div = ilog2(*if_dclk_div);
+ 	*dclk_core_div = ilog2(*dclk_core_div);
 
 -- 
 2.55.0
