@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 12 Nov 2026 08:54:57 +0000
-Subject: [PATCH v2 3/6] media: verisilicon: Don't offer VP8 above 1080p on
- the Rockchip VDPU2
+Date: Thu, 12 Nov 2026 08:54:58 +0000
+Subject: [PATCH v2 4/6] media: verisilicon: Check every VPU981 AV1 tile
+ column buffer before reusing them
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-hantro-codec-fixes-v2-3-f44424df585b@gmail.com>
+Message-Id: <20261112-hantro-codec-fixes-v2-4-f44424df585b@gmail.com>
 References: <20261112-hantro-codec-fixes-v2-0-f44424df585b@gmail.com>
 In-Reply-To: <20261112-hantro-codec-fixes-v2-0-f44424df585b@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -20,68 +20,155 @@ To: Nicolas Dufresne <nicolas.dufresne@collabora.com>,
  Jeffy Chen <jeffy.chen@rock-chips.com>, Tomasz Figa <tfiga@chromium.org>
 Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- Arun Iyengar <aiyengar1990@gmail.com>
+ Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794473695; l=2123;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794473695; l=6292;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=EXI8QBEeHs1R1u0NRn+cDDndC1H6YMS5/uVvMAcEFAg=;
- b=byQz4GYiQ/6r0/WJ5LPGX55naEJ393h9T1l5gHuaK5OuRo6RtWYZrlSRhz6YOZrGDiFC/xWOf
- MshdVJCvzlEDYYPq9i3nJ18rnSX1E++DEDDC4aOJbvgshWW7NRDDiRS
+ bh=BT2F0TOczjHLd2TsiRpWYPl5wVI3/1gtJ6eyqTMB414=;
+ b=5qAFPZ2X7x/mB4guhj/l6YFbtBJPsa29419lVc0kEuJGe/lecc39ZEHCozNBUXAl4Jl+HfG1K
+ bXUwkGJjYUxChMrY+tO3fYSj9CFPo1M/SlTsyFUszqNQ/4Gbz/ZVWBb
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The VDPU2 decoder format tables (RK3328, RK3568, RK3588 VPU121) and the
-RK3399 one let the VP8 OUTPUT format go up to 3840x2160, but their only
-CAPTURE format, NV12, stops at 1920x1088, and the CAPTURE size is
-clamped to it. A 4K VP8 stream is therefore accepted on OUTPUT and then
-decoded into a 1920x1088 buffer: on RK3588 GStreamer v4l2slvp8dec runs
-into "gst_video_frame_map_id: assertion 'info->width <= meta->width'
-failed" for every frame of a 3840x2160 stream and none of the frames
-match FFmpeg.
+rockchip_vpu981_av1_dec_tiles_reallocate() keeps the five tile column
+buffers (deblocking data and control, CDEF, super-res, loop restoration)
+when the deblocking data buffer is big enough for the current frame. The
+buffers don't scale the same way: the deblocking data one grows with the
+frame height and the bit depth, the super-res one only with the number of
+64 pixel rows, and the loop restoration one with the number of
+restoration stripes, which is one more than the number of superblock
+rows. A frame can therefore fit in the old deblocking data buffer and
+still need a larger buffer of another kind. For example, after a 10-bit
+1088 line frame with 4 tile columns, an 8-bit frame of the same height
+with 5 tile columns needs 65280 bytes of deblocking data (65536
+allocated) but 367360 bytes of super-res column data (293888 allocated);
+an 8-bit 128 line frame with 4 columns followed by a 64 line frame with 8
+columns has the same problem with the loop restoration buffer. The
+decoder then writes past the end of the smaller buffer.
 
-Nothing above 1080p can be decoded with these tables, so don't
-advertise it: limit VP8 to the 1920x1088 of the other codecs and of the
-CAPTURE format. Userspace that checks VIDIOC_ENUM_FRAMESIZES, and the
-S_FMT clamping, then know that a 4K VP8 stream needs another decoder.
+The sizes are also not reset when the buffers are freed, so after a
+failed allocation the stale size of the deblocking data buffer lets the
+next frame skip the allocation and run with NULL buffers.
 
-Fixes: 73fb5bfa53e9 ("media: hantro: Support RK3399 VP8 decoding")
+Compare each buffer with the size the current frame needs and clear the
+sizes together with the buffers.
+
+Fixes: 727a400686a2 ("media: verisilicon: Add Rockchip AV1 decoder")
+Cc: stable@vger.kernel.org
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/platform/verisilicon/rockchip_vpu_hw.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ .../verisilicon/rockchip_vpu981_hw_av1_dec.c       | 34 +++++++++++++++++-----
+ 1 file changed, 27 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-index 02673be9878e..2b6242c1fb86 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-@@ -274,10 +274,10 @@ static const struct hantro_fmt rockchip_vdpu2_dec_fmts[] = {
- 		.max_depth = 2,
- 		.frmsize = {
- 			.min_width = FMT_MIN_WIDTH,
--			.max_width = FMT_UHD_WIDTH,
-+			.max_width = FMT_FHD_WIDTH,
- 			.step_width = MB_DIM,
- 			.min_height = FMT_MIN_HEIGHT,
--			.max_height = FMT_UHD_HEIGHT,
-+			.max_height = FMT_FHD_HEIGHT,
- 			.step_height = MB_DIM,
- 		},
- 	},
-@@ -315,10 +315,10 @@ static const struct hantro_fmt rk3399_vpu_dec_fmts[] = {
- 		.max_depth = 2,
- 		.frmsize = {
- 			.min_width = FMT_MIN_WIDTH,
--			.max_width = FMT_UHD_WIDTH,
-+			.max_width = FMT_FHD_WIDTH,
- 			.step_width = MB_DIM,
- 			.min_height = FMT_MIN_HEIGHT,
--			.max_height = FMT_UHD_HEIGHT,
-+			.max_height = FMT_FHD_HEIGHT,
- 			.step_height = MB_DIM,
- 		},
- 	},
+diff --git a/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c b/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
+index 2a145433e6d1..e817c91224d3 100644
+--- a/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
++++ b/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
+@@ -236,27 +236,32 @@ static void rockchip_vpu981_av1_dec_tiles_free(struct hantro_ctx *ctx)
+ 				  av1_dec->db_data_col.cpu,
+ 				  av1_dec->db_data_col.dma);
+ 	av1_dec->db_data_col.cpu = NULL;
++	av1_dec->db_data_col.size = 0;
+ 
+ 	if (av1_dec->db_ctrl_col.cpu)
+ 		dma_free_coherent(vpu->dev, av1_dec->db_ctrl_col.size,
+ 				  av1_dec->db_ctrl_col.cpu,
+ 				  av1_dec->db_ctrl_col.dma);
+ 	av1_dec->db_ctrl_col.cpu = NULL;
++	av1_dec->db_ctrl_col.size = 0;
+ 
+ 	if (av1_dec->cdef_col.cpu)
+ 		dma_free_coherent(vpu->dev, av1_dec->cdef_col.size,
+ 				  av1_dec->cdef_col.cpu, av1_dec->cdef_col.dma);
+ 	av1_dec->cdef_col.cpu = NULL;
++	av1_dec->cdef_col.size = 0;
+ 
+ 	if (av1_dec->sr_col.cpu)
+ 		dma_free_coherent(vpu->dev, av1_dec->sr_col.size,
+ 				  av1_dec->sr_col.cpu, av1_dec->sr_col.dma);
+ 	av1_dec->sr_col.cpu = NULL;
++	av1_dec->sr_col.size = 0;
+ 
+ 	if (av1_dec->lr_col.cpu)
+ 		dma_free_coherent(vpu->dev, av1_dec->lr_col.size,
+ 				  av1_dec->lr_col.cpu, av1_dec->lr_col.dma);
+ 	av1_dec->lr_col.cpu = NULL;
++	av1_dec->lr_col.size = 0;
+ }
+ 
+ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
+@@ -269,15 +274,30 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
+ 	unsigned int height = ALIGN(ctrls->frame->frame_height_minus_1 + 1, 64);
+ 	unsigned int height_in_sb = height / 64;
+ 	unsigned int stripe_num = ((height + 8) + 63) / 64;
++	size_t db_data_size, db_ctrl_size, cdef_size, sr_size, lr_size;
+ 	size_t size;
+ 
+-	if (av1_dec->db_data_col.size >=
+-	    ALIGN(height * 12 * ctx->bit_depth / 8, 128) * num_tile_cols)
++	db_data_size = ALIGN(height * 12 * ctx->bit_depth / 8, 128) * num_tile_cols;
++	db_ctrl_size = ALIGN(height * 2 * 16 / 4, 128) * num_tile_cols;
++	cdef_size = ALIGN(height_in_sb * 44 * ctx->bit_depth * 16 / 8, 128) * num_tile_cols;
++	sr_size = ALIGN(height_in_sb * (3040 + 1280), 128) * num_tile_cols;
++	lr_size = ALIGN(stripe_num * 1536 * ctx->bit_depth / 8, 128) * num_tile_cols;
++
++	/*
++	 * The five buffers scale differently with the frame height, the
++	 * number of tile columns and the bit depth, so each of them has to be
++	 * big enough for the current frame, not only the deblocking data one.
++	 */
++	if (av1_dec->db_data_col.size >= db_data_size &&
++	    av1_dec->db_ctrl_col.size >= db_ctrl_size &&
++	    av1_dec->cdef_col.size >= cdef_size &&
++	    av1_dec->sr_col.size >= sr_size &&
++	    av1_dec->lr_col.size >= lr_size)
+ 		return 0;
+ 
+ 	rockchip_vpu981_av1_dec_tiles_free(ctx);
+ 
+-	size = ALIGN(height * 12 * ctx->bit_depth / 8, 128) * num_tile_cols;
++	size = db_data_size;
+ 	av1_dec->db_data_col.cpu = dma_alloc_coherent(vpu->dev, size,
+ 						      &av1_dec->db_data_col.dma,
+ 						      GFP_KERNEL);
+@@ -285,7 +305,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
+ 		goto buffer_allocation_error;
+ 	av1_dec->db_data_col.size = size;
+ 
+-	size = ALIGN(height * 2 * 16 / 4, 128) * num_tile_cols;
++	size = db_ctrl_size;
+ 	av1_dec->db_ctrl_col.cpu = dma_alloc_coherent(vpu->dev, size,
+ 						      &av1_dec->db_ctrl_col.dma,
+ 						      GFP_KERNEL);
+@@ -293,7 +313,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
+ 		goto buffer_allocation_error;
+ 	av1_dec->db_ctrl_col.size = size;
+ 
+-	size = ALIGN(height_in_sb * 44 * ctx->bit_depth * 16 / 8, 128) * num_tile_cols;
++	size = cdef_size;
+ 	av1_dec->cdef_col.cpu = dma_alloc_coherent(vpu->dev, size,
+ 						   &av1_dec->cdef_col.dma,
+ 						   GFP_KERNEL);
+@@ -301,7 +321,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
+ 		goto buffer_allocation_error;
+ 	av1_dec->cdef_col.size = size;
+ 
+-	size = ALIGN(height_in_sb * (3040 + 1280), 128) * num_tile_cols;
++	size = sr_size;
+ 	av1_dec->sr_col.cpu = dma_alloc_coherent(vpu->dev, size,
+ 						 &av1_dec->sr_col.dma,
+ 						 GFP_KERNEL);
+@@ -309,7 +329,7 @@ static int rockchip_vpu981_av1_dec_tiles_reallocate(struct hantro_ctx *ctx)
+ 		goto buffer_allocation_error;
+ 	av1_dec->sr_col.size = size;
+ 
+-	size = ALIGN(stripe_num * 1536 * ctx->bit_depth / 8, 128) * num_tile_cols;
++	size = lr_size;
+ 	av1_dec->lr_col.cpu = dma_alloc_coherent(vpu->dev, size,
+ 						 &av1_dec->lr_col.dma,
+ 						 GFP_KERNEL);
 
 -- 
 2.55.0
