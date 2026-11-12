@@ -1,109 +1,129 @@
-From: Manuel Levi <mlevif@gmail.com>
-Date: Thu, 12 Nov 2026 15:39:29 +0000
-Subject: [PATCH] media: atomisp: csi2-bridge: Only change the PMC clock
- rate when needed
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Date: Thu, 12 Nov 2026 16:08:44 +0000
+Subject: [PATCH] media: cedrus: vp8: do not disable the engine when a
+ context stops
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-atomisp-pmc-clk-rate-v1-1-d6b3ef392ccf@gmail.com>
-X-B4-Tracking: v=1; b=H4sIALDd9WoC/x3MwQrCMAyA4VcZORtYiozhq4iHtGZb0HUlKTIYe
- 3erx+/w/we4mIrDrTvA5KOuW26gSwdp4TwL6rMZQh8GIgrIdVvVC5Y1YXq/0LgKTv3IMVxpiML
- Q0mIy6f7f3h/NkV0wGue0/GZZ9grn+QWM7hVBfQAAAA==
-X-Change-ID: 20261112-atomisp-pmc-clk-rate-f08ab2416bea
-To: Hans de Goede <hansg@kernel.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-staging@lists.linux.dev, Manuel Levi <mlevif@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794497984; l=3543;
- i=mlevif@gmail.com; s=miix320; h=from:subject:message-id;
- bh=bZ4amSOmRbtAS3Gr8P2aAqXS4SXIOeSbgHibbWxJNVQ=;
- b=XHQlZE7IQvJaBMbwVCXE+DVjs4tIS+XLX3oenO4E1v9bdHGrf86jTe1w360DmpP+FkmUb0Ejv
- lZfJur3dG0vBDwHRNkXKxeLu2gAv1Q5hh7f1fzevRbNzFczXQo3ez7G
-X-Developer-Key: i=mlevif@gmail.com; a=ed25519;
- pk=Ich6VcjyjXrqkJedoL17cXSlYNA9kK/oKhBxDM9IYyA=
-X-Endpoint-Received: by B4 Relay for mlevif@gmail.com/miix320 with auth_id=1501
+Message-Id: <20261112-cedrus-vp8-stop-v1-1-27d5ca038578@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBBA0avIrE2iTTTiKmJBO2UsaDqIpHF3x
+ fIt/k8gFJkE2iJBpJOFtzVDlQXYeVgnQnbZoCttlFIaLbl4CJ6hQdm3gHbUzhjX1LX3kKsQyfP
+ 1Hbv+txzjQnZ/N3DfD3xlovtzAAAA
+X-Change-ID: 20261112-cedrus-vp8-stop-cb2d66d855ff
+To: Maxime Ripard <mripard@kernel.org>, 
+ Paul Kocialkowski <paulk@sys-base.io>
+Cc: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, 
+ Emmanuel Gil Peyrot <linkmauve@linkmauve.fr>, 
+ Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
+ Hans Verkuil <hverkuil@kernel.org>, linux-media@vger.kernel.org, 
+ linux-staging@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794499723; l=4052;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=3L89yofDlUOsKK1Yjxc84OEjIl5RT9/obJriusF77mo=;
+ b=t/eUw1Rec+jk03WZlHwh79vS+7qlA/LmC65+UbcfEwMKPCko1ptMNQXJgINJVUzoALqSK94pc
+ XfP35IlqiL4Az8nPzDPzIA5y4y1mePUL6aGHQelAx48vM5VmzQjsyrR
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-atomisp_csi2_set_pmc_clk_freq() enables and then disables the sensor's
-PMC platform clock before setting its rate to 19.2 MHz, which leaves the
-clock forced off in hardware.
+All the contexts of the device share the one video engine, and the m2m
+framework keeps running the jobs of the other contexts while one of them
+stops streaming: stop_streaming() runs under the device mutex, which
+device_run() does not take. Writing VE_MODE_DISABLED from the VP8 stop
+callback can therefore switch the engine off under a picture that
+another context is decoding, which then never completes and fails on
+the watchdog.
 
-The sensor's clock is also controlled by ACPI: the CLKn power resource
-in the sensor's _PR0 writes the same PMC clock control field that
-clk-pmc-atom writes (1 = force on, 2 = force off), and the two do not
-coordinate. If the sensor is in D0 while the bridge runs, the clock is
-switched off under it and the sensor stops responding on I2C.
+Every job selects the engine mode it needs in its setup callback, and
+runtime suspend resets the engine, so there is nothing to disable when
+a context stops. Drop the call, and the helper, which has no other user.
 
-This happens when the sensor driver probes at the same time as the
-bridge: the i2c core powers the sensor to D0 for every probe attempt,
-including those that end in -EPROBE_DEFER while waiting for the bridge's
-fwnode graph. On a Lenovo Miix 320-10ICR (Cherry Trail) the ov2680 probe
-then fails to read the chip ID in about 1 out of 10 boots:
-
-  ov2680 i2c-OVTI2680:00: Error reading reg 0x300a: -121
-  ov2680 i2c-OVTI2680:00: failed to read chip id
-
-The sensor never binds, so atomisp registers no camera at all.
-
-This can be reproduced on demand: with the ov2680 runtime-resumed
-(CLK2 on, chip ID reads fine), running the same clk_prepare_enable(),
-clk_disable_unprepare(), clk_set_rate() sequence on pmc_plt_clk_2 from
-a test module makes the sensor NAK (-EREMOTEIO) until its power
-resources are cycled.
-
-The enable/disable sequence is only needed to change the rate, which can
-default to 25 MHz on Bay Trail. On Cherry Trail the clocks already run at
-19.2 MHz. Skip the sequence when the clock already has the right rate,
-so that the bridge leaves the clock state to ACPI.
-
-Tested on a Lenovo Miix 320-10ICR with the atomisp driver from Debian's
-6.12.116 kernel (this function is unchanged in mainline): with this
-patch pmc_plt_clk_2 and pmc_plt_clk_4 are no longer switched off during
-bridge init (checked with clk trace events), and both sensors were
-registered on all 10 test boots.
-
-Fixes: 0af9078315c1 ("media: atomisp: csi2-bridge: Set PMC clk-rate for sensors to 19.2 MHz")
-Signed-off-by: Manuel Levi <mlevif@gmail.com>
+Fixes: 3c39a16d30d8 ("media: cedrus: Add support for VP8 decoding")
+Cc: stable@vger.kernel.org
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-I can test further changes on the Lenovo Miix 320 if useful.
----
- drivers/staging/media/atomisp/pci/atomisp_csi2_bridge.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Tested on an Orange Pi Zero2 (H616) with the same change on a 7.3.3
+kernel that carries further, out-of-tree H616 cedrus patches (VE behind
+the sun50i IOMMU). The old behaviour was brought back on the same boot
+by a temporary test switch for comparison. The test is a 4K H.264 decode
+through FFmpeg v4l2-request while a second process opens VP8 contexts
+and starts/stops their OUTPUT queue in a loop. With the old VP8 stop the
+watchdog fired 12 times ("frame processing timed out!", after two IOMMU
+page faults at address 0), only 289 of 300 frames came out and the md5
+changed. With this patch all 300 frames match the reference md5 and
+dmesg stays clean.
 
-diff --git a/drivers/staging/media/atomisp/pci/atomisp_csi2_bridge.c b/drivers/staging/media/atomisp/pci/atomisp_csi2_bridge.c
-index cca91c6d71a596594425a6401292a82bb4f8db12..06340533ee87b972c2ca577f73960d00a15ac135 100644
---- a/drivers/staging/media/atomisp/pci/atomisp_csi2_bridge.c
-+++ b/drivers/staging/media/atomisp/pci/atomisp_csi2_bridge.c
-@@ -257,6 +257,19 @@ static int atomisp_csi2_set_pmc_clk_freq(struct acpi_device *adev, int clock_num
- 		return ret;
- 	}
+On media-committers next, the base of this patch, it is build-tested
+only (arm64, W=1, no warnings); it has not been run on that tree.
+
+This patch is independent of Jernej's pending series "staging: media:
+cedrus: assorted fixes and VP8 4K support" (v2) and also applies on top
+of it.
+
+This patch was developed with Claude (Anthropic) as a coding assistant,
+which found the bug and wrote the code and the commit message. I
+reviewed it and tested it as described above, and take responsibility
+for it (Documentation/process/generated-content.rst).
+---
+ drivers/staging/media/sunxi/cedrus/cedrus_hw.c  | 5 -----
+ drivers/staging/media/sunxi/cedrus/cedrus_hw.h  | 1 -
+ drivers/staging/media/sunxi/cedrus/cedrus_vp8.c | 2 --
+ 3 files changed, 8 deletions(-)
+
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_hw.c b/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
+index 444fb53878d1..a22a8402fc60 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
+@@ -71,11 +71,6 @@ int cedrus_engine_enable(struct cedrus_ctx *ctx)
+ 	return 0;
+ }
  
-+	/*
-+	 * Only touch the clock when its rate needs changing (on BYT it may
-+	 * default to 25 MHz). The enable + disable below leaves the clock
-+	 * forced off, while ACPI controls the same clock through the CLKn
-+	 * power resource in the sensor's _PR0. If the sensor is powered up at
-+	 * this point, e.g. by a concurrent probe of its driver, it would lose
-+	 * its clock and stop responding.
-+	 */
-+	if (clk_get_rate(clk) == PMC_CLK_RATE_19_2MHZ) {
-+		clk_put(clk);
-+		return 0;
-+	}
-+
- 	/*
- 	 * The firmware might enable the clock at boot, to change
- 	 * the rate we must ensure the clock is disabled.
+-void cedrus_engine_disable(struct cedrus_dev *dev)
+-{
+-	cedrus_write(dev, VE_MODE, VE_MODE_DISABLED);
+-}
+-
+ void cedrus_dst_format_set(struct cedrus_dev *dev,
+ 			   struct v4l2_pix_format *fmt)
+ {
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_hw.h b/drivers/staging/media/sunxi/cedrus/cedrus_hw.h
+index 6f1e701b1ea8..4edf729c556d 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_hw.h
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_hw.h
+@@ -17,7 +17,6 @@
+ #define _CEDRUS_HW_H_
+ 
+ int cedrus_engine_enable(struct cedrus_ctx *ctx);
+-void cedrus_engine_disable(struct cedrus_dev *dev);
+ 
+ void cedrus_dst_format_set(struct cedrus_dev *dev,
+ 			   struct v4l2_pix_format *fmt);
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_vp8.c b/drivers/staging/media/sunxi/cedrus/cedrus_vp8.c
+index 969677a3bbf9..4438c7e1bbda 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_vp8.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_vp8.c
+@@ -856,8 +856,6 @@ static void cedrus_vp8_stop(struct cedrus_ctx *ctx)
+ {
+ 	struct cedrus_dev *dev = ctx->dev;
+ 
+-	cedrus_engine_disable(dev);
+-
+ 	dma_free_coherent(dev->dev, CEDRUS_ENTROPY_PROBS_SIZE,
+ 			  ctx->codec.vp8.entropy_probs_buf,
+ 			  ctx->codec.vp8.entropy_probs_buf_dma);
 
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261112-atomisp-pmc-clk-rate-f08ab2416bea
+base-commit: 3fc9303dba01676c2090768126e5327e341b7761
+change-id: 20261112-cedrus-vp8-stop-cb2d66d855ff
 
 Best regards,
--- 
-Manuel Levi <mlevif@gmail.com>
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
