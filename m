@@ -1,174 +1,308 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Subject: [PATCH v2 0/2] usb: core: Pair ports of different host controllers
- through their connector
-Date: Thu, 12 Nov 2026 08:26:15 +0000
-Message-Id: <20261112-usb-port-pairing-v2-0-45f5a1a29f1f@gmail.com>
+Date: Thu, 12 Nov 2026 08:26:16 +0000
+Subject: [PATCH v2 1/2] usb: core: Pair ports of different hubs through
+ their connector
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7Zh2TGpw5T0MiwJTGCOUtEA0p
- HeX4t7lS95/f4PIQTjCrdgg8CpR/LgDnQpoejt2jNLuDKTIaK0VLrHGyYcZJytBxg6tU84Yp2x
- NDPtsCuzkfSQf1Y/jUj+5mXMnG73E2YfP8bnq7P3JrxoVlhd1ZSpb4pbu3WDldW78AFVK6QuDF
- Q0UwgAAAA==
-X-Change-ID: 20261110-usb-port-pairing-af0f66f0ab2e
+Message-Id: <20261112-usb-port-pairing-v2-1-45f5a1a29f1f@gmail.com>
+References: <20261112-usb-port-pairing-v2-0-45f5a1a29f1f@gmail.com>
+In-Reply-To: <20261112-usb-port-pairing-v2-0-45f5a1a29f1f@gmail.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Rob Herring <robh@kernel.org>, Alan Stern <stern@rowland.harvard.edu>
 Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Mathias Nyman <mathias.nyman@intel.com>, Chen-Yu Tsai <wenst@chromium.org>, 
  Chen-Yu Tsai <wens@kernel.org>, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794471975; l=7862;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794471975; l=10006;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=e2s8sooK67x7vmIoLwy9LZ4Ezlzfpkkf2yNAWvkHjzY=;
- b=V5kIsLgXO5t2Iud5BeBpSkGmnoh6KGzV5BybTjNJ/zjPpQX5LOUCNFdLgGhgxs39eLpHK8vbu
- QPGwDyGo6qtCWRXP3TPskmYJDkNfmuLZVi22rrlRyNrp2WzN1EyypdQ
+ bh=TKM1R1LcIumGh2H1LgAD/GVIXTtpjHSsuzoyd7DkBY8=;
+ b=hamEvA9wF5KbG31FsKcZ6z/tE9UI0ajvPrikRg6hjSik2fL/V13CGUjIdr+ThrNdNdioHPdD0
+ AHHzxzDKhaUA9w38v8vd0mHj6+0Mh1IV0YgQFBNxY0Mzk4jRIT309dg
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The USB core pairs the USB 2.0 and SuperSpeed halves of a USB 3 port
-only within one xHCI (shared_hcd, same port number) or through ACPI
-location data. Some SoCs route the two halves of a connector to
-different host controllers: on the Rockchip RK3588, USB 3.0 host 2 is
-SuperSpeed-only (its own USB 2.0 root hub port is not wired to a PHY)
-and the connector's USB 2.0 lines go to a separate EHCI/OHCI pair.
-Today the SuperSpeed port is paired with the dead USB 2.0 port of its
-own xHCI, and the EHCI port that really shares the connector has no
-peer.
+A USB 3 port is two ports to the USB core, a USB 2.0 one and a
+SuperSpeed one, and the core pairs them as peers. Root hub ports are
+paired with the same port number of the other root hub of the same
+xHCI, unless ACPI gives their locations.
 
-That is more than a cosmetic problem on boards where VBUS of such a
-port is always on. On the Orange Pi 5 the Type-A USB 3 port has no
-VBUS switch at all (no enable GPIO in the vendor or mainline device
-tree; confirmed on the board), so a device that is plugged in across
-power-up or a reboot is powered long before the kernel runs. It looks
-for a SuperSpeed link while the xHCI is still down, gives up, and
-connects at high speed to the EHCI, which starts ~10 ms before the
-xHCI. It then stays at 480 Mb/s until it is unplugged: USB 3 devices
-only look for a SuperSpeed link again after a VBUS cycle or a USB 2.0
-bus reset.
+Some SoCs route the two halves of a connector to different host
+controllers. On the Rockchip RK3588, USB 3.0 host 2 is SuperSpeed-only:
+its own USB 2.0 root hub port is not wired to a PHY, and the connector's
+USB 2.0 lines go to a separate EHCI instead. Default pairing then joins
+the SuperSpeed port to a dead USB 2.0 port, and nothing knows about the
+EHCI port that really shares the connector.
 
-The series lets the USB core use a description of the connector in
-the device tree:
+A usb-connector node describes its USB 2.0 data lines as graph port 0
+and its SuperSpeed lanes as graph port 1. When a hub's or host
+controller's graph links one of its ports to a connector whose other
+half leads to a different hub or host controller, pair the port with
+that one instead, and keep it out of the default pairing. Connectors
+whose two halves end on the same node, like a Type-C connector on a
+DWC3, keep the default pairing.
 
-  1. usb: core: when a port's graph endpoint leads to a usb-{a,b,c}
-     connector whose other half ends on a different hub or host
-     controller, pair the two ports through the connector and keep them
-     out of the default pairing. Connectors whose halves end on the same
-     node (Type-C on a dwc3) are unchanged.
-  2. usb: hub: when a SuperSpeed root hub whose ports are paired
-     through a connector with USB 2.0 root hub ports of another host
-     controller starts, reset a SuperSpeed-capable device (not a hub)
-     that sits at high speed on the USB 2.0 peer, once, so that it can
-     train its SuperSpeed link now that the host is up. Resume and reset
-     of the root hub don't do this. A device that still does not train
-     stays at high speed; there is no loop.
-
-The Orange Pi 5/5B device tree that describes its Type-A USB 3
-connector this way was patch 4 of v1; it now goes separately to the
-Rockchip tree as "arm64: dts: rockchip: Describe the USB3 Type-A
-connector on Orange Pi 5/5B". Other RK3588 boards with the same split
-would need the same node.
-
-That DT patch links an EHCI root hub port to the connector through a
-"ports" node on the EHCI. v1 added that node to generic-ehci.yaml
-in its patch 1; v2 relies instead on Chen-Yu Tsai's "dt-bindings:
-usb: hcd: Add downstream USB ports", which adds "ports" to
-usb-hcd.yaml for all host controllers [1]. It is not merged yet. The
-two patches here don't need it to build or run; only the separate DT
-patch needs it to pass dtbs_check.
-
-Port numbers: patch 1 finds a root hub port in the graph by its root
-hub port number, as usb_of_get_connect_type() does today, and not by
-the xHCI port number. On an EHCI the two are the same. On the
-SuperSpeed-only xHCI of the RK3588, a dwc3, the SuperSpeed root hub
-port 1 is graph port@1, which is also where snps,dwc3-common.yaml puts
-the SuperSpeed port today. Chen-Yu has said that the graph port of a
-root hub port should be found by the xHCI port number
-(usb_hcd_find_raw_port_number()) [2], and patch 2 of his series
-renumbers the dwc3 ports to match. If that is the way to go, patch 1
-has to translate the numbers on both sides of the pairing. I would
-like to hear which numbering is wanted before I change it.
-
-Honest limits: patch 2 only helps devices that retry SuperSpeed after
-a USB 2.0 bus reset. A SanDisk Extreme does; a SanDisk Ultra Fit does
-not and stays at high speed after the single reset. The hardware fix
-(a switchable VBUS, cycled once the SuperSpeed host is up) is not
-available on this board. The pairing itself (patch 1) also makes the
-existing peer runtime-PM rules apply to such connectors.
-
-v1 was tested on an Orange Pi 5 (RK3588S): with the series the EHCI
-root hub port 1 and the xHCI SuperSpeed port 1 show each other as
-"peer" in sysfs. A SanDisk Extreme present at boot enumerates at high
-speed on the EHCI at ~3.2 s, "SuperSpeed peer port available,
-resetting" is logged once, and it re-enumerates at 5 Gb/s on the xHCI
-at ~3.8 s, on every boot; without the series (two different kernels)
-it came up at 480 Mb/s on the EHCI on every boot and stayed there
-until replugged. A SanDisk Ultra Fit that ignores the USB 2.0 reset
-stays at high speed after the one reset. Hot-plug after boot (5 Gb/s),
-the Type-C port (both halves on the same dwc3 node) and USB 2.0-only
-devices in the port behave as before.
-
-v2 was tested on the same Orange Pi 5 with the SanDisk Extreme in the
-port: on 4 of 4 boots it ended at 5 Gb/s on the xHCI with the EHCI
-port paired (3 of them logged the one peer reset), no WARN or BUG.
-Root hubs runtime-suspend as without the series. 5 s2idle cycles with
-the bus kept and 3 in which the root hubs lost power: no peer reset on
-resume, no device lost. A logical replug, 2 xHCI unbind/bind cycles
-and 10 unbind/bind races of the xHCI and of the hub driver at
-different delays: no hang, no WARN, the device back at 5 Gb/s each
-time. Not tested: an external USB 3 hub in the port (none at hand).
-With Chen-Yu's binding patch applied, CHECK_DTBS for the Orange Pi 5
-and 5B with the separate DT patch shows no new warnings.
-
-All board tests ran on a v7.3 based kernel with these patches and the
-DT patch applied. On v7.4-rc1 the series is build-tested only.
-
-This series was developed with Claude (Anthropic) as a coding assistant:
-it wrote the code and the commit messages, and I reviewed and tested
-every change as described above.
-
-[1] https://lore.kernel.org/all/20261014082037.1774672-2-wenst@chromium.org/
-[2] https://lore.kernel.org/all/CAGXv+5GdBUafk6niG-UMDx=z6LJQ6iHAWhDpm1Ly2ce6CQDaxg@mail.gmail.com/
+This lets the runtime PM rules for peers (keep the SuperSpeed port
+powered while its USB 2.0 peer is) apply to such connectors too.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Changes in v2:
-- Dropped v1 patch 1 "dt-bindings: usb: generic-ehci: Allow describing
-  the root hub ports": Chen-Yu Tsai's "ports" binding in usb-hcd.yaml
-  covers all host controllers, EHCI included, and Rob Herring's comment
-  on it about the port numbers applied to ours too (Chen-Yu Tsai, Rob
-  Herring). v1 patches 2 and 3 are now patches 1 and 2.
-- Patch 2: reset the USB 2.0 peer only when the SuperSpeed root hub
-  starts, not on its reset-resume or after a reset: a device that is
-  suspended with the system can't be reset (Sashiko)
-- Patch 2: never reset a hub, and only look at USB 2.0 root hub ports
-  of another host controller: the USB 2.0 half of a USB 3 hub stays at
-  high speed, and resetting it would disconnect its children (Sashiko)
-- Patch 2: cancel the work in hub_quiesce() (Sashiko) and hold a
-  runtime PM reference on the hub while it is queued (Sashiko); run it
-  on the freezable hub_wq
-- Patch 1 unchanged
-- v1 patch 4 (Orange Pi 5/5B DTS) split out of the series; it goes to
-  the Rockchip tree on its own (Krzysztof Kozlowski)
-- Link to v1: https://patch.msgid.link/20261110-usb-port-pairing-v1-0-9307e29d2ed2@gmail.com
+ drivers/usb/core/hub.h  |   2 +
+ drivers/usb/core/of.c   | 101 ++++++++++++++++++++++++++++++++++++++++++++++++
+ drivers/usb/core/port.c |  54 ++++++++++++++++++++++++--
+ include/linux/usb/of.h  |   9 +++++
+ 4 files changed, 162 insertions(+), 4 deletions(-)
 
----
-Arun Iyengar (2):
-      usb: core: Pair ports of different hubs through their connector
-      usb: hub: Retry SuperSpeed for a device stuck on its USB 2.0 peer
+diff --git a/drivers/usb/core/hub.h b/drivers/usb/core/hub.h
+index 9ebc5ef54a32..78382839be48 100644
+--- a/drivers/usb/core/hub.h
++++ b/drivers/usb/core/hub.h
+@@ -97,6 +97,7 @@ struct usb_hub {
+  * @usb3_lpm_u2_permit: whether USB3 U2 LPM is permitted.
+  * @early_stop: whether port initialization will be stopped earlier.
+  * @ignore_event: whether events of the port are ignored.
++ * @connector_peer: @peer is on another hub, paired through a connector.
+  */
+ struct usb_port {
+ 	struct usb_device *child;
+@@ -118,6 +119,7 @@ struct usb_port {
+ 	unsigned int is_superspeed:1;
+ 	unsigned int usb3_lpm_u1_permit:1;
+ 	unsigned int usb3_lpm_u2_permit:1;
++	unsigned int connector_peer:1;
+ };
+ 
+ #define to_usb_port(_dev) \
+diff --git a/drivers/usb/core/of.c b/drivers/usb/core/of.c
+index a6ee20d8774e..63cead74ae8e 100644
+--- a/drivers/usb/core/of.c
++++ b/drivers/usb/core/of.c
+@@ -145,6 +145,107 @@ enum usb_port_connect_type usb_of_get_connect_type(struct usb_device *hub, int p
+ }
+ EXPORT_SYMBOL_GPL(usb_of_get_connect_type);
+ 
++static bool usb_of_is_connector(const struct device_node *np)
++{
++	return of_device_is_compatible(np, "usb-a-connector") ||
++	       of_device_is_compatible(np, "usb-b-connector") ||
++	       of_device_is_compatible(np, "usb-c-connector");
++}
++
++/*
++ * Return the device node owning the far end of @con's endpoint on @con_port,
++ * and in @port1 the number of the port that endpoint belongs to.
++ */
++static struct device_node *usb_of_connector_remote(struct device_node *con,
++						   u32 con_port, u32 *port1)
++{
++	struct device_node *ep, *remote;
++	struct of_endpoint endpoint;
++
++	ep = of_graph_get_endpoint_by_regs(con, con_port, -1);
++	if (!ep)
++		return NULL;
++
++	remote = of_graph_get_remote_endpoint(ep);
++	of_node_put(ep);
++	if (!remote)
++		return NULL;
++
++	if (of_graph_parse_endpoint(remote, &endpoint)) {
++		of_node_put(remote);
++		return NULL;
++	}
++	*port1 = endpoint.port;
++
++	ep = remote;
++	remote = of_graph_get_port_parent(ep);
++	of_node_put(ep);
++
++	return remote;
++}
++
++/**
++ * usb_of_get_connector_peer() - find a port's peer through its connector
++ * @hub: hub to which the port @port1 belongs
++ * @port1: one-based index of the port
++ * @superspeed: whether @hub is a SuperSpeed hub
++ * @peer_port1: returns the one-based index of the peer port
++ *
++ * A USB connector carries its USB 2.0 data lines on graph port 0 and its
++ * SuperSpeed lanes on graph port 1. Usually both reach the same hub or host
++ * controller, whose USB 2.0 and SuperSpeed ports are paired by default. Some
++ * SoCs instead route the two halves of a connector to different host
++ * controllers, for example a SuperSpeed-only xHCI paired with an EHCI. In that
++ * case the two ports can only be paired through the connector.
++ *
++ * Return: the device node of the hub or host controller providing the peer
++ * port, with its refcount incremented, if @port1 is the @superspeed half of a
++ * connector whose other half leads to a different node. NULL otherwise.
++ */
++struct device_node *usb_of_get_connector_peer(struct usb_device *hub,
++					      int port1, bool superspeed,
++					      u32 *peer_port1)
++{
++	struct device_node *np = hub->dev.of_node;
++	struct device_node *ep, *con, *remote, *peer = NULL;
++	u32 remote_port1;
++
++	if (!np || !of_graph_is_present(np))
++		return NULL;
++
++	ep = of_graph_get_endpoint_by_regs(np, port1, -1);
++	if (!ep)
++		return NULL;
++
++	con = of_graph_get_remote_port_parent(ep);
++	of_node_put(ep);
++	if (!con)
++		return NULL;
++
++	if (!usb_of_is_connector(con) || !of_device_is_available(con))
++		goto out;
++
++	/* The connector's half for our speed must lead back to this port */
++	remote = usb_of_connector_remote(con, superspeed ? 1 : 0, &remote_port1);
++	if (!remote)
++		goto out;
++	of_node_put(remote);
++	if (remote != np || remote_port1 != port1)
++		goto out;
++
++	/* Peers on the same node are paired without the connector's help */
++	peer = usb_of_connector_remote(con, superspeed ? 0 : 1, peer_port1);
++	if (peer && (peer == np || !*peer_port1 ||
++		     !of_device_is_available(peer))) {
++		of_node_put(peer);
++		peer = NULL;
++	}
++out:
++	of_node_put(con);
++	return peer;
++}
++EXPORT_SYMBOL_GPL(usb_of_get_connector_peer);
++
+ /**
+  * usb_of_get_interface_node() - get a USB interface node
+  * @udev: USB device of interface
+diff --git a/drivers/usb/core/port.c b/drivers/usb/core/port.c
+index b4452b665f59..1677118ae043 100644
+--- a/drivers/usb/core/port.c
++++ b/drivers/usb/core/port.c
+@@ -649,10 +649,39 @@ static int match_location(struct usb_device *peer_hdev, void *p)
+ 	return 0;
+ }
+ 
++struct usb_connector_peer {
++	struct usb_port *port_dev;
++	struct device_node *np;
++	u32 port1;
++};
++
++/*
++ * Check whether @peer_hdev is the hub that firmware describes as providing
++ * the other half of the port's connector, and link the two ports if it is.
++ */
++static int match_connector_peer(struct usb_device *peer_hdev, void *p)
++{
++	struct usb_connector_peer *cp = p;
++	struct usb_hub *peer_hub = usb_hub_to_struct_hub(peer_hdev);
++	struct usb_port *peer;
++
++	if (!peer_hub || peer_hdev->dev.of_node != cp->np ||
++	    hub_is_superspeed(peer_hdev) == cp->port_dev->is_superspeed ||
++	    cp->port1 > peer_hdev->maxchild)
++		return 0;
++
++	peer = peer_hub->ports[cp->port1 - 1];
++	if (!peer || peer->connect_type == USB_PORT_NOT_USED)
++		return 0;
++
++	link_peers_report(cp->port_dev, peer);
++	return 1; /* done */
++}
++
+ /*
+  * Find the peer port either via explicit platform firmware "location"
+- * data, the peer hcd for root hubs, or the upstream peer relationship
+- * for all other hubs.
++ * data, a connector described in the device tree, the peer hcd for root
++ * hubs, or the upstream peer relationship for all other hubs.
+  */
+ static void find_and_link_peer(struct usb_hub *hub, int port1)
+ {
+@@ -660,6 +689,7 @@ static void find_and_link_peer(struct usb_hub *hub, int port1)
+ 	struct usb_device *hdev = hub->hdev;
+ 	struct usb_device *peer_hdev;
+ 	struct usb_hub *peer_hub;
++	struct usb_connector_peer cp;
+ 
+ 	/*
+ 	 * If location data is available then we can only peer this port
+@@ -671,7 +701,23 @@ static void find_and_link_peer(struct usb_hub *hub, int port1)
+ 		/* we link the peer in match_location() if found */
+ 		usb_for_each_dev(port_dev, match_location);
+ 		return;
+-	} else if (!hdev->parent) {
++	}
++
++	/*
++	 * If a connector routes the two halves of this port to different
++	 * hubs or host controllers, the connector alone decides the peer.
++	 */
++	cp.np = usb_of_get_connector_peer(hdev, port1,
++					  port_dev->is_superspeed, &cp.port1);
++	if (cp.np) {
++		cp.port_dev = port_dev;
++		port_dev->connector_peer = 1;
++		usb_for_each_dev(&cp, match_connector_peer);
++		of_node_put(cp.np);
++		return;
++	}
++
++	if (!hdev->parent) {
+ 		struct usb_hcd *hcd = bus_to_hcd(hdev->bus);
+ 		struct usb_hcd *peer_hcd = hcd->shared_hcd;
+ 
+@@ -703,7 +749,7 @@ static void find_and_link_peer(struct usb_hub *hub, int port1)
+ 	 * does not have location data
+ 	 */
+ 	peer = peer_hub->ports[port1 - 1];
+-	if (peer && peer->location == 0)
++	if (peer && peer->location == 0 && !peer->connector_peer)
+ 		link_peers_report(port_dev, peer);
+ }
+ 
+diff --git a/include/linux/usb/of.h b/include/linux/usb/of.h
+index de42f14bd280..cfcfa26e7c69 100644
+--- a/include/linux/usb/of.h
++++ b/include/linux/usb/of.h
+@@ -20,6 +20,9 @@ int of_usb_update_otg_caps(struct device_node *np,
+ 			struct usb_otg_caps *otg_caps);
+ enum usb_port_connect_type usb_of_get_connect_type(struct usb_device *hub, int port1);
+ struct device_node *usb_of_get_device_node(struct usb_device *hub, int port1);
++struct device_node *usb_of_get_connector_peer(struct usb_device *hub,
++					      int port1, bool superspeed,
++					      u32 *peer_port1);
+ bool usb_of_has_combined_node(struct usb_device *udev);
+ struct device_node *usb_of_get_interface_node(struct usb_device *udev,
+ 		u8 config, u8 ifnum);
+@@ -49,6 +52,12 @@ usb_of_get_device_node(struct usb_device *hub, int port1)
+ {
+ 	return NULL;
+ }
++static inline struct device_node *
++usb_of_get_connector_peer(struct usb_device *hub, int port1, bool superspeed,
++			  u32 *peer_port1)
++{
++	return NULL;
++}
+ static inline bool usb_of_has_combined_node(struct usb_device *udev)
+ {
+ 	return false;
 
- drivers/usb/core/hub.c  | 113 ++++++++++++++++++++++++++++++++++++++++++++++++
- drivers/usb/core/hub.h  |   3 ++
- drivers/usb/core/of.c   | 101 +++++++++++++++++++++++++++++++++++++++++++
- drivers/usb/core/port.c |  54 +++++++++++++++++++++--
- include/linux/usb/of.h  |   9 ++++
- 5 files changed, 276 insertions(+), 4 deletions(-)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261110-usb-port-pairing-af0f66f0ab2e
-
-Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+2.55.0
 
