@@ -1,76 +1,120 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Fri, 13 Nov 2026 21:20:52 +0000
-Subject: [PATCH v2] arm64: dts: rockchip: Enable SDR104 on the ODROID-M1 SD
- card
+From: Kairui Song <kasong@tencent.com>
+Subject: [PATCH RFC 0/8] mm/huge_memory: clean up and speed up large folio
+ splitting
+Date: Sat, 14 Nov 2026 05:26:16 +0800
+Message-Id: <20261114-swap-thp-split-v1-0-dfa8d4fa448d@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-odroid-m1-sdr104-v2-1-1a1611fc4cbf@iav.lv>
-X-B4-Tracking: v=1; b=H4sIADN/92oC/32NQQrCMBBFr1Jm7Uim2qCuvId0ETMTO6CNJBKUk
- rsbewCX78F/f4EsSSXDqVsgSdGscW7Qbzrwk5tvgsqNoTe9JSKDkVNUxgdh5kRmj8GK2TnjB+e
- P0GbPJEHfa/IyNp40v2L6rA+FfvZPrBASHoS95cHTNdizurK9FxhrrV/+6JtbrQAAAA==
-To: Heiko Stuebner <heiko@sntech.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1891; i=iav@iav.lv;
- h=from:subject:message-id; bh=bk0BmaYleLaidbW/Gg6PAAPuKLMUdjp+ycVXNHy1qDY=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFnf661D3W8Knv7y4OkXxgllDB5KF5w5Nfe8Ut/syHut+
- tCmqSf+dpSyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJXN3OyPBk1Q+t2JRfh3+l
- Z8RObd12tfDEFo59BT9Z/rJc9796zXU+w2/Wxy2bNu3jbbPr8WuYL7hqifq3Y3ZOscFLth86IjQ
- n2Z0PAA==
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDS0NT3eLyxALdkowC3eKCnMwSXYM0C7MkU1OTJBOjVCWgpoKi1LTMCrC
+ B0UpBbs5KsRDB4tKkrNTkEpBRUGVFqYWlQOtKIGpja2sBcGOPo4wAAAA=
+X-Change-ID: 20260915-swap-thp-split-0f86b554b42e
+To: linux-mm@kvack.org
+Cc: David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+ Michal Hocko <mhocko@suse.com>, Matthew Wilcox <willy@infradead.org>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
+ Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
+ Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
+ Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
+ Baoquan He <baoquan.he@linux.dev>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, Zi Yan <ziy@nvidia.com>, 
+ Nico Pache <nico.pache@linux.dev>, Ryan Roberts <ryan.roberts@arm.com>, 
+ Dev Jain <dev.jain@arm.com>, Lance Yang <lance.yang@linux.dev>, 
+ Usama Arif <usama.arif@linux.dev>, Kiryl Shutsemau <kas@kernel.org>, 
+ linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ Kairui Song <kasong@tencent.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794605194; l=3345;
+ i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
+ bh=/AbmnhDe2IJOrI78TkMUD1kXfK1J0O/e9ZtX3/CBXHc=;
+ b=ZvIY7X4nvjD93wMA1BdYlQtatOQkZhI09urInLIAqNDsnRzPPbovJU2IFJM/8GMfgHOgpdduy
+ bFeZZpGL/5QDNi+NWOuQeujVOGwfqIr1SpMs/ffdtk2+JnI4XBof3iu
+X-Developer-Key: i=kasong@tencent.com; a=ed25519;
+ pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
+X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SD card already switches to 1.8 V, but only SDR50 is described, and
-clk_sdmmc0 on RK3568 is a mux without a divider: dw_mmc-rockchip asks
-it for twice the card clock, 200 MHz for SDR50, the mux rounds down to
-the 100 MHz parent and the card runs at 50 MHz.
+Hi all,
 
-Describe SDR104 as well. With the 150 MHz max-frequency from
-rk356x-base.dtsi the clock comes from the 300 MHz parent and the card
-runs at 150 MHz. Hardkernel's vendor kernel already uses sd-uhs-sdr104
-on this board. With a SanDisk 128 GB card, direct read goes from
-22 MB/s to 58-64 MB/s and direct write from 20 MB/s to 47-50 MB/s.
+This series slghtly cleans up the large folio split path and reduces
+its overhead: uniformly splitting PMD sized file folios to order 0
+is over 20% faster.
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
----
-Tested with an Armbian 7.3.3 kernel (rockchip64), the property added to
-the DTB with fdtput: reboot, sysrq-b, watchdog reset, poweroff, s2idle,
-deep, hibernate, hybrid-sleep and suspend-then-hibernate; the card
-re-tuned and came back in SDR104 at 150 MHz in all 29 runs.
----
-Changes in v2:
-- keep sd-uhs-sdr50 next to sd-uhs-sdr104 (Heiko)
-- rebased on for-next
-- Link to v1: https://lore.kernel.org/r/20261110-odroid-m1-sdr104-v1-1-8edc6d5c1bf6@iav.lv
----
- arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts | 1 +
- 1 file changed, 1 insertion(+)
+I realize this might not be the best time for pushing more optimizations,
+but I am posting this as an early RFC as it adds two helpers, folio_prev()
+and xas_prev_canonical(), and uses them to walk the after-split folios
+in reverse, saving a few local variables, avoiding a for-loop pitfall [1],
+and publishing the folios with a single Xarray walk.
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts b/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts
-index ec43dee18094..27793d3970d2 100644
---- a/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-odroid-m1.dts
-@@ -611,6 +611,7 @@ &sdmmc0 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&sdmmc0_bus4 &sdmmc0_clk &sdmmc0_cmd &sdmmc0_det>;
- 	sd-uhs-sdr50;
-+	sd-uhs-sdr104;
- 	vmmc-supply = <&vcc3v3_sd>;
- 	vqmmc-supply = <&vccio_sd>;
- 	status = "okay";
+Walking backwards also changes the order the pieces are put on the LRU or
+the reclaim list: they are now in ascending order instead of descending,
+which is the actually intended order. The effect was not very
+measurable though.
 
+New code is mostly the two helpers and an Xarray selftest. The change to
+mm/huge_memory.c is LOC-neutral.
+
+Worth noting (not part of the series): I found these useful while
+preparation for supporting all kinds of folio splitting folios in the
+swap cache. I also tried to get rid of lruvec lock for the splitting,
+or at least decouple the lock and reduce lock scope of it. It turns out,
+not cleanly doable at this moment, and the main blocker is: MGLRU.
+MGLRU will read a folio's size without holding a ref, solely depending
+on the LRU lock to stabilize. To improve this, another rework of MGLRU's
+reclaim progress is needed (which will also cover the problem fount by
+the MGLRU-FG series that MGLRU sometime have a higher contention than
+CLRU on reclaim isolation).
+
+Testing
+=======
+
+Split overhead on a 32 vCPU x86-64 KVM guest, 31 GiB RAM, 4K base
+pages, 2M THP.  Split a 1 GiB shmem file (512 PMD-sized folios)
+uniformly to order 0 through /sys/kernel/debug/split_huge_pages and
+time that single write with bash's `time`.  Medians over 12
+interleaved rounds per kernel
+
+Test script:
+   mount -t tmpfs -o size=2G,huge=always tmpfs /mnt
+   fallocate -l 1G /mnt/big
+   time echo /mnt/big,0x0,0x40000,0 > /sys/kernel/debug/split_huge_pages
+   rm -f /mnt/big
+   umount /mnt
+
+Result:
+                        Before        After
+real                    17 ms        13 ms   (-24%)
+sys                     17 ms        13 ms   (-24%)
+
+End to end test showed no regression.
+
+Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
-base-commit: a9d78db32fe78bdbe7c66ba77cb7dbb729b885de
-change-id: 20261110-odroid-m1-sdr104-f6e03a0c5ac9
+Kairui Song (8):
+      mm: add folio_prev()
+      xarray: add xas_prev_canonical()
+      mm/huge_memory: avoid an unnecessary folio size reading
+      mm/huge_memory: walk the after-split file folios in reverse order
+      mm/huge_memory: publish split folios by walking backwards
+      mm/huge_memory: rearrange split routine handling for better optimization
+      mm/huge_memory: walk the after-split anon folios in reverse order
+      mm/huge_memory: walk the folios reversely for the release loop
+
+ include/linux/mm.h     |  23 +++++++++++
+ include/linux/xarray.h |  49 +++++++++++++++++++++++
+ lib/test_xarray.c      |  97 +++++++++++++++++++++++++++++++++++++++++++++
+ lib/xarray.c           |   8 ----
+ mm/huge_memory.c       | 105 +++++++++++++++++++++++++------------------------
+ 5 files changed, 222 insertions(+), 60 deletions(-)
+---
+base-commit: fae273e48c398c56b819151a607a6c8792dadef0
+change-id: 20260915-swap-thp-split-0f86b554b42e
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Kairui Song <kasong@tencent.com>
 
