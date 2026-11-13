@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 16:40:35 +0000
-Subject: [PATCH v3 04/12] media: verisilicon: Don't hold the VPU in reset
- after remove
+Date: Fri, 13 Nov 2026 16:40:36 +0000
+Subject: [PATCH v3 05/12] media: verisilicon: Enable the Rockchip encoder
+ interrupt again after a reset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-hantro-robust-v3-4-82383c722ad2@gmail.com>
+Message-Id: <20261113-hantro-robust-v3-5-82383c722ad2@gmail.com>
 References: <20261113-hantro-robust-v3-0-82383c722ad2@gmail.com>
 In-Reply-To: <20261113-hantro-robust-v3-0-82383c722ad2@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -29,88 +29,54 @@ Cc: linux-media@vger.kernel.org, iommu@lists.linux.dev,
  Sascha Hauer <s.hauer@pengutronix.de>, 
  Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794588032; l=3070;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794588032; l=1763;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=423gUTaQDvX29zH2dozaJwYSRoYQI88efAs7A7ebRKw=;
- b=tK9mQBxdWRV/qXhq69U7Id832ZFNjel5ug1ZPyHSDNSzD1jaelBWFjauAfPUIZdm2DvMYlri7
- cZ8ygCe4PpQA6cWZfiuh03rbalK2SrvLh5ZOzcYkXnSeUwuBSY/boA6
+ bh=+x7MAvTN4ercbfI9R+yr1fEuEHWiIaV4thCiEwGlL7Q=;
+ b=DmmH1x6jQBsbYSOBHBaVgphBTbVvRTk3LmuShnbMWCcdllIPzSyNpvrxNu7zr7MgNbWCHasO4
+ qoCujNxrwL7BC1hMjPTAFrPBIE+y6ju5hZnMRno+q5aS/5QDlT+FKWO
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the RK3588, the resets of the AV1 decoder include the AXI and APB
-bus interface resets (SRST_A_AV1_BIU, SRST_P_AV1_BIU), which also cover
-the Verisilicon IOMMU of the decoder. When the driver is unbound, the
-driver core runtime resumes the device and, through the runtime PM
-device link, its IOMMU. hantro_remove() then asserts the resets, and
-when the IOMMU autosuspends 100 ms later, vsi_iommu_suspend() writes to
-its registers while they are held in reset, which raises an SError and
-panics the system:
+The reset operations of the Rockchip VEPU1 and VEPU2 encoders disable
+the encoder interrupt before stopping the encoder. Nothing enables it
+again: the encoder run functions don't write the interrupt register,
+only the interrupt handler does. Every later job on the encoder then
+times out as well.
 
-  SError Interrupt on CPU4, code 0x00000000be000411 -- SError
-  Workqueue: pm pm_runtime_work
-  Call trace:
-   clk_disable+0x30/0x90 (P)
-   clk_bulk_disable+0x44/0x90
-   vsi_iommu_suspend+0x4c/0xc8 [vsi_iommu]
-   pm_generic_runtime_suspend+0x38/0x80
-   genpd_runtime_suspend+0xc4/0x348
-   ...
-  Kernel panic - not syncing: Asynchronous SError Interrupt
+Clear the interrupt register at the end of the reset, as the interrupt
+handler does after each frame.
 
-Hit when reloading the module.
-
-Commit 8e26d4c20ed2 ("media: hantro: disable runtime PM before hardware
-teardown") moved the assert after the runtime PM teardown because
-powering the domain off faulted on it. With the resets left asserted,
-the domain is still powered on for the next bind, and off after a
-failed probe, in that state.
-
-A runtime suspended VPU has its resets deasserted and its clocks off.
-Leave it in that state on remove and on the probe error path instead of
-asserting the resets.
-
-Fixes: ea71631b7129 ("media: hantro: add support for reset lines")
+Fixes: 775fec69008d ("media: add Rockchip VPU JPEG encoder driver")
 Cc: stable@vger.kernel.org
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/platform/verisilicon/hantro_drv.c | 8 +-------
- 1 file changed, 1 insertion(+), 7 deletions(-)
+ drivers/media/platform/verisilicon/rockchip_vpu_hw.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/drivers/media/platform/verisilicon/hantro_drv.c b/drivers/media/platform/verisilicon/hantro_drv.c
-index 42822b2b376c..daec9f1ea968 100644
---- a/drivers/media/platform/verisilicon/hantro_drv.c
-+++ b/drivers/media/platform/verisilicon/hantro_drv.c
-@@ -1214,7 +1214,7 @@ static int hantro_probe(struct platform_device *pdev)
- 	ret = clk_bulk_prepare(vpu->variant->num_clocks, vpu->clocks);
- 	if (ret) {
- 		dev_err(&pdev->dev, "Failed to prepare clocks\n");
--		goto err_pm_disable_assert_reset;
-+		goto err_pm_disable;
- 	}
- 
- 	ret = v4l2_device_register(&pdev->dev, &vpu->v4l2_dev);
-@@ -1268,11 +1268,6 @@ static int hantro_probe(struct platform_device *pdev)
- 	v4l2_device_unregister(&vpu->v4l2_dev);
- err_clk_unprepare:
- 	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
--err_pm_disable_assert_reset:
--	pm_runtime_dont_use_autosuspend(vpu->dev);
--	pm_runtime_disable(vpu->dev);
--	reset_control_assert(vpu->resets);
--	return ret;
- err_pm_disable:
- 	pm_runtime_dont_use_autosuspend(vpu->dev);
- 	pm_runtime_disable(vpu->dev);
-@@ -1294,7 +1289,6 @@ static void hantro_remove(struct platform_device *pdev)
- 	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
- 	pm_runtime_dont_use_autosuspend(vpu->dev);
- 	pm_runtime_disable(vpu->dev);
--	reset_control_assert(vpu->resets);
+diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
+index 02673be9878e..ce3dbea70a8d 100644
+--- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
++++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
+@@ -475,6 +475,8 @@ static void rockchip_vpu1_enc_reset(struct hantro_ctx *ctx)
+ 	vepu_write(vpu, H1_REG_INTERRUPT_DIS_BIT, H1_REG_INTERRUPT);
+ 	vepu_write(vpu, 0, H1_REG_ENC_CTRL);
+ 	vepu_write(vpu, 0, H1_REG_AXI_CTRL);
++	/* Only the interrupt handler writes this register: enable the interrupt again. */
++	vepu_write(vpu, 0, H1_REG_INTERRUPT);
  }
  
- static int hantro_runtime_resume(struct device *dev)
+ static void rockchip_vpu2_dec_reset(struct hantro_ctx *ctx)
+@@ -493,6 +495,8 @@ static void rockchip_vpu2_enc_reset(struct hantro_ctx *ctx)
+ 	vepu_write(vpu, VEPU_REG_INTERRUPT_DIS_BIT, VEPU_REG_INTERRUPT);
+ 	vepu_write(vpu, 0, VEPU_REG_ENCODE_START);
+ 	vepu_write(vpu, 0, VEPU_REG_AXI_CTRL);
++	/* Only the interrupt handler writes this register: enable the interrupt again. */
++	vepu_write(vpu, 0, VEPU_REG_INTERRUPT);
+ }
+ 
+ /*
 
 -- 
 2.55.0
