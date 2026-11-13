@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 09:03:03 +0000
-Subject: [PATCH v3 11/14] drm/panfrost: Don't take a job that was never
- started for done
+Date: Fri, 13 Nov 2026 09:03:04 +0000
+Subject: [PATCH v3 12/14] drm/panfrost: Wait for the soft-stopped slots
+ with the live slot status
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-panfrost-long-jobs-v3-11-80ae78d38f6e@gmail.com>
+Message-Id: <20261113-panfrost-long-jobs-v3-12-80ae78d38f6e@gmail.com>
 References: <20261113-panfrost-long-jobs-v3-0-80ae78d38f6e@gmail.com>
 In-Reply-To: <20261113-panfrost-long-jobs-v3-0-80ae78d38f6e@gmail.com>
 To: Boris Brezillon <boris.brezillon@collabora.com>, 
@@ -17,92 +17,124 @@ To: Boris Brezillon <boris.brezillon@collabora.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794560572; l=3524;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794560572; l=4065;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=5pnkKY/+fhA341knvkY6+lqBVQeDd4XNYCdcDe+ATgU=;
- b=MXySwKJBuygCzSlOj9OcxD1/vAxiSPq5iQ13y5yehnA+vQqHvMclJMCha/Jfrokjdtbkx+mMr
- sHqYvybU/EBDbOv3LgVsYIZYYr2JN7iNwAkH4r0uK5idyeIGKs+kra0
+ bh=+9Y9glDL3o1W7R1YfSBd4YRIE6jG/q1VAQhorQILig8=;
+ b=mAPuGPrCU2/FyJsBSh27k9JRCHWRMiSlW+aMintLh4lWld9EWz4LAt/wYJiDQdrWpnmHRPuk8
+ Dzn+3K0kg8kB/19nLLLlyehYB2Kk5rvvf1fwnvG9HtRHF4ZXdEqcA84
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-While a reset is pending, panfrost_job_hw_submit() puts the job in
-pfdev->jobs[] without starting it; the reset resubmits it. But
-reset.pending is set, by a timeout or a job fault, before
-panfrost_reset() masks the job interrupt. If such a job waits behind a
-running one that completes in that window, panfrost_jm_handle_irq()
-finds both subslots inactive and takes the waiting job for done as well.
-Its fence is signalled and its jc cleared, so it is never run.
+panfrost_reset() soft-stops the slots and waits for them to go idle by
+polling JOB_INT_JS_STATE. That register is a snapshot of the slot states
+taken when JOB_INT_CLEAR was last written (Arm driver: "status==active
+and _next == busy snapshot from last JOB_IRQ_CLEAR"). For a job started
+into an idle slot, the usual case for an OpenCL queue that submits one
+kernel at a time, it shows the slot idle and the wait ends at once.
 
-Mark a job as started when JS_COMMAND_START is written for it, and leave
-a job that was not started to the reset.
+The GPU reset that follows hides this by killing the job. With the job
+resumed instead (next patch), it was removed from pfdev->jobs[] and
+resubmitted while its first run was still stopping. When the first run
+reported DONE, the handler signalled the resubmission's fence, the job
+manager started the resubmission from _NEXT, and its completion found no
+job on the slot (Mali-G31, OpenCL CTS Integer Ops):
 
-Found by code review (Sashiko). Not reproduced.
+  Unable to handle kernel NULL pointer dereference at virtual address 00000000000000f8
+  pc : panfrost_dequeue_job+0x2c/0xd8 [panfrost]
+  lr : panfrost_jm_handle_irqs+0x268/0x570 [panfrost]
+
+Wait until no JS_STATUS register reads ACTIVE instead, so that the
+pending DONE or STOPPED interrupt is handled before the queues are
+touched. Also make panfrost_dequeue_job() return NULL for a slot without
+a job: every caller copes with it, so a stray event is a WARN, not an
+Oops.
 
 Fixes: 030761e097b4 ("drm/panfrost: Queue jobs on the hardware")
-Cc: stable@vger.kernel.org
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/sashiko-outbox-210891@kernel.org/
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/gpu/drm/panfrost/panfrost_job.c | 8 ++++++--
- drivers/gpu/drm/panfrost/panfrost_job.h | 2 ++
- 2 files changed, 8 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/panfrost/panfrost_job.c | 41 +++++++++++++++------------------
+ 1 file changed, 19 insertions(+), 22 deletions(-)
 
 diff --git a/drivers/gpu/drm/panfrost/panfrost_job.c b/drivers/gpu/drm/panfrost/panfrost_job.c
-index df7fcc436..1b7becf7b 100644
+index 1b7becf7b..8235d182d 100644
 --- a/drivers/gpu/drm/panfrost/panfrost_job.c
 +++ b/drivers/gpu/drm/panfrost/panfrost_job.c
-@@ -261,6 +261,7 @@ static int panfrost_job_hw_submit(struct panfrost_job *job, int js)
+@@ -173,7 +173,8 @@ panfrost_dequeue_job(struct panfrost_device *pfdev, int slot)
+ {
+ 	struct panfrost_job *job = pfdev->jobs[slot][0];
  
- 	spin_lock(&pfdev->js->job_lock);
- 	subslot = panfrost_enqueue_job(pfdev, js, job);
-+	job->started = false;
- 	/* Don't queue the job if a reset is in progress */
- 	if (!atomic_read(&pfdev->reset.pending)) {
- 		job->is_profiled = pfdev->profile_mode;
-@@ -276,6 +277,7 @@ static int panfrost_job_hw_submit(struct panfrost_job *job, int js)
- 			job->start_cycles = panfrost_cycle_counter_read(pfdev);
- 		}
+-	WARN_ON(!job);
++	if (WARN_ON(!job))
++		return NULL;
  
-+		job->started = true;
- 		job_write(pfdev, JS_COMMAND_NEXT(js), JS_COMMAND_START);
- 		dev_dbg(pfdev->base.dev,
- 			"JS: Submitting atom %p to js[%d][%d] with head=0x%llx AS %d",
-@@ -586,7 +588,8 @@ static void panfrost_jm_handle_irq(struct panfrost_device *pfdev, u32 status)
+ 	if (job->is_profiled && job->engine_usage) {
+ 		job->engine_usage->elapsed_ns[slot] +=
+@@ -647,25 +648,20 @@ static void panfrost_jm_handle_irqs(struct panfrost_device *pfdev)
+ 	}
+ }
  
- 		if (failed[j]) {
- 			panfrost_job_handle_err(pfdev, failed[j], j);
--		} else if (pfdev->jobs[j][0] && !(js_state & MK_JS_MASK(j))) {
-+		} else if (pfdev->jobs[j][0] && pfdev->jobs[j][0]->started &&
-+			   !(js_state & MK_JS_MASK(j))) {
- 			/* When the current job doesn't fail, the JM dequeues
- 			 * the next job without waiting for an ACK, this means
- 			 * we can have 2 jobs dequeued and only catch the
-@@ -594,7 +597,8 @@ static void panfrost_jm_handle_irq(struct panfrost_device *pfdev, u32 status)
- 			 * are inactive, but one job remains in pfdev->jobs[j],
- 			 * consider it done. Of course that doesn't apply if a
- 			 * failure happened since we cancelled execution of the
--			 * job in _NEXT (see above).
-+			 * job in _NEXT (see above), or if the job was queued
-+			 * while a reset was pending and never started.
- 			 */
- 			if (WARN_ON(!done[j][0]))
- 				done[j][0] = panfrost_dequeue_job(pfdev, j);
-diff --git a/drivers/gpu/drm/panfrost/panfrost_job.h b/drivers/gpu/drm/panfrost/panfrost_job.h
-index cd82d7930..4d1c54243 100644
---- a/drivers/gpu/drm/panfrost/panfrost_job.h
-+++ b/drivers/gpu/drm/panfrost/panfrost_job.h
-@@ -38,6 +38,8 @@ struct panfrost_job {
- 	bool is_profiled;
- 	/* Holds a reference on the cycle counter */
- 	bool cycle_counter_ref;
-+	/* JS_COMMAND_START was written for this submission */
-+	bool started;
- 	ktime_t start_time;
- 	u64 start_cycles;
- };
+-static u32 panfrost_active_slots(struct panfrost_device *pfdev,
+-				 u32 *js_state_mask, u32 js_state)
++/* Reads the live JS_STATUS: JOB_INT_JS_STATE is a snapshot from the last
++ * JOB_INT_CLEAR write and can show a busy slot as idle.
++ */
++static bool panfrost_slots_idle(struct panfrost_device *pfdev)
+ {
+-	u32 rawstat;
+-
+-	if (!(js_state & *js_state_mask))
+-		return 0;
+-
+-	rawstat = job_read(pfdev, JOB_INT_RAWSTAT);
+-	if (rawstat) {
+-		unsigned int i;
++	unsigned int i;
+ 
+-		for (i = 0; i < NUM_JOB_SLOTS; i++) {
+-			if (rawstat & MK_JS_MASK(i))
+-				*js_state_mask &= ~MK_JS_MASK(i);
+-		}
++	for (i = 0; i < NUM_JOB_SLOTS; i++) {
++		if (job_read(pfdev, JS_STATUS(i)) ==
++		    DRM_PANFROST_EXCEPTION_ACTIVE)
++			return false;
+ 	}
+ 
+-	return js_state & *js_state_mask;
++	return true;
+ }
+ 
+ static void
+@@ -673,9 +669,8 @@ panfrost_reset(struct panfrost_device *pfdev,
+ 	       struct drm_sched_job *bad)
+ {
+ 	struct panfrost_job *evicted[NUM_JOB_SLOTS] = {};
+-	u32 js_state, js_state_mask = 0xffffffff;
+ 	unsigned int i, j;
+-	bool cookie;
++	bool cookie, idle;
+ 	int ret;
+ 
+ 	if (!atomic_read(&pfdev->reset.pending))
+@@ -728,10 +723,12 @@ panfrost_reset(struct panfrost_device *pfdev,
+ 	}
+ 	spin_unlock(&pfdev->js->job_lock);
+ 
+-	/* Wait at most 10ms for soft-stops to complete */
+-	ret = readl_poll_timeout(pfdev->iomem + JOB_INT_JS_STATE, js_state,
+-				 !panfrost_active_slots(pfdev, &js_state_mask, js_state),
+-				 10, 10000);
++	/* Wait at most 10ms for soft-stops to complete. No slot may be active
++	 * when we touch the queues: a late interrupt would find the wrong job,
++	 * or none, in pfdev->jobs[].
++	 */
++	ret = read_poll_timeout(panfrost_slots_idle, idle, idle, 10, 10000,
++				false, pfdev);
+ 
+ 	if (ret)
+ 		dev_err(pfdev->base.dev, "Soft-stop failed\n");
 
 -- 
 2.55.0
