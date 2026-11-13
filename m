@@ -1,11 +1,11 @@
 From: Joonho Lee <mynameisjune111@gmail.com>
-Date: Fri, 13 Nov 2026 18:21:39 +0900
-Subject: [PATCH v33 15/18] ALSA: virtio: reject invalid playback
- completions
+Date: Fri, 13 Nov 2026 18:21:40 +0900
+Subject: [PATCH v33 16/18] ALSA: pcm: add an explicit application pointer
+ to indirect playback transfer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-fix-virtio-snd-recovery-final-v33-15-13a934ad5ece@gmail.com>
+Message-Id: <20261113-fix-virtio-snd-recovery-final-v33-16-13a934ad5ece@gmail.com>
 References: <20261113-fix-virtio-snd-recovery-final-v33-0-13a934ad5ece@gmail.com>
 In-Reply-To: <20261113-fix-virtio-snd-recovery-final-v33-0-13a934ad5ece@gmail.com>
 To: linux-sound@vger.kernel.org, 
@@ -17,51 +17,81 @@ Cc: tiwai@suse.com, perex@perex.cz, mst@redhat.com,
  linux-doc@vger.kernel.org, Takashi Iwai <tiwai@suse.de>, 
  Joonho Lee <mynameisjune111@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794561688; l=1402;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794561688; l=2611;
  i=mynameisjune111@gmail.com; s=default; h=from:subject:message-id;
- bh=Mi2xcgzTptRQt7yx/3bnE7wqogbVXioyVNQffxo+GWM=;
- b=PAYe7t9UtUPDvHyhe9I+i47/IFtUihiTuOGG6NynCGo1djibS+xD2GtUK74FaLTq7+vlTgCvj
- X4A/IbfDejRBPdW3jSIqDwMZ1rS5qsLroPLUSVv+zZGnWGMMfERlGa1
+ bh=v6jytlFKn0liAYZD+sb6fcXHPlu1wdJ34Mi8Ld8kynM=;
+ b=4hECvXQb6S6pwQHBgWa1e74CQDq/g9/iqyt9feVX6toeOhwFDBib5ckoo0dMo/2h13ZaF366K
+ /aMbE3N2f79B6lfiOzhFRnNGn3sNjIjfZWubbrFBqdMM/3VuYbgB1qb
 X-Developer-Key: i=mynameisjune111@gmail.com; a=ed25519;
  pk=wqkZdvfcC8g8fDi6f0Y58LlaXIo+ubf6Y/9Lr9yhshc=
 X-Endpoint-Received: by B4 Relay for mynameisjune111@gmail.com/default with auth_id=1508
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A TX completion currently advances the hardware position even when the
-used length is malformed or the device reports an error. Validate the
-fixed status response before publishing progress. Retire the request
-once, latch XRUN and schedule error delivery while preparation is
-active. Keep malformed or failed transfers out of successful playback
-byte accounting.
+The indirect playback transfer helper samples runtime->control->appl_ptr
+internally. A driver that needs to refill already committed data from a
+pointer callback cannot pass the application-pointer snapshot used for
+ACK validation.
+
+Add snd_pcm_indirect_playback_transfer_appl_ptr() so callers can supply
+that snapshot. Keep snd_pcm_indirect_playback_transfer() as a wrapper
+that samples the runtime pointer as before, preserving existing callers.
+
+The explicit-pointer form lets virtio refill accepted data without
+accepting new application progress while the ALSA buffer-access gate is
+closed.
 
 Assisted-by: LLM
 Signed-off-by: Joonho Lee <mynameisjune111@gmail.com>
 ---
- sound/virtio/virtio_pcm_msg.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ include/sound/pcm-indirect.h | 24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/sound/virtio/virtio_pcm_msg.c b/sound/virtio/virtio_pcm_msg.c
-index 3dfc45d90f08..9c67a8bf15f5 100644
---- a/sound/virtio/virtio_pcm_msg.c
-+++ b/sound/virtio/virtio_pcm_msg.c
-@@ -1011,6 +1011,17 @@ static void virtsnd_pcm_msg_complete(struct virtio_pcm_msg *msg,
+diff --git a/include/sound/pcm-indirect.h b/include/sound/pcm-indirect.h
+index 98e06ea73b2b..ed73bf8ef423 100644
+--- a/include/sound/pcm-indirect.h
++++ b/include/sound/pcm-indirect.h
+@@ -28,15 +28,17 @@ typedef void (*snd_pcm_indirect_copy_t)(struct snd_pcm_substream *substream,
+ 					struct snd_pcm_indirect *rec, size_t bytes);
  
- 	/* Playback requests point directly at the ALSA ring. */
- 	guard(spinlock)(&vss->lock);
-+	if (written_bytes != sizeof(*msg->status) ||
-+	    le32_to_cpu(msg->status->status) != VIRTIO_SND_S_OK) {
-+		vss->xfer_xrun = true;
-+		msg->length = 0;
-+		vss->msg_count--;
-+		if (!vss->msg_count)
-+			wake_up_all(&vss->msg_empty);
-+		if (vss->prepared && !vss->preparing)
-+			virtsnd_pcm_schedule_period_elapsed(vss);
-+		return;
-+	}
- 	completed_bytes = msg->length;
- 	latency_bytes = le32_to_cpu(msg->status->latency_bytes);
- 	vss->hw_ptr += completed_bytes;
+ /*
+- * helper function for playback ack callback
++ * Playback transfer using a caller-supplied application pointer snapshot.
++ * Passing rec->appl_ptr refills previously accepted data without accepting
++ * additional application progress.
+  */
+ static inline int
+-snd_pcm_indirect_playback_transfer(struct snd_pcm_substream *substream,
+-				   struct snd_pcm_indirect *rec,
+-				   snd_pcm_indirect_copy_t copy)
++snd_pcm_indirect_playback_transfer_appl_ptr(struct snd_pcm_substream *substream,
++					    struct snd_pcm_indirect *rec,
++					    snd_pcm_indirect_copy_t copy,
++					    snd_pcm_uframes_t appl_ptr)
+ {
+ 	struct snd_pcm_runtime *runtime = substream->runtime;
+-	snd_pcm_uframes_t appl_ptr = runtime->control->appl_ptr;
+ 	snd_pcm_sframes_t diff = appl_ptr - rec->appl_ptr;
+ 	int qsize;
+ 
+@@ -74,6 +76,18 @@ snd_pcm_indirect_playback_transfer(struct snd_pcm_substream *substream,
+ 	return 0;
+ }
+ 
++/* Preserve the application pointer sampling of the ordinary ACK helper. */
++static inline int
++snd_pcm_indirect_playback_transfer(struct snd_pcm_substream *substream,
++				   struct snd_pcm_indirect *rec,
++				   snd_pcm_indirect_copy_t copy)
++{
++	snd_pcm_uframes_t appl_ptr = substream->runtime->control->appl_ptr;
++
++	return snd_pcm_indirect_playback_transfer_appl_ptr(substream, rec, copy,
++							  appl_ptr);
++}
++
+ /*
+  * helper function for playback pointer callback
+  * ptr = current byte pointer
 
 -- 
 Git-157)
