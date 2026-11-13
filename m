@@ -1,11 +1,11 @@
 From: Joonho Lee <mynameisjune111@gmail.com>
-Date: Fri, 13 Nov 2026 15:41:51 +0900
-Subject: [PATCH v32 07/20] ALSA: virtio: Recover PCM state after a failed
- start
+Date: Fri, 13 Nov 2026 15:41:52 +0900
+Subject: [PATCH v32 08/20] ALSA: virtio: Retain queued messages through
+ device reset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-fix-virtio-snd-recovery-final-v32-7-4e95979e312c@gmail.com>
+Message-Id: <20261113-fix-virtio-snd-recovery-final-v32-8-4e95979e312c@gmail.com>
 References: <20261113-fix-virtio-snd-recovery-final-v32-0-4e95979e312c@gmail.com>
 In-Reply-To: <20261113-fix-virtio-snd-recovery-final-v32-0-4e95979e312c@gmail.com>
 To: linux-sound@vger.kernel.org
@@ -14,282 +14,513 @@ Cc: tiwai@suse.com, perex@perex.cz, mst@redhat.com,
  corbet@lwn.net, skhan@linuxfoundation.org, rdunlap@infradead.org, 
  linux-doc@vger.kernel.org, Joonho Lee <mynameisjune111@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794552109; l=9251;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794552109; l=16639;
  i=mynameisjune111@gmail.com; s=default; h=from:subject:message-id;
- bh=yS1XoHVcn4HSxXZUdl9SLxL7PC/dmm7xMeqtJMxTZ/o=;
- b=kDpMyVST1nD6qwfs3ix0c0ZVztrEokSk+Fb0cV/ieUZQWzwezMXxQM8jTLOgd1zCajZllquUM
- KrPWKVsaPlAB5k4/PzoNpCkvhF5MG7VYkssCKU2Z/+//7irUMZNIATK
+ bh=3oKZqq5FyOTW8thqeV9GBt5qge+aZbrK4GiCTqsfgK8=;
+ b=vSD5VvRi0wdXP1FJ9mpPHb+ScYQuKZvhhN0WPZvdXTYGd6u58QNYfD/ckk14WDm62T4KByq1K
+ kh2nGuLS6ejDEmXrq/iJONPcgAFaiHUs634yq1Dd8cBFeutGckqbHQ8
 X-Developer-Key: i=mynameisjune111@gmail.com; a=ed25519;
  pk=wqkZdvfcC8g8fDi6f0Y58LlaXIo+ubf6Y/9Lr9yhshc=
 X-Endpoint-Received: by B4 Relay for mynameisjune111@gmail.com/default with auth_id=1508
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Capture trigger queues I/O messages before PCM_START. If the START
-message cannot be allocated or sent, transfers may remain queued, and
-ALSA does not invoke the action undo callback for the failed trigger.
+Keep the control queue available through snd_card_free() so close-time
+STOP and RELEASE commands can still be submitted. Block new control
+requests and mark pending messages canceled before reset, then release
+their queue references only after reset and queue deletion.
 
-Mark the stream stopped and disable transfers for every failed START
-path. Arm runtime->stop_operating so sync_stop releases pending I/O and
-prevents prepare, hw_params, or START retries until release succeeds.
+For PCM queues, detach each remaining virtqueue buffer after the device
+has stopped DMA and retire its message without reporting a normal
+completion. Detach all queues before deleting them so outstanding DMA
+mappings are unmapped and no token remains for a late device completion.
 
-Latch a transfer XRUN in both playback and capture, and schedule the
-existing period worker so a running or draining core stream sees the
-pointer error. This also retires a failed playback START during drain,
-where drain-init can already have advanced the core state to DRAINING.
+Protect event callback admission with the event queue lock. Disabling
+events waits for an active dispatch, and later callbacks see a closed
+gate before ALSA objects are freed. Enable and pending-event draining
+share the same lock.
 
-The stopped flag is shared with ACK callbacks that can run without the
-ALSA stream lock. Protect every stopped access with vss->lock. Read the
-pending message count under the same lock in open and hw_params. In
-sync_stop, decide whether RELEASE is needed and mark the stream stopped
-in one locked transition; leave it stopped when release or draining
-fails.
+Reclaim pending event buffers after a failed probe without dispatching
+notifications into ALSA objects that have not been constructed. Record
+the queue's prior enabled state under its lock before closing admission.
 
-Always cancel elapsed-period work in sync_stop, even when no RELEASE is
-needed.
+Track successful virtqueue initialization so teardown and failed restore
+cleanup call del_vqs() only for an initialized queue set.
 
-Record the RELEASE obligation after successful PREPARE and clear it as
-soon as RELEASE succeeds. If the subsequent RX wait fails, retry that
-wait without submitting RELEASE again.
-
-Fixes: da76e9f3e43a ("ALSA: virtio: PCM substream operators")
+Fixes: 9d45e514da88 ("ALSA: virtio: handling control messages")
 Assisted-by: LLM
 Signed-off-by: Joonho Lee <mynameisjune111@gmail.com>
 ---
- sound/virtio/virtio_pcm.h     |   6 ++-
- sound/virtio/virtio_pcm_ops.c | 109 ++++++++++++++++++++++++++++++++----------
- 2 files changed, 87 insertions(+), 28 deletions(-)
+ sound/virtio/virtio_card.c    | 100 ++++++++++++++++++++++++++++++++++--------
+ sound/virtio/virtio_card.h    |   6 +++
+ sound/virtio/virtio_ctl_msg.c |  64 ++++++++++++++++++++++++---
+ sound/virtio/virtio_ctl_msg.h |   4 ++
+ sound/virtio/virtio_pcm.h     |   2 +
+ sound/virtio/virtio_pcm_msg.c |  42 ++++++++++++++++--
+ 6 files changed, 188 insertions(+), 30 deletions(-)
 
-diff --git a/sound/virtio/virtio_pcm.h b/sound/virtio/virtio_pcm.h
-index 34d494920913..a5260ae9dd78 100644
---- a/sound/virtio/virtio_pcm.h
-+++ b/sound/virtio/virtio_pcm.h
-@@ -26,13 +26,13 @@ struct virtio_pcm_msg;
-  * @hw: Kernel ALSA substream hardware descriptor.
-  * @elapsed_period: Kernel work to handle the elapsed period state.
-  * @lock: Spinlock that protects fields shared by interrupt handlers and
-- *        substream operators.
-+ *        substream operators, including @stopped.
-  * @buffer_bytes: Current buffer size in bytes.
-  * @hw_ptr: Substream hardware pointer value in bytes [0 ... buffer_bytes).
-  * @xfer_enabled: Data transfer state (0 - off, 1 - on).
-  * @xfer_xrun: Data underflow/overflow state (0 - no xrun, 1 - xrun).
-  * @stopped: True if the substream is stopped and must be released on the device
-- *           side.
-+ *           side; protected by @lock.
-  * @prepared: True after device PREPARE and the core pointer reset succeed;
-  *            protected by @lock.
-  * @preparing: ACK gate through teardown and prepare's core reset;
-@@ -62,6 +62,8 @@ struct virtio_pcm_substream {
- 	bool stopped;
- 	bool prepared;
- 	bool preparing;
-+	/* Successful PREPARE still needs RELEASE; protected by lock. */
-+	bool release_required;
- 	bool suspended;
- 	struct virtio_pcm_msg **msgs;
- 	unsigned int nmsgs;
-diff --git a/sound/virtio/virtio_pcm_ops.c b/sound/virtio/virtio_pcm_ops.c
-index 839f71b950e3..feb2a5bcee87 100644
---- a/sound/virtio/virtio_pcm_ops.c
-+++ b/sound/virtio/virtio_pcm_ops.c
-@@ -116,6 +116,17 @@ static void virtsnd_pcm_close_ack(struct snd_pcm_substream *substream,
+diff --git a/sound/virtio/virtio_card.c b/sound/virtio/virtio_card.c
+index 6f35276416fe..fe31eb7805d8 100644
+--- a/sound/virtio/virtio_card.c
++++ b/sound/virtio/virtio_card.c
+@@ -70,6 +70,22 @@ static void virtsnd_event_dispatch(struct virtio_snd *snd,
  	}
  }
  
-+static void virtsnd_pcm_start_failed(struct virtio_pcm_substream *vss)
++static void virtsnd_event_drain_locked(struct virtio_snd *snd,
++				       struct virtqueue *vqueue)
 +{
-+	scoped_guard(spinlock_irqsave, &vss->lock) {
-+		vss->xfer_enabled = false;
-+		vss->stopped = true;
-+		vss->xfer_xrun = true;
-+	}
-+	vss->substream->runtime->stop_operating = true;
-+	schedule_work(&vss->elapsed_period);
++	struct virtio_snd_event *event;
++	u32 length;
++
++	lockdep_assert_held(&virtsnd_event_queue(snd)->lock);
++	do {
++		virtqueue_disable_cb(vqueue);
++		while ((event = virtqueue_get_buf(vqueue, &length))) {
++			virtsnd_event_dispatch(snd, event);
++			virtsnd_event_send(vqueue, event, true, GFP_ATOMIC);
++		}
++	} while (!virtqueue_enable_cb(vqueue));
 +}
 +
- /* Keep completed RX data valid while RELEASE drains the device queue. */
- static void virtsnd_pcm_block_ack(struct snd_pcm_substream *substream)
+ /**
+  * virtsnd_event_notify_cb() - Dispatch all reported events from the event queue.
+  * @vqueue: Underlying event virtqueue.
+@@ -83,17 +99,11 @@ static void virtsnd_event_notify_cb(struct virtqueue *vqueue)
  {
-@@ -148,7 +159,7 @@ static int virtsnd_pcm_open(struct snd_pcm_substream *substream)
- 				      SNDRV_PCM_HW_PARAM_PERIODS);
+ 	struct virtio_snd *snd = vqueue->vdev->priv;
+ 	struct virtio_snd_queue *queue = virtsnd_event_queue(snd);
+-	struct virtio_snd_event *event;
+-	u32 length;
  
- 	scoped_guard(spinlock_irqsave, &vss->lock)
--		vss->stopped = !!vss->msg_count;
-+		vss->stopped |= !!vss->msg_count;
- 	vss->suspended = false;
- 
- 	/*
-@@ -250,15 +261,28 @@ static int virtsnd_pcm_hw_params(struct snd_pcm_substream *substream,
- {
- 	struct virtio_pcm_substream *vss = snd_pcm_substream_chip(substream);
- 	struct virtio_device *vdev = vss->snd->vdev;
-+	unsigned int msg_count;
-+	bool stopped;
- 	int rc;
- 
- 	virtsnd_pcm_close_ack(substream, false);
- 
--	if (virtsnd_pcm_msg_pending_num(vss)) {
-+	scoped_guard(spinlock_irqsave, &vss->lock) {
-+		msg_count = vss->msg_count;
-+		stopped = vss->stopped;
-+	}
-+	if (msg_count) {
- 		dev_err(&vdev->dev, "SID %u: invalid I/O queue state\n",
- 			vss->sid);
- 		return -EBADFD;
- 	}
-+	if (stopped) {
-+		dev_err(&vdev->dev, "SID %u: stream release failed\n",
-+			vss->sid);
-+		scoped_guard(pcm_stream_lock_irqsave, substream)
-+			substream->runtime->stop_operating = true;
-+		return -EBADFD;
-+	}
- 
- 	rc = virtsnd_pcm_dev_set_params(vss, params_buffer_bytes(hw_params),
- 					params_period_bytes(hw_params),
-@@ -310,8 +334,19 @@ static int virtsnd_pcm_prepare_device(struct snd_pcm_substream *substream)
- 	struct virtio_pcm_substream *vss = snd_pcm_substream_chip(substream);
- 	struct virtio_device *vdev = vss->snd->vdev;
- 	struct virtio_snd_msg *msg;
-+	bool stopped;
- 	int rc;
- 
-+	scoped_guard(spinlock_irqsave, &vss->lock)
-+		stopped = vss->stopped;
-+	if (stopped) {
-+		dev_err(&vdev->dev, "SID %u: stream release failed\n",
-+			vss->sid);
-+		scoped_guard(pcm_stream_lock_irqsave, substream)
-+			substream->runtime->stop_operating = true;
-+		return -EBADFD;
-+	}
-+
- 	if (!vss->suspended) {
- 		if (virtsnd_pcm_msg_pending_num(vss)) {
- 			dev_err(&vdev->dev, "SID %u: invalid I/O queue state\n",
-@@ -353,6 +388,7 @@ static int virtsnd_pcm_prepare_device(struct snd_pcm_substream *substream)
- 
- 	scoped_guard(spinlock_irqsave, &vss->lock) {
- 		vss->xfer_xrun = false;
-+		vss->release_required = true;
- 	}
- 	return 0;
+ 	guard(spinlock_irqsave)(&queue->lock);
+-	do {
+-		virtqueue_disable_cb(vqueue);
+-		while ((event = virtqueue_get_buf(vqueue, &length))) {
+-			virtsnd_event_dispatch(snd, event);
+-			virtsnd_event_send(vqueue, event, true, GFP_ATOMIC);
+-		}
+-	} while (!virtqueue_enable_cb(vqueue));
++	if (queue->vqueue != vqueue || !snd->event_vq_enabled)
++		return;
++	virtsnd_event_drain_locked(snd, vqueue);
  }
-@@ -402,33 +438,40 @@ static int virtsnd_pcm_trigger(struct snd_pcm_substream *substream, int command)
- 			guard(spinlock)(&vss->lock);
- 			if (vss->preparing || !vss->prepared)
- 				return -EBADFD;
-+			if (vss->stopped) {
-+				substream->runtime->stop_operating = true;
-+				return -EBADFD;
-+			}
- 			if (vss->direction == SNDRV_PCM_STREAM_CAPTURE)
- 				rc = virtsnd_pcm_msg_send(vss, 0, vss->buffer_bytes);
--			if (rc)
--				return rc;
--			vss->xfer_enabled = true;
-+			if (!rc)
-+				vss->xfer_enabled = true;
+ 
+ /**
+@@ -131,6 +141,7 @@ static int virtsnd_find_vqs(struct virtio_snd *snd)
+ 
+ 	for (i = 0; i < VIRTIO_SND_VQ_MAX; ++i)
+ 		snd->queues[i].vqueue = vqs[i];
++	snd->vqs_initialized = true;
+ 
+ 	/* Allocate events and populate the event queue */
+ 	virtqueue_disable_cb(vqs[VIRTIO_SND_VQ_EVENT]);
+@@ -158,8 +169,12 @@ static void virtsnd_enable_event_vq(struct virtio_snd *snd)
+ {
+ 	struct virtio_snd_queue *queue = virtsnd_event_queue(snd);
+ 
++	guard(spinlock_irqsave)(&queue->lock);
++	if (!queue->vqueue)
++		return;
++	snd->event_vq_enabled = true;
+ 	if (!virtqueue_enable_cb(queue->vqueue))
+-		virtsnd_event_notify_cb(queue->vqueue);
++		virtsnd_event_drain_locked(snd, queue->vqueue);
+ }
+ 
+ /**
+@@ -172,13 +187,19 @@ static void virtsnd_disable_event_vq(struct virtio_snd *snd)
+ {
+ 	struct virtio_snd_queue *queue = virtsnd_event_queue(snd);
+ 	struct virtio_snd_event *event;
++	bool dispatch_events;
+ 	u32 length;
+ 
++	guard(spinlock_irqsave)(&queue->lock);
++	dispatch_events = snd->event_vq_enabled;
++	snd->event_vq_enabled = false;
+ 	if (queue->vqueue) {
+-		guard(spinlock_irqsave)(&queue->lock);
+ 		virtqueue_disable_cb(queue->vqueue);
+-		while ((event = virtqueue_get_buf(queue->vqueue, &length)))
+-			virtsnd_event_dispatch(snd, event);
++		while ((event = virtqueue_get_buf(queue->vqueue, &length))) {
++			/* Reclaim used buffers even when failed probe cannot dispatch. */
++			if (dispatch_events)
++				virtsnd_event_dispatch(snd, event);
 +		}
-+		if (rc) {
-+			virtsnd_pcm_start_failed(vss);
-+			return rc;
- 		}
+ 	}
+ }
  
- 		msg = virtsnd_pcm_ctl_msg_alloc(vss, VIRTIO_SND_R_PCM_START,
- 						GFP_KERNEL);
- 		if (!msg) {
--			guard(spinlock_irqsave)(&vss->lock);
--			vss->xfer_enabled = false;
--
-+			virtsnd_pcm_start_failed(vss);
- 			return -ENOMEM;
- 		}
+@@ -337,6 +358,43 @@ static int virtsnd_probe(struct virtio_device *vdev)
+ 	return rc;
+ }
  
--		return virtsnd_ctl_msg_send_sync(snd, msg);
-+		rc = virtsnd_ctl_msg_send_sync(snd, msg);
-+		if (rc)
-+			virtsnd_pcm_start_failed(vss);
++/**
++ * virtsnd_reset_vqs() - Stop device access and unmap outstanding buffers.
++ * @snd: VirtIO sound device.
++ *
++ * Context: Any context that permits to sleep.
++ */
++static void virtsnd_reset_vqs(struct virtio_snd *snd)
++{
++	struct virtio_device *vdev = snd->vdev;
++	unsigned int i;
 +
-+		return rc;
- 	case SNDRV_PCM_TRIGGER_SUSPEND:
--		scoped_guard(spinlock_irqsave, &vss->lock)
--			vss->suspended = true;
-+		vss->suspended = true;
- 		fallthrough;
- 	case SNDRV_PCM_TRIGGER_STOP:
--		scoped_guard(spinlock_irqsave, &vss->lock)
--			vss->stopped = true;
--		fallthrough;
- 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
- 		scoped_guard(spinlock_irqsave, &vss->lock) {
-+			if (command != SNDRV_PCM_TRIGGER_PAUSE_PUSH)
-+				vss->stopped = true;
- 			vss->xfer_enabled = false;
- 		}
++	virtio_reset_device(vdev);
++
++	/* Deleting a virtqueue does not unmap its outstanding descriptors. */
++	for (i = 0; i < VIRTIO_SND_VQ_MAX; ++i) {
++		struct virtio_snd_queue *queue = &snd->queues[i];
++		unsigned long flags;
++		void *msg;
++
++		spin_lock_irqsave(&queue->lock, flags);
++		if (queue->vqueue)
++			while ((msg = virtqueue_detach_unused_buf(queue->vqueue)))
++				if (i == VIRTIO_SND_VQ_TX || i == VIRTIO_SND_VQ_RX)
++					virtsnd_pcm_msg_cancel(msg);
++		if (i == VIRTIO_SND_VQ_EVENT)
++			snd->event_vq_enabled = false;
++		/* IRQ callbacks must never see a detached ring as live. */
++		queue->vqueue = NULL;
++		spin_unlock_irqrestore(&queue->lock, flags);
++	}
++
++	if (snd->vqs_initialized) {
++		vdev->config->del_vqs(vdev);
++		snd->vqs_initialized = false;
++	}
++}
++
+ /**
+  * virtsnd_remove() - Remove VirtIO and ALSA devices.
+  * @vdev: VirtIO parent device.
+@@ -349,13 +407,14 @@ static void virtsnd_remove(struct virtio_device *vdev)
+ 	unsigned int i;
  
-@@ -459,26 +502,38 @@ static int virtsnd_pcm_sync_stop(struct snd_pcm_substream *substream)
- 	struct virtio_snd *snd = vss->snd;
- 	struct virtio_snd_msg *msg;
- 	unsigned int js = msecs_to_jiffies(virtsnd_msg_timeout_ms);
--	bool stopped;
-+	bool need_release;
+ 	virtsnd_disable_event_vq(snd);
+-	virtsnd_ctl_msg_cancel_all(snd);
+ 
+ 	if (snd->card)
+ 		snd_card_free(snd->card);
+ 
+-	virtio_reset_device(vdev);
+-	vdev->config->del_vqs(vdev);
++	virtsnd_ctl_msg_cancel_all(snd);
++
++	virtsnd_reset_vqs(snd);
++	virtsnd_ctl_msg_cleanup(snd);
+ 
+ 	for (i = 0; snd->substreams && i < snd->nsubstreams; ++i) {
+ 		struct virtio_pcm_substream *vss = &snd->substreams[i];
+@@ -383,8 +442,8 @@ static int virtsnd_freeze(struct virtio_device *vdev)
+ 	virtsnd_disable_event_vq(snd);
+ 	virtsnd_ctl_msg_cancel_all(snd);
+ 
+-	virtio_reset_device(vdev);
+-	vdev->config->del_vqs(vdev);
++	virtsnd_reset_vqs(snd);
++	virtsnd_ctl_msg_cleanup(snd);
+ 
+ 	for (i = 0; i < snd->nsubstreams; ++i)
+ 		cancel_work_sync(&snd->substreams[i].elapsed_period);
+@@ -408,10 +467,13 @@ static int virtsnd_restore(struct virtio_device *vdev)
  	int rc;
  
- 	virtsnd_pcm_block_ack(substream);
- 
-+	scoped_guard(spinlock_irqsave, &vss->lock) {
-+		vss->xfer_enabled = false;
-+		need_release = vss->release_required;
-+		if (need_release)
-+			vss->stopped = true;
-+	}
- 	cancel_work_sync(&vss->elapsed_period);
- 
--	scoped_guard(spinlock_irqsave, &vss->lock)
--		stopped = vss->stopped;
--	if (!stopped)
--		return 0;
-+	if (need_release) {
-+		msg = virtsnd_pcm_ctl_msg_alloc(vss, VIRTIO_SND_R_PCM_RELEASE,
-+						GFP_KERNEL);
-+		if (!msg) {
-+			scoped_guard(pcm_stream_lock_irqsave, substream)
-+				substream->runtime->stop_operating = true;
-+			return -ENOMEM;
-+		}
- 
--	msg = virtsnd_pcm_ctl_msg_alloc(vss, VIRTIO_SND_R_PCM_RELEASE,
--					GFP_KERNEL);
--	if (!msg)
--		return -ENOMEM;
-+		rc = virtsnd_ctl_msg_send_sync(snd, msg);
-+		if (rc) {
-+			scoped_guard(pcm_stream_lock_irqsave, substream)
-+				substream->runtime->stop_operating = true;
-+			return rc;
-+		}
- 
--	rc = virtsnd_ctl_msg_send_sync(snd, msg);
+ 	rc = virtsnd_find_vqs(snd);
 -	if (rc)
--		return rc;
-+		scoped_guard(spinlock_irqsave, &vss->lock)
-+			vss->release_required = false;
++	if (rc) {
++		virtsnd_reset_vqs(snd);
+ 		return rc;
 +	}
  
- 	/*
- 	 * The spec states that upon receipt of the RELEASE command "the device
-@@ -492,6 +547,8 @@ static int virtsnd_pcm_sync_stop(struct snd_pcm_substream *substream)
- 	if (rc <= 0) {
- 		dev_warn(&snd->vdev->dev, "SID %u: failed to flush I/O queue\n",
- 			 vss->sid);
-+		scoped_guard(pcm_stream_lock_irqsave, substream)
-+			substream->runtime->stop_operating = true;
+ 	virtio_device_ready(vdev);
++	virtsnd_ctl_msg_enable(snd);
  
- 		return !rc ? -ETIMEDOUT : rc;
+ 	virtsnd_enable_event_vq(snd);
+ 
+diff --git a/sound/virtio/virtio_card.h b/sound/virtio/virtio_card.h
+index 3ceee4e416fc..a733fa684c86 100644
+--- a/sound/virtio/virtio_card.h
++++ b/sound/virtio/virtio_card.h
+@@ -45,8 +45,11 @@ struct virtio_kctl {
+  * struct virtio_snd - VirtIO sound card device.
+  * @vdev: Underlying virtio device.
+  * @queues: Virtqueue wrappers.
++ * @vqs_initialized: Virtqueues allocated by virtio_find_vqs().
+  * @card: ALSA sound card.
+  * @ctl_msgs: Pending control request list.
++ * @ctl_msgs_blocked: Control requests are blocked during teardown or suspend.
++ * @event_vq_enabled: Event callbacks may dispatch, protected by the event queue lock.
+  * @event_msgs: Device events.
+  * @pcm_list: VirtIO PCM device list.
+  * @jacks: VirtIO jacks.
+@@ -62,8 +65,11 @@ struct virtio_kctl {
+ struct virtio_snd {
+ 	struct virtio_device *vdev;
+ 	struct virtio_snd_queue queues[VIRTIO_SND_VQ_MAX];
++	bool vqs_initialized;
+ 	struct snd_card *card;
+ 	struct list_head ctl_msgs;
++	bool ctl_msgs_blocked;
++	bool event_vq_enabled;
+ 	struct virtio_snd_event *event_msgs;
+ 	struct list_head pcm_list;
+ 	struct virtio_jack *jacks;
+diff --git a/sound/virtio/virtio_ctl_msg.c b/sound/virtio/virtio_ctl_msg.c
+index 6433c870f271..6093298cdf5a 100644
+--- a/sound/virtio/virtio_ctl_msg.c
++++ b/sound/virtio/virtio_ctl_msg.c
+@@ -15,6 +15,7 @@
+  * @list: Pending message list entry.
+  * @notify: Request completed notification.
+  * @ref_count: Reference count used to manage a message lifetime.
++ * @cancelled: Request canceled during device teardown.
+  */
+ struct virtio_snd_msg {
+ 	struct scatterlist sg_request;
+@@ -22,6 +23,7 @@ struct virtio_snd_msg {
+ 	struct list_head list;
+ 	struct completion notify;
+ 	refcount_t ref_count;
++	bool cancelled;
+ };
+ 
+ /**
+@@ -100,7 +102,7 @@ struct virtio_snd_msg *virtsnd_ctl_msg_alloc(size_t request_size,
+ 
+ 	INIT_LIST_HEAD(&msg->list);
+ 	init_completion(&msg->notify);
+-	/* This reference is dropped in virtsnd_ctl_msg_complete(). */
++	/* The caller owns this reference; send adds a queue reference. */
+ 	refcount_set(&msg->ref_count, 1);
+ 
+ 	return msg;
+@@ -134,6 +136,7 @@ int virtsnd_ctl_msg_send(struct virtio_snd *snd, struct virtio_snd_msg *msg,
+ 	int rc;
+ 
+ 	virtsnd_ctl_msg_ref(msg);
++	/* This reference stays with the queue until completion or teardown. */
+ 
+ 	/* Set the default status in case the message was canceled. */
+ 	response->code = cpu_to_le32(VIRTIO_SND_S_IO_ERR);
+@@ -147,12 +150,17 @@ int virtsnd_ctl_msg_send(struct virtio_snd *snd, struct virtio_snd_msg *msg,
+ 		psgs[nouts + nins++] = in_sgs;
+ 
+ 	scoped_guard(spinlock_irqsave, &queue->lock) {
+-		rc = virtqueue_add_sgs(queue->vqueue, psgs, nouts, nins, msg,
+-				       GFP_ATOMIC);
++		if (snd->ctl_msgs_blocked)
++			rc = -ENODEV;
++		else
++			rc = virtqueue_add_sgs(queue->vqueue, psgs, nouts, nins,
++					       msg, GFP_ATOMIC);
+ 		if (!rc) {
+ 			notify = virtqueue_kick_prepare(queue->vqueue);
+ 
+ 			list_add_tail(&msg->list, &snd->ctl_msgs);
++			if (notify)
++				virtqueue_notify(queue->vqueue);
+ 		}
  	}
+ 
+@@ -169,9 +177,6 @@ int virtsnd_ctl_msg_send(struct virtio_snd *snd, struct virtio_snd_msg *msg,
+ 		goto on_exit;
+ 	}
+ 
+-	if (notify)
+-		virtqueue_notify(queue->vqueue);
+-
+ 	if (nowait)
+ 		goto on_exit;
+ 
+@@ -187,6 +192,11 @@ int virtsnd_ctl_msg_send(struct virtio_snd *snd, struct virtio_snd_msg *msg,
+ 		goto on_exit;
+ 	}
+ 
++	if (READ_ONCE(msg->cancelled)) {
++		rc = -ENODEV;
++		goto on_exit;
++	}
++
+ 	switch (le32_to_cpu(response->code)) {
+ 	case VIRTIO_SND_S_OK:
+ 		rc = 0;
+@@ -227,9 +237,33 @@ void virtsnd_ctl_msg_complete(struct virtio_snd_msg *msg)
+  * virtsnd_ctl_msg_cancel_all() - Cancel all pending control messages.
+  * @snd: VirtIO sound device.
+  *
+- * Context: Any context.
++ * Context: Any context. Blocks new senders and marks pending requests canceled.
++ *          Existing senders are woken when their request completes or after
++ *          the device has been reset.
+  */
+ void virtsnd_ctl_msg_cancel_all(struct virtio_snd *snd)
++{
++	struct virtio_snd_queue *queue = virtsnd_control_queue(snd);
++	struct virtio_snd_msg *msg;
++
++	guard(spinlock_irqsave)(&queue->lock);
++	snd->ctl_msgs_blocked = true;
++	list_for_each_entry(msg, &snd->ctl_msgs, list) {
++		WRITE_ONCE(msg->cancelled, true);
++	}
++}
++
++/**
++ * virtsnd_ctl_msg_cleanup() - Release messages left after queue teardown.
++ * @snd: VirtIO sound device.
++ *
++ * This must be called after device reset, buffer detachment, and del_vqs(),
++ * when no queue callback or DMA access can still reach a message. The queue
++ * object and its lock must remain alive until this function returns.
++ *
++ * Context: Any context.
++ */
++void virtsnd_ctl_msg_cleanup(struct virtio_snd *snd)
+ {
+ 	struct virtio_snd_queue *queue = virtsnd_control_queue(snd);
+ 
+@@ -243,6 +277,20 @@ void virtsnd_ctl_msg_cancel_all(struct virtio_snd *snd)
+ 	}
+ }
+ 
++/**
++ * virtsnd_ctl_msg_enable() - Allow control requests after queue restoration.
++ * @snd: VirtIO sound device.
++ *
++ * Context: Any context.
++ */
++void virtsnd_ctl_msg_enable(struct virtio_snd *snd)
++{
++	struct virtio_snd_queue *queue = virtsnd_control_queue(snd);
++
++	guard(spinlock_irqsave)(&queue->lock);
++	snd->ctl_msgs_blocked = false;
++}
++
+ /**
+  * virtsnd_ctl_query_info() - Query the item configuration from the device.
+  * @snd: VirtIO sound device.
+@@ -295,6 +343,8 @@ void virtsnd_ctl_notify_cb(struct virtqueue *vqueue)
+ 	u32 length;
+ 
+ 	guard(spinlock_irqsave)(&queue->lock);
++	if (queue->vqueue != vqueue)
++		return;
+ 	do {
+ 		virtqueue_disable_cb(vqueue);
+ 		while ((msg = virtqueue_get_buf(vqueue, &length)))
+diff --git a/sound/virtio/virtio_ctl_msg.h b/sound/virtio/virtio_ctl_msg.h
+index 7f4db044f28e..d917435409d0 100644
+--- a/sound/virtio/virtio_ctl_msg.h
++++ b/sound/virtio/virtio_ctl_msg.h
+@@ -68,6 +68,10 @@ static inline int virtsnd_ctl_msg_send_async(struct virtio_snd *snd,
+ 
+ void virtsnd_ctl_msg_cancel_all(struct virtio_snd *snd);
+ 
++void virtsnd_ctl_msg_cleanup(struct virtio_snd *snd);
++
++void virtsnd_ctl_msg_enable(struct virtio_snd *snd);
++
+ void virtsnd_ctl_msg_complete(struct virtio_snd_msg *msg);
+ 
+ int virtsnd_ctl_query_info(struct virtio_snd *snd, int command, int start_id,
+diff --git a/sound/virtio/virtio_pcm.h b/sound/virtio/virtio_pcm.h
+index a5260ae9dd78..39ba6a48f90a 100644
+--- a/sound/virtio/virtio_pcm.h
++++ b/sound/virtio/virtio_pcm.h
+@@ -128,6 +128,8 @@ void virtsnd_pcm_msg_free(struct virtio_pcm_substream *vss);
+ 
+ void virtsnd_pcm_msg_reset(struct virtio_pcm_substream *vss);
+ 
++void virtsnd_pcm_msg_cancel(struct virtio_pcm_msg *msg);
++
+ int virtsnd_pcm_msg_send(struct virtio_pcm_substream *vss, unsigned long offset,
+ 			 unsigned long bytes);
+ 
+diff --git a/sound/virtio/virtio_pcm_msg.c b/sound/virtio/virtio_pcm_msg.c
+index 5371f4985fd0..59ad99e21e89 100644
+--- a/sound/virtio/virtio_pcm_msg.c
++++ b/sound/virtio/virtio_pcm_msg.c
+@@ -307,6 +307,35 @@ unsigned int virtsnd_pcm_msg_pending_num(struct virtio_pcm_substream *vss)
+ 	return vss->msg_count;
+ }
+ 
++/**
++ * virtsnd_pcm_msg_cancel() - Cancel a message detached during device reset.
++ * @msg: Message returned by virtqueue_detach_unused_buf().
++ *
++ * Reset cancellation retires the queue token without treating it as a device
++ * completion. In particular, it does not advance the PCM hardware pointer or
++ * schedule period work.
++ *
++ * Context: Process context with the PCM queue lock held.
++ */
++void virtsnd_pcm_msg_cancel(struct virtio_pcm_msg *msg)
++{
++	struct virtio_pcm_substream *vss = msg->substream;
++	bool wake;
++
++	{
++		guard(spinlock)(&vss->lock);
++		msg->length = 0;
++		vss->xfer_enabled = false;
++		if (WARN_ON_ONCE(!vss->msg_count))
++			return;
++		vss->msg_count--;
++		wake = !vss->msg_count;
++	}
++
++	if (wake)
++		wake_up_all(&vss->msg_empty);
++}
++
+ /**
+  * virtsnd_pcm_msg_complete() - Complete an I/O message.
+  * @msg: I/O message.
+@@ -367,16 +396,21 @@ static void virtsnd_pcm_msg_complete(struct virtio_pcm_msg *msg,
+ 
+ /**
+  * virtsnd_pcm_notify_cb() - Process all completed I/O messages.
+- * @queue: Underlying tx/rx virtqueue.
++ * @queue: Underlying tx/rx queue wrapper.
++ * @vqueue: Queue that raised this callback.
+  *
+  * Context: Interrupt context. Takes and releases the tx/rx queue spinlock.
+  */
+-static inline void virtsnd_pcm_notify_cb(struct virtio_snd_queue *queue)
++static inline void
++virtsnd_pcm_notify_cb(struct virtio_snd_queue *queue, struct virtqueue *vqueue)
+ {
+ 	struct virtio_pcm_msg *msg;
+ 	u32 written_bytes;
+ 
+ 	guard(spinlock_irqsave)(&queue->lock);
++	/* Reset can detach the queue before the transport drains its IRQs. */
++	if (queue->vqueue != vqueue)
++		return;
+ 	do {
+ 		virtqueue_disable_cb(queue->vqueue);
+ 		while ((msg = virtqueue_get_buf(queue->vqueue, &written_bytes)))
+@@ -394,7 +428,7 @@ void virtsnd_pcm_tx_notify_cb(struct virtqueue *vqueue)
+ {
+ 	struct virtio_snd *snd = vqueue->vdev->priv;
+ 
+-	virtsnd_pcm_notify_cb(virtsnd_tx_queue(snd));
++	virtsnd_pcm_notify_cb(virtsnd_tx_queue(snd), vqueue);
+ }
+ 
+ /**
+@@ -407,7 +441,7 @@ void virtsnd_pcm_rx_notify_cb(struct virtqueue *vqueue)
+ {
+ 	struct virtio_snd *snd = vqueue->vdev->priv;
+ 
+-	virtsnd_pcm_notify_cb(virtsnd_rx_queue(snd));
++	virtsnd_pcm_notify_cb(virtsnd_rx_queue(snd), vqueue);
+ }
+ 
+ /**
 
 -- 
 Git-157)
