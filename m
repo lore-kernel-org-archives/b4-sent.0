@@ -1,86 +1,89 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Sat, 14 Nov 2026 05:26:24 +0800
-Subject: [PATCH RFC 8/8] mm/huge_memory: walk the folios reversely for the
- release loop
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Date: Fri, 13 Nov 2026 21:27:54 +0000
+Subject: [PATCH v2] drm/debugfs: Accept "reset" with a trailing newline in
+ edid_override
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-swap-thp-split-v1-8-dfa8d4fa448d@tencent.com>
-References: <20261114-swap-thp-split-v1-0-dfa8d4fa448d@tencent.com>
-In-Reply-To: <20261114-swap-thp-split-v1-0-dfa8d4fa448d@tencent.com>
-To: linux-mm@kvack.org
-Cc: David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Michal Hocko <mhocko@suse.com>, Matthew Wilcox <willy@infradead.org>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
- Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
- Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
- Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
- Baoquan He <baoquan.he@linux.dev>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, Zi Yan <ziy@nvidia.com>, 
- Nico Pache <nico.pache@linux.dev>, Ryan Roberts <ryan.roberts@arm.com>, 
- Dev Jain <dev.jain@arm.com>, Lance Yang <lance.yang@linux.dev>, 
- Usama Arif <usama.arif@linux.dev>, Kiryl Shutsemau <kas@kernel.org>, 
- linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794605194; l=1841;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=dZXSI3LM1sOQiwV6KeB6SU17Z87R/eSYehou1jdR5o4=;
- b=IzWZ890bKlfCzLTPrilcnJxROgDWfSBsVhqWNDPvxfGm52kTpVgfbT0g1oAWYBw9TmLkGlYET
- sEISPvezQAnDtnWjHKzRTfNJFLFL1pk8WFV+NU3RVhV8SiCnyBW6syP
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+Message-Id: <20261113-drm-debugfs-edid-reset-v2-1-07939ebe7a8b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6CQAxFr0Jmbc20Iior72FYwLRAjYCZAaIh3
+ F3AuHT5kv/fm0wQrxJMGk3Gy6hBu3YB2kXG1XlbCSgvbMhSgogW2DfAUgxVGUBYGbwE6cEebZy
+ TdcmJ0Sznp5dSX5v4ln05DMVdXL/a1kWtoe/8eyuPuO5+EfoXGREQYsd44fPBMdG1anJ97F3Xm
+ Gye5w8kD9nrzgAAAA==
+X-Change-ID: 20261110-drm-debugfs-edid-reset-0504a20c67d1
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Jani Nikula <jani.nikula@linux.intel.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794605273; l=2090;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=NYL/q8RW4OVHSqWl5Xmdo7H2RuHmd47GPaMUXnBj3ww=;
+ b=GBnVq8NpjUHncNStUoHXfUdva311z6rUwCSQZaIRbwplqMYBmr7bkrz/OHXO8V0ciQtVA1ORm
+ R+wmP0AUgD3CMWYf1zSh/XSbO+eEhj211EZT7oZqLXal3aycABZMEW1
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The release loop unlocks and puts every after-split folio except the one
-holding @lock_at.  Walk it backwards with folio_prev() instead of
-forwards with folio_next().
+Writing "reset" to edid_override only removes the override when exactly
+those five bytes are written, so "echo reset > edid_override" fails with
+-EINVAL and leaves the override in place.
 
-This also helps avoid a for loop pitfall mentioned by Zi Yan [1]:
-folio_next() needs the folio it is given to stay alive until the
-increment, folio_prev() does not.  So the cached next pointer can go, and
-the folio that was just put is never read again.
+Compare with sysfs_streq() on a NUL-terminated copy, and reject writes
+larger than the largest possible EDID (256 blocks) before copying,
+so that the size of the copy is bounded.
 
-Same folios visited, same work on each, only the direction changes.
-
-Link: https://lore.kernel.org/r/DKJSFCLP967N.YBR4DNK1NM2N@nvidia.com [1]
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Suggested-by: Jani Nikula <jani.nikula@linux.intel.com>
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- mm/huge_memory.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+Tested on an Orange Pi 5 (RK3588S) with this patch on a 7.3 based
+kernel: "echo reset" and "printf reset" both remove an override, an EDID
+override round trip still works, and garbage or oversized writes fail
+with -EINVAL.
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 2ff201a5e5f3..bb09465a3948 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -4366,7 +4366,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 	const bool is_anon = folio_test_anon(folio);
- 	const bool is_swapcache = folio_test_swapcache(folio);
- 	int old_order = folio_order(folio);
--	struct folio *new_folio, *next;
-+	struct folio *new_folio, *lock_folio;
+Developed with Claude (Anthropic), which wrote the code and the commit
+message. I reviewed and tested it.
+---
+Changes in v2:
+- Use memdup_user_nul() and sysfs_streq() (Jani Nikula)
+- Reject writes larger than 256 EDID blocks before copying
+- Shorter commit message
+- Link to v1: https://patch.msgid.link/20261112-drm-debugfs-edid-reset-v1-1-4cd19d83cd22@gmail.com
+---
+ drivers/gpu/drm/drm_debugfs.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_debugfs.c b/drivers/gpu/drm/drm_debugfs.c
+index a72f9723d3a9..7c39c8ed3984 100644
+--- a/drivers/gpu/drm/drm_debugfs.c
++++ b/drivers/gpu/drm/drm_debugfs.c
+@@ -565,11 +565,15 @@ static ssize_t edid_write(struct file *file, const char __user *ubuf,
+ 	char *buf;
  	int ret;
  
- 	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
-@@ -4399,9 +4399,10 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 	 * Unlock all after-split folios except the one containing
- 	 * @lock_at page. If @folio is not split, it will be kept locked.
- 	 */
--	for (new_folio = folio; new_folio != end_folio; new_folio = next) {
--		next = folio_next(new_folio);
--		if (new_folio == page_folio(lock_at))
-+	lock_folio = page_folio(lock_at);
-+	for (new_folio = folio_prev(end_folio); new_folio != folio;
-+	     new_folio = folio_prev(new_folio)) {
-+		if (new_folio == lock_folio)
- 			continue;
+-	buf = memdup_user(ubuf, len);
++	/* An EDID has at most 256 blocks */
++	if (len > 256 * EDID_LENGTH)
++		return -EINVAL;
++
++	buf = memdup_user_nul(ubuf, len);
+ 	if (IS_ERR(buf))
+ 		return PTR_ERR(buf);
  
- 		/*
+-	if (len == 5 && !strncmp(buf, "reset", 5))
++	if (sysfs_streq(buf, "reset"))
+ 		ret = drm_edid_override_reset(connector);
+ 	else
+ 		ret = drm_edid_override_set(connector, buf, len);
 
--- 
-2.56.1
+---
+base-commit: cb0a63f0c96e8ecb90199eeb99cc2a7fcfa703d4
+change-id: 20261110-drm-debugfs-edid-reset-0504a20c67d1
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
