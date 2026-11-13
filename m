@@ -1,90 +1,84 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 08:04:00 +0000
-Subject: [PATCH net-next] net: stmmac: dwmac-sun8i: Defer probe when the
- EPHY clock is not ready
+Subject: [PATCH v3 0/3] pmdomain: rockchip: fix the probe error and
+ deferral paths
+Date: Fri, 13 Nov 2026 08:42:04 +0000
+Message-Id: <20261113-pmdomain-rockchip-v3-0-b7039ca30b87@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-b4-sun8i-emac-ephy-defer-v1-1-12a8591702fe@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQ6CMBAFf4Xs2U0obQj4K8ZDKQ9ZEyvpFoMh/
- LtVj5PJzE6KJFA6VzslvETlGQuYU0Vh9vEGlrEwNXXTGmMsD451jZ0wHj4wlvnNIyYkdl0dbG9
- 7h9ZTyZeESbbf+kIRmSO2TNe/0XW4I+TvmY7jAySUWp6GAAAA
-X-Change-ID: 20261113-b4-sun8i-emac-ephy-defer-480c39394e6a
-To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, 
- Corentin Labbe <clabbe.montjoie@gmail.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32PyU7EMBBEfyXyGSOv7SQn/gNx8NYTA1lwMhFoN
+ P9OZ+YyB8SlpZKqX1Vd2JprySvrmwureS9rmScS+qlhcfDTKfOSSDMlFEgpBV/GNI++TLzO8SM
+ OZeHadM6r7DChZfS31Izl+8Z8fbvr9Rzec9wO0OEYyrrN9ecWusvD9x9/l1xwCB16yMH7Fl5OZ
+ Ph8jvPIDv6uHgnqL4Iigo2pM8orndA9Eq73ijV/nWn9du/NFr/Fgbb3TVQoos0BwEqKd8YggDY
+ qBbqt9QCtxeDkMSz4NXOijmXrG2eczb4NtgUJQesojMfQOYgokEipSwk0Bqpw/QVhMQgXiAEAA
+ A==
+X-Change-ID: 20261110-pmdomain-rockchip-3497a2e7fdf5
+To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Shawn Lin <shawn.lin@rock-chips.com>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Kevin Hilman <khilman@linaro.org>, Caesar Wang <wxt@rock-chips.com>, 
+ Elaine Zhang <zhangqing@rock-chips.com>
+Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Yao Zi <me@ziyao.cc>, Igor Pecovnik <igor@armbian.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794557039; l=2284;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794559325; l=2265;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=3vOWWV9l/RPEbbthTMkW1C/XCstj8pm3YVWcUELiCkk=;
- b=Zh00xt2IqE0H4WmqmMEFzkuWSzcVdr9Qa1Qf6eTGMm86i/HvyogK5dSaE/9LQJc9xcVZIiy9D
- Q9zA4UQMzy0DKdbTShY1TsZo15qzneFaut3ohv/froP6aUhibJFsMIG
+ bh=k1mLNrWfIj7RN8Bh3VsWtx7wapkXv0tU4C3AAvkt4b0=;
+ b=Mi0cR6vTMB643sMCpH7Z5f77UEcQyS32zt8DJ8ItoWOMCFw+PtT9juZ6YpgxIR2PZkr0XOrLe
+ ZW3cw1yl2tyBacelDOkpFGjTreD09rBGEAKPATbJqP1ns6LkCCxxjAA
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-get_ephy_nodes() skips an internal PHY node on any of_clk_get() error.
-If the EPHY clock provider is not registered yet, the node is skipped,
-the function returns -ENODEV and the probe fails for good. The reset
-lookup right below already returns -EPROBE_DEFER in this case.
+Fixes for a Rockchip power domain controller probe that fails or defers,
+for example on a domain clock that is not available yet. They apply on
+top of 1/2 of Yao Zi's series [1], which has to go in first; patch 2
+replaces 2/2 of [1]. On the pmdomain next branch, 1/2 of [1] conflicts
+with "cycle an optional power-domain reset on power-on" in one line.
 
-Return -EPROBE_DEFER for the clock too. Other clock errors still skip
-the node, as before.
+Tested with v1 on an Orange Pi 5 (RK3588S), v7.3 based kernel, with a
+test device tree that makes the PD_FEC clock appear late: no freed
+domain left on gpd_list, no -517 errors, and the controller binds later
+with all 26 domains. The v2/v3 changes are build-tested only.
 
-Fixes: 9f93ac8d4085 ("net-next: stmmac: Add dwmac-sun8i")
+[1] https://lore.kernel.org/r/20261105001257.1368266-1-me@ziyao.cc
+
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
+
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Reported by the Sashiko review bot while it reviewed my MDIO mux error
-path fix for this driver:
-https://sashiko.dev/#/bug/linux-98384c14-541e-410e-a074-fff5e98b3820
+Changes in v3:
+- Split 2/2 into the fix (2/3: deferral, pm_qos error code, callers'
+  messages) and a clean-up of the other messages without Fixes tags
+  (3/3) (Yao Zi)
+- Shorter commit messages and comments (Heiko Stuebner)
+- No code change from v2 apart from the comments in 1/3
+- Link to v2: https://patch.msgid.link/20261112-pmdomain-rockchip-v2-0-5cd942a23df7@gmail.com
 
-Only the H3/H5 and V3s variants (soc_has_internal_phy) reach this code.
-With the in-tree device trees the EPHY clock comes from the same CCU as
-the EMAC clock and reset, so the EMAC probe already waits for that CCU
-and this cannot fail there. It matters when the EPHY clock comes
-from a provider that probes later. Build-tested only (W=1, arm64 and
-arm); I have no board with the internal PHY.
-
-This patch was developed with Claude (Anthropic) as a coding assistant:
-it checked the report against the code and wrote the fix and the commit
-message. I reviewed it.
----
- drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-index 2ece7ba9dd73..8163e49fa7ad 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-@@ -801,8 +801,13 @@ static int get_ephy_nodes(struct stmmac_priv *priv)
- 		struct clk *ephy_clk;
- 
- 		ephy_clk = of_clk_get(iphynode, 0);
--		if (IS_ERR(ephy_clk))
-+		if (IS_ERR(ephy_clk)) {
-+			if (PTR_ERR(ephy_clk) == -EPROBE_DEFER) {
-+				of_node_put(mdio_internal);
-+				return -EPROBE_DEFER;
-+			}
- 			continue;
-+		}
- 		gmac->rst_ephy = of_reset_control_get_exclusive(iphynode, NULL);
- 		if (IS_ERR(gmac->rst_ephy)) {
- 			ret = PTR_ERR(gmac->rst_ephy);
+Changes in v2:
+- Dropped "pmdomain: rockchip: put only the clocks that were got on
+  error" for 1/2 of [1], which fixes the same bug
+- 2/2: drop the callers' messages and use dev_err_probe() where the
+  errors happen (Sebastian Reichel)
+- 2/2: a pm_qos syscon error keeps its own code
+- Link to v1: https://patch.msgid.link/20261110-pmdomain-rockchip-v1-0-6b9fa6ebaa86@gmail.com
 
 ---
-base-commit: 573af801552999954caa8347e4490b04cf4763f0
-change-id: 20261113-b4-sun8i-emac-ephy-defer-480c39394e6a
+Arun Iyengar (3):
+      pmdomain: rockchip: remove subdomain links before the domains on error
+      pmdomain: rockchip: don't report probe deferral as an error
+      pmdomain: rockchip: use dev_err_probe() for the other probe errors
+
+ drivers/pmdomain/rockchip/pm-domains.c | 131 +++++++++++++++++++--------------
+ 1 file changed, 76 insertions(+), 55 deletions(-)
+---
+base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
+change-id: 20261110-pmdomain-rockchip-3497a2e7fdf5
+prerequisite-patch-id: c2f0c5eb6651baa744f66342db63485a6685fb71
 
 Best regards,
 --  
