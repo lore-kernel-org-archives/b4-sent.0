@@ -1,99 +1,273 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 13 Nov 2026 08:57:23 -0500
-Subject: [PATCH net 2/2] net/smc: do not reuse the DMB of a nocopy device
+From: Marcin Knap <marcin.knap@vecima.com>
+Date: Fri, 13 Nov 2026 15:27:52 +0100
+Subject: [PATCH net v5] xsk: Do not free ZC Rx buffer when the Rx ring is
+ full
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-b4-disp-19244662-v1-2-39b256b70ca7@proton.me>
-References: <20261113-b4-disp-19244662-v1-0-39b256b70ca7@proton.me>
-In-Reply-To: <20261113-b4-disp-19244662-v1-0-39b256b70ca7@proton.me>
-To: Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- "D. Wythe" <alibuda@linux.alibaba.com>, 
- "David S. Miller" <davem@davemloft.net>, 
- Dust Li <dust.li@linux.alibaba.com>, Jakub Kicinski <kuba@kernel.org>, 
- Sidraya Jayagond <sidraya@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, 
- Eric Dumazet <edumazet@kernel.org>, 
- Alexandra Winter <wintera@linux.ibm.com>
-Cc: linux-kernel@vger.kernel.org, Hidayath Khan <hidayath@linux.ibm.com>, 
- Julian Ruess <julianr@linux.ibm.com>, Wenjia Zhang <wenjia@linux.ibm.com>, 
- linux-rdma@vger.kernel.org, Wen Gu <guwen@linux.alibaba.com>, 
- Tony Lu <tonylu@linux.alibaba.com>, netdev@vger.kernel.org, 
- Simon Horman <horms@kernel.org>, linux-s390@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794578241; l=2533;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=2c0oGp/kSpbmU1m2vd4sv8n20H7zF/Cz6Diq2SpwN9Q=;
- b=7bK6FBgLiHQDiMxXglHCd3sC0MFnUZktHKFkxQYWmADm++J21lbzquRm43cGUZ1uC3BGLXJ4u
- 9mvDWOHRLKUCVbplaIqC5Id4sXHSU6RNB5LvKKuUraRP8iLoyEoYXp1
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261113-xsk-zc-rx-double-free-v5-1-6ead3af4d131@vecima.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XPwU7DMAwG4FeZcsZTnGQt2Yn3QBxS12EB1qKki
+ wpT331pd9jQVHH8Lfv75bNIHAMnsd+cReQcUui7EnZPG0EH170zhLZkoaSqUKKFMX3CL0Ecoe1
+ PzReDj8yATjdyZ6k16EW5/Y7sw7i4r6LjQbxdh+nUfDANszivHUIa+viztGdclv8pyggIyjm0v
+ qrUs29eMlM4ui31x6UkqztGyzVGFYa8xNY467WvHxh9Y1CaNUYXBtFJqtmjrfUDY+6Z1afM/JR
+ hKR0pVbg/zDRNF1JEBNOnAQAA
+X-Change-ID: 20261019-xsk-zc-rx-double-free-1a3b059cd41f
+To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
+ Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Magnus Karlsson <magnus.karlsson@intel.com>, 
+ Maciej Fijalkowski <maciej.fijalkowski@intel.com>, 
+ Stanislav Fomichev <sdf@fomichev.me>, Simon Horman <horms@kernel.org>, 
+ Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
+ Jesper Dangaard Brouer <hawk@kernel.org>, 
+ John Fastabend <john.fastabend@gmail.com>, jtollet@cisco.com
+Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
+ =?utf-8?q?Bj=C3=B6rn_T=C3=B6pel?= <bjorn@kernel.org>, 
+ Jason Xing <kerneljasonxing@gmail.com>, 
+ Nitin Shetty J <nshettyj@marvell.com>, Marcin Knap <marcin.knap@vecima.com>, 
+ Joshua Washington <joshwash@google.com>, 
+ Harshitha Ramamurthy <hramamurthy@google.com>, 
+ Sunil Goutham <sgoutham@marvell.com>, Geetha sowjanya <gakula@marvell.com>, 
+ Ratheesh Kannoth <rkannoth@marvell.com>, 
+ Subbaraya Sundeep <sbhatta@marvell.com>, 
+ Bharat Bhushan <bbhushan2@marvell.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794580072; l=9330;
+ i=marcin.knap@vecima.com; s=20261019; h=from:subject:message-id;
+ bh=AIRvjG754M3Sj+HEOteZxm3m/GpLx/VY0+cKvGXe26g=;
+ b=zB3gPzf/0sJ5eXrmEbQ74x47vNq7n1pTvVq58hqDTGLdkK79RCz5FTQhxR/MaGY5aXsI2bj6l
+ a+TqHBR2f4BC/sP6QtOeIsNvzsc+YE4wl2W03VomnEx21QsLasFyq7h
+X-Developer-Key: i=marcin.knap@vecima.com; a=ed25519;
+ pk=rCvVOuopf4s4BHtLE+FRnv0x83PoFHgBPo9mtNlvzLk=
+X-Endpoint-Received: by B4 Relay for marcin.knap@vecima.com/20261019 with auth_id=1237
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With DMB nocopy (the dibs loopback device) the peer writes into the RMB
-through its own attachment, and it can attach late. smc_buf_unuse() puts
-the DMB back in the link group's pool with its token still registered
-while the old peer can still write to it: the next connection that takes
-it gets the old peer's CDCs, and a peer that attaches after the other
-end gave up lands in another connection's DMB.
+When an XDP program redirects a zero-copy buffer to an XSK and the
+socket's Rx ring is full, xsk_rcv_zc() frees the buffer and returns
+-ENOBUFS to xdp_do_redirect().
 
-Unregister a nocopy DMB when the connection ends instead of pooling it.
-The next connection gets a new DMB and token, a peer still attached
-keeps the old DMB to itself until it detaches, and a later attach fails.
-Clear conn->rmb_desc, which a connect() retried on the same socket would
-otherwise use after the free. Devices without nocopy keep their pool.
+A failed xdp_do_redirect() leaves the buffer owned by the caller, so
+the driver releases it as well. That is harmless when the driver frees
+it right away, as i40e, ice, igc, stmmac, idpf and most others do:
+xp_free() ignores a buffer that is already on the pool free list. It
+breaks when the driver releases or uses the buffer later, after it may
+have been reallocated:
 
-Fixes: ae2be35cbed2 ("net/smc: {at|de}tach sndbuf to peer DMB if supported")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+- mlx5e treats the failure as XDP_DROP and releases the buffer when
+  the Rx WQE is refilled. By then the buffer can be in use for another
+  Rx descriptor, so an in-use buffer goes back on the free list and the
+  same UMEM frame is later handed to user space twice. With striding
+  RQ this also ended in a NULL pointer dereference in
+  mlx5e_post_rx_wqes().
+- ixgbe keeps the buffer in the ring on its need_wakeup -ENOBUFS
+  (XDP_EXIT) path and runs XDP on it again on the next poll.
+- dpaa2 hands the buffer back to its hardware pool while it is also on
+  the pool free list.
+- octeontx2 returns false on a failed redirect, so the caller goes on
+  to build an skb from the freed buffer.
+
+Leave the buffer with the caller on both the single-buffer and the
+multi-buffer -ENOBUFS paths, as xsk_rcv() and xsk_rcv_check() already
+do. Make the drivers that relied on the core freeing the buffer free
+it themselves:
+
+- i40e and ice consume the descriptor on XDP_EXIT without freeing it.
+- gve DQO counts the redirect error without freeing the buffer.
+- octeontx2 now frees the buffer and reports it as consumed.
+
+This covers redirects to an XSKMAP. A zero-copy buffer redirected to a
+devmap, a cpumap or an ifindex is copied by
+xdp_convert_zc_to_xdp_frame(), which frees it before
+__xdp_do_redirect_frame() can still fail. The driver then releases it
+a second time, and the copied page leaks. That path is not changed
+here. It can be fixed separately in xdp_do_redirect(): copy the buffer
+without freeing it, free it only once the frame has been queued, and
+free the copy on failure. xdp_convert_zc_to_xdp_frame() itself has to
+keep freeing the buffer, because its XDP_TX users rely on that.
+
+Seen on Mellanox ConnectX-6 DX MT2892 (FW 22.47.1026) with AF_XDP
+zero-copy on 7.3.0-rc6 when the user-space consumer could not keep up
+with the Rx ring. With this change no duplicate frames were seen with
+striding RQ on or off.
+
+Fixes: 269009893146 ("xsk: recycle buffer in case Rx queue was full")
+Reviewed-by: Maciej Fijalkowski <maciej.fijalkowski@intel.com>
+Reviewed-by: Björn Töpel <bjorn@kernel.org>
+Reviewed-by: Jason Xing <kerneljasonxing@gmail.com>
+Reviewed-by: Nitin Shetty J <nshettyj@marvell.com>
+Tested-by: Jerome Tollet <jtollet@cisco.com>
+Signed-off-by: Marcin Knap <marcin.knap@vecima.com>
 ---
- net/smc/smc_core.c | 25 +++++++++++++++++++++++--
- 1 file changed, 23 insertions(+), 2 deletions(-)
+Tested on mlx5 (ConnectX-6 DX) in zero-copy single-buffer mode.
+The i40e and ice changes and the multi-buffer path are build-tested
+only, as I don't have that hardware available.
+---
+Changes in v5:
+- Commit message only: describe the devmap/cpumap/ifindex redirect path
+  and how it can be fixed separately.
+- Link to v4: https://patch.msgid.link/20261109-xsk-zc-rx-double-free-v4-1-24e00ac221a0@vecima.com
 
-diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
-index a3164201c142..88855d9f6617 100644
---- a/net/smc/smc_core.c
-+++ b/net/smc/smc_core.c
-@@ -1243,6 +1243,22 @@ static void smcd_buf_detach(struct smc_connection *conn)
- 	kfree(buf_desc);
+Changes in v4:
+- Commit message only, no code changes (AI review):
+  - Drop igb from the drivers that rerun XDP after XDP_EXIT;
+    igb_run_xdp_zc() turns IGB_XDP_EXIT into IGB_XDP_CONSUMED.
+  - State that the fix covers XSKMAP redirects.
+- Link to v3: https://patch.msgid.link/20261104-xsk-zc-rx-double-free-v3-1-11a0c7ef1973@vecima.com
+
+Changes in v3:
+- Target net instead of bpf (Maciej).
+- Reword the changelog only: drivers that free the buffer right away
+  are not affected; name the ones with a deferred release or reuse
+  after free (AI review). No code changes.
+- Collect Reviewed-by tags.
+- Link to v2: https://patch.msgid.link/20261030-xsk-zc-rx-double-free-v2-1-cf01d4a9f3f7@vecima.com
+
+Changes in v2:
+- Also free the buffer on zero-copy redirect failure in gve DQO and
+  octeontx2, which relied on the core freeing it (AI review).
+- Audited the remaining zero-copy drivers against Björn's table.
+  ixgbe and igb no longer run XDP on a freed buffer after
+  XDP_EXIT; making them drop and consume the descriptor (R2) is
+  left for a follow-up unless you prefer it in this patch.
+- Rebased on current bpf.
+- Link to v1: https://patch.msgid.link/20261019-xsk-zc-rx-double-free-v1-1-2aa19f6628fb@vecima.com
+
+To: Joshua Washington <joshwash@google.com>
+To: Harshitha Ramamurthy <hramamurthy@google.com>
+To: Andrew Lunn <andrew+netdev@lunn.ch>
+To: "David S. Miller" <davem@davemloft.net>
+To: Eric Dumazet <edumazet@kernel.org>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Tony Nguyen <anthony.l.nguyen@intel.com>
+To: Przemek Kitszel <przemyslaw.kitszel@intel.com>
+To: Sunil Goutham <sgoutham@marvell.com>
+To: Geetha sowjanya <gakula@marvell.com>
+To: Ratheesh Kannoth <rkannoth@marvell.com>
+To: Subbaraya Sundeep <sbhatta@marvell.com>
+To: Bharat Bhushan <bbhushan2@marvell.com>
+To: Magnus Karlsson <magnus.karlsson@intel.com>
+To: Maciej Fijalkowski <maciej.fijalkowski@intel.com>
+To: Stanislav Fomichev <sdf@fomichev.me>
+To: Simon Horman <horms@kernel.org>
+To: Alexei Starovoitov <ast@kernel.org>
+To: Daniel Borkmann <daniel@iogearbox.net>
+To: Jesper Dangaard Brouer <hawk@kernel.org>
+To: John Fastabend <john.fastabend@gmail.com>
+Cc: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: intel-wired-lan@lists.osuosl.org
+Cc: bpf@vger.kernel.org
+---
+ drivers/net/ethernet/google/gve/gve_rx_dqo.c           |  4 +++-
+ drivers/net/ethernet/intel/i40e/i40e_xsk.c             |  1 +
+ drivers/net/ethernet/intel/ice/ice_xsk.c               |  1 +
+ drivers/net/ethernet/marvell/octeontx2/nic/otx2_txrx.c |  3 ++-
+ net/xdp/xsk.c                                          | 15 +++------------
+ 5 files changed, 10 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/net/ethernet/google/gve/gve_rx_dqo.c b/drivers/net/ethernet/google/gve/gve_rx_dqo.c
+index 82ed5e48b00a..cc544420df11 100644
+--- a/drivers/net/ethernet/google/gve/gve_rx_dqo.c
++++ b/drivers/net/ethernet/google/gve/gve_rx_dqo.c
+@@ -686,8 +686,10 @@ static void gve_xsk_done_dqo(struct gve_priv *priv, struct gve_rx_ring *rx,
+ 			goto err;
+ 		break;
+ 	case XDP_REDIRECT:
+-		if (unlikely(xdp_do_redirect(priv->dev, xdp, xprog)))
++		if (unlikely(xdp_do_redirect(priv->dev, xdp, xprog))) {
++			xsk_buff_free(xdp);
+ 			goto err;
++		}
+ 		break;
+ 	}
+ 
+diff --git a/drivers/net/ethernet/intel/i40e/i40e_xsk.c b/drivers/net/ethernet/intel/i40e/i40e_xsk.c
+index 51a05ce4c7ce..a11ee1f3fa38 100644
+--- a/drivers/net/ethernet/intel/i40e/i40e_xsk.c
++++ b/drivers/net/ethernet/intel/i40e/i40e_xsk.c
+@@ -360,6 +360,7 @@ static void i40e_handle_xdp_result_zc(struct i40e_ring *rx_ring,
+ 		return;
+ 
+ 	if (xdp_res == I40E_XDP_EXIT) {
++		xsk_buff_free(xdp_buff);
+ 		*failure = true;
+ 		return;
+ 	}
+diff --git a/drivers/net/ethernet/intel/ice/ice_xsk.c b/drivers/net/ethernet/intel/ice/ice_xsk.c
+index 0643017541c3..7c1dd4c87a71 100644
+--- a/drivers/net/ethernet/intel/ice/ice_xsk.c
++++ b/drivers/net/ethernet/intel/ice/ice_xsk.c
+@@ -636,6 +636,7 @@ int ice_clean_rx_irq_zc(struct ice_rx_ring *rx_ring,
+ 		if (likely(xdp_res & (ICE_XDP_TX | ICE_XDP_REDIR))) {
+ 			xdp_xmit |= xdp_res;
+ 		} else if (xdp_res == ICE_XDP_EXIT) {
++			xsk_buff_free(first);
+ 			failure = true;
+ 			first = NULL;
+ 			break;
+diff --git a/drivers/net/ethernet/marvell/octeontx2/nic/otx2_txrx.c b/drivers/net/ethernet/marvell/octeontx2/nic/otx2_txrx.c
+index 90af9b9044aa..6d10c132f61c 100644
+--- a/drivers/net/ethernet/marvell/octeontx2/nic/otx2_txrx.c
++++ b/drivers/net/ethernet/marvell/octeontx2/nic/otx2_txrx.c
+@@ -1555,7 +1555,8 @@ static bool otx2_xdp_rcv_pkt_handler(struct otx2_nic *pfvf,
+ 				*need_xdp_flush = true;
+ 				return true;
+ 			}
+-			return false;
++			xsk_buff_free(xsk_buff);
++			return true;
+ 		}
+ 
+ 		err = xdp_do_redirect(pfvf->netdev, &xdp, prog);
+diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
+index 781ba46eb152..89bac2feeff2 100644
+--- a/net/xdp/xsk.c
++++ b/net/xdp/xsk.c
+@@ -224,21 +224,15 @@ static int xsk_rcv_zc(struct xdp_sock *xs, struct xdp_buff *xdp, u32 len)
+ 	struct list_head *xskb_list;
+ 	u32 contd = 0;
+ 	u32 num_desc;
+-	int err;
+ 
+-	if (likely(!frags)) {
+-		err = __xsk_rcv_zc(xs, xskb, len, contd);
+-		if (err)
+-			goto err;
+-		return 0;
+-	}
++	if (likely(!frags))
++		return __xsk_rcv_zc(xs, xskb, len, contd);
+ 
+ 	contd = XDP_PKT_CONTD;
+ 	num_desc = xdp_get_shared_info_from_buff(xdp)->nr_frags + 1;
+ 	if (xskq_prod_nb_free(xs->rx, num_desc) < num_desc) {
+ 		xs->rx_queue_full++;
+-		err = -ENOBUFS;
+-		goto err;
++		return -ENOBUFS;
+ 	}
+ 
+ 	__xsk_rcv_zc_safe(xs, xskb, len, contd);
+@@ -252,9 +246,6 @@ static int xsk_rcv_zc(struct xdp_sock *xs, struct xdp_buff *xdp, u32 len)
+ 	}
+ 
+ 	return 0;
+-err:
+-	xsk_buff_free(xdp);
+-	return err;
  }
  
-+/* With DMB nocopy the peer writes into the RMB through its own
-+ * attachment, which can outlive this connection: unregister the DMB
-+ * instead of pooling it, so the next connection gets a new one.
-+ */
-+static void smcd_rmb_drop(struct smc_connection *conn,
-+			  struct smc_link_group *lgr)
-+{
-+	struct smc_buf_desc *rmb_desc = conn->rmb_desc;
-+
-+	down_write(&lgr->rmbs_lock);
-+	smc_lgr_buf_list_del(lgr, true, rmb_desc);
-+	up_write(&lgr->rmbs_lock);
-+	WRITE_ONCE(conn->rmb_desc, NULL);
-+	smc_buf_free(lgr, true, rmb_desc);
-+}
-+
- static void smc_buf_unuse(struct smc_connection *conn,
- 			  struct smc_link_group *lgr)
- {
-@@ -1266,8 +1282,13 @@ static void smc_buf_unuse(struct smc_connection *conn,
- 			smcr_buf_unuse(conn->rmb_desc, true, lgr);
- 		} else {
- 			bufsize += sizeof(struct smcd_cdc_msg);
--			memzero_explicit(conn->rmb_desc->cpu_addr, bufsize);
--			WRITE_ONCE(conn->rmb_desc->used, 0);
-+			if (smc_ism_support_dmb_nocopy(lgr->smcd)) {
-+				smcd_rmb_drop(conn, lgr);
-+			} else {
-+				memzero_explicit(conn->rmb_desc->cpu_addr,
-+						 bufsize);
-+				WRITE_ONCE(conn->rmb_desc->used, 0);
-+			}
- 		}
- 		SMC_STAT_RMB_SIZE(smc, is_smcd, true, false, bufsize);
- 	}
+ static void *xsk_copy_xdp_start(struct xdp_buff *from)
 
--- 
-2.56.0
+---
+base-commit: fb7bd3a2aad70a76232a7168a505386d0a1396af
+change-id: 20261019-xsk-zc-rx-double-free-1a3b059cd41f
+
+Best regards,
+--  
+Marcin Knap <marcin.knap@vecima.com>
 
