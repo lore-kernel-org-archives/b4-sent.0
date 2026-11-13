@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 16:40:39 +0000
-Subject: [PATCH v3 08/12] media: verisilicon: Acquire the reset lines only
- while using them
+Date: Fri, 13 Nov 2026 16:40:40 +0000
+Subject: [PATCH v3 09/12] dt-bindings: iommu: verisilicon: Add the reset
+ lines
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-hantro-robust-v3-8-82383c722ad2@gmail.com>
+Message-Id: <20261113-hantro-robust-v3-9-82383c722ad2@gmail.com>
 References: <20261113-hantro-robust-v3-0-82383c722ad2@gmail.com>
 In-Reply-To: <20261113-hantro-robust-v3-0-82383c722ad2@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -29,126 +29,60 @@ Cc: linux-media@vger.kernel.org, iommu@lists.linux.dev,
  Sascha Hauer <s.hauer@pengutronix.de>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794588032; l=4115;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794588032; l=1642;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=DgHWOwtiMWRIc2UDuvJ7/ad5T9I1cEKGr7IVqd0TNqU=;
- b=Pz0rWgvs751W58G0yVV7YcqRJj4gbON0x2nffi0LB0drWSdsB2a4Eaucp1Zi0ySLkNlU48he/
- TL15X6x6kzMDLjiwM/Li+rp9w3k/8gxRMmY291rAq4GKtO259+bob4w
+ bh=a+eZKtwV8FPJqeLafXDDZfyk/cG+VGlzjpq9Qo8/bY8=;
+ b=L1wozRVp2YsBLp3pnvZOk6Asi0zgyaASac5q4LLSW86i3YR69JPYnHiVkoLFTnbNW5SGSsSLt
+ 1z+C7LIT1weBo0dAv6on114npHG1f0hH7gdwj0HY9/mqbqP+VVsAHTz
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3588 AV1 IOMMU has no reset lines of its own: it shares the four
-AV1 resets with the decoder. Get them as released exclusive controls and
-acquire them only around their use, so that the IOMMU driver can
-deassert them too.
+The RK3588 AV1 IOMMU is part of the AV1 block and has no reset lines
+of its own: the four AV1 resets also cover it. Its registers can't be
+accessed while they are asserted. Describe them.
 
 Suggested-by: Philipp Zabel <p.zabel@pengutronix.de>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/platform/verisilicon/hantro_drv.c       | 10 ++++++++--
- drivers/media/platform/verisilicon/rockchip_vpu_hw.c  | 12 ++++++++++--
- drivers/media/platform/verisilicon/stm32mp25_vpu_hw.c |  4 ++++
- drivers/media/platform/verisilicon/sunxi_vpu_hw.c     |  4 ++++
- 4 files changed, 26 insertions(+), 4 deletions(-)
+ Documentation/devicetree/bindings/iommu/verisilicon,iommu.yaml | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/drivers/media/platform/verisilicon/hantro_drv.c b/drivers/media/platform/verisilicon/hantro_drv.c
-index 9bb4d1582622..823be057e167 100644
---- a/drivers/media/platform/verisilicon/hantro_drv.c
-+++ b/drivers/media/platform/verisilicon/hantro_drv.c
-@@ -1188,7 +1188,9 @@ static int hantro_probe(struct platform_device *pdev)
- 			return PTR_ERR(vpu->clocks[0].clk);
- 	}
+diff --git a/Documentation/devicetree/bindings/iommu/verisilicon,iommu.yaml b/Documentation/devicetree/bindings/iommu/verisilicon,iommu.yaml
+index d3ce9e603b61..70df03102015 100644
+--- a/Documentation/devicetree/bindings/iommu/verisilicon,iommu.yaml
++++ b/Documentation/devicetree/bindings/iommu/verisilicon,iommu.yaml
+@@ -41,6 +41,13 @@ properties:
+   power-domains:
+     maxItems: 1
  
--	vpu->resets = devm_reset_control_array_get_optional_exclusive(&pdev->dev);
-+	/* Released: the IOMMU of a core can share its reset lines. */
-+	vpu->resets = devm_reset_control_array_get(&pdev->dev,
-+						   RESET_CONTROL_OPTIONAL_EXCLUSIVE_RELEASED);
- 	if (IS_ERR(vpu->resets))
- 		return PTR_ERR(vpu->resets);
- 
-@@ -1267,7 +1269,11 @@ static int hantro_probe(struct platform_device *pdev)
- 	pm_runtime_use_autosuspend(vpu->dev);
- 	pm_runtime_enable(vpu->dev);
- 
--	ret = reset_control_deassert(vpu->resets);
-+	ret = reset_control_acquire(vpu->resets);
-+	if (!ret) {
-+		ret = reset_control_deassert(vpu->resets);
-+		reset_control_release(vpu->resets);
-+	}
- 	if (ret) {
- 		dev_err(&pdev->dev, "Failed to deassert resets\n");
- 		goto err_pm_disable;
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-index 113b6977031d..f1188a6435b1 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-@@ -481,10 +481,16 @@ static void rockchip_vpu_enc_hw_reset(struct hantro_dev *vpu)
- 	if (!vpu->resets)
- 		return;
- 
-+	ret = reset_control_acquire(vpu->resets);
-+	if (ret) {
-+		dev_warn(vpu->dev, "Failed to acquire resets: %d\n", ret);
-+		return;
-+	}
++  resets:
++    items:
++      - description: AXI reset line
++      - description: AXI bus interface unit reset line
++      - description: APB reset line
++      - description: APB bus interface unit reset line
 +
- 	ret = reset_control_assert(vpu->resets);
- 	if (ret) {
- 		dev_warn(vpu->dev, "Failed to assert resets: %d\n", ret);
--		return;
-+		goto release;
- 	}
+ required:
+   - compatible
+   - reg
+@@ -55,6 +62,7 @@ examples:
+   - |
+     #include <dt-bindings/clock/rockchip,rk3588-cru.h>
+     #include <dt-bindings/interrupt-controller/arm-gic.h>
++    #include <dt-bindings/reset/rockchip,rk3588-cru.h>
  
- 	udelay(5);
-@@ -492,10 +498,12 @@ static void rockchip_vpu_enc_hw_reset(struct hantro_dev *vpu)
- 	ret = reset_control_deassert(vpu->resets);
- 	if (ret) {
- 		dev_err(vpu->dev, "Failed to deassert resets: %d\n", ret);
--		return;
-+		goto release;
- 	}
- 
- 	hantro_iommu_restore(vpu);
-+release:
-+	reset_control_release(vpu->resets);
- }
- 
- static void rockchip_vpu1_enc_reset(struct hantro_ctx *ctx)
-diff --git a/drivers/media/platform/verisilicon/stm32mp25_vpu_hw.c b/drivers/media/platform/verisilicon/stm32mp25_vpu_hw.c
-index 833821120b20..a16c43bdeb24 100644
---- a/drivers/media/platform/verisilicon/stm32mp25_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/stm32mp25_vpu_hw.c
-@@ -115,7 +115,11 @@ static void stm32mp25_venc_reset(struct hantro_ctx *ctx)
- {
- 	struct hantro_dev *vpu = ctx->dev;
- 
-+	if (reset_control_acquire(vpu->resets))
-+		return;
-+
- 	reset_control_reset(vpu->resets);
-+	reset_control_release(vpu->resets);
- }
- 
- /*
-diff --git a/drivers/media/platform/verisilicon/sunxi_vpu_hw.c b/drivers/media/platform/verisilicon/sunxi_vpu_hw.c
-index 02ce8b064a8f..f15ead62dc96 100644
---- a/drivers/media/platform/verisilicon/sunxi_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/sunxi_vpu_hw.c
-@@ -91,7 +91,11 @@ static void sunxi_vpu_reset(struct hantro_ctx *ctx)
- {
- 	struct hantro_dev *vpu = ctx->dev;
- 
-+	if (reset_control_acquire(vpu->resets))
-+		return;
-+
- 	reset_control_reset(vpu->resets);
-+	reset_control_release(vpu->resets);
- }
- 
- static const struct hantro_codec_ops sunxi_vpu_codec_ops[] = {
+     bus {
+       #address-cells = <2>;
+@@ -67,5 +75,7 @@ examples:
+         clocks = <&cru ACLK_AV1>, <&cru PCLK_AV1>;
+         clock-names = "core", "iface";
+         #iommu-cells = <0>;
++        resets = <&cru SRST_A_AV1>, <&cru SRST_A_AV1_BIU>,
++                 <&cru SRST_P_AV1>, <&cru SRST_P_AV1_BIU>;
+       };
+     };
 
 -- 
 2.55.0
