@@ -1,10 +1,10 @@
 From: Ishu Brar <patches@brar.si>
-Date: Fri, 13 Nov 2026 11:26:37 +0530
-Subject: [PATCH v3 4/6] dt-bindings: display/msm: Add SM7250 MDSS
+Date: Fri, 13 Nov 2026 11:26:38 +0530
+Subject: [PATCH v3 5/6] drm/msm/dpu: Add SM7250 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-dpu-sm7250-v3-4-30bdec59d204@brar.si>
+Message-Id: <20261113-dpu-sm7250-v3-5-30bdec59d204@brar.si>
 References: <20261113-dpu-sm7250-v3-0-30bdec59d204@brar.si>
 In-Reply-To: <20261113-dpu-sm7250-v3-0-30bdec59d204@brar.si>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, 
@@ -23,393 +23,378 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794549395; l=12347;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794549395; l=11844;
  i=patches@brar.si; h=from:subject:message-id;
- bh=FCzKCAyjtUbncX98ZGqsF/puuy1SAMwDIJos+SAVy5Q=;
- b=ahOXINMrq/mZhcGWqB78HDpJ+zUkgVYXxfrrREGufwGFBgm6Zi0Vh21GKZaZf/JTr8j7jcJ1z
- 8vjK7jPxy4BAHJUY0bUGHyiXop0w3TahSfk1gqo9PgX+sIoHaWEWhha
+ bh=il6yhgDNJbG62CMGd7GHrWu0+lPZwRXrZvV9rV6U7AU=;
+ b=IxGO51DcmU2OecxpMRHMr1uXrkXZzAUfuiArdLM88JKMHb9JW5nGO6Fcmib+T+tpPIR37ZnMF
+ y7+1kYHuTVXDQx6tlmS/E8yA7jSDbWMRztyIkEgusuJ3Q2ktn7sR+J9
 X-Developer-Key: i=patches@brar.si; a=ed25519;
  pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
 X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the binding for the SM7250 Mobile Display Subsystem. It has the
-same clocks and children as the SM8250 one, so it is modeled on
-qcom,sm8250-mdss.yaml. The example uses the SM8250 clock and
-interconnect headers, as the SM7250 ones are not upstream yet.
+Add definitions for the display hardware (DPU 6.1) used on the Qualcomm
+SM7250 platform. The values come from the downstream lito devicetree.
 
 Signed-off-by: Ishu Brar <patches@brar.si>
 ---
- .../bindings/display/msm/qcom,sm7250-mdss.yaml     | 361 +++++++++++++++++++++
- 1 file changed, 361 insertions(+)
+ .../gpu/drm/msm/disp/dpu1/catalog/dpu_6_1_sm7250.h | 309 +++++++++++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c     |   1 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h     |   1 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c            |   1 +
+ 4 files changed, 312 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/display/msm/qcom,sm7250-mdss.yaml b/Documentation/devicetree/bindings/display/msm/qcom,sm7250-mdss.yaml
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_6_1_sm7250.h b/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_6_1_sm7250.h
 new file mode 100644
-index 000000000000..b2d0833a423d
+index 000000000000..dfa442c438b1
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/display/msm/qcom,sm7250-mdss.yaml
-@@ -0,0 +1,361 @@
-+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/display/msm/qcom,sm7250-mdss.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Qualcomm SM7250 Display MDSS
-+
-+maintainers:
-+  - Ishu Brar <patches@brar.si>
-+
-+description:
-+  SM7250 MSM Mobile Display Subsystem(MDSS) that encapsulates
-+  sub-blocks like DPU display controller, DSI and DP interfaces etc. Device tree
-+  bindings of MDSS are mentioned for SM7250 target.
-+
-+$ref: /schemas/display/msm/mdss-common.yaml#
-+
-+properties:
-+  compatible:
-+    const: qcom,sm7250-mdss
-+
-+  clocks:
-+    items:
-+      - description: Display AHB clock from gcc
-+      - description: Display hf axi clock
-+      - description: Display sf axi clock
-+      - description: Display core clock
-+
-+  clock-names:
-+    items:
-+      - const: iface
-+      - const: bus
-+      - const: nrt_bus
-+      - const: core
-+
-+  iommus:
-+    maxItems: 1
-+
-+  interconnects:
-+    items:
-+      - description: Interconnect path from mdp0 port to the data bus
-+      - description: Interconnect path from mdp1 port to the data bus
-+      - description: Interconnect path from CPU to the reg bus
-+
-+  interconnect-names:
-+    items:
-+      - const: mdp0-mem
-+      - const: mdp1-mem
-+      - const: cpu-cfg
-+
-+patternProperties:
-+  "^display-controller@[0-9a-f]+$":
-+    type: object
-+    additionalProperties: true
-+    properties:
-+      compatible:
-+        const: qcom,sm7250-dpu
-+
-+  "^displayport-controller@[0-9a-f]+$":
-+    type: object
-+    additionalProperties: true
-+    properties:
-+      compatible:
-+        items:
-+          - const: qcom,sm7250-dp
-+          - const: qcom,sm8350-dp
-+
-+  "^dsi@[0-9a-f]+$":
-+    type: object
-+    additionalProperties: true
-+    properties:
-+      compatible:
-+        items:
-+          - const: qcom,sm7250-dsi-ctrl
-+          - const: qcom,mdss-dsi-ctrl
-+
-+  "^phy@[0-9a-f]+$":
-+    type: object
-+    additionalProperties: true
-+    properties:
-+      compatible:
-+        const: qcom,dsi-phy-7nm
-+
-+required:
-+  - compatible
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/clock/qcom,dispcc-sm8250.h>
-+    #include <dt-bindings/clock/qcom,gcc-sm8250.h>
-+    #include <dt-bindings/clock/qcom,rpmh.h>
-+    #include <dt-bindings/interrupt-controller/arm-gic.h>
-+    #include <dt-bindings/interconnect/qcom,icc.h>
-+    #include <dt-bindings/interconnect/qcom,sm8250.h>
-+    #include <dt-bindings/power/qcom,rpmhpd.h>
-+
-+    display-subsystem@ae00000 {
-+        compatible = "qcom,sm7250-mdss";
-+        reg = <0x0ae00000 0x1000>;
-+        reg-names = "mdss";
-+
-+        interconnects = <&mmss_noc MASTER_MDP_PORT0 QCOM_ICC_TAG_ALWAYS
-+                         &mc_virt SLAVE_EBI_CH0 QCOM_ICC_TAG_ALWAYS>,
-+                        <&mmss_noc MASTER_MDP_PORT1 QCOM_ICC_TAG_ALWAYS
-+                         &mc_virt SLAVE_EBI_CH0 QCOM_ICC_TAG_ALWAYS>,
-+                        <&gem_noc MASTER_AMPSS_M0 QCOM_ICC_TAG_ACTIVE_ONLY
-+                         &config_noc SLAVE_DISPLAY_CFG QCOM_ICC_TAG_ACTIVE_ONLY>;
-+        interconnect-names = "mdp0-mem", "mdp1-mem", "cpu-cfg";
-+
-+        power-domains = <&dispcc MDSS_GDSC>;
-+
-+        clocks = <&dispcc DISP_CC_MDSS_AHB_CLK>,
-+                 <&gcc GCC_DISP_HF_AXI_CLK>,
-+                 <&gcc GCC_DISP_SF_AXI_CLK>,
-+                 <&dispcc DISP_CC_MDSS_MDP_CLK>;
-+        clock-names = "iface", "bus", "nrt_bus", "core";
-+
-+        interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
-+        interrupt-controller;
-+        #interrupt-cells = <1>;
-+
-+        iommus = <&apps_smmu 0x820 0x402>;
-+
-+        #address-cells = <1>;
-+        #size-cells = <1>;
-+        ranges;
-+
-+        display-controller@ae01000 {
-+            compatible = "qcom,sm7250-dpu";
-+            reg = <0x0ae01000 0x8f000>,
-+                  <0x0aeb0000 0x2008>;
-+            reg-names = "mdp", "vbif";
-+
-+            clocks = <&dispcc DISP_CC_MDSS_AHB_CLK>,
-+                     <&gcc GCC_DISP_HF_AXI_CLK>,
-+                     <&dispcc DISP_CC_MDSS_MDP_CLK>,
-+                     <&dispcc DISP_CC_MDSS_VSYNC_CLK>;
-+            clock-names = "iface", "bus", "core", "vsync";
-+
-+            assigned-clocks = <&dispcc DISP_CC_MDSS_VSYNC_CLK>;
-+            assigned-clock-rates = <19200000>;
-+
-+            operating-points-v2 = <&mdp_opp_table>;
-+            power-domains = <&rpmhpd RPMHPD_CX>;
-+
-+            interrupt-parent = <&mdss>;
-+            interrupts = <0>;
-+
-+            ports {
-+                #address-cells = <1>;
-+                #size-cells = <0>;
-+
-+                port@0 {
-+                    reg = <0>;
-+                    dpu_intf1_out: endpoint {
-+                        remote-endpoint = <&dsi0_in>;
-+                    };
-+                };
-+
-+                port@1 {
-+                    reg = <1>;
-+                    dpu_intf2_out: endpoint {
-+                        remote-endpoint = <&dsi1_in>;
-+                    };
-+                };
-+            };
-+
-+            mdp_opp_table: opp-table {
-+                compatible = "operating-points-v2";
-+
-+                opp-200000000 {
-+                    opp-hz = /bits/ 64 <200000000>;
-+                    required-opps = <&rpmhpd_opp_low_svs>;
-+                };
-+
-+                opp-300000000 {
-+                    opp-hz = /bits/ 64 <300000000>;
-+                    required-opps = <&rpmhpd_opp_svs>;
-+                };
-+
-+                opp-345000000 {
-+                    opp-hz = /bits/ 64 <345000000>;
-+                    required-opps = <&rpmhpd_opp_svs_l1>;
-+                };
-+
-+                opp-460000000 {
-+                    opp-hz = /bits/ 64 <460000000>;
-+                    required-opps = <&rpmhpd_opp_nom>;
-+                };
-+            };
-+        };
-+
-+        dsi@ae94000 {
-+            compatible = "qcom,sm7250-dsi-ctrl", "qcom,mdss-dsi-ctrl";
-+            reg = <0x0ae94000 0x400>;
-+            reg-names = "dsi_ctrl";
-+
-+            interrupt-parent = <&mdss>;
-+            interrupts = <4>;
-+
-+            clocks = <&dispcc DISP_CC_MDSS_BYTE0_CLK>,
-+                     <&dispcc DISP_CC_MDSS_BYTE0_INTF_CLK>,
-+                     <&dispcc DISP_CC_MDSS_PCLK0_CLK>,
-+                     <&dispcc DISP_CC_MDSS_ESC0_CLK>,
-+                     <&dispcc DISP_CC_MDSS_AHB_CLK>,
-+                     <&gcc GCC_DISP_HF_AXI_CLK>;
-+            clock-names = "byte",
-+                          "byte_intf",
-+                          "pixel",
-+                          "core",
-+                          "iface",
-+                          "bus";
-+
-+            assigned-clocks = <&dispcc DISP_CC_MDSS_BYTE0_CLK_SRC>,
-+                              <&dispcc DISP_CC_MDSS_PCLK0_CLK_SRC>;
-+            assigned-clock-parents = <&dsi0_phy 0>, <&dsi0_phy 1>;
-+
-+            operating-points-v2 = <&dsi_opp_table>;
-+            power-domains = <&rpmhpd RPMHPD_CX>;
-+
-+            phys = <&dsi0_phy>;
-+            phy-names = "dsi";
-+
-+            #address-cells = <1>;
-+            #size-cells = <0>;
-+
-+            ports {
-+                #address-cells = <1>;
-+                #size-cells = <0>;
-+
-+                port@0 {
-+                    reg = <0>;
-+                    dsi0_in: endpoint {
-+                        remote-endpoint = <&dpu_intf1_out>;
-+                    };
-+                };
-+
-+                port@1 {
-+                    reg = <1>;
-+                    dsi0_out: endpoint {
-+                        remote-endpoint = <&panel0_in>;
-+                        data-lanes = <0 1 2 3>;
-+                    };
-+                };
-+            };
-+
-+            dsi_opp_table: opp-table {
-+                compatible = "operating-points-v2";
-+
-+                opp-187500000 {
-+                    opp-hz = /bits/ 64 <187500000>;
-+                    required-opps = <&rpmhpd_opp_low_svs>;
-+                };
-+
-+                opp-300000000 {
-+                    opp-hz = /bits/ 64 <300000000>;
-+                    required-opps = <&rpmhpd_opp_svs>;
-+                };
-+
-+                opp-358000000 {
-+                    opp-hz = /bits/ 64 <358000000>;
-+                    required-opps = <&rpmhpd_opp_svs_l1>;
-+                };
-+            };
-+        };
-+
-+        dsi0_phy: phy@ae94400 {
-+            compatible = "qcom,dsi-phy-7nm";
-+            reg = <0x0ae94400 0x200>,
-+                  <0x0ae94600 0x280>,
-+                  <0x0ae94900 0x260>;
-+            reg-names = "dsi_phy",
-+                        "dsi_phy_lane",
-+                        "dsi_pll";
-+
-+            #clock-cells = <1>;
-+            #phy-cells = <0>;
-+
-+            clocks = <&dispcc DISP_CC_MDSS_AHB_CLK>,
-+                     <&rpmhcc RPMH_CXO_CLK>;
-+            clock-names = "iface", "ref";
-+            vdds-supply = <&vreg_dsi_phy>;
-+        };
-+
-+        dsi@ae96000 {
-+            compatible = "qcom,sm7250-dsi-ctrl", "qcom,mdss-dsi-ctrl";
-+            reg = <0x0ae96000 0x400>;
-+            reg-names = "dsi_ctrl";
-+
-+            interrupt-parent = <&mdss>;
-+            interrupts = <5>;
-+
-+            clocks = <&dispcc DISP_CC_MDSS_BYTE1_CLK>,
-+                     <&dispcc DISP_CC_MDSS_BYTE1_INTF_CLK>,
-+                     <&dispcc DISP_CC_MDSS_PCLK1_CLK>,
-+                     <&dispcc DISP_CC_MDSS_ESC1_CLK>,
-+                     <&dispcc DISP_CC_MDSS_AHB_CLK>,
-+                     <&gcc GCC_DISP_HF_AXI_CLK>;
-+            clock-names = "byte",
-+                          "byte_intf",
-+                          "pixel",
-+                          "core",
-+                          "iface",
-+                          "bus";
-+
-+            assigned-clocks = <&dispcc DISP_CC_MDSS_BYTE1_CLK_SRC>,
-+                              <&dispcc DISP_CC_MDSS_PCLK1_CLK_SRC>;
-+            assigned-clock-parents = <&dsi1_phy 0>, <&dsi1_phy 1>;
-+
-+            operating-points-v2 = <&dsi_opp_table>;
-+            power-domains = <&rpmhpd RPMHPD_CX>;
-+
-+            phys = <&dsi1_phy>;
-+            phy-names = "dsi";
-+
-+            #address-cells = <1>;
-+            #size-cells = <0>;
-+
-+            ports {
-+                #address-cells = <1>;
-+                #size-cells = <0>;
-+
-+                port@0 {
-+                    reg = <0>;
-+                    dsi1_in: endpoint {
-+                        remote-endpoint = <&dpu_intf2_out>;
-+                    };
-+                };
-+
-+                port@1 {
-+                    reg = <1>;
-+                    dsi1_out: endpoint {
-+                        remote-endpoint = <&panel1_in>;
-+                        data-lanes = <0 1 2 3>;
-+                    };
-+                };
-+            };
-+        };
-+
-+        dsi1_phy: phy@ae96400 {
-+            compatible = "qcom,dsi-phy-7nm";
-+            reg = <0x0ae96400 0x200>,
-+                  <0x0ae96600 0x280>,
-+                  <0x0ae96900 0x260>;
-+            reg-names = "dsi_phy",
-+                        "dsi_phy_lane",
-+                        "dsi_pll";
-+
-+            #clock-cells = <1>;
-+            #phy-cells = <0>;
-+
-+            clocks = <&dispcc DISP_CC_MDSS_AHB_CLK>,
-+                     <&rpmhcc RPMH_CXO_CLK>;
-+            clock-names = "iface", "ref";
-+            vdds-supply = <&vreg_dsi_phy>;
-+        };
-+    };
-+...
++++ b/drivers/gpu/drm/msm/disp/dpu1/catalog/dpu_6_1_sm7250.h
+@@ -0,0 +1,309 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++/*
++ * Copyright (c) 2022. Qualcomm Innovation Center, Inc. All rights reserved.
++ * Copyright (c) 2015-2018, 2020 The Linux Foundation. All rights reserved.
++ *
++ * SM7250, SDE hardware revision 6.1.0. Block offsets are relative to the
++ * "mdp" register region.
++ */
++
++#ifndef _DPU_6_1_SM7250_H
++#define _DPU_6_1_SM7250_H
++
++static const struct dpu_caps sm7250_dpu_caps = {
++	.max_mixer_width = DEFAULT_DPU_OUTPUT_LINE_WIDTH,
++	.max_mixer_blendstages = 0x9,
++	.has_src_split = true,
++	.has_dim_layer = true,
++	.has_idle_pc = true,
++	.has_3d_merge = true,
++	.max_linewidth = 2880,
++	.pixel_ram_size = DEFAULT_PIXEL_RAM_SIZE,
++};
++
++static const struct dpu_mdp_cfg sm7250_mdp = {
++	.name = "top_0",
++	.base = 0x0, .len = 0x494,
++	.clk_ctrls = {
++		[DPU_CLK_CTRL_VIG0] = { .reg_off = 0x2ac, .bit_off = 0 },
++		[DPU_CLK_CTRL_VIG1] = { .reg_off = 0x2b4, .bit_off = 0 },
++		[DPU_CLK_CTRL_DMA0] = { .reg_off = 0x2ac, .bit_off = 8 },
++		[DPU_CLK_CTRL_DMA1] = { .reg_off = 0x2b4, .bit_off = 8 },
++		[DPU_CLK_CTRL_DMA2] = { .reg_off = 0x2c4, .bit_off = 8 },
++		[DPU_CLK_CTRL_REG_DMA] = { .reg_off = 0x2bc, .bit_off = 20 },
++		[DPU_CLK_CTRL_WB2] = { .reg_off = 0x2bc, .bit_off = 16 },
++	},
++};
++
++static const struct dpu_ctl_cfg sm7250_ctl[] = {
++	{
++		.name = "ctl_0", .id = CTL_0,
++		.base = 0x1000, .len = 0x1dc,
++		.intr_start = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR2, 9),
++	}, {
++		.name = "ctl_1", .id = CTL_1,
++		.base = 0x1200, .len = 0x1dc,
++		.intr_start = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR2, 10),
++	}, {
++		.name = "ctl_2", .id = CTL_2,
++		.base = 0x1400, .len = 0x1dc,
++		.intr_start = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR2, 11),
++	}, {
++		.name = "ctl_3", .id = CTL_3,
++		.base = 0x1600, .len = 0x1dc,
++		.intr_start = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR2, 12),
++	},
++};
++
++static const struct dpu_sspp_cfg sm7250_sspp[] = {
++	{
++		.name = "sspp_0", .id = SSPP_VIG0,
++		.base = 0x4000, .len = 0x1f8,
++		.features = VIG_SDM845_MASK_SDMA,
++		.sblk = &dpu_vig_sblk_qseed3_3_0,
++		.xin_id = 0,
++		.type = SSPP_TYPE_VIG,
++		.clk_ctrl = DPU_CLK_CTRL_VIG0,
++	}, {
++		.name = "sspp_1", .id = SSPP_VIG1,
++		.base = 0x6000, .len = 0x1f8,
++		.features = VIG_SDM845_MASK_SDMA,
++		.sblk = &dpu_vig_sblk_qseed3_3_0,
++		.xin_id = 4,
++		.type = SSPP_TYPE_VIG,
++		.clk_ctrl = DPU_CLK_CTRL_VIG1,
++	}, {
++		.name = "sspp_8", .id = SSPP_DMA0,
++		.base = 0x24000, .len = 0x1f8,
++		.features = DMA_SDM845_MASK_SDMA,
++		.sblk = &dpu_dma_sblk,
++		.xin_id = 1,
++		.type = SSPP_TYPE_DMA,
++		.clk_ctrl = DPU_CLK_CTRL_DMA0,
++	}, {
++		.name = "sspp_9", .id = SSPP_DMA1,
++		.base = 0x26000, .len = 0x1f8,
++		.features = DMA_SDM845_MASK_SDMA,
++		.sblk = &dpu_dma_sblk,
++		.xin_id = 5,
++		.type = SSPP_TYPE_DMA,
++		.clk_ctrl = DPU_CLK_CTRL_DMA1,
++	}, {
++		.name = "sspp_10", .id = SSPP_DMA2,
++		.base = 0x28000, .len = 0x1f8,
++		.features = DMA_CURSOR_SDM845_MASK_SDMA,
++		.sblk = &dpu_dma_sblk,
++		.xin_id = 9,
++		.type = SSPP_TYPE_DMA,
++		.clk_ctrl = DPU_CLK_CTRL_DMA2,
++	},
++};
++
++static const struct dpu_lm_cfg sm7250_lm[] = {
++	{
++		.name = "lm_0", .id = LM_0,
++		.base = 0x44000, .len = 0x320,
++		.features = MIXER_MSM8998_MASK,
++		.sblk = &sdm845_lm_sblk,
++		.lm_pair = LM_1,
++		.pingpong = PINGPONG_0,
++		.dspp = DSPP_0,
++	}, {
++		.name = "lm_1", .id = LM_1,
++		.base = 0x45000, .len = 0x320,
++		.features = MIXER_MSM8998_MASK,
++		.sblk = &sdm845_lm_sblk,
++		.lm_pair = LM_0,
++		.pingpong = PINGPONG_1,
++		.dspp = DSPP_1,
++	}, {
++		.name = "lm_2", .id = LM_2,
++		.base = 0x46000, .len = 0x320,
++		.features = MIXER_MSM8998_MASK,
++		.sblk = &sdm845_lm_sblk,
++		.lm_pair = LM_3,
++		.pingpong = PINGPONG_2,
++	}, {
++		.name = "lm_3", .id = LM_3,
++		.base = 0x47000, .len = 0x320,
++		.features = MIXER_MSM8998_MASK,
++		.sblk = &sdm845_lm_sblk,
++		.lm_pair = LM_2,
++		.pingpong = PINGPONG_3,
++	},
++};
++
++static const struct dpu_dspp_cfg sm7250_dspp[] = {
++	{
++		.name = "dspp_0", .id = DSPP_0,
++		.base = 0x54000, .len = 0x1800,
++		.sblk = &sdm845_dspp_sblk,
++	}, {
++		.name = "dspp_1", .id = DSPP_1,
++		.base = 0x56000, .len = 0x1800,
++		.sblk = &sdm845_dspp_sblk,
++	},
++};
++
++static const struct dpu_pingpong_cfg sm7250_pp[] = {
++	{
++		.name = "pingpong_0", .id = PINGPONG_0,
++		.base = 0x70000, .len = 0xd4,
++		.sblk = &sdm845_pp_sblk,
++		.merge_3d = MERGE_3D_0,
++		.intr_done = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 8),
++	}, {
++		.name = "pingpong_1", .id = PINGPONG_1,
++		.base = 0x70800, .len = 0xd4,
++		.sblk = &sdm845_pp_sblk,
++		.merge_3d = MERGE_3D_0,
++		.intr_done = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 9),
++	}, {
++		.name = "pingpong_2", .id = PINGPONG_2,
++		.base = 0x71000, .len = 0xd4,
++		.sblk = &sdm845_pp_sblk,
++		.merge_3d = MERGE_3D_1,
++		.intr_done = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 10),
++	}, {
++		.name = "pingpong_3", .id = PINGPONG_3,
++		.base = 0x71800, .len = 0xd4,
++		.sblk = &sdm845_pp_sblk,
++		.merge_3d = MERGE_3D_1,
++		.intr_done = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 11),
++	},
++};
++
++static const struct dpu_merge_3d_cfg sm7250_merge_3d[] = {
++	{
++		.name = "merge_3d_0", .id = MERGE_3D_0,
++		.base = 0x83000, .len = 0x8,
++	}, {
++		.name = "merge_3d_1", .id = MERGE_3D_1,
++		.base = 0x83100, .len = 0x8,
++	},
++};
++
++static const struct dpu_dsc_cfg sm7250_dsc[] = {
++	{
++		.name = "dsc_0", .id = DSC_0,
++		.base = 0x80000, .len = 0x140,
++	}, {
++		.name = "dsc_1", .id = DSC_1,
++		.base = 0x80400, .len = 0x140,
++	},
++};
++
++static const struct dpu_intf_cfg sm7250_intf[] = {
++	{
++		.name = "intf_0", .id = INTF_0,
++		.base = 0x6a000, .len = 0x280,
++		.type = INTF_DP,
++		.controller_id = MSM_DP_CONTROLLER_0,
++		.prog_fetch_lines_worst_case = 24,
++		.intr_underrun = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 24),
++		.intr_vsync = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 25),
++	}, {
++		.name = "intf_1", .id = INTF_1,
++		.base = 0x6a800, .len = 0x2b8,
++		.type = INTF_DSI,
++		.controller_id = MSM_DSI_CONTROLLER_0,
++		.prog_fetch_lines_worst_case = 24,
++		.intr_underrun = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 26),
++		.intr_vsync = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 27),
++		.intr_tear_rd_ptr = DPU_IRQ_IDX(MDP_INTF1_TEAR_INTR, 2),
++	}, {
++		.name = "intf_2", .id = INTF_2,
++		.base = 0x6b000, .len = 0x2b8,
++		.type = INTF_DSI,
++		.controller_id = MSM_DSI_CONTROLLER_1,
++		.prog_fetch_lines_worst_case = 24,
++		.intr_underrun = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 28),
++		.intr_vsync = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 29),
++		.intr_tear_rd_ptr = DPU_IRQ_IDX(MDP_INTF2_TEAR_INTR, 2),
++	}, {
++		.name = "intf_3", .id = INTF_3,
++		.base = 0x6b800, .len = 0x280,
++		.type = INTF_DP,
++		.controller_id = MSM_DP_CONTROLLER_0,	/* pair with intf_0 for DP MST */
++		.prog_fetch_lines_worst_case = 24,
++		.intr_underrun = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 30),
++		.intr_vsync = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 31),
++	},
++};
++
++static const struct dpu_wb_cfg sm7250_wb[] = {
++	{
++		.name = "wb_2", .id = WB_2,
++		.base = 0x65000, .len = 0x2c8,
++		.features = WB_SDM845_MASK,
++		.format_list = wb2_formats_rgb_yuv,
++		.num_formats = ARRAY_SIZE(wb2_formats_rgb_yuv),
++		.clk_ctrl = DPU_CLK_CTRL_WB2,
++		.xin_id = 6,
++		.maxlinewidth = 4096,
++		.intr_wb_done = DPU_IRQ_IDX(MDP_SSPP_TOP0_INTR, 4),
++	},
++};
++
++static const struct dpu_perf_cfg sm7250_perf_data = {
++	.max_bw_low = 5800000,
++	.max_bw_high = 8600000,
++	.min_core_ib = 4800000,
++	.min_llcc_ib = 0,
++	.min_dram_ib = 800000,
++	.min_prefill_lines = 35,
++	.danger_lut_tbl = {0xff, 0xffff, 0x0},
++	.safe_lut_tbl = {0xfffc, 0xff00, 0xffff},
++	.qos_lut_tbl = {
++		{
++		.nentry = ARRAY_SIZE(sm8150_qos_linear),
++		.entries = sm8150_qos_linear
++		}, {
++		.nentry = ARRAY_SIZE(sc7180_qos_macrotile),
++		.entries = sc7180_qos_macrotile
++		}, {
++		.nentry = ARRAY_SIZE(sc7180_qos_nrt),
++		.entries = sc7180_qos_nrt
++		},
++	},
++	.cdp_cfg = {
++		{.rd_enable = 1, .wr_enable = 1},
++		{.rd_enable = 1, .wr_enable = 0}
++	},
++	.clk_inefficiency_factor = 105,
++	.bw_inefficiency_factor = 120,
++};
++
++static const struct dpu_mdss_version sm7250_mdss_ver = {
++	.core_major_ver = 6,
++	.core_minor_ver = 1,
++};
++
++const struct dpu_mdss_cfg dpu_sm7250_cfg = {
++	.mdss_ver = &sm7250_mdss_ver,
++	.caps = &sm7250_dpu_caps,
++	.mdp = &sm7250_mdp,
++	.cdm = &dpu_cdm_5_x,
++	.ctl_count = ARRAY_SIZE(sm7250_ctl),
++	.ctl = sm7250_ctl,
++	.sspp_count = ARRAY_SIZE(sm7250_sspp),
++	.sspp = sm7250_sspp,
++	.mixer_count = ARRAY_SIZE(sm7250_lm),
++	.mixer = sm7250_lm,
++	.dspp_count = ARRAY_SIZE(sm7250_dspp),
++	.dspp = sm7250_dspp,
++	.dsc_count = ARRAY_SIZE(sm7250_dsc),
++	.dsc = sm7250_dsc,
++	.pingpong_count = ARRAY_SIZE(sm7250_pp),
++	.pingpong = sm7250_pp,
++	.merge_3d_count = ARRAY_SIZE(sm7250_merge_3d),
++	.merge_3d = sm7250_merge_3d,
++	.intf_count = ARRAY_SIZE(sm7250_intf),
++	.intf = sm7250_intf,
++	.vbif = &sdm845_vbif,
++	.wb_count = ARRAY_SIZE(sm7250_wb),
++	.wb = sm7250_wb,
++	.perf = &sm7250_perf_data,
++};
++
++#endif
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c
+index 107150a8553f..a6c20dfb954a 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c
+@@ -777,6 +777,7 @@ static const struct dpu_qos_lut_entry sc7180_qos_nrt[] = {
+ #include "catalog/dpu_5_4_sm6125.h"
+ 
+ #include "catalog/dpu_6_0_sm8250.h"
++#include "catalog/dpu_6_1_sm7250.h"
+ #include "catalog/dpu_6_2_sc7180.h"
+ #include "catalog/dpu_6_3_sm6115.h"
+ #include "catalog/dpu_6_4_sm6350.h"
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h
+index f45faf87333e..7e0dfed99c71 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h
+@@ -780,6 +780,7 @@ extern const struct dpu_mdss_cfg dpu_sdm670_cfg;
+ extern const struct dpu_mdss_cfg dpu_sm8150_cfg;
+ extern const struct dpu_mdss_cfg dpu_sc8180x_cfg;
+ extern const struct dpu_mdss_cfg dpu_sm7150_cfg;
++extern const struct dpu_mdss_cfg dpu_sm7250_cfg;
+ extern const struct dpu_mdss_cfg dpu_sm8250_cfg;
+ extern const struct dpu_mdss_cfg dpu_sc7180_cfg;
+ extern const struct dpu_mdss_cfg dpu_sm6115_cfg;
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+index da3556eb6ecc..6eb6f65ada91 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+@@ -1506,6 +1506,7 @@ static const struct of_device_id dpu_dt_match[] = {
+ 	{ .compatible = "qcom,sm6350-dpu", .data = &dpu_sm6350_cfg, },
+ 	{ .compatible = "qcom,sm6375-dpu", .data = &dpu_sm6375_cfg, },
+ 	{ .compatible = "qcom,sm7150-dpu", .data = &dpu_sm7150_cfg, },
++	{ .compatible = "qcom,sm7250-dpu", .data = &dpu_sm7250_cfg, },
+ 	{ .compatible = "qcom,sm8150-dpu", .data = &dpu_sm8150_cfg, },
+ 	{ .compatible = "qcom,sm8250-dpu", .data = &dpu_sm8250_cfg, },
+ 	{ .compatible = "qcom,sm8350-dpu", .data = &dpu_sm8350_cfg, },
 
 -- 
 2.56.1
