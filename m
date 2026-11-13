@@ -1,87 +1,99 @@
-From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Fri, 13 Nov 2026 08:59:33 -0800
-Subject: [PATCH net-next v11 14/14] net: phy: dp83867: Use
- genphy_loopback_no_speed()
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Date: Fri, 13 Nov 2026 17:13:40 +0000
+Subject: [PATCH net] net: stmmac: drop the rest of the frame when
+ napi_build_skb() fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-s2500-mac-phy-support-v11-14-7a186141952c@onsemi.com>
-References: <20261113-s2500-mac-phy-support-v11-0-7a186141952c@onsemi.com>
-In-Reply-To: <20261113-s2500-mac-phy-support-v11-0-7a186141952c@onsemi.com>
-To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
+Message-Id: <20261113-stmmac-rx-skb-fail-v1-1-fcaae89f2d2c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6W8swtJ1Fj8FfGQxK2u2ijZKIXSf
+ zfqcQZmZigXYcW+m1H4LSqP3MCuOqRLyGcmOTWGM85ba9ekdRxDojKR3iINQe4Uo/d978zG7LZ
+ o4bPwINNvekDmiuNf6iteOdXvDsvyAb0bGMd7AAAA
+X-Change-ID: 20261113-stmmac-rx-skb-fail-bb6688204075
+To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
  Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
- Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, 
- Richard Cochran <richardcochran@gmail.com>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, Eric Dumazet <edumazet@kernel.org>, 
- Piergiorgio Beruto <piergiorgio.beruto@gmail.com>, 
- Eric Dumazet <edumazet@kernel.org>
-Cc: Selva Rajagopal <Selvamani.Rajagopal@onsemi.com>, 
- netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Jerry Ray <jerry.ray@microchip.com>, 
- Ciprian Regus <ciprian.regus@analog.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794589162; l=1372;
- i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=87SU+XRFLyfHxWdkx39h3CNz/aAI9UytC7bQUseGhEI=;
- b=RwrVKWKMpM+IGE/WwBKcUeSKSSg29YqAKc2KsjnbELQcB0Ggn550Azc8Mce/HagQPEMb2oCkX
- snNK35YnaauDn2k0IPp1TGSJomMr51xqWiRaPeZ+e5QnuiioS+tKSDd
-X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
- pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
-X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Jose Abreu <Jose.Abreu@synopsys.com>
+Cc: Lorenzo Bianconi <lorenzo@kernel.org>, netdev@vger.kernel.org, 
+ linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Lorenzo Bianconi <lorenzo.bianconi@oss.qualcomm.com>, 
+ stable@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794590019; l=2559;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=wIb/6vSfLxz3UqBxBdPnsbYyCrSq+sayPpXGXdTp9/o=;
+ b=CPrFrxa72Bl0nYXh6+1shMuAOTknAtY7Kk/bwk/FpvzkYEqnDO+PX7KyvlVyN8YxhGuYk8haN
+ 2e5Vh4N8kLlDX6jm3HO7+1ZH6RHs7Qnt9vzjmlksuQhH587SjVPPyvK
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace dp83867_loopback() with genphy_loopback_no_speed(), which
-does the same. No functional change.
+If napi_build_skb() fails on the first buffer of a frame that spans
+several descriptors, stmmac_rx() drops that buffer but goes on with the
+next descriptor of the same frame as if a new frame started there. The
+rest of the frame is then passed up the stack as a frame of its own. A
+frame spans several descriptors when it does not fit in the RX buffers
+of one descriptor.
 
-Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Mark the frame as errored instead, so that its remaining descriptors are
+discarded like those of a frame with a receive error. The frame is
+counted once in rx_dropped and once against the NAPI budget.
+
+Fixes: ec222003bd94 ("net: stmmac: Prepare to add Split Header support")
+Cc: stable@vger.kernel.org
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+---
+Found while working on the sun8i EMAC jumbo frame series, where frames
+over 2032 bytes span several descriptors. Lorenzo's pending net-next
+series "net: stmmac: introduce XDP rx multi-buff support" (v10) removes
+this path; this is the fix for net and stable and will conflict with it.
+
+Tested on an Orange Pi Zero2 (dwmac-sun8i, MTU 4070), backported to
+v7.3.3 with the jumbo series and a test hook that fails
+napi_build_skb(): of 12726 multi-descriptor frames, the 1818 failed
+ones were dropped and counted in rx_dropped, no fragment reached the
+stack, and all other frames arrived intact. Without the patch the 1818
+fragments were delivered as frames.
+
+Developed with Claude (Anthropic), which wrote the fix and the commit
+message. I reviewed every change.
+---
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index 25894771e9e9..d05c5bb8b4b9 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -6029,7 +6029,7 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit, u32 queue)
+ 							 buf->page);
+ 				buf->page = NULL;
+ 				rx_dropped++;
+-				count++;
++				error = 1;
+ 				goto drain_data;
+ 			}
+ 
+@@ -6065,7 +6065,7 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit, u32 queue)
+ 		if (likely(status & rx_not_ls))
+ 			goto read_again;
+ 		if (!skb)
+-			continue;
++			goto next;
+ 
+ 		/* Got entire packet into SKB. Finish it. */
+ 
 
 ---
-changes in v11
-  - Moved the vendor changes into its own patch.
-  - New patch in v11.
----
- drivers/net/phy/dp83867.c | 11 +----------
- 1 file changed, 1 insertion(+), 10 deletions(-)
+base-commit: ead6fa9a0ab194f02a2f36d634b193e9c5f9a1c6
+change-id: 20261113-stmmac-rx-skb-fail-bb6688204075
 
-diff --git a/drivers/net/phy/dp83867.c b/drivers/net/phy/dp83867.c
-index b4b4931c6f8c..dc00484c6c7a 100644
---- a/drivers/net/phy/dp83867.c
-+++ b/drivers/net/phy/dp83867.c
-@@ -1057,15 +1057,6 @@ static void dp83867_link_change_notify(struct phy_device *phydev)
- 	}
- }
- 
--static int dp83867_loopback(struct phy_device *phydev, bool enable, int speed)
--{
--	if (enable && speed)
--		return -EOPNOTSUPP;
--
--	return phy_modify(phydev, MII_BMCR, BMCR_LOOPBACK,
--			  enable ? BMCR_LOOPBACK : 0);
--}
--
- static int
- dp83867_led_brightness_set(struct phy_device *phydev,
- 			   u8 index, enum led_brightness brightness)
-@@ -1291,7 +1282,7 @@ static struct phy_driver dp83867_driver[] = {
- 		.resume		= dp83867_resume,
- 
- 		.link_change_notify = dp83867_link_change_notify,
--		.set_loopback	= dp83867_loopback,
-+		.set_loopback	= genphy_loopback_no_speed,
- 
- 		.led_brightness_set = dp83867_led_brightness_set,
- 		.led_hw_is_supported = dp83867_led_hw_is_supported,
-
--- 
-2.43.0
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
