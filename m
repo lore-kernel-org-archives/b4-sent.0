@@ -1,111 +1,108 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 12 Nov 2026 19:32:50 -0500
-Subject: [PATCH net v6 3/3] net/smc: skip the DMB nocopy accounting until
- the send buffer is set
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Fri, 13 Nov 2026 00:47:28 +0000
+Subject: [PATCH] vfio/spapr: Check the whole IOVA range in
+ VFIO_IOMMU_MAP_DMA
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-b4-disp-1c8d3a53-v6-3-36a38ae35021@proton.me>
-References: <20261112-b4-disp-1c8d3a53-v6-0-36a38ae35021@proton.me>
-In-Reply-To: <20261112-b4-disp-1c8d3a53-v6-0-36a38ae35021@proton.me>
-To: Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- Jakub Kicinski <kuba@kernel.org>, Dust Li <dust.li@linux.alibaba.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Sidraya Jayagond <sidraya@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, 
- "D. Wythe" <alibuda@linux.alibaba.com>
-Cc: Hans Wippel <hwippel@linux.ibm.com>, linux-kernel@vger.kernel.org, 
- Wenjia Zhang <wenjia@linux.ibm.com>, netdev@vger.kernel.org, 
- Hidayath Khan <hidayath@linux.ibm.com>, Ursula Braun <ubraun@linux.ibm.com>, 
- Tony Lu <tonylu@linux.alibaba.com>, linux-rdma@vger.kernel.org, 
- Wen Gu <guwen@linux.alibaba.com>, linux-s390@vger.kernel.org, 
- Simon Horman <horms@kernel.org>
+Message-Id: <20261113-vfio-spapr-v1-1-e3107da71f5c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAB9e9moC/yXMQQqAIBBA0avIrBNSKairRAvLqaaFiVMSRHfPa
+ vkW/1/AGAkZWnFBxERMm89QhYBxsX5GSS4bdKlrpZSRaaJNcrAhSluhLSvdDKZxkIMQcaLzm3X
+ 9bz6GFcf9PcB9P3bpoIFuAAAA
+X-Change-ID: 20261113-vfio-spapr-a5ea0529b39d
+To: alex@shazbot.org, tpearson@raptorengineering.com
+Cc: linux-kernel@vger.kernel.org, kvm@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794529967; l=3196;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=nt/R23dT6xDo9Kn8+8jVzh2IwHUKALEJsmXM6ZDy9BQ=;
- b=HzbPDA+YBBZlmDLCZNEqGeHNImMERgtKIKu+RQ4NThQ/oEpwpqGqMSwI6y5Fx8DGQhXBMN/y9
- CcDJ+EVvKd9BvlMFFWrYRHcjBL1o1Eq60+xvoOuPJr/aJGAINtpjKNr
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794531212; l=3170;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=9BK/s46bs5g6IksgcgM4VCdYbHZgPl56YVsnMO2gB94=;
+ b=uG9dqKsbXc/iJ+FJP43GK6Aj4pUwI+80tlxxpH7Pxo8VCcrTLl86bFrFV25OH7nrSaebJ3eyM
+ rgtqDGgz8XnDkGxYvgadf+jfa6RcqyEpU2jdjSUgecW8FHRUUyKbL4q
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With SMC-D DMB nocopy (the loopback device), smcd_buf_attach() sets
-conn->sndbuf_desc after the connection can already receive a CDC. When
-a DMB is reused, the peer of its previous connection can still hold
-the DMB token, and its next consumer update makes
-smc_cdc_msg_recv_action() dereference the NULL sndbuf_desc in the
-nocopy accounting.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-Set sndbuf_desc with a release store after sndbuf_space, and skip the
-nocopy accounting while sndbuf_desc is unset. Nothing of ours can have
-been consumed before the attach, so the skipped accounting has nothing
-to credit. The update's cursors and flags are still applied to the new
-connection, as those of a CDC that leaves the consumer cursor alone
-already are. The rest of the receive path handles an unset sndbuf_desc
-since commit b395dd319cea ("net/smc: do not dereference an unset send
-buffer on the SMC-D teardown path").
+VFIO_IOMMU_MAP_DMA checks the request with iommu_tce_put_param_check(),
+which only checks one page against the DMA window:
 
-Fixes: cc0ab806fc52 ("net/smc: adapt cursor update when sndbuf and peer DMB are merged")
+    #define iommu_tce_put_param_check(tbl, ioba, gpa)          \
+            (iommu_tce_check_ioba((tbl)->it_page_shift,        \
+                            (tbl)->it_offset, (tbl)->it_size,  \
+                            (ioba), 1) ||                      \
+
+tce_iommu_ioctl() then maps the whole size:
+
+    ret = iommu_tce_put_param_check(tbl, param.iova, param.vaddr);
+    ...
+    ret = tce_iommu_build(container, tbl,
+                    param.iova >> tbl->it_page_shift,
+                    param.vaddr,
+                    param.size >> tbl->it_page_shift,
+                    direction);
+
+tce_iommu_build() and tce_iommu_build_v2() write one TCE per page,
+entry + i for i up to the page count, and nothing below them checks the
+index. On PowerNV, iommu_tce_xchg_no_kill() goes through pnv_tce_xchg()
+to pnv_tce(), which for a single level table ends with
+
+    return tmp + idx;
+
+where tmp is it_base. So a mapping that starts inside the window and
+runs past its end writes TCEs past the end of the table. Each of them
+holds the host physical address of one of the caller's pages plus
+permission bits. v2 also stores the caller's userspace addresses past
+the end of it_userspace, through the same pnv_tce() lookup.
+
+To get there the caller needs an enabled SPAPR TCE container with a
+group attached and valid memory behind the whole range (preregistered
+for v2), which is what QEMU sets up for device passthrough.
+
+VFIO_IOMMU_UNMAP_DMA already checks the whole range. Do the same for
+MAP_DMA. This relies on commit 0b271f7d7f5e ("powerpc/iommu: Fix the
+overflow validation in iommu_tce_check_ioba"), before which
+iommu_tce_check_ioba() ignored npages, so stable trees need that commit
+too.
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: 5ffd229c0273 ("powerpc/vfio: Implement IOMMU driver for VFIO")
 Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
- net/smc/smc_cdc.c  | 10 +++++++++-
- net/smc/smc_core.c |  7 ++++---
- 2 files changed, 13 insertions(+), 4 deletions(-)
+Compile tested only, I don't have a PowerNV machine to try passthrough.
+---
+ drivers/vfio/vfio_iommu_spapr_tce.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/net/smc/smc_cdc.c b/net/smc/smc_cdc.c
-index b3bcc206efe3..4a4a279b405b 100644
---- a/net/smc/smc_cdc.c
-+++ b/net/smc/smc_cdc.c
-@@ -333,6 +333,7 @@ static void smc_cdc_msg_recv_action(struct smc_sock *smc,
- 	union smc_host_cursor cons_old, prod_old;
- 	struct smc_connection *conn = &smc->conn;
- 	int diff_cons, diff_prod, diff_tx;
-+	struct smc_buf_desc *sndbuf_desc;
+diff --git a/drivers/vfio/vfio_iommu_spapr_tce.c b/drivers/vfio/vfio_iommu_spapr_tce.c
+index 1c0eec228cc6..bf0df5a74963 100644
+--- a/drivers/vfio/vfio_iommu_spapr_tce.c
++++ b/drivers/vfio/vfio_iommu_spapr_tce.c
+@@ -952,6 +952,13 @@ static long tce_iommu_ioctl(void *iommu_data,
+ 		if (ret)
+ 			return ret;
  
- 	/* smc_conn_create() can have cleared rmb_desc */
- 	if (!smp_load_acquire(&conn->rmb_desc))
-@@ -357,12 +358,19 @@ static void smc_cdc_msg_recv_action(struct smc_sock *smc,
- 		 * peer RMB, then update tx_curs_fin and sndbuf_space
- 		 * here since peer has already consumed the data.
- 		 */
-+		sndbuf_desc = NULL;
- 		if (conn->lgr->is_smcd &&
- 		    smc_ism_support_dmb_nocopy(conn->lgr->smcd)) {
-+			/* NULL until smcd_buf_attach(), but the old peer of
-+			 * a reused DMB can already signal us.
-+			 */
-+			sndbuf_desc = smp_load_acquire(&conn->sndbuf_desc);
-+		}
-+		if (sndbuf_desc) {
- 			/* Calculate consumed data and
- 			 * increment free send buffer space.
- 			 */
--			diff_tx = smc_curs_diff(conn->sndbuf_desc->len,
-+			diff_tx = smc_curs_diff(sndbuf_desc->len,
- 						&conn->tx_curs_fin,
- 						&conn->local_rx_ctrl.cons);
- 			/* increase local sndbuf space and fin_curs */
-diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
-index 9ef9019bc497..982cfc79ee1c 100644
---- a/net/smc/smc_core.c
-+++ b/net/smc/smc_core.c
-@@ -2654,9 +2654,10 @@ int smcd_buf_attach(struct smc_sock *smc)
- 	buf_desc->cpu_addr =
- 		(u8 *)buf_desc->cpu_addr + sizeof(struct smcd_cdc_msg);
- 	buf_desc->len -= sizeof(struct smcd_cdc_msg);
--	conn->sndbuf_desc = buf_desc;
--	conn->sndbuf_desc->used = 1;
--	atomic_set(&conn->sndbuf_space, conn->sndbuf_desc->len);
-+	buf_desc->used = 1;
-+	atomic_set(&conn->sndbuf_space, buf_desc->len);
-+	/* Set last; pairs with the acquire in smc_cdc_msg_recv_action() */
-+	smp_store_release(&conn->sndbuf_desc, buf_desc);
- 	return 0;
- 
- free:
++		/* The check above only covers the first page */
++		ret = iommu_tce_check_ioba(tbl->it_page_shift, tbl->it_offset,
++					   tbl->it_size, param.iova,
++					   param.size >> tbl->it_page_shift);
++		if (ret)
++			return ret;
++
+ 		if (container->v2)
+ 			ret = tce_iommu_build_v2(container, tbl,
+ 					param.iova >> tbl->it_page_shift,
 
--- 
-2.56.0
+---
+base-commit: 630059a5a632377b9b7b487baccde92b7ae1dd47
+change-id: 20261113-vfio-spapr-a5ea0529b39d
+
+Best regards,
+--  
+Suyuan Wang <shyckless@gmail.com>
 
