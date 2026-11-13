@@ -1,16 +1,12 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Subject: [PATCH net-next v11 00/14] (no cover subject)
-Date: Fri, 13 Nov 2026 08:59:19 -0800
-Message-Id: <20261113-s2500-mac-phy-support-v11-0-7a186141952c@onsemi.com>
+Date: Fri, 13 Nov 2026 08:59:20 -0800
+Subject: [PATCH net-next v11 01/14] dt-bindings: net: add onsemi's S2500
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOlB92oC/3XQwW7DIAwG4FepOI/JJgFDT3uPaQcgzppJTaKQR
- q2qvvtoNq2dIo5g+/vBV5F46jiJ/e4qJl661A19PiC+7EQ8+P6TZdfkC6FAGTCAMikNII8+yvF
- wkek0jsM0y7qtPDsFbaBK5Nlx4rY7r/C76HmWPZ9n8fFTSafwxXG+s/feQ5fmYbqsb1jqdeI3T
- RfSllqCbDinRayiaezb0Cc+dq9xOK4hi35isC4xOjPWWaoDqZaU3jDmiVGuxJjMoI1MLpcrwg1
- DD4bAlhjKTE02WiLv0bsNYx+MU0XGZoYYEL2PsYIt4/4YBCh+yt1XHLllbCC00GwYhIeDYEoOQ
- oYqDNobF6wO9A+63W7fy7HmvIQCAAA=
+Message-Id: <20261113-s2500-mac-phy-support-v11-1-7a186141952c@onsemi.com>
+References: <20261113-s2500-mac-phy-support-v11-0-7a186141952c@onsemi.com>
+In-Reply-To: <20261113-s2500-mac-phy-support-v11-0-7a186141952c@onsemi.com>
 To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
  Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
@@ -33,207 +29,155 @@ Cc: Selva Rajagopal <Selvamani.Rajagopal@onsemi.com>,
  Ciprian Regus <ciprian.regus@analog.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794589162; l=9258;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794589162; l=4324;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=Q7u++2+ia99ofeeV7c7KuHVHI+2bSLsv96doH7MQEJ8=;
- b=ZDdKCWf6WR7a5lEaDG7UN/wTsADOgN/tGaM8IpEe7hV2Px2DDndDYjtufIbjxB6Kxtvnv7rPr
- DdQYbxDpemmChwC944uasCYH5O63MYxPsVPA/ZjRhwlHCJ/7OcjlLCY
+ bh=ydl5QiaaznD+gOcse6AuYZUijr3nYJb8olhfZemEaIw=;
+ b=85QxYvRD1NilPv+Yuy8gY7rhiXRvHCPbUnzuUez98NgyJkHBE8JEiAct/AtmRWDDRo2/q1nlg
+ n/Dv02mm+MCAd1JxpA7sZWr+D2FlAlxs18A4ObU2glymP6WqXS+74jS
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Changes in v11:
-- Create new patches to move vendor changes to its own patch
-- Improve commit message to be more informative of the changes
-- Add clarity to kernel documentation in oa-tc6-framework.rst
-- Fix issues potential Oops issue in S2500 driver.
-- Add logic to take care of frame drop bit from MAC-PHY 
-- Link to v10: https://lore.kernel.org/r/20261106-s2500-mac-phy-support-v10-0-31b5a69b85b7@onsemi.com
+Add device tree binding for the onsemi S2500 IEEE 802.3cg
+compliant Ethernet transceiver device.
 
-Support for onsemi's S2500 10Base-T1S MAC-PHY
+S2500 has both Media Access Controller (MAC) and 10BASE-T1S
+Ethernet PHY. MAC implements 10 Mbps half duplex Ethernet
+MAC. Communication between the host and MAC-PHY is defined in
+OPEN Alliance 10BASE-T1x MACPHY Serial Interface document.
 
-This patch series brings support for onsemi's S2500 that iss
-IEEE 802.3cg compliant Ethernet transceiver with an integrated
-Media Access Controller (MAC-PHY)
-
-Driver implementation is compatible and works with OA TC6
-framework that is already present. S2500 driver supports
-hardware timestamping. Along with this driver, OA TC6
-frame work is also changed to add hardware timestamping
-support.
-
-Driver has support for running selftest and loopback tests.
-Through ethtool, it can provide traffic stats, rmon stats,
-and timestamping related traffic stats.
-
-As S2500 has an internal PHY, changes have been added
-to onsemi's PHY driver to support this device.
-
-To: Andrew Lunn <andrew@lunn.ch>
-To: Heiner Kallweit <hkallweit1@gmail.com>
-To: Russell King <linux@armlinux.org.uk>
-To: David S. Miller <davem@davemloft.net>
-To: Eric Dumazet <edumazet@google.com>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>
-To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
-To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>
-To: Richard Cochran <richardcochran@gmail.com>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Simon Horman <horms@kernel.org>
-To: Jonathan Corbet <corbet@lwn.net>
-To: Shuah Khan <skhan@linuxfoundation.org>
-To: Randy Dunlap <rdunlap@infradead.org>
-To: Eric Dumazet <edumazet@kernel.org>
-To: Piergiorgio Beruto <piergiorgio.beruto@gmail.com>
-Cc: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-doc@vger.kernel.org
-Cc: Jerry Ray <jerry.ray@microchip.com>
-Cc: Ciprian Regus <ciprian.regus@analog.com>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
-Changes in v10:
- - Removed config_intr callback in S2500 PHY driver
- - Removed writing status0/config0 from s2500 driver
- - Implemented API to set tx credit threshold and 
-   to enable RX cut-through mode
- - Drop the frame when frame drop bit in footer is set
- - Module name restored back to oa_tc6.ko from oa_tc6_mod.ko
-- Link to v9: https://lore.kernel.org/r/20261009-s2500-mac-phy-support-v9-0-dcefe1d0bf0d@onsemi.com
-
-Changes in v9:
-- Renamed the new phy API from having "fixed_speed" to "no_speed"
-- Fixed compilation issue due to having changes in the wrong patch
-- Added the MAINTAINERS changes to where files were introduced.
-- Fixed coding style issues reported.
-- Moved the order of patches so that selftest changes goes after
-  s2500 support.
-- Made Pier's email ID consistent across to be consistent across 
-  the codebase.
-
-- Link to v8: https://lore.kernel.org/r/20260928-s2500-mac-phy-support-v8-0-7e011aacc309@onsemi.com
-
-Changes in v8:
-- Modified to use newer MMD based read/write APIs
-- clean up by removing unused definitions/initializations
-- Better handling of timestamp capture events by using
-  bit fields so that we don't lose any event
-- timestamp skb queue is protected with spinlock
-- added reset-gpio in YAML file as support is recently added
-- removed ioctl from OA TC6 framework as it is not needed.
-
-- Link to v7: https://lore.kernel.org/all/20260708-s2500-mac-phy-support-v7-0-478c877aa1a9@onsemi.com
-
-Changes in v7:
-- Fixed compiler warning due to prototype mismatch
-- Moved the order of patches to ensure dt-bindings comes first
-  before it is being used
-- Added missing review tag
-- Added missing MODULE_DEVICE_TABLE
-- OA_TC6 framework enables 64 bit timestamping mode by default.
-
-- Compiler related warnings fixed.
-- Link to v6: https://lore.kernel.org/r/20260629-s2500-mac-phy-support-v6-0-18ce79500371@onsemi.com
-
-Changes in v6:
-- Changes to ensure onsemi code stay within 80 columns.
-- Fixed the error of "not described in comments section"
-  in comments section.
-
-- Fixed compiler warnings.
-- Link to v5: https://patch.msgid.link/20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com
-
-Changes in v5:
- - kernel doc related changes in oa_tc.c, onsemi driver files and
-  oa tc6 rst file
-- Link to v4: https://lore.kernel.org/r/20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com
-
-Changes in v4:
- - Added return value comment for genphy_read/write_phy_mmd functions
- - Added genphy_loopback_fixed_speed helper function to be used in
-   set_loopback callbacks
- - Updated networking documentation for OA TC6 framework to elaborate
-   on what is expected in the ptp_clock_info structure for registration.
- - added spi-max-frequency in YAML file based on alert from sashiko-bot
- - Removed model/version from the onsemi driver's private structure as
-   they were useful as "information-only" data.
- - Replaced the non-standard selftest with Linux's standard selftest
-   and made it as a separate patch
- - Changed bit manipulation, shift operations to use macros so that
-   it is clean and readable.
- - added new read_register and write_register apis with _mms postfix
-   so that MMS (memory map selector) can be given as a parameter.
- - Fixed the wrong condition check with NETIF_F_RXFCS to subtract
-   FCS size from the length of the frame.
- - Link to v3: https://lore.kernel.org/r/CY8PR02MB92499C9080614FA3CEB8CD0483162@CY8PR02MB9249.namprd02.prod.outlook.com
-
-Changes in v3:
- - Moved OA TC6 framework to its own directory.
- - Split changes to smaller patches based on feedback.
- - Added PHY loopback support as a separate patch.
- - New, read and write register APIs with extra parameter MMS
- - Link to v2: https://lore.kernel.org/r/CY8PR02MB924920C8825C7AE5D22EFA4483382@CY8PR02MB9249.namprd02.prod.outlook.com
-
-Changes in v2:
- - API to add vendor specific MMS to mdio device map.
- - Link to v1: https://lore.kernel.org/r/CY8PR02MB9249D083B637477C254F9B0583322@CY8PR02MB9249.namprd02.prod.outlook.com
-
 ---
-Selvamani Rajagopal (14):
-      dt-bindings: net: add onsemi's S2500
-      Documentation: networking: Add timestamp related APIs to OA TC6 framework
-      net: ethernet: oa_tc6: Move oa_tc6.c to its own directory
-      net: ethernet: oa_tc6: Move constant definitions to header file
-      net: ethernet: microchip: lan865x: Depends on PTP_1588_CLOCK_OPTIONAL
-      net: ethernet: adi: adin1140: Depends on PTP_1588_CLOCK_OPTIONAL
-      net: ethernet: oa_tc6: Support for hardware timestamp
-      net: ethernet: oa_tc6: Drop frames if footer has FD bit set
-      net: phy: ncn26000: Enable enhanced noise immunity
-      net: ethernet: onsemi: s2500: Add driver support for S2500
-      net: ethernet: onsemi: s2500: Add selftest support
-      net: phy: Add helper to modify only the PHY loopback bit
-      net: phy: ncn26000: Support for onsemi's S2500 internal phy
-      net: phy: dp83867: Use genphy_loopback_no_speed()
-
- .../devicetree/bindings/net/onnn,s2500.yaml        |  71 +++
- Documentation/networking/oa-tc6-framework.rst      |  81 +++-
- MAINTAINERS                                        |  11 +-
- drivers/net/ethernet/Kconfig                       |  13 +-
- drivers/net/ethernet/Makefile                      |   3 +-
- drivers/net/ethernet/adi/Kconfig                   |   1 +
- drivers/net/ethernet/microchip/lan865x/Kconfig     |   1 +
- drivers/net/ethernet/oa_tc6/Kconfig                |  16 +
- drivers/net/ethernet/oa_tc6/Makefile               |   7 +
- .../ethernet/{oa_tc6.c => oa_tc6/oa_tc6_main.c}    | 504 ++++++++++++++++-----
- drivers/net/ethernet/oa_tc6/oa_tc6_ptp.c           |  68 +++
- drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h       | 173 +++++++
- drivers/net/ethernet/oa_tc6/oa_tc6_tstamp.c        | 224 +++++++++
- drivers/net/ethernet/onsemi/Kconfig                |  21 +
- drivers/net/ethernet/onsemi/Makefile               |   6 +
- drivers/net/ethernet/onsemi/s2500/Kconfig          |  20 +
- drivers/net/ethernet/onsemi/s2500/Makefile         |   6 +
- drivers/net/ethernet/onsemi/s2500/s2500_ethtool.c  | 388 ++++++++++++++++
- drivers/net/ethernet/onsemi/s2500/s2500_hw_def.h   | 151 ++++++
- drivers/net/ethernet/onsemi/s2500/s2500_main.c     | 498 ++++++++++++++++++++
- drivers/net/ethernet/onsemi/s2500/s2500_ptp.c      | 156 +++++++
- drivers/net/phy/Kconfig                            |   2 +-
- drivers/net/phy/dp83867.c                          |  11 +-
- drivers/net/phy/ncn26000.c                         |  67 ++-
- drivers/net/phy/phy_device.c                       |  24 +
- include/linux/oa_tc6.h                             |  32 ++
- include/linux/phy.h                                |   2 +
- 27 files changed, 2412 insertions(+), 145 deletions(-)
+changes in v11
+  - No change
+changes in v10
+  - No change
+changes in v9
+  - No changes
+changes in v8
+  - Changed the interrupt type to level triggered
+  - Added reset-gpios entry that was recently supported.
+changes in v7
+  - Added the missing review tag
+  - Removed the word YAML from the commit message
+changes in v6
+  - Moved the signed off information to the right place.
+changes in v5
+  - no changes
+changes in v4:
+  - added spi-max-frequency as suggested by AI review
+  - changed interrupt to IRQ_TYPE_EDGE_FALLING as it is
+    being taken care in net (stable) branch
+changes in v3
+  - Removed URL link that failed verification
+changes in v2
+  - removed spi-max-frequency entry
+  - changed the compatible string to s2500
+changes in v1
+  - Added the first version of YAML file for onsemi MAC-PHY
 ---
-base-commit: d1f4b7c6b997c29de67ad7178ababac2328cb1b4
-change-id: 20260601-s2500-mac-phy-support-4f3ae920fb73
+ .../devicetree/bindings/net/onnn,s2500.yaml        | 71 ++++++++++++++++++++++
+ MAINTAINERS                                        |  6 ++
+ 2 files changed, 77 insertions(+)
 
-Best regards,
+diff --git a/Documentation/devicetree/bindings/net/onnn,s2500.yaml b/Documentation/devicetree/bindings/net/onnn,s2500.yaml
+new file mode 100644
+index 000000000000..e1df674c0f1e
+--- /dev/null
++++ b/Documentation/devicetree/bindings/net/onnn,s2500.yaml
+@@ -0,0 +1,71 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/onnn,s2500.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: onsemi S2500 10BASE-T1S MACPHY Ethernet Controllers
++
++maintainers:
++  - Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
++
++description:
++  The S2500 combines a Media Access Controller (MAC) and an
++  Ethernet PHY to enable 10BASE-T1S networks. The Ethernet Media Access
++  Controller (MAC) module implements a 10 Mbps half duplex Ethernet MAC,
++  compatible with the IEEE 802.3 standard and a 10BASE-T1S physical layer
++  transceiver integrated into the S2500. The communication between
++  the host and the MAC-PHY is specified in the OPEN Alliance 10BASE-T1x
++  MACPHY Serial Interface (TC6).
++
++allOf:
++  - $ref: /schemas/net/ethernet-controller.yaml#
++  - $ref: /schemas/spi/spi-peripheral-props.yaml#
++
++properties:
++  compatible:
++    const: onnn,s2500
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    description:
++      Interrupt from MAC-PHY asserted in the event of Receive Chunks
++      Available, Transmit Chunk Credits Available and Extended Status
++      Event.
++    maxItems: 1
++
++  reset-gpios:
++    description:
++      GPIO connected to the active-low RST_N pin of the MAC-PHY.
++    maxItems: 1
++
++  spi-max-frequency:
++    maximum: 25000000
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - spi-max-frequency
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++    spi {
++      #address-cells = <1>;
++      #size-cells = <0>;
++
++      ethernet@0 {
++        compatible = "onnn,s2500";
++        reg = <0>;
++        pinctrl-names = "default";
++        pinctrl-0 = <&eth0_pins>;
++        interrupt-parent = <&gpio>;
++        interrupts = <25 IRQ_TYPE_LEVEL_LOW>;
++        spi-max-frequency = <15000000>;
++      };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index c583367c88bc..4a4c26694ba7 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -21013,6 +21013,12 @@ S:	Supported
+ W:	http://www.onsemi.com
+ F:	drivers/net/phy/ncn*
+ 
++ONSEMI S2500 10BASE-T1S MACPHY ETHERNET DRIVER
++M:	Selvamani Rajagopal <selvamani.rajagopal@onsemi.com>
++L:	netdev@vger.kernel.org
++S:	Supported
++F:	Documentation/devicetree/bindings/net/onnn,s2500.yaml
++
+ OP-TEE DRIVER
+ M:	Jens Wiklander <jenswi@kernel.org>
+ L:	op-tee@lists.trustedfirmware.org (moderated for non-subscribers)
+
 -- 
-Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+2.43.0
 
