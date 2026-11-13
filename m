@@ -1,107 +1,132 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Fri, 13 Nov 2026 13:51:06 +0000
-Subject: [PATCH] misc: genwqe: Require CAP_SYS_ADMIN for flash access
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH net 0/2] net/smc: do not reuse the DMB of a nocopy device
+Date: Fri, 13 Nov 2026 08:57:21 -0500
+Message-Id: <20261113-b4-disp-19244662-v1-0-39b256b70ca7@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-genwqe-v1-1-75e064a19068@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMoV92oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQ0Nj3fTUvPLCVF3TpCTj1BSz5FQLIzMloOKCotS0zAqwQdGxEH5xaVJ
- WanIJSLdSbS0AYOrb+GoAAAA=
-X-Change-ID: 20261113-genwqe-5bb3ed6ce826
-To: gregkh@linuxfoundation.org, haver@linux.ibm.com, arnd@arndb.de
-Cc: linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCQAwAv1JyNtDEZVG/Ih423ajxsJZNK0Lp3
+ 93a4wzMLOBaTR0u3QJVP+b2Lg3o0MHwTOWhaLkxcM+RiI4oAbP5iHTmEGJkFO0lqfCJc4aWjVX
+ v9v0vr1B0gtsufZaXDtM2g3X9Abi+R215AAAA
+X-Change-ID: 20261113-b4-disp-19244662-be0baeb282dd
+To: Mahanta Jambigi <mjambigi@linux.ibm.com>, 
+ "D. Wythe" <alibuda@linux.alibaba.com>, 
+ "David S. Miller" <davem@davemloft.net>, 
+ Dust Li <dust.li@linux.alibaba.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Sidraya Jayagond <sidraya@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, 
+ Eric Dumazet <edumazet@kernel.org>, 
+ Alexandra Winter <wintera@linux.ibm.com>
+Cc: linux-kernel@vger.kernel.org, Hidayath Khan <hidayath@linux.ibm.com>, 
+ Julian Ruess <julianr@linux.ibm.com>, Wenjia Zhang <wenjia@linux.ibm.com>, 
+ linux-rdma@vger.kernel.org, Wen Gu <guwen@linux.alibaba.com>, 
+ Tony Lu <tonylu@linux.alibaba.com>, netdev@vger.kernel.org, 
+ Simon Horman <horms@kernel.org>, linux-s390@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794577866; l=2975;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=2IDS6cWesHgEyQ0y9gHSZmaX8tXkBSHw4f0W7fyXhNk=;
- b=TE+beaQCQz1FaapfPVum3t1xHPsVCLUHh2ruJxVBjTVxH9Pcsx+YPEDBWjPUxDQQyneHcOvs7
- 7a1mzWEAdE9D9oaz+FMyTw+FMusqeHv5e3ecD0madxhfN38otJ4pObv
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794578241; l=5181;
+ i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
+ bh=mJVdcGLfztszxhyNOjAwsueiEShPyyPe7iHHHENpQwA=;
+ b=HEIsvIA0Esm0+2ik8Qm601METcXhdCNXFt+KDbMwePfLctfiq14jGhxhys59AKO3tdCQhUj3A
+ iZh9S1XCLOUAyz92DKyCacXny9TV//C+Zv7esTMortYvWYYlWU6W8g1
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+With DMB nocopy (the dibs loopback device) a peer writes into the other
+end's RMB through its own attachment. smc_buf_unuse() puts that DMB back
+in the link group's pool with its token still registered, IOW the old
+peer can still send its CDCs to it. The next connection that takes the
+DMB gets those CDCs, and a peer that attaches after the other end gave
+up lands in another connection's DMB. 2/2 stops pooling DMBs on nocopy
+devices. This is the reused-DMB case that the v6 cover of the CDC
+receive ordering series [1] lists as not fixed; Sashiko flagged it on
+v5 2/2 [2].
 
-GenWQE device nodes are created with mode 0666 since commit
-5ed22cebbacc ("GenWQE: Change default access rights for device node"),
-so that normal users can use the accelerator. The ioctls that write
-card registers and GENWQE_EXECUTE_RAW_DDCB check capable(CAP_SYS_ADMIN),
-but the flash ioctls don't:
+2/2 depends on 1/2, a dibs loopback fix: when the owner unregisters a
+DMB that a peer still holds, its dmb_clientid_arr[] entry is never
+reset, and rmmod smc then warns in dibs_unregister_client() and leaves
+smc registered as a dibs client. On net that needs a link group freed
+while a peer still holds one of its DMBs; with 2/2 alone, each of the 20
+connections of the rmmod test below left an entry set.
 
-    case GENWQE_SLU_UPDATE: {
-            ...
-            if (!genwqe_is_privileged(cd))
-                    return -EPERM;
+Tested in an x86 KVM guest on a v7.4-rc2 KASAN kernel, net/smc and
+drivers/dibs of the base below as modules, with and without the series.
+The modules had test counters, and some tests set a test-only knob (a
+hold, a shorter link group free delay or an injected failure), named
+below. Each test has a control that passes on both, and leaving out any
+part of the series makes its test fail. No KASAN report or WARN with the
+series.
 
-genwqe_is_privileged() checks the privileges of the device function,
-not those of the caller. So any local user who can open the node of a
-privileged function can overwrite the card's bitstream partitions or
-VPD in flash with GENWQE_SLU_UPDATE, and read them with GENWQE_SLU_READ.
-The new contents stay in flash and can leave the card unusable after
-the next reload.
+- A DMB reused while the old peer is still attached, 8 rounds: 4 with
+  the new server end held before its attach by a knob, 4 with no knob,
+  the new client's connect() at SCHED_IDLE on a busy CPU instead. On net
+  the old peer's CDCs reach the new connection every time: it reads EOF
+  while its own client is open, and its send space goes past its buffer
+  size. With the series it gets a new DMB and token and sees none of
+  them, and with 1/2 the old peer's CDCs raise no interrupt.
+- Late attach, after an earlier connection set up the link groups: the
+  client held 8 s by a knob after the CLC accept, past the server's 6 s
+  wait for the confirm. On net it attaches to a DMB another connection
+  already took, and after close() it stays orphaned in PEERCLOSEWAIT1,
+  keeping smc in use. With the series the attach fails with -EINVAL and
+  the client falls back to TCP.
+- rmmod smc after 20 sequential connections, the 600 s link group free
+  delay cut to 3 s by a knob: with 2/2 alone it warns, with 118 entries
+  still set after the other tests of the same boot; with the series it
+  unloads clean, and smc loads and connects again. On net, after the
+  same tests, rmmod smc fails with "Module smc is in use" (the orphan
+  above). In a boot of its own, with the same knob, net warns too when a
+  link group is freed while a peer still holds one of its DMBs; 1/2
+  alone fixes that.
+- 2/2 without the conn->rmb_desc clear: KASAN slab-use-after-free in
+  smc_ism_unset_conn() when the client retries the handshake on the same
+  socket. It took two injected failures, the CLC confirm send of the
+  first attempt and the RMB allocation of the second. Clean with the
+  series.
+- 6000 connect/close cycles, more than the device's 5000 DMBs, with 120
+  peers kept open and the same 3 s delay: one DMB per connection end, no
+  fallback and no -ENOSPC.
 
-The same SLCMD_MOVE_FLASH command can also be sent with
-GENWQE_EXECUTE_DDCB. That path translates the buffer addresses but
-passes the functional unit and command from userspace on to the card.
+Cost, one run of 2000 connect/echo/close cycles per RMB size on the same
+KASAN kernel, so relative only: 3.6% fewer cycles/s with 64 KiB RMBs
+(4251 to 4098), 2.9% fewer with 1 MiB (3328 to 3232); handshake median
+107 to 113 us and 112 to 167 us; a 1 GiB stream with 64 KiB RMBs 4759 to
+4750 MB/s. Each connection end now registers its own DMB instead of
+taking a pooled one. Not measured: under memory pressure that allocation
+can fail, and the connection then gets a smaller DMB or falls back to
+TCP, as a first connection does today.
 
-Require CAP_SYS_ADMIN for both flash ioctls, and for SLCMD_MOVE_FLASH
-to the service layer through GENWQE_EXECUTE_DDCB. Other commands on
-that path, which is what applications use, are not affected.
+ISM pools its DMBs the same way and an old ISM peer also writes its CDCs
+by token, so AFAICT the reuse applies there too. This series does not
+change ISM, and I have not tested it.
 
-Found with a static analysis tool and checked by hand.
+With the series a loopback peer that is still attached is not told the
+DMB is gone, as on net; its writes land in the old DMB, which nobody
+reads and which is freed when that peer closes.
 
-Fixes: eaf4722d4645 ("GenWQE Character device and DDCB queue")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+A client that retries the handshake on the same socket keeps
+conn->rmb_desc and conn->sndbuf_desc from its first attempt; v6 2/3 of
+[1] clears them. 2/2 clears conn->rmb_desc itself and does not depend on
+that series.
+
+Test patch and logs on request.
+
+[1] https://lore.kernel.org/all/20261112-b4-disp-1c8d3a53-v6-0-36a38ae35021@proton.me/
+[2] https://lore.kernel.org/all/179241208501.3135.14193534440423847161@kernel.org/
+
 ---
-On GENWQE_EXECUTE_DDCB I only blocked SLCMD_MOVE_FLASH, the one service
-layer command in the UAPI header besides SLCMD_ECHO_SYNC.
+Bryam Vargas (2):
+      dibs: loopback: reset the client id when the owner unregisters a DMB
+      net/smc: do not reuse the DMB of a nocopy device
 
-Compile tested only, I don't have a GenWQE card.
+ drivers/dibs/dibs_loopback.c | 14 ++++++++------
+ net/smc/smc_core.c           | 25 +++++++++++++++++++++++--
+ 2 files changed, 31 insertions(+), 8 deletions(-)
 ---
- drivers/misc/genwqe/card_dev.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+base-commit: ead6fa9a0ab194f02a2f36d634b193e9c5f9a1c6
+change-id: 20261113-b4-disp-19244662-be0baeb282dd
 
-diff --git a/drivers/misc/genwqe/card_dev.c b/drivers/misc/genwqe/card_dev.c
-index 5a07e8403e97..13adcf17df7d 100644
---- a/drivers/misc/genwqe/card_dev.c
-+++ b/drivers/misc/genwqe/card_dev.c
-@@ -998,6 +998,11 @@ static int genwqe_execute_ddcb(struct genwqe_file *cfile,
- 	struct file *filp = cfile->filp;
- 	struct ddcb_requ *req = container_of(cmd, struct ddcb_requ, cmd);
- 
-+	/* Same flash access as GENWQE_SLU_UPDATE and GENWQE_SLU_READ */
-+	if (cmd->acfunc == DDCB_ACFUNC_SLU && cmd->cmd == SLCMD_MOVE_FLASH &&
-+	    !capable(CAP_SYS_ADMIN))
-+		return -EPERM;
-+
- 	rc = ddcb_cmd_fixups(cfile, req);
- 	if (rc != 0)
- 		return rc;
-@@ -1150,6 +1155,9 @@ static long genwqe_ioctl(struct file *filp, unsigned int cmd,
- 	case GENWQE_SLU_UPDATE: {
- 		struct genwqe_bitstream load;
- 
-+		if (!capable(CAP_SYS_ADMIN))
-+			return -EPERM;
-+
- 		if (!genwqe_is_privileged(cd))
- 			return -EPERM;
- 
-@@ -1171,6 +1179,9 @@ static long genwqe_ioctl(struct file *filp, unsigned int cmd,
- 	case GENWQE_SLU_READ: {
- 		struct genwqe_bitstream load;
- 
-+		if (!capable(CAP_SYS_ADMIN))
-+			return -EPERM;
-+
- 		if (!genwqe_is_privileged(cd))
- 			return -EPERM;
- 
-
-
+Best regards,
+--  
+Bryam Vargas <hexlabsecurity@proton.me>
 
