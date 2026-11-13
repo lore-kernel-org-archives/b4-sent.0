@@ -1,11 +1,10 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 16:38:50 +0000
-Subject: [PATCH 4/9] soc: rockchip: grf: Assign the StreamIDs of the RK3588
- PHP SMMU masters
+Date: Fri, 13 Nov 2026 16:38:51 +0000
+Subject: [PATCH 5/9] arm64: dts: rockchip: Add the PHP GRF clock on RK3588
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-mmu600-php-v1-4-231196049a3b@gmail.com>
+Message-Id: <20261113-mmu600-php-v1-5-231196049a3b@gmail.com>
 References: <20261113-mmu600-php-v1-0-231196049a3b@gmail.com>
 In-Reply-To: <20261113-mmu600-php-v1-0-231196049a3b@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -24,83 +23,37 @@ Cc: Andrew Lunn <andrew+netdev@lunn.ch>,
  Sebastian Reichel <sebastian.reichel@collabora.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794587927; l=2945;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794587927; l=874;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=dag37i6gDSZWIaoVMOYxt4y005R4Dlb0YjRF9trI+6U=;
- b=49vGgwLh6srLC7rCeOZiRR3OVoJMQYsRvrYhsqpaivjD3acouGe/Nn0e/f0GYUOS9aM3SRTPP
- FuVd8+F7g/nB7Fcqp21LSa4kZV0RLSB5Fg7shF028mEe1uA5poQrzgy
+ bh=kP/SM+y2vUxtKYfqhUjNYHPB7Pw9gQeqdsuzeyx9mdI=;
+ b=+IIxzB+4idJmJ+rG+mFd0cbUWQf03L8gHnWxfJK04I1uiUPqNXUDcCLSOZvJmSZzyLeYJ6//t
+ mrPxUsyexlEAi6WZD+LL42kYToUu+Enigmf7VBBOD8YlnxJZong8Ky7
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The StreamIDs of the six masters behind the RK3588 PHP SMMU come from
-PHP GRF registers that reset to 0 and are never programmed, so the SMMU
-can not tell the masters apart.
-
-Assign StreamIDs 1-6 on both AXI channels. 0 stays unused, so a master
-that loses its ID is aborted instead of using another device's tables.
+Once the PHP peripherals suspend, pclk_php_root is gated and a PHP GRF
+access hangs; the syscore resume op of the next patch hung deep suspend
+this way. Add the clock, so the syscon regmap enables it.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/soc/rockchip/grf.c | 37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/soc/rockchip/grf.c b/drivers/soc/rockchip/grf.c
-index b459607c118a..3f0f82a2119f 100644
---- a/drivers/soc/rockchip/grf.c
-+++ b/drivers/soc/rockchip/grf.c
-@@ -168,6 +168,40 @@ static const struct rockchip_grf_info rk3588_sysgrf __initconst = {
- 	.num_values = ARRAY_SIZE(rk3588_defaults),
- };
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+index d0f364547ae5..8807ce6193bf 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+@@ -619,6 +619,7 @@ usb_grf: syscon@fd5ac000 {
+ 	php_grf: syscon@fd5b0000 {
+ 		compatible = "rockchip,rk3588-php-grf", "syscon";
+ 		reg = <0x0 0xfd5b0000 0x0 0x1000>;
++		clocks = <&cru PCLK_PHP_ROOT>;
+ 	};
  
-+/* PHP SMMU StreamIDs: bits 15:0, no write-enable mask */
-+#define RK3588_PHP_GRF_GMAC0_SID_AW	0x0074
-+#define RK3588_PHP_GRF_GMAC1_SID_AW	0x007c
-+#define RK3588_PHP_GRF_SATA0_SID_AW	0x0084
-+#define RK3588_PHP_GRF_SATA1_SID_AW	0x008c
-+#define RK3588_PHP_GRF_SATA2_SID_AW	0x0094
-+#define RK3588_PHP_GRF_GMAC0_SID_AR	0x009c
-+#define RK3588_PHP_GRF_GMAC1_SID_AR	0x00a4
-+#define RK3588_PHP_GRF_SATA0_SID_AR	0x00ac
-+#define RK3588_PHP_GRF_SATA1_SID_AR	0x00b4
-+#define RK3588_PHP_GRF_SATA2_SID_AR	0x00bc
-+#define RK3588_PHP_GRF_USB3OTG2_SID_AR	0x00c4
-+#define RK3588_PHP_GRF_USB3OTG2_SID_AW	0x00cc
-+
-+static const struct rockchip_grf_value rk3588_defaults_php_grf[] __initconst = {
-+	{ "gmac0 write streamid", RK3588_PHP_GRF_GMAC0_SID_AW, 1 },
-+	{ "gmac0 read streamid", RK3588_PHP_GRF_GMAC0_SID_AR, 1 },
-+	{ "gmac1 write streamid", RK3588_PHP_GRF_GMAC1_SID_AW, 2 },
-+	{ "gmac1 read streamid", RK3588_PHP_GRF_GMAC1_SID_AR, 2 },
-+	{ "sata0 write streamid", RK3588_PHP_GRF_SATA0_SID_AW, 3 },
-+	{ "sata0 read streamid", RK3588_PHP_GRF_SATA0_SID_AR, 3 },
-+	{ "sata1 write streamid", RK3588_PHP_GRF_SATA1_SID_AW, 4 },
-+	{ "sata1 read streamid", RK3588_PHP_GRF_SATA1_SID_AR, 4 },
-+	{ "sata2 write streamid", RK3588_PHP_GRF_SATA2_SID_AW, 5 },
-+	{ "sata2 read streamid", RK3588_PHP_GRF_SATA2_SID_AR, 5 },
-+	{ "usb3otg2 write streamid", RK3588_PHP_GRF_USB3OTG2_SID_AW, 6 },
-+	{ "usb3otg2 read streamid", RK3588_PHP_GRF_USB3OTG2_SID_AR, 6 },
-+};
-+
-+static const struct rockchip_grf_info rk3588_phpgrf __initconst = {
-+	.values = rk3588_defaults_php_grf,
-+	.num_values = ARRAY_SIZE(rk3588_defaults_php_grf),
-+};
-+
- static const struct of_device_id rockchip_grf_dt_match[] __initconst = {
- 	{
- 		.compatible = "rockchip,rk3036-grf",
-@@ -202,6 +236,9 @@ static const struct of_device_id rockchip_grf_dt_match[] __initconst = {
- 	}, {
- 		.compatible = "rockchip,rk3576-ioc-grf",
- 		.data = (void *)&rk3576_iocgrf,
-+	}, {
-+		.compatible = "rockchip,rk3588-php-grf",
-+		.data = (void *)&rk3588_phpgrf,
- 	}, {
- 		.compatible = "rockchip,rk3588-sys-grf",
- 		.data = (void *)&rk3588_sysgrf,
+ 	csidphy0_grf: syscon@fd5b4000 {
 
 -- 
 2.55.0
