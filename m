@@ -1,11 +1,11 @@
 From: Hugo Sales <hugo@hsal.es>
-Date: Fri, 13 Nov 2026 19:40:39 +0000
-Subject: [PATCH v2 2/3] drm/amd/display: Leave self-refresh before an ABM
- level update
+Date: Fri, 13 Nov 2026 19:40:40 +0000
+Subject: [PATCH v2 3/3] drm/amd/display: Send a changed ABM level once per
+ commit
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-amdgpu-psr-abm-update-next-v2-2-27ce790856ea@hsal.es>
+Message-Id: <20261113-amdgpu-psr-abm-update-next-v2-3-27ce790856ea@hsal.es>
 References: <20261113-amdgpu-psr-abm-update-next-v2-0-27ce790856ea@hsal.es>
 In-Reply-To: <20261113-amdgpu-psr-abm-update-next-v2-0-27ce790856ea@hsal.es>
 To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
@@ -19,186 +19,103 @@ Cc: Roman Li <Roman.Li@amd.com>,
  dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Hugo Sales <hugo@hsal.es>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7318; i=hugo@hsal.es;
- h=from:subject:message-id; bh=aPK+/O58ErSzPhBOIOuBjn+oOrhfRqck5lqxBkYi52s=;
- b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsr6nb2N8qsSrJa2eI6bcF5rD5Xf6hqKc4wzmk1wLq
- 6UOl9hz8naUsjCIcTHIiimy6N7wZGCZOHlmTtHzJTBzWJlAhjBwcQrARKqkGRka+xtD5rhHL3Dm
- jLLht5C7Nc8g+crSpomfZ02Krz6iPfMnw1+RV4EJ3PklVeFrmYRfy53szz1+Irfy9eqXW7P4Z07
- LO8QBAF1PRQU=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3679; i=hugo@hsal.es;
+ h=from:subject:message-id; bh=LlOJID8gdQUbNTNGo+hW6h93h+A/dK5Q46QGvGs1m3s=;
+ b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsr6nb9Nb6fzsH797mre8wZ45cQvjs9cK/roRe/7ro
+ g7+lT+fbVXrKGVhEONikBVTZNG94cnAMnHyzJyi50tg5rAygQxh4OIUgIkETWZk2HKYKTJOcuaK
+ X+/rdgaFT37WYnv3jt05SbH8XNP7F9akWzEynAx055901DCkzPahxNI/vhueVRSuX1Cyf37Ur1i
+ 5SN+pzABAtEx6
 X-Developer-Key: i=hugo@hsal.es; a=openpgp;
  fpr=193D095149CF7E8737B39064D912B0DB205A91C1
 X-Endpoint-Received: by B4 Relay for hugo@hsal.es/default with auth_id=1417
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Writing panel_power_savings while the eDP is in PSR hangs DMUB on a
-Cezanne laptop (DCN 2.1)
+When a commit changes the ABM level and also has planes on that CRTC,
+the connector update loop in amdgpu_dm_atomic_commit_tail() sends the new
+level to DC, and amdgpu_dm_commit_planes() sends it again. The panel
+leaves self-refresh for each send, so one level change takes it out of
+PSR or Replay twice
 
-An abm_level change on its own is a fast update, so the commit skips
-amdgpu_dm_commit_streams(), where amdgpu_dm_mod_power_update_streams()
-sets the events that keep the panel out of self-refresh. The ABM level
-then reaches DMUB through amdgpu_dm_commit_planes(), or through the
-connector update loop in amdgpu_dm_atomic_commit_tail(), with the panel
-still in self-refresh
+Record the CRTCs whose level the connector loop sent, and skip the second
+send for them in amdgpu_dm_commit_planes()
 
-Raise the PSR and Replay hw_programming events before both updates and
-clear them once DC has the new level. Leaving them for
-amdgpu_dm_enable_self_refresh() would keep PSR off on an idle desktop
-until an unrelated commit came along. An event that a full update, a
-modeset or a PSR SU dirty rect change set before the update stays set,
-for that code to clear
-
-Fixes: 8c322309e48e ("drm/amd/display: Enable PSR")
 Signed-off-by: Hugo Sales <hugo@hsal.es>
 ---
-v1 was tested on an ASUS ROG Flow X13 (GV301QH, Cezanne, DCN 2.1, PSR1 eDP)
-with PSR turned on through amdgpu.dcfeaturemask=0xa and "drm/amd/display:
-Don't require DMUB PSR caps before DCN 3.0" [1], which DCN 2.1 needs for
-PSR to come up at all, but, as far as I can tell, the same bug would
-manifest on other DMUB versions that use PSR and ABM
-
-On 7.3 without this patch, writing 3 to panel_power_savings while
-psr_state reads 6 makes DMUB fail within a second. The log fills with
-"DMCUB error - collecting diagnostic data" and the panel shows vertical
-lines. amdgpu doesn't attempt a GPU reset, and the errors go on until a
-reboot
-
-With the fix, I let psr_state reach 6 before each of these steps:
-
-- turn ABM on, from level 0 to 3
-- change the level, from 4 to 1
-- turn ABM off, from 1 to 0, which takes the immediate disable path
-- switch power-profiles-daemon to balanced and back to power-saver,
-  which sets a new level each time
-
-None of them logged a DMCUB error. Both kernels had [2] applied as well
-
-I tested v2 the same way. I let psr_state reach 6 before each of these
-writes: 0 to 4, 4 to 1, 1 to 4, 4 to 0, and the back-to-back writes
-1 2 3 4 and 0 3 0. None logged a DMCUB error. psr_state left 6 within
-7 ms of each write, and PSR was enabled again about 115 ms later. With
-ABM on, the panel went back into self-refresh about 18 seconds after the
-write
-
-Commit 8c322309e48e ("drm/amd/display: Enable PSR") only paused PSR for
-full updates. The power module events used here came with commit
-3c108046e1d6 ("drm/amd/display: Add power module on Linux"), so a
-backport before that needs another way to leave PSR
-
-[1] https://lore.kernel.org/r/20261029171219.2842014-1-hugo@hsal.es
-[2] https://lore.kernel.org/r/20261029165420.2255749-1-hugo@hsal.es
----
- drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c | 60 +++++++++++++++++++++++
- 1 file changed, 60 insertions(+)
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c | 23 +++++++++++++++--------
+ 1 file changed, 15 insertions(+), 8 deletions(-)
 
 diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-index dfbc384fbbdb4..262170b611502 100644
+index 262170b611502..3077744b2d2d5 100644
 --- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
 +++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-@@ -3841,6 +3841,56 @@ STATIC_IFN_KUNIT void dm_arm_vblank_event_pre_programming(struct amdgpu_crtc *ac
- }
- EXPORT_IF_KUNIT(dm_arm_vblank_event_pre_programming);
- 
-+struct dm_sr_hold {
-+	bool psr;
-+	bool replay;
-+};
-+
-+/*
-+ * DMUB can hang if an ABM level reaches it while the panel is in
-+ * self-refresh. A commit that changes only the ABM level is a fast update and
-+ * skips the hold in amdgpu_dm_mod_power_update_streams(), so hold PSR and
-+ * Replay off around the DC update. Holds that something else already set stay
-+ * as they are, for their owner to clear. dc_lock keeps the backlight path,
-+ * amdgpu_dm_mod_power_update_streams() and the self-refresh code in
-+ * amdgpu_dm_commit_planes() from changing them in between.
-+ * amdgpu_dm_mod_power_setup_streams() sets them without dc_lock, but only for
-+ * a modeset stream, earlier in the same commit tail
-+ */
-+static struct dm_sr_hold dm_hold_self_refresh(struct amdgpu_display_manager *dm,
-+					      struct dc_stream_state *stream)
-+{
-+	struct dm_sr_hold hold;
-+
-+	lockdep_assert_held(&dm->dc_lock);
-+
-+	hold.psr = !amdgpu_dm_psr_event_is_set(dm, stream, psr_event_hw_programming);
-+	hold.replay = !amdgpu_dm_replay_event_is_set(dm, stream, replay_event_hw_programming);
-+
-+	if (hold.psr)
-+		amdgpu_dm_psr_set_event(dm, stream, true, psr_event_hw_programming, true);
-+	if (hold.replay)
-+		amdgpu_dm_replay_set_event(dm, stream, true, replay_event_hw_programming, true);
-+
-+	return hold;
-+}
-+
-+/*
-+ * Nothing else may commit on an idle desktop, so drop the hold right after the
-+ * update rather than leaving it to amdgpu_dm_enable_self_refresh()
-+ */
-+static void dm_release_self_refresh(struct amdgpu_display_manager *dm,
-+				    struct dc_stream_state *stream,
-+				    struct dm_sr_hold hold)
-+{
-+	lockdep_assert_held(&dm->dc_lock);
-+
-+	if (hold.psr)
-+		amdgpu_dm_psr_set_event(dm, stream, false, psr_event_hw_programming, false);
-+	if (hold.replay)
-+		amdgpu_dm_replay_set_event(dm, stream, false, replay_event_hw_programming, false);
-+}
-+
- static void amdgpu_dm_commit_planes(struct drm_atomic_commit *state,
+@@ -3895,7 +3895,8 @@ static void amdgpu_dm_commit_planes(struct drm_atomic_commit *state,
  				    struct drm_device *dev,
  				    struct amdgpu_display_manager *dm,
-@@ -3868,6 +3918,7 @@ static void amdgpu_dm_commit_planes(struct drm_atomic_commit *state,
- 	bool dirty_rects_changed = false;
- 	bool updated_planes_and_streams = false;
- 	bool stream_update_needed = false;
-+	struct dm_sr_hold sr_hold = {};
- 	struct {
- 		struct dc_surface_update surface_updates[MAX_SURFACES];
- 		struct dc_plane_info plane_infos[MAX_SURFACES];
-@@ -4224,11 +4275,16 @@ static void amdgpu_dm_commit_planes(struct drm_atomic_commit *state,
- 			amdgpu_dm_replay_set_event(dm, acrtc_state->stream, true,
- 				replay_event_immediate_flip, true);
+ 				    struct drm_crtc *pcrtc,
+-				    bool wait_for_vblank)
++				    bool wait_for_vblank,
++				    bool abm_sent)
+ {
+ 	u32 i;
+ 	u64 timestamp_ns = ktime_get_ns();
+@@ -4245,7 +4246,8 @@ static void amdgpu_dm_commit_planes(struct drm_atomic_commit *state,
  		}
-+		if (bundle->stream_update.abm_level) {
-+			dc_exit_ips_for_hw_access(dm->dc);
-+			sr_hold = dm_hold_self_refresh(dm, acrtc_state->stream);
-+		}
- 		update_planes_and_stream_adapter(dm->dc,
- 					 planes_count,
- 					 acrtc_state->stream,
- 					 stream_update_needed ? &bundle->stream_update : NULL,
- 					 bundle->surface_updates);
-+		dm_release_self_refresh(dm, acrtc_state->stream, sr_hold);
- 		updated_planes_and_streams = true;
  
- 		/**
-@@ -5198,6 +5254,7 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_commit *state)
- 		struct dc_info_packet hdr_packet;
+ 		acrtc_state->stream->abm_level = acrtc_state->abm_level;
+-		if (acrtc_state->abm_level != dm_old_crtc_state->abm_level) {
++		/* The connector loop in amdgpu_dm_atomic_commit_tail() may have sent it */
++		if (!abm_sent && acrtc_state->abm_level != dm_old_crtc_state->abm_level) {
+ 			bundle->stream_update.abm_level = &acrtc_state->abm_level;
+ 			stream_update_needed = true;
+ 		}
+@@ -5230,6 +5232,7 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_commit *state)
+ 	struct drm_connector_state *old_con_state = NULL, *new_con_state = NULL;
+ 	struct dm_crtc_state *dm_old_crtc_state, *dm_new_crtc_state;
+ 	int crtc_disable_count = 0;
++	u32 abm_sent = 0;
+ 
+ 	trace_amdgpu_dm_atomic_commit_tail_begin(state);
+ 
+@@ -5255,6 +5258,7 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_commit *state)
  		struct dc_stream_status *status = NULL;
  		bool abm_changed, hdr_changed, scaling_changed, output_color_space_changed = false;
-+		struct dm_sr_hold sr_hold = {};
+ 		struct dm_sr_hold sr_hold = {};
++		bool updated;
  
  		memset(&stream_update, 0, sizeof(stream_update));
  
-@@ -5280,11 +5337,14 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_commit *state)
- 
- 		mutex_lock(&dm->dc_lock);
+@@ -5339,14 +5343,16 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_commit *state)
  		dc_exit_ips_for_hw_access(dm->dc);
-+		if (abm_changed)
-+			sr_hold = dm_hold_self_refresh(dm, dm_new_crtc_state->stream);
- 		dc_update_planes_and_stream(dm->dc,
- 					    dummy_updates,
- 					    status->plane_count,
- 					    dm_new_crtc_state->stream,
- 					    &stream_update);
-+		dm_release_self_refresh(dm, dm_new_crtc_state->stream, sr_hold);
+ 		if (abm_changed)
+ 			sr_hold = dm_hold_self_refresh(dm, dm_new_crtc_state->stream);
+-		dc_update_planes_and_stream(dm->dc,
+-					    dummy_updates,
+-					    status->plane_count,
+-					    dm_new_crtc_state->stream,
+-					    &stream_update);
++		updated = dc_update_planes_and_stream(dm->dc,
++						      dummy_updates,
++						      status->plane_count,
++						      dm_new_crtc_state->stream,
++						      &stream_update);
+ 		dm_release_self_refresh(dm, dm_new_crtc_state->stream, sr_hold);
  		mutex_unlock(&dm->dc_lock);
  		kfree(dummy_updates);
++		if (abm_changed && updated)
++			abm_sent |= drm_crtc_mask(&acrtc->base);
  
+ 		drm_connector_update_privacy_screen(new_con_state);
+ 	}
+@@ -5440,7 +5446,8 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_commit *state)
+ 		dm_new_crtc_state = to_dm_crtc_state(new_crtc_state);
+ 
+ 		if (dm_new_crtc_state->stream)
+-			amdgpu_dm_commit_planes(state, dev, dm, crtc, wait_for_vblank);
++			amdgpu_dm_commit_planes(state, dev, dm, crtc, wait_for_vblank,
++						abm_sent & drm_crtc_mask(crtc));
+ 	}
+ 
+ 	/* Enable writeback */
 
 -- 
 2.56.0
