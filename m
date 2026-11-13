@@ -1,11 +1,11 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 12 Nov 2026 19:32:48 -0500
-Subject: [PATCH net v6 1/3] net/smc: order the CDC receive path against RMB
- publication
+Date: Thu, 12 Nov 2026 19:32:49 -0500
+Subject: [PATCH net v6 2/3] net/smc: clear the buffer pointers before
+ registering a connection
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-b4-disp-1c8d3a53-v6-1-36a38ae35021@proton.me>
+Message-Id: <20261112-b4-disp-1c8d3a53-v6-2-36a38ae35021@proton.me>
 References: <20261112-b4-disp-1c8d3a53-v6-0-36a38ae35021@proton.me>
 In-Reply-To: <20261112-b4-disp-1c8d3a53-v6-0-36a38ae35021@proton.me>
 To: Mahanta Jambigi <mjambigi@linux.ibm.com>, 
@@ -20,80 +20,105 @@ Cc: Hans Wippel <hwippel@linux.ibm.com>, linux-kernel@vger.kernel.org,
  Wen Gu <guwen@linux.alibaba.com>, linux-s390@vger.kernel.org, 
  Simon Horman <horms@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794529967; l=2887;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794529967; l=4207;
  i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=2rv6B0D/pQPP0IMQU/D54a72ysNQDMpYUG+Lt+SivGA=;
- b=sgG6hWAl3Na+CyT1IqdbjAOCV7bhuNGI1OMumuUojRDCCkeZ5m7U2H/FgLCvK1TGhYUIoF/PX
- CrLBKzcQ7rnAOs6QSYNwpp/Xnz5xDdHY7tKHkBFGTKGOJZNuLS03WFV
+ bh=bG+MdtaWg2DbS51xfN4NR/c6TdcQBHG7qU+o+c2GvIg=;
+ b=JFCZVpCVOyTE6TV+qBWePlJO5xSk/u6QKeZzP2ZohBWsv7te65w/rzwDU2V1sTeP/wi7khLjN
+ xzZb1KEuz5kAmS6MqbAL2L0qasxJONmalyy7B8fD87UL4Vi7KZRDYNY
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smc_conn_create() adds an SMC-R connection to the token tree before
-smc_buf_create() sets conn->rmb_desc. Tokens come from one global
-counter, so a peer in the link group can predict the next one. A CDC
-with that token, arriving in the window, makes
-smc_cdc_msg_recv_action() dereference a NULL rmb_desc in softirq.
+smc_conn_abort() releases the buffers of a failed handshake attempt
+and leaves conn->rmb_desc and conn->sndbuf_desc pointing at them.
+When the SMC-Rv2 attempt of the listen worker fails in
+smc_listen_rdma_reg(), which a peer forces with a negative
+CONFIRM_RKEY response, the SMC-Rv1 retry registers the connection
+under a new token with the stale pointers; a client can do the same
+with further connect() calls after a failed non-blocking one. A CDC
+with that token then passes the rmb_desc test in
+smc_cdc_rx_handler() and is handled on a buffer the connection no
+longer owns, and a retry that cannot create its buffers releases the
+stale ones a second time.
 
-Set rmb_desc with a release store after the receive fields that go
-with it, and drop a CDC in smc_cdc_rx_handler() while rmb_desc is
-unset. A conforming peer learns the token only from the CLC accept or
-confirm, sent after smc_buf_create(), so nothing it sends is dropped.
-The SMC-D receive tasklet needs no check: smc_ism_set_conn() publishes
-the connection under smcd->lock, which smcd_handle_irq() also takes.
+Clear both pointers in smc_conn_create(), which every registration
+goes through, under the socket spinlock, and let
+smc_cdc_msg_recv_action(), which runs under it, return while
+rmb_desc is unset: a handler that found the connection before the
+clear then does not dereference NULL.
 
-Fixes: 69cb7dc0218b ("net/smc: add common buffer size in send and receive buffer descriptors")
-Closes: https://sashiko.dev/#/patchset/20261008-b4-disp-f7cd3d96-v6-0-fba616c0920c@proton.me?part=1
+Fixes: 35112271672a ("net/smc: Reset connection when trying to use SMCRv2 fails.")
+Reported-by: Sashiko <sashiko-bot@kernel.org>
+Closes: https://lore.kernel.org/all/179241208347.3135.18021879529736748765@kernel.org/
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-The Closes tag is Sashiko's report of this window, in its review of
-v6 of the cursor series. v9 of that series is at
-https://lore.kernel.org/all/20261112-b4-disp-0287c16e-v9-0-e5e8fa688177@proton.me/
-and its 2/6 conflicts with this patch in __smc_buf_create(): keep
-its rmb_len store at the top of the is_rmb block, before the release
-store. The tree is the same in either order.
+The Fixes tag names the listen retry, which a remote peer reaches.
+The connect() re-entry needs the local caller and is older (by
+inspection); I have not dated it.
+
+The clear takes the slock with spin_lock_bh(): smc_conn_create() runs in
+process context with the socket owned, and the CDC handlers take the
+same lock with bh_lock_sock(). Lockdep is silent on it, and reports an
+inconsistent lock state with spin_lock() there.
+
+After the second test the function loads rmb_desc plainly: the clear
+needs the lock it runs under, so a pointer seen set stays set. The
+SMC-D tasklet loads rmb_desc before that lock and the clear cannot
+meet it: the connection is unpublished from the device, and its
+tasklet killed or the connection marked killed, before a retry
+reaches smc_conn_create().
 ---
- net/smc/smc_cdc.c  | 5 ++++-
- net/smc/smc_core.c | 3 ++-
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ net/smc/smc_cdc.c  | 7 ++++++-
+ net/smc/smc_core.c | 9 +++++++++
+ 2 files changed, 15 insertions(+), 1 deletion(-)
 
 diff --git a/net/smc/smc_cdc.c b/net/smc/smc_cdc.c
-index 32d6d03df321..ee5ba6c7a5b4 100644
+index ee5ba6c7a5b4..b3bcc206efe3 100644
 --- a/net/smc/smc_cdc.c
 +++ b/net/smc/smc_cdc.c
-@@ -483,7 +483,10 @@ static void smc_cdc_rx_handler(struct ib_wc *wc, void *buf)
- 	lgr = smc_get_lgr(link);
+@@ -334,6 +334,10 @@ static void smc_cdc_msg_recv_action(struct smc_sock *smc,
+ 	struct smc_connection *conn = &smc->conn;
+ 	int diff_cons, diff_prod, diff_tx;
+ 
++	/* smc_conn_create() can have cleared rmb_desc */
++	if (!smp_load_acquire(&conn->rmb_desc))
++		return;
++
+ 	smc_curs_copy(&prod_old, &conn->local_rx_ctrl.prod, conn);
+ 	smc_curs_copy(&cons_old, &conn->local_rx_ctrl.cons, conn);
+ 	smc_cdc_msg_to_host(&conn->local_rx_ctrl, cdc, conn);
+@@ -484,7 +488,8 @@ static void smc_cdc_rx_handler(struct ib_wc *wc, void *buf)
  	read_lock_bh(&lgr->conns_lock);
  	conn = smc_lgr_find_conn(ntohl(cdc->token), lgr);
--	if (!conn || conn->out_of_sync) {
-+	/* The connection is in the token tree before __smc_buf_create()
-+	 * sets its RMB: drop a CDC that comes earlier.
-+	 */
-+	if (!conn || conn->out_of_sync || !smp_load_acquire(&conn->rmb_desc)) {
+ 	/* The connection is in the token tree before __smc_buf_create()
+-	 * sets its RMB: drop a CDC that comes earlier.
++	 * sets its RMB: drop a CDC that comes earlier. rmb_desc is cleared
++	 * under the socket spinlock; smc_cdc_msg_recv_action() tests it there.
+ 	 */
+ 	if (!conn || conn->out_of_sync || !smp_load_acquire(&conn->rmb_desc)) {
  		read_unlock_bh(&lgr->conns_lock);
- 		return;
- 	}
 diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
-index a3164201c142..02269cede641 100644
+index 02269cede641..9ef9019bc497 100644
 --- a/net/smc/smc_core.c
 +++ b/net/smc/smc_core.c
-@@ -2544,12 +2544,13 @@ static int __smc_buf_create(struct smc_sock *smc, bool is_smcd, bool is_rmb)
- 	}
+@@ -2024,6 +2024,15 @@ int smc_conn_create(struct smc_sock *smc, struct smc_init_info *ini)
+ 	spinlock_t *lgr_lock;
+ 	int rc = 0;
  
- 	if (is_rmb) {
--		conn->rmb_desc = buf_desc;
- 		conn->rmbe_size_comp = bufsize_comp;
- 		smc->sk.sk_rcvbuf = bufsize * 2;
- 		atomic_set(&conn->bytes_to_rcv, 0);
- 		conn->rmbe_update_limit =
- 			smc_rmb_wnd_update_limit(buf_desc->len);
-+		/* Set last; smc_cdc_rx_handler() tests it with an acquire */
-+		smp_store_release(&conn->rmb_desc, buf_desc);
- 		if (is_smcd)
- 			smc_ism_set_conn(conn); /* map RMB/smcd_dev to conn */
- 	} else {
++	/* A retried handshake comes back with the buffer pointers of the
++	 * failed attempt still set: clear them before the connection is
++	 * registered. smc_cdc_msg_recv_action() tests rmb_desc under this lock.
++	 */
++	spin_lock_bh(&smc->sk.sk_lock.slock);
++	WRITE_ONCE(conn->rmb_desc, NULL);
++	WRITE_ONCE(conn->sndbuf_desc, NULL);
++	spin_unlock_bh(&smc->sk.sk_lock.slock);
++
+ 	lgr_list = ini->is_smcd ? &ini->ism_dev[ini->ism_selected]->lgr_list :
+ 				  &smc_lgr_list.list;
+ 	lgr_lock = ini->is_smcd ? &ini->ism_dev[ini->ism_selected]->lgr_lock :
 
 -- 
 2.56.0
