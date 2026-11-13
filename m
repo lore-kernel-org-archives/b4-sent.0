@@ -1,99 +1,99 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 17:13:40 +0000
-Subject: [PATCH net] net: stmmac: drop the rest of the frame when
- napi_build_skb() fails
+From: Ziqiang Xia <xiazq123666@gmail.com>
+Subject: [PATCH RFC 0/2] platform/x86: Add Emdoor Intel EWMI platform
+ driver
+Date: Fri, 13 Nov 2026 10:01:29 -0800
+Message-Id: <20261113-emdoor-intel-wmi-rfc-v1-0-d77ecf23693b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-stmmac-rx-skb-fail-v1-1-fcaae89f2d2c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6W8swtJ1Fj8FfGQxK2u2ijZKIXSf
- zfqcQZmZigXYcW+m1H4LSqP3MCuOqRLyGcmOTWGM85ba9ekdRxDojKR3iINQe4Uo/d978zG7LZ
- o4bPwINNvekDmiuNf6iteOdXvDsvyAb0bGMd7AAAA
-X-Change-ID: 20261113-stmmac-rx-skb-fail-bb6688204075
-To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Jose Abreu <Jose.Abreu@synopsys.com>
-Cc: Lorenzo Bianconi <lorenzo@kernel.org>, netdev@vger.kernel.org, 
- linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Lorenzo Bianconi <lorenzo.bianconi@oss.qualcomm.com>, 
- stable@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794590019; l=2559;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=wIb/6vSfLxz3UqBxBdPnsbYyCrSq+sayPpXGXdTp9/o=;
- b=CPrFrxa72Bl0nYXh6+1shMuAOTknAtY7Kk/bwk/FpvzkYEqnDO+PX7KyvlVyN8YxhGuYk8haN
- 2e5Vh4N8kLlDX6jm3HO7+1ZH6RHs7Qnt9vzjmlksuQhH587SjVPPyvK
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywrCMBAAf6Xs2YVugi14FfwAr6UHm2zqik3Kp
+ j6g9N+NepyBmRUyq3CGQ7WC8lOypFiAdhW46yWOjOILg6lNQ0QWefIpKUpc+I6vSVCDQ0Ot3dt
+ 6sD40UNJZOcj7t+3gfDpC/5f5MdzYLd8hbNsHtGM+i30AAAA=
+X-Change-ID: 20261113-emdoor-intel-wmi-rfc-2173530b3df6
+To: Armin Wolf <W_Armin@gmx.de>, Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-hwmon@vger.kernel.org, Ziqiang Xia <xiazq123666@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794592890; l=3693;
+ i=xiazq123666@gmail.com; s=20261113; h=from:subject:message-id;
+ bh=JQbOY3rncIfzbhs1rsCFzoXeGSybYu6siuyOH4uu5Fk=;
+ b=PmOVtzXO3VOIls9JiNhmhESX3vzKn2G50R9MMhIwLxp6XiKbrbcMiMGYYUiFTYr//wMM8JNph
+ Y0NDJUd4XbICTpmjpd6ZD4YvKKPu31YWcYuhv1EDmK40YBF4LGX9Awc
+X-Developer-Key: i=xiazq123666@gmail.com; a=ed25519;
+ pk=mrJQOUoyemvqamFAwqXZF59Z8eZnI11ZI+BEtDNxq7Q=
+X-Endpoint-Received: by B4 Relay for xiazq123666@gmail.com/20261113 with auth_id=1513
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If napi_build_skb() fails on the first buffer of a frame that spans
-several descriptors, stmmac_rx() drops that buffer but goes on with the
-next descriptor of the same frame as if a new frame started there. The
-rest of the frame is then passed up the stack as a frame of its own. A
-frame spans several descriptors when it does not fit in the RX buffers
-of one descriptor.
+This RFC patch series adds initial Linux support for the Intel EWMI
+(\_SB.EWMI) WMI interface found on Emdoor-based Intel laptops, initially
+matched strictly by DMI and BIOS version to the MECHREVO Wujie 14 2026
+(WUJIE Series-Lark4-LNL, Intel Core Ultra 5 226V Lunar Lake, BIOS
+EM_LNL326_V1.0.19).
 
-Mark the frame as errored instead, so that its remaining descriptors are
-discarded like those of a frame with a receive error. The frame is
-counted once in rx_dropped and once against the NAPI budget.
+Note on naming and scope:
+- Community out-of-tree projects such as fewtarius/emdoor-wmi target AMD
+  Emdoor platforms using different WMI GUIDs (8600ACCE-...) and AMD SMU
+  ports. This Intel EWMI implementation (0B30FD67-1B62-4FCA-B10B-50DC7ADE6A39,
+  0B30FD67-1B62-4FCA-B10B-50DC7ADE6DDD, C75665A3-4382-4646-ADC8-C81AE146E455)
+  is unrelated in protocol and EC register layout, so the driver is named
+  emdoor-intel-wmi.
+- Legacy WMAA-WMCA WMI methods on this DSDT trigger AE_AML_BUFFER_LIMIT due
+  to an out-of-bounds CreateField() and are deliberately unused. The driver
+  only uses the clean WMCD, _WED(0xD0), and WMCC interfaces through modern
+  wmi_driver / wmidev_invoke_method().
 
-Fixes: ec222003bd94 ("net: stmmac: Prepare to add Split Header support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Hardware quirks handled and verified on real hardware:
+1. Shared EC5D mailbox lag and hotkey collision:
+   AML methods GWLS (0x03/01) and GFLS (0x03/03) time out after 20 ms on
+   this BIOS and return the previous mailbox byte on the call itself. After
+   invoking WMCD and waiting 100 ms, the driver reads the settled mailbox
+   register directly and retries up to 3 times if concurrent _QF6/_QF9
+   hotkey events overwrite EC5D in flight.
+2. SPFM stale-EC5F drop race:
+   AML method SPFM (0x03/0a) arms ZZTT/TIZZ before Notify(IETM, 0x88) and
+   before writing EC5F, so an EC scan during the notify can consume a stale
+   EC5F and return RTNC=0 without updating PPMD (or return RTNC=1). The
+   driver verifies 03/09 readback and reissues the absolute mode up to 3 times.
+
+Validation summary on Linux 7.3.4 (MECHREVO WUJIE Series-Lark4-LNL,
+EM_LNL326_V1.0.19):
+- 1500 readonly attribute/hwmon stress reads (battery & AC online): 0 errors
+- 20 platform_profile switches + 40 idempotent writes: 0 errors
+- Fn-lock, Win-lock, and auto_power_on write/readback cycles: pass
+- High-frequency Fn+Esc / F8 hotkey concurrency stress & s2idle: pass
+
+Specific RFC questions for reviewers:
+1. Should fn_lock, win_lock, and auto_power_on stay as WMI device sysfs
+   attributes (documented in Patch 1), or would pdx86 maintainers prefer a
+   firmware-attributes class interface or moving any of them?
+2. Event codes 0xA1 (F7 mic-mute hotkey, _QF8) and 0xA2 (Fn+R refresh rate,
+   _QF5) are conservatively mapped to KEY_PROG2 / KEY_PROG3 for now while
+   verifying whether i8042 also emits scancodes on some desktops/DEs. Is
+   KEY_MICMUTE / KEY_REFRESH_RATE_TOGGLE preferred once verified, or
+   separate input mapping?
+3. Exact DMI_BIOS_VERSION matching is used because board EC offsets (0x5d,
+   0xf5, temp_regs {0x70, 0x73, 0x72, 0x62}) are board/BIOS-specific. Is
+   this strict match appropriate for initial upstreaming?
+
+Signed-off-by: Ziqiang Xia <xiazq123666@gmail.com>
 ---
-Found while working on the sun8i EMAC jumbo frame series, where frames
-over 2032 bytes span several descriptors. Lorenzo's pending net-next
-series "net: stmmac: introduce XDP rx multi-buff support" (v10) removes
-this path; this is the fix for net and stable and will conflict with it.
+Ziqiang Xia (2):
+      Documentation: ABI: testing: Add emdoor-intel-wmi sysfs ABI
+      platform/x86: Add Emdoor Intel EWMI platform driver
 
-Tested on an Orange Pi Zero2 (dwmac-sun8i, MTU 4070), backported to
-v7.3.3 with the jumbo series and a test hook that fails
-napi_build_skb(): of 12726 multi-descriptor frames, the 1818 failed
-ones were dropped and counted in rx_dropped, no fragment reached the
-stack, and all other frames arrived intact. Without the patch the 1818
-fragments were delivered as frames.
-
-Developed with Claude (Anthropic), which wrote the fix and the commit
-message. I reviewed every change.
+ .../ABI/testing/sysfs-bus-wmi-devices-emdoor-ewmi  |  28 +
+ MAINTAINERS                                        |   7 +
+ drivers/platform/x86/Kconfig                       |  18 +
+ drivers/platform/x86/Makefile                      |   1 +
+ drivers/platform/x86/emdoor-intel-wmi.c            | 873 +++++++++++++++++++++
+ 5 files changed, 927 insertions(+)
 ---
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-index 25894771e9e9..d05c5bb8b4b9 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -6029,7 +6029,7 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit, u32 queue)
- 							 buf->page);
- 				buf->page = NULL;
- 				rx_dropped++;
--				count++;
-+				error = 1;
- 				goto drain_data;
- 			}
- 
-@@ -6065,7 +6065,7 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit, u32 queue)
- 		if (likely(status & rx_not_ls))
- 			goto read_again;
- 		if (!skb)
--			continue;
-+			goto next;
- 
- 		/* Got entire packet into SKB. Finish it. */
- 
-
----
-base-commit: ead6fa9a0ab194f02a2f36d634b193e9c5f9a1c6
-change-id: 20261113-stmmac-rx-skb-fail-bb6688204075
+base-commit: 5680519168f65666d2c03cc6ed8fe2b7052aee12
+change-id: 20261113-emdoor-intel-wmi-rfc-2173530b3df6
 
 Best regards,
 --  
-Arun Iyengar <aiyengar1990@gmail.com>
+Ziqiang Xia <xiazq123666@gmail.com>
 
