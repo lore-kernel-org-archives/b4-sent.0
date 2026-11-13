@@ -1,11 +1,10 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 16:40:40 +0000
-Subject: [PATCH v3 09/12] dt-bindings: iommu: verisilicon: Add the reset
- lines
+Date: Fri, 13 Nov 2026 16:40:41 +0000
+Subject: [PATCH v3 10/12] iommu/vsi: Deassert the reset lines on probe
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-hantro-robust-v3-9-82383c722ad2@gmail.com>
+Message-Id: <20261113-hantro-robust-v3-10-82383c722ad2@gmail.com>
 References: <20261113-hantro-robust-v3-0-82383c722ad2@gmail.com>
 In-Reply-To: <20261113-hantro-robust-v3-0-82383c722ad2@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -29,60 +28,70 @@ Cc: linux-media@vger.kernel.org, iommu@lists.linux.dev,
  Sascha Hauer <s.hauer@pengutronix.de>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794588032; l=1642;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794588032; l=1757;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=a+eZKtwV8FPJqeLafXDDZfyk/cG+VGlzjpq9Qo8/bY8=;
- b=L1wozRVp2YsBLp3pnvZOk6Asi0zgyaASac5q4LLSW86i3YR69JPYnHiVkoLFTnbNW5SGSsSLt
- 1z+C7LIT1weBo0dAv6on114npHG1f0hH7gdwj0HY9/mqbqP+VVsAHTz
+ bh=7/YPVx4qDegy0I+GiqV2r/FsoZZRHAX+0GSiqjWtgfw=;
+ b=RiRLVgOv5pP2Pg5WhcuY0uoPfjdZHU4KYIfUkYibCYOOm52LnjxGzvZnsvK/sAGVwxBHc7owp
+ 0UZfNiAFK65BlIdcxaALT7rfzaivOz8pb627vsKnG3AaDiutbEVuHuF
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3588 AV1 IOMMU is part of the AV1 block and has no reset lines
-of its own: the four AV1 resets also cover it. Its registers can't be
-accessed while they are asserted. Describe them.
+The RK3588 AV1 IOMMU shares its reset lines with the decoder, and its
+registers can't be accessed while they are asserted. It writes them on
+attach, before the decoder's probe deasserts the resets.
+
+Deassert the resets on probe. They are released exclusive controls,
+acquired only for that, so the decoder can still use them.
 
 Suggested-by: Philipp Zabel <p.zabel@pengutronix.de>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- Documentation/devicetree/bindings/iommu/verisilicon,iommu.yaml | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ drivers/iommu/vsi-iommu.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/iommu/verisilicon,iommu.yaml b/Documentation/devicetree/bindings/iommu/verisilicon,iommu.yaml
-index d3ce9e603b61..70df03102015 100644
---- a/Documentation/devicetree/bindings/iommu/verisilicon,iommu.yaml
-+++ b/Documentation/devicetree/bindings/iommu/verisilicon,iommu.yaml
-@@ -41,6 +41,13 @@ properties:
-   power-domains:
-     maxItems: 1
+diff --git a/drivers/iommu/vsi-iommu.c b/drivers/iommu/vsi-iommu.c
+index 5dac20b143a5..a3ec2fe5ecd5 100644
+--- a/drivers/iommu/vsi-iommu.c
++++ b/drivers/iommu/vsi-iommu.c
+@@ -33,6 +33,7 @@
+ #include <linux/of_platform.h>
+ #include <linux/platform_device.h>
+ #include <linux/pm_runtime.h>
++#include <linux/reset.h>
+ #include <linux/slab.h>
+ #include <linux/spinlock.h>
  
-+  resets:
-+    items:
-+      - description: AXI reset line
-+      - description: AXI bus interface unit reset line
-+      - description: APB reset line
-+      - description: APB bus interface unit reset line
+@@ -669,6 +670,7 @@ MODULE_DEVICE_TABLE(of, vsi_iommu_dt_ids);
+ static int vsi_iommu_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
++	struct reset_control *resets;
+ 	struct vsi_iommu *iommu;
+ 	int err;
+ 
+@@ -688,6 +690,20 @@ static int vsi_iommu_probe(struct platform_device *pdev)
+ 	if  (iommu->num_clocks < 0)
+ 		return iommu->num_clocks;
+ 
++	/* Shared with the decoder. */
++	resets = devm_reset_control_array_get(dev, RESET_CONTROL_OPTIONAL_EXCLUSIVE_RELEASED);
++	if (IS_ERR(resets))
++		return PTR_ERR(resets);
 +
- required:
-   - compatible
-   - reg
-@@ -55,6 +62,7 @@ examples:
-   - |
-     #include <dt-bindings/clock/rockchip,rk3588-cru.h>
-     #include <dt-bindings/interrupt-controller/arm-gic.h>
-+    #include <dt-bindings/reset/rockchip,rk3588-cru.h>
- 
-     bus {
-       #address-cells = <2>;
-@@ -67,5 +75,7 @@ examples:
-         clocks = <&cru ACLK_AV1>, <&cru PCLK_AV1>;
-         clock-names = "core", "iface";
-         #iommu-cells = <0>;
-+        resets = <&cru SRST_A_AV1>, <&cru SRST_A_AV1_BIU>,
-+                 <&cru SRST_P_AV1>, <&cru SRST_P_AV1_BIU>;
-       };
-     };
++	err = reset_control_acquire(resets);
++	if (err)
++		return err;
++
++	err = reset_control_deassert(resets);
++	reset_control_release(resets);
++	if (err)
++		return err;
++
+ 	err = clk_bulk_prepare(iommu->num_clocks, iommu->clocks);
+ 	if (err)
+ 		return err;
 
 -- 
 2.55.0
