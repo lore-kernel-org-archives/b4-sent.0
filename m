@@ -1,129 +1,116 @@
-From: Joseph Telaak <joseph@telaak.dev>
-Date: Thu, 12 Nov 2026 16:39:41 -0500
-Subject: [PATCH net-next v3 2/2] net: dsa: mxl-gsw1xx: reset the switch
- through reset-gpios
+From: Paul Sajna <sajattack@postmarketos.org>
+Subject: [PATCH v6 0/3] leds: aw2013: Add AW2027 support
+Date: Thu, 12 Nov 2026 17:01:39 -0700
+Message-Id: <20261112-aw2013-aw20xx-rename-v6-0-251eca340abc@postmarketos.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261112-mxl-gsw1xx-reset-v3-2-863e82074893@telaak.dev>
-References: <20261112-mxl-gsw1xx-reset-v3-0-863e82074893@telaak.dev>
-In-Reply-To: <20261112-mxl-gsw1xx-reset-v3-0-863e82074893@telaak.dev>
-To: Hauke Mehrtens <hauke@hauke-m.de>, Andrew Lunn <andrew@lunn.ch>, 
- Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XRTU7DMBAF4KtUXmM0M67jhhX3QCz8M2kt1KTYI
+ QRVuTtOQNAFFivrWZpvnjRXkTlFzuJhdxWJp5jj0JfQ3O2EP9n+yDKGkgUBNdCCkfadANX2zLN
+ M3Nszy9CRUl63hL4RZfSSuIvzxj49l3yKeRzSx7ZlwvX3H3BCCdK31oQOyRrAx8uQx7NNLzwO+
+ X5IR7G6E/1YCKArFhUL4cDelZ7G6IqlbiykiqXWXtZhFwJocE3F2v9aZXPF2kuUB2o0tY7Zaap
+ Y+saq9tKllyOvWZGyLdg/rOXrMIlf38qZx+/rLMsnKmKLOwQCAAA=
+X-Change-ID: 20260907-aw2013-aw20xx-rename-df233c5921c6
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Daniel Golle <daniel@makrotopia.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, netdev@vger.kernel.org, 
+ Conor Dooley <conor+dt@kernel.org>, Nikita Travkin <nikitos.tr@gmail.com>, 
+ Alexey Min <alexeymin@minlexx.ru>, David Heidelberg <david@ixit.cz>, 
+ Griffin Kroah-Hartman <griffin@kroah.com>
+Cc: Nikita Travkin <nikita@trvn.ru>, linux-leds@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joseph Telaak <joseph@telaak.dev>
+ phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ Paul Sajna <sajattack@postmarketos.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794519588; l=3553;
- i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=WZYxeaFGDWxSpN7GzuooSUNjWaVXrTqutE63YR5JtU0=;
- b=gBIElyAt9sK0h91F8d58bV1C+Ls9eNK6vVg0iJzPMMHj54lGxmP2K0mGcfX/Zf1nnV6pB0WUe
- 0Gq71vWKYwcBLZa7K2oTk8pOtDEXMLCKA2l2wfsiOy/vxKAzYZN4lai
-X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
- pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
-X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794528107; l=3313;
+ i=sajattack@postmarketos.org; s=20250413; h=from:subject:message-id;
+ bh=w8c/YpWO2vwNEW8lTX4fe+ur30ObhEM9MW5h1gJ1JSM=;
+ b=ilLA1ISkHHZZMnGz0jkPOZ1n5UTIuMq4rPE3ejPegZWtWq/iMjbSWA0NQ7VuZDo6SiiBMw85c
+ K3n+kmIMr0sDUnT2RSZad91jBzqcKQgaA1ccRoJUmGZtqe76gQIrctF
+X-Developer-Key: i=sajattack@postmarketos.org; a=ed25519;
+ pk=ZFE/UBqiz9Wr8b+zBL27opOjw5x5ket5JFqks/VQGeM=
+X-Endpoint-Received: by B4 Relay for sajattack@postmarketos.org/20250413 with auth_id=1505
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The switch keeps the configuration the bootloader left in it, and the
-driver never resets it. The MDIO core asserts and releases reset-gpios
-only for PHY devices, so a reset line described on the switch node has
-no effect either.
+Refer to PATCH 2 for a full description of the similarities and
+differences between AW2013 and AW2027.
 
-On the GL.iNet GL-SFT1200 the bootloader leaves each internal PHY of
-the GSW150 one MDIO address above its port. Port 0 then fails with
-"failed to connect to PHY: -ENODEV", and the PHY that answers at a
-port's address belongs to the neighboring port. After a hardware reset
-every PHY is back at its port's address and all ports work.
+I'm hoping the sashiko reviews about unbalanced regulators that I was
+struggling to fix are covered by
+https://lore.kernel.org/linux-leds/20261021123406.3163547-1-lee@kernel.org/
+and I can drop my failed attempts to fix them.
+Let me know if I misunderstood.
 
-Get the reset through the reset controller API and pulse it before the
-first register access. The reset core hands a reset-gpios property to
-the reset-gpio driver, so a board that wires the reset this way needs
-CONFIG_RESET_GPIO; without it the reset is skipped. The timing follows
-the vendor's driver for the GSW150: asserted for 250 ms, then 1 s before
-the switch is accessed.
+I'll do my best to address all of Sashiko's comments, but it might take
+me some time to circle back, don't bother reviewing until I've done
+this.
 
-The reset also returns the RGMII slew rates to their power-on defaults,
-so a board that uses reset-gpios sets the ones it needs in its device
-tree.
+This PATCH resulted out of discussions pertaining to
+sdm660-mainline/linux, a close-to-mainline fork for Qualcomm Snapdragon 660
+devices, specifically for the BlackBerry KEY2 Keyboard Backlight,
+in the following GitHub PR: https://github.com/sdm660-mainline/linux/pull/218
 
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+Signed-off-by: Paul Sajna <sajattack@postmarketos.org>
 ---
- drivers/net/dsa/lantiq/mxl-gsw1xx.c | 26 ++++++++++++++++++++++++++
- drivers/net/dsa/lantiq/mxl-gsw1xx.h |  4 ++++
- 2 files changed, 30 insertions(+)
+Changes in v6:
+- Fix the compile error introduced by my unchecked hasty rebase
+- Some adjustments per David Heidelberg's comments
+- Link to v5: https://patch.msgid.link/20261112-aw2013-aw20xx-rename-v5-0-b2c5e323a90a@postmarketos.org
 
-diff --git a/drivers/net/dsa/lantiq/mxl-gsw1xx.c b/drivers/net/dsa/lantiq/mxl-gsw1xx.c
-index a26f78e1a4..f69856a65b 100644
---- a/drivers/net/dsa/lantiq/mxl-gsw1xx.c
-+++ b/drivers/net/dsa/lantiq/mxl-gsw1xx.c
-@@ -18,6 +18,7 @@
- #include <linux/phy/phy-common-props.h>
- #include <linux/property.h>
- #include <linux/regmap.h>
-+#include <linux/reset.h>
- #include <linux/workqueue.h>
- #include <net/dsa.h>
- 
-@@ -719,6 +720,7 @@ static int gsw1xx_serdes_pcs_init(struct gsw1xx_priv *priv)
- static int gsw1xx_probe(struct mdio_device *mdiodev)
- {
- 	struct device *dev = &mdiodev->dev;
-+	struct reset_control *reset;
- 	struct gsw1xx_priv *priv;
- 	u32 version, val;
- 	u8 shellver;
-@@ -737,6 +739,30 @@ static int gsw1xx_probe(struct mdio_device *mdiodev)
- 	if (!priv->gswip.hw_info)
- 		return -EINVAL;
- 
-+	/* The MDIO core handles reset-gpios only for PHYs. Reset the switch
-+	 * here, so it does not run with whatever the bootloader configured.
-+	 */
-+	reset = devm_reset_control_get_optional_exclusive(dev, NULL);
-+	if (IS_ERR(reset))
-+		return dev_err_probe(dev, PTR_ERR(reset),
-+				     "failed to get reset control\n");
-+
-+	if (reset) {
-+		ret = reset_control_assert(reset);
-+		if (ret)
-+			return dev_err_probe(dev, ret,
-+					     "failed to assert reset\n");
-+
-+		fsleep(GSW1XX_RESET_ASSERT_US);
-+
-+		ret = reset_control_deassert(reset);
-+		if (ret)
-+			return dev_err_probe(dev, ret,
-+					     "failed to deassert reset\n");
-+
-+		fsleep(GSW1XX_RESET_DEASSERT_US);
-+	}
-+
- 	priv->gswip.gswip = gsw1xx_regmap_init(priv, "switch",
- 					       GSW1XX_SWITCH_BASE, 0xfff);
- 	if (IS_ERR(priv->gswip.gswip))
-diff --git a/drivers/net/dsa/lantiq/mxl-gsw1xx.h b/drivers/net/dsa/lantiq/mxl-gsw1xx.h
-index 81bc00eabb..bca8e3223c 100644
---- a/drivers/net/dsa/lantiq/mxl-gsw1xx.h
-+++ b/drivers/net/dsa/lantiq/mxl-gsw1xx.h
-@@ -19,6 +19,10 @@
- 
- #define GSW1XX_SYS_CLK_FREQ			340000000
- 
-+/* Hardware reset timing of the vendor's driver for the GSW150 */
-+#define GSW1XX_RESET_ASSERT_US			250000
-+#define GSW1XX_RESET_DEASSERT_US		1000000
-+
- /* SMDIO switch register base address */
- #define GSW1XX_SMDIO_BADR			0x1f
- #define  GSW1XX_SMDIO_BADR_UNKNOWN		-1
+Changes in v5:
+- Drop move of chip->num_leds
+- Make aw2013_microamp_to_imax more readable
+- rebase to next-20261112 for Lee's changes
+- Link to v4: https://lore.kernel.org/linux-leds/20261108-aw2013-aw20xx-rename-v4-0-826529beeb52@postmarketos.org/
 
--- 
-Git-155)
+Changes in v4:
+- Drop sashiko fixes covered by https://lore.kernel.org/linux-leds/20261021123406.3163547-1-lee@kernel.org/
+- Rename the chip id register value to reflect that it covers more chips
+  (https://www.awinic.com/en/driver/AW2027DNR/640)
+- Address preliminary review comments from Lee Jones
+- Link to v3: https://lore.kernel.org/r/20261012-aw2013-aw20xx-rename-v3-0-cab1fdd050b6@postmarketos.org
+
+Changes in v3:
+- Drop rename
+- Capitalize commit subject
+- Extra tweaks to cleanup patches (preventing more unbalanced regulator
+  stuff)
+- Whitespace fiddling
+- Link to v2: https://lore.kernel.org/r/20261005-aw2013-aw20xx-rename-v2-0-108ecbdf2775@postmarketos.org
+
+Changes in v2:
+- Reduce renames to internal driver scope, to prevent breaking compat
+- Address Sashiko Review Comments
+- Split renames into a separate commit to make the actual changes easier
+to identify
+- Change from RFC to PATCH
+- Link to v1: https://lore.kernel.org/r/20260907-aw2013-aw20xx-rename-v1-0-c9a7df12a701@postmarketos.org
+
+To: Lee Jones <lee@kernel.org>
+To: Pavel Machek <pavel@kernel.org>
+To: Griffin Kroah-Hartman <griffin@kroah.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Nikita Travkin <nikitos.tr@gmail.com>
+Cc: linux-leds@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Paul Sajna (3):
+      dt-bindings: leds: aw2013: Add awinic,aw2027 compatible
+      leds: aw2013: Add AW2027 support
+      leds: aw2013: Use dev_err_probe
+
+ .../devicetree/bindings/leds/leds-aw2013.yaml      |   6 +-
+ drivers/leds/leds-aw2013.c                         | 218 +++++++++++++++++----
+ 2 files changed, 180 insertions(+), 44 deletions(-)
+---
+base-commit: 6d582d78fad9d828e575ca0cdcff8ea47a77220b
+change-id: 20260907-aw2013-aw20xx-rename-df233c5921c6
+
+Best regards,
+--  
+Paul Sajna <sajattack@postmarketos.org>
 
