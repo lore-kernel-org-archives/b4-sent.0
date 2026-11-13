@@ -1,10 +1,11 @@
 From: Radu Sabau <radu.sabau@analog.com>
-Date: Fri, 13 Nov 2026 14:33:33 +0200
-Subject: [PATCH v6 3/8] iio: imu: adis: Add optional init callback
+Date: Fri, 13 Nov 2026 14:33:34 +0200
+Subject: [PATCH v6 4/8] dt-bindings: iio: imu: Add bindings for ADI
+ ADIS16607
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-adis16607-v6-3-3f678719942a@analog.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261113-adis16607-v6-4-3f678719942a@analog.com>
 References: <20261113-adis16607-v6-0-3f678719942a@analog.com>
 In-Reply-To: <20261113-adis16607-v6-0-3f678719942a@analog.com>
 To: Lars-Peter Clausen <lars@metafoo.de>, 
@@ -20,72 +21,159 @@ To: Lars-Peter Clausen <lars@metafoo.de>,
  Ramona Gradinariu <ramona.gradinariu@analog.com>
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, linux@analog.com, 
- Jonathan Cameron <jic23@kernel.org>
+ Jonathan Cameron <jic23@kernel.org>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794573212; l=2194;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794573212; l=4547;
  i=radu.sabau@analog.com; s=20261001; h=from:subject:message-id;
- bh=SjMU42Lj85caa9S//To07byzpthfksaMvSiYpZwwChI=;
- b=uPi7zpD5bu/rfCns9/6nz+lb9kUc+RDS6M1gbbByll04qhpAIS4TCuSeVVOgVhG8ToW54oNcm
- wX3/QSzntNZDASDTdP278py0UdhM7ku+9s9gMBnp6woao3A8Qook/GL
+ bh=dtrcj1XsEm2I9niI4lfK23LNsNQBo2BdJFRP4omBKms=;
+ b=zf8uk9ZGlBtTtamRvSMSz++PrVfQbZ8jWk+J3gI53Bd1T9mtSuGbpnKOKIfmVfhvodV6IsRZH
+ w1XUuIlvRJhDlT8E8jwM4r1yl/Fr7yKDGiFXHJ9zblYwdrcGrRTa7NJ
 X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
  pk=XOZSO/Ut8qfYw7khL8lUF65Pgl+VLihISyS+Iy9jY8c=
 X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20261001 with auth_id=1094
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an optional init callback to struct adis_data, called right
-after reset and before self-test. Not all ADIS devices need extra
-bring-up between reset and self-test (SPI mode locking, status or
-bootloader checks, pin or burst-mode configuration, etc.) - purely
-additive: defaults to NULL, no change for existing drivers.
+Add device tree bindings for the Analog Devices ADIS16607 Precision
+MEMS Inertial Measurement Unit. The ADIS16607 integrates a triaxial
+gyroscope, triaxial accelerometer, and temperature sensor, and
+communicates over SPI Half-Duplex.
 
+Two variants are supported, adis16607-2 and adis16607-3, differing
+only in gyroscope full-scale range (±450°/s and ±2000°/s
+respectively).
+
+The binding exposes optional properties for:
+  - An external clock for sync mode (falling back to the internal 8 kHz
+    clock when absent)
+  - A hardware reset GPIO (active low)
+
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Radu Sabau <radu.sabau@analog.com>
 ---
- drivers/iio/imu/adis.c       | 6 ++++++
- include/linux/iio/imu/adis.h | 7 +++++++
- 2 files changed, 13 insertions(+)
+ .../devicetree/bindings/iio/imu/adi,adis16607.yaml | 94 ++++++++++++++++++++++
+ MAINTAINERS                                        |  7 ++
+ 2 files changed, 101 insertions(+)
 
-diff --git a/drivers/iio/imu/adis.c b/drivers/iio/imu/adis.c
-index 5c3bb7259037..e2cf42b8b946 100644
---- a/drivers/iio/imu/adis.c
-+++ b/drivers/iio/imu/adis.c
-@@ -419,6 +419,12 @@ int __adis_initial_startup(struct adis *adis)
- 		msleep(timeouts->sw_reset_ms);
- 	}
- 
-+	if (adis->data->init) {
-+		ret = adis->data->init(adis);
-+		if (ret)
-+			return ret;
-+	}
+diff --git a/Documentation/devicetree/bindings/iio/imu/adi,adis16607.yaml b/Documentation/devicetree/bindings/iio/imu/adi,adis16607.yaml
+new file mode 100644
+index 000000000000..4545f942365c
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/imu/adi,adis16607.yaml
+@@ -0,0 +1,94 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/imu/adi,adis16607.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
- 	ret = adis_self_test(adis);
- 	if (ret)
- 		return ret;
-diff --git a/include/linux/iio/imu/adis.h b/include/linux/iio/imu/adis.h
-index c09b381eb619..c9016f636530 100644
---- a/include/linux/iio/imu/adis.h
-+++ b/include/linux/iio/imu/adis.h
-@@ -52,6 +52,12 @@ struct adis_timeout {
-  * @self_test_mask: Bitmask of supported self-test operations
-  * @self_test_reg: Register address to request self test command
-  * @self_test_no_autoclear: True if device's self-test needs clear of ctrl reg
-+ * @init: Optional device-specific hook called after reset,
-+ *		before self-test. Not all ADIS devices need extra bring-up
-+ *		between reset and self-test (SPI mode locking, status or
-+ *		bootloader checks, pin or burst-mode configuration, etc.) -
-+ *		only called when set. Must return 0 on success, a negative
-+ *		error code otherwise.
-  * @self_test: Optional device-specific self-test override. When set,
-  *		it is called instead of the generic mask-write/sleep/
-  *		check-status sequence. The callback owns its own pass/fail
-@@ -88,6 +94,7 @@ struct adis_data {
- 	unsigned int self_test_mask;
- 	unsigned int self_test_reg;
- 	bool self_test_no_autoclear;
-+	int (*init)(struct adis *adis);
- 	int (*self_test)(struct adis *adis);
- 	const struct adis_timeout *timeouts;
++title: Analog Devices ADIS16607 IMU
++
++maintainers:
++  - Radu Sabau <radu.sabau@analog.com>
++
++description: |
++  Analog Devices ADIS16607 Precision MEMS Inertial Measurement Unit (IMU)
++  with a triaxial gyroscope, triaxial accelerometer, and temperature sensor.
++  Uses SPI Half-Duplex communication protocol.
++
++  The device has five GPIO pins (GPIO0-GPIO4 in the datasheet), each
++  independently selectable for a single fixed function. This binding
++  exposes GPIO0's reset function as reset-gpios; GPIO2's sync function
++  is modeled via the clocks property, and GPIO4's DEV_NOK interrupt via
++  the interrupts property. GPIO3 (data-ready) is required internally
++  regardless of board wiring and isn't exposed. GPIO1 (wake) gates
++  whether the bootloader auto-loads its NVM contents after reset; it
++  defaults to enabled with a weak pull-up, which already gives normal
++  operation with no configuration needed, so it isn't exposed either.
++
++properties:
++  compatible:
++    enum:
++      - adi,adis16607-2
++      - adi,adis16607-3
++
++  reg:
++    maxItems: 1
++
++  spi-cpha: true
++
++  spi-cpol: true
++
++  spi-max-frequency:
++    maximum: 10000000
++
++  vdd-supply: true
++
++  interrupts:
++    maxItems: 1
++
++  clocks:
++    description:
++      Optional external clock for sync mode. If not provided, the internal
++      8 kHz clock is used.
++    maxItems: 1
++
++  reset-gpios:
++    description:
++      Optional GPIO for hardware reset, active low. Routes to the
++      device's GPIO0 pin, which can be independently set to the reset
++      function or left idle via an on-chip register.
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - spi-cpha
++  - spi-cpol
++  - vdd-supply
++
++allOf:
++  - $ref: /schemas/spi/spi-peripheral-props.yaml#
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++    #include <dt-bindings/gpio/gpio.h>
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        imu@0 {
++            compatible = "adi,adis16607-2";
++            reg = <0>;
++            spi-cpha;
++            spi-cpol;
++            spi-max-frequency = <10000000>;
++            vdd-supply = <&vdd>;
++            interrupts = <4 IRQ_TYPE_LEVEL_HIGH>;
++            interrupt-parent = <&gpio>;
++            clocks = <&sync_clk>;
++            reset-gpios = <&gpio 10 GPIO_ACTIVE_LOW>;
++        };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index f53047aa8d3c..d5679e8d0ffd 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -1792,6 +1792,13 @@ S:	Supported
+ W:	https://ez.analog.com/linux-software-drivers
+ F:	Documentation/devicetree/bindings/iio/imu/adi,adis16550.yaml
  
++ANALOG DEVICES INC ADIS16607 DRIVER
++M:	Radu Sabau <radu.sabau@analog.com>
++L:	linux-iio@vger.kernel.org
++S:	Supported
++W:	https://ez.analog.com/linux-software-drivers
++F:	Documentation/devicetree/bindings/iio/imu/adi,adis16607.yaml
++
+ ANALOG DEVICES INC ADL8113 DRIVER
+ M:	Antoniu Miclaus <antoniu.miclaus@analog.com>
+ L:	linux-iio@vger.kernel.org
 
 -- 
 2.43.0
