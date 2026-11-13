@@ -1,80 +1,159 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 20:06:43 +0000
-Subject: [PATCH] iommu/vsi: Don't write the enable register on suspend
+From: =?utf-8?q?Dani=C3=ABl_Trujillo?= <datrujillo@nvidia.com>
+Date: Fri, 13 Nov 2026 20:15:43 +0000
+Subject: [PATCH bpf] bpf: mask speculative out-of-bounds skb helper loads
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-vsi-iommu-disable-v1-1-94f7f44540b3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB1IUgm0VxEX6kx1SqOSUSkE7
- 260y7f4P4FyFFZ4FQki76IyTxm2LKAf22lgFMoGZ5y31j5wV0GZQ9iQRNvuy1g5JvLOkzFPyN0
- S+S2/+1k3f+vWfbhfrxEcxwll7r8XdQAAAA==
-X-Change-ID: 20261113-vsi-iommu-disable-42edd626d009
-To: Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>
-Cc: iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
- Arun Iyengar <aiyengar1990@gmail.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261113-cbpf-ind-nospec-v1-bpf-v1-1-764ac4c14573@nvidia.com>
+X-B4-Tracking: v=1; b=H4sIAO5v92oC/yWMSw7CMAwFr1K9NZZwi8rnKohF6zhgFmkUQ4VU9
+ e6ksJzRe7PAtZg6Ls2CorO5TakC7xrIY0h3JQuV0e7bnpk7kjFHshQoTZ5VaGbaTNefQzgco5y
+ GiHrORaN9fuEr6gC3v/T3+FR5bUms6xcJrs+sfwAAAA==
+X-Change-ID: 20261113-cbpf-ind-nospec-v1-bpf-369dd47fc8af
+To: Alexei Starovoitov <ast@kernel.org>, 
+ Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, 
+ John Fastabend <john.fastabend@gmail.com>, 
+ Stanislav Fomichev <sdf@fomichev.me>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: bpf@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Dani=C3=ABl_Trujillo?= <datrujillo@nvidia.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794600402; l=1969;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=uftO9/StWDRCH/AfNoCaBYaLw8jONKGe5KoaJEmiG08=;
- b=y7eNt27TUkgxu4uCnx3TKetXTmEPoFfqs/j1r46vKVfhIhhpXMPBwxTcrKJGIbkM3oUZmEAK9
- wme1g+bGihiA0Utpxf5tmDqLALSf4NhU5r0LpuEWxwWfxbhQdGaukwI
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794600943; l=4789;
+ i=datrujillo@nvidia.com; s=20261008; h=from:subject:message-id;
+ bh=IrkM3A5rzY7Lrf7aX7/eWswOO8MwkLehIVbqhgYc0eI=;
+ b=yv1ifv5IFVTISmKtkoz2U0m3t/XpoQQNbWEsj72vF7o4NyVJgZqZGb9+Jk1Dx1T8OPQ5NulY8
+ IoTM7o5LAd7DiMUQTNIeNKu5gXHCV6pYBrPOvcO/d26dnI5SmenVi9K
+X-Developer-Key: i=datrujillo@nvidia.com; a=ed25519;
+ pk=AP24zUwENFy2geglpKJAA8oaT41tkteCL9hTWGd88rs=
+X-Endpoint-Received: by B4 Relay for datrujillo@nvidia.com/20261008 with auth_id=1128
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Benjamin Gaignard pointed out that, per the IOMMU documentation, the
-IOMMU can't be disabled once enabled. Drop the write on suspend:
-resume reprograms the IOMMU anyway.
+The fast paths in bpf_skb_load_helper_{8,16,32}() check whether the
+requested bytes fit before loading from data + offset. For indirect loads,
+packet data can determine the offset. A mispredicted check can cause a
+transient out-of-bounds load, as Jin et al. independently demonstrated
+for bpf_skb_load_helper_32() in BeeBox (USENIX Security 2024).
 
-Suggested-by: Benjamin Gaignard <benjamin.gaignard@collabora.com>
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+A classic BPF filter can shift the loaded value and use it as another
+indirect load’s offset (BPF_LSH, BPF_TAX, then BPF_IND),
+creating a data-dependent cache footprint.
+
+Leakage was demonstrated with instrumentation that delays branch
+resolution with a CLFLUSH before the mispredicted branch and makes the
+leaked location deterministic for reproducible measurement. In that
+setup, an unprivileged process that attached a classic BPF socket filter
+was able to recover kernel values from userspace using Prime+Probe. A
+real-world attacker would likely need to delay branch resolution, which
+was not demonstrated end-to-end without the added CLFLUSH.
+
+Mask the load address when the converted offset falls outside the
+permitted range. This removed the leakage in the described setup.
+Derive the lower bound from the network and MAC header
+positions. An out-of-bounds transient offset dereferences NULL instead
+of a potential secret.
+
+Masking increased the time for a filter with
+64 indirect byte loads by roughly 36% in a direct in-kernel test
+(280% with LFENCE). In a loopback UDP test with the same filter, the
+overhead was roughly 6% (21% with LFENCE).
+
+Fixes: e0cea7ce988c ("bpf: implement ld_abs/ld_ind in native bpf")
+Signed-off-by: Daniël Trujillo <datrujillo@nvidia.com>
 ---
-Benjamin suggested this in the hantro-robust review:
-https://lore.kernel.org/r/f212840b-92fd-4d97-a6a7-2768a55483f7@collabora.com
-
-Identity attach keeps the write. On RK3588 it does clear the enable
-bit (AHB_CONTROL reads 0x1 before, 0x0 after), and without it the
-IOMMU would keep using the old domain's page table. Benjamin, should
-that one go too?
-
-Tested on RK3588S (Orange Pi 5), v7.3-based kernel with [1] and
-hantro-robust v3 [2]: AV1 fluster unchanged (203/242), 20 AV1 decoder
-unbind/bind cycles, 3 s2idle cycles. The IOMMU runtime suspended
-after each step; no SError or IOMMU fault.
-Not tested: identity domains, suspend to RAM.
-No conflict with [1] or with patch 10 of [2].
-
-Developed with Claude (Anthropic), which wrote the code and the commit
-message. I reviewed it.
-
-[1] https://lore.kernel.org/r/20261113-vsi-iommu-pm-ref-v1-0-fd917eebdf18@gmail.com
-[2] https://lore.kernel.org/r/20261113-hantro-robust-v3-0-82383c722ad2@gmail.com
+Requesting fix for stable.
 ---
- drivers/iommu/vsi-iommu.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/core/filter.c | 36 +++++++++++++++++++++++++++++++++---
+ 1 file changed, 33 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/iommu/vsi-iommu.c b/drivers/iommu/vsi-iommu.c
-index 5dac20b143a5..bd984060253b 100644
---- a/drivers/iommu/vsi-iommu.c
-+++ b/drivers/iommu/vsi-iommu.c
-@@ -740,7 +740,7 @@ static int __maybe_unused vsi_iommu_suspend(struct device *dev)
+diff --git a/net/core/filter.c b/net/core/filter.c
+index 1a60a2a70e2d..c50e94df79b3 100644
+--- a/net/core/filter.c
++++ b/net/core/filter.c
+@@ -28,6 +28,7 @@
+ #include <linux/in.h>
+ #include <linux/inet.h>
+ #include <linux/netdevice.h>
++#include <linux/nospec.h>
+ #include <linux/if_packet.h>
+ #include <linux/if_arp.h>
+ #include <linux/gfp.h>
+@@ -240,6 +241,32 @@ static int bpf_skb_load_helper_convert_offset(const struct sk_buff *skb, int off
+ 	return INT_MIN;
+ }
+ 
++static __always_inline const void *
++bpf_skb_load_nospec(const struct sk_buff *skb, const void *data,
++		    int headlen, int offset, int len)
++{
++	/* An unset mac_header is maximal and cannot lower the bound. */
++	int header = min(skb->network_header, skb->mac_header);
++	int lower = min(0, header - (int)skb_headroom(skb));
++	unsigned long index, size, mask;
++
++	/* Normalize [lower, headlen) to a zero-based range. */
++	index = (unsigned long)(long)offset - (unsigned long)(long)lower;
++	size = (unsigned long)(long)headlen - (unsigned long)(long)lower;
++
++	OPTIMIZER_HIDE_VAR(index);
++	OPTIMIZER_HIDE_VAR(size);
++
++	/* Check the start and the number of bytes remaining. */
++	mask = array_index_mask_nospec(index, size);
++	/* Each caller passes a constant width, so inlining eliminates this branch. */
++	if (len > 1)
++		mask &= array_index_mask_nospec(len - 1, size - index);
++
++	/* Out-of-bounds transient offsets select NULL as the load address. */
++	return (const void *)(((unsigned long)data + (long)offset) & mask);
++}
++
+ BPF_CALL_4(bpf_skb_load_helper_8, const struct sk_buff *, skb, const void *,
+ 	   data, int, headlen, int, offset)
  {
- 	struct vsi_iommu *iommu = dev_get_drvdata(dev);
+@@ -251,7 +278,8 @@ BPF_CALL_4(bpf_skb_load_helper_8, const struct sk_buff *, skb, const void *,
+ 		return -EFAULT;
  
--	vsi_iommu_disable(iommu);
-+	iommu->enable = false;
+ 	if (headlen - offset >= len)
+-		return *(u8 *)(data + offset);
++		return *(const u8 *)bpf_skb_load_nospec(skb, data, headlen,
++							  offset, len);
+ 	if (!skb_copy_bits(skb, offset, &tmp, sizeof(tmp)))
+ 		return tmp;
+ 	else
+@@ -276,7 +304,8 @@ BPF_CALL_4(bpf_skb_load_helper_16, const struct sk_buff *, skb, const void *,
+ 		return -EFAULT;
  
- 	clk_bulk_disable(iommu->num_clocks, iommu->clocks);
+ 	if (headlen - offset >= len)
+-		return get_unaligned_be16(data + offset);
++		return get_unaligned_be16(bpf_skb_load_nospec(skb, data,
++							 headlen, offset, len));
+ 	if (!skb_copy_bits(skb, offset, &tmp, sizeof(tmp)))
+ 		return be16_to_cpu(tmp);
+ 	else
+@@ -301,7 +330,8 @@ BPF_CALL_4(bpf_skb_load_helper_32, const struct sk_buff *, skb, const void *,
+ 		return -EFAULT;
  
+ 	if (headlen - offset >= len)
+-		return get_unaligned_be32(data + offset);
++		return get_unaligned_be32(bpf_skb_load_nospec(skb, data,
++							 headlen, offset, len));
+ 	if (!skb_copy_bits(skb, offset, &tmp, sizeof(tmp)))
+ 		return be32_to_cpu(tmp);
+ 	else
 
 ---
-base-commit: 2cf4be57b301ed2d7af82e70cff5dfd96894d8de
-change-id: 20261113-vsi-iommu-disable-42edd626d009
+base-commit: 7f1e33230b7c7a55318765862b255b41e5c97cfb
+change-id: 20261113-cbpf-ind-nospec-v1-bpf-369dd47fc8af
 
 Best regards,
 --  
-Arun Iyengar <aiyengar1990@gmail.com>
+Daniël Trujillo <datrujillo@nvidia.com>
 
