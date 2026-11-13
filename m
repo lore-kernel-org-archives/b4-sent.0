@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 09:02:59 +0000
-Subject: [PATCH v3 07/14] drm/panfrost: Don't WARN for a heap folio a
- neighbouring chunk filled
+Date: Fri, 13 Nov 2026 09:03:00 +0000
+Subject: [PATCH v3 08/14] drm/panfrost: Don't signal a job cancelled from
+ _NEXT at a reset as done
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-panfrost-long-jobs-v3-7-80ae78d38f6e@gmail.com>
+Message-Id: <20261113-panfrost-long-jobs-v3-8-80ae78d38f6e@gmail.com>
 References: <20261113-panfrost-long-jobs-v3-0-80ae78d38f6e@gmail.com>
 In-Reply-To: <20261113-panfrost-long-jobs-v3-0-80ae78d38f6e@gmail.com>
 To: Boris Brezillon <boris.brezillon@collabora.com>, 
@@ -17,60 +17,90 @@ To: Boris Brezillon <boris.brezillon@collabora.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794560572; l=2082;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794560572; l=3231;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=XXpcQcwG3g1fcEh8QcoBhKkfE7vf6D6K3x6svd1LylY=;
- b=h24WMmGbJQWEvkd4lNCwZUt2t6Na3VbsRTXSdti7GXlmt9LZFYiPro+0t5wBxGGJS1bEAyRs2
- MHqcW4O03xpCBr+GDDSAkt5QptP5kpvhzniqn1ZTH4Iq840G9/abmgn
+ bh=4JeGZ1WkTboDgfEiNJi6mgsaNNVt//564xP/a5auNoc=;
+ b=3DLQrx+fTgWlRhjKMCPj2AwDbaXXZlGSSgesP3YXinrMeUDBSr2cHE4X9R03lk5QTilNHk5XC
+ q8kPohAvDV6DEiXw5GF4c0rvfB0ZM/07bTaaSxgn7rySH31nYxc7ZP9
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-panfrost_mmu_map_fault_addr() fills the page array of a heap BO a whole
-folio at a time and warns when a page of the folio is already filled in.
-With 16K or 64K pages, the THP mount panfrost uses can return folios
-larger than the 2 MB fault chunk (up to 32 MB and 128 MB). The first
-fault in such a folio fills the entries of the neighbouring chunks too,
-and every later fault in those chunks WARNs, although dropping the extra
-folio reference, as it does, is all it has to do.
+panfrost_reset() cancels the job in each slot's _NEXT registers with
+JS_COMMAND_NOP and soft-stops the running one. If the running job
+completes instead of stopping, panfrost_jm_handle_irq() dequeues it,
+finds both subslots inactive and takes the cancelled job, now at the
+head of the slot, for done as well. The cancelled job gets its jc
+cleared and its done fence signalled: drm_sched_resubmit_jobs() does not
+run it again, and it completes with -ECANCELED without having run.
 
-Warn only for a folio that fits in the chunk: only an earlier fault in
-the same chunk can have filled its pages, which is a bug.
+The Arm driver reads JS_HEAD_NEXT after the NOP: if it still holds the
+job, the job has not started and is evicted. Do the same: take an
+evicted job off the slot while the remaining interrupts are handled and
+put it back afterwards, so that it is restarted with the others.
 
-Not reproduced: with 4K pages, as here, a folio never crosses a chunk.
+Found by code review (Sashiko) of "Soft-stop and resume a job that
+outlives the timeout", which widens the window. Not reproduced.
 
-Fixes: b49c35ba0ce1 ("drm/panfrost: Fix a page leak in panfrost_mmu_map_fault_addr() when THP is on")
+Fixes: 030761e097b4 ("drm/panfrost: Queue jobs on the hardware")
 Cc: stable@vger.kernel.org
 Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/sashiko-outbox-210837@kernel.org/
+Closes: https://lore.kernel.org/all/sashiko-outbox-206581@kernel.org/
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/gpu/drm/panfrost/panfrost_mmu.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ drivers/gpu/drm/panfrost/panfrost_job.c | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
-diff --git a/drivers/gpu/drm/panfrost/panfrost_mmu.c b/drivers/gpu/drm/panfrost/panfrost_mmu.c
-index e1c4e57d0..2cf67d932 100644
---- a/drivers/gpu/drm/panfrost/panfrost_mmu.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_mmu.c
-@@ -711,11 +711,13 @@ static int panfrost_mmu_map_fault_addr(struct panfrost_device *pfdev, int as,
- 			pages[pg++] = folio_page(folio, i);
- 		}
+diff --git a/drivers/gpu/drm/panfrost/panfrost_job.c b/drivers/gpu/drm/panfrost/panfrost_job.c
+index 7319511db..1bb70b07d 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_job.c
++++ b/drivers/gpu/drm/panfrost/panfrost_job.c
+@@ -659,6 +659,7 @@ static void
+ panfrost_reset(struct panfrost_device *pfdev,
+ 	       struct drm_sched_job *bad)
+ {
++	struct panfrost_job *evicted[NUM_JOB_SLOTS] = {};
+ 	u32 js_state, js_state_mask = 0xffffffff;
+ 	unsigned int i, j;
+ 	bool cookie;
+@@ -694,11 +695,25 @@ panfrost_reset(struct panfrost_device *pfdev,
+ 	job_write(pfdev, JOB_INT_MASK, 0);
+ 	synchronize_irq(pfdev->js->irq);
  
--		/* We always fill the page array at a folio granularity so
--		 * there's no valid reason for a folio range to be partially
--		 * populated.
-+		/* We always fill the page array at a folio granularity, so a
-+		 * folio is already owned only if it is larger than the chunk
-+		 * and the fault of a neighbouring chunk filled it.
- 		 */
--		if (drm_WARN_ON(&pfdev->base, already_owned)) {
-+		if (already_owned) {
-+			drm_WARN_ON(&pfdev->base,
-+				    folio_nr_pages(folio) <= NUM_FAULT_PAGES);
- 			folio_put(folio);
- 		} else {
- 			got_start = min(got_start, first);
++	spin_lock(&pfdev->js->job_lock);
+ 	for (i = 0; i < NUM_JOB_SLOTS; i++) {
+ 		/* Cancel the next job and soft-stop the running job. */
+ 		job_write(pfdev, JS_COMMAND_NEXT(i), JS_COMMAND_NOP);
++
++		/* A job still in _NEXT after the NOP never started. Take it
++		 * off the slot, or panfrost_jm_handle_irq() takes it for done
++		 * if the running job completes instead of stopping.
++		 */
++		if (pfdev->jobs[i][1] &&
++		    (job_read(pfdev, JS_HEAD_NEXT_LO(i)) ||
++		     job_read(pfdev, JS_HEAD_NEXT_HI(i)))) {
++			evicted[i] = pfdev->jobs[i][1];
++			pfdev->jobs[i][1] = NULL;
++		}
++
+ 		job_write(pfdev, JS_COMMAND(i), JS_COMMAND_SOFT_STOP);
+ 	}
++	spin_unlock(&pfdev->js->job_lock);
+ 
+ 	/* Wait at most 10ms for soft-stops to complete */
+ 	ret = readl_poll_timeout(pfdev->iomem + JOB_INT_JS_STATE, js_state,
+@@ -720,6 +735,10 @@ panfrost_reset(struct panfrost_device *pfdev,
+ 	 */
+ 	spin_lock(&pfdev->js->job_lock);
+ 	for (i = 0; i < NUM_JOB_SLOTS; i++) {
++		/* Put the evicted job back, to be restarted. */
++		if (evicted[i])
++			pfdev->jobs[i][pfdev->jobs[i][0] ? 1 : 0] = evicted[i];
++
+ 		for (j = 0; j < ARRAY_SIZE(pfdev->jobs[0]) && pfdev->jobs[i][j]; j++) {
+ 			if (pfdev->jobs[i][j]->requirements & PANFROST_JD_REQ_CYCLE_COUNT ||
+ 			    pfdev->jobs[i][j]->is_profiled)
 
 -- 
 2.55.0
