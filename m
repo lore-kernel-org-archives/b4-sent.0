@@ -1,490 +1,110 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 22:21:34 +0000
-Subject: [PATCH RFC 3/3] media: verisilicon: Add multi-core support
+From: Han Gao <gaohan@iscas.ac.cn>
+Subject: [PATCH 00/19] riscv: add initial support for the Allwinner V861
+ and Avaota F2
+Date: Sat, 14 Nov 2026 06:33:26 +0800
+Message-Id: <20261114-v861-v1-0-eb71ec3ee523@iscas.ac.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261113-hantro-multicore-v1-3-43811eea14c4@gmail.com>
-References: <20261113-hantro-multicore-v1-0-43811eea14c4@gmail.com>
-In-Reply-To: <20261113-hantro-multicore-v1-0-43811eea14c4@gmail.com>
-To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0MT3TILM0NdA8M082RjizTLFINUJaDSgqLUtMwKsDHRsRB+cWlSVmp
+ yCUivUm0tADdhXRdoAAAA
+X-Change-ID: 20261114-v861-01f7c38f9d0e
+To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
+ Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Guo Ren <guoren@kernel.org>, 
+ Thomas Gleixner <tglx@kernel.org>, Radu Rendec <radu@rendec.net>, 
+ Samuel Holland <samuel.holland@sifive.com>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, 
+ Anup Patel <anup@brainfault.org>, Han Gao <gaohan@iscas.ac.cn>, 
+ Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Chen-Yu Tsai <wens@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, 
  Philipp Zabel <p.zabel@pengutronix.de>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Heiko Stuebner <heiko@sntech.de>
-Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- iommu@lists.linux.dev, 
- =?utf-8?q?Sven_P=C3=BCschel?= <s.pueschel@pengutronix.de>, 
- Detlev Casanova <detlev.casanova@collabora.com>, 
- Sergei Khomenkov <shomenkow@gmail.com>, 
- Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794608492; l=15974;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Q/UEE2ycJUnZe1hCZNw0kdBuU1kZC6/RMMWMLXvOzAs=;
- b=74se23IVlT+PUg8qRyDTr/zENmsr/V372WL14XtsNca9QvhoA17W8Nznu0QIs5QrCWjNJsAkx
- w4PYcXIe0WiB93IQFeas4BxmXIbsiIRy9vF7Yv6S6VLvR+a3XPMV0Bc
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Maxime Ripard <mripard@kernel.org>, Linus Walleij <linusw@kernel.org>, 
+ Andre Przywara <andre.przywara@arm.com>
+Cc: Han Gao <rabenda.cn@gmail.com>, linux-riscv@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@sifive.com>, Conor Dooley <conor@kernel.org>, 
+ devicetree@vger.kernel.org, linux-csky@vger.kernel.org, 
+ linux-sunxi@lists.linux.dev, linux-clk@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rtc@vger.kernel.org, 
+ linux-gpio@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794609209; l=3323;
+ i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
+ bh=CeY384JrxATDFoc7gV7puzQwq1JBdWH8kbQQH867CU0=;
+ b=b8L/R+6anOOByRDUdqRS0Wkwcagw75RMfi0v9/Yxy08unknBX7nd0LHSn54eIFdYaCTWXFt8j
+ F48RaAVTvDSDBgP/XQ8HyGipQCS3f4sPLQM4ui6JwIl4yG0vLFZ6QnC
+X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
+ pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
+X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3588 has four identical VEPU121 JPEG encoder cores, each with its
-own IOMMU and power domain. So far only the first one is used, and the
-other instances are ignored, so parallel encodes are serialised on a
-single core.
+The Allwinner V861 is a camera SoC with two XuanTie C907 harts. This
+series adds the clock and pin controllers, the RTC clocks and the
+device trees needed to boot the YuzukiHD Avaota F2 board to a serial
+console.
 
-Drive all the cores of variants flagged with multi_core as a single
-device, using the component framework: the first available core is the
-main core and component master. It registers the video device once all
-the other cores are bound to it, and schedules jobs on all of them,
-using v4l2_m2m_set_max_parallel_jobs() to let the mem2mem framework run
-one job per core in parallel. A context still runs a single job at a
-time, so this increases the throughput of parallel streams, not of a
-single one.
+Tested on the Avaota F2.
 
-Buffers are allocated and mapped through the main core before a job is
-scheduled on a core, so the secondary cores are attached to the IOMMU
-domain of the main core when they are bound, as Sven Püschel's RGA
-multi-core series does. They are detached again when unbound, so that
-they can be bound again, e.g. on module reload. A core whose IOMMU setup
-doesn't allow sharing the mappings is left unused.
-
-Variants without the multi_core flag keep using only the first core.
-Enable multi-core support for the RK3588 VEPU121.
-
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/platform/verisilicon/hantro.h        |  23 +++
- drivers/media/platform/verisilicon/hantro_drv.c    | 230 ++++++++++++++++++---
- drivers/media/platform/verisilicon/hantro_hw.h     |   1 +
- .../media/platform/verisilicon/rockchip_vpu_hw.c   |  18 ++
- 4 files changed, 242 insertions(+), 30 deletions(-)
+Han Gao (19):
+      riscv: sunxi: describe the wider Allwinner SoC family
+      dt-bindings: riscv: cpus: add the XuanTie C907
+      dt-bindings: interrupt-controller: add the Allwinner V861 PLIC
+      dt-bindings: timer: add the Allwinner V861 CLINT
+      dt-bindings: clock: sunxi-ng: document the Allwinner V861 CCUs
+      clk: sunxi-ng: add support for the Allwinner V861 CCU
+      clk: sunxi-ng: add support for the Allwinner V861 PRCM CCU
+      dt-bindings: rtc: sun6i: add the Allwinner V861 RTC
+      clk: sunxi-ng: sun6i-rtc: allow variants without a 32k fanout mux
+      clk: sunxi-ng: sun6i-rtc: allow another 24 MHz to 32k divider ratio
+      clk: sunxi-ng: sun6i-rtc: add Allwinner V861 support
+      dt-bindings: pinctrl: add the Allwinner V861 pin controllers
+      pinctrl: sunxi: allow a per-controller IRQ register base
+      pinctrl: sunxi: add support for the Allwinner V861 PIO
+      pinctrl: sunxi: add support for the Allwinner V861 R-PIO
+      riscv: dts: allwinner: add the Allwinner V861 SoC
+      dt-bindings: riscv: sunxi: add the YuzukiHD Avaota F2
+      riscv: dts: allwinner: add the YuzukiHD Avaota F2 board
+      MAINTAINERS: add an entry for the Allwinner V861 SoC
 
-diff --git a/drivers/media/platform/verisilicon/hantro.h b/drivers/media/platform/verisilicon/hantro.h
-index eceaa74a634b..2a3a0fc3e355 100644
---- a/drivers/media/platform/verisilicon/hantro.h
-+++ b/drivers/media/platform/verisilicon/hantro.h
-@@ -77,6 +77,8 @@ struct hantro_irq {
-  * @double_buffer:		core needs double buffering
-  * @legacy_regs:		core uses legacy register set
-  * @late_postproc:		postproc must be set up at the end of the job
-+ * @multi_core:			identical instances of this variant can be driven as
-+ *				a single device, running jobs in parallel
-  * @shared_devices:		an array of device ids that cannot run concurrently
-  */
- struct hantro_variant {
-@@ -102,6 +104,7 @@ struct hantro_variant {
- 	unsigned int double_buffer : 1;
- 	unsigned int legacy_regs : 1;
- 	unsigned int late_postproc : 1;
-+	unsigned int multi_core : 1;
- 	const struct of_device_id *shared_devices;
- };
- 
-@@ -172,6 +175,21 @@ hantro_vdev_to_func(struct video_device *vdev)
- 	return container_of(vdev, struct hantro_func, vdev);
- }
- 
-+/**
-+ * enum hantro_core_role - role of a VPU instance
-+ * @HANTRO_CORE_SINGLE:		Standalone instance.
-+ * @HANTRO_CORE_MAIN:		Main core of a multi-core device. It exposes the
-+ *				device to userspace and binds the secondary
-+ *				cores.
-+ * @HANTRO_CORE_SECONDARY:	Secondary core of a multi-core device, running
-+ *				jobs scheduled by the main core.
-+ */
-+enum hantro_core_role {
-+	HANTRO_CORE_SINGLE,
-+	HANTRO_CORE_MAIN,
-+	HANTRO_CORE_SECONDARY,
-+};
-+
- /**
-  * struct hantro_dev - driver data
-  * @v4l2_dev:		V4L2 device to register video devices for.
-@@ -201,6 +219,9 @@ hantro_vdev_to_func(struct video_device *vdev)
-  * @num_cores:		Number of entries in @cores.
-  * @cores_lock:		Spinlock protecting @cores, @num_cores and @curr_ctx
-  *			of each core.
-+ * @role:		Role of this instance in a multi-core device.
-+ * @attached_domain:	IOMMU domain of the main core that this secondary
-+ *			core is attached to, if any.
-  */
- struct hantro_dev {
- 	struct v4l2_device v4l2_dev;
-@@ -226,6 +247,8 @@ struct hantro_dev {
- 	struct hantro_dev **cores;
- 	unsigned int num_cores;
- 	spinlock_t cores_lock; /* protects the core list and curr_ctx */
-+	enum hantro_core_role role;
-+	struct iommu_domain *attached_domain;
- };
- 
- /**
-diff --git a/drivers/media/platform/verisilicon/hantro_drv.c b/drivers/media/platform/verisilicon/hantro_drv.c
-index ab76251627fb..b248fc31be6c 100644
---- a/drivers/media/platform/verisilicon/hantro_drv.c
-+++ b/drivers/media/platform/verisilicon/hantro_drv.c
-@@ -11,6 +11,8 @@
-  */
- 
- #include <linux/clk.h>
-+#include <linux/component.h>
-+#include <linux/iommu.h>
- #include <linux/module.h>
- #include <linux/of.h>
- #include <linux/of_platform.h>
-@@ -762,7 +764,7 @@ static const struct of_device_id of_hantro_match[] = {
- 	{ .compatible = "rockchip,rk3399-vpu", .data = &rk3399_vpu_variant, },
- 	{ .compatible = "rockchip,rk3568-vepu", .data = &rk3568_vepu_variant, },
- 	{ .compatible = "rockchip,rk3568-vpu", .data = &rk3568_vpu_variant, },
--	{ .compatible = "rockchip,rk3588-vepu121", .data = &rk3568_vepu_variant, },
-+	{ .compatible = "rockchip,rk3588-vepu121", .data = &rk3588_vepu121_variant, },
- 	{ .compatible = "rockchip,rk3588-av1-vpu", .data = &rk3588_vpu981_variant, },
- #endif
- #ifdef CONFIG_VIDEO_HANTRO_IMX8M
-@@ -1042,46 +1044,70 @@ static const struct media_device_ops hantro_m2m_media_ops = {
- };
- 
- /*
-- * Some SoCs, like RK3588 have multiple identical Hantro cores, but the
-- * kernel is currently missing support for multi-core handling. Exposing
-- * separate devices for each core to userspace is bad, since that does
-- * not allow scheduling tasks properly (and creates ABI). With this workaround
-- * the driver will only probe for the first core and early exit for the other
-- * cores. Once the driver gains multi-core support, the same technique
-- * for detecting the main core can be used to cluster all cores together.
-+ * Some SoCs, like RK3588, have multiple identical Hantro cores. Exposing
-+ * separate devices for each core to userspace is bad, since that does not
-+ * allow scheduling tasks properly (and creates ABI). The first compatible
-+ * and available node is considered the main core. For variants with
-+ * multi-core support, the main core binds the other cores as components and
-+ * schedules jobs on all of them. For the other variants, only the main core
-+ * is used.
-+ *
-+ * Returns the role of the instance, and for a main core the match of the
-+ * secondary cores in @match and the total number of cores in @num_cores.
-  */
--static int hantro_disable_multicore(struct hantro_dev *vpu)
-+static int hantro_get_core_role(struct hantro_dev *vpu,
-+				struct component_match **match,
-+				unsigned int *num_cores)
- {
--	struct device_node *node = NULL;
-+	struct device_node *np = vpu->dev->of_node;
-+	struct device_node *node;
-+	bool found_main = false;
-+	bool is_main_core = false;
- 	const char *compatible;
--	bool is_main_core;
- 	int ret;
- 
-+	*num_cores = 1;
-+
- 	/* Intentionally ignores the fallback strings */
--	ret = of_property_read_string(vpu->dev->of_node, "compatible", &compatible);
-+	ret = of_property_read_string(np, "compatible", &compatible);
- 	if (ret)
- 		return ret;
- 
--	/* The first compatible and available node found is considered the main core */
--	do {
--		node = of_find_compatible_node(node, NULL, compatible);
--		if (of_device_is_available(node))
--			break;
--	} while (node);
-+	for_each_compatible_node(node, NULL, compatible) {
-+		if (!of_device_is_available(node))
-+			continue;
- 
--	if (!node)
--		return -EINVAL;
-+		if (!found_main) {
-+			found_main = true;
-+			is_main_core = (node == np);
-+			if (is_main_core && vpu->variant->multi_core)
-+				continue;
-+		} else {
-+			of_node_get(node);
-+			component_match_add_release(vpu->dev, match,
-+						    component_release_of,
-+						    component_compare_of, node);
-+			(*num_cores)++;
-+			continue;
-+		}
- 
--	is_main_core = (vpu->dev->of_node == node);
-+		of_node_put(node);
-+		break;
-+	}
- 
--	of_node_put(node);
-+	if (!found_main)
-+		return -EINVAL;
- 
- 	if (!is_main_core) {
--		dev_info(vpu->dev, "missing multi-core support, ignoring this instance\n");
--		return -ENODEV;
-+		if (!vpu->variant->multi_core) {
-+			dev_info(vpu->dev, "missing multi-core support, ignoring this instance\n");
-+			return -ENODEV;
-+		}
-+
-+		return HANTRO_CORE_SECONDARY;
- 	}
- 
--	return 0;
-+	return *match ? HANTRO_CORE_MAIN : HANTRO_CORE_SINGLE;
- }
- 
- static struct v4l2_m2m_dev *hantro_get_v4l2_m2m_dev(struct hantro_dev *vpu)
-@@ -1276,6 +1302,11 @@ static int hantro_register_devices(struct hantro_dev *vpu)
- 		return PTR_ERR(vpu->m2m_dev);
- 	}
- 
-+	if (vpu->num_cores > 1) {
-+		v4l2_m2m_set_max_parallel_jobs(vpu->m2m_dev, vpu->num_cores);
-+		v4l2_info(&vpu->v4l2_dev, "using %u cores\n", vpu->num_cores);
-+	}
-+
- 	vpu->mdev.dev = vpu->dev;
- 	strscpy(vpu->mdev.model, DRIVER_NAME, sizeof(vpu->mdev.model));
- 	media_device_init(&vpu->mdev);
-@@ -1321,9 +1352,117 @@ static void hantro_unregister_devices(struct hantro_dev *vpu)
- 	v4l2_m2m_put(vpu->m2m_dev);
- }
- 
-+static int hantro_core_bind(struct device *dev, struct device *master,
-+			    void *data)
-+{
-+	struct hantro_dev *core = dev_get_drvdata(dev);
-+	struct iommu_domain *domain, *core_domain;
-+	struct hantro_dev *vpu = data;
-+	int ret;
-+
-+	/*
-+	 * Buffers are allocated and mapped through the main core, before the
-+	 * job is scheduled on a core. Put this core into the IOMMU domain of
-+	 * the main core, so that it uses the same mappings. A core that can't
-+	 * share the mappings is left unused rather than failing the whole
-+	 * device.
-+	 */
-+	domain = iommu_get_domain_for_dev(vpu->dev);
-+	core_domain = iommu_get_domain_for_dev(dev);
-+	if (domain || core_domain) {
-+		if (!domain || !core_domain) {
-+			dev_warn(dev, "IOMMU differs from the main core, not using this core\n");
-+			return 0;
-+		}
-+
-+		ret = iommu_attach_device(domain, dev);
-+		if (ret) {
-+			dev_warn(dev, "Failed to attach to the IOMMU domain of the main core (%d), not using this core\n",
-+				 ret);
-+			return 0;
-+		}
-+		core->attached_domain = domain;
-+	}
-+
-+	scoped_guard(spinlock_irqsave, &vpu->cores_lock)
-+		vpu->cores[vpu->num_cores++] = core;
-+
-+	return 0;
-+}
-+
-+static void hantro_core_unbind(struct device *dev, struct device *master,
-+			       void *data)
-+{
-+	struct hantro_dev *core = dev_get_drvdata(dev);
-+	struct hantro_dev *vpu = data;
-+	unsigned int i;
-+
-+	scoped_guard(spinlock_irqsave, &vpu->cores_lock) {
-+		for (i = 1; i < vpu->num_cores; i++) {
-+			if (vpu->cores[i] != core)
-+				continue;
-+
-+			memmove(&vpu->cores[i], &vpu->cores[i + 1],
-+				(vpu->num_cores - i - 1) * sizeof(*vpu->cores));
-+			vpu->num_cores--;
-+			break;
-+		}
-+	}
-+
-+	cancel_delayed_work_sync(&core->watchdog_work);
-+
-+	/* Return the core to its own DMA domain, so that it can bind again. */
-+	if (core->attached_domain) {
-+		iommu_detach_device(core->attached_domain, dev);
-+		core->attached_domain = NULL;
-+	}
-+}
-+
-+static const struct component_ops hantro_core_ops = {
-+	.bind = hantro_core_bind,
-+	.unbind = hantro_core_unbind,
-+};
-+
-+static int hantro_master_bind(struct device *dev)
-+{
-+	struct hantro_dev *vpu = dev_get_drvdata(dev);
-+	int ret;
-+
-+	ret = component_bind_all(dev, vpu);
-+	if (ret)
-+		return ret;
-+
-+	ret = hantro_register_devices(vpu);
-+	if (ret) {
-+		component_unbind_all(dev, vpu);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static void hantro_master_unbind(struct device *dev)
-+{
-+	struct hantro_dev *vpu = dev_get_drvdata(dev);
-+
-+	/* Wait for running jobs and don't start new ones on unbound cores. */
-+	v4l2_m2m_suspend(vpu->m2m_dev);
-+	cancel_delayed_work_sync(&vpu->watchdog_work);
-+
-+	hantro_unregister_devices(vpu);
-+	component_unbind_all(dev, vpu);
-+}
-+
-+static const struct component_master_ops hantro_master_ops = {
-+	.bind = hantro_master_bind,
-+	.unbind = hantro_master_unbind,
-+};
-+
- static int hantro_probe(struct platform_device *pdev)
- {
-+	struct component_match *cmatch = NULL;
- 	const struct of_device_id *match;
-+	unsigned int num_cores;
- 	struct hantro_dev *vpu;
- 	int ret;
- 
-@@ -1340,9 +1479,10 @@ static int hantro_probe(struct platform_device *pdev)
- 	match = of_match_node(of_hantro_match, pdev->dev.of_node);
- 	vpu->variant = match->data;
- 
--	ret = hantro_disable_multicore(vpu);
--	if (ret)
-+	ret = hantro_get_core_role(vpu, &cmatch, &num_cores);
-+	if (ret < 0)
- 		return ret;
-+	vpu->role = ret;
- 
- 	/*
- 	 * Support for nxp,imx8mq-vpu is kept for backwards compatibility
-@@ -1353,7 +1493,23 @@ static int hantro_probe(struct platform_device *pdev)
- 		dev_warn(&pdev->dev, "%s compatible is deprecated\n",
- 			 match->compatible);
- 
--	vpu->cores = devm_kcalloc(&pdev->dev, 1, sizeof(*vpu->cores),
-+	if (vpu->role == HANTRO_CORE_SECONDARY) {
-+		platform_set_drvdata(pdev, vpu);
-+
-+		ret = hantro_hw_init(vpu);
-+		if (ret)
-+			return ret;
-+
-+		ret = component_add(&pdev->dev, &hantro_core_ops);
-+		if (ret) {
-+			dev_err(&pdev->dev, "Failed to register core component\n");
-+			goto err_hw_cleanup;
-+		}
-+
-+		return 0;
-+	}
-+
-+	vpu->cores = devm_kcalloc(&pdev->dev, num_cores, sizeof(*vpu->cores),
- 				  GFP_KERNEL);
- 	if (!vpu->cores)
- 		return -ENOMEM;
-@@ -1370,7 +1526,12 @@ static int hantro_probe(struct platform_device *pdev)
- 	}
- 	platform_set_drvdata(pdev, vpu);
- 
--	ret = hantro_register_devices(vpu);
-+	if (vpu->role == HANTRO_CORE_MAIN)
-+		ret = component_master_add_with_match(&pdev->dev,
-+						      &hantro_master_ops,
-+						      cmatch);
-+	else
-+		ret = hantro_register_devices(vpu);
- 	if (ret)
- 		goto err_v4l2_unreg;
- 
-@@ -1387,9 +1548,18 @@ static void hantro_remove(struct platform_device *pdev)
- {
- 	struct hantro_dev *vpu = platform_get_drvdata(pdev);
- 
-+	if (vpu->role == HANTRO_CORE_SECONDARY) {
-+		component_del(&pdev->dev, &hantro_core_ops);
-+		hantro_hw_cleanup(vpu);
-+		return;
-+	}
-+
- 	v4l2_info(&vpu->v4l2_dev, "Removing %s\n", pdev->name);
- 
--	hantro_unregister_devices(vpu);
-+	if (vpu->role == HANTRO_CORE_MAIN)
-+		component_master_del(&pdev->dev, &hantro_master_ops);
-+	else
-+		hantro_unregister_devices(vpu);
- 	v4l2_device_unregister(&vpu->v4l2_dev);
- 	hantro_hw_cleanup(vpu);
- }
-diff --git a/drivers/media/platform/verisilicon/hantro_hw.h b/drivers/media/platform/verisilicon/hantro_hw.h
-index 13e573f1f19d..9470f75fb926 100644
---- a/drivers/media/platform/verisilicon/hantro_hw.h
-+++ b/drivers/media/platform/verisilicon/hantro_hw.h
-@@ -414,6 +414,7 @@ extern const struct hantro_variant rk3328_vpu_variant;
- extern const struct hantro_variant rk3399_vpu_variant;
- extern const struct hantro_variant rk3568_vepu_variant;
- extern const struct hantro_variant rk3568_vpu_variant;
-+extern const struct hantro_variant rk3588_vepu121_variant;
- extern const struct hantro_variant rk3588_vpu981_variant;
- extern const struct hantro_variant sama5d4_vdec_variant;
- extern const struct hantro_variant sunxi_vpu_variant;
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-index f1f7f95b2652..1a272a10c51b 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-@@ -771,6 +771,24 @@ const struct hantro_variant rk3568_vepu_variant = {
- 	.num_clocks = ARRAY_SIZE(rockchip_vpu_clk_names)
- };
- 
-+/*
-+ * The RK3588 has four identical VEPU121 cores, each with its own IOMMU,
-+ * which are driven as a single multi-core device.
-+ */
-+const struct hantro_variant rk3588_vepu121_variant = {
-+	.enc_offset = 0x0,
-+	.enc_fmts = rockchip_vpu_enc_fmts,
-+	.num_enc_fmts = ARRAY_SIZE(rockchip_vpu_enc_fmts),
-+	.codec = HANTRO_JPEG_ENCODER,
-+	.codec_ops = rk3568_vepu_codec_ops,
-+	.irqs = rk3568_vepu_irqs,
-+	.num_irqs = ARRAY_SIZE(rk3568_vepu_irqs),
-+	.init = rockchip_vpu_hw_init,
-+	.clk_names = rockchip_vpu_clk_names,
-+	.num_clocks = ARRAY_SIZE(rockchip_vpu_clk_names),
-+	.multi_core = 1,
-+};
-+
- const struct hantro_variant rk3568_vpu_variant = {
- 	.dec_offset = 0x400,
- 	.dec_fmts = rockchip_vdpu2_dec_fmts,
+ .../bindings/clock/allwinner,sun252i-v861-ccu.yaml |   99 ++
+ .../interrupt-controller/sifive,plic-1.0.0.yaml    |    1 +
+ .../pinctrl/allwinner,sun55i-a523-pinctrl.yaml     |   31 +-
+ Documentation/devicetree/bindings/riscv/cpus.yaml  |    1 +
+ Documentation/devicetree/bindings/riscv/sunxi.yaml |    5 +
+ .../bindings/rtc/allwinner,sun6i-a31-rtc.yaml      |    1 +
+ .../devicetree/bindings/timer/sifive,clint.yaml    |    1 +
+ MAINTAINERS                                        |   12 +
+ arch/riscv/Kconfig.socs                            |    6 +-
+ arch/riscv/boot/dts/allwinner/Makefile             |    1 +
+ .../boot/dts/allwinner/sun252i-v861-avaota-f2.dts  |   43 +
+ arch/riscv/boot/dts/allwinner/sun252i-v861.dtsi    |  272 +++++
+ drivers/clk/sunxi-ng/Kconfig                       |   20 +
+ drivers/clk/sunxi-ng/Makefile                      |    4 +
+ drivers/clk/sunxi-ng/ccu-sun252i-v861-r.c          |  110 ++
+ drivers/clk/sunxi-ng/ccu-sun252i-v861.c            | 1117 ++++++++++++++++++++
+ drivers/clk/sunxi-ng/ccu-sun6i-rtc.c               |   31 +-
+ drivers/pinctrl/sunxi/Kconfig                      |   20 +
+ drivers/pinctrl/sunxi/Makefile                     |    2 +
+ drivers/pinctrl/sunxi/pinctrl-sun252i-v861-r.c     |   48 +
+ drivers/pinctrl/sunxi/pinctrl-sun252i-v861.c       |   49 +
+ drivers/pinctrl/sunxi/pinctrl-sunxi.h              |    7 +-
+ include/dt-bindings/clock/sun252i-v861-ccu.h       |  127 +++
+ include/dt-bindings/clock/sun252i-v861-r-ccu.h     |   14 +
+ include/dt-bindings/reset/sun252i-v861-ccu.h       |   55 +
+ include/dt-bindings/reset/sun252i-v861-r-ccu.h     |   12 +
+ 26 files changed, 2080 insertions(+), 9 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261114-v861-01f7c38f9d0e
 
--- 
-2.55.0
+Best regards,
+--  
+Han Gao <gaohan@iscas.ac.cn>
 
