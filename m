@@ -1,10 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 16:38:48 +0000
-Subject: [PATCH 2/9] dt-bindings: ata: rockchip,dwc-ahci: Allow iommus
+Date: Fri, 13 Nov 2026 16:38:49 +0000
+Subject: [PATCH 3/9] dt-bindings: soc: rockchip: grf: Allow a clock for the
+ RK3588 PHP GRF
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-mmu600-php-v1-2-231196049a3b@gmail.com>
+Message-Id: <20261113-mmu600-php-v1-3-231196049a3b@gmail.com>
 References: <20261113-mmu600-php-v1-0-231196049a3b@gmail.com>
 In-Reply-To: <20261113-mmu600-php-v1-0-231196049a3b@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -23,38 +24,48 @@ Cc: Andrew Lunn <andrew+netdev@lunn.ch>,
  Sebastian Reichel <sebastian.reichel@collabora.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794587927; l=768;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794587927; l=998;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=isSOzqim4au9wHe7ayRhl/SLN2i9x9Bd32HMuVeTIQM=;
- b=f6Y3AcMeSBLf/zykfhiJs5LybaevPurozLoFXlFNqhejoU33A3G1MjYQNWi1Mb5O1U8Ymvg19
- B/YuuGiVKViCq0yib6lm2auaQC3rhJ4p7/Hv04UMNTk54hvSQsIEhip
+ bh=B5gD6Ma73MQyMzaxyEvJStUcX9v8sHv/gtVo98dAf/c=;
+ b=YT0aXhYrbKWY8wlrkZK/hEcyepwr4yg+gW6WEGC5ZSfHukSI3V4Bwa9sgPmHU73BoKkP5Tvm5
+ /1hLXK4TftNA5gYYm+6NtnDIiiU7hbtYOagZcGdymdVu2rJRlg28B67
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3588 SATA controllers are behind the PHP SMMU. Allow iommus, as
-snps,dwc-ahci does.
+The RK3588 PHP GRF is clocked from pclk_php_root, which is gated when
+no PHP peripheral holds it. Allow the clock, so the syscon regmap
+enables it.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- Documentation/devicetree/bindings/ata/rockchip,dwc-ahci.yaml | 3 +++
- 1 file changed, 3 insertions(+)
+ Documentation/devicetree/bindings/soc/rockchip/grf.yaml | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/ata/rockchip,dwc-ahci.yaml b/Documentation/devicetree/bindings/ata/rockchip,dwc-ahci.yaml
-index b5ecaabfe2e2..e33e8b5591ee 100644
---- a/Documentation/devicetree/bindings/ata/rockchip,dwc-ahci.yaml
-+++ b/Documentation/devicetree/bindings/ata/rockchip,dwc-ahci.yaml
-@@ -34,6 +34,9 @@ properties:
-           - rockchip,rk3588-dwc-ahci
-       - const: snps,dwc-ahci
+diff --git a/Documentation/devicetree/bindings/soc/rockchip/grf.yaml b/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
+index e94c83d7c138..2525eb51f13b 100644
+--- a/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
++++ b/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
+@@ -321,8 +321,16 @@ allOf:
+         - clocks
  
-+  iommus:
-+    maxItems: 1
+     else:
+-      properties:
+-        clocks: false
++      if:
++        not:
++          properties:
++            compatible:
++              contains:
++                const: rockchip,rk3588-php-grf
 +
-   ports-implemented:
-     const: 1
++      then:
++        properties:
++          clocks: false
  
+ examples:
+   - |
 
 -- 
 2.55.0
