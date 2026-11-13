@@ -1,10 +1,11 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Sat, 14 Nov 2026 06:33:37 +0800
-Subject: [PATCH 11/19] clk: sunxi-ng: sun6i-rtc: add Allwinner V861 support
+Date: Sat, 14 Nov 2026 06:33:38 +0800
+Subject: [PATCH 12/19] dt-bindings: pinctrl: add the Allwinner V861 pin
+ controllers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-v861-v1-11-eb71ec3ee523@iscas.ac.cn>
+Message-Id: <20261114-v861-v1-12-eb71ec3ee523@iscas.ac.cn>
 References: <20261114-v861-v1-0-eb71ec3ee523@iscas.ac.cn>
 In-Reply-To: <20261114-v861-v1-0-eb71ec3ee523@iscas.ac.cn>
 To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
@@ -31,62 +32,95 @@ Cc: Han Gao <rabenda.cn@gmail.com>, linux-riscv@lists.infradead.org,
  linux-arm-kernel@lists.infradead.org, linux-rtc@vger.kernel.org, 
  linux-gpio@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794609209; l=1736;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794609209; l=2426;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=FtT3g2BsbPGWBSuneJ0o2oWXhhcqpYTjSs7COAH+YU8=;
- b=EdbVxEBsgcIrqNXI47Kh+ivqcWZsMI/zxZ4SByBdzlJzw1sOBCXPcRNpv/CWAGJtOwhd6gogI
- S8IwtXnP/rhCnSIObOMgO5DcL+JYJpzv+qW7cacx0j3ueZZ7G0KvR3A
+ bh=OVFVAovojWhCjL1CcvpMpyxRiwB/0HvBnEwl/vSd8Os=;
+ b=I8y5zq/wfjE0lbgnncurtQ07hgFzNrVSMhKq4SHgkIBrpZNMZEux/+meGG5waFVfmHGj730hC
+ i4FabMIA2qFD386KAufZP4MB4on1RyqcbMFigp86/eUPgTrGQwyuMCx
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The V861 RTC clocks are like the A523 ones, without the 32k fanout mux.
-
-The 24 MHz to 32k divider ratio is not documented. With the RTC running
-from it, the RTC kept time with the architectural timer, which uses the
-same oscillator, to within 5 ppm over 15 minutes. So the divider
-outputs 32768 Hz, not 24 MHz / 750.
+The V861 main and always-on pin controllers follow the A523 binding.
+The always-on one has a single interrupt bank, so also allow a single
+debounce value.
 
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- drivers/clk/sunxi-ng/ccu-sun6i-rtc.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ .../pinctrl/allwinner,sun55i-a523-pinctrl.yaml     | 31 +++++++++++++++++++---
+ 1 file changed, 28 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/clk/sunxi-ng/ccu-sun6i-rtc.c b/drivers/clk/sunxi-ng/ccu-sun6i-rtc.c
-index b3619222fef0..1abee85271a9 100644
---- a/drivers/clk/sunxi-ng/ccu-sun6i-rtc.c
-+++ b/drivers/clk/sunxi-ng/ccu-sun6i-rtc.c
-@@ -392,6 +392,18 @@ static const struct sun6i_rtc_match_data sun60i_a733_rtc_ccu_data = {
- 	.osc32k_fanout_nparents	= ARRAY_SIZE(sun50i_r329_osc32k_fanout_parents),
- };
+diff --git a/Documentation/devicetree/bindings/pinctrl/allwinner,sun55i-a523-pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/allwinner,sun55i-a523-pinctrl.yaml
+index d7d0ba32ced4..3c2924df17b9 100644
+--- a/Documentation/devicetree/bindings/pinctrl/allwinner,sun55i-a523-pinctrl.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/allwinner,sun55i-a523-pinctrl.yaml
+@@ -4,7 +4,7 @@
+ $id: http://devicetree.org/schemas/pinctrl/allwinner,sun55i-a523-pinctrl.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
  
-+/*
-+ * The V861 has no 32k fanout mux. Its 24 MHz to 32k divider ratio is not
-+ * documented; measured against the architectural timer, it generates
-+ * 32768 Hz.
-+ */
-+static const struct sun6i_rtc_match_data sun252i_v861_rtc_ccu_data = {
-+	.have_ext_osc32k	= true,
-+	.have_iosc_calibration	= true,
-+	.osc24M_32k_mult	= 128,
-+	.osc24M_32k_div		= 93750,
-+};
+-title: Allwinner A523 & A733 Pin Controller
++title: Allwinner A523, A733 & V861 Pin Controller
+ 
+ maintainers:
+   - Andre Przywara <andre.przywara@arm.com>
+@@ -26,6 +26,8 @@ properties:
+ 
+   compatible:
+     enum:
++      - allwinner,sun252i-v861-pinctrl
++      - allwinner,sun252i-v861-r-pinctrl
+       - allwinner,sun55i-a523-pinctrl
+       - allwinner,sun55i-a523-r-pinctrl
+       - allwinner,sun60i-a733-pinctrl
+@@ -35,7 +37,7 @@ properties:
+     maxItems: 1
+ 
+   interrupts:
+-    minItems: 2
++    minItems: 1
+     maxItems: 11
+     description:
+       One interrupt per external interrupt bank supported on the
+@@ -62,7 +64,7 @@ properties:
+       Debouncing periods in microseconds, one period per interrupt
+       bank found in the controller
+     $ref: /schemas/types.yaml#/definitions/uint32-array
+-    minItems: 2
++    minItems: 1
+     maxItems: 11
+ 
+ patternProperties:
+@@ -149,6 +151,29 @@ allOf:
+           minItems: 2
+           maxItems: 2
+ 
++  - if:
++      properties:
++        compatible:
++          const: allwinner,sun252i-v861-pinctrl
++    then:
++      properties:
++        interrupts:
++          minItems: 7
++          maxItems: 7
++        input-debounce:
++          maxItems: 7
 +
- static const struct of_device_id sun6i_rtc_ccu_match[] = {
- 	{
- 		.compatible	= "allwinner,sun50i-h616-rtc",
-@@ -401,6 +413,10 @@ static const struct of_device_id sun6i_rtc_ccu_match[] = {
- 		.compatible	= "allwinner,sun50i-r329-rtc",
- 		.data		= &sun50i_r329_rtc_ccu_data,
- 	},
-+	{
-+		.compatible	= "allwinner,sun252i-v861-rtc",
-+		.data		= &sun252i_v861_rtc_ccu_data,
-+	},
- 	{
- 		.compatible	= "allwinner,sun55i-a523-rtc",
- 		.data		= &sun55i_a523_rtc_ccu_data,
++  - if:
++      properties:
++        compatible:
++          const: allwinner,sun252i-v861-r-pinctrl
++    then:
++      properties:
++        interrupts:
++          maxItems: 1
++        input-debounce:
++          maxItems: 1
++
+ additionalProperties: false
+ 
+ examples:
 
 -- 
 2.55.0
