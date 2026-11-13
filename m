@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 14 Nov 2026 05:26:22 +0800
-Subject: [PATCH RFC 6/8] mm/huge_memory: rearrange split routine handling
- for better optimization
+Date: Sat, 14 Nov 2026 05:26:23 +0800
+Subject: [PATCH RFC 7/8] mm/huge_memory: walk the after-split anon folios
+ in reverse order
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-swap-thp-split-v1-6-dfa8d4fa448d@tencent.com>
+Message-Id: <20261114-swap-thp-split-v1-7-dfa8d4fa448d@tencent.com>
 References: <20261114-swap-thp-split-v1-0-dfa8d4fa448d@tencent.com>
 In-Reply-To: <20261114-swap-thp-split-v1-0-dfa8d4fa448d@tencent.com>
 To: linux-mm@kvack.org
@@ -26,23 +26,20 @@ Cc: David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>,
  linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794605194; l=2082;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794605194; l=2204;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=Ywh5u6CH0UvNagiKhU1WNU9qFNY87IWayR40Afi6yCI=;
- b=5BjTzAVdQpgSdWyC+wp+tXTzTaCfmBLbicy3sBWh0+gsjfSSveiCBn0OAOViPC/pMoDHBKNFM
- dILf8SHbE2BB1NmVgVtErkw8dzv+fl3VR5SvpYPPSoY5MiKaULg5b9m
+ bh=b73U95HEn/sFMHZHf5dLhjLZSLi/GMxez+2xE4t43Nc=;
+ b=70EsV5Uha41PjuPYxhWxWFvxuyMQ0o4A1mtGI917jUBg/etMrn8S6YMm7q+tJXy9XsBoKFNy5
+ KgC9YTrm+YIDDLdn2hg/4O0StaQTY/e7i5dpk8foYPEWf6bNteg3Zi7
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Anonymous folios never use a mapping or an xarray, so combine the is_anon
-and xas conditions into a single if/else-if chain.  The compiler cannot do
-this on its own because the xarray split calls sit between the two
-conditions and the anon mTHP stat update comes after the split helpers.
-
-./scripts/bloat-o-meter on mm/huge_memory.o (x86-64 KVM test config) shows
-__split_frozen_folio() shrinking from 1077 to 996 bytes.
+Just like the file folio, walk the after-split range with folio_prev()
+so the pieces are queued in ascending reclaim order where the forward
+walk left them descending, and the cached "next" goes away. All of its
+users either expects an ascending or do not care.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
@@ -50,43 +47,42 @@ Signed-off-by: Kairui Song <kasong@tencent.com>
  1 file changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 7270baa20d80..e16b93318613 100644
+index e16b93318613..2ff201a5e5f3 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -3929,13 +3929,17 @@ static int __split_frozen_folio(struct folio *folio, int new_order,
- 	for (split_order = start_order;
- 	     split_order >= new_order;
- 	     split_order--) {
--		int nr_new_folios = 1UL << (old_order - split_order);
-+		if (is_anon) {
-+			int nr_new_folios = 1UL << (old_order - split_order);
+@@ -4076,7 +4076,7 @@ static int __folio_freeze_split_anon(struct folio *folio,
+ 	struct folio *end_folio = folio_next(folio);
+ 	struct swap_cluster_info *ci = NULL;
+ 	const int old_order = folio_order(folio);
+-	struct folio *new_folio, *next;
++	struct folio *new_folio;
+ 	struct anon_vma *anon_vma = NULL;
+ 	enum ttu_flags ttu_flags = 0;
+ 	struct lruvec *lruvec;
+@@ -4137,15 +4137,15 @@ static int __folio_freeze_split_anon(struct folio *folio,
+ 	ret = __split_frozen_folio(folio, new_order, split_at, NULL, split_type);
  
--		/* order-1 anonymous folio is not supported */
--		if (is_anon && split_order == 1)
--			continue;
-+			/* order-1 anonymous folio is not supported */
-+			if (split_order == 1)
-+				continue;
- 
--		if (xas) {
-+			/* Split can't fail at this point, update counters now */
-+			mod_mthp_stat(old_order, MTHP_STAT_NR_ANON, -1);
-+			mod_mthp_stat(split_order, MTHP_STAT_NR_ANON, nr_new_folios);
-+		} else if (xas) {
- 			/*
- 			 * uniform split has xas_split_alloc() called before
- 			 * irq is disabled to allocate enough memory, whereas
-@@ -3960,10 +3964,6 @@ static int __split_frozen_folio(struct folio *folio, int new_order,
- 		pgalloc_tag_split(folio, old_order, split_order);
- 		__split_folio_to_order(folio, old_order, split_order);
- 
--		if (is_anon) {
--			mod_mthp_stat(old_order, MTHP_STAT_NR_ANON, -1);
--			mod_mthp_stat(split_order, MTHP_STAT_NR_ANON, nr_new_folios);
--		}
- 		/*
- 		 * If uniform split, the process is complete.
- 		 * If non-uniform, continue splitting the folio at @split_at
+ 	/*
+-	 * Unfreeze the after-split folios and put them back to the right
+-	 * place. Keep the head @folio frozen until the end: sub entries
+-	 * in swap cache must be updated first, so a concurrent
+-	 * swap_cache_get_folio() cannot return the head folio for a sub
+-	 * entry (folio_try_get() will fail on the head @folio until unfreeze).
++	 * Unfreeze the after-split folios and put them back, keeping @folio
++	 * frozen until every sub entry in the swap cache is repointed, so
++	 * that a racing swap_cache_get_folio() cannot folio_try_get() the
++	 * head.  Backward is also the reclaim order: the pieces queue just
++	 * before @folio on the LRU, or at the tail of @list, both drained
++	 * from the tail.
+ 	 */
+-	for (new_folio = folio_next(folio); new_folio != end_folio;
+-	     new_folio = next) {
+-		next = folio_next(new_folio);
++	for (new_folio = folio_prev(end_folio); new_folio != folio;
++	     new_folio = folio_prev(new_folio)) {
+ 		zone_device_private_split_cb(folio, new_folio);
+ 		folio_ref_unfreeze(new_folio,
+ 				   folio_swapcache_ref_count(new_folio) + 1);
 
 -- 
 2.56.1
