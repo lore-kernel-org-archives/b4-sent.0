@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 09:02:53 +0000
-Subject: [PATCH v3 01/14] drm/panfrost: Power the GPU up for a reset queued
- from the MMU code
+Date: Fri, 13 Nov 2026 09:02:54 +0000
+Subject: [PATCH v3 02/14] drm/panfrost: Refuse to sync the CPU caches of a
+ heap BO
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-panfrost-long-jobs-v3-1-80ae78d38f6e@gmail.com>
+Message-Id: <20261113-panfrost-long-jobs-v3-2-80ae78d38f6e@gmail.com>
 References: <20261113-panfrost-long-jobs-v3-0-80ae78d38f6e@gmail.com>
 In-Reply-To: <20261113-panfrost-long-jobs-v3-0-80ae78d38f6e@gmail.com>
 To: Boris Brezillon <boris.brezillon@collabora.com>, 
@@ -17,119 +17,54 @@ To: Boris Brezillon <boris.brezillon@collabora.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794560572; l=3976;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794560572; l=1768;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=BH2Iap6Du+xzEbuzT73XcwV5IKrRxeZY/aiArdm7A40=;
- b=XCIY3gcj+fK+XvOK25+9FKZ3Q4s+XSdMKjzm+h5v5SwKNn2XttAhQvEjlD+C0r6vZNUvXGzQG
- q2z5gJytxgtCeTy+1NGCzCLjuuBW6beJJmPtbKuMQ0xwVdF52DnXghm
+ bh=HrsdWKsSgiGXkqlebjInUOvLazjeFD30/bAvYhzVDVs=;
+ b=dlCqTBSrojRZUFzJOLlMFkRPGOmIXJ0x6/dG8G1sDEWPKbDF/4+G3xB2st9BIgmevHkEzr5mS
+ X68MKJzh15XBSVEagT7ngMK9XkSkW+FOGCdhTwn/r1qy97NxP/J3Wce
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-panfrost_reset_work() calls panfrost_reset() without a runtime PM
-reference. wait_ready() queues it when AS_ACTIVE is stuck, from MMU
-operations whose callers drop their PM reference right after, and it
-shares the ordered reset workqueue with the scheduler timeout handlers,
-so it can run late. If the GPU was runtime suspended in between,
-panfrost_reset() writes the registers of a powered-off GPU: a
-synchronous external abort on arm64.
+On a coherent GPU a heap BO is not write-combined, so PANFROST_SYNC_BO
+on it reaches drm_gem_shmem_get_pages_sgt() with bo->base.pages being
+the fault handler's sparse page array, and drm_prime_pages_to_sg()
+dereferences the NULL entries of the chunks not faulted in yet. With no
+chunk faulted in, it pins the whole heap and sets bo->base.pages without
+bo->sgts, which the next GPU fault on the heap dereferences.
 
-Take a runtime PM reference in the work. pm_runtime_force_suspend()
-ignores the usage count, so also disable the work across system sleep
-and queue it again on resume if a reset is still pending. If the GPU
-cannot be resumed, no job is running on it and
-panfrost_device_runtime_resume() resets it later, so just clear the
-pending flag. Skipping the reset on a suspended GPU instead would leave
-jobs that a concurrent resume queued behind the pending flag waiting.
+Heap BOs are not CPU-mappable (panfrost_ioctl_mmap_bo() refuses them,
+panfrost_gem_create() refuses PANFROST_BO_WB_MMAP for them), so there is
+nothing to sync: return -EINVAL, as for imported BOs.
 
-Found by code review (Sashiko). Not reproduced.
+Found by code review (Sashiko). Not tested on a coherent GPU: on the
+Mali-G31 here a heap BO is write-combined and the sync returned early.
 
-Fixes: f9ab9c66f080 ("drm/panfrost: Reset the GPU when the AS_ACTIVE bit is stuck")
+Fixes: 7be45f548976 ("drm/panfrost: Add a PANFROST_SYNC_BO ioctl")
 Cc: stable@vger.kernel.org
 Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/sashiko-outbox-206548@kernel.org/
-Closes: https://lore.kernel.org/all/sashiko-outbox-210830@kernel.org/
+Closes: https://lore.kernel.org/all/sashiko-outbox-206561@kernel.org/
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/gpu/drm/panfrost/panfrost_device.c | 26 ++++++++++++++++++++++++--
- drivers/gpu/drm/panfrost/panfrost_job.c    | 11 +++++++++++
- 2 files changed, 35 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/panfrost/panfrost_gem.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/drivers/gpu/drm/panfrost/panfrost_device.c b/drivers/gpu/drm/panfrost/panfrost_device.c
-index 40eda3612..2c11a6721 100644
---- a/drivers/gpu/drm/panfrost/panfrost_device.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_device.c
-@@ -567,7 +567,7 @@ static int panfrost_device_runtime_suspend(struct device *dev)
- 	return 0;
- }
+diff --git a/drivers/gpu/drm/panfrost/panfrost_gem.c b/drivers/gpu/drm/panfrost/panfrost_gem.c
+index 518f24549..f72edb65b 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_gem.c
++++ b/drivers/gpu/drm/panfrost/panfrost_gem.c
+@@ -569,6 +569,10 @@ panfrost_gem_sync(struct drm_gem_object *obj, u32 type, u32 offset, u32 size)
+ 	if (drm_gem_is_imported(&shmem->base))
+ 		return -EINVAL;
  
--static int panfrost_device_resume(struct device *dev)
-+static int panfrost_device_power_up(struct device *dev)
- {
- 	struct panfrost_device *pfdev = dev_get_drvdata(dev);
- 	int ret;
-@@ -604,14 +604,36 @@ static int panfrost_device_resume(struct device *dev)
- 	return ret;
- }
- 
-+static void panfrost_device_enable_reset(struct panfrost_device *pfdev)
-+{
-+	enable_work(&pfdev->reset.work);
-+	if (atomic_read(&pfdev->reset.pending))
-+		queue_work(pfdev->reset.wq, &pfdev->reset.work);
-+}
++	/* A heap BO's pages and sg tables belong to the GPU fault handler. */
++	if (bo->is_heap)
++		return -EINVAL;
 +
-+static int panfrost_device_resume(struct device *dev)
-+{
-+	int ret = panfrost_device_power_up(dev);
-+
-+	panfrost_device_enable_reset(dev_get_drvdata(dev));
-+	return ret;
-+}
-+
- static int panfrost_device_suspend(struct device *dev)
- {
- 	struct panfrost_device *pfdev = dev_get_drvdata(dev);
- 	int ret;
- 
-+	/* pm_runtime_force_suspend() ignores the reset work's runtime PM
-+	 * reference: keep the work off the GPU until resume.
-+	 */
-+	disable_work_sync(&pfdev->reset.work);
-+
- 	ret = pm_runtime_force_suspend(dev);
--	if (ret)
-+	if (ret) {
-+		panfrost_device_enable_reset(pfdev);
- 		return ret;
-+	}
- 
- 	if (pfdev->comp->pm_features & BIT(GPU_PM_CLK_DIS))
- 		panfrost_clks_disable(pfdev, false);
-diff --git a/drivers/gpu/drm/panfrost/panfrost_job.c b/drivers/gpu/drm/panfrost/panfrost_job.c
-index 3a46dd61c..7319511db 100644
---- a/drivers/gpu/drm/panfrost/panfrost_job.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_job.c
-@@ -810,7 +810,18 @@ static void panfrost_reset_work(struct work_struct *work)
- 	struct panfrost_device *pfdev;
- 
- 	pfdev = container_of(work, struct panfrost_device, reset.work);
-+
-+	/* The GPU may have been runtime suspended since the work was queued.
-+	 * If it cannot be resumed, no job is on it, and
-+	 * panfrost_device_runtime_resume() resets it later.
-+	 */
-+	if (pm_runtime_resume_and_get(pfdev->base.dev)) {
-+		atomic_set(&pfdev->reset.pending, 0);
-+		return;
-+	}
-+
- 	panfrost_reset(pfdev, NULL);
-+	pm_runtime_put_autosuspend(pfdev->base.dev);
- }
- 
- static const struct drm_sched_backend_ops panfrost_sched_ops = {
+ 	switch (type) {
+ 	case PANFROST_BO_SYNC_CPU_CACHE_FLUSH:
+ 	case PANFROST_BO_SYNC_CPU_CACHE_FLUSH_AND_INVALIDATE:
 
 -- 
 2.55.0
