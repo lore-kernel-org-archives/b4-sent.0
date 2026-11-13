@@ -1,84 +1,122 @@
-From: Cunhao Lu <1579567540@qq.com>
-Date: Fri, 13 Nov 2026 10:33:06 +0800
-Subject: [PATCH net v2] MAINTAINERS: exclude CAN documentation from general
- networking
+From: Ishu Brar <patches@brar.si>
+Subject: [PATCH v3 0/6] drm/msm/dpu: Add SM7250 display support
+Date: Fri, 13 Nov 2026 11:26:33 +0530
+Message-Id: <20261113-dpu-sm7250-v3-0-30bdec59d204@brar.si>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-exclude-can-docs-from-netdev-v2-1-8ae9dc553024@qq.com>
-X-B4-Tracking: v=1; b=H4sIAOF29moC/42OTQ6CMBSEr0Le2mdsFVRW3sOw6M+r1EgrLTQYw
- t0teAGXM/nyzcwQKViKUBczBEo2Wu9y4LsCVCvcg9DqnIEfeMUY40iTeo2aUAmH2quIJvgOHQ2
- aEpYVO1816dIIA1nxDmTstOnvkBlofmUc5ZPUsIpXrLVx8OGznUhsg//bSwwZypLkUYqToEt16
- /u98h00y7J8AU3Z2VncAAAA
-X-Change-ID: 20261112-exclude-can-docs-from-netdev-56179ded5faf
-To: Jakub Kicinski <kuba@kernel.org>, netdev@vger.kernel.org
-Cc: davem@davemloft.net, edumazet@kernel.org, pabeni@redhat.com, 
- horms@kernel.org, mkl@pengutronix.de, mailhol@kernel.org, 
- socketcan@hartkopp.net, robin@protonic.nl, o.rempel@pengutronix.de, 
- kernel@pengutronix.de, max@enpas.org, linux-can@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Cunhao Lu <1579567540@qq.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNwQ6CMBAFf4X0bE23pQKe/A/jYaGr1EQgLTQaw
+ r/bogl6nOTNvJl5cpY8O2YzcxSst30XQe0y1rTY3YhbE5lJIQ8gpOJmmLh/FFILjgIQtSEwmLM
+ oDI6u9rnGzpcP+6m+UzOmQlq01o+9e61vAdLuG1bwGw7ABQddXXOhqMmFPtUO3d5blrJBbiKA/
+ BNlFEuqpEaFJRZmE5dleQMZR5gk7QAAAA==
+X-Change-ID: 20261023-dpu-sm7250-a01aa5de1da4
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Krishna Manikandan <quic_mkrishn@quicinc.com>, Ishu Brar <patches@brar.si>, 
+ Kuogee Hsieh <quic_khsieh@quicinc.com>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794537207; l=2171;
- i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=6F5YqxvMaIs1hwfEFbyXKXtIGxmZw++Ht0ooa1sJl88=;
- b=2DNpMdnz/83Syn6nW0AH1yBI48kZvv0cu5uv4pbBSxBZT83lgUHpn/v33Y0qTCpn1Mcz1CPHd
- ojULR3hSGccDOvJWX+jBOA9x/rKs40M64/FX5tRwWQHC5CmFIX0Z7LZ
-X-Developer-Key: i=1579567540@qq.com; a=ed25519;
- pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
-X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794549395; l=3390;
+ i=patches@brar.si; h=from:subject:message-id;
+ bh=BSHS/Aji18Q8W6naE/wxA1UmN6lL7923+dY0DTqriYI=;
+ b=dBiyCxc5HjyMaKY/TMBKI4ZKwvSDwtSLniowPAaiCVvwtW1AhyMjqTJY86FTWJ2StsLNRgRjE
+ PRvaD9Ltr3KD44HcOlDV9BkciWRzEAlm1fEoFZgqalAJsx6hLy+nAzP
+X-Developer-Key: i=patches@brar.si; a=ed25519;
+ pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
+X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SocketCAN, ISO-TP and J1939 documents and the CAN driver documentation
-directory match the broad Documentation/networking/ pattern in
-NETWORKING [GENERAL]. This makes get_maintainer.pl select netdev and the
-general networking maintainers for these CAN-specific documentation
-changes.
+Add display support for the SM7250 (Snapdragon 765/765G/768G), which
+has a DPU 6.1. The DPU node matches the SM8150/SM8250 schema, so only
+its compatible is added there; the MDSS gets its own binding, modeled
+on the SM8250 one.
 
-Exclude these paths from NETWORKING [GENERAL], as is already done for
-net/can/ and the CAN selftests. Add the driver documentation directory
-to CAN NETWORK DRIVERS to cover files without a dedicated CAN entry.
+The MDSS driver needs the SM7250 UBWC entry, already applied to the
+Qualcomm tree:
+https://lore.kernel.org/all/20261027-ubwc-sm7250-v1-1-e766b1e264cf@brar.si/
 
-Suggested-by: Jakub Kicinski <kuba@kernel.org>
-Link: https://lore.kernel.org/all/20261111161459.4879a82d@kernel.org/
-Signed-off-by: Cunhao Lu <1579567540@qq.com>
+Tested on a OnePlus Nord (a 7.3 based tree).
+
 ---
+Changes in v3:
+- MDSS binding example: connect the DSI output endpoints to a panel
+  and add data-lanes (Krzysztof)
+- Collect review tags
+- Link to v2: https://patch.msgid.link/20261112-dpu-sm7250-v2-0-8e925a3a8a7d@brar.si
+
 Changes in v2:
-- Exclude the whole CAN driver documentation directory instead of only
-  can327.rst, and add it to CAN NETWORK DRIVERS.
-- Link to v1: https://patch.msgid.link/20261112-exclude-can-docs-from-netdev-v1-1-b5eb3ba4ae86@qq.com
----
- MAINTAINERS | 5 +++++
- 1 file changed, 5 insertions(+)
+- Use dpu_vig_sblk_qseed3_3_0 for the VIG SSPPs, as the other DPU 6.x
+  catalogs do (Dmitry)
+- Drop max_hdeci_exp and max_vdeci_exp from the caps, as the other DPU 6.x
+  catalogs do (reported by sashiko-bot)
+- New patch: add the SM7250 DP compatible to dp-controller.yaml, as the
+  SoC has a single DisplayPort controller (Krzysztof, Konrad)
+- MDSS binding: add the displayport-controller child, fix the
+  description, drop blank lines (Krzysztof)
+- Collect review tags
+- v1 was sent three times by mistake, sorry for the noise; the reviews
+  are on the last copy, linked below
+- Link to v1: https://patch.msgid.link/20261031-dpu-sm7250-v1-0-159f403ec405@brar.si
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 222b7fc2c3aa..152771314140 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -5992,6 +5992,7 @@ T:	git git://git.kernel.org/pub/scm/linux/kernel/git/mkl/linux-can.git
- T:	git git://git.kernel.org/pub/scm/linux/kernel/git/mkl/linux-can-next.git
- F:	Documentation/devicetree/bindings/net/can/
- F:	Documentation/devicetree/bindings/phy/ti,tcan104x-can.yaml
-+F:	Documentation/networking/device_drivers/can/
- F:	drivers/net/can/
- F:	drivers/phy/phy-can-transceiver.c
- F:	include/linux/can/bittiming.h
-@@ -19600,6 +19601,10 @@ F:	samples/pktgen/
- F:	tools/net/
- F:	tools/testing/selftests/net/
- X:	Documentation/networking/batman-adv.rst
-+X:	Documentation/networking/can.rst
-+X:	Documentation/networking/device_drivers/can/
-+X:	Documentation/networking/iso15765-2.rst
-+X:	Documentation/networking/j1939.rst
- X:	Documentation/networking/mac80211-injection.rst
- X:	Documentation/networking/mac80211_hwsim/
- X:	Documentation/networking/regulatory.rst
+To: Rob Clark <robin.clark@oss.qualcomm.com>
+To: Dmitry Baryshkov <lumag@kernel.org>
+To: Abhinav Kumar <abhinav.kumar@linux.dev>
+To: Jessica Zhang <jesszhan0024@gmail.com>
+To: Sean Paul <sean@poorly.run>
+To: Marijn Suijten <marijn.suijten@somainline.org>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+To: Maxime Ripard <mripard@kernel.org>
+To: Thomas Zimmermann <tzimmermann@suse.de>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Krishna Manikandan <quic_mkrishn@quicinc.com>
+To: Kuogee Hsieh <quic_khsieh@quicinc.com>
+To: Ishu Brar <patches@brar.si>
+Cc: linux-arm-msm@vger.kernel.org
+Cc: dri-devel@lists.freedesktop.org
+Cc: freedreno@lists.freedesktop.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: 79eb6679ef6a0d5ea68da53a8321fb1dc72299b9
-change-id: 20261112-exclude-can-docs-from-netdev-56179ded5faf
+Ishu Brar (6):
+      dt-bindings: display/msm: dsi-controller-main: Add SM7250
+      dt-bindings: display/msm: dpu: Document SM7250
+      dt-bindings: display/msm: dp-controller: Add SM7250
+      dt-bindings: display/msm: Add SM7250 MDSS
+      drm/msm/dpu: Add SM7250 support
+      drm/msm: mdss: Add SM7250 support
+
+ .../bindings/display/msm/dp-controller.yaml        |   1 +
+ .../bindings/display/msm/dsi-controller-main.yaml  |   2 +
+ .../bindings/display/msm/qcom,sm7250-mdss.yaml     | 361 +++++++++++++++++++++
+ .../bindings/display/msm/qcom,sm8150-dpu.yaml      |   1 +
+ .../gpu/drm/msm/disp/dpu1/catalog/dpu_6_1_sm7250.h | 309 ++++++++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c     |   1 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h     |   1 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c            |   1 +
+ drivers/gpu/drm/msm/msm_mdss.c                     |   1 +
+ 9 files changed, 678 insertions(+)
+---
+base-commit: 198acaed3b84c91030a039ac5ab833432ec166ea
+change-id: 20261023-dpu-sm7250-a01aa5de1da4
 
 Best regards,
 --  
-Cunhao Lu <1579567540@qq.com>
+Ishu Brar <patches@brar.si>
 
