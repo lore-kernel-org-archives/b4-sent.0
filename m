@@ -1,11 +1,10 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Sat, 14 Nov 2026 06:33:27 +0800
-Subject: [PATCH 01/19] riscv: sunxi: describe the wider Allwinner SoC
- family
+Date: Sat, 14 Nov 2026 06:33:28 +0800
+Subject: [PATCH 02/19] dt-bindings: riscv: cpus: add the XuanTie C907
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-v861-v1-1-eb71ec3ee523@iscas.ac.cn>
+Message-Id: <20261114-v861-v1-2-eb71ec3ee523@iscas.ac.cn>
 References: <20261114-v861-v1-0-eb71ec3ee523@iscas.ac.cn>
 In-Reply-To: <20261114-v861-v1-0-eb71ec3ee523@iscas.ac.cn>
 To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
@@ -32,45 +31,42 @@ Cc: Han Gao <rabenda.cn@gmail.com>, linux-riscv@lists.infradead.org,
  linux-arm-kernel@lists.infradead.org, linux-rtc@vger.kernel.org, 
  linux-gpio@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794609209; l=987;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794609209; l=986;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=iIMXHW4ncH9rYCfV6gqeS1VFiDJbleuDtC++QacYRuM=;
- b=1qagKD3rCKA24HqW1EY7WOksbBJolj6tNk+/fSKplFvFfQFmuICjc/3HRPonNK6YXjTtHCQMd
- k+l2SiI9Az4DbHj5RDb1WJdE+MlgzAKOR89f9hwcRwjPTczallY0Cjt
+ bh=Cm+aoOEvEdfEXFBW81kE8hGffN29ckzRUH816nQCB7k=;
+ b=mWoK/d3s7E1yljsgEDG5AOvjeGoZNBwoSoucC5cXcDHH1Ezvl8ge/m6Rc2ZMX+fXR9/JUk6Cd
+ sgDp+kyX4ikACJQQaTT68CWvbDPAa7lgh8Bv3nSSLDGn7sHbxhQnbqQ
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ARCH_SUNXI is about to cover the V861 as well. Update its prompt and
-help text instead of adding another option.
+Add the XuanTie C907, used in the Allwinner V861.
+
+XuanTie is a brand of C-SKY Microsystems [1], whose JEP106 ID 0x5b7 [2]
+is what the C907 reports in mvendorid, so use the csky prefix rather
+than thead.
+
+[1] https://www.xrvm.com/declaration
+[2] https://www.jedec.org/standards-documents/docs/jep-106ab
 
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- arch/riscv/Kconfig.socs | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ Documentation/devicetree/bindings/riscv/cpus.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/arch/riscv/Kconfig.socs b/arch/riscv/Kconfig.socs
-index cecbce0c4983..4cf3b24467e8 100644
---- a/arch/riscv/Kconfig.socs
-+++ b/arch/riscv/Kconfig.socs
-@@ -61,13 +61,13 @@ config SOC_STARFIVE
- 	  This enables support for StarFive SoC platform hardware.
- 
- config ARCH_SUNXI
--	bool "Allwinner sun20i SoCs"
-+	bool "Allwinner SoCs"
- 	depends on MMU
- 	select ERRATA_THEAD
- 	select SUN4I_TIMER
- 	help
--	  This enables support for Allwinner sun20i platform hardware,
--	  including boards based on the D1 and D1s SoCs.
-+	  This enables support for Allwinner SoC platform hardware,
-+	  including boards based on the D1, D1s and V861 SoCs.
- 
- config ARCH_TENSTORRENT
- 	bool "Tenstorrent SoCs"
+diff --git a/Documentation/devicetree/bindings/riscv/cpus.yaml b/Documentation/devicetree/bindings/riscv/cpus.yaml
+index 0da219ae6769..bdb119ab8ee0 100644
+--- a/Documentation/devicetree/bindings/riscv/cpus.yaml
++++ b/Documentation/devicetree/bindings/riscv/cpus.yaml
+@@ -48,6 +48,7 @@ properties:
+               - amd,mbv64
+               - andestech,ax45mp
+               - canaan,k210
++              - csky,c907
+               - nuclei,ux900
+               - sifive,bullet0
+               - sifive,e5
 
 -- 
 2.55.0
