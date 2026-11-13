@@ -1,11 +1,11 @@
 From: Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>
-Date: Fri, 13 Nov 2026 15:27:46 +0200
-Subject: [PATCH RFC 1/2] firmware: arm_scmi: clock: discover clock domains
- on first use
+Date: Fri, 13 Nov 2026 15:27:47 +0200
+Subject: [PATCH RFC 2/2] clk: scmi: optionally register only clocks
+ referenced in the device tree
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-b4-scmi-clk-on-demand-v1-1-7fd162097b57@oss.nxp.com>
+Message-Id: <20261113-b4-scmi-clk-on-demand-v1-2-7fd162097b57@oss.nxp.com>
 References: <20261113-b4-scmi-clk-on-demand-v1-0-7fd162097b57@oss.nxp.com>
 In-Reply-To: <20261113-b4-scmi-clk-on-demand-v1-0-7fd162097b57@oss.nxp.com>
 To: Brian Masney <bmasney+clk@redhat.com>, 
@@ -19,396 +19,254 @@ Cc: linux-doc@vger.kernel.org, Alberto Ruiz <aruizrui@redhat.com>,
  Enric Balletbo <eballetb@redhat.com>, NXP S32 Linux Team <s32@nxp.com>, 
  Jonathan Corbet <corbet@lwn.net>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794576479; l=13263;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794576479; l=8272;
  i=ghennadi.procopciuc@oss.nxp.com; s=20261113; h=from:subject:message-id;
- bh=m6wgrgZ8AgVX0/wwAJXM4DOFHjBScSop3ClJXnn9sMw=;
- b=xApzx6ZSen2hAtw9bnDZ8DauhYWK7x6qHBqEqiK+W/e6gZJijVfqg6HoZtvi8VsARU2rSleN3
- 1hxLktsr6zRCcoFXQlxP9ShjD9fkuQXz72imXvoXYNMOjqncM3+t4c1
+ bh=uwrgOyoizz013nf3CRlrIPoN2yjLJPfzMYY0JyjnGQ0=;
+ b=lvCVKIh7yxdd85coP6C0l47rk9nd5p/47fv8OsL9av2qN7Ftvu4y95JFPGuDr6AWsgX/XcT+H
+ 5ik5/QhKic7A4+JZbADv4/fGb3AE2QxcTojNxTJ5R5SlwfGhFuZenf+
 X-Developer-Key: i=ghennadi.procopciuc@oss.nxp.com; a=ed25519;
  pk=hNLk4ZpONFOVJg3NdDWRU2LtaL+HBg4W2I1KU0+XBmo=
 X-Endpoint-Received: by B4 Relay for ghennadi.procopciuc@oss.nxp.com/20261113 with auth_id=1509
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-scmi_clock_protocol_init() queries the attributes, rates and parents of
-every clock domain the platform reports. With hundreds of clocks this is
-more than a thousand messages at init, most of them for clocks that are
-never used.
+Registering every clock the platform reports costs messages to the
+platform and time in the clock core, although most of the clocks are not
+used by the board.
 
-Query only the protocol version and attributes at init, and discover
-each clock domain on the first operation that needs it.
+Add the dt_referenced_only module parameter, with a Kconfig default, and
+document it in kernel-parameters.txt. When it is set, register only the
+clocks named by a "clocks", "assigned-clocks" or
+"assigned-clock-parents" property of an enabled node, plus their
+parents, because the clock core cannot resolve a parent that is not
+registered. Disabled nodes are skipped, as sci-clk does, since they
+never become consumers. The parent IDs reported by the platform are
+checked against the clock count before they index the clock table.
 
-Discovery can sleep, so the operations that can run in atomic context
-(enable, disable and OEM config) fail with -EAGAIN for a clock that is
-not discovered yet. A clock for which info_get() returned its info is
-always discovered.
+A lookup of a clock that is not registered gets a NULL hw from
+of_clk_hw_onecell_get(), and the consumer then uses a dummy clock that
+silently does nothing. For the clocks left out by dt_referenced_only,
+fail the lookup with -EINVAL instead. -ENOENT is not used, because the
+optional clock getters turn it into a NULL clock. A clock that fails to
+register keeps the NULL hw, so nothing changes when the parameter is not
+set.
 
-A failed discovery is returned to the caller, and the clock is
-discovered again on the next operation, so a transient transport error
-does not leave the clock unusable until the protocol is released. As a
-result, info_get() now returns NULL for a clock whose
-CLOCK_DESCRIBE_RATES fails, and clk-scmi does not register it. Before,
-the clock was registered without rate information.
-
-The rates and parents arrays are now allocated after the devres group of
-the protocol instance is closed, so allocate them with kcalloc() and free
-them in a new instance_deinit callback.
-
-is_notify_supported() is called for every clock when the protocol events
-are registered, before any clock is discovered, and must not trigger
-discovery. It now reports the protocol level support, and
-set_notify_enabled() discovers the clock and rejects it with -EOPNOTSUPP
-if it does not support the event. Every clock is then a supported source
-of the events the protocol supports, so enabling an event for all
-sources discovers every clock.
-No in-tree driver registers SCMI clock notifiers.
+The unregistered clocks do not show up in clk_summary, and a device tree
+overlay that references a new clock ID or enables a disabled node is not
+supported.
 
 Signed-off-by: Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>
 ---
- drivers/firmware/arm/scmi/clock.c | 160 ++++++++++++++++++++++++++++----------
- include/linux/scmi_protocol.h     |   4 +-
- 2 files changed, 122 insertions(+), 42 deletions(-)
+ Documentation/admin-guide/kernel-parameters.txt |   7 ++
+ drivers/clk/Kconfig                             |  11 +++
+ drivers/clk/clk-scmi.c                          | 120 ++++++++++++++++++++++--
+ 3 files changed, 132 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/firmware/arm/scmi/clock.c b/drivers/firmware/arm/scmi/clock.c
-index 0278705d809e..010b63b63703 100644
---- a/drivers/firmware/arm/scmi/clock.c
-+++ b/drivers/firmware/arm/scmi/clock.c
-@@ -5,9 +5,11 @@
-  * Copyright (C) 2018-2022 ARM Ltd.
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index 0b3c140babd9..765ba53b19e0 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -6941,6 +6941,13 @@ Kernel parameters
+ 			non-zero "wait" parameter.  See weight_single
+ 			and weight_many.
+ 
++	scmi_clk.dt_referenced_only[=<bool>] [CLK]
++			Register only the SCMI clocks referenced by enabled
++			device tree nodes, plus their parents. Enabled when no
++			<bool> value is given.
++			Default value is set by
++			CONFIG_COMMON_CLK_SCMI_DT_REFERENCED_ONLY.
++
+ 	sdw_mclk_divider=[SDW]
+ 			Specify the MCLK divider for Intel SoundWire buses in
+ 			case the BIOS does not provide the clock rate properly.
+diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
+index 37a8e35d4178..9642063e543f 100644
+--- a/drivers/clk/Kconfig
++++ b/drivers/clk/Kconfig
+@@ -116,6 +116,17 @@ config COMMON_CLK_SCMI
+ 	  This driver uses SCMI Message Protocol to interact with the
+ 	  firmware providing all the clock controls.
+ 
++config COMMON_CLK_SCMI_DT_REFERENCED_ONLY
++	bool "Register only the SCMI clocks referenced in the device tree"
++	depends on COMMON_CLK_SCMI && OF
++	help
++	  Register only the SCMI clocks referenced in the device tree, plus
++	  their parents, instead of every clock the firmware exposes. This
++	  shortens the boot time on platforms that expose many clocks.
++
++	  Sets the default of the scmi-clk "dt_referenced_only" module
++	  parameter. If unsure, say N.
++
+ config COMMON_CLK_SCPI
+ 	tristate "Clock driver controlled via SCPI interface"
+ 	depends on ARM_SCPI_PROTOCOL || COMPILE_TEST
+diff --git a/drivers/clk/clk-scmi.c b/drivers/clk/clk-scmi.c
+index 2dd50c5b4ea8..a8ec782ac279 100644
+--- a/drivers/clk/clk-scmi.c
++++ b/drivers/clk/clk-scmi.c
+@@ -5,7 +5,9 @@
+  * Copyright (C) 2018-2024 ARM Ltd.
   */
  
++#include <linux/bitmap.h>
+ #include <linux/bits.h>
 +#include <linux/cleanup.h>
- #include <linux/math64.h>
- #include <linux/module.h>
- #include <linux/limits.h>
-+#include <linux/mutex.h>
- #include <linux/sort.h>
- 
- #include "protocols.h"
-@@ -159,6 +161,7 @@ struct scmi_clock_rate_notify_payld {
- 
- struct scmi_clock_desc {
- 	u32 id;
-+	bool discovered;
- 	unsigned int tot_rates;
- 	struct scmi_clock_rates r;
- #define	RATE_MIN	0
-@@ -175,6 +178,7 @@ struct clock_info {
- 	bool notify_rate_changed_cmd;
- 	bool notify_rate_change_requested_cmd;
- 	atomic_t cur_async_req;
-+	struct mutex discover_lock;	/* serializes the discovery of clkds */
- 	struct scmi_clock_desc *clkds;
- #define CLOCK_INFO(c, i)	(&(((c)->clkds + (i))->info))
- 	int (*clock_config_set)(const struct scmi_protocol_handle *ph,
-@@ -192,15 +196,6 @@ static enum scmi_clock_protocol_cmd evt_2_cmd[] = {
- 	CLOCK_RATE_CHANGE_REQUESTED_NOTIFY,
- };
- 
--static inline struct scmi_clock_info *
--scmi_clock_domain_lookup(struct clock_info *ci, u32 clk_id)
--{
--	if (clk_id >= ci->num_clocks)
--		return ERR_PTR(-EINVAL);
--
--	return CLOCK_INFO(ci, clk_id);
--}
--
- static int
- scmi_clock_protocol_attributes_get(const struct scmi_protocol_handle *ph,
- 				   struct clock_info *ci)
-@@ -271,9 +266,9 @@ static int iter_clk_possible_parents_update_state(struct scmi_iterator_state *st
- 	if (!st->max_resources) {
- 		int num_parents = st->num_returned + st->num_remaining;
- 
--		p->clkd->info.parents = devm_kcalloc(p->dev, num_parents,
--						     sizeof(*p->clkd->info.parents),
--						     GFP_KERNEL);
-+		p->clkd->info.parents = kcalloc(num_parents,
-+						sizeof(*p->clkd->info.parents),
-+						GFP_KERNEL);
- 		if (!p->clkd->info.parents)
- 			return -ENOMEM;
- 
-@@ -484,8 +479,8 @@ iter_clk_describe_update_state(struct scmi_iterator_state *st,
- 	if (!st->max_resources) {
- 		unsigned int tot_rates = st->num_returned + st->num_remaining;
- 
--		p->clkd->r.rates = devm_kcalloc(p->dev, tot_rates,
--						sizeof(*p->clkd->r.rates), GFP_KERNEL);
-+		p->clkd->r.rates = kcalloc(tot_rates, sizeof(*p->clkd->r.rates),
-+					   GFP_KERNEL);
- 		if (!p->clkd->r.rates)
- 			return -ENOMEM;
- 
-@@ -638,6 +633,74 @@ scmi_clock_describe_rates_get(const struct scmi_protocol_handle *ph,
- 	return 0;
+ #include <linux/clk-provider.h>
+ #include <linux/device.h>
+ #include <linux/err.h>
+@@ -350,6 +352,93 @@ scmi_clk_ops_select(struct scmi_device *sdev, struct scmi_clk *sclk,
+ 	return ops;
  }
  
++static bool dt_referenced_only =
++	IS_ENABLED(CONFIG_COMMON_CLK_SCMI_DT_REFERENCED_ONLY);
++module_param(dt_referenced_only, bool, 0444);
++MODULE_PARM_DESC(dt_referenced_only,
++		 "Register only the clocks referenced in the device tree");
++
++static const char * const scmi_clk_ref_props[] = {
++	"clocks", "assigned-clocks", "assigned-clock-parents",
++};
++
++/* Set in @ids the IDs of the @provider clocks referenced by enabled nodes */
++static void scmi_clk_mark_dt_refs(struct device_node *provider,
++				  unsigned long *ids, unsigned int count)
++{
++	struct of_phandle_iterator it;
++	u32 args[MAX_PHANDLE_ARGS];
++	struct device_node *np;
++	const char *prop;
++	int p, err, n;
++
++	for (p = 0; p < ARRAY_SIZE(scmi_clk_ref_props); p++) {
++		prop = scmi_clk_ref_props[p];
++
++		for_each_node_with_property(np, prop) {
++			if (!of_device_is_available(np))
++				continue;
++
++			of_for_each_phandle(&it, err, np, prop, "#clock-cells", -1) {
++				/* Empty entries (<0>) have no node */
++				if (it.node != provider)
++					continue;
++
++				n = of_phandle_iterator_args(&it, args,
++							     MAX_PHANDLE_ARGS);
++				if (n >= 1 && args[0] < count)
++					__set_bit(args[0], ids);
++			}
++		}
++	}
++}
++
 +/*
-+ * Discovery runs after the devres group of the protocol instance is closed,
-+ * so the rates and parents arrays cannot be devm-allocated and are freed
-+ * here instead.
++ * A registered clock needs its parents registered too: a parent_data entry
++ * with no hw makes the clock core look the parent up in the DT, which fails
++ * for this provider. Mark the parents until no new ID is added.
 + */
-+static void scmi_clock_desc_free(struct scmi_clock_desc *clkd)
++static int scmi_clk_mark_parents(const struct scmi_protocol_handle *ph,
++				 unsigned long *ids, unsigned int count)
 +{
-+	kfree(clkd->r.rates);
-+	kfree(clkd->info.parents);
-+}
++	unsigned long *done __free(bitmap) = bitmap_zalloc(count, GFP_KERNEL);
++	const struct scmi_clock_info *info;
++	unsigned int id, j;
++	bool changed;
 +
-+static int scmi_clock_discover(const struct scmi_protocol_handle *ph,
-+			       struct clock_info *ci, u32 clk_id)
-+{
-+	struct scmi_clock_desc *clkd = &ci->clkds[clk_id];
-+	int ret;
++	if (!done)
++		return -ENOMEM;
 +
-+	guard(mutex)(&ci->discover_lock);
++	do {
++		changed = false;
++		for_each_set_bit(id, ids, count) {
++			if (test_bit(id, done))
++				continue;
 +
-+	if (clkd->discovered)
-+		return 0;
-+
-+	clkd->id = clk_id;
-+	ret = scmi_clock_attributes_get(ph, clk_id, ci);
-+	if (!ret)
-+		ret = scmi_clock_describe_rates_get(ph, clk_id, ci);
-+	if (ret) {
-+		/*
-+		 * Start the next attempt from a clean descriptor, so that a
-+		 * transient error does not leave the clock unusable and the
-+		 * iterators do not leak the arrays of this attempt.
-+		 */
-+		scmi_clock_desc_free(clkd);
-+		memset(clkd, 0, sizeof(*clkd));
-+		return ret;
-+	}
-+
-+	/* Pairs with the acquire in the lookup */
-+	smp_store_release(&clkd->discovered, true);
++			__set_bit(id, done);
++			info = scmi_proto_clk_ops->info_get(ph, id);
++			for (j = 0; info && j < info->num_parents; j++)
++				if (info->parents[j] < count &&
++				    !__test_and_set_bit(info->parents[j], ids))
++					changed = true;
++		}
++	} while (changed);
 +
 +	return 0;
 +}
 +
-+static struct scmi_clock_info *
-+scmi_clock_domain_lookup(const struct scmi_protocol_handle *ph,
-+			 struct clock_info *ci, u32 clk_id, bool atomic)
++static struct clk_hw *scmi_clk_get_hw(struct of_phandle_args *clkspec,
++				      void *data)
 +{
-+	struct scmi_clock_desc *clkd;
-+	int ret;
++	struct clk_hw *hw = of_clk_hw_onecell_get(clkspec, data);
 +
-+	if (clk_id >= ci->num_clocks)
-+		return ERR_PTR(-EINVAL);
++	if (IS_ERR(hw))
++		pr_warn_ratelimited("scmi-clocks: clock %u is not registered\n",
++				    clkspec->args[0]);
 +
-+	clkd = &ci->clkds[clk_id];
-+	/* Pairs with the release once the clock is discovered */
-+	if (!smp_load_acquire(&clkd->discovered)) {
-+		/* Discovery sleeps, so an atomic caller can only use known clocks */
-+		if (WARN_ON_ONCE(atomic))
-+			return ERR_PTR(-EAGAIN);
++	return hw;
++}
 +
-+		ret = scmi_clock_discover(ph, ci, clk_id);
-+		if (ret)
-+			return ERR_PTR(ret);
+ static int scmi_clocks_probe(struct scmi_device *sdev)
+ {
+ 	int idx, count, err;
+@@ -391,14 +480,31 @@ static int scmi_clocks_probe(struct scmi_device *sdev)
+ 	transport_is_atomic = handle->is_transport_atomic(handle,
+ 							  &atomic_threshold_us);
+ 
++	unsigned long *ids __free(bitmap) = bitmap_zalloc(count, GFP_KERNEL);
++
++	if (!ids)
++		return -ENOMEM;
++
++	if (dt_referenced_only && np) {
++		scmi_clk_mark_dt_refs(np, ids, count);
++		err = scmi_clk_mark_parents(ph, ids, count);
++		if (err)
++			return err;
++
++		if (bitmap_empty(ids, count))
++			dev_warn(dev, "no clock referenced in the device tree, none registered\n");
++	} else {
++		bitmap_fill(ids, count);
 +	}
 +
-+	return &clkd->info;
-+}
-+
- static int
- scmi_clock_rate_get(const struct scmi_protocol_handle *ph,
- 		    u32 clk_id, u64 *value)
-@@ -670,7 +733,7 @@ static int scmi_clock_rate_set(const struct scmi_protocol_handle *ph,
- 	struct clock_info *ci = ph->get_priv(ph);
- 	struct scmi_clock_info *clk;
- 
--	clk = scmi_clock_domain_lookup(ci, clk_id);
-+	clk = scmi_clock_domain_lookup(ph, ci, clk_id, false);
- 	if (IS_ERR(clk))
- 		return PTR_ERR(clk);
- 
-@@ -726,7 +789,7 @@ static int scmi_clock_determine_rate(const struct scmi_protocol_handle *ph,
- 	if (!rate)
- 		return -EINVAL;
- 
--	clk = scmi_clock_domain_lookup(ci, clk_id);
-+	clk = scmi_clock_domain_lookup(ph, ci, clk_id, false);
- 	if (IS_ERR(clk))
- 		return PTR_ERR(clk);
- 
-@@ -768,7 +831,7 @@ scmi_clock_all_rates_get(const struct scmi_protocol_handle *ph, u32 clk_id)
- 	struct scmi_clock_desc *clkd;
- 	struct scmi_clock_info *clk;
- 
--	clk = scmi_clock_domain_lookup(ci, clk_id);
-+	clk = scmi_clock_domain_lookup(ph, ci, clk_id, false);
- 	if (IS_ERR(clk) || !clk->name[0])
- 		return NULL;
- 
-@@ -827,7 +890,7 @@ scmi_clock_set_parent(const struct scmi_protocol_handle *ph, u32 clk_id,
- 	struct clock_info *ci = ph->get_priv(ph);
- 	struct scmi_clock_info *clk;
- 
--	clk = scmi_clock_domain_lookup(ci, clk_id);
-+	clk = scmi_clock_domain_lookup(ph, ci, clk_id, false);
- 	if (IS_ERR(clk))
- 		return PTR_ERR(clk);
- 
-@@ -923,7 +986,7 @@ static int scmi_clock_enable(const struct scmi_protocol_handle *ph, u32 clk_id,
- 	struct clock_info *ci = ph->get_priv(ph);
- 	struct scmi_clock_info *clk;
- 
--	clk = scmi_clock_domain_lookup(ci, clk_id);
-+	clk = scmi_clock_domain_lookup(ph, ci, clk_id, atomic);
- 	if (IS_ERR(clk))
- 		return PTR_ERR(clk);
- 
-@@ -940,7 +1003,7 @@ static int scmi_clock_disable(const struct scmi_protocol_handle *ph, u32 clk_id,
- 	struct clock_info *ci = ph->get_priv(ph);
- 	struct scmi_clock_info *clk;
- 
--	clk = scmi_clock_domain_lookup(ci, clk_id);
-+	clk = scmi_clock_domain_lookup(ph, ci, clk_id, atomic);
- 	if (IS_ERR(clk))
- 		return PTR_ERR(clk);
- 
-@@ -1041,7 +1104,7 @@ static int scmi_clock_config_oem_set(const struct scmi_protocol_handle *ph,
- 	struct clock_info *ci = ph->get_priv(ph);
- 	struct scmi_clock_info *clk;
- 
--	clk = scmi_clock_domain_lookup(ci, clk_id);
-+	clk = scmi_clock_domain_lookup(ph, ci, clk_id, atomic);
- 	if (IS_ERR(clk))
- 		return PTR_ERR(clk);
- 
-@@ -1060,7 +1123,7 @@ static int scmi_clock_config_oem_get(const struct scmi_protocol_handle *ph,
- 	struct clock_info *ci = ph->get_priv(ph);
- 	struct scmi_clock_info *clk;
- 
--	clk = scmi_clock_domain_lookup(ci, clk_id);
-+	clk = scmi_clock_domain_lookup(ph, ci, clk_id, atomic);
- 	if (IS_ERR(clk))
- 		return PTR_ERR(clk);
- 
-@@ -1084,7 +1147,7 @@ scmi_clock_info_get(const struct scmi_protocol_handle *ph, u32 clk_id)
- 	struct scmi_clock_info *clk;
- 	struct clock_info *ci = ph->get_priv(ph);
- 
--	clk = scmi_clock_domain_lookup(ci, clk_id);
-+	clk = scmi_clock_domain_lookup(ph, ci, clk_id, false);
- 	if (IS_ERR(clk))
- 		return NULL;
- 
-@@ -1113,23 +1176,16 @@ static const struct scmi_clk_proto_ops clk_proto_ops = {
- static bool scmi_clk_notify_supported(const struct scmi_protocol_handle *ph,
- 				      u8 evt_id, u32 src_id)
- {
--	bool supported;
--	struct scmi_clock_info *clk;
- 	struct clock_info *ci = ph->get_priv(ph);
- 
--	if (evt_id >= ARRAY_SIZE(evt_2_cmd))
--		return false;
--
--	clk = scmi_clock_domain_lookup(ci, src_id);
--	if (IS_ERR(clk))
-+	if (evt_id >= ARRAY_SIZE(evt_2_cmd) || src_id >= ci->num_clocks)
- 		return false;
- 
-+	/* No clock is discovered yet, so report the protocol level support */
- 	if (evt_id == SCMI_EVENT_CLOCK_RATE_CHANGED)
--		supported = clk->rate_changed_notifications;
--	else
--		supported = clk->rate_change_requested_notifications;
-+		return ci->notify_rate_changed_cmd;
- 
--	return supported;
-+	return ci->notify_rate_change_requested_cmd;
- }
- 
- static int scmi_clk_rate_notify(const struct scmi_protocol_handle *ph,
-@@ -1157,10 +1213,23 @@ static int scmi_clk_set_notify_enabled(const struct scmi_protocol_handle *ph,
- 				       u8 evt_id, u32 src_id, bool enable)
- {
- 	int ret, cmd_id;
-+	bool supported;
-+	struct scmi_clock_info *clk;
-+	struct clock_info *ci = ph->get_priv(ph);
- 
- 	if (evt_id >= ARRAY_SIZE(evt_2_cmd))
- 		return -EINVAL;
- 
-+	clk = scmi_clock_domain_lookup(ph, ci, src_id, false);
-+	if (IS_ERR(clk))
-+		return PTR_ERR(clk);
-+
-+	supported = evt_id == SCMI_EVENT_CLOCK_RATE_CHANGED ?
-+		    clk->rate_changed_notifications :
-+		    clk->rate_change_requested_notifications;
-+	if (!supported)
-+		return -EOPNOTSUPP;
-+
- 	cmd_id = evt_2_cmd[evt_id];
- 	ret = scmi_clk_rate_notify(ph, src_id, cmd_id, enable);
- 	if (ret)
-@@ -1229,9 +1298,20 @@ static const struct scmi_protocol_events clk_protocol_events = {
- 	.num_events = ARRAY_SIZE(clk_events),
- };
- 
-+static int scmi_clock_protocol_deinit(const struct scmi_protocol_handle *ph)
-+{
-+	struct clock_info *cinfo = ph->get_priv(ph);
-+	int i;
-+
-+	for (i = 0; i < cinfo->num_clocks; i++)
-+		scmi_clock_desc_free(&cinfo->clkds[i]);
-+
-+	return 0;
-+}
-+
- static int scmi_clock_protocol_init(const struct scmi_protocol_handle *ph)
- {
--	int clkid, ret;
-+	int ret;
- 	struct clock_info *cinfo;
- 
- 	dev_dbg(ph->dev, "Clock Version %d.%d\n",
-@@ -1250,12 +1330,9 @@ static int scmi_clock_protocol_init(const struct scmi_protocol_handle *ph)
- 	if (!cinfo->clkds)
+ 	sclks = devm_kcalloc(dev, count, sizeof(*sclks), GFP_KERNEL);
+ 	if (!sclks)
  		return -ENOMEM;
  
--	for (clkid = 0; clkid < cinfo->num_clocks; clkid++) {
--		cinfo->clkds[clkid].id = clkid;
--		ret = scmi_clock_attributes_get(ph, clkid, cinfo);
--		if (!ret)
--			scmi_clock_describe_rates_get(ph, clkid, cinfo);
--	}
-+	ret = devm_mutex_init(ph->dev, &cinfo->discover_lock);
-+	if (ret)
-+		return ret;
+ 	for (idx = 0; idx < count; idx++)
+-		hws[idx] = &sclks[idx].hw;
++		hws[idx] = test_bit(idx, ids) ? &sclks[idx].hw : ERR_PTR(-EINVAL);
  
- 	if (PROTOCOL_REV_MAJOR(ph->version) >= 0x3) {
- 		cinfo->clock_config_set = scmi_clock_config_set_v2;
-@@ -1272,6 +1349,7 @@ static const struct scmi_protocol scmi_clock = {
- 	.id = SCMI_PROTOCOL_CLOCK,
- 	.owner = THIS_MODULE,
- 	.instance_init = &scmi_clock_protocol_init,
-+	.instance_deinit = &scmi_clock_protocol_deinit,
- 	.ops = &clk_proto_ops,
- 	.events = &clk_protocol_events,
- 	.supported_version = SCMI_PROTOCOL_SUPPORTED_VERSION,
-diff --git a/include/linux/scmi_protocol.h b/include/linux/scmi_protocol.h
-index 3f7cc35eb861..c326f4edc9a0 100644
---- a/include/linux/scmi_protocol.h
-+++ b/include/linux/scmi_protocol.h
-@@ -84,7 +84,9 @@ enum scmi_clock_oem_config {
-  *	by SCMI Clock Protocol
-  *
-  * @count_get: get the count of clocks provided by SCMI
-- * @info_get: get the information of the specified clock
-+ * @info_get: get the information of the specified clock. The clock is
-+ *	      discovered on the first call for it, which sends messages to
-+ *	      the platform, so this can sleep
-  * @rate_get: request the current clock rate of a clock
-  * @rate_set: set the clock rate of a clock
-  * @determine_rate: determine the effective rate that can be supported by a
+-	for (idx = 0; idx < count; idx++) {
++	for_each_set_bit(idx, ids, count) {
+ 		struct scmi_clk *sclk = &sclks[idx];
+ 		const struct clk_ops *scmi_ops;
+ 
+@@ -434,8 +540,11 @@ static int scmi_clocks_probe(struct scmi_device *sdev)
+ 				return -ENOMEM;
+ 
+ 			for (int i = 0; i < sclk->info->num_parents; i++) {
+-				sclk->parent_data[i].index = sclk->info->parents[i];
+-				sclk->parent_data[i].hw = hws[sclk->info->parents[i]];
++				u32 pid = sclk->info->parents[i];
++				struct clk_hw *phw = pid < count ? hws[pid] : NULL;
++
++				sclk->parent_data[i].index = pid;
++				sclk->parent_data[i].hw = IS_ERR(phw) ? NULL : phw;
+ 			}
+ 		}
+ 
+@@ -451,8 +560,7 @@ static int scmi_clocks_probe(struct scmi_device *sdev)
+ 		}
+ 	}
+ 
+-	return devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get,
+-					   clk_data);
++	return devm_of_clk_add_hw_provider(dev, scmi_clk_get_hw, clk_data);
+ }
+ 
+ static const struct scmi_device_id scmi_id_table[] = {
 
 -- 
 2.43.0
