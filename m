@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Fri, 13 Nov 2026 08:59:27 -0800
-Subject: [PATCH net-next v11 08/14] net: ethernet: oa_tc6: Drop frames if
- footer has FD bit set
+Date: Fri, 13 Nov 2026 08:59:28 -0800
+Subject: [PATCH net-next v11 09/14] net: phy: ncn26000: Enable enhanced
+ noise immunity
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-s2500-mac-phy-support-v11-8-7a186141952c@onsemi.com>
+Message-Id: <20261113-s2500-mac-phy-support-v11-9-7a186141952c@onsemi.com>
 References: <20261113-s2500-mac-phy-support-v11-0-7a186141952c@onsemi.com>
 In-Reply-To: <20261113-s2500-mac-phy-support-v11-0-7a186141952c@onsemi.com>
 To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
@@ -29,72 +29,95 @@ Cc: Selva Rajagopal <Selvamani.Rajagopal@onsemi.com>,
  Jerry Ray <jerry.ray@microchip.com>, 
  Ciprian Regus <ciprian.regus@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794589162; l=2179;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794589162; l=2405;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=dkkj9Yvy8E8XVR9o8A4wOOf+5qrIVE9onT+oIT/7Bdw=;
- b=QdWV9vCthImkHEbA7LbkU3pP2WAhkBfeV0eQmeWxBTZvloGcgSCVfEima3UVrizhjxcswM4vv
- WoQdCIRBdnzCCUkJTIS/C4AS2SaBW/BW6RYqipi8IMQZV1/5H9o1ktJ
+ bh=iAG7lV9gijg3z6XNjiMZoINHKklWCTR9M+HVJm+0cQY=;
+ b=zflYKp3NW29ITGTeZqKbIdOuwjnCjgA7yNjVcQAf8y41uSt1lI61G/69krDWbv5pcYIsa5sl1
+ fAvRKJIGBj6Di/HQLTnqOpemvxaNwWts24JW1kL9UZFM+r4ZizuH2yZ
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Drop a receive frame when the data footer of its last chunk has
-the Frame Drop (FD) bit set. Dropping the frame with FD bit set
-is in OPEN Alliance specification.
+Intercept PLCA enable/disable requests in set_plca_cfg() and set or
+clear the proprietary ENI bit accordingly. By setting the ENI bit,
+noise immunity is improved and it is specifically meant for PLCA
+enabled nodes.
 
-Here is one scenario when FD bit will be set. With RX cut-through
-enabled, the MAC-PHY can start forwarding a frame before it knows
-the frame is bad, and uses FD to tell the host to discard it.
-
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
 changes in v11
-  - Act on FD bit on the footer in the received data chunk.
-  - New patch in v11
+  - Updated commit message to be more accurate
+changes in v10
+  - No change
+changes in v9
+  - Added Reviewed tag
+changes in v8
+  - No change
+changes in v7
+  - No change
+changes in v6
+  - No change
+changes in v5
+  - No changes
+changes in v4
+  - No changes
+changes in v3
+  - Moved as a separate patch
 ---
- drivers/net/ethernet/oa_tc6/oa_tc6_main.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ drivers/net/phy/ncn26000.c | 23 ++++++++++++++++++++++-
+ 1 file changed, 22 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/net/ethernet/oa_tc6/oa_tc6_main.c b/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
-index 2b31370da2d2..5d01ef5a13ad 100644
---- a/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
-+++ b/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
-@@ -1150,6 +1150,7 @@ static int oa_tc6_prcs_rx_chunk_payload(struct oa_tc6 *tc6, u8 *data,
- 				       footer);
- 	bool start_valid = FIELD_GET(OA_TC6_DATA_FOOTER_START_VALID, footer);
- 	bool end_valid = FIELD_GET(OA_TC6_DATA_FOOTER_END_VALID, footer);
-+	bool frame_drop = FIELD_GET(OA_TC6_DATA_FOOTER_FRAME_DROP, footer);
- 	u16 size;
+diff --git a/drivers/net/phy/ncn26000.c b/drivers/net/phy/ncn26000.c
+index cabdd83c614f..888d74b83125 100644
+--- a/drivers/net/phy/ncn26000.c
++++ b/drivers/net/phy/ncn26000.c
+@@ -35,6 +35,9 @@
  
- 	/* Restart the new rx frame after receiving rx buffer overflow error */
-@@ -1159,6 +1160,25 @@ static int oa_tc6_prcs_rx_chunk_payload(struct oa_tc6 *tc6, u8 *data,
- 	if (tc6->wait_until_start_valid)
- 		return 0;
+ #define TO_TMR_DEFAULT			32
  
-+	/* Drop the frame, if footer sets FD bit. Checking FD bit
-+	 * becomes important, when cut-through operation is enabled.
-+	 */
-+	if (end_valid && frame_drop) {
-+		oa_tc6_cleanup_ongoing_rx_skb(tc6);
++#define NCN26000_REG_PHYCFG1		0x8001
++#define NCN26000_PHYCFG1_ENI		BIT(7)
 +
-+		/* Full frame in this chunk. Nothing to free. Move on to
-+		 * next chunk.
-+		 */
-+		if (start_valid && start_byte_offset < end_byte_offset) {
-+			tc6->netdev->stats.rx_dropped++;
-+			return 0;
-+		}
+ static int ncn26000_config_init(struct phy_device *phydev)
+ {
+ 	/* HW bug workaround: the default value of the PLCA TO_TIMER should be
+@@ -100,6 +103,24 @@ static int ncn26000_read_status(struct phy_device *phydev)
+ 	return 0;
+ }
+ 
++/* Intercept PLCA enable/disable request to
++ * set the proprietary, ENI mode accordingly
++ */
++static int ncn26000_c45_plca_set_cfg(struct phy_device *phydev,
++				     const struct phy_plca_cfg *plca_cfg)
++{
++	int ret = genphy_c45_plca_set_cfg(phydev, plca_cfg);
++	u16 eni_cfg = 0;
 +
-+		/* The chunk carries only the end of the dropped frame. */
-+		if (!start_valid)
-+			return 0;
-+	}
++	if (ret || plca_cfg->enabled < 0)
++		return ret;
 +
- 	/* Process the chunk with complete rx frame */
- 	if (start_valid && end_valid && start_byte_offset < end_byte_offset) {
- 		size = end_byte_offset + 1 - start_byte_offset;
++	eni_cfg = (plca_cfg->enabled) ? NCN26000_PHYCFG1_ENI : 0;
++	return phy_modify_mmd(phydev, MDIO_MMD_VEND2,
++			      NCN26000_REG_PHYCFG1,
++			      NCN26000_PHYCFG1_ENI, eni_cfg);
++}
++
+ static irqreturn_t ncn26000_handle_interrupt(struct phy_device *phydev)
+ {
+ 	int ret;
+@@ -151,7 +172,7 @@ static struct phy_driver ncn26000_driver[] = {
+ 		.read_status		= ncn26000_read_status,
+ 		.handle_interrupt       = ncn26000_handle_interrupt,
+ 		.get_plca_cfg		= genphy_c45_plca_get_cfg,
+-		.set_plca_cfg		= genphy_c45_plca_set_cfg,
++		.set_plca_cfg		= ncn26000_c45_plca_set_cfg,
+ 		.get_plca_status	= genphy_c45_plca_get_status,
+ 		.soft_reset             = genphy_soft_reset,
+ 	},
 
 -- 
 2.43.0
