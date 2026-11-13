@@ -1,273 +1,71 @@
-From: Marcin Knap <marcin.knap@vecima.com>
-Date: Fri, 13 Nov 2026 15:27:52 +0100
-Subject: [PATCH net v5] xsk: Do not free ZC Rx buffer when the Rx ring is
- full
+From: =?utf-8?q?St=C3=A9phane_COLIN?= <bigbob.fun@gmail.com>
+Subject: [PATCH 0/7] openconnect: Fix GlobalProtect authentication,
+ reconnect and split routes
+Date: Fri, 13 Nov 2026 16:34:50 +0100
+Message-Id: <20261113-openconnect-gp-fixes-v1-0-1f7f6922d88f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261113-xsk-zc-rx-double-free-v5-1-6ead3af4d131@vecima.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XPwU7DMAwG4FeZcsZTnGQt2Yn3QBxS12EB1qKki
- wpT331pd9jQVHH8Lfv75bNIHAMnsd+cReQcUui7EnZPG0EH170zhLZkoaSqUKKFMX3CL0Ecoe1
- PzReDj8yATjdyZ6k16EW5/Y7sw7i4r6LjQbxdh+nUfDANszivHUIa+viztGdclv8pyggIyjm0v
- qrUs29eMlM4ui31x6UkqztGyzVGFYa8xNY467WvHxh9Y1CaNUYXBtFJqtmjrfUDY+6Z1afM/JR
- hKR0pVbg/zDRNF1JEBNOnAQAA
-X-Change-ID: 20261019-xsk-zc-rx-double-free-1a3b059cd41f
-To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
- Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Magnus Karlsson <magnus.karlsson@intel.com>, 
- Maciej Fijalkowski <maciej.fijalkowski@intel.com>, 
- Stanislav Fomichev <sdf@fomichev.me>, Simon Horman <horms@kernel.org>, 
- Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
- Jesper Dangaard Brouer <hawk@kernel.org>, 
- John Fastabend <john.fastabend@gmail.com>, jtollet@cisco.com
-Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
- =?utf-8?q?Bj=C3=B6rn_T=C3=B6pel?= <bjorn@kernel.org>, 
- Jason Xing <kerneljasonxing@gmail.com>, 
- Nitin Shetty J <nshettyj@marvell.com>, Marcin Knap <marcin.knap@vecima.com>, 
- Joshua Washington <joshwash@google.com>, 
- Harshitha Ramamurthy <hramamurthy@google.com>, 
- Sunil Goutham <sgoutham@marvell.com>, Geetha sowjanya <gakula@marvell.com>, 
- Ratheesh Kannoth <rkannoth@marvell.com>, 
- Subbaraya Sundeep <sbhatta@marvell.com>, 
- Bharat Bhushan <bbhushan2@marvell.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794580072; l=9330;
- i=marcin.knap@vecima.com; s=20261019; h=from:subject:message-id;
- bh=AIRvjG754M3Sj+HEOteZxm3m/GpLx/VY0+cKvGXe26g=;
- b=zB3gPzf/0sJ5eXrmEbQ74x47vNq7n1pTvVq58hqDTGLdkK79RCz5FTQhxR/MaGY5aXsI2bj6l
- a+TqHBR2f4BC/sP6QtOeIsNvzsc+YE4wl2W03VomnEx21QsLasFyq7h
-X-Developer-Key: i=marcin.knap@vecima.com; a=ed25519;
- pk=rCvVOuopf4s4BHtLE+FRnv0x83PoFHgBPo9mtNlvzLk=
-X-Endpoint-Received: by B4 Relay for marcin.knap@vecima.com/20261019 with auth_id=1237
+X-B4-Tracking: v=1; b=H4sIABou92oC/x3LQQqAIBBA0avErBvIQoWuEi1immw2o2hEEN49a
+ fn4/BcKZ+ECc/dC5luKRG0wfQd0bhoYZW+GcRidMWbCmFgpqjJdGBIe8nBBbydLnqw7dgdtTZn
+ /0M5lrfUDK3AYmmYAAAA=
+To: connman@lists.linux.dev
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794584090; l=2284;
+ i=bigbob.fun@gmail.com; s=20261113; h=from:subject:message-id;
+ bh=EFshlAO7+Q6jxcB9wR4fbD3C3/tlBTEQaI4mKje+WMw=;
+ b=SdVZd3+7ZlUU4lH5iCbIgmO2SD6E/Lq3ZRYnrb81TxSKZZb/pyUJ7/eK9nOEVAwfrzOuSmLLW
+ 1xaLTMWn3fEB+FJI0HRnrqXh2OeUNG7RXY/Iu/OV1zrpBEMABE5QrDU
+X-Developer-Key: i=bigbob.fun@gmail.com; a=ed25519;
+ pk=MoY1DAn0hlhveZhsN9JyLnuWS/CGqJHTad4MaTL8HgY=
+X-Endpoint-Received: by B4 Relay for bigbob.fun@gmail.com/20261113 with auth_id=1512
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When an XDP program redirects a zero-copy buffer to an XSK and the
-socket's Rx ring is full, xsk_rcv_zc() frees the buffer and returns
--ENOBUFS to xdp_do_redirect().
+This series fixes the OpenConnect plugin with a Palo Alto GlobalProtect
+gateway (AuthType userpass, built-in authentication of connman-vpnd), the
+handling of openconnect's own reconnection after a suspend, and split
+routes pushed by the gateway.
 
-A failed xdp_do_redirect() leaves the buffer owned by the caller, so
-the driver releases it as well. That is harmless when the driver frees
-it right away, as i40e, ice, igc, stmmac, idpf and most others do:
-xp_free() ignores a buffer that is already on the pool free list. It
-breaks when the driver releases or uses the buffer later, after it may
-have been reallocated:
+1. The protocol was only given to the openconnect process started after
+   authentication: the built-in authentication always used AnyConnect,
+   POSTed to /gateway and got 404 from a GlobalProtect gateway.
+2. "attempt-reconnect" and "reconnect" from the vpnc-script were handled
+   as a disconnect: the provider was torn down while openconnect was
+   still running, leaving an orphaned process.
+3. GlobalProtect names its password field "passwd": an empty password
+   was sent...
+4. ...and the rejected credentials were resubmitted in a tight loop
+   (~50 times), which can lock an account.
+5. Split routes without a gateway (CISCO_SPLIT_INC_*) were never
+   signalled to connmand.
+6. _MASKLEN was matched as _MASK, so IPv4 netmasks became "16", "32"...
+7. The username was never offered again in the credentials request.
 
-- mlx5e treats the failure as XDP_DROP and releases the buffer when
-  the Rx WQE is refilled. By then the buffer can be in use for another
-  Rx descriptor, so an in-use buffer goes back on the free list and the
-  same UMEM frame is later handed to user space twice. With striding
-  RQ this also ended in a NULL pointer dereference in
-  mlx5e_post_rx_wqes().
-- ixgbe keeps the buffer in the ring on its need_wakeup -ENOBUFS
-  (XDP_EXIT) path and runs XDP on it again on the next poll.
-- dpaa2 hands the buffer back to its hardware pool while it is also on
-  the pool free list.
-- octeontx2 returns false on a failed redirect, so the caller goes on
-  to build an skb from the freed buffer.
-
-Leave the buffer with the caller on both the single-buffer and the
-multi-buffer -ENOBUFS paths, as xsk_rcv() and xsk_rcv_check() already
-do. Make the drivers that relied on the core freeing the buffer free
-it themselves:
-
-- i40e and ice consume the descriptor on XDP_EXIT without freeing it.
-- gve DQO counts the redirect error without freeing the buffer.
-- octeontx2 now frees the buffer and reports it as consumed.
-
-This covers redirects to an XSKMAP. A zero-copy buffer redirected to a
-devmap, a cpumap or an ifindex is copied by
-xdp_convert_zc_to_xdp_frame(), which frees it before
-__xdp_do_redirect_frame() can still fail. The driver then releases it
-a second time, and the copied page leaks. That path is not changed
-here. It can be fixed separately in xdp_do_redirect(): copy the buffer
-without freeing it, free it only once the frame has been queued, and
-free the copy on failure. xdp_convert_zc_to_xdp_frame() itself has to
-keep freeing the buffer, because its XDP_TX users rely on that.
-
-Seen on Mellanox ConnectX-6 DX MT2892 (FW 22.47.1026) with AF_XDP
-zero-copy on 7.3.0-rc6 when the user-space consumer could not keep up
-with the Rx ring. With this change no duplicate frames were seen with
-striding RQ on or off.
-
-Fixes: 269009893146 ("xsk: recycle buffer in case Rx queue was full")
-Reviewed-by: Maciej Fijalkowski <maciej.fijalkowski@intel.com>
-Reviewed-by: Björn Töpel <bjorn@kernel.org>
-Reviewed-by: Jason Xing <kerneljasonxing@gmail.com>
-Reviewed-by: Nitin Shetty J <nshettyj@marvell.com>
-Tested-by: Jerome Tollet <jtollet@cisco.com>
-Signed-off-by: Marcin Knap <marcin.knap@vecima.com>
----
-Tested on mlx5 (ConnectX-6 DX) in zero-copy single-buffer mode.
-The i40e and ice changes and the multi-buffer path are build-tested
-only, as I don't have that hardware available.
----
-Changes in v5:
-- Commit message only: describe the devmap/cpumap/ifindex redirect path
-  and how it can be fixed separately.
-- Link to v4: https://patch.msgid.link/20261109-xsk-zc-rx-double-free-v4-1-24e00ac221a0@vecima.com
-
-Changes in v4:
-- Commit message only, no code changes (AI review):
-  - Drop igb from the drivers that rerun XDP after XDP_EXIT;
-    igb_run_xdp_zc() turns IGB_XDP_EXIT into IGB_XDP_CONSUMED.
-  - State that the fix covers XSKMAP redirects.
-- Link to v3: https://patch.msgid.link/20261104-xsk-zc-rx-double-free-v3-1-11a0c7ef1973@vecima.com
-
-Changes in v3:
-- Target net instead of bpf (Maciej).
-- Reword the changelog only: drivers that free the buffer right away
-  are not affected; name the ones with a deferred release or reuse
-  after free (AI review). No code changes.
-- Collect Reviewed-by tags.
-- Link to v2: https://patch.msgid.link/20261030-xsk-zc-rx-double-free-v2-1-cf01d4a9f3f7@vecima.com
-
-Changes in v2:
-- Also free the buffer on zero-copy redirect failure in gve DQO and
-  octeontx2, which relied on the core freeing it (AI review).
-- Audited the remaining zero-copy drivers against Björn's table.
-  ixgbe and igb no longer run XDP on a freed buffer after
-  XDP_EXIT; making them drop and consume the descriptor (R2) is
-  left for a follow-up unless you prefer it in this patch.
-- Rebased on current bpf.
-- Link to v1: https://patch.msgid.link/20261019-xsk-zc-rx-double-free-v1-1-2aa19f6628fb@vecima.com
-
-To: Joshua Washington <joshwash@google.com>
-To: Harshitha Ramamurthy <hramamurthy@google.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>
-To: "David S. Miller" <davem@davemloft.net>
-To: Eric Dumazet <edumazet@kernel.org>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Tony Nguyen <anthony.l.nguyen@intel.com>
-To: Przemek Kitszel <przemyslaw.kitszel@intel.com>
-To: Sunil Goutham <sgoutham@marvell.com>
-To: Geetha sowjanya <gakula@marvell.com>
-To: Ratheesh Kannoth <rkannoth@marvell.com>
-To: Subbaraya Sundeep <sbhatta@marvell.com>
-To: Bharat Bhushan <bbhushan2@marvell.com>
-To: Magnus Karlsson <magnus.karlsson@intel.com>
-To: Maciej Fijalkowski <maciej.fijalkowski@intel.com>
-To: Stanislav Fomichev <sdf@fomichev.me>
-To: Simon Horman <horms@kernel.org>
-To: Alexei Starovoitov <ast@kernel.org>
-To: Daniel Borkmann <daniel@iogearbox.net>
-To: Jesper Dangaard Brouer <hawk@kernel.org>
-To: John Fastabend <john.fastabend@gmail.com>
-Cc: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: intel-wired-lan@lists.osuosl.org
-Cc: bpf@vger.kernel.org
----
- drivers/net/ethernet/google/gve/gve_rx_dqo.c           |  4 +++-
- drivers/net/ethernet/intel/i40e/i40e_xsk.c             |  1 +
- drivers/net/ethernet/intel/ice/ice_xsk.c               |  1 +
- drivers/net/ethernet/marvell/octeontx2/nic/otx2_txrx.c |  3 ++-
- net/xdp/xsk.c                                          | 15 +++------------
- 5 files changed, 10 insertions(+), 14 deletions(-)
-
-diff --git a/drivers/net/ethernet/google/gve/gve_rx_dqo.c b/drivers/net/ethernet/google/gve/gve_rx_dqo.c
-index 82ed5e48b00a..cc544420df11 100644
---- a/drivers/net/ethernet/google/gve/gve_rx_dqo.c
-+++ b/drivers/net/ethernet/google/gve/gve_rx_dqo.c
-@@ -686,8 +686,10 @@ static void gve_xsk_done_dqo(struct gve_priv *priv, struct gve_rx_ring *rx,
- 			goto err;
- 		break;
- 	case XDP_REDIRECT:
--		if (unlikely(xdp_do_redirect(priv->dev, xdp, xprog)))
-+		if (unlikely(xdp_do_redirect(priv->dev, xdp, xprog))) {
-+			xsk_buff_free(xdp);
- 			goto err;
-+		}
- 		break;
- 	}
- 
-diff --git a/drivers/net/ethernet/intel/i40e/i40e_xsk.c b/drivers/net/ethernet/intel/i40e/i40e_xsk.c
-index 51a05ce4c7ce..a11ee1f3fa38 100644
---- a/drivers/net/ethernet/intel/i40e/i40e_xsk.c
-+++ b/drivers/net/ethernet/intel/i40e/i40e_xsk.c
-@@ -360,6 +360,7 @@ static void i40e_handle_xdp_result_zc(struct i40e_ring *rx_ring,
- 		return;
- 
- 	if (xdp_res == I40E_XDP_EXIT) {
-+		xsk_buff_free(xdp_buff);
- 		*failure = true;
- 		return;
- 	}
-diff --git a/drivers/net/ethernet/intel/ice/ice_xsk.c b/drivers/net/ethernet/intel/ice/ice_xsk.c
-index 0643017541c3..7c1dd4c87a71 100644
---- a/drivers/net/ethernet/intel/ice/ice_xsk.c
-+++ b/drivers/net/ethernet/intel/ice/ice_xsk.c
-@@ -636,6 +636,7 @@ int ice_clean_rx_irq_zc(struct ice_rx_ring *rx_ring,
- 		if (likely(xdp_res & (ICE_XDP_TX | ICE_XDP_REDIR))) {
- 			xdp_xmit |= xdp_res;
- 		} else if (xdp_res == ICE_XDP_EXIT) {
-+			xsk_buff_free(first);
- 			failure = true;
- 			first = NULL;
- 			break;
-diff --git a/drivers/net/ethernet/marvell/octeontx2/nic/otx2_txrx.c b/drivers/net/ethernet/marvell/octeontx2/nic/otx2_txrx.c
-index 90af9b9044aa..6d10c132f61c 100644
---- a/drivers/net/ethernet/marvell/octeontx2/nic/otx2_txrx.c
-+++ b/drivers/net/ethernet/marvell/octeontx2/nic/otx2_txrx.c
-@@ -1555,7 +1555,8 @@ static bool otx2_xdp_rcv_pkt_handler(struct otx2_nic *pfvf,
- 				*need_xdp_flush = true;
- 				return true;
- 			}
--			return false;
-+			xsk_buff_free(xsk_buff);
-+			return true;
- 		}
- 
- 		err = xdp_do_redirect(pfvf->netdev, &xdp, prog);
-diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
-index 781ba46eb152..89bac2feeff2 100644
---- a/net/xdp/xsk.c
-+++ b/net/xdp/xsk.c
-@@ -224,21 +224,15 @@ static int xsk_rcv_zc(struct xdp_sock *xs, struct xdp_buff *xdp, u32 len)
- 	struct list_head *xskb_list;
- 	u32 contd = 0;
- 	u32 num_desc;
--	int err;
- 
--	if (likely(!frags)) {
--		err = __xsk_rcv_zc(xs, xskb, len, contd);
--		if (err)
--			goto err;
--		return 0;
--	}
-+	if (likely(!frags))
-+		return __xsk_rcv_zc(xs, xskb, len, contd);
- 
- 	contd = XDP_PKT_CONTD;
- 	num_desc = xdp_get_shared_info_from_buff(xdp)->nr_frags + 1;
- 	if (xskq_prod_nb_free(xs->rx, num_desc) < num_desc) {
- 		xs->rx_queue_full++;
--		err = -ENOBUFS;
--		goto err;
-+		return -ENOBUFS;
- 	}
- 
- 	__xsk_rcv_zc_safe(xs, xskb, len, contd);
-@@ -252,9 +246,6 @@ static int xsk_rcv_zc(struct xdp_sock *xs, struct xdp_buff *xdp, u32 len)
- 	}
- 
- 	return 0;
--err:
--	xsk_buff_free(xdp);
--	return err;
- }
- 
- static void *xsk_copy_xdp_start(struct xdp_buff *from)
+Tested on a phone running a ConnMan 1.40 based build (Sailfish OS) against
+a GlobalProtect gateway with MFA: login from the native UI, several
+reconnections after suspend, 25 split routes installed with the right
+netmasks. This series is the same change ported to current master; it
+builds without warnings here but was not run on master itself.
 
 ---
-base-commit: fb7bd3a2aad70a76232a7168a505386d0a1396af
-change-id: 20261019-xsk-zc-rx-double-free-1a3b059cd41f
+Stéphane COLIN (7):
+      openconnect: Set protocol before obtaining the cookie
+      openconnect: Do not treat reconnect reasons as disconnect
+      openconnect: Fill the GlobalProtect "passwd" form field
+      openconnect: Limit repeated credential forms
+      vpn-provider: Signal routes without gateway
+      openconnect: Do not take _MASKLEN for _MASK in split routes
+      openconnect: Offer the username again on the next login
+
+ vpn/plugins/openconnect.c | 53 ++++++++++++++++++++++++++++++++++++++++-------
+ vpn/vpn-agent.c           |  3 ++-
+ vpn/vpn-provider.c        |  7 ++++++-
+ 3 files changed, 53 insertions(+), 10 deletions(-)
+---
+base-commit: 9e46e4a021cd8566b942d1a72b41b14a0a58f506
+change-id: 20261113-openconnect-gp-fixes-7535c7c56fd6
 
 Best regards,
---  
-Marcin Knap <marcin.knap@vecima.com>
+-- 
+Stéphane COLIN <bigbob.fun@gmail.com>
 
