@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 22:21:32 +0000
-Subject: [PATCH RFC 1/3] media: verisilicon: Split probe into hardware init
- and device registration
+Date: Fri, 13 Nov 2026 22:21:33 +0000
+Subject: [PATCH RFC 2/3] media: verisilicon: Pick the hardware core for
+ each job
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-hantro-multicore-v1-1-43811eea14c4@gmail.com>
+Message-Id: <20261113-hantro-multicore-v1-2-43811eea14c4@gmail.com>
 References: <20261113-hantro-multicore-v1-0-43811eea14c4@gmail.com>
 In-Reply-To: <20261113-hantro-multicore-v1-0-43811eea14c4@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -21,246 +21,273 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  Sergei Khomenkov <shomenkow@gmail.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794608492; l=7068;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794608492; l=9150;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=w6qJkiLCLbyhDjp75hGrho7FBAJ1tiuNlQsSG9pOWtI=;
- b=rYwXShfgTY/VH8fB0R1BuB/+cbigqnJMUZkaZ08g0Lt7UmROosTg5UQ5qv9WHrKpHlgc1OvVi
- 4DBeO39m2FmDCrGxq6OvY0bSM6zP6dZFqUppTlbzJ+NfgdDX1Cdjmt3
+ bh=9jWn2Gigd2wOwask/FFepVbUYfj7D/TpLOUOJvXCMTw=;
+ b=r5PrlOXvvc8lwpCY2Qqeq30CFBTVyIZ+JOpHn8bsD5t0SNYqAEvdz505CHX/2u8wcphsXES8m
+ A1IfiGTY7wZBowJpTao3uOYhSzPU1ByHClzcbvqqrgGrsaPsFW8/iHq
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move the acquisition of the per-instance hardware resources (clocks,
-resets, registers, interrupts, runtime PM) out of hantro_probe() into
-hantro_hw_init()/hantro_hw_cleanup(), and the creation of the mem2mem,
-video and media devices into hantro_register_devices() and
-hantro_unregister_devices().
+The driver assumes that the hardware instance running a job is the one
+that owns the mem2mem device, and finds the context of the running job
+with v4l2_m2m_get_curr_priv(). Neither holds once jobs can run on
+several identical cores in parallel.
 
-This prepares for multi-core support, where every core needs its
-hardware set up, but only the main core registers the devices exposed to
-userspace, and only once all cores are known.
+Give each hantro_dev a list of cores its jobs can run on, and pick an
+idle one in device_run(). The chosen core is stored in the context for
+the duration of the job, and the context in the core, so that the
+interrupt handler and the watchdog of a core find the job they belong
+to. The JPEG encoder of the VEPU2 now accesses the registers of the core
+running the job.
 
-No functional change intended.
+For now the core list only contains the device itself, so no functional
+change intended.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/platform/verisilicon/hantro_drv.c | 158 +++++++++++++++---------
- 1 file changed, 101 insertions(+), 57 deletions(-)
+ drivers/media/platform/verisilicon/hantro.h        | 18 ++++++
+ drivers/media/platform/verisilicon/hantro_drv.c    | 73 +++++++++++++++++++---
+ .../verisilicon/rockchip_vpu2_hw_jpeg_enc.c        |  4 +-
+ .../media/platform/verisilicon/rockchip_vpu_hw.c   |  2 +-
+ 4 files changed, 86 insertions(+), 11 deletions(-)
 
+diff --git a/drivers/media/platform/verisilicon/hantro.h b/drivers/media/platform/verisilicon/hantro.h
+index 0353de154a1e..eceaa74a634b 100644
+--- a/drivers/media/platform/verisilicon/hantro.h
++++ b/drivers/media/platform/verisilicon/hantro.h
+@@ -193,6 +193,14 @@ hantro_vdev_to_func(struct video_device *vdev)
+  *			shared with interrupt handlers.
+  * @variant:		Hardware variant-specific parameters.
+  * @watchdog_work:	Delayed work for hardware timeout handling.
++ * @curr_ctx:		Context whose job is running on this instance, or NULL
++ *			if the instance is idle. Protected by @cores_lock of
++ *			the device the job was scheduled on.
++ * @cores:		Hardware instances the jobs of this device can be
++ *			scheduled on. The first entry is the device itself.
++ * @num_cores:		Number of entries in @cores.
++ * @cores_lock:		Spinlock protecting @cores, @num_cores and @curr_ctx
++ *			of each core.
+  */
+ struct hantro_dev {
+ 	struct v4l2_device v4l2_dev;
+@@ -213,12 +221,21 @@ struct hantro_dev {
+ 	spinlock_t irqlock;
+ 	const struct hantro_variant *variant;
+ 	struct delayed_work watchdog_work;
++
++	struct hantro_ctx *curr_ctx;
++	struct hantro_dev **cores;
++	unsigned int num_cores;
++	spinlock_t cores_lock; /* protects the core list and curr_ctx */
+ };
+ 
+ /**
+  * struct hantro_ctx - Context (instance) private data.
+  *
+  * @dev:		VPU driver data to which the context belongs.
++ * @core:		VPU instance running the current job of this context,
++ *			only valid while a job is running. Codec operations
++ *			must access the hardware through it. It is the same
++ *			as @dev unless the variant has multiple cores.
+  * @fh:			V4L2 file handler.
+  * @is_encoder:		Decoder or encoder context?
+  *
+@@ -248,6 +265,7 @@ struct hantro_dev {
+  */
+ struct hantro_ctx {
+ 	struct hantro_dev *dev;
++	struct hantro_dev *core;
+ 	struct v4l2_fh fh;
+ 	bool is_encoder;
+ 
 diff --git a/drivers/media/platform/verisilicon/hantro_drv.c b/drivers/media/platform/verisilicon/hantro_drv.c
-index 26e5d5547466..d02988fc19ae 100644
+index d02988fc19ae..ab76251627fb 100644
 --- a/drivers/media/platform/verisilicon/hantro_drv.c
 +++ b/drivers/media/platform/verisilicon/hantro_drv.c
-@@ -1069,38 +1069,16 @@ static struct v4l2_m2m_dev *hantro_get_v4l2_m2m_dev(struct hantro_dev *vpu)
- 	return v4l2_m2m_init(&vpu_m2m_ops);
- }
+@@ -59,11 +59,51 @@ static const struct v4l2_event hantro_eos_event = {
+ 	.type = V4L2_EVENT_EOS
+ };
  
--static int hantro_probe(struct platform_device *pdev)
 +/*
-+ * Acquire and initialize the hardware resources of one VPU instance:
-+ * clocks, resets, registers, interrupts and runtime PM.
++ * Pick an idle core for the job of @ctx. The mem2mem framework never runs
++ * more jobs in parallel than there are cores, so this only fails if the
++ * core accounting is broken.
 + */
-+static int hantro_hw_init(struct hantro_dev *vpu)
- {
--	const struct of_device_id *match;
--	struct hantro_dev *vpu;
-+	struct platform_device *pdev = vpu->pdev;
- 	int num_bases;
- 	int i, ret;
- 
--	vpu = devm_kzalloc(&pdev->dev, sizeof(*vpu), GFP_KERNEL);
--	if (!vpu)
--		return -ENOMEM;
--
--	vpu->dev = &pdev->dev;
--	vpu->pdev = pdev;
--	mutex_init(&vpu->vpu_mutex);
--	spin_lock_init(&vpu->irqlock);
--
--	match = of_match_node(of_hantro_match, pdev->dev.of_node);
--	vpu->variant = match->data;
--
--	ret = hantro_disable_multicore(vpu);
--	if (ret)
--		return ret;
--
--	/*
--	 * Support for nxp,imx8mq-vpu is kept for backwards compatibility
--	 * but it's deprecated. Please update your DTS file to use
--	 * nxp,imx8mq-vpu-g1 or nxp,imx8mq-vpu-g2 instead.
--	 */
--	if (of_device_is_compatible(pdev->dev.of_node, "nxp,imx8mq-vpu"))
--		dev_warn(&pdev->dev, "%s compatible is deprecated\n",
--			 match->compatible);
--
- 	INIT_DELAYED_WORK(&vpu->watchdog_work, hantro_watchdog);
- 
- 	vpu->clocks = devm_kcalloc(&pdev->dev, vpu->variant->num_clocks,
-@@ -1213,18 +1191,39 @@ static int hantro_probe(struct platform_device *pdev)
- 		goto err_pm_disable_assert_reset;
- 	}
- 
--	ret = v4l2_device_register(&pdev->dev, &vpu->v4l2_dev);
--	if (ret) {
--		dev_err(&pdev->dev, "Failed to register v4l2 device\n");
--		goto err_clk_unprepare;
--	}
--	platform_set_drvdata(pdev, vpu);
-+	return 0;
-+
-+err_pm_disable_assert_reset:
-+	pm_runtime_dont_use_autosuspend(vpu->dev);
-+	pm_runtime_disable(vpu->dev);
-+	reset_control_assert(vpu->resets);
-+	return ret;
-+err_pm_disable:
-+	pm_runtime_dont_use_autosuspend(vpu->dev);
-+	pm_runtime_disable(vpu->dev);
-+	return ret;
-+}
-+
-+static void hantro_hw_cleanup(struct hantro_dev *vpu)
++static struct hantro_dev *hantro_acquire_core(struct hantro_ctx *ctx)
 +{
-+	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
-+	pm_runtime_dont_use_autosuspend(vpu->dev);
-+	pm_runtime_disable(vpu->dev);
-+	reset_control_assert(vpu->resets);
-+}
++	struct hantro_dev *vpu = ctx->dev;
++	unsigned int i;
 +
-+/*
-+ * Create the mem2mem device and register the video and media devices that
-+ * expose the VPU to userspace. The v4l2_device must already be registered.
-+ */
-+static int hantro_register_devices(struct hantro_dev *vpu)
-+{
-+	int ret;
- 
- 	vpu->m2m_dev = hantro_get_v4l2_m2m_dev(vpu);
- 	if (IS_ERR(vpu->m2m_dev)) {
- 		v4l2_err(&vpu->v4l2_dev, "Failed to init mem2mem device\n");
--		ret = PTR_ERR(vpu->m2m_dev);
--		goto err_v4l2_unreg;
-+		return PTR_ERR(vpu->m2m_dev);
- 	}
- 
- 	vpu->mdev.dev = vpu->dev;
-@@ -1235,13 +1234,13 @@ static int hantro_probe(struct platform_device *pdev)
- 
- 	ret = hantro_add_enc_func(vpu);
- 	if (ret) {
--		dev_err(&pdev->dev, "Failed to register encoder\n");
-+		dev_err(vpu->dev, "Failed to register encoder\n");
- 		goto err_m2m_rel;
- 	}
- 
- 	ret = hantro_add_dec_func(vpu);
- 	if (ret) {
--		dev_err(&pdev->dev, "Failed to register decoder\n");
-+		dev_err(vpu->dev, "Failed to register decoder\n");
- 		goto err_rm_enc_func;
- 	}
- 
-@@ -1260,18 +1259,70 @@ static int hantro_probe(struct platform_device *pdev)
- err_m2m_rel:
- 	media_device_cleanup(&vpu->mdev);
- 	v4l2_m2m_put(vpu->m2m_dev);
-+	return ret;
-+}
++	guard(spinlock_irqsave)(&vpu->cores_lock);
 +
-+static void hantro_unregister_devices(struct hantro_dev *vpu)
-+{
-+	media_device_unregister(&vpu->mdev);
-+	hantro_remove_dec_func(vpu);
-+	hantro_remove_enc_func(vpu);
-+	media_device_cleanup(&vpu->mdev);
-+	v4l2_m2m_put(vpu->m2m_dev);
-+}
++	for (i = 0; i < vpu->num_cores; i++) {
++		struct hantro_dev *core = vpu->cores[i];
 +
-+static int hantro_probe(struct platform_device *pdev)
-+{
-+	const struct of_device_id *match;
-+	struct hantro_dev *vpu;
-+	int ret;
-+
-+	vpu = devm_kzalloc(&pdev->dev, sizeof(*vpu), GFP_KERNEL);
-+	if (!vpu)
-+		return -ENOMEM;
-+
-+	vpu->dev = &pdev->dev;
-+	vpu->pdev = pdev;
-+	mutex_init(&vpu->vpu_mutex);
-+	spin_lock_init(&vpu->irqlock);
-+
-+	match = of_match_node(of_hantro_match, pdev->dev.of_node);
-+	vpu->variant = match->data;
-+
-+	ret = hantro_disable_multicore(vpu);
-+	if (ret)
-+		return ret;
-+
-+	/*
-+	 * Support for nxp,imx8mq-vpu is kept for backwards compatibility
-+	 * but it's deprecated. Please update your DTS file to use
-+	 * nxp,imx8mq-vpu-g1 or nxp,imx8mq-vpu-g2 instead.
-+	 */
-+	if (of_device_is_compatible(pdev->dev.of_node, "nxp,imx8mq-vpu"))
-+		dev_warn(&pdev->dev, "%s compatible is deprecated\n",
-+			 match->compatible);
-+
-+	ret = hantro_hw_init(vpu);
-+	if (ret)
-+		return ret;
-+
-+	ret = v4l2_device_register(&pdev->dev, &vpu->v4l2_dev);
-+	if (ret) {
-+		dev_err(&pdev->dev, "Failed to register v4l2 device\n");
-+		goto err_hw_cleanup;
++		if (!core->curr_ctx) {
++			core->curr_ctx = ctx;
++			ctx->core = core;
++			return core;
++		}
 +	}
-+	platform_set_drvdata(pdev, vpu);
 +
-+	ret = hantro_register_devices(vpu);
-+	if (ret)
-+		goto err_v4l2_unreg;
++	return NULL;
++}
 +
-+	return 0;
++static void hantro_release_core(struct hantro_ctx *ctx)
++{
++	struct hantro_dev *vpu = ctx->dev;
 +
- err_v4l2_unreg:
- 	v4l2_device_unregister(&vpu->v4l2_dev);
--err_clk_unprepare:
--	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
--err_pm_disable_assert_reset:
--	pm_runtime_dont_use_autosuspend(vpu->dev);
--	pm_runtime_disable(vpu->dev);
--	reset_control_assert(vpu->resets);
--	return ret;
--err_pm_disable:
--	pm_runtime_dont_use_autosuspend(vpu->dev);
--	pm_runtime_disable(vpu->dev);
-+err_hw_cleanup:
-+	hantro_hw_cleanup(vpu);
- 	return ret;
++	guard(spinlock_irqsave)(&vpu->cores_lock);
++
++	if (ctx->core) {
++		ctx->core->curr_ctx = NULL;
++		ctx->core = NULL;
++	}
++}
++
+ static void hantro_job_finish_no_pm(struct hantro_ctx *ctx,
+ 				    enum vb2_buffer_state result)
+ {
+ 	struct vb2_v4l2_buffer *src, *dst;
+ 
++	/* Make the core available to the next job before scheduling it. */
++	hantro_release_core(ctx);
++
+ 	src = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
+ 	dst = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
+ 
+@@ -88,17 +128,20 @@ static void hantro_job_finish_no_pm(struct hantro_ctx *ctx,
+ static void hantro_job_finish(struct hantro_ctx *ctx,
+ 			      enum vb2_buffer_state result)
+ {
+-	struct hantro_dev *vpu = ctx->dev;
++	struct hantro_dev *core = ctx->core;
+ 
+-	pm_runtime_put_autosuspend(vpu->dev);
++	pm_runtime_put_autosuspend(core->dev);
+ 	hantro_job_finish_no_pm(ctx, result);
  }
  
-@@ -1281,16 +1332,9 @@ static void hantro_remove(struct platform_device *pdev)
++/*
++ * Called from the interrupt handler of the VPU instance @vpu, which is the
++ * core the job was running on.
++ */
+ void hantro_irq_done(struct hantro_dev *vpu,
+ 		     enum vb2_buffer_state result)
+ {
+-	struct hantro_ctx *ctx =
+-		v4l2_m2m_get_curr_priv(vpu->m2m_dev);
++	struct hantro_ctx *ctx;
  
- 	v4l2_info(&vpu->v4l2_dev, "Removing %s\n", pdev->name);
+ 	/*
+ 	 * If cancel_delayed_work returns false
+@@ -106,6 +149,7 @@ void hantro_irq_done(struct hantro_dev *vpu,
+ 	 * and will take care of finishing the job.
+ 	 */
+ 	if (cancel_delayed_work(&vpu->watchdog_work)) {
++		ctx = vpu->curr_ctx;
+ 		if (result == VB2_BUF_STATE_DONE && ctx->codec_ops->done)
+ 			ctx->codec_ops->done(ctx);
+ 		hantro_job_finish(ctx, result);
+@@ -119,7 +163,7 @@ void hantro_watchdog(struct work_struct *work)
  
--	media_device_unregister(&vpu->mdev);
--	hantro_remove_dec_func(vpu);
--	hantro_remove_enc_func(vpu);
--	media_device_cleanup(&vpu->mdev);
--	v4l2_m2m_put(vpu->m2m_dev);
-+	hantro_unregister_devices(vpu);
- 	v4l2_device_unregister(&vpu->v4l2_dev);
--	clk_bulk_unprepare(vpu->variant->num_clocks, vpu->clocks);
--	pm_runtime_dont_use_autosuspend(vpu->dev);
--	pm_runtime_disable(vpu->dev);
--	reset_control_assert(vpu->resets);
-+	hantro_hw_cleanup(vpu);
+ 	vpu = container_of(to_delayed_work(work),
+ 			   struct hantro_dev, watchdog_work);
+-	ctx = v4l2_m2m_get_curr_priv(vpu->m2m_dev);
++	ctx = vpu->curr_ctx;
+ 	if (ctx) {
+ 		vpu_err("frame processing timed out!\n");
+ 		if (ctx->codec_ops->reset)
+@@ -160,21 +204,27 @@ void hantro_end_prepare_run(struct hantro_ctx *ctx)
+ 				   &ctx->ctrl_handler);
+ 
+ 	/* Kick the watchdog. */
+-	schedule_delayed_work(&ctx->dev->watchdog_work,
++	schedule_delayed_work(&ctx->core->watchdog_work,
+ 			      msecs_to_jiffies(2000));
  }
  
- static int hantro_runtime_resume(struct device *dev)
+ static void device_run(void *priv)
+ {
+ 	struct hantro_ctx *ctx = priv;
+-	struct hantro_dev *vpu = ctx->dev;
+ 	struct vb2_v4l2_buffer *src, *dst;
++	struct hantro_dev *core;
+ 	int ret;
+ 
+ 	src = hantro_get_src_buf(ctx);
+ 	dst = hantro_get_dst_buf(ctx);
+ 
+-	ret = pm_runtime_resume_and_get(vpu->dev);
++	core = hantro_acquire_core(ctx);
++	if (WARN_ON_ONCE(!core)) {
++		hantro_job_finish_no_pm(ctx, VB2_BUF_STATE_ERROR);
++		return;
++	}
++
++	ret = pm_runtime_resume_and_get(core->dev);
+ 	if (ret < 0) {
+ 		hantro_job_finish_no_pm(ctx, VB2_BUF_STATE_ERROR);
+ 		return;
+@@ -1285,6 +1335,7 @@ static int hantro_probe(struct platform_device *pdev)
+ 	vpu->pdev = pdev;
+ 	mutex_init(&vpu->vpu_mutex);
+ 	spin_lock_init(&vpu->irqlock);
++	spin_lock_init(&vpu->cores_lock);
+ 
+ 	match = of_match_node(of_hantro_match, pdev->dev.of_node);
+ 	vpu->variant = match->data;
+@@ -1302,6 +1353,12 @@ static int hantro_probe(struct platform_device *pdev)
+ 		dev_warn(&pdev->dev, "%s compatible is deprecated\n",
+ 			 match->compatible);
+ 
++	vpu->cores = devm_kcalloc(&pdev->dev, 1, sizeof(*vpu->cores),
++				  GFP_KERNEL);
++	if (!vpu->cores)
++		return -ENOMEM;
++	vpu->cores[vpu->num_cores++] = vpu;
++
+ 	ret = hantro_hw_init(vpu);
+ 	if (ret)
+ 		return ret;
+diff --git a/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c b/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c
+index 61621b1be8a2..f7550470b43d 100644
+--- a/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c
++++ b/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c
+@@ -131,7 +131,7 @@ rockchip_vpu2_jpeg_enc_set_qtable(struct hantro_dev *vpu,
+ 
+ int rockchip_vpu2_jpeg_enc_run(struct hantro_ctx *ctx)
+ {
+-	struct hantro_dev *vpu = ctx->dev;
++	struct hantro_dev *vpu = ctx->core;
+ 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
+ 	struct hantro_jpeg_ctx jpeg_ctx;
+ 	u32 reg;
+@@ -188,7 +188,7 @@ int rockchip_vpu2_jpeg_enc_run(struct hantro_ctx *ctx)
+ 
+ void rockchip_vpu2_jpeg_enc_done(struct hantro_ctx *ctx)
+ {
+-	struct hantro_dev *vpu = ctx->dev;
++	struct hantro_dev *vpu = ctx->core;
+ 	u32 bytesused = vepu_read(vpu, VEPU_REG_STR_BUF_LIMIT) / 8;
+ 	struct vb2_v4l2_buffer *dst_buf = hantro_get_dst_buf(ctx);
+ 
+diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
+index 02673be9878e..f1f7f95b2652 100644
+--- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
++++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
+@@ -488,7 +488,7 @@ static void rockchip_vpu2_dec_reset(struct hantro_ctx *ctx)
+ 
+ static void rockchip_vpu2_enc_reset(struct hantro_ctx *ctx)
+ {
+-	struct hantro_dev *vpu = ctx->dev;
++	struct hantro_dev *vpu = ctx->core;
+ 
+ 	vepu_write(vpu, VEPU_REG_INTERRUPT_DIS_BIT, VEPU_REG_INTERRUPT);
+ 	vepu_write(vpu, 0, VEPU_REG_ENCODE_START);
 
 -- 
 2.55.0
