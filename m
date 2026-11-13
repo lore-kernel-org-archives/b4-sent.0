@@ -1,113 +1,98 @@
 From: Patrick Fischer <admin@tsv-stahl-riesa.de>
-Date: Fri, 13 Nov 2026 20:12:29 +0100
-Subject: [PATCH wireless-next] wifi: wlcore: Don't report RSSI events on
- the P2P device
+Subject: [PATCH RFC wireless-next 0/2] wifi: wl18xx: Stop querying the
+ firmware statistics
+Date: Fri, 13 Nov 2026 20:14:19 +0100
+Message-Id: <20261113-upstream-wl18xx-fw-stats-v1-0-cbdf50739185@tsv-stahl-riesa.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-upstream-wlcore-p2p-rssi-v1-1-754bd625daca@tsv-stahl-riesa.de>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0Q6CMBAEf4Xcs5dATdD6K8aHCquewdLcFSEh/
- LtV922ymVnJoAKjU7WS4i0mYyzQ7CrqHiHewdIXJle7tinjKVlWhBfPQzcqOLnEaiZ8DN6jdf5
- Q73sqelLcZPmlzzSLYoAZRyyZLv/bpusTXf7mads+Avpj6IsAAAA=
-X-Change-ID: 20261111-upstream-wlcore-p2p-rssi-8a99e629703d
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNTQ6CMBCFr0Jm7SSUBYhbEw/glrgo7VTHYCWdY
+ psQ7m7Rt/te3s8KQoFJ4FStEOjDwm9fQB0qMA/t74RsC0NTN60qwmWWGEi/ME3qmDO6hBJ1FDR
+ dbftWW+tMD6U+B3Kcf9MDXC/n3UscaCIR9JQj3P4pWcYnmbi/wLZ9AYIYETOSAAAA
+X-Change-ID: 20261111-upstream-wl18xx-fw-stats-c70d96addfc9
 To: linux-wireless@vger.kernel.org
 Cc: Johannes Berg <johannes@sipsolutions.net>, 
  Svyatoslav Ryhel <clamor95@gmail.com>, linux-kernel@vger.kernel.org, 
  Patrick Fischer <admin@tsv-stahl-riesa.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794597159; l=3844;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794597277; l=3601;
  i=admin@tsv-stahl-riesa.de; s=20261020; h=from:subject:message-id;
- bh=HaLsB5FeE4e7mOdZ4s/ZKiZhR7ChbgmoXjUw6qN7ook=;
- b=2cHA0+InI1KT1A9ZFgrZG//bS45GCpNqhMjtHwb7EdWajV3IMaDEr63gN40QPqpd0ChS99Mq5
- lnMEF7NPN6+CbNrB2wihngbtumu4oHIEhEDZKbj+XdkT4rtVfTPEWBv
+ bh=xIHoochWWNIF1OBob5awdmieWYZJ3MmNdz4ox+BKRs8=;
+ b=BmDcxnz+qaJUpjLNVd8On1QPe2mIV1DXo7LzCwM1yRoUmMe5yxROT9sVe8G970/EbTZszzu5O
+ C5mIKHRaG3LDMC4ogmvhz8WI2xSPKaspkryZ/IbnNI/1zGFDcA5nYV3
 X-Developer-Key: i=admin@tsv-stahl-riesa.de; a=ed25519;
  pk=D+v6EloYcEY9PIUHFyTM5sqcGIU/fIXzLUdkR8vjAtk=
 X-Endpoint-Received: by B4 Relay for admin@tsv-stahl-riesa.de/20261020 with auth_id=1251
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A P2P device vif has no netdev, but wl12xx_init_vif_data() makes it
-BSS_TYPE_STA_BSS, so wl12xx_for_each_wlvif_sta() in
-wlcore_event_rssi_trigger() visits it as well. Its rssi_thold and
-last_rssi_event stay 0, and 0 is NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW.
-A metric above 0 therefore looks like a change to HIGH, and
-ieee80211_cqm_rssi_notify() ends in cfg80211_cqm_rssi_notify(), which
-dereferences the NULL sdata->dev:
+On a WL1801 (Tegra Note 7, firmware 8.9.0.0.83) the answer to
+ACX_STATISTICS overwrites both event mailboxes. struct
+wl18xx_acx_statistics is 1100 bytes, the command mailbox 740 bytes,
+and the two 180-byte event mailboxes sit right behind it
+(0xb007f8, +740, +920 on this chip). An event that is waiting in a
+mailbox while the statistics are read is then handled with statistics
+counters as its vector and data. I ran into it as a NULL pointer
+dereference in wlcore_event_rssi_trigger() with a P2P device; the fix
+for that crash went out separately earlier today [1].
 
-  Internal error: Oops: 5 [#1] SMP ARM
-  PC is at cfg80211_cqm_rssi_notify+0x18/0x108
-  LR is at wlcore_event_rssi_trigger+0x84/0xa0 [wlcore]
-  Call trace:
-   cfg80211_cqm_rssi_notify from wlcore_event_rssi_trigger
-   wlcore_event_rssi_trigger from wl18xx_process_mailbox_events
-   wl18xx_process_mailbox_events from wl1271_event_handle
-   wl1271_event_handle from wlcore_irq_locked
-   wlcore_irq_locked from wlcore_irq
-   wlcore_irq from irq_thread_fn
+What I measured, with a test kernel that logs the mailbox addresses and
+can change the requested length at run time:
 
-The oops kills the IRQ thread with wl->mutex held, so the driver does
-not recover: everything that takes the mutex hangs, and the interrupt
-is disabled as unhandled.
+- idle, chip memory read through debugfs "mem" before and after one
+  query: the pipeline counters (bytes 952-1000 of the statistics) show
+  up in event mailbox B after every query, also when only 740 bytes are
+  requested. The firmware ignores the requested length.
+- 600 s iperf3 upload with the statistics read once a second: 50 bogus
+  RSSI trigger events with 1100 bytes, 24 with 740 bytes, all from
+  mailbox B and all with statistics content. Without the statistics
+  reads: none.
 
-A real RSSI trigger reports a negative value in dBm and does not take
-this path. Here, on a WL1801 (Tegra Note 7) with wpa_supplicant running,
-the metric was +54 because the event mailbox held firmware statistics
-instead of event data: reading the firmware statistics through debugfs
-once a second during an iperf3 upload overwrote the mailbox. That is a
-separate problem, but any bogus metric above 0 crashes the same way.
+So the only fix I see on the host side is not to send ACX_STATISTICS
+on wl18xx at all, which is what this series does. Patch 1 lets wlcore
+run without firmware statistics, patch 2 drops them from wl18xx.
 
-Skip P2P device vifs. Connection quality monitoring does not apply to
-them, and wlcore_event_beacon_loss() also leaves them out, by their
-invalid role_id.
+Why RFC:
 
-Fixes: 7845af35e0de ("wlcore: add p2p device support")
-Signed-off-by: Patrick Fischer <admin@tsv-stahl-riesa.de>
+- It removes the wl18xx fw_stats debugfs files. If someone knows a
+  firmware setting or version where the command mailbox is big enough,
+  or another way to get the statistics, I would rather do that.
+- I kept the statistics structures in wl18xx/acx.h as documentation of
+  the firmware interface. I can drop them as well.
+- Should patch 2 go to stable? It fixes corrupted events, but only for
+  people who read the debugfs statistics.
+
+Tested on the same Tegra Note 7 with v7.3 plus these two patches (the
+touched files are the same in v7.3 and wireless-next): wl18xx/fw_stats,
+clear_fw_stats and fw_stats_raw are gone, the other debugfs files are
+still there; unloading and reloading wl18xx works and the station
+reassociates. The same 600 s iperf3 upload, with the monitoring script
+still trying to read the statistics once a second, ran at 46.7 Mbit/s
+with no RSSI trigger event, no oops, no recovery and 0 failed frames.
+Build-tested with W=1 for arm (gcc, clang) and arm64 (clang).
+
+[1] https://lore.kernel.org/r/20261113-upstream-wlcore-p2p-rssi-v1-1-754bd625daca@tsv-stahl-riesa.de
+
+Tool use (see Documentation/process/generated-content.rst): these
+patches, the changelogs and this letter were prepared with an LLM
+coding assistant (Claude Code). It worked out the mailbox layout from
+the driver source and my logs, wrote the test tooling, the changes and
+the texts from my measurements and instructions. I reviewed the
+changes and ran the tests on the device.
+
 ---
-Tested on a Tegra Note 7 (WL1801, firmware 8.9.0.0.83,
-wpa_supplicant with its P2P device) with v7.3 plus this patch; the
-patched files are the same in v7.3 and wireless-next. Load was a 600 s
-iperf3 upload at about 47 Mbit/s while the debugfs firmware statistics
-were read once a second:
+Patrick Fischer (2):
+      wifi: wlcore: Allow lower drivers without firmware statistics
+      wifi: wl18xx: Stop querying the firmware statistics
 
-- without the patch: oops as above after about 285 s of upload,
-  WLAN dead until reboot;
-- with the patch: 86 RSSI trigger events with bogus positive metrics,
-  no oops, upload ran to the end with 0 failed frames.
-
-Without the statistics reads the same upload produced no RSSI trigger
-event at all. I will send the fix for the overwritten event mailbox
-separately, once I have checked it on the device.
-
-I did not add Cc: stable, as I only know of the debugfs statistics as a
-way to get a positive metric here.
-
-Tool use (see Documentation/process/generated-content.rst): this patch,
-its changelog and this note were prepared with an LLM coding assistant
-(Claude Code). It found the cause from the oops registers and the
-driver source and wrote the change and the texts from my logs and
-instructions. I reviewed the change and ran the tests on the device.
----
- drivers/net/wireless/ti/wlcore/event.c | 4 ++++
- 1 file changed, 4 insertions(+)
-
-diff --git a/drivers/net/wireless/ti/wlcore/event.c b/drivers/net/wireless/ti/wlcore/event.c
-index 6c3a8ea9613e..eb5db3c5ec27 100644
---- a/drivers/net/wireless/ti/wlcore/event.c
-+++ b/drivers/net/wireless/ti/wlcore/event.c
-@@ -117,6 +117,10 @@ void wlcore_event_rssi_trigger(struct wl1271 *wl, s8 *metric_arr)
- 
- 	/* TODO: check actual multi-role support */
- 	wl12xx_for_each_wlvif_sta(wl, wlvif) {
-+		/* A P2P device has no netdev to report the event on */
-+		if (wlcore_is_p2p_mgmt(wlvif))
-+			continue;
-+
- 		if (metric <= wlvif->rssi_thold)
- 			event = NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW;
- 		else
-
+ drivers/net/wireless/ti/wl18xx/acx.c     |  24 ---
+ drivers/net/wireless/ti/wl18xx/acx.h     |   5 -
+ drivers/net/wireless/ti/wl18xx/debugfs.c | 333 +------------------------------
+ drivers/net/wireless/ti/wl18xx/main.c    |   1 -
+ drivers/net/wireless/ti/wlcore/debugfs.c |  18 +-
+ 5 files changed, 14 insertions(+), 367 deletions(-)
 ---
 base-commit: 5dbf2415ca9821a611d09308e3b29d2c37e7cd77
-change-id: 20261111-upstream-wlcore-p2p-rssi-8a99e629703d
+change-id: 20261111-upstream-wl18xx-fw-stats-c70d96addfc9
 
 Best regards,
 --  
