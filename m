@@ -1,11 +1,10 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Sat, 14 Nov 2026 06:33:29 +0800
-Subject: [PATCH 03/19] dt-bindings: interrupt-controller: add the Allwinner
- V861 PLIC
+Date: Sat, 14 Nov 2026 06:33:30 +0800
+Subject: [PATCH 04/19] dt-bindings: timer: add the Allwinner V861 CLINT
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-v861-v1-3-eb71ec3ee523@iscas.ac.cn>
+Message-Id: <20261114-v861-v1-4-eb71ec3ee523@iscas.ac.cn>
 References: <20261114-v861-v1-0-eb71ec3ee523@iscas.ac.cn>
 In-Reply-To: <20261114-v861-v1-0-eb71ec3ee523@iscas.ac.cn>
 To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
@@ -32,36 +31,36 @@ Cc: Han Gao <rabenda.cn@gmail.com>, linux-riscv@lists.infradead.org,
  linux-arm-kernel@lists.infradead.org, linux-rtc@vger.kernel.org, 
  linux-gpio@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794609209; l=972;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794609209; l=884;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=cSnoa1dpGjZSXjdnCsHi40WSrs62RIT7HSiX9HoaPgc=;
- b=iUCPT/4oCEjTnz7lZ0cOcZBIisCUgfbo9jK2u2Xc9FyQvXvPzQoULCXlDT0a+Q1dNOOOi9xgL
- MKKxhwkgxw9CXLKvgiG+vXeQx0tfqqYzy1tVyBu4gG6x4SKQKLVJ3ZW
+ bh=OLe62R4yWCrvtAQgr9InOXGE/QFfhE/9P80Dh0A9I2g=;
+ b=Xvqr8a2EJZbnFzLuvqkhI3hzv9a9jGyJfrPeld/SLx1941Dk4yoln97G7R4RW2n8k8QP2TjYY
+ Im7cRBo3xgcC9HCqAUBv0mALJbyrgCjcRxKx3XGE9mZSwGgfteZZi6B
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The V861 uses the XuanTie C900 PLIC implementation, like the D1. Add an
-SoC-specific compatible with "thead,c900-plic" as the fallback.
+The V861 uses the XuanTie C900 CLINT implementation, like the D1. Add an
+SoC-specific compatible with "thead,c900-clint" as the fallback.
 
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- .../devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml      | 1 +
+ Documentation/devicetree/bindings/timer/sifive,clint.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
-index cde4bb691897..6178fea9bbdc 100644
---- a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
-+++ b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
-@@ -72,6 +72,7 @@ properties:
+diff --git a/Documentation/devicetree/bindings/timer/sifive,clint.yaml b/Documentation/devicetree/bindings/timer/sifive,clint.yaml
+index d53f52e80d88..313fb39bd453 100644
+--- a/Documentation/devicetree/bindings/timer/sifive,clint.yaml
++++ b/Documentation/devicetree/bindings/timer/sifive,clint.yaml
+@@ -49,6 +49,7 @@ properties:
        - items:
            - enum:
-               - allwinner,sun20i-d1-plic
-+              - allwinner,sun252i-v861-plic
-               - canaan,k230-plic
-               - sophgo,cv1800b-plic
-               - sophgo,cv1812h-plic
+               - allwinner,sun20i-d1-clint
++              - allwinner,sun252i-v861-clint
+               - canaan,k230-clint
+               - sophgo,cv1800b-clint
+               - sophgo,cv1812h-clint
 
 -- 
 2.55.0
