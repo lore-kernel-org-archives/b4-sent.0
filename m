@@ -1,122 +1,148 @@
-From: Hugo Sales <hugo@hsal.es>
-Date: Fri, 13 Nov 2026 19:40:40 +0000
-Subject: [PATCH v2 3/3] drm/amd/display: Send a changed ABM level once per
- commit
+From: Patrick Fischer <admin@tsv-stahl-riesa.de>
+Subject: [PATCH v3 0/2] iio: light: Add Capella CM3217 ambient light sensor
+Date: Fri, 13 Nov 2026 20:58:58 +0100
+Message-Id: <20261113-upstream-iio-cm3217-v3-0-c4d5b2485dff@tsv-stahl-riesa.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-amdgpu-psr-abm-update-next-v2-3-27ce790856ea@hsal.es>
-References: <20261113-amdgpu-psr-abm-update-next-v2-0-27ce790856ea@hsal.es>
-In-Reply-To: <20261113-amdgpu-psr-abm-update-next-v2-0-27ce790856ea@hsal.es>
-To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
- Rodrigo Siqueira <siqueira@igalia.com>, 
- Alex Deucher <alexander.deucher@amd.com>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: Roman Li <Roman.Li@amd.com>, 
- Nicholas Kazlauskas <Nicholas.Kazlauskas@amd.com>, 
- Chenyu Chen <chen-yu.chen@amd.com>, amd-gfx@lists.freedesktop.org, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Hugo Sales <hugo@hsal.es>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32OzQ6CMBAGX4X07Bq2/DR48j2Mh9IuUiNC2tJoC
+ O9uixcPxOMk387swhxZQ46dsoVZCsaZ8RmhOGRM9fJ5IzA6MuM5rxFzhHly3pIcwJgR1FBwFEB
+ Fh6UqRZ1TxeLlZKkzr816uX7Zze2dlE+qtOiN86N9b9mAafe/EBByqAgFL5Uk0YqzdwGcl/0D0
+ v/yqImlVOC/snpfxqNMN0JqTQ0KVLuydV0/s5PBVx4BAAA=
+X-Change-ID: 20261101-upstream-iio-cm3217-e3f14c4760e5
+To: Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Kevin Tsai <ktsai@capellamicro.com>, 
+ Svyatoslav Ryhel <clamor95@gmail.com>, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Patrick Fischer <admin@tsv-stahl-riesa.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3679; i=hugo@hsal.es;
- h=from:subject:message-id; bh=LlOJID8gdQUbNTNGo+hW6h93h+A/dK5Q46QGvGs1m3s=;
- b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsr6nb9Nb6fzsH797mre8wZ45cQvjs9cK/roRe/7ro
- g7+lT+fbVXrKGVhEONikBVTZNG94cnAMnHyzJyi50tg5rAygQxh4OIUgIkETWZk2HKYKTJOcuaK
- X+/rdgaFT37WYnv3jt05SbH8XNP7F9akWzEynAx055901DCkzPahxNI/vhueVRSuX1Cyf37Ur1i
- 5SN+pzABAtEx6
-X-Developer-Key: i=hugo@hsal.es; a=openpgp;
- fpr=193D095149CF7E8737B39064D912B0DB205A91C1
-X-Endpoint-Received: by B4 Relay for hugo@hsal.es/default with auth_id=1417
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794599942; l=5952;
+ i=admin@tsv-stahl-riesa.de; s=20261020; h=from:subject:message-id;
+ bh=H766bnLZqaMN3JCJBas9Mw+8eKz2MNL20nTTCG220MA=;
+ b=zTefsdHToVk0ITfLysKAtjIFeRwaS+uzqYVSrIlcu+Adyu3PnOtYRLF2P4U4pFrc3xHCgEweW
+ 9Pdr5xNNzROCmjpcIiy46IGPCnTSenyAIaSO0eyS/j867mA7hT8oUUr
+X-Developer-Key: i=admin@tsv-stahl-riesa.de; a=ed25519;
+ pk=D+v6EloYcEY9PIUHFyTM5sqcGIU/fIXzLUdkR8vjAtk=
+X-Endpoint-Received: by B4 Relay for admin@tsv-stahl-riesa.de/20261020 with auth_id=1251
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a commit changes the ABM level and also has planes on that CRTC,
-the connector update loop in amdgpu_dm_atomic_commit_tail() sends the new
-level to DC, and amdgpu_dm_commit_planes() sends it again. The panel
-leaves self-refresh for each send, so one level change takes it out of
-PSR or Replay twice
+The Capella CM3217 is a small ambient light sensor without registers.
+NVIDIA used it in the Tegra Note 7 and the Shield Tablet. Mainline has
+no driver for it: cm32181 and cm3232 expect registers and an ID, the
+CM3217 has neither.
 
-Record the CRTCs whose level the connector loop sent, and skip the second
-send for them in amdgpu_dm_commit_planes()
+Patch 1 adds the binding, patch 2 the driver with raw value, scale and
+integration time. The datasheet is not public, so the bit fields come
+from NVIDIA's downstream drivers and the scale from Capella's published
+detection range. Patch 2 explains both.
 
-Signed-off-by: Hugo Sales <hugo@hsal.es>
+Tested on a Tegra Note 7 (P1640) with v7.3 and the driver built as a
+module, the device created through new_device. In room light all 32
+combinations of integration time and scale gave the same illuminance
+within the count resolution (6.0 to 7.3 lux), and the first read after
+each change matched the second one. The raw counts scale linearly with
+both fields. Svyatoslav Ryhel also tried it on the P1988 variant of the
+Tegra Note 7.
+
+Probing through the device tree works with the real supply (vdd_dev,
+Palmas LDO6), and unloading and reloading the module twice brought the
+device back each time. Next to a phone light sensor the readings were
+about 7 to 20 times lower. NVIDIA's Android HAL for this tablet
+multiplies the count by 2.1505 at the same 2 T/100 ms setting, which is
+7.2 times the scale here, so most of that is the dark cover window. With
+that factor the tablet was within 15 % of the phone in bright light but
+a factor of three lower in dim room light; I could not tell whether that
+was my setup.
+
+v3 was run again on the P1640, through the device tree with both
+addresses in reg and through new_device without a device tree node: in
+both cases the driver binds to 0x10 and claims 0x11, and all 32
+settings give the same scale and integration time values as v2. With
+the device tree, unloading and reloading the module twice freed and
+claimed the second address again. Suspend/resume was not tested.
+
+There is no MAINTAINERS entry: drivers/iio/light/cm* is covered by the
+Capella entry and the binding by IIO. I am happy to add one if you
+prefer.
+
+The device tree node for the Tegra Note 7 will follow with Svyatoslav's
+tegratab series.
+
+Tool use (see Documentation/process/generated-content.rst): this series
+was prepared with an LLM coding assistant (Claude Code). It read the
+NVIDIA downstream drivers and Capella's product data, wrote the driver,
+the binding and the texts from my instructions, and ran the build and
+binding checks. I reviewed the code and ran the tests on the device.
+
 ---
- drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c | 23 +++++++++++++++--------
- 1 file changed, 15 insertions(+), 8 deletions(-)
+Changes in v3:
+- Binding: list both I2C addresses in reg, one description each
+  (Conor).
+- Driver: take the second address from the second reg entry, with 0x11
+  as fallback when there is no firmware node (new_device). Svyatoslav,
+  I kept your Tested-by as a device tree with only the first address
+  still works through the fallback, but a quick retest would be
+  welcome.
+- Driver: write the resolution constant as 0.01875 lux times 800 ms in
+  nanolux * ms, so that NANO is no longer part of it (Andy).
+- Driver: split the scale into its integer and nano parts with a named
+  helper macro (Andy).
+- Driver: static_assert() on one line, the conversion margin added to
+  conv_ms with a comment, FIELD_MODIFY() for IT_T, and the error return
+  in probe inside scoped_guard() (Andy).
+- No functional change: the scale and integration time tables in the
+  object file are identical to v2. struct cm3217_data was checked with
+  pahole: one 2-byte hole on 32-bit ARM, and no field order makes it
+  smaller as ktime_t needs 8-byte alignment, so the order stays (Andy).
+- Tested again on the device, see above.
+- Link to v2: https://patch.msgid.link/20261106-upstream-iio-cm3217-v2-0-d97adde9171c@tsv-stahl-riesa.de
 
-diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-index 262170b611502..3077744b2d2d5 100644
---- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-+++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-@@ -3895,7 +3895,8 @@ static void amdgpu_dm_commit_planes(struct drm_atomic_commit *state,
- 				    struct drm_device *dev,
- 				    struct amdgpu_display_manager *dm,
- 				    struct drm_crtc *pcrtc,
--				    bool wait_for_vblank)
-+				    bool wait_for_vblank,
-+				    bool abm_sent)
- {
- 	u32 i;
- 	u64 timestamp_ns = ktime_get_ns();
-@@ -4245,7 +4246,8 @@ static void amdgpu_dm_commit_planes(struct drm_atomic_commit *state,
- 		}
- 
- 		acrtc_state->stream->abm_level = acrtc_state->abm_level;
--		if (acrtc_state->abm_level != dm_old_crtc_state->abm_level) {
-+		/* The connector loop in amdgpu_dm_atomic_commit_tail() may have sent it */
-+		if (!abm_sent && acrtc_state->abm_level != dm_old_crtc_state->abm_level) {
- 			bundle->stream_update.abm_level = &acrtc_state->abm_level;
- 			stream_update_needed = true;
- 		}
-@@ -5230,6 +5232,7 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_commit *state)
- 	struct drm_connector_state *old_con_state = NULL, *new_con_state = NULL;
- 	struct dm_crtc_state *dm_old_crtc_state, *dm_new_crtc_state;
- 	int crtc_disable_count = 0;
-+	u32 abm_sent = 0;
- 
- 	trace_amdgpu_dm_atomic_commit_tail_begin(state);
- 
-@@ -5255,6 +5258,7 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_commit *state)
- 		struct dc_stream_status *status = NULL;
- 		bool abm_changed, hdr_changed, scaling_changed, output_color_space_changed = false;
- 		struct dm_sr_hold sr_hold = {};
-+		bool updated;
- 
- 		memset(&stream_update, 0, sizeof(stream_update));
- 
-@@ -5339,14 +5343,16 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_commit *state)
- 		dc_exit_ips_for_hw_access(dm->dc);
- 		if (abm_changed)
- 			sr_hold = dm_hold_self_refresh(dm, dm_new_crtc_state->stream);
--		dc_update_planes_and_stream(dm->dc,
--					    dummy_updates,
--					    status->plane_count,
--					    dm_new_crtc_state->stream,
--					    &stream_update);
-+		updated = dc_update_planes_and_stream(dm->dc,
-+						      dummy_updates,
-+						      status->plane_count,
-+						      dm_new_crtc_state->stream,
-+						      &stream_update);
- 		dm_release_self_refresh(dm, dm_new_crtc_state->stream, sr_hold);
- 		mutex_unlock(&dm->dc_lock);
- 		kfree(dummy_updates);
-+		if (abm_changed && updated)
-+			abm_sent |= drm_crtc_mask(&acrtc->base);
- 
- 		drm_connector_update_privacy_screen(new_con_state);
- 	}
-@@ -5440,7 +5446,8 @@ static void amdgpu_dm_atomic_commit_tail(struct drm_atomic_commit *state)
- 		dm_new_crtc_state = to_dm_crtc_state(new_crtc_state);
- 
- 		if (dm_new_crtc_state->stream)
--			amdgpu_dm_commit_planes(state, dev, dm, crtc, wait_for_vblank);
-+			amdgpu_dm_commit_planes(state, dev, dm, crtc, wait_for_vblank,
-+						abm_sent & drm_crtc_mask(crtc));
- 	}
- 
- 	/* Enable writeback */
+Changes in v2:
+- Binding: describe the two I2C addresses under reg, including what each
+  one is used for (Jonathan).
+- Driver: replace the scale list that was recomputed on every change of
+  the integration time by a const table built at compile time;
+  read_avail() returns the row for the current integration time, so no
+  table is rewritten while a caller may hold a pointer to it (Jonathan,
+  Sashiko).
+- Driver: write the resolution constant with NANO and explain its unit
+  (Jonathan).
+- Driver: add cm3217_power_down() for the shutdown write used in three
+  places (Jonathan), and a helper for the table lookups in write_raw()
+  so the loop counter can live in the for statement (Jonathan).
+- Driver: take the conversion time from the integration time table and
+  drop the separate table in milliseconds.
+- Pick up Svyatoslav's Tested-by on patch 2 (given on v1).
+- Commit messages: name the downstream trees, note that the 4 T field
+  value differs from the vendor header, drop "driver" from the binding
+  text.
+- Rebase onto the current iio togreg branch (based on v7.4-rc1).
+- No functional change intended. The 32 scale values match the v1
+  computation. Run again on the Tegra Note 7 (P1640) as a module: each
+  integration time lists the same scales as with v1, all 32 settings are
+  accepted and read back, invalid values are rejected, and the sensor is
+  shut down when the device is removed.
+- Link to v1: https://patch.msgid.link/20261101-upstream-iio-cm3217-v1-0-5e1724cae7b7@tsv-stahl-riesa.de
 
--- 
-2.56.0
+---
+Patrick Fischer (2):
+      dt-bindings: iio: light: Add Capella CM3217
+      iio: light: Add Capella CM3217 ambient light sensor driver
+
+ .../bindings/iio/light/capella,cm3217.yaml         |  50 +++
+ drivers/iio/light/Kconfig                          |  10 +
+ drivers/iio/light/Makefile                         |   1 +
+ drivers/iio/light/cm3217.c                         | 419 +++++++++++++++++++++
+ 4 files changed, 480 insertions(+)
+---
+base-commit: 1390ca4953a7400ca932cb49635f02c727f885a6
+change-id: 20261101-upstream-iio-cm3217-e3f14c4760e5
+
+Best regards,
+--  
+Patrick Fischer <admin@tsv-stahl-riesa.de>
 
