@@ -1,11 +1,10 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 13 Nov 2026 22:21:33 +0000
-Subject: [PATCH RFC 2/3] media: verisilicon: Pick the hardware core for
- each job
+Date: Fri, 13 Nov 2026 22:21:34 +0000
+Subject: [PATCH RFC 3/3] media: verisilicon: Add multi-core support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-hantro-multicore-v1-2-43811eea14c4@gmail.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261113-hantro-multicore-v1-3-43811eea14c4@gmail.com>
 References: <20261113-hantro-multicore-v1-0-43811eea14c4@gmail.com>
 In-Reply-To: <20261113-hantro-multicore-v1-0-43811eea14c4@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
@@ -21,273 +20,470 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  Sergei Khomenkov <shomenkow@gmail.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794608492; l=9150;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794608492; l=15974;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=9jWn2Gigd2wOwask/FFepVbUYfj7D/TpLOUOJvXCMTw=;
- b=r5PrlOXvvc8lwpCY2Qqeq30CFBTVyIZ+JOpHn8bsD5t0SNYqAEvdz505CHX/2u8wcphsXES8m
- A1IfiGTY7wZBowJpTao3uOYhSzPU1ByHClzcbvqqrgGrsaPsFW8/iHq
+ bh=Q/UEE2ycJUnZe1hCZNw0kdBuU1kZC6/RMMWMLXvOzAs=;
+ b=74se23IVlT+PUg8qRyDTr/zENmsr/V372WL14XtsNca9QvhoA17W8Nznu0QIs5QrCWjNJsAkx
+ w4PYcXIe0WiB93IQFeas4BxmXIbsiIRy9vF7Yv6S6VLvR+a3XPMV0Bc
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver assumes that the hardware instance running a job is the one
-that owns the mem2mem device, and finds the context of the running job
-with v4l2_m2m_get_curr_priv(). Neither holds once jobs can run on
-several identical cores in parallel.
+The RK3588 has four identical VEPU121 JPEG encoder cores, each with its
+own IOMMU and power domain. So far only the first one is used, and the
+other instances are ignored, so parallel encodes are serialised on a
+single core.
 
-Give each hantro_dev a list of cores its jobs can run on, and pick an
-idle one in device_run(). The chosen core is stored in the context for
-the duration of the job, and the context in the core, so that the
-interrupt handler and the watchdog of a core find the job they belong
-to. The JPEG encoder of the VEPU2 now accesses the registers of the core
-running the job.
+Drive all the cores of variants flagged with multi_core as a single
+device, using the component framework: the first available core is the
+main core and component master. It registers the video device once all
+the other cores are bound to it, and schedules jobs on all of them,
+using v4l2_m2m_set_max_parallel_jobs() to let the mem2mem framework run
+one job per core in parallel. A context still runs a single job at a
+time, so this increases the throughput of parallel streams, not of a
+single one.
 
-For now the core list only contains the device itself, so no functional
-change intended.
+Buffers are allocated and mapped through the main core before a job is
+scheduled on a core, so the secondary cores are attached to the IOMMU
+domain of the main core when they are bound, as Sven Püschel's RGA
+multi-core series does. They are detached again when unbound, so that
+they can be bound again, e.g. on module reload. A core whose IOMMU setup
+doesn't allow sharing the mappings is left unused.
+
+Variants without the multi_core flag keep using only the first core.
+Enable multi-core support for the RK3588 VEPU121.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/platform/verisilicon/hantro.h        | 18 ++++++
- drivers/media/platform/verisilicon/hantro_drv.c    | 73 +++++++++++++++++++---
- .../verisilicon/rockchip_vpu2_hw_jpeg_enc.c        |  4 +-
- .../media/platform/verisilicon/rockchip_vpu_hw.c   |  2 +-
- 4 files changed, 86 insertions(+), 11 deletions(-)
+ drivers/media/platform/verisilicon/hantro.h        |  23 +++
+ drivers/media/platform/verisilicon/hantro_drv.c    | 230 ++++++++++++++++++---
+ drivers/media/platform/verisilicon/hantro_hw.h     |   1 +
+ .../media/platform/verisilicon/rockchip_vpu_hw.c   |  18 ++
+ 4 files changed, 242 insertions(+), 30 deletions(-)
 
 diff --git a/drivers/media/platform/verisilicon/hantro.h b/drivers/media/platform/verisilicon/hantro.h
-index 0353de154a1e..eceaa74a634b 100644
+index eceaa74a634b..2a3a0fc3e355 100644
 --- a/drivers/media/platform/verisilicon/hantro.h
 +++ b/drivers/media/platform/verisilicon/hantro.h
-@@ -193,6 +193,14 @@ hantro_vdev_to_func(struct video_device *vdev)
-  *			shared with interrupt handlers.
-  * @variant:		Hardware variant-specific parameters.
-  * @watchdog_work:	Delayed work for hardware timeout handling.
-+ * @curr_ctx:		Context whose job is running on this instance, or NULL
-+ *			if the instance is idle. Protected by @cores_lock of
-+ *			the device the job was scheduled on.
-+ * @cores:		Hardware instances the jobs of this device can be
-+ *			scheduled on. The first entry is the device itself.
-+ * @num_cores:		Number of entries in @cores.
-+ * @cores_lock:		Spinlock protecting @cores, @num_cores and @curr_ctx
-+ *			of each core.
+@@ -77,6 +77,8 @@ struct hantro_irq {
+  * @double_buffer:		core needs double buffering
+  * @legacy_regs:		core uses legacy register set
+  * @late_postproc:		postproc must be set up at the end of the job
++ * @multi_core:			identical instances of this variant can be driven as
++ *				a single device, running jobs in parallel
+  * @shared_devices:		an array of device ids that cannot run concurrently
+  */
+ struct hantro_variant {
+@@ -102,6 +104,7 @@ struct hantro_variant {
+ 	unsigned int double_buffer : 1;
+ 	unsigned int legacy_regs : 1;
+ 	unsigned int late_postproc : 1;
++	unsigned int multi_core : 1;
+ 	const struct of_device_id *shared_devices;
+ };
+ 
+@@ -172,6 +175,21 @@ hantro_vdev_to_func(struct video_device *vdev)
+ 	return container_of(vdev, struct hantro_func, vdev);
+ }
+ 
++/**
++ * enum hantro_core_role - role of a VPU instance
++ * @HANTRO_CORE_SINGLE:		Standalone instance.
++ * @HANTRO_CORE_MAIN:		Main core of a multi-core device. It exposes the
++ *				device to userspace and binds the secondary
++ *				cores.
++ * @HANTRO_CORE_SECONDARY:	Secondary core of a multi-core device, running
++ *				jobs scheduled by the main core.
++ */
++enum hantro_core_role {
++	HANTRO_CORE_SINGLE,
++	HANTRO_CORE_MAIN,
++	HANTRO_CORE_SECONDARY,
++};
++
+ /**
+  * struct hantro_dev - driver data
+  * @v4l2_dev:		V4L2 device to register video devices for.
+@@ -201,6 +219,9 @@ hantro_vdev_to_func(struct video_device *vdev)
+  * @num_cores:		Number of entries in @cores.
+  * @cores_lock:		Spinlock protecting @cores, @num_cores and @curr_ctx
+  *			of each core.
++ * @role:		Role of this instance in a multi-core device.
++ * @attached_domain:	IOMMU domain of the main core that this secondary
++ *			core is attached to, if any.
   */
  struct hantro_dev {
  	struct v4l2_device v4l2_dev;
-@@ -213,12 +221,21 @@ struct hantro_dev {
- 	spinlock_t irqlock;
- 	const struct hantro_variant *variant;
- 	struct delayed_work watchdog_work;
-+
-+	struct hantro_ctx *curr_ctx;
-+	struct hantro_dev **cores;
-+	unsigned int num_cores;
-+	spinlock_t cores_lock; /* protects the core list and curr_ctx */
+@@ -226,6 +247,8 @@ struct hantro_dev {
+ 	struct hantro_dev **cores;
+ 	unsigned int num_cores;
+ 	spinlock_t cores_lock; /* protects the core list and curr_ctx */
++	enum hantro_core_role role;
++	struct iommu_domain *attached_domain;
  };
  
  /**
-  * struct hantro_ctx - Context (instance) private data.
-  *
-  * @dev:		VPU driver data to which the context belongs.
-+ * @core:		VPU instance running the current job of this context,
-+ *			only valid while a job is running. Codec operations
-+ *			must access the hardware through it. It is the same
-+ *			as @dev unless the variant has multiple cores.
-  * @fh:			V4L2 file handler.
-  * @is_encoder:		Decoder or encoder context?
-  *
-@@ -248,6 +265,7 @@ struct hantro_dev {
-  */
- struct hantro_ctx {
- 	struct hantro_dev *dev;
-+	struct hantro_dev *core;
- 	struct v4l2_fh fh;
- 	bool is_encoder;
- 
 diff --git a/drivers/media/platform/verisilicon/hantro_drv.c b/drivers/media/platform/verisilicon/hantro_drv.c
-index d02988fc19ae..ab76251627fb 100644
+index ab76251627fb..b248fc31be6c 100644
 --- a/drivers/media/platform/verisilicon/hantro_drv.c
 +++ b/drivers/media/platform/verisilicon/hantro_drv.c
-@@ -59,11 +59,51 @@ static const struct v4l2_event hantro_eos_event = {
- 	.type = V4L2_EVENT_EOS
+@@ -11,6 +11,8 @@
+  */
+ 
+ #include <linux/clk.h>
++#include <linux/component.h>
++#include <linux/iommu.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/of_platform.h>
+@@ -762,7 +764,7 @@ static const struct of_device_id of_hantro_match[] = {
+ 	{ .compatible = "rockchip,rk3399-vpu", .data = &rk3399_vpu_variant, },
+ 	{ .compatible = "rockchip,rk3568-vepu", .data = &rk3568_vepu_variant, },
+ 	{ .compatible = "rockchip,rk3568-vpu", .data = &rk3568_vpu_variant, },
+-	{ .compatible = "rockchip,rk3588-vepu121", .data = &rk3568_vepu_variant, },
++	{ .compatible = "rockchip,rk3588-vepu121", .data = &rk3588_vepu121_variant, },
+ 	{ .compatible = "rockchip,rk3588-av1-vpu", .data = &rk3588_vpu981_variant, },
+ #endif
+ #ifdef CONFIG_VIDEO_HANTRO_IMX8M
+@@ -1042,46 +1044,70 @@ static const struct media_device_ops hantro_m2m_media_ops = {
  };
  
-+/*
-+ * Pick an idle core for the job of @ctx. The mem2mem framework never runs
-+ * more jobs in parallel than there are cores, so this only fails if the
-+ * core accounting is broken.
-+ */
-+static struct hantro_dev *hantro_acquire_core(struct hantro_ctx *ctx)
+ /*
+- * Some SoCs, like RK3588 have multiple identical Hantro cores, but the
+- * kernel is currently missing support for multi-core handling. Exposing
+- * separate devices for each core to userspace is bad, since that does
+- * not allow scheduling tasks properly (and creates ABI). With this workaround
+- * the driver will only probe for the first core and early exit for the other
+- * cores. Once the driver gains multi-core support, the same technique
+- * for detecting the main core can be used to cluster all cores together.
++ * Some SoCs, like RK3588, have multiple identical Hantro cores. Exposing
++ * separate devices for each core to userspace is bad, since that does not
++ * allow scheduling tasks properly (and creates ABI). The first compatible
++ * and available node is considered the main core. For variants with
++ * multi-core support, the main core binds the other cores as components and
++ * schedules jobs on all of them. For the other variants, only the main core
++ * is used.
++ *
++ * Returns the role of the instance, and for a main core the match of the
++ * secondary cores in @match and the total number of cores in @num_cores.
+  */
+-static int hantro_disable_multicore(struct hantro_dev *vpu)
++static int hantro_get_core_role(struct hantro_dev *vpu,
++				struct component_match **match,
++				unsigned int *num_cores)
+ {
+-	struct device_node *node = NULL;
++	struct device_node *np = vpu->dev->of_node;
++	struct device_node *node;
++	bool found_main = false;
++	bool is_main_core = false;
+ 	const char *compatible;
+-	bool is_main_core;
+ 	int ret;
+ 
++	*num_cores = 1;
++
+ 	/* Intentionally ignores the fallback strings */
+-	ret = of_property_read_string(vpu->dev->of_node, "compatible", &compatible);
++	ret = of_property_read_string(np, "compatible", &compatible);
+ 	if (ret)
+ 		return ret;
+ 
+-	/* The first compatible and available node found is considered the main core */
+-	do {
+-		node = of_find_compatible_node(node, NULL, compatible);
+-		if (of_device_is_available(node))
+-			break;
+-	} while (node);
++	for_each_compatible_node(node, NULL, compatible) {
++		if (!of_device_is_available(node))
++			continue;
+ 
+-	if (!node)
+-		return -EINVAL;
++		if (!found_main) {
++			found_main = true;
++			is_main_core = (node == np);
++			if (is_main_core && vpu->variant->multi_core)
++				continue;
++		} else {
++			of_node_get(node);
++			component_match_add_release(vpu->dev, match,
++						    component_release_of,
++						    component_compare_of, node);
++			(*num_cores)++;
++			continue;
++		}
+ 
+-	is_main_core = (vpu->dev->of_node == node);
++		of_node_put(node);
++		break;
++	}
+ 
+-	of_node_put(node);
++	if (!found_main)
++		return -EINVAL;
+ 
+ 	if (!is_main_core) {
+-		dev_info(vpu->dev, "missing multi-core support, ignoring this instance\n");
+-		return -ENODEV;
++		if (!vpu->variant->multi_core) {
++			dev_info(vpu->dev, "missing multi-core support, ignoring this instance\n");
++			return -ENODEV;
++		}
++
++		return HANTRO_CORE_SECONDARY;
+ 	}
+ 
+-	return 0;
++	return *match ? HANTRO_CORE_MAIN : HANTRO_CORE_SINGLE;
+ }
+ 
+ static struct v4l2_m2m_dev *hantro_get_v4l2_m2m_dev(struct hantro_dev *vpu)
+@@ -1276,6 +1302,11 @@ static int hantro_register_devices(struct hantro_dev *vpu)
+ 		return PTR_ERR(vpu->m2m_dev);
+ 	}
+ 
++	if (vpu->num_cores > 1) {
++		v4l2_m2m_set_max_parallel_jobs(vpu->m2m_dev, vpu->num_cores);
++		v4l2_info(&vpu->v4l2_dev, "using %u cores\n", vpu->num_cores);
++	}
++
+ 	vpu->mdev.dev = vpu->dev;
+ 	strscpy(vpu->mdev.model, DRIVER_NAME, sizeof(vpu->mdev.model));
+ 	media_device_init(&vpu->mdev);
+@@ -1321,9 +1352,117 @@ static void hantro_unregister_devices(struct hantro_dev *vpu)
+ 	v4l2_m2m_put(vpu->m2m_dev);
+ }
+ 
++static int hantro_core_bind(struct device *dev, struct device *master,
++			    void *data)
 +{
-+	struct hantro_dev *vpu = ctx->dev;
++	struct hantro_dev *core = dev_get_drvdata(dev);
++	struct iommu_domain *domain, *core_domain;
++	struct hantro_dev *vpu = data;
++	int ret;
++
++	/*
++	 * Buffers are allocated and mapped through the main core, before the
++	 * job is scheduled on a core. Put this core into the IOMMU domain of
++	 * the main core, so that it uses the same mappings. A core that can't
++	 * share the mappings is left unused rather than failing the whole
++	 * device.
++	 */
++	domain = iommu_get_domain_for_dev(vpu->dev);
++	core_domain = iommu_get_domain_for_dev(dev);
++	if (domain || core_domain) {
++		if (!domain || !core_domain) {
++			dev_warn(dev, "IOMMU differs from the main core, not using this core\n");
++			return 0;
++		}
++
++		ret = iommu_attach_device(domain, dev);
++		if (ret) {
++			dev_warn(dev, "Failed to attach to the IOMMU domain of the main core (%d), not using this core\n",
++				 ret);
++			return 0;
++		}
++		core->attached_domain = domain;
++	}
++
++	scoped_guard(spinlock_irqsave, &vpu->cores_lock)
++		vpu->cores[vpu->num_cores++] = core;
++
++	return 0;
++}
++
++static void hantro_core_unbind(struct device *dev, struct device *master,
++			       void *data)
++{
++	struct hantro_dev *core = dev_get_drvdata(dev);
++	struct hantro_dev *vpu = data;
 +	unsigned int i;
 +
-+	guard(spinlock_irqsave)(&vpu->cores_lock);
++	scoped_guard(spinlock_irqsave, &vpu->cores_lock) {
++		for (i = 1; i < vpu->num_cores; i++) {
++			if (vpu->cores[i] != core)
++				continue;
 +
-+	for (i = 0; i < vpu->num_cores; i++) {
-+		struct hantro_dev *core = vpu->cores[i];
-+
-+		if (!core->curr_ctx) {
-+			core->curr_ctx = ctx;
-+			ctx->core = core;
-+			return core;
++			memmove(&vpu->cores[i], &vpu->cores[i + 1],
++				(vpu->num_cores - i - 1) * sizeof(*vpu->cores));
++			vpu->num_cores--;
++			break;
 +		}
 +	}
 +
-+	return NULL;
-+}
++	cancel_delayed_work_sync(&core->watchdog_work);
 +
-+static void hantro_release_core(struct hantro_ctx *ctx)
-+{
-+	struct hantro_dev *vpu = ctx->dev;
-+
-+	guard(spinlock_irqsave)(&vpu->cores_lock);
-+
-+	if (ctx->core) {
-+		ctx->core->curr_ctx = NULL;
-+		ctx->core = NULL;
++	/* Return the core to its own DMA domain, so that it can bind again. */
++	if (core->attached_domain) {
++		iommu_detach_device(core->attached_domain, dev);
++		core->attached_domain = NULL;
 +	}
 +}
 +
- static void hantro_job_finish_no_pm(struct hantro_ctx *ctx,
- 				    enum vb2_buffer_state result)
- {
- 	struct vb2_v4l2_buffer *src, *dst;
- 
-+	/* Make the core available to the next job before scheduling it. */
-+	hantro_release_core(ctx);
++static const struct component_ops hantro_core_ops = {
++	.bind = hantro_core_bind,
++	.unbind = hantro_core_unbind,
++};
 +
- 	src = v4l2_m2m_next_src_buf(ctx->fh.m2m_ctx);
- 	dst = v4l2_m2m_next_dst_buf(ctx->fh.m2m_ctx);
- 
-@@ -88,17 +128,20 @@ static void hantro_job_finish_no_pm(struct hantro_ctx *ctx,
- static void hantro_job_finish(struct hantro_ctx *ctx,
- 			      enum vb2_buffer_state result)
++static int hantro_master_bind(struct device *dev)
++{
++	struct hantro_dev *vpu = dev_get_drvdata(dev);
++	int ret;
++
++	ret = component_bind_all(dev, vpu);
++	if (ret)
++		return ret;
++
++	ret = hantro_register_devices(vpu);
++	if (ret) {
++		component_unbind_all(dev, vpu);
++		return ret;
++	}
++
++	return 0;
++}
++
++static void hantro_master_unbind(struct device *dev)
++{
++	struct hantro_dev *vpu = dev_get_drvdata(dev);
++
++	/* Wait for running jobs and don't start new ones on unbound cores. */
++	v4l2_m2m_suspend(vpu->m2m_dev);
++	cancel_delayed_work_sync(&vpu->watchdog_work);
++
++	hantro_unregister_devices(vpu);
++	component_unbind_all(dev, vpu);
++}
++
++static const struct component_master_ops hantro_master_ops = {
++	.bind = hantro_master_bind,
++	.unbind = hantro_master_unbind,
++};
++
+ static int hantro_probe(struct platform_device *pdev)
  {
--	struct hantro_dev *vpu = ctx->dev;
-+	struct hantro_dev *core = ctx->core;
- 
--	pm_runtime_put_autosuspend(vpu->dev);
-+	pm_runtime_put_autosuspend(core->dev);
- 	hantro_job_finish_no_pm(ctx, result);
- }
- 
-+/*
-+ * Called from the interrupt handler of the VPU instance @vpu, which is the
-+ * core the job was running on.
-+ */
- void hantro_irq_done(struct hantro_dev *vpu,
- 		     enum vb2_buffer_state result)
- {
--	struct hantro_ctx *ctx =
--		v4l2_m2m_get_curr_priv(vpu->m2m_dev);
-+	struct hantro_ctx *ctx;
- 
- 	/*
- 	 * If cancel_delayed_work returns false
-@@ -106,6 +149,7 @@ void hantro_irq_done(struct hantro_dev *vpu,
- 	 * and will take care of finishing the job.
- 	 */
- 	if (cancel_delayed_work(&vpu->watchdog_work)) {
-+		ctx = vpu->curr_ctx;
- 		if (result == VB2_BUF_STATE_DONE && ctx->codec_ops->done)
- 			ctx->codec_ops->done(ctx);
- 		hantro_job_finish(ctx, result);
-@@ -119,7 +163,7 @@ void hantro_watchdog(struct work_struct *work)
- 
- 	vpu = container_of(to_delayed_work(work),
- 			   struct hantro_dev, watchdog_work);
--	ctx = v4l2_m2m_get_curr_priv(vpu->m2m_dev);
-+	ctx = vpu->curr_ctx;
- 	if (ctx) {
- 		vpu_err("frame processing timed out!\n");
- 		if (ctx->codec_ops->reset)
-@@ -160,21 +204,27 @@ void hantro_end_prepare_run(struct hantro_ctx *ctx)
- 				   &ctx->ctrl_handler);
- 
- 	/* Kick the watchdog. */
--	schedule_delayed_work(&ctx->dev->watchdog_work,
-+	schedule_delayed_work(&ctx->core->watchdog_work,
- 			      msecs_to_jiffies(2000));
- }
- 
- static void device_run(void *priv)
- {
- 	struct hantro_ctx *ctx = priv;
--	struct hantro_dev *vpu = ctx->dev;
- 	struct vb2_v4l2_buffer *src, *dst;
-+	struct hantro_dev *core;
++	struct component_match *cmatch = NULL;
+ 	const struct of_device_id *match;
++	unsigned int num_cores;
+ 	struct hantro_dev *vpu;
  	int ret;
  
- 	src = hantro_get_src_buf(ctx);
- 	dst = hantro_get_dst_buf(ctx);
- 
--	ret = pm_runtime_resume_and_get(vpu->dev);
-+	core = hantro_acquire_core(ctx);
-+	if (WARN_ON_ONCE(!core)) {
-+		hantro_job_finish_no_pm(ctx, VB2_BUF_STATE_ERROR);
-+		return;
-+	}
-+
-+	ret = pm_runtime_resume_and_get(core->dev);
- 	if (ret < 0) {
- 		hantro_job_finish_no_pm(ctx, VB2_BUF_STATE_ERROR);
- 		return;
-@@ -1285,6 +1335,7 @@ static int hantro_probe(struct platform_device *pdev)
- 	vpu->pdev = pdev;
- 	mutex_init(&vpu->vpu_mutex);
- 	spin_lock_init(&vpu->irqlock);
-+	spin_lock_init(&vpu->cores_lock);
- 
+@@ -1340,9 +1479,10 @@ static int hantro_probe(struct platform_device *pdev)
  	match = of_match_node(of_hantro_match, pdev->dev.of_node);
  	vpu->variant = match->data;
-@@ -1302,6 +1353,12 @@ static int hantro_probe(struct platform_device *pdev)
+ 
+-	ret = hantro_disable_multicore(vpu);
+-	if (ret)
++	ret = hantro_get_core_role(vpu, &cmatch, &num_cores);
++	if (ret < 0)
+ 		return ret;
++	vpu->role = ret;
+ 
+ 	/*
+ 	 * Support for nxp,imx8mq-vpu is kept for backwards compatibility
+@@ -1353,7 +1493,23 @@ static int hantro_probe(struct platform_device *pdev)
  		dev_warn(&pdev->dev, "%s compatible is deprecated\n",
  			 match->compatible);
  
-+	vpu->cores = devm_kcalloc(&pdev->dev, 1, sizeof(*vpu->cores),
-+				  GFP_KERNEL);
-+	if (!vpu->cores)
-+		return -ENOMEM;
-+	vpu->cores[vpu->num_cores++] = vpu;
+-	vpu->cores = devm_kcalloc(&pdev->dev, 1, sizeof(*vpu->cores),
++	if (vpu->role == HANTRO_CORE_SECONDARY) {
++		platform_set_drvdata(pdev, vpu);
 +
- 	ret = hantro_hw_init(vpu);
++		ret = hantro_hw_init(vpu);
++		if (ret)
++			return ret;
++
++		ret = component_add(&pdev->dev, &hantro_core_ops);
++		if (ret) {
++			dev_err(&pdev->dev, "Failed to register core component\n");
++			goto err_hw_cleanup;
++		}
++
++		return 0;
++	}
++
++	vpu->cores = devm_kcalloc(&pdev->dev, num_cores, sizeof(*vpu->cores),
+ 				  GFP_KERNEL);
+ 	if (!vpu->cores)
+ 		return -ENOMEM;
+@@ -1370,7 +1526,12 @@ static int hantro_probe(struct platform_device *pdev)
+ 	}
+ 	platform_set_drvdata(pdev, vpu);
+ 
+-	ret = hantro_register_devices(vpu);
++	if (vpu->role == HANTRO_CORE_MAIN)
++		ret = component_master_add_with_match(&pdev->dev,
++						      &hantro_master_ops,
++						      cmatch);
++	else
++		ret = hantro_register_devices(vpu);
  	if (ret)
- 		return ret;
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c b/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c
-index 61621b1be8a2..f7550470b43d 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu2_hw_jpeg_enc.c
-@@ -131,7 +131,7 @@ rockchip_vpu2_jpeg_enc_set_qtable(struct hantro_dev *vpu,
+ 		goto err_v4l2_unreg;
  
- int rockchip_vpu2_jpeg_enc_run(struct hantro_ctx *ctx)
+@@ -1387,9 +1548,18 @@ static void hantro_remove(struct platform_device *pdev)
  {
--	struct hantro_dev *vpu = ctx->dev;
-+	struct hantro_dev *vpu = ctx->core;
- 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
- 	struct hantro_jpeg_ctx jpeg_ctx;
- 	u32 reg;
-@@ -188,7 +188,7 @@ int rockchip_vpu2_jpeg_enc_run(struct hantro_ctx *ctx)
+ 	struct hantro_dev *vpu = platform_get_drvdata(pdev);
  
- void rockchip_vpu2_jpeg_enc_done(struct hantro_ctx *ctx)
- {
--	struct hantro_dev *vpu = ctx->dev;
-+	struct hantro_dev *vpu = ctx->core;
- 	u32 bytesused = vepu_read(vpu, VEPU_REG_STR_BUF_LIMIT) / 8;
- 	struct vb2_v4l2_buffer *dst_buf = hantro_get_dst_buf(ctx);
++	if (vpu->role == HANTRO_CORE_SECONDARY) {
++		component_del(&pdev->dev, &hantro_core_ops);
++		hantro_hw_cleanup(vpu);
++		return;
++	}
++
+ 	v4l2_info(&vpu->v4l2_dev, "Removing %s\n", pdev->name);
  
+-	hantro_unregister_devices(vpu);
++	if (vpu->role == HANTRO_CORE_MAIN)
++		component_master_del(&pdev->dev, &hantro_master_ops);
++	else
++		hantro_unregister_devices(vpu);
+ 	v4l2_device_unregister(&vpu->v4l2_dev);
+ 	hantro_hw_cleanup(vpu);
+ }
+diff --git a/drivers/media/platform/verisilicon/hantro_hw.h b/drivers/media/platform/verisilicon/hantro_hw.h
+index 13e573f1f19d..9470f75fb926 100644
+--- a/drivers/media/platform/verisilicon/hantro_hw.h
++++ b/drivers/media/platform/verisilicon/hantro_hw.h
+@@ -414,6 +414,7 @@ extern const struct hantro_variant rk3328_vpu_variant;
+ extern const struct hantro_variant rk3399_vpu_variant;
+ extern const struct hantro_variant rk3568_vepu_variant;
+ extern const struct hantro_variant rk3568_vpu_variant;
++extern const struct hantro_variant rk3588_vepu121_variant;
+ extern const struct hantro_variant rk3588_vpu981_variant;
+ extern const struct hantro_variant sama5d4_vdec_variant;
+ extern const struct hantro_variant sunxi_vpu_variant;
 diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-index 02673be9878e..f1f7f95b2652 100644
+index f1f7f95b2652..1a272a10c51b 100644
 --- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
 +++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-@@ -488,7 +488,7 @@ static void rockchip_vpu2_dec_reset(struct hantro_ctx *ctx)
+@@ -771,6 +771,24 @@ const struct hantro_variant rk3568_vepu_variant = {
+ 	.num_clocks = ARRAY_SIZE(rockchip_vpu_clk_names)
+ };
  
- static void rockchip_vpu2_enc_reset(struct hantro_ctx *ctx)
- {
--	struct hantro_dev *vpu = ctx->dev;
-+	struct hantro_dev *vpu = ctx->core;
- 
- 	vepu_write(vpu, VEPU_REG_INTERRUPT_DIS_BIT, VEPU_REG_INTERRUPT);
- 	vepu_write(vpu, 0, VEPU_REG_ENCODE_START);
++/*
++ * The RK3588 has four identical VEPU121 cores, each with its own IOMMU,
++ * which are driven as a single multi-core device.
++ */
++const struct hantro_variant rk3588_vepu121_variant = {
++	.enc_offset = 0x0,
++	.enc_fmts = rockchip_vpu_enc_fmts,
++	.num_enc_fmts = ARRAY_SIZE(rockchip_vpu_enc_fmts),
++	.codec = HANTRO_JPEG_ENCODER,
++	.codec_ops = rk3568_vepu_codec_ops,
++	.irqs = rk3568_vepu_irqs,
++	.num_irqs = ARRAY_SIZE(rk3568_vepu_irqs),
++	.init = rockchip_vpu_hw_init,
++	.clk_names = rockchip_vpu_clk_names,
++	.num_clocks = ARRAY_SIZE(rockchip_vpu_clk_names),
++	.multi_core = 1,
++};
++
+ const struct hantro_variant rk3568_vpu_variant = {
+ 	.dec_offset = 0x400,
+ 	.dec_fmts = rockchip_vdpu2_dec_fmts,
 
 -- 
 2.55.0
