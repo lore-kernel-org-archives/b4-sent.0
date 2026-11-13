@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Fri, 13 Nov 2026 08:59:22 -0800
-Subject: [PATCH net-next v11 03/14] net: ethernet: oa_tc6: Move oa_tc6.c to
- its own directory
+Date: Fri, 13 Nov 2026 08:59:23 -0800
+Subject: [PATCH net-next v11 04/14] net: ethernet: oa_tc6: Move constant
+ definitions to header file
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-s2500-mac-phy-support-v11-3-7a186141952c@onsemi.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261113-s2500-mac-phy-support-v11-4-7a186141952c@onsemi.com>
 References: <20261113-s2500-mac-phy-support-v11-0-7a186141952c@onsemi.com>
 In-Reply-To: <20261113-s2500-mac-phy-support-v11-0-7a186141952c@onsemi.com>
 To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
@@ -29,39 +29,39 @@ Cc: Selva Rajagopal <Selvamani.Rajagopal@onsemi.com>,
  Jerry Ray <jerry.ray@microchip.com>, 
  Ciprian Regus <ciprian.regus@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794589162; l=5322;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794589162; l=9475;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=Pd0dXYiMZlEIzgfNTnIo8RTA035x6ymrrjs+dN6mS2Q=;
- b=JRFSyQGbCZ8jGyDjr4z8DPDUdVEu+D5gxL0JIoVbBg//vc00+drFos1SnCzqp/Cg5MsW10X1e
- 4yQbYRjTsvVC9DpaiuIDEy6g0Q+Jk3gHno/MyXtokt5eUQwZlmC6g9X
+ bh=fzye6JMC/7MohkHqYviCT3+QuVAqSqwKD1htmTY4JR4=;
+ b=hT2q9Gkq3Zb6pefm+CLfPq6LlTfX56M0om23ZjEutd3+wSAGKIkaWHrPcEeS5PHOq83fCDDnI
+ dZ5g16//w/GDN+X02jtRAnl0j2feMCyVDaE71gzoW1uRw2WqUbF/5b0
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move oa_tc6.c to its own directory, drivers/net/ethernet/oa_tc6.
-File oa_tc6.c is renamed to oa_tc6_main.c to maintain the kernel
-module's name as oa_tc6. This will facilitate adding more files
-to support other features defined by OPEN Alliance 10BASE-T1x
-Serial Interface specification.
+To help other source files within the module share the
+constant definitions, some of the definitions from
+oa_tc6_main.c are moved to a header file. This header file
+is still private to OA TC6 framework.
 
-This patch series adds two files, one for hardware
-timestamp related functions and one for PTP related APIs.
+oa_tc6 structure is also moved to this header file as it is
+needed for other source files that are part of OA TC6
+framework.
 
 Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
 changes in v11
-  - Mentioned the renaming of oa_tc6.c in the commit message
+  - Removed the reference to oa_tc6.c in commit message. It is
+    oa_tc6_main.c now.
 changes in v10
-  - Kernel module restored to oa_tc6.ko from oa_tc6_mod.ko
-changes in v9
-  - Changed MAINTAINERS to add "all files" under oa_tc6
-  - Added the missing "if COMPILE_TEST"
-  - Added Reviewed by tag
-changes in v8
   - No change
+changes in v9
+  - Added Reviewed tag
+changes in v8:
+  - Merged with latest base version's changes
+  - Added Reviewed tag
 changes in v7
   - No change
 changes in v6
@@ -69,118 +69,266 @@ changes in v6
 changes in v5
   - No change
 changes in v4
-  - Removed reference to onsemi in Kconfig files
+  - Added MMS values 1 and 12, which are used now
 changes in v3
-  - Moved oa_tc6.c to its own, oa_tc6 directory under ethernet.
+  - Moved constant definitions from the source to newly created
+    header file for other sources in the directory to share.
+  - Standard specific defines are moved to Linux common header file
   - First patch
 ---
- MAINTAINERS                                             |  2 +-
- drivers/net/ethernet/Kconfig                            | 12 +-----------
- drivers/net/ethernet/Makefile                           |  2 +-
- drivers/net/ethernet/oa_tc6/Kconfig                     | 15 +++++++++++++++
- drivers/net/ethernet/oa_tc6/Makefile                    |  7 +++++++
- drivers/net/ethernet/{oa_tc6.c => oa_tc6/oa_tc6_main.c} |  0
- 6 files changed, 25 insertions(+), 13 deletions(-)
+ drivers/net/ethernet/oa_tc6/oa_tc6_main.c    | 107 +----------------------
+ drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h | 125 +++++++++++++++++++++++++++
+ 2 files changed, 127 insertions(+), 105 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 4a4c26694ba7..028fa967674e 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -21043,7 +21043,7 @@ M:	Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
- L:	netdev@vger.kernel.org
- S:	Maintained
- F:	Documentation/networking/oa-tc6-framework.rst
--F:	drivers/net/ethernet/oa_tc6.c
-+F:	drivers/net/ethernet/oa_tc6/*
- F:	include/linux/oa_tc6.h
- 
- OPEN FIRMWARE AND FLATTENED DEVICE TREE
-diff --git a/drivers/net/ethernet/Kconfig b/drivers/net/ethernet/Kconfig
-index c2b0161d0bec..5758e0fbbca5 100644
---- a/drivers/net/ethernet/Kconfig
-+++ b/drivers/net/ethernet/Kconfig
-@@ -135,6 +135,7 @@ source "drivers/net/ethernet/netronome/Kconfig"
- source "drivers/net/ethernet/8390/Kconfig"
- source "drivers/net/ethernet/nvidia/Kconfig"
- source "drivers/net/ethernet/nxp/Kconfig"
-+source "drivers/net/ethernet/oa_tc6/Kconfig"
- source "drivers/net/ethernet/oki-semi/Kconfig"
- 
- config ETHOC
-@@ -147,17 +148,6 @@ config ETHOC
- 	help
- 	  Say Y here if you want to use the OpenCores 10/100 Mbps Ethernet MAC.
- 
--config OA_TC6
--	tristate "OPEN Alliance TC6 10BASE-T1x MAC-PHY support" if COMPILE_TEST
--	depends on SPI
--	select PHYLIB
--	help
--	  This library implements OPEN Alliance TC6 10BASE-T1x MAC-PHY
--	  Serial Interface protocol for supporting 10BASE-T1x MAC-PHYs.
+diff --git a/drivers/net/ethernet/oa_tc6/oa_tc6_main.c b/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
+index 8e86cfde6d1c..341d13c97f91 100644
+--- a/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
++++ b/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
+@@ -12,111 +12,8 @@
+ #include <linux/interrupt.h>
+ #include <linux/mdio.h>
+ #include <linux/phy.h>
+-#include <linux/oa_tc6.h>
 -
--	  To know the implementation details, refer documentation in
--	  <file:Documentation/networking/oa-tc6-framework.rst>.
+-/* Control command header */
+-#define OA_TC6_CTRL_HEADER_DATA_NOT_CTRL	BIT(31)
+-#define OA_TC6_CTRL_HEADER_WRITE_NOT_READ	BIT(29)
+-#define OA_TC6_CTRL_HEADER_MEM_MAP_SELECTOR	GENMASK(27, 24)
+-#define OA_TC6_CTRL_HEADER_ADDR			GENMASK(23, 8)
+-#define OA_TC6_CTRL_HEADER_LENGTH		GENMASK(7, 1)
+-#define OA_TC6_CTRL_HEADER_PARITY		BIT(0)
 -
- source "drivers/net/ethernet/pasemi/Kconfig"
- source "drivers/net/ethernet/pensando/Kconfig"
- source "drivers/net/ethernet/qlogic/Kconfig"
-diff --git a/drivers/net/ethernet/Makefile b/drivers/net/ethernet/Makefile
-index a306dae23bcb..e0e86c249e42 100644
---- a/drivers/net/ethernet/Makefile
-+++ b/drivers/net/ethernet/Makefile
-@@ -72,6 +72,7 @@ obj-$(CONFIG_NET_VENDOR_NETRONOME) += netronome/
- obj-$(CONFIG_NET_VENDOR_NI) += ni/
- obj-$(CONFIG_NET_VENDOR_NVIDIA) += nvidia/
- obj-$(CONFIG_LPC_ENET) += nxp/
-+obj-$(CONFIG_OA_TC6) += oa_tc6/
- obj-$(CONFIG_NET_VENDOR_OKI) += oki-semi/
- obj-$(CONFIG_ETHOC) += ethoc.o
- obj-$(CONFIG_NET_VENDOR_PASEMI) += pasemi/
-@@ -105,5 +106,4 @@ obj-$(CONFIG_NET_VENDOR_XILINX) += xilinx/
- obj-$(CONFIG_NET_VENDOR_XIRCOM) += xircom/
- obj-$(CONFIG_NET_VENDOR_SYNOPSYS) += synopsys/
- obj-$(CONFIG_NET_VENDOR_PENSANDO) += pensando/
--obj-$(CONFIG_OA_TC6) += oa_tc6.o
- obj-$(CONFIG_NET_VENDOR_ZTE) += zte/
-diff --git a/drivers/net/ethernet/oa_tc6/Kconfig b/drivers/net/ethernet/oa_tc6/Kconfig
+-/* Data header */
+-#define OA_TC6_DATA_HEADER_DATA_NOT_CTRL	BIT(31)
+-#define OA_TC6_DATA_HEADER_DATA_VALID		BIT(21)
+-#define OA_TC6_DATA_HEADER_START_VALID		BIT(20)
+-#define OA_TC6_DATA_HEADER_START_WORD_OFFSET	GENMASK(19, 16)
+-#define OA_TC6_DATA_HEADER_END_VALID		BIT(14)
+-#define OA_TC6_DATA_HEADER_END_BYTE_OFFSET	GENMASK(13, 8)
+-#define OA_TC6_DATA_HEADER_PARITY		BIT(0)
+-
+-/* Data footer */
+-#define OA_TC6_DATA_FOOTER_EXTENDED_STS		BIT(31)
+-#define OA_TC6_DATA_FOOTER_RXD_HEADER_BAD	BIT(30)
+-#define OA_TC6_DATA_FOOTER_CONFIG_SYNC		BIT(29)
+-#define OA_TC6_DATA_FOOTER_RX_CHUNKS		GENMASK(28, 24)
+-#define OA_TC6_DATA_FOOTER_DATA_VALID		BIT(21)
+-#define OA_TC6_DATA_FOOTER_START_VALID		BIT(20)
+-#define OA_TC6_DATA_FOOTER_START_WORD_OFFSET	GENMASK(19, 16)
+-#define OA_TC6_DATA_FOOTER_END_VALID		BIT(14)
+-#define OA_TC6_DATA_FOOTER_END_BYTE_OFFSET	GENMASK(13, 8)
+-#define OA_TC6_DATA_FOOTER_TX_CREDITS		GENMASK(5, 1)
+-
+-#define OA_TC6_CTRL_PROT_REPLY_SIZE		4
+-#define OA_TC6_CTRL_HEADER_SIZE			4
+-#define OA_TC6_CTRL_REG_VALUE_SIZE		4
+-#define OA_TC6_CTRL_IGNORED_SIZE		4
+-#define OA_TC6_CTRL_MAX_REGISTERS		128
+-#define OA_TC6_CTRL_SPI_BUF_SIZE	(OA_TC6_CTRL_HEADER_SIZE +\
+-					(OA_TC6_CTRL_MAX_REGISTERS *\
+-					(OA_TC6_CTRL_REG_VALUE_SIZE +\
+-					OA_TC6_CTRL_PROT_REPLY_SIZE)) +\
+-					OA_TC6_CTRL_IGNORED_SIZE)
+-
+-#define OA_TC6_CHUNK_PAYLOAD_SIZE		64
+-#define OA_TC6_DATA_HEADER_SIZE			4
+-#define OA_TC6_CHUNK_SIZE			(OA_TC6_DATA_HEADER_SIZE +\
+-						OA_TC6_CHUNK_PAYLOAD_SIZE)
+-#define OA_TC6_MAX_TX_CHUNKS			48
+-#define OA_TC6_SPI_DATA_BUF_SIZE		(OA_TC6_MAX_TX_CHUNKS *\
+-						OA_TC6_CHUNK_SIZE)
+-#define STATUS0_RESETC_POLL_DELAY		1000
+-#define STATUS0_RESETC_POLL_TIMEOUT		1000000
+-
+-#define OA_TC6_REG_MMS_MASK		GENMASK(19, 16)
+-
+-/* Internal structure for MAC-PHY drivers */
+-struct oa_tc6 {
+-	struct net_device *netdev;
+-	struct phy_device *phydev;
+-	struct mii_bus *mdiobus;
+-	struct spi_device *spi;
+-	struct mutex spi_ctrl_lock; /* Protects spi control transfer */
+-	spinlock_t tx_skb_lock; /* Protects tx skb handling */
+-	void *spi_ctrl_tx_buf;
+-	void *spi_ctrl_rx_buf;
+-	void *spi_data_tx_buf;
+-	void *spi_data_rx_buf;
+-	struct sk_buff *ongoing_tx_skb;
+-	struct sk_buff *waiting_tx_skb;
+-	struct sk_buff *rx_skb;
+-	u16 tx_skb_offset;
+-	u16 spi_data_tx_buf_offset;
+-	u16 tx_credits;
+-	u8 rx_chunks_available;
+-	bool wait_until_start_valid;
+-	bool int_flag;
+-	bool disable_traffic;
+-	bool prot_ctrl;
+-	enum oa_tc6_quirk_flag quirk_flags;
+-	struct gpio_desc *reset_gpio;
+-};
+-
+-enum oa_tc6_header_type {
+-	OA_TC6_CTRL_HEADER,
+-	OA_TC6_DATA_HEADER,
+-};
+-
+-enum oa_tc6_register_op {
+-	OA_TC6_CTRL_REG_READ = 0,
+-	OA_TC6_CTRL_REG_WRITE = 1,
+-};
+-
+-enum oa_tc6_data_valid_info {
+-	OA_TC6_DATA_INVALID,
+-	OA_TC6_DATA_VALID,
+-};
+-
+-enum oa_tc6_data_start_valid_info {
+-	OA_TC6_DATA_START_INVALID,
+-	OA_TC6_DATA_START_VALID,
+-};
+-
+-enum oa_tc6_data_end_valid_info {
+-	OA_TC6_DATA_END_INVALID,
+-	OA_TC6_DATA_END_VALID,
+-};
++
++#include "oa_tc6_std_def.h"
+ 
+ static int oa_tc6_spi_transfer(struct oa_tc6 *tc6,
+ 			       enum oa_tc6_header_type header_type, u16 length)
+diff --git a/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h b/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h
 new file mode 100644
-index 000000000000..ec2787eae4b1
+index 000000000000..c2c120ddcc07
 --- /dev/null
-+++ b/drivers/net/ethernet/oa_tc6/Kconfig
-@@ -0,0 +1,15 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+#
-+# OA TC6 10BASE-T1x MAC-PHY configuration
-+#
++++ b/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h
+@@ -0,0 +1,125 @@
++/* SPDX-License-Identifier: GPL-2.0+ */
++/*
++ * Register and driver related definitions to support
++ * OPEN Alliance 10BASE‑T1x MAC‑PHY Serial Interface framework.
++ *
++ * Author: Selva Rajagopal <selvamani.rajagopal@onsemi.com>
++ */
 +
-+config OA_TC6
-+	tristate "OPEN Alliance TC6 10BASE-T1x MAC-PHY support" if COMPILE_TEST
-+	depends on SPI
-+	select PHYLIB
-+	help
-+	  This library implements OPEN Alliance TC6 10BASE-T1x MAC-PHY
-+	  Serial Interface protocol for supporting 10BASE-T1x MAC-PHYs.
++#ifndef OA_TC6_STD_DEF_H
++#define OA_TC6_STD_DEF_H
 +
-+	  To know the implementation details, refer documentation in
-+	  <file:Documentation/networking/oa-tc6-framework.rst>.
-diff --git a/drivers/net/ethernet/oa_tc6/Makefile b/drivers/net/ethernet/oa_tc6/Makefile
-new file mode 100644
-index 000000000000..c51621fae8be
---- /dev/null
-+++ b/drivers/net/ethernet/oa_tc6/Makefile
-@@ -0,0 +1,7 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+#
-+# Makefile for OA TC6 10BASE-T1x MAC-PHY
-+#
++#include <linux/bits.h>
++#include <linux/ptp_clock_kernel.h>
++#include <linux/net_tstamp.h>
++#include <linux/netdevice.h>
++#include <linux/spi/spi.h>
++#include <linux/skbuff.h>
++#include <linux/sched.h>
++#include <linux/wait.h>
++#include <linux/oa_tc6.h>
 +
-+obj-$(CONFIG_OA_TC6) += oa_tc6.o
-+oa_tc6-objs := oa_tc6_main.o
-diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
-similarity index 100%
-rename from drivers/net/ethernet/oa_tc6.c
-rename to drivers/net/ethernet/oa_tc6/oa_tc6_main.c
++/* Control command header */
++#define OA_TC6_CTRL_HEADER_DATA_NOT_CTRL	BIT(31)
++#define OA_TC6_CTRL_HEADER_WRITE_NOT_READ	BIT(29)
++#define OA_TC6_CTRL_HEADER_MEM_MAP_SELECTOR	GENMASK(27, 24)
++#define OA_TC6_CTRL_HEADER_ADDR			GENMASK(23, 8)
++#define OA_TC6_CTRL_HEADER_LENGTH		GENMASK(7, 1)
++#define OA_TC6_CTRL_HEADER_PARITY		BIT(0)
++
++/* Data header */
++#define OA_TC6_DATA_HEADER_DATA_NOT_CTRL	BIT(31)
++#define OA_TC6_DATA_HEADER_DATA_VALID		BIT(21)
++#define OA_TC6_DATA_HEADER_START_VALID		BIT(20)
++#define OA_TC6_DATA_HEADER_START_WORD_OFFSET	GENMASK(19, 16)
++#define OA_TC6_DATA_HEADER_END_VALID		BIT(14)
++#define OA_TC6_DATA_HEADER_END_BYTE_OFFSET	GENMASK(13, 8)
++#define OA_TC6_DATA_HEADER_PARITY		BIT(0)
++
++/* Data footer */
++#define OA_TC6_DATA_FOOTER_EXTENDED_STS		BIT(31)
++#define OA_TC6_DATA_FOOTER_RXD_HEADER_BAD	BIT(30)
++#define OA_TC6_DATA_FOOTER_CONFIG_SYNC		BIT(29)
++#define OA_TC6_DATA_FOOTER_RX_CHUNKS		GENMASK(28, 24)
++#define OA_TC6_DATA_FOOTER_DATA_VALID		BIT(21)
++#define OA_TC6_DATA_FOOTER_START_VALID		BIT(20)
++#define OA_TC6_DATA_FOOTER_START_WORD_OFFSET	GENMASK(19, 16)
++#define OA_TC6_DATA_FOOTER_END_VALID		BIT(14)
++#define OA_TC6_DATA_FOOTER_END_BYTE_OFFSET	GENMASK(13, 8)
++#define OA_TC6_DATA_FOOTER_TX_CREDITS		GENMASK(5, 1)
++
++#define OA_TC6_CTRL_PROT_REPLY_SIZE		4
++#define OA_TC6_CTRL_HEADER_SIZE			4
++#define OA_TC6_CTRL_REG_VALUE_SIZE		4
++#define OA_TC6_CTRL_IGNORED_SIZE		4
++#define OA_TC6_CTRL_MAX_REGISTERS		128
++#define OA_TC6_CTRL_SPI_BUF_SIZE	(OA_TC6_CTRL_HEADER_SIZE +\
++					(OA_TC6_CTRL_MAX_REGISTERS *\
++					(OA_TC6_CTRL_REG_VALUE_SIZE +\
++					OA_TC6_CTRL_PROT_REPLY_SIZE)) +\
++					OA_TC6_CTRL_IGNORED_SIZE)
++
++#define OA_TC6_CHUNK_PAYLOAD_SIZE		64
++#define OA_TC6_DATA_HEADER_SIZE			4
++#define OA_TC6_CHUNK_SIZE			(OA_TC6_DATA_HEADER_SIZE +\
++						OA_TC6_CHUNK_PAYLOAD_SIZE)
++#define OA_TC6_MAX_TX_CHUNKS			48
++#define OA_TC6_SPI_DATA_BUF_SIZE		(OA_TC6_MAX_TX_CHUNKS *\
++						OA_TC6_CHUNK_SIZE)
++#define STATUS0_RESETC_POLL_DELAY		1000
++#define STATUS0_RESETC_POLL_TIMEOUT		1000000
++
++#define OA_TC6_REG_MMS_MASK		GENMASK(19, 16)
++
++/* Internal structure for MAC-PHY drivers */
++struct oa_tc6 {
++	struct net_device *netdev;
++	struct phy_device *phydev;
++	struct mii_bus *mdiobus;
++	struct spi_device *spi;
++	struct mutex spi_ctrl_lock; /* Protects spi control transfer */
++	spinlock_t tx_skb_lock; /* Protects tx skb handling */
++	void *spi_ctrl_tx_buf;
++	void *spi_ctrl_rx_buf;
++	void *spi_data_tx_buf;
++	void *spi_data_rx_buf;
++	struct sk_buff *ongoing_tx_skb;
++	struct sk_buff *waiting_tx_skb;
++	struct sk_buff *rx_skb;
++	u16 tx_skb_offset;
++	u16 spi_data_tx_buf_offset;
++	u16 tx_credits;
++	u8 rx_chunks_available;
++	bool wait_until_start_valid;
++	bool int_flag;
++	bool disable_traffic;
++	bool prot_ctrl;
++	enum oa_tc6_quirk_flag quirk_flags;
++	struct gpio_desc *reset_gpio;
++};
++
++enum oa_tc6_header_type {
++	OA_TC6_CTRL_HEADER,
++	OA_TC6_DATA_HEADER,
++};
++
++enum oa_tc6_register_op {
++	OA_TC6_CTRL_REG_READ = 0,
++	OA_TC6_CTRL_REG_WRITE = 1,
++};
++
++enum oa_tc6_data_valid_info {
++	OA_TC6_DATA_INVALID,
++	OA_TC6_DATA_VALID,
++};
++
++enum oa_tc6_data_start_valid_info {
++	OA_TC6_DATA_START_INVALID,
++	OA_TC6_DATA_START_VALID,
++};
++
++enum oa_tc6_data_end_valid_info {
++	OA_TC6_DATA_END_INVALID,
++	OA_TC6_DATA_END_VALID,
++};
++#endif /* OA_TC6_STD_DEF_H */
 
 -- 
 2.43.0
