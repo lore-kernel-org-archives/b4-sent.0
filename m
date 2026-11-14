@@ -1,11 +1,11 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 13 Nov 2026 23:14:41 -0500
-Subject: [PATCH net 2/4] net/smc: do not credit stale CDC completions after
- a link switch
+Date: Fri, 13 Nov 2026 23:14:42 -0500
+Subject: [PATCH net 3/4] net/smc: fix the failover catch-up across the
+ cursor wrap rollover
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-b4-disp-1a9ab9b0-v1-2-4a7c8d85d849@proton.me>
+Message-Id: <20261113-b4-disp-1a9ab9b0-v1-3-4a7c8d85d849@proton.me>
 References: <20261113-b4-disp-1a9ab9b0-v1-0-4a7c8d85d849@proton.me>
 In-Reply-To: <20261113-b4-disp-1a9ab9b0-v1-0-4a7c8d85d849@proton.me>
 To: Dust Li <dust.li@linux.alibaba.com>, 
@@ -21,125 +21,113 @@ Cc: Guangguan Wang <guangguan.wang@linux.alibaba.com>,
  Wen Gu <guwen@linux.alibaba.com>, Stefan Raspl <raspl@linux.ibm.com>, 
  linux-rdma@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794629679; l=4521;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794629679; l=4137;
  i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=4Sn2P9DnOXO+NKmDKGa450qGEUkjLHBVxYGVT0Ek9hM=;
- b=vvdKcaXBQp92ElfK8fPvAdaTwcm4VaH+L4+m6+YKPDBoSXaL+C1Pa2ZULKIVhQxlZLid5RMsH
- xMokkbmQ6saDyaMA+v5Z7LZTvKAQLP0GSDJgUPz50QXd2UubiIsfJ9i
+ bh=MVHarJC77cCCLJEzqiGRuVpi6O8XQzj00ArzQHD908I=;
+ b=F74AfkgSmjHIJIkI11G6+klEgg5afXLKUyZ+MgiafeDZN5uFBsKxa2QREh+gp2N2FTyRZcd3/
+ sEaJOr5FktXDaaM12ytCJMfZ4oOK01LFbHkVs6yBy5KhEbQS6xLAT2A
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A successful completion on the old link handled after
-smc_switch_cursor() credits bytes that were rewound for resend, so the
-application can overwrite send buffer data before it is resent. A
-connection in a closing state is moved to the new link without a rewind;
-when completions on the two links are then handled out of order, one
-whose cursor is behind tx_curs_fin moves tx_curs_fin back and the same
-bytes are credited again, which can take sndbuf_space past the send
-buffer size.
+smc_switch_cursor() orders the peer's consumer cursor against
+local_tx_ctrl_fin with smc_curs_comp(), which misorders them across the
+65535 -> 0 rollover of the u16 wrap. A consumer cursor behind reads as
+ahead: the catch-up can credit sndbuf_space for bytes never sent and
+tell the peer they are in its RMB, so the next send() can copy past the
+end of the send buffer. One ahead reads as behind and the catch-up is
+skipped. With a send buffer larger than the peer's RMB, the catch-up can
+also be short once the peer is more than one RMB past local_tx_ctrl_fin,
+and the connection then stalls.
 
-Tag each CDC pend with a switch generation that smc_switch_cursor()
-bumps, and credit a completion only if it is of the current generation
-and its cursor is not behind tx_curs_fin.
+Use the signed cursor distance, advance the RMB cursors across any
+number of wraps, and bound the catch-up by the bytes sent, which a
+peer's consumer cursor cannot legitimately pass.
 
 Fixes: c6f02ebeea3a ("net/smc: switch connections to alternate link")
+Reported-by: Sashiko <sashiko-bot@kernel.org>
+Closes: https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261029-b4-disp-33001ace-v8-0-f9bb96e17827%40proton.me?part=4
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- net/smc/smc.h      |  3 +++
- net/smc/smc_cdc.c  | 11 ++++++++++-
- net/smc/smc_cdc.h  | 13 +++++++++++++
- net/smc/smc_core.c |  1 +
- 4 files changed, 27 insertions(+), 1 deletion(-)
+ net/smc/smc_cdc.h  | 10 ++++++++++
+ net/smc/smc_core.c | 22 ++++++++++++++--------
+ 2 files changed, 24 insertions(+), 8 deletions(-)
 
-diff --git a/net/smc/smc.h b/net/smc/smc.h
-index 36b243b34a9a..96f017938b9c 100644
---- a/net/smc/smc.h
-+++ b/net/smc/smc.h
-@@ -233,6 +233,9 @@ struct smc_connection {
- 	atomic_t		sndbuf_space;	/* remaining space in sndbuf */
- 	u16			tx_cdc_seq;	/* sequence # for CDC send */
- 	u16			tx_cdc_seq_fin;	/* sequence # - tx completed */
-+	u16			tx_switch_gen;	/* bumped when a link switch
-+						 * rewinds the tx cursors
-+						 */
- 	spinlock_t		send_lock;	/* protect wr_sends */
- 	atomic_t		cdc_pend_tx_wr; /* number of pending tx CDC wqe
- 						 * - inc when post wqe,
-diff --git a/net/smc/smc_cdc.c b/net/smc/smc_cdc.c
-index 32d6d03df321..d1f346376c08 100644
---- a/net/smc/smc_cdc.c
-+++ b/net/smc/smc_cdc.c
-@@ -36,7 +36,15 @@ static void smc_cdc_tx_handler(struct smc_wr_tx_pend_priv *pnd_snd,
- 	sndbuf_desc = conn->sndbuf_desc;
- 	smc = container_of(conn, struct smc_sock, conn);
- 	bh_lock_sock(&smc->sk);
--	if (!wc_status && sndbuf_desc) {
-+	/* A CDC posted before a link switch rewound the cursors: its bytes
-+	 * are resent on the new link or credited by the switch's catch-up.
-+	 * A cursor behind tx_curs_fin (completions on two links in any
-+	 * order) was credited already.
-+	 */
-+	if (!wc_status && sndbuf_desc &&
-+	    cdcpend->switch_gen == conn->tx_switch_gen &&
-+	    smc_curs_sdiff(sndbuf_desc->len, &conn->tx_curs_fin,
-+			   &cdcpend->cursor) >= 0) {
- 		diff = smc_curs_diff(sndbuf_desc->len,
- 				     &cdcpend->conn->tx_curs_fin,
- 				     &cdcpend->cursor);
-@@ -107,6 +115,7 @@ static inline void smc_cdc_add_pending_send(struct smc_connection *conn,
- 	pend->cursor = conn->tx_curs_sent;
- 	pend->p_cursor = conn->local_tx_ctrl.prod;
- 	pend->ctrl_seq = conn->tx_cdc_seq;
-+	pend->switch_gen = conn->tx_switch_gen;
- }
- 
- int smc_cdc_msg_send(struct smc_connection *conn,
 diff --git a/net/smc/smc_cdc.h b/net/smc/smc_cdc.h
-index 696cc11f2303..597acb2e123f 100644
+index 597acb2e123f..4b586a20dfc2 100644
 --- a/net/smc/smc_cdc.h
 +++ b/net/smc/smc_cdc.h
-@@ -170,6 +170,18 @@ static inline int smc_curs_comp(unsigned int size,
- 	return smc_curs_diff(size, old, new);
+@@ -97,6 +97,16 @@ static inline void smc_curs_add(int size, union smc_host_cursor *curs,
+ 	}
  }
  
-+/* signed distance from old to new; the wrap difference is taken as s16,
-+ * so it holds across the u16 wrap rollover, for cursors less than 32768
-+ * rings apart
-+ */
-+static inline s64 smc_curs_sdiff(unsigned int size,
-+				 union smc_host_cursor *old,
-+				 union smc_host_cursor *new)
++/* smc_curs_add() for a value that may span more than one ring */
++static inline void smc_curs_advance(unsigned int size,
++				    union smc_host_cursor *curs, u32 value)
 +{
-+	return (s64)(s16)(new->wrap - old->wrap) * size +
-+	       (s64)new->count - old->count;
++	u32 count = curs->count + value;
++
++	curs->wrap += count / size;
++	curs->count = count % size;
 +}
 +
- /* calculate cursor difference between old and new, where old <= new and
-  * difference may exceed size
-  */
-@@ -284,6 +296,7 @@ struct smc_cdc_tx_pend {
- 	union smc_host_cursor	cursor;		/* tx sndbuf cursor sent */
- 	union smc_host_cursor	p_cursor;	/* rx RMBE cursor produced */
- 	u16			ctrl_seq;	/* conn. tx sequence # */
-+	u16			switch_gen;	/* tx_switch_gen at send */
- };
- 
- int smc_cdc_get_free_slot(struct smc_connection *conn,
+ /* Copy cursor src into tgt */
+ static inline void smc_curs_copy(union smc_host_cursor *tgt,
+ 				 union smc_host_cursor *src,
 diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
-index 73e86100e6db..fb9f6a4eb683 100644
+index fb9f6a4eb683..76a577a20e4a 100644
 --- a/net/smc/smc_core.c
 +++ b/net/smc/smc_core.c
-@@ -1058,6 +1058,7 @@ static int smc_switch_cursor(struct smc_sock *smc, struct smc_cdc_tx_pend *pend,
+@@ -1054,22 +1054,28 @@ static int smc_switch_cursor(struct smc_sock *smc, struct smc_cdc_tx_pend *pend,
+ 			     struct smc_wr_buf *wr_buf)
+ {
+ 	struct smc_connection *conn = &smc->conn;
+-	union smc_host_cursor cons, fin;
++	union smc_host_cursor cons, fin, sent;
  	int rc = 0;
- 	int diff;
+-	int diff;
++	s64 diff;
  
-+	conn->tx_switch_gen++;	/* completions of earlier sends: no credit */
+ 	conn->tx_switch_gen++;	/* completions of earlier sends: no credit */
++	smc_curs_copy(&sent, &conn->tx_curs_sent, conn);
  	smc_curs_copy(&conn->tx_curs_sent, &conn->tx_curs_fin, conn);
  	smc_curs_copy(&fin, &conn->local_tx_ctrl_fin, conn);
  	/* set prod cursor to old state, enforce tx_rdma_writes() */
+ 	smc_curs_copy(&conn->local_tx_ctrl.prod, &fin, conn);
+ 	smc_curs_copy(&cons, &conn->local_rx_ctrl.cons, conn);
+ 
+-	if (smc_curs_comp(conn->peer_rmbe_size, &cons, &fin) < 0) {
++	/* not past what was sent, whatever cons says; that also keeps
++	 * diff within one send buffer for smc_curs_add()
++	 */
++	diff = min(smc_curs_sdiff(conn->peer_rmbe_size, &fin, &cons),
++		   smc_curs_sdiff(conn->sndbuf_desc->len,
++				  &conn->tx_curs_fin, &sent));
++	if (diff > 0) {
+ 		/* cons cursor advanced more than fin, and prod was set
+ 		 * fin above, so now prod is smaller than cons. Fix that.
+ 		 */
+-		diff = smc_curs_diff(conn->peer_rmbe_size, &fin, &cons);
+ 		smc_curs_add(conn->sndbuf_desc->len,
+ 			     &conn->tx_curs_sent, diff);
+ 		smc_curs_add(conn->sndbuf_desc->len,
+@@ -1079,10 +1085,10 @@ static int smc_switch_cursor(struct smc_sock *smc, struct smc_cdc_tx_pend *pend,
+ 		atomic_add(diff, &conn->sndbuf_space);
+ 		smp_mb__after_atomic();
+ 
+-		smc_curs_add(conn->peer_rmbe_size,
+-			     &conn->local_tx_ctrl.prod, diff);
+-		smc_curs_add(conn->peer_rmbe_size,
+-			     &conn->local_tx_ctrl_fin, diff);
++		smc_curs_advance(conn->peer_rmbe_size,
++				 &conn->local_tx_ctrl.prod, diff);
++		smc_curs_advance(conn->peer_rmbe_size,
++				 &conn->local_tx_ctrl_fin, diff);
+ 	}
+ 	/* recalculate, value is used by tx_rdma_writes() */
+ 	atomic_set(&smc->conn.peer_rmbe_space, smc_write_space(conn));
 
 -- 
 2.56.0
