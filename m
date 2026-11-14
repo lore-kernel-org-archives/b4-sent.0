@@ -1,106 +1,105 @@
-From: Samuel Herdman <lk.gzpc0@passmail.com>
-Date: Sat, 14 Nov 2026 20:37:11 +1100
-Subject: [PATCH] hwmon: (nct6683) Add customer ID for ASRock X600DC-ITX
+From: Han Gao <gaohan@iscas.ac.cn>
+Date: Sat, 14 Nov 2026 17:51:11 +0800
+Subject: [PATCH net] net: macb: limit jumbo frames to the RX buffer size
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-nct6683-asrock-x600dc-itx-v1-1-cbccf1a627fe@passmail.com>
-X-B4-Tracking: v=1; b=H4sIAMYr+GoC/yXMSw7CMAwA0atUXmMpbkr4XAWxaB0DBilFcUCRq
- t6dAMu3mFnAJKsYHLsFsrzVdE4NtOmAb2O6Cmpsht71gYgGTFxC2HscLc/8wBqci4xaKvpIu2l
- wh+i3Hlr/zHLR+nufzn/ba7oLl+8Q1vUDqnQOyX0AAAA=
-X-Change-ID: 20261114-nct6683-asrock-x600dc-itx-3d17b409d353
-To: Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>
-Cc: linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Johan Dahlin <jdahlin@gmail.com>, 
- Samuel Herdman <lk.gzpc0@passmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794649030; l=3221;
- i=lk.gzpc0@passmail.com; s=linux-kernel-email; h=from:subject:message-id;
- bh=r00174raxcwNDJ0unlfuiA9FEN/TRz6+o/AOvvcTaUE=;
- b=r/OEHth9ckNwibOkJ4agSSH0EI4C5VV6R/ALYCm8m8Mc4qhxhGiCaD8JxZVzYX7weoH7ZenUu
- DPTXBRBQ7lxA8ovEtGlACvNNRP4QcttEk0GCMTOxvzTvD2l1tH/7fdp
-X-Developer-Key: i=lk.gzpc0@passmail.com; a=ed25519;
- pk=tqivbAq+N5SMZTlmU8VfcD5yzezM4r5J8zXeFSl+KIE=
-X-Endpoint-Received: by B4 Relay for lk.gzpc0@passmail.com/linux-kernel-email with auth_id=1519
+Message-Id: <20261114-macb-jumbo-jml-v1-1-f501395eaf9e@iscas.ac.cn>
+X-B4-Tracking: v=1; b=H4sIAA4v+GoC/x2MQQqAIBAAvxJ7bsEkivpKdEjdaiUttCKQ/p40t
+ znMJIgUmCL0RYJAN0fefZaqLECvk18I2WQHKWRTZdBNWqG9nNrRug3rzohWC206IyFHR6CZn38
+ 4gKcTxvf9AKLgem9lAAAA
+X-Change-ID: 20261111-macb-jumbo-jml-49d07c0cd9d2
+To: =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Punnaiah Choudary Kalluri <punnaia@xilinx.com>, 
+ Harini Katakam <harini.katakam@xilinx.com>
+Cc: linux-riscv@lists.infradead.org, Han Gao <rabenda.cn@gmail.com>, 
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jingkun Zheng <zhengjingkun@iscas.ac.cn>, Han Gao <gaohan@iscas.ac.cn>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794649871; l=2770;
+ i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
+ bh=Ba0EhmfC/eB3reG4OHAFgVQBuZCONa6EOSwuE8i/JWE=;
+ b=cZLObGEtUvp/SP5azLnWEj3cPd4p6jtuyHY1VunFYe63DcPfgFR0aZxmd+G9sG4dRoq1cwPJa
+ X8PUu1Yfw47BErR31njhHCIlQ/ubs/5ETSdbgWCsByhmmFc+WvGq+fU
+X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
+ pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
+X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ASRock X600DC-ITX (BIOS 2.02) has an NCT6686D with customer ID
-0x165f, which the driver does not know, so it only binds with force=1:
+GEM variants with MACB_CAPS_JUMBO accept frames up to jumbo_max_len
+regardless of the MTU, but the RX buffers are sized from the MTU. A
+frame longer than one RX buffer is split over several descriptors and
+dropped by gem_rx() with "not whole frame pointed by descriptor".
 
-  nct6683: Found NCT6686D or compatible chip at 0x2e:0xa20
-  nct6683 nct6683.2592: Enabling support for unknown customer ID 0x165f
-  nct6683 nct6683.2592: NCT6686D EC firmware version 1.0 build 12/23/25
+Set JML from the RX buffer size in macb_configure_dma(), so that it
+follows MTU changes and longer frames are dropped by the MAC instead.
 
-The change:
-
-Add the customer ID so the driver binds on this board without force=1,
-and add the board to the list of tested boards.
-
-Tests:
-
-- With force=1 the readings are plausible: the CPU temperature (AMD TSI
-  Addr 98h) is within a few degrees of k10temp's Tctl, VCC, VSB and
-  AVSB read 3.36 V, VBAT reads 3.2 V, and fan1 reads about 1450 RPM.
-- With the same change applied to v7.3.3 on this board, the driver
-  binds without force=1 and reports temperature and fan readings.
-
-The patch and this changelog were drafted with an AI coding assistant
-(Claude Code); I reviewed them and ran the tests above on my board.
-
-Signed-off-by: Samuel Herdman <lk.gzpc0@passmail.com>
+Fixes: 98b5a0f4a228 ("net: macb: Add support for jumbo frames")
+Reported-by: Jingkun Zheng <zhengjingkun@iscas.ac.cn>
+Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
-This overlaps with Johan Dahlin's pending series "hwmon: (nct6683) Fan
-control and sensor names for ASRock NCT6686D boards" (v2, 11 Nov 2026).
-Its first patch also adds NCT6683_CUSTOMER_ID_ASROCK8 (0x164a) and a
-table row at the same spot, and its later patches key fan control on
-that macro. Whichever lands second needs its macro renumbered
-throughout; I'm happy to rebase on top of that series if preferred.
+Seen on a SiFive FU740 with the default MTU: every jumbo frame on the
+network caused two "not whole frame pointed by descriptor" errors.
 ---
- Documentation/hwmon/nct6683.rst | 1 +
- drivers/hwmon/nct6683.c         | 3 +++
- 2 files changed, 4 insertions(+)
+ drivers/net/ethernet/cadence/macb_main.c | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/hwmon/nct6683.rst b/Documentation/hwmon/nct6683.rst
-index 62da8fd01..e2e95a33e 100644
---- a/Documentation/hwmon/nct6683.rst
-+++ b/Documentation/hwmon/nct6683.rst
-@@ -97,6 +97,7 @@ ASRock X570			NCT6683D EC firmware version 1.0 build 06/28/19
- ASRock X670E			NCT6686D EC firmware version 1.0 build 05/19/22
- ASRock B650 Steel Legend WiFi	NCT6686D EC firmware version 1.0 build 11/09/23
- ASRock Z590 Taichi		NCT6686D EC firmware version 1.0 build 01/25/21
-+ASRock X600DC-ITX		NCT6686D EC firmware version 1.0 build 12/23/25
- MSI B550			NCT6687D EC firmware version 1.0 build 05/07/20
- MSI B550M			NCT6687D EC firmware version 1.0 build 05/07/20
- MSI B650			NCT6687D EC firmware version 0.0 build 09/27/22
-diff --git a/drivers/hwmon/nct6683.c b/drivers/hwmon/nct6683.c
-index de5b0194c..01784fa6a 100644
---- a/drivers/hwmon/nct6683.c
-+++ b/drivers/hwmon/nct6683.c
-@@ -209,6 +209,7 @@ superio_exit(int ioreg)
- #define NCT6683_CUSTOMER_ID_ASROCK5	0x1621
- #define NCT6683_CUSTOMER_ID_ASROCK6	0x1633
- #define NCT6683_CUSTOMER_ID_ASROCK7	0x163d
-+#define NCT6683_CUSTOMER_ID_ASROCK8	0x165f
+diff --git a/drivers/net/ethernet/cadence/macb_main.c b/drivers/net/ethernet/cadence/macb_main.c
+index 5ad0e32e2b4001c37e230a2eb7badb468b14ab57..e7c9bb24c377babc8dfd57e82ebf55a8e996873d 100644
+--- a/drivers/net/ethernet/cadence/macb_main.c
++++ b/drivers/net/ethernet/cadence/macb_main.c
+@@ -3240,6 +3240,18 @@ static u32 macb_dbw(struct macb *bp)
+ 	}
+ }
  
- #define NCT6683_REG_BUILD_YEAR		0x604
- #define NCT6683_REG_BUILD_MONTH		0x605
-@@ -1640,6 +1641,8 @@ static int nct6683_probe(struct platform_device *pdev)
- 		break;
- 	case NCT6683_CUSTOMER_ID_ASROCK7:
- 		break;
-+	case NCT6683_CUSTOMER_ID_ASROCK8:
-+		break;
- 	default:
- 		if (!force)
- 			return -ENODEV;
++/* Longest frame that fits in a single RX buffer */
++static u32 gem_jumbo_max_len(struct macb *bp)
++{
++	u32 len = bp->ctx->rx_buffer_size;
++
++	/* Frame data starts NET_IP_ALIGN bytes into the buffer without RSC */
++	if (!(bp->caps & MACB_CAPS_RSC))
++		len -= NET_IP_ALIGN;
++
++	return min(len, bp->jumbo_max_len);
++}
++
+ /* Configure the receive DMA engine
+  * - use the correct receive buffer size
+  * - set best burst length for DMA operations
+@@ -3286,6 +3298,13 @@ static void macb_configure_dma(struct macb *bp)
+ 		netdev_dbg(bp->netdev, "Cadence configure DMA with 0x%08x\n",
+ 			   dmacfg);
+ 		gem_writel(bp, DMACFG, dmacfg);
++
++		/* Jumbo frames are always enabled, so limit their length to
++		 * what fits in one RX buffer. Longer frames would otherwise be
++		 * split across several descriptors and dropped by gem_rx().
++		 */
++		if ((bp->caps & MACB_CAPS_JUMBO) && bp->jumbo_max_len)
++			gem_writel(bp, JML, gem_jumbo_max_len(bp));
+ 	}
+ }
+ 
+@@ -3422,8 +3441,6 @@ static void macb_init_hw(struct macb *bp)
+ 		config |= MACB_BIT(NBC);	/* No BroadCast */
+ 	config |= macb_dbw(bp);
+ 	macb_writel(bp, NCFGR, config);
+-	if ((bp->caps & MACB_CAPS_JUMBO) && bp->jumbo_max_len)
+-		gem_writel(bp, JML, bp->jumbo_max_len);
+ 	bp->rx_frm_len_mask = MACB_RX_FRMLEN_MASK;
+ 	if (bp->caps & MACB_CAPS_JUMBO)
+ 		bp->rx_frm_len_mask = MACB_RX_JFRMLEN_MASK;
 
 ---
-base-commit: f9f5501d60c77c71f60bf5b273375e3777d66080
-change-id: 20261114-nct6683-asrock-x600dc-itx-3d17b409d353
+base-commit: aa40afa831ebfe45e40a23721711059f2ac584d4
+change-id: 20261111-macb-jumbo-jml-49d07c0cd9d2
 
 Best regards,
---  
-Samuel Herdman <lk.gzpc0@passmail.com>
+-- 
+Han Gao <gaohan@iscas.ac.cn>
 
