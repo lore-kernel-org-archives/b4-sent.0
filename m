@@ -1,10 +1,11 @@
 From: Joshua Horne <hornejd@etsu.edu>
-Date: Fri, 13 Nov 2026 22:03:23 -0500
-Subject: [PATCH 3/5] drm/amd/pm: show the smu8 overdrive sclk table
+Date: Fri, 13 Nov 2026 22:03:24 -0500
+Subject: [PATCH 4/5] drm/amd/pm: allow editing the smu8 overdrive sclk
+ table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-smu8-overdrive-v1-3-763f07bdfca9@etsu.edu>
+Message-Id: <20261113-smu8-overdrive-v1-4-763f07bdfca9@etsu.edu>
 References: <20261113-smu8-overdrive-v1-0-763f07bdfca9@etsu.edu>
 In-Reply-To: <20261113-smu8-overdrive-v1-0-763f07bdfca9@etsu.edu>
 To: Alex Deucher <alexander.deucher@amd.com>, 
@@ -16,172 +17,301 @@ Cc: =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>,
  dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Joshua Horne <hornejd@etsu.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794625442; l=6141;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794625442; l=9681;
  i=hornejd@etsu.edu; s=20261109; h=from:subject:message-id;
- bh=jolYBmpiIvhINecVVNWDP81ZRRE4q6CH+InU4Wc4WYY=;
- b=Dta1yBLXAjTOSQf1jb9TZZew9rEdXBE5Khn5qqosSASdvxDQQcVPACWTgNVVbhzOMMUTy4C03
- J+RzHYq0tCEDgJ1VrgdtiHi+Rb+BrCCy8i1cP7m+IRxKM9CmdLL38E5
+ bh=9CthicXd5if7HHSGNCOUZf1A6LQY3sogsKxoiIFSOss=;
+ b=Emgm8wuxuJIdAAHUS4yCH3Bht7enlR4RrVumJUe8dTXxi/SK0Gjc5wQWQnetNwtgabD4udOGB
+ dRBViyH4OT0CpBWqt81ypZNmrFwEN4G5mgZWaOEiKEdydroOUg0sBFc
 X-Developer-Key: i=hornejd@etsu.edu; a=ed25519;
  pk=HNOtiwerBbrJhfhzLHLxj3GDsUH9udRXflqnaI8sQmQ=
 X-Endpoint-Received: by B4 Relay for hornejd@etsu.edu/20261109 with auth_id=1469
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Carrizo and Stoney upload up to eight graphics DPM levels to the SMU,
-each with an engine clock, a VDDGFX voltage (GfxVid) and an NB voltage
-(GnbVid) from the VBIOS dependency tables.
+Implement the "s <level> <MHz> <mV>", "r" and "c" commands of
+pp_od_clk_voltage for Carrizo and Stoney.
 
-Prepare overdrive support for them in the pp_od_clk_voltage format of
-smu7: keep the VBIOS levels and the user's edits in struct
-phm_odn_clock_levels as smu7 does, and print the edits as OD_SCLK and
-the allowed ranges as OD_RANGE. Only the levels that the SMU enables
-(PPSMC_MSG_GetMaxSclkLevel) are used, as the VBIOS table can list
-levels above the fused maximum of the part.
+The levels given in one write are checked against OD_RANGE and applied
+all or none. A new clock is rounded to the one the engine PLL produces,
+as reported by the ComputeMemoryEnginePLL table; a level written back
+with the clock OD_SCLK shows keeps its exact clock. A voltage between two
+VID steps is rounded up by convert_to_vid(). A commit is refused unless
+the clocks increase from level to level over the whole table, in which
+the levels that the SMU does not enable keep their VBIOS clocks.
 
-The engine clock may range from the lowest level up to the overdrive
-limit of the VBIOS. Without a limit, the highest enabled level is used,
-so only underclocking is possible, as smu7 and vega10 do since
-commit 46defdd6fff7 ("drm/amd/pp: Allow underclocking when od table is
-empty in vbios"). The voltage is limited to the range the VBIOS uses
-for these levels and kept in mV as on smu7 and vega10, converted from
-the VID with convert_to_vddc().
+As on smu7 and vega10, a commit only marks the table as pending. The
+power state readjustment that follows it writes the clocks and VDDGFX
+voltages into the dependency tables and uploads them through
+smu8_upload_pptable_to_smu(), the path used at init and resume, so the
+settings also survive suspend. The NB voltages (GnbVid) are not
+changed. The power states refer to the levels by clock and are read by
+amdgpu_dpm_get_sclk(), so update them as well, like
+vega10_odn_update_power_state() does.
 
-Overdrive stays disabled on these APUs until a later patch.
+The SMU accepts the new table at runtime and switches to the new clock
+and voltage of a level the next time it enters that level. No
+powerplay backend forces a level change after a commit, so this one
+does not either.
 
 Signed-off-by: Joshua Horne <hornejd@etsu.edu>
 ---
- .../gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c    | 75 +++++++++++++++++++++-
- .../gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.h    |  7 ++
- 2 files changed, 81 insertions(+), 1 deletion(-)
+ .../gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c    | 216 +++++++++++++++++++++
+ .../gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.h    |   1 +
+ 2 files changed, 217 insertions(+)
 
 diff --git a/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c b/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c
-index 77ab96bae4b0..93a7e7e176f3 100644
+index 93a7e7e176f3..c6045234965c 100644
 --- a/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c
 +++ b/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.c
-@@ -1080,6 +1080,54 @@ static int smu8_apply_state_adjust_rules(struct pp_hwmgr *hwmgr,
- 	return 0;
+@@ -860,10 +860,86 @@ static void smu8_populate_umdpstate_clocks(struct pp_hwmgr *hwmgr)
+ 	hwmgr->pstate_mclk_peak = 0;
  }
  
-+static void smu8_init_od_settings(struct pp_hwmgr *hwmgr)
++static void smu8_od_update_power_state(struct pp_hwmgr *hwmgr,
++				       struct pp_power_state *ps)
 +{
 +	struct smu8_hwmgr *data = hwmgr->backend;
++	const struct phm_odn_clock_levels *od = &data->od_edit_sclk;
++	const struct phm_clock_voltage_dependency_table *old =
++				hwmgr->dyn_state.vddc_dependency_on_sclk;
++	struct smu8_power_state *smu8_ps;
++	struct smu8_power_level *level;
++	uint32_t i, j;
++
++	if (!ps)
++		return;
++
++	smu8_ps = cast_smu8_power_state(&ps->hardware);
++	if (!smu8_ps)
++		return;
++
++	for (i = 0; i < smu8_ps->level; i++) {
++		level = &smu8_ps->levels[i];
++		for (j = 0; j < od->num_of_pl; j++) {
++			if (level->engineClock == old->entries[j].clk) {
++				level->engineClock = od->entries[j].clock;
++				break;
++			}
++		}
++	}
++}
++
++static int smu8_od_upload_sclk_table(struct pp_hwmgr *hwmgr)
++{
++	struct smu8_hwmgr *data = hwmgr->backend;
++	const struct phm_odn_clock_levels *od = &data->od_edit_sclk;
 +	struct phm_clock_voltage_dependency_table *vddc_table =
 +				hwmgr->dyn_state.vddc_dependency_on_sclk;
 +	struct phm_clock_voltage_dependency_table *vdd_gfx_table =
 +				hwmgr->dyn_state.vdd_gfx_dependency_on_sclk;
-+	struct phm_odn_clock_levels *od = &data->od_default_sclk;
-+	struct amdgpu_device *adev = hwmgr->adev;
-+	uint32_t i, mv;
++	struct pp_power_state *ps;
++	uint32_t i;
 +
-+	if (!vddc_table || !vdd_gfx_table || !vddc_table->count ||
-+	    vddc_table->count > ARRAY_SIZE(od->entries) ||
-+	    vdd_gfx_table->count != vddc_table->count) {
-+		dev_info(adev->dev,
-+			 "OverDrive not supported by the sclk tables\n");
-+		hwmgr->od_enabled = false;
-+		return;
++	data->od_update_pending = false;
++
++	/* the power states refer to the levels by clock, update them first */
++	ps = hwmgr->ps;
++	for (i = 0; i < hwmgr->num_ps; i++) {
++		smu8_od_update_power_state(hwmgr, ps);
++		ps = (struct pp_power_state *)
++			((unsigned long)ps + hwmgr->ps_size);
 +	}
++	smu8_od_update_power_state(hwmgr, hwmgr->current_ps);
++	smu8_od_update_power_state(hwmgr, hwmgr->request_ps);
 +
-+	/*
-+	 * Only expose the levels that the SMU enables: the VBIOS table can
-+	 * list levels above the fused maximum of the part.
-+	 */
-+	od->num_of_pl = min(vddc_table->count, smu8_get_max_sclk_level(hwmgr));
-+	data->od_min_vddc = U32_MAX;
-+	data->od_max_vddc = 0;
++	/* the NB voltages (GnbVid) of the levels are left untouched */
 +	for (i = 0; i < od->num_of_pl; i++) {
-+		mv = convert_to_vddc((uint8_t)vdd_gfx_table->entries[i].v);
-+		od->entries[i].clock = vddc_table->entries[i].clk;
-+		od->entries[i].vddc = mv;
-+		od->entries[i].enabled = true;
-+		data->od_min_vddc = min(data->od_min_vddc, mv);
-+		data->od_max_vddc = max(data->od_max_vddc, mv);
++		vddc_table->entries[i].clk = od->entries[i].clock;
++		vdd_gfx_table->entries[i].clk = od->entries[i].clock;
++		vdd_gfx_table->entries[i].v =
++			convert_to_vid(od->entries[i].vddc);
 +	}
 +
-+	/*
-+	 * Without an overdrive limit in the VBIOS only allow underclocking,
-+	 * as smu7 and vega10 do. The voltages are limited to the range that
-+	 * the VBIOS uses for these levels.
-+	 */
-+	if (!hwmgr->platform_descriptor.overdriveLimit.engineClock)
-+		hwmgr->platform_descriptor.overdriveLimit.engineClock =
-+			od->entries[od->num_of_pl - 1].clock;
++	smu8_populate_umdpstate_clocks(hwmgr);
 +
-+	data->od_edit_sclk = *od;
++	/*
++	 * The SMU switches to the new clock and voltage of a level the next
++	 * time it enters that level.
++	 */
++	return smu8_upload_pptable_to_smu(hwmgr);
 +}
 +
- static int smu8_hwmgr_backend_init(struct pp_hwmgr *hwmgr)
+ static int smu8_set_power_state_tasks(struct pp_hwmgr *hwmgr, const void *input)
  {
- 	int result = 0;
-@@ -1107,6 +1155,9 @@ static int smu8_hwmgr_backend_init(struct pp_hwmgr *hwmgr)
++	struct smu8_hwmgr *data = hwmgr->backend;
+ 	int ret = 0;
  
- 	hwmgr->platform_descriptor.hardwareActivityPerformanceLevels =  SMU8_MAX_HARDWARE_POWERLEVELS;
- 
-+	if (hwmgr->od_enabled)
-+		smu8_init_od_settings(hwmgr);
++	if (data->od_update_pending) {
++		ret = smu8_od_upload_sclk_table(hwmgr);
++		if (ret)
++			return ret;
++	}
 +
- 	return result;
+ 	smu8_update_sclk_limit(hwmgr);
+ 	smu8_set_deep_sleep_sclk_threshold(hwmgr);
+ 	smu8_set_watermark_threshold(hwmgr);
+@@ -2057,6 +2133,145 @@ static void smu8_dpm_powergate_vce(struct pp_hwmgr *hwmgr, bool bgate)
+ 	}
  }
  
-@@ -1510,7 +1561,8 @@ static int smu8_emit_clock_levels(struct pp_hwmgr *hwmgr,
- 	struct smu8_hwmgr *data = hwmgr->backend;
- 	struct phm_clock_voltage_dependency_table *sclk_table =
- 			hwmgr->dyn_state.vddc_dependency_on_sclk;
--	uint32_t i, now;
-+	const struct phm_odn_clock_levels *od = &data->od_edit_sclk;
-+	uint32_t i, now, clk;
- 	int size = *offset;
++/* the engine clock that the PLL produces for @clk */
++static uint32_t smu8_od_real_sclk(struct pp_hwmgr *hwmgr, uint32_t clk)
++{
++	pp_atomctrl_clock_dividers_kong dividers;
++
++	if (atomctrl_get_engine_pll_dividers_kong(hwmgr, clk, &dividers) ||
++	    !dividers.real_clock)
++		return clk;
++
++	return dividers.real_clock;
++}
++
++static int smu8_od_edit_sclk_level(struct pp_hwmgr *hwmgr,
++				   struct phm_odn_clock_levels *od,
++				   long level, long mhz, long mv)
++{
++	struct smu8_hwmgr *data = hwmgr->backend;
++	struct amdgpu_device *adev = hwmgr->adev;
++	uint32_t min_clk, max_clk, clk;
++
++	min_clk = data->od_default_sclk.entries[0].clock;
++	max_clk = hwmgr->platform_descriptor.overdriveLimit.engineClock;
++
++	if (level < 0 || level >= od->num_of_pl) {
++		dev_info(adev->dev,
++			 "OD sclk level %ld is out of range [0 - %u]\n",
++			 level, od->num_of_pl - 1);
++		return -EINVAL;
++	}
++
++	if (mhz < min_clk / 100 || mhz > max_clk / 100) {
++		dev_info(adev->dev,
++			 "OD engine clock is out of range [%u - %u] MHz\n",
++			 min_clk / 100, max_clk / 100);
++		return -EINVAL;
++	}
++
++	if (mv < data->od_min_vddc || mv > data->od_max_vddc) {
++		dev_info(adev->dev, "OD voltage is out of range [%u - %u] mV\n",
++			 data->od_min_vddc, data->od_max_vddc);
++		return -EINVAL;
++	}
++
++	/*
++	 * OD_SCLK shows whole MHz, so keep the exact clock of a level that is
++	 * written back unchanged. Otherwise use the clock the PLL produces.
++	 */
++	clk = mhz * 100;
++	if (clk == od->entries[level].clock / 100 * 100)
++		clk = od->entries[level].clock;
++	else
++		clk = smu8_od_real_sclk(hwmgr, clk);
++
++	if (clk < min_clk || clk > max_clk) {
++		dev_info(adev->dev,
++			 "OD engine clock %u.%02u MHz is out of range\n",
++			 clk / 100, clk % 100);
++		return -EINVAL;
++	}
++
++	od->entries[level].clock = clk;
++	/* a voltage between two VID steps is rounded up */
++	od->entries[level].vddc = convert_to_vddc(convert_to_vid(mv));
++
++	return 0;
++}
++
++static int smu8_od_commit_sclk_table(struct pp_hwmgr *hwmgr)
++{
++	struct smu8_hwmgr *data = hwmgr->backend;
++	struct phm_odn_clock_levels *od = &data->od_edit_sclk;
++	struct phm_clock_voltage_dependency_table *table =
++				hwmgr->dyn_state.vddc_dependency_on_sclk;
++	struct amdgpu_device *adev = hwmgr->adev;
++	uint32_t i, clk, prev = 0;
++
++	/* the levels that the SMU does not enable keep their clocks */
++	for (i = 0; i < table->count; i++) {
++		clk = i < od->num_of_pl ? od->entries[i].clock :
++					  table->entries[i].clk;
++		if (clk <= prev) {
++			dev_info(adev->dev, "OD sclk levels must increase\n");
++			return -EINVAL;
++		}
++		prev = clk;
++	}
++
++	/* uploaded by the power state readjustment that follows a commit */
++	data->od_update_pending = true;
++
++	return 0;
++}
++
++static int smu8_odn_edit_dpm_table(struct pp_hwmgr *hwmgr,
++				   enum PP_OD_DPM_TABLE_COMMAND type,
++				   long *input, uint32_t size)
++{
++	struct smu8_hwmgr *data = hwmgr->backend;
++	struct amdgpu_device *adev = hwmgr->adev;
++	struct phm_odn_clock_levels od;
++	uint32_t i;
++	int ret;
++
++	if (!hwmgr->od_enabled) {
++		dev_info(adev->dev, "OverDrive feature not enabled\n");
++		return -EINVAL;
++	}
++
++	switch (type) {
++	case PP_OD_EDIT_SCLK_VDDC_TABLE:
++		break;
++	case PP_OD_RESTORE_DEFAULT_TABLE:
++		data->od_edit_sclk = data->od_default_sclk;
++		return 0;
++	case PP_OD_COMMIT_DPM_TABLE:
++		return smu8_od_commit_sclk_table(hwmgr);
++	default:
++		return -EINVAL;
++	}
++
++	if (!input || !size || size % 3) {
++		dev_info(adev->dev,
++			 "OD sclk input must be <level> <MHz> <mV>\n");
++		return -EINVAL;
++	}
++
++	/* apply all of the given levels or none of them */
++	od = data->od_edit_sclk;
++	for (i = 0; i < size; i += 3) {
++		ret = smu8_od_edit_sclk_level(hwmgr, &od, input[i],
++					      input[i + 1], input[i + 2]);
++		if (ret)
++			return ret;
++	}
++	data->od_edit_sclk = od;
++
++	return 0;
++}
++
+ static const struct pp_hwmgr_func smu8_hwmgr_funcs = {
+ 	.backend_init = smu8_hwmgr_backend_init,
+ 	.backend_fini = smu8_hwmgr_backend_fini,
+@@ -2087,6 +2302,7 @@ static const struct pp_hwmgr_func smu8_hwmgr_funcs = {
+ 	.dynamic_state_management_disable = smu8_disable_dpm_tasks,
+ 	.notify_cac_buffer_info = smu8_notify_cac_buffer_info,
+ 	.get_thermal_temperature_range = smu8_get_thermal_temperature_range,
++	.odn_edit_dpm_table = smu8_odn_edit_dpm_table,
+ };
  
- 	switch (type) {
-@@ -1541,6 +1593,27 @@ static int smu8_emit_clock_levels(struct pp_hwmgr *hwmgr,
- 				(SMU8_NUM_NBPMEMORYCLOCK - i == now) ? "*" :
- 								       "");
- 		break;
-+	case OD_SCLK:
-+		if (!hwmgr->od_enabled)
-+			break;
-+		size += sysfs_emit_at(buf, size, "%s:\n", "OD_SCLK");
-+		for (i = 0; i < od->num_of_pl; i++)
-+			size += sysfs_emit_at(buf, size, "%u: %10uMHz %10umV\n",
-+					      i, od->entries[i].clock / 100,
-+					      od->entries[i].vddc);
-+		break;
-+	case OD_RANGE:
-+		if (!hwmgr->od_enabled)
-+			break;
-+		size += sysfs_emit_at(buf, size, "%s:\n", "OD_RANGE");
-+		clk = data->od_default_sclk.entries[0].clock;
-+		size += sysfs_emit_at(buf, size, "SCLK: %7uMHz", clk / 100);
-+		clk = hwmgr->platform_descriptor.overdriveLimit.engineClock;
-+		size += sysfs_emit_at(buf, size, " %10uMHz\n", clk / 100);
-+		/* VDDC is the graphics (VDDGFX) rail of these APUs */
-+		size += sysfs_emit_at(buf, size, "VDDC: %7umV %11umV\n",
-+				      data->od_min_vddc, data->od_max_vddc);
-+		break;
- 	default:
- 		break;
- 	}
+ int smu8_init_function_pointers(struct pp_hwmgr *hwmgr)
 diff --git a/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.h b/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.h
-index 05a06083e1b8..490fcc352a8f 100644
+index 490fcc352a8f..63ae7826a2da 100644
 --- a/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.h
 +++ b/drivers/gpu/drm/amd/pm/powerplay/hwmgr/smu8_hwmgr.h
-@@ -25,6 +25,7 @@
- #define _SMU8_HWMGR_H_
- 
- #include "cgs_common.h"
-+#include "hardwaremanager.h"
- #include "ppatomctrl.h"
- 
- #define SMU8_NUM_NBPSTATES               4
-@@ -306,6 +307,12 @@ struct smu8_hwmgr {
- 
- 	uint32_t max_sclk_level;
- 	uint32_t num_of_clk_entries;
-+
-+	/* overdrive: the VBIOS levels, the user's edits, the VDDGFX range */
-+	struct phm_odn_clock_levels od_default_sclk;
-+	struct phm_odn_clock_levels od_edit_sclk;
-+	uint32_t od_min_vddc;		/* in mV */
-+	uint32_t od_max_vddc;		/* in mV */
+@@ -313,6 +313,7 @@ struct smu8_hwmgr {
+ 	struct phm_odn_clock_levels od_edit_sclk;
+ 	uint32_t od_min_vddc;		/* in mV */
+ 	uint32_t od_max_vddc;		/* in mV */
++	bool od_update_pending;		/* committed, not uploaded yet */
  };
  
  #endif /* _SMU8_HWMGR_H_ */
