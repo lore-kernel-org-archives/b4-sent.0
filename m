@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sat, 14 Nov 2026 14:09:55 +0000
-Subject: [PATCH v6 3/7] lib: kstrtox: allow a negative scale in
+Date: Sat, 14 Nov 2026 14:09:56 +0000
+Subject: [PATCH v6 4/7] lib: test-kstrtox: add E notation tests for
  kstrto[u]dec64()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-e-notation-v6-3-205ca9a1438a@analog.com>
+Message-Id: <20261114-e-notation-v6-4-205ca9a1438a@analog.com>
 References: <20261114-e-notation-v6-0-205ca9a1438a@analog.com>
 In-Reply-To: <20261114-e-notation-v6-0-205ca9a1438a@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org
@@ -14,274 +14,159 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Andy Shevchenko <andy@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794665398; l=9933;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794665398; l=5466;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=bJbqKEr3jK38hEmgNGpehvwD4Fwz3Sx12qMMeSpzWhA=;
- b=k8XSChN1DFjjDi3xcuvEhvu8h5NqoRDSSMyVBNkWk03hvu6QtUZBcXwKbOOeswq0anEXHXaOj
- cbefESqpFyWCwAG2fqLRyM+o+hFgDOqLCElbAK8N7ma4jz4Ri3Jk4lT
+ bh=nIiIP9SD5omcIoOm+2iP0/q9S4xqAXZkU/Z/buM2wZ0=;
+ b=VkOTOuXz0nxKn5VpktoYwOINW1pIXzhI+kWLas5QlSpmVZ4OgMdFnHr4UYv1/4cOKT8ByueVh
+ haywaM/2GhwC/+YbNjM0eha9CZqRSVqKPyBJJ1WJv0byjvI38jO6FLj
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With E notation support, the scale is added to the exponent, and a
-negative effective exponent already drops integer digits with rounding
-to nearest, ties to even. A negative scale could be handled the same
-way, but the scale is declared unsigned int.
+Cover E notation parsing in kstrtoudec64() and kstrtodec64(): positive,
+zero and negative exponents, upper case 'E', an explicit '+' sign,
+rounding (ties to even) of integer digits dropped by negative exponents,
+large values, and failures for overflowing and invalid inputs.
 
-Change the scale parameter of kstrtoudec64() and kstrtodec64() to int
-and describe a negative scale in the kernel-doc. For example, a scale of
--2 with input "12355" results in 124. This lets callers parse a value
-into a coarser unit than the input, such as Hz into kHz, without a
-separate division and rounding step.
-
-Behavior doesn't change for any existing caller, since they all pass a
-non-negative scale.
-
-Add dedicated test macros for kstrto[u]dec64() with a signed scale
-field, as the generic ones carry an unsigned base, and add test cases
-for negative scales: dropped integer digits with ties to even, results
-at the type limits, rounding past them, and exponents that overflow when
-added to the scale.
+Also cover big exponents, up to the limits of int, either alone or
+offset by an opposite scale, and exponents that overflow when added to
+the scale.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- include/linux/kstrtox.h |   4 +-
- lib/kstrtox.c           |  20 +++++-----
- lib/test-kstrtox.c      | 101 ++++++++++++++++++++++++++++++++++++++++++++----
- 3 files changed, 106 insertions(+), 19 deletions(-)
+ lib/test-kstrtox.c | 97 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 97 insertions(+)
 
-diff --git a/include/linux/kstrtox.h b/include/linux/kstrtox.h
-index b41b9736886f..e2d5870c979b 100644
---- a/include/linux/kstrtox.h
-+++ b/include/linux/kstrtox.h
-@@ -97,8 +97,8 @@ int __must_check kstrtou8(const char *s, unsigned int base, u8 *res);
- int __must_check kstrtos8(const char *s, unsigned int base, s8 *res);
- int __must_check kstrtobool(const char *s, bool *res);
- 
--int __must_check kstrtoudec64(const char *s, unsigned int scale, u64 *res);
--int __must_check kstrtodec64(const char *s, unsigned int scale, s64 *res);
-+int __must_check kstrtoudec64(const char *s, int scale, u64 *res);
-+int __must_check kstrtodec64(const char *s, int scale, s64 *res);
- 
- int __must_check kstrtoull_from_user(const char __user *s, size_t count, unsigned int base, unsigned long long *res);
- int __must_check kstrtoll_from_user(const char __user *s, size_t count, unsigned int base, long long *res);
-diff --git a/lib/kstrtox.c b/lib/kstrtox.c
-index 4c1ec9223d63..4962c70abf32 100644
---- a/lib/kstrtox.c
-+++ b/lib/kstrtox.c
-@@ -424,7 +424,7 @@ static u64 round_half_even(const char *p, const char *end, u64 res)
- 	return res & 1;
- }
- 
--static int _kstrtoudec64(const char *s, unsigned int scale, u64 *res)
-+static int _kstrtoudec64(const char *s, int scale, u64 *res)
- {
- 	const char *s_int, *s_frac, *s_end, *s_round;
- 	int len_int, len_frac;
-@@ -500,18 +500,19 @@ static int _kstrtoudec64(const char *s, unsigned int scale, u64 *res)
-  * @s: The start of the string. The string must be null-terminated, and may also
-  *  include a single newline before its terminating null. The first character
-  *  may also be a plus sign, but not a minus sign.
-- * @scale: The number of digits to the right of the decimal point.
-+ * @scale: The number of digits to the right of the decimal point. A negative
-+ *  scale drops digits to the left of the decimal point instead.
-  * @res: Where to write the result of the conversion on success.
-  *
-- * For example, a scale of 3 with input "123.45" results in 123450. Note that
-- * trailing zeros in the fractional part input to match the scale are not
-- * required. Also, digits beyond the specified scale are rounded to nearest,
-- * ties to even.
-+ * For example, a scale of 3 with input "123.45" results in 123450, and a
-+ * scale of -2 with input "12355" results in 124. Note that trailing zeros in
-+ * the fractional part input to match the scale are not required. Also, digits
-+ * beyond the specified scale are rounded to nearest, ties to even.
-  *
-  * Return: 0 on success, -ERANGE on overflow and -EINVAL on parsing error.
-  */
- noinline
--int kstrtoudec64(const char *s, unsigned int scale, u64 *res)
-+int kstrtoudec64(const char *s, int scale, u64 *res)
- {
- 	if (s[0] == '+')
- 		s++;
-@@ -524,7 +525,8 @@ EXPORT_SYMBOL(kstrtoudec64);
-  * @s: The start of the string. The string must be null-terminated, and may also
-  *  include a single newline before its terminating null. The first character
-  *  may also be a plus sign or a minus sign.
-- * @scale: The number of digits to the right of the decimal point.
-+ * @scale: The number of digits to the right of the decimal point. A negative
-+ *  scale drops digits to the left of the decimal point instead.
-  * @res: Where to write the result of the conversion on success.
-  *
-  * For example, a scale of 4 with input "-3.141592" results in -31416. Note
-@@ -535,7 +537,7 @@ EXPORT_SYMBOL(kstrtoudec64);
-  * Return: 0 on success, -ERANGE on overflow and -EINVAL on parsing error.
-  */
- noinline
--int kstrtodec64(const char *s, unsigned int scale, s64 *res)
-+int kstrtodec64(const char *s, int scale, s64 *res)
- {
- 	u64 tmp;
- 	int rv;
 diff --git a/lib/test-kstrtox.c b/lib/test-kstrtox.c
-index 1f176b232085..8ba0f23bb8ef 100644
+index 8ba0f23bb8ef..a5b3fdc6e9b9 100644
 --- a/lib/test-kstrtox.c
 +++ b/lib/test-kstrtox.c
-@@ -709,9 +709,66 @@ static void __init test_kstrtos8_fail(void)
- 	TEST_FAIL(kstrtos8, s8, "%hhd", test_s8_fail);
- }
- 
-+struct test_dec_fail {
-+	const char *str;
-+	int scale;
-+};
-+
-+#define DEFINE_TEST_DEC_FAIL(test)	\
-+	const struct test_dec_fail test[] __initconst
-+
-+#define DECLARE_TEST_DEC_OK(type, test_type)	\
-+	struct test_type {			\
-+		const char *str;		\
-+		int scale;			\
-+		type expected_res;		\
-+	}
-+
-+#define TEST_DEC_FAIL(fn, type, fmt, test)				\
-+{									\
-+	unsigned int i;							\
-+									\
-+	for_each_test(i, test) {					\
-+		const struct test_dec_fail *t = &test[i];		\
-+		type tmp;						\
-+		int rv;							\
-+									\
-+		tmp = 0;						\
-+		rv = fn(t->str, t->scale, &tmp);			\
-+		if (rv >= 0) {						\
-+			WARN(1, "str '%s', scale %d, expected -E, got %d/" fmt "\n",	\
-+				t->str, t->scale, rv, tmp);		\
-+			continue;					\
-+		}							\
-+	}								\
-+}
-+
-+#define TEST_DEC_OK(fn, type, fmt, test)				\
-+{									\
-+	unsigned int i;							\
-+									\
-+	for_each_test(i, test) {					\
-+		const typeof(test[0]) *t = &test[i];			\
-+		type res;						\
-+		int rv;							\
-+									\
-+		rv = fn(t->str, t->scale, &res);			\
-+		if (rv != 0) {						\
-+			WARN(1, "str '%s', scale %d, expected 0/" fmt ", got %d\n",	\
-+				t->str, t->scale, t->expected_res, rv);	\
-+			continue;					\
-+		}							\
-+		if (res != t->expected_res) {				\
-+			WARN(1, "str '%s', scale %d, expected " fmt ", got " fmt "\n",	\
-+				t->str, t->scale, t->expected_res, res);	\
-+			continue;					\
-+		}							\
-+	}								\
-+}
-+
- static void __init test_kstrtoudec64_ok(void)
- {
--	DECLARE_TEST_OK(u64, struct test_udec64);
-+	DECLARE_TEST_DEC_OK(u64, test_udec64);
- 	static DEFINE_TEST_OK(struct test_udec64, test_udec64_ok) = {
- 		/* basic: integer.fraction, exact digits */
- 		{"0.0",			1,	0},
-@@ -781,13 +838,25 @@ static void __init test_kstrtoudec64_ok(void)
+@@ -838,6 +838,45 @@ static void __init test_kstrtoudec64_ok(void)
  		/* rounding with many excess digits */
  		{"0.00000000000000000000000000000000423",	34,	42},
  		{"1.99999999999999999999999999999999999",	3,	2000},
-+		/* negative scale: drops integer digits */
-+		{"12345",		-2,	123ULL},
-+		{"12355",		-2,	124ULL},
-+		{"1250",		-2,	12ULL},
-+		{"1350",		-2,	14ULL},
-+		{"123.45",		-3,	0ULL},
-+		{"500",			-3,	0ULL},
-+		{"500.1",		-3,	1ULL},
-+		{"999",			-3,	1ULL},
-+		{"999",			-4,	0ULL},
-+		{"2.7e10",		-9,	27ULL},
-+		{"18446744073709551615000",	-3,	ULLONG_MAX},
- 	};
--	TEST_OK(kstrtoudec64, u64, "%llu", test_udec64_ok);
-+	TEST_DEC_OK(kstrtoudec64, u64, "%llu", test_udec64_ok);
- }
- 
- static void __init test_kstrtoudec64_fail(void)
- {
--	static DEFINE_TEST_FAIL(test_udec64_fail) = {
-+	static DEFINE_TEST_DEC_FAIL(test_udec64_fail) = {
- 		/* empty / whitespace */
- 		{"",		3},
- 		{"\n",		3},
-@@ -814,13 +883,17 @@ static void __init test_kstrtoudec64_fail(void)
++		/* E notation: positive exponent, no fraction */
++		{"1e3",			3,	1000000ULL},
++		{"42e2",		3,	4200000ULL},
++		/* E notation: positive exponent with fraction */
++		{"2.718e3",		3,	2718000ULL},
++		{"1.5e2",		1,	1500ULL},
++		/* E notation: uppercase E */
++		{"1E3",			3,	1000000ULL},
++		/* E notation: explicit positive exponent sign */
++		{"1e+3",		3,	1000000ULL},
++		/* E notation: zero exponent */
++		{"1.5e0",		1,	15ULL},
++		/* E notation: negative exponent shifts decimal left */
++		{"271828e-5",		3,	2718ULL},
++		{"2.71828e-1",		3,	272ULL},
++		{"270e-2",		3,	2700ULL},
++		/* E notation: negative exponent that rounds integer digits */
++		{"27e-4",		3,	3ULL},
++		{"19e-1",		0,	2ULL},
++		/* E notation: ties to even on integer digits */
++		{"125e-1",		0,	12ULL},
++		{"135e-1",		0,	14ULL},
++		{"25.0001e-1",		0,	3ULL},
++		/* E notation: negative exponent below 1 ULP rounds to 0 */
++		{"1e-5",		3,	0ULL},
++		{"5e-1",		0,	0ULL},
++		{"5e-2",		0,	0ULL},
++		{"6e-1",		0,	1ULL},
++		/* E notation: large value (27 GHz in micro Hz) */
++		{"2.7e10",		6,	27000000000000000ULL},
++		/* E notation: big exponents */
++		{"1e19",		0,	10000000000000000000ULL},
++		{"1.8446744073709551615e19",	0,	ULLONG_MAX},
++		{"18446744073709551615e-20",	20,	ULLONG_MAX},
++		{"123456789012345678901234567890e-29",	0,	1ULL},
++		{"0e2147483647",	0,	0ULL},
++		{"1e-2147483648",	0,	0ULL},
++		{"1e2147483647",	-2147483647,	1ULL},
++		{"1e-2147483647",	2147483647,	1ULL},
+ 		/* negative scale: drops integer digits */
+ 		{"12345",		-2,	123ULL},
+ 		{"12355",		-2,	124ULL},
+@@ -883,6 +922,24 @@ static void __init test_kstrtoudec64_fail(void)
  		{"0.2",				20},
  		{"0.18446744073709551616",	20},
  		{"1",				20},
-+		/* negative scale: rounds up past the limit */
-+		{"18446744073709551615500",	-3},
-+		/* negative scale: exponent overflows when added to it */
-+		{"1e-2147483648",		-1},
- 	};
--	TEST_FAIL(kstrtoudec64, u64, "%llu", test_udec64_fail);
-+	TEST_DEC_FAIL(kstrtoudec64, u64, "%llu", test_udec64_fail);
- }
- 
- static void __init test_kstrtodec64_ok(void)
- {
--	DECLARE_TEST_OK(s64, struct test_dec64);
-+	DECLARE_TEST_DEC_OK(s64, test_dec64);
- 	static DEFINE_TEST_OK(struct test_dec64, test_dec64_ok) = {
- 		/* basic positive */
- 		{"0.0",			1,	0},
-@@ -873,13 +946,20 @@ static void __init test_kstrtodec64_ok(void)
++		/* E notation: exponent causes overflow */
++		{"1e21",			1},
++		{"2e20",			1},
++		/* E notation: no digits after exponent marker */
++		{"1e",			3},
++		/* E notation: sign only after exponent marker */
++		{"1e+",			3},
++		{"1e-",			3},
++		/* E notation: misc */
++		{"1ee",			3}, /* double 'e' */
++		{"1e+0b",		3}, /* hex character after exponent */
++		/* E notation: big exponents */
++		{"1e20",			0},
++		{"1.8446744073709551616e19",	0},
++		{"1e2147483647",		0},
++		{"1e2147483647",		1}, /* exponent + scale overflow */
++		{"1e2147483648",		0}, /* exponent beyond int */
++		{"1e-2147483649",		0},
+ 		/* negative scale: rounds up past the limit */
+ 		{"18446744073709551615500",	-3},
+ 		/* negative scale: exponent overflows when added to it */
+@@ -946,6 +1003,32 @@ static void __init test_kstrtodec64_ok(void)
  		{"-0.00000000000000000001",	20,	-1},
  		{"0.009223372036854775807",	21,	LLONG_MAX},
  		{"-0.009223372036854775808",	21,	LLONG_MIN},
-+		/* negative scale: drops integer digits */
-+		{"-12345",		-2,	-123LL},
-+		{"-12355",		-2,	-124LL},
-+		{"-1250",		-2,	-12LL},
-+		{"-1350",		-2,	-14LL},
-+		{"-999",		-4,	0LL},
-+		{"-9223372036854775808000",	-3,	LLONG_MIN},
- 	};
--	TEST_OK(kstrtodec64, s64, "%lld", test_dec64_ok);
-+	TEST_DEC_OK(kstrtodec64, s64, "%lld", test_dec64_ok);
- }
- 
- static void __init test_kstrtodec64_fail(void)
- {
--	static DEFINE_TEST_FAIL(test_dec64_fail) = {
-+	static DEFINE_TEST_DEC_FAIL(test_dec64_fail) = {
- 		/* empty / whitespace */
- 		{"",		3},
- 		{"\n",		3},
-@@ -903,8 +983,13 @@ static void __init test_kstrtodec64_fail(void)
++		/* E notation: positive number */
++		{"1e3",			3,	1000000LL},
++		{"2.7e3",		3,	2700000LL},
++		{"1.5e0",		1,	15LL},
++		/* E notation: negative number with positive exponent */
++		{"-1e3",		3,	-1000000LL},
++		{"-2.7e3",		3,	-2700000LL},
++		/* E notation: negative exponent */
++		{"27e-1",		3,	2700LL},
++		{"-27e-1",		3,	-2700LL},
++		{"2.7e-1",		3,	270LL},
++		{"-2.7e-1",		3,	-270LL},
++		/* E notation: negative exponent rounds integer digits */
++		{"-27e-4",		3,	-3LL},
++		{"-125e-1",		0,	-12LL},
++		{"-135e-1",		0,	-14LL},
++		/* E notation: negative exponent below 1 ULP rounds to 0 */
++		{"1e-5",		3,	0LL},
++		{"-1e-5",		3,	0LL},
++		{"-5e-1",		0,	0LL},
++		{"-6e-1",		0,	-1LL},
++		/* E notation: big exponents */
++		{"9.223372036854775807e18",	0,	LLONG_MAX},
++		{"-9.223372036854775808e18",	0,	LLONG_MIN},
++		{"-1e-2147483648",	0,	0LL},
++		{"-1e2147483647",	-2147483647,	-1LL},
+ 		/* negative scale: drops integer digits */
+ 		{"-12345",		-2,	-123LL},
+ 		{"-12355",		-2,	-124LL},
+@@ -983,6 +1066,20 @@ static void __init test_kstrtodec64_fail(void)
  		{"-0.1",			20},
  		{"0.09223372036854775808",	20},
  		{"-0.09223372036854775809",	20},
-+		/* negative scale: rounds up past the limit */
-+		{"9223372036854775807500",	-3},
-+		{"-9223372036854775808501",	-3},
-+		/* negative scale: exponent overflows when added to it */
-+		{"-1e-2147483648",		-1},
- 	};
--	TEST_FAIL(kstrtodec64, s64, "%lld", test_dec64_fail);
-+	TEST_DEC_FAIL(kstrtodec64, s64, "%lld", test_dec64_fail);
- }
- 
- static int __init test_kstrtox_init(void)
++		/* E notation: exponent causes overflow */
++		{"1e21",		1},
++		{"-1e21",		1},
++		/* E notation: no digits after exponent marker */
++		{"1e",			3},
++		{"1e+",			3},
++		{"1e-",			3},
++		/* E notation: misc */
++		{"1Ee+3",		3}, /* double 'e' with mixed case */
++		{"1e+0xa",		3}, /* hex number exponent */
++		/* E notation: big exponents */
++		{"9.223372036854775808e18",	0},
++		{"-1e2147483647",		0},
++		{"1e2147483648",		0}, /* exponent beyond int */
+ 		/* negative scale: rounds up past the limit */
+ 		{"9223372036854775807500",	-3},
+ 		{"-9223372036854775808501",	-3},
 
 -- 
 2.43.0
