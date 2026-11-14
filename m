@@ -1,11 +1,11 @@
 From: Prateekshit Jaiswal <prateekshitjaiswal73@gmail.com>
-Date: Sat, 14 Nov 2026 11:44:08 +0530
-Subject: [PATCH 1/2] docs: kdoc: emit warnings for symbols selected with
- -function/-export
+Date: Sat, 14 Nov 2026 11:44:09 +0530
+Subject: [PATCH 2/2] docs: kdoc: don't print warnings of stored entries
+ twice
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-kdoc-dup-warnings-v1-1-265f89bc3f9c@gmail.com>
+Message-Id: <20261114-kdoc-dup-warnings-v1-2-265f89bc3f9c@gmail.com>
 References: <20261114-kdoc-dup-warnings-v1-0-265f89bc3f9c@gmail.com>
 In-Reply-To: <20261114-kdoc-dup-warnings-v1-0-265f89bc3f9c@gmail.com>
 To: Jonathan Corbet <corbet@lwn.net>, 
@@ -16,142 +16,154 @@ To: Jonathan Corbet <corbet@lwn.net>,
 Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Prateekshit Jaiswal <prateekshitjaiswal73@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794636849; l=5015;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794636849; l=5723;
  i=prateekshitjaiswal73@gmail.com; s=20261107; h=from:subject:message-id;
- bh=sMPzBKJW3ciyPVffUZVgGMn0wTa3lXZSu57g8NNQ69U=;
- b=u2V9+Y4Q8riBQTX7km53qzUFfjGn4e1TtYJuO/GGp7UcVc8yXysPzuN9+oA8FC8tBDVXAUv9M
- FLPX0sLYi17AMDTFuHciZETg1FzodcMn4VZvOd4mb7K9r8iUX+HXYRe
+ bh=Dt4V+mOJct8QU5hxnTe0SDVaaxQ3Jn2Hrk2c1EC3JUE=;
+ b=KKkXyMmi8Zg3mVNSXlBvv7/M48TKyQ4HyG7cCb7dh7mqo9Y1Otq9qmdDcP6o5EzXXAApJmAm+
+ UCQbFyLZ70QAjds6PjfVo2aQZIE4DZdZCLjKG0CJ+lSEPqxWDIscbTf
 X-Developer-Key: i=prateekshitjaiswal73@gmail.com; a=ed25519;
  pk=Z9QqjsqOUk3AvD5zQ8B+Kufufuvk9wEO7eT9m1nMJdo=
 X-Endpoint-Received: by B4 Relay for prateekshitjaiswal73@gmail.com/20261107 with auth_id=1445
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 9cbc2d3b137b ("scripts/kernel-doc.py: postpone warnings to the
-output plugin") moved warning output into
-OutputFormat.check_declaration(), which is supposed to print the
-warnings of each symbol it lets through. The OUTPUT_INCLUDE and
-OUTPUT_EXPORTED branch returns without that call, so -function,
--export, and the Sphinx kernel-doc :identifiers: and :export: options
-drop the warnings of the symbols they keep. On v6.18 the command below
-prints nothing, even though intel_dkl_phy_read() does not describe its
-return value:
+Commit 469c1c9eb6c9 ("kernel-doc: Issue warnings that were silently
+discarded") was meant to print warnings of entries that never reach
+the output step. With no symbol filter, kernel-doc now prints the
+warnings of every documented symbol twice:
 
-  $ ./scripts/kernel-doc -none -Wall -function intel_dkl_phy_read drivers/gpu/drm/i915/display/intel_dkl_phy.c
+  $ ./scripts/kernel-doc -none -Wall drivers/gpu/drm/i915/display/intel_dkl_phy.c
+  Warning: drivers/gpu/drm/i915/display/intel_dkl_phy.c:47 No description found for return value of 'intel_dkl_phy_read'
+  Warning: drivers/gpu/drm/i915/display/intel_dkl_phy.c:47 No description found for return value of 'intel_dkl_phy_read'
 
-From v6.19 the warning still appears, because the parser prints the
-warnings of every entry itself. That is a separate bug, fixed in the
-next patch. Fixing only that one would make this gap visible again.
-Until then, this change prints the selected symbols' warnings twice in
-these modes.
+The flush uses "self.entry not in self.entries" to tell stored entries
+from discarded ones. output_declaration() stores a new KdocItem built
+from the entry, never the KernelEntry itself, so that test is always
+true. Every stored entry then warns once in the parser and once in the
+output plugin.
 
-Call out_warnings() in that branch as well, as the other modes do, and
-add tests for the warnings shown with each output filter.
+Those parser-side prints also ignore the later symbol filter, so
+"-function intel_dkl_phy_write" still warns about intel_dkl_phy_read().
+Commit 292eca316321 ("docs: kdoc: fix logic to handle unissued
+warnings") routes the flush through config.warning(), which increments
+the warning count. -Werror then reports "2 warnings as errors" for a
+single warning, and a -function run fails because of a different
+symbol.
+
+Mark the entry as stored in output_declaration(), flush warnings only
+for entries that were not stored, and add tests for both cases. This
+needs the previous patch. Without it, symbols selected with -function
+or -export would lose their warnings.
+
+Running "kernel-doc -none -Wall" over the 10320 .c and .h files with
+kernel-doc comments, the output shrinks from 87900 to 49625 lines,
+while the set of distinct lines stays the same.
 
 The problem was found, and the fix and tests drafted, with the help of
 an AI coding assistant (Claude Code); I have reviewed and tested the
 result.
 
-Fixes: 9cbc2d3b137b ("scripts/kernel-doc.py: postpone warnings to the output plugin")
+Fixes: 469c1c9eb6c9 ("kernel-doc: Issue warnings that were silently discarded")
 Signed-off-by: Prateekshit Jaiswal <prateekshitjaiswal73@gmail.com>
 ---
- tools/lib/python/kdoc/kdoc_output.py |  1 +
- tools/unittests/test_kdoc_parser.py  | 71 ++++++++++++++++++++++++++++++++++++
- 2 files changed, 72 insertions(+)
+ tools/lib/python/kdoc/kdoc_parser.py |  4 ++-
+ tools/unittests/test_kdoc_parser.py  | 55 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 58 insertions(+), 1 deletion(-)
 
-diff --git a/tools/lib/python/kdoc/kdoc_output.py b/tools/lib/python/kdoc/kdoc_output.py
-index 659a2c6fb6be..e0f24302cbc4 100644
---- a/tools/lib/python/kdoc/kdoc_output.py
-+++ b/tools/lib/python/kdoc/kdoc_output.py
-@@ -167,6 +167,7 @@ class OutputFormat:
+diff --git a/tools/lib/python/kdoc/kdoc_parser.py b/tools/lib/python/kdoc/kdoc_parser.py
+index 80d4245acd17..ef5879b05308 100644
+--- a/tools/lib/python/kdoc/kdoc_parser.py
++++ b/tools/lib/python/kdoc/kdoc_parser.py
+@@ -135,6 +135,7 @@ class KernelEntry:
+         self.prototype = ""
  
-         if self.out_mode in [self.OUTPUT_INCLUDE, self.OUTPUT_EXPORTED]:
-             if name in self.function_table:
-+                self.out_warnings(args)
-                 return True
+         self.warnings = []
++        self.stored = False
  
-         if self.out_mode == self.OUTPUT_INTERNAL:
+         self.parameterlist = []
+         self.parameterdescs = {}
+@@ -323,6 +324,7 @@ class KernelDoc:
+                         self.entry.parametertypes,
+                         self.entry.parameterdesc_start_lines)
+         self.entries.append(item)
++        self.entry.stored = True
+ 
+         self.config.log.debug("Output: %s:%s = %s", dtype, name, pformat(args))
+ 
+@@ -346,7 +348,7 @@ class KernelDoc:
+               during the output step of the code, depending on the
+               selected symbols.
+         """
+-        if self.entry and self.entry not in self.entries:
++        if self.entry and not self.entry.stored:
+             for log_msg in self.entry.warnings:
+                 self.config.warning(log_msg)
+ 
 diff --git a/tools/unittests/test_kdoc_parser.py b/tools/unittests/test_kdoc_parser.py
-index 6e305988cb6d..35f7a140942d 100755
+index 35f7a140942d..709455a4b39c 100755
 --- a/tools/unittests/test_kdoc_parser.py
 +++ b/tools/unittests/test_kdoc_parser.py
-@@ -353,6 +353,77 @@ class ManFilterTail(unittest.TestCase):
-         self.assertEqual(self.run_filter(export=True), "")
+@@ -567,6 +567,61 @@ class TestContextLockStruct(GenerateKdocItem):
+         self.assertEqual(entries[0].name, "debugfs_cancellation")
+         self.assertEqual(entries[0].warnings, [])
  
- 
-+class OutputFilterWarnings(unittest.TestCase):
++class TestUnusedWarnings(GenerateKdocItem):
 +    """
-+    The output step shows the warnings of the symbols it outputs, once.
++    Test that the parser itself only emits warnings of discarded entries.
 +    """
 +
-+    source = dedent("""
-+        /**
-+         * foo - First function
-+         */
-+        int foo(int a) { return 0; };
-+
-+        /**
-+         * bar - Second function
-+         * @b: an argument
-+         */
-+        int bar(int b) { return 0; };
-+    """)
-+
-+    def setUp(self):
-+        self.config = MockKdocConfig()
-+        kernel_doc = KernelDoc(self.config, "mock.c", CTransforms())
++    def parse(self, source):
++        """
++        Parse source, returning the entries and the warnings emitted.
++        """
++        kernel_doc = KernelDoc(self.config, "test.c", self.xforms)
 +
 +        with patch('builtins.open', new_callable=mock_open,
-+                   read_data=self.source):
-+            with patch.object(self.config, 'warning'):
-+                _, self.entries = kernel_doc.parse_kdoc()
++                   read_data=dedent(source)):
++            with patch.object(self.config, 'warning') as warning:
++                _, entries = kernel_doc.parse_kdoc()
 +
-+        self.out_style = ManFormat()
-+        self.out_style.set_config(self.config)
++        return entries, [call.args[0] for call in warning.call_args_list]
 +
-+    def run_filter(self, **kwargs):
-+        args = {"export": False, "internal": False, "symbol": None,
-+                "nosymbol": None, "function_table": set(),
-+                "enable_lineno": False, "no_doc_sections": False}
-+        args.update(kwargs)
++    def test_stored_entry(self):
++        """
++        Warnings of a stored entry are left for the output step, which
++        applies the symbol filters, so they must not be emitted here.
++        """
++        source = """
++            /**
++             * func - Do nothing
++             */
++            int func(int arg) { return 0; }
++        """
 +
-+        self.out_style.set_filter(**args)
++        entries, emitted = self.parse(source)
 +
-+        with patch.object(self.config, 'warning') as warning:
-+            self.out_style.output_symbols("mock.c", self.entries)
++        self.assertEqual(len(entries), 1)
++        self.assertEqual(len(entries[0].warnings), 1)
++        self.assertIn("'arg' not described", entries[0].warnings[0])
++        self.assertEqual(emitted, [])
 +
-+        return [call.args[0] for call in warning.call_args_list]
++    def test_discarded_entry(self):
++        """
++        Warnings of an entry that is never stored are emitted once.
++        """
++        source = """
++            /**
++             * to_user_ptr - cast a u64 to a user space pointer
++             * @x: the u64 to convert
++             */
++            #define u64_to_user_ptr(x) ((void __user *)(uintptr_t)(x))
++        """
 +
-+    def test_all_symbols(self):
-+        """Without a filter, the warning of foo is shown."""
-+        warnings = self.run_filter()
++        entries, emitted = self.parse(source)
 +
-+        self.assertEqual(len(warnings), 1)
-+        self.assertIn("'a' not described in 'foo'", warnings[0])
++        self.assertEqual(entries, [])
++        self.assertEqual(len(emitted), 1)
++        self.assertIn("expecting prototype for to_user_ptr()", emitted[0])
 +
-+    def test_selected_symbol(self):
-+        """The warning of a symbol selected by name is shown."""
-+        warnings = self.run_filter(symbol=["foo"], function_table={"foo"})
-+
-+        self.assertEqual(len(warnings), 1)
-+        self.assertIn("'a' not described in 'foo'", warnings[0])
-+
-+    def test_exported_symbol(self):
-+        """The warning of an exported symbol is shown."""
-+        warnings = self.run_filter(export=True, function_table={"foo"})
-+
-+        self.assertEqual(len(warnings), 1)
-+        self.assertIn("'a' not described in 'foo'", warnings[0])
-+
-+    def test_other_symbol(self):
-+        """The warning of a symbol that is not selected is not shown."""
-+        warnings = self.run_filter(symbol=["bar"], function_table={"bar"})
-+
-+        self.assertEqual(warnings, [])
-+
-+
- class CToRest(unittest.TestCase):
-     out_style = RestFormat()
-     config = MockKdocConfig()
+ #
+ # Class and logic to create dynamic tests from YAML
+ #
 
 -- 
 2.53.0
