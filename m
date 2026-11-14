@@ -1,119 +1,136 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Sat, 14 Nov 2026 08:34:18 -0600
-Subject: [PATCH] wifi: ath11k: read a station's TX rate under base_lock
+Date: Sat, 14 Nov 2026 08:44:27 -0600
+Subject: [PATCH] wifi: ath12k: don't zero the 6 GHz TX power on a vdev
+ restart
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-ath11k-sta-txrate-lock-v1-1-8331a03b1000@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAGlx+GoC/yXMQQqDMBCF4avIrDuQRBTqVUoXSTrqVFHJjCKId
- 2+qb/ct3n+AUGISaIoDEm0sPE8Z9lFA7P3UEfInG5xxtc1Dr721A4p61D15JRznOGBlQlWaQOU
- zOsjnJVHL+xV+vW/LGr4U9V+D8/wBBwpHDHoAAAA=
-X-Change-ID: 20261111-ath11k-sta-txrate-lock-50b530be39c2
+Message-Id: <20261114-ath12k-6ghz-tpc-vdev-restart-v1-1-5680ada87c37@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMpz+GoC/yXMwQ7CIAwA0F9ZeraJZZODv2I8ACujmswFKjEu+
+ 3dxO77LW6FwFi5w7VbIXKXIa26gUwchuXlilLEZzNlYIhrQaSLzRDulL+oSsI5cMXNRlxXjxZM
+ dYk+9t9CKJXOUz97f7ofL2z846P+EbfsBGKJri4AAAAA=
+X-Change-ID: 20261114-ath12k-6ghz-tpc-vdev-restart-f5b164f313b6
 To: Jeff Johnson <jjohnson@kernel.org>
 Cc: Baochen Qiang <baochen.qiang@oss.qualcomm.com>, 
- linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
+ Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
+ linux-wireless@vger.kernel.org, ath12k@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
  Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794666858; l=3922;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794667466; l=4577;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=lkF7CDKj4qzGCwVidTwjxrPbBspcYexivWzn0z5gLhU=;
- b=JuwehofTeNwpSKgXfo/YghmTFgukSYSYDa/F0Df96zD+YhS6oT/0Ghs8BJuQxkSTzeaO3gbC8
- l2kaUyf1Dc3D4e0jgZ9MyqHk0SpoQmVOA59yYpzAX8V5Kx4CmI6NaFq
+ bh=kke/DsAVwEMxb+LRgu7ak2aDlof084RcMGz+021hfbM=;
+ b=J3GnQJVnp1P9yrNbKglpLQVBDaYwW8zTORBFGlB3CXSXLIG1jiY49ebcIGqsQ/7SZ6vLz7Hd8
+ RkFMBNmGmN3AN2rjGEUZ4Qf1O/4YbCaZNUByhNG+XytHqSQFnRrme6p
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ath11k_update_per_peer_tx_stats() and ath11k_dp_tx_update_txcompl()
-rewrite arsta->txrate under ab->base_lock: they clear it, then fill in
-its fields one by one. ath11k_mac_op_sta_statistics() copies it into the
-station info without that lock, so a station dump that runs while a TX
-status updates the rate can copy the HE flag with an nss of 0, and
-cfg80211 warns:
+ath12k_mac_fill_reg_tpc_info() takes a non-zero
+reg_tpc_info.num_pwr_levels to mean that a TPE element was parsed, and
+then limits every power level by reg_tpc_info.tpe[]. But it also stores
+the number of levels it filled in that same field.
 
-  WARNING: CPU: 3 PID: 30429 at net/wireless/util.c:1581 ieee80211_get_vht_max_nss+0x474/0x868 [cfg80211]
-  Call trace:
-   ieee80211_get_vht_max_nss+0x474/0x868 [cfg80211] (P)
-   cfg80211_calculate_bitrate+0x1e0/0x4f4 [cfg80211]
-   nl80211_put_sta_rate+0x50/0x1230 [cfg80211]
-   nl80211_put_sta_rate+0xa30/0x1230 [cfg80211]
-   nl80211_dump_station+0x4b8/0x7e0 [cfg80211]
+An AP vdev never parses a TPE element. Its first vdev start finds the
+field zero and fills the levels from the regulatory rules; every later
+start or restart of the vdev, such as a channel switch, finds the count
+of the last fill there, takes the "TPE received" branch with the level
+count of the old width, and limits every level by tpe[], which is all
+zeroes. WMI_VDEV_SET_TPC_POWER_CMDID then carries a limit of 0 dBm, and
+the AP transmits at that until the interface is removed and added
+again. A station whose AP sent no TPE element for its power type goes
+the same way on its next vdev start.
 
-(the line is the nss check in the inlined
-cfg80211_calculate_bitrate_he()). It was seen once in about a day on an
-IPQ8074 AP whose stations are dumped periodically by a monitoring agent.
+On a 6 GHz AP, after a channel switch from channel 149 to 165 at
+80 MHz, or one that only changes the width (80 to 320 MHz, or back),
+iw reports "txpower 0.00 dBm", tpc_stats shows "power limit-0" where it
+showed 48 before the switch, and a station next to the AP hears it
+15 dB lower.
 
-Copy the rate under base_lock and report from the copy, as ath12k reads
-its peer rate info under its DP lock.
+Keep whether a TPE element was parsed in a flag of its own, set by
+ath12k_mac_parse_tx_pwr_env(), and test that instead. With the change
+the power is the same before and after seven channel switches, three of
+them width changes.
 
 The change and this message were written with Claude, an AI coding
 assistant.
 
-Tested-on: IPQ8074 hw2.0 AHB WLAN.HK.2.9.0.1-02146-QCAHKSWPL_SILICONZ-1
-Tested-on: QCN9074 hw1.0 PCI WLAN.HK.2.5.r4-00683-QCAHKSWPL_SILICONZ-1
-Tested-on: IPQ6018 hw1.0 AHB WLAN.HK.2.5.0.1-03982-QCAHKSWPL_SILICONZ-3
+Tested-on: QCN9274 hw2.0 PCI WLAN.WBE.1.4.1-00199-QCAHKSWPL_SILICONZ-1
 
-Fixes: d5c65159f289 ("ath11k: driver for Qualcomm IEEE 802.11ax devices")
+Fixes: aeda163bb0c7 ("wifi: ath12k: fill parameters for vdev set TPC power WMI command")
+Fixes: a44958c83e52 ("wifi: ath12k: Send WMI_VDEV_SET_TPC_POWER_CMD for AP vdev")
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
-Found on an Arista C-360 (IPQ8074 + QCN9074) running OpenWrt, from a
-warning in its kernel log; the cause was found by reading the code.
-ath12k already reads its peer rate info under its DP lock.
----
- drivers/net/wireless/ath/ath11k/mac.c | 26 ++++++++++++++++----------
- 1 file changed, 16 insertions(+), 10 deletions(-)
+Found on an Arista C-460 (IPQ9574 with three QCN9274 hw2.0) running
+OpenWrt: its 6 GHz AP went to 0 dBm after every channel switch, and
+stayed there until the interface was taken down and brought up again.
+The cause was found by reading the code.
 
-diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
-index 1a237adaa37d1..d76eeb1ca0019 100644
---- a/drivers/net/wireless/ath/ath11k/mac.c
-+++ b/drivers/net/wireless/ath/ath11k/mac.c
-@@ -9425,6 +9425,7 @@ static void ath11k_mac_op_sta_statistics(struct ieee80211_hw *hw,
- {
- 	struct ath11k_sta *arsta = ath11k_sta_to_arsta(sta);
- 	struct ath11k *ar = arsta->arvif->ar;
-+	struct rate_info txrate;
- 	s8 signal;
- 	bool db2dbm = test_bit(WMI_TLV_SERVICE_HW_DB2DBM_CONVERSION_SUPPORT,
- 			       ar->ab->wmi_ab.svc_map);
-@@ -9435,18 +9436,23 @@ static void ath11k_mac_op_sta_statistics(struct ieee80211_hw *hw,
- 	sinfo->tx_duration = arsta->tx_duration;
- 	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_DURATION);
+Tested on that board with Linux 6.18 and ath12k from backports 7.2,
+carrying the same change: without it four of four channel switches
+left "txpower 0.00 dBm"; with it seven of seven kept the power. The
+code in ath-next is the same there. On ath-next the patch is
+compile-tested only.
+---
+ drivers/net/wireless/ath/ath12k/mac.c | 5 ++++-
+ drivers/net/wireless/ath/ath12k/mac.h | 2 ++
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
+index eee3f38375ae8..ff835a1a1e32e 100644
+--- a/drivers/net/wireless/ath/ath12k/mac.c
++++ b/drivers/net/wireless/ath/ath12k/mac.c
+@@ -12125,7 +12125,7 @@ void ath12k_mac_fill_reg_tpc_info(struct ath12k *ar,
+ 	start_freq = ath12k_mac_get_6ghz_start_frequency(&ctx->def);
+ 	pwr_reduction = bss_conf->pwr_reduction;
  
--	if (arsta->txrate.legacy || arsta->txrate.nss) {
--		if (arsta->txrate.legacy) {
--			sinfo->txrate.legacy = arsta->txrate.legacy;
-+	/* The TX status paths clear and refill txrate under base_lock */
-+	spin_lock_bh(&ar->ab->base_lock);
-+	txrate = arsta->txrate;
-+	spin_unlock_bh(&ar->ab->base_lock);
-+
-+	if (txrate.legacy || txrate.nss) {
-+		if (txrate.legacy) {
-+			sinfo->txrate.legacy = txrate.legacy;
- 		} else {
--			sinfo->txrate.mcs = arsta->txrate.mcs;
--			sinfo->txrate.nss = arsta->txrate.nss;
--			sinfo->txrate.bw = arsta->txrate.bw;
--			sinfo->txrate.he_gi = arsta->txrate.he_gi;
--			sinfo->txrate.he_dcm = arsta->txrate.he_dcm;
--			sinfo->txrate.he_ru_alloc = arsta->txrate.he_ru_alloc;
-+			sinfo->txrate.mcs = txrate.mcs;
-+			sinfo->txrate.nss = txrate.nss;
-+			sinfo->txrate.bw = txrate.bw;
-+			sinfo->txrate.he_gi = txrate.he_gi;
-+			sinfo->txrate.he_dcm = txrate.he_dcm;
-+			sinfo->txrate.he_ru_alloc = txrate.he_ru_alloc;
- 		}
--		sinfo->txrate.flags = arsta->txrate.flags;
-+		sinfo->txrate.flags = txrate.flags;
- 		sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BITRATE);
+-	if (arvif->reg_tpc_info.num_pwr_levels) {
++	if (reg_tpc_info->tpe_present) {
+ 		is_tpe_present = true;
+ 		num_pwr_levels = arvif->reg_tpc_info.num_pwr_levels;
+ 	} else {
+@@ -12314,6 +12314,7 @@ static void ath12k_mac_parse_tx_pwr_env(struct ath12k *ar,
+ 		ath12k_warn(ab,
+ 			    "no transmit power envelope match client power type %d\n",
+ 			    client_type);
++		tpc_info->tpe_present = false;
+ 		return;
  	}
  
+@@ -12353,6 +12354,8 @@ static void ath12k_mac_parse_tx_pwr_env(struct ath12k *ar,
+ 				   i, tpc_info->tpe[i]);
+ 		}
+ 	}
++
++	tpc_info->tpe_present = tpc_info->num_pwr_levels > 0;
+ }
+ 
+ int
+diff --git a/drivers/net/wireless/ath/ath12k/mac.h b/drivers/net/wireless/ath/ath12k/mac.h
+index 61c2ec8865a39..1da758837c7b1 100644
+--- a/drivers/net/wireless/ath/ath12k/mac.h
++++ b/drivers/net/wireless/ath/ath12k/mac.h
+@@ -119,6 +119,7 @@ struct ath12k_chan_power_info {
+ /**
+  * struct ath12k_reg_tpc_power_info - regulatory TPC power info
+  * @is_psd_power: is PSD power or not
++ * @tpe_present: @num_pwr_levels and @tpe are from a parsed TPE element
+  * @eirp_power: Maximum EIRP power (dBm), valid only if power is PSD
+  * @ap_power_type: type of power (SP/LPI/VLP)
+  * @num_pwr_levels: number of power levels
+@@ -129,6 +130,7 @@ struct ath12k_chan_power_info {
+  */
+ struct ath12k_reg_tpc_power_info {
+ 	bool is_psd_power;
++	bool tpe_present;
+ 	u8 eirp_power;
+ 	enum wmi_reg_6g_ap_type ap_power_type;
+ 	u8 num_pwr_levels;
 
 ---
-base-commit: ff4c7359e310744a7abe53cf66d921fa2969eb19
-change-id: 20261111-ath11k-sta-txrate-lock-50b530be39c2
+base-commit: 1be6c8d3027d4a421dc46b93a89a196c61945614
+change-id: 20261114-ath12k-6ghz-tpc-vdev-restart-f5b164f313b6
 
 Best regards,
 --  
