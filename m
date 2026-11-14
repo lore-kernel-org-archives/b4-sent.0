@@ -1,105 +1,149 @@
-From: Han Gao <gaohan@iscas.ac.cn>
-Date: Sat, 14 Nov 2026 17:51:11 +0800
-Subject: [PATCH net] net: macb: limit jumbo frames to the RX buffer size
+From: Hugo Sales <hugo@hsal.es>
+Date: Sat, 14 Nov 2026 11:51:52 +0000
+Subject: [PATCH RFT] cpufreq: intel_pstate: Refresh cpuinfo.max_freq when a
+ CPU goes online
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-macb-jumbo-jml-v1-1-f501395eaf9e@iscas.ac.cn>
-X-B4-Tracking: v=1; b=H4sIAA4v+GoC/x2MQQqAIBAAvxJ7bsEkivpKdEjdaiUttCKQ/p40t
- znMJIgUmCL0RYJAN0fefZaqLECvk18I2WQHKWRTZdBNWqG9nNrRug3rzohWC206IyFHR6CZn38
- 4gKcTxvf9AKLgem9lAAAA
-X-Change-ID: 20261111-macb-jumbo-jml-49d07c0cd9d2
-To: =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
- Conor Dooley <conor.dooley@microchip.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Punnaiah Choudary Kalluri <punnaia@xilinx.com>, 
- Harini Katakam <harini.katakam@xilinx.com>
-Cc: linux-riscv@lists.infradead.org, Han Gao <rabenda.cn@gmail.com>, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jingkun Zheng <zhengjingkun@iscas.ac.cn>, Han Gao <gaohan@iscas.ac.cn>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794649871; l=2770;
- i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=Ba0EhmfC/eB3reG4OHAFgVQBuZCONa6EOSwuE8i/JWE=;
- b=cZLObGEtUvp/SP5azLnWEj3cPd4p6jtuyHY1VunFYe63DcPfgFR0aZxmd+G9sG4dRoq1cwPJa
- X8PUu1Yfw47BErR31njhHCIlQ/ubs/5ETSdbgWCsByhmmFc+WvGq+fU
-X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
- pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
-X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
+Message-Id: <20261114-intel-pstate-online-max-freq-v1-1-1bbdae2b4986@hsal.es>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMMQ7CMAxA0atUnrGEAxTEAThAxYYY0uCAUXFLH
+ FClqncnwPj/8CYwTsIG+2qCxG8x6bUELSoIN69XRrmUBrd0NRGtUDRzh4Nlnxl77UQZH37EmPi
+ JFOu1C26za7cEhRgSRxl//AmawxHO/2mv9s4hf2GY5w+NBwP7hQAAAA==
+X-Change-ID: 20261113-intel-pstate-online-max-freq-1f642c258b71
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Viresh Kumar <viresh.kumar@linaro.org>, 
+ Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
+ Len Brown <lenb@kernel.org>
+Cc: Ximing Zhang <xzhangjr@gmail.com>, linux-pm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Hugo Sales <hugo@hsal.es>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4935; i=hugo@hsal.es;
+ h=from:subject:message-id; bh=G18cioDv2pnyDIPXQ04NQfkLJuWBJarAvUfVI3wRTGU=;
+ b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsn54R5wTdJvH/LFETEi2kt/7ddzXT51iyRU64qwX2
+ NrPbebbd6GjlIVBjItBVkyRRfeGJwPLxMkzc4qeL4GZw8oEMoSBi1MAJhKWyMhwnzGX91Zdc1VV
+ 6Ac7gwDB6glC9m+PGTDNiih1qX8eu/wzw18BDR6ujhTp7PDnS/arcS7UWRHfb9S3/uIvt6fyFX8
+ mXOUBAJxeRgQ=
+X-Developer-Key: i=hugo@hsal.es; a=openpgp;
+ fpr=193D095149CF7E8737B39064D912B0DB205A91C1
+X-Endpoint-Received: by B4 Relay for hugo@hsal.es/default with auth_id=1417
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-GEM variants with MACB_CAPS_JUMBO accept frames up to jumbo_max_len
-regardless of the MTU, but the RX buffers are sized from the MTU. A
-frame longer than one RX buffer is split over several descriptors and
-dropped by gem_rx() with "not whole frame pointed by descriptor".
+A write to no_turbo or a change in the HWP capabilities updates
+policy->cpuinfo.max_freq through intel_pstate_update_max_freq(), which
+gets the policy with cpufreq_cpu_get(). That returns NULL for an offline
+CPU, so its policy keeps the old value. When the CPU comes back, the
+core reuses the policy and calls ->online(), and
+intel_pstate_cpu_online() doesn't recompute cpuinfo.max_freq either.
+Before commit 4adcf2e5829f ("cpufreq: intel_pstate: Add ->offline and
+->online callbacks"), ->init() ran on every online and set it
 
-Set JML from the RX buffer size in macb_configure_dma(), so that it
-follows MTU changes and longer frames are dropped by the MAC instead.
+Turning turbo on while a CPU is offline leaves that CPU at the non-turbo
+maximum once it's back, while the other CPUs report the turbo frequency.
+In the reverse order the CPU keeps the turbo maximum with turbo off
 
-Fixes: 98b5a0f4a228 ("net: macb: Add support for jumbo frames")
-Reported-by: Jingkun Zheng <zhengjingkun@iscas.ac.cn>
-Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
+Set cpuinfo.max_freq at the end of intel_pstate_cpu_online(), after HWP
+is enabled again, the same way __intel_pstate_update_max_freq() does.
+cpufreq_online() applies the policy limits after that. Hold the CPU
+hotplug lock in store_no_turbo(), so a CPU can't come online between
+the no_turbo store and the update of the online CPUs
+
+Fixes: 4adcf2e5829f ("cpufreq: intel_pstate: Add ->offline and ->online callbacks")
+Reported-by: Ximing Zhang <xzhangjr@gmail.com>
+Closes: https://lore.kernel.org/all/20261108071225.54656-1-xzhangjr@gmail.com/
+Signed-off-by: Hugo Sales <hugo@hsal.es>
 ---
-Seen on a SiFive FU740 with the default MTU: every jumbo frame on the
-network caused two "not whole frame pointed by descriptor" errors.
----
- drivers/net/ethernet/cadence/macb_main.c | 21 +++++++++++++++++++--
- 1 file changed, 19 insertions(+), 2 deletions(-)
+Tested on an i7-4720HQ (Haswell, no HWP) in passive and active mode.
+With CPU 1 offline, writing no_turbo and then onlining CPU 1 leaves its
+cpuinfo_max_freq equal to CPU 0's (2600000 with turbo off, 3600000 with
+it on). Without the patch CPU 1 kept the value it had before going
+offline. I have no HWP machine, so the HWP capability path is untested
 
-diff --git a/drivers/net/ethernet/cadence/macb_main.c b/drivers/net/ethernet/cadence/macb_main.c
-index 5ad0e32e2b4001c37e230a2eb7badb468b14ab57..e7c9bb24c377babc8dfd57e82ebf55a8e996873d 100644
---- a/drivers/net/ethernet/cadence/macb_main.c
-+++ b/drivers/net/ethernet/cadence/macb_main.c
-@@ -3240,6 +3240,18 @@ static u32 macb_dbw(struct macb *bp)
- 	}
+On hybrid CPUs, onlining now reads the HWP capabilities twice, once in
+hybrid_update_capacity() and once for cpuinfo.max_freq. If the firmware
+changes them in between, the CPU's capacity and cpuinfo.max_freq come
+from different values until the HWP notification work recomputes both.
+intel_pstate_notify_work() already reads them twice the same way, in
+the other order. Reading them once would mean splitting
+hybrid_update_capacity(), which I left out of this fix. If you'd like
+that change, I can write it as a follow-up
+
+Ximing found this while testing "ACPI: processor: thermal: Recompute the
+frequency cap when boost changes" [1]. Patch 2 of that series sends an
+event when intel_pstate updates cpuinfo.max_freq, so with this fix the
+event also fires when a CPU comes online. This patch doesn't depend on
+that series
+
+[1] https://lore.kernel.org/all/20261101185807.112449-1-hugo@hsal.es/
+---
+ drivers/cpufreq/intel_pstate.c | 28 +++++++++++++++++++++++++---
+ 1 file changed, 25 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/cpufreq/intel_pstate.c b/drivers/cpufreq/intel_pstate.c
+index c78dcd681511c..96c5775ed161d 100644
+--- a/drivers/cpufreq/intel_pstate.c
++++ b/drivers/cpufreq/intel_pstate.c
+@@ -1426,16 +1426,24 @@ static void intel_pstate_update_policies(void)
+ 		cpufreq_update_policy(cpu);
  }
  
-+/* Longest frame that fits in a single RX buffer */
-+static u32 gem_jumbo_max_len(struct macb *bp)
-+{
-+	u32 len = bp->ctx->rx_buffer_size;
-+
-+	/* Frame data starts NET_IP_ALIGN bytes into the buffer without RSC */
-+	if (!(bp->caps & MACB_CAPS_RSC))
-+		len -= NET_IP_ALIGN;
-+
-+	return min(len, bp->jumbo_max_len);
+-static void __intel_pstate_update_max_freq(struct cpufreq_policy *policy,
+-					   struct cpudata *cpudata)
++static void intel_pstate_update_cpuinfo_max_freq_locked(struct cpufreq_policy *policy,
++							struct cpudata *cpudata)
+ {
+-	guard(cpufreq_policy_write)(policy);
++	lockdep_assert_held_write(&policy->rwsem);
+ 
+ 	if (hwp_active)
+ 		intel_pstate_get_hwp_cap(cpudata);
+ 
+ 	policy->cpuinfo.max_freq = READ_ONCE(global.no_turbo) ?
+ 			cpudata->pstate.max_freq : cpudata->pstate.turbo_freq;
 +}
 +
- /* Configure the receive DMA engine
-  * - use the correct receive buffer size
-  * - set best burst length for DMA operations
-@@ -3286,6 +3298,13 @@ static void macb_configure_dma(struct macb *bp)
- 		netdev_dbg(bp->netdev, "Cadence configure DMA with 0x%08x\n",
- 			   dmacfg);
- 		gem_writel(bp, DMACFG, dmacfg);
++static void __intel_pstate_update_max_freq(struct cpufreq_policy *policy,
++					   struct cpudata *cpudata)
++{
++	guard(cpufreq_policy_write)(policy);
 +
-+		/* Jumbo frames are always enabled, so limit their length to
-+		 * what fits in one RX buffer. Longer frames would otherwise be
-+		 * split across several descriptors and dropped by gem_rx().
-+		 */
-+		if ((bp->caps & MACB_CAPS_JUMBO) && bp->jumbo_max_len)
-+			gem_writel(bp, JML, gem_jumbo_max_len(bp));
++	intel_pstate_update_cpuinfo_max_freq_locked(policy, cpudata);
+ 
+ 	refresh_frequency_limits(policy);
+ }
+@@ -1569,6 +1577,12 @@ static ssize_t store_no_turbo(struct kobject *a, struct kobj_attribute *b,
+ 		return -EINVAL;
+ 
+ 	guard(mutex)(&intel_pstate_driver_lock);
++	/*
++	 * intel_pstate_update_max_freq() skips offline CPUs, and a CPU coming
++	 * online reads global.no_turbo in intel_pstate_cpu_online(). Keep CPUs
++	 * from coming online until every online CPU has the new limit
++	 */
++	guard(cpus_read_lock)();
+ 
+ 	if (!intel_pstate_driver)
+ 		return -EAGAIN;
+@@ -3019,6 +3033,14 @@ static int intel_pstate_cpu_online(struct cpufreq_policy *policy)
+ 		hybrid_update_capacity(cpu);
  	}
+ 
++	/*
++	 * intel_pstate_update_max_freq() skips offline CPUs, so the turbo
++	 * setting or the HWP capabilities may have changed since this CPU
++	 * went offline. Read the HWP capabilities only once HWP is enabled
++	 * again
++	 */
++	intel_pstate_update_cpuinfo_max_freq_locked(policy, cpu);
++
+ 	return 0;
  }
  
-@@ -3422,8 +3441,6 @@ static void macb_init_hw(struct macb *bp)
- 		config |= MACB_BIT(NBC);	/* No BroadCast */
- 	config |= macb_dbw(bp);
- 	macb_writel(bp, NCFGR, config);
--	if ((bp->caps & MACB_CAPS_JUMBO) && bp->jumbo_max_len)
--		gem_writel(bp, JML, bp->jumbo_max_len);
- 	bp->rx_frm_len_mask = MACB_RX_FRMLEN_MASK;
- 	if (bp->caps & MACB_CAPS_JUMBO)
- 		bp->rx_frm_len_mask = MACB_RX_JFRMLEN_MASK;
 
 ---
-base-commit: aa40afa831ebfe45e40a23721711059f2ac584d4
-change-id: 20261111-macb-jumbo-jml-49d07c0cd9d2
+base-commit: a1c4d4a4603198108564963bb42a1e07f4eec3ff
+change-id: 20261113-intel-pstate-online-max-freq-1f642c258b71
 
 Best regards,
--- 
-Han Gao <gaohan@iscas.ac.cn>
+--  
+Hugo Sales <hugo@hsal.es>
 
