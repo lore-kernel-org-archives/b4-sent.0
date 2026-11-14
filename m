@@ -1,10 +1,10 @@
 From: Demeter Barna <me@fromdisposition.org>
-Date: Sat, 14 Nov 2026 02:22:02 +0000
-Subject: [PATCH 8/9] phy: qcom: Add SM8350 to QMP UFS PHY driver
+Date: Sat, 14 Nov 2026 02:22:03 +0000
+Subject: [PATCH 9/9] qcom_defconfig: Enable SM8350 GCC and interconnect
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-sm8350-support-v1-8-414271f59474@fromdisposition.org>
+Message-Id: <20261114-sm8350-support-v1-9-414271f59474@fromdisposition.org>
 References: <20261114-sm8350-support-v1-0-414271f59474@fromdisposition.org>
 In-Reply-To: <20261114-sm8350-support-v1-0-414271f59474@fromdisposition.org>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot@lists.u-boot-project.org, 
@@ -24,36 +24,43 @@ Cc: Tom Rini <trini@konsulko.com>, Lukasz Majewski <lukma@nabladev.com>,
  Quentin Schulz <quentin.schulz@cherry.de>, 
  Demeter Barna <me@fromdisposition.org>, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794622936; l=1160;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794622936; l=860;
  i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
- bh=Ab9qigNC7XOApMfoAMRkXiBEl4LYPa9HnS0XaMWBsj0=;
- b=7WHXha0ZKkNvqnex+XZFrnUOhdOGfjDE3kY74P1B73+seBKiwGHKtYmIwRQWEh0vX7DeHAVlN
- w2YzfW0b7h9BHyI4sWBgyt4dKTYrl37cqN9Uw0JvDS9m07Wpp8kihcO
+ bh=1xJioPfDBoVjOo+gcIP/g2da+DPcc7vuXJsdfTi88Zs=;
+ b=bNOfpup4+eDshhwm/3sGx7N2+Fk/5w1TTs2syMKddFuI9ADc6cjjpOX+o2IcmzZqMcw5V5R3D
+ r1tQhRrRjeLCVBJVLxwZlzANjVXFoRt43g/zrP9urwv/VYmJPzKrna2
 X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
  pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
 X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SA8775P configuration is made of the SM8350 init tables and is
-Linux's sm8350_ufsphy_cfg, so reuse it for SM8350, as QCS8300 does.
+Enable the GCC and interconnect drivers for SM8350 in qcom_defconfig.
 
 Signed-off-by: Demeter Barna <me@fromdisposition.org>
 ---
- drivers/phy/qcom/phy-qcom-qmp-ufs.c | 1 +
- 1 file changed, 1 insertion(+)
+ configs/qcom_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/phy/qcom/phy-qcom-qmp-ufs.c b/drivers/phy/qcom/phy-qcom-qmp-ufs.c
-index 35fa38a5b3..5a0c406b0d 100644
---- a/drivers/phy/qcom/phy-qcom-qmp-ufs.c
-+++ b/drivers/phy/qcom/phy-qcom-qmp-ufs.c
-@@ -1747,6 +1747,7 @@ static const struct udevice_id qmp_ufs_ids[] = {
- 	{ .compatible = "qcom,sm7150-qmp-ufs-phy", .data = (ulong)&sm7150_ufsphy_cfg },
- 	{ .compatible = "qcom,sm8150-qmp-ufs-phy", .data = (ulong)&sm8150_ufsphy_cfg },
- 	{ .compatible = "qcom,sm8250-qmp-ufs-phy", .data = (ulong)&sm8250_ufsphy_cfg },
-+	{ .compatible = "qcom,sm8350-qmp-ufs-phy", .data = (ulong)&sa8775p_ufsphy_cfg },
- 	{ .compatible = "qcom,qcs8300-qmp-ufs-phy", .data = (ulong)&sa8775p_ufsphy_cfg },
- 	{ .compatible = "qcom,sm8550-qmp-ufs-phy", .data = (ulong)&sm8550_ufsphy_cfg },
- 	{ .compatible = "qcom,sm8650-qmp-ufs-phy", .data = (ulong)&sm8650_ufsphy_cfg },
+diff --git a/configs/qcom_defconfig b/configs/qcom_defconfig
+index e5291750aa..7eadfd9454 100644
+--- a/configs/qcom_defconfig
++++ b/configs/qcom_defconfig
+@@ -69,6 +69,7 @@ CONFIG_CLK_QCOM_SM6350=y
+ CONFIG_CLK_QCOM_SM7150=y
+ CONFIG_CLK_QCOM_SM8150=y
+ CONFIG_CLK_QCOM_SM8250=y
++CONFIG_CLK_QCOM_SM8350=y
+ CONFIG_CLK_QCOM_SM8550=y
+ CONFIG_CLK_QCOM_SM8650=y
+ CONFIG_CLK_QCOM_SC7180=y
+@@ -93,6 +94,7 @@ CONFIG_BUTTON_KEYBOARD=y
+ CONFIG_INTERCONNECT=y
+ CONFIG_INTERCONNECT_QCOM_RPMH=y
+ CONFIG_INTERCONNECT_QCOM_SC7280=y
++CONFIG_INTERCONNECT_QCOM_SM8350=y
+ CONFIG_INTERCONNECT_QCOM_SM8650=y
+ CONFIG_IOMMU=y
+ CONFIG_QCOM_HYP_SMMU=y
 
 -- 
 2.53.0
