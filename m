@@ -1,183 +1,182 @@
-From: Adolf Hirthe <ohirthe@proton.me>
-Date: Sat, 14 Nov 2026 13:17:49 +0100
-Subject: [PATCH] HID: microsoft: normalize Xbox Series X|S controller axes
- over Bluetooth
+From: Sven Peter <sven@kernel.org>
+Date: Sat, 14 Nov 2026 14:03:35 +0100
+Subject: [PATCH] arm64: dts: apple: Lowercase hwmon node names
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-hid-ms-xbox-ble-v1-1-0b114dc5dcf3@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBG4avIrDvQEZHqVUoXSfytU6yWjC0B8
- e6muvwW761kiAqjtlgp4qem85Qhl4LC4KYnWLtsKq9lLSIVD9rx2zj5ObEfwU6qpscNrvGOcvW
- J6DUdx/vjtH39C2H5b2jbdmBj81RzAAAA
-X-Change-ID: 20261114-hid-ms-xbox-ble-a149fe8ea9ba
-To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Adolf Hirthe <ohirthe@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794658674; l=6231;
- i=ohirthe@proton.me; s=20261114; h=from:subject:message-id;
- bh=3KqYch9IC5KkG2VI5FWUeMfB/Y98raE9CsBxJbtB8cw=;
- b=OMPzsDF7Oz8RyR0R4c4uGU6xiefdA1aFmRFpk8jkOSmTslOY/bwCTCoqw0MDeip3NclDs71ih
- DUEoIO3A3PdBaXTib9VVgS7TIb2BSXcYU5WSauYLzg/LUdRGPz7NsNI
-X-Developer-Key: i=ohirthe@proton.me; a=ed25519;
- pk=hZO8S9i4hCOzd2Whf3iGt3z8Wqt/A0bO/LLX2i7jWGs=
-X-Endpoint-Received: by B4 Relay for ohirthe@proton.me/20261114 with auth_id=1523
+Message-Id: <20261114-b4-hwmon-nodes-v1-1-7d0a9674e3ae@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrB1wgj/YqxQXiU7rCCYlY6sg3
+ t1Yl9/ivR2Uo7DCI9sh8k9Ugk+gPIN+tP7NKEMymMLURFSiK3Fc5+DRh4EVbd06Y7ki0zSQok/
+ kl2z/4bO7rV83cb9cFziOE8WxGmpyAAAA
+X-Change-ID: 20261114-b4-hwmon-nodes-a69b2ae51277
+To: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Sven Peter <sven@kernel.org>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3915; i=sven@kernel.org;
+ h=from:subject:message-id; bh=gizQ5l+OSD2VXAgRLhGonhOWVto+Q+V1PVlMy8YyyeE=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9aPGK2cp18Wd4gIKraF7DoZdXqjU03KfZOlBw9NcVO2F
+ 3+5fMrkjlIWBjEuBlkxRZbt++1Nnzx8I7h006X3MHNYmUCGMHBxCsBENrswMrywFs4xb9fdcOLL
+ gx9pz9b+/vthYdl1n587BPWaK1SmFU5h+KedY96V4nrGJ9I8Y+pkIbaQe0fO1TT5BqtJR/y//MA
+ skgsA
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When an Xbox Series X|S controller (045e:0b13) is connected over Bluetooth
-LE, its report descriptor exposes the right stick as Z/Rz and the analog
-triggers as Simulation Accelerator/Brake, with the sticks reported as
-unsigned 0..65535 values centered on 32767. hid-input maps this 1:1, so
-evdev consumers see:
+Fix the following dt-check-style strict warnings by using lower-case for
+hwmon node names:
 
-  ABS_X/ABS_Y        left stick,  0..65535, idle ~32767
-  ABS_Z/ABS_RZ       right stick, 0..65535, idle ~32767
-  ABS_GAS/ABS_BRAKE  triggers,    0..1023
+  arch/arm64/boot/dts/apple/hwmon-common.dtsi:9: [node-name] node name "power-PSTR" is using discouraged style
 
-while the same controller over USB (xpad) reports the usual layout:
-sticks on ABS_X/ABS_Y and ABS_RX/ABS_RY in -32767..32767 around 0,
-triggers on ABS_Z/ABS_RZ. Software reading the plain evdev device therefore
-picks up the right stick as triggers, finds no right stick, and sees the
-sticks permanently deflected (characters walking in one direction).
-
-Add a quirk that remaps these usages to the xpad-style layout and recenters
-the stick values, and enable it for the Series X|S controller.
-
-Tested by replaying reports through uhid with the report descriptor
-captured from a real controller (firmware 5.09): before the change the
-sticks idle at 32768 and the right stick/trigger axes are wrong, after the
-change all axes match the xpad layout (sticks -32767..32767 centered on 0,
-triggers 0..1023 on ABS_Z/ABS_RZ). Also checked with the real controller
-over Bluetooth (buttons and stick values around center).
-
-Note: this changes the evdev axis layout for this device. Userspace that
-already special-cases the Bluetooth layout (e.g. SDL mappings for the
-evdev backend) would need to follow; if a HID-BPF fixup is preferred over
-an in-kernel quirk, I'm happy to rework it that way.
-
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=222266
-Assisted-by: LLM
-Signed-off-by: Adolf Hirthe <ohirthe@proton.me>
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
-Bug report with full analysis and the uhid replay test:
-https://bugzilla.kernel.org/show_bug.cgi?id=222266
+ arch/arm64/boot/dts/apple/hwmon-common.dtsi   | 12 ++++++------
+ arch/arm64/boot/dts/apple/hwmon-fan-dual.dtsi |  4 ++--
+ arch/arm64/boot/dts/apple/hwmon-fan.dtsi      |  2 +-
+ arch/arm64/boot/dts/apple/hwmon-laptop.dtsi   | 12 ++++++------
+ arch/arm64/boot/dts/apple/hwmon-mini.dtsi     |  2 +-
+ 5 files changed, 16 insertions(+), 16 deletions(-)
 
-The replay test (Python, uses /dev/uhid with the report descriptor captured
-from the real controller) is available on request or from the bugzilla
-entry; 6 of 7 checks fail on the current driver, all pass with this patch.
----
- drivers/hid/hid-microsoft.c | 64 ++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 63 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/hid/hid-microsoft.c b/drivers/hid/hid-microsoft.c
-index a7d3493..0879602 100644
---- a/drivers/hid/hid-microsoft.c
-+++ b/drivers/hid/hid-microsoft.c
-@@ -27,6 +27,7 @@
- #define MS_DUPLICATE_USAGES	BIT(5)
- #define MS_SURFACE_DIAL		BIT(6)
- #define MS_QUIRK_FF		BIT(7)
-+#define MS_QUIRK_BLE_XBOX_AXES	BIT(8)
+diff --git a/arch/arm64/boot/dts/apple/hwmon-common.dtsi b/arch/arm64/boot/dts/apple/hwmon-common.dtsi
+index a35c7b14fec8..b5153332e819 100644
+--- a/arch/arm64/boot/dts/apple/hwmon-common.dtsi
++++ b/arch/arm64/boot/dts/apple/hwmon-common.dtsi
+@@ -6,32 +6,32 @@
+  */
  
- struct ms_data {
- 	unsigned long quirks;
-@@ -186,6 +187,41 @@ static int ms_input_mapping(struct hid_device *hdev, struct hid_input *hi,
- 	struct ms_data *ms = hid_get_drvdata(hdev);
- 	unsigned long quirks = ms->quirks;
+ &smc_hwmon {
+-	power-PSTR {
++	power-pstr {
+ 		apple,key-id = "PSTR";
+ 		label = "Total System Power";
+ 	};
  
-+	/*
-+	 * Xbox controllers over Bluetooth report the right stick as Z/Rz and
-+	 * the analog triggers as Accelerator/Brake (ABS_GAS/ABS_BRAKE), and
-+	 * expose the sticks in the 0..65535 range centered on 32767 instead
-+	 * of the usual +-32767 around 0. Remap everything to the xpad-style
-+	 * layout so that consumers get the same axes regardless of the
-+	 * connection type.
-+	 */
-+	if (quirks & MS_QUIRK_BLE_XBOX_AXES) {
-+		switch (usage->hid) {
-+		case HID_GD_X:
-+			hid_map_usage(hi, usage, bit, max, EV_ABS, ABS_X);
-+			return 1;
-+		case HID_GD_Y:
-+			hid_map_usage(hi, usage, bit, max, EV_ABS, ABS_Y);
-+			return 1;
-+		case HID_GD_Z:
-+			hid_map_usage(hi, usage, bit, max, EV_ABS, ABS_RX);
-+			return 1;
-+		case HID_GD_RZ:
-+			hid_map_usage(hi, usage, bit, max, EV_ABS, ABS_RY);
-+			return 1;
-+		}
-+		if ((usage->hid & HID_USAGE_PAGE) == HID_UP_SIMULATION) {
-+			switch (usage->hid & HID_USAGE) {
-+			case 0xc5: /* Brake -> right trigger */
-+				hid_map_usage(hi, usage, bit, max, EV_ABS, ABS_RZ);
-+				return 1;
-+			case 0xc4: /* Accelerator -> left trigger */
-+				hid_map_usage(hi, usage, bit, max, EV_ABS, ABS_Z);
-+				return 1;
-+			}
-+		}
-+	}
-+
- 	if (quirks & MS_ERGONOMY) {
- 		int ret = ms_ergonomy_kb_quirk(hi, usage, bit, max);
- 		if (ret)
-@@ -232,6 +268,22 @@ static int ms_event(struct hid_device *hdev, struct hid_field *field,
+-	power-PDTR {
++	power-pdtr {
+ 		apple,key-id = "PDTR";
+ 		label = "AC Input Power";
+ 	};
  
- 	input = field->hidinput->input;
+-	power-PMVR {
++	power-pmvr {
+ 		apple,key-id = "PMVR";
+ 		label = "3.8 V Rail Power";
+ 	};
  
-+	/*
-+	 * The sticks are reported as unsigned 0..65535 values centered on
-+	 * 32767; convert them to the +-32767 range we advertise.
-+	 */
-+	if (quirks & MS_QUIRK_BLE_XBOX_AXES && usage->type == EV_ABS) {
-+		switch (usage->code) {
-+		case ABS_X:
-+		case ABS_Y:
-+		case ABS_RX:
-+		case ABS_RY:
-+			input_report_abs(input, usage->code,
-+					 clamp(value - 32768, -32767, 32767));
-+			return 1;
-+		}
-+	}
-+
- 	/* Handling MS keyboards special buttons */
- 	if (quirks & MS_ERGONOMY && usage->hid == (HID_UP_MSVENDOR | 0xff00)) {
- 		/* Special keypad keys */
-@@ -328,6 +380,16 @@ static int ms_input_configured(struct hid_device *hdev, struct hid_input *hidinp
- 	struct ms_data *ms = hid_get_drvdata(hdev);
- 	struct input_dev *input_dev = hidinput->input;
+-	temperature-TH0x {
++	temperature-th0x {
+ 		apple,key-id = "TH0x";
+ 		label = "NAND Flash Temperature";
+ 	};
  
-+	if (ms->quirks & MS_QUIRK_BLE_XBOX_AXES) {
-+		static const unsigned int sticks[] = { ABS_X, ABS_Y, ABS_RX, ABS_RY };
-+		int i;
-+
-+		for (i = 0; i < ARRAY_SIZE(sticks); i++)
-+			if (test_bit(sticks[i], input_dev->absbit))
-+				input_set_abs_params(input_dev, sticks[i],
-+						     -32767, 32767, 255, 4095);
-+	}
-+
- 	if (!(ms->quirks & MS_QUIRK_FF))
- 		return 0;
+-	voltage-VD0R {
++	voltage-vd0r {
+ 		apple,key-id = "VD0R";
+ 		label = "AC Input Voltage";
+ 	};
  
-@@ -429,7 +491,7 @@ static const struct hid_device_id ms_devices[] = {
- 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_MICROSOFT, USB_DEVICE_ID_MS_XBOX_CONTROLLER_MODEL_1708_BLE),
- 		.driver_data = MS_QUIRK_FF },
- 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_MICROSOFT, USB_DEVICE_ID_MS_XBOX_CONTROLLER_MODEL_1914),
--		.driver_data = MS_QUIRK_FF },
-+		.driver_data = MS_QUIRK_FF | MS_QUIRK_BLE_XBOX_AXES },
- 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_MICROSOFT, USB_DEVICE_ID_MS_XBOX_CONTROLLER_MODEL_1797),
- 		.driver_data = MS_QUIRK_FF },
- 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_MICROSOFT, USB_DEVICE_ID_MS_XBOX_CONTROLLER_MODEL_1797_BLE),
+-	current-ID0R {
++	current-id0r {
+ 		apple,key-id = "ID0R";
+ 		label = "AC Input Current";
+ 	};
+diff --git a/arch/arm64/boot/dts/apple/hwmon-fan-dual.dtsi b/arch/arm64/boot/dts/apple/hwmon-fan-dual.dtsi
+index e87997d21e22..771484ed5870 100644
+--- a/arch/arm64/boot/dts/apple/hwmon-fan-dual.dtsi
++++ b/arch/arm64/boot/dts/apple/hwmon-fan-dual.dtsi
+@@ -8,11 +8,11 @@
+ #include "hwmon-fan.dtsi"
+ 
+ &smc_hwmon {
+-	fan-F0Ac {
++	fan-f0ac {
+ 		label = "Fan 1";
+ 	};
+ 
+-	fan-F1Ac {
++	fan-f1ac {
+ 		apple,key-id = "F1Ac";
+ 		label = "Fan 2";
+ 		apple,fan-minimum = "F1Mn";
+diff --git a/arch/arm64/boot/dts/apple/hwmon-fan.dtsi b/arch/arm64/boot/dts/apple/hwmon-fan.dtsi
+index 180eb8d7441f..b36d0c9b6af3 100644
+--- a/arch/arm64/boot/dts/apple/hwmon-fan.dtsi
++++ b/arch/arm64/boot/dts/apple/hwmon-fan.dtsi
+@@ -6,7 +6,7 @@
+  */
+ 
+ &smc_hwmon {
+-	fan-F0Ac {
++	fan-f0ac {
+ 		apple,key-id = "F0Ac";
+ 		label = "Fan";
+ 		apple,fan-minimum = "F0Mn";
+diff --git a/arch/arm64/boot/dts/apple/hwmon-laptop.dtsi b/arch/arm64/boot/dts/apple/hwmon-laptop.dtsi
+index cadffd000c76..674013b1f387 100644
+--- a/arch/arm64/boot/dts/apple/hwmon-laptop.dtsi
++++ b/arch/arm64/boot/dts/apple/hwmon-laptop.dtsi
+@@ -6,32 +6,32 @@
+  */
+ 
+ &smc_hwmon {
+-	power-PHPC {
++	power-phpc {
+ 		apple,key-id = "PHPC";
+ 		label = "Heatpipe Power";
+ 	};
+ 
+-	temperature-TB0T {
++	temperature-tb0t {
+ 		apple,key-id = "TB0T";
+ 		label = "Battery Hotspot";
+ 	};
+ 
+-	temperature-TCHP {
++	temperature-tchp {
+ 		apple,key-id = "TCHP";
+ 		label = "Charge Regulator Temp";
+ 	};
+ 
+-	temperature-TW0P {
++	temperature-tw0p {
+ 		apple,key-id = "TW0P";
+ 		label = "WiFi/BT Module Temp";
+ 	};
+ 
+-	voltage-SBAV {
++	voltage-sbav {
+ 		apple,key-id = "SBAV";
+ 		label = "Battery Voltage";
+ 	};
+ 
+-	voltage-VD0R {
++	voltage-vd0r {
+ 		apple,key-id = "VD0R";
+ 		label = "Charger Input Voltage";
+ 	};
+diff --git a/arch/arm64/boot/dts/apple/hwmon-mini.dtsi b/arch/arm64/boot/dts/apple/hwmon-mini.dtsi
+index 7fd86e911acf..ce61805dc879 100644
+--- a/arch/arm64/boot/dts/apple/hwmon-mini.dtsi
++++ b/arch/arm64/boot/dts/apple/hwmon-mini.dtsi
+@@ -9,7 +9,7 @@
+ #include "hwmon-fan.dtsi"
+ 
+ &smc_hwmon {
+-	temperature-TW0P {
++	temperature-tw0p {
+ 		apple,key-id = "TW0P";
+ 		label = "WiFi/BT Module Temp";
+ 	};
 
 ---
-base-commit: b29833c4841e0ed8870a227c9a7c468b0cbfc906
-change-id: 20261114-hid-ms-xbox-ble-a149fe8ea9ba
+base-commit: 7809dfc2040bd6b8808da2cb7b8ce429ce3df946
+change-id: 20261114-b4-hwmon-nodes-a69b2ae51277
 
 Best regards,
 --  
-Adolf Hirthe <ohirthe@proton.me>
+Sven Peter <sven@kernel.org>
 
