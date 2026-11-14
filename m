@@ -1,111 +1,71 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 14 Nov 2026 14:09:29 -0500
-Subject: [PATCH net v2 2/2] net/smc: do not reuse the DMB of a nocopy
- device
+From: Igor Velkov <iav@iav.lv>
+Subject: [PATCH 0/2] PCI: meson: Add system suspend/resume support
+Date: Sat, 14 Nov 2026 22:12:57 +0000
+Message-Id: <20261114-b4-pci-meson-suspend-v1-0-be3d04a13304@iav.lv>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-b4-disp-4e6374c2-v2-2-3b7050bddef7@proton.me>
-References: <20261114-b4-disp-4e6374c2-v2-0-3b7050bddef7@proton.me>
-In-Reply-To: <20261114-b4-disp-4e6374c2-v2-0-3b7050bddef7@proton.me>
-To: Dust Li <dust.li@linux.alibaba.com>, 
- "David S. Miller" <davem@davemloft.net>, 
- Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- Alexandra Winter <wintera@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Sidraya Jayagond <sidraya@linux.ibm.com>, 
- "D. Wythe" <alibuda@linux.alibaba.com>
-Cc: Hidayath Khan <hidayath@linux.ibm.com>, linux-kernel@vger.kernel.org, 
- linux-rdma@vger.kernel.org, netdev@vger.kernel.org, 
- Simon Horman <horms@kernel.org>, Tony Lu <tonylu@linux.alibaba.com>, 
- Wen Gu <guwen@linux.alibaba.com>, linux-s390@vger.kernel.org, 
- Wenjia Zhang <wenjia@linux.ibm.com>, Julian Ruess <julianr@linux.ibm.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794683367; l=2946;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=uSm6fhhRSfpsta/rzRA93yjdtBG1K7WKe2FGd/O7Mb0=;
- b=2azoCofFqckc4LR3zOLCrZEl8/IZsQpGG/vIJbCUOKmSdLHCQW6Gdjk61r/P6uOjCDn0SFKVO
- Ncsb1ElCVCsBD2DKCa0Fby6mLrP9k5+iV6LwvxEZbAdKCR2XL42ioJ1
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+X-B4-Tracking: v=1; b=H4sIAOnc+GoC/x3MPQqAMAxA4atIZgO2+FevIg61Rs1gLQ2KULy7x
+ fEb3ksgFJkEhiJBpJuFT5+hygLcbv1GyEs26Eq3Sqka5xqDYzxITo9ySSC/oK4609tuNqZpIac
+ h0srPvx2n9/0ANe3ZJGYAAAA=
+To: Yue Wang <yue.wang@Amlogic.com>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-pci@vger.kernel.org, linux-amlogic@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1569; i=iav@iav.lv;
+ h=from:subject:message-id; bh=WDRaiZdaKfWEl03glQcVn0OXt/DJd9CPRnnp+NTL/5A=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFk/7rxZufzRhJb192SkltcdWJYU2THlgliwe4DGbp7jB
+ 8wDkxeGdJSyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJqFYzMsyucdxqUKj5M+3y
+ 2bsLl6Ud+el8J6iud4/v0mWiF8tU779m+Gd0g6cyZrKVi8deMcXNF+4YnjU6vlWTafdV55PPxN5
+ /escFAA==
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With DMB nocopy (the dibs loopback device) the peer writes into the RMB
-through its own attachment, and it can attach late. smc_buf_unuse() puts
-the DMB back in the link group's pool with its token still registered
-while the old peer can still write to it: the next connection that takes
-it gets the old peer's CDCs, and a peer that attaches after the other
-end gave up lands in another connection's DMB.
+On SM1 the PCIe controller loses power in system suspend and the driver
+has no PM callbacks, so the first config access after resume hangs the
+CPU; on ODROID-HC4 s2idle never returns.
 
-Unregister a nocopy DMB when the connection ends instead of pooling it,
-including when smc_conn_free() finds the link group off its list and
-skips smc_buf_unuse(). The next connection gets a new DMB and token, a
-peer still attached keeps the old DMB until it detaches, and a later
-attach fails. Clear conn->rmb_desc, which a retried connect() would
-otherwise use after the free. Devices without nocopy keep their pool.
+Patch 1 moves the PHY power on and the resets into the host .init and
+.deinit callbacks.  Patch 2 adds noirq suspend/resume through the DWC
+helpers, for SM1 only.
 
-Fixes: ae2be35cbed2 ("net/smc: {at|de}tach sndbuf to peer DMB if supported")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Tested on ODROID-HC4 (SM1, ASM1061 SATA with two disks behind the port)
+on an Armbian v7.4-rc2 kernel with this series, which also carries
+Hans Zhang's pending MPS series (v9): 20 s2idle and 20 suspend-to-RAM
+cycles, the link back at Gen2 x1 and the disk readable after each.
+Suspend-to-RAM woke on the VRTC alarm via a patched BL301; the stock
+firmware has no timer wake on this board.
+
+Not tested on G12A, G12B or AXG.  There patch 1 changes probe and
+remove, and patch 2 leaves suspend alone.
+
+After a failed resume, dw_pcie_suspend_noirq() calls .deinit a second
+time; pci-imx6 and pcie-rcar-gen4 have no guard against it.  Patch 2
+guards with a flag; I can fix it in the DWC core instead if preferred.
+
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- net/smc/smc_core.c | 28 ++++++++++++++++++++++++++--
- 1 file changed, 26 insertions(+), 2 deletions(-)
+Igor Velkov (2):
+      PCI: meson: Power the PHY on and reset the controller in host .init
+      PCI: meson: Add system suspend/resume support
 
-diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
-index a3164201c142..6a673ce74937 100644
---- a/net/smc/smc_core.c
-+++ b/net/smc/smc_core.c
-@@ -1243,6 +1243,22 @@ static void smcd_buf_detach(struct smc_connection *conn)
- 	kfree(buf_desc);
- }
- 
-+/* With DMB nocopy the peer writes into the RMB through its own
-+ * attachment, which can outlive this connection: unregister the DMB
-+ * instead of pooling it, so the next connection gets a new one.
-+ */
-+static void smcd_rmb_drop(struct smc_connection *conn,
-+			  struct smc_link_group *lgr)
-+{
-+	struct smc_buf_desc *rmb_desc = conn->rmb_desc;
-+
-+	down_write(&lgr->rmbs_lock);
-+	smc_lgr_buf_list_del(lgr, true, rmb_desc);
-+	up_write(&lgr->rmbs_lock);
-+	WRITE_ONCE(conn->rmb_desc, NULL);
-+	smc_buf_free(lgr, true, rmb_desc);
-+}
-+
- static void smc_buf_unuse(struct smc_connection *conn,
- 			  struct smc_link_group *lgr)
- {
-@@ -1266,8 +1282,13 @@ static void smc_buf_unuse(struct smc_connection *conn,
- 			smcr_buf_unuse(conn->rmb_desc, true, lgr);
- 		} else {
- 			bufsize += sizeof(struct smcd_cdc_msg);
--			memzero_explicit(conn->rmb_desc->cpu_addr, bufsize);
--			WRITE_ONCE(conn->rmb_desc->used, 0);
-+			if (smc_ism_support_dmb_nocopy(lgr->smcd)) {
-+				smcd_rmb_drop(conn, lgr);
-+			} else {
-+				memzero_explicit(conn->rmb_desc->cpu_addr,
-+						 bufsize);
-+				WRITE_ONCE(conn->rmb_desc->used, 0);
-+			}
- 		}
- 		SMC_STAT_RMB_SIZE(smc, is_smcd, true, false, bufsize);
- 	}
-@@ -1306,6 +1327,9 @@ void smc_conn_free(struct smc_connection *conn)
- 	 */
- 	if (!list_empty(&lgr->list))
- 		smc_buf_unuse(conn, lgr); /* allow buffer reuse */
-+	else if (lgr->is_smcd && conn->rmb_desc &&
-+		 smc_ism_support_dmb_nocopy(lgr->smcd))
-+		smcd_rmb_drop(conn, lgr);
- 	smc_lgr_unregister_conn(conn);
- 
- 	if (!lgr->conns_num)
+ drivers/pci/controller/dwc/pci-meson.c | 108 +++++++++++++++++++++++++++------
+ 1 file changed, 89 insertions(+), 19 deletions(-)
+---
+base-commit: 35f800669ce835aa77364a2ab5b61be19b778d3c
+change-id: 20261114-b4-pci-meson-suspend-20798a7b9956
 
+Best regards,
 -- 
-2.56.0
+Igor Velkov <iav@iav.lv>
 
