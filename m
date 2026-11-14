@@ -1,11 +1,10 @@
 From: Larisa Grigore <larisa.grigore@oss.nxp.com>
-Date: Sat, 14 Nov 2026 12:55:35 +0100
-Subject: [PATCH v11 03/14] ufs: unipro: Move Tx/Rx FSM state definitions to
- unipro.h
+Date: Sat, 14 Nov 2026 12:55:36 +0100
+Subject: [PATCH v11 04/14] ufs: unipro: Add TX/RX FSM state attributes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-b4-ufs-s32n7-v11-3-dc36e11919d5@oss.nxp.com>
+Message-Id: <20261114-b4-ufs-s32n7-v11-4-dc36e11919d5@oss.nxp.com>
 References: <20261114-b4-ufs-s32n7-v11-0-dc36e11919d5@oss.nxp.com>
 In-Reply-To: <20261114-b4-ufs-s32n7-v11-0-dc36e11919d5@oss.nxp.com>
 To: "Martin K. Petersen" <mkp@kernel.org>, 
@@ -35,31 +34,23 @@ Cc: devicetree@vger.kernel.org, Ajay Neeli <ajay.neeli@amd.com>,
  Orson Zhai <orsonzhai@gmail.com>, aruizrui@redhat.com, 
  linux-renesas-soc@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794657369; l=6648;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794657369; l=5904;
  i=larisa.grigore@oss.nxp.com; s=20261114; h=from:subject:message-id;
- bh=trkoKEdgDJvEOwdUNPcivOaHNBCVHWr9HRiB/HK5M28=;
- b=7xexXiN/+K95N4rP6JaB2Vjpy/SOGGA3L9L2eLybPOHkrxWTLlw3BnEHhkxLByvRpXhe2rnF5
- j4JlbwxZEaxDciA9YRwS80mh4JXoJUNIbBIMINQZP36DLEn4Lt6Dl4B
+ bh=1vf7QxwoWXCExG0CShyMP6jW61tVMWQQriyQ9apC0qY=;
+ b=HhE90F0fhuFKcHJehUXF7xV2w5De5XsSujeCeSifCGls9HkTqAPU7lI2arTxuZxU8Dt/hBArU
+ 5i+GaFuoQsmDVwDzaYF1DV69/0OtSDtFUiAQJ67DeN9Q41mj/6b8zlf
 X-Developer-Key: i=larisa.grigore@oss.nxp.com; a=ed25519;
  pk=Jpt52sb6ETKTtvWjUzhz5Sv5FjB9AEg9QKCcbpWFx3w=
 X-Endpoint-Received: by B4 Relay for larisa.grigore@oss.nxp.com/20261114 with auth_id=1522
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move the Tx/Rx FSM state definitions from ufshcd-dwc.h to
-include/ufs/unipro.h.
+Add TX_FSM_STATE and RX_FSM_STATE to include/ufs/unipro.h, as these are
+UniPro M-PHY attribute definitions rather than host controller specific
+ones.
 
-These state values are UniPro/M-PHY related and are not specific to
-the DesignWare UFS host controller implementation, so unipro.h is a
-more appropriate location for sharing them.
-
-As part of this move, drop the driver-private TX_FSM_HIBERN8 define in
-ufs-hisi and ufs-qcom and repoint their Hibern8 checks at the shared
-UFS_TX_STATE_HIBERN8 enum constant. This is a no-op change.
-
-Since the definitions become visible to every user of the shared
-header, prefix the enum constants with UFS_ (e.g. RX_STATE_HIBERN8
-becomes UFS_RX_STATE_HIBERN8) to avoid polluting the global namespace,
-and update the existing AMD Versal2 users accordingly.
+Remove the duplicated local definitions from the HiSilicon, Qualcomm and
+DesignWare UFS headers, and update the HiSilicon, Qualcomm and AMD Versal2
+users accordingly.
 
 This also prepares for using these definitions in a subsequent commit.
 
@@ -67,172 +58,152 @@ Reviewed-by: Frank Li <Frank.Li@nxp.com>
 Signed-off-by: Larisa Grigore <larisa.grigore@oss.nxp.com>
 Reviewed-by: Bart Van Assche <bvanassche@acm.org>
 ---
- drivers/ufs/host/ufs-amd-versal2.c |  8 ++++----
- drivers/ufs/host/ufs-hisi.c        |  8 ++++----
- drivers/ufs/host/ufs-hisi.h        |  1 -
- drivers/ufs/host/ufs-qcom.c        |  4 ++--
- drivers/ufs/host/ufs-qcom.h        |  1 -
- drivers/ufs/host/ufshcd-dwc.h      | 19 -------------------
- include/ufs/unipro.h               | 20 ++++++++++++++++++++
- 7 files changed, 30 insertions(+), 31 deletions(-)
+ drivers/ufs/host/ufs-amd-versal2.c | 4 ++--
+ drivers/ufs/host/ufs-hisi.c        | 8 ++++----
+ drivers/ufs/host/ufs-hisi.h        | 5 -----
+ drivers/ufs/host/ufs-qcom.c        | 4 ++--
+ drivers/ufs/host/ufs-qcom.h        | 1 -
+ drivers/ufs/host/ufshcd-dwc.h      | 4 ----
+ include/ufs/unipro.h               | 2 ++
+ 7 files changed, 10 insertions(+), 18 deletions(-)
 
 diff --git a/drivers/ufs/host/ufs-amd-versal2.c b/drivers/ufs/host/ufs-amd-versal2.c
-index 65cb0b5028b9..3469e49df133 100644
+index 3469e49df133..45403c2a9b05 100644
 --- a/drivers/ufs/host/ufs-amd-versal2.c
 +++ b/drivers/ufs/host/ufs-amd-versal2.c
-@@ -118,8 +118,8 @@ static int ufs_versal2_enable_phy(struct ufs_hba *hba)
+@@ -112,7 +112,7 @@ static int ufs_versal2_enable_phy(struct ufs_hba *hba)
+ 		u32 time_left, mibsel;
+ 
+ 		time_left = TIMEOUT_MICROSEC;
+-		mibsel = UIC_ARG_MIB_SEL(MTX_FSM_STATE, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(offset));
++		mibsel = UIC_ARG_MIB_SEL(TX_FSM_STATE, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(offset));
+ 		do {
+ 			ret = ufshcd_dme_get(hba, mibsel, &reg);
  			if (ret)
- 				return ret;
+@@ -132,7 +132,7 @@ static int ufs_versal2_enable_phy(struct ufs_hba *hba)
+ 		}
  
--			if (reg == TX_STATE_HIBERN8 || reg == TX_STATE_SLEEP ||
--			    reg == TX_STATE_LSBURST)
-+			if (reg == UFS_TX_STATE_HIBERN8 || reg == UFS_TX_STATE_SLEEP ||
-+			    reg == UFS_TX_STATE_LSBURST)
- 				break;
- 
- 			time_left--;
-@@ -138,8 +138,8 @@ static int ufs_versal2_enable_phy(struct ufs_hba *hba)
+ 		time_left = TIMEOUT_MICROSEC;
+-		mibsel = UIC_ARG_MIB_SEL(MRX_FSM_STATE, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(offset));
++		mibsel = UIC_ARG_MIB_SEL(RX_FSM_STATE, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(offset));
+ 		do {
+ 			ret = ufshcd_dme_get(hba, mibsel, &reg);
  			if (ret)
- 				return ret;
- 
--			if (reg == RX_STATE_HIBERN8 || reg == RX_STATE_SLEEP ||
--			    reg == RX_STATE_LSBURST)
-+			if (reg == UFS_RX_STATE_HIBERN8 || reg == UFS_RX_STATE_SLEEP ||
-+			    reg == UFS_RX_STATE_LSBURST)
- 				break;
- 
- 			time_left--;
 diff --git a/drivers/ufs/host/ufs-hisi.c b/drivers/ufs/host/ufs-hisi.c
-index 73eef0e0d278..d3fd340f2dd1 100644
+index d3fd340f2dd1..3e3d44ee0c14 100644
 --- a/drivers/ufs/host/ufs-hisi.c
 +++ b/drivers/ufs/host/ufs-hisi.c
-@@ -34,8 +34,8 @@ static int ufs_hisi_check_hibern8(struct ufs_hba *hba)
+@@ -30,10 +30,10 @@ static int ufs_hisi_check_hibern8(struct ufs_hba *hba)
+ 	unsigned long timeout = jiffies + msecs_to_jiffies(HBRN8_POLL_TOUT_MS);
+ 
+ 	do {
+-		err = ufshcd_dme_get(hba, UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE, 0),
++		err = ufshcd_dme_get(hba, UIC_ARG_MIB_SEL(TX_FSM_STATE, 0),
  				      &tx_fsm_val_0);
  		err |= ufshcd_dme_get(hba,
- 		    UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE, 1), &tx_fsm_val_1);
--		if (err || (tx_fsm_val_0 == TX_FSM_HIBERN8 &&
--			tx_fsm_val_1 == TX_FSM_HIBERN8))
-+		if (err || (tx_fsm_val_0 == UFS_TX_STATE_HIBERN8 &&
-+			tx_fsm_val_1 == UFS_TX_STATE_HIBERN8))
+-		    UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE, 1), &tx_fsm_val_1);
++		    UIC_ARG_MIB_SEL(TX_FSM_STATE, 1), &tx_fsm_val_1);
+ 		if (err || (tx_fsm_val_0 == UFS_TX_STATE_HIBERN8 &&
+ 			tx_fsm_val_1 == UFS_TX_STATE_HIBERN8))
  			break;
+@@ -47,10 +47,10 @@ static int ufs_hisi_check_hibern8(struct ufs_hba *hba)
+ 	 * check the state again.
+ 	 */
+ 	if (time_after(jiffies, timeout)) {
+-		err = ufshcd_dme_get(hba, UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE, 0),
++		err = ufshcd_dme_get(hba, UIC_ARG_MIB_SEL(TX_FSM_STATE, 0),
+ 				     &tx_fsm_val_0);
+ 		err |= ufshcd_dme_get(hba,
+-		 UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE, 1), &tx_fsm_val_1);
++		 UIC_ARG_MIB_SEL(TX_FSM_STATE, 1), &tx_fsm_val_1);
+ 	}
  
- 		/* sleep for max. 200us */
-@@ -56,8 +56,8 @@ static int ufs_hisi_check_hibern8(struct ufs_hba *hba)
  	if (err) {
- 		dev_err(hba->dev, "%s: unable to get TX_FSM_STATE, err %d\n",
- 			__func__, err);
--	} else if (tx_fsm_val_0 != TX_FSM_HIBERN8 ||
--			 tx_fsm_val_1 != TX_FSM_HIBERN8) {
-+	} else if (tx_fsm_val_0 != UFS_TX_STATE_HIBERN8 ||
-+			 tx_fsm_val_1 != UFS_TX_STATE_HIBERN8) {
- 		err = -1;
- 		dev_err(hba->dev, "%s: invalid TX_FSM_STATE, lane0 = %d, lane1 = %d\n",
- 			__func__, tx_fsm_val_0, tx_fsm_val_1);
 diff --git a/drivers/ufs/host/ufs-hisi.h b/drivers/ufs/host/ufs-hisi.h
-index 5a90c0f4e90c..6af6a268458d 100644
+index 6af6a268458d..08dccfbec404 100644
 --- a/drivers/ufs/host/ufs-hisi.h
 +++ b/drivers/ufs/host/ufs-hisi.h
-@@ -43,7 +43,6 @@
-  * M-TX Configuration Attributes for Hixxxx
-  */
- #define MPHY_TX_FSM_STATE	0x41
--#define TX_FSM_HIBERN8	0x1
+@@ -39,11 +39,6 @@
+ #define MASK_UFS_DEVICE_RESET		(0x1 << 16)
+ #define BIT_UFS_DEVICE_RESET		(0x1)
  
+-/*
+- * M-TX Configuration Attributes for Hixxxx
+- */
+-#define MPHY_TX_FSM_STATE	0x41
+-
  /*
   * Hixxxx UFS HC specific Registers
+  */
 diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
-index 67c2a3b95e58..31ea7b294a42 100644
+index 31ea7b294a42..a96ac35994de 100644
 --- a/drivers/ufs/host/ufs-qcom.c
 +++ b/drivers/ufs/host/ufs-qcom.c
-@@ -424,7 +424,7 @@ static int ufs_qcom_check_hibern8(struct ufs_hba *hba)
- 				UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE,
+@@ -421,7 +421,7 @@ static int ufs_qcom_check_hibern8(struct ufs_hba *hba)
+ 
+ 	do {
+ 		err = ufshcd_dme_get(hba,
+-				UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE,
++				UIC_ARG_MIB_SEL(TX_FSM_STATE,
  					UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)),
  				&tx_fsm_val);
--		if (err || tx_fsm_val == TX_FSM_HIBERN8)
-+		if (err || tx_fsm_val == UFS_TX_STATE_HIBERN8)
- 			break;
+ 		if (err || tx_fsm_val == UFS_TX_STATE_HIBERN8)
+@@ -437,7 +437,7 @@ static int ufs_qcom_check_hibern8(struct ufs_hba *hba)
+ 	 */
+ 	if (time_after(jiffies, timeout))
+ 		err = ufshcd_dme_get(hba,
+-				UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE,
++				UIC_ARG_MIB_SEL(TX_FSM_STATE,
+ 					UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)),
+ 				&tx_fsm_val);
  
- 		/* sleep for max. 200us */
-@@ -444,7 +444,7 @@ static int ufs_qcom_check_hibern8(struct ufs_hba *hba)
- 	if (err) {
- 		dev_err(hba->dev, "%s: unable to get TX_FSM_STATE, err %d\n",
- 				__func__, err);
--	} else if (tx_fsm_val != TX_FSM_HIBERN8) {
-+	} else if (tx_fsm_val != UFS_TX_STATE_HIBERN8) {
- 		err = tx_fsm_val;
- 		dev_err(hba->dev, "%s: invalid TX_FSM_STATE = %d\n",
- 				__func__, err);
 diff --git a/drivers/ufs/host/ufs-qcom.h b/drivers/ufs/host/ufs-qcom.h
-index 944b2e532a09..1bda960c1d87 100644
+index 1bda960c1d87..0b062cf912c5 100644
 --- a/drivers/ufs/host/ufs-qcom.h
 +++ b/drivers/ufs/host/ufs-qcom.h
-@@ -11,7 +11,6 @@
+@@ -10,7 +10,6 @@
+ #include <soc/qcom/ice.h>
  #include <ufs/ufshcd.h>
  
- #define MPHY_TX_FSM_STATE       0x41
--#define TX_FSM_HIBERN8          0x1
+-#define MPHY_TX_FSM_STATE       0x41
  #define HBRN8_POLL_TOUT_MS      100
  #define DEFAULT_CLK_RATE_HZ     1000000
  #define MAX_SUPP_MAC		64
 diff --git a/drivers/ufs/host/ufshcd-dwc.h b/drivers/ufs/host/ufshcd-dwc.h
-index c618bb914904..a5e40e7604a1 100644
+index a5e40e7604a1..0406f2bb576b 100644
 --- a/drivers/ufs/host/ufshcd-dwc.h
 +++ b/drivers/ufs/host/ufshcd-dwc.h
-@@ -39,25 +39,6 @@
- #define RX_AFE_CTLE_IDAC(n)	(0x4001 + ((n) * 0x100))
- #define FW_CALIB_CCFG(n)	(0x404D + ((n) * 0x100))
+@@ -27,10 +27,6 @@
  
--/* Tx/Rx FSM state */
--enum rx_fsm_state {
--	RX_STATE_DISABLED = 0,
--	RX_STATE_HIBERN8 = 1,
--	RX_STATE_SLEEP = 2,
--	RX_STATE_STALL = 3,
--	RX_STATE_LSBURST = 4,
--	RX_STATE_HSBURST = 5,
--};
+ #define CBREFREFCLK_GATE_OVR_EN		BIT(7)
+ 
+-/* M-PHY Attributes */
+-#define MTX_FSM_STATE		0x41
+-#define MRX_FSM_STATE		0xC1
 -
--enum tx_fsm_state {
--	TX_STATE_DISABLED = 0,
--	TX_STATE_HIBERN8 = 1,
--	TX_STATE_SLEEP = 2,
--	TX_STATE_STALL = 3,
--	TX_STATE_LSBURST = 4,
--	TX_STATE_HSBURST = 5,
--};
--
- struct ufshcd_dme_attr_val {
- 	u32 attr_sel;
- 	u32 mib_val;
+ /* M-PHY registers */
+ #define RX_OVRD_IN_1(n)		(0x3006 + ((n) * 0x100))
+ #define RX_PCS_OUT(n)		(0x300F + ((n) * 0x100))
 diff --git a/include/ufs/unipro.h b/include/ufs/unipro.h
-index 9c168703b104..16b2051f7241 100644
+index 16b2051f7241..7adba11f4700 100644
 --- a/include/ufs/unipro.h
 +++ b/include/ufs/unipro.h
-@@ -466,4 +466,24 @@ enum {
- 	CPORT_CONNECTED,
- };
- 
-+/* RX_FSM_State encoding, MIPI M-PHY v6.0 Table 50 (M-RX Status Attributes) */
-+enum ufs_rx_fsm_state {
-+	UFS_RX_STATE_DISABLED = 0,
-+	UFS_RX_STATE_HIBERN8 = 1,
-+	UFS_RX_STATE_SLEEP = 2,
-+	UFS_RX_STATE_STALL = 3,
-+	UFS_RX_STATE_LSBURST = 4,
-+	UFS_RX_STATE_HSBURST = 5,
-+};
-+
-+/* TX_FSM_State encoding, MIPI M-PHY v6.0 Table 47 (M-TX Status Attributes) */
-+enum ufs_tx_fsm_state {
-+	UFS_TX_STATE_DISABLED = 0,
-+	UFS_TX_STATE_HIBERN8 = 1,
-+	UFS_TX_STATE_SLEEP = 2,
-+	UFS_TX_STATE_STALL = 3,
-+	UFS_TX_STATE_LSBURST = 4,
-+	UFS_TX_STATE_HSBURST = 5,
-+};
-+
- #endif /* _UNIPRO_H_ */
+@@ -34,6 +34,7 @@
+ #define TX_PWM_G6_G7_SYNC_LENGTH		0x0034
+ #define TX_HS_DEEMPHASIS_SETTING		0x0037
+ #define TX_HS_PRESHOOT_SETTING			0x003B
++#define TX_FSM_STATE				0x0041
+ #define TX_REFCLKFREQ				0x00EB
+ #define TX_CFGCLKFREQVAL			0x00EC
+ #define	CFGEXTRATTR				0x00F0
+@@ -72,6 +73,7 @@
+ #define CFGRXCDR8				0x00BA
+ #define CFGRXOVR8				0x00BD
+ #define CFGRXOVR6				0x00BF
++#define RX_FSM_STATE				0x00C1
+ #define RX_FOM					0x00C2
+ #define RXDIRECTCTRL2				0x00C7
+ #define CFGRXOVR4				0x00E9
 
 -- 
 2.43.0
