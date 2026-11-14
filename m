@@ -1,67 +1,112 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 14 Nov 2026 07:22:19 +0000
-Subject: [PATCH] sunxi: dram: h616: give the MAHB MBUS port priority
+From: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+Date: Sat, 14 Nov 2026 14:34:26 +0700
+Subject: [PATCH sched_ext for-7.4-fixes] selftests/sched_ext: Measure
+ rt_stall runtime over sleep window only
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-h616-mbus-mahb-priority-v1-1-8a65a2b60b35@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw6CQAxA0V8hXduE8piFv2JcMLQ6JeGRFoyG8
- O8OujyLe3dwMRWHa7GDyUtd5ymDLgX0qZuegsrZUJVVIKIGU6CAY9wcxy5FXExn0/WDNcdauCm
- 5bRlyvZg89P073+5/+xYH6ddzB8fxBYYzkxt7AAAA
-X-Change-ID: 20261114-h616-mbus-mahb-priority-3db3ed40d55d
-To: Andre Przywara <andre.przywara@arm.com>
-Cc: Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Tom Rini <trini@konsulko.com>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- u-boot@lists.u-boot-project.org, Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794640938; l=1601;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=TLUyXRDsAef9Ifu4GsEl1ERPm+wnlT5ZHDuMh+ikUtQ=;
- b=DBSe0s5EkFI7lS+8a8JA8XFhl4g7lzLnXH0Ld93T80y5k0GG1uKBn97BJZA6rLsb0CwyJgFNP
- ezymwSEtpCcBrAb+hYwsczqiVHiyEYejRcrgsAw2ckHbYi7+R4fmcBa
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+Message-Id: <20261114-scx-rt-stall-v1-1-4188a9378067@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0QrCMAwAf6Xk2YgdZRV/RUSyLnWBsUlSRmHs3
+ y3z8TjudjBWYYOH20F5E5N1aeAvDtJEy4dRxsbQ3breex/QUkUtaIXmGRP52Ee60xAytOSrnKW
+ euydYmnh8cy0ur4rxGvDvXsfxA+cLDU93AAAA
+X-Change-ID: 20261114-scx-rt-stall-ca1767a8ab4f
+To: Tejun Heo <tj@kernel.org>, David Vernet <void@manifault.com>, 
+ Andrea Righi <arighi@nvidia.com>, Changwoo Min <changwoo@igalia.com>, 
+ Shuah Khan <shuah@kernel.org>, Joel Fernandes <joelagnelf@nvidia.com>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ "Peter Zijlstra (Intel)" <peterz@infradead.org>
+Cc: sched-ext@lists.linux.dev, linux-kselftest@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Ihor Solodrai <ihor.solodrai@linux.dev>, 
+ Cheng-Yang Chou <yphbchou0911@gmail.com>, 
+ Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794641691; l=3171;
+ i=thamrinjonathan@gmail.com; s=20261102; h=from:subject:message-id;
+ bh=64ICNfU8iUX1UX4sbMTXozzlz4bDJsKLO9wf23ALotc=;
+ b=7es2OxIPB/1qY7wtNWGRVEsLn9zmcDTLh5smtHVSoGjQ0sjYgYAWKrh4J2Ie0dTzNFlcQWw7G
+ mKc8sNLNOnfD3v3wSuqake8zPPoh17U4mrikPpmFcwO7CyBcCkARc4u
+X-Developer-Key: i=thamrinjonathan@gmail.com; a=ed25519;
+ pk=mr0q5PZVaUIrv8WvTxIfK7QVcAiRSYI8hOByBQL1ZRo=
+X-Endpoint-Received: by B4 Relay for thamrinjonathan@gmail.com/20261102 with auth_id=1383
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Problem: The EMAC reaches DRAM through MBUS port 2. With jumbo frames
-larger than its 4 KiB TX FIFO, later portions of the frame have to
-come from DRAM. Under CPU and video decoder load, the FIFO runs empty:
-in MAC loopback at 1 Gbit/s, 6% of 8192-byte, 20% of 9014-byte and
-about 70% of 13000-byte and larger frames underflowed.
+In sched_stress_test(), the parent can be slow to start as it has
+to wait for the DL server before reaching sleep() while the RT task
+still runs. The runtime of each task is read as a total since fork
+instead of during sleep(). This adds extra time to RT and makes the
+ratio inaccurate which causes flaky failures on CI.
 
-Fix: Set the priority bit of port 2 (as is already done for port 25).
-With the bit set, 0 of 4000 frames sized 60-16376 bytes underflowed,
-against 1178 of 4000 without it.
+With the parent pinned to CORE_ID, the RT task had already run for
+~0.95s before sleep(), so it was measured at 5.69s in a 5s window and
+the EXT share dropped to ~4.2% against the 4% threshold. CI has seen
+3.0-3.9%.
 
-Caveat: The setting applies to every master behind MAHB, not only the
-EMAC.
+Measure CPU time right before calling sleep() and use deltas to get
+an accurate measurement window. With the parent pinned to CORE_ID, RT
+measures 4.75s and EXT share stays between 4.81% and 5.57% over 20
+runs.
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Fixes: be621a76341c ("selftests/sched_ext: Add test for sched_ext dl_server")
+Link: https://github.com/kernel-patches/vmtest/issues/458
+Cc: Ihor Solodrai <ihor.solodrai@linux.dev>
+Cc: Cheng-Yang Chou <yphbchou0911@gmail.com>
+Signed-off-by: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
 ---
- arch/arm/mach-sunxi/dram_sun50i_h616.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ tools/testing/selftests/sched_ext/rt_stall.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm/mach-sunxi/dram_sun50i_h616.c b/arch/arm/mach-sunxi/dram_sun50i_h616.c
-index 42a0550e015..e2a01a51a88 100644
---- a/arch/arm/mach-sunxi/dram_sun50i_h616.c
-+++ b/arch/arm/mach-sunxi/dram_sun50i_h616.c
-@@ -71,7 +71,7 @@ static void mctl_set_master_priority(void)
+diff --git a/tools/testing/selftests/sched_ext/rt_stall.c b/tools/testing/selftests/sched_ext/rt_stall.c
+index a1552b38a6e8..0c6403d25298 100644
+--- a/tools/testing/selftests/sched_ext/rt_stall.c
++++ b/tools/testing/selftests/sched_ext/rt_stall.c
+@@ -149,7 +149,7 @@ static bool sched_stress_test(bool is_ext)
+ 	const float expected_min_ratio = 0.04; /* 4% */
+ 	const char *class_str = is_ext ? "EXT" : "FAIR";
  
- 	MBUS_CONF(0, false, HIGHEST, 0,  256,  128,  100);
- 	MBUS_CONF(1, false,    HIGH, 0, 1536, 1400,  256);
--	MBUS_CONF(2, false, HIGHEST, 0,  512,  256,   96);
-+	MBUS_CONF(2,  true, HIGHEST, 0,  512,  256,   96);
- 	MBUS_CONF(3, false,    HIGH, 0,  256,  100,   80);
- 	MBUS_CONF(4, false,    HIGH, 2, 8192, 5500, 5000);
- 	MBUS_CONF(5, false,    HIGH, 2,  100,   64,   32);
+-	float ext_runtime, rt_runtime, actual_ratio;
++	float ext_runtime_start, rt_runtime_start, ext_runtime, rt_runtime, actual_ratio;
+ 	int ext_pid, rt_pid;
+ 	int ext_ready[2], rt_ready[2];
+ 	bool ret = false;
+@@ -201,6 +201,23 @@ static bool sched_stress_test(bool is_ext)
+ 	if (!wait_ready(ext_ready[0]) || !wait_ready(rt_ready[0]))
+ 		goto out_kill;
+ 
++	/*
++	 * The parent can be delayed before reaching sleep(). Record each task's
++	 * CPU time right before calling sleep() so only time used during the
++	 * measurement window is counted.
++	 */
++	ext_runtime_start = get_process_runtime(ext_pid);
++	if (ext_runtime_start == -1) {
++		fprintf(stderr, "Failed to read %s task runtime\n", class_str);
++		goto out_kill;
++	}
++
++	rt_runtime_start = get_process_runtime(rt_pid);
++	if (rt_runtime_start == -1) {
++		fprintf(stderr, "Failed to read RT task runtime\n");
++		goto out_kill;
++	}
++
+ 	/* Let the processes run for the specified time */
+ 	sleep(RUN_TIME);
+ 
+@@ -218,6 +235,8 @@ static bool sched_stress_test(bool is_ext)
+ 		goto out_kill;
+ 	}
+ 
++	ext_runtime = ext_runtime - ext_runtime_start;
++	rt_runtime = rt_runtime - rt_runtime_start;
+ 	/* Verify that the scx task got enough runtime */
+ 	actual_ratio = ext_runtime / (ext_runtime + rt_runtime);
+ 	fprintf(stderr, "%s task ran %.3fs, RT task ran %.3fs (%.2f%% of runtime)\n",
 
 ---
-base-commit: 6487c50b8a40f2668ab98a892b9300ad5c181f38
-change-id: 20261114-h616-mbus-mahb-priority-3db3ed40d55d
+base-commit: 0021f17128de5dc0b19f1a523f448df2440d8088
+change-id: 20261114-scx-rt-stall-ca1767a8ab4f
 
 Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
 
