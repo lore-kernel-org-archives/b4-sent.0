@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sat, 14 Nov 2026 14:09:57 +0000
-Subject: [PATCH v6 5/7] iio: test: rescale: compare scales against the
- precision of the output
+Date: Sat, 14 Nov 2026 14:09:58 +0000
+Subject: [PATCH v6 6/7] iio: core: use kstrtodec64() to parse fixed-point
+ values
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-e-notation-v6-5-205ca9a1438a@analog.com>
+Message-Id: <20261114-e-notation-v6-6-205ca9a1438a@analog.com>
 References: <20261114-e-notation-v6-0-205ca9a1438a@analog.com>
 In-Reply-To: <20261114-e-notation-v6-0-205ca9a1438a@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org
@@ -14,162 +14,256 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Andy Shevchenko <andy@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794665398; l=5689;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794665398; l=7786;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=MYurB/fu0EGmpzdutFErjw1ab4qsWqsloaJ03rKS+2A=;
- b=MJQvpM3blgIooooDJYURY226+G2pg+ZULwn8/WUZgkj+MYUQSoWQS22Ylou1yyaDPCXXLKon+
- LjmRfWUI5cIBIcfchq7CZvduknBr9Nq4QgW8t7WeKoWc/DplGnWR7ed
+ bh=DewUrKfXOkpid75Tpnx0McgzCCdHJCPPflM0/bgRSWA=;
+ b=rZZIst12+Yb175Cxf9JWVVVtFySUrHsWVP/p0KW8a5LU6aDbF57g9g74VM2Gpum/vaQyak+xb
+ JWWs8c1/Dl5BQqMvF3zgSjev417rKfKPxcbi1YFgsT9OZqbNl9zbKFU
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The scale tests format the rescaled value with iio_format_value(), which
-prints at most nano precision, and require the relative error to the
-expected value to be below 1 ppm. Both strings are parsed back with
-iio_str_to_fixpoint() at nano precision, so for the small scale cases the
-check only passes because the expected value, like the formatted one, is
-truncated to nano. For example, "0.000000033594" is parsed as 33 nano,
-equal to the formatted "0.000000033", although the actual error is about
-1.8%. If the expected value were rounded instead, it would be parsed as
-34 nano and the test would fail even though the output is as accurate as
-the format allows.
+Replace the open-coded __iio_str_to_fixpoint() parser with kstrtodec64(),
+so sysfs writes of fixed-point values also accept E notation.
 
-Parse both values with kstrtodec64() at a scale of 10, one digit more
-than the output precision, so the expected value keeps the digits lost
-when formatting. Scale 10 is the largest that still fits the overflow
-cases (about 2.1e8) in an s64. Compute the relative error with
-mul_u64_u64_div_u64(), as the product with 10^6 no longer fits in 64 bits
-for those cases.
+The fractional part only keeps the sign when the integer part is zero,
+as before. The dB suffix for scale attributes is now handled by a separate
+iio_str_to_fixpoint_units() helper. It strips an optional trailing newline
+and the "dB" or " dB" suffix before parsing.
 
-Then allow a relative error up to the relative size of one nano of the
-expected value, the precision of the formatted output. This is 0 ppm for
-values of 0.01 and above, so those cases are checked as before, and it
-accepts the formatting error for the small scale cases.
+When there is no fractional part (fract_mult == 0, or dec_scale == 0 for
+64-bit values), try base-autodetecting kstrtoll() first so hexadecimal
+and octal input keeps its meaning ("010" is still 8). Fall back to
+kstrtodec64() on -EINVAL to accept E notation.
+
+As a side effect, inputs that used to be rejected for integer-only
+attributes are now accepted. An invalid octal number such as "08" is
+parsed as decimal 8, and a fractional value such as "1.5" is rounded
+to 2.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/test/iio-test-rescale.c | 60 ++++++++++++++-----------------------
- 1 file changed, 23 insertions(+), 37 deletions(-)
+ drivers/iio/industrialio-core.c | 177 +++++++++++++++++++++++-----------------
+ 1 file changed, 104 insertions(+), 73 deletions(-)
 
-diff --git a/drivers/iio/test/iio-test-rescale.c b/drivers/iio/test/iio-test-rescale.c
-index de4a09f432c0..e37a20ea1ca6 100644
---- a/drivers/iio/test/iio-test-rescale.c
-+++ b/drivers/iio/test/iio-test-rescale.c
-@@ -6,6 +6,8 @@
-  */
- 
- #include <linux/gcd.h>
-+#include <linux/kstrtox.h>
-+#include <linux/math64.h>
- #include <linux/overflow.h>
- 
- #include <linux/iio/afe/rescale.h>
-@@ -581,55 +583,37 @@ static void case_to_desc(const struct rescale_tc_data *t, char *desc)
- KUNIT_ARRAY_PARAM(iio_rescale_scale, scale_cases, case_to_desc);
- KUNIT_ARRAY_PARAM(iio_rescale_offset, offset_cases, case_to_desc);
- 
--/**
-- * iio_str_to_nano() - Parse a fixed-point string to get an
-- *                      IIO_VAL_INT_PLUS_NANO value
-- * @str: The string to parse
-- * @nano: The number as an integer
-- *
-- * Returns 0 on success, or a negative error code if the string could not be
-- * parsed.
-+/*
-+ * iio_format_value() prints scales with up to nano precision. Parse values
-+ * with one more digit, so the expected values keep the precision lost there.
-+ * Scale 10 is the largest that fits the overflow test cases in an s64.
-  */
--static int iio_str_to_nano(const char *str, s64 *nano)
--{
--	int tmp, tmp2;
--	int ret = 0;
--
--	/*
--	 * iio_str_to_fixpoint() uses 10^8 here instead of 10^9 as fract_mult is
--	 * the multiplier for the first decimal place.
--	 */
--	ret = iio_str_to_fixpoint(str, 100000000, &tmp, &tmp2);
--	if (ret < 0)
--		return ret;
--
--	if (tmp < 0)
--		tmp2 *= -1;
--
--	*nano = (s64)tmp * 1000000000UL + tmp2;
--
--	return ret;
--}
-+#define IIO_TEST_EXTRA_DEC_SCALE	1
-+#define IIO_TEST_DEC_SCALE		(9 + IIO_TEST_EXTRA_DEC_SCALE)
-+#define IIO_TEST_NANO_PER_DEC_SCALE	int_pow(10, IIO_TEST_EXTRA_DEC_SCALE)
- 
- /**
-  * iio_test_relative_error_ppm() - Compute relative error (in parts-per-million)
-  *                                 between two fixed-point strings
-  * @real_str: The real value as a string
-  * @exp_str: The expected value as a string
-+ * @max_ppm: The relative size (in parts-per-million) of one nano of the
-+ *           expected value, the precision of iio_format_value()
-  *
-  * Returns a negative error code if the strings could not be parsed, or the
-  * relative error in parts-per-million.
-  */
--static int iio_test_relative_error_ppm(const char *real_str, const char *exp_str)
-+static int iio_test_relative_error_ppm(const char *real_str, const char *exp_str,
-+				       int *max_ppm)
- {
--	s64 real, exp, err;
-+	s64 real, exp;
- 	int ret;
- 
--	ret = iio_str_to_nano(real_str, &real);
-+	ret = kstrtodec64(real_str, IIO_TEST_DEC_SCALE, &real);
- 	if (ret < 0)
- 		return ret;
- 
--	ret = iio_str_to_nano(exp_str, &exp);
-+	ret = kstrtodec64(exp_str, IIO_TEST_DEC_SCALE, &exp);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -638,9 +622,9 @@ static int iio_test_relative_error_ppm(const char *real_str, const char *exp_str
- 		return -EINVAL;
+diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
+index ed7aa7fd9391..4214eb77f312 100644
+--- a/drivers/iio/industrialio-core.c
++++ b/drivers/iio/industrialio-core.c
+@@ -1014,76 +1014,21 @@ static ssize_t iio_read_channel_info_avail(struct device *dev,
  	}
- 
--	err = 1000000UL * abs(exp - real);
-+	*max_ppm = (int)div64_u64(IIO_TEST_NANO_PER_DEC_SCALE * 1000000ULL, abs(exp));
- 
--	return (int)div64_u64(err, abs(exp));
-+	return (int)mul_u64_u64_div_u64(abs(exp - real), 1000000, abs(exp));
  }
  
- static void iio_rescale_test_scale(struct kunit *test)
-@@ -650,6 +634,7 @@ static void iio_rescale_test_scale(struct kunit *test)
- 	struct rescale rescale;
- 	int values[2];
- 	int rel_ppm;
-+	int max_ppm;
- 	int ret;
+-/**
+- * __iio_str_to_fixpoint() - Parse a fixed-point number from a string
+- * @str: The string to parse
+- * @fract_mult: Multiplier for the first decimal place, should be a power of 10
+- * @integer: The integer part of the number
+- * @fract: The fractional part of the number
+- * @scale_db: True if this should parse as dB
+- *
+- * Returns:
+- * 0 on success, or a negative error code if the string could not be parsed.
+- */
+-static int __iio_str_to_fixpoint(const char *str, int fract_mult,
+-				 int *integer, int *fract, bool scale_db)
++static int iio_str_to_s64(const char *str, s64 *val)
+ {
+-	int i = 0, f = 0;
+-	bool integer_part = true, negative = false;
+-
+-	if (fract_mult == 0) {
+-		*fract = 0;
+-
+-		return kstrtoint(str, 0, integer);
+-	}
+-
+-	if (str[0] == '-') {
+-		negative = true;
+-		str++;
+-	} else if (str[0] == '+') {
+-		str++;
+-	}
+-
+-	while (*str) {
+-		if ('0' <= *str && *str <= '9') {
+-			if (integer_part) {
+-				int digit = *str - '0';
+-
+-				/* Accumulate with the sign applied so INT_MIN fits */
+-				if (check_mul_overflow(i, 10, &i) ||
+-				    check_add_overflow(i, negative ? -digit : digit, &i))
+-					return -ERANGE;
+-			} else {
+-				f += fract_mult * (*str - '0');
+-				fract_mult /= 10;
+-			}
+-		} else if (*str == '\n') {
+-			if (*(str + 1) == '\0')
+-				break;
+-			return -EINVAL;
+-		} else if (!strncmp(str, " dB", sizeof(" dB") - 1) && scale_db) {
+-			/* Ignore the dB suffix */
+-			str += sizeof(" dB") - 1;
+-			continue;
+-		} else if (!strncmp(str, "dB", sizeof("dB") - 1) && scale_db) {
+-			/* Ignore the dB suffix */
+-			str += sizeof("dB") - 1;
+-			continue;
+-		} else if (*str == '.' && integer_part) {
+-			integer_part = false;
+-		} else {
+-			return -EINVAL;
+-		}
+-		str++;
+-	}
+-
+-	if (negative && !i)
+-		f = -f;
+-
+-	*integer = i;
+-	*fract = f;
+-
+-	return 0;
++	int ret;
++
++	/*
++	 * Keep hex/octal support for integers. E notation and decimal values
++	 * result in -EINVAL from kstrtoll(), due to unexpected termination on
++	 * '.' or 'e'. It falls back to kstrtodec64() for decimal fixed-point
++	 * numbers with zero scale.
++	 */
++	ret = kstrtoll(str, 0, val);
++	if (ret == -EINVAL)
++		return kstrtodec64(str, 0, val);
++
++	return ret;
+ }
  
- 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buff);
-@@ -666,10 +651,11 @@ static void iio_rescale_test_scale(struct kunit *test)
- 	ret = iio_format_value(buff, ret, 2, values);
- 	KUNIT_EXPECT_EQ(test, (int)strlen(buff), ret);
+ /**
+@@ -1093,16 +1038,98 @@ static int __iio_str_to_fixpoint(const char *str, int fract_mult,
+  * @integer: The integer part of the number
+  * @fract: The fractional part of the number
+  *
++ * Parses a decimal number with an optional sign and an optional E notation
++ * exponent. The string may end with a single newline. Digits beyond the
++ * precision set by @fract_mult are rounded to nearest, ties to even, so with
++ * @fract_mult = 100000 the input "0.0000025" results in 2 micro. The sign is
++ * carried by @integer, or by @fract when @integer is zero.
++ *
++ * When @fract_mult is 0, the number is an integer and @fract is set to 0.
++ * Hexadecimal ("0x10") and octal ("010") inputs are accepted with their usual
++ * meaning. Any other input is parsed as a decimal number and rounded to
++ * nearest. For example, "1e3" results in 1000 and "1.5" in 2. Leading zeros
++ * that do not form a valid octal number fall back to decimal, so "08" results
++ * in 8.
++ *
+  * Returns:
+  * 0 on success, or a negative error code if the string could not be parsed.
+  */
+ int iio_str_to_fixpoint(const char *str, int fract_mult,
+ 			int *integer, int *fract)
+ {
+-	return __iio_str_to_fixpoint(str, fract_mult, integer, fract, false);
++	s64 dec64;
++	int ret;
++
++	if (fract_mult) {
++		/* scale = ffs(fract_mult) = ffs(10^n) = ffs(2^n * 5^n) = n + 1 */
++		ret = kstrtodec64(str, ffs(fract_mult), &dec64);
++		if (ret)
++			return ret;
++
++		dec64 = div_s64_rem(dec64, fract_mult * 10, fract);
++		/* only carry the sign in fract if the integer is zero */
++		if (dec64)
++			*fract = abs(*fract);
++	} else {
++		ret = iio_str_to_s64(str, &dec64);
++		if (ret)
++			return ret;
++
++		*fract = 0;
++	}
++
++	if (dec64 > INT_MAX || dec64 < INT_MIN)
++		return -ERANGE;
++
++	*integer = dec64;
++
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(iio_str_to_fixpoint);
  
--	rel_ppm = iio_test_relative_error_ppm(buff, t->expected);
--	KUNIT_EXPECT_GE_MSG(test, rel_ppm, 0, "failed to compute ppm\n");
-+	rel_ppm = iio_test_relative_error_ppm(buff, t->expected, &max_ppm);
-+	KUNIT_ASSERT_GE_MSG(test, rel_ppm, 0, "failed to compute ppm\n");
++/**
++ * iio_str_to_fixpoint_units() - Parse a fixed-point number with units from a string
++ * @str: The string to parse
++ * @fract_mult: Multiplier for the first decimal place, should be a power of 10
++ * @integer: The integer part of the number
++ * @fract: The fractional part of the number
++ * @units: The units to expect at the end of the string
++ *
++ * Parses a fixed-point/decimal number from a string, optionally with units at
++ * the end. The string should be in the format "<number>[ <units>]". For example,
++ * the input "7.2 dB" would be parsed as integer = 7 and fract = 200000 with
++ * units = "dB" and fract_mult = 100000.
++ *
++ * Returns:
++ * 0 on success, or a negative error code if the string could not be parsed.
++ */
++static int iio_str_to_fixpoint_units(const char *str, int fract_mult,
++				     int *integer, int *fract,
++				     const char *units)
++{
++	size_t units_len = strlen(units);
++	size_t s_len = strlen(str);
++	const char *dec_str = str;
++	char buf[64];
++
++	if (s_len && str[s_len - 1] == '\n')
++		s_len--;
++
++	if (s_len > units_len &&
++	    !strncmp(str + s_len - units_len, units, units_len)) {
++		s_len -= units_len;
++		if (str[s_len - 1] == ' ')
++			s_len--;
++		if (s_len >= sizeof(buf))
++			return -EINVAL;
++		memcpy(buf, str, s_len);
++		buf[s_len] = '\0';
++		dec_str = buf;
++	}
++
++	return iio_str_to_fixpoint(dec_str, fract_mult, integer, fract);
++}
++
+ static ssize_t iio_write_channel_info(struct device *dev,
+ 				      struct device_attribute *attr,
+ 				      const char *buf,
+@@ -1170,14 +1197,18 @@ static ssize_t iio_write_channel_info(struct device *dev,
+ 		if (dec_scale)
+ 			ret = kstrtodec64(buf, dec_scale, &integer64);
+ 		else
+-			ret = kstrtoll(buf, 0, &integer64);
++			ret = iio_str_to_s64(buf, &integer64);
+ 		if (ret)
+ 			return ret;
  
--	KUNIT_EXPECT_EQ_MSG(test, rel_ppm, 0,
-+	/* allow the error of the nano precision used to format the value */
-+	KUNIT_EXPECT_LE_MSG(test, rel_ppm, max_ppm,
- 			    "\t    real=%s"
- 			    "\texpected=%s\n",
- 			    buff, t->expected);
+ 		iio_val_s64_decompose(integer64, &integer, &fract);
+ 	} else {
+-		ret = __iio_str_to_fixpoint(buf, fract_mult, &integer, &fract,
+-					    scale_db);
++		if (scale_db)
++			ret = iio_str_to_fixpoint_units(buf, fract_mult,
++							&integer, &fract, "dB");
++		else
++			ret = iio_str_to_fixpoint(buf, fract_mult, &integer,
++						  &fract);
+ 		if (ret)
+ 			return ret;
+ 	}
 
 -- 
 2.43.0
