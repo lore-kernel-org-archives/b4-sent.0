@@ -1,97 +1,152 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 13 Nov 2026 23:14:43 -0500
-Subject: [PATCH net 4/4] net/smc: order the urgent mark across the cursor
- wrap rollover
+From: Alireza Haghdoost <haghdoost@uber.com>
+Subject: [PATCH v7 0/4] perf script: Lazy symbol loading
+Date: Fri, 13 Nov 2026 21:09:05 -0800
+Message-Id: <20261113-perf-symbol-memory-send-v7-0-d992eced9f9c@uber.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-b4-disp-1a9ab9b0-v1-4-4a7c8d85d849@proton.me>
-References: <20261113-b4-disp-1a9ab9b0-v1-0-4a7c8d85d849@proton.me>
-In-Reply-To: <20261113-b4-disp-1a9ab9b0-v1-0-4a7c8d85d849@proton.me>
-To: Dust Li <dust.li@linux.alibaba.com>, 
- Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- "D. Wythe" <alibuda@linux.alibaba.com>, Jakub Kicinski <kuba@kernel.org>, 
- Eric Dumazet <edumazet@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
- Paolo Abeni <pabeni@redhat.com>, Sidraya Jayagond <sidraya@linux.ibm.com>
-Cc: Guangguan Wang <guangguan.wang@linux.alibaba.com>, 
- Tony Lu <tonylu@linux.alibaba.com>, netdev@vger.kernel.org, 
- Wenjia Zhang <wenjia@linux.ibm.com>, Ursula Braun <ubraun@linux.ibm.com>, 
- Hidayath Khan <hidayath@linux.ibm.com>, linux-s390@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Simon Horman <horms@kernel.org>, 
- Wen Gu <guwen@linux.alibaba.com>, Stefan Raspl <raspl@linux.ibm.com>, 
- linux-rdma@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XQTWrDMBAF4KsErasyGv046qr3KF1Y0qhRqe0gJ
+ SYh+O6RUyjG4HT5YOZ7w9xYoZyosLfdjWUaU0lDX0PzsmP+0PZfxFOomSGgASs0P1KOvFw7N/z
+ wjrohX3mhPnBqfPStaL0MltXtY6aYLg/54/M3l7P7Jn+auXnikMqprj+qRzHP/d8yCg5cBCkNE
+ IoIzfvZUX71Q8fmkhGXjN1msDLKarePAG1o/IqRCwafXCMrI0kRSuWlkW7FqD9GAOA2oyoDrbb
+ oHGppacXoJfPkGj3/xujgyaEDZVeMWTC432ZMZRqyoISOIEAsmGma7ktvRRsyAgAA
+X-Change-ID: 20260915-perf-symbol-memory-send-e7cfca1ac3d9
+To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ James Clark <james.clark@linaro.org>, Alexei Starovoitov <ast@kernel.org>, 
+ Andrii Nakryiko <andriin@fb.com>
+Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Alireza Haghdoost <haghdoost@uber.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794629679; l=2415;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=H0cDzBMU5jnWhuir5b0Y+uamDOQJx9v7YnLHHqnWujU=;
- b=alisxctGY78SwE7oHxLyUorWTGmWoZBmYFTPJ7GI45VR5SB/8i0kWOibNF6J7f4E+tArli1n2
- Lz/ru3MfW06AG4Oar/5Hyqm71sIY1CnsCs2ed4wib0RTDUhShCTI8WV
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5471; i=haghdoost@uber.com;
+ h=from:subject:message-id; bh=bNNSbm6xwr2UqnFKuseW/pVuQUw737DtM/ehJlv2AjE=;
+ b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBq9+0j+RjBe3ySIX53a2BOZU5tuU6o0PEqWBZoJ
+ gpdJ+crwoOJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCavftIxsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtipjg//WX6P1UXk4VAjmiOYr5UVEXwsZyBnt6v
+ lmcfjmgsm4PhcFw79UMYsXpcKodTgTQD+oeqmU/8tSte27ap7aBJejMHEnXTN9AftlKUWIm03G7
+ b40xnQu5uEr+bPG7psfqMzJOpeCFV7ayrLsu5WsNhC9opRWcMNcCpF1Fs5ifA8PA09LnMTRs5i4
+ we2ZyOIDODadhvctsVB6sgE48t9cPGyr97zt7aYG9P5Kog+jfvAv0duRV6b2ki85oaZSlmJ7iv2
+ QNW0qRVaF5f/5b1uqHfpV947wn6F9N36LFAHxYy/vnEffjTJ9ydVU8+Qq723gJH+PvTk/wYU4Wm
+ HFGUl48bMY1pc08sziTy80TNxu0BdnbLrCxNWod5D3BlgfIWJYuK3LCroJz9cfGvFXXLiQTkxFN
+ RvNQSTDKB2/JA/+ekaRkYy9U4vngFZAJ6XaPFOyNN5ALUrdYZPcfPI2WrlCJ3AHtoLijApPtkmx
+ 9DFNheLVRuZQTD9y7h9Uz/bH0A5s2KJnRww3YGYhGhKSKM3+YzAJgD/2pkVJAjwhbVSmzkfUSQP
+ 7eruY8c7geVoVQ9ZtF0rsqGQ3yslZl+n0PQi1OXgrpZCGhcw9m9J5IwMRiOQPCUv5TwSdVX3uaE
+ EtYgPj8F/32mO4I2i+g9JpHA5yqogRw5gLVi25J9jddr4p7Mupy8=
+X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
+ fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
+X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smc_rx_update_consumer() orders the consumer cursor against urg_curs
-with smc_curs_comp(), which misorders them across the 65535 -> 0
-rollover of the RMB wrap. Without SO_OOBINLINE, with the reader on wrap
-65535 and the urgent byte on wrap 0, the mark reads as already passed:
-urg_state becomes SMC_URG_READ before the byte is reached and
-recv(MSG_OOB) fails with -EINVAL. The urgent byte, which bytes_to_rcv
-leaves out, is then never skipped, and the sender, which waits for its
-urgent data to be consumed before it sends more, sends nothing more:
-the connection stalls.
+perf script loads the entire ELF symbol table of every DSO that appears
+in a sample, and keeps each symbol, with its demangled name, until
+process exit. Most of those symbols are never sampled. On a large
+profile this turns symbol loading into the main memory cost of perf
+script, and in a memory-constrained cgroup into an OOM kill.
 
-Use smc_curs_sdiff(), which orders the two cursors across the
-rollover. smc_curs_comp() has no other user; remove it.
+This series adds an opt-in lazy loader for userspace ELF DSOs, after two
+preparatory patches:
 
-Fixes: de8474eb9d50 ("net/smc: urgent data support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+  [1/4] Split the size, type and binding checks out of
+        choose_best_symbol(), so that the loader can tell which aliases
+        need their names. No functional change.
+
+  [2/4] Make the symbol name a pointer instead of a flexible array, so
+        that a name can be set after the symbol is in the rb-tree.
+
+  [3/4] Add --lazy-load-symbols to load symbol names lazily.
+
+  [4/4] Unit and shell tests.
+
+On a perf script run over a 45,073-sample callchain profile of a large
+C++ service (about 1M symbols), the output is identical in all three
+cases (medians of seven runs):
+
+                                      time    max RSS
+  perf-tools-next                     2.9 s   320 MiB
+  v7                                  2.9 s   327 MiB
+  v7 --lazy-load-symbols              1.3 s   135 MiB
+
+Eager loading remains the default, and costs 8 more bytes per symbol for
+the name pointer. Lazy loading covers userspace ELF .symtab and .dynsym.
+The kernel, modules, PPC64 .opd and .gnu_debugdata still load names
+eagerly.
+
+Ian's series [1], which removes the priv area and replaces the rb-tree
+with an array, would shrink each symbol further. The two series conflict:
+both use bit 14 of the symbol flags, and the alias name loading and the
+.dynsym copy check in 3/4 walk the rb-tree that [1] replaces. This series
+does not depend on it, and I'll rebase on it if it lands first.
+
+[1] https://lore.kernel.org/all/20261113171734.2188066-1-irogers@google.com/
+
+Changes in v7:
+
+- Drop v6 1/5, now in perf-tools-next as 794579ff4959 ("perf symbols:
+  Fix broken ELF_C_READ_MMAP fallback guard").
+- Rebase onto current perf-tools-next. Since baef30dd8308 ("perf
+  symbol-elf: Fix zero-size symbol end calculation across .symtab and
+  .dynsym") moved duplicate selection to dso__load_sym(), 3/4 loads the
+  alias and IFUNC names there, once after all symbol tables.
+- 3/4: Check that the symbol table file is still the one that was
+  loaded (device, inode, size, mtime) before reading names from it.
+  If a binary is replaced during the run, perf warns once and shows
+  "[unknown]" instead of names from the new file.
+- 3/4: Load names under the DSO lock instead of a global mutex (Ian,
+  Namhyung).
+- 3/4: Rename symbol__has_lazy_name() to symbol__needs_lazy_name()
+  (Namhyung).
+- 3/4: Lazy loading stays opt-in for now; see the reply on v6 4/5.
+- 4/4: Add a test for a replaced symbol table file.
+- 4/4: Skip instead of failing when names load eagerly (.opd,
+  .gnu_debugdata, compressed .strtab), check that test_loop resolved
+  before requiring lazy names, skip a kernel DSO given with --dso, and
+  include <elf.h>, <stdbool.h> and <stdio.h> (Sashiko).
+- Reword the changelogs and trim some comments in 3/4.
+
+Previous versions:
+
+v6: https://lore.kernel.org/all/20261028-perf-symbol-memory-send-v6-0-7e90415f0101@uber.com/
+v5: https://lore.kernel.org/all/20261005-perf-symbol-memory-send-v5-0-165dceb2b049@uber.com/
+v4: https://lore.kernel.org/all/20261002-perf-symbol-memory-send-v4-0-0a592bb2539e@uber.com/
+v3: https://lore.kernel.org/all/20260925-perf-symbol-memory-send-v3-0-3e4e234c363b@uber.com/
+v2: https://lore.kernel.org/all/20260919-perf-symbol-memory-send-v2-0-495b8f00ad7c@uber.com/
+v1: https://lore.kernel.org/all/20260915-perf-symbol-memory-send-v1-0-1d3360e21f07@uber.com/
+
 ---
- net/smc/smc_cdc.h | 13 -------------
- net/smc/smc_rx.c  |  4 ++--
- 2 files changed, 2 insertions(+), 15 deletions(-)
+Alireza Haghdoost (4):
+      perf symbols: Split out name-independent duplicate symbol selection
+      perf symbols: Point to the symbol name instead of embedding it
+      perf script: Add --lazy-load-symbols to load symbol names lazily
+      perf test: Test lazy symbol name loading
 
-diff --git a/net/smc/smc_cdc.h b/net/smc/smc_cdc.h
-index 4b586a20dfc2..eecd0cc5bb79 100644
---- a/net/smc/smc_cdc.h
-+++ b/net/smc/smc_cdc.h
-@@ -167,19 +167,6 @@ static inline int smc_curs_diff(unsigned int size,
- 	return max_t(int, 0, (new->count - old->count));
- }
- 
--/* calculate cursor difference between old and new - returns negative
-- * value in case old > new
-- */
--static inline int smc_curs_comp(unsigned int size,
--				union smc_host_cursor *old,
--				union smc_host_cursor *new)
--{
--	if (old->wrap > new->wrap ||
--	    (old->wrap == new->wrap && old->count > new->count))
--		return -smc_curs_diff(size, new, old);
--	return smc_curs_diff(size, old, new);
--}
--
- /* signed distance from old to new; the wrap difference is taken as s16,
-  * so it holds across the u16 wrap rollover, for cursors less than 32768
-  * rings apart
-diff --git a/net/smc/smc_rx.c b/net/smc/smc_rx.c
-index 63c178c10bf1..0345167cdc0d 100644
---- a/net/smc/smc_rx.c
-+++ b/net/smc/smc_rx.c
-@@ -68,8 +68,8 @@ static int smc_rx_update_consumer(struct smc_sock *smc,
- 
- 	/* did we process urgent data? */
- 	if (conn->urg_state == SMC_URG_VALID || conn->urg_rx_skip_pend) {
--		diff = smc_curs_comp(conn->rmb_desc->len, &cons,
--				     &conn->urg_curs);
-+		diff = smc_curs_sdiff(conn->rmb_desc->len, &cons,
-+				      &conn->urg_curs);
- 		if (sock_flag(sk, SOCK_URGINLINE)) {
- 			if (diff == 0) {
- 				force = true;
+ tools/perf/Documentation/perf-script.txt           |   9 +
+ tools/perf/builtin-script.c                        |   2 +
+ tools/perf/tests/Build                             |   1 +
+ tools/perf/tests/builtin-test.c                    |   1 +
+ tools/perf/tests/shell/lazy_load_symbols_parity.sh | 293 ++++++++++
+ tools/perf/tests/shell/lib/lazy_names.sh           |  19 +
+ tools/perf/tests/shell/script_lazy_load_symbols.sh | 191 +++++++
+ tools/perf/tests/symbol-lazy.c                     | 606 +++++++++++++++++++++
+ tools/perf/tests/tests.h                           |   1 +
+ tools/perf/ui/browsers/map.c                       |   2 +-
+ tools/perf/ui/stdio/hist.c                         |   1 +
+ tools/perf/util/dso.c                              |   2 +-
+ tools/perf/util/dso.h                              |  20 +-
+ tools/perf/util/symbol-elf.c                       | 299 +++++++++-
+ tools/perf/util/symbol-minimal.c                   |   6 +
+ tools/perf/util/symbol.c                           | 141 ++++-
+ tools/perf/util/symbol.h                           |  29 +-
+ tools/perf/util/symbol_conf.h                      |   1 +
+ 18 files changed, 1599 insertions(+), 25 deletions(-)
+---
+base-commit: a1c3b14c28ebfa79dd56e2743c2fbad0c02a7146
+change-id: 20260915-perf-symbol-memory-send-e7cfca1ac3d9
 
--- 
-2.56.0
+Best regards,
+--  
+Alireza Haghdoost <haghdoost@uber.com>
 
