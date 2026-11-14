@@ -1,82 +1,134 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 14 Nov 2026 08:44:14 +0000
-Subject: [PATCH 2/2] crypto: ecc - Fix P-521 scalar multiplication for
- small scalars
+From: Vincent Jardin <vjardin@free.fr>
+Subject: [PATCH v4 0/5] lx2160a: change the pad muxes through the RCW
+ override
+Date: Sat, 14 Nov 2026 10:12:27 +0100
+Message-Id: <20261114-for-upstream-lx2160a-rcw-pinmux-v1-v4-0-eefcea066a55@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-ecc-p521-small-scalars-v1-2-7b114f076b33@gmail.com>
-References: <20261114-ecc-p521-small-scalars-v1-0-7b114f076b33@gmail.com>
-In-Reply-To: <20261114-ecc-p521-small-scalars-v1-0-7b114f076b33@gmail.com>
-To: Lukas Wunner <lukas@wunner.de>, Ignat Korchagin <ignat@linux.win>, 
- Stefan Berger <stefanb@linux.ibm.com>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>, 
- Jarkko Sakkinen <jarkko@kernel.org>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Erwin Pawliczek <pawliczekerwin@gmail.com>, 
- Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794645852; l=1867;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=ChgYZL5sUZcr2EItC0wbDpEzrtX14Y+YYUPb21F2SXA=;
- b=Uc/1ROh6prmhq8ZQxgMFw4YpS+STmEcKmdAaft7SbGrjt4Xtg3MNhB/aHPkICU5x9fZx65b4K
- qkP+z+SgvYsA/0+AlEeDofpQfCyTeweCSoFE5QfvADC00ESqPaItyw6
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+X-B4-Tracking: v=1; b=H4sIAPsl+GoC/5XNwW7CMAzG8VdBOc+Tk3RpwmnvMXEwjQORRls5U
+ IpQ332ByxAnkHz5+/D7rqqwZC5qvboq4SmXPPQ1mo+V6vbU7xhyrK0MGqc1WkiDwGksR2E6wO9
+ stEMC6c4w5v5wmmHSYHUKFEMbO+9UhUbhlOf7yM+m9j6X4yCX++akb9+3+HoISE5T8LZtm+Y7C
+ fNnEnXDJ/M+aCpoiSJ6h9vgn0D7CPqXQFvBL0J0NulIgf/BZVn+AFTnif10AQAA
+To: Dong Aisheng <aisheng.dong@nxp.com>, Fabio Estevam <festevam@gmail.com>, 
+ Frank Li <Frank.Li@nxp.com>, Jacky Bai <ping.bai@nxp.com>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ NXP S32 Linux Team <s32@nxp.com>, Linus Walleij <linusw@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+ linux-arm-kernel@lists.infradead.org, imx@lists.linux.dev, 
+ Vladimir Oltean <vladimir.oltean@nxp.com>, 
+ Ioana Ciornei <ioana.ciornei@nxp.com>, Vincent Jardin <vjardin@free.fr>, 
+ Frank Li <Frank.li@nxp.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794647552; l=4698;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=Yf1JH3K/Bq6ljusCgDHoAts1E/+RPq1z4yeuVE4EJj4=;
+ b=ZFkP9/CfX8Es/X2tiuNCHqhDBT/y9vm7Hf9tJ3N3fWE2OUBzwRqkewqeB8+HqBIZ+uBw1efwu
+ a3yFpl+mVnaBqsSIIXUutZnqIDfWOAZ/Kwn4p4QdekDlykboxzMMc6J
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Stefan Berger's commit 114e80437e0e ("crypto: ecc - Add special case
-for NIST P521 in ecc_point_mult") made the ladder run on k + n or
-k + 2n with bit 522 as the top bit.
+The LX2160A muxes its IIC, XSPI, SDHC, UART, IRQ and EVT pads from
+fields of the RCW. They are read-only in RCWSR12..14 of DCFG, and are
+changed at runtime through the override registers in the DCSR view of
+DCFG, which read 0 until written.
 
-For k < n, k + n never carries out of the nine digits, so k + 2n is
-always used. Its bit 522 is set only for k >= 2^522 - 2n (about
-2^259.5); for smaller k the result is (k + 2^522) * P instead of k * P.
+Since commit 8a1365c7bbc1 ("arm64: dts: lx2160a: add pinmux and i2c
+gpio to support bus recovery"), fsl-lx216x.dtsi drives the override
+registers with pinctrl-single for the I2C bus recovery. Its first pin
+state clears every other field of the word: a board whose RCW programs
+a non-zero pad mux loses those pads at the first I2C probe.
 
-Use k + n if its bit 521 is set, else k + 2n, and start the ladder at
-bit 521.
+This series reads the fields in effect from RCWSR and writes RCWCR, as
+fsl_guts_rcw_rmw() already does for the SerDes protocols:
 
-No caller is affected today: the only P-521 caller,
-ecc_is_pubkey_valid_full(), passes k = n.
+- patches 1 and 2 describe the pad mux as a child of the DCFG node,
+  which gains its DCSR view
+- patch 3 exports the RCW override of fsl-guts for any RCWSR
+- patch 4 adds the pinctrl driver: one group per RCW field, one
+  function per encoding
+- patch 5 moves the pad muxes of fsl-lx216x.dtsi under DCFG. Labels
+  and pin node names stay, so no board file changes, and the
+  pinctrl-single node goes
 
-Tested in UML on top of the previous patch: ecc_make_pub_key() on
-P-521 now matches a Python reference for k = 2, 3, 4, 2^200 + 5, k
-around 2^521 - n and 2^522 - 2n, and 40 random k. Before, every k
-below 2^522 - 2n was wrong. The ecdsa-nist-p521 self-tests (k = n)
-still pass.
+Patch 4 uses the exports of patch 3, so it cannot be applied alone:
+patches 1 to 4 could be for the the pinctrl tree with an Ack of
+the soc/fsl maintainer on patch 3,
+and patch 5 through the i.MX tree once the driver is in,
+since the I2C pin states of fsl-lx216x.dtsi then belong to it.
 
-Fixes: 114e80437e0e ("crypto: ecc - Add special case for NIST P521 in ecc_point_mult")
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+DTBs built before patch 5 keep their pinctrl-single node and behave as
+before. There is no Fixes: tag, since patch 5 depends on a new driver.
+I did not believe it should be backported then.
+
+Tested on a Nodebox v3 (LX2160A) whose RCW muxes XSPI1_A_DATA[7:4],
+SDHC1 and IIC5 are not set with the defaults, so I could confirm:
+ - with pinctrl-single the first I2C probe cleared those fields
+ - with this series RCWSR12..14 read after boot exactly what the RCW and
+   the board's pin states select
+ - all I2C controllers come up with their recovery states and a
+   forced bus recovery on IIC1 (multi-master enabled for the test)
+   changes only that field
+
+Thanks to Vladimir Oltean for pointing at fsl_guts_rcw_rmw() when I
+tried to prime the override registers from the RCW instead:
+https://github.com/nxp-qoriq/rcw/pull/8
+
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- crypto/ecc.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+Changes in v4:
+- pinctrl: MAINTAINERS with imx@lists.linux.dev
+  FUNC and GROUP macros with LX2160A_PMUX_ prefix (Frank Li)
+- Add the Reviewed and Ack tags of Rob Herring and Frank Li
+- Patches 1, 2, 3 and 5 are not changed
+- Link to v3: https://lore.kernel.org/r/20261108-for-upstream-lx2160a-rcw-pinmux-v1-v3-0-5a0063f1da9e@free.fr
 
-diff --git a/crypto/ecc.c b/crypto/ecc.c
-index a56a33e4eccb..370c60595fa9 100644
---- a/crypto/ecc.c
-+++ b/crypto/ecc.c
-@@ -1365,11 +1365,14 @@ static void ecc_point_mult(struct ecc_point *result,
- 
- 	carry = vli_add(sk[0], scalar, curve->n, ndigits);
- 	vli_add(sk[1], sk[0], curve->n, ndigits);
--	scalar = sk[!carry];
--	if (curve->nbits == 521)	/* NIST P521 */
--		num_bits = curve->nbits + 2;
--	else
-+	if (curve->nbits == 521) {	/* NIST P521 */
-+		/* k + n or k + 2n, whichever has bit 521 as its top bit */
-+		carry = !!vli_test_bit(sk[0], curve->nbits);
-+		num_bits = curve->nbits + 1;
-+	} else {
- 		num_bits = sizeof(u64) * ndigits * 8 + 1;
-+	}
-+	scalar = sk[!carry];
- 
- 	vli_set(rx[1], point->x, ndigits);
- 	vli_set(ry[1], point->y, ndigits);
+Changes in v3:
+- dt-bindings, dts: the pad-mux child is bus-addressed like the
+  clock-controller child of the LS1028A dcfg: its reg is the RCWSR12
+  to RCWSR14 window, under #address-cells, #size-cells and ranges on
+  the dcfg node, the override registers stay the DCSR view of the
+  parent (Krzysztof Kozlowski)
+- cover letter: patch 4 cannot be applied without patch 3 (Linus Walleij)
+- Patches 3 and 4 are unchanged
+- Link to v2: https://lore.kernel.org/r/20261103-for-upstream-lx2160a-rcw-pinmux-v1-v2-0-3aad0860b984@free.fr
 
+Changes in v2:
+- dt-bindings: list, for each function, the groups, so the
+  schema refuses the associations the driver refuses (Frank Li)
+- Patches 2 to 5 are unchanged
+- Link to v1: https://lore.kernel.org/r/20261103-for-upstream-lx2160a-rcw-pinmux-v1-v1-0-0a61a9837744@free.fr
+
+---
+Vincent Jardin (5):
+      dt-bindings: pinctrl: add the NXP LX2160A RCW pad mux
+      dt-bindings: soc: fsl: layerscape-dcfg: add the LX2160A pad-mux child
+      soc: fsl: guts: add the RCW override of any RCWSR
+      pinctrl: freescale: add the LX2160A RCW pad-mux driver
+      arm64: dts: lx2160a: describe the pad muxes as the DCFG RCW override
+
+ .../bindings/pinctrl/fsl,lx2160a-rcw-pinmux.yaml   | 264 +++++++++++++++
+ .../bindings/soc/fsl/fsl,layerscape-dcfg.yaml      |  18 +
+ MAINTAINERS                                        |   8 +
+ arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi      | 377 +++++++++++----------
+ drivers/pinctrl/freescale/Kconfig                  |  15 +
+ drivers/pinctrl/freescale/Makefile                 |   1 +
+ drivers/pinctrl/freescale/pinctrl-lx2160a.c        | 368 ++++++++++++++++++++
+ drivers/soc/fsl/guts.c                             |  73 ++++
+ include/linux/fsl/guts.h                           |   3 +
+ 9 files changed, 952 insertions(+), 175 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261103-for-upstream-lx2160a-rcw-pinmux-v1-31f9ad97dc86
+
+Best regards,
 -- 
-2.55.0
+Vincent Jardin <vjardin@free.fr>
 
