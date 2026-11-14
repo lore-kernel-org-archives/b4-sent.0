@@ -1,16 +1,13 @@
 From: Alireza Haghdoost <haghdoost@uber.com>
-Subject: [PATCH v7 0/4] perf script: Lazy symbol loading
-Date: Fri, 13 Nov 2026 21:09:05 -0800
-Message-Id: <20261113-perf-symbol-memory-send-v7-0-d992eced9f9c@uber.com>
+Date: Fri, 13 Nov 2026 21:09:06 -0800
+Subject: [PATCH v7 1/4] perf symbols: Split out name-independent duplicate
+ symbol selection
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XQTWrDMBAF4KsErasyGv046qr3KF1Y0qhRqe0gJ
- SYh+O6RUyjG4HT5YOZ7w9xYoZyosLfdjWUaU0lDX0PzsmP+0PZfxFOomSGgASs0P1KOvFw7N/z
- wjrohX3mhPnBqfPStaL0MltXtY6aYLg/54/M3l7P7Jn+auXnikMqprj+qRzHP/d8yCg5cBCkNE
- IoIzfvZUX71Q8fmkhGXjN1msDLKarePAG1o/IqRCwafXCMrI0kRSuWlkW7FqD9GAOA2oyoDrbb
- oHGppacXoJfPkGj3/xujgyaEDZVeMWTC432ZMZRqyoISOIEAsmGma7ktvRRsyAgAA
-X-Change-ID: 20260915-perf-symbol-memory-send-e7cfca1ac3d9
+Message-Id: <20261113-perf-symbol-memory-send-v7-1-d992eced9f9c@uber.com>
+References: <20261113-perf-symbol-memory-send-v7-0-d992eced9f9c@uber.com>
+In-Reply-To: <20261113-perf-symbol-memory-send-v7-0-d992eced9f9c@uber.com>
 To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
  Arnaldo Carvalho de Melo <acme@kernel.org>, 
  Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
@@ -22,131 +19,107 @@ To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
 Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Alireza Haghdoost <haghdoost@uber.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5471; i=haghdoost@uber.com;
- h=from:subject:message-id; bh=bNNSbm6xwr2UqnFKuseW/pVuQUw737DtM/ehJlv2AjE=;
- b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBq9+0j+RjBe3ySIX53a2BOZU5tuU6o0PEqWBZoJ
- gpdJ+crwoOJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCavftIxsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtipjg//WX6P1UXk4VAjmiOYr5UVEXwsZyBnt6v
- lmcfjmgsm4PhcFw79UMYsXpcKodTgTQD+oeqmU/8tSte27ap7aBJejMHEnXTN9AftlKUWIm03G7
- b40xnQu5uEr+bPG7psfqMzJOpeCFV7ayrLsu5WsNhC9opRWcMNcCpF1Fs5ifA8PA09LnMTRs5i4
- we2ZyOIDODadhvctsVB6sgE48t9cPGyr97zt7aYG9P5Kog+jfvAv0duRV6b2ki85oaZSlmJ7iv2
- QNW0qRVaF5f/5b1uqHfpV947wn6F9N36LFAHxYy/vnEffjTJ9ydVU8+Qq723gJH+PvTk/wYU4Wm
- HFGUl48bMY1pc08sziTy80TNxu0BdnbLrCxNWod5D3BlgfIWJYuK3LCroJz9cfGvFXXLiQTkxFN
- RvNQSTDKB2/JA/+ekaRkYy9U4vngFZAJ6XaPFOyNN5ALUrdYZPcfPI2WrlCJ3AHtoLijApPtkmx
- 9DFNheLVRuZQTD9y7h9Uz/bH0A5s2KJnRww3YGYhGhKSKM3+YzAJgD/2pkVJAjwhbVSmzkfUSQP
- 7eruY8c7geVoVQ9ZtF0rsqGQ3yslZl+n0PQi1OXgrpZCGhcw9m9J5IwMRiOQPCUv5TwSdVX3uaE
- EtYgPj8F/32mO4I2i+g9JpHA5yqogRw5gLVi25J9jddr4p7Mupy8=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3028; i=haghdoost@uber.com;
+ h=from:subject:message-id; bh=DQuKAcc/eg1Lh4Q4w9Z+uaojSWSxiLMNYdq0w6yVHrM=;
+ b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBq9+0k1kqf2Do+wX6uJQRiiBZfDFhqQ80oxmnN/
+ uq7oNIRXhmJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCavftJBsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtgKQg/+IWL+2AbqKWl60cRWmq8gxWwUmNMVQSu
+ iHSduKWCllyivQo7DxrJQToN6d9+HHYYWGFT2ECOrL6cPXRqrx3/HU2kjm23Ox4A8s3XPb2W/9j
+ I0bi4BYbcQD2gKCkDg+UODhu9sqk9c8OmiF+BLPb6I7UDgjmfBhK0XE+OMoSBfmWP/bgtydaQPQ
+ JfUpgw3jbP/822Yz8j22AdVdY9xN1SwDRMpPflei/WBDaR8o+UkorEpjzlfuBJb2nK84WXr0xfz
+ D8jwjwgwnGwScSTPYC0RdfSqfIsXqq/ZRR6gc+WQjilEOWyK2i/gUm+CEED3ldnMKNp8bda4yEP
+ stVWrTKYXyM6u3DSE/y8F1hYvgqZ/UhNr2x5lehCHBOPFoT2pLV4OVQimsGAj8jxGcfV26fcdAc
+ KM5v47wyvEJfWxf1NqQa2ee3eN0VVJGxEKiojGuT//m3RPXP0pIZLeJ45i4z1MawkKKJuBbUAc6
+ 9CE6eM7CdEO/fi1OmeVorxQhFb/S3AuaRMbjyoeDuEN/nixXBGNjQiubYUxDdBzkvxaUDAoBM6i
+ 7t2aclThmSx/Sa8PnwJtio853wf7kYAaXH54WDcwTV7ySzlI4zGiO1gAo9pni6cv5Bq/3KAr9aE
+ /mMy7UnnrjyI9j9p6BrEl9yYxZC26OGxCoaRy9Vs4bHHhvWV87BA=
 X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
  fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
 X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-perf script loads the entire ELF symbol table of every DSO that appears
-in a sample, and keeps each symbol, with its demangled name, until
-process exit. Most of those symbols are never sampled. On a large
-profile this turns symbol loading into the main memory cost of perf
-script, and in a memory-constrained cgroup into an OOM kill.
+This patch is a refactoring and does not change behavior. It moves the
+size, type and binding checks from choose_best_symbol() to
+choose_best_symbol_by_attrs(), and adds symbol__choice_needs_names() to
+tell whether choosing between two symbols needs their names.
 
-This series adds an opt-in lazy loader for userspace ELF DSOs, after two
-preparatory patches:
+symbols__fixup_duplicate() keeps one of the symbols that share a start
+address. It compares size, type and binding first. If those are equal,
+it compares leading underscores, name lengths and the result of
+arch__choose_best_symbol().
 
-  [1/4] Split the size, type and binding checks out of
-        choose_best_symbol(), so that the loader can tell which aliases
-        need their names. No functional change.
+An unresolved lazy symbol stores a file offset instead of a name
+pointer, so the lazy loader cannot call choose_best_symbol() before it
+has read both names. The new helper lets it leave the names unread when
+the attributes already pick one of the symbols.
 
-  [2/4] Make the symbol name a pointer instead of a flexible array, so
-        that a name can be set after the symbol is in the rb-tree.
-
-  [3/4] Add --lazy-load-symbols to load symbol names lazily.
-
-  [4/4] Unit and shell tests.
-
-On a perf script run over a 45,073-sample callchain profile of a large
-C++ service (about 1M symbols), the output is identical in all three
-cases (medians of seven runs):
-
-                                      time    max RSS
-  perf-tools-next                     2.9 s   320 MiB
-  v7                                  2.9 s   327 MiB
-  v7 --lazy-load-symbols              1.3 s   135 MiB
-
-Eager loading remains the default, and costs 8 more bytes per symbol for
-the name pointer. Lazy loading covers userspace ELF .symtab and .dynsym.
-The kernel, modules, PPC64 .opd and .gnu_debugdata still load names
-eagerly.
-
-Ian's series [1], which removes the priv area and replaces the rb-tree
-with an array, would shrink each symbol further. The two series conflict:
-both use bit 14 of the symbol flags, and the alias name loading and the
-.dynsym copy check in 3/4 walk the rb-tree that [1] replaces. This series
-does not depend on it, and I'll rebase on it if it lands first.
-
-[1] https://lore.kernel.org/all/20261113171734.2188066-1-irogers@google.com/
-
-Changes in v7:
-
-- Drop v6 1/5, now in perf-tools-next as 794579ff4959 ("perf symbols:
-  Fix broken ELF_C_READ_MMAP fallback guard").
-- Rebase onto current perf-tools-next. Since baef30dd8308 ("perf
-  symbol-elf: Fix zero-size symbol end calculation across .symtab and
-  .dynsym") moved duplicate selection to dso__load_sym(), 3/4 loads the
-  alias and IFUNC names there, once after all symbol tables.
-- 3/4: Check that the symbol table file is still the one that was
-  loaded (device, inode, size, mtime) before reading names from it.
-  If a binary is replaced during the run, perf warns once and shows
-  "[unknown]" instead of names from the new file.
-- 3/4: Load names under the DSO lock instead of a global mutex (Ian,
-  Namhyung).
-- 3/4: Rename symbol__has_lazy_name() to symbol__needs_lazy_name()
-  (Namhyung).
-- 3/4: Lazy loading stays opt-in for now; see the reply on v6 4/5.
-- 4/4: Add a test for a replaced symbol table file.
-- 4/4: Skip instead of failing when names load eagerly (.opd,
-  .gnu_debugdata, compressed .strtab), check that test_loop resolved
-  before requiring lazy names, skip a kernel DSO given with --dso, and
-  include <elf.h>, <stdbool.h> and <stdio.h> (Sashiko).
-- Reword the changelogs and trim some comments in 3/4.
-
-Previous versions:
-
-v6: https://lore.kernel.org/all/20261028-perf-symbol-memory-send-v6-0-7e90415f0101@uber.com/
-v5: https://lore.kernel.org/all/20261005-perf-symbol-memory-send-v5-0-165dceb2b049@uber.com/
-v4: https://lore.kernel.org/all/20261002-perf-symbol-memory-send-v4-0-0a592bb2539e@uber.com/
-v3: https://lore.kernel.org/all/20260925-perf-symbol-memory-send-v3-0-3e4e234c363b@uber.com/
-v2: https://lore.kernel.org/all/20260919-perf-symbol-memory-send-v2-0-495b8f00ad7c@uber.com/
-v1: https://lore.kernel.org/all/20260915-perf-symbol-memory-send-v1-0-1d3360e21f07@uber.com/
-
+Reviewed-by: Ian Rogers <irogers@google.com>
+Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
 ---
-Alireza Haghdoost (4):
-      perf symbols: Split out name-independent duplicate symbol selection
-      perf symbols: Point to the symbol name instead of embedding it
-      perf script: Add --lazy-load-symbols to load symbol names lazily
-      perf test: Test lazy symbol name loading
+ tools/perf/util/symbol.c | 26 ++++++++++++++++++++++++--
+ tools/perf/util/symbol.h |  1 +
+ 2 files changed, 25 insertions(+), 2 deletions(-)
 
- tools/perf/Documentation/perf-script.txt           |   9 +
- tools/perf/builtin-script.c                        |   2 +
- tools/perf/tests/Build                             |   1 +
- tools/perf/tests/builtin-test.c                    |   1 +
- tools/perf/tests/shell/lazy_load_symbols_parity.sh | 293 ++++++++++
- tools/perf/tests/shell/lib/lazy_names.sh           |  19 +
- tools/perf/tests/shell/script_lazy_load_symbols.sh | 191 +++++++
- tools/perf/tests/symbol-lazy.c                     | 606 +++++++++++++++++++++
- tools/perf/tests/tests.h                           |   1 +
- tools/perf/ui/browsers/map.c                       |   2 +-
- tools/perf/ui/stdio/hist.c                         |   1 +
- tools/perf/util/dso.c                              |   2 +-
- tools/perf/util/dso.h                              |  20 +-
- tools/perf/util/symbol-elf.c                       | 299 +++++++++-
- tools/perf/util/symbol-minimal.c                   |   6 +
- tools/perf/util/symbol.c                           | 141 ++++-
- tools/perf/util/symbol.h                           |  29 +-
- tools/perf/util/symbol_conf.h                      |   1 +
- 18 files changed, 1599 insertions(+), 25 deletions(-)
----
-base-commit: a1c3b14c28ebfa79dd56e2743c2fbad0c02a7146
-change-id: 20260915-perf-symbol-memory-send-e7cfca1ac3d9
+diff --git a/tools/perf/util/symbol.c b/tools/perf/util/symbol.c
+index b61a574ce9a3..2d611c05d000 100644
+--- a/tools/perf/util/symbol.c
++++ b/tools/perf/util/symbol.c
+@@ -157,11 +157,15 @@ int __weak arch__choose_best_symbol(struct symbol *syma,
+ 	return SYMBOL_A;
+ }
+ 
+-static int choose_best_symbol(struct symbol *syma, struct symbol *symb)
++/*
++ * Choose between two symbols at the same address by size, type and binding.
++ * Returns SYMBOL_A or SYMBOL_B, or -1 if only their names can decide.
++ */
++static int choose_best_symbol_by_attrs(const struct symbol *syma,
++				       const struct symbol *symb)
+ {
+ 	s64 a;
+ 	s64 b;
+-	size_t na, nb;
+ 
+ 	/* Prefer a symbol with non zero length */
+ 	a = syma->end - syma->start;
+@@ -194,6 +198,24 @@ static int choose_best_symbol(struct symbol *syma, struct symbol *symb)
+ 	if (b && !a)
+ 		return SYMBOL_B;
+ 
++	return -1;
++}
++
++bool symbol__choice_needs_names(const struct symbol *syma, const struct symbol *symb)
++{
++	return choose_best_symbol_by_attrs(syma, symb) < 0;
++}
++
++static int choose_best_symbol(struct symbol *syma, struct symbol *symb)
++{
++	int ret = choose_best_symbol_by_attrs(syma, symb);
++	s64 a;
++	s64 b;
++	size_t na, nb;
++
++	if (ret >= 0)
++		return ret;
++
+ 	/* Prefer a symbol with less underscores */
+ 	a = prefix_underscores_count(syma->name);
+ 	b = prefix_underscores_count(symb->name);
+diff --git a/tools/perf/util/symbol.h b/tools/perf/util/symbol.h
+index 6347bd218ad5..ae7ede8f6070 100644
+--- a/tools/perf/util/symbol.h
++++ b/tools/perf/util/symbol.h
+@@ -301,6 +301,7 @@ int arch__compare_symbol_names(const char *namea, const char *nameb);
+ int arch__compare_symbol_names_n(const char *namea, const char *nameb,
+ 				 unsigned int n);
+ int arch__choose_best_symbol(struct symbol *syma, struct symbol *symb);
++bool symbol__choice_needs_names(const struct symbol *syma, const struct symbol *symb);
+ 
+ enum symbol_tag_include {
+ 	SYMBOL_TAG_INCLUDE__NONE = 0,
 
-Best regards,
---  
-Alireza Haghdoost <haghdoost@uber.com>
+-- 
+Git-157)
 
