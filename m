@@ -1,190 +1,106 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Sat, 14 Nov 2026 22:12:59 +0000
-Subject: [PATCH 2/2] PCI: meson: Add system suspend/resume support
+From: Hugo Sales <hugo@hsal.es>
+Subject: [PATCH 0/8] drm/amd/display: Copy probed modes for atomic_check
+Date: Sat, 14 Nov 2026 23:09:11 +0000
+Message-Id: <20261114-amdgpu-modes-four-v1-0-f11e2a6cd407@hsal.es>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-b4-pci-meson-suspend-v1-2-be3d04a13304@iav.lv>
-References: <20261114-b4-pci-meson-suspend-v1-0-be3d04a13304@iav.lv>
-In-Reply-To: <20261114-b4-pci-meson-suspend-v1-0-be3d04a13304@iav.lv>
-To: Yue Wang <yue.wang@Amlogic.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-pci@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5260; i=iav@iav.lv;
- h=from:subject:message-id; bh=MeM+aGdPJAWmnUmNJwf7DDqjZs0SyCzmsgJmymZ7zbo=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFk/7rwVPihZuTDPPzQ7h/9pz5wzbadeZUprzjDMYJg/0
- VUie8rCjlIWBjEuBlkxRZYJhzRuZSy5+tffw/wBzBxWJpAhDFycAjCRFUyMDJtM+jp9o/ZMtxLR
- Fw/S/ayTdeZLxbx7vS/+TTXNFp5h95eRYVZKguzmtvi6M/Y3pIIuZXxkua/z38m+YnGmhuK2r2F
- SjAA=
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrDtg/MerlC4mZtQRNJJppCDev
+ Wldfov3TlAOwgp9dkLgQ1T8lmAeGQwzbROjuGQo8qIxJq+QVjftEVfvWHH0MWDdErGrSrKmg9T
+ tgUf5/J/P122NduHh/RvBdX0BTEQDDnUAAAA=
+X-Change-ID: 20261104-amdgpu-modes-four-57aaed43ab18
+To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
+ Rodrigo Siqueira <siqueira@igalia.com>, 
+ Alex Deucher <alexander.deucher@amd.com>, 
+ =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Ray Wu <ray.wu@amd.com>, Fangzhi Zuo <jerry.zuo@amd.com>, 
+ Roman Li <roman.li@amd.com>, Alex Hung <alex.hung@amd.com>
+Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Ville_Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>, 
+ Aurabindo Pillai <aurabindo.pillai@amd.com>, Hugo Sales <hugo@hsal.es>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3829; i=hugo@hsal.es;
+ h=from:subject:message-id; bh=+dDISwyisNdvJwt3B/p7Y642cJGXY2iQt7K7XzoHftQ=;
+ b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsn68kmCebrPd1v+MlmhdJK9C9cNofplHL//ExW1I/
+ Oh7f3sc++aOUhYGMS4GWTFFFt0bngwsEyfPzCl6vgRmDisTyBAGLk4BmIhFKcM/1ZeTGH7/71+9
+ UH7ePY/pk3piq4KStp/9+FTJOH9BVeUXLkaGTb9/NDnrRh5j+r9X9UJEbqmhN7uCX/CJt12nD8V
+ VK/1mBgBfp0ul
+X-Developer-Key: i=hugo@hsal.es; a=openpgp;
+ fpr=193D095149CF7E8737B39064D912B0DB205A91C1
+X-Endpoint-Received: by B4 Relay for hugo@hsal.es/default with auth_id=1417
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On SM1 the controller sits in the PCIE power domain, which genpd
-switches off in the noirq suspend phase.  The driver has no PM
-callbacks, so the controller comes back unprogrammed and the first
-config access to the Root Port after resume hangs the CPU.  On
-ODROID-HC4 (ASM1061 SATA behind the port) s2idle never returns.
+mode_config.mutex protects connector->modes, but amdgpu_dm walks it from
+atomic_check, in create_stream_for_sink() and
+amdgpu_dm_get_highest_refresh_rate_mode(), without that mutex.
+atomic_check can't take the mutex because of lock ordering. An earlier
+patch I submitted moved the probe helper's sort under the modeset locks
+so this walk couldn't race it, and Ville pointed out that the bug is in
+the reader:
+https://lore.kernel.org/r/auh8pUx_kXUYSdZ8@intel.com
 
-Add noirq PM callbacks that call dw_pcie_suspend_noirq() and
-dw_pcie_resume_noirq(): suspend broadcasts PME_Turn_Off and waits for
-L2 if the link is up, then calls .deinit; resume calls .init, programs
-the Root Complex, MSI and iATU registers and restarts the link.  Set
-suspend_poweroff, so that suspend enters L2 even when D3cold is not
-possible.
+atomic_check only needs the preferred mode and the highest refresh rate
+mode. This series copies both at the end of each probe, under
+mode_config.mutex and connection_mutex, and atomic_check reads the
+copies under connection_mutex. The highest refresh rate copy is the mode
+add_fs_modes() built the FreeSync video modes from, as upstream's cached
+freesync_vid_base is. It's done this way because a search of
+connector->modes at the end of the probe could pick a command line mode
+with a higher refresh rate, and amdgpu_dm_is_freesync_video_mode() would
+then reject the video modes
 
-Send PME_Turn_Off through the apps_pm_xmt_turnoff bit of PCIE_CFG0
-in a .pme_turn_off callback, so that no outbound iATU window is needed
-for the Msg TLP.  Bit 12 is apps_pm_xmt_turnoff in the description of
-this wrapper in the Amlogic A311D (G12B) datasheet, where bit 7 is the
-app_ltssm_enable the driver already uses.
+The copies also need work to stay current after a monitor swap. Until
+the next probe they still describe the previous monitor, as
+connector->modes could, and two paths read them before that probe.
+mode_valid runs before the probe refreshes them, and after a swap the
+HPD handlers commit before the next probe. Patch 3 has mode_valid
+validate each mode with its own timing, so it no longer needs the
+preferred mode. Patch 4 records the EDID of the sink the copies came
+from, and patch 7 uses them only for a sink with that EDID. atomic_check
+checks them against the sink of the stream it builds, since a hotplug
+can swap dc_sink under it. With another sink, atomic_check uses the
+requested mode's own timing until the next probe, as before the first
+probe
 
-Do this only when the controller has a power domain, as on SM1.  G12A,
-G12B and AXG have none; entering L2 and powering the PHY off in
-suspend is untested there, so the callbacks return at once.
+Patch 1 drops a debug check that walked probed_modes and
+connector->modes from atomic_check, and asks its author below the cut
+whether to keep it behind mutex_trylock() instead. Patch 2 stops
+add_fs_modes() matching against connector->modes, which dropped the
+FreeSync video modes on every second probe. Patch 4 adds the copies,
+patches 5 and 6 pass the sink of the stream being built to the code that
+checks them, patch 7 switches the readers to them, and patch 8 adds
+tests for the copies
 
-A resume that fails to start the link or times out waiting for it
-calls .deinit itself, and the next suspend calls it again.  A second
-phy_power_off() and phy_exit() would unbalance the PHY counts, and the
-next .init would not power the PHY on, so .deinit leaves a controller
-that is already off alone.
+Patch 6 also changes one behaviour, only with amdgpu.freesync_video=1,
+which is off by default. A CRTC turned on straight into a FreeSync video
+mode now gets its fixed refresh config, which it never got before
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- drivers/pci/controller/dwc/pci-meson.c | 53 ++++++++++++++++++++++++++++++++++
- 1 file changed, 53 insertions(+)
+Hugo Sales (8):
+      drm/amd/display: Drop the unadvertised mode check
+      drm/amd/display: Don't match FreeSync video modes against the last probe
+      drm/amd/display: Validate modes with their own timing
+      drm/amd/display: Copy the preferred and highest refresh modes after probe
+      drm/amd/display: Pass the sink to the FreeSync and stream timing helpers
+      drm/amd/display: Pick the FreeSync video config for the new stream's sink
+      drm/amd/display: Stop reading connector->modes from atomic_check
+      drm/amd/display: Add KUnit tests for the mode copies
 
-diff --git a/drivers/pci/controller/dwc/pci-meson.c b/drivers/pci/controller/dwc/pci-meson.c
-index 627470c83bb5..5ef7369bb21b 100644
---- a/drivers/pci/controller/dwc/pci-meson.c
-+++ b/drivers/pci/controller/dwc/pci-meson.c
-@@ -9,6 +9,7 @@
- #include <linux/clk.h>
- #include <linux/delay.h>
- #include <linux/gpio/consumer.h>
-+#include <linux/of.h>
- #include <linux/pci.h>
- #include <linux/platform_device.h>
- #include <linux/reset.h>
-@@ -27,6 +28,7 @@
- /* PCIe specific config registers */
- #define PCIE_CFG0			0x0
- #define APP_LTSSM_ENABLE		BIT(7)
-+#define APPS_PM_XMT_TURNOFF		BIT(12)
- 
- #define PCIE_CFG_STATUS12		0x30
- #define IS_SMLH_LINK_UP(x)		((x) & (1 << 6))
-@@ -68,6 +70,8 @@ struct meson_pcie {
- 	struct meson_pcie_rc_reset mrst;
- 	struct gpio_desc *reset_gpio;
- 	struct phy *phy;
-+	bool power_domain;
-+	bool powered;
- };
- 
- static struct reset_control *meson_pcie_get_reset(struct meson_pcie *mp,
-@@ -385,6 +389,8 @@ static int meson_pcie_host_init(struct dw_pcie_rp *pp)
- 		return ret;
- 	}
- 
-+	mp->powered = true;
-+
- 	pp->bridge->ops = &meson_pci_ops;
- 
- 	meson_set_max_payload(mp, MAX_PAYLOAD_SIZE);
-@@ -397,13 +403,29 @@ static void meson_pcie_host_deinit(struct dw_pcie_rp *pp)
- {
- 	struct meson_pcie *mp = to_meson_pcie(to_dw_pcie_from_pp(pp));
- 
-+	/* After a failed resume the next suspend calls .deinit once more */
-+	if (!mp->powered)
-+		return;
-+
- 	gpiod_set_value_cansleep(mp->reset_gpio, 1);
- 	meson_pcie_power_off(mp);
-+	mp->powered = false;
-+}
-+
-+static void meson_pcie_pme_turn_off(struct dw_pcie_rp *pp)
-+{
-+	struct meson_pcie *mp = to_meson_pcie(to_dw_pcie_from_pp(pp));
-+	u32 val;
-+
-+	val = meson_cfg_readl(mp, PCIE_CFG0);
-+	meson_cfg_writel(mp, val | APPS_PM_XMT_TURNOFF, PCIE_CFG0);
-+	meson_cfg_writel(mp, val, PCIE_CFG0);
- }
- 
- static const struct dw_pcie_host_ops meson_pcie_host_ops = {
- 	.init = meson_pcie_host_init,
- 	.deinit = meson_pcie_host_deinit,
-+	.pme_turn_off = meson_pcie_pme_turn_off,
- };
- 
- static const struct dw_pcie_ops dw_pcie_ops = {
-@@ -429,6 +451,13 @@ static int meson_pcie_probe(struct platform_device *pdev)
- 	pci->pp.ops = &meson_pcie_host_ops;
- 	pci->num_lanes = 1;
- 
-+	/*
-+	 * Genpd switches the controller's power domain off in suspend.  Only
-+	 * SM1 has one, and only SM1 gets suspend support.
-+	 */
-+	mp->power_domain = of_property_present(dev->of_node, "power-domains");
-+	pci->pp.suspend_poweroff = mp->power_domain;
-+
- 	mp->phy = devm_phy_get(dev, "pcie");
- 	if (IS_ERR(mp->phy)) {
- 		dev_err(dev, "get phy failed, %pe\n", mp->phy);
-@@ -477,6 +506,29 @@ static void meson_pcie_remove(struct platform_device *pdev)
- 	dw_pcie_host_deinit(&mp->pci.pp);
- }
- 
-+static int meson_pcie_suspend_noirq(struct device *dev)
-+{
-+	struct meson_pcie *mp = dev_get_drvdata(dev);
-+
-+	if (!mp->power_domain)
-+		return 0;
-+
-+	return dw_pcie_suspend_noirq(&mp->pci);
-+}
-+
-+static int meson_pcie_resume_noirq(struct device *dev)
-+{
-+	struct meson_pcie *mp = dev_get_drvdata(dev);
-+
-+	if (!mp->power_domain)
-+		return 0;
-+
-+	return dw_pcie_resume_noirq(&mp->pci);
-+}
-+
-+static DEFINE_NOIRQ_DEV_PM_OPS(meson_pcie_pm_ops, meson_pcie_suspend_noirq,
-+			       meson_pcie_resume_noirq);
-+
- static const struct of_device_id meson_pcie_of_match[] = {
- 	{
- 		.compatible = "amlogic,axg-pcie",
-@@ -494,6 +546,7 @@ static struct platform_driver meson_pcie_driver = {
- 	.driver = {
- 		.name = "meson-pcie",
- 		.of_match_table = meson_pcie_of_match,
-+		.pm = pm_sleep_ptr(&meson_pcie_pm_ops),
- 	},
- };
- 
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c  |   38 +-
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h  |   23 +-
+ .../amd/display/amdgpu_dm/amdgpu_dm_connector.c    |  499 +++++---
+ .../amd/display/amdgpu_dm/amdgpu_dm_connector.h    |   13 +-
+ .../amd/display/amdgpu_dm/amdgpu_dm_mst_types.c    |    2 +-
+ .../amdgpu_dm/tests/amdgpu_dm_connector_test.c     | 1209 +++++++++++++++++---
+ .../amd/display/amdgpu_dm/tests/amdgpu_dm_test.c   |  153 +++
+ 7 files changed, 1644 insertions(+), 293 deletions(-)
+---
+base-commit: 47df73aa49d1988c8f684b7caf8be6570e966844
+change-id: 20261104-amdgpu-modes-four-57aaed43ab18
 
--- 
-2.43.0
+Best regards,
+--  
+Hugo Sales <hugo@hsal.es>
 
