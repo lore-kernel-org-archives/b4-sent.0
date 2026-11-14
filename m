@@ -1,174 +1,96 @@
-From: Matt Thompson <matt@boondocker.io>
-Date: Fri, 13 Nov 2026 17:52:21 -0700
-Subject: [PATCH RFC v2 3/3] PCI: rockchip-host: Recover downstream
- configuration access
+From: Demeter Barna <me@fromdisposition.org>
+Subject: [PATCH 0/9] Qualcomm SM8350 support
+Date: Sat, 14 Nov 2026 02:21:54 +0000
+Message-Id: <20261114-sm8350-support-v1-0-414271f59474@fromdisposition.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-rfc-b4-v2-3-d6b14f95c1d6@boondocker.io>
-References: <20261113-rfc-b4-v2-0-d6b14f95c1d6@boondocker.io>
-In-Reply-To: <20261113-rfc-b4-v2-0-d6b14f95c1d6@boondocker.io>
-To: Shawn Lin <shawn.lin@rock-chips.com>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>
-Cc: Rob Herring <robh@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- linux-pci@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0MT3eJcC2NTA93i0oKC/KISXUujFIvkFGMLMyNjYyWgpoKi1LTMCrC
+ B0bEQfnFpUlZqcgnIFKXaWgD88cxYcgAAAA==
+X-Change-ID: 20261114-sm8350-support-92d8cd386233
+To: Sumit Garg <sumit.garg@kernel.org>, u-boot@lists.u-boot-project.org, 
+ u-boot-qcom@groups.io
+Cc: Tom Rini <trini@konsulko.com>, Lukasz Majewski <lukma@nabladev.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
+ Biswapriyo Nath <nathbappai@gmail.com>, 
+ Vitalii Skorkin <nikroks@mainlining.org>, 
+ Erikas Bitovtas <xerikasxx@gmail.com>, Johan Jonker <jbx6244@gmail.com>, 
+ Petr Hodina <petr.hodina@protonmail.com>, 
+ Marek Vasut <marek.vasut+renesas@mailbox.org>, 
+ Jaehoon Chung <jh80.chung@samsung.com>, Peng Fan <peng.fan@nxp.com>, 
+ Federico Amedeo Izzo <federico@izzo.pro>, 
+ Michael Srba <Michael.Srba@seznam.cz>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, 
+ Demeter Barna <me@fromdisposition.org>, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794617540; l=4966;
- i=matt@boondocker.io; s=rk3399-rfc-20261113; h=from:subject:message-id;
- bh=t7P6yz1ZPt577IkVoaPXVx7wOD2MZniq6qTtpmWpQv0=;
- b=jziTXeF5pImkNcRBXi1/XuWIcxKWxvHLp+DYHF8WdmNM8X8Lb2cTRE0wor/brvEoVKj4LVlMt
- duqShSJl3stBp9I4FbyY4nwfWMJoIdj0bfe4icOSvGYFNWEdAW+7orW
-X-Developer-Key: i=matt@boondocker.io; a=ed25519;
- pk=WMnh3kwFFRkrqamL/FbDcdl1/9rBF2uT03VdvGGP40k=
-X-Endpoint-Received: by B4 Relay for matt@boondocker.io/rk3399-rfc-20261113 with auth_id=1517
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794622936; l=2755;
+ i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
+ bh=V7Z9MNs4lz2ZkPc5+wizpyhZZc3+q5IUGdEJ9guSD3E=;
+ b=GUMj3q9aRHN0LvBY/OGUJ61soVOoVBqhfFfFOZ46HzOuxw2yA5oc04nkUHayocuGOpY45bvNj
+ laRV3uPH7WmA2DNYEbO59coBu6CxbBNSJvE8XT4Vux9e/4cYdLKKCTv
+X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
+ pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
+X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The link status can change between the readiness check and a downstream
-PCI configuration read. A link that reports up can also fail to return
-a usable completion.
+This adds the Qualcomm SM8350 (Snapdragon 888) to the generic Qualcomm
+target. It is based on v2027.01-rc2 and applies to qcom-next as well.
 
-On arm64, annotate downstream loads for all three access widths so a
-synchronous external abort returns PCIBIOS_DEVICE_NOT_FOUND with all-ones
-data. Keep little-endian conversion and I/O read ordering on success.
+Patches 1-3 add the GCC, pinctrl and interconnect drivers, limited to
+what U-Boot drives: the QUP wrappers, UFS, the primary USB controller
+and SDCC2. Patches 4-8 add the SM8350 and PM8350 entries to existing
+drivers, and patch 9 enables the new drivers in qcom_defconfig. The data
+come from Linux v7.4-rc1.
 
-After retraining, the controller can continue to block configuration
-traffic until its AXI link-down latch is cleared. Clear the latch before
-downstream config reads and writes once the link readiness checks pass.
+Tested on the Razer Edge 5G, chainloaded from its ABL: the console on
+the splash framebuffer, UFS (HS-G3, two lanes), USB fastboot and the
+volume-up key work, the SD host probes (no card tried), and Linux boots
+through bootmgr and systemd-boot.
 
-Link: https://lore.kernel.org/linux-pci/20261024-rockchip-pcie-resume-v1-2-58e54a5cf5f1@iav.lv/
+That ABL takes only boot image header v3 and resets on the Image
+text_offset of a qcom_defconfig build, so the test builds set
+CONFIG_TEXT_BASE=0x80000000 and carry the board DT, much as the patch
+"board: qualcomm: add Moto G10 configuration and boot instructions" on
+the list describes. The board DT is not in Linux yet; sm8350-hdk builds,
+but I have no HDK to run it on.
 
-Signed-off-by: Matt Thompson <matt@boondocker.io>
 ---
- drivers/pci/controller/pcie-rockchip-host.c | 62 +++++++++++++++++++++++++++--
- drivers/pci/controller/pcie-rockchip.h      |  1 +
- 2 files changed, 59 insertions(+), 4 deletions(-)
+Demeter Barna (9):
+      clk: qcom: Add SM8350 GCC driver
+      pinctrl: qcom: Add SM8350 pinctrl driver
+      interconnect: qcom: Add SM8350 interconnect driver
+      clk: qcom: sm8350: enable shared RPMH clock driver
+      gpio: qcom_spmi_gpio: add qcom,pm8350-gpio
+      iommu: qcom-hyp-smmu: Add SM8350 compatible
+      power: regulator: qcom-rpmh: add PM8350 support
+      phy: qcom: Add SM8350 to QMP UFS PHY driver
+      qcom_defconfig: Enable SM8350 GCC and interconnect
 
-diff --git a/drivers/pci/controller/pcie-rockchip-host.c b/drivers/pci/controller/pcie-rockchip-host.c
-index 35105c1..64ac6f4 100644
---- a/drivers/pci/controller/pcie-rockchip-host.c
-+++ b/drivers/pci/controller/pcie-rockchip-host.c
-@@ -29,6 +29,10 @@
- #include "../pci.h"
- #include "pcie-rockchip.h"
- 
-+#ifdef CONFIG_ARM64
-+#include <asm/asm-extable.h>
-+#endif
-+
- static void rockchip_pcie_enable_bw_int(struct rockchip_pcie *rockchip)
- {
- 	u32 status;
-@@ -149,16 +153,36 @@ static bool rockchip_pcie_downstream_ready(struct rockchip_pcie *rockchip)
- 	       PCIE_LINK_TRAINING_DONE(rockchip_pcie_read(rockchip, PCIE_CORE_CTRL));
- }
- 
-+#ifdef CONFIG_ARM64
-+/*
-+ * An absent completion can raise a synchronous external abort even when
-+ * the link status indicated up immediately before the config transaction.
-+ */
-+#define rockchip_pcie_cfg_load(insn, addr, val)			\
-+	({								\
-+		int err = 0;					\
-+		asm volatile("1: " #insn " %w0, [%2]\n"			\
-+			     "2:\n"					\
-+			     _ASM_EXTABLE_MMIO_READ_ERR_ZERO(1b, 2b,	\
-+							    %w1, %w0)	\
-+			     : "=&r" (val), "+r" (err)			\
-+			     : "r" (addr) : "memory");			\
-+		err;							\
-+	})
-+#endif
-+
- static int rockchip_pcie_rd_other_conf(struct rockchip_pcie *rockchip,
- 				       struct pci_bus *bus, u32 devfn,
- 				       int where, int size, u32 *val)
- {
- 	void __iomem *addr;
-+#ifdef CONFIG_ARM64
-+	u32 data;
-+	int err;
-+#endif
- 
--	if (!rockchip_pcie_downstream_ready(rockchip)) {
--		*val = ~0U;
--		return PCIBIOS_DEVICE_NOT_FOUND;
--	}
-+	if (!rockchip_pcie_downstream_ready(rockchip))
-+		goto absent;
- 
- 	addr = rockchip->reg_base + PCIE_ECAM_OFFSET(bus->number, devfn, where);
- 
-@@ -174,6 +198,28 @@ static int rockchip_pcie_rd_other_conf(struct rockchip_pcie *rockchip,
- 		rockchip_pcie_cfg_configuration_accesses(rockchip,
- 						AXI_WRAPPER_TYPE1_CFG);
- 
-+	/* Clear the AXI link-down latch before downstream config traffic. */
-+	rockchip_pcie_write(rockchip, 0, PCIE_CORE_AXI_LINK_DOWN);
-+
-+#ifdef CONFIG_ARM64
-+	if (size == 4) {
-+		err = rockchip_pcie_cfg_load(ldr, addr, data);
-+		*val = le32_to_cpu((__force __le32)data);
-+	} else if (size == 2) {
-+		err = rockchip_pcie_cfg_load(ldrh, addr, data);
-+		*val = le16_to_cpu((__force __le16)data);
-+	} else if (size == 1) {
-+		err = rockchip_pcie_cfg_load(ldrb, addr, data);
-+		*val = data;
-+	} else {
-+		*val = 0;
-+		return PCIBIOS_BAD_REGISTER_NUMBER;
-+	}
-+	if (err)
-+		goto absent;
-+	/* Preserve the I/O read ordering of readl/readw/readb. */
-+	__io_ar(*val);
-+#else
- 	if (size == 4) {
- 		*val = readl(addr);
- 	} else if (size == 2) {
-@@ -184,7 +230,12 @@ static int rockchip_pcie_rd_other_conf(struct rockchip_pcie *rockchip,
- 		*val = 0;
- 		return PCIBIOS_BAD_REGISTER_NUMBER;
- 	}
-+#endif
- 	return PCIBIOS_SUCCESSFUL;
-+
-+absent:
-+	*val = ~0U;
-+	return PCIBIOS_DEVICE_NOT_FOUND;
- }
- 
- static int rockchip_pcie_wr_other_conf(struct rockchip_pcie *rockchip,
-@@ -208,6 +259,9 @@ static int rockchip_pcie_wr_other_conf(struct rockchip_pcie *rockchip,
- 		rockchip_pcie_cfg_configuration_accesses(rockchip,
- 						AXI_WRAPPER_TYPE1_CFG);
- 
-+	/* Clear the AXI link-down latch before downstream config traffic. */
-+	rockchip_pcie_write(rockchip, 0, PCIE_CORE_AXI_LINK_DOWN);
-+
- 	if (size == 4)
- 		writel(val, addr);
- 	else if (size == 2)
-diff --git a/drivers/pci/controller/pcie-rockchip.h b/drivers/pci/controller/pcie-rockchip.h
-index b5da156..1cc3621 100644
---- a/drivers/pci/controller/pcie-rockchip.h
-+++ b/drivers/pci/controller/pcie-rockchip.h
-@@ -164,6 +164,7 @@
- #define MIN_AXI_ADDR_BITS_PASSED		8
- #define PCIE_ADDR_MASK			GENMASK_ULL(63, MIN_AXI_ADDR_BITS_PASSED)
- #define PCIE_CORE_AXI_CONF_BASE		0xc00000
-+#define PCIE_CORE_AXI_LINK_DOWN		(PCIE_CORE_AXI_CONF_BASE + 0x824)
- #define PCIE_CORE_OB_REGION_ADDR0	(PCIE_CORE_AXI_CONF_BASE + 0x0)
- #define   PCIE_CORE_OB_REGION_ADDR0_NUM_BITS	0x3f
- #define   PCIE_CORE_OB_REGION_ADDR0_LO_ADDR	PCIE_ADDR_MASK
+ configs/qcom_defconfig                        |   2 +
+ drivers/clk/qcom/Kconfig                      |   9 +
+ drivers/clk/qcom/Makefile                     |   1 +
+ drivers/clk/qcom/clock-rpmh.c                 |   1 +
+ drivers/clk/qcom/clock-sm8350.c               | 281 ++++++++++++++++++++++++++
+ drivers/gpio/qcom_spmi_gpio.c                 |   1 +
+ drivers/interconnect/qcom/Kconfig             |   7 +
+ drivers/interconnect/qcom/Makefile            |   1 +
+ drivers/interconnect/qcom/sm8350.c            | 271 +++++++++++++++++++++++++
+ drivers/interconnect/qcom/sm8350.h            |  25 +++
+ drivers/iommu/qcom-hyp-smmu.c                 |   1 +
+ drivers/phy/qcom/phy-qcom-qmp-ufs.c           |   1 +
+ drivers/pinctrl/qcom/Kconfig                  |   8 +
+ drivers/pinctrl/qcom/Makefile                 |   1 +
+ drivers/pinctrl/qcom/pinctrl-sm8350.c         | 101 +++++++++
+ drivers/power/regulator/qcom-rpmh-regulator.c |  30 +++
+ 16 files changed, 741 insertions(+)
+---
+base-commit: ecdcf9e365df6249a57cd8cc946e7026804ff4ae
+change-id: 20261114-sm8350-support-92d8cd386233
 
--- 
-Git-155)
+Best regards,
+--  
+Demeter Barna <me@fromdisposition.org>
 
