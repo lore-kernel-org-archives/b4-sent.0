@@ -1,11 +1,11 @@
 From: Larisa Grigore <larisa.grigore@oss.nxp.com>
-Date: Sat, 14 Nov 2026 12:55:42 +0100
-Subject: [PATCH v11 10/14] ufs: pltfrm: Add a flags argument to
- ufshcd_pltfrm_init()
+Date: Sat, 14 Nov 2026 12:55:43 +0100
+Subject: [PATCH v11 11/14] ufs: pltfrm: Add a flag to manage fixed rate
+ clocks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-b4-ufs-s32n7-v11-10-dc36e11919d5@oss.nxp.com>
+Message-Id: <20261114-b4-ufs-s32n7-v11-11-dc36e11919d5@oss.nxp.com>
 References: <20261114-b4-ufs-s32n7-v11-0-dc36e11919d5@oss.nxp.com>
 In-Reply-To: <20261114-b4-ufs-s32n7-v11-0-dc36e11919d5@oss.nxp.com>
 To: "Martin K. Petersen" <mkp@kernel.org>, 
@@ -35,202 +35,180 @@ Cc: devicetree@vger.kernel.org, Ajay Neeli <ajay.neeli@amd.com>,
  Orson Zhai <orsonzhai@gmail.com>, aruizrui@redhat.com, 
  linux-renesas-soc@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794657370; l=7753;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794657370; l=5794;
  i=larisa.grigore@oss.nxp.com; s=20261114; h=from:subject:message-id;
- bh=uqwIomSzy0PEvlFV96Px59Ss9lbqTn7kBdME7ujSvaY=;
- b=whX7ZIwJN+OZzdu4rmY09TRleffoMpPhI7rIA8tJWx2+DRO8Gmg9KRRXSF/y/PY+j8hr72525
- ldG1FaMSFdRCUCBfN3mC6WO4GyGpdibAJ9AYzSNbEc+FRutle4ZWGev
+ bh=gfpDkcJvEuz9ohkYzalTe5JXhCA/VTTkJXlX970pQDU=;
+ b=o1tlKOyaboHDGeDGhpmh3x4nGW0otGNWGbqfiXBQ0n0U/gzpzUz43PtRaIkF+qw47BCvRW8KU
+ ho70Z9Qj3ZtDkP9m/+ELCNqFq+O1bVFQtCXo0Gf7h0LuaRtowpustei
 X-Developer-Key: i=larisa.grigore@oss.nxp.com; a=ed25519;
  pk=Jpt52sb6ETKTtvWjUzhz5Sv5FjB9AEg9QKCcbpWFx3w=
 X-Endpoint-Received: by B4 Relay for larisa.grigore@oss.nxp.com/20261114 with auth_id=1522
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a flags argument to ufshcd_pltfrm_init() so that glue drivers can
-request optional behavior from the common platform code without
-affecting the other users of the helper.
+Some UFS host controllers have clocks whose rate is set by the clock
+provider and is never scaled. ufshcd_parse_clock_info() registers the
+clocks listed in clock-names only when freq-table-hz is present, and
+ufshcd_parse_operating_points() only when operating-points-v2 is
+present. On such platforms the UFS core therefore neither enables the
+clocks at probe nor gates them on idle and on suspend.
 
-No flags are defined yet, so all callers pass 0. No functional change.
+Describing these clocks with a dummy operating-points-v2 table, or with
+the deprecated freq-table-hz property, only to make the core manage
+them is not desirable.
+
+Registering the clocks unconditionally is not possible either: some
+glue drivers list clocks without a frequency table and manage them
+themselves (e.g. ufs-rockchip on rk3576), and the core would then start
+to enable, gate and possibly scale the same clocks.
+
+Add UFSHCD_PLTFRM_FIXED_RATE_CLKS. When a glue driver passes it to
+ufshcd_pltfrm_init() and neither freq-table-hz nor operating-points-v2
+is present, register the clocks from clock-names with min_freq and
+max_freq set to 0. ufshcd_init_clocks() then leaves their rate
+unchanged, and the UFS core enables and gates them like any other
+clock. The flag is not meant to be combined with
+UFSHCD_CAP_CLK_SCALING.
 
 Assisted-by: LLM
 Signed-off-by: Larisa Grigore <larisa.grigore@oss.nxp.com>
 ---
- drivers/ufs/host/cdns-pltfrm.c        | 2 +-
- drivers/ufs/host/tc-dwc-g210-pltfrm.c | 2 +-
- drivers/ufs/host/ufs-amd-versal2.c    | 2 +-
- drivers/ufs/host/ufs-exynos.c         | 2 +-
- drivers/ufs/host/ufs-hisi.c           | 2 +-
- drivers/ufs/host/ufs-mediatek.c       | 2 +-
- drivers/ufs/host/ufs-qcom.c           | 2 +-
- drivers/ufs/host/ufs-renesas.c        | 2 +-
- drivers/ufs/host/ufs-rockchip.c       | 2 +-
- drivers/ufs/host/ufs-sprd.c           | 2 +-
- drivers/ufs/host/ufshcd-pltfrm.c      | 4 +++-
- drivers/ufs/host/ufshcd-pltfrm.h      | 3 ++-
- 12 files changed, 15 insertions(+), 12 deletions(-)
+ drivers/ufs/host/ufshcd-pltfrm.c | 57 ++++++++++++++++++++++++----------------
+ drivers/ufs/host/ufshcd-pltfrm.h |  9 +++++++
+ 2 files changed, 44 insertions(+), 22 deletions(-)
 
-diff --git a/drivers/ufs/host/cdns-pltfrm.c b/drivers/ufs/host/cdns-pltfrm.c
-index 3ef62acb04fa..f6a19a5d7f14 100644
---- a/drivers/ufs/host/cdns-pltfrm.c
-+++ b/drivers/ufs/host/cdns-pltfrm.c
-@@ -292,7 +292,7 @@ static int cdns_ufs_pltfrm_probe(struct platform_device *pdev)
- 	vops = (struct ufs_hba_variant_ops *)of_id->data;
- 
- 	/* Perform generic probe */
--	err = ufshcd_pltfrm_init(pdev, vops);
-+	err = ufshcd_pltfrm_init(pdev, vops, 0);
- 	if (err)
- 		dev_err(dev, "ufshcd_pltfrm_init() failed %d\n", err);
- 
-diff --git a/drivers/ufs/host/tc-dwc-g210-pltfrm.c b/drivers/ufs/host/tc-dwc-g210-pltfrm.c
-index 454ac88c357d..5ac1bc8ee7ce 100644
---- a/drivers/ufs/host/tc-dwc-g210-pltfrm.c
-+++ b/drivers/ufs/host/tc-dwc-g210-pltfrm.c
-@@ -62,7 +62,7 @@ static int tc_dwc_g210_pltfm_probe(struct platform_device *pdev)
- 	vops = (struct ufs_hba_variant_ops *)of_id->data;
- 
- 	/* Perform generic probe */
--	err = ufshcd_pltfrm_init(pdev, vops);
-+	err = ufshcd_pltfrm_init(pdev, vops, 0);
- 	if (err)
- 		dev_err(dev, "ufshcd_pltfrm_init() failed %d\n", err);
- 
-diff --git a/drivers/ufs/host/ufs-amd-versal2.c b/drivers/ufs/host/ufs-amd-versal2.c
-index dcca6be5dad0..061666125fa3 100644
---- a/drivers/ufs/host/ufs-amd-versal2.c
-+++ b/drivers/ufs/host/ufs-amd-versal2.c
-@@ -444,7 +444,7 @@ static int ufs_versal2_probe(struct platform_device *pdev)
- 	int ret;
- 
- 	/* Perform generic probe */
--	ret = ufshcd_pltfrm_init(pdev, &ufs_versal2_hba_vops);
-+	ret = ufshcd_pltfrm_init(pdev, &ufs_versal2_hba_vops, 0);
- 	if (ret)
- 		dev_err(dev, "ufshcd_pltfrm_init() failed %d\n", ret);
- 
-diff --git a/drivers/ufs/host/ufs-exynos.c b/drivers/ufs/host/ufs-exynos.c
-index 265e01467a9b..c96ebf12c218 100644
---- a/drivers/ufs/host/ufs-exynos.c
-+++ b/drivers/ufs/host/ufs-exynos.c
-@@ -2137,7 +2137,7 @@ static int exynos_ufs_probe(struct platform_device *pdev)
- 	if (drv_data && drv_data->vops)
- 		vops = drv_data->vops;
- 
--	err = ufshcd_pltfrm_init(pdev, vops);
-+	err = ufshcd_pltfrm_init(pdev, vops, 0);
- 	if (err)
- 		dev_err(dev, "ufshcd_pltfrm_init() failed %d\n", err);
- 
-diff --git a/drivers/ufs/host/ufs-hisi.c b/drivers/ufs/host/ufs-hisi.c
-index 5217e2e294f8..8537602a594a 100644
---- a/drivers/ufs/host/ufs-hisi.c
-+++ b/drivers/ufs/host/ufs-hisi.c
-@@ -528,7 +528,7 @@ static int ufs_hisi_probe(struct platform_device *pdev)
- 
- 	of_id = of_match_node(ufs_hisi_of_match, pdev->dev.of_node);
- 
--	return ufshcd_pltfrm_init(pdev, of_id->data);
-+	return ufshcd_pltfrm_init(pdev, of_id->data, 0);
- }
- 
- static void ufs_hisi_remove(struct platform_device *pdev)
-diff --git a/drivers/ufs/host/ufs-mediatek.c b/drivers/ufs/host/ufs-mediatek.c
-index 7691349c502a..2e1992e0125a 100644
---- a/drivers/ufs/host/ufs-mediatek.c
-+++ b/drivers/ufs/host/ufs-mediatek.c
-@@ -2438,7 +2438,7 @@ static int ufs_mtk_probe(struct platform_device *pdev)
- 
- skip_phy:
- 	/* perform generic probe */
--	err = ufshcd_pltfrm_init(pdev, &ufs_hba_mtk_vops);
-+	err = ufshcd_pltfrm_init(pdev, &ufs_hba_mtk_vops, 0);
- 	if (err) {
- 		dev_err(dev, "probe failed %d\n", err);
- 		goto out;
-diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
-index 979d223230a6..301dbf4f5d88 100644
---- a/drivers/ufs/host/ufs-qcom.c
-+++ b/drivers/ufs/host/ufs-qcom.c
-@@ -2974,7 +2974,7 @@ static int ufs_qcom_probe(struct platform_device *pdev)
- 		vops = &ufs_hba_qcom_vops;
- 
- 	/* Perform generic probe */
--	err = ufshcd_pltfrm_init(pdev, vops);
-+	err = ufshcd_pltfrm_init(pdev, vops, 0);
- 	if (err)
- 		return dev_err_probe(dev, err, "ufshcd_pltfrm_init() failed\n");
- 
-diff --git a/drivers/ufs/host/ufs-renesas.c b/drivers/ufs/host/ufs-renesas.c
-index e418c5878038..4267202185d8 100644
---- a/drivers/ufs/host/ufs-renesas.c
-+++ b/drivers/ufs/host/ufs-renesas.c
-@@ -535,7 +535,7 @@ MODULE_DEVICE_TABLE(of, ufs_renesas_of_match);
- 
- static int ufs_renesas_probe(struct platform_device *pdev)
- {
--	return ufshcd_pltfrm_init(pdev, &ufs_renesas_vops);
-+	return ufshcd_pltfrm_init(pdev, &ufs_renesas_vops, 0);
- }
- 
- static void ufs_renesas_remove(struct platform_device *pdev)
-diff --git a/drivers/ufs/host/ufs-rockchip.c b/drivers/ufs/host/ufs-rockchip.c
-index 8ce6534a73de..600460aa118f 100644
---- a/drivers/ufs/host/ufs-rockchip.c
-+++ b/drivers/ufs/host/ufs-rockchip.c
-@@ -253,7 +253,7 @@ static int ufs_rockchip_probe(struct platform_device *pdev)
- 	if (!vops)
- 		return dev_err_probe(dev, -ENODATA, "ufs_hba_variant_ops not defined.\n");
- 
--	err = ufshcd_pltfrm_init(pdev, vops);
-+	err = ufshcd_pltfrm_init(pdev, vops, 0);
- 	if (err)
- 		return dev_err_probe(dev, err, "ufshcd_pltfrm_init failed\n");
- 
-diff --git a/drivers/ufs/host/ufs-sprd.c b/drivers/ufs/host/ufs-sprd.c
-index 8c0a13e95556..fbd53cc4d3c8 100644
---- a/drivers/ufs/host/ufs-sprd.c
-+++ b/drivers/ufs/host/ufs-sprd.c
-@@ -415,7 +415,7 @@ static int ufs_sprd_probe(struct platform_device *pdev)
- 	const struct of_device_id *of_id;
- 
- 	of_id = of_match_node(ufs_sprd_of_match, dev->of_node);
--	err = ufshcd_pltfrm_init(pdev, of_id->data);
-+	err = ufshcd_pltfrm_init(pdev, of_id->data, 0);
- 	if (err)
- 		dev_err(dev, "ufshcd_pltfrm_init() failed %d\n", err);
- 
 diff --git a/drivers/ufs/host/ufshcd-pltfrm.c b/drivers/ufs/host/ufshcd-pltfrm.c
-index c238f6073ad0..f8b2d64b6b4b 100644
+index f8b2d64b6b4b..50afc2816dc7 100644
 --- a/drivers/ufs/host/ufshcd-pltfrm.c
 +++ b/drivers/ufs/host/ufshcd-pltfrm.c
-@@ -641,11 +641,13 @@ EXPORT_SYMBOL_GPL(ufshcd_init_host_params);
-  * ufshcd_pltfrm_init - probe routine of the driver
-  * @pdev: pointer to Platform device handle
-  * @vops: pointer to variant ops
-+ * @flags: bitmask of UFSHCD_PLTFRM_* flags
-  *
-  * Return: 0 on success, non-zero value on failure.
-  */
- int ufshcd_pltfrm_init(struct platform_device *pdev,
--		       const struct ufs_hba_variant_ops *vops)
-+		       const struct ufs_hba_variant_ops *vops,
-+		       unsigned int flags)
+@@ -21,7 +21,7 @@
+ 
+ #define UFSHCD_DEFAULT_LANES_PER_DIRECTION		2
+ 
+-static int ufshcd_parse_clock_info(struct ufs_hba *hba)
++static int ufshcd_parse_clock_info(struct ufs_hba *hba, unsigned int flags)
  {
- 	struct ufs_hba *hba;
- 	void __iomem *mmio_base;
+ 	int ret = 0;
+ 	int cnt;
+@@ -51,32 +51,43 @@ static int ufshcd_parse_clock_info(struct ufs_hba *hba)
+ 
+ 	sz = of_property_count_u32_elems(np, "freq-table-hz");
+ 	if (sz <= 0) {
+-		dev_info(dev, "freq-table-hz property not specified\n");
+-		goto out;
+-	}
++		/*
++		 * Without a frequency table the clocks are either registered by
++		 * ufshcd_parse_operating_points() or managed by the glue driver,
++		 * unless the glue driver asked for fixed rate clocks.
++		 */
++		if (!(flags & UFSHCD_PLTFRM_FIXED_RATE_CLKS) ||
++		    of_property_present(np, "operating-points-v2")) {
++			dev_info(dev, "freq-table-hz property not specified\n");
++			goto out;
++		}
+ 
+-	if (sz != 2 * cnt) {
++		dev_dbg(dev, "no frequency table, using fixed rate clocks\n");
++		sz = 0;
++	} else if (sz != 2 * cnt) {
+ 		dev_err(dev, "%s len mismatch\n", "freq-table-hz");
+ 		ret = -EINVAL;
+ 		goto out;
+ 	}
+ 
+-	clkfreq = devm_kzalloc_objs(dev, *clkfreq, sz);
+-	if (!clkfreq) {
+-		ret = -ENOMEM;
+-		goto out;
+-	}
++	if (sz) {
++		clkfreq = devm_kzalloc_objs(dev, *clkfreq, sz);
++		if (!clkfreq) {
++			ret = -ENOMEM;
++			goto out;
++		}
+ 
+-	ret = of_property_read_u32_array(np, "freq-table-hz",
+-			clkfreq, sz);
+-	if (ret && (ret != -EINVAL)) {
+-		dev_err(dev, "%s: error reading array %d\n",
++		ret = of_property_read_u32_array(np, "freq-table-hz",
++						 clkfreq, sz);
++		if (ret && (ret != -EINVAL)) {
++			dev_err(dev, "%s: error reading array %d\n",
+ 				"freq-table-hz", ret);
+-		return ret;
++			return ret;
++		}
+ 	}
+ 
+-	for (i = 0; i < sz; i += 2) {
+-		ret = of_property_read_string_index(np,	"clock-names", i/2,
++	for (i = 0; i < cnt; i++) {
++		ret = of_property_read_string_index(np,	"clock-names", i,
+ 						    &name);
+ 		if (ret)
+ 			goto out;
+@@ -87,8 +98,10 @@ static int ufshcd_parse_clock_info(struct ufs_hba *hba)
+ 			goto out;
+ 		}
+ 
+-		clki->min_freq = clkfreq[i];
+-		clki->max_freq = clkfreq[i+1];
++		if (clkfreq) {
++			clki->min_freq = clkfreq[2 * i];
++			clki->max_freq = clkfreq[2 * i + 1];
++		}
+ 		clki->name = devm_kstrdup(dev, name, GFP_KERNEL);
+ 		if (!clki->name) {
+ 			ret = -ENOMEM;
+@@ -97,8 +110,8 @@ static int ufshcd_parse_clock_info(struct ufs_hba *hba)
+ 
+ 		if (!strcmp(name, "ref_clk"))
+ 			clki->keep_link_active = true;
+-		dev_dbg(dev, "%s: min %u max %u name %s\n", "freq-table-hz",
+-				clki->min_freq, clki->max_freq, clki->name);
++		dev_dbg(dev, "%s: min %u max %u name %s\n", __func__,
++			clki->min_freq, clki->max_freq, clki->name);
+ 		list_add_tail(&clki->list, &hba->clk_list_head);
+ 	}
+ out:
+@@ -670,7 +683,7 @@ int ufshcd_pltfrm_init(struct platform_device *pdev,
+ 
+ 	hba->vops = vops;
+ 
+-	err = ufshcd_parse_clock_info(hba);
++	err = ufshcd_parse_clock_info(hba, flags);
+ 	if (err) {
+ 		dev_err(dev, "%s: clock parse failed %d\n",
+ 				__func__, err);
 diff --git a/drivers/ufs/host/ufshcd-pltfrm.h b/drivers/ufs/host/ufshcd-pltfrm.h
-index 0a18a8aed94d..0dc48c8d89d5 100644
+index 0dc48c8d89d5..1f612734507c 100644
 --- a/drivers/ufs/host/ufshcd-pltfrm.h
 +++ b/drivers/ufs/host/ufshcd-pltfrm.h
-@@ -31,7 +31,8 @@ int ufshcd_negotiate_pwr_params(const struct ufs_host_params *host_params,
- void ufshcd_init_host_params(struct ufs_host_params *host_params);
- void ufshcd_parse_gear_limits(struct ufs_hba *hba, struct ufs_host_params *host_params);
- int ufshcd_pltfrm_init(struct platform_device *pdev,
--		       const struct ufs_hba_variant_ops *vops);
-+		       const struct ufs_hba_variant_ops *vops,
-+		       unsigned int flags);
- void ufshcd_pltfrm_remove(struct platform_device *pdev);
- int ufshcd_populate_vreg(struct device *dev, const char *name,
- 			 struct ufs_vreg **out_vreg, bool skip_current);
+@@ -5,6 +5,7 @@
+ #ifndef UFSHCD_PLTFRM_H_
+ #define UFSHCD_PLTFRM_H_
+ 
++#include <linux/bits.h>
+ #include <ufs/ufshcd.h>
+ 
+ #define UFS_PWM_MODE 1
+@@ -25,6 +26,14 @@ struct ufs_host_params {
+ 	u32 desired_working_mode;
+ };
+ 
++/*
++ * Register the clocks listed in clock-names even when neither freq-table-hz
++ * nor operating-points-v2 is present. Their rate is set by the clock provider
++ * and is not scaled, but the UFS core enables and gates them. Not meant to be
++ * combined with UFSHCD_CAP_CLK_SCALING, as there is nothing to scale.
++ */
++#define UFSHCD_PLTFRM_FIXED_RATE_CLKS	BIT(0)
++
+ int ufshcd_negotiate_pwr_params(const struct ufs_host_params *host_params,
+ 				const struct ufs_pa_layer_attr *dev_max,
+ 				struct ufs_pa_layer_attr *agreed_pwr);
 
 -- 
 2.43.0
