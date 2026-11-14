@@ -1,11 +1,11 @@
 From: Alireza Haghdoost <haghdoost@uber.com>
-Date: Fri, 13 Nov 2026 21:09:06 -0800
-Subject: [PATCH v7 1/4] perf symbols: Split out name-independent duplicate
- symbol selection
+Date: Fri, 13 Nov 2026 21:09:07 -0800
+Subject: [PATCH v7 2/4] perf symbols: Point to the symbol name instead of
+ embedding it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-perf-symbol-memory-send-v7-1-d992eced9f9c@uber.com>
+Message-Id: <20261113-perf-symbol-memory-send-v7-2-d992eced9f9c@uber.com>
 References: <20261113-perf-symbol-memory-send-v7-0-d992eced9f9c@uber.com>
 In-Reply-To: <20261113-perf-symbol-memory-send-v7-0-d992eced9f9c@uber.com>
 To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
@@ -19,106 +19,81 @@ To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
 Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Alireza Haghdoost <haghdoost@uber.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3028; i=haghdoost@uber.com;
- h=from:subject:message-id; bh=DQuKAcc/eg1Lh4Q4w9Z+uaojSWSxiLMNYdq0w6yVHrM=;
- b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBq9+0k1kqf2Do+wX6uJQRiiBZfDFhqQ80oxmnN/
- uq7oNIRXhmJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCavftJBsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtgKQg/+IWL+2AbqKWl60cRWmq8gxWwUmNMVQSu
- iHSduKWCllyivQo7DxrJQToN6d9+HHYYWGFT2ECOrL6cPXRqrx3/HU2kjm23Ox4A8s3XPb2W/9j
- I0bi4BYbcQD2gKCkDg+UODhu9sqk9c8OmiF+BLPb6I7UDgjmfBhK0XE+OMoSBfmWP/bgtydaQPQ
- JfUpgw3jbP/822Yz8j22AdVdY9xN1SwDRMpPflei/WBDaR8o+UkorEpjzlfuBJb2nK84WXr0xfz
- D8jwjwgwnGwScSTPYC0RdfSqfIsXqq/ZRR6gc+WQjilEOWyK2i/gUm+CEED3ldnMKNp8bda4yEP
- stVWrTKYXyM6u3DSE/y8F1hYvgqZ/UhNr2x5lehCHBOPFoT2pLV4OVQimsGAj8jxGcfV26fcdAc
- KM5v47wyvEJfWxf1NqQa2ee3eN0VVJGxEKiojGuT//m3RPXP0pIZLeJ45i4z1MawkKKJuBbUAc6
- 9CE6eM7CdEO/fi1OmeVorxQhFb/S3AuaRMbjyoeDuEN/nixXBGNjQiubYUxDdBzkvxaUDAoBM6i
- 7t2aclThmSx/Sa8PnwJtio853wf7kYAaXH54WDcwTV7ySzlI4zGiO1gAo9pni6cv5Bq/3KAr9aE
- /mMy7UnnrjyI9j9p6BrEl9yYxZC26OGxCoaRy9Vs4bHHhvWV87BA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2165; i=haghdoost@uber.com;
+ h=from:subject:message-id; bh=5Vgr4AxcBlLUBP0rquFzxB5nBuvrWCjr8gPD/q+/iIM=;
+ b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBq9+0kmE9p4X1qwosXQYvGbY/ESDG0k6M0O/a2O
+ h07TLHfpFmJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCavftJBsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtj5cg/8DrWyiGSKdMn5ny8I4L32N9i9rMFVWJe
+ 9rzqbhMoZHy8b3Ikza7w1l0GHwfrw3hDawLx9VsBxgcI20UVnSIX9+V8YuvXCJU4NtgmiiV9tA7
+ mPvmqNqDbroRXTwcqLIpLw50y/lCcl8+daWCMOxAW0kKZ6D9M70Y6I6BnAzNIUd22QB1AGWpJ7A
+ ufW3lhViVaOK08s9E/NUOm2iwMaNnmTuI/i9oX36Fk/Ekmsfz2vFSiV7TU6ZwA+fEWBoxw6tzon
+ teK6a+jse422nrfYjyAKk1GQr0nIGh5oUt62uraph/TZUivbYyHWNrbeifeKdxEwte/K0JlMcBx
+ 7Ce1u9lLJXQaFSV7594xMJ4gOiw0+3qCf4UtaOfkqawtvTf3tTu5c8rFcUYns2O57axD7+zQgQH
+ d/azPVw+x4XXDzBF0dh807L3uaDFb6b3ur0EkBCDZz1Xc1M4BQdEzsnG1YmDhnkrg6L9u9k/F6E
+ e9z0dPAxgf57cdvVEPY6ZD5eKIDt5aEtwD6eB8dK5kyH8QsOoTPvr4fGqrmN37i9g5bFlG6Xqq6
+ gfGk0ylbip1oiw8ZENTUSivU8E92P3Lv5mdDwjsKf7OcE8+6DXTNda9fYSLogs0MofWizpuNoET
+ hJNAssTEYvbREOIDrVVTn7zUaMj4hvCS+ltbHEho64fOBn0nEy4o=
 X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
  fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
 X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch is a refactoring and does not change behavior. It moves the
-size, type and binding checks from choose_best_symbol() to
-choose_best_symbol_by_attrs(), and adds symbol__choice_needs_names() to
-tell whether choosing between two symbols needs their names.
+This patch changes the name field of struct symbol from a flexible
+array (char name[]) to a pointer (char *name). It does not change
+behavior, but each symbol allocation grows by 8 bytes on 64-bit hosts.
 
-symbols__fixup_duplicate() keeps one of the symbols that share a start
-address. It compares size, type and binding first. If those are equal,
-it compares leading underscores, name lengths and the result of
-arch__choose_best_symbol().
-
-An unresolved lazy symbol stores a file offset instead of a name
-pointer, so the lazy loader cannot call choose_best_symbol() before it
-has read both names. The new helper lets it leave the names unread when
-the attributes already pick one of the symbols.
+The next patch creates symbols whose names are read only when needed.
+perf does not know the length of such a name when it creates the symbol,
+so it cannot allocate the name after the symbol. It cannot reallocate
+the symbol later either, because the rb-tree and the callers hold
+pointers to it. With a pointer, the name is allocated separately and set
+when it is read.
 
 Reviewed-by: Ian Rogers <irogers@google.com>
 Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
 ---
- tools/perf/util/symbol.c | 26 ++++++++++++++++++++++++--
- tools/perf/util/symbol.h |  1 +
- 2 files changed, 25 insertions(+), 2 deletions(-)
+ tools/perf/ui/stdio/hist.c | 1 +
+ tools/perf/util/symbol.c   | 1 +
+ tools/perf/util/symbol.h   | 2 +-
+ 3 files changed, 3 insertions(+), 1 deletion(-)
 
+diff --git a/tools/perf/ui/stdio/hist.c b/tools/perf/ui/stdio/hist.c
+index 8c4c8925df2c..c65e3aa73a13 100644
+--- a/tools/perf/ui/stdio/hist.c
++++ b/tools/perf/ui/stdio/hist.c
+@@ -106,6 +106,7 @@ static void init_rem_hits(void)
+ 		return;
+ 	}
+ 
++	rem_sq_bracket->name = (char *)(rem_sq_bracket + 1);
+ 	strcpy(rem_sq_bracket->name, "[...]");
+ 	rem_hits.ms.sym = rem_sq_bracket;
+ }
 diff --git a/tools/perf/util/symbol.c b/tools/perf/util/symbol.c
-index b61a574ce9a3..2d611c05d000 100644
+index 2d611c05d000..02c077d7e2a6 100644
 --- a/tools/perf/util/symbol.c
 +++ b/tools/perf/util/symbol.c
-@@ -157,11 +157,15 @@ int __weak arch__choose_best_symbol(struct symbol *syma,
- 	return SYMBOL_A;
- }
+@@ -362,6 +362,7 @@ struct symbol *symbol__new(u64 start, u64 len, u8 binding, u8 type, const char *
  
--static int choose_best_symbol(struct symbol *syma, struct symbol *symb)
-+/*
-+ * Choose between two symbols at the same address by size, type and binding.
-+ * Returns SYMBOL_A or SYMBOL_B, or -1 if only their names can decide.
-+ */
-+static int choose_best_symbol_by_attrs(const struct symbol *syma,
-+				       const struct symbol *symb)
- {
- 	s64 a;
- 	s64 b;
--	size_t na, nb;
+ 	pr_debug4("%s: %s %#" PRIx64 "-%#" PRIx64 "\n",
+ 		  __func__, name, start, sym->end);
++	sym->name = (char *)(sym + 1);
+ 	memcpy(sym->name, name, namelen);
  
- 	/* Prefer a symbol with non zero length */
- 	a = syma->end - syma->start;
-@@ -194,6 +198,24 @@ static int choose_best_symbol(struct symbol *syma, struct symbol *symb)
- 	if (b && !a)
- 		return SYMBOL_B;
- 
-+	return -1;
-+}
-+
-+bool symbol__choice_needs_names(const struct symbol *syma, const struct symbol *symb)
-+{
-+	return choose_best_symbol_by_attrs(syma, symb) < 0;
-+}
-+
-+static int choose_best_symbol(struct symbol *syma, struct symbol *symb)
-+{
-+	int ret = choose_best_symbol_by_attrs(syma, symb);
-+	s64 a;
-+	s64 b;
-+	size_t na, nb;
-+
-+	if (ret >= 0)
-+		return ret;
-+
- 	/* Prefer a symbol with less underscores */
- 	a = prefix_underscores_count(syma->name);
- 	b = prefix_underscores_count(symb->name);
+ 	return sym;
 diff --git a/tools/perf/util/symbol.h b/tools/perf/util/symbol.h
-index 6347bd218ad5..ae7ede8f6070 100644
+index ae7ede8f6070..c8b94f54f0e6 100644
 --- a/tools/perf/util/symbol.h
 +++ b/tools/perf/util/symbol.h
-@@ -301,6 +301,7 @@ int arch__compare_symbol_names(const char *namea, const char *nameb);
- int arch__compare_symbol_names_n(const char *namea, const char *nameb,
- 				 unsigned int n);
- int arch__choose_best_symbol(struct symbol *syma, struct symbol *symb);
-+bool symbol__choice_needs_names(const struct symbol *syma, const struct symbol *symb);
+@@ -93,7 +93,7 @@ struct symbol {
+ 	/** Architecture specific. Unused except on PPC where it holds st_other. */
+ 	u8		arch_sym;
+ 	/** The name of length namelen associated with the symbol. */
+-	char		name[];
++	char		*name;
+ };
  
- enum symbol_tag_include {
- 	SYMBOL_TAG_INCLUDE__NONE = 0,
+ void symbol__delete(struct symbol *sym);
 
 -- 
 Git-157)
