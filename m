@@ -1,80 +1,101 @@
-From: Joshua Horne <hornejd@etsu.edu>
-Date: Fri, 13 Nov 2026 22:03:25 -0500
-Subject: [PATCH 5/5] drm/amd/pm: stop disabling overdrive on Carrizo and
- Stoney
+From: Haipeng Lin <jimmie.lin@gmail.com>
+Date: Fri, 13 Nov 2026 22:04:55 -0500
+Subject: [PATCH] drm/panel-edp: Add LG LP129WT332166 panel
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-smu8-overdrive-v1-5-763f07bdfca9@etsu.edu>
-References: <20261113-smu8-overdrive-v1-0-763f07bdfca9@etsu.edu>
-In-Reply-To: <20261113-smu8-overdrive-v1-0-763f07bdfca9@etsu.edu>
-To: Alex Deucher <alexander.deucher@amd.com>, 
- Kenneth Feng <kenneth.feng@amd.com>
-Cc: =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
+Message-Id: <20261113-sp11-panel-lgd0779-v1-1-1020a0f2f83d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQqAIBAAvyJ7bsE1UOor0aFyq4UwUYhA/HvSc
+ QZmCmROwhlGVSDxI1nu0IA6Bdu5hINRfGMw2lgi6jFHIoxL4Auvw2vnBlybJzLWGT1AC2PiXd5
+ /Os21fq1DhhpkAAAA
+X-Change-ID: 20261113-sp11-panel-lgd0779-b11311267209
+To: Douglas Anderson <dianders@chromium.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>
+Cc: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
  David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- =?utf-8?q?Timur_Krist=C3=B3f?= <timur.kristof@gmail.com>, 
- Lijo Lazar <lijo.lazar@amd.com>, amd-gfx@lists.freedesktop.org, 
  dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Joshua Horne <hornejd@etsu.edu>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794625442; l=2145;
- i=hornejd@etsu.edu; s=20261109; h=from:subject:message-id;
- bh=VKahiMDOwea9yzvvuGDSewIcoDKB3SmzTv8wZiIV9IQ=;
- b=KErygZMEC8XajtvxXESCTHrx0CU9sOSsqn8cFaSxKmFHw9mnLjjBDAuxxWM8OZAAi0L2f6qMJ
- beK8j/3QEDkAsxbdGhsLSXiBnsQ725mYhH8xNG2f32mAI1jFVHXWtWu
-X-Developer-Key: i=hornejd@etsu.edu; a=ed25519;
- pk=HNOtiwerBbrJhfhzLHLxj3GDsUH9udRXflqnaI8sQmQ=
-X-Endpoint-Received: by B4 Relay for hornejd@etsu.edu/20261109 with auth_id=1469
+ Haipeng Lin <jimmie.lin@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794625502; l=2909;
+ i=jimmie.lin@gmail.com; s=20261011; h=from:subject:message-id;
+ bh=k1zdeOuZKmI346GK/WJs+LsEMnIwuG5UcbSu0sYIEIA=;
+ b=uCgZPWh+NTVyBWtti2DSCdUFQRqqylx3b7GtGWNo+59m0mVMHyIJCudgKJMzTuzWzHB4otRsj
+ zXiTBeA0L87DT8r6TKXUgiCs8lhP82U84fPepy8lJ+ET2nYdc3dVOEJ
+X-Developer-Key: i=jimmie.lin@gmail.com; a=ed25519;
+ pk=3KDRF1RQ/9A7ZUVTdRVEZnVrGltdmq1bRocsOYeXezI=
+X-Endpoint-Received: by B4 Relay for jimmie.lin@gmail.com/20261011 with auth_id=1164
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit b7e919b9403f ("drm/amd/pp: Disable OD feature on APU/Iceland")
-disabled overdrive on these APUs, which the smu8 backend did not
-implement then. Now that it does, let the PP_OVERDRIVE_MASK bit of
-amdgpu.ppfeaturemask decide, as on Tonga and newer dGPUs. The bit is
-clear by default and taints the kernel when set.
+Add an entry for the eDP LG LP129WT332166 panel used in the Microsoft
+Surface Pro 11 (LCD variant).
 
-Raven, disabled by the same commit, gained overdrive support with
-commit 12a6727dee5d ("drm/amd/powerplay: add one sysfs file to support
-the feature to modify gfx clock on Raven/Raven2/Picasso APU.").
+No datasheet available. Delays were not derived from ACPI or firmware
+tables. delay_200_500_e200_d200 was copied from the entry for the
+closely related LG LP129WT232166 (LGD 0x06b2, Surface Pro 9 5G) which
+most LGD entries also use.
 
-Document the pp_od_clk_voltage format for Carrizo and Stoney.
+Tested on Surface Pro 11 with ftrace (function_graph on
+msm_dp_wait_hpd_asserted and gpio events for panel power).
+Tested 22 cycles DPMS off/on, suspend/resume successfully with no prep-
+are retries. HPD asserts 179-182 ms after panel power-on within the
+200 ms hpd_absent.
 
-Signed-off-by: Joshua Horne <hornejd@etsu.edu>
+Cross-checked that the Windows display driver qcdxkmext8380_DENidp.bin
+waits 500 ms after power-off, which agrees with the 500 ms unprepare
+delay.
+
+edid-decode (hex):
+
+00 ff ff ff ff ff ff 00 30 e4 79 07 a1 21 00 12
+00 21 01 04 b5 1b 12 78 03 f0 70 aa 50 4e a8 26
+0e 4f 53 00 00 00 01 01 01 01 01 01 01 01 01 01
+01 01 01 01 01 01 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 fd 00 18 78 f0
+f0 48 01 0a 20 20 20 20 20 20 00 00 00 fe 00 4c
+47 44 5f 44 56 31 2e 30 5f 0a 20 20 00 00 00 fe
+00 4c 50 31 32 39 57 54 33 33 32 31 36 36 01 48
+
+70 20 79 02 00 20 00 19 3c e6 24 79 07 a1 21 00
+12 00 17 0d 4c 50 31 32 39 57 54 33 33 32 31 36
+36 21 00 1d b4 0a 26 07 40 0b 80 07 00 ac aa 50
+e1 f4 a7 62 e2 0e f2 f4 52 b0 60 b0 60 99 35 13
+78 26 00 09 06 00 00 00 00 00 40 00 00 22 00 28
+c0 e9 0a 84 3f 0b 63 00 07 80 1f 00 7f 07 4f 00
+41 00 07 00 c0 e9 0a 04 3f 0b 63 00 07 80 1f 00
+7f 07 1f 08 41 00 07 00 00 00 00 00 00 00 d1 90
+
+Assisted-by: LLM
+Signed-off-by: Haipeng Lin <jimmie.lin@gmail.com>
 ---
- drivers/gpu/drm/amd/pm/amdgpu_pm.c             | 6 ++++++
- drivers/gpu/drm/amd/pm/powerplay/hwmgr/hwmgr.c | 1 -
- 2 files changed, 6 insertions(+), 1 deletion(-)
+This adds LGD 0x0779 panel based on similar entries for the SP9 LCD
+panel (the datasheet is unavailable) and live testing based on a
+v7.2.11 downstream kernel for the Surface Pro 11 with this patch.
 
-diff --git a/drivers/gpu/drm/amd/pm/amdgpu_pm.c b/drivers/gpu/drm/amd/pm/amdgpu_pm.c
-index 48c52ac0fc77..aeee31cc08c9 100644
---- a/drivers/gpu/drm/amd/pm/amdgpu_pm.c
-+++ b/drivers/gpu/drm/amd/pm/amdgpu_pm.c
-@@ -705,6 +705,12 @@ static ssize_t amdgpu_set_pp_table(struct device *dev,
-  * "c" (commit) to the file to commit your changes.  If you want to reset to the
-  * default power levels, write "r" (reset) to the file to reset them.
-  *
-+ * < For Carrizo and Stoney APUs >
-+ *
-+ * As for Vega10 and previous ASICs, without OD_MCLK. The voltages are
-+ * those of the graphics (VDDGFX) rail. A level switches to its new clock
-+ * and voltage the next time the GPU enters that level.
-+ *
-  *
-  * < For Vega20 and newer ASICs >
-  *
-diff --git a/drivers/gpu/drm/amd/pm/powerplay/hwmgr/hwmgr.c b/drivers/gpu/drm/amd/pm/powerplay/hwmgr/hwmgr.c
-index 4d553be56396..1567b8fa2a6b 100644
---- a/drivers/gpu/drm/amd/pm/powerplay/hwmgr/hwmgr.c
-+++ b/drivers/gpu/drm/amd/pm/powerplay/hwmgr/hwmgr.c
-@@ -120,7 +120,6 @@ int hwmgr_early_init(struct pp_hwmgr *hwmgr)
- 		break;
- 	case AMDGPU_FAMILY_CZ:
- 		adev->pm.pp_feature &= ~PP_GFXOFF_MASK;
--		hwmgr->od_enabled = false;
- 		hwmgr->smumgr_funcs = &smu8_smu_funcs;
- 		hwmgr->feature_mask &= ~PP_GFXOFF_MASK;
- 		smu8_init_function_pointers(hwmgr);
+Thanks,
+---
+ drivers/gpu/drm/panel/panel-edp.c | 1 +
+ 1 file changed, 1 insertion(+)
 
+diff --git a/drivers/gpu/drm/panel/panel-edp.c b/drivers/gpu/drm/panel/panel-edp.c
+index 3e0bdae8e272..6b9cc771e88e 100644
+--- a/drivers/gpu/drm/panel/panel-edp.c
++++ b/drivers/gpu/drm/panel/panel-edp.c
+@@ -2200,6 +2200,7 @@ static const struct edp_panel_entry edp_panels[] = {
+ 	EDP_PANEL_ENTRY('L', 'G', 'D', 0x05f1, &delay_200_500_e200_d200, "Unknown"),
+ 	EDP_PANEL_ENTRY('L', 'G', 'D', 0x06b2, &delay_200_500_e200_d200, "LP129WT232166"),
+ 	EDP_PANEL_ENTRY('L', 'G', 'D', 0x0778, &delay_200_500_e200_d200, "134WT1"),
++	EDP_PANEL_ENTRY('L', 'G', 'D', 0x0779, &delay_200_500_e200_d200, "LP129WT332166"),
+ 	EDP_PANEL_ENTRY('L', 'G', 'D', 0x07fe, &delay_200_500_e200_d200, "LP116WHA-SPB1"),
+ 
+ 	EDP_PANEL_ENTRY('S', 'H', 'P', 0x1511, &delay_200_500_e50, "LQ140M1JW48"),
+
+---
+base-commit: fc72cd52fb284f3707fa36a68ea5a22543a51d71
+change-id: 20261113-sp11-panel-lgd0779-b11311267209
+
+Best regards,
 -- 
-2.56.0
+Haipeng Lin <jimmie.lin@gmail.com>
 
