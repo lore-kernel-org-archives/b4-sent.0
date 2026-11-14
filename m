@@ -1,10 +1,11 @@
 From: Hugo Sales <hugo@hsal.es>
-Date: Sat, 14 Nov 2026 23:09:14 +0000
-Subject: [PATCH 3/8] drm/amd/display: Validate modes with their own timing
+Date: Sat, 14 Nov 2026 23:09:15 +0000
+Subject: [PATCH 4/8] drm/amd/display: Copy the preferred and highest
+ refresh modes after probe
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-amdgpu-modes-four-v1-3-f11e2a6cd407@hsal.es>
+Message-Id: <20261114-amdgpu-modes-four-v1-4-f11e2a6cd407@hsal.es>
 References: <20261114-amdgpu-modes-four-v1-0-f11e2a6cd407@hsal.es>
 In-Reply-To: <20261114-amdgpu-modes-four-v1-0-f11e2a6cd407@hsal.es>
 To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
@@ -19,609 +20,944 @@ Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
  =?utf-8?q?Ville_Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>, 
  Aurabindo Pillai <aurabindo.pillai@amd.com>, Hugo Sales <hugo@hsal.es>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=24983; i=hugo@hsal.es;
- h=from:subject:message-id; bh=Rk90VzfmUI+RlSiWjUDEw/T3mxLoTo+bZU0iGnJSVuw=;
- b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsn68kniuyblLxOw5a9YeiyZtJXWTW9uVA1evOaqwL
- G4n68QvBxZ0lLIwiHExyIopsuje8GRgmTh5Zk7R8yUwc1iZQIYwcHEKwESSvRn+u71i1Q3Js0/p
- k738OClkwXnZe38WKoXbLrUXj3oWuHJ5H8NfecckdfnzTifEzVdfvWbq1WPMEvhS+WgC77L3z0/
- 4iJgwAwC4vUfV
+X-Developer-Signature: v=1; a=openpgp-sha256; l=36491; i=hugo@hsal.es;
+ h=from:subject:message-id; bh=bQY0OUl/GFo3ImDoCf6LQiBPSTRX1a5B+X9wGQ8cWcU=;
+ b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsn68krALPzg/cVpeWMd79Su6zUIr3D66+tznmV3PP
+ uV1W1bH9EMdpSwMYlwMsmKKLLo3PBlYJk6emVP0fAnMHFYmkCEMXJwCMBFrZ0aGGeFrlDJ2fWf9
+ +T18auQlsSXqa2dvWh1t7VWb+Xil5bonrgy/WT+U3p6WwHqkf+Ntjs8ijkcFzRcviKpuLbF0ajj
+ wSFadCwCvgEro
 X-Developer-Key: i=hugo@hsal.es; a=openpgp;
  fpr=193D095149CF7E8737B39064D912B0DB205A91C1
 X-Endpoint-Received: by B4 Relay for hugo@hsal.es/default with auth_id=1417
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-amdgpu_dm_connector_mode_valid() builds a stream through
-create_stream_for_sink(), which takes the preferred mode from
-connector->modes. During a probe that list still holds the previous
-probe's modes, so after a monitor swap with no probe in between, as
-across suspend or behind a KVM switch, mode_valid finds the old
-monitor's preferred mode. With scaling on it validates that timing in
-place of each mode's own, which can prune every mode of the new monitor
-or pass modes its link can't carry. This probe's preferred mode won't do
-either, since if it fails validation it prunes every other mode with it
+atomic_check walks connector->modes for the preferred mode and the
+highest refresh rate mode without mode_config.mutex, so a probe on
+another thread can rebuild the list under it
 
-Validate each mode with its own timing, as the first probe already does
-on connectors other than eDP and LVDS. create_stream_for_sink() now
-takes the preferred mode from its caller. atomic_check still looks it
-up, with the eDP and LVDS fallback from
-commit ab9e2cfa0e54 ("drm/amd/display: Fall back to the native mode, not
-the first, on eDP/LVDS"), and mode_valid passes none
+Add amdgpu_dm_connector_fill_modes() as the fill_modes hook of SST and
+MST connectors. After the probe it copies both modes and the dc_sink's
+EDID into struct amdgpu_dm_connector, under connection_mutex, which
+atomic_check holds. On eDP and LVDS the preferred copy falls back to the
+panel's native mode, as atomic_check's lookup does
 
-With scaling on, two kinds of mode get a different answer. A scaled
-pairing that needs another encoding, such as one whose preferred timing
-is YCbCr 4:2:0 only, now fails in atomic_check instead of being pruned
-at probe time. A mode the link can carry only at the preferred mode's
-timing, such as a smaller mode with a higher refresh rate, is now
-pruned. Before, it passed and then ran at the preferred mode's refresh
-rate. With scaling off, the same modes pass as before
+The highest refresh rate copy is the mode add_fs_modes() built the
+FreeSync video modes from, which it now records in
+probed_freesync_vid_base, if validation kept it
 
+amdgpu_dm_get_highest_refresh_rate_mode() returns the copy, except to
+the probe's own callers, add_fs_modes() and the max_vfreq fallback,
+which need the ongoing probe's modes. For an EDID without a preferred
+mode, those callers now fall back to the first mode of this probe, not
+of the previous one
+
+An upcoming patch switches the readers to the copies, for a sink with
+the same EDID only
+
+Link: https://lore.kernel.org/r/auh8pUx_kXUYSdZ8@intel.com
 Signed-off-by: Hugo Sales <hugo@hsal.es>
 ---
-On eDP and LVDS with scaling off, the common modes amdgpu_dm adds differ
-from the native mode only in their active area. They keep its pixel
-clock and totals, so atomic_check drives them at the native timing.
-mode_valid used to validate that timing and now validates their own, but
-both need the same link bandwidth, so the same modes pass
+Comparing the whole EDID costs about as much as a CRC32 of it and can't
+collide. The copy sits inline, as raw_edid does in dc_sink, so it needs
+no allocation
 
-With no preferred mode from mode_valid, the "No preferred mode found"
-message no longer prints for every depth it tries. Writeback connectors,
-which never used the preferred mode, stop looking it up
+A dc_sink pointer match won't do, since dm_resume() and a replug replace
+dc_sink, and the copies of the same monitor would be dropped on every
+resume
 
-An upcoming patch makes the preferred mode lookup assert connection_mutex.
-The early return on a missing state in
-amdgpu_dm_create_validate_stream_for_sink() then also keeps that assert
-away from callers without one
-
-The @native_buf argument of amdgpu_dm_connector_preferred_mode() keeps
-the eDP and LVDS fallback working until an upcoming patch has the
-lookup return the copy taken after the probe, which already holds the
-native mode. That patch drops the argument again
+dm_resume() and the MST connector's ->early_unregister() release dc_sink
+without mode_config.mutex, so reading its EDID here can race with them,
+as ->get_modes() and ->mode_valid() already do. I have an upcoming
+series that takes mode_config.mutex around those releases
 ---
- .../amd/display/amdgpu_dm/amdgpu_dm_connector.c    | 214 +++++++++++++--------
- .../amd/display/amdgpu_dm/amdgpu_dm_connector.h    |   4 +
- .../amdgpu_dm/tests/amdgpu_dm_connector_test.c     | 120 +++++++++++-
- 3 files changed, 249 insertions(+), 89 deletions(-)
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h  |  20 +-
+ .../amd/display/amdgpu_dm/amdgpu_dm_connector.c    | 197 ++++++--
+ .../amd/display/amdgpu_dm/amdgpu_dm_connector.h    |   3 +
+ .../amd/display/amdgpu_dm/amdgpu_dm_mst_types.c    |   2 +-
+ .../amdgpu_dm/tests/amdgpu_dm_connector_test.c     | 516 +++++++++++++++++++++
+ 5 files changed, 702 insertions(+), 36 deletions(-)
 
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h
+index f8503ebf28f47..97a74178513a9 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h
+@@ -902,8 +902,26 @@ struct amdgpu_dm_connector {
+ 	struct dsc_preferred_settings dsc_settings;
+ 	struct psr_caps psr_caps;
+ 	union dp_downstream_port_present mst_downstream_port_present;
+-	/* Cached display modes */
++	/*
++	 * Copies of the preferred mode in base.modes and of the highest
++	 * refresh rate mode at its size, with the EDID of the dc_sink they
++	 * came from, or a size of 0 if it had none. After each probe,
++	 * amdgpu_dm_connector_fill_modes() writes them with
++	 * &drm_mode_config.mutex and &drm_mode_config.connection_mutex held,
++	 * so either lock is enough to read them. atomic_check holds only the
++	 * modeset locks, so it reads these instead of base.modes
++	 */
++	struct drm_display_mode preferred_mode;
+ 	struct drm_display_mode freesync_vid_base;
++	u8 mode_copies_edid[DC_MAX_EDID_BUFFER_SIZE];
++	u32 mode_copies_edid_size;
++	/*
++	 * The mode add_fs_modes() built the FreeSync video modes from in the
++	 * last probe, or zeroed if it built none. It comes from the EDID,
++	 * while base.modes can also hold a command line mode. Protected by
++	 * &drm_mode_config.mutex
++	 */
++	struct drm_display_mode probed_freesync_vid_base;
+ 
+ 	int sr_skip_count;
+ 	bool disallow_edp_enter_psr;
 diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.c
-index da2ee6179cb67..e477ef61ce109 100644
+index e477ef61ce109..491965266b786 100644
 --- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.c
 +++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.c
-@@ -1052,6 +1052,62 @@ create_fake_sink(struct drm_device *dev, struct dc_link *link)
- 	return sink;
+@@ -1108,6 +1108,74 @@ amdgpu_dm_panel_native_mode(struct drm_connector *connector, struct list_head *m
+ 	return native_buf;
  }
  
-+/*
-+ * After a probe with size limits smaller than the preferred mode, @modes no
-+ * longer has that mode, and the first mode left would become the stream
-+ * timing. fbdev emulation probes with limits that video= can set below the
-+ * native size. Only eDP and LVDS panels get a fallback here, since they take
-+ * only their native size. On other connectors mode_valid can also reject the
-+ * preferred mode, and then the first valid mode is the right one
-+ *
-+ * Take a mode of the native size from @modes if one is left, since mode_valid
-+ * may have rejected the preferred timing itself. The probe sorts the list, so
-+ * the first one has the highest refresh rate left. If the limits pruned them
-+ * all, fill @native_buf from the copy of the preferred mode that
-+ * amdgpu_dm_get_native_mode() keeps in the encoder and refreshes on every
-+ * probe, before the limits apply
-+ *
-+ * @native_buf: storage for the native mode when no mode of its size is left
-+ * in @modes
-+ *
-+ * Returns a mode of the native size from @modes if there is one, otherwise
-+ * @native_buf filled with the encoder's native mode, or NULL for other
-+ * connectors or when the encoder has no native mode
-+ */
-+static const struct drm_display_mode *
-+amdgpu_dm_panel_native_mode(struct drm_connector *connector, struct list_head *modes,
-+			    struct drm_display_mode *native_buf)
++static struct drm_display_mode *amdgpu_dm_find_preferred_mode(struct list_head *modes)
 +{
-+	struct amdgpu_dm_connector *aconnector = to_amdgpu_dm_connector(connector);
-+	const struct drm_display_mode *enc_native;
-+	struct drm_encoder *encoder;
 +	struct drm_display_mode *m;
 +
-+	if (!aconnector->drm_edid ||
-+	    (connector->connector_type != DRM_MODE_CONNECTOR_eDP &&
-+	     connector->connector_type != DRM_MODE_CONNECTOR_LVDS))
-+		return NULL;
-+
-+	encoder = amdgpu_dm_connector_to_encoder(connector);
-+	if (!encoder)
-+		return NULL;
-+
-+	enc_native = &to_amdgpu_encoder(encoder)->native_mode;
-+	if (!enc_native->clock)
-+		return NULL;
-+
 +	list_for_each_entry(m, modes, head) {
-+		if (m->hdisplay == enc_native->hdisplay &&
-+		    m->vdisplay == enc_native->vdisplay)
++		if (m->type & DRM_MODE_TYPE_PREFERRED)
 +			return m;
 +	}
 +
-+	drm_mode_init(native_buf, enc_native);
-+	drm_mode_set_crtcinfo(native_buf, CRTC_INTERLACE_HALVE_V);
++	return NULL;
++}
 +
-+	return native_buf;
++/*
++ * Find the mode with the highest refresh rate at the size of @m_pref. For
++ * some monitors the preferred mode is not the one with the highest supported
++ * refresh rate
++ */
++static struct drm_display_mode *
++amdgpu_dm_find_highest_refresh_mode(struct list_head *modes,
++				    struct drm_display_mode *m_pref)
++{
++	int highest_refresh = drm_mode_vrefresh(m_pref);
++	struct drm_display_mode *best = m_pref, *m;
++
++	list_for_each_entry(m, modes, head) {
++		int current_refresh = drm_mode_vrefresh(m);
++
++		if (m->hdisplay == m_pref->hdisplay &&
++		    m->vdisplay == m_pref->vdisplay &&
++		    highest_refresh < current_refresh) {
++			highest_refresh = current_refresh;
++			best = m;
++		}
++	}
++
++	return best;
++}
++
++/* The size of @sink's EDID, 0 without a sink or EDID */
++static u32 amdgpu_dm_sink_edid_size(const struct dc_sink *sink)
++{
++	return sink ? min_t(u32, sink->dc_edid.length, sizeof(sink->dc_edid.raw_edid)) : 0;
++}
++
++/*
++ * Whether @modes still holds @vid_base, at the size of @preferred. Validation
++ * may have pruned the FreeSync video modes and their base after add_fs_modes()
++ * recorded it
++ */
++static bool
++amdgpu_dm_probed_freesync_vid_base_listed(struct list_head *modes,
++					  const struct drm_display_mode *vid_base,
++					  const struct drm_display_mode *preferred)
++{
++	const struct drm_display_mode *m;
++
++	if (!vid_base->clock || vid_base->hdisplay != preferred->hdisplay ||
++	    vid_base->vdisplay != preferred->vdisplay)
++		return false;
++
++	list_for_each_entry(m, modes, head) {
++		if (drm_mode_equal(m, vid_base))
++			return true;
++	}
++
++	return false;
 +}
 +
  /**
   * DOC: FreeSync Video
   *
-@@ -1474,6 +1530,7 @@ EXPORT_IF_KUNIT(amdgpu_dm_update_stream_scaling_settings);
- STATIC_IFN_KUNIT struct dc_stream_state *
- create_stream_for_sink(struct drm_connector *connector,
- 		       const struct drm_display_mode *drm_mode,
-+		       const struct drm_display_mode *preferred_mode,
- 		       const struct dm_connector_state *dm_state,
- 		       const struct dc_stream_state *old_stream,
- 		       int requested_bpc,
-@@ -1482,8 +1539,6 @@ create_stream_for_sink(struct drm_connector *connector,
+@@ -1142,8 +1210,7 @@ struct drm_display_mode *
+ amdgpu_dm_get_highest_refresh_rate_mode(struct amdgpu_dm_connector *aconnector,
+ 		bool use_probed_modes)
  {
- 	struct drm_device *dev = connector->dev;
- 	struct amdgpu_dm_connector *aconnector = NULL;
--	struct drm_display_mode *preferred_mode = NULL;
--	struct drm_display_mode *connector_mode;
- 	const struct drm_connector_state *con_state = &dm_state->base;
- 	struct dc_stream_state *stream = NULL;
- 	struct drm_display_mode mode;
-@@ -1539,75 +1594,9 @@ create_stream_for_sink(struct drm_connector *connector,
- 	stream->timing.flags.LTE_340MCSC_SCRAMBLE =
- 		connector->display_info.hdmi.scdc.scrambling.low_rates;
+-	struct drm_display_mode *m, *m_pref = NULL;
+-	u16 current_refresh, highest_refresh;
++	struct drm_display_mode *m_pref;
+ 	struct list_head *list_head = use_probed_modes ?
+ 		&aconnector->base.probed_modes :
+ 		&aconnector->base.modes;
+@@ -1151,47 +1218,25 @@ amdgpu_dm_get_highest_refresh_rate_mode(struct amdgpu_dm_connector *aconnector,
+ 	if (aconnector->base.connector_type == DRM_MODE_CONNECTOR_WRITEBACK)
+ 		return NULL;
  
--	list_for_each_entry(connector_mode, &connector->modes, head) {
--		/* Search for preferred mode */
--		if (connector_mode->type & DRM_MODE_TYPE_PREFERRED) {
--			preferred_mode = connector_mode;
+-	if (aconnector->freesync_vid_base.clock != 0)
++	/*
++	 * A probe reads its own probed_modes, not the copy of the last one. The
++	 * copy stands in while probed_modes is empty
++	 */
++	if (aconnector->freesync_vid_base.clock != 0 &&
++	    !(use_probed_modes && !list_empty(list_head)))
+ 		return &aconnector->freesync_vid_base;
+ 
+-	/* Find the preferred mode */
+-	list_for_each_entry(m, list_head, head) {
+-		if (m->type & DRM_MODE_TYPE_PREFERRED) {
+-			m_pref = m;
 -			break;
 -		}
 -	}
 -
++	m_pref = amdgpu_dm_find_preferred_mode(list_head);
+ 	if (!m_pref) {
+ 		/* Probably an EDID with no preferred mode. Fallback to first entry */
+-		m_pref = list_first_entry_or_null(
+-				&aconnector->base.modes, struct drm_display_mode, head);
++		m_pref = list_first_entry_or_null(list_head, struct drm_display_mode, head);
+ 		if (!m_pref) {
+ 			drm_dbg_driver(aconnector->base.dev, "No preferred mode found in EDID\n");
+ 			return NULL;
+ 		}
+ 	}
+ 
+-	highest_refresh = drm_mode_vrefresh(m_pref);
+-
 -	/*
--	 * After a probe with size limits smaller than the preferred mode,
--	 * connector->modes no longer has that mode, and the first mode left
--	 * would become the stream timing. fbdev emulation probes with limits
--	 * that video= can set below the native size. Only eDP and LVDS panels
--	 * get a fallback here, since they take only their native size. On other
--	 * connectors mode_valid can also reject the preferred mode, and then
--	 * the first valid mode is the right one
--	 *
--	 * Take a mode of the native size from connector->modes if one is left,
--	 * since mode_valid may have rejected the preferred timing itself. The
--	 * probe sorts the list, so the first one has the highest refresh rate
--	 * left. If the limits pruned them all, use the copy of the preferred
--	 * mode that amdgpu_dm_get_native_mode() keeps in the encoder. It is
--	 * made on every probe, before the limits apply
+-	 * Find the mode with highest refresh rate with same resolution.
+-	 * For some monitors, preferred mode is not the mode with highest
+-	 * supported refresh rate.
 -	 */
--	if (!preferred_mode && aconnector && aconnector->drm_edid &&
--	    (connector->connector_type == DRM_MODE_CONNECTOR_eDP ||
--	     connector->connector_type == DRM_MODE_CONNECTOR_LVDS)) {
--		struct drm_encoder *encoder = amdgpu_dm_connector_to_encoder(connector);
--		const struct drm_display_mode *enc_native =
--			encoder ? &to_amdgpu_encoder(encoder)->native_mode : NULL;
+-	list_for_each_entry(m, list_head, head) {
+-		current_refresh  = drm_mode_vrefresh(m);
 -
--		if (enc_native && enc_native->clock) {
--			list_for_each_entry(connector_mode, &connector->modes, head) {
--				if (connector_mode->hdisplay == enc_native->hdisplay &&
--				    connector_mode->vdisplay == enc_native->vdisplay) {
--					preferred_mode = connector_mode;
--					break;
--				}
--			}
--
--			/*
--			 * saved_mode is only used for FreeSync video modes, and
--			 * that path doesn't read preferred_mode
--			 */
--			if (!preferred_mode) {
--				drm_mode_init(&saved_mode, enc_native);
--				drm_mode_set_crtcinfo(&saved_mode, CRTC_INTERLACE_HALVE_V);
--				preferred_mode = &saved_mode;
--			}
+-		if (m->hdisplay == m_pref->hdisplay &&
+-		    m->vdisplay == m_pref->vdisplay &&
+-		    highest_refresh < current_refresh) {
+-			highest_refresh = current_refresh;
+-			m_pref = m;
 -		}
 -	}
 -
--	if (!preferred_mode)
--		preferred_mode = list_first_entry_or_null(
--				&connector->modes,
--				struct drm_display_mode,
--				head);
--
- 	mode_refresh = drm_mode_vrefresh(&mode);
- 
--	if (preferred_mode == NULL) {
--		/*
--		 * This may not be an error, the use case is when we have no
--		 * usermode calls to reset and set mode upon hotplug. In this
--		 * case, we call set mode ourselves to restore the previous mode
--		 * and the modelist may not be filled in time.
--		 */
--		drm_dbg_driver(dev, "No preferred mode found\n");
--	} else if (aconnector) {
-+	if (aconnector && preferred_mode) {
- 		recalculate_timing = amdgpu_freesync_vid_mode &&
- 				 amdgpu_dm_is_freesync_video_mode(&mode, aconnector);
- 		if (recalculate_timing) {
-@@ -2337,11 +2326,12 @@ dm_validate_stream_color_format(const struct drm_connector_state *drm_state,
- 		DC_OK : DC_UNSUPPORTED_VALUE;
+-	drm_mode_copy(&aconnector->freesync_vid_base, m_pref);
+-	return m_pref;
++	return amdgpu_dm_find_highest_refresh_mode(list_head, m_pref);
  }
+ EXPORT_IF_KUNIT(amdgpu_dm_get_highest_refresh_rate_mode);
  
--struct dc_stream_state *
--amdgpu_dm_create_validate_stream_for_sink(struct drm_connector *connector,
--					  const struct drm_display_mode *drm_mode,
--					  const struct dm_connector_state *dm_state,
--					  const struct dc_stream_state *old_stream)
-+static struct dc_stream_state *
-+__amdgpu_dm_create_validate_stream_for_sink(struct drm_connector *connector,
-+					    const struct drm_display_mode *drm_mode,
-+					    const struct drm_display_mode *preferred_mode,
-+					    const struct dm_connector_state *dm_state,
-+					    const struct dc_stream_state *old_stream)
- {
- 	/*
- 	 * Ordered lists of the encodings and bit depths we are willing to
-@@ -2383,8 +2373,8 @@ amdgpu_dm_create_validate_stream_for_sink(struct drm_connector *connector,
- 	 * meaningful for the writeback path).
- 	 */
- 	if (!aconnector) {
--		stream = create_stream_for_sink(connector, drm_mode, dm_state,
--						old_stream, requested_bpc,
-+		stream = create_stream_for_sink(connector, drm_mode, preferred_mode,
-+						dm_state, old_stream, requested_bpc,
- 						PIXEL_ENCODING_RGB, is_hdmi_ep);
- 		if (!stream)
- 			drm_err(adev_to_drm(adev), "Failed to create stream for sink!\n");
-@@ -2514,6 +2504,7 @@ amdgpu_dm_create_validate_stream_for_sink(struct drm_connector *connector,
- 				    encoding_mask, bpc_mask, requested_bpc);
- 
- 			stream = create_stream_for_sink(connector, drm_mode,
-+							preferred_mode,
- 							dm_state, old_stream,
- 							bpc, enc, is_hdmi_ep);
- 			if (stream == NULL) {
-@@ -2555,6 +2546,63 @@ amdgpu_dm_create_validate_stream_for_sink(struct drm_connector *connector,
- 	 */
- 	return NULL;
+@@ -1223,6 +1268,87 @@ bool amdgpu_dm_is_freesync_video_mode(const struct drm_display_mode *mode,
  }
-+
-+STATIC_IFN_KUNIT const struct drm_display_mode *
-+amdgpu_dm_connector_preferred_mode(struct drm_connector *connector,
-+				   struct drm_display_mode *native_buf)
+ EXPORT_IF_KUNIT(amdgpu_dm_is_freesync_video_mode);
+ 
++STATIC_IFN_KUNIT void
++amdgpu_dm_connector_update_mode_copies(struct amdgpu_dm_connector *aconnector)
 +{
-+	const struct drm_display_mode *mode;
++	struct drm_mode_config *config = &aconnector->base.dev->mode_config;
++	struct list_head *modes = &aconnector->base.modes;
++	const struct drm_display_mode *preferred, *highest;
++	struct drm_display_mode native_buf;
++	const struct dc_sink *sink;
 +
-+	if (connector->connector_type == DRM_MODE_CONNECTOR_WRITEBACK)
-+		return NULL;
++	lockdep_assert_held(&config->mutex);
 +
-+	list_for_each_entry(mode, &connector->modes, head) {
-+		if (mode->type & DRM_MODE_TYPE_PREFERRED)
-+			return mode;
++	drm_modeset_lock(&config->connection_mutex, NULL);
++
++	sink = aconnector->dc_sink;
++	aconnector->mode_copies_edid_size = amdgpu_dm_sink_edid_size(sink);
++	if (aconnector->mode_copies_edid_size)
++		memcpy(aconnector->mode_copies_edid, sink->dc_edid.raw_edid,
++		       aconnector->mode_copies_edid_size);
++
++	preferred = amdgpu_dm_find_preferred_mode(modes);
++	if (!preferred)
++		preferred = amdgpu_dm_panel_native_mode(&aconnector->base, modes, &native_buf);
++	if (!preferred)
++		preferred = list_first_entry_or_null(modes, struct drm_display_mode, head);
++
++	if (!preferred) {
++		memset(&aconnector->preferred_mode, 0, sizeof(aconnector->preferred_mode));
++		memset(&aconnector->freesync_vid_base, 0, sizeof(aconnector->freesync_vid_base));
++		goto unlock;
 +	}
 +
-+	mode = amdgpu_dm_panel_native_mode(connector, &connector->modes, native_buf);
-+	if (mode)
-+		return mode;
++	drm_mode_copy(&aconnector->preferred_mode, preferred);
 +
-+	mode = list_first_entry_or_null(&connector->modes,
-+					struct drm_display_mode, head);
-+	if (!mode) {
-+		/*
-+		 * This may not be an error, the use case is when we have no
-+		 * usermode calls to reset and set mode upon hotplug. In this
-+		 * case, we call set mode ourselves to restore the previous mode
-+		 * and the modelist may not be filled in time
-+		 */
-+		drm_dbg_driver(connector->dev, "No preferred mode found\n");
-+	}
++	/*
++	 * The FreeSync video modes differ from their base only in vtotal, and
++	 * atomic_check matches them against this copy. A command line mode at
++	 * the preferred size with a higher refresh rate would win the search
++	 * below, so take the base add_fs_modes() used, if validation kept it
++	 * and it has the preferred mode's size
++	 */
++	if (amdgpu_dm_probed_freesync_vid_base_listed(modes,
++						      &aconnector->probed_freesync_vid_base,
++						      &aconnector->preferred_mode))
++		highest = &aconnector->probed_freesync_vid_base;
++	else
++		highest = amdgpu_dm_find_highest_refresh_mode(modes, &aconnector->preferred_mode);
++
++	drm_mode_copy(&aconnector->freesync_vid_base, highest);
++
++unlock:
++	drm_modeset_unlock(&config->connection_mutex);
++}
++EXPORT_IF_KUNIT(amdgpu_dm_connector_update_mode_copies);
++
++/*
++ * atomic_check needs the preferred and highest refresh rate modes, but
++ * &drm_mode_config.mutex protects base.modes and atomic_check can't take it.
++ * Copy them after each probe. amdgpu_dm_connector_update_mode_copies() also
++ * takes &drm_mode_config.connection_mutex, so atomic_check can read the copies
++ * with the lock it holds
++ */
++int amdgpu_dm_connector_fill_modes(struct drm_connector *connector,
++				   u32 max_width, u32 max_height)
++{
++	struct amdgpu_dm_connector *aconnector = to_amdgpu_dm_connector(connector);
++	int count;
++
++	lockdep_assert_held(&connector->dev->mode_config.mutex);
++
++	/* The probe helper skips ->get_modes() for a disconnected connector */
++	memset(&aconnector->probed_freesync_vid_base, 0,
++	       sizeof(aconnector->probed_freesync_vid_base));
++
++	count = drm_helper_probe_single_connector_modes(connector, max_width,
++							max_height);
++	amdgpu_dm_connector_update_mode_copies(aconnector);
++
++	return count;
++}
++EXPORT_IF_KUNIT(amdgpu_dm_connector_fill_modes);
++
+ #if defined(CONFIG_DRM_AMD_DC_FP)
+ static void update_dsc_caps(struct amdgpu_dm_connector *aconnector,
+ 			    struct dc_sink *sink, struct dc_stream_state *stream,
+@@ -2150,7 +2276,7 @@ EXPORT_IF_KUNIT(amdgpu_dm_connector_funcs_force);
+ static const struct drm_connector_funcs amdgpu_dm_connector_funcs = {
+ 	.reset = amdgpu_dm_connector_funcs_reset,
+ 	.detect = amdgpu_dm_connector_detect,
+-	.fill_modes = drm_helper_probe_single_connector_modes,
++	.fill_modes = amdgpu_dm_connector_fill_modes,
+ 	.destroy = amdgpu_dm_connector_destroy,
+ 	.atomic_duplicate_state = amdgpu_dm_connector_atomic_duplicate_state,
+ 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
+@@ -3199,6 +3325,9 @@ STATIC_IFN_KUNIT uint add_fs_modes(struct amdgpu_dm_connector *aconnector)
+ 			drm_mode_destroy(aconnector->base.dev, new_mode);
+ 	}
+  out:
++	if (new_modes_count)
++		drm_mode_copy(&aconnector->probed_freesync_vid_base, m);
++
+ 	return new_modes_count;
+ }
+ EXPORT_IF_KUNIT(add_fs_modes);
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.h b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.h
+index e7ed9a0bf56fb..ee8d7eabd7c13 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.h
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.h
+@@ -51,6 +51,8 @@ struct drm_edid;
+ struct drm_property;
+ 
+ void amdgpu_dm_connector_funcs_reset(struct drm_connector *connector);
++int amdgpu_dm_connector_fill_modes(struct drm_connector *connector,
++				   u32 max_width, u32 max_height);
+ 
+ struct drm_connector_state *
+ amdgpu_dm_connector_atomic_duplicate_state(struct drm_connector *connector);
+@@ -170,6 +172,7 @@ void amdgpu_dm_connector_ddc_get_modes(struct drm_connector *connector,
+ int amdgpu_dm_connector_get_modes(struct drm_connector *connector);
+ void amdgpu_dm_prune_primary_tile_modes(struct drm_connector *connector);
+ uint add_fs_modes(struct amdgpu_dm_connector *aconnector);
++void amdgpu_dm_connector_update_mode_copies(struct amdgpu_dm_connector *aconnector);
+ void amdgpu_dm_connector_add_freesync_modes(struct drm_connector *connector,
+ 					    const struct drm_edid *drm_edid);
+ void hdmi_cec_unset_edid(struct amdgpu_dm_connector *aconnector);
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_mst_types.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_mst_types.c
+index 5697645ef7cca..83021470c8b2c 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_mst_types.c
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_mst_types.c
+@@ -256,7 +256,7 @@ amdgpu_dm_mst_connector_early_unregister(struct drm_connector *connector)
+ EXPORT_IF_KUNIT(amdgpu_dm_mst_connector_early_unregister);
+ 
+ static const struct drm_connector_funcs dm_dp_mst_connector_funcs = {
+-	.fill_modes = drm_helper_probe_single_connector_modes,
++	.fill_modes = amdgpu_dm_connector_fill_modes,
+ 	.destroy = dm_dp_mst_connector_destroy,
+ 	.reset = amdgpu_dm_connector_funcs_reset,
+ 	.atomic_duplicate_state = amdgpu_dm_connector_atomic_duplicate_state,
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/tests/amdgpu_dm_connector_test.c b/drivers/gpu/drm/amd/display/amdgpu_dm/tests/amdgpu_dm_connector_test.c
+index e8cabe25a192d..49e85aec3c665 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/tests/amdgpu_dm_connector_test.c
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/tests/amdgpu_dm_connector_test.c
+@@ -2457,6 +2457,383 @@ static void dm_test_highest_refresh_preferred_mode(struct kunit *test)
+ 			    mode);
+ }
+ 
++/* Tests for amdgpu_dm_connector_update_mode_copies() */
++
++static struct drm_display_mode *
++dm_test_copy_add_mode(struct kunit *test, struct list_head *modes,
++		      u16 hdisplay, u16 vdisplay, u16 htotal, u16 vtotal,
++		      int clock, u32 type)
++{
++	struct drm_display_mode *mode;
++
++	mode = kunit_kzalloc(test, sizeof(*mode), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, mode);
++
++	mode->hdisplay = hdisplay;
++	mode->vdisplay = vdisplay;
++	mode->htotal = htotal;
++	mode->vtotal = vtotal;
++	mode->clock = clock;
++	mode->type = type;
++	list_add_tail(&mode->head, modes);
 +
 +	return mode;
 +}
-+EXPORT_IF_KUNIT(amdgpu_dm_connector_preferred_mode);
 +
-+struct dc_stream_state *
-+amdgpu_dm_create_validate_stream_for_sink(struct drm_connector *connector,
-+					  const struct drm_display_mode *drm_mode,
-+					  const struct dm_connector_state *dm_state,
-+					  const struct dc_stream_state *old_stream)
-+{
-+	const struct drm_display_mode *preferred_mode;
-+	struct drm_display_mode native_buf;
-+
-+	/*
-+	 * __amdgpu_dm_create_validate_stream_for_sink() checks this as well,
-+	 * but without a state there is no commit, so skip the preferred mode
-+	 * lookup too
-+	 */
-+	if (!dm_state)
-+		return NULL;
-+
-+	preferred_mode = amdgpu_dm_connector_preferred_mode(connector, &native_buf);
-+	return __amdgpu_dm_create_validate_stream_for_sink(connector, drm_mode,
-+							   preferred_mode, dm_state,
-+							   old_stream);
-+}
- EXPORT_IF_KUNIT(amdgpu_dm_create_validate_stream_for_sink);
- 
- enum drm_mode_status amdgpu_dm_connector_mode_valid(struct drm_connector *connector,
-@@ -2569,6 +2617,7 @@ enum drm_mode_status amdgpu_dm_connector_mode_valid(struct drm_connector *connec
- 	 * here via the amdgpu_dm_connector_helper_funcs
- 	 */
- 	struct amdgpu_dm_connector *aconnector = to_amdgpu_dm_connector(connector);
-+	struct dm_connector_state *dm_state = to_dm_connector_state(connector->state);
- 
- 	if ((mode->flags & DRM_MODE_FLAG_INTERLACE) ||
- 			(mode->flags & DRM_MODE_FLAG_DBLSCAN))
-@@ -2596,9 +2645,16 @@ enum drm_mode_status amdgpu_dm_connector_mode_valid(struct drm_connector *connec
- 
- 	drm_mode_set_crtcinfo(test_mode, 0);
- 
--	stream = amdgpu_dm_create_validate_stream_for_sink(connector, test_mode,
--						 to_dm_connector_state(connector->state),
--						 NULL);
-+	/*
-+	 * During a probe connector->modes still holds the previous probe's
-+	 * modes, possibly of another sink, and the probe knows its preferred
-+	 * mode only once mode_valid has seen every mode. Validate each mode
-+	 * with its own timing, even where atomic_check drives another one, the
-+	 * preferred mode's with scaling on or the native one for eDP and LVDS
-+	 * common modes
-+	 */
-+	stream = __amdgpu_dm_create_validate_stream_for_sink(connector, test_mode,
-+							     NULL, dm_state, NULL);
- 	drm_mode_destroy(connector->dev, test_mode);
- 	if (stream) {
- 		dc_stream_release(stream);
-diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.h b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.h
-index 7bfbb68538335..e7ed9a0bf56fb 100644
---- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.h
-+++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.h
-@@ -196,11 +196,15 @@ void fill_stream_properties_from_drm_display_mode(
- struct dc_stream_state *
- create_stream_for_sink(struct drm_connector *connector,
- 		       const struct drm_display_mode *drm_mode,
-+		       const struct drm_display_mode *preferred_mode,
- 		       const struct dm_connector_state *dm_state,
- 		       const struct dc_stream_state *old_stream,
- 		       int requested_bpc,
- 		       enum dc_pixel_encoding requested_encoding,
- 		       bool is_hdmi_ep);
-+const struct drm_display_mode *
-+amdgpu_dm_connector_preferred_mode(struct drm_connector *connector,
-+				   struct drm_display_mode *native_buf);
- enum drm_connector_status
- amdgpu_dm_connector_poll(struct amdgpu_dm_connector *aconnector, bool force);
- enum drm_connector_status
-diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/tests/amdgpu_dm_connector_test.c b/drivers/gpu/drm/amd/display/amdgpu_dm/tests/amdgpu_dm_connector_test.c
-index 5af111698e355..e8cabe25a192d 100644
---- a/drivers/gpu/drm/amd/display/amdgpu_dm/tests/amdgpu_dm_connector_test.c
-+++ b/drivers/gpu/drm/amd/display/amdgpu_dm/tests/amdgpu_dm_connector_test.c
-@@ -4277,7 +4277,7 @@ static void dm_test_create_stream_fake_sink_success(struct kunit *test)
- 	struct dc_stream_state *stream;
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
--					ctx->dm_state, NULL, 8,
-+					NULL, ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
- 	KUNIT_ASSERT_NOT_NULL(test, stream);
-@@ -4294,7 +4294,7 @@ static void dm_test_create_stream_sets_dm_context(struct kunit *test)
- 	struct dc_stream_state *stream;
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
--					ctx->dm_state, NULL, 8,
-+					NULL, ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
- 	KUNIT_ASSERT_NOT_NULL(test, stream);
-@@ -4312,7 +4312,7 @@ static void dm_test_create_stream_virtual_signal(struct kunit *test)
- 	struct dc_stream_state *stream;
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
--					ctx->dm_state, NULL, 8,
-+					NULL, ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
- 	KUNIT_ASSERT_NOT_NULL(test, stream);
-@@ -4332,7 +4332,7 @@ static void dm_test_create_stream_scaling_src(struct kunit *test)
- 	struct dc_stream_state *stream;
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
--					ctx->dm_state, NULL, 8,
-+					NULL, ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
- 	KUNIT_ASSERT_NOT_NULL(test, stream);
-@@ -4364,7 +4364,7 @@ static void dm_test_create_stream_existing_sink(struct kunit *test)
- 	ctx->aconnector->dc_sink = sink;
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
--					ctx->dm_state, NULL, 8,
-+					NULL, ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
- 	KUNIT_ASSERT_NOT_NULL(test, stream);
-@@ -4431,6 +4431,8 @@ static void dm_test_create_stream_preferred_mode(struct kunit *test)
- 	dm_test_stream_add_mode(test, ctx, DRM_MODE_TYPE_PREFERRED);
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
-+					list_first_entry(&ctx->aconnector->base.modes,
-+							 struct drm_display_mode, head),
- 					ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
-@@ -4459,6 +4461,8 @@ static void dm_test_create_stream_scaled_keeps_refresh(struct kunit *test)
- 	ctx->dm_state->scaling = RMX_FULL;
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
-+					list_first_entry(&ctx->aconnector->base.modes,
-+							 struct drm_display_mode, head),
- 					ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
-@@ -4490,7 +4494,7 @@ static void dm_test_create_stream_timing_override(struct kunit *test)
- 	ctx->aconnector->timing_requested = timing;
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
--					ctx->dm_state, NULL, 8,
-+					NULL, ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
- 	KUNIT_ASSERT_NOT_NULL(test, stream);
-@@ -4519,7 +4523,7 @@ static void dm_test_create_stream_dp_vsc_colorimetry(struct kunit *test)
- 	ctx->link->dpcd_caps.dprx_feature.bits.VSC_SDP_COLORIMETRY_SUPPORTED = 1;
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
--					ctx->dm_state, NULL, 8,
-+					NULL, ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
- 	KUNIT_ASSERT_NOT_NULL(test, stream);
-@@ -4547,7 +4551,7 @@ static void dm_test_create_stream_dp_colorimetry_quirk(struct kunit *test)
- 	ctx->link->dpcd_caps.dprx_feature.bits.VSC_SDP_COLORIMETRY_SUPPORTED = 1;
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
--					ctx->dm_state, NULL, 8,
-+					NULL, ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
- 	KUNIT_ASSERT_NOT_NULL(test, stream);
-@@ -4574,7 +4578,7 @@ static void dm_test_create_stream_hdmi_vsif(struct kunit *test)
- 	sink = dm_test_stream_add_sink(test, ctx, SIGNAL_TYPE_HDMI_TYPE_A);
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
--					ctx->dm_state, NULL, 8,
-+					NULL, ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
- 	KUNIT_ASSERT_NOT_NULL(test, stream);
-@@ -4609,8 +4613,8 @@ dm_test_native_mode_stream(struct kunit *test, int connector_type, unsigned int
- 	static const u8 edid[EDID_LENGTH];
- 	struct dm_test_stream_ctx *ctx = dm_test_stream_ctx_alloc_type(test, connector_type);
- 	struct amdgpu_encoder *aenc;
-+	struct drm_display_mode *native, native_buf;
- 	struct dc_stream_state *stream;
--	struct drm_display_mode *native;
- 
- 	aenc = drmm_kzalloc(ctx->drm, sizeof(*aenc), GFP_KERNEL);
- 	KUNIT_ASSERT_NOT_NULL(test, aenc);
-@@ -4659,6 +4663,8 @@ dm_test_native_mode_stream(struct kunit *test, int connector_type, unsigned int
- 	}
- 
- 	stream = create_stream_for_sink(&ctx->aconnector->base, ctx->mode,
-+					amdgpu_dm_connector_preferred_mode(&ctx->aconnector->base,
-+									   &native_buf),
- 					ctx->dm_state, NULL, 8,
- 					PIXEL_ENCODING_RGB, false);
- 
-@@ -7479,6 +7485,98 @@ static void dm_test_create_validate_stream_hdmi_rgb_first(struct kunit *test)
- 	KUNIT_EXPECT_EQ(test, (int)dm_test_cvs_first_encoding, (int)PIXEL_ENCODING_RGB);
- }
- 
-+static u32 dm_test_cvs_first_h_addressable;
-+
-+static bool dm_test_cvs_record_first_h_addressable(struct timing_generator *tg,
-+						   const struct dc_crtc_timing *timing)
-+{
-+	if (!dm_test_cvs_first_h_addressable)
-+		dm_test_cvs_first_h_addressable = timing->h_addressable;
-+
-+	return false;
-+}
++static struct drm_device *dm_test_alloc_drm(struct kunit *test);
 +
 +/*
-+ * A 3840x2160 preferred mode in connector->modes, as a probe of another sink
-+ * leaves it until the next probe prunes it
++ * Take the copies as amdgpu_dm_connector_fill_modes() does, with
++ * &drm_mode_config.mutex held. A connector without a device gets one for the
++ * locks, without registering the connector with it
 + */
-+static void dm_test_cvs_add_preferred_4k(struct kunit *test, struct dm_test_cvs_dc *c)
++static void dm_test_copy_locked(struct kunit *test, struct amdgpu_dm_connector *aconnector)
 +{
-+	struct drm_display_mode *pref = drm_mode_create(c->drm);
++	struct drm_mode_config *config;
 +
-+	KUNIT_ASSERT_NOT_NULL(test, pref);
-+	pref->hdisplay = 3840;
-+	pref->hsync_start = 4016;
-+	pref->hsync_end = 4104;
-+	pref->htotal = 4400;
-+	pref->vdisplay = 2160;
-+	pref->vsync_start = 2168;
-+	pref->vsync_end = 2178;
-+	pref->vtotal = 2250;
-+	pref->clock = 594000;
-+	pref->type = DRM_MODE_TYPE_PREFERRED;
-+	drm_mode_set_crtcinfo(pref, CRTC_INTERLACE_HALVE_V);
-+	list_add_tail(&pref->head, &c->aconnector->base.modes);
++	if (!aconnector->base.dev)
++		aconnector->base.dev = dm_test_alloc_drm(test);
++	config = &aconnector->base.dev->mode_config;
++
++	mutex_lock(&config->mutex);
++	amdgpu_dm_connector_update_mode_copies(aconnector);
++	mutex_unlock(&config->mutex);
 +}
 +
 +/**
-+ * dm_test_create_validate_stream_scaled_preferred - Test atomic_check scales to the preferred mode
++ * dm_test_highest_refresh_probed_skips_copy - Test a probe reads probed_modes
 + * @test: The KUnit test context
 + *
-+ * With scaling on, the stream for a 1920x1080 mode takes the CRTC timing of
-+ * the preferred mode in connector->modes
++ * The copy is from the previous probe, possibly of another monitor, so a
++ * caller that passes use_probed_modes must get this probe's mode
 + */
-+static void dm_test_create_validate_stream_scaled_preferred(struct kunit *test)
++static void dm_test_highest_refresh_probed_skips_copy(struct kunit *test)
 +{
-+	struct dm_test_cvs_dc *c = dm_test_cvs_dc_alloc(test);
++	struct amdgpu_dm_connector *aconnector;
++	struct drm_display_mode *mode;
 +
-+	c->dm_state->scaling = RMX_FULL;
-+	dm_test_cvs_add_preferred_4k(test, c);
-+	c->tgfuncs->validate_timing = dm_test_cvs_record_first_h_addressable;
-+	dm_test_cvs_first_h_addressable = 0;
++	aconnector = kunit_kzalloc(test, sizeof(*aconnector), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, aconnector);
++	aconnector->base.connector_type = DRM_MODE_CONNECTOR_HDMIA;
++	INIT_LIST_HEAD(&aconnector->base.modes);
++	INIT_LIST_HEAD(&aconnector->base.probed_modes);
++	aconnector->freesync_vid_base.clock = 148500;
++	aconnector->freesync_vid_base.hdisplay = 1920;
++	aconnector->freesync_vid_base.vdisplay = 1080;
 +
-+	KUNIT_EXPECT_NULL(test,
-+			  amdgpu_dm_create_validate_stream_for_sink(&c->aconnector->base,
-+								    c->mode,
-+								    c->dm_state,
-+								    NULL));
-+	KUNIT_EXPECT_EQ(test, dm_test_cvs_first_h_addressable, 3840);
++	mode = dm_test_copy_add_mode(test, &aconnector->base.probed_modes, 2560, 1440,
++				     2720, 1481, 241500, DRM_MODE_TYPE_PREFERRED);
++
++	KUNIT_EXPECT_PTR_EQ(test,
++			    amdgpu_dm_get_highest_refresh_rate_mode(aconnector, true),
++			    mode);
 +}
 +
 +/**
-+ * dm_test_mode_valid_ignores_preferred_mode - Test mode_valid uses the mode's own timing
++ * dm_test_update_mode_copies_highest_refresh - Test the copies taken from base.modes
 + * @test: The KUnit test context
 + *
-+ * During a probe connector->modes still holds the previous sink's preferred
-+ * mode. Even with scaling on, the mode is validated with its own 1920x1080
-+ * timing rather than that mode's 3840x2160 one
++ * The preferred mode is copied as is. The highest refresh rate copy comes from
++ * the preferred size only, even when another size has a higher refresh rate
 + */
-+static void dm_test_mode_valid_ignores_preferred_mode(struct kunit *test)
++static void dm_test_update_mode_copies_highest_refresh(struct kunit *test)
 +{
-+	struct dm_test_cvs_dc *c = dm_test_cvs_dc_alloc(test);
-+	struct dc_sink *em_sink;
++	struct amdgpu_dm_connector *aconnector;
++	struct list_head *modes;
 +
-+	em_sink = kunit_kzalloc(test, sizeof(*em_sink), GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, em_sink);
-+	c->aconnector->dc_em_sink = em_sink;
-+	c->aconnector->base.force = DRM_FORCE_ON;
++	aconnector = kunit_kzalloc(test, sizeof(*aconnector), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, aconnector);
++	modes = &aconnector->base.modes;
++	INIT_LIST_HEAD(modes);
 +
-+	/* drm_connector_cleanup() kfree()s connector->state */
-+	KUNIT_ASSERT_NULL(test, c->aconnector->base.state);
-+	amdgpu_dm_connector_funcs_reset(&c->aconnector->base);
-+	KUNIT_ASSERT_NOT_NULL(test, c->aconnector->base.state);
-+	to_dm_connector_state(c->aconnector->base.state)->scaling = RMX_FULL;
++	dm_test_copy_add_mode(test, modes, 1280, 720, 1650, 750, 297000, 0);
++	dm_test_copy_add_mode(test, modes, 1920, 1080, 2200, 1125, 148500,
++			      DRM_MODE_TYPE_PREFERRED);
++	dm_test_copy_add_mode(test, modes, 1920, 1080, 2200, 1125, 297000, 0);
 +
-+	dm_test_cvs_add_preferred_4k(test, c);
-+	c->tgfuncs->validate_timing = dm_test_cvs_record_first_h_addressable;
-+	dm_test_cvs_first_h_addressable = 0;
++	dm_test_copy_locked(test, aconnector);
 +
-+	KUNIT_EXPECT_EQ(test,
-+			amdgpu_dm_connector_mode_valid(&c->aconnector->base, c->mode),
-+			MODE_ERROR);
-+	KUNIT_EXPECT_EQ(test, dm_test_cvs_first_h_addressable, 1920);
++	KUNIT_EXPECT_EQ(test, aconnector->preferred_mode.clock, 148500);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.hdisplay, 1920);
++	KUNIT_EXPECT_TRUE(test, aconnector->preferred_mode.type & DRM_MODE_TYPE_PREFERRED);
++	KUNIT_EXPECT_EQ(test, aconnector->freesync_vid_base.clock, 297000);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->freesync_vid_base.hdisplay, 1920);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->freesync_vid_base.vdisplay, 1080);
 +}
 +
- /* Further tests for amdgpu_dm_connector_mode_valid() */
++/**
++ * dm_test_update_mode_copies_no_preferred - Test the first mode stands in for a preferred one
++ * @test: The KUnit test context
++ */
++static void dm_test_update_mode_copies_no_preferred(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector;
++	struct list_head *modes;
++
++	aconnector = kunit_kzalloc(test, sizeof(*aconnector), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, aconnector);
++	modes = &aconnector->base.modes;
++	INIT_LIST_HEAD(modes);
++
++	dm_test_copy_add_mode(test, modes, 1920, 1080, 2200, 1125, 148500, 0);
++	dm_test_copy_add_mode(test, modes, 1280, 720, 1650, 750, 297000, 0);
++
++	dm_test_copy_locked(test, aconnector);
++
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.hdisplay, 1920);
++	KUNIT_EXPECT_EQ(test, aconnector->freesync_vid_base.clock, 148500);
++}
++
++/**
++ * dm_test_update_mode_copies_records_edid - Test the copies record the sink's EDID
++ * @test: The KUnit test context
++ *
++ * atomic_check compares the EDID of the sink it builds a stream for with the
++ * one the copies were taken with
++ */
++static void dm_test_update_mode_copies_records_edid(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector;
++	struct dc_sink *sink;
++	u8 *edid;
++
++	aconnector = kunit_kzalloc(test, sizeof(*aconnector), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, aconnector);
++	sink = kunit_kzalloc(test, sizeof(*sink), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sink);
++	INIT_LIST_HEAD(&aconnector->base.modes);
++	aconnector->dc_sink = sink;
++
++	edid = sink->dc_edid.raw_edid;
++	memset(edid, 0xa5, 256);
++	sink->dc_edid.length = 256;
++
++	dm_test_copy_add_mode(test, &aconnector->base.modes, 1920, 1080, 2200, 1125,
++			      148500, DRM_MODE_TYPE_PREFERRED);
++
++	dm_test_copy_locked(test, aconnector);
++
++	KUNIT_EXPECT_EQ(test, aconnector->mode_copies_edid_size, 256);
++	KUNIT_EXPECT_MEMEQ(test, aconnector->mode_copies_edid, edid, 256);
++}
++
++/**
++ * dm_test_update_mode_copies_no_edid - Test copies without a sink EDID record none
++ * @test: The KUnit test context
++ *
++ * Without a sink, or with one that has no EDID, nothing identifies the
++ * monitor, so the copies must not match any sink later
++ */
++static void dm_test_update_mode_copies_no_edid(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector;
++	struct dc_sink *sink;
++
++	aconnector = kunit_kzalloc(test, sizeof(*aconnector), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, aconnector);
++	sink = kunit_kzalloc(test, sizeof(*sink), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sink);
++	INIT_LIST_HEAD(&aconnector->base.modes);
++	aconnector->mode_copies_edid_size = 128;
++	memset(aconnector->mode_copies_edid, 0x5a, 128);
++
++	dm_test_copy_add_mode(test, &aconnector->base.modes, 1920, 1080, 2200, 1125,
++			      148500, DRM_MODE_TYPE_PREFERRED);
++
++	dm_test_copy_locked(test, aconnector);
++	KUNIT_EXPECT_EQ(test, aconnector->mode_copies_edid_size, 0);
++
++	aconnector->dc_sink = sink;
++	aconnector->mode_copies_edid_size = 128;
++	memset(aconnector->mode_copies_edid, 0x5a, 128);
++
++	dm_test_copy_locked(test, aconnector);
++	KUNIT_EXPECT_EQ(test, aconnector->mode_copies_edid_size, 0);
++}
++
++/**
++ * dm_test_update_mode_copies_empty - Test an empty mode list clears both copies
++ * @test: The KUnit test context
++ *
++ * A disconnected connector ends its probe with no modes. Copies from an
++ * earlier probe must not survive that
++ */
++static void dm_test_update_mode_copies_empty(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector;
++
++	aconnector = kunit_kzalloc(test, sizeof(*aconnector), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, aconnector);
++	INIT_LIST_HEAD(&aconnector->base.modes);
++	aconnector->preferred_mode.clock = 148500;
++	aconnector->freesync_vid_base.clock = 297000;
++
++	dm_test_copy_locked(test, aconnector);
++
++	KUNIT_EXPECT_EQ(test, aconnector->preferred_mode.clock, 0);
++	KUNIT_EXPECT_EQ(test, aconnector->freesync_vid_base.clock, 0);
++}
++
++/**
++ * dm_test_update_mode_copies_freesync_vid_base - Test the FreeSync base beats a command line mode
++ * @test: The KUnit test context
++ *
++ * A video= mode at the preferred size with a higher refresh rate than any EDID
++ * mode is in base.modes, but the FreeSync video modes were built from
++ * probed_freesync_vid_base, so that is the copy atomic_check gets
++ */
++static void dm_test_update_mode_copies_freesync_vid_base(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector;
++	struct list_head *modes;
++
++	aconnector = kunit_kzalloc(test, sizeof(*aconnector), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, aconnector);
++	modes = &aconnector->base.modes;
++	INIT_LIST_HEAD(modes);
++
++	dm_test_copy_add_mode(test, modes, 1920, 1080, 2200, 1125, 148500,
++			      DRM_MODE_TYPE_PREFERRED);
++	dm_test_copy_add_mode(test, modes, 1920, 1080, 2200, 1125, 297000, 0);
++	dm_test_copy_add_mode(test, modes, 1920, 1080, 2200, 1125, 346500,
++			      DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_USERDEF);
++
++	dm_test_copy_locked(test, aconnector);
++	KUNIT_EXPECT_EQ(test, aconnector->freesync_vid_base.clock, 346500);
++
++	aconnector->probed_freesync_vid_base.hdisplay = 1920;
++	aconnector->probed_freesync_vid_base.vdisplay = 1080;
++	aconnector->probed_freesync_vid_base.htotal = 2200;
++	aconnector->probed_freesync_vid_base.vtotal = 1125;
++	aconnector->probed_freesync_vid_base.clock = 297000;
++
++	dm_test_copy_locked(test, aconnector);
++	KUNIT_EXPECT_EQ(test, aconnector->freesync_vid_base.clock, 297000);
++	KUNIT_EXPECT_EQ(test, aconnector->preferred_mode.clock, 148500);
++}
++
++/**
++ * dm_test_update_mode_copies_freesync_vid_base_pruned - Test a pruned FreeSync base is not copied
++ * @test: The KUnit test context
++ *
++ * add_fs_modes() records probed_freesync_vid_base before validation. If
++ * validation pruned its size, or the base itself, the copy must be the highest
++ * refresh rate mode at the preferred size that base.modes still holds
++ */
++static void dm_test_update_mode_copies_freesync_vid_base_pruned(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector;
++	struct list_head *modes;
++
++	aconnector = kunit_kzalloc(test, sizeof(*aconnector), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, aconnector);
++	aconnector->base.connector_type = DRM_MODE_CONNECTOR_HDMIA;
++	modes = &aconnector->base.modes;
++	INIT_LIST_HEAD(modes);
++
++	dm_test_copy_add_mode(test, modes, 1920, 1200, 2080, 1235, 154000, 0);
++	dm_test_copy_add_mode(test, modes, 1920, 1200, 2080, 1235, 308000, 0);
++
++	aconnector->probed_freesync_vid_base.hdisplay = 3840;
++	aconnector->probed_freesync_vid_base.vdisplay = 2400;
++	aconnector->probed_freesync_vid_base.htotal = 4000;
++	aconnector->probed_freesync_vid_base.vtotal = 2469;
++	aconnector->probed_freesync_vid_base.clock = 592500;
++
++	dm_test_copy_locked(test, aconnector);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.hdisplay, 1920);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->freesync_vid_base.hdisplay, 1920);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->freesync_vid_base.vdisplay, 1200);
++	KUNIT_EXPECT_EQ(test, aconnector->freesync_vid_base.clock, 308000);
++
++	aconnector->probed_freesync_vid_base.hdisplay = 1920;
++	aconnector->probed_freesync_vid_base.vdisplay = 1200;
++	aconnector->probed_freesync_vid_base.htotal = 2080;
++	aconnector->probed_freesync_vid_base.vtotal = 1235;
++	aconnector->probed_freesync_vid_base.clock = 231000;
++
++	dm_test_copy_locked(test, aconnector);
++	KUNIT_EXPECT_EQ(test, aconnector->freesync_vid_base.clock, 308000);
++}
++
++/* Tests for amdgpu_dm_connector_fill_modes() */
++
++static int dm_test_fill_modes_get_modes(struct drm_connector *connector)
++{
++	static const int refresh[] = { 60, 120 };
++	struct drm_display_mode *mode;
++	int i;
++
++	for (i = 0; i < ARRAY_SIZE(refresh); i++) {
++		mode = drm_cvt_mode(connector->dev, 1920, 1080, refresh[i],
++				    false, false, false);
++		if (!mode)
++			return i;
++		if (i == 0)
++			mode->type |= DRM_MODE_TYPE_PREFERRED;
++		drm_mode_probed_add(connector, mode);
++	}
++
++	return i;
++}
++
++static const struct drm_connector_helper_funcs dm_test_fill_modes_helper_funcs = {
++	.get_modes = dm_test_fill_modes_get_modes,
++};
++
++static const struct drm_connector_funcs dm_test_fill_modes_funcs = {
++	.fill_modes = amdgpu_dm_connector_fill_modes,
++	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
++	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
++};
++
++/**
++ * dm_test_fill_modes_copies_probe - Test fill_modes copies the modes of its probe
++ * @test: The KUnit test context
++ *
++ * The hook returns the probe helper's mode count and takes the copies and the
++ * sink's EDID from the modes that probe left in base.modes
++ */
++static void dm_test_fill_modes_copies_probe(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector;
++	struct drm_connector *connector;
++	struct drm_device *drm;
++	struct device *dev;
++	struct dc_sink *sink;
++	int count;
++
++	dev = drm_kunit_helper_alloc_device(test);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, dev);
++	drm = __drm_kunit_helper_alloc_drm_device(test, dev, sizeof(*drm), 0,
++						  DRIVER_MODESET);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, drm);
++
++	aconnector = drmm_kzalloc(drm, sizeof(*aconnector), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, aconnector);
++	connector = &aconnector->base;
++	KUNIT_ASSERT_EQ(test, drmm_connector_init(drm, connector, &dm_test_fill_modes_funcs,
++						  DRM_MODE_CONNECTOR_HDMIA, NULL), 0);
++	drm_connector_helper_add(connector, &dm_test_fill_modes_helper_funcs);
++
++	sink = kunit_kzalloc(test, sizeof(*sink), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sink);
++	memset(sink->dc_edid.raw_edid, 0x5a, 128);
++	sink->dc_edid.length = 128;
++	aconnector->dc_sink = sink;
++
++	mutex_lock(&drm->mode_config.mutex);
++	count = connector->funcs->fill_modes(connector, 4096, 4096);
++	mutex_unlock(&drm->mode_config.mutex);
++
++	KUNIT_EXPECT_EQ(test, count, 2);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.hdisplay, 1920);
++	KUNIT_EXPECT_EQ(test, drm_mode_vrefresh(&aconnector->preferred_mode), 60);
++	KUNIT_EXPECT_EQ(test, drm_mode_vrefresh(&aconnector->freesync_vid_base), 120);
++	KUNIT_EXPECT_EQ(test, aconnector->mode_copies_edid_size, 128);
++	KUNIT_EXPECT_MEMEQ(test, aconnector->mode_copies_edid, sink->dc_edid.raw_edid, 128);
++}
++
+ /* Tests for amdgpu_dm_is_freesync_video_mode() */
  
  /**
-@@ -10695,6 +10793,8 @@ static struct kunit_case amdgpu_dm_connector_tests[] = {
- 	KUNIT_CASE(dm_test_create_validate_stream_prune_timing),
- 	KUNIT_CASE(dm_test_create_validate_stream_prune_context),
- 	KUNIT_CASE(dm_test_create_validate_stream_hdmi_rgb_first),
-+	KUNIT_CASE(dm_test_create_validate_stream_scaled_preferred),
-+	KUNIT_CASE(dm_test_mode_valid_ignores_preferred_mode),
- 	/* amdgpu_dm_update_connector_after_detect */
- 	KUNIT_CASE(dm_test_update_after_detect_mst_noop),
- 	KUNIT_CASE(dm_test_update_after_detect_sink_unchanged),
+@@ -4800,6 +5177,127 @@ static void dm_test_create_stream_native_mode_no_edid_edp(struct kunit *test)
+ 							     DM_TEST_NATIVE_NO_EDID));
+ }
+ 
++/*
++ * Copy the modes after a probe with size limits below the native mode. The
++ * probe left a 1920x1200 mode in base.modes, and with @listed also a 3840x2400
++ * mode at half the native clock, while the encoder keeps the 3840x2400 native
++ * mode
++ */
++static struct amdgpu_dm_connector *
++dm_test_copy_pruned(struct kunit *test, int connector_type, bool listed)
++{
++	static const u8 edid[EDID_LENGTH];
++	struct dm_test_stream_ctx *ctx = dm_test_stream_ctx_alloc_type(test, connector_type);
++	struct amdgpu_dm_connector *aconnector = ctx->aconnector;
++	struct list_head *modes = &aconnector->base.modes;
++	struct drm_display_mode *native, *mode;
++	struct amdgpu_encoder *aenc;
++
++	aenc = drmm_kzalloc(ctx->drm, sizeof(*aenc), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, aenc);
++	KUNIT_ASSERT_EQ(test, drmm_encoder_init(ctx->drm, &aenc->base, NULL,
++						DRM_MODE_ENCODER_TMDS, NULL), 0);
++	KUNIT_ASSERT_EQ(test, drm_connector_attach_encoder(&aconnector->base, &aenc->base), 0);
++
++	native = &aenc->native_mode;
++	native->clock = 592500;
++	native->hdisplay = 3840;
++	native->hsync_start = 3888;
++	native->hsync_end = 3920;
++	native->htotal = 4000;
++	native->vdisplay = 2400;
++	native->vsync_start = 2403;
++	native->vsync_end = 2409;
++	native->vtotal = 2469;
++
++	mode = drm_mode_duplicate(ctx->drm, native);
++	KUNIT_ASSERT_NOT_NULL(test, mode);
++	mode->hdisplay = 1920;
++	mode->vdisplay = 1200;
++	list_add_tail(&mode->head, modes);
++
++	if (listed) {
++		mode = drm_mode_duplicate(ctx->drm, native);
++		KUNIT_ASSERT_NOT_NULL(test, mode);
++		mode->clock /= 2;
++		list_add_tail(&mode->head, modes);
++	}
++
++	aconnector->drm_edid = drm_edid_alloc(edid, sizeof(edid));
++	KUNIT_ASSERT_NOT_NULL(test, aconnector->drm_edid);
++
++	dm_test_copy_locked(test, aconnector);
++
++	drm_edid_free(aconnector->drm_edid);
++	aconnector->drm_edid = NULL;
++
++	return aconnector;
++}
++
++/**
++ * dm_test_update_mode_copies_pruned_edp - Test eDP copies the encoder's native mode
++ * @test: The KUnit test context
++ *
++ * With the native size pruned from base.modes, the preferred mode copy must be
++ * the panel's native mode, with its CRTC timing set, so that atomic_check
++ * still scales to it
++ */
++static void dm_test_update_mode_copies_pruned_edp(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector =
++		dm_test_copy_pruned(test, DRM_MODE_CONNECTOR_eDP, false);
++
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.hdisplay, 3840);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.vdisplay, 2400);
++	KUNIT_EXPECT_EQ(test, aconnector->preferred_mode.clock, 592500);
++	KUNIT_EXPECT_EQ(test, aconnector->preferred_mode.crtc_clock, 592500);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.crtc_htotal, 4000);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->freesync_vid_base.hdisplay, 3840);
++	KUNIT_EXPECT_EQ(test, aconnector->freesync_vid_base.clock, 592500);
++}
++
++/**
++ * dm_test_update_mode_copies_pruned_lvds - Test LVDS copies the encoder's native mode
++ * @test: The KUnit test context
++ */
++static void dm_test_update_mode_copies_pruned_lvds(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector =
++		dm_test_copy_pruned(test, DRM_MODE_CONNECTOR_LVDS, false);
++
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.hdisplay, 3840);
++	KUNIT_EXPECT_EQ(test, aconnector->preferred_mode.clock, 592500);
++}
++
++/**
++ * dm_test_update_mode_copies_pruned_listed_edp - Test eDP copies a listed native size mode
++ * @test: The KUnit test context
++ *
++ * mode_valid may have rejected the encoder's native timing, so a mode of the
++ * native size left in base.modes must be copied in its place
++ */
++static void dm_test_update_mode_copies_pruned_listed_edp(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector =
++		dm_test_copy_pruned(test, DRM_MODE_CONNECTOR_eDP, true);
++
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.hdisplay, 3840);
++	KUNIT_EXPECT_EQ(test, aconnector->preferred_mode.clock, 296250);
++}
++
++/**
++ * dm_test_update_mode_copies_pruned_hdmi - Test HDMI copies the first mode
++ * @test: The KUnit test context
++ */
++static void dm_test_update_mode_copies_pruned_hdmi(struct kunit *test)
++{
++	struct amdgpu_dm_connector *aconnector =
++		dm_test_copy_pruned(test, DRM_MODE_CONNECTOR_HDMIA, true);
++
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.hdisplay, 1920);
++	KUNIT_EXPECT_EQ(test, (int)aconnector->preferred_mode.vdisplay, 1200);
++}
++
+ /* Tests for amdgpu_dm_connector_detect() */
+ 
+ /*
+@@ -6332,6 +6830,8 @@ static void dm_test_add_fs_modes_generates(struct kunit *test)
+ 
+ 	KUNIT_EXPECT_EQ(test, count, 8);
+ 	KUNIT_EXPECT_EQ(test, duplicate_count, 0);
++	KUNIT_EXPECT_EQ(test, aconnector->probed_freesync_vid_base.clock, 148500);
++	KUNIT_EXPECT_EQ(test, aconnector->probed_freesync_vid_base.vtotal, 1125);
+ }
+ 
+ /**
+@@ -6350,6 +6850,7 @@ static void dm_test_add_fs_modes_out_of_range(struct kunit *test)
+ 	aconnector->max_vfreq = 120;
+ 
+ 	KUNIT_EXPECT_EQ(test, (int)add_fs_modes(aconnector), 0);
++	KUNIT_EXPECT_EQ(test, aconnector->probed_freesync_vid_base.clock, 0);
+ }
+ 
+ /**
+@@ -10576,6 +11077,17 @@ static struct kunit_case amdgpu_dm_connector_tests[] = {
+ 	KUNIT_CASE(dm_test_highest_refresh_writeback_null),
+ 	KUNIT_CASE(dm_test_highest_refresh_cached_base),
+ 	KUNIT_CASE(dm_test_highest_refresh_preferred_mode),
++	KUNIT_CASE(dm_test_highest_refresh_probed_skips_copy),
++	/* amdgpu_dm_connector_update_mode_copies */
++	KUNIT_CASE(dm_test_update_mode_copies_highest_refresh),
++	KUNIT_CASE(dm_test_update_mode_copies_no_preferred),
++	KUNIT_CASE(dm_test_update_mode_copies_records_edid),
++	KUNIT_CASE(dm_test_update_mode_copies_no_edid),
++	KUNIT_CASE(dm_test_update_mode_copies_empty),
++	KUNIT_CASE(dm_test_update_mode_copies_freesync_vid_base),
++	KUNIT_CASE(dm_test_update_mode_copies_freesync_vid_base_pruned),
++	/* amdgpu_dm_connector_fill_modes */
++	KUNIT_CASE(dm_test_fill_modes_copies_probe),
+ 	/* amdgpu_dm_is_freesync_video_mode */
+ 	KUNIT_CASE(dm_test_is_freesync_video_mode_null_mode),
+ 	KUNIT_CASE(dm_test_is_freesync_video_mode_match),
+@@ -10664,6 +11176,10 @@ static struct kunit_case amdgpu_dm_connector_tests[] = {
+ 	KUNIT_CASE(dm_test_create_stream_native_preferred_edp),
+ 	KUNIT_CASE(dm_test_create_stream_native_mode_no_clock_edp),
+ 	KUNIT_CASE(dm_test_create_stream_native_mode_no_edid_edp),
++	KUNIT_CASE(dm_test_update_mode_copies_pruned_edp),
++	KUNIT_CASE(dm_test_update_mode_copies_pruned_lvds),
++	KUNIT_CASE(dm_test_update_mode_copies_pruned_listed_edp),
++	KUNIT_CASE(dm_test_update_mode_copies_pruned_hdmi),
+ 	/* amdgpu_dm_connector_detect */
+ 	KUNIT_CASE(dm_test_detect_force_on),
+ 	KUNIT_CASE(dm_test_detect_force_on_digital),
 
 -- 
 2.56.0
