@@ -1,138 +1,118 @@
-From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Sat, 14 Nov 2026 08:44:27 -0600
-Subject: [PATCH] wifi: ath12k: don't zero the 6 GHz TX power on a vdev
- restart
+From: Alexis Calin <alexiscalin@protonmail.com>
+Date: Sat, 14 Nov 2026 16:06:32 +0100
+Subject: [PATCH] drm/i915/backlight: Keep ACPI brightness requests while
+ the display is off
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-ath12k-6ghz-tpc-vdev-restart-v1-1-5680ada87c37@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMpz+GoC/yXMwQ7CIAwA0F9ZeraJZZODv2I8ACujmswFKjEu+
- 3dxO77LW6FwFi5w7VbIXKXIa26gUwchuXlilLEZzNlYIhrQaSLzRDulL+oSsI5cMXNRlxXjxZM
- dYk+9t9CKJXOUz97f7ofL2z846P+EbfsBGKJri4AAAAA=
-X-Change-ID: 20261114-ath12k-6ghz-tpc-vdev-restart-f5b164f313b6
-To: Jeff Johnson <jjohnson@kernel.org>
-Cc: Baochen Qiang <baochen.qiang@oss.qualcomm.com>, 
- Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
- linux-wireless@vger.kernel.org, ath12k@lists.infradead.org, 
- linux-kernel@vger.kernel.org, 
- Christopher Griffin <christophergriffin05@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794667466; l=4577;
- i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=kke/DsAVwEMxb+LRgu7ak2aDlof084RcMGz+021hfbM=;
- b=J3GnQJVnp1P9yrNbKglpLQVBDaYwW8zTORBFGlB3CXSXLIG1jiY49ebcIGqsQ/7SZ6vLz7Hd8
- RkFMBNmGmN3AN2rjGEUZ4Qf1O/4YbCaZNUByhNG+XytHqSQFnRrme6p
-X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
- pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
-X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
+Message-Id: <20261114-i915-acpi-backlight-display-off-v1-1-9306f19d605a@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2NSwqEMBAFryK9tsH2B85VBhcxdvShaEiGQRHvb
+ nBZUFRdFDVAI32yi4L+EbFvCSTPyM5mm5QxJqayKFsRqRmdNGysBw/GLium+ccjol/Nybtz3Fq
+ pNIlD0TlKFR/U4XgP3/6+H987PfFxAAAA
+X-Change-ID: 20261114-i915-acpi-backlight-display-off-6c13e114b09f
+To: intel-gfx@lists.freedesktop.org, 
+ Jani Nikula <jani.nikula@linux.intel.com>, 
+ Rodrigo Vivi <rodrigo.vivi@intel.com>, 
+ Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
+ Tvrtko Ursulin <tursulin@ursulin.net>
+Cc: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Jesse Barnes <jbarnes@virtuousgeek.org>, intel-xe@lists.freedesktop.org, 
+ dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Alexis Calin <alexiscalin@protonmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794668829; l=3928;
+ i=alexiscalin@protonmail.com; s=20261114; h=from:subject:message-id;
+ bh=yfV5siqoHW/ZsYrHAiTnfqWhV+mA/En7svlIUOMAlGQ=;
+ b=R1pN8mDR1lCIq9lN2N09YjigxDNNUkgL6X2/m8UmvRxMuUpITR3BCsjacT8gMmKWXYeQ58TYV
+ 1gUs380NXXdD9iVWIbXJql5Qj7Q4QQsDbVEW87+PetIbKG0a/+6M/eN
+X-Developer-Key: i=alexiscalin@protonmail.com; a=ed25519;
+ pk=oNYBG1X8+3bGmJMn0tnt+BbJC1vI7dgqomx4pGPM+4c=
+X-Endpoint-Received: by B4 Relay for alexiscalin@protonmail.com/20261114 with auth_id=1528
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ath12k_mac_fill_reg_tpc_info() takes a non-zero
-reg_tpc_info.num_pwr_levels to mean that a TPE element was parsed, and
-then limits every power level by reg_tpc_info.tpe[]. But it also stores
-the number of levels it filled in that same field.
+intel_backlight_set_acpi() returns early when the connector has no
+crtc. This is meant for requests that the BIOS sends during driver init,
+but the connector also has no crtc while the display is turned off, e.g.
+when the desktop blanks the screen. A brightness request received then
+is dropped, while asle_set_backlight() still reports it as done in CBLV.
+When the display is turned on again, the backlight is enabled with the
+old level.
 
-An AP vdev never parses a TPE element. Its first vdev start finds the
-field zero and fills the levels from the regulatory rules; every later
-start or restart of the vdev, such as a channel switch, finds the count
-of the last fill there, takes the "TPE received" branch with the level
-count of the old width, and limits every level by tpe[], which is all
-zeroes. WMI_VDEV_SET_TPC_POWER_CMDID then carries a limit of 0 dBm, and
-the AP transmits at that until the interface is removed and added
-again. A station whose AP sent no TPE element for its power type goes
-the same way on its next vdev start.
+With the ACPI video backlight interface, this happens on the GNOME idle
+path: the screen is dimmed, then blanked, and on wake-up GNOME restores
+the previous level while the display is still off. The panel then comes
+back at the dimmed level, while the backlight class device and CBLV
+report the restored one.
 
-On a 6 GHz AP, after a channel switch from channel 149 to 165 at
-80 MHz, or one that only changes the width (80 to 320 MHz, or back),
-iw reports "txpower 0.00 dBm", tpc_stats shows "power limit-0" where it
-showed 48 before the switch, and a station next to the AP hears it
-15 dB lower.
+The crtc is only needed to program the hardware, as vlv_set_backlight()
+gets the pipe from it. Store the new level in all cases, like
+intel_panel_set_backlight() does for the native backlight interface, and
+only program it when the backlight is enabled and there is a crtc. The
+next backlight enable then uses the new level.
 
-Keep whether a TPE element was parsed in a flag of its own, set by
-ath12k_mac_parse_tx_pwr_env(), and test that instead. With the change
-the power is the same before and after seven channel switches, three of
-them width changes.
-
-The change and this message were written with Claude, an AI coding
-assistant.
-
-Tested-on: QCN9274 hw2.0 PCI WLAN.WBE.1.4.1-00199-QCAHKSWPL_SILICONZ-1
-
-Fixes: aeda163bb0c7 ("wifi: ath12k: fill parameters for vdev set TPC power WMI command")
-Fixes: a44958c83e52 ("wifi: ath12k: Send WMI_VDEV_SET_TPC_POWER_CMD for AP vdev")
-Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
+Fixes: 752aa88a1e78 ("drm/i915: make backlight functions take a connector")
+Assisted-by: LLM
+Signed-off-by: Alexis Calin <alexiscalin@protonmail.com>
 ---
-Found on an Arista C-460 (IPQ9574 with three QCN9274 hw2.0) running
-OpenWrt: its 6 GHz AP went to 0 dBm after every channel switch, and
-stayed there until the interface was taken down and brought up again.
-The cause was found by reading the code.
+Tested on a ThinkPad T480s (Kaby Lake-R) with coreboot firmware, which
+makes Linux use the ACPI video backlight. With the display turned off
+through Mutter's PowerSaveMode, a level written to acpi_video0 is
+reported in CBLV, but without this patch the panel comes back at the
+previous level (40 instead of 75 on 6.12.117). With this patch on
+drm-tip, it comes back at the new level (75). The GNOME idle path was
+also tested: after the idle dim (31) and blank, wake-up now restores the
+level (74) instead of staying at 31. Brightness changes with the display
+on and S3 suspend/resume behave as before. Not tested on VLV/CHV, where
+programming the level needs the crtc.
 
-Tested on that board with Linux 6.18 and ath12k from backports 7.2,
-carrying the same change: without it four of four channel switches
-left "txpower 0.00 dBm"; with it seven of seven kept the power. The
-code in ath-next is the same there. On ath-next the patch is
-compile-tested only.
+checkpatch.pl in drm-tip reports the Assisted-by tag, as it predates
+commit 816d9992d9ed ("coding-assistants: simplify attribution").
 ---
- drivers/net/wireless/ath/ath12k/mac.c | 5 ++++-
- drivers/net/wireless/ath/ath12k/mac.h | 2 ++
- 2 files changed, 6 insertions(+), 1 deletion(-)
+ drivers/gpu/drm/i915/display/intel_backlight.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath12k/mac.c b/drivers/net/wireless/ath/ath12k/mac.c
-index eee3f38375ae8..ff835a1a1e32e 100644
---- a/drivers/net/wireless/ath/ath12k/mac.c
-+++ b/drivers/net/wireless/ath/ath12k/mac.c
-@@ -12125,7 +12125,7 @@ void ath12k_mac_fill_reg_tpc_info(struct ath12k *ar,
- 	start_freq = ath12k_mac_get_6ghz_start_frequency(&ctx->def);
- 	pwr_reduction = bss_conf->pwr_reduction;
+diff --git a/drivers/gpu/drm/i915/display/intel_backlight.c b/drivers/gpu/drm/i915/display/intel_backlight.c
+index b128896cb1c2..3f2c75b249ed 100644
+--- a/drivers/gpu/drm/i915/display/intel_backlight.c
++++ b/drivers/gpu/drm/i915/display/intel_backlight.c
+@@ -310,13 +310,7 @@ void intel_backlight_set_acpi(const struct drm_connector_state *conn_state,
+ 	struct intel_panel *panel = &connector->panel;
+ 	u32 hw_level;
  
--	if (arvif->reg_tpc_info.num_pwr_levels) {
-+	if (reg_tpc_info->tpe_present) {
- 		is_tpe_present = true;
- 		num_pwr_levels = arvif->reg_tpc_info.num_pwr_levels;
- 	} else {
-@@ -12314,6 +12314,7 @@ static void ath12k_mac_parse_tx_pwr_env(struct ath12k *ar,
- 		ath12k_warn(ab,
- 			    "no transmit power envelope match client power type %d\n",
- 			    client_type);
-+		tpc_info->tpe_present = false;
+-	/*
+-	 * Lack of crtc may occur during driver init because
+-	 * connection_mutex isn't held across the entire backlight
+-	 * setup + modeset readout, and the BIOS can issue the
+-	 * requests at any time.
+-	 */
+-	if (!panel->backlight.present || !conn_state->crtc)
++	if (!panel->backlight.present)
  		return;
- 	}
  
-@@ -12353,6 +12354,8 @@ static void ath12k_mac_parse_tx_pwr_env(struct ath12k *ar,
- 				   i, tpc_info->tpe[i]);
- 		}
- 	}
-+
-+	tpc_info->tpe_present = tpc_info->num_pwr_levels > 0;
- }
+ 	mutex_lock(&display->backlight.lock);
+@@ -332,7 +326,15 @@ void intel_backlight_set_acpi(const struct drm_connector_state *conn_state,
+ 					 panel->backlight.level,
+ 					 panel->backlight.device->props.max_brightness);
  
- int
-diff --git a/drivers/net/wireless/ath/ath12k/mac.h b/drivers/net/wireless/ath/ath12k/mac.h
-index 61c2ec8865a39..1da758837c7b1 100644
---- a/drivers/net/wireless/ath/ath12k/mac.h
-+++ b/drivers/net/wireless/ath/ath12k/mac.h
-@@ -119,6 +119,7 @@ struct ath12k_chan_power_info {
- /**
-  * struct ath12k_reg_tpc_power_info - regulatory TPC power info
-  * @is_psd_power: is PSD power or not
-+ * @tpe_present: @num_pwr_levels and @tpe are from a parsed TPE element
-  * @eirp_power: Maximum EIRP power (dBm), valid only if power is PSD
-  * @ap_power_type: type of power (SP/LPI/VLP)
-  * @num_pwr_levels: number of power levels
-@@ -129,6 +130,7 @@ struct ath12k_chan_power_info {
-  */
- struct ath12k_reg_tpc_power_info {
- 	bool is_psd_power;
-+	bool tpe_present;
- 	u8 eirp_power;
- 	enum wmi_reg_6g_ap_type ap_power_type;
- 	u8 num_pwr_levels;
+-	if (panel->backlight.enabled)
++	/*
++	 * Lack of crtc may occur during driver init because
++	 * connection_mutex isn't held across the entire backlight
++	 * setup + modeset readout, and the BIOS can issue the
++	 * requests at any time. There is no crtc either while the
++	 * display is off. Keep the new level for the next backlight
++	 * enable, but only program it with a crtc.
++	 */
++	if (panel->backlight.enabled && conn_state->crtc)
+ 		intel_panel_actually_set_backlight(conn_state, hw_level);
+ 
+ 	mutex_unlock(&display->backlight.lock);
 
 ---
-base-commit: 1be6c8d3027d4a421dc46b93a89a196c61945614
-change-id: 20261114-ath12k-6ghz-tpc-vdev-restart-f5b164f313b6
+base-commit: 419bb0e4cadd214a0847010c02ade95e5fc511f7
+change-id: 20261114-i915-acpi-backlight-display-off-6c13e114b09f
 
 Best regards,
---  
-Christopher Griffin <christophergriffin05@gmail.com>
+-- 
+Alexis Calin <alexiscalin@protonmail.com>
 
