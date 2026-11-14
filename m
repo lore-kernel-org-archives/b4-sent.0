@@ -1,11 +1,11 @@
 From: Matt Thompson <matt@boondocker.io>
-Date: Fri, 13 Nov 2026 17:52:20 -0700
-Subject: [PATCH RFC v2 2/3] arm64: Allow synchronous abort fixups for
- guarded MMIO reads
+Date: Fri, 13 Nov 2026 17:52:21 -0700
+Subject: [PATCH RFC v2 3/3] PCI: rockchip-host: Recover downstream
+ configuration access
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-rfc-b4-v2-2-d6b14f95c1d6@boondocker.io>
+Message-Id: <20261113-rfc-b4-v2-3-d6b14f95c1d6@boondocker.io>
 References: <20261113-rfc-b4-v2-0-d6b14f95c1d6@boondocker.io>
 In-Reply-To: <20261113-rfc-b4-v2-0-d6b14f95c1d6@boondocker.io>
 To: Shawn Lin <shawn.lin@rock-chips.com>, 
@@ -18,135 +18,156 @@ Cc: Rob Herring <robh@kernel.org>, Mark Rutland <mark.rutland@arm.com>,
  linux-pci@vger.kernel.org, linux-rockchip@lists.infradead.org, 
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794617540; l=3957;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794617540; l=4966;
  i=matt@boondocker.io; s=rk3399-rfc-20261113; h=from:subject:message-id;
- bh=O2LbMV/iAQG9voycLpkvTk5xx5a7660O6hR4aIZ4gWk=;
- b=AOyjADqb2c9zoTvOxoesEqPq2yFWtk+fGp4f0dFjGUBjgacjGBHN2o1QsuuE7wEmK2y/dvjeQ
- 0Bj55wz2NCVAGOBG3u4H5pEBc9Gt7IU9E3dA1lwhdo+WnxAxk+nSbxI
+ bh=t7P6yz1ZPt577IkVoaPXVx7wOD2MZniq6qTtpmWpQv0=;
+ b=jziTXeF5pImkNcRBXi1/XuWIcxKWxvHLp+DYHF8WdmNM8X8Lb2cTRE0wor/brvEoVKj4LVlMt
+ duqShSJl3stBp9I4FbyY4nwfWMJoIdj0bfe4icOSvGYFNWEdAW+7orW
 X-Developer-Key: i=matt@boondocker.io; a=ed25519;
  pk=WMnh3kwFFRkrqamL/FbDcdl1/9rBF2uT03VdvGGP40k=
 X-Endpoint-Received: by B4 Relay for matt@boondocker.io/rk3399-rfc-20261113 with auth_id=1517
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-An RK3399 PCI configuration read can raise a synchronous external data
-abort if it does not get a usable response. Allow an explicitly annotated
-MMIO load to return an error in this case.
+The link status can change between the readiness check and a downstream
+PCI configuration read. A link that reports up can also fail to return
+a usable completion.
 
-Match only a current-EL synchronous external abort on a read instruction
-with the new exception table type. Keep existing handling for other
-faults, including asynchronous SError and translation table walk aborts.
+On arm64, annotate downstream loads for all three access widths so a
+synchronous external abort returns PCIBIOS_DEVICE_NOT_FOUND with all-ones
+data. Keep little-endian conversion and I/O read ordering on success.
+
+After retraining, the controller can continue to block configuration
+traffic until its AXI link-down latch is cleared. Clear the latch before
+downstream config reads and writes once the link readiness checks pass.
+
+Link: https://lore.kernel.org/linux-pci/20261024-rockchip-pcie-resume-v1-2-58e54a5cf5f1@iav.lv/
 
 Signed-off-by: Matt Thompson <matt@boondocker.io>
 ---
- arch/arm64/include/asm/asm-extable.h | 15 +++++++++++++++
- arch/arm64/mm/extable.c              | 20 ++++++++++++++++++++
- arch/arm64/mm/fault.c                |  4 ++++
- 3 files changed, 39 insertions(+)
+ drivers/pci/controller/pcie-rockchip-host.c | 62 +++++++++++++++++++++++++++--
+ drivers/pci/controller/pcie-rockchip.h      |  1 +
+ 2 files changed, 59 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm64/include/asm/asm-extable.h b/arch/arm64/include/asm/asm-extable.h
-index d67e2fd..ac78167 100644
---- a/arch/arm64/include/asm/asm-extable.h
-+++ b/arch/arm64/include/asm/asm-extable.h
-@@ -11,6 +11,7 @@
- #define EX_TYPE_KACCESS_ERR_ZERO	3
- #define EX_TYPE_UACCESS_CPY		4
- #define EX_TYPE_LOAD_UNALIGNED_ZEROPAD	5
-+#define EX_TYPE_MMIO_READ_ERR_ZERO	6
+diff --git a/drivers/pci/controller/pcie-rockchip-host.c b/drivers/pci/controller/pcie-rockchip-host.c
+index 35105c1..64ac6f4 100644
+--- a/drivers/pci/controller/pcie-rockchip-host.c
++++ b/drivers/pci/controller/pcie-rockchip-host.c
+@@ -29,6 +29,10 @@
+ #include "../pci.h"
+ #include "pcie-rockchip.h"
  
- /* Data fields for EX_TYPE_UACCESS_ERR_ZERO */
- #define EX_DATA_REG_ERR_SHIFT	0
-@@ -80,6 +81,11 @@
- #else /* __ASSEMBLER__ */
- 
- #include <linux/stringify.h>
-+#include <linux/types.h>
-+
-+struct pt_regs;
-+
-+bool fixup_sea_exception(struct pt_regs *regs, unsigned long esr);
- 
- #define __ASM_EXTABLE_RAW(insn, fixup, type, data)	\
- 	".pushsection	__ex_table, \"a\"\n"		\
-@@ -111,6 +117,15 @@
- 			    EX_DATA_REG(ZERO, zero)			\
- 			  ")")
- 
-+#define _ASM_EXTABLE_MMIO_READ_ERR_ZERO(insn, fixup, err, zero)		\
-+	__DEFINE_ASM_GPR_NUMS						\
-+	__ASM_EXTABLE_RAW(#insn, #fixup,				\
-+			  __stringify(EX_TYPE_MMIO_READ_ERR_ZERO),	\
-+			  "("						\
-+			    EX_DATA_REG(ERR, err) " | "			\
-+			    EX_DATA_REG(ZERO, zero)			\
-+			  ")")
-+
- #define _ASM_EXTABLE_UACCESS_ERR(insn, fixup, err)			\
- 	_ASM_EXTABLE_UACCESS_ERR_ZERO(insn, fixup, err, wzr)
- 
-diff --git a/arch/arm64/mm/extable.c b/arch/arm64/mm/extable.c
-index 299a244..dcb84d8 100644
---- a/arch/arm64/mm/extable.c
-+++ b/arch/arm64/mm/extable.c
-@@ -28,6 +28,8 @@ bool insn_may_access_user(unsigned long addr, unsigned long esr)
- 		return false;
- 
- 	switch (ex->type) {
-+	case EX_TYPE_MMIO_READ_ERR_ZERO:
-+		return false;
- 	case EX_TYPE_UACCESS_CPY:
- 		return cpy_faulted_on_uaccess(ex, esr);
- 	default:
-@@ -101,6 +103,8 @@ bool fixup_exception(struct pt_regs *regs, unsigned long esr)
- 	case EX_TYPE_UACCESS_ERR_ZERO:
- 	case EX_TYPE_KACCESS_ERR_ZERO:
- 		return ex_handler_uaccess_err_zero(ex, regs);
-+	case EX_TYPE_MMIO_READ_ERR_ZERO:
-+		return false;
- 	case EX_TYPE_UACCESS_CPY:
- 		return ex_handler_uaccess_cpy(ex, regs, esr);
- 	case EX_TYPE_LOAD_UNALIGNED_ZEROPAD:
-@@ -109,3 +113,19 @@ bool fixup_exception(struct pt_regs *regs, unsigned long esr)
- 
- 	BUG();
- }
-+
-+bool fixup_sea_exception(struct pt_regs *regs, unsigned long esr)
-+{
-+	const struct exception_table_entry *ex;
-+
-+	if (ESR_ELx_EC(esr) != ESR_ELx_EC_DABT_CUR ||
-+	    (esr & ESR_ELx_FSC) != ESR_ELx_FSC_EXTABT ||
-+	    (esr & ESR_ELx_WNR))
-+		return false;
-+
-+	ex = search_exception_tables(instruction_pointer(regs));
-+	if (!ex || ex->type != EX_TYPE_MMIO_READ_ERR_ZERO)
-+		return false;
-+
-+	return ex_handler_uaccess_err_zero(ex, regs);
-+}
-diff --git a/arch/arm64/mm/fault.c b/arch/arm64/mm/fault.c
-index b227368..ebe8054 100644
---- a/arch/arm64/mm/fault.c
-+++ b/arch/arm64/mm/fault.c
-@@ -30,6 +30,7 @@
- #include <linux/hugetlb.h>
- 
- #include <asm/acpi.h>
++#ifdef CONFIG_ARM64
 +#include <asm/asm-extable.h>
- #include <asm/bug.h>
- #include <asm/cmpxchg.h>
- #include <asm/cpufeature.h>
-@@ -879,6 +880,9 @@ static int do_sea(unsigned long far, unsigned long esr, struct pt_regs *regs)
- 	const struct fault_info *inf;
- 	unsigned long siaddr;
- 
-+	if (fixup_sea_exception(regs, esr))
-+		return 0;
++#endif
 +
- 	inf = esr_to_fault_info(esr);
+ static void rockchip_pcie_enable_bw_int(struct rockchip_pcie *rockchip)
+ {
+ 	u32 status;
+@@ -149,16 +153,36 @@ static bool rockchip_pcie_downstream_ready(struct rockchip_pcie *rockchip)
+ 	       PCIE_LINK_TRAINING_DONE(rockchip_pcie_read(rockchip, PCIE_CORE_CTRL));
+ }
  
- 	if (user_mode(regs) && apei_claim_sea(regs) == 0) {
++#ifdef CONFIG_ARM64
++/*
++ * An absent completion can raise a synchronous external abort even when
++ * the link status indicated up immediately before the config transaction.
++ */
++#define rockchip_pcie_cfg_load(insn, addr, val)			\
++	({								\
++		int err = 0;					\
++		asm volatile("1: " #insn " %w0, [%2]\n"			\
++			     "2:\n"					\
++			     _ASM_EXTABLE_MMIO_READ_ERR_ZERO(1b, 2b,	\
++							    %w1, %w0)	\
++			     : "=&r" (val), "+r" (err)			\
++			     : "r" (addr) : "memory");			\
++		err;							\
++	})
++#endif
++
+ static int rockchip_pcie_rd_other_conf(struct rockchip_pcie *rockchip,
+ 				       struct pci_bus *bus, u32 devfn,
+ 				       int where, int size, u32 *val)
+ {
+ 	void __iomem *addr;
++#ifdef CONFIG_ARM64
++	u32 data;
++	int err;
++#endif
+ 
+-	if (!rockchip_pcie_downstream_ready(rockchip)) {
+-		*val = ~0U;
+-		return PCIBIOS_DEVICE_NOT_FOUND;
+-	}
++	if (!rockchip_pcie_downstream_ready(rockchip))
++		goto absent;
+ 
+ 	addr = rockchip->reg_base + PCIE_ECAM_OFFSET(bus->number, devfn, where);
+ 
+@@ -174,6 +198,28 @@ static int rockchip_pcie_rd_other_conf(struct rockchip_pcie *rockchip,
+ 		rockchip_pcie_cfg_configuration_accesses(rockchip,
+ 						AXI_WRAPPER_TYPE1_CFG);
+ 
++	/* Clear the AXI link-down latch before downstream config traffic. */
++	rockchip_pcie_write(rockchip, 0, PCIE_CORE_AXI_LINK_DOWN);
++
++#ifdef CONFIG_ARM64
++	if (size == 4) {
++		err = rockchip_pcie_cfg_load(ldr, addr, data);
++		*val = le32_to_cpu((__force __le32)data);
++	} else if (size == 2) {
++		err = rockchip_pcie_cfg_load(ldrh, addr, data);
++		*val = le16_to_cpu((__force __le16)data);
++	} else if (size == 1) {
++		err = rockchip_pcie_cfg_load(ldrb, addr, data);
++		*val = data;
++	} else {
++		*val = 0;
++		return PCIBIOS_BAD_REGISTER_NUMBER;
++	}
++	if (err)
++		goto absent;
++	/* Preserve the I/O read ordering of readl/readw/readb. */
++	__io_ar(*val);
++#else
+ 	if (size == 4) {
+ 		*val = readl(addr);
+ 	} else if (size == 2) {
+@@ -184,7 +230,12 @@ static int rockchip_pcie_rd_other_conf(struct rockchip_pcie *rockchip,
+ 		*val = 0;
+ 		return PCIBIOS_BAD_REGISTER_NUMBER;
+ 	}
++#endif
+ 	return PCIBIOS_SUCCESSFUL;
++
++absent:
++	*val = ~0U;
++	return PCIBIOS_DEVICE_NOT_FOUND;
+ }
+ 
+ static int rockchip_pcie_wr_other_conf(struct rockchip_pcie *rockchip,
+@@ -208,6 +259,9 @@ static int rockchip_pcie_wr_other_conf(struct rockchip_pcie *rockchip,
+ 		rockchip_pcie_cfg_configuration_accesses(rockchip,
+ 						AXI_WRAPPER_TYPE1_CFG);
+ 
++	/* Clear the AXI link-down latch before downstream config traffic. */
++	rockchip_pcie_write(rockchip, 0, PCIE_CORE_AXI_LINK_DOWN);
++
+ 	if (size == 4)
+ 		writel(val, addr);
+ 	else if (size == 2)
+diff --git a/drivers/pci/controller/pcie-rockchip.h b/drivers/pci/controller/pcie-rockchip.h
+index b5da156..1cc3621 100644
+--- a/drivers/pci/controller/pcie-rockchip.h
++++ b/drivers/pci/controller/pcie-rockchip.h
+@@ -164,6 +164,7 @@
+ #define MIN_AXI_ADDR_BITS_PASSED		8
+ #define PCIE_ADDR_MASK			GENMASK_ULL(63, MIN_AXI_ADDR_BITS_PASSED)
+ #define PCIE_CORE_AXI_CONF_BASE		0xc00000
++#define PCIE_CORE_AXI_LINK_DOWN		(PCIE_CORE_AXI_CONF_BASE + 0x824)
+ #define PCIE_CORE_OB_REGION_ADDR0	(PCIE_CORE_AXI_CONF_BASE + 0x0)
+ #define   PCIE_CORE_OB_REGION_ADDR0_NUM_BITS	0x3f
+ #define   PCIE_CORE_OB_REGION_ADDR0_LO_ADDR	PCIE_ADDR_MASK
 
 -- 
 Git-155)
