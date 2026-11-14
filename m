@@ -1,114 +1,106 @@
-From: Christian Zietz <czietz@gmx.net>
-Date: Sat, 14 Nov 2026 10:15:49 +0100
-Subject: [PATCH] m68k: Preserve fixups during dead code elimination
+From: Samuel Herdman <lk.gzpc0@passmail.com>
+Date: Sat, 14 Nov 2026 20:37:11 +1100
+Subject: [PATCH] hwmon: (nct6683) Add customer ID for ASRock X600DC-ITX
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261113-fix_deadcode_elimination_for_tt_ram-v1-1-a6aa8e7cb90c@gmx.net>
-X-B4-Tracking: v=1; b=H4sIAMQm+GoC/x2OUQqDMBBEryL73UCTlqC9SilhTTZ1ocayCSKId
- +/az8fMPGaHSsJU4dHtILRy5aUo2EsHccLyJsNJGdzVeWvtzWTeQiJMcUkU6MMzF2w6CnmR0Fo
- QnI33bhhcb+999qCmESuZUbDE6XRp0xTa2hl9hdT4P/B8HccPTt9ER5AAAAA=
-To: Geert Uytterhoeven <geert@linux-m68k.org>, 
- Sam Creasey <sammy@sammy.net>
-Cc: linux-m68k@lists.linux-m68k.org, linux-kernel@vger.kernel.org, 
- Christian Zietz <czietz@gmx.net>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794647763; l=2837;
- i=czietz@gmx.net; s=20261113; h=from:subject:message-id;
- bh=UYLvKZBzNE+sBSp2JLnrfwCUbYDF4Z0Kocgxl/zojiw=;
- b=ewPMJ0lBlMkdQr2T23XANUpkboMvkGGSlqb+ofZhhS4Czu52r8eQtmR+d7nREuZEPYcsRtdDM
- RvvSgipjo6PC3z3h2JdA4cvtNhH3CkJCRJPazWTGFJuNquUnXTfD1Ug
-X-Developer-Key: i=czietz@gmx.net; a=ed25519;
- pk=4CdkqAQq9wBZuj+KXG9PqH5ivA+edxVtP0VMbuoWu1c=
-X-Endpoint-Received: by B4 Relay for czietz@gmx.net/20261113 with auth_id=1516
+Message-Id: <20261114-nct6683-asrock-x600dc-itx-v1-1-cbccf1a627fe@passmail.com>
+X-B4-Tracking: v=1; b=H4sIAMYr+GoC/yXMSw7CMAwA0atUXmMpbkr4XAWxaB0DBilFcUCRq
+ t6dAMu3mFnAJKsYHLsFsrzVdE4NtOmAb2O6Cmpsht71gYgGTFxC2HscLc/8wBqci4xaKvpIu2l
+ wh+i3Hlr/zHLR+nufzn/ba7oLl+8Q1vUDqnQOyX0AAAA=
+X-Change-ID: 20261114-nct6683-asrock-x600dc-itx-3d17b409d353
+To: Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>
+Cc: linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Johan Dahlin <jdahlin@gmail.com>, 
+ Samuel Herdman <lk.gzpc0@passmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794649030; l=3221;
+ i=lk.gzpc0@passmail.com; s=linux-kernel-email; h=from:subject:message-id;
+ bh=r00174raxcwNDJ0unlfuiA9FEN/TRz6+o/AOvvcTaUE=;
+ b=r/OEHth9ckNwibOkJ4agSSH0EI4C5VV6R/ALYCm8m8Mc4qhxhGiCaD8JxZVzYX7weoH7ZenUu
+ DPTXBRBQ7lxA8ovEtGlACvNNRP4QcttEk0GCMTOxvzTvD2l1tH/7fdp
+X-Developer-Key: i=lk.gzpc0@passmail.com; a=ed25519;
+ pk=tqivbAq+N5SMZTlmU8VfcD5yzezM4r5J8zXeFSl+KIE=
+X-Endpoint-Received: by B4 Relay for lk.gzpc0@passmail.com/linux-kernel-email with auth_id=1519
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A kernel built with CONFIG_LD_DEAD_CODE_DATA_ELIMINATION=y panics when
-loaded into TT-RAM (starting at address 0x01000000) on Atari. This is
-due to the .m68k_fixup section being removed by the linker's dead code
-elimination. Thus, the kernel is not fixed up for the TT-RAM address.
+The ASRock X600DC-ITX (BIOS 2.02) has an NCT6686D with customer ID
+0x165f, which the driver does not know, so it only binds with force=1:
 
-KEEP() ensures the fixups are always kept in the kernel binary.
+  nct6683: Found NCT6686D or compatible chip at 0x2e:0xa20
+  nct6683 nct6683.2592: Enabling support for unknown customer ID 0x165f
+  nct6683 nct6683.2592: NCT6686D EC firmware version 1.0 build 12/23/25
 
-Tested on an Atari TT and under Hatari emulation.
+The change:
 
-Fixes: 4fbdd56edf1f ("m68k: Enable dead code elimination")
-Signed-off-by: Christian Zietz <czietz@gmx.net>
+Add the customer ID so the driver binds on this board without force=1,
+and add the board to the list of tested boards.
+
+Tests:
+
+- With force=1 the readings are plausible: the CPU temperature (AMD TSI
+  Addr 98h) is within a few degrees of k10temp's Tctl, VCC, VSB and
+  AVSB read 3.36 V, VBAT reads 3.2 V, and fan1 reads about 1450 RPM.
+- With the same change applied to v7.3.3 on this board, the driver
+  binds without force=1 and reports temperature and fan readings.
+
+The patch and this changelog were drafted with an AI coding assistant
+(Claude Code); I reviewed them and ran the tests above on my board.
+
+Signed-off-by: Samuel Herdman <lk.gzpc0@passmail.com>
 ---
-For reference, here is the objdump output of a kernel built with
-CONFIG_LD_DEAD_CODE_DATA_ELIMINATION=y that shows .m68k_fixup is
-missing:
-
-m68k-linux-gnu-objdump -s -j .m68k_fixup vmlinux
-
-vmlinux:     file format elf32-m68k
-
-m68k-linux-gnu-objdump: section '.m68k_fixup' mentioned in a -j option,
-but not found in any input file
-
-... versus after applying the patch:
-
-m68k-linux-gnu-objdump -s -j .m68k_fixup vmlinux
-
-vmlinux:     file format elf32-m68k
-
-Contents of section .m68k_fixup:
- 3c5a8c 00000000 003a8478 00000000 003aa6f8  .....:.x.....:..
- 3c5a9c 00000000 003aaafe 00000000 0000b5ae  .....:..........
- 3c5aac 00000000 003aaed4 00000000 003aaefa  .....:.......:..
- 3c5abc 00000000 0000c5f6 00000000 0000c61c  ................
- [...]
+This overlaps with Johan Dahlin's pending series "hwmon: (nct6683) Fan
+control and sensor names for ASRock NCT6686D boards" (v2, 11 Nov 2026).
+Its first patch also adds NCT6683_CUSTOMER_ID_ASROCK8 (0x164a) and a
+table row at the same spot, and its later patches key fan control on
+that macro. Whichever lands second needs its macro renumbered
+throughout; I'm happy to rebase on top of that series if preferred.
 ---
- arch/m68k/kernel/vmlinux-nommu.lds | 2 +-
- arch/m68k/kernel/vmlinux-std.lds   | 2 +-
- arch/m68k/kernel/vmlinux-sun3.lds  | 2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+ Documentation/hwmon/nct6683.rst | 1 +
+ drivers/hwmon/nct6683.c         | 3 +++
+ 2 files changed, 4 insertions(+)
 
-diff --git a/arch/m68k/kernel/vmlinux-nommu.lds b/arch/m68k/kernel/vmlinux-nommu.lds
-index 45d7f4b01..485bbc24a 100644
---- a/arch/m68k/kernel/vmlinux-nommu.lds
-+++ b/arch/m68k/kernel/vmlinux-nommu.lds
-@@ -72,7 +72,7 @@ SECTIONS {
- 	PERCPU_SECTION(16)
- 	.m68k_fixup : {
- 		__start_fixup = .;
--		*(.m68k_fixup)
-+		KEEP(*(.m68k_fixup))
- 		__stop_fixup = .;
- 	}
- 	.init.data : {
-diff --git a/arch/m68k/kernel/vmlinux-std.lds b/arch/m68k/kernel/vmlinux-std.lds
-index 7326586af..8783df430 100644
---- a/arch/m68k/kernel/vmlinux-std.lds
-+++ b/arch/m68k/kernel/vmlinux-std.lds
-@@ -45,7 +45,7 @@ SECTIONS
-   INIT_DATA_SECTION(16)
-   .m68k_fixup : {
- 	__start_fixup = .;
--	*(.m68k_fixup)
-+	KEEP(*(.m68k_fixup))
- 	__stop_fixup = .;
-   }
-   .init_end : {
-diff --git a/arch/m68k/kernel/vmlinux-sun3.lds b/arch/m68k/kernel/vmlinux-sun3.lds
-index 1b19fef20..8be83d13d 100644
---- a/arch/m68k/kernel/vmlinux-sun3.lds
-+++ b/arch/m68k/kernel/vmlinux-sun3.lds
-@@ -40,7 +40,7 @@ __init_begin = .;
- 	INIT_DATA_SECTION(16)
- 	.m68k_fixup : {
- 		__start_fixup = .;
--		*(.m68k_fixup)
-+		KEEP(*(.m68k_fixup))
- 		__stop_fixup = .;
- 	}
- 	. = ALIGN(PAGE_SIZE);
+diff --git a/Documentation/hwmon/nct6683.rst b/Documentation/hwmon/nct6683.rst
+index 62da8fd01..e2e95a33e 100644
+--- a/Documentation/hwmon/nct6683.rst
++++ b/Documentation/hwmon/nct6683.rst
+@@ -97,6 +97,7 @@ ASRock X570			NCT6683D EC firmware version 1.0 build 06/28/19
+ ASRock X670E			NCT6686D EC firmware version 1.0 build 05/19/22
+ ASRock B650 Steel Legend WiFi	NCT6686D EC firmware version 1.0 build 11/09/23
+ ASRock Z590 Taichi		NCT6686D EC firmware version 1.0 build 01/25/21
++ASRock X600DC-ITX		NCT6686D EC firmware version 1.0 build 12/23/25
+ MSI B550			NCT6687D EC firmware version 1.0 build 05/07/20
+ MSI B550M			NCT6687D EC firmware version 1.0 build 05/07/20
+ MSI B650			NCT6687D EC firmware version 0.0 build 09/27/22
+diff --git a/drivers/hwmon/nct6683.c b/drivers/hwmon/nct6683.c
+index de5b0194c..01784fa6a 100644
+--- a/drivers/hwmon/nct6683.c
++++ b/drivers/hwmon/nct6683.c
+@@ -209,6 +209,7 @@ superio_exit(int ioreg)
+ #define NCT6683_CUSTOMER_ID_ASROCK5	0x1621
+ #define NCT6683_CUSTOMER_ID_ASROCK6	0x1633
+ #define NCT6683_CUSTOMER_ID_ASROCK7	0x163d
++#define NCT6683_CUSTOMER_ID_ASROCK8	0x165f
+ 
+ #define NCT6683_REG_BUILD_YEAR		0x604
+ #define NCT6683_REG_BUILD_MONTH		0x605
+@@ -1640,6 +1641,8 @@ static int nct6683_probe(struct platform_device *pdev)
+ 		break;
+ 	case NCT6683_CUSTOMER_ID_ASROCK7:
+ 		break;
++	case NCT6683_CUSTOMER_ID_ASROCK8:
++		break;
+ 	default:
+ 		if (!force)
+ 			return -ENODEV;
 
 ---
-base-commit: 8c9ddebb300c719362a52a2d465f44e7d055778d
-change-id: 20261113-fix_deadcode_elimination_for_tt_ram-6629928148f6
+base-commit: f9f5501d60c77c71f60bf5b273375e3777d66080
+change-id: 20261114-nct6683-asrock-x600dc-itx-3d17b409d353
 
 Best regards,
--- 
-Christian Zietz <czietz@gmx.net>
+--  
+Samuel Herdman <lk.gzpc0@passmail.com>
 
