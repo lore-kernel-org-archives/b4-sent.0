@@ -1,131 +1,164 @@
-From: cookys <cookys@gmail.com>
-Date: Sat, 14 Nov 2026 22:02:54 +0800
-Subject: [PATCH] i2c: qup: scale the transfer timeout with the transfer
- length
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v6 0/7] Add E notation support to kstrtodec64() and IIO
+ sysfs writes
+Date: Sat, 14 Nov 2026 14:09:52 +0000
+Message-Id: <20261114-e-notation-v6-0-205ca9a1438a@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-qup-timeout-v1-1-ab3be931d506@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw5AMBBA0V+RWWtiEBW/IhYtg5F49SES8e+K5
- Vnce4Elw2Shii4wdLDldQnAOIJ2VMtAgrtgSJO0QMRc7H4TjmdavROFlirpykxqiRCKzVDP53e
- rm9/W64la9y7gvh8wYiE2bwAAAA==
-X-Change-ID: 20261114-qup-timeout-6b7a0d837b71
-To: Andi Shyti <andi.shyti@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-i2c@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIALBr+GoC/23OS07EMBAE0KuMvMao2994VtwDsXD8mTGCGMUhA
+ o1yd+xhQaywLKledd9ICXMKhZxPNzKHNZWUpxrUw4m4q50ugSZfM2HAFAIgDXTKi11qjUIEraU
+ 2CEGSCj7mENPXfez55TeXz/E1uKUttMY1lSXP3/drK7bev8MrUqBa4qDHCMohPNnJvuXLo8vvp
+ C2vbGeRd5ZV64X1owxoeHQHy3eWQWd5tdHzQTqIY1TyYMXeqs6Kai1XyiqPwkt9sPLPVtxZ2X7
+ mxgQphDUD6+y2bT/wv777pwEAAA==
+X-Change-ID: 20261001-e-notation-0f07757910e5
+To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794664973; l=3701;
- i=cookys@gmail.com; s=20261114; h=from:subject:message-id;
- bh=zxianrKojbq9bic6+na8V+oRSupTcgwcBLkFgdWYgvE=;
- b=x9S2ehW1Zf27K0+xaHExDuSiTdAXjX1Fkaef3wnZLrOUEFHb5ECZSiGELuPKVY00avdXYKso0
- V4JMCGOiaA9AgE7PWsLO8h+pzBuFprYTVKWyWYQulhtB93iLr6YaoBk
-X-Developer-Key: i=cookys@gmail.com; a=ed25519;
- pk=CR+HDlVDbzSn6HgGtSLe9WwOu5qDJieqaLN/LgFay6c=
-X-Endpoint-Received: by B4 Relay for cookys@gmail.com/20261114 with auth_id=1525
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794665398; l=6300;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=qkglJAAoJMp6WutJnose8xK7lLSYHcC33wrXVsxjJLM=;
+ b=gd825G2+uZY8TWcjDbGm+AdgntuWosrdx95Jk+oJiTFOxV6OUsgTX9FBrPehe+7n6/9k0zvQv
+ S8u5vrKEl0cBttAnvddhM81mdey6CQgY2DH4XxqHxb3yB2JUm9qXQiW
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-qup_i2c_probe() sets one transfer timeout for the adapter, sized for the
-largest DMA transfer: TOUT_MIN (2 s) plus MX_DMA_TX_RX_LEN (128 KiB)
-byte times. At the default 100 kHz that is 2 s + 131072 x 99 us, about
-15 s, and every wait uses it, even for a one-byte read. A transfer that
-never completes therefore stalls its caller for 15 s before -ETIMEDOUT.
+This series lets kstrtoudec64() and kstrtodec64() accept numbers in E
+notation (scientific notation), such as "2.7e9", "1.5E-3" or "1e+16".
+It then moves the IIO core fixed-point parser over to kstrtodec64(), so
+every IIO channel attribute written through iio_write_channel_info()
+accepts that format as well.
 
-On the Lenovo ThinkSmart View (APQ8053) the FT8201 touch controller
-sometimes does not complete the first read after power-up (about one
-boot in four). edt_ft5x06 probes asynchronously, so for those 15 s
-every module init waits in async_synchronize_full(), and boot stalls:
+There are two main motivations:
 
-  probe of 2-0038 with driver edt_ft5x06 returned 0 after 15343275 usecs
+1. Shell usage of sysfs attributes
 
-Set the timeout before each wait from the bytes that wait covers: the
-message length on the FIFO and block paths (v1 and v2), the total of
-the messages in the batch on the BAM path. The probe-time value is now
-only the initial default. With this change the same failed read returns
-after about 2 s:
+   Some IIO devices take values that are long to type and easy to get
+   wrong in plain decimal. A frequency synthesizer or DDS might be
+   programmed in the GHz range, and a scale might be a tiny fraction.
+   With this series one can write:
 
-  probe of 2-0038 with driver edt_ft5x06 returned 0 after 2353169 usecs
+     echo 2.7e9 > out_altvoltage0_frequency
+     echo 1.5e-6 > in_voltage0_scale
 
-Tested on the ThinkSmart View (msm8953-mainline 7.3 with this change),
-24 boots: touch probe 0.32-0.35 s, and 2.35 s in the one boot where
-the controller missed its first read.
+   instead of counting zeros in "2700000000" or "0.0000015". It also
+   works with shell tools that print in E notation by default, such as
+   printf's %g conversion ("printf '%g' 2700000000" prints "2.7e+09")
+   and awk, whose default output format ("%.6g") prints
+   non-integral values like 1234567.5 as "1.23457e+06".
 
-Assisted-by: Grok:grok-4.6
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: cookys <cookys@gmail.com>
+2. Userspace software that formats numbers automatically
+
+   Many languages and libraries switch to E notation when converting
+   floating point numbers to strings, without the caller asking for it:
+
+   - Python: str() and repr() of a float use E notation for exponents
+     below -4 or from 16 up, e.g. str(0.00001) == '1e-05' and
+     str(1e16) == '1e+16'. Writing such a value straight to an attribute
+     with open(...).write(str(value)) currently fails with -EINVAL.
+     The same applies to NumPy scalars and to f-strings with the 'g'
+     format spec (f"{2.7e9:g}" == '2.7e+09').
+   - JavaScript/Node.js: Number.prototype.toString() uses E notation
+     for magnitudes from 1e21 up or below 1e-6, e.g. String(1e-7)
+     gives '1e-7'.
+   - C/C++ applications and bindings that use printf("%g") or
+     std::to_chars() with general formatting, as well as MATLAB/Octave
+     and other numeric environments that print in a "short" form.
+
+   Today these values have to be reformatted by the application, or are
+   rejected by the kernel without warning. Accepting E notation in the
+   kernel makes the IIO sysfs ABI more robust to this common
+   behaviour.
+
+The exponent is folded into the requested decimal scale, so no floating
+point arithmetic is involved. Overflow is reported as -ERANGE and a
+malformed exponent ("1e", "1e+") as -EINVAL.
+
+Digits beyond the resulting precision are now rounded to nearest, ties
+to even, instead of truncated (new patch 2). This follows from the
+second motivation: floating point values printed by userspace often end
+just below the intended decimal value. "%.17g" of 0.3 gives
+"0.29999999999999999", which truncation turns into 299999 at micro
+precision instead of 300000. E notation makes this more visible, since
+a negative exponent can drop integer digits: with truncation, "19e-1"
+written to an integer attribute gives 1. Round-half-even is the IEEE 754
+default, as used by strtod() and printf(), it is unbiased and symmetric
+for negative values, and inputs that fit the precision (including values
+read back from sysfs) are parsed exactly as before. The rounding is done
+before the IIO core conversion, so IIO fixed-point writes change
+behaviour only once.
+
+This changes existing kstrtodec64() behaviour, so feedback is welcome on
+whether it should stay in this series or be sent as a follow-up.
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/i2c/busses/i2c-qup.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Changes in v6:
+- Rename skip_digits() to skip_and_count_digits().
+- Add a negative value example to the rounding commit message.
+- Link to v5: https://patch.msgid.link/20261102-e-notation-v5-0-d399e544a982@analog.com
 
-diff --git a/drivers/i2c/busses/i2c-qup.c b/drivers/i2c/busses/i2c-qup.c
-index a0e076fc5..cda78933e 100644
---- a/drivers/i2c/busses/i2c-qup.c
-+++ b/drivers/i2c/busses/i2c-qup.c
-@@ -439,6 +439,12 @@ static int qup_i2c_change_state(struct qup_i2c_dev *qup, u32 state)
- 	return 0;
- }
- 
-+static void qup_i2c_set_xfer_timeout(struct qup_i2c_dev *qup, unsigned int len)
-+{
-+	qup->xfer_timeout = TOUT_MIN * HZ +
-+		usecs_to_jiffies(len * qup->one_byte_t);
-+}
-+
- /* Check if I2C bus returns to IDLE state */
- static int qup_i2c_bus_active(struct qup_i2c_dev *qup, int len)
- {
-@@ -864,6 +870,7 @@ static int qup_i2c_bam_xfer(struct i2c_adapter *adap, struct i2c_msg *msg,
- 	struct qup_i2c_dev *qup = i2c_get_adapdata(adap);
- 	int ret = 0;
- 	int idx = 0;
-+	unsigned int xfer_len = 0;
- 
- 	ret = qup_i2c_vote_bw(qup, qup->src_clk_freq);
- 	if (ret)
-@@ -900,6 +907,8 @@ static int qup_i2c_bam_xfer(struct i2c_adapter *adap, struct i2c_msg *msg,
- 		if (ret)
- 			break;
- 
-+		xfer_len += qup->msg->len;
-+
- 		/*
- 		 * Make DMA descriptor and schedule the BAM transfer if its
- 		 * already crossed the maximum length. Since the memory for all
-@@ -910,11 +919,13 @@ static int qup_i2c_bam_xfer(struct i2c_adapter *adap, struct i2c_msg *msg,
- 		if (qup->btx.sg_cnt > qup->max_xfer_sg_len ||
- 		    qup->brx.sg_cnt > qup->max_xfer_sg_len ||
- 		    qup->is_last) {
-+			qup_i2c_set_xfer_timeout(qup, xfer_len);
- 			ret = qup_i2c_bam_schedule_desc(qup);
- 			if (ret)
- 				break;
- 
- 			qup_i2c_bam_clear_tag_buffers(qup);
-+			xfer_len = 0;
- 		}
- 	}
- 
-@@ -1054,6 +1065,7 @@ static int qup_i2c_conf_xfer_v1(struct qup_i2c_dev *qup, bool is_rx)
- 	if (ret)
- 		goto err;
- 
-+	qup_i2c_set_xfer_timeout(qup, qup->msg->len);
- 	ret = qup_i2c_wait_for_complete(qup, qup->msg);
- 	if (ret)
- 		goto err;
-@@ -1432,6 +1444,7 @@ qup_i2c_conf_xfer_v2(struct qup_i2c_dev *qup, bool is_rx, bool is_first,
- 	if (ret)
- 		goto err;
- 
-+	qup_i2c_set_xfer_timeout(qup, msg->len);
- 	ret = qup_i2c_wait_for_complete(qup, msg);
- 	if (ret)
- 		goto err;
+Changes in v5:
+- Allow for a negative scale in kstrto[u]dec64().
+- Add more details to the documentation.
+- Link to v4: https://patch.msgid.link/20261026-e-notation-v4-0-a366a6d14d57@analog.com
+
+Changes in v4:
+- Adjust iio-test-rescale.c to use kstrtodec64().
+- Minor changes on making the patches more readable.
+- Link to v3: https://patch.msgid.link/20261020-e-notation-v3-0-fd385c0fbf65@analog.com
+
+Changes in v3:
+- New patch: round to nearest, ties to even, instead of truncating.
+- Amend kstrtox E notation tests and IIO channel write tests for rounding.
+- Link to v2: https://patch.msgid.link/20261013-e-notation-v2-0-d4adb5e193fc@analog.com
+
+Changes in v2:
+- More test cases on test-kstrtox.c.
+- Rework fallback logic when parsing integers.
+- Add iio kunit test cases for iio_write_channel_info()
+- Link to v1: https://patch.msgid.link/20261001-e-notation-v1-0-75187bf06c10@analog.com
+
+To: linux-kernel@vger.kernel.org
+To: linux-iio@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Jonathan Cameron <jic23@kernel.org>
+Cc: David Lechner <dlechner@baylibre.com>
+Cc: Nuno Sá <nuno.sa@analog.com>
+Cc: Andy Shevchenko <andy@kernel.org>
+Cc: Rodrigo Alencar <rodrigo.alencar@analog.com>
 
 ---
-base-commit: 04e9bf1648f846976b543e91c1838a712433772a
-change-id: 20261114-qup-timeout-6b7a0d837b71
+Rodrigo Alencar (7):
+      lib: kstrtox: support E notation in kstrtoudec64() and kstrtodec64()
+      lib: kstrtox: round to nearest, ties to even in kstrto[u]dec64()
+      lib: kstrtox: allow a negative scale in kstrto[u]dec64()
+      lib: test-kstrtox: add E notation tests for kstrto[u]dec64()
+      iio: test: rescale: compare scales against the precision of the output
+      iio: core: use kstrtodec64() to parse fixed-point values
+      iio: test: add kunit tests for channel info writes
+
+ MAINTAINERS                               |   1 +
+ drivers/iio/iio_core.h                    |   3 +
+ drivers/iio/industrialio-core.c           | 186 ++++++++-------
+ drivers/iio/test/Kconfig                  |  14 ++
+ drivers/iio/test/Makefile                 |   1 +
+ drivers/iio/test/iio-test-channel-write.c | 360 ++++++++++++++++++++++++++++++
+ drivers/iio/test/iio-test-rescale.c       |  60 ++---
+ include/linux/kstrtox.h                   |   4 +-
+ lib/kstrtox.c                             | 127 ++++++++---
+ lib/test-kstrtox.c                        | 246 ++++++++++++++++++--
+ 10 files changed, 833 insertions(+), 169 deletions(-)
+---
+base-commit: 7c054db85b5a3ce4d5465cc5cc682cc44ae9eabd
+change-id: 20261001-e-notation-0f07757910e5
 
 Best regards,
 --  
-cookys <cookys@gmail.com>
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
