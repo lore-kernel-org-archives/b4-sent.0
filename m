@@ -1,82 +1,67 @@
-From: Haipeng Lin <jimmie.lin@gmail.com>
-Date: Sat, 14 Nov 2026 01:18:41 -0500
-Subject: [PATCH] pinctrl: qcom: sc8180x: Add missing dual edge GPIO IRQ
- errata flag
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Date: Sat, 14 Nov 2026 07:22:19 +0000
+Subject: [PATCH] sunxi: dram: h616: give the MAHB MBUS port priority
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-up-sc8180x-pinctrl-dual-edge-v1-1-aaa31ad633f3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSwqFMAxA0a1IxgYaFX9bkTeobaoBqaV9iiDu3
- eLwwOXekDgKJxiLGyKfkmT3GVQWYFbtF0ax2VCpqiWiBo+AyfTUqwuDePOPG9pDb8g2t66tzdA
- 1Sru5g7wIkZ1c3376Pc8LfyINYG4AAAA=
-X-Change-ID: 20261114-up-sc8180x-pinctrl-dual-edge-f63c9740afb7
-To: Bartosz Golaszewski <brgl@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, Linus Walleij <linusw@kernel.org>
-Cc: Val Packett <val@packett.cool>, linux-arm-msm@vger.kernel.org, 
- linux-gpio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Haipeng Lin <jimmie.lin@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794637126; l=2055;
- i=jimmie.lin@gmail.com; s=20261011; h=from:subject:message-id;
- bh=ERbdkmUDz2DUlOGI3v6R0Snrh7A43j5SXlTHI6jcLqI=;
- b=gKBO3Onq4yWQLKggkZ4qhWRLO385s+dlM+JyVH921I5mfSqSsUQKN2Acus9mH9YvqKQWQZN4S
- lLKzjGm2zgfCsDwuiqJRwY3j4yLGk7FDn8mhdiAv2Hr9Oa4jskvFxOa
-X-Developer-Key: i=jimmie.lin@gmail.com; a=ed25519;
- pk=3KDRF1RQ/9A7ZUVTdRVEZnVrGltdmq1bRocsOYeXezI=
-X-Endpoint-Received: by B4 Relay for jimmie.lin@gmail.com/20261011 with auth_id=1164
+Message-Id: <20261114-h616-mbus-mahb-priority-v1-1-8a65a2b60b35@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw6CQAxA0V8hXduE8piFv2JcMLQ6JeGRFoyG8
+ O8OujyLe3dwMRWHa7GDyUtd5ymDLgX0qZuegsrZUJVVIKIGU6CAY9wcxy5FXExn0/WDNcdauCm
+ 5bRlyvZg89P073+5/+xYH6ddzB8fxBYYzkxt7AAAA
+X-Change-ID: 20261114-h616-mbus-mahb-priority-3db3ed40d55d
+To: Andre Przywara <andre.przywara@arm.com>
+Cc: Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Tom Rini <trini@konsulko.com>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
+ u-boot@lists.u-boot-project.org, Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794640938; l=1601;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=TLUyXRDsAef9Ifu4GsEl1ERPm+wnlT5ZHDuMh+ikUtQ=;
+ b=DBSe0s5EkFI7lS+8a8JA8XFhl4g7lzLnXH0Ld93T80y5k0GG1uKBn97BJZA6rLsb0CwyJgFNP
+ ezymwSEtpCcBrAb+hYwsczqiVHiyEYejRcrgsAw2ckHbYi7+R4fmcBa
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Wakeup-capable GPIOs on SC8180X use the PDC as their parent interrupt
-chip. Like the SM8150, the PDC on SC8180X does not support dual-edge
-interrupts, so dual-edge GPIO interrupts only fire on a single edge
-unless emulated by the TLMM driver via wakeirq_dual_edge_errata.
+Problem: The EMAC reaches DRAM through MBUS port 2. With jumbo frames
+larger than its 4 KiB TX FIFO, later portions of the frame have to
+come from DRAM. Under CPU and video decoder load, the FIFO runs empty:
+in MAC loopback at 1 Gbit/s, 6% of 8192-byte, 20% of 9014-byte and
+about 70% of 13000-byte and larger frames underflowed.
 
-On SC8180X boards with a gpio-keys lid switch (e.g., Lenovo Flex 5G,
-Surface Pro X) this causes the falling edge (lid close) to stop trig-
-gering interrupts after the first suspend/resume cycle, preventing the
-system from suspending again when the lid is closed.
+Fix: Set the priority bit of port 2 (as is already done for port 25).
+With the bit set, 0 of 4000 frames sized 60-16376 bytes underflowed,
+against 1178 of 4000 without it.
 
-Enables wakeirq_dual_edge_errata for SC8180X. Feature tested on a
-v7.3.3 tree for the Surface Pro X with this patch applied, the lid
-switch on TLMM GPIO 121 (PDC pin 89) now works after the first resume.
-Without this patch opening the lid raised an interrupt but not on
-close.
+Caveat: The setting applies to every master behind MAHB, not only the
+EMAC.
 
-Fixes: 97423113ec4b ("pinctrl: qcom: Add sc8180x TLMM driver")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Haipeng Lin <jimmie.lin@gmail.com>
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Hi, 
+ arch/arm/mach-sunxi/dram_sun50i_h616.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-This fixes a lid-switch issue in SC8180X identified when trying to get
-the Surface Pro X to sleep/resume when closing/opening the type cover.
-It should apply cleanly to both fixes or devel but I based it off 
-pinctrl/devel to send out the patch.
-
-Thanks,
----
- drivers/pinctrl/qcom/pinctrl-sc8180x.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/drivers/pinctrl/qcom/pinctrl-sc8180x.c b/drivers/pinctrl/qcom/pinctrl-sc8180x.c
-index 062cb913e5ee..fef21b2db57c 100644
---- a/drivers/pinctrl/qcom/pinctrl-sc8180x.c
-+++ b/drivers/pinctrl/qcom/pinctrl-sc8180x.c
-@@ -1597,6 +1597,7 @@ static struct msm_pinctrl_soc_data sc8180x_pinctrl = {
- 	.ngpios = 191,
- 	.wakeirq_map = sc8180x_pdc_map,
- 	.nwakeirq_map = ARRAY_SIZE(sc8180x_pdc_map),
-+	.wakeirq_dual_edge_errata = true,
- };
+diff --git a/arch/arm/mach-sunxi/dram_sun50i_h616.c b/arch/arm/mach-sunxi/dram_sun50i_h616.c
+index 42a0550e015..e2a01a51a88 100644
+--- a/arch/arm/mach-sunxi/dram_sun50i_h616.c
++++ b/arch/arm/mach-sunxi/dram_sun50i_h616.c
+@@ -71,7 +71,7 @@ static void mctl_set_master_priority(void)
  
- static const struct msm_pinctrl_soc_data sc8180x_acpi_pinctrl = {
+ 	MBUS_CONF(0, false, HIGHEST, 0,  256,  128,  100);
+ 	MBUS_CONF(1, false,    HIGH, 0, 1536, 1400,  256);
+-	MBUS_CONF(2, false, HIGHEST, 0,  512,  256,   96);
++	MBUS_CONF(2,  true, HIGHEST, 0,  512,  256,   96);
+ 	MBUS_CONF(3, false,    HIGH, 0,  256,  100,   80);
+ 	MBUS_CONF(4, false,    HIGH, 2, 8192, 5500, 5000);
+ 	MBUS_CONF(5, false,    HIGH, 2,  100,   64,   32);
 
 ---
-base-commit: 135fd91896455cd1b611a8ef99c35df8ba9c17df
-change-id: 20261114-up-sc8180x-pinctrl-dual-edge-f63c9740afb7
+base-commit: 6487c50b8a40f2668ab98a892b9300ad5c181f38
+change-id: 20261114-h616-mbus-mahb-priority-3db3ed40d55d
 
 Best regards,
--- 
-Haipeng Lin <jimmie.lin@gmail.com>
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
