@@ -1,11 +1,11 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Sun, 15 Nov 2026 23:29:37 +0100
-Subject: [PATCH 2/7] arm64: dts: amlogic: a1: Add ranges to periphs pinctrl
- node
+Date: Sun, 15 Nov 2026 23:29:38 +0100
+Subject: [PATCH 3/7] arm64: dts: amlogic: axg: Add ranges to periphs
+ pinctrl node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261115-fix-amlogic-dt-warnings-v1-2-94cbd67a32ea@aliel.fr>
+Message-Id: <20261115-fix-amlogic-dt-warnings-v1-3-94cbd67a32ea@aliel.fr>
 References: <20261115-fix-amlogic-dt-warnings-v1-0-94cbd67a32ea@aliel.fr>
 In-Reply-To: <20261115-fix-amlogic-dt-warnings-v1-0-94cbd67a32ea@aliel.fr>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -17,49 +17,57 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1233;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1603;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=oskDA3lqc2OXkomXgBBue1EJY5c1W7W4Jw8yaVrxwc8=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9Yvo5RVdYkvJ4tUbw67vWqhh93cb+1r5UT47rxjZMpg2
- T1/5Yt3HaUsDGJcDLJiiiz9cy1PvLt89MzXPeopMHNYmUCGMHBxCsBEDM8xMrxjb5z2kPWilo1Y
- f3tE0mJ7l2mhck3stosrZJb+utc+k4Hhf+CBy0s3WEb9X5u3ONJ+r9ayk5c2egcd3n5p9rxkmzu
- SArwA
+ bh=t3oox1TjzpL1ctm6S+5Ku7TzDmvGbGuVy9dMZYSp6B4=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9Yvo9RuaxaGU1OPHnxSk9zGLPtc4/4xXUeuEBPNCeGOe
+ 2xMby/vKGVhEONikBVTZOmfa3ni3eWjZ77uUU+BmcPKBDKEgYtTACZy9zXDP5PlYj9CXxlM9ctY
+ n3T17frIsFN3ms5vMHvW3TubgbNSuIDhf/qOHJ6Szru3N04UcvbYrNreemFpS3e+8QyXnnN/tx+
+ bxAYA
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Building the amlogic DTBs with W=1 reports the following warnings
-for the periphs pinctrl node:
-
-  meson-a1.dtsi:131.33-483.6: Warning (unit_address_vs_reg):
-  /soc/bus@fe000000/pinctrl@400: node has a unit name, but no
-  reg or ranges property
-  meson-a1.dtsi:131.33-483.6: Warning (simple_bus_reg):
-  /soc/bus@fe000000/pinctrl@400: missing or empty reg/ranges property
-
-The pinctrl node has no reg property of its own, and its empty
-"ranges;" does not describe which address space is translated to the
-children.
+  meson-axg.dtsi:360.33-1262.6: Warning (unit_address_vs_reg):
+  /soc/bus@ff634000/pinctrl@480: node has a unit name, but no reg
+  or ranges property
+  meson-axg.dtsi:1609.30-1716.6: Warning (unit_address_vs_reg):
+  /soc/bus@ff800000/pinctrl@14: node has a unit name, but no reg
+  or ranges property
+  meson-axg.dtsi:360.33-1262.6: Warning (simple_bus_reg):
+  /soc/bus@ff634000/pinctrl@480: missing or empty reg/ranges property
+  meson-axg.dtsi:1609.30-1716.6: Warning (simple_bus_reg):
+  /soc/bus@ff800000/pinctrl@14: missing or empty reg/ranges property
 
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- arch/arm64/boot/dts/amlogic/meson-a1.dtsi | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ arch/arm64/boot/dts/amlogic/meson-axg.dtsi | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-a1.dtsi b/arch/arm64/boot/dts/amlogic/meson-a1.dtsi
-index 6f6a6145cba1..f59495c1885a 100644
---- a/arch/arm64/boot/dts/amlogic/meson-a1.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-a1.dtsi
-@@ -132,7 +132,7 @@ periphs_pinctrl: pinctrl@400 {
- 				compatible = "amlogic,meson-a1-periphs-pinctrl";
+diff --git a/arch/arm64/boot/dts/amlogic/meson-axg.dtsi b/arch/arm64/boot/dts/amlogic/meson-axg.dtsi
+index 5b8ef98f6d03..dc932629c92c 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-axg.dtsi
++++ b/arch/arm64/boot/dts/amlogic/meson-axg.dtsi
+@@ -361,7 +361,8 @@ pinctrl_periphs: pinctrl@480 {
+ 				compatible = "amlogic,meson-axg-periphs-pinctrl";
  				#address-cells = <2>;
  				#size-cells = <2>;
 -				ranges;
-+				ranges = <0x0 0x400 0x0 0x400 0x0 0x198>;
++				ranges = <0x0 0x480 0x0 0x480 0x0 0xb4>,
++					 <0x0 0x430 0x0 0x430 0x0 0x3c>;
  
- 				gpio: bank@400 {
- 					reg = <0x0 0x0400 0x0 0x003c>,
+ 				gpio: bank@480 {
+ 					reg = <0x0 0x00480 0x0 0x40>,
+@@ -1610,7 +1611,7 @@ pinctrl_aobus: pinctrl@14 {
+ 				compatible = "amlogic,meson-axg-aobus-pinctrl";
+ 				#address-cells = <2>;
+ 				#size-cells = <2>;
+-				ranges;
++				ranges = <0x0 0x14 0x0 0x14 0x0 0x1c>;
+ 
+ 				gpio_ao: bank@14 {
+ 					reg = <0x0 0x00014 0x0 0x8>,
 
 -- 
 2.43.0
