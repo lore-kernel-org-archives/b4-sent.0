@@ -1,106 +1,80 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sun, 15 Nov 2026 08:39:49 +0000
-Subject: [PATCH v2 4/4] media: verisilicon: Set the bit depth again when
- its control is rewritten
+Subject: [PATCH v2 0/3] media: rockchip: Add the IEP2 deinterlacer of
+ RK3568/RK3588
+Date: Sun, 15 Nov 2026 08:47:41 +0000
+Message-Id: <20261115-iep2-v2-0-3d8798cd9a55@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261115-hantro-fixes-v2-4-bfecfb07a3e7@gmail.com>
-References: <20261115-hantro-fixes-v2-0-bfecfb07a3e7@gmail.com>
-In-Reply-To: <20261115-hantro-fixes-v2-0-bfecfb07a3e7@gmail.com>
-To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Andrzej Pietrasiewicz <andrzej.p@collabora.com>, 
- Hans Verkuil <hverkuil@kernel.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/zWNQQ6CMBBFr0JmbQ3TVBBX3MOwKO0IY4SSFomG9
+ O4WiMuXvP/+CoE8U4BbtoKnhQO7MYE8ZWB6PXYk2CYGmcsCEXPBNEnRVroyBZWlUQqSOnl68Gf
+ P3JuDw7t9kpm37Wb0HGbnv/vPgpv3T6ojuaDIhb6StXTREgnrbtD8Ohs3QBNj/AHMdJxwqgAAA
+ A==
+X-Change-ID: 20261110-iep2-b9a9c6e77c44
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
 Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Arun Iyengar <aiyengar1990@gmail.com>
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Hans Verkuil <hverkuil@kernel.org>, 
+ Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Alex Bee <knaerzche@gmail.com>, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794731985; l=2693;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794732461; l=2184;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=HWxB2YEEQC+V3ysP/l33g5scqDBlUMjlgqm8A4O3QvE=;
- b=6IQgd9D/SW76qY9HjFa29Wet/8gTddE+EEmFkx5EZ/ybrFIcq5PbxkpFRoUW8Zk6kq8g819nD
- uC1L5n9cMfQB2Y9RbbhF53rMWsZjScbPNRs7yOHajMko/fVGe+hiz+q
+ bh=CP/GfEF6q6iAXiPRajx03x8XxJzaza0j12kU0I34ReM=;
+ b=/nL2ov0291Jhw5UthMWgnc2poPEBaUsCuTKzVtpKz58fI7340e/KpJ6qb6YBiIy99TQA5Hl+p
+ jUZxhdkzTpaDizpV5GUYw8t0eNPHHHVyv0nDWfUfG5b/rfTkHCGFwGF
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-S_FMT on OUTPUT resets the CAPTURE format to 8 bits, but rewriting an
-unchanged 10-bit HEVC SPS, VP9 frame or AV1 sequence control skips
-s_ctrl, so the format stays 8-bit. Mark these controls EXECUTE_ON_WRITE;
-every write of them then also sends a V4L2_EVENT_CTRL value change.
+Add a V4L2 mem2mem driver for the IEP2 deinterlacer of the RK3568 and
+RK3588, with its binding and the RK3588 DT node. It is based on the
+Rockchip vendor driver; the V4L2 side follows Alex Bee's IEP driver.
 
-Fixes: 3c32d94c9c52 ("media: verisilicon: Do not change context bit depth before validating the format")
-Cc: stable@vger.kernel.org
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Tested on an Orange Pi 5 (RK3588S) with a 7.3-based kernel; build-tested
+on media next. v4l2-compliance 59/59, all four modes at 576i/1080i without
+IOMMU faults. Not tested: RK3568. DMABUF imports of exactly the image
+size are refused, because of the 4 KiB OUTPUT padding (see 2/3).
+
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages; I reviewed every change.
+
 ---
- drivers/media/platform/verisilicon/hantro_drv.c | 12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
+Changes in v2:
+- 2/3: return the held OUTPUT and second CAPTURE buffers when a job cannot start (Sashiko)
+- 2/3: clear only the interrupt bits that were read (Sashiko)
+- 2/3: in remove(), unregister the video device before suspending the m2m core (Sashiko)
+- Shorter cover, driver commit message, doc and comments
+- Link to v1: https://patch.msgid.link/20261114-iep2-v1-0-a8edde5a21e1@gmail.com
 
-diff --git a/drivers/media/platform/verisilicon/hantro_drv.c b/drivers/media/platform/verisilicon/hantro_drv.c
-index 26e5d5547466..248fb0e23a29 100644
---- a/drivers/media/platform/verisilicon/hantro_drv.c
-+++ b/drivers/media/platform/verisilicon/hantro_drv.c
-@@ -534,6 +534,7 @@ static const struct hantro_ctrl controls[] = {
- 		.cfg = {
- 			.id = V4L2_CID_STATELESS_HEVC_SPS,
- 			.ops = &hantro_hevc_ctrl_ops,
-+			.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
- 		},
- 	}, {
- 		.codec = HANTRO_HEVC_DECODER,
-@@ -555,6 +556,7 @@ static const struct hantro_ctrl controls[] = {
- 		.cfg = {
- 			.id = V4L2_CID_STATELESS_VP9_FRAME,
- 			.ops = &hantro_vp9_ctrl_ops,
-+			.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
- 		},
- 	}, {
- 		.codec = HANTRO_VP9_DECODER,
-@@ -577,6 +579,7 @@ static const struct hantro_ctrl controls[] = {
- 		.cfg = {
- 			.id = V4L2_CID_STATELESS_AV1_SEQUENCE,
- 			.ops = &hantro_av1_ctrl_ops,
-+			.flags = V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
- 		},
- 	}, {
- 		.codec = HANTRO_AV1_DECODER,
-@@ -591,6 +594,7 @@ static int hantro_ctrls_setup(struct hantro_dev *vpu,
- 			      int allowed_codecs)
- {
- 	int i, num_ctrls = ARRAY_SIZE(controls);
-+	struct v4l2_ctrl *ctrl;
- 
- 	v4l2_ctrl_handler_init(&ctx->ctrl_handler, num_ctrls);
- 
-@@ -598,8 +602,8 @@ static int hantro_ctrls_setup(struct hantro_dev *vpu,
- 		if (!(allowed_codecs & controls[i].codec))
- 			continue;
- 
--		v4l2_ctrl_new_custom(&ctx->ctrl_handler,
--				     &controls[i].cfg, NULL);
-+		ctrl = v4l2_ctrl_new_custom(&ctx->ctrl_handler,
-+					    &controls[i].cfg, NULL);
- 		if (ctx->ctrl_handler.error) {
- 			vpu_err("Adding control (%d) failed %d\n",
- 				controls[i].cfg.id,
-@@ -607,6 +611,10 @@ static int hantro_ctrls_setup(struct hantro_dev *vpu,
- 			v4l2_ctrl_handler_free(&ctx->ctrl_handler);
- 			return ctx->ctrl_handler.error;
- 		}
-+
-+		/* v4l2_ctrl_new_custom() drops cfg.flags of standard controls. */
-+		if (ctrl)
-+			ctrl->flags |= controls[i].cfg.flags & V4L2_CTRL_FLAG_EXECUTE_ON_WRITE;
- 	}
- 	return v4l2_ctrl_handler_setup(&ctx->ctrl_handler);
- }
+---
+Arun Iyengar (3):
+      media: dt-bindings: Add Rockchip IEP2 deinterlacer
+      media: rockchip: Add IEP2 deinterlacer driver
+      arm64: dts: rockchip: Add IEP2 deinterlacer to RK3588
 
--- 
-2.55.0
+ Documentation/admin-guide/media/rockchip-iep2.rst  |   32 +
+ Documentation/admin-guide/media/v4l-drivers.rst    |    1 +
+ .../bindings/media/rockchip,rk3568-iep2.yaml       |   95 ++
+ MAINTAINERS                                        |    9 +
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      |   22 +
+ drivers/media/platform/rockchip/Kconfig            |    1 +
+ drivers/media/platform/rockchip/Makefile           |    1 +
+ drivers/media/platform/rockchip/iep2/Kconfig       |   16 +
+ drivers/media/platform/rockchip/iep2/Makefile      |    3 +
+ drivers/media/platform/rockchip/iep2/iep2-regs.h   |  191 +++
+ drivers/media/platform/rockchip/iep2/iep2.c        | 1280 ++++++++++++++++++++
+ drivers/media/platform/rockchip/iep2/iep2.h        |  106 ++
+ 12 files changed, 1757 insertions(+)
+---
+base-commit: ad6549a46748d00818483b535e5cd2a704685c98
+change-id: 20261110-iep2-b9a9c6e77c44
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
