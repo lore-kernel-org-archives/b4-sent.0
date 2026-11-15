@@ -1,100 +1,236 @@
-From: Erwin Springer <aot.lerwin@gmail.com>
-Date: Sun, 15 Nov 2026 15:17:23 +0100
-Subject: [PATCH] drm/i915/display: Ignore disabled planes in async flip
- checks
+From: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+Date: Sun, 15 Nov 2026 22:11:23 +0700
+Subject: [PATCH sched_ext for-7.4-fixes v2] selftests/sched_ext: Fix flaky
+ rt_stall measurement
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261115-i915-async-planes-v1-1-d13498d0b6be@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQ0NT3UxLIJFYXJmXrFuQk5iXWqybYmpslJxoaZKcZpysBNRXUJSallk
- BNjM6FsIvLk3KSk0uARmkVFsLAPxI58N1AAAA
-X-Change-ID: 20261115-i915-async-planes-d532ca94cf3c
-To: Jani Nikula <jani.nikula@linux.intel.com>, 
- Rodrigo Vivi <rodrigo.vivi@intel.com>, 
- Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
- Tvrtko Ursulin <tursulin@ursulin.net>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>
-Cc: intel-gfx@lists.freedesktop.org, intel-xe@lists.freedesktop.org, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Erwin Springer <aot.lerwin@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794752243; l=2902;
- i=aot.lerwin@gmail.com; s=20261115; h=from:subject:message-id;
- bh=zbrZwdXv7Ir3puhwTmXxiOvcf/QUh3Wwkm5UJD4mpNU=;
- b=/Y1rbzSeLH0RL6DqX86DomEbAF3/KtOl6K9zeSeVWCkZ8rAzXDeICQIgXEs3z5M9SMsuHktqz
- xo999STbvl6BkdCYmOKoMeztiIImAzh8bordzpbvnhzAczdZzzPzb9q
-X-Developer-Key: i=aot.lerwin@gmail.com; a=ed25519;
- pk=nbZwBfXFrLeFJg8vZmODCUcYskhldfPhOapnbey95tI=
-X-Endpoint-Received: by B4 Relay for aot.lerwin@gmail.com/20261115 with auth_id=1534
+Message-Id: <20261115-scx-rt-stall-v2-1-926678b214c6@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NTQqDMBBGryKz7ohjg0m76j2KlGmMOqBNSYJYx
+ Ls32G2Xj+/nbRBdEBfhWmwQ3CJR/CtDfSrAjvwaHEqXGeqqbohIYbQrhoQx8TShZdKNZsNP1UO
+ evIPrZT3u7hDt6LqHW1PR+4C6VPjL2lwcJSYfPod2oaP+37AQEioyhi9nbapG34aZZSqtn6Hd9
+ /0LK0V5WcEAAAA=
+X-Change-ID: 20261114-scx-rt-stall-ca1767a8ab4f
+To: Tejun Heo <tj@kernel.org>, David Vernet <void@manifault.com>, 
+ Andrea Righi <arighi@nvidia.com>, Changwoo Min <changwoo@igalia.com>, 
+ Shuah Khan <shuah@kernel.org>, Joel Fernandes <joelagnelf@nvidia.com>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ "Peter Zijlstra (Intel)" <peterz@infradead.org>
+Cc: sched-ext@lists.linux.dev, linux-kselftest@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Ihor Solodrai <ihor.solodrai@linux.dev>, 
+ Cheng-Yang Chou <yphbchou0911@gmail.com>, 
+ Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794755501; l=6833;
+ i=thamrinjonathan@gmail.com; s=20261102; h=from:subject:message-id;
+ bh=FSo+4bW4QOIKlFrjYLYQ3EtTSbBrBmlB/68VUcbr1ss=;
+ b=FceagnOTWXvzpQtn0WkIGjrgs071OsTsoevYM6tFcOJ4Ll77863C5RVLidcQjy1bR++6XXhUB
+ ZqRnRl+ax0IABPOOhk5TBswMIfOlQCyOYEm4VSKgaUeZZdjt8ZGa5EP
+X-Developer-Key: i=thamrinjonathan@gmail.com; a=ed25519;
+ pk=mr0q5PZVaUIrv8WvTxIfK7QVcAiRSYI8hOByBQL1ZRo=
+X-Endpoint-Received: by B4 Relay for thamrinjonathan@gmail.com/20261102 with auth_id=1383
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Atomic async flips may carry properties that don't change, so compositors
-tend to send their whole plane state with every commit. KWin for example
-adds all planes of the pipe, including the ones that are disabled and stay
-disabled (CRTC_ID=0, FB_ID=0).
+In sched_stress_test(), the DL server budget on CORE_ID is shared with
+other FAIR/EXT tasks, including the parent task when unpinned. The
+parent can also be slow to start as it has to wait for the DL server
+before reaching sleep() while the RT task still runs. The runtime of
+each task is read as a total since fork instead of during sleep() and
+is measured in USER_HZ units (10ms). These 3 factors skew the ratio and
+cause CI flakes. An EXT task got as little as ~0.18s on CI, which is a
+3.0-3.9% share against a minimum 4%.
 
-intel_async_flip_check_uapi() fails the commit as soon as the state
-contains any plane of the pipe that can't do async flips:
+With the parent pinned to CORE_ID, the RT task had already run for
+~0.95s before sleep(), so it was measured at 5.69s in a 5s window and
+the EXT share dropped to ~4.2% against the 4% threshold.
 
-  [drm:intel_atomic_check [i915]] [PLANE:66:plane 2A] async flip not supported
-  [drm:drm_atomic_check_only.cold] atomic driver check for ... failed: -22
+Measure CPU time using per-task CPU clocks via clock_getcpuclockid()
+with deltas before and after sleep to get an accurate measurement
+window while also pinning the parent off CORE_ID. With the parent
+pinned to another CPU, RT measures ~4.75s and EXT share stays between
+4.86% and 5.10% over 20 runs.
 
-So with such a compositor tearing never works on a pipe with sprite or
-cursor planes, even though only the FB of the primary plane changes. KWin
-silently falls back to vsynced flips, about 60 rejected commits per second.
-
-A plane without a framebuffer before and after the commit takes no part in
-the flip. Skip it in both async flip checks.
-
-Tested on Raptor Lake-U (Iris Xe) with the patch applied to the i915 of
-Linux 7.3.4, unmodified KWin 6.8.2 and a fullscreen client that requests
-tearing through wp_tearing_control_v1. Before, none of about 350 frames per
-run was presented without vsync. With the patch 3334 of 3340 frames tear
-and the message above is gone. What is still rejected is the first flip
-after the modifier or format changed, once per run, as intended.
-
-Signed-off-by: Erwin Springer <aot.lerwin@gmail.com>
+Fixes: be621a76341c ("selftests/sched_ext: Add test for sched_ext dl_server")
+Link: https://github.com/kernel-patches/vmtest/issues/458
+Suggested-by: Andrea Righi <arighi@nvidia.com>
+Cc: Ihor Solodrai <ihor.solodrai@linux.dev>
+Cc: Cheng-Yang Chou <yphbchou0911@gmail.com>
+Signed-off-by: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
 ---
- drivers/gpu/drm/i915/display/intel_display.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+Changes in v2:
+- Read CPU time with clock_getcpuclockid() and clock_gettime() instead of
+  /proc/<pid>/stat to avoid USER_HZ rounding (Andrea)
+- Pin parent off CORE_ID so it doesn't share DL server budget (Andrea)
+- Threshold unchanged: 4.86-5.10% over 20 runs, but was unable to 
+  reproduce kthreads noise similar to CI, happy to lower threshold to 3%
+  if needed
+- Link to v1: https://lore.kernel.org/r/20261114-scx-rt-stall-v1-1-4188a9378067@gmail.com
+---
+ tools/testing/selftests/sched_ext/rt_stall.c | 88 ++++++++++++++++++++--------
+ 1 file changed, 65 insertions(+), 23 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/display/intel_display.c b/drivers/gpu/drm/i915/display/intel_display.c
-index f4d9148ef..58f45dd68 100644
---- a/drivers/gpu/drm/i915/display/intel_display.c
-+++ b/drivers/gpu/drm/i915/display/intel_display.c
-@@ -6281,6 +6281,14 @@ static int intel_async_flip_check_uapi(struct intel_atomic_state *state,
- 		if (plane->pipe != crtc->pipe)
- 			continue;
+diff --git a/tools/testing/selftests/sched_ext/rt_stall.c b/tools/testing/selftests/sched_ext/rt_stall.c
+index a1552b38a6e8..c5027fd6b682 100644
+--- a/tools/testing/selftests/sched_ext/rt_stall.c
++++ b/tools/testing/selftests/sched_ext/rt_stall.c
+@@ -21,6 +21,9 @@
+ #define CORE_ID		0	/* CPU to pin tasks to */
+ #define RUN_TIME        5	/* How long to run the test in seconds */
  
-+		/*
-+		 * Userspace may add planes it doesn't change to the commit.
-+		 * A plane that is disabled and stays disabled takes no part
-+		 * in the async flip.
-+		 */
-+		if (!old_plane_state->uapi.fb && !new_plane_state->uapi.fb)
-+			continue;
++static cpu_set_t old_mask;
++static bool affinity_saved;
 +
- 		/*
- 		 * TODO: Async flip is only supported through the page flip IOCTL
- 		 * as of now. So support currently added for primary plane only.
-@@ -6346,6 +6354,10 @@ static int intel_async_flip_check_hw(struct intel_atomic_state *state, struct in
- 		if (plane->pipe != crtc->pipe)
- 			continue;
+ /* Signal the parent that setup is complete by writing to a pipe */
+ static void signal_ready(int fd)
+ {
+@@ -82,43 +85,57 @@ static void set_sched(int policy, int priority)
+ 	}
+ }
  
-+		/* Disabled planes that stay disabled take no part in the flip. */
-+		if (!old_plane_state->hw.fb && !new_plane_state->hw.fb)
-+			continue;
+-/* Get process runtime from /proc/<pid>/stat */
++/* Get process runtime from CPU clock */
+ static float get_process_runtime(int pid)
+ {
+-	char path[256];
+-	FILE *file;
+-	long utime, stime;
+-	int fields;
+-
+-	snprintf(path, sizeof(path), "/proc/%d/stat", pid);
+-	file = fopen(path, "r");
+-	if (file == NULL) {
+-		perror("Failed to open stat file");
++	clockid_t clk;
++	struct timespec ts;
++	int err;
 +
- 		/*
- 		 * Only async flip capable planes should be in the state
- 		 * if we're really about to ask the hardware to perform
++	err = clock_getcpuclockid(pid, &clk);
++	if (err) {
++		fprintf(stderr, "Failed to get clock ID: %s\n", strerror(err));
++		return -1;
++	}
++
++	if (clock_gettime(clk, &ts) == -1) {
++		perror("Failed to get clock time");
+ 		return -1;
+ 	}
+ 
+-	/* Skip the first 13 fields and read the 14th and 15th */
+-	fields = fscanf(file,
+-			"%*d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu",
+-			&utime, &stime);
+-	fclose(file);
++	return ts.tv_sec + ts.tv_nsec / 1e9;
++}
+ 
+-	if (fields != 2) {
+-		fprintf(stderr, "Failed to read stat file\n");
++/* Move parent off of CORE_ID so it doesn't share DL server budget */
++static int pin_parent_off_core(void)
++{
++	if (sched_getaffinity(0, sizeof(old_mask), &old_mask) != 0) {
++		perror("sched_getaffinity");
+ 		return -1;
+ 	}
+ 
+-	/* Calculate the total time spent in the process */
+-	long total_time = utime + stime;
+-	long ticks_per_second = sysconf(_SC_CLK_TCK);
+-	float runtime_seconds = total_time * 1.0 / ticks_per_second;
++	for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
++		if (CPU_ISSET(cpu, &old_mask) && cpu != CORE_ID) {
++			cpu_set_t mask;
++
++			CPU_ZERO(&mask);
++			CPU_SET(cpu, &mask);
++			if (sched_setaffinity(0, sizeof(mask), &mask)) {
++				perror("sched_setaffinity");
++				return -1;
++			}
++			affinity_saved = true;
++			return 0;
++		}
++	}
+ 
+-	return runtime_seconds;
++	return 1; /* No other CPU available */
+ }
+ 
+ static enum scx_test_status setup(void **ctx)
+ {
+ 	struct rt_stall *skel;
++	int err;
+ 
+ 	if (!__COMPAT_struct_has_field("rq", "ext_server")) {
+ 		fprintf(stderr, "SKIP: ext DL server not supported\n");
+@@ -132,6 +149,9 @@ static enum scx_test_status setup(void **ctx)
+ 
+ 	*ctx = skel;
+ 
++	err = pin_parent_off_core();
++	SCX_FAIL_IF(err == -1, "Failed to pin parent CPU");
++
+ 	return SCX_TEST_PASS;
+ }
+ 
+@@ -149,7 +169,7 @@ static bool sched_stress_test(bool is_ext)
+ 	const float expected_min_ratio = 0.04; /* 4% */
+ 	const char *class_str = is_ext ? "EXT" : "FAIR";
+ 
+-	float ext_runtime, rt_runtime, actual_ratio;
++	float ext_runtime_start, rt_runtime_start, ext_runtime, rt_runtime, actual_ratio;
+ 	int ext_pid, rt_pid;
+ 	int ext_ready[2], rt_ready[2];
+ 	bool ret = false;
+@@ -201,6 +221,23 @@ static bool sched_stress_test(bool is_ext)
+ 	if (!wait_ready(ext_ready[0]) || !wait_ready(rt_ready[0]))
+ 		goto out_kill;
+ 
++	/*
++	 * The parent can be delayed before reaching sleep(). Record each task's
++	 * CPU time right before calling sleep() so only time used during the
++	 * measurement window is counted.
++	 */
++	ext_runtime_start = get_process_runtime(ext_pid);
++	if (ext_runtime_start == -1) {
++		fprintf(stderr, "Failed to read %s task runtime\n", class_str);
++		goto out_kill;
++	}
++
++	rt_runtime_start = get_process_runtime(rt_pid);
++	if (rt_runtime_start == -1) {
++		fprintf(stderr, "Failed to read RT task runtime\n");
++		goto out_kill;
++	}
++
+ 	/* Let the processes run for the specified time */
+ 	sleep(RUN_TIME);
+ 
+@@ -218,6 +255,8 @@ static bool sched_stress_test(bool is_ext)
+ 		goto out_kill;
+ 	}
+ 
++	ext_runtime = ext_runtime - ext_runtime_start;
++	rt_runtime = rt_runtime - rt_runtime_start;
+ 	/* Verify that the scx task got enough runtime */
+ 	actual_ratio = ext_runtime / (ext_runtime + rt_runtime);
+ 	fprintf(stderr, "%s task ran %.3fs, RT task ran %.3fs (%.2f%% of runtime)\n",
+@@ -284,6 +323,9 @@ static void cleanup(void *ctx)
+ {
+ 	struct rt_stall *skel = ctx;
+ 
++	if (affinity_saved)
++		sched_setaffinity(0, sizeof(old_mask), &old_mask);
++
+ 	rt_stall__destroy(skel);
+ }
+ 
 
 ---
-base-commit: 419bb0e4cadd214a0847010c02ade95e5fc511f7
-change-id: 20261115-i915-async-planes-d532ca94cf3c
+base-commit: 0021f17128de5dc0b19f1a523f448df2440d8088
+change-id: 20261114-scx-rt-stall-ca1767a8ab4f
 
 Best regards,
---  
-Erwin Springer <aot.lerwin@gmail.com>
+-- 
+Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
 
