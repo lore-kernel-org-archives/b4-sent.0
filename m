@@ -1,141 +1,159 @@
-From: yzddMr6 <yzddmr6@gmail.com>
-Date: Sun, 15 Nov 2026 21:12:57 +0800
-Subject: [PATCH] ASoC: qcom: q6dsp-lpass-clocks: Set driver data before
- registering clocks
+From: Vincent Jardin <vjardin@free.fr>
+Subject: [PATCH v6 0/5] lx2160a: change the pad muxes through the RCW
+ override
+Date: Sun, 15 Nov 2026 14:27:30 +0100
+Message-Id: <20261115-for-upstream-lx2160a-rcw-pinmux-v1-v6-0-fbdce4565a5c@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261115-upstream-q6dsp-clk-drvdata-v1-1-4d7dbea52e52@gmail.com>
-X-B4-Tracking: v=1; b=H4sIANiv+WoC/zXMyw6CMBCF4Vchs3aUVgLiqxgXvQxSL4Az0JgQ3
- t2CcfmfnHwzCHEggXM2A1MMEvouhdpl4FrT3QiDTw0616VSqsBpkJHJvPBdehnQPR/oOXozGqS
- 89rpq9Km2R0jAwNSEz4Zfrr+Wyd7Jjau4PqwRQsumc+06/e3DtsdqXyA7DcvyBbn5X9OnAAAA
-X-Change-ID: 20261114-upstream-q6dsp-clk-drvdata-e09d27f289b3
-To: Srinivas Kandagatla <srini@kernel.org>, Mark Brown <broonie@kernel.org>
-Cc: Liam Girdwood <lgirdwood@gmail.com>, Jaroslav Kysela <perex@perex.cz>, 
- Takashi Iwai <tiwai@suse.com>, linux-sound@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, yzddMr6 <yzddmr6@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794748380; l=4515;
- i=yzddmr6@gmail.com; s=20261028; h=from:subject:message-id;
- bh=IhpdDzjG8SfUTWw69Q02/8xD6GDVJahHeSuoz5N6di4=;
- b=1VjHJ+3hckZdc0O+FuL60XGYogx0ZxwJhD+VOXHMKTe3EPdoyEnpqTWiIqO8cOPhscKIRQjan
- UBcaxw7PFcQAtzV+3B+D6bnxJHIYHcKVusuuFUHGEN5vOJxUKkfxkEN
-X-Developer-Key: i=yzddmr6@gmail.com; a=ed25519;
- pk=QLT2mwairk4R38oU379hkHynqjoLrlqd0Cl1ERUqIqY=
-X-Endpoint-Received: by B4 Relay for yzddmr6@gmail.com/20261028 with auth_id=1489
+X-B4-Tracking: v=1; b=H4sIAEKz+WoC/5XNPW7DMAyG4asEmqtC1A9tdeo9igysRTUCGtuQE
+ tdB4LtXyVKnkwNweTk831UUzomLeNtdReYplTT0NfBlJ7oD9V8sU6gttNIIoIyMQ5bnsZwy01F
+ +zxpQkczdjxxTfzzPcgJpIHoKvgldi6JCY+aY5vvIx772IZXTkC/3zQlu36f4ekoqQiDfmqax9
+ j1m5teYxQ2f9POgrqAhCqpF9enbf6BZg+0m0FTQkVJoIgTy/AjaFQh2E2gryBw7JoVIzj2Cbg2
+ 6TaCrYNAWAZHJov8Dl2X5BTl3JssWAgAA
+To: Dong Aisheng <aisheng.dong@nxp.com>, Fabio Estevam <festevam@gmail.com>, 
+ Frank Li <Frank.Li@nxp.com>, Jacky Bai <ping.bai@nxp.com>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ NXP S32 Linux Team <s32@nxp.com>, Linus Walleij <linusw@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+ linux-arm-kernel@lists.infradead.org, imx@lists.linux.dev, 
+ Vladimir Oltean <vladimir.oltean@nxp.com>, 
+ Ioana Ciornei <ioana.ciornei@nxp.com>, Vincent Jardin <vjardin@free.fr>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794749254; l=6145;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=mzN2xb3WlzXIy4G5fZofLhzJhCSSEFwAHiDN49pOoxs=;
+ b=mYvDvR3jK9uqwPDTAjsaWd3vmeQlBoiPubhfqT6ucGl8IJQGER12o+jxSMgBNbCrMvUQiQc9P
+ P4+WWLnGa4CDdZh2oocAcdRrPY3jiSASegZtaXVNA73es4XBlGuXijT
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The clk ops of the q6dsp clock controller look up struct q6dsp_cc with
-dev_get_drvdata(), but q6dsp_clock_dev_probe() sets the driver data only
-after it has registered the clocks and added the OF clock provider. A
-consumer that gets and prepares one of the clocks in between
-dereferences a NULL pointer.
+The LX2160A muxes its IIC, XSPI, SDHC, UART, IRQ and EVT pads from
+fields of the RCW. They are read-only in RCWSR12..14 of DCFG, and are
+changed at runtime through the override registers in the DCSR view of
+DCFG, which read 0 until written.
 
-fw_devlink does not keep consumers out of that window. The q6prm and
-q6afe clock controllers are described below the ADSP remoteproc node,
-and their devices are only created once the ADSP has booted and its
-GPR/APR services have come up, long after the remoteproc device has
-bound. fw_devlink therefore makes the remoteproc device the supplier of
-their consumers. A consumer such as the LPASS LPI pinctrl then just
-defers until of_clk_get() succeeds, and its retry from the deferred
-probe worker can run while the clock controller is still in its probe.
+Since commit 8a1365c7bbc1 ("arm64: dts: lx2160a: add pinmux and i2c
+gpio to support bus recovery"), fsl-lx216x.dtsi drives the override
+registers with pinctrl-single for the I2C bus recovery. Its first pin
+state clears every other field of the word: a board whose RCW programs
+a non-zero pad mux loses those pads at the first I2C probe.
 
-That happened once on a Xiaomi Pad 8 Pro (SM8750). While the LPI pinctrl
-probe registered its GPIO chip, gpiolib read a GPIO direction, which
-runtime resumed the device and prepared its q6prm vote clocks through
-pm_clk. The prepare op then faulted with a NULL pointer dereference at
-virtual address 0x350 (trimmed):
+This series reads the fields in effect from RCWSR and writes RCWCR, as
+fsl_guts_rcw_rmw() already does for the SerDes protocols:
 
-  pc : clk_vote_q6dsp_block+0x24/0x58 [snd_q6dsp_common]
-  lr : clk_core_prepare+0x7c/0x298
-  Call trace:
-   clk_vote_q6dsp_block+0x24/0x58 [snd_q6dsp_common] (P)
-   clk_core_prepare+0x7c/0x298
-   clk_prepare+0x28/0x44
-   pm_clk_resume+0x10c/0x188
-   pm_generic_runtime_resume+0x2c/0x44
-   ...
-   __pm_runtime_resume+0x50/0x94
-   ...
-   lpi_gpio_get_direction+0x4c/0x8c [pinctrl_lpass_lpi]
-   gpiochip_add_data_with_key+0x7b0/0x10dc
-   devm_gpiochip_add_data_with_key+0x38/0x8c
-   lpi_pinctrl_probe+0x2b8/0x320 [pinctrl_lpass_lpi]
-   ...
-   deferred_probe_work_func+0x88/0xc0
+- patches 1 and 2 describe the pad mux as a child of the DCFG node
+- patch 3 exports the RCW override of fsl-guts for the pad-mux fields
+  only
+- patch 4 adds the pinctrl driver: one group per RCW field, one
+  function per encoding
+- patch 5 moves the pad muxes of fsl-lx216x.dtsi under DCFG, which
+  gains its DCSR view. Labels and pin node names stay, so no board
+  file changes, and the pinctrl-single node is removed
 
-0x350 is the offset of desc in struct q6dsp_cc; the driver data pointer
-it was loaded from was NULL. The oops left the clk prepare_lock held,
-which blocks every later clk_prepare(), and the system did not finish
-booting.
+Patch 4 uses the exports of patch 3, so it cannot be applied alone:
+patches 1 to 4 could be for the the pinctrl tree with an Ack of
+the soc/fsl maintainer on patch 3,
+and patch 5 through the i.MX tree once the driver is in,
+since the I2C pin states of fsl-lx216x.dtsi then belong to it.
 
-On mainline the window is short, but it includes a wait for prepare_lock
-in clk_core_reparent_orphans(), which of_clk_add_hw_provider() calls
-right after listing the provider. The kernel that hit this had
-out-of-tree changes to drivers/clk/clk.c that do more work at that
-point, which makes the window wider.
+DTBs built before patch 5 keep their pinctrl-single node and behave as
+before. There is no Fixes: tag, since patch 5 depends on a new driver.
+I did not believe it should be backported then.
 
-Both q6afe-clocks and q6prm-clocks use q6dsp_clock_dev_probe(). Set the
-driver data before the first clock is registered.
+Tested on a Nodebox v3 (LX2160A) whose RCW muxes XSPI1_A_DATA[7:4],
+SDHC1 and IIC5 are not set with the defaults, so I could confirm:
+ - with pinctrl-single the first I2C probe cleared those fields
+ - with this series RCWSR12..14 read after boot exactly what the RCW and
+   the board's pin states select
+ - all I2C controllers come up with their recovery states and a
+   forced bus recovery on IIC1 (multi-master enabled for the test)
+   changes only that field
+ - RCWSR27 reads what the RCW selects for EC1, EC2, USB_EXT, GTX_CLK
+   and SDHC1_DS. Selecting SDHC1_DS again from debugfs is the first
+   override of that word, and keeps its other fields
 
-The oops was analysed and the fix written with the help of an AI coding
-assistant.
+Thanks to Vladimir Oltean for pointing at fsl_guts_rcw_rmw() when I
+tried to prime the override registers from the RCW instead:
+https://github.com/nxp-qoriq/rcw/pull/8
 
-Fixes: 9ab71ac37240 ("ASoC: qdsp6: q6afe-clocks: move audio-clocks to common file")
-Cc: stable@vger.kernel.org
-Signed-off-by: yzddMr6 <yzddmr6@gmail.com>
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
-The kernel that hit this was v7.4-rc2 with out-of-tree board support and
-other changes, including the clk.c changes mentioned above. The oops
-showed up once in the 23 boots of that kernel I have logs for, and I
-have not been able to reproduce it on demand. The patch is build-tested
-(arm64 defconfig, W=1) on the base commit below.
+Changes in v6:
+- pinctrl: the driver is no longer specific to the LX2160A, so that
+  other Layerscape SoCs can be added to it: pinctrl-layerscape-rcw.c
+  (suggested by Vladimir Oltean)
+- Patches 1, 2 and 5 are not changed
+- Link to v5: https://lore.kernel.org/r/20261115-for-upstream-lx2160a-rcw-pinmux-v1-v5-0-d246166ea469@free.fr
 
-I used an AI coding assistant for this work. It analysed the oops,
-traced the probe ordering and drafted this patch and changelog. I have
-reviewed the change.
----
- sound/soc/qcom/qdsp6/q6dsp-lpass-clocks.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+Changes in v5:
+- soc: fsl: guts: the exports become fsl_guts_pmux_read(),
+  fsl_guts_pmux_override() and fsl_guts_pmux_override_supported(). guts
+  lists the pad-mux fields of the LX2160A and refuses any other field
+  or register, so the serdes fields cannot be changed (Vladimir Oltean)
+- dt-bindings, pinctrl, dts: add the EC1, EC2, USB_EXT, GTX_CLK and
+  SDHC1_DS pad muxes of RCWSR27, the second reg of the node (Vladimir Oltean)
+- Patch 3 is reworked: drop the review tags, new round of review is
+  needed (TBC, from Christophe Leroy and Frank Li)
+- Patch 1 gets a reg, 5 groups and 4 functions:
+  same drop the the Reviewed-by of Rob Herring and Frank Li
+- Patch 2: its description names RCWSR27 too, I assume the
+  Reviewed-by of Rob Herring can remain
+- Link to v4: https://lore.kernel.org/r/20261114-for-upstream-lx2160a-rcw-pinmux-v1-v4-0-eefcea066a55@free.fr
 
-diff --git a/sound/soc/qcom/qdsp6/q6dsp-lpass-clocks.c b/sound/soc/qcom/qdsp6/q6dsp-lpass-clocks.c
-index 94d96130245e..c3628f90fdb2 100644
---- a/sound/soc/qcom/qdsp6/q6dsp-lpass-clocks.c
-+++ b/sound/soc/qcom/qdsp6/q6dsp-lpass-clocks.c
-@@ -146,6 +146,12 @@ int q6dsp_clock_dev_probe(struct platform_device *pdev)
- 	cc->dev = dev;
- 	q6dsp_clks = desc->clks;
- 
-+	/*
-+	 * The clk ops look up cc through the driver data, so set it before
-+	 * any of the clocks can be prepared.
-+	 */
-+	dev_set_drvdata(dev, cc);
-+
- 	for (i = 0; i < desc->num_clks; i++) {
- 		unsigned int id = q6dsp_clks[i].clk_id;
- 		struct clk_init_data init = {
-@@ -174,12 +180,6 @@ int q6dsp_clock_dev_probe(struct platform_device *pdev)
- 			return ret;
- 	}
- 
--	ret = devm_of_clk_add_hw_provider(dev, q6dsp_of_clk_hw_get, cc);
--	if (ret)
--		return ret;
--
--	dev_set_drvdata(dev, cc);
--
--	return 0;
-+	return devm_of_clk_add_hw_provider(dev, q6dsp_of_clk_hw_get, cc);
- }
- EXPORT_SYMBOL_GPL(q6dsp_clock_dev_probe);
+Changes in v4:
+- pinctrl: MAINTAINERS with imx@lists.linux.dev
+  FUNC and GROUP macros with LX2160A_PMUX_ prefix (Frank Li)
+- Add the Reviewed and Ack tags of Rob Herring and Frank Li
+- Patches 1, 2, 3 and 5 are not changed
+- Link to v3: https://lore.kernel.org/r/20261108-for-upstream-lx2160a-rcw-pinmux-v1-v3-0-5a0063f1da9e@free.fr
+
+Changes in v3:
+- dt-bindings, dts: the pad-mux child is bus-addressed like the
+  clock-controller child of the LS1028A dcfg: its reg is the RCWSR12
+  to RCWSR14 window, under #address-cells, #size-cells and ranges on
+  the dcfg node, the override registers stay the DCSR view of the
+  parent (Krzysztof Kozlowski)
+- cover letter: patch 4 cannot be applied without patch 3 (Linus Walleij)
+- Patches 3 and 4 are unchanged
+- Link to v2: https://lore.kernel.org/r/20261103-for-upstream-lx2160a-rcw-pinmux-v1-v2-0-3aad0860b984@free.fr
+
+Changes in v2:
+- dt-bindings: list, for each function, the groups, so the
+  schema refuses the associations the driver refuses (Frank Li)
+- Patches 2 to 5 are unchanged
+- Link to v1: https://lore.kernel.org/r/20261103-for-upstream-lx2160a-rcw-pinmux-v1-v1-0-0a61a9837744@free.fr
 
 ---
-base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261114-upstream-q6dsp-clk-drvdata-e09d27f289b3
+Vincent Jardin (5):
+      dt-bindings: pinctrl: add the NXP LX2160A RCW pad mux
+      dt-bindings: soc: fsl: layerscape-dcfg: add the LX2160A pad-mux child
+      soc: fsl: guts: add the RCW override of the pad muxes
+      pinctrl: freescale: add the Layerscape RCW pad-mux driver
+      arm64: dts: lx2160a: describe the pad muxes as the DCFG RCW override
+
+ .../bindings/pinctrl/fsl,lx2160a-rcw-pinmux.yaml   | 309 +++++++++++++++
+ .../bindings/soc/fsl/fsl,layerscape-dcfg.yaml      |  18 +
+ MAINTAINERS                                        |   8 +
+ arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi      | 377 +++++++++---------
+ drivers/pinctrl/freescale/Kconfig                  |  15 +
+ drivers/pinctrl/freescale/Makefile                 |   1 +
+ drivers/pinctrl/freescale/pinctrl-layerscape-rcw.c | 427 +++++++++++++++++++++
+ drivers/soc/fsl/guts.c                             | 125 +++++-
+ include/linux/fsl/guts.h                           |   3 +
+ 9 files changed, 1107 insertions(+), 176 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261103-for-upstream-lx2160a-rcw-pinmux-v1-31f9ad97dc86
 
 Best regards,
---  
-yzddMr6 <yzddmr6@gmail.com>
+-- 
+Vincent Jardin <vjardin@free.fr>
 
