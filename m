@@ -1,98 +1,61 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Date: Mon, 16 Nov 2026 01:49:10 +0530
-Subject: [PATCH] drm/msm/a6xx: Fall back to MX when GMxC has no levels
+Subject: [PATCH 0/2] pinctrl: qcom: Add the Molokai TLMM
+Date: Mon, 16 Nov 2026 01:49:22 +0530
+Message-Id: <20261116-molokai-tlmm-v1-0-3ba4840002cb@yahoo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-msm-gmxc-fallback-v1-1-a9daad716a1e@yahoo.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB1oAg2tVxEXyTjaqUYl0xZBv
- LvRLt/i/w2Uk7BCVWyQ+Ccq85RhygLo5aeeUdpssDfrjDEOo0bs40rY+XEMngYM92fgh2VHtoX
- cLYk7Wa9n3fyt3/Bm+pwj2PcDMV8WrnUAAAA=
-X-Change-ID: 20261116-msm-gmxc-fallback-b59be82e6c2d
-To: Rob Clark <robin.clark@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Akhil P Oommen <akhilpo@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ5EMBRG4VeRu9bEZXQxryIWxT9coyotIhHvP
+ mWW3+KckwK8INA7OcljlyBujuA0oXYwcw8lXTTlWa6ZWSvrJvc1otbJWtWYDHixRskFxWTx+Mj
+ x7Kr677A1I9r1ftB1/QBl/OSdcAAAAA==
+X-Change-ID: 20261116-molokai-tlmm-ba0ee416e513
+To: Bartosz Golaszewski <brgl@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, Linus Walleij <linusw@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
  Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794773949; l=2658;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794773962; l=1461;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=BA89LyPLwbpk5+OPvueWTT6sDxsYtskxk6HHZayfkmQ=;
- b=Mc+/cZ8bF9Ufxr4KlPw90MYzIclxGRxJCOCF2QMi2DJdCfve/8sIQxpJucNuBPujQjEYWS/HC
- YdW2ZPHan7oArZj622DLM1t4YiOHoRAceWuqy6qnu5DqxhXZUsPwyi2
+ bh=ycrpenfnV06XhWlfcVWQ1HMmfcwzHDxYlIujTz54+LI=;
+ b=OXUKtRiR3bN02LazYY80nM1rysJOYuqGc7EfCK1ErDXCW/w7ClFnBr/9vpUf9KDOu9u//uHi2
+ hjoXzWW0vnpC4l6q7FKapNOkjmB25tNDI83Mn6YY3MayXH4YGDBEZKy
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The command DB of Molokai (SM8845) lists the gmxc.lvl resource without
-any level. Since a6xx_gmu_rpmh_read_arc() trims the trailing zero
-levels, reading it now fails with -EINVAL, so the GX votes are never
-built and the GMU of the Adreno 829 hangs on the first GX vote:
+Molokai (SM8845) is a Qualcomm SoC derived from Kaanapali (SM8850), found
+for example in the Motorola Signature. Its TLMM has the Kaanapali register
+layout, but 205 GPIOs instead of 217, different functions on every pin and
+a different GPIO to PDC wakeup map. With the Kaanapali tables a
+wake-capable GPIO interrupt is routed to the wrong PDC input and never
+fires, so this adds a binding and a driver of its own.
 
-  Message HFI_H2F_MSG_GX_BW_PERF_VOTE id 8 timed out waiting for response
-  Timeout waiting for GMU OOB set GPU_SET: 0x4
-  gpu hw init failed: -110
+The SoC and board devicetree that use it are sent separately in "Add
+support for the Qualcomm Molokai (SM8845) and the Motorola Signature".
 
-Before, the empty list made the GX votes use the lowest GMxC corner and
-the GPU worked. Read gmxc.lvl the same way when choosing the secondary
-rail, so that a GMxC without levels is treated like a missing one and
-the GX votes use MX.
+Tested on the Motorola Signature: the UFS reset, the keys and the GPIO
+interrupts that go through the PDC (touchscreen, amplifiers) work.
 
-Fixes: b5269bf0e1ad ("drm/msm/a6xx: Factor out RPMh arc-vote helpers")
-Assisted-by: LLM
-Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
----
-Found while bringing up the Adreno 829 of the Motorola Signature
-(Qualcomm Molokai, SM8845) on next-20261113: the GMU firmware loads but
-never answers the first GX vote. Bisecting the arc vote rework points at
-commit b5269bf0e1ad: the Molokai command DB lists gmxc.lvl without any
-level, which the new helper rejects, so the GX votes are never built.
-
-Tested on the Motorola Signature: the GMU answers, the GPU comes up and
-Phosh renders on it.
-
-I used an LLM (Claude) to help write this patch and its commit message.
-I reviewed it, bisected the regression on the device and tested the
-result there.
----
- drivers/gpu/drm/msm/adreno/a6xx_gmu.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
-index 662f09bec9d5..914434b49eed 100644
---- a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
-+++ b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
-@@ -1889,13 +1889,17 @@ static int a6xx_gmu_rpmh_votes_init(struct a6xx_gmu *gmu)
- 	struct msm_gpu *gpu = &adreno_gpu->base;
- 	const char *sec_id;
- 	const u16 *gmxc;
-+	size_t gmxc_count;
- 	int ret;
- 
--	gmxc = cmd_db_read_aux_data("gmxc.lvl", NULL);
-+	gmxc = a6xx_gmu_rpmh_read_arc("gmxc.lvl", &gmxc_count);
- 	if (gmxc == ERR_PTR(-EPROBE_DEFER))
- 		return -EPROBE_DEFER;
- 
--	/* If GMxC is present, prefer that as secondary rail for GX votes */
-+	/*
-+	 * If GMxC is present, prefer that as secondary rail for GX votes. Some
-+	 * SoCs list it in the command DB without any level, use MX there.
-+	 */
- 	sec_id = IS_ERR_OR_NULL(gmxc) ? "mx.lvl" : "gmxc.lvl";
- 
- 	/* Build the GX votes */
+I used an LLM (Claude) to help write these patches and their commit
+messages. I reviewed all of them and tested the result on the device.
 
 ---
-base-commit: d024361c631b3f020a26c07d683e5103404b0fbf
-change-id: 20261116-msm-gmxc-fallback-b59be82e6c2d
+Venkat Yadlapati (2):
+      dt-bindings: pinctrl: qcom: Add Molokai TLMM
+      pinctrl: qcom: Add Molokai TLMM driver
+
+ .../bindings/pinctrl/qcom,molokai-tlmm.yaml        |  128 ++
+ drivers/pinctrl/qcom/Kconfig.msm                   |   10 +
+ drivers/pinctrl/qcom/Makefile                      |    1 +
+ drivers/pinctrl/qcom/pinctrl-molokai.c             | 1679 ++++++++++++++++++++
+ 4 files changed, 1818 insertions(+)
+---
+base-commit: 7bbad7337a81d1d73559b783280a76a65a9de191
+change-id: 20261116-molokai-tlmm-ba0ee416e513
 
 Best regards,
 --  
