@@ -1,168 +1,73 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Sun, 15 Nov 2026 19:22:08 +0000
-Subject: [PATCH net] net: mdio: mux-meson-g12a: keep the MAC data path when
- switching MDIO
+From: Akshat Singh <automobilehacks@gmail.com>
+Subject: [PATCH 0/3] irqchip/econet-en751221: Deliver odd interrupts
+ without VEIC
+Date: Sun, 15 Nov 2026 19:26:00 +0000
+Message-Id: <20261115-en751221-intc-all-lines-v1-0-dc03a40f47f0@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261115-g12a-mux-data-path-v1-1-011dad738698@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAF8G+moC/x3MQQqEMAxA0atI1gZMcBTnKoOL1EbNwiptZxDEu
- 1tm+Rb/X5A0miZ4VxdE/VmyPRRQXcG0SlgUzRcDN9wR0QsXYsHte6KXLHhIXrFrWZx3U+94gBI
- eUWc7/9MPBM0w3vcDR/PlzWkAAAA=
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4492; i=iav@iav.lv;
- h=from:subject:message-id; bh=rixsLn/9QY2RgeRhk+RdadQVMXkG8S6mNv5cUWus1nk=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFm/2BK38l3+vnLXneB3c4Um/vN+9ndKXUs372TV2JmGP
- g/ehh+70FHKwiDGxSArpsgy4ZDGrYwlV//6e5g/gJnDygQyhIGLUwAmcmonw//q4PWZTL6G15tS
- ArUFlx2RiTr89XnppPMWR8ybJ/lerlrCyHDh/pOaGTX+SqGnXeY0aiQ3L36XLxrxqp1Zvtw+leX
- 3Sg4A
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAEgH+moC/yXMwQrCMAyA4VcZORtYIp3MVxEPbY0zo0Rppghj7
+ 27V43f4/xVcqorDsVuhyktd79ZAuw7yLdokqJdm4J4HIgoodgjETKi2ZIylYFETR477wIFTn8Y
+ MrX5Uuer7dz6d//ZnmiUv3x1s2weaewXKewAAAA==
+X-Change-ID: 20261115-en751221-intc-all-lines-2a35252b0b9c
+To: Caleb James DeLisle <cjd@cjdns.fr>, Thomas Gleixner <tglx@kernel.org>, 
+ Radu Rendec <radu@rendec.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thomas Bogendoerfer <tsbogend@alpha.franken.de>
+Cc: linux-mips@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Akshat Singh <automobilehacks@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794770761; l=1983;
+ i=automobilehacks@gmail.com; s=20261115; h=from:subject:message-id;
+ bh=37nXMvHe9COOysw+x+zYU6STNDAgT/YyB1vW+x/B7yk=;
+ b=uT2JglyePJzMDk4/2T4qCA1bMjsDQ3m0H/e5/goeML6gCtolC6/TMhF00OFbOihB05ndcW7Zl
+ yQcHmxFvCz/BUDUrVfPml9kFgXquydbW37lc63I8vHzQyO8bn3ojjrm
+X-Developer-Key: i=automobilehacks@gmail.com; a=ed25519;
+ pk=wYmYXn6wy/XN0edTCg6D7UtE9nYLei8mbfqydGGCdf4=
+X-Endpoint-Received: by B4 Relay for automobilehacks@gmail.com/20261115 with auth_id=1535
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Switching the mux to the internal MDIO bus writes SMI_SRC_MAC together
-with USE_INTERNAL and RX_CLK_EPHY to ETH_PHY_CNTL2. The last two move the
-MAC data path and RX clock to the internal PHY. On boards whose MAC uses
-an external PHY, any access to the internal PHY stops reception until an
-access to the external bus switches the mux back.
+the en751221 intc puts the number of the pending irq plus one, in binary,
+on IP2-IP7. with VEIC the cpu takes that as the vector, but without it the
+driver only chains IP2, so odd irqs (qdma 21, xhci 17, first pcie port 23)
+only get handled when an even one runs the handler, usually the next timer
+tick.
 
-phylib suspends and resumes the unattached internal PHY across system
-sleep. stmmac sets mac_managed_pm, and with Wake-on-LAN in the MAC
-phylink_resume() does not start the external PHY, so nothing switches
-the mux back. On ODROID-HC4 (RTL8211F), after suspend-to-RAM with WoL in
-the MAC and an RTC wakeup, ETH_PHY_CNTL2 stays at 0x260 and the MAC
-receives nothing while TX works.
+on a nokia g-140w-c the 34kc doesn't report VEIC (no veic in
+/proc/cpuinfo), and ping to the box kept cycling through 1-11ms. chaining
+the handler to IP2-IP6 brings it under 1ms. VEIC mode is untouched.
 
-With the MAC on the external PHY, SMI_SRC_MAC alone is enough to read
-the internal PHY ID (0x0180/0x3301) while RX keeps running; adding
-USE_INTERNAL or RX_CLK_EPHY stops RX.
+tested on the g-140w-c with openwrt's 6.18 kernel, where the non-VEIC path
+is the same as in mainline. on 7.4-rc2 it's build tested (W=1, no new
+warnings), and dt_binding_check, CHECK_DTBS and checkpatch --strict are
+clean. Caleb offered to test it on his boards:
+https://github.com/openwrt/openwrt/pull/26744
 
-Set the data path bits only when the MAC's phy-handle names a PHY on
-the internal bus. As in dwmac-rk, which reads phy-is-integrated from
-that node, the node phy-handle names decides; here it is the mux bus
-the PHY sits on.
+Caleb: arch/mips/econet/init.c says the en751221 is a 34kc with VEIC, but
+this one doesn't report it. is that something the bootloader or a soc
+register turns on? if VEIC can be enabled here that's probably the better
+fix for this board, but the non-VEIC path should still deliver everything.
 
-Fixes: 7090425104db ("net: phy: add amlogic g12a mdio mux support")
-Signed-off-by: Igor Velkov <iav@iav.lv>
+the binding patch has to go in first, the dts change fails CHECK_DTBS
+without it.
+
+Signed-off-by: Akshat Singh <automobilehacks@gmail.com>
 ---
-Tested on ODROID-HC4: three RTC wakeups from suspend-to-RAM with WoL in
-the MAC (ETH_PHY_CNTL2 0x40, RX working), one without WoL.
----
- drivers/net/mdio/mdio-mux-meson-g12a.c | 49 ++++++++++++++++++++++++++++++----
- 1 file changed, 44 insertions(+), 5 deletions(-)
+Akshat Singh (3):
+      dt-bindings: interrupt-controller: econet,en751221-intc: Allow up to 6 parent interrupts
+      irqchip/econet-en751221: Chain the handler to all parent interrupts
+      mips: dts: Connect the EcoNet EN751221 intc to IP2-IP6
 
-diff --git a/drivers/net/mdio/mdio-mux-meson-g12a.c b/drivers/net/mdio/mdio-mux-meson-g12a.c
-index 71c44385489d..ed688d48eaf0 100644
---- a/drivers/net/mdio/mdio-mux-meson-g12a.c
-+++ b/drivers/net/mdio/mdio-mux-meson-g12a.c
-@@ -12,6 +12,7 @@
- #include <linux/iopoll.h>
- #include <linux/mdio-mux.h>
- #include <linux/module.h>
-+#include <linux/of.h>
- #include <linux/phy.h>
- #include <linux/platform_device.h>
- 
-@@ -56,6 +57,7 @@ struct g12a_mdio_mux {
- 	void __iomem *regs;
- 	void *mux_handle;
- 	struct clk *pll;
-+	bool mac_uses_internal_phy;
- };
- 
- struct g12a_ephy_pll {
-@@ -149,7 +151,7 @@ static const struct clk_ops g12a_ephy_pll_ops = {
- 
- static int g12a_enable_internal_mdio(struct g12a_mdio_mux *priv)
- {
--	u32 value;
-+	u32 value, cntl2;
- 	int ret;
- 
- 	/* Enable the phy clock */
-@@ -169,10 +171,11 @@ static int g12a_enable_internal_mdio(struct g12a_mdio_mux *priv)
- 		PHY_CNTL1_CLK_EN |
- 		PHY_CNTL1_CLKFREQ;
- 	writel(value, priv->regs + ETH_PHY_CNTL1);
--	writel(PHY_CNTL2_USE_INTERNAL |
--	       PHY_CNTL2_SMI_SRC_MAC |
--	       PHY_CNTL2_RX_CLK_EPHY,
--	       priv->regs + ETH_PHY_CNTL2);
-+
-+	cntl2 = PHY_CNTL2_SMI_SRC_MAC;
-+	if (priv->mac_uses_internal_phy)
-+		cntl2 |= PHY_CNTL2_USE_INTERNAL | PHY_CNTL2_RX_CLK_EPHY;
-+	writel(cntl2, priv->regs + ETH_PHY_CNTL2);
- 
- 	value |= PHY_CNTL1_PHY_ENB;
- 	writel(value, priv->regs + ETH_PHY_CNTL1);
-@@ -301,6 +304,41 @@ static int g12a_ephy_glue_clk_register(struct device *dev)
- 	return 0;
- }
- 
-+/* Like dwmac-rk: the PHY named by the MAC's phy-handle decides the data path */
-+static bool g12a_mac_uses_internal_phy(struct device_node *mux_np)
-+{
-+	struct device_node *parent_bus, *mac, *phy, *phy_bus, *mux;
-+	bool internal = false;
-+	u32 reg;
-+
-+	parent_bus = of_parse_phandle(mux_np, "mdio-parent-bus", 0);
-+	if (!parent_bus)
-+		return false;
-+
-+	mac = of_get_parent(parent_bus);
-+	of_node_put(parent_bus);
-+	if (!mac)
-+		return false;
-+
-+	phy = of_parse_phandle(mac, "phy-handle", 0);
-+	of_node_put(mac);
-+	if (!phy)
-+		return false;
-+
-+	phy_bus = of_get_parent(phy);
-+	of_node_put(phy);
-+	if (!phy_bus)
-+		return false;
-+
-+	mux = of_get_parent(phy_bus);
-+	if (mux == mux_np && !of_property_read_u32(phy_bus, "reg", &reg))
-+		internal = (reg == MESON_G12A_MDIO_INTERNAL_ID);
-+	of_node_put(mux);
-+	of_node_put(phy_bus);
-+
-+	return internal;
-+}
-+
- static int g12a_mdio_mux_probe(struct platform_device *pdev)
- {
- 	struct device *dev = &pdev->dev;
-@@ -313,6 +351,7 @@ static int g12a_mdio_mux_probe(struct platform_device *pdev)
- 		return -ENOMEM;
- 
- 	platform_set_drvdata(pdev, priv);
-+	priv->mac_uses_internal_phy = g12a_mac_uses_internal_phy(dev->of_node);
- 
- 	priv->regs = devm_platform_ioremap_resource(pdev, 0);
- 	if (IS_ERR(priv->regs))
-
+ .../interrupt-controller/econet,en751221-intc.yaml |  9 ++++--
+ arch/mips/boot/dts/econet/en751221.dtsi            |  7 ++++-
+ drivers/irqchip/irq-econet-en751221.c              | 33 ++++++++++++++++++++--
+ 3 files changed, 43 insertions(+), 6 deletions(-)
 ---
-base-commit: aa40afa831ebfe45e40a23721711059f2ac584d4
-change-id: 20261115-g12a-mux-data-path-642abdbc7b29
+base-commit: fa2933aac170dd19c6a7f0d7b81a8f537e40915c
+change-id: 20261115-en751221-intc-all-lines-2a35252b0b9c
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Akshat Singh <automobilehacks@gmail.com>
 
