@@ -1,11 +1,11 @@
 From: Alireza Asgari <alireza@asgari.net>
-Date: Sun, 15 Nov 2026 22:34:45 +0000
-Subject: [PATCH RFC nf-next 5/9] memcg: test capacity reservation rollback
- and refunds
+Date: Sun, 15 Nov 2026 22:34:46 +0000
+Subject: [PATCH RFC nf-next 6/9] netfilter: nfqueue: account saved skb
+ bytes per queue
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261115-b4-nfqueue-memory-accounting-v1-5-b9cc30819997@asgari.net>
+Message-Id: <20261115-b4-nfqueue-memory-accounting-v1-6-b9cc30819997@asgari.net>
 References: <20261115-b4-nfqueue-memory-accounting-v1-0-b9cc30819997@asgari.net>
 In-Reply-To: <20261115-b4-nfqueue-memory-accounting-v1-0-b9cc30819997@asgari.net>
 To: netfilter-devel@vger.kernel.org, linux-mm@kvack.org
@@ -22,340 +22,240 @@ Cc: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>,
  cgroups@vger.kernel.org, netdev@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, Alireza Asgari <alireza@asgari.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794782082; l=12013;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794782082; l=8527;
  i=alireza@asgari.net; s=alireza-kernel; h=from:subject:message-id;
- bh=JloqzugReTrQDTmQ8+3w3kkQBiN+qr4RbrFYTkj8puY=;
- b=gg11vMfGHX0ZXN6TpMvg36yRN9ncGpEk8plCsVJP9PFk5Y2as5paAhWF0bnq91G+PynzVjsEA
- Y1JGes7kSe5CdUilOWpBrOq7AGkkAT/+kmim7jw6bR3Seu7vVVS31XK
+ bh=5VLqD9hrhT1MpNUocVL10oVpUb4KAqRndB+1hfVAv+c=;
+ b=LhT3DhnLw1RGO11l0Nui1rJW18n0Ql3De38AdIwBgIQsb+M6+rLSlaBQ5uHvKK9PmMp8gO5JA
+ uAK5NmbIcgLA/SoI70QJbwmrFEYfDJutbpjnQ0pVJIc8qTsu1wVbv/+
 X-Developer-Key: i=alireza@asgari.net; a=ed25519;
  pk=wuQ0/M69FqoVnrCMUJ13EQCwrCwVjCrtz75k15vW8tw=
 X-Endpoint-Received: by B4 Relay for alireza@asgari.net/alireza-kernel with auth_id=1055
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add reservation-specific KUnit coverage for partial-growth rollback,
-reparented-root growth, range and architecture checks, and root refunds.
+The packet-count limit does not bound how much skb memory a queue can
+retain: packets with different truesize values consume the same one
+entry. Add a local byte allowance alongside the existing packet limit.
 
-Transaction cases inject charge results through KUnit static stubs.
-The root-refund case uses temporary real root page-counter charges while
-other CPUs are stopped, and restores the counters even if the expected
-refund is absent. It models charges inherited after reparenting; the
-network selftest separately exercises real cgroup removal.
+Derive the allowance from queue_maxlen times an aligned skb shell plus
+a nominal 2048-byte complete head. This is a proposed policy, not a
+promise that every packet fitting a nominal payload size is admitted.
+Page-backed receive heads can exceed the allowance of a small queue.
 
-Keep these tests separate from the generic memory.high suite and make
-all redirection conditional on the reservation KUnit option.
+Record admission-time skb truesize only after insertion succeeds. Keep
+that saved cost while verdict handlers detach entries, and subtract it
+before reinjection, including early consume paths. Undo it if the
+userspace notification fails. Later payload replacement does not change
+the saved cost. Segmented packets account each inserted segment.
 
+Use subtraction-based admission checks that remain safe after a live
+limit reduction. Retain existing entries when shrinking and refuse new
+ones until both limits permit admission. Byte refusal follows the
+existing drop or FAIL_OPEN policy.
+
+This implements the local accounting part of Florian Westphal's
+suggestion; shared owner accounting follows in the next patch.
+
+Link: https://lists.openwall.net/netdev/2026/11/06/366
 Signed-off-by: Alireza Asgari <alireza@asgari.net>
 ---
- mm/Kconfig                       |  11 ++
- mm/memcontrol.c                  |  16 +++
- mm/memcontrol_reservation_test.c | 232 +++++++++++++++++++++++++++++++++++++++
- 3 files changed, 259 insertions(+)
+ include/net/netfilter/nf_queue.h |  1 +
+ net/netfilter/nfnetlink_queue.c  | 59 +++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 53 insertions(+), 7 deletions(-)
 
-diff --git a/mm/Kconfig b/mm/Kconfig
-index dd763d3d0e36..39db388f193f 100644
---- a/mm/Kconfig
-+++ b/mm/Kconfig
-@@ -1541,6 +1541,17 @@ config MEMCG_HIGH_KUNIT_TEST
- 	  fixed-point rounding and arithmetic bounds on 32-bit and 64-bit
- 	  kernels. Say N unless developing memory cgroup high limit handling.
+diff --git a/include/net/netfilter/nf_queue.h b/include/net/netfilter/nf_queue.h
+index 4a8cefd8398d..5644a1ad32d5 100644
+--- a/include/net/netfilter/nf_queue.h
++++ b/include/net/netfilter/nf_queue.h
+@@ -16,6 +16,7 @@ struct nf_queue_entry {
+ 	struct sk_buff		*skb;
+ 	struct net_device	*skb_dev;
+ 	unsigned int		id;
++	unsigned int truesize; /* saved NFQUEUE charge, zero if uncharged */
+ 	unsigned int		hook_index;	/* index in hook_entries->hook[] */
+ #if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
+ 	struct net_device	*bridge_dev;
+diff --git a/net/netfilter/nfnetlink_queue.c b/net/netfilter/nfnetlink_queue.c
+index 862d2a762106..d1e6e02e144b 100644
+--- a/net/netfilter/nfnetlink_queue.c
++++ b/net/netfilter/nfnetlink_queue.c
+@@ -92,6 +92,8 @@ struct nfqnl_instance {
+ 	unsigned int	queue_total;
+ 	unsigned int	id_sequence;		/* 'sequence' of pkt ids */
+ 	struct list_head queue_list;		/* packets in queue */
++	u64 mem_limit;
++	u64 mem_used;
+ };
  
-+config MEMCG_RESERVATION_KUNIT_TEST
-+	bool "Memory cgroup capacity reservation tests" if !KUNIT_ALL_TESTS
-+	depends on MEMCG && KUNIT=y
-+	default KUNIT_ALL_TESTS
-+	help
-+	  Test capacity reservation transactions, including partial growth
-+	  failure, architecture support, and uncharged growth after reparenting
-+	  to root. Transaction tests inject charge results. The root refund test
-+	  checks real counters with a temporary eight-page charge while other
-+	  CPUs are stopped. Say N unless developing this interface.
+ typedef int (*nfqnl_cmpfn)(struct nf_queue_entry *, unsigned long);
+@@ -138,6 +140,28 @@ instance_lookup(struct nfnl_queue_net *q, u_int16_t queue_num)
+ 	return NULL;
+ }
+ 
++static u64 nfqnl_mem_limit(unsigned int maxlen)
++{
++	/* Match the skb shell alignment included in skb->truesize. */
++	return (u64)maxlen * (SKB_DATA_ALIGN(sizeof(struct sk_buff)) + 2048);
++}
 +
- source "mm/damon/Kconfig"
- 
- endmenu
-diff --git a/mm/memcontrol.c b/mm/memcontrol.c
-index 0227d9b411f5..d49ce5a92c1f 100644
---- a/mm/memcontrol.c
-+++ b/mm/memcontrol.c
-@@ -73,6 +73,10 @@
- 
- #include <linux/uaccess.h>
- 
-+#if IS_ENABLED(CONFIG_MEMCG_RESERVATION_KUNIT_TEST)
-+#include <kunit/static_stub.h>
-+#endif
++static bool nfqnl_mem_full(const struct nfqnl_instance *queue,
++			   unsigned int truesize)
++{
++	return queue->mem_used > queue->mem_limit ||
++	       truesize > queue->mem_limit - queue->mem_used;
++}
 +
- #define CREATE_TRACE_POINTS
- #include <trace/events/memcg.h>
- #undef CREATE_TRACE_POINTS
-@@ -3264,6 +3268,10 @@ static int mem_cgroup_reservation_charge(struct obj_cgroup *objcg,
- 	struct mem_cgroup *memcg;
- 	int ret = 0;
- 
-+#if IS_ENABLED(CONFIG_MEMCG_RESERVATION_KUNIT_TEST)
-+	KUNIT_STATIC_STUB_REDIRECT(mem_cgroup_reservation_charge, objcg, pages,
-+				   charged);
-+#endif
- 	memcg = get_mem_cgroup_from_objcg(objcg);
- 	*charged = false;
- 	/* Reparenting to root removes the limit, not previously held charges. */
-@@ -3291,6 +3299,10 @@ static void mem_cgroup_reservation_uncharge_batch(struct mem_cgroup *memcg,
- 
- static void mem_cgroup_reservation_uncharge(struct obj_cgroup *objcg, u64 pages)
++/* All release paths use the saved admission cost, including notification undo. */
++static void nfqnl_mem_uncharge(struct nfqnl_instance *queue,
++			       struct nf_queue_entry *entry)
++{
++	lockdep_assert_held(&queue->lock);
++	queue->mem_used -= entry->truesize;
++	entry->truesize = 0;
++}
++
+ static struct nfqnl_instance *
+ instance_create(struct nfnl_queue_net *q, u_int16_t queue_num, u32 portid)
  {
-+#if IS_ENABLED(CONFIG_MEMCG_RESERVATION_KUNIT_TEST)
-+	KUNIT_STATIC_STUB_REDIRECT(mem_cgroup_reservation_uncharge, objcg,
-+				   pages);
-+#endif
- 	while (pages) {
- 		unsigned int batch = min_t(u64, pages, MEMCG_RESERVATION_BATCH);
- 		struct mem_cgroup *memcg;
-@@ -6699,3 +6711,7 @@ void mem_cgroup_show_protected_memory(struct mem_cgroup *memcg)
- #if IS_ENABLED(CONFIG_MEMCG_HIGH_KUNIT_TEST)
- #include "memcontrol_high_test.c"
- #endif
-+
-+#if IS_ENABLED(CONFIG_MEMCG_RESERVATION_KUNIT_TEST)
-+#include "memcontrol_reservation_test.c"
-+#endif
-diff --git a/mm/memcontrol_reservation_test.c b/mm/memcontrol_reservation_test.c
-new file mode 100644
-index 000000000000..5ce4f05431b3
---- /dev/null
-+++ b/mm/memcontrol_reservation_test.c
-@@ -0,0 +1,232 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+
-+#include <kunit/test.h>
-+#include <linux/stop_machine.h>
-+
-+struct memcg_reservation_test {
-+	struct obj_cgroup owner;
-+	struct mem_cgroup_reservation res;
-+	u64 refunds;
-+	unsigned int calls;
-+	unsigned int fail_call;
-+	bool uncharged;
-+};
-+
-+static int memcg_reservation_test_charge(struct obj_cgroup *objcg,
-+					 unsigned int pages, bool *charged)
+@@ -152,6 +176,7 @@ instance_create(struct nfnl_queue_net *q, u_int16_t queue_num, u32 portid)
+ 	inst->queue_num = queue_num;
+ 	inst->peer_portid = portid;
+ 	inst->queue_maxlen = NFQNL_QMAX_DEFAULT;
++	inst->mem_limit = nfqnl_mem_limit(NFQNL_QMAX_DEFAULT);
+ 	inst->copy_range = NFQNL_MAX_COPY_RANGE;
+ 	inst->copy_mode = NFQNL_COPY_NONE;
+ 	spin_lock_init(&inst->lock);
+@@ -199,6 +224,7 @@ static void instance_destroy_work(struct work_struct *work)
+ 	rcu_read_lock();
+ 	nfqnl_flush(inst, NULL, 0);
+ 	rcu_read_unlock();
++	WARN_ON_ONCE(inst->mem_used);
+ 
+ 	rhashtable_destroy(&inst->nfqnl_packet_map);
+ 
+@@ -235,6 +261,8 @@ __enqueue_entry(struct nfqnl_instance *queue, struct nf_queue_entry *entry)
+ 
+ 	list_add_tail(&entry->list, &queue->queue_list);
+ 	queue->queue_total++;
++	entry->truesize = entry->skb->truesize;
++	queue->mem_used += entry->truesize;
+ 
+ 	return 0;
+ }
+@@ -493,7 +521,7 @@ static bool nf_bridge_ports_valid(const struct nf_queue_entry *entry)
+ 	return true;
+ }
+ 
+-static void nfqnl_reinject(struct nf_queue_entry *entry, unsigned int verdict)
++static void __nfqnl_reinject(struct nf_queue_entry *entry, unsigned int verdict)
+ {
+ 	const struct nf_ct_hook *ct_hook;
+ 
+@@ -544,6 +572,15 @@ static void nfqnl_reinject(struct nf_queue_entry *entry, unsigned int verdict)
+ 	nf_reinject(entry, verdict);
+ }
+ 
++static void nfqnl_reinject(struct nfqnl_instance *queue,
++			   struct nf_queue_entry *entry, unsigned int verdict)
 +{
-+	struct memcg_reservation_test *ctx = kunit_get_current_test()->priv;
-+
-+	*charged = !ctx->uncharged;
-+	if (++ctx->calls == ctx->fail_call)
-+		return -ENOMEM;
-+	return 0;
++	spin_lock_bh(&queue->lock);
++	nfqnl_mem_uncharge(queue, entry);
++	spin_unlock_bh(&queue->lock);
++	__nfqnl_reinject(entry, verdict);
 +}
 +
-+static void memcg_reservation_test_uncharge(struct obj_cgroup *objcg, u64 pages)
-+{
-+	struct memcg_reservation_test *ctx = kunit_get_current_test()->priv;
-+
-+	ctx->refunds += pages;
-+}
-+
-+static int memcg_reservation_test_init(struct kunit *test)
-+{
-+	struct memcg_reservation_test *ctx;
-+
-+	ctx = kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
-+	if (!ctx)
-+		return -ENOMEM;
-+	/* Transaction cases stub accounting; the root refund case calls the batch. */
-+	ctx->owner.is_root = true;
-+	ctx->res.objcg = &ctx->owner;
-+	test->priv = ctx;
-+	kunit_activate_static_stub(test, mem_cgroup_reservation_charge,
-+				   memcg_reservation_test_charge);
-+	kunit_activate_static_stub(test, mem_cgroup_reservation_uncharge,
-+				   memcg_reservation_test_uncharge);
-+	return 0;
-+}
-+
-+static void memcg_reservation_test_rollback(struct kunit *test)
-+{
-+	struct memcg_reservation_test *ctx = test->priv;
-+	u64 original = 7;
-+
-+	if (!IS_ENABLED(CONFIG_64BIT)) {
-+		kunit_skip(test,
-+			   "Charged reservations require 64-bit counters");
-+		return;
-+	}
-+	KUNIT_ASSERT_EQ(test,
-+			mem_cgroup_reservation_resize(&ctx->res, original), 0);
-+	ctx->calls = 0;
-+	ctx->fail_call = 2;
-+	KUNIT_EXPECT_EQ(test,
-+			mem_cgroup_reservation_resize(
-+				&ctx->res,
-+				original + MEMCG_RESERVATION_BATCH + 1),
-+			-ENOMEM);
-+	KUNIT_EXPECT_EQ(test, ctx->res.pages, original);
-+	KUNIT_EXPECT_EQ(test, ctx->res.charged_pages, original);
-+	KUNIT_EXPECT_EQ(test, ctx->refunds, (u64)MEMCG_RESERVATION_BATCH);
-+	KUNIT_EXPECT_EQ(test, ctx->calls, 2U);
-+	mem_cgroup_reservation_destroy(&ctx->res);
-+	KUNIT_EXPECT_EQ(test, ctx->refunds, MEMCG_RESERVATION_BATCH + original);
-+	KUNIT_EXPECT_PTR_EQ(test, ctx->res.objcg, NULL);
-+}
-+
-+static void memcg_reservation_test_root_growth(struct kunit *test)
-+{
-+	struct memcg_reservation_test *ctx = test->priv;
-+
-+	if (!IS_ENABLED(CONFIG_64BIT)) {
-+		kunit_skip(test,
-+			   "Charged reservations require 64-bit counters");
-+		return;
-+	}
-+	KUNIT_ASSERT_EQ(test, mem_cgroup_reservation_resize(&ctx->res, 8), 0);
-+	/* Simulate the charge helper observing reparenting to root. */
-+	ctx->uncharged = true;
-+	KUNIT_ASSERT_EQ(test, mem_cgroup_reservation_resize(&ctx->res, 16), 0);
-+	KUNIT_EXPECT_EQ(test, ctx->res.charged_pages, 8ULL);
-+	KUNIT_ASSERT_EQ(test, mem_cgroup_reservation_resize(&ctx->res, 10), 0);
-+	KUNIT_EXPECT_EQ(test, ctx->refunds, 0ULL);
-+	KUNIT_ASSERT_EQ(test, mem_cgroup_reservation_resize(&ctx->res, 3), 0);
-+	KUNIT_EXPECT_EQ(test, ctx->res.charged_pages, 3ULL);
-+	KUNIT_EXPECT_EQ(test, ctx->refunds, 5ULL);
-+	mem_cgroup_reservation_destroy(&ctx->res);
-+	KUNIT_EXPECT_EQ(test, ctx->refunds, 8ULL);
-+	KUNIT_EXPECT_EQ(test, ctx->res.pages, 0ULL);
-+	KUNIT_EXPECT_EQ(test, ctx->res.charged_pages, 0ULL);
-+}
-+
-+static void memcg_reservation_test_range(struct kunit *test)
-+{
-+	struct memcg_reservation_test *ctx = test->priv;
-+
-+	KUNIT_EXPECT_EQ(test,
-+			mem_cgroup_reservation_resize(
-+				&ctx->res, (u64)PAGE_COUNTER_MAX + 1),
-+			-E2BIG);
-+	KUNIT_EXPECT_EQ(test, ctx->calls, 0U);
-+	KUNIT_EXPECT_EQ(test, ctx->res.pages, 0ULL);
-+	mem_cgroup_reservation_destroy(&ctx->res);
-+	/* Disabled/root ownership still records the logical reservation. */
-+	KUNIT_EXPECT_EQ(test, mem_cgroup_reservation_resize(&ctx->res, 9), 0);
-+	KUNIT_EXPECT_EQ(test, ctx->res.pages, 9ULL);
-+	KUNIT_EXPECT_EQ(test, ctx->res.charged_pages, 0ULL);
-+	mem_cgroup_reservation_destroy(&ctx->res);
-+}
-+
-+static void memcg_reservation_test_arch_support(struct kunit *test)
-+{
-+	struct memcg_reservation_test *ctx = test->priv;
-+	bool supported = IS_ENABLED(CONFIG_64BIT);
-+
-+	KUNIT_ASSERT_EQ(test, mem_cgroup_reservation_resize(&ctx->res, 0), 0);
-+	KUNIT_EXPECT_EQ(test, ctx->calls, 0U);
-+	KUNIT_EXPECT_EQ(test, mem_cgroup_reservation_resize(&ctx->res, 9),
-+			supported ? 0 : -EOPNOTSUPP);
-+	KUNIT_EXPECT_EQ(test, ctx->calls, supported ? 1U : 0U);
-+	KUNIT_EXPECT_EQ(test, ctx->res.pages, supported ? 9ULL : 0ULL);
-+	KUNIT_EXPECT_EQ(test, ctx->res.charged_pages, supported ? 9ULL : 0ULL);
-+	KUNIT_EXPECT_EQ(test, ctx->refunds, 0ULL);
-+	mem_cgroup_reservation_destroy(&ctx->res);
-+	KUNIT_EXPECT_EQ(test, ctx->refunds, supported ? 9ULL : 0ULL);
-+	KUNIT_EXPECT_PTR_EQ(test, ctx->res.objcg, NULL);
-+
-+	/* An uncharged reservation remains usable on either architecture. */
-+	KUNIT_ASSERT_EQ(test, mem_cgroup_reservation_resize(&ctx->res, 9), 0);
-+	KUNIT_EXPECT_EQ(test, ctx->res.pages, 9ULL);
-+	KUNIT_EXPECT_EQ(test, ctx->res.charged_pages, 0ULL);
-+	KUNIT_EXPECT_EQ(test, ctx->calls, supported ? 1U : 0U);
-+	mem_cgroup_reservation_destroy(&ctx->res);
-+	KUNIT_EXPECT_EQ(test, ctx->refunds, supported ? 9ULL : 0ULL);
-+}
-+
-+struct memcg_reservation_root_refund {
-+	unsigned long memory_before, memory_shrunk, memory_after;
-+	unsigned long memsw_before, memsw_shrunk, memsw_after;
-+	bool memsw;
-+};
-+
-+static void memcg_reservation_test_restore_counter(struct page_counter *counter,
-+						   unsigned long before)
-+{
-+	unsigned long after = page_counter_read(counter);
-+
-+	if (after > before)
-+		page_counter_uncharge(counter, after - before);
-+	else if (after < before)
-+		page_counter_charge(counter, before - after);
-+}
-+
-+static int memcg_reservation_test_root_refund_stopped(void *data)
-+{
-+	struct memcg_reservation_root_refund *result = data;
-+	struct mem_cgroup *memcg = root_mem_cgroup;
-+
-+	/* Model charged capacity inherited from a removed child. */
-+	result->memory_before = page_counter_read(&memcg->memory);
-+	result->memsw_before = page_counter_read(&memcg->memsw);
-+	page_counter_charge(&memcg->memory, 8);
-+	if (result->memsw)
-+		page_counter_charge(&memcg->memsw, 8);
-+	account_kmem_nmi_safe(memcg, 8);
-+	memcg1_account_kmem(memcg, 8);
-+
-+	mem_cgroup_reservation_uncharge_batch(memcg, 3);
-+	result->memory_shrunk = page_counter_read(&memcg->memory);
-+	result->memsw_shrunk = page_counter_read(&memcg->memsw);
-+	mem_cgroup_reservation_uncharge_batch(memcg, 5);
-+	result->memory_after = page_counter_read(&memcg->memory);
-+	result->memsw_after = page_counter_read(&memcg->memsw);
-+
-+	/* Leave no counter imbalance behind if the refund regression returns. */
-+	memcg_reservation_test_restore_counter(&memcg->memory,
-+					       result->memory_before);
-+	if (result->memsw)
-+		memcg_reservation_test_restore_counter(&memcg->memsw,
-+						       result->memsw_before);
-+	return 0;
-+}
-+
-+static void memcg_reservation_test_root_refund(struct kunit *test)
-+{
-+	struct memcg_reservation_root_refund result = {
-+		.memsw = do_memsw_account(),
-+	};
-+
-+	if (mem_cgroup_disabled() || mem_cgroup_kmem_disabled()) {
-+		kunit_skip(test, "Memory cgroup accounting is disabled");
-+		return;
-+	}
-+	/* Exclude background charges while checking the actual root counters. */
-+	KUNIT_ASSERT_EQ(test,
-+			stop_machine(memcg_reservation_test_root_refund_stopped,
-+				     &result, NULL),
-+			0);
-+	KUNIT_EXPECT_EQ(test, result.memory_shrunk, result.memory_before + 5);
-+	KUNIT_EXPECT_EQ(test, result.memory_after, result.memory_before);
-+	KUNIT_EXPECT_EQ(test, result.memsw_shrunk,
-+			result.memsw_before + (result.memsw ? 5 : 0));
-+	KUNIT_EXPECT_EQ(test, result.memsw_after, result.memsw_before);
-+}
-+
-+static struct kunit_case memcg_reservation_test_cases[] = {
-+	KUNIT_CASE(memcg_reservation_test_rollback),
-+	KUNIT_CASE(memcg_reservation_test_root_growth),
-+	KUNIT_CASE(memcg_reservation_test_range),
-+	KUNIT_CASE(memcg_reservation_test_arch_support),
-+	KUNIT_CASE(memcg_reservation_test_root_refund),
-+	{}
-+};
-+
-+static struct kunit_suite memcg_reservation_test_suite = {
-+	.name = "memcg_reservation",
-+	.init = memcg_reservation_test_init,
-+	.test_cases = memcg_reservation_test_cases,
-+};
-+
-+kunit_test_suite(memcg_reservation_test_suite);
+ static void
+ nfqnl_flush(struct nfqnl_instance *queue, nfqnl_cmpfn cmpfn, unsigned long data)
+ {
+@@ -553,7 +590,8 @@ nfqnl_flush(struct nfqnl_instance *queue, nfqnl_cmpfn cmpfn, unsigned long data)
+ 	list_for_each_entry_safe(entry, next, &queue->queue_list, list) {
+ 		if (!cmpfn || cmpfn(entry, data)) {
+ 			__dequeue_entry(queue, entry);
+-			nfqnl_reinject(entry, NF_DROP);
++			nfqnl_mem_uncharge(queue, entry);
++			__nfqnl_reinject(entry, NF_DROP);
+ 		}
+ 	}
+ 	spin_unlock_bh(&queue->lock);
+@@ -1004,6 +1042,7 @@ __nfqnl_enqueue_packet(struct net *net, struct nfqnl_instance *queue,
+ 	__be32 *packet_id_ptr;
+ 	int failopen = 0;
+ 
++	entry->truesize = 0;
+ 	nskb = nfqnl_build_packet_message(net, queue, entry, &packet_id_ptr);
+ 	if (nskb == NULL) {
+ 		err = -ENOMEM;
+@@ -1011,7 +1050,8 @@ __nfqnl_enqueue_packet(struct net *net, struct nfqnl_instance *queue,
+ 	}
+ 	spin_lock_bh(&queue->lock);
+ 
+-	if (queue->queue_total >= queue->queue_maxlen)
++	if (queue->queue_total >= queue->queue_maxlen ||
++	    nfqnl_mem_full(queue, entry->skb->truesize))
+ 		goto err_out_queue_drop;
+ 
+ 	entry->id = ++queue->id_sequence;
+@@ -1027,6 +1067,7 @@ __nfqnl_enqueue_packet(struct net *net, struct nfqnl_instance *queue,
+ 	if (err < 0) {
+ 		/* Unicast failed - remove entry we just inserted */
+ 		__dequeue_entry(queue, entry);
++		nfqnl_mem_uncharge(queue, entry);
+ 
+ 		if (queue->flags & NFQA_CFG_F_FAIL_OPEN) {
+ 			failopen = 1;
+@@ -1050,6 +1091,9 @@ __nfqnl_enqueue_packet(struct net *net, struct nfqnl_instance *queue,
+ 		if (queue->queue_total >= queue->queue_maxlen)
+ 			net_warn_ratelimited("nf_queue: full at %d entries, dropping packets(s)\n",
+ 					     queue->queue_total);
++		else if (nfqnl_mem_full(queue, entry->skb->truesize))
++			net_warn_ratelimited(
++				"nf_queue: byte limit reached, dropping packet\n");
+ 		else
+ 			net_warn_ratelimited("nf_queue: hash insert failed: %d\n", err);
+ 	}
+@@ -1057,7 +1101,7 @@ __nfqnl_enqueue_packet(struct net *net, struct nfqnl_instance *queue,
+ err_out_unlock:
+ 	spin_unlock_bh(&queue->lock);
+ 	if (failopen)
+-		nfqnl_reinject(entry, NF_ACCEPT);
++		nfqnl_reinject(queue, entry, NF_ACCEPT);
+ err_out:
+ 	return err;
+ }
+@@ -1773,7 +1817,7 @@ static int nfqnl_recv_verdict_batch(struct sk_buff *skb,
+ 		if (nfqa[NFQA_PRIORITY])
+ 			entry->skb->priority = ntohl(nla_get_be32(nfqa[NFQA_PRIORITY]));
+ 
+-		nfqnl_reinject(entry, verdict);
++		nfqnl_reinject(queue, entry, verdict);
+ 	}
+ 	return 0;
+ }
+@@ -1885,7 +1929,7 @@ static int nfqnl_recv_verdict(struct sk_buff *skb, const struct nfnl_info *info,
+ 	if (entry->state.pf == PF_BRIDGE) {
+ 		err = nfqa_parse_bridge(entry, nfqa);
+ 		if (err < 0) {
+-			nfqnl_reinject(entry, NF_DROP);
++			nfqnl_reinject(queue, entry, NF_DROP);
+ 			return err;
+ 		}
+ 	}
+@@ -1907,7 +1951,7 @@ static int nfqnl_recv_verdict(struct sk_buff *skb, const struct nfnl_info *info,
+ 	if (nfqa[NFQA_PRIORITY])
+ 		entry->skb->priority = ntohl(nla_get_be32(nfqa[NFQA_PRIORITY]));
+ 
+-	nfqnl_reinject(entry, verdict);
++	nfqnl_reinject(queue, entry, verdict);
+ 	return 0;
+ }
+ 
+@@ -2037,6 +2081,7 @@ static int nfqnl_recv_config(struct sk_buff *skb, const struct nfnl_info *info,
+ 
+ 		spin_lock_bh(&queue->lock);
+ 		queue->queue_maxlen = ntohl(*queue_maxlen);
++		queue->mem_limit = nfqnl_mem_limit(queue->queue_maxlen);
+ 		spin_unlock_bh(&queue->lock);
+ 	}
+ 
 
 -- 
 2.34.1
