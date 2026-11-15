@@ -1,269 +1,168 @@
-From: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
-Date: Mon, 16 Nov 2026 01:10:10 +0700
-Subject: [PATCH sched_ext for-7.4-fixes v3] selftests/sched_ext: Reduce
- rt_stall measurement noise
+From: Igor Velkov <iav@iav.lv>
+Date: Sun, 15 Nov 2026 19:22:08 +0000
+Subject: [PATCH net] net: mdio: mux-meson-g12a: keep the MAC data path when
+ switching MDIO
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-scx-rt-stall-v3-1-8dd2d150c4aa@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22N0QqDIBiFXyW83h/95tTtau8xxjCzEiqHSjSid
- 5+4mxi7/DjnO2cjwXhrArkWG/FmscG6OUF9Koge1NwbsG1iQivKEZFB0Cv4CCGqcQStUHChpGp
- YR5Ly8qaza567k6AH0z7NGovOeRAlg2/2SMXBhuj8O98umOv/HxYEBIZSqkstZMXFrZ+UHUvtp
- jy00KN8/pFpki+UcyEbikzzo7zv+wfN417d/gAAAA==
-X-Change-ID: 20261114-scx-rt-stall-ca1767a8ab4f
-To: Tejun Heo <tj@kernel.org>, David Vernet <void@manifault.com>, 
- Andrea Righi <arighi@nvidia.com>, Changwoo Min <changwoo@igalia.com>, 
- Shuah Khan <shuah@kernel.org>, Joel Fernandes <joelagnelf@nvidia.com>, 
- Emil Tsalapatis <emil@etsalapatis.com>, 
- "Peter Zijlstra (Intel)" <peterz@infradead.org>
-Cc: sched-ext@lists.linux.dev, linux-kselftest@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ihor Solodrai <ihor.solodrai@linux.dev>, 
- Cheng-Yang Chou <yphbchou0911@gmail.com>, 
- Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794766228; l=8589;
- i=thamrinjonathan@gmail.com; s=20261102; h=from:subject:message-id;
- bh=6uCViknxMn4SrDjPmOXFqAYya15FnrezGCtK+2yoHMA=;
- b=NfCYDx534xD9205/wu4rNGlvRVc2Bf5eZ4Lq1VR2ZeAl0t2tPKi2fFUuysgCNH77SKBt9WpQu
- MKvwgtKOJi5BMY9sdDU3eea/TXT3dN4A/pKDoJnYQ4smEVqPpWR43/6
-X-Developer-Key: i=thamrinjonathan@gmail.com; a=ed25519;
- pk=mr0q5PZVaUIrv8WvTxIfK7QVcAiRSYI8hOByBQL1ZRo=
-X-Endpoint-Received: by B4 Relay for thamrinjonathan@gmail.com/20261102 with auth_id=1383
+Message-Id: <20261115-g12a-mux-data-path-v1-1-011dad738698@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAF8G+moC/x3MQQqEMAxA0atI1gZMcBTnKoOL1EbNwiptZxDEu
+ 1tm+Rb/X5A0miZ4VxdE/VmyPRRQXcG0SlgUzRcDN9wR0QsXYsHte6KXLHhIXrFrWZx3U+94gBI
+ eUWc7/9MPBM0w3vcDR/PlzWkAAAA=
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4492; i=iav@iav.lv;
+ h=from:subject:message-id; bh=rixsLn/9QY2RgeRhk+RdadQVMXkG8S6mNv5cUWus1nk=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFm/2BK38l3+vnLXneB3c4Um/vN+9ndKXUs372TV2JmGP
+ g/ehh+70FHKwiDGxSArpsgy4ZDGrYwlV//6e5g/gJnDygQyhIGLUwAmcmonw//q4PWZTL6G15tS
+ ArUFlx2RiTr89XnppPMWR8ybJ/lerlrCyHDh/pOaGTX+SqGnXeY0aiQ3L36XLxrxqp1Zvtw+leX
+ 3Sg4A
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In sched_stress_test(), the DL server budget on CORE_ID is shared with
-other FAIR/EXT tasks, including the parent task when unpinned. The
-parent can also be slow to start as it has to wait for the DL server
-before reaching sleep() while the RT task still runs. The runtime of
-each task is read as a total since fork instead of during sleep() and
-is measured in USER_HZ units (10ms). These 3 factors add noise to the
-measurement and contribute to the CI flakes. An EXT task got as little
-as ~0.18s on CI, which is a 3.0-3.9% share against a minimum 4%.
+Switching the mux to the internal MDIO bus writes SMI_SRC_MAC together
+with USE_INTERNAL and RX_CLK_EPHY to ETH_PHY_CNTL2. The last two move the
+MAC data path and RX clock to the internal PHY. On boards whose MAC uses
+an external PHY, any access to the internal PHY stops reception until an
+access to the external bus switches the mux back.
 
-With the parent pinned to CORE_ID, the RT task had already run for
-~0.95s before sleep(), so it was measured at 5.69s in a 5s window and
-the EXT share dropped to ~4.2% against the 4% threshold.
+phylib suspends and resumes the unattached internal PHY across system
+sleep. stmmac sets mac_managed_pm, and with Wake-on-LAN in the MAC
+phylink_resume() does not start the external PHY, so nothing switches
+the mux back. On ODROID-HC4 (RTL8211F), after suspend-to-RAM with WoL in
+the MAC and an RTC wakeup, ETH_PHY_CNTL2 stays at 0x260 and the MAC
+receives nothing while TX works.
 
-Measure CPU time using per-task CPU clocks via clock_getcpuclockid()
-with deltas before and after sleep to get an accurate measurement
-window while also pinning the parent off CORE_ID. With the parent
-pinned to another CPU, RT measures ~4.75s and EXT share stays between
-4.86% and 5.10% over 20 runs.
+With the MAC on the external PHY, SMI_SRC_MAC alone is enough to read
+the internal PHY ID (0x0180/0x3301) while RX keeps running; adding
+USE_INTERNAL or RX_CLK_EPHY stops RX.
 
-Per-CPU kthreads on CORE_ID can still consume part of the DL server
-budget, so this reduces the measurement noise rather than fully fixing
-the flakes. The threshold can be lowered later if they persist to
-account for this.
+Set the data path bits only when the MAC's phy-handle names a PHY on
+the internal bus. As in dwmac-rk, which reads phy-is-integrated from
+that node, the node phy-handle names decides; here it is the mux bus
+the PHY sits on.
 
-Fixes: be621a76341c ("selftests/sched_ext: Add test for sched_ext dl_server")
-Link: https://github.com/kernel-patches/vmtest/issues/458
-Suggested-by: Andrea Righi <arighi@nvidia.com>
-Reviewed-by: Andrea Righi <arighi@nvidia.com>
-Cc: Ihor Solodrai <ihor.solodrai@linux.dev>
-Cc: Cheng-Yang Chou <yphbchou0911@gmail.com>
-Signed-off-by: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+Fixes: 7090425104db ("net: phy: add amlogic g12a mdio mux support")
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-Hi Andrea, thanks for the quick response! As a possible follow-up for
-the kthread noise, I have an idea to change the test to check the RT
-task's share of a wall-clock window instead since kthreads wouldn't
-affect this check. I'd assert that RT's CPU time <=96% (or <=97% to
-allow for the 5s window not aligning with the 1s server period) of
-the window as the main check and that the EXT/FAIR task's CPU time
-is above a low floor (1-3%) to check that it hasn't stalled. The big
-problem with this would be steal time as it would inflate the window
-and could hide a broken server. We could subtract the steal time from
-the window using /proc/stat but it's only accurate to 10 ms. Would
-this be a valid solution and is it worth a follow-up patch?
-
-Changes in v3:
-- Reword commit to reduce measurement noise rather than fix flakes
-  (Andrea)
-- Add comment on DL server budget being shared with other EXT/FAIR
-  tasks on CORE_ID (Andrea)
-- Link to v2: https://lore.kernel.org/r/20261115-scx-rt-stall-v2-1-926678b214c6@gmail.com
-
-Changes in v2:
-- Read CPU time with clock_getcpuclockid() and clock_gettime() instead of
-  /proc/<pid>/stat to avoid USER_HZ rounding (Andrea)
-- Pin parent off CORE_ID so it doesn't share DL server budget (Andrea)
-- Threshold unchanged: 4.86-5.10% over 20 runs, but was unable to 
-  reproduce kthreads noise similar to CI, happy to lower threshold to 3%
-  if needed
-- Link to v1: https://lore.kernel.org/r/20261114-scx-rt-stall-v1-1-4188a9378067@gmail.com
+Tested on ODROID-HC4: three RTC wakeups from suspend-to-RAM with WoL in
+the MAC (ETH_PHY_CNTL2 0x40, RX working), one without WoL.
 ---
- tools/testing/selftests/sched_ext/rt_stall.c | 92 +++++++++++++++++++++-------
- 1 file changed, 69 insertions(+), 23 deletions(-)
+ drivers/net/mdio/mdio-mux-meson-g12a.c | 49 ++++++++++++++++++++++++++++++----
+ 1 file changed, 44 insertions(+), 5 deletions(-)
 
-diff --git a/tools/testing/selftests/sched_ext/rt_stall.c b/tools/testing/selftests/sched_ext/rt_stall.c
-index a1552b38a6e8..7be801b1fa2b 100644
---- a/tools/testing/selftests/sched_ext/rt_stall.c
-+++ b/tools/testing/selftests/sched_ext/rt_stall.c
-@@ -21,6 +21,9 @@
- #define CORE_ID		0	/* CPU to pin tasks to */
- #define RUN_TIME        5	/* How long to run the test in seconds */
+diff --git a/drivers/net/mdio/mdio-mux-meson-g12a.c b/drivers/net/mdio/mdio-mux-meson-g12a.c
+index 71c44385489d..ed688d48eaf0 100644
+--- a/drivers/net/mdio/mdio-mux-meson-g12a.c
++++ b/drivers/net/mdio/mdio-mux-meson-g12a.c
+@@ -12,6 +12,7 @@
+ #include <linux/iopoll.h>
+ #include <linux/mdio-mux.h>
+ #include <linux/module.h>
++#include <linux/of.h>
+ #include <linux/phy.h>
+ #include <linux/platform_device.h>
  
-+static cpu_set_t old_mask;
-+static bool affinity_saved;
-+
- /* Signal the parent that setup is complete by writing to a pipe */
- static void signal_ready(int fd)
+@@ -56,6 +57,7 @@ struct g12a_mdio_mux {
+ 	void __iomem *regs;
+ 	void *mux_handle;
+ 	struct clk *pll;
++	bool mac_uses_internal_phy;
+ };
+ 
+ struct g12a_ephy_pll {
+@@ -149,7 +151,7 @@ static const struct clk_ops g12a_ephy_pll_ops = {
+ 
+ static int g12a_enable_internal_mdio(struct g12a_mdio_mux *priv)
  {
-@@ -82,43 +85,57 @@ static void set_sched(int policy, int priority)
- 	}
+-	u32 value;
++	u32 value, cntl2;
+ 	int ret;
+ 
+ 	/* Enable the phy clock */
+@@ -169,10 +171,11 @@ static int g12a_enable_internal_mdio(struct g12a_mdio_mux *priv)
+ 		PHY_CNTL1_CLK_EN |
+ 		PHY_CNTL1_CLKFREQ;
+ 	writel(value, priv->regs + ETH_PHY_CNTL1);
+-	writel(PHY_CNTL2_USE_INTERNAL |
+-	       PHY_CNTL2_SMI_SRC_MAC |
+-	       PHY_CNTL2_RX_CLK_EPHY,
+-	       priv->regs + ETH_PHY_CNTL2);
++
++	cntl2 = PHY_CNTL2_SMI_SRC_MAC;
++	if (priv->mac_uses_internal_phy)
++		cntl2 |= PHY_CNTL2_USE_INTERNAL | PHY_CNTL2_RX_CLK_EPHY;
++	writel(cntl2, priv->regs + ETH_PHY_CNTL2);
+ 
+ 	value |= PHY_CNTL1_PHY_ENB;
+ 	writel(value, priv->regs + ETH_PHY_CNTL1);
+@@ -301,6 +304,41 @@ static int g12a_ephy_glue_clk_register(struct device *dev)
+ 	return 0;
  }
  
--/* Get process runtime from /proc/<pid>/stat */
-+/* Get process runtime from CPU clock */
- static float get_process_runtime(int pid)
- {
--	char path[256];
--	FILE *file;
--	long utime, stime;
--	int fields;
--
--	snprintf(path, sizeof(path), "/proc/%d/stat", pid);
--	file = fopen(path, "r");
--	if (file == NULL) {
--		perror("Failed to open stat file");
-+	clockid_t clk;
-+	struct timespec ts;
-+	int err;
-+
-+	err = clock_getcpuclockid(pid, &clk);
-+	if (err) {
-+		fprintf(stderr, "Failed to get clock ID: %s\n", strerror(err));
-+		return -1;
-+	}
-+
-+	if (clock_gettime(clk, &ts) == -1) {
-+		perror("Failed to get clock time");
- 		return -1;
- 	}
- 
--	/* Skip the first 13 fields and read the 14th and 15th */
--	fields = fscanf(file,
--			"%*d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu",
--			&utime, &stime);
--	fclose(file);
-+	return ts.tv_sec + ts.tv_nsec / 1e9;
-+}
- 
--	if (fields != 2) {
--		fprintf(stderr, "Failed to read stat file\n");
-+/* Move parent off of CORE_ID so it doesn't share DL server budget */
-+static int pin_parent_off_core(void)
++/* Like dwmac-rk: the PHY named by the MAC's phy-handle decides the data path */
++static bool g12a_mac_uses_internal_phy(struct device_node *mux_np)
 +{
-+	if (sched_getaffinity(0, sizeof(old_mask), &old_mask) != 0) {
-+		perror("sched_getaffinity");
- 		return -1;
- 	}
- 
--	/* Calculate the total time spent in the process */
--	long total_time = utime + stime;
--	long ticks_per_second = sysconf(_SC_CLK_TCK);
--	float runtime_seconds = total_time * 1.0 / ticks_per_second;
-+	for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
-+		if (CPU_ISSET(cpu, &old_mask) && cpu != CORE_ID) {
-+			cpu_set_t mask;
++	struct device_node *parent_bus, *mac, *phy, *phy_bus, *mux;
++	bool internal = false;
++	u32 reg;
 +
-+			CPU_ZERO(&mask);
-+			CPU_SET(cpu, &mask);
-+			if (sched_setaffinity(0, sizeof(mask), &mask)) {
-+				perror("sched_setaffinity");
-+				return -1;
-+			}
-+			affinity_saved = true;
-+			return 0;
-+		}
-+	}
- 
--	return runtime_seconds;
-+	return 1; /* No other CPU available */
- }
- 
- static enum scx_test_status setup(void **ctx)
++	parent_bus = of_parse_phandle(mux_np, "mdio-parent-bus", 0);
++	if (!parent_bus)
++		return false;
++
++	mac = of_get_parent(parent_bus);
++	of_node_put(parent_bus);
++	if (!mac)
++		return false;
++
++	phy = of_parse_phandle(mac, "phy-handle", 0);
++	of_node_put(mac);
++	if (!phy)
++		return false;
++
++	phy_bus = of_get_parent(phy);
++	of_node_put(phy);
++	if (!phy_bus)
++		return false;
++
++	mux = of_get_parent(phy_bus);
++	if (mux == mux_np && !of_property_read_u32(phy_bus, "reg", &reg))
++		internal = (reg == MESON_G12A_MDIO_INTERNAL_ID);
++	of_node_put(mux);
++	of_node_put(phy_bus);
++
++	return internal;
++}
++
+ static int g12a_mdio_mux_probe(struct platform_device *pdev)
  {
- 	struct rt_stall *skel;
-+	int err;
+ 	struct device *dev = &pdev->dev;
+@@ -313,6 +351,7 @@ static int g12a_mdio_mux_probe(struct platform_device *pdev)
+ 		return -ENOMEM;
  
- 	if (!__COMPAT_struct_has_field("rq", "ext_server")) {
- 		fprintf(stderr, "SKIP: ext DL server not supported\n");
-@@ -132,6 +149,9 @@ static enum scx_test_status setup(void **ctx)
+ 	platform_set_drvdata(pdev, priv);
++	priv->mac_uses_internal_phy = g12a_mac_uses_internal_phy(dev->of_node);
  
- 	*ctx = skel;
- 
-+	err = pin_parent_off_core();
-+	SCX_FAIL_IF(err == -1, "Failed to pin parent CPU");
-+
- 	return SCX_TEST_PASS;
- }
- 
-@@ -145,11 +165,15 @@ static bool sched_stress_test(bool is_ext)
- 	 * that the EXT deadline server is working correctly. A percentage
- 	 * less than 4% indicates a bug where RT tasks can potentially
- 	 * stall SCHED_EXT tasks, causing the test to fail.
-+	 *
-+	 * The DL server budget is per-CPU and shared with all other
-+	 * EXT/FAIR tasks on CORE_ID (e.g., kthreads, ksoftirqd). The EXT
-+	 * task may get slightly less than 5% on a noisy system due to this.
- 	 */
- 	const float expected_min_ratio = 0.04; /* 4% */
- 	const char *class_str = is_ext ? "EXT" : "FAIR";
- 
--	float ext_runtime, rt_runtime, actual_ratio;
-+	float ext_runtime_start, rt_runtime_start, ext_runtime, rt_runtime, actual_ratio;
- 	int ext_pid, rt_pid;
- 	int ext_ready[2], rt_ready[2];
- 	bool ret = false;
-@@ -201,6 +225,23 @@ static bool sched_stress_test(bool is_ext)
- 	if (!wait_ready(ext_ready[0]) || !wait_ready(rt_ready[0]))
- 		goto out_kill;
- 
-+	/*
-+	 * The parent can be delayed before reaching sleep(). Record each task's
-+	 * CPU time right before calling sleep() so only time used during the
-+	 * measurement window is counted.
-+	 */
-+	ext_runtime_start = get_process_runtime(ext_pid);
-+	if (ext_runtime_start == -1) {
-+		fprintf(stderr, "Failed to read %s task runtime\n", class_str);
-+		goto out_kill;
-+	}
-+
-+	rt_runtime_start = get_process_runtime(rt_pid);
-+	if (rt_runtime_start == -1) {
-+		fprintf(stderr, "Failed to read RT task runtime\n");
-+		goto out_kill;
-+	}
-+
- 	/* Let the processes run for the specified time */
- 	sleep(RUN_TIME);
- 
-@@ -218,6 +259,8 @@ static bool sched_stress_test(bool is_ext)
- 		goto out_kill;
- 	}
- 
-+	ext_runtime = ext_runtime - ext_runtime_start;
-+	rt_runtime = rt_runtime - rt_runtime_start;
- 	/* Verify that the scx task got enough runtime */
- 	actual_ratio = ext_runtime / (ext_runtime + rt_runtime);
- 	fprintf(stderr, "%s task ran %.3fs, RT task ran %.3fs (%.2f%% of runtime)\n",
-@@ -284,6 +327,9 @@ static void cleanup(void *ctx)
- {
- 	struct rt_stall *skel = ctx;
- 
-+	if (affinity_saved)
-+		sched_setaffinity(0, sizeof(old_mask), &old_mask);
-+
- 	rt_stall__destroy(skel);
- }
- 
+ 	priv->regs = devm_platform_ioremap_resource(pdev, 0);
+ 	if (IS_ERR(priv->regs))
 
 ---
-base-commit: 0021f17128de5dc0b19f1a523f448df2440d8088
-change-id: 20261114-scx-rt-stall-ca1767a8ab4f
+base-commit: aa40afa831ebfe45e40a23721711059f2ac584d4
+change-id: 20261115-g12a-mux-data-path-642abdbc7b29
 
 Best regards,
 -- 
-Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+Igor Velkov <iav@iav.lv>
 
