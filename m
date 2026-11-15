@@ -1,15 +1,13 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Subject: [PATCH 0/2] ASoC: qcom: Add the sound card of the Motorola
- Signature
-Date: Mon, 16 Nov 2026 01:50:27 +0530
-Message-Id: <20261116-vantage-sndcard-v1-0-df69a8759833@yahoo.com>
+Date: Mon, 16 Nov 2026 01:50:28 +0530
+Subject: [PATCH 1/2] ASoC: dt-bindings: qcom,sm8250: Add Motorola Signature
+ sound card
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqAIBCF4avErBMaCYOuEi1Mx5oWFk5FEN09q
- +X34P0XCCUmgba4INHBwkvMwLIAN9k4kmKfDbrSBhGNOmzcbJ4lemeTVwGx1k6b0Pga8mtNFPj
- 8il3/W/ZhJre9GbjvB/YVkhNzAAAA
-X-Change-ID: 20261116-vantage-sndcard-f1142c26f7d4
+Message-Id: <20261116-vantage-sndcard-v1-1-df69a8759833@yahoo.com>
+References: <20261116-vantage-sndcard-v1-0-df69a8759833@yahoo.com>
+In-Reply-To: <20261116-vantage-sndcard-v1-0-df69a8759833@yahoo.com>
 To: Srinivas Kandagatla <srini@kernel.org>, 
  Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,41 +17,39 @@ Cc: linux-arm-msm@vger.kernel.org, linux-sound@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794774027; l=1069;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794774027; l=954;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=Oe6OeT8RwHKrTHvPAPN/a1CWaI7nMbR56LFpTyYY3Gs=;
- b=an9vVmlYBD2jj71PQbdMkvSlN1WF1nLtTvg+plnabK/0blSY1L2gBLnDwWkvvo+TDcBuRNmZL
- jvWHpds9rT+DcpXDqZN0yVwCofKjzuXdvYAM9FqKzWC2Dye+JMvc2iS
+ bh=nX9qTnZEW1eY4ue+aHl0y+aU2y03Je7/bL6nIWQuIPg=;
+ b=krJygh5DLJPWif5c4HWThx0qoWh3j05sndx4UrP985vfoE3qbBsy6BWta2MAtuJgpERLrjTJJ
+ oSUITQ3rwU1CO59kTw7NP+J9q7JFDFCsRYSxB6TYLKlTwS3frPSLzKF
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Motorola Signature has two TFA9865 amplifiers on the senary MI2S
-interface. They expect 32-bit I2S slots, which the sc8280xp machine
-driver does not support so far. This series documents the sound card
-compatible and adds an option for 32-bit MI2S backends together with the
-card.
+Document the sound card of the Motorola Signature (vantage) phone,
+which has its speaker and earpiece amplifiers on an MI2S interface.
 
-Tested on a Motorola Signature together with the TFA9865 driver: the
-speaker and the earpiece play audio.
+An LLM was used to help write this commit message.
 
-I used an LLM (Claude) to help write these patches and their commit
-messages. I reviewed all of them and tested the result on the device.
-
+Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
-Venkat Yadlapati (2):
-      ASoC: dt-bindings: qcom,sm8250: Add Motorola Signature sound card
-      ASoC: qcom: sc8280xp: Add Motorola Signature sound card
+ Documentation/devicetree/bindings/sound/qcom,sm8250.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
- .../devicetree/bindings/sound/qcom,sm8250.yaml       |  1 +
- sound/soc/qcom/sc8280xp.c                            | 20 ++++++++++++++++++++
- 2 files changed, 21 insertions(+)
----
-base-commit: 4e019254b80b70f6fb90d17a50f211de1daf7ffe
-change-id: 20261116-vantage-sndcard-f1142c26f7d4
+diff --git a/Documentation/devicetree/bindings/sound/qcom,sm8250.yaml b/Documentation/devicetree/bindings/sound/qcom,sm8250.yaml
+index e2e3fc99e6d9..7adf0f5ce2f7 100644
+--- a/Documentation/devicetree/bindings/sound/qcom,sm8250.yaml
++++ b/Documentation/devicetree/bindings/sound/qcom,sm8250.yaml
+@@ -37,6 +37,7 @@ properties:
+           - fairphone,fp4-sndcard
+           - fairphone,fp5-sndcard
+           - motorola,dubai-sndcard
++          - motorola,vantage-sndcard
+           - qcom,apq8096-sndcard
+           - qcom,glymur-sndcard
+           - qcom,nord-sndcard
 
-Best regards,
---  
-Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+-- 
+2.56.0
 
