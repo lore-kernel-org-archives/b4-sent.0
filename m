@@ -1,16 +1,13 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Subject: [PATCH v2 0/4] media: verisilicon: Keep the CAPTURE format in line
- with the decoder
-Date: Sun, 15 Nov 2026 08:39:45 +0000
-Message-Id: <20261115-hantro-fixes-v2-0-bfecfb07a3e7@gmail.com>
+Date: Sun, 15 Nov 2026 08:39:46 +0000
+Subject: [PATCH v2 1/4] media: verisilicon: Size the VP8 segment map for
+ the largest frame
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNQQ6CMBBFr0Jm7Zi2IhJX3sOwaMsIY4SSFomG9
- O62GBcu35//36wQyDMFOBcreFo4sBsTqF0BttdjR8htYlBCVVLKA6Zw9g5v/KKAWlsSZXtUVW0
- gTSZP2yEtrs2Xw9Pcyc7ZkRs9h9n59/Zvkbn3U5f/6kWiQG3MqVZVWQtJl27Q/NhbN0ATY/wAr
- ST8D7oAAAA=
-X-Change-ID: 20261113-hantro-fixes-aace04d5268b
+Message-Id: <20261115-hantro-fixes-v2-1-bfecfb07a3e7@gmail.com>
+References: <20261115-hantro-fixes-v2-0-bfecfb07a3e7@gmail.com>
+In-Reply-To: <20261115-hantro-fixes-v2-0-bfecfb07a3e7@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
  Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
  Philipp Zabel <p.zabel@pengutronix.de>, 
@@ -23,52 +20,43 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794731985; l=1704;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794731985; l=1178;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=ieijxoJ+Z395DXW1QlEoaITK3L8xF7mWwBby8wJ+DGk=;
- b=/uVlZ6ozpByZ8clNwP0NjCB4JDtnqv9NzXnKK2vpfHhw2ZdhGxVR0IoF5sT99Iw0cgW+z9uWP
- bIah0ICOwAMCLAlDAPAGWgscLLinzYElFp68cno5uNHbTyMNHyC1wx7
+ bh=HL3Blb6OWyDUqsGQviHP7B92VIrg7DTEXdqj8j/7nqU=;
+ b=URFopEk5oS38P36Xwr5aN0tmKgXZZJP3hjScqQ7OJNMmx9tPMQBLbZNUh1y3wt6NuOamQ+j0N
+ +ANmer4lhJKAinZXiGcHEnq5GMutHJAjFs7HSl2II1X3w3Sm2sHoQy7
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fixes for cases where the decoder writes past the CAPTURE format or an
-auxiliary buffer, found by Sashiko on hantro-dec-size-check v1 [1].
+The segment map is sized at STREAMON, but the CAPTURE format can grow
+while streaming and overrun it. Size it for the largest frame, as VP9
+does.
 
-Tested on an Orange Pi 5 (RK3588S) with AV1: the CAPTURE format is right
-after film grain is turned off and for 10-bit streams; VP8 and AV1
-fluster show no new failures. The overrun in patch 1 was not reproduced.
-HEVC and VP9 are untested (the RK3588 has no G2 core).
-
-Developed with Claude (Anthropic), which wrote the code and the commit
-messages. I reviewed every change.
-
-[1] https://lore.kernel.org/r/20261112-hantro-dec-size-check-v1-1-e5f1180b625f@gmail.com
-
+Fixes: bbd267daf4fc ("media: verisilicon: vp9: Allow to change resolution while streaming")
+Cc: stable@vger.kernel.org
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Changes in v2:
-- 3/4: also replace a native format when post-processing; second Fixes tag (Sashiko)
-- 4/4: check the control returned by v4l2_ctrl_new_custom() (Sashiko)
-- Shorter commit messages, fewer code comments
-- Link to v1: https://patch.msgid.link/20261114-hantro-fixes-v1-0-abb78264801e@gmail.com
+ drivers/media/platform/verisilicon/hantro_vp8.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
----
-Arun Iyengar (4):
-      media: verisilicon: Size the VP8 segment map for the largest frame
-      media: verisilicon: Set need_postproc before resetting the CAPTURE format
-      media: verisilicon: Keep the CAPTURE format at the stream's bit depth
-      media: verisilicon: Set the bit depth again when its control is rewritten
+diff --git a/drivers/media/platform/verisilicon/hantro_vp8.c b/drivers/media/platform/verisilicon/hantro_vp8.c
+index 381bc1d3bfda..98ad86269bc3 100644
+--- a/drivers/media/platform/verisilicon/hantro_vp8.c
++++ b/drivers/media/platform/verisilicon/hantro_vp8.c
+@@ -151,8 +151,8 @@ int hantro_vp8_dec_init(struct hantro_ctx *ctx)
+ 	int ret;
+ 
+ 	/* segment map table size calculation */
+-	mb_width = DIV_ROUND_UP(ctx->dst_fmt.width, 16);
+-	mb_height = DIV_ROUND_UP(ctx->dst_fmt.height, 16);
++	mb_width = DIV_ROUND_UP(ctx->vpu_src_fmt->frmsize.max_width, 16);
++	mb_height = DIV_ROUND_UP(ctx->vpu_src_fmt->frmsize.max_height, 16);
+ 	segment_map_size = round_up(DIV_ROUND_UP(mb_width * mb_height, 4), 64);
+ 
+ 	/*
 
- drivers/media/platform/verisilicon/hantro_drv.c  | 12 ++++++++++--
- drivers/media/platform/verisilicon/hantro_v4l2.c | 20 +++++++++++++++++---
- drivers/media/platform/verisilicon/hantro_vp8.c  |  4 ++--
- 3 files changed, 29 insertions(+), 7 deletions(-)
----
-base-commit: ad6549a46748d00818483b535e5cd2a704685c98
-change-id: 20261113-hantro-fixes-aace04d5268b
-
-Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+2.55.0
 
