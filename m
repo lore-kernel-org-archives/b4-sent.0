@@ -1,118 +1,113 @@
-From: Erwin Springer <aot.lerwin@gmail.com>
-Date: Sun, 15 Nov 2026 16:43:35 +0100
-Subject: [PATCH v2] drm/i915/display: Ignore disabled planes in async flip
- checks
+From: Ricardo Pardini <ricardo@pardini.net>
+Date: Sun, 15 Nov 2026 16:48:11 +0100
+Subject: [PATCH v2] phy: rockchip: naneng-combphy: fix RK3588 SATA
+ pipe_con1 register offset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261115-i915-async-planes-v2-1-c5163dfea5b2@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NzQqDMBCEX0Vyboobf6g99T2Kh7hZdYsmklipi
- O/eaO+9DHww880mAnmmIO7JJjwtHNjZCOqSCOy17UiyiSxUqkoAKCRXMXRYLcpp0JaCNEWmUFc
- 5thmKuJs8tfw5nc/6x+HdvAjnQ3Q0eg6z8+t5usDR++dfQII0kOXVzaRN2dCjGzUPV3SjqPd9/
- wIx7/NoxAAAAA==
-X-Change-ID: 20261115-i915-async-planes-d532ca94cf3c
-To: Jani Nikula <jani.nikula@linux.intel.com>, 
- Rodrigo Vivi <rodrigo.vivi@intel.com>, 
- Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
- Tvrtko Ursulin <tursulin@ursulin.net>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>
-Cc: intel-gfx@lists.freedesktop.org, intel-xe@lists.freedesktop.org, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Erwin Springer <aot.lerwin@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794757416; l=3821;
- i=aot.lerwin@gmail.com; s=20261115; h=from:subject:message-id;
- bh=mp77voJK9qaE913+ZVMfV5BypZtyZmNXVgJbz4MPjx0=;
- b=OA43Y8dQG94I+l83wmcmVvaLNFvJPaCZx/sIKsmc/F8ew3ZhgCYzQ8a1L8XPVE94KkqPcZ8Tw
- 0iwCSmNx3ceBBcQQ6Sq7Onj82WLsAhdLD3mLJoVUynF3Lcvgdzm1Cvi
-X-Developer-Key: i=aot.lerwin@gmail.com; a=ed25519;
- pk=nbZwBfXFrLeFJg8vZmODCUcYskhldfPhOapnbey95tI=
-X-Endpoint-Received: by B4 Relay for aot.lerwin@gmail.com/20261115 with auth_id=1534
+Message-Id: <20261115-rk3588-combphy-sata2-6g-v2-1-778e0e8011fe@pardini.net>
+X-B4-Tracking: v=1; b=H4sIADrU+WoC/3WNyw6CMBBFf4V07ZhOawm48j8MixZGGI2FtJVIC
+ P8uj7XLk9x7ziwiBaYortksAo0cufcrqFMm6s76loCblYWSKkepLhBe2hQF1P3bDd0E0SarIG9
+ Baue0RIPGKLG+h0AP/u7me3Vw/Lgn1WnTbYuOY+rDtKdH3HZHBWX5tzIiIFCJ2tQlNpTb22BDw
+ 57PnpKolmX5AZz+eZnSAAAA
+X-Change-ID: 20261024-rk3588-combphy-sata2-6g-03bb30151552
+To: Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: Lucas Tanure <tanure@linux.com>, linux-phy@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Yifeng Zhao <yifeng.zhao@rock-chips.com>, 
+ stable@vger.kernel.org, Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Ricardo Pardini <ricardo@pardini.net>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3245; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=7C3z50HF4YPPhxfojWOPHlWST5mhlOANTFSCF0BvMLE=;
+ b=owEBbQGS/pANAwAKATteP+Oex+3pAcsmYgBq+dQ8Q7AOEqBEaJ40Qr8v90oLDQJ4qH6b6aZGN
+ Rxv5wgYhS2JATMEAAEKAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCavnUPAAKCRA7Xj/jnsft
+ 6Qu5B/43ii5B5vLp7uePCdS2Y60DAhqinh6J/QWpePpP4kNJVbE3YWpuHFy9lFKwgX7VaIRTNjq
+ b3b06t7skss2elc97aE6opCrKTCog4udVuaUFgbXajh63e/nJBZgr91p9dSespZKw1RkNg9fsj7
+ XEnFvSfys82kKhyK3Ap7g9qvhyukWwo6XsSCbUjnTRP0WBBNPJBM2LQ6cjEwia06jlipE5LZIxQ
+ Hv49ZX2NnMZ3ba4y3Q+Dwh1U/KGFw2UuOjpo23r+4MFQFYEetjNqPKQxVkFdseeyz9GHGYtgCpV
+ lJdsS2jc6D6do+YxNpwORkbkyNwgrK9fifExcH/RUeVuGsK4
+X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
+ fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
+X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Atomic async flips may carry properties that don't change, so compositors
-tend to send their whole plane state with every commit. KWin for example
-adds all planes of the pipe, including the ones that are disabled and stay
-disabled (CRTC_ID=0, FB_ID=0).
+From: Yifeng Zhao <yifeng.zhao@rock-chips.com>
 
-intel_async_flip_check_uapi() fails the commit as soon as the state
-contains any plane of the pipe that can't do async flips:
+On RK3588, the sata2 PHY speed is selected by sata2_phy_spdmode in
+PHP_GRF_PHP_CON1[1:0] (offset 0x0004), with sata2_phy_rx_err in bit 2.
+rk3588_combphy_grfcfgs has pipe_con1_for_sata at offset 0x0000 though,
+so the value 0x2 (6.0 Gb/s, rx_err cleared) ends up in PHP_GRF_PHP_CON0
+and CON1 is never written.
 
-  [drm:intel_atomic_check [i915]] [PLANE:66:plane 2A] async flip not supported
-  [drm:drm_atomic_check_only.cold] atomic driver check for ... failed: -22
+This leaves sata2 at its 1.5 Gb/s reset value, so the link only trains
+at 1.5 Gb/s, even with a 6 Gb/s capable disk and no SControl speed
+limit. sata0 and sata1 are not affected: their speed fields are in
+PHP_GRF_PHP_CON0 and are set by pipe_con0_for_sata.
 
-So with such a compositor tearing never works on a pipe with sprite or
-cursor planes, even though only the FB of the primary plane changes. KWin
-silently falls back to vsynced flips, about 60 rejected commits per second.
+The misplaced write also lands in PHP_GRF_PHP_CON0[2:0], which are the
+PCIe link reset grant bits, and turns on the one for pcie3x2 whenever a
+combphy is put in SATA mode. No effect from that is known, but this
+stops it too.
 
-A plane without a framebuffer before and after the commit takes no part in
-the flip. Skip it in both async flip checks.
+The register layout is described in the RK3588 TRM V1.0 Part1, section
+6.17 "PHP_GRF Register Description".
 
-A plane that is disabled in uapi may still be used by the hardware as the
-Y plane of a planar framebuffer on another plane (planar_linked_plane on
-ICL+). Don't skip such a plane in the uapi check, so the commit is still
-rejected there as before, instead of the linked planes being pulled into
-the state later and tripping the drm_WARN_ON() in
-intel_async_flip_check_hw().
+Tested with an mSATA SSD on sata2 (combphy2_psu). Before:
 
-Tested on Raptor Lake-U (Iris Xe) with the patch applied to the i915 of
-Linux 7.3.4, unmodified KWin 6.8.2 and a fullscreen client that requests
-tearing through wp_tearing_control_v1. Before, none of about 350 frames per
-run was presented without vsync. With the patch 3334 of 3340 frames tear
-and the message above is gone. What is still rejected is the first flip
-after the modifier or format changed, once per run, as intended.
+  ata2: SATA link up 1.5 Gbps (SStatus 113 SControl 300)
+  Timing O_DIRECT disk reads: 374 MB in 3.01 seconds = 124.45 MB/sec
 
-Signed-off-by: Erwin Springer <aot.lerwin@gmail.com>
+After:
+
+  ata2: SATA link up 6.0 Gbps (SStatus 133 SControl 300)
+  Timing O_DIRECT disk reads: 1266 MB in 3.00 seconds = 421.78 MB/sec
+
+Fixes: a03c44277253 ("phy: rockchip: Add naneng combo phy support for RK3588")
+Cc: stable@vger.kernel.org
+Signed-off-by: Yifeng Zhao <yifeng.zhao@rock-chips.com>
+[rewrite commit message]
+Reviewed-by: Sebastian Reichel <sebastian.reichel@collabora.com>
+Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
+---
+Only sata2 was tested. U-Boot has the same table and the same problem;
+the fix was sent there in [1].
+
+[1] https://patch.msgid.link/20261109-rk3588-sata-fixes-v2027-01-v1-0-e54ca8e68f18@pardini.net
 ---
 Changes in v2:
-- Don't skip a disabled plane that is in use as the Y plane of a planar
-  framebuffer, it would trip the drm_WARN_ON() in
-  intel_async_flip_check_hw() (found by the Sashiko review)
-  The device test was done with v1, no planar framebuffer was in use
-  there. v2 is compile-tested (W=1).
-- Link to v1: https://patch.msgid.link/20261115-i915-async-planes-v1-1-d13498d0b6be@gmail.com
+- Author is now Yifeng Zhao, who wrote the fix in the Rockchip BSP
+  kernel; add his Signed-off-by (Sebastian)
+- Move the PCIe link reset grant note into the commit message (Sebastian)
+- Drop the BSP history sentence, the BSP Link: and the Cc (Sebastian)
+- Trim the notes below the fold (Sebastian)
+- Collect Sebastian's Reviewed-by
+- Link to v1: https://patch.msgid.link/20261109-rk3588-combphy-sata2-6g-v1-1-e9135c91de6a@pardini.net
 ---
- drivers/gpu/drm/i915/display/intel_display.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ drivers/phy/rockchip/phy-rockchip-naneng-combphy.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/gpu/drm/i915/display/intel_display.c b/drivers/gpu/drm/i915/display/intel_display.c
-index f4d9148ef..9be7596fa 100644
---- a/drivers/gpu/drm/i915/display/intel_display.c
-+++ b/drivers/gpu/drm/i915/display/intel_display.c
-@@ -6281,6 +6281,16 @@ static int intel_async_flip_check_uapi(struct intel_atomic_state *state,
- 		if (plane->pipe != crtc->pipe)
- 			continue;
- 
-+		/*
-+		 * Userspace may add planes it doesn't change to the commit.
-+		 * A plane that is disabled and stays disabled takes no part
-+		 * in the async flip, unless it is in use as the Y plane of
-+		 * a planar format on another plane.
-+		 */
-+		if (!old_plane_state->uapi.fb && !new_plane_state->uapi.fb &&
-+		    !old_plane_state->planar_linked_plane)
-+			continue;
-+
- 		/*
- 		 * TODO: Async flip is only supported through the page flip IOCTL
- 		 * as of now. So support currently added for primary plane only.
-@@ -6346,6 +6356,10 @@ static int intel_async_flip_check_hw(struct intel_atomic_state *state, struct in
- 		if (plane->pipe != crtc->pipe)
- 			continue;
- 
-+		/* Disabled planes that stay disabled take no part in the flip. */
-+		if (!old_plane_state->hw.fb && !new_plane_state->hw.fb)
-+			continue;
-+
- 		/*
- 		 * Only async flip capable planes should be in the state
- 		 * if we're really about to ask the hardware to perform
+diff --git a/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c b/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
+index 3102a99128f6..c469222dba8b 100644
+--- a/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
++++ b/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
+@@ -1395,7 +1395,7 @@ static const struct rockchip_combphy_grfcfg rk3588_combphy_grfcfgs = {
+ 	.con3_for_sata		= { 0x000c, 15, 0, 0x00, 0x0407 },
+ 	/* pipe-grf */
+ 	.pipe_con0_for_sata	= { 0x0000, 11, 5, 0x00, 0x22 },
+-	.pipe_con1_for_sata	= { 0x0000, 2, 0, 0x00, 0x2 },
++	.pipe_con1_for_sata	= { 0x0004, 2, 0, 0x00, 0x2 },
+ 	.pipe_pcie1l0_sel	= { 0x0100, 0, 0, 0x01, 0x0 },
+ 	.pipe_pcie1l1_sel	= { 0x0100, 1, 1, 0x01, 0x0 },
+ };
 
 ---
-base-commit: 419bb0e4cadd214a0847010c02ade95e5fc511f7
-change-id: 20261115-i915-async-planes-d532ca94cf3c
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261024-rk3588-combphy-sata2-6g-03bb30151552
 
 Best regards,
 --  
-Erwin Springer <aot.lerwin@gmail.com>
+Ricardo Pardini <ricardo@pardini.net>
 
