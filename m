@@ -1,11 +1,11 @@
 From: Alireza Asgari <alireza@asgari.net>
-Date: Sun, 15 Nov 2026 22:34:48 +0000
-Subject: [PATCH RFC nf-next 8/9] netfilter: nfqueue: add KUnit memory
- accounting coverage
+Date: Sun, 15 Nov 2026 22:34:49 +0000
+Subject: [PATCH RFC nf-next 9/9] selftests: netfilter: exercise nfqueue
+ memory accounting
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261115-b4-nfqueue-memory-accounting-v1-8-b9cc30819997@asgari.net>
+Message-Id: <20261115-b4-nfqueue-memory-accounting-v1-9-b9cc30819997@asgari.net>
 References: <20261115-b4-nfqueue-memory-accounting-v1-0-b9cc30819997@asgari.net>
 In-Reply-To: <20261115-b4-nfqueue-memory-accounting-v1-0-b9cc30819997@asgari.net>
 To: netfilter-devel@vger.kernel.org, linux-mm@kvack.org
@@ -22,431 +22,514 @@ Cc: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>,
  cgroups@vger.kernel.org, netdev@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, Alireza Asgari <alireza@asgari.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794782082; l=14296;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794782082; l=22469;
  i=alireza@asgari.net; s=alireza-kernel; h=from:subject:message-id;
- bh=yVuu+o+DPEI25W4yS93kGUP6LvZX/GhqtDFPsoYHgAs=;
- b=YPoI4Nk50+1ctKI89mKDWt40MD/LMYTFi1OpHNVEFXgtIhaESx1oP+VTbjzERsu9UrHxzjP3n
- pM5pQVERUNICNXnwtadyFf0HBGt85Za8BEkwyQkbkSSOdos9yyhA/qu
+ bh=80QwPQxuavyWtfMrm4ApasxlTbljCSwj9/58LkECDdE=;
+ b=jebOzQrZwtcagfmQTokCdN2ywSPh/pRV5ZpqaJKFX79QvHyBGdiiMnDHoa4SMoTegqhQrBdOc
+ HulmUVPAIOiBB1QlIhJ9AFJjcN/6SUVTwU2/aaszzjUikgOSybI6a8f
 X-Developer-Key: i=alireza@asgari.net; a=ed25519;
  pk=wuQ0/M69FqoVnrCMUJ13EQCwrCwVjCrtz75k15vW8tw=
 X-Endpoint-Received: by B4 Relay for alireza@asgari.net/alireza-kernel with auth_id=1055
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Test local byte boundaries, a small nominal-head skb, a page-backed head,
-saved accounting across detachment, and live limit changes.
+Add a raw-Netlink NFQUEUE selftest using isolated network namespaces and
+loopback traffic. Cover individual and batch verdicts, resizing occupied
+queues, oversized packets and FAIL_OPEN, payload replacement, and software
+segmentation.
 
-Also test active, inactive, and failed instance creation against a private
-queue table. A KUnit static stub checks that a new instance remains absent
-from lookup until configuration succeeds. These tests exercise publication
-ordering directly; they do not claim a concurrent queue-bypass reproducer.
+With cgroup v2 available, exercise reservation failure and rollback,
+aggregate limits, saved ownership after task migration, reparenting, and
+inactive sizing before first activation. The payload case checks the
+modified UDP payload delivered after an ACCEPT verdict and reuses the
+queue afterward.
+
+The script reports unsupported environment requirements explicitly and
+cleans up its namespaces, queue sockets, and cgroups.
 
 Signed-off-by: Alireza Asgari <alireza@asgari.net>
 ---
- net/netfilter/Kconfig                |  10 ++
- net/netfilter/nfnetlink_queue.c      |  13 ++
- net/netfilter/nfnetlink_queue_test.c | 338 +++++++++++++++++++++++++++++++++++
- 3 files changed, 361 insertions(+)
+ tools/testing/selftests/net/netfilter/Makefile     |   1 +
+ .../selftests/net/netfilter/nft_queue_memory.py    | 460 +++++++++++++++++++++
+ 2 files changed, 461 insertions(+)
 
-diff --git a/net/netfilter/Kconfig b/net/netfilter/Kconfig
-index 09874c26fd13..02818552ac8b 100644
---- a/net/netfilter/Kconfig
-+++ b/net/netfilter/Kconfig
-@@ -71,6 +71,16 @@ config NETFILTER_NETLINK_LOG
- 	  and is also scheduled to replace the old syslog-based ipt_LOG
- 	  and ip6t_LOG modules.
- 
-+config NETFILTER_NETLINK_QUEUE_KUNIT_TEST
-+	bool "NFQUEUE memory accounting tests" if !KUNIT_ALL_TESTS
-+	depends on NETFILTER_NETLINK_QUEUE=y && KUNIT=y
-+	default KUNIT_ALL_TESTS
-+	help
-+	  Test NFQUEUE byte admission, saved charges across detachment, and
-+	  live queue limit updates without sending network traffic.
-+	  The tests run with KUnit and do not need a userspace queue listener.
-+	  Say N unless you are testing changes to NFQUEUE accounting.
-+
- config NETFILTER_NETLINK_OSF
- 	tristate "Netfilter OSF over NFNETLINK interface"
- 	depends on NETFILTER_ADVANCED
-diff --git a/net/netfilter/nfnetlink_queue.c b/net/netfilter/nfnetlink_queue.c
-index b37fb6f21482..ad14c74f35a8 100644
---- a/net/netfilter/nfnetlink_queue.c
-+++ b/net/netfilter/nfnetlink_queue.c
-@@ -51,6 +51,10 @@
- 
- #include <linux/atomic.h>
- 
-+#if IS_ENABLED(CONFIG_NETFILTER_NETLINK_QUEUE_KUNIT_TEST)
-+#include <kunit/static_stub.h>
-+#endif
-+
- #if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
- #include "../bridge/br_private.h"
- #endif
-@@ -210,6 +214,11 @@ static int nfqnl_set_config(struct nfqnl_instance *queue, unsigned int maxlen,
- 	bool activated;
- 	int err = 0;
- 
-+#if IS_ENABLED(CONFIG_NETFILTER_NETLINK_QUEUE_KUNIT_TEST)
-+	KUNIT_STATIC_STUB_REDIRECT(nfqnl_set_config, queue, maxlen, params,
-+				   flags, mask);
-+#endif
-+
- 	if (params && params->copy_mode == NFQNL_COPY_PACKET) {
- 		range = ntohl(params->copy_range);
- 		if (!range || range > NFQNL_MAX_COPY_RANGE)
-@@ -2390,3 +2399,7 @@ MODULE_ALIAS_NFNL_SUBSYS(NFNL_SUBSYS_QUEUE);
- 
- module_init(nfnetlink_queue_init);
- module_exit(nfnetlink_queue_fini);
-+
-+#if IS_ENABLED(CONFIG_NETFILTER_NETLINK_QUEUE_KUNIT_TEST)
-+#include "nfnetlink_queue_test.c"
-+#endif
-diff --git a/net/netfilter/nfnetlink_queue_test.c b/net/netfilter/nfnetlink_queue_test.c
-new file mode 100644
-index 000000000000..e8b89ca83dff
+diff --git a/tools/testing/selftests/net/netfilter/Makefile b/tools/testing/selftests/net/netfilter/Makefile
+index 1bc7f7a75f1e..21b58d2cfe86 100644
+--- a/tools/testing/selftests/net/netfilter/Makefile
++++ b/tools/testing/selftests/net/netfilter/Makefile
+@@ -37,6 +37,7 @@ TEST_PROGS := \
+ 	nft_nat_zones.sh \
+ 	nft_offload.sh \
+ 	nft_queue.sh \
++	nft_queue_memory.py \
+ 	nft_synproxy.sh \
+ 	nft_tproxy_tcp.sh \
+ 	nft_tproxy_udp.sh \
+diff --git a/tools/testing/selftests/net/netfilter/nft_queue_memory.py b/tools/testing/selftests/net/netfilter/nft_queue_memory.py
+new file mode 100755
+index 000000000000..35ae4db09a48
 --- /dev/null
-+++ b/net/netfilter/nfnetlink_queue_test.c
-@@ -0,0 +1,338 @@
-+// SPDX-License-Identifier: GPL-2.0-only
++++ b/tools/testing/selftests/net/netfilter/nft_queue_memory.py
+@@ -0,0 +1,460 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0
++"""Bounded NFQUEUE retention tests; run in a disposable guest with the patch.
 +
-+#include <kunit/test.h>
-+#include <linux/mm.h>
++The test creates its own network namespace and consumes notifications while
++withholding verdicts. --cgroup accepts a writable, delegated cgroup v2 parent
++for the optional capacity-reservation test. No public network is used.
++"""
 +
-+static void nfqnl_test_destroy_map(void *data)
-+{
-+	struct nfqnl_instance *queue = data;
++import argparse
++import contextlib
++import errno
++import os
++from pathlib import Path
++import select
++import shutil
++import socket
++import struct
++import subprocess
++import sys
++import time
 +
-+	rhashtable_destroy(&queue->nfqnl_packet_map);
-+}
 +
-+static void nfqnl_test_free_skb(void *data)
-+{
-+	kfree_skb(data);
-+}
++NFQ_SUBSYS = 3 << 8
++NFQ_PACKET, NFQ_VERDICT, NFQ_CONFIG, NFQ_BATCH = range(4)
++CFG_CMD, CFG_PARAMS, CFG_MAXLEN, CFG_MASK, CFG_FLAGS = range(1, 6)
++F_FAIL_OPEN, F_GSO = 1, 4
++SKB_GSO = 2
++MAX_HELD = 64
 +
-+static int nfqnl_test_init(struct kunit *test)
-+{
-+	struct nfqnl_instance *queue;
-+	int err;
 +
-+	queue = kunit_kzalloc(test, sizeof(*queue), GFP_KERNEL);
-+	if (!queue)
-+		return -ENOMEM;
-+	spin_lock_init(&queue->lock);
-+	mutex_init(&queue->mem_mutex);
-+	INIT_WORK(&queue->mem_work, nfqnl_mem_work);
-+	INIT_LIST_HEAD(&queue->queue_list);
-+	err = rhashtable_init(&queue->nfqnl_packet_map,
-+			      &nfqnl_rhashtable_params);
-+	if (err)
-+		return err;
-+	test->priv = queue;
-+	return kunit_add_action_or_reset(test, nfqnl_test_destroy_map, queue);
-+}
++def attr(kind, data):
++    result = struct.pack("=HH", 4 + len(data), kind) + data
++    return result + bytes((-len(result)) % 4)
 +
-+static void nfqnl_test_boundaries(struct kunit *test)
-+{
-+	struct nfqnl_instance *queue = test->priv;
 +
-+	queue->mem_limit = 8192;
-+	queue->mem_used = 4096;
-+	KUNIT_EXPECT_FALSE(test, nfqnl_mem_full(queue, 4096));
-+	KUNIT_EXPECT_TRUE(test, nfqnl_mem_full(queue, 4097));
-+	queue->mem_used = 8193;
-+	KUNIT_EXPECT_TRUE(test, nfqnl_mem_full(queue, 1));
-+	queue->mem_used = 0;
-+	queue->mem_limit = 0;
-+	KUNIT_EXPECT_TRUE(test, nfqnl_mem_full(queue, 1));
-+	queue->mem_limit = U64_MAX;
-+	queue->mem_used = U64_MAX - 10;
-+	KUNIT_EXPECT_FALSE(test, nfqnl_mem_full(queue, 10));
-+	KUNIT_EXPECT_TRUE(test, nfqnl_mem_full(queue, 11));
++def u32(kind, value):
++    return attr(kind, struct.pack("!I", value))
 +
-+	KUNIT_EXPECT_GT(test, nfqnl_mem_limit(U32_MAX), (u64)U32_MAX);
-+	KUNIT_EXPECT_EQ(test, nfqnl_mem_pages(0), 0ULL);
-+	KUNIT_EXPECT_EQ(test, nfqnl_mem_pages(PAGE_SIZE), 1ULL);
-+	KUNIT_EXPECT_EQ(test, nfqnl_mem_pages(PAGE_SIZE + 1), 2ULL);
-+	KUNIT_EXPECT_EQ(test, nfqnl_mem_pages(U64_MAX),
-+			(U64_MAX >> PAGE_SHIFT) + 1);
-+}
 +
-+static void nfqnl_test_small_queue(struct kunit *test)
-+{
-+	struct nfqnl_instance *queue = test->priv;
-+	struct sk_buff *skb;
++def check(condition, message):
++    if not condition:
++        raise AssertionError(message)
 +
-+	skb = alloc_skb(SKB_WITH_OVERHEAD(2048), GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, skb);
-+	KUNIT_ASSERT_EQ(
-+		test, kunit_add_action_or_reset(test, nfqnl_test_free_skb, skb),
-+		0);
-+	KUNIT_ASSERT_EQ(test, nfqnl_set_config(queue, 1, NULL, 0, 0), 0);
-+	/* A standard 2 KiB head must fit in an empty length-one queue. */
-+	KUNIT_EXPECT_FALSE(test, nfqnl_mem_full(queue, skb->truesize));
-+}
 +
-+static void nfqnl_test_page_head(struct kunit *test)
-+{
-+	struct nfqnl_instance *queue = test->priv;
-+	struct sk_buff *skb;
-+	struct page *page;
++class Queue:
++    def __init__(self, number=1):
++        self.number = number
++        self.sock = socket.socket(socket.AF_NETLINK, socket.SOCK_RAW, 12)
++        self.sock.bind((0, 0))
++        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1 << 20)
++        self.seq = 0
++        self.held = []
 +
-+	page = alloc_page(GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, page);
-+	skb = build_skb(page_address(page), PAGE_SIZE);
-+	if (!skb)
-+		__free_page(page);
-+	KUNIT_ASSERT_NOT_NULL(test, skb);
-+	KUNIT_ASSERT_EQ(
-+		test, kunit_add_action_or_reset(test, nfqnl_test_free_skb, skb),
-+		0);
-+	skb_put_zero(skb, 64);
++    def close(self):
++        self.sock.close()
 +
-+	/* A small payload still accounts for the complete receive allocation. */
-+	KUNIT_ASSERT_EQ(test, nfqnl_set_config(queue, 1, NULL, 0, 0), 0);
-+	if (PAGE_SIZE > 2048)
-+		KUNIT_EXPECT_TRUE(test, nfqnl_mem_full(queue, skb->truesize));
-+	else
-+		KUNIT_EXPECT_FALSE(test, nfqnl_mem_full(queue, skb->truesize));
-+	KUNIT_ASSERT_EQ(test,
-+			nfqnl_set_config(queue, DIV_ROUND_UP(PAGE_SIZE, 2048),
-+					 NULL, 0, 0),
-+			0);
-+	KUNIT_EXPECT_FALSE(test, nfqnl_mem_full(queue, skb->truesize));
++    def receive(self, timeout):
++        if not select.select([self.sock], [], [], timeout)[0]:
++            return []
++        data, _, flags, _ = self.sock.recvmsg(65536)
++        check(not flags & socket.MSG_TRUNC, "truncated netlink message")
++        replies = []
++        while data:
++            check(len(data) >= 16, "short netlink header")
++            length, kind, _, seq, _ = struct.unpack_from("=IHHII", data)
++            check(16 <= length <= len(data), "invalid netlink length")
++            body = data[16:length]
++            if kind == 2:  # NLMSG_ERROR, including successful ACKs
++                replies.append((seq, struct.unpack_from("=i", body)[0]))
++            elif kind == NFQ_SUBSYS | NFQ_PACKET:
++                attrs = {}
++                offset = 4  # nfgenmsg
++                while offset < len(body):
++                    size, atype = struct.unpack_from("=HH", body, offset)
++                    check(size >= 4 and offset + size <= len(body),
++                          "invalid packet attribute")
++                    attrs[atype & 0x3fff] = body[offset + 4:offset + size]
++                    offset += (size + 3) & ~3
++                packet_id = struct.unpack_from("!I", attrs[1])[0]
++                skb_info = struct.unpack("!I", attrs.get(14, bytes(4)))[0]
++                check(len(self.held) < MAX_HELD, "bounded hold list exhausted")
++                self.held.append((packet_id, skb_info))
++            data = data[(length + 3) & ~3:]
++        return replies
 +
-+	queue->mem_limit = skb->truesize - 1;
-+	KUNIT_EXPECT_TRUE(test, nfqnl_mem_full(queue, skb->truesize));
-+	queue->mem_limit = skb->truesize;
-+	KUNIT_EXPECT_FALSE(test, nfqnl_mem_full(queue, skb->truesize));
-+}
++    def request(self, kind, attrs):
++        self.seq += 1
++        body = struct.pack("!BBH", 0, 0, self.number) + attrs
++        header = struct.pack("=IHHII", 16 + len(body), NFQ_SUBSYS | kind,
++                             1 | 4, self.seq, 0)  # REQUEST | ACK
++        self.sock.sendto(header + body, (0, 0))
++        deadline = time.monotonic() + 3
++        while time.monotonic() < deadline:
++            for seq, error in self.receive(max(0, deadline - time.monotonic())):
++                if seq == self.seq:
++                    if error:
++                        raise OSError(-error, os.strerror(-error))
++                    return
++        raise TimeoutError("NFQUEUE ACK timed out")
 +
-+static void nfqnl_test_detached_charge(struct kunit *test)
-+{
-+	struct nfqnl_instance *queue = test->priv;
-+	struct nf_queue_entry entry = {};
-+	u64 detached, released;
-+	unsigned int saved;
-+	int err;
++    def configure(self, maximum, *, bind=False, flags=F_GSO, mode=1):
++        attrs = u32(CFG_MAXLEN, maximum)
++        attrs += attr(CFG_PARAMS, struct.pack("!IB", 0, mode))  # COPY_META by default
++        attrs += u32(CFG_MASK, F_GSO | F_FAIL_OPEN) + u32(CFG_FLAGS, flags)
++        if bind:
++            attrs += attr(CFG_CMD, struct.pack("!BBH", 1, 0, socket.AF_INET))
++        self.request(NFQ_CONFIG, attrs)
 +
-+	entry.skb = alloc_skb(512, GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, entry.skb);
-+	KUNIT_ASSERT_EQ(test,
-+			kunit_add_action_or_reset(test, nfqnl_test_free_skb,
-+						  entry.skb),
-+			0);
-+	saved = entry.skb->truesize;
-+	queue->mem_limit = saved;
++    def collect(self):
++        while select.select([self.sock], [], [], 0.1)[0]:
++            replies = self.receive(0)
++            check(not replies, "unexpected asynchronous netlink error")
 +
-+	spin_lock_bh(&queue->lock);
-+	err = __enqueue_entry(queue, &entry);
-+	if (!err) {
-+		__dequeue_entry(queue, &entry);
-+		detached = queue->mem_used;
-+		/* Verdict payload replacement must not change the saved refund. */
-+		entry.skb->truesize += 128;
-+		nfqnl_mem_uncharge(queue, &entry);
-+		released = queue->mem_used;
-+		entry.skb->truesize = saved;
-+	}
-+	spin_unlock_bh(&queue->lock);
-+	KUNIT_ASSERT_EQ(test, err, 0);
-+	KUNIT_EXPECT_EQ(test, detached, (u64)saved);
-+	KUNIT_EXPECT_EQ(test, released, 0ULL);
-+	KUNIT_EXPECT_EQ(test, entry.truesize, 0U);
-+	KUNIT_EXPECT_EQ(test, queue->queue_total, 0U);
-+	KUNIT_EXPECT_TRUE(test, list_empty(&queue->queue_list));
-+	KUNIT_EXPECT_FALSE(test, nfqnl_mem_full(queue, saved));
++    def release(self, batch=False):
++        self.collect()
++        ids = [packet_id for packet_id, _ in self.held]
++        self.held.clear()
++        if batch:
++            ids = ids[-1:]
++        for packet_id in ids:
++            self.request(NFQ_BATCH if batch else NFQ_VERDICT,
++                         attr(2, struct.pack("!II", 0, packet_id)))  # DROP
 +
-+	/* FAIL_OPEN and notification rollback can reach reinjection uncharged. */
-+	spin_lock_bh(&queue->lock);
-+	nfqnl_mem_uncharge(queue, &entry);
-+	spin_unlock_bh(&queue->lock);
-+	KUNIT_EXPECT_EQ(test, queue->mem_used, 0ULL);
-+}
++    def stats(self):
++        path = Path("/proc/self/net/netfilter/nfnetlink_queue")
++        for line in path.read_text().splitlines():
++            values = [int(value) for value in line.split()]
++            if values[0] == self.number:
++                return values
++        raise AssertionError("bound queue missing from procfs")
 +
-+static void nfqnl_test_limit_update(struct kunit *test)
-+{
-+	struct nfqnl_instance *queue = test->priv;
-+	u64 used = nfqnl_mem_limit(8);
 +
-+	queue->mem_used = used;
-+	queue->queue_total = 2;
-+	KUNIT_ASSERT_EQ(test, nfqnl_set_config(queue, 1, NULL, 0, 0), 0);
-+	KUNIT_EXPECT_EQ(test, queue->queue_maxlen, 1U);
-+	KUNIT_EXPECT_EQ(test, queue->mem_limit, nfqnl_mem_limit(1));
-+	KUNIT_EXPECT_EQ(test, queue->mem_used, used);
-+	KUNIT_EXPECT_EQ(test, queue->queue_total, 2U);
-+	KUNIT_EXPECT_TRUE(test, nfqnl_mem_full(queue, 1));
-+	KUNIT_ASSERT_EQ(test, nfqnl_set_config(queue, 16, NULL, 0, 0), 0);
-+	KUNIT_EXPECT_FALSE(test, nfqnl_mem_full(queue, 1));
-+	KUNIT_EXPECT_EQ(test, queue->mem_used, used);
-+	KUNIT_EXPECT_EQ(test, queue->mem_reserved, 0ULL);
-+}
++class Traffic:
++    def __init__(self):
++        self.rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
++        self.rx.bind(("127.0.0.1", 0))
++        self.destination = self.rx.getsockname()
++        rules = f"""table ip nfq_memory {{
++ chain output {{
++  type filter hook output priority 0; policy accept;
++  udp dport {self.destination[1]} queue num 1
++ }}
++}}
++"""
++        subprocess.run(["nft", "-f", "-"], input=rules, text=True, check=True)
 +
-+struct nfqnl_test_creation {
-+	struct nfnl_queue_net queues;
-+	struct nfqnl_instance *instance;
-+	unsigned int config_calls;
-+	int config_error;
-+};
++    def close(self):
++        self.rx.close()
 +
-+static struct nfqnl_instance *nfqnl_test_lookup(struct nfqnl_test_creation *ctx,
-+						u16 queue_num)
-+{
-+	struct nfqnl_instance *queue;
++    def send(self, size=16384, segment=0):
++        cmsgs = [(socket.IPPROTO_UDP, 103, struct.pack("=H", segment))] if segment else []
++        # Retained output skbs can exhaust one sender's socket memory first.
++        # A fresh, bounded sender isolates the NFQUEUE retention limit.
++        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sender:
++            sender.settimeout(1)
++            sender.sendmsg([bytes(size)], cmsgs, 0, self.destination)
 +
-+	rcu_read_lock();
-+	queue = instance_lookup(&ctx->queues, queue_num);
-+	rcu_read_unlock();
-+	return queue;
-+}
 +
-+static int
-+nfqnl_test_config_private(struct nfqnl_instance *queue, unsigned int maxlen,
-+			  const struct nfqnl_msg_config_params *params,
-+			  u32 flags, u32 mask)
-+{
-+	struct kunit *test = kunit_get_current_test();
-+	struct nfqnl_test_creation *ctx = test->priv;
-+	int err;
++def retention(traffic, batch):
++    with contextlib.closing(Queue()) as queue:
++        queue.configure(32, bind=True)
++        for _ in range(40):
++            traffic.send()
++            queue.collect()
++        count = len(queue.held)
++        check(0 < count < 32, f"expected byte rejection below count limit, held {count}")
++        stats = queue.stats()
++        check(stats[2] == count and stats[5] > 0, "wrong queue/drop accounting")
++        check(stats[6] == 0, "netlink backpressure invalidated the test")
++        queue.release(batch=batch)
++        check(queue.stats()[2] == 0, "verdict did not drain queue")
++        traffic.send()
++        queue.collect()
++        check(len(queue.held) == 1, "verdict did not restore capacity")
 +
-+	ctx->config_calls++;
-+	KUNIT_EXPECT_PTR_EQ(test, nfqnl_test_lookup(ctx, queue->queue_num),
-+			    NULL);
-+	if (ctx->config_error)
-+		return ctx->config_error;
 +
-+	/* Exercise the real configuration while checking its visibility. */
-+	kunit_deactivate_static_stub(test, nfqnl_set_config);
-+	err = nfqnl_set_config(queue, maxlen, params, flags, mask);
-+	KUNIT_EXPECT_PTR_EQ(test, nfqnl_test_lookup(ctx, queue->queue_num),
-+			    NULL);
-+	return err;
-+}
++def resize(traffic):
++    with contextlib.closing(Queue()) as queue:
++        queue.configure(32, bind=True)
++        traffic.send()
++        queue.collect()
++        check(len(queue.held) == 1, "initial packet not queued")
++        queue.configure(0)
++        check(queue.stats()[2] == 1, "shrink discarded existing entry")
++        traffic.send()
++        queue.collect()
++        check(len(queue.held) == 1, "zero limit admitted a packet")
++        queue.release(batch=True)
++        queue.configure(32)
++        traffic.send()
++        queue.collect()
++        check(len(queue.held) == 1, "growth did not restore admission")
 +
-+static void nfqnl_test_destroy_instance(void *data)
-+{
-+	struct nfqnl_test_creation *ctx = data;
 +
-+	if (!IS_ERR_OR_NULL(ctx->instance)) {
-+		instance_destroy(&ctx->queues, ctx->instance);
-+		rcu_barrier();
-+		flush_workqueue(nfq_cleanup_wq);
-+	}
-+}
++def oversized(traffic):
++    with contextlib.closing(Queue()) as queue:
++        queue.configure(1, bind=True)
++        traffic.send(60000)
++        queue.collect()
++        check(not queue.held and queue.stats()[5] == 1,
++              "single skb above byte allowance was not rejected")
++        queue.configure(1, flags=F_GSO | F_FAIL_OPEN)
++        traffic.send(60000)
++        queue.collect()
++        check(not queue.held, "FAIL_OPEN packet was queued")
++        check(select.select([traffic.rx], [], [], 1)[0], "FAIL_OPEN did not deliver")
++        check(len(traffic.rx.recv(65536)) == 60000, "incorrect FAIL_OPEN payload")
 +
-+static struct nfqnl_test_creation *nfqnl_test_creation_init(struct kunit *test)
-+{
-+	struct nfqnl_test_creation *ctx;
-+	unsigned int i;
 +
-+	ctx = kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
-+	if (!ctx)
-+		return NULL;
-+	spin_lock_init(&ctx->queues.instances_lock);
-+	for (i = 0; i < INSTANCE_BUCKETS; i++)
-+		INIT_HLIST_HEAD(&ctx->queues.instance_table[i]);
-+	if (kunit_add_action_or_reset(test, nfqnl_test_destroy_instance, ctx))
-+		return NULL;
-+	test->priv = ctx;
-+	kunit_activate_static_stub(test, nfqnl_set_config,
-+				   nfqnl_test_config_private);
-+	return ctx;
-+}
++def ipv4_checksum(header):
++    total = sum(struct.unpack("!10H", header))
++    while total >> 16:
++        total = (total & 0xffff) + (total >> 16)
++    return (~total) & 0xffff
 +
-+static void nfqnl_test_create_active(struct kunit *test)
-+{
-+	const struct nfqnl_msg_config_params params = {
-+		.copy_range = htonl(512),
-+		.copy_mode = NFQNL_COPY_PACKET,
-+	};
-+	struct nfqnl_test_creation *ctx = nfqnl_test_creation_init(test);
-+	struct nfqnl_instance *queue, *duplicate;
 +
-+	KUNIT_ASSERT_NOT_NULL(test, ctx);
-+	queue = instance_create(&init_net, &ctx->queues, 7, 1, 32, &params,
-+				NFQA_CFG_F_FAIL_OPEN, NFQA_CFG_F_FAIL_OPEN);
-+	ctx->instance = queue;
-+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, queue);
-+	KUNIT_EXPECT_EQ(test, ctx->config_calls, 1U);
-+	KUNIT_EXPECT_PTR_EQ(test, nfqnl_test_lookup(ctx, 7), queue);
-+	KUNIT_EXPECT_TRUE(test, queue->mem_activated);
-+	KUNIT_EXPECT_EQ(test, queue->queue_maxlen, 32U);
-+	KUNIT_EXPECT_EQ(test, queue->mem_limit, nfqnl_mem_limit(32));
-+	KUNIT_EXPECT_EQ(test, queue->copy_mode, (u8)NFQNL_COPY_PACKET);
-+	KUNIT_EXPECT_EQ(test, queue->copy_range, 512U);
-+	KUNIT_EXPECT_EQ(test, queue->flags, (u32)NFQA_CFG_F_FAIL_OPEN);
++def payload_accept(traffic):
++    with contextlib.closing(Queue()) as queue:
++        queue.configure(1, bind=True)
++        traffic.send(64)
++        queue.collect()
++        check(len(queue.held) == 1, "initial small packet was not queued")
++        packet_id = queue.held.pop()[0]
++        data = b"\xa5" * (60000 - 28)
++        address = socket.inet_aton("127.0.0.1")
++        header = struct.pack("!BBHHHBBH4s4s", 0x45, 0, 60000, 0, 0,
++                             64, socket.IPPROTO_UDP, 0, address, address)
++        checksum = ipv4_checksum(header)
++        header = header[:10] + struct.pack("!H", checksum) + header[12:]
++        udp = struct.pack("!HHHH", 12345, traffic.destination[1],
++                          len(data) + 8, 0)
++        # Delivery proves replacement succeeded; DROP could hide a failed edit.
++        queue.request(NFQ_VERDICT,
++                      attr(2, struct.pack("!II", 1, packet_id)) +  # ACCEPT
++                      attr(10, header + udp + data))  # NFQA_PAYLOAD
++        check(select.select([traffic.rx], [], [], 3)[0],
++              "expanded ACCEPT packet was not delivered")
++        check(traffic.rx.recv(65536) == data,
++              "expanded payload differs from supplied data")
++        check(queue.stats()[2] == 0, "ACCEPT verdict did not drain queue")
++        traffic.send(64)
++        queue.collect()
++        check(len(queue.held) == 1,
++              "successful payload expansion did not restore saved-charge capacity")
++        queue.release()
++        check(queue.stats()[2] == 0, "subsequent packet did not drain")
 +
-+	duplicate =
-+		instance_create(&init_net, &ctx->queues, 7, 1, 1, NULL, 0, 0);
-+	KUNIT_EXPECT_TRUE(test, IS_ERR(duplicate));
-+	if (IS_ERR(duplicate)) {
-+		KUNIT_EXPECT_EQ(test, PTR_ERR(duplicate), (long)-EEXIST);
-+	} else {
-+		instance_destroy(&ctx->queues, duplicate);
-+		rcu_barrier();
-+		flush_workqueue(nfq_cleanup_wq);
-+	}
-+	KUNIT_EXPECT_PTR_EQ(test, nfqnl_test_lookup(ctx, 7), queue);
-+	KUNIT_EXPECT_EQ(test, queue->queue_maxlen, 32U);
-+}
 +
-+static void nfqnl_test_create_inactive(struct kunit *test)
-+{
-+	struct nfqnl_test_creation *ctx = nfqnl_test_creation_init(test);
-+	struct nfqnl_instance *queue;
++def segmentation(traffic):
++    for flags, expected in [(F_GSO, 1), (0, 8)]:
++        with contextlib.closing(Queue()) as queue:
++            queue.configure(64, bind=True, flags=flags)
++            try:
++                traffic.send(8 * 1200, segment=1200)
++            except OSError as error:
++                if error.errno in (errno.EINVAL, errno.ENOPROTOOPT, errno.EOPNOTSUPP):
++                    return "UDP_SEGMENT is unavailable"
++                raise
++            queue.collect()
++            check(len(queue.held) == expected,
++                  f"GSO flags {flags}: expected {expected} entries, got {len(queue.held)}")
++            if flags:
++                check(queue.held[0][1] & SKB_GSO, "aggregate did not reach NFQUEUE")
++            queue.release()
++            check(queue.stats()[2] == 0, "segmented entries did not drain")
 +
-+	KUNIT_ASSERT_NOT_NULL(test, ctx);
-+	queue = instance_create(&init_net, &ctx->queues, 7, 1,
-+				NFQNL_QMAX_DEFAULT, NULL, 0, 0);
-+	ctx->instance = queue;
-+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, queue);
-+	KUNIT_EXPECT_EQ(test, ctx->config_calls, 1U);
-+	KUNIT_EXPECT_PTR_EQ(test, nfqnl_test_lookup(ctx, 7), queue);
-+	KUNIT_EXPECT_FALSE(test, queue->mem_activated);
-+	KUNIT_EXPECT_EQ(test, queue->copy_mode, (u8)NFQNL_COPY_NONE);
-+	KUNIT_EXPECT_EQ(test, queue->queue_maxlen, NFQNL_QMAX_DEFAULT);
-+	KUNIT_EXPECT_EQ(test, queue->memcg.pages, 0ULL);
-+}
 +
-+static void nfqnl_test_create_failure(struct kunit *test)
-+{
-+	const struct nfqnl_msg_config_params params = {
-+		.copy_mode = NFQNL_COPY_PACKET,
-+	};
-+	struct nfqnl_test_creation *ctx = nfqnl_test_creation_init(test);
++def reservation(traffic, parent):
++    if not parent:
++        return "supply --cgroup with a delegated cgroup v2 parent in a test guest"
++    parent = Path(parent).resolve()
++    check("memory" in (parent / "cgroup.subtree_control").read_text().split(),
++          "parent must already delegate the memory controller")
++    membership = next(line[3:] for line in Path("/proc/self/cgroup").read_text().splitlines()
++                      if line.startswith("0::"))
++    original = Path("/sys/fs/cgroup") / membership.lstrip("/")
++    group = parent / f"nfq-memory-{os.getpid()}"
++    group.mkdir()
++    try:
++        (group / "memory.max").write_text(str(64 << 20))
++        (group / "cgroup.procs").write_text(str(os.getpid()))
++        with contextlib.closing(Queue()) as queue:
++            try:
++                queue.configure(1 << 20, bind=True)
++            except OSError as error:
++                check(error.errno == errno.ENOMEM, f"unexpected BIND refusal: {error}")
++            else:
++                raise AssertionError("oversized capacity reservation succeeded")
++            # A refused BIND must leave no published queue behind.
++            queue.configure(32, bind=True)
++            # Later changes must continue charging the original owner.
++            (original / "cgroup.procs").write_text(str(os.getpid()))
++            try:
++                queue.configure(1 << 20, mode=0, flags=0)
++            except OSError as error:
++                check(error.errno == errno.ENOMEM, f"unexpected growth refusal: {error}")
++            else:
++                raise AssertionError("growth escaped its original owner")
++            traffic.send()
++            queue.collect()
++            check(len(queue.held) == 1, "failed growth changed the usable queue")
++            queue.release()
++            queue.configure(0)
++        # Individually bounded queues must still share their owner's budget.
++        (group / "cgroup.procs").write_text(str(os.getpid()))
++        with contextlib.ExitStack() as stack:
++            queues = []
++            refused = None
++            for number in range(10, 26):
++                candidate = stack.enter_context(contextlib.closing(Queue(number)))
++                try:
++                    candidate.configure(4096, bind=True)
++                except OSError as error:
++                    check(error.errno == errno.ENOMEM,
++                          f"unexpected aggregate refusal: {error}")
++                    refused = candidate
++                    break
++                queues.append(candidate)
++            check(queues and refused is not None,
++                  "expected successful queues followed by aggregate refusal")
++            queues[0].configure(0)
++            refused.configure(4096, bind=True)
++        # Reparent an occupied reservation, then grow and refund it in its parent.
++        (group / "cgroup.procs").write_text(str(os.getpid()))
++        with contextlib.closing(Queue()) as queue:
++            queue.configure(32, bind=True)
++            (original / "cgroup.procs").write_text(str(os.getpid()))
++            group.rmdir()
++            queue.configure(64)
++            queue.configure(0)
++    finally:
++        (original / "cgroup.procs").write_text(str(os.getpid()))
++        if group.exists():
++            group.rmdir()
 +
-+	KUNIT_ASSERT_NOT_NULL(test, ctx);
-+	ctx->config_error = -ENOMEM;
-+	ctx->instance = instance_create(&init_net, &ctx->queues, 7, 1, 32,
-+					&params, 0, 0);
-+	KUNIT_ASSERT_TRUE(test, IS_ERR(ctx->instance));
-+	KUNIT_EXPECT_EQ(test, PTR_ERR(ctx->instance), (long)-ENOMEM);
-+	KUNIT_EXPECT_EQ(test, ctx->config_calls, 1U);
-+	KUNIT_EXPECT_PTR_EQ(test, nfqnl_test_lookup(ctx, 7), NULL);
-+}
 +
-+static struct kunit_case nfqnl_mem_test_cases[] = {
-+	KUNIT_CASE(nfqnl_test_boundaries),
-+	KUNIT_CASE(nfqnl_test_small_queue),
-+	KUNIT_CASE(nfqnl_test_page_head),
-+	KUNIT_CASE(nfqnl_test_detached_charge),
-+	KUNIT_CASE(nfqnl_test_limit_update),
-+	KUNIT_CASE(nfqnl_test_create_active),
-+	KUNIT_CASE(nfqnl_test_create_inactive),
-+	KUNIT_CASE(nfqnl_test_create_failure),
-+	{}
-+};
++def reservation_startup(traffic, parent):
++    if not parent:
++        return "supply --cgroup with a delegated cgroup v2 parent in a test guest"
++    parent = Path(parent).resolve()
++    check("memory" in (parent / "cgroup.subtree_control").read_text().split(),
++          "parent must already delegate the memory controller")
++    membership = next(line[3:] for line in Path("/proc/self/cgroup").read_text().splitlines()
++                      if line.startswith("0::"))
++    original = Path("/sys/fs/cgroup") / membership.lstrip("/")
++    group = parent / f"nfq-startup-{os.getpid()}"
++    group.mkdir()
++    bind = attr(CFG_CMD, struct.pack("!BBH", 1, 0, socket.AF_INET))
++    activate = attr(CFG_PARAMS, struct.pack("!IB", 0, 1))  # COPY_META
++    try:
++        # Enough for a small queue, but less than the default 1024-slot allowance.
++        (group / "memory.max").write_text(str(1 << 20))
++        (group / "cgroup.procs").write_text(str(os.getpid()))
++        with contextlib.closing(Queue()) as queue:
++            queue.request(NFQ_CONFIG, bind)
++            check(queue.stats()[3] == 0, "BIND enabled packet admission")
++            # Inactive sizing must not reserve capacity either.
++            queue.request(NFQ_CONFIG, u32(CFG_MAXLEN, 1 << 20))
++            queue.request(NFQ_CONFIG, u32(CFG_MAXLEN, 1))
++            (original / "cgroup.procs").write_text(str(os.getpid()))
++            try:
++                queue.configure(1 << 20, flags=F_GSO | F_FAIL_OPEN)
++            except OSError as error:
++                check(error.errno == errno.ENOMEM,
++                      f"unexpected activation refusal: {error}")
++            else:
++                raise AssertionError("activation escaped its BIND-time owner")
++            check(queue.stats()[3] == 0, "failed activation changed copy mode")
++            # A mode-only retry also verifies that failed activation kept MAXLEN.
++            queue.request(NFQ_CONFIG, activate)
++            traffic.send(64)
++            queue.collect()
++            check(len(queue.held) == 1, "small queue did not become usable")
++            queue.request(NFQ_CONFIG, attr(CFG_PARAMS, struct.pack("!IB", 0, 0)))
++            stats = queue.stats()
++            check(stats[3] == 0 and stats[2] == 1,
++                  "COPY_NONE discarded a retained packet")
++            try:
++                queue.request(NFQ_CONFIG, u32(CFG_MAXLEN, 1 << 20))
++            except OSError as error:
++                check(error.errno == errno.ENOMEM,
++                      f"unexpected COPY_NONE growth refusal: {error}")
++            else:
++                raise AssertionError("COPY_NONE disabled established accounting")
++            stats = queue.stats()
++            check(stats[3] == 0 and stats[2] == 1 and len(queue.held) == 1,
++                  "failed COPY_NONE growth changed mode or retained packet")
++            queue.request(NFQ_CONFIG, activate)
++            queue.release()
++            traffic.send(60000)
++            queue.collect()
++            check(not queue.held and queue.stats()[5] > 0,
++                  "failed activation changed the small queue limit")
++            check(not select.select([traffic.rx], [], [], 0.1)[0],
++                  "failed activation enabled FAIL_OPEN")
 +
-+static struct kunit_suite nfqnl_mem_test_suite = {
-+	.name = "nfnetlink_queue_memory",
-+	.init = nfqnl_test_init,
-+	.test_cases = nfqnl_mem_test_cases,
-+};
++        # BIND, final size, and mode may also arrive in one configuration message.
++        (group / "cgroup.procs").write_text(str(os.getpid()))
++        with contextlib.closing(Queue()) as queue:
++            queue.configure(1, bind=True)
++            (original / "cgroup.procs").write_text(str(os.getpid()))
++            traffic.send(64)
++            queue.collect()
++            check(len(queue.held) == 1, "bundled small-queue activation failed")
++            queue.release()
 +
-+kunit_test_suite(nfqnl_mem_test_suite);
++        # Closing before activation must release the captured owner reference.
++        (group / "cgroup.procs").write_text(str(os.getpid()))
++        with contextlib.closing(Queue()) as queue:
++            queue.request(NFQ_CONFIG, bind)
++            (original / "cgroup.procs").write_text(str(os.getpid()))
++    finally:
++        (original / "cgroup.procs").write_text(str(os.getpid()))
++        group.rmdir()
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--cgroup")
++    parser.add_argument("--inside-netns", action="store_true", help=argparse.SUPPRESS)
++    args = parser.parse_args()
++    if not all(shutil.which(tool) for tool in ("nft", "ip", "unshare")):
++        print("1..0 # SKIP nft, ip and unshare are required")
++        return 4
++    if not args.inside_netns:
++        probe = subprocess.run(["unshare", "-n", "true"], capture_output=True)
++        if probe.returncode:
++            print("1..0 # SKIP cannot create a network namespace")
++            return 4
++        return subprocess.call(["unshare", "-n", sys.executable,
++                                str(Path(__file__).resolve()), "--inside-netns",
++                                *(["--cgroup", args.cgroup] if args.cgroup else [])])
++    subprocess.run(["ip", "link", "set", "lo", "up"], check=True)
++    with contextlib.closing(Traffic()) as traffic:
++        tests = [
++            ("byte admission and individual release", lambda: retention(traffic, False)),
++            ("byte admission and batch release", lambda: retention(traffic, True)),
++            ("occupied shrink and growth", lambda: resize(traffic)),
++            ("oversized skb and FAIL_OPEN", lambda: oversized(traffic)),
++            ("payload replacement and saved-charge release", lambda: payload_accept(traffic)),
++            ("GSO and software segmentation", lambda: segmentation(traffic)),
++            ("reservation rollback and ownership", lambda: reservation(traffic, args.cgroup)),
++            ("reservation startup and activation", lambda: reservation_startup(traffic, args.cgroup)),
++        ]
++        print(f"TAP version 13\n1..{len(tests)}", flush=True)
++        failed = False
++        for number, (name, run) in enumerate(tests, 1):
++            try:
++                skip = run()
++                suffix = f" # SKIP {skip}" if skip else ""
++                print(f"ok {number} - {name}{suffix}", flush=True)
++            except (AssertionError, OSError, TimeoutError) as error:
++                print(f"not ok {number} - {name}\n# {error}", flush=True)
++                failed = True
++        return int(failed)
++
++
++if __name__ == "__main__":
++    sys.exit(main())
 
 -- 
 2.34.1
