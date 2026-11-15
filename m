@@ -1,15 +1,13 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Subject: [PATCH RFC net v4 0/8] net/iucv: serialize the HiperSockets
- receive path with the socket lock
-Date: Sat, 14 Nov 2026 20:29:18 -0500
-Message-Id: <20261114-b4-disp-fc0634a3-v4-0-f96c506447ce@proton.me>
+Date: Sat, 14 Nov 2026 20:29:19 -0500
+Subject: [PATCH RFC net v4 1/8] net/iucv: keep the window given to the peer
+ in a field of its own
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CQAxFr0K6tgmFYRLcmngAtsYFU4rWxUima
- EwId3eA5fs/7y1gklQMzsUCSb5q+o4Z3KkAfvbxIahDZqjKyhORw+BwUJtw5NLXrq+xJQ7UUMO
- tJ8jalGTU3568QXe9bFuUGe7HZ5/wEp63JqzrHzIaFPmAAAAA
-X-Change-ID: 20261114-b4-disp-fc0634a3-91cb1515c961
+Message-Id: <20261114-b4-disp-fc0634a3-v4-1-f96c506447ce@proton.me>
+References: <20261114-b4-disp-fc0634a3-v4-0-f96c506447ce@proton.me>
+In-Reply-To: <20261114-b4-disp-fc0634a3-v4-0-f96c506447ce@proton.me>
 To: Jakub Kicinski <kuba@kernel.org>, 
  Alexandra Winter <wintera@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, 
  "David S. Miller" <davem@davemloft.net>, 
@@ -19,192 +17,230 @@ Cc: Thorsten Winkler <twinkler@linux.ibm.com>,
  linux-kernel@vger.kernel.org, Nagamani PV <nagamani@linux.ibm.com>, 
  linux-s390@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794706158; l=10108;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794706158; l=9899;
  i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=NNR0QywEUYNspRhbVSWl8eAEaherI5Lxm/o/sZprxBg=;
- b=CKu1SX5uOUbGMf5oe/VTsvzg+1Iz0SMTC8++X+/d99c8m878cxWf4YsXRHWaXbTHpZ8TRJ+N3
- ML0upHJH4JdAITGwV1e2RD90VMGL2dLMH7fnHEwoGR3KI+usPhAFCTS
+ bh=tBktRCECV16AHemJJkc5PXWZncgcV3fTC9Z/nR+0JNo=;
+ b=0SnjfkybWNKJu8o/FZrTS+z+dlRC+PjjG9tdDyvwce95iQMZHPM0AfmiZSJDPp2mtwCsOPW1N
+ zif6Zx7LNf9C01kZ0hgh2nO+m+Qe7u97AlVTcSsi0DJ63vDc0F8Hptz
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-v4 of stage 1 of the socket-locking rework [1]. It is v3 [2] with the
-two findings of the AI review of v3 fixed ([3] on 1/7, [4] on 3/7) and
-the dev_hold() the netdev CI flagged replaced. Nobody else has reviewed
-v3 yet, so the rest is unchanged.
+A HiperSockets SYN carries msglimit as the receive window, and
+SO_MSGLIMIT is accepted while the socket is IUCV_BOUND, which it is
+until the SYN|ACK arrives. A msglimit changed in between leaves the peer
+with the window the SYN carried, while recvmsg() counts the frames it
+reads against the new value:
 
-  1/8  a msglimit changed while the SYN is out no longer closes the
-       socket on a peer that kept to its window, nor stalls that peer
-  2/8  iucv_send_ctrl() leaves sk_shutdown alone (new)
-  3/8  sendmsg() fails with -EPIPE when sending is shut down while it
-       waits for the window
-  4/8  recvmsg() under lock_sock()
-  5/8  the frame dispatch and three state changes moved into functions
-       of their own, no functional change
-  6/8  the HiperSockets rx path under the socket lock: a control frame
-       waits for the task that owns the socket
-  7/8  shutdown(SHUT_RD) against a frame in flight
-  8/8  EOF, not -ENOTCONN, for a reader parked when the peer closes
+- Lowered, a peer that keeps to its window has the socket closed on it
+  once the receive buffer is full and frames wait in backlog_skb_q,
+  where no window update resets the count: WARN_ON(), -EFAULT, the rest
+  of the stream lost.
+- Raised far enough, the threshold of the window update lies above the
+  window: the count never reaches it, the peer uses up its window and
+  its writer waits for an update that only a data frame from us would
+  carry.
 
-1/8 to 3/8 and 8/8 are fixes in their own right. 1/8 to 3/8 each apply
-to net without the rest; 3/8 is complete only on top of 2/8. 8/8 is
-written on top of 6/8: its hunks are in functions that 4/8 and 5/8 add.
+Record the window when the first SYN of a socket leaves, and in a
+listener's SYN|ACK, and let recvmsg() count frames against it and take
+the window-update threshold from it. A SYN that is not sent records
+nothing, and a later SYN of the socket carries the recorded window. A
+msglimit set after the first SYN no longer changes anything for that
+socket; getsockopt() still returns it. A socket connected by a SYN|ACK
+without having sent a SYN keeps msglimit as its window.
 
-Alexandra, 2/8 needs your call. v3 dropped the iucv_send_ctrl() rewrite
-as you asked, and 2/8 brings back one part of it: the function no longer
-clears SEND_SHUTDOWN around its allocation. That clear is behind the
-finding on v3 3/7 [4], behind the bit my copy of Hidayath's sk_shutdown
-test loses, and behind the two items v3's notes left open under 2/7 and
-7/7. The rest stays out: the allocation still asks for room in
-sk_sndbuf, for every control frame. Is the SEND_SHUTDOWN part fine as a
-patch of its own? If not I can fold it into 4/8; 3/8 then has the gap
-the note of v3 2/7 described, up to 4/8.
-
-RFC because one thing is missing that I can't provide. Hidayath,
-Alexandra: could one of you run v4 on z/VM the way Hidayath ran v1 [5]?
-I depend on those numbers: my setup was tuned against that run, and the
-series moves enough code to need one again before this is a PATCH. What
-I'd compare is below, with net as the baseline (the numbers from [5] in
-parentheses, on net-next unless marked). Each line names the patch where
-the code changes; the kernels I ran for it are under that patch:
-
-- recvrecv (3917 backwards reads): 0 from 4/8 on
-- sk_shutdown (565 of 7281 cycles): 0 from 2/8 on, as in my setup, or
-  from 4/8 if that test also loses the bit the way 4/8's second item
-  describes
-- shut_rd (32 of 212): as net up to 5/8, 0 from 6/8 on. 6/8 leaves the
-  window KCSAN reported on v1 [6], which shut_rd did not hit there and
-  hits here only with a udelay() added to widen it; 7/8 closes it
-- the blocked reader (-ENOTCONN in 13627 of 13627): EOF in all with 8/8
-- rxclose (51 of 906): 0 with 8/8
-- SO_MSGLIMIT lowered in IUCV_BOUND (1 message lost in 6297 cycles on
-  v1; none on net-next, which has no budget): none lost at any step.
-  The budget comes back with 6/8 and counts against the window of 1/8
-- KCSAN: the 29 reports on net-next gone, the 6 between afiucv_hs_rcv()
-  and iucv_send_ctrl() and the 2 between iucv_send_ctrl() and
-  iucv_sock_shutdown() with 2/8, the 19 between recvmsg() and
-  iucv_sock_shutdown() with 4/8, the 2 between afiucv_hs_rcv() and
-  iucv_sock_shutdown() with 7/8. Up to 7/8 the receive wait still reads
-  sk_shutdown with READ_ONCE() against shutdown()'s plain write, so a
-  report of that pair can stay until then, and on a z/VM socket after
-  it: 7/8 marks the write on the HiperSockets branch only. The hs_dev
-  report of the v1 run [6] is not one of the 29; 1/2 of the two fixes
-  posted for net on 28 Oct [7] is for it, and is not in this series
-
-My setup is QEMU TCG with an emulated HiperSockets adapter and CP, so
-rates and real SMP come only from the hardware, and I have no KCSAN
-build of it. Where the two disagree, the hardware is the reference.
-
-Changes in v4 (details below the --- of each patch):
-
-- 1/8: a second SYN of the socket carries the window the first one gave
-  and records nothing, and the window is recorded when the first SYN is
-  handed to the device, not while its header is built (AI review [3])
-- 2/8 is new, see above. With it the writer that 4/8 lets wait for send
-  memory without the socket lock returns -EPIPE when shutdown(SHUT_WR)
-  runs meanwhile; in v3 it could sleep through that wake-up (AI review
-  [4])
-- 6/8: the SYN that waits in the backlog holds its device with
-  netdev_hold() and netdev_put() (netdev CI)
-- 4/8 and 7/8: message only, for what 2/8 changes under them
-
-Not in v4, and what that costs: five of my 53 default tests (the set v2
-was tested with) fail on v4, as they do on net. With the three pieces
-v3 dropped applied on top again (the rest of the iucv_send_ctrl()
-rewrite, the window update only while connected, the credit reset), all
-53 pass.
-
-- iucv_send_ctrl() still needs room in sk_sndbuf for every control
-  frame. With the send memory used up, which on HiperSockets lasts until
-  TX completion, shutdown(SHUT_WR) sends no SHT and the peer never reads
-  EOF (two tests), and the FIN of NETDEV_GOING_DOWN does not go out
-  (one)
-- recvmsg() still sends a window update after the peer's FIN, a frame
-  nobody uses (one); [7] 2/2 has the test for it
-- a window update that finds no room leaves its credit, and the SHT read
-  next is counted past the window: WARN_ON() and -EFAULT where EOF was
-  due (one). [7] 2/2 ends that by not counting the SHT
-
-net fails three more: two that 3/8 fixes and one that 8/8 fixes.
-
-Tested on s390x under QEMU TCG, KASAN + PROVE_LOCKING +
-DEBUG_ATOMIC_SLEEP, on net main, against the emulated adapter under the
-real qeth and qdio drivers and the emulated CP, as v3 was. Two vCPUs
-under -icount, which runs one at a time; the race tests also with seeded
-short slices, and the two-reader test of 4/8 under MTTCG. No KASAN or
-lockdep splat on net, at any step of the series or on the kernels that
-follow. Of 25 kernels each with one piece of the series taken out or
-changed (6 for 1/8, 1 for 2/8, 3 for 3/8, 1 for 4/8, 10 for 6/8, 1 for
-7/8, 3 for 8/8; the tracker build under 6/8 is not one of them), 23 fail
-a test the series passes; two of the 23 need a test kernel under them,
-one that drops the first SYN in the device (1/8) and one that makes two
-waits overlap (2/8). The other two show only with a delay added to hold
-their window open: the one without 7/8's spinlock and the one without
-the receive-queue test in 8/8's wait. The numbers are below the --- of
-each patch. Logs on request.
-
-Still open, as in v3: afiucv_hs_callback_txnotify() and the z/VM
-callbacks change sk_state without checking whether a task owns the
-socket, and so does afiucv_netdev_event(), whose fix Nagamani is holding
-for this series [8]. backlog_skb_q stays unbounded for a peer that
-ignores its window. A listener with a full accept queue still leaks the
-child of the SYN it refuses (measured on net and with the series,
-numbers under 6/8), and so does a SYN|ACK that fails to go out (by
-inspection) [9]. connect() tests sk_state before lock_sock(), so a
-connected socket can still send a SYN [3]. On a z/VM socket
-iucv_sock_shutdown() and recvmsg() update sk_shutdown under lock_sock()
-and iucv_callback_shutdown() under bh_lock_sock(), so either side can
-lose its bit, and iucv_callback_rx() tests RCV_SHUTDOWN with no lock:
-7/8 takes the spinlock on the HiperSockets branch only. And
-iucv_callback_connreq() answers a path request for a listener that
-close() is emptying, the race 6/8 closes for a HiperSockets SYN.
-
-Seen while working on v4, in net as well and not touched here:
-
-- a HiperSockets recv() that owes a window update while the send memory
-  is full sets IUCV_DISCONN: iucv_send_ctrl() finds no room and
-  recvmsg() takes that for a dead path. It is the same failed update as
-  in the last item of "Not in v4": that item is what the next read does
-  with the credit, this one the state the socket is left in. Measured on
-  net and with the series
-- a z/VM sendmsg() that waits for send memory is not ended when the
-  peer severs the path: the memory is freed only at close(). By
-  inspection
-- afiucv_hs_send() passes NET_XMIT_DROP through, so a send() or
-  connect() whose frame the qdisc dropped returns 1. By inspection for
-  the qdisc; the test kernel of 1/8 that drops the SYN shows the
-  connect() half
-
-[1] https://lore.kernel.org/all/20260724222917.134769-1-hexlabsecurity@proton.me/
-[2] https://lore.kernel.org/netdev/20261110-b4-disp-2a6b4364-v3-0-35677b68e697@proton.me/
-[3] https://lore.kernel.org/all/sashiko-outbox-210383@kernel.org/
-[4] https://lore.kernel.org/all/sashiko-outbox-210385@kernel.org/
-[5] https://lore.kernel.org/netdev/51a4a40a-f34b-4d41-b049-69aa53f4dcf5@linux.ibm.com/
-[6] https://lore.kernel.org/netdev/b3fea2ca-25ff-42c0-812c-f8cc6bb6667e@linux.ibm.com/
-[7] https://lore.kernel.org/netdev/20261028-b4-disp-dd3e4ebb-v2-0-3747658d59bd@proton.me/
-[8] https://lore.kernel.org/netdev/1d9d3cc1-24fb-40e0-a4c7-6fbfbcf4dc37@linux.ibm.com/
-[9] https://lore.kernel.org/netdev/5f88daf4-cd8e-4464-b132-ac45be205121@linux.ibm.com/
-
+Fixes: 3881ac441f64 ("af_iucv: add HiperSockets transport")
+Fixes: 800c5eb7b5eb ("af_iucv: change net_device handling for HS transport")
+Cc: stable@vger.kernel.org # 6.18.x
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Bryam Vargas (8):
-      net/iucv: keep the window given to the peer in a field of its own
-      net/iucv: do not clear SEND_SHUTDOWN to send a control frame
-      net/iucv: fail sendmsg() with EPIPE once sending is shut down
-      net/iucv: run recvmsg() under the socket lock
-      net/iucv: factor out the HiperSockets frame dispatch and state changes
-      net/iucv: serialize HiperSockets receive with the socket lock
-      net/iucv: set RCV_SHUTDOWN under the socket spinlock
-      net/iucv: return EOF to a reader parked when the peer closes
+v4 (AI review of v3, [3] in the cover letter):
+- a later SYN of the socket carries the window the first one gave and
+  records nothing. v3 wrote the field for every SYN, so a second
+  connect() in IUCV_BOUND after a SO_MSGLIMIT change left the peer of
+  the first SYN with a window the socket no longer counted against
+- the window is recorded when the first SYN is handed to the device,
+  after the device and MTU tests, and forgotten if that transmit fails.
+  v3 recorded it while building the header: a connect() that failed
+  with -ENETDOWN left a window nobody had received
+- not changed: connect() still tests sk_state before lock_sock(), the
+  last case of that review. A SYN sent that way does not move the
+  window: it is recorded by then, or the socket was connected by a
+  SYN|ACK it never asked for and the SYN records the msglimit the
+  socket already counts against
+v3: https://lore.kernel.org/netdev/20261110-b4-disp-2a6b4364-v3-1-35677b68e697@proton.me/
 
- include/net/iucv/af_iucv.h |   8 +
- net/iucv/af_iucv.c         | 687 +++++++++++++++++++++++++++++++++++++--------
- 2 files changed, 579 insertions(+), 116 deletions(-)
+It goes first because the backlog of 6/8 counts against this window: on
+the live msglimit it would drop data without a trace, as in Hidayath's
+SO_MSGLIMIT scenario on v1.
+
+Both cases in the message repro in the emulated setup, with the SYN|ACK
+held back in the adapter while the limit changes:
+
+- SO_MSGLIMIT 8 when the SYN goes out, lowered to 2, minimum SO_RCVBUF,
+  the peer sends its 8 frames. net reads 2, then takes the WARN_ON() in
+  iucv_sock_recvmsg() and returns -EFAULT; with this patch all 8 arrive.
+  With the default SO_RCVBUF net delivers the 8 as well: a window update
+  goes out after each read and resets the count.
+- SO_MSGLIMIT 2 when the SYN goes out, raised to 8. The peer sends 2 and
+  the socket reads both. On net no window update leaves and the peer's
+  next send returns -EAGAIN; with this patch the update leaves and the
+  send goes through. With the limit left at 2 both kernels send the
+  update.
+
+The v4 items, same setup:
+
+- The lowered case with a second connect() after the limit changed, so
+  that a second SYN leaves with the SYN|ACK of the first still held. The
+  child the first SYN made sends its 8 frames: net reads 2, WARN_ON()
+  and -EFAULT; this patch reads all 8. With the field written by every
+  SYN again the socket reads 2 and takes the -EFAULT whichever child
+  sends. net and this patch read all 8 from the child the second SYN
+  made; with the second SYN carrying the live msglimit that child stops
+  after 2 frames, as the socket counts against 8 and owes it no update.
+- connect() with the interface down and SO_MSGLIMIT 1: -ENETDOWN, no SYN
+  leaves. Interface up, the limit raised to 8, then a forged SYN|ACK and
+  three frames. net and this patch read all three; with the window
+  recorded ahead of the device test, as in v3, the socket reads one and
+  the next read takes the WARN_ON() and returns -EFAULT.
+- For a transmit that fails after the record I have no qdisc that drops
+  on demand, so a test kernel drops the SYN to a destination name that
+  begins with DSY: it frees the skb where dev_queue_xmit() would be
+  called and hands back NET_XMIT_DROP. The sequence above with that
+  SYN: the three frames are read; with the record left in place the
+  second read fails as above.
+
+Not changed, and for the maintainers to call: once a first SYN has
+left, SO_MSGLIMIT is still accepted while the socket is IUCV_BOUND and
+no longer moves the window, even when the next connect() names another
+peer. The window given and the window counted agree, which is all this
+patch is after. Refusing SO_MSGLIMIT once a SYN has left, or forgetting
+the window when the destination changes, would each be a change of its
+own.
+
+The last sentence of the message is the third item of the AI review of
+v2. net connects an IUCV_BOUND socket on any SYN|ACK, whether or not it
+sent a SYN. The series leaves that as it is. With a forged SYN|ACK and
+one byte for a socket that never called connect(), net and this patch
+return the byte; with the window left at 0, as in v2, the read takes
+the WARN_ON() and returns -EFAULT.
+
+With afiucv_hs_window() back on the live msglimit, the lowered case
+loses data in the backlog of 6/8 and the raised one stalls as on net.
+None of this shows in the 53 default tests: with this patch the same
+eight fail as on net, with the same result.
 ---
-base-commit: 8373c4e8863ac5f5120d200527aca9880330f343
-change-id: 20261114-b4-disp-fc0634a3-91cb1515c961
+ include/net/iucv/af_iucv.h |  1 +
+ net/iucv/af_iucv.c         | 35 ++++++++++++++++++++++++++++++++---
+ 2 files changed, 33 insertions(+), 3 deletions(-)
 
-Best regards,
---  
-Bryam Vargas <hexlabsecurity@proton.me>
+diff --git a/include/net/iucv/af_iucv.h b/include/net/iucv/af_iucv.h
+index df85d19fbf84..6decbb1f34b3 100644
+--- a/include/net/iucv/af_iucv.h
++++ b/include/net/iucv/af_iucv.h
+@@ -130,6 +130,7 @@ struct iucv_sock {
+ 	u8			flags;
+ 	u16			msglimit;
+ 	u16			msglimit_peer;
++	u16			msglimit_adv;	/* window given to the peer */
+ 	atomic_t		skbs_in_xmit;
+ 	atomic_t		msg_sent;
+ 	atomic_t		msg_recv;
+diff --git a/net/iucv/af_iucv.c b/net/iucv/af_iucv.c
+index ce13fe3c85b5..daed2a3cfd66 100644
+--- a/net/iucv/af_iucv.c
++++ b/net/iucv/af_iucv.c
+@@ -176,6 +176,22 @@ static inline int iucv_below_msglim(struct sock *sk)
+ 			(atomic_read(&iucv->pendings) <= 0));
+ }
+ 
++/**
++ * afiucv_hs_window() - the window a HiperSockets socket gave its peer
++ * @iucv:	the socket
++ *
++ * The msglimit carried by its first SYN that was handed to the device, or
++ * by its SYN|ACK. A socket that sent neither has msglimit as its window:
++ * one about to send its first SYN, or one connected by a SYN|ACK it did not
++ * ask for.
++ *
++ * Return: the frames the peer may send before it needs a window update.
++ */
++static u16 afiucv_hs_window(const struct iucv_sock *iucv)
++{
++	return iucv->msglimit_adv ?: iucv->msglimit;
++}
++
+ /*
+  * iucv_sock_wake_msglim() - Wake up thread waiting on msg limit
+  */
+@@ -200,6 +216,7 @@ static int afiucv_hs_send(struct iucv_message *imsg, struct sock *sock,
+ 	struct iucv_sock *iucv = iucv_sk(sock);
+ 	struct af_iucv_trans_hdr *phs_hdr;
+ 	int err, confirm_recv = 0;
++	bool first_syn = false;
+ 
+ 	phs_hdr = skb_push(skb, sizeof(*phs_hdr));
+ 	memset(phs_hdr, 0, sizeof(*phs_hdr));
+@@ -209,7 +226,7 @@ static int afiucv_hs_send(struct iucv_message *imsg, struct sock *sock,
+ 	phs_hdr->version = 1;
+ 	phs_hdr->flags = flags;
+ 	if (flags == AF_IUCV_FLAG_SYN)
+-		phs_hdr->window = iucv->msglimit;
++		phs_hdr->window = afiucv_hs_window(iucv);
+ 	memcpy(phs_hdr->destUserID, iucv->dst_user_id, 8);
+ 	memcpy(phs_hdr->destAppName, iucv->dst_name, 8);
+ 	memcpy(phs_hdr->srcUserID, iucv->src_user_id, 8);
+@@ -255,11 +272,21 @@ static int afiucv_hs_send(struct iucv_message *imsg, struct sock *sock,
+ 			phs_hdr->flags = phs_hdr->flags | AF_IUCV_FLAG_WIN;
+ 	}
+ 
++	/* The first SYN to leave: its window is what the peer may send us,
++	 * whatever msglimit becomes. A later SYN carries it.
++	 */
++	if (flags == AF_IUCV_FLAG_SYN && !iucv->msglimit_adv) {
++		iucv->msglimit_adv = iucv->msglimit;
++		first_syn = true;
++	}
++
+ 	atomic_inc(&iucv->skbs_in_xmit);
+ 	err = dev_queue_xmit(skb);
+ 	if (net_xmit_eval(err)) {
+ 		atomic_dec(&iucv->skbs_in_xmit);
+ 		atomic_add(confirm_recv, &iucv->msg_recv);
++		if (first_syn)
++			iucv->msglimit_adv = 0;
+ 	}
+ 	return net_xmit_eval(err);
+ 
+@@ -1320,7 +1347,8 @@ static int iucv_sock_recvmsg(struct socket *sock, struct msghdr *msg,
+ 		consume_skb(skb);
+ 		if (iucv->transport == AF_IUCV_TRANS_HIPER) {
+ 			atomic_inc(&iucv->msg_recv);
+-			if (atomic_read(&iucv->msg_recv) > iucv->msglimit) {
++			if (atomic_read(&iucv->msg_recv) >
++			    afiucv_hs_window(iucv)) {
+ 				WARN_ON(1);
+ 				iucv_sock_close(sk);
+ 				return -EFAULT;
+@@ -1345,7 +1373,7 @@ static int iucv_sock_recvmsg(struct socket *sock, struct msghdr *msg,
+ 				iucv_process_message_q(sk);
+ 			if (iucv->transport == AF_IUCV_TRANS_HIPER &&
+ 			    atomic_read(&iucv->msg_recv) >=
+-							iucv->msglimit / 2)
++						afiucv_hs_window(iucv) / 2)
+ 				send_win = true;
+ 		}
+ 		spin_unlock_bh(&iucv->message_q.lock);
+@@ -1926,6 +1954,7 @@ static int afiucv_hs_callback_syn(struct sock *sk, struct sk_buff *skb)
+ 	afiucv_swap_src_dest(skb);
+ 	trans_hdr->flags = AF_IUCV_FLAG_SYN | AF_IUCV_FLAG_ACK;
+ 	trans_hdr->window = niucv->msglimit;
++	niucv->msglimit_adv = niucv->msglimit;
+ 	/* if receiver acks the xmit connection is established */
+ 	err = dev_queue_xmit(skb);
+ 	if (!err) {
+
+-- 
+2.56.0
 
