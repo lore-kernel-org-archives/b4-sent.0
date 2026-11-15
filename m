@@ -1,10 +1,11 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Date: Mon, 16 Nov 2026 01:50:17 +0530
-Subject: [PATCH 09/11] arm64: dts: qcom: Add Molokai (SM8845) SoC dtsi
+Date: Mon, 16 Nov 2026 01:50:18 +0530
+Subject: [PATCH 10/11] arm64: dts: qcom: molokai: Describe the Adreno 829
+ GPU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-molokai-soc-v1-9-3b2ee920fa3b@yahoo.com>
+Message-Id: <20261116-molokai-soc-v1-10-3b2ee920fa3b@yahoo.com>
 References: <20261116-molokai-soc-v1-0-3b2ee920fa3b@yahoo.com>
 In-Reply-To: <20261116-molokai-soc-v1-0-3b2ee920fa3b@yahoo.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -17,243 +18,166 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794774008; l=5077;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794774008; l=4118;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=dN4ehkKmhYmopR/D8W5OecyyWoWfD4UaBoOxVLeHzzI=;
- b=9dKCVynVqyOJlCguxOpqqvHvWzuLNcP4IJkVG4WKs0Md64rVCqAWC1r9aSFpW/gKaAF/SR+dw
- Aa3Fy5XnUroDNwsk3cBz8TPK4IYT496Yj+oLbAQn+SERoA29trYOBUW
+ bh=KV10ej5y8FLKIBJyutRokQTWdFziMzi+9h+0oYQJfbE=;
+ b=RmYt54SKvuY4Vl5r+LDManwJ6/CCHWu6VZ18TN5sBbrBnUnoGnMGiu2KaTkplWRTzPOVfq6BA
+ HCE/dzGfDZhA4tbUEso0knXYHwWfViSDQDITwKlNqe76D4i50VkCYwF
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Molokai is a Kaanapali derivative. Describe it on top of the Kaanapali
-dtsi: it has its own TLMM, with different pins for most serial engines
-and a different GPIO to PDC wakeup map, and a PDC with one more interrupt
-range. It has neither the I2C master hub nor the fourth QUP wrapper, and
-QUP3 SE5 does not exist. Its graphics clock controller is not compatible
-with the Kaanapali one.
-
-The SDC2 lines are muxed on regular GPIOs instead of dedicated pins, so
-the Kaanapali SDC2 pin states are dropped; boards using SDC2 describe
-their own.
+The Molokai GPU is an Adreno 829 instead of the Kaanapali Adreno 840. It
+has no speed bin fuse and its own set of operating points.
 
 Assisted-by: LLM
 Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
- arch/arm64/boot/dts/qcom/molokai.dtsi | 204 ++++++++++++++++++++++++++++++++++
- 1 file changed, 204 insertions(+)
+ arch/arm64/boot/dts/qcom/molokai.dtsi | 123 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 123 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/molokai.dtsi b/arch/arm64/boot/dts/qcom/molokai.dtsi
-new file mode 100644
-index 000000000000..82fd31bda1d9
---- /dev/null
+index 82fd31bda1d9..3b9772edd68f 100644
+--- a/arch/arm64/boot/dts/qcom/molokai.dtsi
 +++ b/arch/arm64/boot/dts/qcom/molokai.dtsi
-@@ -0,0 +1,204 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2026 Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-+ *
-+ * Molokai (SM8845) is a Kaanapali derivative with its own TLMM: the pins of
-+ * most serial engines and all the GPIO wakeup interrupts are different. It
-+ * has no I2C master hub, no fourth QUP wrapper and no QUP3 SE5, and its PDC
-+ * maps one more interrupt range. The SDC2 lines are muxed on regular GPIOs
-+ * instead of dedicated pins, and the GPU is an Adreno 829 instead of the
-+ * Adreno 840.
-+ */
-+#include "kaanapali.dtsi"
-+
-+/delete-node/ &gpi_dma4;
-+/delete-node/ &i2c_master_hub;
-+/delete-node/ &qupv3_4;
-+/delete-node/ &uart18;
-+
-+/delete-node/ &hub_i2c0_data_clk;
-+/delete-node/ &hub_i2c1_data_clk;
-+/delete-node/ &hub_i2c2_data_clk;
-+/delete-node/ &hub_i2c3_data_clk;
-+/delete-node/ &hub_i2c4_data_clk;
-+/delete-node/ &qup_i2c19_data_clk;
-+/delete-node/ &qup_i2c20_data_clk;
-+/delete-node/ &qup_i2c21_data_clk;
-+/delete-node/ &qup_i2c22_data_clk;
-+/delete-node/ &qup_i2c23_data_clk;
-+/delete-node/ &qup_spi19_cs;
-+/delete-node/ &qup_spi19_data_clk;
-+/delete-node/ &qup_spi20_cs;
-+/delete-node/ &qup_spi20_data_clk;
-+/delete-node/ &qup_spi21_cs;
-+/delete-node/ &qup_spi21_data_clk;
-+/delete-node/ &qup_uart18_cts_rts;
-+/delete-node/ &qup_uart18_default;
-+/delete-node/ &sdc2_default;
-+/delete-node/ &sdc2_sleep;
-+
-+&gpucc {
-+	compatible = "qcom,molokai-gpucc";
+@@ -12,6 +12,7 @@
+ #include "kaanapali.dtsi"
+ 
+ /delete-node/ &gpi_dma4;
++/delete-node/ &gpu_opp_table;
+ /delete-node/ &i2c_master_hub;
+ /delete-node/ &qupv3_4;
+ /delete-node/ &uart18;
+@@ -37,6 +38,128 @@
+ /delete-node/ &sdc2_default;
+ /delete-node/ &sdc2_sleep;
+ 
++&gmu {
++	compatible = "qcom,adreno-gmu-829.0", "qcom,adreno-gmu";
 +};
 +
-+&pdc {
-+	compatible = "qcom,molokai-pdc", "qcom,pdc";
-+	qcom,pdc-ranges = <0 745 38>,
-+			  <40 785 11>,
-+			  <51 527 4>,
-+			  <58 534 2>,
-+			  <61 537 20>,
-+			  <84 559 14>,
-+			  <98 609 32>,
-+			  <130 717 12>,
-+			  <142 251 5>,
-+			  <147 796 16>,
-+			  <163 783 2>,
-+			  <165 531 2>,
-+			  <167 536 1>,
-+			  <168 557 2>,
-+			  <170 415 1>,
-+			  <171 438 1>,
-+			  <172 579 1>,
-+			  <173 703 1>,
-+			  <174 708 1>,
-+			  <175 714 1>,
-+			  <176 68 1>,
-+			  <177 86 1>,
-+			  <178 96 1>,
-+			  <179 249 1>,
-+			  <180 504 9>;
++&gpu {
++	compatible = "qcom,adreno-44030a00", "qcom,adreno";
++
++	/* No GPU speed bin fuse */
++	/delete-property/ nvmem-cells;
++	/delete-property/ nvmem-cell-names;
++
++	gpu_opp_table: opp-table {
++		compatible = "operating-points-v2-adreno",
++			     "operating-points-v2";
++
++		opp-195000000 {
++			opp-hz = /bits/ 64 <195000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_LOW_SVS_D2>;
++			opp-peak-kBps = <2136718>;
++			qcom,opp-acd-level = <0xc82f5ffd>;
++		};
++
++		opp-301000000 {
++			opp-hz = /bits/ 64 <301000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_LOW_SVS_D1>;
++			opp-peak-kBps = <5285156>;
++			qcom,opp-acd-level = <0xc82f5ffd>;
++		};
++
++		opp-403000000 {
++			opp-hz = /bits/ 64 <403000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_LOW_SVS>;
++			opp-peak-kBps = <5285156>;
++			qcom,opp-acd-level = <0xc8295ffd>;
++		};
++
++		opp-496000000 {
++			opp-hz = /bits/ 64 <496000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_LOW_SVS_L1>;
++			opp-peak-kBps = <5285156>;
++			qcom,opp-acd-level = <0xc8295ffd>;
++		};
++
++		opp-589000000 {
++			opp-hz = /bits/ 64 <589000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_SVS>;
++			opp-peak-kBps = <6074218>;
++			qcom,opp-acd-level = <0xc02b5ffd>;
++		};
++
++		opp-660000000 {
++			opp-hz = /bits/ 64 <660000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_SVS_L0>;
++			opp-peak-kBps = <6074218>;
++			qcom,opp-acd-level = <0x882f5ffd>;
++		};
++
++		opp-714000000 {
++			opp-hz = /bits/ 64 <714000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_SVS_L1>;
++			opp-peak-kBps = <6074218>;
++			qcom,opp-acd-level = <0x882f5ffd>;
++		};
++
++		opp-732000000 {
++			opp-hz = /bits/ 64 <732000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_SVS_L2>;
++			opp-peak-kBps = <8171875>;
++			qcom,opp-acd-level = <0x882e5ffd>;
++		};
++
++		opp-795000000 {
++			opp-hz = /bits/ 64 <795000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_NOM>;
++			opp-peak-kBps = <12449218>;
++			qcom,opp-acd-level = <0x882d5ffd>;
++		};
++
++		opp-891000000 {
++			opp-hz = /bits/ 64 <891000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_NOM_L1>;
++			opp-peak-kBps = <12449218>;
++			qcom,opp-acd-level = <0xa82b5ffd>;
++		};
++
++		opp-975000000 {
++			opp-hz = /bits/ 64 <975000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_TURBO>;
++			opp-peak-kBps = <14398437>;
++			qcom,opp-acd-level = <0x882b5ffd>;
++		};
++
++		opp-1025000000 {
++			opp-hz = /bits/ 64 <1025000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_TURBO_L0>;
++			opp-peak-kBps = <14398437>;
++			qcom,opp-acd-level = <0xa82a5ffd>;
++		};
++
++		opp-1075000000 {
++			opp-hz = /bits/ 64 <1075000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_TURBO_L1>;
++			opp-peak-kBps = <14398437>;
++			qcom,opp-acd-level = <0x882a5ffd>;
++		};
++
++		opp-1150000000 {
++			opp-hz = /bits/ 64 <1150000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_TURBO_L2>;
++			opp-peak-kBps = <18671875>;
++			qcom,opp-acd-level = <0xa8295ffd>;
++		};
++
++		opp-1225000000 {
++			opp-hz = /bits/ 64 <1225000000>;
++			opp-level = <RPMH_REGULATOR_LEVEL_TURBO_L3>;
++			opp-peak-kBps = <18671875>;
++			qcom,opp-acd-level = <0x88295ffd>;
++		};
++	};
 +};
 +
-+&qup_i2c0_data_clk {
-+	pins = "gpio32", "gpio33";
-+};
-+
-+&qup_i2c1_data_clk {
-+	pins = "gpio36", "gpio37";
-+};
-+
-+&qup_i2c4_data_clk {
-+	pins = "gpio48", "gpio49";
-+};
-+
-+&qup_i2c5_data_clk {
-+	pins = "gpio72", "gpio73";
-+	function = "qup1_se5_mira";
-+};
-+
-+&qup_i2c10_data_clk {
-+	pins = "gpio8", "gpio9";
-+};
-+
-+&qup_i2c11_data_clk {
-+	pins = "gpio12", "gpio13";
-+};
-+
-+&qup_i2c12_data_clk {
-+	pins = "gpio117", "gpio118";
-+	function = "qup2_se4_mirb";
-+};
-+
-+&qup_i2c14_data_clk {
-+	pins = "gpio68", "gpio69";
-+};
-+
-+&qup_i2c15_data_clk {
-+	pins = "gpio80", "gpio81";
-+};
-+
-+&qup_i2c16_data_clk {
-+	pins = "gpio76", "gpio77";
-+};
-+
-+&qup_i2c17_data_clk {
-+	pins = "gpio52", "gpio53";
-+};
-+
-+&qup_spi0_cs {
-+	pins = "gpio35";
-+};
-+
-+&qup_spi0_data_clk {
-+	pins = "gpio32", "gpio33", "gpio34";
-+};
-+
-+&qup_spi1_cs {
-+	pins = "gpio39";
-+};
-+
-+&qup_spi1_data_clk {
-+	pins = "gpio36", "gpio37", "gpio38";
-+};
-+
-+&qup_spi4_cs {
-+	pins = "gpio51";
-+};
-+
-+&qup_spi4_data_clk {
-+	pins = "gpio48", "gpio49", "gpio50";
-+};
-+
-+&qup_spi5_cs {
-+	pins = "gpio75";
-+	function = "qup1_se5_mira";
-+};
-+
-+&qup_spi5_data_clk {
-+	pins = "gpio72", "gpio73", "gpio74";
-+	function = "qup1_se5_mira";
-+};
-+
-+&qup_spi10_cs {
-+	pins = "gpio11";
-+};
-+
-+&qup_spi10_data_clk {
-+	pins = "gpio8", "gpio9", "gpio10";
-+};
-+
-+&qup_spi11_cs {
-+	pins = "gpio15";
-+};
-+
-+&qup_spi11_data_clk {
-+	pins = "gpio12", "gpio13", "gpio14";
-+};
-+
-+&qup_spi14_cs {
-+	pins = "gpio71";
-+};
-+
-+&qup_spi14_data_clk {
-+	pins = "gpio68", "gpio69", "gpio70";
-+};
-+
-+&qup_spi15_cs {
-+	pins = "gpio83";
-+};
-+
-+&qup_spi15_data_clk {
-+	pins = "gpio80", "gpio81", "gpio82";
-+};
-+
-+&qup_spi16_cs {
-+	pins = "gpio147";
-+};
-+
-+&qup_spi16_data_clk {
-+	pins = "gpio76", "gpio77", "gpio146";
-+};
-+
-+&qup_spi17_cs {
-+	pins = "gpio55";
-+};
-+
-+&qup_spi17_data_clk {
-+	pins = "gpio52", "gpio53", "gpio54";
-+};
-+
-+&tlmm {
-+	compatible = "qcom,molokai-tlmm";
-+	gpio-ranges = <&tlmm 0 0 206>;
-+};
+ &gpucc {
+ 	compatible = "qcom,molokai-gpucc";
+ };
 
 -- 
 2.56.0
