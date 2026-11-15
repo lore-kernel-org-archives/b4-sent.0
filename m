@@ -1,15 +1,12 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Subject: [PATCH 0/2] Add support for the BOE ILI97680A AMOLED panel of the
- Motorola Signature
-Date: Mon, 16 Nov 2026 01:50:20 +0530
-Message-Id: <20261116-vantage-panel-v1-0-30b95bd49216@yahoo.com>
+Date: Mon, 16 Nov 2026 01:50:21 +0530
+Subject: [PATCH 1/2] dt-bindings: display: panel: Add Ilitek ILI97680A
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QpAMBTG8VdZ59rKFiteRS6OOTjSaBspeXfD5
- e+r739BIM8UoBYXeDo48OoSVCbATuhGktwng861UUoZeaCLmOYNHS2y6owuC8QcCw3ps3ka+Px
- 6Tfs77N1MNr4RuO8HSWa8b3EAAAA=
-X-Change-ID: 20261116-vantage-panel-9b6254aa0a42
+Message-Id: <20261116-vantage-panel-v1-1-30b95bd49216@yahoo.com>
+References: <20261116-vantage-panel-v1-0-30b95bd49216@yahoo.com>
+In-Reply-To: <20261116-vantage-panel-v1-0-30b95bd49216@yahoo.com>
 To: Venkat Yadlapati <venkat.yadlapati@yahoo.com>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
@@ -21,47 +18,122 @@ To: Venkat Yadlapati <venkat.yadlapati@yahoo.com>,
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794774020; l=1422;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794774020; l=2944;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=KQjjdkBwQ6+2i8+eBdXH5aAGDT7OhKlPtqt4R3BsY5g=;
- b=ejJ6ZaTaQUZI4fGanN319Tuz3hrXmYLxTAEG/DwdOoVn1j/i3x252I00pV4uqEVZ7xTMv1JYI
- +oHkJ/z909GBblpPtC3OoDvVyFnicdwp8njYNG0RDtpUIPDB98ulDg7
+ bh=NHqAvGOGAdVLM5YYlEmL7m/RTijzbvnCh01U3Ae0TvE=;
+ b=uHcNVJY60ykGdCj6sB64Wq24TjIarK94/qHRx3Jx/y57Rv6wnt9VzlIa+9eiUnisRCtYhtdci
+ 3qHek8DkyLSC3q9rYKeuyWMdRhRQdDbrqyEGlp7VnEDb46wFWjmqG+J
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Motorola Signature uses a 1264x2780 BOE AMOLED panel driven by an
-Ilitek ILI97680A. It is a MIPI DSI command mode panel with DSC 1.2
-compression on four lanes. This series adds the devicetree binding and a
-driver for it.
+Document the Ilitek ILI97680A based 1264x2780 AMOLED panel by BOE, a
+MIPI DSI command mode panel with DSC 1.2 compression found in the
+Motorola Signature.
 
-Two things are specific to this panel. The DSC picture parameter set is
-written to a vendor register on command page 7 instead of being sent as a
-standard PPS packet, and the brightness range is 0 to 16180 over DCS.
+An LLM was used to help write this commit message.
 
-Tested on a Motorola Signature with the msm DRM driver: the panel lights
-up at its native resolution and Phosh renders on it.
-
-I used an LLM (Claude) to help write these patches and their commit
-messages. I reviewed all of them and tested the result on the device.
-
+Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
-Venkat Yadlapati (2):
-      dt-bindings: display: panel: Add Ilitek ILI97680A
-      drm/panel: Add Ilitek ILI97680A DSC command mode panel driver
+ .../bindings/display/panel/ilitek,ili97680a.yaml   | 70 ++++++++++++++++++++++
+ MAINTAINERS                                        |  6 ++
+ 2 files changed, 76 insertions(+)
 
- .../bindings/display/panel/ilitek,ili97680a.yaml   |  70 +++
- MAINTAINERS                                        |   6 +
- drivers/gpu/drm/panel/Kconfig                      |  16 +
- drivers/gpu/drm/panel/Makefile                     |   1 +
- drivers/gpu/drm/panel/panel-ilitek-ili97680a.c     | 494 +++++++++++++++++++++
- 5 files changed, 587 insertions(+)
----
-base-commit: 39e407b553ec15d4a233b651531ad431ed7542be
-change-id: 20261116-vantage-panel-9b6254aa0a42
+diff --git a/Documentation/devicetree/bindings/display/panel/ilitek,ili97680a.yaml b/Documentation/devicetree/bindings/display/panel/ilitek,ili97680a.yaml
+new file mode 100644
+index 000000000000..f3323fbd587f
+--- /dev/null
++++ b/Documentation/devicetree/bindings/display/panel/ilitek,ili97680a.yaml
+@@ -0,0 +1,70 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/display/panel/ilitek,ili97680a.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Ilitek ILI97680A based AMOLED DSI command mode panel
++
++maintainers:
++  - Venkat Yadlapati <venkat.yadlapati@yahoo.com>
++
++description:
++  1264x2780 BOE AMOLED panel driven by an Ilitek ILI97680A controller over
++  four MIPI DSI lanes in command mode with DSC 1.2 compression, as found in
++  the Motorola Signature.
++
++allOf:
++  - $ref: panel-common.yaml#
++
++properties:
++  compatible:
++    const: ilitek,ili97680a
++
++  reg:
++    maxItems: 1
++    description: DSI virtual channel
++
++  vci-supply: true
++  vdd-supply: true
++  vddio-supply: true
++  port: true
++  reset-gpios: true
++
++required:
++  - compatible
++  - reg
++  - vci-supply
++  - vdd-supply
++  - vddio-supply
++  - port
++  - reset-gpios
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++
++    dsi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        panel@0 {
++            compatible = "ilitek,ili97680a";
++            reg = <0>;
++
++            vci-supply = <&vreg_l13b_3p1>;
++            vdd-supply = <&vreg_l11b_1p2>;
++            vddio-supply = <&vreg_l10b_1p8>;
++
++            reset-gpios = <&tlmm 146 GPIO_ACTIVE_LOW>;
++
++            port {
++                endpoint {
++                    remote-endpoint = <&mdss_dsi1_out>;
++                };
++            };
++        };
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index c4f4e48774d0..e2a8093c328a 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -13040,6 +13040,12 @@ M:	Stanislaw Gruszka <stf_xl@wp.pl>
+ S:	Maintained
+ F:	drivers/usb/atm/ueagle-atm.c
+ 
++ILITEK ILI97680A PANEL DRIVER
++M:	Venkat Yadlapati <venkat.yadlapati@yahoo.com>
++S:	Maintained
++F:	Documentation/devicetree/bindings/display/panel/ilitek,ili97680a.yaml
++F:	drivers/gpu/drm/panel/panel-ilitek-ili97680a.c
++
+ IMAGIS TOUCHSCREEN DRIVER
+ M:	Markuss Broks <markuss.broks@gmail.com>
+ S:	Maintained
 
-Best regards,
---  
-Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+-- 
+2.56.0
 
