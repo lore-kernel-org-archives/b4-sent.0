@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sun, 15 Nov 2026 08:57:18 +0000
-Subject: [PATCH v4 1/2] usb: core: Pair ports of different hubs through
- their connector
+Date: Sun, 15 Nov 2026 08:57:19 +0000
+Subject: [PATCH v4 2/2] usb: hub: Retry SuperSpeed for a device stuck on
+ its USB 2.0 peer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261115-usb-port-pairing-v4-1-25d3c9adcc21@gmail.com>
+Message-Id: <20261115-usb-port-pairing-v4-2-25d3c9adcc21@gmail.com>
 References: <20261115-usb-port-pairing-v4-0-25d3c9adcc21@gmail.com>
 In-Reply-To: <20261115-usb-port-pairing-v4-0-25d3c9adcc21@gmail.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -14,276 +14,219 @@ Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org,
  Mathias Nyman <mathias.nyman@intel.com>, Chen-Yu Tsai <wenst@chromium.org>, 
  Rob Herring <robh@kernel.org>, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794733037; l=8613;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794733037; l=7016;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=qBMyWAfJQ3+ED0TgGFatKYoCLnVtQqhP00eQLWRu7hM=;
- b=KDnkeeOljdEAJt+29QD5BYBLo0OC47n5NkDjfqoOWK+QMmi3mcv18djEm6qxB4L5mQW8IKTcB
- fJTbvw4eawlB1JGW9ri4zvyU4oUR21kdMam5HZSRC31ZDVHjt/a7h41
+ bh=x/pl7VUYVHlXCr7FPF6ufBBZfBXL4EZGgC4W7auwWNo=;
+ b=PzNmA+xnt1Q6ecY32F8qyFfy/5dLFatcPOUs2XnNFLyRCSEmuQfpsiA/C2L+CidGXFmlvcdTt
+ a/71/2xw7EXBM+ijrPd9c/Cp9NQlBXmXLgx2hpbnlTQCawCYQRSqmUp
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The USB core pairs the USB 2.0 and SuperSpeed ports of a connector by
-port number within one xHCI, or by ACPI location. On the RK3588, USB 3.0
-host 2 is SuperSpeed-only and the connector's USB 2.0 lines go to a
-separate EHCI, so the SuperSpeed port gets a dead USB 2.0 peer.
+A SuperSpeed device that finds no SuperSpeed link at power-up connects
+at high speed and retries SuperSpeed only after a VBUS cycle or a USB
+2.0 bus reset. With VBUS always on and the connector's halves on
+different host controllers (Orange Pi 5 USB 3 Type-A port), a device
+present at boot reaches the EHCI before the SuperSpeed-only xHCI is up
+and stays at 480 Mb/s.
 
-When graph ports 0 (USB 2.0) and 1 (SuperSpeed) of a usb-connector lead
-to different hubs or host controllers, pair the two ports through the
-connector and mark them hotplug. Root hub ports are found by the
-controller's port number, as in ACPI; a controller graph in the dwc3
-numbering (port@0 HS, port@1 SS) does not match and keeps today's
-pairing.
+When such a SuperSpeed root hub starts, reset the USB 2.0 peer port of
+a SuperSpeed-capable device once; hubs are skipped. A device that
+appears on the SuperSpeed port within 1 s is disconnected from the USB
+2.0 port. One that stays at high speed is restored with
+usb_reset_device() and keeps its drivers bound (they don't see the
+first reset).
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/usb/core/hub.h  |  2 ++
- drivers/usb/core/of.c   | 87 +++++++++++++++++++++++++++++++++++++++++++++++++
- drivers/usb/core/port.c | 62 ++++++++++++++++++++++++++++++++---
- include/linux/usb/of.h  |  8 +++++
- 4 files changed, 155 insertions(+), 4 deletions(-)
+ drivers/usb/core/hub.c | 132 +++++++++++++++++++++++++++++++++++++++++++++++++
+ drivers/usb/core/hub.h |   1 +
+ 2 files changed, 133 insertions(+)
 
-diff --git a/drivers/usb/core/hub.h b/drivers/usb/core/hub.h
-index 9ebc5ef54a32..ab80164b4b46 100644
---- a/drivers/usb/core/hub.h
-+++ b/drivers/usb/core/hub.h
-@@ -97,6 +97,7 @@ struct usb_hub {
-  * @usb3_lpm_u2_permit: whether USB3 U2 LPM is permitted.
-  * @early_stop: whether port initialization will be stopped earlier.
-  * @ignore_event: whether events of the port are ignored.
-+ * @connector_peer: peer found through a connector.
-  */
- struct usb_port {
- 	struct usb_device *child;
-@@ -118,6 +119,7 @@ struct usb_port {
- 	unsigned int is_superspeed:1;
- 	unsigned int usb3_lpm_u1_permit:1;
- 	unsigned int usb3_lpm_u2_permit:1;
-+	unsigned int connector_peer:1;
- };
+diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
+index 199d3f535a89..b56ee90e55f0 100644
+--- a/drivers/usb/core/hub.c
++++ b/drivers/usb/core/hub.c
+@@ -144,6 +144,8 @@ EXPORT_SYMBOL_GPL(ehci_cf_port_reset_rwsem);
  
- #define to_usb_port(_dev) \
-diff --git a/drivers/usb/core/of.c b/drivers/usb/core/of.c
-index a6ee20d8774e..df789cef265c 100644
---- a/drivers/usb/core/of.c
-+++ b/drivers/usb/core/of.c
-@@ -145,6 +145,93 @@ enum usb_port_connect_type usb_of_get_connect_type(struct usb_device *hub, int p
+ static int usb_reset_and_verify_device(struct usb_device *udev);
+ static int hub_port_disable(struct usb_hub *hub, int port1, int set_state);
++static void hub_queue_peer_reset(struct usb_hub *hub);
++static void hub_peer_reset_work(struct work_struct *ws);
+ static bool hub_port_warm_reset_required(struct usb_hub *hub, int port1,
+ 		u16 portstatus);
+ 
+@@ -1346,6 +1348,10 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
+ 
+ 	/* Scan all ports that need attention */
+ 	kick_hub_wq(hub);
++
++	if (!hdev->parent && hub_is_superspeed(hdev) &&
++	    (type == HUB_INIT2 || type == HUB_INIT3))
++		hub_queue_peer_reset(hub);
+  abort:
+ 	if (type == HUB_INIT2 || type == HUB_INIT3) {
+ 		/* Allow autosuspend if it was suppressed */
+@@ -1419,6 +1425,10 @@ static void hub_quiesce(struct usb_hub *hub, enum hub_quiescing_type type)
+ 	/* Stop hub_wq and related activity */
+ 	timer_delete_sync(&hub->irq_urb_retry);
+ 	flush_delayed_work(&hub->post_resume_work);
++	if (cancel_work_sync(&hub->peer_reset_work)) {
++		usb_autopm_put_interface_no_suspend(to_usb_interface(hub->intfdev));
++		hub_put(hub);
++	}
+ 	usb_kill_urb(hub->urb);
+ 	if (hub->has_indicators)
+ 		cancel_delayed_work_sync(&hub->leds);
+@@ -1978,6 +1988,7 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
+ 	INIT_DELAYED_WORK(&hub->leds, led_work);
+ 	INIT_DELAYED_WORK(&hub->init_work, NULL);
+ 	INIT_DELAYED_WORK(&hub->post_resume_work, hub_post_resume);
++	INIT_WORK(&hub->peer_reset_work, hub_peer_reset_work);
+ 	INIT_WORK(&hub->events, hub_event);
+ 	INIT_LIST_HEAD(&hub->onboard_devs);
+ 	spin_lock_init(&hub->irq_urb_lock);
+@@ -3278,6 +3289,127 @@ static void usb_unlock_port(struct usb_port *port_dev)
+ 	__release(&port_dev->status_lock);
  }
- EXPORT_SYMBOL_GPL(usb_of_get_connect_type);
  
-+static bool usb_of_is_connector(const struct device_node *np)
++static void hub_reset_peer_child(struct usb_hub *hub, int port1,
++				 struct usb_device *peer_hdev, int peer_port1)
 +{
-+	return of_device_is_compatible(np, "usb-a-connector") ||
-+	       of_device_is_compatible(np, "usb-b-connector") ||
-+	       of_device_is_compatible(np, "usb-c-connector");
-+}
++	struct usb_hub *peer_hub;
++	struct usb_device *udev;
 +
-+static struct device_node *usb_of_connector_remote(struct device_node *con,
-+						   u32 con_port, u32 *port)
-+{
-+	struct device_node *ep, *remote;
-+	struct of_endpoint endpoint;
++	usb_lock_device(peer_hdev);
++	if (hub->quiescing)
++		goto out;
++	peer_hub = usb_hub_to_struct_hub(peer_hdev);
++	if (!peer_hub || peer_port1 > peer_hdev->maxchild)
++		goto out;
 +
-+	ep = of_graph_get_endpoint_by_regs(con, con_port, -1);
-+	if (!ep)
-+		return NULL;
++	udev = peer_hub->ports[peer_port1 - 1]->child;
++	if (!udev || udev->speed != USB_SPEED_HIGH)
++		goto out;
 +
-+	remote = of_graph_get_remote_endpoint(ep);
-+	of_node_put(ep);
-+	if (!remote)
-+		return NULL;
++	if (udev->descriptor.bDeviceClass == USB_CLASS_HUB)
++		goto out;
 +
-+	if (of_graph_parse_endpoint(remote, &endpoint)) {
-+		of_node_put(remote);
-+		return NULL;
++	usb_lock_device(udev);
++	if (udev->state != USB_STATE_NOTATTACHED &&
++	    udev->bos && udev->bos->ss_cap &&
++	    usb_autoresume_device(udev) == 0) {
++		struct usb_port *port_dev = peer_hub->ports[peer_port1 - 1];
++		u16 portstatus, portchange;
++		int i, ret;
++
++		dev_info(&udev->dev,
++			 "SuperSpeed peer port available, resetting\n");
++		/* A second reset hands the EHCI port to its companion */
++		usb_lock_port(port_dev);
++		ret = hub_port_reset(peer_hub, peer_port1, NULL,
++				     HUB_ROOT_RESET_TIME, false);
++		for (i = 0; !ret && i < 20; i++) {
++			msleep(50);
++			ret = hub->quiescing ? -ENODEV :
++				usb_hub_port_status(hub, port1, &portstatus,
++						    &portchange);
++			if (!ret && (portstatus & USB_PORT_STAT_CONNECTION))
++				ret = -ENOTCONN;
++		}
++		if (ret)
++			hub_port_logical_disconnect(peer_hub, peer_port1);
++		/* Else hub_wq resets the port again */
++		for (i = 0; ret == -ENOTCONN && i < 20; i++) {
++			if (usb_hub_port_status(peer_hub, peer_port1, &portstatus,
++						&portchange) ||
++			    !(portstatus & USB_PORT_STAT_CONNECTION))
++				break;
++			msleep(50);
++		}
++		usb_unlock_port(port_dev);
++
++		if (!ret)
++			usb_reset_device(udev);
++		usb_autosuspend_device(udev);
 +	}
-+	*port = endpoint.port;
-+
-+	ep = remote;
-+	remote = of_graph_get_port_parent(ep);
-+	of_node_put(ep);
-+
-+	return remote;
-+}
-+
-+/**
-+ * usb_of_get_connector_peer() - find a port's peer through its connector
-+ * @hub: hub to which the port belongs
-+ * @port: graph port of the port
-+ * @superspeed: whether @hub is a SuperSpeed hub
-+ * @peer_port: returns the graph port of the peer
-+ *
-+ * Return: the node with the peer port, with a reference, if the other half
-+ * of @port's connector leads to a different node. NULL otherwise.
-+ */
-+struct device_node *usb_of_get_connector_peer(struct usb_device *hub, u32 port,
-+					      bool superspeed, u32 *peer_port)
-+{
-+	struct device_node *np = hub->dev.of_node;
-+	struct device_node *ep, *con, *remote, *peer = NULL;
-+	u32 remote_port;
-+
-+	if (!np || !of_graph_is_present(np))
-+		return NULL;
-+
-+	ep = of_graph_get_endpoint_by_regs(np, port, -1);
-+	if (!ep)
-+		return NULL;
-+
-+	con = of_graph_get_remote_port_parent(ep);
-+	of_node_put(ep);
-+	if (!con)
-+		return NULL;
-+
-+	if (!usb_of_is_connector(con) || !of_device_is_available(con))
-+		goto out;
-+
-+	remote = usb_of_connector_remote(con, superspeed ? 1 : 0, &remote_port);
-+	if (!remote)
-+		goto out;
-+	of_node_put(remote);
-+	if (remote != np || remote_port != port)
-+		goto out;
-+
-+	/* Same-node peers are paired by port number */
-+	peer = usb_of_connector_remote(con, superspeed ? 0 : 1, peer_port);
-+	if (peer && (peer == np || !*peer_port ||
-+		     !of_device_is_available(peer))) {
-+		of_node_put(peer);
-+		peer = NULL;
-+	}
++	usb_unlock_device(udev);
 +out:
-+	of_node_put(con);
-+	return peer;
-+}
-+EXPORT_SYMBOL_GPL(usb_of_get_connector_peer);
-+
- /**
-  * usb_of_get_interface_node() - get a USB interface node
-  * @udev: USB device of interface
-diff --git a/drivers/usb/core/port.c b/drivers/usb/core/port.c
-index b4452b665f59..5b2041d891ec 100644
---- a/drivers/usb/core/port.c
-+++ b/drivers/usb/core/port.c
-@@ -649,10 +649,49 @@ static int match_location(struct usb_device *peer_hdev, void *p)
- 	return 0;
- }
- 
-+static u32 usb_port_graph_id(struct usb_device *hdev, int port1)
-+{
-+	if (hdev->parent)
-+		return port1;
-+	return usb_hcd_find_raw_port_number(bus_to_hcd(hdev->bus), port1);
++	usb_unlock_device(peer_hdev);
 +}
 +
-+struct usb_connector_peer {
-+	struct usb_port *port_dev;
-+	struct device_node *np;
-+	u32 port;
-+};
-+
-+static int match_connector_peer(struct usb_device *peer_hdev, void *p)
++static void hub_peer_reset_work(struct work_struct *ws)
 +{
-+	struct usb_connector_peer *cp = p;
-+	struct usb_hub *peer_hub = usb_hub_to_struct_hub(peer_hdev);
-+	struct usb_port *peer;
++	struct usb_hub *hub = container_of(ws, struct usb_hub, peer_reset_work);
++	struct usb_device *hdev = hub->hdev;
 +	int port1;
 +
-+	if (!peer_hub || peer_hdev->dev.of_node != cp->np ||
-+	    hub_is_superspeed(peer_hdev) == cp->port_dev->is_superspeed)
-+		return 0;
++	for (port1 = 1; ; port1++) {
++		struct usb_device *peer_hdev = NULL;
++		struct usb_port *port_dev;
++		int peer_port1 = 0;
 +
-+	for (port1 = 1; port1 <= peer_hdev->maxchild; port1++) {
-+		if (usb_port_graph_id(peer_hdev, port1) == cp->port)
++		mutex_lock(&usb_port_peer_mutex);
++		if (port1 > hdev->maxchild || hub->quiescing) {
++			mutex_unlock(&usb_port_peer_mutex);
++			break;
++		}
++		port_dev = hub->ports[port1 - 1];
++		if (port_dev->connector_peer && port_dev->peer) {
++			peer_hdev = to_usb_device(port_dev->peer->dev.parent->parent);
++			peer_port1 = port_dev->peer->portnum;
++			if (peer_hdev->parent ||
++			    peer_hdev->bus->controller == hdev->bus->controller)
++				peer_hdev = NULL;
++			else
++				usb_get_dev(peer_hdev);
++		}
++		mutex_unlock(&usb_port_peer_mutex);
++
++		if (peer_hdev) {
++			hub_reset_peer_child(hub, port1, peer_hdev, peer_port1);
++			usb_put_dev(peer_hdev);
++		}
++	}
++
++	usb_autopm_put_interface_async(to_usb_interface(hub->intfdev));
++	hub_put(hub);
++}
++
++static void hub_queue_peer_reset(struct usb_hub *hub)
++{
++	struct usb_interface *intf = to_usb_interface(hub->intfdev);
++	int port1;
++
++	for (port1 = 1; port1 <= hub->hdev->maxchild; port1++) {
++		if (hub->ports[port1 - 1]->connector_peer)
 +			break;
 +	}
-+	if (port1 > peer_hdev->maxchild)
-+		return 0;
-+
-+	peer = peer_hub->ports[port1 - 1];
-+	if (!peer)
-+		return 0;
-+
-+	link_peers_report(cp->port_dev, peer);
-+	return 1;
-+}
-+
- /*
-  * Find the peer port either via explicit platform firmware "location"
-- * data, the peer hcd for root hubs, or the upstream peer relationship
-- * for all other hubs.
-+ * data, a DT connector, the peer hcd for root hubs, or the upstream peer
-+ * relationship for all other hubs.
-  */
- static void find_and_link_peer(struct usb_hub *hub, int port1)
- {
-@@ -660,6 +699,7 @@ static void find_and_link_peer(struct usb_hub *hub, int port1)
- 	struct usb_device *hdev = hub->hdev;
- 	struct usb_device *peer_hdev;
- 	struct usb_hub *peer_hub;
-+	struct usb_connector_peer cp;
- 
- 	/*
- 	 * If location data is available then we can only peer this port
-@@ -671,7 +711,21 @@ static void find_and_link_peer(struct usb_hub *hub, int port1)
- 		/* we link the peer in match_location() if found */
- 		usb_for_each_dev(port_dev, match_location);
- 		return;
--	} else if (!hdev->parent) {
-+	}
-+
-+	cp.np = usb_of_get_connector_peer(hdev, usb_port_graph_id(hdev, port1),
-+					  port_dev->is_superspeed, &cp.port);
-+	if (cp.np) {
-+		cp.port_dev = port_dev;
-+		port_dev->connector_peer = 1;
-+		/* usb_of_get_connect_type() misses graph ports */
-+		port_dev->connect_type = USB_PORT_CONNECT_TYPE_HOT_PLUG;
-+		usb_for_each_dev(&cp, match_connector_peer);
-+		of_node_put(cp.np);
++	if (port1 > hub->hdev->maxchild)
 +		return;
-+	}
 +
-+	if (!hdev->parent) {
- 		struct usb_hcd *hcd = bus_to_hcd(hdev->bus);
- 		struct usb_hcd *peer_hcd = hcd->shared_hcd;
- 
-@@ -703,7 +757,7 @@ static void find_and_link_peer(struct usb_hub *hub, int port1)
- 	 * does not have location data
- 	 */
- 	peer = peer_hub->ports[port1 - 1];
--	if (peer && peer->location == 0)
-+	if (peer && peer->location == 0 && !peer->connector_peer)
- 		link_peers_report(port_dev, peer);
- }
- 
-diff --git a/include/linux/usb/of.h b/include/linux/usb/of.h
-index de42f14bd280..4be581bd2758 100644
---- a/include/linux/usb/of.h
-+++ b/include/linux/usb/of.h
-@@ -20,6 +20,8 @@ int of_usb_update_otg_caps(struct device_node *np,
- 			struct usb_otg_caps *otg_caps);
- enum usb_port_connect_type usb_of_get_connect_type(struct usb_device *hub, int port1);
- struct device_node *usb_of_get_device_node(struct usb_device *hub, int port1);
-+struct device_node *usb_of_get_connector_peer(struct usb_device *hub, u32 port,
-+					      bool superspeed, u32 *peer_port);
- bool usb_of_has_combined_node(struct usb_device *udev);
- struct device_node *usb_of_get_interface_node(struct usb_device *udev,
- 		u8 config, u8 ifnum);
-@@ -49,6 +51,12 @@ usb_of_get_device_node(struct usb_device *hub, int port1)
- {
- 	return NULL;
- }
-+static inline struct device_node *
-+usb_of_get_connector_peer(struct usb_device *hub, u32 port, bool superspeed,
-+			  u32 *peer_port)
-+{
-+	return NULL;
++	usb_autopm_get_interface_no_resume(intf);
++	hub_get(hub);
++	if (!queue_work(hub_wq, &hub->peer_reset_work)) {
++		usb_autopm_put_interface_async(intf);
++		hub_put(hub);
++	}
 +}
- static inline bool usb_of_has_combined_node(struct usb_device *udev)
- {
- 	return false;
++
+ #ifdef	CONFIG_PM
+ 
+ /* Check if a port is suspended(USB2.0 port) or in U3 state(USB3.0 port) */
+diff --git a/drivers/usb/core/hub.h b/drivers/usb/core/hub.h
+index ab80164b4b46..f6387b99c708 100644
+--- a/drivers/usb/core/hub.h
++++ b/drivers/usb/core/hub.h
+@@ -71,6 +71,7 @@ struct usb_hub {
+ 	struct delayed_work	leds;
+ 	struct delayed_work	init_work;
+ 	struct delayed_work	post_resume_work;
++	struct work_struct	peer_reset_work;
+ 	struct work_struct      events;
+ 	spinlock_t		irq_urb_lock;
+ 	struct timer_list	irq_urb_retry;
 
 -- 
 2.55.0
