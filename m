@@ -1,160 +1,131 @@
-From: Marc Herrero <marcht@proton.me>
-Date: Mon, 16 Nov 2026 20:16:29 +0000
-Subject: [PATCH v2] ASoC: qcom: audioreach: apply volume changes to a
- running graph
+From: Joseph Telaak <joseph@telaak.dev>
+Subject: [PATCH v3 0/4] clk: Add the Siflower SF19A2890 clock manager and
+ peripheral clock and reset managers
+Date: Mon, 16 Nov 2026 17:04:46 -0500
+Message-Id: <20261116-sf19a2890-sysm-v3-0-b07bc7833a87@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-q6apm-vol-live-v2-1-fbeba4402984@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WMQQ7CIBBFr9LM2jFCFK0r72G6KDC1k7RAoSGah
- ruL3ft37yfvbZAoMiW4NxtEypzYuwry0IAZe/ciZFsZ5EkqUYeL6sOM2U84cSa0SmthNZmraaF
- KIdLA7z347CqPnFYfP3s/i9/7N5UFCtR0uxAN6twa8QjRr94dZ4KulPIF6Y/zRKwAAAA=
-X-Change-ID: 20261111-q6apm-vol-live-d6bb1dbec7c9
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Marc Herrero <marcht@proton.me>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794860189; l=5278;
- i=marcht@proton.me; s=20261111; h=from:subject:message-id;
- bh=mp2MbI2XiexMCnav2onYjsf+zW4C1sDOoQtZdybVDJk=;
- b=uWiabstwfrwXapwCEIJ2z2qJ6Bro5hEqxGWwLMW3uDhCYHmT2E99Vw3EjNByte2HbhREeY3Dz
- KVuNWySWd8gAvHKEH8VPFKD/x3rxY0eECoB45g/r+eDSsjvYBQR21K0
-X-Developer-Key: i=marcht@proton.me; a=ed25519;
- pk=pIPy6L+INgiuJt7L7umVilPgpzy/Ni3QS77ToLj/H9c=
-X-Endpoint-Received: by B4 Relay for marcht@proton.me/20261111 with auth_id=1490
+X-B4-Tracking: v=1; b=H4sIAP59+2oC/2WOSQ7CMAxFr4KyJih2CwVW3AOxSBOHhpm4jahQ7
+ 07KIKbls/7731fBFDyxmA+uIlD07I+HBNlwIEylD2uS3iYWqHACoFCyg5nG6UxJbnkvtQFXmhL
+ B2rFI0imQ85d74XL1YG7KDZm6b3kmAp2btFS/Y5Xn+hja+xsR+utrMf9djCCV1LnTRhXWTTFb1
+ LTTejuyFEXfFfHDB/jzMfkWnSkLzCh38OV3XXcDf8V9gBQBAAA=
+X-Change-ID: 20261102-sf19a2890-sysm-ac1fbcb21dd5
+To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: Chuanhong Guo <gch981213@gmail.com>, Yao Zi <me@ziyao.cc>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+ linux-mips@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Joseph Telaak <joseph@telaak.dev>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794866701; l=4774;
+ i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
+ bh=lj+d99xoFwkdyN2+RnvfppViMpO8GlW8yclhuqv6J6I=;
+ b=63QImwQ1uC8d3XutETgwiR66VqeySik1W+fW3phzPCG4D9Hk0TSkvRLSBDHKvlL+RM6StiF+D
+ mC8qobbjblTCIZEwdEvx4kdVEpnIRJbAxIWyx0Uafxbidik/4Eg0TAG
+X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
+ pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
+X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-audioreach_put_vol_ctrl_audio_mixer() only stores the new gain in the
-module. The gain reaches the DSP from audioreach_pga_event() on
-SND_SOC_DAPM_POST_PMU, that is when a stream starts, so changing the
-"<stream> Playback Volume" control while playing has no effect until the
-next stream.
+The Siflower SF19A2890, a MIPS SoC for home routers, has a clock manager
+with its PLLs and the muxes and dividers that feed the CPU, the buses
+and the peripherals, and for each peripheral block a small clock and
+reset manager with its gates, its resets and a bus output enable. This
+series adds bindings and drivers for both.
 
-On QCS6490 (Radxa Dragon Q6A) shairport-sync uses this control as its
-hardware volume: the volume set when an AirPlay session starts is
-applied, but every later change from the phone is ignored.
+Both drivers are Chuanhong Guo's, from his SF19A2890 branch [1], with
+his authorship kept and my changes noted in each. The clock manager's
+driver is unchanged apart from fixes. The peripheral managers' binding
+is rewritten: Chuanhong's described every block with one compatible and
+its bit layout in properties (siflower,valid-gates, siflower,reset-masks
+and so on); here each block has its own compatible and the layouts are
+tables in the driver. Clock N of a block is its input clock N, gated.
 
-Send the gain to the DSP right away when the widget is powered and the
-graph holding the volume module has been started, since the DSP rejects
-the parameter before that. Otherwise only store it, and the PGA event
-applies it at power up as before. Hold the DAPM lock so the power state
-cannot change between the check and the update, keep the old gain and
-return the error if the DSP does not take the new one, and report no
-change when the value is the same.
+Following Conor's review of Chuanhong's SF21 clock binding, the header
+has no count at its end.
 
-Fixes: 36ad9bf1d93d ("ASoC: qdsp6: audioreach: add topology support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Marc Herrero <marcht@proton.me>
+The clock manager registers from CLK_OF_DECLARE because the GIC timer
+runs from the CPU clock. The SoC support itself (MACH_SIFLOWER_MIPS)
+goes through the MIPS tree; until then the drivers build with
+COMPILE_TEST.
+
+Tested on a GL.iNet GL-SFT1200: the rates in clk_summary match the
+vendor firmware's (CMN PLL 1.5 GHz, buses 300, 300 and 375 MHz, PBUS
+100 MHz, UART 125 MHz, GMAC reference 125 MHz, USB PHY reference
+50 MHz), and the CPU clock reads 800 MHz, the rate the GIC timer was
+checked at against a reference clock with the MIPS series; the console,
+DDR and buses survive the unused clock sweep; the UART, SPI NAND, I2C,
+GPIO, GMAC, USB and watchdog drivers probe with these clocks and resets;
+and the I2C controller works again after an unbind and bind, which
+cycles its reset.
+
+[1] https://github.com/981213/linux/commits/siflower-7.1
+
 ---
-Found on the Radxa Dragon Q6A together with the two fixes in
-"[PATCH v2 0/2] ASoC: qcom: audioreach: fix S24_LE playback and route
-mixer disconnects". This one is independent of them.
+Changes in v3:
+- Patches 1 and 2: name the NPU clock CLK_MUXDIV_NPU_PE, without the _CLK
+  suffix that no other clock has (Brian).
+- Patch 3: add Conor's Ack.
+- Patch 4: take the spinlock with guard(spinlock_irqsave) (Philipp).
+- Patch 4: explain each multi-bit reset group in the commit message, not
+  just the GMAC's (Philipp).
+- Patch 4: add Philipp's Reviewed-by.
+- Link to v2: https://patch.msgid.link/20261111-sf19a2890-sysm-v2-0-d2fcb723e4f1@telaak.dev
 
-Tested on 7.2.9: with the patch, moving the AirPlay volume while
-playing changes the output immediately; without it nothing changes
-until the next stream. Builds on asoc/for-next.
----
 Changes in v2:
-- Only send the gain when the graph holding the volume module has been
-  started, since the DSP rejects it before that (Srini). Add
-  q6apm_is_graph_started() for this.
-- Take the DAPM lock so the widget power state cannot change between
-  the check and the update (Mark).
-- Return the error and keep the old gain if the DSP does not take the
-  new one, so writing the same value again retries (Sashiko).
-- Link to v1: https://lore.kernel.org/r/20261111-q6apm-vol-live-v1-1-be85eef649c1@proton.me
----
- sound/soc/qcom/qdsp6/q6apm.c    | 13 +++++++++++++
- sound/soc/qcom/qdsp6/q6apm.h    |  1 +
- sound/soc/qcom/qdsp6/topology.c | 26 ++++++++++++++++++++++++--
- 3 files changed, 38 insertions(+), 2 deletions(-)
-
-diff --git a/sound/soc/qcom/qdsp6/q6apm.c b/sound/soc/qcom/qdsp6/q6apm.c
-index 8e3314a2738c..034d42edde22 100644
---- a/sound/soc/qcom/qdsp6/q6apm.c
-+++ b/sound/soc/qcom/qdsp6/q6apm.c
-@@ -839,6 +839,19 @@ int q6apm_graph_stop(struct q6apm_graph *graph)
- }
- EXPORT_SYMBOL_GPL(q6apm_graph_stop);
- 
-+bool q6apm_is_graph_started(struct q6apm *apm, uint32_t graph_id)
-+{
-+	struct audioreach_graph *graph;
-+	bool started;
-+
-+	mutex_lock(&apm->lock);
-+	graph = idr_find(&apm->graph_idr, graph_id);
-+	started = graph && graph->start_count > 0;
-+	mutex_unlock(&apm->lock);
-+
-+	return started;
-+}
-+
- int q6apm_graph_flush(struct q6apm_graph *graph)
- {
- 	return audioreach_graph_mgmt_cmd(graph->ar_graph, APM_CMD_GRAPH_FLUSH);
-diff --git a/sound/soc/qcom/qdsp6/q6apm.h b/sound/soc/qcom/qdsp6/q6apm.h
-index 9092359ccf90..b84ccbee4926 100644
---- a/sound/soc/qcom/qdsp6/q6apm.h
-+++ b/sound/soc/qcom/qdsp6/q6apm.h
-@@ -120,6 +120,7 @@ int q6apm_graph_prepare(struct q6apm_graph *graph);
- int q6apm_graph_start(struct q6apm_graph *graph);
- int q6apm_graph_stop(struct q6apm_graph *graph);
- int q6apm_graph_flush(struct q6apm_graph *graph);
-+bool q6apm_is_graph_started(struct q6apm *apm, uint32_t graph_id);
- 
- /* Media Format */
- int q6apm_graph_media_format_pcm(struct q6apm_graph *graph,
-diff --git a/sound/soc/qcom/qdsp6/topology.c b/sound/soc/qcom/qdsp6/topology.c
-index 612d8f03e6e9..956f8e9e6a76 100644
---- a/sound/soc/qcom/qdsp6/topology.c
-+++ b/sound/soc/qcom/qdsp6/topology.c
-@@ -1322,11 +1322,33 @@ static int audioreach_put_vol_ctrl_audio_mixer(struct snd_kcontrol *kcontrol,
- 					       struct snd_ctl_elem_value *ucontrol)
- {
- 	struct snd_soc_dapm_widget *dw = snd_soc_dapm_kcontrol_to_widget(kcontrol);
-+	struct snd_soc_component *c = snd_soc_dapm_to_component(dw->dapm);
- 	struct audioreach_module *mod = dw->dobj.private;
-+	struct q6apm *apm = dev_get_drvdata(c->dev);
-+	long gain = ucontrol->value.integer.value[0];
-+	int ret = 0;
- 
--	mod->gain = ucontrol->value.integer.value[0];
-+	/*
-+	 * The PGA event applies the gain when the widget powers up. Hold the
-+	 * DAPM lock so the power state cannot change under us: either the
-+	 * event sees the new gain or it is sent here. The DSP only accepts
-+	 * the parameter once the graph holding the module has been started.
-+	 * Keep the old gain if the DSP did not take the new one, so that
-+	 * writing the same value again retries.
-+	 */
-+	snd_soc_dapm_mutex_lock(dw->dapm);
-+	if (mod->gain != gain) {
-+		if (dw->power &&
-+		    q6apm_is_graph_started(apm, mod->container->sub_graph->info->id))
-+			ret = audioreach_gain_set_vol_ctrl(apm, mod, gain);
-+		if (!ret) {
-+			mod->gain = gain;
-+			ret = 1;
-+		}
-+	}
-+	snd_soc_dapm_mutex_unlock(dw->dapm);
- 
--	return 1;
-+	return ret;
- }
- 
- static int audioreach_control_load_mix(struct snd_soc_component *scomp,
+- Write my notes on Chuanhong's patches as lists, with Co-developed-by.
+- Use GPL-2.0-only, not the deprecated GPL-2.0 identifier, in the clock
+  header's SPDX line.
+- Add a MAINTAINERS entry for the drivers, their bindings and the
+  headers, with an F: line per driver, since drivers/clk/siflower/ will
+  also hold the SF21 drivers.
+- Include <linux/device-id/of.h> instead of <linux/mod_devicetable.h>
+  (Uwe).
+- Word the error messages the same way, and use the current SPDX
+  identifiers in the new files.
+- Explain in the commit message why some resets cover more than one bit
+  (Philipp, Chuanhong).
+- Patch 1: add Conor's Ack.
+- Patch 2: with the PLL's fractional modulator on, scale the fraction by
+  the reference rate, not by the integer VCO rate; and reject a rate of 0
+  in the mux dividers instead of dividing by it.
+- Patch 3: add include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h,
+  naming the clocks and resets of each manager, instead of listing the
+  resets in the description; patch 4 indexes its tables by it (Conor).
+- Patch 4: no comma after the match table's sentinel (Uwe).
+- Link to v1: https://patch.msgid.link/20261104-sf19a2890-sysm-v1-0-a4fac07df823@telaak.dev
 
 ---
-base-commit: cde5523c75f1320a55ac1d55a717ccbb566557f0
-change-id: 20261111-q6apm-vol-live-d6bb1dbec7c9
+Chuanhong Guo (2):
+      clk: siflower: Add SF19A2890 clock manager driver
+      clk: siflower: Add SF19A2890 peripheral clock and reset manager driver
+
+Joseph Telaak (2):
+      dt-bindings: clock: Add Siflower SF19A2890 clock manager
+      dt-bindings: clock: Add Siflower SF19A2890 peripheral clock/reset managers
+
+ .../bindings/clock/siflower,sf19a2890-clk.yaml     |  57 +++
+ .../clock/siflower,sf19a2890-periph-crm.yaml       | 166 ++++++++
+ MAINTAINERS                                        |  11 +
+ drivers/clk/Kconfig                                |   1 +
+ drivers/clk/Makefile                               |   1 +
+ drivers/clk/siflower/Kconfig                       |  22 ++
+ drivers/clk/siflower/Makefile                      |   3 +
+ drivers/clk/siflower/clk-sf19a2890-periphcrm.c     | 362 ++++++++++++++++++
+ drivers/clk/siflower/clk-sf19a2890.c               | 419 +++++++++++++++++++++
+ include/dt-bindings/clock/siflower,sf19a2890-clk.h |  27 ++
+ .../clock/siflower,sf19a2890-periph-crm.h          |  87 +++++
+ 11 files changed, 1156 insertions(+)
+---
+base-commit: fc1f8f0ceb3b949b58c2f7819976644f5cf84249
+change-id: 20261102-sf19a2890-sysm-ac1fbcb21dd5
 
 Best regards,
--- 
-Marc Herrero <marcht@proton.me>
+--  
+Joseph Telaak <joseph@telaak.dev>
 
