@@ -1,240 +1,150 @@
-From: Cristian Filipescu <filipescu.cristian@gmail.com>
-Date: Mon, 16 Nov 2026 16:44:31 +0000
-Subject: [PATCH v5 2/2] arm64: dts: allwinner: h6: Add Orange Pi 3 LTS
+From: Mike Bazov <mike.bazov@gmail.com>
+Date: Mon, 16 Nov 2026 19:18:18 +0200
+Subject: [PATCH bpf-next] bpf: Disable preemption while a raw tracepoint
+ regs slot is in use
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261116-sunxi-orangepi-3-lts-v5-2-979cf5474913@gmail.com>
-References: <20261116-sunxi-orangepi-3-lts-v5-0-979cf5474913@gmail.com>
-In-Reply-To: <20261116-sunxi-orangepi-3-lts-v5-0-979cf5474913@gmail.com>
-To: linux-sunxi@lists.linux.dev, devicetree@vger.kernel.org, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
- Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Andre Przywara <andre.przywara@arm.com>, linux-kernel@vger.kernel.org, 
- Cristian Filipescu <filipescu.cristian@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794847469; l=5799;
- i=filipescu.cristian@gmail.com; s=uboot-20261021; h=from:subject:message-id;
- bh=LaxsdgCto8Iw/LV/2gy1jzXSKmMNoqirf/zKIZsGW50=;
- b=P4FCZd+wqibX8QPxT/rLOssAM4qmYq6KTHAcNqxuqhxjCRk6BsVNlhEFR/4PLVbanLqO1blIy
- yQDbSRJjovIBmVG8PZiNoalq5UONEDD4K0QVQtCArWCU9C+A36GSy1M
-X-Developer-Key: i=filipescu.cristian@gmail.com; a=ed25519;
- pk=o7Ui0tU3x+X/6Pq6PZHmd2KFtOdPWttoPuNFOvdD8t0=
-X-Endpoint-Received: by B4 Relay for filipescu.cristian@gmail.com/uboot-20261021 with auth_id=1255
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261116-bpf-raw-tp-regs-preempt-v1-1-d01b6dd8573c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIANk6+2oC/x2MQQqEMAwAvyI5GzAedOtXxEN1UzcHa0mLFsS/2
+ /U4AzMXRFbhCEN1gfIhUXZfgOoKlp/1K6N8C0PbtB0RdTgHh2pPTAGV14hBmbeQkFzfkDEfY2c
+ DpS7eSX7PI/wjzznBdN8P/zFbfnMAAAA=
+To: Song Liu <song@kernel.org>, Jiri Olsa <jolsa@kernel.org>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, 
+ Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
+ Andrii Nakryiko <andrii@kernel.org>, Eduard Zingerman <eddyz87@gmail.com>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, 
+ Yonghong Song <yonghong.song@linux.dev>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, KP Singh <kpsingh@kernel.org>, 
+ Matt Bobrowski <matt@bobrowski.net>, Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-trace-kernel@vger.kernel.org, Mike Bazov <mike.bazov@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794849502; l=4672;
+ i=mike.bazov@gmail.com; s=gmail-20261116; h=from:subject:message-id;
+ bh=UzSSLc393SFgDdsvt18pcI0fmb0CrVnIVQAxJGAGphQ=;
+ b=GAaY2hAzCna3cUR6yb/ptwCvXlNZZpMOdEud5eOwnnXQGAMSvuhEv67Lifu1O9VSPVnxIgyvp
+ K4RpB9ZFgbMBpw2s5+w+zg8VGN24RO/Q9/4brbIap9OuxqdeVa+jz+u
+X-Developer-Key: i=mike.bazov@gmail.com; a=ed25519;
+ pk=Rr9fagn0pNA+bs8tgc6DXZpRAhl/maU6BeqkttIR7DA=
+X-Endpoint-Received: by B4 Relay for mike.bazov@gmail.com/gmail-20261116 with auth_id=1544
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Jernej Skrabec <jernej.skrabec@gmail.com>
+bpf_perf_event_output(), bpf_get_stackid() and bpf_get_stack() of raw
+tracepoint and tracing programs have no pt_regs, so they fill in one of
+three per-CPU slots, picked by a per-CPU nest counter:
 
-Add the board description for the Allwinner H6-based Orange Pi 3 LTS,
-using the common Orange Pi H6 description for shared hardware.
-Describe the LTS regulators, storage, Motorcomm YT8531C Ethernet PHY,
-wireless module supplies, LEDs and USB ports.
+  get_bpf_raw_tp_regs()   level++, use regs[level - 1]
+  put_bpf_raw_tp_regs()   level--
 
-Reset the sole Ethernet PHY at MDIO bus registration and keep reset
-outside interface detach so its configured 125 MHz output is retained.
-Use generic Clause 22 discovery and PHY-internal RGMII delays.
+That only works if the users of a CPU leave in the reverse order they
+came, as a task, an interrupt and an NMI do. These programs run with
+migration disabled but preemption enabled, so tasks can leave in any
+order:
 
-Inherit the schematic LED roles and defaults: red power on and green
-status off. Select the weakest GPIO drive level for both LEDs and enable
-1.8 V eMMC DDR52 and HS200 modes while retaining the H6 maximum frequency
-of 150 MHz. Inherit the CPU/GPU OPP tables, CPU supply and regulator ramp
-delays from the common include. Remove inherited USB ID detection for
-fixed host mode.
+  task A              task B              task C
+  get: regs[0]
+  <preempted>
+                      get: regs[1]
+                      <preempted>
+  put: level 1
+                                          get: regs[1]
+                                          fills in its regs
+                      uses regs[1]
 
-Link: https://lore.kernel.org/linux-sunxi/20250413134318.66681-3-jernej.skrabec@gmail.com/
-Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
-Signed-off-by: Cristian Filipescu <filipescu.cristian@gmail.com>
+B sends a sample or a stack trace with the registers of C. Profilers and
+tracers then attribute it to the wrong task, and nothing reports an
+error. The per-CPU recursion counter of a program doesn't prevent it:
+the slots are shared by all programs, so it takes two of them.
+
+Disable preemption from get to put, as the two other users of this
+scheme do since commit f2c67a3e60d1 ("bpf: Disable preemption in
+bpf_perf_event_output") and commit d62cc390c2e9 ("bpf: Disable
+preemption in bpf_event_output"). Nothing in between sleeps: the
+sleepable bpf_get_stack() of these programs doesn't use the slots.
+
+The cost is small: the helpers already disable preemption around most
+of their work, the unwind in bpf_get_stack() and bpf_get_stackid() and
+all of bpf_perf_event_output(); this adds the few instructions around
+it.
+
+Signed-off-by: Mike Bazov <mike.bazov@gmail.com>
 ---
- arch/arm64/boot/dts/allwinner/Makefile             |   1 +
- .../dts/allwinner/sun50i-h6-orangepi-3-lts.dts     | 164 +++++++++++++++++++++
- 2 files changed, 165 insertions(+)
+A reproducer, x86-64: two raw tracepoint programs on sys_enter call
+bpf_perf_event_output() once each, with the program's number as data.
+Two threads make syscalls on CPU 0, and a SCHED_FIFO thread preempts
+them every 20us. The IP of a sample is regs->ip of the slot, the return
+address of the helper call. The reproducer reads that address for both
+programs from their JIT images and checks every sample.
 
-diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
-index d1f768dd6..da39f0225 100644
---- a/arch/arm64/boot/dts/allwinner/Makefile
-+++ b/arch/arm64/boot/dts/allwinner/Makefile
-@@ -42,6 +42,7 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h5-orangepi-zero-plus.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h5-orangepi-zero-plus2.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-beelink-gs1.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-3.dtb
-+dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-3-lts.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-lite2.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-one-plus.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-pine-h64.dtb
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts
-new file mode 100644
-index 000000000..6dbdba4a8
---- /dev/null
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts
-@@ -0,0 +1,164 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+// Copyright (C) 2025 Jernej Skrabec <jernej.skrabec@gmail.com>
-+// Based on sun50i-h6-orangepi-3.dts, which is:
-+// Copyright (C) 2019 Ondřej Jirman <megous@megous.com>
-+
-+#include "sun50i-h6-orangepi.dtsi"
-+
-+/ {
-+	model = "OrangePi 3 LTS";
-+	compatible = "xunlong,orangepi-3-lts", "allwinner,sun50i-h6";
-+
-+	aliases {
-+		ethernet0 = &emac;
-+		ethernet1 = &aw859a;
-+	};
-+
-+	leds {
-+		led-0 {
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&led_red_pin>;
-+		};
-+
-+		led-1 {
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&led_green_pin>;
-+		};
-+	};
-+
-+	reg_gmac_3v3: gmac-3v3 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "gmac-3v3";
-+		vin-supply = <&reg_vcc5v>;
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		startup-delay-us = <150000>;
-+		enable-active-high;
-+		gpio = <&pio 3 6 GPIO_ACTIVE_HIGH>; /* PD6 */
-+	};
-+
-+	reg_wifi_3v3: wifi-3v3 {
-+		/* 3.3V regulator for WiFi and BT */
-+		compatible = "regulator-fixed";
-+		regulator-name = "wifi-3v3";
-+		vin-supply = <&reg_vcc5v>;
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		enable-active-high;
-+		gpio = <&pio 7 7 GPIO_ACTIVE_HIGH>; /* PH7 */
-+	};
-+
-+	wifi_pwrseq: wifi-pwrseq {
-+		compatible = "mmc-pwrseq-simple";
-+		clocks = <&rtc CLK_OSC32K_FANOUT>;
-+		clock-names = "ext_clock";
-+		reset-gpios = <&r_pio 1 3 GPIO_ACTIVE_LOW>; /* PM3 */
-+		post-power-on-delay-ms = <200>;
-+	};
-+};
-+
-+&axp805 {
-+	/* ALDO3 is shorted to CLDO1; both inherit regulator-always-on. */
-+	regulators {
-+		cldo2 {
-+			/* unused */
-+			/delete-property/ regulator-min-microvolt;
-+			/delete-property/ regulator-max-microvolt;
-+		};
-+
-+		cldo3 {
-+			/* unused */
-+			/delete-property/ regulator-min-microvolt;
-+			/delete-property/ regulator-max-microvolt;
-+		};
-+
-+		/* DCDCB is polyphased with DCDCA. */
-+		dcdca {
-+			regulator-min-microvolt = <800000>;
-+		};
-+	};
-+};
-+
-+&dwc3 {
-+	status = "okay";
-+};
-+
-+&emac {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&ext_rgmii_pins>;
-+	phy-mode = "rgmii-id";
-+	phy-handle = <&ext_rgmii_phy>;
-+	phy-supply = <&reg_gmac_3v3>;
-+	allwinner,rx-delay-ps = <0>;
-+	allwinner,tx-delay-ps = <0>;
-+	status = "okay";
-+};
-+
-+&hdmi {
-+	hvcc-supply = <&reg_bldo2>;
-+};
-+
-+&mdio {
-+	reset-gpios = <&pio 3 14 GPIO_ACTIVE_LOW>; /* PD14 */
-+	reset-delay-us = <15000>;
-+	reset-post-delay-us = <100000>;
-+
-+	ext_rgmii_phy: ethernet-phy@1 {
-+		compatible = "ethernet-phy-ieee802.3-c22";
-+		reg = <1>;
-+
-+		motorcomm,clk-out-frequency-hz = <125000000>;
-+		rx-internal-delay-ps = <1950>;
-+		tx-internal-delay-ps = <1950>;
-+	};
-+};
-+
-+&mmc1 {
-+	vmmc-supply = <&reg_wifi_3v3>;
-+	vqmmc-supply = <&reg_bldo3>;
-+	mmc-pwrseq = <&wifi_pwrseq>;
-+	bus-width = <4>;
-+	non-removable;
-+	status = "okay";
-+
-+	aw859a: wifi@1 {
-+		reg = <1>;
-+	};
-+};
-+
-+&mmc2 {
-+	vmmc-supply = <&reg_cldo1>;
-+	vqmmc-supply = <&reg_bldo2>;
-+	mmc-ddr-1_8v;
-+	mmc-hs200-1_8v;
-+	cap-mmc-hw-reset;
-+	non-removable;
-+	bus-width = <8>;
-+	status = "okay";
-+};
-+
-+&pio {
-+	vcc-pg-supply = <&reg_bldo3>;
-+};
-+
-+&r_pio {
-+	led_green_pin: led-green-pin {
-+		pins = "PL7";
-+		function = "gpio_out";
-+		drive-strength = <10>;
-+	};
-+
-+	led_red_pin: led-red-pin {
-+		pins = "PL4";
-+		function = "gpio_out";
-+		drive-strength = <10>;
-+	};
-+};
-+
-+&usb2phy {
-+	/delete-property/ usb0_id_det-gpios;
-+};
-+
-+&usb3phy {
-+	status = "okay";
-+};
+Without this patch, 7 to 18 samples per program and 10s run have the IP
+of the other program, out of 1.4M. With it, none. bpf_get_stack() and
+bpf_get_stackid() in the same setup return an empty kernel stack
+instead: the unwinder looks for the other task's sp on the current
+stack and doesn't find it.
 
+5 runs of 10s, debug config, CONFIG_PREEMPT=y, preempt=full, on
+bpf-next 0fb18ce8a2e9:
+
+                                     without     with
+  bpf_perf_event_output, wrong IP    7-18        0      per program
+  bpf_get_stack, empty stacks        362-535     0
+  bpf_get_stackid, empty stacks      168-364     0
+
+The bpf_get_stackid() case with bpftrace, whose kstack calls it; @a[]
+and @b[] count the empty stacks:
+
+bpftrace -e '
+  rawtracepoint:sys_enter /comm == "dd"/ { @a[kstack(1)] = count(); }
+  rawtracepoint:sys_enter /comm == "dd"/ { @b[kstack(1)] = count(); }' &
+  taskset -c 0 dd if=/dev/zero of=/dev/null bs=1 &
+  taskset -c 0 dd if=/dev/zero of=/dev/null bs=1 &
+  taskset -c 0 chrt -f 1 perl -e 'select(undef, undef, undef, 2e-5) while 1' &
+---
+ kernel/trace/bpf_trace.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/kernel/trace/bpf_trace.c b/kernel/trace/bpf_trace.c
+index b4ff9d4e8..eb3daf2bf 100644
+--- a/kernel/trace/bpf_trace.c
++++ b/kernel/trace/bpf_trace.c
+@@ -1639,11 +1639,17 @@ static DEFINE_PER_CPU(struct bpf_raw_tp_regs, bpf_raw_tp_regs);
+ static DEFINE_PER_CPU(int, bpf_raw_tp_nest_level);
+ static struct pt_regs *get_bpf_raw_tp_regs(void)
+ {
+-	struct bpf_raw_tp_regs *tp_regs = this_cpu_ptr(&bpf_raw_tp_regs);
+-	int nest_level = this_cpu_inc_return(bpf_raw_tp_nest_level);
++	struct bpf_raw_tp_regs *tp_regs;
++	int nest_level;
++
++	/* The slots nest: a task must not be preempted while it holds one */
++	preempt_disable();
++	tp_regs = this_cpu_ptr(&bpf_raw_tp_regs);
++	nest_level = this_cpu_inc_return(bpf_raw_tp_nest_level);
+ 
+ 	if (nest_level > ARRAY_SIZE(tp_regs->regs)) {
+ 		this_cpu_dec(bpf_raw_tp_nest_level);
++		preempt_enable();
+ 		return ERR_PTR(-EBUSY);
+ 	}
+ 
+@@ -1653,6 +1659,7 @@ static struct pt_regs *get_bpf_raw_tp_regs(void)
+ static void put_bpf_raw_tp_regs(void)
+ {
+ 	this_cpu_dec(bpf_raw_tp_nest_level);
++	preempt_enable();
+ }
+ 
+ BPF_CALL_5(bpf_perf_event_output_raw_tp, struct bpf_raw_tracepoint_args *, args,
+
+---
+base-commit: 8835113107b2cf75df33a71e265cdeec5d5d13e0
+change-id: 20261116-bpf-raw-tp-regs-preempt-1f7019989ab9
+
+Best regards,
 -- 
-2.47.3
+Mike Bazov <mike.bazov@gmail.com>
 
