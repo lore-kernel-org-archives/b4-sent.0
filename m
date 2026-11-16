@@ -1,11 +1,11 @@
 From: Marc Herrero <marcht@proton.me>
-Date: Mon, 16 Nov 2026 20:16:20 +0000
-Subject: [PATCH v2 1/2] ASoC: qcom: audioreach: use a 32-bit container for
- S24_LE PCM
+Date: Mon, 16 Nov 2026 20:16:21 +0000
+Subject: [PATCH v2 2/2] ASoC: qcom: audioreach: only disconnect the route a
+ mixer control owns
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-q6apm-fixes-v2-1-ea89fb43316a@proton.me>
+Message-Id: <20261116-q6apm-fixes-v2-2-ea89fb43316a@proton.me>
 References: <20261116-q6apm-fixes-v2-0-ea89fb43316a@proton.me>
 In-Reply-To: <20261116-q6apm-fixes-v2-0-ea89fb43316a@proton.me>
 To: Srinivas Kandagatla <srini@kernel.org>, 
@@ -14,78 +14,63 @@ To: Srinivas Kandagatla <srini@kernel.org>,
  Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>
 Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>, 
  Marc Herrero <marcht@proton.me>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794860180; l=3033;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794860180; l=2169;
  i=marcht@proton.me; s=20261111; h=from:subject:message-id;
- bh=Z5RD52GcSCFqyovob0M2rUs9F/Magv4CJIHWMKjM0rk=;
- b=yH2v4uHtdKhNILLqgB2qEtBUKD2UHQKGXvuuwc1Q/8gvPPVm7b/YSsf5+Cet6IKvcMZ323gp9
- rJeRMfSj3azCiJqQHVp1jjYSk/KrHrlqEsTbXBmLLXB60yFvI5JCx9Y
+ bh=5GY+RyEwsSLLjDug3UhC0wQAQJ4Vka8brzoVhhszmhE=;
+ b=pbRPm+nLWeDcSAhEBrWdUHO/O2jQrubIJka04sF/J45X1LaxZnGIzQjvF+tVyl0GMTITxUapU
+ tuJxWCx5s//D7d5BN4V1g2RpgSMlIGs0/6GoxLQ2Ef+x0QRAgqRBtRj
 X-Developer-Key: i=marcht@proton.me; a=ed25519;
  pk=pIPy6L+INgiuJt7L7umVilPgpzy/Ni3QS77ToLj/H9c=
 X-Endpoint-Received: by B4 Relay for marcht@proton.me/20261111 with auth_id=1490
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SNDRV_PCM_FORMAT_S24_LE carries 24 valid bits in a 32-bit container, but
-audioreach_shmem_set_media_format() and audioreach_pcm_set_media_format()
-set bits_per_sample = bit_width = 24 in PARAM_ID_MEDIA_FORMAT and
-PARAM_ID_PCM_OUTPUT_FORMAT_CFG, which tells the DSP that the samples are
-packed 3-byte words.
+Each AudioReach virtual mixer route control ("<BE> Audio Mixer <FE>")
+connects a front-end stream graph to a back-end device graph by storing
+the source module in the device graph's audioreach_graph_info. Writing 0
+to any of these controls clears that link unconditionally, even when the
+device graph is connected to a different front end.
 
-q6apm-dai advertises S24_LE, so with a topology that allows it on a
-playback front end the DSP walks the buffer with the wrong stride. On
-QCS6490 (Radxa Dragon Q6A) this crashes the ADSP audio_process:
+When two front ends can feed the same back end the result therefore
+depends on write order. On QCS6490 (Radxa Dragon Q6A):
 
-  PDM: service 'audio_process' crash: 'EX:audio_process:0x2:...'
-  q6apm-lpass-dais ...: Failed to start APM port 113
-  remoteproc remoteproc0: crash detected in adsp: type fatal error
+ - alsactl restore writes 'DISPLAY_PORT_RX_0 Audio Mixer MultiMedia2' = 1
+   and then 'DISPLAY_PORT_RX_0 Audio Mixer MultiMedia1' = 0, which leaves
+   DisplayPort disconnected although the saved state has it connected;
+ - the UCM HDMI enable sequence writes
+   'RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia2' = 0, which disconnects
+   MultiMedia1 from the headphones. A PCM started on MultiMedia1 after
+   that never advances (hw_ptr stays at 0).
 
-Use the container size (32) for 24-bit data and keep bit_width = 24,
-alignment = PCM_LSB_ALIGNED and q_factor = 23. With this change S24_LE
-playback works on the headphone path (codec DMA RX -> LPASS RX macro ->
-WCD9385), tested with the back end at S16_LE, S24_LE and S32_LE and at
-48, 96 and 192 kHz.
+Make audioreach_connect_sub_graphs() only clear the link when it belongs
+to the control being cleared, using the same test as
+audioreach_is_vmixer_connected() does for get(). The DAPM mixer state is
+still updated for every write, so DAPM keeps tracking each route control
+as before.
 
-The DSP then reads each 32-bit word as Q23, so S24_LE samples must be
-sign-extended into the top byte, as alsa-lib's conversions do.
-
-Fixes: 25ab80db6b13 ("ASoC: qdsp6: audioreach: add module configuration command helpers")
+Fixes: e4977b91cff8 ("ASoC: qdsp6: audioreach: Simplify handing FE and BE graph connections")
 Cc: stable@vger.kernel.org
-Reviewed-by: Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>
 Signed-off-by: Marc Herrero <marcht@proton.me>
 ---
- sound/soc/qcom/qdsp6/audioreach.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ sound/soc/qcom/qdsp6/topology.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/sound/soc/qcom/qdsp6/audioreach.c b/sound/soc/qcom/qdsp6/audioreach.c
-index d2dc5d37bccf..aa1f4e296764 100644
---- a/sound/soc/qcom/qdsp6/audioreach.c
-+++ b/sound/soc/qcom/qdsp6/audioreach.c
-@@ -1216,7 +1216,12 @@ static int audioreach_pcm_set_media_format(struct q6apm_graph *graph,
- 	media_cfg->interleaved = module->interleave_type;
- 	media_cfg->num_channels = mcfg->num_channels;
- 	media_cfg->q_factor = mcfg->bit_width - 1;
--	media_cfg->bits_per_sample = mcfg->bit_width;
-+	/*
-+	 * bit_width is the number of valid bits in a sample, bits_per_sample
-+	 * the size of the container it is stored in. S24_LE keeps 24 valid
-+	 * bits in a 32-bit container, so it is 24/32, not packed 24/24.
-+	 */
-+	media_cfg->bits_per_sample = mcfg->bit_width == 24 ? 32 : mcfg->bit_width;
- 	/* Convert the physical mapping to a logical mapping of the channels */
- 	for (i = 0, j = 0; i < AR_PCM_MAX_NUM_CHANNEL && j < mcfg->num_channels; i++) {
- 		if (!mcfg->channel_map[i])
-@@ -1308,7 +1313,8 @@ static int audioreach_shmem_set_media_format(struct q6apm_graph *graph,
- 		cfg->sample_rate = mcfg->sample_rate;
- 		cfg->bit_width = mcfg->bit_width;
- 		cfg->alignment = PCM_LSB_ALIGNED;
--		cfg->bits_per_sample = mcfg->bit_width;
-+		/* S24_LE: 24 valid bits in a 32-bit container, see above */
-+		cfg->bits_per_sample = mcfg->bit_width == 24 ? 32 : mcfg->bit_width;
- 		cfg->q_factor = mcfg->bit_width - 1;
- 		cfg->endianness = PCM_LITTLE_ENDIAN;
- 		cfg->num_channels = mcfg->num_channels;
+diff --git a/sound/soc/qcom/qdsp6/topology.c b/sound/soc/qcom/qdsp6/topology.c
+index 612d8f03e6e9..aa2ab2b058d0 100644
+--- a/sound/soc/qcom/qdsp6/topology.c
++++ b/sound/soc/qcom/qdsp6/topology.c
+@@ -1240,7 +1240,9 @@ static void audioreach_connect_sub_graphs(struct q6apm *apm,
+ 		info->dst_mod_inst_id = m2->module_instance_id;
+ 		info->dst_mod_ip_port_id = 2;
+ 
+-	} else {
++	} else if (info->src_mod_inst_id == m1->module_instance_id &&
++		   info->dst_mod_inst_id == m2->module_instance_id) {
++		/* only drop the link this control made, not another FE's */
+ 		info->src_mod_inst_id = 0;
+ 		info->src_mod_op_port_id = 0;
+ 		info->dst_mod_inst_id = 0;
 
 -- 
 2.53.0
