@@ -1,11 +1,11 @@
 From: "Jeff C. Jensen" <kernel@nullptr.com>
-Date: Sun, 15 Nov 2026 19:43:04 -0800
-Subject: [PATCH v2 1/3] dmaengine: xilinx_dma: Reject transfers that map no
- data
+Date: Sun, 15 Nov 2026 19:43:05 -0800
+Subject: [PATCH v2 2/3] dmaengine: xilinx_dma: Fix cyclic period count
+ truncation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261115-xilinx-dma-work-v2-1-681ed00c15a1@nullptr.com>
+Message-Id: <20261115-xilinx-dma-work-v2-2-681ed00c15a1@nullptr.com>
 References: <20261115-xilinx-dma-work-v2-0-681ed00c15a1@nullptr.com>
 In-Reply-To: <20261115-xilinx-dma-work-v2-0-681ed00c15a1@nullptr.com>
 To: Vinod Koul <vkoul@kernel.org>, dmaengine@vger.kernel.org
@@ -18,73 +18,65 @@ Cc: Frank Li <Frank.Li@kernel.org>, Michal Simek <michal.simek@amd.com>,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  "Jeff C. Jensen" <kernel@nullptr.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2208; i=kernel@nullptr.com;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1861; i=kernel@nullptr.com;
  s=openpgp-2026; h=from:subject:message-id;
- bh=QYC4vX1LRQq4IFV/4oVzvQGjzHrh3TFPTAyJaiMRS6w=;
- b=owGbwMvMwCV2439B4wpuQQ7G02pJDFm/qu9u37Bwf9cj464VdyWPnon2l2u6kPzRpZLx88IJx
- x+//tC/o6OUhUGMi0FWTJHl+LFpO/Nt/euKqu9XwcxhZQIZwsDFKQATub+N4X+KD8f0mzM0Dq8T
- WSZbuSz5RtqrSJtPHeGqa+z3NzvKn9zFyHD7ysuA2sK8Q/Z2Ky1m+R5a8HT9wWOpa6p5+tYGzpe
- s1OEFAA==
+ bh=YUWNqOn/+Zb1scbFCp7ICqUXI0F0lLN8QDUGg53bhVo=;
+ b=owGbwMvMwCV2439B4wpuQQ7G02pJDFm/qu+uvPpBVkHu+WbX4IaZqbyrbzYI/c0y3Wkv92Cax
+ hudZR8+dpSyMIhxMciKKbIcPzZtZ76tf11R9f0qmDmsTCBDGLg4BWAirfcYGQ63mp6z7lC443r1
+ fMTf+i/3Ko8cllddclx0bs9WnS9HDzAzMhxc+/ePzrqTOc7zKqs/9qtb1kSr6fZcfLG82Ec7av7
+ sx0wA
 X-Developer-Key: i=kernel@nullptr.com; a=openpgp;
  fpr=C7C696B96F3D4F7E727BDF7AD8FF7081A80B1108
 X-Endpoint-Received: by B4 Relay for kernel@nullptr.com/openpgp-2026 with auth_id=1265
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If every entry of a scatterlist or a DMA vector array has zero length,
-the preparation loops in xilinx_dma_prep_slave_sg(),
-xilinx_dma_prep_peripheral_dma_vec() and xilinx_mcdma_prep_slave_sg()
-allocate no segments. Each function then takes list_first_entry() of the
-empty segment list anyway, so desc->async_tx.phys, which is later
-programmed as the current descriptor, is derived from the list head
-rather than from a segment. For DMA_MEM_TO_DEV, the SOP and EOP bits are
-also set through pointers that do not point at a segment.
+xilinx_dma_prep_dma_cyclic() stores buf_len / period_len, a size_t
+quotient, in an unsigned int. On 64-bit builds the count can be
+truncated: a buffer of 2^32 + 1 bytes split into 1-byte periods becomes
+a single period, and the transfer covers one byte of the buffer the
+client asked for.
 
-Fail the preparation when no segment was allocated.
+Compute the quotient as a size_t and reject it if it exceeds
+XILINX_DMA_NUM_DESCS before narrowing it. Each period needs at least one
+hardware descriptor, so a larger count could never be prepared from the
+pool anyway.
 
-Fixes: c0bba3a99f07 ("dmaengine: vdma: Add Support for Xilinx AXI Direct Memory Access Engine")
-Fixes: 6ccd692bfb7f ("dmaengine: xilinx_dma: Add Xilinx AXI MCDMA Engine driver support")
-Fixes: 38433a6fdfb7 ("dmaengine: xilinx_dma: Support descriptor setup from dma_vecs")
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
+Fixes: 92d794dfb699 ("dmaengine: vdma: Add support for cyclic dma mode")
 Reviewed-by: Suraj Gupta <suraj.gupta2@amd.com>
+Reviewed-by: Frank Li <Frank.Li@nxp.com>
 Signed-off-by: Jeff C. Jensen <kernel@nullptr.com>
 ---
- drivers/dma/xilinx/xilinx_dma.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ drivers/dma/xilinx/xilinx_dma.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/dma/xilinx/xilinx_dma.c b/drivers/dma/xilinx/xilinx_dma.c
-index 0336941d4095..6f00ab41b143 100644
+index 6f00ab41b143..ba4fa1aafc50 100644
 --- a/drivers/dma/xilinx/xilinx_dma.c
 +++ b/drivers/dma/xilinx/xilinx_dma.c
-@@ -2362,6 +2362,9 @@ static struct dma_async_tx_descriptor *xilinx_dma_prep_peripheral_dma_vec(
- 		}
- 	}
+@@ -2511,7 +2511,7 @@ static struct dma_async_tx_descriptor *xilinx_dma_prep_dma_cyclic(
+ 	struct xilinx_dma_chan *chan = to_xilinx_chan(dchan);
+ 	struct xilinx_dma_tx_descriptor *desc;
+ 	struct xilinx_axidma_tx_segment *segment, *head_segment, *prev = NULL;
+-	size_t copy, sg_used;
++	size_t copy, sg_used, periods;
+ 	unsigned int num_periods;
+ 	int i;
+ 	u32 reg;
+@@ -2519,10 +2519,11 @@ static struct dma_async_tx_descriptor *xilinx_dma_prep_dma_cyclic(
+ 	if (!period_len)
+ 		return NULL;
  
-+	if (list_empty(&desc->segments))
-+		goto error;
-+
- 	head = list_first_entry(&desc->segments, struct xilinx_axidma_tx_segment, node);
- 	desc->async_tx.phys = head->phys;
+-	num_periods = buf_len / period_len;
+-
+-	if (!num_periods)
++	/* a period takes at least one descriptor */
++	periods = buf_len / period_len;
++	if (!periods || periods > XILINX_DMA_NUM_DESCS)
+ 		return NULL;
++	num_periods = periods;
  
-@@ -2463,6 +2466,9 @@ static struct dma_async_tx_descriptor *xilinx_dma_prep_slave_sg(
- 		}
- 	}
- 
-+	if (list_empty(&desc->segments))
-+		goto error;
-+
- 	segment = list_first_entry(&desc->segments,
- 				   struct xilinx_axidma_tx_segment, node);
- 	desc->async_tx.phys = segment->phys;
-@@ -2670,6 +2676,9 @@ xilinx_mcdma_prep_slave_sg(struct dma_chan *dchan, struct scatterlist *sgl,
- 		}
- 	}
- 
-+	if (list_empty(&desc->segments))
-+		goto error;
-+
- 	segment = list_first_entry(&desc->segments,
- 				   struct xilinx_aximcdma_tx_segment, node);
- 	desc->async_tx.phys = segment->phys;
+ 	if (!is_slave_direction(direction))
+ 		return NULL;
 
 -- 
 2.43.0
