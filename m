@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Mon, 16 Nov 2026 16:39:57 +0000
-Subject: [PATCH v4 05/12] dt-bindings: iio: frequency: add
- adi,ad9910-axi-backend
+Date: Mon, 16 Nov 2026 16:39:58 +0000
+Subject: [PATCH v4 06/12] dt-bindings: iio: frequency: ad9910: add
+ io-backends property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-ad9910-backend-support-v4-5-fcf1ad364ed5@analog.com>
+Message-Id: <20261116-ad9910-backend-support-v4-6-fcf1ad364ed5@analog.com>
 References: <20261116-ad9910-backend-support-v4-0-fcf1ad364ed5@analog.com>
 In-Reply-To: <20261116-ad9910-backend-support-v4-0-fcf1ad364ed5@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -21,126 +21,88 @@ Cc: Olivier Moysan <olivier.moysan@foss.st.com>,
  =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
  Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
  Randy Dunlap <rdunlap@infradead.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794847197; l=3737;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794847197; l=2580;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=BlveSXTBkrVMa7jHBGiJtSUp2f/q4Ub0i4UsjmjsZ+4=;
- b=BVUU10xdaf7Mb9RdndNTU2RBmYkqeDwV+d2p8/AA8Jzw64w7xJTrKWdgvFf5D8PzIWnaimpvI
- CohJx//207JDVXT5SkMpFJmv8ASxF9A8pQuqDf+SHxphxQALdJ94QJs
+ bh=j5dklZUTaCzTsmtRwls0MFDoIhZtjambNyK1FFjRxqs=;
+ b=tlu2PdHBcsP/jZkRQbqD74n4mvZvwhoZCJ95ooMYlIhKwlmwDSRbX4Tdj3zV+fNDYGoK8vf5q
+ qm6ZBMbSdABA/ZBdEgX4ua31FHNmdTmW0vNqKlccbTdnKlwE+EbgOTf
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add bindings for the AD9910 AXI backend IP core. The FPGA IP core
-interfaces with the data and control pins of the AD9910 DDS, streaming
-data from memory via DMA into the 18-bit parallel data port (F[1:0] and
-D[15:0] pins), which is clocked by the PDCLK output of the device. It
-also drives the PROFILE[2:0] pins and the DRCTL pin, which controls the
-slope direction of the digital ramp generator (DRG). The DRCTL pin is
-driven by a PWM generator, so the IP core is described both as an IIO
-backend and as a PWM provider.
+The AD9910 parallel data port allows high-speed modulation of the DDS
+core parameters, which requires a data source such as an FPGA IP core
+connected to the F[1:0] and D[15:0] pins. Add the io-backends property,
+so that an IIO backend providing such interface can be referenced.
 
-Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+The property is optional as the parallel port is. The device remains
+functional through the SPI control interface only, as other modes can
+be used to drive the DDS core.
+
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- .../iio/frequency/adi,ad9910-axi-backend.yaml      | 74 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 2 files changed, 75 insertions(+)
+ .../bindings/iio/frequency/adi,ad9910.yaml         | 38 ++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml
-new file mode 100644
-index 000000000000..0015a92aeaea
---- /dev/null
-+++ b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml
-@@ -0,0 +1,74 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/iio/frequency/adi,ad9910-axi-backend.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Analog Devices AD9910 AXI Backend IP core
-+
-+maintainers:
-+  - Rodrigo Alencar <rodrigo.alencar@analog.com>
-+
-+description:
-+  FPGA IP core that interfaces with the data and control pins of the AD9910
-+  Direct Digital Synthesizer. The SPI bus is used as the control interface
-+  of the AD9910 device, while this IP core streams data from memory via DMA
-+  into the 18-bit parallel data port (F[1:0] and D[15:0] pins), which is
-+  clocked by the PDCLK output of the AD9910. The IP core also drives the
-+  PROFILE[2:0] pins for profile selection and provides a PWM generator that
-+  drives the DRCTL pin, controlling the digital ramp generator (DRG) slope
-+  direction.
-+
-+  https://developer.analog.com/docs/hdl/latest/library/axi_ad9910/index.html
-+
-+properties:
-+  compatible:
-+    const: adi,ad9910-axi-backend
-+
-+  reg:
+diff --git a/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
+index 4eebbd388b27..02fd49db93ff 100644
+--- a/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
++++ b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
+@@ -120,6 +120,13 @@ properties:
+     items:
+       - const: drctl
+ 
++  io-backends:
 +    maxItems: 1
-+
-+  clocks:
-+    maxItems: 1
-+    description: AXI bus clock (s_axi_aclk).
-+
-+  dmas:
-+    maxItems: 1
-+
-+  dma-names:
-+    items:
-+      - const: tx
-+
-+  '#io-backend-cells':
-+    const: 0
-+
-+  '#pwm-cells':
-+    const: 3
 +    description:
-+      The first cell is the PWM channel index, which must be 0 (DRCTL output).
-+      The second cell is the PWM period in nanoseconds and the third cell
-+      holds the PWM flags.
++      IIO backend that interfaces with the parallel data port, enabling data
++      streaming into the device. The backend may also drive the PROFILE[2:0]
++      and DRCTL pins, the latter being exposed as a PWM provider.
 +
-+required:
-+  - compatible
-+  - reg
-+  - clocks
-+  - dmas
-+  - dma-names
-+  - '#io-backend-cells'
-+  - '#pwm-cells'
-+
-+additionalProperties: false
-+
-+examples:
+   adi,pll-enable:
+     type: boolean
+     description:
+@@ -206,4 +213,35 @@ examples:
+             adi,refclk-out-drive-strength = "disabled";
+         };
+     };
 +  - |
-+    ad9910_backend: dds-backend@44a00000 {
-+        compatible = "adi,ad9910-axi-backend";
-+        reg = <0x44a00000 0x10000>;
-+        clocks = <&clkc 15>;
-+        dmas = <&tx_dma 0>;
-+        dma-names = "tx";
-+        #io-backend-cells = <0>;
-+        #pwm-cells = <3>;
++    #include <dt-bindings/gpio/gpio.h>
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++        dds@0 {
++            compatible = "adi,ad9910";
++            reg = <0>;
++            spi-max-frequency = <1000000>;
++
++            #clock-cells = <1>;
++            clock-output-names = "sync_clk", "pdclk", "sync_out";
++
++            clocks = <&ad9910_refclk>;
++            clock-names = "ref_clk";
++
++            dvdd-io33-supply = <&vdd_io33>;
++            avdd33-supply = <&vdd_a33>;
++            dvdd18-supply = <&vdd_d18>;
++            avdd18-supply = <&vdd_a18>;
++
++            reset-gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
++            io-reset-gpios = <&gpio 1 GPIO_ACTIVE_HIGH>;
++            powerdown-gpios = <&gpio 2 GPIO_ACTIVE_HIGH>;
++            update-gpios = <&gpio 3 GPIO_ACTIVE_HIGH>;
++
++            io-backends = <&ad9910_backend>;
++            pwms = <&ad9910_backend 0 1000000 0>;
++            pwm-names = "drctl";
++        };
 +    };
-+...
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 02015eaec312..1913532d96b3 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1774,6 +1774,7 @@ S:	Supported
- W:	https://ez.analog.com/linux-software-drivers
- F:	Documentation/ABI/testing/debugfs-iio-ad9910
- F:	Documentation/ABI/testing/sysfs-bus-iio-frequency-ad9910
-+F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml
- F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
- F:	Documentation/iio/ad9910.rst
- F:	drivers/iio/frequency/ad9910.c
+ ...
 
 -- 
 2.43.0
