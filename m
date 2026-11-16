@@ -1,11 +1,11 @@
 From: Mattathias Pinchover <mattathias.pinchover@uber.com>
-Date: Mon, 16 Nov 2026 19:10:04 +0000
-Subject: [PATCH 1/6] mm/damon/core: introduce sz_ops_filter_passed_last
- stat
+Date: Mon, 16 Nov 2026 19:10:05 +0000
+Subject: [PATCH 2/6] mm/damon/sysfs-schemes: add sz_ops_filter_passed_last
+ file
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-damon-sz-ops-b4-v1-1-1cffe7227e6d@uber.com>
+Message-Id: <20261116-damon-sz-ops-b4-v1-2-1cffe7227e6d@uber.com>
 References: <20261116-damon-sz-ops-b4-v1-0-1cffe7227e6d@uber.com>
 In-Reply-To: <20261116-damon-sz-ops-b4-v1-0-1cffe7227e6d@uber.com>
 To: SJ Park <sj@kernel.org>, Andrew Morton <akpm@linux-foundation.org>, 
@@ -15,91 +15,84 @@ Cc: damon@lists.linux.dev, linux-mm@kvack.org, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, 
  Mattathias Pinchover <mattathias.pinchover@uber.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794856219; l=3175;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794856219; l=2837;
  i=mattathias.pinchover@uber.com; s=20261113; h=from:subject:message-id;
- bh=+LoR4vjeWULTWq1HaaBRt0DI5bIP4EpokrffEX6bIPk=;
- b=LTou6WHMxnLQienM9yJ0jomHPbYxEh+IIwzgRJywMRzgdUp/Z50xpB4I7QiEoZhPibPGUxjZW
- 4n90urIrykDDGR9PBUYhJ6jgH1FvfwjvLCsfiw5Gn6rhgTj4JjBUkUo
+ bh=3d72KQenPLZSAMPasN1wih5Lo/g59JndfypEpkGmhZ0=;
+ b=ob0NIrM5E36+IU946sP/gerNGtsB6G1jMaVz6CIklTsO1XmSuRtfAXavsk4EJgGhR524xNXNa
+ hh61Cn/ziZCB+eAEWSGpjAOTt7YsPgURlFwJy7Fs8cvWMw+RQF3ZHXP
 X-Developer-Key: i=mattathias.pinchover@uber.com; a=ed25519;
  pk=6Bh6OEwWiU6dpON0CVcoipq8fXtEgvhsM1Tmm9CTmtY=
 X-Endpoint-Received: by B4 Relay for mattathias.pinchover@uber.com/20261113 with auth_id=1515
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-DAMOS stat sz_ops_filter_passed shows the total bytes that passed
-operations layer-handled DAMOS filters, accumulated from the beginning of
-the scheme's execution.  Users who want the amount for only the latest
-apply interval, e.g., the size of a workload's anonymous memory that is
-cold as of now, need to keep the previous values in user space and
-compute the difference with the help of nr_snapshots.  Because
-nr_snapshots is increased once per target per apply interval, the
-computation is complicated and error-prone, especially for contexts
-having multiple targets.
-
-Introduce a new DAMOS stat, sz_ops_filter_passed_last.  It is
-updated at the end of each apply interval of the scheme with the amount
-of sz_ops_filter_passed increase in the interval.
+Introduce a new DAMON sysfs interface file for exposing the newly added
+DAMOS stat, sz_ops_filter_passed_last.  The file has the same
+name as the stat and is placed under the DAMOS stats directory.  Like
+other stats files, it is updated when the stats are refreshed via
+refresh_ms or the update_schemes_stats command.
 
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Mattathias Pinchover <mattathias.pinchover@uber.com>
 ---
- include/linux/damon.h | 6 ++++++
- mm/damon/core.c       | 5 +++++
- 2 files changed, 11 insertions(+)
+ mm/damon/sysfs-schemes.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-diff --git a/include/linux/damon.h b/include/linux/damon.h
-index 06bd92981af2..3aff5c525132 100644
---- a/include/linux/damon.h
-+++ b/include/linux/damon.h
-@@ -351,6 +351,9 @@ struct damos_watermarks {
-  * @sz_applied:	Total size of regions that the scheme is applied.
-  * @sz_ops_filter_passed:
-  *		Total bytes that passed ops layer-handled DAMOS filters.
-+ * @sz_ops_filter_passed_last:
-+ *		Bytes that passed ops layer-handled DAMOS filters in the last
-+ *		apply interval.
-  * @qt_exceeds: Total number of times the quota of the scheme has exceeded.
-  * @nr_snapshots:
-  *		Total number of DAMON snapshots that the scheme is completely
-@@ -379,6 +382,7 @@ struct damos_stat {
+diff --git a/mm/damon/sysfs-schemes.c b/mm/damon/sysfs-schemes.c
+index 230987efac3a..fe33189e8802 100644
+--- a/mm/damon/sysfs-schemes.c
++++ b/mm/damon/sysfs-schemes.c
+@@ -370,6 +370,7 @@ struct damon_sysfs_stats {
  	unsigned long nr_applied;
  	unsigned long sz_applied;
  	unsigned long sz_ops_filter_passed;
 +	unsigned long sz_ops_filter_passed_last;
  	unsigned long qt_exceeds;
  	unsigned long nr_snapshots;
- };
-@@ -578,6 +582,8 @@ struct damos {
- 	 * @action
- 	 */
- 	unsigned long next_apply_sis;
-+	/* @stat.sz_ops_filter_passed at the start of the current apply interval */
-+	unsigned long sz_ops_filter_passed_at_start;
- 	/* informs if ongoing DAMOS walk for this scheme is finished */
- 	bool walk_completed;
- 	/*
-diff --git a/mm/damon/core.c b/mm/damon/core.c
-index 0a056949604f..6af3309691d4 100644
---- a/mm/damon/core.c
-+++ b/mm/damon/core.c
-@@ -769,6 +769,7 @@ struct damos *damon_new_scheme(struct damos_access_pattern *pattern,
- 	 * or damon_attrs are updated.
- 	 */
- 	scheme->next_apply_sis = 0;
-+	scheme->sz_ops_filter_passed_at_start = 0;
- 	scheme->walk_completed = false;
- 	INIT_LIST_HEAD(&scheme->core_filters);
- 	INIT_LIST_HEAD(&scheme->ops_filters);
-@@ -3533,6 +3534,10 @@ static noinline_for_stack void kdamond_apply_schemes(struct damon_ctx *c)
- 		if (time_before(c->passed_sample_intervals, s->next_apply_sis))
- 			continue;
- 		damos_walk_complete(c, s);
-+		s->stat.sz_ops_filter_passed_last =
-+			s->stat.sz_ops_filter_passed -
-+			s->sz_ops_filter_passed_at_start;
-+		s->sz_ops_filter_passed_at_start = s->stat.sz_ops_filter_passed;
- 		damos_set_next_apply_sis(s, c);
- 		s->last_applied = NULL;
- 		damos_trace_stat(c, s);
+ 	unsigned long max_nr_snapshots;
+@@ -425,6 +426,15 @@ static ssize_t sz_ops_filter_passed_show(struct kobject *kobj,
+ 	return sysfs_emit(buf, "%lu\n", stats->sz_ops_filter_passed);
+ }
+ 
++static ssize_t sz_ops_filter_passed_last_show(struct kobject *kobj,
++		struct kobj_attribute *attr, char *buf)
++{
++	struct damon_sysfs_stats *stats = container_of(kobj,
++			struct damon_sysfs_stats, kobj);
++
++	return sysfs_emit(buf, "%lu\n", stats->sz_ops_filter_passed_last);
++}
++
+ static ssize_t qt_exceeds_show(struct kobject *kobj,
+ 		struct kobj_attribute *attr, char *buf)
+ {
+@@ -485,6 +495,10 @@ static struct kobj_attribute damon_sysfs_stats_sz_applied_attr =
+ static struct kobj_attribute damon_sysfs_stats_sz_ops_filter_passed_attr =
+ 		__ATTR_RO_MODE(sz_ops_filter_passed, 0400);
+ 
++static struct kobj_attribute
++damon_sysfs_stats_sz_ops_filter_passed_last_attr =
++		__ATTR_RO_MODE(sz_ops_filter_passed_last, 0400);
++
+ static struct kobj_attribute damon_sysfs_stats_qt_exceeds_attr =
+ 		__ATTR_RO_MODE(qt_exceeds, 0400);
+ 
+@@ -500,6 +514,7 @@ static struct attribute *damon_sysfs_stats_attrs[] = {
+ 	&damon_sysfs_stats_nr_applied_attr.attr,
+ 	&damon_sysfs_stats_sz_applied_attr.attr,
+ 	&damon_sysfs_stats_sz_ops_filter_passed_attr.attr,
++	&damon_sysfs_stats_sz_ops_filter_passed_last_attr.attr,
+ 	&damon_sysfs_stats_qt_exceeds_attr.attr,
+ 	&damon_sysfs_stats_nr_snapshots_attr.attr,
+ 	&damon_sysfs_stats_max_nr_snapshots_attr.attr,
+@@ -3130,6 +3145,8 @@ void damon_sysfs_schemes_update_stats(
+ 		sysfs_stats->sz_applied = scheme->stat.sz_applied;
+ 		sysfs_stats->sz_ops_filter_passed =
+ 			scheme->stat.sz_ops_filter_passed;
++		sysfs_stats->sz_ops_filter_passed_last =
++			scheme->stat.sz_ops_filter_passed_last;
+ 		sysfs_stats->qt_exceeds = scheme->stat.qt_exceeds;
+ 		sysfs_stats->nr_snapshots = scheme->stat.nr_snapshots;
+ 	}
 
 -- 
 2.54.0-uber3
