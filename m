@@ -1,10 +1,10 @@
 From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Mon, 16 Nov 2026 12:55:14 +0100
-Subject: [PATCH v3 7/8] MAINTAINERS: Add entry for MIPS RISC-V SoC support
+Date: Mon, 16 Nov 2026 12:55:15 +0100
+Subject: [PATCH v3 8/8] riscv: defconfig: Enable MIPS SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-p8700-dts-v3-7-ec5d4b7de39f@htecgroup.com>
+Message-Id: <20261116-p8700-dts-v3-8-ec5d4b7de39f@htecgroup.com>
 References: <20261116-p8700-dts-v3-0-ec5d4b7de39f@htecgroup.com>
 In-Reply-To: <20261116-p8700-dts-v3-0-ec5d4b7de39f@htecgroup.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -21,44 +21,39 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  Vladimir Kondratiev <vladimir.kondratiev@mobileye.com>, 
  Paul Walmsley <paul.walmsley@sifive.com>, 
  Palmer Dabbelt <palmer@sifive.com>, Joel Stanley <joel@jms.id.au>, 
- Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+ Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794830124; l=854;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794830124; l=702;
  i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=vb61DMpqL5a39NmtlZJUf76Y1KgC0WwgwIwdSxwuzoQ=;
- b=HLSKtg/bptyTUBFjrFU6X/ri6p+ErLOY6x04krRt8MeXvHr5BqJa/qcZumgbU7yE57ZHwcorc
- qqqPV8Q09V7B96H7++yRVnj9OwvwNJRDuKvXXJhRtz9xlkcslYqb6vH
+ bh=466tDeyPbrAH0ZZbXJHUmWZAi2oQm3IXvaEsJZHNtNU=;
+ b=V/9j8MpCMt8whhuC9mZX8aB9c75Lj6yWWaWFtpQUoxsQVLHWQwc/LZbRxYxLv+BQuuAq3ipyi
+ D1kWAWKu+JpDga9AQJ4b7V79T02NruFzyZs3b8GxdVt8kE0VPS/F8B+
 X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
  pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
 X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a MAINTAINERS entry covering the MIPS RISC-V devicetree sources
-and the board binding.
+Build the MIPS P8700 Boston dtb by default.
 
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+ arch/riscv/configs/defconfig | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index c2414447892c24d58595059ca27b18775919ac12..a00f1a801be3c532c33918e673c7977d9de91823 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -23542,6 +23542,13 @@ F:	drivers/spi/spi-mpfs.c
- F:	drivers/usb/musb/mpfs.c
- F:	include/soc/microchip/mpfs.h
- 
-+RISC-V MIPS SoC SUPPORT
-+M:	Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-+L:	linux-riscv@lists.infradead.org
-+S:	Supported
-+F:	Documentation/devicetree/bindings/riscv/mips.yaml
-+F:	arch/riscv/boot/dts/mips/
-+
- RISC-V MISC SOC SUPPORT
- M:	Conor Dooley <conor@kernel.org>
- L:	linux-riscv@lists.infradead.org
+diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
+index 04ae305d5511bb0760247f50d4b69b1e3a00527b..1b0b5346603934058d8348ddb3aa9d7616af999c 100644
+--- a/arch/riscv/configs/defconfig
++++ b/arch/riscv/configs/defconfig
+@@ -26,6 +26,7 @@ CONFIG_ARCH_ANDES=y
+ CONFIG_ARCH_ANLOGIC=y
+ CONFIG_ARCH_ESWIN=y
+ CONFIG_ARCH_MICROCHIP=y
++CONFIG_ARCH_MIPS=y
+ CONFIG_ARCH_SIFIVE=y
+ CONFIG_ARCH_SOPHGO=y
+ CONFIG_ARCH_SPACEMIT=y
 
 -- 
 2.43.0
