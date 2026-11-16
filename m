@@ -1,11 +1,11 @@
 From: Matt Thompson <matt@boondocker.io>
-Date: Mon, 16 Nov 2026 02:35:46 -0700
-Subject: [PATCH RFC v3 4/6] PCI: Resume downstream ports before sysfs Link
- Control writes
+Date: Mon, 16 Nov 2026 02:35:47 -0700
+Subject: [PATCH RFC v3 5/6] PCI: rockchip-host: Defer retraining during
+ initial link training
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-rfc-b4-v3-4-0bf052b68f2a@boondocker.io>
+Message-Id: <20261116-rfc-b4-v3-5-0bf052b68f2a@boondocker.io>
 References: <20261116-rfc-b4-v3-0-0bf052b68f2a@boondocker.io>
 In-Reply-To: <20261116-rfc-b4-v3-0-0bf052b68f2a@boondocker.io>
 To: Shawn Lin <shawn.lin@rock-chips.com>, 
@@ -19,65 +19,136 @@ Cc: Rob Herring <robh@kernel.org>, Mark Rutland <mark.rutland@arm.com>,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794821744; l=1870;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794821744; l=4671;
  i=matt@boondocker.io; s=rk3399-rfc-20261113; h=from:subject:message-id;
- bh=WwxhOpFrtKsCRMga9k7eAPDdOyaWOUhvS24ZacGcwHM=;
- b=Vt/YxUV8iyuFcHYDbGV8VJ1jDUfHBt7r3E0+peNj47PQhLuHZVbc/DW+gkn2Gb1zSm98duTUN
- ShveA0x/eUaAq51euaX34+7tof+wu4vc4pOXXy7r4ZsVWOwU7sG1VR/
+ bh=KUXpKSAKyk225bpT79IH2hk0YJswSkRu8Uhog5/Ier8=;
+ b=sNVtW5seraedhdRLtk/01tgNfKXot3Oe0ZrNnzO7kxnYpnZRc9MJhR0eFYN8XN15mSkDH8B5P
+ iKpB8swdS4NCD8ogtJv+gkpNAEPatfYGTf7msQ1lNr7PkDL9KlitTKG
 X-Developer-Key: i=matt@boondocker.io; a=ed25519;
  pk=WMnh3kwFFRkrqamL/FbDcdl1/9rBF2uT03VdvGGP40k=
 X-Endpoint-Received: by B4 Relay for matt@boondocker.io/rk3399-rfc-20261113 with auth_id=1517
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Configuration space can remain accessible while a port is runtime
-suspended. A sysfs Link Control write can then reach hardware before
-runtime resume restores the saved state. On RockPro64 a rescan resumed
-the port and restored the saved Link Disable bit after userspace had
-cleared it, leaving the endpoint absent.
+Clearing Link Disable starts initial training. A retrain request can
+arrive while the PHY is still in Detect, when it cannot recover a data
+link that later stalls in initialization. On RockPro64 the link could
+reach L0 while the data link remained unable to pass configuration
+traffic.
 
-Resume a runtime-suspended downstream port before writing overlapping
-Link Control bytes. The configuration access already holds the runtime
-PM reference across the write.
+Remember an early request and give initialization 50 ms to finish.
+If a later downstream access finds the PHY ready with data link
+initialization still pending, issue the saved request once and leave
+configuration access blocked until the data link becomes ready.
 
 Signed-off-by: Matt Thompson <matt@boondocker.io>
 ---
- drivers/pci/pci-sysfs.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ drivers/pci/controller/pcie-rockchip-host.c | 45 +++++++++++++++++++++++++++--
+ drivers/pci/controller/pcie-rockchip.h      |  3 ++
+ 2 files changed, 46 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/pci/pci-sysfs.c b/drivers/pci/pci-sysfs.c
-index 6669e9a..ff47ea1 100644
---- a/drivers/pci/pci-sysfs.c
-+++ b/drivers/pci/pci-sysfs.c
-@@ -786,6 +786,7 @@ static ssize_t pci_write_config(struct file *filp, struct kobject *kobj,
- 	struct pci_dev *dev = to_pci_dev(kobj_to_dev(kobj));
- 	unsigned int size = count;
- 	loff_t init_off = off;
-+	loff_t lnkctl = pci_pcie_cap(dev) + PCI_EXP_LNKCTL;
- 	u8 *data = (u8 *) buf;
- 	int ret;
+diff --git a/drivers/pci/controller/pcie-rockchip-host.c b/drivers/pci/controller/pcie-rockchip-host.c
+index 64ac6f4..d6c494f 100644
+--- a/drivers/pci/controller/pcie-rockchip-host.c
++++ b/drivers/pci/controller/pcie-rockchip-host.c
+@@ -19,6 +19,7 @@
+ #include <linux/irq.h>
+ #include <linux/irqchip/chained_irq.h>
+ #include <linux/irqdomain.h>
++#include <linux/jiffies.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/of_pci.h>
+@@ -123,11 +124,28 @@ static int rockchip_pcie_wr_own_conf(struct rockchip_pcie *rockchip,
+ 				     int where, int size, u32 val)
+ {
+ 	u32 mask, tmp, offset;
++	bool link_control = where == 0xc0 + PCI_EXP_LNKCTL;
+ 	void __iomem *addr;
  
-@@ -809,6 +810,21 @@ static ssize_t pci_write_config(struct file *filp, struct kobject *kobj,
- 
- 	pci_config_pm_runtime_get(dev);
+ 	offset = where & ~0x3;
+ 	addr = rockchip->apb_base + PCIE_RC_CONFIG_NORMAL_BASE + offset;
  
 +	/*
-+	 * Link Control can be written while config space remains accessible in
-+	 * runtime suspend. Restore saved state first so a later resume cannot
-+	 * replace the new link setting with the saved value.
++	 * Let the PHY finish initial training after Link Disable is cleared.
++	 * Retain a request made during this phase in case the data link does
++	 * not finish initializing on its own.
 +	 */
-+	if (count && pci_is_pcie(dev) && pcie_downstream_port(dev) &&
-+	    pm_runtime_suspended(&dev->dev) &&
-+	    off < lnkctl + sizeof(u16) && off + count > lnkctl) {
-+		ret = pm_runtime_resume(&dev->dev);
-+		if (ret < 0) {
-+			pci_config_pm_runtime_put(dev);
-+			return ret;
++	if (link_control && (val & PCI_EXP_LNKCTL_LD)) {
++		rockchip->retrain_pending = false;
++	} else if (link_control && (val & PCI_EXP_LNKCTL_RL)) {
++		rockchip->retrain_pending = false;
++		if (!PCIE_LINK_TRAINING_DONE(rockchip_pcie_read(rockchip, PCIE_CORE_CTRL))) {
++			rockchip->retrain_pending = true;
++			rockchip->retrain_after = jiffies + msecs_to_jiffies(50);
++			val &= ~PCI_EXP_LNKCTL_RL;
 +		}
 +	}
 +
- 	if ((off & 1) && size) {
- 		pci_user_write_config_byte(dev, off, data[off - init_off]);
- 		off++;
+ 	if (size == 4) {
+ 		writel(val, addr);
+ 		return PCIBIOS_SUCCESSFUL;
+@@ -149,8 +167,29 @@ static int rockchip_pcie_wr_own_conf(struct rockchip_pcie *rockchip,
+ 
+ static bool rockchip_pcie_downstream_ready(struct rockchip_pcie *rockchip)
+ {
+-	return PCIE_LINK_UP(rockchip_pcie_read(rockchip, PCIE_CLIENT_BASIC_STATUS1)) &&
+-	       PCIE_LINK_TRAINING_DONE(rockchip_pcie_read(rockchip, PCIE_CORE_CTRL));
++	u32 status = rockchip_pcie_read(rockchip, PCIE_CLIENT_BASIC_STATUS1);
++	u32 core = rockchip_pcie_read(rockchip, PCIE_CORE_CTRL);
++	u32 control;
++
++	if (!PCIE_LINK_TRAINING_DONE(core))
++		return false;
++	if (PCIE_LINK_UP(status)) {
++		rockchip->retrain_pending = false;
++		return true;
++	}
++
++	if (rockchip->retrain_pending &&
++	    time_after_eq(jiffies, rockchip->retrain_after) &&
++	    (status & PCIE_CLIENT_LINK_STATUS_MASK) == PCIE_CLIENT_LINK_STATUS_DL_INIT) {
++		rockchip->retrain_pending = false;
++		rockchip_pcie_rd_own_conf(rockchip, 0xc0 + PCI_EXP_LNKCTL, 2, &control);
++		if (!(control & PCI_EXP_LNKCTL_LD)) {
++			rockchip_pcie_wr_own_conf(rockchip, 0xc0 + PCI_EXP_LNKCTL, 2,
++						  control | PCI_EXP_LNKCTL_RL);
++		}
++	}
++
++	return false;
+ }
+ 
+ #ifdef CONFIG_ARM64
+@@ -914,6 +953,8 @@ static int rockchip_pcie_suspend_noirq(struct device *dev)
+ 	struct rockchip_pcie *rockchip = dev_get_drvdata(dev);
+ 	int ret;
+ 
++	rockchip->retrain_pending = false;
++
+ 	/* disable core and cli int since we don't need to ack PME_ACK */
+ 	rockchip_pcie_write(rockchip, (PCIE_CLIENT_INT_CLI << 16) |
+ 			    PCIE_CLIENT_INT_CLI, PCIE_CLIENT_INT_MASK);
+diff --git a/drivers/pci/controller/pcie-rockchip.h b/drivers/pci/controller/pcie-rockchip.h
+index 1cc3621..5fdd06b 100644
+--- a/drivers/pci/controller/pcie-rockchip.h
++++ b/drivers/pci/controller/pcie-rockchip.h
+@@ -58,6 +58,7 @@
+ #define   PCIE_CLIENT_NEG_LINK_WIDTH_SHIFT	6
+ #define   PCIE_CLIENT_NEG_LINK_SPEED		BIT(5)
+ #define PCIE_CLIENT_BASIC_STATUS1	(PCIE_CLIENT_BASE + 0x48)
++#define   PCIE_CLIENT_LINK_STATUS_DL_INIT	0x00200000
+ #define   PCIE_CLIENT_LINK_STATUS_UP		0x00300000
+ #define   PCIE_CLIENT_LINK_STATUS_MASK		0x00300000
+ #define PCIE_CLIENT_INT_MASK		(PCIE_CLIENT_BASE + 0x4c)
+@@ -325,6 +326,8 @@ struct rockchip_pcie {
+ 	void    __iomem *msg_region;
+ 	phys_addr_t msg_bus_addr;
+ 	bool is_rc;
++	bool retrain_pending;
++	unsigned long retrain_after;
+ 	struct resource *mem_res;
+ };
+ 
 
 -- 
 Git-155)
