@@ -1,70 +1,111 @@
-From: Matt Thompson <matt@boondocker.io>
-Date: Mon, 16 Nov 2026 02:35:48 -0700
-Subject: [PATCH RFC v3 6/6] PCI: rockchip-host: Mask the client correctable
- error interrupt
+From: Junyi Zhao <junyi.zhao@amlogic.com>
+Subject: [PATCH v4 0/2] Add Amlogic A9 I3C support
+Date: Mon, 16 Nov 2026 18:49:28 +0800
+Message-Id: <20261116-a9_i3c-v4-0-3d3222b7128d@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-rfc-b4-v3-6-0bf052b68f2a@boondocker.io>
-References: <20261116-rfc-b4-v3-0-0bf052b68f2a@boondocker.io>
-In-Reply-To: <20261116-rfc-b4-v3-0-0bf052b68f2a@boondocker.io>
-To: Shawn Lin <shawn.lin@rock-chips.com>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>
-Cc: Rob Herring <robh@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- linux-pci@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
+X-B4-Tracking: v=1; b=H4sIALjf+moC/2XNQQ6CMBQE0KuQrq35LQX5rryHMYb+tlCjYqgSj
+ eHuFgyocTnJvJknC7b1NrB18mSt7XzwzTkGtUgY1eW5stybmJkEmQsQwEvc+5Q4mkyqzAAqKlg
+ sX1rr/H0c2u7eOdz0wdJ10EOj9uHatI/xqRNDbxrFabQTHHgq0RQCTS6F25SnY1N5WlJzYsNsJ
+ z9QgJyhjBBIrZR2RM6V/zD9hvkM0wgLUDpHjYCZ/oV9378A3j0XxSIBAAA=
+X-Change-ID: 20261010-a9_i3c-9d5245d094c8
+To: Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Frank Li <Frank.Li@nxp.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, Kees Cook <kees@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>
+Cc: linux-i3c@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, imx@lists.linux.dev, 
+ linux-hardening@vger.kernel.org, xianwei.zhao@amlogic.com, 
+ Kelvin.Zhang@amlogic.com, Junyi Zhao <junyi.zhao@amlogic.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794821744; l=1536;
- i=matt@boondocker.io; s=rk3399-rfc-20261113; h=from:subject:message-id;
- bh=ce3FAgQbXHJSx+KdqASGBJHjnYp6SNCbhPb8KwijOGQ=;
- b=Roa8HS4rvXHjevx86m6SGHzFE/Uvg8ZIdOKnCckQyQAhP/T2bbAmFPtUYp+bBt/mQYp8z/z+f
- Q3cGA20Dji+DvKbDPqSCsiGW2i2ULWqy5FZQpt8sDp0OfoYQJDvjq1k
-X-Developer-Key: i=matt@boondocker.io; a=ed25519;
- pk=WMnh3kwFFRkrqamL/FbDcdl1/9rBF2uT03VdvGGP40k=
-X-Endpoint-Received: by B4 Relay for matt@boondocker.io/rk3399-rfc-20261113 with auth_id=1517
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794826174; l=2920;
+ i=junyi.zhao@amlogic.com; s=20260924; h=from:subject:message-id;
+ bh=tEwHdY6mdhTInElfOAdG6vOt9+cf0Vk0A3dk5bHZYZI=;
+ b=pc0or0fzYVQZI40xYj5aVT8xvcrZ6X6fqq6ehw9PkNRbWdB9Ln5BaE0MLtADdfzTQBfvy1E4s
+ OF46/MSZkB7D8DuOJSqWIrGKGOGPSZn7bhdA0IIs1jLdN5iuzBdZGqM
+X-Developer-Key: i=junyi.zhao@amlogic.com; a=ed25519;
+ pk=hiL5PjGIksGFiWvEx9J3MhQqU/ro6vNbj72NIw4bbvA=
+X-Endpoint-Received: by B4 Relay for junyi.zhao@amlogic.com/20260924 with auth_id=1054
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On RockPro64 the PCIe client correctable-error bit stayed asserted
-during link bring-up despite acknowledgment. Its level interrupt
-fired at roughly one million interrupts per second on CPU 0 and
-starved RCU.
+Amlogic A9 SoCs integrate the Silvaco I3C IP, but their peripheral
+clock setup differs from the original implementation: the EE-domain
+controller (amlogic,a9-i3c) takes two clocks, "pclk" and "fast_clk",
+while the AO-domain controller (amlogic,a9-ao-i3c) exposes only
+"pclk" and derives its bus clock from an internal divider inside the
+controller's own register region.
 
-Mask the controller-local notification, which the driver only uses
-for a debug message. Standard PCIe AER uses root port status and its
-separate interrupt.
+This series consists of:
 
-Signed-off-by: Matt Thompson <matt@boondocker.io>
+  - Add the Amlogic compatibles and per-variant clock
+    constraints to the silvaco,i3c-master binding schema.
+
+  - Add a vendor_init callback for the clock setup and an
+    Amlogic-specific bit (AML_I3C_QUIRK_AO) for AO-specific behaviour
+    to the Silvaco I3C master driver, and enable the existing
+    Silvaco workaround quirks for both Amlogic variants.
+
+Verified on Amlogic A9 (BY401) with both EE and AO controller
+instances. dt_binding_check and dtbs_check pass with this series.
+
+Signed-off-by: Junyi Zhao <junyi.zhao@amlogic.com>
 ---
- drivers/pci/controller/pcie-rockchip-host.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+Changes in v4:
+  - Move the DT binding patch before the driver patch.
+  - Add CLK_OPS_PARENT_ENABLE flag for ao tail clocks.
+  - Enable fclk before allocating the new clk bulk array.
 
-diff --git a/drivers/pci/controller/pcie-rockchip-host.c b/drivers/pci/controller/pcie-rockchip-host.c
-index d6c494f..a8c2575 100644
---- a/drivers/pci/controller/pcie-rockchip-host.c
-+++ b/drivers/pci/controller/pcie-rockchip-host.c
-@@ -746,8 +746,14 @@ err_out:
- 
- static void rockchip_pcie_enable_interrupts(struct rockchip_pcie *rockchip)
- {
--	rockchip_pcie_write(rockchip, (PCIE_CLIENT_INT_CLI << 16) &
--			    (~PCIE_CLIENT_INT_CLI), PCIE_CLIENT_INT_MASK);
-+	/*
-+	 * Leave the client correctable-error notification masked. On RK3399
-+	 * it can remain asserted after acknowledgment during link bring-up
-+	 * and monopolize the CPU. PCIe AER uses the root port's own status
-+	 * and interrupt, which are independent of this client mask.
-+	 */
-+	rockchip_pcie_write(rockchip, (PCIE_CLIENT_INT_CLI << 16) |
-+			    PCIE_CLIENT_INT_CORR_ERR, PCIE_CLIENT_INT_MASK);
- 	rockchip_pcie_write(rockchip, (u32)(~PCIE_CORE_INT),
- 			    PCIE_CORE_INT_MASK);
- 
+- Link to v3: https://patch.msgid.link/20261106-a9_i3c-v3-0-804b69b9095b@amlogic.com
 
--- 
-Git-155)
+Changes in v3:
+  - Merge vendor quirks into the legacy quirks bitmask and add
+    AML_I3C_QUIRK_AO for the AO variant.
+  - Check the devm_kcalloc() return value when allocating the new
+    clk bulk array.
+  - Enable the clocks before aml_ao_i3c_tail_clocks(), because the
+    divider registers are accessed during registration.
+  - Rework the probe error paths so the clocks are disabled when
+    vendor_init or later steps fail.
+  - Reorder the local variables (longest first).
+  - Convert comments to kernel-doc format.
+  - Depend on COMMON_CLK in Kconfig.
+  - Drop the silvaco,i3c-master-v1 fallback and add a blank line
+    before the new if/then block in the binding.
+  - Explain the I3C peripheral integration details in the binding
+    commit message.
+
+- Link to v2: https://patch.msgid.link/20261102-a9_i3c-v2-0-0c474bfccffa@amlogic.com
+
+Changes in v2:
+
+  - No need rework the Silvaco I3C driver. 
+  - Based on vanilla driver, adapt A9 SoCs through callback 
+    and quirks to handle the variant.
+
+- Link to v1: https://patch.msgid.link/20261019-a9_i3c-v1-0-329d819d621f@amlogic.com
+
+---
+Junyi Zhao (2):
+      dt-bindings: i3c: silvaco,i3c-master: Add Amlogic A9 support
+      i3c: master: svc: Add amlogic a9 support
+
+ .../bindings/i3c/silvaco,i3c-master.yaml           |  26 +-
+ drivers/i3c/master/Kconfig                         |   1 +
+ drivers/i3c/master/svc-i3c-master.c                | 276 ++++++++++++++++++++-
+ 3 files changed, 289 insertions(+), 14 deletions(-)
+---
+base-commit: aac26bee2287c88af5be5a5ff96d783b19a28790
+change-id: 20261010-a9_i3c-9d5245d094c8
+
+Best regards,
+--  
+Junyi Zhao <junyi.zhao@amlogic.com>
 
