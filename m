@@ -1,11 +1,10 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Date: Mon, 16 Nov 2026 13:10:01 +0530
-Subject: [PATCH v2 03/11] dt-bindings: interrupt-controller: qcom,pdc:
- Document Molokai PDC
+Date: Mon, 16 Nov 2026 13:10:02 +0530
+Subject: [PATCH v2 04/11] soc: qcom: ubwc: Add config for Molokai
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-molokai-soc-v2-3-9dc4dddc4e96@yahoo.com>
+Message-Id: <20261116-molokai-soc-v2-4-9dc4dddc4e96@yahoo.com>
 References: <20261116-molokai-soc-v2-0-9dc4dddc4e96@yahoo.com>
 In-Reply-To: <20261116-molokai-soc-v2-0-9dc4dddc4e96@yahoo.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -18,38 +17,39 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794814798; l=975;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794814798; l=1078;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=6zAZrpNbRMeb1g5rcQiYw3H1ORIIFBwSvRVKUAZK5ys=;
- b=ePSah5O0PVUhh3SYASdSFKzE3tFhuVaWPHp0fMl2ApwFnQeBicQeMejXqID5Be7pHXOqZqGwI
- L3gjhzntOa8Bqi8Nclz6Rtao4TYdfAFHQU3eiyXySaqDrib4aHiyAa8
+ bh=WP1Svqpj7tR2Cxdu5FZ65Nb5M45+JGuJ7myetv6wWDk=;
+ b=jWrd2iS4Zx3skYnO2A11Fiueyr08Um9BuLJSQIjEiA5kdan9SpZGW9gLP0rRdg4XDEiWJeCO4
+ FgKT21Q2NekAII7I7lmx2Q37AlYyc9gS4nQt1HQbwCUcGVl5WT86UAs
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the Power Domain Controller of the Qualcomm Molokai (SM8845) SoC,
-which maps one more range of interrupts than the Kaanapali one.
+Molokai (SM8845) uses UBWC 6.0 with a highest bank bit of 16, like
+Kaanapali. Without an entry, the display subsystem fails to probe on
+Molokai based devices.
 
 An LLM was used to help write this commit message.
 
 Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
- Documentation/devicetree/bindings/interrupt-controller/qcom,pdc.yaml | 1 +
+ drivers/soc/qcom/ubwc_config.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/interrupt-controller/qcom,pdc.yaml b/Documentation/devicetree/bindings/interrupt-controller/qcom,pdc.yaml
-index 8401d3b48e0f..64de63b7a031 100644
---- a/Documentation/devicetree/bindings/interrupt-controller/qcom,pdc.yaml
-+++ b/Documentation/devicetree/bindings/interrupt-controller/qcom,pdc.yaml
-@@ -33,6 +33,7 @@ properties:
-           - qcom,kuno-pdc
-           - qcom,maili-pdc
-           - qcom,milos-pdc
-+          - qcom,molokai-pdc
-           - qcom,nord-pdc
-           - qcom,qcs615-pdc
-           - qcom,qcs8300-pdc
+diff --git a/drivers/soc/qcom/ubwc_config.c b/drivers/soc/qcom/ubwc_config.c
+index 456995699fdb..7c1166c68551 100644
+--- a/drivers/soc/qcom/ubwc_config.c
++++ b/drivers/soc/qcom/ubwc_config.c
+@@ -130,6 +130,7 @@ static const struct of_device_id qcom_ubwc_configs[] __maybe_unused = {
+ 	{ .compatible = "qcom,mahua", .data = &glymur_data },
+ 	{ .compatible = "qcom,maili", .data = &ubwc_7_0_hbb16, },
+ 	{ .compatible = "qcom,milos", .data = &milos_data },
++	{ .compatible = "qcom,molokai", .data = &ubwc_6_0_hbb16 },
+ 	{ .compatible = "qcom,msm8226", .data = &no_ubwc_data },
+ 	{ .compatible = "qcom,msm8916", .data = &no_ubwc_data },
+ 	{ .compatible = "qcom,msm8917", .data = &no_ubwc_data },
 
 -- 
 2.56.1
