@@ -1,11 +1,11 @@
 From: Matt Thompson <matt@boondocker.io>
-Date: Mon, 16 Nov 2026 02:35:45 -0700
-Subject: [PATCH RFC v3 3/6] PCI: rockchip-host: Recover downstream
- configuration access
+Date: Mon, 16 Nov 2026 02:35:46 -0700
+Subject: [PATCH RFC v3 4/6] PCI: Resume downstream ports before sysfs Link
+ Control writes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-rfc-b4-v3-3-0bf052b68f2a@boondocker.io>
+Message-Id: <20261116-rfc-b4-v3-4-0bf052b68f2a@boondocker.io>
 References: <20261116-rfc-b4-v3-0-0bf052b68f2a@boondocker.io>
 In-Reply-To: <20261116-rfc-b4-v3-0-0bf052b68f2a@boondocker.io>
 To: Shawn Lin <shawn.lin@rock-chips.com>, 
@@ -19,156 +19,65 @@ Cc: Rob Herring <robh@kernel.org>, Mark Rutland <mark.rutland@arm.com>,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794821744; l=4966;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794821744; l=1870;
  i=matt@boondocker.io; s=rk3399-rfc-20261113; h=from:subject:message-id;
- bh=t7P6yz1ZPt577IkVoaPXVx7wOD2MZniq6qTtpmWpQv0=;
- b=BnKbzR8+U/NVEHw0lN+x9zQOZ26TegMsjXzgJThVUDaAmKioqOd2YPUmM15W5G/Frro19sTKP
- voN91EOgr2vAkKaHiiQYK9AnhG7gGHpbrC04uvt8/d4MSuZlKp8NdqU
+ bh=WwxhOpFrtKsCRMga9k7eAPDdOyaWOUhvS24ZacGcwHM=;
+ b=Vt/YxUV8iyuFcHYDbGV8VJ1jDUfHBt7r3E0+peNj47PQhLuHZVbc/DW+gkn2Gb1zSm98duTUN
+ ShveA0x/eUaAq51euaX34+7tof+wu4vc4pOXXy7r4ZsVWOwU7sG1VR/
 X-Developer-Key: i=matt@boondocker.io; a=ed25519;
  pk=WMnh3kwFFRkrqamL/FbDcdl1/9rBF2uT03VdvGGP40k=
 X-Endpoint-Received: by B4 Relay for matt@boondocker.io/rk3399-rfc-20261113 with auth_id=1517
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The link status can change between the readiness check and a downstream
-PCI configuration read. A link that reports up can also fail to return
-a usable completion.
+Configuration space can remain accessible while a port is runtime
+suspended. A sysfs Link Control write can then reach hardware before
+runtime resume restores the saved state. On RockPro64 a rescan resumed
+the port and restored the saved Link Disable bit after userspace had
+cleared it, leaving the endpoint absent.
 
-On arm64, annotate downstream loads for all three access widths so a
-synchronous external abort returns PCIBIOS_DEVICE_NOT_FOUND with all-ones
-data. Keep little-endian conversion and I/O read ordering on success.
-
-After retraining, the controller can continue to block configuration
-traffic until its AXI link-down latch is cleared. Clear the latch before
-downstream config reads and writes once the link readiness checks pass.
-
-Link: https://lore.kernel.org/linux-pci/20261024-rockchip-pcie-resume-v1-2-58e54a5cf5f1@iav.lv/
+Resume a runtime-suspended downstream port before writing overlapping
+Link Control bytes. The configuration access already holds the runtime
+PM reference across the write.
 
 Signed-off-by: Matt Thompson <matt@boondocker.io>
 ---
- drivers/pci/controller/pcie-rockchip-host.c | 62 +++++++++++++++++++++++++++--
- drivers/pci/controller/pcie-rockchip.h      |  1 +
- 2 files changed, 59 insertions(+), 4 deletions(-)
+ drivers/pci/pci-sysfs.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-diff --git a/drivers/pci/controller/pcie-rockchip-host.c b/drivers/pci/controller/pcie-rockchip-host.c
-index 35105c1..64ac6f4 100644
---- a/drivers/pci/controller/pcie-rockchip-host.c
-+++ b/drivers/pci/controller/pcie-rockchip-host.c
-@@ -29,6 +29,10 @@
- #include "../pci.h"
- #include "pcie-rockchip.h"
+diff --git a/drivers/pci/pci-sysfs.c b/drivers/pci/pci-sysfs.c
+index 6669e9a..ff47ea1 100644
+--- a/drivers/pci/pci-sysfs.c
++++ b/drivers/pci/pci-sysfs.c
+@@ -786,6 +786,7 @@ static ssize_t pci_write_config(struct file *filp, struct kobject *kobj,
+ 	struct pci_dev *dev = to_pci_dev(kobj_to_dev(kobj));
+ 	unsigned int size = count;
+ 	loff_t init_off = off;
++	loff_t lnkctl = pci_pcie_cap(dev) + PCI_EXP_LNKCTL;
+ 	u8 *data = (u8 *) buf;
+ 	int ret;
  
-+#ifdef CONFIG_ARM64
-+#include <asm/asm-extable.h>
-+#endif
-+
- static void rockchip_pcie_enable_bw_int(struct rockchip_pcie *rockchip)
- {
- 	u32 status;
-@@ -149,16 +153,36 @@ static bool rockchip_pcie_downstream_ready(struct rockchip_pcie *rockchip)
- 	       PCIE_LINK_TRAINING_DONE(rockchip_pcie_read(rockchip, PCIE_CORE_CTRL));
- }
+@@ -809,6 +810,21 @@ static ssize_t pci_write_config(struct file *filp, struct kobject *kobj,
  
-+#ifdef CONFIG_ARM64
-+/*
-+ * An absent completion can raise a synchronous external abort even when
-+ * the link status indicated up immediately before the config transaction.
-+ */
-+#define rockchip_pcie_cfg_load(insn, addr, val)			\
-+	({								\
-+		int err = 0;					\
-+		asm volatile("1: " #insn " %w0, [%2]\n"			\
-+			     "2:\n"					\
-+			     _ASM_EXTABLE_MMIO_READ_ERR_ZERO(1b, 2b,	\
-+							    %w1, %w0)	\
-+			     : "=&r" (val), "+r" (err)			\
-+			     : "r" (addr) : "memory");			\
-+		err;							\
-+	})
-+#endif
-+
- static int rockchip_pcie_rd_other_conf(struct rockchip_pcie *rockchip,
- 				       struct pci_bus *bus, u32 devfn,
- 				       int where, int size, u32 *val)
- {
- 	void __iomem *addr;
-+#ifdef CONFIG_ARM64
-+	u32 data;
-+	int err;
-+#endif
+ 	pci_config_pm_runtime_get(dev);
  
--	if (!rockchip_pcie_downstream_ready(rockchip)) {
--		*val = ~0U;
--		return PCIBIOS_DEVICE_NOT_FOUND;
--	}
-+	if (!rockchip_pcie_downstream_ready(rockchip))
-+		goto absent;
- 
- 	addr = rockchip->reg_base + PCIE_ECAM_OFFSET(bus->number, devfn, where);
- 
-@@ -174,6 +198,28 @@ static int rockchip_pcie_rd_other_conf(struct rockchip_pcie *rockchip,
- 		rockchip_pcie_cfg_configuration_accesses(rockchip,
- 						AXI_WRAPPER_TYPE1_CFG);
- 
-+	/* Clear the AXI link-down latch before downstream config traffic. */
-+	rockchip_pcie_write(rockchip, 0, PCIE_CORE_AXI_LINK_DOWN);
-+
-+#ifdef CONFIG_ARM64
-+	if (size == 4) {
-+		err = rockchip_pcie_cfg_load(ldr, addr, data);
-+		*val = le32_to_cpu((__force __le32)data);
-+	} else if (size == 2) {
-+		err = rockchip_pcie_cfg_load(ldrh, addr, data);
-+		*val = le16_to_cpu((__force __le16)data);
-+	} else if (size == 1) {
-+		err = rockchip_pcie_cfg_load(ldrb, addr, data);
-+		*val = data;
-+	} else {
-+		*val = 0;
-+		return PCIBIOS_BAD_REGISTER_NUMBER;
++	/*
++	 * Link Control can be written while config space remains accessible in
++	 * runtime suspend. Restore saved state first so a later resume cannot
++	 * replace the new link setting with the saved value.
++	 */
++	if (count && pci_is_pcie(dev) && pcie_downstream_port(dev) &&
++	    pm_runtime_suspended(&dev->dev) &&
++	    off < lnkctl + sizeof(u16) && off + count > lnkctl) {
++		ret = pm_runtime_resume(&dev->dev);
++		if (ret < 0) {
++			pci_config_pm_runtime_put(dev);
++			return ret;
++		}
 +	}
-+	if (err)
-+		goto absent;
-+	/* Preserve the I/O read ordering of readl/readw/readb. */
-+	__io_ar(*val);
-+#else
- 	if (size == 4) {
- 		*val = readl(addr);
- 	} else if (size == 2) {
-@@ -184,7 +230,12 @@ static int rockchip_pcie_rd_other_conf(struct rockchip_pcie *rockchip,
- 		*val = 0;
- 		return PCIBIOS_BAD_REGISTER_NUMBER;
- 	}
-+#endif
- 	return PCIBIOS_SUCCESSFUL;
 +
-+absent:
-+	*val = ~0U;
-+	return PCIBIOS_DEVICE_NOT_FOUND;
- }
- 
- static int rockchip_pcie_wr_other_conf(struct rockchip_pcie *rockchip,
-@@ -208,6 +259,9 @@ static int rockchip_pcie_wr_other_conf(struct rockchip_pcie *rockchip,
- 		rockchip_pcie_cfg_configuration_accesses(rockchip,
- 						AXI_WRAPPER_TYPE1_CFG);
- 
-+	/* Clear the AXI link-down latch before downstream config traffic. */
-+	rockchip_pcie_write(rockchip, 0, PCIE_CORE_AXI_LINK_DOWN);
-+
- 	if (size == 4)
- 		writel(val, addr);
- 	else if (size == 2)
-diff --git a/drivers/pci/controller/pcie-rockchip.h b/drivers/pci/controller/pcie-rockchip.h
-index b5da156..1cc3621 100644
---- a/drivers/pci/controller/pcie-rockchip.h
-+++ b/drivers/pci/controller/pcie-rockchip.h
-@@ -164,6 +164,7 @@
- #define MIN_AXI_ADDR_BITS_PASSED		8
- #define PCIE_ADDR_MASK			GENMASK_ULL(63, MIN_AXI_ADDR_BITS_PASSED)
- #define PCIE_CORE_AXI_CONF_BASE		0xc00000
-+#define PCIE_CORE_AXI_LINK_DOWN		(PCIE_CORE_AXI_CONF_BASE + 0x824)
- #define PCIE_CORE_OB_REGION_ADDR0	(PCIE_CORE_AXI_CONF_BASE + 0x0)
- #define   PCIE_CORE_OB_REGION_ADDR0_NUM_BITS	0x3f
- #define   PCIE_CORE_OB_REGION_ADDR0_LO_ADDR	PCIE_ADDR_MASK
+ 	if ((off & 1) && size) {
+ 		pci_user_write_config_byte(dev, off, data[off - init_off]);
+ 		off++;
 
 -- 
 Git-155)
