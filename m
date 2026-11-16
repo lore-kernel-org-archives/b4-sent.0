@@ -1,11 +1,11 @@
 From: Hugo Sales <hugo@hsal.es>
-Date: Mon, 16 Nov 2026 14:01:04 +0000
-Subject: [PATCH v3 2/6] drm/amd/display: Add the CRTC's planes when the ABM
+Date: Mon, 16 Nov 2026 14:01:05 +0000
+Subject: [PATCH v3 3/6] drm/amd/display: Don't force a modeset when the ABM
  level changes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-abm-sysfs-commit-v3-2-7a3d84a5328e@hsal.es>
+Message-Id: <20261116-abm-sysfs-commit-v3-3-7a3d84a5328e@hsal.es>
 References: <20261116-abm-sysfs-commit-v3-0-7a3d84a5328e@hsal.es>
 In-Reply-To: <20261116-abm-sysfs-commit-v3-0-7a3d84a5328e@hsal.es>
 To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
@@ -27,73 +27,107 @@ Cc: Mario Limonciello <mario.limonciello@amd.com>, Ray Wu <ray.wu@amd.com>,
  linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Hugo Sales <hugo@hsal.es>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2571; i=hugo@hsal.es;
- h=from:subject:message-id; bh=qEE0S9PbkvyPum4bGl1VMgQGUMbMKntSfo2X6VR25RU=;
- b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsn7zzL8b2R3Z9DqkuuSfSMa5K2p3l/+ZnPRA/IiV2
- r2VpZ+jVPU6SlkYxLgYZMUUWXRveDKwTJw8M6fo+RKYOaxMIEMYuDgFYCKXbBn+qSzicZ//LPpJ
- 4mvPFcek79awlLNnLf2vPUG+3q2NQ3DRNkaGyZYTS1uOlXW63Jr/jkVzhe+fi9MUrj6eWxVgqLa
- p32QXKwA1Lkup
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4516; i=hugo@hsal.es;
+ h=from:subject:message-id; bh=nTN2YLHV+ve8v1xZQdklVKDNGY+K7ZshEneUQgf4siY=;
+ b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsn7zzPdo0k5N1XwUv1ok9yFv37XpfzImXd/yWvvE6
+ rd5U08zeE7pKGVhEONikBVTZNG94cnAMnHyzJyi50tg5rAygQxh4OIUgIncT2b4X3Sl2bP4oEDa
+ jpybF+3aX300OWbos2zFbv0Eh+rLE+YvFmNk+KTUP3m3z/yimNP39GKXqei8DiidcGWKz0Xn/KP
+ vdab4sAEAYsZNtg==
 X-Developer-Key: i=hugo@hsal.es; a=openpgp;
  fpr=193D095149CF7E8737B39064D912B0DB205A91C1
 X-Endpoint-Received: by B4 Relay for hugo@hsal.es/default with auth_id=1417
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-An upcoming patch stops a change of the connector's ABM level from
-forcing a modeset. The modeset adds every plane on the CRTC to the
-commit. Without it, a commit that changes only the level carries the
-planes the CRTC check pulls in, which with VRR active is the primary
-plane alone. DC then updates the stream with that one surface and drops
-an active overlay plane until the next flip
+An upcoming patch commits panel_power_savings writes from the kernel
+without a modeset. amdgpu_dm_atomic_check() sets connectors_changed on the
+CRTC when the connector's ABM level changes, so that commit would fail
+with -EINVAL
 
-Add the CRTC's planes when the level changes, as atomic check already
-does for color management and VRR changes
+The flag came in with commit c5892a102182 ("drm/amd/display: Fix dmesg
+warning from setting abm level"), which also added the CRTC to the commit.
+Setting the level alone left the CRTC out, so no stream update reached DC.
+Adding the CRTC is enough for that. Since commit b05e2c5e81f9
+("drm/amd/display: Update ABM crtc state on non-modeset"),
+dm_update_crtc_state() copies the level from the connector to the CRTC
+state on the non-modeset path, and the commit tail sends a changed level
+as stream_update.abm_level. Sending the level doesn't need the planes in
+the commit. The commit tail walks the connectors and takes the surfaces
+from the stream status in DC
 
+The modeset also put every plane on the CRTC in the commit, which kept DC
+from dropping an overlay when VRR is active. "drm/amd/display: Add the
+CRTC's planes when the ABM level changes" keeps them there
+
+This applies to every commit that changes the level. A compositor that
+sets the "adaptive backlight modulation" KMS property no longer gets a
+modeset either
+
+The forced modeset also took the panel out of PSR or Panel Replay before
+the level reached DC. The non-modeset path relies on "drm/amd/display:
+Leave self-refresh before an ABM level update" for that, so it has to be
+applied first
+
+Keep the flag for scaling changes, which move the stream's source and
+destination rectangles
+
+David Weber <weber.aulendorf@gmail.com> sent the same change to the
+condition in August
+
+Link: https://lore.kernel.org/amd-gfx/20260813112634.11455-3-weber.aulendorf@gmail.com/
 Signed-off-by: Hugo Sales <hugo@hsal.es>
 ---
-This was reported on v2 [1]. On my laptop (GV301QH, DCN 2.1), with v2
-and VRR active, a panel_power_savings write took the overlay off the
-screen. The DTN log went from four pipes, primary and overlay each split
-over two, to the two primary ones, and a flip of both planes brought the
-overlay back. With VRR off, the overlay stayed. With this patch, it
-stayed with VRR on too, and all four pipes were still there after the
-write
+This needs "drm/amd/display: Leave self-refresh before an ABM level
+update" [1] applied first. Without it, a level change on the
+non-modeset path reaches DC while PSR or Panel Replay is active
 
-This only covers commits that change the ABM level. From my reading,
-other commits that add the CRTC but no planes, like a change of the HDR
-metadata, can drop an overlay the same way while VRR is active. That
-needs a fix in the CRTC check that pulls in only the primary plane, which
-I'll send as a separate series
+[1] https://lore.kernel.org/r/20261113-amdgpu-psr-abm-update-next-v2-0-27ce790856ea@hsal.es
 
-[1] https://lore.kernel.org/all/sashiko-outbox-213691@kernel.org/
+Upstream, a level already reaches DC this way when a compositor commits
+the connector after a panel_power_savings write. The store has already
+written the level into the current connector state, so the old and new
+connector states match and atomic check doesn't ask for a modeset. Only
+the CRTC state, which still holds the old level, sees the change. With
+this series, the hardware tests in the cover letter apply every level this
+way
+
+When a commit changes the level and also has planes on that CRTC, for
+example a compositor that sets the property and flips in the same
+commit, upstream sends the level to DC twice: from the connector loop in
+the commit tail and from amdgpu_dm_commit_planes(). The same already
+happens upstream after a panel_power_savings write, when the
+compositor's next commit has both the connector and planes. [1] sends it
+from the connector loop only
+
+If a level change through the KMS property should still force a modeset,
+the store could flag its own commits instead. It would set a flag in
+dm_connector_state that atomic check reads to skip connectors_changed.
+duplicate_state wouldn't copy the flag, so it only lasts for that one
+commit. I think it's simpler to treat the change the same way whoever made
+it, but I can send that version
+
+Scaling has been in the same check since commit 3c6d1aeb4342
+("drm/amd/display: Fix set scaling doesn's work"). From my reading the
+non-modeset path handles it too, as a src/dst stream update, but it
+changes the scaler ratio and I can't tell whether DC needs the full
+validation for that. Could it go as well?
 ---
- drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-index dfbc384fbbdb4..cf75450066451 100644
+index cf75450066451..caef3857eec18 100644
 --- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
 +++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-@@ -6307,6 +6307,20 @@ STATIC_IFN_KUNIT int amdgpu_dm_atomic_check(struct drm_device *dev,
- 		if (dm_old_con_state->abm_level != dm_new_con_state->abm_level ||
- 		    dm_old_con_state->scaling != dm_new_con_state->scaling)
- 			new_crtc_state->connectors_changed = true;
-+
-+		/*
-+		 * With VRR active, the CRTC check adds only the primary plane,
-+		 * and DC would drop any other plane from the stream
-+		 */
-+		if (dm_old_con_state->abm_level != dm_new_con_state->abm_level) {
-+			ret = drm_atomic_add_affected_planes(state, new_con_state->crtc);
-+			if (ret) {
-+				drm_dbg_atomic(dev,
-+					       "drm_atomic_add_affected_planes() failed: %pe\n",
-+					       ERR_PTR(ret));
-+				goto fail;
-+			}
-+		}
- 	}
+@@ -6304,8 +6304,7 @@ STATIC_IFN_KUNIT int amdgpu_dm_atomic_check(struct drm_device *dev,
+ 			goto fail;
+ 		}
  
- 	if (dc_resource_is_dsc_encoding_supported(dc)) {
+-		if (dm_old_con_state->abm_level != dm_new_con_state->abm_level ||
+-		    dm_old_con_state->scaling != dm_new_con_state->scaling)
++		if (dm_old_con_state->scaling != dm_new_con_state->scaling)
+ 			new_crtc_state->connectors_changed = true;
+ 
+ 		/*
 
 -- 
 2.56.0
