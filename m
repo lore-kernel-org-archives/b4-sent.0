@@ -1,172 +1,126 @@
-From: Moad Tarrih <tarrihmoad@proton.me>
-Date: Mon, 16 Nov 2026 11:48:12 +0000
-Subject: [PATCH v5] platform/x86: asus-wmi: Ignore unusable kbd backlight
- WMI device on ROG Strix G814FP
+From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Subject: [PATCH v3 0/8] Add support for MIPS P8700
+Date: Mon, 16 Nov 2026 12:55:07 +0100
+Message-Id: <20261116-p8700-dts-v3-0-ec5d4b7de39f@htecgroup.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-asus-wmi-kbd-readback-v5-1-f2f170836bf4@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XRTW7CMBAF4Ksgr+vKf3EcVtyj6sL2jIuLSMBOA
- gjl7jjQRdQq6vJJM9+TZu4kY4qYyXZzJwnHmGPXllC9bYjf2/YLaYSSiWBCc84MtXnI9HKM9OC
- AJrTgrD9QIbVQFRoBaEjZPSUM8fp0Pz5fOQ/uG30/Y/PEPua+S7dn8cjnuf86Rk45dUGaoBVjF
- nB3Sl3fte9HJHPHKJZKs6aIonimTPCVBIN/FLlQOFtTZFG00haCcEaL5reilgpfU1RR6gYCr3S
- tag1LZXqdLeF5KF/pf245TQ9XfvwtswEAAA==
-X-Change-ID: 20261108-asus-wmi-kbd-readback-236245e82de8
-To: Corentin Chary <corentin.chary@gmail.com>, 
- "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
- Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Antheas Kapenekakis <lkml@antheas.dev>, 
- Benjamin Tissoires <bentiss@kernel.org>
-Cc: Sercan GOKMEN <gokmensercan@gmail.com>, 
- Burak Goncu <burakgon12@gmail.com>, Denis Benato <benato.denis96@gmail.com>, 
- platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Moad Tarrih <tarrihmoad@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794829702; l=5701;
- i=tarrihmoad@proton.me; s=20261108; h=from:subject:message-id;
- bh=3nGZnubAyvz6LHpt+pJHAhYjFwDOuh3QCXEfuWLUP48=;
- b=TU1qjWk4F4/ItjYisO1i5iKWQwNqMsFCBU33o2CipCt7EFQTzX3TF1s4ZnbuTV+qfUGpoquAk
- Pdgiiz66DvuCLf8dqI+/S/46EIXMXLrofXVU5cVd80YzilnaxiLhpyY
-X-Developer-Key: i=tarrihmoad@proton.me; a=ed25519;
- pk=wtwpmYxZldK7Qebavgtx7P5WmSQOiWjicK0506NOKLg=
-X-Endpoint-Received: by B4 Relay for tarrihmoad@proton.me/20261108 with auth_id=1453
+X-B4-Tracking: v=1; b=H4sIABvv+moC/12MwQ6CMBAFf8X0bE13Wyh48j+MByxb6EFKWmw0h
+ H+3YGKIx3l5MzOLFBxFdj7MLFBy0fkhgzwemOmboSPu2swMBZZCYsHHSgvB2ylyBbqqrACFqFn
+ +j4Gse22t6y1z7+Lkw3tLJ1jXb6UGtask4IJLLLUFRXdDcOknMl3wz/Fk/IOtpYQ/G0DIvY2r3
+ ZiiVbVFI/W/vSzLB+So4GbkAAAA
+X-Change-ID: 20260325-p8700-dts-41788f014227
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>, 
+ Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
+ Anup Patel <anup@brainfault.org>, Thomas Gleixner <tglx@kernel.org>, 
+ Radu Rendec <radu@rendec.net>, Inochi Amaoto <inochiama@outlook.com>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
+ Conor Dooley <conor@kernel.org>, linux-riscv@lists.infradead.org, 
+ Vladimir Kondratiev <vladimir.kondratiev@mobileye.com>, 
+ Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@sifive.com>, Joel Stanley <joel@jms.id.au>, 
+ Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794830124; l=4421;
+ i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
+ bh=yMBQcqxirYNOfYKfWqY+jYqV6O5S2DvCDStxOPByMsY=;
+ b=OeNR91oEA6s0OsEjqaqT3C97DuJtiNR6SitaKopZW7aSx5Pt7hqmHDrIoSpwDYrlg/Rqn/S0V
+ kym7xGkGOj1DxGsPtFmALtUblcWSI3IcmrwuVxTyVoLnOzj5quOMgpv
+X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
+ pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
+X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the ASUS ROG Strix G18 G814FP, writing a level to the keyboard
-backlight brightness in sysfs changes the LED brightness, but reading
-it back always gives 0, and the read makes the Fn brightness keys
-misbehave.
+The MIPS P8700 is a multi-core RISC-V microprocessor system, supporting
+both single-cluster and multi-cluster configurations. [1]
+This series adds full description of the platform,
+including the Boston FPGA board configured with a P8700 bitfile.
 
-The firmware reports the keyboard backlight WMI device as present
-without implementing it, and the backlight is actually driven by
-hid-asus. DSTS(0x00050021) always returns 0x50000, which is level 0
-with the presence bit set, regardless of the actual level, and every
-DEVS(0x00050021) write is rejected as an unsupported method.
+The P8700 cores support the RV64GCZba_Zbb (G = IMAFD) Standard ISA,
+with a caveat: the A extension is only partially supported, and all ZAAMO
+extension instructions are emulated on the SBI level. The device tree
+intentionally does not reflect this fact. Vladimir Kondratiev's series
+improves performance by directly substituting AMO instructions with LR/SC. [4]
+The two patchsets do not depend on one another.
 
-Add a kbd_led_no_wmi quirk that makes asus-wmi treat the keyboard
-backlight WMI device as absent, and set it for this board, matched on
-the DMI board name. asus-wmi then keeps the LED registered for hid-asus
-and no longer reads from or writes to the WMI device.
+The board itself is the same board as 'img,boston', configured with a different
+bitfile [3]. The Boston board has been supported since commit 6e62a888029b
+("MIPS: generic: Support MIPS Boston development boards") (thanks to Maciej for finding the ref).
 
-As a side effect, the kbd_rgb_mode and kbd_rgb_mode_index attributes are
-no longer created on this board, they never worked here since the firmware
-rejects those writes as well.
+I tested this series both on QEMU and a Boston board
+configured with a single P8700 CPU,
+after applying the necessary U-Boot changes.
+We are planning on upstreaming these as well.
 
-Fixes: fac55d29581f ("platform/x86: asus-wmi: Add support for multiple kbd led handlers")
-Suggested-by: Antheas Kapenekakis <lkml@antheas.dev>
-Suggested-by: Denis Benato <denis.benato@linux.dev>
-Cc: stable@vger.kernel.org
-Signed-off-by: Moad Tarrih <tarrihmoad@proton.me>
-Reviewed-by: Antheas Kapenekakis <lkml@antheas.dev>
-Reviewed-by: Denis Benato <denis.benato@linux.dev>
+Following the discussion in [2], I decided to drop the 'gf' prefix for all compatibles
+and to rework the aclint-mtimer binding.
+
+Links:
+[1] https://mips.com/wp-content/uploads/2025/11/P8700-F_Programmers_Reference_Manual-TM.pdf
+[2] https://lore.kernel.org/linux-riscv/20261109051050.105623-5-joel@jms.id.au/
+[3] https://training.mips.com/cps_mips/Examples/MD00901_Boot-MIPS_Example_Boot_Code_for_MIPS_Cores.pdf
+[4] https://lore.kernel.org/all/20261026-lrsc-only-v3-0-ec29c8190fb1@mobileye.com/
+
+Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
-Tested on an ASUS ROG Strix G18 (board G814FP, BIOS G814FP.317) on
-7.2.14: the brightness attribute reads back the level that was set, the
-Fn keys step from it, and this survives suspend and reboot. W=1 and
-checkpatch --strict are clean. v5 only changes the commit message.
-
-Sercan GOKMEN's B9406CAA patch also adds a field to struct quirk_entry
-and a DMI entry, so whichever lands second may need a trivial rebase.
-
-AI assistance: Claude Code (Claude Opus 5.5) was used to trace the
-asus-wmi code, write the patch and draft the commit message. I reviewed
-it and tested it on the hardware.
----
-Changes in v5:
-- Say that the sysfs write changes the LED brightness, and that
-  DSTS(0x00050021) returns level 0 with the presence bit set (Denis).
-- Add Denis's Reviewed-by.
-- Link to v4: https://patch.msgid.link/20261111-asus-wmi-kbd-readback-v4-1-79df1567476d@proton.me
-
-Changes in v4:
-- Trim the commit message and move the AI assistance note below the
-  --- line (Ilpo).
-- Link to v3: https://patch.msgid.link/20261110-asus-wmi-kbd-readback-v3-1-646adf2b8629@proton.me
-
 Changes in v3:
-- Drop the comment on kbd_led_no_wmi (Antheas).
-- Don't set wmi_backlight_set_devstate for this board: the firmware
-  rejects both DSTS and DEVS on 0x00050012, so the write did nothing
-  (Antheas).
-- Add Antheas's Reviewed-by.
-- Link to v2: https://patch.msgid.link/20261109-asus-wmi-kbd-readback-v2-1-c048fc53d8ee@proton.me
+- Drop the 'gf' vendor prefix patch. The prefix isn't used anywhere.
+- Replace 'gf,mips-p8700-*' compatibles with 'mips,p8700-*'
+  to match those already present in OpenSBI.
+  Other compatibles are also renamed for consistency.
+  Match the directory structure and binding names,
+  by replacing 'gf' with 'mips' everywhere.
+- Add a MAINTAINERS entry.
+- Change the `aclint-mtimer` binding, reversing the decision made in v2
+  and putting 'mtime' first when both 'mtime' and 'mtimecmp' are present.
+- Link to v2: https://lore.kernel.org/r/20261103-p8700-dts-v2-0-3ac5d49f2c37@htecgroup.com
 
 Changes in v2:
-- Add a quirk that makes asus-wmi skip the keyboard backlight WMI
-  device on this board instead of detecting rejected writes at
-  runtime (Antheas), so no more WMI writes that are known to fail
-  are issued (Denis).
-- Link to v1: https://patch.msgid.link/20261108-asus-wmi-kbd-readback-v1-1-bf38f6400ade@proton.me
----
- drivers/platform/x86/asus-nb-wmi.c | 13 +++++++++++++
- drivers/platform/x86/asus-wmi.c    |  3 ++-
- drivers/platform/x86/asus-wmi.h    |  1 +
- 3 files changed, 16 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/platform/x86/asus-nb-wmi.c b/drivers/platform/x86/asus-nb-wmi.c
-index 3b0f3346dc60..9b2a4b829885 100644
---- a/drivers/platform/x86/asus-nb-wmi.c
-+++ b/drivers/platform/x86/asus-nb-wmi.c
-@@ -93,6 +93,10 @@ static struct quirk_entry quirk_asus_unknown = {
- 	.wmi_backlight_set_devstate = true,
- };
- 
-+static struct quirk_entry quirk_asus_g814fp = {
-+	.kbd_led_no_wmi = true,
-+};
-+
- static struct quirk_entry quirk_asus_q500a = {
- 	.filter_i8042_e1_extended_codes = true,
- 	.wmi_backlight_set_devstate = true,
-@@ -167,6 +171,15 @@ static int dmi_matched(const struct dmi_system_id *dmi)
- }
- 
- static const struct dmi_system_id asus_quirks[] = {
-+	{
-+		.callback = dmi_matched,
-+		.ident = "ASUS ROG Strix G18 G814FP",
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
-+			DMI_MATCH(DMI_BOARD_NAME, "G814FP"),
-+		},
-+		.driver_data = &quirk_asus_g814fp,
-+	},
- 	{
- 		.callback = dmi_matched,
- 		.ident = "ASUSTeK COMPUTER INC. Q500A",
-diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
-index b33ebdb21aa2..51fea21ff247 100644
---- a/drivers/platform/x86/asus-wmi.c
-+++ b/drivers/platform/x86/asus-wmi.c
-@@ -2165,7 +2165,8 @@ static int asus_wmi_led_init(struct asus_wmi *asus)
- 	asus->kbd_led.brightness_set_blocking = kbd_led_set;
- 	asus->kbd_led.brightness_get = kbd_led_get;
- 	asus->kbd_led.max_brightness = ASUS_EV_MAX_BRIGHTNESS;
--	asus->kbd_led_avail = !kbd_led_read(asus, &led_val, NULL);
-+	asus->kbd_led_avail = !asus->driver->quirks->kbd_led_no_wmi &&
-+			      !kbd_led_read(asus, &led_val, NULL);
- 	INIT_WORK(&asus->kbd_led_work, kbd_led_update_all);
- 
- 	if (asus->kbd_led_avail) {
-diff --git a/drivers/platform/x86/asus-wmi.h b/drivers/platform/x86/asus-wmi.h
-index b45f81b38a47..e53c6b3fc619 100644
---- a/drivers/platform/x86/asus-wmi.h
-+++ b/drivers/platform/x86/asus-wmi.h
-@@ -41,6 +41,7 @@ struct quirk_entry {
- 	bool wmi_force_als_set;
- 	bool wmi_ignore_fan;
- 	bool filter_i8042_e1_extended_codes;
-+	bool kbd_led_no_wmi;
- 	int key_wlan_event;
- 	enum asus_wmi_tablet_switch_mode tablet_switch_mode;
- 	int wapf;
+- Patch 1: Replace "MIPS Technology" with "MIPS Technologies".
+- Patch 3: Name the FPGA used and add the versioned bitfile compatible.
+- Patch 5: Drop hart indexes from MSWI.
+- Patch 6: Swap mtimecmp and mtime, require reg-names both for mtime and mtimecmp on P8700.
+- Original patch 7: Dropped.
+- Patch 7 (previously 8): Remove additional harts that are not
+  present in the bitfile I have. Reflect changes made in patches 3, 5 and 6.
+  Remove riscv,cbom-block-size. Drop undocumented compatibles. Other minor changes.
+- Link to v1: https://lore.kernel.org/r/20260914-p8700-dts-v1-0-3267f14ebce1@htecgroup.com
 
 ---
-base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
-change-id: 20261108-asus-wmi-kbd-readback-236245e82de8
+Aleksa Paunovic (8):
+      dt-bindings: riscv: cpus: add mips,p8700
+      dt-bindings: riscv: Add MIPS Boston board compatible
+      dt-bindings: interrupt-controller: Add MIPS P8700 APLIC
+      dt-bindings: interrupt-controller: Add MIPS P8700 ACLINT MSWI
+      dt-bindings: timer: Add MIPS P8700 ACLINT MTIMER
+      riscv: dts: mips: Initial support for the P8700 Boston board
+      MAINTAINERS: Add entry for MIPS RISC-V SoC support
+      riscv: defconfig: Enable MIPS SoCs
+
+ .../bindings/interrupt-controller/riscv,aplic.yaml |   1 +
+ .../thead,c900-aclint-mswi.yaml                    |  11 ++
+ Documentation/devicetree/bindings/riscv/cpus.yaml  |   1 +
+ Documentation/devicetree/bindings/riscv/mips.yaml  |  33 +++++
+ .../bindings/timer/thead,c900-aclint-mtimer.yaml   |  37 ++++++
+ MAINTAINERS                                        |   7 ++
+ arch/riscv/Kconfig.socs                            |   6 +
+ arch/riscv/boot/dts/Makefile                       |   1 +
+ arch/riscv/boot/dts/mips/Makefile                  |   2 +
+ arch/riscv/boot/dts/mips/p8700-boston.dts          | 135 +++++++++++++++++++++
+ arch/riscv/boot/dts/mips/p8700.dtsi                |  82 +++++++++++++
+ arch/riscv/configs/defconfig                       |   1 +
+ 12 files changed, 317 insertions(+)
+---
+base-commit: fd73f4a6659897191fa0d40695fe370925dd3780
+change-id: 20260325-p8700-dts-41788f014227
 
 Best regards,
---  
-Moad Tarrih <tarrihmoad@proton.me>
+-- 
+Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 
