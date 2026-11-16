@@ -1,72 +1,113 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Mon, 16 Nov 2026 08:45:08 +0000
-Subject: [PATCH v2 2/2] clk: sunxi-ng: h616: Register GPU PLL notifier
- before mux notifier
+From: Matt Thompson <matt@boondocker.io>
+Subject: [PATCH RFC v3 0/6] PCI: rockchip-host: Handle unavailable
+ downstream config space
+Date: Mon, 16 Nov 2026 02:35:42 -0700
+Message-Id: <20261116-rfc-b4-v3-0-0bf052b68f2a@boondocker.io>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-h616-pll-output-gate-v2-2-a418026ffae6@gmail.com>
-References: <20261116-h616-pll-output-gate-v2-0-a418026ffae6@gmail.com>
-In-Reply-To: <20261116-h616-pll-output-gate-v2-0-a418026ffae6@gmail.com>
-To: Chen-Yu Tsai <wens@kernel.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, Stephen Boyd <sboyd@kernel.org>, 
- Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>
-Cc: Andre Przywara <andre.przywara@arm.com>, 
- Maxime Ripard <mripard@kernel.org>, 
- Philippe Simons <simons.philippe@gmail.com>, 
- Ilya Titov <ilya.titov@wirenboard.com>, linux-clk@vger.kernel.org, 
- linux-sunxi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794818707; l=1471;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=QL/weaZ6VGxEBkGAwe9yYKN6VnO0kkiDcNvaqnoXQSE=;
- b=77W17WrT9nFCzC+g6lJHQ5hR7OvFqbPOm6VA8sd65vxexQQJGeaCX4IXRt/PSOBZ0yJZ8Jt5Q
- ZJfHeM/omhGBwPsMy926W+02bT/vUWgreFPRf7oIuJYzzYK6vuEvh8w
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+X-B4-Tracking: v=1; b=H4sIAG7O+moC/22NzQrCMBAGX6Xs2Ug2bSLxJAg+gFfx0PzURqGRp
+ Aal9N1N4614/JaZ2QmiDc5G2FcTBJtcdH7Io95UoPt2uFniTN7AKBOIWJPQaaIaItROcsVrYWQ
+ LGX4G27l3CV3gfDrC9XeML3W3elwSC9a7OPrwKe8SFnhdTkgoURKNVpwyxulBeT8Yrx82bJ0v4
+ cT+qyyrRihsOsk1GrFW53n+AqD9x87yAAAA
+X-Change-ID: 20261113-rfc-b4-6b795b536d9a
+To: Shawn Lin <shawn.lin@rock-chips.com>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>
+Cc: Rob Herring <robh@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ linux-pci@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794821744; l=3925;
+ i=matt@boondocker.io; s=rk3399-rfc-20261113; h=from:subject:message-id;
+ bh=32ugxZ9YhRZmQLH1EfOQDSlBHTw79cq4a8bA5dFZ1lQ=;
+ b=UODUueP6aJsGykruLNX++bgYLoLqRjAPAex3aYOzj24x9UodGmKQ8UXcyoxw5Mh6O/Yl2msMi
+ /dH+q0SZmyqBqj1VV4NU71XxHOkZAw/HjjWqqymrT9IF6aa4iJvbc6t
+X-Developer-Key: i=matt@boondocker.io; a=ed25519;
+ pk=WMnh3kwFFRkrqamL/FbDcdl1/9rBF2uT03VdvGGP40k=
+X-Endpoint-Received: by B4 Relay for matt@boondocker.io/rk3399-rfc-20261113 with auth_id=1517
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Register the GPU PLL notifier first, so the GPU goes back to the PLL
-only after it has re-locked, as required by commit 02ae2bc6febd
-("clk: sunxi-ng: Add clk notifier to gate then ungate PLL clocks").
-Commit 0ec5e7572ddc ("clk: sunxi-ng: h616: register CPU PLL notifier
-before mux notifier") did this for the CPU.
+On a RockPro64 v2.1 with a Kintex-7 FPGA endpoint, a downstream vendor
+ID read during a PCI rescan raised a synchronous external abort
+(ESR 0x96000210). The rescan task exited with IRQs disabled and the
+watchdog reported a lockup.
 
-Fixes: eb963d7948ce ("clk: sunxi-ng: h616: Reparent GPU clock during frequency changes")
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Patches 1 through 3 retain the downstream link check, the guarded
+arm64 read fixup, and the AXI link-down latch handling. The fixup
+handles current-EL synchronous external read aborts at the annotated
+instructions.
+
+Testing repeated re-enable, retrain, and rescan exposed three further
+failures:
+
+- PCI runtime resume replayed a saved Link Disable bit after userspace
+  cleared it. Patch 4 resumes the port before a sysfs write to Link
+  Control while holding the configuration access runtime PM reference.
+- The PHY could reach L0 while the data link stayed in initialization.
+  Patch 5 retains an early retrain request and issues it once if a
+  later downstream access finds initialization still pending.
+- The Rockchip PCIe client correctable-error interrupt fired at about
+  one million interrupts per second on CPU 0 and starved RCU. Patch 6
+  masks that controller-local notification. The standard AER service
+  remains on the root port's separate interrupt.
+
+Validation used upstream commit 97d73c825122, these six patches, and
+Igor Velkov's separately posted probe and resume retry patch [1]. The
+combined source matches the audit branch [2]. The clean kernel
+completed 600 disable, re-enable, retrain, and rescan cycles with
+runtime PM set to auto. Each cycle found the FPGA without a driver
+rebind or a second userspace retrain request. The board stayed on the
+same boot, the client IRQ count remained zero, and the kernel logged
+no stall or SError. This test did not reproduce the asynchronous SError
+that Igor reported on Helios64 [3].
+
+[1] https://lore.kernel.org/r/20261116-rockchip-pcie-resume-v2-1-a633e279be97@iav.lv
+[2] https://github.com/boondocklabs/linux/commit/bb7c4f9ee7ed33fc32832060fdecb9115c8e9630
+[3] https://lore.kernel.org/r/20261116-rockchip-host-rfc-v2-test-1@iav.lv
+
 ---
- drivers/clk/sunxi-ng/ccu-sun50i-h616.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+Changes in v3:
+- Add the Fixes tag to the downstream link-state check.
+- Resume a suspended downstream port before sysfs Link Control writes.
+- Defer early retrain requests when the PHY is still training.
+- Mask the Rockchip client correctable-error interrupt.
+- Record the 600-cycle RockPro64 test with Igor's separate patch applied.
+- Link to v2: https://lore.kernel.org/r/20261113-rfc-b4-v2-0-d6b14f95c1d6@boondocker.io
 
-diff --git a/drivers/clk/sunxi-ng/ccu-sun50i-h616.c b/drivers/clk/sunxi-ng/ccu-sun50i-h616.c
-index 4037c5f022a8..8f53605eaafa 100644
---- a/drivers/clk/sunxi-ng/ccu-sun50i-h616.c
-+++ b/drivers/clk/sunxi-ng/ccu-sun50i-h616.c
-@@ -1254,13 +1254,16 @@ static int sun50i_h616_ccu_probe(struct platform_device *pdev)
- 	ccu_mux_notifier_register(pll_cpux_clk.common.hw.clk,
- 				  &sun50i_h616_cpu_nb);
- 
-+	/*
-+	 * Re-lock the GPU PLL after any rate changes. Must be registered
-+	 * before the mux notifier, so GPU goes back to a locked PLL.
-+	 */
-+	ccu_pll_notifier_register(&sun50i_h616_pll_gpu_nb);
-+
- 	/* Reparent GPU during GPU PLL rate changes */
- 	ccu_mux_notifier_register(pll_gpu_clk.common.hw.clk,
- 				  &sun50i_h616_gpu_nb);
- 
--	/* Re-lock the GPU PLL after any rate changes */
--	ccu_pll_notifier_register(&sun50i_h616_pll_gpu_nb);
--
- 	return 0;
- }
- 
+Changes in v2:
+- Restrict the MMIO read fixup to the SEA path and exclude its
+  exception-table type from user-access classification.
+- Look up the guarded instruction once on the SEA path.
+- Use the standard arm64 register-number encoding helpers in
+  the exception-table macro (Sashiko review).
+- Link to v1: https://lore.kernel.org/r/20261113-rfc-b4-v1-0-b91dcb502250@boondocker.io
 
--- 
-2.55.0
+---
+Matt Thompson (6):
+      PCI: rockchip-host: Skip downstream config access while link is down
+      arm64: Allow synchronous abort fixups for guarded MMIO reads
+      PCI: rockchip-host: Recover downstream configuration access
+      PCI: Resume downstream ports before sysfs Link Control writes
+      PCI: rockchip-host: Defer retraining during initial link training
+      PCI: rockchip-host: Mask the client correctable error interrupt
+
+ arch/arm64/include/asm/asm-extable.h        |  15 ++++
+ arch/arm64/mm/extable.c                     |  20 +++++
+ arch/arm64/mm/fault.c                       |   4 +
+ drivers/pci/controller/pcie-rockchip-host.c | 119 +++++++++++++++++++++++++++-
+ drivers/pci/controller/pcie-rockchip.h      |   4 +
+ drivers/pci/pci-sysfs.c                     |  16 ++++
+ 6 files changed, 176 insertions(+), 2 deletions(-)
+---
+base-commit: 97d73c8251226cf27cc6656b4c542869bb8c69fa
+change-id: 20261113-rfc-b4-6b795b536d9a
+
+Best regards,
+--  
+Matt Thompson <matt@boondocker.io>
 
