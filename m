@@ -1,193 +1,124 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Mon, 16 Nov 2026 16:40:04 +0000
-Subject: [PATCH v4 12/12] docs: iio: ad9910: document DRCTL pin control
+From: Cristian Filipescu <filipescu.cristian@gmail.com>
+Subject: [PATCH v5 0/2] arm64: dts: allwinner: Support Orange Pi 3 LTS
+Date: Mon, 16 Nov 2026 16:44:29 +0000
+Message-Id: <20261116-sunxi-orangepi-3-lts-v5-0-979cf5474913@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-ad9910-backend-support-v4-12-fcf1ad364ed5@analog.com>
-References: <20261116-ad9910-backend-support-v4-0-fcf1ad364ed5@analog.com>
-In-Reply-To: <20261116-ad9910-backend-support-v4-0-fcf1ad364ed5@analog.com>
-To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux@analog.com, devicetree@vger.kernel.org, linux-pwm@vger.kernel.org, 
- linux-doc@vger.kernel.org, 
- Jonathan Cameron <jonathan.cameron@oss.qualcomm.com>
-Cc: Olivier Moysan <olivier.moysan@foss.st.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
+X-B4-Tracking: v=1; b=H4sIAO0y+2oC/4XOzY6CMBAH8FcxPTsbGAZoPfkexkNbioxBMC0Qj
+ OHdt3UPazYxe/zPx2/mKYLz7II47J7Cu4UDj0MM5X4nbKeHiwNuYhaYYZVniBDmYWUYferdGQr
+ opwBUGIVIlZauEXH17l3L64s9nX9ymM3V2SlZacLo4MBExXap1PMwr5CKqdlxmEb/eD21YEL+u
+ b8gZFBnRiqFJdpKHy83zf2XHW8i3V+Kd6T6gBQRUbJ1LbV1mUv6i9AvkuflB4TSJzUpQyQ1Nc0
+ 7sm3bN+CxQalxAQAA
+X-Change-ID: 20261022-sunxi-orangepi-3-lts-43b92246a8ed
+To: linux-sunxi@lists.linux.dev, devicetree@vger.kernel.org, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Andre Przywara <andre.przywara@arm.com>, linux-kernel@vger.kernel.org, 
+ Cristian Filipescu <filipescu.cristian@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794847197; l=6219;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=9AdEqIZ+bYqk9Lw6P7OuqM0LPTI0z5xHBJLcZX+ImKY=;
- b=3iAnJPFWKY/dBuJtaEHNfAh+V+JWDqolzSlWNPF/6rIpBV1ZQW4tUjG807ALgx7V3/YVhotRY
- 5kqaQGZdqeOBkQwZNtLBplVW70o21SlC0oDfH7nozdMA993fdNUVj3O
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794847469; l=4684;
+ i=filipescu.cristian@gmail.com; s=uboot-20261021; h=from:subject:message-id;
+ bh=yvbbvDA0lpxvYsV9tvrk9UhEBzJNM75uNkRtwsHky1E=;
+ b=pEXRpO2C8ZUCd2NuLcdZ/mwWYqmMVp+vidTtr7CVR3gtCg23IbQ8bt05ZXB51N35XDQaDV3ZZ
+ n94jCQShLKhA/scD/5Y/WrM1SEQ6Ey5v5l2zjhp1nIJDFtaD8b5kZck
+X-Developer-Key: i=filipescu.cristian@gmail.com; a=ed25519;
+ pk=o7Ui0tU3x+X/6Pq6PZHmd2KFtOdPWttoPuNFOvdD8t0=
+X-Endpoint-Received: by B4 Relay for filipescu.cristian@gmail.com/uboot-20261021 with auth_id=1255
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the integration_time attribute of the digital ramp generator
-(DRG) rising and falling channels, and describe how the DRCTL pin
-waveform is generated from those values according to the dwell_en
-configuration. Add usage examples for triangular and sawtooth sweeps
-driven through the DRCTL pin.
+Continue Jernej Skrabec's April 2025 series, adding the board compatible
+and device tree for the Allwinner H6-based Orange Pi 3 LTS.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Use the common Orange Pi H6 include and describe the LTS differences.
+Follow the schematic's LED roles, remove unused USB ID detection, and
+use generic PHY discovery with bus-level reset. The binding patch is
+unchanged apart from rebasing.
+
+Rebase onto sunxi/dt-for-7.5 at 098728144545. Inherit the common CPU/GPU
+OPP tables, CPU0 supply, regulator ramp delays and CPU maximum voltage.
+Remove the LTS CPU0-CPU3 supply blocks and redundant regulator overrides;
+retain the LTS CPU minimum of 800 mV. The resolved OPP tables, voltage
+limits and ramp delays match the tested v4 description. The new base
+also carries the H6 video-codec SRAM/IOMMU changes.
+
+Hardware results reported for v4 remain historical: LED names/defaults
+and drive strength 10, shared cpufreq policy, BLDO2 enabled at 1.8 V,
+768 MiB of matching eMMC HS200 reads at 150 MHz/8-bit/1.8 V with zero
+reported MMC errors, and generic PHY discovery passing five interface
+cycles and three MAC rebinds both with and without PHY-ID logging.
+Each Ethernet run obtained eight DHCP leases and 24/24 ping replies at
+1 Gbps/full duplex with PHY ID and 125 MHz clock configuration read back.
+The rebased v5 description has not been boot-tested.
+
+Following review, Cristian measured 1.8 V directly at U60/AW859A pin 22
+(VDDIO) relative to board ground. The earlier connection trace was from
+the schematic; the module-pin result is separate from the earlier RW1
+reading. It is consistent with retaining BLDO3 as the I/O supply.
+Functional onboard Wi-Fi support is not claimed.
+
+The LTS, Orange Pi 3, Lite2 and One Plus DTBs build with W=1 and pass
+validation against freshly generated schemas. The board binding and
+strict patch checks pass. Diagnostic kernel instrumentation is outside
+the patch series.
+
+Codex assisted with DTS updates, review analysis and build checks;
+Cristian performed the v4 board tests and the direct VDDIO measurement.
+
 ---
- Documentation/iio/ad9910.rst | 90 +++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 84 insertions(+), 6 deletions(-)
+Changes in v5:
+- Rebase onto the latest sunxi/dt-for-7.5 (098728144545).
+- Inherit CPU/GPU OPP tables and CPU supply from the common include;
+  remove the board-local CPU0-CPU3 supply declarations.
+- Inherit regulator ramp delays and the CPU maximum voltage; retain
+  the existing LTS CPU minimum of 800 mV.
+- Keep any shared all-core CPU-supply cleanup outside this board addition.
+- Report the requested direct U60 pin-22 VDDIO measurement of 1.8 V;
+  retain the existing BLDO3 assignment.
+- Distinguish v4 board results from v5 static validation.
+- Link to v4: https://lore.kernel.org/all/20261115-sunxi-orangepi-3-lts-v4-0-7749b448a4dd@gmail.com/
 
-diff --git a/Documentation/iio/ad9910.rst b/Documentation/iio/ad9910.rst
-index aab569f561db..bff55cca8c82 100644
---- a/Documentation/iio/ad9910.rst
-+++ b/Documentation/iio/ad9910.rst
-@@ -85,13 +85,13 @@ system clock (SYSCLK) which affects all other channels.
-      - ``drg_rising_frequency``
-      - ``drg_frequency``
-      - DRG frequency rising-ramp parameters: limit code, dwell enable,
--       ramp clock, rate of change.
-+       ramp clock, rate of change, integration time.
- 
-    * - ``out_frequency132``
-      - ``drg_falling_frequency``
-      - ``drg_frequency``
-      - DRG frequency falling-ramp parameters: limit code, dwell enable,
--       ramp clock, rate of change.
-+       ramp clock, rate of change, integration time.
- 
-    * - ``out_phase130``
-      - ``drg_phase``
-@@ -104,13 +104,13 @@ system clock (SYSCLK) which affects all other channels.
-      - ``drg_rising_phase``
-      - ``drg_phase``
-      - DRG phase rising-ramp parameters: limit code, dwell enable, ramp clock,
--       rate of change.
-+       rate of change, integration time.
- 
-    * - ``out_phase132``
-      - ``drg_falling_phase``
-      - ``drg_phase``
-      - DRG phase falling-ramp parameters: limit code, dwell enable, ramp clock,
--       rate of change.
-+       rate of change, integration time.
- 
-    * - ``out_altcurrent130``
-      - ``drg_amplitude``
-@@ -123,13 +123,13 @@ system clock (SYSCLK) which affects all other channels.
-      - ``drg_rising_amplitude``
-      - ``drg_amplitude``
-      - DRG amplitude rising-ramp parameters: limit code, dwell enable,
--       ramp clock, rate of change.
-+       ramp clock, rate of change, integration time.
- 
-    * - ``out_altcurrent132``
-      - ``drg_falling_amplitude``
-      - ``drg_amplitude``
-      - DRG amplitude falling-ramp parameters: limit code, dwell enable,
--       ramp clock, rate of change.
-+       ramp clock, rate of change, integration time.
- 
-    * - ``out_altcurrent140``
-      - ``ram``
-@@ -493,6 +493,60 @@ Ramp channel attributes
-        from the hardware step size and the current ramp clock. Writing
-        requires ``sampling_frequency`` to be configured first.
- 
-+   * - ``integration_time``
-+     - s
-+     - Time interval assigned to the ramp direction, which is used to generate
-+       the DRCTL pin waveform. See `DRCTL pin control`_. Rising and falling
-+       ramp channels of all destinations share the same underlying value for
-+       their respective directions. The written value is adjusted to the
-+       resolution supported by the PWM provider.
-+
-+DRCTL pin control
-+^^^^^^^^^^^^^^^^^
-+
-+The DRCTL pin selects the DRG slope direction: a logic high drives the ramp
-+towards the upper limit and a logic low drives it towards the lower limit.
-+When a PWM is assigned to the DRCTL pin (via the ``pwms`` and ``pwm-names``
-+devicetree properties), the driver generates the DRCTL waveform from the
-+``integration_time`` of the rising and falling ramp channels, according to the
-+``dwell_en`` configuration:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Rising ``dwell_en``
-+     - Falling ``dwell_en``
-+     - DRCTL waveform
-+
-+   * - 1
-+     - 1
-+     - DRCTL is held high for the rising ``integration_time`` and then held
-+       low for the falling ``integration_time``. The PWM period is the sum of
-+       both intervals. If a ramp reaches its limit before its interval
-+       elapses, the output dwells at that limit.
-+
-+   * - 0
-+     - 1
-+     - Sawtooth rising ramp: a new ramp starts at every DRCTL rising edge,
-+       which happens periodically at the rising ``integration_time``. The
-+       falling ``integration_time`` is not used.
-+
-+   * - 1
-+     - 0
-+     - Sawtooth falling ramp: a new ramp starts at every DRCTL falling edge,
-+       which happens periodically at the falling ``integration_time``. The
-+       rising ``integration_time`` is not used.
-+
-+   * - 0
-+     - 0
-+     - Bidirectional continuous ramp. DRCTL is not relevant and it is held
-+       low.
-+
-+The DRCTL output is disabled when the resulting PWM period is zero, e.g., when
-+the relevant ``integration_time`` attributes are set to ``0``. Without a PWM
-+assigned to the DRCTL pin, writing to ``integration_time`` fails with
-+``-EOPNOTSUPP``.
-+
- Usage examples
- ^^^^^^^^^^^^^^
- 
-@@ -525,6 +579,30 @@ Configure a frequency sweep from 40 MHz to 60 MHz with a rate of change of
-   # Enable the DRG with frequency as the destination
-   echo 1 > /sys/bus/iio/devices/iio\:device0/out_frequency130_en
- 
-+With the same limits and rate of change, each ramp takes 0.8 ms to complete.
-+Configure a PWM-driven triangular sweep that dwells 0.2 ms at each limit:
-+
-+.. code-block:: bash
-+
-+  # Enable dwell on both limits, so DRCTL controls the ramp direction
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_frequency131_dwell_en
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_frequency132_dwell_en
-+
-+  # DRCTL high for 1 ms (rising ramp) and low for 1 ms (falling ramp)
-+  echo 0.001 > /sys/bus/iio/devices/iio\:device0/out_frequency131_integration_time
-+  echo 0.001 > /sys/bus/iio/devices/iio\:device0/out_frequency132_integration_time
-+
-+Configure a rising sawtooth sweep that restarts every 1 ms:
-+
-+.. code-block:: bash
-+
-+  # No dwell at the upper limit: the ramp returns to the lower limit
-+  echo 0 > /sys/bus/iio/devices/iio\:device0/out_frequency131_dwell_en
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_frequency132_dwell_en
-+
-+  # A new rising ramp starts every 1 ms
-+  echo 0.001 > /sys/bus/iio/devices/iio\:device0/out_frequency131_integration_time
-+
- RAM mode
- --------
- 
+Changes in v4:
+- Base the LTS description on sun50i-h6-orangepi.dtsi.
+- Inherit red PL4 as power/on and green PL7 as status/off, keeping the
+  existing H6 labels and drive strength 10.
+- Describe the shared CPU supply on all four cores.
+- Delete inherited USB ID detection for the fixed host-mode controller.
+- Drop the explicit PHY ID after generic discovery passes interface and
+  MAC rebind tests with and without temporary PHY-ID logging.
+- Inherit BLDO2's common always-on policy.
+- Keep common regulator/clock names; defer naming cleanups.
+- Update the validation results and explanations in the review replies.
+- Link to v3: https://lore.kernel.org/all/20261026-sunxi-orangepi-3-lts-v3-0-98fef4f75184@gmail.com/
 
--- 
-2.43.0
+Changes in v3:
+- Keep green as power and red as status, matching Armbian LTS roles;
+  default green on and red off without a boot-stage sequence.
+- Select drive strength 10 on PL4 and PL7 with per-LED pinctrl states.
+- Move PHY reset to the MDIO bus, before discovery and outside detach.
+- Specify the YT8531C PHY ID; MAC rebind fails with early autodetection.
+- Enable 1.8 V eMMC DDR52 and HS200 after board testing; retain the
+  existing H6 maximum frequency of 150 MHz.
+- Shorten the descriptions and update validation status.
+- Link to v2: https://lore.kernel.org/all/20261022-sunxi-orangepi-3-lts-v2-0-70b899252c6a@gmail.com/
+
+---
+Jernej Skrabec (2):
+      dt-bindings: arm: sunxi: Add Orange Pi 3 LTS board
+      arm64: dts: allwinner: h6: Add Orange Pi 3 LTS
+
+ Documentation/devicetree/bindings/arm/sunxi.yaml   |   5 +
+ arch/arm64/boot/dts/allwinner/Makefile             |   1 +
+ .../dts/allwinner/sun50i-h6-orangepi-3-lts.dts     | 164 +++++++++++++++++++++
+ 3 files changed, 170 insertions(+)
+---
+base-commit: 09872814454580dad9f04fb194a7befe0fd6e94f
+change-id: 20261022-sunxi-orangepi-3-lts-43b92246a8ed
+
+Best regards,
+--  
+Cristian Filipescu <filipescu.cristian@gmail.com>
 
