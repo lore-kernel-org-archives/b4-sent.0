@@ -1,60 +1,113 @@
-From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Mon, 16 Nov 2026 12:55:15 +0100
-Subject: [PATCH v3 8/8] riscv: defconfig: Enable MIPS SoCs
+From: Peder Bergan <peder.bergan@gmail.com>
+Date: Mon, 16 Nov 2026 13:53:32 +0100
+Subject: [PATCH] rust: alloc: check the length precondition in
+ Vec::from_raw_parts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-p8700-dts-v3-8-ec5d4b7de39f@htecgroup.com>
-References: <20261116-p8700-dts-v3-0-ec5d4b7de39f@htecgroup.com>
-In-Reply-To: <20261116-p8700-dts-v3-0-ec5d4b7de39f@htecgroup.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>, 
- Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
- Anup Patel <anup@brainfault.org>, Thomas Gleixner <tglx@kernel.org>, 
- Radu Rendec <radu@rendec.net>, Inochi Amaoto <inochiama@outlook.com>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
- Conor Dooley <conor@kernel.org>, linux-riscv@lists.infradead.org, 
- Vladimir Kondratiev <vladimir.kondratiev@mobileye.com>, 
- Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@sifive.com>, Joel Stanley <joel@jms.id.au>, 
- Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
- Conor Dooley <conor.dooley@microchip.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794830124; l=702;
- i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=466tDeyPbrAH0ZZbXJHUmWZAi2oQm3IXvaEsJZHNtNU=;
- b=V/9j8MpCMt8whhuC9mZX8aB9c75Lj6yWWaWFtpQUoxsQVLHWQwc/LZbRxYxLv+BQuuAq3ipyi
- D1kWAWKu+JpDga9AQJ4b7V79T02NruFzyZs3b8GxdVt8kE0VPS/F8B+
-X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
- pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
-X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
+Message-Id: <20261116-vec-raw-parts-precondition-v1-1-8f633f66b4c1@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMv8+moC/yWMSQ6DMAxFr4K8riWCCoteperCMW5JRQOywyAh7
+ t6kXb4/vANMNIjBrTpAZQ0WppjBXSrggeJLMPSZoambzjnX4SqMShvOpMlwVuEp9iHlG/r2WpN
+ vmVk8ZEEun2H/ye+PP9vi38KpGMvCkwl6pchDiZbZkgp9kMZxYoyyJzjPL3kdRwqkAAAA
+X-Change-ID: 20261116-vec-raw-parts-precondition-b540ab5ccceb
+To: Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>
+Cc: Lorenzo Stoakes <ljs@kernel.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, Uladzislau Rezki <urezki@gmail.com>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Trevor Gross <tmgross@umich.edu>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794833612; l=2687;
+ i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
+ bh=8AL5TouHwkYVMGdbW1C9LR1cjbYm5Y41STYkvRtrL4E=;
+ b=C71Hvp9FqzTymLLh+nECFQ02HlfuynnuaZJoG3z1rj9QjDIEIibvSjG9SM2olgoWXiYtOlLW0
+ xl1FNloM/eWBf7daFFqCZOq7Gm5USwEBn9LDHv5AuzgoI2dEBPplWj/
+X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
+ pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
+X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Build the MIPS P8700 Boston dtb by default.
+Vec::from_raw_parts() requires length to be no greater than capacity for
+nonzero-sized elements. Check this precondition with
+unsafe_precondition_assert!() before constructing the vector so debug
+builds diagnose invalid raw parts at this boundary.
 
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
-Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Keep the check in the nonzero-sized branch because zero-sized vectors
+ignore the capacity argument. Add a KUnit test for reconstructing a
+nonempty zero-sized vector with a zero capacity argument.
+
+Suggested-by: Miguel Ojeda <ojeda@kernel.org>
+Link: https://github.com/Rust-for-Linux/linux/issues/1232
+Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
 ---
- arch/riscv/configs/defconfig | 1 +
- 1 file changed, 1 insertion(+)
+Based on alloc-next.
 
-diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
-index 04ae305d5511bb0760247f50d4b69b1e3a00527b..1b0b5346603934058d8348ddb3aa9d7616af999c 100644
---- a/arch/riscv/configs/defconfig
-+++ b/arch/riscv/configs/defconfig
-@@ -26,6 +26,7 @@ CONFIG_ARCH_ANDES=y
- CONFIG_ARCH_ANLOGIC=y
- CONFIG_ARCH_ESWIN=y
- CONFIG_ARCH_MICROCHIP=y
-+CONFIG_ARCH_MIPS=y
- CONFIG_ARCH_SIFIVE=y
- CONFIG_ARCH_SOPHGO=y
- CONFIG_ARCH_SPACEMIT=y
+My validation used the x86_64 rust_kvec KUnit suite under QEMU with
+CLIPPY=1 and debug assertions enabled and disabled. All six tests passed
+in both configurations. A temporary invalid-length probe triggered the
+expected precondition diagnostic. The baseline has an unrelated unused
+function warning in io/resource.rs, also present after this change.
 
--- 
-2.43.0
+OpenAI Codex assisted with coding and testing.
+---
+ rust/kernel/alloc/kvec.rs | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/rust/kernel/alloc/kvec.rs b/rust/kernel/alloc/kvec.rs
+index cd0c57a9a..b8f4c1692 100644
+--- a/rust/kernel/alloc/kvec.rs
++++ b/rust/kernel/alloc/kvec.rs
+@@ -23,7 +23,8 @@ use crate::{
+     page::{
+         AsPageIter,
+         PAGE_SIZE, //
+-    }, //
++    },
++    unsafe_precondition_assert, //
+ };
+ 
+ use core::{
+@@ -685,6 +686,8 @@ where
+         let layout = if Self::is_zst() {
+             ArrayLayout::empty()
+         } else {
++            unsafe_precondition_assert!(length <= capacity);
++
+             // SAFETY: By the safety requirements of this function, `capacity * size_of::<T>()` is
+             // smaller than `isize::MAX`.
+             unsafe { ArrayLayout::new_unchecked(capacity) }
+@@ -1623,6 +1626,18 @@ mod tests {
+     use super::*;
+     use crate::prelude::*;
+ 
++    #[test]
++    fn test_kvec_from_raw_parts_zst() {
++        let ptr = NonNull::<()>::dangling().as_ptr();
++
++        // SAFETY: For a zero-sized type, `ptr` only needs to be dangling and well aligned.
++        // The capacity argument is ignored.
++        let v = unsafe { KVec::from_raw_parts(ptr, 3, 0) };
++
++        assert_eq!(v.len(), 3);
++        assert_eq!(v.capacity(), usize::MAX);
++    }
++
+     #[test]
+     fn test_kvec_retain() {
+         /// Verify correctness for one specific function.
+
+---
+base-commit: a2a82cbb73342d605078cb85763472f40156af1f
+change-id: 20261116-vec-raw-parts-precondition-b540ab5ccceb
+
+Best regards,
+--  
+Peder Bergan <peder.bergan@gmail.com>
 
