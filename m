@@ -1,11 +1,10 @@
 From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Mon, 16 Nov 2026 12:55:11 +0100
-Subject: [PATCH v3 4/8] dt-bindings: interrupt-controller: Add MIPS P8700
- ACLINT MSWI
+Date: Mon, 16 Nov 2026 12:55:12 +0100
+Subject: [PATCH v3 5/8] dt-bindings: timer: Add MIPS P8700 ACLINT MTIMER
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-p8700-dts-v3-4-ec5d4b7de39f@htecgroup.com>
+Message-Id: <20261116-p8700-dts-v3-5-ec5d4b7de39f@htecgroup.com>
 References: <20261116-p8700-dts-v3-0-ec5d4b7de39f@htecgroup.com>
 In-Reply-To: <20261116-p8700-dts-v3-0-ec5d4b7de39f@htecgroup.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -22,52 +21,92 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  Vladimir Kondratiev <vladimir.kondratiev@mobileye.com>, 
  Paul Walmsley <paul.walmsley@sifive.com>, 
  Palmer Dabbelt <palmer@sifive.com>, Joel Stanley <joel@jms.id.au>, 
- Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
- Conor Dooley <conor.dooley@microchip.com>
+ Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794830124; l=1430;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794830124; l=2281;
  i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=zFOUG0JTBN6Duoy/8XI+grpvovTujt3/U4G1NG7BFIQ=;
- b=2G3aMhBtGSruqDbApBJlAahcUAU+LZ1KKFvWPjahInd+ewDggF0CriiFlj07bvGorM+guUnIa
- UvKC1Z5cG/aADYjMDquLt1vedrCHh1ZQu2Q1w7JhN4YKpNtMp/aBvq7
+ bh=NJe+9FUIucxCmNXZnGjS07SXJ64Ib/0GQbLsdG2nvOM=;
+ b=YxdDK4koG2rM6wnlapd4vaY+E2+hhCtPnx271NUbwJPio1A3ajKWu3wHmKxS1rDXbn6EAC/sQ
+ CYTOKULvqitCHqXVF4KGAl5GOIaKEKu0HJ27gV/ZiWACf6AWCFNzjXq
 X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
  pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
 X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the aclint mswi compatible for the MIPS P8700.
+Document the MIPS P8700 ACLINT MTIMER.
+Extend support for both mtimecmp and mtime registers
+within the ACLINT MTIMER, identified via reg-names.
 
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
- .../bindings/interrupt-controller/thead,c900-aclint-mswi.yaml | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ .../bindings/timer/thead,c900-aclint-mtimer.yaml   | 37 ++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/interrupt-controller/thead,c900-aclint-mswi.yaml b/Documentation/devicetree/bindings/interrupt-controller/thead,c900-aclint-mswi.yaml
-index 62fd220e126e650e3800d8eee2a749fdbbde6108..3255ea666e1560ccca239264786fa49d444e8101 100644
---- a/Documentation/devicetree/bindings/interrupt-controller/thead,c900-aclint-mswi.yaml
-+++ b/Documentation/devicetree/bindings/interrupt-controller/thead,c900-aclint-mswi.yaml
-@@ -21,6 +21,7 @@ properties:
+diff --git a/Documentation/devicetree/bindings/timer/thead,c900-aclint-mtimer.yaml b/Documentation/devicetree/bindings/timer/thead,c900-aclint-mtimer.yaml
+index cf7c82e980f674afcf59fc726742dc4f49c1a820..a5ebe04ade9ed61c8beac5017aab94ab12afa9ea 100644
+--- a/Documentation/devicetree/bindings/timer/thead,c900-aclint-mtimer.yaml
++++ b/Documentation/devicetree/bindings/timer/thead,c900-aclint-mtimer.yaml
+@@ -21,13 +21,19 @@ properties:
            - enum:
-               - anlogic,dr1v90-aclint-mswi
-           - const: nuclei,ux900-aclint-mswi
-+      - const: mips,p8700-aclint-mswi
+               - anlogic,dr1v90-aclint-mtimer
+           - const: nuclei,ux900-aclint-mtimer
++      - const: mips,p8700-aclint-mtimer
  
    reg:
-     maxItems: 1
-@@ -46,4 +47,14 @@ examples:
-                             <&cpu4intc 3>;
-       reg = <0x94000000 0x00010000>;
++    minItems: 1
+     items:
++      - description: MTIME Registers, or MTIMECMP Registers if only one
++          region is present
+       - description: MTIMECMP Registers
+ 
+   reg-names:
++    minItems: 1
+     items:
++      - enum: [ mtime, mtimecmp ]
+       - const: mtimecmp
+ 
+   interrupts-extended:
+@@ -42,6 +48,26 @@ required:
+   - reg-names
+   - interrupts-extended
+ 
++allOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: mips,p8700-aclint-mtimer
++    then:
++      properties:
++        reg:
++          minItems: 2
++        reg-names:
++          minItems: 2
++    else:
++      properties:
++        reg:
++          maxItems: 1
++        reg-names:
++          items:
++            - const: mtimecmp
++
+ examples:
+   - |
+     timer@ac000000 {
+@@ -53,4 +79,15 @@ examples:
+       reg = <0xac000000 0x00010000>;
+       reg-names = "mtimecmp";
      };
 +
 +  - |
-+    mswi@16150000 {
-+        compatible = "mips,p8700-aclint-mswi";
-+        reg = <0x16150000 0x4000>;
-+        interrupts-extended = <&cpu1intc 3>,
-+                              <&cpu2intc 3>,
-+                              <&cpu3intc 3>,
-+                              <&cpu4intc 3>;
++    timer@16108050 {
++        compatible = "mips,p8700-aclint-mtimer";
++        reg = <0x16108050 0x8>, <0x16154000 0x7ff8>;
++        reg-names = "mtime", "mtimecmp";
++        interrupts-extended = <&cpu1intc 7>,
++                              <&cpu2intc 7>,
++                              <&cpu3intc 7>,
++                              <&cpu4intc 7>;
 +    };
  ...
 
