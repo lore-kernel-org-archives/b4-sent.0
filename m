@@ -1,10 +1,11 @@
 From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Mon, 16 Nov 2026 12:55:08 +0100
-Subject: [PATCH v3 1/8] dt-bindings: riscv: cpus: add mips,p8700
+Date: Mon, 16 Nov 2026 12:55:09 +0100
+Subject: [PATCH v3 2/8] dt-bindings: riscv: Add MIPS Boston board
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-p8700-dts-v3-1-ec5d4b7de39f@htecgroup.com>
+Message-Id: <20261116-p8700-dts-v3-2-ec5d4b7de39f@htecgroup.com>
 References: <20261116-p8700-dts-v3-0-ec5d4b7de39f@htecgroup.com>
 In-Reply-To: <20261116-p8700-dts-v3-0-ec5d4b7de39f@htecgroup.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -24,36 +25,65 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794830124; l=841;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794830124; l=1692;
  i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=lv7fN/1sfes4OW73tQF/sEOIFoYV8Fh2hXDbsngJw9E=;
- b=kN62qoyjoQ10HEK4mKnCJ3zptssPyJYyrOZaHxCayLaCKBKUW2G7Gtc3b3tu0uTnLgLJJJOSN
- FO+e8nK0ujCDdTEEcW1aGXL4NeGlcId8F2C9tnu2HXP6XrvNKnmp2kR
+ bh=5xVOseiOua96OFvJrDMkH+ySfMmO2vu4mBB4SPO9IZo=;
+ b=CFEMhFviJqzLiCWV/idM/1CfSBhuzsjSnorw0V62mkGAPjmQbpm486MJVAKXrKB7Wv7rMNzA7
+ Oov0uPhn1bdC8rr0d20Fzijr3aNlmdAlcC6SW4CawWXCWnGhQt73R9r
 X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
  pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
 X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the MIPS P8700 compatible.
+Document the MIPS Boston board compatible with a P8700 bitfile.
 
+Co-developed-by: Djordje Todorovic <djordje.todorovic@htecgroup.com>
+Signed-off-by: Djordje Todorovic <djordje.todorovic@htecgroup.com>
 Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
- Documentation/devicetree/bindings/riscv/cpus.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ Documentation/devicetree/bindings/riscv/mips.yaml | 33 +++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/riscv/cpus.yaml b/Documentation/devicetree/bindings/riscv/cpus.yaml
-index 0da219ae6769767a9b7f41f179a3559ae7160d69..3e7016687fb67c53856310f97f4ba587ba6b89e0 100644
---- a/Documentation/devicetree/bindings/riscv/cpus.yaml
-+++ b/Documentation/devicetree/bindings/riscv/cpus.yaml
-@@ -48,6 +48,7 @@ properties:
-               - amd,mbv64
-               - andestech,ax45mp
-               - canaan,k210
-+              - mips,p8700
-               - nuclei,ux900
-               - sifive,bullet0
-               - sifive,e5
+diff --git a/Documentation/devicetree/bindings/riscv/mips.yaml b/Documentation/devicetree/bindings/riscv/mips.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..bb251a7b1bcc762876fb94f0b636415774024183
+--- /dev/null
++++ b/Documentation/devicetree/bindings/riscv/mips.yaml
+@@ -0,0 +1,33 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/riscv/mips.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: MIPS SoC-based boards
++
++maintainers:
++  - Djordje Todorovic <djordje.todorovic@htecgroup.com>
++  - Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
++
++description:
++  MIPS SoC-based boards
++
++properties:
++  $nodename:
++    const: '/'
++  compatible:
++    oneOf:
++      - description: |
++          Boston FPGA development board with a MIPS P8700 bitfile
++
++          The Boston board carries a Xilinx XC7V2000T FPGA and fixed
++          peripherals: a Xilinx AXI PCIe root port, an Intel EG20T PCH,
++          a UART and an ASCII LCD.
++        items:
++          - const: mips,p8700-boston-rtl-5057225-202410011144
++          - const: mips,p8700-boston
++
++additionalProperties: true
++
++...
 
 -- 
 2.43.0
