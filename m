@@ -1,15 +1,13 @@
 From: Junyi Zhao <junyi.zhao@amlogic.com>
-Subject: [PATCH v4 0/2] Add Amlogic A9 I3C support
-Date: Mon, 16 Nov 2026 18:49:28 +0800
-Message-Id: <20261116-a9_i3c-v4-0-3d3222b7128d@amlogic.com>
+Date: Mon, 16 Nov 2026 18:49:29 +0800
+Subject: [PATCH v4 1/2] dt-bindings: i3c: silvaco,i3c-master: Add Amlogic
+ A9 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALjf+moC/2XNQQ6CMBQE0KuQrq35LQX5rryHMYb+tlCjYqgSj
- eHuFgyocTnJvJknC7b1NrB18mSt7XzwzTkGtUgY1eW5stybmJkEmQsQwEvc+5Q4mkyqzAAqKlg
- sX1rr/H0c2u7eOdz0wdJ10EOj9uHatI/xqRNDbxrFabQTHHgq0RQCTS6F25SnY1N5WlJzYsNsJ
- z9QgJyhjBBIrZR2RM6V/zD9hvkM0wgLUDpHjYCZ/oV9378A3j0XxSIBAAA=
-X-Change-ID: 20261010-a9_i3c-9d5245d094c8
+Message-Id: <20261116-a9_i3c-v4-1-3d3222b7128d@amlogic.com>
+References: <20261116-a9_i3c-v4-0-3d3222b7128d@amlogic.com>
+In-Reply-To: <20261116-a9_i3c-v4-0-3d3222b7128d@amlogic.com>
 To: Alexandre Belloni <alexandre.belloni@bootlin.com>, 
  Frank Li <Frank.Li@nxp.com>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -26,86 +24,108 @@ Cc: linux-i3c@lists.infradead.org, devicetree@vger.kernel.org,
  Kelvin.Zhang@amlogic.com, Junyi Zhao <junyi.zhao@amlogic.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794826174; l=2920;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794826174; l=3081;
  i=junyi.zhao@amlogic.com; s=20260924; h=from:subject:message-id;
- bh=tEwHdY6mdhTInElfOAdG6vOt9+cf0Vk0A3dk5bHZYZI=;
- b=pc0or0fzYVQZI40xYj5aVT8xvcrZ6X6fqq6ehw9PkNRbWdB9Ln5BaE0MLtADdfzTQBfvy1E4s
- OF46/MSZkB7D8DuOJSqWIrGKGOGPSZn7bhdA0IIs1jLdN5iuzBdZGqM
+ bh=dIkv8OCvN45i4CbYK1jcC+1GlXumNc4PG6TMfSPbzdY=;
+ b=zdXFGGS6SyLc2mvbTC4jp4sYjVVAJvJ0Hg2d7mMwFoz4nN/qoIaXc7Ly8IRrM0WUxZSYpt27j
+ aUD2MFwhIlkAf/91eTICrTHk340V2SSuJDIsLmSHj4HLtzRQ7hcmeqO
 X-Developer-Key: i=junyi.zhao@amlogic.com; a=ed25519;
  pk=hiL5PjGIksGFiWvEx9J3MhQqU/ro6vNbj72NIw4bbvA=
 X-Endpoint-Received: by B4 Relay for junyi.zhao@amlogic.com/20260924 with auth_id=1054
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Amlogic A9 SoCs integrate the Silvaco I3C IP, but their peripheral
-clock setup differs from the original implementation: the EE-domain
-controller (amlogic,a9-i3c) takes two clocks, "pclk" and "fast_clk",
-while the AO-domain controller (amlogic,a9-ao-i3c) exposes only
-"pclk" and derives its bus clock from an internal divider inside the
-controller's own register region.
+Amlogic A9 SoCs integrate the Silvaco I3C master IP in two domains:
+the EE-domain instance (amlogic,a9-i3c) takes "pclk" and "fast_clk"
+like the NXP integration, while the AO-domain instance
+(amlogic,a9-ao-i3c) lives in the Always-On domain and generates its
+bus clock from a divider inside the controller's own register space,
+so there is no external fast clock and only "pclk" is exposed.
 
-This series consists of:
+The two instances differ from the vanilla Silvaco/NXP integrations in
+clock topology and required init, so the driver matches them by
+dedicated compatibles instead of the "silvaco,i3c-master-v1"
+fallback: a fallback would bind the generic driver data, which
+neither programs the fast clock rate nor handles the AO internal
+divider, and the variant would then fail to work.
 
-  - Add the Amlogic compatibles and per-variant clock
-    constraints to the silvaco,i3c-master binding schema.
+Add both compatibles to the schema without the fallback, following
+nuvoton,npcm845-i3c, and use per-compatible if/then conditionals to
+enforce the clock counts: two clocks for the EE-domain instance and
+one clock for the AO-domain instance.
 
-  - Add a vendor_init callback for the clock setup and an
-    Amlogic-specific bit (AML_I3C_QUIRK_AO) for AO-specific behaviour
-    to the Silvaco I3C master driver, and enable the existing
-    Silvaco workaround quirks for both Amlogic variants.
-
-Verified on Amlogic A9 (BY401) with both EE and AO controller
-instances. dt_binding_check and dtbs_check pass with this series.
-
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Junyi Zhao <junyi.zhao@amlogic.com>
 ---
-Changes in v4:
-  - Move the DT binding patch before the driver patch.
-  - Add CLK_OPS_PARENT_ENABLE flag for ao tail clocks.
-  - Enable fclk before allocating the new clk bulk array.
+ .../bindings/i3c/silvaco,i3c-master.yaml           | 26 ++++++++++++++++++++--
+ 1 file changed, 24 insertions(+), 2 deletions(-)
 
-- Link to v3: https://patch.msgid.link/20261106-a9_i3c-v3-0-804b69b9095b@amlogic.com
+diff --git a/Documentation/devicetree/bindings/i3c/silvaco,i3c-master.yaml b/Documentation/devicetree/bindings/i3c/silvaco,i3c-master.yaml
+index 853092f75..d892d42be 100644
+--- a/Documentation/devicetree/bindings/i3c/silvaco,i3c-master.yaml
++++ b/Documentation/devicetree/bindings/i3c/silvaco,i3c-master.yaml
+@@ -13,6 +13,8 @@ properties:
+   compatible:
+     oneOf:
+       - enum:
++          - amlogic,a9-i3c
++          - amlogic,a9-ao-i3c
+           - nuvoton,npcm845-i3c
+           - silvaco,i3c-master-v1
+       - items:
+@@ -28,14 +30,14 @@ properties:
+     maxItems: 1
+ 
+   clocks:
+-    minItems: 2
++    minItems: 1
+     items:
+       - description: system clock
+       - description: bus clock
+       - description: other (slower) events clock
+ 
+   clock-names:
+-    minItems: 2
++    minItems: 1
+     items:
+       - const: pclk
+       - const: fast_clk
+@@ -70,15 +72,35 @@ allOf:
+         compatible:
+           contains:
+             enum:
++              - amlogic,a9-i3c
+               - nxp,imx94-i3c
+               - nxp,imx95-i3c
+     then:
+       properties:
+         clocks:
++          minItems: 2
+           maxItems: 2
+         clock-names:
++          minItems: 2
+           maxItems: 2
+ 
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - amlogic,a9-ao-i3c
++    then:
++      properties:
++        clocks:
++          maxItems: 1
++          description:
++            The "ao" variant is the controller instance in the Always-On (AO)
++            domain, which has no separate bus clock and derives the
++            bus clock from an internal divider.
++        clock-names:
++          maxItems: 1
++
+ unevaluatedProperties: false
+ 
+ examples:
 
-Changes in v3:
-  - Merge vendor quirks into the legacy quirks bitmask and add
-    AML_I3C_QUIRK_AO for the AO variant.
-  - Check the devm_kcalloc() return value when allocating the new
-    clk bulk array.
-  - Enable the clocks before aml_ao_i3c_tail_clocks(), because the
-    divider registers are accessed during registration.
-  - Rework the probe error paths so the clocks are disabled when
-    vendor_init or later steps fail.
-  - Reorder the local variables (longest first).
-  - Convert comments to kernel-doc format.
-  - Depend on COMMON_CLK in Kconfig.
-  - Drop the silvaco,i3c-master-v1 fallback and add a blank line
-    before the new if/then block in the binding.
-  - Explain the I3C peripheral integration details in the binding
-    commit message.
-
-- Link to v2: https://patch.msgid.link/20261102-a9_i3c-v2-0-0c474bfccffa@amlogic.com
-
-Changes in v2:
-
-  - No need rework the Silvaco I3C driver. 
-  - Based on vanilla driver, adapt A9 SoCs through callback 
-    and quirks to handle the variant.
-
-- Link to v1: https://patch.msgid.link/20261019-a9_i3c-v1-0-329d819d621f@amlogic.com
-
----
-Junyi Zhao (2):
-      dt-bindings: i3c: silvaco,i3c-master: Add Amlogic A9 support
-      i3c: master: svc: Add amlogic a9 support
-
- .../bindings/i3c/silvaco,i3c-master.yaml           |  26 +-
- drivers/i3c/master/Kconfig                         |   1 +
- drivers/i3c/master/svc-i3c-master.c                | 276 ++++++++++++++++++++-
- 3 files changed, 289 insertions(+), 14 deletions(-)
----
-base-commit: aac26bee2287c88af5be5a5ff96d783b19a28790
-change-id: 20261010-a9_i3c-9d5245d094c8
-
-Best regards,
---  
-Junyi Zhao <junyi.zhao@amlogic.com>
+-- 
+2.42.0
 
