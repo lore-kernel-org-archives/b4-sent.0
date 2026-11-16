@@ -1,11 +1,11 @@
 From: Hugo Sales <hugo@hsal.es>
-Date: Mon, 16 Nov 2026 14:01:03 +0000
-Subject: [PATCH v3 1/6] drm/amd/display: Render the panel power savings
- kernel-doc
+Date: Mon, 16 Nov 2026 14:01:04 +0000
+Subject: [PATCH v3 2/6] drm/amd/display: Add the CRTC's planes when the ABM
+ level changes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-abm-sysfs-commit-v3-1-7a3d84a5328e@hsal.es>
+Message-Id: <20261116-abm-sysfs-commit-v3-2-7a3d84a5328e@hsal.es>
 References: <20261116-abm-sysfs-commit-v3-0-7a3d84a5328e@hsal.es>
 In-Reply-To: <20261116-abm-sysfs-commit-v3-0-7a3d84a5328e@hsal.es>
 To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
@@ -27,38 +27,73 @@ Cc: Mario Limonciello <mario.limonciello@amd.com>, Ray Wu <ray.wu@amd.com>,
  linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Hugo Sales <hugo@hsal.es>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=972; i=hugo@hsal.es;
- h=from:subject:message-id; bh=FVHKsTcB+kzVbQ+9zevb2MG6df7WbrsHz6OXzX6yqvM=;
- b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsn7zzGdpqd6kKRUbEfRwLk8ZC0f8l2DxucdPWyQcL
- w3OtG69xNtRysIgxsUgK6bIonvDk4Fl4uSZOUXPl8DMYWUCGcLAxSkAE8lJZPgfkvfy3CKbJtZ3
- Dw0D5yWVVd+wNfn9997sl/vLWc45M98TZfif9GdGXfVTky+7z7+R/Ob15TTzVgXWg/E3JQ4FVAR
- d/tzKCQCkuUxx
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2571; i=hugo@hsal.es;
+ h=from:subject:message-id; bh=qEE0S9PbkvyPum4bGl1VMgQGUMbMKntSfo2X6VR25RU=;
+ b=owJ4nJvAy8zAJVbLU7f+5A3TBYyn1ZIYsn7zzL8b2R3Z9DqkuuSfSMa5K2p3l/+ZnPRA/IiV2
+ r2VpZ+jVPU6SlkYxLgYZMUUWXRveDKwTJw8M6fo+RKYOaxMIEMYuDgFYCKXbBn+qSzicZ//LPpJ
+ 4mvPFcek79awlLNnLf2vPUG+3q2NQ3DRNkaGyZYTS1uOlXW63Jr/jkVzhe+fi9MUrj6eWxVgqLa
+ p32QXKwA1Lkup
 X-Developer-Key: i=hugo@hsal.es; a=openpgp;
  fpr=193D095149CF7E8737B39064D912B0DB205A91C1
 X-Endpoint-Received: by B4 Relay for hugo@hsal.es/default with auth_id=1417
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The DOC section for the panel_power_savings sysfs file is not included
-in any rst file, so it never shows up in the built documentation. Add it
-to the Display Properties section next to the 'adaptive backlight
-modulation' property it interacts with
+An upcoming patch stops a change of the connector's ABM level from
+forcing a modeset. The modeset adds every plane on the CRTC to the
+commit. Without it, a commit that changes only the level carries the
+planes the CRTC check pulls in, which with VRR active is the primary
+plane alone. DC then updates the stream with that one surface and drops
+an active overlay plane until the next flip
+
+Add the CRTC's planes when the level changes, as atomic check already
+does for color management and VRR changes
 
 Signed-off-by: Hugo Sales <hugo@hsal.es>
 ---
- Documentation/gpu/amdgpu/display/display-manager.rst | 3 +++
- 1 file changed, 3 insertions(+)
+This was reported on v2 [1]. On my laptop (GV301QH, DCN 2.1), with v2
+and VRR active, a panel_power_savings write took the overlay off the
+screen. The DTN log went from four pipes, primary and overlay each split
+over two, to the two primary ones, and a flip of both planes brought the
+overlay back. With VRR off, the overlay stayed. With this patch, it
+stayed with VRR on too, and all four pipes were still there after the
+write
 
-diff --git a/Documentation/gpu/amdgpu/display/display-manager.rst b/Documentation/gpu/amdgpu/display/display-manager.rst
-index f6de9e7779e29..ca4a956d2aa17 100644
---- a/Documentation/gpu/amdgpu/display/display-manager.rst
-+++ b/Documentation/gpu/amdgpu/display/display-manager.rst
-@@ -187,3 +187,6 @@ Display Properties
- 
- .. kernel-doc:: drivers/gpu/drm/amd/amdgpu/amdgpu_display.c
-    :doc: property for adaptive backlight modulation
+This only covers commits that change the ABM level. From my reading,
+other commits that add the CRTC but no planes, like a change of the HDR
+metadata, can drop an overlay the same way while VRR is active. That
+needs a fix in the CRTC check that pulls in only the primary plane, which
+I'll send as a separate series
+
+[1] https://lore.kernel.org/all/sashiko-outbox-213691@kernel.org/
+---
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+index dfbc384fbbdb4..cf75450066451 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+@@ -6307,6 +6307,20 @@ STATIC_IFN_KUNIT int amdgpu_dm_atomic_check(struct drm_device *dev,
+ 		if (dm_old_con_state->abm_level != dm_new_con_state->abm_level ||
+ 		    dm_old_con_state->scaling != dm_new_con_state->scaling)
+ 			new_crtc_state->connectors_changed = true;
 +
-+.. kernel-doc:: drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_backlight.c
-+   :doc: panel power savings
++		/*
++		 * With VRR active, the CRTC check adds only the primary plane,
++		 * and DC would drop any other plane from the stream
++		 */
++		if (dm_old_con_state->abm_level != dm_new_con_state->abm_level) {
++			ret = drm_atomic_add_affected_planes(state, new_con_state->crtc);
++			if (ret) {
++				drm_dbg_atomic(dev,
++					       "drm_atomic_add_affected_planes() failed: %pe\n",
++					       ERR_PTR(ret));
++				goto fail;
++			}
++		}
+ 	}
+ 
+ 	if (dc_resource_is_dsc_encoding_supported(dc)) {
 
 -- 
 2.56.0
