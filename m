@@ -1,10 +1,10 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Wed, 18 Nov 2026 04:00:05 +0800
-Subject: [PATCH v2 1/2] dt-bindings: riscv: eswin: Add Milk-V Megrez
+Date: Wed, 18 Nov 2026 04:00:06 +0800
+Subject: [PATCH v2 2/2] riscv: dts: eswin: Add Milk-V Megrez board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-eic7700-megrez-v2-1-0113ebc5b670@iscas.ac.cn>
+Message-Id: <20261118-eic7700-megrez-v2-2-0113ebc5b670@iscas.ac.cn>
 References: <20261118-eic7700-megrez-v2-0-0113ebc5b670@iscas.ac.cn>
 In-Reply-To: <20261118-eic7700-megrez-v2-0-0113ebc5b670@iscas.ac.cn>
 To: Min Lin <linmin@eswincomputing.com>, 
@@ -18,36 +18,67 @@ Cc: Han Gao <rabenda.cn@gmail.com>, devicetree@vger.kernel.org,
  linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Han Gao <gaohan@iscas.ac.cn>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794945611; l=781;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794945611; l=1629;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=yEGqwvhItikCOim9M5s0hyGEeXn8c2umboDlEvC4XcE=;
- b=/0eh6mt7RCm5DEygEVRE4eamr6oWEncaZFrDhtKhfNokI0DADKhv7W1NbthjBnX2e66SW7wIb
- AQXaceinxMjDFk/DpZ/Eo1y/1Ez1V4FNTpwnqD5Lun/zUL+/aWkAuJu
+ bh=QUGwPSZ5IJZOF55+jsHoXOrYxzxrVAnohOX9v3SFw5c=;
+ b=8S3rk5VvyppR1x4KTay2bz5XR7TwdRtLNW9udJPa5eB/bNsqOYAZs8ZxYA48p3Snbe9prV8XH
+ CuS4PbE2qHGBniA+nu0eQHITSdgiZm9UWsZq7XDDZAQkxy5gmKVtuFX
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the compatible for the Milk-V Megrez, a Mini-ITX board based on the
-ESWIN EIC7700X SoC.
+The Milk-V Megrez is a Mini-ITX board based on the ESWIN EIC7700X SoC.
+
+Add a minimal device tree that enables UART0, which is connected to the
+USB-C debug port through a CH340 USB-to-UART bridge, and use it as the
+serial console.
 
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- Documentation/devicetree/bindings/riscv/eswin.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ arch/riscv/boot/dts/eswin/Makefile                 |  1 +
+ arch/riscv/boot/dts/eswin/eic7700-milkv-megrez.dts | 25 ++++++++++++++++++++++
+ 2 files changed, 26 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/riscv/eswin.yaml b/Documentation/devicetree/bindings/riscv/eswin.yaml
-index c603c45eef2252e760818e830e9dccdf0fdae6cf..f730f5ff91797d4c2f0610f9024a74611ffeae63 100644
---- a/Documentation/devicetree/bindings/riscv/eswin.yaml
-+++ b/Documentation/devicetree/bindings/riscv/eswin.yaml
-@@ -21,6 +21,7 @@ properties:
-     oneOf:
-       - items:
-           - enum:
-+              - milkv,megrez
-               - sifive,hifive-premier-p550
-           - const: eswin,eic7700
- 
+diff --git a/arch/riscv/boot/dts/eswin/Makefile b/arch/riscv/boot/dts/eswin/Makefile
+index 224101ae471e8d89996f7cbfc616425f704af37e..5daade822e15eda43eee111cbf89bc386bb06f32 100644
+--- a/arch/riscv/boot/dts/eswin/Makefile
++++ b/arch/riscv/boot/dts/eswin/Makefile
+@@ -1,2 +1,3 @@
+ # SPDX-License-Identifier: GPL-2.0
+ dtb-$(CONFIG_ARCH_ESWIN) += eic7700-hifive-premier-p550.dtb
++dtb-$(CONFIG_ARCH_ESWIN) += eic7700-milkv-megrez.dtb
+diff --git a/arch/riscv/boot/dts/eswin/eic7700-milkv-megrez.dts b/arch/riscv/boot/dts/eswin/eic7700-milkv-megrez.dts
+new file mode 100644
+index 0000000000000000000000000000000000000000..a57cb61171087b20a39eb962f9c45d9c8ded3925
+--- /dev/null
++++ b/arch/riscv/boot/dts/eswin/eic7700-milkv-megrez.dts
+@@ -0,0 +1,25 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++/*
++ * Copyright (c) 2026 Han Gao <gaohan@iscas.ac.cn>
++ */
++
++/dts-v1/;
++
++#include "eic7700.dtsi"
++
++/ {
++	compatible = "milkv,megrez", "eswin,eic7700";
++	model = "Milk-V Megrez";
++
++	aliases {
++		serial0 = &uart0;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++};
++
++&uart0 {
++	status = "okay";
++};
 
 -- 
 2.47.3
