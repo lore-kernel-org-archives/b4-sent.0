@@ -1,11 +1,11 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Tue, 17 Nov 2026 23:29:23 +0300
-Subject: [PATCH v4 1/2] dt-bindings: interrupt-controller: Add Cortina
- Systems CS7542 peripheral interrupt controller
+Date: Tue, 17 Nov 2026 23:29:24 +0300
+Subject: [PATCH v4 2/2] irqchip: Add Cortina Systems CS75xx peripheral
+ interrupt controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-cs75xx-intc-v4-1-0a678f35e5f3@gmail.com>
+Message-Id: <20261117-cs75xx-intc-v4-2-0a678f35e5f3@gmail.com>
 References: <20261117-cs75xx-intc-v4-0-0a678f35e5f3@gmail.com>
 In-Reply-To: <20261117-cs75xx-intc-v4-0-0a678f35e5f3@gmail.com>
 To: Thomas Gleixner <tglx@kernel.org>, Radu Rendec <radu@rendec.net>, 
@@ -14,89 +14,169 @@ To: Thomas Gleixner <tglx@kernel.org>, Radu Rendec <radu@rendec.net>,
 Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, Fil Dunsky <filipp.dunsky@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794947362; l=2389;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794947362; l=5096;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=m01hcJJ8xuXAEtFmd0R1Lw/ptpQwdip1II1Pbh1M174=;
- b=a08qu7Da3/pmTatk0TPaP2A+BvY8F15Gznd80NAfJMa45L2Mk6+ka5FIYIOj3kqn7jTlPElov
- gNuO2M2J1bCDD9hrbr2fpkVL3IB5MrOrq17a5YaQhPs0E0cXX6TkrFM
+ bh=/TDDrsDXswx4rj1Q6oUXRwk17epz9dhPBPrG6KgLxTU=;
+ b=ejtm9LmgvsXGWtXcUH+DBww2L0dLTC7iLcg7hwYWNdOK6fmX8CnNkHveV42QYqqEvLPukM5j2
+ l3yTAe0NU60ASH/rvpslPwVDWj2V7OEU1cGE/nho1xhg5ih+NKVfMwt
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The low speed peripherals of the Cortina Systems CS75xx SoCs share one
-GIC interrupt. A small controller in the peripheral register block
-reports which of its 15 sources are asserted and allows masking them.
+The timers, GPIO banks, I2C, MDIO, SPI and a few other low speed
+peripherals of the Cortina Systems CS75xx SoCs share a single GIC
+interrupt. A status register shows the level of the 15 sources and an
+enable register masks them; there is nothing to acknowledge, each source
+is cleared in its peripheral.
 
-Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+Add a chained driver using a generic chip on a linear domain.
+
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
- .../interrupt-controller/cortina,cs7542-intc.yaml  | 57 ++++++++++++++++++++++
- 1 file changed, 57 insertions(+)
+ drivers/irqchip/Kconfig      |  12 ++++++
+ drivers/irqchip/Makefile     |   1 +
+ drivers/irqchip/irq-cs75xx.c | 100 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 113 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/interrupt-controller/cortina,cs7542-intc.yaml b/Documentation/devicetree/bindings/interrupt-controller/cortina,cs7542-intc.yaml
+diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
+index 136bab41f..db5edd4ec 100644
+--- a/drivers/irqchip/Kconfig
++++ b/drivers/irqchip/Kconfig
+@@ -187,6 +187,18 @@ config BRCMSTB_L2_IRQ
+ 	select GENERIC_IRQ_CHIP
+ 	select IRQ_DOMAIN
+ 
++config CS75XX_INTC
++	bool "Cortina Systems CS75xx peripheral interrupt controller"
++	depends on ARCH_CORTINA_ACCESS || COMPILE_TEST
++	default ARCH_CORTINA_ACCESS
++	select GENERIC_IRQ_CHIP
++	select IRQ_DOMAIN
++	help
++	  Support for the interrupt controller of the Cortina Systems
++	  CS75xx SoCs that combines the interrupts of the low speed
++	  peripherals (timers, GPIO banks, I2C, MDIO, SPI) into a single
++	  GIC interrupt. Say Y if you have a board with such an SoC.
++
+ config DAVINCI_CP_INTC
+ 	bool
+ 	select GENERIC_IRQ_CHIP
+diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
+index 16a5fd126..7ed8f8b33 100644
+--- a/drivers/irqchip/Makefile
++++ b/drivers/irqchip/Makefile
+@@ -136,3 +136,4 @@ obj-$(CONFIG_MCHP_EIC)			+= irq-mchp-eic.o
+ obj-$(CONFIG_SOPHGO_SG2042_MSI)		+= irq-sg2042-msi.o
+ obj-$(CONFIG_SUNPLUS_SP7021_INTC)	+= irq-sp7021-intc.o
+ obj-$(CONFIG_IRQCHIP_XILINX_SMMU_CSR)	+= irq-xilinx-smmu-csr.o
++obj-$(CONFIG_CS75XX_INTC)		+= irq-cs75xx.o
+diff --git a/drivers/irqchip/irq-cs75xx.c b/drivers/irqchip/irq-cs75xx.c
 new file mode 100644
-index 000000000..2963acaf7
+index 000000000..f3d71b06c
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/interrupt-controller/cortina,cs7542-intc.yaml
-@@ -0,0 +1,57 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/interrupt-controller/cortina,cs7542-intc.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
++++ b/drivers/irqchip/irq-cs75xx.c
+@@ -0,0 +1,100 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Cortina Systems CS75xx peripheral interrupt controller
++ *
++ * The low speed peripherals on the register bus (timers, GPIO banks, I2C,
++ * MDIO, SPI, ...) share a single GIC interrupt. A status register shows
++ * the level of the 15 sources and an enable register masks them; there is
++ * nothing to acknowledge, the sources are cleared in the peripherals.
++ */
 +
-+title: Cortina Systems CS7542 peripheral interrupt controller
++#include <linux/bitops.h>
++#include <linux/io.h>
++#include <linux/irq.h>
++#include <linux/irqchip.h>
++#include <linux/irqchip/chained_irq.h>
++#include <linux/irqdomain.h>
++#include <linux/of.h>
++#include <linux/of_address.h>
++#include <linux/of_irq.h>
 +
-+maintainers:
-+  - Fil Dunsky <filipp.dunsky@gmail.com>
++#define CS75XX_INTC_STATUS	0x00
++#define CS75XX_INTC_ENABLE	0x04
 +
-+description:
-+  The low speed peripherals of the Cortina Systems CS75xx (Goldengate G2)
-+  SoCs (two software interrupts, two timers, the AXI bridge, SPI, the five
-+  GPIO banks, I2C, MDIO, SSP and the random number generator) share one GIC
-+  interrupt. This controller has a status register showing the level of the
-+  15 sources and an enable register to mask them. The sources are cleared in
-+  the peripherals themselves.
++#define CS75XX_INTC_NR_IRQS	15
 +
-+properties:
-+  compatible:
-+    const: cortina,cs7542-intc
++static void cs75xx_intc_handler(struct irq_desc *desc)
++{
++	struct irq_domain *domain = irq_desc_get_handler_data(desc);
++	struct irq_chip *chip = irq_desc_get_chip(desc);
++	struct irq_chip_generic *gc;
++	unsigned long pending;
++	unsigned int hwirq;
 +
-+  reg:
-+    maxItems: 1
++	gc = irq_get_domain_generic_chip(domain, 0);
++	chained_irq_enter(chip, desc);
 +
-+  interrupts:
-+    maxItems: 1
++	pending = readl(gc->reg_base + CS75XX_INTC_STATUS) & gc->mask_cache;
++	for_each_set_bit(hwirq, &pending, CS75XX_INTC_NR_IRQS)
++		generic_handle_domain_irq(domain, hwirq);
 +
-+  interrupt-controller: true
++	chained_irq_exit(chip, desc);
++}
 +
-+  "#interrupt-cells":
-+    const: 1
-+    description:
-+      The number of the source, 0 to 14. All sources are active high level
-+      interrupts.
++static int __init cs75xx_intc_init(struct device_node *np, struct device_node *parent)
++{
++	struct irq_chip_generic *gc;
++	struct irq_domain *domain;
++	void __iomem *base;
++	int parent_irq;
++	int ret;
 +
-+required:
-+  - compatible
-+  - reg
-+  - interrupts
-+  - interrupt-controller
-+  - "#interrupt-cells"
++	base = of_io_request_and_map(np, 0, of_node_full_name(np));
++	if (IS_ERR(base)) {
++		pr_err("%pOF: unable to map registers\n", np);
++		return PTR_ERR(base);
++	}
 +
-+additionalProperties: false
++	/* Mask everything before the chained handler is installed */
++	writel(0, base + CS75XX_INTC_ENABLE);
 +
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/arm-gic.h>
++	parent_irq = irq_of_parse_and_map(np, 0);
++	if (!parent_irq) {
++		pr_err("%pOF: unable to map parent interrupt\n", np);
++		ret = -EINVAL;
++		goto err_unmap;
++	}
 +
-+    interrupt-controller@f0070004 {
-+        compatible = "cortina,cs7542-intc";
-+        reg = <0xf0070004 0x8>;
-+        interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
-+        interrupt-controller;
-+        #interrupt-cells = <1>;
-+    };
++	domain = irq_domain_create_linear(of_fwnode_handle(np), CS75XX_INTC_NR_IRQS,
++					  &irq_generic_chip_ops, NULL);
++	if (!domain) {
++		ret = -ENOMEM;
++		goto err_dispose;
++	}
++
++	ret = irq_alloc_domain_generic_chips(domain, CS75XX_INTC_NR_IRQS, 1, "cs75xx-intc",
++					     handle_level_irq, IRQ_NOREQUEST | IRQ_NOPROBE, 0,
++					     IRQ_GC_INIT_MASK_CACHE);
++	if (ret)
++		goto err_domain;
++
++	gc = irq_get_domain_generic_chip(domain, 0);
++	gc->reg_base = base;
++	gc->chip_types[0].regs.mask = CS75XX_INTC_ENABLE;
++	gc->chip_types[0].chip.irq_mask = irq_gc_mask_clr_bit;
++	gc->chip_types[0].chip.irq_unmask = irq_gc_mask_set_bit;
++
++	irq_set_chained_handler_and_data(parent_irq, cs75xx_intc_handler, domain);
++
++	return 0;
++
++err_domain:
++	irq_domain_remove(domain);
++err_dispose:
++	irq_dispose_mapping(parent_irq);
++err_unmap:
++	iounmap(base);
++	return ret;
++}
++
++IRQCHIP_DECLARE(cs7542_intc, "cortina,cs7542-intc", cs75xx_intc_init);
 
 -- 
 2.53.0
