@@ -1,15 +1,13 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Subject: [PATCH v2 0/2] phy: Add the Siflower SF19A2890 USB 2.0 PHY
-Date: Mon, 16 Nov 2026 19:31:31 -0500
-Message-Id: <20261116-sf19a2890-usb-phy-v2-0-df3ce9d23f5a@telaak.dev>
+Date: Mon, 16 Nov 2026 19:31:32 -0500
+Subject: [PATCH v2 1/2] dt-bindings: phy: Add Siflower SF19A2890 USB 2.0
+ PHY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGOg+2oC/22OQQ6CMBBFr2K6dkxbC1hX3sOwaOkgVQPYlkZCu
- LsFNW5cvsn//81EPDqLnhw3E3EYrbddm4BvN6RqVHtBsCYx4ZTnjFEOvmZS8YOkMHgNfTNCpnU
- uhJS8yChJvd5hbZ/r5rl8sx/0FauwDH0SDh9DkoVfrLE+dG5cP4lsuX6l4o80MqBgNK2UkfsiZ
- +IU8K7UbWcwknKe5xdhdQyo2gAAAA==
-X-Change-ID: 20261102-sf19a2890-usb-phy-5bb644992750
+Message-Id: <20261116-sf19a2890-usb-phy-v2-1-df3ce9d23f5a@telaak.dev>
+References: <20261116-sf19a2890-usb-phy-v2-0-df3ce9d23f5a@telaak.dev>
+In-Reply-To: <20261116-sf19a2890-usb-phy-v2-0-df3ce9d23f5a@telaak.dev>
 To: Vinod Koul <vkoul@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
  Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -20,72 +18,109 @@ Cc: Chuanhong Guo <gch981213@gmail.com>, linux-mips@vger.kernel.org,
  linux-kernel@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>, 
  Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794875503; l=2526;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794875503; l=2519;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=KCD1K/RN5VnCsfZu7rP3RZx/6edB+L0TT1Z4KmlF39I=;
- b=WcdohhKHXSOvPKligVFFb1OadZvEoZIDiJQUqATxR0TTAkUhAMRhpnu+IGra/PT827BRGH/kv
- fP+pa6WRHIoDE1zcapecz2lQXoH9+Zaa9VNR0wkfFOKAEZTLL7Z4gqi
+ bh=f6jkKWPEJpHvw7GQNBeKtVPZhfiBTHRuEikeBW1F/aI=;
+ b=0TxT4hFwBX4ctjLhXol0oKfxcNcIOA3WJkP411dJR2TC1ExAKcf6SnHtBpX7wIYkFW2lqMbTI
+ lu+kvH7q+VzAcikxQhTikykSr72v7kvhRN87bMjSXdeBLXYdLyI6Oly
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds a binding and a driver for the USB 2.0 PHY of the
-Siflower SF19A2890, a MIPS SoC for home routers. The PHY takes its
-reference clock and its two resets from the USB block's clock and reset
-manager, which goes to the clk tree.
+The USB 2.0 PHY of the Siflower SF19A2890 serves its DWC2 controller.
+It takes a reference clock and two resets, power-on and PHY, from the
+USB block's clock and reset manager.
 
-The driver is Chuanhong Guo's, from his SF19A2890 branch [1], with my
-changes noted.
-
-The SoC support itself (MACH_SIFLOWER_MIPS) goes through the MIPS tree;
-until then the driver builds with COMPILE_TEST. The DWC2 part goes to
-the USB tree.
-
-Tested on a GL.iNet GL-SFT1200 with the DWC2 patches. With v1 on
-v7.4-rc1, a USB stick enumerates at 480 Mb/s and reads at 5.6 MB/s
-(5.0 MB/s with the same stick on OpenWrt's 6.18 kernel), and comes back
-after unplugging and replugging it twice. v2 takes the resets with the
-bulk API, so it was run again, on OpenWrt's 6.18 kernel with the driver
-backported: the stick enumerates at 480 Mb/s after a cold and a warm
-boot and after reloading dwc2, which powers the PHY off and on, and
-comes back after a replug.
-
-[1] https://github.com/981213/linux/commits/siflower-7.1
-
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
-Changes in v2:
-- Write my note on Chuanhong's patch as a list.
-- Add a MAINTAINERS entry for the driver and its binding, naming the
-  driver's file, since drivers/phy/siflower/ will also hold the SF21
-  PHY drivers.
-- Get and toggle both resets with the reset_control_bulk API (Philipp).
-- Word the error messages the same way, name the error labels, include
-  <linux/device-id/of.h> instead of <linux/of.h>, and use GPL-2.0-only,
-  not the deprecated GPL-2.0 SPDX identifier.
-- Patch 1: add Conor's Ack.
-- Link to v1: https://patch.msgid.link/20261104-sf19a2890-usb-phy-v1-0-db0cad937614@telaak.dev
+ .../bindings/phy/siflower,sf19a2890-usb-phy.yaml   | 58 ++++++++++++++++++++++
+ MAINTAINERS                                        |  6 +++
+ 2 files changed, 64 insertions(+)
 
----
-Chuanhong Guo (1):
-      phy: siflower: Add SF19A2890 USB 2.0 PHY driver
+diff --git a/Documentation/devicetree/bindings/phy/siflower,sf19a2890-usb-phy.yaml b/Documentation/devicetree/bindings/phy/siflower,sf19a2890-usb-phy.yaml
+new file mode 100644
+index 000000000000..77b8e35d8017
+--- /dev/null
++++ b/Documentation/devicetree/bindings/phy/siflower,sf19a2890-usb-phy.yaml
+@@ -0,0 +1,58 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/phy/siflower,sf19a2890-usb-phy.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Siflower SF19A2890 USB 2.0 PHY
++
++maintainers:
++  - Joseph Telaak <joseph@telaak.dev>
++
++description:
++  The USB 2.0 PHY of the Siflower SF19A2890, used by its DWC2 controller.
++
++properties:
++  compatible:
++    const: siflower,sf19a2890-usb-phy
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++    description: PHY reference clock
++
++  resets:
++    items:
++      - description: power-on reset
++      - description: PHY reset
++
++  reset-names:
++    items:
++      - const: por
++      - const: phy
++
++  "#phy-cells":
++    const: 0
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - resets
++  - reset-names
++  - "#phy-cells"
++
++additionalProperties: false
++
++examples:
++  - |
++    usb-phy@19e0c040 {
++        compatible = "siflower,sf19a2890-usb-phy";
++        reg = <0x19e0c040 0x60>;
++        clocks = <&usb_crm 2>;
++        resets = <&usb_crm 1>, <&usb_crm 2>;
++        reset-names = "por", "phy";
++        #phy-cells = <0>;
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 93abbb315065..7033d9b6152d 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -25698,6 +25698,12 @@ N:	sifive
+ K:	fu[57]40
+ K:	[^@]sifive
+ 
++SIFLOWER SF19A2890 USB PHY DRIVER
++M:	Joseph Telaak <joseph@telaak.dev>
++L:	linux-phy@lists.infradead.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/phy/siflower,sf19a2890-usb-phy.yaml
++
+ SILEAD TOUCHSCREEN DRIVER
+ M:	Hans de Goede <hansg@kernel.org>
+ L:	linux-input@vger.kernel.org
 
-Joseph Telaak (1):
-      dt-bindings: phy: Add Siflower SF19A2890 USB 2.0 PHY
-
- .../bindings/phy/siflower,sf19a2890-usb-phy.yaml   |  58 +++++++++
- MAINTAINERS                                        |   7 ++
- drivers/phy/Kconfig                                |   1 +
- drivers/phy/Makefile                               |   1 +
- drivers/phy/siflower/Kconfig                       |  12 ++
- drivers/phy/siflower/Makefile                      |   2 +
- drivers/phy/siflower/phy-sf19a2890-usb.c           | 132 +++++++++++++++++++++
- 7 files changed, 213 insertions(+)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261102-sf19a2890-usb-phy-5bb644992750
-
-Best regards,
---  
-Joseph Telaak <joseph@telaak.dev>
+-- 
+Git-155)
 
