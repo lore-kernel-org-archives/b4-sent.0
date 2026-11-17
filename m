@@ -1,93 +1,117 @@
-From: Ricky Sorrell <rmsorrell@gmail.com>
-Date: Mon, 16 Nov 2026 20:49:39 -0700
-Subject: [PATCH] power: supply: surface_battery: Defer AC-triggered update
- across suspend
+From: Cristian Filipescu <filipescu.cristian@gmail.com>
+To: linux-leds@vger.kernel.org, devicetree@vger.kernel.org
+Cc: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ Griffin Kroah-Hartman <griffin@kroah.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, linux-sunxi@lists.linux.dev
+Subject: [PATCH RFC] leds: DT: migrating existing labels to function/color
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-surface-battery-suspend-v1-1-71862c94435f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIANLO+2oC/yXMQQrCMBBG4auUWRtoChbxKuJikvzRcRHLTCqV0
- rs31eW3eG8lgwqMrt1Kio+YvEuDP3UUn1wecJKaaeiH0Xs/Ops1c4QLXCv022wTSnLhzCmEjEv
- PmVo9KbIsv/Pt/rfN4YVYjx1t2w5aWWcpewAAAA==
-X-Change-ID: 20261116-surface-battery-suspend-b5adbbfe80af
-To: Maximilian Luz <luzmaximilian@gmail.com>, 
- Sebastian Reichel <sre@kernel.org>
-Cc: linux-pm@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ricky Sorrell <rmsorrell@gmail.com>
+Date: Tue, 17 Nov 2026 05:10:16 +0000
+Message-ID: <179489221679.1.1429296960451969532.led-label-policy-rfc@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794887378; l=3169;
- i=rmsorrell@gmail.com; s=20261117; h=from:subject:message-id;
- bh=Nm4oDrkT9c+zgZKLqwTPIM9uMxM/qKmEf83Eim2ZI+A=;
- b=Y/O3bQAP6wvKxqeZvxMj+O34ZAGKVr0Z9f4ZHmbJSD4q8f09awao2RXW0CsywUS10qWtfOPRh
- JXPLjkuhkpuA/ySi39H12X22FcsudwpHfdfxAS2dK2BdKJ3Ghv2iU29
-X-Developer-Key: i=rmsorrell@gmail.com; a=ed25519;
- pk=iB5I4ZV9deYinB0dHWz2x12lFRsMIymvzUMBcvlbAKs=
-X-Endpoint-Received: by B4 Relay for rmsorrell@gmail.com/20261117 with auth_id=1546
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794892216; l=3129;
+ i=filipescu.cristian@gmail.com; s=uboot-20261021; h=from:subject:message-id;
+ bh=yDEyHZ0vBr1PYekgAZguFVDD5Tfxmd/H6LQWci3XaNg=;
+ b=32idoKYdXJ1Ued9e/Rgjim6ANtMlStXIm10OgKqlPw2EMFMZ/SznqoucCcuTAOxOsu0hQZisi
+ jDVVG9zh0wMAOikJzP57ueY4ADZfIgpij6bsK1fqzx34t2eJlqUtHpO
+X-Developer-Key: i=filipescu.cristian@gmail.com; a=ed25519;
+ pk=o7Ui0tU3x+X/6Pq6PZHmd2KFtOdPWttoPuNFOvdD8t0=
+X-Endpoint-Received: by B4 Relay for filipescu.cristian@gmail.com/uboot-20261021 with auth_id=1255
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the AC adapter is plugged in or removed, spwr_external_power_changed()
-schedules a battery state update after five seconds, on system_wq. That
-workqueue is not frozen for system suspend. If the system starts to
-suspend within those five seconds, for example when the charger is
-unplugged and the lid closed straight away, the work runs after the
-Surface Aggregator controller has been suspended. The request then trips
-the WARN_ON() in ssam_request_do_sync_with_buffer() and fails:
+Hi,
 
-  WARNING: drivers/platform/surface/aggregator/controller.c:1703 at ssam_request_do_sync_with_buffer+0x15a/0x180 [surface_aggregator]
-  Workqueue: events spwr_battery_update_bst_workfn [surface_battery]
-  surface_battery 01:02:02:01:00: failed to update battery state: -19
+The common LED binding deprecates label in favour of function and color.
+Is removing existing labels desirable when it changes established LED class
+names, or should existing board descriptions retain them for compatibility?
 
-Queue the work on system_freezable_wq instead. Freezable workqueues are
-frozen before devices are suspended and thawed after they have resumed,
-so a pending update now runs only once the controller is reachable again.
-Nothing is lost by the delay: surface_battery_resume() already rechecks
-the full battery state.
+For example, the Orange Pi H6 descriptions could replace their labels with
+LED_FUNCTION_POWER/STATUS and LED_COLOR_ID_RED/GREEN. With gpio-leds, this
+would change the names under /sys/class/leds:
 
-The problem was found, and this change written and tested, with the help
-of an AI coding assistant (Claude Opus 5.5 in Claude Code). It was found
-by reading the kernel log after suspend tests on a Surface Book 3, then
-confirmed in the source. Reproduced and tested on a Surface Book 3 with
-Linux 7.3.4: unplug the charger and close the lid within five seconds.
-Before the change the warning above appeared; after it, the same test
-gave no warning and correct battery state after resume.
+  orangepi:red:power    -> red:power
+  orangepi:green:status -> green:status
 
-Fixes: 167f77f7d0b3 ("power: supply: Add battery driver for Surface Aggregator Module")
-Signed-off-by: Ricky Sorrell <rmsorrell@gmail.com>
----
-Not done, so reviewers know: the change was built and tested against
-Linux 7.3.4 only. Mainline's surface_battery.c differs from 7.3.4 only in
-an unrelated devm_kzalloc_obj() line, and the patch applies to mainline,
-but it was not built or run there.
----
- drivers/power/supply/surface_battery.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+The example below changes two files and affects Orange Pi 3, 3 LTS, Lite2
+and One Plus. GPIOs, polarity, pinctrl, defaults and triggers are unchanged.
+All four DTBs compile before and after; comparison found only the intended
+label/function/color changes. The renamed LEDs have not been tested on
+hardware.
 
-diff --git a/drivers/power/supply/surface_battery.c b/drivers/power/supply/surface_battery.c
-index dac19932c..a9b0cdfe3 100644
---- a/drivers/power/supply/surface_battery.c
-+++ b/drivers/power/supply/surface_battery.c
-@@ -417,9 +417,14 @@ static void spwr_external_power_changed(struct power_supply *psy)
- 	 * event for the state (charging/discharging) change. Furthermore it
- 	 * may take some time until the state is updated on the battery.
- 	 * Schedule an update to solve this.
-+	 *
-+	 * Use the freezable workqueue so that the update does not run while
-+	 * the system is suspending, when the EC can no longer be reached.
-+	 * surface_battery_resume() rechecks the full state anyway.
- 	 */
+I was thinking of converting all the deprecated LED labels, but I wanted
+to see if this was something maintainers wanted, since it would touch a lot
+of files. Would you prefer retaining existing labels (potentially adding
+function and color alongside them), or reviewing migrations with the name
+changes explicitly documented?
+
+This is a discussion example, not a patch for inclusion. Preparation and
+static checks were assisted by OpenAI Codex.
+
+Thanks,
+Cristian
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3.dts b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3.dts
+index ce82aa265..8e4117057 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3.dts
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3.dts
+@@ -8,6 +8,7 @@
+ #include "sun50i-h6-gpu-opp.dtsi"
  
--	schedule_delayed_work(&bat->update_work, SPWR_AC_BAT_UPDATE_DELAY);
-+	queue_delayed_work(system_freezable_wq, &bat->update_work,
-+			   SPWR_AC_BAT_UPDATE_DELAY);
- }
+ #include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/leds/common.h>
  
+ / {
+ 	model = "OrangePi 3";
+@@ -45,13 +46,15 @@ leds {
+ 		compatible = "gpio-leds";
  
-
----
-base-commit: 666539eecdf4db623f5e3c3e55cf9f2dfad24aa4
-change-id: 20261116-surface-battery-suspend-b5adbbfe80af
-
-Best regards,
---  
-Ricky Sorrell <rmsorrell@gmail.com>
+ 		led-0 {
+-			label = "orangepi:red:power";
++			function = LED_FUNCTION_POWER;
++			color = <LED_COLOR_ID_RED>;
+ 			gpios = <&r_pio 0 4 GPIO_ACTIVE_HIGH>; /* PL4 */
+ 			default-state = "on";
+ 		};
+ 
+ 		led-1 {
+-			label = "orangepi:green:status";
++			function = LED_FUNCTION_STATUS;
++			color = <LED_COLOR_ID_GREEN>;
+ 			gpios = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
+ 		};
+ 	};
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi.dtsi
+index 57b137755..49f3d2fc8 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi.dtsi
+@@ -9,6 +9,7 @@
+ #include "sun50i-h6-gpu-opp.dtsi"
+ 
+ #include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/leds/common.h>
+ 
+ / {
+ 	model = "OrangePi One Plus";
+@@ -45,13 +46,15 @@ leds {
+ 		compatible = "gpio-leds";
+ 
+ 		led-0 {
+-			label = "orangepi:red:power";
++			function = LED_FUNCTION_POWER;
++			color = <LED_COLOR_ID_RED>;
+ 			gpios = <&r_pio 0 4 GPIO_ACTIVE_HIGH>; /* PL4 */
+ 			default-state = "on";
+ 		};
+ 
+ 		led-1 {
+-			label = "orangepi:green:status";
++			function = LED_FUNCTION_STATUS;
++			color = <LED_COLOR_ID_GREEN>;
+ 			gpios = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
+ 		};
+ 	};
 
