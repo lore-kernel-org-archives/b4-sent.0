@@ -1,73 +1,87 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Tue, 17 Nov 2026 20:33:15 +0100
-Subject: [PATCH 10/10] arm64: dts: amlogic: Add HDMI TX PHY node for GXL
+From: David Heidelberg <david@ixit.cz>
+Date: Tue, 17 Nov 2026 20:51:18 +0100
+Subject: [PATCH] remoteproc: qcom_q6v5_mss: Save the need_pas_mem_setup
+ into qproc
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-meson-drm-create-hdmitx-phy-v1-10-9e0ac931381c@aliel.fr>
-References: <20261117-meson-drm-create-hdmitx-phy-v1-0-9e0ac931381c@aliel.fr>
-In-Reply-To: <20261117-meson-drm-create-hdmitx-phy-v1-0-9e0ac931381c@aliel.fr>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Vinod Koul <vkoul@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-phy@lists.infradead.org, dri-devel@lists.freedesktop.org, 
- Ronald Claveau <linux-kernel-dev@aliel.fr>
+Message-Id: <20261117-qcom_q6v5_mss_msm8953-v1-1-0fdaea2855ff@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0Nz3cLk/Nz4QrMy0/jc4mIgzrWwNDXWTUxKtDA0NTI2MjJOUgLqLSh
+ KTcusAJsbHQvhF5cmZaUml4AMU6qtBQAZG3wJeQAAAA==
+X-Change-ID: 20261117-qcom_q6v5_mss_msm8953-aba81523223b
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Mathieu Poirier <mathieu.poirier@linaro.org>, 
+ =?utf-8?q?Barnab=C3=A1s_Cz=C3=A9m=C3=A1n?= <barnabas.czeman@mainlining.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Bryan O'Donoghue <bod@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-remoteproc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sashiko <sashiko-bot@kernel.org>, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1114;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=9hTxeugOjhcX9M0v6UHrUWRPvC2sPx1GRYk5SnrhvPE=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9afNVxMTVGy8uvFMiu3blw+ZQvr6YK0yecT9v839H3z7
- NquBzesO0pZGMS4GGTFFFn651qeeHf56Jmve9RTYOawMoEMYeDiFICJBPszMjz6Vh5u2WH1piNs
- lrqOSkf6xGtBHJ4VGzbyM1b8Kw3fcJ+RYdsHZtHggOyjWbIG5vsna3ma1R+Z3R7y9Z/bqT/BWVL
- tLAA=
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1721; i=david@ixit.cz;
+ h=from:subject:message-id; bh=YXA0PBEQxG7y3KQPuhFsjnj3v8mXJmuKIs88QrqT56o=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/LA3t4wTRLmCJRD8Rbmf1F2YC+5aKN1QBaJ6W
+ Vf6R+LYyPaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCavywNwAKCRBgAj/E00kg
+ cjKFEACm4UVdY1Sc6btYgmxzmBtq/95vt8znRQ2e5Uebw9/R6eOFohV3r1xnfyYTQquxU8NDuqm
+ f3gAvlhpM4fw7aA2QZ73jD3CfXZR1NOP3aBJ7T17H/KKNnuHVsg/uW4iRxFc1G3MsAOYwpafMRH
+ isoj0sY2qMgKKP6QWnQZRVy+aR53VmfXaSKk1HGWazqj19BF6qyXK9hF5WVvk9QkaVgymiqR8w6
+ FedoyuHicdvmrM76j23H5hISpGU9OgX1/Sp7cEwXlNDHTRXxE3v6TlL2MnFXJyWu/1BGR1Z0l6T
+ Nw2nPPmgheWJFQVABOXMsCugpffHN8A/Ag61BDxvMnkcB0RxUrouf+77BgLUUd3g5Cr59N2llTM
+ rB5Fg4LK8t9gDAfCSZ249VeoxihlgBDd0kvElH3x+DCx9hAEWaWsP7cj4cXfrJwqzihoGfHdrR4
+ e5kqvkGqiYpJsZghgiRwWAg5pqimQfAsSd8zp+oh2bokXNtRoX9jpUwW41wBrP8uRBgJ1iUg4mk
+ 5jpqaOWYxzYkKKc9/3Lbjw3vq2NLkXOD8bpnF3KOu76k8NT20mdgrPnQbk1s3fM+HMfzla2jdZQ
+ AjptKnUD869OLIZTNvczaQgDj4OynEQB/jgDFAc2bMIW7R1gOcZqEwk9eOI2Q7JehRNABEl4jkL
+ jQnvLHzHaSteBmw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the HDMI TX PHY as a child of the HHI system controller, with
-the amlogic,meson-gxl-hdmi-tx-phy compatible and reference
-it from the HDMI TX node through "phys" and "phy-names".
+On hardware requiring Peripheral Authentication Service (PAS) for modem
+memory setup (e.g., SDM632), the remoteproc subsystem skips hardware memory
+authentication because q6v5_probe() fails to copy the need_pas_mem_setup
+flag to the allocated device instance.
 
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Original commit didn't save the value into the structure thus quietly
+skipping if (qproc->need_pas_mem_setup) condition.
+
+Reported-by: Sashiko <sashiko-bot@kernel.org>
+Closes: https://sashiko.dev/#/bug/linux-83fcbc28-236c-48e4-a6bd-731f4361f9ae
+Fixes: f56052f4d87c ("remoteproc: qcom_q6v5_mss: Introduce need_pas_mem_setup")
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/amlogic/meson-gxl.dtsi | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/remoteproc/qcom_q6v5_mss.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-gxl.dtsi b/arch/arm64/boot/dts/amlogic/meson-gxl.dtsi
-index f257fe3860f7..77d4e6b5b850 100644
---- a/arch/arm64/boot/dts/amlogic/meson-gxl.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-gxl.dtsi
-@@ -328,6 +328,8 @@ &hdmi_tx {
- 		 <&clkc CLKID_GCLK_VENCI_INT0>;
- 	clock-names = "isfr", "iahb", "venci";
- 	power-domains = <&pwrc PWRC_GXBB_VPU_ID>;
-+	phys = <&hdmi_tx_phy>;
-+	phy-names = "hdmi";
+diff --git a/drivers/remoteproc/qcom_q6v5_mss.c b/drivers/remoteproc/qcom_q6v5_mss.c
+index dd052a62b8583..5d084aa2eac36 100644
+--- a/drivers/remoteproc/qcom_q6v5_mss.c
++++ b/drivers/remoteproc/qcom_q6v5_mss.c
+@@ -2189,16 +2189,17 @@ static int q6v5_probe(struct platform_device *pdev)
  
- 	assigned-clocks = <&clkc CLKID_HDMI_SEL>,
- 			  <&clkc CLKID_HDMI>;
-@@ -342,6 +344,11 @@ clkc: clock-controller {
- 		clocks = <&xtal>;
- 		clock-names = "xtal";
- 	};
-+
-+	hdmi_tx_phy: hdmi-phy {
-+		compatible = "amlogic,meson-gxl-hdmi-tx-phy";
-+		#phy-cells = <0>;
-+	};
- };
+ 	qproc->has_alt_reset = desc->has_alt_reset;
+ 	ret = q6v5_init_reset(qproc);
+ 	if (ret)
+ 		goto detach_proxy_pds;
  
- &hwrng {
+ 	qproc->version = desc->version;
+ 	qproc->need_mem_protection = desc->need_mem_protection;
++	qproc->need_pas_mem_setup = desc->need_pas_mem_setup;
+ 	qproc->has_mba_logs = desc->has_mba_logs;
+ 
+ 	ret = qcom_q6v5_init(&qproc->q6v5, pdev, rproc, MPSS_CRASH_REASON_SMEM, "modem",
+ 			     qcom_msa_handover);
+ 	if (ret)
+ 		goto detach_proxy_pds;
+ 
+ 	qproc->mpss_perm = BIT(QCOM_SCM_VMID_HLOS);
 
--- 
-2.43.0
+---
+base-commit: aaa2f954c21b205a0bcd0961e5b2be4e82e58455
+change-id: 20261117-qcom_q6v5_mss_msm8953-aba81523223b
+
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
