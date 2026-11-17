@@ -1,11 +1,11 @@
 From: Mattathias Pinchover <mattathias.pinchover@uber.com>
-Date: Tue, 17 Nov 2026 23:22:19 +0000
-Subject: [PATCH v2 5/6] Docs/admin-guide/mm/damon/usage: update for
+Date: Tue, 17 Nov 2026 23:22:20 +0000
+Subject: [PATCH v2 6/6] Docs/ABI/damon: update for
  sz_ops_filter_passed_last
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261117-damon-sz-ops-b4-v2-5-439888fa04ac@uber.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261117-damon-sz-ops-b4-v2-6-439888fa04ac@uber.com>
 References: <20261117-damon-sz-ops-b4-v2-0-439888fa04ac@uber.com>
 In-Reply-To: <20261117-damon-sz-ops-b4-v2-0-439888fa04ac@uber.com>
 To: SJ Park <sj@kernel.org>, Andrew Morton <akpm@linux-foundation.org>, 
@@ -15,52 +15,43 @@ Cc: damon@lists.linux.dev, linux-mm@kvack.org, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, 
  Mattathias Pinchover <mattathias.pinchover@uber.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794957787; l=2220;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794957787; l=1281;
  i=mattathias.pinchover@uber.com; s=20261113; h=from:subject:message-id;
- bh=tvJBR8JDDpKpw1xULOsbisctgZ8T255dOmTkH3Mq+d0=;
- b=sn9jKNfNT452I5qkbsBxzO7juwhpsdzcLKXVP8IlWA37FavQ/FVK/H/BHGFb4SMBeN6MYU0x7
- ZCSuZGNmB3uAaGmXVWyoK1VIwPRJijhPDgKYBGx4YelarTXegoxiDD7
+ bh=90a1wbT2PC+F+rhsnr9WMD8Unb+N/GP+Z2kT1pcYBmY=;
+ b=pkBlnH43gn4zV/kWKM/02araP3z+bcuBHTyxxj9OoZ/EcohJK1F3SlFgD+e7Udmps9/m0JS/c
+ 7+wiCSdYnsWDurYzDel6oOypuSIIIpH3e+Bxz68U/vqDCr326+dQTM9
 X-Developer-Key: i=mattathias.pinchover@uber.com; a=ed25519;
  pk=6Bh6OEwWiU6dpON0CVcoipq8fXtEgvhsM1Tmm9CTmtY=
 X-Endpoint-Received: by B4 Relay for mattathias.pinchover@uber.com/20261113 with auth_id=1515
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update DAMON usage document for the newly added DAMOS stat file,
+Update DAMON ABI document for the newly added DAMOS stat file,
 sz_ops_filter_passed_last.
 
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Mattathias Pinchover <mattathias.pinchover@uber.com>
 ---
- Documentation/admin-guide/mm/damon/usage.rst | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ Documentation/ABI/testing/sysfs-kernel-mm-damon | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/Documentation/admin-guide/mm/damon/usage.rst b/Documentation/admin-guide/mm/damon/usage.rst
-index 6093b1c8fbfd..51c4909f1a8b 100644
---- a/Documentation/admin-guide/mm/damon/usage.rst
-+++ b/Documentation/admin-guide/mm/damon/usage.rst
-@@ -105,7 +105,10 @@ comma (",").
-     │ │ │ │ │ │ │ │ 0/type,matching,allow,memcg_path,addr_start,addr_end,damon_target_idx,min,max
-     │ │ │ │ │ │ │ :ref:`dests <damon_sysfs_dests>`/nr_dests
-     │ │ │ │ │ │ │ │ 0/id,weight
--    │ │ │ │ │ │ │ :ref:`stats <sysfs_schemes_stats>`/nr_tried,sz_tried,nr_applied,sz_applied,sz_ops_filter_passed,qt_exceeds,nr_snapshots,max_nr_snapshots
-+    │ │ │ │ │ │ │ :ref:`stats <sysfs_schemes_stats>`/nr_tried,sz_tried,
-+    │ │ │ │ │ │ │     nr_applied,sz_applied,sz_ops_filter_passed,
-+    │ │ │ │ │ │ │     sz_ops_filter_passed_last,qt_exceeds,nr_snapshots,
-+    │ │ │ │ │ │ │     max_nr_snapshots
-     │ │ │ │ │ │ │ :ref:`tried_regions <sysfs_schemes_tried_regions>`/total_bytes
-     │ │ │ │ │ │ │ │ 0/start,end,nr_accesses,age,sz_filter_passed
-     │ │ │ │ │ │ │ │ │ probes
-@@ -631,8 +634,8 @@ online analysis or tuning of the schemes.  Refer to :ref:`design doc
+diff --git a/Documentation/ABI/testing/sysfs-kernel-mm-damon b/Documentation/ABI/testing/sysfs-kernel-mm-damon
+index 4acb2015c2f4..92348178e48a 100644
+--- a/Documentation/ABI/testing/sysfs-kernel-mm-damon
++++ b/Documentation/ABI/testing/sysfs-kernel-mm-damon
+@@ -623,6 +623,13 @@ Contact:	SJ Park <sj@kernel.org>
+ Description:	Reading this file returns the total size of memory that passed
+ 		DAMON operations layer-handled filters of the scheme in bytes.
  
- The statistics can be retrieved by reading the files under ``stats`` directory
- (``nr_tried``, ``sz_tried``, ``nr_applied``, ``sz_applied``,
--``sz_ops_filter_passed``, ``qt_exceeds``, ``nr_snapshots`` and
--``max_nr_snapshots``), respectively.
-+``sz_ops_filter_passed``, ``sz_ops_filter_passed_last``,
-+``qt_exceeds``, ``nr_snapshots`` and ``max_nr_snapshots``), respectively.
- 
- The files are not updated in real time by default.  Users should ask DAMON
- sysfs interface to periodically update those using ``refresh_ms``, or do a one
++What:		/sys/kernel/mm/damon/admin/kdamonds/<K>/contexts/<C>/schemes/<S>/stats/sz_ops_filter_passed_last
++Date:		Nov 2026
++Contact:	SJ Park <sj@kernel.org>
++Description:	Reading this file returns the size of memory that passed DAMON
++		operations layer-handled filters of the scheme in bytes, in the
++		last apply interval of the scheme.
++
+ What:		/sys/kernel/mm/damon/admin/kdamonds/<K>/contexts/<C>/schemes/<S>/stats/qt_exceeds
+ Date:		Mar 2022
+ Contact:	SJ Park <sj@kernel.org>
 
 -- 
 2.54.0-uber3
