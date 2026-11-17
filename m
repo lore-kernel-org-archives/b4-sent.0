@@ -1,15 +1,12 @@
 From: Peder Bergan <peder.bergan@gmail.com>
-Subject: [PATCH v2 0/2] rust: str: tie Formatter to its backing buffer
-Date: Tue, 17 Nov 2026 18:57:05 +0100
-Message-Id: <20261117-formatter-lifetime-v2-0-e216d86ffb57@gmail.com>
+Date: Tue, 17 Nov 2026 18:57:06 +0100
+Subject: [PATCH v2 1/2] rust: str: tie Formatter to its backing buffer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHGV/GoC/32OzQ6CMBCEX4X07BoL8ufJ9zAcCmxhDaVkWwiG8
- O5SvHv8JjNfZhMOmdCJR7QJxoUc2fGA+BKJpldjh0DtwSK+xZmUMgdt2SjvkWEgjZ4Mwr1ISol
- trrRuxTGcGDWtp/RV/djN9RsbH0yhUSuHULMamz5E8+Q8ozLAs/Mw4upDqSfnLX/Oa4sMsr8vF
- gkSyjbXSZEVWZrGz84oGq6NNaLa9/0Lf1AmW+sAAAA=
-X-Change-ID: 20261117-formatter-lifetime-48391ed7affd
+Message-Id: <20261117-formatter-lifetime-v2-1-e216d86ffb57@gmail.com>
+References: <20261117-formatter-lifetime-v2-0-e216d86ffb57@gmail.com>
+In-Reply-To: <20261117-formatter-lifetime-v2-0-e216d86ffb57@gmail.com>
 To: Miguel Ojeda <ojeda@kernel.org>
 Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
  =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
@@ -24,42 +21,55 @@ Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>,
  stable@vger.kernel.org, 
  Georgios Androutsopoulos <georgeandrout13@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794938225; l=966;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794938225; l=1630;
  i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
- bh=vp/LWvvmAzX34f8vnKcLQw+RL3iAYT/77OcdfbM1kEI=;
- b=eeZ1jr/xE+W8GNpkuqpEhdsS1+fV16E1iXTtLdK1DxWqokbyROdzfm0ed6J6RNc2K9J9Wqzsv
- nUaKFAL90/iCO3/qxvg9eqXLMrTMuf5m3cC3XNqHnc+lG3FdDNsexyh
+ bh=pk/XTxsT2Cck/gs1Jsjp5EjCnE+z6vFIFe6DZRaRaow=;
+ b=UoEl7Jj1iJ543UmZ3DLnqWPw6c1Qv4seKjCgdMzsZgxf7j+C+CMr64hZ+7DDXKBoYx7hRigaY
+ L0xurLXmFn6C9QfFLvxg2XjC4XUGNfPCGKUGgU4BUqAmz3L4JsVmBxm
 X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
  pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
 X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Split the lifetime fix and its documentation into separate patches as
-requested by Gary.
+Formatter::new() returns a Formatter whose lifetime is independent of the
+borrow of its backing buffer. Safe code can therefore drop the buffer and
+then write through the formatter, causing a use-after-free.
 
-I compiled the fix-only first patch with Clippy and ran the string tests
-and kernel doctests under x86_64 QEMU. The final source tree is unchanged
-from v1, including the previously tested example.
+Tie the buffer borrow to the formatter's lifetime so that the borrow
+checker rejects such callers and prevents overlapping mutable access.
 
-OpenAI Codex assisted with coding and testing.
-
+Fixes: 87482d6d9104 ("rust: str: allow `str::Formatter` to format into `&mut [u8]`.")
+Cc: stable@vger.kernel.org
+Reported-by: Georgios Androutsopoulos <georgeandrout13@gmail.com>
+Closes: https://github.com/Rust-for-Linux/linux/issues/1261
+Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
 ---
-Changes in v2:
-- Split the documentation and example into a second patch, as requested by Gary.
-- Link to v1: https://lore.kernel.org/rust-for-linux/20261117-formatter-lifetime-v1-1-9d7f38686552@gmail.com/
+ rust/kernel/str.rs | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
----
-Peder Bergan (2):
-      rust: str: tie Formatter to its backing buffer
-      rust: str: add an example for Formatter::new
+diff --git a/rust/kernel/str.rs b/rust/kernel/str.rs
+index 644b4279a..e5fe84eeb 100644
+--- a/rust/kernel/str.rs
++++ b/rust/kernel/str.rs
+@@ -645,7 +645,7 @@ impl fmt::Write for RawFormatter {
+ /// Fails if callers attempt to write more than will fit in the buffer.
+ pub struct Formatter<'a>(RawFormatter, PhantomData<&'a mut ()>);
+ 
+-impl Formatter<'_> {
++impl<'a> Formatter<'a> {
+     /// Creates a new instance of [`Formatter`] with the given buffer.
+     ///
+     /// # Safety
+@@ -658,7 +658,7 @@ impl Formatter<'_> {
+     }
+ 
+     /// Create a new [`Self`] instance.
+-    pub fn new(buffer: &mut [u8]) -> Self {
++    pub fn new(buffer: &'a mut [u8]) -> Self {
+         // SAFETY: `buffer` is valid for writes for the entire length for
+         // the lifetime of `Self`.
+         unsafe { Formatter::from_buffer(buffer.as_mut_ptr(), buffer.len()) }
 
- rust/kernel/str.rs | 20 ++++++++++++++++++--
- 1 file changed, 18 insertions(+), 2 deletions(-)
----
-base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
-change-id: 20261117-formatter-lifetime-48391ed7affd
-
-Best regards,
---  
-Peder Bergan <peder.bergan@gmail.com>
+-- 
+2.56.1
 
