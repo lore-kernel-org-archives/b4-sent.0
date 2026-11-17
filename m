@@ -1,11 +1,10 @@
 From: Rui Cao <i@udp0.com>
-Date: Tue, 17 Nov 2026 17:11:31 +0800
-Subject: [PATCH v2 1/5] dt-bindings: arm: mediatek: Add MT6833 and the
- Xiaomi Redmi Note 13 5G
+Date: Tue, 17 Nov 2026 17:11:32 +0800
+Subject: [PATCH v2 2/5] dt-bindings: watchdog: mediatek,mtk-wdt: Add MT6833
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-mt6833-base-v2-1-058a0685c40c@udp0.com>
+Message-Id: <20261117-mt6833-base-v2-2-058a0685c40c@udp0.com>
 References: <20261117-mt6833-base-v2-0-058a0685c40c@udp0.com>
 In-Reply-To: <20261117-mt6833-base-v2-0-058a0685c40c@udp0.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -21,44 +20,42 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
  linux-watchdog@vger.kernel.org, linux-serial@vger.kernel.org, 
  phone-devel@vger.kernel.org, Roman Vivchar <rva333@protonmail.com>, 
- Rui Cao <i@udp0.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ Rui Cao <i@udp0.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794906695; l=997;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794906695; l=1098;
  i=i@udp0.com; s=20261107; h=from:subject:message-id;
- bh=GFyoNWGAxLOiNW5P7U3cZx8tiVYOhuPhOWyXLc+W+0Q=;
- b=+PL/AuT0FA8iW/Q8KV20KLaBcgLP5YqhtlQdcoSCjLAcMb01U+sp2+tjoAQ3PEsrSfVe5OaCi
- XoTUjWGfst1BEC/NiAGORsYr08KDucu8bzQsdhed6EbAQT67EVeqAkt
+ bh=jjCiaVOOht+RI3oDkxUaR1YbdSwCNgqgxnVxINfl9q8=;
+ b=9g9D2itu8LsARvIWD5fHnn7cKiJ5isx3uDconLIYrEz7YNX9M/UaO365a15DHPzjWzin6dTNu
+ DZmZImgXlCpAcN2Vn/scwDnZx8pOnzCjHOIz8kc7gqYD/GgVyArpBpA
 X-Developer-Key: i=i@udp0.com; a=ed25519;
  pk=XZJKcKgnUUjjyw8KuKy7u2QeIX0JLY/L1Fxzwwje41w=
 X-Endpoint-Received: by B4 Relay for i@udp0.com/20261107 with auth_id=1443
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MediaTek's MT6833 (Dimensity 700) and the Xiaomi Redmi Note 13 5G,
-codenamed gold, which is built on it.
+Add MediaTek's MT6833 (Dimensity 700) as a compatible of its own.
 
-Reviewed-by: Roman Vivchar <rva333@protonmail.com>
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+It can't fall back to mediatek,mt6589-wdt, which also describes
+MT6589's twelve TOPRGU reset lines: MediaTek's kernel for MT6833 resets
+the connectivity CPU through bit 12 of WDT_SWSYSRST, past them, and has
+no full reset table for the SoC to take one from.
+
 Signed-off-by: Rui Cao <i@udp0.com>
 ---
- Documentation/devicetree/bindings/arm/mediatek.yaml | 4 ++++
- 1 file changed, 4 insertions(+)
+ Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/mediatek.yaml b/Documentation/devicetree/bindings/arm/mediatek.yaml
-index 180e6e4948e..900f16b57dc 100644
---- a/Documentation/devicetree/bindings/arm/mediatek.yaml
-+++ b/Documentation/devicetree/bindings/arm/mediatek.yaml
-@@ -72,6 +72,10 @@ properties:
-               - archermind,mt6797-x20-dev
-               - mediatek,mt6797-evb
-           - const: mediatek,mt6797
-+      - items:
-+          - enum:
-+              - xiaomi,gold
-+          - const: mediatek,mt6833
-       - items:
-           - enum:
-               - bananapi,bpi-r64
+diff --git a/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml b/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml
+index f9b725592c2..5742cc09a74 100644
+--- a/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml
++++ b/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml
+@@ -24,6 +24,7 @@ properties:
+           - mediatek,mt6589-wdt
+           - mediatek,mt6735-wdt
+           - mediatek,mt6795-wdt
++          - mediatek,mt6833-wdt
+           - mediatek,mt7986-wdt
+           - mediatek,mt7988-wdt
+           - mediatek,mt8167-wdt
 
 -- 
 Git-157)
