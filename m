@@ -1,11 +1,10 @@
 From: yy-Local-LLM <yogo.0917.sabu@gmail.com>
-Date: Tue, 17 Nov 2026 22:06:51 +0900
-Subject: [PATCH RFC 1/6] dt-bindings: add SiRF AT550 and Yupiteru YPL514si
- descriptions
+Date: Tue, 17 Nov 2026 22:06:52 +0900
+Subject: [PATCH RFC 2/6] irqchip: add the SiRF AT550 interrupt controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-at550-rfc-v1-v1-1-5879573cb825@gmail.com>
+Message-Id: <20261117-at550-rfc-v1-v1-2-5879573cb825@gmail.com>
 References: <20261117-at550-rfc-v1-v1-0-5879573cb825@gmail.com>
 In-Reply-To: <20261117-at550-rfc-v1-v1-0-5879573cb825@gmail.com>
 To: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org
@@ -23,298 +22,183 @@ Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
  linux-mmc@vger.kernel.org, linux-doc@vger.kernel.org, soc@lists.linux.dev
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794920817; l=8505;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794920817; l=5243;
  i=yogo.0917.sabu@gmail.com; s=ypl514-20261117; h=from:subject:message-id;
- bh=PPMFmty+X1fB4x1sTCUWuwl5IruxK1aahzVZzgQU0DI=;
- b=/M56w7i6wjjKb7hkQhlFL4AB7O0JGYb32FY8M87pw5hDp1BHmErXvZVs4yqdXAIaIoI0HuWL3
- x7h42a21k0HBJ0HskfUmHsNgeVwKeAgdVZzsePenB1Nq51EwaHtImmM
+ bh=9f0nqZv4WQhgKV1VvrZgloZ85kHakrrDVLP2DGNKTf4=;
+ b=m6zb8HTiPIox5b7xSvz+83eHXlrLwsdjRIptcxLk4j6673ysoDkYCiWcdc0fUQqBy0mqGhciz
+ 4utdk7k6o5uDMYJ5wLW5zRTjBmMg2r77oYpeU8rxeonbhVQaT3Zj1RH
 X-Developer-Key: i=yogo.0917.sabu@gmail.com; a=ed25519;
  pk=TIQ8Tk4xQrxyn8rmk3GI2f5qg/kO6g2KZm7YOOyBHeg=
 X-Endpoint-Received: by B4 Relay for yogo.0917.sabu@gmail.com/ypl514-20261117 with auth_id=1550
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the 64-source interrupt controller, counter/match timer,
-resistive touch input and PIO SD host, together with the YPL514si board
-compatible. The counter clock is supplied by boot firmware after its
-configured divider. The initial platform inherits firmware clock and pin
-setup.
+Register the root controller through IRQCHIP_DECLARE and a linear
+domain. Validate the chip ID before writes, mask both banks during setup
+and route sources to IRQ. Keep dispatch bounded and leave the DSP mask
+registers alone. The register operations derive from the 6.12.60
+YPL514si bring-up. The device owner has now booted the 7.4-rc3 candidate
+through JWM on this upstream initialization path.
 
 Signed-off-by: yy-Local-LLM <yogo.0917.sabu@gmail.com>
 ---
- .../devicetree/bindings/arm/sirf,at550.yaml        | 22 ++++++++++
- .../bindings/input/touchscreen/sirf,at550-ts.yaml  | 36 +++++++++++++++
- .../interrupt-controller/sirf,at550-intc.yaml      | 46 +++++++++++++++++++
- .../devicetree/bindings/mmc/sirf,at550-sdhci.yaml  | 51 ++++++++++++++++++++++
- .../bindings/timer/sirf,at550-timer.yaml           | 47 ++++++++++++++++++++
- .../devicetree/bindings/vendor-prefixes.yaml       |  2 +
- MAINTAINERS                                        |  9 ++++
- 7 files changed, 213 insertions(+)
+ MAINTAINERS                 |   1 +
+ drivers/irqchip/Kconfig     |   5 ++
+ drivers/irqchip/Makefile    |   2 +
+ drivers/irqchip/irq-at550.c | 110 ++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 118 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/sirf,at550.yaml b/Documentation/devicetree/bindings/arm/sirf,at550.yaml
-new file mode 100644
-index 000000000..f538f7ccc
---- /dev/null
-+++ b/Documentation/devicetree/bindings/arm/sirf,at550.yaml
-@@ -0,0 +1,22 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/arm/sirf,at550.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: SiRF AT550 platforms
-+
-+maintainers:
-+  - yy-Local-LLM <yogo.0917.sabu@gmail.com>
-+
-+properties:
-+  $nodename:
-+    const: '/'
-+  compatible:
-+    items:
-+      - const: yupiteru,ypl514si
-+      - const: sirf,at550
-+
-+additionalProperties: true
-+
-+...
-diff --git a/Documentation/devicetree/bindings/input/touchscreen/sirf,at550-ts.yaml b/Documentation/devicetree/bindings/input/touchscreen/sirf,at550-ts.yaml
-new file mode 100644
-index 000000000..0458db241
---- /dev/null
-+++ b/Documentation/devicetree/bindings/input/touchscreen/sirf,at550-ts.yaml
-@@ -0,0 +1,36 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/input/touchscreen/sirf,at550-ts.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: SiRF AT550 resistive touchscreen
-+
-+maintainers:
-+  - yy-Local-LLM <yogo.0917.sabu@gmail.com>
-+
-+allOf:
-+  - $ref: touchscreen.yaml#
-+
-+properties:
-+  compatible:
-+    const: sirf,at550-ts
-+  reg:
-+    maxItems: 1
-+
-+required:
-+  - compatible
-+  - reg
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    touchscreen@80120000 {
-+        compatible = "sirf,at550-ts";
-+        reg = <0x80120000 0x1000>;
-+        touchscreen-size-x = <4096>;
-+        touchscreen-size-y = <4096>;
-+    };
-+
-+...
-diff --git a/Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml b/Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml
-new file mode 100644
-index 000000000..ec68afa80
---- /dev/null
-+++ b/Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml
-@@ -0,0 +1,46 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/interrupt-controller/sirf,at550-intc.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: SiRF AT550 interrupt controller
-+
-+maintainers:
-+  - yy-Local-LLM <yogo.0917.sabu@gmail.com>
-+
-+description:
-+  The AT550 controller routes 64 level-sensitive interrupt sources to the
-+  ARM1136 IRQ input. Each source has a fixed active level; the single interrupt
-+  cell is the source number. Firmware FIQ routes are not exposed by this driver.
-+
-+properties:
-+  compatible:
-+    const: sirf,at550-intc
-+  reg:
-+    maxItems: 1
-+  interrupt-controller: true
-+  '#interrupt-cells':
-+    const: 1
-+  '#address-cells':
-+    const: 0
-+
-+required:
-+  - compatible
-+  - reg
-+  - interrupt-controller
-+  - '#interrupt-cells'
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    interrupt-controller@90020000 {
-+        compatible = "sirf,at550-intc";
-+        reg = <0x90020000 0x1000>;
-+        interrupt-controller;
-+        #interrupt-cells = <1>;
-+        #address-cells = <0>;
-+    };
-+
-+...
-diff --git a/Documentation/devicetree/bindings/mmc/sirf,at550-sdhci.yaml b/Documentation/devicetree/bindings/mmc/sirf,at550-sdhci.yaml
-new file mode 100644
-index 000000000..7129aaeec
---- /dev/null
-+++ b/Documentation/devicetree/bindings/mmc/sirf,at550-sdhci.yaml
-@@ -0,0 +1,51 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/mmc/sirf,at550-sdhci.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: SiRF AT550 SDHCI host controller
-+
-+maintainers:
-+  - yy-Local-LLM <yogo.0917.sabu@gmail.com>
-+
-+description:
-+  AT550 removable SD controller. Initial support uses programmed I/O and
-+  firmware-configured clocks and pin multiplexing. DMA address translation
-+  and 1.8 V operation are not described by this binding.
-+
-+allOf:
-+  - $ref: mmc-controller.yaml#
-+
-+properties:
-+  compatible:
-+    const: sirf,at550-sdhci
-+  reg:
-+    maxItems: 1
-+  interrupts:
-+    maxItems: 1
-+  bus-width:
-+    enum: [1, 4]
-+  no-1-8-v: true
-+
-+required:
-+  - compatible
-+  - reg
-+  - interrupts
-+  - no-1-8-v
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    mmc@56000000 {
-+        compatible = "sirf,at550-sdhci";
-+        reg = <0x56000000 0x1000>;
-+        interrupt-parent = <&intc>;
-+        interrupts = <36>;
-+        bus-width = <4>;
-+        max-frequency = <25000000>;
-+        no-1-8-v;
-+    };
-+
-+...
-diff --git a/Documentation/devicetree/bindings/timer/sirf,at550-timer.yaml b/Documentation/devicetree/bindings/timer/sirf,at550-timer.yaml
-new file mode 100644
-index 000000000..d1465d438
---- /dev/null
-+++ b/Documentation/devicetree/bindings/timer/sirf,at550-timer.yaml
-@@ -0,0 +1,47 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/timer/sirf,at550-timer.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: SiRF AT550 system timer
-+
-+maintainers:
-+  - yy-Local-LLM <yogo.0917.sabu@gmail.com>
-+
-+description:
-+  A free-running counter with six match channels. The Linux driver uses the
-+  low 32 counter bits and match channel zero. Firmware configures the divider
-+  before boot and supplies the resulting counter clock. A running watchdog
-+  must be disabled by firmware before this block is handed to Linux.
-+
-+properties:
-+  compatible:
-+    const: sirf,at550-timer
-+  reg:
-+    maxItems: 1
-+  interrupts:
-+    maxItems: 1
-+  clocks:
-+    items:
-+      - description: Counter clock after the firmware-configured divider
-+
-+required:
-+  - compatible
-+  - reg
-+  - interrupts
-+  - clocks
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    timer@90050000 {
-+        compatible = "sirf,at550-timer";
-+        reg = <0x90050000 0x1000>;
-+        interrupt-parent = <&intc>;
-+        interrupts = <0>;
-+        clocks = <&counter_clk>;
-+    };
-+
-+...
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index 5471a06f9..a8927fea3 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -1985,6 +1985,8 @@ patternProperties:
-     description: Shenzhen Yashi Changhua Intelligent Technology Co., Ltd.
-   "^ysoft,.*":
-     description: Y Soft Corporation a.s.
-+  "^yupiteru,.*":
-+    description: Yupiteru
-   "^yuridenki,.*":
-     description: Yuridenki-Shokai Co. Ltd.
-   "^yuzukihd,.*":
 diff --git a/MAINTAINERS b/MAINTAINERS
-index d73899016..6c3702cd8 100644
+index 6c3702cd8..acb6fde49 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -25847,6 +25847,15 @@ F:	drivers/gpio/gpio-siox.c
- F:	drivers/siox/*
- F:	include/trace/events/siox.h
+@@ -25855,6 +25855,7 @@ F:	Documentation/devicetree/bindings/input/touchscreen/sirf,at550-ts.yaml
+ F:	Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml
+ F:	Documentation/devicetree/bindings/mmc/sirf,at550-sdhci.yaml
+ F:	Documentation/devicetree/bindings/timer/sirf,at550-timer.yaml
++F:	drivers/irqchip/irq-at550.c
  
-+SIRF AT550 PLATFORM
-+M:	yy-Local-LLM <yogo.0917.sabu@gmail.com>
-+S:	Odd Fixes
-+F:	Documentation/devicetree/bindings/arm/sirf,at550.yaml
-+F:	Documentation/devicetree/bindings/input/touchscreen/sirf,at550-ts.yaml
-+F:	Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml
-+F:	Documentation/devicetree/bindings/mmc/sirf,at550-sdhci.yaml
-+F:	Documentation/devicetree/bindings/timer/sirf,at550-timer.yaml
-+
  SIS 190 ETHERNET DRIVER
  M:	Francois Romieu <romieu@fr.zoreil.com>
- L:	netdev@vger.kernel.org
+diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
+index 136bab41f..abf704110 100644
+--- a/drivers/irqchip/Kconfig
++++ b/drivers/irqchip/Kconfig
+@@ -852,4 +852,9 @@ config IRQCHIP_XILINX_SMMU_CSR
+ 	  ZynqMP-class platforms where a vendor CSR block mediates SMMU
+ 	  interrupts.
+ 
++config AT550_IRQ
++	bool
++	depends on ARM
++	select IRQ_DOMAIN
++
+ endmenu
+diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
+index 16a5fd126..0aa36c7b8 100644
+--- a/drivers/irqchip/Makefile
++++ b/drivers/irqchip/Makefile
+@@ -136,3 +136,5 @@ obj-$(CONFIG_MCHP_EIC)			+= irq-mchp-eic.o
+ obj-$(CONFIG_SOPHGO_SG2042_MSI)		+= irq-sg2042-msi.o
+ obj-$(CONFIG_SUNPLUS_SP7021_INTC)	+= irq-sp7021-intc.o
+ obj-$(CONFIG_IRQCHIP_XILINX_SMMU_CSR)	+= irq-xilinx-smmu-csr.o
++
++obj-$(CONFIG_AT550_IRQ) += irq-at550.o
+diff --git a/drivers/irqchip/irq-at550.c b/drivers/irqchip/irq-at550.c
+new file mode 100644
+index 000000000..33eb18cd1
+--- /dev/null
++++ b/drivers/irqchip/irq-at550.c
+@@ -0,0 +1,110 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* SiRF AT550 interrupt controller. */
++#include <linux/io.h>
++#include <linux/irq.h>
++#include <linux/irqchip.h>
++#include <linux/irqdomain.h>
++#include <linux/of_address.h>
++#include <asm/exception.h>
++
++#define AT550_IRQ_COUNT	64
++#define AT550_MASK	0x18
++#define AT550_LEVEL	0x20
++#define AT550_CHIP_ID	0x34
++#define AT550_IRQ_ID	0x38
++
++static void __iomem *at550_intc;
++static struct irq_domain *at550_domain;
++
++static void at550_irq_mask(struct irq_data *data)
++{
++	void __iomem *reg = at550_intc + AT550_MASK + (data->hwirq / 32) * 4;
++
++	writel(readl(reg) & ~BIT(data->hwirq % 32), reg);
++}
++
++static void at550_irq_unmask(struct irq_data *data)
++{
++	void __iomem *reg = at550_intc + AT550_MASK + (data->hwirq / 32) * 4;
++
++	writel(readl(reg) | BIT(data->hwirq % 32), reg);
++}
++
++static struct irq_chip at550_chip = {
++	.name = "at550-intc",
++	.irq_mask = at550_irq_mask,
++	.irq_unmask = at550_irq_unmask,
++};
++
++static int at550_irq_map(struct irq_domain *domain, unsigned int irq,
++			irq_hw_number_t hwirq)
++{
++	if (hwirq >= AT550_IRQ_COUNT)
++		return -EINVAL;
++	irq_set_chip_and_handler(irq, &at550_chip, handle_level_irq);
++	irq_set_noprobe(irq);
++	return 0;
++}
++
++static const struct irq_domain_ops at550_domain_ops = {
++	.map = at550_irq_map,
++	.xlate = irq_domain_xlate_onecell,
++};
++
++static void __exception_irq_entry at550_handle_irq(struct pt_regs *regs)
++{
++	unsigned int count, hwirq;
++
++	for (count = 0; count < AT550_IRQ_COUNT; count++) {
++		hwirq = readl(at550_intc + AT550_IRQ_ID) & 0xff;
++		if (hwirq == 0xff)
++			return;
++		if (hwirq >= AT550_IRQ_COUNT) {
++			pr_err_ratelimited("at550-intc: invalid source %u\n", hwirq);
++			return;
++		}
++		if (generic_handle_domain_irq(at550_domain, hwirq))
++			return;
++	}
++}
++
++static int __init at550_irq_init(struct device_node *node,
++				struct device_node *parent)
++{
++	int ret;
++
++	if (parent || at550_intc)
++		return -EINVAL;
++	at550_intc = of_iomap(node, 0);
++	if (!at550_intc)
++		return -ENOMEM;
++	if ((readl(at550_intc + AT550_CHIP_ID) & 0xffff) != 0x1230) {
++		ret = -ENODEV;
++		goto unmap;
++	}
++	/* A set mask bit enables a source; clear level bits route it to IRQ. */
++	writel(0, at550_intc + AT550_MASK);
++	writel(0, at550_intc + AT550_MASK + 4);
++	writel(0, at550_intc + AT550_LEVEL);
++	writel(0, at550_intc + AT550_LEVEL + 4);
++	at550_domain = irq_domain_create_linear(of_fwnode_handle(node), AT550_IRQ_COUNT,
++					   &at550_domain_ops, NULL);
++	if (!at550_domain) {
++		ret = -ENOMEM;
++		goto unmap;
++	}
++	ret = set_handle_irq(at550_handle_irq);
++	if (ret)
++		goto remove_domain;
++	irq_set_default_domain(at550_domain);
++	return 0;
++
++remove_domain:
++	irq_domain_remove(at550_domain);
++	at550_domain = NULL;
++unmap:
++	iounmap(at550_intc);
++	at550_intc = NULL;
++	return ret;
++}
++IRQCHIP_DECLARE(at550, "sirf,at550-intc", at550_irq_init);
 
 -- 
 2.56.0
