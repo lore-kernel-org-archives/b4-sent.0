@@ -1,73 +1,62 @@
-From: Peder Bergan <peder.bergan@gmail.com>
-Date: Tue, 17 Nov 2026 18:57:07 +0100
-Subject: [PATCH v2 2/2] rust: str: add an example for Formatter::new
+From: Roman Vivchar <rva333@protonmail.com>
+Subject: [PATCH v2 0/4] iio: light: stk3310: stk3337 support + vdd supply
+Date: Tue, 17 Nov 2026 20:08:34 +0200
+Message-Id: <20261117-6768-stk3337-v2-0-92f4c7be3bc6@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-formatter-lifetime-v2-2-e216d86ffb57@gmail.com>
-References: <20261117-formatter-lifetime-v2-0-e216d86ffb57@gmail.com>
-In-Reply-To: <20261117-formatter-lifetime-v2-0-e216d86ffb57@gmail.com>
-To: Miguel Ojeda <ojeda@kernel.org>
-Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
- Georgios Androutsopoulos <georgeandrout13@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794938225; l=1243;
- i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
- bh=cXnDKX6DUJYzotZgM4eodRj9988SY5vag/57CgAxefA=;
- b=ftlkleDiJFBrpP5Go7Zmk+scHV6bzIGVdtrSzMBuq71SDPvACTVvj4xa0XhOcRCoa6bVKLGMp
- tn8Qq+MxRm8A7huSNZqHvGsypCZTXzVQX9Iuo9O0dTqDGEF8niqOGRZ
-X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
- pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
-X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNwQ6CMBAFf4X0bE3bJRQ8+R+GQymLrEpL2ko0h
+ H8XMB48TjJv3swiBsLITtnMAk4UybsV1CFjtjfuipzalZkSqpBSaF7oouQx3QFAc8g7bVTbgFE
+ 5WydjwI5ee+5Sfzk+mxvatDU2o6eYfHjvf5PcvF+6/E9PkgsuIBe2qhqBAOcx+OTdYOhxtH5g9
+ bIsH784dBa/AAAA
+X-Change-ID: 20261107-6768-stk3337-34f7a2db3a24
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Roman Vivchar <rva333@protonmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794938915; l=1167;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=FAzYg1TpkGb7wV9Cp24G4J88VqcXA/Aizp5voUGpLIQ=;
+ b=6DmnmMwYtz0Vf7smueOV07bHGdtjBO13koGOuoiSbrCd7WOyFnkfDRXZu0zhA4D2qncrZwm7A
+ 5C3y9IwNJfuDkU/nM6IkztzB5J3h2KYLANT1/hWwPiUAvjELJ73IEI3
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the exclusive buffer borrow held by Formatter::new() and show
-formatting into a live buffer. Check the number of bytes written and the
-resulting buffer contents.
+This patch series adds support for stk3337 light sensor, found in the
+Xiaomi Redmi Note 9 phone. The sensor is compatible with stk3310
+registers, while having Clear channel, similar to the stk36c61.
 
-Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
+The series also adds vdd-supply property, since on this board the sensor
+is wired to the shared power supply.
+
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- rust/kernel/str.rs | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Changes in v2:
+- Clarify that stk3337 is a subset of the stk36c61 in patch 4 commit message (Jonathan)
+- Link to v1: https://patch.msgid.link/20261108-6768-stk3337-v1-0-0340c99b0e33@protonmail.com
 
-diff --git a/rust/kernel/str.rs b/rust/kernel/str.rs
-index e5fe84eeb..6222faacf 100644
---- a/rust/kernel/str.rs
-+++ b/rust/kernel/str.rs
-@@ -658,6 +658,22 @@ impl<'a> Formatter<'a> {
-     }
- 
-     /// Create a new [`Self`] instance.
-+    ///
-+    /// The formatter exclusively borrows `buffer` for its lifetime.
-+    ///
-+    /// # Examples
-+    ///
-+    /// ```
-+    /// use kernel::fmt::Write as _;
-+    /// use kernel::str::Formatter;
-+    ///
-+    /// let mut buffer = [0; 4];
-+    /// let mut formatter = Formatter::new(&mut buffer);
-+    /// formatter.write_str("test")?;
-+    /// assert_eq!(formatter.bytes_written(), 4);
-+    /// assert_eq!(&buffer, b"test");
-+    /// # Ok::<(), kernel::error::Error>(())
-+    /// ```
-     pub fn new(buffer: &'a mut [u8]) -> Self {
-         // SAFETY: `buffer` is valid for writes for the entire length for
-         // the lifetime of `Self`.
+---
+Roman Vivchar (4):
+      dt-bindings: iio: light: stk33xx: add power supply support
+      dt-bindings: iio: light: stk33xx: add stk3337
+      iio: light: stk3310: add vdd regulator support
+      iio: light: stk3310: add stk3337 support
 
--- 
-2.56.1
+ .../devicetree/bindings/iio/light/stk33xx.yaml      |  3 +++
+ drivers/iio/light/stk3310.c                         | 21 +++++++++++++++++++++
+ 2 files changed, 24 insertions(+)
+---
+base-commit: ddfe51b0a0f5dc9e415cc2c8ad8db17532dd426b
+change-id: 20261107-6768-stk3337-34f7a2db3a24
+
+Best regards,
+--  
+rva3 <rva333@protonmail.com>
 
