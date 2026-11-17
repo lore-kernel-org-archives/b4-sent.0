@@ -1,133 +1,141 @@
-From: Cristian Filipescu <filipescu.cristian@gmail.com>
-Date: Tue, 17 Nov 2026 22:40:48 +0000
-Subject: [PATCH v3] sunxi: Add Orange Pi 3 LTS defconfig
+From: Mattathias Pinchover <mattathias.pinchover@uber.com>
+Subject: [PATCH v2 0/6] mm/damon: add sz_ops_filter_passed_last DAMOS stat
+Date: Tue, 17 Nov 2026 23:22:14 +0000
+Message-Id: <20261117-damon-sz-ops-b4-v2-0-439888fa04ac@uber.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-sunxi-orangepi-3-lts-v3-1-473ed5569351@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAO/X/GoC/4XOTQ7CIBAF4KsY1o4pUNG68h7GBS2DHaNtw1Sia
- Xp3QTcuNC7f/Hx5k2AMhCx2i0kEjMTUdyno5UI0re1OCORSFqpQRhZKAt+6O0Ef8m4g0HAZGZS
- 3G+PQeG2kSK9DQE/3F3s4vjPf6jM2Y7byRW0ZoU5K0+bRVzVqcDhwPm+Jxz48XjWjzOyfRlFCA
- bKy2vlKbd0W96erpcuq6a8iN4rqE1E/EJWQ0tSV82tfYak/kXmenxxb6to+AQAA
-X-Change-ID: 20261021-sunxi-orangepi-3-lts-2fa76de6f361
-To: Andre Przywara <andre.przywara@arm.com>, 
- u-boot@lists.u-boot-project.org
-Cc: Hans de Goede <hdegoede@redhat.com>, Tom Rini <trini@konsulko.com>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Cristian Filipescu <filipescu.cristian@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKbh/GoC/2WNQQ6CMBBFr0Jm7RhaBIwr72FY0HYqNYGSDhCV9
+ O5SjCuXL3n//RWYgiOGS7ZCoMWx88MG8pCB7trhTujMxiBzWQkhCjRt7wfkN/qRUZ2wOJc1KWO
+ V1iVsqzGQdc+9eGu+zLN6kJ5SJhmd48mH1365iOT96tVffRGYo9DWUi1lTZW5zorCUfsemhjjB
+ 1Z/T6a/AAAA
+X-Change-ID: 20261113-damon-sz-ops-b4-3857ebdfbcc5
+To: SJ Park <sj@kernel.org>, Andrew Morton <akpm@linux-foundation.org>, 
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>
+Cc: damon@lists.linux.dev, linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ linux-doc@vger.kernel.org, 
+ Mattathias Pinchover <mattathias.pinchover@uber.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794955247; l=3847;
- i=filipescu.cristian@gmail.com; s=uboot-20261021; h=from:subject:message-id;
- bh=RtlKPWjNtEXF0V5zt9qRofSTktGUys8yyv2cqLufyu8=;
- b=SirQuTYr0H4Ns1jO9KpQVx9CsHPZyjl+EO+hgcZgmp7KW7/IwTi6U//WpCp0rZ1LJpPrrHEVa
- GpDtUGY3D7xCq8Q8PFxMnjZHHW7Y1eHmROQTCAcuimWx4jUyaGTAe9w
-X-Developer-Key: i=filipescu.cristian@gmail.com; a=ed25519;
- pk=o7Ui0tU3x+X/6Pq6PZHmd2KFtOdPWttoPuNFOvdD8t0=
-X-Endpoint-Received: by B4 Relay for filipescu.cristian@gmail.com/uboot-20261021 with auth_id=1255
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794957787; l=5068;
+ i=mattathias.pinchover@uber.com; s=20261113; h=from:subject:message-id;
+ bh=lX/+yj6tp13LokI6+o6FxethEyIg7dcyNoFvFf1Qr+Q=;
+ b=gZpxTPFSUoC8+qYn04ZU02GKtqWqJeuDxnZQsHv2rTeTERkILSnSQ60db1s0JADIJ9EVQ6jOC
+ G+3GzAQ/VR0Afl77YYhOgijyvk8DZiR3CYg4auP++rgL/uil0BXdNV9
+X-Developer-Key: i=mattathias.pinchover@uber.com; a=ed25519;
+ pk=6Bh6OEwWiU6dpON0CVcoipq8fXtEgvhsM1Tmm9CTmtY=
+X-Endpoint-Received: by B4 Relay for mattathias.pinchover@uber.com/20261113 with auth_id=1515
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a configuration for the H6-based Orange Pi 3 LTS using the upstream
-Linux device tree. Enable the Motorcomm PHY driver and use red PL4 as
-the power indicator through the existing SPL LED hook.
+DAMOS stat sz_ops_filter_passed shows the total bytes that passed
+operations layer-handled DAMOS filters, accumulated from the beginning
+of the scheme's execution.  Users who want the amount for only the
+latest apply interval, e.g., the size of a workload's anonymous memory
+that is cold as of now, have to keep the previous value in user space
+and compute the difference.  To know how many apply intervals a
+difference covers, they have to rely on nr_snapshots.  But nr_snapshots
+is increased once per target per apply interval, so the computation is
+complicated for contexts having multiple targets.
 
-The sun8i EMAC driver reads MAC-level reset properties rather than the
-MDIO bus reset in the Linux DTS. Provide the equivalent PD14 reset and
-timings in a U-Boot-specific fragment.
+This series introduces a new DAMOS stat, sz_ops_filter_passed_last.  It
+shows the amount of sz_ops_filter_passed increase in the last apply
+interval of the scheme.  It is updated at the end of each apply
+interval, and kept unchanged until the next apply interval is
+completed.  Like the other DAMOS stats, it is exposed under the stats/
+directory of the scheme in the DAMON sysfs interface, and refreshed
+together with the other stats when refresh_ms expires or
+update_schemes_stats is written.
 
-Signed-off-by: Cristian Filipescu <filipescu.cristian@gmail.com>
+Patches sequence
+================
+
+Patch 1 introduces the stat to the DAMON core.  Patch 2 exposes it via
+the DAMON sysfs interface.  Patch 3 adds a kunit test.  Patches 4-6
+update the design, usage, and ABI documents, respectively.
+
+Tests
+=====
+
+I ran the DAMON kunit tests (all 50 pass, including the new one), built
+mm/damon/ with W=1 (no warnings), built htmldocs (no new warnings
+compared to mm-new), and ran checkpatch.pl --strict on the patches (it
+reports a warning and an error on each patch because it does not
+recognize the Assisted-by tag, and four alignment checks on patches 2
+and 3 for the continuation line alignment that the existing DAMON code
+uses).
+
+I also ran the DAMON selftests in a QEMU VM without KVM, on mm-new and
+on mm-new with this series.  On mm-new, 12 tests pass, 2 fail
+(sysfs_update_schemes_tried_regions_wss_estimation.py and
+damos_tried_regions.py), and 1 is skipped (sysfs_memcg_path_leak.sh,
+because kmemleak is not available).  With this series, 13 pass, 1 fails
+(the wss_estimation one), and the same one is skipped, so I saw no
+failure that mm-new does not also have.
+
+None of the selftests read the new stat, so I also checked it on a
+live kernel.  In the same kind of VM running this series, I started two
+Docker containers, each running a Python process that allocates 512 MiB
+and 2 GiB of anonymous memory and then holds it.  Each process was
+monitored by its own kdamond, using the vaddr operations set and a
+stat scheme with an anon operations layer filter, with refresh_ms set
+to 1000.  Output from sz_ops_filter_passed_last was correct:
+
+    # cd /sys/kernel/mm/damon/admin/kdamonds
+    # cat 0/contexts/0/schemes/0/stats/sz_ops_filter_passed_last
+    546385920
+    # cat 1/contexts/0/schemes/0/stats/sz_ops_filter_passed_last
+    2157043712
+
+Tool use
+========
+
+Claude (Anthropic) assisted with the code, kunit test, documents, and
+changelogs of this series, as noted by the Assisted-by: tags.  I
+reviewed all of it and ran the tests listed above.
+
+Signed-off-by: Mattathias Pinchover <mattathias.pinchover@uber.com>
 ---
-Add the Orange Pi 3 LTS defconfig using the upstream Linux DTS and the
-existing SPL power LED hook.
+Changes in v2:
+- Patch 2: join the attribute declaration onto one line 
+- Patch 3: call damos_set_filters_default_reject() before adding the
+  scheme 
+- Patch 4: keep only the stats list bullet, dropping the explanation
+  that the stat is not accumulated 
+- Patch 5: wrap the stats line in the usage document
+- Link to v1: https://patch.msgid.link/20261116-damon-sz-ops-b4-v1-0-1cffe7227e6d@uber.com
 
-The Linux DTS is accepted in sunxi/dt-for-7.5:
-https://git.kernel.org/sunxi/linux/c/a203a4bac331
-This revision depends on its devicetree-rebasing import and the shared H6
-DVFS update. The local DT staging commit is excluded from this submission.
-
-Both defconfigs build with GCC 14.2 and TF-A v2.13.0. On the LTS board,
-SD boot, U-Boot DHCP/ping, USB 3 storage enumeration at 5 Gb/s, and red-on /
-green-off LED state passed. Linux boots successfully; its board checks and
-768 MiB of eMMC HS200 reads at 150 MHz passed with zero reported errors.
-Preparation used OpenAI Codex.
----
-Changes in v3:
-- Select OF_UPSTREAM and the accepted Linux board description.
-- Remove the board-specific handoff hook and main U-Boot LED settings;
-  use the SPL LED hook for red PL4.
-- Supply the existing EMAC driver's reset properties in a U-Boot fragment.
-- Rebase onto U-Boot main (2027.01-rc2).
-
-Link to v2: https://lore.kernel.org/u-boot/20261022-sunxi-orangepi-3-lts-v2-0-46b9df5f9e43@gmail.com/
----
- arch/arm/dts/sun50i-h6-orangepi-3-lts-u-boot.dtsi |  9 +++++++++
- board/sunxi/MAINTAINERS                           |  6 ++++++
- configs/orangepi_3_lts_defconfig                  | 20 ++++++++++++++++++++
- 3 files changed, 35 insertions(+)
-
-diff --git a/arch/arm/dts/sun50i-h6-orangepi-3-lts-u-boot.dtsi b/arch/arm/dts/sun50i-h6-orangepi-3-lts-u-boot.dtsi
-new file mode 100644
-index 00000000..cfbfe60e
---- /dev/null
-+++ b/arch/arm/dts/sun50i-h6-orangepi-3-lts-u-boot.dtsi
-@@ -0,0 +1,9 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+
-+#include "sunxi-u-boot.dtsi"
-+
-+/* The sun8i EMAC driver uses the MAC-level reset properties. */
-+&emac {
-+	snps,reset-gpio = <&pio 3 14 GPIO_ACTIVE_LOW>; /* PD14 */
-+	snps,reset-delays-us = <0 15000 100000>;
-+};
-diff --git a/board/sunxi/MAINTAINERS b/board/sunxi/MAINTAINERS
-index 344f52ea..36db194e 100644
---- a/board/sunxi/MAINTAINERS
-+++ b/board/sunxi/MAINTAINERS
-@@ -443,6 +443,12 @@ M:	Andre Heider <a.heider@gmail.com>
- S:	Maintained
- F:	configs/orangepi_3_defconfig
- 
-+ORANGEPI 3 LTS BOARD
-+M:	Cristian Filipescu <filipescu.cristian@gmail.com>
-+S:	Maintained
-+F:	arch/arm/dts/sun50i-h6-orangepi-3-lts-u-boot.dtsi
-+F:	configs/orangepi_3_lts_defconfig
-+
- ORANGEPI 4A BOARD
- M:	Chen-Yu Tsai <wens@kernel.org>
- S:	Maintained
-diff --git a/configs/orangepi_3_lts_defconfig b/configs/orangepi_3_lts_defconfig
-new file mode 100644
-index 00000000..85ee37c2
---- /dev/null
-+++ b/configs/orangepi_3_lts_defconfig
-@@ -0,0 +1,20 @@
-+CONFIG_ARM=y
-+CONFIG_ARCH_SUNXI=y
-+CONFIG_DEFAULT_DEVICE_TREE="allwinner/sun50i-h6-orangepi-3-lts"
-+CONFIG_SPL=y
-+CONFIG_MACH_SUN50I_H6=y
-+CONFIG_SUNXI_DRAM_H6_LPDDR3=y
-+CONFIG_MMC_SUNXI_SLOT_EXTRA=2
-+CONFIG_SPL_SUNXI_LED_STATUS=y
-+CONFIG_SPL_SUNXI_LED_STATUS_GPIO=356
-+# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
-+CONFIG_OF_UPSTREAM=y
-+CONFIG_SUN8I_EMAC=y
-+CONFIG_PHY_MOTORCOMM=y
-+CONFIG_PHY_SUN50I_USB3=y
-+CONFIG_USB_XHCI_HCD=y
-+CONFIG_USB_XHCI_DWC3=y
-+CONFIG_USB_EHCI_HCD=y
-+CONFIG_USB_OHCI_HCD=y
-+CONFIG_USB_DWC3=y
-+# CONFIG_USB_DWC3_GADGET is not set
+To: SJ Park <sj@kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
+To: Jonathan Corbet <corbet@lwn.net>
+To: Shuah Khan <skhan@linuxfoundation.org>
+To: Randy Dunlap <rdunlap@infradead.org>
+Cc: damon@lists.linux.dev
+Cc: linux-mm@kvack.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-doc@vger.kernel.org
 
 ---
-base-commit: 45516c31e1227746cda1078897fd44ec1e494a98
-change-id: 20261021-sunxi-orangepi-3-lts-2fa76de6f361
+Mattathias Pinchover (6):
+      mm/damon/core: introduce sz_ops_filter_passed_last stat
+      mm/damon/sysfs-schemes: add sz_ops_filter_passed_last file
+      mm/damon/tests/core-kunit: test sz_ops_filter_passed_last
+      Docs/mm/damon/design: update for sz_ops_filter_passed_last
+      Docs/admin-guide/mm/damon/usage: update for sz_ops_filter_passed_last
+      Docs/ABI/damon: update for sz_ops_filter_passed_last
+
+ Documentation/ABI/testing/sysfs-kernel-mm-damon |  7 ++
+ Documentation/admin-guide/mm/damon/usage.rst    |  9 ++-
+ Documentation/mm/damon/design.rst               |  2 +
+ include/linux/damon.h                           |  6 ++
+ mm/damon/core.c                                 |  5 ++
+ mm/damon/sysfs-schemes.c                        | 16 +++++
+ mm/damon/tests/core-kunit.h                     | 93 +++++++++++++++++++++++++
+ 7 files changed, 135 insertions(+), 3 deletions(-)
+---
+base-commit: 67f3b04b277373438f17300e056306adbd9edf7b
+change-id: 20261113-damon-sz-ops-b4-3857ebdfbcc5
 
 Best regards,
 --  
-Cristian Filipescu <filipescu.cristian@gmail.com>
+Mattathias Pinchover <mattathias.pinchover@uber.com>
 
