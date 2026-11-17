@@ -1,117 +1,99 @@
-From: Cristian Filipescu <filipescu.cristian@gmail.com>
-To: linux-leds@vger.kernel.org, devicetree@vger.kernel.org
-Cc: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
- Griffin Kroah-Hartman <griffin@kroah.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, linux-sunxi@lists.linux.dev
-Subject: [PATCH RFC] leds: DT: migrating existing labels to function/color
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v9 0/2] i2c: Add driver support Amlogic A9 I2C
+Date: Tue, 17 Nov 2026 05:44:02 +0000
+Message-Id: <20261117-a9-i2c-v9-0-7b303c894fea@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Date: Tue, 17 Nov 2026 05:10:16 +0000
-Message-ID: <179489221679.1.1429296960451969532.led-label-policy-rfc@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794892216; l=3129;
- i=filipescu.cristian@gmail.com; s=uboot-20261021; h=from:subject:message-id;
- bh=yDEyHZ0vBr1PYekgAZguFVDD5Tfxmd/H6LQWci3XaNg=;
- b=32idoKYdXJ1Ued9e/Rgjim6ANtMlStXIm10OgKqlPw2EMFMZ/SznqoucCcuTAOxOsu0hQZisi
- jDVVG9zh0wMAOikJzP57ueY4ADZfIgpij6bsK1fqzx34t2eJlqUtHpO
-X-Developer-Key: i=filipescu.cristian@gmail.com; a=ed25519;
- pk=o7Ui0tU3x+X/6Pq6PZHmd2KFtOdPWttoPuNFOvdD8t0=
-X-Endpoint-Received: by B4 Relay for filipescu.cristian@gmail.com/uboot-20261021 with auth_id=1255
+X-B4-Tracking: v=1; b=H4sIAKLp+2oC/23QTW7DIBAF4KtErEvLDP9d9R5VF4CHBKmxKzuyU
+ kW5eyFqHVfOcuB9PDEXNtFYaGKvuwsbaS5TGfo6+KcdS4fQ74mXrs4MBRrhAXjwvGDiqJR1hEj
+ GSVbDMUzE4xj6dGjxGnlpsZ7Op3b9NVIu51vP+0edD2U6DeP3rXaGdvrbgOqvYQYueHSh81GZr
+ IJ7C8fPYV/ScxqOrD0y4wJBIC4QK1SaZKIMVse8hXIN/QJlhTZKkVISQku5heoOq1ygqlAHMB5
+ BR0d+C/UaygXqCp3J2KUOrO8e/NGs4X05pi0nBAMWMpr8ANrH0DYoK4pa5pDVFroVBLFAVyGQ7
+ 9A4zM7E//B6vf4A2cJK7kwCAAA=
+X-Change-ID: 20260911-a9-i2c-24478e22e683
+To: Junyi Zhao <junyi.zhao@amlogic.com>, Andi Shyti <andi.shyti@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Xianwei Zhao <xianwei.zhaol@amlogic.com>
+Cc: Junyi Zhao <junyi.zhaol@amlogic.com>, 
+ Markus Elfring <Markus.Elfring@web.de>, linux-i2c@vger.kernel.org, 
+ linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794894285; l=2906;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=sKg+ezEKpqfPxRfUc62ziON7SyaA8QSFTl1n/ygHs3M=;
+ b=D15RfZwfZt+xczMQ+XV4t2xV4wyB8+IYyFZmII8TF6No9XA9ud9hMEv2dKvzPHg/GZRtqBUxY
+ MP/XR2b2TXNC71vkIjkLubwNBjzcaxACRrxVWumP0t8zrPYvN8yixrr
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+Add a Device Tree binding and driver for the I2C controller found on the
+Amlogic A9 SoC.
 
-The common LED binding deprecates label in favour of function and color.
-Is removing existing labels desirable when it changes established LED class
-names, or should existing board descriptions retain them for compatibility?
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+---
+Changes in v9:
+- Use guard(spinlock) instead of spinlock according to Markus's suggestions, no logic change.
+- Link to v8: https://lore.kernel.org/r/20261110-a9-i2c-v8-0-1e9d2682f86b@amlogic.com
 
-For example, the Orange Pi H6 descriptions could replace their labels with
-LED_FUNCTION_POWER/STATUS and LED_COLOR_ID_RED/GREEN. With gpio-leds, this
-would change the names under /sys/class/leds:
+Changes in v8:
+- Reserve complete(done) into lock, and adjust the code process in irq func.
+- Link to v7: https://lore.kernel.org/r/20261104-a9-i2c-v7-0-b31f2b53faf4@amlogic.com
 
-  orangepi:red:power    -> red:power
-  orangepi:green:status -> green:status
+Changes in v7:
+- Move complete(done) out of lock, and when state = idle not complete(done) in irq func.
+- Link to v6: https://lore.kernel.org/r/20261104-a9-i2c-v6-0-baa6171f26f8@amlogic.com
 
-The example below changes two files and affects Orange Pi 3, 3 LTS, Lite2
-and One Plus. GPIOs, polarity, pinctrl, defaults and triggers are unchanged.
-All four DTBs compile before and after; comparison found only the intended
-label/function/color changes. The renamed LEDs have not been tested on
-hardware.
+Changes in v6:
+- use xfer instead of master_xfer interface, and when div=8 remain valid.
+- Optimized the function.
+- Link to v5: https://lore.kernel.org/r/20261103-a9-i2c-v5-0-86f2dcd179d8@amlogic.com
 
-I was thinking of converting all the deprecated LED labels, but I wanted
-to see if this was something maintainers wanted, since it would touch a lot
-of files. Would you prefer retaining existing labels (potentially adding
-function and color alongside them), or reviewing migrations with the name
-changes explicitly documented?
+Changes in v5:
+- Mask out I2C_FUNC_SMBUS_QUICK and return I2C_FUNC_I2C | (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK).
+- Link to v4: https://lore.kernel.org/r/20261102-a9-i2c-v4-0-5a169215b8e9@amlogic.com
 
-This is a discussion example, not a patch for inclusion. Preparation and
-static checks were assisted by OpenAI Codex.
+Changes in v4:
+- Repocess xfer len equal 0 use I2C_AQ_NO_ZERO_LEN, and Optimized the function.
+- Disable A9_RX_THRESH_READ/A9_TX_THRESH_WRITE enables of irq when xfer timeout.
+- Use guard(spinlock_irqsave) instead for direct call spinlock in xfer timeout process.
+- Link to v3: https://lore.kernel.org/r/20261029-a9-i2c-v3-0-7b30ccc00533@amlogic.com
 
-Thanks,
-Cristian
+Changes in v3:
+- Based on the questions raised by the robot, the data flow was reorganized.
+- Some processing was optimized according to Andi's and Markus's suggestions.
+- Link to v2: https://lore.kernel.org/r/20261022-a9-i2c-v2-0-45e3cef175bf@amlogic.com
 
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3.dts b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3.dts
-index ce82aa265..8e4117057 100644
---- a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3.dts
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3.dts
-@@ -8,6 +8,7 @@
- #include "sun50i-h6-gpu-opp.dtsi"
- 
- #include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/leds/common.h>
- 
- / {
- 	model = "OrangePi 3";
-@@ -45,13 +46,15 @@ leds {
- 		compatible = "gpio-leds";
- 
- 		led-0 {
--			label = "orangepi:red:power";
-+			function = LED_FUNCTION_POWER;
-+			color = <LED_COLOR_ID_RED>;
- 			gpios = <&r_pio 0 4 GPIO_ACTIVE_HIGH>; /* PL4 */
- 			default-state = "on";
- 		};
- 
- 		led-1 {
--			label = "orangepi:green:status";
-+			function = LED_FUNCTION_STATUS;
-+			color = <LED_COLOR_ID_GREEN>;
- 			gpios = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
- 		};
- 	};
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi.dtsi
-index 57b137755..49f3d2fc8 100644
---- a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi.dtsi
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi.dtsi
-@@ -9,6 +9,7 @@
- #include "sun50i-h6-gpu-opp.dtsi"
- 
- #include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/leds/common.h>
- 
- / {
- 	model = "OrangePi One Plus";
-@@ -45,13 +46,15 @@ leds {
- 		compatible = "gpio-leds";
- 
- 		led-0 {
--			label = "orangepi:red:power";
-+			function = LED_FUNCTION_POWER;
-+			color = <LED_COLOR_ID_RED>;
- 			gpios = <&r_pio 0 4 GPIO_ACTIVE_HIGH>; /* PL4 */
- 			default-state = "on";
- 		};
- 
- 		led-1 {
--			label = "orangepi:green:status";
-+			function = LED_FUNCTION_STATUS;
-+			color = <LED_COLOR_ID_GREEN>;
- 			gpios = <&r_pio 0 7 GPIO_ACTIVE_HIGH>; /* PL7 */
- 		};
- 	};
+Changes in v2:
+- dtbinding: make some minor modifications, suggestted by Conor and robot.
+- driver: Make some adjustments, including macro definitions, format adjustments,
+          adding quirks, process optimization, and so on. According to Andi and robot's suggestion
+- Give up MAINTAINERS file the separate submission, make it together with the driver.
+- Link to v1: https://lore.kernel.org/r/20260924-a9-i2c-v1-0-b8ad9b46f4a8@amlogic.com
+
+---
+Junyi Zhao (1):
+      i2c: amlogic: Add Amlogic A9 I2C controller driver
+
+Xianwei Zhao (1):
+      dt-bindings: i2c: add Amlogic A9 I2C controller
+
+ .../devicetree/bindings/i2c/amlogic,a9-i2c.yaml    |  56 +++
+ MAINTAINERS                                        |   9 +
+ drivers/i2c/busses/Kconfig                         |   8 +
+ drivers/i2c/busses/Makefile                        |   1 +
+ drivers/i2c/busses/i2c-amlogic-a9.c                | 429 +++++++++++++++++++++
+ 5 files changed, 503 insertions(+)
+---
+base-commit: 4ec2365c08de306f52650d8736aef5862baedb8d
+change-id: 20260911-a9-i2c-24478e22e683
+
+Best regards,
+-- 
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
