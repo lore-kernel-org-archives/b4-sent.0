@@ -1,11 +1,11 @@
 From: Eslam Almorshdy <ealmorshdy@d-matrix.ai>
-Date: Tue, 17 Nov 2026 22:36:44 +0000
-Subject: [PATCH RFC 6/7] dtprobed: fix the USDT load bias for non-zero link
- addresses
+Date: Tue, 17 Nov 2026 22:36:45 +0000
+Subject: [PATCH RFC 7/7] test: add USDT test for libraries with a non-zero
+ link address
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-b4-bug003-load-bias-v1-6-dcd0f6cde412@d-matrix.ai>
+Message-Id: <20261117-b4-bug003-load-bias-v1-7-dcd0f6cde412@d-matrix.ai>
 References: <20261117-b4-bug003-load-bias-v1-0-dcd0f6cde412@d-matrix.ai>
 In-Reply-To: <20261117-b4-bug003-load-bias-v1-0-dcd0f6cde412@d-matrix.ai>
 To: dtrace@lists.linux.dev
@@ -13,80 +13,160 @@ Cc: Nick Alcock <nix@esperi.org.uk>,
  Kris Van Hees <kris.van.hees@oracle.com>, 
  Eslam Almorshdy <ealmorshdy@d-matrix.ai>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794955038; l=2391;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794955038; l=4263;
  i=ealmorshdy@d-matrix.ai; s=20261015; h=from:subject:message-id;
- bh=ViXW6Fjdic9ZZgQ9WlQHCjn5bwm83dfPgvTDBQ7Wzw0=;
- b=Mpahp5D02ndiel9lqQOPsLXHkadW5EYu1aPEDn+YpHXmJb/nXvMlNw4FQxcDNB3p5jo23Ieaj
- BtOujPybilGCEeS8nRHYwUUcUrx06mZyGzSNHCftHAFfONsSO+I7fIG
+ bh=LgoLY3MC3kK4GCv/r3CBeV+QjoVl+OXEZ5LxN18sER0=;
+ b=MkVjQ+PU73LkgEr35InJKLoiBamXkc5rUfCBFFjElsb5M69mW2Jvb2gUs0If3YuvYqMgT63YV
+ HRD/UwUJ6F4AvTdRenOziYh/X19QOBf7Ee7/QJq/+8SB2vAyGIBgGw5
 X-Developer-Key: i=ealmorshdy@d-matrix.ai; a=ed25519;
  pk=E4tVAIvp2rvz2CB7Re6YVMP6FiUVSxuq0TUtjGQL5NM=
 X-Endpoint-Received: by B4 Relay for ealmorshdy@d-matrix.ai/20261015 with auth_id=1187
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For USDT probes in ELF notes, dtprobed passes the load address of the
-object's first mapping as dofhp_addr, and the note parser adds it to
-each probe's link-time address.  That is the load bias only for objects
-linked at 0.  In a shared library linked elsewhere (GNU ld
--Ttext-segment, lld --image-base) every probe address is too high by the
-link address, libdtrace finds no mapping for it, and no probe is
-created.
+Build a USDT probe into shared libraries linked at 0 and at 0x200000,
+with GNU ld and with lld, and check that it fires 3 times in each.
+Without the previous patch no probe is created in the libraries linked
+at 0x200000.
 
-Subtract the first PT_LOAD's page-aligned p_vaddr, as libproc now does
-for its computed load bias.
-
-Also log the DOF helper after the adjustment, so the debug output shows
-the address actually used.
+Linkers that are not installed are left out; the .x file skips the test
+if neither is.
 
 Signed-off-by: Eslam Almorshdy <ealmorshdy@d-matrix.ai>
 ---
- dtprobed/dtprobed.c | 27 ++++++++++++++++++++++++---
- 1 file changed, 24 insertions(+), 3 deletions(-)
+ test/unittest/usdt/tst.lib-loadbias.r  |  1 +
+ test/unittest/usdt/tst.lib-loadbias.sh | 96 ++++++++++++++++++++++++++++++++++
+ test/unittest/usdt/tst.lib-loadbias.x  | 14 +++++
+ 3 files changed, 111 insertions(+)
 
-diff --git a/dtprobed/dtprobed.c b/dtprobed/dtprobed.c
-index 37d615bb..a84424b8 100644
---- a/dtprobed/dtprobed.c
-+++ b/dtprobed/dtprobed.c
-@@ -503,9 +503,6 @@ handle_usdt_notes(pid_t pid, uintptr_t addr)
- 	dh.dofhp_addr = mapp->pr_vaddr;
- 	dh.dofhp_dof = 0;
- 
--	fuse_log(FUSE_LOG_DEBUG, "%i: DOF helper { '%s', %lx, %lx }\n",
--		 pid, dh.dofhp_mod, dh.dofhp_addr, dh.dofhp_dof);
--
- 	exec_mapp = Plmid_to_map(P, LM_ID_BASE, PR_OBJ_EXEC);
- 	if (exec_mapp == NULL || (prf = exec_mapp->pr_file) == NULL) {
- 		fuse_log(FUSE_LOG_ERR, "%i: dtprobed: cannot look up mapping (process dead?)\n",
-@@ -538,6 +535,30 @@ handle_usdt_notes(pid_t pid, uintptr_t addr)
- 		goto elf_err;
- 	if (ehdr.e_type == ET_EXEC)
- 		dh.dofhp_addr = 0;
-+	else {
-+		size_t nphdrs, i;
-+		GElf_Phdr phdr;
+diff --git a/test/unittest/usdt/tst.lib-loadbias.r b/test/unittest/usdt/tst.lib-loadbias.r
+new file mode 100644
+index 00000000..2e9ba477
+--- /dev/null
++++ b/test/unittest/usdt/tst.lib-loadbias.r
+@@ -0,0 +1 @@
++success
+diff --git a/test/unittest/usdt/tst.lib-loadbias.sh b/test/unittest/usdt/tst.lib-loadbias.sh
+new file mode 100755
+index 00000000..132e7a95
+--- /dev/null
++++ b/test/unittest/usdt/tst.lib-loadbias.sh
+@@ -0,0 +1,96 @@
++#!/bin/bash
++#
++# Oracle Linux DTrace.
++# Copyright (c) 2026, d-Matrix Corporation. All rights reserved.
++# Licensed under the Universal Permissive License v 1.0 as shown at
++# http://oss.oracle.com/licenses/upl.
++#
++# Check that USDT probes are created and fire in shared libraries linked at
++# 0 and at 0x200000, by GNU ld and by lld.
++#
++# dtprobed turns each probe's link-time address into a runtime address by
++# adding the library's load bias.  The load address of its first segment is
++# the bias only if the library is linked at 0; otherwise the probe address
++# is too high by the link address and no probe is created.  Linkers that are
++# not installed are left out; the .x file skips the test if neither is.
++#
 +
-+		/*
-+		 * dofhp_addr is the load address of the first segment.  The
-+		 * load bias is that minus the page-aligned p_vaddr of the
-+		 * first PT_LOAD segment, which is not 0 for objects linked at a
-+		 * non-zero address (GNU ld -Ttext-segment, lld --image-base).
-+		 */
-+		if (elf_getphdrnum(elf, &nphdrs) == 0) {
-+			for (i = 0; i < nphdrs; i++) {
-+				if (gelf_getphdr(elf, i, &phdr) == NULL ||
-+				    phdr.p_type != PT_LOAD)
-+					continue;
-+				dh.dofhp_addr -= phdr.p_vaddr &
-+				    ~((GElf_Addr)sysconf(_SC_PAGESIZE) - 1);
-+				break;
-+			}
-+		}
-+	}
++dtrace=$1
++utils=$PWD/test/utils
++ncalls=3
++CFLAGS="$test_cppflags"
++LDFLAGS="$test_ldflags"
++declare -A base=([bfd]=-Wl,-Ttext-segment=0x200000
++		 [lld]=-Wl,--image-base=0x200000)
 +
-+	fuse_log(FUSE_LOG_DEBUG, "%i: DOF helper { '%s', %lx, %lx }\n",
-+		 pid, dh.dofhp_mod, dh.dofhp_addr, dh.dofhp_dof);
- 
- 	while ((scn = elf_nextscn(elf, scn)) != NULL) {
- 		const char *name;
++DIRNAME=$tmpdir/usdt-lib-loadbias.$$.$RANDOM
++mkdir -p $DIRNAME
++cd $DIRNAME
++
++cat > prov.d <<EOF
++provider test_prov {
++	probe tick(int);
++};
++EOF
++
++cat > work.c <<EOF
++#include "prov.h"
++
++__attribute__((noinline)) void work(int i)
++{
++	TEST_PROV_TICK(i);
++}
++EOF
++
++cat > main.c <<EOF
++void work(int i);
++
++int main(void)
++{
++	int i;
++
++	for (i = 0; i < $ncalls; i++)
++		work(i);
++	return 0;
++}
++EOF
++
++$dtrace $dt_flags -h -s prov.d || exit 1
++
++# build NAME LD LDFLAGS...: libNAME.so linked by LD with LDFLAGS, and NAME
++# linked against it.  dtrace -G uses the same linker.
++build() {
++	local name=$1 ld=$2
++	shift 2
++
++	$CC $CFLAGS -fPIC -c -o $name.o work.c &&
++	$dtrace $dt_flags -x ldpath=ld.$ld -G -s prov.d -o prov-$name.o $name.o &&
++	$CC $LDFLAGS -fuse-ld=$ld -shared "$@" -o lib$name.so $name.o prov-$name.o &&
++	$CC $CFLAGS $LDFLAGS -fuse-ld=$ld -o $name main.c -L. -l$name \
++	    -Wl,-rpath,$DIRNAME
++}
++
++# fired BIN PROBE: how often PROBE fired in a run of ./BIN, or dtrace's error
++fired() {
++	$dtrace $dt_flags -qn "$2 { n++; } dtrace:::END { printf(\"%d\\n\", n); }" \
++	    -c ./$1 2>&1 | awk 'NF { last = $0 } END {
++		sub(/^dtrace: (invalid probe specifier .*: )?/, "", last)
++		print last
++	    }'
++}
++
++status=0
++for ld in $($utils/linkers.sh); do
++	build $ld $ld && build $ld-base $ld ${base[$ld]} || exit 1
++
++	for name in $ld $ld-base; do
++		n=$(fired $name 'test_prov$target:::tick')
++		if [ "$n" != $ncalls ]; then
++			echo "ERROR: lib$name.so: got '$n', want $ncalls firings"
++			status=1
++		fi
++	done
++done
++
++[ $status -eq 0 ] && echo success
++exit $status
+diff --git a/test/unittest/usdt/tst.lib-loadbias.x b/test/unittest/usdt/tst.lib-loadbias.x
+new file mode 100755
+index 00000000..e5a3ad3e
+--- /dev/null
++++ b/test/unittest/usdt/tst.lib-loadbias.x
+@@ -0,0 +1,14 @@
++#!/bin/bash
++#
++# Oracle Linux DTrace.
++# Copyright (c) 2026, d-Matrix Corporation. All rights reserved.
++# Licensed under the Universal Permissive License v 1.0 as shown at
++# http://oss.oracle.com/licenses/upl.
++#
++# This test needs GNU ld or lld.
++
++if ! test/utils/linkers.sh > /dev/null; then
++	echo "neither GNU ld nor ld.lld is available"
++	exit 2
++fi
++exit 0
 
 -- 
 2.55.0
