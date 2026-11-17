@@ -1,98 +1,125 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Tue, 17 Nov 2026 20:13:03 +0000
-Subject: [PATCH] rtc: meson-vrtc: keep the alarm across the hibernation
- snapshot
+From: Armandas Kvietkus <armandas.kvietkus@proton.me>
+Subject: [PATCH v5 0/2] media: i2c: Samsung S5K3T2 image sensor
+Date: Tue, 17 Nov 2026 21:20:03 +0100
+Message-Id: <20261117-upstream-s5k3t2-v5-0-1f7f5fde9e2a@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-meson-vrtc-thaw-v1-1-b58a2c3919d3@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAE61/GoC/x3MQQqAIBBA0avIrBtwggq7SrQQm2oWaahUEN49a
- fkW/7+QOAonGNULkS9JEnwFNQrcbv3GKEs1tLrtiWjAg1PweMXsMO/2Rm2sJmecsR1Drc7Iqzz
- /cZpL+QDTRidsYQAAAA==
-To: Alexandre Belloni <alexandre.belloni@bootlin.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-rtc@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2531; i=iav@iav.lv;
- h=from:subject:message-id; bh=SA/YHiFrtpyx141R9I9mj/voNyRERhsuFPxCUy/+Hlc=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFl/tgYcyVxedunn3MdR+1ew5Nh862Dv8X7Ju+ZICfexS
- VzicnzXOkpZGMS4GGTFFFkmHNK4lbHk6l9/D/MHMHNYmUCGMHBxCsBE8v8zMhzPfWsf7n1ry6d1
- ezY5iXmqHVh4vPzG7tIdus/2Lr1Ue1qOkeHZR7Vi5yjlZvUzcnXHOtvCf0fedb+mPf3kttJivUX
- np7ECAA==
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOzUoDMRQF4FcpWRu5P8loXfke4iK/NkpnhiQdl
+ DLvblJBageXB8537j2LEnIKRTztziKHJZU0jS3ou51wBzO+BZl8y4KABtgTyNNcag7mKIv+4Eq
+ S2DJ7Y4FRi6bmHGL6vCy+vP7kcrLvwdU+0xuHVOqUvy4nF+y9/9cXlCD9oOBBQVSA/DznqU7j/
+ TGIvr7Qteetp+ZBxegNswaHt56vvdp6bt5opx99dMHR/tarX4+AuPWq/89skaJlGv78v67rN6/
+ NZHmAAQAA
+X-Change-ID: 20260920-upstream-s5k3t2-23b33dab0315
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Elgin Perumbilly <elgin.perumbilly@siliconsignals.io>, 
+ Armandas Kvietkus <armandas.kvietkus@proton.me>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794946803; l=4420;
+ i=armandas.kvietkus@proton.me; h=from:subject:message-id;
+ bh=cWqprRsWHifDeyW+sl4Dkmfh8eAssu1/TNdW3k/zaZw=;
+ b=UZI5K0+TMQE4wKCGPqbGpGSB5wqz+El6gd5sT9JsTmTPpoKkWRO3AlLhw4cSgKhSN0cVHURUv
+ XxMwdAeAyN9CgiobQixeBalX70rRFXpD2pGTQywNdN2UXpLYOsg9LLG
+X-Developer-Key: i=armandas.kvietkus@proton.me; a=ed25519;
+ pk=wuqmImJ9sKlDVcwALOvfGhjj7G8EBjjM4TpCdmlrAf8=
+X-Endpoint-Received: by B4 Relay for armandas.kvietkus@proton.me/default with auth_id=974
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SIMPLE_DEV_PM_OPS also installs meson_vrtc_resume() as the .thaw
-callback, so the alarm is cleared as soon as the hibernation image has
-been created. An alarm set through the RTC (rtcwake, wakealarm) is then
-lost: with hybrid-sleep the system suspends with a zero wakeup time in
-the SCP and does not wake on it. The alarmtimer is not affected, as it
-sets the alarm again from its own suspend callback.
+This series adds a binding and a driver for the Samsung S5K3T2, a
+20 Mpixel CMOS image sensor with four MIPI D-PHY lanes.
 
-Set only the suspend/resume and poweroff/restore callbacks, so freeze
-and thaw leave the alarm alone.
+The sensor is the front camera of the Xiaomi POCO F3. That phone has no
+device tree in mainline, so this series adds no user for the binding.
+The driver was written and tested on the phone with the Qualcomm CAMSS
+driver.
 
-Tested on ODROID-HC4 with v7.4-rc3, rtcwake -m no before hybrid-sleep:
-BL301 printed alarm=0S before this change and the remaining time with
-it, and woke the board on the alarm 3 of 3 times. Waking needs a BL301
-that acts on this alarm; the stock one for HC4 does not. Deep suspend
-still wakes on the alarm.
+Tested:
 
-Fixes: 6ef35398e827 ("rtc: Add Amlogic Virtual Wake RTC")
-Signed-off-by: Igor Velkov <iav@iav.lv>
+  v4l2-compliance on the sensor sub-device, 46 tests, 46 passed
+  capture in all three modes, twelve runs, no kernel error
+  the sensor returns to runtime suspend after every run
+  exposure and gain sweeps checked on the captured frames
+  Bayer order checked for both flips
+
+Signed-off-by: Armandas Kvietkus <armandas.kvietkus@proton.me>
 ---
- drivers/rtc/rtc-meson-vrtc.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+Changes in v5:
+- Dropped four page select writes (0x6028) from the register tables.
+  Each one selected the page that was already selected. They came from
+  the vendor sequence.
+- Collected the Reviewed-by from Elgin.
+- The link frequency still follows the mode. The question about it on
+  v3 is still open.
+- Link to v4: https://patch.msgid.link/20261011-upstream-s5k3t2-v4-0-d33b12fb3263@proton.me
 
-diff --git a/drivers/rtc/rtc-meson-vrtc.c b/drivers/rtc/rtc-meson-vrtc.c
-index e5f9f05ffee0..f34a98defee6 100644
---- a/drivers/rtc/rtc-meson-vrtc.c
-+++ b/drivers/rtc/rtc-meson-vrtc.c
-@@ -86,7 +86,7 @@ static int meson_vrtc_probe(struct platform_device *pdev)
- 	return devm_rtc_register_device(rtc);
- }
- 
--static int __maybe_unused meson_vrtc_suspend(struct device *dev)
-+static int meson_vrtc_suspend(struct device *dev)
- {
- 	struct meson_vrtc_data *vrtc = dev_get_drvdata(dev);
- 
-@@ -115,7 +115,7 @@ static int __maybe_unused meson_vrtc_suspend(struct device *dev)
- 	return 0;
- }
- 
--static int __maybe_unused meson_vrtc_resume(struct device *dev)
-+static int meson_vrtc_resume(struct device *dev)
- {
- 	struct meson_vrtc_data *vrtc = dev_get_drvdata(dev);
- 
-@@ -126,8 +126,12 @@ static int __maybe_unused meson_vrtc_resume(struct device *dev)
- 	return 0;
- }
- 
--static SIMPLE_DEV_PM_OPS(meson_vrtc_pm_ops,
--			 meson_vrtc_suspend, meson_vrtc_resume);
-+static const struct dev_pm_ops meson_vrtc_pm_ops = {
-+	.suspend = pm_sleep_ptr(meson_vrtc_suspend),
-+	.resume = pm_sleep_ptr(meson_vrtc_resume),
-+	.poweroff = pm_sleep_ptr(meson_vrtc_suspend),
-+	.restore = pm_sleep_ptr(meson_vrtc_resume),
-+};
- 
- static const struct of_device_id meson_vrtc_dt_match[] = {
- 	{ .compatible = "amlogic,meson-vrtc"},
+Changes in v4:
+- Use ARRAY_SIZE() instead of the S5K3T2_NUM_SUPPLIES macro.
+- The link frequency and pixel rate controls have no ops now, the
+  driver never writes them.
+- HBLANK and VBLANK are written from s_ctrl. The line length and frame
+  length registers are gone from the mode lists. HBLANK is not read only
+  anymore, but its range is still one value per mode.
+- The flips are written from s_ctrl and are clustered.
+- 0x0100 and 0x0101 are written as 8-bit registers.
+- The mode is not kept outside the subdev state anymore. The crop
+  rectangle is kept in the state too.
+- Every control call in set_fmt has its return value checked.
+- The fwnode properties are parsed before the control handler is set
+  up, and the control flags are set after the error check.
+- Dropped the link_validate op, the redundant fwnode and endpoint
+  checks, and the gotos in power_on and set_fmt.
+- The error labels in probe start with err_, and remove calls
+  pm_runtime_dont_use_autosuspend().
+- Small cleanups: container_of_const(), local variable order,
+  s5k3t2_format_from_mode(), and init_state returns the set_fmt result.
+- The link frequency still follows the mode. The question about it on
+  v3 is still open.
+- Dropped the line about hidden modes from the commit message.
+- Link to v3: https://patch.msgid.link/20260924-upstream-s5k3t2-v3-0-a5c58dfcec29@proton.me
+
+Changes in v3:
+- The check on pm_runtime_get_if_active() is back to the form used by
+  every other sensor driver. The v2 form skipped the register write when
+  the helper returned an error, so a kernel built without CONFIG_PM never
+  applied exposure, gain, blanking or the test pattern.
+- The binding now requires clocks and the three supplies. The driver does
+  not probe without the clock, and the sensor needs all three rails.
+- Link to v2: https://patch.msgid.link/20260923-upstream-s5k3t2-v2-0-04ffda3350c1@proton.me
+
+Changes in v2:
+- set_pad_format() now stores the new mode before it updates the
+  controls. The VBLANK handler reads the mode, so it used to program the
+  frame length from the mode that was active before the call.
+- A negative return from pm_runtime_get_if_active() is no longer read as
+  active. Runtime PM can be disabled for the device, and in that case the
+  usage count is not taken, so the old code could drop a count it never
+  took.
+- The PM ops use RUNTIME_PM_OPS() with pm_ptr(), so the ops and the power
+  callbacks are dropped when CONFIG_PM is not set.
+- Link to v1: https://patch.msgid.link/20260920-upstream-s5k3t2-v1-0-d640740f4013@proton.me
 
 ---
-base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
-change-id: 20261117-meson-vrtc-thaw-09a01c9c9a5e
+Armandas Kvietkus (2):
+      dt-bindings: media: i2c: Add Samsung S5K3T2 image sensor
+      media: i2c: Add Samsung S5K3T2 image sensor driver
+
+ .../bindings/media/i2c/samsung,s5k3t2.yaml         |  105 ++
+ MAINTAINERS                                        |    8 +
+ drivers/media/i2c/Kconfig                          |   10 +
+ drivers/media/i2c/Makefile                         |    1 +
+ drivers/media/i2c/s5k3t2.c                         | 1327 ++++++++++++++++++++
+ 5 files changed, 1451 insertions(+)
+---
+base-commit: 518e5b794c06c0f0eb40df3e202274a66202c137
+change-id: 20260920-upstream-s5k3t2-23b33dab0315
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Armandas Kvietkus <armandas.kvietkus@proton.me>
 
