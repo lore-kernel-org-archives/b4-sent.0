@@ -1,183 +1,55 @@
-From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Tue, 17 Nov 2026 23:29:24 +0300
-Subject: [PATCH v4 2/2] irqchip: Add Cortina Systems CS75xx peripheral
- interrupt controller
+From: Ben Grisdale <bengris32@protonmail.ch>
+Subject: [PATCH 0/2] pinctrl: mediatek: Add MT8163 support
+Date: Tue, 17 Nov 2026 21:00:40 +0000
+Message-Id: <20261117-mt8163-pinctrl-v1-0-2cfd12206b17@protonmail.ch>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-cs75xx-intc-v4-2-0a678f35e5f3@gmail.com>
-References: <20261117-cs75xx-intc-v4-0-0a678f35e5f3@gmail.com>
-In-Reply-To: <20261117-cs75xx-intc-v4-0-0a678f35e5f3@gmail.com>
-To: Thomas Gleixner <tglx@kernel.org>, Radu Rendec <radu@rendec.net>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, Fil Dunsky <filipp.dunsky@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0Nz3dwSC0MzY92CzLzkkqIc3SSDFAND0zQjYxOzJCWgpoKi1LTMCrC
+ B0bEQfnFpUlZqcgnIFKXaWgB9SlqVcgAAAA==
+X-Change-ID: 20261117-mt8163-pinctrl-b0d015f2346b
+To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Sean Wang <sean.wang@kernel.org>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, Ben Grisdale <bengris32@protonmail.ch>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794947362; l=5096;
- i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=/TDDrsDXswx4rj1Q6oUXRwk17epz9dhPBPrG6KgLxTU=;
- b=ejtm9LmgvsXGWtXcUH+DBww2L0dLTC7iLcg7hwYWNdOK6fmX8CnNkHveV42QYqqEvLPukM5j2
- l3yTAe0NU60ASH/rvpslPwVDWj2V7OEU1cGE/nho1xhg5ih+NKVfMwt
-X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
- pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
-X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794949947; l=902;
+ i=bengris32@protonmail.ch; s=20261018; h=from:subject:message-id;
+ bh=1RUSaNQaX406sgZc8R8mxzN7Q315rl1SptZhofKDiBA=;
+ b=iXMhQXmjmJwcA72ZEb9q/p7LA5/PVRKlDSXyJRUfsA8uP1/qdR69WaGrMAPELn1Axas5Tdwri
+ /VtuCOgZJ+WDk3PnzY6T9ITFfXzfbdpPKHKftPL4mwiXxG/1sxny5Nk
+X-Developer-Key: i=bengris32@protonmail.ch; a=ed25519;
+ pk=4ewFRC2yNph/tXokHVzIDlgOA9Hxecf1AlBuD4eOnaU=
+X-Endpoint-Received: by B4 Relay for bengris32@protonmail.ch/20261018 with auth_id=1233
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The timers, GPIO banks, I2C, MDIO, SPI and a few other low speed
-peripherals of the Cortina Systems CS75xx SoCs share a single GIC
-interrupt. A status register shows the level of the 15 sources and an
-enable register masks them; there is nothing to acknowledge, each source
-is cleared in its peripheral.
+This series adds device tree bindings and a pinctrl driver for the
+MediaTek MT8163 SoC.
 
-Add a chained driver using a generic chip on a linear domain.
-
-Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
+Signed-off-by: Ben Grisdale <bengris32@protonmail.ch>
 ---
- drivers/irqchip/Kconfig      |  12 ++++++
- drivers/irqchip/Makefile     |   1 +
- drivers/irqchip/irq-cs75xx.c | 100 +++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 113 insertions(+)
+Ben Grisdale (2):
+      dt-bindings: pinctrl: mediatek: Add MT8163
+      pinctrl: mediatek: Add support for MT8163 pinctrl
 
-diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
-index 136bab41f..db5edd4ec 100644
---- a/drivers/irqchip/Kconfig
-+++ b/drivers/irqchip/Kconfig
-@@ -187,6 +187,18 @@ config BRCMSTB_L2_IRQ
- 	select GENERIC_IRQ_CHIP
- 	select IRQ_DOMAIN
- 
-+config CS75XX_INTC
-+	bool "Cortina Systems CS75xx peripheral interrupt controller"
-+	depends on ARCH_CORTINA_ACCESS || COMPILE_TEST
-+	default ARCH_CORTINA_ACCESS
-+	select GENERIC_IRQ_CHIP
-+	select IRQ_DOMAIN
-+	help
-+	  Support for the interrupt controller of the Cortina Systems
-+	  CS75xx SoCs that combines the interrupts of the low speed
-+	  peripherals (timers, GPIO banks, I2C, MDIO, SPI) into a single
-+	  GIC interrupt. Say Y if you have a board with such an SoC.
-+
- config DAVINCI_CP_INTC
- 	bool
- 	select GENERIC_IRQ_CHIP
-diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
-index 16a5fd126..7ed8f8b33 100644
---- a/drivers/irqchip/Makefile
-+++ b/drivers/irqchip/Makefile
-@@ -136,3 +136,4 @@ obj-$(CONFIG_MCHP_EIC)			+= irq-mchp-eic.o
- obj-$(CONFIG_SOPHGO_SG2042_MSI)		+= irq-sg2042-msi.o
- obj-$(CONFIG_SUNPLUS_SP7021_INTC)	+= irq-sp7021-intc.o
- obj-$(CONFIG_IRQCHIP_XILINX_SMMU_CSR)	+= irq-xilinx-smmu-csr.o
-+obj-$(CONFIG_CS75XX_INTC)		+= irq-cs75xx.o
-diff --git a/drivers/irqchip/irq-cs75xx.c b/drivers/irqchip/irq-cs75xx.c
-new file mode 100644
-index 000000000..f3d71b06c
---- /dev/null
-+++ b/drivers/irqchip/irq-cs75xx.c
-@@ -0,0 +1,100 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Cortina Systems CS75xx peripheral interrupt controller
-+ *
-+ * The low speed peripherals on the register bus (timers, GPIO banks, I2C,
-+ * MDIO, SPI, ...) share a single GIC interrupt. A status register shows
-+ * the level of the 15 sources and an enable register masks them; there is
-+ * nothing to acknowledge, the sources are cleared in the peripherals.
-+ */
-+
-+#include <linux/bitops.h>
-+#include <linux/io.h>
-+#include <linux/irq.h>
-+#include <linux/irqchip.h>
-+#include <linux/irqchip/chained_irq.h>
-+#include <linux/irqdomain.h>
-+#include <linux/of.h>
-+#include <linux/of_address.h>
-+#include <linux/of_irq.h>
-+
-+#define CS75XX_INTC_STATUS	0x00
-+#define CS75XX_INTC_ENABLE	0x04
-+
-+#define CS75XX_INTC_NR_IRQS	15
-+
-+static void cs75xx_intc_handler(struct irq_desc *desc)
-+{
-+	struct irq_domain *domain = irq_desc_get_handler_data(desc);
-+	struct irq_chip *chip = irq_desc_get_chip(desc);
-+	struct irq_chip_generic *gc;
-+	unsigned long pending;
-+	unsigned int hwirq;
-+
-+	gc = irq_get_domain_generic_chip(domain, 0);
-+	chained_irq_enter(chip, desc);
-+
-+	pending = readl(gc->reg_base + CS75XX_INTC_STATUS) & gc->mask_cache;
-+	for_each_set_bit(hwirq, &pending, CS75XX_INTC_NR_IRQS)
-+		generic_handle_domain_irq(domain, hwirq);
-+
-+	chained_irq_exit(chip, desc);
-+}
-+
-+static int __init cs75xx_intc_init(struct device_node *np, struct device_node *parent)
-+{
-+	struct irq_chip_generic *gc;
-+	struct irq_domain *domain;
-+	void __iomem *base;
-+	int parent_irq;
-+	int ret;
-+
-+	base = of_io_request_and_map(np, 0, of_node_full_name(np));
-+	if (IS_ERR(base)) {
-+		pr_err("%pOF: unable to map registers\n", np);
-+		return PTR_ERR(base);
-+	}
-+
-+	/* Mask everything before the chained handler is installed */
-+	writel(0, base + CS75XX_INTC_ENABLE);
-+
-+	parent_irq = irq_of_parse_and_map(np, 0);
-+	if (!parent_irq) {
-+		pr_err("%pOF: unable to map parent interrupt\n", np);
-+		ret = -EINVAL;
-+		goto err_unmap;
-+	}
-+
-+	domain = irq_domain_create_linear(of_fwnode_handle(np), CS75XX_INTC_NR_IRQS,
-+					  &irq_generic_chip_ops, NULL);
-+	if (!domain) {
-+		ret = -ENOMEM;
-+		goto err_dispose;
-+	}
-+
-+	ret = irq_alloc_domain_generic_chips(domain, CS75XX_INTC_NR_IRQS, 1, "cs75xx-intc",
-+					     handle_level_irq, IRQ_NOREQUEST | IRQ_NOPROBE, 0,
-+					     IRQ_GC_INIT_MASK_CACHE);
-+	if (ret)
-+		goto err_domain;
-+
-+	gc = irq_get_domain_generic_chip(domain, 0);
-+	gc->reg_base = base;
-+	gc->chip_types[0].regs.mask = CS75XX_INTC_ENABLE;
-+	gc->chip_types[0].chip.irq_mask = irq_gc_mask_clr_bit;
-+	gc->chip_types[0].chip.irq_unmask = irq_gc_mask_set_bit;
-+
-+	irq_set_chained_handler_and_data(parent_irq, cs75xx_intc_handler, domain);
-+
-+	return 0;
-+
-+err_domain:
-+	irq_domain_remove(domain);
-+err_dispose:
-+	irq_dispose_mapping(parent_irq);
-+err_unmap:
-+	iounmap(base);
-+	return ret;
-+}
-+
-+IRQCHIP_DECLARE(cs7542_intc, "cortina,cs7542-intc", cs75xx_intc_init);
+ .../bindings/pinctrl/mediatek,mt8163-pinctrl.yaml  |  208 ++++
+ drivers/pinctrl/mediatek/Kconfig                   |   12 +
+ drivers/pinctrl/mediatek/Makefile                  |    1 +
+ drivers/pinctrl/mediatek/pinctrl-mt8163.c          |  478 +++++++
+ drivers/pinctrl/mediatek/pinctrl-mtk-mt8163.h      | 1299 ++++++++++++++++++++
+ .../dt-bindings/pinctrl/mediatek,mt8163-pinfunc.h  |  821 +++++++++++++
+ 6 files changed, 2819 insertions(+)
+---
+base-commit: 749a4de370409464cf8501ec5b2451df45c84eb4
+change-id: 20261117-mt8163-pinctrl-b0d015f2346b
 
--- 
-2.53.0
+Best regards,
+--  
+Ben Grisdale <bengris32@protonmail.ch>
 
