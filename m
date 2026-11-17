@@ -1,11 +1,11 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Date: Tue, 17 Nov 2026 13:33:22 +0200
-Subject: [PATCH RESEND v5 2/4] nvmem: mtk-efuse: add support for 32-bit
- aligned reads
+Date: Tue, 17 Nov 2026 13:33:23 +0200
+Subject: [PATCH RESEND v5 3/4] nvmem: mtk-efuse: add CPU speedbin
+ post-processing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-6572-nvmem-v5-2-9b561a8a83e1@protonmail.com>
+Message-Id: <20261117-6572-nvmem-v5-3-9b561a8a83e1@protonmail.com>
 References: <20261117-6572-nvmem-v5-0-9b561a8a83e1@protonmail.com>
 In-Reply-To: <20261117-6572-nvmem-v5-0-9b561a8a83e1@protonmail.com>
 To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -19,106 +19,65 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
  Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794915409; l=2576;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794915409; l=1737;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=mDeWdFlgCV5LQ7V1Qel0v86EFQeD6sQC8dDyGhHzDrg=;
- b=kThR0pt7ntH1vuOsJ5KCQ19+F/lu3NmbHGIjqzow9PYU0aErAgxLhyzJ/n3G0Gt+qo+eWcRmN
- Y4MckRVVvcmB1EFSvQwG0bKcOL5x0ejq+a/B9plNo0M4SuTvFm7cVy0
+ bh=2fMHy4JxbvhP2Nx70MB1a2Zu4elW1Lbb73LR5vQKGOc=;
+ b=GEZYIJniMHkcE0LLN+BoXraYuM1xaVRYosLrMetE1QqhfWhM0dvsvNLsGoNwPP6fVcyCeuM75
+ ATyT/SPm6g5BpNXis2ddYoMCVVdfRp7NN/fMuEYTVwyCD6F3aWFEbvj
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some MediaTek SoCs, such as mt6572, don't support 8-bit reads, leading
-to zeroes or garbage data. 32-bit aligned reads must be used instead.
+MediaTek SoCs are often released under the same marketing name, but with
+different suffix for the speedbin. For example, mt6572m has 1 GHz limit,
+mt6572a - 1.2 GHz, mt6572w - 1.4 GHz.
 
-Introduce a 'mtk_reg_read_aligned' helper to enforce 32-bit aligned
-register access. All reads will be performed by reading 4-byte words
-and masking them.
+Since the speedbin is stored as a number in the efuse, add support for
+converting it to the bitmask for opp-supported-hw usage in the DT.
 
-Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- drivers/nvmem/mtk-efuse.c | 35 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 34 insertions(+), 1 deletion(-)
+ drivers/nvmem/mtk-efuse.c | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
 diff --git a/drivers/nvmem/mtk-efuse.c b/drivers/nvmem/mtk-efuse.c
-index 00a84ea963a8..980c29d01337 100644
+index 980c29d01337..d2e5c69c580e 100644
 --- a/drivers/nvmem/mtk-efuse.c
 +++ b/drivers/nvmem/mtk-efuse.c
-@@ -4,6 +4,7 @@
-  * Author: Andrew-CT Chen <andrew-ct.chen@mediatek.com>
-  */
+@@ -70,6 +70,18 @@ static int mtk_efuse_gpu_speedbin_pp(void *context, const char *id, int index,
+ 	return 0;
+ }
  
-+#include <linux/align.h>
- #include <linux/device.h>
- #include <linux/module.h>
- #include <linux/io.h>
-@@ -13,12 +14,37 @@
- 
- struct mtk_efuse_pdata {
- 	bool uses_post_processing;
-+	bool needs_aligned_read;
- };
- 
- struct mtk_efuse_priv {
- 	void __iomem *base;
- };
- 
-+static int mtk_reg_read_aligned(void *context,
-+				unsigned int reg, void *_val, size_t bytes)
++static int mtk_efuse_cpu_speedbin_pp(void *context, const char *id, int index,
++				     unsigned int offset, void *data, size_t bytes)
 +{
-+	struct mtk_efuse_priv *priv = context;
-+	u8 *val = _val;
-+	u32 i, pos, shift, val32;
++	u8 *val = data;
 +
-+	for (i = 0; i < bytes; i++, val++) {
-+		pos = reg + i;
++	if (val[0] >= 8)
++		return -EINVAL;
 +
-+		/*
-+		 * Read on 32-bit word boundary or if it's the first
-+		 * iteration
-+		 */
-+		if (i == 0 || IS_ALIGNED(pos, 4))
-+			val32 = readl(priv->base + (pos & ~3));
-+
-+		shift = (pos & 3) * 8;
-+		*val = (val32 >> shift) & 0xff;
-+	}
-+
++	val[0] = BIT(val[0]);
 +	return 0;
 +}
 +
- static int mtk_reg_read(void *context,
- 			unsigned int reg, void *_val, size_t bytes)
+ static void mtk_efuse_fixup_dt_cell_info(struct nvmem_device *nvmem,
+ 					 struct nvmem_cell_info *cell)
  {
-@@ -81,7 +107,12 @@ static int mtk_efuse_probe(struct platform_device *pdev)
- 	econfig.add_legacy_fixed_of_cells = true;
- 	econfig.stride = 1;
- 	econfig.word_size = 1;
--	econfig.reg_read = mtk_reg_read;
+@@ -83,6 +95,13 @@ static void mtk_efuse_fixup_dt_cell_info(struct nvmem_device *nvmem,
+ 	if (cell->nbits <= 3 &&
+ 	    strncmp(cell->name, "gpu-speedbin", min(sz, strlen("gpu-speedbin"))) == 0)
+ 		cell->read_post_process = mtk_efuse_gpu_speedbin_pp;
 +
-+	if (pdata->needs_aligned_read)
-+		econfig.reg_read = mtk_reg_read_aligned;
-+	else
-+		econfig.reg_read = mtk_reg_read;
-+
- 	econfig.size = resource_size(res);
- 	econfig.priv = priv;
- 	econfig.dev = dev;
-@@ -102,10 +133,12 @@ static int mtk_efuse_probe(struct platform_device *pdev)
++	/*
++	 * On mobile SoCs, the CPU speedbin is a number. Convert it to
++	 * a bitmask for supported-hw usage.
++	 */
++	if (strncmp(cell->name, "cpu-speedbin", min(sz, strlen("cpu-speedbin"))) == 0)
++		cell->read_post_process = mtk_efuse_cpu_speedbin_pp;
+ }
  
- static const struct mtk_efuse_pdata mtk_mt8186_efuse_pdata = {
- 	.uses_post_processing = true,
-+	.needs_aligned_read = false,
- };
- 
- static const struct mtk_efuse_pdata mtk_efuse_pdata = {
- 	.uses_post_processing = false,
-+	.needs_aligned_read = false,
- };
- 
- static const struct of_device_id mtk_efuse_of_match[] = {
+ static int mtk_efuse_probe(struct platform_device *pdev)
 
 -- 
 2.56.1
