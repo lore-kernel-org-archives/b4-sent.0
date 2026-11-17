@@ -1,11 +1,10 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Date: Tue, 17 Nov 2026 19:56:33 +0200
-Subject: [PATCH v2 2/3] iio: adc: mt6359-auxadc: mask conversion ready bit
- in mt6358_read_imp
+Date: Tue, 17 Nov 2026 19:56:34 +0200
+Subject: [PATCH v2 3/3] iio: adc: mt6359-auxadc: fix scale calculation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-6768-6358-fixes-v2-2-1ffc3c2f3c80@protonmail.com>
+Message-Id: <20261117-6768-6358-fixes-v2-3-1ffc3c2f3c80@protonmail.com>
 References: <20261117-6768-6358-fixes-v2-0-1ffc3c2f3c80@protonmail.com>
 In-Reply-To: <20261117-6768-6358-fixes-v2-0-1ffc3c2f3c80@protonmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -20,41 +19,48 @@ Cc: Chen-Yu Tsai <wenst@chromium.org>, linux-iio@vger.kernel.org,
  linux-mediatek@lists.infradead.org, Roman Vivchar <rva333@protonmail.com>, 
  Jonathan Cameron <jic23@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794938202; l=935;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794938202; l=1136;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=bZjW/quYiBMjfPjx4Er0DwmCVZ9DiZQDsN1KE4x1ONc=;
- b=OusJTjkZgLVAQdFTHc5MWzls2x8KOggCi76d/hEZKW7sLdQMmQUGtc1+S5huPfcnIAGMHGrZz
- AeXtIKS1cu7DL5N75QIwAQGFGeJmi1NS9rmUiPO/OWlXCPD2UIP9KsM
+ bh=dlPuJsQ30iilHCX3ky5K9VEurCW9bPVUqM4NO+pOFjs=;
+ b=7iq2aIFVabqKvHpVhkrNE98UvRvNwtTEYyuql4FJ3kV8llZcoCW+TWWlKf0e2TurMkmRjRfqY
+ XVTflMRCLfKApjBsZNIt3Vz8qdovb99QqUy2mSf641TdmB1ZK7qeZJ/
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In mt6358_read_imp() the raw ADC value is returned directly without
-masking out bit 15, resulting in incorrect battery voltage reporting.
+IIO_CHAN_INFO_SCALE currently returns value without dividing by
+2^realbits, overflowing the integer to an invalid value.
 
-Apply the mask to strip the ready bit, matching the behavior in
-mt6359_auxadc_read_adc() function.
+Fix this by using IIO_VAL_FRACTIONAL and setting val2 to the ADC
+resolution.
 
 Fixes: 3587914bf61d ("iio: adc: Add support for MediaTek MT6357/8/9 Auxiliary ADC")
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- drivers/iio/adc/mt6359-auxadc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/iio/adc/mt6359-auxadc.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/iio/adc/mt6359-auxadc.c b/drivers/iio/adc/mt6359-auxadc.c
-index 951d236f972b..09432d0974cf 100644
+index 09432d0974cf..3a969c30f633 100644
 --- a/drivers/iio/adc/mt6359-auxadc.c
 +++ b/drivers/iio/adc/mt6359-auxadc.c
-@@ -502,7 +502,7 @@ static int mt6358_read_imp(struct mt6359_auxadc *adc_dev,
- 	mt6358_stop_imp_conv(adc_dev);
+@@ -770,13 +770,9 @@ static int mt6359_auxadc_read_raw(struct iio_dev *indio_dev,
  
- 	if (vbat)
--		*vbat = val_v;
-+		*vbat = val_v & GENMASK(chan->scan_type.realbits - 1, 0);
- 	if (ibat)
- 		*ibat = 0;
+ 	if (mask == IIO_CHAN_INFO_SCALE) {
+ 		*val = desc->r_ratio.numerator * cinfo->vref_mV;
++		*val2 = desc->r_ratio.denominator << chan->scan_type.realbits;
  
+-		if (desc->r_ratio.denominator > 1) {
+-			*val2 = desc->r_ratio.denominator;
+-			return IIO_VAL_FRACTIONAL;
+-		}
+-
+-		return IIO_VAL_INT;
++		return IIO_VAL_FRACTIONAL;
+ 	}
+ 
+ 	scoped_guard(mutex, &adc_dev->lock) {
 
 -- 
 2.56.1
