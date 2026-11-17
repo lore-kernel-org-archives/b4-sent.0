@@ -1,16 +1,13 @@
 From: Sidharth Saha <ssaha2000@gmail.com>
-Subject: [PATCH 0/5] drm/vkms: Add KUnit tests for packed RGB format
- conversions
-Date: Mon, 16 Nov 2026 18:21:31 -0700
-Message-Id: <20261116-rgb565-test-v1-0-27f49c1aa694@gmail.com>
+Date: Mon, 16 Nov 2026 18:21:32 -0700
+Subject: [PATCH 1/5] drm/vkms: Add KUnit test for RGB565 writeback
+ conversion
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4avIrJuQGIxGSuk9iouoEw1UbTOxF
- MS7N9Xl/+B9GxAGjwR1tkHAjye/zCnkJYNutPOAzPepIRe5llJqFoa20AWLSJGpvnKmU51pFUJ
- 6vAI6/z20R3N2wPea0HiOMCGRPdA6u/5NYfJKiEIJyZUuTVkyySYbR1yJW/uc0Pf27mfHVxcG4
- m24QbPvP3gk8zC3AAAA
-X-Change-ID: 20261116-rgb565-test-3d8f9c3c9b3e
+Message-Id: <20261116-rgb565-test-v1-1-27f49c1aa694@gmail.com>
+References: <20261116-rgb565-test-v1-0-27f49c1aa694@gmail.com>
+In-Reply-To: <20261116-rgb565-test-v1-0-27f49c1aa694@gmail.com>
 To: Louis Chauvet <louis.chauvet@bootlin.com>, 
  Haneen Mohammed <hamohammed.sa@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
  Melissa Wen <melissa.srw@gmail.com>, 
@@ -20,58 +17,121 @@ To: Louis Chauvet <louis.chauvet@bootlin.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Sidharth Saha <40047656+Sidharth-Saha@users.noreply.github.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794878495; l=2121;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794878495; l=4548;
  i=ssaha2000@gmail.com; s=20261116; h=from:subject:message-id;
- bh=4R4U0RGMTz3P5bOW6oCa+DKZ3/UIMcCejyTU2U2foww=;
- b=LO61FrvPo0vRuzmFSmVKabjZJxKkkU+DVF8WiR5UIvSO1/KF8brdQcBDPG4My8/LGs9VNR5Uw
- w1x1GBdIaHPDkFdlmKJH/vGtwIZNWfA+Yz/JTFc69uuhJ7Q7xd8FBuG
+ bh=O4oCx5AVv4hw3TWfDUOkN6pr1WzBeONVMnkcYKgeUH4=;
+ b=MJ11pi2eRZ7b71iwFlTOwgt0+haFEbdRh4RXrvssD92e6jGdROeJFOqffEsjOT20mlsigyfxF
+ 9t28QHgWgDQCXjZurmMaxb+Spxo9euLS3gjmquIWDBR+bXIIzqjUXol
 X-Developer-Key: i=ssaha2000@gmail.com; a=ed25519;
  pk=wMWW9xOklVZkO7Yh4yIXvhVVRs/3ROsqgjTt8XBGybI=
 X-Endpoint-Received: by B4 Relay for ssaha2000@gmail.com/20261116 with auth_id=1541
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds KUnit tests for the pixel format conversions touched
-by Matheus's series "drm/vkms: support more formats and fix RGB565
-regression" [1], which it depends on.
+argb_u16_to_RGB565() reduces each 16-bit channel to 5 or 6 bits. Its
+rounding was fixed in commit ab87f558dcfb ("drm/vkms: Fix RGB565 pixel
+conversion"), lost again in commit cc4fd2934d41 ("drm/vkms: Isolate
+writeback pixel conversion functions"), and restored by "drm/vkms: make
+argb_u16_to_RGB565 round resulting values". Add a KUnit test so it can't
+silently regress again.
 
-The RGB565 writeback rounding fix in [1] restores a fix that was lost
-once before in a refactor. These tests are meant to keep it, and the new
-RGB332, BGR233 and BGR565 conversions, from regressing.
+The test checks hand-computed values for zero, maximum, the 0x8000
+midpoint, inputs on either side of the first rounding step, and distinct
+per-channel values to catch channel placement errors.
 
-Each test is table-driven, with expected values computed by hand. With
-[1] applied, all cases pass. Without it, the tests for the new formats
-don't build, the RGB565 writeback rounding cases fail, and the
-RGB565/BGR565 read cases pass unchanged.
-
-Matheus offered to include these in a v2 of [1] if one is needed;
-otherwise they can be applied on top of it.
-
-[1] https://lore.kernel.org/dri-devel/20260928005301.367977-1-matheus.aalmeida@inf.ufrgs.br/
+Make argb_u16_to_RGB565() visible to KUnit so the test can call it.
 
 Signed-off-by: Sidharth Saha <40047656+Sidharth-Saha@users.noreply.github.com>
 ---
-Sidharth Saha (5):
-      drm/vkms: Add KUnit test for RGB565 writeback conversion
-      drm/vkms: Add KUnit test for BGR565 writeback conversion
-      drm/vkms: Add KUnit tests for RGB332 and BGR233 read conversion
-      drm/vkms: Add KUnit tests for RGB332 and BGR233 writeback conversion
-      drm/vkms: Add KUnit tests for RGB565 and BGR565 read conversion
+ drivers/gpu/drm/vkms/tests/vkms_format_test.c | 38 ++++++++++++++++++++++++++-
+ drivers/gpu/drm/vkms/vkms_formats.c           |  3 ++-
+ drivers/gpu/drm/vkms/vkms_formats.h           |  1 +
+ 3 files changed, 40 insertions(+), 2 deletions(-)
 
- drivers/gpu/drm/vkms/tests/vkms_format_test.c | 202 ++++++++++++++++++++++++++
- drivers/gpu/drm/vkms/vkms_formats.c           |  24 ++-
- drivers/gpu/drm/vkms/vkms_formats.h           |  10 ++
- 3 files changed, 228 insertions(+), 8 deletions(-)
----
-base-commit: 66c571876c4634dc3258a75a6d49bd7e88ffcb35
-change-id: 20261116-rgb565-test-3d8f9c3c9b3e
-prerequisite-message-id: <20260928005301.367977-1-matheus.aalmeida@inf.ufrgs.br>
-prerequisite-patch-id: 62056d93696db239d59a0ca486a7fba3f5ee204d
-prerequisite-patch-id: a909d90a401095b0ad014f44f08b8c76563262b8
-prerequisite-patch-id: 713b5a5532b2ec31d360132496e6f9980b91a16a
-prerequisite-patch-id: fa0fda9d178c4b5a65d984a672f47ec90b86ea2a
-prerequisite-patch-id: 8e173c420969c0943d31eec819288d9df4d39b5f
+diff --git a/drivers/gpu/drm/vkms/tests/vkms_format_test.c b/drivers/gpu/drm/vkms/tests/vkms_format_test.c
+index bbb1ad18c99f..a8ef93b9c806 100644
+--- a/drivers/gpu/drm/vkms/tests/vkms_format_test.c
++++ b/drivers/gpu/drm/vkms/tests/vkms_format_test.c
+@@ -265,9 +265,45 @@ KUNIT_ARRAY_PARAM(yuv_u16_to_argb_u16, yuv_u16_to_argb_u16_cases,
+ 		  vkms_format_test_yuv_u16_to_argb_u16_case_desc
+ );
+ 
++struct rgb565_case {
++	const char *name;
++	struct pixel_argb_u16 in;
++	u16 r, g, b;		/* expected 5/6/5-bit outputs */
++};
++
++static struct rgb565_case rgb565_cases[] = {
++	{ "zero",       { .a = 0xffff, .r = 0,      .g = 0,      .b = 0      },  0,  0,  0 },
++	{ "max",        { .a = 0xffff, .r = 0xffff, .g = 0xffff, .b = 0xffff }, 31, 63, 31 },
++	{ "midpoint",   { .a = 0xffff, .r = 0x8000, .g = 0x8000, .b = 0x8000 }, 16, 32, 16 },
++	{ "below-step", { .a = 0xffff, .r = 1057,   .g = 0,      .b = 0      },  0,  0,  0 },
++	{ "above-step", { .a = 0xffff, .r = 1058,   .g = 0,      .b = 0      },  1,  0,  0 },
++	{ "distinct",   { .a = 0xffff, .r = 0xffff, .g = 0x8000, .b = 0      }, 31, 32,  0 },
++};
++
++static void vkms_format_test_rgb565_case_desc(struct rgb565_case *t, char *desc)
++{
++	snprintf(desc, KUNIT_PARAM_DESC_SIZE, "%s", t->name);
++}
++
++KUNIT_ARRAY_PARAM(rgb565, rgb565_cases, vkms_format_test_rgb565_case_desc);
++
++static void vkms_format_test_argb_u16_to_RGB565(struct kunit *test)
++{
++	const struct rgb565_case *c = test->param_value;
++	__le16 out;
++	u16 v;
++
++	argb_u16_to_RGB565((u8 *)&out, &c->in);
++	v = le16_to_cpu(out);
++
++	KUNIT_EXPECT_EQ(test, (v >> 11) & 0x1f, c->r);
++	KUNIT_EXPECT_EQ(test, (v >> 5) & 0x3f, c->g);
++	KUNIT_EXPECT_EQ(test, v & 0x1f, c->b);
++}
++
+ static struct kunit_case vkms_format_test_cases[] = {
+ 	KUNIT_CASE_PARAM(vkms_format_test_yuv_u16_to_argb_u16, yuv_u16_to_argb_u16_gen_params),
+-	{}
++	KUNIT_CASE_PARAM(vkms_format_test_argb_u16_to_RGB565, rgb565_gen_params),
+ };
+ 
+ static struct kunit_suite vkms_format_test_suite = {
+diff --git a/drivers/gpu/drm/vkms/vkms_formats.c b/drivers/gpu/drm/vkms/vkms_formats.c
+index b0078d6efb90..c5ee2d6a920f 100644
+--- a/drivers/gpu/drm/vkms/vkms_formats.c
++++ b/drivers/gpu/drm/vkms/vkms_formats.c
+@@ -685,7 +685,7 @@ static void argb_u16_to_channels(u16 *out_r, u16 *out_g, u16 *out_b, u16 *out_a,
+ 		*out_a = u16_to_channel(a_size, in_pixel->a);
+ }
+ 
+-static void argb_u16_to_RGB565(u8 *out_pixel, const struct pixel_argb_u16 *in_pixel)
++VISIBLE_IF_KUNIT void argb_u16_to_RGB565(u8 *out_pixel, const struct pixel_argb_u16 *in_pixel)
+ {
+ 	__le16 *pixel = (__le16 *)out_pixel;
+ 	u16 r, g, b;
+@@ -694,6 +694,7 @@ static void argb_u16_to_RGB565(u8 *out_pixel, const struct pixel_argb_u16 *in_pi
+ 
+ 	*pixel = cpu_to_le16(r << 11 | g << 5 | b);
+ }
++EXPORT_SYMBOL_IF_KUNIT(argb_u16_to_RGB565);
+ 
+ static void argb_u16_to_BGR565(u8 *out_pixel, const struct pixel_argb_u16 *in_pixel)
+ {
+diff --git a/drivers/gpu/drm/vkms/vkms_formats.h b/drivers/gpu/drm/vkms/vkms_formats.h
+index d969cc669a5e..2b8a1c4a5d46 100644
+--- a/drivers/gpu/drm/vkms/vkms_formats.h
++++ b/drivers/gpu/drm/vkms/vkms_formats.h
+@@ -16,6 +16,7 @@ void get_conversion_matrix_to_argb_u16(u32 format, enum drm_color_encoding encod
+ #if IS_ENABLED(CONFIG_KUNIT)
+ struct pixel_argb_u16 argb_u16_from_yuv161616(const struct conversion_matrix *matrix,
+ 					      u16 y, u16 channel_1, u16 channel_2);
++void argb_u16_to_RGB565(u8 *out_pixel, const struct pixel_argb_u16 *in_pixel);
+ #endif
+ 
+ #endif /* _VKMS_FORMATS_H_ */
 
-Best regards,
---  
-Sidharth Saha <ssaha2000@gmail.com>
+-- 
+2.53.0
 
