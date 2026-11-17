@@ -1,11 +1,10 @@
 From: Eslam Almorshdy <ealmorshdy@d-matrix.ai>
-Date: Tue, 17 Nov 2026 22:36:40 +0000
-Subject: [PATCH RFC 2/7] test: add ufunc() test for libraries with a
- non-zero link address
+Date: Tue, 17 Nov 2026 22:36:41 +0000
+Subject: [PATCH RFC 3/7] libproc: add Paddr_to_load_bias()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-b4-bug003-load-bias-v1-2-dcd0f6cde412@d-matrix.ai>
+Message-Id: <20261117-b4-bug003-load-bias-v1-3-dcd0f6cde412@d-matrix.ai>
 References: <20261117-b4-bug003-load-bias-v1-0-dcd0f6cde412@d-matrix.ai>
 In-Reply-To: <20261117-b4-bug003-load-bias-v1-0-dcd0f6cde412@d-matrix.ai>
 To: dtrace@lists.linux.dev
@@ -13,151 +12,80 @@ Cc: Nick Alcock <nix@esperi.org.uk>,
  Kris Van Hees <kris.van.hees@oracle.com>, 
  Eslam Almorshdy <ealmorshdy@d-matrix.ai>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794955038; l=4205;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794955038; l=2156;
  i=ealmorshdy@d-matrix.ai; s=20261015; h=from:subject:message-id;
- bh=Njf1unyjBHRByVolS5NPRPLzAKagoAYgS8m2ruhOZVc=;
- b=xLjQr0O+gYHKA6K9JBIb/pcyBScOJp5qBIyNycPYJ32SKYY3xs/6ECsf2aRiwja8fiAa2H9eR
- 1ymd0d8ElstDDzZ55UNKryf5LxrBXL/ML3/PLToMDwgC4eY6f7GG+dE
+ bh=LDD7eY6fQEebFO9lkJUW3O43ywlFHyv32e3keoRksIE=;
+ b=AKGSJJXeziONY4nUdLvauabg4/czIbgkYDMO6ODNkfIB0E5YgB7Po9Hphn4BbCMrP/a3Uk4KN
+ GCSFu40vyoJD1VGY2US3BhxzEvQytj6fg/ZkOGaoSn1glu3XXA3fgSH
 X-Developer-Key: i=ealmorshdy@d-matrix.ai; a=ed25519;
  pk=E4tVAIvp2rvz2CB7Re6YVMP6FiUVSxuq0TUtjGQL5NM=
 X-Endpoint-Received: by B4 Relay for ealmorshdy@d-matrix.ai/20261015 with auth_id=1187
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Sample a process that dtrace neither started nor attached to, and check
-that ufunc() names the function running in its shared library, for
-libraries linked at 0 and at 0x200000 by GNU ld (-Ttext-segment) and by
-lld (--image-base).  Symbolizing such a process uses libproc's computed
-load bias; without the previous patch the samples in the libraries
-linked at 0x200000 are shown as bare addresses.
-
-Linkers that are not installed are left out; the .x file skips the test
-if neither is.
+Return the load bias of the object mapped at a given address, as libproc
+already computes it for symbol lookups (from ld.so's link map, or from
+the object's first mapping).  The next patch uses it to relocate
+link-time addresses given by the user.
 
 Signed-off-by: Eslam Almorshdy <ealmorshdy@d-matrix.ai>
 ---
- test/unittest/profile-n/tst.ufunc-loadbias.r  |  1 +
- test/unittest/profile-n/tst.ufunc-loadbias.sh | 85 +++++++++++++++++++++++++++
- test/unittest/profile-n/tst.ufunc-loadbias.x  | 14 +++++
- 3 files changed, 100 insertions(+)
+ libproc/Psymtab.c | 30 ++++++++++++++++++++++++++++++
+ libproc/libproc.h |  1 +
+ 2 files changed, 31 insertions(+)
 
-diff --git a/test/unittest/profile-n/tst.ufunc-loadbias.r b/test/unittest/profile-n/tst.ufunc-loadbias.r
-new file mode 100644
-index 00000000..2e9ba477
---- /dev/null
-+++ b/test/unittest/profile-n/tst.ufunc-loadbias.r
-@@ -0,0 +1 @@
-+success
-diff --git a/test/unittest/profile-n/tst.ufunc-loadbias.sh b/test/unittest/profile-n/tst.ufunc-loadbias.sh
-new file mode 100755
-index 00000000..a409477c
---- /dev/null
-+++ b/test/unittest/profile-n/tst.ufunc-loadbias.sh
-@@ -0,0 +1,85 @@
-+#!/bin/bash
-+#
-+# Oracle Linux DTrace.
-+# Copyright (c) 2026, d-Matrix Corporation. All rights reserved.
-+# Licensed under the Universal Permissive License v 1.0 as shown at
-+# http://oss.oracle.com/licenses/upl.
-+#
-+# Check that ufunc() names the function running in a shared library of a
-+# process that dtrace neither started nor attached to, for libraries linked
-+# at 0 and at 0x200000 by GNU ld and by lld.
-+#
-+# Without the dynamic linker's link map, libproc computes a library's load
-+# bias from its first mapping.  The bias is the mapping's start minus the
-+# first PT_LOAD's page-aligned p_vaddr; subtracting only the part of p_vaddr
-+# below p_align leaves it too high by the link address, and the samples are
-+# shown as bare addresses.  Linkers that are not installed are left out; the
-+# .x file skips the test if neither is.
-+#
-+
-+dtrace=$1
-+utils=$PWD/test/utils
-+declare -A base=([bfd]=-Wl,-Ttext-segment=0x200000
-+		 [lld]=-Wl,--image-base=0x200000)
-+
-+DIRNAME=$tmpdir/ufunc-loadbias.$$.$RANDOM
-+mkdir -p $DIRNAME
-+cd $DIRNAME
-+
-+cat > work.c <<EOF
-+volatile unsigned long spin;
-+
-+__attribute__((noinline)) void work(void)
+diff --git a/libproc/Psymtab.c b/libproc/Psymtab.c
+index b713e439..afabf794 100644
+--- a/libproc/Psymtab.c
++++ b/libproc/Psymtab.c
+@@ -2279,6 +2279,36 @@ Pobject_iter(struct ps_prochandle *P, proc_map_f *func, void *cd)
+ 	return 0;
+ }
+ 
++/*
++ * Given an address in the process, return in *biasp the load bias of the
++ * object mapped there: the difference between its runtime and its
++ * link-time addresses (0 for ET_EXEC objects).  Returns 0 on success, -1
++ * on failure.
++ */
++int
++Paddr_to_load_bias(struct ps_prochandle *P, uintptr_t addr, uintptr_t *biasp)
 +{
-+	unsigned long i;
++	map_info_t *mptr;
++	file_info_t *fptr;
 +
-+	for (i = 0; i < 20000000UL; i++)
-+		spin += i;
-+}
-+EOF
++	if (P->state == PS_DEAD)
++		return -1;
 +
-+cat > main.c <<EOF
-+#include <unistd.h>
++	Pupdate_maps(P);
++	Pupdate_lmids(P);
 +
-+extern void work(void);
++	if ((mptr = Paddr2mptr(P, addr)) == NULL ||
++	    (fptr = mptr->map_file) == NULL)
++		return -1;
 +
-+int main(void)
-+{
-+	int i;
++	Pbuild_file_symtab(P, fptr);
++	if (fptr->file_elf == NULL)
++		return -1;
 +
-+	for (i = 0; i < 1000; i++) {
-+		work();
-+		usleep(1000);
-+	}
++	*biasp = fptr->file_dyn_base;
 +	return 0;
 +}
-+EOF
 +
-+status=0
-+for ld in $($utils/linkers.sh); do
-+	$CC -O0 -fuse-ld=$ld -fPIC -shared -o libwork-$ld.so work.c &&
-+	$CC -O0 -fuse-ld=$ld -fPIC -shared ${base[$ld]} \
-+	    -o libwork-$ld-base.so work.c || exit 1
-+
-+	for l in $ld $ld-base; do
-+		$CC -fuse-ld=$ld -o main-$l main.c -L. -lwork-$l \
-+		    -Wl,-rpath,$DIRNAME || exit 1
-+		./main-$l &
-+		pid=$!
-+		$dtrace $dt_flags -qn '
-+		profile-997 /pid == '$pid' && arg1 != 0/ { @[ufunc(arg1)] = count(); }
-+		tick-1s { exit(0); }' > out-$l 2>&1
-+		kill $pid
-+		wait $pid 2> /dev/null
-+
-+		if ! awk -v f="libwork-$l.so\`work" '$1 == f { found = 1 }
-+		    END { exit !found }' out-$l; then
-+			echo "ERROR: libwork-$l.so: no sample in work():"
-+			cat out-$l
-+			status=1
-+		fi
-+	done
-+done
-+
-+[ $status -eq 0 ] && echo success
-+exit $status
-diff --git a/test/unittest/profile-n/tst.ufunc-loadbias.x b/test/unittest/profile-n/tst.ufunc-loadbias.x
-new file mode 100755
-index 00000000..e5a3ad3e
---- /dev/null
-+++ b/test/unittest/profile-n/tst.ufunc-loadbias.x
-@@ -0,0 +1,14 @@
-+#!/bin/bash
-+#
-+# Oracle Linux DTrace.
-+# Copyright (c) 2026, d-Matrix Corporation. All rights reserved.
-+# Licensed under the Universal Permissive License v 1.0 as shown at
-+# http://oss.oracle.com/licenses/upl.
-+#
-+# This test needs GNU ld or lld.
-+
-+if ! test/utils/linkers.sh > /dev/null; then
-+	echo "neither GNU ld nor ld.lld is available"
-+	exit 2
-+fi
-+exit 0
+ /*
+  * Given a virtual address, return the name of the underlying
+  * mapped object (file) as provided by the dynamic linker.
+diff --git a/libproc/libproc.h b/libproc/libproc.h
+index 59c73051..5cbc7423 100644
+--- a/libproc/libproc.h
++++ b/libproc/libproc.h
+@@ -256,6 +256,7 @@ typedef int proc_map_f(void *, const prmap_t *, const char *);
+ extern int Pobject_iter(struct ps_prochandle *, proc_map_f *, void *);
+ 
+ extern const prmap_t *Paddr_to_map(struct ps_prochandle *, uintptr_t);
++extern int Paddr_to_load_bias(struct ps_prochandle *, uintptr_t, uintptr_t *);
+ extern const prmap_t *Pname_to_map(struct ps_prochandle *, const char *);
+ extern const prmap_t *Plmid_to_map(struct ps_prochandle *,
+     Lmid_t, const char *);
 
 -- 
 2.55.0
