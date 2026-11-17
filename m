@@ -1,256 +1,175 @@
-From: Joseph Telaak <joseph@telaak.dev>
-Date: Mon, 16 Nov 2026 19:31:33 -0500
-Subject: [PATCH v2 2/2] phy: siflower: Add SF19A2890 USB 2.0 PHY driver
+From: Igor Velkov <iav@iav.lv>
+Date: Tue, 17 Nov 2026 00:54:06 +0000
+Subject: [PATCH net v2] net: mdio: mux-meson-g12a: keep the MAC data path
+ when switching MDIO
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-sf19a2890-usb-phy-v2-2-df3ce9d23f5a@telaak.dev>
-References: <20261116-sf19a2890-usb-phy-v2-0-df3ce9d23f5a@telaak.dev>
-In-Reply-To: <20261116-sf19a2890-usb-phy-v2-0-df3ce9d23f5a@telaak.dev>
-To: Vinod Koul <vkoul@kernel.org>, 
+Message-Id: <20261117-g12a-mux-data-path-v2-1-fc56db5973af@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAK6l+2oC/32NTQ6CMBCFr0Jm7RimKn8r72FYDLTCJFpIWxsM4
+ e42PYDL77287+3gjRPjoSt2cCaKl8UmUKcCxpntZFB0YlClqojohhMpxvdnQ82BceUwY3VVPOh
+ hrAfVQhquzjxly9IHWBOgT+EsPizum48i5eqfMxISlkSadX1pqra5C8fzK0J/HMcPQbjRyLYAA
+ AA=
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: Chuanhong Guo <gch981213@gmail.com>, linux-mips@vger.kernel.org, 
- linux-phy@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Joseph Telaak <joseph@telaak.dev>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794875503; l=7116;
- i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=8HvG1pdy9K5Hi5HXJ2aiw/2AyyYBFJcOC4UpudfQu64=;
- b=UdoDRWnPY4rkXXAP+VdrRfKV79cOCnmlpxd0Xtt/IKof8gn0MJ9dzSntD39By6SLP3IdPoBks
- Ena7c97tAyRBbECyvTTycQfpFEAGME8WjZViEmS5jVGQHLGiZTCzFEi
-X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
- pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
-X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4841; i=iav@iav.lv;
+ h=from:subject:message-id; bh=Oka1iBI9vfxsi4AhO3yJ38sooyDgeJia2wLavleLy1U=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFm/l25o1Wb33sA1P7/WYGdUtIT4ga9nZLmeb3rAPiUoe
+ Y5Php1fRykLgxgXg6yYIsuEQxq3MpZc/evvYf4AZg4rE8gQBi5OAZhIqwfD/zTzR62Lp0xv87za
+ +3b5mhr/Lh7x6js/L78psNGzrHt0SZHhf8WnScJL1tlOCwqYu2ZTdyFjV/f7kOyeUxZaop5nV6S
+ HMwIA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Chuanhong Guo <gch981213@gmail.com>
+Switching the mux to the internal MDIO bus writes SMI_SRC_MAC together
+with USE_INTERNAL and RX_CLK_EPHY to ETH_PHY_CNTL2. The last two move the
+MAC data path and RX clock to the internal PHY. On boards whose MAC uses
+an external PHY, any access to the internal PHY stops reception until an
+access to the external bus switches the mux back.
 
-Add a driver for the USB 2.0 PHY of the Siflower SF19A2890. Powering it
-on enables its reference clock, releases its two resets and takes it
-out of sleep.
+phylib suspends and resumes the unattached internal PHY across system
+sleep. stmmac sets mac_managed_pm, and with Wake-on-LAN in the MAC
+phylink_resume() does not start the external PHY, so nothing switches
+the mux back. On ODROID-HC4 (RTL8211F), after suspend-to-RAM with WoL in
+the MAC and an RTC wakeup, ETH_PHY_CNTL2 stays at 0x260 and the MAC
+receives nothing while TX works.
 
-Signed-off-by: Chuanhong Guo <gch981213@gmail.com>
-[Joseph Telaak:
-  - take the SF19A2890 PHY only, from Chuanhong's siflower-7.1 branch
-  - name the resets "por" and "phy"
-  - get and toggle the two resets with the bulk reset API
-  - dev_err_probe() for the resets
-  - drop the unused includes and drvdata
-  - Kconfig dependencies and help, commit message and subject]
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+With the MAC on the external PHY, SMI_SRC_MAC alone is enough to read
+the internal PHY ID (0x0180/0x3301) while RX keeps running; adding
+USE_INTERNAL or RX_CLK_EPHY stops RX.
+
+Set the data path bits only when the PHY the MAC attaches sits on the
+internal bus. Look the PHY up with fwnode_get_phy_node(), as stmmac
+does, so phy-handle and the deprecated phy and phy-device all count.
+
+Fixes: 7090425104db ("net: phy: add amlogic g12a mdio mux support")
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- MAINTAINERS                              |   1 +
- drivers/phy/Kconfig                      |   1 +
- drivers/phy/Makefile                     |   1 +
- drivers/phy/siflower/Kconfig             |  12 +++
- drivers/phy/siflower/Makefile            |   2 +
- drivers/phy/siflower/phy-sf19a2890-usb.c | 132 +++++++++++++++++++++++++++++++
- 6 files changed, 149 insertions(+)
+Tested on ODROID-HC4: three RTC wakeups from suspend-to-RAM with WoL in
+the MAC (ETH_PHY_CNTL2 0x40, RX working), one without WoL.
+---
+Changes in v2:
+- Find the PHY with fwnode_get_phy_node(), as stmmac does, so the
+  deprecated phy and phy-device references count too (Sashiko).
+- Drop the dwmac-rk comparison from the comment and commit message.
+- Link to v1: https://lore.kernel.org/r/20261115-g12a-mux-data-path-v1-1-011dad738698@iav.lv
+---
+ drivers/net/mdio/mdio-mux-meson-g12a.c | 50 ++++++++++++++++++++++++++++++----
+ 1 file changed, 45 insertions(+), 5 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 7033d9b6152d..b9d5cfd3e30b 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -25703,6 +25703,7 @@ M:	Joseph Telaak <joseph@telaak.dev>
- L:	linux-phy@lists.infradead.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/phy/siflower,sf19a2890-usb-phy.yaml
-+F:	drivers/phy/siflower/phy-sf19a2890-usb.c
+diff --git a/drivers/net/mdio/mdio-mux-meson-g12a.c b/drivers/net/mdio/mdio-mux-meson-g12a.c
+index 71c44385489d..e0acbd3ed383 100644
+--- a/drivers/net/mdio/mdio-mux-meson-g12a.c
++++ b/drivers/net/mdio/mdio-mux-meson-g12a.c
+@@ -12,6 +12,7 @@
+ #include <linux/iopoll.h>
+ #include <linux/mdio-mux.h>
+ #include <linux/module.h>
++#include <linux/of.h>
+ #include <linux/phy.h>
+ #include <linux/platform_device.h>
  
- SILEAD TOUCHSCREEN DRIVER
- M:	Hans de Goede <hansg@kernel.org>
-diff --git a/drivers/phy/Kconfig b/drivers/phy/Kconfig
-index 105fbe408aa2..8ba351e23c09 100644
---- a/drivers/phy/Kconfig
-+++ b/drivers/phy/Kconfig
-@@ -194,6 +194,7 @@ source "drivers/phy/realtek/Kconfig"
- source "drivers/phy/renesas/Kconfig"
- source "drivers/phy/rockchip/Kconfig"
- source "drivers/phy/samsung/Kconfig"
-+source "drivers/phy/siflower/Kconfig"
- source "drivers/phy/socionext/Kconfig"
- source "drivers/phy/sophgo/Kconfig"
- source "drivers/phy/spacemit/Kconfig"
-diff --git a/drivers/phy/Makefile b/drivers/phy/Makefile
-index c6dd02003bbe..8c917c4c5531 100644
---- a/drivers/phy/Makefile
-+++ b/drivers/phy/Makefile
-@@ -46,6 +46,7 @@ obj-$(CONFIG_GENERIC_PHY)		+= allwinner/	\
- 					   renesas/	\
- 					   rockchip/	\
- 					   samsung/	\
-+					   siflower/	\
- 					   socionext/	\
- 					   sophgo/	\
- 					   spacemit/	\
-diff --git a/drivers/phy/siflower/Kconfig b/drivers/phy/siflower/Kconfig
-new file mode 100644
-index 000000000000..5ae1f83d1449
---- /dev/null
-+++ b/drivers/phy/siflower/Kconfig
-@@ -0,0 +1,12 @@
-+# SPDX-License-Identifier: GPL-2.0-only
+@@ -56,6 +57,7 @@ struct g12a_mdio_mux {
+ 	void __iomem *regs;
+ 	void *mux_handle;
+ 	struct clk *pll;
++	bool mac_uses_internal_phy;
+ };
+ 
+ struct g12a_ephy_pll {
+@@ -149,7 +151,7 @@ static const struct clk_ops g12a_ephy_pll_ops = {
+ 
+ static int g12a_enable_internal_mdio(struct g12a_mdio_mux *priv)
+ {
+-	u32 value;
++	u32 value, cntl2;
+ 	int ret;
+ 
+ 	/* Enable the phy clock */
+@@ -169,10 +171,11 @@ static int g12a_enable_internal_mdio(struct g12a_mdio_mux *priv)
+ 		PHY_CNTL1_CLK_EN |
+ 		PHY_CNTL1_CLKFREQ;
+ 	writel(value, priv->regs + ETH_PHY_CNTL1);
+-	writel(PHY_CNTL2_USE_INTERNAL |
+-	       PHY_CNTL2_SMI_SRC_MAC |
+-	       PHY_CNTL2_RX_CLK_EPHY,
+-	       priv->regs + ETH_PHY_CNTL2);
 +
-+config PHY_SF19A2890_USB
-+	tristate "Siflower SF19A2890 USB 2.0 PHY driver"
-+	depends on MACH_SIFLOWER_MIPS || COMPILE_TEST
-+	depends on OF
-+	select GENERIC_PHY
-+	help
-+	  Enable this to support the USB 2.0 PHY of the Siflower SF19A2890,
-+	  used by its DWC2 controller. Its reference clock and its resets
-+	  come from the USB block's clock and reset manager.
-+	  Say M or Y if the kernel is to run on this SoC.
-diff --git a/drivers/phy/siflower/Makefile b/drivers/phy/siflower/Makefile
-new file mode 100644
-index 000000000000..a12383193429
---- /dev/null
-+++ b/drivers/phy/siflower/Makefile
-@@ -0,0 +1,2 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+obj-$(CONFIG_PHY_SF19A2890_USB)	+= phy-sf19a2890-usb.o
-diff --git a/drivers/phy/siflower/phy-sf19a2890-usb.c b/drivers/phy/siflower/phy-sf19a2890-usb.c
-new file mode 100644
-index 000000000000..a7de66e54cba
---- /dev/null
-+++ b/drivers/phy/siflower/phy-sf19a2890-usb.c
-@@ -0,0 +1,132 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+
-+#include <linux/array_size.h>
-+#include <linux/clk.h>
-+#include <linux/device-id/of.h>
-+#include <linux/io.h>
-+#include <linux/module.h>
-+#include <linux/phy/phy.h>
-+#include <linux/platform_device.h>
-+#include <linux/reset.h>
-+
-+#define USB_SLEEPM 0x4
-+
-+struct sf19a2890_usb_phy {
-+	struct device *dev;
-+	struct clk *phy_clk;
-+	/* Asserted in this order, deasserted in reverse */
-+	struct reset_control_bulk_data resets[2];
-+	void __iomem *base;
-+};
-+
-+static int sf19a2890_usb_phy_power_on(struct phy *phy)
++	cntl2 = PHY_CNTL2_SMI_SRC_MAC;
++	if (priv->mac_uses_internal_phy)
++		cntl2 |= PHY_CNTL2_USE_INTERNAL | PHY_CNTL2_RX_CLK_EPHY;
++	writel(cntl2, priv->regs + ETH_PHY_CNTL2);
+ 
+ 	value |= PHY_CNTL1_PHY_ENB;
+ 	writel(value, priv->regs + ETH_PHY_CNTL1);
+@@ -301,6 +304,42 @@ static int g12a_ephy_glue_clk_register(struct device *dev)
+ 	return 0;
+ }
+ 
++/* The data path follows the PHY the MAC attaches, looked up as stmmac does */
++static bool g12a_mac_uses_internal_phy(struct device_node *mux_np)
 +{
-+	struct sf19a2890_usb_phy *p_phy = phy_get_drvdata(phy);
-+	int ret;
++	struct device_node *parent_bus, *mac, *phy_bus, *mux;
++	struct fwnode_handle *phy;
++	bool internal = false;
++	u32 reg;
 +
-+	ret = clk_prepare_enable(p_phy->phy_clk);
-+	if (ret) {
-+		dev_err(p_phy->dev, "failed to enable the PHY clock: %d\n",
-+			ret);
-+		return ret;
-+	}
++	parent_bus = of_parse_phandle(mux_np, "mdio-parent-bus", 0);
++	if (!parent_bus)
++		return false;
 +
-+	ret = reset_control_bulk_deassert(ARRAY_SIZE(p_phy->resets),
-+					  p_phy->resets);
-+	if (ret)
-+		goto err_disable_clk;
++	mac = of_get_parent(parent_bus);
++	of_node_put(parent_bus);
++	if (!mac)
++		return false;
 +
-+	writel(1, p_phy->base + USB_SLEEPM);
-+	return 0;
-+
-+err_disable_clk:
-+	clk_disable_unprepare(p_phy->phy_clk);
-+	return ret;
-+}
-+
-+static int sf19a2890_usb_phy_power_off(struct phy *phy)
-+{
-+	struct sf19a2890_usb_phy *p_phy = phy_get_drvdata(phy);
-+
-+	writel(0, p_phy->base + USB_SLEEPM);
-+	reset_control_bulk_assert(ARRAY_SIZE(p_phy->resets), p_phy->resets);
-+	clk_disable_unprepare(p_phy->phy_clk);
-+	return 0;
-+}
-+
-+static const struct phy_ops sf19a2890_usb_phy_ops = {
-+	.power_on = sf19a2890_usb_phy_power_on,
-+	.power_off = sf19a2890_usb_phy_power_off,
-+	.owner = THIS_MODULE,
-+};
-+
-+static int sf19a2890_usb_phy_probe(struct platform_device *pdev)
-+{
-+	struct sf19a2890_usb_phy *p_phy;
-+	struct phy_provider *provider;
-+	struct phy *phy;
-+	int ret;
-+
-+	p_phy = devm_kzalloc(&pdev->dev, sizeof(*p_phy), GFP_KERNEL);
-+	if (!p_phy)
-+		return -ENOMEM;
-+
-+	p_phy->dev = &pdev->dev;
-+
-+	p_phy->base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(p_phy->base))
-+		return PTR_ERR(p_phy->base);
-+
-+	p_phy->phy_clk = devm_clk_get(p_phy->dev, NULL);
-+	if (IS_ERR(p_phy->phy_clk))
-+		return dev_err_probe(p_phy->dev, PTR_ERR(p_phy->phy_clk),
-+				     "failed to get the PHY clock\n");
-+
-+	p_phy->resets[0].id = "por";
-+	p_phy->resets[1].id = "phy";
-+	ret = devm_reset_control_bulk_get_exclusive(p_phy->dev,
-+						    ARRAY_SIZE(p_phy->resets),
-+						    p_phy->resets);
-+	if (ret)
-+		return dev_err_probe(p_phy->dev, ret,
-+				     "failed to get the resets\n");
-+
-+	ret = reset_control_bulk_assert(ARRAY_SIZE(p_phy->resets),
-+					p_phy->resets);
-+	if (ret)
-+		return ret;
-+
-+	phy = devm_phy_create(p_phy->dev, NULL, &sf19a2890_usb_phy_ops);
++	phy = fwnode_get_phy_node(of_fwnode_handle(mac));
++	of_node_put(mac);
 +	if (IS_ERR(phy))
-+		return dev_err_probe(p_phy->dev, PTR_ERR(phy),
-+				     "failed to create the PHY\n");
++		return false;
 +
-+	phy_set_drvdata(phy, p_phy);
++	phy_bus = of_get_parent(to_of_node(phy));
++	fwnode_handle_put(phy);
++	if (!phy_bus)
++		return false;
 +
-+	provider = devm_of_phy_provider_register(p_phy->dev,
-+						 of_phy_simple_xlate);
-+	if (IS_ERR(provider))
-+		return dev_err_probe(p_phy->dev, PTR_ERR(provider),
-+				     "failed to register the PHY provider\n");
++	mux = of_get_parent(phy_bus);
++	if (mux == mux_np && !of_property_read_u32(phy_bus, "reg", &reg))
++		internal = (reg == MESON_G12A_MDIO_INTERNAL_ID);
++	of_node_put(mux);
++	of_node_put(phy_bus);
 +
-+	return 0;
++	return internal;
 +}
 +
-+static const struct of_device_id sf19a2890_usb_phy_of_match[] = {
-+	{ .compatible = "siflower,sf19a2890-usb-phy" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, sf19a2890_usb_phy_of_match);
-+
-+static struct platform_driver sf19a2890_usb_phy_driver = {
-+	.probe		= sf19a2890_usb_phy_probe,
-+	.driver		= {
-+		.name	= "sf19a2890-usb-phy",
-+		.of_match_table = sf19a2890_usb_phy_of_match,
-+	},
-+};
-+module_platform_driver(sf19a2890_usb_phy_driver);
-+
-+MODULE_AUTHOR("Ziying Wu <ziying.wu@siflower.com.cn>");
-+MODULE_DESCRIPTION("Siflower SF19A2890 USB 2.0 PHY driver");
-+MODULE_LICENSE("GPL");
+ static int g12a_mdio_mux_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -313,6 +352,7 @@ static int g12a_mdio_mux_probe(struct platform_device *pdev)
+ 		return -ENOMEM;
+ 
+ 	platform_set_drvdata(pdev, priv);
++	priv->mac_uses_internal_phy = g12a_mac_uses_internal_phy(dev->of_node);
+ 
+ 	priv->regs = devm_platform_ioremap_resource(pdev, 0);
+ 	if (IS_ERR(priv->regs))
 
+---
+base-commit: aa40afa831ebfe45e40a23721711059f2ac584d4
+change-id: 20261115-g12a-mux-data-path-642abdbc7b29
+
+Best regards,
 -- 
-Git-155)
+Igor Velkov <iav@iav.lv>
 
