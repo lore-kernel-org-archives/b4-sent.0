@@ -1,10 +1,10 @@
 From: Peder Bergan <peder.bergan@gmail.com>
-Date: Tue, 17 Nov 2026 18:57:06 +0100
-Subject: [PATCH v2 1/2] rust: str: tie Formatter to its backing buffer
+Date: Tue, 17 Nov 2026 18:57:07 +0100
+Subject: [PATCH v2 2/2] rust: str: add an example for Formatter::new
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-formatter-lifetime-v2-1-e216d86ffb57@gmail.com>
+Message-Id: <20261117-formatter-lifetime-v2-2-e216d86ffb57@gmail.com>
 References: <20261117-formatter-lifetime-v2-0-e216d86ffb57@gmail.com>
 In-Reply-To: <20261117-formatter-lifetime-v2-0-e216d86ffb57@gmail.com>
 To: Miguel Ojeda <ojeda@kernel.org>
@@ -21,54 +21,52 @@ Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>,
  stable@vger.kernel.org, 
  Georgios Androutsopoulos <georgeandrout13@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794938225; l=1630;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794938225; l=1243;
  i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
- bh=pk/XTxsT2Cck/gs1Jsjp5EjCnE+z6vFIFe6DZRaRaow=;
- b=UoEl7Jj1iJ543UmZ3DLnqWPw6c1Qv4seKjCgdMzsZgxf7j+C+CMr64hZ+7DDXKBoYx7hRigaY
- L0xurLXmFn6C9QfFLvxg2XjC4XUGNfPCGKUGgU4BUqAmz3L4JsVmBxm
+ bh=cXnDKX6DUJYzotZgM4eodRj9988SY5vag/57CgAxefA=;
+ b=ftlkleDiJFBrpP5Go7Zmk+scHV6bzIGVdtrSzMBuq71SDPvACTVvj4xa0XhOcRCoa6bVKLGMp
+ tn8Qq+MxRm8A7huSNZqHvGsypCZTXzVQX9Iuo9O0dTqDGEF8niqOGRZ
 X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
  pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
 X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Formatter::new() returns a Formatter whose lifetime is independent of the
-borrow of its backing buffer. Safe code can therefore drop the buffer and
-then write through the formatter, causing a use-after-free.
+Document the exclusive buffer borrow held by Formatter::new() and show
+formatting into a live buffer. Check the number of bytes written and the
+resulting buffer contents.
 
-Tie the buffer borrow to the formatter's lifetime so that the borrow
-checker rejects such callers and prevents overlapping mutable access.
-
-Fixes: 87482d6d9104 ("rust: str: allow `str::Formatter` to format into `&mut [u8]`.")
-Cc: stable@vger.kernel.org
-Reported-by: Georgios Androutsopoulos <georgeandrout13@gmail.com>
-Closes: https://github.com/Rust-for-Linux/linux/issues/1261
 Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
 ---
- rust/kernel/str.rs | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ rust/kernel/str.rs | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
 diff --git a/rust/kernel/str.rs b/rust/kernel/str.rs
-index 644b4279a..e5fe84eeb 100644
+index e5fe84eeb..6222faacf 100644
 --- a/rust/kernel/str.rs
 +++ b/rust/kernel/str.rs
-@@ -645,7 +645,7 @@ impl fmt::Write for RawFormatter {
- /// Fails if callers attempt to write more than will fit in the buffer.
- pub struct Formatter<'a>(RawFormatter, PhantomData<&'a mut ()>);
- 
--impl Formatter<'_> {
-+impl<'a> Formatter<'a> {
-     /// Creates a new instance of [`Formatter`] with the given buffer.
-     ///
-     /// # Safety
-@@ -658,7 +658,7 @@ impl Formatter<'_> {
+@@ -658,6 +658,22 @@ impl<'a> Formatter<'a> {
      }
  
      /// Create a new [`Self`] instance.
--    pub fn new(buffer: &mut [u8]) -> Self {
-+    pub fn new(buffer: &'a mut [u8]) -> Self {
++    ///
++    /// The formatter exclusively borrows `buffer` for its lifetime.
++    ///
++    /// # Examples
++    ///
++    /// ```
++    /// use kernel::fmt::Write as _;
++    /// use kernel::str::Formatter;
++    ///
++    /// let mut buffer = [0; 4];
++    /// let mut formatter = Formatter::new(&mut buffer);
++    /// formatter.write_str("test")?;
++    /// assert_eq!(formatter.bytes_written(), 4);
++    /// assert_eq!(&buffer, b"test");
++    /// # Ok::<(), kernel::error::Error>(())
++    /// ```
+     pub fn new(buffer: &'a mut [u8]) -> Self {
          // SAFETY: `buffer` is valid for writes for the entire length for
          // the lifetime of `Self`.
-         unsafe { Formatter::from_buffer(buffer.as_mut_ptr(), buffer.len()) }
 
 -- 
 2.56.1
