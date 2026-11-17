@@ -1,11 +1,10 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Mon, 16 Nov 2026 19:31:32 -0500
-Subject: [PATCH v2 1/2] dt-bindings: phy: Add Siflower SF19A2890 USB 2.0
- PHY
+Date: Mon, 16 Nov 2026 19:31:33 -0500
+Subject: [PATCH v2 2/2] phy: siflower: Add SF19A2890 USB 2.0 PHY driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-sf19a2890-usb-phy-v2-1-df3ce9d23f5a@telaak.dev>
+Message-Id: <20261116-sf19a2890-usb-phy-v2-2-df3ce9d23f5a@telaak.dev>
 References: <20261116-sf19a2890-usb-phy-v2-0-df3ce9d23f5a@telaak.dev>
 In-Reply-To: <20261116-sf19a2890-usb-phy-v2-0-df3ce9d23f5a@telaak.dev>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -15,111 +14,242 @@ To: Vinod Koul <vkoul@kernel.org>,
  Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
 Cc: Chuanhong Guo <gch981213@gmail.com>, linux-mips@vger.kernel.org, 
  linux-phy@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>, 
- Joseph Telaak <joseph@telaak.dev>
+ linux-kernel@vger.kernel.org, Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794875503; l=2519;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794875503; l=7116;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=f6jkKWPEJpHvw7GQNBeKtVPZhfiBTHRuEikeBW1F/aI=;
- b=0TxT4hFwBX4ctjLhXol0oKfxcNcIOA3WJkP411dJR2TC1ExAKcf6SnHtBpX7wIYkFW2lqMbTI
- lu+kvH7q+VzAcikxQhTikykSr72v7kvhRN87bMjSXdeBLXYdLyI6Oly
+ bh=8HvG1pdy9K5Hi5HXJ2aiw/2AyyYBFJcOC4UpudfQu64=;
+ b=UdoDRWnPY4rkXXAP+VdrRfKV79cOCnmlpxd0Xtt/IKof8gn0MJ9dzSntD39By6SLP3IdPoBks
+ Ena7c97tAyRBbECyvTTycQfpFEAGME8WjZViEmS5jVGQHLGiZTCzFEi
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The USB 2.0 PHY of the Siflower SF19A2890 serves its DWC2 controller.
-It takes a reference clock and two resets, power-on and PHY, from the
-USB block's clock and reset manager.
+From: Chuanhong Guo <gch981213@gmail.com>
 
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Add a driver for the USB 2.0 PHY of the Siflower SF19A2890. Powering it
+on enables its reference clock, releases its two resets and takes it
+out of sleep.
+
+Signed-off-by: Chuanhong Guo <gch981213@gmail.com>
+[Joseph Telaak:
+  - take the SF19A2890 PHY only, from Chuanhong's siflower-7.1 branch
+  - name the resets "por" and "phy"
+  - get and toggle the two resets with the bulk reset API
+  - dev_err_probe() for the resets
+  - drop the unused includes and drvdata
+  - Kconfig dependencies and help, commit message and subject]
 Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
- .../bindings/phy/siflower,sf19a2890-usb-phy.yaml   | 58 ++++++++++++++++++++++
- MAINTAINERS                                        |  6 +++
- 2 files changed, 64 insertions(+)
+ MAINTAINERS                              |   1 +
+ drivers/phy/Kconfig                      |   1 +
+ drivers/phy/Makefile                     |   1 +
+ drivers/phy/siflower/Kconfig             |  12 +++
+ drivers/phy/siflower/Makefile            |   2 +
+ drivers/phy/siflower/phy-sf19a2890-usb.c | 132 +++++++++++++++++++++++++++++++
+ 6 files changed, 149 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/phy/siflower,sf19a2890-usb-phy.yaml b/Documentation/devicetree/bindings/phy/siflower,sf19a2890-usb-phy.yaml
-new file mode 100644
-index 000000000000..77b8e35d8017
---- /dev/null
-+++ b/Documentation/devicetree/bindings/phy/siflower,sf19a2890-usb-phy.yaml
-@@ -0,0 +1,58 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/phy/siflower,sf19a2890-usb-phy.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Siflower SF19A2890 USB 2.0 PHY
-+
-+maintainers:
-+  - Joseph Telaak <joseph@telaak.dev>
-+
-+description:
-+  The USB 2.0 PHY of the Siflower SF19A2890, used by its DWC2 controller.
-+
-+properties:
-+  compatible:
-+    const: siflower,sf19a2890-usb-phy
-+
-+  reg:
-+    maxItems: 1
-+
-+  clocks:
-+    maxItems: 1
-+    description: PHY reference clock
-+
-+  resets:
-+    items:
-+      - description: power-on reset
-+      - description: PHY reset
-+
-+  reset-names:
-+    items:
-+      - const: por
-+      - const: phy
-+
-+  "#phy-cells":
-+    const: 0
-+
-+required:
-+  - compatible
-+  - reg
-+  - clocks
-+  - resets
-+  - reset-names
-+  - "#phy-cells"
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    usb-phy@19e0c040 {
-+        compatible = "siflower,sf19a2890-usb-phy";
-+        reg = <0x19e0c040 0x60>;
-+        clocks = <&usb_crm 2>;
-+        resets = <&usb_crm 1>, <&usb_crm 2>;
-+        reset-names = "por", "phy";
-+        #phy-cells = <0>;
-+    };
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 93abbb315065..7033d9b6152d 100644
+index 7033d9b6152d..b9d5cfd3e30b 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -25698,6 +25698,12 @@ N:	sifive
- K:	fu[57]40
- K:	[^@]sifive
+@@ -25703,6 +25703,7 @@ M:	Joseph Telaak <joseph@telaak.dev>
+ L:	linux-phy@lists.infradead.org
+ S:	Maintained
+ F:	Documentation/devicetree/bindings/phy/siflower,sf19a2890-usb-phy.yaml
++F:	drivers/phy/siflower/phy-sf19a2890-usb.c
  
-+SIFLOWER SF19A2890 USB PHY DRIVER
-+M:	Joseph Telaak <joseph@telaak.dev>
-+L:	linux-phy@lists.infradead.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/phy/siflower,sf19a2890-usb-phy.yaml
-+
  SILEAD TOUCHSCREEN DRIVER
  M:	Hans de Goede <hansg@kernel.org>
- L:	linux-input@vger.kernel.org
+diff --git a/drivers/phy/Kconfig b/drivers/phy/Kconfig
+index 105fbe408aa2..8ba351e23c09 100644
+--- a/drivers/phy/Kconfig
++++ b/drivers/phy/Kconfig
+@@ -194,6 +194,7 @@ source "drivers/phy/realtek/Kconfig"
+ source "drivers/phy/renesas/Kconfig"
+ source "drivers/phy/rockchip/Kconfig"
+ source "drivers/phy/samsung/Kconfig"
++source "drivers/phy/siflower/Kconfig"
+ source "drivers/phy/socionext/Kconfig"
+ source "drivers/phy/sophgo/Kconfig"
+ source "drivers/phy/spacemit/Kconfig"
+diff --git a/drivers/phy/Makefile b/drivers/phy/Makefile
+index c6dd02003bbe..8c917c4c5531 100644
+--- a/drivers/phy/Makefile
++++ b/drivers/phy/Makefile
+@@ -46,6 +46,7 @@ obj-$(CONFIG_GENERIC_PHY)		+= allwinner/	\
+ 					   renesas/	\
+ 					   rockchip/	\
+ 					   samsung/	\
++					   siflower/	\
+ 					   socionext/	\
+ 					   sophgo/	\
+ 					   spacemit/	\
+diff --git a/drivers/phy/siflower/Kconfig b/drivers/phy/siflower/Kconfig
+new file mode 100644
+index 000000000000..5ae1f83d1449
+--- /dev/null
++++ b/drivers/phy/siflower/Kconfig
+@@ -0,0 +1,12 @@
++# SPDX-License-Identifier: GPL-2.0-only
++
++config PHY_SF19A2890_USB
++	tristate "Siflower SF19A2890 USB 2.0 PHY driver"
++	depends on MACH_SIFLOWER_MIPS || COMPILE_TEST
++	depends on OF
++	select GENERIC_PHY
++	help
++	  Enable this to support the USB 2.0 PHY of the Siflower SF19A2890,
++	  used by its DWC2 controller. Its reference clock and its resets
++	  come from the USB block's clock and reset manager.
++	  Say M or Y if the kernel is to run on this SoC.
+diff --git a/drivers/phy/siflower/Makefile b/drivers/phy/siflower/Makefile
+new file mode 100644
+index 000000000000..a12383193429
+--- /dev/null
++++ b/drivers/phy/siflower/Makefile
+@@ -0,0 +1,2 @@
++# SPDX-License-Identifier: GPL-2.0-only
++obj-$(CONFIG_PHY_SF19A2890_USB)	+= phy-sf19a2890-usb.o
+diff --git a/drivers/phy/siflower/phy-sf19a2890-usb.c b/drivers/phy/siflower/phy-sf19a2890-usb.c
+new file mode 100644
+index 000000000000..a7de66e54cba
+--- /dev/null
++++ b/drivers/phy/siflower/phy-sf19a2890-usb.c
+@@ -0,0 +1,132 @@
++// SPDX-License-Identifier: GPL-2.0-only
++
++#include <linux/array_size.h>
++#include <linux/clk.h>
++#include <linux/device-id/of.h>
++#include <linux/io.h>
++#include <linux/module.h>
++#include <linux/phy/phy.h>
++#include <linux/platform_device.h>
++#include <linux/reset.h>
++
++#define USB_SLEEPM 0x4
++
++struct sf19a2890_usb_phy {
++	struct device *dev;
++	struct clk *phy_clk;
++	/* Asserted in this order, deasserted in reverse */
++	struct reset_control_bulk_data resets[2];
++	void __iomem *base;
++};
++
++static int sf19a2890_usb_phy_power_on(struct phy *phy)
++{
++	struct sf19a2890_usb_phy *p_phy = phy_get_drvdata(phy);
++	int ret;
++
++	ret = clk_prepare_enable(p_phy->phy_clk);
++	if (ret) {
++		dev_err(p_phy->dev, "failed to enable the PHY clock: %d\n",
++			ret);
++		return ret;
++	}
++
++	ret = reset_control_bulk_deassert(ARRAY_SIZE(p_phy->resets),
++					  p_phy->resets);
++	if (ret)
++		goto err_disable_clk;
++
++	writel(1, p_phy->base + USB_SLEEPM);
++	return 0;
++
++err_disable_clk:
++	clk_disable_unprepare(p_phy->phy_clk);
++	return ret;
++}
++
++static int sf19a2890_usb_phy_power_off(struct phy *phy)
++{
++	struct sf19a2890_usb_phy *p_phy = phy_get_drvdata(phy);
++
++	writel(0, p_phy->base + USB_SLEEPM);
++	reset_control_bulk_assert(ARRAY_SIZE(p_phy->resets), p_phy->resets);
++	clk_disable_unprepare(p_phy->phy_clk);
++	return 0;
++}
++
++static const struct phy_ops sf19a2890_usb_phy_ops = {
++	.power_on = sf19a2890_usb_phy_power_on,
++	.power_off = sf19a2890_usb_phy_power_off,
++	.owner = THIS_MODULE,
++};
++
++static int sf19a2890_usb_phy_probe(struct platform_device *pdev)
++{
++	struct sf19a2890_usb_phy *p_phy;
++	struct phy_provider *provider;
++	struct phy *phy;
++	int ret;
++
++	p_phy = devm_kzalloc(&pdev->dev, sizeof(*p_phy), GFP_KERNEL);
++	if (!p_phy)
++		return -ENOMEM;
++
++	p_phy->dev = &pdev->dev;
++
++	p_phy->base = devm_platform_ioremap_resource(pdev, 0);
++	if (IS_ERR(p_phy->base))
++		return PTR_ERR(p_phy->base);
++
++	p_phy->phy_clk = devm_clk_get(p_phy->dev, NULL);
++	if (IS_ERR(p_phy->phy_clk))
++		return dev_err_probe(p_phy->dev, PTR_ERR(p_phy->phy_clk),
++				     "failed to get the PHY clock\n");
++
++	p_phy->resets[0].id = "por";
++	p_phy->resets[1].id = "phy";
++	ret = devm_reset_control_bulk_get_exclusive(p_phy->dev,
++						    ARRAY_SIZE(p_phy->resets),
++						    p_phy->resets);
++	if (ret)
++		return dev_err_probe(p_phy->dev, ret,
++				     "failed to get the resets\n");
++
++	ret = reset_control_bulk_assert(ARRAY_SIZE(p_phy->resets),
++					p_phy->resets);
++	if (ret)
++		return ret;
++
++	phy = devm_phy_create(p_phy->dev, NULL, &sf19a2890_usb_phy_ops);
++	if (IS_ERR(phy))
++		return dev_err_probe(p_phy->dev, PTR_ERR(phy),
++				     "failed to create the PHY\n");
++
++	phy_set_drvdata(phy, p_phy);
++
++	provider = devm_of_phy_provider_register(p_phy->dev,
++						 of_phy_simple_xlate);
++	if (IS_ERR(provider))
++		return dev_err_probe(p_phy->dev, PTR_ERR(provider),
++				     "failed to register the PHY provider\n");
++
++	return 0;
++}
++
++static const struct of_device_id sf19a2890_usb_phy_of_match[] = {
++	{ .compatible = "siflower,sf19a2890-usb-phy" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, sf19a2890_usb_phy_of_match);
++
++static struct platform_driver sf19a2890_usb_phy_driver = {
++	.probe		= sf19a2890_usb_phy_probe,
++	.driver		= {
++		.name	= "sf19a2890-usb-phy",
++		.of_match_table = sf19a2890_usb_phy_of_match,
++	},
++};
++module_platform_driver(sf19a2890_usb_phy_driver);
++
++MODULE_AUTHOR("Ziying Wu <ziying.wu@siflower.com.cn>");
++MODULE_DESCRIPTION("Siflower SF19A2890 USB 2.0 PHY driver");
++MODULE_LICENSE("GPL");
 
 -- 
 Git-155)
