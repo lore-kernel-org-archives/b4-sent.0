@@ -1,11 +1,11 @@
 From: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-Date: Wed, 18 Nov 2026 07:29:54 +0000
-Subject: [PATCH v3 1/2] iio: light: adux1020: use guard() to simplify lock
- handling
+Date: Wed, 18 Nov 2026 07:29:55 +0000
+Subject: [PATCH v3 2/2] iio: light: adux1020: return early on unsupported
+ channel types
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-adux1020-guard-v3-1-2c6a18954fc7@gmail.com>
+Message-Id: <20261118-adux1020-guard-v3-2-2c6a18954fc7@gmail.com>
 References: <20261118-adux1020-guard-v3-0-2c6a18954fc7@gmail.com>
 In-Reply-To: <20261118-adux1020-guard-v3-0-2c6a18954fc7@gmail.com>
 To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -14,263 +14,216 @@ To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>,
  Andy Shevchenko <andy@kernel.org>
 Cc: linux@analog.com, linux-iio@vger.kernel.org, 
  linux-kernel@vger.kernel.org, 
- Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>, 
- Joshua Crofts <crofts@kernel.org>, 
- Andy Shevchenko <andriy.shevchenko@intel.com>
+ Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794986997; l=6315;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794986997; l=5621;
  i=raffaele.tranfaglia@gmail.com; s=20261011; h=from:subject:message-id;
- bh=DMtHrOaeoSbk69l93gv+SBOwCJ/sq3BfFEE9UbzKpVM=;
- b=fEXS8coQDCkDBlpSSLJkLT1MpCdBCZyfdktBYJRrZ1oXuDMfUB6XPy27wYJxxW55Owokn1FPd
- f+pyeGHhXGmDUR6KylinD9g8mTcaNlC1GEkUR438ZfS1LdQwCHxkZbI
+ bh=MV8Ao7tH+kZOZGFAQwihjZFywcvb8hOVDmLBq0ZEOik=;
+ b=y92lfZHFLsmTSDmXGNYuHYjI1hyYfPGoKkTax4EulSt/V6FTf5CFRhD3iKtF9MupJEsgzjB2K
+ 8c+ihzj5K1cDQuhQ3sfd7lXsJVj0nWyS3gMWiDY0wPrby1uNsR+fpnN
 X-Developer-Key: i=raffaele.tranfaglia@gmail.com; a=ed25519;
  pk=mweuSGNM6vguCTdqa+aiHwMXdgk70suj2wolzCp6XGM=
 X-Endpoint-Received: by B4 Relay for raffaele.tranfaglia@gmail.com/20261011 with auth_id=1160
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use guard(mutex) in adux1020_read_raw(), adux1020_write_raw() and
-adux1020_write_event_config() so the lock is released automatically on
-return. This allows returning directly instead of jumping to a common
-unlock label, and lets adux1020_write_raw() drop its ret variable.
+Now that adux1020_read_raw() and adux1020_write_raw() can return
+directly, check the channel type with an inverted condition and return
+-EINVAL early instead of nesting the work in an inner switch or if
+block. This removes one level of indentation and makes the two
+functions consistent with each other.
+
+While at it, add a local regmap pointer in adux1020_read_raw() and
+adux1020_write_raw() to shorten the regmap calls, check the return
+value of regmap_read() with 'if (ret)' since regmap only returns 0 or a
+negative error code, and drop the stray semicolon after the closing
+brace of adux1020_read_raw().
 
 No functional change intended.
 
 Suggested-by: Jonathan Cameron <jic23@kernel.org>
-Reviewed-by: Joshua Crofts <crofts@kernel.org>
-Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
 Signed-off-by: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
 ---
- drivers/iio/light/adux1020.c | 104 ++++++++++++++++---------------------------
- 1 file changed, 39 insertions(+), 65 deletions(-)
+ drivers/iio/light/adux1020.c | 131 ++++++++++++++++++++-----------------------
+ 1 file changed, 61 insertions(+), 70 deletions(-)
 
 diff --git a/drivers/iio/light/adux1020.c b/drivers/iio/light/adux1020.c
-index 6b32c5be4753..b595faf4abc5 100644
+index b595faf4abc5..5ee1994b6e50 100644
 --- a/drivers/iio/light/adux1020.c
 +++ b/drivers/iio/light/adux1020.c
-@@ -9,6 +9,7 @@
-  */
- 
- #include <linux/bitfield.h>
-+#include <linux/cleanup.h>
- #include <linux/delay.h>
- #include <linux/err.h>
- #include <linux/i2c.h>
-@@ -362,10 +363,10 @@ static int adux1020_read_raw(struct iio_dev *indio_dev,
+@@ -362,6 +362,7 @@ static int adux1020_read_raw(struct iio_dev *indio_dev,
+ 			     int *val, int *val2, long mask)
  {
  	struct adux1020_data *data = iio_priv(indio_dev);
++	struct regmap *map = data->regmap;
  	u16 buf[3];
--	int ret = -EINVAL;
  	unsigned int regval;
-+	int ret;
- 
--	mutex_lock(&data->lock);
-+	guard(mutex)(&data->lock);
+ 	int ret;
+@@ -370,61 +371,54 @@ static int adux1020_read_raw(struct iio_dev *indio_dev,
  
  	switch (mask) {
  	case IIO_CHAN_INFO_RAW:
-@@ -373,69 +374,56 @@ static int adux1020_read_raw(struct iio_dev *indio_dev,
- 		case IIO_PROXIMITY:
- 			ret = adux1020_set_mode(data, ADUX1020_MODE_PROX_I);
- 			if (ret < 0)
--				goto fail;
-+				return ret;
+-		switch (chan->type) {
+-		case IIO_PROXIMITY:
+-			ret = adux1020_set_mode(data, ADUX1020_MODE_PROX_I);
+-			if (ret < 0)
+-				return ret;
+-
+-			ret = adux1020_measure(data, ADUX1020_MODE_PROX_I, buf);
+-			if (ret < 0)
+-				return ret;
+-
+-			*val = buf[0];
+-			return IIO_VAL_INT;
+-		default:
++		if (chan->type != IIO_PROXIMITY)
+ 			return -EINVAL;
+-		}
+-	case IIO_CHAN_INFO_PROCESSED:
+-		switch (chan->type) {
+-		case IIO_CURRENT:
+-			ret = regmap_read(data->regmap,
+-					  ADUX1020_REG_LED_CURRENT, &regval);
+-			if (ret < 0)
+-				return ret;
  
- 			ret = adux1020_measure(data, ADUX1020_MODE_PROX_I, buf);
- 			if (ret < 0)
--				goto fail;
-+				return ret;
+-			regval = regval & ADUX1020_LED_CURRENT_MASK;
++		ret = adux1020_set_mode(data, ADUX1020_MODE_PROX_I);
++		if (ret < 0)
++			return ret;
  
- 			*val = buf[0];
--			ret = IIO_VAL_INT;
--			break;
-+			return IIO_VAL_INT;
- 		default:
--			break;
-+			return -EINVAL;
- 		}
--		break;
- 	case IIO_CHAN_INFO_PROCESSED:
- 		switch (chan->type) {
- 		case IIO_CURRENT:
- 			ret = regmap_read(data->regmap,
- 					  ADUX1020_REG_LED_CURRENT, &regval);
- 			if (ret < 0)
--				goto fail;
-+				return ret;
+-			*val = adux1020_led_currents[regval][0];
+-			*val2 = adux1020_led_currents[regval][1];
++		ret = adux1020_measure(data, ADUX1020_MODE_PROX_I, buf);
++		if (ret < 0)
++			return ret;
  
- 			regval = regval & ADUX1020_LED_CURRENT_MASK;
- 
- 			*val = adux1020_led_currents[regval][0];
- 			*val2 = adux1020_led_currents[regval][1];
- 
--			ret = IIO_VAL_INT_PLUS_MICRO;
--			break;
-+			return IIO_VAL_INT_PLUS_MICRO;
- 		default:
--			break;
-+			return -EINVAL;
- 		}
--		break;
+-			return IIO_VAL_INT_PLUS_MICRO;
+-		default:
++		*val = buf[0];
++
++		return IIO_VAL_INT;
++	case IIO_CHAN_INFO_PROCESSED:
++		if (chan->type != IIO_CURRENT)
+ 			return -EINVAL;
+-		}
++
++		ret = regmap_read(map, ADUX1020_REG_LED_CURRENT, &regval);
++		if (ret)
++			return ret;
++
++		regval = regval & ADUX1020_LED_CURRENT_MASK;
++
++		*val = adux1020_led_currents[regval][0];
++		*val2 = adux1020_led_currents[regval][1];
++
++		return IIO_VAL_INT_PLUS_MICRO;
  	case IIO_CHAN_INFO_SAMP_FREQ:
- 		switch (chan->type) {
- 		case IIO_PROXIMITY:
- 			ret = regmap_read(data->regmap, ADUX1020_REG_FREQUENCY,
- 					  &regval);
- 			if (ret < 0)
--				goto fail;
-+				return ret;
- 
- 			regval = FIELD_GET(ADUX1020_PROX_FREQ_MASK, regval);
--			if (regval >= ARRAY_SIZE(adux1020_rates)) {
--				ret = -EINVAL;
--				goto fail;
--			}
-+			if (regval >= ARRAY_SIZE(adux1020_rates))
-+				return -EINVAL;
- 
- 			*val = adux1020_rates[regval][0];
- 			*val2 = adux1020_rates[regval][1];
- 
--			ret = IIO_VAL_INT_PLUS_MICRO;
--			break;
-+			return IIO_VAL_INT_PLUS_MICRO;
- 		default:
--			break;
+-		switch (chan->type) {
+-		case IIO_PROXIMITY:
+-			ret = regmap_read(data->regmap, ADUX1020_REG_FREQUENCY,
+-					  &regval);
+-			if (ret < 0)
+-				return ret;
+-
+-			regval = FIELD_GET(ADUX1020_PROX_FREQ_MASK, regval);
+-			if (regval >= ARRAY_SIZE(adux1020_rates))
+-				return -EINVAL;
+-
+-			*val = adux1020_rates[regval][0];
+-			*val2 = adux1020_rates[regval][1];
+-
+-			return IIO_VAL_INT_PLUS_MICRO;
+-		default:
++		if (chan->type != IIO_PROXIMITY)
 +			return -EINVAL;
- 		}
--		break;
++
++		ret = regmap_read(map, ADUX1020_REG_FREQUENCY, &regval);
++		if (ret)
++			return ret;
++
++		regval = FIELD_GET(ADUX1020_PROX_FREQ_MASK, regval);
++		if (regval >= ARRAY_SIZE(adux1020_rates))
+ 			return -EINVAL;
+-		}
++
++		*val = adux1020_rates[regval][0];
++		*val2 = adux1020_rates[regval][1];
++
++		return IIO_VAL_INT_PLUS_MICRO;
  	default:
--		break;
-+		return -EINVAL;
+ 		return -EINVAL;
  	}
--
--fail:
--	mutex_unlock(&data->lock);
--
--	return ret;
- };
+-};
++}
  
  static inline int adux1020_find_index(const int array[][2], int count, int val,
-@@ -455,9 +443,9 @@ static int adux1020_write_raw(struct iio_dev *indio_dev,
+ 				      int val2)
+@@ -443,43 +437,40 @@ static int adux1020_write_raw(struct iio_dev *indio_dev,
  			      int val, int val2, long mask)
  {
  	struct adux1020_data *data = iio_priv(indio_dev);
--	int i, ret = -EINVAL;
-+	int i;
++	struct regmap *map = data->regmap;
+ 	int i;
  
--	mutex_lock(&data->lock);
-+	guard(mutex)(&data->lock);
+ 	guard(mutex)(&data->lock);
  
  	switch (mask) {
  	case IIO_CHAN_INFO_SAMP_FREQ:
-@@ -465,15 +453,13 @@ static int adux1020_write_raw(struct iio_dev *indio_dev,
- 			i = adux1020_find_index(adux1020_rates,
- 						ARRAY_SIZE(adux1020_rates),
- 						val, val2);
--			if (i < 0) {
--				ret = i;
--				goto fail;
--			}
+-		if (chan->type == IIO_PROXIMITY) {
+-			i = adux1020_find_index(adux1020_rates,
+-						ARRAY_SIZE(adux1020_rates),
+-						val, val2);
+-			if (i < 0)
+-				return i;
 -
--			ret = regmap_update_bits(data->regmap,
--						 ADUX1020_REG_FREQUENCY,
--						 ADUX1020_PROX_FREQ_MASK,
--						 ADUX1020_PROX_FREQ(i));
-+			if (i < 0)
-+				return i;
+-			return regmap_update_bits(data->regmap,
+-						  ADUX1020_REG_FREQUENCY,
+-						  ADUX1020_PROX_FREQ_MASK,
+-						  ADUX1020_PROX_FREQ(i));
+-		}
+-		break;
++		if (chan->type != IIO_PROXIMITY)
++			return -EINVAL;
 +
-+			return regmap_update_bits(data->regmap,
-+						  ADUX1020_REG_FREQUENCY,
-+						  ADUX1020_PROX_FREQ_MASK,
-+						  ADUX1020_PROX_FREQ(i));
- 		}
- 		break;
++		i = adux1020_find_index(adux1020_rates,
++					ARRAY_SIZE(adux1020_rates),
++					val, val2);
++		if (i < 0)
++			return i;
++
++		return regmap_update_bits(map, ADUX1020_REG_FREQUENCY,
++					  ADUX1020_PROX_FREQ_MASK,
++					  ADUX1020_PROX_FREQ(i));
  	case IIO_CHAN_INFO_PROCESSED:
-@@ -481,24 +467,19 @@ static int adux1020_write_raw(struct iio_dev *indio_dev,
- 			i = adux1020_find_index(adux1020_led_currents,
+-		if (chan->type == IIO_CURRENT) {
+-			i = adux1020_find_index(adux1020_led_currents,
++		if (chan->type != IIO_CURRENT)
++			return -EINVAL;
++
++		i = adux1020_find_index(adux1020_led_currents,
  					ARRAY_SIZE(adux1020_led_currents),
  					val, val2);
--			if (i < 0) {
--				ret = i;
--				goto fail;
--			}
--
--			ret = regmap_update_bits(data->regmap,
--						 ADUX1020_REG_LED_CURRENT,
--						 ADUX1020_LED_CURRENT_MASK, i);
-+			if (i < 0)
-+				return i;
-+
-+			return regmap_update_bits(data->regmap,
-+						  ADUX1020_REG_LED_CURRENT,
-+						  ADUX1020_LED_CURRENT_MASK, i);
- 		}
- 		break;
- 	default:
- 		break;
- 	}
+-			if (i < 0)
+-				return i;
++		if (i < 0)
++			return i;
  
--fail:
--	mutex_unlock(&data->lock);
--
--	return ret;
-+	return -EINVAL;
- }
- 
- static int adux1020_write_event_config(struct iio_dev *indio_dev,
-@@ -510,16 +491,16 @@ static int adux1020_write_event_config(struct iio_dev *indio_dev,
- 	struct adux1020_data *data = iio_priv(indio_dev);
- 	int ret, mask;
- 
--	mutex_lock(&data->lock);
-+	guard(mutex)(&data->lock);
- 
- 	ret = regmap_write(data->regmap, ADUX1020_REG_INT_ENABLE,
- 			   ADUX1020_INT_ENABLE);
- 	if (ret < 0)
--		goto fail;
-+		return ret;
- 
- 	ret = regmap_write(data->regmap, ADUX1020_REG_INT_POLARITY, 0);
- 	if (ret < 0)
--		goto fail;
-+		return ret;
- 
- 	switch (chan->type) {
- 	case IIO_PROXIMITY:
-@@ -535,7 +516,7 @@ static int adux1020_write_event_config(struct iio_dev *indio_dev,
- 			ret = regmap_set_bits(data->regmap,
- 					      ADUX1020_REG_INT_MASK, mask);
- 		if (ret < 0)
--			goto fail;
-+			return ret;
- 
- 		/*
- 		 * Trigger proximity interrupt when the intensity is above
-@@ -544,20 +525,13 @@ static int adux1020_write_event_config(struct iio_dev *indio_dev,
- 		ret = regmap_set_bits(data->regmap, ADUX1020_REG_PROX_TYPE,
- 				      ADUX1020_PROX_TYPE);
- 		if (ret < 0)
--			goto fail;
-+			return ret;
- 
- 		/* Set proximity mode */
--		ret = adux1020_set_mode(data, ADUX1020_MODE_PROX_I);
+-			return regmap_update_bits(data->regmap,
+-						  ADUX1020_REG_LED_CURRENT,
+-						  ADUX1020_LED_CURRENT_MASK, i);
+-		}
 -		break;
-+		return adux1020_set_mode(data, ADUX1020_MODE_PROX_I);
++		return regmap_update_bits(map, ADUX1020_REG_LED_CURRENT,
++					  ADUX1020_LED_CURRENT_MASK, i);
  	default:
--		ret = -EINVAL;
 -		break;
 +		return -EINVAL;
  	}
 -
--fail:
--	mutex_unlock(&data->lock);
--
--	return ret;
+-	return -EINVAL;
  }
  
- static int adux1020_read_event_config(struct iio_dev *indio_dev,
+ static int adux1020_write_event_config(struct iio_dev *indio_dev,
 
 -- 
 2.56.0
