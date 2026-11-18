@@ -1,15 +1,13 @@
 From: =?utf-8?q?Alexandru_Andrie=C8=99?= <alex.andries.aa@gmail.com>
-Subject: [PATCH 0/3] power: supply: qcom_battmgr: fix SM8350/SM8550 units,
- acks, and negative temp
-Date: Thu, 19 Nov 2026 00:16:49 +0100
-Message-Id: <20261119-upstream-qcom-battmgr-fixes-v1-v1-0-ca83700c08c1@gmail.com>
+Date: Thu, 19 Nov 2026 00:16:50 +0100
+Subject: [PATCH 1/3] power: supply: qcom_battmgr: set mAh unit for SM8350
+ and SM8550
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSQrDMAxA0asErSuwXHe8SunCcZTUBWeQnFAIu
- Xvcdvn48FdQlsgK92oF4SVqHPoCOlQQXr7vGGNTDNbYMxHdcB41C/uEUxgS1j7n1Am28cOKC6E
- xrj260/USnIUyGYV/rTwez791rt8c8vcK27YD2U51/IIAAAA=
-X-Change-ID: 20261119-upstream-qcom-battmgr-fixes-v1-004f34587c42
+Message-Id: <20261119-upstream-qcom-battmgr-fixes-v1-v1-1-ca83700c08c1@gmail.com>
+References: <20261119-upstream-qcom-battmgr-fixes-v1-v1-0-ca83700c08c1@gmail.com>
+In-Reply-To: <20261119-upstream-qcom-battmgr-fixes-v1-v1-0-ca83700c08c1@gmail.com>
 To: Sebastian Reichel <sre@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>
 Cc: Bjorn Andersson <andersson@kernel.org>, 
@@ -20,52 +18,51 @@ Cc: Bjorn Andersson <andersson@kernel.org>,
  Sebastian Reichel <sebastian.reichel@collabora.com>, stable@vger.kernel.org, 
  =?utf-8?q?Alexandru_Andrie=C8=99?= <alex.andries.aa@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795043834; l=1715;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795043834; l=1477;
  i=alex.andries.aa@gmail.com; s=20261118; h=from:subject:message-id;
- bh=m10mZSU/1Zs9cTC5pq8aFlYb+YKIJMjUiK5nOQ8Ic5U=;
- b=14Lq8wuWQuoQc3cNz9//dLqgr1JXctqOo4kFuKLkJS5coL8EnvrYoqD4Hmn/Xuy24mz+804oV
- Ot47XW7aOgGDN+Xcx13lP93bzbL+7qiM343UtygdiLY50P/9tSM4AHS
+ bh=57hCL/wfpzvCW6AYmx0LBjTyYxD1cG6DUfZHuao/KPI=;
+ b=3rYahb7KNQtzhxSpXJCb5betOKRj2XiHodoeXFNeAMkJlH4PyOOnE589g+bvcd1Dtp3z25MwE
+ Q+DDg/2arIpB8Q6btPmnlA8MlzCs2IDZ14RZIcQdGufHeFGfThyql6X
 X-Developer-Key: i=alex.andries.aa@gmail.com; a=ed25519;
  pk=kNAqgavfB7uUd1mA8o8TszhGxzyqBwY71PGO/oK4v84=
 X-Endpoint-Received: by B4 Relay for alex.andries.aa@gmail.com/20261118 with auth_id=1564
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix three issues in qcom_battmgr encountered while bringing up PMIC GLINK
-battery reporting on a Xiaomi MIX 4 (xiaomi-odin, SM8350):
+battmgr->unit is only populated by BATTMGR_BAT_INFO on SC8280XP and
+X1E80100, remaining QCOM_BATTMGR_UNIT_mWh (0) on SM8350 and SM8550 where
+firmware reports BATT_CHG_FULL and BATT_CHG_FULL_DESIGN in uAh via
+BATTMGR_BAT_PROPERTY_GET. Consequently, charge_full and
+charge_full_design always return -ENODATA, preventing UPower from
+computing battery energy and health.
 
-1. Set battmgr->unit to QCOM_BATTMGR_UNIT_mAh on SM8350 and SM8550 so
-   charge_full and charge_full_design stop returning -ENODATA.
-2. Complete &battmgr->ack on invalid payload length errors in both
-   callbacks so callers receive -ENODATA immediately instead of stalling
-   for 1s with -ETIMEDOUT and aborting power_supply_uevent().
-3. Change status.temperature and qcom_battmgr_sc8280xp_convert_temp() to
-   int and cast SM8350 BATT_TEMP values to s32 before dividing by 10 so
-   sub-zero temperatures do not wrap into large positive values.
+Set battmgr->unit to QCOM_BATTMGR_UNIT_mAh when probing SM8350 and
+SM8550.
 
-Testing:
-- Built warning-free (W=1) on arm64 against commit 97d73c825122.
-- Tested on a Xiaomi MIX 4 (xiaomi-odin, SM8350) with UPower 1.91.0.
-- The SM8550 variant in patch 1, the SC8280XP paths in patches 2 and 3,
-  and sub-zero battery temperatures (< 0 C) in patch 3 were not
-  hardware-tested.
+Tested on a Xiaomi MIX 4 (SM8350): charge_full (4256000) and
+charge_full_design (4360000) are now reported. SM8550 shares the same
+property path and was not tested.
 
-AI disclosure:
-- Debugged and drafted with assistance from Gemini 4 Carbon
-  (Antigravity), and reviewed and tested on hardware by the submitter.
-
+Fixes: 29e8142b5623 ("power: supply: Introduce Qualcomm PMIC GLINK power supply")
+Cc: stable@vger.kernel.org
+Signed-off-by: Alexandru Andrieș <alex.andries.aa@gmail.com>
 ---
-Alexandru Andrieș (3):
-      power: supply: qcom_battmgr: set mAh unit for SM8350 and SM8550
-      power: supply: qcom_battmgr: complete ack on callback payload errors
-      power: supply: qcom_battmgr: fix negative temperature values
+ drivers/power/supply/qcom_battmgr.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
- drivers/power/supply/qcom_battmgr.c | 27 ++++++++++++++++-----------
- 1 file changed, 16 insertions(+), 11 deletions(-)
----
-base-commit: 97d73c8251226cf27cc6656b4c542869bb8c69fa
-change-id: 20261119-upstream-qcom-battmgr-fixes-v1-004f34587c42
+diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
+index 58e238e6fb2a..c07e2db8f242 100644
+--- a/drivers/power/supply/qcom_battmgr.c
++++ b/drivers/power/supply/qcom_battmgr.c
+@@ -1717,6 +1717,8 @@ static int qcom_battmgr_probe(struct auxiliary_device *adev,
+ 			return dev_err_probe(dev, PTR_ERR(battmgr->wls_psy),
+ 					     "failed to register wireless charing power supply\n");
+ 	} else {
++		battmgr->unit = QCOM_BATTMGR_UNIT_mAh;
++
+ 		if (battmgr->variant == QCOM_BATTMGR_SM8550)
+ 			psy_desc = &sm8550_bat_psy_desc;
+ 		else
 
-Best regards,
---  
-Alexandru Andrieș <alex.andries.aa@gmail.com>
+-- 
+2.56.1
 
