@@ -1,283 +1,112 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Wed, 18 Nov 2026 04:34:59 +0000
-Subject: [PATCH v5 2/2] usb: hub: Retry SuperSpeed for a device stuck on
- its USB 2.0 peer
+From: Christopher Griffin <christophergriffin05@gmail.com>
+Date: Tue, 17 Nov 2026 22:11:21 -0800
+Subject: [PATCH wireless-next] wifi: mac80211: don't limit the fq memory of
+ HE radios to 4 MB
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-usb-port-pairing-v5-2-5f1a26789270@gmail.com>
-References: <20261118-usb-port-pairing-v5-0-5f1a26789270@gmail.com>
-In-Reply-To: <20261118-usb-port-pairing-v5-0-5f1a26789270@gmail.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Alan Stern <stern@rowland.harvard.edu>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Mathias Nyman <mathias.nyman@intel.com>, Chen-Yu Tsai <wenst@chromium.org>, 
- Rob Herring <robh@kernel.org>, Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794976497; l=8610;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Q0K/TLuQbv40AlLDUVaV87KwIS+As3fX4PyARl9VR+o=;
- b=MrJ+o0j7bwGGGp5l1jH2csQ1sxuECcaCN77Im+g/3MLmJJIrEFf+N2WjO/BQQHueHqcvXTDer
- gxp6nSyYi08B93pKEmbxHMv4uUsPLwv928GAqNpH9kNl94du4WKqXoL
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+Message-Id: <20261117-mac80211-fq-he-v1-1-9d5e4985677e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAIhB/WoC/yWMwQ6CMBAFf4Xs2U3Y0iD6K8YD1oes0SpdVBLCv
+ 1P1OJnMzGRICqN9MVPCW00fMYNsCgp9Gy9gPWcmV7paRDzf29CUToS7gXvwrmoqJz4EbD3l6Jn
+ Q6fQbHuijCTeYccQ00vGv7XW6IozfKS3LCrZ/NaiBAAAA
+X-Change-ID: 20261114-mac80211-fq-he-9383214cce74
+To: Johannes Berg <johannes@sipsolutions.net>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Christopher Griffin <christophergriffin05@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794982280; l=3461;
+ i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
+ bh=A5chuA+mk1Jxt5uqOsj5kFLbFwFtNAbJvoydU9CX6F0=;
+ b=tsEpH85/SLJp598QuL1nEUfdtqycq0j4cazPHc5I1xOD0xsnkVhH7JoHezTvc7yFswSCaRAIf
+ aiD6jPMP7QuBxsXz2qYOmPhX3FGHgtonyVz5gXtdiT4phO4iSuImbdC
+X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
+ pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
+X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With VBUS always on, a USB 3 device present at boot connects to the EHCI
-before the SuperSpeed-only xHCI is up, and stays at 480 Mb/s until a USB
-2.0 bus reset.
+ieee80211_txq_setup_flows() lowers the fq memory limit from 16 MB to
+4 MB when no band of the wiphy supports VHT, since 4 MB is 64 max-size
+802.11n aggregates. A radio that supports HE but not VHT falls under
+that limit too: a 6 GHz only radio, where VHT does not exist, and a
+2.4 GHz only HE radio. Such a radio aggregates far more than 802.11n
+allows; HE alone raises the block ack window to 256 MPDUs.
 
-When such a SuperSpeed root hub starts, reset the USB 2.0 peer port of a
-SuperSpeed-capable device (not a hub) once with usb_reset_device(). If
-the device appears on the SuperSpeed port within 1 s, the USB 2.0 device
-is disconnected; otherwise the reset completes at high speed.
+The limit binds once the driver leaves frames in the mac80211 queues,
+as it does with airtime queue limits. On an ath11k QCN9074 6 GHz only
+radio (HE160, 2x2) running the pending ath11k airtime queue limit
+series [1], a TCP download to one station ran at 1314 Mbit/s with
+11968 retransmits while fq_overmemory rose by 374. With the limit set
+to 16 MB through debugfs it ran at 1446 Mbit/s with 2721.
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Count HE like VHT. An EHT radio supports HE, so it is covered as well.
+
+This change and message were written with Claude, an AI coding assistant.
+
+Link: https://lore.kernel.org/all/20261018174904.1757161-1-julius@bairaktaris.de/ [1]
+Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- drivers/usb/core/hub.c | 158 +++++++++++++++++++++++++++++++++++++++++++++++++
- drivers/usb/core/hub.h |   3 +
- 2 files changed, 161 insertions(+)
+Found while testing the pending ath11k airtime queue limit series on an
+Arista C-360 (IPQ8074 plus a QCN9074 6 GHz radio) running OpenWrt. The
+6 GHz radio is its own wiphy, so it has no VHT and got the 4 MB limit;
+the same holds for the board's 2.4 GHz radio.
 
-diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
-index 199d3f535a89..65d0728d4330 100644
---- a/drivers/usb/core/hub.c
-+++ b/drivers/usb/core/hub.c
-@@ -144,6 +144,8 @@ EXPORT_SYMBOL_GPL(ehci_cf_port_reset_rwsem);
- 
- static int usb_reset_and_verify_device(struct usb_device *udev);
- static int hub_port_disable(struct usb_hub *hub, int port1, int set_state);
-+static void hub_queue_peer_reset(struct usb_hub *hub);
-+static void hub_peer_reset_work(struct work_struct *ws);
- static bool hub_port_warm_reset_required(struct usb_hub *hub, int port1,
- 		u16 portstatus);
- 
-@@ -1346,6 +1348,10 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
- 
- 	/* Scan all ports that need attention */
- 	kick_hub_wq(hub);
-+
-+	if (!hdev->parent && hub_is_superspeed(hdev) &&
-+	    (type == HUB_INIT2 || type == HUB_INIT3))
-+		hub_queue_peer_reset(hub);
-  abort:
- 	if (type == HUB_INIT2 || type == HUB_INIT3) {
- 		/* Allow autosuspend if it was suppressed */
-@@ -1419,6 +1425,10 @@ static void hub_quiesce(struct usb_hub *hub, enum hub_quiescing_type type)
- 	/* Stop hub_wq and related activity */
- 	timer_delete_sync(&hub->irq_urb_retry);
- 	flush_delayed_work(&hub->post_resume_work);
-+	if (cancel_work_sync(&hub->peer_reset_work)) {
-+		usb_autopm_put_interface_no_suspend(to_usb_interface(hub->intfdev));
-+		hub_put(hub);
-+	}
- 	usb_kill_urb(hub->urb);
- 	if (hub->has_indicators)
- 		cancel_delayed_work_sync(&hub->leds);
-@@ -1978,6 +1988,7 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
- 	INIT_DELAYED_WORK(&hub->leds, led_work);
- 	INIT_DELAYED_WORK(&hub->init_work, NULL);
- 	INIT_DELAYED_WORK(&hub->post_resume_work, hub_post_resume);
-+	INIT_WORK(&hub->peer_reset_work, hub_peer_reset_work);
- 	INIT_WORK(&hub->events, hub_event);
- 	INIT_LIST_HEAD(&hub->onboard_devs);
- 	spin_lock_init(&hub->irq_urb_lock);
-@@ -3278,6 +3289,116 @@ static void usb_unlock_port(struct usb_port *port_dev)
- 	__release(&port_dev->status_lock);
- }
- 
-+static void hub_reset_peer_child(struct usb_hub *hub, int port1,
-+				 struct usb_device *peer_hdev, int peer_port1)
-+{
-+	struct usb_port *ss_port = hub->ports[port1 - 1];
-+	struct usb_port *port_dev;
-+	struct usb_hub *peer_hub;
-+	struct usb_device *udev;
-+	u16 portstatus, portchange;
-+
-+	/* Keep hub_wq off the SuperSpeed port until the USB 2.0 device is gone */
-+	mutex_lock_nested(&ss_port->status_lock, SINGLE_DEPTH_NESTING);
-+	usb_lock_device(peer_hdev);
-+	if (hub->quiescing)
-+		goto out;
-+	peer_hub = usb_hub_to_struct_hub(peer_hdev);
-+	if (!peer_hub || peer_port1 > peer_hdev->maxchild)
-+		goto out;
-+
-+	port_dev = peer_hub->ports[peer_port1 - 1];
-+	udev = port_dev->child;
-+	if (!udev || udev->speed != USB_SPEED_HIGH ||
-+	    udev->descriptor.bDeviceClass == USB_CLASS_HUB)
-+		goto out;
-+
-+	if (usb_hub_port_status(hub, port1, &portstatus, &portchange) ||
-+	    (portstatus & USB_PORT_STAT_CONNECTION))
-+		goto out;
-+
-+	usb_lock_device(udev);
-+	if (udev->state != USB_STATE_NOTATTACHED &&
-+	    udev->bos && udev->bos->ss_cap) {
-+		dev_info(&udev->dev,
-+			 "SuperSpeed peer port available, resetting\n");
-+		port_dev->ss_retry = ss_port;
-+		usb_reset_device(udev);
-+		port_dev->ss_retry = NULL;
-+	}
-+	usb_unlock_device(udev);
-+
-+	/* As hub_port_connect() would */
-+	if (udev->state == USB_STATE_NOTATTACHED) {
-+		struct usb_hcd *hcd = bus_to_hcd(peer_hdev->bus);
-+
-+		if (hcd->usb_phy)
-+			usb_phy_notify_disconnect(hcd->usb_phy, udev->speed);
-+		usb_disconnect(&port_dev->child);
-+	}
-+out:
-+	usb_unlock_device(peer_hdev);
-+	mutex_unlock(&ss_port->status_lock);
-+}
-+
-+static void hub_peer_reset_work(struct work_struct *ws)
-+{
-+	struct usb_hub *hub = container_of(ws, struct usb_hub, peer_reset_work);
-+	struct usb_device *hdev = hub->hdev;
-+	int port1;
-+
-+	for (port1 = 1; ; port1++) {
-+		struct usb_device *peer_hdev = NULL;
-+		struct usb_port *port_dev;
-+		int peer_port1 = 0;
-+
-+		mutex_lock(&usb_port_peer_mutex);
-+		if (port1 > hdev->maxchild || hub->quiescing) {
-+			mutex_unlock(&usb_port_peer_mutex);
-+			break;
-+		}
-+		port_dev = hub->ports[port1 - 1];
-+		if (port_dev->connector_peer && port_dev->peer) {
-+			peer_hdev = to_usb_device(port_dev->peer->dev.parent->parent);
-+			peer_port1 = port_dev->peer->portnum;
-+			if (peer_hdev->parent ||
-+			    peer_hdev->bus->controller == hdev->bus->controller)
-+				peer_hdev = NULL;
-+			else
-+				usb_get_dev(peer_hdev);
-+		}
-+		mutex_unlock(&usb_port_peer_mutex);
-+
-+		if (peer_hdev) {
-+			hub_reset_peer_child(hub, port1, peer_hdev, peer_port1);
-+			usb_put_dev(peer_hdev);
-+		}
-+	}
-+
-+	usb_autopm_put_interface_async(to_usb_interface(hub->intfdev));
-+	hub_put(hub);
-+}
-+
-+static void hub_queue_peer_reset(struct usb_hub *hub)
-+{
-+	struct usb_interface *intf = to_usb_interface(hub->intfdev);
-+	int port1;
-+
-+	for (port1 = 1; port1 <= hub->hdev->maxchild; port1++) {
-+		if (hub->ports[port1 - 1]->connector_peer)
-+			break;
-+	}
-+	if (port1 > hub->hdev->maxchild)
-+		return;
-+
-+	usb_autopm_get_interface_no_resume(intf);
-+	hub_get(hub);
-+	if (!queue_work(hub_wq, &hub->peer_reset_work)) {
-+		usb_autopm_put_interface_async(intf);
-+		hub_put(hub);
-+	}
-+}
-+
- #ifdef	CONFIG_PM
- 
- /* Check if a port is suspended(USB2.0 port) or in U3 state(USB3.0 port) */
-@@ -4899,6 +5020,37 @@ static int get_bMaxPacketSize0(struct usb_device *udev,
- 
- #define GET_DESCRIPTOR_BUFSIZE	64
- 
-+/* -ENOTCONN if the device moved to its SuperSpeed peer port */
-+static int hub_wait_ss_retry(struct usb_hub *hub, int port1,
-+			     struct usb_port *ss_port)
-+{
-+	struct usb_device *ss_hdev = to_usb_device(ss_port->dev.parent->parent);
-+	struct usb_hub *ss_hub = usb_hub_to_struct_hub(ss_hdev);
-+	u16 portstatus, portchange;
-+	int i;
-+
-+	for (i = 0; i < 20; i++) {
-+		msleep(50);
-+		if (!ss_hub ||
-+		    usb_hub_port_status(ss_hub, ss_port->portnum, &portstatus,
-+					&portchange))
-+			return 0;
-+		if (portstatus & USB_PORT_STAT_CONNECTION)
-+			break;
-+	}
-+	if (i == 20)
-+		return 0;
-+
-+	/* Else hub_wq resets the port again */
-+	for (i = 0; i < 20; i++) {
-+		if (usb_hub_port_status(hub, port1, &portstatus, &portchange) ||
-+		    !(portstatus & USB_PORT_STAT_CONNECTION))
-+			break;
-+		msleep(50);
-+	}
-+	return -ENOTCONN;
-+}
-+
- /* Reset device, (re)assign address, get device descriptor.
-  * Device connection must be stable, no more debouncing needed.
-  * Returns device in USB_STATE_ADDRESS, except on error.
-@@ -4959,6 +5111,12 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
- 		goto fail;
- 	/* success, speed is known */
- 
-+	if (port_dev->ss_retry) {
-+		retval = hub_wait_ss_retry(hub, port1, port_dev->ss_retry);
-+		if (retval)
-+			goto fail;
-+	}
-+
- 	retval = -ENODEV;
- 
- 	/* Don't allow speed changes at reset, except usb 3.0 to faster */
-diff --git a/drivers/usb/core/hub.h b/drivers/usb/core/hub.h
-index a186c41bdb5e..1213a242fa34 100644
---- a/drivers/usb/core/hub.h
-+++ b/drivers/usb/core/hub.h
-@@ -71,6 +71,7 @@ struct usb_hub {
- 	struct delayed_work	leds;
- 	struct delayed_work	init_work;
- 	struct delayed_work	post_resume_work;
-+	struct work_struct	peer_reset_work;
- 	struct work_struct      events;
- 	spinlock_t		irq_urb_lock;
- 	struct timer_list	irq_urb_retry;
-@@ -98,12 +99,14 @@ struct usb_hub {
-  * @early_stop: whether port initialization will be stopped earlier.
-  * @ignore_event: whether events of the port are ignored.
-  * @connector_peer: peer found through a connector.
-+ * @ss_retry: SuperSpeed port a device may move to on reset.
-  */
- struct usb_port {
- 	struct usb_device *child;
- 	struct device dev;
- 	struct usb_dev_state *port_owner;
- 	struct usb_port *peer;
-+	struct usb_port *ss_retry;
- 	struct typec_connector *connector;
- 	struct dev_pm_qos_request *req;
- 	enum usb_port_connect_type connect_type;
+Compile-tested on wireless-next. On that board (OpenWrt, kernel 6.18,
+backports 7.2 with this change applied), the 6 GHz only and 2.4 GHz only
+radios come up with a 16 MB limit instead of 4 MB, and the two radios
+with VHT keep 16 MB. The throughput numbers in the changelog were
+measured with the limit changed through debugfs, not with this patch
+loaded.
+---
+ net/mac80211/tx.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
--- 
-2.55.0
+diff --git a/net/mac80211/tx.c b/net/mac80211/tx.c
+index 14885c2ce..a3a3ed370 100644
+--- a/net/mac80211/tx.c
++++ b/net/mac80211/tx.c
+@@ -1647,6 +1647,7 @@ int ieee80211_txq_setup_flows(struct ieee80211_local *local)
+ 	int ret;
+ 	int i;
+ 	bool supp_vht = false;
++	bool supp_he = false;
+ 	enum nl80211_band band;
+ 
+ 	ret = fq_init(fq, 4096);
+@@ -1654,10 +1655,12 @@ int ieee80211_txq_setup_flows(struct ieee80211_local *local)
+ 		return ret;
+ 
+ 	/*
+-	 * If the hardware doesn't support VHT, it is safe to limit the maximum
+-	 * queue size. 4 Mbytes is 64 max-size aggregates in 802.11n.
++	 * If the hardware supports neither VHT nor HE, it is safe to limit the
++	 * maximum queue size. 4 Mbytes is 64 max-size aggregates in 802.11n.
++	 * HE counts as well, since a 6 GHz only radio has no VHT.
+ 	 */
+ 	for (band = 0; band < NUM_NL80211_BANDS; band++) {
++		const struct ieee80211_sband_iftype_data *iftd;
+ 		struct ieee80211_supported_band *sband;
+ 
+ 		sband = local->hw.wiphy->bands[band];
+@@ -1665,9 +1668,12 @@ int ieee80211_txq_setup_flows(struct ieee80211_local *local)
+ 			continue;
+ 
+ 		supp_vht = supp_vht || sband->vht_cap.vht_supported;
++
++		for_each_sband_iftype_data(sband, i, iftd)
++			supp_he = supp_he || iftd->he_cap.has_he;
+ 	}
+ 
+-	if (!supp_vht)
++	if (!supp_vht && !supp_he)
+ 		fq->memory_limit = 4 << 20; /* 4 Mbytes */
+ 
+ 	codel_params_init(&local->cparams);
+
+---
+base-commit: 5dbf2415ca9821a611d09308e3b29d2c37e7cd77
+change-id: 20261114-mac80211-fq-he-9383214cce74
+
+Best regards,
+--  
+Christopher Griffin <christophergriffin05@gmail.com>
 
