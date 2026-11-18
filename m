@@ -1,69 +1,89 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Wed, 18 Nov 2026 23:01:05 +0000
-Subject: [PATCH] arm64: dts: rockchip: Keep the PCIe power of Kobol
- Helios64 on
+From: Noam Cohen <noam@noam.me>
+Date: Wed, 18 Nov 2026 23:04:37 +0000
+Subject: [PATCH] ls-tree: do not quote %(path) with -z
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-helios64-pcie-always-on-v1-1-b77dcf4f01b4@iav.lv>
-X-B4-Tracking: v=1; b=H4sIADAu/moC/x3MywqEMAxA0V+RrA00ZaiPXxEXHSeOAWmlAR8U/
- 93i8izuzaCchBX6KkPiXVRiKKC6gmnx4c8ov2KwxjoianHhVaK6D26TMPr18JdiDOiNpe/cGNe
- 1DZR6SzzL+Z6H8b4f+VBGr2kAAAA=
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: linux-rockchip@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1592; i=iav@iav.lv;
- h=from:subject:message-id; bh=csC4RQd6YR8LhC4D4T+ae3/8hKPMoykDjDiK28IYahI=;
- b=kA0DAAoWMpeVi+pfeQMByyZiAGr+LjGjXuGgGi0NcgRJibYyX3z3oA2z4fntgBZHDpxaGAz22
- Yh1BAAWCgAdFiEEkMIo2mik1f1PSDfgMpeVi+pfeQMFAmr+LjEACgkQMpeVi+pfeQOdGQEAixzq
- JcOSwoAS3wZZDLkOiE1x//+RWLpYCBczjYcLrKcBAJYJLXShTf5deewKTgzhNeB8iCyJzBXRINC
- Jv3xurRoD
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261118-ls-tree-format-z-verbatim-path-v1-1-718987241861@noam.me>
+X-B4-Tracking: v=1; b=H4sIAAQv/moC/yXNTQrCQAxA4auUrA2YinXwKuJipiY2Yn9IpkUsv
+ bujLr/Neys4m7LDuVrBeFHXcSigXQVtF4c7o96Kod7XDREFfDpmY0YZrY8Z37iwpZi1xynmDuV
+ 4CofUkEgQKJHJWPT1G1yuf/ucHtzmbxW27QNoc4/aggAAAA==
+X-Change-ID: 20261118-ls-tree-format-z-verbatim-path-f5783b61ff8f
+To: git@vger.kernel.org
+Cc: Junio C Hamano <gitster@pobox.com>, Teng Long <dyroneteng@gmail.com>, 
+ =?utf-8?q?=C3=86var_Arnfj=C3=B6r=C3=B0_Bjarmason?= <avarab@gmail.com>, 
+ =?utf-8?q?Ren=C3=A9_Scharfe?= <l.s.r@web.de>, Noam Cohen <noam@noam.me>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795043135; l=1980;
+ i=noam@noam.me; s=20261118; h=from:subject:message-id;
+ bh=/gS8cB9hoApkoumXcC9pvUxzrBcAfscqlgx+E/AqFio=;
+ b=T+uWUJSMwZRIQ1pVZ2Y7ycU/uL2NxTqfXpExeGeVWi+nxVin6uiqV3h9IRh/VQ1zMxMJrRtYt
+ xVyxvddV6xZC+ZkoWmdFmx8/iu9A4w+fQvGFw69v0oKxrEiXzoiKyjJ
+X-Developer-Key: i=noam@noam.me; a=ed25519;
+ pk=qyNqXh2nrM20rNZXIQMjH3jLUPgL/RaLrmNnO0YOpp4=
+X-Endpoint-Received: by B4 Relay for noam@noam.me/20261118 with auth_id=1563
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The JMB585 SATA controller needs PERST# high for about 60 ms after its
-supply comes up. If PERST# is low at power-on, the chip stays dead
-until the next power cycle.
+With -z, "git ls-tree" is documented to output the filename verbatim,
+but since 455923e0a1 (ls-tree: introduce "--format" option,
+2022-03-23) the %(path) placeholder of a custom --format is always
+C-quoted.
 
-At boot pcie_power is already on and PERST# is pulled high, so the
-driver only pulses PERST# on a running chip. On unbind the driver
-switches pcie_power off; on bind it asserts PERST# before it switches
-the supply back on, and the link never trains (LTSSM in Detect.Active).
+Output it verbatim when -z is given, like "git ls-files --format"
+already does.
 
-Keep pcie_power on, so that a rebind resets the chip the way boot does.
-
-Tested with unbind/bind of the controller on v7.4-rc2 (plus the pending
-rockchip-host link retry patch, which did not trigger): 0 of 4 attempts
-without this change, 8 of 8 with it.
-
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Signed-off-by: Noam Cohen <noam@noam.me>
 ---
- arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts | 1 +
- 1 file changed, 1 insertion(+)
+This makes "ls-tree -z --format" match "ls-files -z --format", which
+already outputs %(path) verbatim.
+---
+ builtin/ls-tree.c         | 5 ++++-
+ t/t3104-ls-tree-format.sh | 9 ++++++++-
+ 2 files changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-index 76beac38699f..aba8a0c87edb 100644
---- a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-@@ -230,6 +230,7 @@ pcie_power: regulator-pcie-power {
- 		gpio = <&gpio1 RK_PD0 GPIO_ACTIVE_HIGH>;
- 		pinctrl-0 = <&pcie_pwr>;
- 		pinctrl-names = "default";
-+		regulator-always-on;
- 		regulator-boot-on;
- 		regulator-name = "pcie_power";
- 		startup-delay-us = <10000>;
+diff --git a/builtin/ls-tree.c b/builtin/ls-tree.c
+index 46edaffc2e..d25bbffcdd 100644
+--- a/builtin/ls-tree.c
++++ b/builtin/ls-tree.c
+@@ -130,7 +130,10 @@ static int show_tree_fmt(const struct object_id *oid, struct strbuf *base,
+ 
+ 			strbuf_addstr(base, pathname);
+ 			name = relative_path(base->buf, prefix, &sbuf);
+-			quote_c_style(name, &sb, NULL, 0);
++			if (options->null_termination)
++				strbuf_addstr(&sb, name);
++			else
++				quote_c_style(name, &sb, NULL, 0);
+ 			strbuf_setlen(base, baselen);
+ 			strbuf_release(&sbuf);
+ 		} else
+diff --git a/t/t3104-ls-tree-format.sh b/t/t3104-ls-tree-format.sh
+index a1b2069a25..016c0fd0ff 100755
+--- a/t/t3104-ls-tree-format.sh
++++ b/t/t3104-ls-tree-format.sh
+@@ -12,7 +12,8 @@ test_expect_success 'ls-tree --format usage' '
+ '
+ 
+ test_expect_success 'setup' '
+-	setup_basic_ls_tree_data
++	setup_basic_ls_tree_data &&
++	test_commit נעם
+ '
+ 
+ test_ls_tree_format () {
+@@ -76,4 +77,10 @@ test_ls_tree_format \
+ 	"--full-tree" \
+ 	"--full-tree"
+ 
++test_expect_success 'ls-tree --format with -z does not quote paths' '
++	printf "blob נעם.t\0" >expect &&
++	git ls-tree -z --format="%(objecttype) %(path)" HEAD נעם.t >actual &&
++	test_cmp expect actual
++'
++
+ test_done
 
 ---
-base-commit: a9d78db32fe78bdbe7c66ba77cb7dbb729b885de
-change-id: 20261118-helios64-pcie-always-on-a021bf706987
-
-Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+base-commit: 03b41523c576f26ad34085378717a0c1b287470f
+change-id: 20261118-ls-tree-format-z-verbatim-path-f5783b61ff8f
 
