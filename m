@@ -1,261 +1,133 @@
-From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Wed, 18 Nov 2026 16:52:09 +0530
-Subject: [PATCH v2] drm/amdgpu: Don't report stale or empty vm_fault info
- in devcoredump
+From: =?utf-8?q?Eren_=C3=96zen?= <erenozen@protonmail.com>
+Subject: [PATCH v2 0/3] drm/amd/display: Fix FRL status polling work
+ lifetime
+Date: Wed, 18 Nov 2026 15:10:51 +0300
+Message-Id: <20261118-frl-polling-wq-teardown-v2-0-957e61c0b698@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261118-amdgpu-devcoredump-fault-info-v2-1-7691d78e84fb@zohomail.in>
-X-B4-Tracking: v=1; b=H4sIAGCK/WoC/42OQQ6CMBBFr0K6dgxtLKIr72FYlHYKY6QlLW1Uw
- t0FvIDLl7y8/2cWMRBGdi1mFjBTJO9WEIeC6V65DoHMykyUouK8lKAG040JDGbtA5o0jGBVek5
- Aznqw+lK3J5QcpWBrYwxo6bX3782PY2ofqKctuhk9xcmH934g8837dytz4CDOuuaVbK0y6vbxv
- R8UPY/kWLMsyxfHz/ng3gAAAA==
-X-Change-ID: 20261105-amdgpu-devcoredump-fault-info-fc98b4e51e52
-To: Alex Deucher <alexander.deucher@amd.com>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/4XNTQqDMBBA4auEWTslPyitq96juNA40YGYaCLaI
+ t691At0+xbfOyBTYspQiwMSbZw5BqiFLgTYsQ0DIfdQC9BSV0opiS55nKP3HAbcF1ypTX3cA+r
+ OGFNZSw+qoBAwJ3L8vuRXUwgYOa8xfa7Rpn71v7kplCidk/rel9aU3XNOcY1hatnfbJygOc/zC
+ 5kZYLrDAAAA
+X-Change-ID: 20261110-frl-polling-wq-teardown-2b3336cce9e6
+To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
+ Rodrigo Siqueira <siqueira@igalia.com>, 
+ Alex Deucher <alexander.deucher@amd.com>, 
  =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Fangzhi Zuo <Jerry.Zuo@amd.com>, Chenyu Chen <chen-yu.chen@amd.com>, 
+ Bhawanpreet Lakha <bhawanpreet.lakha@amd.com>, 
+ Alex Hung <alex.hung@amd.com>
+Cc: Wayne Lin <Wayne.Lin@amd.com>, 
+ =?utf-8?q?Timur_Krist=C3=B3f?= <timur.kristof@gmail.com>, 
+ amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
  linux-kernel@vger.kernel.org, 
- Pierre-Eric Pelloux-Prayer <pierre-eric.pelloux-prayer@amd.com>, 
- Shivam Kalra <shivamkalra98@zohomail.in>, 
- =?utf-8?q?Timur_Krist=C3=B3f?= <timur.kristof@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795000935; l=9725;
- i=shivamkalra98@zohomail.in; s=20260402; h=from:subject:message-id;
- bh=CWGXGZ+hzPQB5SI2iVtuFE6GCgosZa3S1wO3WxPBGSU=;
- b=U/79Ovrfx+VUXUM09J7mMoYcp5CKQh2Lp7iXCKW2nJYa+KbZ9Q7ZO/3daj5P3Vn0Kx96ZZ5Jp
- CKVvougZn/4B5ANe38pkBZB3LbtMnidyEjj7wd/poMUnHNAl2i26GzM
-X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
- pk=U8kQSxcte8P8iZ6zB7phIj+Yl+i/5ntifBGuclgypx8=
-X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260402 with auth_id=716
+ =?utf-8?q?Eren_=C3=96zen?= <erenozen@protonmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795003852; l=4876;
+ i=erenozen@protonmail.com; s=20261110; h=from:subject:message-id;
+ bh=o4xp1XWRc/cv7WWAhJEyxTWE3Q7ktwDyLfzkelJnCZc=;
+ b=AgfFfB9uvzQRRPn5Cpfcvxl2Ctp2Doit/H49xJSknhBcNbfN2Sd3Kgdb0xcebzwQHvUuKZ5C9
+ uUnV/OtTe8uBjdvR4JQBLMYz3OE0CYYjJ089JVHXCxfswPtY1fd9QRL
+X-Developer-Key: i=erenozen@protonmail.com; a=ed25519;
+ pk=tPAwfVmIbYF3QziJ3LcoTIZDU12BsjVK+EkAB9nN1gA=
+X-Endpoint-Received: by B4 Relay for erenozen@protonmail.com/20261110 with auth_id=1479
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-amdgpu_devcoredump_format() reads adev->vm_manager.fault_info unlocked
-from the deferred worker and prints the page fault section
-unconditionally. This races with new faults, emits a misleading address
-0x0 / status 0x0 block when no fault occurred, and repeats stale faults
-on subsequent non-fault timeouts.
+The HDMI FRL status polling work and its workqueue, added in commit
+5c9b8b27a883 ("drm/amd/display: Tie FRL support into amdgpu_dm"), have
+two remaining lifetime problems:
 
-Add amdgpu_vm_take_fault_info() to atomically snapshot and clear the
-global fault cache under amdgpu_pasid_lock(). Call it before the slow
-dump_ip_state() loop in amdgpu_job_do_core_dump() (or in
-amdgpu_coredump() for non-job resets), store the snapshot in struct
-amdgpu_coredump_info, and only print the fault section when
-fault_info.status != 0.
+1. Since commit 0e967e086e75 ("drm/amd/display: Extract connector and
+   encoder code to amdgpu_dm_connector"), the delayed work is
+   initialized in amdgpu_dm_connector_init_helper(), which also runs
+   at runtime for every new MST connector. An MST hotplug while FRL
+   polling is armed re-initializes a pending delayed work. Because the
+   work is only initialized once connectors exist, the cancel that
+   commit 8bcad6d7acbb ("drm/amd/display: Stop HDMI FRL status polling
+   on fini") added to amdgpu_dm_fini() can also run on a work item
+   that was never initialized, if amdgpu_dm_init() fails after the
+   workqueue is created but before the first connector is set up.
 
-Link: https://lore.kernel.org/amd-gfx/20250521094912.6714-2-pierre-eric.pelloux-prayer@amd.com/
-Suggested-by: Pierre-Eric Pelloux-Prayer <pierre-eric.pelloux-prayer@amd.com>
-Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
----
-This follows Christian König's feedback on Pierre-Eric's earlier
-patch [1] to capture the fault information earlier and while holding
-a lock.
+2. If the workqueue allocation fails, amdgpu_dm_commit_streams() still
+   passes the NULL workqueue to queue_delayed_work().
 
-Tested on Rembrandt / Yellow Carp (gfx1033) using IGT amd_deadlock:
+Patch 1 moves the initialization to amdgpu_dm_init(), before the
+workqueue is created. Patch 2 skips queueing when the workqueue does
+not exist. Patch 3 adds a KUnit test for the MST case of patch 1.
 
-1. amdgpu-gfx-illegal-reg-access (no VM fault): no fault block emitted
-2. amdgpu-gfx-illegal-mem-access (VM fault): fault emitted (status 0x640c51)
-3. amdgpu-gfx-illegal-reg-access (post-fault): stale fault cleared, no fault emitted
+These issues were pointed out by an automated review of the workqueue
+rename patch earlier this year.
 
-Note: Captures and clears fault_info under amdgpu_pasid_lock() before 
-dump_ip_state() per Christian Konig's review on v1.
+This series should still combine cleanly with Timur's "Check HDMI FRL
+support before creating polling workqueue", which is not in
+amd-staging-drm-next yet. With that patch, the workqueue is NULL on
+hardware without FRL, and the NULL checks in amdgpu_dm_fini() and in
+patch 2 handle that case. If his patch lands first, patch 1 needs a
+trivial rebase because both touch the same context.
 
-[1] https://lore.kernel.org/all/1ad1b3ea-e825-45d1-ae4d-914f1623d5e2@amd.com/
+Testing:
+- Built on amd-staging-drm-next 8dd68a79583a with GCC 16. W=1 build
+  of amdgpu_dm.o and amdgpu_dm_connector.o: no warnings.
+- Booted on a Cezanne laptop with CONFIG_DEBUG_OBJECTS_WORK and
+  CONFIG_DEBUG_OBJECTS_TIMERS: one hdmi_frl_status_polling_wq thread,
+  no ODEBUG or workqueue warnings, s2idle suspend/resume works. Sysfs
+  unbind of amdgpu: the FRL thread count goes from 1 to 0, with no
+  warnings.
+- amdgpu_dm KUnit suite (UML), with CONFIG_DEBUG_OBJECTS_WORK and
+  CONFIG_DEBUG_OBJECTS_TIMERS: all FRL polling and connector init
+  tests pass, including the new one from patch 3. Without patch 1,
+  the new test fails and ODEBUG reports "init active" on the polling
+  work's timer. On this tree the suite needs a local workaround first:
+  since commit 48b8c06b05ad ("drm/amd/display: Route connector DDC
+  over AUX for native DP sinks"), dm_test_i2c_xfer_no_ddc_pin
+  dereferences a NULL ddc->link and crashes the UML kernel. With the
+  test given a zeroed dc_link, 1931 of 1932 tests pass. The remaining
+  failure, dm_test_fs_caps_dp_vsdb_version, also fails without this
+  series.
+- v1 testing with a debug-only change that forces the polling work to
+  run (lockdep, ODEBUG, about 1200 runs, s2idle, unbind) still applies
+  to patch 1.
+- Not tested: MST hotplug with an active HDMI FRL stream and real FRL
+  link training, since I have no FRL sink or MST hub.
+
+Signed-off-by: Eren Özen <erenozen@protonmail.com>
 ---
 Changes in v2:
-- Rebase onto amd-staging-drm-next 
-- Link to v1: https://patch.msgid.link/20261105-amdgpu-devcoredump-fault-info-v1-1-27c8165bfada@zohomail.in
+- Rebased onto amd-staging-drm-next with the "DC Patches November 16,
+  2026" batch.
+- Dropped v1 patch 2/3 ("Destroy FRL status polling workqueue in
+  amdgpu_dm_fini()"). The same change went in from the DC batch as
+  commit 8bcad6d7acbb, as agreed with Wayne Lin:
+  https://lore.kernel.org/all/20261113031935.53510-1-Wayne.Lin@amd.com/
+- Patch 1: the commit message now also explains the init error path
+  in amdgpu_dm_fini().
+- Patch 1: Fixes tag corrected to 0e967e086e75, which moved the
+  initialization into amdgpu_dm_connector_init_helper() (pointed out
+  by sashiko-bot).
+- Patch 2 (v1 3/3): trivial rebase over "Move HDMI FRL Polling Outside
+  dc_lock". The code change is unchanged. The commit message now
+  compares with amdgpu_dm_crtc_set_vblank(); v1 wrongly said
+  amdgpu_dm_atomic_commit_tail() checks vblank_control_workqueue.
+- New patch 3: KUnit test for patch 1.
+- Link to v1: https://lore.kernel.org/r/20261110-frl-polling-wq-teardown-v1-0-0ff028d5c35b@protonmail.com
 
-To: Alex Deucher <alexander.deucher@amd.com>
-To: Christian König <christian.koenig@amd.com>
-To: David Airlie <airlied@gmail.com>
-To: Simona Vetter <simona@ffwll.ch>
-Cc: amd-gfx@lists.freedesktop.org
-Cc: dri-devel@lists.freedesktop.org
-Cc: linux-kernel@vger.kernel.org
-Cc: Timur Kristóf <timur.kristof@gmail.com>
 ---
- drivers/gpu/drm/amd/amdgpu/amdgpu_dev_coredump.c | 24 +++++++++++++++++-------
- drivers/gpu/drm/amd/amdgpu/amdgpu_dev_coredump.h |  4 +++-
- drivers/gpu/drm/amd/amdgpu/amdgpu_device.c       |  3 ++-
- drivers/gpu/drm/amd/amdgpu/amdgpu_job.c          |  9 ++++++++-
- drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c           | 22 ++++++++++++++++++++++
- drivers/gpu/drm/amd/amdgpu/amdgpu_vm.h           |  2 ++
- 6 files changed, 54 insertions(+), 10 deletions(-)
+Eren Özen (3):
+      drm/amd/display: Initialize FRL status polling work once at DM init
+      drm/amd/display: Don't queue FRL status polling on a NULL workqueue
+      drm/amd/display: Test connector init with FRL status polling pending
 
-diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_dev_coredump.c b/drivers/gpu/drm/amd/amdgpu/amdgpu_dev_coredump.c
-index 2d3fb87af00a..a396295fb949 100644
---- a/drivers/gpu/drm/amd/amdgpu/amdgpu_dev_coredump.c
-+++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_dev_coredump.c
-@@ -30,7 +30,8 @@
- 
- #ifndef CONFIG_DEV_COREDUMP
- void amdgpu_coredump(struct amdgpu_device *adev, bool skip_vram_check,
--		     bool vram_lost, struct amdgpu_job *job)
-+		     bool vram_lost, struct amdgpu_job *job,
-+		     const struct amdgpu_vm_fault_info *fault_info)
- {
- }
- void amdgpu_coredump_init(struct amdgpu_device *adev)
-@@ -418,11 +419,15 @@ amdgpu_devcoredump_format(char *buffer, size_t count, struct amdgpu_coredump_inf
- 	}
- 
- 	/* Add page fault information */
--	fault_info = &coredump->adev->vm_manager.fault_info;
--	drm_printf(&p, "\n[%s] Page fault observed\n",
--		   fault_info->vmhub ? "mmhub" : "gfxhub");
--	drm_printf(&p, "Faulty page starting at address: 0x%016llx\n", fault_info->addr);
--	drm_printf(&p, "Protection fault status register: 0x%x\n\n", fault_info->status);
-+	fault_info = &coredump->fault_info;
-+	if (fault_info->status != 0) {
-+		drm_printf(&p, "\n[%s] Page fault observed\n",
-+			   fault_info->vmhub ? "mmhub" : "gfxhub");
-+		drm_printf(&p, "Faulty page starting at address: 0x%016llx\n",
-+			   fault_info->addr);
-+		drm_printf(&p, "Protection fault status register: 0x%x\n\n",
-+			   fault_info->status);
-+	}
- 
- 	/* dump the ip state for each ip */
- 	drm_printf(&p, "IP Dump\n");
-@@ -542,7 +547,8 @@ static void amdgpu_devcoredump_deferred_work(struct work_struct *work)
- }
- 
- void amdgpu_coredump(struct amdgpu_device *adev, bool skip_vram_check,
--		     bool vram_lost, struct amdgpu_job *job)
-+		     bool vram_lost, struct amdgpu_job *job,
-+		     const struct amdgpu_vm_fault_info *fault_info)
- {
- 	struct drm_device *dev = adev_to_drm(adev);
- 	struct amdgpu_coredump_info *coredump;
-@@ -565,6 +571,10 @@ void amdgpu_coredump(struct amdgpu_device *adev, bool skip_vram_check,
- 
- 	coredump->skip_vram_check = skip_vram_check;
- 	coredump->reset_vram_lost = vram_lost;
-+	if (fault_info)
-+		coredump->fault_info = *fault_info;
-+	else
-+		amdgpu_vm_take_fault_info(adev, &coredump->fault_info);
- 
- 	if (job && job->pasid) {
- 		struct amdgpu_task_info *ti;
-diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_dev_coredump.h b/drivers/gpu/drm/amd/amdgpu/amdgpu_dev_coredump.h
-index cb874d8c3394..85d476828473 100644
---- a/drivers/gpu/drm/amd/amdgpu/amdgpu_dev_coredump.h
-+++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_dev_coredump.h
-@@ -50,6 +50,7 @@ struct amdgpu_coredump_info {
- 
- 	bool                            skip_vram_check;
- 	bool                            reset_vram_lost;
-+	struct amdgpu_vm_fault_info     fault_info;
- 	struct amdgpu_ring              *ring;
- 
- 	struct amdgpu_coredump_ring	*rings;
-@@ -69,7 +70,8 @@ struct amdgpu_coredump_info {
- #endif
- 
- void amdgpu_coredump(struct amdgpu_device *adev, bool skip_vram_check,
--		     bool vram_lost, struct amdgpu_job *job);
-+		     bool vram_lost, struct amdgpu_job *job,
-+		     const struct amdgpu_vm_fault_info *fault_info);
- void amdgpu_coredump_init(struct amdgpu_device *adev);
- void amdgpu_coredump_fini(struct amdgpu_device *adev);
- #endif
-diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_device.c b/drivers/gpu/drm/amd/amdgpu/amdgpu_device.c
-index 5251ce727317..49f06fe08322 100644
---- a/drivers/gpu/drm/amd/amdgpu/amdgpu_device.c
-+++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_device.c
-@@ -5246,7 +5246,8 @@ int amdgpu_device_reinit_after_reset(struct amdgpu_reset_context *reset_context)
- 				vram_lost = amdgpu_device_check_vram_lost(tmp_adev);
- 
- 				if (!test_bit(AMDGPU_SKIP_COREDUMP, &reset_context->flags))
--					amdgpu_coredump(tmp_adev, false, vram_lost, reset_context->job);
-+					amdgpu_coredump(tmp_adev, false, vram_lost,
-+							reset_context->job, NULL);
- 
- 				if (vram_lost) {
- 					dev_info(
-diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_job.c b/drivers/gpu/drm/amd/amdgpu/amdgpu_job.c
-index 8689a3c933b2..502bfd633ae8 100644
---- a/drivers/gpu/drm/amd/amdgpu/amdgpu_job.c
-+++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_job.c
-@@ -36,8 +36,15 @@
- static void amdgpu_job_do_core_dump(struct amdgpu_device *adev,
- 				    struct amdgpu_job *job)
- {
-+	struct amdgpu_vm_fault_info fault_info;
- 	int i;
- 
-+	/*
-+	 * The IP state dump below can take seconds.  Take the snapshot before
-+	 * it, while holding the same lock as the interrupt handler.
-+	 */
-+	amdgpu_vm_take_fault_info(adev, &fault_info);
-+
- 	dev_info(adev->dev, "Dumping IP State\n");
- 	for (i = 0; i < adev->num_ip_blocks; i++)
- 		if (adev->ip_blocks[i].version->funcs->dump_ip_state)
-@@ -45,7 +52,7 @@ static void amdgpu_job_do_core_dump(struct amdgpu_device *adev,
- 				->dump_ip_state((void *)&adev->ip_blocks[i]);
- 	dev_info(adev->dev, "Dumping IP State Completed\n");
- 
--	amdgpu_coredump(adev, true, false, job);
-+	amdgpu_coredump(adev, true, false, job, &fault_info);
- }
- 
- static void amdgpu_job_core_dump(struct amdgpu_device *adev,
-diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c b/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c
-index 6b4dc0276e27..2aadac8792a8 100644
---- a/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c
-+++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c
-@@ -3335,6 +3335,28 @@ void amdgpu_vm_update_fault_cache(struct amdgpu_device *adev,
- 	amdgpu_pasid_unlock(flags);
- }
- 
-+/**
-+ * amdgpu_vm_take_fault_info - snapshot and clear the global fault cache
-+ * @adev: amdgpu device pointer
-+ * @fault_info: destination for the fault information
-+ *
-+ * The fault cache is updated by amdgpu_vm_update_fault_cache() under the
-+ * PASID lock.  Take the snapshot and clear the cache in the same critical
-+ * section so that a fault arriving after the snapshot is not overwritten,
-+ * and a consumed fault is not reported again in a later timeout.
-+ */
-+void amdgpu_vm_take_fault_info(struct amdgpu_device *adev,
-+			       struct amdgpu_vm_fault_info *fault_info)
-+{
-+	unsigned long flags;
-+
-+	amdgpu_pasid_lock(&flags);
-+	*fault_info = adev->vm_manager.fault_info;
-+	memset(&adev->vm_manager.fault_info, 0,
-+	       sizeof(adev->vm_manager.fault_info));
-+	amdgpu_pasid_unlock(flags);
-+}
-+
- void amdgpu_vm_print_task_info(struct amdgpu_device *adev,
- 			       struct amdgpu_task_info *task_info)
- {
-diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.h b/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.h
-index f6285a9d9e98..e4a21f16e43b 100644
---- a/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.h
-+++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.h
-@@ -577,6 +577,8 @@ void amdgpu_vm_update_fault_cache(struct amdgpu_device *adev,
- 				  uint64_t addr,
- 				  uint32_t status,
- 				  unsigned int vmhub);
-+void amdgpu_vm_take_fault_info(struct amdgpu_device *adev,
-+			       struct amdgpu_vm_fault_info *fault_info);
- void amdgpu_vm_tlb_fence_create(struct amdgpu_device *adev,
- 				struct amdgpu_vm *vm,
- 				struct dma_fence *dep,
-
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c  |  6 +++-
+ .../amd/display/amdgpu_dm/amdgpu_dm_connector.c    |  2 --
+ .../amdgpu_dm/tests/amdgpu_dm_connector_test.c     | 34 ++++++++++++++++++++++
+ 3 files changed, 39 insertions(+), 3 deletions(-)
 ---
 base-commit: 8dd68a79583aaf6df6fe4feea3ee9e9f26b02993
-change-id: 20261105-amdgpu-devcoredump-fault-info-fc98b4e51e52
+change-id: 20261110-frl-polling-wq-teardown-2b3336cce9e6
 
 Best regards,
---  
-Shivam Kalra <shivamkalra98@zohomail.in>
+-- 
+Eren Özen <erenozen@protonmail.com>
 
