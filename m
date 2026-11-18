@@ -1,101 +1,69 @@
-From: Zi-Hao Huang <zi-hao.huang@mediatek.com>
-Date: Wed, 18 Nov 2026 10:31:42 +0800
-Subject: [PATCH v2] block: fix PF_BLOCK_TS/current->plug ordering in
- blk_finish_plug()
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Date: Wed, 18 Nov 2026 03:55:58 +0000
+Subject: [PATCH] arm64: dts: allwinner: orangepi-zero2: Read the SPI NOR
+ over two lines
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-blk-plug-fix-v2-1-4acbeec5d512@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIAA0O/WoC/3WMyw6CMBAAf4Xs2TXdNSLx5H8YDi0ssOGZFomG9
- N+t3D3OJDM7BPEqAe7ZDl42DTpPCfiUQdXZqRXUOjGw4ZyIGN3Q4zK8Wmz0jY3JC2eYL64wkJL
- FS9LH7lkm7jSss/8c941+9s9oIyS8NZZtznR1Rf0YpVa7Sn+u5hHKGOMXW3GED6sAAAA=
-X-Change-ID: 20261112-blk-plug-fix-f068b0223b80
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Chao Yu <chao@kernel.org>, stable@vger.kernel.org, 
- Zi-Hao Huang <zi-hao.huang@mediatek.com>, 
- Sandeep Dhavale <dhavale@google.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794969131; l=2708;
- i=zi-hao.huang@mediatek.com; s=20261112; h=from:subject:message-id;
- bh=yzVnLTZw+V0byMgdM9XGWdyVxiHY2j5nto3cl5zYTUw=;
- b=YreCA/+/lxEewEeUdbmQqFTXZK9vYT/ZIJn38ItYb2h92mIT9j114TDFWBTozc6GL+lHZXlrX
- 496eudRghoJCRE0IrwkTnO0nnGdLBh5hc83YVTYF2yVzBYdKYnAh0Mm
-X-Developer-Key: i=zi-hao.huang@mediatek.com; a=ed25519;
- pk=tbMIVegYSSBtz5MaQSUCX9RJO88MA/AI5cbmQKbaoIc=
-X-Endpoint-Received: by B4 Relay for zi-hao.huang@mediatek.com/20261112 with auth_id=1493
+Message-Id: <20261118-zero2-spi-nor-dual-read-v1-1-bcdcbf785be0@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/0WNUQuCMBRG/4rsuRvbyBUS0f8IH+Z20xvpbHMSi
+ f+9pUKPB77vnIkF9ISBFdnEPI4UyHUJxC5jptFdjUA2MZNcKiFEDh/0TkLoCTrnwUb9BI/agjr
+ kWlmUOZ4ES+/e453ei/lWrhxi9UAz/HTbwuMrpuSwzliLIeglWWTnraiWVoidImhUwn9ylMABu
+ VEKq6NAya91q+m5N669sHKevwbesJbdAAAA
+X-Change-ID: 20261115-zero2-spi-nor-dual-read-645a6de25e81
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794974157; l=1356;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=azsGory18NjrLZMbFK+fhx8bhUeiwb0w4jtTyXOp1s0=;
+ b=m180m4A6WLT+kJyz23ClvGlYswZxgc9As93hAgp5fKtYXJeB/FchFqqzONmKShqEBxtX3Pvm7
+ 5EFnJiBr/UxAFBEGtfj77F7geCTkl7SG03XkW5QUEsvFcmgngCX6CKD
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-blk_plug_invalidate_ts() runs on context switch and assumes that
-PF_BLOCK_TS set implies current->plug != NULL. blk_finish_plug() breaks
-this: it clears PF_BLOCK_TS in __blk_flush_plug() and then sets
-current->plug = NULL, with plain accesses.
+WP# and HOLD# are tied to VCC (schematic v1.3), so read over two lines.
 
-clang inlines __blk_flush_plug() and emits the store to current->plug
-before the store that clears the flag (arm64, Android common kernel):
-
-  ldr  w8, [x20, #0x44]     // w8 = current->flags
-  str  xzr, [x20, #0xaa8]   // current->plug = NULL
-  and  w8, w8, #0xdfffffff  // w8 &= ~PF_BLOCK_TS  <- preempted here
-  str  w8, [x20, #0x44]     // current->flags = w8
-
-If an interrupt hits there and preempts the task, the task is later
-scheduled back in with PF_BLOCK_TS set and no plug, and
-blk_plug_invalidate_ts() writes to NULL + 0x20 (plug->cur_ktime):
-
-  Unable to handle kernel NULL pointer dereference at 0000000000000020
-  pc : __schedule+0x108c
-   preempt_schedule_irq+0x48/0xa8
-   el1_interrupt+0x48/0x8c
-   blk_finish_plug+0x6c/0x18c
-   ext4_do_writepages+0xd3c/0xef8
-
-The window is only a few instructions wide, so this is rare. It was hit
-at cycle 127 of a warm reboot stress test.
-
-Add a compiler barrier so the flag is cleared before the plug is
-dropped. A compiler barrier is enough because the race is with
-preemption of the same task on the same CPU. With the barrier, the same
-build stores current->flags before current->plug.
-
-Fixes: fad156c2af22 ("block: invalidate cached plug timestamp after task switch")
-Cc: stable@vger.kernel.org
-Signed-off-by: Zi-Hao Huang <zi-hao.huang@mediatek.com>
-Reviewed-by: Sandeep Dhavale <dhavale@google.com>
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Changes in v2:
-- Point the Fixes tag at fad156c2af22, which dropped the NULL check and
-  made the preemption race possible, and drop the stable version
-  (Sandeep)
-- Collect Reviewed-by
-- Link to v1: https://lore.kernel.org/r/20261112-blk-plug-fix-v1-1-7fa2a6215b8d@mediatek.com
----
- block/blk-core.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Needs the spi-sun6i H616 dual read series v2 (prerequisite below).
+Tested on an Orange Pi Zero2 with it: 1-1-2 reads (opcode 0x3b), 2 MiB in
+0.28 s instead of 0.52 s, identical data.
 
-diff --git a/block/blk-core.c b/block/blk-core.c
-index 8836c7028568..ad2a8e4fe7a8 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -1299,6 +1299,12 @@ void blk_finish_plug(struct blk_plug *plug)
- {
- 	if (plug == current->plug) {
- 		__blk_flush_plug(plug, false);
-+		/*
-+		 * blk_plug_invalidate_ts() runs on context switch and expects a
-+		 * plug whenever PF_BLOCK_TS is set, so clear the flag (done in
-+		 * __blk_flush_plug()) before dropping the plug.
-+		 */
-+		barrier();
- 		current->plug = NULL;
- 	}
- }
+Developed with Claude (Anthropic), which wrote the commit message. I
+reviewed it.
+---
+ arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
+index 90c25e12e189..fb117116002e 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
+@@ -150,6 +150,7 @@ &pio {
+ 
+ &spi0 {
+ 	flash@0 {
++		spi-rx-bus-width = <2>;
+ 		vcc-supply = <&reg_aldo1>;
+ 	};
+ };
 
 ---
-base-commit: 067c5c24cef23d913b67eaaf71ae67e7169a6620
-change-id: 20261112-blk-plug-fix-f068b0223b80
+base-commit: a203a4bac3316451a3036653657c8b250dea2055
+change-id: 20261115-zero2-spi-nor-dual-read-645a6de25e81
+prerequisite-message-id: <20261116-spi-sun6i-h616-dual-read-v2-0-e0c66eb71e20@gmail.com>
+prerequisite-patch-id: 28b145097d0f859e5bd27bcc5028d0915f3ba4bd
+prerequisite-patch-id: fb47570beb53613acb42c518fd1999e05e0c54fb
 
 Best regards,
--- 
-Zi-Hao Huang <zi-hao.huang@mediatek.com>
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
