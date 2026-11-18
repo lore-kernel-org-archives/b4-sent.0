@@ -1,89 +1,71 @@
-From: Noam Cohen <noam@noam.me>
-Date: Wed, 18 Nov 2026 23:04:37 +0000
-Subject: [PATCH] ls-tree: do not quote %(path) with -z
+From: =?utf-8?q?Alexandru_Andrie=C8=99?= <alex.andries.aa@gmail.com>
+Subject: [PATCH 0/3] power: supply: qcom_battmgr: fix SM8350/SM8550 units,
+ acks, and negative temp
+Date: Thu, 19 Nov 2026 00:16:49 +0100
+Message-Id: <20261119-upstream-qcom-battmgr-fixes-v1-v1-0-ca83700c08c1@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261118-ls-tree-format-z-verbatim-path-v1-1-718987241861@noam.me>
-X-B4-Tracking: v=1; b=H4sIAAQv/moC/yXNTQrCQAxA4auUrA2YinXwKuJipiY2Yn9IpkUsv
- bujLr/Neys4m7LDuVrBeFHXcSigXQVtF4c7o96Kod7XDREFfDpmY0YZrY8Z37iwpZi1xynmDuV
- 4CofUkEgQKJHJWPT1G1yuf/ucHtzmbxW27QNoc4/aggAAAA==
-X-Change-ID: 20261118-ls-tree-format-z-verbatim-path-f5783b61ff8f
-To: git@vger.kernel.org
-Cc: Junio C Hamano <gitster@pobox.com>, Teng Long <dyroneteng@gmail.com>, 
- =?utf-8?q?=C3=86var_Arnfj=C3=B6r=C3=B0_Bjarmason?= <avarab@gmail.com>, 
- =?utf-8?q?Ren=C3=A9_Scharfe?= <l.s.r@web.de>, Noam Cohen <noam@noam.me>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795043135; l=1980;
- i=noam@noam.me; s=20261118; h=from:subject:message-id;
- bh=/gS8cB9hoApkoumXcC9pvUxzrBcAfscqlgx+E/AqFio=;
- b=T+uWUJSMwZRIQ1pVZ2Y7ycU/uL2NxTqfXpExeGeVWi+nxVin6uiqV3h9IRh/VQ1zMxMJrRtYt
- xVyxvddV6xZC+ZkoWmdFmx8/iu9A4w+fQvGFw69v0oKxrEiXzoiKyjJ
-X-Developer-Key: i=noam@noam.me; a=ed25519;
- pk=qyNqXh2nrM20rNZXIQMjH3jLUPgL/RaLrmNnO0YOpp4=
-X-Endpoint-Received: by B4 Relay for noam@noam.me/20261118 with auth_id=1563
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSQrDMAxA0asErSuwXHe8SunCcZTUBWeQnFAIu
+ Xvcdvn48FdQlsgK92oF4SVqHPoCOlQQXr7vGGNTDNbYMxHdcB41C/uEUxgS1j7n1Am28cOKC6E
+ xrj260/USnIUyGYV/rTwez791rt8c8vcK27YD2U51/IIAAAA=
+X-Change-ID: 20261119-upstream-qcom-battmgr-fixes-v1-004f34587c42
+To: Sebastian Reichel <sre@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>
+Cc: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ linux-pm@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, stable@vger.kernel.org, 
+ =?utf-8?q?Alexandru_Andrie=C8=99?= <alex.andries.aa@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795043834; l=1715;
+ i=alex.andries.aa@gmail.com; s=20261118; h=from:subject:message-id;
+ bh=m10mZSU/1Zs9cTC5pq8aFlYb+YKIJMjUiK5nOQ8Ic5U=;
+ b=14Lq8wuWQuoQc3cNz9//dLqgr1JXctqOo4kFuKLkJS5coL8EnvrYoqD4Hmn/Xuy24mz+804oV
+ Ot47XW7aOgGDN+Xcx13lP93bzbL+7qiM343UtygdiLY50P/9tSM4AHS
+X-Developer-Key: i=alex.andries.aa@gmail.com; a=ed25519;
+ pk=kNAqgavfB7uUd1mA8o8TszhGxzyqBwY71PGO/oK4v84=
+X-Endpoint-Received: by B4 Relay for alex.andries.aa@gmail.com/20261118 with auth_id=1564
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With -z, "git ls-tree" is documented to output the filename verbatim,
-but since 455923e0a1 (ls-tree: introduce "--format" option,
-2022-03-23) the %(path) placeholder of a custom --format is always
-C-quoted.
+Fix three issues in qcom_battmgr encountered while bringing up PMIC GLINK
+battery reporting on a Xiaomi MIX 4 (xiaomi-odin, SM8350):
 
-Output it verbatim when -z is given, like "git ls-files --format"
-already does.
+1. Set battmgr->unit to QCOM_BATTMGR_UNIT_mAh on SM8350 and SM8550 so
+   charge_full and charge_full_design stop returning -ENODATA.
+2. Complete &battmgr->ack on invalid payload length errors in both
+   callbacks so callers receive -ENODATA immediately instead of stalling
+   for 1s with -ETIMEDOUT and aborting power_supply_uevent().
+3. Change status.temperature and qcom_battmgr_sc8280xp_convert_temp() to
+   int and cast SM8350 BATT_TEMP values to s32 before dividing by 10 so
+   sub-zero temperatures do not wrap into large positive values.
 
-Signed-off-by: Noam Cohen <noam@noam.me>
----
-This makes "ls-tree -z --format" match "ls-files -z --format", which
-already outputs %(path) verbatim.
----
- builtin/ls-tree.c         | 5 ++++-
- t/t3104-ls-tree-format.sh | 9 ++++++++-
- 2 files changed, 12 insertions(+), 2 deletions(-)
+Testing:
+- Built warning-free (W=1) on arm64 against commit 97d73c825122.
+- Tested on a Xiaomi MIX 4 (xiaomi-odin, SM8350) with UPower 1.91.0.
+- The SM8550 variant in patch 1, the SC8280XP paths in patches 2 and 3,
+  and sub-zero battery temperatures (< 0 C) in patch 3 were not
+  hardware-tested.
 
-diff --git a/builtin/ls-tree.c b/builtin/ls-tree.c
-index 46edaffc2e..d25bbffcdd 100644
---- a/builtin/ls-tree.c
-+++ b/builtin/ls-tree.c
-@@ -130,7 +130,10 @@ static int show_tree_fmt(const struct object_id *oid, struct strbuf *base,
- 
- 			strbuf_addstr(base, pathname);
- 			name = relative_path(base->buf, prefix, &sbuf);
--			quote_c_style(name, &sb, NULL, 0);
-+			if (options->null_termination)
-+				strbuf_addstr(&sb, name);
-+			else
-+				quote_c_style(name, &sb, NULL, 0);
- 			strbuf_setlen(base, baselen);
- 			strbuf_release(&sbuf);
- 		} else
-diff --git a/t/t3104-ls-tree-format.sh b/t/t3104-ls-tree-format.sh
-index a1b2069a25..016c0fd0ff 100755
---- a/t/t3104-ls-tree-format.sh
-+++ b/t/t3104-ls-tree-format.sh
-@@ -12,7 +12,8 @@ test_expect_success 'ls-tree --format usage' '
- '
- 
- test_expect_success 'setup' '
--	setup_basic_ls_tree_data
-+	setup_basic_ls_tree_data &&
-+	test_commit נעם
- '
- 
- test_ls_tree_format () {
-@@ -76,4 +77,10 @@ test_ls_tree_format \
- 	"--full-tree" \
- 	"--full-tree"
- 
-+test_expect_success 'ls-tree --format with -z does not quote paths' '
-+	printf "blob נעם.t\0" >expect &&
-+	git ls-tree -z --format="%(objecttype) %(path)" HEAD נעם.t >actual &&
-+	test_cmp expect actual
-+'
-+
- test_done
+AI disclosure:
+- Debugged and drafted with assistance from Gemini 4 Carbon
+  (Antigravity), and reviewed and tested on hardware by the submitter.
 
 ---
-base-commit: 03b41523c576f26ad34085378717a0c1b287470f
-change-id: 20261118-ls-tree-format-z-verbatim-path-f5783b61ff8f
+Alexandru Andrieș (3):
+      power: supply: qcom_battmgr: set mAh unit for SM8350 and SM8550
+      power: supply: qcom_battmgr: complete ack on callback payload errors
+      power: supply: qcom_battmgr: fix negative temperature values
+
+ drivers/power/supply/qcom_battmgr.c | 27 ++++++++++++++++-----------
+ 1 file changed, 16 insertions(+), 11 deletions(-)
+---
+base-commit: 97d73c8251226cf27cc6656b4c542869bb8c69fa
+change-id: 20261119-upstream-qcom-battmgr-fixes-v1-004f34587c42
+
+Best regards,
+--  
+Alexandru Andrieș <alex.andries.aa@gmail.com>
 
