@@ -1,230 +1,125 @@
-From: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-Date: Wed, 18 Nov 2026 07:29:55 +0000
-Subject: [PATCH v3 2/2] iio: light: adux1020: return early on unsupported
- channel types
+From: Long Zhao <longzhao@ambarella.com>
+Subject: [PATCH v15 00/14] gpio: add Ambarella CV75 PL061 support
+Date: Wed, 18 Nov 2026 15:42:17 +0800
+Message-Id: <20261118-cv75-gpio-v15-0-e3c563673fe1@ambarella.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-adux1020-guard-v3-2-2c6a18954fc7@gmail.com>
-References: <20261118-adux1020-guard-v3-0-2c6a18954fc7@gmail.com>
-In-Reply-To: <20261118-adux1020-guard-v3-0-2c6a18954fc7@gmail.com>
-To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux@analog.com, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794986997; l=5621;
- i=raffaele.tranfaglia@gmail.com; s=20261011; h=from:subject:message-id;
- bh=MV8Ao7tH+kZOZGFAQwihjZFywcvb8hOVDmLBq0ZEOik=;
- b=y92lfZHFLsmTSDmXGNYuHYjI1hyYfPGoKkTax4EulSt/V6FTf5CFRhD3iKtF9MupJEsgzjB2K
- 8c+ihzj5K1cDQuhQ3sfd7lXsJVj0nWyS3gMWiDY0wPrby1uNsR+fpnN
-X-Developer-Key: i=raffaele.tranfaglia@gmail.com; a=ed25519;
- pk=mweuSGNM6vguCTdqa+aiHwMXdgk70suj2wolzCp6XGM=
-X-Endpoint-Received: by B4 Relay for raffaele.tranfaglia@gmail.com/20261011 with auth_id=1160
+X-B4-Tracking: v=1; b=H4sIANlW/WoC/23PQW7DIBAF0KtErEs1A4yxu+o9qi7GeJxQJXGEU
+ 6tV5LsXElW1K0tsgHmfz02NkqKM6mV3U0mmOMbhnDdITzsVDnzei45dPlAGTIUAXofJk95f4qC
+ ttZ0P2PWCqPL8JUkfv+5hb++P/fjZfki4loAycYjjdUjf99empsz95uIjd8qr0aBdXYVg6oZdW
+ 7/yqeUkxyM/h+GkSvKEsMBIi1L5Knvbi5XWIjHRpseFN7DymL0A1S0LNuRx05ul9ytvsg/GEJE
+ DENzub/98Dlh5W/7fNxbRCRtwm94tPK77u9Kf6oq5A1d5/u/nef4Bng8chvcBAAA=
+X-Change-ID: 20261007-cv75-gpio-333d7c1dfe11
+To: Bartosz Golaszewski <brgl@kernel.org>, linux-gpio@vger.kernel.org
+Cc: Linus Walleij <linusw@kernel.org>, Michael Walle <mwalle@kernel.org>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Conor Dooley <conor+dt@kernel.org>, Mika Westerberg <westeri@kernel.org>, 
+ devicetree@vger.kernel.org, Long Zhao <longzhao@ambarella.com>, 
+ Long Zhao <zl020895@163.com>, linux-kernel@vger.kernel.org, 
+ Conor Dooley <conor.dooley@microchip.com>, Chanho Min <chanho.min@lge.com>, 
+ linux-acpi@vger.kernel.org, Kees Cook <kees@kernel.org>, 
+ linux-hardening@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794987752; l=4295;
+ i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
+ bh=y3I78avvWB7/oGZfxXwD/pE3NGDD4Ih4+VVvkpVdeBI=;
+ b=YyRsVVcVRBn4qY+ZmLIM/qZYSKAibd/uZBHy/uB9xCPCYzg8LmMyqWQ0kcyEp1eGckWA0+eri
+ U7J/OrOPW21DN6iK/CG29V8cAVK5JhzNCrRQ+IprIoehRmQA8iQOJ9U
+X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
+ pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
+X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that adux1020_read_raw() and adux1020_write_raw() can return
-directly, check the channel type with an inverted condition and return
--EINVAL early instead of nesting the work in an inner switch or if
-block. This removes one level of indentation and makes the two
-functions consistent with each other.
+Please take this series through the GPIO tree. The quirk, the PL061
+conversion and the Ambarella layout belong together.
 
-While at it, add a local regmap pointer in adux1020_read_raw() and
-adux1020_write_raw() to shorten the regmap calls, check the return
-value of regmap_read() with 'if (ret)' since regmap only returns 0 or a
-negative error code, and drop the stray semicolon after the closing
-brace of adux1020_read_raw().
+These patches convert the ARM PL061 data path to regmap, then add
+the CV75 layout. They also request ACPI GPIO events for an external
+irq domain, and remove the gpiochip before tearing down its irqchip.
 
-No functional change intended.
+The data path uses gpio-regmap with two layouts, ARM PrimeCell and
+Ambarella. ARM PL061 sets GPIO_REGMAP_QUIRK_SET_AFTER_DIR. IRQ stays
+a custom PL061 irqchip, attached through gpio-regmap. regmap-irq is
+not used.
 
-Suggested-by: Jonathan Cameron <jic23@kernel.org>
-Signed-off-by: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
+Tested with lockdep enabled on the CV75 EVK. The board boots.
+gpio-hammer toggles gpiochip0 line 26 ten times, and gpio-event-mon
+on line 27 records alternating rising and falling edges. unbind and
+bind work; the chip re-registers and both tools work again after
+the rebind. Holding line 27 as an edge IRQ and unbinding, without
+blocking in read, no longer warns from remove_proc_entry().
+
+The registration error-path leak fix is already applied in the GPIO
+tree as 80415a6ff295 ("gpio: regmap: free the irqchip if adding the
+irq domain fails"). Apply this series on top of that commit.
+
+Changes in v15:
+- gpio: pl061: call gpiolib irq helpers on the immutable chip. (Sashiko)
+- lib/string_choices: collect Andy's Reviewed-by on the helper. (Andy)
+- gpio: pl061: collect Andy's Reviewed-by on the string_choices use. (Andy)
+- Link to v14: https://patch.msgid.link/20261110-cv75-gpio-v14-0-e586aad0467a@ambarella.com
+
+Changes in v14:
+- lib/string_choices: add str_rising_falling() and use it in pl061. (Andy)
+- gpio: regmap: keep removing the gpiochip before the irqchip. (Sashiko)
+- gpio: regmap: rename the SET_AFTER_DIR subject from gpiolib:. (Michael)
+- gpiolib: collect Mika's Acked-by and move linux-acpi below ---. (Mika)
+- gpio: pl061: collect Andy's Reviewed-by on the IRQ logging patch. (Andy)
+- gpio: pl061: collect Linus's Reviewed-by on the parent local. (Linus)
+- Link to v13: https://patch.msgid.link/20261102-cv75-gpio-v13-0-4f93114ea204@ambarella.com
+
+To: Bartosz Golaszewski <brgl@kernel.org>
+To: linux-gpio@vger.kernel.org
+Cc: Linus Walleij <linusw@kernel.org>
+Cc: Michael Walle <mwalle@kernel.org>
+Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: Rob Herring <robh@kernel.org>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>
+Cc: Krzysztof Kozlowski <krzk+dt@kernel.org>
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Cc: Conor Dooley <conor+dt@kernel.org>
+Cc: Mika Westerberg <westeri@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: Long Zhao <longzhao@ambarella.com>
+Cc: Long Zhao <zl020895@163.com>
+Cc: linux-kernel@vger.kernel.org
+
+Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
- drivers/iio/light/adux1020.c | 131 ++++++++++++++++++++-----------------------
- 1 file changed, 61 insertions(+), 70 deletions(-)
+Long Zhao (14):
+      dt-bindings: gpio: pl061: add Ambarella CV75 variant
+      gpio: regmap: add GPIO_REGMAP_QUIRK_SET_AFTER_DIR
+      gpio: regmap: remove gpiochip before tearing down irqchip
+      gpio: pl061: drop redundant pending check in the IRQ handler
+      gpio: pl061: convert register access to regmap
+      gpio: pl061: use IRQ_TYPE_LEVEL_MASK and IRQ_TYPE_EDGE_BOTH
+      gpio: pl061: use cleanup helpers for locks
+      gpio: pl061: keep the parent device in a local
+      gpiolib: request ACPI GPIO events for external IRQ domains
+      gpio: pl061: switch data path to gpio-regmap
+      gpio: pl061: add Ambarella register-layout variant
+      gpio: pl061: tidy up IRQ trigger logging
+      lib/string_choices: add str_rising_falling()
+      gpio: pl061: use string_choices helpers for IRQ trigger logging
 
-diff --git a/drivers/iio/light/adux1020.c b/drivers/iio/light/adux1020.c
-index b595faf4abc5..5ee1994b6e50 100644
---- a/drivers/iio/light/adux1020.c
-+++ b/drivers/iio/light/adux1020.c
-@@ -362,6 +362,7 @@ static int adux1020_read_raw(struct iio_dev *indio_dev,
- 			     int *val, int *val2, long mask)
- {
- 	struct adux1020_data *data = iio_priv(indio_dev);
-+	struct regmap *map = data->regmap;
- 	u16 buf[3];
- 	unsigned int regval;
- 	int ret;
-@@ -370,61 +371,54 @@ static int adux1020_read_raw(struct iio_dev *indio_dev,
- 
- 	switch (mask) {
- 	case IIO_CHAN_INFO_RAW:
--		switch (chan->type) {
--		case IIO_PROXIMITY:
--			ret = adux1020_set_mode(data, ADUX1020_MODE_PROX_I);
--			if (ret < 0)
--				return ret;
--
--			ret = adux1020_measure(data, ADUX1020_MODE_PROX_I, buf);
--			if (ret < 0)
--				return ret;
--
--			*val = buf[0];
--			return IIO_VAL_INT;
--		default:
-+		if (chan->type != IIO_PROXIMITY)
- 			return -EINVAL;
--		}
--	case IIO_CHAN_INFO_PROCESSED:
--		switch (chan->type) {
--		case IIO_CURRENT:
--			ret = regmap_read(data->regmap,
--					  ADUX1020_REG_LED_CURRENT, &regval);
--			if (ret < 0)
--				return ret;
- 
--			regval = regval & ADUX1020_LED_CURRENT_MASK;
-+		ret = adux1020_set_mode(data, ADUX1020_MODE_PROX_I);
-+		if (ret < 0)
-+			return ret;
- 
--			*val = adux1020_led_currents[regval][0];
--			*val2 = adux1020_led_currents[regval][1];
-+		ret = adux1020_measure(data, ADUX1020_MODE_PROX_I, buf);
-+		if (ret < 0)
-+			return ret;
- 
--			return IIO_VAL_INT_PLUS_MICRO;
--		default:
-+		*val = buf[0];
-+
-+		return IIO_VAL_INT;
-+	case IIO_CHAN_INFO_PROCESSED:
-+		if (chan->type != IIO_CURRENT)
- 			return -EINVAL;
--		}
-+
-+		ret = regmap_read(map, ADUX1020_REG_LED_CURRENT, &regval);
-+		if (ret)
-+			return ret;
-+
-+		regval = regval & ADUX1020_LED_CURRENT_MASK;
-+
-+		*val = adux1020_led_currents[regval][0];
-+		*val2 = adux1020_led_currents[regval][1];
-+
-+		return IIO_VAL_INT_PLUS_MICRO;
- 	case IIO_CHAN_INFO_SAMP_FREQ:
--		switch (chan->type) {
--		case IIO_PROXIMITY:
--			ret = regmap_read(data->regmap, ADUX1020_REG_FREQUENCY,
--					  &regval);
--			if (ret < 0)
--				return ret;
--
--			regval = FIELD_GET(ADUX1020_PROX_FREQ_MASK, regval);
--			if (regval >= ARRAY_SIZE(adux1020_rates))
--				return -EINVAL;
--
--			*val = adux1020_rates[regval][0];
--			*val2 = adux1020_rates[regval][1];
--
--			return IIO_VAL_INT_PLUS_MICRO;
--		default:
-+		if (chan->type != IIO_PROXIMITY)
-+			return -EINVAL;
-+
-+		ret = regmap_read(map, ADUX1020_REG_FREQUENCY, &regval);
-+		if (ret)
-+			return ret;
-+
-+		regval = FIELD_GET(ADUX1020_PROX_FREQ_MASK, regval);
-+		if (regval >= ARRAY_SIZE(adux1020_rates))
- 			return -EINVAL;
--		}
-+
-+		*val = adux1020_rates[regval][0];
-+		*val2 = adux1020_rates[regval][1];
-+
-+		return IIO_VAL_INT_PLUS_MICRO;
- 	default:
- 		return -EINVAL;
- 	}
--};
-+}
- 
- static inline int adux1020_find_index(const int array[][2], int count, int val,
- 				      int val2)
-@@ -443,43 +437,40 @@ static int adux1020_write_raw(struct iio_dev *indio_dev,
- 			      int val, int val2, long mask)
- {
- 	struct adux1020_data *data = iio_priv(indio_dev);
-+	struct regmap *map = data->regmap;
- 	int i;
- 
- 	guard(mutex)(&data->lock);
- 
- 	switch (mask) {
- 	case IIO_CHAN_INFO_SAMP_FREQ:
--		if (chan->type == IIO_PROXIMITY) {
--			i = adux1020_find_index(adux1020_rates,
--						ARRAY_SIZE(adux1020_rates),
--						val, val2);
--			if (i < 0)
--				return i;
--
--			return regmap_update_bits(data->regmap,
--						  ADUX1020_REG_FREQUENCY,
--						  ADUX1020_PROX_FREQ_MASK,
--						  ADUX1020_PROX_FREQ(i));
--		}
--		break;
-+		if (chan->type != IIO_PROXIMITY)
-+			return -EINVAL;
-+
-+		i = adux1020_find_index(adux1020_rates,
-+					ARRAY_SIZE(adux1020_rates),
-+					val, val2);
-+		if (i < 0)
-+			return i;
-+
-+		return regmap_update_bits(map, ADUX1020_REG_FREQUENCY,
-+					  ADUX1020_PROX_FREQ_MASK,
-+					  ADUX1020_PROX_FREQ(i));
- 	case IIO_CHAN_INFO_PROCESSED:
--		if (chan->type == IIO_CURRENT) {
--			i = adux1020_find_index(adux1020_led_currents,
-+		if (chan->type != IIO_CURRENT)
-+			return -EINVAL;
-+
-+		i = adux1020_find_index(adux1020_led_currents,
- 					ARRAY_SIZE(adux1020_led_currents),
- 					val, val2);
--			if (i < 0)
--				return i;
-+		if (i < 0)
-+			return i;
- 
--			return regmap_update_bits(data->regmap,
--						  ADUX1020_REG_LED_CURRENT,
--						  ADUX1020_LED_CURRENT_MASK, i);
--		}
--		break;
-+		return regmap_update_bits(map, ADUX1020_REG_LED_CURRENT,
-+					  ADUX1020_LED_CURRENT_MASK, i);
- 	default:
--		break;
-+		return -EINVAL;
- 	}
--
--	return -EINVAL;
- }
- 
- static int adux1020_write_event_config(struct iio_dev *indio_dev,
+ .../devicetree/bindings/gpio/pl061-gpio.yaml       |  25 +-
+ drivers/gpio/Kconfig                               |   2 +
+ drivers/gpio/gpio-pl061.c                          | 592 ++++++++++++++-------
+ drivers/gpio/gpio-regmap.c                         |  24 +-
+ drivers/gpio/gpiolib.c                             |   9 +-
+ include/linux/amba/bus.h                           |   1 +
+ include/linux/gpio/regmap.h                        |  14 +
+ include/linux/string_choices.h                     |   6 +
+ 8 files changed, 475 insertions(+), 198 deletions(-)
+---
+base-commit: 34cf6dafc47441dfb6b356a095b89c3585a93714
+change-id: 20261007-cv75-gpio-333d7c1dfe11
 
--- 
-2.56.0
+Best regards,
+--  
+Long Zhao <longzhao@ambarella.com>
 
