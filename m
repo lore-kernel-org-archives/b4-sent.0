@@ -1,141 +1,96 @@
-From: Matthew Salsamendi <matthewsalsamendi@gmail.com>
-Date: Tue, 17 Nov 2026 16:26:17 -0800
-Subject: [PATCH v2 2/2] selftests/mm: cover PAGEMAP_SCAN refill and HugeTLB
- retry
-To: Andrew Morton <akpm@linux-foundation.org>, 
- "Liam R. Howlett" <liam@infradead.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- David Hildenbrand <david@kernel.org>, Shuah Khan <shuah@kernel.org>
-Cc: Chris Down <chris@chrisdown.name>, Vlastimil Babka <vbabka@kernel.org>, 
- Muhammad Usama Anjum <usama.anjum@arm.com>, linux-mm@kvack.org, 
- linux-kernel@vger.kernel.org, matthewsalsamendi@gmail.com, 
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Michal Hocko <mhocko@suse.com>, linux-kselftest@vger.kernel.org
-Message-Id: <20261118-pagemap-walk-end-v2-2-94cd92d838b3@gmail.com>
-In-Reply-To: <20261118-pagemap-walk-end-v2-0-94cd92d838b3@gmail.com>
-References: <20261118-pagemap-walk-end-v2-0-94cd92d838b3@gmail.com>
-X-Mailer: b4 0.16.0
+From: Zi-Hao Huang <zi-hao.huang@mediatek.com>
+Date: Wed, 18 Nov 2026 09:25:18 +0800
+Subject: [PATCH] drm/mediatek: dsi: Don't let a signal cut the IRQ wait
+ short
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794961577; l=4010;
- i=matthewsalsamendi@gmail.com; s=b4-kernel-20261117;
- h=from:subject:message-id; bh=NjI4ckbRiDH/qj/osMQWWUKd8BFP8IcXjX/T5XOwGbg=;
- b=mrjF2WrjZGFgovurzwg8O491bymKSYiw6D8PuPvt46rgg2nazqv8TPr8dKIckqMsNpfgMOKTh
- YEQcy8h++zCCbqFtnK/w6RdNSXJy1wNYLOihLNAAODzz4YDmq/jUmr2
-X-Developer-Key: i=matthewsalsamendi@gmail.com; a=ed25519;
- pk=K4Lg4pTU46IL2CPz2Nb/u30nsnWJ38MlR2/Co4n0tto=
-X-Endpoint-Received: by B4 Relay for matthewsalsamendi@gmail.com/b4-kernel-20261117 with auth_id=1555
+Message-Id: <20261118-mtk-dsi-irq-wait-v1-1-205f25fac8b2@mediatek.com>
+X-B4-Tracking: v=1; b=H4sIAH3+/GoC/x3MzQpAUBBA4VfRrE2ZSciryGJyB5P83SuUvLub5
+ bc454Gg3jRAnTzg9bRg6xJBaQLdKMugaC4aOOOCiCqcjwldMDS/4yV2oHBeEouTgkuI2ea1t/t
+ fNu37fkZKzT5iAAAA
+X-Change-ID: 20261118-mtk-dsi-irq-wait-a24712ada627
+To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ shaoming chen <shaoming.chen@mediatek.com>, dri-devel@lists.freedesktop.org, 
+ linux-mediatek@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, 
+ Zi-Hao Huang <zi-hao.huang@mediatek.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794965128; l=2609;
+ i=zi-hao.huang@mediatek.com; s=20261112; h=from:subject:message-id;
+ bh=mBD6dS6d064X8Z2NA64EwiPmxgRAZHmv32EB6c3egAE=;
+ b=h0n34iq4oweQpJL4Q1/996A0FU3QFKpqo/f4lya6mqbzxROzBIxyGIe0y5Q1hebLNaOvGCuh6
+ Uzd8VWv4YnTCLk29wrnRg3YlOT4kPhXxSEBsbUMS+exxPHW/ApTnAvr
+X-Developer-Key: i=zi-hao.huang@mediatek.com; a=ed25519;
+ pk=tbMIVegYSSBtz5MaQSUCX9RJO88MA/AI5cbmQKbaoIc=
+X-Endpoint-Received: by B4 Relay for zi-hao.huang@mediatek.com/20261112 with auth_id=1493
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Check that scanning 513 disjoint dirty pages returns every range and
-sets walk_end to the end of the scan. For a written HugeTLB page, limit
-the scan to one base page, then retry from walk_end and check that the
-whole page is returned and write-protected.
+mtk_dsi_wait_for_irq_done() waits for the DSI IRQ with
+wait_event_interruptible_timeout(). If it returns early, for example
+with -ERESTARTSYS when a signal is pending, both callers still treat the
+command as done, because they only handle a return value of 0 as a
+failure.
 
-Codex assisted with the selftests, validation and this message.
+On an MT8196 board this led to a hard lockup during shutdown. The wait
+returned before the IRQ arrived, the panel disable sequence went on and
+restarted video mode, and the late CMD_DONE interrupt was then handled
+by mtk_dsi_irq(). The handler writes RACK and loops until DSI_BUSY
+clears, but DSI_BUSY stays set while video mode is running, so the CPU
+never leaves the handler until the watchdog fires. Forcing the wait to
+return early reproduces the lockup every time, and it no longer
+happens once the wait cannot return early.
 
-Suggested-by: Andrew Morton <akpm@linux-foundation.org>
-Suggested-by: Chris Down <chris@chrisdown.name>
-Signed-off-by: Matthew Salsamendi <matthewsalsamendi@gmail.com>
+The wait is made from the driver's own context to synchronise with the
+hardware, not on behalf of a userspace request, and it is bounded by its
+timeout. Use wait_event_timeout() so that it only ends on the IRQ or the
+timeout.
+
+wake_up_interruptible() cannot wake a task in uninterruptible sleep, so
+switch mtk_dsi_irq() to wake_up(). Without it every wait would last
+until its timeout.
+
+Fixes: dd5080a54df8 ("drm/mediatek: add dsi interrupt control")
+Signed-off-by: Zi-Hao Huang <zi-hao.huang@mediatek.com>
 ---
- tools/testing/selftests/mm/pagemap_ioctl.c | 61 +++++++++++++++++++++-
- 1 file changed, 60 insertions(+), 1 deletion(-)
+ drivers/gpu/drm/mediatek/mtk_dsi.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/tools/testing/selftests/mm/pagemap_ioctl.c b/tools/testing/selftests/mm/pagemap_ioctl.c
-index 03898b4f6cda..02062b178aa5 100644
---- a/tools/testing/selftests/mm/pagemap_ioctl.c
-+++ b/tools/testing/selftests/mm/pagemap_ioctl.c
-@@ -682,6 +682,62 @@ static int sanity_tests_sd(void)
- 	return 0;
- }
+diff --git a/drivers/gpu/drm/mediatek/mtk_dsi.c b/drivers/gpu/drm/mediatek/mtk_dsi.c
+index f82506e10fd5..1315dd31a834 100644
+--- a/drivers/gpu/drm/mediatek/mtk_dsi.c
++++ b/drivers/gpu/drm/mediatek/mtk_dsi.c
+@@ -627,9 +627,8 @@ static s32 mtk_dsi_wait_for_irq_done(struct mtk_dsi *dsi, u32 irq_flag,
+ 	unsigned long jiffies = msecs_to_jiffies(timeout);
+ 	struct drm_device *drm = dsi->bridge.dev;
  
-+static void test_walk_end_after_refill(void)
-+{
-+	/* One more range than the internal buffer holds on x86-64. */
-+	struct page_region vec[513];
-+	size_t len = 2 * ARRAY_SIZE(vec) * page_size;
-+	long ret, walk_end;
-+	char *mem;
-+	bool ok;
-+	size_t i;
-+
-+	mem = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-+	if (mem == MAP_FAILED)
-+		ksft_exit_fail_msg("mmap: %s\n", strerror(errno));
-+	if (madvise(mem, len, MADV_NOHUGEPAGE) && errno != EINVAL)
-+		ksft_exit_fail_msg("MADV_NOHUGEPAGE: %s\n", strerror(errno));
-+
-+	wp_init(mem, len);
-+	for (i = 0; i < ARRAY_SIZE(vec); i++)
-+		mem[2 * i * page_size] = 1;
-+
-+	ret = pagemap_ioc(mem, len, vec, ARRAY_SIZE(vec), 0, 0,
-+			  PAGE_IS_WRITTEN, 0, 0, PAGE_IS_WRITTEN, &walk_end);
-+	ok = ret == ARRAY_SIZE(vec) && walk_end == (long)(mem + len);
-+	for (i = 0; ok && i < ARRAY_SIZE(vec); i++) {
-+		uintptr_t addr = (uintptr_t)(mem + 2 * i * page_size);
-+
-+		ok = vec[i].start == addr && vec[i].end == addr + page_size;
-+	}
-+	ksft_test_result(ok, "PAGEMAP_SCAN walk_end after buffer refill\n");
-+
-+	wp_free(mem, len);
-+	munmap(mem, len);
-+}
-+
-+static void test_hugetlb_walk_end(char *mem, size_t len)
-+{
-+	const int flags = PM_SCAN_WP_MATCHING | PM_SCAN_CHECK_WPASYNC;
-+	struct page_region range;
-+	long ret, walk_end;
-+	bool ok;
-+
-+	mem[0] = 1;
-+	ret = pagemap_ioc(mem, len, &range, 1, flags, 1, PAGE_IS_WRITTEN,
-+			  0, 0, PAGE_IS_WRITTEN, &walk_end);
-+	ok = ret == 0 && walk_end == (long)mem &&
-+	     !(pagemap_get_entry(pagemap_fd, mem) & PM_UFFD_WP);
-+	if (ok) {
-+		ret = pagemap_ioc((void *)walk_end, len, &range, 1, flags, len / page_size,
-+				  PAGE_IS_WRITTEN, 0, 0, PAGE_IS_WRITTEN, &walk_end);
-+		ok = ret == 1 && walk_end == (long)(mem + len) &&
-+		     range.start == (uintptr_t)mem && range.end == (uintptr_t)(mem + len) &&
-+		     (pagemap_get_entry(pagemap_fd, mem) & PM_UFFD_WP);
-+	}
-+	ksft_test_result(ok, "PAGEMAP_SCAN HugeTLB write-protect retry\n");
-+}
-+
- static int base_tests(char *prefix, char *mem, size_t mem_size, int skip)
- {
- 	size_t vec_size;
-@@ -1661,7 +1717,7 @@ int main(int __attribute__((unused)) argc, char *argv[])
- 	if (!hugetlb_setup_default(4))
- 		ksft_print_msg("HugeTLB test will be skipped\n");
+-	ret = wait_event_interruptible_timeout(dsi->irq_wait_queue,
+-					       dsi->irq_data & irq_flag,
+-					       jiffies);
++	ret = wait_event_timeout(dsi->irq_wait_queue,
++				 dsi->irq_data & irq_flag, jiffies);
+ 	if (ret == 0) {
+ 		drm_warn(drm, "Wait DSI IRQ(0x%08x) Timeout\n", irq_flag);
  
--	ksft_set_plan(119);
-+	ksft_set_plan(121);
+@@ -656,7 +655,7 @@ static irqreturn_t mtk_dsi_irq(int irq, void *dev_id)
  
- 	pagemap_fd = open(PAGEMAP, O_RDONLY);
- 	if (pagemap_fd < 0)
-@@ -1669,6 +1725,7 @@ int main(int __attribute__((unused)) argc, char *argv[])
- 
- 	/* 1. Sanity testing */
- 	sanity_tests_sd();
-+	test_walk_end_after_refill();
- 
- 	/* 2. Normal page testing */
- 	mem_size = 10 * page_size;
-@@ -1730,10 +1787,12 @@ int main(int __attribute__((unused)) argc, char *argv[])
- 		wp_addr_range(mem, mem_size);
- 
- 		base_tests("Hugetlb mem testing:", mem, mem_size, 0);
-+		test_hugetlb_walk_end(mem, mem_size);
- 
- 		wp_free(mem, mem_size);
- 	} else {
- 		base_tests("Hugetlb mem testing:", NULL, 0, 1);
-+		ksft_test_result_skip("PAGEMAP_SCAN HugeTLB write-protect retry: no huge page\n");
+ 		mtk_dsi_mask(dsi, DSI_INTSTA, status, 0);
+ 		mtk_dsi_irq_data_set(dsi, status);
+-		wake_up_interruptible(&dsi->irq_wait_queue);
++		wake_up(&dsi->irq_wait_queue);
  	}
  
- 	/* 7. File Hugetlb testing */
+ 	return IRQ_HANDLED;
+
+---
+base-commit: 067c5c24cef23d913b67eaaf71ae67e7169a6620
+change-id: 20261118-mtk-dsi-irq-wait-a24712ada627
+
+Best regards,
+-- 
+Zi-Hao Huang <zi-hao.huang@mediatek.com>
 
