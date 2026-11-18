@@ -1,86 +1,129 @@
 From: Maximo Manriquez Lizarraga <DelaySystem@tubot.lat>
-Date: Tue, 17 Nov 2026 16:06:03 -0800
-Subject: [PATCH v2] staging: iio: adc: ad7816: use dev_err_probe() for GPIO
- lookups
+Date: Tue, 17 Nov 2026 16:06:06 -0800
+Subject: [PATCH v2] staging: most: dim2: use atomic_t for channel state
+ counters
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-batch1-s3-warn-v2-1-17f4e541123b@tubot.lat>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6CMBBFr0Jm7RimJVJceQ/Doh2L1Bggbakaw
- t2luHb5kvffXyBY72yAc7GAt8kFNw4biEMB3OvhbtHdNgZRihNRWaPRkXvCIPGl/YBCNdworg2
- Rgm00edu59x68tj8Os3lYjrmSjd6FOPrP/pgoe3/jiZCw6lgqWRFrqS5xNmM8PnWEdl3XL2mLE
- V6+AAAA
-X-Change-ID: 20261107-batch1-s3-warn-289c98c7b118
-To: jic23@kernel.org, Michael.Hennerich@analog.com, dlechner@baylibre.com, 
- gregkh@linuxfoundation.org, andy@kernel.org, nuno.sa@analog.com
-Cc: linux-iio@vger.kernel.org, krzk@kernel.org, linux@analog.com, 
- linux-kernel@vger.kernel.org, linux-staging@lists.linux.dev, 
+Message-Id: <20261117-staging-dim2-atomic-v2-1-a550f0518043@tubot.lat>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7RhatTauvIdhMcAUxgglbSEaw
+ t0F3Lt8yfvvzxA5CEe4ZTMEniSK71fQhwyqlvqGUeqVQefaKJVfMSZqpG+wlk4jJd9JhcaSvTj
+ rmJyBdTkEdvLeq4/ix3Esn1ylLbUZrcTkw2e/ndTm/X+YFCo0XJ7ZOuXMie5pLH06vihBsSzLF
+ 2q0klzIAAAA
+X-Change-ID: 20261107-staging-dim2-atomic-68a85f8feaf6
+To: error27@gmail.com, shyamsunderreddypadira@gmail.com, 
+ marusik.adamenko@gmail.com, rajveer.chaudhari.linux@gmail.com, 
+ parthiban.veerasooran@microchip.com, christian.gromm@microchip.com, 
+ gregkh@linuxfoundation.org
+Cc: linux-kernel@vger.kernel.org, linux-staging@lists.linux.dev, 
  Maximo Manriquez Lizarraga <DelaySystem@tubot.lat>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2256; i=DelaySystem@tubot.lat;
- h=from:subject:message-id; bh=zUcBktwXmCE4oXfyfd9Np1m8huOS/SaVtNAIrPt4qJg=;
- b=owGbwMvMwCH2SNl4+SzWXm/G02pJDFl/Xr/+PSPHu2fBstdXOq22WfBt+3NoU++6/09nl4v4d
- S09bnQ3oaOUhUGMg0FWTJFFTIbnff19nThrqzknYOawMoEMYeDiFICJLJFn+J8gJz5hQ/OaRV06
- pvf/von+XL5yxk3R+Ik9FTeCtVfE/zJk+Ge8TWObqUHYEq4Wvnt8BaeVOdrOyL2cv/OvF9c8Ye3
- eXawA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3418; i=DelaySystem@tubot.lat;
+ h=from:subject:message-id; bh=DzVwGgJlaMAT/3SAIgdkmln9ovVSG2ZhjYnhV3aplks=;
+ b=owGbwMvMwCH2SNl4+SzWXm/G02pJDFl/Xr/9uNDl6g6TFZyFb2+K2nkm9HqZsJYuUdnjs1Okr
+ vxT6bKXHaUsDGIcDLJiiixiMjzv6+/rxFlbzTkBM4eVCWQIAxenAExkOwMjw7S0lCZeoSddMrvv
+ tZVHaRq1VuRmi8R8VnGx+Tu9zeb/VEaG9kNmFzmvxIlmGJglyF0NcdiWG6g/9dImzUzTEydPHEt
+ iAwA=
 X-Developer-Key: i=DelaySystem@tubot.lat; a=openpgp;
  fpr=161C0CEF7FDF2C5E3B3A9CC8E22333A79A058D4B
 X-Endpoint-Received: by B4 Relay for DelaySystem@tubot.lat/default with auth_id=1447
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-GPIO lookups can return -EPROBE_DEFER.  Convert the rdwr and convert
-GPIO lookup failures in ad7816_probe() to dev_err_probe(), which
-suppresses the error message on deferral and records the deferral
-reason.  The busy-GPIO path is left untouched: its optionality is the
-subject of a separate proposed change.
+Replace the volatile int channel state counters with atomic_t and
+convert all access sites to the atomic API.
 
-No functional change other than defer handling.
+request_counter is incremented in the AHB interrupt handler
+(channel_service_interrupt) and read from task context
+(channel_service), while service_counter is updated in task context.
+Plain volatile provides neither atomicity nor ordering for such
+cross-context sharing, see
+Documentation/process/volatile-considered-harmful.rst.
 
+Use atomic_set() at init, atomic_inc() for updates and atomic_read()
+for the comparison in channel_service().  No functional change is
+intended.  Unlike the earlier attempt that only dropped the
+qualifier, this converts the access sites as well.
+
+Compile-tested only; I don't have this hardware, so testing on real
+hardware would be appreciated.
+
+Link: https://lore.kernel.org/linux-staging/2026072515-domestic-cardboard-f657@gregkh/
 Signed-off-by: Maximo Manriquez Lizarraga <DelaySystem@tubot.lat>
 ---
 Changes in v2:
 - Resend under my real name (From/Signed-off-by: Maximo Manriquez Lizarraga).
-- Apologies for the improper sign-off on v1; no code change.
-- Link to v1: https://patch.msgid.link/20261107-batch1-s3-warn-v1-1-4fc38341ca38@tubot.lat
+- Apologies for the wasted cycle; if the objection was technical rather than the sender identity, please say what to change.
+- Link to v1: https://patch.msgid.link/20261107-staging-dim2-atomic-v1-1-6eb4e8f1f63a@tubot.lat
 ---
- drivers/staging/iio/adc/ad7816.c | 18 ++++++------------
- 1 file changed, 6 insertions(+), 12 deletions(-)
+ drivers/staging/most/dim2/hal.c | 11 ++++++-----
+ drivers/staging/most/dim2/hal.h |  5 +++--
+ 2 files changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/staging/iio/adc/ad7816.c b/drivers/staging/iio/adc/ad7816.c
-index 2a15d7598abb..11292216dfb5 100644
---- a/drivers/staging/iio/adc/ad7816.c
-+++ b/drivers/staging/iio/adc/ad7816.c
-@@ -381,20 +381,14 @@ static int ad7816_probe(struct spi_device *spi_dev)
+diff --git a/drivers/staging/most/dim2/hal.c b/drivers/staging/most/dim2/hal.c
+index 4f137ef846a3..ca931782b06c 100644
+--- a/drivers/staging/most/dim2/hal.c
++++ b/drivers/staging/most/dim2/hal.c
+@@ -419,8 +419,8 @@ u16 dim_dbr_space(struct dim_channel *ch)
  
- 	chip->id = spi_get_device_id(spi_dev)->driver_data;
- 	chip->rdwr_pin = devm_gpiod_get(&spi_dev->dev, "rdwr", GPIOD_OUT_HIGH);
--	if (IS_ERR(chip->rdwr_pin)) {
--		ret = PTR_ERR(chip->rdwr_pin);
--		dev_err(&spi_dev->dev, "Failed to request rdwr GPIO: %d\n",
--			ret);
--		return ret;
--	}
-+	if (IS_ERR(chip->rdwr_pin))
-+		return dev_err_probe(&spi_dev->dev, PTR_ERR(chip->rdwr_pin),
-+				     "Failed to request rdwr GPIO\n");
- 	chip->convert_pin = devm_gpiod_get(&spi_dev->dev, "convert",
- 					   GPIOD_OUT_HIGH);
--	if (IS_ERR(chip->convert_pin)) {
--		ret = PTR_ERR(chip->convert_pin);
--		dev_err(&spi_dev->dev, "Failed to request convert GPIO: %d\n",
--			ret);
--		return ret;
--	}
-+	if (IS_ERR(chip->convert_pin))
-+		return dev_err_probe(&spi_dev->dev, PTR_ERR(chip->convert_pin),
-+				     "Failed to request convert GPIO\n");
- 	if (chip->id == ID_AD7816 || chip->id == ID_AD7817) {
- 		chip->busy_pin = devm_gpiod_get(&spi_dev->dev, "busy",
- 						GPIOD_IN);
+ static void state_init(struct int_ch_state *state)
+ {
+-	state->request_counter = 0;
+-	state->service_counter = 0;
++	atomic_set(&state->request_counter, 0);
++	atomic_set(&state->service_counter, 0);
+ 
+ 	state->idx1 = 0;
+ 	state->idx2 = 0;
+@@ -634,7 +634,7 @@ static bool channel_service_interrupt(struct dim_channel *ch)
+ 		return false;
+ 
+ 	state->idx2 ^= 1;
+-	state->request_counter++;
++	atomic_inc(&state->request_counter);
+ 	return true;
+ }
+ 
+@@ -682,8 +682,9 @@ static u8 channel_service(struct dim_channel *ch)
+ {
+ 	struct int_ch_state *const state = &ch->state;
+ 
+-	if (state->service_counter != state->request_counter) {
+-		state->service_counter++;
++	if (atomic_read(&state->service_counter) !=
++	    atomic_read(&state->request_counter)) {
++		atomic_inc(&state->service_counter);
+ 		if (state->level == 0)
+ 			return DIM_ERR_UNDERFLOW;
+ 
+diff --git a/drivers/staging/most/dim2/hal.h b/drivers/staging/most/dim2/hal.h
+index 5d69a5e7d299..70b10793cf84 100644
+--- a/drivers/staging/most/dim2/hal.h
++++ b/drivers/staging/most/dim2/hal.h
+@@ -9,6 +9,7 @@
+ #ifndef _DIM2_HAL_H
+ #define _DIM2_HAL_H
+ 
++#include <linux/atomic.h>
+ #include <linux/types.h>
+ #include "reg.h"
+ 
+@@ -34,10 +35,10 @@ struct dim_ch_state {
+ 
+ struct int_ch_state {
+ 	/* changed only in interrupt context */
+-	volatile int request_counter;
++	atomic_t request_counter;
+ 
+ 	/* changed only in task context */
+-	volatile int service_counter;
++	atomic_t service_counter;
+ 
+ 	u8 idx1;
+ 	u8 idx2;
 
 ---
-base-commit: fa4ad798f6f681031775266044ba1b0cf3c670bd
-change-id: 20261107-batch1-s3-warn-289c98c7b118
+base-commit: a41e364995bbcfa627418a70fe913c35b7510728
+change-id: 20261107-staging-dim2-atomic-68a85f8feaf6
 
 Best regards,
 --  
