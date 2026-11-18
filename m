@@ -1,10 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 18 Nov 2026 18:25:35 +0100
-Subject: [PATCH v2 02/12] regulator: qcom_usb_vbus: Add support for pmi8998
+Date: Wed, 18 Nov 2026 18:25:36 +0100
+Subject: [PATCH v2 03/12] power: supply: qcom_smbx: Do not interfere with
+ vbus driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-pmi8998-vbus-v2-2-3c77a72b280a@ixit.cz>
+Message-Id: <20261118-pmi8998-vbus-v2-3-3c77a72b280a@ixit.cz>
 References: <20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz>
 In-Reply-To: <20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz>
 To: Alexey Minnekhanov <alexeymin@minlexx.ru>, 
@@ -22,85 +23,85 @@ Cc: Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org,
  linux-pm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2369; i=david@ixit.cz;
- h=from:subject:message-id; bh=9lTr2DbmYbgEO/XSdLxjtaeMnYcrX8YD7AeBwt1Utr4=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/d+WBuCgNZLjX8R/DFVgJW4axGbZ2NQXzr3SE
- L5zd9UP/qOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3flgAKCRBgAj/E00kg
- cu/LD/9AVnXgyhWvoYjRuHuNp8P0mZvN1DKN42sr/v231fYrpwEUb78AqWl1OQX7tmXHDNl7LuL
- iFHUxI3rG8Mb38vPgNq5xvHq8vKpi2nGpvr9NVWtMK3Fk8BEFnB11fUNb3AiFqiaIfyZaFghdI4
- g65tZ3iZPKqck785sinmmAofaRaEb4FrSC0d9K5sV+Vy8tYKN1XbKDajyjrAztNMF/LJC8rXpub
- x7dr3i2SgfoKSiHHzqVwUb1Wt231aEdbIp1mto+kyXetkLPTG2lKMu0KvbpTDSHcfEZNyrPDMYf
- 8rtv9gJYAG3aiD1rCQMO7gKL90Ub6FxH3s7uyzwrBI2Ov8OQpBfDUCvZB/3MgoTpxKpBPsFdLkc
- fF69t3DLFagQSIjmPh3B0SV+y3nEw+4EHxowfWawsP8wnHhYLSXU9mQjVLzi1pULii6yRbdbNEB
- Agtcwp7ueNJRK80t+nBkJLJi5obpg+cRbM3akDAw9MVvwVPf135um87j8d+jNr+hK9RGuCzdjcc
- jRUdK8Q1xQKhzrbiom/zGXKLUQyYNcMOx0W1629D5zMX6keq2quiECaKf16Vh0SLIxoXery+Ly9
- NpDm5Vk5IAeL9F0laWj36qeki/gR8fNmjjJrSXHu5/SRnhDqISFgfM4VQd1gAhwpD8YIfl0/w3x
- /Fst4K33dwqCgTA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2282; i=david@ixit.cz;
+ h=from:subject:message-id; bh=1RAFhqxbLzWvkajdEIS51cyQ/wOX5d5vQdDgirzDWBM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/d+WlU6ezqlUSvyrj59uaeAlbkXY7bU0iFj3b
+ E9mR2ttLgyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3flgAKCRBgAj/E00kg
+ crL/EACYL2H4LarFjAhJwiEkEYgD3uzceVKZjxaieYLNo8zrTHYPTFLrB+UhSHFhR1v30iIYRuA
+ p0jJN7dW3fQ1C8EZM66LtNZs0NKjylgPK+Erc9QWCD2l9upLWdxaSZweun4AXOtCpAFCUAG5fMF
+ /89B7hnZewzg6oQtIkTwMFACrPxEX5vzqHKjuJ9JxWJG4oOdjDHWgEx00J4Ppqb98YjOi2cov28
+ rZqsJbzTkeIIXjetvQ7shYB0l4Xc++KsySh9iUg0ZAXOXsjIewPLgdVxZyWBpXOeKFyuQQ5xx5W
+ QglHr1pqJXF5Yw/O+93R2vJwitYG+vQ/zPNWc+hDVcsi2ciGz7KENMGkXAko9KQ7CeOMYs7s7nV
+ 2UPHHzR6m4apn9vNVJlAAbN/N9OS9LZuM7naFfLtg/y2piVGZIfsZSwbIYqBthX32FlYa1Pdfx5
+ V5WkqCP0/gIMn2/Kjt+sjlV7Zw9hg6CnsdakFm2NJvSUndA3YBlRTjN8VV5bDrcW49PEyXEkxGz
+ pYVFtjAzoan1rueejsAndNs0LbGP8+Ou2//4rJSPUFKycSeu++F8cQlV+PuTkA/qG6kxlWKZ7L2
+ dDEabAZWsd+t/ntHUoKGEprEY/aWxCjKyKniIJeVNOky1qD/vXYoz4cozC0eC3iSdtQFFPu/KTK
+ ho0qUmvlFwBIezw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PMI8998 uses different register layout, but due to the limited
-functionality of the qcom_usb_vbus driver, the basic registers are the
-same as the PM8150B, thus reuse these. For more advanced features it'll
-differ.
+Charger should not touch bits handled by OTG block handled by the vbus
+driver.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/regulator/qcom_usb_vbus-regulator.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/power/supply/qcom_smbx.c | 14 --------------
+ 1 file changed, 14 deletions(-)
 
-diff --git a/drivers/regulator/qcom_usb_vbus-regulator.c b/drivers/regulator/qcom_usb_vbus-regulator.c
-index 88f5a6ba79e6e..0617106a82cda 100644
---- a/drivers/regulator/qcom_usb_vbus-regulator.c
-+++ b/drivers/regulator/qcom_usb_vbus-regulator.c
-@@ -63,16 +63,27 @@ static const struct qcom_usb_vbus_reg_data pm8150b_data = {
- 	.otg_en_src_cfg = OTG_EN_SRC_CFG,
- 	.csel_reg = OTG_CURRENT_LIMIT_CFG,
- 	.csel_mask = OTG_CURRENT_LIMIT_MASK,
- 	.curr_table = curr_table,
- 	.n_current_limits = ARRAY_SIZE(curr_table),
- 	.ops = &qcom_usb_vbus_reg_ops,
- };
+diff --git a/drivers/power/supply/qcom_smbx.c b/drivers/power/supply/qcom_smbx.c
+index c6188c915703a..a4f5ffd3cd6e5 100644
+--- a/drivers/power/supply/qcom_smbx.c
++++ b/drivers/power/supply/qcom_smbx.c
+@@ -96,28 +96,16 @@
+ #define USBIN_ICL_CHANGE_RT_STS_BIT			BIT(6)
+ #define USBIN_SOURCE_CHANGE_RT_STS_BIT			BIT(5)
+ #define USBIN_PLUGIN_RT_STS_BIT				BIT(4)
+ #define USBIN_OV_RT_STS_BIT				BIT(3)
+ #define USBIN_UV_RT_STS_BIT				BIT(2)
+ #define USBIN_LT_3P6V_RT_STS_BIT			BIT(1)
+ #define USBIN_COLLAPSE_RT_STS_BIT			BIT(0)
  
-+static const struct qcom_usb_vbus_reg_data pmi8998_data = {
-+	.cmd_otg = CMD_OTG,
-+	.otg_cfg = OTG_CFG,
-+	.otg_en_src_cfg = OTG_EN_SRC_CFG,
-+	.csel_reg = OTG_CURRENT_LIMIT_CFG,
-+	.csel_mask = OTG_CURRENT_LIMIT_MASK,
-+	.curr_table = curr_table,
-+	.n_current_limits = ARRAY_SIZE(curr_table),
-+	.ops = &qcom_usb_vbus_reg_ops,
-+};
-+
- static const struct regulator_ops qcom_usb_vbus_pm4125_reg_ops = {
- 	.enable = regulator_enable_regmap,
- 	.disable = regulator_disable_regmap,
- 	.is_enabled = regulator_is_enabled_regmap,
- 	.get_voltage_sel = regulator_get_voltage_sel_regmap,
- 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
- 	.list_voltage = regulator_list_voltage_table,
- };
-@@ -161,16 +172,17 @@ static int qcom_usb_vbus_regulator_probe(struct platform_device *pdev)
- 	regmap_update_bits(regmap, base + data->otg_cfg, data->otg_en_src_cfg, 0);
- 
- 	return 0;
- }
- 
- static const struct of_device_id qcom_usb_vbus_regulator_match[] = {
- 	{ .compatible = "qcom,pm8150b-vbus-reg", .data = &pm8150b_data },
- 	{ .compatible = "qcom,pm4125-vbus-reg",  .data = &pm4125_data },
-+	{ .compatible = "qcom,pmi8998-vbus-reg", .data = &pmi8998_data },
- 	{ }
- };
- MODULE_DEVICE_TABLE(of, qcom_usb_vbus_regulator_match);
- 
- static struct platform_driver qcom_usb_vbus_regulator_driver = {
- 	.driver		= {
- 		.name	= "qcom-usb-vbus-regulator",
- 		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
+-#define OTG_CFG						0x153
+-#define OTG_RESERVED_MASK				GENMASK(7, 6)
+-#define DIS_OTG_ON_TLIM_BIT				BIT(5)
+-#define QUICKSTART_OTG_FASTROLESWAP_BIT			BIT(4)
+-#define INCREASE_DFP_TIME_BIT				BIT(3)
+-#define ENABLE_OTG_IN_DEBUG_MODE_BIT			BIT(2)
+-#define OTG_EN_SRC_CFG_BIT				BIT(1)
+-#define CONCURRENT_MODE_CFG_BIT				BIT(0)
+-
+-#define OTG_ENG_OTG_CFG					0x1C0
+-#define ENG_BUCKBOOST_HALT1_8_MODE_BIT			BIT(0)
+-
+ #define APSD_STATUS					0x307
+ #define APSD_STATUS_7_BIT				BIT(7)
+ #define HVDCP_CHECK_TIMEOUT_BIT				BIT(6)
+ #define SLOW_PLUGIN_TIMEOUT_BIT				BIT(5)
+ #define ENUMERATION_DONE_BIT				BIT(4)
+ #define VADP_CHANGE_DONE_AFTER_AUTH_BIT			BIT(3)
+ #define QC_AUTH_DONE_STATUS_BIT				BIT(2)
+ #define QC_CHARGER_BIT					BIT(1)
+@@ -811,18 +799,16 @@ static const struct smb_init_register smb_init_seq[] = {
+ 	  .val = VCONN_EN_SRC_BIT },
+ 	/*
+ 	 * Disable Type-C factory mode and stay in Attached.SRC state when VCONN
+ 	 * over-current happens
+ 	 */
+ 	{ .addr = TYPE_C_CFG,
+ 	  .mask = FACTORY_MODE_DETECTION_EN_BIT | VCONN_OC_CFG_BIT,
+ 	  .val = 0 },
+-	/* Configure VBUS for software control */
+-	{ .addr = OTG_CFG, .mask = OTG_EN_SRC_CFG_BIT, .val = 0 },
+ 	/*
+ 	 * Use VBAT to determine the recharge threshold when battery is full
+ 	 * rather than the state of charge.
+ 	 */
+ 	{ .addr = FG_UPDATE_CFG_2_SEL,
+ 	  .mask = SOC_LT_CHG_RECHARGE_THRESH_SEL_BIT |
+ 		  VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT,
+ 	  .val = VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT },
 
 -- 
 2.55.0
