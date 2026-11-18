@@ -1,89 +1,185 @@
-From: Peder Bergan <peder.bergan@gmail.com>
-Date: Wed, 18 Nov 2026 10:08:50 +0100
-Subject: [PATCH] rust: kbuild: generate a symbol version for
- rust_build_error
+From: Cunhao Lu <1579567540@qq.com>
+Subject: [PATCH v5 0/2] pmdomain: rockchip: Add RK3572 power domains
+Date: Wed, 18 Nov 2026 17:11:38 +0800
+Message-Id: <20261118-add-board-ok3572-c-pmdomain-v5-0-f1af919dd434@qq.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-fix-rust-build-error-modversions-v1-1-7c1023764f30@gmail.com>
-X-B4-Tracking: v=1; b=H4sIACFr/WoC/yWN2w6CMBBEf4XssxttFaP+ivGhl0VqpJDdlpAQ/
- t0WH89kzswKQhxI4NGswDQHCWMsoA4NuN7EN2HwhUGf9FUpdcMuLMhZEtocvh6JeWQcRj8TV1f
- wYrr23JJ3d6uhzExMxdkvnq8/S7Yfcqnu1oY1QmjZRNfXKE+SmMxw3G8iLQm27QeUqHuzqQAAA
- A==
-X-Change-ID: 20261118-fix-rust-build-error-modversions-4af535edc9b2
-To: Miguel Ojeda <ojeda@kernel.org>
-Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>, 
- Sami Tolvanen <samitolvanen@google.com>, 
- Matthew Maurer <mmaurer@google.com>, Masahiro Yamada <masahiroy@kernel.org>, 
- Gwan-gyeong Mun <gwan-gyeong.mun@intel.com>, rust-for-linux@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-kbuild@vger.kernel.org, 
- linux-modules@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794992929; l=2134;
- i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
- bh=iwv1qR5QyWs5FUrFMluYyHlgGOi5NpHY1vMGZeZUJRU=;
- b=NwD6BfBA4WLob4JLWPSWapwm4CZS3A7yc5jvskFd0xanhimNfBdKYJ6oPbN3P2DqnFUHqZ/RS
- z4EPoyo3A7EC6m2QxLn1urUhN9JCBklyXWBl1CvPG6Yij6lqo4TXdgd
-X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
- pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
-X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
+X-B4-Tracking: v=1; b=H4sIAMpr/WoC/33OTU7DMBAF4KtUXmNkj3+asOIeqAvHM6EGJW7tY
+ hVVuTt2EdBKKMsnvfneXFimFCizp82FJSohhzjXYB42zO/d/Eo8YM0MBFgpQHGHyIfoEvL4rsw
+ WuOeHCePkwsxhFIBOStVZYlU4JBrD+aq/7L5z/hjeyJ8a2Rr7kE8xfV7ni2y9nyX4b6lILrgYx
+ IidcUoSPR+Pjz5OrOkFbu/XPy1QoW2PiBqoBy/vIHUL2XVINUiglRoV9nAP6T9ICr0O6QpJ48d
+ uMM6S6X+hZVm+AFclxHunAQAA
+X-Change-ID: 20261023-add-board-ok3572-c-pmdomain-2f02da11386e
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Elaine Zhang <zhangqing@rock-chips.com>, Ulf Hansson <ulfh@kernel.org>
+Cc: Cunhao Lu <1579567540@qq.com>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Finley Xiao <finley.xiao@rock-chips.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794993108; l=6231;
+ i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
+ bh=VOirG8rvip50FshLKtHOl6mSFVznO9ijKIGNDn4J0Fs=;
+ b=4AGzzWGIrq8amBZPZnkvTzXpmTGJiLYOyvc8VnnOE52TbAwHGwC8ZE2nOcvPqTg1H6PbzIxDw
+ 75xk7Uh14WiAmL0CZxCJS3UqExRDF+mlJrxjGBpJbzmXH4Y4If+2J6W
+X-Developer-Key: i=1579567540@qq.com; a=ed25519;
+ pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
+X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-CONFIG_RUST_BUILD_ASSERT_ALLOW exports rust_build_error to modules.
-When CONFIG_MODVERSIONS is also enabled, modpost warns that the export
-has no symbol version and records a zero CRC because the build_error.o
-rule skips gendwarfksyms.
+This is one of the subsystem submissions for RK3572 support.
 
-Generate the checksum from build_error.o with the existing Rust library
-rule. Make build_error.o depend on rust/Makefile when module versioning
-is enabled so incremental builds pick up the change. Kbuild's saved
-rustc command does not include the gendwarfksyms step.
+This series adds the RK3572 power-controller binding and power IDs,
+followed by support for all 14 power domains. It includes system GRF
+firmware shift-ready checks, NPU voltage-domain control and genpd startup
+protection for boot-enabled IMG, VOP, VOP_PRE and VO.
 
-Fixes: ac61506bf2d1 ("rust: Use gendwarfksyms + extended modversions for CONFIG_MODVERSIONS")
-Reported-by: Gwan-gyeong Mun <gwan-gyeong.mun@intel.com>
-Closes: https://github.com/Rust-for-Linux/linux/issues/1201
-Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
+The RK3572 SoC has eight CPU cores: two Cortex-A73 cores and six
+Cortex-A53 cores. It also integrates an Arm Mali-G310V2 MC1 GPU.
+The OK3572-C board provides two Gigabit Ethernet ports, three USB3 Type-A
+ports, a Type-C dual-role port, eMMC, microSD, and UART.
+
+This series depends on the separately submitted power-on rollback fix [1].
+Firmware readiness failures reuse it, preserving the original error and
+saved QoS. If rollback fails, the domain may remain on while resources are
+released and genpd may power down its parent.
+
+[1] https://patch.msgid.link/20261118-fix-rockchip-pmdomain-power-on-rollback-v2-1-3e4e93a19996@qq.com
+
+Testing was performed with Debian 13 minimal and Linux 7.3 on the
+OK3572-C with the FET3572-C module. Shared peripheral tests were run with
+the system booted from SD, while eMMC validation covered the complete
+boot chain.
+
+Passed functionality:
+
+- SD and eMMC complete the firmware, kernel, and root filesystem
+  boot chain.
+- UART console works at 1500000 baud.
+- SD read/write and data persistence checks pass.
+- All eight CPUs start; CPU frequency scaling and hotplug checks pass.
+- Both Ethernet ports obtain IPv4 addresses and pass bidirectional file
+  transfers.
+- All three Type-A ports pass USB2 and USB3 enumeration, data transfers,
+  and reconnect persistence checks.
+- Type-C host and device modes pass in both plug orientations. Physical
+  reconnects correctly select the expected device, host, and device roles
+  in sequence.
+
+Stability:
+
+- Repeated cold and software reboots complete on SD and eMMC without
+  data integrity failures or power-domain transition failures.
+- A combined CPU, memory, network, SD, and USB3 stress test completes
+  without a crash, lockup, CPU offline event, or thermal shutdown.
+- Ethernet error and drop counters do not increase during bidirectional
+  network tests.
+
+Power-domain validation:
+
+- All 14 domains register; 11 complete 1,140 runtime-PM cycles. NPU VD
+  sequencing and startup-protection release are checked.
+- Physical cold boot with an eMMC root filesystem succeeds. Read/write
+  checks pass on eMMC, SD and two USB storage devices; both Ethernet
+  ports pass ping tests bound to their respective interfaces.
+- Thirteen return-value injections after successful operations check
+  idle-exit and firmware-readiness rollback, NPU cleanup, original errors
+  and saved QoS. Retries succeed after removing injection.
+- 124 host model cases using the driver and genpd pass ASan and UBSan.
+
+Build and checks:
+
+- The kernel, modules, and board DTB build successfully.
+- Strict checkpatch reports no errors.
+
+Untested hardware and paths:
+
+- NPU
+- PCIe
+- GPU, video output, and audio
+- CPU rates above 1.2 GHz and voltage scaling
+- Other low-speed external interfaces
+
+Some files in this series are derived from the Forlinx OK3572-C BSP
+Alpha1. Thanks to Forlinx for their support.
+Thanks also to Rockchip's David Wu, Elaine Zhang, Finley Xiao, Frank
+Wang, William Wu, and Ye Zhang for providing the driver source files.
+
+AI assistance:
+
+- Codex / DeepSeek V4.1 Flash were used for:
+  - Reviewing and adjusting code style to follow community conventions
+  - Automating tests
+  - Collecting data
+
+Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
-An incremental x86-64 build with LLVM=1 CLIPPY=1 clears the modpost
-warning. The kernel export and a Rust module that references it both
-record the same nonzero CRC.
+Changes in v5:
+- Rebase onto the next branch of Ulf Hansson's linux-pm.git tree.
+- Link to v4:
+  https://patch.msgid.link/20261104-add-board-ok3572-c-pmdomain-v4-0-15cf8b5a6e59@qq.com
 
-OpenAI Codex assisted with coding and testing.
+Changes in v4:
+- Drop generic pending-state tracking and power-off recovery; reuse the
+  separate power-on rollback fix for firmware readiness errors.
+- Support all 14 domains, including NPU voltage-domain control and
+  cleanup after failed transitions.
+- Retain boot-enabled IMG, VOP, VOP_PRE and VO domains until sync_state.
+- Use firmware shift-ready naming for the GRF status.
+- Build ungate write masks with unsigned arithmetic.
+- Link to v3:
+  https://patch.msgid.link/20261026-add-board-ok3572-c-pmdomain-v3-0-70d614d3d921@qq.com
+
+Changes in v3:
+- Track incomplete shutdowns to preserve QoS and complete firmware updates.
+- Preserve pending memory resets across shutdown and cancel unfinished
+  power-on requests.
+- Attempt to restore the domain after power-off errors, while preserving
+  the original error returned to genpd.
+- Link to v2:
+  https://patch.msgid.link/20261023-add-board-ok3572-c-pmdomain-v2-0-79ddd42e92c1@qq.com
+
+Changes in v2:
+- Split the original RK3572 support series by subsystem.
+- Track low-level power-on and restoration separately. Retain unfinished
+  memory resets across retries, avoid repeating completed resets, and
+  preserve QoS snapshots when shutting down after a failed power-on.
+- Link to v1:
+  https://patch.msgid.link/20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com
+
 ---
- rust/Makefile | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Raw dmesg: see v2 cover letter.
 
-diff --git a/rust/Makefile b/rust/Makefile
-index 0165626decbe..dd5b0a958d0c 100644
---- a/rust/Makefile
-+++ b/rust/Makefile
-@@ -773,8 +773,9 @@ $(obj)/pin_init.o: $(src)/pin-init/src/lib.rs $(obj)/compiler_builtins.o \
- # treated as such so that we pass the same flags. Otherwise, for instance,
- # `rustc` will complain about missing sanitizer flags causing an ABI mismatch.
- $(obj)/build_error.o: private is-kernel-object := y
--$(obj)/build_error.o: private skip_gendwarfksyms = 1
--$(obj)/build_error.o: $(src)/build_error.rs $(obj)/compiler_builtins.o FORCE
-+# Rebuild when the symbol version generation rule changes.
-+$(obj)/build_error.o: $(src)/build_error.rs $(obj)/compiler_builtins.o \
-+    $(if $(CONFIG_MODVERSIONS),$(src)/Makefile) FORCE
- 	+$(call if_changed_rule,rustc_library)
- 
- $(obj)/ffi.o: private skip_gendwarfksyms = 1
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Heiko Stuebner <heiko@sntech.de>
+To: Elaine Zhang <zhangqing@rock-chips.com>
+To: Ulf Hansson <ulfh@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-rockchip@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-pm@vger.kernel.org
 
 ---
-base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
-change-id: 20261118-fix-rust-build-error-modversions-4af535edc9b2
+Cunhao Lu (1):
+      pmdomain: rockchip: Add RK3572 power domains
+
+Finley Xiao (1):
+      dt-bindings: power: rockchip: Add RK3572 power domains
+
+ .../bindings/power/rockchip,power-controller.yaml  |  17 +++
+ drivers/pmdomain/rockchip/pm-domains.c             | 168 +++++++++++++++++++--
+ .../power/rockchip,rk3572-power-controller.h       |  30 ++++
+ 3 files changed, 204 insertions(+), 11 deletions(-)
+---
+base-commit: 8b2e839ba5666876a9f0f0887c7b12c66dac5fbc
+change-id: 20261023-add-board-ok3572-c-pmdomain-2f02da11386e
 
 Best regards,
 --  
-Peder Bergan <peder.bergan@gmail.com>
+Cunhao Lu <1579567540@qq.com>
 
