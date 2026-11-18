@@ -1,97 +1,65 @@
-From: Maximo Manriquez Lizarraga <DelaySystem@tubot.lat>
-Date: Wed, 18 Nov 2026 10:24:41 -0800
-Subject: [PATCH v3] staging: most: dim2: drop volatile from state counters
+From: =?utf-8?q?Alexandra_=C3=98stermark?= <alex.cramt@gmail.com>
+Subject: [PATCH 0/3] arm64: dts: socfpga: agilex5: add support for Terasic
+ DE25-Nano
+Date: Wed, 18 Nov 2026 20:07:12 +0100
+Message-Id: <20261118-de25-nano-v1-0-473d16131f7a@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-staging-dim2-atomic-v3-1-bc595e081fc8@tubot.lat>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBQFr0K6tqYttDauvIdxUeAXvhFq2kI0h
- Lvb4oaNLid5b2YhATxCIOdiIR5mDOjGBOWhIE1vxg4otomJYEJxzk40RNPh2NEWB0FNdAM2VGm
- jpdUWjFUkPZ8eLL426/X25TDVd2hiVuVFjyE6/96yM8+7/4WZU04V1BVoy60qzSVOtYvHh4kkF
- 2axc/AfDpEcRkpmmeSaVeXesa7rB+y+100MAQAA
-X-Change-ID: 20261107-staging-dim2-atomic-68a85f8feaf6
-To: shyamsunderreddypadira@gmail.com, marusik.adamenko@gmail.com, 
- error27@gmail.com, gregkh@linuxfoundation.org, 
- christian.gromm@microchip.com, parthiban.veerasooran@microchip.com, 
- rajveer.chaudhari.linux@gmail.com
-Cc: linux-kernel@vger.kernel.org, linux-staging@lists.linux.dev, 
- Maximo Manriquez Lizarraga <DelaySystem@tubot.lat>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2808; i=DelaySystem@tubot.lat;
- h=from:subject:message-id; bh=obOr3rP8PTgcSS0Dx2Zi17AJdPtVHUgcvGOImUJO25I=;
- b=owGbwMvMwCH2SNl4+SzWXm/G02pJDFl/3x5P7s9RsppXzhhYcOZ+pvvrOqFdkX2Z/3pcfvKc2
- B16UO9ARykLgxgHg6yYIouYDM/7+vs6cdZWc07AzGFlAhnCwMUpABNhe87IMHWOdUfRJukPVl2L
- MrishERuvv88t2zdhp92ORYzVqz7c4fhf/mX4D+5C2qEL21gv+i+6R3/UvNP543fiPwriSxNkF0
- whQsA
-X-Developer-Key: i=DelaySystem@tubot.lat; a=openpgp;
- fpr=161C0CEF7FDF2C5E3B3A9CC8E22333A79A058D4B
-X-Endpoint-Received: by B4 Relay for DelaySystem@tubot.lat/default with auth_id=1447
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5AMBBA4avIrDXp1E9wFbGoGoxFSYtIpHdXL
+ L/k5d3gyTF5aJIbHJ3sebURmCZgZm0nEjxEg5KqRMRKDKQKYbVdhcxHXWd9URJKiP3maOTre7X
+ db3/0C5n9HUAID2zM3z9tAAAA
+X-Change-ID: 20261118-de25-nano-04fa93b56e10
+To: Dinh Nguyen <dinguyen@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, Mahesh Rao <mahesh.rao@altera.com>, 
+ Mohamad Asyraaf Azhar <mohamad.asyraaf.azhar@altera.com>, 
+ =?utf-8?q?Alexandra_=C3=98stermark?= <alex.cramt@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795028833; l=1507;
+ i=alex.cramt@gmail.com; s=20261118; h=from:subject:message-id;
+ bh=I2QEA8KTDnJXjo3wsvoSR95BaaAm1rnHP6QBDVZCnCQ=;
+ b=fY89QoAyxTxKeMwb4ZIxvRr60vqML9S4ya0Ah54MitvFZdihnz9DWTRrs3vZhjDf9MhnDE7b4
+ 6scpMSeb0uVCvcHjHqyoaTxxB+HwGysEoK6TNLyco/oYvz5wbbgMxOG
+X-Developer-Key: i=alex.cramt@gmail.com; a=ed25519;
+ pk=vQBaXUvFG7cCIaWDKclPMjo3b4XfPEVkuPjaWCkYddc=
+X-Endpoint-Received: by B4 Relay for alex.cramt@gmail.com/20261118 with auth_id=1561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The request_counter/service_counter pair is shared between the AHB
-hard-IRQ handler and the threaded-IRQ service path, but every access
-already runs under dim_lock with local interrupts disabled:
-dim2_ahb_isr() holds it across dim_service_ahb_int_irq(),
-dim2_task_irq() across dim_service_channel(), and configure_channel()
-across the dim_init_*() calls that zero the counters. The spinlock
-provides both the mutual exclusion and the memory barriers, so the
-volatile qualifier adds nothing and wrongly suggests lockless
-cross-context sharing (see
-Documentation/process/volatile-considered-harmful.rst).
+The Terasic DE25-Nano is an Agilex 5 SoC FPGA board. This adds its
+binding and device tree, plus the service layer interrupt that the
+Agilex 5 dtsi is missing (Stratix 10 and Agilex 7 already have it).
 
-Converting to atomic_t is the wrong tool here: the service-side
-check-and-increment cannot be a single atomic step when done as
-separate atomic_read() calls, as Dan Carpenter pointed out on the
-atomic_t attempt, and a lockless scheme would still need dim_lock for
-the sibling channel state (level, indices, done-buffer count, MBO
-lists) anyway.
+Altera's vendor tree (altera-fpga/linux-socfpga) carries a DE25-Nano
+device tree too; this one is written against upstream's dtsi, so it uses
+the SD6HC sdmmc node, and it only enables what has been tested on the
+board.
 
-Drop the qualifier and document the actual protection in place. No
-functional change intended.
-
-Compile-tested only (MOST=m, MOST_DIM2=m build clean); I don't have
-this hardware, so testing on real hardware would be appreciated.
-
-Signed-off-by: Maximo Manriquez Lizarraga <DelaySystem@tubot.lat>
----
-Changes in v3:
-- New direction: drop the NAKed atomic_t conversion. An audit showed every counter access already runs under dim_lock, so drop volatile and document the lock instead (Dan Carpenter).
-- Link to v2: https://patch.msgid.link/20261117-staging-dim2-atomic-v2-1-a550f0518043@tubot.lat
-
-Changes in v2:
-- Resend under my real name (From/Signed-off-by: Maximo Manriquez Lizarraga).
-- Apologies for the wasted cycle; if the objection was technical rather than the sender identity, please say what to change.
-- Link to v1: https://patch.msgid.link/20261107-staging-dim2-atomic-v1-1-6eb4e8f1f63a@tubot.lat
----
- drivers/staging/most/dim2/hal.h | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/staging/most/dim2/hal.h b/drivers/staging/most/dim2/hal.h
-index 5d69a5e7d299..f857e6856a16 100644
---- a/drivers/staging/most/dim2/hal.h
-+++ b/drivers/staging/most/dim2/hal.h
-@@ -33,11 +33,11 @@ struct dim_ch_state {
- };
- 
- struct int_ch_state {
--	/* changed only in interrupt context */
--	volatile int request_counter;
-+	/* protected by dim_lock; incremented in interrupt context */
-+	int request_counter;
- 
--	/* changed only in task context */
--	volatile int service_counter;
-+	/* protected by dim_lock; updated in task context */
-+	int service_counter;
- 
- 	u8 idx1;
- 	u8 idx2;
+Tested on the board on v7.4-rc2 carrying the same device tree (its
+decompiled DTB matches this series' build on next-20261117 apart from
+nodes added to the dtsi since): boot from the microSD slot, gigabit
+Ethernet, USB, the HPS LED, and FPGA configuration through the
+stratix10-soc FPGA manager. dt_binding_check, dtbs_check and
+dt-check-style --mode=strict are clean.
 
 ---
-base-commit: a41e364995bbcfa627418a70fe913c35b7510728
-change-id: 20261107-staging-dim2-atomic-68a85f8feaf6
+Alexandra Østermark (3):
+      arm64: dts: socfpga: agilex5: add the service layer interrupt
+      dt-bindings: arm: altera: add Terasic DE25-Nano
+      arm64: dts: socfpga: agilex5: add support for Terasic DE25-Nano
+
+ Documentation/devicetree/bindings/arm/altera.yaml  |  1 +
+ arch/arm64/boot/dts/altera/Makefile                |  1 +
+ arch/arm64/boot/dts/altera/socfpga_agilex5.dtsi    |  2 +
+ .../boot/dts/altera/socfpga_agilex5_de25_nano.dts  | 91 ++++++++++++++++++++++
+ 4 files changed, 95 insertions(+)
+---
+base-commit: 7cfbf79c66c63e807ea452abf0546e6f6d6833a6
+change-id: 20261118-de25-nano-04fa93b56e10
 
 Best regards,
 --  
-Maximo Manriquez Lizarraga <DelaySystem@tubot.lat>
+Alexandra Østermark <alex.cramt@gmail.com>
 
