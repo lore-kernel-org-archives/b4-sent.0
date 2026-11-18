@@ -1,16 +1,13 @@
 From: Yongjian Wang <echoowall@gmail.com>
-Subject: [PATCH net-next v2 0/2] tcp: document and test MTU probing black
- hole fallback
-Date: Wed, 18 Nov 2026 16:10:51 +0800
-Message-Id: <20261118-tcp-mtu-probing-doc-v1-v2-0-e795f20b8cfe@gmail.com>
+Date: Wed, 18 Nov 2026 16:10:52 +0800
+Subject: [PATCH net-next v2 1/2] tcp: document black hole detection for
+ tcp_mtu_probing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIxd/WoC/4VOSw6CMBC9ipm1Y2ilkrjyHoZFWwYYIy1pC8EQ7
- m7BA5i8zcv7rhApMEW4n1YINHNk7zKR5xPYXruOkJvMQRbyJoSoMNkRhzThGLxh12HjLc4Cr0p
- YU6my1ZWBHB4DtbwcxU9wlNDRkqD+KXEyL7Jp7929Pcfkw+f4MIsj8W8uQ6BSUlNRNlRS++gGz
- e+L9QPU27Z9AUw1Z33YAAAA
-X-Change-ID: 20261117-tcp-mtu-probing-doc-v1-351cb754fa7b
+Message-Id: <20261118-tcp-mtu-probing-doc-v1-v2-1-e795f20b8cfe@gmail.com>
+References: <20261118-tcp-mtu-probing-doc-v1-v2-0-e795f20b8cfe@gmail.com>
+In-Reply-To: <20261118-tcp-mtu-probing-doc-v1-v2-0-e795f20b8cfe@gmail.com>
 To: corbet@lwn.net, edumazet@kernel.org, davem@davemloft.net, 
  kuba@kernel.org, shuah@kernel.org, pabeni@redhat.com
 Cc: Yongjian Wang <echoowall@gmail.com>, rdunlap@infradead.org, 
@@ -18,47 +15,70 @@ Cc: Yongjian Wang <echoowall@gmail.com>, rdunlap@infradead.org,
  kuniyu@google.com, skhan@linuxfoundation.org, netdev@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794989453; l=1424;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794989453; l=2444;
  i=echoowall@gmail.com; s=20261026; h=from:subject:message-id;
- bh=R90V3zCpNbOGid8F8EJLRVPdRZBvDvePiD/4QNvUdOg=;
- b=1RQoLj5sSHdElWMgrjWu4kIuFt4WblQTKyPQYOfdgzePK7C9mF9vV1oJIfljMwF6mR2HMo91z
- iS3JD8s57CEB0QIjnCLIq8x3dmcjBEU9kif8JkpXOe64Wotoi57Pi6s
+ bh=ta6f43Q9WCijtV9U1XrIJWYCHAQ4FrHJdfRc+ckR0n8=;
+ b=S4lH+mwLEmJOlG3gNxDU33WKSApX7xGkxPBbsThKzrn0lyRgQxF6BY/IaRIex1VXZzX6Fqylt
+ pTvvDpGU65vABIK5GKvo5VMuNv+z+nFeD26bUy85582xk+RWcS4iIyj
 X-Developer-Key: i=echoowall@gmail.com; a=ed25519;
  pk=9XP6JhqjjPsHCF6UZZZTeqTRnXIa4+ufggnxXtTJ+no=
 X-Endpoint-Received: by B4 Relay for echoowall@gmail.com/20261026 with auth_id=1323
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ip-sysctl.rst does not say when TCP detects a black hole with
-tcp_mtu_probing=1 or how the MSS drops afterwards. Patch 1 documents
-both. Patch 2 adds a packetdrill test for the part that had no
-coverage: each further retransmission timeout halves the MSS, down to
-tcp_mtu_probe_floor.
+ip-sysctl.rst says that tcp_mtu_probing=1 enables MTU probing once an
+ICMP black hole is detected, but not when that happens or what TCP
+does then.
 
-On x86_64 KVM, the new test passed in IPv4, IPv6 and IPv4-mapped IPv6.
-Variants expecting no floor or no halving failed in all three modes.
-
-Changes in v2:
-- Spell out the 200 ms RTO, say when the time starts and when it is
-  checked, and give the resulting detection time (Eric, patch 1).
-- Say that the MSS is only lowered, and that each further
-  retransmission timeout lowers it again (Eric, patch 1).
-- Add a test for tcp_mtu_probe_floor (patch 2).
-- Link to v1: https://lore.kernel.org/r/20261117-tcp-mtu-probing-doc-v1-v1-1-552ae04de4ef@gmail.com
+Describe both, as implemented in tcp_write_timeout() and
+tcp_mtu_probing(). Also add the missing defaults of tcp_mtu_probing
+and tcp_base_mss.
 
 Signed-off-by: Yongjian Wang <echoowall@gmail.com>
+Reviewed-by: Eric Dumazet <edumazet@kernel.org>
 ---
-Yongjian Wang (2):
-      tcp: document black hole detection for tcp_mtu_probing
-      selftests/net: packetdrill: test tcp_mtu_probe_floor
+ Documentation/networking/ip-sysctl.rst | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
- Documentation/networking/ip-sysctl.rst             | 21 ++++++++++++
- .../tcp_mtu_probing_blackhole_floor.pkt            | 37 ++++++++++++++++++++++
- 2 files changed, 58 insertions(+)
----
-base-commit: 6ff4c5942a301675eb12e5b49d53a81e604624a1
-change-id: 20261117-tcp-mtu-probing-doc-v1-351cb754fa7b
+diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
+index 0b7bfbd98a92..6ac8b3fb9aae 100644
+--- a/Documentation/networking/ip-sysctl.rst
++++ b/Documentation/networking/ip-sysctl.rst
+@@ -412,6 +412,8 @@ tcp_base_mss - INTEGER
+ 	Path MTU discovery (MTU probing).  If MTU probing is enabled,
+ 	this is the initial MSS used by the connection.
+ 
++	Default: 1024
++
+ tcp_mtu_probe_floor - INTEGER
+ 	If MTU probing is enabled this caps the minimum MSS used for search_low
+ 	for the connection.
+@@ -711,6 +713,25 @@ tcp_mtu_probing - INTEGER
+ 	- 1 - Disabled by default, enabled when an ICMP black hole detected
+ 	- 2 - Always enabled, use initial MSS of tcp_base_mss.
+ 
++	A black hole is detected when the retransmission timer fires after
++	the handshake and retransmissions have stayed unacknowledged for as
++	long as tcp_retries1 retransmissions would take with an RTO starting
++	at 200 ms and doubling each time, which is 3 seconds with the
++	default tcp_retries1. This time is counted from the first
++	retransmission and only checked when the timer fires, so a flow
++	with a 200 ms RTO detects the black hole at the fifth timeout,
++	about 6 seconds after the original transmission.
++
++	With value 1, the first detection enables MTU probing and lowers
++	the MSS to tcp_base_mss if it is larger. From then on, and from the
++	first detection with value 2, each further retransmission timeout
++	lowers search_low to half its MSS, keeping it at most tcp_base_mss
++	and at least tcp_mtu_probe_floor and tcp_min_snd_mss, and lowers the
++	MSS to match if it is larger. Once MTU probing is enabled, the
++	connection also probes for a larger MSS, as with value 2.
++
++	Default: 0
++
+ tcp_probe_interval - UNSIGNED INTEGER
+ 	Controls how often to start TCP Packetization-Layer Path MTU
+ 	Discovery reprobe. The default is reprobing every 10 minutes as
 
-Best regards,
---  
-Yongjian Wang <echoowall@gmail.com>
+-- 
+Git-157)
 
