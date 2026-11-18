@@ -1,84 +1,277 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 18 Nov 2026 18:25:45 +0100
-Subject: [PATCH v2 12/12] arm64: dts: qcom: sdm670-google: Enable vbus
- support
+From: Alex Ousherovitch <aousherovitch@rambus.com>
+Subject: [PATCH v9 0/5] crypto: cmh - add Rambus CryptoManager Hub core
+ driver and AES
+Date: Wed, 18 Nov 2026 09:51:44 -0800
+Message-Id: <20261118-cmh-b4-a-v9-v9-0-70385613fd50@rambus.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-pmi8998-vbus-v2-12-3c77a72b280a@ixit.cz>
-References: <20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz>
-In-Reply-To: <20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz>
-To: Alexey Minnekhanov <alexeymin@minlexx.ru>, 
- Robin Snyders <robin@snyders.xyz>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIALDl/WoC/yXMTQ5AMBBA4avIrE3SESRcRSzamjISP2kRibi7Y
+ vkt3rsgsBcOUCcXeD4kyDJHVGkCdtBzzyhdNGQqK4moRDsNaHLUeFRIjoxyShWF0xCL1bOT87s
+ 17e+wm5Ht9i7gvh/8qt4YbwAAAA==
+X-Change-ID: 20261116-cmh-b4-a-v9-1f1b0f0055fa
+To: Saravanakrishnan Krishnamoorthy <skrishnamoorthy@rambus.com>, 
+ Joel Wittenauer <Joel.Wittenauer@cryptography.com>, 
+ Thi Nguyen <thin@rambus.com>, Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Wesley Cheng <quic_wcheng@quicinc.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Sebastian Reichel <sre@kernel.org>
-Cc: Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- linux-pm@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=985; i=david@ixit.cz;
- h=from:subject:message-id; bh=opQSg7fZ2yNDm8dbUq57ONjOIZ7j+aCXyQPY1Da3ae0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/d+X8tGUm9NqcawCeiNNQn3yPCHrsJApxfjza
- /qcssjy6P6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3flwAKCRBgAj/E00kg
- cuOpD/9Mlt3mX5CO1pP7WQX65+rTeQsLM5MkbJ7evmfniT6rHsLOhp71uqBd1GUskQtHJKzxUeU
- 0xzKXgB6mfU0pZxyX7A3o3ukHz0LGlBvpLJplRTxru7BL/3f5tkcI+81kTmHBABSXlxdU/D0EoK
- xeO+HpfOfSV75ZzWypwhrmK8vVusYRi4OKMj8jP5p1mlJEXchi3OLXgp3YAuOgj+WqDFmRDdr/D
- YhK9pYMeN0pFs4GgSbaG32ytluKhtIH0p+Re5XZjF4NbxGo9A+SsKWcN5FTqyFGeh4LR4FNRRz7
- d+Qr+lU0HGL0fad1FeZ0dSbWEAaSjwcPjIKwpC/5zgWBAAiOW3itJh3aOBI5XSnqf+9YLycrVfk
- xW3p1cT7PB6W7I4hV8Abk+yrRPDAra0ALUVbAnZnV8y3k1jTp8Z7ZTrolTn4ydrcjSqYFgcDAuR
- acZZEw40VqXMeprrOYbCfS9ubj3OGFXzcToVqAOe+414UW1leMeKg1klnXXTt/OG9EDCALu6u2T
- QTGZw9p+3k/g/hMj1K6uzQsIB61PX50Puvaj1qzAU6LfO5e8jo99pY62Ulp1//OmEjtILyn39MN
- EBgix4WWMXgCRfIjX67T5XjXH3UwDvWdvKrcuCMD6I//Bww47MPrmeb38g6XVvmx9QfsnmhOw1h
- KnLowI+KdNeqNyA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>
+Cc: linux-crypto@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Alex Ousherovitch <aousherovitch@rambus.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795024320; l=14011;
+ i=aousherovitch@rambus.com; s=20261026; h=from:subject:message-id;
+ bh=KbfzosJ3C3ZLBJvmLddH1ikGsbPON3i/y3vfx0Y3EAk=;
+ b=+Y7xg7fJK9Aed/J/qDm1DE8M6LWddNtKDOHTAqt4JVIdE/YDXzC4LU8aTQ265cxOMCXxP2u3R
+ 4NRPcwnLj3sDA4eL9v3jP/wSKrxqSm2rE76ax/5fDpuDJLZvrAweTzd
+X-Developer-Key: i=aousherovitch@rambus.com; a=ed25519;
+ pk=ECFtTdQUPAolK+qGZ6v7Xm3sRf7rnM7wxpTeFzbqpmA=
+X-Endpoint-Received: by B4 Relay for aousherovitch@rambus.com/20261026 with auth_id=1330
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On this device, vbus was setup and switched off by the charger driver.
-Enable proper driver.
+The Rambus CryptoManager Hub (CMH) is a hardware cryptographic
+accelerator accessed through a mailbox-based VCQ (Virtual Command Queue)
+interface.  This part, the first of the split posting (lineage and
+changelog below), adds the core platform driver, the shared
+key/datastore layer and the AES transforms, plus the device-tree binding
+and the MAINTAINERS entry.  AES is the first and least-problematic
+algorithm family, so the core has a user and the VCQ/DMA/completion data
+path is reviewable end to end.  Later parts add the remaining symmetric
+ciphers (SM4, ChaCha20-Poly1305) and the hwrng, the hashes and MACs,
+and finally the asymmetric and post-quantum algorithms together with the
+/dev/cmh_mgmt management interface.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+The core driver binds the device, parses its device-tree description,
+sets up DMA, the mailbox queue interface and the transaction manager,
+and exposes sysfs/debugfs instrumentation.  The key/datastore patch adds
+the raw-key handling and the datastore (SYS) command helpers that the AES
+driver in this series, and the algorithm drivers in the following series,
+build on.
+
+The transaction manager runs as a kthread that packs VCQ entries and
+submits each request to the mailbox its core is bound to; completion is
+handled by per-mailbox threaded IRQs, or a watchdog poll without them.
+The data path is asynchronous: requests return -EINPROGRESS, and on a
+full queue a CRYPTO_TFM_REQ_MAY_BACKLOG request is backlogged (-EBUSY)
+while any other gets -ENOSPC.
+The CMH eSW is loaded independently by the hardware before probe; the
+driver loads no firmware.
+
+The CMH is a platform device matched via device tree (compatible
+"rambus,cmh-v1030").  Following the inside-secure,eip93 binding model
+and the DT maintainer's guidance, the schema requires a SoC-specific
+compatible ahead of the IP fallback and therefore carries no example.
+
+Public hardware documentation:
+  Product overview: https://www.rambus.com/security/crypto-hub/
+  No public datasheets or downloadable briefs are currently available.
+  The driver was developed against the Rambus CryptoManager Hub Hardware
+  Reference Manual (Rambus Inc. confidential).  Detailed hardware
+  reference is available under NDA from Rambus Inc.; contact the
+  maintainers listed in MAINTAINERS for access during review.
+
+Developed against Herbert Xu's cryptodev tree.  checkpatch.pl --strict,
+sparse (C=2) and a W=1 -Werror build are clean, and dtschema's
+dt-doc-validate accepts the binding.  Exercised on riscv64 and arm64 --
+QEMU with the CMH hardware model and a Xilinx VMK180 FPGA with the CMH
+IP -- under lockdep/PROVE_LOCKING, DEBUG_OBJECTS,
+KASAN/UBSAN/KMEMLEAK/KFENCE and (arm64) KCSAN with no findings;
+worst-case stack stays under 1 KB.
+
+Changes in v9:
+ - dt-bindings: add Rob Herring's Reviewed-by (binding unchanged).
+ - crypto: cmh: mailbox recovery: reissue a FLUSH, RESTART or ABORT the
+   device cleared before taking it, FLUSH rather than RESTART an error seen
+   with an empty queue, give each timed-out request at HEAD its own
+   ABORT, and leave a retired mailbox alone.
+ - crypto: cmh: synchronous commands: a timed-out command still held by
+   the transaction manager is cancelled instead of dispatched later; one
+   on the device carries its timeout, so the watchdog escalates it, and
+   the caller waits for the drain.  An undrained command counts as
+   possibly live until it completes, and a full command queue is waited
+   on within the timeout instead of failing with -EAGAIN.
+ - crypto: cmh: record possibly-live DMA on every mailbox retirement.
+ - crypto: cmh: a refused suspend keeps the queued requests instead of
+   cancelling them.
+ - crypto: cmh: probe and teardown FLUSHes clear the mailbox interrupt
+   and write TAIL, as recovery does.
+ - crypto: cmh: AES: the ccm(aes) fallback masks CRYPTO_ALG_ASYNC, so it
+   cannot be built on the driver's own ctr(aes).
+ - crypto: cmh: AES: setkey rejects a 384-bit XTS key (-EINVAL); the
+   device supports only XTS-AES-128/256.
+ - crypto: cmh: debugfs: add config/inject_tm_hold_ms; recovery actions
+   are refused while suspended.
+ - crypto: cmh: assorted small fixes and comment corrections.
+
+Changes in v8:
+ - dt-bindings: rambus,slot-stride-bytes is 512 or 1024; reword
+   rambus,cores for cores that no mailbox lists.
+ - crypto: cmh: harden mailbox error recovery against concurrent
+   interrupt and watchdog activity.
+ - crypto: cmh: close transaction-manager races in timeout arming,
+   doorbell ringing and backlog promotion, and wake the manager for a
+   backlogged request.
+ - crypto: cmh: never free memory the device may still write: DMA memory
+   is freed or allocated only behind an acknowledged mailbox FLUSH, a
+   mailbox that never acknowledges is retired with its buffers kept, and
+   suspend is refused with -EBUSY instead of cancelling in-flight work.
+ - crypto: cmh: crypto API conformance: MAY_BACKLOG requests are never
+   refused (unbounded backlog), others get -ENOSPC on a full queue, final
+   completions run with BH disabled, CRYPTO_ALG_ALLOCATES_MEMORY is set,
+   and sysfs bind/unbind is disabled.
+ - crypto: cmh: error codes: -EIO only for a device failure, -ECANCELED
+   after recovery, -ENODEV on a retired mailbox, -EBADMSG for an AEAD tag
+   mismatch.
+ - crypto: cmh: AES: drop cfb(aes); zero-length xts(aes) returns -EINVAL;
+   out-of-place AEAD no longer writes the destination AAD; an oversized
+   CCM payload returns -EOVERFLOW; the empty CCM tag uses the AES
+   library; the second leg of a counter-wrap CTR request is backlogged.
+ - crypto: cmh: assorted small fixes and comment corrections.
+ - Documentation and patch split: each patch documents and adds only
+   what it needs; the PQC command sizes moved to the PQC series.
+ - Rebased onto cryptodev-2.6 (7.4.0-rc1).
+
+Changes in v7:
+ - Corrected the DCO sign-off chain so the co-developer attribution is
+   immediately followed by that author's own sign-off and the submitting
+   author signs last (the DCO point first raised on v3).
+ - crypto: cmh: close a debugfs force-drain vs teardown use-after-free --
+   the response-handler lock now also covers freeing the per-mailbox state
+   on teardown, so a force-drain can no longer race it.
+ - crypto: cmh: reclaim abandoned mailbox scratch with a non-destructive
+   flush ordered in the host command stream instead of a destructive
+   per-mailbox MBX_COMMAND_FLUSH -- removing the cmh_tm_flush_mbx helper
+   and its drain-wait -- so reclaiming scratch no longer cancels a crypto
+   VCQ that shares the mailbox.
+ - Added the per-revision changelog and the prior-posting links below.
+   The previous posting was sent untagged as "[PATCH 0/5]" and was the
+   sixth revision (v6), so this is v7.
+
+Changes in v6:
+ - Restructured the single v1-v5 series into smaller, independently
+   reviewable per-maintainer chunks.  This first series is the core
+   driver, the shared key/datastore layer and AES; later series add the
+   remaining algorithms and the management ioctl interface.
+ - dt-bindings: simplified the clock-names schema -- the oneOf collapses
+   to a single items list (core, an optional core-div2 or rt, then rt,
+   minItems: 1) -- and bounded the per-mailbox queue reg to the hardware
+   range (maximum: 63), following the v5 DT review.
+ - crypto: cmh: the response handler accumulates the IRQ status bits
+   before clearing the pending flag and releases its mailbox IRQs on
+   teardown even after a suspend; a wedged pinned mailbox now fails with
+   -EIO instead of head-of-line blocking; a second probe is rejected; and
+   debugfs ABORT injection and force-drain take the response-handler lock.
+ - crypto: cmh: AES-CMAC hardware-accelerates the one-shot .digest()
+   only and forwards the incremental and virtual-address paths to a
+   generic cmac(aes) transform the driver allocates in .init_tfm()
+   (CRYPTO_ALG_NO_FALLBACK + CRYPTO_ALG_REQ_VIRT, as the generic
+   cmac(aes) shash has no export_core and cannot back crypto_ahash_fb()).
+ - crypto: cmh: moved the datastore-type-to-core-id mapping into the
+   management layer so the key/datastore code no longer depends on the
+   management UAPI header; that header now lands with the ioctl
+   implementation in a later series.
+
+Changes in v5:
+ - dt-bindings: reworked the compatible and rambus,cores per DT review --
+   require a SoC-specific compatible ahead of the "rambus,cmh-v1030" IP
+   fallback via the inside-secure,eip93 "not: {}" idiom (no example can
+   validate until a real SoC is upstreamed), switch rambus,cores to a
+   string-array of core names, and replace the positional clocks list with
+   a count-bounded description.
+ - crypto: cmh: transaction-manager / response-handler race fixes -- FLUSH
+   and drain instead of restarting the eSW into freed slots, serialise the
+   mailbox TAIL doorbell, ABORT a sync timeout only at the mailbox HEAD,
+   and reject an over-large num_vcqs.
+
+Changes in v4:
+ - dt-bindings: renamed the per-mailbox child to queue@N and described its
+   ring geometry as plain counts (rambus,num-slots / rambus,slot-stride-
+   bytes) rather than log2; renamed the binding to rambus,cmh-v1030.yaml.
+ - crypto: cmh: convert to module_platform_driver() + dev_err_probe() and
+   drop the single-instance guard; remove informational probe logging; and
+   drop the production module parameters (built-in constants, with
+   debug-only knobs under debugfs).
+
+Changes in v3:
+ - dt-bindings: reworked the mailbox topology per DT review -- mailbox@N
+   child nodes, with cores discovered from CORE_ENABLE rather than the DT
+   -- and adopted the "rambus" vendor prefix with a device-specific
+   "rambus,cmh-v1030" compatible (the IP revision).
+
+Changes in v2:
+ - crypto: cmh: gate probe on both eSW readiness bits (MISSION and
+   MISSION2) so an operation offloaded to the sidecar engine cannot race an
+   engine that is not yet up.
+
+The CMH driver was first posted as a single series; following
+maintainer feedback it is now split into smaller, independently reviewable
+parts, numbered continuously across the split.  Earlier postings:
+  v1: https://lore.kernel.org/linux-crypto/20260625173328.1140487-1-skrishnamoorthy@rambus.com/
+  v2: https://lore.kernel.org/linux-crypto/20260709203037.1884436-1-skrishnamoorthy@rambus.com/
+  v3: https://lore.kernel.org/linux-crypto/20260806195519.2703224-1-skrishnamoorthy@rambus.com/
+  v4: https://lore.kernel.org/linux-crypto/20260825221539.255951-1-aousherovitch@rambus.com/
+  v5: https://lore.kernel.org/linux-crypto/20260917225929.2494111-1-aousherovitch@rambus.com/
+  v6: https://lore.kernel.org/linux-crypto/20261013174847.2192609-1-aousherovitch@rambus.com/
+  v7: https://lore.kernel.org/linux-crypto/20261026-cmh-b4-a-v7-v7-0-500a83faf500@rambus.com/
+  v8: https://lore.kernel.org/linux-crypto/20261110-cmh-b4-a-v8-v8-0-4cea8ebc1d40@rambus.com/
+
+Signed-off-by: Alex Ousherovitch <aousherovitch@rambus.com>
 ---
- arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi | 7 +++++++
- 1 file changed, 7 insertions(+)
+Alex Ousherovitch (5):
+      dt-bindings: crypto: add Rambus CryptoManager Hub
+      crypto: cmh - add core platform driver
+      crypto: cmh - add key/datastore infrastructure
+      crypto: cmh - add AES skcipher/aead/cmac
+      MAINTAINERS: add Rambus CryptoManager Hub (CMH)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
-index 8f91faf8a9cc5..9c95855b56e7b 100644
---- a/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
-@@ -604,16 +604,23 @@ cam_vio_pin: cam-vio-state {
- 		power-source = <0>;
- 	};
- };
- 
- &pm660_rradc {
- 	status = "okay";
- };
- 
-+&pm660_vbus {
-+	regulator-min-microamp = <500000>;
-+	regulator-max-microamp = <1500000>;
-+
-+	status = "okay";
-+};
-+
- &pm660l_flash {
- 	status = "okay";
- 
- 	led-0 {
- 		function = LED_FUNCTION_FLASH;
- 		color = <LED_COLOR_ID_WHITE>;
- 		led-sources = <1>, <2>;
- 		led-max-microamp = <500000>;
+ Documentation/ABI/testing/debugfs-driver-cmh       |  161 ++
+ Documentation/ABI/testing/sysfs-driver-cmh         |   62 +
+ Documentation/crypto/device_drivers/cmh.rst        |  326 +++
+ Documentation/crypto/device_drivers/index.rst      |    1 +
+ .../bindings/crypto/rambus,cmh-v1030.yaml          |  145 ++
+ .../devicetree/bindings/vendor-prefixes.yaml       |    2 +
+ MAINTAINERS                                        |   13 +
+ drivers/crypto/Kconfig                             |    1 +
+ drivers/crypto/Makefile                            |    1 +
+ drivers/crypto/cmh/Kconfig                         |   48 +
+ drivers/crypto/cmh/Makefile                        |   30 +
+ drivers/crypto/cmh/cmh_aes.c                       |  709 +++++
+ drivers/crypto/cmh/cmh_aes_aead.c                  |  935 +++++++
+ drivers/crypto/cmh/cmh_aes_cmac.c                  |  460 ++++
+ drivers/crypto/cmh/cmh_config.c                    |  625 +++++
+ drivers/crypto/cmh/cmh_debugfs.c                   |  309 +++
+ drivers/crypto/cmh/cmh_dma.c                       |  332 +++
+ drivers/crypto/cmh/cmh_key.c                       |  152 ++
+ drivers/crypto/cmh/cmh_main.c                      |  413 +++
+ drivers/crypto/cmh/cmh_mqi.c                       |  471 ++++
+ drivers/crypto/cmh/cmh_rh.c                        | 1497 +++++++++++
+ drivers/crypto/cmh/cmh_sys.c                       |   58 +
+ drivers/crypto/cmh/cmh_sysfs.c                     |  108 +
+ drivers/crypto/cmh/cmh_txn.c                       | 2712 ++++++++++++++++++++
+ drivers/crypto/cmh/include/cmh.h                   |   24 +
+ drivers/crypto/cmh/include/cmh_aes.h               |   24 +
+ drivers/crypto/cmh/include/cmh_aes_abi.h           |   98 +
+ drivers/crypto/cmh/include/cmh_config.h            |  110 +
+ drivers/crypto/cmh/include/cmh_debugfs.h           |   94 +
+ drivers/crypto/cmh/include/cmh_dma.h               |  195 ++
+ drivers/crypto/cmh/include/cmh_key.h               |   76 +
+ drivers/crypto/cmh/include/cmh_mqi.h               |   59 +
+ drivers/crypto/cmh/include/cmh_registers.h         |  147 ++
+ drivers/crypto/cmh/include/cmh_rh.h                |   99 +
+ drivers/crypto/cmh/include/cmh_sys.h               |   23 +
+ drivers/crypto/cmh/include/cmh_sys_abi.h           |  148 ++
+ drivers/crypto/cmh/include/cmh_sysfs.h             |   14 +
+ drivers/crypto/cmh/include/cmh_txn.h               |  655 +++++
+ drivers/crypto/cmh/include/cmh_vcq.h               |  203 ++
+ 39 files changed, 11540 insertions(+)
+---
+base-commit: 82e91fe19fb838f235f7c8829afc1eb389c93bdf
+change-id: 20261116-cmh-b4-a-v9-1f1b0f0055fa
 
--- 
-2.55.0
+Best regards,
+--  
+Alex Ousherovitch <aousherovitch@rambus.com>
 
