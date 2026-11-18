@@ -1,99 +1,101 @@
-From: Alexandre Rapaille <arapaille@atlr-engineering.com>
-Date: Wed, 18 Nov 2026 15:58:01 +0100
-Subject: [PATCH 3/3] wifi: wcn36xx: Stop waiting on a dead firmware during
- remove
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Wed, 18 Nov 2026 15:38:25 +0000
+Subject: [PATCH] remoteproc: omap: Fix cleanup after timer start failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-wcnss-series-v1-v1-3-a64d82e151bf@atlr-engineering.com>
-References: <20261118-wcnss-series-v1-v1-0-a64d82e151bf@atlr-engineering.com>
-In-Reply-To: <20261118-wcnss-series-v1-v1-0-a64d82e151bf@atlr-engineering.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Luca Weiss <luca@lucaweiss.eu>, Eugene Krasnikov <k.eugene.e@gmail.com>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, wcn36xx@lists.infradead.org, 
- linux-wireless@vger.kernel.org, 
- Alexandre Rapaille <arapaille@atlr-engineering.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795013892; l=2576;
- i=arapaille@atlr-engineering.com; s=20261118; h=from:subject:message-id;
- bh=OWtB8gLUHR0gZZyDT6Sr85NMnedCySghwg3+i2hEYMk=;
- b=40vQIVIHDiOrrWXDECYvU5u3JJRHAVNJeUedW0JPVJCgi5Xofe0K70qQvMCKg/EHM6Bza2uQk
- +hoPHbqb31UD0khKmRPYS2s9xX9yNGInY/QjftvDjjtkHMEQzsXZy8B
-X-Developer-Key: i=arapaille@atlr-engineering.com; a=ed25519;
- pk=xskH/sIiNU/aZCeGeBB1TK/AuiG3MXlX0m2wMlbMl08=
-X-Endpoint-Received: by B4 Relay for arapaille@atlr-engineering.com/20261118 with auth_id=1560
+Message-Id: <20261118-omap-rproc-v1-1-c2824060fd10@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAHDG/WoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0ML3fzcxALdooKi/GTdJGNjQxNLcxMz40RzJaCGgqLUtMwKsGHRsRB
+ +cWlSVmpyCcgEpdpaAJiaNWRuAAAA
+X-Change-ID: 20261118-omap-rproc-b331497463a7
+To: andersson@kernel.org, mathieu.poirier@linaro.org
+Cc: linux-remoteproc@vger.kernel.org, linux-omap@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795016304; l=2382;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=5CaSvn4PiRTxlXy+sXlFYuB0nwYQd2B6binwsJAROTE=;
+ b=FcG4ouxfwBkbl5ONLABK/xpQ+rRul8yhXniLdOWoNT8bFvI26PaqOSNpexnFmOP/rfMFO+J4b
+ 5Gf2XbdaEynCI8NGMVOIpSqhIRgMOtP1hPyuDi+YwMMuV4ViuefbaiX
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After a WCNSS crash, remove sends ~16 HAL commands nobody can answer,
-each waiting HAL_MSG_TIMEOUT: recovery took 160 s on msm8974. Once one
-times out during remove, fail the rest at once; recovery now takes ~20 s.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-Signed-off-by: Alexandre Rapaille <arapaille@atlr-engineering.com>
+When omap_rproc_start_timer() fails in omap_rproc_enable_timers(), the
+error handling has three problems.
+
+First, the stop loop also stops the timer that failed to start:
+
+	while (i >= 0) {
+		omap_rproc_stop_timer(&timers[i]);
+		i--;
+	}
+
+omap_dm_timer_start() drops its runtime PM reference when
+pm_runtime_resume_and_get() fails, so stopping that timer calls
+pm_runtime_put_sync() once more than it should.
+
+Second, the loop leaves i at -1 and then jumps to put_node, which falls
+through to free_timers:
+
+	while (i--) {
+		...
+		omap_rproc_release_timer(&timers[i]);
+
+With i == -1 the condition is true and the first iteration uses
+timers[-2]. The loop then keeps going through negative indexes.
+
+Third, when configure is true, put_node puts np again. The parse loop
+already put every node it got, and np still points at the last one, so
+that reference is dropped twice.
+
+Only stop the timers that were started. On resume (configure == false)
+return the error and keep the timers: they still belong to the driver
+and are released later by omap_rproc_disable_timers(rproc, true). On the
+first start (configure == true) release all the timers that were set up
+and skip put_node, since no node reference is held at this point.
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: e28edc571925 ("remoteproc/omap: Request a timer(s) for remoteproc usage")
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
- drivers/net/wireless/ath/wcn36xx/main.c    | 1 +
- drivers/net/wireless/ath/wcn36xx/smd.c     | 8 ++++++++
- drivers/net/wireless/ath/wcn36xx/wcn36xx.h | 4 ++++
- 3 files changed, 13 insertions(+)
+Compile tested on arm with clang (W=1, no new warnings). I don't have
+the hardware, so the failure path hasn't been run.
+---
+ drivers/remoteproc/omap_remoteproc.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/wcn36xx/main.c b/drivers/net/wireless/ath/wcn36xx/main.c
-index ad8a4bd910..77a1029108 100644
---- a/drivers/net/wireless/ath/wcn36xx/main.c
-+++ b/drivers/net/wireless/ath/wcn36xx/main.c
-@@ -1651,6 +1651,7 @@ static void wcn36xx_remove(struct platform_device *pdev)
- 
- 	release_firmware(wcn->nv);
- 
-+	WRITE_ONCE(wcn->removing, true);
- 	ieee80211_unregister_hw(hw);
- 
- 	qcom_smem_state_put(wcn->tx_enable_state);
-diff --git a/drivers/net/wireless/ath/wcn36xx/smd.c b/drivers/net/wireless/ath/wcn36xx/smd.c
-index c0b4773458..d07ea967ac 100644
---- a/drivers/net/wireless/ath/wcn36xx/smd.c
-+++ b/drivers/net/wireless/ath/wcn36xx/smd.c
-@@ -427,6 +427,12 @@ static int wcn36xx_smd_send_and_wait(struct wcn36xx *wcn, size_t len)
- 		(struct wcn36xx_hal_msg_header *)wcn->hal_buf;
- 	u16 req_type = hdr->msg_type;
- 
-+	/* After a WCNSS crash every teardown command would wait the full
-+	 * timeout; one is enough to know nobody will answer.
-+	 */
-+	if (wcn->fw_dead)
-+		return -ETIME;
-+
- 	wcn36xx_dbg_dump(WCN36XX_DBG_SMD_DUMP, "HAL >>> ", wcn->hal_buf, len);
- 
- 	init_completion(&wcn->hal_rsp_compl);
-@@ -440,6 +446,8 @@ static int wcn36xx_smd_send_and_wait(struct wcn36xx *wcn, size_t len)
- 		msecs_to_jiffies(HAL_MSG_TIMEOUT)) <= 0) {
- 		wcn36xx_err("Timeout! No SMD response to req %d in %dms\n",
- 			    req_type, HAL_MSG_TIMEOUT);
-+		if (READ_ONCE(wcn->removing))
-+			wcn->fw_dead = true;
- 		ret = -ETIME;
- 		goto out;
+diff --git a/drivers/remoteproc/omap_remoteproc.c b/drivers/remoteproc/omap_remoteproc.c
+index f52a531877ae..d50f2e993c4e 100644
+--- a/drivers/remoteproc/omap_remoteproc.c
++++ b/drivers/remoteproc/omap_remoteproc.c
+@@ -418,11 +418,14 @@ static int omap_rproc_enable_timers(struct rproc *rproc, bool configure)
+ 		}
  	}
-diff --git a/drivers/net/wireless/ath/wcn36xx/wcn36xx.h b/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
-index 8c43f67bd7..9e5f3918ca 100644
---- a/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
-+++ b/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
-@@ -276,6 +276,10 @@ struct wcn36xx {
- 	spinlock_t	dxe_lock;
- 	bool                    queues_stopped;
- 
-+	/* Set in remove; a HAL timeout then means the firmware is gone. */
-+	bool			removing;
-+	bool			fw_dead;
+ 	if (ret) {
+-		while (i >= 0) {
++		while (i--)
+ 			omap_rproc_stop_timer(&timers[i]);
+-			i--;
+-		}
+-		goto put_node;
 +
- 	/* Memory pools */
- 	struct wcn36xx_dxe_mem_pool mgmt_mem_pool;
- 	struct wcn36xx_dxe_mem_pool data_mem_pool;
++		if (!configure)
++			return ret;
++
++		i = num_timers;
++		goto free_timers;
+ 	}
+ 	return 0;
+ 
 
--- 
-2.43.0
+
 
