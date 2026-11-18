@@ -1,85 +1,87 @@
-From: =?utf-8?q?Alexandru_Andrie=C8=99?= <alex.andries.aa@gmail.com>
-Date: Thu, 19 Nov 2026 00:16:52 +0100
-Subject: [PATCH 3/3] power: supply: qcom_battmgr: fix negative temperature
- values
+From: Florian Bauckholt <florian.bauckholt@cispa.de>
+Subject: [PATCH v2 0/2] KEYS: two fixes for the asymmetric keyctl
+ operations
+Date: Thu, 19 Nov 2026 00:19:27 +0100
+Message-Id: <20261119-keyctl-pkey-fixes-v2-0-9e2d1c7db7ec@cispa.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261119-upstream-qcom-battmgr-fixes-v1-v1-3-ca83700c08c1@gmail.com>
-References: <20261119-upstream-qcom-battmgr-fixes-v1-v1-0-ca83700c08c1@gmail.com>
-In-Reply-To: <20261119-upstream-qcom-battmgr-fixes-v1-v1-0-ca83700c08c1@gmail.com>
-To: Sebastian Reichel <sre@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>
-Cc: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- linux-pm@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, stable@vger.kernel.org, 
- =?utf-8?q?Alexandru_Andrie=C8=99?= <alex.andries.aa@gmail.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NTQ6CMBCFr0Jm7ZhStEVX3sOwKGWUUQOkg0RCu
+ Lst7n2byZd5PwsIBSaBc7ZAoImF+y6C3mXgW9fdCbmJDFppk0fhk2Y/vnCIF2/8IUFtimPpSqt
+ sbSDmhkDbI8au1Y/lXT/Ij6koOVqWsQ/zNjrlyfevf8pR4ak4UO2cNtbZi2cZ3L4hqNZ1/QJbd
+ XROwwAAAA==
+X-Change-ID: 20261111-keyctl-pkey-fixes-26358a8707b6
+To: David Howells <dhowells@redhat.com>, 
+ Jarkko Sakkinen <jarkko@kernel.org>, Lukas Wunner <lukas@wunner.de>, 
+ Ignat Korchagin <ignat@linux.win>, Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>
+Cc: Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>, 
+ "Serge E. Hallyn" <serge@hallyn.com>, Hui Peng <benquike@gmail.com>, 
+ Stefan Berger <stefanb@linux.ibm.com>, 
+ Rodolfo Giometti <giometti@enneenne.com>, keyrings@vger.kernel.org, 
+ linux-crypto@vger.kernel.org, linux-security-module@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Florian Bauckholt <florian.bauckholt@cispa.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795043834; l=2126;
- i=alex.andries.aa@gmail.com; s=20261118; h=from:subject:message-id;
- bh=rbeD9/hqy2iLa1zbMjhzXGTU00ckT0RtHpgBQ16AH5I=;
- b=JsoY8sFr/LIOpNR9zSCmVSlbAT0y8+na0ABBLTwEaUCcTDISlTl8LFCGx31mJICe5nVIy0Qtu
- UutV5/Wakh1DN2wEzee4AH33SDAS4fJv78X+dVsfRO+4EeM1fQs9uu1
-X-Developer-Key: i=alex.andries.aa@gmail.com; a=ed25519;
- pk=kNAqgavfB7uUd1mA8o8TszhGxzyqBwY71PGO/oK4v84=
-X-Endpoint-Received: by B4 Relay for alex.andries.aa@gmail.com/20261118 with auth_id=1564
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795044005; l=1979;
+ i=florian.bauckholt@cispa.de; s=20261105; h=from:subject:message-id;
+ bh=FDAmoObBsHQBGQ+MetdjiLo0kYxapT4Ogq4Y3JdbTA8=;
+ b=Wk1rAO/meq+r3f/pjo64iqVGKoS19pmqMHM9xPsXpyGDnVlWCtUdfEuvhLovt1cvaysJFtuQL
+ tCvradrixlqCEdT2Je4d9Jncgq1EAGoPrSv0Mn4NmON56/1No+Asitb
+X-Developer-Key: i=florian.bauckholt@cispa.de; a=ed25519;
+ pk=n9klXQ+dI45FWy0qWLrGpQfXU5ylIA0SN+uWSmOx3ok=
+X-Endpoint-Received: by B4 Relay for florian.bauckholt@cispa.de/20261105 with auth_id=1420
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Firmware reports battery temperature in signed hundredths of a degree
-Celsius, scaled to tenths of a degree for POWER_SUPPLY_PROP_TEMP.
-Passing it as unsigned int to DIV_ROUND_CLOSEST(..., 10) in both
-qcom_battmgr_sc8280xp_convert_temp() and qcom_battmgr_sm8350_callback()
-turns sub-zero values (e.g. -5.00 C, 0xfffffe0c) into 429496680 instead
-of -50.
+Hi,
 
-Change status.temperature and qcom_battmgr_sc8280xp_convert_temp() to
-int, and cast the SM8350 BATT_TEMP payload to s32 before dividing.
+two small fixes for KEYCTL_PKEY_VERIFY and KEYCTL_PKEY_DECRYPT that I
+ran into while doing differential testing of crypto implementations
+with the kernel hooked up via UML:
 
-Tested at 35.0 C on a Xiaomi MIX 4 (SM8350); the SC8280XP path and
-sub-zero temperatures were not hardware-tested.
+Patch 1 fixes a regression from commit cb481e59ea6c ("KEYS: fix overflow
+in keyctl_pkey_params_get_2()"), which was tagged for stable:
+KEYCTL_PKEY_VERIFY ignores the signature length passed by the caller.
+It also is a prerequisite for making the x962 ECDSA template reject
+signatures that are not DER-encoded, which I posted separately to
+linux-crypto [2].
 
-Fixes: 29e8142b5623 ("power: supply: Introduce Qualcomm PMIC GLINK power supply")
-Cc: stable@vger.kernel.org
-Signed-off-by: Alexandru Andrieș <alex.andries.aa@gmail.com>
+Patch 2 fixes PKCS#1 decryption of an empty message returning the
+ciphertext.
+
+Both changes were part of a patch posted by Hui Peng in September that
+did not get a reply [1]. That patch also changed the out_len checks in
+keyctl_pkey_params_get_2(), which is not included here.
+
+Thanks!
+
+[1] https://lore.kernel.org/all/20260919221742.3709658-1-benquike@gmail.com/
+[2] https://lore.kernel.org/all/20261112-ecdsa-x962-der-v1-1-36b24c5f5e11@cispa.de/
+
 ---
- drivers/power/supply/qcom_battmgr.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Changes in v2:
+- Rebased onto jarkko/linux-tpmdd.git for-next-keys (141b164bbe18).
+  Patch 1 no longer applied after commit bab48a104447 ("KEYS: Protect
+  pkey method checks against type removal"). The code change itself is
+  the same.
+- Patch 1: the commit message now mentions that a truncated RSA
+  signature can be accepted (Rodolfo Giometti).
+- Patch 2: unchanged.
+- Link to v1: https://patch.msgid.link/20261111-keyctl-pkey-fixes-v1-0-934ebaa267a7@cispa.de
 
-diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
-index 83e67d22c432..98b658ff6beb 100644
---- a/drivers/power/supply/qcom_battmgr.c
-+++ b/drivers/power/supply/qcom_battmgr.c
-@@ -278,7 +278,7 @@ struct qcom_battmgr_status {
- 	int power_now;
- 	unsigned int voltage_now;
- 	unsigned int voltage_ocv;
--	unsigned int temperature;
-+	int temperature;
- 	unsigned int resistance;
- 	unsigned int soh_percent;
- 
-@@ -1250,7 +1250,7 @@ static unsigned int qcom_battmgr_sc8280xp_parse_technology(const char *chemistry
- 	return POWER_SUPPLY_TECHNOLOGY_UNKNOWN;
- }
- 
--static unsigned int qcom_battmgr_sc8280xp_convert_temp(unsigned int temperature)
-+static int qcom_battmgr_sc8280xp_convert_temp(int temperature)
- {
- 	return DIV_ROUND_CLOSEST(temperature, 10);
- }
-@@ -1467,7 +1467,7 @@ static void qcom_battmgr_sm8350_callback(struct qcom_battmgr *battmgr,
- 			break;
- 		case BATT_TEMP:
- 			val = le32_to_cpu(resp->intval.value);
--			battmgr->status.temperature = DIV_ROUND_CLOSEST(val, 10);
-+			battmgr->status.temperature = DIV_ROUND_CLOSEST((s32)val, 10);
- 			break;
- 		case BATT_TECHNOLOGY:
- 			battmgr->info.technology = le32_to_cpu(resp->intval.value);
+---
+Florian Bauckholt (2):
+      KEYS: fix signature length passed to KEYCTL_PKEY_VERIFY
+      KEYS: asymmetric: Fix PKCS#1 decryption of an empty message
 
--- 
-2.56.1
+ crypto/asymmetric_keys/public_key.c | 6 +++---
+ security/keys/keyctl_pkey.c         | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+---
+base-commit: 141b164bbe186423e295b139e40e8e2d11cf1341
+change-id: 20261111-keyctl-pkey-fixes-26358a8707b6
+
+Best regards,
+--  
+Florian Bauckholt <florian.bauckholt@cispa.de>
 
