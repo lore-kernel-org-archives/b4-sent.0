@@ -1,11 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH RESEND v6 0/3] Enable DW9714V camera focus coils on SHIFT
- 6MQ
-Date: Wed, 18 Nov 2026 17:23:55 +0100
-Message-Id: <20261118-dw9714v-v6-0-48cfd8ee4c4c@ixit.cz>
+Date: Wed, 18 Nov 2026 17:23:56 +0100
+Subject: [PATCH RESEND v6 1/3] dt-bindings: media: i2c: dongwoon,dw9714:
+ Document DW9714A and V variant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+Message-Id: <20261118-dw9714v-v6-1-48cfd8ee4c4c@ixit.cz>
+References: <20261118-dw9714v-v6-0-48cfd8ee4c4c@ixit.cz>
+In-Reply-To: <20261118-dw9714v-v6-0-48cfd8ee4c4c@ixit.cz>
 To: Alexander Martinz <amartinz@shiftphones.com>, 
  Bjorn Andersson <andersson@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, 
@@ -18,106 +20,85 @@ Cc: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>,
  linux-media@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3562; i=david@ixit.cz;
- h=from:subject:message-id; bh=CTBuRRU/+SixDB/NzKk3xD/txNPor4/d5Mzcm8+QFgI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/dFS+hD9wtEe+u5vVhlFQhFfaPSmNxNNkFHs1
- Je0Cf3KzPOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3RUgAKCRBgAj/E00kg
- clfXEADBiIu6BpPHI3h56OMRfTYGUECG2wUUJNaZaCkNL+PvttQdU/pYDVR+hLQfvqPc7VoQRWI
- g1pWxqXQNGSfjnlSy0jMLASyVNU95ZOo8uby5+KcMWBcR9f2IKcNqcSWmDM79JzfE5jJN4bVGot
- JIFrwnTV+lAZvcxjJhHcw1griDLq/AwPURGgSS6QyQaGaUPdns8rzPDHvn1p1fZn16rnqZzipvy
- e1M7edFCo6SRCBmW//OsPNI9iIfpLBmzAr9I6Kn+4sJubwaGWNelhPoFjOPJYmEnpQhKLZF2muA
- UnoEu/glCQfCTTu9UhvVpbGiFdyyjbfdFYmCP6qIGr4elKDP6kuHhz6Z9454cTdqAHvE1Neokic
- cUT0KWWV4X7lWu9hzuM4OXRrRbXEFjmL6mIosmu31WaY43y7WQQFgE5+utdrhmLmfmBEaAqHys+
- jQNBzVse3Jx1LxQ+hS1l81oxMVpEmDrvLiSEXW1LSQCgquL8J9Y67kb02AIFn/kdGN3FcF7ls0g
- jpFkl9T1iUZXGhZpVEKY6AiwA16wddXDQKUlVTOaA6FXczTtGXQLw8ux3geJ54y5wWK74scVvfP
- R430QRKXSCf/gAcyCGQB4dzushTUm2pLcb/xIu1KApnmLKCq/3Ogr5YgF8B0xGTVy0aIql91C4l
- 6p1jLX6v+Q8iuoA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2393; i=david@ixit.cz;
+ h=from:subject:message-id; bh=MctnB/YBUlKBkfY6HkmVWzrj67EeGRulizfUpQ/8RY4=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/dFSfbanzBkVKEUdzbIRWUm26RyYZMeX/trR9
+ fWxIc3JZ6SJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3RUgAKCRBgAj/E00kg
+ cu43D/wM3kahxulqMtdpQMfZlethaBetxXfjD1Rudb0vrDeQajTyb9okO8MeqEjgSa0JkTkw/TX
+ Tydpf++oqQ4zp8XlU4X2v3/pLz3iGzxLomNX2wEuOWpAQK4pY6ZN0SrL5x0RJY6c3FoiSttfp24
+ O2413uemhzLGTFcypS2jpwksl3GJuc4SDVygIrd4ucARmV77eNqL5mDIadMaRXtTfbMPpXKwFTh
+ tF0EALpBUvUmz/nbK23GblqSQIFkN+pNG+5JIegRCzO8abgUQTrvdGjB9epNdRvzhVxt0xw5vKK
+ eGoq/ACHq3j6xdMlnd49ET77C6XG8pUyF1KFnECsx91zssENgXG4OifPlruhRKYGgvEbW8017Ph
+ 7RckOpob7/DAUSmgrwatw27DwX3Tk3yVl3iD6vMg6nRgoxbUiAlFNK153sN93qxSB6w3EqEJpvq
+ PG4r69F+QK/AgqshE2TTLO+BP+Z117R8h9PwCgKbN0fECV1jODJFKzDDexxtU+JOrMNtGtE5kqb
+ 8ETGCe7sd6cp0uyHRhzc5p60/X3RHoqMS7A45fwS7bGBSyr4nUF/j5mRX22vMAsSy3BOzr/vAK+
+ xi4C/Wz/+TEpvRpnwMv8Y5opwtFYipdW333vi12DzkO8kQtX6lFzQeb2mFFQvLSAioU0c8yK+pi
+ mwy4n7R0rjgjo8A==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implements wiring for:
- - SGM2036 linear regulator used to turn on the focus coils [1]
- - Dongwoon 9714V focus coil used by IMX519 camera sensor [2]
- - Dongwoon 9714V focus coil used by S5K2X7SP camera sensor
+DW9714A is a successor of DW9714 and DW9714V is a successor of DW9714A.
 
-[1] https://www.sg-micro.com/rect/assets/efa85993-263c-41aa-9274-b488f59f85d5/SGM2036.pdf
-[2] https://datasheet4u.com/pdf/1247146/DW9714V.pdf
+All three are compatible in their normal mode: a 10-bit DAC with the same
+Direct/LSC/DLC slew rate control. DW9714V additionally has an "advanced
+mode", which exposes Smart Actuator Control (SAC2/SAC3/SAC3.5/SLSC) and
+soft start/landing. Out of reset the DW9714V comes up in normal mode
+with ringing control disabled, i.e. behaving as a plain DW9714,
+so nothing has to be configured for it to work today.
 
-Open question for future work: modeling the I2C bus supply.
+Should SAC support be added later, it is board data rather than a userspace
+knob: the mode and the vibration period (SAC_CFG/PRESC/SACT) have to match
+the mechanical tVIB of the actuator and lens assembly of the given camera
+module. Those properties are left out until there is driver support and
+measured values.
 
-Like many similar chips, the DW9714 has a single VDD supply, but its I2C
-lines go through a level shifter to a 1.8V rail, and there is currently no
-place in DT to describe that rail so it gets enabled during I2C access to
-the device. As a stopgap, this series models it as an always-on, see the
-comment in the vreg_lvs1a_1p8 node).
-
-Direction agreed with Rob Herring and Mark Brown on IRC:
-
- - Modeling the level shifter itself is overkill as long as it is just a
-   supply; modeling the connector would come first if needed.
- - Since each side of the shifter has its own supply, the proper solution
-   is a generic 'bus-supply' property valid in both the I2C controller and
-   device nodes.
- - Defining it per-device-schema would ideally use an I2C equivalent of
-   spi-peripheral-props.yaml, which does not exist yet. The pragmatic
-   interim is to define bus-supply in i2c-controller.yaml for both places
-   and add 'bus-supply: true' to schemas that need it now (dw9714),
-   deferring the peripheral-props question until more shared device
-   properties accumulate.
-
-Once bus-supply exists, the regulator-always-on workaround in this DTS can
-be dropped.
-
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v6:
-- Mostly resend, rebased against next-20261016.
-- Link to v5: https://patch.msgid.link/20260822-dw9714v-v5-0-502bc7f43b8f@ixit.cz
+ .../devicetree/bindings/media/i2c/dongwoon,dw9714.yaml     | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
 
-Changes in v5:
-- There is secondary rear camera with the same AF. Tested with the
-  camera (not upstreamed yet).
-- Verified the both rear cameras i2c addresses, added comment about it.
-- Link to v4: https://patch.msgid.link/20260810-dw9714v-v4-0-a227cb1d29bd@ixit.cz
+diff --git a/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml b/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml
+index 66229a3dc05d6..7c2769e6c4880 100644
+--- a/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml
++++ b/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml
+@@ -5,22 +5,30 @@ $id: http://devicetree.org/schemas/media/i2c/dongwoon,dw9714.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
+ 
+ title: Dongwoon Anatech DW9714 camera voice coil lens driver
+ 
+ maintainers:
+   - Krzysztof Kozlowski <krzk@kernel.org>
+ 
+ description:
+-  DW9174 is a 10-bit DAC with current sink capability. It is intended for
+-  driving voice coil lenses in camera modules.
++  10-bit DAC with current sink capability. It is intended for driving
++  voice coil lenses in camera modules.
+ 
+ properties:
+   compatible:
+-    const: dongwoon,dw9714
++    oneOf:
++      - items:
++          - const: dongwoon,dw9714v
++          - const: dongwoon,dw9714a
++          - const: dongwoon,dw9714
++      - items:
++          - const: dongwoon,dw9714a
++          - const: dongwoon,dw9714
++      - const: dongwoon,dw9714
+ 
+   reg:
+     maxItems: 1
+ 
+   powerdown-gpios:
+     description:
+       XSD pin for shutdown (active low)
+ 
 
-Changes in v4:
-- Updated DT bindings commit description. (Sakari)
-- Link to v3: https://patch.msgid.link/20260803-dw9714v-v3-0-8e10278dcd0d@ixit.cz
-
-Changes in v3:
-- Multiline compatible. (Konrad)
-- Dropped output-low from avdd_cam pinctrl. (Konrad)
-- Then dropped whole sleep pinctrl state, as it's same as default.
-- Reworded the TODO. (Konrad)
-- Dropped camss node. (claude)
-- Moved before cdsp_pas (sort)
-- Dropped unused regulator label.
-- Switched the i2c bus shifter with the regulator VDD, as previously it
-  was incorrectly wired and keep always-on on the i2c bus shifter.
-- Link to v2: https://patch.msgid.link/20260730-dw9714v-v2-0-d5da19e6c60b@ixit.cz
-
-Changes in v2:
-- Address Sashiko findings.
-- Link to v1: https://patch.msgid.link/20260729-dw9714v-v1-0-3c479b3cf8c0@ixit.cz
-
----
-David Heidelberg (3):
-      dt-bindings: media: i2c: dongwoon,dw9714: Document DW9714A and V variant
-      arm64: dts: qcom: sdm845-shift-axolotl: Add actuator for main rear camera
-      arm64: dts: qcom: sdm845-shift-axolotl: Add actuator for second rear camera
-
- .../bindings/media/i2c/dongwoon,dw9714.yaml        | 14 +++-
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts  | 89 ++++++++++++++++++++++
- 2 files changed, 100 insertions(+), 3 deletions(-)
----
-base-commit: 2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64
-change-id: 20260416-dw9714v-4566465ebe7d
-
-Best regards,
---
-David Heidelberg <david@ixit.cz>
 -- 
-David Heidelberg <david@ixit.cz>
+2.55.0
 
