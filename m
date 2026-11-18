@@ -1,94 +1,99 @@
 From: Zi-Hao Huang <zi-hao.huang@mediatek.com>
-Date: Wed, 18 Nov 2026 09:25:18 +0800
-Subject: [PATCH] drm/mediatek: dsi: Don't let a signal cut the IRQ wait
- short
+Date: Wed, 18 Nov 2026 10:31:42 +0800
+Subject: [PATCH v2] block: fix PF_BLOCK_TS/current->plug ordering in
+ blk_finish_plug()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-mtk-dsi-irq-wait-v1-1-205f25fac8b2@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIAH3+/GoC/x3MzQpAUBBA4VfRrE2ZSciryGJyB5P83SuUvLub5
- bc454Gg3jRAnTzg9bRg6xJBaQLdKMugaC4aOOOCiCqcjwldMDS/4yV2oHBeEouTgkuI2ea1t/t
- fNu37fkZKzT5iAAAA
-X-Change-ID: 20261118-mtk-dsi-irq-wait-a24712ada627
-To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- shaoming chen <shaoming.chen@mediatek.com>, dri-devel@lists.freedesktop.org, 
- linux-mediatek@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, 
- Zi-Hao Huang <zi-hao.huang@mediatek.com>
+Message-Id: <20261118-blk-plug-fix-v2-1-4acbeec5d512@mediatek.com>
+X-B4-Tracking: v=1; b=H4sIAA0O/WoC/3WMyw6CMBAAf4Xs2TXdNSLx5H8YDi0ssOGZFomG9
+ N+t3D3OJDM7BPEqAe7ZDl42DTpPCfiUQdXZqRXUOjGw4ZyIGN3Q4zK8Wmz0jY3JC2eYL64wkJL
+ FS9LH7lkm7jSss/8c941+9s9oIyS8NZZtznR1Rf0YpVa7Sn+u5hHKGOMXW3GED6sAAAA=
+X-Change-ID: 20261112-blk-plug-fix-f068b0223b80
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Chao Yu <chao@kernel.org>, stable@vger.kernel.org, 
+ Zi-Hao Huang <zi-hao.huang@mediatek.com>, 
+ Sandeep Dhavale <dhavale@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794965128; l=2609;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794969131; l=2708;
  i=zi-hao.huang@mediatek.com; s=20261112; h=from:subject:message-id;
- bh=mBD6dS6d064X8Z2NA64EwiPmxgRAZHmv32EB6c3egAE=;
- b=h0n34iq4oweQpJL4Q1/996A0FU3QFKpqo/f4lya6mqbzxROzBIxyGIe0y5Q1hebLNaOvGCuh6
- Uzd8VWv4YnTCLk29wrnRg3YlOT4kPhXxSEBsbUMS+exxPHW/ApTnAvr
+ bh=yzVnLTZw+V0byMgdM9XGWdyVxiHY2j5nto3cl5zYTUw=;
+ b=YreCA/+/lxEewEeUdbmQqFTXZK9vYT/ZIJn38ItYb2h92mIT9j114TDFWBTozc6GL+lHZXlrX
+ 496eudRghoJCRE0IrwkTnO0nnGdLBh5hc83YVTYF2yVzBYdKYnAh0Mm
 X-Developer-Key: i=zi-hao.huang@mediatek.com; a=ed25519;
  pk=tbMIVegYSSBtz5MaQSUCX9RJO88MA/AI5cbmQKbaoIc=
 X-Endpoint-Received: by B4 Relay for zi-hao.huang@mediatek.com/20261112 with auth_id=1493
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mtk_dsi_wait_for_irq_done() waits for the DSI IRQ with
-wait_event_interruptible_timeout(). If it returns early, for example
-with -ERESTARTSYS when a signal is pending, both callers still treat the
-command as done, because they only handle a return value of 0 as a
-failure.
+blk_plug_invalidate_ts() runs on context switch and assumes that
+PF_BLOCK_TS set implies current->plug != NULL. blk_finish_plug() breaks
+this: it clears PF_BLOCK_TS in __blk_flush_plug() and then sets
+current->plug = NULL, with plain accesses.
 
-On an MT8196 board this led to a hard lockup during shutdown. The wait
-returned before the IRQ arrived, the panel disable sequence went on and
-restarted video mode, and the late CMD_DONE interrupt was then handled
-by mtk_dsi_irq(). The handler writes RACK and loops until DSI_BUSY
-clears, but DSI_BUSY stays set while video mode is running, so the CPU
-never leaves the handler until the watchdog fires. Forcing the wait to
-return early reproduces the lockup every time, and it no longer
-happens once the wait cannot return early.
+clang inlines __blk_flush_plug() and emits the store to current->plug
+before the store that clears the flag (arm64, Android common kernel):
 
-The wait is made from the driver's own context to synchronise with the
-hardware, not on behalf of a userspace request, and it is bounded by its
-timeout. Use wait_event_timeout() so that it only ends on the IRQ or the
-timeout.
+  ldr  w8, [x20, #0x44]     // w8 = current->flags
+  str  xzr, [x20, #0xaa8]   // current->plug = NULL
+  and  w8, w8, #0xdfffffff  // w8 &= ~PF_BLOCK_TS  <- preempted here
+  str  w8, [x20, #0x44]     // current->flags = w8
 
-wake_up_interruptible() cannot wake a task in uninterruptible sleep, so
-switch mtk_dsi_irq() to wake_up(). Without it every wait would last
-until its timeout.
+If an interrupt hits there and preempts the task, the task is later
+scheduled back in with PF_BLOCK_TS set and no plug, and
+blk_plug_invalidate_ts() writes to NULL + 0x20 (plug->cur_ktime):
 
-Fixes: dd5080a54df8 ("drm/mediatek: add dsi interrupt control")
+  Unable to handle kernel NULL pointer dereference at 0000000000000020
+  pc : __schedule+0x108c
+   preempt_schedule_irq+0x48/0xa8
+   el1_interrupt+0x48/0x8c
+   blk_finish_plug+0x6c/0x18c
+   ext4_do_writepages+0xd3c/0xef8
+
+The window is only a few instructions wide, so this is rare. It was hit
+at cycle 127 of a warm reboot stress test.
+
+Add a compiler barrier so the flag is cleared before the plug is
+dropped. A compiler barrier is enough because the race is with
+preemption of the same task on the same CPU. With the barrier, the same
+build stores current->flags before current->plug.
+
+Fixes: fad156c2af22 ("block: invalidate cached plug timestamp after task switch")
+Cc: stable@vger.kernel.org
 Signed-off-by: Zi-Hao Huang <zi-hao.huang@mediatek.com>
+Reviewed-by: Sandeep Dhavale <dhavale@google.com>
 ---
- drivers/gpu/drm/mediatek/mtk_dsi.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+Changes in v2:
+- Point the Fixes tag at fad156c2af22, which dropped the NULL check and
+  made the preemption race possible, and drop the stable version
+  (Sandeep)
+- Collect Reviewed-by
+- Link to v1: https://lore.kernel.org/r/20261112-blk-plug-fix-v1-1-7fa2a6215b8d@mediatek.com
+---
+ block/blk-core.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_dsi.c b/drivers/gpu/drm/mediatek/mtk_dsi.c
-index f82506e10fd5..1315dd31a834 100644
---- a/drivers/gpu/drm/mediatek/mtk_dsi.c
-+++ b/drivers/gpu/drm/mediatek/mtk_dsi.c
-@@ -627,9 +627,8 @@ static s32 mtk_dsi_wait_for_irq_done(struct mtk_dsi *dsi, u32 irq_flag,
- 	unsigned long jiffies = msecs_to_jiffies(timeout);
- 	struct drm_device *drm = dsi->bridge.dev;
- 
--	ret = wait_event_interruptible_timeout(dsi->irq_wait_queue,
--					       dsi->irq_data & irq_flag,
--					       jiffies);
-+	ret = wait_event_timeout(dsi->irq_wait_queue,
-+				 dsi->irq_data & irq_flag, jiffies);
- 	if (ret == 0) {
- 		drm_warn(drm, "Wait DSI IRQ(0x%08x) Timeout\n", irq_flag);
- 
-@@ -656,7 +655,7 @@ static irqreturn_t mtk_dsi_irq(int irq, void *dev_id)
- 
- 		mtk_dsi_mask(dsi, DSI_INTSTA, status, 0);
- 		mtk_dsi_irq_data_set(dsi, status);
--		wake_up_interruptible(&dsi->irq_wait_queue);
-+		wake_up(&dsi->irq_wait_queue);
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 8836c7028568..ad2a8e4fe7a8 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -1299,6 +1299,12 @@ void blk_finish_plug(struct blk_plug *plug)
+ {
+ 	if (plug == current->plug) {
+ 		__blk_flush_plug(plug, false);
++		/*
++		 * blk_plug_invalidate_ts() runs on context switch and expects a
++		 * plug whenever PF_BLOCK_TS is set, so clear the flag (done in
++		 * __blk_flush_plug()) before dropping the plug.
++		 */
++		barrier();
+ 		current->plug = NULL;
  	}
- 
- 	return IRQ_HANDLED;
+ }
 
 ---
 base-commit: 067c5c24cef23d913b67eaaf71ae67e7169a6620
-change-id: 20261118-mtk-dsi-irq-wait-a24712ada627
+change-id: 20261112-blk-plug-fix-f068b0223b80
 
 Best regards,
 -- 
