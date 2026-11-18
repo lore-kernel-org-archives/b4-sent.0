@@ -1,142 +1,89 @@
-From: Cunhao Lu <1579567540@qq.com>
-Date: Wed, 18 Nov 2026 17:03:46 +0800
-Subject: [PATCH v2] pmdomain: rockchip: Roll back power-on when leaving
- idle fails
+From: Peder Bergan <peder.bergan@gmail.com>
+Date: Wed, 18 Nov 2026 10:08:50 +0100
+Subject: [PATCH] rust: kbuild: generate a symbol version for
+ rust_build_error
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-fix-rockchip-pmdomain-power-on-rollback-v2-1-3e4e93a19996@qq.com>
-X-B4-Tracking: v=1; b=H4sIAPFp/WoC/5WOSxKCMBBEr0Jl7VgMH38r72GxCGGQEUhCgqhFc
- XcDnsDlq3ndPbPw5Ji8uESzcDSxZ6MDJLtIqEbqOwFXgUUSJwfEGKHmNzijWtWwBdtXppeswZo
- XOTA6nLqulKoFhUjBz6hGFKHNOgrRbelW/Ng/ywepca1fjYb9aNxne2XC1ft/dUJAyM8yy4+nl
- NKUrsOwV6YXxbIsXz5+zsTtAAAA
-X-Change-ID: 20261101-fix-rockchip-pmdomain-power-on-rollback-c11e1014ef11
-To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Peter Geis <pgwipeout@gmail.com>
-Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Cunhao Lu <1579567540@qq.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794992626; l=4100;
- i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=iNwwI4s6GSLy+qcCrFrOUdp0m3/C5bTABfIfePwVyzQ=;
- b=H63KA2kbZQ2Udd1ZDZZGo9Hi68SF/NWCbC3+XwmNAXq8T/k3dsQ+VxVWUvmFLqYBBiUmgoEex
- xw75v/1FNqUD4mT0epcOH217F8bJF6A2hMLTH1oMBT5JU4Fy1okbdl4
-X-Developer-Key: i=1579567540@qq.com; a=ed25519;
- pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
-X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
+Message-Id: <20261118-fix-rust-build-error-modversions-v1-1-7c1023764f30@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACFr/WoC/yWN2w6CMBBEf4XssxttFaP+ivGhl0VqpJDdlpAQ/
+ t0WH89kzswKQhxI4NGswDQHCWMsoA4NuN7EN2HwhUGf9FUpdcMuLMhZEtocvh6JeWQcRj8TV1f
+ wYrr23JJ3d6uhzExMxdkvnq8/S7Yfcqnu1oY1QmjZRNfXKE+SmMxw3G8iLQm27QeUqHuzqQAAA
+ A==
+X-Change-ID: 20261118-fix-rust-build-error-modversions-4af535edc9b2
+To: Miguel Ojeda <ojeda@kernel.org>
+Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>, 
+ Sami Tolvanen <samitolvanen@google.com>, 
+ Matthew Maurer <mmaurer@google.com>, Masahiro Yamada <masahiroy@kernel.org>, 
+ Gwan-gyeong Mun <gwan-gyeong.mun@intel.com>, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-kbuild@vger.kernel.org, 
+ linux-modules@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794992929; l=2134;
+ i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
+ bh=iwv1qR5QyWs5FUrFMluYyHlgGOi5NpHY1vMGZeZUJRU=;
+ b=NwD6BfBA4WLob4JLWPSWapwm4CZS3A7yc5jvskFd0xanhimNfBdKYJ6oPbN3P2DqnFUHqZ/RS
+ z4EPoyo3A7EC6m2QxLn1urUhN9JCBklyXWBl1CvPG6Yij6lqo4TXdgd
+X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
+ pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
+X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When NIU idle exit fails after PMU power-on, clocks and the regulator
-reference are released while the domain remains powered. genpd treats
-it as off and may power off its parents.
+CONFIG_RUST_BUILD_ASSERT_ALLOW exports rust_build_error to modules.
+When CONFIG_MODVERSIONS is also enabled, modpost warns that the export
+has no symbol version and records a zero CRC because the build_error.o
+rule skips gendwarfksyms.
 
-Request idle again and, if successful, use the low-level power-off path
-before releasing resources. This preserves saved QoS and notifies
-firmware while retaining the original error.
+Generate the checksum from build_error.o with the existing Rust library
+rule. Make build_error.o depend on rust/Makefile when module versioning
+is enabled so incremental builds pick up the change. Kbuild's saved
+rustc command does not include the gendwarfksyms step.
 
-If rollback fails, resources are still released and genpd may power off
-the parents.
-
-Fixes: 6b2690df3f03 ("pmdomain: rockchip: fix rockchip_pd_power error handling")
-Signed-off-by: Cunhao Lu <1579567540@qq.com>
+Fixes: ac61506bf2d1 ("rust: Use gendwarfksyms + extended modversions for CONFIG_MODVERSIONS")
+Reported-by: Gwan-gyeong Mun <gwan-gyeong.mun@intel.com>
+Closes: https://github.com/Rust-for-Linux/linux/issues/1201
+Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
 ---
-This pre-existing idle-exit failure case was reported by Sashiko AI
-during the RK3572 mainlining work:
-https://sashiko.dev/#/patchset/20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com?part=10
+An incremental x86-64 build with LLVM=1 CLIPPY=1 clears the modpost
+warning. The kernel export and a Rust module that references it both
+record the same nonzero CRC.
 
-If leaving NIU idle fails after PMU power-on, the domain remains powered
-while genpd treats it as off. The error path releases the clocks and
-regulator reference, and genpd may power off the parent domains.
-
-This patch requests idle again and, if successful, powers the domain
-off before releasing those resources. It preserves the saved QoS state
-and original error, and uses the low-level path to notify firmware.
-
-Validation:
-
-- All 48 host simulations passed, covering power cycles, idle-exit and
-  rollback failures, QoS preservation and error propagation. No sanitizer
-  findings.
-
-- Hardware testing on OK3572-C: 20 patched and 50 unpatched NVM1 power
-  cycles passed. Request-write injection caused native idle-exit polling
-  timeouts. The fix powered the domain off in 3/3 cases; the original
-  driver left it ON. QoS and the original error were preserved, and
-  retries succeeded after removing the injection.
-
-Persistent rollback idle and power-off timeouts were also tested:
-resources were still released with the domain ON and genpd OFF. These
-failure paths remain unresolved, and genpd may still power off the parents.
-
-AI assistance:
-
-- Codex / DeepSeek V4.1 Flash were used for:
-  - Reviewing and adjusting code style to follow community conventions
-  - Automating tests
-  - Collecting data
+OpenAI Codex assisted with coding and testing.
 ---
-Changes in v2:
-- Rebase onto the next branch of Ulf Hansson's linux-pm.git tree.
-- Link to v1:
-  https://patch.msgid.link/20261101-fix-rockchip-pmdomain-power-on-rollback-v1-1-59a45783e33e@qq.com
----
- drivers/pmdomain/rockchip/pm-domains.c | 27 ++++++++++++++++++++++++++-
- 1 file changed, 26 insertions(+), 1 deletion(-)
+ rust/Makefile | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
-index 6abef60a5b4c..2c021784316a 100644
---- a/drivers/pmdomain/rockchip/pm-domains.c
-+++ b/drivers/pmdomain/rockchip/pm-domains.c
-@@ -648,6 +648,29 @@ static int rockchip_do_pmu_set_power_domain(struct rockchip_pm_domain *pd,
- 	return 0;
- }
+diff --git a/rust/Makefile b/rust/Makefile
+index 0165626decbe..dd5b0a958d0c 100644
+--- a/rust/Makefile
++++ b/rust/Makefile
+@@ -773,8 +773,9 @@ $(obj)/pin_init.o: $(src)/pin-init/src/lib.rs $(obj)/compiler_builtins.o \
+ # treated as such so that we pass the same flags. Otherwise, for instance,
+ # `rustc` will complain about missing sanitizer flags causing an ABI mismatch.
+ $(obj)/build_error.o: private is-kernel-object := y
+-$(obj)/build_error.o: private skip_gendwarfksyms = 1
+-$(obj)/build_error.o: $(src)/build_error.rs $(obj)/compiler_builtins.o FORCE
++# Rebuild when the symbol version generation rule changes.
++$(obj)/build_error.o: $(src)/build_error.rs $(obj)/compiler_builtins.o \
++    $(if $(CONFIG_MODVERSIONS),$(src)/Makefile) FORCE
+ 	+$(call if_changed_rule,rustc_library)
  
-+/*
-+ * The caller holds the PMU lock and transition resources. Use the low-level
-+ * power-off path to avoid overwriting the saved QoS state.
-+ */
-+static void rockchip_pd_power_on_rollback(struct rockchip_pm_domain *pd)
-+{
-+	int ret;
-+
-+	ret = rockchip_pmu_set_idle_request(pd, true);
-+	if (ret < 0) {
-+		dev_err(pd->pmu->dev,
-+			"failed to idle domain '%s' on rollback: %d\n",
-+			pd->genpd.name, ret);
-+		return;
-+	}
-+
-+	ret = rockchip_do_pmu_set_power_domain(pd, false);
-+	if (ret < 0)
-+		dev_err(pd->pmu->dev,
-+			"failed to power off domain '%s' on rollback: %d\n",
-+			pd->genpd.name, ret);
-+}
-+
- static int rockchip_pd_power(struct rockchip_pm_domain *pd, bool power_on)
- {
- 	struct rockchip_pmu *pmu = pd->pmu;
-@@ -682,8 +705,10 @@ static int rockchip_pd_power(struct rockchip_pm_domain *pd, bool power_on)
- 	if (power_on) {
- 		/* if powering up, leave idle mode */
- 		ret = rockchip_pmu_set_idle_request(pd, false);
--		if (ret < 0)
-+		if (ret < 0) {
-+			rockchip_pd_power_on_rollback(pd);
- 			goto out;
-+		}
- 
- 		rockchip_pmu_restore_qos(pd);
- 	}
+ $(obj)/ffi.o: private skip_gendwarfksyms = 1
 
 ---
-base-commit: 6f5c8ec9302c5ad8904dbdfe8cf2a538ff835572
-change-id: 20261101-fix-rockchip-pmdomain-power-on-rollback-c11e1014ef11
+base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
+change-id: 20261118-fix-rust-build-error-modversions-4af535edc9b2
 
 Best regards,
 --  
-Cunhao Lu <1579567540@qq.com>
+Peder Bergan <peder.bergan@gmail.com>
 
