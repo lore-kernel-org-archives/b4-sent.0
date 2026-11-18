@@ -1,16 +1,13 @@
 From: Florian Bauckholt <florian.bauckholt@cispa.de>
-Subject: [PATCH v2 0/2] KEYS: two fixes for the asymmetric keyctl
- operations
-Date: Thu, 19 Nov 2026 00:19:27 +0100
-Message-Id: <20261119-keyctl-pkey-fixes-v2-0-9e2d1c7db7ec@cispa.de>
+Date: Thu, 19 Nov 2026 00:19:28 +0100
+Subject: [PATCH v2 1/2] KEYS: fix signature length passed to
+ KEYCTL_PKEY_VERIFY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NTQ6CMBCFr0Jm7ZhStEVX3sOwKGWUUQOkg0RCu
- Lst7n2byZd5PwsIBSaBc7ZAoImF+y6C3mXgW9fdCbmJDFppk0fhk2Y/vnCIF2/8IUFtimPpSqt
- sbSDmhkDbI8au1Y/lXT/Ij6koOVqWsQ/zNjrlyfevf8pR4ak4UO2cNtbZi2cZ3L4hqNZ1/QJbd
- XROwwAAAA==
-X-Change-ID: 20261111-keyctl-pkey-fixes-26358a8707b6
+Message-Id: <20261119-keyctl-pkey-fixes-v2-1-9e2d1c7db7ec@cispa.de>
+References: <20261119-keyctl-pkey-fixes-v2-0-9e2d1c7db7ec@cispa.de>
+In-Reply-To: <20261119-keyctl-pkey-fixes-v2-0-9e2d1c7db7ec@cispa.de>
 To: David Howells <dhowells@redhat.com>, 
  Jarkko Sakkinen <jarkko@kernel.org>, Lukas Wunner <lukas@wunner.de>, 
  Ignat Korchagin <ignat@linux.win>, Herbert Xu <herbert@gondor.apana.org.au>, 
@@ -23,65 +20,62 @@ Cc: Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Florian Bauckholt <florian.bauckholt@cispa.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795044005; l=1979;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795044005; l=2019;
  i=florian.bauckholt@cispa.de; s=20261105; h=from:subject:message-id;
- bh=FDAmoObBsHQBGQ+MetdjiLo0kYxapT4Ogq4Y3JdbTA8=;
- b=Wk1rAO/meq+r3f/pjo64iqVGKoS19pmqMHM9xPsXpyGDnVlWCtUdfEuvhLovt1cvaysJFtuQL
- tCvradrixlqCEdT2Je4d9Jncgq1EAGoPrSv0Mn4NmON56/1No+Asitb
+ bh=N7REUG2kPhLJRwBc7RQwMvseCRnp8G0f0SHndQLFK84=;
+ b=wSsNJ4/DKFfO0vdFGpQJfzVa8dJ017dKUNWPMWaEWXXHpVYVoAkcNfEMHgfl83BghL0USVvEF
+ FXj7nNAKOtpBz1L9okSFKAosb93728onlmmj0rk1rixMNgzkKntZHh8
 X-Developer-Key: i=florian.bauckholt@cispa.de; a=ed25519;
  pk=n9klXQ+dI45FWy0qWLrGpQfXU5ylIA0SN+uWSmOx3ok=
 X-Endpoint-Received: by B4 Relay for florian.bauckholt@cispa.de/20261105 with auth_id=1420
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+Commit cb481e59ea6c ("KEYS: fix overflow in keyctl_pkey_params_get_2()")
+made keyctl_pkey_params_get_2() set params->out_len to the maximum
+output size of the operation instead of the size provided by the caller.
+It does so for KEYCTL_PKEY_VERIFY as well, but verify has no output
+buffer: out_len shares a union with in2_len, the length of the
+signature.
 
-two small fixes for KEYCTL_PKEY_VERIFY and KEYCTL_PKEY_DECRYPT that I
-ran into while doing differential testing of crypto implementations
-with the kernel hooked up via UML:
+As a result keyctl_pkey_verify() ignores the signature length passed by
+the caller and always reads max_sig_size bytes from the signature
+pointer. A shorter signature is extended with whatever follows it in
+the caller's memory, or the call fails with -EFAULT if that memory is
+not readable.
 
-Patch 1 fixes a regression from commit cb481e59ea6c ("KEYS: fix overflow
-in keyctl_pkey_params_get_2()"), which was tagged for stable:
-KEYCTL_PKEY_VERIFY ignores the signature length passed by the caller.
-It also is a prerequisite for making the x962 ECDSA template reject
-signatures that are not DER-encoded, which I posted separately to
-linux-crypto [2].
+The x962 ECDSA template currently ignores data following a DER-encoded
+signature, which hides the problem there. A truncated RSA signature,
+however, is accepted if the bytes following it happen to match the ones
+that were cut off, as reported by Rodolfo Giometti [1].
 
-Patch 2 fixes PKCS#1 decryption of an empty message returning the
-ciphertext.
+Use the length provided by the caller, which has already been checked
+against max_sig_size.
 
-Both changes were part of a patch posted by Hui Peng in September that
-did not get a reply [1]. That patch also changed the out_len checks in
-keyctl_pkey_params_get_2(), which is not included here.
-
-Thanks!
-
-[1] https://lore.kernel.org/all/20260919221742.3709658-1-benquike@gmail.com/
-[2] https://lore.kernel.org/all/20261112-ecdsa-x962-der-v1-1-36b24c5f5e11@cispa.de/
-
+Fixes: cb481e59ea6c ("KEYS: fix overflow in keyctl_pkey_params_get_2()")
+Cc: stable@vger.kernel.org
+Link: https://lore.kernel.org/all/20260919221742.3709658-1-benquike@gmail.com/
+Link: https://lore.kernel.org/all/0e20f799-e389-40d2-aaee-2f174748faae@enneenne.com/ [1]
+Reviewed-by: Jarkko Sakkinen <jarkko@kernel.org>
+Tested-by: Stefan Berger <stefanb@linux.ibm.com>
+Signed-off-by: Florian Bauckholt <florian.bauckholt@cispa.de>
 ---
-Changes in v2:
-- Rebased onto jarkko/linux-tpmdd.git for-next-keys (141b164bbe18).
-  Patch 1 no longer applied after commit bab48a104447 ("KEYS: Protect
-  pkey method checks against type removal"). The code change itself is
-  the same.
-- Patch 1: the commit message now mentions that a truncated RSA
-  signature can be accepted (Rodolfo Giometti).
-- Patch 2: unchanged.
-- Link to v1: https://patch.msgid.link/20261111-keyctl-pkey-fixes-v1-0-934ebaa267a7@cispa.de
+ security/keys/keyctl_pkey.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
----
-Florian Bauckholt (2):
-      KEYS: fix signature length passed to KEYCTL_PKEY_VERIFY
-      KEYS: asymmetric: Fix PKCS#1 decryption of an empty message
+diff --git a/security/keys/keyctl_pkey.c b/security/keys/keyctl_pkey.c
+index e7121523b9c9..722521a014ab 100644
+--- a/security/keys/keyctl_pkey.c
++++ b/security/keys/keyctl_pkey.c
+@@ -175,7 +175,7 @@ static int keyctl_pkey_params_get_2(const struct keyctl_pkey_params __user *_par
+ 			goto out_up_key_sem;
+ 		}
+ 
+-		params->out_len = info.max_sig_size;
++		params->in2_len = uparams.in2_len;
+ 		break;
+ 	default:
+ 		ret = -EOPNOTSUPP;
 
- crypto/asymmetric_keys/public_key.c | 6 +++---
- security/keys/keyctl_pkey.c         | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
----
-base-commit: 141b164bbe186423e295b139e40e8e2d11cf1341
-change-id: 20261111-keyctl-pkey-fixes-26358a8707b6
-
-Best regards,
---  
-Florian Bauckholt <florian.bauckholt@cispa.de>
+-- 
+2.56.0
 
