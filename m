@@ -1,16 +1,13 @@
 From: =?utf-8?q?Eren_=C3=96zen?= <erenozen@protonmail.com>
-Subject: [PATCH v2 0/3] drm/amd/display: Fix FRL status polling work
- lifetime
-Date: Wed, 18 Nov 2026 15:10:51 +0300
-Message-Id: <20261118-frl-polling-wq-teardown-v2-0-957e61c0b698@protonmail.com>
+Date: Wed, 18 Nov 2026 15:10:52 +0300
+Subject: [PATCH v2 1/3] drm/amd/display: Initialize FRL status polling work
+ once at DM init
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/4XNTQqDMBBA4auEWTslPyitq96juNA40YGYaCLaI
- t691At0+xbfOyBTYspQiwMSbZw5BqiFLgTYsQ0DIfdQC9BSV0opiS55nKP3HAbcF1ypTX3cA+r
- OGFNZSw+qoBAwJ3L8vuRXUwgYOa8xfa7Rpn71v7kplCidk/rel9aU3XNOcY1hatnfbJygOc/zC
- 5kZYLrDAAAA
-X-Change-ID: 20261110-frl-polling-wq-teardown-2b3336cce9e6
+Message-Id: <20261118-frl-polling-wq-teardown-v2-1-957e61c0b698@protonmail.com>
+References: <20261118-frl-polling-wq-teardown-v2-0-957e61c0b698@protonmail.com>
+In-Reply-To: <20261118-frl-polling-wq-teardown-v2-0-957e61c0b698@protonmail.com>
 To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
  Rodrigo Siqueira <siqueira@igalia.com>, 
  Alex Deucher <alexander.deucher@amd.com>, 
@@ -25,109 +22,77 @@ Cc: Wayne Lin <Wayne.Lin@amd.com>,
  linux-kernel@vger.kernel.org, 
  =?utf-8?q?Eren_=C3=96zen?= <erenozen@protonmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795003852; l=4876;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795003852; l=3225;
  i=erenozen@protonmail.com; s=20261110; h=from:subject:message-id;
- bh=o4xp1XWRc/cv7WWAhJEyxTWE3Q7ktwDyLfzkelJnCZc=;
- b=AgfFfB9uvzQRRPn5Cpfcvxl2Ctp2Doit/H49xJSknhBcNbfN2Sd3Kgdb0xcebzwQHvUuKZ5C9
- uUnV/OtTe8uBjdvR4JQBLMYz3OE0CYYjJ089JVHXCxfswPtY1fd9QRL
+ bh=acr9azNHV4DrR5AOD/x83axcCIQ8+yKBRupLY4OPr38=;
+ b=QwOf7v5a8WSFCoej3uB8MXnl8fZP6UenjHa4qtEEAeDHvZhKMP1RuR3QmToxu6G90Zt8q9Izz
+ 9QyqH/JsQjwCJN+uTziUFTTrykKCkSiLBgO+O6hED1ZXYXqjkmOZ/DV
 X-Developer-Key: i=erenozen@protonmail.com; a=ed25519;
  pk=tPAwfVmIbYF3QziJ3LcoTIZDU12BsjVK+EkAB9nN1gA=
 X-Endpoint-Received: by B4 Relay for erenozen@protonmail.com/20261110 with auth_id=1479
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HDMI FRL status polling work and its workqueue, added in commit
-5c9b8b27a883 ("drm/amd/display: Tie FRL support into amdgpu_dm"), have
-two remaining lifetime problems:
+hdmi_frl_status_polling_work is a single delayed work item shared by the
+whole display manager, but it is initialized from
+amdgpu_dm_connector_init_helper(), which runs once for every connector.
+That helper is also called at runtime from dm_dp_add_mst_connector()
+when a DisplayPort MST branch device is plugged in. If an HDMI FRL
+stream is active at that moment, the polling work is queued and
+re-arming itself every 200ms, and INIT_DELAYED_WORK() on it
+reinitializes the timer and work entry of a pending item, which can
+corrupt the timer and workqueue state.
 
-1. Since commit 0e967e086e75 ("drm/amd/display: Extract connector and
-   encoder code to amdgpu_dm_connector"), the delayed work is
-   initialized in amdgpu_dm_connector_init_helper(), which also runs
-   at runtime for every new MST connector. An MST hotplug while FRL
-   polling is armed re-initializes a pending delayed work. Because the
-   work is only initialized once connectors exist, the cancel that
-   commit 8bcad6d7acbb ("drm/amd/display: Stop HDMI FRL status polling
-   on fini") added to amdgpu_dm_fini() can also run on a work item
-   that was never initialized, if amdgpu_dm_init() fails after the
-   workqueue is created but before the first connector is set up.
+The work item belongs to the display manager, not to a connector, so
+initialize it, along with its polling delay, once in amdgpu_dm_init()
+next to the workqueue it runs on.
 
-2. If the workqueue allocation fails, amdgpu_dm_commit_streams() still
-   passes the NULL workqueue to queue_delayed_work().
+This also keeps the work valid on the amdgpu_dm_init() error path.
+Commit 8bcad6d7acbb ("drm/amd/display: Stop HDMI FRL status polling on
+fini") cancels the work in amdgpu_dm_fini() whenever the workqueue
+exists. The workqueue is created before amdgpu_dm_initialize_drm_device(),
+but the work was only initialized when the first connector was set up.
+If amdgpu_dm_init() failed in between, for example when allocating
+dmub_notify or delayed_hpd_wq, the cancel ran on a work item that was
+never initialized and hit WARN_ON(!work->func) in __flush_work(). With
+the work initialized first, it is valid whenever the workqueue exists.
 
-Patch 1 moves the initialization to amdgpu_dm_init(), before the
-workqueue is created. Patch 2 skips queueing when the workqueue does
-not exist. Patch 3 adds a KUnit test for the MST case of patch 1.
-
-These issues were pointed out by an automated review of the workqueue
-rename patch earlier this year.
-
-This series should still combine cleanly with Timur's "Check HDMI FRL
-support before creating polling workqueue", which is not in
-amd-staging-drm-next yet. With that patch, the workqueue is NULL on
-hardware without FRL, and the NULL checks in amdgpu_dm_fini() and in
-patch 2 handle that case. If his patch lands first, patch 1 needs a
-trivial rebase because both touch the same context.
-
-Testing:
-- Built on amd-staging-drm-next 8dd68a79583a with GCC 16. W=1 build
-  of amdgpu_dm.o and amdgpu_dm_connector.o: no warnings.
-- Booted on a Cezanne laptop with CONFIG_DEBUG_OBJECTS_WORK and
-  CONFIG_DEBUG_OBJECTS_TIMERS: one hdmi_frl_status_polling_wq thread,
-  no ODEBUG or workqueue warnings, s2idle suspend/resume works. Sysfs
-  unbind of amdgpu: the FRL thread count goes from 1 to 0, with no
-  warnings.
-- amdgpu_dm KUnit suite (UML), with CONFIG_DEBUG_OBJECTS_WORK and
-  CONFIG_DEBUG_OBJECTS_TIMERS: all FRL polling and connector init
-  tests pass, including the new one from patch 3. Without patch 1,
-  the new test fails and ODEBUG reports "init active" on the polling
-  work's timer. On this tree the suite needs a local workaround first:
-  since commit 48b8c06b05ad ("drm/amd/display: Route connector DDC
-  over AUX for native DP sinks"), dm_test_i2c_xfer_no_ddc_pin
-  dereferences a NULL ddc->link and crashes the UML kernel. With the
-  test given a zeroed dc_link, 1931 of 1932 tests pass. The remaining
-  failure, dm_test_fs_caps_dp_vsdb_version, also fails without this
-  series.
-- v1 testing with a debug-only change that forces the polling work to
-  run (lockdep, ODEBUG, about 1200 runs, s2idle, unbind) still applies
-  to patch 1.
-- Not tested: MST hotplug with an active HDMI FRL stream and real FRL
-  link training, since I have no FRL sink or MST hub.
-
+Fixes: 0e967e086e75 ("drm/amd/display: Extract connector and encoder code to amdgpu_dm_connector")
+Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Eren Özen <erenozen@protonmail.com>
 ---
-Changes in v2:
-- Rebased onto amd-staging-drm-next with the "DC Patches November 16,
-  2026" batch.
-- Dropped v1 patch 2/3 ("Destroy FRL status polling workqueue in
-  amdgpu_dm_fini()"). The same change went in from the DC batch as
-  commit 8bcad6d7acbb, as agreed with Wayne Lin:
-  https://lore.kernel.org/all/20261113031935.53510-1-Wayne.Lin@amd.com/
-- Patch 1: the commit message now also explains the init error path
-  in amdgpu_dm_fini().
-- Patch 1: Fixes tag corrected to 0e967e086e75, which moved the
-  initialization into amdgpu_dm_connector_init_helper() (pointed out
-  by sashiko-bot).
-- Patch 2 (v1 3/3): trivial rebase over "Move HDMI FRL Polling Outside
-  dc_lock". The code change is unchanged. The commit message now
-  compares with amdgpu_dm_crtc_set_vblank(); v1 wrongly said
-  amdgpu_dm_atomic_commit_tail() checks vblank_control_workqueue.
-- New patch 3: KUnit test for patch 1.
-- Link to v1: https://lore.kernel.org/r/20261110-frl-polling-wq-teardown-v1-0-0ff028d5c35b@protonmail.com
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c           | 4 ++++
+ drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.c | 2 --
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
----
-Eren Özen (3):
-      drm/amd/display: Initialize FRL status polling work once at DM init
-      drm/amd/display: Don't queue FRL status polling on a NULL workqueue
-      drm/amd/display: Test connector init with FRL status polling pending
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+index 3d2201285888..af7acfbbf9e0 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+@@ -773,6 +773,10 @@ static int amdgpu_dm_init(struct amdgpu_device *adev)
+ 
+ 		dc_init_callbacks(adev->dm.dc, &init_params);
+ 	}
++
++	adev->dm.hdmi_frl_status_polling_delay_ms = 200;
++	INIT_DELAYED_WORK(&adev->dm.hdmi_frl_status_polling_work,
++			  hdmi_frl_status_polling_work);
+ 	if (adev->dm.dc->caps.max_links > 0) {
+ 		adev->dm.hdmi_frl_status_polling_wq =
+ 			create_singlethread_workqueue("hdmi_frl_status_polling_wq");
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.c
+index 1bc8547d5777..35d975262114 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.c
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_connector.c
+@@ -3331,8 +3331,6 @@ void amdgpu_dm_connector_init_helper(struct amdgpu_display_manager *dm,
+ 		aconnector->hdmi_hpd_debounce_delay_ms = 0;
+ 	}
+ 
+-	dm->hdmi_frl_status_polling_delay_ms = 200;
+-	INIT_DELAYED_WORK(&dm->hdmi_frl_status_polling_work, hdmi_frl_status_polling_work);
+ 	/*
+ 	 * configure support HPD hot plug connector_>polled default value is 0
+ 	 * which means HPD hot plug not supported
 
- drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c  |  6 +++-
- .../amd/display/amdgpu_dm/amdgpu_dm_connector.c    |  2 --
- .../amdgpu_dm/tests/amdgpu_dm_connector_test.c     | 34 ++++++++++++++++++++++
- 3 files changed, 39 insertions(+), 3 deletions(-)
----
-base-commit: 8dd68a79583aaf6df6fe4feea3ee9e9f26b02993
-change-id: 20261110-frl-polling-wq-teardown-2b3336cce9e6
-
-Best regards,
 -- 
-Eren Özen <erenozen@protonmail.com>
+2.56.0
 
