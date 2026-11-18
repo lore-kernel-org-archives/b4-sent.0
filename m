@@ -1,11 +1,11 @@
 From: Yongjian Wang <echoowall@gmail.com>
-Date: Wed, 18 Nov 2026 16:10:52 +0800
-Subject: [PATCH net-next v2 1/2] tcp: document black hole detection for
- tcp_mtu_probing
+Date: Wed, 18 Nov 2026 16:10:53 +0800
+Subject: [PATCH net-next v2 2/2] selftests/net: packetdrill: test
+ tcp_mtu_probe_floor
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-tcp-mtu-probing-doc-v1-v2-1-e795f20b8cfe@gmail.com>
+Message-Id: <20261118-tcp-mtu-probing-doc-v1-v2-2-e795f20b8cfe@gmail.com>
 References: <20261118-tcp-mtu-probing-doc-v1-v2-0-e795f20b8cfe@gmail.com>
 In-Reply-To: <20261118-tcp-mtu-probing-doc-v1-v2-0-e795f20b8cfe@gmail.com>
 To: corbet@lwn.net, edumazet@kernel.org, davem@davemloft.net, 
@@ -15,69 +15,75 @@ Cc: Yongjian Wang <echoowall@gmail.com>, rdunlap@infradead.org,
  kuniyu@google.com, skhan@linuxfoundation.org, netdev@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794989453; l=2444;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794989453; l=2202;
  i=echoowall@gmail.com; s=20261026; h=from:subject:message-id;
- bh=ta6f43Q9WCijtV9U1XrIJWYCHAQ4FrHJdfRc+ckR0n8=;
- b=S4lH+mwLEmJOlG3gNxDU33WKSApX7xGkxPBbsThKzrn0lyRgQxF6BY/IaRIex1VXZzX6Fqylt
- pTvvDpGU65vABIK5GKvo5VMuNv+z+nFeD26bUy85582xk+RWcS4iIyj
+ bh=WrcY9iXn4SXDQlJWipeiEC5l8GUQMcBnGkZOHeOty8w=;
+ b=WhNkoerzSliW4HHWgcU2HRPh+ONRc6XzzwRKlmUOnmhFoedAJM0lNeXSM7bwGvL/5QpJhlKl9
+ 2wyyDcXXhNtCgrkY5VPaXeXsTRwYH8x3PwUumkHq7tnouREhinNc4Lh
 X-Developer-Key: i=echoowall@gmail.com; a=ed25519;
  pk=9XP6JhqjjPsHCF6UZZZTeqTRnXIa4+ufggnxXtTJ+no=
 X-Endpoint-Received: by B4 Relay for echoowall@gmail.com/20261026 with auth_id=1323
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ip-sysctl.rst says that tcp_mtu_probing=1 enables MTU probing once an
-ICMP black hole is detected, but not when that happens or what TCP
-does then.
+tcp_mtu_probe_floor has no selftest coverage.
 
-Describe both, as implemented in tcp_write_timeout() and
-tcp_mtu_probing(). Also add the missing defaults of tcp_mtu_probing
-and tcp_base_mss.
+Add a test where a full-sized segment keeps timing out without any ICMP
+feedback. After the first detection falls back to tcp_base_mss, check
+that each further retransmission timeout halves the MSS, and that the
+MSS stops at tcp_mtu_probe_floor.
+
+Use tcp_retries1=1 and disable TLP, as in
+tcp_mtu_probing_blackhole_no_tlp_retries1_is_1.pkt, so that every
+retransmission comes from the RTO timer.
 
 Signed-off-by: Yongjian Wang <echoowall@gmail.com>
-Reviewed-by: Eric Dumazet <edumazet@kernel.org>
 ---
- Documentation/networking/ip-sysctl.rst | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+ .../tcp_mtu_probing_blackhole_floor.pkt            | 37 ++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
 
-diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
-index 0b7bfbd98a92..6ac8b3fb9aae 100644
---- a/Documentation/networking/ip-sysctl.rst
-+++ b/Documentation/networking/ip-sysctl.rst
-@@ -412,6 +412,8 @@ tcp_base_mss - INTEGER
- 	Path MTU discovery (MTU probing).  If MTU probing is enabled,
- 	this is the initial MSS used by the connection.
- 
-+	Default: 1024
+diff --git a/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole_floor.pkt b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole_floor.pkt
+new file mode 100644
+index 000000000000..dd040d9beca0
+--- /dev/null
++++ b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole_floor.pkt
+@@ -0,0 +1,37 @@
++// SPDX-License-Identifier: GPL-2.0
++// Test that after black hole detection, each further retransmission timeout
++// halves the MSS, but not below tcp_mtu_probe_floor.
 +
- tcp_mtu_probe_floor - INTEGER
- 	If MTU probing is enabled this caps the minimum MSS used for search_low
- 	for the connection.
-@@ -711,6 +713,25 @@ tcp_mtu_probing - INTEGER
- 	- 1 - Disabled by default, enabled when an ICMP black hole detected
- 	- 2 - Always enabled, use initial MSS of tcp_base_mss.
- 
-+	A black hole is detected when the retransmission timer fires after
-+	the handshake and retransmissions have stayed unacknowledged for as
-+	long as tcp_retries1 retransmissions would take with an RTO starting
-+	at 200 ms and doubling each time, which is 3 seconds with the
-+	default tcp_retries1. This time is counted from the first
-+	retransmission and only checked when the timer fires, so a flow
-+	with a 200 ms RTO detects the black hole at the fifth timeout,
-+	about 6 seconds after the original transmission.
++`./defaults.sh
++sysctl -q net.ipv4.tcp_mtu_probing=1
++sysctl -q net.ipv4.tcp_base_mss=1024
++sysctl -q net.ipv4.tcp_mtu_probe_floor=300
++sysctl -q net.ipv4.tcp_retries1=1
++sysctl -q net.ipv4.tcp_early_retrans=0`
 +
-+	With value 1, the first detection enables MTU probing and lowers
-+	the MSS to tcp_base_mss if it is larger. From then on, and from the
-+	first detection with value 2, each further retransmission timeout
-+	lowers search_low to half its MSS, keeping it at most tcp_base_mss
-+	and at least tcp_mtu_probe_floor and tcp_min_snd_mss, and lowers the
-+	MSS to match if it is larger. Once MTU probing is enabled, the
-+	connection also probes for a larger MSS, as with value 2.
++    0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
++   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
++   +0 bind(3, ..., ...) = 0
++   +0 listen(3, 1) = 0
 +
-+	Default: 0
++   +0 < S 0:0(0) win 65535 <mss 1460,nop,nop,sackOK>
++   +0 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK>
++  +.1 < . 1:1(0) ack 1 win 65535
++   +0 accept(3, ..., ...) = 4
 +
- tcp_probe_interval - UNSIGNED INTEGER
- 	Controls how often to start TCP Packetization-Layer Path MTU
- 	Discovery reprobe. The default is reprobing every 10 minutes as
++   +0 write(4, ..., 1460) = 1460
++   +0 > P. 1:1461(1460) ack 1
++  +.3 > P. 1:1461(1460) ack 1
++
++// The first detection falls back to tcp_base_mss.
++  +.6 > . 1:1025(1024) ack 1
++
++// Each further timeout halves the MSS.
++ +1.2 > . 1:513(512) ack 1
++
++// Half of 512 is below tcp_mtu_probe_floor, so the floor is used.
++ +2.4 > . 1:301(300) ack 1
++
++// The MSS does not go below the floor.
++ +4.8 > . 1:301(300) ack 1
++  +.1 < . 1:1(0) ack 1461 win 65535
 
 -- 
 Git-157)
