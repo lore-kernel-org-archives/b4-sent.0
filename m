@@ -1,112 +1,114 @@
-From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Tue, 17 Nov 2026 22:11:21 -0800
-Subject: [PATCH wireless-next] wifi: mac80211: don't limit the fq memory of
- HE radios to 4 MB
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v11 0/2] i2c: Add driver support Amlogic A9 I2C
+Date: Wed, 18 Nov 2026 07:17:34 +0000
+Message-Id: <20261118-a9-i2c-v11-0-68a3e79ff43a@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261117-mac80211-fq-he-v1-1-9d5e4985677e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAIhB/WoC/yWMwQ6CMBAFf4Xs2U3Y0iD6K8YD1oes0SpdVBLCv
- 1P1OJnMzGRICqN9MVPCW00fMYNsCgp9Gy9gPWcmV7paRDzf29CUToS7gXvwrmoqJz4EbD3l6Jn
- Q6fQbHuijCTeYccQ00vGv7XW6IozfKS3LCrZ/NaiBAAAA
-X-Change-ID: 20261114-mac80211-fq-he-9383214cce74
-To: Johannes Berg <johannes@sipsolutions.net>
-Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Christopher Griffin <christophergriffin05@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794982280; l=3461;
- i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=A5chuA+mk1Jxt5uqOsj5kFLbFwFtNAbJvoydU9CX6F0=;
- b=tsEpH85/SLJp598QuL1nEUfdtqycq0j4cazPHc5I1xOD0xsnkVhH7JoHezTvc7yFswSCaRAIf
- aiD6jPMP7QuBxsXz2qYOmPhX3FGHgtonyVz5gXtdiT4phO4iSuImbdC
-X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
- pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
-X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
+X-B4-Tracking: v=1; b=H4sIAA5R/WoC/23QTW7DIBAF4KtEXpeWGf676j2qLgAPCVJjR3Zkp
+ Ypy9+IoJa7sJcP7eGKuzUhDprF5312bgaY85r4rB4CXXRMPvtsTy20ZNMhRcwfAvGMZI0MpjSV
+ E0lY0JRz8SCwMvouHOV4ib3Oso8t5vj4NlPLlXvT5Vc6HPJ774efeO8E8fTSg/GuYgHEWrG9dk
+ DpJbz/88bvf5/ga+2MzPzJhhcARK8QCpSIRKYFRIa2hWEJXoSjQBMFjjJwrIdZQPmGRFcoClQf
+ tEFSw5NZQLaGoUBVodcI2tmBcu/FHvYTP5eh5Od5rMJBQpw1otqGZoSgoKJF8kmtoFxB4hbZAI
+ NeitpisDmvoltBU6B5bFdE6mcivIfBtWdo5E4K885QiIf9Pb7fbL2+69ivBAgAA
+X-Change-ID: 20260911-a9-i2c-24478e22e683
+To: Junyi Zhao <junyi.zhao@amlogic.com>, Andi Shyti <andi.shyti@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Xianwei Zhao <xianwei.zhaol@amlogic.com>
+Cc: Junyi Zhao <junyi.zhaol@amlogic.com>, 
+ Markus Elfring <Markus.Elfring@web.de>, linux-i2c@vger.kernel.org, 
+ linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794986262; l=3580;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=YEBzqbDLmv//8l3Wi9X/W6MkreumJiymrOIXzsBvqeY=;
+ b=3yFocliqT5CqdebMIujriXvq3tjoJirYtj8eRqdrcMo1JMQw05xbufjMMQ/emCAP/wl2r37yf
+ bjhPPRodnxyAJP9ew1LWESgV/VtQMGCS/k/ZzZZMfDI7q4QRBUnOzC/
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ieee80211_txq_setup_flows() lowers the fq memory limit from 16 MB to
-4 MB when no band of the wiphy supports VHT, since 4 MB is 64 max-size
-802.11n aggregates. A radio that supports HE but not VHT falls under
-that limit too: a 6 GHz only radio, where VHT does not exist, and a
-2.4 GHz only HE radio. Such a radio aggregates far more than 802.11n
-allows; HE alone raises the block ack window to 256 MPDUs.
+Add a device tree binding and driver for the I2C controller found on the
+Amlogic A9 SoC.
 
-The limit binds once the driver leaves frames in the mac80211 queues,
-as it does with airtime queue limits. On an ath11k QCN9074 6 GHz only
-radio (HE160, 2x2) running the pending ath11k airtime queue limit
-series [1], a TCP download to one station ran at 1314 Mbit/s with
-11968 retransmits while fq_overmemory rose by 374. With the limit set
-to 16 MB through debugfs it ran at 1446 Mbit/s with 2721.
-
-Count HE like VHT. An EHT radio supports HE, so it is covered as well.
-
-This change and message were written with Claude, an AI coding assistant.
-
-Link: https://lore.kernel.org/all/20261018174904.1757161-1-julius@bairaktaris.de/ [1]
-Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Found while testing the pending ath11k airtime queue limit series on an
-Arista C-360 (IPQ8074 plus a QCN9074 6 GHz radio) running OpenWrt. The
-6 GHz radio is its own wiphy, so it has no VHT and got the 4 MB limit;
-the same holds for the board's 2.4 GHz radio.
+Changes in v11:
+- Convert hand-rolled spin_lock_irqsave()/spin_unlock_irqrestore() pairs
+  to scoped_guard(), and drop the now unused  "flags" variable.
+- Link to v10: https://lore.kernel.org/r/20261117-a9-i2c-v10-0-33ea9aefce20@amlogic.com
 
-Compile-tested on wireless-next. On that board (OpenWrt, kernel 6.18,
-backports 7.2 with this change applied), the 6 GHz only and 2.4 GHz only
-radios come up with a 16 MB limit instead of 4 MB, and the two radios
-with VHT keep 16 MB. The throughput numbers in the changelog were
-measured with the limit changed through debugfs, not with this patch
-loaded.
----
- net/mac80211/tx.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+Changes in v10:
+- Convert hand-rolled spin_lock_irqsave()/spin_unlock_irqrestore() pairs
+  to guard().
+- Drop unneeded braces around the single-statement early return in the
+  IRQ handler.
+- Add MODULE_AUTHOR entry for Xianwei Zhao.
+- Fix commit message capitalization in the dt-bindings patch
+  ("Device Tree" -> "device tree").
+- Link to v9: https://lore.kernel.org/r/20261117-a9-i2c-v9-0-7b303c894fea@amlogic.com
 
-diff --git a/net/mac80211/tx.c b/net/mac80211/tx.c
-index 14885c2ce..a3a3ed370 100644
---- a/net/mac80211/tx.c
-+++ b/net/mac80211/tx.c
-@@ -1647,6 +1647,7 @@ int ieee80211_txq_setup_flows(struct ieee80211_local *local)
- 	int ret;
- 	int i;
- 	bool supp_vht = false;
-+	bool supp_he = false;
- 	enum nl80211_band band;
- 
- 	ret = fq_init(fq, 4096);
-@@ -1654,10 +1655,12 @@ int ieee80211_txq_setup_flows(struct ieee80211_local *local)
- 		return ret;
- 
- 	/*
--	 * If the hardware doesn't support VHT, it is safe to limit the maximum
--	 * queue size. 4 Mbytes is 64 max-size aggregates in 802.11n.
-+	 * If the hardware supports neither VHT nor HE, it is safe to limit the
-+	 * maximum queue size. 4 Mbytes is 64 max-size aggregates in 802.11n.
-+	 * HE counts as well, since a 6 GHz only radio has no VHT.
- 	 */
- 	for (band = 0; band < NUM_NL80211_BANDS; band++) {
-+		const struct ieee80211_sband_iftype_data *iftd;
- 		struct ieee80211_supported_band *sband;
- 
- 		sband = local->hw.wiphy->bands[band];
-@@ -1665,9 +1668,12 @@ int ieee80211_txq_setup_flows(struct ieee80211_local *local)
- 			continue;
- 
- 		supp_vht = supp_vht || sband->vht_cap.vht_supported;
-+
-+		for_each_sband_iftype_data(sband, i, iftd)
-+			supp_he = supp_he || iftd->he_cap.has_he;
- 	}
- 
--	if (!supp_vht)
-+	if (!supp_vht && !supp_he)
- 		fq->memory_limit = 4 << 20; /* 4 Mbytes */
- 
- 	codel_params_init(&local->cparams);
+Changes in v9:
+- Use guard(spinlock) instead of spinlock according to Markus's suggestions, no logic change.
+- Link to v8: https://lore.kernel.org/r/20261110-a9-i2c-v8-0-1e9d2682f86b@amlogic.com
+
+Changes in v8:
+- Reserve complete(done) into lock, and adjust the code process in irq func.
+- Link to v7: https://lore.kernel.org/r/20261104-a9-i2c-v7-0-b31f2b53faf4@amlogic.com
+
+Changes in v7:
+- Move complete(done) out of lock, and when state = idle not complete(done) in irq func.
+- Link to v6: https://lore.kernel.org/r/20261104-a9-i2c-v6-0-baa6171f26f8@amlogic.com
+
+Changes in v6:
+- use xfer instead of master_xfer interface, and when div=8 remain valid.
+- Optimized the function.
+- Link to v5: https://lore.kernel.org/r/20261103-a9-i2c-v5-0-86f2dcd179d8@amlogic.com
+
+Changes in v5:
+- Mask out I2C_FUNC_SMBUS_QUICK and return I2C_FUNC_I2C | (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK).
+- Link to v4: https://lore.kernel.org/r/20261102-a9-i2c-v4-0-5a169215b8e9@amlogic.com
+
+Changes in v4:
+- Repocess xfer len equal 0 use I2C_AQ_NO_ZERO_LEN, and Optimized the function.
+- Disable A9_RX_THRESH_READ/A9_TX_THRESH_WRITE enables of irq when xfer timeout.
+- Use guard(spinlock_irqsave) instead for direct call spinlock in xfer timeout process.
+- Link to v3: https://lore.kernel.org/r/20261029-a9-i2c-v3-0-7b30ccc00533@amlogic.com
+
+Changes in v3:
+- Based on the questions raised by the robot, the data flow was reorganized.
+- Some processing was optimized according to Andi's and Markus's suggestions.
+- Link to v2: https://lore.kernel.org/r/20261022-a9-i2c-v2-0-45e3cef175bf@amlogic.com
+
+Changes in v2:
+- dtbinding: make some minor modifications, suggestted by Conor and robot.
+- driver: Make some adjustments, including macro definitions, format adjustments,
+          adding quirks, process optimization, and so on. According to Andi and robot's suggestion
+- Give up MAINTAINERS file the separate submission, make it together with the driver.
+- Link to v1: https://lore.kernel.org/r/20260924-a9-i2c-v1-0-b8ad9b46f4a8@amlogic.com
 
 ---
-base-commit: 5dbf2415ca9821a611d09308e3b29d2c37e7cd77
-change-id: 20261114-mac80211-fq-he-9383214cce74
+Junyi Zhao (1):
+      i2c: amlogic: Add Amlogic A9 I2C controller driver
+
+Xianwei Zhao (1):
+      dt-bindings: i2c: add Amlogic A9 I2C controller
+
+ .../devicetree/bindings/i2c/amlogic,a9-i2c.yaml    |  56 +++
+ MAINTAINERS                                        |   9 +
+ drivers/i2c/busses/Kconfig                         |   8 +
+ drivers/i2c/busses/Makefile                        |   1 +
+ drivers/i2c/busses/i2c-amlogic-a9.c                | 428 +++++++++++++++++++++
+ 5 files changed, 502 insertions(+)
+---
+base-commit: 4ec2365c08de306f52650d8736aef5862baedb8d
+change-id: 20260911-a9-i2c-24478e22e683
 
 Best regards,
---  
-Christopher Griffin <christophergriffin05@gmail.com>
+-- 
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
