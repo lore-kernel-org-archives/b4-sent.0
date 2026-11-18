@@ -1,54 +1,65 @@
 From: Matthew Salsamendi <matthewsalsamendi@gmail.com>
 Date: Tue, 17 Nov 2026 16:26:17 -0800
-Subject: [PATCH v2 0/2] fs/proc: fix PAGEMAP_SCAN walk_end after a buffer
- refill
+Subject: [PATCH v2 1/2] fs/proc/task_mmu: reset walk_end before each
+ pagemap walk
 To: Andrew Morton <akpm@linux-foundation.org>, 
- "Liam R. Howlett" <liam@infradead.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- David Hildenbrand <david@kernel.org>, Shuah Khan <shuah@kernel.org>
+ "Liam R. Howlett" <liam@infradead.org>, Lorenzo Stoakes <ljs@kernel.org>
 Cc: Chris Down <chris@chrisdown.name>, Vlastimil Babka <vbabka@kernel.org>, 
  Muhammad Usama Anjum <usama.anjum@arm.com>, linux-mm@kvack.org, 
  linux-kernel@vger.kernel.org, matthewsalsamendi@gmail.com, 
  Jann Horn <jannh@google.com>, Pedro Falcato <pfalcato@suse.de>, 
- linux-fsdevel@vger.kernel.org, Mike Rapoport <rppt@kernel.org>, 
- Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
- linux-kselftest@vger.kernel.org
-Message-Id: <20261118-pagemap-walk-end-v2-0-94cd92d838b3@gmail.com>
+ linux-fsdevel@vger.kernel.org, stable@vger.kernel.org
+Message-Id: <20261118-pagemap-walk-end-v2-1-94cd92d838b3@gmail.com>
+In-Reply-To: <20261118-pagemap-walk-end-v2-0-94cd92d838b3@gmail.com>
+References: <20261118-pagemap-walk-end-v2-0-94cd92d838b3@gmail.com>
 X-Mailer: b4 0.16.0
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794961577; l=815;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794961577; l=1428;
  i=matthewsalsamendi@gmail.com; s=b4-kernel-20261117;
- h=from:subject:message-id; bh=oowHUtsthVeLQJxBrgRcG222FtO1F1EoKnj3be3MVlU=;
- b=vOdiQvji9DzMpw5/AWv0JtWMBH9LLUYwG0GKe+mhCGAYOG5BguFAO8nhkwu3xBM9Ewb4x3hvD
- qvAWl7sQ2c9A1VbcbIQHPqoqxRFnVe+7OeJICM2ig8hE1sLI2iczHR2
+ h=from:subject:message-id; bh=7qGs2hd6Xj+UHbWpzY0D12fJy01dF02sQB04QPCEhTs=;
+ b=Mc9ZX82EqhXsHrPuC5JbOue8KSUJJJe+aeJNlnoQt1oDt7qh63ZBSqkMCdmrEMHJu/jJe1kqN
+ yPXCwPuokCXCNL51/tvJiRSpZrCbS+ZSW/xH8TYix1x9mLmSaQ/5PNB
 X-Developer-Key: i=matthewsalsamendi@gmail.com; a=ed25519;
  pk=K4Lg4pTU46IL2CPz2Nb/u30nsnWJ38MlR2/Co4n0tto=
 X-Endpoint-Received: by B4 Relay for matthewsalsamendi@gmail.com/b4-kernel-20261117 with auth_id=1555
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hey all,
+When PAGEMAP_SCAN resumes after filling its buffer, it can return ranges
+beyond a stale walk_end. This aborts a production game server during
+dirty-page tracking.
 
-Thanks for the feedback. I agree with the proposed change to the patch.
-Apologies for the delayed reply.
+Reset walk_end before each walk so a completed scan reports the end and
+a partial HugeTLB write-protect request keeps its retry address.
 
-You'll find the updated patch and the requested selftest below.
+Codex assisted with diagnosis, validation and this message.
 
-On x86-64, the refill test fails on the unpatched kernel and the
-HugeTLB retry test fails on v1. All 121 tests pass on v2.
+Fixes: 52526ca7fdb9 ("fs/proc/task_mmu: implement IOCTL to get and optionally clear info about PTEs")
+Suggested-by: Chris Down <chris@chrisdown.name>
+Suggested-by: Lorenzo Stoakes <ljs@kernel.org>
+Cc: stable@vger.kernel.org # 6.7+
+Signed-off-by: Matthew Salsamendi <matthewsalsamendi@gmail.com>
+---
+v2: Use the per-walk reset suggested by Chris and Lorenzo.
+    Verified the 513-range refill and 2 MiB HugeTLB retry on x86-64.
 
-Matt
+Stable: The bug is present in v6.7. The hunk needs a context adjustment
+on v6.7 and applies unchanged to v6.8.
 
-v1: https://lore.kernel.org/linux-mm/CAMPWk9NE_epOdOCbs1PGh8OQP4wjTObvjU-1Wopmu7SSNAMXhw@mail.gmail.com/
+ fs/proc/task_mmu.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Matthew Salsamendi (2):
-  fs/proc/task_mmu: reset walk_end before each pagemap walk
-  selftests/mm: cover PAGEMAP_SCAN refill and HugeTLB retry
-
- fs/proc/task_mmu.c                         |  1 +
- tools/testing/selftests/mm/pagemap_ioctl.c | 61 +++++++++++++++++++++-
- 2 files changed, 61 insertions(+), 1 deletion(-)
-
-
-base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
+diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
+index b87d3e86442d..8723ffbff77c 100644
+--- a/fs/proc/task_mmu.c
++++ b/fs/proc/task_mmu.c
+@@ -3155,6 +3155,7 @@ static long do_pagemap_scan(struct mm_struct *mm, unsigned long uarg)
+ 			mmu_notifier_invalidate_range_start(&range);
+ 		}
+ 
++		p.arg.walk_end = 0; /* Reset partial walks. */
+ 		ret = walk_page_range(mm, walk_start, p.arg.end,
+ 				      &pagemap_scan_ops, &p);
+ 
 
