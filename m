@@ -1,10 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 18 Nov 2026 18:25:43 +0100
-Subject: [PATCH v2 10/12] arm64: dts: qcom: sdm845-lg: Enable vbus support
+Date: Wed, 18 Nov 2026 18:25:44 +0100
+Subject: [PATCH v2 11/12] arm64: dts: qcom: sdm845-xiaomi-beryllium: Enable
+ vbus support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-pmi8998-vbus-v2-10-3c77a72b280a@ixit.cz>
+Message-Id: <20261118-pmi8998-vbus-v2-11-3c77a72b280a@ixit.cz>
 References: <20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz>
 In-Reply-To: <20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz>
 To: Alexey Minnekhanov <alexeymin@minlexx.ru>, 
@@ -22,20 +23,20 @@ Cc: Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org,
  linux-pm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=933; i=david@ixit.cz;
- h=from:subject:message-id; bh=zzz1wDCTzc1/fIjXGnK2jf9q0XuYTFpC4inv6HpNgto=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/d+XjjM2rY8s2yzYBWJxS4HXESt1659FNQHKM
- trBglWfKK2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3flwAKCRBgAj/E00kg
- ckU/D/9X9hSuPKpnrY3w9JVtGO+oAT0DR9sSfV5c4waWBsyepm6QCrimBCLO2hcHv+KIyhgydb7
- 4cjlF3RmDu12/YYWKOb4cmAIj/17vwUSHMiuJFehk2Evo8E6qh0+vuDwd26PNPuloM2gXjERNUJ
- rUyVZ/exJlWlikakdwgadlBbWrM6oYTeSTKrAdjrAjbOfrvrsJNdmfJFTivn6VCPOO6D0Nf2yth
- N6WETfrp21jTbQOdcnp5IrT4cAg8T/SHrjkjXIARf+MoOV4Ole7jEOoKo8ALrdnUoBUWZVkYcLe
- y2DIjdQrj78lvKXZ8jPvnGjg2ktgV1OeUbYPtUxRJWh8O3VGrJkSgyuo41RsbLZshxLRa5NXTHZ
- onVnXIOHkiv2pYqkUWNz06m/pJBBiCs+/CtpMT6YCURjk551uG30sluIyGg/v6AfL3D58J4krfH
- cIOucEyflVVi57V1hUVco5+bIPmwFt38Ntq+8VfJdW53oGgi7gH9UZaDNocFc81mAZpQRybx1qd
- Q5YLYO61JsQmPJrDQwcjnlfLR72J7yX7W4LUgljWzB3ahkUw5zfpMhb4ozsuyGp3YgMqG9mdRT/
- gY/4glDShY/+vGnrlAedHZ6lUIKiFE9sgkshzMh7MwEeh8fIZgTUovVViQyx18Xk/znY1qhaEwf
- 6OFt3WqH0VKkN+w==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1319; i=david@ixit.cz;
+ h=from:subject:message-id; bh=/Lj3TGFexa5AfzuS/I1Uhtld+K5vTju4obeOh3yWZrc=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/d+XlZGDgGZoz0iSr3s6ex4mRpEIhqUZGBxp+
+ 1ZJCxpTckeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3flwAKCRBgAj/E00kg
+ cq+EEADLvJzKhZRpu+5LyYC9tSlFmKR0zlyaDNa2Mj6LtKIDkysLAiI20OPDn3NsKzhV7zLrzpI
+ 3mHCEwoZi4IhgrpTsdnWZQ85lJr2UydKl8dtn0tV2Fmtlj0udVyEIW89kwxBFuedvluPYVjX4eq
+ ynSJmSNPNm3o4Tqj7mCUAZ5KpzZj4pSA6q8+Iv+bZYxW5whj4YYEkbXosEKAmtH2ratIIHQZ+ha
+ hGDNxJfefCTEmz0fGctH1h0yhfWzEADXsh1F+B1YDQJE/8opCZVB1vYeEd2TOQj+m8jG0SMhMrP
+ 9B8USfeseQsjXBfkqQetQZplwto3brFCt4gaMaSiwxzbhhUsZ4gnnFAyKws/LbYzp0sVtyoH5So
+ +/ijmXpCTFoC9jNf+cAeuQxSMQdgJBKxDbMl4z/fBRnb/ErMh7b3uGxZgs42g1+7pnGGkA6HKvh
+ XYwBLLfyYScLcksaw6dcVVlAW7aJwfHTRkRq1K3EShcZJRlcJpkozrB/jLCA9lSjQiZOXA7YQz2
+ FicoGv9jBsgA1MU8lo8UuMql1X9PrRsqoqpSUpRS6E+PLgJjwvdf9xIvLyFPwq8Az4UKWP2VUP7
+ kRzElwwHW5Se2Huvqczo39yHcNr1bp4pyzN1GKfDqcKfBXI+4ig+xLxKWQM36MtupP4J9KGjedz
+ qD0LjtOki2MBOpA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -46,20 +47,20 @@ Enable proper driver.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi | 7 +++++++
- 1 file changed, 7 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
-index 6989532584251..e868cf44956b5 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
-@@ -548,16 +548,23 @@ led@4 {
- 
- 		led@5 {
- 			reg = <5>;
- 			color = <LED_COLOR_ID_RED>;
- 		};
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+index d57851b0b9419..aab5738253914 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+@@ -418,16 +418,23 @@ led-1 {
  	};
+ };
+ 
+ &pm8998_resin {
+ 	linux,code = <KEY_VOLUMEDOWN>;
+ 	status = "okay";
  };
  
 +&pmi8998_vbus {
@@ -69,14 +70,24 @@ index 6989532584251..e868cf44956b5 100644
 +	status = "okay";
 +};
 +
- &pmi8998_wled {
- 	qcom,current-limit-microamp = <20000>;
- 	qcom,ovp-millivolt = <29600>;
- 	qcom,switching-freq = <800>;
- 	qcom,cabc;
- 	status = "okay";
+ /* QUAT I2S Uses 1 I2S SD Line for audio on TAS2559/60 amplifiers */
+ &q6afedai {
+ 	dai@22 {
+ 		reg = <QUATERNARY_MI2S_RX>;
+ 		qcom,sd-lines = <0>;
+ 	};
  };
  
+@@ -682,9 +689,8 @@ &wifi {
+ 	vdd-1.8-xo-supply = <&vreg_l7a_1p8>;
+ 	vdd-1.3-rfa-supply = <&vreg_l17a_1p3>;
+ 	vdd-3.3-ch0-supply = <&vreg_l25a_3p3>;
+ 	vdd-3.3-ch1-supply = <&vreg_l23a_3p3>;
+ 
+ 	qcom,calibration-variant = "xiaomi_beryllium";
+ 	qcom,snoc-host-cap-skip-quirk;
+ };
+-
 
 -- 
 2.55.0
