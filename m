@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 18 Nov 2026 18:25:40 +0100
-Subject: [PATCH v2 07/12] arm64: dts: qcom: sdm845-google: Enable vbus
+Date: Wed, 18 Nov 2026 18:25:41 +0100
+Subject: [PATCH v2 08/12] arm64: dts: qcom: sdm845-oneplus: Enable vbus
  support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-pmi8998-vbus-v2-7-3c77a72b280a@ixit.cz>
+Message-Id: <20261118-pmi8998-vbus-v2-8-3c77a72b280a@ixit.cz>
 References: <20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz>
 In-Reply-To: <20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz>
 To: Alexey Minnekhanov <alexeymin@minlexx.ru>, 
@@ -23,20 +23,20 @@ Cc: Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org,
  linux-pm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=892; i=david@ixit.cz;
- h=from:subject:message-id; bh=VkOTwwbUirh5SMOgzMhWbBAJrp1wguqG0ymDT4qYW/I=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/d+XZSFQwxLzTmFjB1NHz/hEX3XHI77Ygrdl2
- Prlq7NZiyqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3flwAKCRBgAj/E00kg
- cjGmD/sEaSEdMyQLmSgXhBuZ12FqpHWGOIFl8ctW1iDbvRKqVBAU7LZfvq9YvbYd5+THnoXnb3s
- JMMUUJEAOSWgjrMR4zz6FAird4bh2JY/h6gqof/G/1eteZcL5cUAcBS4NUHy9hzTocW7n45QrBZ
- nlb95iDdPyqD9NxU2H9fAAdM53V4SsLqxWS4MtnBZCaAutEpo6hOMbBZ6p/DmUq3nufRKnWxspi
- aVX3JmlJ3F8sl59L9CUp0M3ce8fCuP/BExdpEv9xSfcCUSW1uPy6C3AXBFeO4rbF9YmhSiOMz19
- QBYEx/RJ8O4CY3JUeHmVSQTii2Zw0Bz7FdYVBD4ebqfz6TICGevxcDLSowbPsjGg31FX3VgQad6
- NuuTceMoqtQBlmgFB8p9x6/L/1YmBxcwSAzYbn9KgaudEaHLe/WTKYTGRgJ2apy/5lRt0vz8FL3
- JpPwfmBBWMEWfLbII1QemNAPSHAILj0sIQrVaFOD2UhkeHbo7GKZqnk9AbKt2N+o3wfjUAzBgNJ
- yVNQceX5iY936IVsm38JZ4/AT4Ot14Qk29BtFNjo2DmDe3JcNSdWJ87LD6Se1Sydkp7BwypKxj4
- NGF+VIoh1ZMOppI06UguG5Zz94SMWMZ4qm1Z1Lk9IPKjgCxiNgTdNMBv5f6wTz0mOS31TDxwvhK
- Y8vQXaXp6GAVKYg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1021; i=david@ixit.cz;
+ h=from:subject:message-id; bh=qtK8U0DG1cRkdsACHAr+c1jMalJb+5fDCyLN85kWDvA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/d+Xux/XV/RcXxApBTxcJ2ZIuM8XgqAeK/KNK
+ oiW3dqxLhCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3flwAKCRBgAj/E00kg
+ cpXqD/0cPSi/Spa6ztty2BllXCoc8Y4UUnWTZswjzAhVje+ckv0MNJKQB50DIqRZpPJ9aawHKbk
+ N6E9/IapIM+brBH6XCLadnKgIZ5tayWX2BeOeEToCibAAMoNKA1mUXBCUz4yOyMx26pwb5ykTEj
+ /6ltPIUNvlJYTBSY0Ag4TVOBxSDyVvfAuX1SeXzg0UIHFBTG1W81m+YOTVr6MhzEfnJv8pGGzsz
+ aTQzhXh9KZse1YZGPXsRMYVi3Pk1sOIHdEg7DGvwNwcCvqYnyuWknh+KWy0/izApn8MI6fLjiPo
+ WgBkQbmwzdU1uvyxc8kuNLo1DZmpuqckgOpEZZZjyg0ykcwxzv4K1piUpVaTyELUNE1V3aZDLUd
+ VNam24iFesz58IY6sUhhOwSFtE5AwyzPHVJMi35vFa3GiqxFCl5kD01j2dl98Rk6xOfaacPUhX2
+ tpDa5oTzEb4133IVX+0sQvRLQOyw/vtAKhAV8ATH/z3zttbk6BURLC3dKjwiJnFn1TkarlhrW7Q
+ B/tAJNBAQVmKvm3bb6b6wRooFUj1lLeZfBPbpbyro2nsIL7ltEDdHOT6ODLJ8Us8Obk7pSPs3NQ
+ WXMhi4likHlzUE1SmyNkIUNSGkw/GnoSNJ8JHiuF/fg+qAv/YWFYokgdrVLIOb5xPvKANWr3wob
+ MG4Yrdla/Na43Cw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -47,20 +47,20 @@ Enable proper driver.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 7 +++++++
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 7 +++++++
  1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index 3c9656b88b696..417c767a1821d 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -451,16 +451,23 @@ &pm8998_resin {
- };
- 
- &pmi8998_charger {
- 	monitored-battery = <&battery>;
- 
- 	status = "okay";
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+index 1df09da3c4d71..4996ce24fee36 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+@@ -660,16 +660,23 @@ led-1 {
+ 		color = <LED_COLOR_ID_YELLOW>;
+ 		led-sources = <2>;
+ 		led-max-microamp = <500000>;
+ 		flash-max-microamp = <1500000>;
+ 		flash-max-timeout-us = <1280000>;
+ 	};
  };
  
 +&pmi8998_vbus {
@@ -70,14 +70,14 @@ index 3c9656b88b696..417c767a1821d 100644
 +	status = "okay";
 +};
 +
- &qupv3_id_0 {
- 	status = "okay";
- };
+ &q6afedai {
+ 	dai@22 {
+ 		reg = <QUATERNARY_MI2S_RX>;
+ 		qcom,sd-lines = <1>;
+ 	};
  
- &qupv3_id_1 {
- 	status = "okay";
- };
- 
+ 	dai@23 {
+ 		reg = <QUATERNARY_MI2S_TX>;
 
 -- 
 2.55.0
