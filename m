@@ -1,102 +1,119 @@
-From: Zi-Hao Huang <zi-hao.huang@mediatek.com>
-Date: Wed, 18 Nov 2026 17:33:11 +0800
-Subject: [PATCH v2] drm/mediatek: dsi: Don't let a signal cut the IRQ wait
- short
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v12 0/2] i2c: Add driver support Amlogic A9 I2C
+Date: Wed, 18 Nov 2026 09:59:17 +0000
+Message-Id: <20261118-a9-i2c-v12-0-fc83c53121e6@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-mtk-dsi-irq-wait-v2-1-8bda52993c6f@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIANZw/WoC/32NTQ6CQAxGr0K6toY28hNX3sOwqEyRhgA6M0EN4
- e6OHMDle8n3vhWCetMA52wFr4sFm6cEfMig7WW6K5pLDJxzSUQ1jnFAFwzNP/ElFlH4VBGLk5I
- rSLOH187ee/LaJO4txNl/9oeFfvZPbCEk5LzouOikrW98GdWZRB2O7TxCs23bF6MjLaazAAAA
-X-Change-ID: 20261118-mtk-dsi-irq-wait-a24712ada627
-To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- shaoming chen <shaoming.chen@mediatek.com>, dri-devel@lists.freedesktop.org, 
- linux-mediatek@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, 
- Zi-Hao Huang <zi-hao.huang@mediatek.com>, CK Hu <ck.hu@mediatek.com>
+X-B4-Tracking: v=1; b=H4sIAPV2/WoC/23SzW7DIAwH8Fepch4bNt877T2mHYCYFmlNqqSKO
+ lV990HVpdGSo41//IXFtRlpyDQ277trM9CUx9x3pQB82TXx4Ls9sdyWRoMcNXcAzDuWMTKU0lh
+ CJG1FU4aDH4mFwXfxUMfLyFsd6+hyrsengVK+3IM+v0p9yOO5H37uuRPU7iMB5V/CBIyzYH3rg
+ tRJevvhj9/9PsfX2B+besmEMwSOOEMsUCoSkRIYFdIaiiV0MxQFmiB4jJFzJcQayicscoayQOV
+ BOwQVLLk1VEsoZqgKtDphG1swrt14o17C53J0XY73Ggwk1GkDmm1oKhQFBSWST3IN7QICn6EtE
+ Mi1qC0mq8MauiU0M3SPrYponUzk1xD4tizpnAlB3nlKkZBvUFhS+6T192jrBRmXkhT/Um+32y/
+ k+KAa/AIAAA==
+X-Change-ID: 20260911-a9-i2c-24478e22e683
+To: Junyi Zhao <junyi.zhao@amlogic.com>, Andi Shyti <andi.shyti@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Xianwei Zhao <xianwei.zhaol@amlogic.com>
+Cc: Junyi Zhao <junyi.zhaol@amlogic.com>, 
+ Markus Elfring <Markus.Elfring@web.de>, linux-i2c@vger.kernel.org, 
+ linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1794994396; l=2849;
- i=zi-hao.huang@mediatek.com; s=20261112; h=from:subject:message-id;
- bh=oSiLiwqCKkPp3lIKuiL5raZFKV28BSNXcVhbBi3SzXg=;
- b=vxu/8VdPlOJ1xHqEyJ64lB/7rEWbl4aMOvpjVViVoUm+YA7qopHYx1fIM4QO8RL6XUuWtY4CL
- sdTUiA0sJc2DCUsoRmyP0GpmHJ3PFqKaZ1F679Y91eWjGk/LZvKulA+
-X-Developer-Key: i=zi-hao.huang@mediatek.com; a=ed25519;
- pk=tbMIVegYSSBtz5MaQSUCX9RJO88MA/AI5cbmQKbaoIc=
-X-Endpoint-Received: by B4 Relay for zi-hao.huang@mediatek.com/20261112 with auth_id=1493
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1794995960; l=3743;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=g5vQyIvM+rDCy2acja7kjSEWO0tqx22aOG7GZamYqmI=;
+ b=VG1dBGY6yTFa4ybvjkPWSyXIeCQjg+qsuU22gchICxh2bwHB7uxvW476aTATQ/5ohfYf3mCQE
+ ywQ4SzRQYLbDRzqcTTsLSrlJtnHVDRwJXUpmAxD+hsTZS8o+3GW8WSa
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mtk_dsi_wait_for_irq_done() waits for the DSI IRQ with
-wait_event_interruptible_timeout(). If it returns early, for example
-with -ERESTARTSYS when a signal is pending, both callers still treat the
-command as done, because they only handle a return value of 0 as a
-failure.
+Add a device tree binding and driver for the I2C controller found on the
+Amlogic A9 SoC.
 
-On an MT8196 board this led to a hard lockup during shutdown. The wait
-returned before the IRQ arrived, the panel disable sequence went on and
-restarted video mode, and the late CMD_DONE interrupt was then handled
-by mtk_dsi_irq(). The handler writes RACK and loops until DSI_BUSY
-clears, but DSI_BUSY stays set while video mode is running, so the CPU
-never leaves the handler until the watchdog fires. Forcing the wait to
-return early reproduces the lockup every time, and it no longer
-happens once the wait cannot return early.
-
-The wait synchronises the driver with the hardware, and it is bounded by
-its timeout. Use wait_event_timeout() so that it only ends on the IRQ or
-the timeout.
-
-wake_up_interruptible() cannot wake a task in uninterruptible sleep, so
-switch mtk_dsi_irq() to wake_up(). Without it every wait would last
-until its timeout.
-
-Fixes: dd5080a54df8 ("drm/mediatek: add dsi interrupt control")
-Signed-off-by: Zi-Hao Huang <zi-hao.huang@mediatek.com>
-Reviewed-by: CK Hu <ck.hu@mediatek.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
+Changes in v12:
+- Cancel the initialization of local variables "ret".
+- Link to v11: https://lore.kernel.org/r/20261118-a9-i2c-v11-0-68a3e79ff43a@amlogic.com
+
+Changes in v11:
+- Convert hand-rolled spin_lock_irqsave()/spin_unlock_irqrestore() pairs
+  to scoped_guard(), and drop the now unused  "flags" variable.
+- Link to v10: https://lore.kernel.org/r/20261117-a9-i2c-v10-0-33ea9aefce20@amlogic.com
+
+Changes in v10:
+- Convert hand-rolled spin_lock_irqsave()/spin_unlock_irqrestore() pairs
+  to guard().
+- Drop unneeded braces around the single-statement early return in the
+  IRQ handler.
+- Add MODULE_AUTHOR entry for Xianwei Zhao.
+- Fix commit message capitalization in the dt-bindings patch
+  ("Device Tree" -> "device tree").
+- Link to v9: https://lore.kernel.org/r/20261117-a9-i2c-v9-0-7b303c894fea@amlogic.com
+
+Changes in v9:
+- Use guard(spinlock) instead of spinlock according to Markus's suggestions, no logic change.
+- Link to v8: https://lore.kernel.org/r/20261110-a9-i2c-v8-0-1e9d2682f86b@amlogic.com
+
+Changes in v8:
+- Reserve complete(done) into lock, and adjust the code process in irq func.
+- Link to v7: https://lore.kernel.org/r/20261104-a9-i2c-v7-0-b31f2b53faf4@amlogic.com
+
+Changes in v7:
+- Move complete(done) out of lock, and when state = idle not complete(done) in irq func.
+- Link to v6: https://lore.kernel.org/r/20261104-a9-i2c-v6-0-baa6171f26f8@amlogic.com
+
+Changes in v6:
+- use xfer instead of master_xfer interface, and when div=8 remain valid.
+- Optimized the function.
+- Link to v5: https://lore.kernel.org/r/20261103-a9-i2c-v5-0-86f2dcd179d8@amlogic.com
+
+Changes in v5:
+- Mask out I2C_FUNC_SMBUS_QUICK and return I2C_FUNC_I2C | (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK).
+- Link to v4: https://lore.kernel.org/r/20261102-a9-i2c-v4-0-5a169215b8e9@amlogic.com
+
+Changes in v4:
+- Repocess xfer len equal 0 use I2C_AQ_NO_ZERO_LEN, and Optimized the function.
+- Disable A9_RX_THRESH_READ/A9_TX_THRESH_WRITE enables of irq when xfer timeout.
+- Use guard(spinlock_irqsave) instead for direct call spinlock in xfer timeout process.
+- Link to v3: https://lore.kernel.org/r/20261029-a9-i2c-v3-0-7b30ccc00533@amlogic.com
+
+Changes in v3:
+- Based on the questions raised by the robot, the data flow was reorganized.
+- Some processing was optimized according to Andi's and Markus's suggestions.
+- Link to v2: https://lore.kernel.org/r/20261022-a9-i2c-v2-0-45e3cef175bf@amlogic.com
+
 Changes in v2:
-- Drop the remark that the wait is not made on behalf of userspace, since
-  a userspace backlight change can reach it (CK)
-- Collect Reviewed-by
-- Link to v1: https://lore.kernel.org/r/20261118-mtk-dsi-irq-wait-v1-1-205f25fac8b2@mediatek.com
----
- drivers/gpu/drm/mediatek/mtk_dsi.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/gpu/drm/mediatek/mtk_dsi.c b/drivers/gpu/drm/mediatek/mtk_dsi.c
-index f82506e10fd5..1315dd31a834 100644
---- a/drivers/gpu/drm/mediatek/mtk_dsi.c
-+++ b/drivers/gpu/drm/mediatek/mtk_dsi.c
-@@ -627,9 +627,8 @@ static s32 mtk_dsi_wait_for_irq_done(struct mtk_dsi *dsi, u32 irq_flag,
- 	unsigned long jiffies = msecs_to_jiffies(timeout);
- 	struct drm_device *drm = dsi->bridge.dev;
- 
--	ret = wait_event_interruptible_timeout(dsi->irq_wait_queue,
--					       dsi->irq_data & irq_flag,
--					       jiffies);
-+	ret = wait_event_timeout(dsi->irq_wait_queue,
-+				 dsi->irq_data & irq_flag, jiffies);
- 	if (ret == 0) {
- 		drm_warn(drm, "Wait DSI IRQ(0x%08x) Timeout\n", irq_flag);
- 
-@@ -656,7 +655,7 @@ static irqreturn_t mtk_dsi_irq(int irq, void *dev_id)
- 
- 		mtk_dsi_mask(dsi, DSI_INTSTA, status, 0);
- 		mtk_dsi_irq_data_set(dsi, status);
--		wake_up_interruptible(&dsi->irq_wait_queue);
-+		wake_up(&dsi->irq_wait_queue);
- 	}
- 
- 	return IRQ_HANDLED;
+- dtbinding: make some minor modifications, suggestted by Conor and robot.
+- driver: Make some adjustments, including macro definitions, format adjustments,
+          adding quirks, process optimization, and so on. According to Andi and robot's suggestion
+- Give up MAINTAINERS file the separate submission, make it together with the driver.
+- Link to v1: https://lore.kernel.org/r/20260924-a9-i2c-v1-0-b8ad9b46f4a8@amlogic.com
 
 ---
-base-commit: 067c5c24cef23d913b67eaaf71ae67e7169a6620
-change-id: 20261118-mtk-dsi-irq-wait-a24712ada627
+Junyi Zhao (1):
+      i2c: amlogic: Add Amlogic A9 I2C controller driver
+
+Xianwei Zhao (1):
+      dt-bindings: i2c: add Amlogic A9 I2C controller
+
+ .../devicetree/bindings/i2c/amlogic,a9-i2c.yaml    |  56 +++
+ MAINTAINERS                                        |   9 +
+ drivers/i2c/busses/Kconfig                         |   8 +
+ drivers/i2c/busses/Makefile                        |   1 +
+ drivers/i2c/busses/i2c-amlogic-a9.c                | 428 +++++++++++++++++++++
+ 5 files changed, 502 insertions(+)
+---
+base-commit: 4ec2365c08de306f52650d8736aef5862baedb8d
+change-id: 20260911-a9-i2c-24478e22e683
 
 Best regards,
 -- 
-Zi-Hao Huang <zi-hao.huang@mediatek.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
