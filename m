@@ -1,10 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Thu, 19 Nov 2026 05:03:36 +0800
-Subject: [PATCH v5 04/17] mm/memcg: add folio-based lruvec live helper
+Date: Thu, 19 Nov 2026 05:03:37 +0800
+Subject: [PATCH v5 05/17] mm/mglru: skip the flags cmpxchg when nothing
+ changes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-mglru-fg-v5-4-9eee2fe97a2d@tencent.com>
+Message-Id: <20261119-mglru-fg-v5-5-9eee2fe97a2d@tencent.com>
 References: <20261119-mglru-fg-v5-0-9eee2fe97a2d@tencent.com>
 In-Reply-To: <20261119-mglru-fg-v5-0-9eee2fe97a2d@tencent.com>
 To: linux-mm@kvack.org
@@ -38,174 +39,105 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  damon@lists.linux.dev, linux-doc@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795035819; l=5345;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795035819; l=3975;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=UPy3pGE6319hHgjCcjHs3BYbIQXEmhnHCnBETYV6U1U=;
- b=AqfXtl+0yCpQiqyIhsARAmmg2Fsm9mLz1qO5V+JmtA+2ZDtZgTGXqyJCmNSR+dvfy8goUaZ48
- 3vrkNo74McRCI5QhGsRrjoUyRufQBCMaywpKJnzlOrA+BydE3iJC3FC
+ bh=rKjtT9cTVQE3kB+eFzFZdlThrfxXKVi5B+1GEDGHtjw=;
+ b=eXy1GT3doCWx4eA2MrHyusXF+V13z0BHWbZolJceGwJbmMtsa+zI9QRCGuCTBY1Rom264jpeW
+ FKGD+ZvzktJA6h8Yvwm38iMU9RTQym7XK1PfXQXh4ylDSTy6KSdhsZ9
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a helper that resolves a live lruvec for a folio under RCU
-without taking the lruvec lock.  It takes a folio directly so the
-lruvec lookup happens inside the RCU read-side critical section,
-which a lruvec-based interface cannot guarantee.  The first user is
-the lockless folio_inc_lru_refs() path later in the series.
+From: Ridong Chen <chenridong@xiaomi.com>
 
-Factor the ancestor walk out of lruvec_live_lock_irq() into
-__lruvec_get_live(), so that both entry points share it, and spell
-out why the walk is enough while only the RCU read lock is held:
-reparenting of a memcg that starts dying waits for a grace period,
-so it cannot race with the caller until the lock is released.
+folio_update_gen() and folio_set_lru_refs() always end with a
+try_cmpxchg() on folio->flags, even when the new value equals the old
+one. The locked instruction still takes the struct page cacheline in
+exclusive state.
 
-Move memcg_is_dying() up in memcontrol.h, next to the other memcg state
-predicates, and use it for the walk rather than repeating the open coded
-css_is_dying() test a few definitions away from where it is explained.
+That is common in practice: a folio mapped by many processes is visited
+once per mm during a page table walk, and after the first visit it is
+already in the youngest generation with refs cleared and PG_workingset
+set. isolate_folio() and the eviction paths also call
+folio_set_lru_refs(folio, 0) on folios whose refs are already zero.
 
-No functional change for existing callers.
+Break out of the loop when the flags would not change. The update is
+complete at the point of that read: the flags already hold the target
+value, and a concurrent change to them is ordered after it. When the
+cmpxchg would have succeeded, the value written is the same, so no new
+state becomes reachable.
 
-Tested-by: Zhao Zhenzhuo <zhaozhengzhuo@uniontech.com>
+What the patch drops is the retry. A retry re-reads the flags and
+recomputes new_flags from the newer value, so it overwrites a concurrent
+update with what this CPU wanted. For folio_update_gen(), a walker that
+read an older max_seq can lose the cmpxchg against a promotion done by
+another CPU, and then write its older generation back on the retry.
+folio_set_lru_refs() can likewise clear a refs increment that raced with
+it. Breaking out keeps the newer state.
+
+No caller relies on the full barrier that the locked instruction
+implied on the skipped path: the eviction and isolation callers run
+under the LRU lock, and the others (page table walks,
+folio_mark_accessed(), lru_gen_clear_refs()) only care about the
+resulting flags value, which is already in place. Note that
+lru_gen_inc_refs() already returns without any atomic when refs is at
+LRU_REFS_MAX and the folio is in the workingset.
+
+Tested on an i7-13700HX with turbo disabled and the performance
+governor. N processes map the same 2GiB tmpfs file (huge=never) and
+read every page, then one aging pass is triggered on their memcg
+through /sys/kernel/debug/lru_gen ("+ <memcg_id> 0 <max_seq> 200 1").
+Time per aging pass in ms, median of 5 runs of 10 passes each, averaged
+over 2 boots of each kernel:
+
+  processes    base   patched
+          1    32.9      31.7   -3.5%
+          8   195.1     160.2  -17.9%
+         32   755.8     592.2  -21.7%
+         64  1597.2    1260.6  -21.1%
+
+With one process, every visit changes the generation, so there is
+nothing to skip. Before the patch, perf annotate attributes 53-58% of
+the walk_update_folio() samples to the lock cmpxchg in the inlined
+folio_update_gen() in this test.
+
+[kasong: folio_update_gen() is replaced by folio_inc_lru_refs_walk()
+later in the series, which keeps the same early exit.]
+Reviewed-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Ridong Chen <chenridong@xiaomi.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/memcontrol.h | 71 ++++++++++++++++++++++++++++++++++++----------
- 1 file changed, 56 insertions(+), 15 deletions(-)
+ include/linux/mm_inline.h | 2 ++
+ mm/vmscan.c               | 2 ++
+ 2 files changed, 4 insertions(+)
 
-diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
-index 980358bc6f49..441a5d57e723 100644
---- a/include/linux/memcontrol.h
-+++ b/include/linux/memcontrol.h
-@@ -571,6 +571,11 @@ static inline bool mem_cgroup_disabled(void)
- 	return !cgroup_subsys_enabled(memory_cgrp_subsys);
+diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
+index 46beded51c7d..2571b3f01226 100644
+--- a/include/linux/mm_inline.h
++++ b/include/linux/mm_inline.h
+@@ -233,6 +233,8 @@ static inline void folio_set_lru_refs(struct folio *folio, unsigned int refs)
+ 	do {
+ 		new_flags = old_flags;
+ 		lru_set_refs_flags(&new_flags, refs);
++		if (new_flags == old_flags)
++			break;
+ 	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
  }
  
-+static inline bool memcg_is_dying(struct mem_cgroup *memcg)
-+{
-+	return memcg ? css_is_dying(&memcg->css) : false;
-+}
-+
- static inline void mem_cgroup_protection(const struct mem_cgroup *root,
- 					 const struct mem_cgroup *memcg,
- 					 unsigned long *min,
-@@ -1349,6 +1354,11 @@ static inline bool mem_cgroup_online(struct mem_cgroup *memcg)
- 	return true;
- }
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 8d14831cdf83..0f24b6ebc1eb 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -3274,6 +3274,8 @@ static int folio_update_gen(struct folio *folio, int new_gen, int *type,
+ 		lru_set_gen_flags(&new_flags, new_gen);
+ 		lru_set_refs_flags(&new_flags, 0);
+ 		new_flags |= BIT(PG_workingset);
++		if (new_flags == old_flags)
++			break;
+ 	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
  
-+static inline bool memcg_is_dying(struct mem_cgroup *memcg)
-+{
-+	return false;
-+}
-+
- static inline
- unsigned long mem_cgroup_get_zone_lru_size(const struct lruvec *lruvec,
- 		enum lru_list lru, int zone_idx)
-@@ -1510,28 +1520,41 @@ static inline void lruvec_lock_irq(struct lruvec *lruvec)
- 	spin_lock_irq(&lruvec->lru_lock);
- }
- 
--static inline struct lruvec *lruvec_live_lock_irq(struct lruvec *lruvec)
-+/*
-+ * Reparenting moves a dying memcg's LRU state to its parent at any time,
-+ * so anything added to that LRU afterwards would be lost.  This helper
-+ * walks up to the nearest live ancestor while the caller must hold the
-+ * RCU read lock: reparenting of a memcg that starts dying waits for a
-+ * grace period, so it cannot race with the caller until the lock is
-+ * released.
-+ */
-+static inline struct lruvec *__lruvec_get_live(struct lruvec *lruvec)
- {
- #ifdef CONFIG_MEMCG
- 	struct pglist_data *pgdat = lruvec_pgdat(lruvec);
- 	struct mem_cgroup *memcg = lruvec_memcg(lruvec);
- 
--	rcu_read_lock();
--
- 	/*
- 	 * The memcg can be NULL when the memory controller is disabled.
- 	 * Otherwise, the caller keeps the memcg owning @lruvec alive.
- 	 */
--	while (unlikely(memcg && css_is_dying(&memcg->css))) {
-+	while (unlikely(memcg_is_dying(memcg))) {
- 		memcg = parent_mem_cgroup(memcg);
- 		lruvec = mem_cgroup_lruvec(memcg, pgdat);
- 	}
-+#endif
-+	return lruvec;
-+}
- 
-+static inline struct lruvec *lruvec_live_lock_irq(struct lruvec *lruvec)
-+{
-+#ifdef CONFIG_MEMCG
-+	rcu_read_lock();
-+	lruvec = __lruvec_get_live(lruvec);
- 	spin_lock_irq(&lruvec->lru_lock);
- #else
- 	lruvec_lock_irq(lruvec);
- #endif
--
- 	return lruvec;
- }
- 
-@@ -1561,6 +1584,34 @@ static inline bool folio_matches_lruvec(const struct folio *folio,
- 	       lruvec_memcg(lruvec) == folio_memcg(folio);
- }
- 
-+/**
-+ * folio_lruvec_live_get - get a live lruvec for a folio under RCU
-+ * @folio: the folio
-+ *
-+ * Same as folio_lruvec(), except that a folio whose memcg is dying is
-+ * accounted to the nearest live ancestor, which is where reparenting
-+ * would put it anyway.
-+ *
-+ * Return: the live lruvec, with rcu_read_lock() held.  Pair it with
-+ * folio_lruvec_live_put().
-+ */
-+static inline struct lruvec *folio_lruvec_live_get(struct folio *folio)
-+{
-+#ifdef CONFIG_MEMCG
-+	rcu_read_lock();
-+	return __lruvec_get_live(folio_lruvec(folio));
-+#else
-+	return folio_lruvec(folio);
-+#endif
-+}
-+
-+static inline void folio_lruvec_live_put(struct lruvec *lruvec)
-+{
-+#ifdef CONFIG_MEMCG
-+	rcu_read_unlock();
-+#endif
-+}
-+
- /* Don't lock again iff page's lruvec locked */
- static inline struct lruvec *folio_lruvec_relock_irq(const struct folio *folio,
- 		struct lruvec *locked_lruvec)
-@@ -1826,11 +1877,6 @@ void mem_cgroup_node_filter_allowed(struct mem_cgroup *memcg, nodemask_t *mask);
- 
- void mem_cgroup_show_protected_memory(struct mem_cgroup *memcg);
- 
--static inline bool memcg_is_dying(struct mem_cgroup *memcg)
--{
--	return memcg ? css_is_dying(&memcg->css) : false;
--}
--
- #else
- static inline bool mem_cgroup_kmem_disabled(void)
- {
-@@ -1901,11 +1947,6 @@ static inline void mem_cgroup_node_filter_allowed(struct mem_cgroup *memcg,
- static inline void mem_cgroup_show_protected_memory(struct mem_cgroup *memcg)
- {
- }
--
--static inline bool memcg_is_dying(struct mem_cgroup *memcg)
--{
--	return false;
--}
- #endif /* CONFIG_MEMCG */
- 
- #if defined(CONFIG_MEMCG) && defined(CONFIG_LRU_GEN)
+ 	*type = folio_flags_is_file_lru(&old_flags);
 
 -- 
 2.56.1
