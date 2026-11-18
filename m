@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Thu, 19 Nov 2026 05:03:33 +0800
-Subject: [PATCH v5 01/17] mm/mglru: rename the generation offset in
- lru_gen_folio_seq()
+Date: Thu, 19 Nov 2026 05:03:34 +0800
+Subject: [PATCH v5 02/17] mm/memcontrol: allow update of LRU statistic
+ without holding LRU lock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-mglru-fg-v5-1-9eee2fe97a2d@tencent.com>
+Message-Id: <20261119-mglru-fg-v5-2-9eee2fe97a2d@tencent.com>
 References: <20261119-mglru-fg-v5-0-9eee2fe97a2d@tencent.com>
 In-Reply-To: <20261119-mglru-fg-v5-0-9eee2fe97a2d@tencent.com>
 To: linux-mm@kvack.org
@@ -39,71 +39,45 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  damon@lists.linux.dev, linux-doc@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795035819; l=2264;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795035819; l=1182;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=YwqZ+e/q+Bs63p0EPa3WlWInx++BICs4SMMeFTRMo0I=;
- b=YvPtmtaQbA6mZdFgjxoUMC6rb+7OWEf9+nliTpL4Bc3GKxUs5kNL45/RuGmCxmFZJQAo4W4WX
- afdUPeF417PBvcgFY+BnlE6WnpX3DQAkM2rk4mvWkE7Pq6SQWm5jzs8
+ bh=G0nnA5K3vgx6DnvgX5PBKRNHiMmd0ZDMM0I+7unVnUs=;
+ b=Or384oTYmhezGr12VgUCqXcg3RIjHRi1VIREbML7u8xdTtJvzi8P8v1XYtrkZ/MyxcN22pjLV
+ ZU7Emfb4fcGBc4PgU9uzX0rG1VNuzCTFopsvPnTDBNOyD35qOIS9jAr
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Ridong Chen <chenridong@xiaomi.com>
+To enable moving file pages in folio_mark_accessed directly and lazily
+for MGLRU, allow updating the LRU statistic atomically without holding a
+lock. It may cause temporary counter underflow, which should be fine as
+the counter is eventually consistent and only serves as an estimate.
 
-lru_gen_folio_seq() computes how many generations below max_seq a folio
-should be added to, but stores it in a variable named "gen". Elsewhere in
-MGLRU "gen" means an index into lrugen->folios[], i.e. seq % MAX_NR_GENS,
-so reusing the name for a relative offset is confusing.
-
-Rename it to "age", which matches what the value means: the newest
-generation is age 1, and a larger age is an older generation.
-
-No functional change.
-
-[kasong: dropped the comment table part, the series rewrites it]
-Signed-off-by: Ridong Chen <chenridong@xiaomi.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mm_inline.h | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ include/linux/mm_inline.h | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index f6f4bc9a704f..2395ca8ee305 100644
+index 2395ca8ee305..2edb9beef6d3 100644
 --- a/include/linux/mm_inline.h
 +++ b/include/linux/mm_inline.h
-@@ -302,7 +302,7 @@ static inline unsigned long lru_gen_folio_seq(const struct lruvec *lruvec,
- 					      const struct folio *folio,
- 					      bool reclaiming)
+@@ -47,12 +47,11 @@ static __always_inline void __update_lru_size(struct lruvec *lruvec,
  {
--	int gen;
-+	int age;
- 	int type = folio_is_file_lru(folio);
- 	const struct lru_gen_folio *lrugen = &lruvec->lrugen;
+ 	struct pglist_data *pgdat = lruvec_pgdat(lruvec);
  
-@@ -319,17 +319,17 @@ static inline unsigned long lru_gen_folio_seq(const struct lruvec *lruvec,
- 	 * |<---------------------------- MAX_NR_GENS ---------------------------->|
- 	 */
- 	if (folio_test_active(folio))
--		gen = MIN_NR_GENS - folio_test_workingset(folio);
-+		age = MIN_NR_GENS - folio_test_workingset(folio);
- 	else if (reclaiming)
--		gen = MAX_NR_GENS;
-+		age = MAX_NR_GENS;
- 	else if ((!folio_is_file_lru(folio) && !folio_test_swapcache(folio)) ||
- 		 (folio_test_reclaim(folio) &&
- 		  (folio_test_dirty(folio) || folio_test_writeback(folio))))
--		gen = MIN_NR_GENS;
-+		age = MIN_NR_GENS;
- 	else
--		gen = MAX_NR_GENS - (folio_test_workingset(folio) || folio_test_referenced(folio));
-+		age = MAX_NR_GENS - (folio_test_workingset(folio) || folio_test_referenced(folio));
+-	lockdep_assert_held(&lruvec->lru_lock);
+ 	WARN_ON_ONCE(nr_pages != (int)nr_pages);
  
--	return max(READ_ONCE(lrugen->max_seq) - gen + 1, READ_ONCE(lrugen->min_seq[type]));
-+	return max(READ_ONCE(lrugen->max_seq) - age + 1, READ_ONCE(lrugen->min_seq[type]));
+ 	mod_lruvec_state(lruvec, NR_LRU_BASE + lru, nr_pages);
+-	__mod_zone_page_state(&pgdat->node_zones[zid],
+-				NR_ZONE_LRU_BASE + lru, nr_pages);
++	mod_zone_page_state(&pgdat->node_zones[zid],
++			    NR_ZONE_LRU_BASE + lru, nr_pages);
  }
  
- static inline bool __lru_gen_add_folio(struct lruvec *lruvec, struct folio *folio,
+ static __always_inline void update_lru_size(struct lruvec *lruvec,
 
 -- 
 2.56.1
