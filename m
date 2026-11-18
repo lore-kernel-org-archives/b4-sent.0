@@ -1,11 +1,11 @@
 From: Joachim Eastwood <joachim.eastwood@gmail.com>
-Date: Wed, 18 Nov 2026 22:45:30 +0100
-Subject: [PATCH 3/4] arm64: dts: rockchip: use i2c-gpio for hdmi ddc on
+Date: Wed, 18 Nov 2026 22:45:31 +0100
+Subject: [PATCH 4/4] arm64: dts: rockchip: enable hdmi sound on
  rk3588-h96-max-v58
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-dw-hdmi-qp-bridge_attach-v1-3-e370920bc7f3@gmail.com>
+Message-Id: <20261118-dw-hdmi-qp-bridge_attach-v1-4-e370920bc7f3@gmail.com>
 References: <20261118-dw-hdmi-qp-bridge_attach-v1-0-e370920bc7f3@gmail.com>
 In-Reply-To: <20261118-dw-hdmi-qp-bridge_attach-v1-0-e370920bc7f3@gmail.com>
 To: Sandy Huang <hjc@rock-chips.com>, 
@@ -26,79 +26,49 @@ Cc: dri-devel@lists.freedesktop.org, linux-rockchip@lists.infradead.org,
  devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  Joachim Eastwood <joachim.eastwood@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795038370; l=2059;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795038370; l=838;
  i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
- bh=ZKHrf9fZfya43GZzxlgu/vfQ6CugSi9lV4hIpaRZsLU=;
- b=uyr04LBj1Nkn02R5XunZ6iLLnYc3emIzJl0246OwELe6DeMlNxzvY5CUUxs7ZSy600h8hBtt9
- xRJbf1vdC2qDiR9dNIaXCijrlEPVUkyd/ClCCn1XF0OPfwPmuEaSwKB
+ bh=Olvh2LZXh8fwddYqdBGYqLRZSxdXzrxttsogQiNz044=;
+ b=+rBsl+l7IxeVv/QH09lai1TD/u5HoNCnxlTLKxgYu1V3vc3HHrgm7mebshsZbQVpZmgFuMJtE
+ bOzsqqGuVLXBxOpqr3SQ/NERCfJSzRqjNasrbGxdvb4yJFOU/7PH+ZL
 X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
  pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
 X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On-chip DDC controller is unreliable on this board so override DDC on
-the HDMI connector with i2c-gpio. The root cause of breakage is not
-known but on-chip DDC controller refuses to read the EDID.
+Enable hdmi0_sound and i2s5_8ch to get sound over HDMI.
 
 Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
 ---
- .../arm64/boot/dts/rockchip/rk3588-h96-max-v58.dts | 22 ++++++++++++++++++++--
- 1 file changed, 20 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/rockchip/rk3588-h96-max-v58.dts | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/rockchip/rk3588-h96-max-v58.dts b/arch/arm64/boot/dts/rockchip/rk3588-h96-max-v58.dts
-index 3811f9a73bb6c..da6282c105255 100644
+index da6282c105255..5dd3f71932ec1 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3588-h96-max-v58.dts
 +++ b/arch/arm64/boot/dts/rockchip/rk3588-h96-max-v58.dts
-@@ -37,6 +37,7 @@ chosen {
- 
- 	hdmi0-con {
- 		compatible = "hdmi-connector";
-+		ddc-i2c-bus = <&i2c_gpio_ddc>;
- 		type = "a";
- 
- 		port {
-@@ -46,6 +47,16 @@ hdmi0_con_in: endpoint {
- 		};
+@@ -239,6 +239,10 @@ hdmi0_out_con: endpoint {
  	};
+ };
  
-+	/* on-chip DDC controller is unreliable on this board */
-+	i2c_gpio_ddc: i2c-ddc {
-+		compatible = "i2c-gpio";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&i2c_ddc_scl &i2c_ddc_sda>;
-+		scl-gpios = <&gpio4 RK_PB7 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+		sda-gpios = <&gpio4 RK_PC0 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+		i2c-gpio,delay-us = <5>;
-+	};
++&hdmi0_sound {
++	status = "okay";
++};
 +
- 	ir-receiver {
- 		compatible = "gpio-ir-receiver";
- 		gpios = <&gpio0 RK_PD4 GPIO_ACTIVE_LOW>;
-@@ -211,8 +222,7 @@ &gpu {
- 
- &hdmi0 {
- 	frl-enable-gpios = <&gpio4 RK_PB1 GPIO_ACTIVE_LOW>;
--	pinctrl-0 = <&hdmim0_tx0_cec &hdmim0_tx0_hpd
--		     &hdmim0_tx0_scl &hdmim0_tx0_sda &hdmi0_tx_on_h>;
-+	pinctrl-0 = <&hdmim0_tx0_cec &hdmim0_tx0_hpd &hdmi0_tx_on_h>;
- 	pinctrl-names = "default";
+ &hdptxphy0 {
  	status = "okay";
  };
-@@ -347,6 +357,14 @@ hdmi {
- 		hdmi0_tx_on_h: hdmi0-tx-on-h {
- 			rockchip,pins = <4 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
- 		};
-+
-+		i2c_ddc_scl: i2c-ddc-scl {
-+			rockchip,pins = <4 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+
-+		i2c_ddc_sda: i2c-ddc-sda {
-+			rockchip,pins = <4 RK_PC0 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
+@@ -299,6 +303,10 @@ hym8563: rtc@51 {
  	};
+ };
  
- 	hym8563 {
++&i2s5_8ch {
++	status = "okay";
++};
++
+ &gmac1 {
+ 	clock_in_out = "output";
+ 	phy-handle = <&rgmii_phy1>;
 
 -- 
 2.56.0
