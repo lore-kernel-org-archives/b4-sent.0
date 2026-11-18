@@ -1,10 +1,10 @@
 From: Radu Sabau <radu.sabau@analog.com>
-Date: Wed, 18 Nov 2026 15:17:44 +0200
-Subject: [PATCH v7 2/7] iio: imu: adis: Add optional self_test callback
+Date: Wed, 18 Nov 2026 15:17:45 +0200
+Subject: [PATCH v7 3/7] iio: imu: adis: Add optional init callback
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261118-adis16607-v7-2-707609737691@analog.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261118-adis16607-v7-3-707609737691@analog.com>
 References: <20261118-adis16607-v7-0-707609737691@analog.com>
 In-Reply-To: <20261118-adis16607-v7-0-707609737691@analog.com>
 To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -21,67 +21,70 @@ Cc: linux-iio@vger.kernel.org, linux@analog.com,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Jonathan Cameron <jic23@kernel.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795007863; l=2180;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795007863; l=2194;
  i=radu.sabau@analog.com; s=20261001; h=from:subject:message-id;
- bh=tkzZy4kOyhyn9i1xmuSSgwdCRKGw+8zTfZiJqELNqH0=;
- b=1n3SayWj8/hOgOU+vMli2hY+T8/nVKjzYQr8GhtNb/pCcfYeRM2jWHa0HYsrD9X9uFpFPiY7K
- 09oyfBZbm1xC/s1gFzC4w4qKfix3MFbtcmLVaCqHbO7j9sDTLUVYNNR
+ bh=SjMU42Lj85caa9S//To07byzpthfksaMvSiYpZwwChI=;
+ b=F1YwaQR89yDUJO84jC1UZyn77TMVwYuz5mqTGedqirZclje4cy9twPnfYzhkQA9QwGDdifW8E
+ Q1yxllycP+uDtB0MyqAlZHL6Z+ZCWRjGIDqg/4QkZc3DPND7tWbRj9i
 X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
  pk=XOZSO/Ut8qfYw7khL8lUF65Pgl+VLihISyS+Iy9jY8c=
 X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20261001 with auth_id=1094
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an optional self_test callback to struct adis_data, for devices
-whose self-test doesn't fit the generic mask-write/sleep/check-status
-sequence. Purely additive: defaults to NULL, no change for existing
-drivers.
+Add an optional init callback to struct adis_data, called right
+after reset and before self-test. Not all ADIS devices need extra
+bring-up between reset and self-test (SPI mode locking, status or
+bootloader checks, pin or burst-mode configuration, etc.) - purely
+additive: defaults to NULL, no change for existing drivers.
 
-Reviewed-by: Nuno Sá <nuno.sa@analog.com>
 Signed-off-by: Radu Sabau <radu.sabau@analog.com>
 ---
- drivers/iio/imu/adis.c       | 3 +++
+ drivers/iio/imu/adis.c       | 6 ++++++
  include/linux/iio/imu/adis.h | 7 +++++++
- 2 files changed, 10 insertions(+)
+ 2 files changed, 13 insertions(+)
 
 diff --git a/drivers/iio/imu/adis.c b/drivers/iio/imu/adis.c
-index 793e3b6b0ea7..5c3bb7259037 100644
+index 5c3bb7259037..e2cf42b8b946 100644
 --- a/drivers/iio/imu/adis.c
 +++ b/drivers/iio/imu/adis.c
-@@ -357,6 +357,9 @@ static int adis_self_test(struct adis *adis)
- 	int ret;
- 	const struct adis_timeout *timeouts = adis->data->timeouts;
+@@ -419,6 +419,12 @@ int __adis_initial_startup(struct adis *adis)
+ 		msleep(timeouts->sw_reset_ms);
+ 	}
  
-+	if (adis->data->self_test)
-+		return adis->data->self_test(adis);
++	if (adis->data->init) {
++		ret = adis->data->init(adis);
++		if (ret)
++			return ret;
++	}
 +
- 	ret = __adis_write_reg_16(adis, adis->data->self_test_reg,
- 				  adis->data->self_test_mask);
- 	if (ret) {
+ 	ret = adis_self_test(adis);
+ 	if (ret)
+ 		return ret;
 diff --git a/include/linux/iio/imu/adis.h b/include/linux/iio/imu/adis.h
-index 97323b8d1cb3..c09b381eb619 100644
+index c09b381eb619..c9016f636530 100644
 --- a/include/linux/iio/imu/adis.h
 +++ b/include/linux/iio/imu/adis.h
 @@ -52,6 +52,12 @@ struct adis_timeout {
   * @self_test_mask: Bitmask of supported self-test operations
   * @self_test_reg: Register address to request self test command
   * @self_test_no_autoclear: True if device's self-test needs clear of ctrl reg
-+ * @self_test: Optional device-specific self-test override. When set,
-+ *		it is called instead of the generic mask-write/sleep/
-+ *		check-status sequence. The callback owns its own pass/fail
-+ *		determination entirely (it should call __adis_check_status()
-+ *		itself if it wants status-register checks). Must return 0 on
-+ *		success, a negative error code otherwise.
-  * @status_error_msgs: Array of error messages
-  * @status_error_mask: Bitmask of errors supported by the device
-  * @timeouts: Chip specific delays
-@@ -82,6 +88,7 @@ struct adis_data {
++ * @init: Optional device-specific hook called after reset,
++ *		before self-test. Not all ADIS devices need extra bring-up
++ *		between reset and self-test (SPI mode locking, status or
++ *		bootloader checks, pin or burst-mode configuration, etc.) -
++ *		only called when set. Must return 0 on success, a negative
++ *		error code otherwise.
+  * @self_test: Optional device-specific self-test override. When set,
+  *		it is called instead of the generic mask-write/sleep/
+  *		check-status sequence. The callback owns its own pass/fail
+@@ -88,6 +94,7 @@ struct adis_data {
  	unsigned int self_test_mask;
  	unsigned int self_test_reg;
  	bool self_test_no_autoclear;
-+	int (*self_test)(struct adis *adis);
++	int (*init)(struct adis *adis);
+ 	int (*self_test)(struct adis *adis);
  	const struct adis_timeout *timeouts;
  
- 	const char * const *status_error_msgs;
 
 -- 
 2.43.0
