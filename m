@@ -1,11 +1,11 @@
 From: Florian Bauckholt <florian.bauckholt@cispa.de>
-Date: Thu, 19 Nov 2026 00:19:28 +0100
-Subject: [PATCH v2 1/2] KEYS: fix signature length passed to
- KEYCTL_PKEY_VERIFY
+Date: Thu, 19 Nov 2026 00:19:29 +0100
+Subject: [PATCH v2 2/2] KEYS: asymmetric: Fix PKCS#1 decryption of an empty
+ message
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-keyctl-pkey-fixes-v2-1-9e2d1c7db7ec@cispa.de>
+Message-Id: <20261119-keyctl-pkey-fixes-v2-2-9e2d1c7db7ec@cispa.de>
 References: <20261119-keyctl-pkey-fixes-v2-0-9e2d1c7db7ec@cispa.de>
 In-Reply-To: <20261119-keyctl-pkey-fixes-v2-0-9e2d1c7db7ec@cispa.de>
 To: David Howells <dhowells@redhat.com>, 
@@ -20,61 +20,68 @@ Cc: Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Florian Bauckholt <florian.bauckholt@cispa.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795044005; l=2019;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795044005; l=2154;
  i=florian.bauckholt@cispa.de; s=20261105; h=from:subject:message-id;
- bh=N7REUG2kPhLJRwBc7RQwMvseCRnp8G0f0SHndQLFK84=;
- b=wSsNJ4/DKFfO0vdFGpQJfzVa8dJ017dKUNWPMWaEWXXHpVYVoAkcNfEMHgfl83BghL0USVvEF
- FXj7nNAKOtpBz1L9okSFKAosb93728onlmmj0rk1rixMNgzkKntZHh8
+ bh=61cY2hx+6753NibYFuLl6rSMCEQVY9VLZLVipWWk1vM=;
+ b=iX57flM5+ziDYBQrrp9KJ7kUDnjAqKWOgTIfvcM4S0fiRan6GPJMyfgKXEnDX3bFjNNWS3w4q
+ GB7GkxeEikiD9yfpiYk3HDJJC6gB7oaIQwQerKvj+g48chhA1UksQao
 X-Developer-Key: i=florian.bauckholt@cispa.de; a=ed25519;
  pk=n9klXQ+dI45FWy0qWLrGpQfXU5ylIA0SN+uWSmOx3ok=
 X-Endpoint-Received: by B4 Relay for florian.bauckholt@cispa.de/20261105 with auth_id=1420
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit cb481e59ea6c ("KEYS: fix overflow in keyctl_pkey_params_get_2()")
-made keyctl_pkey_params_get_2() set params->out_len to the maximum
-output size of the operation instead of the size provided by the caller.
-It does so for KEYCTL_PKEY_VERIFY as well, but verify has no output
-buffer: out_len shares a union with in2_len, the length of the
-signature.
+KEYCTL_PKEY_DECRYPT with enc=pkcs1 on a valid ciphertext of an empty
+message returns the key size instead of 0, and the output buffer is
+filled with the ciphertext.
 
-As a result keyctl_pkey_verify() ignores the signature length passed by
-the caller and always reads max_sig_size bytes from the signature
-pointer. A shorter signature is extended with whatever follows it in
-the caller's memory, or the call fails with -EFAULT if that memory is
-not readable.
+crypto_akcipher_sync_encrypt() returns 0 on success, so
+software_key_eds_op() maps a result of 0 to crypto_akcipher_maxsize().
+The mapping is applied to decryption as well, but
+crypto_akcipher_sync_decrypt() returns the length of the plaintext,
+which is 0 for an empty message. By then crypto_akcipher_sync_post()
+has copied its scratch buffer to the output. pkcs1pad copied nothing
+into that buffer, so it still holds the ciphertext.
 
-The x962 ECDSA template currently ignores data following a DER-encoded
-signature, which hides the problem there. A truncated RSA signature,
-however, is accepted if the bytes following it happen to match the ones
-that were cut off, as reported by Rodolfo Giometti [1].
+Only the caller's own input is returned, so nothing is disclosed, and
+messages that are not empty are decrypted correctly. An empty message
+is valid, though: RFC 8017 section 7.2 only limits the message length
+to k - 11 octets.
 
-Use the length provided by the caller, which has already been checked
-against max_sig_size.
+Apply the mapping to encryption only.
 
-Fixes: cb481e59ea6c ("KEYS: fix overflow in keyctl_pkey_params_get_2()")
-Cc: stable@vger.kernel.org
+Fixes: 63ba4d67594a ("KEYS: asymmetric: Use new crypto interface without scatterlists")
+Cc: stable@vger.kernel.org # v6.5+
 Link: https://lore.kernel.org/all/20260919221742.3709658-1-benquike@gmail.com/
-Link: https://lore.kernel.org/all/0e20f799-e389-40d2-aaee-2f174748faae@enneenne.com/ [1]
 Reviewed-by: Jarkko Sakkinen <jarkko@kernel.org>
-Tested-by: Stefan Berger <stefanb@linux.ibm.com>
 Signed-off-by: Florian Bauckholt <florian.bauckholt@cispa.de>
 ---
- security/keys/keyctl_pkey.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ crypto/asymmetric_keys/public_key.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/security/keys/keyctl_pkey.c b/security/keys/keyctl_pkey.c
-index e7121523b9c9..722521a014ab 100644
---- a/security/keys/keyctl_pkey.c
-+++ b/security/keys/keyctl_pkey.c
-@@ -175,7 +175,7 @@ static int keyctl_pkey_params_get_2(const struct keyctl_pkey_params __user *_par
- 			goto out_up_key_sem;
- 		}
- 
--		params->out_len = info.max_sig_size;
-+		params->in2_len = uparams.in2_len;
+diff --git a/crypto/asymmetric_keys/public_key.c b/crypto/asymmetric_keys/public_key.c
+index 09a0b83d5d77..d71747d93b2c 100644
+--- a/crypto/asymmetric_keys/public_key.c
++++ b/crypto/asymmetric_keys/public_key.c
+@@ -341,6 +341,9 @@ static int software_key_eds_op(struct kernel_pkey_params *params,
+ 			break;
+ 		ret = crypto_akcipher_sync_encrypt(tfm, in, params->in_len,
+ 						   out, params->out_len);
++		/* Returns 0 on success and always fills the whole output. */
++		if (ret == 0)
++			ret = crypto_akcipher_maxsize(tfm);
  		break;
- 	default:
- 		ret = -EOPNOTSUPP;
+ 	case kernel_pkey_decrypt:
+ 		if (issig)
+@@ -358,9 +361,6 @@ static int software_key_eds_op(struct kernel_pkey_params *params,
+ 		BUG();
+ 	}
+ 
+-	if (!issig && ret == 0)
+-		ret = crypto_akcipher_maxsize(tfm);
+-
+ error_free_tfm:
+ 	if (issig)
+ 		crypto_free_sig(sig);
 
 -- 
 2.56.0
