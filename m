@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 18 Nov 2026 18:25:37 +0100
-Subject: [PATCH v2 04/12] dt-bindings: regulator: qcom,usb-vbus-regulator:
- Add pmi8998 and pm660
+Date: Wed, 18 Nov 2026 18:25:38 +0100
+Subject: [PATCH v2 05/12] arm64: dts: qcom: pmi8998: Add node for PMIC VBUS
+ booster
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-pmi8998-vbus-v2-4-3c77a72b280a@ixit.cz>
+Message-Id: <20261118-pmi8998-vbus-v2-5-3c77a72b280a@ixit.cz>
 References: <20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz>
 In-Reply-To: <20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz>
 To: Alexey Minnekhanov <alexeymin@minlexx.ru>, 
@@ -23,66 +23,62 @@ Cc: Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org,
  linux-pm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1376; i=david@ixit.cz;
- h=from:subject:message-id; bh=iOvaxT1G2XggGbeguNuBhCumUCCnVFoo/EJHZMzemjU=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/d+XFuPrWspHz0miqC/yWOVsqMFXFIgZPsEzr
- ljLnGzKRAeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3flwAKCRBgAj/E00kg
- coz0EACAFvKPWMjZK+r8pF7ySaq6i5bl+/hHZqLw2+kVCr/AEwVpylT8fEjDTOy/OHRd4NHOUJ7
- hWaboAHTpc+okUIpvDJ78EdCXinzoasks3mKnUMicEdVjDD3JV2tmb4Wxgi7X6e+1bNONR4tkZk
- /dYUrC/1NwP2Go9bE9VeAbtuWOngNMIw+SrgJmjztAhW01saymfaWcrUjeV/C0XCeRMpGnL+S5/
- yQweeho95OuyO8isF7R13wENLfQ/79Jf45dzN/x87i7/g46DXLtUBD6EFfk4DVvdsuHlQIMD1/o
- /gqFXcD2fiZMXPReThwSQAdkP7IUwjNHu+S5tLXNn2DSqIFPpzb6K2/CiXSxF00wU7/Gg1XIL+c
- 0IAv34gION47c3ka75ph+pKOnaoZPsgvZjqgB/7nTF7ATG/1ENLkPUhyzazowN3h37y+jdnpYmI
- EjDv06WI1w5Mlsg6jKZahoQN5bi9RrDgveaC1xDLJYJzsfBe1ZKDlrEBce9JSjp/foLEheniWO8
- BLh+1K8yKi9/jV9RmQiq+3a5ttHiv9pDfxCtrSSRvjenf2SX6zgK0uXx0x5nCIYf3HHPbtCRZ81
- cbMGev6iXiGRKfi1JpK5WWfjSQmhssmbjTvGnHhMJVyabbZxeHBrhJJCHezfYKWszOCndEUZ4RH
- 9ABGTObMyUKmtcw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1153; i=david@ixit.cz;
+ h=from:subject:message-id; bh=Vml5iGmLl1DRnRJN3EG4LOdQ6VYHu9Isno8WfrbJtu0=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq/d+XemSzEY+u+p5xduVbCY5qO/O3Aygrw5bOq
+ QQpsVQYqa6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCav3flwAKCRBgAj/E00kg
+ ciI4D/4wKee+VYKUNi3UFoP1r1oc2tDloP/9f0eHvYdr9US6whWYCtZO12lCJZt7H0kjfzTaMAT
+ MZ6CImazYP7oAkvqTC7U/mHGQHlbq7BhA4ECOmrGf4O3nrf6d6g1Yb1GTc7JouReujrPDSvbAHW
+ JyiVliU4K+kmXCpsNGxd5W22FdKECk0aDtBmQdc2XEdY40WUNLhHVpdzmeANyuKdxJpEZuKaA/9
+ sBKsxxs9vX3lIwSvuiLLXkB7mEnx0vGiX+W7GtLKy/3v7U3rHTgRMxT7HoKx5lAcrQVRwJSOje7
+ HRX6j4XCw7DJNwmXAElrSEDNToJ+HXnyHSp/yIF6XBKPYXcoCEBTi4w8DNkRWcQI6D6lrYySIrk
+ Kaq8+t2in19t/0bkBJBBrOtDb0yvb/ONQxQVE/rnSp20n3WgYaMjDhSuxr4M/4VLPhYMiPn5S3Q
+ qQL4SmSsrLTmHV3n00RQ9czrWY0xaHPQ53nEUock6gJ6cd4QCsKzjK8BpymR/WqEDwCbzmFJRCy
+ n3EqMcuSB5EqClSb8FZubS/tuXAEdyGuGpB0KDvMPBjypgGhW87k2zqMeGJ4ERR67ffuPh3uSBa
+ IMmQQhMIczBkuE7fWvK+O8W3iMKazfyPSFTtsoesA2fsP9Gqb4Pja6OOACqYyb5GJws1v1forux
+ XgwC2A8he5BtrCw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The VBUS register block on the PMI8998 and PM660 PMIC shares the design.
-Define corresponding compatible string, having the
-qcom,pmi8998-vbus-reg as a fallback.
+Add the required DTS node for the USB VBUS output regulator, which is
+available on PMI8998. This will provide the VBUS source to connected
+peripherals.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml       | 5 +++++
- 1 file changed, 5 insertions(+)
+ arch/arm64/boot/dts/qcom/pmi8998.dtsi | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml b/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml
-index 024b34d0eb1a6..96f984060ce4d 100644
---- a/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml
-+++ b/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml
-@@ -22,22 +22,27 @@ description: |
-   and 5.0 V.
+diff --git a/arch/arm64/boot/dts/qcom/pmi8998.dtsi b/arch/arm64/boot/dts/qcom/pmi8998.dtsi
+index cd3f0790fd420..9d65dd4abcdbb 100644
+--- a/arch/arm64/boot/dts/qcom/pmi8998.dtsi
++++ b/arch/arm64/boot/dts/qcom/pmi8998.dtsi
+@@ -24,16 +24,23 @@ pmi8998_charger: charger@1000 {
  
- properties:
-   compatible:
-     oneOf:
-       - enum:
-           - qcom,pm8150b-vbus-reg
-           - qcom,pm4125-vbus-reg
-+          - qcom,pmi8998-vbus-reg
-       - items:
-           - enum:
-               - qcom,pm6150-vbus-reg
-               - qcom,pm7250b-vbus-reg
-               - qcom,pmi632-vbus-reg
-           - const: qcom,pm8150b-vbus-reg
-+      - items:
-+          - enum:
-+              - qcom,pm660-vbus-reg
-+          - const: qcom,pm8998-vbus-reg
+ 			io-channels = <&pmi8998_rradc 3>,
+ 				      <&pmi8998_rradc 4>;
+ 			io-channel-names = "usbin_i", "usbin_v";
  
-   reg:
-     maxItems: 1
-     description: VBUS output base address
+ 			status = "disabled";
+ 		};
  
- allOf:
-   - $ref: regulator.yaml#
-   - if:
++		pmi8998_vbus: usb-vbus-regulator@1100 {
++			compatible = "qcom,pmi8998-vbus-reg";
++			reg = <0x1100>;
++
++			status = "disabled";
++		};
++
+ 		pmi8998_gpios: gpio@c000 {
+ 			compatible = "qcom,pmi8998-gpio", "qcom,spmi-gpio";
+ 			reg = <0xc000>;
+ 			gpio-controller;
+ 			gpio-ranges = <&pmi8998_gpios 0 0 14>;
+ 			#gpio-cells = <2>;
+ 			interrupt-controller;
+ 			#interrupt-cells = <2>;
 
 -- 
 2.55.0
