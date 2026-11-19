@@ -1,173 +1,143 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Fri, 20 Nov 2026 01:14:30 +0200
-Subject: [PATCH] irqchip/meson-gpio: Restore the channel setup after
- hibernation
+From: Joan Maillard <joan.md@proton.me>
+Date: Fri, 20 Nov 2026 00:47:19 +0100
+Subject: [PATCH] Input: xpad - drop truncated Xbox 360 input reports
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-meson-gpio-hibernate-v1-1-462fdd55810a@iav.lv>
-X-B4-Tracking: v=1; b=H4sIANaC/2oC/x2MQQqAIBAAvxJ7bkGFhPpKdChbbQ+paEQg/b2l4
- zDMNKhUmCpMXYNCN1dOUUD3HbhjjYGQd2EwylitjcKTaooYMic8eKMS14twEKdHv1vvLEiaC3l
- +/u28vO8HycQ6aGYAAAA=
-To: Thomas Gleixner <tglx@kernel.org>, Radu Rendec <radu@rendec.net>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4669; i=iav@iav.lv;
- h=from:subject:message-id; bh=8E657J8E9V1B6VWAcIoFiF9rMDrYJrYzKUQ3uwXqqLM=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFn/m64f63MT/NzBfF2X+ZPwo+Qez9ff7eay8zz+kydnm
- GI1RXJqRykLgxgXg6yYIsuEQxq3MpZc/evvYf4AZg4rE8gQBi5OAZiI2yNGhuZkx9wrdnwaKcGS
- pY/F6rbxG+3UO+IQJJuibnAnfVJMAsP/guTL9xgy1gTd+r+b54zcKbYJh8PvWNnf0N31hD3Ch8m
- VEQA=
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Message-Id: <20261120-xpad-truncated-v1-1-74514e0498c3@proton.me>
+X-B4-Tracking: v=1; b=H4sIAIaK/2oC/x3MTQqAIBBA4avErBOawJ+6SrQQnWo2JlohSHdPW
+ n6L9ypkSkwZ5q5Cooczn6EB+w7cYcNOgn0zjMOoEHESJVovrnQHZy/yAqVE5zUZpQ20KCbauPz
+ DZX3fDzx2oDVgAAAA
+X-Change-ID: 20261119-xpad-truncated-1551cd7e8678
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: linux-input@vger.kernel.org, Joan Maillard <joan.md@proton.me>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795132053; l=5127;
+ i=joan.md@proton.me; s=20261119; h=from:subject:message-id;
+ bh=tdp62fZVjV9JdeJU7vPAFFDtdaU/xYLcHfV3h/gbUnc=;
+ b=+GQZP3vrDf3u3V7oL+0/froD6+KAzdgmO8XVsch5C+L3EF98jhyJX8Cu7WiscZyBJTBf6m2lo
+ l/HhV1rFBW+B75jOBi8RTwYlIA3q/NzjncqiwpA0iE6zPsmF+vROfCc
+X-Developer-Key: i=joan.md@proton.me; a=ed25519;
+ pk=kywOHDNagSGO48kcqDUiYZklWcOrOiU0lmBEaVM3qWk=
+X-Endpoint-Received: by B4 Relay for joan.md@proton.me/20261119 with auth_id=1574
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The GPIO interrupt mux takes the first free channel when an interrupt is
-mapped, so the channel a pad gets depends on probe order. A hibernation
-image is restored by a freshly booted kernel that maps the interrupts in
-its own order, and the controller may lose power while the image is on
-disk. The restored kernel keeps its channel table, but the hardware
-routes the pads as the boot kernel set them up.
+The GuliKit KingKong3 Max (NS39, firmware V5.9) enumerates as a wired
+Xbox 360 controller (045e:028e, manufacturer string "Guli") and
+occasionally sends truncated input reports. This leads to intrusive
+phantom inputs behaving like fast and repeated keypresses, making the
+controller unusable while wired.
 
-On ODROID-HC4, after a power cut during hibernation, PIN_03_SEL changed
-from 0x54521a3b to 0x001a523b: the PHY and RTC channels swapped, the
-PHY interrupt ran the pcf8563 handler and the link was never reported.
-This happened on 7 of 11 restores.
+A usbmon capture over 150 seconds with no buttons pressed contained 156957
+regular 20-byte reports, 3012 transfers that failed with -EOVERFLOW,
+362 zero-length packets and 284 truncated packets of 6 to 19 bytes,
+mostly 16. Every truncated packet arrived within a burst of -EOVERFLOW
+errors, most of them directly after one, so the pad appears to
+occasionally send oversized transfers of which only a fragment
+gets through. Most of the 16-byte packets are the previous report
+with its first four bytes missing. For example:
 
-Save the register block in syscore suspend and write it back in syscore
-resume. create_image() calls them around the snapshot, so the image's
-own setup comes back.
+  20 bytes: 00 14 00 00 00 00 67 01 87 01 47 ff 57 ff 00 00 00 00 00 00
+  16 bytes:             00 00 67 01 87 01 47 ff 57 ff 00 00 00 00 00 00
 
-Tested on ODROID-HC4: 10 restores after a power cut, the registers and
-the network came back every time.
+xpad360_process_packet() only checks that byte 0 is 0x00, which such a
+packet often passes, so the stick values are parsed as buttons and
+triggers. With the stick above at rest, userspace sees D-pad left, Back,
+left stick click and LB pressed, with the left trigger at 135. The
+truncated packets come in bursts, so the phantom presses repeat at about
+50 Hz for a few hundred milliseconds. The same pad shows no phantom
+inputs on Windows.
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Byte 1 of an Xbox 360 input report holds the report length (0x14). Drop
+input reports that are shorter than the 14 bytes the parser reads, or
+shorter than the length they declare. This leaves complete reports
+untouched and does not affect non-input packets, which are already
+ignored.
+
+A bug report was also sent to the manufacturer GuliKit.
+
+The diagnosis (analysis of evtest logs and the usbmon capture), the fix
+and a first draft of this changelog were produced with the help of an AI
+assistant (Claude Opus 5.5 by Anthropic). I reviewed and tested the change.
+
+Signed-off-by: Joan Maillard <joan.md@proton.me>
 ---
-Tested on ODROID-HC4 with v7.3.5 and v7.4-rc3 based kernels: hybrid sleep, power removed while asleep, image restored on the next boot.
----
- drivers/irqchip/irq-meson-gpio.c | 53 +++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 52 insertions(+), 1 deletion(-)
+Tested on Debian's 7.2.12 kernel with the KK3 Max; no phantom inputs
+made it through to the game during 4 hours of play. I would be happy to make
+a short capture run to compare the debug log and a parallel usbmon
+capture, along with the commands used to extract them, upon request.
 
-diff --git a/drivers/irqchip/irq-meson-gpio.c b/drivers/irqchip/irq-meson-gpio.c
-index e0329ef5e4a2..009576633ff7 100644
---- a/drivers/irqchip/irq-meson-gpio.c
-+++ b/drivers/irqchip/irq-meson-gpio.c
-@@ -15,6 +15,7 @@
- #include <linux/irqchip.h>
- #include <linux/of.h>
- #include <linux/of_address.h>
-+#include <linux/syscore_ops.h>
- 
- #define MAX_NUM_CHANNEL 64
- #define MAX_INPUT_MUX 256
-@@ -245,6 +246,9 @@ struct meson_gpio_irq_controller {
- 	u32 channel_irqs[MAX_NUM_CHANNEL];
- 	DECLARE_BITMAP(channel_map, MAX_NUM_CHANNEL);
- 	raw_spinlock_t lock;
-+	struct syscore syscore;
-+	unsigned int nr_regs;
-+	u32 *saved_regs;
- };
- 
- static void meson_gpio_irq_update_bits(struct meson_gpio_irq_controller *ctl,
-@@ -633,6 +637,35 @@ static const struct irq_domain_ops meson_gpio_irq_domain_ops = {
- 	.translate	= meson_gpio_irq_domain_translate,
- };
+The check is deliberately lenient: it accepts any input report that is at
+least 14 bytes long and as long as it declares, so pads that send shorter
+but complete reports keep working. A device-specific quirk was
+considered, but would be hard to reliably target: the pad uses Microsoft's
+VID/PID, and its manufacturer string changed between firmware versions
+(specifically, before writing the patch, an older firmware was in the
+controller; it reported "FMD" on V3.8, "Guli" on V5.9).
+
+I also considered doing the check inside xpad360_process_packet(), next to
+the existing byte 0 check. That function is shared with the wireless receiver
+path, which passes the report embedded at offset 4 of a larger frame, so
+it would need a length parameter and would change behavior for wireless pads,
+which I cannot test. I therefore kept the check in the wired dispatch path;
+happy to move it if that is preferred.
+
+Thank you very much for any attention and time you might spend on this
+matter.
+---
+ drivers/input/joystick/xpad.c | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/drivers/input/joystick/xpad.c b/drivers/input/joystick/xpad.c
+index d2eb48d98fead7d89eb3e45613a52176c4fa5fad..0a9e23f6b5fd26950335d39a73c5205c879b9f17 100644
+--- a/drivers/input/joystick/xpad.c
++++ b/drivers/input/joystick/xpad.c
+@@ -1217,6 +1217,30 @@ static void xpadone_process_packet(struct usb_xpad *xpad, u16 cmd, unsigned char
+ 		input_sync(dev);
+ }
  
 +/*
-+ * The kernel that restores a hibernation image routes the channels in its
-+ * own order; write back the image's setup.
++ * Some third-party pads occasionally send truncated input reports, which
++ * xpad360_process_packet() would parse with stick data in the button
++ * fields. Byte 1 of an Xbox 360 input report holds the report length, so
++ * treat an input report as truncated if it is shorter than the 14 bytes
++ * the parser reads or than the length it declares.
 + */
-+static int meson_gpio_irq_suspend(void *data)
++static bool xpad360_is_truncated(struct usb_xpad *xpad, u32 len)
 +{
-+	struct meson_gpio_irq_controller *ctl = data;
-+	unsigned int i;
++	const unsigned char *data = xpad->idata;
 +
-+	for (i = 0; i < ctl->nr_regs; i++)
-+		ctl->saved_regs[i] = readl_relaxed(ctl->base + 4 * i);
++	if (data[0] != 0x00)
++		return false;
 +
-+	return 0;
++	if (len >= 14 && data[1] >= 14 && len >= data[1])
++		return false;
++
++	if (len)
++		dev_dbg(&xpad->intf->dev,
++			"dropping truncated report, %u bytes: %*ph\n",
++			len, (int)len, data);
++	return true;
 +}
 +
-+static void meson_gpio_irq_resume(void *data)
-+{
-+	struct meson_gpio_irq_controller *ctl = data;
-+	unsigned int i;
-+
-+	for (i = 0; i < ctl->nr_regs; i++)
-+		writel_relaxed(ctl->saved_regs[i], ctl->base + 4 * i);
-+}
-+
-+static const struct syscore_ops meson_gpio_irq_syscore_ops = {
-+	.suspend	= meson_gpio_irq_suspend,
-+	.resume		= meson_gpio_irq_resume,
-+};
-+
- static int meson_gpio_irq_parse_dt(struct device_node *node, struct meson_gpio_irq_controller *ctl)
+ static void xpad_irq_in(struct urb *urb)
  {
- 	const struct of_device_id *match;
-@@ -664,6 +697,7 @@ static int meson_gpio_irq_probe(struct platform_device *pdev, struct device_node
- 	struct device_node *node = pdev->dev.of_node;
- 	struct irq_domain *domain, *parent_domain;
- 	struct meson_gpio_irq_controller *ctl;
-+	struct resource res;
- 	int ret;
+ 	struct usb_xpad *xpad = urb->context;
+@@ -1244,6 +1268,8 @@ static void xpad_irq_in(struct urb *urb)
  
- 	if (!parent) {
-@@ -683,10 +717,21 @@ static int meson_gpio_irq_probe(struct platform_device *pdev, struct device_node
- 
- 	raw_spin_lock_init(&ctl->lock);
- 
-+	ret = of_address_to_resource(node, 0, &res);
-+	if (ret)
-+		goto free_ctl;
-+
-+	ctl->nr_regs = resource_size(&res) / 4;
-+	ctl->saved_regs = kzalloc_objs(*ctl->saved_regs, ctl->nr_regs);
-+	if (!ctl->saved_regs) {
-+		ret = -ENOMEM;
-+		goto free_ctl;
-+	}
-+
- 	ctl->base = of_iomap(node, 0);
- 	if (!ctl->base) {
- 		ret = -ENOMEM;
--		goto free_ctl;
-+		goto free_saved_regs;
- 	}
- 
- 	ret = meson_gpio_irq_parse_dt(node, ctl);
-@@ -704,6 +749,10 @@ static int meson_gpio_irq_probe(struct platform_device *pdev, struct device_node
- 		goto free_channel_irqs;
- 	}
- 
-+	ctl->syscore.ops = &meson_gpio_irq_syscore_ops;
-+	ctl->syscore.data = ctl;
-+	register_syscore(&ctl->syscore);
-+
- 	pr_info("%d to %d gpio interrupt mux initialized\n",
- 		ctl->params->nr_hwirq, ctl->params->nr_channels);
- 
-@@ -711,6 +760,8 @@ static int meson_gpio_irq_probe(struct platform_device *pdev, struct device_node
- 
- free_channel_irqs:
- 	iounmap(ctl->base);
-+free_saved_regs:
-+	kfree(ctl->saved_regs);
- free_ctl:
- 	kfree(ctl);
- 
+ 	switch (xpad->xtype) {
+ 	case XTYPE_XBOX360:
++		if (xpad360_is_truncated(xpad, urb->actual_length))
++			break;
+ 		xpad360_process_packet(xpad, xpad->dev, 0, xpad->idata);
+ 		break;
+ 	case XTYPE_XBOX360W:
 
 ---
-base-commit: aab02e49f0b54a0837e58c67651c4abdad1a3208
-change-id: 20261120-meson-gpio-hibernate-561119fd6fc6
+base-commit: 8dac6df92a2e66e2098bbc69061964cfe7e8375b
+change-id: 20261119-xpad-truncated-1551cd7e8678
 
 Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+Joan Maillard <joan.md@proton.me>
 
