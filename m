@@ -1,232 +1,148 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 16:34:53 +0000
-Subject: [PATCH RFC 2/2] media: cedrus: mpeg2: decode MPEG-1 as
- V4L2_PIX_FMT_MPEG1_SLICE
+Date: Thu, 19 Nov 2026 16:39:09 +0000
+Subject: [PATCH] vt: allocate the screen buffers with kvzalloc()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-b4-cedrus-mpeg1-v1-2-aa5ba1192822@gmail.com>
-References: <20261119-b4-cedrus-mpeg1-v1-0-aa5ba1192822@gmail.com>
-In-Reply-To: <20261119-b4-cedrus-mpeg1-v1-0-aa5ba1192822@gmail.com>
-To: Hans Verkuil <hverkuil@kernel.org>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, Maxime Ripard <mripard@kernel.org>, 
- Paul Kocialkowski <paulk@sys-base.io>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>
-Cc: Jonas Karlman <jonas@kwiboo.se>, linux-media@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-staging@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, 
- =?utf-8?q?Christian_Stefan_K=C3=B6v=C3=A9r-Draxl?= <ckoever@outlook.de>, 
- Arun Iyengar <aiyengar1990@gmail.com>
+Message-Id: <20261119-vt-kvzalloc-v1-1-5e5f59b37f61@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBBA0avIrDXREspVxKJqMAjS0ghxd8XyL
+ f6/wKIhtFAEFxh0ZGmZPXgYgO7V3CGjxhtEJFLOec7cxkZ3qmlaNMNURLKRmUpkDL5YDbZ0fLe
+ y+m33ekC9vQu47wcFkD5UbwAAAA==
+X-Change-ID: 20261119-vt-kvzalloc-e6208d87a483
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ Nicolas Pitre <nico@fluxnic.net>, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795106091; l=7907;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795106349; l=4415;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=4OAKGNj/fvmq8EYTd28gnpjS58JFKm9IwxTpeVBNv6Y=;
- b=v7c4QB6HYvoCijXa6CR58r6I2XrsRc8fvnD2VvUrhaOtDSTbc4FBqIYDsbUmvRirCtYZf5bvb
- kebyPf5NBO2C0QDcpgrEq34vXpJec2kk3XROo0eHjO399aA6cK8AFfN
+ bh=83ftxt1Y3R8cULoF8CrapPrLjB8/VCL6Q7syy8fYTqQ=;
+ b=cb/1C90W46uJY1W+sHyRgr96rWWZcFm89KMxF4+WT3nuPzc3Bn/lRrxjcGeme3U9TjrPR2mcf
+ so5JjuVRguhCihuRTgAKezivDTuv0ms44KLgo3WYGGskr49hILlsjeI
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The engine has an MPEG-1 mode, selected with the MPEG-1 decoder type in
-the trigger register, and takes the full pel flags and the picture
-coding type (D-pictures included) in the picture header register.
+A console's screen buffer grows with the display: 480x135 (3840x2160
+with the 8x16 font) needs 129600 bytes, an order-5 kzalloc() that can
+fail when memory is fragmented. On an Orange Pi Zero2 (1 GiB) under
+memory load, plugging in an HDMI monitor gave an order:5 page
+allocation failure in vc_do_resize() from fbcon_startup().
 
-Enumerate V4L2_PIX_FMT_MPEG1_SLICE on every variant with the MPEG-2
-decoder (tested on H616 only), with the MPEG-2 limits, and select the
-MPEG-1 mode from the coded format. try_ctrl accepts the MPEG-1 flag, the
-full pel flags and D-pictures only with the MPEG-1 format. A job whose
-sequence control does not match the coded format fails, as do field
-pictures in MPEG-1 sequences.
+Commit 9a98e7a80f95 ("vt: don't use kmalloc() for the unicode screen
+buffer") moved the unicode buffer to vmalloc for this reason; let the
+screen buffer and its alternate screen copy fall back to vmalloc too.
+Nothing needs them physically contiguous. con_init() keeps its
+GFP_NOWAIT kzalloc(), which kvfree() also handles.
 
+Cc: Nicolas Pitre <nico@fluxnic.net>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/staging/media/sunxi/cedrus/cedrus.c       | 22 +++++++++++++
- drivers/staging/media/sunxi/cedrus/cedrus_dec.c   |  1 +
- drivers/staging/media/sunxi/cedrus/cedrus_hw.c    |  1 +
- drivers/staging/media/sunxi/cedrus/cedrus_mpeg2.c | 38 ++++++++++++++++++++---
- drivers/staging/media/sunxi/cedrus/cedrus_video.c |  7 +++++
- 5 files changed, 65 insertions(+), 4 deletions(-)
+Tested on an Orange Pi Zero2 (H616) on 7.3.4 with KASAN and the order-5
+kmalloc failed by fault injection: 20 of 20 fbcon rebinds fell back to
+vmalloc and kept the screen contents (all 20 fail without the patch).
 
-diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.c b/drivers/staging/media/sunxi/cedrus/cedrus.c
-index c3331b4f3f02..60b296032a90 100644
---- a/drivers/staging/media/sunxi/cedrus/cedrus.c
-+++ b/drivers/staging/media/sunxi/cedrus/cedrus.c
-@@ -77,6 +77,26 @@ static int cedrus_try_ctrl(struct v4l2_ctrl *ctrl)
- 			ctx->bit_depth = bit_depth;
- 			cedrus_reset_cap_format(ctx);
+Developed with Claude (Anthropic), which wrote the code and the commit
+message. I reviewed it.
+---
+ drivers/tty/vt/vt.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/tty/vt/vt.c b/drivers/tty/vt/vt.c
+index 7dbc0072a40a..cdc862be4d6f 100644
+--- a/drivers/tty/vt/vt.c
++++ b/drivers/tty/vt/vt.c
+@@ -1232,7 +1232,7 @@ int vc_allocate(unsigned int currcons)	/* return 0 on success */
+ 	    vc->vc_screenbuf_size > KMALLOC_MAX_SIZE || !vc->vc_screenbuf_size)
+ 		goto err_free;
+ 	err = -ENOMEM;
+-	vc->vc_screenbuf = kzalloc(vc->vc_screenbuf_size, GFP_KERNEL);
++	vc->vc_screenbuf = kvzalloc(vc->vc_screenbuf_size, GFP_KERNEL);
+ 	if (!vc->vc_screenbuf)
+ 		goto err_free;
+ 
+@@ -1324,14 +1324,14 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
+ 
+ 	if (new_screen_size > KMALLOC_MAX_SIZE || !new_screen_size)
+ 		return -EINVAL;
+-	newscreen = kzalloc(new_screen_size, GFP_USER);
++	newscreen = kvzalloc(new_screen_size, GFP_USER);
+ 	if (!newscreen)
+ 		return -ENOMEM;
+ 
+ 	if (vc->vc_uni_lines) {
+ 		new_uniscr = vc_uniscr_alloc(new_cols, new_rows);
+ 		if (!new_uniscr) {
+-			kfree(newscreen);
++			kvfree(newscreen);
+ 			return -ENOMEM;
  		}
-+	} else if (ctrl->id == V4L2_CID_STATELESS_MPEG2_SEQUENCE) {
-+		const struct v4l2_ctrl_mpeg2_sequence *seq =
-+			ctrl->p_new.p_mpeg2_sequence;
-+		struct cedrus_ctx *ctx = container_of(ctrl->handler,
-+						      struct cedrus_ctx, hdl);
-+
-+		if (seq->flags & V4L2_MPEG2_SEQ_FLAG_MPEG1 &&
-+		    ctx->src_fmt.pixelformat != V4L2_PIX_FMT_MPEG1_SLICE)
-+			return -EINVAL;
-+	} else if (ctrl->id == V4L2_CID_STATELESS_MPEG2_PICTURE) {
-+		const struct v4l2_ctrl_mpeg2_picture *pic =
-+			ctrl->p_new.p_mpeg2_picture;
-+		struct cedrus_ctx *ctx = container_of(ctrl->handler,
-+						      struct cedrus_ctx, hdl);
-+
-+		if (ctx->src_fmt.pixelformat != V4L2_PIX_FMT_MPEG1_SLICE &&
-+		    (pic->picture_coding_type == V4L2_MPEG2_PIC_CODING_TYPE_D ||
-+		     pic->flags & (V4L2_MPEG2_PIC_FLAG_FULL_PEL_FORWARD |
-+				   V4L2_MPEG2_PIC_FLAG_FULL_PEL_BACKWARD)))
-+			return -EINVAL;
  	}
+@@ -1344,7 +1344,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
  
- 	return 0;
-@@ -90,12 +110,14 @@ static const struct cedrus_control cedrus_controls[] = {
- 	{
- 		.cfg = {
- 			.id	= V4L2_CID_STATELESS_MPEG2_SEQUENCE,
-+			.ops	= &cedrus_ctrl_ops,
- 		},
- 		.capabilities	= CEDRUS_CAPABILITY_MPEG2_DEC,
- 	},
- 	{
- 		.cfg = {
- 			.id	= V4L2_CID_STATELESS_MPEG2_PICTURE,
-+			.ops	= &cedrus_ctrl_ops,
- 		},
- 		.capabilities	= CEDRUS_CAPABILITY_MPEG2_DEC,
- 	},
-diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_dec.c b/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
-index 9f8b0555b7dc..6657d6060c39 100644
---- a/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
-+++ b/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
-@@ -41,6 +41,7 @@ void cedrus_device_run(void *priv)
+ 	err = resize_screen(vc, new_cols, new_rows, from_user);
+ 	if (err) {
+-		kfree(newscreen);
++		kvfree(newscreen);
+ 		vc_uniscr_free(new_uniscr);
+ 		return err;
+ 	}
+@@ -1402,7 +1402,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
+ 	vc->vc_screenbuf = newscreen;
+ 	vc->vc_screenbuf_size = new_screen_size;
+ 	set_origin(vc);
+-	kfree(oldscreen);
++	kvfree(oldscreen);
  
- 	switch (ctx->src_fmt.pixelformat) {
- 	case V4L2_PIX_FMT_MPEG2_SLICE:
-+	case V4L2_PIX_FMT_MPEG1_SLICE:
- 		run.mpeg2.sequence = cedrus_find_control_data(ctx,
- 			V4L2_CID_STATELESS_MPEG2_SEQUENCE);
- 		run.mpeg2.picture = cedrus_find_control_data(ctx,
-diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_hw.c b/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
-index 444fb53878d1..fd3ee8f5e9a5 100644
---- a/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
-+++ b/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
-@@ -44,6 +44,7 @@ int cedrus_engine_enable(struct cedrus_ctx *ctx)
+ 	/* do part of a reset_terminal() */
+ 	vc->vc_top = 0;
+@@ -1483,10 +1483,10 @@ struct vc_data *vc_deallocate(unsigned int currcons)
+ 		con_free_unimap(vc);
+ 		put_pid(vc->vt_pid);
+ 		vc_uniscr_set(vc, NULL);
+-		kfree(vc->vc_screenbuf);
++		kvfree(vc->vc_screenbuf);
+ 		vc_cons[currcons].d = NULL;
+ 		if (vc->vc_saved_screen != NULL) {
+-			kfree(vc->vc_saved_screen);
++			kvfree(vc->vc_saved_screen);
+ 			vc->vc_saved_screen = NULL;
+ 		}
+ 		vc_uniscr_free(vc->vc_saved_uni_lines);
+@@ -2032,7 +2032,7 @@ static void enter_alt_screen(struct vc_data *vc)
  
- 	switch (ctx->src_fmt.pixelformat) {
- 	case V4L2_PIX_FMT_MPEG2_SLICE:
-+	case V4L2_PIX_FMT_MPEG1_SLICE:
- 		reg |= VE_MODE_DEC_MPEG;
- 		break;
- 
-diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_mpeg2.c b/drivers/staging/media/sunxi/cedrus/cedrus_mpeg2.c
-index 10e98f08aafc..18d91b9b1e4a 100644
---- a/drivers/staging/media/sunxi/cedrus/cedrus_mpeg2.c
-+++ b/drivers/staging/media/sunxi/cedrus/cedrus_mpeg2.c
-@@ -48,6 +48,30 @@ static void cedrus_mpeg2_irq_disable(struct cedrus_ctx *ctx)
- 	cedrus_write(dev, VE_DEC_MPEG_CTRL, reg);
+ 	if (vc->vc_saved_screen != NULL)
+ 		return; /* Already inside an alt-screen */
+-	vc->vc_saved_screen = kmemdup((u16 *)vc->vc_origin, size, GFP_KERNEL);
++	vc->vc_saved_screen = kvmemdup((u16 *)vc->vc_origin, size, GFP_KERNEL);
+ 	if (vc->vc_saved_screen == NULL)
+ 		return;
+ 	vc->vc_saved_uni_lines = vc->vc_uni_lines;
+@@ -2082,7 +2082,7 @@ static void leave_alt_screen(struct vc_data *vc)
+ 	/* Update the entire screen */
+ 	if (con_should_update(vc))
+ 		do_update_region(vc, vc->vc_origin, vc->vc_screenbuf_size / 2);
+-	kfree(vc->vc_saved_screen);
++	kvfree(vc->vc_saved_screen);
+ 	vc->vc_saved_screen = NULL;
  }
  
-+static bool cedrus_mpeg2_is_mpeg1(struct cedrus_ctx *ctx)
-+{
-+	return ctx->src_fmt.pixelformat == V4L2_PIX_FMT_MPEG1_SLICE;
-+}
-+
-+static bool
-+cedrus_mpeg2_format_matches(struct cedrus_ctx *ctx,
-+			    const struct v4l2_ctrl_mpeg2_sequence *seq,
-+			    const struct v4l2_ctrl_mpeg2_picture *pic)
-+{
-+	bool mpeg1 = cedrus_mpeg2_is_mpeg1(ctx);
-+
-+	/* try_ctrl checked the controls against the format set at that time. */
-+	if (mpeg1 != !!(seq->flags & V4L2_MPEG2_SEQ_FLAG_MPEG1))
-+		return false;
-+
-+	if (mpeg1)
-+		return pic->picture_structure == V4L2_MPEG2_PIC_FRAME;
-+
-+	return pic->picture_coding_type != V4L2_MPEG2_PIC_CODING_TYPE_D &&
-+	       !(pic->flags & (V4L2_MPEG2_PIC_FLAG_FULL_PEL_FORWARD |
-+			       V4L2_MPEG2_PIC_FLAG_FULL_PEL_BACKWARD));
-+}
-+
- static int cedrus_mpeg2_setup(struct cedrus_ctx *ctx, struct cedrus_run *run)
- {
- 	const struct v4l2_ctrl_mpeg2_sequence *seq;
-@@ -63,6 +87,9 @@ static int cedrus_mpeg2_setup(struct cedrus_ctx *ctx, struct cedrus_run *run)
- 	seq = run->mpeg2.sequence;
- 	pic = run->mpeg2.picture;
+@@ -2400,7 +2400,7 @@ static void reset_terminal(struct vc_data *vc, int do_clear)
+ 	vc->vc_decim		= 0;
  
-+	if (!cedrus_mpeg2_format_matches(ctx, seq, pic))
-+		return -EINVAL;
-+
- 	quantisation = run->mpeg2.quantisation;
- 
- 	/* Activate MPEG engine. */
-@@ -101,8 +128,10 @@ static int cedrus_mpeg2_setup(struct cedrus_ctx *ctx, struct cedrus_run *run)
- 	reg |= VE_DEC_MPEG_MP12HDR_Q_SCALE_TYPE(pic->flags & V4L2_MPEG2_PIC_FLAG_Q_SCALE_TYPE);
- 	reg |= VE_DEC_MPEG_MP12HDR_INTRA_VLC_FORMAT(pic->flags & V4L2_MPEG2_PIC_FLAG_INTRA_VLC);
- 	reg |= VE_DEC_MPEG_MP12HDR_ALTERNATE_SCAN(pic->flags & V4L2_MPEG2_PIC_FLAG_ALT_SCAN);
--	reg |= VE_DEC_MPEG_MP12HDR_FULL_PEL_FORWARD_VECTOR(0);
--	reg |= VE_DEC_MPEG_MP12HDR_FULL_PEL_BACKWARD_VECTOR(0);
-+	reg |= VE_DEC_MPEG_MP12HDR_FULL_PEL_FORWARD_VECTOR(pic->flags &
-+				V4L2_MPEG2_PIC_FLAG_FULL_PEL_FORWARD);
-+	reg |= VE_DEC_MPEG_MP12HDR_FULL_PEL_BACKWARD_VECTOR(pic->flags &
-+				V4L2_MPEG2_PIC_FLAG_FULL_PEL_BACKWARD);
- 
- 	cedrus_write(dev, VE_DEC_MPEG_MP12HDR, reg);
- 
-@@ -183,8 +212,9 @@ static void cedrus_mpeg2_trigger(struct cedrus_ctx *ctx)
- 	u32 reg;
- 
- 	/* Trigger MPEG engine. */
--	reg = VE_DEC_MPEG_TRIGGER_HW_MPEG_VLD | VE_DEC_MPEG_TRIGGER_MPEG2 |
--	      VE_DEC_MPEG_TRIGGER_MB_BOUNDARY;
-+	reg = VE_DEC_MPEG_TRIGGER_HW_MPEG_VLD | VE_DEC_MPEG_TRIGGER_MB_BOUNDARY;
-+	reg |= cedrus_mpeg2_is_mpeg1(ctx) ? VE_DEC_MPEG_TRIGGER_MPEG1 :
-+					    VE_DEC_MPEG_TRIGGER_MPEG2;
- 
- 	cedrus_write(dev, VE_DEC_MPEG_TRIGGER, reg);
- }
-diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_video.c b/drivers/staging/media/sunxi/cedrus/cedrus_video.c
-index ad4ec3490775..8979693e9109 100644
---- a/drivers/staging/media/sunxi/cedrus/cedrus_video.c
-+++ b/drivers/staging/media/sunxi/cedrus/cedrus_video.c
-@@ -40,6 +40,11 @@ static struct cedrus_format cedrus_formats[] = {
- 		.directions	= CEDRUS_DECODE_SRC,
- 		.capabilities	= CEDRUS_CAPABILITY_MPEG2_DEC,
- 	},
-+	{
-+		.pixelformat	= V4L2_PIX_FMT_MPEG1_SLICE,
-+		.directions	= CEDRUS_DECODE_SRC,
-+		.capabilities	= CEDRUS_CAPABILITY_MPEG2_DEC,
-+	},
- 	{
- 		.pixelformat	= V4L2_PIX_FMT_H264_SLICE,
- 		.directions	= CEDRUS_DECODE_SRC,
-@@ -125,6 +130,7 @@ void cedrus_prepare_format(struct v4l2_pix_format *pix_fmt)
- 
- 	switch (pix_fmt->pixelformat) {
- 	case V4L2_PIX_FMT_MPEG2_SLICE:
-+	case V4L2_PIX_FMT_MPEG1_SLICE:
- 	case V4L2_PIX_FMT_H264_SLICE:
- 	case V4L2_PIX_FMT_HEVC_SLICE:
- 	case V4L2_PIX_FMT_VP8_FRAME:
-@@ -352,6 +358,7 @@ static int cedrus_s_fmt_vid_out_p(struct cedrus_ctx *ctx,
- 
- 	switch (ctx->src_fmt.pixelformat) {
- 	case V4L2_PIX_FMT_MPEG2_SLICE:
-+	case V4L2_PIX_FMT_MPEG1_SLICE:
- 		ctx->current_codec = &cedrus_dec_ops_mpeg2;
- 		break;
- 	case V4L2_PIX_FMT_H264_SLICE:
+ 	if (vc->vc_saved_screen != NULL) {
+-		kfree(vc->vc_saved_screen);
++		kvfree(vc->vc_saved_screen);
+ 		vc->vc_saved_screen = NULL;
+ 		vc_uniscr_free(vc->vc_saved_uni_lines);
+ 		vc->vc_saved_uni_lines = NULL;
 
--- 
-2.55.0
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261119-vt-kvzalloc-e6208d87a483
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
