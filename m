@@ -1,53 +1,66 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 05:29:35 +0000
-Subject: [PATCH v2 2/2] arm64: dts: allwinner: orangepi-zero2/zero3: Read
- the SPI NOR over two lines
+Subject: [PATCH 0/2] media: verisilicon: Fix VDPU2 decoder error handling
+Date: Thu, 19 Nov 2026 06:20:06 +0000
+Message-Id: <20261119-vdpu2-errreset-v1-0-f8fa403b6a3a@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-zero2-spi-nor-dual-read-v2-2-185c87065e39@gmail.com>
-References: <20261119-zero2-spi-nor-dual-read-v2-0-185c87065e39@gmail.com>
-In-Reply-To: <20261119-zero2-spi-nor-dual-read-v2-0-185c87065e39@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>
-Cc: Andre Przywara <andre.przywara@arm.com>, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSwqDQBBF0a1IjdPQHzStWwkZ+HmJ5UClSiUg7
+ t3WDM/g3p0UwlCqsp0EGytPY4J7ZNT29fiF4S6ZvPWFcy43Wzev3kBEoFhMLGJ8WhvKUAdK0Sz
+ 48O8evt5/69oMaJfrQsdxAjWqA61yAAAA
+X-Change-ID: 20261115-vdpu2-errreset-8688700393a3
+To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>, Jonas Karlman <jonas@kwiboo.se>, 
+ Boris Brezillon <boris.brezillon@collabora.com>, 
+ Hans Verkuil <hverkuil@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795066173; l=857;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795069206; l=1334;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Q+r4zEIs6OoXjgWsTg14JRKlUB5idFqb5Wum5OUoLAI=;
- b=64RjdNiTWEOyc/imWHPnWirAAmWbU5eG2Y2HriNa1MjneBj8xG8+WssVODkJpJVzzZ/htz6eg
- diuEy0yHbMeAazMYr0kuIZMx51+JrXQYOltsFaCRx679k3Ai5zDXIAY
+ bh=2RFAUR3ng5/QnrGOQnWU+xGFztNU4gfgufFi7kzRutU=;
+ b=OjJRsu4+0DdVHmvl5f/yUFh9DPg7MhS/pT7qenF5H07QM1yFTfJx6KXvTla6h9Fqw68gjmIuo
+ mtkobnUna1sCg+BTTpBZtAsQOddm23UGyyBfLbCHqFHog2CZUfoSsl2
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-WP# and HOLD# are tied to VCC on the Zero2 (schematic v1.3), so read over
-two lines. Andre Przywara pointed out that the Zero3 is the same.
+The VDPU2 decoder reports failed decodes as done and is not reset
+after an error, so it can keep accessing freed buffers.
 
-Suggested-by: Andre Przywara <andre.przywara@arm.com>
+Tested on an Orange Pi 5 (RK3588S), KASAN v7.3 based kernel: 72 H.264
+fluster runs, no IOMMU faults or stalls; with patch 1 alone, an earlier
+run faulted. The VP8 test vectors pass (61/61). Two H.264 vectors
+(FI1_Sony_E, MR8_BT_B) fail in 1 to 4 of 249 runs each, with patch 1
+alone as with both. Build-tested on media next. MPEG-2, RK3399 and
+RK3568 untested.
+
+Independent of "Recover the Rockchip VPUs from faults and timeouts"
+v3 [1]; the two only conflict in one #include line.
+
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
+
+[1] https://lore.kernel.org/r/20261113-hantro-robust-v3-0-82383c722ad2@gmail.com
+
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi | 1 +
- 1 file changed, 1 insertion(+)
+Arun Iyengar (2):
+      media: verisilicon: Don't report VDPU2 decoder errors as success
+      media: verisilicon: Reset the VDPU2 decoder after an error
 
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi
-index 646d92e0f724..4a588c44d029 100644
---- a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi
-@@ -110,6 +110,7 @@ flash: flash@0 {
- 		compatible = "jedec,spi-nor";
- 		reg = <0>;
- 		spi-max-frequency = <40000000>;
-+		spi-rx-bus-width = <2>;
- 	};
- };
- 
+ .../media/platform/verisilicon/rockchip_vpu_hw.c   | 23 +++++++++++++++++++---
+ 1 file changed, 20 insertions(+), 3 deletions(-)
+---
+base-commit: aa0f4c41d4870a18e65772a1817af16427200371
+change-id: 20261115-vdpu2-errreset-8688700393a3
 
--- 
-2.55.0
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
