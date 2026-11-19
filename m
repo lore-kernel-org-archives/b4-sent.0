@@ -1,65 +1,245 @@
 From: =?utf-8?q?Jordan_DESNO=C3=8BS?= <jordan.desnoes@francetv.fr>
-Subject: [PATCH 6.18.y 0/4] libceph: add CEPH_CRYPTO_AES256KRB5 support
-Date: Thu, 19 Nov 2026 09:57:22 +0100
-Message-Id: <20261119-aes256k-6-18-y-v1-0-bd5db87da2f5@francetv.fr>
+Date: Thu, 19 Nov 2026 09:57:23 +0100
+Subject: [PATCH 6.18.y 1/4] libceph: generalize ceph_x_encrypt_offset() and
+ ceph_x_encrypt_buflen()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAPK5/moC/yWMQQ6CQAwAv0J6tsRupC5+hXCApWg1QbMFIiH83
- RWOM8nMCiZRxeCWrRBlVtP3kIBOGYRHM9wFtUsM7uyYiEpsxFzBL2Qkjwte2r4r+OpLlgAp+kT
- p9bsPK+CcfL5AfXib2qeE8X+DbfsBs/cemXoAAAA=
-X-Change-ID: 20261119-aes256k-6-18-y-4bfd567896ec
+Message-Id: <20261119-aes256k-6-18-y-v1-1-bd5db87da2f5@francetv.fr>
+References: <20261119-aes256k-6-18-y-v1-0-bd5db87da2f5@francetv.fr>
+In-Reply-To: <20261119-aes256k-6-18-y-v1-0-bd5db87da2f5@francetv.fr>
 To: stable@vger.kernel.org
 Cc: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
  Xiubo Li <xiubo.li@clyso.com>, Viacheslav Dubeyko <slava@dubeyko.com>, 
  ceph-devel@vger.kernel.org, 
  =?utf-8?q?Jordan_DESNO=C3=8BS?= <jordan.desnoes@francetv.fr>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795078645; l=1618;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795078645; l=7492;
  i=jordan.desnoes@francetv.fr; s=20261119; h=from:subject:message-id;
- bh=UpqiUKM7C7AR2lLJt+zJ2w1iHwSEDbb6nW94JSyxo8Q=;
- b=yfBLQPgOHbbFdt429ktoFdr+HMl0jyRmXE9h3Ngn+2eLDwuEe9lGv2j17vQJXxamT6ZM606jm
- F+xqrQAtd11ACdZ1SlPqvP7wmxnyLB3nyQUFAqxX69W8wI8cJE15wND
+ bh=iEzjxOYX3Hdxb7Jo0K8dEmAqF3tW2pOOAN0UWjmvS04=;
+ b=Nq0PyRH2pKeQcLEdT4PpQCrya+vi9Ji9E2PkW2zM5AZUPpazBvUAygo4h0AxPnNeSPkgZBht8
+ f6+qKQW3WRTBh+DbgE2mBwN92EDDyR8k0KfpITrQ8Ym9U3rde6Easxh
 X-Developer-Key: i=jordan.desnoes@francetv.fr; a=ed25519;
  pk=NsqAnHujTt5QBjYGvDgx/bh9SKZzYfCniV8bhRv6vTA=
 X-Endpoint-Received: by B4 Relay for jordan.desnoes@francetv.fr/20261119 with auth_id=1567
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Backport of the libceph aes256k series from v7.0, as discussed in [1].
-Ilya is fine with it going to 6.18.y.
+From: Ilya Dryomov <idryomov@gmail.com>
 
-Patches 2 and 4 cherry-pick cleanly. Patches 1 and 3 conflict in
-__ceph_x_decrypt() with 821365487aa5 ("libceph: Fix potential
-out-of-bounds access in __ceph_x_decrypt()"), which 6.18.y already has;
-the resolution gives the same code as mainline.
+commit 0ee8bccf7396d50726c9c8dd3135fb64a9fe8426 upstream.
 
-Tested on 6.18.58 against a Ceph 20.2.4 cluster restricted to aes256k:
-rbd and CephFS via ceph-csi, map/unmap, reboot, and 24h of I/O across
-ticket renewals. Build-tested on top of 6.18.64.
+- introduce the notion of a data offset for ceph_x_encrypt_offset()
+  to allow for e.g. confounder to be prepended before the encryption
+  header in the future.  For CEPH_CRYPTO_AES, the data offset is 0
+  (i.e. nothing is prepended).
 
-[1] https://lore.kernel.org/stable/PR1P264MB1805408F7C4A11E6F4D2F6BE887B2@PR1P264MB1805.FRAP264.PROD.OUTLOOK.COM/
+- adjust ceph_x_encrypt_buflen() accordingly and make it account for
+  PKCS#7 padding that is used by CEPH_CRYPTO_AES precisely instead of
+  just always adding 16.
 
+Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
+[ Jordan: resolve conflict with 821365487aa5 in __ceph_x_decrypt() ]
 Signed-off-by: Jordan DESNOËS <jordan.desnoes@francetv.fr>
 ---
-Ilya Dryomov (4):
-      libceph: generalize ceph_x_encrypt_offset() and ceph_x_encrypt_buflen()
-      libceph: introduce ceph_crypto_key_prepare()
-      libceph: add support for CEPH_CRYPTO_AES256KRB5
-      libceph: adapt ceph_x_challenge_blob hashing and msgr1 message signing
+ net/ceph/auth_x.c | 44 +++++++++++++++++++++++++++++---------------
+ net/ceph/crypto.c | 25 +++++++++++++++++++++++++
+ net/ceph/crypto.h |  2 ++
+ 3 files changed, 56 insertions(+), 15 deletions(-)
 
- include/linux/ceph/ceph_fs.h |   5 +-
- net/ceph/Kconfig             |   1 +
- net/ceph/auth_x.c            | 195 ++++++++++++++++++++++---------
- net/ceph/auth_x_protocol.h   |  38 ++++++
- net/ceph/crypto.c            | 269 +++++++++++++++++++++++++++++++++++--------
- net/ceph/crypto.h            |  21 +++-
- net/ceph/messenger_v2.c      |  14 +--
- 7 files changed, 428 insertions(+), 115 deletions(-)
----
-base-commit: fd7cfd39c88596fec816639ad83cbf3e9d316372
-change-id: 20261119-aes256k-6-18-y-4bfd567896ec
+diff --git a/net/ceph/auth_x.c b/net/ceph/auth_x.c
+index f805a8133..d1c7b7880 100644
+--- a/net/ceph/auth_x.c
++++ b/net/ceph/auth_x.c
+@@ -44,23 +44,35 @@ static int ceph_x_should_authenticate(struct ceph_auth_client *ac)
+ 	return !!need;
+ }
+ 
+-static int ceph_x_encrypt_offset(void)
++static int __ceph_x_encrypt_offset(const struct ceph_crypto_key *key)
+ {
+-	return sizeof(u32) + sizeof(struct ceph_x_encrypt_header);
++	return ceph_crypt_data_offset(key) +
++	       sizeof(struct ceph_x_encrypt_header);
+ }
+ 
+-static int ceph_x_encrypt_buflen(int ilen)
++static int ceph_x_encrypt_offset(const struct ceph_crypto_key *key)
+ {
+-	return ceph_x_encrypt_offset() + ilen + 16;
++	return sizeof(u32) + __ceph_x_encrypt_offset(key);
++}
++
++/*
++ * AES: ciphertext_len | hdr | data... | padding
++ */
++static int ceph_x_encrypt_buflen(const struct ceph_crypto_key *key,
++				 int data_len)
++{
++	int encrypt_len = sizeof(struct ceph_x_encrypt_header) + data_len;
++	return sizeof(u32) + ceph_crypt_buflen(key, encrypt_len);
+ }
+ 
+ static int ceph_x_encrypt(struct ceph_crypto_key *secret, void *buf,
+ 			  int buf_len, int plaintext_len)
+ {
+-	struct ceph_x_encrypt_header *hdr = buf + sizeof(u32);
++	struct ceph_x_encrypt_header *hdr;
+ 	int ciphertext_len;
+ 	int ret;
+ 
++	hdr = buf + sizeof(u32) + ceph_crypt_data_offset(secret);
+ 	hdr->struct_v = 1;
+ 	hdr->magic = cpu_to_le64(CEPHX_ENC_MAGIC);
+ 
+@@ -77,7 +89,7 @@ static int ceph_x_encrypt(struct ceph_crypto_key *secret, void *buf,
+ static int __ceph_x_decrypt(struct ceph_crypto_key *secret, void *p,
+ 			    int ciphertext_len)
+ {
+-	struct ceph_x_encrypt_header *hdr = p;
++	struct ceph_x_encrypt_header *hdr;
+ 	int plaintext_len;
+ 	int ret;
+ 
+@@ -91,6 +103,7 @@ static int __ceph_x_decrypt(struct ceph_crypto_key *secret, void *p,
+ 		return -EINVAL;
+ 	}
+ 
++	hdr = p + ceph_crypt_data_offset(secret);
+ 	if (le64_to_cpu(hdr->magic) != CEPHX_ENC_MAGIC) {
+ 		pr_err("%s bad magic\n", __func__);
+ 		return -EINVAL;
+@@ -198,7 +211,7 @@ static int process_one_ticket(struct ceph_auth_client *ac,
+ 	}
+ 
+ 	/* blob for me */
+-	dp = *p + ceph_x_encrypt_offset();
++	dp = *p + ceph_x_encrypt_offset(secret);
+ 	ret = ceph_x_decrypt(secret, p, end);
+ 	if (ret < 0)
+ 		goto out;
+@@ -225,7 +238,7 @@ static int process_one_ticket(struct ceph_auth_client *ac,
+ 	ceph_decode_8_safe(p, end, is_enc, bad);
+ 	if (is_enc) {
+ 		/* encrypted */
+-		tp = *p + ceph_x_encrypt_offset();
++		tp = *p + ceph_x_encrypt_offset(&th->session_key);
+ 		ret = ceph_x_decrypt(&th->session_key, p, end);
+ 		if (ret < 0)
+ 			goto out;
+@@ -317,7 +330,7 @@ static int encrypt_authorizer(struct ceph_x_authorizer *au,
+ 	p = (void *)(msg_a + 1) + le32_to_cpu(msg_a->ticket_blob.blob_len);
+ 	end = au->buf->vec.iov_base + au->buf->vec.iov_len;
+ 
+-	msg_b = p + ceph_x_encrypt_offset();
++	msg_b = p + ceph_x_encrypt_offset(&au->session_key);
+ 	msg_b->struct_v = 2;
+ 	msg_b->nonce = cpu_to_le64(au->nonce);
+ 	if (server_challenge) {
+@@ -373,7 +386,7 @@ static int ceph_x_build_authorizer(struct ceph_auth_client *ac,
+ 		goto out_au;
+ 
+ 	maxlen = sizeof(*msg_a) + ticket_blob_len +
+-		ceph_x_encrypt_buflen(sizeof(*msg_b));
++		ceph_x_encrypt_buflen(&au->session_key, sizeof(*msg_b));
+ 	dout("  need len %d\n", maxlen);
+ 	if (au->buf && au->buf->alloc_len < maxlen) {
+ 		ceph_buffer_put(au->buf);
+@@ -512,7 +525,7 @@ static int ceph_x_build_request(struct ceph_auth_client *ac,
+ 		struct ceph_x_authenticate *auth = (void *)(head + 1);
+ 		void *enc_buf = xi->auth_authorizer.enc_buf;
+ 		struct ceph_x_challenge_blob *blob = enc_buf +
+-							ceph_x_encrypt_offset();
++					     ceph_x_encrypt_offset(&xi->secret);
+ 		u64 *u;
+ 
+ 		p = auth + 1;
+@@ -639,7 +652,7 @@ static int handle_auth_session_key(struct ceph_auth_client *ac, u64 global_id,
+ 	ceph_decode_need(p, end, len, e_inval);
+ 	dout("%s connection secret blob len %d\n", __func__, len);
+ 	if (len > 0) {
+-		dp = *p + ceph_x_encrypt_offset();
++		dp = *p + ceph_x_encrypt_offset(&th->session_key);
+ 		ret = ceph_x_decrypt(&th->session_key, p, *p + len);
+ 		if (ret < 0)
+ 			return ret;
+@@ -816,7 +829,7 @@ static int decrypt_authorizer_challenge(struct ceph_crypto_key *secret,
+ 		return ret;
+ 
+ 	dout("%s decrypted %d bytes\n", __func__, ret);
+-	dp = challenge + sizeof(struct ceph_x_encrypt_header);
++	dp = challenge + __ceph_x_encrypt_offset(secret);
+ 	dend = dp + ret;
+ 
+ 	ceph_decode_skip_8(&dp, dend, e_inval);  /* struct_v */
+@@ -863,7 +876,7 @@ static int decrypt_authorizer_reply(struct ceph_crypto_key *secret,
+ 	u8 struct_v;
+ 	int ret;
+ 
+-	dp = *p + ceph_x_encrypt_offset();
++	dp = *p + ceph_x_encrypt_offset(secret);
+ 	ret = ceph_x_decrypt(secret, p, end);
+ 	if (ret < 0)
+ 		return ret;
+@@ -986,7 +999,8 @@ static int calc_signature(struct ceph_x_authorizer *au, struct ceph_msg *msg,
+ 			__le32 front_crc;
+ 			__le32 middle_crc;
+ 			__le32 data_crc;
+-		} __packed *sigblock = enc_buf + ceph_x_encrypt_offset();
++		} __packed *sigblock = enc_buf +
++				       ceph_x_encrypt_offset(&au->session_key);
+ 
+ 		sigblock->len = cpu_to_le32(4*sizeof(u32));
+ 		sigblock->header_crc = msg->hdr.crc;
+diff --git a/net/ceph/crypto.c b/net/ceph/crypto.c
+index 5601732cf..2b98daffe 100644
+--- a/net/ceph/crypto.c
++++ b/net/ceph/crypto.c
+@@ -285,6 +285,31 @@ int ceph_crypt(const struct ceph_crypto_key *key, bool encrypt,
+ 	}
+ }
+ 
++int ceph_crypt_data_offset(const struct ceph_crypto_key *key)
++{
++	switch (key->type) {
++	case CEPH_CRYPTO_NONE:
++	case CEPH_CRYPTO_AES:
++		return 0;
++	default:
++		BUG();
++	}
++}
++
++int ceph_crypt_buflen(const struct ceph_crypto_key *key, int data_len)
++{
++	switch (key->type) {
++	case CEPH_CRYPTO_NONE:
++		return data_len;
++	case CEPH_CRYPTO_AES:
++		/* PKCS#7 padding at the end */
++		return data_len + AES_BLOCK_SIZE -
++		       (data_len & (AES_BLOCK_SIZE - 1));
++	default:
++		BUG();
++	}
++}
++
+ static int ceph_key_preparse(struct key_preparsed_payload *prep)
+ {
+ 	struct ceph_crypto_key *ckey;
+diff --git a/net/ceph/crypto.h b/net/ceph/crypto.h
+index a20bad6d1..736ec6d2f 100644
+--- a/net/ceph/crypto.h
++++ b/net/ceph/crypto.h
+@@ -28,6 +28,8 @@ void ceph_crypto_key_destroy(struct ceph_crypto_key *key);
+ /* crypto.c */
+ int ceph_crypt(const struct ceph_crypto_key *key, bool encrypt,
+ 	       void *buf, int buf_len, int in_len, int *pout_len);
++int ceph_crypt_data_offset(const struct ceph_crypto_key *key);
++int ceph_crypt_buflen(const struct ceph_crypto_key *key, int data_len);
+ int ceph_crypto_init(void);
+ void ceph_crypto_shutdown(void);
+ 
 
-Best regards,
---  
-Jordan DESNOËS <jordan.desnoes@francetv.fr>
+-- 
+2.43.0
 
