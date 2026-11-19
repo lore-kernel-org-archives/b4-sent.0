@@ -1,10 +1,11 @@
 From: Umer Uddin <umer.uddin@mentallysanemainliners.org>
-Date: Thu, 19 Nov 2026 19:49:20 +0000
-Subject: [PATCH 4/6] arm64: dts: exynos: Enable USB in Exynos7885
+Date: Thu, 19 Nov 2026 19:49:21 +0000
+Subject: [PATCH 5/6] arm64: dts: exynos: exynos7885-gta3xllte: Enable USB
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-gta3xllte-usb-battery-v1-4-0cf5f763522e@mentallysanemainliners.org>
+Message-Id: <20261119-gta3xllte-usb-battery-v1-5-0cf5f763522e@mentallysanemainliners.org>
 References: <20261119-gta3xllte-usb-battery-v1-0-0cf5f763522e@mentallysanemainliners.org>
 In-Reply-To: <20261119-gta3xllte-usb-battery-v1-0-0cf5f763522e@mentallysanemainliners.org>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -21,91 +22,68 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-phy@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-samsung-soc@vger.kernel.org, 
- Umer Uddin <umer.uddin@mentallysanemainliners.org>, 
- David Virag <virag.david003@gmail.com>
+ Umer Uddin <umer.uddin@mentallysanemainliners.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795117759; l=2109;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795117759; l=1489;
  i=umer.uddin@mentallysanemainliners.org; s=20261109;
- h=from:subject:message-id; bh=Z90I+ZgSvTHKtQhv8fIplgrzwo46zX8M8n1SBbl4siw=;
- b=3uCw2rXhAwhlB/yoGbbyMLAd57ifkF6WctONIGReP8/YmugqWx5fu4psFBPq3Bx8x5tOarECl
- a+5rCl4oaMmCTLelMQ+e1AUcZ92OorKL2QuSVSdNSETRD7DIDGAUU8f
+ h=from:subject:message-id; bh=2sc//xhMdQLxeTbKn3e0zeBob0QS6bolzRWDj8BhCrE=;
+ b=hoa8lF31kpywbV6h7hS1pTyfL1CIInM9Am92ae7H88ueiW47bUVtJ7ONmjYxJi3JTlClFyWPv
+ yplbPml6tGqB/pddUWhxTIrYZFIIS7uwQ+sZBxr4oToOwDW+qNOmRH5
 X-Developer-Key: i=umer.uddin@mentallysanemainliners.org; a=ed25519;
  pk=Hsgrt4A72CFTe27AI1AAWlnLsiQrlb4+T+cbrfWDhUA=
 X-Endpoint-Received: by B4 Relay for umer.uddin@mentallysanemainliners.org/20261109 with auth_id=1466
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: David Virag <virag.david003@gmail.com>
+The Samsung Galaxy Tab A 10.1 (2019) has a USB-C port capable of USB 2.0
+speeds, used both as host and device, and is used for charging the
+tablet.
 
-Add USB controller and USB PHY controller nodes to Exynos7885 SoC DTSI.
+The port is controlled by an S2MU005 IC. Until support for it is
+added, only USB device functionality is available, so enable the USB
+controller and PHY in peripheral mode.
 
-The SoC theoretically supports USB3 SuperSpeed, but is not implemented
-in any known device. The vendor kernel also stubs out USB3 functions, so
-we do not support it.
-
-It is though, perfectly capable of USB 2.0 high-speed mode, both as host
-and device.
-
-Signed-off-by: David Virag <virag.david003@gmail.com>
-[Umer Uddin: Rebased onto krzk for-next branch]
 Signed-off-by: Umer Uddin <umer.uddin@mentallysanemainliners.org>
 ---
- arch/arm64/boot/dts/exynos/exynos7885.dtsi | 43 ++++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
+ .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/exynos/exynos7885.dtsi b/arch/arm64/boot/dts/exynos/exynos7885.dtsi
-index 6b994b487107..142542245cb1 100644
---- a/arch/arm64/boot/dts/exynos/exynos7885.dtsi
-+++ b/arch/arm64/boot/dts/exynos/exynos7885.dtsi
-@@ -480,6 +480,49 @@ i2c_7: i2c@11cd0000 {
+diff --git a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
+index 03476f8b1200..57df878cb563 100644
+--- a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
++++ b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
+@@ -68,6 +68,12 @@ memory@80000000 {
+ 		      <0x0 0xc0000000 0x40000000>;
+ 	};
  
- 			status = "disabled";
- 		};
++	/* TODO: Remove this once PMIC is implemented */
++	reg_dummy: regulator-0 {
++		compatible = "regulator-fixed";
++		regulator-name = "dummy_reg";
++	};
 +
-+		usbdrd: usb@13600000 {
-+			compatible = "samsung,exynos7885-dwusb3",
-+				     "samsung,exynos850-dwusb3";
-+			ranges = <0x0 0x13600000 0x10000>;
-+			#address-cells = <1>;
-+			#size-cells = <1>;
-+
-+			clocks = <&cmu_fsys CLK_FSYS_USB30DRD_BUS_CLK_EARLY>,
-+				 <&cmu_fsys CLK_FSYS_USB30DRD_REF_CLK>;
-+			clock-names = "bus_early", "ref";
-+
-+			status = "disabled";
-+
-+			usbdrd_dwc3: usb@0 {
-+				compatible = "snps,dwc3";
-+				reg = <0x0 0x10000>;
-+				interrupts = <GIC_SPI 135 IRQ_TYPE_LEVEL_HIGH>;
-+
-+				phys = <&usbdrd_phy 0>;
-+				phy-names = "usb2-phy";
-+
-+				/*
-+				 * SoC in theory supports SS but no device has it.
-+				 * Actual capabilities unknown.
-+				 */
-+				maximum-speed = "high-speed";
-+			};
-+		};
-+
-+		usbdrd_phy: phy@135d0000 {
-+			compatible = "samsung,exynos7885-usbdrd-phy";
-+			reg = <0x135d0000 0x100>;
-+			#phy-cells = <1>;
-+
-+			clocks = <&cmu_fsys CLK_FSYS_USB30DRD_ACLK_20PHYCTRL>,
-+				 <&cmu_fsys CLK_FSYS_USB20PHY_CLKCORE>;
-+			clock-names = "phy", "ref";
-+
-+			samsung,pmu-syscon = <&pmu_system_controller>;
-+
-+			status = "disabled";
-+		};
+ 	reserved-memory {
+ 		ranges;
+ 		#address-cells = <2>;
+@@ -127,3 +133,19 @@ key_volup: key-volup-pins {
+ 		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
  	};
  };
- 
++
++&usbdrd {
++	vdd10-supply = <&reg_dummy>;
++	vdd33-supply = <&reg_dummy>;
++
++	status = "okay";
++};
++
++&usbdrd_dwc3 {
++	/* Force to peripheral until we have Type-C working */
++	dr_mode = "peripheral";
++};
++
++&usbdrd_phy {
++	status = "okay";
++};
 
 -- 
 2.56.1
