@@ -1,506 +1,247 @@
-From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Date: Thu, 19 Nov 2026 14:01:47 +0530
-Subject: [PATCH v3 2/2] ASoC: codecs: Add NXP TFA9865 amplifier driver
+From: Cunhao Lu <1579567540@qq.com>
+Subject: [PATCH net v10 00/10] can: fix Rockchip TX stalls and bus-off
+ restart/close races
+Date: Thu, 19 Nov 2026 16:39:41 +0800
+Message-Id: <20261119-rockchip-canfd-restart-close-v10-0-df23913aa33a@qq.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-vantage-tfa9865-v3-2-5257fa45df57@yahoo.com>
-References: <20261119-vantage-tfa9865-v3-0-5257fa45df57@yahoo.com>
-In-Reply-To: <20261119-vantage-tfa9865-v3-0-5257fa45df57@yahoo.com>
-To: Venkat Yadlapati <venkat.yadlapati@yahoo.com>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
- Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, phone-devel@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAM21/moC/5XSyU7EMAwG4FdBOROUfeHEeyAOieMwYWln0lKBR
+ vPupOUw7anM0Zb1+bfkMxmwFhzI492ZVJzKUPquFZzd3xE4hO4VaUmtQQQThjMuae3hHQ7lSCF
+ 0OdGKwxjqSOGjH5BiTKi9VpnHTBpxrJjL9+I/kw5H8vLXHL7iG8I4w/PYoQxjX3+WFBNfhv+3b
+ +KUUysggMpeCshPp9MD9J/LnkmsJbUjCcoouBxTDok7JjeSvEWSTcoMo+LMM6HERlJrSe9Iqkk
+ tjfI5W68020j6FknPElorhWXSgt9IZi3ZHck0CZNhOrcLo8GNZK8SZ2ZHsnMmgBQ5j+CU3khuL
+ bkdyTVJog1C5uQxbDP5lcT5juSbZIySWTqhY7h+weVy+QW+x8xmLQMAAA==
+X-Change-ID: 20261013-rockchip-canfd-restart-close-ebde5954f1bf
+To: Marc Kleine-Budde <mkl@pengutronix.de>, kernel@pengutronix.de, 
+ Vincent Mailhol <mailhol@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Oliver Hartkopp <socketcan@hartkopp.net>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, 
+ Wolfgang Grandegger <wg@grandegger.com>
+Cc: linux-can@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-doc@vger.kernel.org, Cunhao Lu <1579567540@qq.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795077105; l=16250;
- i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=v4SzyXeV8g7WUUyP5yv+2u1jBMWeOkRiYSmvp/e5NsU=;
- b=+/ZUQCPre2jvOu8SuDdEtXFgEHJuBx6OgbBg6a1lWLQ5jOowFZaChonA2VNxuK7zfOvzeg5RK
- hDwnM46cPYBD5HvLzgeTqRC/TW4cM6xd5KU3a3jlxw4Z/h+yKKdHlAN
-X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
- pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
-X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795077587; l=10566;
+ i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
+ bh=lTsdnwCHqwAoxAmeYNGgy9yRcSKjH5pM5w7N5WL7PJo=;
+ b=FuX8UwsdDtydpORReZh0QXGB9ddEG1/a9JvLNw/bdZ3NsKpgR5tZWRJBa+9/RIn4BvGs64NAJ
+ OkcXOh01kFZBrTyw4ZPRoebf0ITttp1F2TEFesMSIujQGkDj/KwJzgG
+X-Developer-Key: i=1579567540@qq.com; a=ed25519;
+ pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
+X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a driver for the NXP (now Goodix) TFA9865 speaker amplifier. The
-chip has no DSP, so the driver only has to apply the initialization
-sequence for the device revision, select the I2S slot that feeds the
-amplifier and power the amplifier and its boost converter up and down.
+On a production robot using a LubanCat-5IO with an RK3588, the CAN TX
+queue remained stopped while RX continued, and subsequent sends returned
+ENOBUFS. The interface still reported ERROR-ACTIVE, with neither a
+hardware bus-off condition nor a pending TX request.
 
-The register settings are taken from the NXP tfa98xx driver. Only the
-B0 revision and the 32-bit I2S slots configured at reset are supported
-for now.
+During CAN traffic, the driver also repeatedly reported an inconsistent
+TX echo state:
 
-Assisted-by: LLM
-Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+  rockchip_canfd fea60000.can can0: rkcanfd_tx_tail_is_eff:
+  echo_skb[0]=NULL tx_head=0x00060f7d tx_tail=0x00060f7c
+
+The Rockchip CAN-FD driver completes transmissions by matching
+self-received frames with entries in the echo skb ring. A race between its
+transmit and completion paths can expose a partially updated echo entry,
+dereference an skb queued for NAPI, or stop the TX queue without a later
+completion to wake it. If the driver cannot install an echo skb, it now
+drops the frame before issuing a TX request. Retries use the outstanding
+frame's slot and block new TX until both request bits clear, even if the
+original echo arrives first.
+
+While testing the echo-loss fix with fault injection, I discovered a
+separate race between bus-off restart and device close.
+
+Rockchip currently cancels restart_work in close_candev(), after freeing
+the IRQ, disabling RX offload and stopping the controller. A concurrent
+restart can re-enable the controller and interrupts after IRQ teardown,
+and requeue timestamp work that accesses registers after runtime suspend
+has disabled the controller clocks.
+
+The CAN core skips scheduling or starting recovery when its
+netif_running() check observes the interface down. These checks apply to
+CAN core software recovery and do not serialize it with device close.
+Rockchip waits for active core restart work before freeing the IRQ and
+stopping the controller. The final close_candev() call still cancels
+restart work and flushes the echo ring.
+
+Rockchip restart masks the device's interrupts and drains active IRQ
+handlers without disabling the shared interrupt line. It also drains
+timestamp work before reinitializing the controller and timecounter.
+The reset path restores and flushes the interrupt mask immediately after
+reset deassertion. The Rockchip IRQ handler stays suspended until
+initialization is complete.
+
+Disabling timestamp work prevents workers from rearming after bus-off.
+Timestamp locking keeps timestamp conversions consistent with timecounter
+updates.
+
+The bus-off path drains TX submission and RX-side echo users before
+publishing BUS_OFF. Consumed RX FIFO entries are dropped while TX is
+disabled to prevent self-transmitted frames from reaching ordinary RX.
+Startup serializes carrier restoration, IRQ resumption and queue wake
+with a new bus-off. The series also fixes RX offload cleanup when
+request_irq() fails during open.
+
+Hardware testing used a LubanCat-5IO running Linux 6.18 PREEMPT and
+PREEMPT_RT kernels with v7 and the applicable prerequisites backported.
+Tests on each kernel covered 600 seconds of bidirectional classic CAN
+traffic, plus CAN FD and CAN FD+BRS. Local echo and both software and
+hardware TX timestamps were also verified.
+
+All 1,000 socket-close iterations passed. Instrumentation captured
+1,150 cases where the last TX skb of a closed socket was destroyed,
+all after releasing tx_lock and with IRQs enabled.
+
+All 200 injected echo clone failures dropped the frame without
+submitting TX, advancing tx_head or adding BQL bytes; subsequent sends
+succeeded after removing the injection. BUSY, occupied slots, missing
+echo skbs and invalid indices were also tested, along with automatic and
+manual recovery from hardware bus-off triggered by bitrate mismatches.
+All passed.
+
+Test-only instrumentation captured 20 restart/close and 20 close/FIFO
+interleavings. No timestamp worker ran during about 300 seconds after
+close, and no WARN/Oops, deadlocks or persistent TX stalls were observed
+during CAN testing.
+
+Signed-off-by: Cunhao Lu <1579567540@qq.com>
+
 ---
- sound/soc/codecs/Kconfig   |  14 ++
- sound/soc/codecs/Makefile  |   2 +
- sound/soc/codecs/tfa9865.c | 400 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 416 insertions(+)
+Changes in v10:
+- Move the retry fix (v9 03) after TX/IRQ synchronization and block new
+  submissions after a retry until both TX request bits clear.
+- Limit the recovery documentation to CAN core software recovery and
+  clarify that running checks do not serialize recovery with shutdown.
+- Link to v9:
+  https://patch.msgid.link/20261111-rockchip-canfd-restart-close-v9-0-6643f3825ba3@qq.com
 
-diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
-index ba59dabeeccd..a30057b2d1ef 100644
---- a/sound/soc/codecs/Kconfig
-+++ b/sound/soc/codecs/Kconfig
-@@ -284,6 +284,7 @@ config SND_SOC_ALL_CODECS
- 	imply SND_SOC_TAS6424
- 	imply SND_SOC_TAS675X
- 	imply SND_SOC_TDA7419
-+	imply SND_SOC_TFA9865
- 	imply SND_SOC_TFA9879
- 	imply SND_SOC_TFA989X
- 	imply SND_SOC_TLV320ADC3XXX
-@@ -2321,6 +2322,19 @@ config SND_SOC_TDA7419
- 	depends on I2C
- 	select REGMAP_I2C
- 
-+config SND_SOC_TFA9865
-+	tristate "NXP/Goodix TFA9865 amplifier"
-+	depends on I2C
-+	select REGMAP_I2C
-+	help
-+	  Enable support for the NXP (now Goodix) TFA9865 mono class-D
-+	  speaker amplifier with boost converter. The amplifier has no DSP,
-+	  speaker protection is left to the host. The driver supports the
-+	  B0 revision of the chip with 32-bit I2S slots.
-+
-+	  To compile this driver as a module, choose M here: the module
-+	  will be called snd-soc-tfa9865.
-+
- config SND_SOC_TFA9879
- 	tristate "NXP Semiconductors TFA9879 amplifier"
- 	depends on I2C
-diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
-index 3826f9e4fce8..0e421a3c620b 100644
---- a/sound/soc/codecs/Makefile
-+++ b/sound/soc/codecs/Makefile
-@@ -334,6 +334,7 @@ snd-soc-tas2781-comlib-i2c-y := tas2781-comlib-i2c.o
- snd-soc-tas2781-fmwlib-y := tas2781-fmwlib.o
- snd-soc-tas2781-i2c-y := tas2781-i2c.o
- snd-soc-tas2783-sdw-y := tas2783-sdw.o
-+snd-soc-tfa9865-y := tfa9865.o
- snd-soc-tfa9879-y := tfa9879.o
- snd-soc-tfa989x-y := tfa989x.o
- snd-soc-tlv320adc3xxx-y := tlv320adc3xxx.o
-@@ -782,6 +783,7 @@ obj-$(CONFIG_SND_SOC_TAS6424)	+= snd-soc-tas6424.o
- obj-$(CONFIG_SND_SOC_TAS675X)	+= snd-soc-tas675x.o
- obj-$(CONFIG_SND_SOC_TDA7419)	+= snd-soc-tda7419.o
- obj-$(CONFIG_SND_SOC_TAS2770) += snd-soc-tas2770.o
-+obj-$(CONFIG_SND_SOC_TFA9865)	+= snd-soc-tfa9865.o
- obj-$(CONFIG_SND_SOC_TFA9879)	+= snd-soc-tfa9879.o
- obj-$(CONFIG_SND_SOC_TFA989X)	+= snd-soc-tfa989x.o
- obj-$(CONFIG_SND_SOC_TLV320ADC3XXX)	+= snd-soc-tlv320adc3xxx.o
-diff --git a/sound/soc/codecs/tfa9865.c b/sound/soc/codecs/tfa9865.c
-new file mode 100644
-index 000000000000..ca1a458e6f65
---- /dev/null
-+++ b/sound/soc/codecs/tfa9865.c
-@@ -0,0 +1,400 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Driver for the NXP TFA9865 mono class-D speaker amplifier
-+ *
-+ * The TFA9865 has no DSP of its own, speaker protection (if any) is done by
-+ * the host. Register definitions and the initialization sequence are taken
-+ * from the NXP tfa98xx kernel driver:
-+ * Copyright (C) 2014-2020 NXP Semiconductors, All Rights Reserved.
-+ *
-+ * Copyright (c) 2026 Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-+ */
-+
-+#include <linux/bitfield.h>
-+#include <linux/delay.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/mutex.h>
-+#include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
-+#include <sound/pcm_params.h>
-+#include <sound/soc.h>
-+
-+#define TFA9865_SYS_CTRL0		0x00
-+#define TFA9865_SYS_CTRL0_PWDN		0	/* power down */
-+#define TFA9865_SYS_CTRL0_I2CR		BIT(1)	/* register reset, self clearing */
-+#define TFA9865_SYS_CTRL0_AMPE		3	/* enable amplifier */
-+#define TFA9865_SYS_CTRL0_DCA		4	/* enable boost converter */
-+#define TFA9865_SYS_CTRL1		0x01
-+#define TFA9865_SYS_CTRL1_MANSCONF	BIT(2)	/* I2C configuration done */
-+#define TFA9865_SYS_CTRL2		0x02
-+#define TFA9865_SYS_CTRL2_AUDFS		GENMASK(3, 0)	/* sample rate */
-+#define TFA9865_REVISIONNUMBER		0x03
-+#define TFA9865_REVISIONNUMBER_REV	GENMASK(7, 0)
-+#define TFA9865_REVISIONNUMBER_FAM	GENMASK(15, 8)
-+#define TFA9865_CLK_GATING_CTRL		0x04
-+#define TFA9865_CLK_GATING_CTRL_MANAOOSC BIT(6)	/* oscillator off in power down */
-+#define TFA9865_DEVICE_INFO		0x06
-+#define TFA9865_DEVICE_INFO_DEVREV	GENMASK(15, 8)
-+#define TFA9865_HIDE_UNHIDE_KEY		0x0f
-+#define TFA9865_STATUS_FLAGS2		0x12
-+#define TFA9865_STATUS_FLAGS2_MANSTATE	GENMASK(3, 0)	/* device manager state */
-+#define TFA9865_TDM_CFG1		0x21
-+#define TFA9865_TDM_CFG1_TDMSPKS	8	/* slot for the amplifier input */
-+#define TFA9865_TDM_GAIN		0x5f
-+#define TFA9865_TDM_GAIN_TDMSPKG	5	/* input attenuation */
-+#define TFA9865_TDM_GAIN_TDMSPKG_MAX	31
-+#define TFA9865_KEY1			0xa0
-+#define TFA9865_KEY2			0xa1
-+#define TFA9865_KEY1_SEED		0xfb
-+
-+#define TFA9865_FAMILY			0x98
-+#define TFA9865_REVISION		0x66
-+
-+#define TFA9865_MANSTATE_POWERDOWN	0
-+#define TFA9865_MANSTATE_WAIT_SRC	1
-+
-+struct tfa9865 {
-+	struct regmap *regmap;
-+	struct gpio_desc *reset_gpiod;
-+	/* Protects powered and unmuted */
-+	struct mutex lock;
-+	bool powered;
-+	bool unmuted;
-+};
-+
-+/*
-+ * The amplifier is enabled only while the output path is powered and the
-+ * stream is unmuted. Enabling it before the I2S clocks run makes it pop.
-+ */
-+static int tfa9865_update_ampe(struct tfa9865 *tfa9865)
-+{
-+	bool on = tfa9865->powered && tfa9865->unmuted;
-+
-+	return regmap_update_bits(tfa9865->regmap, TFA9865_SYS_CTRL0,
-+				  BIT(TFA9865_SYS_CTRL0_AMPE),
-+				  on ? BIT(TFA9865_SYS_CTRL0_AMPE) : 0);
-+}
-+
-+static int tfa9865_ampe_event(struct snd_soc_dapm_widget *w,
-+			      struct snd_kcontrol *kcontrol, int event)
-+{
-+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-+	struct tfa9865 *tfa9865 = snd_soc_component_get_drvdata(component);
-+
-+	guard(mutex)(&tfa9865->lock);
-+	tfa9865->powered = SND_SOC_DAPM_EVENT_ON(event);
-+
-+	return tfa9865_update_ampe(tfa9865);
-+}
-+
-+static bool tfa9865_volatile_reg(struct device *dev, unsigned int reg)
-+{
-+	switch (reg) {
-+	case TFA9865_SYS_CTRL0:		/* I2CR clears itself */
-+	case TFA9865_HIDE_UNHIDE_KEY:
-+	case 0x10 ... 0x15:		/* status and interrupt flags */
-+	case TFA9865_KEY1:
-+	case TFA9865_KEY2:
-+	case TFA9865_KEY1_SEED:
-+		return true;
-+	default:
-+		return false;
-+	}
-+}
-+
-+static const struct regmap_config tfa9865_regmap = {
-+	.reg_bits = 8,
-+	.val_bits = 16,
-+	.max_register = 0xff,
-+
-+	.volatile_reg = tfa9865_volatile_reg,
-+	.cache_type = REGCACHE_MAPLE,
-+};
-+
-+static const char * const tdmspks_text[] = { "Left", "Right" };
-+static SOC_ENUM_SINGLE_DECL(tdmspks_enum, TFA9865_TDM_CFG1, TFA9865_TDM_CFG1_TDMSPKS,
-+			    tdmspks_text);
-+static const struct snd_kcontrol_new tdmspks_mux = SOC_DAPM_ENUM("Amp Input", tdmspks_enum);
-+static const struct snd_kcontrol_new amp_switch = SOC_DAPM_SINGLE_VIRT("Switch", 1);
-+
-+static const struct snd_kcontrol_new tfa9865_controls[] = {
-+	/* The input attenuation has no documented scale, larger is quieter */
-+	SOC_SINGLE("Playback Volume", TFA9865_TDM_GAIN, TFA9865_TDM_GAIN_TDMSPKG,
-+		   TFA9865_TDM_GAIN_TDMSPKG_MAX, 1),
-+};
-+
-+static const struct snd_soc_dapm_widget tfa9865_dapm_widgets[] = {
-+	SND_SOC_DAPM_OUTPUT("OUT"),
-+	SND_SOC_DAPM_SUPPLY("POWER", TFA9865_SYS_CTRL0, TFA9865_SYS_CTRL0_PWDN, 1, NULL, 0),
-+	SND_SOC_DAPM_SUPPLY("BOOST", TFA9865_SYS_CTRL0, TFA9865_SYS_CTRL0_DCA, 0, NULL, 0),
-+	SND_SOC_DAPM_OUT_DRV_E("AMPE", SND_SOC_NOPM, 0, 0, NULL, 0, tfa9865_ampe_event,
-+			       SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
-+	SND_SOC_DAPM_SWITCH("Amp", SND_SOC_NOPM, 0, 0, &amp_switch),
-+
-+	SND_SOC_DAPM_MUX("Amp Input", SND_SOC_NOPM, 0, 0, &tdmspks_mux),
-+	SND_SOC_DAPM_AIF_IN("AIFINL", "HiFi Playback", 0, SND_SOC_NOPM, 0, 0),
-+	SND_SOC_DAPM_AIF_IN("AIFINR", "HiFi Playback", 1, SND_SOC_NOPM, 0, 0),
-+};
-+
-+static const struct snd_soc_dapm_route tfa9865_dapm_routes[] = {
-+	{"OUT", NULL, "AMPE"},
-+	{"AMPE", NULL, "POWER"},
-+	{"AMPE", NULL, "BOOST"},
-+	{"AMPE", NULL, "Amp"},
-+	{"Amp", "Switch", "Amp Input"},
-+	{"Amp Input", "Left", "AIFINL"},
-+	{"Amp Input", "Right", "AIFINR"},
-+};
-+
-+static const struct snd_soc_component_driver tfa9865_component = {
-+	.controls		= tfa9865_controls,
-+	.num_controls		= ARRAY_SIZE(tfa9865_controls),
-+	.dapm_widgets		= tfa9865_dapm_widgets,
-+	.num_dapm_widgets	= ARRAY_SIZE(tfa9865_dapm_widgets),
-+	.dapm_routes		= tfa9865_dapm_routes,
-+	.num_dapm_routes	= ARRAY_SIZE(tfa9865_dapm_routes),
-+	.use_pmdown_time	= 1,
-+	.endianness		= 1,
-+};
-+
-+static const unsigned int tfa9865_rates[] = {
-+	8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000
-+};
-+
-+static int tfa9865_find_sample_rate(unsigned int rate)
-+{
-+	int i;
-+
-+	for (i = 0; i < ARRAY_SIZE(tfa9865_rates); i++)
-+		if (tfa9865_rates[i] == rate)
-+			return i;
-+
-+	return -EINVAL;
-+}
-+
-+static int tfa9865_hw_params(struct snd_pcm_substream *substream,
-+			     struct snd_pcm_hw_params *params,
-+			     struct snd_soc_dai *dai)
-+{
-+	struct snd_soc_component *component = dai->component;
-+	int sr;
-+
-+	/* Only the 32-bit I2S slots configured at reset are supported */
-+	if (params_physical_width(params) != 32) {
-+		dev_err(component->dev, "unsupported slot width: %d\n",
-+			params_physical_width(params));
-+		return -EINVAL;
-+	}
-+
-+	sr = tfa9865_find_sample_rate(params_rate(params));
-+	if (sr < 0) {
-+		dev_err(component->dev, "unsupported sample rate: %d\n",
-+			params_rate(params));
-+		return sr;
-+	}
-+
-+	return snd_soc_component_update_bits(component, TFA9865_SYS_CTRL2,
-+					     TFA9865_SYS_CTRL2_AUDFS,
-+					     FIELD_PREP(TFA9865_SYS_CTRL2_AUDFS, sr));
-+}
-+
-+static int tfa9865_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
-+{
-+	struct tfa9865 *tfa9865 = snd_soc_component_get_drvdata(dai->component);
-+
-+	guard(mutex)(&tfa9865->lock);
-+	tfa9865->unmuted = !mute;
-+
-+	return tfa9865_update_ampe(tfa9865);
-+}
-+
-+static const struct snd_soc_dai_ops tfa9865_dai_ops = {
-+	.hw_params = tfa9865_hw_params,
-+	.mute_stream = tfa9865_mute_stream,
-+	.no_capture_mute = 1,
-+};
-+
-+static struct snd_soc_dai_driver tfa9865_dai = {
-+	.name = "tfa9865-hifi",
-+	.playback = {
-+		.stream_name	= "HiFi Playback",
-+		.formats	= SNDRV_PCM_FMTBIT_S32_LE,
-+		.rates		= SNDRV_PCM_RATE_8000_48000,
-+		.rate_min	= 8000,
-+		.rate_max	= 48000,
-+		.channels_min	= 1,
-+		.channels_max	= 2,
-+	},
-+	.ops = &tfa9865_dai_ops,
-+};
-+
-+static int tfa9865_wait_manstate(struct tfa9865 *tfa9865, unsigned int state)
-+{
-+	unsigned int val;
-+
-+	return regmap_read_poll_timeout(tfa9865->regmap, TFA9865_STATUS_FLAGS2, val,
-+					FIELD_GET(TFA9865_STATUS_FLAGS2_MANSTATE, val) == state,
-+					1000, 50000);
-+}
-+
-+static const struct reg_sequence tfa9865_b0_init[] = {
-+	/* "generated code" version 2 for TFA9865 B0 from the NXP driver */
-+	{ 0x00, 0xf241 },
-+	{ 0x02, 0x0c28 },
-+	{ 0x08, 0x009a },
-+	{ 0x50, 0xc000 },
-+	{ 0x54, 0x10e0 },
-+	{ 0x5a, 0x5f5e },
-+	{ 0x5b, 0x74e2 },
-+	{ 0x5c, 0xb02b },
-+	{ 0x5f, 0x00a0 },
-+	{ 0x62, 0x06c4 },
-+	{ 0x63, 0x80d4 },
-+	{ 0x65, 0x0c58 },
-+	{ 0x67, 0x006e },
-+	{ 0x68, 0x0820 },
-+	{ 0x69, 0x0119 },
-+	{ 0x74, 0x6028 },
-+	{ 0x75, 0x1daa },
-+	{ 0x78, 0x0001 },
-+	{ 0x7c, 0x10f2 },
-+	{ 0xdd, 0x01b6 },
-+};
-+
-+static int tfa9865_init(struct tfa9865 *tfa9865)
-+{
-+	struct regmap *regmap = tfa9865->regmap;
-+	unsigned int seed;
-+	int ret;
-+
-+	/*
-+	 * Start from the register defaults, also when the device stayed
-+	 * powered (no reset GPIO, driver rebind). This clears MANSCONF, so
-+	 * the device manager waits in WAIT_SRC below.
-+	 */
-+	ret = regmap_write(regmap, TFA9865_SYS_CTRL0, TFA9865_SYS_CTRL0_I2CR);
-+	if (ret)
-+		return ret;
-+	usleep_range(1000, 2000);
-+
-+	/* The reset changed every register, forget what was read before */
-+	regcache_drop_region(regmap, 0, tfa9865_regmap.max_register);
-+
-+	/* Leave power down to make the protected registers accessible */
-+	regmap_clear_bits(regmap, TFA9865_SYS_CTRL0, BIT(TFA9865_SYS_CTRL0_PWDN));
-+	regmap_clear_bits(regmap, TFA9865_CLK_GATING_CTRL, TFA9865_CLK_GATING_CTRL_MANAOOSC);
-+	ret = tfa9865_wait_manstate(tfa9865, TFA9865_MANSTATE_WAIT_SRC);
-+	if (ret)
-+		return ret;
-+
-+	/* Unlock key 1 and key 2 */
-+	regmap_write(regmap, TFA9865_HIDE_UNHIDE_KEY, 0x5a6b);
-+	ret = regmap_read(regmap, TFA9865_KEY1_SEED, &seed);
-+	if (ret)
-+		return ret;
-+	regmap_write(regmap, TFA9865_KEY1, seed ^ 0x005a);
-+	regmap_write(regmap, TFA9865_KEY2, 0x005a);
-+
-+	ret = regmap_multi_reg_write(regmap, tfa9865_b0_init, ARRAY_SIZE(tfa9865_b0_init));
-+
-+	/* Lock the keys again */
-+	regmap_write(regmap, TFA9865_KEY2, 0);
-+	regmap_write(regmap, TFA9865_KEY1, 0);
-+	regmap_write(regmap, TFA9865_HIDE_UNHIDE_KEY, 0);
-+	if (ret)
-+		return ret;
-+
-+	/* Go back to power down with the oscillator off */
-+	regmap_set_bits(regmap, TFA9865_SYS_CTRL0, BIT(TFA9865_SYS_CTRL0_PWDN));
-+	ret = tfa9865_wait_manstate(tfa9865, TFA9865_MANSTATE_POWERDOWN);
-+	if (ret)
-+		return ret;
-+	regmap_set_bits(regmap, TFA9865_CLK_GATING_CTRL, TFA9865_CLK_GATING_CTRL_MANAOOSC);
-+
-+	/* Input attenuation used by the vendor configuration */
-+	regmap_update_bits(regmap, TFA9865_TDM_GAIN,
-+			   TFA9865_TDM_GAIN_TDMSPKG_MAX << TFA9865_TDM_GAIN_TDMSPKG,
-+			   5 << TFA9865_TDM_GAIN_TDMSPKG);
-+
-+	/* Configuration done, let the device manager start on power up */
-+	return regmap_set_bits(regmap, TFA9865_SYS_CTRL1, TFA9865_SYS_CTRL1_MANSCONF);
-+}
-+
-+static int tfa9865_i2c_probe(struct i2c_client *i2c)
-+{
-+	struct device *dev = &i2c->dev;
-+	struct tfa9865 *tfa9865;
-+	unsigned int val, devrev;
-+	int ret;
-+
-+	tfa9865 = devm_kzalloc(dev, sizeof(*tfa9865), GFP_KERNEL);
-+	if (!tfa9865)
-+		return -ENOMEM;
-+
-+	i2c_set_clientdata(i2c, tfa9865);
-+
-+	ret = devm_mutex_init(dev, &tfa9865->lock);
-+	if (ret)
-+		return ret;
-+
-+	ret = devm_regulator_get_enable_optional(dev, "vddd");
-+	if (ret && ret != -ENODEV)
-+		return dev_err_probe(dev, ret, "failed to enable vddd supply\n");
-+
-+	tfa9865->reset_gpiod = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
-+	if (IS_ERR(tfa9865->reset_gpiod))
-+		return dev_err_probe(dev, PTR_ERR(tfa9865->reset_gpiod),
-+				     "failed to get reset gpio\n");
-+	if (tfa9865->reset_gpiod) {
-+		usleep_range(1000, 2000);
-+		gpiod_set_value_cansleep(tfa9865->reset_gpiod, 0);
-+		usleep_range(1000, 2000);
-+	}
-+
-+	tfa9865->regmap = devm_regmap_init_i2c(i2c, &tfa9865_regmap);
-+	if (IS_ERR(tfa9865->regmap))
-+		return PTR_ERR(tfa9865->regmap);
-+
-+	ret = regmap_read(tfa9865->regmap, TFA9865_REVISIONNUMBER, &val);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to read revision number\n");
-+
-+	if (FIELD_GET(TFA9865_REVISIONNUMBER_FAM, val) != TFA9865_FAMILY ||
-+	    FIELD_GET(TFA9865_REVISIONNUMBER_REV, val) != TFA9865_REVISION)
-+		return dev_err_probe(dev, -ENODEV, "unknown revision number %#x\n", val);
-+
-+	ret = regmap_read(tfa9865->regmap, TFA9865_DEVICE_INFO, &val);
-+	if (ret)
-+		return ret;
-+
-+	/* Only the B0 init sequence is known */
-+	devrev = FIELD_GET(TFA9865_DEVICE_INFO_DEVREV, val);
-+	if (((devrev >> 2) & 0x3) != 1 || (devrev & 0xf0))
-+		return dev_err_probe(dev, -ENODEV, "unsupported device revision %#x\n", devrev);
-+
-+	ret = tfa9865_init(tfa9865);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to initialize\n");
-+
-+	return devm_snd_soc_register_component(dev, &tfa9865_component, &tfa9865_dai, 1);
-+}
-+
-+static const struct of_device_id tfa9865_of_match[] = {
-+	{ .compatible = "nxp,tfa9865" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, tfa9865_of_match);
-+
-+static struct i2c_driver tfa9865_i2c_driver = {
-+	.driver = {
-+		.name = "tfa9865",
-+		.of_match_table = tfa9865_of_match,
-+	},
-+	.probe = tfa9865_i2c_probe,
-+};
-+module_i2c_driver(tfa9865_i2c_driver);
-+
-+MODULE_DESCRIPTION("ASoC NXP TFA9865 speaker amplifier driver");
-+MODULE_LICENSE("GPL");
+Changes in v9:
+- Use workqueue disable/enable operations to prevent timestamp work from
+  rearming after bus-off, balancing repeated stop calls.
+- Move worker requeueing and initial scheduling outside timestamp_lock.
+- Restore and flush device interrupt masking immediately after hardware
+  reset, before the remaining controller configuration.
+- Count consumed RX FIFO entries discarded while TX is disabled.
+- Link to v8:
+  https://patch.msgid.link/20261108-rockchip-canfd-restart-close-v8-0-3e7a23fd9eae@qq.com
 
--- 
-2.56.1
+Changes in v8:
+- Merge the previously submitted Rockchip TX fixes, with TX serialization
+  before the retry fix.
+- Move retained-skb handling and the missing-echo guard into the echo
+  failure fix, using the original skb as the frame-data source.
+- Establish the TX/RX critical sections and caller-held helper locking in
+  the TX serialization patch, covering queue updates, TX diagnostics and
+  RX pending checks, with assertions for command writes.
+- Reuse those critical sections in the bus-off/restart lifecycle patch.
+- Rebase onto the latest testing branch in the mkl/linux-can-next repository.
+- Link to the Rockchip TX fixes:
+  https://lore.kernel.org/linux-can/tencent_E25C9BE6689264E4138A464803B810FDFD09@qq.com
+- Link to v7:
+  https://patch.msgid.link/20261106-rockchip-canfd-restart-close-v7-0-accdb11bc845@qq.com
+
+Changes in v7:
+- Clarify that running checks do not serialize recovery with close, and
+  keep the restart-ms example tied to configuration while down.
+- Introduce Rockchip restart/IRQ synchronization and TX protection
+  together, keeping close cancellation and open failure cleanup in
+  separate patches.
+- Build on the CAN skb and Rockchip TX fixes, reusing the TX lock and
+  adapting failure cleanup to the updated skb ownership contract.
+- Link to v6:
+  https://patch.msgid.link/20261017-rockchip-canfd-restart-close-v6-0-ed605feb4b6e@qq.com
+
+Changes in v6:
+- Update the can_bus_off() comment and document the running-interface
+  requirement for automatic recovery.
+- Explain Rockchip's use of the cancellation helper.
+- Release the original TX skb after unlocking.
+- Abort TX submission if echo preparation fails.
+- Link to v5:
+  https://patch.msgid.link/20261015-rockchip-canfd-restart-close-v5-0-ae77327037c9@qq.com
+
+Changes in v5:
+- Drop consumed RX FIFO entries under tx_lock when TX is disabled
+  instead of only skipping echo filtering.
+- Link to v4:
+  https://patch.msgid.link/20261015-rockchip-canfd-restart-close-v4-0-ad149ff79450@qq.com
+
+Changes in v4:
+- Serialize timecounter_cyc2time() with the worker's timecounter_read()
+  and startup's timecounter_init() using timestamp_lock.
+- Update rkcanfd_skb_set_timestamp() to take a non-const private pointer
+  and document the expanded scope of timestamp_lock.
+- Link to v3:
+  https://patch.msgid.link/20261014-rockchip-canfd-restart-close-v3-0-f0eb41090242@qq.com
+
+Changes in v3:
+- Replace disable_irq()/enable_irq() in Rockchip restart with device
+  interrupt masking, mask readback, irq_suspended and synchronize_irq().
+- Use release/acquire ordering when resuming the IRQ handler.
+- Initialize timestamp delayed work once at probe and synchronously
+  cancel it before restart reinitializes the timecounter.
+- Balance RX offload enablement when request_irq() fails during open.
+- Prevent timestamp work from reading the counter or rearming after
+  deactivation, with cancellation outside the lock.
+- Drain TX submission and RX-side echo users before publishing BUS_OFF,
+  protecting the core's pre-restart echo flush.
+- Serialize carrier restoration, IRQ enablement and queue wake with a new
+  bus-off; suspend shared IRQ handling during open until startup finishes.
+- Link to v2:
+  https://lore.kernel.org/linux-can/tencent_82C93561D200C84C24608C80049C23EEF80A@qq.com/
+
+Changes in v2:
+- Split the series into the common checks, the cancellation helper, and
+  its use in Rockchip.
+- Check netif_running() after the do_set_mode capability check and before
+  the restart notification, echo cleanup, and carrier update.
+- Only queue automatic recovery for a running interface; keep reporting
+  bus-off and make the log message match the scheduling decision.
+- Add close_candev_cancel_restart_sync() in linux/can/dev.h and use it in
+  close_candev() without changing the existing cleanup order.
+- Replace the Rockchip mutex and closing flag with an early call to the
+  helper. Drop the extra close-path IRQ synchronization and mask readback.
+- Retain IRQ exclusion around hardware reinitialization in the restart
+  callback.
+- Link to v1:
+  https://lore.kernel.org/linux-can/tencent_5802EE88434010229EDF7A53084D994C6106@qq.com/
+
+---
+Cunhao Lu (10):
+      can: rockchip_canfd: prevent TX stall on echo skb failure
+      can: rockchip_canfd: serialize TX state and command writes
+      can: dev: check netif_running() before bus-off recovery
+      can: dev: add close_candev_cancel_restart_sync()
+      can: rockchip_canfd: cancel bus-off restart before closing the device
+      can: rockchip_canfd: disable RX offload on open failure
+      can: rockchip_canfd: serialize TX with bus-off and restart
+      can: rockchip_canfd: retry the outstanding TX buffer
+      can: rockchip_canfd: prevent timestamp work from rearming after bus-off
+      can: rockchip_canfd: serialize timecounter timestamp conversion
+
+ Documentation/networking/can.rst                   |   9 +-
+ drivers/net/can/dev/dev.c                          |  17 ++-
+ drivers/net/can/rockchip/rockchip_canfd-core.c     |  79 ++++++++++++-
+ drivers/net/can/rockchip/rockchip_canfd-rx.c       |  30 +++--
+ .../net/can/rockchip/rockchip_canfd-timestamp.c    |  41 ++++++-
+ drivers/net/can/rockchip/rockchip_canfd-tx.c       | 124 +++++++++++++++++++--
+ drivers/net/can/rockchip/rockchip_canfd.h          |  19 +++-
+ include/linux/can/dev.h                            |  17 +++
+ 8 files changed, 303 insertions(+), 33 deletions(-)
+---
+base-commit: 48bcad36a131fa67a29a5ac430aceedf2d6f3d0f
+change-id: 20261013-rockchip-canfd-restart-close-ebde5954f1bf
+
+Best regards,
+--  
+Cunhao Lu <1579567540@qq.com>
 
