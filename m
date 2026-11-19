@@ -1,84 +1,75 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 16:50:01 +0000
-Subject: [PATCH] regmap: mmio: Don't attach the clock if clk_prepare()
- fails
+Date: Thu, 19 Nov 2026 16:53:54 +0000
+Subject: [PATCH RFC] watchdog: core: Ignore userspace keepalives once the
+ system goes down
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-regmap-mmio-attach-clk-v1-1-91291802ac53@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDvQGNqiV5EuxmSio0YliVIQ7
- 97YLt/i/wMiB+EIdXFA4F2iLHOGuhVgepo7RrHZUN7Lp1KqwsCdpxW9lwUpJTI9mmlEVz3Ivpz
- VmjTkeA3s5PMbN++/49YObNJ1g/P8AhNfZa16AAAA
-X-Change-ID: 20261119-regmap-mmio-attach-clk-f95ad7fd33a3
-To: Mark Brown <broonie@kernel.org>
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
- Johan Hovold <johan@kernel.org>, Maxime Ripard <mripard@kernel.org>, 
- linux-kernel@vger.kernel.org, driver-core@lists.linux.dev, 
- stable@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+Message-Id: <20261119-watchdog-reboot-keepalive-v1-1-c5902d959796@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMTQrCMBQGr1Le2kATVKpbwQN0K13k50v7VJqSp
+ FUovbtRlzMws1JCZCQ6VytFLJw4jAXkriI76LGHYFeYVK2OUsqTeOlsBxd6EWFCyOIBTPrJC4R
+ 3h9rvTaMar6j0U4Tn9+99o/Z6oe4v02zusPl7pW37AN59C/iCAAAA
+X-Change-ID: 20261119-watchdog-reboot-keepalive-fd50f4b828f2
+To: Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: linux-watchdog@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Primoz Fiser <primoz.fiser@norik.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795107001; l=1957;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795107233; l=1792;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=i99wsC+7/XSg8MNOgqgqgUZ46RlYbMj6RkR/Vf2Of1c=;
- b=9jiDl8QoEqCknvUZMfHJ+ua9PFRbCuLKzsSUKI6x99WZcMsI0+i45tMlgFNggee5UeHYEJgsp
- 6iRbXf9hNrcBfAAPty5w9VsnUBkl6THsynckgmxjhPdAbA0acQ3h+t1
+ bh=8odbgLzkMjv4qHTEHWFN4RAGFDasNozQ665DspbA17w=;
+ b=1rDr9Uz/tDZ9di0LWUyCicF5QfSmb3YYmZIPw4SQUeYUDtf+J6cTiSsiEf2uwfyQtfnpUzVjo
+ kKRuVAQfoJECTRQvVUUMYLnkWlYJk1Ac3hTcM96ZL/kyMbrmU3CxEhn
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-regmap_mmio_attach_clk() stores the clock before preparing it. If
-clk_prepare() fails, regmap_exit() later unprepares a clock that was
-never prepared, and the caller may already have put it.
+A watchdog left running through a reboot should reset a system whose
+reboot hangs. But a daemon still pinging after reboot(2), such as
+systemd after "systemctl reboot -ff", keeps a hang in device_shutdown()
+from ever being reset.
 
-Only attach the clock once it is prepared.
+Ignore userspace keepalives once system_state is past SYSTEM_RUNNING,
+as da9062_wdt and da9063_wdt do since commit 2f61b3a74699 ("watchdog:
+da9062: da9063: prevent pings ahead of machine reset").
 
-Fixes: 31895662f9ba ("regmap: mmio: Add function to attach a clock")
-Cc: stable@vger.kernel.org
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/r/179493691305.3136.16311404541139130213@kernel.org
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Found while fixing the error path of of_syscon_register(); that mfd patch
-is sent separately and neither depends on the other.
+RFC: this changes every driver. A reboot or power-off whose
+device_shutdown() outlasts the timeout now ends in a watchdog reset.
 
-Tested on an Orange Pi 5 (RK3588S), 7.3 with KASAN, together with the mfd
-patch: with a forced clk_prepare() failure in of_syscon_register(), a
-use-after-free in clk_unprepare() is reported without the two patches and
-nothing with both. This patch was not run on its own.
+Tested on an Orange Pi Zero2 (H616, sunxi_wdt) on 7.3.5 with a test
+module that oopses holding a device lock: "systemctl reboot -ff" was
+reset after 14 s in 6 of 6 runs. Without the patch there was no reset
+within 90 s (one run, older 7.3 build). Other drivers and kexec are
+not tested.
 
-Developed with Claude (Anthropic), which wrote the code and the commit
-message. I reviewed every change.
+Developed with Claude (Anthropic) as a coding assistant, which wrote
+the code and the commit message. I reviewed and tested it.
 ---
- drivers/base/regmap/regmap-mmio.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ drivers/watchdog/watchdog_dev.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/base/regmap/regmap-mmio.c b/drivers/base/regmap/regmap-mmio.c
-index 1de2278fa572..6adbc950877c 100644
---- a/drivers/base/regmap/regmap-mmio.c
-+++ b/drivers/base/regmap/regmap-mmio.c
-@@ -590,11 +590,16 @@ EXPORT_SYMBOL_GPL(__devm_regmap_init_mmio_clk);
- int regmap_mmio_attach_clk(struct regmap *map, struct clk *clk)
- {
- 	struct regmap_mmio_context *ctx = map->bus_context;
-+	int ret;
+diff --git a/drivers/watchdog/watchdog_dev.c b/drivers/watchdog/watchdog_dev.c
+index aad3f1f1b4ce..0f149da49a69 100644
+--- a/drivers/watchdog/watchdog_dev.c
++++ b/drivers/watchdog/watchdog_dev.c
+@@ -201,6 +201,9 @@ static int watchdog_ping(struct watchdog_device *wdd)
+ 	if (!watchdog_hw_running(wdd))
+ 		return 0;
+ 
++	if (system_state > SYSTEM_RUNNING)
++		return 0;
 +
-+	ret = clk_prepare(clk);
-+	if (ret)
-+		return ret;
+ 	set_bit(_WDOG_KEEPALIVE, &wd_data->status);
  
- 	ctx->clk = clk;
- 	ctx->attached_clk = true;
- 
--	return clk_prepare(ctx->clk);
-+	return 0;
- }
- EXPORT_SYMBOL_GPL(regmap_mmio_attach_clk);
- 
+ 	wd_data->last_keepalive = ktime_get();
 
 ---
-base-commit: 50b3d8bb527b11384153c4ca854c8610f4a55649
-change-id: 20261119-regmap-mmio-attach-clk-f95ad7fd33a3
+base-commit: 865c2d0f1dd3f0937865dd11819eeb59298a814c
+change-id: 20261119-watchdog-reboot-keepalive-fd50f4b828f2
 
 Best regards,
 --  
