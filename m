@@ -1,11 +1,11 @@
 From: Nizat Mikayilli <nacht@dxdmail.cc>
-Date: Thu, 19 Nov 2026 23:40:05 +0100
-Subject: [PATCH 2/6] arm64: dts: qcom: sm8550-samsung-gts9wifi: Add GPIO
- vibrator
+Date: Thu, 19 Nov 2026 23:40:06 +0100
+Subject: [PATCH 3/6] arm64: dts: qcom: sm8550-samsung-gts9wifi: Add rear
+ flash LED
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-b4-gts9wifi-followups-v1-2-2e2388589a62@dxdmail.cc>
+Message-Id: <20261119-b4-gts9wifi-followups-v1-3-2e2388589a62@dxdmail.cc>
 References: <20261119-b4-gts9wifi-followups-v1-0-2e2388589a62@dxdmail.cc>
 In-Reply-To: <20261119-b4-gts9wifi-followups-v1-0-2e2388589a62@dxdmail.cc>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -15,18 +15,20 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Nizat Mikayilli <nacht@dxdmail.cc>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795128013; l=1114;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795128013; l=1422;
  i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
- bh=LNUGNkotVCwE1oY6OrzDcZJUYNIfY57QMi/3bSwKTao=;
- b=yYmfAn/ldoSlJGnJQOy5sEd3RNTETVwppDlYOHDW7qw1Mgu2sC0OmQ5wwKO/d9SJqEDpbivAR
- x+oPHPXlHCwDizIvKwRVBLQgO4BZdknI+kBSrczDApI2+EY16snO9DU
+ bh=LklzicKTYQYo/JFeFrkMHKE6fg9/z8CBkJFyC8WJ7Fk=;
+ b=6Kv44Z130PJiYrpvk/y2vkSC6hhyyhQTge28cEelavFUk++WK/ZJBmVPgRXJtVINxxaktapjs
+ 69mp3pCCkzbD+ytbFLxOsGflWTwKQZbcvnGpDhhnwzwXTx7kzFxLdZu
 X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
  pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
 X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The vibration motor is switched on and off by TLMM GPIO 18. Describe
-it as a gpio-vibrator.
+The rear flash is a white LED driven by the first two channels of the
+PM8550 flash module. The flash current and timeout limits are those of
+the vendor kernel, and the torch current is limited to 500 mA as on
+SM8550 QRD and Xperia 1 V.
 
 Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
 ---
@@ -34,37 +36,37 @@ Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
  1 file changed, 14 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts b/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts
-index 8e906b7e2af4..3832ea0deb46 100644
+index 3832ea0deb46..ea69d161e6b6 100644
 --- a/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts
 +++ b/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts
-@@ -161,6 +161,13 @@ platform {
- 		};
+@@ -11,6 +11,7 @@
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/input/input.h>
+ #include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/leds/common.h>
+ #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+ #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+ #include "sm8550.dtsi"
+@@ -641,6 +642,19 @@ wifi@0 {
  	};
+ };
  
-+	vibrator {
-+		compatible = "gpio-vibrator";
-+		enable-gpios = <&tlmm 18 GPIO_ACTIVE_HIGH>;
-+		pinctrl-0 = <&vib_en>;
-+		pinctrl-names = "default";
-+	};
++&pm8550_flash {
++	status = "okay";
 +
- 	wcn6855-pmu {
- 		compatible = "qcom,wcn6855-pmu";
- 
-@@ -800,6 +807,13 @@ tdm0_ws_active: tdm0-ws-active-state {
- 		bias-disable;
- 	};
- 
-+	vib_en: vib-en-state {
-+		pins = "gpio18";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
++	led-0 {
++		function = LED_FUNCTION_FLASH;
++		color = <LED_COLOR_ID_WHITE>;
++		led-sources = <1>, <2>;
++		led-max-microamp = <500000>;
++		flash-max-microamp = <2000000>;
++		flash-max-timeout-us = <1280000>;
 +	};
++};
 +
- 	wlan_en: wlan-en-state {
- 		pins = "gpio80";
- 		function = "gpio";
+ &pm8550_gpios {
+ 	sdc2_card_det_n: sdc2-card-det-state {
+ 		pins = "gpio12";
 
 -- 
 2.56.1
