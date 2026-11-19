@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 05:29:34 +0000
-Subject: [PATCH v2 1/2] arm64: dts: allwinner: orangepi-zero2: Reference
- the SPI NOR by label
+Date: Thu, 19 Nov 2026 05:29:35 +0000
+Subject: [PATCH v2 2/2] arm64: dts: allwinner: orangepi-zero2/zero3: Read
+ the SPI NOR over two lines
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-zero2-spi-nor-dual-read-v2-1-185c87065e39@gmail.com>
+Message-Id: <20261119-zero2-spi-nor-dual-read-v2-2-185c87065e39@gmail.com>
 References: <20261119-zero2-spi-nor-dual-read-v2-0-185c87065e39@gmail.com>
 In-Reply-To: <20261119-zero2-spi-nor-dual-read-v2-0-185c87065e39@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -16,64 +16,37 @@ Cc: Andre Przywara <andre.przywara@arm.com>, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
  linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795066173; l=1653;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795066173; l=857;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Q67hG4LUmhhGEHNYhzy/cl5VtGg3Fnoo9rBc5WdZgVg=;
- b=QrPHNczIJ3tpZjilTnMJlGmRdNz9hN+huIkd/Hg9qAHyJ105T47Sa1JjlqhqPvMgKnRUyLyt6
- 51zPNn9l0f/AfQ8TFGJtpZfn/1vOovDcSIOaWnKJZ59LbZGkNAXKcf0
+ bh=Q+r4zEIs6OoXjgWsTg14JRKlUB5idFqb5Wum5OUoLAI=;
+ b=64RjdNiTWEOyc/imWHPnWirAAmWbU5eG2Y2HriNa1MjneBj8xG8+WssVODkJpJVzzZ/htz6eg
+ diuEy0yHbMeAazMYr0kuIZMx51+JrXQYOltsFaCRx679k3Ai5zDXIAY
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Andre Przywara suggested labelling the flash node, so the Zero2 sets its
-supply through the label instead of nesting flash@0 in &spi0.
+WP# and HOLD# are tied to VCC on the Zero2 (schematic v1.3), so read over
+two lines. Andre Przywara pointed out that the Zero3 is the same.
 
 Suggested-by: Andre Przywara <andre.przywara@arm.com>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi |  2 +-
- arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts | 10 ++++------
- 2 files changed, 5 insertions(+), 7 deletions(-)
+ arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi
-index 0d3e761f6466..646d92e0f724 100644
+index 646d92e0f724..4a588c44d029 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi
-@@ -104,7 +104,7 @@ &spi0 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&spi0_pins>, <&spi0_cs0_pin>;
- 
--	flash@0 {
-+	flash: flash@0 {
- 		#address-cells = <1>;
- 		#size-cells = <1>;
+@@ -110,6 +110,7 @@ flash: flash@0 {
  		compatible = "jedec,spi-nor";
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
-index 90c25e12e189..59bbb09bcdbf 100644
---- a/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts
-@@ -24,6 +24,10 @@ &emac0 {
- 	phy-supply = <&reg_dcdce>;
+ 		reg = <0>;
+ 		spi-max-frequency = <40000000>;
++		spi-rx-bus-width = <2>;
+ 	};
  };
  
-+&flash {
-+	vcc-supply = <&reg_aldo1>;
-+};
-+
- &gpu {
- 	mali-supply = <&reg_dcdcc>;
- };
-@@ -147,9 +151,3 @@ &pio {
- 	vcc-ph-supply = <&reg_aldo1>;
- 	vcc-pi-supply = <&reg_aldo1>;
- };
--
--&spi0 {
--	flash@0 {
--		vcc-supply = <&reg_aldo1>;
--	};
--};
 
 -- 
 2.55.0
