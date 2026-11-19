@@ -1,10 +1,11 @@
 From: Nizat Mikayilli <nacht@dxdmail.cc>
-Date: Thu, 19 Nov 2026 23:40:04 +0100
-Subject: [PATCH 1/6] arm64: dts: qcom: sm8550-samsung-gts9wifi: Enable CDSP
+Date: Thu, 19 Nov 2026 23:40:05 +0100
+Subject: [PATCH 2/6] arm64: dts: qcom: sm8550-samsung-gts9wifi: Add GPIO
+ vibrator
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-b4-gts9wifi-followups-v1-1-2e2388589a62@dxdmail.cc>
+Message-Id: <20261119-b4-gts9wifi-followups-v1-2-2e2388589a62@dxdmail.cc>
 References: <20261119-b4-gts9wifi-followups-v1-0-2e2388589a62@dxdmail.cc>
 In-Reply-To: <20261119-b4-gts9wifi-followups-v1-0-2e2388589a62@dxdmail.cc>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -14,41 +15,56 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Nizat Mikayilli <nacht@dxdmail.cc>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795128013; l=877;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795128013; l=1114;
  i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
- bh=NnJjHpakdpxyyCZ6oFrLlypqqGlSBONU2v6+sLCEUd0=;
- b=HSIW++4ax0tLWO5zg/pur07sUSuGMeU7bTsW3qAPEdC/lJSQOP5Zz+7mRTLRiXNYh2wO67JfF
- EATqFW3CvHuAXNrldTf1BEs+6dSHJPjo6Y29J09CgQhk8yXnXKYQLMO
+ bh=LNUGNkotVCwE1oY6OrzDcZJUYNIfY57QMi/3bSwKTao=;
+ b=yYmfAn/ldoSlJGnJQOy5sEd3RNTETVwppDlYOHDW7qw1Mgu2sC0OmQ5wwKO/d9SJqEDpbivAR
+ x+oPHPXlHCwDizIvKwRVBLQgO4BZdknI+kBSrczDApI2+EY16snO9DU
 X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
  pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
 X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the CDSP with the Samsung-signed firmware shipped on the device.
+The vibration motor is switched on and off by TLMM GPIO 18. Describe
+it as a gpio-vibrator.
 
 Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
 ---
- arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts | 7 +++++++
- 1 file changed, 7 insertions(+)
+ arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts b/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts
-index 1e8bfafcc8b1..8e906b7e2af4 100644
+index 8e906b7e2af4..3832ea0deb46 100644
 --- a/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts
 +++ b/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts
-@@ -714,6 +714,13 @@ &remoteproc_adsp {
- 	status = "okay";
- };
+@@ -161,6 +161,13 @@ platform {
+ 		};
+ 	};
  
-+&remoteproc_cdsp {
-+	firmware-name = "qcom/sm8550/Samsung/gts9wifi/cdsp.mbn",
-+			"qcom/sm8550/Samsung/gts9wifi/cdsp_dtb.mbn";
++	vibrator {
++		compatible = "gpio-vibrator";
++		enable-gpios = <&tlmm 18 GPIO_ACTIVE_HIGH>;
++		pinctrl-0 = <&vib_en>;
++		pinctrl-names = "default";
++	};
 +
-+	status = "okay";
-+};
+ 	wcn6855-pmu {
+ 		compatible = "qcom,wcn6855-pmu";
+ 
+@@ -800,6 +807,13 @@ tdm0_ws_active: tdm0-ws-active-state {
+ 		bias-disable;
+ 	};
+ 
++	vib_en: vib-en-state {
++		pins = "gpio18";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
 +
- &sdhc_2 {
- 	cd-gpios = <&pm8550_gpios 12 GPIO_ACTIVE_LOW>;
- 	pinctrl-0 = <&sdc2_default>, <&sdc2_card_det_n>;
+ 	wlan_en: wlan-en-state {
+ 		pins = "gpio80";
+ 		function = "gpio";
 
 -- 
 2.56.1
