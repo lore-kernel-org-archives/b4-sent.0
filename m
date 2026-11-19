@@ -1,141 +1,68 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Thu, 19 Nov 2026 01:12:36 +0000
-Subject: [PATCH] PCI: rockchip-host: Support hibernation with endpoints in
- D0
+From: Dave Airlie <airlied@redhat.com>
+Subject: [PATCH 0/2] nova/nouveau: add configs/module options to control
+ binding behaviour
+Date: Thu, 19 Nov 2026 11:38:23 +1000
+Message-Id: <20261119-nova-nouveau-gsp-v1-0-4cde2bc41132@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-b4-rockchip-pcie-hib-v1-1-05df24cc77e6@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAANN/moC/x3MQQqAIBBA0avErBtwRIK6SrTIccohKFGIQLp70
- vIt/q9QJKsUmLoKWW4tep0N1HfAcT13QQ3NYI0diGhE7zBffHDUhIlVMKpHY5zQGtgZZ6GlKcu
- mz7+dl/f9AEvHSUxmAAAA
-To: Shawn Lin <shawn.lin@rock-chips.com>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>
-Cc: linux-pci@vger.kernel.org, Heiko Stuebner <heiko@sntech.de>, 
- linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Rob Herring <robh@kernel.org>, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3860; i=iav@iav.lv;
- h=from:subject:message-id; bh=tt1dbxgPAsX3IFa6cNo4EeAGvruDQ8t+mQUrzu36VIA=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFn/fFkLdjOq/VvaYb5qy+rEVp9/9i1Kum+enHy7OHvJw
- +56/X8uHaUsDGJcDLJiiiwTDmncylhy9a+/h/kDmDmsTCBDGLg4BWAiW68yMiy6dXtzyes9JYFh
- EzrObIx5cy/W4desP1GbA59ozX+gZBDGyNCroHr9tm1TxhZNtfNPZ/d6byj5oWV1V2dp3Oftv5e
- IvmYDAA==
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQqAIBAAvxJ7TnBFyvpKdJBabS8aShKIf0+6D
+ MxhpkKmxJRhHSokKpw5hi44DnBcNngSfHYHJdWEiIsIsdiOp5B9hM+3QOnMbJReDGno2Z3I8fs
+ vt721D0uK5XpiAAAA
+X-Change-ID: 20261119-nova-nouveau-gsp-10f8782498e4
+To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>
+Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
+ nova-gpu@lists.linux.dev, Dave Airlie <airlied@redhat.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1451; i=airlied@redhat.com;
+ h=from:subject:message-id; bh=a4R+CA33McYCg3MsCLoZGkMds+XhCjyC2e9aLNwAvnk=;
+ b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBq/lMX3zuL8Y2AWISRh7ealRDpz9EVaxPcLG55H
+ GUDkx93P6OJAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCav5TFwAKCRAMdPNZecSG
+ vnCHD/9A8JSADHK6u4S3PFnLGfl3AlKX1XQ/M3NgiCJ2C/H5ixG2dGNm+EU58QykVRu8LBs8hBT
+ DVTXl9Z5O/Wj+pNBCvAKcHj7cF9Ies0wFE1AkGjUm9pYKt+elLDwaihXjU6JQZ05GSQoixtIpdP
+ +bIS/iGqbXI02QUT7fAtUCkMiMdsqpor38Xp4ZQ11BKKbafgkctr7eRydHvfpZLDCKL+7fD68tD
+ gpjxuXUQ5bOj0qKuHKfFoBdpnMTvwZ86Jj5efdQl/5KVLKslE2B1aYZR767NZCNNqLso617eddz
+ j5IZCQxTQMIgZMBJQOnvHyl1jRUiTCyJCSXHjR9X1XL6o67hVKPtp3haObrG6cf2Qbn3VODEG+n
+ H3dTFbLKcxYfHdn8pvKprQEVjdhU/wP50jIRiPl3ckqjPnaZZ2F6sF88D2ei1NDLqgagJIFND+D
+ +gNRwqw9mad0BWBAVqSOiGATCKeaSnqVKKPQzB40/aM3naGzV6punmsu5Rh937al3PI5MKm9wN/
+ PZttHKHlHh8zd0TSojV05nk3uKLIWY+mxL/wAsJL9TpVXIbHSNRVVpKxzQfJ7upeirLgk5VKO8H
+ fxIlao9BYQNitFgWVoL7qaQqK6uBCU2/37rHGjdJcCbzWO3RDUJEgMdJ+AuQFdpnTT7IWb7y+RG
+ sNmVVxMYIFcsV8A==
+X-Developer-Key: i=airlied@redhat.com; a=openpgp;
+ fpr=10A6D91DA1B05BD29F6DEBAC0C74F35979C486BE
+X-Endpoint-Received: by B4 Relay for airlied@redhat.com/default with auth_id=1321
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver runs its suspend callback on every system sleep transition,
-including hibernation freeze and the quiesce step of the kernel that
-loads the image. The PCI core leaves the endpoints in D0 there, the
-link does not enter L2 after PME_Turn_Off, and hibernation aborts:
+We want to be able to build both nova and nouveau and maintain the
+status quo for now of nouveau binding to all GSP enabled GPUs.
 
-  rockchip-pcie f8000000.pcie: PCIe link enter L2 timeout!
-  rockchip-pcie f8000000.pcie: PM: failed to freeze noirq: error -110
+In the future we may suggest switching the default to nova, but
+for now the default is to let users use command line options for testing
+and developers building their own kernel can set the kconfig.
 
-Keep the link up across freeze and thaw. On restore, power the port
-down and bring it up as on resume, because the kernel that loaded the
-image may have left it in any state. The port may already be down if
-poweroff_noirq ran, so track that state.
-
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Signed-off-by: Dave Airlie <airlied@redhat.com>
 ---
-Tested on v7.4-rc3 with this patch, ROCK Pi 4A with a WD SN770 NVMe:
-5 of 5 hibernation cycles restored, the NVMe readable after each.
----
- drivers/pci/controller/pcie-rockchip-host.c | 33 +++++++++++++++++++++++++++--
- drivers/pci/controller/pcie-rockchip.h      |  1 +
- 2 files changed, 32 insertions(+), 2 deletions(-)
+Dave Airlie (2):
+      drm/nouveau: add option to leave GSP-capable GPUs to other drivers
+      nova-core: only bind to GPUs when explicitly requested
 
-diff --git a/drivers/pci/controller/pcie-rockchip-host.c b/drivers/pci/controller/pcie-rockchip-host.c
-index 1e1556e436b8..df4b9b3ec031 100644
---- a/drivers/pci/controller/pcie-rockchip-host.c
-+++ b/drivers/pci/controller/pcie-rockchip-host.c
-@@ -863,6 +863,8 @@ static int rockchip_pcie_suspend_noirq(struct device *dev)
- 
- 	regulator_disable(rockchip->vpcie0v9);
- 
-+	rockchip->powered_down = true;
-+
- 	return ret;
- }
- 
-@@ -893,6 +895,8 @@ static int rockchip_pcie_resume_noirq(struct device *dev)
- 	rockchip_pcie_update_txcredit_mui(rockchip);
- 	rockchip_pcie_enable_interrupts(rockchip);
- 
-+	rockchip->powered_down = false;
-+
- 	return 0;
- 
- err_err_deinit_port:
-@@ -904,6 +908,25 @@ static int rockchip_pcie_resume_noirq(struct device *dev)
- 	return err;
- }
- 
-+static int rockchip_pcie_restore_noirq(struct device *dev)
-+{
-+	struct rockchip_pcie *rockchip = dev_get_drvdata(dev);
-+
-+	/*
-+	 * The boot kernel may have left the port in any state, while the image
-+	 * holds the enable counts of a running port. Power it down so that
-+	 * resume brings it up from scratch.
-+	 */
-+	if (!rockchip->powered_down) {
-+		rockchip_pcie_deinit_phys(rockchip);
-+		rockchip_pcie_disable_clocks(rockchip);
-+		regulator_disable(rockchip->vpcie0v9);
-+		rockchip->powered_down = true;
-+	}
-+
-+	return rockchip_pcie_resume_noirq(dev);
-+}
-+
- static int rockchip_pcie_probe(struct platform_device *pdev)
- {
- 	struct rockchip_pcie *rockchip;
-@@ -1011,9 +1034,15 @@ static void rockchip_pcie_remove(struct platform_device *pdev)
- 	regulator_disable(rockchip->vpcie0v9);
- }
- 
-+/*
-+ * Freeze leaves the endpoints in D0 and the link does not reach L2 then,
-+ * so keep the link up across freeze and thaw; restore re-inits the port.
-+ */
- static const struct dev_pm_ops rockchip_pcie_pm_ops = {
--	NOIRQ_SYSTEM_SLEEP_PM_OPS(rockchip_pcie_suspend_noirq,
--				  rockchip_pcie_resume_noirq)
-+	.suspend_noirq = pm_sleep_ptr(rockchip_pcie_suspend_noirq),
-+	.resume_noirq = pm_sleep_ptr(rockchip_pcie_resume_noirq),
-+	.poweroff_noirq = pm_sleep_ptr(rockchip_pcie_suspend_noirq),
-+	.restore_noirq = pm_sleep_ptr(rockchip_pcie_restore_noirq),
- };
- 
- static const struct of_device_id rockchip_pcie_of_match[] = {
-diff --git a/drivers/pci/controller/pcie-rockchip.h b/drivers/pci/controller/pcie-rockchip.h
-index b5da15601b58..51877678d3df 100644
---- a/drivers/pci/controller/pcie-rockchip.h
-+++ b/drivers/pci/controller/pcie-rockchip.h
-@@ -324,6 +324,7 @@ struct rockchip_pcie {
- 	void    __iomem *msg_region;
- 	phys_addr_t msg_bus_addr;
- 	bool is_rc;
-+	bool powered_down;
- 	struct resource *mem_res;
- };
- 
-
+ drivers/gpu/drm/nouveau/Kconfig                    | 17 +++++++++++++++++
+ drivers/gpu/drm/nouveau/include/nvkm/core/pci.h    |  2 +-
+ drivers/gpu/drm/nouveau/nouveau_drm.c              |  9 ++++++++-
+ drivers/gpu/drm/nouveau/nvkm/engine/device/base.c  | 16 +++++++++++++++-
+ drivers/gpu/drm/nouveau/nvkm/engine/device/pci.c   |  4 ++--
+ drivers/gpu/drm/nouveau/nvkm/engine/device/priv.h  |  2 +-
+ drivers/gpu/drm/nouveau/nvkm/engine/device/tegra.c |  5 ++++-
+ drivers/gpu/nova-core/Kconfig                      | 21 +++++++++++++++++++++
+ drivers/gpu/nova-core/driver.rs                    | 13 +++++++++++++
+ drivers/gpu/nova-core/nova_core.rs                 |  4 ++++
+ 10 files changed, 86 insertions(+), 7 deletions(-)
 ---
-base-commit: 35f800669ce835aa77364a2ab5b61be19b778d3c
-change-id: 20261119-b4-rockchip-pcie-hib-004e1adc4042
+base-commit: e55a991e09e3b44f0b0d8206bb523dc57c086341
+change-id: 20261119-nova-nouveau-gsp-10f8782498e4
 
 Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+Dave Airlie <airlied@redhat.com>
 
