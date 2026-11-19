@@ -1,145 +1,160 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 10:07:58 +0000
-Subject: [PATCH] media: verisilicon: Limit the i.MX8MM G1 decoder to 1920
- pixel wide pictures
+From: Cunhao Lu <1579567540@qq.com>
+Date: Thu, 19 Nov 2026 18:12:34 +0800
+Subject: [PATCH v2] dt-bindings: soc: rockchip: Add RK3572 PMU and GRF
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-hantro-imx8mm-vp8-v1-1-835dd9b5382c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0Q5EMBCF4VeRuTaJ6Qrtvoq4sEwZSZEWkYh3V
- +vyO8n5TwjshQN8kxM87xJkniIoTaAdmqlnlC4aVKYKIjIYx9XPKO7QzuG+aFQfy7q0ZLrcQPw
- tnq0c/2ZVvw7bb+R2fUJwXTfIrYPTdQAAAA==
-X-Change-ID: 20261119-hantro-imx8mm-vp8-23fe87f19d49
-To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Frank Li <Frank.Li@nxp.com>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Hans Verkuil <hverkuil@kernel.org>, 
- Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
- Adam Ford <aford173@gmail.com>
-Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+Message-Id: <20261119-add-board-ok3572-c-soc-v2-1-86f331024ae6@qq.com>
+X-B4-Tracking: v=1; b=H4sIAJHL/moC/22Nyw6CMBBFf4XM2jGdkuJj5X8YFqWdSjVSaZFoC
+ P9uga3Lk9x7zgSJo+cE52KCyKNPPnQZ5K4A0+ruxuhtZpBCVkR0Qm0tNkFHi+FRqoNEgykYFI0
+ jpXXlVGUhn1+Rnf+s4mu9cXo3dzbDYlsWrU9DiN+1PNKy2yJCyn+RkVDkinD2qHRJzJe+35vwh
+ Hqe5x/Y49qWxwAAAA==
+X-Change-ID: 20261119-add-board-ok3572-c-soc-0bf15aa6f56d
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Elaine Zhang <zhangqing@rock-chips.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, Cunhao Lu <1579567540@qq.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795082877; l=3675;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=ttabhbq6HX9n6LkD9lfDtGqujWqiEJqLK1Woo7amLA4=;
- b=+G5/+KW2AA45IYVMYGsAK031f3/0CCyalGQ+9VZaUy/I1qNSEut0kIdVEsvlPABpwv/SV97aN
- by0MkGaTorGCX58eERoTDkfsA1sJAYMPiaiCNQwfVdOyBtXjalc1cP+
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795083174; l=5318;
+ i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
+ bh=b/rDTbq4DCmHSU701K3E2hX3KodZSHqR0es+ciOnncM=;
+ b=T1wmbAcUr5SHtkt0cRgeD/nv42XSiVmV7RqDZ+6uN8OuohfqZgffN9iSBgDLcYGlT/0+iRMyU
+ M8sXcuF/eNHBKdqabV+HA6x9dmbPPvJKqH1GtKy/abpUtZcqtw4hRRO
+X-Developer-Key: i=1579567540@qq.com; a=ed25519;
+ pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
+X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The i.MX8MM G1 uses the i.MX8MQ format table, which allows H.264, VP8
-and NV12 up to 3840x2160. The i.MX 8M Mini data sheet rates the decoder
-at 1080p60, and NXP's hantro_v4l2 driver offers a decoder of that size
-1920 pixels wide and up to 4096 high.
+The RK3572 PMU and GRF blocks are system controllers shared with the
+clock, power-domain, and USB PHY drivers.
 
-Give it its own table with these formats limited to 1920 pixels wide.
-Heights are kept so that portrait pictures such as 1080x1920 are still
-accepted, as in NXP's driver.
-
-Fixes: cf1abc501a5c ("media: hantro: Add support for i.MX8MM Hantro-G1")
-Reported-by: Nicolas Dufresne <nicolas.dufresne@collabora.com>
-Closes: https://lore.kernel.org/r/f041c5d87698ab3be8283ecc71ead0679327238e.camel@collabora.com
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Signed-off-by: Cunhao Lu <1579567540@qq.com>
+Acked-by: Rob Herring (Arm) <robh@kernel.org>
 ---
-Not tested on hardware: I have no i.MX8MM board, so the limit is from the
-data sheet and NXP's driver, not from the decoder's configuration
-register. Build-tested only (W=1 arm64). The i.MX8MQ table is unchanged:
-NXP's driver gives VP8 the same 4096x4096 as H.264 there.
+This is one of the subsystem submissions for RK3572 support.
 
-Developed with Claude (Anthropic), which wrote the code and the commit
-messages. I reviewed every change.
+This patch documents the RK3572 power management unit (PMU) and general
+register files (GRFs) used by the clock, power-domain and PHY drivers.
+The GRF binding describes the USB2 PHY as a child of its GRF and
+requires clocks for the NVM0, PHP, PIPE PHY and USB2 PHY GRFs.
+
+The RK3572 SoC has eight CPU cores: two Cortex-A73 cores and six
+Cortex-A53 cores. It also integrates an Arm Mali-G310V2 MC1 GPU.
+The OK3572-C board provides two Gigabit Ethernet ports, three USB3 Type-A
+ports, a Type-C dual-role port, eMMC, microSD, and UART.
+
+Testing was performed with Debian 13 minimal and Linux 7.3 on the
+OK3572-C with the FET3572-C module.
+
+Passed functionality:
+
+- SD and eMMC complete the firmware, kernel, and root filesystem
+  boot chain.
+- UART console works at 1500000 baud.
+- SD read/write and data persistence checks pass.
+- All eight CPUs start; CPU frequency scaling and hotplug checks pass.
+- Both Ethernet ports obtain IPv4 addresses and pass bidirectional file
+  transfers.
+- All three Type-A ports pass USB2 and USB3 enumeration, data transfers,
+  and reconnect persistence checks.
+- Type-C host and device modes pass in both plug orientations. Physical
+  reconnects correctly select the expected device, host, and device roles
+  in sequence.
+
+Some files in this series are derived from the Forlinx OK3572-C BSP
+Alpha1. Thanks to Forlinx for their support.
+Thanks also to Rockchip's David Wu, Elaine Zhang, Finley Xiao, Frank
+Wang, William Wu, and Ye Zhang for providing the driver source files.
+
+AI assistance:
+
+- Codex / DeepSeek V4.1 Flash were used for:
+  - Reviewing and adjusting code style to follow community conventions
+  - Automating tests
+  - Collecting data
 ---
- drivers/media/platform/verisilicon/imx8m_vpu_hw.c | 58 ++++++++++++++++++++++-
- 1 file changed, 56 insertions(+), 2 deletions(-)
+Changes in v2:
+- Split the original RK3572 support series by subsystem.
+- Link to v1:
+  https://patch.msgid.link/20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com
+---
+Raw dmesg: see the v1 cover letter.
+---
+ Documentation/devicetree/bindings/arm/rockchip/pmu.yaml |  2 ++
+ Documentation/devicetree/bindings/soc/rockchip/grf.yaml | 12 ++++++++++++
+ 2 files changed, 14 insertions(+)
 
-diff --git a/drivers/media/platform/verisilicon/imx8m_vpu_hw.c b/drivers/media/platform/verisilicon/imx8m_vpu_hw.c
-index fa4224de4b99..805c57a4adcb 100644
---- a/drivers/media/platform/verisilicon/imx8m_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/imx8m_vpu_hw.c
-@@ -148,6 +148,60 @@ static const struct hantro_fmt imx8m_vpu_dec_fmts[] = {
- 	},
- };
- 
-+static const struct hantro_fmt imx8mm_vpu_g1_dec_fmts[] = {
-+	{
-+		.fourcc = V4L2_PIX_FMT_NV12,
-+		.codec_mode = HANTRO_MODE_NONE,
-+		.frmsize = {
-+			.min_width = FMT_MIN_WIDTH,
-+			.max_width = FMT_FHD_WIDTH,
-+			.step_width = MB_DIM,
-+			.min_height = FMT_MIN_HEIGHT,
-+			.max_height = FMT_UHD_HEIGHT,
-+			.step_height = MB_DIM,
-+		},
-+	},
-+	{
-+		.fourcc = V4L2_PIX_FMT_MPEG2_SLICE,
-+		.codec_mode = HANTRO_MODE_MPEG2_DEC,
-+		.max_depth = 2,
-+		.frmsize = {
-+			.min_width = FMT_MIN_WIDTH,
-+			.max_width = FMT_FHD_WIDTH,
-+			.step_width = MB_DIM,
-+			.min_height = FMT_MIN_HEIGHT,
-+			.max_height = FMT_FHD_HEIGHT,
-+			.step_height = MB_DIM,
-+		},
-+	},
-+	{
-+		.fourcc = V4L2_PIX_FMT_VP8_FRAME,
-+		.codec_mode = HANTRO_MODE_VP8_DEC,
-+		.max_depth = 2,
-+		.frmsize = {
-+			.min_width = FMT_MIN_WIDTH,
-+			.max_width = FMT_FHD_WIDTH,
-+			.step_width = MB_DIM,
-+			.min_height = FMT_MIN_HEIGHT,
-+			.max_height = FMT_UHD_HEIGHT,
-+			.step_height = MB_DIM,
-+		},
-+	},
-+	{
-+		.fourcc = V4L2_PIX_FMT_H264_SLICE,
-+		.codec_mode = HANTRO_MODE_H264_DEC,
-+		.max_depth = 2,
-+		.frmsize = {
-+			.min_width = FMT_MIN_WIDTH,
-+			.max_width = FMT_FHD_WIDTH,
-+			.step_width = MB_DIM,
-+			.min_height = FMT_MIN_HEIGHT,
-+			.max_height = FMT_UHD_HEIGHT,
-+			.step_height = MB_DIM,
-+		},
-+	},
-+};
-+
- static const struct hantro_fmt imx8m_vpu_g2_postproc_fmts[] = {
- 	{
- 		.fourcc = V4L2_PIX_FMT_NV12,
-@@ -382,8 +436,8 @@ const struct hantro_variant imx8mq_vpu_g2_variant = {
- };
- 
- const struct hantro_variant imx8mm_vpu_g1_variant = {
--	.dec_fmts = imx8m_vpu_dec_fmts,
--	.num_dec_fmts = ARRAY_SIZE(imx8m_vpu_dec_fmts),
-+	.dec_fmts = imx8mm_vpu_g1_dec_fmts,
-+	.num_dec_fmts = ARRAY_SIZE(imx8mm_vpu_g1_dec_fmts),
- 	.codec = HANTRO_MPEG2_DECODER | HANTRO_VP8_DECODER |
- 		 HANTRO_H264_DECODER,
- 	.codec_ops = imx8mq_vpu_g1_codec_ops,
+diff --git a/Documentation/devicetree/bindings/arm/rockchip/pmu.yaml b/Documentation/devicetree/bindings/arm/rockchip/pmu.yaml
+index 1cff2328cd01..43dcaa77ffdb 100644
+--- a/Documentation/devicetree/bindings/arm/rockchip/pmu.yaml
++++ b/Documentation/devicetree/bindings/arm/rockchip/pmu.yaml
+@@ -28,6 +28,7 @@ select:
+           - rockchip,rk3528-pmu
+           - rockchip,rk3562-pmu
+           - rockchip,rk3568-pmu
++          - rockchip,rk3572-pmu
+           - rockchip,rk3576-pmu
+           - rockchip,rk3588-pmu
+           - rockchip,rv1126-pmu
+@@ -48,6 +49,7 @@ properties:
+           - rockchip,rk3528-pmu
+           - rockchip,rk3562-pmu
+           - rockchip,rk3568-pmu
++          - rockchip,rk3572-pmu
+           - rockchip,rk3576-pmu
+           - rockchip,rk3588-pmu
+           - rockchip,rv1126-pmu
+diff --git a/Documentation/devicetree/bindings/soc/rockchip/grf.yaml b/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
+index e94c83d7c138..0e0bf8e234c8 100644
+--- a/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
++++ b/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
+@@ -30,6 +30,12 @@ properties:
+               - rockchip,rk3568-pipe-grf
+               - rockchip,rk3568-pipe-phy-grf
+               - rockchip,rk3568-usb2phy-grf
++              - rockchip,rk3572-ioc-grf
++              - rockchip,rk3572-nvm0-grf
++              - rockchip,rk3572-php-grf
++              - rockchip,rk3572-pipe-phy-grf
++              - rockchip,rk3572-pmu0-grf
++              - rockchip,rk3572-sys-grf
+               - rockchip,rk3576-bigcore-grf
+               - rockchip,rk3576-cci-grf
+               - rockchip,rk3576-csidphy-grf
+@@ -96,6 +102,7 @@ properties:
+               - rockchip,rk3562-pmu-grf
+               - rockchip,rk3568-grf
+               - rockchip,rk3568-pmugrf
++              - rockchip,rk3572-usb2phy-grf
+               - rockchip,rk3576-ioc-grf
+               - rockchip,rk3576-pmu0-grf
+               - rockchip,rk3576-usb2phy-grf
+@@ -259,6 +266,7 @@ allOf:
+               - rockchip,rk3308-usb2phy-grf
+               - rockchip,rk3328-usb2phy-grf
+               - rockchip,rk3399-grf
++              - rockchip,rk3572-usb2phy-grf
+               - rockchip,rk3576-usb2phy-grf
+               - rockchip,rk3588-usb2phy-grf
+               - rockchip,rv1108-grf
+@@ -310,6 +318,10 @@ allOf:
+         compatible:
+           contains:
+             enum:
++              - rockchip,rk3572-nvm0-grf
++              - rockchip,rk3572-php-grf
++              - rockchip,rk3572-pipe-phy-grf
++              - rockchip,rk3572-usb2phy-grf
+               - rockchip,rk3576-dcphy-grf
+               - rockchip,rk3576-vo1-grf
+               - rockchip,rk3588-vo-grf
 
 ---
-base-commit: aa0f4c41d4870a18e65772a1817af16427200371
-change-id: 20261119-hantro-imx8mm-vp8-23fe87f19d49
+base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
+change-id: 20261119-add-board-ok3572-c-soc-0bf15aa6f56d
 
 Best regards,
 --  
-Arun Iyengar <aiyengar1990@gmail.com>
+Cunhao Lu <1579567540@qq.com>
 
