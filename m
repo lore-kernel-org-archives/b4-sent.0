@@ -1,105 +1,65 @@
-From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 19 Nov 2026 16:39:51 +0800
-Subject: [PATCH net v10 10/10] can: rockchip_canfd: serialize timecounter
- timestamp conversion
+From: =?utf-8?q?Jordan_DESNO=C3=8BS?= <jordan.desnoes@francetv.fr>
+Subject: [PATCH 6.18.y 0/4] libceph: add CEPH_CRYPTO_AES256KRB5 support
+Date: Thu, 19 Nov 2026 09:57:22 +0100
+Message-Id: <20261119-aes256k-6-18-y-v1-0-bd5db87da2f5@francetv.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-rockchip-canfd-restart-close-v10-10-df23913aa33a@qq.com>
-References: <20261119-rockchip-canfd-restart-close-v10-0-df23913aa33a@qq.com>
-In-Reply-To: <20261119-rockchip-canfd-restart-close-v10-0-df23913aa33a@qq.com>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, kernel@pengutronix.de, 
- Vincent Mailhol <mailhol@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Oliver Hartkopp <socketcan@hartkopp.net>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, 
- Wolfgang Grandegger <wg@grandegger.com>
-Cc: linux-can@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-doc@vger.kernel.org, Cunhao Lu <1579567540@qq.com>, 
- stable@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795077587; l=2925;
- i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=+r/q2Rl2I8NQ6adJiGUotbvYu4U8wC9txcC8z+mu+Ic=;
- b=ix+bj2eByxUlMPtJyr+VbT69M5muyWlJq24slJxXeYu686VBrz8FBX6VIAd43F5Bim12v+JMx
- ebL939YJJS/BRtrnI8cw7P6TGMI0jMQI9DvjZnet+AhiMH7POwU0r43
-X-Developer-Key: i=1579567540@qq.com; a=ed25519;
- pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
-X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAPK5/moC/yWMQQ6CQAwAv0J6tsRupC5+hXCApWg1QbMFIiH83
+ RWOM8nMCiZRxeCWrRBlVtP3kIBOGYRHM9wFtUsM7uyYiEpsxFzBL2Qkjwte2r4r+OpLlgAp+kT
+ p9bsPK+CcfL5AfXib2qeE8X+DbfsBs/cemXoAAAA=
+X-Change-ID: 20261119-aes256k-6-18-y-4bfd567896ec
+To: stable@vger.kernel.org
+Cc: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Xiubo Li <xiubo.li@clyso.com>, Viacheslav Dubeyko <slava@dubeyko.com>, 
+ ceph-devel@vger.kernel.org, 
+ =?utf-8?q?Jordan_DESNO=C3=8BS?= <jordan.desnoes@francetv.fr>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795078645; l=1618;
+ i=jordan.desnoes@francetv.fr; s=20261119; h=from:subject:message-id;
+ bh=UpqiUKM7C7AR2lLJt+zJ2w1iHwSEDbb6nW94JSyxo8Q=;
+ b=yfBLQPgOHbbFdt429ktoFdr+HMl0jyRmXE9h3Ngn+2eLDwuEe9lGv2j17vQJXxamT6ZM606jm
+ F+xqrQAtd11ACdZ1SlPqvP7wmxnyLB3nyQUFAqxX69W8wI8cJE15wND
+X-Developer-Key: i=jordan.desnoes@francetv.fr; a=ed25519;
+ pk=NsqAnHujTt5QBjYGvDgx/bh9SKZzYfCniV8bhRv6vTA=
+X-Endpoint-Received: by B4 Relay for jordan.desnoes@francetv.fr/20261119 with auth_id=1567
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The timestamp worker advances the timecounter with timecounter_read()
-while RX, TX completion and error-frame paths use timecounter_cyc2time()
-to convert hardware timestamps without holding timestamp_lock.
+Backport of the libceph aes256k series from v7.0, as discussed in [1].
+Ilya is fine with it going to 6.18.y.
 
-timecounter_read() updates frac, cycle_last and nsec in separate steps.
-A concurrent conversion can observe the new cycle_last with the old
-nsec and produce an incorrect timestamp.
+Patches 2 and 4 cherry-pick cleanly. Patches 1 and 3 conflict in
+__ceph_x_decrypt() with 821365487aa5 ("libceph: Fix potential
+out-of-bounds access in __ceph_x_decrypt()"), which 6.18.y already has;
+the resolution gives the same code as mainline.
 
-Hold timestamp_lock across timecounter_cyc2time(), using the same lock
-as timecounter_read() and timecounter_init(). Keep the SKB timestamp
-assignment outside the critical section.
+Tested on 6.18.58 against a Ceph 20.2.4 cluster restricted to aes256k:
+rbd and CephFS via ceph-csi, map/unmap, reboot, and 24h of I/O across
+ticket renewals. Build-tested on top of 6.18.64.
 
-TX completion nests timestamp_lock inside tx_lock; no timestamp-lock
-holder acquires tx_lock.
+[1] https://lore.kernel.org/stable/PR1P264MB1805408F7C4A11E6F4D2F6BE887B2@PR1P264MB1805.FRAP264.PROD.OUTLOOK.COM/
 
-Fixes: 4e1a18bab124 ("can: rockchip_canfd: add hardware timestamping support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Cunhao Lu <1579567540@qq.com>
+Signed-off-by: Jordan DESNOËS <jordan.desnoes@francetv.fr>
 ---
- drivers/net/can/rockchip/rockchip_canfd-timestamp.c | 5 ++++-
- drivers/net/can/rockchip/rockchip_canfd.h           | 4 ++--
- 2 files changed, 6 insertions(+), 3 deletions(-)
+Ilya Dryomov (4):
+      libceph: generalize ceph_x_encrypt_offset() and ceph_x_encrypt_buflen()
+      libceph: introduce ceph_crypto_key_prepare()
+      libceph: add support for CEPH_CRYPTO_AES256KRB5
+      libceph: adapt ceph_x_challenge_blob hashing and msgr1 message signing
 
-diff --git a/drivers/net/can/rockchip/rockchip_canfd-timestamp.c b/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-index 7c7b95343aa8..76d522ee972e 100644
---- a/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-+++ b/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-@@ -15,13 +15,16 @@ static u64 rkcanfd_timestamp_read(struct cyclecounter *cc)
- 	return rkcanfd_get_timestamp(priv);
- }
- 
--void rkcanfd_skb_set_timestamp(const struct rkcanfd_priv *priv,
-+void rkcanfd_skb_set_timestamp(struct rkcanfd_priv *priv,
- 			       struct sk_buff *skb, const u32 timestamp)
- {
- 	struct skb_shared_hwtstamps *hwtstamps = skb_hwtstamps(skb);
-+	unsigned long flags;
- 	u64 ns;
- 
-+	spin_lock_irqsave(&priv->timestamp_lock, flags);
- 	ns = timecounter_cyc2time(&priv->tc, timestamp);
-+	spin_unlock_irqrestore(&priv->timestamp_lock, flags);
- 
- 	hwtstamps->hwtstamp = ns_to_ktime(ns);
- }
-diff --git a/drivers/net/can/rockchip/rockchip_canfd.h b/drivers/net/can/rockchip/rockchip_canfd.h
-index 9fa0327b3e74..b84ab01eaab4 100644
---- a/drivers/net/can/rockchip/rockchip_canfd.h
-+++ b/drivers/net/can/rockchip/rockchip_canfd.h
-@@ -477,7 +477,7 @@ struct rkcanfd_priv {
- 
- 	/* Serialize TX submission/completion with bus-off and restart. */
- 	spinlock_t tx_lock;
--	/* Serialize timestamp work with start/stop. */
-+	/* Protects tc and timestamp_active. */
- 	spinlock_t timestamp_lock;
- 	void __iomem *regs;
- 	unsigned int tx_head;
-@@ -561,7 +561,7 @@ void rkcanfd_ethtool_init(struct rkcanfd_priv *priv);
- 
- int rkcanfd_handle_rx_int(struct rkcanfd_priv *priv);
- 
--void rkcanfd_skb_set_timestamp(const struct rkcanfd_priv *priv,
-+void rkcanfd_skb_set_timestamp(struct rkcanfd_priv *priv,
- 			       struct sk_buff *skb, const u32 timestamp);
- void rkcanfd_timestamp_work_init(struct rkcanfd_priv *priv);
- void rkcanfd_timestamp_init(struct rkcanfd_priv *priv);
+ include/linux/ceph/ceph_fs.h |   5 +-
+ net/ceph/Kconfig             |   1 +
+ net/ceph/auth_x.c            | 195 ++++++++++++++++++++++---------
+ net/ceph/auth_x_protocol.h   |  38 ++++++
+ net/ceph/crypto.c            | 269 +++++++++++++++++++++++++++++++++++--------
+ net/ceph/crypto.h            |  21 +++-
+ net/ceph/messenger_v2.c      |  14 +--
+ 7 files changed, 428 insertions(+), 115 deletions(-)
+---
+base-commit: fd7cfd39c88596fec816639ad83cbf3e9d316372
+change-id: 20261119-aes256k-6-18-y-4bfd567896ec
 
--- 
-2.34.1
+Best regards,
+--  
+Jordan DESNOËS <jordan.desnoes@francetv.fr>
 
