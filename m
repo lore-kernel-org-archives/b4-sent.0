@@ -1,98 +1,113 @@
-From: Blake Alexander <contact@blakejalexander.com>
-Date: Thu, 19 Nov 2026 04:56:59 +0100
-Subject: [PATCH] usb: typec: ucsi: log invalid UCSI version of 0
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Thu, 19 Nov 2026 04:00:48 +0000
+Subject: [PATCH v3] smb: client: don't use read data that failed signature
+ verification
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-log-ucsi-firmware-quirk-v1-1-6d42d70a6158@blakejalexander.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CQAxA0auQrm3CTIygVzEusLRQVNDWURPC3
- R1l+Rb/z+Bsyg6HYgbjl7pOY0bYFEB9M3aM2mZDLOMuhLDH69RhIlcUtdu7McZHUrtgLUJ1RVW
- 7jQK5vhuLfv7n42m1p/PA9PztYFm+rNKy2nsAAAA=
-X-Change-ID: 20261119-log-ucsi-firmware-quirk-8ffc87c7d42f
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Blake Alexander <contact@blakejalexander.com>
+Message-Id: <20261119-smb2-readv-v3-1-f3a8a2eddb1c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAG90/moC/yXMSQqAMAxA0atI1hZsBaeriAtrokZwoNEiiHe36
+ vIt/r9AyDEJVNEFjjwLr0tAGkfQje0ykGIMBpOYTGtdKpmtUY5a9CopeouabJojQgg2Rz2f36x
+ ufsthJ+r29wD3/QBx6SnEbgAAAA==
+X-Change-ID: 20261119-smb2-readv-08fbd1eb37dd
+To: linkinjeon@kernel.org, pc@manguebit.org
+Cc: bharathsm@microsoft.com, samba-technical@lists.samba.org, 
+ dhowells@redhat.com, smfrench@gmail.com, ematsumiya@suse.de, 
+ sprasad@microsoft.com, linux-kernel@vger.kernel.org, 
+ linux-cifs@vger.kernel.org, tom@talpey.com, ronniesahlberg@gmail.com
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795060629; l=2922;
- i=contact@blakejalexander.com; s=20261119; h=from:subject:message-id;
- bh=D9QKefTsauXLfG27A3b8IZK8JtUA5DtyqrpmUi8e6cE=;
- b=rdPy/cmFK41OxT4Qx7L+fZtJAtdaWVvzTfGR+7kCCx+VCJ6OKfsJ7/1KcE8tnZk2za6Cy31/q
- z7qoirp65lwAkn8git9jXKQ+qnL4nPc1yP7zKWqyQN0f8Ne2y80yqKp
-X-Developer-Key: i=contact@blakejalexander.com; a=ed25519;
- pk=csAgv2qq1q6RTYXyATg9ngFwpSFPE0yWA9R9nSvVxW0=
-X-Endpoint-Received: by B4 Relay for contact@blakejalexander.com/20261119 with auth_id=1565
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795060847; l=3688;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=URMORExrH4JCtRZ0Ue777N7D5BGWiuT3dVJfKgv73gg=;
+ b=ToRXAkguD7E1PnuVkw51/9lK1qF1PYf3Rk+n99xdleliV9SoLKEY7e5xs8imihPGrzEB+6kj+
+ aJi1hipwXl7Bd1HzcHJIpO8syyzqTqyfIx1U4Dnb0C+MVq46NX/0ChE
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some devices ship bugged firmware which sets the version of the UCSI
-mailbox to zero. In such cases the ucsi_register() will return -ENODEV
-and the driver will silently fail to bind. There is otherwise no
-indication as to the cause of the probe failure.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-While existing (and future) machine-specific workarounds may resolve
-this issue by assuming a known-good UCSI version, future devices or
-older firmware revisions with this issue will still silently fail.
-Both users and developers will benefit from a clear diagnostic message
-when troubleshooting this particular bug.
+When smb2_readv_callback() finds a bad signature, it sets the error in
+rdata->result but leaves rdata->got_bytes alone. Further down, a short
+read that reaches the remote EOF clears the error again:
 
-Add a dev_err() log message when a UCSI version of 0 is reported during
-ucsi_register() hinting towards a potential firmware bug.
+    size_t trans = rdata->subreq.transferred + rdata->got_bytes;
+    if (trans < rdata->subreq.len &&
+        rdata->subreq.start + trans >= netfs_read_remote_i_size(inode)) {
+            rdata->result = 0;
 
-Signed-off-by: Blake Alexander <contact@blakejalexander.com>
+and got_bytes is then added to subreq.transferred. So the last part of a
+file, or all of a small one, is returned even though its signature is
+wrong.
+
+Clearing got_bytes is not enough on its own. If the read starts at or
+past the cached remote size, for example because the file has grown on
+the server since the size was last fetched, the check above still
+matches and the error turns into EOF, or into a zero-filled tail when
+NETFS_SREQ_CLEAR_TAIL is set.
+
+Clear got_bytes when the signature check fails, as the retry path in the
+same function already does, and only treat a short read as hitting the
+remote EOF when the read itself succeeded. That is what commit
+1da29f2c39b6 ("netfs, cifs: Fix handling of short DIO read") describes:
+"clear the error if a short read occurred without error and the read-to
+file position is now at the remote inode size".
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: 1da29f2c39b6 ("netfs, cifs: Fix handling of short DIO read")
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-Hi,
+v3:
+- Only this patch is resent; 1/2 is in cifs-next.
+- Also skip the remote-EOF check when the read has already failed (from
+  sashiko's review). Clearing got_bytes alone still let a failed read
+  that starts at or past the cached remote size come back as EOF.
 
-I have a ThinkPad T14 Gen 2a which is failing to negotiate a DisplayPort
-Alt-Mode connection to a monitor-hub with a USB-C cable.
+Tested in QEMU against cifs-next, signed SMB 3.1.1 to Samba through a
+proxy that changes READ data without re-signing it. A cache=none file
+is opened (21 bytes), 23 bytes are appended through a second mount, and
+the file is read from offset 21:
+  v2:  pread returns 0 (EOF), the signature error is lost
+  v3:  pread returns -EACCES
+Without the proxy both versions read the 23 new bytes, and a read past
+the real EOF returns 0.
 
-I spent quite some time troubleshooting the issue and identified the
-root-cause only to find that a patch which fixes this issue was already
-submitted:
-- "[PATCH v2 0/2] usb: typec: acpi: Zero version quirk for Lenovo ThinkPad T14 Gen 2a" <20261103-ucsi-lenovo-t14g2a-v2-0-e85c659b56a2@resetko.pl>
+One side effect: a short read that ends with a retryable error at the
+remote EOF is now retried instead of being reported as EOF. I haven't
+exercised that path.
 
-Similar issues with other laptops have also been recently submitted:
-- "[PATCH] usb: typec: ucsi: acpi: Add quirk for ASUS ROG Zephyrus Duo 16 GX650PI" <20261009-usb-next-v1-1-95a2288ad9b2@gmail.com>
-
-And existing quirks are also already handled in mainline:
-- Acer Nitro ANV15-41: commit 8c51ea651d04 ("usb: typec: ucsi: acpi:
-  Assume UCSI 1.2 on Acer Nitro ANV15-41")
-
-In the hope of saving future developer's time, this patch adds a
-dev_err() log message when the UCSI version register reads zero. The
-log message hints towards a potential firmware bug and gives an 
-explicit cause of the driver's probe failure.
-
-Tested on ThinkPad BIOS R1MET65W (1.35), EC R1MHT65W without the
-relevant quirk patches.
+v2: https://lore.kernel.org/linux-cifs/20261116-smb2-sign-v2-0-a823a90d0db4@gmail.com/
 ---
- drivers/usb/typec/ucsi/ucsi.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/smb/client/smb2pdu.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
-index 9e453d216c16..fa79ba6dec02 100644
---- a/drivers/usb/typec/ucsi/ucsi.c
-+++ b/drivers/usb/typec/ucsi/ucsi.c
-@@ -2396,8 +2396,13 @@ int ucsi_register(struct ucsi *ucsi)
- 	if (ret)
- 		return ret;
+diff --git a/fs/smb/client/smb2pdu.c b/fs/smb/client/smb2pdu.c
+index b26bfb4bd91a..f7cb08f5e34f 100644
+--- a/fs/smb/client/smb2pdu.c
++++ b/fs/smb/client/smb2pdu.c
+@@ -4819,6 +4819,8 @@ smb2_readv_callback(struct TCP_Server_Info *server, struct mid_q_entry *mid)
+ 					      rc);
+ 				rdata->subreq.error = rc;
+ 				rdata->result = rc;
++				/* the data can't be trusted, don't count it */
++				rdata->got_bytes = 0;
  
--	if (!ucsi->version)
-+	/* Version of 0 is not valid but some vendors may report it due to bugged
-+	 * FW and there may not already be a workaround quirk to correct it.
-+	 */
-+	if (!ucsi->version) {
-+		dev_err(ucsi->dev, "UCSI interface reported version 0.0.0: possible firmware bug.");
- 		return -ENODEV;
-+	}
- 
- 	/*
- 	 * Version format is JJ.M.N (JJ = Major version, M = Minor version,
+ 				if (is_replayable_error(rc)) {
+ 					trace_netfs_sreq(&rdata->subreq, netfs_sreq_trace_io_retry_needed);
+@@ -4898,7 +4900,7 @@ smb2_readv_callback(struct TCP_Server_Info *server, struct mid_q_entry *mid)
+ 			__set_bit(NETFS_SREQ_CLEAR_TAIL, &rdata->subreq.flags);
+ 	} else {
+ 		size_t trans = rdata->subreq.transferred + rdata->got_bytes;
+-		if (trans < rdata->subreq.len &&
++		if (!rdata->result && trans < rdata->subreq.len &&
+ 		    rdata->subreq.start + trans >= netfs_read_remote_i_size(inode)) {
+ 			rdata->result = 0;
+ 			if (rdata->subreq.start + trans >= i_size_read(inode))
 
----
-base-commit: f11fe7603df07fbb9fa02b0d385c1696c87a6dab
-change-id: 20261119-log-ucsi-firmware-quirk-8ffc87c7d42f
 
-Best regards,
---  
-Blake Alexander <contact@blakejalexander.com>
 
