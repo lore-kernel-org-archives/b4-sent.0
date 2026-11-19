@@ -1,265 +1,85 @@
-From: =?utf-8?q?Jordan_DESNO=C3=8BS?= <jordan.desnoes@francetv.fr>
-Date: Thu, 19 Nov 2026 09:57:26 +0100
-Subject: [PATCH 6.18.y 4/4] libceph: adapt ceph_x_challenge_blob hashing
- and msgr1 message signing
+From: Peder Bergan <peder.bergan@gmail.com>
+Date: Thu, 19 Nov 2026 10:48:47 +0100
+Subject: [PATCH] rust: drm: enable standard fdinfo for Rust drivers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261119-aes256k-6-18-y-v1-4-bd5db87da2f5@francetv.fr>
-References: <20261119-aes256k-6-18-y-v1-0-bd5db87da2f5@francetv.fr>
-In-Reply-To: <20261119-aes256k-6-18-y-v1-0-bd5db87da2f5@francetv.fr>
-To: stable@vger.kernel.org
-Cc: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Xiubo Li <xiubo.li@clyso.com>, Viacheslav Dubeyko <slava@dubeyko.com>, 
- ceph-devel@vger.kernel.org, 
- =?utf-8?q?Jordan_DESNO=C3=8BS?= <jordan.desnoes@francetv.fr>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261119-fix-drm-rust-fdinfo-v1-1-c10f4134488d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAP7F/moC/0WM0QrCMAxFf2Xk2aCZ4Jy/IntY29RFsJNkE2Hs3
+ 20n4uO53HMWMFZhg0u1gPJLTMaUgXYV+KFPN0YJmaE+1CciajHKG4M+UGebMAZJccQzUxMbCqH
+ 1R8jmUznftuq1+7LN7s5+KqnycL0xOu2TH8r0C+7/5c1f1w8kFOGgoQAAAA==
+X-Change-ID: 20261119-fix-drm-rust-fdinfo-8e17f71dd9c3
+To: Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>
+Cc: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Trevor Gross <tmgross@umich.edu>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Asahi Lina <lina+kernel@asahilina.net>, Lyude Paul <lyude@redhat.com>, 
+ dri-devel@lists.freedesktop.org, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-api@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795078645; l=8403;
- i=jordan.desnoes@francetv.fr; s=20261119; h=from:subject:message-id;
- bh=YbUYeUj8xsoc+Mg83NPT9/yh0NXTd4ZQv3ttYwlUU04=;
- b=ARP/3hcT80zMnNvJ3lL7uMvOom4ahH7QD3hyZdIAFbscIRt4xHPsqQp6eVYVFeZTpVXuSI2jf
- 9kWJzzsuRZ2DtXo4TThRc7dc1Cm+sAFR/q+u9dlcTTCJHjLorWi3qfR
-X-Developer-Key: i=jordan.desnoes@francetv.fr; a=ed25519;
- pk=NsqAnHujTt5QBjYGvDgx/bh9SKZzYfCniV8bhRv6vTA=
-X-Endpoint-Received: by B4 Relay for jordan.desnoes@francetv.fr/20261119 with auth_id=1567
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795081726; l=1843;
+ i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
+ bh=xxqWVMVxZbBkPwfGR3DEyfjXL1JPRrrX4MkbzxGWQrE=;
+ b=rPGVsN+1pazjTfjzZNIzCQIkNRmJM51jRUZ7lIiSyXuBw8ULl6w8n77Lj/7Cw4gLW85fu/kcM
+ 4snU6fRBnW0DNdVdLHz9Y6n9NGKz3jLwgSUWfzSlS2DrR/b8IgOqxz5
+X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
+ pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
+X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Ilya Dryomov <idryomov@gmail.com>
+DRM monitoring tools use drm-driver and drm-client-id in procfs fdinfo
+to identify DRM clients. The common Rust DRM file operations leave
+show_fdinfo unset, so these entries are missing for those clients.
 
-commit 8356b4b1103b8c970648c94bab724aa30e42d869 upstream.
+Set show_fdinfo to drm_show_fdinfo. The DRM core helper emits the
+standard client information and calls the separate driver statistics
+hook if the driver provides one.
 
-The existing approach where ceph_x_challenge_blob is encrypted with the
-client's secret key and then the digest derived from the ciphertext is
-used for the test doesn't work with CEPH_CRYPTO_AES256KRB5 because the
-confounder randomizes the ciphertext: the client and the server get two
-different ciphertexts and therefore two different digests.
-
-msgr1 signatures are affected the same way: a digest derived from the
-ciphertext for the message's "sigblock" is what becomes a signature and
-the two sides disagree on the expected value.
-
-For CEPH_CRYPTO_AES256KRB5 (and potential future encryption schemes),
-switch to HMAC-SHA256 function keyed in the same way as the existing
-encryption.  For CEPH_CRYPTO_AES, everything is preserved as is.
-
-Signed-off-by: Ilya Dryomov <idryomov@gmail.com>
-Signed-off-by: Jordan DESNOËS <jordan.desnoes@francetv.fr>
+Fixes: c284d3e42338 ("rust: drm: gem: Add GEM object abstraction")
+Closes: https://github.com/Rust-for-Linux/linux/issues/1266
+Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
 ---
- net/ceph/auth_x.c       | 59 +++++++++++++++++++++++++++++++++++--------------
- net/ceph/crypto.c       | 18 +++++++++++++++
- net/ceph/crypto.h       |  4 ++++
- net/ceph/messenger_v2.c | 14 ++++++------
- 4 files changed, 72 insertions(+), 23 deletions(-)
+Matt Mireles reported the missing fdinfo fields on an Asahi kernel and
+suggested using this helper.
 
-diff --git a/net/ceph/auth_x.c b/net/ceph/auth_x.c
-index 966a38264..9350e1a9d 100644
---- a/net/ceph/auth_x.c
-+++ b/net/ceph/auth_x.c
-@@ -558,8 +558,7 @@ static int ceph_x_build_request(struct ceph_auth_client *ac,
- 	if (need & CEPH_ENTITY_TYPE_AUTH) {
- 		struct ceph_x_authenticate *auth = (void *)(head + 1);
- 		void *enc_buf = xi->auth_authorizer.enc_buf;
--		struct ceph_x_challenge_blob *blob = enc_buf +
--					     ceph_x_encrypt_offset(&xi->secret);
-+		struct ceph_x_challenge_blob *blob;
- 		u64 *u;
- 
- 		p = auth + 1;
-@@ -569,15 +568,29 @@ static int ceph_x_build_request(struct ceph_auth_client *ac,
- 		dout(" get_auth_session_key\n");
- 		head->op = cpu_to_le16(CEPHX_GET_AUTH_SESSION_KEY);
- 
--		/* encrypt and hash */
-+		if (xi->secret.type == CEPH_CRYPTO_AES) {
-+			blob = enc_buf + ceph_x_encrypt_offset(&xi->secret);
-+		} else {
-+			BUILD_BUG_ON(SHA256_DIGEST_SIZE + sizeof(*blob) >
-+				     CEPHX_AU_ENC_BUF_LEN);
-+			blob = enc_buf + SHA256_DIGEST_SIZE;
-+		}
-+
- 		get_random_bytes(&auth->client_challenge, sizeof(u64));
- 		blob->client_challenge = auth->client_challenge;
- 		blob->server_challenge = cpu_to_le64(xi->server_challenge);
--		ret = ceph_x_encrypt(&xi->secret, 0 /* dummy */,
--				     enc_buf, CEPHX_AU_ENC_BUF_LEN,
--				     sizeof(*blob));
--		if (ret < 0)
--			return ret;
-+
-+		if (xi->secret.type == CEPH_CRYPTO_AES) {
-+			ret = ceph_x_encrypt(&xi->secret, 0 /* dummy */,
-+					     enc_buf, CEPHX_AU_ENC_BUF_LEN,
-+					     sizeof(*blob));
-+			if (ret < 0)
-+				return ret;
-+		} else {
-+			ceph_hmac_sha256(&xi->secret, blob, sizeof(*blob),
-+					 enc_buf);
-+			ret = SHA256_DIGEST_SIZE;
-+		}
- 
- 		auth->struct_v = 3;  /* nautilus+ */
- 		auth->key = 0;
-@@ -1065,11 +1078,19 @@ static int calc_signature(struct ceph_x_authorizer *au, struct ceph_msg *msg,
- 			__le32 data_crc;
- 			__le32 data_len;
- 			__le32 seq_lower_word;
--		} __packed *sigblock = enc_buf;
-+		} __packed *sigblock;
- 		struct {
- 			__le64 a, b, c, d;
- 		} __packed *penc = enc_buf;
--		int ciphertext_len;
-+
-+		if (au->session_key.type == CEPH_CRYPTO_AES) {
-+			/* no leading len, no ceph_x_encrypt_header */
-+			sigblock = enc_buf;
-+		} else {
-+			BUILD_BUG_ON(SHA256_DIGEST_SIZE + sizeof(*sigblock) >
-+				     CEPHX_AU_ENC_BUF_LEN);
-+			sigblock = enc_buf + SHA256_DIGEST_SIZE;
-+		}
- 
- 		sigblock->header_crc = msg->hdr.crc;
- 		sigblock->front_crc = msg->footer.front_crc;
-@@ -1080,12 +1101,18 @@ static int calc_signature(struct ceph_x_authorizer *au, struct ceph_msg *msg,
- 		sigblock->data_len = msg->hdr.data_len;
- 		sigblock->seq_lower_word = *(__le32 *)&msg->hdr.seq;
- 
--		/* no leading len, no ceph_x_encrypt_header */
--		ret = ceph_crypt(&au->session_key, 0 /* dummy */,
--				 true, enc_buf, CEPHX_AU_ENC_BUF_LEN,
--				 sizeof(*sigblock), &ciphertext_len);
--		if (ret)
--			return ret;
-+		if (au->session_key.type == CEPH_CRYPTO_AES) {
-+			int ciphertext_len; /* unused */
-+
-+			ret = ceph_crypt(&au->session_key, 0 /* dummy */,
-+					 true, enc_buf, CEPHX_AU_ENC_BUF_LEN,
-+					 sizeof(*sigblock), &ciphertext_len);
-+			if (ret)
-+				return ret;
-+		} else {
-+			ceph_hmac_sha256(&au->session_key, sigblock,
-+					 sizeof(*sigblock), enc_buf);
-+		}
- 
- 		*psig = penc->a ^ penc->b ^ penc->c ^ penc->d;
- 	}
-diff --git a/net/ceph/crypto.c b/net/ceph/crypto.c
-index b54085d8d..b2067ea6c 100644
---- a/net/ceph/crypto.c
-+++ b/net/ceph/crypto.c
-@@ -84,6 +84,7 @@ int ceph_crypto_key_prepare(struct ceph_crypto_key *key,
- 	case CEPH_CRYPTO_AES:
- 		return set_aes_tfm(key);
- 	case CEPH_CRYPTO_AES256KRB5:
-+		hmac_sha256_preparekey(&key->hmac_key, key->key, key->len);
- 		return set_krb5_tfms(key, key_usages, key_usage_cnt);
- 	default:
- 		return -ENOTSUPP;
-@@ -178,6 +179,7 @@ void ceph_crypto_key_destroy(struct ceph_crypto_key *key)
- 			key->aes_tfm = NULL;
- 		}
- 	} else if (key->type == CEPH_CRYPTO_AES256KRB5) {
-+		memzero_explicit(&key->hmac_key, sizeof(key->hmac_key));
- 		for (i = 0; i < ARRAY_SIZE(key->krb5_tfms); i++) {
- 			if (key->krb5_tfms[i]) {
- 				crypto_free_aead(key->krb5_tfms[i]);
-@@ -436,6 +438,22 @@ int ceph_crypt_buflen(const struct ceph_crypto_key *key, int data_len)
- 	}
- }
- 
-+void ceph_hmac_sha256(const struct ceph_crypto_key *key, const void *buf,
-+		      int buf_len, u8 hmac[SHA256_DIGEST_SIZE])
-+{
-+	switch (key->type) {
-+	case CEPH_CRYPTO_NONE:
-+	case CEPH_CRYPTO_AES:
-+		memset(hmac, 0, SHA256_DIGEST_SIZE);
-+		return;
-+	case CEPH_CRYPTO_AES256KRB5:
-+		hmac_sha256(&key->hmac_key, buf, buf_len, hmac);
-+		return;
-+	default:
-+		BUG();
-+	}
-+}
-+
- static int ceph_key_preparse(struct key_preparsed_payload *prep)
- {
- 	struct ceph_crypto_key *ckey;
-diff --git a/net/ceph/crypto.h b/net/ceph/crypto.h
-index 2c37c54d0..3a2ade15a 100644
---- a/net/ceph/crypto.h
-+++ b/net/ceph/crypto.h
-@@ -2,6 +2,7 @@
- #ifndef _FS_CEPH_CRYPTO_H
- #define _FS_CEPH_CRYPTO_H
- 
-+#include <crypto/sha2.h>
- #include <linux/ceph/types.h>
- #include <linux/ceph/buffer.h>
- 
-@@ -20,6 +21,7 @@ struct ceph_crypto_key {
- 	union {
- 		struct crypto_sync_skcipher *aes_tfm;
- 		struct {
-+			struct hmac_sha256_key hmac_key;
- 			const struct krb5_enctype *krb5_type;
- 			struct crypto_aead *krb5_tfms[3];
- 		};
-@@ -39,6 +41,8 @@ int ceph_crypt(const struct ceph_crypto_key *key, int usage_slot, bool encrypt,
- 	       void *buf, int buf_len, int in_len, int *pout_len);
- int ceph_crypt_data_offset(const struct ceph_crypto_key *key);
- int ceph_crypt_buflen(const struct ceph_crypto_key *key, int data_len);
-+void ceph_hmac_sha256(const struct ceph_crypto_key *key, const void *buf,
-+		      int buf_len, u8 hmac[SHA256_DIGEST_SIZE]);
- int ceph_crypto_init(void);
- void ceph_crypto_shutdown(void);
- 
-diff --git a/net/ceph/messenger_v2.c b/net/ceph/messenger_v2.c
-index 4bb238eb8..d5300c662 100644
---- a/net/ceph/messenger_v2.c
-+++ b/net/ceph/messenger_v2.c
-@@ -778,9 +778,9 @@ static int setup_crypto(struct ceph_connection *con,
- 	return 0;  /* auth_x, secure mode */
- }
- 
--static void ceph_hmac_sha256(struct ceph_connection *con,
--			     const struct kvec *kvecs, int kvec_cnt,
--			     u8 hmac[SHA256_DIGEST_SIZE])
-+static void con_hmac_sha256(struct ceph_connection *con,
-+			    const struct kvec *kvecs, int kvec_cnt,
-+			    u8 hmac[SHA256_DIGEST_SIZE])
- {
- 	struct hmac_sha256_ctx ctx;
- 	int i;
-@@ -1437,8 +1437,8 @@ static int prepare_auth_signature(struct ceph_connection *con)
- 	if (!buf)
- 		return -ENOMEM;
- 
--	ceph_hmac_sha256(con, con->v2.in_sign_kvecs, con->v2.in_sign_kvec_cnt,
--			 CTRL_BODY(buf));
-+	con_hmac_sha256(con, con->v2.in_sign_kvecs, con->v2.in_sign_kvec_cnt,
-+			CTRL_BODY(buf));
- 
- 	return prepare_control(con, FRAME_TAG_AUTH_SIGNATURE, buf,
- 			       SHA256_DIGEST_SIZE);
-@@ -2441,8 +2441,8 @@ static int process_auth_signature(struct ceph_connection *con,
- 		return -EINVAL;
- 	}
- 
--	ceph_hmac_sha256(con, con->v2.out_sign_kvecs, con->v2.out_sign_kvec_cnt,
--			 hmac);
-+	con_hmac_sha256(con, con->v2.out_sign_kvecs, con->v2.out_sign_kvec_cnt,
-+			hmac);
- 
- 	ceph_decode_need(&p, end, SHA256_DIGEST_SIZE, bad);
- 	if (crypto_memneq(p, hmac, SHA256_DIGEST_SIZE)) {
+The x86-64 LLVM=1 CLIPPY=1 build adds the drm_show_fdinfo callback to
+nova-drm.ko's file operations table.
 
--- 
-2.43.0
+The pending move of the file operations into drm::device [1] should
+carry this assignment into UnregisteredDevice::FOPS.
+
+[1] https://lore.kernel.org/dri-devel/20261118163203.2483856-4-dakr@kernel.org/
+
+OpenAI Codex assisted with coding and testing.
+---
+ rust/kernel/drm/gem/mod.rs | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/rust/kernel/drm/gem/mod.rs b/rust/kernel/drm/gem/mod.rs
+index 85657a39e146..b37695f870d4 100644
+--- a/rust/kernel/drm/gem/mod.rs
++++ b/rust/kernel/drm/gem/mod.rs
+@@ -388,6 +388,7 @@ pub(super) const fn create_fops(owner: *mut bindings::module) -> bindings::file_
+     fops.read = Some(bindings::drm_read);
+     fops.llseek = Some(bindings::noop_llseek);
+     fops.mmap = Some(bindings::drm_gem_mmap);
++    fops.show_fdinfo = Some(bindings::drm_show_fdinfo);
+     fops.fop_flags = bindings::FOP_UNSIGNED_OFFSET;
+ 
+     fops
+
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261119-fix-drm-rust-fdinfo-8e17f71dd9c3
+
+Best regards,
+--  
+Peder Bergan <peder.bergan@gmail.com>
 
