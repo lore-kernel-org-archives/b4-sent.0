@@ -1,105 +1,58 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Thu, 19 Nov 2026 22:39:33 +0000
-Subject: [PATCH] um: vector: Don't clean up NAPI that was never set up
+From: Nizat Mikayilli <nacht@dxdmail.cc>
+Subject: [PATCH 0/6] arm64: dts: qcom: sm8550-samsung-gts9wifi: Enable more
+ peripherals
+Date: Thu, 19 Nov 2026 23:40:03 +0100
+Message-Id: <20261119-b4-gts9wifi-followups-v1-0-2e2388589a62@dxdmail.cc>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-uml-vector-napi-v1-1-b3751cf4fa60@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKR6/2oC/yXMSQ5AQBBA0atIrVWiWoxXEQtDoYQm3YhE3F1j+
- Rb/X2DZCFvIvQsMH2Jl0Q7ke9AMle4ZpXUGFaiYiDLc5wkPbrbFoK5WwTSNEtWFdRYSg6tWw52
- c37Eof9u9Hl3xbuC+HxUyOGlzAAAA
-X-Change-ID: 20261119-uml-vector-napi-88572f3b931e
-To: anton.ivanov@cambridgegreys.com, johannes@sipsolutions.net, 
- richard@nod.at
-Cc: linux-kernel@vger.kernel.org, linux-um@lists.infradead.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795127972; l=2916;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=8Y+O44qYrjdqbAzW0Oc18LWnlpyxhaxzbOh4UGR+4is=;
- b=1olmBNnFslciyrZdOshl2nFiY/pp6dtf+L/vnQ7IJmgrX9G3QDMhk/nWYpP8SPcV5NB00G7e4
- pHFgwy9Lf83CXyZqLWZeGfgHelQ1lh4EaNaA3DsKpNeCmfstWN53hFK
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSQqAMAxA0atI1gaMiNNVxIW2qQbESuME4t0tL
+ t/i/weUg7BCmzwQ+BQVv0ZQmoCZh3ViFBsNeZaXRNTgWOC0a3OJE3R+Wfx1bIq1saYyZGmoK4j
+ tFtjJ/X+7/n0/Fm9C/mcAAAA=
+X-Change-ID: 20261119-b4-gts9wifi-followups-8cdc7c1d1a87
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Nizat Mikayilli <nacht@dxdmail.cc>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795128013; l=1145;
+ i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
+ bh=l/rOmrHcrx0V4i+2/VhyNsiibsipwyDGfZ6M6/al5/w=;
+ b=PZAwGtHU9digB4wAFO4X0dPvGGBnlE/p9BReLL1wtlbN2bC4jTii4Hoon6XOelm6JMQS4x/w8
+ 1gVvBWJkWtACO/dJi8CakEnBYJn5QjDbkUgbPQxeWpm++spSmHV5/9J
+X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
+ pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
+X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+Add the CDSP, the vibration motor, the rear flash LED, four board
+thermistors, PM8550VS-C and the battery fuel gauge.
 
-vector_net_open() calls vector_net_close() on any failure once
-vp->fds is set, and vector_net_close() then runs napi_disable() and
-netif_napi_del() unconditionally. But the NAPI context is only added
-and enabled after build_transport_data() and the header buffer
-allocations, so a failure in any of those disables a NAPI context that
-was never added. napi_disable() locks n->dev, which is still NULL:
+Patch 6 needs the fuel gauge binding, which is in power-supply for-next:
+https://lore.kernel.org/r/20261108-b4-sm5714-fuel-gauge-v1-0-c659b6c0884a@dxdmail.cc
 
-  ip link set vec0 up   (vec0:transport=gre,...,rx_key=1, no tx_key)
-  Kernel panic - not syncing: Kernel mode fault at addr 0x910
-   napi_disable+0x4e/0x9e
-   vector_net_close+0x2b9/0x87d
-   vector_net_open+0x105d/0x106f
-   __dev_open+0x244/0x334
+Tested on the tablet. The LED was only tested as a torch, not as a
+flash.
 
-Record in vp->napi_enabled whether vector_net_open() got as far as
-enabling NAPI, and only disable and delete it in vector_net_close()
-when it did. NAPI is still enabled only after the queues and buffers
-that vector_poll() uses are set up.
-
-Found with a static analysis tool and checked by hand.
-
-Fixes: b35507a4cfb2 ("um: Migrate vector drivers to NAPI")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
 ---
-Tested with UML (seccomp=on) on top of the um fixes branch: with a GRE
-vector device missing tx_key, "ip link set vec0 up" panics without the
-patch and fails cleanly with -EINVAL with it, also when repeated. A raw
-vector device on the host's lo still goes up and down twice as before.
+Nizat Mikayilli (6):
+      arm64: dts: qcom: sm8550-samsung-gts9wifi: Enable CDSP
+      arm64: dts: qcom: sm8550-samsung-gts9wifi: Add GPIO vibrator
+      arm64: dts: qcom: sm8550-samsung-gts9wifi: Add rear flash LED
+      arm64: dts: qcom: sm8550-samsung-gts9wifi: Add board thermistors
+      arm64: dts: qcom: sm8550-samsung-gts9wifi: Enable PM8550VS-C
+      arm64: dts: qcom: sm8550-samsung-gts9wifi: Add battery fuel gauge
+
+ .../boot/dts/qcom/sm8550-samsung-gts9wifi.dts      | 145 +++++++++++++++++++++
+ 1 file changed, 145 insertions(+)
 ---
- arch/um/drivers/vector_kern.c | 9 +++++++--
- arch/um/drivers/vector_kern.h | 1 +
- 2 files changed, 8 insertions(+), 2 deletions(-)
+base-commit: dde0308a2f8867806a444df1fdd7e685b1c56d5b
+change-id: 20261119-b4-gts9wifi-followups-8cdc7c1d1a87
 
-diff --git a/arch/um/drivers/vector_kern.c b/arch/um/drivers/vector_kern.c
-index 8008278ccee7..021f14780b45 100644
---- a/arch/um/drivers/vector_kern.c
-+++ b/arch/um/drivers/vector_kern.c
-@@ -1137,8 +1137,12 @@ static int vector_net_close(struct net_device *dev)
- 		um_free_irq(vp->tx_irq, dev);
- 		vp->tx_irq = 0;
- 	}
--	napi_disable(&vp->napi);
--	netif_napi_del(&vp->napi);
-+	/* vector_net_open() may fail before setting up NAPI */
-+	if (vp->napi_enabled) {
-+		napi_disable(&vp->napi);
-+		netif_napi_del(&vp->napi);
-+		vp->napi_enabled = false;
-+	}
- 	if (vp->fds->rx_fd > 0) {
- 		if (vp->bpf)
- 			uml_vector_detach_bpf(vp->fds->rx_fd, vp->bpf);
-@@ -1260,6 +1264,7 @@ static int vector_net_open(struct net_device *dev)
- 		netif_napi_add_weight(vp->dev, &vp->napi, vector_poll, NAPI_POLL_WEIGHT);
- 
- 	napi_enable(&vp->napi);
-+	vp->napi_enabled = true;
- 
- 	/* READ IRQ */
- 	err = um_request_irq(
-diff --git a/arch/um/drivers/vector_kern.h b/arch/um/drivers/vector_kern.h
-index 5f0ceb80779d..e1b697266fa7 100644
---- a/arch/um/drivers/vector_kern.h
-+++ b/arch/um/drivers/vector_kern.h
-@@ -118,6 +118,7 @@ struct vector_private {
- 
- 	bool rexmit_scheduled;
- 	bool opened;
-+	bool napi_enabled;
- 	bool in_write_poll;
- 	bool in_error;
- 
-
-
+Best regards,
+-- 
+Nizat Mikayilli <nacht@dxdmail.cc>
 
