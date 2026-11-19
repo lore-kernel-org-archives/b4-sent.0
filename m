@@ -1,372 +1,78 @@
-From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Thu, 19 Nov 2026 14:02:50 +0300
-Subject: [PATCH v5 2/2] gpio: Add Cortina Systems CS75xx GPIO driver
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Thu, 19 Nov 2026 11:20:33 +0000
+Subject: [PATCH] tpm: xen-tpmfront: fix use-after-free in backend_changed()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-cs75xx-gpio-v5-2-8d14f2bb614b@gmail.com>
-References: <20261119-cs75xx-gpio-v5-0-8d14f2bb614b@gmail.com>
-In-Reply-To: <20261119-cs75xx-gpio-v5-0-8d14f2bb614b@gmail.com>
-To: Linus Walleij <linusw@kernel.org>, 
- Bartosz Golaszewski <brgl@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- Fil Dunsky <filipp.dunsky@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795086186; l=10491;
- i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=2tnGziWrBseSW4RURGkE53ZtaZ0kbwmEIU62H72AIQo=;
- b=e4TQWVyzBi5ZNeK1NnH9bCrBZ402CoA4EK87G28+X64wHMBff9V9TfAFiUSEnXprXRPA4eUf+
- uJlqCdIVJfTCv1XlF/Ah8fPUYRZaGc+9zgWdPPIk0gTvAfOQ6Fpr4jT
-X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
- pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
-X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
+Message-Id: <20261119-xen-tpmfront-v1-1-bfabbbed462a@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAIDb/moC/yXMQQqAIBBA0avErBMaF1JdJVqYTjVBFmohRHfPa
+ vkW/18QyDMFaIsLPJ0ceHMZWBZgZu0mEmyzQVZSIWIjEjkR93X0m4sCq1prqWxtlIWc7J5GTt+
+ u63+HY1jIxPcB9/0AQukJC3AAAAA=
+X-Change-ID: 20261119-xen-tpmfront-108aa26d8c6d
+To: jgg@ziepe.ca, jarkko@kernel.org
+Cc: linux-kernel@vger.kernel.org, jgross@suse.com, sstabellini@kernel.org, 
+ linux-integrity@vger.kernel.org, xen-devel@lists.xenproject.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795087232; l=1866;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=SeHCF57qvTjGFWZBGFq4/OdwCYQKor1OKDV0zKf38bM=;
+ b=9LGNWNkQtNeORKMHA4bnA+tIT8SFxlO/+PusmyfK51AQl6KJ4CyCP1WJPlQ3nrvwC7h8yimPN
+ OtFGagUC1FiBQkOBQJOxyhML/GeMEo1PWXi1jzh3R0xSmvnNzdoztCF
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a driver for the GPIO banks of the Cortina Systems CS75xx SoCs. The
-data and direction registers are handled by gpio-mmio; each bank has its
-own interrupt with level and edge triggers, both edges are emulated by
-flipping the polarity.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-A pin only works as a GPIO when the pin mux in the global control block
-selects the GPIO function. That is not part of the GPIO controller and
-is left to the boot loader until there is a pin controller driver.
+When the backend moves to Closing or Closed, backend_changed()
+unregisters the device and then keeps using it:
 
-Reviewed-by: Linus Walleij <linusw@kernel.org>
-Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
+	device_unregister(&dev->dev);
+	xenbus_frontend_closed(dev);
+
+The xenbus watch callback that calls backend_changed() does not hold a
+reference to the device. The tpm_chip registered by xen-tpmfront has dev
+as its parent and holds a reference to it, but tpmfront_remove() drops
+that reference when it unregisters the chip. So device_unregister() can
+release the last reference and free the xenbus_device, and
+xenbus_frontend_closed(dev) then accesses freed memory.
+
+Take a temporary reference before unregistering and drop it after
+xenbus_frontend_closed(). This keeps dev alive for the last access and
+keeps the existing order, in which TPM operations are stopped before
+the frontend is marked Closed.
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: e2683957fb26 ("drivers/tpm: add xen tpmfront interface")
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
- drivers/gpio/Kconfig       |  12 ++
- drivers/gpio/Makefile      |   1 +
- drivers/gpio/gpio-cs75xx.c | 283 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 296 insertions(+)
+Compile tested on x86_64 (W=1, no new warnings). Not run with a Xen vTPM
+backend.
+---
+ drivers/char/tpm/xen-tpmfront.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
-index 55e428002..cc00cfe48 100644
---- a/drivers/gpio/Kconfig
-+++ b/drivers/gpio/Kconfig
-@@ -300,6 +300,18 @@ config GPIO_CLPS711X
- 	help
- 	  Say yes here to support GPIO on CLPS711X SoCs.
+diff --git a/drivers/char/tpm/xen-tpmfront.c b/drivers/char/tpm/xen-tpmfront.c
+index 3c0cce57c4ae..1be925cca535 100644
+--- a/drivers/char/tpm/xen-tpmfront.c
++++ b/drivers/char/tpm/xen-tpmfront.c
+@@ -397,8 +397,11 @@ static void backend_changed(struct xenbus_device *dev,
  
-+config GPIO_CS75XX
-+	tristate "Cortina Systems CS75xx GPIO support"
-+	depends on ARCH_CORTINA_ACCESS || COMPILE_TEST
-+	select GPIO_GENERIC
-+	select GPIOLIB_IRQCHIP
-+	help
-+	  Say yes here to support the GPIO banks of the Cortina Systems
-+	  CS75xx SoCs, including their interrupts.
-+
-+	  This driver can also be built as a module. If so, the module
-+	  will be called gpio-cs75xx.
-+
- config GPIO_DAVINCI
- 	tristate "TI Davinci/Keystone GPIO support"
- 	default y if ARCH_DAVINCI
-diff --git a/drivers/gpio/Makefile b/drivers/gpio/Makefile
-index 88f748846..2c2e18ef2 100644
---- a/drivers/gpio/Makefile
-+++ b/drivers/gpio/Makefile
-@@ -60,6 +60,7 @@ obj-$(CONFIG_GPIO_SNPS_CREG)		+= gpio-creg-snps.o
- obj-$(CONFIG_GPIO_CROS_EC)		+= gpio-cros-ec.o
- obj-$(CONFIG_GPIO_CRYSTAL_COVE)		+= gpio-crystalcove.o
- obj-$(CONFIG_GPIO_CS5535)		+= gpio-cs5535.o
-+obj-$(CONFIG_GPIO_CS75XX)		+= gpio-cs75xx.o
- obj-$(CONFIG_GPIO_DA9052)		+= gpio-da9052.o
- obj-$(CONFIG_GPIO_DA9055)		+= gpio-da9055.o
- obj-$(CONFIG_GPIO_DAVINCI)		+= gpio-davinci.o
-diff --git a/drivers/gpio/gpio-cs75xx.c b/drivers/gpio/gpio-cs75xx.c
-new file mode 100644
-index 000000000..733284444
---- /dev/null
-+++ b/drivers/gpio/gpio-cs75xx.c
-@@ -0,0 +1,283 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Cortina Systems CS75xx GPIO controller
-+ *
-+ * Each bank has 32 lines with direction, data and interrupt registers.
-+ * Whether a pin is driven by the GPIO bank or by its peripheral function
-+ * (NAND, Ethernet, UART, ...) is selected in the global control block,
-+ * which this driver does not touch: the pin mux is left as the boot loader
-+ * set it up.
-+ */
-+
-+#include <linux/bitops.h>
-+#include <linux/cleanup.h>
-+#include <linux/gpio/driver.h>
-+#include <linux/gpio/generic.h>
-+#include <linux/interrupt.h>
-+#include <linux/io.h>
-+#include <linux/irq.h>
-+#include <linux/module.h>
-+#include <linux/platform_device.h>
-+#include <linux/slab.h>
-+
-+#define CS75XX_GPIO_CFG		0x00	/* 1: input, 0: output */
-+#define CS75XX_GPIO_OUT		0x04
-+#define CS75XX_GPIO_IN		0x08
-+#define CS75XX_GPIO_LVL		0x0c	/* 1: high level or rising edge */
-+#define CS75XX_GPIO_EDGE	0x10	/* 1: edge, 0: level */
-+#define CS75XX_GPIO_IE		0x14
-+#define CS75XX_GPIO_INT		0x18	/* write 1 to clear */
-+
-+struct cs75xx_gpio {
-+	struct gpio_generic_chip chip;
-+	void __iomem *base;
-+	u32 both_edges;
-+};
-+
-+/* Both edges are emulated by flipping the polarity on every interrupt */
-+static void cs75xx_gpio_set_polarity(struct cs75xx_gpio *g, u32 mask)
-+{
-+	u32 lvl = readl(g->base + CS75XX_GPIO_LVL);
-+
-+	if (readl(g->base + CS75XX_GPIO_IN) & mask)
-+		lvl &= ~mask;
-+	else
-+		lvl |= mask;
-+
-+	writel(lvl, g->base + CS75XX_GPIO_LVL);
-+}
-+
-+static void cs75xx_gpio_irq_ack(struct irq_data *d)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	u32 mask = BIT(irqd_to_hwirq(d));
-+
-+	guard(gpio_generic_lock_irqsave)(&g->chip);
-+	writel(mask, g->base + CS75XX_GPIO_INT);
-+	/* Arm the opposite edge after the ack, so that it is not lost */
-+	if (g->both_edges & mask)
-+		cs75xx_gpio_set_polarity(g, mask);
-+}
-+
-+static void cs75xx_gpio_irq_mask(struct irq_data *d)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
-+
-+	scoped_guard(gpio_generic_lock_irqsave, &g->chip) {
-+		u32 ie = readl(g->base + CS75XX_GPIO_IE);
-+
-+		writel(ie & ~BIT(hwirq), g->base + CS75XX_GPIO_IE);
-+	}
-+
-+	gpiochip_disable_irq(gc, hwirq);
-+}
-+
-+static void cs75xx_gpio_irq_unmask(struct irq_data *d)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
-+	u32 ie;
-+
-+	gpiochip_enable_irq(gc, hwirq);
-+
-+	guard(gpio_generic_lock_irqsave)(&g->chip);
-+	/*
-+	 * The status of a level interrupt is latched while the line is
-+	 * asserted, also after the ack, so it may be stale by now. Clear it,
-+	 * it is set again right away if the line is still asserted.
-+	 */
-+	if (irqd_is_level_type(d))
-+		writel(BIT(hwirq), g->base + CS75XX_GPIO_INT);
-+	ie = readl(g->base + CS75XX_GPIO_IE);
-+	writel(ie | BIT(hwirq), g->base + CS75XX_GPIO_IE);
-+}
-+
-+static int cs75xx_gpio_irq_set_type(struct irq_data *d, unsigned int type)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	u32 mask = BIT(irqd_to_hwirq(d));
-+	u32 lvl, edge, both_edges;
-+
-+	guard(gpio_generic_lock_irqsave)(&g->chip);
-+
-+	lvl = readl(g->base + CS75XX_GPIO_LVL);
-+	edge = readl(g->base + CS75XX_GPIO_EDGE);
-+	both_edges = g->both_edges & ~mask;
-+
-+	switch (type & IRQ_TYPE_SENSE_MASK) {
-+	case IRQ_TYPE_LEVEL_LOW:
-+		lvl &= ~mask;
-+		edge &= ~mask;
-+		break;
-+	case IRQ_TYPE_LEVEL_HIGH:
-+		lvl |= mask;
-+		edge &= ~mask;
-+		break;
-+	case IRQ_TYPE_EDGE_FALLING:
-+		lvl &= ~mask;
-+		edge |= mask;
-+		break;
-+	case IRQ_TYPE_EDGE_RISING:
-+		lvl |= mask;
-+		edge |= mask;
-+		break;
-+	case IRQ_TYPE_EDGE_BOTH:
-+		both_edges |= mask;
-+		edge |= mask;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	g->both_edges = both_edges;
-+	writel(lvl, g->base + CS75XX_GPIO_LVL);
-+	writel(edge, g->base + CS75XX_GPIO_EDGE);
-+	if (g->both_edges & mask)
-+		cs75xx_gpio_set_polarity(g, mask);
-+	/* The new trigger may have latched the status already, drop it */
-+	writel(mask, g->base + CS75XX_GPIO_INT);
-+
-+	if (type & IRQ_TYPE_LEVEL_MASK)
-+		irq_set_handler_locked(d, handle_level_irq);
-+	else
-+		irq_set_handler_locked(d, handle_edge_irq);
-+
-+	return 0;
-+}
-+
-+static int cs75xx_gpio_irq_reqres(struct irq_data *d)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
-+	int ret;
-+
-+	/*
-+	 * The boot loader may leave the line configured as an output. Only
-+	 * touch it when nobody else has requested it.
-+	 */
-+	char *label __free(kfree) = gpiochip_dup_line_label(gc, hwirq);
-+	if (IS_ERR(label))
-+		return PTR_ERR(label);
-+	if (!label) {
-+		ret = gc->direction_input(gc, hwirq);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return gpiochip_reqres_irq(gc, hwirq);
-+}
-+
-+static void cs75xx_gpio_irq_relres(struct irq_data *d)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+
-+	gpiochip_relres_irq(gc, irqd_to_hwirq(d));
-+}
-+
-+static const struct irq_chip cs75xx_gpio_irq_chip = {
-+	.name			= "cs75xx-gpio",
-+	.irq_ack		= cs75xx_gpio_irq_ack,
-+	.irq_mask		= cs75xx_gpio_irq_mask,
-+	.irq_unmask		= cs75xx_gpio_irq_unmask,
-+	.irq_set_type		= cs75xx_gpio_irq_set_type,
-+	.irq_request_resources	= cs75xx_gpio_irq_reqres,
-+	.irq_release_resources	= cs75xx_gpio_irq_relres,
-+	.flags			= IRQCHIP_IMMUTABLE | IRQCHIP_MASK_ON_SUSPEND,
-+};
-+
-+static void cs75xx_gpio_irq_handler(struct irq_desc *desc)
-+{
-+	struct gpio_chip *gc = irq_desc_get_handler_data(desc);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	struct irq_chip *chip = irq_desc_get_chip(desc);
-+	unsigned long pending;
-+	unsigned int offset;
-+
-+	chained_irq_enter(chip, desc);
-+
-+	pending = readl(g->base + CS75XX_GPIO_INT) &
-+		  readl(g->base + CS75XX_GPIO_IE);
-+
-+	for_each_set_bit(offset, &pending, gc->ngpio)
-+		generic_handle_domain_irq(gc->irq.domain, offset);
-+
-+	chained_irq_exit(chip, desc);
-+}
-+
-+static int cs75xx_gpio_probe(struct platform_device *pdev)
-+{
-+	struct gpio_generic_chip_config config;
-+	struct device *dev = &pdev->dev;
-+	struct gpio_irq_chip *girq;
-+	struct cs75xx_gpio *g;
-+	int irq, ret;
-+
-+	g = devm_kzalloc(dev, sizeof(*g), GFP_KERNEL);
-+	if (!g)
-+		return -ENOMEM;
-+
-+	g->base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(g->base))
-+		return PTR_ERR(g->base);
-+
-+	irq = platform_get_irq(pdev, 0);
-+	if (irq < 0)
-+		return irq;
-+
-+	config = (struct gpio_generic_chip_config) {
-+		.dev = dev,
-+		.sz = 4,
-+		.dat = g->base + CS75XX_GPIO_IN,
-+		.set = g->base + CS75XX_GPIO_OUT,
-+		.dirin = g->base + CS75XX_GPIO_CFG,
-+	};
-+
-+	ret = gpio_generic_chip_init(&g->chip, &config);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "unable to init generic GPIO\n");
-+
-+	if (g->chip.gc.ngpio > 32)
-+		return dev_err_probe(dev, -EINVAL, "too many lines: %u\n",
-+				     g->chip.gc.ngpio);
-+
-+	/* Mask and clear all interrupts before the parent is set up */
-+	writel(0, g->base + CS75XX_GPIO_IE);
-+	writel(~0, g->base + CS75XX_GPIO_INT);
-+
-+	girq = &g->chip.gc.irq;
-+	gpio_irq_chip_set_chip(girq, &cs75xx_gpio_irq_chip);
-+	girq->parent_handler = cs75xx_gpio_irq_handler;
-+	girq->num_parents = 1;
-+	girq->parents = devm_kcalloc(dev, 1, sizeof(*girq->parents),
-+				     GFP_KERNEL);
-+	if (!girq->parents)
-+		return -ENOMEM;
-+	girq->parents[0] = irq;
-+	girq->default_type = IRQ_TYPE_NONE;
-+	girq->handler = handle_bad_irq;
-+
-+	return devm_gpiochip_add_data(dev, &g->chip.gc, g);
-+}
-+
-+static const struct of_device_id cs75xx_gpio_of_match[] = {
-+	{ .compatible = "cortina,cs7542-gpio" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, cs75xx_gpio_of_match);
-+
-+static struct platform_driver cs75xx_gpio_driver = {
-+	.probe = cs75xx_gpio_probe,
-+	.driver = {
-+		.name = "cs75xx-gpio",
-+		.of_match_table = cs75xx_gpio_of_match,
-+	},
-+};
-+module_platform_driver(cs75xx_gpio_driver);
-+
-+MODULE_DESCRIPTION("Cortina Systems CS75xx GPIO driver");
-+MODULE_LICENSE("GPL");
+ 	case XenbusStateClosing:
+ 	case XenbusStateClosed:
++		/* device_unregister() can drop the last reference to dev */
++		get_device(&dev->dev);
+ 		device_unregister(&dev->dev);
+ 		xenbus_frontend_closed(dev);
++		put_device(&dev->dev);
+ 		break;
+ 	default:
+ 		break;
 
--- 
-2.53.0
+
 
