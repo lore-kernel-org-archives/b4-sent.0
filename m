@@ -1,100 +1,72 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 05:21:49 +0000
-Subject: [PATCH v4 8/8] drm/rockchip: vop2: Fix the AFBC offsets of a
- source that starts inside a superblock
+Subject: [PATCH v2 0/2] arm64: dts: allwinner: orangepi-zero2/zero3: Read
+ the SPI NOR over two lines
+Date: Thu, 19 Nov 2026 05:29:33 +0000
+Message-Id: <20261119-zero2-spi-nor-dual-read-v2-0-185c87065e39@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-vop2-fixes-v4-8-4b8f5e7148c9@gmail.com>
-References: <20261119-vop2-fixes-v4-0-4b8f5e7148c9@gmail.com>
-In-Reply-To: <20261119-vop2-fixes-v4-0-4b8f5e7148c9@gmail.com>
-To: Sandy Huang <hjc@rock-chips.com>, 
- =?utf-8?q?Heiko_St=C3=BCbner?= <heiko@sntech.de>, 
- Andy Yan <andyshrk@163.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Sascha Hauer <s.hauer@pengutronix.de>
-Cc: Piotr Zalewski <pZ010001011111@proton.me>, 
- Chaoyi Chen <chaoyi.chen@rock-chips.com>, 
- Damon Ding <damon.ding@rock-chips.com>, dri-devel@lists.freedesktop.org, 
- linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WPQW7CMBBFr4JmzVS2GycOK+5RsbA9E2IEcbCTq
+ C3K3WsC2y6f9Of9Pw/InAJnOOwekHgJOcShgNrvwPd2ODMGKgxKqFpKqfGXU1SYx4BDTEizvWJ
+ iS1hX2tbESrORUK7HxF343sxfpxfn2V3YT0/dO5H4PpfK6RWD0U6+L4Wl3zhZadE2JDqjW9aOV
+ OO810IZEq3U3aezlSN4qvuQp5h+th8WuZnec82/cxeJEp0n77rGaMfieL7ZcP3w8QandV3/AFC
+ vskkZAQAA
+X-Change-ID: 20261115-zero2-spi-nor-dual-read-645a6de25e81
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>
+Cc: Andre Przywara <andre.przywara@arm.com>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
  linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795065702; l=2614;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795066173; l=1665;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=TKQv8lkwPZ5sd2Rf6HL/JUQwo4LrM3O2/MLRjh5P0BY=;
- b=0RocM37D4tuZkn5YHqDXNLASsCJnLv1FeBe5RjnGkveNcmJuCUEFSyZl14kNI6qdbCf3FdTRp
- tbYH9mxdJm2CU51hDwljYI9GElyxzG1ItdAUD9oZGCtxNJjoMKT4faU
+ bh=dSUlrtuj/XZo8LVxmrqcGVmatGiczTvRbXzsTOXBhPM=;
+ b=p6DGgixcbBrVaXI7ubEA+MhLxvzD4Dcd9aRiJTYGBG7qLklgmmtb9PJolIxZuNYvkR4bst+X4
+ fdvV+6DSPb4DvykJXBJKX7CCREZBaoG/ELg1mT5uhdZUjIAe9pTTaem
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For an AFBC source that starts inside a superblock, AFBC_TILE_NUM misses
-the first, partial superblock column, and the transform offset is the
-whole x position (truncated to 8 bits) instead of the offset inside the
-superblock.
+Andre Przywara reviewed v1 and suggested labelling the flash node (patch
+1) and setting spi-rx-bus-width in the dtsi shared with the Zero3 (patch 2).
 
-Count the columns from the first one the source touches and take the x
-offset modulo the superblock width, as the vendor kernel does.
+spi-rx-bus-width = <2> needs the binding patch of [1] (acked, not applied
+yet) to pass dtbs_check.
+Without the driver patch of [1] the driver ignores the setting.
 
-Fixes: 604be85547ce ("drm/rockchip: Add VOP2 driver")
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Tested on an Orange Pi Zero2 only, with [1]: 1-1-2 reads (opcode 0x3b),
+two 2 MiB reads identical to an earlier dump.
+
+[1] https://lore.kernel.org/r/20261116-spi-sun6i-h616-dual-read-v2-0-e0c66eb71e20@gmail.com
+
+Developed with Claude (Anthropic), which wrote the patches and commit
+messages. I reviewed them.
+
 ---
- drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Changes in v2:
+- Label the flash node, no nested &spi0 override (Andre)
+- spi-rx-bus-width moved to the shared dtsi, Zero3 included (Andre;
+  he read 16 MB on a Zero3 in 1.8 s instead of 3.5 s)
+- Dropped the driver dependency (Andre); the binding is still needed for dtbs_check
+- Link to v1: https://patch.msgid.link/20261118-zero2-spi-nor-dual-read-v1-1-bcdcbf785be0@gmail.com
 
-diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-index d4103e02f37f..670875ade4c4 100644
---- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-+++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-@@ -435,7 +435,7 @@ static bool vop2_half_block_enable(struct drm_plane_state *pstate)
- }
- 
- static u32 vop2_afbc_transform_offset(struct drm_plane_state *pstate,
--				      bool afbc_half_block_en)
-+				      bool afbc_half_block_en, u32 block_w)
- {
- 	struct drm_rect *src = &pstate->src;
- 	struct drm_framebuffer *fb = pstate->fb;
-@@ -483,7 +483,7 @@ static u32 vop2_afbc_transform_offset(struct drm_plane_state *pstate,
- 		ty = act_yoffset;
- 		break;
- 	case DRM_MODE_REFLECT_Y:
--		tx = act_xoffset;
-+		tx = act_xoffset % block_w;
- 		ty = bottom_crop_line_num - act_yoffset;
- 		break;
- 	case DRM_MODE_ROTATE_90:
-@@ -495,7 +495,7 @@ static u32 vop2_afbc_transform_offset(struct drm_plane_state *pstate,
- 		ty = vir_width - width - act_xoffset;
- 		break;
- 	case 0:
--		tx = act_xoffset;
-+		tx = act_xoffset % block_w;
- 		ty = act_yoffset;
- 		break;
- 	}
-@@ -1437,7 +1437,7 @@ static void vop2_plane_atomic_update(struct drm_plane *plane,
- 		if (fb->modifier & AFBC_FORMAT_MOD_YTR)
- 			afbc_format |= (1 << 4);
- 
--		afbc_tile_num = ALIGN(src_w, block_w) / block_w;
-+		afbc_tile_num = ALIGN(src_w + (src->x1 >> 16) % block_w, block_w) / block_w;
- 
- 		/*
- 		 * AFBC pic_vir_width is count by pixel, this is different
-@@ -1488,7 +1488,7 @@ static void vop2_plane_atomic_update(struct drm_plane *plane,
- 			vop2_win_write(win, VOP2_WIN_AFBC_PLD_OFFSET, yrgb_mst);
- 		}
- 
--		transform_offset = vop2_afbc_transform_offset(pstate, half_block_en);
-+		transform_offset = vop2_afbc_transform_offset(pstate, half_block_en, block_w);
- 		vop2_win_write(win, VOP2_WIN_AFBC_HDR_PTR, yrgb_mst);
- 		vop2_win_write(win, VOP2_WIN_AFBC_PIC_SIZE, act_info);
- 		vop2_win_write(win, VOP2_WIN_TRANSFORM_OFFSET, transform_offset);
+---
+Arun Iyengar (2):
+      arm64: dts: allwinner: orangepi-zero2: Reference the SPI NOR by label
+      arm64: dts: allwinner: orangepi-zero2/zero3: Read the SPI NOR over two lines
 
--- 
-2.55.0
+ arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi |  3 ++-
+ arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts | 10 ++++------
+ 2 files changed, 6 insertions(+), 7 deletions(-)
+---
+base-commit: 90e0d3fd460ec365617982b56bd7ea5179b36197
+change-id: 20261115-zero2-spi-nor-dual-read-645a6de25e81
+prerequisite-patch-id: 28b145097d0f859e5bd27bcc5028d0915f3ba4bd
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
