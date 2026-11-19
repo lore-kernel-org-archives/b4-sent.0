@@ -1,115 +1,143 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 10:07:04 +0000
-Subject: [PATCH] drm/edid: Add the modes of CTA Type VII video timing data
- blocks
+Date: Thu, 19 Nov 2026 10:07:58 +0000
+Subject: [PATCH] media: verisilicon: Limit the i.MX8MM G1 decoder to 1920
+ pixel wide pictures
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-edid-t7vtdb-v1-1-d6b8229d2041@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBBA0avIrDXRCm1dRSxoB2OBtCUS6d0Vy
- 7f4/waPjtBDk93g8CRP25rA8wzM3K8TMrLJIApRc841Q0uWBXkGO7BKKCVNqVUhBaRidzjS9d3
- a7rc/hgVNeBcQ4wNN8JaHbwAAAA==
-X-Change-ID: 20261119-edid-t7vtdb-52887c398072
-To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Jani Nikula <jani.nikula@linux.intel.com>, 
- Arun Iyengar <aiyengar1990@gmail.com>
+Message-Id: <20261119-hantro-imx8mm-vp8-v1-1-835dd9b5382c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0Q5EMBCF4VeRuTaJ6Qrtvoq4sEwZSZEWkYh3V
+ +vyO8n5TwjshQN8kxM87xJkniIoTaAdmqlnlC4aVKYKIjIYx9XPKO7QzuG+aFQfy7q0ZLrcQPw
+ tnq0c/2ZVvw7bb+R2fUJwXTfIrYPTdQAAAA==
+X-Change-ID: 20261119-hantro-imx8mm-vp8-23fe87f19d49
+To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Frank Li <Frank.Li@nxp.com>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Hans Verkuil <hverkuil@kernel.org>, 
+ Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
+ Adam Ford <aford173@gmail.com>
+Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795082823; l=3314;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795082877; l=3675;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=ScVtHOJIDgPl4/O/zIOpx/r4EUsECXNNFCTxoFJH0aM=;
- b=0P6zzqbJo5NuJRTPk89GnQsec3NRNlPrNNgLUOrRKeu3N5oa3HbD4o3/o7LvNytREOD5g8bf6
- v3gigHSBGaWCrzJ5OmZya3++7pxgbh/Jgh+m4jAvYXwpf69Fratuv3z
+ bh=ttabhbq6HX9n6LkD9lfDtGqujWqiEJqLK1Woo7amLA4=;
+ b=+G5/+KW2AA45IYVMYGsAK031f3/0CCyalGQ+9VZaUy/I1qNSEut0kIdVEsvlPABpwv/SV97aN
+ by0MkGaTorGCX58eERoTDkfsA1sJAYMPiaiCNQwfVdOyBtXjalc1cP+
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-CTA-861-H lets a CTA extension carry DisplayID Type VII timings (T7VTDB,
-extended tag 0x22). HDMI 2.1 TVs list modes such as 3840x2160@144Hz
-there, but only Type VII timings in DisplayID extensions are parsed, so
-these modes are missing. Add them. In a T7VTDB bit 7 of the timing
-flags means YCbCr 4:2:0 support instead of preferred timing, so these
-modes are never marked preferred. The 4:2:0 flag is not used, as 4:2:0
-capable modes are tracked by VIC.
+The i.MX8MM G1 uses the i.MX8MQ format table, which allows H.264, VP8
+and NV12 up to 3840x2160. The i.MX 8M Mini data sheet rates the decoder
+at 1080p60, and NXP's hantro_v4l2 driver offers a decoder of that size
+1920 pixels wide and up to 4096 high.
 
+Give it its own table with these formats limited to 1920 pixels wide.
+Heights are kept so that portrait pictures such as 1080x1920 are still
+accepted, as in NXP's driver.
+
+Fixes: cf1abc501a5c ("media: hantro: Add support for i.MX8MM Hantro-G1")
+Reported-by: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+Closes: https://lore.kernel.org/r/f041c5d87698ab3be8283ecc71ead0679327238e.camel@collabora.com
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Tested on an Orange Pi 5 (RK3588S, 7.3-based kernel): the three T7VTDB
-timings of an HDMI 2.1 TV are listed. With an EDID override adding a
-T7VTDB timing with bit 7 set, the mode is listed and not preferred.
+Not tested on hardware: I have no i.MX8MM board, so the limit is from the
+data sheet and NXP's driver, not from the decoder's configuration
+register. Build-tested only (W=1 arm64). The i.MX8MQ table is unchanged:
+NXP's driver gives VP8 the same 4096x4096 as H.264 there.
 
 Developed with Claude (Anthropic), which wrote the code and the commit
-message. I reviewed every change.
+messages. I reviewed every change.
 ---
- drivers/gpu/drm/drm_edid.c | 34 ++++++++++++++++++++++++++++++++++
- 1 file changed, 34 insertions(+)
+ drivers/media/platform/verisilicon/imx8m_vpu_hw.c | 58 ++++++++++++++++++++++-
+ 1 file changed, 56 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
-index b8f882a17c8f..ff47b34d4efb 100644
---- a/drivers/gpu/drm/drm_edid.c
-+++ b/drivers/gpu/drm/drm_edid.c
-@@ -4215,6 +4215,7 @@ static int add_detailed_modes(struct drm_connector *connector,
- #define CTA_EXT_DB_HDR_STATIC_METADATA	6
- #define CTA_EXT_DB_420_VIDEO_DATA	14
- #define CTA_EXT_DB_420_VIDEO_CAP_MAP	15
-+#define CTA_EXT_DB_T7VTDB		0x22
- #define CTA_EXT_DB_HF_EEODB		0x78
- #define CTA_EXT_DB_HF_SCDB		0x79
+diff --git a/drivers/media/platform/verisilicon/imx8m_vpu_hw.c b/drivers/media/platform/verisilicon/imx8m_vpu_hw.c
+index fa4224de4b99..805c57a4adcb 100644
+--- a/drivers/media/platform/verisilicon/imx8m_vpu_hw.c
++++ b/drivers/media/platform/verisilicon/imx8m_vpu_hw.c
+@@ -148,6 +148,60 @@ static const struct hantro_fmt imx8m_vpu_dec_fmts[] = {
+ 	},
+ };
  
-@@ -7206,6 +7207,38 @@ static int add_displayid_detailed_modes(struct drm_connector *connector,
- 	return num_modes;
- }
++static const struct hantro_fmt imx8mm_vpu_g1_dec_fmts[] = {
++	{
++		.fourcc = V4L2_PIX_FMT_NV12,
++		.codec_mode = HANTRO_MODE_NONE,
++		.frmsize = {
++			.min_width = FMT_MIN_WIDTH,
++			.max_width = FMT_FHD_WIDTH,
++			.step_width = MB_DIM,
++			.min_height = FMT_MIN_HEIGHT,
++			.max_height = FMT_UHD_HEIGHT,
++			.step_height = MB_DIM,
++		},
++	},
++	{
++		.fourcc = V4L2_PIX_FMT_MPEG2_SLICE,
++		.codec_mode = HANTRO_MODE_MPEG2_DEC,
++		.max_depth = 2,
++		.frmsize = {
++			.min_width = FMT_MIN_WIDTH,
++			.max_width = FMT_FHD_WIDTH,
++			.step_width = MB_DIM,
++			.min_height = FMT_MIN_HEIGHT,
++			.max_height = FMT_FHD_HEIGHT,
++			.step_height = MB_DIM,
++		},
++	},
++	{
++		.fourcc = V4L2_PIX_FMT_VP8_FRAME,
++		.codec_mode = HANTRO_MODE_VP8_DEC,
++		.max_depth = 2,
++		.frmsize = {
++			.min_width = FMT_MIN_WIDTH,
++			.max_width = FMT_FHD_WIDTH,
++			.step_width = MB_DIM,
++			.min_height = FMT_MIN_HEIGHT,
++			.max_height = FMT_UHD_HEIGHT,
++			.step_height = MB_DIM,
++		},
++	},
++	{
++		.fourcc = V4L2_PIX_FMT_H264_SLICE,
++		.codec_mode = HANTRO_MODE_H264_DEC,
++		.max_depth = 2,
++		.frmsize = {
++			.min_width = FMT_MIN_WIDTH,
++			.max_width = FMT_FHD_WIDTH,
++			.step_width = MB_DIM,
++			.min_height = FMT_MIN_HEIGHT,
++			.max_height = FMT_UHD_HEIGHT,
++			.step_height = MB_DIM,
++		},
++	},
++};
++
+ static const struct hantro_fmt imx8m_vpu_g2_postproc_fmts[] = {
+ 	{
+ 		.fourcc = V4L2_PIX_FMT_NV12,
+@@ -382,8 +436,8 @@ const struct hantro_variant imx8mq_vpu_g2_variant = {
+ };
  
-+/* CTA-861-H T7VTDB: a revision byte, then one DisplayID Type VII timing */
-+static int add_cta_t7vtdb_modes(struct drm_connector *connector,
-+				const struct drm_edid *drm_edid)
-+{
-+	const struct displayid_detailed_timings_1 *timings;
-+	struct drm_display_mode *newmode;
-+	const struct cea_db *db;
-+	struct cea_db_iter iter;
-+	int num_modes = 0;
-+
-+	cea_db_iter_edid_begin(drm_edid, &iter);
-+	cea_db_iter_for_each(db, &iter) {
-+		if (!cea_db_is_extended_tag(db, CTA_EXT_DB_T7VTDB) ||
-+		    cea_db_payload_len(db) < 2 + sizeof(*timings))
-+			continue;
-+
-+		timings = (const void *)(cea_db_data(db) + 2);
-+		newmode = drm_mode_displayid_detailed(connector->dev, timings, true);
-+		if (!newmode)
-+			continue;
-+
-+		/* Bit 7 of the flags is YCbCr 4:2:0 support here, not preferred */
-+		newmode->type &= ~DRM_MODE_TYPE_PREFERRED;
-+
-+		drm_mode_probed_add(connector, newmode);
-+		num_modes++;
-+	}
-+	cea_db_iter_end(&iter);
-+
-+	return num_modes;
-+}
-+
- static int _drm_edid_connector_add_modes(struct drm_connector *connector,
- 					 const struct drm_edid *drm_edid)
- {
-@@ -7235,6 +7268,7 @@ static int _drm_edid_connector_add_modes(struct drm_connector *connector,
- 	num_modes += add_cea_modes(connector, drm_edid);
- 	num_modes += add_alternate_cea_modes(connector, drm_edid);
- 	num_modes += add_displayid_detailed_modes(connector, drm_edid);
-+	num_modes += add_cta_t7vtdb_modes(connector, drm_edid);
- 	if (drm_edid->edid->features & DRM_EDID_FEATURE_CONTINUOUS_FREQ)
- 		num_modes += add_inferred_modes(connector, drm_edid);
- 
+ const struct hantro_variant imx8mm_vpu_g1_variant = {
+-	.dec_fmts = imx8m_vpu_dec_fmts,
+-	.num_dec_fmts = ARRAY_SIZE(imx8m_vpu_dec_fmts),
++	.dec_fmts = imx8mm_vpu_g1_dec_fmts,
++	.num_dec_fmts = ARRAY_SIZE(imx8mm_vpu_g1_dec_fmts),
+ 	.codec = HANTRO_MPEG2_DECODER | HANTRO_VP8_DECODER |
+ 		 HANTRO_H264_DECODER,
+ 	.codec_ops = imx8mq_vpu_g1_codec_ops,
 
 ---
-base-commit: fac7a5f16230779cfb0d50ca49e9467cc94a2ea9
-change-id: 20261119-edid-t7vtdb-52887c398072
+base-commit: aa0f4c41d4870a18e65772a1817af16427200371
+change-id: 20261119-hantro-imx8mm-vp8-23fe87f19d49
 
 Best regards,
 --  
