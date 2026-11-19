@@ -1,10 +1,11 @@
 From: Kyle Hendry <khendry@reliablecontrols.com>
-Date: Thu, 19 Nov 2026 09:57:47 -0800
-Subject: [PATCH 5/6] net: pcs: rzn1-miic: Add resets to rzn1 info structure
+Date: Thu, 19 Nov 2026 09:57:48 -0800
+Subject: [PATCH 6/6] ARM: dts: renesas: r9a06g032: Add resets to mii
+ converter
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-rzn1-miic-resets-v1-5-feee2bb28bb4@reliablecontrols.com>
+Message-Id: <20261119-rzn1-miic-resets-v1-6-feee2bb28bb4@reliablecontrols.com>
 References: <20261119-rzn1-miic-resets-v1-0-feee2bb28bb4@reliablecontrols.com>
 In-Reply-To: <20261119-rzn1-miic-resets-v1-0-feee2bb28bb4@reliablecontrols.com>
 To: Geert Uytterhoeven <geert+renesas@glider.be>, 
@@ -25,49 +26,37 @@ Cc: linux-renesas-soc@vger.kernel.org, linux-clk@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  netdev@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795111097; l=1138;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795111097; l=858;
  i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=J27gezGON7U1BSPHR97CeYos8JNMDptm1U9mPf2DCsA=;
- b=Vz5uGN4jIeTJ/CkeTD/1x37t5B6Ma5MB2Y+rjOEBO77+UJW3NMgViLHlU/WL/8ogQ2YuD04Te
- Lad8nu/LlflCkZPMcbhl7NLBiJIugLWelfCnW9pdQY7H0Dv0GanamHr
+ bh=qgvA5VciuFpDDlBloW4+43M1wkddJY2irZpJYObbd+0=;
+ b=OhrIO0OOq4envOlQ9SlkMKgZ8zwywCqI1Hl35UHS4W/dakNbGHiHRR1SxMVHYQLVh/LFjgBDm
+ 5VR8kkDEHxuDewOhaKUuZGCrfzaMxujoY0XpSH2F3UcUugaAkVPUUrP
 X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
  pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
 X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update the rzn1 info structure to include the resets that the driver needs
-to deassert
+Add references to the resets in the system driver that the miic needs
 
 Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
 ---
- drivers/net/pcs/pcs-rzn1-miic.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ arch/arm/boot/dts/renesas/r9a06g032.dtsi | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/net/pcs/pcs-rzn1-miic.c b/drivers/net/pcs/pcs-rzn1-miic.c
-index f8bafce26bf1..38164502c08c 100644
---- a/drivers/net/pcs/pcs-rzn1-miic.c
-+++ b/drivers/net/pcs/pcs-rzn1-miic.c
-@@ -128,6 +128,11 @@ static const char * const index_to_string[] = {
- 	"CONV5",
- };
+diff --git a/arch/arm/boot/dts/renesas/r9a06g032.dtsi b/arch/arm/boot/dts/renesas/r9a06g032.dtsi
+index f2bf087f7ad2..0a538d922125 100644
+--- a/arch/arm/boot/dts/renesas/r9a06g032.dtsi
++++ b/arch/arm/boot/dts/renesas/r9a06g032.dtsi
+@@ -463,6 +463,9 @@ eth_miic: eth-miic@44030000 {
+ 				 <&sysctrl R9A06G032_CLK_RMII_REF>,
+ 				 <&sysctrl R9A06G032_HCLK_SWITCH_RG>;
+ 			clock-names = "mii_ref", "rgmii_ref", "rmii_ref", "hclk";
++			resets = <&sysctrl R9A06G032_RST_TS>,
++				 <&sysctrl R9A06G032_RST_MIIC>;
++			reset-names = "rst_ts", "rst_miic";
+ 			power-domains = <&sysctrl>;
+ 			status = "disabled";
  
-+static const char * const rzn1_reset_ids[] = {
-+	"rst_ts",
-+	"rst_miic",
-+};
-+
- static struct modctrl_match rzt2h_modctrl_match_table[] = {
- 	{0x0, {ETHSS_GMAC0_PORT, ETHSS_ETHSW_PORT0, ETHSS_ETHSW_PORT1,
- 	       ETHSS_ETHSW_PORT2, ETHSS_GMAC1_PORT}},
-@@ -855,6 +860,8 @@ static struct miic_of_data rzn1_miic_of_data = {
- 	.miic_port_start = 1,
- 	.miic_port_last = 5,
- 	.sw_mode_mask = GENMASK(4, 0),
-+	.reset_ids = rzn1_reset_ids,
-+	.reset_count = ARRAY_SIZE(rzn1_reset_ids),
- 	.init_unlock_lock_regs = true,
- 	.miic_write = miic_reg_writel_unlocked,
- 	.type = MIIC_TYPE_RZN1,
 
 -- 
 2.53.0
