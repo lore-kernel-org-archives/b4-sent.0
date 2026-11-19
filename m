@@ -1,11 +1,11 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 19 Nov 2026 16:39:45 +0800
-Subject: [PATCH net v10 04/10] can: dev: add
- close_candev_cancel_restart_sync()
+Date: Thu, 19 Nov 2026 16:39:46 +0800
+Subject: [PATCH net v10 05/10] can: rockchip_canfd: cancel bus-off restart
+ before closing the device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-rockchip-canfd-restart-close-v10-4-df23913aa33a@qq.com>
+Message-Id: <20261119-rockchip-canfd-restart-close-v10-5-df23913aa33a@qq.com>
 References: <20261119-rockchip-canfd-restart-close-v10-0-df23913aa33a@qq.com>
 In-Reply-To: <20261119-rockchip-canfd-restart-close-v10-0-df23913aa33a@qq.com>
 To: Marc Kleine-Budde <mkl@pengutronix.de>, kernel@pengutronix.de, 
@@ -22,87 +22,53 @@ Cc: linux-can@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-doc@vger.kernel.org, Cunhao Lu <1579567540@qq.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795077587; l=2569;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795077587; l=1589;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=Oh0l4Hj6DLFLNs+Pl9fZvvNbgUu+HHvweePhd3Jg4SY=;
- b=5WBUGNaXVNmpaWLzQAv121VnBDVxwVlXxT3h197bb+CBAS67pN/mPp7Lm1ahCljaFErXoOn4J
- 90V6xrVXQ8CCoAeOT5PWG48ZmmYvsXT6DfME37ZArkfbUVmE2Fy4j93
+ bh=I72HUC2ujKjaadGUhXTkD9nz9XMWR5jwCKsKJZRMdaE=;
+ b=6dA4bo0IuR1E3f3nKoAs80AapPZiMp/AOzmkvdFO+DewwPOosyPtDhU36qD/uLoipyS/UIxcS
+ /ddTnXYTLeyCmWhQuQ7oacLb7ScRtXfPpQaGu7hcNWbb7nsiluPNTOC
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Drivers may need to wait for bus-off recovery before tearing down the
-IRQ and hardware resources used by their restart callback. Calling
-close_candev() at that point also flushes echo skbs, which belongs after
-the driver has quiesced the users of those buffers.
+The close path cancels restart_work in close_candev() only after freeing
+the IRQ, disabling RX offload and stopping the controller. A concurrent
+restart can re-enable the controller and interrupts after IRQ teardown,
+or requeue timestamp work that accesses registers after runtime suspend
+has disabled the controller clocks.
 
-Extract the synchronous cancellation from close_candev() into
-close_candev_cancel_restart_sync(). Drivers can then cancel restart
-work early and call close_candev() after stopping its producers. The
-final close still cancels restart work before flushing echo skbs.
+Call close_candev_cancel_restart_sync() at the start of ndo_stop(), while
+the resources needed by a running restart are still available. Leave
+echo cleanup in close_candev().
 
-Cc: stable@vger.kernel.org # prerequisite for the Rockchip restart/close fix
+A bus-off IRQ can pass the scheduling check before close, then queue
+restart work after the early cancellation. The final cancellation after
+free_irq() drains that late work so it cannot survive close.
+
+Fixes: ff60bfbaf67f ("can: rockchip_canfd: add driver for Rockchip CAN-FD controller")
+Cc: stable@vger.kernel.org
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
 
 ---
-Changes in v6:
-- Describe the helper's use by the following Rockchip fix.
+Changes in v7:
+- Keep close cancellation separate from restart and open error handling.
 ---
- drivers/net/can/dev/dev.c |  4 +---
- include/linux/can/dev.h   | 17 +++++++++++++++++
- 2 files changed, 18 insertions(+), 3 deletions(-)
+ drivers/net/can/rockchip/rockchip_canfd-core.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/net/can/dev/dev.c b/drivers/net/can/dev/dev.c
-index a893a49a3381..39271a3ef0fa 100644
---- a/drivers/net/can/dev/dev.c
-+++ b/drivers/net/can/dev/dev.c
-@@ -537,9 +537,7 @@ EXPORT_SYMBOL_GPL(of_can_transceiver);
-  */
- void close_candev(struct net_device *dev)
+diff --git a/drivers/net/can/rockchip/rockchip_canfd-core.c b/drivers/net/can/rockchip/rockchip_canfd-core.c
+index 1cae86973da5..59a79fe057e6 100644
+--- a/drivers/net/can/rockchip/rockchip_canfd-core.c
++++ b/drivers/net/can/rockchip/rockchip_canfd-core.c
+@@ -758,6 +758,7 @@ static int rkcanfd_stop(struct net_device *ndev)
  {
--	struct can_priv *priv = netdev_priv(dev);
--
--	cancel_delayed_work_sync(&priv->restart_work);
-+	close_candev_cancel_restart_sync(dev);
- 	can_flush_echo_skb(dev);
- }
- EXPORT_SYMBOL_GPL(close_candev);
-diff --git a/include/linux/can/dev.h b/include/linux/can/dev.h
-index 346faddee02e..2a286f906394 100644
---- a/include/linux/can/dev.h
-+++ b/include/linux/can/dev.h
-@@ -22,6 +22,7 @@
- #include <linux/can/skb.h>
- #include <linux/ethtool.h>
- #include <linux/netdevice.h>
-+#include <linux/workqueue.h>
+ 	struct rkcanfd_priv *priv = netdev_priv(ndev);
  
- /*
-  * CAN mode
-@@ -115,6 +116,22 @@ struct can_priv *safe_candev_priv(struct net_device *dev);
++	close_candev_cancel_restart_sync(ndev);
+ 	netif_stop_queue(ndev);
  
- int open_candev(struct net_device *dev);
- void close_candev(struct net_device *dev);
-+
-+/**
-+ * close_candev_cancel_restart_sync() - cancel bus-off restart synchronously
-+ * @dev: CAN network device
-+ *
-+ * Call before tearing down resources used by the restart callback.
-+ * The driver must quiesce restart work producers before calling
-+ * close_candev() for the final cleanup.
-+ */
-+static inline void close_candev_cancel_restart_sync(struct net_device *dev)
-+{
-+	struct can_priv *priv = netdev_priv(dev);
-+
-+	cancel_delayed_work_sync(&priv->restart_work);
-+}
-+
- void can_set_default_mtu(struct net_device *dev);
- void can_set_cap_info(struct net_device *dev);
- int __must_check can_set_static_ctrlmode(struct net_device *dev,
+ 	rkcanfd_chip_interrupts_disable(priv);
 
 -- 
 2.34.1
