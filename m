@@ -1,146 +1,111 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 16:39:09 +0000
-Subject: [PATCH] vt: allocate the screen buffers with kvzalloc()
+Date: Thu, 19 Nov 2026 16:44:46 +0000
+Subject: [PATCH RFC v4l-utils] v4l2-compliance: detect
+ V4L2_PIX_FMT_MPEG1_SLICE decoders
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-vt-kvzalloc-v1-1-5e5f59b37f61@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBBA0avIrDXREspVxKJqMAjS0ghxd8XyL
- f6/wKIhtFAEFxh0ZGmZPXgYgO7V3CGjxhtEJFLOec7cxkZ3qmlaNMNURLKRmUpkDL5YDbZ0fLe
- y+m33ekC9vQu47wcFkD5UbwAAAA==
-X-Change-ID: 20261119-vt-kvzalloc-e6208d87a483
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- Nicolas Pitre <nico@fluxnic.net>, Arun Iyengar <aiyengar1990@gmail.com>
+Message-Id: <20261119-v4l-utils-mpeg1-slice-v1-1-204ec6ef9166@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0NL3TKTHN3SksycYt3cgtR0Q93inMzkVF3zJEuDNHNjA5NEixQloN6
+ CotS0zAqwudFKQW7OIDG4TqVYiIri0qSs1OQSkPFKtbUAcuFIoIsAAAA=
+X-Change-ID: 20261119-v4l-utils-mpeg1-slice-7b90f7304a8d
+To: Hans Verkuil <hverkuil@kernel.org>
+Cc: linux-media@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795106349; l=4415;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795106686; l=3935;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=83ftxt1Y3R8cULoF8CrapPrLjB8/VCL6Q7syy8fYTqQ=;
- b=cb/1C90W46uJY1W+sHyRgr96rWWZcFm89KMxF4+WT3nuPzc3Bn/lRrxjcGeme3U9TjrPR2mcf
- so5JjuVRguhCihuRTgAKezivDTuv0ms44KLgo3WYGGskr49hILlsjeI
+ bh=3DdqQ3KNlKglmIG7Q1VxCQYz+FeFKYbpbQNmL/+qqag=;
+ b=h/SGZskaAHxRm1UZmHho4noMYeAX3sK6hWx2K3uGfPOAcn/JbMsERaBHrzPfJY1IkqAlBDSMW
+ SyTOf6R7g0rAjjawD3x3lngpgMX7JJ/CV1gnBK/AGSZFfmN+cMTGlkG
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A console's screen buffer grows with the display: 480x135 (3840x2160
-with the 8x16 font) needs 129600 bytes, an order-5 kzalloc() that can
-fail when memory is fragmented. On an Orange Pi Zero2 (1 GiB) under
-memory load, plugging in an HDMI monitor gave an order:5 page
-allocation failure in vc_do_resize() from fbcon_startup().
+determine_codec_mask() gives up on a compressed format it does not
+know, so a decoder that lists 'MG1S' is not tested as a stateless
+decoder and fails VIDIOC_(TRY_)DECODER_CMD.
 
-Commit 9a98e7a80f95 ("vt: don't use kmalloc() for the unicode screen
-buffer") moved the unicode buffer to vmalloc for this reason; let the
-screen buffer and its alternate screen copy fall back to vmalloc too.
-Nothing needs them physically contiguous. con_init() keeps its
-GFP_NOWAIT kzalloc(), which kvfree() also handles.
+The format and flags are added to the headers and v4l2-pix-formats.h
+by hand; sync-with-kernel replaces them once the kernel series is in.
 
-Cc: Nicolas Pitre <nico@fluxnic.net>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Tested on an Orange Pi Zero2 (H616) on 7.3.4 with KASAN and the order-5
-kmalloc failed by fault injection: 20 of 20 fbcon rebinds fell back to
-vmalloc and kept the screen contents (all 20 fail without the patch).
+For the kernel RFC "media: stateless MPEG-1 decoding, cedrus support":
+https://lore.kernel.org/r/20261119-b4-cedrus-mpeg1-v1-0-aa5ba1192822@gmail.com
 
-Developed with Claude (Anthropic), which wrote the code and the commit
-message. I reviewed it.
+Tested with it on an Orange Pi Zero2 (cedrus): 49 of 49 tests pass.
+Developed with Claude (Anthropic) as a coding assistant; I reviewed and
+tested it.
 ---
- drivers/tty/vt/vt.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ include/linux/v4l2-controls.h             | 3 +++
+ include/linux/videodev2.h                 | 1 +
+ utils/common/v4l2-pix-formats.h           | 1 +
+ utils/v4l2-compliance/v4l2-compliance.cpp | 1 +
+ 4 files changed, 6 insertions(+)
 
-diff --git a/drivers/tty/vt/vt.c b/drivers/tty/vt/vt.c
-index 7dbc0072a40a..cdc862be4d6f 100644
---- a/drivers/tty/vt/vt.c
-+++ b/drivers/tty/vt/vt.c
-@@ -1232,7 +1232,7 @@ int vc_allocate(unsigned int currcons)	/* return 0 on success */
- 	    vc->vc_screenbuf_size > KMALLOC_MAX_SIZE || !vc->vc_screenbuf_size)
- 		goto err_free;
- 	err = -ENOMEM;
--	vc->vc_screenbuf = kzalloc(vc->vc_screenbuf_size, GFP_KERNEL);
-+	vc->vc_screenbuf = kvzalloc(vc->vc_screenbuf_size, GFP_KERNEL);
- 	if (!vc->vc_screenbuf)
- 		goto err_free;
+diff --git a/include/linux/v4l2-controls.h b/include/linux/v4l2-controls.h
+index 80d0e12e..8108f0ea 100644
+--- a/include/linux/v4l2-controls.h
++++ b/include/linux/v4l2-controls.h
+@@ -1986,6 +1986,7 @@ struct v4l2_ctrl_vp8_frame {
+ /* Stateless MPEG-2 controls */
  
-@@ -1324,14 +1324,14 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
+ #define V4L2_MPEG2_SEQ_FLAG_PROGRESSIVE	0x01
++#define V4L2_MPEG2_SEQ_FLAG_MPEG1	0x02
  
- 	if (new_screen_size > KMALLOC_MAX_SIZE || !new_screen_size)
- 		return -EINVAL;
--	newscreen = kzalloc(new_screen_size, GFP_USER);
-+	newscreen = kvzalloc(new_screen_size, GFP_USER);
- 	if (!newscreen)
- 		return -ENOMEM;
+ #define V4L2_CID_STATELESS_MPEG2_SEQUENCE (V4L2_CID_CODEC_STATELESS_BASE+220)
+ /**
+@@ -2034,6 +2035,8 @@ struct v4l2_ctrl_mpeg2_sequence {
+ #define V4L2_MPEG2_PIC_FLAG_ALT_SCAN			0x0020
+ #define V4L2_MPEG2_PIC_FLAG_REPEAT_FIRST		0x0040
+ #define V4L2_MPEG2_PIC_FLAG_PROGRESSIVE			0x0080
++#define V4L2_MPEG2_PIC_FLAG_FULL_PEL_FORWARD		0x0100
++#define V4L2_MPEG2_PIC_FLAG_FULL_PEL_BACKWARD		0x0200
  
- 	if (vc->vc_uni_lines) {
- 		new_uniscr = vc_uniscr_alloc(new_cols, new_rows);
- 		if (!new_uniscr) {
--			kfree(newscreen);
-+			kvfree(newscreen);
- 			return -ENOMEM;
- 		}
- 	}
-@@ -1344,7 +1344,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
- 
- 	err = resize_screen(vc, new_cols, new_rows, from_user);
- 	if (err) {
--		kfree(newscreen);
-+		kvfree(newscreen);
- 		vc_uniscr_free(new_uniscr);
- 		return err;
- 	}
-@@ -1402,7 +1402,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
- 	vc->vc_screenbuf = newscreen;
- 	vc->vc_screenbuf_size = new_screen_size;
- 	set_origin(vc);
--	kfree(oldscreen);
-+	kvfree(oldscreen);
- 
- 	/* do part of a reset_terminal() */
- 	vc->vc_top = 0;
-@@ -1483,10 +1483,10 @@ struct vc_data *vc_deallocate(unsigned int currcons)
- 		con_free_unimap(vc);
- 		put_pid(vc->vt_pid);
- 		vc_uniscr_set(vc, NULL);
--		kfree(vc->vc_screenbuf);
-+		kvfree(vc->vc_screenbuf);
- 		vc_cons[currcons].d = NULL;
- 		if (vc->vc_saved_screen != NULL) {
--			kfree(vc->vc_saved_screen);
-+			kvfree(vc->vc_saved_screen);
- 			vc->vc_saved_screen = NULL;
- 		}
- 		vc_uniscr_free(vc->vc_saved_uni_lines);
-@@ -2032,7 +2032,7 @@ static void enter_alt_screen(struct vc_data *vc)
- 
- 	if (vc->vc_saved_screen != NULL)
- 		return; /* Already inside an alt-screen */
--	vc->vc_saved_screen = kmemdup((u16 *)vc->vc_origin, size, GFP_KERNEL);
-+	vc->vc_saved_screen = kvmemdup((u16 *)vc->vc_origin, size, GFP_KERNEL);
- 	if (vc->vc_saved_screen == NULL)
- 		return;
- 	vc->vc_saved_uni_lines = vc->vc_uni_lines;
-@@ -2082,7 +2082,7 @@ static void leave_alt_screen(struct vc_data *vc)
- 	/* Update the entire screen */
- 	if (con_should_update(vc))
- 		do_update_region(vc, vc->vc_origin, vc->vc_screenbuf_size / 2);
--	kfree(vc->vc_saved_screen);
-+	kvfree(vc->vc_saved_screen);
- 	vc->vc_saved_screen = NULL;
- }
- 
-@@ -2400,7 +2400,7 @@ static void reset_terminal(struct vc_data *vc, int do_clear)
- 	vc->vc_decim		= 0;
- 
- 	if (vc->vc_saved_screen != NULL) {
--		kfree(vc->vc_saved_screen);
-+		kvfree(vc->vc_saved_screen);
- 		vc->vc_saved_screen = NULL;
- 		vc_uniscr_free(vc->vc_saved_uni_lines);
- 		vc->vc_saved_uni_lines = NULL;
+ #define V4L2_CID_STATELESS_MPEG2_PICTURE (V4L2_CID_CODEC_STATELESS_BASE+221)
+ /**
+diff --git a/include/linux/videodev2.h b/include/linux/videodev2.h
+index feb32668..d027e134 100644
+--- a/include/linux/videodev2.h
++++ b/include/linux/videodev2.h
+@@ -734,6 +734,7 @@ struct v4l2_pix_format {
+ #define V4L2_PIX_FMT_MPEG1    v4l2_fourcc('M', 'P', 'G', '1') /* MPEG-1 ES     */
+ #define V4L2_PIX_FMT_MPEG2    v4l2_fourcc('M', 'P', 'G', '2') /* MPEG-2 ES     */
+ #define V4L2_PIX_FMT_MPEG2_SLICE v4l2_fourcc('M', 'G', '2', 'S') /* MPEG-2 parsed slice data */
++#define V4L2_PIX_FMT_MPEG1_SLICE v4l2_fourcc('M', 'G', '1', 'S') /* MPEG-1 parsed slice data */
+ #define V4L2_PIX_FMT_MPEG4    v4l2_fourcc('M', 'P', 'G', '4') /* MPEG-4 part 2 ES */
+ #define V4L2_PIX_FMT_XVID     v4l2_fourcc('X', 'V', 'I', 'D') /* Xvid           */
+ #define V4L2_PIX_FMT_VC1_ANNEX_G v4l2_fourcc('V', 'C', '1', 'G') /* SMPTE 421M Annex G compliant stream */
+diff --git a/utils/common/v4l2-pix-formats.h b/utils/common/v4l2-pix-formats.h
+index efc31d73..e34c9ae1 100644
+--- a/utils/common/v4l2-pix-formats.h
++++ b/utils/common/v4l2-pix-formats.h
+@@ -223,6 +223,7 @@
+ 	case V4L2_PIX_FMT_H263: return "H.263";
+ 	case V4L2_PIX_FMT_MPEG1: return "MPEG-1 ES";
+ 	case V4L2_PIX_FMT_MPEG2: return "MPEG-2 ES";
++	case V4L2_PIX_FMT_MPEG1_SLICE: return "MPEG-1 Parsed Slice Data";
+ 	case V4L2_PIX_FMT_MPEG2_SLICE: return "MPEG-2 Parsed Slice Data";
+ 	case V4L2_PIX_FMT_MPEG4: return "MPEG-4 Part 2 ES";
+ 	case V4L2_PIX_FMT_XVID: return "Xvid";
+diff --git a/utils/v4l2-compliance/v4l2-compliance.cpp b/utils/v4l2-compliance/v4l2-compliance.cpp
+index e9e84363..f31b7ed5 100644
+--- a/utils/v4l2-compliance/v4l2-compliance.cpp
++++ b/utils/v4l2-compliance/v4l2-compliance.cpp
+@@ -604,6 +604,7 @@ static void determine_codec_mask(struct node &node)
+ 			case V4L2_PIX_FMT_FWHT:
+ 				mask |= STATEFUL_DECODER;
+ 				break;
++			case V4L2_PIX_FMT_MPEG1_SLICE:
+ 			case V4L2_PIX_FMT_MPEG2_SLICE:
+ 			case V4L2_PIX_FMT_H264_SLICE:
+ 			case V4L2_PIX_FMT_HEVC_SLICE:
 
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261119-vt-kvzalloc-e6208d87a483
+base-commit: d2e89246cefcb6371425361b12c4ca2a36a662d2
+change-id: 20261119-v4l-utils-mpeg1-slice-7b90f7304a8d
 
 Best regards,
 --  
