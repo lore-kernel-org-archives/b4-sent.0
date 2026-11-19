@@ -1,15 +1,12 @@
 From: Oleh Kurudz <admin@or1k.net>
-Subject: [PATCH 0/2] USB: core: Disconnect a parent hub on suspend for
- HyperX QuadCast S
-Date: Fri, 20 Nov 2026 00:22:24 +0200
-Message-Id: <20261120-quadcast-s-suspend-v1-0-add8ccf12c8f@or1k.net>
+Date: Fri, 20 Nov 2026 00:22:25 +0200
+Subject: [PATCH 1/2] USB: core: Add USB_QUIRK_DISCONNECT_PARENT_SUSPEND
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MQQrCQAwF0KuEv26gGaHUuYq4iDNRsxnrxBah9
- O6C7wBvR1h3C2Ta0W3z8FdDJhkI5antYewVmZDGNImkkd+r1qLx4eBYY7FW+SY1yWk+a5kVA2H
- pdvfvP71cj+MH5I456WQAAAA=
-X-Change-ID: 20261120-quadcast-s-suspend-b1d21389ac8a
+Message-Id: <20261120-quadcast-s-suspend-v1-1-add8ccf12c8f@or1k.net>
+References: <20261120-quadcast-s-suspend-v1-0-add8ccf12c8f@or1k.net>
+In-Reply-To: <20261120-quadcast-s-suspend-v1-0-add8ccf12c8f@or1k.net>
 To: Jonathan Corbet <corbet@lwn.net>, 
  Shuah Khan <skhan@linuxfoundation.org>, 
  Randy Dunlap <rdunlap@infradead.org>, 
@@ -18,62 +15,139 @@ Cc: Alan Stern <stern@rowland.harvard.edu>, linux-doc@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
  Oleh Kurudz <admin@or1k.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795126946; l=2397;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795126946; l=5002;
  i=admin@or1k.net; s=20261120; h=from:subject:message-id;
- bh=MEMGo5g61PY933MO5JFk74iMl4YxUIg5MC75DGdWosk=;
- b=oeyFB+9TSEv7kTebJT0NfJPxoY8q8EsyAow+xcjI6Qn/S5NM8UElZzB8O5iL8iD4/dcXjZGOQ
- 5mdAdBGPWJ7Bnjy1BeuSYYf/YbCRALEkaF8vXCwUcwEszD1xDQEBuuw
+ bh=KS7CYnsQniBo8AQ1uwycWYmb0KvcOWr+4Ntt5Gu/5Bo=;
+ b=vUoxPDfWd6mCpilBiN9DmkA3IQgp2ZchSHiDTk99tOOJBcs769O54gcorFxnilLsMnq1BIFcM
+ lRJrWaPS/crBN8Gsybs+FW06qczEQn/y7vbtjJmHHXC+LDFvi+IDDjn
 X-Developer-Key: i=admin@or1k.net; a=ed25519;
  pk=99OKf9VLJkjldneE6gRk0c6oTl7G+EdqRiFo4h8sH6Q=
 X-Endpoint-Received: by B4 Relay for admin@or1k.net/20261120 with auth_id=1577
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HyperX QuadCast S microphone is an audio function and an HID (RGB)
-function behind a hub built into the microphone. During system suspend
-the HID function drops off that hub, and the hub then wakes the system
-even though remote wakeup is disabled for it. On s2idle machines the
-suspend bounces back within about a second. Users report the same
-symptom online, with unplugging the microphone as the usual workaround.
+Some USB products are several functions behind a small hub inside the
+same enclosure. On the HyperX QuadCast S microphone one of these
+functions drops off the bus while the system is suspending, and the
+built-in hub then reports the connect change upstream and wakes the
+system, even though remote wakeup is disabled for the hub and for
+everything behind it. On s2idle systems the suspend bounces back within
+about a second.
 
-The existing USB_QUIRK_DISCONNECT_SUSPEND would fix this if it were set
-on the hub, but the hub is a generic Huasheng 214b:7250 chip, and setting
-the quirk on it would also stop keyboards behind other hubs with that
-chip from waking the system. So patch 1 adds a quirk for the child
-device that makes usb_suspend() disable the upstream port of its parent
-hub, and patch 2 sets it for the two QuadCast S functions.
+USB_QUIRK_DISCONNECT_SUSPEND does not help here. Set on the function
+that drops off, it disables that function's port on the built-in hub,
+but the hub itself still signals the wakeup. Set on the hub, it would
+affect every product that uses the same generic hub chip (a Huasheng
+214b:7250 in this case), including ones with a keyboard behind it that
+is expected to wake the system.
 
-Other QuadCast models (QuadCast, QuadCast 2, the HP-era 03f0:xxxx IDs)
-may have the same problem, but I only have the QuadCast S to test with.
-They can be tried with usbcore.quirks=<vid>:<pid>:s.
+Add USB_QUIRK_DISCONNECT_PARENT_SUSPEND. When a hub has a child with
+this quirk, usb_suspend() disables the hub's upstream port after
+suspending it, just as USB_QUIRK_DISCONNECT_SUSPEND would for the hub
+itself. The children are checked at suspend time instead of copying the
+flag to the hub at enumeration, because a reset-resume of the hub re-runs
+usb_detect_quirks() and would drop a copied flag.
 
-Tested on usb-next (7.4.0-rc3) on an AMD laptop with s2idle.
+Like USB_QUIRK_DISCONNECT_SUSPEND, this only affects system sleep;
+runtime suspend does not go through usb_suspend(). The quirk can also be
+set with the usbcore.quirks parameter, using the letter 's'.
 
-How this was made: I had been working around the problem with a
-systemd-sleep hook that disabled the microphone's upstream port, and
-asked an AI coding assistant (Claude, claude-opus-5-5) to turn it into
-a kernel fix. It read the USB core code, proposed the approach, wrote
-both patches and the changelogs, and built the test kernel. I reviewed
-the patches and ran the tests on my laptop: with the quirk cleared via
-usbcore.quirks the bouncing suspend is reproducible, with it the system
-stays suspended. checkpatch.pl --strict is clean and each patch builds
-on its own with W=1.
+This patch and its changelog were written with the help of an AI
+coding assistant (Claude, claude-opus-5-5). I reviewed the result and
+tested it on my hardware, see the next patch.
 
 Signed-off-by: Oleh Kurudz <admin@or1k.net>
 ---
-Oleh Kurudz (2):
-      USB: core: Add USB_QUIRK_DISCONNECT_PARENT_SUSPEND
-      USB: quirks: Add USB_QUIRK_DISCONNECT_PARENT_SUSPEND for HyperX QuadCast S
-
  Documentation/admin-guide/kernel-parameters.txt |  5 +++++
  drivers/usb/core/driver.c                       | 20 +++++++++++++++++++-
- drivers/usb/core/quirks.c                       |  9 +++++++++
+ drivers/usb/core/quirks.c                       |  3 +++
  include/linux/usb/quirks.h                      |  7 +++++++
- 4 files changed, 40 insertions(+), 1 deletion(-)
----
-base-commit: f11fe7603df07fbb9fa02b0d385c1696c87a6dab
-change-id: 20261120-quadcast-s-suspend-b1d21389ac8a
+ 4 files changed, 34 insertions(+), 1 deletion(-)
 
-Best regards,
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index 176648941..7751c373a 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -8235,6 +8235,11 @@ Kernel parameters
+ 					9-bytes configuration descriptor request.
+ 					Ask for 255-bytes request instead to mirror
+ 					Windows' behavior);
++				s = USB_QUIRK_DISCONNECT_PARENT_SUSPEND
++					(Device sits behind a hub that signals
++					a spurious wakeup when the device drops
++					off the bus during suspend; disconnect
++					the hub before suspend);
+ 			Example: quirks=0781:5580:bk,0a5c:5834:gij
+ 
+ 	usbhid.mousepoll=
+diff --git a/drivers/usb/core/driver.c b/drivers/usb/core/driver.c
+index d3a61ebc6..a40d9595b 100644
+--- a/drivers/usb/core/driver.c
++++ b/drivers/usb/core/driver.c
+@@ -1620,6 +1620,23 @@ static void choose_wakeup(struct usb_device *udev, pm_message_t msg)
+ 	udev->do_remote_wakeup = w;
+ }
+ 
++/*
++ * Check whether a child of @hdev wants @hdev disconnected during system
++ * suspend. The caller must hold @hdev's device lock, which keeps the set of
++ * children stable.
++ */
++static bool usb_child_wants_parent_disconnect(struct usb_device *hdev)
++{
++	struct usb_device *child;
++	int port1;
++
++	usb_hub_for_each_child(hdev, port1, child) {
++		if (child->quirks & USB_QUIRK_DISCONNECT_PARENT_SUSPEND)
++			return true;
++	}
++	return false;
++}
++
+ /* The device lock is held by the PM core */
+ int usb_suspend(struct device *dev, pm_message_t msg)
+ {
+@@ -1637,7 +1654,8 @@ int usb_suspend(struct device *dev, pm_message_t msg)
+ 	if (r)
+ 		return r;
+ 
+-	if (udev->quirks & USB_QUIRK_DISCONNECT_SUSPEND)
++	if ((udev->quirks & USB_QUIRK_DISCONNECT_SUSPEND) ||
++	    (udev->parent && usb_child_wants_parent_disconnect(udev)))
+ 		usb_port_disable(udev);
+ 
+ 	return 0;
+diff --git a/drivers/usb/core/quirks.c b/drivers/usb/core/quirks.c
+index a4bcbe9c9..3933cf9c0 100644
+--- a/drivers/usb/core/quirks.c
++++ b/drivers/usb/core/quirks.c
+@@ -146,6 +146,9 @@ static int quirks_param_set(const char *value, const struct kernel_param *kp)
+ 			case 'r':
+ 				flags |= USB_QUIRK_WINDOWS_CONFIG_REQ_SIZE;
+ 				break;
++			case 's':
++				flags |= USB_QUIRK_DISCONNECT_PARENT_SUSPEND;
++				break;
+ 			/* Ignore unrecognized flag characters */
+ 			}
+ 		}
+diff --git a/include/linux/usb/quirks.h b/include/linux/usb/quirks.h
+index a4043b33c..101dd1ca4 100644
+--- a/include/linux/usb/quirks.h
++++ b/include/linux/usb/quirks.h
+@@ -84,4 +84,11 @@
+ /* Use a 255 bytes config descriptor request mirroring windows behavior */
+ #define USB_QUIRK_WINDOWS_CONFIG_REQ_SIZE	BIT(19)
+ 
++/*
++ * Device sits behind a hub that signals a spurious wakeup when the device
++ * drops off the bus during system suspend; the hub needs to be disconnected
++ * before suspend.
++ */
++#define USB_QUIRK_DISCONNECT_PARENT_SUSPEND	BIT(20)
++
+ #endif /* __LINUX_USB_QUIRKS_H */
+
 -- 
-Oleh Kurudz <admin@or1k.net>
+2.56.1
 
