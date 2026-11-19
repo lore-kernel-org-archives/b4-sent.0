@@ -1,63 +1,77 @@
-From: Kyle Hendry <khendry@reliablecontrols.com>
-Date: Thu, 19 Nov 2026 09:57:48 -0800
-Subject: [PATCH 6/6] ARM: dts: renesas: r9a06g032: Add resets to mii
- converter
+From: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+Date: Thu, 19 Nov 2026 20:22:07 +0200
+Subject: [PATCH] EDAC/mc: Convert the poll period to jiffies when it is
+ changed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-rzn1-miic-resets-v1-6-feee2bb28bb4@reliablecontrols.com>
-References: <20261119-rzn1-miic-resets-v1-0-feee2bb28bb4@reliablecontrols.com>
-In-Reply-To: <20261119-rzn1-miic-resets-v1-0-feee2bb28bb4@reliablecontrols.com>
-To: Geert Uytterhoeven <geert+renesas@glider.be>, 
- Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Magnus Damm <magnus.damm@gmail.com>, 
- Fabrizio Castro <fabrizio.castro.jz@renesas.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>, 
- Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>
-Cc: linux-renesas-soc@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795111097; l=858;
- i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=qgvA5VciuFpDDlBloW4+43M1wkddJY2irZpJYObbd+0=;
- b=OhrIO0OOq4envOlQ9SlkMKgZ8zwywCqI1Hl35UHS4W/dakNbGHiHRR1SxMVHYQLVh/LFjgBDm
- 5VR8kkDEHxuDewOhaKUuZGCrfzaMxujoY0XpSH2F3UcUugaAkVPUUrP
-X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
- pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
-X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
+Message-Id: <20261119-edac-mc-poll-msec-jiffies-v1-1-fe329938fa09@ahmedabdelfattah.dev>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDQAxA4atI1g00s1DsVUoXGhON+MdEpSDev
+ aNdfov3DnCJJg6v7IAou7nNUwI9MuCumlpBa5IhPENORCVKUzGOjMs8DDi6MPammhaodaFlyJU
+ oMKR+iaL2vd/vz9++1b3weg3hPH9wNnipfQAAAA==
+X-Change-ID: 20261119-edac-mc-poll-msec-jiffies-fb7f926f112c
+To: Borislav Petkov <bp@alien8.de>, Tony Luck <tony.luck@intel.com>
+Cc: linux-edac@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795112528; l=2158;
+ i=me@ahmedabdelfattah.dev; s=20261106; h=from:subject:message-id;
+ bh=aXLz/0TM/M/jsqG2Y3hoOozntxY6jGOuwYADUxDIanU=;
+ b=JibszSrF34HNAx3ksLTf9r3T3IHPqQO7pvSdwgNI9iqEH1zGTiN8cA4M+F1rj7FnIKBbPO9zt
+ gQE25XHAnmbDToEi5vA9fbJjx+dhONnlkELxKhhDOaD55hEnmhvx+RZ
+X-Developer-Key: i=me@ahmedabdelfattah.dev; a=ed25519;
+ pk=DHEHKU4PddrkJ/iYMZpwyyXsFyIQ6ySjTttKLrt9YqI=
+X-Endpoint-Received: by B4 Relay for me@ahmedabdelfattah.dev/20261106 with auth_id=1438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add references to the resets in the system driver that the miic needs
+Writing edac_mc_poll_msec at run time re-arms every polled memory
+controller through edac_mc_reset_delay_period(), which passes the new
+value to edac_mod_work() as it is. mod_delayed_work() takes jiffies, so
+the first poll after the write comes "value" jiffies later rather than
+"value" milliseconds: at HZ=300, writing 2000 puts the next poll 6.7 s
+out. edac_mc_workq_function() re-arms with msecs_to_jiffies(), so only
+that first poll is off.
 
-Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
+Before commit c4cf3b454eca ("EDAC: Rework workqueue handling") this
+path converted the value through edac_mc_workq_setup(), and
+edac_device_reset_delay_period() still does. Convert it here as well.
+
+Fixes: c4cf3b454eca ("EDAC: Rework workqueue handling")
+Signed-off-by: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 ---
- arch/arm/boot/dts/renesas/r9a06g032.dtsi | 3 +++
- 1 file changed, 3 insertions(+)
+I noticed this while timing ie31200_edac's polls in a KVM guest: the
+first poll after a write to edac_mc_poll_msec came late.
 
-diff --git a/arch/arm/boot/dts/renesas/r9a06g032.dtsi b/arch/arm/boot/dts/renesas/r9a06g032.dtsi
-index f2bf087f7ad2..0a538d922125 100644
---- a/arch/arm/boot/dts/renesas/r9a06g032.dtsi
-+++ b/arch/arm/boot/dts/renesas/r9a06g032.dtsi
-@@ -463,6 +463,9 @@ eth_miic: eth-miic@44030000 {
- 				 <&sysctrl R9A06G032_CLK_RMII_REF>,
- 				 <&sysctrl R9A06G032_HCLK_SWITCH_RG>;
- 			clock-names = "mii_ref", "rgmii_ref", "rmii_ref", "hclk";
-+			resets = <&sysctrl R9A06G032_RST_TS>,
-+				 <&sysctrl R9A06G032_RST_MIIC>;
-+			reset-names = "rst_ts", "rst_miic";
- 			power-domains = <&sysctrl>;
- 			status = "disabled";
+Tested on v7.4-rc3+ (4405c18c95d2) at HZ=300, with ie31200_edac bound
+to a QEMU model of the Kaby Lake host bridge (a local device model, not
+upstream QEMU), timing edac_mc_workq_function() with a kprobe. Without
+the patch the first poll came 6.76 s after writing 2000 and 3.51 s after
+writing 1000, with the polls after it every 2.13 s and 1.01 s. With the
+patch the first poll comes 2.14 s and 1.02 s after the write, the same
+as the ones after it. Writes below 1000 are still rejected.
+---
+ drivers/edac/edac_mc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/edac/edac_mc.c b/drivers/edac/edac_mc.c
+index fd70caa85574..787bef803ef0 100644
+--- a/drivers/edac/edac_mc.c
++++ b/drivers/edac/edac_mc.c
+@@ -499,7 +499,7 @@ void edac_mc_reset_delay_period(unsigned long value)
+ 		mci = list_entry(item, struct mem_ctl_info, link);
  
+ 		if (mci->op_state == OP_RUNNING_POLL)
+-			edac_mod_work(&mci->work, value);
++			edac_mod_work(&mci->work, msecs_to_jiffies(value));
+ 	}
+ 	mutex_unlock(&mem_ctls_mutex);
+ }
 
--- 
-2.53.0
+---
+base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
+change-id: 20261119-edac-mc-poll-msec-jiffies-fb7f926f112c
+
+Best regards,
+--  
+Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 
