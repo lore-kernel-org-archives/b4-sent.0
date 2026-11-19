@@ -1,91 +1,141 @@
-From: =?utf-8?q?Alexandru_Andrie=C8=99?= <alex.andries.aa@gmail.com>
-Date: Thu, 19 Nov 2026 01:47:58 +0100
-Subject: [PATCH] drm/msm/dpu: use single DSC encoder when slice_count is 1
+From: Igor Velkov <iav@iav.lv>
+Date: Thu, 19 Nov 2026 01:12:36 +0000
+Subject: [PATCH] PCI: rockchip-host: Support hibernation with endpoints in
+ D0
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261119-upstream-drm-msm-dpu-dsc-single-slice-v1-v1-1-4744ad5b9747@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNQQrCMBCF4auUWTtgirXWq4iLOBnrSBPDTFOE0
- rsbdfX4Nv9bwViFDc7NCsqLmLxShds1QA+fRkYJ1dDu26NzbsCSbVb2EYNGjFY3FwxGaJLGidE
- mIcbFYdf1RL6n4XQgqLmsfJf37+py/dvK7ck0f/uwbR/+4X6DjAAAAA==
-X-Change-ID: 20261119-upstream-drm-msm-dpu-dsc-single-slice-v1-557cca7c984c
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
- =?utf-8?q?Alexandru_Andrie=C8=99?= <alex.andries.aa@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795049300; l=2415;
- i=alex.andries.aa@gmail.com; s=20261118; h=from:subject:message-id;
- bh=f5QJmSYrdCgoJ98DDgeJ718yQzeQFrq5DX9OKNMAinQ=;
- b=rXC2vTGceRQp0u2V8QoFCw7XfnzFKhnBDOn2ug/aufs/tPdEbAjHloh/v8jz8fV6yqUYOOnsT
- ZnHYpjgXT73D+qJA46bwgRoo3hvneMu/5Zh6S3+xMEJw2zW2w+qLN80
-X-Developer-Key: i=alex.andries.aa@gmail.com; a=ed25519;
- pk=kNAqgavfB7uUd1mA8o8TszhGxzyqBwY71PGO/oK4v84=
-X-Endpoint-Received: by B4 Relay for alex.andries.aa@gmail.com/20261118 with auth_id=1564
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261119-b4-rockchip-pcie-hib-v1-1-05df24cc77e6@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAANN/moC/x3MQQqAIBBA0avErBtwRIK6SrTIccohKFGIQLp70
+ vIt/q9QJKsUmLoKWW4tep0N1HfAcT13QQ3NYI0diGhE7zBffHDUhIlVMKpHY5zQGtgZZ6GlKcu
+ mz7+dl/f9AEvHSUxmAAAA
+To: Shawn Lin <shawn.lin@rock-chips.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>
+Cc: linux-pci@vger.kernel.org, Heiko Stuebner <heiko@sntech.de>, 
+ linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Rob Herring <robh@kernel.org>, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3860; i=iav@iav.lv;
+ h=from:subject:message-id; bh=tt1dbxgPAsX3IFa6cNo4EeAGvruDQ8t+mQUrzu36VIA=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFn/fFkLdjOq/VvaYb5qy+rEVp9/9i1Kum+enHy7OHvJw
+ +56/X8uHaUsDGJcDLJiiiwTDmncylhy9a+/h/kDmDmsTCBDGLg4BWAiW68yMiy6dXtzyes9JYFh
+ EzrObIx5cy/W4desP1GbA59ozX+gZBDGyNCroHr9tm1TxhZNtfNPZ/d6byj5oWV1V2dp3Oftv5e
+ IvmYDAA==
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-dpu_encoder_update_topology() currently selects 2 DSC encoders whenever
-catalog->dsc_count >= 2, even when the panel only uses a single DSC
-slice (dsc->slice_count == 1).
+The driver runs its suspend callback on every system sleep transition,
+including hibernation freeze and the quiesce step of the kernel that
+loads the image. The PCI core leaves the endpoints in D0 there, the
+link does not enter L2 after PME_Turn_Off, and hibernation aborts:
 
-A single slice cannot be split across two DSC encoders: merge mode
-halves the per-encoder input width below slice_width and, on DPU 7.0+,
-computes num_active_slice_per_enc = dsc->slice_count / 2 = 0 in
-dpu_hw_dsc_config_1_2(), dividing by zero in
-_dsc_calc_output_buf_max_addr().
+  rockchip-pcie f8000000.pcie: PCIe link enter L2 timeout!
+  rockchip-pcie f8000000.pcie: PM: failed to freeze noirq: error -110
 
-Require dsc->slice_count >= 2 before selecting 2 DSC encoders on a
-single interface so single-slice panels use 1 DSC encoder.
+Keep the link up across freeze and thaw. On restore, power the port
+down and bring it up as on resume, because the kernel that loaded the
+image may have left it in any state. The port may already be down if
+poweroff_noirq ran, so track that state.
 
-Fixes: b6090ffb30f3 ("drm/msm/dpu: Fall back to a single DSC encoder (1:1:1) on small SoCs")
-Cc: stable@vger.kernel.org
-Signed-off-by: Alexandru Andrieș <alex.andries.aa@gmail.com>
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-Testing:
-- Tested on a Xiaomi MIX 4 (SM8350, DPU 7.0) with a 1080x2400@120Hz
-  single-DSI single-slice DSC panel; dual-DSI topologies were not
-  hardware-tested.
-
-AI disclosure:
-- Debugged and drafted with assistance from Gemini 4 Carbon
-  (Antigravity), and reviewed and tested on hardware by the submitter.
+Tested on v7.4-rc3 with this patch, ROCK Pi 4A with a WD SN770 NVMe:
+5 of 5 hibernation cycles restored, the NVMe readable after each.
 ---
- drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ drivers/pci/controller/pcie-rockchip-host.c | 33 +++++++++++++++++++++++++++--
+ drivers/pci/controller/pcie-rockchip.h      |  1 +
+ 2 files changed, 32 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
-index 0a6be69a3e83..ffccee6b41f1 100644
---- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
-+++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
-@@ -680,13 +680,14 @@ void dpu_encoder_update_topology(struct drm_encoder *drm_enc,
- 		/*
- 		 * Use 2 DSC encoders, 2 layer mixers and 1 or 2 interfaces
- 		 * when Display Stream Compression (DSC) is enabled,
--		 * and when enough DSC blocks are available.
-+		 * and when enough DSC blocks and slices are available.
- 		 * This is power-optimal and can drive up to (including) 4k
- 		 * screens.
- 		 */
- 		WARN(topology->num_intf > 2,
- 		     "DSC topology cannot support more than 2 interfaces\n");
--		if (topology->num_intf >= 2 || dpu_kms->catalog->dsc_count >= 2)
-+		if (topology->num_intf >= 2 ||
-+		    (dpu_kms->catalog->dsc_count >= 2 && dsc->slice_count >= 2))
- 			topology->num_dsc = 2;
- 		else
- 			topology->num_dsc = 1;
+diff --git a/drivers/pci/controller/pcie-rockchip-host.c b/drivers/pci/controller/pcie-rockchip-host.c
+index 1e1556e436b8..df4b9b3ec031 100644
+--- a/drivers/pci/controller/pcie-rockchip-host.c
++++ b/drivers/pci/controller/pcie-rockchip-host.c
+@@ -863,6 +863,8 @@ static int rockchip_pcie_suspend_noirq(struct device *dev)
+ 
+ 	regulator_disable(rockchip->vpcie0v9);
+ 
++	rockchip->powered_down = true;
++
+ 	return ret;
+ }
+ 
+@@ -893,6 +895,8 @@ static int rockchip_pcie_resume_noirq(struct device *dev)
+ 	rockchip_pcie_update_txcredit_mui(rockchip);
+ 	rockchip_pcie_enable_interrupts(rockchip);
+ 
++	rockchip->powered_down = false;
++
+ 	return 0;
+ 
+ err_err_deinit_port:
+@@ -904,6 +908,25 @@ static int rockchip_pcie_resume_noirq(struct device *dev)
+ 	return err;
+ }
+ 
++static int rockchip_pcie_restore_noirq(struct device *dev)
++{
++	struct rockchip_pcie *rockchip = dev_get_drvdata(dev);
++
++	/*
++	 * The boot kernel may have left the port in any state, while the image
++	 * holds the enable counts of a running port. Power it down so that
++	 * resume brings it up from scratch.
++	 */
++	if (!rockchip->powered_down) {
++		rockchip_pcie_deinit_phys(rockchip);
++		rockchip_pcie_disable_clocks(rockchip);
++		regulator_disable(rockchip->vpcie0v9);
++		rockchip->powered_down = true;
++	}
++
++	return rockchip_pcie_resume_noirq(dev);
++}
++
+ static int rockchip_pcie_probe(struct platform_device *pdev)
+ {
+ 	struct rockchip_pcie *rockchip;
+@@ -1011,9 +1034,15 @@ static void rockchip_pcie_remove(struct platform_device *pdev)
+ 	regulator_disable(rockchip->vpcie0v9);
+ }
+ 
++/*
++ * Freeze leaves the endpoints in D0 and the link does not reach L2 then,
++ * so keep the link up across freeze and thaw; restore re-inits the port.
++ */
+ static const struct dev_pm_ops rockchip_pcie_pm_ops = {
+-	NOIRQ_SYSTEM_SLEEP_PM_OPS(rockchip_pcie_suspend_noirq,
+-				  rockchip_pcie_resume_noirq)
++	.suspend_noirq = pm_sleep_ptr(rockchip_pcie_suspend_noirq),
++	.resume_noirq = pm_sleep_ptr(rockchip_pcie_resume_noirq),
++	.poweroff_noirq = pm_sleep_ptr(rockchip_pcie_suspend_noirq),
++	.restore_noirq = pm_sleep_ptr(rockchip_pcie_restore_noirq),
+ };
+ 
+ static const struct of_device_id rockchip_pcie_of_match[] = {
+diff --git a/drivers/pci/controller/pcie-rockchip.h b/drivers/pci/controller/pcie-rockchip.h
+index b5da15601b58..51877678d3df 100644
+--- a/drivers/pci/controller/pcie-rockchip.h
++++ b/drivers/pci/controller/pcie-rockchip.h
+@@ -324,6 +324,7 @@ struct rockchip_pcie {
+ 	void    __iomem *msg_region;
+ 	phys_addr_t msg_bus_addr;
+ 	bool is_rc;
++	bool powered_down;
+ 	struct resource *mem_res;
+ };
+ 
 
 ---
-base-commit: 97d73c8251226cf27cc6656b4c542869bb8c69fa
-change-id: 20261119-upstream-drm-msm-dpu-dsc-single-slice-v1-557cca7c984c
+base-commit: 35f800669ce835aa77364a2ab5b61be19b778d3c
+change-id: 20261119-b4-rockchip-pcie-hib-004e1adc4042
 
 Best regards,
---  
-Alexandru Andrieș <alex.andries.aa@gmail.com>
+-- 
+Igor Velkov <iav@iav.lv>
 
