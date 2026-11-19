@@ -1,11 +1,11 @@
 From: Umer Uddin <umer.uddin@mentallysanemainliners.org>
-Date: Thu, 19 Nov 2026 19:49:21 +0000
-Subject: [PATCH 5/6] arm64: dts: exynos: exynos7885-gta3xllte: Enable USB
- support
+Date: Thu, 19 Nov 2026 19:49:22 +0000
+Subject: [PATCH 6/6] arm64: dts: exynos: exynos7885-gta3xllte: Enable
+ FuelGauge support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-gta3xllte-usb-battery-v1-5-0cf5f763522e@mentallysanemainliners.org>
+Message-Id: <20261119-gta3xllte-usb-battery-v1-6-0cf5f763522e@mentallysanemainliners.org>
 References: <20261119-gta3xllte-usb-battery-v1-0-0cf5f763522e@mentallysanemainliners.org>
 In-Reply-To: <20261119-gta3xllte-usb-battery-v1-0-0cf5f763522e@mentallysanemainliners.org>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -24,66 +24,79 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-phy@lists.infradead.org,
  linux-samsung-soc@vger.kernel.org, 
  Umer Uddin <umer.uddin@mentallysanemainliners.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795117759; l=1489;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795117759; l=1850;
  i=umer.uddin@mentallysanemainliners.org; s=20261109;
- h=from:subject:message-id; bh=2sc//xhMdQLxeTbKn3e0zeBob0QS6bolzRWDj8BhCrE=;
- b=hoa8lF31kpywbV6h7hS1pTyfL1CIInM9Am92ae7H88ueiW47bUVtJ7ONmjYxJi3JTlClFyWPv
- yplbPml6tGqB/pddUWhxTIrYZFIIS7uwQ+sZBxr4oToOwDW+qNOmRH5
+ h=from:subject:message-id; bh=8/qztykzuOZxhphrQU0aaqpVGh+Y9V0/eepwjkmIL64=;
+ b=21d/ypEdBDsGYrW/vcomA2ptJ+BSgDPuTOUObjThbEmYwTq/Bf9mVhfYVzfITsCVthjbT19Q6
+ lE79g+pF+x/A02WDaQ+kJJFTZNSLX4Ht+dfeEFqjN9i3PwmH85FBKKk
 X-Developer-Key: i=umer.uddin@mentallysanemainliners.org; a=ed25519;
  pk=Hsgrt4A72CFTe27AI1AAWlnLsiQrlb4+T+cbrfWDhUA=
 X-Endpoint-Received: by B4 Relay for umer.uddin@mentallysanemainliners.org/20261109 with auth_id=1466
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Samsung Galaxy Tab A 10.1 (2019) has a USB-C port capable of USB 2.0
-speeds, used both as host and device, and is used for charging the
-tablet.
-
-The port is controlled by an S2MU005 IC. Until support for it is
-added, only USB device functionality is available, so enable the USB
-controller and PHY in peripheral mode.
+The Samsung Galaxy Tab A 10.1 (2019) has a S2MU005 Multi Function Device
+(MFD). It contains PMIC, FG and EXTCON. This commit enables the FG, to be
+used with a simple battery device to allow for battery percentages to be
+reported.
 
 Signed-off-by: Umer Uddin <umer.uddin@mentallysanemainliners.org>
 ---
- .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+ .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 28 ++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
-index 03476f8b1200..57df878cb563 100644
+index 57df878cb563..1c0af6f89396 100644
 --- a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
 +++ b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
-@@ -68,6 +68,12 @@ memory@80000000 {
- 		      <0x0 0xc0000000 0x40000000>;
+@@ -22,6 +22,13 @@ aliases {
+ 		serial2 = &serial_2;
  	};
  
-+	/* TODO: Remove this once PMIC is implemented */
-+	reg_dummy: regulator-0 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "dummy_reg";
++	battery: battery {
++		compatible = "simple-battery";
++		charge-full-design-microamp-hours = <6000000>;
++		voltage-min-design-microvolt = <3300000>;
++		voltage-max-design-microvolt = <4350000>;
 +	};
 +
- 	reserved-memory {
+ 	chosen {
  		ranges;
  		#address-cells = <2>;
-@@ -127,3 +133,19 @@ key_volup: key-volup-pins {
- 		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
+@@ -86,6 +93,20 @@ cont_splash_mem: framebuffer@ec000000 {
  	};
  };
-+
-+&usbdrd {
-+	vdd10-supply = <&reg_dummy>;
-+	vdd33-supply = <&reg_dummy>;
-+
+ 
++&i2c_0 {
 +	status = "okay";
++
++	fuel-gauge@3b {
++		compatible = "samsung,s2mu005-fuel-gauge";
++		reg = <0x3b>;
++		interrupt-parent = <&gpa2>;
++		interrupts = <4 IRQ_TYPE_EDGE_BOTH>;
++		pinctrl-0 = <&fuel_irq>;
++		pinctrl-names = "default";
++		monitored-battery = <&battery>;
++	};
 +};
 +
-+&usbdrd_dwc3 {
-+	/* Force to peripheral until we have Type-C working */
-+	dr_mode = "peripheral";
-+};
+ &mmc_0 {
+ 	bus-width = <8>;
+ 	cap-mmc-highspeed;
+@@ -112,6 +133,13 @@ &oscclk {
+ };
+ 
+ &pinctrl_alive {
++	fuel_irq: fuel-irq-pins {
++		samsung,pins = "gpa2-4";
++		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
++		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
++		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
++	};
 +
-+&usbdrd_phy {
-+	status = "okay";
-+};
+ 	key_power: key-power-pins {
+ 		samsung,pins = "gpa1-7";
+ 		samsung,pin-function = <EXYNOS_PIN_FUNC_F>;
 
 -- 
 2.56.1
