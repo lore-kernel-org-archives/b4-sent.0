@@ -1,14 +1,13 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Subject: [PATCH 0/2] drm/rockchip: RK3588 HDMI interlaced modes
-Date: Thu, 19 Nov 2026 10:05:59 +0000
-Message-Id: <20261119-rk3588-interlace-v1-0-993212e389cd@gmail.com>
+Date: Thu, 19 Nov 2026 10:06:00 +0000
+Subject: [PATCH 1/2] drm/rockchip: vop2: Reject double clocked modes on
+ RK3588
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBA0auQWdOEaZUUr0JYlHYqg6aQKRoSw
- t2tunyL/w/IJEwZbtUBQm/OvKQCrCvwk0t3UhyKQTe6RcROycNcrVWcNpKn86R8i11jo72YGKB
- kq1Dk/bfsh7/za5zJb98PnOcHiCJyo3QAAAA=
-X-Change-ID: 20261119-rk3588-interlace-c61908f843fd
+Message-Id: <20261119-rk3588-interlace-v1-1-993212e389cd@gmail.com>
+References: <20261119-rk3588-interlace-v1-0-993212e389cd@gmail.com>
+In-Reply-To: <20261119-rk3588-interlace-v1-0-993212e389cd@gmail.com>
 To: Sandy Huang <hjc@rock-chips.com>, 
  =?utf-8?q?Heiko_St=C3=BCbner?= <heiko@sntech.de>, 
  Andy Yan <andyshrk@163.com>, Andrzej Hajda <andrzej.hajda@intel.com>, 
@@ -25,42 +24,45 @@ Cc: dri-devel@lists.freedesktop.org, linux-rockchip@lists.infradead.org,
  Cristian Ciocaltea <cristian.ciocaltea@collabora.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795082759; l=1081;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795082759; l=1221;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=R9RXsFkub066PZWp+rp0tXeW89o/uXELOYPZveB+DEc=;
- b=jMxdtnlAV5oAn1dA1lIoCpHGxLQHES3il63J5mA6kBBuRjlxCuCM0pBo5ZPk+7fIIJZ528iEi
- 4q+fsLrFqE8DWA7cka6E9VwR/QzXnr3EddCMClhWMIWOnnwv0vWheZN
+ bh=552SdLdmG+KybFPqh32b97uQLYRUzbBP6Eh4nDlCs5k=;
+ b=y6rLEloNTiqrvVs+2r1raoh58iyJiXIURveUiIwb8wYBqizSVv4oGyrBzPmVOtWLfQDH91eyf
+ WIChskGgOiGARTrP5etUwuQVMvCNfwJ9qadI5CSNkDji33DJPr3i35q
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Patch 1 rejects the pixel repeated modes (480i, 576i, 240p, 288p) that
-RK3588 cannot send. Patch 2 lets dw-hdmi-qp keep the interlaced modes of
-the sink; VOP2 already generates the fields.
+Pixel repeated modes (DRM_MODE_FLAG_DBLCLK, e.g. 720(1440)x480i) need
+each pixel sent twice. RK3588 cannot do that: DSP_CTRL.CORE_DCLK_DIV is
+reserved, dclk_core already runs at dclk/4 and the HDMI QP TX has no
+pixel repetition. The doubled dclk then sends a timing that does not
+match the VIC. Reject such modes on RK3588.
 
-Tested on an Orange Pi 5 (RK3588S, 7.3-based kernel): 1080i60, 1080i59.94
-and 1080i50 on an HDMI TV show a correct picture with the right field rate
-and AVI VIC; 1080p60 unchanged. With an EDID override listing 480i and
-576i, both modes are pruned. RK3576 uses the same bridge and was not
-tested.
-
-Developed with Claude (Anthropic), which wrote the code and the commit
-messages. I reviewed every change.
-
+Fixes: 5a028e8f062f ("drm/rockchip: vop2: Add support for rk3588")
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Arun Iyengar (2):
-      drm/rockchip: vop2: Reject double clocked modes on RK3588
-      drm/bridge: synopsys: dw-hdmi-qp: Allow interlaced modes
-
- drivers/gpu/drm/bridge/synopsys/dw-hdmi-qp.c | 1 +
  drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 5 +++++
- 2 files changed, 6 insertions(+)
----
-base-commit: fac7a5f16230779cfb0d50ca49e9467cc94a2ea9
-change-id: 20261119-rk3588-interlace-c61908f843fd
+ 1 file changed, 5 insertions(+)
 
-Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
+index 76d151b8bc52..1458d8ae79d6 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
+@@ -1581,6 +1581,11 @@ static enum drm_mode_status vop2_crtc_mode_valid(struct drm_crtc *crtc,
+ 	if (mode->hdisplay > vp->data->max_output.width)
+ 		return MODE_BAD_HVALUE;
+ 
++	/* RK3588 cannot repeat pixels: no CORE_DCLK_DIV, dclk_core at dclk/4 */
++	if (mode->flags & DRM_MODE_FLAG_DBLCLK &&
++	    vp->vop2->version == VOP_VERSION_RK3588)
++		return MODE_H_ILLEGAL;
++
+ 	return MODE_OK;
+ }
+ 
+
+-- 
+2.55.0
 
