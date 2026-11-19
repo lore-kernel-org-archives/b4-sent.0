@@ -1,155 +1,91 @@
-From: Eslam Almorshdy <ealmorshdy@d-matrix.ai>
-Date: Wed, 18 Nov 2026 23:25:05 +0000
-Subject: [PATCH 2/2] test: add test for system daemons with regular files
- as streams
+From: =?utf-8?q?Alexandru_Andrie=C8=99?= <alex.andries.aa@gmail.com>
+Date: Thu, 19 Nov 2026 01:47:58 +0100
+Subject: [PATCH] drm/msm/dpu: use single DSC encoder when slice_count is 1
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261118-b4-bug008-daemon-readlink-v1-2-187c9eb22d11@d-matrix.ai>
-References: <20261118-b4-bug008-daemon-readlink-v1-0-187c9eb22d11@d-matrix.ai>
-In-Reply-To: <20261118-b4-bug008-daemon-readlink-v1-0-187c9eb22d11@d-matrix.ai>
-To: dtrace@lists.linux.dev
-Cc: Kris Van Hees <kris.van.hees@oracle.com>, 
- Nick Alcock <nix@esperi.org.uk>, Eslam Almorshdy <ealmorshdy@d-matrix.ai>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795044315; l=4037;
- i=ealmorshdy@d-matrix.ai; s=20261015; h=from:subject:message-id;
- bh=yDF0D43XW758YL8hvfsIvhrmkyTvfY82BKQGj04GcnE=;
- b=7HjMy9rZZeOOm212xzsu9Kq1NbvObb7wdiQ2a/sDosP2xOXZQorC+RzJiEQ16vsY9Dc+08hWW
- 8vl92DdiunSBazTNPhz/9E8Bp517OkpEt4LdnVmH7hxVtIIhUkOyzMb
-X-Developer-Key: i=ealmorshdy@d-matrix.ai; a=ed25519;
- pk=E4tVAIvp2rvz2CB7Re6YVMP6FiUVSxuq0TUtjGQL5NM=
-X-Endpoint-Received: by B4 Relay for ealmorshdy@d-matrix.ai/20261015 with auth_id=1187
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261119-upstream-drm-msm-dpu-dsc-single-slice-v1-v1-1-4744ad5b9747@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNQQrCMBCF4auUWTtgirXWq4iLOBnrSBPDTFOE0
+ rsbdfX4Nv9bwViFDc7NCsqLmLxShds1QA+fRkYJ1dDu26NzbsCSbVb2EYNGjFY3FwxGaJLGidE
+ mIcbFYdf1RL6n4XQgqLmsfJf37+py/dvK7ck0f/uwbR/+4X6DjAAAAA==
+X-Change-ID: 20261119-upstream-drm-msm-dpu-dsc-single-slice-v1-557cca7c984c
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, 
+ =?utf-8?q?Alexandru_Andrie=C8=99?= <alex.andries.aa@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795049300; l=2415;
+ i=alex.andries.aa@gmail.com; s=20261118; h=from:subject:message-id;
+ bh=f5QJmSYrdCgoJ98DDgeJ718yQzeQFrq5DX9OKNMAinQ=;
+ b=rXC2vTGceRQp0u2V8QoFCw7XfnzFKhnBDOn2ug/aufs/tPdEbAjHloh/v8jz8fV6yqUYOOnsT
+ ZnHYpjgXT73D+qJA46bwgRoo3hvneMu/5Zh6S3+xMEJw2zW2w+qLN80
+X-Developer-Key: i=alex.andries.aa@gmail.com; a=ed25519;
+ pk=kNAqgavfB7uUd1mA8o8TszhGxzyqBwY71PGO/oK4v84=
+X-Endpoint-Received: by B4 Relay for alex.andries.aa@gmail.com/20261118 with auth_id=1564
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Start a root process without a terminal with its stdout to a regular
-file outside /var, then to one under /var, and check how libproc
-classifies it from DTRACE_DEBUG: not a system daemon, then a system
-daemon.
+dpu_encoder_update_topology() currently selects 2 DSC encoders whenever
+catalog->dsc_count >= 2, even when the panel only uses a single DSC
+slice (dsc->slice_count == 1).
 
-libproc asks systemd whenever /run/systemd/system exists, and for a
-process in a systemd slice the slice decides.  So on a systemd system
-the test runs dtrace under unshare -m, in a mount namespace of its own
-with a tmpfs over /run/systemd: libproc does not find systemd and uses
-the rules under test.
+A single slice cannot be split across two DSC encoders: merge mode
+halves the per-encoder input width below slice_width and, on DPU 7.0+,
+computes num_active_slice_per_enc = dsc->slice_count / 2 = 0 in
+dpu_hw_dsc_config_1_2(), dividing by zero in
+_dsc_calc_output_buf_max_addr().
 
-The first case fails without the previous patch.
+Require dsc->slice_count >= 2 before selecting 2 DSC encoders on a
+single interface so single-slice panels use 1 DSC encoder.
 
-Signed-off-by: Eslam Almorshdy <ealmorshdy@d-matrix.ai>
+Fixes: b6090ffb30f3 ("drm/msm/dpu: Fall back to a single DSC encoder (1:1:1) on small SoCs")
+Cc: stable@vger.kernel.org
+Signed-off-by: Alexandru Andrieș <alex.andries.aa@gmail.com>
 ---
- test/unittest/proc/tst.system-daemon-files.r  |  2 +
- test/unittest/proc/tst.system-daemon-files.sh | 94 +++++++++++++++++++++++++++
- 2 files changed, 96 insertions(+)
+Testing:
+- Tested on a Xiaomi MIX 4 (SM8350, DPU 7.0) with a 1080x2400@120Hz
+  single-DSI single-slice DSC panel; dual-DSI topologies were not
+  hardware-tested.
 
-diff --git a/test/unittest/proc/tst.system-daemon-files.r b/test/unittest/proc/tst.system-daemon-files.r
-new file mode 100644
-index 00000000..0a2b3945
---- /dev/null
-+++ b/test/unittest/proc/tst.system-daemon-files.r
-@@ -0,0 +1,2 @@
-+outside /var: not a system daemon
-+under /var: system daemon
-diff --git a/test/unittest/proc/tst.system-daemon-files.sh b/test/unittest/proc/tst.system-daemon-files.sh
-new file mode 100755
-index 00000000..a24b5eb1
---- /dev/null
-+++ b/test/unittest/proc/tst.system-daemon-files.sh
-@@ -0,0 +1,94 @@
-+#!/bin/bash
-+#
-+# Oracle Linux DTrace.
-+# Copyright (c) 2026, d-Matrix Corporation. All rights reserved.
-+# Licensed under the Universal Permissive License v 1.0 as shown at
-+# http://oss.oracle.com/licenses/upl.
-+#
-+# Check how libproc classifies a root process without a terminal when it
-+# does not ask systemd: a standard stream to a regular file outside /var
-+# means it is not a system daemon, one under /var does not.
-+#
-+# libproc asks systemd whenever /run/systemd/system exists, and for a
-+# process in a systemd slice, as this one is, the slice decides and these
-+# rules are never reached.  So on a systemd system, dtrace runs under
-+# unshare -m, in a mount namespace of its own, with a tmpfs mounted over
-+# /run/systemd: libproc does not find systemd and uses these rules.  The
-+# namespace is made private first, so the rest of the system still sees
-+# /run/systemd.
-+#
-+
-+dtrace=$1
-+
-+DIRNAME=$tmpdir/system-daemon-files.$$.$RANDOM
-+mkdir -p $DIRNAME
-+cd $DIRNAME
-+
-+case $DIRNAME in
-+/var/*)	echo "$DIRNAME is under /var"; exit 1;;
-+esac
-+VARFILE=$(mktemp /var/tmp/system-daemon-files.XXXXXX) || exit 1
-+trap "rm -f $VARFILE" EXIT
-+
-+# main PIDFILE: leave the terminal's session, write the pid to PIDFILE and
-+# sleep for a minute
-+cat > main.c <<EOT
-+#include <stdio.h>
-+#include <unistd.h>
-+
-+int main(int argc, char **argv)
-+{
-+	FILE *f;
-+	int i;
-+
-+	if (setsid() < 0 || (f = fopen(argv[1], "w")) == NULL)
-+		return 1;
-+	fprintf(f, "%d\n", getpid());
-+	fclose(f);
-+	for (i = 0; i < 600; i++)
-+		usleep(100000);
-+	return 0;
-+}
-+EOT
-+$CC -o main main.c || exit 1
-+
-+# run_dtrace DTRACE ARGS: run dtrace, with /run/systemd hidden if it exists
-+run_dtrace() {
-+	if [ -d /run/systemd/system ]; then
-+		unshare -m sh -c 'mount --make-rprivate / &&
-+		    mount -t tmpfs none /run/systemd && exec "$@"' sh "$@"
-+	else
-+		"$@"
-+	fi
-+}
-+
-+# verdict LABEL FILE: run main with stdout to FILE and print LABEL and
-+# libproc's verdict
-+verdict() {
-+	local pid out
-+
-+	rm -f pid
-+	./main pid < /dev/null > $2 2> /dev/null &
-+	for i in $(seq 50); do
-+		[ -s pid ] && break
-+		sleep 0.1
-+	done
-+	pid=$(cat pid)
-+
-+	out=$(DTRACE_DEBUG=t run_dtrace $dtrace $dt_flags \
-+	    -ln "pid$pid:a.out:main:entry" 2>&1)
-+	if grep -q " $pid is a system daemon process" <<< "$out"; then
-+		echo "$1: system daemon"
-+	elif grep -q "^ *[0-9]* *pid$pid " <<< "$out"; then
-+		echo "$1: not a system daemon"
-+	else
-+		echo "$1: no verdict"
-+		grep -v DEBUG <<< "$out" | tail -2
-+	fi
-+	kill $pid
-+}
-+
-+verdict "outside /var" $DIRNAME/out.txt
-+verdict "under /var" $VARFILE
-+
-+exit 0
+AI disclosure:
+- Debugged and drafted with assistance from Gemini 4 Carbon
+  (Antigravity), and reviewed and tested on hardware by the submitter.
+---
+ drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
--- 
-2.55.0
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
+index 0a6be69a3e83..ffccee6b41f1 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
+@@ -680,13 +680,14 @@ void dpu_encoder_update_topology(struct drm_encoder *drm_enc,
+ 		/*
+ 		 * Use 2 DSC encoders, 2 layer mixers and 1 or 2 interfaces
+ 		 * when Display Stream Compression (DSC) is enabled,
+-		 * and when enough DSC blocks are available.
++		 * and when enough DSC blocks and slices are available.
+ 		 * This is power-optimal and can drive up to (including) 4k
+ 		 * screens.
+ 		 */
+ 		WARN(topology->num_intf > 2,
+ 		     "DSC topology cannot support more than 2 interfaces\n");
+-		if (topology->num_intf >= 2 || dpu_kms->catalog->dsc_count >= 2)
++		if (topology->num_intf >= 2 ||
++		    (dpu_kms->catalog->dsc_count >= 2 && dsc->slice_count >= 2))
+ 			topology->num_dsc = 2;
+ 		else
+ 			topology->num_dsc = 1;
+
+---
+base-commit: 97d73c8251226cf27cc6656b4c542869bb8c69fa
+change-id: 20261119-upstream-drm-msm-dpu-dsc-single-slice-v1-557cca7c984c
+
+Best regards,
+--  
+Alexandru Andrieș <alex.andries.aa@gmail.com>
 
