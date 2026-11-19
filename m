@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 05:21:46 +0000
-Subject: [PATCH v4 5/8] drm/rockchip: vop2: Only accept AFBC YTR for 8 bit
- RGB on RK3588
+Date: Thu, 19 Nov 2026 05:21:47 +0000
+Subject: [PATCH v4 6/8] drm/rockchip: vop2: Find the first mixer of a video
+ port with Esmart3 too
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-vop2-fixes-v4-5-4b8f5e7148c9@gmail.com>
+Message-Id: <20261119-vop2-fixes-v4-6-4b8f5e7148c9@gmail.com>
 References: <20261119-vop2-fixes-v4-0-4b8f5e7148c9@gmail.com>
 In-Reply-To: <20261119-vop2-fixes-v4-0-4b8f5e7148c9@gmail.com>
 To: Sandy Huang <hjc@rock-chips.com>, 
@@ -21,49 +21,58 @@ Cc: Piotr Zalewski <pZ010001011111@proton.me>,
  linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795065702; l=1440;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795065702; l=1927;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=uMnTJIcFwj1gG3DgCMEJ8nNkx4JZMnStu+mMXXYuIVg=;
- b=1b22BtMFBoMuRj7piWq/bszlAYD84J3qIiaw2Tx3rGku6UHS7m+1JvGyHTqRz8zZpjR1a7xiW
- OBiBKooC9EqA/jC3N9CpVVNkiQiMuuJJ0UTke/Pvj0wL3Y+UDB3OR34
+ bh=65jy5ymajpG89k237tvRGcCxVl9Lytdo/uG5Ow0DDXs=;
+ b=eavln/Szzu2kfv6EJn+f2yUSSyS0oEHYBNjqxRmhWRR/dAprw5iUYDy1WujlwSeTK+xNvx6ez
+ rWN54Xr7MO7CsJooBXzdymCxHWAhNHwjRjYMqcM/IDF31l1DrduV844
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-According to the TRM, the AFBC decoder of the RK3588 Cluster windows
-supports the lossless colour transform (YTR) only for the 8 bit RGB
-formats. An RGB565 buffer with YTR gives a black picture and
-POST_BUF_EMPTY, while the same buffer without YTR displays fine.
+vop2_find_start_mixer_id_for_vp() passes ROCKCHIP_VOP2_ESMART3, the
+highest window id, as the bit count to for_each_set_bit(), so Esmart3
+is never found and a video port whose bottom layer is Esmart3 programs
+the mixers of other video ports.
 
-Don't accept YTR for any other format on RK3588.
+Add ROCKCHIP_VOP2_MAX_LAYER_ID after the last window id and search up to
+it.
 
-Fixes: 5a028e8f062f ("drm/rockchip: vop2: Add support for rk3588")
+Fixes: d3fe9aa49585 ("drm/rockchip: vop2: Use OVL_LAYER_SEL configuration instead of use win_mask calculate used layers")
+Reviewed-by: Chaoyi Chen <chaoyi.chen@rock-chips.com>
+Reviewed-by: Damon Ding <damon.ding@rock-chips.com>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.h | 1 +
+ drivers/gpu/drm/rockchip/rockchip_vop2_reg.c | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-index e8ef83d6924b..1408b539c311 100644
---- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-+++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
-@@ -396,6 +396,15 @@ static bool rockchip_vop2_mod_supported(struct drm_plane *plane, u32 format,
- 		return false;
- 	}
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.h b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.h
+index de325cc50c59..a1668d234b84 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.h
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.h
+@@ -807,6 +807,7 @@ enum vop2_layer_phy_id {
+ 	ROCKCHIP_VOP2_CLUSTER3,
+ 	ROCKCHIP_VOP2_ESMART2,
+ 	ROCKCHIP_VOP2_ESMART3,
++	ROCKCHIP_VOP2_MAX_LAYER_ID,
+ 	ROCKCHIP_VOP2_PHY_ID_INVALID = -1,
+ };
  
-+	/* AFBC YTR on 3588 is for 8bpc RGB only */
-+	if (vop2->version == VOP_VERSION_RK3588 && drm_is_afbc(modifier) &&
-+	    (modifier & AFBC_FORMAT_MOD_YTR) &&
-+	    vop2_convert_afbc_format(format) != VOP2_AFBC_FMT_ARGB8888 &&
-+	    vop2_convert_afbc_format(format) != VOP2_AFBC_FMT_RGB888) {
-+		drm_dbg_kms(vop2->drm, "Only support YTR with 8bpc RGB formats\n");
-+		return false;
-+	}
-+
- 	/* Linear is otherwise supported everywhere */
- 	if (modifier == DRM_FORMAT_MOD_LINEAR)
- 		return true;
+diff --git a/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c b/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c
+index 3a95d2f9516c..6927db8a592d 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c
++++ b/drivers/gpu/drm/rockchip/rockchip_vop2_reg.c
+@@ -1881,7 +1881,7 @@ static int vop2_find_start_mixer_id_for_vp(struct vop2_video_port *vp)
+ 
+ 	for (i = 0; i < 31; i += 4) {
+ 		match = false;
+-		for_each_set_bit(phys_id, &win_mask, ROCKCHIP_VOP2_ESMART3) {
++		for_each_set_bit(phys_id, &win_mask, ROCKCHIP_VOP2_MAX_LAYER_ID) {
+ 			win = vop2_find_win_by_phys_id(vop2, phys_id);
+ 			if (win->data->layer_sel_id[vp->id] == ((layer_sel >> i) & 0xf)) {
+ 				match = true;
 
 -- 
 2.55.0
