@@ -1,120 +1,80 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Thu, 19 Nov 2026 21:39:02 +0000
-Subject: [PATCH net] tipc: restore write readiness when a socket's group
- goes away
+From: Ahmet Zeren <niko3x@proton.me>
+Subject: [PATCH rtw-next 0/3] wifi: rtl8xxxu: honour rate, retries and
+ bandwidth of injected frames
+Date: Fri, 20 Nov 2026 01:09:27 +0300
+Message-Id: <20261120-b4-inject-v1-0-1e1693af0c6b@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-tipc-group-open-v1-1-cb725145da51@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAHVs/2oC/yWMwQqDMBAFf0X23AVXaKv+SulBt692PSQhiVIQ/
- 93YHmdgZqOEaEjUVxtFrJbMuwJyqUg/g5vA9ipMTd3cRKTjbEF5in4J7AMcDxC93ttuFCiVKkS
- 87fs7Psgh0/Mv0zLO0Hy+aN8PJ2NuN3gAAAA=
-X-Change-ID: 20261119-tipc-group-open-ae1c5789b1ec
-To: davem@davemloft.net, kuba@kernel.org, edumazet@kernel.org, 
- jmaloy@redhat.com, pabeni@redhat.com
-Cc: horms@kernel.org, tipc-discussion@lists.sourceforge.net, 
- tung.quang.nguyen@est.tech, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMMQ6DMBAEv4K2zknYIAj5SpQiNme4FCayHUBC/
+ D0GytHuzIbIQTjiUWwIPEuUyWdQtwJ2fPuBSfrM0KVulNIlmZrEf9gmco2rjb23VdVp5P83sJP
+ 1bD0R0kKe14TXtcSfOaQjhX3/AzUvjSp3AAAA
+X-Change-ID: 20261120-b4-inject-f6f4bc873392
+To: Jes Sorensen <Jes.Sorensen@gmail.com>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Ping-Ke Shih <pkshih@realtek.com>, Ahmet Zeren <niko3x@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795124342; l=3659;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=d+WQVJYdbAe7xs4W7Iq+DJKoNtE/VFiuVnisFS9O1rY=;
- b=1zji59NQqSj+Iubp+nmQx9B8FQKfMd8sXkpS3yVFOcBxV/yVNJqbc6VmHYQKqtKS+PbZY+AjA
- G1xWZIXdo5+AtE3O9rrxhkFCCoZxrgVSgqqERHfpf7SCUkMIfNqB3SH
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795126169; l=2447;
+ i=niko3x@proton.me; s=20261119; h=from:subject:message-id;
+ bh=wIWSBvsZagGyK7K273K72Z/OcMBhty/IqhzJyzOyBko=;
+ b=U3R2Pco+Xmj2bsVNtdyeC5YzFxciqXsIvMCA9n6bMXQ5sdbxrZFdNciMSslAs3hDRiYThUjuS
+ AzKpAyYQ95OBt05gufLlm5wxDi+5I/mgnAJRo0fhS9q4Yrb8R1OEDE8
+X-Developer-Key: i=niko3x@proton.me; a=ed25519;
+ pk=J4zNm2pudzQ/wF+pQ8xO+wW6jpcNa9EJ2C1g4DUAjhM=
+X-Endpoint-Received: by B4 Relay for niko3x@proton.me/20261119 with auth_id=1575
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+rtl8xxxu ignores most of the radiotap header of injected frames. On a
+RTL8192CU every injected frame went out at MCS 7 and 20 MHz whatever was
+requested, the retry count was ignored, and NOACK frames were retried up
+to 48 times. That makes the driver unusable for tools that rely on
+fixed-rate injection.
 
-tipc_group_create() sets tsk->group_is_open to false, and tipc_poll()
-only reports EPOLLOUT for a socket in TIPC_OPEN state when that flag is
-true. Commit 1b22bcad7e39 ("tipc: correct initial value for group
-congestion flag") made sure the flag is true for sockets that never
-join a group, since otherwise "SOCK_RDM/DGRAM sockets sending datagrams
-never receive POLLOUT".
+Patch 1 makes gen1 chips (RTL8188CU, RTL8192CU, RTL8723AU) use the
+injected rate and guard interval, without rate fallback.
 
-The flag is not set back when the group goes away again, though:
+Patch 2 makes the radiotap retry count and NOACK work. max_rate_tries is
+0 today, so mac80211 clamps injected retries to zero, and the hardware
+default of 48 retries is used instead: unicast frames to an absent
+station then stalled injection for over 100 s in my tests.
 
-- tipc_group_create() clears the flag and then fails when the topology
-  subscription cannot be created, for example when TIPC_MAX_SUBSCR
-  subscriptions exist already;
-- tipc_sk_join() deletes the new group when tipc_sk_publish() fails,
-  for example when the node's publication limit is reached;
-- tipc_sk_leave() deletes the group while the flag may still be false,
-  e.g. because of group congestion, or because the group has no other
-  members yet.
+Patch 3 sends injected frames at 40 MHz when they ask for it. Only QoS
+data frames get the 40 MHz descriptor bits today.
 
-In all three cases the socket is back to an ordinary RDM/DGRAM socket,
-but poll() never reports EPOLLOUT for it again. Before commit
-60c253069632 ("tipc: fix race between poll() and setsockopt()"),
-tipc_poll() also reported EPOLLOUT when tsk->group was NULL, so
-deleting the group was enough; since then the flag has to be reset.
+Frames without radiotap rate information are not affected.
 
-Set tsk->group_is_open to true in these three places, as it is for a
-socket that never had a group, and call sk_write_space() so that a
-task already waiting for EPOLLOUT is woken up, as tipc_sk_filter_rcv()
-does when a group becomes open again.
+Gen2 chips and the RTL8188EU use other descriptor formats. Patches for
+them follow as a separate RFT series, since I cannot test them.
 
-Found with a static analysis tool and checked by hand.
+Testing, all on RTL8192CU (0bda:8178) in monitor mode, received by a
+second radio:
+- 1, 5.5, 6 and 54 Mbps and MCS 0/7/8/15 with long and short GI arrive
+  at the requested rate (stock driver: all MCS 7).
+- Unicast frames to an absent station: drain time grows with the
+  requested retry count, NOACK frames are sent once.
+- Channel 6 HT40+ and HT40-: MCS 0 and 7 requested at 40 MHz arrive at
+  40 MHz (stock driver: 20 MHz).
+- checkpatch --strict, W=1 and sparse are clean for each patch.
 
-Fixes: 60c253069632 ("tipc: fix race between poll() and setsockopt()")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+AI tool use (Documentation/process/generated-content.rst): the patches
+were written with help from Claude Code (Claude Opus 5.5). It was asked
+to find why injected frames ignore the radiotap rate, retry count and
+bandwidth, write the fixes, and run the over-the-air tests above. I have
+reviewed and tested the changes and take responsibility for them.
+
 ---
-Tested in QEMU (x86_64, KASAN), on next-20261109 (net/tipc/ is the same
-as in net):
-- empty group, no loopback: JOIN, a thread waits in epoll_wait() for
-  EPOLLOUT, then TIPC_GROUP_LEAVE. Before: no EPOLLOUT, the waiter times
-  out. After: the waiter is woken and poll() reports POLLOUT.
-- 65535 topology subscriptions open, then TIPC_GROUP_JOIN fails with
-  -ENOMEM: no POLLOUT before, POLLOUT after.
-- bind until the publication limit, then TIPC_GROUP_JOIN fails with
-  -EINVAL: no POLLOUT before, POLLOUT after.
+Ahmet Zeren (3):
+      wifi: rtl8xxxu: honour the rate of injected frames on gen1 chips
+      wifi: rtl8xxxu: honour the retry count of injected frames on gen1 chips
+      wifi: rtl8xxxu: honour the bandwidth of injected frames on gen1 chips
+
+ drivers/net/wireless/realtek/rtl8xxxu/core.c | 78 +++++++++++++++++++++++++---
+ 1 file changed, 70 insertions(+), 8 deletions(-)
 ---
- net/tipc/socket.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+base-commit: 0bdc579dbfc251a6b6838ee9459b6771b948c617
+change-id: 20261120-b4-inject-f6f4bc873392
 
-diff --git a/net/tipc/socket.c b/net/tipc/socket.c
-index 65cc0c4964b3..26771a98dc7a 100644
---- a/net/tipc/socket.c
-+++ b/net/tipc/socket.c
-@@ -3096,8 +3096,12 @@ static int tipc_sk_join(struct tipc_sock *tsk, struct tipc_group_req *mreq)
- 	if (grp)
- 		return -EACCES;
- 	grp = tipc_group_create(net, tsk->portid, mreq, &tsk->group_is_open);
--	if (!grp)
-+	if (!grp) {
-+		/* tipc_group_create() may have cleared it before failing */
-+		tsk->group_is_open = true;
-+		tsk->sk.sk_write_space(&tsk->sk);
- 		return -ENOMEM;
-+	}
- 	tsk->group = grp;
- 	msg_set_lookup_scope(hdr, mreq->scope);
- 	msg_set_nametype(hdr, mreq->type);
-@@ -3109,6 +3113,8 @@ static int tipc_sk_join(struct tipc_sock *tsk, struct tipc_group_req *mreq)
- 	if (rc) {
- 		tipc_group_delete(net, grp);
- 		tsk->group = NULL;
-+		tsk->group_is_open = true;
-+		tsk->sk.sk_write_space(&tsk->sk);
- 		return rc;
- 	}
- 	/* Eliminate any risk that a broadcast overtakes sent JOINs */
-@@ -3132,7 +3138,9 @@ static int tipc_sk_leave(struct tipc_sock *tsk)
- 	ua.scope = scope;
- 	tipc_group_delete(net, grp);
- 	tsk->group = NULL;
-+	tsk->group_is_open = true;
- 	tipc_sk_withdraw(tsk, &ua);
-+	tsk->sk.sk_write_space(&tsk->sk);
- 	return 0;
- }
- 
-
-
+Best regards,
+--  
+Ahmet Zeren <niko3x@proton.me>
 
