@@ -1,11 +1,11 @@
 From: Igor Velkov <iav@iav.lv>
-Date: Thu, 19 Nov 2026 07:23:59 +0000
-Subject: [PATCH net v7 3/5] net: phy: stop postponing PHY interrupts when
- phy_suspend() fails
+Date: Thu, 19 Nov 2026 07:24:00 +0000
+Subject: [PATCH net v7 4/5] net: phy: run a postponed PHY interrupt handler
+ directly on resume
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-b4-phylib-mac-pm-irq-v3-v7-3-d8b8f43b5a62@iav.lv>
+Message-Id: <20261119-b4-phylib-mac-pm-irq-v3-v7-4-d8b8f43b5a62@iav.lv>
 References: <20261119-b4-phylib-mac-pm-irq-v3-v7-0-d8b8f43b5a62@iav.lv>
 In-Reply-To: <20261119-b4-phylib-mac-pm-irq-v3-v7-0-d8b8f43b5a62@iav.lv>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -27,72 +27,85 @@ Cc: Thomas Gleixner <tglx@kernel.org>, linux-pm@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2032; i=iav@iav.lv;
- h=from:subject:message-id; bh=+A2hLcXVzSFgT2M5CYC4xlPO/kE1CSINjgk6/JEhbKI=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFn/lghOjFq7xNrV8U3Y5A+Lrx4tsry8p7Gv1+g0G/9v4
- xaLui0HO0pZGMS4GGTFFFkmHNK4lbHk6l9/D/MHMHNYmUCGMHBxCsBEMj4x/C9L2niVU95cLkVn
- 9p3ra3IXR6Qs0EqYpWfEs7ZD7S1X8RZGhnV7/72td/kZsHTxpC2dN1YEzwneln/k0py+7Pnnel3
- Sz/ADAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3045; i=iav@iav.lv;
+ h=from:subject:message-id; bh=tJFrw+ovxezOqGpL0LoRv72fnj6/k3KLfaKIS2eufrE=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFn/lgheOZp26InOlJWbDth7snB+mqMZq/nFLK7vXO8xm
+ +n+AZeWdJSyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJNC1l+O8n8Mjrbl6XUsGW
+ nwxm8mE7823umj54aM+bnWC7pebsw32MDF/z763VlrhzKnnd7aszfxw53jRPWbtK3ZM15PHxFss
+ pX7kB
 X-Developer-Key: i=iav@iav.lv; a=openpgp;
  fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
 X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When phy_suspend() fails in mdio_bus_phy_suspend(), irq_suspended
-stays set and the state machine stays stopped: the PM core does not
-resume a device whose suspend callback failed, and the next PHY
-interrupt disables the line until the next resume.
+mdio_bus_phy_resume_irq() reruns a postponed interrupt with
+irq_wake_thread(). A PHY interrupt behind a nested threaded interrupt
+controller, such as an I2C or SPI GPIO expander, has no interrupt
+thread, so irq_wake_thread() does nothing and the postponed interrupt
+is lost: the PHY keeps its status latched and its INT line asserted.
 
-Undo the postponing and restart the state machine when phy_suspend()
-fails. Set suspended_by_mdio_bus only after phy_suspend() succeeds.
-Set before it, the flag outlived a failed suspend, and in a later cycle
-where mdio_bus_phy_may_suspend() returns false, mdio_bus_phy_resume()
-ran phy_init_hw() and phy_resume() on a PHY that the MDIO bus had not
-suspended.
+For a PHY without MAC-managed PM, mdio_bus_phy_resume() calls
+phy_init_hw() before the rerun, and config_intr() there acknowledges
+the latched status in drivers such as realtek. A later patch brings
+PHYs with MAC-managed PM under postponing, and stmmac, for one, does
+not call phy_init_hw() on resume.
+
+Call the PHY driver's handler from mdio_bus_phy_resume_irq(), as
+phy_interrupt() does, unless the PHY has freed its interrupt: on a
+shared line irq_rerun outlives the free, and the handler would run on a
+PHY with its interrupts disabled. Hold irq_pm_lock across the call and
+around phy_disable_interrupts() in phy_free_interrupt(), so that the
+free waits for the handler, as free_irq() waits for the thread.
 
 Fixes: 1758bde2e4aa ("net: phy: Don't trigger state machine while in suspend")
 Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-Haoning Cheng's Tested-by on v5 is not carried: this patch no longer
-changes the resume error path.
----
- drivers/net/phy/phy_device.c | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
+ drivers/net/phy/phy.c        |  3 +--
+ drivers/net/phy/phy_device.c | 13 ++++++++++---
+ 2 files changed, 11 insertions(+), 5 deletions(-)
 
+diff --git a/drivers/net/phy/phy.c b/drivers/net/phy/phy.c
+index 92ee4651bdbc..6cc94b525e09 100644
+--- a/drivers/net/phy/phy.c
++++ b/drivers/net/phy/phy.c
+@@ -1516,9 +1516,8 @@ EXPORT_SYMBOL(phy_request_interrupt);
+  */
+ void phy_free_interrupt(struct phy_device *phydev)
+ {
+-	phy_disable_interrupts(phydev);
+-
+ 	mutex_lock(&phydev->irq_pm_lock);
++	phy_disable_interrupts(phydev);
+ 	free_irq(phydev->irq, phydev);
+ 	/* free_irq() shuts down a line left without users and the next request
+ 	 * resets its depth; mdio_bus_phy_resume_irq() enables a shared line.
 diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
-index f2e2370b4be7..2d2058c29f30 100644
+index 2d2058c29f30..8bc394ff7d2d 100644
 --- a/drivers/net/phy/phy_device.c
 +++ b/drivers/net/phy/phy_device.c
-@@ -368,6 +368,7 @@ static __maybe_unused void mdio_bus_phy_resume_irq(struct phy_device *phydev)
- static __maybe_unused int mdio_bus_phy_suspend(struct device *dev)
- {
- 	struct phy_device *phydev = to_phy_device(dev);
-+	int ret;
- 
- 	if (phydev->mac_managed_pm)
- 		return 0;
-@@ -385,9 +386,20 @@ static __maybe_unused int mdio_bus_phy_suspend(struct device *dev)
- 	if (!mdio_bus_phy_may_suspend(phydev))
- 		return 0;
- 
-+	ret = phy_suspend(phydev);
-+	if (ret) {
-+		/* The PM core skips the resume callback of a device whose
-+		 * suspend callback failed.
-+		 */
-+		mdio_bus_phy_resume_irq(phydev);
-+		if (phy_uses_state_machine(phydev))
-+			phy_start_machine(phydev);
-+		return ret;
-+	}
-+
- 	phydev->suspended_by_mdio_bus = 1;
- 
--	return phy_suspend(phydev);
-+	return 0;
+@@ -355,12 +355,19 @@ static __maybe_unused void mdio_bus_phy_resume_irq(struct phy_device *phydev)
+ 	mutex_lock(&phydev->irq_pm_lock);
+ 	if (phy_interrupt_is_valid(phydev))
+ 		synchronize_irq(phydev->irq);
+-	/* The PHY may have fallen back to polling since it disabled the line */
++	/* The PHY may have fallen back to polling since it disabled the line,
++	 * or freed its interrupt while another user keeps the line.
++	 */
+ 	if (phydev->irq_rerun) {
+ 		phydev->irq_rerun = false;
+ 		enable_irq(phydev->irq_rerun_line);
+-		if (phydev->irq == phydev->irq_rerun_line)
+-			irq_wake_thread(phydev->irq, phydev);
++		/* A nested threaded line has no thread; we run the handler */
++		if (phydev->irq == phydev->irq_rerun_line &&
++		    phydev->interrupts) {
++			mutex_lock(&phydev->lock);
++			phydev->drv->handle_interrupt(phydev);
++			mutex_unlock(&phydev->lock);
++		}
+ 	}
+ 	mutex_unlock(&phydev->irq_pm_lock);
  }
- 
- static __maybe_unused int mdio_bus_phy_resume(struct device *dev)
 
 -- 
 2.43.0
