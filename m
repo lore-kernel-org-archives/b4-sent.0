@@ -1,15 +1,13 @@
 From: Umer Uddin <umer.uddin@mentallysanemainliners.org>
-Subject: [PATCH 0/6] Add USB support for Exynos7885 and enable USB and FG
- on gta3xllte
-Date: Thu, 19 Nov 2026 19:49:16 +0000
-Message-Id: <20261119-gta3xllte-usb-battery-v1-0-0cf5f763522e@mentallysanemainliners.org>
+Date: Thu, 19 Nov 2026 19:49:17 +0000
+Subject: [PATCH 1/6] dt-bindings: phy: samsung,usb3-drd-phy: Add Exynos7885
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTuJRTDUqxgWLfziGIKmMxgI4
- e5WXX6L9zZSJIHSpdgo4S0qzynDHQrq7mEawNJnU3ksz845z4OF0zKOBp41cgxmSCtHX6PqGx/
- Q1JTbV8JNlt/32v6tc3ygs++M9v0DH3PPq3kAAAA=
-X-Change-ID: 20261119-gta3xllte-usb-battery-b95e4d89ae85
+Message-Id: <20261119-gta3xllte-usb-battery-v1-1-0cf5f763522e@mentallysanemainliners.org>
+References: <20261119-gta3xllte-usb-battery-v1-0-0cf5f763522e@mentallysanemainliners.org>
+In-Reply-To: <20261119-gta3xllte-usb-battery-v1-0-0cf5f763522e@mentallysanemainliners.org>
 To: Vinod Koul <vkoul@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
  Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -27,57 +25,49 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-phy@lists.infradead.org,
  Umer Uddin <umer.uddin@mentallysanemainliners.org>, 
  David Virag <virag.david003@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795117759; l=1828;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795117759; l=1416;
  i=umer.uddin@mentallysanemainliners.org; s=20261109;
- h=from:subject:message-id; bh=yfFFDGO1vosaycRHkyMq/ESVrYzVjaRTqRdxrfEOlRU=;
- b=DOUWCJC+nGAPnXyDeJyc7GzcvtXM33vcEfPLeUGUDgC34VJmZIADaL8pMrRRf0Q+kEdHuXTF9
- pScKDNhyaBXCo8FM/p5Xk8rvTEEKTBTi+pjQnkEozJPcCyD4Te1NT4c
+ h=from:subject:message-id; bh=hf78BaYPHXU8fTomC50BXpD7afJqnpvHdHzfX9Bswkg=;
+ b=hMXfPZsZK+A9lZWD6eOC0XTSbJyALSYtYEkVrFQGLpAuCihutOJA6vGD4DgZXJ8wZaWwZjhMf
+ c3mO7shKsDDDvIZTyvpTc77yj/oa4tgZTRlBIRSriVoPXElCP4gVcg3
 X-Developer-Key: i=umer.uddin@mentallysanemainliners.org; a=ed25519;
  pk=Hsgrt4A72CFTe27AI1AAWlnLsiQrlb4+T+cbrfWDhUA=
 X-Endpoint-Received: by B4 Relay for umer.uddin@mentallysanemainliners.org/20261109 with auth_id=1466
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi guys, this patch series adds support for USB on Exynos7885. This series
-is based on David Virag's work[1] I had rebased it onto krzk's for-next
-tree and tested it on gta3xllte. This series also enables S2MU005 FG
-on gta3xllte, which is also tested.
+From: David Virag <virag.david003@gmail.com>
 
-Please note, I did drop enabling USB on jackpotlte, this is because I
-don't have the device myself to test the changes personally and I didn't
-want to risk a regression on jackpotlte.
+Document Exynos7885 compatible.
+Exynos7885 USB PHY has two clocks (ref and phy) like Exynos850, which
+are already described in bindings.
 
-DT changes were tested with make dtbs_check W=1, and the dt styling check
-scripts with --mode strict flags, both of which returned no warnings.
-
-Best regards,
-Umer
-
-[1] https://github.com/VDavid003/linux/commits/linux-6.11-rc2-7885/
-
+Signed-off-by: David Virag <virag.david003@gmail.com>
 Signed-off-by: Umer Uddin <umer.uddin@mentallysanemainliners.org>
 ---
-David Virag (4):
-      dt-bindings: phy: samsung,usb3-drd-phy: Add Exynos7885 support
-      dt-bindings: usb: samsung,exynos-dwc3: Add Exynos7885 support
-      phy: exynos5-usbdrd: support Exynos7885 USB PHY
-      arm64: dts: exynos: Enable USB in Exynos7885
+ Documentation/devicetree/bindings/phy/samsung,usb3-drd-phy.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Umer Uddin (2):
-      arm64: dts: exynos: exynos7885-gta3xllte: Enable USB support
-      arm64: dts: exynos: exynos7885-gta3xllte: Enable FuelGauge support
+diff --git a/Documentation/devicetree/bindings/phy/samsung,usb3-drd-phy.yaml b/Documentation/devicetree/bindings/phy/samsung,usb3-drd-phy.yaml
+index a1b3d9e6a094..f644a4aa1e95 100644
+--- a/Documentation/devicetree/bindings/phy/samsung,usb3-drd-phy.yaml
++++ b/Documentation/devicetree/bindings/phy/samsung,usb3-drd-phy.yaml
+@@ -32,6 +32,7 @@ properties:
+       - samsung,exynos5433-usbdrd-phy
+       - samsung,exynos7-usbdrd-phy
+       - samsung,exynos7870-usbdrd-phy
++      - samsung,exynos7885-usbdrd-phy
+       - samsung,exynos850-usbdrd-phy
+       - samsung,exynos990-usbdrd-phy
+       - samsung,exynosautov920-usb31drd-combo-ssphy
+@@ -234,6 +235,7 @@ allOf:
+               - samsung,exynos5250-usbdrd-phy
+               - samsung,exynos5420-usbdrd-phy
+               - samsung,exynos7870-usbdrd-phy
++              - samsung,exynos7885-usbdrd-phy
+               - samsung,exynos850-usbdrd-phy
+               - samsung,exynos990-usbdrd-phy
+               - samsung,exynosautov920-usb31drd-combo-ssphy
 
- .../bindings/phy/samsung,usb3-drd-phy.yaml         |  2 +
- .../bindings/usb/samsung,exynos-dwc3.yaml          |  3 ++
- .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 50 ++++++++++++++++++++++
- arch/arm64/boot/dts/exynos/exynos7885.dtsi         | 43 +++++++++++++++++++
- drivers/phy/samsung/phy-exynos5-usbdrd.c           | 27 ++++++++++++
- include/linux/soc/samsung/exynos-regs-pmu.h        |  3 ++
- 6 files changed, 128 insertions(+)
----
-base-commit: 397f550f3c8551b3ffbf3f45a571b58448514988
-change-id: 20261119-gta3xllte-usb-battery-b95e4d89ae85
-
-Best regards,
---  
-Umer Uddin <umer.uddin@mentallysanemainliners.org>
+-- 
+2.56.1
 
