@@ -1,72 +1,88 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 04:40:08 +0000
-Subject: [PATCH v2 2/2] media: verisilicon: av1: Read the segmentation map
- at the reference's offset
+Subject: [PATCH v4 0/8] drm/rockchip: vop2: RK3588 clocking, sync polarity
+ and window fixes
+Date: Thu, 19 Nov 2026 05:21:41 +0000
+Message-Id: <20261119-vop2-fixes-v4-0-4b8f5e7148c9@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-b4-vpu981-av1-refs-v2-2-7c270158b20e@gmail.com>
-References: <20261119-b4-vpu981-av1-refs-v2-0-7c270158b20e@gmail.com>
-In-Reply-To: <20261119-b4-vpu981-av1-refs-v2-0-7c270158b20e@gmail.com>
-To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Heiko Stuebner <heiko@sntech.de>, Hans Verkuil <hverkuil@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- stable@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23NTQ6CMBAF4KuQrq3ptPwUV97DuCjtIDVCCcVGQ
+ 7i7BTdgXL7M+95MxONg0ZNTMpEBg/XWdTGkh4ToRnU3pNbETDjjOQAwGlzPaW1f6Gmt0gxSXpS
+ lBhJBP+B6iP3L9Zv9s7qjHpeFpdFYP7rhvX4LsPT+DgegjBohciyNKZkR51ur7OOoXUuW4cC3l
+ O8oj1RykBp0LZWWv1RsqdhRESmTCkWBUlSZ3tJ5nj8H1MxvLAEAAA==
+X-Change-ID: 20261110-vop2-fixes-fa45142799c1
+To: Sandy Huang <hjc@rock-chips.com>, 
+ =?utf-8?q?Heiko_St=C3=BCbner?= <heiko@sntech.de>, 
+ Andy Yan <andyshrk@163.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Sascha Hauer <s.hauer@pengutronix.de>
+Cc: Piotr Zalewski <pZ010001011111@proton.me>, 
+ Chaoyi Chen <chaoyi.chen@rock-chips.com>, 
+ Damon Ding <damon.ding@rock-chips.com>, dri-devel@lists.freedesktop.org, 
+ linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>, 
+ stable@vger.kernel.org, 
+ Cristian Ciocaltea <cristian.ciocaltea@collabora.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795063206; l=2044;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795065702; l=2365;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=M5VkkkdflunTVyGr1Nz/gUu/uiqdpj4/jtKjFiX6La8=;
- b=PfK2nx60qvDot3pPQb8sNiCu7mL5/ewrHcGUlIufCanfGvZ8XhvDNrx0yefrmEzuRKSNZUrUH
- Ixd6+x30474A9F/JgkuxopzmZSIhV5QmLK6it7TPuRYw7xa3sJjGH/q
+ bh=DKrZ8YElBahQy97+zTx5tNNcwtO0wt30KXIKbUCDTYw=;
+ b=2jM2Zi1py2UsUHQUdVkIAlqdFMsTjXBj/1UjMtCrB5xm3N6FTGzjOaEBYzzuCTj850TNisq6f
+ D2Zn5oaZT6jClH79GzpqahDXk6SQrQXl8M+bwfvnnnNYEpeaOlSQU/u
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The segmentation map of the primary reference is read at the motion
-vector offset of the current CAPTURE format. After a switch to a larger
-format, that is past the end of a reference held in a smaller buffer.
+Fixes for the RK3588 VOP2 found while bringing up HDMI and DisplayPort
+on an Orange Pi 5 (RK3588S).
 
-Use the reference's own offset, and skip the map of a reference of
-another size (the spec then uses segment 0, load_previous_segment_ids()
-in section 6.8.2).
+Tested on an Orange Pi 5 with an HDMI 2.1 TV and a DisplayPort monitor,
+pictures judged with a camera, v7.3 based kernel: VP_CLK_CTRL reads back
+without the garbage divider; the HDMI controller sees the sync polarities
+of +/+ and mixed modes; HDMI from 148.5 to 1188 MHz (TMDS and FRL) and DP
+show a correct picture; RGB565 on the Cluster windows scans out without
+YTR; NV12 in two GEM objects and an AFBC overlay at x=1001 show correctly.
+Not tested: -HSync/-VSync modes (none in the TV's list), BGR565, HDMI1,
+eDP, MIPI DSI and DPI (no hardware).
 
-Fixes: 727a400686a2 ("media: verisilicon: Add Rockchip AV1 decoder")
-Cc: stable@vger.kernel.org
-Reviewed-by: Benjamin Gaignard <benjamin.gaignard@collabora.com>
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
+
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+Changes in v4:
+- Patches 1 and 2: Reviewed-by added (Damon Ding).
+- Patch 4: the GRF sync polarity bits get names in rockchip_drm_vop2.h
+  (Damon Ding); comment dropped.
+- Patch 5: check moved after the 10bpc check, with a comment and a
+  drm_dbg_kms() (Damon Ding); it tests drm_is_afbc() there, as it now
+  runs before the linear return.
+- Rebased on drm-misc-next.
+- Link to v3: https://patch.msgid.link/20261113-vop2-fixes-v3-0-08ae37e83b5c@gmail.com
 
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c b/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
-index b331ff234878..21a97a57328a 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu981_hw_av1_dec.c
-@@ -910,13 +910,15 @@ static void rockchip_vpu981_av1_dec_set_segmentation(struct hantro_ctx *ctx)
- 	    frame->primary_ref_frame < V4L2_AV1_REFS_PER_FRAME) {
- 		int idx = rockchip_vpu981_get_frame_index(ctx, frame->primary_ref_frame);
- 		struct hantro_decoded_buffer *ref = rockchip_vpu981_av1_dec_ref_buf(ctx, idx);
-+		int mi_cols = DIV_ROUND_UP(frame->frame_width_minus_1 + 1, 8);
-+		int mi_rows = DIV_ROUND_UP(frame->frame_height_minus_1 + 1, 8);
- 
--		if (ref) {
-+		if (ref && av1_dec->frame_refs[idx].mi_cols == mi_cols &&
-+		    av1_dec->frame_refs[idx].mi_rows == mi_rows) {
- 			dma_addr_t luma_addr, mv_addr = 0;
--			size_t mv_offset = rockchip_vpu981_av1_dec_chroma_size(ctx);
- 
- 			luma_addr = hantro_get_dec_buf_addr(ctx, &ref->base.vb.vb2_buf);
--			mv_addr = luma_addr + mv_offset;
-+			mv_addr = luma_addr + ref->av1.mv_offset;
- 
- 			hantro_write_addr(vpu, AV1_SEGMENTATION, mv_addr);
- 			hantro_reg_write(vpu, &av1_use_temporal3_mvs, 1);
+---
+Arun Iyengar (8):
+      drm/rockchip: vop2: Take the UV plane address from the second GEM object
+      drm/rockchip: vop2: Don't use uninitialised dividers on RK3588
+      drm/rockchip: vop2: Fix the HDMI sync polarity on RK3588
+      drm/rockchip: vop2: Fix the HDMI sync polarity bit order on RK3588
+      drm/rockchip: vop2: Only accept AFBC YTR for 8 bit RGB on RK3588
+      drm/rockchip: vop2: Find the first mixer of a video port with Esmart3 too
+      drm/rockchip: vop2: Keep the other LUT_PORT_SEL fields on gamma LUT updates
+      drm/rockchip: vop2: Fix the AFBC offsets of a source that starts inside a superblock
 
--- 
-2.55.0
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 27 +++++++++++++++++++--------
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.h |  3 +++
+ drivers/gpu/drm/rockchip/rockchip_vop2_reg.c | 16 ++++++++++++----
+ 3 files changed, 34 insertions(+), 12 deletions(-)
+---
+base-commit: fac7a5f16230779cfb0d50ca49e9467cc94a2ea9
+change-id: 20261110-vop2-fixes-fa45142799c1
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
