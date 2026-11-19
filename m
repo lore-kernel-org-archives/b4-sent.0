@@ -1,96 +1,107 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Thu, 19 Nov 2026 20:12:14 +0000
-Subject: [PATCH 2/2] w1: Keep the master alive until the slave is released
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Subject: [PATCH v3 0/2] PM / devfreq: Do not change the frequency of a
+ suspended device
+Date: Thu, 19 Nov 2026 21:16:21 +0000
+Message-Id: <20261119-devfreq-suspend-sync-v3-0-ef19fbf94d83@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-w1-slave-release-v1-2-c2948c825d08@gmail.com>
-References: <20261119-w1-slave-release-v1-0-c2948c825d08@gmail.com>
-In-Reply-To: <20261119-w1-slave-release-v1-0-c2948c825d08@gmail.com>
-To: krzk@kernel.org
-Cc: josef@toxicpanda.com, linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XOTQ6CMBAF4KuQrq3p9AeNK+9hXNQyhRoFbKGRE
+ O5uQRPZGJdv8uabGUlA7zCQQzYSj9EF19QpiE1GTKXrEqkrUiac8RwAOC0wWo8PGvrQYl3QMNS
+ G7ozeW6NAKaZJWm09Wvdc2NP5nUN/uaLpZuvTSEqf7nXfWuVC1/hheSbCPP1zNwIFqm0ucybQS
+ oHH8q7dbWuaO5nByNeI/IHwhACzzAgEyaVaI9M0vQD5X3nYJAEAAA==
+X-Change-ID: 20261112-devfreq-suspend-sync-7ca8fc51550a
+To: MyungJoo Ham <myungjoo.ham@samsung.com>, 
+ Kyungmin Park <kyungmin.park@samsung.com>, 
+ Chanwoo Choi <cw00.choi@samsung.com>
+Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Boris Brezillon <boris.brezillon@collabora.com>, 
+ Steven Price <steven.price@arm.com>, Liviu Dudau <liviu.dudau@arm.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Dong Aisheng <aisheng.dong@nxp.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795119133; l=2640;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=s7xxV1z0BqGEA94eM7oLKVSYG0/TyrMlUWouAQlJF6Y=;
- b=IYkHBgy09w1VAi/qYFgCX+/Av1jwGZk/juotQBNCxqYE2MnArmRg1E6odQJs7djcFrWIsV1z0
- pXAVa9JTl/HA5yC+1RXUcKHHOEYA7BWcIPjt96cg5Rt/BJ29BIJ8Fc5
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795122981; l=3640;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=zRcwh0X/csqSTO8PFOHLtSayo1tqobLNJE+EuERfHnA=;
+ b=YXff/cIq2Din9p4fBQzh0CpqPVb7vE5xGDQdUvXRBxcZ3UauImYZPboIUexA6YYOxvnY3MEmI
+ 9vJv6PKqb2iAWkKjWTebIAoPDr7I60UIUiKMPffb/Op9d8fno7CLAvO
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+From the review of a panthor patch [1]: Boris Brezillon pointed out that
+the devfreq core, not the driver, should stop calling ->target() between
+devfreq_suspend_device() and devfreq_resume_device().
 
-w1_slave_release() updates the master's slave count:
+1/2 is v2 of [2], which 2/2 builds on. The panthor side is [3].
 
-	sl->master->slave_count--;
+Tested on an Orange Pi 5 (RK3588S), v7.3-based kernel with [3],
+GPU clock on SCMI_CLK_GPU with a 200 MHz opp-suspend (Jonas Karlman's
+RFC, not in mainline).
+min_freq, max_freq, the userspace governor's set_freq and the cooling
+state written while the GPU was runtime suspended take effect on resume,
+with no SError; min_freq also after s2idle and deep suspend. 200 runtime
+suspend/resume cycles with changing limits. A KUnit test (not posted)
+covers the passive governor, the single transition on resume, failing
+suspend and resume, and a resume without a suspend.
 
-but the slave holds no reference to the master. The reference the
-slave device took on its parent in device_add() is dropped again in
-device_del(), and w1_unref_slave() drops the master's refcnt right
-after unregistering the slave, so the master can be removed and freed
-before a delayed release of the slave runs.
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
 
-With CONFIG_DEBUG_KOBJECT_RELEASE and the previous patch applied,
-removing a slave through w1_master_remove and then removing the master
-right away gives a KASAN report in w1_slave_release(), reading the
-4096-byte w1_master allocation freed by the master's release.
+[1] https://lore.kernel.org/r/20261110-panthor-suspend-clk-v1-1-53457050e51e@gmail.com
+[2] https://lore.kernel.org/r/20261110-devfreq-resume-freq-v1-1-90de450ccbd0@gmail.com
+[3] https://lore.kernel.org/r/20261112-panthor-suspend-clk-v2-1-62e1b168052d@gmail.com
 
-Take a reference to the master device when the slave is attached and
-drop it at the end of w1_slave_release(). Before commit 9fcbbac5ded4
-("w1: process w1 netlink commands in w1_process thread") this could
-not happen, because removing a slave waited for its release.
-
-Found with a static analysis tool and checked by hand.
-
-Fixes: 9fcbbac5ded4 ("w1: process w1 netlink commands in w1_process thread")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-Tested in the same setup: six rounds of adding a slave, removing it and
-removing the master right after. With only 1/2 applied KASAN reported
-the use-after-free in w1_slave_release() in four rounds; with both
-patches there were no reports.
+Changes in v3:
+- Run the pending update instead of restoring first, so resume makes
+  one transition; the userspace governor without set_freq keeps the
+  frequency from before suspend (Sashiko)
+- Keep the passive governor out of the pending update, which evaluated
+  it with freq 0 (Sashiko)
+- Leave devfreq suspended when suspend or resume fails, instead of the
+  v2 undo: callers may power the device down regardless. A caller that
+  ignores a failed resume recovers on its next suspend and resume (Sashiko)
+- Add [2] as 1/2: commit message corrected (lima on RK3528 is the
+  mainline case, not panthor), comment shortened
+- Rebase on devfreq-next
+- Link to v2: https://patch.msgid.link/20261114-devfreq-suspend-sync-v2-1-10f0c3e14245@gmail.com
+
+Changes in v2:
+- Keep only the suspend count, now a plain int changed under
+  devfreq->lock, instead of a separate suspended flag that could
+  disagree with it when suspend and resume race (Sashiko)
+- Resume at the resume frequency clamped to the current limits, then
+  run the deferred update: the userspace governor without set_freq
+  stayed at the suspend frequency (Sashiko)
+- Don't defer the passive governor's parent updates: exynos-bus
+  children must follow their parent to its suspend frequency, also at
+  shutdown (Sashiko)
+- Drop pending_freq: the deferred update runs like any update_devfreq()
+  call. If it fails, resume logs the error and still sends
+  DEVFREQ_GOV_RESUME (Sashiko)
+- Undo a failed devfreq_suspend_device(), as rk3399_dmc and lima abort
+  without resuming; an unbalanced devfreq_resume_device() is a no-op
+  (Sashiko)
+- Leave polling governors to their next poll after resume; the driver
+  has just reset their load data (Sashiko)
+- Link to v1: https://patch.msgid.link/20261112-devfreq-suspend-sync-v1-1-af64603ef43e@gmail.com
+
 ---
- drivers/w1/w1.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+Arun Iyengar (2):
+      PM / devfreq: Resume at the frequency from before suspend
+      PM / devfreq: Do not change the frequency of a suspended device
 
-diff --git a/drivers/w1/w1.c b/drivers/w1/w1.c
-index bead2fa08c8b..348edc5bf455 100644
---- a/drivers/w1/w1.c
-+++ b/drivers/w1/w1.c
-@@ -75,15 +75,17 @@ static void w1_master_release(struct device *dev)
- static void w1_slave_release(struct device *dev)
- {
- 	struct w1_slave *sl = dev_to_w1_slave(dev);
-+	struct w1_master *master = sl->master;
- 
- 	dev_dbg(dev, "%s: Releasing %s [%p]\n", __func__, sl->name, sl);
- 
- 	w1_family_put(sl->family);
--	sl->master->slave_count--;
-+	master->slave_count--;
- #ifdef DEBUG
- 	memset(sl, 0, sizeof(*sl));
- #endif
- 	kfree(sl);
-+	put_device(&master->dev);
- }
- 
- static ssize_t name_show(struct device *dev, struct device_attribute *attr, char *buf)
-@@ -735,6 +737,8 @@ int w1_attach_slave_device(struct w1_master *dev, struct w1_reg_num *rn)
- 
- 	sl->owner = THIS_MODULE;
- 	sl->master = dev;
-+	/* w1_slave_release() uses the master, keep it until then */
-+	get_device(&dev->dev);
- 	set_bit(W1_SLAVE_ACTIVE, &sl->flags);
- 
- 	memset(&msg, 0, sizeof(msg));
+ drivers/devfreq/devfreq.c            | 86 +++++++++++++++++++++++++++++-------
+ drivers/devfreq/governor_userspace.c |  3 +-
+ include/linux/devfreq.h              | 10 ++++-
+ 3 files changed, 79 insertions(+), 20 deletions(-)
+---
+base-commit: f9316c13d6f621af4f6f4a6089d3c989ffe899e6
+change-id: 20261112-devfreq-suspend-sync-7ca8fc51550a
 
--- 
-2.34.1
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
