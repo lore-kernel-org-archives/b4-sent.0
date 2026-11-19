@@ -1,84 +1,87 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Thu, 19 Nov 2026 19:28:02 +0000
-Subject: [PATCH v2] pwm: Drop the module reference before the chip in
- __pwm_put()
+From: Peder Bergan <peder.bergan@gmail.com>
+Date: Thu, 19 Nov 2026 20:33:07 +0100
+Subject: [PATCH] rust: bindgen: Preserve sched_statistics alignment
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-pwm-v2-1-fe761df4f272@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMFN/2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
- vPSU3UzU4B8JSMDIzNDQ0NL3YLyXF3jlGSLlCQDcyMzU0MloMqCotS0zAqwKdGxEH5xaVJWanI
- JSKtSbS0Aadf4RmcAAAA=
-X-Change-ID: 20261119-pwm-3dc8db072651
-To: ukleinek@kernel.org, m.wilczynski@samsung.com
-Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795116482; l=1837;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=jU7pi4yuE2f3TtWrb3aU0gY1rBGzqQsso5D2Sa20T0U=;
- b=b9OLKs/Bm6WhAwXYM7jiPZyYPyKDjRH2gs7/gaItPByrCW8qwcHFbFkVrP+1DmEBTZOsL1UBZ
- yMvlSpjEv5cCTAJNKpgEsDoCOXQPr3pGLSzy9/aO6w0r13cYeOhjyip
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+Message-Id: <20261119-fix-schedstats-bindgen-layout-v1-1-0599dd230ffd@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPJO/2oC/yWMQQ6CMBBFr0Jm7UQKCMGrEBdtGaFGC+lMDYZwd
+ 1tdvp//3g5MwRHDtdgh0NuxW3wCdSrAztpPhG5MDFVZtUqpHu9uQ7YzjSxaGI3z40Qen/qzRMG
+ yry+mbeqmKztIjTVQEn794fZnjuZBVnI0P4xmQhO0t3Oe4soSSL/OIbKgp03gOL7Z1CCbpgAAA
+ A==
+X-Change-ID: 20261119-fix-schedstats-bindgen-layout-0935b6434707
+To: Miguel Ojeda <ojeda@kernel.org>
+Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Carlos Llamas <cmllamas@google.com>, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795116790; l=2061;
+ i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
+ bh=enj6BUb4oRB8IE5yaVUAOv95G/2SRaL0ZVC/+tCgiiM=;
+ b=rQs8CAyFUbEYInVCLSgBlAGhq9GORNTkDMbyOCPP/Y82UJOutZ4Y4O+RHHUn0zap6mInfzx3F
+ mgGOYtrg3ocBebFeSG9AqC66FX9RCOAL1h+Uq3/fJkAHzUUVQtnKBAD
+X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
+ pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
+X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+With CONFIG_SCHEDSTATS disabled, struct sched_statistics is empty but
+still cache-line aligned. Bindgen emits the empty definition without
+that alignment. On affected builds this misplaces fields following
+stats in the generated task_struct. In the reported arm64 build, Rust
+Binder reads the wrong pointer via CurrentTask::mm() and rejects mmap()
+with -EINVAL.
 
-__pwm_put() drops the chip reference the consumer took and then reads the
-chip to drop the module reference:
+Make sched_statistics opaque so bindgen uses the C size and alignment.
+Rust has no callers that access the fields of this type.
 
-	put_device(&chip->dev);
-	module_put(chip->owner);
-
-A consumer takes both references in pwm_device_request()
-(try_module_get(chip->owner) and get_device(&chip->dev)). The chip's base
-reference is released by pwmchip_put(), not by pwmchip_remove(), so a
-consumer can still hold a pwm after the provider has removed and put the
-chip. When that consumer finally calls pwm_put(), the put_device() here
-drops the last reference, pwmchip_release() frees the chip, and
-module_put(chip->owner) then reads the freed chip.
-
-Call module_put() before put_device(). This is safe because the chip is
-released by pwmchip_release() in the PWM core, not by code in the
-provider module.
-
-Found with a static analysis tool and checked by hand.
-
-Fixes: 4c56b1434b81 ("pwm: Add a struct device to struct pwm_chip")
+Fixes: 313c4281bc9d ("rust: add basic `Task`")
+Closes: https://github.com/Rust-for-Linux/linux/issues/1269
 Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
 ---
-Changes in v2:
-- Call module_put() before put_device() instead of reading chip->owner
-  into a local first (Uwe).
+Jules Mercier reported the layout mismatch on arm64.
 
-Compile tested on x86_64 (W=1 and sparse, no new warnings). I don't have
-the hardware.
+On arm64 with bindgen 0.73.2 and CONFIG_SCHEDSTATS=n, the generated Rust
+binding placed task_struct.mm at offset 1168 while the C layout placed
+it at 1208. After the change both report 1208. The layouts also agree
+with CONFIG_SCHEDSTATS=y, and the Rust kernel crate and Binder driver
+build with Clippy in both configurations.
 
-v1: https://lore.kernel.org/linux-pwm/20261119-pwm-v1-1-adeff0cc366a@gmail.com/
+OpenAI Codex assisted with the bindgen change, validation and drafting.
 ---
- drivers/pwm/core.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ rust/bindgen_parameters | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/drivers/pwm/core.c b/drivers/pwm/core.c
-index 4c6d716e5fde..4e8dba089261 100644
---- a/drivers/pwm/core.c
-+++ b/drivers/pwm/core.c
-@@ -2036,9 +2036,9 @@ static void __pwm_put(struct pwm_device *pwm)
+diff --git a/rust/bindgen_parameters b/rust/bindgen_parameters
+index 5bab3cf063360..2686687555af3 100644
+--- a/rust/bindgen_parameters
++++ b/rust/bindgen_parameters
+@@ -26,6 +26,10 @@
+ # warning. We don't need to peek into it anyway.
+ --opaque-type spinlock
  
- 	pwm->label = NULL;
- 
--	put_device(&chip->dev);
--
- 	module_put(chip->owner);
++# Bindgen drops the alignment of empty structs. Keep the cache-line alignment
++# of sched_statistics when CONFIG_SCHEDSTATS is disabled.
++--opaque-type sched_statistics
 +
-+	put_device(&chip->dev);
- }
- 
- /**
+ # enums that appear in indirect function calls should specify a cfi type
+ --newtype-enum fwctl_rpc_scope
+ --with-attribute-custom-enum=fwctl_rpc_scope='#[cfi_encoding="15fwctl_rpc_scope"]'
 
+---
+base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
+change-id: 20261119-fix-schedstats-bindgen-layout-0935b6434707
 
+Best regards,
+--  
+Peder Bergan <peder.bergan@gmail.com>
 
