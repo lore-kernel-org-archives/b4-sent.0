@@ -1,124 +1,98 @@
-From: Yasunobu Sakashita <hi@yasunobu.dev>
-Date: Thu, 19 Nov 2026 20:44:56 +0900
-Subject: [PATCH] media: uvcvideo: Batch StreamCam unlinks on ASUS ASM2142
+From: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+Date: Thu, 19 Nov 2026 09:22:04 -0300
+Subject: [PATCH] docs: pt_BR: submitting-patches: update LKML role as last
+ resort
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-streamcam-batched-unlink-v1-1-076bc02866c1@yasunobu.dev>
-X-B4-Tracking: v=1; b=H4sIADfh/moC/yWMQQrCMBBFr1Jm7YCJEqhXEReTdGqidpRMWgqld
- zfR5fv89zZQzokVLt0GmZek6S0VzKGDEEnujGmoDPZonTGmRy2ZaQo0oacSIg84yyvJE0d/Jse
- n3lnHUPVP5jGtv/T19med/YNDab328KSMPpOE2CbhtcC+fwGU/I6fkwAAAA==
-X-Change-ID: 20261119-streamcam-batched-unlink-fb4a6e39626e
-To: linux-media@vger.kernel.org
-Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Hans de Goede <hansg@kernel.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Mathias Nyman <mathias.nyman@intel.com>, linux-usb@vger.kernel.org, 
- Yasunobu Sakashita <hi@yasunobu.dev>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261119-pt-br-submitting-patches-lkml-v1-1-1c7170de926f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ6CMAyA4VchPdvE1cQMX8V4gFGgCnNZiyEhv
+ DtTj9/h/zdQzsIKt2qDzB9ReccCd6ogjE0cGKUrBjrT1TlXYzJsM+rSzmImccDUWBhZcXrNE3p
+ /IU81c98RlEfK3Mv6+98ff5f0ycG+U9j3A1y+ZzyBAAAA
+X-Change-ID: 20261119-pt-br-submitting-patches-lkml-8832829eefd2
+To: Jonathan Corbet <corbet@lwn.net>
+Cc: Randy Dunlap <rdunlap@infradead.org>, 
+ Eduardo Pereira Cruz <dreduardocruz@gmail.com>, 
+ Daniel Pereira <danielmaraboo@gmail.com>, 
+ Shuah Khan <skhan@linuxfoundation.org>, linux-doc@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795088699; l=3387;
- i=hi@yasunobu.dev; s=linux-kernel; h=from:subject:message-id;
- bh=SM/F5q1dd2vyprkfGis4uWr1Bm42nEAIAtBJ4e6DG4M=;
- b=I9BApyP7CrZMcyE67xRmVhF+o4Qfb7NeHa7K21IK2F7ww7GGWsFrDUNCjCZrDlQVuTj6I55uk
- JhUduYDGWayBlHnEU3m24BcDXHfiMspq6gZ7Z1swHNKtiW+VXJqEBFR
-X-Developer-Key: i=hi@yasunobu.dev; a=ed25519;
- pk=QjththR6KbbJLxSuYvQ/eDo4hRrutwL7BdLamwrIW9c=
-X-Endpoint-Received: by B4 Relay for hi@yasunobu.dev/linux-kernel with auth_id=1570
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795090927; l=3887;
+ i=dreduardocruz@gmail.com; s=20261119; h=from:subject:message-id;
+ bh=GcKCZ7A9qSK4VpwFufllbUosGCXBesddh9epOSyJAXo=;
+ b=bFL+aH959aRdVBG+RhE2Vj24tH3JmNAvAUCteRUYQxSzjmJ1eOVbGTQxxBC1xKLWzXmk4FCOY
+ 6//oC7TjuBHBC0AbGVbCKVn/p6mWofmuXJpSTNOgTih7dnem75x6+FP
+X-Developer-Key: i=dreduardocruz@gmail.com; a=ed25519;
+ pk=2dtL+BL/x70sROmAvlskv9dbjj274zlPkLBVu4gJJiA=
+X-Endpoint-Received: by B4 Relay for dreduardocruz@gmail.com/20261119 with auth_id=1571
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Stopping a SuperSpeed StreamCam can halt xHCI on the ASUS PRIME Z270-A.
-The fifth Stop Endpoint command timed out after an invalid type 15 event.
+Update the Brazilian Portuguese translation of submitting-patches.rst to reflect commit 3a198413bb71 ("docs: submitting-patches: make LKML a list of last resort again"), advising contributors to send patches to a subsystem-specific mailing list first and use linux-kernel@vger.kernel.org only as a list of last resort.
 
-For the affected StreamCam and ASM2142, block URB resubmission.
-Queue all unlinks before waiting so xHCI can coalesce them.
-
-The stock driver reproduced the halt on Ubuntu 6.8.0-149-generic.
-Three FFmpeg 720p MJPEG and audio capture cycles passed with the patch.
-
-I used Codex to help analyze traces and draft the patch and changelog.
-
-Signed-off-by: Yasunobu Sakashita <hi@yasunobu.dev>
+Signed-off-by: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+Cc: Daniel Pereira <danielmaraboo@gmail.com>
+Cc: Jonathan Corbet <corbet@lwn.net>
+Cc: Shuah Khan <skhan@linuxfoundation.org>
+Cc: Randy Dunlap <rdunlap@infradead.org>
+Cc: linux-doc@vger.kernel.org
 ---
-Built uvc_video.o on media-committers/next with and without CONFIG_PCI.
----
- drivers/media/usb/uvc/uvc_video.c | 43 ++++++++++++++++++++++++++++++++++-----
- 1 file changed, 38 insertions(+), 5 deletions(-)
+ .../translations/pt_BR/process/submitting-patches.rst | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/media/usb/uvc/uvc_video.c b/drivers/media/usb/uvc/uvc_video.c
-index a92a986ab..0ee5a7d17 100644
---- a/drivers/media/usb/uvc/uvc_video.c
-+++ b/drivers/media/usb/uvc/uvc_video.c
-@@ -11,6 +11,7 @@
- #include <linux/kernel.h>
- #include <linux/list.h>
- #include <linux/module.h>
-+#include <linux/pci.h>
- #include <linux/slab.h>
- #include <linux/usb.h>
- #include <linux/usb/hcd.h>
-@@ -1885,6 +1886,26 @@ static int uvc_alloc_urb_buffers(struct uvc_streaming *stream,
- 	return 0;
- }
+diff --git a/Documentation/translations/pt_BR/process/submitting-patches.rst b/Documentation/translations/pt_BR/process/submitting-patches.rst
+index 4d1e75935745..3b77363ded18 100644
+--- a/Documentation/translations/pt_BR/process/submitting-patches.rst
++++ b/Documentation/translations/pt_BR/process/submitting-patches.rst
+@@ -118,10 +118,10 @@ mudar daqui a cinco anos.
  
-+static bool uvc_streamcam_batch_unlink(const struct uvc_streaming *stream)
-+{
-+	const struct usb_device *udev = stream->dev->udev;
-+	struct device *controller = udev->bus->controller;
-+	const struct pci_dev *pdev;
-+
-+	if (stream->frozen || udev->state != USB_STATE_CONFIGURED ||
-+	    udev->speed != USB_SPEED_SUPER ||
-+	    le16_to_cpu(udev->descriptor.idVendor) != 0x046d ||
-+	    le16_to_cpu(udev->descriptor.idProduct) != 0x0893 ||
-+	    !controller || !dev_is_pci(controller))
-+		return false;
-+
-+	pdev = to_pci_dev(controller);
-+	return pdev->vendor == PCI_VENDOR_ID_ASMEDIA &&
-+	       pdev->device == 0x2142 &&
-+	       pdev->subsystem_vendor == PCI_VENDOR_ID_ASUSTEK &&
-+	       pdev->subsystem_device == 0x8732 && pdev->revision == 0;
-+}
-+
- /*
-  * Uninitialize isochronous/bulk URBs and free transfer buffers.
-  */
-@@ -1896,12 +1917,24 @@ static void uvc_video_stop_transfer(struct uvc_streaming *stream,
- 	uvc_video_stats_stop(stream);
+ Se discussões relacionadas ou qualquer outra informação de contexto por trás da mudança
+ puderem ser encontradas na web, adicione tags 'Link:' apontando para isso. Se o patch é o
+-resultado de algumas discussões anteriores na lista de e-mails ou algo documentado na
++resultado de algumas discussões anteriores na lista de discussão ou algo documentado na
+ web, aponte para ele.
  
- 	/*
--	 * We must poison the URBs rather than kill them to ensure that even
--	 * after the completion handler returns, any asynchronous workqueues
--	 * will be prevented from resubmitting the URBs.
-+	 * URBs must stay blocked until the workqueue has been flushed.
-+	 * A completion handler can leave work that tries to resubmit an URB.
- 	 */
--	for_each_uvc_urb(uvc_urb, stream)
--		usb_poison_urb(uvc_urb->urb);
-+	if (uvc_streamcam_batch_unlink(stream)) {
-+		/*
-+		 * usb_block_urb() keeps URBs blocked after usb_kill_urb().
-+		 * Queue unlinks together so xHCI can coalesce them.
-+		 */
-+		for_each_uvc_urb(uvc_urb, stream)
-+			usb_block_urb(uvc_urb->urb);
-+		for_each_uvc_urb(uvc_urb, stream)
-+			usb_unlink_urb(uvc_urb->urb);
-+		for_each_uvc_urb(uvc_urb, stream)
-+			usb_kill_urb(uvc_urb->urb);
-+	} else {
-+		for_each_uvc_urb(uvc_urb, stream)
-+			usb_poison_urb(uvc_urb->urb);
-+	}
+-Ao criar links para arquivos de listas de e-mails, de preferência use o serviço
++Ao criar links para arquivos de listas de discussão, de preferência use o serviço
+ de arquivo de mensagens lore.kernel.org. Para criar a URL do link, use o
+ conteúdo do cabeçalho ``Message-ID`` da mensagem, sem os colchetes angulares
+ circundantes. Por exemplo::
+@@ -132,11 +132,11 @@ Por favor, verifique o link para se certificar de que ele está realmente
+ funcionando e aponta para a mensagem relevante.
  
- 	flush_workqueue(stream->async_wq);
+ No entanto, tente tornar a sua explicação compreensível sem recursos
+-externos. Além de fornecer um URL para um arquivo da lista de e-mails ou bug,
++externos. Além de fornecer um URL para um arquivo da lista de discussão ou bug,
+ resuma os pontos relevantes da discussão que levaram ao patch conforme enviado.
  
+ Caso o seu patch corrija um bug, use a tag 'Closes:' com um URL que referencie o
+-relato nos arquivos da lista de e-mails ou em um rastreador público de bugs. Por exemplo::
++relato nos arquivos da lista de discussão ou em um rastreador público de bugs. Por exemplo::
+ 
+ 	Closes: https://example.com/issues/1234
+ 
+@@ -244,10 +244,13 @@ encontrar um mantenedor para o subsistema em que está trabalhando,
+ Andrew Morton (akpm@linux-foundation.org) serve como um mantenedor de
+ último recurso.
+ 
+-linux-kernel@vger.kernel.org deve ser usado por padrão para todos os
+-patches, mas o volume dessa lista fez com que vários desenvolvedores a
+-ignorassem. Por favor, não envie spam para listas e pessoas não
+-relacionadas.
++Você também deve normalmente escolher pelo menos uma lista de discussão para
++receber uma cópia do seu conjunto de patches. Procure no arquivo MAINTAINERS
++por uma lista específica do subsistema; seu patch provavelmente receberá mais
++atenção lá.
++linux-kernel@vger.kernel.org funciona como uma lista de último recurso para
++patches que não possuem uma lista específica do subsistema. Por favor, não
++envie spam para listas e pessoas não relacionadas.
+ 
+ Muitas listas relacionadas ao kernel estão hospedadas em kernel.org;
+ você pode encontrar uma lista delas em https://subspace.kernel.org.
 
 ---
-base-commit: aa0f4c41d4870a18e65772a1817af16427200371
-change-id: 20261119-streamcam-batched-unlink-fb4a6e39626e
+base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
+change-id: 20261119-pt-br-submitting-patches-lkml-8832829eefd2
 
 Best regards,
 --  
-Yasunobu Sakashita <hi@yasunobu.dev>
+Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 
