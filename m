@@ -1,94 +1,84 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 19 Nov 2026 16:49:56 +0000
-Subject: [PATCH] mfd: syscon: Put the clock after regmap_exit()
+Date: Thu, 19 Nov 2026 16:50:01 +0000
+Subject: [PATCH] regmap: mmio: Don't attach the clock if clk_prepare()
+ fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-syscon-clk-uaf-v1-1-dc4a4c1be353@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMAyA4VeRnA2YQgfuVcRD7ZIt26jSqGyI7
- 77qjt/h/zcwzsoG12qDzKuajqmA6griI6Q7o96KwTXuQkQt2tfimDC+X7gEQS/ifMuNBPJQoim
- z6Occdv3ftgxPjvNxgX3/AasTtmlyAAAA
-X-Change-ID: 20261119-syscon-clk-uaf-5ff259e0fa15
-To: Lee Jones <lee@kernel.org>, Arnd Bergmann <arnd@arndb.de>
-Cc: Fabrice Gasnier <fabrice.gasnier@foss.st.com>, 
- Jeremy Kerr <jk@codeconstruct.com.au>, mfd@lists.linux.dev, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Arun Iyengar <aiyengar1990@gmail.com>
+Message-Id: <20261119-regmap-mmio-attach-clk-v1-1-91291802ac53@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDvQGNqiV5EuxmSio0YliVIQ7
+ 97YLt/i/wMiB+EIdXFA4F2iLHOGuhVgepo7RrHZUN7Lp1KqwsCdpxW9lwUpJTI9mmlEVz3Ivpz
+ VmjTkeA3s5PMbN++/49YObNJ1g/P8AhNfZa16AAAA
+X-Change-ID: 20261119-regmap-mmio-attach-clk-f95ad7fd33a3
+To: Mark Brown <broonie@kernel.org>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
+ Johan Hovold <johan@kernel.org>, Maxime Ripard <mripard@kernel.org>, 
+ linux-kernel@vger.kernel.org, driver-core@lists.linux.dev, 
+ stable@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795106996; l=2258;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795107001; l=1957;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Xle/0X0eA0Wa8LPqfRsJuOjguZ9Uh3tFLZYrD/TPVc0=;
- b=CSfb7vPXlkbnKosHL34ELamSXGEOplysb5QTiVCvPbHPMuJkNOoLYHgzqU5XwlnEDa9kflzrR
- tEPKbFI7j9vBF0OOASG/uy9G7lt0p7E2xUVIEsYLHbr2QX63JuvTAI5
+ bh=i99wsC+7/XSg8MNOgqgqgUZ46RlYbMj6RkR/Vf2Of1c=;
+ b=9jiDl8QoEqCknvUZMfHJ+ua9PFRbCuLKzsSUKI6x99WZcMsI0+i45tMlgFNggee5UeHYEJgsp
+ 6iRbXf9hNrcBfAAPty5w9VsnUBkl6THsynckgmxjhPdAbA0acQ3h+t1
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the error path, of_syscon_register() puts the clock before
-regmap_exit(), which then unprepares the freed clock. This happens
-when the reset lookup fails, e.g. with -EPROBE_DEFER.
+regmap_mmio_attach_clk() stores the clock before preparing it. If
+clk_prepare() fails, regmap_exit() later unprepares a clock that was
+never prepared, and the caller may already have put it.
 
-Put the clock after regmap_exit().
+Only attach the clock once it is prepared.
 
-Fixes: a00406b71c5f ("mfd: syscon: Add optional clock support")
-Fixes: 7d1e3bd94828 ("mfd: syscon: Allow reset control for syscon devices")
+Fixes: 31895662f9ba ("regmap: mmio: Add function to attach a clock")
 Cc: stable@vger.kernel.org
 Reported-by: Sashiko <sashiko-bot@kernel.org>
 Closes: https://lore.kernel.org/r/179493691305.3136.16311404541139130213@kernel.org
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-A related regmap patch ("regmap: mmio: Don't attach the clock if
-clk_prepare() fails") is sent separately; neither depends on the other.
+Found while fixing the error path of of_syscon_register(); that mfd patch
+is sent separately and neither depends on the other.
 
-Tested on an Orange Pi 5 (RK3588S), 7.3 with KASAN, together with the
-regmap patch: with a forced reset lookup failure, a use-after-free in
-clk_unprepare() is reported without the two patches and nothing with both.
+Tested on an Orange Pi 5 (RK3588S), 7.3 with KASAN, together with the mfd
+patch: with a forced clk_prepare() failure in of_syscon_register(), a
+use-after-free in clk_unprepare() is reported without the two patches and
+nothing with both. This patch was not run on its own.
 
 Developed with Claude (Anthropic), which wrote the code and the commit
 message. I reviewed every change.
 ---
- drivers/mfd/syscon.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ drivers/base/regmap/regmap-mmio.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/mfd/syscon.c b/drivers/mfd/syscon.c
-index 21a7fcdd2737..3ff4e024542b 100644
---- a/drivers/mfd/syscon.c
-+++ b/drivers/mfd/syscon.c
-@@ -132,13 +132,13 @@ static struct syscon *of_syscon_register(struct device_node *np, bool check_res)
- 		} else {
- 			ret = regmap_mmio_attach_clk(regmap, clk);
- 			if (ret)
--				goto err_attach_clk;
-+				goto err_clk;
- 		}
+diff --git a/drivers/base/regmap/regmap-mmio.c b/drivers/base/regmap/regmap-mmio.c
+index 1de2278fa572..6adbc950877c 100644
+--- a/drivers/base/regmap/regmap-mmio.c
++++ b/drivers/base/regmap/regmap-mmio.c
+@@ -590,11 +590,16 @@ EXPORT_SYMBOL_GPL(__devm_regmap_init_mmio_clk);
+ int regmap_mmio_attach_clk(struct regmap *map, struct clk *clk)
+ {
+ 	struct regmap_mmio_context *ctx = map->bus_context;
++	int ret;
++
++	ret = clk_prepare(clk);
++	if (ret)
++		return ret;
  
- 		reset = of_reset_control_get_optional_exclusive(np, NULL);
- 		if (IS_ERR(reset)) {
- 			ret = PTR_ERR(reset);
--			goto err_attach_clk;
-+			goto err_clk;
- 		}
+ 	ctx->clk = clk;
+ 	ctx->attached_clk = true;
  
- 		ret = reset_control_deassert(reset);
-@@ -155,11 +155,10 @@ static struct syscon *of_syscon_register(struct device_node *np, bool check_res)
+-	return clk_prepare(ctx->clk);
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(regmap_mmio_attach_clk);
  
- err_reset:
- 	reset_control_put(reset);
--err_attach_clk:
--	if (!IS_ERR(clk))
--		clk_put(clk);
- err_clk:
- 	regmap_exit(regmap);
-+	if (!IS_ERR(clk))
-+		clk_put(clk);
- err_regmap:
- 	iounmap(base);
- 	return ERR_PTR(ret);
 
 ---
-base-commit: e5bcc8e02e570e3eee46d4cebefd552cc7c9e843
-change-id: 20261119-syscon-clk-uaf-5ff259e0fa15
+base-commit: 50b3d8bb527b11384153c4ca854c8610f4a55649
+change-id: 20261119-regmap-mmio-attach-clk-f95ad7fd33a3
 
 Best regards,
 --  
