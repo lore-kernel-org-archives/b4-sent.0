@@ -1,190 +1,243 @@
-From: Alex Ainscow <aainscow@uk.ibm.com>
-Date: Thu, 19 Nov 2026 10:35:36 +0000
-Subject: [PATCH] libceph: don't put a linger request twice when its watch
- is cancelled
+From: Mike Bazov <mike.bazov@gmail.com>
+Date: Thu, 19 Nov 2026 12:37:24 +0200
+Subject: [PATCH bpf-next v2] bpf: Use an on-stack pt_regs in the raw
+ tracepoint helpers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-wip-libceph-linger-uaf-v1-1-40f3661fea68@uk.ibm.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/yWM0Q5FMBBEf0X22SZaIvgV8aC1WBGa9rok4t8tn
- iYnM3NOCOSZAlTRCZ7+HHhdBFQcgR3bZSDkThh0onOlVIE7O5zZWHKjpAw8bm2P0pWdNqlNswT
- k7Dz1fLziuvk4bGYi+3tscF03j4fg+XoAAAA=
-X-Change-ID: 20261118-wip-libceph-linger-uaf-1119d2b3c340
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Xiubo Li <xiubo.li@clyso.com>, Viacheslav Dubeyko <slava@dubeyko.com>, 
- Jeff Layton <jlayton@kernel.org>
-Cc: Xiubo Li <xiubli@redhat.com>, ceph-devel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Alex Ainscow <aainscow@uk.ibm.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795084591; l=6146;
- i=aainscow@uk.ibm.com; s=20261119; h=from:subject:message-id;
- bh=P336QPYKJ+T98DqHq/Xl/XyUZlBZy0xGC+6YBxgAyJQ=;
- b=+NmmuqClQ9aYtwjUwh1aiaet+s66SSRqJ0aDT2Pa7MKJK2Fi7LaRy1KjDNPMJHVv0OVhYOBF/
- tPeUwUBx8FND5obSVsQXQXu6JLRHdBLlEi62b4s0C7e6NluI5ln9xEi
-X-Developer-Key: i=aainscow@uk.ibm.com; a=ed25519;
- pk=VlrkYHn/ahAgYEx7wjI3JQeBO/6/uCw4k8oYcEnn6dE=
-X-Endpoint-Received: by B4 Relay for aainscow@uk.ibm.com/20261119 with auth_id=1568
+Message-Id: <20261119-bpf-raw-tp-regs-preempt-v2-1-e1e1b90857d6@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGPR/moC/4WNQQ6CMBBFr0Jm7RgGI1BX3MOwKO0Akwg0bYMYw
+ t2tXMDl+z///R0Ce+EAj2wHz6sEWeYExSUDM+p5YBSbGIq8KImoxM716PUbo0PPQ0DnmScXkfo
+ qJ6VqpTsFaZ3yXrbT/ITfaOYtQpuaUUJc/Oe8XOns/9pXQkKbU1daW9+rm2mGScvrapYJ2uM4v
+ vBaRBzIAAAA
+To: Song Liu <song@kernel.org>, Jiri Olsa <jolsa@kernel.org>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, 
+ Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
+ Andrii Nakryiko <andrii@kernel.org>, Eduard Zingerman <eddyz87@gmail.com>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, 
+ Yonghong Song <yonghong.song@linux.dev>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, KP Singh <kpsingh@kernel.org>, 
+ Matt Bobrowski <matt@bobrowski.net>, Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-trace-kernel@vger.kernel.org, Mike Bazov <mike.bazov@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795084644; l=7871;
+ i=mike.bazov@gmail.com; s=gmail-20261116; h=from:subject:message-id;
+ bh=6EzdZ5kXAytUcjASHjJSyHChrRCCQ5aVdBi0WKUNNmo=;
+ b=vMA5md7CjaQ3aLL1nyJkX/CdbsbM2YZYb81DrOEviachWJFUb67oHo3Gq+7Olntr3jZO5+BQT
+ wEc1LJzi6OTBRw8zF0ZURweTCLE4WvL7DFkOHCIfFdA8+LW06lSI8HY
+X-Developer-Key: i=mike.bazov@gmail.com; a=ed25519;
+ pk=Rr9fagn0pNA+bs8tgc6DXZpRAhl/maU6BeqkttIR7DA=
+X-Endpoint-Received: by B4 Relay for mike.bazov@gmail.com/gmail-20261116 with auth_id=1544
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-handle_reply() finishes a request under osdc->lock and completes it,
-calling its callback, after dropping the lock.  A linger request on
-lreq->osd_reqs holds a reference for the list, which both its callback
-and whoever empties the list (send_linger(), __linger_cancel()) drop.
-If the list is emptied in between, as when rbd re-registers its watch
-after an error just as the reply to a watch ping comes in, the
-reference is dropped twice:
+bpf_perf_event_output(), bpf_get_stackid() and bpf_get_stack() of raw
+tracepoint and tracing programs have no pt_regs, so they fill in one of
+three per-CPU slots, picked by a per-CPU nest counter:
 
-  handle_reply thread             rbd watch error / OSD reset
+  get_bpf_raw_tp_regs()   level++, use regs[level - 1]
+  put_bpf_raw_tp_regs()   level--
 
-  down_read(&osdc->lock)
-  finish_request(ping)
-    # unlinked: r_osd == NULL
-  up_read(&osdc->lock)
-                                  down_write(&osdc->lock)
-                                  __linger_cancel(lreq)
-                                    # not cancel_linger_request(),
-                                    # the ping is unlinked
-                                    list_del_init(&ping->...)
-                                    ceph_osdc_put_request(ping)
-  __complete_request(ping)
-    linger_ping_cb(ping)
-      list_del_init(&ping->...)
-      ceph_osdc_put_request(ping)
-        # freed
-    complete_all(&ping->r_completion)
-      # use-after-free
+That only works if the users of a CPU leave in the reverse order they
+came, as a task, an interrupt and an NMI do. These programs run with
+migration disabled but preemption enabled, so tasks can leave in any
+order:
 
-Drop the list's reference in the callbacks only if the request is still
-on the list, and empty the list in __linger_cancel() under lreq->lock,
-as send_linger() does, so that whichever takes the request off drops
-the reference.
+  task A              task B              task C
+  get: regs[0]
+  <preempted>
+                      get: regs[1]
+                      <preempted>
+  put: level 1
+                                          get: regs[1]
+                                          fills in its regs
+                      uses regs[1]
 
-Seen as a KASAN slab-use-after-free in complete_all(), called from
-__complete_request(), on a request freed by linger_ping_cb(), in the
-rbd-nomount workunit krbd_data_pool.sh after OSD session resets.
+B sends a sample or a stack trace with the registers of C. Profilers and
+tracers then attribute it to the wrong task, and nothing reports an
+error. The per-CPU recursion counter of a program doesn't prevent it:
+the slots are shared by all programs, so it takes two of them.
 
-Fixes: 75dbb685f4e8 ("libceph: fix potential use-after-free on linger ping and resends")
-Cc: stable@vger.kernel.org
-Signed-off-by: Alex Ainscow <aainscow@uk.ibm.com>
+Fill in a pt_regs on the stack of each helper instead, as
+bpf_get_stack_raw_tp_sleepable() already does, and remove the slots.
+Each caller then has its own registers, however it nests or gets
+preempted, and the helpers no longer fail with -EBUSY when nested more
+than three deep.
+
+The cost is sizeof(struct pt_regs) of stack per call, 168 bytes on
+x86-64, in helpers that can also run in IRQ and NMI context, and
+zeroing it on every call. It has to be zeroed: perf_fetch_caller_regs()
+sets only a few registers, and a sample with PERF_SAMPLE_REGS_INTR
+copies all of them to user space.
+
+Signed-off-by: Mike Bazov <mike.bazov@gmail.com>
 ---
-This is a standalone fix for a use-after-free in the kernel RADOS client,
-split out from a larger in-progress series (EC direct reads, pool migration
-and stretch EC) so it can be reviewed and taken on its own. It applies to
-current ceph-client/testing and is a stable candidate.
+A reproducer, x86-64: two raw tracepoint programs on sys_enter call
+bpf_perf_event_output() once each, with the program's number as data.
+Two threads make syscalls on CPU 0, and a SCHED_FIFO thread preempts
+them every 20us. The IP of a sample is regs->ip, the return address of
+the helper call. The reproducer reads that address for both programs
+from their JIT images and checks every sample.
 
-A linger request's list reference can be dropped both by its reply callback
-and by whoever empties lreq->osd_reqs (send_linger(), __linger_cancel()).
-When the list is emptied in the window between the two - e.g. rbd
-re-registering a watch after an error just as a watch-ping reply arrives -
-the reference is dropped twice and the request is freed while still in use.
-The patch makes each side drop the reference only if the request is still
-listed; the full race ladder is in the commit message. KASAN flagged it as a
-slab-use-after-free in complete_all() during the krbd_data_pool.sh workunit
-under repeated OSD session resets.
+Without this patch, 7 to 18 samples per program and 10s run have the IP
+of the other program, out of 1.4M. With it, none. bpf_get_stack() and
+bpf_get_stackid() in the same setup return an empty kernel stack
+instead: the unwinder looks for the other task's sp on the current
+stack and doesn't find it.
 
-This fix was prepared with AI assistance (Anthropic's Claude Code): the race
-was found by AI-run KASAN testing of krbd under thrashing, and the analysis
-and patch were done with AI help and reviewed by me before sending.
+5 runs of 10s, debug config, CONFIG_PREEMPT=y, preempt=full, on
+bpf-next 0fb18ce8a2e9:
+
+                                     without     with
+  bpf_perf_event_output, wrong IP    7-18        0      per program
+  bpf_get_stack, empty stacks        362-535     0
+  bpf_get_stackid, empty stacks      168-364     0
+
+The bpf_get_stackid() case with bpftrace, whose kstack calls it; @a[]
+and @b[] count the empty stacks:
+
+bpftrace -e '
+  rawtracepoint:sys_enter /comm == "dd"/ { @a[kstack(1)] = count(); }
+  rawtracepoint:sys_enter /comm == "dd"/ { @b[kstack(1)] = count(); }' &
+  taskset -c 0 dd if=/dev/zero of=/dev/null bs=1 &
+  taskset -c 0 dd if=/dev/zero of=/dev/null bs=1 &
+  taskset -c 0 chrt -f 1 perl -e 'select(undef, undef, undef, 2e-5) while 1' &
 ---
- net/ceph/osd_client.c | 20 +++++++++++++++++---
- 1 file changed, 17 insertions(+), 3 deletions(-)
+Changes in v2:
+- Use a pt_regs on the stack of each helper and remove the per-CPU
+  slots, instead of disabling preemption while a slot is in use
+  (per Andrii's suggestion).
+- Link to v1: https://lore.kernel.org/r/20261116-bpf-raw-tp-regs-preempt-v1-1-d01b6dd8573c@gmail.com
+---
+ kernel/trace/bpf_trace.c | 78 +++++++-----------------------------------------
+ 1 file changed, 11 insertions(+), 67 deletions(-)
 
-diff --git a/net/ceph/osd_client.c b/net/ceph/osd_client.c
-index 2ad6d917ee61..481cd56301c0 100644
---- a/net/ceph/osd_client.c
-+++ b/net/ceph/osd_client.c
-@@ -3053,6 +3053,7 @@ static void linger_reg_commit_complete(struct ceph_osd_linger_request *lreq,
- static void linger_commit_cb(struct ceph_osd_request *req)
- {
- 	struct ceph_osd_linger_request *lreq = req->r_priv;
-+	bool listed;
- 
- 	mutex_lock(&lreq->lock);
- 	dout("%s lreq %p linger_id %llu result %d\n", __func__, lreq,
-@@ -3078,10 +3079,13 @@ static void linger_commit_cb(struct ceph_osd_request *req)
- 		}
+diff --git a/kernel/trace/bpf_trace.c b/kernel/trace/bpf_trace.c
+index b4ff9d4e8..3f1901ae6 100644
+--- a/kernel/trace/bpf_trace.c
++++ b/kernel/trace/bpf_trace.c
+@@ -1624,51 +1624,13 @@ pe_prog_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
  	}
- 
-+	listed = !list_empty(&req->r_private_item);
- 	list_del_init(&req->r_private_item);
- 	mutex_unlock(&lreq->lock);
- 
--	ceph_osdc_put_request(req);
-+	/* unless send_linger() or __linger_cancel() took it off */
-+	if (listed)
-+		ceph_osdc_put_request(req);
- 	linger_put(lreq);
  }
  
-@@ -3101,6 +3105,7 @@ static int normalize_watch_error(int err)
- static void linger_reconnect_cb(struct ceph_osd_request *req)
+-/*
+- * bpf_raw_tp_regs are separate from bpf_pt_regs used from skb/xdp
+- * to avoid potential recursive reuse issue when/if tracepoints are added
+- * inside bpf_*_event_output, bpf_get_stackid and/or bpf_get_stack.
+- *
+- * Since raw tracepoints run despite bpf_prog_active, support concurrent usage
+- * in normal, irq, and nmi context.
+- */
+-struct bpf_raw_tp_regs {
+-	struct pt_regs regs[3];
+-};
+-static DEFINE_PER_CPU(struct bpf_raw_tp_regs, bpf_raw_tp_regs);
+-static DEFINE_PER_CPU(int, bpf_raw_tp_nest_level);
+-static struct pt_regs *get_bpf_raw_tp_regs(void)
+-{
+-	struct bpf_raw_tp_regs *tp_regs = this_cpu_ptr(&bpf_raw_tp_regs);
+-	int nest_level = this_cpu_inc_return(bpf_raw_tp_nest_level);
+-
+-	if (nest_level > ARRAY_SIZE(tp_regs->regs)) {
+-		this_cpu_dec(bpf_raw_tp_nest_level);
+-		return ERR_PTR(-EBUSY);
+-	}
+-
+-	return &tp_regs->regs[nest_level - 1];
+-}
+-
+-static void put_bpf_raw_tp_regs(void)
+-{
+-	this_cpu_dec(bpf_raw_tp_nest_level);
+-}
+-
+ BPF_CALL_5(bpf_perf_event_output_raw_tp, struct bpf_raw_tracepoint_args *, args,
+ 	   struct bpf_map *, map, u64, flags, void *, data, u64, size)
  {
- 	struct ceph_osd_linger_request *lreq = req->r_priv;
-+	bool listed;
+-	struct pt_regs *regs = get_bpf_raw_tp_regs();
+-	int ret;
+-
+-	if (IS_ERR(regs))
+-		return PTR_ERR(regs);
+-
+-	perf_fetch_caller_regs(regs);
+-	ret = ____bpf_perf_event_output(regs, map, flags, data, size);
++	struct pt_regs regs = {};
  
- 	mutex_lock(&lreq->lock);
- 	dout("%s lreq %p linger_id %llu result %d last_error %d\n", __func__,
-@@ -3112,10 +3117,13 @@ static void linger_reconnect_cb(struct ceph_osd_request *req)
- 		}
- 	}
- 
-+	listed = !list_empty(&req->r_private_item);
- 	list_del_init(&req->r_private_item);
- 	mutex_unlock(&lreq->lock);
- 
--	ceph_osdc_put_request(req);
-+	/* unless send_linger() or __linger_cancel() took it off */
-+	if (listed)
-+		ceph_osdc_put_request(req);
- 	linger_put(lreq);
+-	put_bpf_raw_tp_regs();
+-	return ret;
++	perf_fetch_caller_regs(&regs);
++	return ____bpf_perf_event_output(&regs, map, flags, data, size);
  }
  
-@@ -3182,6 +3190,7 @@ static void send_linger(struct ceph_osd_linger_request *lreq)
- static void linger_ping_cb(struct ceph_osd_request *req)
+ static const struct bpf_func_proto bpf_perf_event_output_proto_raw_tp = {
+@@ -1689,18 +1651,12 @@ extern const struct bpf_func_proto bpf_xdp_get_buff_len_trace_proto;
+ BPF_CALL_3(bpf_get_stackid_raw_tp, struct bpf_raw_tracepoint_args *, args,
+ 	   struct bpf_map *, map, u64, flags)
  {
- 	struct ceph_osd_linger_request *lreq = req->r_priv;
-+	bool listed;
+-	struct pt_regs *regs = get_bpf_raw_tp_regs();
+-	int ret;
+-
+-	if (IS_ERR(regs))
+-		return PTR_ERR(regs);
++	struct pt_regs regs = {};
  
- 	mutex_lock(&lreq->lock);
- 	dout("%s lreq %p linger_id %llu result %d ping_sent %lu last_error %d\n",
-@@ -3199,10 +3208,13 @@ static void linger_ping_cb(struct ceph_osd_request *req)
- 		     lreq->register_gen, req->r_ops[0].watch.gen);
- 	}
- 
-+	listed = !list_empty(&req->r_private_item);
- 	list_del_init(&req->r_private_item);
- 	mutex_unlock(&lreq->lock);
- 
--	ceph_osdc_put_request(req);
-+	/* unless send_linger() or __linger_cancel() took it off */
-+	if (listed)
-+		ceph_osdc_put_request(req);
- 	linger_put(lreq);
+-	perf_fetch_caller_regs(regs);
++	perf_fetch_caller_regs(&regs);
+ 	/* similar to bpf_perf_event_output_tp, but pt_regs fetched differently */
+-	ret = bpf_get_stackid((unsigned long) regs, (unsigned long) map,
+-			      flags, 0, 0);
+-	put_bpf_raw_tp_regs();
+-	return ret;
++	return bpf_get_stackid((unsigned long) &regs, (unsigned long) map,
++			       flags, 0, 0);
  }
  
-@@ -3285,6 +3297,7 @@ static void __linger_cancel(struct ceph_osd_linger_request *lreq)
+ static const struct bpf_func_proto bpf_get_stackid_proto_raw_tp = {
+@@ -1715,17 +1671,11 @@ static const struct bpf_func_proto bpf_get_stackid_proto_raw_tp = {
+ BPF_CALL_4(bpf_get_stack_raw_tp, struct bpf_raw_tracepoint_args *, args,
+ 	   void *, buf, u32, size, u64, flags)
  {
- 	struct ceph_osd_request *req;
+-	struct pt_regs *regs = get_bpf_raw_tp_regs();
+-	int ret;
+-
+-	if (IS_ERR(regs))
+-		return PTR_ERR(regs);
++	struct pt_regs regs = {};
  
-+	mutex_lock(&lreq->lock);
- 	while (!list_empty(&lreq->osd_reqs)) {
- 		req = list_first_entry(&lreq->osd_reqs,
- 				       struct ceph_osd_request, r_private_item);
-@@ -3293,6 +3306,7 @@ static void __linger_cancel(struct ceph_osd_linger_request *lreq)
- 		list_del_init(&req->r_private_item);
- 		ceph_osdc_put_request(req);
- 	}
-+	mutex_unlock(&lreq->lock);
+-	perf_fetch_caller_regs(regs);
+-	ret = bpf_get_stack((unsigned long) regs, (unsigned long) buf,
+-			    (unsigned long) size, flags, 0);
+-	put_bpf_raw_tp_regs();
+-	return ret;
++	perf_fetch_caller_regs(&regs);
++	return bpf_get_stack((unsigned long) &regs, (unsigned long) buf,
++			     (unsigned long) size, flags, 0);
+ }
  
- 	cancel_linger_map_check(lreq);
- 	unlink_linger(lreq->osd, lreq);
+ static const struct bpf_func_proto bpf_get_stack_proto_raw_tp = {
+@@ -1741,12 +1691,6 @@ static const struct bpf_func_proto bpf_get_stack_proto_raw_tp = {
+ BPF_CALL_4(bpf_get_stack_raw_tp_sleepable, struct bpf_raw_tracepoint_args *, args,
+ 	   void *, buf, u32, size, u64, flags)
+ {
+-	/*
+-	 * Don't take a per-CPU bpf_raw_tp_regs slot here: those slots are a
+-	 * LIFO nest counter and are vulnerable to slot overwrite and
+-	 * corruption across sleep.  Sleepable programs never run in
+-	 * IRQ/NMI context, so a local pt_regs is sufficient.
+-	 */
+ 	struct pt_regs regs = {};
+ 
+ 	perf_fetch_caller_regs(&regs);
 
 ---
-base-commit: 6a9830a8f414d3830c584782568d0233be969d09
-change-id: 20261118-wip-libceph-linger-uaf-1119d2b3c340
+base-commit: 8835113107b2cf75df33a71e265cdeec5d5d13e0
+change-id: 20261116-bpf-raw-tp-regs-preempt-1f7019989ab9
 
 Best regards,
---  
-Alex Ainscow <aainscow@uk.ibm.com>
+-- 
+Mike Bazov <mike.bazov@gmail.com>
 
