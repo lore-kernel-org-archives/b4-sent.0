@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:01 -0500
-Subject: [PATCH 10/60] sched/numa: restrict NUMA migration targets to
- common memory
+Date: Fri, 20 Nov 2026 13:09:02 -0500
+Subject: [PATCH 11/60] fork: check cached stack locality only on common
+ memory nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-10-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-11-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,46 +62,43 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=1044;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=1024;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=8xAnUIGjGSJir+fD8yB81C3j8AQ2SKbyFL5jvqemmlk=;
- b=ITwE6KTd6aOZpuyjJFOoe0STMIT7+0eaFIXOVs6I0ryUIxRHLbIno5UO04kFOxJT7OvBREvQE
- aMVtqVwDWbPApem/lyw9QN2C2QmxHB1p/MFJmF6ejxZlsuwRg6Ycrdi
+ bh=FFFpqhBLc8gM/DlQGaqjHX/JHYwyjj4bi22co9/B61M=;
+ b=rO3nC+tuGAUkZK+up/1r/p+QOF9uTflwwwI5VKLdkKL6Sn+VumAtsjX3b0agV4OanZqd598EQ
+ 09gpdfrfuhCCZcNNEYTDTQ0+HvWE+lv0vLlhX9nLj+fGFDMFKeEbBl2
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-should_numa_migrate_memory() refuses to migrate folios towards a
-memoryless node, since the migration can only fail; see
-commit 3fb43636876d ("sched/numa, mm: do not try to migrate memory to
-memoryless nodes").
+try_release_thread_stack_to_cache() caches a freed stack only if all of
+its pages are on the local node, unless the local node has no memory.
 
-A node outside N_MEMORY_COMMON can have CPUs but has an empty
-__GFP_THISNODE zonelist, so a NUMA hinting fault from one of its CPUs
-would isolate the folio, fail to allocate the destination and put the
-folio back.
+A CPU on a node outside N_MEMORY_COMMON gets its stacks from other
+nodes, as a CPU on a memoryless node does, so the locality check would
+keep it from ever caching a stack.
 
-Check N_MEMORY_COMMON instead.
+Skip the check when the local node has no common memory.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- kernel/sched/fair.c | 2 +-
+ kernel/fork.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
-index 0c8af1cac2d5..18db9bd25db2 100644
---- a/kernel/sched/fair.c
-+++ b/kernel/sched/fair.c
-@@ -2876,7 +2876,7 @@ bool should_numa_migrate_memory(struct task_struct *p, struct folio *folio,
- 	/*
- 	 * Cannot migrate to memoryless nodes.
+diff --git a/kernel/fork.c b/kernel/fork.c
+index 5efceb8d58a7..28c58f2765f7 100644
+--- a/kernel/fork.c
++++ b/kernel/fork.c
+@@ -254,7 +254,7 @@ static bool try_release_thread_stack_to_cache(struct vm_struct *vm_area)
  	 */
--	if (!node_state(dst_nid, N_MEMORY))
-+	if (!node_state(dst_nid, N_MEMORY_COMMON))
- 		return false;
- 
- 	/*
+ 	scoped_guard(preempt) {
+ 		nid = numa_node_id();
+-		if (node_state(nid, N_MEMORY)) {
++		if (node_state(nid, N_MEMORY_COMMON)) {
+ 			for (i = 0; i < vm_area->nr_pages; i++) {
+ 				struct page *page = vm_area->pages[i];
+ 				if (page_to_nid(page) != nid)
 
 -- 
 2.56.1
