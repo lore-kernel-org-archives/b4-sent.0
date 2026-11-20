@@ -1,11 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:14 -0500
-Subject: [PATCH 23/60] mm/damon: restrict DAMON-native folio operations to
- common memory
+Date: Fri, 20 Nov 2026 13:09:15 -0500
+Subject: [PATCH 24/60] mm/madvise: restrict reclaim advice to common memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-23-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-24-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,65 +61,73 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=1668;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1781;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=V04Qzs1fFpNTUapr14E0HnNb9Xxz8DrH55t1p7KWMZU=;
- b=RMc1L4r0dlZpqP5Q+uot3dU1rWD7OMYOabzEbwk3/bzUXH/pZdb+6OmzM/UnOgzxpD/hhyFTZ
- 4DV6BPxrgdECffvg689x8JzsMYq+qTUvinCDA2UxDQTgWjuAldpeOdl
+ bh=/55J316jzS1Wh7mQFy6gzCQoU7Eiv7k39WwzIyNwWco=;
+ b=s8Msb/DrpA/5wN3ASvagAuczkPPgA4E++0gfH202AUo7xPM8n5yupjDRsPxxFkVKilzb+fYxT
+ xtWsWL7f8LdCntXyjxSr/jqmZ85TrM6YA0zmgNaeq1zdsJM3IBJCiUJ
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-DAMON acquires folios to age them, check their accesses, and apply LRU
-operations and migration. Treat these as general-purpose MM services
-and restrict them to N_MEMORY_COMMON.
+MADV_COLD and MADV_PAGEOUT age or reclaim the folios a caller names,
+and MADV_FREE marks them lazyfree, whatever node they are on.
 
-Memory outside N_MEMORY_COMMON can still hold ordinary LRU folios, so
-it would pass the checks that keep ZONE_DEVICE memory out of these
-operations.
-
-Treat these folios like ZONE_DEVICE memory.
-
-DAMON cannot acquire such a folio, so it never ages one and virtual
-address monitoring reports it as accessed, and DAMOS cannot isolate
-one for migration.
+Restrict them to common memory: convert their ZONE_DEVICE checks,
+including the one in madvise_free_huge_pmd(), to
+folio_is_common_memory().
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/damon/ops-common.c | 5 +++--
- mm/damon/vaddr.c      | 2 +-
- 2 files changed, 4 insertions(+), 3 deletions(-)
+ mm/huge_memory.c | 2 +-
+ mm/madvise.c     | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/mm/damon/ops-common.c b/mm/damon/ops-common.c
-index 15cabc79613b..57201a0c5e3a 100644
---- a/mm/damon/ops-common.c
-+++ b/mm/damon/ops-common.c
-@@ -17,8 +17,9 @@
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index 75e8641bf9ff..cae28513b121 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -2452,7 +2452,7 @@ bool madvise_free_huge_pmd(struct mmu_gather *tlb, struct vm_area_struct *vma,
  
- static bool damon_folio_acceptable(struct folio *folio, bool monitor)
- {
--	return folio_test_lru(folio) ||
--		(monitor && folio_test_hugetlb(folio));
-+	return folio_is_common_memory(folio) &&
-+		(folio_test_lru(folio) ||
-+		 (monitor && folio_test_hugetlb(folio)));
- }
+ 	folio = pmd_folio(orig_pmd);
  
- /*
-diff --git a/mm/damon/vaddr.c b/mm/damon/vaddr.c
-index 1e65e7651cd9..338876559140 100644
---- a/mm/damon/vaddr.c
-+++ b/mm/damon/vaddr.c
-@@ -830,7 +830,7 @@ static void damos_va_migrate_dests_add(struct folio *folio,
- 	if (folio_nid(folio) == nid)
- 		return;
+-	if (folio_is_zone_device(folio))
++	if (!folio_is_common_memory(folio))
+ 		goto out;
  
--	if (!folio_isolate_lru(folio))
-+	if (!folio_is_common_memory(folio) || !folio_isolate_lru(folio))
- 		return;
- 	node_stat_add_folio(folio, NR_ISOLATED_ANON +
- 			folio_is_file_lru(folio));
+ 	/*
+diff --git a/mm/madvise.c b/mm/madvise.c
+index 2d54cb9863ea..0f1648526f15 100644
+--- a/mm/madvise.c
++++ b/mm/madvise.c
+@@ -404,7 +404,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+ 		if (!folio)
+ 			goto huge_unlock;
+ 
+-		if (folio_is_zone_device(folio))
++		if (!folio_is_common_memory(folio))
+ 			goto huge_unlock;
+ 
+ 		/* Do not interfere with other mappings of this folio */
+@@ -485,7 +485,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+ 			continue;
+ 
+ 		folio = vm_normal_folio(vma, addr, ptent);
+-		if (!folio || folio_is_zone_device(folio))
++		if (!folio || !folio_is_common_memory(folio))
+ 			continue;
+ 
+ 		/*
+@@ -715,7 +715,7 @@ static int madvise_free_pte_range(pmd_t *pmd, unsigned long addr,
+ 		}
+ 
+ 		folio = vm_normal_folio(vma, addr, ptent);
+-		if (!folio || folio_is_zone_device(folio))
++		if (!folio || !folio_is_common_memory(folio))
+ 			continue;
+ 
+ 		/*
 
 -- 
 2.56.1
