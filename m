@@ -1,10 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:08:55 -0500
-Subject: [PATCH 04/60] mm/page_alloc: build zonelists from common memory
+Date: Fri, 20 Nov 2026 13:08:56 -0500
+Subject: [PATCH 05/60] mm/mempolicy: keep interleave and tmpfs mount
+ policies on common memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-4-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-5-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,77 +62,128 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=2108;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=4176;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=hYnZoxMJ3yP49nfY0PYkTWJ6krAi0Bs8xOcweeGlZSI=;
- b=0+ENTTd09K3orEMzSi6wiR5qOFJD5dDrUYY3xdoPrBK5gY7zLwZQW1DS5dBPmSiXPxJfW0mkv
- 12JJVCclp0MC6jQLSgCNEVIyNSUniufk9x/6ovTQjJziND5MyE5ogoK
+ bh=9bmcZ7R/82zTxF1Qtk/yGZ6mpKBsveqW+bL1srzM0FI=;
+ b=rzt6Q/QHsAoNZY/tZYjwurSoHivRuidMYKiNejInoFdn5cQoQErCHIyU+a6IoDegA4QyBS/88
+ XEWmHXW061WASp1v7pEQJTOmJKF7N9mx07G1qUrotuxRGHzVHQJXqtS
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Zonelists decide which nodes an allocation can reach.
+Use N_MEMORY_COMMON for boot mempolicy calculations and their per-node
+sysfs entries (weighted interleave weights).
 
-The fallback lists hold every node in N_MEMORY, and a node's
-__GFP_THISNODE list holds its own zones whatever the node's state.
+Restrict the node set mpol_set_nodemask() applies to set_mempolicy()
+and mbind() masks to N_MEMORY_COMMON nodes.
 
-Ordinary allocations should reach only common (general purpose) memory.
+A tmpfs mpol= nodelist must name only N_MEMORY_COMMON nodes, and an
+interleave policy without a nodelist defaults to them.
 
-Build the fallback zonelists from N_MEMORY_COMMON, and __GFP_THISNODE
-zonelists only for a common node.
-
-The build_local_zonelist() refactor lets us reuse the code to build
-a local-only zonelist for nodes outside the N_MEMORY_COMMON set later.
+Later when an N_MEMORY node is omitted from the N_MEMORY_COMMON set,
+they will be stripped from mempolicy nodemasks as they're not eligible
+(similar to memoryless nodes today).
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/page_alloc.c | 23 ++++++++++++-----------
- 1 file changed, 12 insertions(+), 11 deletions(-)
+ mm/mempolicy.c | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
 
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index ddb04b72a160..0448d04e048a 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -5947,17 +5947,14 @@ int find_next_best_node_in(int node, nodemask_t *used_node_mask,
- }
+diff --git a/mm/mempolicy.c b/mm/mempolicy.c
+index 6f800fb961ae..806577e1d48b 100644
+--- a/mm/mempolicy.c
++++ b/mm/mempolicy.c
+@@ -213,10 +213,10 @@ static void reduce_interleave_weights(unsigned int *bw, u8 *new_iw)
+ 	int nid;
  
+ 	/*
+-	 * N_MEMORY can change while wi_state_lock is held. Remember the
+-	 * nodes contributing to sum_bw so all passes use the same set.
++	 * N_MEMORY_COMMON can change while wi_state_lock is held. Remember
++	 * the nodes contributing to sum_bw so all passes use the same set.
+ 	 */
+-	for_each_node_state(nid, N_MEMORY) {
++	for_each_node_state(nid, N_MEMORY_COMMON) {
+ 		node_set(nid, nodes);
+ 		sum_bw += bw[nid];
+ 	}
+@@ -439,9 +439,9 @@ static int mpol_set_nodemask(struct mempolicy *pol,
+ 	if (!pol || pol->mode == MPOL_LOCAL)
+ 		return 0;
  
--/*
-- * Build __GFP_THISNODE zonelists
-- */
--static void build_thisnode_zonelists(pg_data_t *pgdat)
-+/* Build a local-only zonelist when this node is eligible. */
-+static void build_local_zonelist(pg_data_t *pgdat, int zlidx, bool eligible)
- {
--	struct zoneref *zonerefs;
--	int nr_zones;
-+	struct zoneref *zonerefs =
-+		pgdat->node_zonelists[zlidx]._zonerefs;
+-	/* Check N_MEMORY */
++	/* Check N_MEMORY_COMMON */
+ 	nodes_and(nsc->mask1,
+-		  cpuset_current_mems_allowed, node_states[N_MEMORY]);
++		  cpuset_current_mems_allowed, node_states[N_MEMORY_COMMON]);
  
--	zonerefs = pgdat->node_zonelists[ZONELIST_NOFALLBACK]._zonerefs;
--	nr_zones = build_zonerefs_node(pgdat, zonerefs);
--	zonerefs += nr_zones;
-+	if (eligible)
-+		zonerefs += build_zonerefs_node(pgdat, zonerefs);
- 	zonerefs->zone = NULL;
- 	zonerefs->zone_idx = 0;
- }
-@@ -6001,8 +5998,12 @@ static void build_node_zonelist(pg_data_t *pgdat, const nodemask_t *candidates,
+ 	VM_BUG_ON(!nodes);
  
- static void build_zonelists(pg_data_t *pgdat)
- {
--	build_node_zonelist(pgdat, &node_states[N_MEMORY], ZONELIST_FALLBACK);
--	build_thisnode_zonelists(pgdat);
-+	int nid = pgdat->node_id;
-+
-+	build_node_zonelist(pgdat, &node_states[N_MEMORY_COMMON],
-+			    ZONELIST_FALLBACK);
-+	build_local_zonelist(pgdat, ZONELIST_NOFALLBACK,
-+			     node_state(nid, N_MEMORY_COMMON));
- }
+@@ -2104,7 +2104,7 @@ bool apply_policy_zone(struct mempolicy *policy, enum zone_type zone)
+ 	 * if policy->nodes has movable memory only,
+ 	 * we apply policy when gfp_zone(gfp) = ZONE_MOVABLE only.
+ 	 *
+-	 * policy->nodes is intersect with node_states[N_MEMORY].
++	 * policy->nodes is intersect with node_states[N_MEMORY_COMMON].
+ 	 * so if the following test fails, it implies
+ 	 * policy->nodes has movable memory only.
+ 	 */
+@@ -3398,11 +3398,11 @@ void __init numa_policy_init(void)
  
- #ifdef CONFIG_HAVE_MEMORYLESS_NODES
+ 	/*
+ 	 * Set interleaving policy for system init. Interleaving is only
+-	 * enabled across suitably sized nodes (default is >= 16MB), or
+-	 * fall back to the largest node if they're all smaller.
++	 * enabled across suitably sized common memory nodes (default is
++	 * >= 16MB), or fall back to the largest node if they're all smaller.
+ 	 */
+ 	nodes_clear(interleave_nodes);
+-	for_each_node_state(nid, N_MEMORY) {
++	for_each_node_state(nid, N_MEMORY_COMMON) {
+ 		unsigned long total_pages = node_present_pages(nid);
+ 
+ 		/* Preserve the largest node */
+@@ -3474,7 +3474,7 @@ int mpol_parse_str(char *str, struct mempolicy **mpol)
+ 		*nodelist++ = '\0';
+ 		if (nodelist_parse(nodelist, nodes))
+ 			goto out;
+-		if (!nodes_subset(nodes, node_states[N_MEMORY]))
++		if (!nodes_subset(nodes, node_states[N_MEMORY_COMMON]))
+ 			goto out;
+ 	} else
+ 		nodes_clear(nodes);
+@@ -3506,7 +3506,7 @@ int mpol_parse_str(char *str, struct mempolicy **mpol)
+ 		 * Default to online nodes with memory if no nodelist
+ 		 */
+ 		if (!nodelist)
+-			nodes = node_states[N_MEMORY];
++			nodes = node_states[N_MEMORY_COMMON];
+ 		break;
+ 	case MPOL_LOCAL:
+ 		/*
+@@ -3901,6 +3901,9 @@ static int wi_node_notifier(struct notifier_block *nb,
+ 
+ 	switch (action) {
+ 	case NODE_ADDED_FIRST_MEMORY:
++		/* Weighted interleave spans only common memory. */
++		if (!node_state(nid, N_MEMORY_COMMON))
++			break;
+ 		err = sysfs_wi_node_add(nid);
+ 		if (err)
+ 			pr_err("failed to add sysfs for node%d during hotplug: %d\n",
+@@ -3932,10 +3935,7 @@ static int __init add_weighted_interleave_group(struct kobject *mempolicy_kobj)
+ 	if (err)
+ 		goto err_put_kobj;
+ 
+-	for_each_online_node(nid) {
+-		if (!node_state(nid, N_MEMORY))
+-			continue;
+-
++	for_each_node_state(nid, N_MEMORY_COMMON) {
+ 		err = sysfs_wi_node_add(nid);
+ 		if (err) {
+ 			pr_err("failed to add sysfs for node%d during init: %d\n",
 
 -- 
 2.56.1
