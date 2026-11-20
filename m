@@ -1,90 +1,85 @@
-From: Gleb Pesin <dormancygrace@gmail.com>
-Date: Fri, 20 Nov 2026 19:37:18 +0000
-Subject: [PATCH] crypto: eip93 - return request validation errors
- synchronously
+From: Joseph Telaak <joseph@telaak.dev>
+Subject: [PATCH v3 0/3] usb: dwc2: Add Siflower SF19A2890 support
+Date: Fri, 20 Nov 2026 15:31:05 -0500
+Message-Id: <20261120-sf19a2890-dwc2-v3-0-de377bd408a0@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-eip93-sync-errors-v1-1-1a83ae607181@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ6CQAxA4auQrmkyHYP8XIW40KFIWQykBaOZc
- HcHXX6L9xIYq7BBVyRQfonJEjOoLCBM9/hklCEbvPNXIu+QZW0vaJ8YkFUXNRyH2rnQtDVVBLl
- blUd5/5797W/bHzOH7RzBcXwBVOfKRXUAAAA=
-X-Change-ID: 20261120-eip93-sync-errors-fd700c897151
-To: Christian Marangi <ansuelsmth@gmail.com>, 
- Antoine Tenart <atenart@kernel.org>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795203472; l=2301;
- i=dormancygrace@gmail.com; s=eip93-20261120; h=from:subject:message-id;
- bh=+TERzP8CffsbpcQ4hBerOf52PVosyn07V8S4OEMiU+s=;
- b=PZQlB1FHao03xhRgyUZoCNx9qVq7bZcoCSRfK8UXjiMndmeNRgXSkKxLZPA4fO2R5XtMKl+Oi
- Pej7t3wOQrnB1J95q7sjZIt+4R0fumYtk6gHihhEiNW83n+1qkOiHRU
-X-Developer-Key: i=dormancygrace@gmail.com; a=ed25519;
- pk=XHpoYk1e6byKypiKa/3bDHJ2i4leWLeZDDjx4gJVsmc=
-X-Endpoint-Received: by B4 Relay for dormancygrace@gmail.com/eip93-20261120 with auth_id=1587
+X-B4-Tracking: v=1; b=H4sIAAmuAGsC/2WNzQ6CMBAGX4X0bA1dKKWefA/jobSLVA2YFquG8
+ O62GBN/bjvJN7MT8egserLJJuIwWG+HPkKxyojuVH9Aak1kAjlUjOVAfcukglrm1Nw00FpwUbR
+ CY4OGROnisLX3Jbjbv9hfmyPqMVXSorN+HNxj+RhY2r3j5W88MBovyWUhOEKlmu2IZ6VOa4OBp
+ HqAD5+xPx+irxsljSlVCbz68ud5fgJVnBlR/wAAAA==
+X-Change-ID: 20261102-sf19a2890-dwc2-87573f7cebed
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thinh Nguyen <Thinh.Nguyen@synopsys.com>
+Cc: Chuanhong Guo <gch981213@gmail.com>, linux-mips@vger.kernel.org, 
+ linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>, 
+ Joseph Telaak <joseph@telaak.dev>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795206676; l=2375;
+ i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
+ bh=5Fbe18oY4Op0Orls0kCxG//pb0Q6XyFf2Ud9BgK1RGo=;
+ b=eMv2f/LlgjHl/vhxaWhaeobxe+GjTNRBWd504efnupfITibJXJTKjn/mtN0c3G47ZTamNkGLK
+ TD3TVrSCQI8BCFt+VvFCiJmK3oxsApJXu7P3kl1/Vo4phe+sathJEAE
+X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
+ pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
+X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The skcipher and AEAD paths validate requests before submitting them
-to the hardware. On validation failure they invoke the completion
-callback and return the same error. Callers handle that return value
-as a synchronous failure and can complete the request a second time.
+The Siflower SF19A2890, a MIPS SoC for home routers, has a DWC OTG 3.30a.
+This series adds its compatible and parameters, and handles an
+interrupt it raises without flagging it: with battery charger support
+enabled, the core sets MultValIpChng in GOTGINT but not OTGINT in GINTSTS,
+so the interrupt is never cleared. Chuanhong saw the line disabled with
+"nobody cares"; on the GL-SFT1200 the system stalls instead (below).
 
-Return the validation error directly in both paths. Keep completion
-callbacks in the hardware result handlers.
+The two driver patches are Chuanhong Guo's, from OpenWrt and his
+SF19A2890 branch. The OTG one handled GOTGINT on every interrupt for
+every core; here it does so only for cores that set the new
+otg_int_unflagged parameter, which only the SF19A2890 does.
 
-Codex (gpt-6.2-sol) assisted with comparing the two paths, preparing the
-change and writing the changelog. The corresponding OpenWrt 6.18.64
-driver object was cross-compiled on MIPS.
-
-Fixes: 9739f5f93b78 ("crypto: eip93 - Add Inside Secure SafeXcel EIP-93 crypto engine support")
-Reported-by: Herbert Xu <herbert@gondor.apana.org.au>
-Closes: https://lore.kernel.org/linux-crypto/aXxmIuU9PKJiDs7n@gondor.apana.org.au/
-Signed-off-by: Gleb Pesin <dormancygrace@gmail.com>
----
- drivers/crypto/inside-secure/eip93/eip93-aead.c   | 4 +---
- drivers/crypto/inside-secure/eip93/eip93-cipher.c | 4 +---
- 2 files changed, 2 insertions(+), 6 deletions(-)
-
-diff --git a/drivers/crypto/inside-secure/eip93/eip93-aead.c b/drivers/crypto/inside-secure/eip93/eip93-aead.c
-index 0b7a899b1..12134b6aa 100644
---- a/drivers/crypto/inside-secure/eip93/eip93-aead.c
-+++ b/drivers/crypto/inside-secure/eip93/eip93-aead.c
-@@ -47,10 +47,8 @@ static int eip93_aead_send_req(struct crypto_async_request *async)
- 	int err;
- 
- 	err = check_valid_request(rctx);
--	if (err) {
--		aead_request_complete(req, err);
-+	if (err)
- 		return err;
--	}
- 
- 	return eip93_send_req(async, req->iv, rctx);
- }
-diff --git a/drivers/crypto/inside-secure/eip93/eip93-cipher.c b/drivers/crypto/inside-secure/eip93/eip93-cipher.c
-index 4dd7ab750..7b6d510f4 100644
---- a/drivers/crypto/inside-secure/eip93/eip93-cipher.c
-+++ b/drivers/crypto/inside-secure/eip93/eip93-cipher.c
-@@ -38,10 +38,8 @@ static int eip93_skcipher_send_req(struct crypto_async_request *async)
- 
- 	err = check_valid_request(rctx);
- 
--	if (err) {
--		skcipher_request_complete(req, err);
-+	if (err)
- 		return err;
--	}
- 
- 	return eip93_send_req(async, req->iv, rctx);
- }
+Tested on a GL.iNet GL-SFT1200 with the USB PHY driver: a USB stick
+enumerates at 480 Mb/s, reads at 5.6 MB/s and comes back cleanly after
+two replugs. Without patch 3, a couple of replugs leave the system
+stuck, the console repeating its last message with the same timestamp
+until a power cycle; no "nobody cares" message appears first.
 
 ---
-base-commit: 26ca5f34841f0a86d0883664a1c13be89a01d351
-change-id: 20261120-eip93-sync-errors-fd700c897151
+Changes in v3:
+- Send to Thinh Nguyen, who took over dwc2 in commit 688bee95b423
+  ("MAINTAINERS: take over dwc2 maintainership") after v7.4-rc1 (Greg).
+- No code changes.
+- Link to v2: https://patch.msgid.link/20261111-sf19a2890-dwc2-v2-0-cba9dd4a4256@telaak.dev
+
+Changes in v2:
+- Write my notes on Chuanhong's patches as lists, with Co-developed-by
+  on the OTG interrupt patch.
+- Sort the new compatible in the binding and in the match table.
+- Describe the OTG interrupt fix as it is now in its commit message.
+- Patch 1: add Conor's Ack.
+- Link to v1: https://patch.msgid.link/20261104-sf19a2890-dwc2-v1-0-d959375e26ab@telaak.dev
+
+---
+Chuanhong Guo (2):
+      usb: dwc2: Add Siflower SF19A2890 support
+      usb: dwc2: Handle OTG interrupts that GINTSTS does not flag
+
+Joseph Telaak (1):
+      dt-bindings: usb: dwc2: Add Siflower SF19A2890
+
+ Documentation/devicetree/bindings/usb/dwc2.yaml |  1 +
+ drivers/usb/dwc2/core.h                         |  6 ++++++
+ drivers/usb/dwc2/core_intr.c                    |  5 ++++-
+ drivers/usb/dwc2/params.c                       | 11 +++++++++++
+ 4 files changed, 22 insertions(+), 1 deletion(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261102-sf19a2890-dwc2-87573f7cebed
 
 Best regards,
 --  
-Gleb Pesin <dormancygrace@gmail.com>
+Joseph Telaak <joseph@telaak.dev>
 
