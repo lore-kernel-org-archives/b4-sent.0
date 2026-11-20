@@ -1,11 +1,11 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Thu, 19 Nov 2026 19:07:27 -0500
-Subject: [PATCH v3 05/11] leds: rgb: ktd202x: Keep the unlit colors of a
- blinking LED off
+Date: Thu, 19 Nov 2026 19:07:28 -0500
+Subject: [PATCH v3 06/11] dt-bindings: leds: kinetic,ktd202x: Add Etek
+ ET6326
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-ktd202x-et6326-v3-5-98b836b1cddc@telaak.dev>
+Message-Id: <20261119-ktd202x-et6326-v3-6-98b836b1cddc@telaak.dev>
 References: <20261119-ktd202x-et6326-v3-0-98b836b1cddc@telaak.dev>
 In-Reply-To: <20261119-ktd202x-et6326-v3-0-98b836b1cddc@telaak.dev>
 To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
@@ -18,59 +18,62 @@ To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>,
  Randy Dunlap <rdunlap@infradead.org>
 Cc: linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-hardening@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-doc@vger.kernel.org, stable@vger.kernel.org, 
+ linux-doc@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
  Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795133254; l=1614;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795133254; l=1708;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=N0qjLyVSYeHCoIVzs3o90qtyZk6KHKqoW0ZHApWnTGE=;
- b=uJsMQ/n6ajRaxGbd7zm/7rUpM/ehN02TU8AxegrS22XOOrS9CPH1TX2cxKTdPXha2unWWxHbw
- ZAUHwZgHvhXBpOvd7qYZdlDHjPYTytHFYM+Dps4v3ZJjVcA2JQo/Woy
+ bh=a87pmZOYciXu8wPOBt9hfD/vnlp8BaUGzhCLXazMciY=;
+ b=HP4JIq6MUbGx3fHK3VijWHbKvet9/Oah7AjmTiwjM/6JTsz/6AvlyMf9GPB5iSVaFeeKbAA/0
+ gKhSEZOLzwwBR9oNXl0uNZqYl+snfGRdpz4kpFJ79APxGRVTiFwJacP
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-blink_set() switches every channel of a multicolor LED to the flash
-timer, or to always on when delay_off is 0, including the colors whose
-brightness is 0. Their current register still holds the last brightness
-they had, or the 10 mA default, so for example a red blink set with a
-multi_intensity of "255 0 0" also blinks green and blue.
+The Etek ET6326 is a 3 channel LED driver with the register map, the I2C
+address and the current steps of the KTD2026. It only differs in the
+flash period, which is (n + 1) * 128 ms instead of 256 ms + n * 128 ms
+for a period setting of n, so a KTD2026 driver runs it with blink
+periods that are 128 ms off. Document it with the KTD2026 as fallback.
 
-Leave the channels of the colors with no brightness off, as
-brightness_set() does. A single color LED now passes its brightness too.
+The ET6326 drives the status LED of the GL.iNet GL-SFT1200 (Opal).
 
-Fixes: 0ebdb7210943 ("leds: Add ktd202x driver")
-Cc: stable@vger.kernel.org
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
- drivers/leds/rgb/leds-ktd202x.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ .../devicetree/bindings/leds/kinetic,ktd202x.yaml         | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/leds/rgb/leds-ktd202x.c b/drivers/leds/rgb/leds-ktd202x.c
-index bfc05f5f02d6..ac7ed7552fb2 100644
---- a/drivers/leds/rgb/leds-ktd202x.c
-+++ b/drivers/leds/rgb/leds-ktd202x.c
-@@ -285,6 +285,11 @@ static int ktd202x_blink_set(struct ktd202x_led *led, unsigned long *delay_on,
- 		int channel = subleds[i].channel;
+diff --git a/Documentation/devicetree/bindings/leds/kinetic,ktd202x.yaml b/Documentation/devicetree/bindings/leds/kinetic,ktd202x.yaml
+index 832c030a5acf..b13c71721853 100644
+--- a/Documentation/devicetree/bindings/leds/kinetic,ktd202x.yaml
++++ b/Documentation/devicetree/bindings/leds/kinetic,ktd202x.yaml
+@@ -15,11 +15,20 @@ description: |
+   The data sheet can be found at:
+     https://www.kinet-ic.com/uploads/KTD2026-7-04h.pdf
  
- 		ctrl_mask |= KTD202X_CHANNEL_CTRL_MASK(channel);
++  The Etek ET6326 is a 3 channel variant that is register compatible with
++  the KTD2026, but encodes the flash period differently. Its data sheet can
++  be found at:
++    https://www.etekmicro.com/wp-content/uploads/datasheets/ET6326_datasheet.pdf
 +
-+		/* A color with no brightness stays off */
-+		if (!subleds[i].brightness)
-+			continue;
-+
- 		ctrl_on |= KTD202X_CHANNEL_CTRL_ON(channel);
- 		ctrl_pwm1 |= KTD202X_CHANNEL_CTRL_PWM1(channel);
- 	}
-@@ -360,6 +365,7 @@ static int ktd202x_blink_single_set(struct led_classdev *cdev,
- 	if (!*delay_on)
- 		return ktd202x_brightness_single_set(cdev, LED_OFF);
+ properties:
+   compatible:
+-    enum:
+-      - kinetic,ktd2026
+-      - kinetic,ktd2027
++    oneOf:
++      - enum:
++          - kinetic,ktd2026
++          - kinetic,ktd2027
++      - items:
++          - const: etekmicro,et6326
++          - const: kinetic,ktd2026
  
-+	info.brightness = cdev->brightness;
- 	info.channel = led->index;
- 
- 	return ktd202x_blink_set(led, delay_on, delay_off, &info, 1);
+   reg:
+     maxItems: 1
 
 -- 
 Git-155)
