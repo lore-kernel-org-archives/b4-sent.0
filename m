@@ -1,11 +1,11 @@
 From: Mike Bazov <mike.bazov@gmail.com>
-Date: Fri, 20 Nov 2026 12:59:11 +0200
-Subject: [PATCH bpf-next v3 1/3] bpf: Don't WARN when
- bpf_perf_event_output() nests too deep
+Date: Fri, 20 Nov 2026 12:59:12 +0200
+Subject: [PATCH bpf-next v3 2/3] bpf: Limit nesting of mmap_read_trylock()
+ in BPF helpers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-bpf-raw-tp-regs-preempt-v3-1-ec109009a5d2@gmail.com>
+Message-Id: <20261120-bpf-raw-tp-regs-preempt-v3-2-ec109009a5d2@gmail.com>
 References: <20261120-bpf-raw-tp-regs-preempt-v3-0-ec109009a5d2@gmail.com>
 In-Reply-To: <20261120-bpf-raw-tp-regs-preempt-v3-0-ec109009a5d2@gmail.com>
 To: Song Liu <song@kernel.org>, Jiri Olsa <jolsa@kernel.org>, 
@@ -22,45 +22,100 @@ To: Song Liu <song@kernel.org>, Jiri Olsa <jolsa@kernel.org>,
 Cc: bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-trace-kernel@vger.kernel.org, Mike Bazov <mike.bazov@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795172363; l=1271;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795172363; l=3076;
  i=mike.bazov@gmail.com; s=gmail-20261116; h=from:subject:message-id;
- bh=OpB06pONNtl7It9Z2DjXFTZ1zpUQ2HlWqwhm6FIcX8I=;
- b=s9wlWDij4BjhO5fW4WXa1A/ivy4hTpJ6a65d6bJNrGAR/Q69mdw7oBUzAmIcIm5747HDAYOE9
- X3RyHFm/97oAzMnDMyEzE3TdCbafBYCFz2PhWnfpq9/Otqpjg8fGT8c
+ bh=HKoapPVt+y68Tmqmk8BOQ4lm6ZdE9zNq151YdINJiy8=;
+ b=FBHB3WVLGm2+Z5TJ4RNHlFPXH/ljQYiLTyzi0rFT/3iP4qs9oFRUjuDAZoYdstzetwlw4TCcE
+ Ih8rA23e/cUAEfK+WqczgpuX+Y13GbFzCYkEF31CIzhf2enWOS3Rv3k
 X-Developer-Key: i=mike.bazov@gmail.com; a=ed25519;
  pk=Rr9fagn0pNA+bs8tgc6DXZpRAhl/maU6BeqkttIR7DA=
 X-Endpoint-Received: by B4 Relay for mike.bazov@gmail.com/gmail-20261116 with auth_id=1544
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-bpf_perf_event_output() takes one of three per-CPU perf_sample_data
-slots per nesting level, and fails with -EBUSY and a WARN_ON_ONCE() when
-it is entered a fourth time on a CPU. Programs get there without any
-bug: a kprobe program calls it, and fentry programs on
-perf_event_output() call it again from inside. Each program's own
-recursion check lets it in once, so three of them reach the fourth
-level. With panic_on_warn, that takes the machine down.
+bpf_get_stack() and bpf_get_stackid() with BPF_F_USER_BUILD_ID, and
+bpf_find_vma(), take mmap_read_trylock() on the current mm. That fires
+the mmap_lock tracepoints, so a program on one of them that calls these
+helpers runs the tracepoint again from inside itself:
 
-Keep the -EBUSY and drop the warning, as commit 3880cdbed1c4 ("bpf: Fix
-WARN() in get_bpf_raw_tp_regs") did for the raw tracepoint regs slots.
+  prog 1 on mmap_lock_acquire_returned
+    bpf_get_stack(BPF_F_USER_STACK | BPF_F_USER_BUILD_ID)
+      mmap_read_trylock()
+        prog 2 on mmap_lock_acquire_returned
+          bpf_get_stack(...)
+            mmap_read_trylock()
+              ...
 
+The recursion check of each program only stops it from running inside
+itself, so this nests as deep as there are programs attached, and each
+level runs all programs that aren't on the stack yet: the work per
+tracepoint hit grows with the factorial of the number of programs. With
+irqs disabled, the per-CPU irq_work already allows only one level; with
+irqs enabled nothing limits it.
+
+Count the levels per CPU with irqs enabled too and fail with -EBUSY past
+three, the same depth as the other per-CPU nesting limits of BPF
+tracing. The helpers then fall back as they do when the trylock fails:
+bpf_get_stack() and bpf_get_stackid() return IPs instead of build IDs,
+and bpf_find_vma() returns -EBUSY.
+
+The counter is per CPU, and programs with irqs enabled can be
+preempted, so a preempted holder counts against the other tasks on its
+CPU. They can hit the limit early and get the fallback; they never get
+wrong data.
+
+Suggested-by: Alexei Starovoitov <ast@kernel.org>
 Signed-off-by: Mike Bazov <mike.bazov@gmail.com>
 ---
- kernel/trace/bpf_trace.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ kernel/bpf/mmap_unlock_work.h | 16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
 
-diff --git a/kernel/trace/bpf_trace.c b/kernel/trace/bpf_trace.c
-index b4ff9d4e8..8910d5d05 100644
---- a/kernel/trace/bpf_trace.c
-+++ b/kernel/trace/bpf_trace.c
-@@ -702,7 +702,7 @@ BPF_CALL_5(bpf_perf_event_output, struct pt_regs *, regs, struct bpf_map *, map,
- 	sds = this_cpu_ptr(&bpf_trace_sds);
- 	nest_level = this_cpu_inc_return(bpf_trace_nest_level);
+diff --git a/kernel/bpf/mmap_unlock_work.h b/kernel/bpf/mmap_unlock_work.h
+index 1834db20b..02af564e6 100644
+--- a/kernel/bpf/mmap_unlock_work.h
++++ b/kernel/bpf/mmap_unlock_work.h
+@@ -13,6 +13,7 @@ struct mmap_unlock_irq_work {
+ 	struct irq_work irq_work;
+ 	struct mm_struct *mm;
+ 	atomic_t active;
++	int nest_level;
+ };
  
--	if (WARN_ON_ONCE(nest_level > ARRAY_SIZE(sds->sds))) {
-+	if (nest_level > ARRAY_SIZE(sds->sds)) {
- 		err = -EBUSY;
- 		goto out;
- 	}
+ DECLARE_PER_CPU(struct mmap_unlock_irq_work, mmap_unlock_work);
+@@ -28,8 +29,16 @@ static inline struct mmap_unlock_irq_work *bpf_mmap_unlock_guard_get(void)
+ {
+ 	struct mmap_unlock_irq_work *work;
+ 
+-	if (!irqs_disabled())
+-		return NULL;
++	if (!irqs_disabled()) {
++		/*
++		 * mmap_read_trylock() fires the mmap_lock tracepoints, and
++		 * programs on them can get here again.
++		 */
++		if (this_cpu_inc_return(mmap_unlock_work.nest_level) <= 3)
++			return NULL;
++		this_cpu_dec(mmap_unlock_work.nest_level);
++		return ERR_PTR(-EBUSY);
++	}
+ 
+ 	/*
+ 	 * PREEMPT_RT does not allow to trylock mmap sem in interrupt
+@@ -51,12 +60,15 @@ bpf_mmap_unlock_guard_put(struct mmap_unlock_irq_work *work)
+ {
+ 	if (work)
+ 		atomic_set_release(&work->active, 0);
++	else
++		this_cpu_dec(mmap_unlock_work.nest_level);
+ }
+ 
+ static inline void bpf_mmap_unlock_mm(struct mmap_unlock_irq_work *work, struct mm_struct *mm)
+ {
+ 	if (!work) {
+ 		mmap_read_unlock(mm);
++		bpf_mmap_unlock_guard_put(NULL);
+ 	} else {
+ 		work->mm = mm;
+ 
 
 -- 
 2.43.0
