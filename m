@@ -1,11 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:39 -0500
-Subject: [PATCH 48/60] mm/madvise: restrict reclaim advice to
- reclaim-capable memory
+Date: Fri, 20 Nov 2026 13:09:40 -0500
+Subject: [PATCH 49/60] mm/vmscan: reclaim private nodes for memcg
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-48-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-49-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,95 +61,131 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=2519;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=4186;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=/7n8Y7BJF+n1w6zg34qEl4WSAk5zs5lFqc/saob4yDc=;
- b=x5v1UZjZD7NavKPzy3gZFJ4vk2PBUASf1WJMKcO8I8rh0UDg9n2rwb6VVYJJEjpdeaXC+C4/N
- 8FX/kkSJcmcBGbIA1sklk5dsK0Xt7WZPXHmG0HW7LdpXEcbdkmZLRkY
+ bh=gf0+A4YMX7aNzEjLzoppxY9C0nz/hDCzkhh7ctvqKwQ=;
+ b=PXI/X13XAoa7r+jmzPre0N2z+VrJATpuAV7CpwhBQAVTEngszA2E6bmutkAMGbnv2eUsyGVrn
+ +kF2GDAg++lDYHrIPmvec6YTNf5pZ5MjEHc8/slSYzQiq7FbbeI35Jq
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MADV_COLD, MADV_PAGEOUT and MADV_FREE reclaim or age folios directly,
-bypassing the node filter reclaim uses, so they act only on common
-memory.
+Memcg reclaim does not serve one allocation, so it should cover every
+node that permits reclaim. It walks the current node's fallback
+zonelist, which holds no private node, so a private node that permits
+reclaim is never scanned for a cgroup over its limit.
 
-Add folio_allows_reclaim(), which requires the folio's node to permit
-reclaim, and use it instead for those advices, including their
-huge-page paths.
+After the zonelist, visit the nodes that permit reclaim and that the
+zonelist did not cover, and give them the same refault snapshot and
+congestion reset. The zonelist keeps setting the order, which matters
+because memcg reclaim stops once it has freed enough.
 
-No behavior change to common nodes.
+Direct reclaim for an allocation still walks only that allocation's
+zonelist. A private allocation's zonelist covers its own node, and
+reclaiming private memory cannot satisfy a common allocation.
+
+Without private nodes the zonelist covers every node that permits
+reclaim, so behavior is unchanged.
+
+Another way to do this would be to implement a reclaim zonelist that
+only reclaim uses, but this implementation does not carry the static
+per-node size overhead that adding another zonelist does.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/huge_memory.c | 2 +-
- mm/internal.h    | 7 +++++++
- mm/madvise.c     | 6 +++---
- 3 files changed, 11 insertions(+), 4 deletions(-)
+ mm/vmscan.c | 43 ++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 42 insertions(+), 1 deletion(-)
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index cae28513b121..00c72b91ed30 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -2452,7 +2452,7 @@ bool madvise_free_huge_pmd(struct mmu_gather *tlb, struct vm_area_struct *vma,
- 
- 	folio = pmd_folio(orig_pmd);
- 
--	if (!folio_is_common_memory(folio))
-+	if (!folio_allows_reclaim(folio))
- 		goto out;
- 
- 	/*
-diff --git a/mm/internal.h b/mm/internal.h
-index 9c162ded5305..fa1ae221564e 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -80,6 +80,13 @@ static inline bool page_is_common_memory(struct page *page)
- 	return folio_is_common_memory(page_folio(page));
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 03d0919d11be..49ec85ed00e0 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -6636,6 +6636,21 @@ static void consider_reclaim_throttle(pg_data_t *pgdat, struct scan_control *sc)
+ 		reclaim_throttle(pgdat, VMSCAN_THROTTLE_NOPROGRESS);
  }
  
-+/* May reclaim act on this folio's memory? */
-+static inline bool folio_allows_reclaim(struct folio *folio)
++/* Whether shrink_zones() reaches @nid through @zonelist. */
++static bool zonelist_reaches_node(struct zonelist *zonelist, int nid,
++				  struct scan_control *sc)
 +{
-+	return !folio_is_zone_device(folio) &&
-+	       node_state(folio_nid(folio), N_MEMORY_RECLAIM);
++	struct zoneref *z;
++	struct zone *zone;
++
++	for_each_zone_zonelist_nodemask(zone, z, zonelist, sc->reclaim_idx,
++					sc->nodemask) {
++		if (zone_to_nid(zone) == nid)
++			return true;
++	}
++	return false;
 +}
 +
- /* mm/vmscan.c */
- unsigned long zone_reclaimable_pages(struct zone *zone);
- unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
-diff --git a/mm/madvise.c b/mm/madvise.c
-index 0f1648526f15..a5fa3b948a20 100644
---- a/mm/madvise.c
-+++ b/mm/madvise.c
-@@ -404,7 +404,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 		if (!folio)
- 			goto huge_unlock;
+ /*
+  * This is the direct reclaim path, for page-allocating processes.  We only
+  * try to reclaim pages from zones which will satisfy the caller's allocation
+@@ -6651,6 +6666,7 @@ static void shrink_zones(struct zonelist *zonelist, struct scan_control *sc)
+ 	gfp_t orig_mask;
+ 	pg_data_t *last_pgdat = NULL;
+ 	pg_data_t *first_pgdat = NULL;
++	int nid;
  
--		if (!folio_is_common_memory(folio))
-+		if (!folio_allows_reclaim(folio))
- 			goto huge_unlock;
+ 	/*
+ 	 * If the number of buffer_heads in the machine exceeds the maximum
+@@ -6706,6 +6722,14 @@ static void shrink_zones(struct zonelist *zonelist, struct scan_control *sc)
+ 		shrink_node(zone->zone_pgdat, sc);
+ 	}
  
- 		/* Do not interfere with other mappings of this folio */
-@@ -485,7 +485,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 			continue;
++	/* A cgroup's memory may be on nodes that are not on the zonelist. */
++	if (cgroup_reclaim(sc)) {
++		for_each_node_state(nid, N_MEMORY_RECLAIM) {
++			if (!zonelist_reaches_node(zonelist, nid, sc))
++				shrink_node(NODE_DATA(nid), sc);
++		}
++	}
++
+ 	if (first_pgdat)
+ 		consider_reclaim_throttle(first_pgdat, sc);
  
- 		folio = vm_normal_folio(vma, addr, ptent);
--		if (!folio || !folio_is_common_memory(folio))
-+		if (!folio || !folio_allows_reclaim(folio))
- 			continue;
+@@ -6754,6 +6778,7 @@ static unsigned long do_try_to_free_pages(struct zonelist *zonelist,
+ 	pg_data_t *last_pgdat;
+ 	struct zoneref *z;
+ 	struct zone *zone;
++	int nid;
+ retry:
+ 	delayacct_freepages_start();
  
- 		/*
-@@ -715,7 +715,7 @@ static int madvise_free_pte_range(pmd_t *pmd, unsigned long addr,
+@@ -6792,6 +6817,21 @@ static unsigned long do_try_to_free_pages(struct zonelist *zonelist,
  		}
+ 	}
  
- 		folio = vm_normal_folio(vma, addr, ptent);
--		if (!folio || !folio_is_common_memory(folio))
-+		if (!folio || !folio_allows_reclaim(folio))
- 			continue;
++	/*
++	 * Also cover the nodes shrink_zones() reclaimed beyond the zonelist.
++	 * Finishing a zonelist node again is harmless.
++	 */
++	if (cgroup_reclaim(sc)) {
++		for_each_node_state(nid, N_MEMORY_RECLAIM) {
++			struct lruvec *lruvec;
++
++			snapshot_refaults(sc->target_mem_cgroup, NODE_DATA(nid));
++			lruvec = mem_cgroup_lruvec(sc->target_mem_cgroup,
++						   NODE_DATA(nid));
++			clear_bit(LRUVEC_CGROUP_CONGESTED, &lruvec->flags);
++		}
++	}
++
+ 	delayacct_freepages_end();
  
- 		/*
+ 	if (sc->nr_reclaimed)
+@@ -7038,7 +7078,8 @@ unsigned long try_to_free_mem_cgroup_pages(struct mem_cgroup *memcg,
+ 	/*
+ 	 * Traverse the ZONELIST_FALLBACK zonelist of the current node to put
+ 	 * equal pressure on all the nodes. This is based on the assumption that
+-	 * the reclaim does not bail out early.
++	 * the reclaim does not bail out early. shrink_zones() also visits the
++	 * nodes that permit reclaim and are not on the zonelist.
+ 	 */
+ 	struct zonelist *zonelist = node_zonelist(numa_node_id(), sc.gfp_mask);
+ 
 
 -- 
 2.56.1
