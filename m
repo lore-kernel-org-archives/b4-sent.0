@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:28 -0500
-Subject: [PATCH 37/60] mm/page_alloc: keep private memory out of reclaim
- reserves
+Date: Fri, 20 Nov 2026 13:09:29 -0500
+Subject: [PATCH 38/60] mm/page_alloc: refuse contiguous allocation from
+ private memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-37-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-38-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,90 +62,54 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=2669;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1528;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=NqkTU0G15QptyPCK0Ojs5H9K0W+kcHSZdbygJtTYqZc=;
- b=U+TYg4SE0rKVwmvMy4PubxHF4IY7Amo8OOW2W53v3w1Myl2X+1UCWjZFn9mv5qjoPrZIpJw9A
- 33bh8SQUd1oCsIAGWHNALhdB5JCENBTwjecSgE4RLHDlwbK3KW4BS/N
+ bh=SJvqLJtfHqxTbxOinmUOdOKCVWk7SGtVeDyrji7C2Tw=;
+ b=Irg8N3GrwFg5yXeCFynVswMM6e7cnSR82GrmMFfEKmwMHPcu5/cEKgAKCYKrx+y54cYfXcmSK
+ kzbXph7DqTTAa3NH+5AcJKokpz3sVmwYO3+Bw14lYWZ+1wiDm0fftM2
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Private memory cannot serve general system allocations, so it should not
-contribute to reserves.
+Exact-PFN contiguous allocation bypasses the zonelists and can invoke
+compaction and reclaim.
 
-Exclude private capacity from the lowmem denominator and the global
-reserve total, so the pages_min budget and the system reserve stay on
-common memory. A private node still records its own reserve, which
-its per-node dirty limit subtracts.
+Reject a range on a private node with -EPERM before isolating any pages,
+and document the error.
 
-Zero private zones' watermarks. No kswapd runs for a private node to
-restore them, and the pages below the minimum would be unreachable.
-With no high watermark, a migratetype fallback never boosts them
-either.
+If a user of private ranges shows up, alloc_contig_range() can grow an
+ACR flag or an exported api for private allocations.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/page_alloc.c | 23 ++++++++++++++++++++---
- 1 file changed, 20 insertions(+), 3 deletions(-)
+ mm/page_alloc.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 0a5176a6e9db..de1a13a91ef4 100644
+index de1a13a91ef4..08e57f809a03 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -6610,6 +6610,8 @@ static void calculate_totalreserve_pages(void)
- 	enum zone_type i, j;
+@@ -7379,7 +7379,8 @@ static void __free_contig_frozen_range(unsigned long pfn, unsigned long nr_pages
+  * free_frozen_pages() also could be used to free compound frozen pages
+  * directly.
+  *
+- * Return: zero on success or negative error code.
++ * Return: zero on success or negative error code
++ *         -EPERM if the range is on a private memory node.
+  */
+ int alloc_contig_frozen_range_noprof(unsigned long start, unsigned long end,
+ 		acr_flags_t alloc_flags, gfp_t gfp_mask)
+@@ -7410,6 +7411,9 @@ int alloc_contig_frozen_range_noprof(unsigned long start, unsigned long end,
+ 	if (WARN_ON_ONCE((gfp_mask & __GFP_COMP) && order > MAX_FOLIO_ORDER))
+ 		return -EINVAL;
  
- 	for_each_online_pgdat(pgdat) {
-+		/* Only common memory holds the system reserve. */
-+		bool common = node_state(pgdat->node_id, N_MEMORY_COMMON);
- 
- 		pgdat->totalreserve_pages = 0;
- 
-@@ -6640,7 +6642,8 @@ static void calculate_totalreserve_pages(void)
- 
- 			pgdat->totalreserve_pages += max;
- 
--			reserve_pages += max;
-+			if (common)
-+				reserve_pages += max;
- 		}
- 	}
- 	totalreserve_pages = reserve_pages;
-@@ -6705,9 +6708,13 @@ static void __setup_per_zone_wmarks(void)
- 	struct zone *zone;
- 	unsigned long flags;
- 
--	/* Calculate total number of !ZONE_HIGHMEM and !ZONE_MOVABLE pages */
-+	/*
-+	 * Calculate total number of !ZONE_HIGHMEM and !ZONE_MOVABLE pages.
-+	 * Distribute the global pages_min budget only over common memory.
-+	 */
- 	for_each_zone(zone) {
--		if (!is_highmem(zone) && zone_idx(zone) != ZONE_MOVABLE)
-+		if (!is_highmem(zone) && zone_idx(zone) != ZONE_MOVABLE &&
-+		    !node_state(zone_to_nid(zone), N_MEMORY_PRIVATE))
- 			lowmem_pages += zone_managed_pages(zone);
- 	}
- 
-@@ -6715,6 +6722,16 @@ static void __setup_per_zone_wmarks(void)
- 		u64 tmp;
- 
- 		spin_lock_irqsave(&zone->lock, flags);
-+		/* No kswapd runs for a private node to restore watermarks. */
-+		if (node_state(zone_to_nid(zone), N_MEMORY_PRIVATE)) {
-+			zone->_watermark[WMARK_MIN] = 0;
-+			zone->_watermark[WMARK_LOW] = 0;
-+			zone->_watermark[WMARK_HIGH] = 0;
-+			zone->_watermark[WMARK_PROMO] = 0;
-+			zone->watermark_boost = 0;
-+			spin_unlock_irqrestore(&zone->lock, flags);
-+			continue;
-+		}
- 		tmp = (u64)pages_min * zone_managed_pages(zone);
- 		tmp = div64_ul(tmp, lowmem_pages);
- 		if (is_highmem(zone) || zone_idx(zone) == ZONE_MOVABLE) {
++	if (node_state(zone_to_nid(cc.zone), N_MEMORY_PRIVATE))
++		return -EPERM;
++
+ 	gfp_mask = current_gfp_context(gfp_mask);
+ 	if (__alloc_contig_verify_gfp_mask(gfp_mask, (gfp_t *)&cc.gfp_mask))
+ 		return -EINVAL;
 
 -- 
 2.56.1
