@@ -1,11 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:17 -0500
-Subject: [PATCH 26/60] mm/migrate: leave pages outside common memory in
- move_pages()
+Date: Fri, 20 Nov 2026 13:09:18 -0500
+Subject: [PATCH 27/60] mm: add the private-memory node state
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-26-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-27-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,41 +61,152 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=857;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=5643;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=AKM465apFVaa3BIvx9XBEK691w0dLD6ac7SFTDNSyZQ=;
- b=zKNmtwP0ZJy98reK9MCbqubRCfEXRiY4oIhpY5EIBd6qtzzkCGaM6TwqOsdAK0YxCEyfiIv7s
- pNtU/wZ9nLKDgoZ6+gYrdIUpvysLRVgvfMsEzFM7klZsQ3JuUN5Arbk
+ bh=zId/m3UcEeKPlrHjDuBTph6SlMWMgHfNTv0FPlTy5jk=;
+ b=UQPuu0+30xBC00mgn1hSzuDWDMkKDN3WxupMdh1ZgoT3kBVxhLL5UdV2Q7T1tbGBb8aBZhTom
+ a2I0WisarbDDWUsD2+k6+bL9x+5sPTZQCfJRGG2SOn1nC/Y+GahAoYl
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-move_pages(2) moves the pages a caller names, and reports the node of
-each page in status queries.
+N_MEMORY_COMMON describes memory that ordinary allocations and MM
+services may use. Some memory is online but is not part of that pool.
 
-Leave pages outside common memory where they are: refuse to move them,
-similar to ZONE_DEVICE pages. Status queries move nothing, so they
-still report the node of each page.
+Add N_MEMORY_PRIVATE for nodes with such memory.
+
+N_MEMORY_COMMON and N_MEMORY_PRIVATE partition N_MEMORY, so a caller can
+drop private nodes from a mask without also dropping memoryless nodes.
+
+Expose the state via `has_private_memory`.
+
+Without CONFIG_NUMA, node 0 holds all memory and none of it is private.
+We have to adjust the node_state check to return false for this node,
+previously when CONFIG_NUMA was disabled it would always return true.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/migrate.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ Documentation/ABI/stable/sysfs-devices-node | 10 ++++++++++
+ Documentation/mm/physical_memory.rst        |  3 +++
+ drivers/base/node.c                         |  2 ++
+ include/linux/nodemask.h                    | 12 ++++++++----
+ mm/page_alloc.c                             |  1 +
+ 5 files changed, 24 insertions(+), 4 deletions(-)
 
-diff --git a/mm/migrate.c b/mm/migrate.c
-index 208788b130fa..ac583afa1bc5 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -2287,7 +2287,7 @@ static int __add_folio_for_migration(struct folio *folio, int node,
- 	if (is_zero_folio(folio) || is_huge_zero_folio(folio))
- 		return -EFAULT;
+diff --git a/Documentation/ABI/stable/sysfs-devices-node b/Documentation/ABI/stable/sysfs-devices-node
+index 0a2cf3088233..70ab780c6ddf 100644
+--- a/Documentation/ABI/stable/sysfs-devices-node
++++ b/Documentation/ABI/stable/sysfs-devices-node
+@@ -46,6 +46,16 @@ Description:
+ 		requesting the node explicitly, and that kernel memory
+ 		management services manage.
  
--	if (folio_is_zone_device(folio))
-+	if (!folio_is_common_memory(folio))
- 		return -ENOENT;
++What:		/sys/devices/system/node/has_private_memory
++Date:		November 2026
++Contact:	Linux Memory Management list <linux-mm@kvack.org>
++Description:
++		Nodelist of the memory nodes absent from has_common_memory.
++		Together the two lists partition has_memory.
++
++		Ordinary allocations do not use memory on a node listed here.
++		See Documentation/mm/numa_private_nodes.rst.
++
+ What:		/sys/devices/system/node/nodeX
+ Date:		October 2002
+ Contact:	Linux Memory Management list <linux-mm@kvack.org>
+diff --git a/Documentation/mm/physical_memory.rst b/Documentation/mm/physical_memory.rst
+index 86a7d6080535..ddba7c890418 100644
+--- a/Documentation/mm/physical_memory.rst
++++ b/Documentation/mm/physical_memory.rst
+@@ -174,6 +174,9 @@ nodes with particular properties as defined by ``enum node_states``:
+ ``N_MEMORY_COMMON``
+   Ordinary allocations and memory management services may use the node's
+   memory.
++``N_MEMORY_PRIVATE``
++  The node has memory but is not on the fallback zonelists. Together with
++  ``N_MEMORY_COMMON`` it partitions ``N_MEMORY``.
+ ``N_CPU``
+   The node has one or more CPUs
+ ``N_GENERIC_INITIATOR``
+diff --git a/drivers/base/node.c b/drivers/base/node.c
+index cc6696d1390f..56a1741a6a45 100644
+--- a/drivers/base/node.c
++++ b/drivers/base/node.c
+@@ -966,6 +966,7 @@ static struct node_attr node_state_attr[] = {
+ #endif
+ 	[N_MEMORY] = _NODE_ATTR(has_memory, N_MEMORY),
+ 	[N_MEMORY_COMMON] = _NODE_ATTR(has_common_memory, N_MEMORY_COMMON),
++	[N_MEMORY_PRIVATE] = _NODE_ATTR(has_private_memory, N_MEMORY_PRIVATE),
+ 	[N_CPU] = _NODE_ATTR(has_cpu, N_CPU),
+ 	[N_GENERIC_INITIATOR] = _NODE_ATTR(has_generic_initiator,
+ 					   N_GENERIC_INITIATOR),
+@@ -980,6 +981,7 @@ static struct attribute *node_state_attrs[] = {
+ #endif
+ 	&node_state_attr[N_MEMORY].attr.attr,
+ 	&node_state_attr[N_MEMORY_COMMON].attr.attr,
++	&node_state_attr[N_MEMORY_PRIVATE].attr.attr,
+ 	&node_state_attr[N_CPU].attr.attr,
+ 	&node_state_attr[N_GENERIC_INITIATOR].attr.attr,
+ 	NULL
+diff --git a/include/linux/nodemask.h b/include/linux/nodemask.h
+index c3b984105bd1..5a9722d57701 100644
+--- a/include/linux/nodemask.h
++++ b/include/linux/nodemask.h
+@@ -403,9 +403,12 @@ enum node_states {
+ 	 * to manage per-node meta-data and topology decisions.
+ 	 * N_MEMORY_COMMON indicates whether the node can satisfy arbitrary
+ 	 * allocations and whether a service should manage that node's folios.
++	 * N_MEMORY_PRIVATE holds the other memory nodes: together the two
++	 * partition N_MEMORY.
+ 	 */
+ 	N_MEMORY,		/* the node has memory */
+ 	N_MEMORY_COMMON,	/* common pool (fallback zonelist) */
++	N_MEMORY_PRIVATE,	/* memory outside the common pool */
+ 	N_CPU,		/* The node has one or more cpus */
+ 	N_GENERIC_INITIATOR,	/* The node has one or more Generic Initiators */
+ 	NR_NODE_STATES
+@@ -478,9 +481,10 @@ static __always_inline void node_set_offline(int nid)
  
- 	if (folio_nid(folio) == node)
+ #else
+ 
++/* Node 0 holds all memory, and none of it is private. */
+ static __always_inline int node_state(int node, enum node_states state)
+ {
+-	return node == 0;
++	return node == 0 && state != N_MEMORY_PRIVATE;
+ }
+ 
+ static __always_inline void node_set_state(int node, enum node_states state)
+@@ -493,13 +497,13 @@ static __always_inline void node_clear_state(int node, enum node_states state)
+ 
+ static __always_inline int num_node_state(enum node_states state)
+ {
+-	return 1;
++	return state != N_MEMORY_PRIVATE;
+ }
+ 
+ #define for_each_node_state(node, __state) \
+-	for ( (node) = 0; (node) == 0; (node) = 1)
++	for ((node) = 0; (node) == 0 && (__state) != N_MEMORY_PRIVATE; (node) = 1)
+ 
+-#define first_node_state(state)	0
++#define first_node_state(state)	((state) == N_MEMORY_PRIVATE ? MAX_NUMNODES : 0)
+ static __always_inline unsigned int next_node_state(int nid, enum node_states state)
+ {
+ 	return MAX_NUMNODES;
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 1ec7d8000792..50336eb58edf 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -217,6 +217,7 @@ void __meminit node_set_memory_state(int nid)
+ 
+ void __meminit node_clear_memory_state(int nid)
+ {
++	node_clear_state(nid, N_MEMORY_PRIVATE);
+ 	node_clear_state(nid, N_MEMORY_COMMON);
+ 	node_clear_state(nid, N_MEMORY);
+ }
 
 -- 
 2.56.1
