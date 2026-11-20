@@ -1,57 +1,103 @@
-From: Jim Cromie <jim.cromie@gmail.com>
-Date: Fri, 20 Nov 2026 10:18:32 -0700
-Subject: [PATCH v2 5/5] drm-dyndbg: drop BROKEN on DRM_USE_DYNAMIC_DEBUG
- for testing (DONT_APPLY)
+From: Peder Bergan <peder.bergan@gmail.com>
+Date: Fri, 20 Nov 2026 18:19:17 +0100
+Subject: [PATCH v2] rust: bindgen: Preserve sched_statistics alignment
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-rd-mostly-v2-5-88056ede02a8@gmail.com>
-References: <20261120-rd-mostly-v2-0-88056ede02a8@gmail.com>
-In-Reply-To: <20261120-rd-mostly-v2-0-88056ede02a8@gmail.com>
-To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Jason Baron <jbaron@akamai.com>, 
+Message-Id: <20261120-fix-schedstats-bindgen-layout-v2-1-1c42e4a996ae@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABSBAGsC/42OTQ6CMBSEr2K69mkLosGV9zAs+vOgNdKSvkI0h
+ rvb4gVcfpOZL/NhhNEhsevuwyIujlzwGar9jmkr/YDgTGZW8eoshGihdy8gbdFQkolAOW8G9PC
+ U7zAn4G3dqPOpPl34hWXHFDEPNv+9+zHN6oE6FWlpKEkIKkqvbYnmiVJEOR7jTAk8vlIpWUcpx
+ Pf2chFF9u+hRYAA3rStMVXN+97chlG650GHkXXrun4BQiKm3wEBAAA=
+X-Change-ID: 20261119-fix-schedstats-bindgen-layout-0935b6434707
+To: Miguel Ojeda <ojeda@kernel.org>
+Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Carlos Llamas <cmllamas@google.com>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Andrew Morton <akpm@linux-foundation.org>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Jim Cromie <jim.cromie@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795195125; l=818;
- i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=FywBSQVzh/O/x8StOKw+M4F1py0iU1srNXGib4Mzet0=;
- b=4Q8U85N1C78yeLyMj63YwqF5+U6ufImwakmci5dnOIkTR0vcUY/p5hPB0NgOgmTxtzEL7NacS
- D8I+sK++SG0DdBHGG2yIIQ9pyIAuGL+NHhbni9gLByaSDk7SS5SJuyI
-X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
- pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
-X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
+ =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
+ Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
+ Jules Mercier <jules@les-mercier.fr>, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795195162; l=2723;
+ i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
+ bh=u4QY0eOrLq5AnKKXDQlNnc7y1G/bsdbLKO4Tsmnc1Rc=;
+ b=CGjLrC3xrHMMhwNk+60mTkOfXvVww+NtfWTp4WrSpTz699eWkTcZfvLHqQl0ZqdN5766bwcEE
+ 9/I4tueXlvnA7tRsCj0He39kTVlIwcEXrORV3Rogf331Je1IwEuSJFa
+X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
+ pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
+X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-remove BROKEN from DRM_USE_DYNAMIC_DEBUG, to facilitate testing with
-it enabled.
+With CONFIG_SCHEDSTATS disabled, struct sched_statistics is empty but
+still cache-line aligned. Bindgen omits the alignment of the empty
+type. Bindgen 0.73.2 also stopped forcing padding before over-aligned
+fields, so fields following stats can be misplaced in the generated
+task_struct. On the reported arm64 build, Rust Binder reads the wrong
+pointer via CurrentTask::mm() and rejects mmap() with -EINVAL.
 
-DO_NOT_APPLY - full functionality requires the (forthcoming) classmaps
-patchset, and drivers/accel/ uses drm_*dbg, and needs the ccflags
-additions like for drm/Makefile
+Make sched_statistics opaque so bindgen uses the C size and alignment.
+Rust has no callers that access the fields of this type.
 
-Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Reported-by: Jules Mercier <jules@les-mercier.fr>
+Closes: https://github.com/Rust-for-Linux/linux/issues/1269
+Link: https://github.com/rust-lang/rust-bindgen/issues/3549
+Tested-by: Jules Mercier <jules@les-mercier.fr>
+Cc: stable@vger.kernel.org # 6.12.x
+Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
 ---
- drivers/gpu/drm/Kconfig.debug | 1 -
- 1 file changed, 1 deletion(-)
+Changes in v2
 
-diff --git a/drivers/gpu/drm/Kconfig.debug b/drivers/gpu/drm/Kconfig.debug
-index b909cd0a619f..b0aa56281413 100644
---- a/drivers/gpu/drm/Kconfig.debug
-+++ b/drivers/gpu/drm/Kconfig.debug
-@@ -1,7 +1,6 @@
- config DRM_USE_DYNAMIC_DEBUG
- 	bool "use dynamic debug to implement drm.debug"
- 	default n
--	depends on BROKEN
- 	depends on DRM
- 	depends on DYNAMIC_DEBUG || DYNAMIC_DEBUG_CORE
- 	depends on JUMP_LABEL
+- Explain how the bindgen 0.73.2 padding change exposes the missing alignment.
+- Link the bindgen bug and request stable backports starting with 6.12.x.
+- Credit Jules Mercier's report and OnePlus 6T test, and expand the Binder Cc list.
 
--- 
-2.56.1
+I kept the opaque rule unconditional as discussed. On bindgen 0.73.1,
+I found an offset mismatch at task_struct.se before sched_statistics.
+
+I also checked an arm64 6.12.y build with bindgen 0.73.2 and schedstats
+disabled. With the rule applied in the 6.12.y context, the Rust
+task_struct.pid offset moved from 1208 to 1216, matching C.
+
+v1 on lore.kernel.org
+https://lore.kernel.org/rust-for-linux/20261119-fix-schedstats-bindgen-layout-v1-1-0599dd230ffd@gmail.com/
+
+OpenAI Codex assisted with the bindgen change, validation and drafting.
+---
+ rust/bindgen_parameters | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/rust/bindgen_parameters b/rust/bindgen_parameters
+index 5bab3cf063360..65c308d4b603b 100644
+--- a/rust/bindgen_parameters
++++ b/rust/bindgen_parameters
+@@ -26,6 +26,12 @@
+ # warning. We don't need to peek into it anyway.
+ --opaque-type spinlock
+ 
++# Bindgen omits the alignment of empty structs. Bindgen 0.73.2 also stopped
++# forcing padding before over-aligned fields, so following fields can be
++# misplaced. Making sched_statistics opaque preserves its C alignment.
++# https://github.com/rust-lang/rust-bindgen/issues/3549
++--opaque-type sched_statistics
++
+ # enums that appear in indirect function calls should specify a cfi type
+ --newtype-enum fwctl_rpc_scope
+ --with-attribute-custom-enum=fwctl_rpc_scope='#[cfi_encoding="15fwctl_rpc_scope"]'
+
+---
+base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
+change-id: 20261119-fix-schedstats-bindgen-layout-0935b6434707
+
+Best regards,
+--  
+Peder Bergan <peder.bergan@gmail.com>
 
