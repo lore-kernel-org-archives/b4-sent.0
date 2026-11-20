@@ -1,10 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:05 -0500
-Subject: [PATCH 14/60] mm: base hash distribution on common memory nodes
+Date: Fri, 20 Nov 2026 13:09:06 -0500
+Subject: [PATCH 15/60] mm/page_alloc: count common memory nodes for kswapd
+ recovery
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-14-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-15-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,40 +62,41 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=752;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=954;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=kzu60kHcR4jg5+83pzySdZg/16HqDs5ZJU+b16doVWE=;
- b=748lnM0UAIWYIikKEzoqzk1NLfEf9UkP/kYV8mG5fcRoZKQ2waLuxmbZewbEadsHLukTRzV3V
- r9lLSXCux+nBTwzYAwYPzqHH+pyb+k2EBGnYxU14R5HCUN2/FGpt/7x
+ bh=aFOBkE3dz1xwSTmNPK2kJnfdjjcB92u911EXeeybS5k=;
+ b=miZr9gvtGaEB+gbuRcJGykPJI+d+lB6tSrF2muK1MI3mjI5Sn4TSITCLQ17YsndpWzcCDgzxv
+ qw/A7tFHGb3BeDl3swCP0HsgD2rlRnitjHD2V8ZURSMeMu3SzxBJkCC
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hashdist is useful when large kernel hash tables can be allocated across
-multiple NUMA nodes. The tables come from ordinary allocations, which
-only N_MEMORY_COMMON nodes serve.
+When a zone recovers above its high watermark, free_frozen_page_commit()
+clears a hopeless kswapd state if more than one memory node exists,
+since allocations could then have fallen back to another node without
+triggering direct reclaim here.
 
-Count N_MEMORY_COMMON nodes when applying the single-node optimization.
+Only common memory provide fallbacks, so count N_MEMORY_COMMON nodes.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/mm_init.c | 2 +-
+ mm/page_alloc.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mm/mm_init.c b/mm/mm_init.c
-index 46fe9a274a7a..f21b3dbcc92a 100644
---- a/mm/mm_init.c
-+++ b/mm/mm_init.c
-@@ -685,7 +685,7 @@ __setup("hashdist=", set_hashdist);
- 
- static inline void fixup_hashdist(void)
- {
--	if (num_node_state(N_MEMORY) == 1)
-+	if (num_node_state(N_MEMORY_COMMON) == 1)
- 		hashdist = false;
- }
- #else
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 0448d04e048a..1ec7d8000792 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -2958,7 +2958,7 @@ static bool free_frozen_page_commit(struct zone *zone,
+ 		 * kswapd work again by resetting kswapd_failures.
+ 		 */
+ 		if (kswapd_test_hopeless(pgdat) &&
+-		    num_node_state(N_MEMORY) > 1)
++		    num_node_state(N_MEMORY_COMMON) > 1)
+ 			kswapd_clear_hopeless(pgdat, KSWAPD_CLEAR_HOPELESS_PCP);
+ 	}
+ 	return ret;
 
 -- 
 2.56.1
