@@ -1,11 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:10 -0500
-Subject: [PATCH 19/60] mm: add folio_is_common_memory() and
- page_is_common_memory()
+Date: Fri, 20 Nov 2026 13:09:11 -0500
+Subject: [PATCH 20/60] mm/ksm: restrict merging to common memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-19-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-20-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,56 +61,61 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=1507;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=1590;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=m/xIO2hju0O2MUxmJsoUbcjHDLOxcmw4vOXYB3RhCDc=;
- b=r9U28O85QC7KiTn0NtGXb3PVRmPqixIvxW3FarWvGYMIe+TtX/FQCmUuDfZ/0dXaLjaL/g/Lw
- F7K7kgvtuD+BLMHEs+q0AR9fgZqrNmHByKFqFVDK5bc8MLFaIcotn7f
+ bh=1HskuxEf+1Zhw3YBFVrlQVKDFRcqnw9jX4hWONKblFA=;
+ b=KX1ctcadjm/RHab3rq+KPJ8U93Fk/aZfsz1s26MHn6QysyfvDO0bjL2QQSMq3Q+U4X6ZzNMXd
+ mEI5+NqYbr6CfPqa/Ro1yHh+HAbQ9NETS1e/yCFhGps0epW+mqx8JOq
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-N_MEMORY_COMMON decides where ordinary allocations and node-scoped
-services go, but MM services that walk folios reach them through page
-tables, physical addresses or LRU lists, whatever node they are on.
+KSM is an opportunistic MM service and should leave memory outside
+the ordinary memory pool alone - as it already does for ZONE_DEVICE
+folios where its scan picks up candidate pages.
 
-Add folio_is_common_memory() and page_is_common_memory() for those
-services. ZONE_DEVICE folios are never common memory, so the helpers
-can replace the folio_is_zone_device() and page_is_zone_device() checks
-those services already make. Following commits convert them.
+Use folio_is_common_memory() at those same sites, which still rejects
+ZONE_DEVICE folios.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/internal.h | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+ mm/ksm.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/mm/internal.h b/mm/internal.h
-index c102e0f498bf..cd0562f0b68f 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -65,6 +65,21 @@ void folio_mark_lazyfree(struct folio *folio);
- void node_set_memory_state(int nid);
- void node_clear_memory_state(int nid);
+diff --git a/mm/ksm.c b/mm/ksm.c
+index 623a2cdb3924..25b2c2f94486 100644
+--- a/mm/ksm.c
++++ b/mm/ksm.c
+@@ -831,7 +831,7 @@ static struct page *get_mergeable_page(struct ksm_rmap_item *rmap_item)
  
-+/*
-+ * Common memory is available to generic MM services. ZONE_DEVICE folios do
-+ * not qualify even when their NUMA node is common.
-+ */
-+static inline bool folio_is_common_memory(struct folio *folio)
-+{
-+	return !folio_is_zone_device(folio) &&
-+	       node_state(folio_nid(folio), N_MEMORY_COMMON);
-+}
-+
-+static inline bool page_is_common_memory(struct page *page)
-+{
-+	return folio_is_common_memory(page_folio(page));
-+}
-+
- /* mm/vmscan.c */
- unsigned long zone_reclaimable_pages(struct zone *zone);
- unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
+ 	folio = folio_walk_start(&fw, vma, addr, 0);
+ 	if (folio) {
+-		if (!folio_is_zone_device(folio) &&
++		if (folio_is_common_memory(folio) &&
+ 		    folio_test_anon(folio)) {
+ 			folio_get(folio);
+ 			page = fw.page;
+@@ -2571,7 +2571,8 @@ static int ksm_next_page_pmd_entry(pmd_t *pmdp, unsigned long addr, unsigned lon
+ 				goto not_found_unlock;
+ 			folio = page_folio(page);
+ 
+-			if (folio_is_zone_device(folio) || !folio_test_anon(folio))
++			if (!folio_is_common_memory(folio) ||
++			    !folio_test_anon(folio))
+ 				goto not_found_unlock;
+ 
+ 			page += ((addr & (PMD_SIZE - 1)) >> PAGE_SHIFT);
+@@ -2595,7 +2596,8 @@ static int ksm_next_page_pmd_entry(pmd_t *pmdp, unsigned long addr, unsigned lon
+ 			continue;
+ 		folio = page_folio(page);
+ 
+-		if (folio_is_zone_device(folio) || !folio_test_anon(folio))
++		if (!folio_is_common_memory(folio) ||
++		    !folio_test_anon(folio))
+ 			continue;
+ 		goto found_unlock;
+ 	}
 
 -- 
 2.56.1
