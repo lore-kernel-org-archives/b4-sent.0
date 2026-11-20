@@ -1,178 +1,72 @@
-From: Thomas de Gruijter <thomasdegruijter@pm.me>
-Date: Fri, 20 Nov 2026 02:13:36 +0100
-Subject: [PATCH 2/2] Bluetooth: MSFT: Only enable the advertisement filter
- with monitors
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Subject: [PATCH v2 0/2] media: verisilicon: Fix VDPU2 decoder error
+ handling
+Date: Fri, 20 Nov 2026 02:49:13 +0000
+Message-Id: <20261120-vdpu2-errreset-v2-0-8f4ef55e6dee@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-msft-filter-monitors-v1-2-8192f0c0791a@pm.me>
-References: <20261120-msft-filter-monitors-v1-0-8192f0c0791a@pm.me>
-In-Reply-To: <20261120-msft-filter-monitors-v1-0-8192f0c0791a@pm.me>
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- Brian Gix <brian.gix@intel.com>, Yun-Hao Chung <howardchung@google.com>, 
- Miao-chen Chou <mcchou@chromium.org>, Archie Pusaka <apusaka@chromium.org>
-Cc: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
- linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Thomas de Gruijter <thomasdegruijter@pm.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12Nyw6CMBBFf4XM2po+FIsr/8OwKDDAGKFkCo2G8
+ O8Cxo3Lk5x77gwBmTDANZmBMVIg36+gDwmUresbFFStDFrqVCl1FrEaJi2QmTHgKGxq7UVKkxl
+ nYB0NjDW99uA9/3KYigeW41bZjJbC6Pm9P0a1eb949h+PSkhR29qdpClSZ9yt6Rw9j6XvIF+W5
+ QPt8b64vgAAAA==
+X-Change-ID: 20261115-vdpu2-errreset-8688700393a3
+To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>, Jonas Karlman <jonas@kwiboo.se>, 
+ Boris Brezillon <boris.brezillon@collabora.com>, 
+ Hans Verkuil <hverkuil@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795137220; l=5018;
- i=thomasdegruijter@pm.me; s=20261120; h=from:subject:message-id;
- bh=oT34K5Pir/uDlTpBt575+nbbGyIR7ZHnel9uDdmYiDw=;
- b=fsi+gUP+ht/139YcgqzEyVLogw8p4nnwczBQby4sAl8ujOmP77MtN21lncNbh0//pUWXNb45j
- SHpRBT+6vAgAAFjBIMZzTcKLfzU0zT4T2L58Y6Ul02dvtDNYftR49hm
-X-Developer-Key: i=thomasdegruijter@pm.me; a=ed25519;
- pk=YtEZHHXdsASGVJkddpdFLAnfVg0G/gza+FXgPGUJZlg=
-X-Endpoint-Received: by B4 Relay for thomasdegruijter@pm.me/20261120 with auth_id=1578
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795142953; l=1549;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=236hsCejcx3sS9x+HFSJjCRXf+BV1f1+zibsBZf0JVg=;
+ b=+ScOgDQeEaI5FZeSrS1ngM1Vh5HeTVe1p8NGZR8cjcXzNPcKHKCVAGU/ex+lwBGdM2kHJUuCi
+ 3ZpiTcU5blgAZD4G9tSKHLAmAsOsrEeaAqfLZAxw7WU3d/sWWcCRDiu
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-msft_do_open() unconditionally enables the MSFT LE advertisement filter
-on every power on, whether or not any advertisement monitor is
-registered.
+The VDPU2 decoder reports failed decodes as done, and its interrupt
+handler can finish a job the decoder is still working on.
 
-On MediaTek MT7922 (USB 0e8d:0616, firmware build 20260724) the
-controller then drops every LE advertisement: LE Set Extended Scan
-Enable succeeds, but no LE Extended Advertising Report is ever
-delivered, so LE discovery and passive scanning find nothing. BR/EDR
-inquiry is not affected. Sending LE Set Advertisement Filter Enable with
-Enable set to 0x00 restores reporting immediately. The Microsoft HCI
-extension specification defines the filter as disabled by default and
-does not specify what a controller reports while the filter is enabled
-without any monitor condition.
+Tested on Orange Pi 5 (RK3588S), v7.3-based KASAN kernel: 72 H.264
+fluster suite runs, 50 error-stream runs, VP8 61/61; no IOMMU faults or
+timeouts. The decoder was still enabled after 72 buffer-empty
+interrupts; a later interrupt ended each of those jobs.
+With a TEST-only patch (not in this series), the IRQ_NONE path ran
+200 times on real registers; bus error and timeout, simulated 5 times
+each by injected status bits, were logged and ended their jobs at once.
+VP8 stayed 61/61 bit-exact.
+Build-tested on media next. MPEG-2, RK3399 and RK3568 untested.
 
-Only enable the filter while at least one monitor is offloaded to the
-controller, and update it after a monitor is added or removed and after
-the monitors are re-registered on power on and resume. Like the
-monitors, the filter state does not survive a power off, so reset the
-tracked state in msft_do_close() instead of sending a redundant disable
-on power on. A command is only sent when the wanted state differs from
-msft->filter_enabled, so this depends on the previous patch keeping
-that state accurate when the controller reports the filter as already
-being in the requested state.
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
 
-Fixes: 394566bf1e37 ("Bluetooth: advmon offload MSFT handle filter enablement")
-Signed-off-by: Thomas de Gruijter <thomasdegruijter@pm.me>
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- net/bluetooth/msft.c | 46 +++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 43 insertions(+), 3 deletions(-)
+Changes in v2:
+- Patch 2: no reset after an error; handle the interrupt like the G2
+  handler instead (Nicolas)
+- Link to v1: https://patch.msgid.link/20261119-vdpu2-errreset-v1-0-f8fa403b6a3a@gmail.com
 
-diff --git a/net/bluetooth/msft.c b/net/bluetooth/msft.c
-index f372df9a9831..db7b40ab5fc1 100644
---- a/net/bluetooth/msft.c
-+++ b/net/bluetooth/msft.c
-@@ -468,6 +468,30 @@ static int msft_remove_monitor_sync(struct hci_dev *hdev,
- 	return err;
- }
- 
-+/* Keep the advertisement filter enabled only while at least one monitor is
-+ * offloaded to the controller. With the filter enabled and no monitors, some
-+ * controllers (e.g. MediaTek MT7922) drop every advertisement, which breaks
-+ * LE discovery and passive scanning entirely.
-+ *
-+ * This function requires the caller holds hci_req_sync_lock
-+ */
-+static void msft_update_filter_enable(struct hci_dev *hdev)
-+{
-+	struct msft_data *msft = hdev->msft_data;
-+	bool enable, update;
-+
-+	if (!msft)
-+		return;
-+
-+	hci_dev_lock(hdev);
-+	enable = !list_empty(&msft->handle_map);
-+	update = enable != msft->filter_enabled;
-+	hci_dev_unlock(hdev);
-+
-+	if (update)
-+		msft_set_filter_enable(hdev, enable);
-+}
-+
- /* This function requires the caller holds hci_req_sync_lock */
- int msft_suspend_sync(struct hci_dev *hdev)
- {
-@@ -493,6 +517,8 @@ int msft_suspend_sync(struct hci_dev *hdev)
- 	/* All monitors have been removed */
- 	msft->suspending = false;
- 
-+	msft_update_filter_enable(hdev);
-+
- 	return 0;
- }
- 
-@@ -633,6 +659,7 @@ int msft_resume_sync(struct hci_dev *hdev)
- 	hci_dev_unlock(hdev);
- 
- 	reregister_monitor(hdev);
-+	msft_update_filter_enable(hdev);
- 
- 	return 0;
- }
-@@ -670,11 +697,11 @@ void msft_do_open(struct hci_dev *hdev)
- 
- 	if (msft_monitor_supported(hdev)) {
- 		msft->resuming = true;
--		msft_set_filter_enable(hdev, true);
- 		/* Monitors get removed on power off, so we need to explicitly
- 		 * tell the controller to re-monitor.
- 		 */
- 		reregister_monitor(hdev);
-+		msft_update_filter_enable(hdev);
- 	}
- }
- 
-@@ -706,6 +733,11 @@ void msft_do_close(struct hci_dev *hdev)
- 		kfree(handle_data);
- 	}
- 
-+	/* The advertisement filter is back to its default, disabled state
-+	 * after power off as well.
-+	 */
-+	msft->filter_enabled = false;
-+
- 	hci_dev_unlock(hdev);
- 
- 	mutex_lock(&msft->filter_lock);
-@@ -1173,6 +1205,7 @@ static void msft_le_set_advertisement_filter_enable_cb(struct hci_dev *hdev,
- int msft_add_monitor_pattern(struct hci_dev *hdev, struct adv_monitor *monitor)
- {
- 	struct msft_data *msft = hdev->msft_data;
-+	int err;
- 
- 	if (!msft)
- 		return -EOPNOTSUPP;
-@@ -1180,13 +1213,17 @@ int msft_add_monitor_pattern(struct hci_dev *hdev, struct adv_monitor *monitor)
- 	if (msft->resuming || msft->suspending)
- 		return -EBUSY;
- 
--	return msft_add_monitor_sync(hdev, monitor);
-+	err = msft_add_monitor_sync(hdev, monitor);
-+	msft_update_filter_enable(hdev);
-+
-+	return err;
- }
- 
- /* This function requires the caller holds hci_req_sync_lock */
- int msft_remove_monitor(struct hci_dev *hdev, struct adv_monitor *monitor)
- {
- 	struct msft_data *msft = hdev->msft_data;
-+	int err;
- 
- 	if (!msft)
- 		return -EOPNOTSUPP;
-@@ -1194,7 +1231,10 @@ int msft_remove_monitor(struct hci_dev *hdev, struct adv_monitor *monitor)
- 	if (msft->resuming || msft->suspending)
- 		return -EBUSY;
- 
--	return msft_remove_monitor_sync(hdev, monitor);
-+	err = msft_remove_monitor_sync(hdev, monitor);
-+	msft_update_filter_enable(hdev);
-+
-+	return err;
- }
- 
- int msft_set_filter_enable(struct hci_dev *hdev, bool enable)
+---
+Arun Iyengar (2):
+      media: verisilicon: Don't report VDPU2 decoder errors as success
+      media: verisilicon: Handle VDPU2 decoder interrupts like the G2
 
--- 
-2.56.0
+ drivers/media/platform/verisilicon/rockchip_vpu_hw.c | 20 ++++++++++++++++++--
+ 1 file changed, 18 insertions(+), 2 deletions(-)
+---
+base-commit: aa0f4c41d4870a18e65772a1817af16427200371
+change-id: 20261115-vdpu2-errreset-8688700393a3
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
