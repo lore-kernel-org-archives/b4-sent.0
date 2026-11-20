@@ -1,11 +1,11 @@
 From: Ivan Pfarher <ipfarher@gmail.com>
-Date: Fri, 20 Nov 2026 12:40:47 +0100
-Subject: [PATCH 3/4] arm64: dts: allwinner: h5: orangepi-zero-plus2: Fix
- USB peripheral mode
+Date: Fri, 20 Nov 2026 12:40:48 +0100
+Subject: [PATCH 4/4] arm64: dts: allwinner: h5: orangepi-zero-plus2: Add
+ MMC aliases
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-orangepi-zero-plus2-fixes-v1-3-ecd792189f27@gmail.com>
+Message-Id: <20261120-orangepi-zero-plus2-fixes-v1-4-ecd792189f27@gmail.com>
 References: <20261120-orangepi-zero-plus2-fixes-v1-0-ecd792189f27@gmail.com>
 In-Reply-To: <20261120-orangepi-zero-plus2-fixes-v1-0-ecd792189f27@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -15,74 +15,52 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-sunxi@lists.linux.dev, Ivan Pfarher <ipfarher@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795174845; l=2079;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795174845; l=1496;
  i=ipfarher@gmail.com; s=20261120; h=from:subject:message-id;
- bh=xNp8GjP59av7t0jD0DKAR+qLGNBv0iVBKlMlHOJX/bQ=;
- b=LYdIeAg0Z6D9hFAlocH2PSZCyaBHHy6WLerO7QNpZyL8gPTX5MGhRlVA/p/PhMwtgBawPihCa
- rdmDDcSs/jAA4Ylcsg0pIyPD2nV8r7aCpwj4HNwPn8qfRJX8icDs9kq
+ bh=9aWwwAzsx9U2iQUbLdf6klaNBeIN6Kxth853YqVu9o0=;
+ b=8oBh1A0f4Jl18/rO4qnX4tVCjQH3AZVUPMYNPiUjNYReBhlAIRtNGVpHJ47ipRRd4WcRtZa/D
+ j/DnSy61jIoBYnN+mht9zy/OcJhtwYXLYuVLWog2LE+kyyHdAotZk8L
 X-Developer-Key: i=ipfarher@gmail.com; a=ed25519;
  pk=3DMYyz/xl+KRAx2TNGJpheG+5QUm7lqHhKXFqVu2TmY=
 X-Endpoint-Received: by B4 Relay for ipfarher@gmail.com/20261120 with auth_id=1582
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The micro USB port is set to dr_mode = "peripheral" because it cannot
-supply VBUS, but EHCI0/OHCI0, which share USB PHY 0 with the MUSB
-controller, are enabled too.
+sunxi-mmc probes asynchronously, so without aliases the microSD card,
+the SDIO WiFi and the eMMC get their mmc numbers in probe order. A boot
+script using root=/dev/mmcblk0p2 for the microSD card can then end up
+on the eMMC instead.
 
-When they register, usb_add_hcd() asks the shared PHY for host mode
-(since commit e671765e521c ("usb: core: Try generic PHY_MODE_USB_HOST
-if usb_phy_roothub_set_mode fails")), and phy-sun4i-usb switches PHY 0
-to host ("Changing dr_mode to 1"). MUSB then stays in a_wait_vrise, the
-UDC stays "not attached", and a gadget never shows up on the host.
-
-The port cannot work as a host on this board anyway, so drop EHCI0 and
-OHCI0.
+Add aliases so that the microSD card is always mmc0 and the eMMC mmc1,
+matching the numbering U-Boot uses on this board, with the SDIO WiFi
+as mmc2.
 
 Tested on an Orange Pi Zero Plus2 (H5) running Linux 6.6.160 with this
-change applied: g_cdc enumerates on the PC (CDC ECM + ACM), the UDC
-state is "configured" and MUSB is in b_peripheral. Build-tested only
-against current mainline.
-
-The H3 version of the board (sun8i-h3-orangepi-zero-plus2.dts) has the
-same setup from the same commit but is not changed here, as it could
-not be tested.
+change applied: the microSD card is mmcblk0 and the eMMC mmcblk1,
+booting from either. Build-tested only against current mainline.
 
 This problem was investigated, and the patch drafted, in an interactive
 session with an AI coding assistant (Claude by Anthropic). The submitter
 reviewed the change and ran the tests described above.
 
-Fixes: 43aad09c7928 ("ARM: dts: orange-pi-zero-plus2: enable USB OTG port")
 Signed-off-by: Ivan Pfarher <ipfarher@gmail.com>
 ---
- arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts | 8 --------
- 1 file changed, 8 deletions(-)
+ arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts | 3 +++
+ 1 file changed, 3 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts b/arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts
-index 5697251b9..892723b46 100644
+index 892723b46..4a26863e8 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts
-@@ -66,10 +66,6 @@
- 	status = "okay";
- };
+@@ -13,6 +13,9 @@
+ 	compatible = "xunlong,orangepi-zero-plus2", "allwinner,sun50i-h5";
  
--&ehci0 {
--	status = "okay";
--};
--
- &hdmi {
- 	status = "okay";
- };
-@@ -115,10 +111,6 @@
- 	status = "okay";
- };
+ 	aliases {
++		mmc0 = &mmc0;
++		mmc1 = &mmc2;
++		mmc2 = &mmc1;
+ 		serial0 = &uart0;
+ 	};
  
--&ohci0 {
--	status = "okay";
--};
--
- &uart0 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&uart0_pa_pins>;
 
 -- 
 2.43.0
