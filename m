@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:27 -0500
-Subject: [PATCH 36/60] mm: refuse explicit reclaim and compaction of
- private nodes
+Date: Fri, 20 Nov 2026 13:09:28 -0500
+Subject: [PATCH 37/60] mm/page_alloc: keep private memory out of reclaim
+ reserves
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-36-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-37-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,56 +62,90 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1212;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=2669;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=eVaoyJoyzU9zyOtulCuIbI+hG2+czzxVMTo5PX+qnoE=;
- b=67qX9eYJBrvlvPcdtzToXyRPuTdmsGPvAub9aazmEHJk4ZHCWWJWu7Tqa8XRPOPW+PAeiRoBS
- +WMnYQ09bUHA4ZgWD9y4UJK3j2zi7pY+0jx9YkmAbm61ZjkvAHWzQu6
+ bh=NqkTU0G15QptyPCK0Ojs5H9K0W+kcHSZdbygJtTYqZc=;
+ b=U+TYg4SE0rKVwmvMy4PubxHF4IY7Amo8OOW2W53v3w1Myl2X+1UCWjZFn9mv5qjoPrZIpJw9A
+ 33bh8SQUd1oCsIAGWHNALhdB5JCENBTwjecSgE4RLHDlwbK3KW4BS/N
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-kswapd and kcompactd do not run on private nodes, but nodeN/reclaim and
-nodeN/compact name a node directly. Reject them for a private node with
--EOPNOTSUPP.
+Private memory cannot serve general system allocations, so it should not
+contribute to reserves.
 
-Memoryless nodes keep accepting the requests.
+Exclude private capacity from the lowmem denominator and the global
+reserve total, so the pages_min budget and the system reserve stay on
+common memory. A private node still records its own reserve, which
+its per-node dirty limit subtracts.
+
+Zero private zones' watermarks. No kswapd runs for a private node to
+restore them, and the pages below the minimum would be unreachable.
+With no high watermark, a migratetype fallback never boosts them
+either.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/compaction.c | 3 +++
- mm/vmscan.c     | 3 +++
- 2 files changed, 6 insertions(+)
+ mm/page_alloc.c | 23 ++++++++++++++++++++---
+ 1 file changed, 20 insertions(+), 3 deletions(-)
 
-diff --git a/mm/compaction.c b/mm/compaction.c
-index 879f372a891e..283d4d4e78c3 100644
---- a/mm/compaction.c
-+++ b/mm/compaction.c
-@@ -3038,6 +3038,9 @@ static ssize_t compact_store(struct device *dev,
- 	int nid = dev->id;
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 0a5176a6e9db..de1a13a91ef4 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -6610,6 +6610,8 @@ static void calculate_totalreserve_pages(void)
+ 	enum zone_type i, j;
  
- 	if (nid >= 0 && nid < nr_node_ids && node_online(nid)) {
-+		if (node_state(nid, N_MEMORY_PRIVATE))
-+			return -EOPNOTSUPP;
-+
- 		/* Flush pending updates to the LRU lists */
- 		lru_add_drain_all();
+ 	for_each_online_pgdat(pgdat) {
++		/* Only common memory holds the system reserve. */
++		bool common = node_state(pgdat->node_id, N_MEMORY_COMMON);
  
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 5b53e0391d80..3e934135e805 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -8268,6 +8268,9 @@ static ssize_t reclaim_store(struct device *dev,
- {
- 	int ret, nid = dev->id;
+ 		pgdat->totalreserve_pages = 0;
  
-+	if (node_state(nid, N_MEMORY_PRIVATE))
-+		return -EOPNOTSUPP;
-+
- 	ret = user_proactive_reclaim((char *)buf, NULL, NODE_DATA(nid));
- 	return ret ? ret : count;
- }
+@@ -6640,7 +6642,8 @@ static void calculate_totalreserve_pages(void)
+ 
+ 			pgdat->totalreserve_pages += max;
+ 
+-			reserve_pages += max;
++			if (common)
++				reserve_pages += max;
+ 		}
+ 	}
+ 	totalreserve_pages = reserve_pages;
+@@ -6705,9 +6708,13 @@ static void __setup_per_zone_wmarks(void)
+ 	struct zone *zone;
+ 	unsigned long flags;
+ 
+-	/* Calculate total number of !ZONE_HIGHMEM and !ZONE_MOVABLE pages */
++	/*
++	 * Calculate total number of !ZONE_HIGHMEM and !ZONE_MOVABLE pages.
++	 * Distribute the global pages_min budget only over common memory.
++	 */
+ 	for_each_zone(zone) {
+-		if (!is_highmem(zone) && zone_idx(zone) != ZONE_MOVABLE)
++		if (!is_highmem(zone) && zone_idx(zone) != ZONE_MOVABLE &&
++		    !node_state(zone_to_nid(zone), N_MEMORY_PRIVATE))
+ 			lowmem_pages += zone_managed_pages(zone);
+ 	}
+ 
+@@ -6715,6 +6722,16 @@ static void __setup_per_zone_wmarks(void)
+ 		u64 tmp;
+ 
+ 		spin_lock_irqsave(&zone->lock, flags);
++		/* No kswapd runs for a private node to restore watermarks. */
++		if (node_state(zone_to_nid(zone), N_MEMORY_PRIVATE)) {
++			zone->_watermark[WMARK_MIN] = 0;
++			zone->_watermark[WMARK_LOW] = 0;
++			zone->_watermark[WMARK_HIGH] = 0;
++			zone->_watermark[WMARK_PROMO] = 0;
++			zone->watermark_boost = 0;
++			spin_unlock_irqrestore(&zone->lock, flags);
++			continue;
++		}
+ 		tmp = (u64)pages_min * zone_managed_pages(zone);
+ 		tmp = div64_ul(tmp, lowmem_pages);
+ 		if (is_highmem(zone) || zone_idx(zone) == ZONE_MOVABLE) {
 
 -- 
 2.56.1
