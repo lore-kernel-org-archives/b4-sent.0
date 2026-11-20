@@ -1,72 +1,90 @@
-From: Han Gao <gaohan@iscas.ac.cn>
-Date: Sat, 21 Nov 2026 03:15:59 +0800
-Subject: [PATCH v4 13/13] MAINTAINERS: add Zhihe A210
+From: Gleb Pesin <dormancygrace@gmail.com>
+Date: Fri, 20 Nov 2026 19:37:18 +0000
+Subject: [PATCH] crypto: eip93 - return request validation errors
+ synchronously
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-a210-scmi-v4-13-4a795a0a9fc9@iscas.ac.cn>
-References: <20261121-a210-scmi-v4-0-4a795a0a9fc9@iscas.ac.cn>
-In-Reply-To: <20261121-a210-scmi-v4-0-4a795a0a9fc9@iscas.ac.cn>
-To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
- Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>, 
- Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>, 
- Jassi Brar <jassisinghbrar@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Thomas Gleixner <tglx@kernel.org>, 
- Radu Rendec <radu@rendec.net>, Samuel Holland <samuel.holland@sifive.com>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, 
- Anup Patel <anup@brainfault.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, Michal Simek <michal.simek@amd.com>, 
- Drew Fustini <fustini@kernel.org>, Icenowy Zheng <uwu@icenowy.me>, 
- Inochi Amaoto <inochiama@gmail.com>, Vivian Wang <wangruikang@iscas.ac.cn>, 
- Yao Zi <me@ziyao.cc>, Jiaxun Yang <jiaxun.yang@flygoat.com>
-Cc: linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Paul Walmsley <paul.walmsley@sifive.com>, 
- linux-serial@vger.kernel.org, Han Gao <rabenda.cn@gmail.com>, 
- Han Gao <gaohan@iscas.ac.cn>
+Message-Id: <20261120-eip93-sync-errors-v1-1-1a83ae607181@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ6CQAxA4auQrmkyHYP8XIW40KFIWQykBaOZc
+ HcHXX6L9xIYq7BBVyRQfonJEjOoLCBM9/hklCEbvPNXIu+QZW0vaJ8YkFUXNRyH2rnQtDVVBLl
+ blUd5/5797W/bHzOH7RzBcXwBVOfKRXUAAAA=
+X-Change-ID: 20261120-eip93-sync-errors-fd700c897151
+To: Christian Marangi <ansuelsmth@gmail.com>, 
+ Antoine Tenart <atenart@kernel.org>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795202181; l=998;
- i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=4+K9oMgmXDDNfWP3RQVazEGhA8ORba3TgR1reKRQrsA=;
- b=7xcyBtu7YBanong5vbppbomKxRSQ5askeWhUrWIhxQ49iTgHE+taiLAE4M2HbLLzGiFk62t3o
- ZuIW/KgYXZDB//lw5jViGKgh8McyJDTU0lHz8KeFABH1yAAJZAYqs+j
-X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
- pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
-X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795203472; l=2301;
+ i=dormancygrace@gmail.com; s=eip93-20261120; h=from:subject:message-id;
+ bh=+TERzP8CffsbpcQ4hBerOf52PVosyn07V8S4OEMiU+s=;
+ b=PZQlB1FHao03xhRgyUZoCNx9qVq7bZcoCSRfK8UXjiMndmeNRgXSkKxLZPA4fO2R5XtMKl+Oi
+ Pej7t3wOQrnB1J95q7sjZIt+4R0fumYtk6gHihhEiNW83n+1qkOiHRU
+X-Developer-Key: i=dormancygrace@gmail.com; a=ed25519;
+ pk=XHpoYk1e6byKypiKa/3bDHJ2i4leWLeZDDjx4gJVsmc=
+X-Endpoint-Received: by B4 Relay for dormancygrace@gmail.com/eip93-20261120 with auth_id=1587
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Zhiguo Zhu and Han Gao as A210 maintainers.
+The skcipher and AEAD paths validate requests before submitting them
+to the hardware. On validation failure they invoke the completion
+callback and return the same error. Callers handle that return value
+as a synchronous failure and can complete the request a second time.
 
-Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
+Return the validation error directly in both paths. Keep completion
+callbacks in the hardware result handlers.
+
+Codex (gpt-6.2-sol) assisted with comparing the two paths, preparing the
+change and writing the changelog. The corresponding OpenWrt 6.18.64
+driver object was cross-compiled on MIPS.
+
+Fixes: 9739f5f93b78 ("crypto: eip93 - Add Inside Secure SafeXcel EIP-93 crypto engine support")
+Reported-by: Herbert Xu <herbert@gondor.apana.org.au>
+Closes: https://lore.kernel.org/linux-crypto/aXxmIuU9PKJiDs7n@gondor.apana.org.au/
+Signed-off-by: Gleb Pesin <dormancygrace@gmail.com>
 ---
- MAINTAINERS | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/crypto/inside-secure/eip93/eip93-aead.c   | 4 +---
+ drivers/crypto/inside-secure/eip93/eip93-cipher.c | 4 +---
+ 2 files changed, 2 insertions(+), 6 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index ccbcdc0799b9..a1eb24fd742e 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -30928,6 +30928,18 @@ L:	linux-kernel@vger.kernel.org
- S:	Maintained
- F:	arch/x86/kernel/cpu/zhaoxin.c
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-aead.c b/drivers/crypto/inside-secure/eip93/eip93-aead.c
+index 0b7a899b1..12134b6aa 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-aead.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-aead.c
+@@ -47,10 +47,8 @@ static int eip93_aead_send_req(struct crypto_async_request *async)
+ 	int err;
  
-+ZHIHE A210 SOC SUPPORT
-+M:	Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
-+M:	Han Gao <gaohan@iscas.ac.cn>
-+L:	linux-riscv@lists.infradead.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/mailbox/zhihe,a210-ap-mailbox.yaml
-+F:	Documentation/devicetree/bindings/pinctrl/zhihe,a210-pinctrl.yaml
-+F:	Documentation/devicetree/bindings/riscv/zhihe.yaml
-+F:	arch/riscv/boot/dts/zhihe/
-+F:	drivers/mailbox/mailbox-a210.c
-+F:	drivers/pinctrl/pinctrl-zhihe-a210.c
-+
- ZONED BLOCK DEVICE (BLOCK LAYER)
- M:	Damien Le Moal <dlemoal@kernel.org>
- L:	linux-block@vger.kernel.org
+ 	err = check_valid_request(rctx);
+-	if (err) {
+-		aead_request_complete(req, err);
++	if (err)
+ 		return err;
+-	}
+ 
+ 	return eip93_send_req(async, req->iv, rctx);
+ }
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-cipher.c b/drivers/crypto/inside-secure/eip93/eip93-cipher.c
+index 4dd7ab750..7b6d510f4 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-cipher.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-cipher.c
+@@ -38,10 +38,8 @@ static int eip93_skcipher_send_req(struct crypto_async_request *async)
+ 
+ 	err = check_valid_request(rctx);
+ 
+-	if (err) {
+-		skcipher_request_complete(req, err);
++	if (err)
+ 		return err;
+-	}
+ 
+ 	return eip93_send_req(async, req->iv, rctx);
+ }
 
--- 
-2.55.0
+---
+base-commit: 26ca5f34841f0a86d0883664a1c13be89a01d351
+change-id: 20261120-eip93-sync-errors-fd700c897151
+
+Best regards,
+--  
+Gleb Pesin <dormancygrace@gmail.com>
 
