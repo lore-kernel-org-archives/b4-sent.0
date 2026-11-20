@@ -1,99 +1,278 @@
-From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
-Date: Fri, 20 Nov 2026 14:59:02 +0800
-Subject: [PATCH bpf-next] selftests/bpf: Fix
- file_reader/on_open_non_sleepable_first on overlayfs
+From: Xiubo Li <xiubo.li@clyso.com>
+Subject: [PATCH v7 0/5] ceph: reduce mdsc->mutex contention in the cephfs
+ kclient
+Date: Fri, 20 Nov 2026 09:11:08 +0200
+Message-Id: <20261120-ceph-mdsc-mutex-optimization-v7-0-a4eee70e0038@clyso.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-file-reader-overlayfs-v1-1-81aa7f3041d1@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqDMBBG4avIrDuQpFaaXqV0Ec0fHZAokyIW8
- e6GLr/FewcVqKDQqzlIsUmRJVfYW0PDFPIIllhNzrjOWmc4yQxWhAjlZYPO4ZcKm9b7Z4yhe/g
- 71XZVJNn/3zf1a+KM/Uuf87wAwDh0gnEAAAA=
-X-Change-ID: 20261120-file-reader-overlayfs-04998dda6593
-To: Andrii Nakryiko <andrii@kernel.org>, 
- Eduard Zingerman <eddyz87@gmail.com>, 
- Ihor Solodrai <ihor.solodrai@linux.dev>, 
- Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
- Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- Emil Tsalapatis <emil@etsalapatis.com>, Shuah Khan <shuah@kernel.org>
-Cc: bpf@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- Hang Zhengyang <hang.zhengyang1010@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795157947; l=2542;
- i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
- bh=Z42i5/leJVwaMNYSXOof1lDedpwAns1zY51D5qfLFZg=;
- b=BVELy4sSCT416yAlXQDGZOkNtmJrAAIWI07LrHUOPdK4831RXbQ3f0/U5f91jZvgqGiuvGpmL
- WwqN1+FqKaxBANdUCPWmvgNM9CLE67wy3NxSXRR6Y8yeTXZOETej6IR
-X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
- pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
-X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43Ny26DMBQE0F+JvK4rXz9xVv2PKgv72hRXJSBMU
+ B7i32vSRVFZ0OVIM2ceJMchxUyOhwcZ4pRy6s4lmJcDwcadPyJNoWTCGdfMgKAY+4a2ISNtL2O
+ 80q4fU5vubixDaqKRzmvvsfKkEP0Q63R98u+nn5wv/jPiuJhLo0l57Ibb83+CpffPqwkoo9ZF5
+ RCEQiHf8OuWu1fsWrJcTXyNqR2MLxiLFXjDteEbTPxiFcAOJgoWmAAAKcHWG0yuMb6DyYLV6IQ
+ 3UvPabjC1xqodTBXMBCGUEw4C838xvcK43cF0waTWVmhEH2xYY/M8fwOPVYCpWwIAAA==
+X-Change-ID: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795158674; l=13162;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=11QYm/TENGcKjsBvK1LwuXUbKbn3xsSZ8/Fv39N+9vY=;
+ b=My5zsK5laIIeMjR0JTc87uCUrO32U3S//OYOvK1m5lL3DRUvqUeSeXeWA4KlKRbD+EDvl0ymR
+ ZOhVuigJo+sD6FV70cONIPImCBin+sHZOXRFyQ487z61eQUHuwNelrW
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-on_open_non_sleepable_first fails every time when the test_progs binary
-is on overlayfs, as under /home and /tmp in a virtme-ng guest:
+This series reduces mdsc->mutex hold times from hundreds of
+microseconds to tens of microseconds on the hot request-submit and
+reply-handling paths.
 
-  run_test:FAIL:err unexpected err: actual 4 != expected 0
+The approach is incremental:
+  1. Convert oldest_tid to atomic64_t so that __prepare_send_request()
+     and __send_request() no longer need the mutex.
+  2. Replace the request_tree rbtree with an xarray for O(1) lookups
+     and internally-locked iteration.
+  3. Add a dedicated wait_list_lock spinlock so wait-list operations
+     no longer depend on the global mutex.
+  4. Move mdsc->mutex acquisition inside __do_request(), then release
+     it during the send phase (message construction and path walking),
+     leaving only the brief setup/teardown under the lock.
+  5. Narrow the mutex scope in replay_unsafe_requests() similarly.
 
-bpf_task_work_schedule_signal() returns -EBUSY.  On overlayfs, the
-open() of /proc/self/exe calls security_file_open() twice: once for
-the overlay file, and once more for the backing file through
-ovl_open() -> backing_file_open() -> vfs_open().  The program runs
-twice in the same task, and the second call finds the work from the
-first one still pending, since it only runs on return to user space.
+Tested with concurrent readdir + stat on a 5000-file directory
+(32 threads).  bpftrace measurements show:
 
-Act only on the first call.  The other file_open programs in the file
-either don't schedule task work or don't check the result, so running
-twice doesn't affect them.
+                 before         after
+  __do_request   354-2327 us    10-68 us    (34x)
+  handle_reply   51-416 us     10-32 us    (13x)
+  submit_request 89-211 us     10-41 us    (5x)
 
-Fixes: fc38f07781ca ("selftests/bpf: Test per-call site function specialization")
-Signed-off-by: Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Benchmark results from test_i_caps (aggregate cache test):
+
+  | Test                | Before   | After    | Improvement |
+  |---------------------|----------|----------|-------------|
+  | stat storm ST       | 692k/s   | 1,420k/s | +105% (2.1x)|
+  | stat storm MT       | 722k/s   | 1,373k/s | +90%  (1.9x)|
+  | open/close          | 403k/s   | 524k/s   | +30%        |
+  | stat hot (cache)    | 353k/s   | 540k/s   | +53%        |
+  | readdir             | 877/s    | 832/s    | ~0%         |
+  | Total time          | 195s     | 121s     | -38%  (1.6x)|
+
+The 2x stat throughput gain comes from __do_request() no longer
+holding mdsc->mutex during the __send_request() phase, so dentry
+path walking and message encoding in create_request_message()
+run outside the lock.
+
+No functional changes intended.
+
+Testing for 24+ hours:
+
+The runtime validation ran on a vstart cluster (3 active + 3 standby
+MDS) with a 32-thread metadata load generator and a kernel built with
+CONFIG_PROVE_LOCKING, CONFIG_DEBUG_LIST and CONFIG_DETECT_HUNG_TASK:
+
+- fsstress + dbench smoke runs: clean.
+- r1, single-MDS failover churn: 108 failovers across 4 runs, every
+  session reconnected, no lost wakeups, no hangs.
+- r2, double "ceph mds fail" chaos: ~90 double-fail cycles across
+  2 runs, zero hangs, zero kernel warnings, clean teardown.
+- r3, double-fail plus victim processes SIGKILLed every 50-400 ms
+  (5084 kills in one run) to exercise the request abort path: zero
+  warnings, zero list-corruption reports, zero refcount issues.
+- r4 (double mds fail + evict churn + 8 victim processes killed at
+  200-2000 ms): one 32-minute run FAILED -- a worker was stuck in
+  truncate for ~15 minutes at shutdown, the join oracle's first hit
+  across all runs.  Live-kernel forensics (drgn against /proc/kcore)
+  showed the wedge is unrelated to this series: the double-fail had
+  dropped the inode's dirty caps in the session-loss path (caps.c)
+  without cleaning up the page wrbuffer refs, so the ceph_inode_work()
+  kworker spun forever in __ceph_do_pending_vmtruncate()'s flush
+  branch -- with no dirty caps, ceph_writepages_start() returns
+  -ENODATA without writing, the refs never drain, and the loop holds
+  i_truncate_mutex indefinitely, starving concurrent truncates (and,
+  via setattr's inode lock and vfs_unlink()'s target-inode lock,
+  unlinks).  Every link of that chain is in caps.c/inode.c/addr.c/VFS
+  code untouched by these patches; it is a pre-existing consistency
+  bug (dirty caps dropped without wrbuffer-ref cleanup on session
+  loss, plus an unbounded flush loop) to be fixed separately.  (The
+  r4 evict trigger was skipped in this run as debugfs was not
+  mounted; session eviction itself had been exercised in earlier
+  testing.)
+
+No lockdep reports, list corruption, refcount warnings, or hung tasks
+across the whole campaign.  The campaign also exposed two pre-existing
+mainline bugs (a NULL oldest-snapc dereference in the writeback path
+and a request abort-path use-after-free), both reproducible without
+this series on a vanilla 7.2 kernel and fixed separately.
+
+The whole test code could be find in:
+https://tracker.ceph.com/issues/80086
+Or
+https://tracker.ceph.com/issues/80084
+
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
-Tested in a virtme-ng guest on bpf-next (82cc2b4383e3): file_reader
-passes from overlayfs and from a tmpfs copy, and 20 times in a row
-from overlayfs; without the change the subtest fails from overlayfs
-and passes from tmpfs.
+Changes in v7:
+- Patches 1-3 are identical to v6.
+- patch 4: add the missing braces around the s_unsafe loop in
+  replay_unsafe_requests().  Only r_attempts++ was inside the loop,
+  and __send_request() ran once after it on a request pointer derived
+  from the list head, so a reconnect with patch 4 alone replayed no
+  unsafe request and touched a bogus pointer.  Patch 5 rewrites the
+  function, so the series result is unchanged; this keeps patch 4
+  bisectable.  Found by -Wmisleading-indentation.
+- patch 5:
+  - replay_unsafe_requests() no longer skips a request whose
+    CEPH_MDS_R_DISPATCHING is held.  The owner may already have queued
+    the request message on the connection that send_mds_reconnect()
+    resets, and nothing would send it again, so the caller waited
+    forever.  The replay now waits for the owner to release the bit,
+    rescans, and replays the request itself.  The owner never takes
+    session->s_mutex in its send window, so the wait cannot deadlock.
+    (Alex Markuze)
+  - Add release_dispatch() and use it on every DISPATCHING release
+    path.  The replay flags its wait with the new
+    CEPH_MDS_R_REPLAY_WAIT bit, and release_dispatch() calls
+    wake_up_bit() only when that bit is set, so the common release
+    stays one atomic clear plus a plain test_bit() under mdsc->mutex,
+    without a lookup in the kernel-wide bit_wait_table.
+  - __do_request() and replay_unsafe_requests() copy r_attempts and
+    r_num_fwd into the new r_send_attempts and r_send_num_fwd under
+    mdsc->mutex, and __prepare_send_request() encodes num_retry and
+    num_fwd, and checks for retry overflow, from the copies.
+    cleanup_session_requests() and handle_forward() may rewrite the
+    originals while the message is built, which encoded num_retry as
+    255 and ext_num_retry as 0xffffffff.  (Alex Markuze)
+  - __do_request() resets r_resend_mds before dropping mdsc->mutex, so
+    that a forward arriving in the send window is not undone.
+- Link to v6: https://patch.msgid.link/20260829-ceph-mdsc-mutex-optimization-v6-0-466936ccbd9d@clyso.com
 
-The patch, this text and the tests were written and run with Claude
-Code; I reproduced the issue and reviewed the change.
+Changes in v6:
+- Only patch 5/5 is changed; patches 1-4 are identical to v5.
+- Replace the ad-hoc r_attempts dispatch gate with an explicit
+  ownership protocol.  __do_request() and replay_unsafe_requests()
+  claim CEPH_MDS_R_DISPATCHING under mdsc->mutex before the unlocked
+  prepare/send window and release it on exit, so only one context ever
+  rebuilds and sends a request's message.  A claim consumes any
+  pending CEPH_MDS_R_RESEND.
+- cleanup_session_requests() and handle_forward() set
+  CEPH_MDS_R_RESEND under mdsc->mutex when they see DISPATCHING held,
+  instead of relying on r_attempts == 0 to trigger a resend.  Fixes
+  the v5 race where cleanup_session_requests() could zero r_attempts
+  while a sender was between the mutex release and __send_request(),
+  letting a second __do_request() in and double ceph_msg_put() the
+  request message.
+- On release, the owner consumes a pending CEPH_MDS_R_RESEND
+  and re-dispatches the request through __do_request() (restart label)
+  as long as it is still registered in the request xarray.
+- __wake_requests() now takes mdsc->mutex and splices the wait
+  list under it, pinning a reference on each request in the same
+  critical section as the list_del_init().  This fixes the v5 lockless
+  walk of the spliced list against concurrent list_del_init() by the
+  park paths, and serializes the SESSION_OPEN wake in handle_session()
+  against the park decision in __do_request().
+- Collector exclusivity — kick_requests(), __wake_requests()
+  and replay_unsafe_requests() skip any request whose r_aux_item is
+  non-empty (checked under mdsc->mutex), so two concurrent collectors
+  can no longer add the same node to their local lists.
+- The re-park paths in __do_request() now list_del_init() the
+  request before list_add()ing it onto a wait list, so re-parking is
+  idempotent (needed now that a request can re-enter __do_request()
+  through the RESEND restart loop).
+- __do_request() refuses to dispatch GOT_UNSAFE requests,
+  clearing any pending RESEND/DISPATCHING bits, so an unsafe request
+  is never parked on a wait list.  Together with the exclusivity
+  predicate this guarantees a request is never both wait-listed and on
+  session->s_unsafe, and replay_unsafe_requests() remains the only
+  replayer of unsafe requests.
+- replay_unsafe_requests() claims DISPATCHING in both collect
+  loops, and after __send_request() consumes a pending RESEND and
+  re-dispatches through __do_request().
+- send_mds_reconnect() drops snap_rwsem before calling
+  __wake_requests(), which now takes mdsc->mutex internally (lock
+  order).
+- Link to v5: https://patch.msgid.link/20260818-ceph-mdsc-mutex-optimization-v5-0-7d335a3a1d0b@clyso.com
+
+Changes in v5:
+- patch 4: add INIT_LIST_HEAD(&req->r_aux_item) in ceph_mdsc_create_request().
+- patch 5: keep requests on session->s_unsafe during replay; use r_aux_item
+  only as a walk list.
+- Link to v4: https://patch.msgid.link/20260812-ceph-mdsc-mutex-optimization-v4-0-fca3b7462f94@clyso.com
+
+Changes in v4:
+- Fix ref leak in __register_request() xa_store error path
+- Fix r_attempts data race: move r_attempts++ from
+  __prepare_send_request() (lockless) into __do_request() and
+  replay_unsafe_requests() under mdsc->mutex.  Adjust the retry
+  overflow check accordingly.
+- Fix kick_requests() list corruption: detach r_wait from the local
+  kick_list before calling __do_request().
+- Fix collect-then-replay list-node races in both kick_requests()
+  and replay_unsafe_requests(): introduce r_aux_item, a dedicated
+  list_head for temporary local list iteration, so that concurrent
+  __unregister_request() cannot corrupt the iterator.
+- Link to v3: https://patch.msgid.link/20260811-ceph-mdsc-mutex-optimization-v3-0-d031114419f4@clyso.com
+
+Changes in v3:
+- Restrict CEPH_FS to 64BIT to prevent xarray index truncation of
+  u64 transaction IDs on 32-bit platforms, instead of the previous
+  #if BITS_PER_LONG guard.  There are no 32-bit users.
+  The survey: https://lore.kernel.org/ceph-devel/CAOJNxR+XiUxR1GNUgd8T18x2KH8kstWtpxwL-mwwE0i_qospJA@mail.gmail.com/T/#t
+- Fix two plain reads of oldest_tid in the writer paths to use
+  READ_ONCE() for consistency with the lockless read side.
+- Replace the original replay_unsafe_requests() change with a
+  proper collect-then-replay pattern: unsafe list entries and
+  matching old xarray entries are gathered under the mutex with a
+  reference taken, then replayed outside it.  Taking a reference
+  ensures a concurrent reply handler cannot free an entry out
+  from under the local-list iterator.
+- Rewrite all commit messages as descriptive prose, focusing on
+  the problem and the approach rather than enumerating modified
+  functions.
+- Link to v2: https://patch.msgid.link/20260715-ceph-mdsc-mutex-optimization-v2-0-90e81b726724@clyso.com
+
+Changes in v2:
+- Add xa_store() error handling and bail out on failure in the submit path
+- Guard xarray conversion with BITS_PER_LONG==64, fall back to rbtree on 32-bit
+- Fix missing mutex_unlock on early-return path in __do_request()
+- Move mutex_unlock before __wake_requests() and kick_requests() calls to
+  avoid recursive lock acquisition
+- Pin requests with ceph_mdsc_get_request() across lockless __send_request()
+  in replay_unsafe_requests() to prevent use-after-free
+- Keep mdsc->mutex held on 32-bit for rb_first()/rb_next() iteration in
+  replay_unsafe_requests()
+- Drop stale "called under mdsc->mutex" comment on __wake_requests()
+- Add benchmark results from test_i_caps (2.1x stat throughput improvement)
+- Link to v1: https://patch.msgid.link/20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com
+
+To: Ilya Dryomov <idryomov@gmail.com>
+To: Alex Markuze <amarkuze@redhat.com>
+To: Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
 ---
- tools/testing/selftests/bpf/progs/file_reader.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+Xiubo Li (5):
+      ceph: use READ_ONCE/WRITE_ONCE for oldest_tid
+      ceph: replace the request_tree rbtree with an xarray keyed by r_tid
+      ceph: add wait_list_lock for wait-list serialization
+      ceph: move mdsc->mutex into __do_request()
+      ceph: narrow mdsc->mutex scope in replay_unsafe_requests
 
-diff --git a/tools/testing/selftests/bpf/progs/file_reader.c b/tools/testing/selftests/bpf/progs/file_reader.c
-index 8b972fd26d73..1318b8e0845c 100644
---- a/tools/testing/selftests/bpf/progs/file_reader.c
-+++ b/tools/testing/selftests/bpf/progs/file_reader.c
-@@ -28,6 +28,7 @@ char tmp_buf[256000];
- int pid = 0;
- int err, run_success = 0;
- __u64 beyond_eof_offset;
-+bool done;
- 
- static int validate_file_read(struct file *file);
- static int task_work_callback(struct bpf_map *map, void *key, void *value);
-@@ -101,8 +102,13 @@ int on_open_non_sleepable_first(void *c)
- 	int key = 0;
- 	int ret;
- 
--	if (bpf_get_current_pid_tgid() >> 32 != pid)
-+	/*
-+	 * On overlayfs, file_open runs again for the backing file, while the
-+	 * work scheduled by the first call is still pending.
-+	 */
-+	if (bpf_get_current_pid_tgid() >> 32 != pid || done)
- 		return 0;
-+	done = true;
- 
- 	file = bpf_get_task_exe_file(task);
- 	if (!file) {
-
+ fs/ceph/Kconfig      |   1 +
+ fs/ceph/debugfs.c    |   6 +-
+ fs/ceph/mds_client.c | 666 ++++++++++++++++++++++++++++++++++++++++-----------
+ fs/ceph/mds_client.h |  56 ++++-
+ 4 files changed, 579 insertions(+), 150 deletions(-)
 ---
-base-commit: 82cc2b4383e3edfa1026c8612fb4e90a9329ba11
-change-id: 20261120-file-reader-overlayfs-04998dda6593
+base-commit: dee30ce1286a0d18b14545ecac345e4cf4a80511
+change-id: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
 
 Best regards,
--- 
-Hang Zhengyang <hang.zhengyang1010@gmail.com>
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
