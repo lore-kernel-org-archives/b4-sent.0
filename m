@@ -1,10 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:41 -0500
-Subject: [PATCH 50/60] mm: add N_MEMORY_MEMPOLICY node state
+Date: Fri, 20 Nov 2026 13:09:42 -0500
+Subject: [PATCH 51/60] mm: restrict explicit migration to
+ N_MEMORY_MEMPOLICY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-50-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-51-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,120 +62,116 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=4477;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198154; l=3917;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=POrrod7a8qe5/RJcpG1x1W6f1yuN7ZdnOW2+WhH0FXE=;
- b=aTDMy5aQgR/eu/TnyoctRRRg14g5CIETIw3u4dDaQdYVGncbixZ+T0SNCnrlFn6DFrsn4+Zg1
- q8XW52q1jYMDuHrNhBZsCfARwTf3Qz3aNp9IhHdIxv9ybHyAJ3U5en6
+ bh=B6Y6UKzNoFCEvlaigonl7wIhC2pzL3ijUJbtxgXP4vI=;
+ b=Cqgg+950T1Wa/QOdAAoJ89OU4n2XkUCd91Mhb4KvzETYBoxSmxxLKw/cTE1vnANvYIjt0Oank
+ NZIwcdEbRo7DFudh5eeM7NJWPyrWJpnbINaDNlQsQ5xoIUroWylq7iS
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add N_MEMORY_MEMPOLICY as an internal state for the nodes that memory
-policy interfaces and explicit migration may target, and
-NODE_MEMORY_FEAT_MEMPOLICY for memory providers to select it.
+mbind(MPOL_MF_MOVE), migrate_pages() and move_pages() act only on folios
+on common memory. N_MEMORY_MEMPOLICY nodes are the nodes memory policy
+and explicit migration may target, so let explicit migration also act on
+folios already on them.
 
-Userspace placement lets ordinary processes use the node like any other
-memory. That assumes the node is reclaimed and compacted, so the feature
-requires both.
+Add folio_allows_mempolicy(), which requires the folio's node to permit
+memory policy, and use it instead.
+
+Memory on other private nodes is still left alone:
+  - move_pages() refuses to migrate it.
+  - mbind(MPOL_MF_MOVE) and migrate_pages() skip its folios.
+
+Cpuset migration can now find pages on these nodes. Evacuate them only
+from nodes the cpuset no longer allows. Private nodes are still never
+destinations for this kind of migration.
+
+Migration keeps its best-effort behavior and can affect shared backing
+pages seen by other mappers.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- Documentation/mm/physical_memory.rst |  3 +++
- include/linux/nodemask.h             | 11 +++++++++--
- mm/page_alloc.c                      |  4 ++++
- 3 files changed, 16 insertions(+), 2 deletions(-)
+ kernel/cgroup/cpuset.c | 8 +++++++-
+ mm/internal.h          | 7 +++++++
+ mm/mempolicy.c         | 4 ++--
+ mm/migrate.c           | 2 +-
+ 4 files changed, 17 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/mm/physical_memory.rst b/Documentation/mm/physical_memory.rst
-index 1bafe8c085a3..75752c3a5694 100644
---- a/Documentation/mm/physical_memory.rst
-+++ b/Documentation/mm/physical_memory.rst
-@@ -190,6 +190,8 @@ The following states are internal and not exported through sysfs:
- ``N_MEMORY_RECLAIM``
-   The kernel reclaims the node on its own initiative (kswapd, memcg and
-   explicit reclaim).
-+``N_MEMORY_MEMPOLICY``
-+  Memory-policy interfaces and explicit migration may target the node.
- 
- For each node that has a property described above, the bit corresponding to the
- node ID in the ``node_states[<property>]`` bitmask is set.
-@@ -205,6 +207,7 @@ For example, for node 2 with normal memory and CPUs, bit 2 will be set in ::
-   node_states[N_CPU]
-   node_states[N_MEMORY_COMPACTION]
-   node_states[N_MEMORY_RECLAIM]
-+  node_states[N_MEMORY_MEMPOLICY]
- 
- For various operations possible with nodemasks please refer to
- ``include/linux/nodemask.h``.
-diff --git a/include/linux/nodemask.h b/include/linux/nodemask.h
-index be5edbee2b22..c7a1800d9171 100644
---- a/include/linux/nodemask.h
-+++ b/include/linux/nodemask.h
-@@ -414,6 +414,7 @@ enum node_states {
- 	/* Internal states, not exported through sysfs */
- 	N_MEMORY_COMPACTION,	/* mm compaction may operate on the node */
- 	N_MEMORY_RECLAIM,	/* mm reclaim may operate on the node */
-+	N_MEMORY_MEMPOLICY,	/* memory policy may target the node */
- 	NR_NODE_STATES
- };
- 
-@@ -552,14 +553,17 @@ static __always_inline int node_random(const nodemask_t *maskp)
- #define NODE_MEMORY_FEAT_COMMON		BIT(0) /* add to fallback zonelist */
- #define NODE_MEMORY_FEAT_COMPACTION	BIT(1) /* mm compaction */
- #define NODE_MEMORY_FEAT_RECLAIM	BIT(2) /* mm reclaim */
-+#define NODE_MEMORY_FEAT_MEMPOLICY	BIT(3) /* userspace NUMA controls */
- #define NODE_MEMORY_FEAT_ALL		(NODE_MEMORY_FEAT_COMMON | \
- 					 NODE_MEMORY_FEAT_COMPACTION | \
--					 NODE_MEMORY_FEAT_RECLAIM)
-+					 NODE_MEMORY_FEAT_RECLAIM | \
-+					 NODE_MEMORY_FEAT_MEMPOLICY)
- 
- /*
-  * Common memory carries every feature. Private memory needs NUMA: node 0
-  * holds all memory without it. Reclaim leaves high-order requests to
-- * compaction, so it requires compaction.
-+ * compaction, so it requires compaction. Userspace placement assumes the
-+ * node is reclaimed and compacted like any other memory.
-  */
- static inline bool node_memory_features_valid(unsigned long features)
+diff --git a/kernel/cgroup/cpuset.c b/kernel/cgroup/cpuset.c
+index e20f9ccb8ab7..7d4b922a1914 100644
+--- a/kernel/cgroup/cpuset.c
++++ b/kernel/cgroup/cpuset.c
+@@ -2686,8 +2686,14 @@ static void cpuset_migrate_mm_workfn(struct work_struct *work)
  {
-@@ -570,6 +574,9 @@ static inline bool node_memory_features_valid(unsigned long features)
- 	if ((features & NODE_MEMORY_FEAT_RECLAIM) &&
- 	    !(features & NODE_MEMORY_FEAT_COMPACTION))
- 		return false;
-+	if ((features & NODE_MEMORY_FEAT_MEMPOLICY) &&
-+	    !(features & NODE_MEMORY_FEAT_RECLAIM))
-+		return false;
- 	return IS_ENABLED(CONFIG_NUMA);
+ 	struct cpuset_migrate_mm_work *mwork =
+ 		container_of(work, struct cpuset_migrate_mm_work, work);
++	nodemask_t retained;
+ 
+-	/* Private nodes are never migration destinations. */
++	/*
++	 * Private nodes are never migration destinations. Evacuate private
++	 * memory only from nodes the cpuset no longer allows.
++	 */
++	nodes_and(retained, mwork->to, node_states[N_MEMORY_PRIVATE]);
++	nodes_andnot(mwork->from, mwork->from, retained);
+ 	nodes_andnot(mwork->to, mwork->to, node_states[N_MEMORY_PRIVATE]);
+ 	/* on a wq worker, no need to worry about %current's mems_allowed */
+ 	do_migrate_pages(mwork->mm, &mwork->from, &mwork->to, MPOL_MF_MOVE_ALL);
+diff --git a/mm/internal.h b/mm/internal.h
+index fa1ae221564e..4bac570bb29f 100644
+--- a/mm/internal.h
++++ b/mm/internal.h
+@@ -87,6 +87,13 @@ static inline bool folio_allows_reclaim(struct folio *folio)
+ 	       node_state(folio_nid(folio), N_MEMORY_RECLAIM);
  }
  
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index cc70e1b45322..eff9c3d8251f 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -206,6 +206,7 @@ nodemask_t node_states[NR_NODE_STATES] __read_mostly = {
- 	[N_MEMORY_COMMON] = { { [0] = 1UL } },
- 	[N_MEMORY_COMPACTION] = { { [0] = 1UL } },
- 	[N_MEMORY_RECLAIM] = { { [0] = 1UL } },
-+	[N_MEMORY_MEMPOLICY] = { { [0] = 1UL } },
- 	[N_CPU] = { { [0] = 1UL } },
- #endif	/* NUMA */
- };
-@@ -224,10 +225,13 @@ void __meminit node_set_memory_state(int nid, unsigned long features)
- 		node_set_state(nid, N_MEMORY_COMPACTION);
- 	if (features & NODE_MEMORY_FEAT_RECLAIM)
- 		node_set_state(nid, N_MEMORY_RECLAIM);
-+	if (features & NODE_MEMORY_FEAT_MEMPOLICY)
-+		node_set_state(nid, N_MEMORY_MEMPOLICY);
- }
++/* May userspace NUMA operations act on this folio's memory? */
++static inline bool folio_allows_mempolicy(struct folio *folio)
++{
++	return !folio_is_zone_device(folio) &&
++	       node_state(folio_nid(folio), N_MEMORY_MEMPOLICY);
++}
++
+ /* mm/vmscan.c */
+ unsigned long zone_reclaimable_pages(struct zone *zone);
+ unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
+diff --git a/mm/mempolicy.c b/mm/mempolicy.c
+index 2bfe8b2b6287..9d2e56017ebe 100644
+--- a/mm/mempolicy.c
++++ b/mm/mempolicy.c
+@@ -705,7 +705,7 @@ static void queue_folios_pmd(pmd_t *pmd, unsigned long addr,
+ 		return;
+ 	}
+ 	folio = vm_normal_folio_pmd(walk->vma, addr, pmdval);
+-	if (!folio || !folio_is_common_memory(folio))
++	if (!folio || !folio_allows_mempolicy(folio))
+ 		return;
+ 	if (!queue_folio_required(folio, qp))
+ 		return;
+@@ -763,7 +763,7 @@ static int queue_folios_pte_range(pmd_t *pmd, unsigned long addr,
+ 			continue;
+ 		}
+ 		folio = vm_normal_folio(vma, addr, ptent);
+-		if (!folio || !folio_is_common_memory(folio))
++		if (!folio || !folio_allows_mempolicy(folio))
+ 			continue;
+ 		if (folio_test_large(folio) && max_nr != 1)
+ 			nr = folio_pte_batch(folio, pte, ptent, max_nr);
+diff --git a/mm/migrate.c b/mm/migrate.c
+index ac583afa1bc5..6791834f14fe 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -2287,7 +2287,7 @@ static int __add_folio_for_migration(struct folio *folio, int node,
+ 	if (is_zero_folio(folio) || is_huge_zero_folio(folio))
+ 		return -EFAULT;
  
- void __meminit node_clear_memory_state(int nid)
- {
-+	node_clear_state(nid, N_MEMORY_MEMPOLICY);
- 	node_clear_state(nid, N_MEMORY_RECLAIM);
- 	node_clear_state(nid, N_MEMORY_COMPACTION);
- 	node_clear_state(nid, N_MEMORY_PRIVATE);
+-	if (!folio_is_common_memory(folio))
++	if (!folio_allows_mempolicy(folio))
+ 		return -ENOENT;
+ 
+ 	if (folio_nid(folio) == node)
 
 -- 
 2.56.1
