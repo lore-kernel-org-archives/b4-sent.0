@@ -1,10 +1,10 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Date: Fri, 20 Nov 2026 21:23:03 +0530
-Subject: [PATCH v3 01/11] dt-bindings: arm: qcom,ids: Add SoC ID for SM8845
+Date: Fri, 20 Nov 2026 21:23:04 +0530
+Subject: [PATCH v3 02/11] soc: qcom: socinfo: Add SM8845 SoC ID
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-molokai-soc-v3-1-403d763685d9@yahoo.com>
+Message-Id: <20261120-molokai-soc-v3-2-403d763685d9@yahoo.com>
 References: <20261120-molokai-soc-v3-0-403d763685d9@yahoo.com>
 In-Reply-To: <20261120-molokai-soc-v3-0-403d763685d9@yahoo.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -18,37 +18,35 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795189983; l=789;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795189983; l=669;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=itNkOBsn5zBXIqWfZ31vPjkOQIWmU2w3sGj2sszfkTE=;
- b=tDORZz76Q7I2nv9Eap1OWBYBdurn8FBNZgsHXeQzj8N5Dc8hGmkT1JyTRApmS1gPWCAcN5wOg
- +CvgxWdD8aMBv2r79JFQkFmW2pYBe8fQ6Pe5UP2HwuluO/sKNuB2j+u
+ bh=8xw0twAksMHMX47Apc9L+1JQQiLJNoWw5JK0Kzy6y1o=;
+ b=Z0wiU4mXxxmcJwPwUlCho+OdscD1y/Gq3jwxa5bVrgxFrqea3BDA3lWQPta/X5GY6xqyOHcov
+ IlFnLA0CNzRDbRzSoGWg0h+NrjKVudYgkXOkRaR3r1xSQItBZuO4KWM
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the ID of the Qualcomm SM8845 (Molokai), a variant of the SM8850
-(Kaanapali), as the Motorola Signature reports it in SMEM. socinfo uses
-it to report the SoC by name.
+Add the SoC ID for SM8845, a variant of SM8850 (Kaanapali).
 
 Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
- include/dt-bindings/arm/qcom,ids.h | 1 +
+ drivers/soc/qcom/socinfo.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/include/dt-bindings/arm/qcom,ids.h b/include/dt-bindings/arm/qcom,ids.h
-index d89d3b5dd00c..5e4af9edcd77 100644
---- a/include/dt-bindings/arm/qcom,ids.h
-+++ b/include/dt-bindings/arm/qcom,ids.h
-@@ -300,6 +300,7 @@
- #define QCOM_ID_QCS8275			675
- #define QCOM_ID_QCS9075			676
- #define QCOM_ID_QCS615			680
-+#define QCOM_ID_SM8845			685
- #define QCOM_ID_SA8797P			690
- #define QCOM_ID_SM8975			707
- #define QCOM_ID_CQ7790M			731
+diff --git a/drivers/soc/qcom/socinfo.c b/drivers/soc/qcom/socinfo.c
+index 18105ddcf04d..718d1fa7e830 100644
+--- a/drivers/soc/qcom/socinfo.c
++++ b/drivers/soc/qcom/socinfo.c
+@@ -541,6 +541,7 @@ static const struct soc_id soc_id[] = {
+ 	{ qcom_board_id(QCS8275) },
+ 	{ qcom_board_id(QCS9075) },
+ 	{ qcom_board_id(QCS615) },
++	{ qcom_board_id(SM8845) },
+ 	{ qcom_board_id(SA8797P) },
+ 	{ qcom_board_id(SM8975) },
+ 	{ qcom_board_id(CQ7790M) },
 
 -- 
 2.56.1
