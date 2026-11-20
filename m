@@ -1,11 +1,11 @@
 From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
-Date: Fri, 20 Nov 2026 16:44:22 +0800
-Subject: [PATCH sched_ext/for-7.5 1/2] sched_ext: idle: Don't stack a sync
- wakee behind a higher-class task
+Date: Fri, 20 Nov 2026 16:44:23 +0800
+Subject: [PATCH sched_ext/for-7.5 2/2] selftests/sched_ext: Test sync
+ wakeups from an RT task
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-scx-fix75-v1-1-254f782ff9b0@gmail.com>
+Message-Id: <20261120-scx-fix75-v1-2-254f782ff9b0@gmail.com>
 References: <20261120-scx-fix75-v1-0-254f782ff9b0@gmail.com>
 In-Reply-To: <20261120-scx-fix75-v1-0-254f782ff9b0@gmail.com>
 To: Tejun Heo <tj@kernel.org>, David Vernet <void@manifault.com>, 
@@ -24,85 +24,310 @@ Cc: Kuba Piecuch <jpiecuch@google.com>,
  linux-kselftest@vger.kernel.org, 
  Hang Zhengyang <hang.zhengyang1010@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795164273; l=3366;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795164273; l=7737;
  i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
- bh=XDlfptL4/63rv6xAwJeSPuaqpC6qexTX9EZsXa6XdeE=;
- b=+041VgJyuR080Y7h/zrFkwlzfmEXSrTActdVaCPfTvYKiDijZMidGqycmug0BVWAySZtC+EO0
- 2NNuASmdAXDD3trtjhj9q2R1TZdKG0rJKoRLJrsGFG6ehfgS4OCidu5
+ bh=ZdH0zACDdHFIhPF1NiY9Xw4N3rcdSdQGPyZtTNXQl2k=;
+ b=HdoouE0PZ48l4E/8Wqvn7vjxTSXVoGoSc+v6R02Y2sDKcoTESxDs4FwTQezq03JDJIDMSNGEO
+ loIGnICLn5ZCJvWQ64oME+FiK82CmKGfx8MGoMYBffTk/3HlTyAQZR5
 X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
  pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
 X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On a sync wakeup, scx_select_cpu_dfl() can return the waker's CPU. It
-does this when the waker's local DSQ is empty and some CPU is idle,
-because the waker is expected to give up its CPU soon.
+Add the sync_wake_rt test. It loads the minimal scheduler, so the
+kernel picks the CPU for each wakeup.
 
-This is wrong when the waker's CPU runs an RT or DL task, or a fair
-task in partial mode. The BPF scheduler can't preempt such a task. The
-wakee waits on the local DSQ until that task blocks, or until the ext
-dl_server runs the wakee. Meanwhile, other CPUs are idle.
+In each round, a reader task first runs on one CPU. Then it blocks on
+a pipe and may run on any usable CPU. An RT task, pinned to that first
+CPU, writes to the pipe and spins until the reader has run, for at
+most 300 ms.
 
-The waker may not sleep at all. pipe_write() and sock_def_readable()
-always set WF_SYNC, even if the writer keeps running.
-
-This affects every BPF scheduler that leaves CPU selection to the
-kernel, or that passes SCX_WAKE_SYNC to scx_bpf_select_cpu_dfl() or
-scx_bpf_select_cpu_and(). In an 8 vCPU guest with scx_simple, an RT
-task on CPU 0 wrote to a pipe and kept spinning. In 16 of 16 wakeups,
-the reader ran on CPU 0, 169 ms to 1.5 s later. With an eventfd write
-instead, which is not a sync wakeup, the reader ran on an idle CPU
-within 0.1 ms.
-
-SCX_OPS_ALWAYS_ENQ_IMMED doesn't fix this. It re-enqueues the wakee,
-but in the same test the wakee still ran 16 to 483 ms late. The fair
-class doesn't have this problem. wake_affine_idle() also picks the
-waker's CPU, but select_idle_sibling() only uses it if it is idle.
-
-Skip the shortcut when a task of a higher class than EXT is running,
-or about to run, on the waker's CPU. rq->next_class shows this, and
-rq_is_open() uses the same check for SCX_ENQ_IMMED. The wakee then
-goes to an idle CPU, as in any other wakeup. Sync wakeups between EXT
-tasks don't change, unless a higher-class task is about to run on the
-waker's CPU.
+The test fails if the reader runs on the RT task's CPU in more than 5
+of 10 rounds. It is skipped if fewer than two CPUs are usable. It
+checks where the reader runs, not how long it waits, because the wait
+depends on the state of the ext dl_server.
 
 Signed-off-by: Hang Zhengyang <hang.zhengyang1010@gmail.com>
 ---
- kernel/sched/ext/idle.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ tools/testing/selftests/sched_ext/Makefile       |   1 +
+ tools/testing/selftests/sched_ext/sync_wake_rt.c | 257 +++++++++++++++++++++++
+ 2 files changed, 258 insertions(+)
 
-diff --git a/kernel/sched/ext/idle.c b/kernel/sched/ext/idle.c
-index 922fbc3065cc..bf4dd8cb4255 100644
---- a/kernel/sched/ext/idle.c
-+++ b/kernel/sched/ext/idle.c
-@@ -534,6 +534,7 @@ s32 scx_select_cpu_dfl(struct task_struct *p, s32 prev_cpu, u64 wake_flags,
- 	 * If WAKE_SYNC, try to migrate the wakee to the waker's CPU.
- 	 */
- 	if (wake_flags & SCX_WAKE_SYNC) {
-+		const struct sched_class *next_class;
- 		int waker_node;
+diff --git a/tools/testing/selftests/sched_ext/Makefile b/tools/testing/selftests/sched_ext/Makefile
+index 44083f1c6596..8d2c5b5b0070 100644
+--- a/tools/testing/selftests/sched_ext/Makefile
++++ b/tools/testing/selftests/sched_ext/Makefile
+@@ -201,6 +201,7 @@ auto-test-targets :=			\
+ 	test_example			\
+ 	total_bw			\
+ 	cyclic_kick_wait		\
++	sync_wake_rt			\
  
- 		/*
-@@ -559,9 +560,19 @@ s32 scx_select_cpu_dfl(struct task_struct *p, s32 prev_cpu, u64 wake_flags,
- 		 * insufficient as the local DSQ of the waker could have tasks
- 		 * piled up on it even if there is an idle core elsewhere on
- 		 * the system.
-+		 *
-+		 * Also don't put @p behind a task of a higher class (RT, DL,
-+		 * or fair in partial mode). The BPF scheduler can't preempt
-+		 * that task, and it may keep the CPU for a long time. @p would
-+		 * wait on the local DSQ until that task stops, or until the
-+		 * ext dl_server runs @p. ->next_class also shows a higher-class
-+		 * task that is about to run here. Reading it without the rq
-+		 * lock is fine, since this is only a hint.
- 		 */
-+		next_class = READ_ONCE(cpu_rq(cpu)->next_class);
- 		waker_node = scx_cpu_node_if_enabled(cpu);
- 		if (!(current->flags & PF_EXITING) &&
-+		    !sched_class_above(next_class, &ext_sched_class) &&
- 		    cpu_rq(cpu)->scx.local_dsq.nr == 0 &&
- 		    (!(flags & SCX_PICK_IDLE_IN_NODE) || (waker_node == node)) &&
- 		    !cpumask_empty(idle_cpumask(waker_node)->cpu)) {
+ testcase-targets := $(addsuffix .o,$(addprefix $(SCXOBJ_DIR)/,$(auto-test-targets)))
+ 
+diff --git a/tools/testing/selftests/sched_ext/sync_wake_rt.c b/tools/testing/selftests/sched_ext/sync_wake_rt.c
+new file mode 100644
+index 000000000000..54af31a17076
+--- /dev/null
++++ b/tools/testing/selftests/sched_ext/sync_wake_rt.c
+@@ -0,0 +1,257 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * An RT task wakes a task with a sync wakeup (a pipe write) and keeps
++ * running. The wakee must not be queued behind the RT task on its CPU
++ * while other CPUs are idle. Otherwise it waits until the RT task blocks
++ * or the ext dl_server runs it.
++ *
++ * The minimal scheduler has no ops.select_cpu(), so the kernel's default
++ * idle selection picks the wakee's CPU.
++ *
++ * How long the wakee waits depends on the state of the dl_server, so the
++ * test checks where the wakee runs, not how long it waits.
++ */
++#define _GNU_SOURCE
++#include <fcntl.h>
++#include <sched.h>
++#include <scx/common.h>
++#include <signal.h>
++#include <stdio.h>
++#include <string.h>
++#include <sys/mman.h>
++#include <sys/wait.h>
++#include <time.h>
++#include <unistd.h>
++#include "minimal.bpf.skel.h"
++#include "scx_test.h"
++
++#define ROUNDS		10
++#define SPIN_MS		300	/* max time the RT waker spins */
++#define SLEEP_WAIT_MS	5000	/* max time to wait for the wakee to block */
++
++struct shared {
++	int	cpu;		/* CPU the wakee ran on after read() */
++	int	ran;
++};
++
++static cpu_set_t allowed;
++static int waker_cpu;
++
++static u64 now_ns(void)
++{
++	struct timespec ts;
++
++	clock_gettime(CLOCK_MONOTONIC, &ts);
++	return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
++}
++
++static void spin(struct shared *sh, u64 ns)
++{
++	u64 end = now_ns() + ns;
++
++	while (!(sh && __atomic_load_n(&sh->ran, __ATOMIC_ACQUIRE)) &&
++	       now_ns() < end)
++		;
++}
++
++static int pin(int cpu)
++{
++	cpu_set_t mask;
++
++	CPU_ZERO(&mask);
++	CPU_SET(cpu, &mask);
++	return sched_setaffinity(0, sizeof(mask), &mask);
++}
++
++/* Wait until @pid is sleeping, i.e. blocked in read() */
++static bool wait_sleeping(pid_t pid)
++{
++	char path[64], buf[256], *p;
++	int i, fd;
++	ssize_t len;
++
++	snprintf(path, sizeof(path), "/proc/%d/stat", pid);
++	for (i = 0; i < SLEEP_WAIT_MS; i++) {
++		fd = open(path, O_RDONLY);
++		if (fd < 0)
++			return false;
++		len = read(fd, buf, sizeof(buf) - 1);
++		close(fd);
++		if (len <= 0)
++			return false;
++		buf[len] = '\0';
++		p = strrchr(buf, ')');
++		if (p && p[1] == ' ' && p[2] == 'S')
++			return true;
++		usleep(1000);
++	}
++	return false;
++}
++
++static bool reap(pid_t pid)
++{
++	int status;
++
++	return waitpid(pid, &status, 0) == pid && WIFEXITED(status) &&
++	       !WEXITSTATUS(status);
++}
++
++/*
++ * One round. The wakee first runs on waker_cpu, so that waker_cpu is its
++ * prev_cpu. Then it blocks on a pipe and may run on any allowed CPU. The
++ * RT waker, pinned to waker_cpu, writes to the pipe and spins until the
++ * wakee has run, for at most SPIN_MS. Returns the CPU the wakee ran on,
++ * or -1 on error.
++ */
++static int one_round(struct shared *sh)
++{
++	struct sched_param param = { .sched_priority = 1 };
++	int ret = -1;
++	pid_t wakee, waker;
++	int pipefd[2];
++	char c = 0;
++	bool ok;
++
++	memset(sh, 0, sizeof(*sh));
++	if (pipe(pipefd))
++		return -1;
++
++	wakee = fork();
++	if (wakee < 0)
++		goto out_close;
++	if (wakee == 0) {
++		close(pipefd[1]);
++		if (pin(waker_cpu))
++			_exit(1);
++		spin(NULL, 1000000);
++		if (sched_setaffinity(0, sizeof(allowed), &allowed) ||
++		    read(pipefd[0], &c, 1) != 1)
++			_exit(1);
++		sh->cpu = sched_getcpu();
++		__atomic_store_n(&sh->ran, 1, __ATOMIC_RELEASE);
++		_exit(0);
++	}
++
++	if (!wait_sleeping(wakee)) {
++		kill(wakee, SIGKILL);
++		reap(wakee);
++		goto out_close;
++	}
++
++	waker = fork();
++	if (waker < 0) {
++		kill(wakee, SIGKILL);
++		reap(wakee);
++		goto out_close;
++	}
++	if (waker == 0) {
++		close(pipefd[0]);
++		if (pin(waker_cpu) ||
++		    sched_setscheduler(0, SCHED_FIFO, &param))
++			_exit(1);
++		if (write(pipefd[1], &c, 1) != 1)
++			_exit(1);
++		spin(sh, SPIN_MS * 1000000ULL);
++		_exit(0);
++	}
++
++	close(pipefd[0]);
++	close(pipefd[1]);
++	ok = reap(waker);
++	ok = reap(wakee) && ok;
++	if (ok)
++		ret = sh->cpu;
++	return ret;
++
++out_close:
++	close(pipefd[0]);
++	close(pipefd[1]);
++	return -1;
++}
++
++static enum scx_test_status setup(void **ctx)
++{
++	struct minimal *skel;
++
++	SCX_FAIL_IF(sched_getaffinity(0, sizeof(allowed), &allowed),
++		    "Failed to get CPU affinity");
++	if (CPU_COUNT(&allowed) < 2) {
++		fprintf(stderr, "Skipping: requires at least 2 usable CPUs\n");
++		return SCX_TEST_SKIP;
++	}
++	for (waker_cpu = 0; !CPU_ISSET(waker_cpu, &allowed); waker_cpu++)
++		;
++
++	skel = minimal__open();
++	SCX_FAIL_IF(!skel, "Failed to open");
++	SCX_ENUM_INIT(skel);
++	if (minimal__load(skel)) {
++		SCX_ERR("Failed to load skel");
++		minimal__destroy(skel);
++		return SCX_TEST_FAIL;
++	}
++
++	*ctx = skel;
++	return SCX_TEST_PASS;
++}
++
++static enum scx_test_status run(void *ctx)
++{
++	enum scx_test_status status = SCX_TEST_PASS;
++	struct minimal *skel = ctx;
++	struct bpf_link *link;
++	struct shared *sh;
++	int i, cpu, stacked = 0;
++
++	sh = mmap(NULL, sizeof(*sh), PROT_READ | PROT_WRITE,
++		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
++	SCX_FAIL_IF(sh == MAP_FAILED, "Failed to mmap");
++
++	link = bpf_map__attach_struct_ops(skel->maps.minimal_ops);
++	if (!link) {
++		SCX_ERR("Failed to attach scheduler");
++		status = SCX_TEST_FAIL;
++		goto out_unmap;
++	}
++
++	for (i = 0; i < ROUNDS; i++) {
++		cpu = one_round(sh);
++		if (cpu < 0) {
++			SCX_ERR("Round %d failed", i);
++			status = SCX_TEST_FAIL;
++			goto out_destroy;
++		}
++		if (cpu == waker_cpu)
++			stacked++;
++	}
++
++	/*
++	 * Allow a few rounds on waker_cpu: if no CPU is idle, the wakee can
++	 * still end up there.
++	 */
++	if (stacked > ROUNDS / 2) {
++		SCX_ERR("Wakee ran on the RT waker's CPU in %d of %d rounds",
++			stacked, ROUNDS);
++		status = SCX_TEST_FAIL;
++	}
++
++out_destroy:
++	bpf_link__destroy(link);
++out_unmap:
++	munmap(sh, sizeof(*sh));
++	return status;
++}
++
++static void cleanup(void *ctx)
++{
++	minimal__destroy(ctx);
++}
++
++struct scx_test sync_wake_rt = {
++	.name = "sync_wake_rt",
++	.description = "Verify that a sync wakeup from an RT task doesn't stack the wakee",
++	.setup = setup,
++	.run = run,
++	.cleanup = cleanup,
++};
++REGISTER_SCX_TEST(&sync_wake_rt)
 
 -- 
 2.53.0
