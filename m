@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:23 -0500
-Subject: [PATCH 32/60] cgroup/cpuset: keep spread page cache off private
- nodes
+Date: Fri, 20 Nov 2026 13:09:24 -0500
+Subject: [PATCH 33/60] cgroup/cpuset: ignore private nodes when matching
+ OOM victims
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-32-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-33-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,47 +62,59 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1224;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1825;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=U/hUJktwLNtMpFnMwtT8ZUgdvPgOHOmoMK5TEsERPVo=;
- b=6zBGjHr356XwIzle3h4wX/iKnG/2+8B5GuEfHIteJvz4xCnBp6ubmqH5bkGYDUttwW2K1KHpu
- JKpw6/sCtwuDyKwjrhDyjB+1mRZE/zXC/EcJ5YWA5D7ZKOSyFjgOwu9
+ bh=tfQy6A54qGIg5N0QwMR0J5wQcHlPo4StvKwwDY0AXzQ=;
+ b=TOQv91CCE4kl6kuILhP9vhwwGPNmP5h8d1k9lUI5PYoPQsNY3N5JtGHROUurmkLEfZ7JXBtci
+ YRpEP+Zs0diDRgCXyfgSRDIhjJbJuiQm1kaI1p1h+gZS7NfXp8/pkI9
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With memory_spread_page set, cpuset_mem_spread_node() rotates the
-preferred node for page cache over the task's mems_allowed.
+The OOM killer only considers a task an eligible victim if its
+mems_allowed intersects the allocating task's mems_allowed. The
+assumption is that a shared node means shared ordinary memory.
 
-mems_allowed can include private nodes. A private preferred node will
-fall back to the nearest common node, which takes an extra share.
+Private nodes break that assumption. If two cpusets partition common
+memory but both allow a private node, an OOM in one could kill tasks in
+the other and free nothing the allocating task can use.
 
-Rotate only over the allowed nodes outside N_MEMORY_PRIVATE. A task's
-mems_allowed always holds common memory, so the loop always terminates.
+Initially, private memory allocations will never invoke the OOM killer,
+so only common memory pressure reaches this check.
+
+Leave private nodes out of the intersection.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- kernel/cgroup/cpuset.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ kernel/cgroup/cpuset.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
 diff --git a/kernel/cgroup/cpuset.c b/kernel/cgroup/cpuset.c
-index 6802ca13c46b..8401b69ee3da 100644
+index 8401b69ee3da..e20f9ccb8ab7 100644
 --- a/kernel/cgroup/cpuset.c
 +++ b/kernel/cgroup/cpuset.c
-@@ -4600,7 +4600,14 @@ void cpuset_nodes_allowed(struct cgroup *cgroup, nodemask_t *mask)
-  */
- static int cpuset_spread_node(int *rotor)
+@@ -4628,15 +4628,19 @@ int cpuset_mem_spread_node(void)
+  * @tsk2: pointer to task_struct of some other task.
+  *
+  * Description: Return true if @tsk1's mems_allowed intersects the
+- * mems_allowed of @tsk2.  Used by the OOM killer to determine if
+- * one of the task's memory usage might impact the memory available
+- * to the other.
++ * mems_allowed of @tsk2 outside private memory nodes.  Used by the OOM
++ * killer to determine if one of the task's memory usage might impact the
++ * memory available to the other.
+  **/
+ 
+ int cpuset_mems_allowed_intersects(const struct task_struct *tsk1,
+ 				   const struct task_struct *tsk2)
  {
--	return *rotor = next_node_in(*rotor, current->mems_allowed);
-+	int nid = *rotor;
+-	return nodes_intersects(tsk1->mems_allowed, tsk2->mems_allowed);
++	nodemask_t shared;
 +
-+	/* Spread page cache only over memory that ordinary allocations use. */
-+	do {
-+		nid = next_node_in(nid, current->mems_allowed);
-+	} while (nid < MAX_NUMNODES && node_state(nid, N_MEMORY_PRIVATE));
-+
-+	return *rotor = nid;
++	nodes_and(shared, tsk1->mems_allowed, tsk2->mems_allowed);
++	nodes_andnot(shared, shared, node_states[N_MEMORY_PRIVATE]);
++	return !nodes_empty(shared);
  }
  
  /**
