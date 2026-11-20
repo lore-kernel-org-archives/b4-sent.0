@@ -1,10 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:03 -0500
-Subject: [PATCH 12/60] mm/vmscan: restrict reclaim to common memory
+Date: Fri, 20 Nov 2026 13:09:04 -0500
+Subject: [PATCH 13/60] mm/compaction: restrict compaction to common memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-12-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-13-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,103 +61,81 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=2825;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=2217;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=FtLUhP0wFF5GfqO7k4obSm/pRyOe/gBL2Z3quyWtR6I=;
- b=zwlm1U/LcEdr9egylwJhEu7nOZaUODHcksIlsiJlCATY4Fbl78/BXLfyNjSKWv3UDT+qsBfSZ
- piPbYWcP1rrCCLgsKDDw4afKb7rTwG3CyQeRdlVm7Foh4LeK1/sZgiM
+ bh=BmbnHul2BY8/db5+GiTddW3CKoXNqAVos1d4H4BuQY8=;
+ b=UBJbyCgvQkAHnb0K2qbW7oGYgoTN2r8jD/DTCgat/O2ohtOkVQif8zR9qpcfBTBGByrEoQt25
+ bXDi/nE8V3+AUav43Xm1EHfXoH0es9WCRtJpbKRVj72i9Kflq8+RAVP
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Reclaim serves the ordinary allocation domain.
+Compaction serves the ordinary allocation domain.
 
 Restrict it to N_MEMORY_COMMON:
-  - start kswapd only on common nodes, at boot or hotplug.
-  - walk common nodes when MGLRU's debugfs interface iterates or
-    validates nodes, using first_node_state() and next_node_state() in
-    place of first_memory_node and next_memory_node.
+  - start kcompactd only on common nodes, at boot and hotplug.
+  - compact only common nodes for /proc/sys/vm/compact_memory,
+    and trigger proactive compaction only on common nodes.
 
-Direct reclaim serves an allocation from its own zonelist, so it is left
-alone.
+compact_memory and the proactiveness trigger walked every online node
+before. Memoryless nodes have nothing to compact and no kcompactd, so
+leaving them out changes nothing.
+
+Direct compaction serves an allocation from its own zonelist, so it is
+left alone.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/memory_hotplug.c |  3 ++-
- mm/vmscan.c         | 12 ++++++------
- 2 files changed, 8 insertions(+), 7 deletions(-)
+ mm/compaction.c     | 6 +++---
+ mm/memory_hotplug.c | 3 ++-
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
-index 1d3d1792074c..a599fcad65d3 100644
---- a/mm/memory_hotplug.c
-+++ b/mm/memory_hotplug.c
-@@ -1222,7 +1222,8 @@ int online_pages(unsigned long pfn, unsigned long nr_pages,
- 	/* reinitialise watermarks and update pcp limits */
- 	init_per_zone_wmark_min();
+diff --git a/mm/compaction.c b/mm/compaction.c
+index 426563acf7ac..879f372a891e 100644
+--- a/mm/compaction.c
++++ b/mm/compaction.c
+@@ -2973,7 +2973,7 @@ static int compact_nodes(void)
+ 	/* Flush pending updates to the LRU lists */
+ 	lru_add_drain_all();
  
--	kswapd_run(nid);
-+	if (node_state(nid, N_MEMORY_COMMON))
-+		kswapd_run(nid);
- 	kcompactd_run(nid);
+-	for_each_online_node(nid) {
++	for_each_node_state(nid, N_MEMORY_COMMON) {
+ 		ret = compact_node(NODE_DATA(nid), false);
+ 		if (ret)
+ 			return ret;
+@@ -2992,7 +2992,7 @@ static int compaction_proactiveness_sysctl_handler(const struct ctl_table *table
+ 		return rc;
  
- 	if (node_arg.nid >= 0)
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index bc7579d47f9b..5b53e0391d80 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -5729,7 +5729,7 @@ static void *lru_gen_seq_start(struct seq_file *m, loff_t *pos)
- 	do {
- 		int nid;
- 
--		for_each_node_state(nid, N_MEMORY) {
+ 	if (write && sysctl_compaction_proactiveness) {
+-		for_each_online_node(nid) {
 +		for_each_node_state(nid, N_MEMORY_COMMON) {
- 			if (!nr_to_skip--)
- 				return mem_cgroup_lruvec(memcg, NODE_DATA(nid));
- 		}
-@@ -5754,13 +5754,13 @@ static void *lru_gen_seq_next(struct seq_file *m, void *v, loff_t *pos)
+ 			pg_data_t *pgdat = NODE_DATA(nid);
  
- 	++*pos;
- 
--	nid = next_memory_node(nid);
-+	nid = next_node_state(nid, N_MEMORY_COMMON);
- 	if (nid == MAX_NUMNODES) {
- 		memcg = mem_cgroup_iter(NULL, memcg, NULL);
- 		if (!memcg)
- 			return NULL;
- 
--		nid = first_memory_node;
-+		nid = first_node_state(N_MEMORY_COMMON);
- 	}
- 
- 	return mem_cgroup_lruvec(memcg, NODE_DATA(nid));
-@@ -5832,7 +5832,7 @@ static int lru_gen_seq_show(struct seq_file *m, void *v)
- 	DEFINE_MAX_SEQ(lruvec);
- 	DEFINE_MIN_SEQ(lruvec);
- 
--	if (nid == first_memory_node) {
-+	if (nid == first_node_state(N_MEMORY_COMMON)) {
- 		const char *path = memcg ? m->private : "";
- 
- #ifdef CONFIG_MEMCG
-@@ -5935,7 +5935,7 @@ static int run_cmd(char cmd, u64 memcg_id, int nid, unsigned long seq,
- 	int err = -EINVAL;
- 	struct mem_cgroup *memcg = NULL;
- 
--	if (nid < 0 || nid >= MAX_NUMNODES || !node_state(nid, N_MEMORY))
-+	if (nid < 0 || nid >= MAX_NUMNODES || !node_state(nid, N_MEMORY_COMMON))
- 		return -EINVAL;
- 
- 	if (!mem_cgroup_disabled()) {
-@@ -7907,7 +7907,7 @@ static int __init kswapd_init(void)
+ 			if (pgdat->proactive_compact_trigger)
+@@ -3366,7 +3366,7 @@ static int __init kcompactd_init(void)
  {
  	int nid;
  
 -	for_each_node_state(nid, N_MEMORY)
 +	for_each_node_state(nid, N_MEMORY_COMMON)
-  		kswapd_run(nid);
- 	register_sysctl_init("vm", vmscan_sysctl_table);
+ 		kcompactd_run(nid);
+ 	register_sysctl_init("vm", vm_compaction);
  	return 0;
+diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
+index a599fcad65d3..6b6873cfbc5a 100644
+--- a/mm/memory_hotplug.c
++++ b/mm/memory_hotplug.c
+@@ -1224,7 +1224,8 @@ int online_pages(unsigned long pfn, unsigned long nr_pages,
+ 
+ 	if (node_state(nid, N_MEMORY_COMMON))
+ 		kswapd_run(nid);
+-	kcompactd_run(nid);
++	if (node_state(nid, N_MEMORY_COMMON))
++		kcompactd_run(nid);
+ 
+ 	if (node_arg.nid >= 0)
+ 		/* First memory added successfully. Notify consumers. */
 
 -- 
 2.56.1
