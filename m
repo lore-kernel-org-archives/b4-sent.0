@@ -1,171 +1,97 @@
-From: ILYAS NHASSE <ilyas.nhasse@skf.com>
-Date: Fri, 20 Nov 2026 12:26:48 +0100
-Subject: [PATCH 2/2] iio: adc: ad_sigma_delta: support devices without RDY
- interrupt
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Subject: [PATCH v3 0/3] media: rockchip: Add the IEP2 deinterlacer of
+ RK3568/RK3588
+Date: Fri, 20 Nov 2026 11:30:05 +0000
+Message-Id: <20261120-iep2-v3-0-e94eb9f629d2@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261120-ad7124-no-irq-v1-2-7826c5c3fd25@skf.com>
-References: <20261120-ad7124-no-irq-v1-0-7826c5c3fd25@skf.com>
-In-Reply-To: <20261120-ad7124-no-irq-v1-0-7826c5c3fd25@skf.com>
-To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Marcelo Schmitt <marcelo.schmitt@analog.com>
-Cc: linux@analog.com, linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, ILYAS NHASSE <ilyas.nhasse@skf.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795174009; l=4847;
- i=ilyas.nhasse@skf.com; s=20261120; h=from:subject:message-id;
- bh=HkzT/yb82j6rKe0Wh5OPBoTT821E9QupBRs1skXiPo8=;
- b=1hP85xBznH4d7TuSarorWfpu5RkjyLmNxMEGy/wG2fGuVOF8OGKDMx2pJuvSvMecBgFRcDdHt
- l6yYl1GYOS3CNszA/vey0D5HX3jz7VB36TNdhCDfrkmzi2nGwN9Av7s
-X-Developer-Key: i=ilyas.nhasse@skf.com; a=ed25519;
- pk=DeEyhWzUoP0HCAWFV/8oy5EFF+41tZxPpWZhfGyiMS4=
-X-Endpoint-Received: by B4 Relay for ilyas.nhasse@skf.com/20261120 with auth_id=1581
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02Nyw6CMBQFf4V0bQ0tFCgr/8O4KO0VrpFHWmw0h
+ H+3BU1YTnJmzkIcWARH6mQhFjw6HIcA2SkhulNDCxRNYMJTXjDGUoowcdpIJXUBZanznITpZOG
+ O7y1zve3sXs0D9BzduOjQzaP9bD+exd0/me9Jz2hKVQXGgFCcAbu0vcLnWY89iUnPj5L4STxIm
+ alKWWkjlRBHaV3XLxaagl/fAAAA
+X-Change-ID: 20261110-iep2-b9a9c6e77c44
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Hans Verkuil <hverkuil@kernel.org>, 
+ Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Alex Bee <knaerzche@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795174206; l=2896;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=R65zek14E7+PZ6+dhDe8b4DlafUNDeybXwhd5n/LjPY=;
+ b=UNdXYNTz4DvcNhR0iYG1qIoq1f3xowbXK1kf1ZdCsz7eo2VwPi/Nyadw0seBLq/WduPSx6hY+
+ zz3NAIc4mVMAqK58wcT8UDvehFwKl/yVQrmjvvwl5dSqB4GMzSVAgJB
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The end of a conversion or of a calibration is detected with the DOUT/RDY
-interrupt, so a device whose DOUT/RDY pin is only wired to the SPI MISO
-line can't be used, although its status register reports the same event
-in its RDY bit.
+Add a V4L2 mem2mem driver for the IEP2 deinterlacer of the RK3568 and
+RK3588, with its binding and the RK3588 DT node. The V4L2 side follows
+Alex Bee's IEP driver.
 
-For devices with registers but without interrupt, wait for RDY in
-ad_sigma_delta_single_conversion() and ad_sd_calibrate() by polling the
-status register, with the same timeouts as the interrupt-driven waits.
-As with the interrupt, the bus stays locked and CS asserted during the
-wait, and ad_sigma_delta_clear_pending_event() has drained any older
-result beforehand, so the RDY bit seen by the poll belongs to the
-operation just started. A timeout is reported as -ETIMEDOUT.
+Tested on an Orange Pi 5 (RK3588S) with a 7.3-based kernel (KASAN,
+lockdep); build-tested on media next. v4l2-compliance 59/59, all four
+modes at 1080i without IOMMU faults, s2idle and deep suspend while
+streaming, unbind while streaming, forced watchdog and IOMMU fault
+resets. Not tested: RK3568. DMABUF imports of exactly the image size
+are refused, because of the 4 KiB OUTPUT padding (see 2/3).
 
-The RDY interrupt is the only trigger source of the triggered buffer, so
-devm_ad_sd_setup_buffer_and_trigger() sets nothing up for these devices
-and they only support direct mode. Registerless devices still require
-the interrupt.
+One case is still open: a reset during a transfer, seen only with
+forced watchdog resets, can leave the IOMMU busy. Jobs then fail
+without DMA and the driver suspends at once so that PD_VDPU powers
+off, which restores it. While another device of the domain, e.g. a
+video decoder, keeps it on, the jobs keep failing.
 
-Each poll is a SPI transfer, so poll every 20 ms: this delays the
-detection of the end of a conversion by at most one period, a fifth of
-a conversion at the AD7124 default output data rate of 10 SPS, while
-keeping the bus traffic, and the CPU time of PIO SPI transfers, low.
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
 
-Nothing changes for devices with an interrupt.
-
-Signed-off-by: ILYAS NHASSE <ilyas.nhasse@skf.com>
 ---
- drivers/iio/adc/ad_sigma_delta.c | 47 +++++++++++++++++++++++++++++++++++-----
- 1 file changed, 41 insertions(+), 6 deletions(-)
+Changes in v3:
+- Drop the vendor kernel notes from the commit messages and cover (Krzysztof)
+- 1/3: drop the linux-media list from the MAINTAINERS entry (Krzysztof)
+- 1/3: add Krzysztof's Reviewed-by
+- 2/3: start the job and its watchdog under irq_lock (Sashiko)
+- 2/3: soft-reset the core with the AXI side, CRU reset if the IOMMU
+  stays lost, shared IRQ off during a reset; no DMA until the IOMMU is
+  restored
+- 2/3: return OUTPUT buffers before CAPTURE buffers
+- 2/3: mask and clear all interrupts on completion and before a job
+- 2/3: suspend at once when the IOMMU is lost
+- 2/3: take the mutex in system suspend
+- Link to v2: https://patch.msgid.link/20261115-iep2-v2-0-3d8798cd9a55@gmail.com
 
-diff --git a/drivers/iio/adc/ad_sigma_delta.c b/drivers/iio/adc/ad_sigma_delta.c
-index 119ddc5a1..546135995 100644
---- a/drivers/iio/adc/ad_sigma_delta.c
-+++ b/drivers/iio/adc/ad_sigma_delta.c
-@@ -17,6 +17,7 @@
- #include <linux/find.h>
- #include <linux/gpio/consumer.h>
- #include <linux/interrupt.h>
-+#include <linux/iopoll.h>
- #include <linux/module.h>
- #include <linux/property.h>
- #include <linux/slab.h>
-@@ -43,6 +44,8 @@
- 
- #define AD_SD_REG_STATUS_RDY	0x80
- 
-+#define AD_SD_POLL_PERIOD_US	(20 * USEC_PER_MSEC)
-+
- /**
-  * ad_sd_set_comm() - Set communications register
-  *
-@@ -347,6 +350,22 @@ static int ad_sigma_delta_clear_pending_event(struct ad_sigma_delta *sigma_delta
- 	return ret;
- }
- 
-+static int ad_sd_poll_rdy(struct ad_sigma_delta *sigma_delta,
-+			  unsigned int timeout_us)
-+{
-+	unsigned int status;
-+	int ret, ret_read;
-+
-+	ret = read_poll_timeout(ad_sd_read_reg, ret_read,
-+				ret_read || !(status & AD_SD_REG_STATUS_RDY),
-+				AD_SD_POLL_PERIOD_US, timeout_us, false,
-+				sigma_delta, AD_SD_REG_STATUS, 1, &status);
-+	if (ret)
-+		return ret;
-+
-+	return ret_read;
-+}
-+
- int ad_sd_calibrate(struct ad_sigma_delta *sigma_delta,
- 	unsigned int mode, unsigned int channel)
- {
-@@ -370,6 +389,11 @@ int ad_sd_calibrate(struct ad_sigma_delta *sigma_delta,
- 	if (ret < 0)
- 		goto out;
- 
-+	if (!sigma_delta->irq_line) {
-+		ret = ad_sd_poll_rdy(sigma_delta, 2 * USEC_PER_SEC);
-+		goto out;
-+	}
-+
- 	ad_sd_enable_irq(sigma_delta);
- 	time_left = wait_for_completion_timeout(&sigma_delta->completion, 2 * HZ);
- 	if (time_left == 0) {
-@@ -447,12 +471,16 @@ int ad_sigma_delta_single_conversion(struct iio_dev *indio_dev,
- 
- 	ad_sigma_delta_set_mode(sigma_delta, AD_SD_MODE_SINGLE);
- 
--	ad_sd_enable_irq(sigma_delta);
--	ret = wait_for_completion_interruptible_timeout(
--			&sigma_delta->completion, HZ);
-+	if (sigma_delta->irq_line) {
-+		ad_sd_enable_irq(sigma_delta);
-+		ret = wait_for_completion_interruptible_timeout(&sigma_delta->completion,
-+								HZ);
- 
--	if (ret == 0)
--		ret = -EIO;
-+		if (ret == 0)
-+			ret = -EIO;
-+	} else {
-+		ret = ad_sd_poll_rdy(sigma_delta, USEC_PER_SEC);
-+	}
- 	if (ret < 0)
- 		goto out;
- 
-@@ -466,7 +494,8 @@ int ad_sigma_delta_single_conversion(struct iio_dev *indio_dev,
- 		&raw_sample);
- 
- out:
--	ad_sd_disable_irq(sigma_delta);
-+	if (sigma_delta->irq_line)
-+		ad_sd_disable_irq(sigma_delta);
- 
- out_unlock:
- 	sigma_delta->keep_cs_asserted = false;
-@@ -816,12 +845,18 @@ static int devm_ad_sd_probe_trigger(struct device *dev, struct iio_dev *indio_de
-  * devm_ad_sd_setup_buffer_and_trigger() - Device-managed buffer & trigger setup
-  * @dev: Device object to which to bind the life-time of the resources attached
-  * @indio_dev: The IIO device
-+ *
-+ * Nothing is set up for devices with registers but without R̅D̅Y̅ interrupt:
-+ * they only support direct mode, with polled conversions.
-  */
- int devm_ad_sd_setup_buffer_and_trigger(struct device *dev, struct iio_dev *indio_dev)
- {
- 	struct ad_sigma_delta *sigma_delta = iio_device_get_drvdata(indio_dev);
- 	int ret;
- 
-+	if (!sigma_delta->irq_line && sigma_delta->info->has_registers)
-+		return 0;
-+
- 	sigma_delta->slots = devm_kcalloc(dev, sigma_delta->num_slots,
- 					  sizeof(*sigma_delta->slots), GFP_KERNEL);
- 	if (!sigma_delta->slots)
+---
+Arun Iyengar (3):
+      media: dt-bindings: Add Rockchip IEP2 deinterlacer
+      media: rockchip: Add IEP2 deinterlacer driver
+      arm64: dts: rockchip: Add IEP2 deinterlacer to RK3588
 
--- 
-2.43.0
+ Documentation/admin-guide/media/rockchip-iep2.rst  |   32 +
+ Documentation/admin-guide/media/v4l-drivers.rst    |    1 +
+ .../bindings/media/rockchip,rk3568-iep2.yaml       |   95 ++
+ MAINTAINERS                                        |    8 +
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      |   22 +
+ drivers/media/platform/rockchip/Kconfig            |    1 +
+ drivers/media/platform/rockchip/Makefile           |    1 +
+ drivers/media/platform/rockchip/iep2/Kconfig       |   16 +
+ drivers/media/platform/rockchip/iep2/Makefile      |    3 +
+ drivers/media/platform/rockchip/iep2/iep2-regs.h   |  191 +++
+ drivers/media/platform/rockchip/iep2/iep2.c        | 1320 ++++++++++++++++++++
+ drivers/media/platform/rockchip/iep2/iep2.h        |  108 ++
+ 12 files changed, 1798 insertions(+)
+---
+base-commit: ad6549a46748d00818483b535e5cd2a704685c98
+change-id: 20261110-iep2-b9a9c6e77c44
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
