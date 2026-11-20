@@ -1,124 +1,95 @@
-From: Zhendong Liu <yzddmr6@gmail.com>
-Date: Fri, 20 Nov 2026 23:30:53 +0800
-Subject: [PATCH v2] dma: swiotlb: Allocate the restricted DMA pool slot
- array with kvzalloc()
+From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+Subject: [PATCH v3 0/2] pinctrl: qcom: Add the Molokai TLMM
+Date: Fri, 20 Nov 2026 21:22:27 +0530
+Message-Id: <20261120-molokai-tlmm-v3-0-e5fc37e37011@yahoo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-upstream2-swiotlb-rmem-kvzalloc-v2-1-cc5732dddb6b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKxnAGsC/42OzQ6DIBCEX6Xh3G0Vo4k99T0aD4CL0oIYQPpjf
- PeiJj03e5qdyTczE49OoSeXw0wcRuWVHZKgxwMRPRs6BNUmTWhGqzynGUyjDw6ZoeCfygbNwRk
- 08IgfprUVICvBKyExq1lBEmV0KNVra7g1u/YTv6MIK3ZNcOYRuGOD6NfXr+C8Ga1hsANStFc+W
- Pfe1sZ8Rf4/LOaQTpSy5mVWUFpcO8OUPglrSLMsyxcnCgudCwEAAA==
-X-Change-ID: 20261120-upstream2-swiotlb-rmem-kvzalloc-f6cb6cfe09a3
-To: Marek Szyprowski <m.szyprowski@samsung.com>
-Cc: Robin Murphy <robin.murphy@arm.com>, iommu@lists.linux.dev, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Zhendong Liu <yzddmr6@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795188654; l=4063;
- i=yzddmr6@gmail.com; s=20261028; h=from:subject:message-id;
- bh=n5WsBNFSSTY++xySoe4Lh6qAZ7+HFLIrorjS4M0Xd3I=;
- b=qpNujyU5LVEecmTJsbr9Kv82yZ6BGA0fvstIKHTLBgxAXuO2n1vVfjnSaVCkcTzNapi2xhZoB
- Al43Wdsl6TdBBXvUugeeZ3oEFCh7YVWtS23i5e3Kcyo3VGK3DL4+EXO
-X-Developer-Key: i=yzddmr6@gmail.com; a=ed25519;
- pk=QLT2mwairk4R38oU379hkHynqjoLrlqd0Cl1ERUqIqY=
-X-Endpoint-Received: by B4 Relay for yzddmr6@gmail.com/20261028 with auth_id=1489
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ7CIBQFr9KwFsOn2KAr72FcAP21qBQDldg0v
+ btQN250OcmbeTOJGCxGcqhmEjDZaP2Qod5UxPRquCC1bWbCGW8AoKHO3/1NWTrenaNaMUQBDe6
+ gJll5BOzsa82dzh+OT31FM5ZGWfQ2jj5M61+CsvuRTkAZrbUSUjDGuNHHSfXeb413pKQT/yfzL
+ Au+76SRrUQN3/KyLG9ec3yc9wAAAA==
+X-Change-ID: 20261116-molokai-tlmm-ba0ee416e513
+To: Bartosz Golaszewski <brgl@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, Linus Walleij <linusw@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795189947; l=2704;
+ i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
+ bh=r7Mtff5qbkeYb7DWH6qJOe5Kqw7NebkDFy5PqqoVhjI=;
+ b=ongauZFwcUxBohtVhaqb80JrNTnOz504zbv9cJIHEpXrYuJqwAMh4uCUDfypLMvYIRT/IEqnr
+ WIBVqyiIlchCvZ7TRwxA8jFf0GR2S+pZku8cAf6tibCGtpOWWLyhpAC
+X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
+ pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
+X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rmem_swiotlb_device_init() allocates one struct io_tlb_slot per 2 KiB
-slot of a restricted DMA pool with kzalloc(). The struct is 24 bytes on
-64-bit, so with 4 KiB pages and the default MAX_PAGE_ORDER of 10 the
-array is larger than KMALLOC_MAX_SIZE (4 MiB) for any pool above about
-341 MiB. For such a pool kzalloc() refuses the request with a
-WARN_ON_ONCE() in ___kmalloc_large_node(), the pool is not set up, and
-of_dma_set_restricted_buffer() warns that it failed to initialise the
-pool. The devices assigned to it then lose the restriction without
-their probe failing, and use the default DMA path.
+Molokai (SM8845) is a Qualcomm SoC derived from Kaanapali (SM8850), found
+for example in the Motorola Signature. Its TLMM has the Kaanapali register
+layout, but 205 GPIOs instead of 217, different functions on every pin and
+a different GPIO to PDC wakeup map. With the Kaanapali tables a
+wake-capable GPIO interrupt is routed to the wrong PDC input and never
+fires, so this adds a binding and a driver of its own.
 
-The slot array is only accessed by the CPU and does not need to be
-physically contiguous. Allocate it with kvzalloc_objs() and free it with
-kvfree(). The other pools are not affected: the slot array of the
-default pool comes from memblock, and the buffers of late and dynamic
-pools are limited to MAX_PAGE_ORDER, which keeps their slot arrays
-small.
+The SoC and board devicetree that use it are sent separately in "Add
+support for the Qualcomm Molokai (SM8845) and the Motorola Signature".
 
-Pools of this size are needed when large buffers go through the pool
-for their whole lifetime: this was hit with an arm64 Gunyah protected
-VM whose virtio-gpu resources stay mapped in the pool, and a desktop at
-3392x2400 needed more than 341 MiB.
+Tested on the Motorola Signature: the UFS reset, the keys and the GPIO
+interrupts that go through the PDC (touchscreen, amplifiers) work.
 
-The problem was analysed and this change written with the help of an
-AI coding assistant.
+I used an LLM (Claude) to help write these patches and their commit
+messages. I reviewed all of them and tested the result on the device.
 
-Fixes: 0b84e4f8b793 ("swiotlb: Add restricted DMA pool initialization")
-Cc: stable@vger.kernel.org
-Signed-off-by: Zhendong Liu <yzddmr6@gmail.com>
 ---
-Reproduced in QEMU on the base commit below (arm64 defconfig, 4 KiB
-pages): virt machine with 2 GiB, a 512 MiB restricted-dma-pool added to
-the DT and referenced by every virtio_mmio node, one virtio-rng device
-with iommu_platform=on (modern virtio-mmio, so VIRTIO_F_ACCESS_PLATFORM
-is negotiated), and swiotlb=track_hiwater. Without this patch the WARN in
-___kmalloc_large_node() fires, every transport reports "failed to
-initialise "restricted-dma-pool" memory node", no debugfs directory is
-created for the pool, and reading /dev/hwrng works without any bounce
-(io_tlb_used_hiwater of the default pool stays 0). With it there is no
-warning, every transport is assigned the pool, and its debugfs
-directory shows 262144 slots, with io_tlb_used_hiwater already at 17
-once virtio-rng has probed. W=1 shows no new warnings in kernel/dma/.
+Changes in v3:
+- Drop the Assisted-by trailers and the LLM notes from the commit
+  messages, the LLM use is stated in this cover letter (Krzysztof).
+- Rewrap the GPIO to PDC wakeup map so that no entry is split across
+  lines, no change in content.
+- Pick up the Reviewed-by of Krzysztof.
+- Link to v2: https://patch.msgid.link/20261116-molokai-tlmm-v2-0-429f8c8d8eb1@yahoo.com
 
-The change is also used in the guest kernel of the Gunyah VMs
-mentioned above.
-
-I used an AI coding assistant for this work. It analysed the failure,
-wrote this patch and changelog and set up the QEMU reproducer. I have
-reviewed the change.
----
 Changes in v2:
-- Use my legal name in the From: and Signed-off-by: lines, as requested.
-- Link to v1: https://patch.msgid.link/20261120-upstream2-swiotlb-rmem-kvzalloc-v1-1-1c5f9b503223@gmail.com
----
- kernel/dma/swiotlb.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+- Binding: indent the example state node consistently.
+- Driver: mark egpio as a GPIO function (MSM_GPIO_PIN_FUNCTION) so GPIO
+  requests on pins muxed to egpio are not rejected.
+- Kept the default 3-bit interrupt target field: on Molokai INTR_CFG[11]
+  reads 0 out of reset and the target resets to 0x7.
+- Link to v1: https://patch.msgid.link/20261116-molokai-tlmm-v1-0-3ba4840002cb@yahoo.com
 
-diff --git a/kernel/dma/swiotlb.c b/kernel/dma/swiotlb.c
-index 786954bc5e6a..51c7c064b62f 100644
---- a/kernel/dma/swiotlb.c
-+++ b/kernel/dma/swiotlb.c
-@@ -2042,7 +2042,7 @@ static int rmem_swiotlb_device_init(struct reserved_mem *rmem,
- 			return -ENOMEM;
- 		pool = &mem->defpool;
- 
--		pool->slots = kzalloc_objs(*pool->slots, nslabs);
-+		pool->slots = kvzalloc_objs(*pool->slots, nslabs);
- 		if (!pool->slots) {
- 			kfree(mem);
- 			return -ENOMEM;
-@@ -2050,7 +2050,7 @@ static int rmem_swiotlb_device_init(struct reserved_mem *rmem,
- 
- 		pool->areas = kzalloc_objs(*pool->areas, nareas);
- 		if (!pool->areas) {
--			kfree(pool->slots);
-+			kvfree(pool->slots);
- 			kfree(mem);
- 			return -ENOMEM;
- 		}
-@@ -2067,7 +2067,7 @@ static int rmem_swiotlb_device_init(struct reserved_mem *rmem,
- 			if (ret) {
- 				dev_err(dev, "Failed to decrypt restricted DMA pool\n");
- 				kfree(pool->areas);
--				kfree(pool->slots);
-+				kvfree(pool->slots);
- 				kfree(mem);
- 				return ret;
- 			}
+To: Bjorn Andersson <andersson@kernel.org>
+To: Bartosz Golaszewski <brgl@kernel.org>
+To: Linus Walleij <linusw@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+Cc: linux-arm-msm@vger.kernel.org
+Cc: linux-gpio@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: 14866e632fa48a0b4c385ab0121526575eb8f88c
-change-id: 20261120-upstream2-swiotlb-rmem-kvzalloc-f6cb6cfe09a3
+Venkat Yadlapati (2):
+      dt-bindings: pinctrl: qcom: Add Molokai TLMM
+      pinctrl: qcom: Add Molokai TLMM driver
+
+ .../bindings/pinctrl/qcom,molokai-tlmm.yaml        |  128 ++
+ drivers/pinctrl/qcom/Kconfig.msm                   |   10 +
+ drivers/pinctrl/qcom/Makefile                      |    1 +
+ drivers/pinctrl/qcom/pinctrl-molokai.c             | 1681 ++++++++++++++++++++
+ 4 files changed, 1820 insertions(+)
+---
+base-commit: 7bbad7337a81d1d73559b783280a76a65a9de191
+change-id: 20261116-molokai-tlmm-ba0ee416e513
 
 Best regards,
 --  
-Zhendong Liu <yzddmr6@gmail.com>
+Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 
