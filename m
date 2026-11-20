@@ -1,11 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:29 -0500
-Subject: [PATCH 38/60] mm/page_alloc: refuse contiguous allocation from
- private memory
+Date: Fri, 20 Nov 2026 13:09:30 -0500
+Subject: [PATCH 39/60] mm/page_alloc: add a private-node zonelist
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-38-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-39-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,54 +61,98 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1528;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=3134;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=SJvqLJtfHqxTbxOinmUOdOKCVWk7SGtVeDyrji7C2Tw=;
- b=Irg8N3GrwFg5yXeCFynVswMM6e7cnSR82GrmMFfEKmwMHPcu5/cEKgAKCYKrx+y54cYfXcmSK
- kzbXph7DqTTAa3NH+5AcJKokpz3sVmwYO3+Bw14lYWZ+1wiDm0fftM2
+ bh=OqpMdBUt5im1cMgZFE5X+fZAbGJWYU6WcOHKkFwuS9o=;
+ b=o/dYXsRSD+kDIMnUJjWNiDdysIiPZ9AEs4oJxtAad9XJMPtLlNyz+nTDlkBw/SrIIzFQ8NEmg
+ Q5LoNu0vSTqCQh8ZHl/nPuFBHXZVGMqF4GQxX08YQa6pADhhTLCJq4v
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Exact-PFN contiguous allocation bypasses the zonelists and can invoke
-compaction and reclaim.
+A private node carries N_MEMORY without N_MEMORY_COMMON, so the FALLBACK
+and NOFALLBACK zonelists already exclude it. That leaves no zonelist
+that can reach it.
 
-Reject a range on a private node with -EPERM before isolating any pages,
-and document the error.
+Add ZONELIST_PRIVATE, which holds a node's local zones only if the node
+is private. Common nodes have an empty private zonelist.
 
-If a user of private ranges shows up, alloc_contig_range() can grow an
-ACR flag or an exported api for private allocations.
+Like the existing zonelists, it is sized for every zone of every node.
+That adds a zoneref (16 bytes on 64-bit) per possible zone, MAX_NUMNODES
+* MAX_NR_ZONES, to each pgdat. A smaller local-only zonelist type can be
+a follow-up if this matters.
+
+When the zonelist becomes selectable, __GFP_THISNODE will still suppress
+OOM, while the page allocator selects the private zonelist instead of
+NOFALLBACK.
+
+If a user grows requiring fallback behavior to COMMON nodes when the
+private node is out of memory, we can consider adding a fallback
+variant - but for now private node allocations use a local-only
+zonelist to limit complexity.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/page_alloc.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ include/linux/mmzone.h | 5 +++--
+ mm/mm_init.c           | 5 +++--
+ mm/page_alloc.c        | 2 ++
+ 3 files changed, 8 insertions(+), 4 deletions(-)
 
+diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
+index d6c1a43c0bc8..05f212b56c9d 100644
+--- a/include/linux/mmzone.h
++++ b/include/linux/mmzone.h
+@@ -1402,10 +1402,11 @@ enum {
+ 	ZONELIST_FALLBACK,	/* zonelist with fallback */
+ #ifdef CONFIG_NUMA
+ 	/*
+-	 * The NUMA zonelists are doubled because we need zonelists that
+-	 * restrict the allocations to a single node for __GFP_THISNODE.
++	 * NUMA nodes also have local-only zonelists that restrict allocations
++	 * to a single node, for __GFP_THISNODE and for private-node access.
+ 	 */
+ 	ZONELIST_NOFALLBACK,	/* zonelist without fallback (__GFP_THISNODE) */
++	ZONELIST_PRIVATE,	/* local private-node access, no fallback */
+ #endif
+ 	MAX_ZONELISTS
+ };
+diff --git a/mm/mm_init.c b/mm/mm_init.c
+index 99a45fd04ac5..a6ff49043b5c 100644
+--- a/mm/mm_init.c
++++ b/mm/mm_init.c
+@@ -99,7 +99,8 @@ void __init mminit_verify_zonelist(void)
+ 
+ 			/* Print information about the zonelist */
+ 			printk(KERN_DEBUG "mminit::zonelist %s %d:%s = ",
+-				listid > 0 ? "thisnode" : "general", nid,
++				listid == 0 ? "general" :
++				listid == 1 ? "thisnode" : "private", nid,
+ 				zone->name);
+ 
+ 			/* Iterate the zonelist */
+@@ -2706,7 +2707,7 @@ void __init mm_core_init(void)
+ 	init_zero_page_pfn();
+ 
+ 	/* Initializations relying on SMP setup */
+-	BUILD_BUG_ON(MAX_ZONELISTS > 2);
++	BUILD_BUG_ON(MAX_ZONELISTS > 3);
+ 	build_all_zonelists(NULL);
+ 	page_alloc_init_cpuhp();
+ 	alloc_tag_sec_init();
 diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index de1a13a91ef4..08e57f809a03 100644
+index 08e57f809a03..0bd21916cea1 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -7379,7 +7379,8 @@ static void __free_contig_frozen_range(unsigned long pfn, unsigned long nr_pages
-  * free_frozen_pages() also could be used to free compound frozen pages
-  * directly.
-  *
-- * Return: zero on success or negative error code.
-+ * Return: zero on success or negative error code
-+ *         -EPERM if the range is on a private memory node.
-  */
- int alloc_contig_frozen_range_noprof(unsigned long start, unsigned long end,
- 		acr_flags_t alloc_flags, gfp_t gfp_mask)
-@@ -7410,6 +7411,9 @@ int alloc_contig_frozen_range_noprof(unsigned long start, unsigned long end,
- 	if (WARN_ON_ONCE((gfp_mask & __GFP_COMP) && order > MAX_FOLIO_ORDER))
- 		return -EINVAL;
+@@ -6010,6 +6010,8 @@ static void build_zonelists(pg_data_t *pgdat)
+ 			    ZONELIST_FALLBACK);
+ 	build_local_zonelist(pgdat, ZONELIST_NOFALLBACK,
+ 			     node_state(nid, N_MEMORY_COMMON));
++	build_local_zonelist(pgdat, ZONELIST_PRIVATE,
++			     node_state(nid, N_MEMORY_PRIVATE));
+ }
  
-+	if (node_state(zone_to_nid(cc.zone), N_MEMORY_PRIVATE))
-+		return -EPERM;
-+
- 	gfp_mask = current_gfp_context(gfp_mask);
- 	if (__alloc_contig_verify_gfp_mask(gfp_mask, (gfp_t *)&cc.gfp_mask))
- 		return -EINVAL;
+ #ifdef CONFIG_HAVE_MEMORYLESS_NODES
 
 -- 
 2.56.1
