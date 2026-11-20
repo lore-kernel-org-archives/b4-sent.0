@@ -1,10 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:15 -0500
-Subject: [PATCH 24/60] mm/madvise: restrict reclaim advice to common memory
+Date: Fri, 20 Nov 2026 13:09:16 -0500
+Subject: [PATCH 25/60] mm/mempolicy: queue only common memory for mbind()
+ and migrate_pages()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-24-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-25-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,73 +62,50 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1781;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1280;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=/55J316jzS1Wh7mQFy6gzCQoU7Eiv7k39WwzIyNwWco=;
- b=s8Msb/DrpA/5wN3ASvagAuczkPPgA4E++0gfH202AUo7xPM8n5yupjDRsPxxFkVKilzb+fYxT
- xtWsWL7f8LdCntXyjxSr/jqmZ85TrM6YA0zmgNaeq1zdsJM3IBJCiUJ
+ bh=oVUBe3L0N9OzvHIPOvGNp++MFXvEPdYO7K5H5oP/xXo=;
+ b=z0Yss6rDFAVA1N5nV8ud28CkhXRAlSaKlLr0ZvA0vfg/FyvOeTLlv0XfslsD2RQQ13WZutKr6
+ BXIJh30hlb0DJUOedF94r7a7FARtG2gTQbcL8IzU8HufAGAAA6nYwet
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MADV_COLD and MADV_PAGEOUT age or reclaim the folios a caller names,
-and MADV_FREE marks them lazyfree, whatever node they are on.
+mbind(MPOL_MF_MOVE) and migrate_pages() queue folios from a task's
+mappings for migration.
 
-Restrict them to common memory: convert their ZONE_DEVICE checks,
-including the one in madvise_free_huge_pmd(), to
-folio_is_common_memory().
+Queue only folios on common memory: convert the ZONE_DEVICE checks to
+folio_is_common_memory(). As with ZONE_DEVICE folios, the skipped folios
+do not count as failures, so MPOL_MF_STRICT does not report them.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/huge_memory.c | 2 +-
- mm/madvise.c     | 6 +++---
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ mm/mempolicy.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 75e8641bf9ff..cae28513b121 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -2452,7 +2452,7 @@ bool madvise_free_huge_pmd(struct mmu_gather *tlb, struct vm_area_struct *vma,
- 
- 	folio = pmd_folio(orig_pmd);
- 
--	if (folio_is_zone_device(folio))
-+	if (!folio_is_common_memory(folio))
- 		goto out;
- 
- 	/*
-diff --git a/mm/madvise.c b/mm/madvise.c
-index 2d54cb9863ea..0f1648526f15 100644
---- a/mm/madvise.c
-+++ b/mm/madvise.c
-@@ -404,7 +404,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 		if (!folio)
- 			goto huge_unlock;
- 
--		if (folio_is_zone_device(folio))
-+		if (!folio_is_common_memory(folio))
- 			goto huge_unlock;
- 
- 		/* Do not interfere with other mappings of this folio */
-@@ -485,7 +485,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+diff --git a/mm/mempolicy.c b/mm/mempolicy.c
+index 07d577aca78c..e208018499d6 100644
+--- a/mm/mempolicy.c
++++ b/mm/mempolicy.c
+@@ -687,7 +687,7 @@ static void queue_folios_pmd(pmd_t *pmd, unsigned long addr,
+ 		return;
+ 	}
+ 	folio = vm_normal_folio_pmd(walk->vma, addr, pmdval);
+-	if (!folio || folio_is_zone_device(folio))
++	if (!folio || !folio_is_common_memory(folio))
+ 		return;
+ 	if (!queue_folio_required(folio, qp))
+ 		return;
+@@ -745,7 +745,7 @@ static int queue_folios_pte_range(pmd_t *pmd, unsigned long addr,
  			continue;
- 
- 		folio = vm_normal_folio(vma, addr, ptent);
--		if (!folio || folio_is_zone_device(folio))
-+		if (!folio || !folio_is_common_memory(folio))
- 			continue;
- 
- 		/*
-@@ -715,7 +715,7 @@ static int madvise_free_pte_range(pmd_t *pmd, unsigned long addr,
  		}
- 
  		folio = vm_normal_folio(vma, addr, ptent);
 -		if (!folio || folio_is_zone_device(folio))
 +		if (!folio || !folio_is_common_memory(folio))
  			continue;
- 
- 		/*
+ 		if (folio_test_large(folio) && max_nr != 1)
+ 			nr = folio_pte_batch(folio, pte, ptent, max_nr);
 
 -- 
 2.56.1
