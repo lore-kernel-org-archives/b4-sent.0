@@ -1,10 +1,11 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Date: Fri, 20 Nov 2026 21:23:04 +0530
-Subject: [PATCH v3 02/11] soc: qcom: socinfo: Add SM8845 SoC ID
+Date: Fri, 20 Nov 2026 21:23:05 +0530
+Subject: [PATCH v3 03/11] dt-bindings: interrupt-controller: qcom,pdc:
+ Document Molokai PDC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-molokai-soc-v3-2-403d763685d9@yahoo.com>
+Message-Id: <20261120-molokai-soc-v3-3-403d763685d9@yahoo.com>
 References: <20261120-molokai-soc-v3-0-403d763685d9@yahoo.com>
 In-Reply-To: <20261120-molokai-soc-v3-0-403d763685d9@yahoo.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -18,35 +19,36 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795189983; l=669;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795189983; l=921;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=8xw0twAksMHMX47Apc9L+1JQQiLJNoWw5JK0Kzy6y1o=;
- b=Z0wiU4mXxxmcJwPwUlCho+OdscD1y/Gq3jwxa5bVrgxFrqea3BDA3lWQPta/X5GY6xqyOHcov
- IlFnLA0CNzRDbRzSoGWg0h+NrjKVudYgkXOkRaR3r1xSQItBZuO4KWM
+ bh=JA3D3612ejShp+CgP9o/2OKJA3UVuFzmTpSGVKbp7Mc=;
+ b=6RO1Wrb3rIL9FsszrVLVrkyzLQ3157+CrULVSDUSCr6BaFCum8ETTZUHSnbeHtx5Tiuu79LeC
+ PyOnIw65iy/BnohsdMREOtbW9GE97kKeQe7M5zjjiOFtSriF6VFdtO9
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the SoC ID for SM8845, a variant of SM8850 (Kaanapali).
+Document the Power Domain Controller of the Qualcomm Molokai (SM8845) SoC,
+which maps one more range of interrupts than the Kaanapali one.
 
 Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
- drivers/soc/qcom/socinfo.c | 1 +
+ Documentation/devicetree/bindings/interrupt-controller/qcom,pdc.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/drivers/soc/qcom/socinfo.c b/drivers/soc/qcom/socinfo.c
-index 18105ddcf04d..718d1fa7e830 100644
---- a/drivers/soc/qcom/socinfo.c
-+++ b/drivers/soc/qcom/socinfo.c
-@@ -541,6 +541,7 @@ static const struct soc_id soc_id[] = {
- 	{ qcom_board_id(QCS8275) },
- 	{ qcom_board_id(QCS9075) },
- 	{ qcom_board_id(QCS615) },
-+	{ qcom_board_id(SM8845) },
- 	{ qcom_board_id(SA8797P) },
- 	{ qcom_board_id(SM8975) },
- 	{ qcom_board_id(CQ7790M) },
+diff --git a/Documentation/devicetree/bindings/interrupt-controller/qcom,pdc.yaml b/Documentation/devicetree/bindings/interrupt-controller/qcom,pdc.yaml
+index 8401d3b48e0f..64de63b7a031 100644
+--- a/Documentation/devicetree/bindings/interrupt-controller/qcom,pdc.yaml
++++ b/Documentation/devicetree/bindings/interrupt-controller/qcom,pdc.yaml
+@@ -33,6 +33,7 @@ properties:
+           - qcom,kuno-pdc
+           - qcom,maili-pdc
+           - qcom,milos-pdc
++          - qcom,molokai-pdc
+           - qcom,nord-pdc
+           - qcom,qcs615-pdc
+           - qcom,qcs8300-pdc
 
 -- 
 2.56.1
