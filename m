@@ -1,143 +1,178 @@
-From: Joan Maillard <joan.md@proton.me>
-Date: Fri, 20 Nov 2026 00:47:19 +0100
-Subject: [PATCH] Input: xpad - drop truncated Xbox 360 input reports
+From: Joseph Telaak <joseph@telaak.dev>
+Subject: [PATCH v3 00/11] leds: ktd202x: Add Etek ET6326, hardware
+ breathing and fixes
+Date: Thu, 19 Nov 2026 19:07:22 -0500
+Message-Id: <20261119-ktd202x-et6326-v3-0-98b836b1cddc@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-xpad-truncated-v1-1-74514e0498c3@proton.me>
-X-B4-Tracking: v=1; b=H4sIAIaK/2oC/x3MTQqAIBBA4avErBOawJ+6SrQQnWo2JlohSHdPW
- n6L9ypkSkwZ5q5Cooczn6EB+w7cYcNOgn0zjMOoEHESJVovrnQHZy/yAqVE5zUZpQ20KCbauPz
- DZX3fDzx2oDVgAAAA
-X-Change-ID: 20261119-xpad-truncated-1551cd7e8678
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-input@vger.kernel.org, Joan Maillard <joan.md@proton.me>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795132053; l=5127;
- i=joan.md@proton.me; s=20261119; h=from:subject:message-id;
- bh=tdp62fZVjV9JdeJU7vPAFFDtdaU/xYLcHfV3h/gbUnc=;
- b=+GQZP3vrDf3u3V7oL+0/froD6+KAzdgmO8XVsch5C+L3EF98jhyJX8Cu7WiscZyBJTBf6m2lo
- l/HhV1rFBW+B75jOBi8RTwYlIA3q/NzjncqiwpA0iE6zPsmF+vROfCc
-X-Developer-Key: i=joan.md@proton.me; a=ed25519;
- pk=kywOHDNagSGO48kcqDUiYZklWcOrOiU0lmBEaVM3qWk=
-X-Endpoint-Received: by B4 Relay for joan.md@proton.me/20261119 with auth_id=1574
+X-B4-Tracking: v=1; b=H4sIADuP/2oC/3WNyw7CIBBFf6VhLYZHoY+V/2FcUBgt1rQGkNQ0/
+ XehbjTG3ZzknjML8uAseNQWC3IQrbfTmIDvCqR7NV4AW5MYMcIkpYTiIZh0zxiC5EziioPhpJR
+ a8BIl6e7gbOcteDy92T+6K+iQK3nRWx8m99w+Rpp3f+ORYoKhExSMUYbU+hDgptSwNxBRrkf26
+ Tc/Pku+kNBUmjEpRf3lr+v6AiwAy9P/AAAA
+X-Change-ID: 20261101-ktd202x-et6326-73ed3046c534
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ Griffin Kroah-Hartman <griffin@kroah.com>, Kees Cook <kees@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>
+Cc: linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-hardening@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-doc@vger.kernel.org, stable@vger.kernel.org, 
+ Joseph Telaak <joseph@telaak.dev>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795133254; l=7350;
+ i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
+ bh=Xdl7JhCrzMFcD+Yx/GVwMVIDBXAjGW7X5Emk10IWF78=;
+ b=s2Wc4yDz3tHq5DaZYQeN6+q7pyyv3VEQ8qUcMoBG/ek1GMSu/grNuQohPzmrhALdiMAd2pUHF
+ aJl6HX7KveTDEi0kFAM+GDxAsT0auIeENsyPvc3iFRUVnZxqlwGa09h
+X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
+ pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
+X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The GuliKit KingKong3 Max (NS39, firmware V5.9) enumerates as a wired
-Xbox 360 controller (045e:028e, manufacturer string "Guli") and
-occasionally sends truncated input reports. This leads to intrusive
-phantom inputs behaving like fast and repeated keypresses, making the
-controller unusable while wired.
+The Etek ET6326 drives the status LED of the GL.iNet GL-SFT1200 (Opal)
+router. It is register compatible with the Kinetic KTD2026, except for
+the flash period: Reg1 = n is (n + 1) * 128 ms on the ET6326 and
+256 ms + n * 128 ms on the KTD202x. Patches 6 and 7 add it with the
+KTD2026 as fallback, so older kernels drive it with slightly off blinks.
 
-A usbmon capture over 150 seconds with no buttons pressed contained 156957
-regular 20-byte reports, 3012 transfers that failed with -EOVERFLOW,
-362 zero-length packets and 284 truncated packets of 6 to 19 bytes,
-mostly 16. Every truncated packet arrived within a burst of -EOVERFLOW
-errors, most of them directly after one, so the pad appears to
-occasionally send oversized transfers of which only a fragment
-gets through. Most of the 16-byte packets are the previous report
-with its first four bytes missing. For example:
+Patches 1 to 5 fix bugs that have been there since the driver was
+added, and come first so they can be applied on their own:
+- a blink shorter than 256 ms became a 16 s blink on 32 bit
+- with fewer LEDs in the DT than channels, as on this board, the driver
+  read past the end of its LED array
+- a blink with a very short on time was programmed as never on
+- delays from the timer trigger that add up to 2^32 (or 2^64) divided
+  by zero, and long blinks overflowed the on time on 32 bit
+- a blinking multicolor LED also lit its colors at brightness 0
 
-  20 bytes: 00 14 00 00 00 00 67 01 87 01 47 ff 57 ff 00 00 00 00 00 00
-  16 bytes:             00 00 67 01 87 01 47 ff 57 ff 00 00 00 00 00 00
+Patch 8 lets the pattern trigger's hw_pattern use the chip's rise and
+fall ramps, so a breathing LED needs no I2C traffic. Patch 9 honors
+led-max-microamp on single color LEDs: the GL-SFT1200 drives three LEDs
+in parallel on each channel at 1.375 mA, and the driver's full
+brightness is 24 mA. Patch 10 fails the probe when nothing answers at
+the address. Patch 11 stops a second blinking LED from silently
+retiming the first: it shares the flash timer only with the same
+timing, and otherwise blinks in software. The second PWM timer is no
+help, since in the timer slot the driver uses it repeats the first.
 
-xpad360_process_packet() only checks that byte 0 is 0x00, which such a
-packet often passes, so the stick values are parsed as buttons and
-triggers. With the stick above at rest, userspace sees D-pad left, Back,
-left stick click and LB pressed, with the left trigger at 135. The
-truncated packets come in bursts, so the phantom presses repeat at about
-50 Hz for a few hundred milliseconds. The same pad shows no phantom
-inputs on Windows.
+ET6326 datasheet:
+https://www.etekmicro.com/wp-content/uploads/datasheets/ET6326_datasheet.pdf
 
-Byte 1 of an Xbox 360 input report holds the report length (0x14). Drop
-input reports that are shorter than the 14 bytes the parser reads, or
-shorter than the length they declare. This leaves complete reports
-untouched and does not affect non-input packets, which are already
-ignored.
-
-A bug report was also sent to the manufacturer GuliKit.
-
-The diagnosis (analysis of evtest logs and the usbmon capture), the fix
-and a first draft of this changelog were produced with the help of an AI
-assistant (Claude Opus 5.5 by Anthropic). I reviewed and tested the change.
-
-Signed-off-by: Joan Maillard <joan.md@proton.me>
----
-Tested on Debian's 7.2.12 kernel with the KK3 Max; no phantom inputs
-made it through to the game during 4 hours of play. I would be happy to make
-a short capture run to compare the debug log and a parallel usbmon
-capture, along with the commands used to extract them, upon request.
-
-The check is deliberately lenient: it accepts any input report that is at
-least 14 bytes long and as long as it declares, so pads that send shorter
-but complete reports keep working. A device-specific quirk was
-considered, but would be hard to reliably target: the pad uses Microsoft's
-VID/PID, and its manufacturer string changed between firmware versions
-(specifically, before writing the patch, an older firmware was in the
-controller; it reported "FMD" on V3.8, "Guli" on V5.9).
-
-I also considered doing the check inside xpad360_process_packet(), next to
-the existing byte 0 check. That function is shared with the wireless receiver
-path, which passes the report embedded at offset 4 of a larger frame, so
-it would need a length parameter and would change behavior for wireless pads,
-which I cannot test. I therefore kept the check in the wired dispatch path;
-happy to move it if that is preferred.
-
-Thank you very much for any attention and time you might spend on this
-matter.
----
- drivers/input/joystick/xpad.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
-
-diff --git a/drivers/input/joystick/xpad.c b/drivers/input/joystick/xpad.c
-index d2eb48d98fead7d89eb3e45613a52176c4fa5fad..0a9e23f6b5fd26950335d39a73c5205c879b9f17 100644
---- a/drivers/input/joystick/xpad.c
-+++ b/drivers/input/joystick/xpad.c
-@@ -1217,6 +1217,30 @@ static void xpadone_process_packet(struct usb_xpad *xpad, u16 cmd, unsigned char
- 		input_sync(dev);
- }
- 
-+/*
-+ * Some third-party pads occasionally send truncated input reports, which
-+ * xpad360_process_packet() would parse with stick data in the button
-+ * fields. Byte 1 of an Xbox 360 input report holds the report length, so
-+ * treat an input report as truncated if it is shorter than the 14 bytes
-+ * the parser reads or than the length it declares.
-+ */
-+static bool xpad360_is_truncated(struct usb_xpad *xpad, u32 len)
-+{
-+	const unsigned char *data = xpad->idata;
-+
-+	if (data[0] != 0x00)
-+		return false;
-+
-+	if (len >= 14 && data[1] >= 14 && len >= data[1])
-+		return false;
-+
-+	if (len)
-+		dev_dbg(&xpad->intf->dev,
-+			"dropping truncated report, %u bytes: %*ph\n",
-+			len, (int)len, data);
-+	return true;
-+}
-+
- static void xpad_irq_in(struct urb *urb)
- {
- 	struct usb_xpad *xpad = urb->context;
-@@ -1244,6 +1268,8 @@ static void xpad_irq_in(struct urb *urb)
- 
- 	switch (xpad->xtype) {
- 	case XTYPE_XBOX360:
-+		if (xpad360_is_truncated(xpad, urb->actual_length))
-+			break;
- 		xpad360_process_packet(xpad, xpad->dev, 0, xpad->idata);
- 		break;
- 	case XTYPE_XBOX360W:
+Tested on a GL-SFT1200 (SF19A2890, MIPS32) with OpenWrt and Linux
+6.18.60, with the two LEDs of the board (blue and white, three LEDs in
+parallel on each channel, led-max-microamp = <1375>):
+- brightness 1 to 11 (max_brightness 11 from led-max-microamp), and
+  waking the chip from sleep
+- the timer trigger from 1/1 ms to 500/500 ms; a camera measured a
+  0.917 s period for 896 ms, the same 2.2 % slow oscillator as with the
+  stock firmware, so the ET6326 period encoding is the one used here
+- a 1/200 ms blink, which keeps blinking after a new delay_off, and
+  delays that add up to 2^32 ms
+- a second LED blinking at another rate falls back to software and
+  leaves the first one alone; with the same delays it shares the timer
+  in step with the first; a LED that blinks in software takes the timer
+  over at its own brightness once it is free
+- the timer programmed again after the chip slept
+- breathing through hw_pattern, written right after selecting the
+  pattern trigger
+- invalid patterns and finite repeats rejected
+- the same pattern on both LEDs shares the timer, and a pattern that
+  cannot get the timer leaves its LED off
+- 240 writes to one LED while the other stayed lit, module unload and
+  reload, and a reboot while blinking
+v3 was run again on a second GL-SFT1200 with Linux 6.18.55: the
+current limit and brightness, the timer trigger, a second LED refused
+the timer or sharing it, a blink started from off, and breathing, with
+the ramps cleared by the next blink.
+The bug fixes were also checked with a simulated chip under ASan and
+UBSan, and the series builds with W=1 on x86_64, i386, MIPS and arm64.
 
 ---
-base-commit: 8dac6df92a2e66e2098bbc69061964cfe7e8375b
-change-id: 20261119-xpad-truncated-1551cd7e8678
+Changes in v3:
+- Patch 2: a blank line between the number of LEDs and the allocation
+  (Lee).
+- Patch 3: name the shortest on time KTD202X_FLASH_ON_MIN (Lee).
+- Patches 5, 8 and 11: a blank line before the colors at brightness 0
+  are skipped (Lee).
+- Patch 7 (Lee):
+  - drop the datasheet URL from the file header; it stays as a Link: in
+    the commit message
+  - call the per chip data caps, and give the flash period limits named
+    defines instead of comments about the period register
+  - chip->num_leds stays next to caps->num_leds, as __counted_by() needs
+    the count in struct ktd202x itself
+- Patch 8 (Lee): KTD202X_RAMP_TFALL_SHIFT, named rise, high, fall and
+  low times, loop counters declared in the for, a mutex guard instead of
+  goto, and lines joined where they fit in 100 columns.
+- Patch 11 (Sashiko):
+  - tell that a LED is off from the brightness it is given, not from its
+    colors, which can all round down to 0 when a multicolor LED is
+    dimmed
+  - in blink, read cdev->brightness once and always set it under the
+    mutex before the timer, as the LED core may have changed it without
+    applying it yet
+  - mutex guards instead of goto in blink and hw_pattern (Lee)
+- Patches 2, 3, 5, 7 and 8 have no functional change.
+- Link to v2: https://patch.msgid.link/20261109-ktd202x-et6326-v2-0-56e97c226658@telaak.dev
+
+Changes in v2:
+- New patch 5: a blinking multicolor LED keeps its colors at brightness
+  0 off. The bug is older than the series.
+- Patch 6: add Krzysztof's Ack.
+- Patch 7: report delay_on rounded to the nearest ms and at least 1 ms.
+  On the 128 ms ET6326 period a short on time read back as 0 ms, and the
+  timer trigger's next delay_off write then turned the LED off.
+- Patch 8:
+  - skip the colors at brightness 0, and build the channel list under
+    the mutex
+  - use GPL-2.0-only, not the deprecated GPL-2.0 SPDX identifier, in the
+    new document
+- Patch 10: the KTD2026/7 does not ACK the byte that resets it, so v1
+  failed the probe on every KTD2026/7. Ignore that write again, and fail
+  the probe when the write that puts the chip to sleep fails.
+- Patch 11:
+  - write the timer registers whenever no other LED uses the timer, so
+    they are set again after the chip lost power, and release the timer
+    when the write fails
+  - hold the chip mutex from the brightness to the timer in blink and
+    hw_pattern, and track the timer from the brightness being set, not
+    cdev->brightness
+  - blink at blink_brightness, not max_brightness
+  - check the timer before a pattern touches the LED, and leave the LED
+    as it was on -EBUSY
+- Link to v1: https://lore.kernel.org/r/20261101-ktd202x-et6326-v1-0-eb51eddad08c@telaak.dev
+
+---
+Joseph Telaak (11):
+      leds: rgb: ktd202x: Fix the flash period of short blinks on 32 bit
+      leds: rgb: ktd202x: Fix an out-of-bounds read with unused channels
+      leds: rgb: ktd202x: Never program an on time of zero
+      leds: rgb: ktd202x: Fix a division by zero with long blinks
+      leds: rgb: ktd202x: Keep the unlit colors of a blinking LED off
+      dt-bindings: leds: kinetic,ktd202x: Add Etek ET6326
+      leds: rgb: ktd202x: Add Etek ET6326 support
+      leds: rgb: ktd202x: Add hardware pattern support
+      leds: rgb: ktd202x: Limit the LED current to led-max-microamp
+      leds: rgb: ktd202x: Fail the probe when the chip does not answer
+      leds: rgb: ktd202x: Don't let a blinking LED retime another one
+
+ .../devicetree/bindings/leds/kinetic,ktd202x.yaml  |  15 +-
+ Documentation/leds/index.rst                       |   1 +
+ Documentation/leds/leds-ktd202x.rst                |  51 ++
+ drivers/leds/rgb/Kconfig                           |   3 +-
+ drivers/leds/rgb/leds-ktd202x.c                    | 566 +++++++++++++++++----
+ 5 files changed, 534 insertions(+), 102 deletions(-)
+---
+base-commit: 59cf91cf87abb67a49b1bb7b9d3b06486abde8cf
+change-id: 20261101-ktd202x-et6326-73ed3046c534
 
 Best regards,
--- 
-Joan Maillard <joan.md@proton.me>
+--  
+Joseph Telaak <joseph@telaak.dev>
 
