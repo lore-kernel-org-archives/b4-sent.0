@@ -1,10 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:37 -0500
-Subject: [PATCH 46/60] mm: add N_MEMORY_RECLAIM node state
+Date: Fri, 20 Nov 2026 13:09:38 -0500
+Subject: [PATCH 47/60] mm/vmscan: restrict reclaim to N_MEMORY_RECLAIM
+ instead of N_MEMORY_COMMON
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-46-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-47-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,119 +62,184 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=4233;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=6325;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=2Cu3isS44jPims+WvemrkSJ075FaNv3x27ntceES1eU=;
- b=rCEvV4Vxm5Bay12IKWxYIL/HB0z/8bt8JJw96EnOqDCYmA4Tr8glUa/20lHdJNAS53zrMeueF
- ad3F6711g+iAlRzLli3ssnKMTwH2aKtumPIHc/RU0a8x0zX/R0r+MAC
+ bh=c7DgarKbPTh+6IzFAHFl6eKVTW2BJrYv3RKLDMceLJE=;
+ b=pJ9yiRLLHXGH+ah/OM4I5sNBVlA9ZiE7FmUiyed58jvCYoAInkb3gL9qE4qbzozo6/HQ/UBhm
+ +p2J5pp71F8BQDYiKB23kBhQW4ibDlwjd0+2F6Ea2rd3w38dcgQckEc
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add N_MEMORY_RECLAIM as an internal state for the nodes page reclaim
-may operate on, and NODE_MEMORY_FEAT_RECLAIM for memory providers to
-select it.
+kswapd and the reclaim interfaces currently serve only common memory. A
+private node that opts into reclaim should get them too.
 
-Reclaim frees order-0 pages and leaves high-order requests to
-compaction, so a private node that permits reclaim must permit
-compaction too.
+Restrict reclaim to N_MEMORY_RECLAIM:
+  - start kswapd only on N_MEMORY_RECLAIM nodes.
+  - walk N_MEMORY_RECLAIM nodes in MGLRU's debugfs interface.
+  - reject nodeN/reclaim for nodes without N_MEMORY_RECLAIM.
+
+Direct reclaim is unchanged: an allocation reclaims the zones on its
+zonelist, and a private node's zones are only on its private zonelist.
+
+Private nodes that permit reclaim get watermarks again (the capped
+minimum that highmem and movable zones get) and are boosted, since
+their kswapd restores both.
+
+Private nodes without the state keep zero watermarks.
+
+The hopeless-kswapd recovery on page free exists because allocations
+that fall back to another node skip the direct reclaim that would clear
+the state. Only common memory offers that fallback, so apply the
+recovery only to common nodes now that private nodes run kswapd.
+
+Leave private zones out of si_mem_available()'s low watermark sum,
+which bounds the common page cache and slab that must stay.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- Documentation/mm/physical_memory.rst |  4 ++++
- include/linux/nodemask.h             | 11 +++++++++--
- mm/page_alloc.c                      |  4 ++++
- 3 files changed, 17 insertions(+), 2 deletions(-)
+ mm/memory_hotplug.c |  2 +-
+ mm/page_alloc.c     | 11 +++++++----
+ mm/show_mem.c       |  7 +++++--
+ mm/vmscan.c         | 14 +++++++-------
+ 4 files changed, 20 insertions(+), 14 deletions(-)
 
-diff --git a/Documentation/mm/physical_memory.rst b/Documentation/mm/physical_memory.rst
-index 5d0a69f6c23c..1bafe8c085a3 100644
---- a/Documentation/mm/physical_memory.rst
-+++ b/Documentation/mm/physical_memory.rst
-@@ -187,6 +187,9 @@ The following states are internal and not exported through sysfs:
- ``N_MEMORY_COMPACTION``
-   The kernel compacts the node on its own initiative (kcompactd, proactive
-   and explicit compaction).
-+``N_MEMORY_RECLAIM``
-+  The kernel reclaims the node on its own initiative (kswapd, memcg and
-+  explicit reclaim).
+diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
+index 1cb10c88954e..8146f77919d5 100644
+--- a/mm/memory_hotplug.c
++++ b/mm/memory_hotplug.c
+@@ -1230,7 +1230,7 @@ int online_pages(unsigned long pfn, unsigned long nr_pages,
+ 	/* reinitialise watermarks and update pcp limits */
+ 	init_per_zone_wmark_min();
  
- For each node that has a property described above, the bit corresponding to the
- node ID in the ``node_states[<property>]`` bitmask is set.
-@@ -201,6 +204,7 @@ For example, for node 2 with normal memory and CPUs, bit 2 will be set in ::
-   node_states[N_MEMORY_COMMON]
-   node_states[N_CPU]
-   node_states[N_MEMORY_COMPACTION]
-+  node_states[N_MEMORY_RECLAIM]
- 
- For various operations possible with nodemasks please refer to
- ``include/linux/nodemask.h``.
-diff --git a/include/linux/nodemask.h b/include/linux/nodemask.h
-index 2757acffff2b..be5edbee2b22 100644
---- a/include/linux/nodemask.h
-+++ b/include/linux/nodemask.h
-@@ -413,6 +413,7 @@ enum node_states {
- 	N_GENERIC_INITIATOR,	/* The node has one or more Generic Initiators */
- 	/* Internal states, not exported through sysfs */
- 	N_MEMORY_COMPACTION,	/* mm compaction may operate on the node */
-+	N_MEMORY_RECLAIM,	/* mm reclaim may operate on the node */
- 	NR_NODE_STATES
- };
- 
-@@ -550,12 +551,15 @@ static __always_inline int node_random(const nodemask_t *maskp)
-  */
- #define NODE_MEMORY_FEAT_COMMON		BIT(0) /* add to fallback zonelist */
- #define NODE_MEMORY_FEAT_COMPACTION	BIT(1) /* mm compaction */
-+#define NODE_MEMORY_FEAT_RECLAIM	BIT(2) /* mm reclaim */
- #define NODE_MEMORY_FEAT_ALL		(NODE_MEMORY_FEAT_COMMON | \
--					 NODE_MEMORY_FEAT_COMPACTION)
-+					 NODE_MEMORY_FEAT_COMPACTION | \
-+					 NODE_MEMORY_FEAT_RECLAIM)
- 
- /*
-  * Common memory carries every feature. Private memory needs NUMA: node 0
-- * holds all memory without it.
-+ * holds all memory without it. Reclaim leaves high-order requests to
-+ * compaction, so it requires compaction.
-  */
- static inline bool node_memory_features_valid(unsigned long features)
- {
-@@ -563,6 +567,9 @@ static inline bool node_memory_features_valid(unsigned long features)
- 		return false;
- 	if (features & NODE_MEMORY_FEAT_COMMON)
- 		return features == NODE_MEMORY_FEAT_ALL;
-+	if ((features & NODE_MEMORY_FEAT_RECLAIM) &&
-+	    !(features & NODE_MEMORY_FEAT_COMPACTION))
-+		return false;
- 	return IS_ENABLED(CONFIG_NUMA);
- }
- 
+-	if (node_state(nid, N_MEMORY_COMMON))
++	if (node_state(nid, N_MEMORY_RECLAIM))
+ 		kswapd_run(nid);
+ 	if (node_state(nid, N_MEMORY_COMPACTION))
+ 		kcompactd_run(nid);
 diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 335ce73e645e..864da908a59b 100644
+index 864da908a59b..cc70e1b45322 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -205,6 +205,7 @@ nodemask_t node_states[NR_NODE_STATES] __read_mostly = {
- 	[N_MEMORY] = { { [0] = 1UL } },
- 	[N_MEMORY_COMMON] = { { [0] = 1UL } },
- 	[N_MEMORY_COMPACTION] = { { [0] = 1UL } },
-+	[N_MEMORY_RECLAIM] = { { [0] = 1UL } },
- 	[N_CPU] = { { [0] = 1UL } },
- #endif	/* NUMA */
- };
-@@ -221,10 +222,13 @@ void __meminit node_set_memory_state(int nid, unsigned long features)
- 		node_set_state(nid, N_MEMORY_PRIVATE);
- 	if (features & NODE_MEMORY_FEAT_COMPACTION)
- 		node_set_state(nid, N_MEMORY_COMPACTION);
-+	if (features & NODE_MEMORY_FEAT_RECLAIM)
-+		node_set_state(nid, N_MEMORY_RECLAIM);
- }
+@@ -2972,6 +2972,7 @@ static bool free_frozen_page_commit(struct zone *zone,
+ 		 * kswapd work again by resetting kswapd_failures.
+ 		 */
+ 		if (kswapd_test_hopeless(pgdat) &&
++		    node_state(pgdat->node_id, N_MEMORY_COMMON) &&
+ 		    num_node_state(N_MEMORY_COMMON) > 1)
+ 			kswapd_clear_hopeless(pgdat, KSWAPD_CLEAR_HOPELESS_PCP);
+ 	}
+@@ -6814,8 +6815,8 @@ static void __setup_per_zone_wmarks(void)
+ 		u64 tmp;
  
- void __meminit node_clear_memory_state(int nid)
+ 		spin_lock_irqsave(&zone->lock, flags);
+-		/* No kswapd runs for a private node to restore watermarks. */
+-		if (node_state(zone_to_nid(zone), N_MEMORY_PRIVATE)) {
++		/* Nodes that reclaim does not serve carry no watermarks. */
++		if (!node_state(zone_to_nid(zone), N_MEMORY_RECLAIM)) {
+ 			zone->_watermark[WMARK_MIN] = 0;
+ 			zone->_watermark[WMARK_LOW] = 0;
+ 			zone->_watermark[WMARK_HIGH] = 0;
+@@ -6826,11 +6827,13 @@ static void __setup_per_zone_wmarks(void)
+ 		}
+ 		tmp = (u64)pages_min * zone_managed_pages(zone);
+ 		tmp = div64_ul(tmp, lowmem_pages);
+-		if (is_highmem(zone) || zone_idx(zone) == ZONE_MOVABLE) {
++		if (is_highmem(zone) || zone_idx(zone) == ZONE_MOVABLE ||
++		    node_state(zone_to_nid(zone), N_MEMORY_PRIVATE)) {
+ 			/*
+ 			 * __GFP_HIGH and PF_MEMALLOC allocations usually don't
+ 			 * need highmem and movable zones pages, so cap pages_min
+-			 * to a small  value here.
++			 * to a small  value here. Private memory holds no system
++			 * reserve, only this small minimum.
+ 			 *
+ 			 * The WMARK_HIGH-WMARK_LOW and (WMARK_LOW-WMARK_MIN)
+ 			 * deltas control async page reclaim, and so should
+diff --git a/mm/show_mem.c b/mm/show_mem.c
+index b90fb5a0016b..24dd33ba783b 100644
+--- a/mm/show_mem.c
++++ b/mm/show_mem.c
+@@ -38,8 +38,11 @@ long si_mem_available(void)
+ 	unsigned long reclaimable;
+ 	struct zone *zone;
+ 
+-	for_each_zone(zone)
+-		wmark_low += low_wmark_pages(zone);
++	/* Only common zones bound the page cache and slab that must stay. */
++	for_each_zone(zone) {
++		if (!node_state(zone_to_nid(zone), N_MEMORY_PRIVATE))
++			wmark_low += low_wmark_pages(zone);
++	}
+ 
+ 	/*
+ 	 * Estimate the amount of memory available for userspace allocations,
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 3e934135e805..03d0919d11be 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -5729,7 +5729,7 @@ static void *lru_gen_seq_start(struct seq_file *m, loff_t *pos)
+ 	do {
+ 		int nid;
+ 
+-		for_each_node_state(nid, N_MEMORY_COMMON) {
++		for_each_node_state(nid, N_MEMORY_RECLAIM) {
+ 			if (!nr_to_skip--)
+ 				return mem_cgroup_lruvec(memcg, NODE_DATA(nid));
+ 		}
+@@ -5754,13 +5754,13 @@ static void *lru_gen_seq_next(struct seq_file *m, void *v, loff_t *pos)
+ 
+ 	++*pos;
+ 
+-	nid = next_node_state(nid, N_MEMORY_COMMON);
++	nid = next_node_state(nid, N_MEMORY_RECLAIM);
+ 	if (nid == MAX_NUMNODES) {
+ 		memcg = mem_cgroup_iter(NULL, memcg, NULL);
+ 		if (!memcg)
+ 			return NULL;
+ 
+-		nid = first_node_state(N_MEMORY_COMMON);
++		nid = first_node_state(N_MEMORY_RECLAIM);
+ 	}
+ 
+ 	return mem_cgroup_lruvec(memcg, NODE_DATA(nid));
+@@ -5832,7 +5832,7 @@ static int lru_gen_seq_show(struct seq_file *m, void *v)
+ 	DEFINE_MAX_SEQ(lruvec);
+ 	DEFINE_MIN_SEQ(lruvec);
+ 
+-	if (nid == first_node_state(N_MEMORY_COMMON)) {
++	if (nid == first_node_state(N_MEMORY_RECLAIM)) {
+ 		const char *path = memcg ? m->private : "";
+ 
+ #ifdef CONFIG_MEMCG
+@@ -5935,7 +5935,7 @@ static int run_cmd(char cmd, u64 memcg_id, int nid, unsigned long seq,
+ 	int err = -EINVAL;
+ 	struct mem_cgroup *memcg = NULL;
+ 
+-	if (nid < 0 || nid >= MAX_NUMNODES || !node_state(nid, N_MEMORY_COMMON))
++	if (nid < 0 || nid >= MAX_NUMNODES || !node_state(nid, N_MEMORY_RECLAIM))
+ 		return -EINVAL;
+ 
+ 	if (!mem_cgroup_disabled()) {
+@@ -7907,7 +7907,7 @@ static int __init kswapd_init(void)
  {
-+	node_clear_state(nid, N_MEMORY_RECLAIM);
- 	node_clear_state(nid, N_MEMORY_COMPACTION);
- 	node_clear_state(nid, N_MEMORY_PRIVATE);
- 	node_clear_state(nid, N_MEMORY_COMMON);
+ 	int nid;
+ 
+-	for_each_node_state(nid, N_MEMORY_COMMON)
++	for_each_node_state(nid, N_MEMORY_RECLAIM)
+  		kswapd_run(nid);
+ 	register_sysctl_init("vm", vmscan_sysctl_table);
+ 	return 0;
+@@ -8268,7 +8268,7 @@ static ssize_t reclaim_store(struct device *dev,
+ {
+ 	int ret, nid = dev->id;
+ 
+-	if (node_state(nid, N_MEMORY_PRIVATE))
++	if (node_state(nid, N_MEMORY) && !node_state(nid, N_MEMORY_RECLAIM))
+ 		return -EOPNOTSUPP;
+ 
+ 	ret = user_proactive_reclaim((char *)buf, NULL, NODE_DATA(nid));
 
 -- 
 2.56.1
