@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:33 -0500
-Subject: [PATCH 42/60] mm: fail private placement on exhaustion instead of
- OOM killing
+Date: Fri, 20 Nov 2026 13:09:34 -0500
+Subject: [PATCH 43/60] mm/page_alloc: fall back when a bind policy's nodes
+ become private
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-42-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-43-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,101 +62,106 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=3361;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=3943;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=TbRq76F0ctxLdrc4ZvqTJEioaj0puOvUL1bbmmWV60Y=;
- b=4TuCqLi3E6og3lhWPEnbx57vqhH0UZ+xHpnIJwJApHy8FsrwbpMCJEhWBmQF1kacYofzGuQUk
- MJg+9HMhsJnCGqIcMdsQtmg/Q+w3B05gKy4AO+RBfvyb9bK7v/Vtefk
+ bh=MvCOuLTJrjpaTAmpn2Zbq/KX8f7RvrtAs1ipWbBROxM=;
+ b=DVYzRbCZncJFfd8wmeRLbtBkyfuqBe2ViahLjuovjyvk17+NJApfRjBY2nJ50Ht7MFj0Mt9Nc
+ RvcANV2Hfw5CWYGgF52KPf58f0DIBcx5qSTyz3t9oWeSeLKVo/t70CN
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Private memory belongs to a device or specialized service and is a fixed
-pool, like the HugeTLB pool. The OOM killer has no good answer for it:
-the task that faults the last page may not be the one that filled the
-node, a remote accessor or another mapper of a shared object would be
-blamed, and killing a task does not free shared private pages.
+Memory hotplug can make a node private after a bind policy naming it
+was created. A static bind policy, a shared memory policy, or any bind
+policy without cpusets is not rebound when the node's memory is
+removed, so it still names the node when the node returns as private
+memory.
 
-When reclaim cannot satisfy an allocation from a private zonelist, fail
-it instead of OOMing.
-  - __alloc_pages_may_oom() does not select a victim for a private
-    request, and marks the task.
-  - handle_mm_fault() turns VM_FAULT_OOM from such a failure into
-    VM_FAULT_SIGBUS. GUP and remote access see -EFAULT, and other
-    callers see the allocation failure, e.g. -ENOMEM from write(2).
+The common zonelists hold no private node, so a policy naming only such
+nodes leaves the allocation no zone to use. The nodemask still
+intersects the cpuset, so check_retry_cpuset() keeps it, and a fault
+through the policy is retried forever.
 
-A request that became ineligible since the last retry check is not
-exhausted. Report progress so the slowpath retries and relaxes it.
+Let relax_private_alloc() treat a nodemask that names a private node
+like a private request: once no node in the zonelist is in the nodemask
+and allowed by the cpuset, drop the nodemask and allocate from common
+memory. Only a request on the private zonelist keeps __GFP_THISNODE
+strict.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- include/linux/sched.h |  2 ++
- mm/memory.c           |  5 +++++
- mm/page_alloc.c       | 14 ++++++++++++++
- 3 files changed, 21 insertions(+)
+ mm/page_alloc.c | 31 +++++++++++++++++++------------
+ 1 file changed, 19 insertions(+), 12 deletions(-)
 
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index e4f6323d7855..8a2e37475e5d 100644
---- a/include/linux/sched.h
-+++ b/include/linux/sched.h
-@@ -1038,6 +1038,8 @@ struct task_struct {
- 	/* whether the LRU algorithm may apply to this access */
- 	unsigned			in_lru_fault:1;
- #endif
-+	/* A private memory allocation failed; a fault reports SIGBUS. */
-+	unsigned			private_alloc_failed:1;
- #ifdef CONFIG_COMPAT_BRK
- 	unsigned			brk_randomized:1;
- #endif
-diff --git a/mm/memory.c b/mm/memory.c
-index 282266dd5e5d..4a8a08df28ff 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -7003,6 +7003,7 @@ vm_fault_t handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
- 	}
- 
- 	is_droppable = !!(vma->vm_flags & VM_DROPPABLE);
-+	current->private_alloc_failed = 0;
- 
- 	/*
- 	 * Enable the memcg OOM handling for faults triggered in user
-@@ -7034,6 +7035,10 @@ vm_fault_t handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
- 	if (is_droppable && (flags & FAULT_FLAG_USER))
- 		ret &= ~VM_FAULT_OOM;
- 
-+	/* Exhausted private memory fails like an empty HugeTLB pool. */
-+	if (unlikely(current->private_alloc_failed) && (ret & VM_FAULT_OOM))
-+		ret = (ret & ~VM_FAULT_OOM) | VM_FAULT_SIGBUS;
-+
- 	if (flags & FAULT_FLAG_USER) {
- 		mem_cgroup_exit_user_fault();
- 		/*
 diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 63cc8729c41a..ea48991ef589 100644
+index ea48991ef589..b7339bc634d5 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -4176,6 +4176,20 @@ __alloc_pages_may_oom(gfp_t gfp_mask, unsigned int order,
- 	 * failures more gracefully we should just bail out here.
- 	 */
+@@ -4078,16 +4078,20 @@ __alloc_pages_cpuset_fallback(gfp_t gfp_mask, unsigned int order,
+ 	return page;
+ }
  
-+	/*
-+	 * Private memory is a fixed pool, exhausting it fails the allocation
-+	 * rather than selecting an OOM victim. Otherwise, if there is some
-+	 * indication of progress because of a revoked request, just report
-+	 * some progress so the slowpath retries and relaxes it.
-+	 */
+-/* A request on the private zonelist. */
++/* A private request, or a nodemask that names a private node. */
+ static bool alloc_is_private(const struct alloc_context *ac)
+ {
+-	return ac->alloc_flags & ALLOC_ZONELIST_PRIVATE;
++	if (ac->alloc_flags & ALLOC_ZONELIST_PRIVATE)
++		return true;
++	return ac->nodemask &&
++	       nodes_intersects(*ac->nodemask, node_states[N_MEMORY_PRIVATE]);
+ }
+ 
+ /*
+- * Whether a private request can still allocate: some node in its zonelist is
+- * in its nodemask and allowed by the cpuset. Any zone type counts, so neither a
+- * GFP zone restriction nor an exhausted node makes the request unsatisfiable.
++ * Whether a request that names private memory can still allocate: some node in
++ * its zonelist is in its nodemask and allowed by the cpuset. Any zone type
++ * counts, so neither a GFP zone restriction nor an exhausted node makes the
++ * request unsatisfiable.
+  */
+ static bool alloc_private_reachable(gfp_t gfp, const struct alloc_context *ac)
+ {
+@@ -4095,7 +4099,7 @@ static bool alloc_private_reachable(gfp_t gfp, const struct alloc_context *ac)
+ 	struct zone *zone;
+ 
+ 	/* A strict local private request keeps its allocation domain. */
+-	if (gfp & __GFP_THISNODE)
++	if ((gfp & __GFP_THISNODE) && (ac->alloc_flags & ALLOC_ZONELIST_PRIVATE))
+ 		return true;
+ 
+ 	for_each_zone_zonelist_nodemask(zone, z, ac->zonelist, MAX_NR_ZONES - 1,
+@@ -4819,10 +4823,11 @@ check_retry_cpuset(int cpuset_mems_cookie, struct alloc_context *ac)
+ }
+ 
+ /*
+- * Relax a private request that can no longer allocate, because the cpuset
+- * revoked its node or memory hotplug removed it. Drop the nodemask and allocate
+- * from the common zonelist of the preferred node. Called after
+- * check_retry_cpuset() and check_retry_zonelist() found no concurrent update.
++ * Relax a request that names private memory but can no longer allocate,
++ * because the cpuset revoked its node or memory hotplug removed it or made it
++ * private. Drop the nodemask and allocate from the common zonelist of the
++ * preferred node. Called after check_retry_cpuset() and check_retry_zonelist()
++ * found no concurrent update.
+  */
+ static bool relax_private_alloc(gfp_t gfp, struct alloc_context *ac)
+ {
+@@ -4830,8 +4835,10 @@ static bool relax_private_alloc(gfp_t gfp, struct alloc_context *ac)
+ 		return false;
+ 
+ 	ac->nodemask = NULL;
+-	ac->alloc_flags &= ~ALLOC_ZONELIST_PRIVATE;
+-	ac->zonelist = node_zonelist(ac->preferred_nid, gfp);
 +	if (ac->alloc_flags & ALLOC_ZONELIST_PRIVATE) {
-+		if (!alloc_private_reachable(gfp_mask, ac))
-+			*did_some_progress = 1;
-+		else
-+			current->private_alloc_failed = 1;
-+		goto out;
++		ac->alloc_flags &= ~ALLOC_ZONELIST_PRIVATE;
++		ac->zonelist = node_zonelist(ac->preferred_nid, gfp);
 +	}
-+
- 	/* Exhausted what can be done so it's blame time */
- 	if (out_of_memory(&oc) ||
- 	    WARN_ON_ONCE_GFP(gfp_mask & __GFP_NOFAIL, gfp_mask)) {
+ 	return true;
+ }
+ 
 
 -- 
 2.56.1
