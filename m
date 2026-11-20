@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:43 -0500
-Subject: [PATCH 52/60] mm: count memory with userspace placement as general
- purpose
+Date: Fri, 20 Nov 2026 13:09:44 -0500
+Subject: [PATCH 53/60] mm/mempolicy: add MPOL_F_PRIVATE_NODES for private
+ node bindings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-52-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-53-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,150 +62,306 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198154; l=4692;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198154; l=11909;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=6RX//QZ0SKZV5TxlzdYhe/tOzKC4XmRnHwcFufstJ18=;
- b=NCTptt6/uCAZdwhyVmM2rpriQlBmZN9AxKQqG79yZ5rxdXd8RGciTmhOiPZUUECoSDy16oEFb
- Kbu7zu/nGUdCEINR6uXZJsSM2Z1tPpxQx5CroIpLspzccWRfbqKkHRl
+ bh=qpDp9Uw5U7Holq6SO9FpvmrnHTCzndjaolkmwUv4n7U=;
+ b=waLUxFwVjjK1r6z4uQauHS9EmVfZ5EzEf3NftvJiPHdtba1GeE5pQkOh+uFgsoD0FSgI7Qh0m
+ 90Gt5kKZDi0BUk8WRLzEx00KWBPydIAE+btm2kQOwM3mOTEjAL0xccQ
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Userspace places ordinary data on N_MEMORY_MEMPOLICY nodes, and neither
-the commit charge nor a task's RSS can tell nodes apart. Treat their
-memory as general purpose: totalram_pages() and MemFree count it, and so
-do the limits sized from them (overcommit, OOM capacity).
+Private bindings behave differently from ordinary ones: they are strict,
+never rebound, and fail with SIGBUS instead of invoking the OOM killer
+when their node is exhausted. Callers should know they are opting into
+that behavior explicitly.
 
-Other defaults sized from totalram_pages(), such as the zswap pool and
-tmpfs sizes, also see the larger total, as they already do for memory
-the kernel cannot allocate from in ZONE_MOVABLE.
+Add MPOL_F_PRIVATE_NODES, an mbind() mode flag that binds a mapping to
+one private node in N_MEMORY_MEMPOLICY. Without the flag, private nodes
+in a mask are ignored - the same as nodes outside the cpuset.
 
-Free memory on these nodes serves only private bindings and migration,
-so counting it in MemAvailable or the global dirtyable memory would
-overstate both. Add common_free_pages() and use it there.
+Older kernels reject the flag, so userspace can probe for it.
 
-MemAvailable also assumes about half of the file LRU can be reclaimed.
-Reclaiming file pages on these nodes frees only private memory, so
-count only the file LRU on common nodes, via common_file_pages().
+A private binding must name exactly one node. The private zonelist
+covers only that node, and a memoryless node left in the mask would
+widen the binding once it gains memory.
 
-File pages that reach a private node through migration stay covered
-by the dirty limits' file LRU term.
+The flag selects a rebind mode like MPOL_F_STATIC_NODES and
+MPOL_F_RELATIVE_NODES, so it excludes both: a private binding is never
+rebound. policy_nodemask() already ignores a binding with no node in the
+current cpuset, so revoking access suspends the binding to common
+memory, and restoring access resumes it.
+
+The flag also excludes MPOL_F_NUMA_BALANCING, since NUMA balancing does
+not act on private memory.  This can be loosened in the future.
+
+Reject private bindings on HugeTLB mappings. Pool reservations are made
+at mmap() time against global counts, and pool growth and dequeue use
+the common zonelists, so the binding could never be satisfied. This
+can also be loosened in the future if a use case grows HugeTLB support.
+
+set_mempolicy() rejects the flag, because a task policy also steers the
+task's kernel allocations.
+
+Policies other than MPOL_BIND only apply to common memory nodes.
+This can also be loosened later if a use case appears, but no compelling
+use case has been proposed in 2 years of discussions.  This minimizes
+the overall complexity of the base HBM/GPU use case considerably.
+
+Use policy_nodemask() for the existing cpuset and zone checks, then
+select the local private zonelist only when the effective target is
+eligible private memory.
+
+set_mempolicy_home_node() rejects a home node other than the bound
+private node, since there is no fallback behavior in either direction,
+an unmatched home node is nonsensical.
+
+numa_maps reports private bindings as "private".
+
+Document the flag in the admin guide.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/internal.h       | 26 ++++++++++++++++++++++++--
- mm/page-writeback.c |  7 ++++++-
- mm/show_mem.c       | 24 ++++++++++++++++++++----
- 3 files changed, 50 insertions(+), 7 deletions(-)
+ .../admin-guide/mm/numa_memory_policy.rst          | 22 +++++++
+ include/uapi/linux/mempolicy.h                     |  4 +-
+ mm/mempolicy.c                                     | 76 +++++++++++++++++++---
+ 3 files changed, 92 insertions(+), 10 deletions(-)
 
-diff --git a/mm/internal.h b/mm/internal.h
-index 4bac570bb29f..c83c100a5253 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -793,11 +793,33 @@ void set_recommended_min_free_kbytes(void);
+diff --git a/Documentation/admin-guide/mm/numa_memory_policy.rst b/Documentation/admin-guide/mm/numa_memory_policy.rst
+index 90ab26e805a9..f2dc59cd6acc 100644
+--- a/Documentation/admin-guide/mm/numa_memory_policy.rst
++++ b/Documentation/admin-guide/mm/numa_memory_policy.rst
+@@ -341,6 +341,28 @@ MPOL_F_RELATIVE_NODES
+ 	MPOL_PREFERRED policies that were created with an empty nodemask
+ 	(local allocation).
  
- extern char * const zone_names[MAX_NR_ZONES];
++MPOL_F_PRIVATE_NODES
++	This flag binds a VMA to a single private memory node (see
++	Documentation/mm/numa_private_nodes.rst).  Without it, private
++	nodes in a policy's nodemask are ignored, as nodes outside the
++	task's cpuset are.
++
++	Only mbind() with MPOL_BIND accepts the flag, and its nodemask
++	must name exactly one private node that permits userspace
++	placement.
++	A private binding is never rebound when the task's allowed nodes
++	change.  While its node is ineligible (outside the task's cpuset,
++	or no longer private memory that permits userspace placement),
++	the binding is suspended and allocations use common memory.  It
++	resumes when the node becomes eligible again.  If the node returns
++	as common memory, the binding acts as an ordinary binding to that
++	node.
++	get_mempolicy() reports the original nodemask.
++
++	MPOL_F_PRIVATE_NODES cannot be combined with
++	MPOL_F_STATIC_NODES, MPOL_F_RELATIVE_NODES or
++	MPOL_F_NUMA_BALANCING, and cannot be used on HugeTLB mappings.
++
+ Memory Policy Reference Counting
+ ================================
  
--/* true if the node is capable of servicing general system allocations */
-+/*
-+ * true if the node is capable of servicing general system allocations or
-+ * userspace directed allocations (mempolicy, migration)
-+ */
- static inline bool node_memory_is_general_purpose(int nid)
- {
- 	return READ_ONCE(NODE_DATA(nid)->memory_features) &
--	       NODE_MEMORY_FEAT_COMMON;
-+	       NODE_MEMORY_FEAT_MEMPOLICY;
-+}
-+
-+unsigned long common_free_pages(void);
-+
-+/* File LRU pages on common nodes, whose reclaim frees common memory. */
-+static inline unsigned long common_file_pages(void)
-+{
-+	unsigned long nr = global_node_page_state(NR_ACTIVE_FILE) +
-+			   global_node_page_state(NR_INACTIVE_FILE);
-+	int nid;
-+
-+	if (!IS_ENABLED(CONFIG_NUMA))
-+		return nr;
-+
-+	for_each_node_state(nid, N_MEMORY_PRIVATE) {
-+		nr -= min(nr, node_page_state(NODE_DATA(nid), NR_ACTIVE_FILE) +
-+			      node_page_state(NODE_DATA(nid), NR_INACTIVE_FILE));
-+	}
-+	return nr;
- }
+diff --git a/include/uapi/linux/mempolicy.h b/include/uapi/linux/mempolicy.h
+index 7f6fc9599693..4dcdf8f68803 100644
+--- a/include/uapi/linux/mempolicy.h
++++ b/include/uapi/linux/mempolicy.h
+@@ -31,13 +31,15 @@ enum mempolicy_mode {
+ #define MPOL_F_STATIC_NODES	(1 << 15)
+ #define MPOL_F_RELATIVE_NODES	(1 << 14)
+ #define MPOL_F_NUMA_BALANCING	(1 << 13) /* Optimize with NUMA balancing if possible */
++#define MPOL_F_PRIVATE_NODES	(1 << 12) /* mbind() to a private memory node */
  
- extern int min_free_kbytes;
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 00293a64fcea..6181266bf159 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -317,7 +317,12 @@ static unsigned long global_dirtyable_memory(void)
- {
- 	unsigned long x;
+ /*
+  * MPOL_MODE_FLAGS is the union of all possible optional mode flags passed to
+  * either set_mempolicy() or mbind().
+  */
+ #define MPOL_MODE_FLAGS							\
+-	(MPOL_F_STATIC_NODES | MPOL_F_RELATIVE_NODES | MPOL_F_NUMA_BALANCING)
++	(MPOL_F_STATIC_NODES | MPOL_F_RELATIVE_NODES | MPOL_F_NUMA_BALANCING | \
++	 MPOL_F_PRIVATE_NODES)
  
--	x = nr_free_pages();
+ /* Whether the nodemask is specified by users */
+ #define MPOL_USER_NODEMASK_FLAGS (MPOL_F_STATIC_NODES | MPOL_F_RELATIVE_NODES)
+diff --git a/mm/mempolicy.c b/mm/mempolicy.c
+index 9d2e56017ebe..cb5419cb7ee8 100644
+--- a/mm/mempolicy.c
++++ b/mm/mempolicy.c
+@@ -451,9 +451,13 @@ static int mpol_set_nodemask(struct mempolicy *pol,
+ 	if (!pol || pol->mode == MPOL_LOCAL)
+ 		return 0;
+ 
+-	/* Check N_MEMORY_COMMON */
+-	nodes_and(nsc->mask1,
+-		  cpuset_current_mems_allowed, node_states[N_MEMORY_COMMON]);
++	/* Private bindings name a private node; others use common memory. */
++	if (pol->flags & MPOL_F_PRIVATE_NODES)
++		nodes_and(nsc->mask1, node_states[N_MEMORY_MEMPOLICY],
++			  node_states[N_MEMORY_PRIVATE]);
++	else
++		nsc->mask1 = node_states[N_MEMORY_COMMON];
++	nodes_and(nsc->mask1, nsc->mask1, cpuset_current_mems_allowed);
+ 
+ 	VM_BUG_ON(!nodes);
+ 
+@@ -488,6 +492,13 @@ static struct mempolicy *mpol_new(unsigned short mode, unsigned short flags,
+ 	}
+ 	VM_BUG_ON(!nodes);
+ 
 +	/*
-+	 * Free private memory serves only private bindings and migration.
-+	 * File pages that reach private memory are counted with the file
-+	 * LRU below.
++	 * The private zonelist covers a single node, so a private bind must name
++	 * exactly one node; a memoryless bit would later widen the binding.
 +	 */
-+	x = common_free_pages();
- 	/*
- 	 * Pages reserved for the kernel should not be considered
- 	 * dirtyable, to prevent a situation where reclaim has to
-diff --git a/mm/show_mem.c b/mm/show_mem.c
-index 24dd33ba783b..de4769e06a53 100644
---- a/mm/show_mem.c
-+++ b/mm/show_mem.c
-@@ -46,17 +46,18 @@ long si_mem_available(void)
- 
- 	/*
- 	 * Estimate the amount of memory available for userspace allocations,
--	 * without causing swapping or OOM.
-+	 * without causing swapping or OOM. Only free common memory serves
-+	 * ordinary allocations.
- 	 */
--	available = nr_free_pages() - totalreserve_pages;
-+	available = common_free_pages() - totalreserve_pages;
- 
- 	/*
- 	 * Not all the page cache can be freed, otherwise the system will
- 	 * start swapping or thrashing. Assume at least half of the page
- 	 * cache, or the low watermark worth of cache, needs to stay.
- 	 */
--	pagecache = global_node_page_state(NR_ACTIVE_FILE) +
--		global_node_page_state(NR_INACTIVE_FILE);
-+	/* Reclaiming file pages on private nodes frees only private memory. */
-+	pagecache = common_file_pages();
- 	pagecache -= min(pagecache / 2, wmark_low);
- 	available += pagecache;
- 
-@@ -92,6 +93,21 @@ unsigned long nr_free_pages(void)
- 	return nr;
- }
- 
-+/* Free pages on common nodes, the free memory ordinary allocations can use. */
-+unsigned long common_free_pages(void)
-+{
-+	unsigned long nr = global_zone_page_state(NR_FREE_PAGES);
-+	int nid;
++	if ((flags & MPOL_F_PRIVATE_NODES) && nodes_weight(*nodes) != 1)
++		return ERR_PTR(-EINVAL);
 +
-+	if (!IS_ENABLED(CONFIG_NUMA))
-+		return nr;
-+
-+	for_each_node_state(nid, N_MEMORY_PRIVATE) {
-+		nr -= min(nr, sum_zone_node_page_state(nid, NR_FREE_PAGES));
+ 	/*
+ 	 * MPOL_PREFERRED cannot be used with MPOL_F_STATIC_NODES or
+ 	 * MPOL_F_RELATIVE_NODES if the nodemask is empty (local allocation).
+@@ -580,6 +591,9 @@ static void mpol_rebind_policy(struct mempolicy *pol, const nodemask_t *newmask)
+ 
+ 	if (!pol || pol->mode == MPOL_LOCAL)
+ 		return;
++	/* Allocation checks a private binding against the current cpuset. */
++	if (pol->flags & MPOL_F_PRIVATE_NODES)
++		return;
+ 	mpol_rebindable_mems(&mems, newmask);
+ 	if (!mpol_store_user_nodemask(pol) &&
+ 	    nodes_equal(pol->w.cpuset_mems_allowed, mems))
+@@ -1587,6 +1601,21 @@ static long do_mbind(unsigned long start, unsigned long len,
+ 	if (err)
+ 		goto mpol_out;
+ 
++	/* Private nodes cannot hold HugeTLB pages; this is unsupported. */
++	if (new && (new->flags & MPOL_F_PRIVATE_NODES)) {
++		vma_iter_init(&vmi, mm, start);
++		for_each_vma_range(vmi, vma, end) {
++			if (vma_is_hugetlb(vma)) {
++				err = -EINVAL;
++				break;
++			}
++		}
++		if (err) {
++			mmap_write_unlock(mm);
++			goto mpol_out;
++		}
 +	}
-+	return nr;
-+}
 +
- void si_meminfo(struct sysinfo *val)
+ 	/*
+ 	 * Lock the VMAs before scanning for pages to migrate,
+ 	 * to ensure we don't miss a concurrently inserted page.
+@@ -1771,6 +1800,11 @@ static inline int sanitize_mpol_flags(int *mode, unsigned short *flags)
+ 		return -EINVAL;
+ 	if ((*flags & MPOL_F_STATIC_NODES) && (*flags & MPOL_F_RELATIVE_NODES))
+ 		return -EINVAL;
++	/* A private binding is never rebound or balanced. */
++	if ((*flags & MPOL_F_PRIVATE_NODES) &&
++	    (*mode != MPOL_BIND ||
++	     (*flags & (MPOL_USER_NODEMASK_FLAGS | MPOL_F_NUMA_BALANCING))))
++		return -EINVAL;
+ 	if (*flags & MPOL_F_NUMA_BALANCING) {
+ 		if (*mode == MPOL_BIND || *mode == MPOL_PREFERRED_MANY)
+ 			*flags |= (MPOL_F_MOF | MPOL_F_MORON);
+@@ -1851,6 +1885,11 @@ SYSCALL_DEFINE4(set_mempolicy_home_node, unsigned long, start, unsigned long, le
+ 			err = -EOPNOTSUPP;
+ 			break;
+ 		}
++		if ((old->flags & MPOL_F_PRIVATE_NODES) &&
++		    !node_isset(home_node, old->nodes)) {
++			err = -EINVAL;
++			break;
++		}
+ 		new = mpol_dup(old);
+ 		if (IS_ERR(new)) {
+ 			err = PTR_ERR(new);
+@@ -1888,6 +1927,10 @@ static long kernel_set_mempolicy(int mode, const unsigned long __user *nmask,
+ 	if (err)
+ 		return err;
+ 
++	/* A task policy also steers the task's kernel allocations. */
++	if (mode_flags & MPOL_F_PRIVATE_NODES)
++		return -EINVAL;
++
+ 	err = get_nodes(&nodes, nmask, maxnode);
+ 	if (err)
+ 		return err;
+@@ -2124,7 +2167,8 @@ bool apply_policy_zone(struct mempolicy *policy, enum zone_type zone)
+ 	 * if policy->nodes has movable memory only,
+ 	 * we apply policy when gfp_zone(gfp) = ZONE_MOVABLE only.
+ 	 *
+-	 * policy->nodes is intersect with node_states[N_MEMORY_COMMON].
++	 * policy->nodes is intersect with node_states[N_MEMORY_COMMON], or with
++	 * the private N_MEMORY_MEMPOLICY nodes for MPOL_F_PRIVATE_NODES.
+ 	 * so if the following test fails, it implies
+ 	 * policy->nodes has movable memory only.
+ 	 */
+@@ -2495,10 +2539,20 @@ static struct page *alloc_pages_preferred_many(gfp_t gfp, unsigned int order,
+ static struct page *alloc_pages_mpol(gfp_t gfp, unsigned int order,
+ 		struct mempolicy *pol, pgoff_t ilx, int nid)
  {
- 	val->totalram = totalram_pages();
++	unsigned int alloc_flags = ALLOC_DEFAULT;
+ 	nodemask_t *nodemask;
+ 	struct page *page;
+ 
+ 	nodemask = policy_nodemask(gfp, pol, ilx, &nid);
++	if (nodemask && (pol->flags & MPOL_F_PRIVATE_NODES)) {
++		int private_nid = first_node(*nodemask);
++
++		if (node_state(private_nid, N_MEMORY_MEMPOLICY) &&
++		    node_state(private_nid, N_MEMORY_PRIVATE)) {
++			nid = private_nid;
++			alloc_flags = ALLOC_ZONELIST_PRIVATE;
++		}
++	}
+ 
+ 	if (pol->mode == MPOL_PREFERRED_MANY)
+ 		return alloc_pages_preferred_many(gfp, order, nid, nodemask);
+@@ -2520,24 +2574,26 @@ static struct page *alloc_pages_mpol(gfp_t gfp, unsigned int order,
+ 		    pol->mode != MPOL_WEIGHTED_INTERLEAVE &&
+ 		    (!nodemask || node_isset(nid, *nodemask))) {
+ 			/*
+-			 * First, try to allocate THP only on local node, but
++			 * First, try to allocate THP only on the selected node, but
+ 			 * don't reclaim unnecessarily, just compact.
+ 			 */
+ 			page = __alloc_frozen_pages_noprof(
+ 				gfp | __GFP_THISNODE | __GFP_NORETRY, order,
+-				nid, NULL, ALLOC_DEFAULT);
++				nid, (alloc_flags & ALLOC_ZONELIST_PRIVATE) ?
++					 nodemask : NULL, alloc_flags);
+ 			if (page || !(gfp & __GFP_DIRECT_RECLAIM))
+ 				return page;
+ 			/*
+ 			 * If hugepage allocations are configured to always
+ 			 * synchronous compact or the vma has been madvised
+ 			 * to prefer hugepage backing, retry allowing remote
+-			 * memory with both reclaim and compact as well.
++			 * memory with both reclaim and compact as well. A
++			 * private binding stays on its local zonelist.
+ 			 */
+ 		}
+ 	}
+ 
+-	page = __alloc_frozen_pages_noprof(gfp, order, nid, nodemask, ALLOC_DEFAULT);
++	page = __alloc_frozen_pages_noprof(gfp, order, nid, nodemask, alloc_flags);
+ 
+ 	if (unlikely(pol->mode == MPOL_INTERLEAVE ||
+ 		     pol->mode == MPOL_WEIGHTED_INTERLEAVE) && page) {
+@@ -3651,12 +3707,14 @@ void mpol_to_str(char *buffer, int maxlen, struct mempolicy *pol)
+ 		p += snprintf(p, buffer + maxlen - p, "=");
+ 
+ 		/*
+-		 * Static and relative are mutually exclusive.
++		 * Static, relative and private are mutually exclusive.
+ 		 */
+ 		if (flags & MPOL_F_STATIC_NODES)
+ 			p += snprintf(p, buffer + maxlen - p, "static");
+ 		else if (flags & MPOL_F_RELATIVE_NODES)
+ 			p += snprintf(p, buffer + maxlen - p, "relative");
++		else if (flags & MPOL_F_PRIVATE_NODES)
++			p += snprintf(p, buffer + maxlen - p, "private");
+ 
+ 		if (flags & MPOL_F_NUMA_BALANCING) {
+ 			if (!is_power_of_2(flags & MPOL_MODE_FLAGS))
 
 -- 
 2.56.1
