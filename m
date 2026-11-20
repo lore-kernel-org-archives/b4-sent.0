@@ -1,94 +1,99 @@
-From: Seonghyeon Lim <forfortuna@naver.com>
-Date: Fri, 20 Nov 2026 15:56:04 +0900
-Subject: [PATCH v2 2/2] can: virtio: fix virtqueue use before DRIVER_OK
+From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Date: Fri, 20 Nov 2026 14:59:02 +0800
+Subject: [PATCH bpf-next] selftests/bpf: Fix
+ file_reader/on_open_non_sleepable_first on overlayfs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-virtio-can-ready-v2-2-0defda2af8cb@naver.com>
-References: <20261120-virtio-can-ready-v2-0-0defda2af8cb@naver.com>
-In-Reply-To: <20261120-virtio-can-ready-v2-0-0defda2af8cb@naver.com>
-To: Harald Mommer <harald.mommer@oss.qualcomm.com>, 
- Matias Ezequiel Vara Larsen <mvaralar@redhat.com>, 
- Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol@kernel.org>, 
- Mikhail Golubev-Ciuchea <mikhail.golubev-ciuchea@oss.qualcomm.com>, 
- Francesco Valla <francesco@valla.it>, "Michael S. Tsirkin" <mst@redhat.com>
-Cc: virtualization@lists.linux.dev, linux-can@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Jason Wang <jasowangio@gmail.com>, 
- stable@vger.kernel.org, Seonghyeon Lim <forfortuna@naver.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795157866; l=2078;
- i=forfortuna@naver.com; s=20261110; h=from:subject:message-id;
- bh=wIY55Nih6Exr0WUhi1Tyc3EiQfNI6qtLKhOXoT4e7Vs=;
- b=iNTmLb2IWMi8elzzOk5J87idYxXeiL/HJlLHubu6TkFR6PvPZZ2EtrbwqEf2/9Hg+tlrRCNfC
- kqvNbXf4G3DCr+iziYwoMCePuJlXRkNMSecgnlwE05WyIN+Fch2rUMB
-X-Developer-Key: i=forfortuna@naver.com; a=ed25519;
- pk=NSzj4ReyzmE01C4q/f+7jqXzWqsN5NwQK5UsSI6ufiE=
-X-Endpoint-Received: by B4 Relay for forfortuna@naver.com/20261110 with auth_id=1481
+Message-Id: <20261120-file-reader-overlayfs-v1-1-81aa7f3041d1@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqDMBBG4avIrDuQpFaaXqV0Ec0fHZAokyIW8
+ e6GLr/FewcVqKDQqzlIsUmRJVfYW0PDFPIIllhNzrjOWmc4yQxWhAjlZYPO4ZcKm9b7Z4yhe/g
+ 71XZVJNn/3zf1a+KM/Uuf87wAwDh0gnEAAAA=
+X-Change-ID: 20261120-file-reader-overlayfs-04998dda6593
+To: Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, 
+ Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, Shuah Khan <shuah@kernel.org>
+Cc: bpf@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ Hang Zhengyang <hang.zhengyang1010@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795157947; l=2542;
+ i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
+ bh=Z42i5/leJVwaMNYSXOof1lDedpwAns1zY51D5qfLFZg=;
+ b=BVELy4sSCT416yAlXQDGZOkNtmJrAAIWI07LrHUOPdK4831RXbQ3f0/U5f91jZvgqGiuvGpmL
+ WwqN1+FqKaxBANdUCPWmvgNM9CLE67wy3NxSXRR6Y8yeTXZOETej6IR
+X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
+ pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
+X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-virtio_can_probe() and virtio_can_restore() fill the RX virtqueue and
-kick it before the device is set DRIVER_OK. The virtio specification
-does not allow the driver to notify the device before DRIVER_OK.
+on_open_non_sleepable_first fails every time when the test_progs binary
+is on overlayfs, as under /home and /tmp in a virtme-ng guest:
 
-In restore, if the interface was up, virtio_can_open() then sends a
-START control message and waits for the reply. DRIVER_OK is only set
-by the virtio core after restore returns, so the device may never
-handle the request and the wait never completes, which hangs system
-resume:
+  run_test:FAIL:err unexpected err: actual 4 != expected 0
 
-  task:kworker/u4:5 state:D
-  Workqueue: async async_run_entry_fn
-  Call Trace:
-   __wait_for_common
-   virtio_can_send_ctrl_msg
-   virtio_can_open
-   virtio_can_restore
-   virtio_device_restore_priv
-   dpm_run_callback
-   device_resume
+bpf_task_work_schedule_signal() returns -EBUSY.  On overlayfs, the
+open() of /proc/self/exe calls security_file_open() twice: once for
+the overlay file, and once more for the backing file through
+ovl_open() -> backing_file_open() -> vfs_open().  The program runs
+twice in the same task, and the second call finds the work from the
+first one still pending, since it only runs on return to user space.
 
-In probe, an ndo_open() right after register_candev() can likewise
-send the START message before DRIVER_OK.
+Act only on the first call.  The other file_open programs in the file
+either don't schedule task work or don't check the result, so running
+twice doesn't affect them.
 
-Call virtio_device_ready() before the first virtqueue use in both
-probe and restore, as virtio-net does. Config change callbacks are
-still deferred by the virtio core until probe or restore returns, and
-virtqueue callbacks that arrive before NAPI is enabled are handled in
-virtio_can_napi_enable().
-
-Fixes: 083082a4e6d8 ("can: virtio: Add virtio CAN driver")
-Cc: stable@vger.kernel.org
-Signed-off-by: Seonghyeon Lim <forfortuna@naver.com>
+Fixes: fc38f07781ca ("selftests/bpf: Test per-call site function specialization")
+Signed-off-by: Hang Zhengyang <hang.zhengyang1010@gmail.com>
 ---
- drivers/net/can/virtio_can.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Tested in a virtme-ng guest on bpf-next (82cc2b4383e3): file_reader
+passes from overlayfs and from a tmpfs copy, and 20 times in a row
+from overlayfs; without the change the subtest fails from overlayfs
+and passes from tmpfs.
 
-diff --git a/drivers/net/can/virtio_can.c b/drivers/net/can/virtio_can.c
-index 9055d7e43235..549e8d789d74 100644
---- a/drivers/net/can/virtio_can.c
-+++ b/drivers/net/can/virtio_can.c
-@@ -925,6 +925,9 @@ static int virtio_can_probe(struct virtio_device *vdev)
- 		err = -ENOMEM;
- 		goto on_failure;
- 	}
-+
-+	virtio_device_ready(vdev);
-+
- 	virtio_can_populate_rx_vq(vdev);
- 
- 	err = register_virtio_can_dev(dev);
-@@ -979,6 +982,9 @@ static int __maybe_unused virtio_can_restore(struct virtio_device *vdev)
- 		virtio_can_del_vq(vdev);
- 		return -ENOMEM;
- 	}
-+
-+	virtio_device_ready(vdev);
-+
- 	virtio_can_populate_rx_vq(vdev);
- 
- 	if (netif_running(ndev)) {
+The patch, this text and the tests were written and run with Claude
+Code; I reproduced the issue and reviewed the change.
+---
+ tools/testing/selftests/bpf/progs/file_reader.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
+diff --git a/tools/testing/selftests/bpf/progs/file_reader.c b/tools/testing/selftests/bpf/progs/file_reader.c
+index 8b972fd26d73..1318b8e0845c 100644
+--- a/tools/testing/selftests/bpf/progs/file_reader.c
++++ b/tools/testing/selftests/bpf/progs/file_reader.c
+@@ -28,6 +28,7 @@ char tmp_buf[256000];
+ int pid = 0;
+ int err, run_success = 0;
+ __u64 beyond_eof_offset;
++bool done;
+ 
+ static int validate_file_read(struct file *file);
+ static int task_work_callback(struct bpf_map *map, void *key, void *value);
+@@ -101,8 +102,13 @@ int on_open_non_sleepable_first(void *c)
+ 	int key = 0;
+ 	int ret;
+ 
+-	if (bpf_get_current_pid_tgid() >> 32 != pid)
++	/*
++	 * On overlayfs, file_open runs again for the backing file, while the
++	 * work scheduled by the first call is still pending.
++	 */
++	if (bpf_get_current_pid_tgid() >> 32 != pid || done)
+ 		return 0;
++	done = true;
+ 
+ 	file = bpf_get_task_exe_file(task);
+ 	if (!file) {
+
+---
+base-commit: 82cc2b4383e3edfa1026c8612fb4e90a9329ba11
+change-id: 20261120-file-reader-overlayfs-04998dda6593
+
+Best regards,
 -- 
-2.43.0
+Hang Zhengyang <hang.zhengyang1010@gmail.com>
 
