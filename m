@@ -1,148 +1,124 @@
-From: Peter LaDow <pladow@gmail.com>
-Date: Fri, 20 Nov 2026 06:58:55 -0800
-Subject: [PATCH] leds: lp5860: Fix DOTONOFF register offsets
+From: Zhendong Liu <yzddmr6@gmail.com>
+Date: Fri, 20 Nov 2026 23:30:53 +0800
+Subject: [PATCH v2] dma: swiotlb: Allocate the restricted DMA pool slot
+ array with kvzalloc()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261120-fix-lp5860-dotonoff-register-offset-calculation-v1-1-ec1e78842380@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAC5gAGsC/x3NQQrDIBBA0auEWXdAB7RNr1K6MGZMB0SD2lIIu
- XuHLv/m/QM6N+EO9+mAxh/pUouGvUwQX6FsjLJqAxny1pLBJF/Mu7t5g2sdtdSUsPEmfXBDjc4
- DY8jxncNQC5fFOU8U5vnqQNW9sRL/4+N5nj9lLTTVgQAAAA==
-X-Change-ID: 20261120-fix-lp5860-dotonoff-register-offset-calculation-bb55622a9975
-To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
- Griffin Kroah-Hartman <griffin@kroah.com>, 
- Steffen Trumtrar <s.trumtrar@pengutronix.de>
-Cc: linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Peter LaDow <pladow@gmail.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261120-upstream2-swiotlb-rmem-kvzalloc-v2-1-cc5732dddb6b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKxnAGsC/42OzQ6DIBCEX6Xh3G0Vo4k99T0aD4CL0oIYQPpjf
+ PeiJj03e5qdyTczE49OoSeXw0wcRuWVHZKgxwMRPRs6BNUmTWhGqzynGUyjDw6ZoeCfygbNwRk
+ 08IgfprUVICvBKyExq1lBEmV0KNVra7g1u/YTv6MIK3ZNcOYRuGOD6NfXr+C8Ga1hsANStFc+W
+ Pfe1sZ8Rf4/LOaQTpSy5mVWUFpcO8OUPglrSLMsyxcnCgudCwEAAA==
+X-Change-ID: 20261120-upstream2-swiotlb-rmem-kvzalloc-f6cb6cfe09a3
+To: Marek Szyprowski <m.szyprowski@samsung.com>
+Cc: Robin Murphy <robin.murphy@arm.com>, iommu@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Zhendong Liu <yzddmr6@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795186748; l=7231;
- i=pladow@gmail.com; s=20261120; h=from:subject:message-id;
- bh=bHt1ff45vnpY9vEZH118XYhA+bCp4obPXckiyGuJFVc=;
- b=xm5/bsmtq8SaHgmesxVDzNODD6fIQtALeBheNLxhZLeLTNdQBkuHawXApA7mpQovnVbNoqnE/
- re55ApUk0VSCCMYqrvHoGmEFHZZf78mvRTmcbyfQpKx2JiaiFHcowMY
-X-Developer-Key: i=pladow@gmail.com; a=ed25519;
- pk=GEdL9uXOAV0PnykeFpXX87oqKs0/Ac0qAUc4Oow7WN4=
-X-Endpoint-Received: by B4 Relay for pladow@gmail.com/20261120 with auth_id=1585
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795188654; l=4063;
+ i=yzddmr6@gmail.com; s=20261028; h=from:subject:message-id;
+ bh=n5WsBNFSSTY++xySoe4Lh6qAZ7+HFLIrorjS4M0Xd3I=;
+ b=qpNujyU5LVEecmTJsbr9Kv82yZ6BGA0fvstIKHTLBgxAXuO2n1vVfjnSaVCkcTzNapi2xhZoB
+ Al43Wdsl6TdBBXvUugeeZ3oEFCh7YVWtS23i5e3Kcyo3VGK3DL4+EXO
+X-Developer-Key: i=yzddmr6@gmail.com; a=ed25519;
+ pk=QLT2mwairk4R38oU379hkHynqjoLrlqd0Cl1ERUqIqY=
+X-Endpoint-Received: by B4 Relay for yzddmr6@gmail.com/20261028 with auth_id=1489
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-According to the TI LP5860 datasheet, 18 dots per scanline are
-spread across groups of 3 in the DOTONOFF0..DOTONOFF32 registers,
-rather than spread across the entire range.  Update the register
-offset calculation to correctly calculate the offset and mask
-for scanlines 1 to 10.
+rmem_swiotlb_device_init() allocates one struct io_tlb_slot per 2 KiB
+slot of a restricted DMA pool with kzalloc(). The struct is 24 bytes on
+64-bit, so with 4 KiB pages and the default MAX_PAGE_ORDER of 10 the
+array is larger than KMALLOC_MAX_SIZE (4 MiB) for any pool above about
+341 MiB. For such a pool kzalloc() refuses the request with a
+WARN_ON_ONCE() in ___kmalloc_large_node(), the pool is not set up, and
+of_dma_set_restricted_buffer() warns that it failed to initialise the
+pool. The devices assigned to it then lose the restriction without
+their probe failing, and use the default DMA path.
 
-Fixes: f0a66563aa2d ("leds: Add support for TI LP5860 LED driver chip")
-Signed-off-by: Peter LaDow <pladow@gmail.com>
+The slot array is only accessed by the CPU and does not need to be
+physically contiguous. Allocate it with kvzalloc_objs() and free it with
+kvfree(). The other pools are not affected: the slot array of the
+default pool comes from memblock, and the buffers of late and dynamic
+pools are limited to MAX_PAGE_ORDER, which keeps their slot arrays
+small.
+
+Pools of this size are needed when large buffers go through the pool
+for their whole lifetime: this was hit with an arm64 Gunyah protected
+VM whose virtio-gpu resources stay mapped in the pool, and a desktop at
+3392x2400 needed more than 341 MiB.
+
+The problem was analysed and this change written with the help of an
+AI coding assistant.
+
+Fixes: 0b84e4f8b793 ("swiotlb: Add restricted DMA pool initialization")
+Cc: stable@vger.kernel.org
+Signed-off-by: Zhendong Liu <yzddmr6@gmail.com>
 ---
-I logged a defect in drivers/leds/rgb/lp5860-core.c on the bugzilla
-at kernel.org (but #222303).  Attached is a patch to fix the offset
-calculation for the DOTONOFFn registers.
+Reproduced in QEMU on the base commit below (arm64 defconfig, 4 KiB
+pages): virt machine with 2 GiB, a 512 MiB restricted-dma-pool added to
+the DT and referenced by every virtio_mmio node, one virtio-rng device
+with iommu_platform=on (modern virtio-mmio, so VIRTIO_F_ACCESS_PLATFORM
+is negotiated), and swiotlb=track_hiwater. Without this patch the WARN in
+___kmalloc_large_node() fires, every transport reports "failed to
+initialise "restricted-dma-pool" memory node", no debugfs directory is
+created for the pool, and reading /dev/hwrng works without any bounce
+(io_tlb_used_hiwater of the default pool stays 0). With it there is no
+warning, every transport is assigned the pool, and its debugfs
+directory shows 262144 slots, with io_tlb_used_hiwater already at 17
+once virtio-rng has probed. W=1 shows no new warnings in kernel/dma/.
 
-Per the LP5860 11 × 18 LED Matrix Driver Register Maps
-(see https://www.ti.com/lit/ug/snvu786/snvu786.pdf), the DOTONOFF for each
-of 18 current sinks are spread across 3 registers.  But the current
-mainline code assumes they are tightly packed across all the registers.
+The change is also used in the guest kernel of the Gunyah VMs
+mentioned above.
 
-This patch calculates the correct offsets by first determining which line
-the appropriate dot is on.  It then chooses the appropriate starting
-register offset for that line, then correctly calculates the mask.
-The comments documenting the registers are longer than 100 columns
-(108 columns to be exactly), but I think this is important to keep the
-information clear.
-
-In the bugzilla entry, I attached Python code that demonstrates the proper
-calculation and how the mainline mismatches.  I also demonstrated the new
-code correctly calculates the offsets to match the datasheet.
+I used an AI coding assistant for this work. It analysed the failure,
+wrote this patch and changelog and set up the QEMU reproducer. I have
+reviewed the change.
 ---
- drivers/leds/rgb/leds-lp5860-core.c | 67 +++++++++++++++++++++++++++++++++++--
- 1 file changed, 65 insertions(+), 2 deletions(-)
+Changes in v2:
+- Use my legal name in the From: and Signed-off-by: lines, as requested.
+- Link to v1: https://patch.msgid.link/20261120-upstream2-swiotlb-rmem-kvzalloc-v1-1-1c5f9b503223@gmail.com
+---
+ kernel/dma/swiotlb.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/leds/rgb/leds-lp5860-core.c b/drivers/leds/rgb/leds-lp5860-core.c
-index e21d5f2302be..540463c615d4 100644
---- a/drivers/leds/rgb/leds-lp5860-core.c
-+++ b/drivers/leds/rgb/leds-lp5860-core.c
-@@ -19,10 +19,73 @@ static struct lp5860_led *mcled_cdev_to_led(struct led_classdev_mc *mc_cdev)
- 	return container_of(mc_cdev, struct lp5860_led, mc_cdev);
- }
+diff --git a/kernel/dma/swiotlb.c b/kernel/dma/swiotlb.c
+index 786954bc5e6a..51c7c064b62f 100644
+--- a/kernel/dma/swiotlb.c
++++ b/kernel/dma/swiotlb.c
+@@ -2042,7 +2042,7 @@ static int rmem_swiotlb_device_init(struct reserved_mem *rmem,
+ 			return -ENOMEM;
+ 		pool = &mem->defpool;
  
-+// Per the datasheet for the TI LP5860 the DOT_ONOFFn registers group the 18
-+// current sink lines across 3 registers, starting at offset 0x43.
-+// From https://www.ti.com/lit/ds/symlink/lp5860.pdf:
-+//
-+// |  Register   | Address |    D7   |    D6   |    D5   |    D4   |    D3   |    D2   |    D1   |    D0   |
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+// | DOT_ONOFF0  |  043h   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |
-+// |             |         |  L0-CS7 |  L0-CS6 |  L0-CS5 |  L0-CS4 |  L0-CS3 |  L0-CS2 |  L0-CS1 |  L0-CS0 |
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+// | DOT_ONOFF1  |  044h   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |
-+// |             |         | L0-CS15 | L0-CS14 | L0-CS13 | L0-CS12 | L0-CS11 | L0-CS10 |  L0-CS9 |  L0-CS8 |
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+// | DOT_ONOFF2  |  045h   | Reserved                                                  |   Dot   |   Dot   |
-+// |             |         |                                                           | L0-CS17 | L0-CS16 |
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+// | DOT_ONOFF3  |  046h   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |
-+// |             |         |  L1-CS7 |  L1-CS6 |  L1-CS5 |  L1-CS4 |  L1-CS3 |  L1-CS2 |  L1-CS1 |  L1-CS0 |
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+// | DOT_ONOFF4  |  047h   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |
-+// |             |         | L1-CS15 | L1-CS14 | L1-CS13 | L1-CS12 | L1-CS11 | L1-CS10 |  L1-CS9 |  L1-CS8 |
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+// | DOT_ONOFF5  |  048h   | Reserved                                                  |   Dot   |   Dot   |
-+// |             |         |                                                           | L1-CS17 | L1-CS16 |
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+// ... (049h ... 060h)
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+// | DOT_ONOFF30 |  061h   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |
-+// |             |         | L10-CS7 | L10-CS6 | L10-CS5 | L10-CS4 | L10-CS3 | L10-CS2 | L10-CS1 | L10-CS0 |
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+// | DOT_ONOFF31 |  062h   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |   Dot   |
-+// |             |         |L10-CS15 |L10-CS14 |L10-CS13 |L10-CS12 |L10-CS11 |L10-CS10 | L10-CS9 | L10-CS8 |
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+// | DOT_ONOFF32 |  063h   | Reserved                                                  |   Dot   |   Dot   |
-+// |             |         |                                                           |L10-CS17 |L10-CS16 |
-+// +-------------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
-+//
-+// LP5860_MAX_LED_CONSTANT is the number of LEDs per line.
-+// LP5860_MAX_DOT_ONOFF_GROUP_NUM is the number of LEDs per register.
-+// These are 18 and 8, respectively, for the LP5860.
-+//
-+// So to calculate which register to write, we do the following:
-+//
-+//   Which line? (NOTE: integer division, rounding to 0)
-+//     line = dot / LP5860_MAX_LED_CONSTANT
-+//
-+//   Which current sink channel on the line?
-+//     channel = dot % LP5860_MAX_LED_CONSTANT
-+//
-+//   Number of registers per line:
-+//     ceil(LP5860_MAX_LED_CONSTANT / LP5860_MAX_DOT_ONOFF_GROUP_NUM)
-+//
-+//   Starting register for the line:
-+//     line * DIV_ROUND_UP(LP5860_MAX_LED_CONSTANT, LP5860_MAX_DOT_ONOFF_GROUP_NUM)
-+//
-+//   Offset within the line:
-+//     channel / LP5860_MAX_DOT_ONOFF_GROUP_NUM
- static int lp5860_set_dot_onoff(struct lp5860_led *led, unsigned int dot, bool enable)
- {
--	unsigned int offset = dot / LP5860_MAX_DOT_ONOFF_GROUP_NUM;
--	unsigned int mask = BIT(dot % LP5860_MAX_DOT_ONOFF_GROUP_NUM);
-+	unsigned int line = dot / LP5860_MAX_LED_CONSTANT;
-+	unsigned int channel = dot % LP5860_MAX_LED_CONSTANT;
-+
-+	// Calculate the register offset.
-+	unsigned int offset = line * DIV_ROUND_UP(LP5860_MAX_LED_CONSTANT, LP5860_MAX_DOT_ONOFF_GROUP_NUM) +
-+		channel / LP5860_MAX_DOT_ONOFF_GROUP_NUM;
-+
-+	// The bit within the register.
-+	unsigned int mask = BIT(channel % LP5860_MAX_DOT_ONOFF_GROUP_NUM);
+-		pool->slots = kzalloc_objs(*pool->slots, nslabs);
++		pool->slots = kvzalloc_objs(*pool->slots, nslabs);
+ 		if (!pool->slots) {
+ 			kfree(mem);
+ 			return -ENOMEM;
+@@ -2050,7 +2050,7 @@ static int rmem_swiotlb_device_init(struct reserved_mem *rmem,
  
- 	if (dot > LP5860_MAX_LED)
- 		return -EINVAL;
+ 		pool->areas = kzalloc_objs(*pool->areas, nareas);
+ 		if (!pool->areas) {
+-			kfree(pool->slots);
++			kvfree(pool->slots);
+ 			kfree(mem);
+ 			return -ENOMEM;
+ 		}
+@@ -2067,7 +2067,7 @@ static int rmem_swiotlb_device_init(struct reserved_mem *rmem,
+ 			if (ret) {
+ 				dev_err(dev, "Failed to decrypt restricted DMA pool\n");
+ 				kfree(pool->areas);
+-				kfree(pool->slots);
++				kvfree(pool->slots);
+ 				kfree(mem);
+ 				return ret;
+ 			}
 
 ---
-base-commit: c016466c8c8b01af27ac66d97b64fa9c9e431a3d
-change-id: 20261120-fix-lp5860-dotonoff-register-offset-calculation-bb55622a9975
+base-commit: 14866e632fa48a0b4c385ab0121526575eb8f88c
+change-id: 20261120-upstream2-swiotlb-rmem-kvzalloc-f6cb6cfe09a3
 
 Best regards,
 --  
-Peter LaDow <pladow@gmail.com>
+Zhendong Liu <yzddmr6@gmail.com>
 
