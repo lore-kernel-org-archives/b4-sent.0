@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:25 -0500
-Subject: [PATCH 34/60] mm/mempolicy: don't rebind policies onto private
- nodes
+Date: Fri, 20 Nov 2026 13:09:26 -0500
+Subject: [PATCH 35/60] mm/mempolicy: keep private nodes out of
+ migrate_pages() destinations
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-34-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-35-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,128 +62,46 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=3916;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1114;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=O4sFHAoLYcMEsR+pbprmEIIYrOpT4VdUvGorp6JE4oo=;
- b=++1ya54kNulohMUVhkDNAIgSodP5iBDwFFCmWjVnOGU1NsRveo/lx1Jce0OpvaUnLUmZ7pT/r
- w52A5nrqjOZA3Cb2wKDaNK6almrCmCp5wMfSWBDh7BzHHpTEwgkoGoQ
+ bh=H9nkzUJ+W/B+CQbALDD5SyhxQlr5AVXp1jZnonCs+2k=;
+ b=qYt4WGgIFvq2RJT+D/LbNX9eFwn5eLa1APiNG0q/gFK7SazhE8Ij9A//vMkPQj7FL/v1ICdhS
+ jrfi9jSAKC+C0aiThj8fYRh2F/Gs/FtXJaqopNXu15BKaJfgfgG0QYs
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A cpuset can allow private nodes, and rebinding a policy to a new cpuset
-mask can move its nodes onto them:
-  - a static policy reapplies the raw user mask.
-  - relative and remapped policies follow node positions in the cpuset
-    mask.
+migrate_pages(2) intersects its destination nodes with the caller's
+cpuset, which can include private nodes.
 
-Ordinary policies cannot use private nodes.
+A private destination gets mapped to some source node, and every page
+bound for it attempts a __GFP_THISNODE allocation. A private node is not
+on its own __GFP_THISNODE zonelist, so the call fails with -ENOMEM and
+logs an allocation failure.
 
-Rebind policies over the cpuset's nodes other than private ones, and
-record the remap base the same way, so adding or removing a private node
-moves no policy.
-
-Cpusets keep common memory in every effective mask, so a mask with no
-node left is a bug. Warn, and keep the whole mask rather than leave the
-policy empty.
-
-On systems without a private node, rebinding is unchanged.
+Leave private nodes out of the destination mask, as move_pages(2)
+already rejects them. A mask that names only private nodes fails with
+-EINVAL.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/mempolicy.c | 42 ++++++++++++++++++++++++++++++------------
- 1 file changed, 30 insertions(+), 12 deletions(-)
+ mm/mempolicy.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/mm/mempolicy.c b/mm/mempolicy.c
-index e208018499d6..81ccc481cea1 100644
+index 81ccc481cea1..2bfe8b2b6287 100644
 --- a/mm/mempolicy.c
 +++ b/mm/mempolicy.c
-@@ -418,6 +418,18 @@ static int mpol_new_preferred(struct mempolicy *pol, const nodemask_t *nodes)
- 	return 0;
- }
- 
-+/*
-+ * Policies are rebound over the cpuset's nodes other than private ones. A node
-+ * removed since the remap base was recorded keeps its position.
-+ */
-+static void mpol_rebindable_mems(nodemask_t *dst, const nodemask_t *nodes)
-+{
-+	nodes_andnot(*dst, *nodes, node_states[N_MEMORY_PRIVATE]);
-+	/* Cpusets keep common memory in every effective mask. */
-+	if (WARN_ON_ONCE(nodes_empty(*dst)))
-+		*dst = *nodes;
-+}
-+
- /*
-  * mpol_set_nodemask is called after mpol_new() to set up the nodemask, if
-  * any, for the new policy.  mpol_new() has already validated the nodes
-@@ -453,7 +465,8 @@ static int mpol_set_nodemask(struct mempolicy *pol,
- 	if (mpol_store_user_nodemask(pol))
- 		pol->w.user_nodemask = *nodes;
- 	else
--		pol->w.cpuset_mems_allowed = cpuset_current_mems_allowed;
-+		mpol_rebindable_mems(&pol->w.cpuset_mems_allowed,
-+				     &cpuset_current_mems_allowed);
- 
- 	ret = mpol_ops[pol->mode].create(pol, &nsc->mask2);
- 	return ret;
-@@ -528,20 +541,22 @@ static void mpol_rebind_default(struct mempolicy *pol, const nodemask_t *nodes)
- 
- static void mpol_rebind_nodemask(struct mempolicy *pol, const nodemask_t *nodes)
- {
--	nodemask_t tmp;
-+	nodemask_t tmp, allowed;
-+
-+	mpol_rebindable_mems(&allowed, nodes);
- 
--	if (pol->flags & MPOL_F_STATIC_NODES)
--		nodes_and(tmp, pol->w.user_nodemask, *nodes);
--	else if (pol->flags & MPOL_F_RELATIVE_NODES)
--		mpol_relative_nodemask(&tmp, &pol->w.user_nodemask, nodes);
--	else {
-+	if (pol->flags & MPOL_F_STATIC_NODES) {
-+		nodes_and(tmp, pol->w.user_nodemask, allowed);
-+	} else if (pol->flags & MPOL_F_RELATIVE_NODES) {
-+		mpol_relative_nodemask(&tmp, &pol->w.user_nodemask, &allowed);
-+	} else {
- 		nodes_remap(tmp, pol->nodes, pol->w.cpuset_mems_allowed,
--								*nodes);
--		pol->w.cpuset_mems_allowed = *nodes;
-+			    allowed);
-+		pol->w.cpuset_mems_allowed = allowed;
+@@ -1958,6 +1958,8 @@ static int kernel_migrate_pages(pid_t pid, unsigned long maxnode,
  	}
  
- 	if (nodes_empty(tmp))
--		tmp = *nodes;
-+		tmp = allowed;
+ 	task_nodes = cpuset_mems_allowed(current);
++	/* Private memory is not a migration destination. */
++	nodes_andnot(task_nodes, task_nodes, node_states[N_MEMORY_PRIVATE]);
+ 	if (!nodes_and(*new, *new, task_nodes))
+ 		goto out_put;
  
- 	pol->nodes = tmp;
- }
-@@ -549,7 +564,7 @@ static void mpol_rebind_nodemask(struct mempolicy *pol, const nodemask_t *nodes)
- static void mpol_rebind_preferred(struct mempolicy *pol,
- 						const nodemask_t *nodes)
- {
--	pol->w.cpuset_mems_allowed = *nodes;
-+	mpol_rebindable_mems(&pol->w.cpuset_mems_allowed, nodes);
- }
- 
- /*
-@@ -561,10 +576,13 @@ static void mpol_rebind_preferred(struct mempolicy *pol,
-  */
- static void mpol_rebind_policy(struct mempolicy *pol, const nodemask_t *newmask)
- {
-+	nodemask_t mems;
-+
- 	if (!pol || pol->mode == MPOL_LOCAL)
- 		return;
-+	mpol_rebindable_mems(&mems, newmask);
- 	if (!mpol_store_user_nodemask(pol) &&
--	    nodes_equal(pol->w.cpuset_mems_allowed, *newmask))
-+	    nodes_equal(pol->w.cpuset_mems_allowed, mems))
- 		return;
- 
- 	mpol_ops[pol->mode].rebind(pol, newmask);
 
 -- 
 2.56.1
