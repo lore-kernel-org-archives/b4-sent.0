@@ -1,74 +1,80 @@
-From: Rong Chen <rong.chen@amlogic.com>
-Date: Fri, 20 Nov 2026 13:53:23 +0800
-Subject: [PATCH] mmc: meson-gx: Add reset for Response Mode Error Mask
- (RMEM)
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Subject: [PATCH v3 0/2] arm64: dts: allwinner: orangepi-zero2/zero3: Read
+ the SPI NOR over two lines
+Date: Fri, 20 Nov 2026 06:30:07 +0000
+Message-Id: <20261120-zero2-spi-nor-dual-read-v3-0-1cbb0caaed91@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-a4_mmc-v1-1-5a84cbcdcace@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAFLg/2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQyMD3UST+NzcZN2UFJMkyyRjs+QkAwMloOKCotS0zAqwQdGxtbUAKoW
- 1klgAAAA=
-X-Change-ID: 20261120-a4_mmc-dd4b9b36cb00
-To: Ulf Hansson <ulfh@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-mmc@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Rong Chen <rong.chen@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795154005; l=1328;
- i=rong.chen@amlogic.com; s=20261116; h=from:subject:message-id;
- bh=ldcBzSWY8qmDPf31J18ds1oMT+JS17QVuWgrGqm9XrQ=;
- b=vUz2tYdPH+vzuS5s+wTBf+hkZRqWYYUyOdbqg+YHDpmn5FeQ9cDaWszezykoMJ1UlbazSXAHf
- h8TBoKOe9beBd9UcK2PbvOvH2MvbmouhGCLdFdEwtpaXhSYmstq5V9C
-X-Developer-Key: i=rong.chen@amlogic.com; a=ed25519;
- pk=vFtPE1jHKfpAuk10u/dq9u25ZzVsUM3t2Sew8vz0YWc=
-X-Endpoint-Received: by B4 Relay for rong.chen@amlogic.com/20261116 with auth_id=1539
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XPTW6DMBAF4KsgrzuVbRiws+o9qi78MwRXCSY2o
+ LYRd69DssgmyyfNfG/myjKlQJkdqitLtIYc4lhC/VYxN5jxSBB8yUxy2QohEP4oRQl5CjDGBH4
+ xJ0hkPLQNmtaTRFKCle0pUR9+dvnz657zYr/JzTfuMZHospTK+T7GJjO7oRQeKqmsaJDrzvNeo
+ Sa0XnbWOeRSea4F9rU1jfXsRg8hzzH97j+sYpce56qX564CBFjnne07hZb4x/FswundxfNurvL
+ Z0a8dCRyEQqc63iLV+tnZtu0fJM5pAmEBAAA=
+X-Change-ID: 20261115-zero2-spi-nor-dual-read-645a6de25e81
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>
+Cc: Andre Przywara <andre.przywara@arm.com>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795156207; l=2063;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=TbezzXnMhGFtPtXyzkhDKAuplra+gjD4n+VzAJSqXBY=;
+ b=y4xQhOYT0fd7FkbqvjjxEuvNHMYfcJJYHOVEN9DSjUQzLlKWclQbSGmDywej7kWEbWNHUuEOT
+ mYejXy/io01BbI1yB/kRaFxCJt9dabk3SOd7C3Mbdh1sH6mD3imFJ7J
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For T7 and older SoC families, the RMEM has no effect. Starting from
-the SoC family A4, RMEM acts as an interrupt mask for the device status
-field received in R1/R1b responses.
+Andre Przywara reviewed v1 and suggested labelling the flash node (patch
+1) and setting spi-rx-bus-width in the dtsi shared with the Zero3 (patch 2).
 
-By setting RMEM to zero, the device status is ignored, thereby
-preventing controller hangs caused by spurious IRQs under specific
-device states.
+spi-rx-bus-width = <2> needs the binding patch of [1] (acked, not applied
+yet) to pass dtbs_check.
+Without the driver patch of [1] the driver ignores the setting.
 
-Signed-off-by: Rong Chen <rong.chen@amlogic.com>
----
- drivers/mmc/host/meson-gx-mmc.c | 4 ++++
- 1 file changed, 4 insertions(+)
+Tested on an Orange Pi Zero2, with [1]: 1-1-2 reads (opcode 0x3b),
+two 2 MiB reads identical to an earlier dump.
 
-diff --git a/drivers/mmc/host/meson-gx-mmc.c b/drivers/mmc/host/meson-gx-mmc.c
-index 49df33bbd8e5..9d9b00b199b6 100644
---- a/drivers/mmc/host/meson-gx-mmc.c
-+++ b/drivers/mmc/host/meson-gx-mmc.c
-@@ -113,6 +113,7 @@
- #define SD_EMMC_CMD_RSP1 0x60
- #define SD_EMMC_CMD_RSP2 0x64
- #define SD_EMMC_CMD_RSP3 0x68
-+#define SD_EMMC_CMD_RMEM 0x150
- 
- #define SD_EMMC_RXD 0x94
- #define SD_EMMC_TXD 0x94
-@@ -1086,6 +1087,9 @@ static void meson_mmc_cfg_init(struct meson_host *host)
- 	cfg |= CFG_ERR_ABORT;
- 
- 	writel(cfg, host->regs + SD_EMMC_CFG);
-+
-+	/* ignore status in response */
-+	writel(0x0, host->regs + SD_EMMC_CMD_RMEM);
- }
- 
- static int meson_mmc_card_busy(struct mmc_host *mmc)
+[1] https://lore.kernel.org/r/20261116-spi-sun6i-h616-dual-read-v2-0-e0c66eb71e20@gmail.com
+
+Developed with Claude (Anthropic), which wrote the patches and commit
+messages. I reviewed them.
 
 ---
-base-commit: d2616724e01132376c78872b8324f38659af9f28
-change-id: 20261120-a4_mmc-dd4b9b36cb00
+Changes in v3:
+- Label renamed to spi_flash (Andre)
+- Zero3 flash supply added (Andre): reg_dldo1, see the note in patch 1
+- Zero2 &spi_flash moved after &pio (sorted)
+- Dropped Suggested-by on patch 2, added Andre's tags
+- Link to v2: https://patch.msgid.link/20261119-zero2-spi-nor-dual-read-v2-0-185c87065e39@gmail.com
+
+Changes in v2:
+- Label the flash node, no nested &spi0 override (Andre)
+- spi-rx-bus-width moved to the shared dtsi, Zero3 included (Andre;
+  he read 16 MB on a Zero3 in 1.8 s instead of 3.5 s)
+- Dropped the driver dependency (Andre); the binding is still needed for dtbs_check
+- Link to v1: https://patch.msgid.link/20261118-zero2-spi-nor-dual-read-v1-1-bcdcbf785be0@gmail.com
+
+---
+Arun Iyengar (2):
+      arm64: dts: allwinner: orangepi-zero2/zero3: Set the SPI NOR supply by label
+      arm64: dts: allwinner: orangepi-zero2/zero3: Read the SPI NOR over two lines
+
+ arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero.dtsi | 3 ++-
+ arch/arm64/boot/dts/allwinner/sun50i-h616-orangepi-zero2.dts | 6 ++----
+ arch/arm64/boot/dts/allwinner/sun50i-h618-orangepi-zero3.dts | 4 ++++
+ 3 files changed, 8 insertions(+), 5 deletions(-)
+---
+base-commit: 90e0d3fd460ec365617982b56bd7ea5179b36197
+change-id: 20261115-zero2-spi-nor-dual-read-645a6de25e81
+prerequisite-patch-id: 28b145097d0f859e5bd27bcc5028d0915f3ba4bd
 
 Best regards,
--- 
-Rong Chen <rong.chen@amlogic.com>
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
