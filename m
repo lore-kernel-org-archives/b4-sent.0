@@ -1,128 +1,109 @@
-From: Peder Bergan <peder.bergan@gmail.com>
-Date: Fri, 20 Nov 2026 17:32:12 +0100
-Subject: [PATCH] rust: put C helper exports in a dedicated namespace
+From: Blake Alexander <contact@blakejalexander.com>
+Date: Fri, 20 Nov 2026 17:48:21 +0100
+Subject: [PATCH v2] usb: typec: ucsi: log invalid UCSI version of 0
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-rust-helper-namespace-v1-1-3b9a05553ff6@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAt2AGsC/yWM0Q6CMBAEf4Xcs420RjH+ivHhKIvUSG3uiiEh/
- LsUH2ezMwspJEDpVi0k+AYNn7iBPVTkB45PmNBtTK52F2tdbWTSbAa8E8REHqGJPcy5wdWfGqD
- petrcJOjDvHfvjz/r1L7gc4mVR8sK0wpHP5RpSpoFPB73fsScaV1/Kuql2p4AAAA=
-X-Change-ID: 20261120-rust-helper-namespace-57e8c37ee7df
-To: Miguel Ojeda <ojeda@kernel.org>
-Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Luis Chamberlain <mcgrof@kernel.org>, Petr Pavlu <petr.pavlu@suse.com>, 
- Daniel Gomez <da.gomez@kernel.org>, Sami Tolvanen <samitolvanen@google.com>, 
- Aaron Tomlin <atomlin@atomlin.com>, rust-for-linux@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-modules@vger.kernel.org, 
- Wedson Almeida Filho <wedsonaf@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795192339; l=3698;
- i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
- bh=5abfNuTCOBRWevTCg/nJxA+AusAhHZG6K5llcZxRyjI=;
- b=kHhyiIoVhUVvEZ39eIExpOF7QUtA1sz03mr1zCe+6+mUbacftH2am3hofEnCEBIkZ6Y7elFJw
- 1dEuwYZ8hHfADPm4c37j0mG/eJgltFQ5TJZ0LLUmtyK2jVAim1/mjBu
-X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
- pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
-X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
+Message-Id: <20261120-log-ucsi-firmware-quirk-v2-1-bb9aebf0b308@blakejalexander.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNTQ6CMBBGr0K6dgxtFNCV9zAsSpnK8FedAmIId
+ 7fgAVy+5PveW4RHJvTiGi2CcSJPrg+gDpEwle4fCFQGFipWiZTyAq17wGg8gSXu3poRXiNxA5m
+ 1JktNWp6UFeH9ZLQ07+Z7/mM/FjWaYdNti4r84Pizpye57f5XJgkSktAo01gn8pzdilY3WOsWZ
+ 92XyEfjOpGv6/oFIuNBGNoAAAA=
+X-Change-ID: 20261119-log-ucsi-firmware-quirk-8ffc87c7d42f
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Blake Alexander <contact@blakejalexander.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795193306; l=3351;
+ i=contact@blakejalexander.com; s=20261119; h=from:subject:message-id;
+ bh=b0MQKohAyz7nav2UR2M4JLiTqoUm2vbglbqr05OCohE=;
+ b=LqAwu7AW+izohmMiI8d9jjRUAzGwOvHNIHeOCSKLxjeiiFRRgtaD8JsHdJ+R7f+lpDeiy9cLy
+ LU+KVCiA7OCAns87eXb8Cx4adhVfHUoGCxeQpuCKCiTfGMxZd795vO9
+X-Developer-Key: i=contact@blakejalexander.com; a=ed25519;
+ pk=csAgv2qq1q6RTYXyATg9ngFwpSFPE0yWA9R9nSvVxW0=
+X-Endpoint-Received: by B4 Relay for contact@blakejalexander.com/20261119 with auth_id=1565
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The rust_helper_ prefix marks these C wrappers as Rust implementation
-details. Their exports use the default namespace, so GPL-compatible
-modules can link against them without an explicit import.
+Some devices ship bugged firmware which sets the version of the UCSI
+mailbox to zero. In such cases the ucsi_register() will return -ENODEV
+and the driver will silently fail to bind. There is otherwise no
+indication as to the cause of the probe failure.
 
-Export the wrappers in RUST_HELPERS so modpost can detect accidental
-dependencies at build time by flagging a missing namespace import.
-Have module! supply the import when the helpers are exported, since
-inlining and generic instantiation can introduce calls through ordinary
-Rust abstractions.
+While existing (and future) machine-specific workarounds may resolve
+this issue by assuming a known-good UCSI version, future devices or
+older firmware revisions with this issue will still silently fail.
+Both users and developers will benefit from a clear diagnostic message
+when troubleshooting this particular bug.
 
-External modules that call these helpers without module! need to
-declare the import explicitly.
+Add a dev_err() log message when a UCSI version of 0 is reported during
+ucsi_register() hinting towards a potential firmware bug.
 
-Suggested-by: Wedson Almeida Filho <wedsonaf@gmail.com>
-Link: https://github.com/Rust-for-Linux/linux/issues/216
-Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
+Signed-off-by: Blake Alexander <contact@blakejalexander.com>
+Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
 ---
-The two Rust sample modules loaded and unloaded under x86-64 QEMU
-with namespace enforcement enabled. Removing the import made modpost
-reject the sample. The exports and imports were also checked with helper
-inlining enabled and disabled.
+Hi,
 
-OpenAI Codex assisted with coding and testing.
+I have a ThinkPad T14 Gen 2a which is failing to negotiate a DisplayPort
+Alt-Mode connection to a monitor-hub with a USB-C cable.
+
+I spent quite some time troubleshooting the issue and identified the
+root-cause only to find that a patch which fixes this issue was already
+submitted:
+- "[PATCH v2 0/2] usb: typec: acpi: Zero version quirk for Lenovo ThinkPad T14 Gen 2a" <20261103-ucsi-lenovo-t14g2a-v2-0-e85c659b56a2@resetko.pl>
+
+Similar issues with other laptops have also been recently submitted:
+- "[PATCH] usb: typec: ucsi: acpi: Add quirk for ASUS ROG Zephyrus Duo 16 GX650PI" <20261009-usb-next-v1-1-95a2288ad9b2@gmail.com>
+
+And existing quirks are also already handled in mainline:
+- Acer Nitro ANV15-41: commit 8c51ea651d04 ("usb: typec: ucsi: acpi: Assume UCSI 1.2 on Acer Nitro ANV15-41")
+
+In the hope of saving future developer's time, this patch adds a
+dev_err() log message when the UCSI version register reads zero. The
+log message hints towards a potential firmware bug and gives an 
+explicit cause of the driver's probe failure.
+
+Tested on ThinkPad BIOS R1MET65W (1.35), EC R1MHT65W without the
+relevant quirk patches.
 ---
- rust/Makefile         | 4 +++-
- rust/exports.c        | 2 ++
- rust/macros/module.rs | 5 +++++
- 3 files changed, 10 insertions(+), 1 deletion(-)
+Changes in v2:
+- Fixed comment style as per feedback from Greg K-H.
+- Link to v1: https://patch.msgid.link/20261119-log-ucsi-firmware-quirk-v1-1-6d42d70a6158@blakejalexander.com
 
-diff --git a/rust/Makefile b/rust/Makefile
-index 0165626decbe7..17c559052e936 100644
---- a/rust/Makefile
-+++ b/rust/Makefile
-@@ -569,9 +569,10 @@ $(obj)/helpers/helpers.bc $(obj)/helpers/helpers_module.bc: $(src)/helpers/helpe
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ drivers/usb/typec/ucsi/ucsi.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
+index 9e453d216c16..3dddcec2f425 100644
+--- a/drivers/usb/typec/ucsi/ucsi.c
++++ b/drivers/usb/typec/ucsi/ucsi.c
+@@ -2396,8 +2396,14 @@ int ucsi_register(struct ucsi *ucsi)
+ 	if (ret)
+ 		return ret;
  
- rust_exports = $(NM) -p --defined-only $(1) | awk '$$2~/(T|R|D|B)/ && $$3!~/__(pfx|cfi|odr_asan)/ { printf $(2),$$3 }'
+-	if (!ucsi->version)
++	/*
++	 * Version of 0 is not valid but some vendors may report it due to bugged
++	 * FW and there may not already be a workaround quirk to correct it.
++	 */
++	if (!ucsi->version) {
++		dev_err(ucsi->dev, "UCSI interface reported version 0.0.0: possible firmware bug.");
+ 		return -ENODEV;
++	}
  
-+rust_export_macro = EXPORT_SYMBOL_RUST_GPL
- quiet_cmd_exports = EXPORTS $@
-       cmd_exports = \
--	$(call rust_exports,$<,"EXPORT_SYMBOL_RUST_GPL(%s);\n") > $@
-+	$(call rust_exports,$<,"$(rust_export_macro)(%s);\n") > $@
- 
- $(obj)/exports_core_generated.h: $(obj)/core.o FORCE
- 	$(call if_changed,exports)
-@@ -585,6 +586,7 @@ $(obj)/exports_core_generated.h: $(obj)/core.o FORCE
- # function either. Therefore, we export all symbols from helpers and bindings.
- # In the future, this may be revisited to reduce the number of exports after
- # the compiler is informed about the places codegen is required.
-+$(obj)/exports_helpers_generated.h: private rust_export_macro = EXPORT_SYMBOL_RUST_HELPER_GPL
- $(obj)/exports_helpers_generated.h: $(obj)/helpers/helpers.o FORCE
- 	$(call if_changed,exports)
- 
-diff --git a/rust/exports.c b/rust/exports.c
-index 1b52460b0f4ee..fde2a52d2a1ae 100644
---- a/rust/exports.c
-+++ b/rust/exports.c
-@@ -14,6 +14,8 @@
- #include <linux/export.h>
- 
- #define EXPORT_SYMBOL_RUST_GPL(sym) extern int sym; EXPORT_SYMBOL_GPL(sym)
-+#define EXPORT_SYMBOL_RUST_HELPER_GPL(sym) \
-+	extern int sym; EXPORT_SYMBOL_NS_GPL(sym, "RUST_HELPERS")
- 
- #include "exports_core_generated.h"
- #include "exports_bindings_generated.h"
-diff --git a/rust/macros/module.rs b/rust/macros/module.rs
-index 0a7b9e24c9600..ac3376fa8fb85 100644
---- a/rust/macros/module.rs
-+++ b/rust/macros/module.rs
-@@ -467,6 +467,11 @@ pub(crate) fn module(info: ModuleInfo) -> Result<TokenStream> {
-         }
-     }
- 
-+    // Inlined kernel code can introduce calls to C helpers in any Rust module.
-+    if !cfg!(CONFIG_RUST_INLINE_HELPERS) {
-+        modinfo.emit_only_loadable("import_ns", "RUST_HELPERS", false);
-+    }
-+
-     // Built-in modules also export the `file` modinfo string.
-     let file =
-         std::env::var("RUST_MODFILE").expect("Unable to fetch RUST_MODFILE environmental variable");
+ 	/*
+ 	 * Version format is JJ.M.N (JJ = Major version, M = Minor version,
 
 ---
-base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
-change-id: 20261120-rust-helper-namespace-57e8c37ee7df
+base-commit: f11fe7603df07fbb9fa02b0d385c1696c87a6dab
+change-id: 20261119-log-ucsi-firmware-quirk-8ffc87c7d42f
 
 Best regards,
 --  
-Peder Bergan <peder.bergan@gmail.com>
+Blake Alexander <contact@blakejalexander.com>
 
