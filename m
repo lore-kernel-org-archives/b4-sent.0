@@ -1,99 +1,74 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Fri, 20 Nov 2026 08:51:13 +0000
-Subject: [PATCH net] l2tp: require CAP_NET_ADMIN to join the l2tp multicast
- group
+From: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+Subject: [PATCH v3 0/2] Add Altera timeout bridge driver
+Date: Fri, 20 Nov 2026 09:24:02 +0000
+Message-Id: <20261120-feature-timeout-ip-v3-0-affcc644af5e@bruker.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-l2tp-mcast-perm-v1-1-22dbffa88655@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAKAGsC/yWMwQrCMBAFf6Xs2YUmQsX+SvGQpK+6YmPIpkUo/
- fdGPc7AzEaKLFDqm40yVlF5xwrm1FB4uHgHy1iZbGs7Y2zLL1sSz8Fp4YQ8s790cOE8wrsr1Sp
- lTPL5HQeKKHT7S138E6F8X7TvBxXVuZ54AAAA
-X-Change-ID: 20261120-l2tp-mcast-perm-b76eac3deba9
-To: davem@davemloft.net, edumazet@kernel.org, kuba@kernel.org, 
- pabeni@redhat.com
-Cc: stephen@networkplumber.org, linux-kernel@vger.kernel.org, 
- maoyixie.tju@gmail.com, netdev@vger.kernel.org, horms@kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795164672; l=2848;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=QYL5ERiD0rSoT6Kdzd/1Vi1hg5wYDxhdVPE3t1Z9Y9s=;
- b=/Egw0ayNzFvVWWOtDuOcExSGyss8K0jQOh1ad6zGfq1b5fOJ/5JqirMhiR2tEPNh0XdBYhN9R
- Ftjyjx8iaT3AOSZLEaxtcmaHOfN7pSFwGvxzOQznLpgYuBVe0gC/yn3
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+X-B4-Tracking: v=1; b=H4sIALIRAGsC/33NTQrCMBCG4auUrI1kEtokrryHuEjb0Q7SH5I0K
+ KV3N+1KQVy+H8wzCwvoCQM7FQvzmCjQOORQh4I1nRvuyKnNzaSQFQih+A1dnD3ySD2Oc+Q0ce2
+ sqpRoUVrL8uHk8UbPHb1cc3cU4uhf+48E2/qXS8AFN0bpRgG0pYZz7ecH+mMz9mzzkvwwJPw0Z
+ DacULpGYWwJ5stY1/UNE6lLbPkAAAA=
+X-Change-ID: 20261003-feature-timeout-ip-7a93630de299
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Vyacheslav Yurkov <uvv.mail@gmail.com>, 
+ Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795166651; l=1799;
+ i=V.Yurkov.EXT@bruker.com; s=20260318; h=from:subject:message-id;
+ bh=kYSfZpE9Q+XmwjPs5z2U1miPr1VgSlYB6FBVbeLyHgc=;
+ b=tlzWrqVpZgqD8x7PyspcJbSCH8wS6Ge0GP9idKN5hKUMvT96Lu2MfUkCwHwEr442kKMjnWp4w
+ O1c7/HWedHWACtb2NAo/411xv8pC/Y9Ah4Y1EAxknqRXuLIqfu56Rod
+X-Developer-Key: i=V.Yurkov.EXT@bruker.com; a=ed25519;
+ pk=snJmgYVOKlp7aQtK9tWnEI7QTYxpPpJJvxdVsnxA7Fk=
+X-Endpoint-Received: by B4 Relay for V.Yurkov.EXT@bruker.com/20260318 with auth_id=686
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+This series adds support for the Altera's AXI Timeout Bridge IP. 
 
-The l2tp generic netlink family sends a notification on its "l2tp"
-multicast group whenever a tunnel or session is created, modified or
-deleted. The message is built by the same l2tp_nl_tunnel_send() and
-l2tp_nl_session_send() helpers as the replies to TUNNEL_GET and
-SESSION_GET, so it carries the tunnel and session IDs, the addresses
-and ports, the statistics and, for L2TPv3 sessions with cookies
-configured, the local and peer cookies.
+The timeout bridge connects an Axi bus to the HPS and provides a
+downstream address space for devices implemented in the FPGA. The
+bridge also exposes status information and generates an interrupt when
+a timeout occurs.
 
-The tunnel and session commands, including the GET commands, need
-CAP_NET_ADMIN in the user namespace owning the network namespace
-(GENL_UNS_ADMIN_PERM), but generic netlink lets any user join a
-multicast group by default. So an unprivileged user in the same network
-namespace can read all of this by joining the group. Configured cookies
-help an L2TPv3 endpoint reject blindly injected packets, and leaking
-them weakens that.
+The driver registers the timeout bridge as a bus and allows child
+devices behind the bridge to be described as the child nodes in the
+device tree.
 
-Commit ed267f783c0c ("l2tp: send netlink notifications in the tunnel's
-net namespace") already noted that a listener needs no privilege, but
-only stopped the notifications from reaching other network namespaces.
-This patch handles listeners in the tunnel's own namespace.
+The latest bridge documentation (as of November 2026):
+https://docs.altera.com/r/docs/683609/26.1/quartus-prime-pro-edition-user-guide-platform-designer/axi-timeout-bridge-ip
 
-Mark the group with GENL_MCAST_CAP_NET_ADMIN, as was done for gtp in
-commit db627e71b6da ("gtp: Require 'CAP_NET_ADMIN' when joining the gtp
-multicast group"). genl_bind() then requires CAP_NET_ADMIN in the user
-namespace owning the network namespace, the same capability and
-namespace as the tunnel and session commands.
-
-Found with a static analysis tool and checked by hand.
-
-Fixes: 33f72e6f0c67 ("l2tp : multicast notification to the registered listeners")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+Signed-off-by: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 ---
-Tested in QEMU (x86_64): three listeners join the "l2tp" group, then
-root creates an L2TPv3 tunnel and a session with a cookie.
+Changes in v3:
+- Addressed sashiko findings.
+- Link to v2: https://lore.kernel.org/r/20261021-feature-timeout-ip-v2-0-a037be089518@bruker.com
 
-Before:
-  root: joined, gets TUNNEL_CREATE and SESSION_CREATE (with the cookie)
-  root without CAP_NET_ADMIN: same
-  nobody: same
+Changes in v2:
+- Address review notes
+- Simplify error handling
+- Provide better description for DT Schema
+- Link to v1: https://lore.kernel.org/r/20261003-feature-timeout-ip-v1-0-8837c311d571@bruker.com
 
-After:
-  root: joined, gets both notifications
-  root without CAP_NET_ADMIN: EPERM
-  nobody: EPERM
-
-This covers joining the registered group. Joining a group ID before any
-family owns it is a separate genetlink issue, handled by "genetlink:
-Reject joining multicast groups no family owns".
 ---
- net/l2tp/l2tp_netlink.c | 1 +
- 1 file changed, 1 insertion(+)
+Vyacheslav Yurkov (2):
+      dt-bindings: bus: Add Altera AXI Timeout Bridge
+      bus: Add Altera AXI Timeout Bridge driver
 
-diff --git a/net/l2tp/l2tp_netlink.c b/net/l2tp/l2tp_netlink.c
-index 89ef04c78787..98290cc956fe 100644
---- a/net/l2tp/l2tp_netlink.c
-+++ b/net/l2tp/l2tp_netlink.c
-@@ -31,6 +31,7 @@ static struct genl_family l2tp_nl_family;
- static const struct genl_multicast_group l2tp_multicast_group[] = {
- 	{
- 		.name = L2TP_GENL_MCGROUP,
-+		.flags = GENL_MCAST_CAP_NET_ADMIN,
- 	},
- };
- 
+ .../ABI/testing/sysfs-driver-altera-timeout-bridge |  21 +++
+ .../bindings/bus/altr,axi-timeout-bridge-1.0.yaml  |  86 ++++++++++
+ MAINTAINERS                                        |   7 +
+ drivers/bus/Kconfig                                |  13 ++
+ drivers/bus/Makefile                               |   1 +
+ drivers/bus/altera-timeout-bridge.c                | 184 +++++++++++++++++++++
+ 6 files changed, 312 insertions(+)
+---
+base-commit: 65e4fd942f72a9dba0e4e257290c4fa1aa756854
+change-id: 20261003-feature-timeout-ip-7a93630de299
 
-
+Best regards,
+-- 
+Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 
