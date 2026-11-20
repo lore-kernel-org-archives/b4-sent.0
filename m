@@ -1,11 +1,10 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Sat, 21 Nov 2026 03:15:50 +0800
-Subject: [PATCH v4 04/13] dt-bindings: interrupt-controller: add Zhihe A210
- PLIC
+Date: Sat, 21 Nov 2026 03:15:51 +0800
+Subject: [PATCH v4 05/13] dt-bindings: riscv: add Melon Pi V1 and V2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-a210-scmi-v4-4-4a795a0a9fc9@iscas.ac.cn>
+Message-Id: <20261121-a210-scmi-v4-5-4a795a0a9fc9@iscas.ac.cn>
 References: <20261121-a210-scmi-v4-0-4a795a0a9fc9@iscas.ac.cn>
 In-Reply-To: <20261121-a210-scmi-v4-0-4a795a0a9fc9@iscas.ac.cn>
 To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
@@ -27,11 +26,11 @@ Cc: linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-serial@vger.kernel.org, Han Gao <rabenda.cn@gmail.com>, 
  Han Gao <gaohan@iscas.ac.cn>, Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795202181; l=1014;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795202181; l=1374;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=AEoDt8k53w5dy3iSBlDwYkPfz+bxGBpVIveGLfYHoNA=;
- b=1GYhi4YZ9kd+MNOYdzEmPclFuKMuXMDYkfAFeOAn0W5AMTox3qf6cloZLWJzDCjlc063R4ov9
- slQpGOWU0VDBJ9VJ/n2UIHV4eFf8hcROXJy6zlNyfuw9r+W3QfQsVpe
+ bh=on0k3/ROjA851j7Dksi+n9Xdm06/pOAfayb1Q0RsTuY=;
+ b=PP5nWJ3gOvrjZtkB+LPtY0eHwTGyaaIIuDAiwuVFqZwdxmCsWEqEHb149VJc/Tad1Cfi/BiST
+ JdzHQ2HJ789BkuWUYUrUI8UGhtzk8gecqy3H3RKS0flrCKxQC/n07TJ
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
@@ -39,27 +38,50 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
 
-Add the A210 PLIC compatible with the thead,c900-plic fallback.
+Add bindings for Melon Pi V1 and V2 with the A210 module. V3 uses the
+same board compatible as V2.
 
 Signed-off-by: Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
 Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Co-developed-by: Han Gao <gaohan@iscas.ac.cn>
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- .../devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml      | 1 +
- 1 file changed, 1 insertion(+)
+ Documentation/devicetree/bindings/riscv/zhihe.yaml | 27 ++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
-index cde4bb691897..fd5b61db3f5f 100644
---- a/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
-+++ b/Documentation/devicetree/bindings/interrupt-controller/sifive,plic-1.0.0.yaml
-@@ -80,6 +80,7 @@ properties:
-               - sophgo,sg2042-plic
-               - sophgo,sg2044-plic
-               - thead,th1520-plic
-+              - zhihe,a210-plic
-           - const: thead,c900-plic
-       - items:
-           - const: ultrarisc,dp1000-plic
+diff --git a/Documentation/devicetree/bindings/riscv/zhihe.yaml b/Documentation/devicetree/bindings/riscv/zhihe.yaml
+new file mode 100644
+index 000000000000..aa778275ab5d
+--- /dev/null
++++ b/Documentation/devicetree/bindings/riscv/zhihe.yaml
+@@ -0,0 +1,27 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/riscv/zhihe.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Zhihe SoC-based boards
++
++maintainers:
++  - Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
++
++properties:
++  $nodename:
++    const: '/'
++  compatible:
++    oneOf:
++      - description: Melon Pi V1 and V2 with the A210 SODIMM module
++        items:
++          - enum:
++              - zhihe,a210-melonpi-v1
++              - zhihe,a210-melonpi-v2
++          - const: zhihe,a210-som
++          - const: zhihe,a210
++
++additionalProperties: true
++
++...
 
 -- 
 2.55.0
