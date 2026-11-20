@@ -1,11 +1,11 @@
 From: Alexandre Rapaille <arapaille@atlr-engineering.com>
-Date: Fri, 20 Nov 2026 09:05:46 +0100
-Subject: [PATCH v2 2/3] wifi: wcn36xx: Do not enforce interrupt trigger
- type
+Date: Fri, 20 Nov 2026 09:05:47 +0100
+Subject: [PATCH v2 3/3] wifi: wcn36xx: Stop waiting on a dead firmware
+ during remove
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-wcnss-series-v1-v2-2-3fed518decfb@atlr-engineering.com>
+Message-Id: <20261120-wcnss-series-v1-v2-3-3fed518decfb@atlr-engineering.com>
 References: <20261120-wcnss-series-v1-v2-0-3fed518decfb@atlr-engineering.com>
 In-Reply-To: <20261120-wcnss-series-v1-v2-0-3fed518decfb@atlr-engineering.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,49 +19,82 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-wireless@vger.kernel.org, 
  Alexandre Rapaille <arapaille@atlr-engineering.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795161947; l=1310;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795161947; l=2669;
  i=arapaille@atlr-engineering.com; s=20261118; h=from:subject:message-id;
- bh=fl24+QXJej14ixsS3PP+/Yde4CZKV/tbL7KavByENog=;
- b=jOVeRhQploDdl2usEZ5kRoAUO7AklsBT9dK43kVpb1jIaOBVKD3GKmgYmTUUsDNGa5PZKLwmu
- x0+dmbYMrPMBruIEGeq5p2t2SYrvYCDuQYwsi8Tx5yGBbQx71AY5Imz
+ bh=aNGMzK4TGJR9fdTqFm+U1fGWoLrLo05sBlDTYvgq33U=;
+ b=V/0eKlALIO82U1cNEW91q+40K7SfvMwD4HoYijeCYvjPOiUzibGnLGb+rfGHYZMRpgtS7d6/m
+ m+QGSmWFvN4Bd6myr/qQVXtpkVmf+61DuNPJ7NF4uZQ8sSeGgBf4JIc
 X-Developer-Key: i=arapaille@atlr-engineering.com; a=ed25519;
  pk=xskH/sIiNU/aZCeGeBB1TK/AuiG3MXlX0m2wMlbMl08=
 X-Endpoint-Received: by B4 Relay for arapaille@atlr-engineering.com/20261118 with auth_id=1560
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-request_irq() with IRQF_TRIGGER_HIGH stores level on the IRQ mapping,
-which outlives the driver, so a DT with another type gets "type
-mismatch" and -ENXIO on the next probe. Rely on the DT as ath10k does;
-every in-tree qcom,wcnss-wlan node is level high (msm8974 since the
-previous patch).
+After a WCNSS crash, remove sends ~16 HAL commands nobody can answer,
+each waiting HAL_MSG_TIMEOUT: recovery took 160 s on msm8974. Once one
+times out during remove, fail the rest at once; recovery now takes
+~20 s. Testing removing alone would also skip the teardown on a normal
+unbind with live firmware.
 
 Signed-off-by: Alexandre Rapaille <arapaille@atlr-engineering.com>
 ---
- drivers/net/wireless/ath/wcn36xx/dxe.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ drivers/net/wireless/ath/wcn36xx/main.c    | 1 +
+ drivers/net/wireless/ath/wcn36xx/smd.c     | 8 ++++++++
+ drivers/net/wireless/ath/wcn36xx/wcn36xx.h | 4 ++++
+ 3 files changed, 13 insertions(+)
 
-diff --git a/drivers/net/wireless/ath/wcn36xx/dxe.c b/drivers/net/wireless/ath/wcn36xx/dxe.c
-index 801f1218ef..7852f71368 100644
---- a/drivers/net/wireless/ath/wcn36xx/dxe.c
-+++ b/drivers/net/wireless/ath/wcn36xx/dxe.c
-@@ -552,14 +552,14 @@ static int wcn36xx_dxe_request_irqs(struct wcn36xx *wcn)
- {
- 	int ret;
+diff --git a/drivers/net/wireless/ath/wcn36xx/main.c b/drivers/net/wireless/ath/wcn36xx/main.c
+index ad8a4bd910..77a1029108 100644
+--- a/drivers/net/wireless/ath/wcn36xx/main.c
++++ b/drivers/net/wireless/ath/wcn36xx/main.c
+@@ -1651,6 +1651,7 @@ static void wcn36xx_remove(struct platform_device *pdev)
  
--	ret = request_irq(wcn->tx_irq, wcn36xx_irq_tx_complete,
--			  IRQF_TRIGGER_HIGH, "wcn36xx_tx", wcn);
-+	ret = request_irq(wcn->tx_irq, wcn36xx_irq_tx_complete, 0,
-+			  "wcn36xx_tx", wcn);
- 	if (ret) {
- 		wcn36xx_err("failed to alloc tx irq\n");
- 		goto out_err;
+ 	release_firmware(wcn->nv);
+ 
++	WRITE_ONCE(wcn->removing, true);
+ 	ieee80211_unregister_hw(hw);
+ 
+ 	qcom_smem_state_put(wcn->tx_enable_state);
+diff --git a/drivers/net/wireless/ath/wcn36xx/smd.c b/drivers/net/wireless/ath/wcn36xx/smd.c
+index c0b4773458..d07ea967ac 100644
+--- a/drivers/net/wireless/ath/wcn36xx/smd.c
++++ b/drivers/net/wireless/ath/wcn36xx/smd.c
+@@ -427,6 +427,12 @@ static int wcn36xx_smd_send_and_wait(struct wcn36xx *wcn, size_t len)
+ 		(struct wcn36xx_hal_msg_header *)wcn->hal_buf;
+ 	u16 req_type = hdr->msg_type;
+ 
++	/* After a WCNSS crash every teardown command would wait the full
++	 * timeout; one is enough to know nobody will answer.
++	 */
++	if (wcn->fw_dead)
++		return -ETIME;
++
+ 	wcn36xx_dbg_dump(WCN36XX_DBG_SMD_DUMP, "HAL >>> ", wcn->hal_buf, len);
+ 
+ 	init_completion(&wcn->hal_rsp_compl);
+@@ -440,6 +446,8 @@ static int wcn36xx_smd_send_and_wait(struct wcn36xx *wcn, size_t len)
+ 		msecs_to_jiffies(HAL_MSG_TIMEOUT)) <= 0) {
+ 		wcn36xx_err("Timeout! No SMD response to req %d in %dms\n",
+ 			    req_type, HAL_MSG_TIMEOUT);
++		if (READ_ONCE(wcn->removing))
++			wcn->fw_dead = true;
+ 		ret = -ETIME;
+ 		goto out;
  	}
+diff --git a/drivers/net/wireless/ath/wcn36xx/wcn36xx.h b/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
+index 8c43f67bd7..9e5f3918ca 100644
+--- a/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
++++ b/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
+@@ -276,6 +276,10 @@ struct wcn36xx {
+ 	spinlock_t	dxe_lock;
+ 	bool                    queues_stopped;
  
--	ret = request_irq(wcn->rx_irq, wcn36xx_irq_rx_ready, IRQF_TRIGGER_HIGH,
-+	ret = request_irq(wcn->rx_irq, wcn36xx_irq_rx_ready, 0,
- 			  "wcn36xx_rx", wcn);
- 	if (ret) {
- 		wcn36xx_err("failed to alloc rx irq\n");
++	/* Set in remove; a HAL timeout then means the firmware is gone. */
++	bool			removing;
++	bool			fw_dead;
++
+ 	/* Memory pools */
+ 	struct wcn36xx_dxe_mem_pool mgmt_mem_pool;
+ 	struct wcn36xx_dxe_mem_pool data_mem_pool;
 
 -- 
 2.43.0
