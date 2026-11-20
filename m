@@ -1,250 +1,155 @@
-From: Peter LaDow <pladow@gmail.com>
-Date: Fri, 20 Nov 2026 09:40:24 -0800
-Subject: [PATCH v2] leds: lp5860: Add I2C interface support
+From: Armandas Kvietkus <armandas.kvietkus@proton.me>
+Subject: [PATCH v6 0/2] media: i2c: Samsung S5K3T2 image sensor
+Date: Fri, 20 Nov 2026 19:04:17 +0100
+Message-Id: <20261120-upstream-s5k3t2-v6-0-dd345fa4201c@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-add-i2c-support-for-lp5860-v2-1-bcb2ce00a7f5@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAeGAGsC/42NSw6DIBQAr2JY9zWAqZ+ueo/GhcBDX6NCQE0b4
- 92L9gJdTjKZ2VjEQBjZPdtYwJUiuSmBvGRM9+3UIZBJzCSXhRCSQ2sMkNQQF+9dmMG6AIO/VQW
- HurR5pSQqFJqlgA9o6X3Gn82P46JeqOejeBg9xdmFz3lfxeH9NVoFCMi50nVptLJl9ejGloard
- iNr9n3/AiLc5xHWAAAA
-X-Change-ID: 20261120-add-i2c-support-for-lp5860-97f38b2ebe1c
-To: Nam Tran <trannamatk@gmail.com>, Lee Jones <lee@kernel.org>, 
- Pavel Machek <pavel@kernel.org>, Griffin Kroah-Hartman <griffin@kroah.com>
-Cc: linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
- Peter LaDow <pladow@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795196424; l=6956;
- i=pladow@gmail.com; s=20261120; h=from:subject:message-id;
- bh=xozLBt9WPkM9Emoa1I+i7XryYHRlBk5nwDYxPBgOQgQ=;
- b=hqGuZsh7VMIKGghMl40sxHPRIaId38O0BHU/NtkL9cl2D69REyWsEI6FAJ3T7ACHdayM4IKET
- h3tWXYExQ31DtpCKR/u/b6xK6ZJowXERKIVATe35gatE4me22AUTelM
-X-Developer-Key: i=pladow@gmail.com; a=ed25519;
- pk=GEdL9uXOAV0PnykeFpXX87oqKs0/Ac0qAUc4Oow7WN4=
-X-Endpoint-Received: by B4 Relay for pladow@gmail.com/20261120 with auth_id=1585
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOQU7DMBAF0KtUXmPkmbET0hX3QCwce0wNahLZb
+ gSqcnecIkHUiOWX/vszV5E5Rc7ieLiKxHPMcRxqaB4Owp3s8MYy+poFKmxUh0peplwS27PM5oM
+ KSqSeyNteERhR1ZQ4xM/b4svrT86X/p1dWWfWxinmMqav28kZ1t7/6zNIJX2jVatV0AroeUpjG
+ YfHM4t1fcatp73H6pUOwVsioxzce9p6vfdUvTXOPPng2GF37/WvBwWw93r9n6gHDD1hs/vf/Hm
+ Adu9N9RDaYILnjtFu/bIs33g+sivAAQAA
+X-Change-ID: 20260920-upstream-s5k3t2-23b33dab0315
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Elgin Perumbilly <elgin.perumbilly@siliconsignals.io>, 
+ phone-devel@vger.kernel.org, 
+ Armandas Kvietkus <armandas.kvietkus@proton.me>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795197857; l=5640;
+ i=armandas.kvietkus@proton.me; h=from:subject:message-id;
+ bh=mbLrU2TtWG//UqAkd1hg4LGPAE7nIw6zMUc/JOxOByc=;
+ b=FhbRJ9ZHCsSkpvTN+YhvnSGI/4gtmlLpvjsKUkKR0TyqJv2ZWGDqPGMTTGgWCoZsYUXRdRhSJ
+ AT2FdZNt6c+CxfcvU87q/awxt2W1SqNKqG8/Xs83SjR43Xm64iggwmq
+X-Developer-Key: i=armandas.kvietkus@proton.me; a=ed25519;
+ pk=wuqmImJ9sKlDVcwALOvfGhjj7G8EBjjM4TpCdmlrAf8=
+X-Endpoint-Received: by B4 Relay for armandas.kvietkus@proton.me/default with auth_id=974
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch adds I2C bus support to the Texas Instruments LP5860 RGB LED
-matrix driver.
+This series adds a binding and a driver for the Samsung S5K3T2, a
+20 Mpixel CMOS image sensor with four MIPI D-PHY lanes.
 
-The LP5860 supports both SPI and I2C interfaces depending on the hardware
-IFS pin configuration, but the existing driver only implements the SPI
-bus interface (leds-lp5860-spi).
+The sensor is the front camera of the Xiaomi POCO F3. That phone has no
+device tree in mainline, so this series adds no user for the binding.
+The driver was written and tested on the phone with the Qualcomm CAMSS
+driver.
 
-Changes include:
-- Adding the leds-lp5860-i2c bus driver module to handle the LP5860's
-  10-bit register addressing scheme over I2C.
-- Updating Kconfig and Makefile so I2C and SPI bus support can be built
-  independently or together.
+The driver supports three modes. All of them are RAW10 on four D-PHY
+lanes.
 
-Tested on ZymqMP (ZU3) with an LP5860 connected over an AXI IIC at
-base address 0x40 (A1=0, A0=0) at 400kHz.
+  5184x3880 at 15 fps, link frequency 448 MHz
+  2592x1940 at 60 fps, link frequency 448 MHz
+  1280x720 at 120 fps, link frequency 300 MHz
 
-Signed-off-by: Peter LaDow <pladow@gmail.com>
+The link frequency control selects which modes are available. The pixel
+clock does not change between modes, so the pixel rate is constant.
+
+The controls are exposure, analogue gain, horizontal blanking, vertical
+blanking, horizontal flip, vertical flip and test pattern. Rotation and
+orientation come from the device tree. Power is handled by runtime PM
+with autosuspend.
+
+The register tables come from the vendor camera firmware.
+
+Tested:
+
+  v4l2-compliance on the sensor sub-device, 46 tests, 46 passed
+  capture in all three modes, twelve runs, no kernel error
+  the sensor returns to runtime suspend after every run
+  exposure and gain sweeps checked on the captured frames
+  Bayer order checked for both flips
+  link frequency switching, and the control is busy while streaming
+
+Signed-off-by: Armandas Kvietkus <armandas.kvietkus@proton.me>
 ---
+Changes in v6:
+- The link frequency control is writable now and selects which modes
+  are available. When it changes, the format moves to the nearest mode
+  at the new frequency.
+- Moved the mode list and the other details from the driver commit
+  message to the cover letter.
+- Dropped the Reviewed-by from Elgin because of the link frequency
+  change.
+- Added phone-devel to Cc.
+- Link to v5: https://patch.msgid.link/20261117-upstream-s5k3t2-v5-0-1f7f5fde9e2a@proton.me
+
+Changes in v5:
+- Dropped four page select writes (0x6028) from the register tables.
+  Each one selected the page that was already selected. They came from
+  the vendor sequence.
+- Collected the Reviewed-by from Elgin.
+- The link frequency still follows the mode. The question about it on
+  v3 is still open.
+- Link to v4: https://patch.msgid.link/20261011-upstream-s5k3t2-v4-0-d33b12fb3263@proton.me
+
+Changes in v4:
+- Use ARRAY_SIZE() instead of the S5K3T2_NUM_SUPPLIES macro.
+- The link frequency and pixel rate controls have no ops now, the
+  driver never writes them.
+- HBLANK and VBLANK are written from s_ctrl. The line length and frame
+  length registers are gone from the mode lists. HBLANK is not read only
+  anymore, but its range is still one value per mode.
+- The flips are written from s_ctrl and are clustered.
+- 0x0100 and 0x0101 are written as 8-bit registers.
+- The mode is not kept outside the subdev state anymore. The crop
+  rectangle is kept in the state too.
+- Every control call in set_fmt has its return value checked.
+- The fwnode properties are parsed before the control handler is set
+  up, and the control flags are set after the error check.
+- Dropped the link_validate op, the redundant fwnode and endpoint
+  checks, and the gotos in power_on and set_fmt.
+- The error labels in probe start with err_, and remove calls
+  pm_runtime_dont_use_autosuspend().
+- Small cleanups: container_of_const(), local variable order,
+  s5k3t2_format_from_mode(), and init_state returns the set_fmt result.
+- The link frequency still follows the mode. The question about it on
+  v3 is still open.
+- Dropped the line about hidden modes from the commit message.
+- Link to v3: https://patch.msgid.link/20260924-upstream-s5k3t2-v3-0-a5c58dfcec29@proton.me
+
+Changes in v3:
+- The check on pm_runtime_get_if_active() is back to the form used by
+  every other sensor driver. The v2 form skipped the register write when
+  the helper returned an error, so a kernel built without CONFIG_PM never
+  applied exposure, gain, blanking or the test pattern.
+- The binding now requires clocks and the three supplies. The driver does
+  not probe without the clock, and the sensor needs all three rails.
+- Link to v2: https://patch.msgid.link/20260923-upstream-s5k3t2-v2-0-04ffda3350c1@proton.me
+
 Changes in v2:
-- Use designated initializer (.name = "lp5860") in i2c_device_id table
-- Link to v1: https://patch.msgid.link/20261120-add-i2c-support-for-lp5860-v1-1-30bc97dcbf78@gmail.com
-
-To: Nam Tran <trannamatk@gmail.com>
-To: Lee Jones <lee@kernel.org>
-To: Pavel Machek <pavel@kernel.org>
-To: Griffin Kroah-Hartman <griffin@kroah.com>
-Cc: linux-kernel@vger.kernel.org
-Cc: linux-leds@vger.kernel.org
----
- drivers/leds/rgb/Kconfig           |  12 ++++
- drivers/leds/rgb/Makefile          |   1 +
- drivers/leds/rgb/leds-lp5860-i2c.c | 139 +++++++++++++++++++++++++++++++++++++
- 3 files changed, 152 insertions(+)
-
-diff --git a/drivers/leds/rgb/Kconfig b/drivers/leds/rgb/Kconfig
-index 3f6786616a7d..5dfca8949464 100644
---- a/drivers/leds/rgb/Kconfig
-+++ b/drivers/leds/rgb/Kconfig
-@@ -78,6 +78,18 @@ config LEDS_LP5860_SPI
- 	  To compile this driver as a module, choose M here: the
- 	  module will be called leds-lp5860-spi.
- 
-+config LEDS_LP5860_I2C
-+	tristate "LED Support for TI LP5860 I2C LED driver chip"
-+	depends on I2C
-+	depends on OF
-+	select LEDS_LP5860_CORE
-+	help
-+	  If you say yes here you get support for the Texas Instruments
-+	  LP5860 LED driver for I2C bus connections.
-+
-+	  To compile this driver as a module, choose M here: the
-+	  module will be called leds-lp5860-i2c.
-+
- config LEDS_NCP5623
- 	tristate "LED support for NCP5623"
- 	depends on I2C
-diff --git a/drivers/leds/rgb/Makefile b/drivers/leds/rgb/Makefile
-index a59c13396a22..0e35bf16d615 100644
---- a/drivers/leds/rgb/Makefile
-+++ b/drivers/leds/rgb/Makefile
-@@ -6,6 +6,7 @@ obj-$(CONFIG_LEDS_KTD202X)		+= leds-ktd202x.o
- obj-$(CONFIG_LEDS_LP5812)		+= leds-lp5812.o
- obj-$(CONFIG_LEDS_LP5860_CORE)		+= leds-lp5860-core.o
- obj-$(CONFIG_LEDS_LP5860_SPI)		+= leds-lp5860-spi.o
-+obj-$(CONFIG_LEDS_LP5860_I2C)		+= leds-lp5860-i2c.o
- obj-$(CONFIG_LEDS_NCP5623)		+= leds-ncp5623.o
- obj-$(CONFIG_LEDS_PWM_MULTICOLOR)	+= leds-pwm-multicolor.o
- obj-$(CONFIG_LEDS_QCOM_LPG)		+= leds-qcom-lpg.o
-diff --git a/drivers/leds/rgb/leds-lp5860-i2c.c b/drivers/leds/rgb/leds-lp5860-i2c.c
-new file mode 100644
-index 000000000000..97948cde54a9
---- /dev/null
-+++ b/drivers/leds/rgb/leds-lp5860-i2c.c
-@@ -0,0 +1,139 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/mutex.h>
-+#include <linux/of.h>
-+#include <linux/property.h>
-+#include <linux/regmap.h>
-+#include <linux/slab.h>
-+
-+#include "leds-lp5860.h"
-+
-+#define LP5860_I2C_NUM_PAGES	4
-+
-+struct lp5860_i2c {
-+	struct i2c_client *clients[LP5860_I2C_NUM_PAGES];
-+};
-+
-+static int lp5860_i2c_reg_read(void *context, unsigned int reg, unsigned int *val)
-+{
-+	struct lp5860_i2c *i2c = context;
-+	int ret;
-+
-+	ret = i2c_smbus_read_byte_data(i2c->clients[reg >> 8], reg & 0xff);
-+	if (ret < 0)
-+		return ret;
-+
-+	*val = ret;
-+	return 0;
-+}
-+
-+static int lp5860_i2c_reg_write(void *context, unsigned int reg, unsigned int val)
-+{
-+	struct lp5860_i2c *i2c = context;
-+
-+	return i2c_smbus_write_byte_data(i2c->clients[reg >> 8], reg & 0xff, val);
-+}
-+
-+static const struct regmap_bus lp5860_i2c_regmap_bus = {
-+	.reg_read = lp5860_i2c_reg_read,
-+	.reg_write = lp5860_i2c_reg_write,
-+};
-+
-+static const struct regmap_config lp5860_i2c_regmap_config = {
-+	.name = "lp5860",
-+	.reg_bits = 16,
-+	.val_bits = 8,
-+	.max_register = LP5860_MAX_REG,
-+};
-+
-+static int lp5860_i2c_probe(struct i2c_client *client)
-+{
-+	struct device *dev = &client->dev;
-+	struct lp5860_i2c *i2c;
-+	struct lp5860 *lp5860;
-+	unsigned int multi_leds;
-+	unsigned int page;
-+	int ret;
-+
-+	if ((client->flags & I2C_CLIENT_TEN) ||
-+	    client->addr < 0x40 || client->addr > 0x4c || (client->addr & 0x03))
-+		return dev_err_probe(dev, -EINVAL,
-+				     "Use the page-zero I2C address (0x40, 0x44, 0x48 or 0x4c).\n");
-+
-+	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
-+		return dev_err_probe(dev, -EOPNOTSUPP,
-+				     "SMBus byte-data transactions are not supported.\n");
-+
-+	multi_leds = device_get_child_node_count(dev);
-+	if (!multi_leds)
-+		return dev_err_probe(dev, -ENODEV, "LEDs are not defined in Device Tree!\n");
-+
-+	if (multi_leds > LP5860_MAX_LED)
-+		return dev_err_probe(dev, -EINVAL, "Too many LEDs specified.\n");
-+
-+	lp5860 = devm_kzalloc(dev, struct_size(lp5860, leds, multi_leds), GFP_KERNEL);
-+	if (!lp5860)
-+		return -ENOMEM;
-+
-+	i2c = devm_kzalloc(dev, sizeof(*i2c), GFP_KERNEL);
-+	if (!i2c)
-+		return -ENOMEM;
-+
-+	i2c->clients[0] = client;
-+	for (page = 1; page < LP5860_I2C_NUM_PAGES; page++) {
-+		i2c->clients[page] = devm_i2c_new_dummy_device(dev, client->adapter,
-+							       client->addr | page);
-+		if (IS_ERR(i2c->clients[page]))
-+			return dev_err_probe(dev, PTR_ERR(i2c->clients[page]),
-+					     "Failed to reserve I2C register page %u.\n", page);
-+	}
-+
-+	lp5860->regmap = devm_regmap_init(dev, &lp5860_i2c_regmap_bus, i2c,
-+					  &lp5860_i2c_regmap_config);
-+	if (IS_ERR(lp5860->regmap))
-+		return dev_err_probe(dev, PTR_ERR(lp5860->regmap),
-+				     "Failed to initialise Regmap.\n");
-+
-+	lp5860->dev = dev;
-+
-+	ret = devm_mutex_init(dev, &lp5860->lock);
-+	if (ret)
-+		return ret;
-+
-+	i2c_set_clientdata(client, lp5860);
-+
-+	return lp5860_device_init(dev);
-+}
-+
-+static void lp5860_i2c_remove(struct i2c_client *client)
-+{
-+	lp5860_device_remove(&client->dev);
-+}
-+
-+static const struct of_device_id lp5860_i2c_of_match[] = {
-+	{ .compatible = "ti,lp5860" },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, lp5860_i2c_of_match);
-+
-+static const struct i2c_device_id lp5860_i2c_ids[] = {
-+	{ .name = "lp5860" },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(i2c, lp5860_i2c_ids);
-+
-+static struct i2c_driver lp5860_i2c_driver = {
-+	.driver = {
-+		.name = "lp5860-i2c",
-+		.of_match_table = lp5860_i2c_of_match,
-+	},
-+	.probe = lp5860_i2c_probe,
-+	.remove = lp5860_i2c_remove,
-+	.id_table = lp5860_i2c_ids,
-+};
-+module_i2c_driver(lp5860_i2c_driver);
-+
-+MODULE_DESCRIPTION("TI LP5860 RGB LED I2C driver");
-+MODULE_LICENSE("GPL");
+- set_pad_format() now stores the new mode before it updates the
+  controls. The VBLANK handler reads the mode, so it used to program the
+  frame length from the mode that was active before the call.
+- A negative return from pm_runtime_get_if_active() is no longer read as
+  active. Runtime PM can be disabled for the device, and in that case the
+  usage count is not taken, so the old code could drop a count it never
+  took.
+- The PM ops use RUNTIME_PM_OPS() with pm_ptr(), so the ops and the power
+  callbacks are dropped when CONFIG_PM is not set.
+- Link to v1: https://patch.msgid.link/20260920-upstream-s5k3t2-v1-0-d640740f4013@proton.me
 
 ---
-base-commit: c016466c8c8b01af27ac66d97b64fa9c9e431a3d
-change-id: 20261120-add-i2c-support-for-lp5860-97f38b2ebe1c
+Armandas Kvietkus (2):
+      dt-bindings: media: i2c: Add Samsung S5K3T2 image sensor
+      media: i2c: Add Samsung S5K3T2 image sensor driver
+
+ .../bindings/media/i2c/samsung,s5k3t2.yaml         |  105 ++
+ MAINTAINERS                                        |    8 +
+ drivers/media/i2c/Kconfig                          |   10 +
+ drivers/media/i2c/Makefile                         |    1 +
+ drivers/media/i2c/s5k3t2.c                         | 1365 ++++++++++++++++++++
+ 5 files changed, 1489 insertions(+)
+---
+base-commit: 518e5b794c06c0f0eb40df3e202274a66202c137
+change-id: 20260920-upstream-s5k3t2-23b33dab0315
 
 Best regards,
 --  
-Peter LaDow <pladow@gmail.com>
+Armandas Kvietkus <armandas.kvietkus@proton.me>
 
