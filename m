@@ -1,16 +1,13 @@
 From: Kyle Hendry <khendry@reliablecontrols.com>
-Subject: [PATCH v2 0/3] clk: renesas: r9a06g032: Add reset controller to
- clear resets for mii converter
-Date: Fri, 20 Nov 2026 13:16:51 -0800
-Message-Id: <20261120-rzn1-miic-resets-v2-0-f1cfa678615b@reliablecontrols.com>
+Date: Fri, 20 Nov 2026 13:16:52 -0800
+Subject: [PATCH v2 1/3] dt-bindings: clock: r9a06g032-sysctrl: Document
+ reset cells
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WNQQ6CMBBFr0JmbU2niqIr72FYtHWQSaA1U0JU0
- rtbcenyveS/v0AiYUpwrhYQmjlxDAXMpgLf23AnxbfCYLQ5oDZHJe+AamT2SijRlFSz002NtbX
- Gayizh1DHzzV5bQv3nKYor/Vhxq/9xRBP/7EZlVYdERnnTOPc/iI0sHUD+RgmiUPa+jhCm3P+A
- Om+Fzy7AAAA
-X-Change-ID: 20261027-rzn1-miic-resets-8308515aa2c0
+Message-Id: <20261120-rzn1-miic-resets-v2-1-f1cfa678615b@reliablecontrols.com>
+References: <20261120-rzn1-miic-resets-v2-0-f1cfa678615b@reliablecontrols.com>
+In-Reply-To: <20261120-rzn1-miic-resets-v2-0-f1cfa678615b@reliablecontrols.com>
 To: Geert Uytterhoeven <geert+renesas@glider.be>, 
  Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
  Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
@@ -20,56 +17,69 @@ To: Geert Uytterhoeven <geert+renesas@glider.be>,
  Philipp Zabel <p.zabel@pengutronix.de>
 Cc: linux-renesas-soc@vger.kernel.org, linux-clk@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Kyle Hendry <khendry@reliablecontrols.com>, 
- Wolfram Sang <wsa+renesas@sang-engineering.com>
+ Kyle Hendry <khendry@reliablecontrols.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795209454; l=1704;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795209454; l=1778;
  i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=64flA37FYq7GX7EUX0roYoz1X+pA+V7pvD9Hrm3PL+g=;
- b=KRB/7zyk+sfhm6s21ea85KRVqZs2zvpIpkIF1zdDNcSYpDc0JgzTV4j3XneKsMkesYau7m312
- 2RfhwsSykP7BNWLMwZxBRHd8XuwvRLHWp62i76L/oY+61SUOa/mROQH
+ bh=WXf/BZr4yjg1xY6IIiwzikkQWZRk9snLw1UWfup0bNw=;
+ b=bK05m5/mZ6wVusVvvi76q7xIAyyBGK1yE0z93i2M11e1QQinpO7IxqGPMM9MR/VGTMxKsvu1t
+ xJwOPrhkijiDj4OgLclZAf0W4/MhgkopeuHF7HedOFSeQZy0UM03fNi
 X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
  pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
 X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the rzn1, there are two resets for the mii converter in the system
-controller. If they are not cleared by the bootloader then the kernel needs
-to do it. 
+Update the rzn1 system controller to indicate it can be a reset controller
+and add defines for miic resets
 
-To handle this, I've added a reset controller interface to the clock
-driver so the miic driver can deassert them.
-
+Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
 ---
-Changes in v2:
-- Drop patches for pcs-rzn1-miic to be submitted separately to netdev
-- Add reset_controller_dev to r9a06g032_priv fix build error
-- Use designated initializers for the reset bit definitions
-- Change macro for getting priv data to static inline
-- Drop unnecessary reset from controller ops
-- Remove debugging argument from r9a06g032_reset_set
-- Remove configuration of of_reset_n_cells 
-- Add #reset-cells to required and example in schema
-- Make r9a06g032_reset_status correctly return the active low status
-- Move reset controller register earlier in probe to better handle failure
-- Link to v1: https://lore.kernel.org/r/20261119-rzn1-miic-resets-v1-0-feee2bb28bb4@reliablecontrols.com
+ .../devicetree/bindings/clock/renesas,r9a06g032-sysctrl.yaml         | 5 +++++
+ include/dt-bindings/clock/r9a06g032-sysctrl.h                        | 3 +++
+ 2 files changed, 8 insertions(+)
 
----
-Kyle Hendry (3):
-      dt-bindings: clock: r9a06g032-sysctrl: Document reset cells
-      clk: renesas: r9a06g032: Add reset controller
-      ARM: dts: renesas: r9a06g032: Add #reset-cells to system controller node
+diff --git a/Documentation/devicetree/bindings/clock/renesas,r9a06g032-sysctrl.yaml b/Documentation/devicetree/bindings/clock/renesas,r9a06g032-sysctrl.yaml
+index 26d94cedc871..70ccc315a10c 100644
+--- a/Documentation/devicetree/bindings/clock/renesas,r9a06g032-sysctrl.yaml
++++ b/Documentation/devicetree/bindings/clock/renesas,r9a06g032-sysctrl.yaml
+@@ -36,6 +36,9 @@ properties:
+   '#clock-cells':
+     const: 1
+ 
++  '#reset-cells':
++    const: 1
++
+   '#power-domain-cells':
+     const: 0
+ 
+@@ -56,6 +59,7 @@ required:
+   - clocks
+   - clock-names
+   - '#clock-cells'
++  - '#reset-cells'
+   - '#power-domain-cells'
+ 
+ additionalProperties: false
+@@ -69,5 +73,6 @@ examples:
+                      <&ext_rgmii_ref>;
+             clock-names = "mclk", "rtc", "jtag", "rgmii_ref_ext";
+             #clock-cells = <1>;
++            #reset-cells = <1>;
+             #power-domain-cells = <0>;
+     };
+diff --git a/include/dt-bindings/clock/r9a06g032-sysctrl.h b/include/dt-bindings/clock/r9a06g032-sysctrl.h
+index d9d7b8b4f426..e3059c50f7c3 100644
+--- a/include/dt-bindings/clock/r9a06g032-sysctrl.h
++++ b/include/dt-bindings/clock/r9a06g032-sysctrl.h
+@@ -146,4 +146,7 @@
+ #define R9A06G032_CLK_UART6		152
+ #define R9A06G032_CLK_UART7		153
+ 
++#define R9A06G032_RST_TS		1
++#define R9A06G032_RST_MIIC		2
++
+ #endif /* __DT_BINDINGS_R9A06G032_SYSCTRL_H__ */
 
- .../bindings/clock/renesas,r9a06g032-sysctrl.yaml  |  5 ++
- arch/arm/boot/dts/renesas/r9a06g032.dtsi           |  1 +
- drivers/clk/renesas/r9a06g032-clocks.c             | 59 ++++++++++++++++++++++
- include/dt-bindings/clock/r9a06g032-sysctrl.h      |  3 ++
- 4 files changed, 68 insertions(+)
----
-base-commit: 662377fd1bb1d7cf4e97d312255fed868f56342d
-change-id: 20261027-rzn1-miic-resets-8308515aa2c0
-
-Best regards,
 -- 
-Kyle Hendry <khendry@reliablecontrols.com>
+2.53.0
 
