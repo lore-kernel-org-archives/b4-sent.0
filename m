@@ -1,101 +1,183 @@
-From: Alexandre Rapaille <arapaille@atlr-engineering.com>
-Date: Fri, 20 Nov 2026 09:05:47 +0100
-Subject: [PATCH v2 3/3] wifi: wcn36xx: Stop waiting on a dead firmware
- during remove
+From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Subject: [PATCH v14 0/2] Add LPASS VA CSR HeartBeat pulse clock support
+Date: Fri, 20 Nov 2026 14:06:46 +0530
+Message-Id: <20261120-master-v14-0-112cfd63438d@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-wcnss-series-v1-v2-3-3fed518decfb@atlr-engineering.com>
-References: <20261120-wcnss-series-v1-v2-0-3fed518decfb@atlr-engineering.com>
-In-Reply-To: <20261120-wcnss-series-v1-v2-0-3fed518decfb@atlr-engineering.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Luca Weiss <luca@lucaweiss.eu>, Eugene Krasnikov <k.eugene.e@gmail.com>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, wcn36xx@lists.infradead.org, 
- linux-wireless@vger.kernel.org, 
- Alexandre Rapaille <arapaille@atlr-engineering.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795161947; l=2669;
- i=arapaille@atlr-engineering.com; s=20261118; h=from:subject:message-id;
- bh=aNGMzK4TGJR9fdTqFm+U1fGWoLrLo05sBlDTYvgq33U=;
- b=V/0eKlALIO82U1cNEW91q+40K7SfvMwD4HoYijeCYvjPOiUzibGnLGb+rfGHYZMRpgtS7d6/m
- m+QGSmWFvN4Bd6myr/qQVXtpkVmf+61DuNPJ7NF4uZQ8sSeGgBf4JIc
-X-Developer-Key: i=arapaille@atlr-engineering.com; a=ed25519;
- pk=xskH/sIiNU/aZCeGeBB1TK/AuiG3MXlX0m2wMlbMl08=
-X-Endpoint-Received: by B4 Relay for arapaille@atlr-engineering.com/20261118 with auth_id=1560
+X-B4-Tracking: v=1; b=H4sIAJ4GAGsC/3XOTU7DMBAF4KtUXpNqZlzHNivugVg4/qFGpAE7j
+ UBV7o5dpCQSZGNprPfNvBvLPkWf2ePhxpKfYo7DpQx4ejgwezaXV99EVz4YAbWgUTa9yaNPTWt
+ JShWENNqwEv5IPsSv+6bnl985X7s3b8eqa+Ic8zik7/upSdXcn6WTaqBRxB1Z4UCDeRpyPn5ez
+ bsd+v5YHlZ3T3qjSS1aF02lVgAdtAG9oxE2nMPCEYpHEASys4Kk2PO4eASk1WP1AkB77q2xfM/
+ TxhOunorXHXdBYHDo5J7nqy91V8+Ld1134tbZFvx//ed5/gFY+2qa9AEAAA==
+X-Change-ID: 20260917-master-6c2778f57a9a
+To: andersson@kernel.org, abelvesa@kernel.org, sboyd@kernel.org, 
+ bmasney+clk@redhat.com, jbrunet+clk@baylibre.com, robh@kernel.org, 
+ krzk+dt@kernel.org, conor+dt@kernel.org, 
+ srinivas.kandagatla@oss.qualcomm.com, sarath.ganapathiraju@oss.qualcomm.com
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ prasad.kumpatla@oss.qualcomm.com
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795163807; l=7074;
+ i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
+ h=from:subject:message-id; bh=bwiqNoyuJeYE0cWhtbxJCmsXje1qBwdE5nXCQtMn/EM=;
+ b=U7B1HNo0qdIEdz9Pn+xOi6r4NMwyUmsGsIbwoPaDYf/EEsipqmqHjnU4TJPN7GSxkdHqMSkcr
+ YoPova1M6YEDXdAk0y5dknJXjH3W5GWdS2DNuilySB3cuyPMIzXNxwa
+X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
+ pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
+X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After a WCNSS crash, remove sends ~16 HAL commands nobody can answer,
-each waiting HAL_MSG_TIMEOUT: recovery took 160 s on msm8974. Once one
-times out during remove, fail the rest at once; recovery now takes
-~20 s. Testing removing alone would also skip the teardown on a normal
-unbind with live firmware.
+The LPASS VA CSR block contains rate generator hardware that produces
+a HeartBeat Pulse (also known as RateGen Pulse). This pulse
+synchronizes the start of the DMAs and Codec Interfaces for the audio
+usecases and can serve as a periodic wakeup source for the DSP.
 
-Signed-off-by: Alexandre Rapaille <arapaille@atlr-engineering.com>
+This series adds the DT binding and driver support to model this
+rate generator as a clock provider.
+
+Patch 1 adds the YAML binding for the new qcom,hawi-lpass-va-csr
+clock provider node under Documentation/devicetree/bindings/clock/.
+
+Patch 2 adds the lpass-va-csr driver under drivers/clk/qcom that
+registers the lpass_heartbeat_pulse clock and enables/disables the
+rate generator via regmap when the clock consumer requests it.
+
+Changes in v14:
+- Rebase the series on linux-next next-20261119.
+- Add Prasad's Reviewed-by and Tested-by tags.
+- Resolve the Makefile context against latest linux-next by keeping the
+  new entry in the existing CONFIG_QCOM_CLK_* block; no functional
+  driver changes.
+- Link to v13: https://patch.msgid.link/20261105-master-v13-0-dbb43cdc60e5@oss.qualcomm.com
+
+Changes in v13:
+- Rebase the series on linux-next next-20261104.
+- Create and populate the PM clock list before enabling runtime PM so
+  runtime resume cannot touch VA CSR registers before the LPASS vote
+  clocks are available (Sashiko).
+- Drop the regmap cache for the LPASS rate generator registers to avoid
+  stale LPASS_RATE_GEN_CTRL state after LPASS register context loss
+  (Sashiko).
+- Use runtime PM force suspend and resume for system sleep, and restore
+  LPASS_RATE_GEN_CTRL on resume when the heartbeat clock was enabled
+  before LPASS register context loss.
+- Link to v12: https://patch.msgid.link/20261021-master-v12-0-9b3df51fd1d7@oss.qualcomm.com
+
+Changes in v12:
+- Rebase the series on linux-next next-20261020.
+- Depend on PM_CLK so COMPILE_TEST builds cannot select the driver when
+  pm_clk_suspend() and pm_clk_resume() are unavailable (Sashiko, LKP).
+- Link to v11: https://patch.msgid.link/20261012-master-v11-0-15009e3ecac3@oss.qualcomm.com
+
+Changes in v11:
+- Rebase the series on linux-next next-20261009.
+- Drop the custom heartbeat prepare/unprepare callbacks and rely on CCF
+  provider runtime PM handling (Ajay).
+- Restore the rate generator counter and delay registers from the
+  runtime resume callback after the LPASS vote clocks are enabled
+  (Sashiko).
+- Add an of_device_get_match_data() NULL guard (Sashiko).
+- Link to v10: https://patch.msgid.link/20260930-master-v10-0-105207bc5275@oss.qualcomm.com
+
+Changes in v10:
+- Rebase the series on linux-next next-20260929.
+- Add clk_is_enabled_regmap() to report the heartbeat gate state for
+  clk_disable_unused() (Sashiko).
+- Add Rob's Reviewed-by tag to the binding patch.
+- Link to v9: https://patch.msgid.link/20260928-master-v9-0-2277f09f9a09@oss.qualcomm.com
+
+Changes in v9:
+- Rebase the series on linux-next next-20260928.
+- Add runtime PM callbacks so the LPASS LPR and audio vote clocks are
+  enabled by pm_runtime_resume_and_get() before touching VA CSR
+  registers.
+- Keep the LPASS vote clocks enabled across heartbeat clock
+  enable/disable register accesses by taking a runtime PM reference from
+  the heartbeat clock prepare path.
+- Use synchronous runtime PM put on probe success and error paths.
+- Drop the one-use runtime PM error label while keeping synchronous puts (Konrad).
+- Wrap the runtime PM ops with pm_ptr() from HTML review.
+- Link to v8: https://patch.msgid.link/20260917-master-v8-0-823d2c5d090a@oss.qualcomm.com
+
+Changes in v8:
+- Rebase the series on linux-next next-20260916.
+- Require the LPASS LPR and audio vote clocks to access VA CSR
+  register space safely.
+- Attach the DT vote clocks to runtime PM and resume the device before
+  programming the rate generator registers.
+- Program the counter and delay registers once during probe.
+- Use qcom's simple regmap gate ops for the enable bit (Srinivas).
+- Drop the unreachable of_device_get_match_data() NULL check (Srinivas).
+- Drop stale Reviewed-by/Tested-by tags after the binding and driver
+  changes.
+- Link to v7: https://patch.msgid.link/20260831-heartbeat-v7-next-20260828-v7-0-e3ffeac46a51@oss.qualcomm.com
+
+Changes in v7:
+- Rebase the series on linux-next next-20260828.
+- Add Prasad's Reviewed-by and Tested-by tags to patch 2.
+- Link to v6: https://patch.msgid.link/20260821-heartbeat-v6-next-20260821-send-v6-0-62c5df84ce21@oss.qualcomm.com
+
+Changes in v6:
+- Rebase the series on linux-next next-20260821.
+- Capitalize Hawi in binding text (Bjorn).
+- Simplify the binding example by removing the soc wrapper and
+  two-cell address/size setup (Bjorn).
+- Keep the full VA CSR register window in the binding and describe it
+  as the VA CSR register block after Konrad clarified the earlier
+  register-range concern (Bjorn, Konrad).
+- Link to v5: https://patch.msgid.link/20260806-master-20260805-sync-v5-0-0ff42e9b6431@oss.qualcomm.com
+
+Changes in v5:
+- Add explicit ARM64 Kconfig gating and Qualcomm default-module policy
+  for QCOM_CLK_LPASS_HEARTBEAT_PULSE to align with nearby qcom clock
+  entries.
+- Link to v4: https://patch.msgid.link/20260805-master-20260805-sync-v4-0-dfbcbf427c2c@oss.qualcomm.com
+
+Changes in v4:
+- Rename the binding filename and schema ID to hawi-specific naming:
+  qcom,lpass-va-csr.yaml -> qcom,hawi-lpass-va-csr.yaml (Krzysztof).
+- Rename Kconfig symbol QCOM_CLK_LPASS_VA_CSR to
+  QCOM_CLK_LPASS_HEARTBEAT_PULSE (Konrad).
+- Add devm_pm_runtime_enable() in the lpass-va-csr probe path.
+- Drop the qcom,lpass-va-macro binding extension patch; it will be
+  resubmitted with the Hawi DTSI changes.
+- Drop sound/soc/codecs/Kconfig select wiring to keep this series
+  clock-only (Konrad).
+- Link to v3: https://lore.kernel.org/all/20260723-master-v3-0-3d67b79b0515@oss.qualcomm.com/
+
+Changes in v3:
+- Move the qcom,lpass-va-csr binding under
+  Documentation/devicetree/bindings/clock/ (Krzysztof).
+- Move the driver under drivers/clk/qcom/ (Krzysztof).
+- Improve the schema description and use generic clock-controller node
+  naming (Krzysztof).
+- Use additionalProperties: false and keep compatibles sorted.
+
+Changes in v2:
+- Split the qcom,lpass-va-csr and qcom,lpass-va-macro bindings into
+  separate patches.
+
+Changes in v1:
+- Initial version
+
+Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 ---
- drivers/net/wireless/ath/wcn36xx/main.c    | 1 +
- drivers/net/wireless/ath/wcn36xx/smd.c     | 8 ++++++++
- drivers/net/wireless/ath/wcn36xx/wcn36xx.h | 4 ++++
- 3 files changed, 13 insertions(+)
+Sarath Ganapathiraju (2):
+      dt-bindings: clock: qcom: Add LPASS VA CSR HeartBeat pulse clock
+      clk: qcom: Add LPASS VA CSR heartbeat pulse clock
 
-diff --git a/drivers/net/wireless/ath/wcn36xx/main.c b/drivers/net/wireless/ath/wcn36xx/main.c
-index ad8a4bd910..77a1029108 100644
---- a/drivers/net/wireless/ath/wcn36xx/main.c
-+++ b/drivers/net/wireless/ath/wcn36xx/main.c
-@@ -1651,6 +1651,7 @@ static void wcn36xx_remove(struct platform_device *pdev)
- 
- 	release_firmware(wcn->nv);
- 
-+	WRITE_ONCE(wcn->removing, true);
- 	ieee80211_unregister_hw(hw);
- 
- 	qcom_smem_state_put(wcn->tx_enable_state);
-diff --git a/drivers/net/wireless/ath/wcn36xx/smd.c b/drivers/net/wireless/ath/wcn36xx/smd.c
-index c0b4773458..d07ea967ac 100644
---- a/drivers/net/wireless/ath/wcn36xx/smd.c
-+++ b/drivers/net/wireless/ath/wcn36xx/smd.c
-@@ -427,6 +427,12 @@ static int wcn36xx_smd_send_and_wait(struct wcn36xx *wcn, size_t len)
- 		(struct wcn36xx_hal_msg_header *)wcn->hal_buf;
- 	u16 req_type = hdr->msg_type;
- 
-+	/* After a WCNSS crash every teardown command would wait the full
-+	 * timeout; one is enough to know nobody will answer.
-+	 */
-+	if (wcn->fw_dead)
-+		return -ETIME;
-+
- 	wcn36xx_dbg_dump(WCN36XX_DBG_SMD_DUMP, "HAL >>> ", wcn->hal_buf, len);
- 
- 	init_completion(&wcn->hal_rsp_compl);
-@@ -440,6 +446,8 @@ static int wcn36xx_smd_send_and_wait(struct wcn36xx *wcn, size_t len)
- 		msecs_to_jiffies(HAL_MSG_TIMEOUT)) <= 0) {
- 		wcn36xx_err("Timeout! No SMD response to req %d in %dms\n",
- 			    req_type, HAL_MSG_TIMEOUT);
-+		if (READ_ONCE(wcn->removing))
-+			wcn->fw_dead = true;
- 		ret = -ETIME;
- 		goto out;
- 	}
-diff --git a/drivers/net/wireless/ath/wcn36xx/wcn36xx.h b/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
-index 8c43f67bd7..9e5f3918ca 100644
---- a/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
-+++ b/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
-@@ -276,6 +276,10 @@ struct wcn36xx {
- 	spinlock_t	dxe_lock;
- 	bool                    queues_stopped;
- 
-+	/* Set in remove; a HAL timeout then means the firmware is gone. */
-+	bool			removing;
-+	bool			fw_dead;
-+
- 	/* Memory pools */
- 	struct wcn36xx_dxe_mem_pool mgmt_mem_pool;
- 	struct wcn36xx_dxe_mem_pool data_mem_pool;
+ .../bindings/clock/qcom,hawi-lpass-va-csr.yaml     |  62 ++++++
+ drivers/clk/qcom/Kconfig                           |  15 ++
+ drivers/clk/qcom/Makefile                          |   1 +
+ drivers/clk/qcom/lpass-va-csr.c                    | 210 +++++++++++++++++++++
+ 4 files changed, 288 insertions(+)
+---
+base-commit: adcad7f4e6332cff3d6d7165f41584899f598534
+change-id: 20260917-master-6c2778f57a9a
 
--- 
-2.43.0
+Best regards,
+--  
+Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 
