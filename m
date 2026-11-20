@@ -1,95 +1,75 @@
-From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 20 Nov 2026 13:07:12 -0800
-Subject: [PATCH] KVM: x86/mmu: Prevent hugepage recovery on non-guest_memfd
- private GFNs
+From: Kyle Hendry <khendry@reliablecontrols.com>
+Subject: [PATCH v2 0/3] clk: renesas: r9a06g032: Add reset controller to
+ clear resets for mii converter
+Date: Fri, 20 Nov 2026 13:16:51 -0800
+Message-Id: <20261120-rzn1-miic-resets-v2-0-f1cfa678615b@reliablecontrols.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-gmem-fix-gmem-max-mapping-level-v1-1-108788914fe8@google.com>
-X-B4-Tracking: v=1; b=H4sIAH+2AGsC/yWNwQqDMBBEf0X23AUTaYX+SukhWbdxi0lDoiKI/
- 95tPQzMg+HNDpWLcIV7s0PhVap8koK5NECjS4FRBmWwrb0ZY1sMkSO+ZDtLdJsmZ0kBJ155Qkf
- kfW+o664W1JIL6/r/8HieXBf/Zpp/WjiOLytk3UKDAAAA
-X-Change-ID: 20261120-gmem-fix-gmem-max-mapping-level-accbb71c3352
-To: Sean Christopherson <seanjc@google.com>, 
- Paolo Bonzini <pbonzini@redhat.com>, Thomas Gleixner <tglx@kernel.org>, 
- Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
- Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
- "H. Peter Anvin" <hpa@zytor.com>, Fuad Tabba <fuad.tabba@linux.dev>, 
- David Hildenbrand <david@kernel.org>
-Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Ackerley Tng <ackerleytng@google.com>
-X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795208833; l=2547;
- i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=Y0i6Euk/xaC1ZCsSKIuwJUQwvKbcrEW4zjiLBGkW4HE=;
- b=yGonGreEgc0BdPMVqeglPV5HUwVFM4Dw1iv2Lr9P4AMWQ6f6wM0eyzt/GT2B9ke6JNrIpdkAm
- uf9Z/wXEoTuBqibEvSAT8CtdDu+DCZhw5/hWtY5LzPjcfz/kBPIaVu4
-X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
- pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
-X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WNQQ6CMBBFr0JmbU2niqIr72FYtHWQSaA1U0JU0
+ rtbcenyveS/v0AiYUpwrhYQmjlxDAXMpgLf23AnxbfCYLQ5oDZHJe+AamT2SijRlFSz002NtbX
+ Gayizh1DHzzV5bQv3nKYor/Vhxq/9xRBP/7EZlVYdERnnTOPc/iI0sHUD+RgmiUPa+jhCm3P+A
+ Om+Fzy7AAAA
+X-Change-ID: 20261027-rzn1-miic-resets-8308515aa2c0
+To: Geert Uytterhoeven <geert+renesas@glider.be>, 
+ Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Magnus Damm <magnus.damm@gmail.com>, 
+ Fabrizio Castro <fabrizio.castro.jz@renesas.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-renesas-soc@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Kyle Hendry <khendry@reliablecontrols.com>, 
+ Wolfram Sang <wsa+renesas@sang-engineering.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795209454; l=1704;
+ i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
+ bh=64flA37FYq7GX7EUX0roYoz1X+pA+V7pvD9Hrm3PL+g=;
+ b=KRB/7zyk+sfhm6s21ea85KRVqZs2zvpIpkIF1zdDNcSYpDc0JgzTV4j3XneKsMkesYau7m312
+ 2RfhwsSykP7BNWLMwZxBRHd8XuwvRLHWp62i76L/oY+61SUOa/mROQH
+X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
+ pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
+X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When determining the maximum mapping level outside of a page fault
-(such as when disabling dirty logging), KVM queries the VM memory
-attributes to determine whether a GFN is private. Userspace can mark a
-GFN as private in the VM attributes even when the covering memslot is
-not backed by guest_memfd.
+On the rzn1, there are two resets for the mii converter in the system
+controller. If they are not cleared by the bootloader then the kernel needs
+to do it. 
 
-Previously, this caused the mapping level calculation to fall into
-kvm_gmem_max_mapping_level(), triggering a kernel warning.
-
-Here's 1 way to trigger the warning on a TDX VM, with VM memory attributes
-enabled on KVM.
-
-1. Create a non-guest_memfd memslot covering a 1G-aligned base GFN with
-   dirty logging enabled.
-2. In that memslot, fault a shared page outside the first 2M chunk so a
-   non-leaf PTE at the 1G level is installed.
-3. Mark the first 2M chunk (at the 1G-aligned base GFN) private. Conversion
-   zaps that 2M chunk, while the shared mapping outside it keeps the 1G
-   non-leaf PTE present.
-4. Disable dirty logging on the memslot.
-
-Hugepage recovery iterates over the present 1G non-leaf PTE, sees that its
-base GFN is private and the 2M range is not mixed, and calls into
-kvm_gmem_max_mapping_level() without a fault context, hitting the WARN.
-
-Return 4K as the maximum mapping level when a GFN is marked private in
-a non-fault path for a memslot without guest_memfd. Fault paths already
-disallow mapping private GFNs in non-guest_memfd memslots, and
-returning 4K prevents hugepage recovery on such GFNs.
-
-Fixes: a3522ac71f5e ("KVM: x86/mmu: Enforce guest_memfd's max order when recovering hugepages")
-Signed-off-by: Ackerley Tng <ackerleytng@google.com>
----
- arch/x86/kvm/mmu/mmu.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/arch/x86/kvm/mmu/mmu.c b/arch/x86/kvm/mmu/mmu.c
-index f89e9f8a6cc2f..af40fbe9001a7 100644
---- a/arch/x86/kvm/mmu/mmu.c
-+++ b/arch/x86/kvm/mmu/mmu.c
-@@ -3489,6 +3489,14 @@ int kvm_mmu_max_mapping_level(struct kvm *kvm, struct kvm_page_fault *fault,
- 	} else {
- 		max_level = PG_LEVEL_NUM;
- 		is_private = kvm_is_private_gfn(kvm, gfn);
-+
-+		/*
-+		 * is_private (set in VM attributes) should never have been used
-+		 * with a non-guest_memfd memslot. Return PG_LEVEL_4K to prevent
-+		 * hugepage recovery.
-+		 */
-+		if (is_private && !kvm_slot_has_gmem(slot))
-+			return PG_LEVEL_4K;
- 	}
- 
- 	max_level = min(max_level, max_huge_page_level);
+To handle this, I've added a reset controller interface to the clock
+driver so the miic driver can deassert them.
 
 ---
-base-commit: d0f871bfb831705d9f55479f5b2b40f636ea7b16
-change-id: 20261120-gmem-fix-gmem-max-mapping-level-accbb71c3352
+Changes in v2:
+- Drop patches for pcs-rzn1-miic to be submitted separately to netdev
+- Add reset_controller_dev to r9a06g032_priv fix build error
+- Use designated initializers for the reset bit definitions
+- Change macro for getting priv data to static inline
+- Drop unnecessary reset from controller ops
+- Remove debugging argument from r9a06g032_reset_set
+- Remove configuration of of_reset_n_cells 
+- Add #reset-cells to required and example in schema
+- Make r9a06g032_reset_status correctly return the active low status
+- Move reset controller register earlier in probe to better handle failure
+- Link to v1: https://lore.kernel.org/r/20261119-rzn1-miic-resets-v1-0-feee2bb28bb4@reliablecontrols.com
+
+---
+Kyle Hendry (3):
+      dt-bindings: clock: r9a06g032-sysctrl: Document reset cells
+      clk: renesas: r9a06g032: Add reset controller
+      ARM: dts: renesas: r9a06g032: Add #reset-cells to system controller node
+
+ .../bindings/clock/renesas,r9a06g032-sysctrl.yaml  |  5 ++
+ arch/arm/boot/dts/renesas/r9a06g032.dtsi           |  1 +
+ drivers/clk/renesas/r9a06g032-clocks.c             | 59 ++++++++++++++++++++++
+ include/dt-bindings/clock/r9a06g032-sysctrl.h      |  3 ++
+ 4 files changed, 68 insertions(+)
+---
+base-commit: 662377fd1bb1d7cf4e97d312255fed868f56342d
+change-id: 20261027-rzn1-miic-resets-8308515aa2c0
 
 Best regards,
---  
-Ackerley Tng <ackerleytng@google.com>
+-- 
+Kyle Hendry <khendry@reliablecontrols.com>
 
