@@ -1,11 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:07 -0500
-Subject: [PATCH 16/60] mm/oom_kill: compare OOM constraints against common
- memory
+Date: Fri, 20 Nov 2026 13:09:08 -0500
+Subject: [PATCH 17/60] PM: hibernate: size the image from common memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-16-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-17-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,52 +61,82 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=1433;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=2366;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=CGbgCesiUK7FaS3uE7XEsjS4RivbEoofszYkkl9tolQ=;
- b=Rl5iRdBywuqFmQMQRF7nrZzOaOma19N8ic11E9/UVk+2PB3MAEYUmgBsm8qCfHUD/luGjWSnn
- 1y963MhGKdIDVXBwN1DmjehCfEvUCZJcZl0Bhfm95sNHcGlPv8/lJgd
+ bh=A3l/6pPMz9YPRB99YIwhmspv/HD0g4ri54lK4DwOHLU=;
+ b=mI+JjYrIOIQon3oEqa2KKxHS1h91tm2h8L4t/n3aWLMMUysU1+sJoKRNNeogaWqhf2eGMWvyF
+ WkAqiNUeQllD2ej1Rpnh67Y1ngxyx7Mj3iNBos7ryRyQn7xec/6u1L2
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Ordinary allocations reach only common-memory zonelists. Compare policy
-and cpuset constraints against N_MEMORY_COMMON, so nodes outside it
-neither make an otherwise global policy appear constrained nor inflate
-the constrained capacity.
+hibernate_preallocate_memory(), enough_free_mem() and
+count_free_highmem_pages() count the free pages of every populated zone
+as room for the hibernation image, but the pages used to store the image
+can only come from common memory.
+
+Count free pages only in zones on N_MEMORY_COMMON nodes.
+
+The image metadata estimate is a separate sum.  The bitmaps track the
+page frames, and every zone's frames are tracked (regardless of node),
+so that sum still needs to be calculated for all populated zones.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/oom_kill.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ kernel/power/snapshot.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
-diff --git a/mm/oom_kill.c b/mm/oom_kill.c
-index 5d48bd862c27..1ec22bdad1fd 100644
---- a/mm/oom_kill.c
-+++ b/mm/oom_kill.c
-@@ -274,9 +274,9 @@ static enum oom_constraint constrained_alloc(struct oom_control *oc)
- 	 * get_page_from_freelist().
- 	 */
- 	if (oc->nodemask &&
--	    !nodes_subset(node_states[N_MEMORY], *oc->nodemask)) {
-+	    !nodes_subset(node_states[N_MEMORY_COMMON], *oc->nodemask)) {
- 		oc->totalpages = total_swap_pages;
--		for_each_node_mask(nid, *oc->nodemask)
-+		for_each_node_mask_state(nid, *oc->nodemask, N_MEMORY_COMMON)
- 			oc->totalpages += node_present_pages(nid);
- 		return CONSTRAINT_MEMORY_POLICY;
- 	}
-@@ -289,7 +289,8 @@ static enum oom_constraint constrained_alloc(struct oom_control *oc)
+diff --git a/kernel/power/snapshot.c b/kernel/power/snapshot.c
+index d5dba0e50b2e..912804bee361 100644
+--- a/kernel/power/snapshot.c
++++ b/kernel/power/snapshot.c
+@@ -1291,16 +1291,19 @@ static void mark_free_pages(struct zone *zone)
+ /**
+  * count_free_highmem_pages - Compute the total number of free highmem pages.
+  *
+- * The returned number is system-wide.
++ * Only common memory counts, since image pages come from common memory.
+  */
+ static unsigned int count_free_highmem_pages(void)
+ {
+ 	struct zone *zone;
+ 	unsigned int cnt = 0;
  
- 	if (cpuset_limited) {
- 		oc->totalpages = total_swap_pages;
--		for_each_node_mask(nid, cpuset_current_mems_allowed)
-+		for_each_node_mask_state(nid, cpuset_current_mems_allowed,
-+					 N_MEMORY_COMMON)
- 			oc->totalpages += node_present_pages(nid);
- 		return CONSTRAINT_CPUSET;
- 	}
+-	for_each_populated_zone(zone)
++	for_each_populated_zone(zone) {
++		if (!node_state(zone_to_nid(zone), N_MEMORY_COMMON))
++			continue;
+ 		if (is_highmem(zone))
+ 			cnt += zone_page_state(zone, NR_FREE_PAGES);
++	}
+ 
+ 	return cnt;
+ }
+@@ -1868,6 +1871,9 @@ int hibernate_preallocate_memory(void)
+ 	size = 0;
+ 	for_each_populated_zone(zone) {
+ 		size += snapshot_additional_pages(zone);
++		/* Image pages come from ordinary allocations. */
++		if (!node_state(zone_to_nid(zone), N_MEMORY_COMMON))
++			continue;
+ 		if (is_highmem(zone))
+ 			highmem += zone_page_state(zone, NR_FREE_PAGES);
+ 		else
+@@ -2011,9 +2017,12 @@ static int enough_free_mem(unsigned int nr_pages, unsigned int nr_highmem)
+ 	struct zone *zone;
+ 	unsigned int free = alloc_normal;
+ 
+-	for_each_populated_zone(zone)
++	for_each_populated_zone(zone) {
++		if (!node_state(zone_to_nid(zone), N_MEMORY_COMMON))
++			continue;
+ 		if (!is_highmem(zone))
+ 			free += zone_page_state(zone, NR_FREE_PAGES);
++	}
+ 
+ 	nr_pages += count_pages_for_highmem(nr_highmem);
+ 	pr_debug("Normal pages needed: %u + %u, available pages: %u\n",
 
 -- 
 2.56.1
