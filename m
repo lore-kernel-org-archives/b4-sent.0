@@ -1,11 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:02 -0500
-Subject: [PATCH 11/60] fork: check cached stack locality only on common
- memory nodes
+Date: Fri, 20 Nov 2026 13:09:03 -0500
+Subject: [PATCH 12/60] mm/vmscan: restrict reclaim to common memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-11-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-12-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,43 +61,103 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=1024;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=2825;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=FFFpqhBLc8gM/DlQGaqjHX/JHYwyjj4bi22co9/B61M=;
- b=rO3nC+tuGAUkZK+up/1r/p+QOF9uTflwwwI5VKLdkKL6Sn+VumAtsjX3b0agV4OanZqd598EQ
- 09gpdfrfuhCCZcNNEYTDTQ0+HvWE+lv0vLlhX9nLj+fGFDMFKeEbBl2
+ bh=FtLUhP0wFF5GfqO7k4obSm/pRyOe/gBL2Z3quyWtR6I=;
+ b=zwlm1U/LcEdr9egylwJhEu7nOZaUODHcksIlsiJlCATY4Fbl78/BXLfyNjSKWv3UDT+qsBfSZ
+ piPbYWcP1rrCCLgsKDDw4afKb7rTwG3CyQeRdlVm7Foh4LeK1/sZgiM
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-try_release_thread_stack_to_cache() caches a freed stack only if all of
-its pages are on the local node, unless the local node has no memory.
+Reclaim serves the ordinary allocation domain.
 
-A CPU on a node outside N_MEMORY_COMMON gets its stacks from other
-nodes, as a CPU on a memoryless node does, so the locality check would
-keep it from ever caching a stack.
+Restrict it to N_MEMORY_COMMON:
+  - start kswapd only on common nodes, at boot or hotplug.
+  - walk common nodes when MGLRU's debugfs interface iterates or
+    validates nodes, using first_node_state() and next_node_state() in
+    place of first_memory_node and next_memory_node.
 
-Skip the check when the local node has no common memory.
+Direct reclaim serves an allocation from its own zonelist, so it is left
+alone.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- kernel/fork.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ mm/memory_hotplug.c |  3 ++-
+ mm/vmscan.c         | 12 ++++++------
+ 2 files changed, 8 insertions(+), 7 deletions(-)
 
-diff --git a/kernel/fork.c b/kernel/fork.c
-index 5efceb8d58a7..28c58f2765f7 100644
---- a/kernel/fork.c
-+++ b/kernel/fork.c
-@@ -254,7 +254,7 @@ static bool try_release_thread_stack_to_cache(struct vm_struct *vm_area)
- 	 */
- 	scoped_guard(preempt) {
- 		nid = numa_node_id();
--		if (node_state(nid, N_MEMORY)) {
-+		if (node_state(nid, N_MEMORY_COMMON)) {
- 			for (i = 0; i < vm_area->nr_pages; i++) {
- 				struct page *page = vm_area->pages[i];
- 				if (page_to_nid(page) != nid)
+diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
+index 1d3d1792074c..a599fcad65d3 100644
+--- a/mm/memory_hotplug.c
++++ b/mm/memory_hotplug.c
+@@ -1222,7 +1222,8 @@ int online_pages(unsigned long pfn, unsigned long nr_pages,
+ 	/* reinitialise watermarks and update pcp limits */
+ 	init_per_zone_wmark_min();
+ 
+-	kswapd_run(nid);
++	if (node_state(nid, N_MEMORY_COMMON))
++		kswapd_run(nid);
+ 	kcompactd_run(nid);
+ 
+ 	if (node_arg.nid >= 0)
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index bc7579d47f9b..5b53e0391d80 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -5729,7 +5729,7 @@ static void *lru_gen_seq_start(struct seq_file *m, loff_t *pos)
+ 	do {
+ 		int nid;
+ 
+-		for_each_node_state(nid, N_MEMORY) {
++		for_each_node_state(nid, N_MEMORY_COMMON) {
+ 			if (!nr_to_skip--)
+ 				return mem_cgroup_lruvec(memcg, NODE_DATA(nid));
+ 		}
+@@ -5754,13 +5754,13 @@ static void *lru_gen_seq_next(struct seq_file *m, void *v, loff_t *pos)
+ 
+ 	++*pos;
+ 
+-	nid = next_memory_node(nid);
++	nid = next_node_state(nid, N_MEMORY_COMMON);
+ 	if (nid == MAX_NUMNODES) {
+ 		memcg = mem_cgroup_iter(NULL, memcg, NULL);
+ 		if (!memcg)
+ 			return NULL;
+ 
+-		nid = first_memory_node;
++		nid = first_node_state(N_MEMORY_COMMON);
+ 	}
+ 
+ 	return mem_cgroup_lruvec(memcg, NODE_DATA(nid));
+@@ -5832,7 +5832,7 @@ static int lru_gen_seq_show(struct seq_file *m, void *v)
+ 	DEFINE_MAX_SEQ(lruvec);
+ 	DEFINE_MIN_SEQ(lruvec);
+ 
+-	if (nid == first_memory_node) {
++	if (nid == first_node_state(N_MEMORY_COMMON)) {
+ 		const char *path = memcg ? m->private : "";
+ 
+ #ifdef CONFIG_MEMCG
+@@ -5935,7 +5935,7 @@ static int run_cmd(char cmd, u64 memcg_id, int nid, unsigned long seq,
+ 	int err = -EINVAL;
+ 	struct mem_cgroup *memcg = NULL;
+ 
+-	if (nid < 0 || nid >= MAX_NUMNODES || !node_state(nid, N_MEMORY))
++	if (nid < 0 || nid >= MAX_NUMNODES || !node_state(nid, N_MEMORY_COMMON))
+ 		return -EINVAL;
+ 
+ 	if (!mem_cgroup_disabled()) {
+@@ -7907,7 +7907,7 @@ static int __init kswapd_init(void)
+ {
+ 	int nid;
+ 
+-	for_each_node_state(nid, N_MEMORY)
++	for_each_node_state(nid, N_MEMORY_COMMON)
+  		kswapd_run(nid);
+ 	register_sysctl_init("vm", vmscan_sysctl_table);
+ 	return 0;
 
 -- 
 2.56.1
