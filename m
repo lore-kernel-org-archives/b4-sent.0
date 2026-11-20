@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:08:58 -0500
-Subject: [PATCH 07/60] mm/memory-tiers: restrict demotion topology to
+Date: Fri, 20 Nov 2026 13:08:59 -0500
+Subject: [PATCH 08/60] mm/migrate: reject move_pages() destinations outside
  common memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-7-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-8-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,121 +62,40 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=4041;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=835;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=Ext7MJ+xSeMP4IZ0P2+5bubjxg6YItpPPyY245ptKwA=;
- b=77z5saMzmlS7WuTHEiIf8+6SjbA1jSdRtgEyOkufSBTTbdVuWCTYUK70piMdHImpjzWCl8Jgv
- pKO7a4CGnM8BRAQ7IjzE1Ga6YyebvLho8JkT9M06RFxX2wvQHw+JNzl
+ bh=pP22b8YF19lh+xtqINC6tvfU3jfkWVAhKO3xXxkME4Q=;
+ b=zIyXXPWBVmQkXDlYvC5h4ZDvLmW7Fv9UoBLS9vJ/Pz9f2a+rQQr2z64NdVHxlPNBrL4P3HD5y
+ CL9ctZIadC8AcBeiIq1b1GZsIOfZ0Hg0mQWqGbUkGaNZffKMPxNdRDC
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Memory outside N_MEMORY_COMMON is outside the ordinary allocation pool
-and cannot be a generic demotion source or destination.
+move_pages(2) places user memory on a node the caller picks. As with
+memory policies, the destination should be general purpose memory.
 
-Build demotion paths and the default DRAM performance reference from
-N_MEMORY_COMMON rather than every node that has memory, and do not
-assign other nodes to a memory tier through the generic hotplug path.
-
-Removing a node's memory already resets its demotion targets, so a node
-that unplugs and returns outside N_MEMORY_COMMON keeps none.
+Reject a destination outside N_MEMORY_COMMON with -ENODEV, exactly
+the same as a node without memory is rejected today.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/memory-tiers.c | 23 ++++++++++++-----------
- 1 file changed, 12 insertions(+), 11 deletions(-)
+ mm/migrate.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mm/memory-tiers.c b/mm/memory-tiers.c
-index 7fc56a8c6651..97d5ecefd89f 100644
---- a/mm/memory-tiers.c
-+++ b/mm/memory-tiers.c
-@@ -370,7 +370,8 @@ int next_demotion_node(int node, const nodemask_t *allowed_mask)
- 	 * closest demotion target.
- 	 */
- 	nodes_complement(mask, *allowed_mask);
--	return find_next_best_node_in(node, &mask, &node_states[N_MEMORY]);
-+	return find_next_best_node_in(node, &mask,
-+				      &node_states[N_MEMORY_COMMON]);
- }
+diff --git a/mm/migrate.c b/mm/migrate.c
+index 65869b8acec5..208788b130fa 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -2411,7 +2411,7 @@ static int do_pages_move(struct mm_struct *mm, nodemask_t task_nodes,
+ 		err = -ENODEV;
+ 		if (node < 0 || node >= MAX_NUMNODES)
+ 			goto out_flush;
+-		if (!node_state(node, N_MEMORY))
++		if (!node_state(node, N_MEMORY_COMMON))
+ 			goto out_flush;
  
- static void disable_all_demotion_targets(void)
-@@ -405,7 +406,7 @@ static void dump_demotion_targets(void)
- {
- 	int node;
- 
--	for_each_node_state(node, N_MEMORY) {
-+	for_each_node_state(node, N_MEMORY_COMMON) {
- 		struct memory_tier *memtier = __node_get_memory_tier(node);
- 		nodemask_t preferred = node_demotion[node].preferred;
- 
-@@ -441,7 +442,7 @@ static void establish_demotion_targets(void)
- 
- 	disable_all_demotion_targets();
- 
--	for_each_node_state(node, N_MEMORY) {
-+	for_each_node_state(node, N_MEMORY_COMMON) {
- 		best_distance = -1;
- 		nd = &node_demotion[node];
- 
-@@ -459,7 +460,7 @@ static void establish_demotion_targets(void)
- 		 * nodelist to skip list so that we find the best node from the
- 		 * memtier nodelist.
- 		 */
--		nodes_andnot(tier_nodes, node_states[N_MEMORY], tier_nodes);
-+		nodes_andnot(tier_nodes, node_states[N_MEMORY_COMMON], tier_nodes);
- 
- 		/*
- 		 * Find all the nodes in the memory tier node list of same best distance.
-@@ -468,7 +469,7 @@ static void establish_demotion_targets(void)
- 		 */
- 		do {
- 			target = find_next_best_node_in(node, &tier_nodes,
--							&node_states[N_MEMORY]);
-+							&node_states[N_MEMORY_COMMON]);
- 			if (target == NUMA_NO_NODE)
- 				break;
- 
-@@ -507,7 +508,7 @@ static void establish_demotion_targets(void)
- 	 * allocation to a set of nodes that is closer the above selected
- 	 * preferred node.
- 	 */
--	lower_tier = node_states[N_MEMORY];
-+	lower_tier = node_states[N_MEMORY_COMMON];
- 	list_for_each_entry(memtier, &memory_tiers, list) {
- 		/*
- 		 * Keep removing current tier from lower_tier nodes,
-@@ -554,7 +555,7 @@ static struct memory_tier *set_node_memory_tier(int node)
- 
- 	lockdep_assert_held_once(&memory_tier_lock);
- 
--	if (!node_state(node, N_MEMORY))
-+	if (!node_state(node, N_MEMORY_COMMON))
- 		return ERR_PTR(-EINVAL);
- 
- 	mt_calc_adistance(node, &adist);
-@@ -706,8 +707,8 @@ static int __init memory_tier_late_init(void)
- 	get_online_mems();
- 	guard(mutex)(&memory_tier_lock);
- 
--	/* Assign each uninitialized N_MEMORY node to a memory tier. */
--	for_each_node_state(nid, N_MEMORY) {
-+	/* Assign each uninitialized common memory node to a memory tier. */
-+	for_each_node_state(nid, N_MEMORY_COMMON) {
- 		/*
- 		 * Some device drivers may have initialized
- 		 * memory tiers, potentially bringing memory nodes
-@@ -929,8 +930,8 @@ static int __init memory_tier_init(void)
- 	if (IS_ERR(default_dram_type))
- 		panic("%s() failed to allocate default DRAM tier\n", __func__);
- 
--	/* Record nodes with memory and CPU to set default DRAM performance. */
--	nodes_and(default_dram_nodes, node_states[N_MEMORY],
-+	/* Record common-memory nodes with CPUs for default DRAM performance. */
-+	nodes_and(default_dram_nodes, node_states[N_MEMORY_COMMON],
- 		  node_states[N_CPU]);
- 
- 	hotplug_node_notifier(memtier_hotplug_callback, MEMTIER_HOTPLUG_PRI);
+ 		err = -EACCES;
 
 -- 
 2.56.1
