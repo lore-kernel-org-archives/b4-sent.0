@@ -1,10 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:08:52 -0500
-Subject: [PATCH 01/60] nodemask: add node-state iterators
+Date: Fri, 20 Nov 2026 13:08:53 -0500
+Subject: [PATCH 02/60] mm: publish and clear node memory states via helpers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-1-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-2-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,70 +61,120 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=2119;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=3460;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=G4ssD0bod7vgjZxwR56nCucNo1kgkEnObUnor5Z23Ok=;
- b=RjAl7uvfEf4NqVkoeEx7BN6LIu7ylgrHkEUd9mkFu97o60NZ4EyCUrePrl7IYTdG0pVE3cvIL
- Tfn22wnQtSZAtJ0uk4weMboEXWaQLw3lMEAfCsBn1GD/x5mvmm8mTel
+ bh=bHuUN4m1rYdeHd2n9uTV5bvIEOwz0W65sMVI4gQRCFE=;
+ b=5PaC3uuW3KE0lNJmW+SARs1O0zlNg2YD6FwQIBFs9Daq6H1QsV7mc6KO2+wYEThTdvpSt7rTR
+ V6KaOerJChvCGaLx48xIa9FWmn4rD0/KaqOmHyfps7bojLi6JOB8mrX
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add first_node_state() and next_node_state(), so callers can walk any
-node state the way first_memory_node and next_memory_node walk N_MEMORY.
+N_MEMORY is set in free_area_init() and online_pages(), and cleared in
+offline_pages().
 
-Add for_each_node_mask_state(), which iterates a nodemask intersected
-with a node state using the bitmap intersection helpers, without a
-temporary nodemask.
+Centralize those updates in node_set/clear_memory_state(), so states
+that subdivide N_MEMORY can be published together with it.
+
+Behavior is unchanged.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- include/linux/nodemask.h | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+ mm/internal.h       |  3 +++
+ mm/memory_hotplug.c |  4 ++--
+ mm/mm_init.c        |  8 ++++----
+ mm/page_alloc.c     | 10 ++++++++++
+ 4 files changed, 19 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/nodemask.h b/include/linux/nodemask.h
-index 607373bd83ee..90bdcffa42ea 100644
---- a/include/linux/nodemask.h
-+++ b/include/linux/nodemask.h
-@@ -411,6 +411,11 @@ enum node_states {
+diff --git a/mm/internal.h b/mm/internal.h
+index de4593b3e3b6..c102e0f498bf 100644
+--- a/mm/internal.h
++++ b/mm/internal.h
+@@ -62,6 +62,9 @@ void lru_add_drain_cpu_zone(struct zone *zone);
+ void folio_deactivate(struct folio *folio);
+ void folio_mark_lazyfree(struct folio *folio);
  
- extern nodemask_t node_states[NR_NODE_STATES];
- 
-+/* Iterate the nodes in a mask that also belong to the specified state. */
-+#define for_each_node_mask_state(node, mask, state)			\
-+	for_each_and_bit(node, nodes_addr(mask),			\
-+			 nodes_addr(node_states[state]), MAX_NUMNODES)
++void node_set_memory_state(int nid);
++void node_clear_memory_state(int nid);
 +
- #if MAX_NUMNODES > 1
- static __always_inline int node_state(int node, enum node_states state)
+ /* mm/vmscan.c */
+ unsigned long zone_reclaimable_pages(struct zone *zone);
+ unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
+diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
+index e5024f934932..e5cb770e4b09 100644
+--- a/mm/memory_hotplug.c
++++ b/mm/memory_hotplug.c
+@@ -1197,7 +1197,7 @@ int online_pages(unsigned long pfn, unsigned long nr_pages,
+ 	adjust_present_page_count(pfn_to_page(pfn), group, nr_pages);
+ 
+ 	if (node_arg.nid >= 0)
+-		node_set_state(nid, N_MEMORY);
++		node_set_memory_state(nid);
+ 	/*
+ 	 * Check whether we are adding normal memory to the node for the first
+ 	 * time.
+@@ -2165,7 +2165,7 @@ int offline_pages(unsigned long start_pfn, unsigned long nr_pages,
+ 	 * list. Otherwise this node would still appear in the fallback lists.
+ 	 */
+ 	if (node_arg.nid >= 0)
+-		node_clear_state(node, N_MEMORY);
++		node_clear_memory_state(node);
+ 	if (!populated_zone(zone)) {
+ 		zone_pcp_reset(zone);
+ 		build_all_zonelists(NULL);
+diff --git a/mm/mm_init.c b/mm/mm_init.c
+index a9d848c92678..46fe9a274a7a 100644
+--- a/mm/mm_init.c
++++ b/mm/mm_init.c
+@@ -1763,11 +1763,13 @@ static void __init free_area_init_node(int nid)
+ 	lru_gen_init_pgdat(pgdat);
+ }
+ 
+-/* Any regular or high memory on that node? */
++/* Publish the memory states of a node that has present pages. */
+ static void __init check_for_memory(pg_data_t *pgdat)
  {
-@@ -435,6 +440,12 @@ static __always_inline int num_node_state(enum node_states state)
- #define for_each_node_state(__node, __state) \
- 	for_each_node_mask((__node), node_states[__state])
+ 	enum zone_type zone_type;
  
-+#define first_node_state(state)	first_node(node_states[state])
-+static __always_inline unsigned int next_node_state(int nid, enum node_states state)
++	node_set_memory_state(pgdat->node_id);
++
+ 	for (zone_type = 0; zone_type <= ZONE_MOVABLE - 1; zone_type++) {
+ 		struct zone *zone = &pgdat->node_zones[zone_type];
+ 		if (populated_zone(zone)) {
+@@ -1924,10 +1926,8 @@ static void __init free_area_init(void)
+ 		 *memory-less node. The pgdat will get fully initialized by
+ 		 *hotadd_init_pgdat() when memory is hotplugged into this node.
+ 		 */
+-		if (pgdat->node_present_pages) {
+-			node_set_state(nid, N_MEMORY);
++		if (pgdat->node_present_pages)
+ 			check_for_memory(pgdat);
+-		}
+ 	}
+ 
+ 	calc_nr_kernel_pages();
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index aa1ed599c7c6..88d507f93b1a 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -208,6 +208,16 @@ nodemask_t node_states[NR_NODE_STATES] __read_mostly = {
+ };
+ EXPORT_SYMBOL(node_states);
+ 
++void __meminit node_set_memory_state(int nid)
 +{
-+	return next_node(nid, node_states[state]);
++	node_set_state(nid, N_MEMORY);
 +}
 +
- #define first_online_node	first_node(node_states[N_ONLINE])
- #define first_memory_node	first_node(node_states[N_MEMORY])
- static __always_inline unsigned int next_online_node(int nid)
-@@ -481,6 +492,12 @@ static __always_inline int num_node_state(enum node_states state)
- #define for_each_node_state(node, __state) \
- 	for ( (node) = 0; (node) == 0; (node) = 1)
- 
-+#define first_node_state(state)	0
-+static __always_inline unsigned int next_node_state(int nid, enum node_states state)
++void __meminit node_clear_memory_state(int nid)
 +{
-+	return MAX_NUMNODES;
++	node_clear_state(nid, N_MEMORY);
 +}
 +
- #define first_online_node	0
- #define first_memory_node	0
- #define next_online_node(nid)	(MAX_NUMNODES)
+ gfp_t gfp_allowed_mask __read_mostly = GFP_BOOT_MASK;
+ 
+ #ifdef CONFIG_HUGETLB_PAGE_SIZE_VARIABLE
 
 -- 
 2.56.1
