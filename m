@@ -1,11 +1,11 @@
 From: Ivan Pfarher <ipfarher@gmail.com>
-Date: Fri, 20 Nov 2026 12:40:46 +0100
-Subject: [PATCH 2/4] arm64: dts: allwinner: h5: orangepi-zero-plus2: Add
- AP6212 Bluetooth
+Date: Fri, 20 Nov 2026 12:40:47 +0100
+Subject: [PATCH 3/4] arm64: dts: allwinner: h5: orangepi-zero-plus2: Fix
+ USB peripheral mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-orangepi-zero-plus2-fixes-v1-2-ecd792189f27@gmail.com>
+Message-Id: <20261120-orangepi-zero-plus2-fixes-v1-3-ecd792189f27@gmail.com>
 References: <20261120-orangepi-zero-plus2-fixes-v1-0-ecd792189f27@gmail.com>
 In-Reply-To: <20261120-orangepi-zero-plus2-fixes-v1-0-ecd792189f27@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -15,68 +15,74 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-sunxi@lists.linux.dev, Ivan Pfarher <ipfarher@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795174845; l=2073;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795174845; l=2079;
  i=ipfarher@gmail.com; s=20261120; h=from:subject:message-id;
- bh=N+gCZKSFdjvJNosqW8VyXfcloLRjV1OkNZSQDadOkiI=;
- b=tPfPEbATNv3mq+JDkKPCdtxG1k6VqvAhezObKAw6Yhbn9XisANtaKSEEGKFjIVb+0f4xtEo0b
- W/VY2mu9j1PDB5pZlH6mVg2X4CnPeiiXqlDLPeTr2H3lhmcb/StPSvF
+ bh=xNp8GjP59av7t0jD0DKAR+qLGNBv0iVBKlMlHOJX/bQ=;
+ b=LYdIeAg0Z6D9hFAlocH2PSZCyaBHHy6WLerO7QNpZyL8gPTX5MGhRlVA/p/PhMwtgBawPihCa
+ rdmDDcSs/jAA4Ylcsg0pIyPD2nV8r7aCpwj4HNwPn8qfRJX8icDs9kq
 X-Developer-Key: i=ipfarher@gmail.com; a=ed25519;
  pk=3DMYyz/xl+KRAx2TNGJpheG+5QUm7lqHhKXFqVu2TmY=
 X-Endpoint-Received: by B4 Relay for ipfarher@gmail.com/20261120 with auth_id=1582
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-UART1 is connected to the Bluetooth part of the AP6212 module, but the
-controller itself is not described, so nothing powers it up and the
-kernel never registers it.
+The micro USB port is set to dr_mode = "peripheral" because it cannot
+supply VBUS, but EHCI0/OHCI0, which share USB PHY 0 with the MUSB
+controller, are enabled too.
 
-Add it as a serdev child of UART1. BT_REG_ON is connected to PA10:
-on the board, driving PA10 low makes the controller drop CTS and stop
-answering, driving it high brings it back. It uses the same RTC LPO
-clock as the WiFi part. The wake-up lines are not described because
-they could not be identified.
+When they register, usb_add_hcd() asks the shared PHY for host mode
+(since commit e671765e521c ("usb: core: Try generic PHY_MODE_USB_HOST
+if usb_phy_roothub_set_mode fails")), and phy-sun4i-usb switches PHY 0
+to host ("Changing dr_mode to 1"). MUSB then stays in a_wait_vrise, the
+UDC stays "not attached", and a gadget never shows up on the host.
+
+The port cannot work as a host on this board anyway, so drop EHCI0 and
+OHCI0.
 
 Tested on an Orange Pi Zero Plus2 (H5) running Linux 6.6.160 with this
-change applied: hci_bcm powers the controller, loads
-brcm/BCM43430A1.hcd, switches the UART to 1.5 Mbaud and the adapter
-works with BlueZ (scan finds nearby devices):
+change applied: g_cdc enumerates on the PC (CDC ECM + ACM), the UDC
+state is "configured" and MUSB is in b_peripheral. Build-tested only
+against current mainline.
 
-  Bluetooth: hci0: BCM43430A1 'brcm/BCM43430A1.hcd' Patch
-  Bluetooth: hci0: BCM43438A1 26MHz AP6212A1_CL1 BT4.0 OTP-BD-0034
-
-Build-tested only against current mainline.
+The H3 version of the board (sun8i-h3-orangepi-zero-plus2.dts) has the
+same setup from the same commit but is not changed here, as it could
+not be tested.
 
 This problem was investigated, and the patch drafted, in an interactive
 session with an AI coding assistant (Claude by Anthropic). The submitter
 reviewed the change and ran the tests described above.
 
+Fixes: 43aad09c7928 ("ARM: dts: orange-pi-zero-plus2: enable USB OTG port")
 Signed-off-by: Ivan Pfarher <ipfarher@gmail.com>
 ---
- .../boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts      | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts | 8 --------
+ 1 file changed, 8 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts b/arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts
-index 34d6c1468..5697251b9 100644
+index 5697251b9..892723b46 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h5-orangepi-zero-plus2.dts
-@@ -128,7 +128,18 @@
- &uart1 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&uart1_pins>, <&uart1_rts_cts_pins>;
-+	uart-has-rtscts;
+@@ -66,10 +66,6 @@
  	status = "okay";
-+
-+	bluetooth {
-+		compatible = "brcm,bcm43438-bt";
-+		max-speed = <1500000>;
-+		clocks = <&rtc CLK_OSC32K_FANOUT>;
-+		clock-names = "lpo";
-+		vbat-supply = <&reg_vcc3v3>;
-+		vddio-supply = <&reg_vcc3v3>;
-+		shutdown-gpios = <&pio 0 10 GPIO_ACTIVE_HIGH>; /* PA10 */
-+	};
  };
  
- &usb_otg {
+-&ehci0 {
+-	status = "okay";
+-};
+-
+ &hdmi {
+ 	status = "okay";
+ };
+@@ -115,10 +111,6 @@
+ 	status = "okay";
+ };
+ 
+-&ohci0 {
+-	status = "okay";
+-};
+-
+ &uart0 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&uart0_pa_pins>;
 
 -- 
 2.43.0
