@@ -1,11 +1,11 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Fri, 20 Nov 2026 19:15:45 +0100
-Subject: [PATCH v2 06/11] pmdomain: amlogic: meson-ee-pwrc: power up
- memories for boot-enabled domains
+Date: Fri, 20 Nov 2026 19:15:46 +0100
+Subject: [PATCH v2 07/11] drm/meson: dw-hdmi: Drop manual HHI clock and
+ memory PD setup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-meson-drm-create-hdmitx-phy-v2-6-93d622d9bb07@aliel.fr>
+Message-Id: <20261120-meson-drm-create-hdmitx-phy-v2-7-93d622d9bb07@aliel.fr>
 References: <20261120-meson-drm-create-hdmitx-phy-v2-0-93d622d9bb07@aliel.fr>
 In-Reply-To: <20261120-meson-drm-create-hdmitx-phy-v2-0-93d622d9bb07@aliel.fr>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -23,69 +23,133 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-phy@lists.infradead.org, dri-devel@lists.freedesktop.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>, linux-pm@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2119;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4251;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=7xG4MIxwS+Zi1PRSbSHzfUQgbqHckZHtTi4D+NymJ5Y=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQzZDX174l/q2lartNv9n/V9WcUvk4i67Nx9sA3fcYKu4s
- SJX+NrRjlIWBjEuBlkxRZb+uZYn3l0+eubrHvUUmDmsTCBDGLg4BWAiE2czMpzbfsp/s53NovDi
- 9niW2Z6bFwUu3y54Yem/6GyvQ195PYwYGSYsYjkhWqoYNFM0xV4n4veut+9YXHbWzfwyOedLwp+
- tfEwA
+ bh=Va7r71zAoY5+1f1lapvKRBrSntc7NXGNh523dnCyfas=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQzZDX4GZjNy7xIJ/H7Xe3WBc8u2oglNt/veMTOfiemZ/r
+ Q+bnOZ0lLIwiHExyIopsvTPtTzx7vLRM1/3qKfAzGFlAhnCwMUpABNJ6GX477i2lk/sTIjI0ZxF
+ 4iXO8a8mXHe/vNNiU9cTlqomseNMnYwMkzUfeofIZiXGz+cNVDjwgW2db19U1t9PMX6unqnTDXa
+ zAgA=
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a power domain is found already powered on at probe time (typically
-the VPU domain left enabled by the bootloader), the driver registers the
-genpd in the ON state with GENPD_FLAG_ALWAYS_ON and never calls
-meson_ee_pwrc_on(). As a result, the memory power-down bits of the domain
-are not touched.
+meson_dw_hdmi_init() programs two HHI registers by hand: the HDMI clock
+mux/divider/gate (HHI_HDMI_CLK_CNTL) and the HDMITX memory power-down
+bits (HHI_MEM_PD_REG0). Both are already covered by resources described
+in the DT:
 
-pwrc_ee_is_powered_off() only checks the top-level sleep bit, so a
-bootloader that enabled the VPU without waking every memory block
-leaves those memories powered down, and nothing in the genpd framework
-will wake them since pm_runtime_resume_and_get() is a no-op for an
-always-on domain.
+ - the HDMI clock is selected and rated through assigned-clocks
+   (CLKID_HDMI_SEL parented to xtal, CLKID_HDMI at 24 MHz), and gated
+   through the "isfr" clock, which the driver already enables at bind
+   time;
+ - the memory power-down bits are handled by the VPU power domain
+   referenced by "power-domains".
 
-This is a preparatory change: a following patch drops the explicit
-HHI_MEM_PD_REG0 write from the meson_dw_hdmi driver, which relies on the
-power domain to power the HDMITX memory.
+Remove the open-coded register writes. Take an explicit runtime PM
+reference in probe and release it on removal, so that the domain is
+guaranteed to be on for the lifetime of the device.
+
+The driver now relies on runtime PM to power the HDMITX memory, so make
+it depend on PM.
+
+Those properties are optional in the binding and were only added to the
+in-tree DTs in v6.11, so DTs without them would no longer get the
+registers programmed by the kernel. This is not a concern in practice:
+
+ - the DT used by the kernel often comes from U-Boot, which used a DT
+   based on Linux v6.2 before v2024.07 and has used the DT synchronized
+   with Linux since then, matching the v6.11 DT with the clock changes;
+ - U-Boot already sets HHI_HDMI_CLK_CNTL and HHI_MEM_PD_REG0 when
+   probing dw_hdmi, since v2019.04, so both registers are already in the
+   expected state when Linux boots, even with an older U-Boot and DT.
+
+The risk of regression is therefore very low.
 
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- drivers/pmdomain/amlogic/meson-ee-pwrc.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/gpu/drm/meson/Kconfig         |  1 +
+ drivers/gpu/drm/meson/meson_dw_hdmi.c | 31 ++++++++++++++++++++++---------
+ 2 files changed, 23 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/pmdomain/amlogic/meson-ee-pwrc.c b/drivers/pmdomain/amlogic/meson-ee-pwrc.c
-index 338f70d77bf0..404af4619256 100644
---- a/drivers/pmdomain/amlogic/meson-ee-pwrc.c
-+++ b/drivers/pmdomain/amlogic/meson-ee-pwrc.c
-@@ -428,6 +428,16 @@ static int meson_ee_pwrc_on(struct generic_pm_domain *domain)
- 				       pwrc_domain->clks);
+diff --git a/drivers/gpu/drm/meson/Kconfig b/drivers/gpu/drm/meson/Kconfig
+index 417f79829cf8..6645665f6038 100644
+--- a/drivers/gpu/drm/meson/Kconfig
++++ b/drivers/gpu/drm/meson/Kconfig
+@@ -17,6 +17,7 @@ config DRM_MESON
+ config DRM_MESON_DW_HDMI
+ 	tristate "HDMI Synopsys Controller support for Amlogic Meson Display"
+ 	depends on DRM_MESON
++	depends on PM
+ 	default y if DRM_MESON
+ 	select DRM_DW_HDMI
+ 	imply DRM_DW_HDMI_I2S_AUDIO
+diff --git a/drivers/gpu/drm/meson/meson_dw_hdmi.c b/drivers/gpu/drm/meson/meson_dw_hdmi.c
+index eb33c70f29c3..20a821936b3a 100644
+--- a/drivers/gpu/drm/meson/meson_dw_hdmi.c
++++ b/drivers/gpu/drm/meson/meson_dw_hdmi.c
+@@ -12,6 +12,7 @@
+ #include <linux/of.h>
+ #include <linux/of_graph.h>
+ #include <linux/platform_device.h>
++#include <linux/pm_runtime.h>
+ #include <linux/regulator/consumer.h>
+ #include <linux/reset.h>
+ 
+@@ -102,8 +103,6 @@
+ #define HDMITX_DWC_CTRL_REG	0x18
+ 
+ /* HHI Registers */
+-#define HHI_MEM_PD_REG0		0x100 /* 0x40 */
+-#define HHI_HDMI_CLK_CNTL	0x1cc /* 0x73 */
+ #define HHI_HDMI_PHY_CNTL0	0x3a0 /* 0xe8 */
+ #define HHI_HDMI_PHY_CNTL1	0x3a4 /* 0xe9 */
+ #define  PHY_CNTL1_INIT		0x03900000
+@@ -599,12 +598,6 @@ static void meson_dw_hdmi_init(struct meson_dw_hdmi *meson_dw_hdmi)
+ {
+ 	struct meson_drm *priv = meson_dw_hdmi->priv;
+ 
+-	/* Enable clocks */
+-	regmap_update_bits(priv->hhi, HHI_HDMI_CLK_CNTL, 0xffff, 0x100);
+-
+-	/* Bring HDMITX MEM output of power down */
+-	regmap_update_bits(priv->hhi, HHI_MEM_PD_REG0, 0xff << 8, 0);
+-
+ 	/* Reset HDMITX APB & TX & PHY */
+ 	reset_control_reset(meson_dw_hdmi->hdmitx_apb);
+ 	reset_control_reset(meson_dw_hdmi->hdmitx_ctrl);
+@@ -829,9 +822,29 @@ static int __maybe_unused meson_dw_hdmi_pm_resume(struct device *dev)
+ 	return 0;
  }
  
-+static void meson_ee_pwrc_mem_power_up(struct meson_ee_pwrc_domain *dom)
++static void meson_dw_hdmi_pm_put(void *dev)
 +{
-+	int i;
-+
-+	for (i = 0; i < dom->desc.mem_pd_count; i++)
-+		regmap_update_bits(dom->pwrc->regmap_hhi,
-+				   dom->desc.mem_pd[i].reg,
-+				   dom->desc.mem_pd[i].mask, 0);
++	pm_runtime_put_sync(dev);
 +}
 +
- static int meson_ee_pwrc_init_domain(struct platform_device *pdev,
- 				     struct meson_ee_pwrc *pwrc,
- 				     struct meson_ee_pwrc_domain *dom)
-@@ -478,6 +488,8 @@ static int meson_ee_pwrc_init_domain(struct platform_device *pdev,
-          * prepare/enable counters won't be in sync.
-          */
- 	if (dom->num_clks && dom->desc.is_powered_off && !dom->desc.is_powered_off(dom)) {
-+		meson_ee_pwrc_mem_power_up(dom);
+ static int meson_dw_hdmi_probe(struct platform_device *pdev)
+ {
+-	return component_add(&pdev->dev, &meson_dw_hdmi_ops);
++	struct device *dev = &pdev->dev;
++	int ret;
 +
- 		ret = clk_bulk_prepare_enable(dom->num_clks, dom->clks);
- 		if (ret)
- 			return ret;
++	ret = devm_pm_runtime_enable(dev);
++	if (ret)
++		return ret;
++
++	ret = pm_runtime_resume_and_get(dev);
++	if (ret)
++		return dev_err_probe(dev, ret, "Failed to power on HDMI TX\n");
++
++	ret = devm_add_action_or_reset(dev, meson_dw_hdmi_pm_put, dev);
++	if (ret)
++		return ret;
++
++	return component_add(dev, &meson_dw_hdmi_ops);
+ }
+ 
+ static void meson_dw_hdmi_remove(struct platform_device *pdev)
 
 -- 
 2.56.1
