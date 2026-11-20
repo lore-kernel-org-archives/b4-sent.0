@@ -1,315 +1,103 @@
-From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
-Date: Fri, 20 Nov 2026 14:06:48 +0530
-Subject: [PATCH v14 2/2] clk: qcom: Add LPASS VA CSR heartbeat pulse clock
+From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Subject: [PATCH sched_ext/for-7.5 0/2] sched_ext: idle: Don't stack a sync
+ wakee behind a higher-class task
+Date: Fri, 20 Nov 2026 16:44:21 +0800
+Message-Id: <20261120-scx-fix75-v1-0-254f782ff9b0@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-master-v14-2-112cfd63438d@oss.qualcomm.com>
-References: <20261120-master-v14-0-112cfd63438d@oss.qualcomm.com>
-In-Reply-To: <20261120-master-v14-0-112cfd63438d@oss.qualcomm.com>
-To: andersson@kernel.org, abelvesa@kernel.org, sboyd@kernel.org, 
- bmasney+clk@redhat.com, jbrunet+clk@baylibre.com, robh@kernel.org, 
- krzk+dt@kernel.org, conor+dt@kernel.org, 
- srinivas.kandagatla@oss.qualcomm.com, sarath.ganapathiraju@oss.qualcomm.com
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- prasad.kumpatla@oss.qualcomm.com
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795163807; l=8593;
- i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
- h=from:subject:message-id; bh=hWUOqIp70+7tbNk8ZoL2B0Bd4sifWZKINu8/13oNjNs=;
- b=g+yb0z4UB/m93hO62vPurmi8jJk1w1f9HJQ7gVxlqs1JumFVzKi1A8eLPOtc+Ef6nmsYdjT1I
- r4zI0xUIJFPBVwmx1jQ0MPBrWn7dMDxwjvAbLXQlGz8Cx+ICb+nZ+xy
-X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
- pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
-X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MwQqDMBAFf0X27LYmxVj8FSkSk2fdi5aslID47
+ waPwwxzkCIJlPrqoIS/qGxrAVNXFBa/fsESC5NtrDPGNqwh8yy5a9m/nXfxZRAwUel/CUXcr4E
+ 0LIgj8v6ct8Tdo6XPeV6lfDYwbgAAAA==
+X-Change-ID: 20261120-scx-fix75-a86a6d31eceb
+To: Tejun Heo <tj@kernel.org>, David Vernet <void@manifault.com>, 
+ Andrea Righi <arighi@nvidia.com>, Changwoo Min <changwoo@igalia.com>, 
+ Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
+ Juri Lelli <juri.lelli@redhat.com>, 
+ Vincent Guittot <vincent.guittot@linaro.org>, 
+ Dietmar Eggemann <dietmar.eggemann@arm.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
+ Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
+ K Prateek Nayak <kprateek.nayak@amd.com>, Shuah Khan <shuah@kernel.org>
+Cc: Kuba Piecuch <jpiecuch@google.com>, 
+ Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>, 
+ Hui Su <sh_def@163.com>, sched-ext@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, 
+ Hang Zhengyang <hang.zhengyang1010@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795164273; l=3044;
+ i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
+ bh=+c5iTcPGpkwPWTC0M/a6nppfpfe0VFKGA2gyib/nlzg=;
+ b=KW5iaCyxdPLwsuWYUfdcxn+/B/rhaa9ybvCDWxHbFnLzoMGK/ua2uAo1eyZbM26DtaqeMjoNT
+ /RSr1OFRAP7C/J88aluS8E8yimXJKoTVA1UpY4PE5aTqlrBvdSYk7EW
+X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
+ pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
+X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HeartBeat Pulse, also known as RateGen Pulse, synchronizes the
-start of DMAs and Codec Interfaces for the audio usecases and can
-serve as a periodic wakeup source for the DSP.
+In sched_ext, the default idle CPU selection can put a sync wakee on
+the waker's CPU, even when the waker is an RT or DL task that keeps
+running. The wakee then waits there, sometimes for more than a second,
+while other CPUs are idle. Patch 1 stops this for higher-class wakers.
+Patch 2 adds a selftest that fails without patch 1.
 
-Add the LPASS VA CSR driver that models the rate generator as a clock
-provider so consumers can enable and disable it through the common
-clock framework.
+Tested on sched_ext/for-7.5 (c6cc52a72055) in an 8 vCPU KVM guest,
+non-debug kernel, booting each kernel twice:
 
-Attach the DT vote clocks to runtime PM and program the rate generator
-counter and delay registers from runtime resume after the votes are
-enabled. This restores the state if the LPASS register context is lost
-across runtime suspend.
+                               before               after
+  RT waker, pipe               16/16 on CPU 0,      idle CPU,
+                               169 ms - 1.5 s       <= 0.6 ms
+  same, ALWAYS_ENQ_IMMED       16/16 late by        <= 0.6 ms
+                               16-483 ms
+  partial, fair waker          16/16 on CPU 0,      <= 0.6 ms
+                               half ~930 ms late
+  sync_wake_rt, 8/3/2 vCPUs    fails                passes
+  other sched_ext selftests    no change            no change
 
-Rely on the clock core provider runtime PM handling around clock
-prepare and unprepare to keep the votes active for regmap gate
-accesses. Use the same runtime suspend and resume callbacks for
-system sleep so the vote clocks are enabled before restoring the
-rate generator after suspend. Track the heartbeat gate state in the
-clock callbacks and restore LPASS_RATE_GEN_CTRL on resume when the
-clock was enabled before the LPASS register context was lost.
+With KASAN and lockdep on v7.4-rc2, sync_wake_rt fails without the fix
+and passes with it, with no warnings. If other tasks keep all CPUs
+busy, the test passes on both kernels, because the shortcut is only
+used when some CPU is idle. On bare metal I could only run an
+unpatched distro v7.0 kernel, because of Secure Boot. It has the same
+problem: the reader waited 168 ms or more.
 
-Reviewed-by: Prasad Kumpatla <prasad.kumpatla@oss.qualcomm.com>
-Tested-by: Prasad Kumpatla <prasad.kumpatla@oss.qualcomm.com>
-Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+The cost: after a sync wakeup from a higher-class task, the wakee no
+longer runs on the waker's CPU. WF_SYNC doesn't promise this anyway.
+In a pipe ping-pong between an RT task and an EXT task, a round trip
+now takes ~9.8 us instead of ~6.5 us, because the EXT task stays on
+its own CPU. CFS also takes ~10 us here. The difference can be bigger
+on large non-SMT machines [1]. That series detects pairs of tasks that
+wake each other. If fair adopts it, we could keep the shortcut for
+such pairs.
+
+There is no Fixes tag. The shortcut has been there since sched_ext was
+added, and this patch changes where a task runs, not whether the
+kernel works correctly.
+
+Hui Su's patch "sched_ext: idle: Honor SCX_PICK_IDLE_CORE in CPU
+selection shortcuts" changes the line just before this code. Whichever
+patch is applied second will need a small rebase.
+
+I used Claude Code to find the issue, write the patches and run the
+tests. I reproduced the issue on bare metal and reviewed the patches.
+
+[1] https://lore.kernel.org/all/20261021-b4-sched-sync-wakeup-v7-1-91995ba5b596@gentwo.org/
+
 ---
- drivers/clk/qcom/Kconfig        |  15 +++
- drivers/clk/qcom/Makefile       |   1 +
- drivers/clk/qcom/lpass-va-csr.c | 210 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 226 insertions(+)
+Hang Zhengyang (2):
+      sched_ext: idle: Don't stack a sync wakee behind a higher-class task
+      selftests/sched_ext: Test sync wakeups from an RT task
 
-diff --git a/drivers/clk/qcom/Kconfig b/drivers/clk/qcom/Kconfig
-index e6c58e8b1849..f4f4b48e1e5d 100644
---- a/drivers/clk/qcom/Kconfig
-+++ b/drivers/clk/qcom/Kconfig
-@@ -2159,6 +2159,21 @@ config CLK_GFM_LPASS_SM8250
- 	  Support for the Glitch Free Mux (GFM) Low power audio
-           subsystem (LPASS) clocks found on SM8250 SoCs.
- 
-+config QCOM_CLK_LPASS_HEARTBEAT_PULSE
-+	tristate "Qualcomm LPASS VA CSR heartbeat pulse clock provider"
-+	depends on COMMON_CLK
-+	depends on ARM64 || COMPILE_TEST
-+	depends on PM_CLK
-+	select REGMAP_MMIO
-+	default m if ARCH_QCOM
-+	help
-+	  Qualcomm LPASS VA CSR block contains the rate generator hardware
-+	  that produces the HeartBeat Pulse (also known as RateGen Pulse).
-+	  This driver models the rate generator as a clock provider so
-+	  that consumers can enable or disable it via the common clock
-+	  framework, and it can be used to synchronize the start of DMAs
-+	  and Codec Interfaces or as a periodic wakeup source for the DSP.
-+
- config SM_VIDEOCC_8450
- 	tristate "SM8450 Video Clock Controller"
- 	depends on ARM64 || COMPILE_TEST
-diff --git a/drivers/clk/qcom/Makefile b/drivers/clk/qcom/Makefile
-index f84d7343a3a4..89cdc43a6b03 100644
---- a/drivers/clk/qcom/Makefile
-+++ b/drivers/clk/qcom/Makefile
-@@ -112,6 +112,7 @@ obj-$(CONFIG_QCOM_A7PLL) += a7-pll.o
- obj-$(CONFIG_QCOM_CLK_APCS_MSM8916) += apcs-msm8916.o
- obj-$(CONFIG_QCOM_CLK_APCC_MSM8996) += apcs-msm8996.o clk-cpu-8996.o clk-cbf-8996.o
- obj-$(CONFIG_QCOM_CLK_APCS_SDX55) += apcs-sdx55.o
-+obj-$(CONFIG_QCOM_CLK_LPASS_HEARTBEAT_PULSE) += lpass-va-csr.o
- obj-$(CONFIG_QCOM_CLK_RPM) += clk-rpm.o
- obj-$(CONFIG_QCOM_CLK_RPMH) += clk-rpmh.o
- obj-$(CONFIG_QCOM_CLK_SMD_RPM) += clk-smd-rpm.o
-diff --git a/drivers/clk/qcom/lpass-va-csr.c b/drivers/clk/qcom/lpass-va-csr.c
-new file mode 100644
-index 000000000000..b4257e8d74e4
---- /dev/null
-+++ b/drivers/clk/qcom/lpass-va-csr.c
-@@ -0,0 +1,210 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-+ */
-+
-+#include <linux/clk-provider.h>
-+#include <linux/device.h>
-+#include <linux/module.h>
-+#include <linux/of_clk.h>
-+#include <linux/pm_clock.h>
-+#include <linux/platform_device.h>
-+#include <linux/pm_runtime.h>
-+#include <linux/regmap.h>
-+
-+#include "clk-regmap.h"
-+
-+#define LPASS_RATE_GEN_CTRL		0xd000
-+#define LPASS_RATE_GEN_COUNTER_0	0xd004
-+#define LPASS_RATE_GEN_DELAY		0xd010
-+
-+#define LPASS_RATE_GEN_MAX_REG		LPASS_RATE_GEN_DELAY
-+
-+#define LPASS_RG_CTRL_EN		BIT(0)
-+
-+struct lpass_va_csr_data {
-+	u32 counter_0;
-+	u32 delay;
-+};
-+
-+static const struct lpass_va_csr_data hawi_csr_data = {
-+	.counter_0 = 0x960,
-+	.delay = 0x16,
-+};
-+
-+static const struct regmap_config lpass_rate_gen_regmap_config = {
-+	.name = "lpass_rate_gen",
-+	.reg_bits = 32,
-+	.val_bits = 32,
-+	.reg_stride = 4,
-+	.max_register = LPASS_RATE_GEN_MAX_REG,
-+};
-+
-+struct lpass_va_csr {
-+	const struct lpass_va_csr_data *data;
-+	struct clk_regmap hb;
-+	bool hb_enabled;
-+};
-+
-+static int lpass_va_csr_hb_enable(struct clk_hw *hw)
-+{
-+	struct lpass_va_csr *csr = container_of(to_clk_regmap(hw),
-+					       struct lpass_va_csr, hb);
-+	int ret;
-+
-+	ret = clk_enable_regmap(hw);
-+	if (ret)
-+		return ret;
-+
-+	csr->hb_enabled = true;
-+
-+	return 0;
-+}
-+
-+static void lpass_va_csr_hb_disable(struct clk_hw *hw)
-+{
-+	struct lpass_va_csr *csr = container_of(to_clk_regmap(hw),
-+					       struct lpass_va_csr, hb);
-+
-+	clk_disable_regmap(hw);
-+	csr->hb_enabled = false;
-+}
-+
-+static const struct clk_ops lpass_va_csr_hb_ops = {
-+	.enable = lpass_va_csr_hb_enable,
-+	.disable = lpass_va_csr_hb_disable,
-+	.is_enabled = clk_is_enabled_regmap,
-+};
-+
-+static int lpass_va_csr_runtime_resume(struct device *dev)
-+{
-+	struct lpass_va_csr *csr = dev_get_drvdata(dev);
-+	const struct lpass_va_csr_data *data = csr->data;
-+	int ret;
-+
-+	ret = pm_clk_resume(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_write(csr->hb.regmap, LPASS_RATE_GEN_COUNTER_0,
-+			   data->counter_0);
-+	if (ret)
-+		goto err_pm_clk_suspend;
-+
-+	ret = regmap_write(csr->hb.regmap, LPASS_RATE_GEN_DELAY, data->delay);
-+	if (ret)
-+		goto err_pm_clk_suspend;
-+
-+	if (csr->hb_enabled) {
-+		ret = regmap_update_bits(csr->hb.regmap, LPASS_RATE_GEN_CTRL,
-+					 LPASS_RG_CTRL_EN, LPASS_RG_CTRL_EN);
-+		if (ret)
-+			goto err_pm_clk_suspend;
-+	}
-+
-+	return 0;
-+
-+err_pm_clk_suspend:
-+	pm_clk_suspend(dev);
-+	return ret;
-+}
-+
-+static int lpass_va_csr_runtime_suspend(struct device *dev)
-+{
-+	return pm_clk_suspend(dev);
-+}
-+
-+static int lpass_va_csr_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	const struct lpass_va_csr_data *data = of_device_get_match_data(dev);
-+	struct lpass_va_csr *csr;
-+	struct clk_init_data init = {
-+		.name = "lpass_heartbeat_pulse",
-+		.ops = &lpass_va_csr_hb_ops,
-+	};
-+	struct regmap *regmap;
-+	void __iomem *base;
-+	int ret;
-+
-+	csr = devm_kzalloc(dev, sizeof(*csr), GFP_KERNEL);
-+	if (!csr)
-+		return -ENOMEM;
-+
-+	if (!data)
-+		return dev_err_probe(dev, -EINVAL, "missing match data\n");
-+
-+	base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(base))
-+		return PTR_ERR(base);
-+
-+	regmap = devm_regmap_init_mmio(dev, base,
-+				       &lpass_rate_gen_regmap_config);
-+	if (IS_ERR(regmap))
-+		return dev_err_probe(dev, PTR_ERR(regmap),
-+				     "failed to init regmap\n");
-+
-+	csr->data = data;
-+	csr->hb.regmap = regmap;
-+	csr->hb.enable_reg = LPASS_RATE_GEN_CTRL;
-+	csr->hb.enable_mask = LPASS_RG_CTRL_EN;
-+	csr->hb.hw.init = &init;
-+
-+	platform_set_drvdata(pdev, csr);
-+
-+	ret = devm_pm_clk_create(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = of_pm_clk_add_clks(dev);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "failed to get vote clocks\n");
-+
-+	ret = devm_pm_runtime_enable(dev);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to enable PM runtime\n");
-+
-+	ret = pm_runtime_resume_and_get(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = devm_clk_register_regmap(dev, &csr->hb);
-+	if (ret) {
-+		pm_runtime_put_sync(dev);
-+		return ret;
-+	}
-+
-+	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, &csr->hb.hw);
-+	if (ret) {
-+		pm_runtime_put_sync(dev);
-+		return ret;
-+	}
-+
-+	pm_runtime_put_sync(dev);
-+
-+	return 0;
-+}
-+
-+static const struct of_device_id lpass_va_csr_dt_match[] = {
-+	{ .compatible = "qcom,hawi-lpass-va-csr", .data = &hawi_csr_data },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, lpass_va_csr_dt_match);
-+
-+static DEFINE_RUNTIME_DEV_PM_OPS(lpass_va_csr_pm_ops,
-+				 lpass_va_csr_runtime_suspend,
-+				 lpass_va_csr_runtime_resume, NULL);
-+
-+static struct platform_driver lpass_va_csr_driver = {
-+	.driver = {
-+		.name = "qcom-lpass-va-csr",
-+		.of_match_table = lpass_va_csr_dt_match,
-+		.pm = pm_ptr(&lpass_va_csr_pm_ops),
-+	},
-+	.probe = lpass_va_csr_probe,
-+};
-+
-+module_platform_driver(lpass_va_csr_driver);
-+
-+MODULE_DESCRIPTION("Qualcomm LPASS VA CSR heartbeat pulse clock provider");
-+MODULE_LICENSE("GPL");
+ kernel/sched/ext/idle.c                          |  11 +
+ tools/testing/selftests/sched_ext/Makefile       |   1 +
+ tools/testing/selftests/sched_ext/sync_wake_rt.c | 257 +++++++++++++++++++++++
+ 3 files changed, 269 insertions(+)
+---
+base-commit: c6cc52a72055ef9775b39937d02e39ca358ba042
+change-id: 20261120-scx-fix75-a86a6d31eceb
 
+Best regards,
 -- 
-2.34.1
+Hang Zhengyang <hang.zhengyang1010@gmail.com>
 
