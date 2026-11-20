@@ -1,11 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:46 -0500
-Subject: [PATCH 55/60] mm/memory_hotplug: online and offline private memory
- nodes
+Date: Fri, 20 Nov 2026 13:09:47 -0500
+Subject: [PATCH 56/60] dax/kmem: add a private memory mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-55-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-56-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,277 +61,167 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198154; l=9476;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198154; l=5242;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=b3jGnnyWNDUyPQKsXIBVFwBX7ofSFROdnSCpZbbkWAM=;
- b=dURyeucqjPXkJcCpnAWMuH39xYYU9Sy7XUOxE2r8Wwzbf7ANdiCKotrRObSTQ40QuJ0Zf1HzK
- SNlKPBgabacDKodij1dmaphP8727fp4GMxD4DcXEnSyqnVu+FgJGUPW
+ bh=zrM1qpXNDU0W3OEbrrofBX3aJ+CtXsUD9H1wIf9M9+I=;
+ b=R6sNzzY6t+TWBdJe7KJBQcoH3BsMwxDWl4rWxlfetNYs3LP+oZXkDWdpnsHICyDBXQ4HWIrdL
+ DUshXIHhLEGAEndhFx3dYv0seeaJh6E4Ar1fYAuHjKqy+U87r8NL2cs
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Allow a driver to hotplug memory onto a private node at runtime.
+Add a `private` boolean sysfs attribute, defaulting to false and
+changeable only while memory is unplugged.
 
-Pass a feature mask through driver-managed hotplug, and reject masks
-that node_memory_features_valid() refuses.
+When true, dax/kmem onlines the node as private memory with
+NODE_MEMORY_FEAT_MEMPOLICY, NODE_MEMORY_FEAT_RECLAIM and
+NODE_MEMORY_FEAT_COMPACTION.
 
-Memory joins a node only with the same mask. The node's features hold
-while any System RAM block remains (including offline blocks), and are
-reset after the last one is removed, even when ZONE_DEVICE memory keeps
-the node alive.
+Userspace targets private capacity via single-node MPOL_F_PRIVATE_NODES
+bindings on anonymous and shmem-backed mappings. Reclaim and compaction
+manage the memory, and the system does not otherwise use it.
 
-dax/kmem and the other hotplug callers pass NODE_MEMORY_FEAT_ALL, which
-registers the node as N_MEMORY_COMMON.
+The attribute is hidden without CONFIG_NUMA or CONFIG_MEMORY_HOTREMOVE,
+since selecting private mode requires unplugging the memory first, and
+the default behavior of dax/kmem probe creates the memory blocks (an
+unfortunately backward compatibility wart).
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- drivers/dax/kmem.c             |  2 +-
- include/linux/memory_hotplug.h |  2 +-
- mm/internal.h                  |  9 ++++
- mm/memory_hotplug.c            | 94 +++++++++++++++++++++++++++++++-----------
- 4 files changed, 80 insertions(+), 27 deletions(-)
+ Documentation/ABI/testing/sysfs-bus-dax | 19 ++++++++++++
+ drivers/dax/kmem.c                      | 55 +++++++++++++++++++++++++++++++--
+ 2 files changed, 72 insertions(+), 2 deletions(-)
 
+diff --git a/Documentation/ABI/testing/sysfs-bus-dax b/Documentation/ABI/testing/sysfs-bus-dax
+index 60703fffa99e..d024cf8e5ae0 100644
+--- a/Documentation/ABI/testing/sysfs-bus-dax
++++ b/Documentation/ABI/testing/sysfs-bus-dax
+@@ -175,3 +175,22 @@ Description:
+ 		A device can only be onlined from the "unplugged" state, so a
+ 		device must be returned to "unplugged" before it can be onlined
+ 		into a different state.
++
++What:		/sys/bus/dax/devices/daxX.Y/private
++Date:		October, 2026
++Contact:	nvdimm@lists.linux.dev
++Description:
++		(RW) Select private memory when a device is bound to kmem.
++		Accepts boolean values and defaults to 0. The value can only
++		change while state is "unplugged", before memory blocks exist.
++		The attribute is hidden without CONFIG_NUMA or
++		CONFIG_MEMORY_HOTREMOVE.
++
++		With private=1, the next online enables userspace NUMA
++		placement, together with the reclaim and compaction it
++		requires. The memory is excluded from ordinary allocations
++		and from other memory management services.
++
++		Userspace can bind anonymous and shmem-backed mappings to it
++		with a single-node mbind() policy using
++		(MPOL_BIND | MPOL_F_PRIVATE_NODES).
 diff --git a/drivers/dax/kmem.c b/drivers/dax/kmem.c
-index a48d699cf344..5ec653bc88f0 100644
+index 5ec653bc88f0..2954f22ececf 100644
 --- a/drivers/dax/kmem.c
 +++ b/drivers/dax/kmem.c
-@@ -126,7 +126,7 @@ static int dax_kmem_do_hotplug(struct dev_dax *dev_dax,
+@@ -46,6 +46,7 @@ struct dax_kmem_data {
+ 	const char *res_name;
+ 	int mgid;
+ 	int state;
++	bool private;
+ 	struct mutex lock; /* protects hotplug state transitions */
+ 	struct resource *res[];
+ };
+@@ -89,9 +90,15 @@ static int dax_kmem_do_hotplug(struct dev_dax *dev_dax,
+ 			       int online_type)
+ {
+ 	struct device *dev = &dev_dax->dev;
++	unsigned long features;
+ 	int i, rc, added = 0;
+ 	mhp_t mhp_flags;
+ 
++	features = data->private ? NODE_MEMORY_FEAT_MEMPOLICY |
++				   NODE_MEMORY_FEAT_RECLAIM |
++				   NODE_MEMORY_FEAT_COMPACTION :
++				   NODE_MEMORY_FEAT_ALL;
++
+ 	if (dax_kmem_state_is_online(data->state))
+ 		return -EINVAL;
+ 
+@@ -126,7 +133,7 @@ static int dax_kmem_do_hotplug(struct dev_dax *dev_dax,
  		 */
  		rc = __add_memory_driver_managed(data->mgid, range.start,
  				range_len(&range), kmem_name, mhp_flags,
--				online_type);
-+				online_type, NODE_MEMORY_FEAT_ALL);
+-				online_type, NODE_MEMORY_FEAT_ALL);
++				online_type, features);
  
  		if (rc) {
  			dev_warn(dev, "mapping%d: %#llx-%#llx memory add failed\n",
-diff --git a/include/linux/memory_hotplug.h b/include/linux/memory_hotplug.h
-index ec71debc0673..ae6046510958 100644
---- a/include/linux/memory_hotplug.h
-+++ b/include/linux/memory_hotplug.h
-@@ -304,7 +304,7 @@ extern int add_memory_resource(int nid, struct resource *resource,
- 			       mhp_t mhp_flags);
- int __add_memory_driver_managed(int nid, u64 start, u64 size,
- 				const char *resource_name, mhp_t mhp_flags,
--				enum mmop online_type);
-+				enum mmop online_type, unsigned long features);
- extern int add_memory_driver_managed(int nid, u64 start, u64 size,
- 				     const char *resource_name,
- 				     mhp_t mhp_flags);
-diff --git a/mm/internal.h b/mm/internal.h
-index 646efc2eacd1..0eefa0df1350 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -65,6 +65,15 @@ void folio_mark_lazyfree(struct folio *folio);
- void node_set_memory_state(int nid, unsigned long features);
- void node_clear_memory_state(int nid);
- 
-+#ifdef CONFIG_MEMORY_HOTPLUG
-+bool can_claim_node_memory(int nid, unsigned long features);
-+#else
-+static inline bool can_claim_node_memory(int nid, unsigned long features)
-+{
-+	return false;
-+}
-+#endif
-+
- /*
-  * Common memory is available to generic MM services. ZONE_DEVICE folios do
-  * not qualify even when their NUMA node is common.
-diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
-index 8146f77919d5..37e64c146b46 100644
---- a/mm/memory_hotplug.c
-+++ b/mm/memory_hotplug.c
-@@ -1494,6 +1494,43 @@ static int create_altmaps_and_memory_blocks(int nid, struct memory_group *group,
- 	return ret;
+@@ -380,6 +387,33 @@ static ssize_t state_store(struct device *dev, struct device_attribute *attr,
+ 	return len;
  }
  
-+static int check_no_memblock_for_node_cb(struct memory_block *mem, void *arg)
++static ssize_t private_show(struct device *dev,
++			    struct device_attribute *attr, char *buf)
 +{
-+	int nid = *(int *)arg;
++	struct dax_kmem_data *data = dev_get_drvdata(dev);
 +
-+	/*
-+	 * If a memory block belongs to multiple nodes, the stored nid is not
-+	 * reliable. However, such blocks are always online (e.g., cannot get
-+	 * offlined) and, therefore, are still spanned by the node.
-+	 */
-+	return mem->nid == nid ? -EEXIST : 0;
++	guard(mutex)(&data->lock);
++	return sysfs_emit(buf, "%d\n", data->private);
 +}
 +
-+/* Caller must hold the memory hotplug lock for these checks. */
-+static bool node_has_memory_blocks(int nid)
++static ssize_t private_store(struct device *dev, struct device_attribute *attr,
++			     const char *buf, size_t len)
 +{
-+	return for_each_memory_block(&nid, check_no_memblock_for_node_cb);
++	struct dax_kmem_data *data = dev_get_drvdata(dev);
++	bool private;
++	int rc;
++
++	rc = kstrtobool(buf, &private);
++	if (rc)
++		return rc;
++
++	guard(mutex)(&data->lock);
++	if (data->private != private && data->state != DAX_KMEM_UNPLUGGED)
++		return -EBUSY;
++	data->private = private;
++	return len;
 +}
 +
-+static bool node_has_system_ram(int nid)
+ static int dev_dax_kmem_probe(struct dev_dax *dev_dax)
+ {
+ 	struct device *dev = &dev_dax->dev;
+@@ -560,12 +594,29 @@ static void dev_dax_kmem_remove(struct dev_dax *dev_dax)
+ #endif /* CONFIG_MEMORY_HOTREMOVE */
+ 
+ static DEVICE_ATTR_RW(state);
++static DEVICE_ATTR_RW(private);
+ 
+ static struct attribute *dev_dax_kmem_attrs[] = {
+ 	&dev_attr_state.attr,
++	&dev_attr_private.attr,
+ 	NULL,
+ };
+-ATTRIBUTE_GROUPS(dev_dax_kmem);
++
++static umode_t dev_dax_kmem_visible(struct kobject *kobj,
++				    struct attribute *attr, int n)
 +{
-+	/* Mixed-node memory blocks are always online and covered by N_MEMORY. */
-+	return node_state(nid, N_MEMORY) || node_has_memory_blocks(nid);
++	/* Selecting private memory needs an unplug, which needs hot-remove. */
++	if (attr == &dev_attr_private.attr &&
++	    (!IS_ENABLED(CONFIG_NUMA) || !IS_ENABLED(CONFIG_MEMORY_HOTREMOVE)))
++		return 0;
++	return attr->mode;
 +}
 +
-+/*
-+ * Whether memory with @features may join @nid. Offline System RAM blocks keep
-+ * the node's features until the last block is removed.
-+ */
-+bool can_claim_node_memory(int nid, unsigned long features)
-+{
-+	pg_data_t *pgdat = NODE_DATA(nid);
-+
-+	if (pgdat->memory_features == features)
-+		return true;
-+	return !node_has_system_ram(nid);
-+}
-+
- /*
-  * NOTE: The caller must call lock_device_hotplug() to serialize hotplug
-  * and online/offline operations (triggered e.g. by sysfs).
-@@ -1501,11 +1538,12 @@ static int create_altmaps_and_memory_blocks(int nid, struct memory_group *group,
-  * we are OK calling __meminit stuff here - we have CONFIG_MEMORY_HOTPLUG
-  */
- static int __add_memory_resource(int nid, struct resource *res, mhp_t mhp_flags,
--				 enum mmop online_type)
-+				 enum mmop online_type, unsigned long features)
- {
- 	struct mhp_params params = { .pgprot = pgprot_mhp(PAGE_KERNEL) };
- 	enum memblock_flags memblock_flags = MEMBLOCK_NONE;
- 	struct memory_group *group = NULL;
-+	unsigned long old_features;
- 	u64 start, size;
- 	bool new_node = false;
- 	int ret;
-@@ -1528,6 +1566,8 @@ static int __add_memory_resource(int nid, struct resource *res, mhp_t mhp_flags,
- 		WARN(1, "node %d was absent from the node_possible_map\n", nid);
- 		return -EINVAL;
- 	}
-+	if (!node_memory_features_valid(features))
-+		return -EINVAL;
++static const struct attribute_group dev_dax_kmem_group = {
++	.attrs = dev_dax_kmem_attrs,
++	.is_visible = dev_dax_kmem_visible,
++};
++__ATTRIBUTE_GROUPS(dev_dax_kmem);
  
- 	mem_hotplug_begin();
- 
-@@ -1552,6 +1592,14 @@ static int __add_memory_resource(int nid, struct resource *res, mhp_t mhp_flags,
- 		new_node = true;
- 	}
- 
-+	old_features = NODE_DATA(nid)->memory_features;
-+	if (!can_claim_node_memory(nid, features)) {
-+		ret = -EBUSY;
-+		goto error;
-+	}
-+	/* Set the node's features before onlining its memory. */
-+	WRITE_ONCE(NODE_DATA(nid)->memory_features, features);
-+
- 	/*
- 	 * Self hosted memmap array
- 	 */
-@@ -1597,6 +1645,8 @@ static int __add_memory_resource(int nid, struct resource *res, mhp_t mhp_flags,
- 
- 	return ret;
- error:
-+	/* Restore the previous features while holding the lock. */
-+	WRITE_ONCE(NODE_DATA(nid)->memory_features, old_features);
- 	if (new_node) {
- 		node_set_offline(nid);
- 		unregister_node(nid);
-@@ -1612,7 +1662,8 @@ static int __add_memory_resource(int nid, struct resource *res, mhp_t mhp_flags,
- int add_memory_resource(int nid, struct resource *res, mhp_t mhp_flags)
- {
- 	return __add_memory_resource(nid, res, mhp_flags,
--				     mhp_get_default_online_type());
-+				     mhp_get_default_online_type(),
-+				     NODE_MEMORY_FEAT_ALL);
- }
- 
- /* requires device_hotplug_lock, see __add_memory_resource() */
-@@ -1651,6 +1702,9 @@ EXPORT_SYMBOL_GPL(add_memory);
-  * @resource_name: Resource name in format "System RAM ($DRIVER)"
-  * @mhp_flags: Memory hotplug flags
-  * @online_type: Auto-Online behavior (offline, online, kernel, movable)
-+ * @features: NODE_MEMORY_FEAT_* services the memory opts into;
-+ *            %NODE_MEMORY_FEAT_ALL adds it as ordinary common system RAM,
-+ *            and a mask without %NODE_MEMORY_FEAT_COMMON as private memory.
-  *
-  * Add special, driver-managed memory to the system as system RAM. Such
-  * memory is not exposed via the raw firmware-provided memmap as system
-@@ -1677,7 +1731,7 @@ EXPORT_SYMBOL_GPL(add_memory);
-  */
- int __add_memory_driver_managed(int nid, u64 start, u64 size,
- 		const char *resource_name, mhp_t mhp_flags,
--		enum mmop online_type)
-+		enum mmop online_type, unsigned long features)
- {
- 	struct resource *res;
- 	int rc;
-@@ -1698,7 +1752,7 @@ int __add_memory_driver_managed(int nid, u64 start, u64 size,
- 		goto out_unlock;
- 	}
- 
--	rc = __add_memory_resource(nid, res, mhp_flags, online_type);
-+	rc = __add_memory_resource(nid, res, mhp_flags, online_type, features);
- 	if (rc < 0)
- 		release_memory_resource(res);
- 
-@@ -1727,8 +1781,8 @@ int add_memory_driver_managed(int nid, u64 start, u64 size,
- 			      const char *resource_name, mhp_t mhp_flags)
- {
- 	return __add_memory_driver_managed(nid, start, size, resource_name,
--			mhp_flags,
--			mhp_get_default_online_type());
-+			mhp_flags, mhp_get_default_online_type(),
-+			NODE_MEMORY_FEAT_ALL);
- }
- EXPORT_SYMBOL_GPL(add_memory_driver_managed);
- 
-@@ -1789,18 +1843,6 @@ bool mhp_range_allowed(u64 start, u64 size, bool need_mapping)
- 
- #ifdef CONFIG_MEMORY_HOTREMOVE
- 
--static int check_no_memblock_for_node_cb(struct memory_block *mem, void *arg)
--{
--	int nid = *(int *)arg;
--
--	/*
--	 * If a memory block belongs to multiple nodes, the stored nid is not
--	 * reliable. However, such blocks are always online (e.g., cannot get
--	 * offlined) and, therefore, are still spanned by the node.
--	 */
--	return mem->nid == nid ? -EEXIST : 0;
--}
--
- /* Caller must hold the memory hotplug lock for this check. */
- static bool node_is_memoryless(int nid)
- {
-@@ -1811,12 +1853,9 @@ static bool node_is_memoryless(int nid)
- 	 */
- 	if (node_spanned_pages(nid))
- 		return false;
--	/*
--	 * Offline memory blocks may not be spanned by the node yet, but they
--	 * link to it in sysfs and can be onlined later, so the node is not
--	 * memoryless while any remain.
--	 */
--	return !for_each_memory_block(&nid, check_no_memblock_for_node_cb);
-+
-+	/* Offline memory blocks keep the node alive so they can be onlined. */
-+	return !node_has_memory_blocks(nid);
- }
- 
- /*
-@@ -2347,8 +2386,13 @@ static int try_remove_memory(u64 start, u64 size)
- 
- 	release_mem_region_adjustable(start, size);
- 
--	if (nid != NUMA_NO_NODE)
-+	if (nid != NUMA_NO_NODE) {
-+		/* No System RAM left: reset the node's features. */
-+		if (!node_has_system_ram(nid))
-+			WRITE_ONCE(NODE_DATA(nid)->memory_features,
-+				   NODE_MEMORY_FEAT_ALL);
- 		try_offline_node(nid);
-+	}
- 
- 	mem_hotplug_done();
- 	return 0;
+ static struct dax_device_driver device_dax_kmem_driver = {
+ 	.probe = dev_dax_kmem_probe,
 
 -- 
 2.56.1
