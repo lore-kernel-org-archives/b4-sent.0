@@ -1,10 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:08:53 -0500
-Subject: [PATCH 02/60] mm: publish and clear node memory states via helpers
+Date: Fri, 20 Nov 2026 13:08:54 -0500
+Subject: [PATCH 03/60] mm: introduce the common-memory node state
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-2-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-3-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,120 +61,167 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=3460;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=6041;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=bHuUN4m1rYdeHd2n9uTV5bvIEOwz0W65sMVI4gQRCFE=;
- b=5PaC3uuW3KE0lNJmW+SARs1O0zlNg2YD6FwQIBFs9Daq6H1QsV7mc6KO2+wYEThTdvpSt7rTR
- V6KaOerJChvCGaLx48xIa9FWmn4rD0/KaqOmHyfps7bojLi6JOB8mrX
+ bh=ajsO63VrYOt1/B86M9EiwRSYqxX+EUlgXltSDFFhAuY=;
+ b=i8EdEJBLCK7kYw+nGD0pd446Jpk01TMj3DEPiN/iEyXX9xSSPwHuWtf9EvwHBIGp7fpgk2j1g
+ eGSAKGYzz0zCca0iN2pUlbb/I/wPDtOPtDeqTdJbPbkWAfpWma+9Zqh
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-N_MEMORY is set in free_area_init() and online_pages(), and cleared in
-offline_pages().
+N_MEMORY is overloaded with two meanings:
+  1) a node has memory.
+  2) a node's memory is reachable via ordinary allocation or
+     an arbitrary MM service may use that memory.
 
-Centralize those updates in node_set/clear_memory_state(), so states
-that subdivide N_MEMORY can be published together with it.
+Allow N_MEMORY to mean #1, and introduce N_MEMORY_COMMON to mean #2.
 
-Behavior is unchanged.
+N_MEMORY_COMMON nodes contain "common memory" capable of being managed
+arbitrarily by the kernel MM based solely on zone membership. Following
+commits convert relevant N_MEMORY users to N_MEMORY_COMMON.
+
+Expose the state via `has_common_memory` so userspace can identify
+the memory available to ordinary allocations and common MM services.
+
+Add has_memory to the docs while we're here.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/internal.h       |  3 +++
- mm/memory_hotplug.c |  4 ++--
- mm/mm_init.c        |  8 ++++----
- mm/page_alloc.c     | 10 ++++++++++
- 4 files changed, 19 insertions(+), 6 deletions(-)
+ Documentation/ABI/stable/sysfs-devices-node | 17 +++++++++++++++++
+ Documentation/mm/physical_memory.rst        |  8 +++++++-
+ drivers/base/node.c                         |  2 ++
+ include/linux/nodemask.h                    |  9 ++++++++-
+ mm/page_alloc.c                             |  3 +++
+ 5 files changed, 37 insertions(+), 2 deletions(-)
 
-diff --git a/mm/internal.h b/mm/internal.h
-index de4593b3e3b6..c102e0f498bf 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -62,6 +62,9 @@ void lru_add_drain_cpu_zone(struct zone *zone);
- void folio_deactivate(struct folio *folio);
- void folio_mark_lazyfree(struct folio *folio);
+diff --git a/Documentation/ABI/stable/sysfs-devices-node b/Documentation/ABI/stable/sysfs-devices-node
+index 2d0e023f22a7..0a2cf3088233 100644
+--- a/Documentation/ABI/stable/sysfs-devices-node
++++ b/Documentation/ABI/stable/sysfs-devices-node
+@@ -10,6 +10,15 @@ Contact:	Linux Memory Management list <linux-mm@kvack.org>
+ Description:
+ 		Nodes that are online.
  
-+void node_set_memory_state(int nid);
-+void node_clear_memory_state(int nid);
++What:		/sys/devices/system/node/has_memory
++Date:		December 2012
++Contact:	Linux Memory Management list <linux-mm@kvack.org>
++Description:
++		Nodes that have memory.
 +
- /* mm/vmscan.c */
- unsigned long zone_reclaimable_pages(struct zone *zone);
- unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
-diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
-index e5024f934932..e5cb770e4b09 100644
---- a/mm/memory_hotplug.c
-+++ b/mm/memory_hotplug.c
-@@ -1197,7 +1197,7 @@ int online_pages(unsigned long pfn, unsigned long nr_pages,
- 	adjust_present_page_count(pfn_to_page(pfn), group, nr_pages);
- 
- 	if (node_arg.nid >= 0)
--		node_set_state(nid, N_MEMORY);
-+		node_set_memory_state(nid);
- 	/*
- 	 * Check whether we are adding normal memory to the node for the first
- 	 * time.
-@@ -2165,7 +2165,7 @@ int offline_pages(unsigned long start_pfn, unsigned long nr_pages,
- 	 * list. Otherwise this node would still appear in the fallback lists.
- 	 */
- 	if (node_arg.nid >= 0)
--		node_clear_state(node, N_MEMORY);
-+		node_clear_memory_state(node);
- 	if (!populated_zone(zone)) {
- 		zone_pcp_reset(zone);
- 		build_all_zonelists(NULL);
-diff --git a/mm/mm_init.c b/mm/mm_init.c
-index a9d848c92678..46fe9a274a7a 100644
---- a/mm/mm_init.c
-+++ b/mm/mm_init.c
-@@ -1763,11 +1763,13 @@ static void __init free_area_init_node(int nid)
- 	lru_gen_init_pgdat(pgdat);
- }
- 
--/* Any regular or high memory on that node? */
-+/* Publish the memory states of a node that has present pages. */
- static void __init check_for_memory(pg_data_t *pgdat)
- {
- 	enum zone_type zone_type;
- 
-+	node_set_memory_state(pgdat->node_id);
++		This memory may or may not be reachable via standard
++		allocations, see has_common_memory for details.
 +
- 	for (zone_type = 0; zone_type <= ZONE_MOVABLE - 1; zone_type++) {
- 		struct zone *zone = &pgdat->node_zones[zone_type];
- 		if (populated_zone(zone)) {
-@@ -1924,10 +1926,8 @@ static void __init free_area_init(void)
- 		 *memory-less node. The pgdat will get fully initialized by
- 		 *hotadd_init_pgdat() when memory is hotplugged into this node.
- 		 */
--		if (pgdat->node_present_pages) {
--			node_set_state(nid, N_MEMORY);
-+		if (pgdat->node_present_pages)
- 			check_for_memory(pgdat);
--		}
- 	}
+ What:		/sys/devices/system/node/has_normal_memory
+ Date:		October 2002
+ Contact:	Linux Memory Management list <linux-mm@kvack.org>
+@@ -29,6 +38,14 @@ Description:
+ 		Nodes that have regular or high memory.
+ 		Depends on CONFIG_HIGHMEM.
  
- 	calc_nr_kernel_pages();
++What:		/sys/devices/system/node/has_common_memory
++Date:		November 2026
++Contact:	Linux Memory Management list <linux-mm@kvack.org>
++Description:
++		Nodes whose memory ordinary allocations may use without
++		requesting the node explicitly, and that kernel memory
++		management services manage.
++
+ What:		/sys/devices/system/node/nodeX
+ Date:		October 2002
+ Contact:	Linux Memory Management list <linux-mm@kvack.org>
+diff --git a/Documentation/mm/physical_memory.rst b/Documentation/mm/physical_memory.rst
+index 2e67e8b23a99..86a7d6080535 100644
+--- a/Documentation/mm/physical_memory.rst
++++ b/Documentation/mm/physical_memory.rst
+@@ -168,7 +168,12 @@ nodes with particular properties as defined by ``enum node_states``:
+   The node has regular or high memory. When ``CONFIG_HIGHMEM`` is disabled
+   aliased to ``N_NORMAL_MEMORY``.
+ ``N_MEMORY``
+-  The node has memory(regular, high, movable)
++  The node has online memory (regular, high, movable).  This is a topology and
++  accounting state. Presence in this mask does not mean ordinary allocations
++  can use the node's memory. See ``N_MEMORY_COMMON``.
++``N_MEMORY_COMMON``
++  Ordinary allocations and memory management services may use the node's
++  memory.
+ ``N_CPU``
+   The node has one or more CPUs
+ ``N_GENERIC_INITIATOR``
+@@ -184,6 +189,7 @@ For example, for node 2 with normal memory and CPUs, bit 2 will be set in ::
+   node_states[N_NORMAL_MEMORY]
+   node_states[N_HIGH_MEMORY]
+   node_states[N_MEMORY]
++  node_states[N_MEMORY_COMMON]
+   node_states[N_CPU]
+ 
+ For various operations possible with nodemasks please refer to
+diff --git a/drivers/base/node.c b/drivers/base/node.c
+index dcdc8626627a..cc6696d1390f 100644
+--- a/drivers/base/node.c
++++ b/drivers/base/node.c
+@@ -965,6 +965,7 @@ static struct node_attr node_state_attr[] = {
+ 	[N_HIGH_MEMORY] = _NODE_ATTR(has_high_memory, N_HIGH_MEMORY),
+ #endif
+ 	[N_MEMORY] = _NODE_ATTR(has_memory, N_MEMORY),
++	[N_MEMORY_COMMON] = _NODE_ATTR(has_common_memory, N_MEMORY_COMMON),
+ 	[N_CPU] = _NODE_ATTR(has_cpu, N_CPU),
+ 	[N_GENERIC_INITIATOR] = _NODE_ATTR(has_generic_initiator,
+ 					   N_GENERIC_INITIATOR),
+@@ -978,6 +979,7 @@ static struct attribute *node_state_attrs[] = {
+ 	&node_state_attr[N_HIGH_MEMORY].attr.attr,
+ #endif
+ 	&node_state_attr[N_MEMORY].attr.attr,
++	&node_state_attr[N_MEMORY_COMMON].attr.attr,
+ 	&node_state_attr[N_CPU].attr.attr,
+ 	&node_state_attr[N_GENERIC_INITIATOR].attr.attr,
+ 	NULL
+diff --git a/include/linux/nodemask.h b/include/linux/nodemask.h
+index 90bdcffa42ea..c3b984105bd1 100644
+--- a/include/linux/nodemask.h
++++ b/include/linux/nodemask.h
+@@ -398,7 +398,14 @@ enum node_states {
+ #else
+ 	N_HIGH_MEMORY = N_NORMAL_MEMORY,
+ #endif
+-	N_MEMORY,		/* The node has memory(regular, high, movable) */
++	/*
++	 * N_MEMORY indicates online memory exists on the node - it is used
++	 * to manage per-node meta-data and topology decisions.
++	 * N_MEMORY_COMMON indicates whether the node can satisfy arbitrary
++	 * allocations and whether a service should manage that node's folios.
++	 */
++	N_MEMORY,		/* the node has memory */
++	N_MEMORY_COMMON,	/* common pool (fallback zonelist) */
+ 	N_CPU,		/* The node has one or more cpus */
+ 	N_GENERIC_INITIATOR,	/* The node has one or more Generic Initiators */
+ 	NR_NODE_STATES
 diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index aa1ed599c7c6..88d507f93b1a 100644
+index 88d507f93b1a..ddb04b72a160 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -208,6 +208,16 @@ nodemask_t node_states[NR_NODE_STATES] __read_mostly = {
+@@ -203,6 +203,7 @@ nodemask_t node_states[NR_NODE_STATES] __read_mostly = {
+ 	[N_HIGH_MEMORY] = { { [0] = 1UL } },
+ #endif
+ 	[N_MEMORY] = { { [0] = 1UL } },
++	[N_MEMORY_COMMON] = { { [0] = 1UL } },
+ 	[N_CPU] = { { [0] = 1UL } },
+ #endif	/* NUMA */
  };
- EXPORT_SYMBOL(node_states);
+@@ -211,10 +212,12 @@ EXPORT_SYMBOL(node_states);
+ void __meminit node_set_memory_state(int nid)
+ {
+ 	node_set_state(nid, N_MEMORY);
++	node_set_state(nid, N_MEMORY_COMMON);
+ }
  
-+void __meminit node_set_memory_state(int nid)
-+{
-+	node_set_state(nid, N_MEMORY);
-+}
-+
-+void __meminit node_clear_memory_state(int nid)
-+{
-+	node_clear_state(nid, N_MEMORY);
-+}
-+
- gfp_t gfp_allowed_mask __read_mostly = GFP_BOOT_MASK;
+ void __meminit node_clear_memory_state(int nid)
+ {
++	node_clear_state(nid, N_MEMORY_COMMON);
+ 	node_clear_state(nid, N_MEMORY);
+ }
  
- #ifdef CONFIG_HUGETLB_PAGE_SIZE_VARIABLE
 
 -- 
 2.56.1
