@@ -1,10 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:08 -0500
-Subject: [PATCH 17/60] PM: hibernate: size the image from common memory
+Date: Fri, 20 Nov 2026 13:09:09 -0500
+Subject: [PATCH 18/60] mm/khugepaged: base the recommended min_free_kbytes
+ on common memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-17-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-18-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,82 +62,40 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=2366;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=820;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=A3l/6pPMz9YPRB99YIwhmspv/HD0g4ri54lK4DwOHLU=;
- b=mI+JjYrIOIQon3oEqa2KKxHS1h91tm2h8L4t/n3aWLMMUysU1+sJoKRNNeogaWqhf2eGMWvyF
- WkAqiNUeQllD2ej1Rpnh67Y1ngxyx7Mj3iNBos7ryRyQn7xec/6u1L2
+ bh=JCSrPzqa2r6D3icJs5AIufuY11hG988pPEZwgCCKHVU=;
+ b=f3X9GhfZRr3Y70akJ+5LQMJEYnQw87oEwJYni6EhKNTNghWitJzBda24ENsNg3gaswvLxfzcA
+ QCSxARUrbOQAlPm+bIz7doFjfAUsXQ0DXnPHQw+oYeT5ibepz98hWgq
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hibernate_preallocate_memory(), enough_free_mem() and
-count_free_highmem_pages() count the free pages of every populated zone
-as room for the hibernation image, but the pages used to store the image
-can only come from common memory.
-
-Count free pages only in zones on N_MEMORY_COMMON nodes.
-
-The image metadata estimate is a separate sum.  The bitmaps track the
-page frames, and every zone's frames are tracked (regardless of node),
-so that sum still needs to be calculated for all populated zones.
+set_recommended_min_free_kbytes() reserves two pageblocks per populated
+zone to help THP allocations avoid fragmentation. The reserve serves
+ordinary allocations, which use only common memory, so count only the
+zones on N_MEMORY_COMMON nodes.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- kernel/power/snapshot.c | 15 ++++++++++++---
- 1 file changed, 12 insertions(+), 3 deletions(-)
+ mm/khugepaged.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/kernel/power/snapshot.c b/kernel/power/snapshot.c
-index d5dba0e50b2e..912804bee361 100644
---- a/kernel/power/snapshot.c
-+++ b/kernel/power/snapshot.c
-@@ -1291,16 +1291,19 @@ static void mark_free_pages(struct zone *zone)
- /**
-  * count_free_highmem_pages - Compute the total number of free highmem pages.
-  *
-- * The returned number is system-wide.
-+ * Only common memory counts, since image pages come from common memory.
-  */
- static unsigned int count_free_highmem_pages(void)
- {
- 	struct zone *zone;
- 	unsigned int cnt = 0;
+diff --git a/mm/khugepaged.c b/mm/khugepaged.c
+index 2dc4245814df..a930d99f89da 100644
+--- a/mm/khugepaged.c
++++ b/mm/khugepaged.c
+@@ -3151,6 +3151,9 @@ void set_recommended_min_free_kbytes(void)
+ 	}
  
--	for_each_populated_zone(zone)
-+	for_each_populated_zone(zone) {
-+		if (!node_state(zone_to_nid(zone), N_MEMORY_COMMON))
-+			continue;
- 		if (is_highmem(zone))
- 			cnt += zone_page_state(zone, NR_FREE_PAGES);
-+	}
- 
- 	return cnt;
- }
-@@ -1868,6 +1871,9 @@ int hibernate_preallocate_memory(void)
- 	size = 0;
  	for_each_populated_zone(zone) {
- 		size += snapshot_additional_pages(zone);
-+		/* Image pages come from ordinary allocations. */
 +		if (!node_state(zone_to_nid(zone), N_MEMORY_COMMON))
 +			continue;
- 		if (is_highmem(zone))
- 			highmem += zone_page_state(zone, NR_FREE_PAGES);
- 		else
-@@ -2011,9 +2017,12 @@ static int enough_free_mem(unsigned int nr_pages, unsigned int nr_highmem)
- 	struct zone *zone;
- 	unsigned int free = alloc_normal;
- 
--	for_each_populated_zone(zone)
-+	for_each_populated_zone(zone) {
-+		if (!node_state(zone_to_nid(zone), N_MEMORY_COMMON))
-+			continue;
- 		if (!is_highmem(zone))
- 			free += zone_page_state(zone, NR_FREE_PAGES);
-+	}
- 
- 	nr_pages += count_pages_for_highmem(nr_highmem);
- 	pr_debug("Normal pages needed: %u + %u, available pages: %u\n",
++
+ 		/*
+ 		 * We don't need to worry about fragmentation of
+ 		 * ZONE_MOVABLE since it only has movable pages.
 
 -- 
 2.56.1
