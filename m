@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:00 -0500
-Subject: [PATCH 09/60] mm/damon: reject migration destinations outside
+Date: Fri, 20 Nov 2026 13:09:01 -0500
+Subject: [PATCH 10/60] sched/numa: restrict NUMA migration targets to
  common memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-9-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-10-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,40 +62,46 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=912;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=1044;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=PHs1dwZV5jWDY/oD9jV+dBublSOMfq9XyD2sA1X67ls=;
- b=EHjtqMd7/8EaTbdZ+vJ1PCa8apdnUFyPwhm5wisIAr5smnjEwxj+N6vWTCoyNXJw98hRk2en0
- +blI33RHe8NCH5zVJHV0l2+J4bHQKjBy4yR6u86Gh0NgqVYPfJ4g5b/
+ bh=8xAnUIGjGSJir+fD8yB81C3j8AQ2SKbyFL5jvqemmlk=;
+ b=ITwE6KTd6aOZpuyjJFOoe0STMIT7+0eaFIXOVs6I0ryUIxRHLbIno5UO04kFOxJT7OvBREvQE
+ aMVtqVwDWbPApem/lyw9QN2C2QmxHB1p/MFJmF6ejxZlsuwRg6Ycrdi
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-DAMOS migration actions move folios to a node the user picks. As with
-move_pages(2), the destination should be general purpose memory.
+should_numa_migrate_memory() refuses to migrate folios towards a
+memoryless node, since the migration can only fail; see
+commit 3fb43636876d ("sched/numa, mm: do not try to migrate memory to
+memoryless nodes").
 
-Reject a destination outside N_MEMORY_COMMON, exactly the same as a
-node without memory is rejected today.
+A node outside N_MEMORY_COMMON can have CPUs but has an empty
+__GFP_THISNODE zonelist, so a NUMA hinting fault from one of its CPUs
+would isolate the folio, fail to allocate the destination and put the
+folio back.
+
+Check N_MEMORY_COMMON instead.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/damon/ops-common.c | 2 +-
+ kernel/sched/fair.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mm/damon/ops-common.c b/mm/damon/ops-common.c
-index 2216a0023154..15cabc79613b 100644
---- a/mm/damon/ops-common.c
-+++ b/mm/damon/ops-common.c
-@@ -498,7 +498,7 @@ unsigned long damon_migrate_pages(struct list_head *folio_list, int target_nid)
- 		return nr_migrated;
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index 0c8af1cac2d5..18db9bd25db2 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -2876,7 +2876,7 @@ bool should_numa_migrate_memory(struct task_struct *p, struct folio *folio,
+ 	/*
+ 	 * Cannot migrate to memoryless nodes.
+ 	 */
+-	if (!node_state(dst_nid, N_MEMORY))
++	if (!node_state(dst_nid, N_MEMORY_COMMON))
+ 		return false;
  
- 	if (target_nid < 0 || target_nid >= MAX_NUMNODES ||
--			!node_state(target_nid, N_MEMORY)) {
-+			!node_state(target_nid, N_MEMORY_COMMON)) {
- 		damon_putback_folio_list(folio_list);
- 		return nr_migrated;
- 	}
+ 	/*
 
 -- 
 2.56.1
