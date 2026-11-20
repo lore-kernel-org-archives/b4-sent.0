@@ -1,10 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:04 -0500
-Subject: [PATCH 13/60] mm/compaction: restrict compaction to common memory
+Date: Fri, 20 Nov 2026 13:09:05 -0500
+Subject: [PATCH 14/60] mm: base hash distribution on common memory nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-13-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-14-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,81 +61,40 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=2217;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=752;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=BmbnHul2BY8/db5+GiTddW3CKoXNqAVos1d4H4BuQY8=;
- b=UBJbyCgvQkAHnb0K2qbW7oGYgoTN2r8jD/DTCgat/O2ohtOkVQif8zR9qpcfBTBGByrEoQt25
- bXDi/nE8V3+AUav43Xm1EHfXoH0es9WCRtJpbKRVj72i9Kflq8+RAVP
+ bh=kzu60kHcR4jg5+83pzySdZg/16HqDs5ZJU+b16doVWE=;
+ b=748lnM0UAIWYIikKEzoqzk1NLfEf9UkP/kYV8mG5fcRoZKQ2waLuxmbZewbEadsHLukTRzV3V
+ r9lLSXCux+nBTwzYAwYPzqHH+pyb+k2EBGnYxU14R5HCUN2/FGpt/7x
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Compaction serves the ordinary allocation domain.
+hashdist is useful when large kernel hash tables can be allocated across
+multiple NUMA nodes. The tables come from ordinary allocations, which
+only N_MEMORY_COMMON nodes serve.
 
-Restrict it to N_MEMORY_COMMON:
-  - start kcompactd only on common nodes, at boot and hotplug.
-  - compact only common nodes for /proc/sys/vm/compact_memory,
-    and trigger proactive compaction only on common nodes.
-
-compact_memory and the proactiveness trigger walked every online node
-before. Memoryless nodes have nothing to compact and no kcompactd, so
-leaving them out changes nothing.
-
-Direct compaction serves an allocation from its own zonelist, so it is
-left alone.
+Count N_MEMORY_COMMON nodes when applying the single-node optimization.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/compaction.c     | 6 +++---
- mm/memory_hotplug.c | 3 ++-
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ mm/mm_init.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mm/compaction.c b/mm/compaction.c
-index 426563acf7ac..879f372a891e 100644
---- a/mm/compaction.c
-+++ b/mm/compaction.c
-@@ -2973,7 +2973,7 @@ static int compact_nodes(void)
- 	/* Flush pending updates to the LRU lists */
- 	lru_add_drain_all();
+diff --git a/mm/mm_init.c b/mm/mm_init.c
+index 46fe9a274a7a..f21b3dbcc92a 100644
+--- a/mm/mm_init.c
++++ b/mm/mm_init.c
+@@ -685,7 +685,7 @@ __setup("hashdist=", set_hashdist);
  
--	for_each_online_node(nid) {
-+	for_each_node_state(nid, N_MEMORY_COMMON) {
- 		ret = compact_node(NODE_DATA(nid), false);
- 		if (ret)
- 			return ret;
-@@ -2992,7 +2992,7 @@ static int compaction_proactiveness_sysctl_handler(const struct ctl_table *table
- 		return rc;
- 
- 	if (write && sysctl_compaction_proactiveness) {
--		for_each_online_node(nid) {
-+		for_each_node_state(nid, N_MEMORY_COMMON) {
- 			pg_data_t *pgdat = NODE_DATA(nid);
- 
- 			if (pgdat->proactive_compact_trigger)
-@@ -3366,7 +3366,7 @@ static int __init kcompactd_init(void)
+ static inline void fixup_hashdist(void)
  {
- 	int nid;
- 
--	for_each_node_state(nid, N_MEMORY)
-+	for_each_node_state(nid, N_MEMORY_COMMON)
- 		kcompactd_run(nid);
- 	register_sysctl_init("vm", vm_compaction);
- 	return 0;
-diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
-index a599fcad65d3..6b6873cfbc5a 100644
---- a/mm/memory_hotplug.c
-+++ b/mm/memory_hotplug.c
-@@ -1224,7 +1224,8 @@ int online_pages(unsigned long pfn, unsigned long nr_pages,
- 
- 	if (node_state(nid, N_MEMORY_COMMON))
- 		kswapd_run(nid);
--	kcompactd_run(nid);
-+	if (node_state(nid, N_MEMORY_COMMON))
-+		kcompactd_run(nid);
- 
- 	if (node_arg.nid >= 0)
- 		/* First memory added successfully. Notify consumers. */
+-	if (num_node_state(N_MEMORY) == 1)
++	if (num_node_state(N_MEMORY_COMMON) == 1)
+ 		hashdist = false;
+ }
+ #else
 
 -- 
 2.56.1
