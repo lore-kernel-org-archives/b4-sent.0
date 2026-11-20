@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 20 Nov 2026 10:45:34 +0000
-Subject: [PATCH net-next v4 3/5] net: stmmac: Balance runtime PM when the
- probe fails
+Date: Fri, 20 Nov 2026 10:45:35 +0000
+Subject: [PATCH net-next v4 4/5] net: stmmac: Add MDIO init and exit
+ platform hooks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-sun8i-emac-mux-uaf-v4-3-57eba8915f25@gmail.com>
+Message-Id: <20261120-sun8i-emac-mux-uaf-v4-4-57eba8915f25@gmail.com>
 References: <20261120-sun8i-emac-mux-uaf-v4-0-57eba8915f25@gmail.com>
 In-Reply-To: <20261120-sun8i-emac-mux-uaf-v4-0-57eba8915f25@gmail.com>
 To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
@@ -22,40 +22,74 @@ Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-sunxi@lists.linux.dev, linux-stm32@st-md-mailman.stormreply.com, 
  linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795171532; l=980;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795171532; l=2066;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=97PW5UFQBSB4Dnlh/PFE17fL8cbRuMGnU3dk5Q8efjw=;
- b=syVtZ25ayULnjArOlHLxIBpunZ75gTnHIIXt5gPUQe7+pDpaMqHQdKfqpEUV/1vcpQIO9NpYf
- OnUsSNj0EnoCp2Dj28a93ZUH7bmc+xg4Xi5RzTQLjCRcZG/0jfLPOa3
+ bh=3XSU4X4aemzp7oTaCLwDDP9zhzsIxn55nP09waG9ngE=;
+ b=LAtqp2wEi3+1K9NUmpn6EgBjdbn9DkZFOCCTWv250cgGR3fC6cRaOLC/yMKVP6uIAW+4BPgFo
+ 8qkvxVjpZ4lCBbp8exE+nbsmnWOLKQdmVq7q1qFk+fn2eJ0Rz9DoxEC
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__stmmac_dvr_probe() enables runtime PM and takes a usage count before
-it registers the MDIO bus, but its error path undoes neither. After a
-failed or deferred probe the device never runtime-suspends.
+A glue driver that adds devices on top of the stmmac MDIO bus, such as
+an MDIO mux, can only do so after stmmac_dvr_probe() has registered the
+netdev.
 
-Undo both, as stmmac_dvr_remove() does.
+Add mdio_init(), called once the bus is registered, and mdio_exit(),
+called before it is unregistered.
 
+Suggested-by: Maxime Chevallier <maxime.chevallier@bootlin.com>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/net/ethernet/stmicro/stmmac/stmmac_mdio.c | 11 +++++++++++
+ include/linux/stmmac.h                            |  2 ++
+ 2 files changed, 13 insertions(+)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-index f256244ce0d1..4ebf4b625374 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -8407,6 +8407,8 @@ static int __stmmac_dvr_probe(struct device *device,
- error_pcs_setup:
- 	stmmac_mdio_unregister(ndev);
- error_mdio_register:
-+	pm_runtime_disable(device);
-+	pm_runtime_put_noidle(device);
- 	stmmac_napi_del(ndev);
- error_hw_init:
- 	destroy_workqueue(priv->wq);
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_mdio.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_mdio.c
+index 7396b68899c6..fb1f7b1a5323 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_mdio.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_mdio.c
+@@ -682,8 +682,16 @@ int stmmac_mdio_register(struct net_device *ndev)
+ bus_register_done:
+ 	priv->mii = new_bus;
+ 
++	if (priv->plat->mdio_init) {
++		err = priv->plat->mdio_init(priv);
++		if (err)
++			goto mdio_init_fail;
++	}
++
+ 	return 0;
+ 
++mdio_init_fail:
++	priv->mii = NULL;
+ no_phy_found:
+ 	mdiobus_unregister(new_bus);
+ bus_register_fail:
+@@ -703,6 +711,9 @@ int stmmac_mdio_unregister(struct net_device *ndev)
+ 	if (!priv->mii)
+ 		return 0;
+ 
++	if (priv->plat->mdio_exit)
++		priv->plat->mdio_exit(priv);
++
+ 	mdiobus_unregister(priv->mii);
+ 	priv->mii->priv = NULL;
+ 	mdiobus_free(priv->mii);
+diff --git a/include/linux/stmmac.h b/include/linux/stmmac.h
+index 00be2df63d22..e94f9cab973d 100644
+--- a/include/linux/stmmac.h
++++ b/include/linux/stmmac.h
+@@ -296,6 +296,8 @@ struct plat_stmmacenet_data {
+ 	int (*crosststamp)(ktime_t *device, struct system_counterval_t *system,
+ 			   void *ctx);
+ 	void (*dump_debug_regs)(void *priv);
++	int (*mdio_init)(struct stmmac_priv *priv);
++	void (*mdio_exit)(struct stmmac_priv *priv);
+ 	int (*pcs_init)(struct stmmac_priv *priv);
+ 	void (*pcs_exit)(struct stmmac_priv *priv);
+ 	struct phylink_pcs *(*select_pcs)(struct stmmac_priv *priv,
 
 -- 
 2.55.0
