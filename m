@@ -1,16 +1,13 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Subject: [PATCH v2 0/2] media: verisilicon: Fix VDPU2 decoder error
- handling
-Date: Fri, 20 Nov 2026 02:49:13 +0000
-Message-Id: <20261120-vdpu2-errreset-v2-0-8f4ef55e6dee@gmail.com>
+Date: Fri, 20 Nov 2026 02:49:14 +0000
+Subject: [PATCH v2 1/2] media: verisilicon: Don't report VDPU2 decoder
+ errors as success
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12Nyw6CMBBFf4XM2po+FIsr/8OwKDDAGKFkCo2G8
- O8Cxo3Lk5x77gwBmTDANZmBMVIg36+gDwmUresbFFStDFrqVCl1FrEaJi2QmTHgKGxq7UVKkxl
- nYB0NjDW99uA9/3KYigeW41bZjJbC6Pm9P0a1eb949h+PSkhR29qdpClSZ9yt6Rw9j6XvIF+W5
- QPt8b64vgAAAA==
-X-Change-ID: 20261115-vdpu2-errreset-8688700393a3
+Message-Id: <20261120-vdpu2-errreset-v2-1-8f4ef55e6dee@gmail.com>
+References: <20261120-vdpu2-errreset-v2-0-8f4ef55e6dee@gmail.com>
+In-Reply-To: <20261120-vdpu2-errreset-v2-0-8f4ef55e6dee@gmail.com>
 To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
  Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
  Philipp Zabel <p.zabel@pengutronix.de>, 
@@ -22,51 +19,44 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795142953; l=1549;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795142953; l=1243;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=236hsCejcx3sS9x+HFSJjCRXf+BV1f1+zibsBZf0JVg=;
- b=+ScOgDQeEaI5FZeSrS1ngM1Vh5HeTVe1p8NGZR8cjcXzNPcKHKCVAGU/ex+lwBGdM2kHJUuCi
- 3ZpiTcU5blgAZD4G9tSKHLAmAsOsrEeaAqfLZAxw7WU3d/sWWcCRDiu
+ bh=pmz+6zoUL7toWQYosmuS4NH+xU1lJuYNQV3oDGrhPbs=;
+ b=BDh2pWVPFr77FF11sME0qilG5geg/tyt3eY9phIjzcv/4CUISB7PCsPZP4ygzi15iLdIHKJwr
+ YaT9K7/UxTpDfHsfEnyR6SoWgpMbieFVUIFumPnUFRY/RPZO7DmTGVm
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The VDPU2 decoder reports failed decodes as done, and its interrupt
-handler can finish a job the decoder is still working on.
+The VDPU2 interrupt handler completes the job as done whenever the
+decoder raised an interrupt. DEC_IRQ is set for every interrupt,
+including timeouts, bus errors and stream errors, so failed decodes
+are returned to userspace as valid frames.
 
-Tested on Orange Pi 5 (RK3588S), v7.3-based KASAN kernel: 72 H.264
-fluster suite runs, 50 error-stream runs, VP8 61/61; no IOMMU faults or
-timeouts. The decoder was still enabled after 72 buffer-empty
-interrupts; a later interrupt ended each of those jobs.
-With a TEST-only patch (not in this series), the IRQ_NONE path ran
-200 times on real registers; bus error and timeout, simulated 5 times
-each by injected status bits, were logged and ended their jobs at once.
-VP8 stayed 61/61 bit-exact.
-Build-tested on media next. MPEG-2, RK3399 and RK3568 untested.
+Check the picture ready bit instead, as the G1 handler does.
 
-Developed with Claude (Anthropic), which wrote the code and the commit
-messages. I reviewed every change.
-
+Fixes: 879dee56a40c ("media: rockchip/vpu: Add MPEG2 decoding support to RK3399")
+Cc: stable@vger.kernel.org
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Changes in v2:
-- Patch 2: no reset after an error; handle the interrupt like the G2
-  handler instead (Nicolas)
-- Link to v1: https://patch.msgid.link/20261119-vdpu2-errreset-v1-0-f8fa403b6a3a@gmail.com
+ drivers/media/platform/verisilicon/rockchip_vpu_hw.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
----
-Arun Iyengar (2):
-      media: verisilicon: Don't report VDPU2 decoder errors as success
-      media: verisilicon: Handle VDPU2 decoder interrupts like the G2
+diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
+index 02673be9878e..4bc1bdb41c70 100644
+--- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
++++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
+@@ -391,7 +391,7 @@ static irqreturn_t rockchip_vpu2_vdpu_irq(int irq, void *dev_id)
+ 	u32 status;
+ 
+ 	status = vdpu_read(vpu, VDPU_REG_INTERRUPT);
+-	state = (status & VDPU_REG_INTERRUPT_DEC_IRQ) ?
++	state = (status & VDPU_REG_INTERRUPT_DEC_RDY_INT) ?
+ 		VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR;
+ 
+ 	vdpu_write(vpu, 0, VDPU_REG_INTERRUPT);
 
- drivers/media/platform/verisilicon/rockchip_vpu_hw.c | 20 ++++++++++++++++++--
- 1 file changed, 18 insertions(+), 2 deletions(-)
----
-base-commit: aa0f4c41d4870a18e65772a1817af16427200371
-change-id: 20261115-vdpu2-errreset-8688700393a3
-
-Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+2.55.0
 
