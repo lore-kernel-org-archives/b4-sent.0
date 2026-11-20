@@ -1,11 +1,11 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Date: Fri, 20 Nov 2026 21:23:09 +0530
-Subject: [PATCH v3 07/11] dt-bindings: arm: qcom: Document Molokai and the
- Motorola Signature
+Date: Fri, 20 Nov 2026 21:23:10 +0530
+Subject: [PATCH v3 08/11] arm64: dts: qcom: kaanapali: Add the second DSI
+ controller and PHY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-molokai-soc-v3-7-403d763685d9@yahoo.com>
+Message-Id: <20261120-molokai-soc-v3-8-403d763685d9@yahoo.com>
 References: <20261120-molokai-soc-v3-0-403d763685d9@yahoo.com>
 In-Reply-To: <20261120-molokai-soc-v3-0-403d763685d9@yahoo.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,40 +19,140 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795189983; l=831;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795189983; l=3401;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=vP3Rth4Xdo7PMRDMJk4bz4PlxggY7eSrhw2hP8+apn0=;
- b=ImJjXdaLDdbq3v3HdqIpoyE0N69ZqaC1Cz0OaZg8c5SuknKKmqAR55WdBrYWpbXruakB1qY1I
- lQWAei6fiOdCvngy/y7islIL9b6TUXjn+efBwvY1jUF0zlHlY6BghdA
+ bh=iFsYs/9s0sJxlpMmr425F1RnSAWZKOQUHiFZ0c+GAms=;
+ b=MGTRqK3GIYYwblPk4QsssioF1xIrl7ULKNLkLcmgYiqcORuYuoZ1RqjCTOJIDVMEWp/4gUfeV
+ 3n0EGngZ/JRDQSOA4PBG5dgf6k/CgJavGmEAKiiGkPXb1iFNVERB4ol
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the Qualcomm Molokai (SM8845) SoC and the Motorola Signature
-(vantage) phone based on it.
+Kaanapali has two DSI controllers. Describe DSI1 and its PHY next to
+DSI0, connect it to the INTF2 output of the display processor and feed
+the PHY's byte and pixel clocks to the display clock controller.
 
 Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
- Documentation/devicetree/bindings/arm/qcom.yaml | 5 +++++
- 1 file changed, 5 insertions(+)
+ arch/arm64/boot/dts/qcom/kaanapali.dtsi | 90 ++++++++++++++++++++++++++++++++-
+ 1 file changed, 88 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
-index 7ffa4f69987f..6993bbffef9e 100644
---- a/Documentation/devicetree/bindings/arm/qcom.yaml
-+++ b/Documentation/devicetree/bindings/arm/qcom.yaml
-@@ -241,6 +241,11 @@ properties:
-               - nothing,asteroids
-           - const: qcom,milos
+diff --git a/arch/arm64/boot/dts/qcom/kaanapali.dtsi b/arch/arm64/boot/dts/qcom/kaanapali.dtsi
+index 132577d540bf..0c4b6a8b32b5 100644
+--- a/arch/arm64/boot/dts/qcom/kaanapali.dtsi
++++ b/arch/arm64/boot/dts/qcom/kaanapali.dtsi
+@@ -3709,6 +3709,7 @@ port@1 {
+ 						reg = <1>;
  
-+      - items:
-+          - enum:
-+              - motorola,vantage
-+          - const: qcom,molokai
+ 						dpu_intf2_out: endpoint {
++							remote-endpoint = <&mdss_dsi1_in>;
+ 						};
+ 					};
+ 
+@@ -3868,6 +3869,91 @@ mdss_dsi0_phy: phy@9ac1000 {
+ 
+ 				status = "disabled";
+ 			};
 +
-       - items:
-           - enum:
-               - microsoft,dempsey
++			mdss_dsi1: dsi@9ac3000 {
++				compatible = "qcom,kaanapali-dsi-ctrl", "qcom,mdss-dsi-ctrl";
++				reg = <0x0 0x09ac3000 0x0 0x1000>;
++				reg-names = "dsi_ctrl";
++
++				interrupts-extended = <&mdss 5>;
++
++				clocks = <&dispcc DISP_CC_MDSS_BYTE1_CLK>,
++					 <&dispcc DISP_CC_MDSS_BYTE1_INTF_CLK>,
++					 <&dispcc DISP_CC_MDSS_PCLK1_CLK>,
++					 <&dispcc DISP_CC_MDSS_ESC1_CLK>,
++					 <&dispcc DISP_CC_MDSS_AHB_CLK>,
++					 <&gcc GCC_DISP_HF_AXI_CLK>,
++					 <&mdss_dsi1_phy DSI_PIXEL_PLL_CLK>,
++					 <&mdss_dsi1_phy DSI_BYTE_PLL_CLK>,
++					 <&dispcc DISP_CC_ESYNC1_CLK>,
++					 <&dispcc DISP_CC_OSC_CLK>,
++					 <&dispcc DISP_CC_MDSS_BYTE1_CLK_SRC>,
++					 <&dispcc DISP_CC_MDSS_PCLK1_CLK_SRC>;
++				clock-names = "byte",
++					      "byte_intf",
++					      "pixel",
++					      "core",
++					      "iface",
++					      "bus",
++					      "dsi_pll_pixel",
++					      "dsi_pll_byte",
++					      "esync",
++					      "osc",
++					      "byte_src",
++					      "pixel_src";
++
++				operating-points-v2 = <&mdss_dsi_opp_table>;
++
++				power-domains = <&rpmhpd RPMHPD_MMCX>;
++
++				phys = <&mdss_dsi1_phy>;
++				phy-names = "dsi";
++
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				status = "disabled";
++
++				ports {
++					#address-cells = <1>;
++					#size-cells = <0>;
++
++					port@0 {
++						reg = <0>;
++
++						mdss_dsi1_in: endpoint {
++							remote-endpoint = <&dpu_intf2_out>;
++						};
++					};
++
++					port@1 {
++						reg = <1>;
++
++						mdss_dsi1_out: endpoint {
++						};
++					};
++				};
++			};
++
++			mdss_dsi1_phy: phy@9ac4000 {
++				compatible = "qcom,kaanapali-dsi-phy-3nm";
++				reg = <0x0 0x09ac4000 0x0 0x1cc>,
++				      <0x0 0x09ac4200 0x0 0x280>,
++				      <0x0 0x09ac4500 0x0 0x400>;
++				reg-names = "dsi_phy",
++					    "dsi_phy_lane",
++					    "dsi_pll";
++
++				clocks = <&dispcc DISP_CC_MDSS_AHB_CLK>,
++					 <&rpmhcc RPMH_CXO_CLK>;
++				clock-names = "iface",
++					      "ref";
++
++				#clock-cells = <1>;
++				#phy-cells = <0>;
++
++				status = "disabled";
++			};
+ 		};
+ 
+ 		dispcc: clock-controller@9ba2000 {
+@@ -3887,8 +3973,8 @@ dispcc: clock-controller@9ba2000 {
+ 				 <0>,
+ 				 <&mdss_dsi0_phy DSI_BYTE_PLL_CLK>,
+ 				 <&mdss_dsi0_phy DSI_PIXEL_PLL_CLK>,
+-				 <0>,
+-				 <0>;
++				 <&mdss_dsi1_phy DSI_BYTE_PLL_CLK>,
++				 <&mdss_dsi1_phy DSI_PIXEL_PLL_CLK>;
+ 
+ 			power-domains = <&rpmhpd RPMHPD_MMCX>;
+ 			required-opps = <&rpmhpd_opp_low_svs>;
 
 -- 
 2.56.1
