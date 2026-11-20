@@ -1,192 +1,250 @@
-From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Fri, 20 Nov 2026 20:24:15 +0300
-Subject: [PATCH v5 2/2] irqchip: Add Cortina Systems CS75xx peripheral
- interrupt controller
+From: Peter LaDow <pladow@gmail.com>
+Date: Fri, 20 Nov 2026 09:40:24 -0800
+Subject: [PATCH v2] leds: lp5860: Add I2C interface support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-cs75xx-intc-v5-2-f2be75c5e97c@gmail.com>
-References: <20261120-cs75xx-intc-v5-0-f2be75c5e97c@gmail.com>
-In-Reply-To: <20261120-cs75xx-intc-v5-0-f2be75c5e97c@gmail.com>
-To: Thomas Gleixner <tglx@kernel.org>, Radu Rendec <radu@rendec.net>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, Fil Dunsky <filipp.dunsky@gmail.com>
+Message-Id: <20261120-add-i2c-support-for-lp5860-v2-1-bcb2ce00a7f5@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAeGAGsC/42NSw6DIBQAr2JY9zWAqZ+ueo/GhcBDX6NCQE0b4
+ 92L9gJdTjKZ2VjEQBjZPdtYwJUiuSmBvGRM9+3UIZBJzCSXhRCSQ2sMkNQQF+9dmMG6AIO/VQW
+ HurR5pSQqFJqlgA9o6X3Gn82P46JeqOejeBg9xdmFz3lfxeH9NVoFCMi50nVptLJl9ejGloard
+ iNr9n3/AiLc5xHWAAAA
+X-Change-ID: 20261120-add-i2c-support-for-lp5860-97f38b2ebe1c
+To: Nam Tran <trannamatk@gmail.com>, Lee Jones <lee@kernel.org>, 
+ Pavel Machek <pavel@kernel.org>, Griffin Kroah-Hartman <griffin@kroah.com>
+Cc: linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
+ Peter LaDow <pladow@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795195470; l=5353;
- i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=nlJ1ISew1ezebn+ulwSM+gYqPI61U7Zt8jVwTgz66XQ=;
- b=tcMMCzoGaymUUNfrebj6mGjQ3JnvK9hH/SSj93AzrUDRy8s+8/FXvEvdKgaj6R7YTik409P9f
- ZOr7nlD6gjfCXeBfDHCWH19jSr0A73NxpRNFaaDC6cTXRWCHpivyrcT
-X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
- pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
-X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795196424; l=6956;
+ i=pladow@gmail.com; s=20261120; h=from:subject:message-id;
+ bh=xozLBt9WPkM9Emoa1I+i7XryYHRlBk5nwDYxPBgOQgQ=;
+ b=hqGuZsh7VMIKGghMl40sxHPRIaId38O0BHU/NtkL9cl2D69REyWsEI6FAJ3T7ACHdayM4IKET
+ h3tWXYExQ31DtpCKR/u/b6xK6ZJowXERKIVATe35gatE4me22AUTelM
+X-Developer-Key: i=pladow@gmail.com; a=ed25519;
+ pk=GEdL9uXOAV0PnykeFpXX87oqKs0/Ac0qAUc4Oow7WN4=
+X-Endpoint-Received: by B4 Relay for pladow@gmail.com/20261120 with auth_id=1585
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The timers, GPIO banks, I2C, MDIO, SPI and a few other low speed
-peripherals of the Cortina Systems CS75xx SoCs share a single GIC
-interrupt. A status register shows the level of the 15 sources and an
-enable register masks them; there is nothing to acknowledge, each source
-is cleared in its peripheral.
+This patch adds I2C bus support to the Texas Instruments LP5860 RGB LED
+matrix driver.
 
-Add a chained driver using a generic chip on a linear domain.
-The driver depends on OF and HAS_IOMEM and can be enabled independently
-of the CS75xx platform support.
+The LP5860 supports both SPI and I2C interfaces depending on the hardware
+IFS pin configuration, but the existing driver only implements the SPI
+bus interface (leds-lp5860-spi).
 
-Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
+Changes include:
+- Adding the leds-lp5860-i2c bus driver module to handle the LP5860's
+  10-bit register addressing scheme over I2C.
+- Updating Kconfig and Makefile so I2C and SPI bus support can be built
+  independently or together.
+
+Tested on ZymqMP (ZU3) with an LP5860 connected over an AXI IIC at
+base address 0x40 (A1=0, A0=0) at 400kHz.
+
+Signed-off-by: Peter LaDow <pladow@gmail.com>
 ---
- drivers/irqchip/Kconfig      |  12 +++++
- drivers/irqchip/Makefile     |   1 +
- drivers/irqchip/irq-cs75xx.c | 107 +++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 120 insertions(+)
+Changes in v2:
+- Use designated initializer (.name = "lp5860") in i2c_device_id table
+- Link to v1: https://patch.msgid.link/20261120-add-i2c-support-for-lp5860-v1-1-30bc97dcbf78@gmail.com
 
-diff --git a/drivers/irqchip/Kconfig b/drivers/irqchip/Kconfig
-index 136bab41f..12bf87e8e 100644
---- a/drivers/irqchip/Kconfig
-+++ b/drivers/irqchip/Kconfig
-@@ -187,6 +187,18 @@ config BRCMSTB_L2_IRQ
- 	select GENERIC_IRQ_CHIP
- 	select IRQ_DOMAIN
+To: Nam Tran <trannamatk@gmail.com>
+To: Lee Jones <lee@kernel.org>
+To: Pavel Machek <pavel@kernel.org>
+To: Griffin Kroah-Hartman <griffin@kroah.com>
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-leds@vger.kernel.org
+---
+ drivers/leds/rgb/Kconfig           |  12 ++++
+ drivers/leds/rgb/Makefile          |   1 +
+ drivers/leds/rgb/leds-lp5860-i2c.c | 139 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 152 insertions(+)
+
+diff --git a/drivers/leds/rgb/Kconfig b/drivers/leds/rgb/Kconfig
+index 3f6786616a7d..5dfca8949464 100644
+--- a/drivers/leds/rgb/Kconfig
++++ b/drivers/leds/rgb/Kconfig
+@@ -78,6 +78,18 @@ config LEDS_LP5860_SPI
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called leds-lp5860-spi.
  
-+config CS75XX_INTC
-+	bool "Cortina Systems CS75xx peripheral interrupt controller"
++config LEDS_LP5860_I2C
++	tristate "LED Support for TI LP5860 I2C LED driver chip"
++	depends on I2C
 +	depends on OF
-+	depends on HAS_IOMEM
-+	select GENERIC_IRQ_CHIP
-+	select IRQ_DOMAIN
++	select LEDS_LP5860_CORE
 +	help
-+	  Support for the interrupt controller of the Cortina Systems
-+	  CS75xx SoCs that combines the interrupts of the low speed
-+	  peripherals (timers, GPIO banks, I2C, MDIO, SPI) into a single
-+	  GIC interrupt. Say Y if you have a board with such an SoC.
++	  If you say yes here you get support for the Texas Instruments
++	  LP5860 LED driver for I2C bus connections.
 +
- config DAVINCI_CP_INTC
- 	bool
- 	select GENERIC_IRQ_CHIP
-diff --git a/drivers/irqchip/Makefile b/drivers/irqchip/Makefile
-index 16a5fd126..7ed8f8b33 100644
---- a/drivers/irqchip/Makefile
-+++ b/drivers/irqchip/Makefile
-@@ -136,3 +136,4 @@ obj-$(CONFIG_MCHP_EIC)			+= irq-mchp-eic.o
- obj-$(CONFIG_SOPHGO_SG2042_MSI)		+= irq-sg2042-msi.o
- obj-$(CONFIG_SUNPLUS_SP7021_INTC)	+= irq-sp7021-intc.o
- obj-$(CONFIG_IRQCHIP_XILINX_SMMU_CSR)	+= irq-xilinx-smmu-csr.o
-+obj-$(CONFIG_CS75XX_INTC)		+= irq-cs75xx.o
-diff --git a/drivers/irqchip/irq-cs75xx.c b/drivers/irqchip/irq-cs75xx.c
++	  To compile this driver as a module, choose M here: the
++	  module will be called leds-lp5860-i2c.
++
+ config LEDS_NCP5623
+ 	tristate "LED support for NCP5623"
+ 	depends on I2C
+diff --git a/drivers/leds/rgb/Makefile b/drivers/leds/rgb/Makefile
+index a59c13396a22..0e35bf16d615 100644
+--- a/drivers/leds/rgb/Makefile
++++ b/drivers/leds/rgb/Makefile
+@@ -6,6 +6,7 @@ obj-$(CONFIG_LEDS_KTD202X)		+= leds-ktd202x.o
+ obj-$(CONFIG_LEDS_LP5812)		+= leds-lp5812.o
+ obj-$(CONFIG_LEDS_LP5860_CORE)		+= leds-lp5860-core.o
+ obj-$(CONFIG_LEDS_LP5860_SPI)		+= leds-lp5860-spi.o
++obj-$(CONFIG_LEDS_LP5860_I2C)		+= leds-lp5860-i2c.o
+ obj-$(CONFIG_LEDS_NCP5623)		+= leds-ncp5623.o
+ obj-$(CONFIG_LEDS_PWM_MULTICOLOR)	+= leds-pwm-multicolor.o
+ obj-$(CONFIG_LEDS_QCOM_LPG)		+= leds-qcom-lpg.o
+diff --git a/drivers/leds/rgb/leds-lp5860-i2c.c b/drivers/leds/rgb/leds-lp5860-i2c.c
 new file mode 100644
-index 000000000..18f10eb7e
+index 000000000000..97948cde54a9
 --- /dev/null
-+++ b/drivers/irqchip/irq-cs75xx.c
-@@ -0,0 +1,107 @@
++++ b/drivers/leds/rgb/leds-lp5860-i2c.c
+@@ -0,0 +1,139 @@
 +// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Cortina Systems CS75xx peripheral interrupt controller
-+ *
-+ * The low speed peripherals on the register bus (timers, GPIO banks, I2C,
-+ * MDIO, SPI, ...) share a single GIC interrupt. A status register shows
-+ * the level of the 15 sources and an enable register masks them; there is
-+ * nothing to acknowledge, the sources are cleared in the peripherals.
-+ */
 +
-+#include <linux/bitops.h>
-+#include <linux/io.h>
-+#include <linux/ioport.h>
-+#include <linux/irq.h>
-+#include <linux/irqchip.h>
-+#include <linux/irqchip/chained_irq.h>
-+#include <linux/irqdomain.h>
++#include <linux/i2c.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
 +#include <linux/of.h>
-+#include <linux/of_address.h>
-+#include <linux/of_irq.h>
++#include <linux/property.h>
++#include <linux/regmap.h>
++#include <linux/slab.h>
 +
-+#define CS75XX_INTC_STATUS	0x00
-+#define CS75XX_INTC_ENABLE	0x04
++#include "leds-lp5860.h"
 +
-+#define CS75XX_INTC_NR_IRQS	15
++#define LP5860_I2C_NUM_PAGES	4
 +
-+static void cs75xx_intc_handler(struct irq_desc *desc)
++struct lp5860_i2c {
++	struct i2c_client *clients[LP5860_I2C_NUM_PAGES];
++};
++
++static int lp5860_i2c_reg_read(void *context, unsigned int reg, unsigned int *val)
 +{
-+	struct irq_domain *domain = irq_desc_get_handler_data(desc);
-+	struct irq_chip *chip = irq_desc_get_chip(desc);
-+	struct irq_chip_generic *gc;
-+	unsigned long pending;
-+	unsigned int hwirq;
-+
-+	gc = irq_get_domain_generic_chip(domain, 0);
-+	chained_irq_enter(chip, desc);
-+
-+	pending = readl(gc->reg_base + CS75XX_INTC_STATUS) & gc->mask_cache;
-+	for_each_set_bit(hwirq, &pending, CS75XX_INTC_NR_IRQS)
-+		generic_handle_domain_irq(domain, hwirq);
-+
-+	chained_irq_exit(chip, desc);
-+}
-+
-+static int __init cs75xx_intc_init(struct device_node *np, struct device_node *parent)
-+{
-+	struct irq_chip_generic *gc;
-+	struct irq_domain *domain;
-+	struct resource res;
-+	void __iomem *base;
-+	int parent_irq;
++	struct lp5860_i2c *i2c = context;
 +	int ret;
 +
-+	ret = of_address_to_resource(np, 0, &res);
++	ret = i2c_smbus_read_byte_data(i2c->clients[reg >> 8], reg & 0xff);
++	if (ret < 0)
++		return ret;
++
++	*val = ret;
++	return 0;
++}
++
++static int lp5860_i2c_reg_write(void *context, unsigned int reg, unsigned int val)
++{
++	struct lp5860_i2c *i2c = context;
++
++	return i2c_smbus_write_byte_data(i2c->clients[reg >> 8], reg & 0xff, val);
++}
++
++static const struct regmap_bus lp5860_i2c_regmap_bus = {
++	.reg_read = lp5860_i2c_reg_read,
++	.reg_write = lp5860_i2c_reg_write,
++};
++
++static const struct regmap_config lp5860_i2c_regmap_config = {
++	.name = "lp5860",
++	.reg_bits = 16,
++	.val_bits = 8,
++	.max_register = LP5860_MAX_REG,
++};
++
++static int lp5860_i2c_probe(struct i2c_client *client)
++{
++	struct device *dev = &client->dev;
++	struct lp5860_i2c *i2c;
++	struct lp5860 *lp5860;
++	unsigned int multi_leds;
++	unsigned int page;
++	int ret;
++
++	if ((client->flags & I2C_CLIENT_TEN) ||
++	    client->addr < 0x40 || client->addr > 0x4c || (client->addr & 0x03))
++		return dev_err_probe(dev, -EINVAL,
++				     "Use the page-zero I2C address (0x40, 0x44, 0x48 or 0x4c).\n");
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
++		return dev_err_probe(dev, -EOPNOTSUPP,
++				     "SMBus byte-data transactions are not supported.\n");
++
++	multi_leds = device_get_child_node_count(dev);
++	if (!multi_leds)
++		return dev_err_probe(dev, -ENODEV, "LEDs are not defined in Device Tree!\n");
++
++	if (multi_leds > LP5860_MAX_LED)
++		return dev_err_probe(dev, -EINVAL, "Too many LEDs specified.\n");
++
++	lp5860 = devm_kzalloc(dev, struct_size(lp5860, leds, multi_leds), GFP_KERNEL);
++	if (!lp5860)
++		return -ENOMEM;
++
++	i2c = devm_kzalloc(dev, sizeof(*i2c), GFP_KERNEL);
++	if (!i2c)
++		return -ENOMEM;
++
++	i2c->clients[0] = client;
++	for (page = 1; page < LP5860_I2C_NUM_PAGES; page++) {
++		i2c->clients[page] = devm_i2c_new_dummy_device(dev, client->adapter,
++							       client->addr | page);
++		if (IS_ERR(i2c->clients[page]))
++			return dev_err_probe(dev, PTR_ERR(i2c->clients[page]),
++					     "Failed to reserve I2C register page %u.\n", page);
++	}
++
++	lp5860->regmap = devm_regmap_init(dev, &lp5860_i2c_regmap_bus, i2c,
++					  &lp5860_i2c_regmap_config);
++	if (IS_ERR(lp5860->regmap))
++		return dev_err_probe(dev, PTR_ERR(lp5860->regmap),
++				     "Failed to initialise Regmap.\n");
++
++	lp5860->dev = dev;
++
++	ret = devm_mutex_init(dev, &lp5860->lock);
 +	if (ret)
 +		return ret;
 +
-+	base = of_io_request_and_map(np, 0, of_node_full_name(np));
-+	if (IS_ERR(base)) {
-+		pr_err("%pOF: unable to map registers\n", np);
-+		return PTR_ERR(base);
-+	}
++	i2c_set_clientdata(client, lp5860);
 +
-+	/* Mask everything before the chained handler is installed */
-+	writel(0, base + CS75XX_INTC_ENABLE);
-+
-+	parent_irq = irq_of_parse_and_map(np, 0);
-+	if (!parent_irq) {
-+		pr_err("%pOF: unable to map parent interrupt\n", np);
-+		ret = -EINVAL;
-+		goto err_unmap;
-+	}
-+
-+	domain = irq_domain_create_linear(of_fwnode_handle(np), CS75XX_INTC_NR_IRQS,
-+					  &irq_generic_chip_ops, NULL);
-+	if (!domain) {
-+		ret = -ENOMEM;
-+		goto err_dispose;
-+	}
-+
-+	ret = irq_alloc_domain_generic_chips(domain, CS75XX_INTC_NR_IRQS, 1, "cs75xx-intc",
-+					     handle_level_irq, IRQ_NOREQUEST,
-+					     IRQ_LEVEL | IRQ_NOPROBE, IRQ_GC_INIT_MASK_CACHE);
-+	if (ret)
-+		goto err_domain;
-+
-+	gc = irq_get_domain_generic_chip(domain, 0);
-+	gc->reg_base = base;
-+	gc->chip_types[0].regs.mask = CS75XX_INTC_ENABLE;
-+	gc->chip_types[0].chip.irq_mask = irq_gc_mask_clr_bit;
-+	gc->chip_types[0].chip.irq_unmask = irq_gc_mask_set_bit;
-+
-+	irq_set_chained_handler_and_data(parent_irq, cs75xx_intc_handler, domain);
-+
-+	return 0;
-+
-+err_domain:
-+	irq_domain_remove(domain);
-+err_dispose:
-+	irq_dispose_mapping(parent_irq);
-+err_unmap:
-+	iounmap(base);
-+	release_mem_region(res.start, resource_size(&res));
-+	return ret;
++	return lp5860_device_init(dev);
 +}
 +
-+IRQCHIP_DECLARE(cs7542_intc, "cortina,cs7542-intc", cs75xx_intc_init);
++static void lp5860_i2c_remove(struct i2c_client *client)
++{
++	lp5860_device_remove(&client->dev);
++}
++
++static const struct of_device_id lp5860_i2c_of_match[] = {
++	{ .compatible = "ti,lp5860" },
++	{}
++};
++MODULE_DEVICE_TABLE(of, lp5860_i2c_of_match);
++
++static const struct i2c_device_id lp5860_i2c_ids[] = {
++	{ .name = "lp5860" },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, lp5860_i2c_ids);
++
++static struct i2c_driver lp5860_i2c_driver = {
++	.driver = {
++		.name = "lp5860-i2c",
++		.of_match_table = lp5860_i2c_of_match,
++	},
++	.probe = lp5860_i2c_probe,
++	.remove = lp5860_i2c_remove,
++	.id_table = lp5860_i2c_ids,
++};
++module_i2c_driver(lp5860_i2c_driver);
++
++MODULE_DESCRIPTION("TI LP5860 RGB LED I2C driver");
++MODULE_LICENSE("GPL");
 
--- 
-2.53.0
+---
+base-commit: c016466c8c8b01af27ac66d97b64fa9c9e431a3d
+change-id: 20261120-add-i2c-support-for-lp5860-97f38b2ebe1c
+
+Best regards,
+--  
+Peter LaDow <pladow@gmail.com>
 
