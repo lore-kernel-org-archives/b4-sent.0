@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:16 -0500
-Subject: [PATCH 25/60] mm/mempolicy: queue only common memory for mbind()
- and migrate_pages()
+Date: Fri, 20 Nov 2026 13:09:17 -0500
+Subject: [PATCH 26/60] mm/migrate: leave pages outside common memory in
+ move_pages()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-25-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-26-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,50 +62,41 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1280;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=857;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=oVUBe3L0N9OzvHIPOvGNp++MFXvEPdYO7K5H5oP/xXo=;
- b=z0Yss6rDFAVA1N5nV8ud28CkhXRAlSaKlLr0ZvA0vfg/FyvOeTLlv0XfslsD2RQQ13WZutKr6
- BXIJh30hlb0DJUOedF94r7a7FARtG2gTQbcL8IzU8HufAGAAA6nYwet
+ bh=AKM465apFVaa3BIvx9XBEK691w0dLD6ac7SFTDNSyZQ=;
+ b=zKNmtwP0ZJy98reK9MCbqubRCfEXRiY4oIhpY5EIBd6qtzzkCGaM6TwqOsdAK0YxCEyfiIv7s
+ pNtU/wZ9nLKDgoZ6+gYrdIUpvysLRVgvfMsEzFM7klZsQ3JuUN5Arbk
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mbind(MPOL_MF_MOVE) and migrate_pages() queue folios from a task's
-mappings for migration.
+move_pages(2) moves the pages a caller names, and reports the node of
+each page in status queries.
 
-Queue only folios on common memory: convert the ZONE_DEVICE checks to
-folio_is_common_memory(). As with ZONE_DEVICE folios, the skipped folios
-do not count as failures, so MPOL_MF_STRICT does not report them.
+Leave pages outside common memory where they are: refuse to move them,
+similar to ZONE_DEVICE pages. Status queries move nothing, so they
+still report the node of each page.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/mempolicy.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ mm/migrate.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mm/mempolicy.c b/mm/mempolicy.c
-index 07d577aca78c..e208018499d6 100644
---- a/mm/mempolicy.c
-+++ b/mm/mempolicy.c
-@@ -687,7 +687,7 @@ static void queue_folios_pmd(pmd_t *pmd, unsigned long addr,
- 		return;
- 	}
- 	folio = vm_normal_folio_pmd(walk->vma, addr, pmdval);
--	if (!folio || folio_is_zone_device(folio))
-+	if (!folio || !folio_is_common_memory(folio))
- 		return;
- 	if (!queue_folio_required(folio, qp))
- 		return;
-@@ -745,7 +745,7 @@ static int queue_folios_pte_range(pmd_t *pmd, unsigned long addr,
- 			continue;
- 		}
- 		folio = vm_normal_folio(vma, addr, ptent);
--		if (!folio || folio_is_zone_device(folio))
-+		if (!folio || !folio_is_common_memory(folio))
- 			continue;
- 		if (folio_test_large(folio) && max_nr != 1)
- 			nr = folio_pte_batch(folio, pte, ptent, max_nr);
+diff --git a/mm/migrate.c b/mm/migrate.c
+index 208788b130fa..ac583afa1bc5 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -2287,7 +2287,7 @@ static int __add_folio_for_migration(struct folio *folio, int node,
+ 	if (is_zero_folio(folio) || is_huge_zero_folio(folio))
+ 		return -EFAULT;
+ 
+-	if (folio_is_zone_device(folio))
++	if (!folio_is_common_memory(folio))
+ 		return -ENOENT;
+ 
+ 	if (folio_nid(folio) == node)
 
 -- 
 2.56.1
