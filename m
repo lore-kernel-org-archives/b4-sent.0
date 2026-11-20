@@ -1,10 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:30 -0500
-Subject: [PATCH 39/60] mm/page_alloc: add a private-node zonelist
+Date: Fri, 20 Nov 2026 13:09:31 -0500
+Subject: [PATCH 40/60] mm/page_alloc: let MM callers select the local
+ private zonelist
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-39-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-40-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -61,98 +62,120 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=3134;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=3868;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=OqpMdBUt5im1cMgZFE5X+fZAbGJWYU6WcOHKkFwuS9o=;
- b=o/dYXsRSD+kDIMnUJjWNiDdysIiPZ9AEs4oJxtAad9XJMPtLlNyz+nTDlkBw/SrIIzFQ8NEmg
- Q5LoNu0vSTqCQh8ZHl/nPuFBHXZVGMqF4GQxX08YQa6pADhhTLCJq4v
+ bh=npD7Fmno/ihvzONGk5Hl78WlKQtT973I2z2+au4TARw=;
+ b=B+B4iyRjeprBqeAT8WfT6BHrv5fPRykSXQFs1sxCFnPlJtNmc6Rzehajvtbg2fl48qr5ckUeO
+ TI31w3UdoXUBQoL6KmdQvmp7Vmy8aGnqUBf4brYww1HglkUBFrAUDZz
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A private node carries N_MEMORY without N_MEMORY_COMMON, so the FALLBACK
-and NOFALLBACK zonelists already exclude it. That leaves no zonelist
-that can reach it.
+Add ALLOC_ZONELIST_PRIVATE, which selects the local private zonelist
+independently of __GFP_THISNODE.
 
-Add ZONELIST_PRIVATE, which holds a node's local zones only if the node
-is private. Common nodes have an empty private zonelist.
+__GFP_THISNODE still governs OOM behavior separately.
 
-Like the existing zonelists, it is sized for every zone of every node.
-That adds a zoneref (16 bytes on 64-bit) per possible zone, MAX_NUMNODES
-* MAX_NR_ZONES, to each pgdat. A smaller local-only zonelist type can be
-a follow-up if this matters.
+Allocations are otherwise still filtered by the task's cpuset, this
+creates some quirks.
 
-When the zonelist becomes selectable, __GFP_THISNODE will still suppress
-OOM, while the page allocator selects the private zonelist instead of
-NOFALLBACK.
-
-If a user grows requiring fallback behavior to COMMON nodes when the
-private node is out of memory, we can consider adding a fallback
-variant - but for now private node allocations use a local-only
-zonelist to limit complexity.
+Reserve allocations normally drop the nodemask and the cpuset check.
+A private request keeps both, since private memory has no reserves
+to grant. A non-blocking __GFP_HIGH request still skips the cpuset
+check, as it does for ordinary allocations.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- include/linux/mmzone.h | 5 +++--
- mm/mm_init.c           | 5 +++--
- mm/page_alloc.c        | 2 ++
- 3 files changed, 8 insertions(+), 4 deletions(-)
+ mm/page_alloc.c | 21 +++++++++++++++------
+ mm/page_alloc.h | 15 +++++++++++++++
+ 2 files changed, 30 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
-index d6c1a43c0bc8..05f212b56c9d 100644
---- a/include/linux/mmzone.h
-+++ b/include/linux/mmzone.h
-@@ -1402,10 +1402,11 @@ enum {
- 	ZONELIST_FALLBACK,	/* zonelist with fallback */
- #ifdef CONFIG_NUMA
- 	/*
--	 * The NUMA zonelists are doubled because we need zonelists that
--	 * restrict the allocations to a single node for __GFP_THISNODE.
-+	 * NUMA nodes also have local-only zonelists that restrict allocations
-+	 * to a single node, for __GFP_THISNODE and for private-node access.
- 	 */
- 	ZONELIST_NOFALLBACK,	/* zonelist without fallback (__GFP_THISNODE) */
-+	ZONELIST_PRIVATE,	/* local private-node access, no fallback */
- #endif
- 	MAX_ZONELISTS
- };
-diff --git a/mm/mm_init.c b/mm/mm_init.c
-index 99a45fd04ac5..a6ff49043b5c 100644
---- a/mm/mm_init.c
-+++ b/mm/mm_init.c
-@@ -99,7 +99,8 @@ void __init mminit_verify_zonelist(void)
- 
- 			/* Print information about the zonelist */
- 			printk(KERN_DEBUG "mminit::zonelist %s %d:%s = ",
--				listid > 0 ? "thisnode" : "general", nid,
-+				listid == 0 ? "general" :
-+				listid == 1 ? "thisnode" : "private", nid,
- 				zone->name);
- 
- 			/* Iterate the zonelist */
-@@ -2706,7 +2707,7 @@ void __init mm_core_init(void)
- 	init_zero_page_pfn();
- 
- 	/* Initializations relying on SMP setup */
--	BUILD_BUG_ON(MAX_ZONELISTS > 2);
-+	BUILD_BUG_ON(MAX_ZONELISTS > 3);
- 	build_all_zonelists(NULL);
- 	page_alloc_init_cpuhp();
- 	alloc_tag_sec_init();
 diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 08e57f809a03..0bd21916cea1 100644
+index 0bd21916cea1..a219057931c3 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -6010,6 +6010,8 @@ static void build_zonelists(pg_data_t *pgdat)
- 			    ZONELIST_FALLBACK);
- 	build_local_zonelist(pgdat, ZONELIST_NOFALLBACK,
- 			     node_state(nid, N_MEMORY_COMMON));
-+	build_local_zonelist(pgdat, ZONELIST_PRIVATE,
-+			     node_state(nid, N_MEMORY_PRIVATE));
- }
+@@ -4926,16 +4926,24 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
+ 		goto got_pg;
  
- #ifdef CONFIG_HAVE_MEMORYLESS_NODES
+ 	reserve_flags = __gfp_pfmemalloc_flags(gfp_mask);
+-	if (reserve_flags)
++	if (reserve_flags) {
++		unsigned int keep = ALLOC_KSWAPD;
++
++		/* The cpuset still grants a private request's node. */
++		if (ac->alloc_flags & ALLOC_ZONELIST_PRIVATE)
++			keep |= ALLOC_CPUSET;
+ 		alloc_flags = alloc_flags_cma(gfp_mask) | reserve_flags |
+-				ac->alloc_flags | (alloc_flags & ALLOC_KSWAPD);
++				ac->alloc_flags | (alloc_flags & keep);
++	}
+ 
+ 	/*
+ 	 * Reset the nodemask and zonelist iterators if memory policies can be
+ 	 * ignored. These allocations are high priority and system rather than
+-	 * user oriented.
++	 * user oriented. A private request keeps its node: private memory has
++	 * no reserves to grant.
+ 	 */
+-	if (!(alloc_flags & ALLOC_CPUSET) || reserve_flags) {
++	if ((!(alloc_flags & ALLOC_CPUSET) || reserve_flags) &&
++	    !(ac->alloc_flags & ALLOC_ZONELIST_PRIVATE)) {
+ 		ac->nodemask = NULL;
+ 		ac->preferred_zoneref = first_zones_zonelist(ac->zonelist,
+ 					ac->highest_zoneidx, ac->nodemask);
+@@ -5164,7 +5172,7 @@ static inline bool prepare_alloc_pages(gfp_t gfp_mask, unsigned int order,
+ 		unsigned int *alloc_flags)
+ {
+ 	ac->highest_zoneidx = gfp_zone(gfp_mask);
+-	ac->zonelist = node_zonelist(preferred_nid, gfp_mask);
++	ac->zonelist = select_zonelist(preferred_nid, gfp_mask, *alloc_flags);
+ 	ac->nodemask = nodemask;
+ 	ac->migratetype = gfp_migratetype(gfp_mask);
+ 
+@@ -5477,7 +5485,8 @@ struct page *__alloc_frozen_pages_noprof(gfp_t gfp, unsigned int order,
+ 	unsigned int zonelist_iter_cookie;
+ 
+ 	/* Other flags could be supported later if needed. */
+-	if (WARN_ON(alloc_flags & ~(ALLOC_NOLOCK | ALLOC_NO_CODETAG)))
++	if (WARN_ON(alloc_flags & ~(ALLOC_NOLOCK | ALLOC_NO_CODETAG |
++				    ALLOC_ZONELIST_PRIVATE)))
+ 		return NULL;
+ 
+ 	if (!alloc_order_allowed(gfp, order, alloc_flags))
+diff --git a/mm/page_alloc.h b/mm/page_alloc.h
+index 917653ae14a3..c0a0e6abe4cd 100644
+--- a/mm/page_alloc.h
++++ b/mm/page_alloc.h
+@@ -56,6 +56,11 @@
+  * alloc_tag_sub_check().
+  */
+ #define ALLOC_NO_CODETAG       0x1000
++#ifdef CONFIG_NUMA
++#define ALLOC_ZONELIST_PRIVATE 0x2000	/* use the local private zonelist */
++#else
++#define ALLOC_ZONELIST_PRIVATE 0x0
++#endif
+ 
+ /* Flags that allow allocations below the min watermark. */
+ #define ALLOC_RESERVES (ALLOC_MIN_RESERVE|ALLOC_HIGHATOMIC|ALLOC_OOM)
+@@ -100,6 +105,16 @@ struct alloc_context {
+ 	unsigned int reclaim_compact_order;
+ };
+ 
++static inline struct zonelist *
++select_zonelist(int nid, gfp_t gfp, unsigned int alloc_flags)
++{
++#ifdef CONFIG_NUMA
++	if (alloc_flags & ALLOC_ZONELIST_PRIVATE)
++		return &NODE_DATA(nid)->node_zonelists[ZONELIST_PRIVATE];
++#endif
++	return node_zonelist(nid, gfp);
++}
++
+ /*
+  * This function returns the order of a free page in the buddy system. In
+  * general, page_zone(page)->lock must be held by the caller to prevent the
 
 -- 
 2.56.1
