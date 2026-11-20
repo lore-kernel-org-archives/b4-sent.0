@@ -1,129 +1,92 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Fri, 20 Nov 2026 05:47:56 +0200
-Subject: [PATCH] pwm: meson: Restore the registers after hibernation
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Fri, 20 Nov 2026 04:26:16 +0000
+Subject: [PATCH v3] tpm: xen-tpmfront: fix use-after-free in
+ backend_changed()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-pwm-meson-hib-v1-1-606e947b2c1f@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAOvC/2oC/x3MQQqAIBBA0avIrBvIgaK6SrTQnHIWmShUEN49a
- fkW/7+QOQlnmNQLiS/JcoYK3ShYvQk7o7hqoJZ6ranFeB94cD4DerFoBjey7cgxGahNTLzJ8//
- mpZQPMlWZmF8AAAA=
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-pwm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3326; i=iav@iav.lv;
- h=from:subject:message-id; bh=JOoyPeCQ7AebKuZzzp2MRiGi9mXQP+9Qpistecz8jTo=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFn/D705s6n3fvJShpulGrb7l9lk+SrsyFnyslh6fd0x3
- S3p9xcVdpSyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJCK5g+MOztfBx1UmLo0c3
- FB03X9HL0K4VyWBrlj/BRqLp6EIjZSaG/zX6vZzxqnxf/czXTmNL/BTPxvbw/pq/M27LuSV3NGk
- 1MQAA
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Message-Id: <20261120-xen-tpmfront-v3-1-3ea2e3fd8611@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOfL/2oC/yXMQQ5AMBBA0avIrDWpqi5cRSwYU0aipC2RiLsrl
+ m/x/wWBPFOAOrvA08GBV5dQ5hng1LmRBA/JoKQyRaGkOMmJuC3Wry4K1Eiy16hMZSElmyfL57d
+ r2t9h72fC+D7gvh/w/tYMcAAAAA==
+X-Change-ID: 20261120-xen-tpmfront-c4ce0b4c265f
+To: jgg@ziepe.ca, jarkko@kernel.org
+Cc: sstabellini@kernel.org, jgross@suse.com, xen-devel@lists.xenproject.org, 
+ linux-kernel@vger.kernel.org, linux-integrity@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795148775; l=2391;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=y48N31ZkViOWzWpWm3teQZk54JRgePEMfCs5wUrfGDI=;
+ b=0aGMxum0hOy9buIFYkF9KMKvvK+7gQ4d4pH6piRdWeijez31/TgCv47CxSTssPFrw8PGRVo+T
+ kKvn2MY1G2CBNupEha6M6Hdr1X/7rI0n8vlpeQPUJ7NaoZ9BDx6Cw+K
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a hibernation image is restored after the system was powered off,
-the PWM registers are reset. The channel clocks (mux, divider and gate)
-are fields of REG_MISC_AB, and the clock framework still counts the gate
-as enabled and the rate as set, so none of these fields is written
-again. pwm-fan reconfigures its channel on resume, but that rewrites
-only the counters and the enable bits, not the clock fields, and the
-PWM core skips an unchanged state altogether. On ODROID-HC4 the fan
-stays stopped after the restore.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-Save REG_PWM_A, REG_PWM_B and REG_MISC_AB on suspend and write them back
-on resume. pwm_AO_cd, which drives the VDDCPU regulator on this board,
-is restored the same way.
+When the backend moves to Closing or Closed, backend_changed()
+unregisters the device and then keeps using it:
 
-Tested on ODROID-HC4: after two restores following a power cut, the fan
-follows both manual pwm1 settings and the thermal control.
+	device_unregister(&dev->dev);
+	xenbus_frontend_closed(dev);
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
+The xenbus watch callback that calls backend_changed() does not hold a
+reference to the device. The tpm_chip registered by xen-tpmfront has dev
+as its parent and holds a reference to it, but tpmfront_remove() drops
+that reference when it unregisters the chip. So device_unregister() can
+release the last reference and free the xenbus_device, and
+xenbus_frontend_closed(dev) then accesses freed memory.
+
+The stubdom based vTPM backend, the only one in use today, never
+switches to Closing or Closed, so this path is not reached with it. It
+is reached with any backend that follows the normal xenbus state
+machine on shutdown.
+
+Take a temporary reference before unregistering and drop it after
+xenbus_frontend_closed(). This keeps dev alive for the last access and
+keeps the existing order, in which TPM operations are stopped before
+the frontend is marked Closed.
+
+Found with a static analysis tool and checked by hand.
+
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-Tested on a v7.3.5 based kernel, before the waveform API conversion, which did not change the clock handling relevant here; build-tested on pwm/for-next.
+Changes in v3:
+- Drop the Fixes tag (Jarkko). No code change.
+
+Changes in v2:
+- Say that the stubdom vTPM backend never reaches this path, and don't
+  ask for a stable backport (Juergen, Jarkko). No code change.
+
+Compile tested on x86_64 (W=1, no new warnings). Not run with a Xen vTPM
+backend.
+
+v2: https://lore.kernel.org/all/20261119-xen-tpmfront-v2-1-e0e51c36360d@gmail.com/
+v1: https://lore.kernel.org/all/20261119-xen-tpmfront-v1-1-bfabbbed462a@gmail.com/
 ---
- drivers/pwm/pwm-meson.c | 43 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
+ drivers/char/tpm/xen-tpmfront.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/pwm/pwm-meson.c b/drivers/pwm/pwm-meson.c
-index 633b384358c0..c8fec42ae414 100644
---- a/drivers/pwm/pwm-meson.c
-+++ b/drivers/pwm/pwm-meson.c
-@@ -119,6 +119,8 @@ struct meson_pwm {
- 	 * that is shared between the two PWMs.
- 	 */
- 	spinlock_t lock;
-+	u32 saved_pwm[MESON_NUM_PWMS];
-+	u32 saved_misc;
- };
+diff --git a/drivers/char/tpm/xen-tpmfront.c b/drivers/char/tpm/xen-tpmfront.c
+index 3c0cce57c4ae..1be925cca535 100644
+--- a/drivers/char/tpm/xen-tpmfront.c
++++ b/drivers/char/tpm/xen-tpmfront.c
+@@ -397,8 +397,11 @@ static void backend_changed(struct xenbus_device *dev,
  
- static inline struct meson_pwm *to_meson_pwm(struct pwm_chip *chip)
-@@ -732,13 +734,54 @@ static int meson_pwm_probe(struct platform_device *pdev)
- 		return dev_err_probe(&pdev->dev, err,
- 				     "failed to register PWM chip\n");
- 
-+	platform_set_drvdata(pdev, chip);
-+
-+	return 0;
-+}
-+
-+/*
-+ * After a power loss the registers are reset, but the PWM core and the clock
-+ * framework keep their state and skip unchanged writes.
-+ */
-+static int meson_pwm_suspend(struct device *dev)
-+{
-+	struct pwm_chip *chip = dev_get_drvdata(dev);
-+	struct meson_pwm *meson = to_meson_pwm(chip);
-+	unsigned int i;
-+
-+	for (i = 0; i < MESON_NUM_PWMS; i++)
-+		meson->saved_pwm[i] = readl(meson->base +
-+					    meson_pwm_per_channel_data[i].reg_offset);
-+	meson->saved_misc = readl(meson->base + REG_MISC_AB);
-+
- 	return 0;
- }
- 
-+static int meson_pwm_resume(struct device *dev)
-+{
-+	struct pwm_chip *chip = dev_get_drvdata(dev);
-+	struct meson_pwm *meson = to_meson_pwm(chip);
-+	unsigned long flags;
-+	unsigned int i;
-+
-+	spin_lock_irqsave(&meson->lock, flags);
-+	for (i = 0; i < MESON_NUM_PWMS; i++)
-+		writel(meson->saved_pwm[i], meson->base +
-+		       meson_pwm_per_channel_data[i].reg_offset);
-+	writel(meson->saved_misc, meson->base + REG_MISC_AB);
-+	spin_unlock_irqrestore(&meson->lock, flags);
-+
-+	return 0;
-+}
-+
-+static DEFINE_SIMPLE_DEV_PM_OPS(meson_pwm_pm_ops, meson_pwm_suspend,
-+				meson_pwm_resume);
-+
- static struct platform_driver meson_pwm_driver = {
- 	.driver = {
- 		.name = "meson-pwm",
- 		.of_match_table = meson_pwm_matches,
-+		.pm = pm_sleep_ptr(&meson_pwm_pm_ops),
- 	},
- 	.probe = meson_pwm_probe,
- };
+ 	case XenbusStateClosing:
+ 	case XenbusStateClosed:
++		/* device_unregister() can drop the last reference to dev */
++		get_device(&dev->dev);
+ 		device_unregister(&dev->dev);
+ 		xenbus_frontend_closed(dev);
++		put_device(&dev->dev);
+ 		break;
+ 	default:
+ 		break;
 
----
-base-commit: 3f9bd3ccc80af2684cfc0901757f85a78358cbab
-change-id: 20261120-pwm-meson-hib-a8d9eb52de2a
 
-Best regards,
--- 
-Igor Velkov <iav@iav.lv>
 
