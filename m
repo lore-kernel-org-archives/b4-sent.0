@@ -1,238 +1,158 @@
-From: Peter LaDow <pladow@gmail.com>
-Date: Fri, 20 Nov 2026 08:52:25 -0800
-Subject: [PATCH] leds: lp5860: Add I2C interface support
+From: Peder Bergan <peder.bergan@gmail.com>
+Date: Fri, 20 Nov 2026 18:18:30 +0100
+Subject: [PATCH v2] rust: put C helper exports in a dedicated namespace
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-add-i2c-support-for-lp5860-v1-1-30bc97dcbf78@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMh6AGsC/yXMwQrCMAwA0F8ZORtoI87pr4iHtU01ImtJNhHG/
- t2qx3d5KxirsMG5W0H5JSZlavC7DuJ9nG6MkpqBHPXek8MxJRSKaEutRWfMRfFZD0Pv8HTM+yE
- QB/YRWlCVs7x/+eX6ty3hwXH+jrBtHxco5Cp+AAAA
-X-Change-ID: 20261120-add-i2c-support-for-lp5860-97f38b2ebe1c
-To: Nam Tran <trannamatk@gmail.com>, Lee Jones <lee@kernel.org>, 
- Pavel Machek <pavel@kernel.org>, Griffin Kroah-Hartman <griffin@kroah.com>
-Cc: linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
- Peter LaDow <pladow@gmail.com>
+Message-Id: <20261120-rust-helper-namespace-v2-1-14315658f59e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOWAAGsC/4WOQQ6DIBREr2JYl1YwaNtV79G4APwITUXCR2Njv
+ HvFHqDLN5l5mZUgRAdI7sVKIswO3eh34KeCaCt9D9R1OxNe8poxXtI4YaIW3gEi9XIADFIDFQ1
+ cddUANJ0h+zZEMG45vM/2xzipF+iUZbmhJAJVUXptczQFTBHkcDn8HpaUS9ZhGuPneDezLPt3Z
+ GaU0UrdZCmEqIypH/0g3fusx4G027Z9ATJI7VTxAAAA
+X-Change-ID: 20261120-rust-helper-namespace-57e8c37ee7df
+To: Andrey Ryabinin <ryabinin.a.a@gmail.com>, 
+ Miguel Ojeda <ojeda@kernel.org>
+Cc: Alexander Potapenko <glider@google.com>, 
+ Andrey Konovalov <andreyknvl@gmail.com>, Dmitry Vyukov <dvyukov@google.com>, 
+ Vincenzo Frascino <vincenzo.frascino@arm.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Luis Chamberlain <mcgrof@kernel.org>, Petr Pavlu <petr.pavlu@suse.com>, 
+ Daniel Gomez <da.gomez@kernel.org>, Sami Tolvanen <samitolvanen@google.com>, 
+ Aaron Tomlin <atomlin@atomlin.com>, kasan-dev@googlegroups.com, 
+ linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ rust-for-linux@vger.kernel.org, linux-modules@vger.kernel.org, 
+ Wedson Almeida Filho <wedsonaf@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795193549; l=6530;
- i=pladow@gmail.com; s=20261120; h=from:subject:message-id;
- bh=WYeX7Dr68OiZme4pornFR+sF3AnsOda9svE1CKz58RI=;
- b=hVFHNJ0BORNibfo9AMK6B3bmn8cIlFNYdnhaZ7YahevywvWu9diIBhs5OoFqDugMcll+F6usS
- G0iXzqDl/8IADm32WZYx2P3VLzIpixE6Rxib6vrrLm32KyfistXB8zZ
-X-Developer-Key: i=pladow@gmail.com; a=ed25519;
- pk=GEdL9uXOAV0PnykeFpXX87oqKs0/Ac0qAUc4Oow7WN4=
-X-Endpoint-Received: by B4 Relay for pladow@gmail.com/20261120 with auth_id=1585
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795195112; l=4679;
+ i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
+ bh=nX0YbO/vtt47+6y4IylipSM71r9O+9xEUx60Z3g64FY=;
+ b=qTCg26Oq8Pjxp/oLQvY8MWSA8T9mQh94rZWp9HfgwSRh9oxjB4DdefYwAxmyYbkzevUK6a5Yn
+ ivpi0EOBirtC6JIIrzz2MXAZX8yIJdIqYu1XBXqFFK89EROXaU6uqD3
+X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
+ pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
+X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch adds I2C bus support to the Texas Instruments LP5860 RGB LED
-matrix driver.
+The rust_helper_ prefix marks these C wrappers as Rust implementation
+details. Their exports use the default namespace, so GPL-compatible
+modules can link against them without an explicit import.
 
-The LP5860 supports both SPI and I2C interfaces depending on the hardware
-IFS pin configuration, but the existing driver only implements the SPI
-bus interface (leds-lp5860-spi).
+Export the wrappers in RUST_HELPERS so modpost can detect accidental
+dependencies at build time by flagging a missing namespace import.
+Have module! supply the import when the helpers are exported, since
+inlining and generic instantiation can introduce calls through ordinary
+Rust abstractions.
 
-Changes include:
-- Adding the leds-lp5860-i2c bus driver module to handle the LP5860's
-  10-bit register addressing scheme over I2C.
-- Updating Kconfig and Makefile so I2C and SPI bus support can be built
-  independently or together.
+The KASAN test links its Rust object into a module whose C object
+supplies the metadata. Import the namespace in that C file when
+building the test as a module with out-of-line Rust helpers. External
+modules that call these helpers without module! also need an explicit
+import.
 
-Tested on ZymqMP (ZU3) with an LP5860 connected over an AXI IIC at
-base address 0x40 (A1=0, A0=0) at 400kHz.
-
-Signed-off-by: Peter LaDow <pladow@gmail.com>
+Suggested-by: Wedson Almeida Filho <wedsonaf@gmail.com>
+Link: https://github.com/Rust-for-Linux/linux/issues/216
+Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
 ---
- drivers/leds/rgb/Kconfig           |  12 ++++
- drivers/leds/rgb/Makefile          |   1 +
- drivers/leds/rgb/leds-lp5860-i2c.c | 139 +++++++++++++++++++++++++++++++++++++
- 3 files changed, 152 insertions(+)
+The modular x86-64 KASAN build failed at modpost on v1 and now passes
+with strict namespace checks. With CONFIG_MODVERSIONS enabled, the
+test module and kernel export record the same checksum for the helper.
 
-diff --git a/drivers/leds/rgb/Kconfig b/drivers/leds/rgb/Kconfig
-index 3f6786616a7d..5dfca8949464 100644
---- a/drivers/leds/rgb/Kconfig
-+++ b/drivers/leds/rgb/Kconfig
-@@ -78,6 +78,18 @@ config LEDS_LP5860_SPI
- 	  To compile this driver as a module, choose M here: the
- 	  module will be called leds-lp5860-spi.
+OpenAI Codex assisted with coding and testing.
+---
+Changes in v2:
+- Import RUST_HELPERS in the C metadata for the modular KASAN test
+  when using out-of-line Rust helpers.
+  https://lore.kernel.org/linux-modules/sashiko-outbox-225583@kernel.org/
+- Link to v1: https://patch.msgid.link/20261120-rust-helper-namespace-v1-1-3b9a05553ff6@gmail.com
+---
+ mm/kasan/kasan_test_c.c | 3 +++
+ rust/Makefile           | 4 +++-
+ rust/exports.c          | 2 ++
+ rust/macros/module.rs   | 5 +++++
+ 4 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/mm/kasan/kasan_test_c.c b/mm/kasan/kasan_test_c.c
+index b9e167ed5be32..f8e96c1194e02 100644
+--- a/mm/kasan/kasan_test_c.c
++++ b/mm/kasan/kasan_test_c.c
+@@ -34,6 +34,9 @@
+ #define OOB_TAG_OFF (IS_ENABLED(CONFIG_KASAN_GENERIC) ? 0 : KASAN_GRANULE_SIZE)
  
-+config LEDS_LP5860_I2C
-+	tristate "LED Support for TI LP5860 I2C LED driver chip"
-+	depends on I2C
-+	depends on OF
-+	select LEDS_LP5860_CORE
-+	help
-+	  If you say yes here you get support for the Texas Instruments
-+	  LP5860 LED driver for I2C bus connections.
+ MODULE_IMPORT_NS("EXPORTED_FOR_KUNIT_TESTING");
++#if defined(MODULE) && defined(CONFIG_RUST) && !defined(CONFIG_RUST_INLINE_HELPERS)
++MODULE_IMPORT_NS("RUST_HELPERS");
++#endif
+ 
+ static bool multishot;
+ 
+diff --git a/rust/Makefile b/rust/Makefile
+index 0165626decbe7..17c559052e936 100644
+--- a/rust/Makefile
++++ b/rust/Makefile
+@@ -569,9 +569,10 @@ $(obj)/helpers/helpers.bc $(obj)/helpers/helpers_module.bc: $(src)/helpers/helpe
+ 
+ rust_exports = $(NM) -p --defined-only $(1) | awk '$$2~/(T|R|D|B)/ && $$3!~/__(pfx|cfi|odr_asan)/ { printf $(2),$$3 }'
+ 
++rust_export_macro = EXPORT_SYMBOL_RUST_GPL
+ quiet_cmd_exports = EXPORTS $@
+       cmd_exports = \
+-	$(call rust_exports,$<,"EXPORT_SYMBOL_RUST_GPL(%s);\n") > $@
++	$(call rust_exports,$<,"$(rust_export_macro)(%s);\n") > $@
+ 
+ $(obj)/exports_core_generated.h: $(obj)/core.o FORCE
+ 	$(call if_changed,exports)
+@@ -585,6 +586,7 @@ $(obj)/exports_core_generated.h: $(obj)/core.o FORCE
+ # function either. Therefore, we export all symbols from helpers and bindings.
+ # In the future, this may be revisited to reduce the number of exports after
+ # the compiler is informed about the places codegen is required.
++$(obj)/exports_helpers_generated.h: private rust_export_macro = EXPORT_SYMBOL_RUST_HELPER_GPL
+ $(obj)/exports_helpers_generated.h: $(obj)/helpers/helpers.o FORCE
+ 	$(call if_changed,exports)
+ 
+diff --git a/rust/exports.c b/rust/exports.c
+index 1b52460b0f4ee..fde2a52d2a1ae 100644
+--- a/rust/exports.c
++++ b/rust/exports.c
+@@ -14,6 +14,8 @@
+ #include <linux/export.h>
+ 
+ #define EXPORT_SYMBOL_RUST_GPL(sym) extern int sym; EXPORT_SYMBOL_GPL(sym)
++#define EXPORT_SYMBOL_RUST_HELPER_GPL(sym) \
++	extern int sym; EXPORT_SYMBOL_NS_GPL(sym, "RUST_HELPERS")
+ 
+ #include "exports_core_generated.h"
+ #include "exports_bindings_generated.h"
+diff --git a/rust/macros/module.rs b/rust/macros/module.rs
+index 0a7b9e24c9600..ac3376fa8fb85 100644
+--- a/rust/macros/module.rs
++++ b/rust/macros/module.rs
+@@ -467,6 +467,11 @@ pub(crate) fn module(info: ModuleInfo) -> Result<TokenStream> {
+         }
+     }
+ 
++    // Inlined kernel code can introduce calls to C helpers in any Rust module.
++    if !cfg!(CONFIG_RUST_INLINE_HELPERS) {
++        modinfo.emit_only_loadable("import_ns", "RUST_HELPERS", false);
++    }
 +
-+	  To compile this driver as a module, choose M here: the
-+	  module will be called leds-lp5860-i2c.
-+
- config LEDS_NCP5623
- 	tristate "LED support for NCP5623"
- 	depends on I2C
-diff --git a/drivers/leds/rgb/Makefile b/drivers/leds/rgb/Makefile
-index a59c13396a22..0e35bf16d615 100644
---- a/drivers/leds/rgb/Makefile
-+++ b/drivers/leds/rgb/Makefile
-@@ -6,6 +6,7 @@ obj-$(CONFIG_LEDS_KTD202X)		+= leds-ktd202x.o
- obj-$(CONFIG_LEDS_LP5812)		+= leds-lp5812.o
- obj-$(CONFIG_LEDS_LP5860_CORE)		+= leds-lp5860-core.o
- obj-$(CONFIG_LEDS_LP5860_SPI)		+= leds-lp5860-spi.o
-+obj-$(CONFIG_LEDS_LP5860_I2C)		+= leds-lp5860-i2c.o
- obj-$(CONFIG_LEDS_NCP5623)		+= leds-ncp5623.o
- obj-$(CONFIG_LEDS_PWM_MULTICOLOR)	+= leds-pwm-multicolor.o
- obj-$(CONFIG_LEDS_QCOM_LPG)		+= leds-qcom-lpg.o
-diff --git a/drivers/leds/rgb/leds-lp5860-i2c.c b/drivers/leds/rgb/leds-lp5860-i2c.c
-new file mode 100644
-index 000000000000..2744ac325862
---- /dev/null
-+++ b/drivers/leds/rgb/leds-lp5860-i2c.c
-@@ -0,0 +1,139 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/mutex.h>
-+#include <linux/of.h>
-+#include <linux/property.h>
-+#include <linux/regmap.h>
-+#include <linux/slab.h>
-+
-+#include "leds-lp5860.h"
-+
-+#define LP5860_I2C_NUM_PAGES	4
-+
-+struct lp5860_i2c {
-+	struct i2c_client *clients[LP5860_I2C_NUM_PAGES];
-+};
-+
-+static int lp5860_i2c_reg_read(void *context, unsigned int reg, unsigned int *val)
-+{
-+	struct lp5860_i2c *i2c = context;
-+	int ret;
-+
-+	ret = i2c_smbus_read_byte_data(i2c->clients[reg >> 8], reg & 0xff);
-+	if (ret < 0)
-+		return ret;
-+
-+	*val = ret;
-+	return 0;
-+}
-+
-+static int lp5860_i2c_reg_write(void *context, unsigned int reg, unsigned int val)
-+{
-+	struct lp5860_i2c *i2c = context;
-+
-+	return i2c_smbus_write_byte_data(i2c->clients[reg >> 8], reg & 0xff, val);
-+}
-+
-+static const struct regmap_bus lp5860_i2c_regmap_bus = {
-+	.reg_read = lp5860_i2c_reg_read,
-+	.reg_write = lp5860_i2c_reg_write,
-+};
-+
-+static const struct regmap_config lp5860_i2c_regmap_config = {
-+	.name = "lp5860",
-+	.reg_bits = 16,
-+	.val_bits = 8,
-+	.max_register = LP5860_MAX_REG,
-+};
-+
-+static int lp5860_i2c_probe(struct i2c_client *client)
-+{
-+	struct device *dev = &client->dev;
-+	struct lp5860_i2c *i2c;
-+	struct lp5860 *lp5860;
-+	unsigned int multi_leds;
-+	unsigned int page;
-+	int ret;
-+
-+	if ((client->flags & I2C_CLIENT_TEN) ||
-+	    client->addr < 0x40 || client->addr > 0x4c || (client->addr & 0x03))
-+		return dev_err_probe(dev, -EINVAL,
-+				     "Use the page-zero I2C address (0x40, 0x44, 0x48 or 0x4c).\n");
-+
-+	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
-+		return dev_err_probe(dev, -EOPNOTSUPP,
-+				     "SMBus byte-data transactions are not supported.\n");
-+
-+	multi_leds = device_get_child_node_count(dev);
-+	if (!multi_leds)
-+		return dev_err_probe(dev, -ENODEV, "LEDs are not defined in Device Tree!\n");
-+
-+	if (multi_leds > LP5860_MAX_LED)
-+		return dev_err_probe(dev, -EINVAL, "Too many LEDs specified.\n");
-+
-+	lp5860 = devm_kzalloc(dev, struct_size(lp5860, leds, multi_leds), GFP_KERNEL);
-+	if (!lp5860)
-+		return -ENOMEM;
-+
-+	i2c = devm_kzalloc(dev, sizeof(*i2c), GFP_KERNEL);
-+	if (!i2c)
-+		return -ENOMEM;
-+
-+	i2c->clients[0] = client;
-+	for (page = 1; page < LP5860_I2C_NUM_PAGES; page++) {
-+		i2c->clients[page] = devm_i2c_new_dummy_device(dev, client->adapter,
-+							       client->addr | page);
-+		if (IS_ERR(i2c->clients[page]))
-+			return dev_err_probe(dev, PTR_ERR(i2c->clients[page]),
-+					     "Failed to reserve I2C register page %u.\n", page);
-+	}
-+
-+	lp5860->regmap = devm_regmap_init(dev, &lp5860_i2c_regmap_bus, i2c,
-+					  &lp5860_i2c_regmap_config);
-+	if (IS_ERR(lp5860->regmap))
-+		return dev_err_probe(dev, PTR_ERR(lp5860->regmap),
-+				     "Failed to initialise Regmap.\n");
-+
-+	lp5860->dev = dev;
-+
-+	ret = devm_mutex_init(dev, &lp5860->lock);
-+	if (ret)
-+		return ret;
-+
-+	i2c_set_clientdata(client, lp5860);
-+
-+	return lp5860_device_init(dev);
-+}
-+
-+static void lp5860_i2c_remove(struct i2c_client *client)
-+{
-+	lp5860_device_remove(&client->dev);
-+}
-+
-+static const struct of_device_id lp5860_i2c_of_match[] = {
-+	{ .compatible = "ti,lp5860" },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, lp5860_i2c_of_match);
-+
-+static const struct i2c_device_id lp5860_i2c_ids[] = {
-+	{ "lp5860" },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(i2c, lp5860_i2c_ids);
-+
-+static struct i2c_driver lp5860_i2c_driver = {
-+	.driver = {
-+		.name = "lp5860-i2c",
-+		.of_match_table = lp5860_i2c_of_match,
-+	},
-+	.probe = lp5860_i2c_probe,
-+	.remove = lp5860_i2c_remove,
-+	.id_table = lp5860_i2c_ids,
-+};
-+module_i2c_driver(lp5860_i2c_driver);
-+
-+MODULE_DESCRIPTION("TI LP5860 RGB LED I2C driver");
-+MODULE_LICENSE("GPL");
+     // Built-in modules also export the `file` modinfo string.
+     let file =
+         std::env::var("RUST_MODFILE").expect("Unable to fetch RUST_MODFILE environmental variable");
 
 ---
-base-commit: c016466c8c8b01af27ac66d97b64fa9c9e431a3d
-change-id: 20261120-add-i2c-support-for-lp5860-97f38b2ebe1c
+base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
+change-id: 20261120-rust-helper-namespace-57e8c37ee7df
 
 Best regards,
 --  
-Peter LaDow <pladow@gmail.com>
+Peder Bergan <peder.bergan@gmail.com>
 
