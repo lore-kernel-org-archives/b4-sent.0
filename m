@@ -1,11 +1,10 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:50 -0500
-Subject: [PATCH 59/60] selftests/dax: test cpuset interaction with private
- nodes
+Date: Fri, 20 Nov 2026 13:09:51 -0500
+Subject: [PATCH 60/60] Documentation/mm: describe private memory nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-59-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-60-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,1000 +61,330 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198154; l=31064;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198154; l=15763;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=EI6JxHWnX1E8lmDW0ZNNtbtjkB4kd9zr5bG7TLb7SPI=;
- b=azX2IoQ0k/rNrnRYN5r39xQCJPo2uC5yWshnAuSDxixMsQXyTBNlaYZD4aZPk+RcVCgh5zKpz
- Y8NszRWT5+yD9YPyNGFlSe6opcaFAZwfNfLk183+H5TRmWjAtvmQLmq
+ bh=1CxuEurfODQ6QUesg2p+46KtXtCsxztkO+La2AEjh24=;
+ b=WnIWFdXNA3YhHmbpHmvoUOZODvZAbww7W+o8UVb3uDxQYfzw96Yr4+pTNSw84j5Jay8xHYv7i
+ imoUMEv16NyAMKIYKCcM4AM4Islb2OK0ve028+6PeyNhbWqAicWlZ+l
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Test private nodes in cgroup-v2 cpusets with kmem_private_rebind_tool:
-  - cpuset.mems may name a private node, a private-only request
-    inherits the parent's common nodes, and ordinary allocations in the
-    cpuset stay on common memory.
-  - policies across cpuset.mems changes and task attachment: interleave
-    and positional rebinds never reach private memory, and a private
-    binding keeps its node while it is allowed, evacuates to common
-    memory when it is revoked, and returns when it is restored.
-  - policies across hotplug: a private binding falls back while its
-    node is offline or common and resumes once the node is private
-    again, and a common binding falls back when its node becomes
-    private.
+Add Documentation/mm/numa_private_nodes.rst for administrators,
+covering:
+  - creating a private node with dax kmem private mode.
+  - binding memory to it with MPOL_F_PRIVATE_NODES, and explicit
+    migration.
+  - controlling access with cpusets.
+  - what happens when the node becomes unavailable or full.
+  - shared memory placement.
+  - which memory management services apply, and how memory counters
+    account private memory.
 
-Run with DAX_KMEM_TEST_DEV=<daxX.Y|auto>. The rebind tests need two
-common memory nodes.
+In both cgroup guides, document that cpuset memory migration never
+targets a private node and moves pages off one only when the cpuset no
+longer allows it. Document how a private-only cpuset.mems gains the
+parent's common memory nodes in v2, and is rejected in v1.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- tools/testing/selftests/dax/.gitignore             |   1 +
- tools/testing/selftests/dax/Makefile               |   3 +
- tools/testing/selftests/dax/config                 |   1 +
- tools/testing/selftests/dax/kmem_private_cpuset.sh |  70 +++
- tools/testing/selftests/dax/kmem_private_rebind.sh | 301 +++++++++++++
- .../selftests/dax/kmem_private_rebind_tool.c       | 495 +++++++++++++++++++++
- tools/testing/selftests/dax/private_node_common.sh |  32 ++
- 7 files changed, 903 insertions(+)
+ Documentation/admin-guide/cgroup-v1/cpusets.rst |   7 +
+ Documentation/admin-guide/cgroup-v2.rst         |  13 +-
+ Documentation/mm/index.rst                      |   1 +
+ Documentation/mm/numa_private_nodes.rst         | 223 ++++++++++++++++++++++++
+ 4 files changed, 243 insertions(+), 1 deletion(-)
 
-diff --git a/tools/testing/selftests/dax/.gitignore b/tools/testing/selftests/dax/.gitignore
-index fce2950a4e05..bb9c006203d0 100644
---- a/tools/testing/selftests/dax/.gitignore
-+++ b/tools/testing/selftests/dax/.gitignore
-@@ -1,2 +1,3 @@
- # SPDX-License-Identifier: GPL-2.0-only
- kmem_private_policy_tool
-+kmem_private_rebind_tool
-diff --git a/tools/testing/selftests/dax/Makefile b/tools/testing/selftests/dax/Makefile
-index 26473b640a4c..de1327f3a7a7 100644
---- a/tools/testing/selftests/dax/Makefile
-+++ b/tools/testing/selftests/dax/Makefile
-@@ -5,8 +5,11 @@ TEST_PROGS := dax-kmem-hotplug.sh
- TEST_PROGS += kmem_private.sh
- TEST_PROGS += kmem_private_services.sh
- TEST_PROGS += kmem_private_policy.sh
-+TEST_PROGS += kmem_private_cpuset.sh
-+TEST_PROGS += kmem_private_rebind.sh
- TEST_FILES := private_node_common.sh
- TEST_GEN_FILES := kmem_private_policy_tool
-+TEST_GEN_FILES += kmem_private_rebind_tool
+diff --git a/Documentation/admin-guide/cgroup-v1/cpusets.rst b/Documentation/admin-guide/cgroup-v1/cpusets.rst
+index fb3fb6fa88cb..642b6f568bcc 100644
+--- a/Documentation/admin-guide/cgroup-v1/cpusets.rst
++++ b/Documentation/admin-guide/cgroup-v1/cpusets.rst
+@@ -653,6 +653,13 @@ the cpuset is preserved during these migration operations if possible.
+ For example if the page was on the second valid node of the prior cpuset
+ then the page will be placed on the second valid node of the new cpuset.
  
- CFLAGS += -Wall $(KHDR_INCLUDES)
++Private memory nodes (see Documentation/mm/numa_private_nodes.rst) are
++never a migration destination. With 'cpuset.memory_migrate' set, pages
++on a private node migrate only when the cpuset no longer allows that
++node. Listing a private node in 'cpuset.mems' permits explicit private
++bindings to it, but tasks do not otherwise allocate from it. Writing a
++'cpuset.mems' that names only private nodes fails with -ENOSPC.
++
+ Also if 'cpuset.memory_migrate' is set true, then if that cpuset's
+ 'cpuset.mems' file is modified, pages allocated to tasks in that
+ cpuset, that were on nodes in the previous setting of 'cpuset.mems',
+diff --git a/Documentation/admin-guide/cgroup-v2.rst b/Documentation/admin-guide/cgroup-v2.rst
+index 9e3c67b02ae2..8b24c2648040 100644
+--- a/Documentation/admin-guide/cgroup-v2.rst
++++ b/Documentation/admin-guide/cgroup-v2.rst
+@@ -2626,6 +2626,12 @@ Cpuset Interface Files
+ 	tasks within the cgroup to be migrated to the designated nodes if
+ 	they are currently using memory outside of the designated nodes.
  
-diff --git a/tools/testing/selftests/dax/config b/tools/testing/selftests/dax/config
-index 5436c4a195c8..54ef671020c5 100644
---- a/tools/testing/selftests/dax/config
-+++ b/tools/testing/selftests/dax/config
-@@ -7,3 +7,4 @@ CONFIG_COMPACTION=y
- CONFIG_MIGRATION=y
- CONFIG_MEMCG=y
- CONFIG_TRANSPARENT_HUGEPAGE=y
-+CONFIG_CPUSETS=y
-diff --git a/tools/testing/selftests/dax/kmem_private_cpuset.sh b/tools/testing/selftests/dax/kmem_private_cpuset.sh
-new file mode 100755
-index 000000000000..2ae64b973f01
---- /dev/null
-+++ b/tools/testing/selftests/dax/kmem_private_cpuset.sh
-@@ -0,0 +1,70 @@
-+#!/bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+#
-+# Check that cgroup-v2 cpuset.mems may name a private kmem node without
-+# exposing it to ordinary allocations.
-+#
-+# Needs root, DAX_KMEM_TEST_DEV=<daxX.Y|auto> (see private_node_common.sh),
-+# one common memory node and the cgroup-v2 cpuset controller.
++	Private memory nodes (see Documentation/mm/numa_private_nodes.rst)
++	are never a migration destination.  Pages on a private node are
++	migrated only when the node is removed from "cpuset.mems.effective".
++	Listing a private node in "cpuset.mems" permits explicit private
++	bindings to it, but tasks do not otherwise allocate from it.
 +
-+# shellcheck disable=SC1091
-+DIR="$(dirname "$(readlink -f "$0")")"
-+. "$DIR"/../kselftest/ktap_helpers.sh
-+. "$DIR"/private_node_common.sh
+ 	There is a cost for this memory migration.  The migration
+ 	may not be complete and some memory pages may be left behind.
+ 	So it is recommended that "cpuset.mems" should be set properly
+@@ -2652,7 +2658,12 @@ Cpuset Interface Files
+ 	parent cgroup that will be available to be used by this cgroup.
+ 	Otherwise, it should be a subset of "cpuset.mems" unless none of
+ 	the memory nodes listed in "cpuset.mems" can be granted.  In this
+-	case, it will be treated just like an empty "cpuset.mems".
++	case, it will be treated just like an empty "cpuset.mems", except
++	that the parent's private memory nodes are left out.
 +
-+TOOL="$DIR/kmem_private_rebind_tool"
-+CG="$CGROOT/kmem-private-cpuset-$$"
-+
-+# shellcheck disable=SC2317 # invoked by the EXIT trap
-+cleanup()
-+{
-+	pn_cpuset_cleanup "$CG"
-+	pn_unbind_kmem_private
-+}
-+trap cleanup EXIT
-+
-+pn_setup
-+[ -x "$TOOL" ] || pn_skip "kmem_private_rebind_tool not built"
-+pn_find_common_nodes 1
-+pn_require_mask_nodes "$PN" "${COMMON[0]}"
-+pn_cpuset_cgroup "$CG"
-+
-+ktap_set_plan 4
-+
-+name="mixed common/private cpuset.mems is accepted"
-+if echo "${COMMON[0]},$PN" > "$CG/cpuset.mems" 2>/dev/null &&
-+   pn_nodelist_has "$(cat "$CG/cpuset.mems.effective")" "$PN"; then
-+	ktap_test_pass "$name"
-+else
-+	ktap_test_fail "$name"
-+fi
-+
-+name="a private-only request keeps the node and inherits common memory"
-+if echo "$PN" > "$CG/cpuset.mems" 2>/dev/null &&
-+   pn_nodelist_has "$(cat "$CG/cpuset.mems")" "$PN" &&
-+   pn_nodelist_has "$(cat "$CG/cpuset.mems.effective")" "$PN" &&
-+   pn_nodelist_has "$(cat "$CG/cpuset.mems.effective")" "${COMMON[0]}"; then
-+	ktap_test_pass "$name"
-+else
-+	ktap_test_fail "$name"
-+fi
-+
-+name="ordinary allocation in the cpuset stays on common memory"
-+out=$(timeout 60 sh -c "echo \$\$ > '$CG/cgroup.procs'; exec '$TOOL' \
-+	ordinary '$PN' '${COMMON[0]}' '${COMMON[0]}'")
-+if [ "$out" = "private=0" ]; then
-+	ktap_test_pass "$name"
-+else
-+	ktap_print_msg "$out"
-+	ktap_test_fail "$name"
-+fi
-+
-+name="removing the private node revokes it"
-+if echo "${COMMON[0]}" > "$CG/cpuset.mems" 2>/dev/null &&
-+   ! pn_nodelist_has "$(cat "$CG/cpuset.mems.effective")" "$PN"; then
-+	ktap_test_pass "$name"
-+else
-+	ktap_test_fail "$name"
-+fi
-+
-+ktap_finished
-diff --git a/tools/testing/selftests/dax/kmem_private_rebind.sh b/tools/testing/selftests/dax/kmem_private_rebind.sh
-new file mode 100755
-index 000000000000..5d39be04f179
---- /dev/null
-+++ b/tools/testing/selftests/dax/kmem_private_rebind.sh
-@@ -0,0 +1,301 @@
-+#!/bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+#
-+# Check memory policies on private kmem memory while a cgroup-v2 cpuset is
-+# reshaped, tasks move between cpusets, and the node is hotplugged. Each case
-+# starts kmem_private_rebind_tool, changes the cpuset or the node, and sends
-+# the tool SIGUSR1 to check where its memory went.
-+#
-+# Needs root, DAX_KMEM_TEST_DEV=<daxX.Y|auto> (see private_node_common.sh),
-+# two common memory nodes and the cgroup-v2 cpuset controller.
-+
-+# shellcheck disable=SC1091
-+DIR="$(dirname "$(readlink -f "$0")")"
-+. "$DIR"/../kselftest/ktap_helpers.sh
-+. "$DIR"/private_node_common.sh
-+
-+TOOL="$DIR/kmem_private_rebind_tool"
-+CG="$CGROOT/kmem-private-rebind-$$"
-+CGCOMMON="$CGROOT/kmem-private-rebind-common-$$"
-+OUT=$(mktemp)
-+
-+# CHILD is the timeout wrapper and TARGET the tool, which may be its child.
-+stop_tool()
-+{
-+	[ -n "${TARGET:-}" ] && kill "$TARGET" 2>/dev/null
-+	[ -n "${CHILD:-}" ] && kill "$CHILD" 2>/dev/null
-+	[ -n "${CHILD:-}" ] && wait "$CHILD" 2>/dev/null
-+	TARGET=
-+	CHILD=
-+}
-+
-+# shellcheck disable=SC2317 # invoked by the EXIT trap
-+cleanup()
-+{
-+	stop_tool
-+	rm -f "$OUT"
-+	pn_cpuset_cleanup "$CG" "$CGCOMMON"
-+	pn_unbind_kmem_private
-+}
-+trap cleanup EXIT
-+
-+wait_output()
-+{
-+	local pattern=$1 i
-+
-+	for ((i = 0; i < 100; i++)); do
-+		grep -q "$pattern" "$OUT" && return 0
-+		kill -0 "$CHILD" 2>/dev/null || break
-+		sleep 0.1
-+	done
-+	return 1
-+}
-+
-+# Start the tool in mode $1, inside cgroup $2 if given, and wait until it is
-+# ready for the first SIGUSR1.
-+start_tool()
-+{
-+	local mode=$1 cg=${2:-}
-+
-+	: > "$OUT"
-+	if [ -n "$cg" ]; then
-+		timeout 60 sh -ec "echo \$\$ > '$cg/cgroup.procs'; exec '$TOOL' \
-+			'$mode' '$PN' '${COMMON[0]}' '${COMMON[1]}'" > "$OUT" 2>&1 &
-+	else
-+		timeout 60 "$TOOL" "$mode" "$PN" "${COMMON[0]}" "${COMMON[1]}" \
-+			> "$OUT" 2>&1 &
-+	fi
-+	CHILD=$!
-+	wait_output '^ready pid=' || return 1
-+	TARGET=$(sed -n 's/^ready pid=//p' "$OUT")
-+}
-+
-+# Signal the tool to check stage $1 and report its result as test $2.
-+# Returns 1 if the tool did not answer.
-+report_stage()
-+{
-+	local stage=$1 name=$2 line
-+
-+	if ! kill -USR1 "$TARGET" || ! wait_output "^stage=$stage "; then
-+		ktap_print_msg "no answer from the tool"
-+		ktap_test_fail "$name"
-+		return 1
-+	fi
-+	line=$(grep "^stage=$stage " "$OUT")
-+	ktap_print_msg "$line"
-+	if grep -q 'ok=1$' <<<"$line"; then
-+		ktap_test_pass "$name"
-+	else
-+		ktap_test_fail "$name"
-+	fi
-+}
-+
-+# Run task policy mode $1 in the cpuset across one cpuset.mems change. The
-+# tool's result is the last line of $OUT.
-+run_task_policy()
-+{
-+	echo "${COMMON[0]},$PN" > "$CG/cpuset.mems"
-+	if ! start_tool "$1" "$CG" ||
-+	   ! echo "${COMMON[1]},$PN" > "$CG/cpuset.mems" ||
-+	   ! kill -USR1 "$TARGET" || ! wait "$CHILD"; then
-+		stop_tool
-+		echo "tool failed" >> "$OUT"
-+		return 1
-+	fi
-+	CHILD=
-+	TARGET=
-+}
-+
-+# Allow or revoke the private node at stage $2, by attaching the tool to
-+# another cpuset or by writing mask $3 to cpuset.mems, for action $1.
-+transition_cpuset()
-+{
-+	local action=$1 stage=$2 mask=$3
-+
-+	case "$action:$stage" in
-+	attach:1) echo "$TARGET" > "$CGCOMMON/cgroup.procs" ;;
-+	attach:*) echo "$TARGET" > "$CG/cgroup.procs" ;;
-+	*) echo "$mask" > "$CG/cpuset.mems" ;;
-+	esac
-+}
-+
-+# A private binding in tool mode $1 while its cpuset allows, revokes and
-+# allows the private node again, by action reshape or attach.
-+run_private_transitions()
-+{
-+	local mode=$1 label=$2 action=${3:-reshape}
-+	local stage mask title cg=
-+	local titles=("keeps private pages and placement while the node stays allowed"
-+		"evacuates private pages and uses common placement when access is revoked"
-+		"restores the original private request when access returns")
-+
-+	echo "${COMMON[0]},$PN" > "$CG/cpuset.mems"
-+	if [ "$action" = attach ]; then
-+		echo "${COMMON[1]},$PN" > "$CG/cpuset.mems"
-+	fi
-+	# Shared-policy parents and task-attachment tools start at the root.
-+	if [ "$mode" = private-anon ] && [ "$action" = reshape ]; then
-+		cg=$CG
-+	fi
-+	if ! start_tool "$mode" "$cg"; then
-+		ktap_print_msg "tool setup failed"
-+		for title in "${titles[@]}"; do
-+			ktap_test_fail "$label $title"
-+		done
-+		stop_tool
-+		return
-+	fi
-+	if [ "$mode" = private-shared ] && [ "$action" = reshape ]; then
-+		echo "$TARGET" > "$CG/cgroup.procs"
-+	fi
-+	for stage in 0 1 2; do
-+		mask=${COMMON[1]}
-+		[ "$stage" = 1 ] || mask+=",$PN"
-+		if ! transition_cpuset "$action" "$stage" "$mask"; then
-+			ktap_print_msg "cannot change the cpuset"
-+			ktap_test_fail "$label ${titles[$stage]}"
-+			continue
-+		fi
-+		report_stage "$stage" "$label ${titles[$stage]}"
-+	done
-+	wait "$CHILD"
-+	CHILD=
-+	TARGET=
-+}
-+
-+# Take the private node through stage $1: offline, common, offline, private.
-+retype_node()
-+{
-+	case "$1" in
-+	0|2) echo unplugged > "$D/state" ;;
-+	1) echo 0 > "$D/private" && echo online_movable > "$D/state" ;;
-+	3) echo 1 > "$D/private" && echo online_movable > "$D/state" ;;
-+	esac
-+}
-+
-+# A private binding in tool mode $1 while its node is hotplugged and retyped.
-+run_private_retype()
-+{
-+	local mode=$1 label=$2
-+	local stage name ready=false
-+	local titles=("falls back while the private node is offline"
-+		"binds the original node when it returns as common memory"
-+		"falls back again after draining the common node"
-+		"restores private placement when the node returns as private memory")
-+
-+	echo "${COMMON[1]},$PN" > "$CG/cpuset.mems"
-+	start_tool "$mode" "$CG" && ready=true
-+	for stage in 0 1 2 3; do
-+		name="$label ${titles[$stage]}"
-+		if [ "$ready" != true ]; then
-+			ktap_print_msg "tool is not running"
-+			ktap_test_fail "$name"
-+		elif ! retype_node "$stage"; then
-+			ktap_print_msg "cannot hotplug $(basename "$D")"
-+			ktap_test_fail "$name"
-+			ready=false
-+		elif ! report_stage "$stage" "$name"; then
-+			ready=false
-+		fi
-+	done
-+	stop_tool
-+	pn_bind_kmem_private "$D"
-+}
-+
-+# A static binding in tool mode $1 of a common node that becomes private.
-+run_common_retype()
-+{
-+	local mode=$1 name=$2 line
-+
-+	if ! echo unplugged > "$D/state" || ! echo 0 > "$D/private" ||
-+	   ! echo online_movable > "$D/state"; then
-+		ktap_print_msg "cannot provision common kmem memory"
-+		ktap_test_fail "$name"
-+		return
-+	fi
-+	echo "${COMMON[0]},$PN" > "$CG/cpuset.mems"
-+	if ! start_tool "$mode" "$CG"; then
-+		ktap_print_msg "tool setup failed"
-+		ktap_test_fail "$name"
-+		stop_tool
-+		return
-+	fi
-+	if ! echo unplugged > "$D/state" || ! echo 1 > "$D/private" ||
-+	   ! echo online_movable > "$D/state" ||
-+	   ! echo "${COMMON[1]},$PN" > "$CG/cpuset.mems"; then
-+		ktap_print_msg "cannot retype kmem memory"
-+		ktap_test_fail "$name"
-+		stop_tool
-+		return
-+	fi
-+	kill -USR1 "$TARGET"
-+	if wait "$CHILD"; then
-+		line=$(tail -1 "$OUT")
-+		ktap_print_msg "$line"
-+		if grep -q 'ok=1$' <<<"$line"; then
-+			ktap_test_pass "$name"
-+		else
-+			ktap_test_fail "$name"
-+		fi
-+	else
-+		ktap_print_msg "tool failed or timed out"
-+		ktap_test_fail "$name"
-+	fi
-+	CHILD=
-+	TARGET=
-+}
-+
-+pn_setup
-+[ -x "$TOOL" ] || pn_skip "kmem_private_rebind_tool not built"
-+pn_find_common_nodes 2
-+pn_require_mask_nodes "$PN" "${COMMON[@]}"
-+pn_cpuset_cgroup "$CG"
-+pn_cpuset_cgroup "$CGCOMMON"
-+echo "${COMMON[0]},$PN" > "$CG/cpuset.mems" ||
-+	ktap_exit_fail_msg "cannot set cpuset.mems of $CG"
-+echo "${COMMON[1]}" > "$CGCOMMON/cpuset.mems" ||
-+	ktap_exit_fail_msg "cannot set cpuset.mems of $CGCOMMON"
-+
-+ktap_set_plan 25
-+
-+run_task_policy interleave
-+line=$(tail -1 "$OUT")
-+ktap_print_msg "$line"
-+name="interleave policy cannot reacquire private memory on rebind"
-+if grep -q '^private=0 ' <<<"$line"; then
-+	ktap_test_pass "$name"
-+else
-+	ktap_test_fail "$name"
-+fi
-+
-+run_task_policy bind
-+line=$(tail -1 "$OUT")
-+ktap_print_msg "$line"
-+name="positional cpuset migration excludes private memory"
-+if grep -q '^private=0 ' <<<"$line"; then
-+	ktap_test_pass "$name"
-+else
-+	ktap_test_fail "$name"
-+fi
-+name="removed common-node pages migrate to common fallback"
-+if grep -q ' new_common=64$' <<<"$line"; then
-+	ktap_test_pass "$name"
-+else
-+	ktap_test_fail "$name"
-+fi
-+
-+run_private_transitions private-anon "anonymous binding"
-+run_private_transitions private-shared \
-+	"shared binding across distinct mapper cpusets"
-+run_private_transitions private-anon \
-+	"anonymous binding across task attachment" attach
-+run_private_transitions private-shared \
-+	"shared binding across task attachment" attach
-+run_private_retype retype-anon "anonymous private binding"
-+run_private_retype retype-shared "shared private binding"
-+run_common_retype static \
-+	"shared common binding falls back after its node becomes private"
-+run_common_retype static-mixed \
-+	"shared common binding requires an allowed common target"
-+
-+ktap_finished
-diff --git a/tools/testing/selftests/dax/kmem_private_rebind_tool.c b/tools/testing/selftests/dax/kmem_private_rebind_tool.c
++	If the granted nodes are all private memory nodes, the parent's
++	other memory nodes are added, so that tasks always have memory for
++	ordinary allocations.
+ 
+ 	Its value will be affected by memory nodes hotplug events.
+ 
+diff --git a/Documentation/mm/index.rst b/Documentation/mm/index.rst
+index e9ae5cd82163..ecb83e1bdbf6 100644
+--- a/Documentation/mm/index.rst
++++ b/Documentation/mm/index.rst
+@@ -66,6 +66,7 @@ documentation, or deleted if it has served its purpose.
+    mmu_notifier
+    multigen_lru
+    numa
++   numa_private_nodes
+    overcommit-accounting
+    page_migration
+    page_frags
+diff --git a/Documentation/mm/numa_private_nodes.rst b/Documentation/mm/numa_private_nodes.rst
 new file mode 100644
-index 000000000000..3d88d1e61c2f
+index 000000000000..2fedf7534446
 --- /dev/null
-+++ b/tools/testing/selftests/dax/kmem_private_rebind_tool.c
-@@ -0,0 +1,495 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Helper for kmem_private_cpuset.sh and kmem_private_rebind.sh. Most modes
-+ * place memory under a policy, print "ready pid=<pid>" and wait for SIGUSR1
-+ * while the script changes the cpuset or the node, then report where the
-+ * memory went. Modes with several stages wait for one SIGUSR1 per stage and
-+ * print one "stage=<n> ... ok=<0|1>" line each.
-+ *
-+ * Modes that check their own results exit 1 when a check fails. All modes
-+ * exit 2 on usage or setup errors.
-+ */
-+#define _GNU_SOURCE
-+#include <linux/mempolicy.h>
-+#include <signal.h>
-+#include <stdbool.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <sys/mman.h>
-+#include <sys/syscall.h>
-+#include <sys/wait.h>
-+#include <unistd.h>
++++ b/Documentation/mm/numa_private_nodes.rst
+@@ -0,0 +1,223 @@
++.. SPDX-License-Identifier: GPL-2.0
 +
-+#ifndef MPOL_F_PRIVATE_NODES
-+#define MPOL_F_PRIVATE_NODES (1 << 12)
-+#endif
++====================
++Private memory nodes
++====================
 +
-+#define NR_PAGES 64
-+/* The kernel reads maxnode - 1 bits. */
-+#define MAXNODE (8 * sizeof(unsigned long) + 1)
++A private memory node is a NUMA node whose memory the kernel does not use for
++ordinary allocations. Applications place memory there only by asking for that
++node explicitly. This keeps specialized memory, such as HBM or coherent device
++memory, visible as a NUMA node without making it a general fallback for every
++allocation. Memory that is not private is called common memory.
 +
-+enum mode {
-+	ORDINARY,
-+	INTERLEAVE,
-+	BIND,
-+	PRIVATE_ANON,
-+	PRIVATE_SHARED,
-+	RETYPE_ANON,
-+	RETYPE_SHARED,
-+	STATIC,
-+	STATIC_MIXED,
-+	NR_MODES,
-+};
++The kernel manages a private node's memory with the usual page allocator. The
++driver that provides the memory decides which memory management services the
++node also gets. The dax kmem private mode described below enables reclaim,
++compaction and explicit placement by applications.
 +
-+static const struct {
-+	const char *name;
-+	const char *help;
-+} modes[NR_MODES] = {
-+	[ORDINARY] = { "ordinary", "allocate without a policy" },
-+	[INTERLEAVE] = { "interleave",
-+			 "task interleave over <private> and <common1>" },
-+	[BIND] = { "bind", "task bind to <common1>" },
-+	[PRIVATE_ANON] = { "private-anon",
-+			   "private binding of anonymous memory" },
-+	[PRIVATE_SHARED] = { "private-shared",
-+			     "private binding of shared memory, two mappers" },
-+	[RETYPE_ANON] = { "retype-anon",
-+			  "private-anon across node hotplug" },
-+	[RETYPE_SHARED] = { "retype-shared",
-+			    "private-shared across node hotplug" },
-+	[STATIC] = { "static", "static binding of shared memory to <private>" },
-+	[STATIC_MIXED] = { "static-mixed",
-+			   "static binding to <private> and <common1>" },
-+};
++``/sys/devices/system/node/has_private_memory`` lists the private nodes, and
++``has_common_memory`` lists the others. Together they make up ``has_memory``.
 +
-+static void print_usage(const char *prog)
-+{
-+	int i;
++Creating a private node
++=======================
 +
-+	fprintf(stderr, "usage: %s <mode> <private> <common1> <common2>\n",
-+		prog);
-+	for (i = 0; i < NR_MODES; i++)
-+		fprintf(stderr, "  %-15s %s\n", modes[i].name, modes[i].help);
-+	exit(2);
-+}
++Private memory is added through memory hotplug and requires ``CONFIG_NUMA``.
++With ``CONFIG_DEV_DAX_KMEM`` and ``CONFIG_MEMORY_HOTREMOVE``, a device-dax
++instance bound to ``kmem`` can be onlined as private memory. Select private mode
++while the device's memory is unplugged::
 +
-+/* Node masks are a single unsigned long. */
-+static bool node_fits(int nid)
-+{
-+	return nid >= 0 && nid < (int)(8 * sizeof(unsigned long));
-+}
++    echo unplugged > /sys/bus/dax/devices/daxX.Y/state
++    echo 1 > /sys/bus/dax/devices/daxX.Y/private
++    echo online_movable > /sys/bus/dax/devices/daxX.Y/state
 +
-+static void *map_anon(long len)
-+{
-+	return mmap(NULL, len, PROT_READ | PROT_WRITE,
-+		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-+}
++The ``private`` attribute defaults to 0, which keeps ordinary kmem behavior.
++Its value can change only while the device is unplugged. Unbinding kmem
++discards the setting. Bind the device with memory auto-onlining disabled, so
++that its memory is not onlined as common memory first.
 +
-+static void *map_shared(int *fd, long len)
-+{
-+	*fd = memfd_create("private-rebind", 0);
-+	if (*fd < 0 || ftruncate(*fd, len))
-+		return MAP_FAILED;
-+	return mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, *fd, 0);
-+}
++All System RAM on a node shares one configuration. Adding memory with a
++different configuration to a node that already has System RAM fails with
++``-EBUSY``. To change the configuration, remove every System RAM block on the
++node first. Offlining the blocks is not enough, since offline blocks keep their
++configuration so they can be onlined again.
 +
-+static void announce_ready(void)
-+{
-+	printf("ready pid=%d\n", getpid());
-+	fflush(stdout);
-+}
++A private node may have CPUs. Like the CPUs of a memoryless node, they get
++ordinary memory from the nearest common nodes.
 +
-+static long count_node(void *addr, long page_size, int nid)
-+{
-+	void *pages[NR_PAGES];
-+	int status[NR_PAGES];
-+	long i, count = 0;
++Using private memory
++====================
 +
-+	for (i = 0; i < NR_PAGES; i++)
-+		pages[i] = addr + i * page_size;
-+	if (syscall(SYS_move_pages, 0, NR_PAGES, pages, NULL, status, 0UL))
-+		return -1;
-+	for (i = 0; i < NR_PAGES; i++)
-+		count += status[i] == nid;
-+	return count;
-+}
++An application binds an anonymous or shmem-backed mapping to one private node
++with ``mbind(2)``, passing ``MPOL_BIND | MPOL_F_PRIVATE_NODES``, before it
++faults the pages in::
 +
-+static bool range_matches(void *ptr, long page_size, unsigned char value)
-+{
-+	long i;
++    buf = mmap(NULL, length, PROT_READ | PROT_WRITE,
++               MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
++    /* mask contains exactly the chosen private node */
++    mbind(buf, length, MPOL_BIND | MPOL_F_PRIVATE_NODES, mask, maxnode, 0);
++    memset(buf, 0, length);
 +
-+	for (i = 0; i < NR_PAGES; i++)
-+		if (*(unsigned char *)(ptr + i * page_size) != value)
-+			return false;
-+	return true;
-+}
++``mbind(2)`` rejects a private binding with ``-EINVAL`` if:
 +
-+static int bind_mapping(void *ptr, long len, unsigned long mask, int flags)
-+{
-+	return syscall(SYS_mbind, ptr, len, MPOL_BIND | flags,
-+		       &mask, MAXNODE, 0UL);
-+}
++- the mask names more than one node, or a node that is not private memory
++  with userspace placement enabled.
++- the mode is not ``MPOL_BIND``, or the flag is combined with
++  ``MPOL_F_STATIC_NODES``, ``MPOL_F_RELATIVE_NODES`` or
++  ``MPOL_F_NUMA_BALANCING``.
++- the mapping is a HugeTLB mapping. Private nodes hold no HugeTLB pages.
++- the node is not in the caller's cpuset.
 +
-+static bool policy_matches(void *ptr, unsigned long mask, int flags)
-+{
-+	unsigned long actual = 0;
-+	int mode;
++Kernels without private node support reject the flag with ``-EINVAL``, so
++applications can probe for it. ``get_mempolicy(2)`` reports the flag.
 +
-+	return !syscall(SYS_get_mempolicy, &mode, &actual, MAXNODE,
-+			ptr, MPOL_F_ADDR) &&
-+		mode == (MPOL_BIND | flags) && actual == mask;
-+}
++Without ``MPOL_F_PRIVATE_NODES``, private nodes in a ``set_mempolicy(2)`` or
++``mbind(2)`` mask are ignored, as nodes outside the cpuset are. A mask that
++names only private nodes is therefore rejected with ``-EINVAL``.
++``set_mempolicy(2)`` does not accept the flag, because a task policy also
++applies to the kernel's allocations on behalf of the task. Preferred,
++interleave and preferred-many policies, tmpfs ``mpol=`` mount options, HugeTLB
++pools and automatic NUMA balancing use only common memory.
 +
-+/* Report how many pages are on the private node. */
-+static int ordinary(long page_size, int priv)
-+{
-+	long len = NR_PAGES * page_size;
-+	void *ptr = map_anon(len);
++``move_pages(2)`` and ``migrate_pages(2)`` can move pages to a private node
++with userspace placement enabled, subject to their usual permission checks.
++They take no flag. ``move_pages(2)`` rejects other private nodes with
++``-ENODEV``, and ``migrate_pages(2)`` ignores them, as it ignores nodes outside
++the caller's cpuset.
 +
-+	if (ptr == MAP_FAILED)
-+		return 2;
-+	memset(ptr, 0xab, len);
-+	printf("private=%ld\n", count_node(ptr, page_size, priv));
-+	return 0;
-+}
++Page cache for regular files is never allocated from private memory.
++Copy-on-write pages of a private file mapping follow a binding like anonymous
++memory, and explicit migration can move existing file pages to a private node.
++A private binding on a shmem-backed mapping allocates its pages from the
++private node, and reclaim swaps them out like other shmem pages.
 +
-+static void report_placement(void *ptr, long page_size, int priv,
-+			     int common1, int common2)
-+{
-+	printf("private=%ld old_common=%ld new_common=%ld\n",
-+	       count_node(ptr, page_size, priv),
-+	       count_node(ptr, page_size, common1),
-+	       count_node(ptr, page_size, common2));
-+}
++guest_memfd memory cannot be moved, so a binding places it on a private node
++only if the node has memory onlined as ``online`` or ``online_kernel``.
 +
-+/* Interleave over the private node and allocate after the cpuset change. */
-+static int task_interleave(long page_size, int priv, int common1,
-+			   int common2, const sigset_t *waitset)
-+{
-+	unsigned long mask = (1UL << common1) | (1UL << priv);
-+	long len = NR_PAGES * page_size;
-+	void *ptr;
-+	int sig;
++Controlling access
++==================
 +
-+	if (syscall(SYS_set_mempolicy, MPOL_INTERLEAVE, &mask, MAXNODE))
-+		return 2;
-+	announce_ready();
-+	sigwait(waitset, &sig);
-+	ptr = map_anon(len);
-+	if (ptr == MAP_FAILED)
-+		return 2;
-+	memset(ptr, 0xcd, len);
-+	report_placement(ptr, page_size, priv, common1, common2);
-+	munmap(ptr, len);
-+	return 0;
-+}
++``cpuset.mems`` includes private nodes by default, so any task can bind to a
++private node and use up its capacity. Use ``cpuset.mems`` to limit which tasks
++may use a private node. Listing a private node in ``cpuset.mems`` permits
++private bindings to it. Tasks do not otherwise allocate from it.
 +
-+/* Bind to the first common node and allocate before the cpuset change. */
-+static int task_bind(long page_size, int priv, int common1, int common2,
-+		     const sigset_t *waitset)
-+{
-+	unsigned long mask = 1UL << common1;
-+	long len = NR_PAGES * page_size;
-+	void *ptr;
-+	int sig;
++In cgroup v2, a ``cpuset.mems`` that names only private nodes is accepted, and
++the parent's common nodes are added to ``cpuset.mems.effective`` so that tasks
++always have memory for ordinary allocations. The parent's other private nodes
++are not added. An empty ``cpuset.mems`` inherits the parent's effective nodes,
++private nodes included.
 +
-+	if (syscall(SYS_set_mempolicy, MPOL_BIND, &mask, MAXNODE))
-+		return 2;
-+	ptr = map_anon(len);
-+	if (ptr == MAP_FAILED)
-+		return 2;
-+	memset(ptr, 0xab, len);
-+	announce_ready();
-+	sigwait(waitset, &sig);
-+	report_placement(ptr, page_size, priv, common1, common2);
-+	munmap(ptr, len);
-+	return 0;
-+}
++In cgroup v1, writing a ``cpuset.mems`` that names only private nodes, or
++attaching a task to such a cpuset, fails with ``-ENOSPC``. When memory hotplug
++leaves a v1 cpuset with only private memory, its tasks move to an ancestor.
 +
-+struct shared_result {
-+	long private_pages;
-+	long shared_pages;
-+};
++Cpuset memory migration never moves pages to a private node. It moves pages
++off a private node only when the cpuset no longer allows that node.
 +
-+/* Keep one mapper outside the cpuset that is being changed. */
-+static int shared_mapper(void *ptr, long len, long page_size, int priv,
-+			 int common, int requests, int replies, pid_t child)
-+{
-+	struct shared_result result;
-+	int stage, status;
-+	bool contents;
-+	void *range;
++When a node becomes unavailable
++===============================
 +
-+	while (read(requests, &stage, sizeof(stage)) == sizeof(stage)) {
-+		range = ptr + (stage + 4) * len;
-+		memset(range, 0xef, len);
-+		result.private_pages = count_node(range, page_size, priv);
++A private binding applies while its node is online private memory with
++userspace placement enabled and the task's cpuset allows it. While it applies,
++allocations use only that node and never fall back to common memory.
 +
-+		/* Existing shared pages are not reallocated for another mapper. */
-+		range = ptr + (stage + 1) * len;
-+		contents = range_matches(range, page_size, 0xcd);
-+		result.shared_pages = count_node(range, page_size,
-+						 stage == 1 ? common : priv);
-+		if (!contents)
-+			result.shared_pages = -1;
-+		if (write(replies, &result, sizeof(result)) != sizeof(result))
-+			break;
-+	}
-+	close(requests);
-+	close(replies);
-+	if (waitpid(child, &status, 0) != child || !WIFEXITED(status))
-+		return 1;
-+	return WEXITSTATUS(status);
-+}
++Otherwise the binding is suspended and allocations use the task's common
++memory. The binding is never rebound to another node. It applies again when
++its node becomes available again. If the node comes back as common memory, the
++binding acts like an ordinary binding to that node. ``get_mempolicy(2)`` keeps
++reporting the original binding throughout.
 +
-+/*
-+ * A private binding across three cpuset changes that allow, revoke and allow
-+ * the node again. Range 0 of the mapping is populated up front and range
-+ * 1 + stage at each stage. For shared memory the parent stays outside the
-+ * cpuset as a second mapper and populates range 4 + stage.
-+ */
-+static int private_rebind(bool shared, long page_size, int priv, int common,
-+			  const sigset_t *waitset)
-+{
-+	unsigned long mask = 1UL << priv;
-+	long len = NR_PAGES * page_size;
-+	long total = (shared ? 7 : 4) * len;
-+	int fd = -1, requests[2], replies[2];
-+	int stage, sig, failed = 0;
-+	struct shared_result other;
-+	long private_pages, common_pages, existing, existing_common;
-+	bool policy, contents, ok;
-+	pid_t child;
-+	void *ptr, *range;
++==============================  ==================  =========================
++Event                           New allocations     Existing private pages
++==============================  ==================  =========================
++cpuset removes the node         common memory       migrated to common memory
++cpuset allows the node again    the private node    not migrated back
++node is being hot-removed       the private node    migrated to common memory
++node is removed                 common memory       none remain
++node returns as private memory  the private node
++node returns as common memory   that common node
++==============================  ==================  =========================
 +
-+	if (shared)
-+		ptr = map_shared(&fd, total);
-+	else
-+		ptr = map_anon(total);
-+	if (ptr == MAP_FAILED ||
-+	    bind_mapping(ptr, total, mask, MPOL_F_PRIVATE_NODES))
-+		return 2;
-+	/* Keep later ranges absent until their respective cpuset transition. */
-+	if (madvise(ptr, total, MADV_NOHUGEPAGE))
-+		return 2;
-+	memset(ptr, 0xab, len);
-+	if (count_node(ptr, page_size, priv) != NR_PAGES)
-+		return 1;
++While a node is being hot-removed, its free memory is no longer available, so
++faults on mappings bound to it can fail with ``SIGBUS`` until removal finishes.
 +
-+	if (shared) {
-+		if (pipe(requests) || pipe(replies))
-+			return 2;
-+		child = fork();
-+		if (child < 0)
-+			return 2;
-+		if (child) {
-+			close(requests[1]);
-+			close(replies[0]);
-+			failed = shared_mapper(ptr, len, page_size, priv, common,
-+					       requests[0], replies[1], child);
-+			goto out;
-+		}
-+		close(requests[0]);
-+		close(replies[1]);
-+		/* Populate the child's PTEs before cpuset-requested migration. */
-+		if (!range_matches(ptr, page_size, 0xab))
-+			return 2;
-+	}
++Allocations that cannot use ``ZONE_MOVABLE``, such as guest_memfd memory, ignore
++a binding to a private node whose memory is all movable and use common memory.
++Long-term pins migrate pages out of ``ZONE_MOVABLE`` as usual.
 +
-+	announce_ready();
-+	for (stage = 0; stage < 3; stage++) {
-+		if (sigwait(waitset, &sig))
-+			return 2;
-+		range = ptr + (stage + 1) * len;
-+		memset(range, 0xcd, len);
-+		private_pages = count_node(range, page_size, priv);
-+		common_pages = count_node(range, page_size, common);
-+		/* File-backed PTEs can be populated lazily after fork. */
-+		contents = range_matches(ptr, page_size, 0xab);
-+		existing = count_node(ptr, page_size, priv);
-+		existing_common = count_node(ptr, page_size, common);
-+		policy = policy_matches(ptr, mask, MPOL_F_PRIVATE_NODES);
-+		ok = policy && contents;
-+		/* Old pages leave the private node only once it is revoked. */
-+		if (stage == 0)
-+			ok &= existing == NR_PAGES && existing_common == 0;
-+		else
-+			ok &= existing == 0 && existing_common == NR_PAGES;
-+		if (stage == 1)
-+			ok &= common_pages == NR_PAGES && private_pages == 0;
-+		else
-+			ok &= private_pages == NR_PAGES && common_pages == 0;
-+		other.private_pages = -1;
-+		other.shared_pages = -1;
-+		if (shared) {
-+			if (write(requests[1], &stage, sizeof(stage)) != sizeof(stage) ||
-+			    read(replies[0], &other, sizeof(other)) != sizeof(other))
-+				return 2;
-+			ok &= other.private_pages == NR_PAGES &&
-+				other.shared_pages == NR_PAGES;
-+		}
-+		printf("stage=%d private=%ld common=%ld existing_private=%ld ",
-+		       stage, private_pages, common_pages, existing);
-+		printf("existing_common=%ld ", existing_common);
-+		printf("policy=%d other_private=%ld shared_pages=%ld ok=%d\n",
-+		       policy, other.private_pages, other.shared_pages, ok);
-+		fflush(stdout);
-+		failed |= !ok;
-+	}
-+	if (shared) {
-+		close(requests[1]);
-+		close(replies[0]);
-+	}
-+out:
-+	munmap(ptr, total);
-+	if (fd >= 0)
-+		close(fd);
-+	return failed;
-+}
++An ordinary policy that is not rebound, such as a static binding or a shared
++memory policy, can name a node that later comes back as private memory. If the
++task may use no common node in such a policy, the policy is ignored and the
++allocation uses common memory.
 +
-+/*
-+ * A private binding while the node goes offline, returns as common memory,
-+ * goes offline again and returns as private memory. Range @stage of the
-+ * mapping is populated at each stage.
-+ */
-+static int private_retype(bool shared, long page_size, int target, int common,
-+			  const sigset_t *waitset)
-+{
-+	unsigned long mask = 1UL << target;
-+	long len = NR_PAGES * page_size;
-+	long private_pages, common_pages;
-+	int fd = -1, stage, sig, i, failed = 0;
-+	bool policy, contents, ok;
-+	void *ptr, *range;
++Exhaustion and OOM
++==================
 +
-+	if (shared)
-+		ptr = map_shared(&fd, 4 * len);
-+	else
-+		ptr = map_anon(4 * len);
-+	if (ptr == MAP_FAILED ||
-+	    bind_mapping(ptr, 4 * len, mask, MPOL_F_PRIVATE_NODES) ||
-+	    madvise(ptr, 4 * len, MADV_NOHUGEPAGE))
-+		return 2;
++A private node is a fixed pool, like a HugeTLB pool. When the node is full and
++reclaim cannot free enough memory on it, an allocation for a private binding
++fails without invoking the OOM killer and without falling back to common
++memory. A page fault then gets ``SIGBUS``, as with an exhausted HugeTLB pool.
++Other callers see an error, such as ``-ENOMEM`` from ``write(2)`` to a shmem
++file or ``-EFAULT`` from a write through ``/proc/pid/mem`` or
++``process_vm_writev(2)``. Allocations succeed again once memory on the node is
++freed.
 +
-+	/* Keep the policy alive without preventing the initial hot-unplug. */
-+	announce_ready();
-+	for (stage = 0; stage < 4; stage++) {
-+		if (sigwait(waitset, &sig))
-+			return 2;
-+		range = ptr + stage * len;
-+		memset(range, 0xa0 + stage, len);
-+		private_pages = count_node(range, page_size, target);
-+		common_pages = count_node(range, page_size, common);
-+		policy = policy_matches(ptr, mask, MPOL_F_PRIVATE_NODES);
-+		contents = true;
-+		for (i = 0; i <= stage; i++)
-+			contents &= range_matches(ptr + i * len, page_size,
-+						  0xa0 + i);
-+		ok = policy && contents;
-+		if (stage & 1)
-+			ok &= private_pages == NR_PAGES && common_pages == 0;
-+		else
-+			ok &= private_pages == 0 && common_pages == NR_PAGES;
-+		printf("stage=%d target=%ld common=%ld policy=%d contents=%d ok=%d\n",
-+		       stage, private_pages, common_pages, policy, contents, ok);
-+		fflush(stdout);
-+		failed |= !ok;
-+	}
-+	munmap(ptr, 4 * len);
-+	if (fd >= 0)
-+		close(fd);
-+	return failed;
-+}
++Private pages are charged to memory cgroups like other memory. Reaching a
++memory cgroup limit causes reclaim and OOM handling as usual, and memcg reclaim
++also reclaims private nodes that permit reclaim.
 +
-+/*
-+ * A static binding of shared memory to a common node, optionally with a
-+ * second common node, that the script turns private before a second mapper
-+ * faults the pages in.
-+ */
-+static int common_retype(bool mixed, long page_size, int target,
-+			 int old_common, int new_common,
-+			 const sigset_t *waitset)
-+{
-+	unsigned long mask = 1UL << target;
-+	long len = NR_PAGES * page_size;
-+	long private_pages, common_pages;
-+	int fd, sig;
-+	bool policy, ok;
-+	void *ptr, *other;
++Tasks whose cpusets overlap only on private nodes are not chosen as OOM victims
++for each other.
 +
-+	if (mixed)
-+		mask |= 1UL << old_common;
-+	ptr = map_shared(&fd, len);
-+	if (ptr == MAP_FAILED ||
-+	    bind_mapping(ptr, len, mask, MPOL_F_STATIC_NODES))
-+		return 2;
-+	other = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-+	if (other == MAP_FAILED)
-+		return 2;
-+	/* No resident pages: the target can be removed and retyped. */
-+	announce_ready();
-+	if (sigwait(waitset, &sig))
-+		return 2;
-+	memset(other, 0xcd, len);
-+	private_pages = count_node(other, page_size, target);
-+	common_pages = count_node(other, page_size, new_common);
-+	policy = policy_matches(other, mask, MPOL_F_STATIC_NODES);
-+	ok = private_pages == 0 && common_pages == NR_PAGES && policy;
-+	printf("private=%ld common=%ld policy=%d ok=%d\n",
-+	       private_pages, common_pages, policy, ok);
-+	munmap(other, len);
-+	munmap(ptr, len);
-+	close(fd);
-+	return !ok;
-+}
++Shared memory
++=============
 +
-+int main(int argc, char **argv)
-+{
-+	long page_size = sysconf(_SC_PAGESIZE);
-+	int priv, common1, common2, mode;
-+	sigset_t waitset;
++A private binding on a shmem-backed mapping, such as memfd, tmpfs or shared
++anonymous memory, applies to the file's offset range, not to each task that
++maps it. Whether a new page is allocated on the private node depends on the
++cpuset of the task that faults it in. A task whose cpuset excludes the node
++allocates the page on common memory, and every task that maps the file then
++uses that page. A file can therefore hold both private and common pages.
 +
-+	if (argc != 5)
-+		print_usage(argv[0]);
-+	for (mode = 0; mode < NR_MODES; mode++)
-+		if (!strcmp(argv[1], modes[mode].name))
-+			break;
-+	if (mode == NR_MODES)
-+		print_usage(argv[0]);
-+	priv = atoi(argv[2]);
-+	common1 = atoi(argv[3]);
-+	common2 = atoi(argv[4]);
-+	if (!node_fits(priv) || !node_fits(common1) || !node_fits(common2)) {
-+		fprintf(stderr, "node ids must be 0 to %zu\n",
-+			8 * sizeof(unsigned long) - 1);
-+		return 2;
-+	}
++Shared pages keep using private memory until they are freed. Unmapping the
++file does not free them while the file still exists or another task keeps it
++open. Truncate the file or punch holes in it to return the memory.
 +
-+	sigemptyset(&waitset);
-+	sigaddset(&waitset, SIGUSR1);
-+	sigprocmask(SIG_BLOCK, &waitset, NULL);
++Memory management services
++==========================
 +
-+	switch (mode) {
-+	case ORDINARY:
-+		return ordinary(page_size, priv);
-+	case INTERLEAVE:
-+		return task_interleave(page_size, priv, common1, common2,
-+				       &waitset);
-+	case BIND:
-+		return task_bind(page_size, priv, common1, common2, &waitset);
-+	case PRIVATE_ANON:
-+	case PRIVATE_SHARED:
-+		return private_rebind(mode == PRIVATE_SHARED, page_size, priv,
-+				      common2, &waitset);
-+	case RETYPE_ANON:
-+	case RETYPE_SHARED:
-+		return private_retype(mode == RETYPE_SHARED, page_size, priv,
-+				      common2, &waitset);
-+	case STATIC:
-+	case STATIC_MIXED:
-+		return common_retype(mode == STATIC_MIXED, page_size, priv,
-+				     common1, common2, &waitset);
-+	}
-+	return 2;
-+}
-diff --git a/tools/testing/selftests/dax/private_node_common.sh b/tools/testing/selftests/dax/private_node_common.sh
-index cd03d9489822..5c58f3195d22 100644
---- a/tools/testing/selftests/dax/private_node_common.sh
-+++ b/tools/testing/selftests/dax/private_node_common.sh
-@@ -234,3 +234,35 @@ pn_require_mask_nodes()
- 			pn_skip "node $nid does not fit the helper node mask"
- 	done
- }
++kswapd and kcompactd run on a private node only if its driver enables reclaim
++and compaction, as the dax kmem private mode does. Writing to ``nodeN/reclaim``
++or ``nodeN/compact`` fails with ``-EOPNOTSUPP`` for a private node without the
++service. ``MADV_COLD``, ``MADV_PAGEOUT`` and ``MADV_FREE`` act only on pages on
++nodes that permit reclaim.
 +
-+# Create cgroup $1 with the cpuset controller enabled and all CPUs.
-+pn_cpuset_cgroup()
-+{
-+	[ "$(stat -fc %T "$CGROOT" 2>/dev/null)" = cgroup2fs ] ||
-+		pn_skip "requires cgroup v2"
-+	grep -qw cpuset "$CGROOT/cgroup.controllers" 2>/dev/null ||
-+		pn_skip "cpuset controller unavailable"
-+	if ! grep -qw cpuset "$CGROOT/cgroup.subtree_control"; then
-+		echo +cpuset > "$CGROOT/cgroup.subtree_control" 2>/dev/null ||
-+			pn_skip "cannot enable cpuset controller"
-+		PN_CPUSET_ENABLED=1
-+	fi
-+	if ! mkdir "$1" ||
-+	   ! cat "$CGROOT/cpuset.cpus.effective" > "$1/cpuset.cpus"; then
-+		ktap_exit_fail_msg "cannot create $1"
-+	fi
-+}
++Private nodes are excluded from KSM merging, THP collapse, automatic NUMA
++balancing, DAMON actions, demotion between memory tiers and HugeTLB pool
++growth. A KSM page that is explicitly migrated to a private node remains
++shareable while it is mapped.
 +
-+# Remove the cgroups $@ made by pn_cpuset_cgroup(), and the cpuset
-+# controller if it enabled it.
-+pn_cpuset_cleanup()
-+{
-+	local cg
++Memory hot-remove and soft offline migrate pages on a private node to common
++memory. Pinned or otherwise unmovable pages can still prevent removal.
 +
-+	for cg in "$@"; do
-+		[ -d "$cg" ] && rmdir "$cg" 2>/dev/null
-+	done
-+	[ -n "${PN_CPUSET_ENABLED:-}" ] || return 0
-+	PN_CPUSET_ENABLED=
-+	echo -cpuset > "$CGROOT/cgroup.subtree_control" 2>/dev/null
-+}
++Accounting
++==========
++
++``MemTotal`` and ``MemFree`` in ``/proc/meminfo`` include private memory with
++userspace placement enabled, such as dax kmem private memory, since it holds
++ordinary application data. They leave out other private memory. The overcommit
++limit (``CommitLimit``) and other limits sized from total memory follow
++``MemTotal``.
++
++``MemAvailable`` and the dirty page limits count free memory on common nodes
++only, since free private memory serves only private bindings. ``MemTotal``
++minus ``MemAvailable`` therefore includes free private memory.
++
++Per-node statistics, including ``nodeN/meminfo``, ``/proc/vmstat`` and
++``memory.numa_stat``, count all memory, private memory included.
++
++Limitations
++===========
++
++- A task's OOM score includes its resident private pages.
++- Free page reporting reports free private pages like other free pages.
 
 -- 
 2.56.1
