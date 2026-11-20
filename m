@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:42 -0500
-Subject: [PATCH 51/60] mm: restrict explicit migration to
- N_MEMORY_MEMPOLICY
+Date: Fri, 20 Nov 2026 13:09:43 -0500
+Subject: [PATCH 52/60] mm: count memory with userspace placement as general
+ purpose
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-51-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-52-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,116 +62,150 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198154; l=3917;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198154; l=4692;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=B6Y6UKzNoFCEvlaigonl7wIhC2pzL3ijUJbtxgXP4vI=;
- b=Cqgg+950T1Wa/QOdAAoJ89OU4n2XkUCd91Mhb4KvzETYBoxSmxxLKw/cTE1vnANvYIjt0Oank
- NZIwcdEbRo7DFudh5eeM7NJWPyrWJpnbINaDNlQsQ5xoIUroWylq7iS
+ bh=6RX//QZ0SKZV5TxlzdYhe/tOzKC4XmRnHwcFufstJ18=;
+ b=NCTptt6/uCAZdwhyVmM2rpriQlBmZN9AxKQqG79yZ5rxdXd8RGciTmhOiPZUUECoSDy16oEFb
+ Kbu7zu/nGUdCEINR6uXZJsSM2Z1tPpxQx5CroIpLspzccWRfbqKkHRl
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mbind(MPOL_MF_MOVE), migrate_pages() and move_pages() act only on folios
-on common memory. N_MEMORY_MEMPOLICY nodes are the nodes memory policy
-and explicit migration may target, so let explicit migration also act on
-folios already on them.
+Userspace places ordinary data on N_MEMORY_MEMPOLICY nodes, and neither
+the commit charge nor a task's RSS can tell nodes apart. Treat their
+memory as general purpose: totalram_pages() and MemFree count it, and so
+do the limits sized from them (overcommit, OOM capacity).
 
-Add folio_allows_mempolicy(), which requires the folio's node to permit
-memory policy, and use it instead.
+Other defaults sized from totalram_pages(), such as the zswap pool and
+tmpfs sizes, also see the larger total, as they already do for memory
+the kernel cannot allocate from in ZONE_MOVABLE.
 
-Memory on other private nodes is still left alone:
-  - move_pages() refuses to migrate it.
-  - mbind(MPOL_MF_MOVE) and migrate_pages() skip its folios.
+Free memory on these nodes serves only private bindings and migration,
+so counting it in MemAvailable or the global dirtyable memory would
+overstate both. Add common_free_pages() and use it there.
 
-Cpuset migration can now find pages on these nodes. Evacuate them only
-from nodes the cpuset no longer allows. Private nodes are still never
-destinations for this kind of migration.
+MemAvailable also assumes about half of the file LRU can be reclaimed.
+Reclaiming file pages on these nodes frees only private memory, so
+count only the file LRU on common nodes, via common_file_pages().
 
-Migration keeps its best-effort behavior and can affect shared backing
-pages seen by other mappers.
+File pages that reach a private node through migration stay covered
+by the dirty limits' file LRU term.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- kernel/cgroup/cpuset.c | 8 +++++++-
- mm/internal.h          | 7 +++++++
- mm/mempolicy.c         | 4 ++--
- mm/migrate.c           | 2 +-
- 4 files changed, 17 insertions(+), 4 deletions(-)
+ mm/internal.h       | 26 ++++++++++++++++++++++++--
+ mm/page-writeback.c |  7 ++++++-
+ mm/show_mem.c       | 24 ++++++++++++++++++++----
+ 3 files changed, 50 insertions(+), 7 deletions(-)
 
-diff --git a/kernel/cgroup/cpuset.c b/kernel/cgroup/cpuset.c
-index e20f9ccb8ab7..7d4b922a1914 100644
---- a/kernel/cgroup/cpuset.c
-+++ b/kernel/cgroup/cpuset.c
-@@ -2686,8 +2686,14 @@ static void cpuset_migrate_mm_workfn(struct work_struct *work)
- {
- 	struct cpuset_migrate_mm_work *mwork =
- 		container_of(work, struct cpuset_migrate_mm_work, work);
-+	nodemask_t retained;
- 
--	/* Private nodes are never migration destinations. */
-+	/*
-+	 * Private nodes are never migration destinations. Evacuate private
-+	 * memory only from nodes the cpuset no longer allows.
-+	 */
-+	nodes_and(retained, mwork->to, node_states[N_MEMORY_PRIVATE]);
-+	nodes_andnot(mwork->from, mwork->from, retained);
- 	nodes_andnot(mwork->to, mwork->to, node_states[N_MEMORY_PRIVATE]);
- 	/* on a wq worker, no need to worry about %current's mems_allowed */
- 	do_migrate_pages(mwork->mm, &mwork->from, &mwork->to, MPOL_MF_MOVE_ALL);
 diff --git a/mm/internal.h b/mm/internal.h
-index fa1ae221564e..4bac570bb29f 100644
+index 4bac570bb29f..c83c100a5253 100644
 --- a/mm/internal.h
 +++ b/mm/internal.h
-@@ -87,6 +87,13 @@ static inline bool folio_allows_reclaim(struct folio *folio)
- 	       node_state(folio_nid(folio), N_MEMORY_RECLAIM);
- }
+@@ -793,11 +793,33 @@ void set_recommended_min_free_kbytes(void);
  
-+/* May userspace NUMA operations act on this folio's memory? */
-+static inline bool folio_allows_mempolicy(struct folio *folio)
-+{
-+	return !folio_is_zone_device(folio) &&
-+	       node_state(folio_nid(folio), N_MEMORY_MEMPOLICY);
+ extern char * const zone_names[MAX_NR_ZONES];
+ 
+-/* true if the node is capable of servicing general system allocations */
++/*
++ * true if the node is capable of servicing general system allocations or
++ * userspace directed allocations (mempolicy, migration)
++ */
+ static inline bool node_memory_is_general_purpose(int nid)
+ {
+ 	return READ_ONCE(NODE_DATA(nid)->memory_features) &
+-	       NODE_MEMORY_FEAT_COMMON;
++	       NODE_MEMORY_FEAT_MEMPOLICY;
 +}
 +
- /* mm/vmscan.c */
- unsigned long zone_reclaimable_pages(struct zone *zone);
- unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
-diff --git a/mm/mempolicy.c b/mm/mempolicy.c
-index 2bfe8b2b6287..9d2e56017ebe 100644
---- a/mm/mempolicy.c
-+++ b/mm/mempolicy.c
-@@ -705,7 +705,7 @@ static void queue_folios_pmd(pmd_t *pmd, unsigned long addr,
- 		return;
- 	}
- 	folio = vm_normal_folio_pmd(walk->vma, addr, pmdval);
--	if (!folio || !folio_is_common_memory(folio))
-+	if (!folio || !folio_allows_mempolicy(folio))
- 		return;
- 	if (!queue_folio_required(folio, qp))
- 		return;
-@@ -763,7 +763,7 @@ static int queue_folios_pte_range(pmd_t *pmd, unsigned long addr,
- 			continue;
- 		}
- 		folio = vm_normal_folio(vma, addr, ptent);
--		if (!folio || !folio_is_common_memory(folio))
-+		if (!folio || !folio_allows_mempolicy(folio))
- 			continue;
- 		if (folio_test_large(folio) && max_nr != 1)
- 			nr = folio_pte_batch(folio, pte, ptent, max_nr);
-diff --git a/mm/migrate.c b/mm/migrate.c
-index ac583afa1bc5..6791834f14fe 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -2287,7 +2287,7 @@ static int __add_folio_for_migration(struct folio *folio, int node,
- 	if (is_zero_folio(folio) || is_huge_zero_folio(folio))
- 		return -EFAULT;
++unsigned long common_free_pages(void);
++
++/* File LRU pages on common nodes, whose reclaim frees common memory. */
++static inline unsigned long common_file_pages(void)
++{
++	unsigned long nr = global_node_page_state(NR_ACTIVE_FILE) +
++			   global_node_page_state(NR_INACTIVE_FILE);
++	int nid;
++
++	if (!IS_ENABLED(CONFIG_NUMA))
++		return nr;
++
++	for_each_node_state(nid, N_MEMORY_PRIVATE) {
++		nr -= min(nr, node_page_state(NODE_DATA(nid), NR_ACTIVE_FILE) +
++			      node_page_state(NODE_DATA(nid), NR_INACTIVE_FILE));
++	}
++	return nr;
+ }
  
--	if (!folio_is_common_memory(folio))
-+	if (!folio_allows_mempolicy(folio))
- 		return -ENOENT;
+ extern int min_free_kbytes;
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 00293a64fcea..6181266bf159 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -317,7 +317,12 @@ static unsigned long global_dirtyable_memory(void)
+ {
+ 	unsigned long x;
  
- 	if (folio_nid(folio) == node)
+-	x = nr_free_pages();
++	/*
++	 * Free private memory serves only private bindings and migration.
++	 * File pages that reach private memory are counted with the file
++	 * LRU below.
++	 */
++	x = common_free_pages();
+ 	/*
+ 	 * Pages reserved for the kernel should not be considered
+ 	 * dirtyable, to prevent a situation where reclaim has to
+diff --git a/mm/show_mem.c b/mm/show_mem.c
+index 24dd33ba783b..de4769e06a53 100644
+--- a/mm/show_mem.c
++++ b/mm/show_mem.c
+@@ -46,17 +46,18 @@ long si_mem_available(void)
+ 
+ 	/*
+ 	 * Estimate the amount of memory available for userspace allocations,
+-	 * without causing swapping or OOM.
++	 * without causing swapping or OOM. Only free common memory serves
++	 * ordinary allocations.
+ 	 */
+-	available = nr_free_pages() - totalreserve_pages;
++	available = common_free_pages() - totalreserve_pages;
+ 
+ 	/*
+ 	 * Not all the page cache can be freed, otherwise the system will
+ 	 * start swapping or thrashing. Assume at least half of the page
+ 	 * cache, or the low watermark worth of cache, needs to stay.
+ 	 */
+-	pagecache = global_node_page_state(NR_ACTIVE_FILE) +
+-		global_node_page_state(NR_INACTIVE_FILE);
++	/* Reclaiming file pages on private nodes frees only private memory. */
++	pagecache = common_file_pages();
+ 	pagecache -= min(pagecache / 2, wmark_low);
+ 	available += pagecache;
+ 
+@@ -92,6 +93,21 @@ unsigned long nr_free_pages(void)
+ 	return nr;
+ }
+ 
++/* Free pages on common nodes, the free memory ordinary allocations can use. */
++unsigned long common_free_pages(void)
++{
++	unsigned long nr = global_zone_page_state(NR_FREE_PAGES);
++	int nid;
++
++	if (!IS_ENABLED(CONFIG_NUMA))
++		return nr;
++
++	for_each_node_state(nid, N_MEMORY_PRIVATE) {
++		nr -= min(nr, sum_zone_node_page_state(nid, NR_FREE_PAGES));
++	}
++	return nr;
++}
++
+ void si_meminfo(struct sysinfo *val)
+ {
+ 	val->totalram = totalram_pages();
 
 -- 
 2.56.1
