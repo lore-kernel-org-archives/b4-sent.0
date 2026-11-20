@@ -1,109 +1,238 @@
-From: Blake Alexander <contact@blakejalexander.com>
-Date: Fri, 20 Nov 2026 17:48:21 +0100
-Subject: [PATCH v2] usb: typec: ucsi: log invalid UCSI version of 0
+From: Peter LaDow <pladow@gmail.com>
+Date: Fri, 20 Nov 2026 08:52:25 -0800
+Subject: [PATCH] leds: lp5860: Add I2C interface support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-log-ucsi-firmware-quirk-v2-1-bb9aebf0b308@blakejalexander.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNTQ6CMBBGr0K6dgxtFNCV9zAsSpnK8FedAmIId
- 7fgAVy+5PveW4RHJvTiGi2CcSJPrg+gDpEwle4fCFQGFipWiZTyAq17wGg8gSXu3poRXiNxA5m
- 1JktNWp6UFeH9ZLQ07+Z7/mM/FjWaYdNti4r84Pizpye57f5XJgkSktAo01gn8pzdilY3WOsWZ
- 92XyEfjOpGv6/oFIuNBGNoAAAA=
-X-Change-ID: 20261119-log-ucsi-firmware-quirk-8ffc87c7d42f
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Blake Alexander <contact@blakejalexander.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795193306; l=3351;
- i=contact@blakejalexander.com; s=20261119; h=from:subject:message-id;
- bh=b0MQKohAyz7nav2UR2M4JLiTqoUm2vbglbqr05OCohE=;
- b=LqAwu7AW+izohmMiI8d9jjRUAzGwOvHNIHeOCSKLxjeiiFRRgtaD8JsHdJ+R7f+lpDeiy9cLy
- LU+KVCiA7OCAns87eXb8Cx4adhVfHUoGCxeQpuCKCiTfGMxZd795vO9
-X-Developer-Key: i=contact@blakejalexander.com; a=ed25519;
- pk=csAgv2qq1q6RTYXyATg9ngFwpSFPE0yWA9R9nSvVxW0=
-X-Endpoint-Received: by B4 Relay for contact@blakejalexander.com/20261119 with auth_id=1565
+Message-Id: <20261120-add-i2c-support-for-lp5860-v1-1-30bc97dcbf78@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMh6AGsC/yXMwQrCMAwA0F8ZORtoI87pr4iHtU01ImtJNhHG/
+ t2qx3d5KxirsMG5W0H5JSZlavC7DuJ9nG6MkpqBHPXek8MxJRSKaEutRWfMRfFZD0Pv8HTM+yE
+ QB/YRWlCVs7x/+eX6ty3hwXH+jrBtHxco5Cp+AAAA
+X-Change-ID: 20261120-add-i2c-support-for-lp5860-97f38b2ebe1c
+To: Nam Tran <trannamatk@gmail.com>, Lee Jones <lee@kernel.org>, 
+ Pavel Machek <pavel@kernel.org>, Griffin Kroah-Hartman <griffin@kroah.com>
+Cc: linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
+ Peter LaDow <pladow@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795193549; l=6530;
+ i=pladow@gmail.com; s=20261120; h=from:subject:message-id;
+ bh=WYeX7Dr68OiZme4pornFR+sF3AnsOda9svE1CKz58RI=;
+ b=hVFHNJ0BORNibfo9AMK6B3bmn8cIlFNYdnhaZ7YahevywvWu9diIBhs5OoFqDugMcll+F6usS
+ G0iXzqDl/8IADm32WZYx2P3VLzIpixE6Rxib6vrrLm32KyfistXB8zZ
+X-Developer-Key: i=pladow@gmail.com; a=ed25519;
+ pk=GEdL9uXOAV0PnykeFpXX87oqKs0/Ac0qAUc4Oow7WN4=
+X-Endpoint-Received: by B4 Relay for pladow@gmail.com/20261120 with auth_id=1585
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some devices ship bugged firmware which sets the version of the UCSI
-mailbox to zero. In such cases the ucsi_register() will return -ENODEV
-and the driver will silently fail to bind. There is otherwise no
-indication as to the cause of the probe failure.
+This patch adds I2C bus support to the Texas Instruments LP5860 RGB LED
+matrix driver.
 
-While existing (and future) machine-specific workarounds may resolve
-this issue by assuming a known-good UCSI version, future devices or
-older firmware revisions with this issue will still silently fail.
-Both users and developers will benefit from a clear diagnostic message
-when troubleshooting this particular bug.
+The LP5860 supports both SPI and I2C interfaces depending on the hardware
+IFS pin configuration, but the existing driver only implements the SPI
+bus interface (leds-lp5860-spi).
 
-Add a dev_err() log message when a UCSI version of 0 is reported during
-ucsi_register() hinting towards a potential firmware bug.
+Changes include:
+- Adding the leds-lp5860-i2c bus driver module to handle the LP5860's
+  10-bit register addressing scheme over I2C.
+- Updating Kconfig and Makefile so I2C and SPI bus support can be built
+  independently or together.
 
-Signed-off-by: Blake Alexander <contact@blakejalexander.com>
-Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
+Tested on ZymqMP (ZU3) with an LP5860 connected over an AXI IIC at
+base address 0x40 (A1=0, A0=0) at 400kHz.
+
+Signed-off-by: Peter LaDow <pladow@gmail.com>
 ---
-Hi,
+ drivers/leds/rgb/Kconfig           |  12 ++++
+ drivers/leds/rgb/Makefile          |   1 +
+ drivers/leds/rgb/leds-lp5860-i2c.c | 139 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 152 insertions(+)
 
-I have a ThinkPad T14 Gen 2a which is failing to negotiate a DisplayPort
-Alt-Mode connection to a monitor-hub with a USB-C cable.
-
-I spent quite some time troubleshooting the issue and identified the
-root-cause only to find that a patch which fixes this issue was already
-submitted:
-- "[PATCH v2 0/2] usb: typec: acpi: Zero version quirk for Lenovo ThinkPad T14 Gen 2a" <20261103-ucsi-lenovo-t14g2a-v2-0-e85c659b56a2@resetko.pl>
-
-Similar issues with other laptops have also been recently submitted:
-- "[PATCH] usb: typec: ucsi: acpi: Add quirk for ASUS ROG Zephyrus Duo 16 GX650PI" <20261009-usb-next-v1-1-95a2288ad9b2@gmail.com>
-
-And existing quirks are also already handled in mainline:
-- Acer Nitro ANV15-41: commit 8c51ea651d04 ("usb: typec: ucsi: acpi: Assume UCSI 1.2 on Acer Nitro ANV15-41")
-
-In the hope of saving future developer's time, this patch adds a
-dev_err() log message when the UCSI version register reads zero. The
-log message hints towards a potential firmware bug and gives an 
-explicit cause of the driver's probe failure.
-
-Tested on ThinkPad BIOS R1MET65W (1.35), EC R1MHT65W without the
-relevant quirk patches.
----
-Changes in v2:
-- Fixed comment style as per feedback from Greg K-H.
-- Link to v1: https://patch.msgid.link/20261119-log-ucsi-firmware-quirk-v1-1-6d42d70a6158@blakejalexander.com
-
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- drivers/usb/typec/ucsi/ucsi.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
-index 9e453d216c16..3dddcec2f425 100644
---- a/drivers/usb/typec/ucsi/ucsi.c
-+++ b/drivers/usb/typec/ucsi/ucsi.c
-@@ -2396,8 +2396,14 @@ int ucsi_register(struct ucsi *ucsi)
- 	if (ret)
- 		return ret;
+diff --git a/drivers/leds/rgb/Kconfig b/drivers/leds/rgb/Kconfig
+index 3f6786616a7d..5dfca8949464 100644
+--- a/drivers/leds/rgb/Kconfig
++++ b/drivers/leds/rgb/Kconfig
+@@ -78,6 +78,18 @@ config LEDS_LP5860_SPI
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called leds-lp5860-spi.
  
--	if (!ucsi->version)
-+	/*
-+	 * Version of 0 is not valid but some vendors may report it due to bugged
-+	 * FW and there may not already be a workaround quirk to correct it.
-+	 */
-+	if (!ucsi->version) {
-+		dev_err(ucsi->dev, "UCSI interface reported version 0.0.0: possible firmware bug.");
- 		return -ENODEV;
++config LEDS_LP5860_I2C
++	tristate "LED Support for TI LP5860 I2C LED driver chip"
++	depends on I2C
++	depends on OF
++	select LEDS_LP5860_CORE
++	help
++	  If you say yes here you get support for the Texas Instruments
++	  LP5860 LED driver for I2C bus connections.
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called leds-lp5860-i2c.
++
+ config LEDS_NCP5623
+ 	tristate "LED support for NCP5623"
+ 	depends on I2C
+diff --git a/drivers/leds/rgb/Makefile b/drivers/leds/rgb/Makefile
+index a59c13396a22..0e35bf16d615 100644
+--- a/drivers/leds/rgb/Makefile
++++ b/drivers/leds/rgb/Makefile
+@@ -6,6 +6,7 @@ obj-$(CONFIG_LEDS_KTD202X)		+= leds-ktd202x.o
+ obj-$(CONFIG_LEDS_LP5812)		+= leds-lp5812.o
+ obj-$(CONFIG_LEDS_LP5860_CORE)		+= leds-lp5860-core.o
+ obj-$(CONFIG_LEDS_LP5860_SPI)		+= leds-lp5860-spi.o
++obj-$(CONFIG_LEDS_LP5860_I2C)		+= leds-lp5860-i2c.o
+ obj-$(CONFIG_LEDS_NCP5623)		+= leds-ncp5623.o
+ obj-$(CONFIG_LEDS_PWM_MULTICOLOR)	+= leds-pwm-multicolor.o
+ obj-$(CONFIG_LEDS_QCOM_LPG)		+= leds-qcom-lpg.o
+diff --git a/drivers/leds/rgb/leds-lp5860-i2c.c b/drivers/leds/rgb/leds-lp5860-i2c.c
+new file mode 100644
+index 000000000000..2744ac325862
+--- /dev/null
++++ b/drivers/leds/rgb/leds-lp5860-i2c.c
+@@ -0,0 +1,139 @@
++// SPDX-License-Identifier: GPL-2.0-only
++
++#include <linux/i2c.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/of.h>
++#include <linux/property.h>
++#include <linux/regmap.h>
++#include <linux/slab.h>
++
++#include "leds-lp5860.h"
++
++#define LP5860_I2C_NUM_PAGES	4
++
++struct lp5860_i2c {
++	struct i2c_client *clients[LP5860_I2C_NUM_PAGES];
++};
++
++static int lp5860_i2c_reg_read(void *context, unsigned int reg, unsigned int *val)
++{
++	struct lp5860_i2c *i2c = context;
++	int ret;
++
++	ret = i2c_smbus_read_byte_data(i2c->clients[reg >> 8], reg & 0xff);
++	if (ret < 0)
++		return ret;
++
++	*val = ret;
++	return 0;
++}
++
++static int lp5860_i2c_reg_write(void *context, unsigned int reg, unsigned int val)
++{
++	struct lp5860_i2c *i2c = context;
++
++	return i2c_smbus_write_byte_data(i2c->clients[reg >> 8], reg & 0xff, val);
++}
++
++static const struct regmap_bus lp5860_i2c_regmap_bus = {
++	.reg_read = lp5860_i2c_reg_read,
++	.reg_write = lp5860_i2c_reg_write,
++};
++
++static const struct regmap_config lp5860_i2c_regmap_config = {
++	.name = "lp5860",
++	.reg_bits = 16,
++	.val_bits = 8,
++	.max_register = LP5860_MAX_REG,
++};
++
++static int lp5860_i2c_probe(struct i2c_client *client)
++{
++	struct device *dev = &client->dev;
++	struct lp5860_i2c *i2c;
++	struct lp5860 *lp5860;
++	unsigned int multi_leds;
++	unsigned int page;
++	int ret;
++
++	if ((client->flags & I2C_CLIENT_TEN) ||
++	    client->addr < 0x40 || client->addr > 0x4c || (client->addr & 0x03))
++		return dev_err_probe(dev, -EINVAL,
++				     "Use the page-zero I2C address (0x40, 0x44, 0x48 or 0x4c).\n");
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
++		return dev_err_probe(dev, -EOPNOTSUPP,
++				     "SMBus byte-data transactions are not supported.\n");
++
++	multi_leds = device_get_child_node_count(dev);
++	if (!multi_leds)
++		return dev_err_probe(dev, -ENODEV, "LEDs are not defined in Device Tree!\n");
++
++	if (multi_leds > LP5860_MAX_LED)
++		return dev_err_probe(dev, -EINVAL, "Too many LEDs specified.\n");
++
++	lp5860 = devm_kzalloc(dev, struct_size(lp5860, leds, multi_leds), GFP_KERNEL);
++	if (!lp5860)
++		return -ENOMEM;
++
++	i2c = devm_kzalloc(dev, sizeof(*i2c), GFP_KERNEL);
++	if (!i2c)
++		return -ENOMEM;
++
++	i2c->clients[0] = client;
++	for (page = 1; page < LP5860_I2C_NUM_PAGES; page++) {
++		i2c->clients[page] = devm_i2c_new_dummy_device(dev, client->adapter,
++							       client->addr | page);
++		if (IS_ERR(i2c->clients[page]))
++			return dev_err_probe(dev, PTR_ERR(i2c->clients[page]),
++					     "Failed to reserve I2C register page %u.\n", page);
 +	}
- 
- 	/*
- 	 * Version format is JJ.M.N (JJ = Major version, M = Minor version,
++
++	lp5860->regmap = devm_regmap_init(dev, &lp5860_i2c_regmap_bus, i2c,
++					  &lp5860_i2c_regmap_config);
++	if (IS_ERR(lp5860->regmap))
++		return dev_err_probe(dev, PTR_ERR(lp5860->regmap),
++				     "Failed to initialise Regmap.\n");
++
++	lp5860->dev = dev;
++
++	ret = devm_mutex_init(dev, &lp5860->lock);
++	if (ret)
++		return ret;
++
++	i2c_set_clientdata(client, lp5860);
++
++	return lp5860_device_init(dev);
++}
++
++static void lp5860_i2c_remove(struct i2c_client *client)
++{
++	lp5860_device_remove(&client->dev);
++}
++
++static const struct of_device_id lp5860_i2c_of_match[] = {
++	{ .compatible = "ti,lp5860" },
++	{}
++};
++MODULE_DEVICE_TABLE(of, lp5860_i2c_of_match);
++
++static const struct i2c_device_id lp5860_i2c_ids[] = {
++	{ "lp5860" },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, lp5860_i2c_ids);
++
++static struct i2c_driver lp5860_i2c_driver = {
++	.driver = {
++		.name = "lp5860-i2c",
++		.of_match_table = lp5860_i2c_of_match,
++	},
++	.probe = lp5860_i2c_probe,
++	.remove = lp5860_i2c_remove,
++	.id_table = lp5860_i2c_ids,
++};
++module_i2c_driver(lp5860_i2c_driver);
++
++MODULE_DESCRIPTION("TI LP5860 RGB LED I2C driver");
++MODULE_LICENSE("GPL");
 
 ---
-base-commit: f11fe7603df07fbb9fa02b0d385c1696c87a6dab
-change-id: 20261119-log-ucsi-firmware-quirk-8ffc87c7d42f
+base-commit: c016466c8c8b01af27ac66d97b64fa9c9e431a3d
+change-id: 20261120-add-i2c-support-for-lp5860-97f38b2ebe1c
 
 Best regards,
 --  
-Blake Alexander <contact@blakejalexander.com>
+Peter LaDow <pladow@gmail.com>
 
