@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:26 -0500
-Subject: [PATCH 35/60] mm/mempolicy: keep private nodes out of
- migrate_pages() destinations
+Date: Fri, 20 Nov 2026 13:09:27 -0500
+Subject: [PATCH 36/60] mm: refuse explicit reclaim and compaction of
+ private nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-35-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-36-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,46 +62,56 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1114;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198153; l=1212;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=H9nkzUJ+W/B+CQbALDD5SyhxQlr5AVXp1jZnonCs+2k=;
- b=qYt4WGgIFvq2RJT+D/LbNX9eFwn5eLa1APiNG0q/gFK7SazhE8Ij9A//vMkPQj7FL/v1ICdhS
- jrfi9jSAKC+C0aiThj8fYRh2F/Gs/FtXJaqopNXu15BKaJfgfgG0QYs
+ bh=eVaoyJoyzU9zyOtulCuIbI+hG2+czzxVMTo5PX+qnoE=;
+ b=67qX9eYJBrvlvPcdtzToXyRPuTdmsGPvAub9aazmEHJk4ZHCWWJWu7Tqa8XRPOPW+PAeiRoBS
+ +WMnYQ09bUHA4ZgWD9y4UJK3j2zi7pY+0jx9YkmAbm61ZjkvAHWzQu6
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-migrate_pages(2) intersects its destination nodes with the caller's
-cpuset, which can include private nodes.
+kswapd and kcompactd do not run on private nodes, but nodeN/reclaim and
+nodeN/compact name a node directly. Reject them for a private node with
+-EOPNOTSUPP.
 
-A private destination gets mapped to some source node, and every page
-bound for it attempts a __GFP_THISNODE allocation. A private node is not
-on its own __GFP_THISNODE zonelist, so the call fails with -ENOMEM and
-logs an allocation failure.
-
-Leave private nodes out of the destination mask, as move_pages(2)
-already rejects them. A mask that names only private nodes fails with
--EINVAL.
+Memoryless nodes keep accepting the requests.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/mempolicy.c | 2 ++
- 1 file changed, 2 insertions(+)
+ mm/compaction.c | 3 +++
+ mm/vmscan.c     | 3 +++
+ 2 files changed, 6 insertions(+)
 
-diff --git a/mm/mempolicy.c b/mm/mempolicy.c
-index 81ccc481cea1..2bfe8b2b6287 100644
---- a/mm/mempolicy.c
-+++ b/mm/mempolicy.c
-@@ -1958,6 +1958,8 @@ static int kernel_migrate_pages(pid_t pid, unsigned long maxnode,
- 	}
+diff --git a/mm/compaction.c b/mm/compaction.c
+index 879f372a891e..283d4d4e78c3 100644
+--- a/mm/compaction.c
++++ b/mm/compaction.c
+@@ -3038,6 +3038,9 @@ static ssize_t compact_store(struct device *dev,
+ 	int nid = dev->id;
  
- 	task_nodes = cpuset_mems_allowed(current);
-+	/* Private memory is not a migration destination. */
-+	nodes_andnot(task_nodes, task_nodes, node_states[N_MEMORY_PRIVATE]);
- 	if (!nodes_and(*new, *new, task_nodes))
- 		goto out_put;
+ 	if (nid >= 0 && nid < nr_node_ids && node_online(nid)) {
++		if (node_state(nid, N_MEMORY_PRIVATE))
++			return -EOPNOTSUPP;
++
+ 		/* Flush pending updates to the LRU lists */
+ 		lru_add_drain_all();
  
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 5b53e0391d80..3e934135e805 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -8268,6 +8268,9 @@ static ssize_t reclaim_store(struct device *dev,
+ {
+ 	int ret, nid = dev->id;
+ 
++	if (node_state(nid, N_MEMORY_PRIVATE))
++		return -EOPNOTSUPP;
++
+ 	ret = user_proactive_reclaim((char *)buf, NULL, NODE_DATA(nid));
+ 	return ret ? ret : count;
+ }
 
 -- 
 2.56.1
