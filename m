@@ -1,11 +1,11 @@
 From: "Gregory Price (Meta)" <gourry@gourry.net>
-Date: Fri, 20 Nov 2026 13:09:09 -0500
-Subject: [PATCH 18/60] mm/khugepaged: base the recommended min_free_kbytes
- on common memory
+Date: Fri, 20 Nov 2026 13:09:10 -0500
+Subject: [PATCH 19/60] mm: add folio_is_common_memory() and
+ page_is_common_memory()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-private_nodes_v6-v1-18-74f5f9a115c2@gourry.net>
+Message-Id: <20261120-private_nodes_v6-v1-19-74f5f9a115c2@gourry.net>
 References: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 In-Reply-To: <20261120-private_nodes_v6-v1-0-74f5f9a115c2@gourry.net>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -62,40 +62,56 @@ Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
  cgroups@vger.kernel.org, nvdimm@lists.linux.dev, 
  linux-kselftest@vger.kernel.org, "Gregory Price (Meta)" <gourry@gourry.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=820;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795198152; l=1507;
  i=gourry@gourry.net; s=20261120; h=from:subject:message-id;
- bh=JCSrPzqa2r6D3icJs5AIufuY11hG988pPEZwgCCKHVU=;
- b=f3X9GhfZRr3Y70akJ+5LQMJEYnQw87oEwJYni6EhKNTNghWitJzBda24ENsNg3gaswvLxfzcA
- QCSxARUrbOQAlPm+bIz7doFjfAUsXQ0DXnPHQw+oYeT5ibepz98hWgq
+ bh=m/xIO2hju0O2MUxmJsoUbcjHDLOxcmw4vOXYB3RhCDc=;
+ b=r9U28O85QC7KiTn0NtGXb3PVRmPqixIvxW3FarWvGYMIe+TtX/FQCmUuDfZ/0dXaLjaL/g/Lw
+ F7K7kgvtuD+BLMHEs+q0AR9fgZqrNmHByKFqFVDK5bc8MLFaIcotn7f
 X-Developer-Key: i=gourry@gourry.net; a=ed25519;
  pk=BZWDlx4htkR5KcvGjGtSDfx1tM0E5dlyBR43FEhjWVc=
 X-Endpoint-Received: by B4 Relay for gourry@gourry.net/20261120 with auth_id=1586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-set_recommended_min_free_kbytes() reserves two pageblocks per populated
-zone to help THP allocations avoid fragmentation. The reserve serves
-ordinary allocations, which use only common memory, so count only the
-zones on N_MEMORY_COMMON nodes.
+N_MEMORY_COMMON decides where ordinary allocations and node-scoped
+services go, but MM services that walk folios reach them through page
+tables, physical addresses or LRU lists, whatever node they are on.
+
+Add folio_is_common_memory() and page_is_common_memory() for those
+services. ZONE_DEVICE folios are never common memory, so the helpers
+can replace the folio_is_zone_device() and page_is_zone_device() checks
+those services already make. Following commits convert them.
 
 Signed-off-by: Gregory Price (Meta) <gourry@gourry.net>
 ---
- mm/khugepaged.c | 3 +++
- 1 file changed, 3 insertions(+)
+ mm/internal.h | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-diff --git a/mm/khugepaged.c b/mm/khugepaged.c
-index 2dc4245814df..a930d99f89da 100644
---- a/mm/khugepaged.c
-+++ b/mm/khugepaged.c
-@@ -3151,6 +3151,9 @@ void set_recommended_min_free_kbytes(void)
- 	}
+diff --git a/mm/internal.h b/mm/internal.h
+index c102e0f498bf..cd0562f0b68f 100644
+--- a/mm/internal.h
++++ b/mm/internal.h
+@@ -65,6 +65,21 @@ void folio_mark_lazyfree(struct folio *folio);
+ void node_set_memory_state(int nid);
+ void node_clear_memory_state(int nid);
  
- 	for_each_populated_zone(zone) {
-+		if (!node_state(zone_to_nid(zone), N_MEMORY_COMMON))
-+			continue;
++/*
++ * Common memory is available to generic MM services. ZONE_DEVICE folios do
++ * not qualify even when their NUMA node is common.
++ */
++static inline bool folio_is_common_memory(struct folio *folio)
++{
++	return !folio_is_zone_device(folio) &&
++	       node_state(folio_nid(folio), N_MEMORY_COMMON);
++}
 +
- 		/*
- 		 * We don't need to worry about fragmentation of
- 		 * ZONE_MOVABLE since it only has movable pages.
++static inline bool page_is_common_memory(struct page *page)
++{
++	return folio_is_common_memory(page_folio(page));
++}
++
+ /* mm/vmscan.c */
+ unsigned long zone_reclaimable_pages(struct zone *zone);
+ unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
 
 -- 
 2.56.1
