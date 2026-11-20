@@ -1,95 +1,90 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Fri, 20 Nov 2026 01:13:16 +0000
-Subject: [PATCH] tee: optee: check for the supplicant under supp->mutex
+From: Thomas de Gruijter <thomasdegruijter@pm.me>
+Subject: [PATCH 0/2] Bluetooth: MSFT: Only enable the advertisement filter
+ with monitors
+Date: Fri, 20 Nov 2026 02:13:34 +0100
+Message-Id: <20261120-msft-filter-monitors-v1-0-8192f0c0791a@pm.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261120-optee-supp-toctou-v1-1-d9a2bdea1c90@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTsJU6MGrmJcYPnRYUGbTmtMC
- Hen6PJbvLeSISmM+malhI+ahqVCTg3597C8wDpWk2vdVUQ6DjEDbCVGzsHnUHgcnL9MbXfDWah
- 2MWHS7+95f/xt5TnD52NE27YDbTJKYnUAAAA=
-X-Change-ID: 20261119-optee-supp-toctou-da2c5f097e31
-To: Jens Wiklander <jenswi@kernel.org>, Sumit Garg <sumit.garg@kernel.org>
-Cc: op-tee@lists.trustedfirmware.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrDuQBPyhVykuGp3oSE1kJpaCe
+ HfTdvkt3jtASZgU7tUBQm9WTrHA3ioY5mecCHksBmdcY60zuGrIGPiVSXBNkXMSRVNT67vgG9v
+ WUNJNKPDnt330f+vuFxry9wXneQEdqSFXeAAAAA==
+X-Change-ID: 20261120-msft-filter-monitors-05e7b8fb6175
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ Brian Gix <brian.gix@intel.com>, Yun-Hao Chung <howardchung@google.com>, 
+ Miao-chen Chou <mcchou@chromium.org>, Archie Pusaka <apusaka@chromium.org>
+Cc: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
+ linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Thomas de Gruijter <thomasdegruijter@pm.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795137196; l=2397;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=r+DQHxCOjcjVvvLW4z3rrN6VNbrbMcD//gJUMsCvQXA=;
- b=irKeG1tS1xjH2e5wZixMtRgpxVJnRQ42nvZOXhZQvcCjRW+s/qZsKt4qjlzxguZIhsC7zCLaY
- M6C+ScbZGmkAimKTGANjsQOXkqKi7IURLIKJZ756ptsYLTjbLFW2Hkr
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795137220; l=2581;
+ i=thomasdegruijter@pm.me; s=20261120; h=from:subject:message-id;
+ bh=8/AuYm0ked8MCkDMwRkqznLi5F2SKWqBi78N6Aa7kMI=;
+ b=AphLmhqzHZxMDtYf0VAg+/x/lgsXYSXgkcQBKjrS4dPXrmKocw1a04GmEI6I/mcRTS/3quUOP
+ Jo9s4NXGOKmCxiILM75AwxlizDUzGHcgpgfsZh56HcVxTXsfugmB7bX
+X-Developer-Key: i=thomasdegruijter@pm.me; a=ed25519;
+ pk=YtEZHHXdsASGVJkddpdFLAnfVg0G/gza+FXgPGUJZlg=
+X-Endpoint-Received: by B4 Relay for thomasdegruijter@pm.me/20261120 with auth_id=1578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-optee_supp_thrd_req() checks supp->ctx without supp->mutex. If the
-supplicant is released between the check and queueing, a supp_nowait
-request is queued after optee_supp_release() aborted the queue and
-waits until a new supplicant opens. For in-kernel clients that can
-be forever.
+On MediaTek MT7922 (USB 0e8d:0616, BT firmware build 20260724) LE
+discovery and passive scanning find nothing, because msft_do_open()
+enables the MSFT advertisement filter on every power on even when no
+advertisement monitor is registered, and this controller then drops
+every advertisement.
 
-Do the check under supp->mutex, together with queueing the request.
+Patch 2 only enables the filter while at least one monitor is offloaded.
+It is the first user of msft->filter_enabled, which does not follow the
+controller when it reports the filter as already being in the requested
+state, so patch 1 fixes that first.
 
-Fixes: 42bf4152d8a7 ("tee: add supp_nowait flag in tee_context struct")
-Cc: stable@vger.kernel.org
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
----
-Found by Sashiko in its review of [1]; the race is older than that patch.
-Tested on an Orange Pi 5 (7.3-based, KASAN and lockdep) with a test-only
-2 ms delay between the check and queueing; 1242 of 2000 supp_nowait
-requests stranded without this patch, none with it. A real
-tee-supplicant was not tested.
+How the problem was found
+-------------------------
+- btmon showed LE Set Extended Scan Parameters/Enable completing with
+  status 0x00, followed by zero LE Extended Advertising Report events
+  while three BLE beacons and ~20 other devices were in range.
+- With hci0 powered off in BlueZ, the controller was reset and driven
+  directly through the HCI user channel. Legacy and extended scanning
+  both delivered reports (~870-980 in 10 s from 23 devices). Adding the
+  kernel's init steps one at a time showed that only LE Set
+  Advertisement Filter Enable(0x01) stops all reports (0, versus
+  ~520-540 with LE Set Address Resolution Enable or the CIS host
+  feature bit added instead).
+- Disabling the filter on the running hci0 through a raw HCI socket made
+  BlueZ LE discovery see 22 devices instead of 0.
 
-Developed with Claude (Anthropic), which wrote the code and the commit
-message. I reviewed it.
+Testing
+-------
+- Patch 2 was tested on the MT7922 described
+  above: LE discovery works right after boot (22 devices instead of 0)
+  and BLE power control of Lighthouse base stations works again.
 
-[1] https://lore.kernel.org/r/20261115-optee-supp-close-v1-1-4e0b14f3a97c@gmail.com
----
- drivers/tee/optee/supp.c | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+Not tested
+----------
+- Patch 1.
+- Any setup with advertisement monitors registered (adding or removing
+  monitors, suspend/resume with monitors), any controller other than
+  the MT7922, and the Command Disallowed path of patch 1, which needs a
+  controller that starts with the filter enabled.
 
-diff --git a/drivers/tee/optee/supp.c b/drivers/tee/optee/supp.c
-index 06747e90c230..fd8d1f363f2f 100644
---- a/drivers/tee/optee/supp.c
-+++ b/drivers/tee/optee/supp.c
-@@ -91,13 +91,6 @@ u32 optee_supp_thrd_req(struct tee_context *ctx, u32 func, size_t num_params,
- 	struct optee_supp_req *req;
- 	u32 ret;
- 
--	/*
--	 * Return in case there is no supplicant available and
--	 * non-blocking request.
--	 */
--	if (!supp->ctx && ctx->supp_nowait)
--		return TEEC_ERROR_COMMUNICATION;
--
- 	req = kzalloc_obj(*req);
- 	if (!req)
- 		return TEEC_ERROR_OUT_OF_MEMORY;
-@@ -109,6 +102,16 @@ u32 optee_supp_thrd_req(struct tee_context *ctx, u32 func, size_t num_params,
- 
- 	/* Insert the request in the request list */
- 	mutex_lock(&supp->mutex);
-+	/*
-+	 * Return in case there is no supplicant available and
-+	 * non-blocking request.
-+	 */
-+	if (!supp->ctx && ctx->supp_nowait) {
-+		mutex_unlock(&supp->mutex);
-+		kfree(req);
-+		return TEEC_ERROR_COMMUNICATION;
-+	}
-+
- 	req->id = idr_alloc(&supp->idr, req, 1, 0, GFP_KERNEL);
- 	if (req->id < 0) {
- 		mutex_unlock(&supp->mutex);
+Tool assistance
+---------------
+The investigation and the creation test scripts were done using Claude Code.
+I have reviewed the changes and the analysis and can answer questions about them.
 
 ---
-base-commit: e21989d08e0d6abacfff71387d0cb36dd96a4079
-change-id: 20261119-optee-supp-toctou-da2c5f097e31
+Thomas de Gruijter (2):
+      Bluetooth: MSFT: Record the filter state on Command Disallowed
+      Bluetooth: MSFT: Only enable the advertisement filter with monitors
+
+ net/bluetooth/msft.c | 57 ++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 49 insertions(+), 8 deletions(-)
+---
+base-commit: 1d79f61152c315e30e758116e525871732181a98
+change-id: 20261120-msft-filter-monitors-05e7b8fb6175
 
 Best regards,
 --  
-Arun Iyengar <aiyengar1990@gmail.com>
+Thomas de Gruijter <thomasdegruijter@pm.me>
 
