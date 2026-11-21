@@ -1,10 +1,11 @@
 From: Yuugo Yoneda <yogo.0917.sabu@gmail.com>
-Date: Sat, 21 Nov 2026 21:43:21 +0900
-Subject: [PATCH RFC v2 11/13] ARM: at550: add SiRF AT550 platform support
+Date: Sat, 21 Nov 2026 21:43:22 +0900
+Subject: [PATCH RFC v2 12/13] ARM: dts: sirf: add SiRF AT550 SoC and
+ Yupiteru YPL514si board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-at550-rfc-v1-v2-11-b0309d0789b2@gmail.com>
+Message-Id: <20261121-at550-rfc-v1-v2-12-b0309d0789b2@gmail.com>
 References: <20261121-at550-rfc-v1-v2-0-b0309d0789b2@gmail.com>
 In-Reply-To: <20261121-at550-rfc-v1-v2-0-b0309d0789b2@gmail.com>
 To: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org
@@ -21,195 +22,210 @@ Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
  linux-mmc@vger.kernel.org, linux-doc@vger.kernel.org, soc@lists.linux.dev
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795264991; l=7327;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795264991; l=5087;
  i=yogo.0917.sabu@gmail.com; s=ypl514-20261117; h=from:subject:message-id;
- bh=TMVN798mJJ3rMR1jYweJbb0iwGiP7A9/jXlQP0XI6K4=;
- b=k9T5AXKOfnRl0xWMoYosBZkHR19mlayrpQGvVtbjZtWrnnK6S/79+MapEQ+WMCK3vIqDrjqGO
- 85uJGsh21NdDEkRajfMmOrCwnaWVTWtOistwMZwcv8HgsRP1AMZzfLF
+ bh=YYX61pnZdoYnIBPRaBdIkg3vvaVgdoCDdTNEbzGmLXk=;
+ b=bKDtzQGtlYOFfzHob6IE5SlxNrps9zcBIoMbJNwdCddsMSw4hw+qBG+NXH4OQE+Xh3rBgxlwL
+ 5AD3vB/SGBKAQZy68sNzRleyWHBxLl8ghXGdmlzXRbA0lbfuEdhnM02
 X-Developer-Key: i=yogo.0917.sabu@gmail.com; a=ed25519;
  pk=TIQ8Tk4xQrxyn8rmk3GI2f5qg/kO6g2KZm7YOOyBHeg=
 X-Endpoint-Received: by B4 Relay for yogo.0917.sabu@gmail.com/ypl514-20261117 with auth_id=1550
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add minimal Devicetree machine support for the SiRF AT550 SoC, selecting
-CPU_ARM1136R1 (matching MIDR 0x4117b365) alongside ARM_ERRATA_411920,
-AT550_IRQ, and CLKSRC_AT550.
+Add the SiRF AT550 SoC device tree include and the Yupiteru YPL514si
+board device tree.
 
-Document the RAM-boot firmware handoff contract and initial platform
-limits in Documentation/arch/arm/at550.rst.
+The bootloader fills in the Linux-owned RAM range and post-divider
+counter clock frequency at boot, enables only handed-over peripherals,
+and enables simple-framebuffer once display geometry is verified. The
+framebuffer range is reserved via a no-map reserved-memory node so
+simplefb ioremap_wc() does not alias the ARM linear mapping.
 
 Signed-off-by: Yuugo Yoneda <yogo.0917.sabu@gmail.com>
 ---
- Documentation/arch/arm/at550.rst | 56 ++++++++++++++++++++++++++++++++++++++++
- Documentation/arch/arm/index.rst |  1 +
- MAINTAINERS                      |  2 ++
- arch/arm/Kconfig                 |  1 +
- arch/arm/Makefile                |  1 +
- arch/arm/mach-at550/Kconfig      | 13 ++++++++++
- arch/arm/mach-at550/Makefile     |  2 ++
- arch/arm/mach-at550/at550.c      | 11 ++++++++
- 8 files changed, 87 insertions(+)
+ MAINTAINERS                               |  1 +
+ arch/arm/boot/dts/Makefile                |  1 +
+ arch/arm/boot/dts/sirf/Makefile           |  2 +
+ arch/arm/boot/dts/sirf/at550-ypl514si.dts | 63 ++++++++++++++++++++++++++++
+ arch/arm/boot/dts/sirf/at550.dtsi         | 69 +++++++++++++++++++++++++++++++
+ 5 files changed, 136 insertions(+)
 
-diff --git a/Documentation/arch/arm/at550.rst b/Documentation/arch/arm/at550.rst
-new file mode 100644
-index 000000000..3d1d8a77c
---- /dev/null
-+++ b/Documentation/arch/arm/at550.rst
-@@ -0,0 +1,56 @@
-+.. SPDX-License-Identifier: GPL-2.0-only
-+
-+SiRF AT550 and Yupiteru YPL514si
-+================================
-+
-+The initial AT550 port supports the ARM1136 CPU, the 64-source interrupt
-+controller, the low 32 bits of the system counter and match channel zero,
-+polled resistive touch input, and SDHCI programmed I/O. The YPL514si board
-+can use a firmware-configured 480 by 272 RGB565 simple framebuffer.
-+
-+Firmware handoff
-+----------------
-+
-+Use the standard ARM boot protocol and a flattened device tree. Firmware must
-+initialize SDRAM, peripheral clocks, and pin multiplexing before entering the
-+kernel. No firmware-specific virtual mappings or page-table inspection are
-+used by the Linux drivers.
-+
-+The bootloader must update the following parts of the board device tree:
-+
-+* Supply the actual Linux-owned region in the memory node. The zero size in
-+  the source DTS is a placeholder, not a description of all installed memory.
-+  RAM still owned by another operating system must not be advertised to Linux.
-+* Set the fixed counter clock frequency to the rate after the programmed
-+  hardware divider. The driver deliberately does not reset the counter or
-+  change the divider. A zero rate is rejected.
-+* Disable the timer watchdog before handing the timer block to Linux.
-+* Enable the simple framebuffer only when its physical address, dimensions,
-+  stride, and format have been verified. Reserve its memory with a no-map
-+  reserved-memory node so simplefb does not alias the ARM linear mapping.
-+* Enable the touch and SD nodes only for peripherals actually handed to Linux.
-+  The touchscreen driver rejects an active streaming/AUX configuration.
-+
-+A Windows CE RAM loader is one possible bootloader. Its allocation checks,
-+volatile driver registration, MMU transition, and DT fixups are outside the
-+kernel port. The Linux Image and all its runtime memory must fit inside the
-+region returned to the kernel; a static firmware RAM mapping is insufficient
-+proof that memory is available.
-+
-+Initial limits
-+--------------
-+
-+The port depends on firmware clock and pin setup; cold reset initialization
-+and clock-tree programming are not implemented. Board suspend is disabled in
-+the defconfig because firmware state restoration has not been established.
-+
-+DMA address translation has not been validated, so the SDHCI driver uses PIO.
-+The YPL514si DT disables MMC and SDIO discovery and limits SD to 25 MHz and
-+3.3 V. Filesystem write support, card removal, and suspend/resume require
-+separate hardware validation. No flash or bootloader update is required to
-+use the RAM boot path.
-+
-+The touchscreen exports raw coordinates. Initial five-point affine calibration
-+is performed in userspace, rather than placing a board-specific transform in
-+the input driver. GPS/baseband, USB, UART, and native LCD modesetting are not
-+part of the initial support.
-diff --git a/Documentation/arch/arm/index.rst b/Documentation/arch/arm/index.rst
-index b15621093..9cf1fb834 100644
---- a/Documentation/arch/arm/index.rst
-+++ b/Documentation/arch/arm/index.rst
-@@ -62,6 +62,7 @@ SoC-specific documents
-    stm32/stm32mp157-overview
-    stm32/stm32-dma-mdma-chaining
- 
-+   at550
-    sunxi
- 
-    samsung/index
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 9d02a79a2..1f9c8c08b 100644
+index 1f9c8c08b..c6f0f3fb6 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -25850,11 +25850,13 @@ F:	include/trace/events/siox.h
- SIRF AT550 PLATFORM
- M:	Yuugo Yoneda <yogo.0917.sabu@gmail.com>
- S:	Odd Fixes
-+F:	Documentation/arch/arm/at550.rst
- F:	Documentation/devicetree/bindings/arm/sirf,at550.yaml
- F:	Documentation/devicetree/bindings/input/touchscreen/sirf,at550-ts.yaml
+@@ -25856,6 +25856,7 @@ F:	Documentation/devicetree/bindings/input/touchscreen/sirf,at550-ts.yaml
  F:	Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml
  F:	Documentation/devicetree/bindings/mmc/sirf,at550-sdhci.yaml
  F:	Documentation/devicetree/bindings/timer/sirf,at550-timer.yaml
-+F:	arch/arm/mach-at550/
++F:	arch/arm/boot/dts/sirf/at550*
+ F:	arch/arm/mach-at550/
  F:	drivers/clocksource/timer-at550.c
  F:	drivers/input/touchscreen/at550-ts.c
- F:	drivers/irqchip/irq-at550.c
-diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
-index 0cc289a71..7fcf2a28f 100644
---- a/arch/arm/Kconfig
-+++ b/arch/arm/Kconfig
-@@ -367,6 +367,7 @@ source "arch/arm/mach-artpec/Kconfig"
- 
- source "arch/arm/mach-aspeed/Kconfig"
- 
-+source "arch/arm/mach-at550/Kconfig"
- source "arch/arm/mach-at91/Kconfig"
- 
- source "arch/arm/mach-axxia/Kconfig"
-diff --git a/arch/arm/Makefile b/arch/arm/Makefile
-index 573813ef5..508cbad8b 100644
---- a/arch/arm/Makefile
-+++ b/arch/arm/Makefile
-@@ -176,6 +176,7 @@ machine-$(CONFIG_ARCH_ACTIONS)		+= actions
- machine-$(CONFIG_ARCH_ALPINE)		+= alpine
- machine-$(CONFIG_ARCH_ARTPEC)		+= artpec
- machine-$(CONFIG_ARCH_ASPEED)           += aspeed
-+machine-$(CONFIG_ARCH_AT550)		+= at550
- machine-$(CONFIG_ARCH_AT91)		+= at91
- machine-$(CONFIG_ARCH_AXXIA)		+= axxia
- machine-$(CONFIG_ARCH_BCM)		+= bcm
-diff --git a/arch/arm/mach-at550/Kconfig b/arch/arm/mach-at550/Kconfig
+diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
+index 28fba538d..d28c8eb01 100644
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -30,6 +30,7 @@ subdir-y += renesas
+ subdir-y += rockchip
+ subdir-y += samsung
+ subdir-y += sigmastar
++subdir-y += sirf
+ subdir-y += socionext
+ subdir-y += st
+ subdir-y += sunplus
+diff --git a/arch/arm/boot/dts/sirf/Makefile b/arch/arm/boot/dts/sirf/Makefile
 new file mode 100644
-index 000000000..b3a0c1874
+index 000000000..d1d3d5bfe
 --- /dev/null
-+++ b/arch/arm/mach-at550/Kconfig
-@@ -0,0 +1,13 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+config ARCH_AT550
-+	bool "SiRF AT550 platforms"
-+	depends on ARCH_MULTI_V6
-+	select ARM_ERRATA_411920
-+	select AT550_IRQ
-+	select CLKSRC_AT550
-+	select CPU_ARM1136R1
-+	help
-+	  Support SiRF AT550 systems, including the Yupiteru YPL514si.
-+	  The initial support uses firmware-configured peripheral clocks,
-+	  pin multiplexing and SDRAM. A bootloader-supplied device tree must
-+	  describe the usable RAM region and the divided counter clock rate.
-diff --git a/arch/arm/mach-at550/Makefile b/arch/arm/mach-at550/Makefile
-new file mode 100644
-index 000000000..98a51d234
---- /dev/null
-+++ b/arch/arm/mach-at550/Makefile
++++ b/arch/arm/boot/dts/sirf/Makefile
 @@ -0,0 +1,2 @@
 +# SPDX-License-Identifier: GPL-2.0-only
-+obj-y += at550.o
-diff --git a/arch/arm/mach-at550/at550.c b/arch/arm/mach-at550/at550.c
++dtb-$(CONFIG_ARCH_AT550) += at550-ypl514si.dtb
+diff --git a/arch/arm/boot/dts/sirf/at550-ypl514si.dts b/arch/arm/boot/dts/sirf/at550-ypl514si.dts
 new file mode 100644
-index 000000000..affcc9eb3
+index 000000000..d34019858
 --- /dev/null
-+++ b/arch/arm/mach-at550/at550.c
-@@ -0,0 +1,11 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+#include <asm/mach/arch.h>
++++ b/arch/arm/boot/dts/sirf/at550-ypl514si.dts
+@@ -0,0 +1,63 @@
++// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++/dts-v1/;
++#include "at550.dtsi"
 +
-+static const char *const at550_dt_compat[] __initconst = {
-+	"sirf,at550",
-+	NULL,
++/ {
++	model = "Yupiteru YPL514si";
++	compatible = "yupiteru,ypl514si", "sirf,at550";
++
++	chosen {
++		ranges;
++		#address-cells = <1>;
++		#size-cells = <1>;
++
++		framebuffer@c0100000 {
++			compatible = "simple-framebuffer";
++			reg = <0xc0100000 0x3fc00>;
++			width = <480>;
++			height = <272>;
++			stride = <960>;
++			format = "r5g6b5";
++
++			status = "disabled";
++		};
++	};
++
++	memory@c0000000 {
++		device_type = "memory";
++		/* The bootloader supplies the region allocated for Linux. */
++		reg = <0xc0000000 0>;
++	};
++
++	reserved-memory {
++		ranges;
++		#address-cells = <1>;
++		#size-cells = <1>;
++
++		framebuffer@c0100000 {
++			reg = <0xc0100000 0x40000>;
++			no-map;
++		};
++	};
 +};
 +
-+DT_MACHINE_START(AT550_DT, "SiRF AT550")
-+	.dt_compat = at550_dt_compat,
-+MACHINE_END
++&sd0 {
++	bus-width = <4>;
++	max-frequency = <25000000>;
++	no-1-8-v;
++	no-mmc;
++	no-sdio;
++};
++
++&sd2 {
++	bus-width = <4>;
++	max-frequency = <25000000>;
++	no-1-8-v;
++	no-mmc;
++	no-sdio;
++};
++
++&touchscreen {
++	touchscreen-size-x = <4096>;
++	touchscreen-size-y = <4096>;
++};
+diff --git a/arch/arm/boot/dts/sirf/at550.dtsi b/arch/arm/boot/dts/sirf/at550.dtsi
+new file mode 100644
+index 000000000..0daf05eca
+--- /dev/null
++++ b/arch/arm/boot/dts/sirf/at550.dtsi
+@@ -0,0 +1,69 @@
++// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++/ {
++	#address-cells = <1>;
++	#size-cells = <1>;
++	interrupt-parent = <&intc>;
++
++	counter_clk: clock-counter {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		/* Boot firmware supplies the rate after the hardware divider. */
++		clock-frequency = <0>;
++	};
++
++	cpus {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		cpu@0 {
++			device_type = "cpu";
++			compatible = "arm,arm1136jf-s";
++			reg = <0>;
++		};
++	};
++
++	soc {
++		compatible = "simple-bus";
++		ranges;
++		#address-cells = <1>;
++		#size-cells = <1>;
++
++		sd0: mmc@56000000 {
++			compatible = "sirf,at550-sdhci";
++			reg = <0x56000000 0x1000>;
++			interrupts = <36>;
++
++			status = "disabled";
++		};
++
++		sd2: mmc@56200000 {
++			compatible = "sirf,at550-sdhci";
++			reg = <0x56200000 0x1000>;
++			interrupts = <20>;
++
++			status = "disabled";
++		};
++
++		touchscreen: touchscreen@80120000 {
++			compatible = "sirf,at550-ts";
++			reg = <0x80120000 0x1000>;
++
++			status = "disabled";
++		};
++
++		intc: interrupt-controller@90020000 {
++			compatible = "sirf,at550-intc";
++			reg = <0x90020000 0x1000>;
++			interrupt-controller;
++			#interrupt-cells = <1>;
++			#address-cells = <0>;
++		};
++
++		timer@90050000 {
++			compatible = "sirf,at550-timer";
++			reg = <0x90050000 0x1000>;
++			interrupts = <0>;
++			clocks = <&counter_clk>;
++		};
++	};
++};
 
 -- 
 2.56.0
