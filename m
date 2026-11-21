@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 21 Nov 2026 23:37:55 +0100
-Subject: [PATCH v3 01/12] regulator: dt-bindings: qcom,usb-vbus-regulator:
- Add pmi8998 and pm660
+Date: Sat, 21 Nov 2026 23:37:56 +0100
+Subject: [PATCH v3 02/12] regulator: qcom_usb_vbus: Fix the
+ MODULE_LICENSE() string
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-pmi8998-vbus-v3-1-91ba2e61a877@ixit.cz>
+Message-Id: <20261121-pmi8998-vbus-v3-2-91ba2e61a877@ixit.cz>
 References: <20261121-pmi8998-vbus-v3-0-91ba2e61a877@ixit.cz>
 In-Reply-To: <20261121-pmi8998-vbus-v3-0-91ba2e61a877@ixit.cz>
 To: Abel Vesa <abelvesa@kernel.org>, 
@@ -24,156 +24,53 @@ Cc: Richard Acayan <mailingradian@gmail.com>,
  linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3908; i=david@ixit.cz;
- h=from:subject:message-id; bh=uY38OOoOv7AGRyzhEMqIBpg8bK80KZsXFqsa90ruurA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrAh1aZ71OU7nXEzGksm9JPBqUjPCMKJQIwl0AR
- /GgYR1ikoGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawIdWgAKCRBgAj/E00kg
- crzrEACvV8hZp+8Nvex937epX+wbnJpLE+R4rEnKDaBYvYJasLsS4i7V176Fpr1lzgZVqn2X2be
- A24nn3e9hYzSDgRsGY1EahzxU7y1xxVS3uWfENPH6N2uv9/pOBPyFacjzD4Gb4AWW8Puh2ykUUO
- n4uCZuUH5CEOMMXdEWGqznkA4C7/xVj/CmdxhPlZCDFR7/q9yZCM0qBsGY7yBrgvBtmTwfPLCqI
- TIfLJhSqgYLFwbb77X6SUNuCYxJHOgH3+NDmfwENUA6f2qAjN4flYy0zsv5B3g+IketMeOBa1Wo
- RuEvnRzsFV+WCrmNCdQXRPeFIWF/OkYce1VravKDOXYC8W/JibanTSZpalLa92uZQCtkiHjXyf2
- DG/CLoB0+o7FxKF+ZRVY5Dgen78IevGVAvaErCy3WGB81nX8vTWFcKFs5uz1gL3s/BLl8tl+SLn
- mvab9y/NQ46sotGVTyN5rjcJuF8XHDzwk9vfnkqEPEEILiAs95eFK9/uCNvgGwzrY4eBrsDK31J
- kHWKa5HvJL08xthSrVv4NQxbHo3/RiVeTaZ6+G0BaHXCR+EU04LTmDTURyekkpf8rHG7EQJQD8m
- SIm66DualkV8214cYVk/uZahvSA8HrDq8kjVkS42C/UbAAIGma9yK8ITT/x0IUW/p5Pa3+NzdAk
- BTnzG7xO4yUobIg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1233; i=david@ixit.cz;
+ h=from:subject:message-id; bh=F79nBmxItmBKLY+5BEM13y1NDT1vp2palB3VbLLu0zM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrAh1afl3rcaq6g4wTWEwFc5CPeJ3e6HObeuEC9
+ li6KnB8sT6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawIdWgAKCRBgAj/E00kg
+ coMcD/oCe2oRgElpBSGKInEhx2e7IDBu390+H5o9R7XOLrWmCdtAN954iUPufOnMmFauwcxTMWo
+ QSb0/MTt2JoJ9QUXqMyg0wN0BHc6tODnmAwkhDBE0Ta/ivviYGNQdWpskEFb9NAViaWQw9BF2wc
+ x4oLYEDtkopMivVuwTkYuMghDiXfm6woMsBu29Ju28C0WPGdBQjLX4vTWg1HswaCnYuAVBNAQbs
+ BiLEeXIqAvZtfa0tMkqtAAfV0m8eSVQJCoeTeXUfa1rEMqVsoYo/tDuFfj4eUr4VfY/VZLk/DgK
+ Hp90WoHufVh4+WH0ZMISXE7XHbMCFb4Y9yiaLFn+beTVCpCnkZmDP1g2Q0ClxbnEtX0QU6aNpZn
+ lc3n/ltQ5o0qvXYgNf/kIS5eKBkHrAq1EOq6sacootAZdWzPfa6mcRHOn2xGa8pyI658Jyw40lK
+ Mf3+1zlWfDN8Fwe5+JbiUIStwLIDQi/CsnTLpoMqvxnl/UuqadeE3vAt4ElI66d2acfuNd7/iqS
+ ovv5338YMGo8RDM3kE4aaexBCM2Ka0dGmcwmAfmCYUx7EEB4THsCIahFvJ5vGeQuUvdhec/BpR5
+ bTsr+/D9II5wEzuK+rdmjSwIDb7aaWTz1rQJLO1RSExxgNuT6jnUeQGWWjLFC83NzySkdcYXZ8f
+ x7va73EyaUSbc5Q==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The VBUS register block on the PMI8998 and PM660 PMIC shares the design.
-Define corresponding compatible string, having the
-qcom,pmi8998-vbus-reg as a fallback.
+Replace the bogus "GPL v2" with "GPL" as MODULE_LICENSE() string. The
+value does not declare the module's exact license, but only lets the
+module loader test whether the module is Free Software or not.
 
-As a part of the definition properly define existing chips using
-min/max/multipleOf properties.
+See commit bf7fbeeae6db ("module: Cure the MODULE_LICENSE "GPL" vs.
+"GPL v2" bogosity") in the details of the issue. The fix is to use
+"GPL" for all modules under any variant of the GPL.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../regulator/qcom,usb-vbus-regulator.yaml         | 56 ++++++++++++++++++++--
- 1 file changed, 52 insertions(+), 4 deletions(-)
+ drivers/regulator/qcom_usb_vbus-regulator.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml b/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml
-index 024b34d0eb1a6..7e984ab9a1474 100644
---- a/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml
-+++ b/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml
-@@ -9,35 +9,38 @@ title: The Qualcomm PMIC VBUS output regulator driver
- maintainers:
-   - Wesley Cheng <quic_wcheng@quicinc.com>
+diff --git a/drivers/regulator/qcom_usb_vbus-regulator.c b/drivers/regulator/qcom_usb_vbus-regulator.c
+index d909a6f2b7f14..88f5a6ba79e6e 100644
+--- a/drivers/regulator/qcom_usb_vbus-regulator.c
++++ b/drivers/regulator/qcom_usb_vbus-regulator.c
+@@ -176,9 +176,9 @@ static struct platform_driver qcom_usb_vbus_regulator_driver = {
+ 		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
+ 		.of_match_table = qcom_usb_vbus_regulator_match,
+ 	},
+ 	.probe		= qcom_usb_vbus_regulator_probe,
+ };
+ module_platform_driver(qcom_usb_vbus_regulator_driver);
  
- description: |
-   This regulator driver controls the VBUS output by the Qualcomm PMIC.  This
-   regulator will be enabled in situations where the device is required to
-   provide power to the connected peripheral.
- 
--  The pm8150b variant uses an OTG current-limit selector, supporting limits
--  of 500 mA, 1000 mA, 1500 mA, 2000 mA, 2500 mA and 3000 mA.
-+  The pm8150b and pmi8998 variant uses an OTG current-limit selector.
- 
-   The pm4125 variant uses a different register layout with a 2-bit VBOOST
--  voltage selector supporting output voltages of 4.25 V, 4.5 V, 4.75 V
--  and 5.0 V.
-+  voltage selector.
- 
- properties:
-   compatible:
-     oneOf:
-       - enum:
-           - qcom,pm8150b-vbus-reg
-           - qcom,pm4125-vbus-reg
-+          - qcom,pmi8998-vbus-reg
-       - items:
-           - enum:
-               - qcom,pm6150-vbus-reg
-               - qcom,pm7250b-vbus-reg
-               - qcom,pmi632-vbus-reg
-           - const: qcom,pm8150b-vbus-reg
-+      - items:
-+          - enum:
-+              - qcom,pm660-vbus-reg
-+          - const: qcom,pmi8998-vbus-reg
- 
-   reg:
-     maxItems: 1
-     description: VBUS output base address
- 
- allOf:
-   - $ref: regulator.yaml#
-   - if:
-@@ -45,26 +48,71 @@ allOf:
-         compatible:
-           contains:
-             enum:
-               - qcom,pm8150b-vbus-reg
-               - qcom,pm6150-vbus-reg
-               - qcom,pm7250b-vbus-reg
-               - qcom,pmi632-vbus-reg
-     then:
-+      properties:
-+        regulator-min-microamp:
-+          multipleOf: 500000
-+          minimum: 500000
-+          maximum: 3000000
-+
-+        regulator-max-microamp:
-+          multipleOf: 500000
-+          minimum: 500000
-+          maximum: 3000000
-+
-+      required:
-+        - regulator-min-microamp
-+        - regulator-max-microamp
-+
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - qcom,pm660-vbus-reg
-+              - qcom,pmi8998-vbus-reg
-+    then:
-+      properties:
-+        regulator-min-microamp:
-+          multipleOf: 250000
-+          minimum: 250000
-+          maximum: 2000000
-+
-+        regulator-max-microamp:
-+          multipleOf: 250000
-+          minimum: 250000
-+          maximum: 2000000
-+
-       required:
-         - regulator-min-microamp
-         - regulator-max-microamp
- 
-   - if:
-       properties:
-         compatible:
-           contains:
-             const: qcom,pm4125-vbus-reg
-     then:
-+      properties:
-+        regulator-min-microvolt:
-+          multipleOf: 250000
-+          minimum: 4250000
-+          maximum: 5000000
-+
-+        regulator-max-microvolt:
-+          multipleOf: 250000
-+          minimum: 4250000
-+          maximum: 5000000
-+
-       required:
-         - regulator-min-microvolt
-         - regulator-max-microvolt
- 
- required:
-   - compatible
-   - reg
- 
+ MODULE_DESCRIPTION("Qualcomm USB vbus regulator driver");
+-MODULE_LICENSE("GPL v2");
++MODULE_LICENSE("GPL");
 
 -- 
 2.55.0
