@@ -1,10 +1,10 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Sat, 21 Nov 2026 15:49:22 -0700
-Subject: [PATCH 4/6] vmlinux.lds.h: remove redundant ALIGN(8) directives
+Date: Sat, 21 Nov 2026 15:49:23 -0700
+Subject: [PATCH 5/6] dyndbg.lds.S: fix lost dyndbg sections in modules
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-vmlinux-lds-v1-4-49818f3f5cc0@gmail.com>
+Message-Id: <20261121-vmlinux-lds-v1-5-49818f3f5cc0@gmail.com>
 References: <20261121-vmlinux-lds-v1-0-49818f3f5cc0@gmail.com>
 In-Reply-To: <20261121-vmlinux-lds-v1-0-49818f3f5cc0@gmail.com>
 To: Arnd Bergmann <arnd@arndb.de>, Jason Baron <jbaron@akamai.com>, 
@@ -15,126 +15,157 @@ To: Arnd Bergmann <arnd@arndb.de>, Jason Baron <jbaron@akamai.com>,
 Cc: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org, 
  linux-modules@vger.kernel.org, Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795301375; l=3579;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795301375; l=5098;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=UWBsnPOKwEU86EF/7fgNh8+symPCuK2eZOcJxfRgLYY=;
- b=AOMDbzuug3CzJQNYnuVFHGSpbxkFu0YpomfJCOVSrE7QnZHOL85QAfkAwJDgtkocupTfy/Piq
- AQJCK/c1cu9CfUonuKqWzceIkr59BgNPwZCRSibpB3cy4FxtVjObrb5
+ bh=VzsP1ToJjgJAp9UDySI4ByI7IFGoSIBhUQQ/fSWeluo=;
+ b=h9nzpVBJz4uteoBt80zsnV8Hf8iD65fBRGPhEl1a7wMNjtBsi3JJdv5oAmwCjD1fWaqxP07yN
+ KYMQ6K2FvMyDP96lanEiubSsDTBHeEg8xJq9Dinx07RL1lSzVaI6WnR
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The BOUNDED_SECTION_PRE_LABEL and BOUNDED_SECTION_POST_LABEL macros
-were recently updated to inherently enforce an 8-byte alignment. This
-makes the explicit '. = ALIGN(8);' statements preceding 'naked' macro
-calls in vmlinux.lds.h redundant.
+With CONFIG_DRM_USE_DYNAMIC_DEBUG=y, several build configs had
+problems with __dyndbg* sections getting lost in drm drivers.  Fix
+this by following the model demonstrated in codetag.lds.h.
 
-Remove these redundant alignment directives to clean up the file and
-clarify that the macros handle their own alignment padding.
+Introduce include/asm-generic/dyndbg.lds.h, to bundle dynamic-debug's
+multiple sections together, into 2 macros:
 
+vmlinux.lds.h DATA_DATA: move the 2 BOUNDED_SECTION_BY(__dyndbg*)
+calls into dyndbg.lds.h DYNDBG_SECTIONS(). vmlinux.lds.h now includes
+the new file and calls the new macro.
+
+MOD_DYNDBG_SECTIONS keeps the 2 sections by name, aligns them and sets
+the output address to 0 when the sections are empty.
+
+dyndbg.lds.h includes (reuses) bounded-section.lds.h
+
+scripts/module.lds.S: now calls MOD_DYNDBG_SECTIONS right before the
+CODETAG macro (consistent with their placements in vmlinux.lds.h), and
+also includes dyndbg.lds.h
+
+This isolates vmlinux.lds.h from further __dyndbg section additions.
+
+CC: Arnd Bergmann <arnd@arndb.de>
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Reviewed-by: Petr Pavlu <petr.pavlu@suse.com>
 ---
- include/asm-generic/vmlinux.lds.h | 13 -------------
- 1 file changed, 13 deletions(-)
+v3: move #includes to top, drop extra ALIGN(8) in DYNDBG_SECTIONS, add RvBy
 
+v2: Address linker script review feedback for relocatable modules.
+
+MOD_DYNDBG_SECTIONS() used the BOUNDED_SECTION_BY() macro, which
+proved problematic for kernel modules for two reasons:
+
+1. Unwanted Empty Sections:
+   BOUNDED_SECTION_BY() automatically generates `__start` and `__stop`
+   symbols. When applied to `MOD_DYNDBG_SECTIONS()`, the linker assumes
+   the sections are populated due to the symbol definitions, forcing an
+   empty `__dyndbg` and `__dyndbg_classes` output section in every
+   compiled module, even those without dynamic debug configuration.
+   Since the module loader uses `section_objs()` to locate data via
+   ELF headers instead of relying on `__start`/`__stop` symbols, these
+   assignments are completely unnecessary.
+
+2. Non-zero Output Addresses:
+   During relocatable linking (e.g., `ld.bfd -r`), omitting an explicit
+   base address causes the section to inherit the current location
+   counter. This results in non-zero sh_addr values in `.ko` files,
+   which is confusing, degrades compressibility, and can cause issues
+   with external tools parsing the ELF.
+
+Fix both issues by dropping `BOUNDED_SECTION_BY()` in favor of a simple
+`KEEP(*(...))` constraint and explicitly defining the sections with a `0`
+base address: `__dyndbg 0 : ALIGN(8) { ... }`.
+
+fixup-inc-vml
+---
+ MAINTAINERS                       |  1 +
+ include/asm-generic/dyndbg.lds.h  | 18 ++++++++++++++++++
+ include/asm-generic/vmlinux.lds.h |  6 ++----
+ scripts/module.lds.S              |  2 ++
+ 4 files changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index ccbcdc0799b9..1acdf6e8b30b 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -9505,6 +9505,7 @@ DYNAMIC DEBUG
+ M:	Jason Baron <jbaron@akamai.com>
+ M:	Jim Cromie <jim.cromie@gmail.com>
+ S:	Maintained
++F:	include/asm-generic/dyndbg.lds.h
+ F:	include/linux/dynamic_debug.h
+ F:	lib/dynamic_debug.c
+ F:	lib/test_dynamic_debug.c
+diff --git a/include/asm-generic/dyndbg.lds.h b/include/asm-generic/dyndbg.lds.h
+new file mode 100644
+index 000000000000..9d8951bef688
+--- /dev/null
++++ b/include/asm-generic/dyndbg.lds.h
+@@ -0,0 +1,18 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#ifndef __ASM_GENERIC_DYNDBG_LDS_H
++#define __ASM_GENERIC_DYNDBG_LDS_H
++
++#include <asm-generic/bounded_sections.lds.h>
++#define DYNDBG_SECTIONS()					\
++	BOUNDED_SECTION_BY(__dyndbg, ___dyndbg)			\
++	BOUNDED_SECTION_BY(__dyndbg_classes, ___dyndbg_classes)
++
++#define MOD_DYNDBG_SECTIONS()						\
++	__dyndbg 0 : ALIGN(8) {						\
++		KEEP(*(__dyndbg))					\
++	}								\
++	__dyndbg_classes 0 : ALIGN(8) {					\
++		KEEP(*(__dyndbg_classes))				\
++	}
++
++#endif /* __ASM_GENERIC_DYNDBG_LDS_H */
 diff --git a/include/asm-generic/vmlinux.lds.h b/include/asm-generic/vmlinux.lds.h
-index c570495d8de5..20c49684d89d 100644
+index 20c49684d89d..f2f29f2e4e6c 100644
 --- a/include/asm-generic/vmlinux.lds.h
 +++ b/include/asm-generic/vmlinux.lds.h
-@@ -228,7 +228,6 @@
+@@ -52,6 +52,7 @@
  
- #ifdef CONFIG_KPROBES
- #define KPROBE_BLACKLIST()				\
--	. = ALIGN(8);					\
- 	BOUNDED_SECTION(_kprobe_blacklist)
- #else
- #define KPROBE_BLACKLIST()
-@@ -244,7 +243,6 @@
+ #include <asm-generic/bounded_sections.lds.h>
+ #include <asm-generic/codetag.lds.h>
++#include <asm-generic/dyndbg.lds.h>
  
- #ifdef CONFIG_EVENT_TRACING
- #define FTRACE_EVENTS()							\
+ #ifndef LOAD_OFFSET
+ #define LOAD_OFFSET 0
+@@ -344,10 +345,7 @@
+ 	*(.data..do_once)						\
+ 	STRUCT_ALIGN();							\
+ 	*(__tracepoints)						\
+-	/* implement dynamic printk debug */				\
 -	. = ALIGN(8);							\
- 	BOUNDED_SECTION(_ftrace_events)					\
- 	BOUNDED_SECTION_BY(_ftrace_eval_map, _ftrace_eval_maps)
- #else
-@@ -261,7 +259,6 @@
+-	BOUNDED_SECTION_BY(__dyndbg_classes, ___dyndbg_classes)		\
+-	BOUNDED_SECTION_BY(__dyndbg, ___dyndbg)				\
++	DYNDBG_SECTIONS()						\
+ 	CODETAG_SECTIONS()						\
+ 	LIKELY_PROFILE()		       				\
+ 	BRANCH_PROFILE()						\
+diff --git a/scripts/module.lds.S b/scripts/module.lds.S
+index d0f200428957..5950ff8edc31 100644
+--- a/scripts/module.lds.S
++++ b/scripts/module.lds.S
+@@ -5,6 +5,7 @@
+  */
  
- #ifdef CONFIG_FTRACE_SYSCALLS
- #define TRACE_SYSCALLS()			\
--	. = ALIGN(8);				\
- 	BOUNDED_SECTION_BY(__syscalls_metadata, _syscalls_metadata)
- #else
- #define TRACE_SYSCALLS()
-@@ -276,7 +273,6 @@
+ #include <asm-generic/codetag.lds.h>
++#include <asm-generic/dyndbg.lds.h>
  
- #ifdef CONFIG_SERIAL_EARLYCON
- #define EARLYCON_TABLE()						\
--	. = ALIGN(8);							\
- 	BOUNDED_SECTION_POST_LABEL(__earlycon_table, __earlycon_table, , _end)
- #else
- #define EARLYCON_TABLE()
-@@ -284,11 +280,9 @@
+ SECTIONS {
+ 	/DISCARD/ : {
+@@ -56,6 +57,7 @@ SECTIONS {
+ 		*(.rodata..L*)
+ 	}
  
- #ifdef CONFIG_SECURITY
- #define LSM_TABLE()					\
--	. = ALIGN(8);					\
- 	BOUNDED_SECTION_PRE_LABEL(.lsm_info.init, _lsm_info, __start, __end)
- 
- #define EARLY_LSM_TABLE()						\
--	. = ALIGN(8);							\
- 	BOUNDED_SECTION_PRE_LABEL(.early_lsm_info.init, _early_lsm_info, __start, __end)
- #else
- #define LSM_TABLE()
-@@ -314,7 +308,6 @@
- 
- #ifdef CONFIG_ACPI
- #define ACPI_PROBE_TABLE(name)						\
--	. = ALIGN(8);							\
- 	BOUNDED_SECTION_POST_LABEL(__##name##_acpi_probe_table,		\
- 				   __##name##_acpi_probe_table,, _end)
- #else
-@@ -323,7 +316,6 @@
- 
- #ifdef CONFIG_THERMAL
- #define THERMAL_TABLE(name)						\
--	. = ALIGN(8);							\
- 	BOUNDED_SECTION_POST_LABEL(__##name##_thermal_table,		\
- 				   __##name##_thermal_table,, _end)
- #else
-@@ -403,12 +395,10 @@
- 	__end_init_stack = .;
- 
- #define JUMP_TABLE_DATA							\
--	. = ALIGN(8);							\
- 	BOUNDED_SECTION_BY(__jump_table, ___jump_table)
- 
- #ifdef CONFIG_HAVE_STATIC_CALL_INLINE
- #define STATIC_CALL_DATA						\
--	. = ALIGN(8);							\
- 	BOUNDED_SECTION_BY(.static_call_sites, _static_call_sites)	\
- 	BOUNDED_SECTION_BY(.static_call_tramp_key, _static_call_tramp_key)
- #else
-@@ -453,7 +443,6 @@
- 		*(.rodata) *(.rodata.*) *(.data.rel.ro*)		\
- 		SCHED_DATA						\
- 		RO_AFTER_INIT_DATA	/* Read only after init */	\
--		. = ALIGN(8);						\
- 		BOUNDED_SECTION_BY(__tracepoints_ptrs, ___tracepoints_ptrs) \
- 		*(__tracepoints_strings)/* Tracepoints: strings */	\
- 	}								\
-@@ -989,12 +978,10 @@
- 
- /* Alignment must be consistent with (kunit_suite *) in include/kunit/test.h */
- #define KUNIT_TABLE()							\
--		. = ALIGN(8);						\
- 		BOUNDED_SECTION_POST_LABEL(.kunit_test_suites, __kunit_suites, _start, _end)
- 
- /* Alignment must be consistent with (kunit_suite *) in include/kunit/test.h */
- #define KUNIT_INIT_TABLE()						\
--		. = ALIGN(8);						\
- 		BOUNDED_SECTION_POST_LABEL(.kunit_init_test_suites, \
- 				__kunit_init_suites, _start, _end)
++	MOD_DYNDBG_SECTIONS()
+ 	MOD_SEPARATE_CODETAG_SECTIONS()
+ }
  
 
 -- 
