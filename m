@@ -1,69 +1,98 @@
-From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-Date: Sat, 21 Nov 2026 16:10:33 +0100
-Subject: [PATCH] dt-bindings: serial: pl011: Reference rs485.yaml
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Sat, 21 Nov 2026 15:26:27 +0000
+Subject: [PATCH] ASoC: SOF: ipc4-mtrace: fix the wrapped read when the user
+ buffer is short
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261121-pl011-rs485-v1-1-0d18008f4a12@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAGi0AWsC/yXMQQ5AMBBA0avIrDXplIq4ilgUgxFBOohE3F2xf
- Iv/LxDyTAJFdIGng4WXOQDjCJrBzT0pboPBaJMhGlTrpBGVlzS3KiOLmLi8c66FUKyeOj6/W1n
- 9lr0eqdneBdz3A/wxiwNvAAAA
-X-Change-ID: 20261121-pl011-rs485-6e5113a8faad
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Lino Sanfilippo <LinoSanfilippo@gmx.de>
-Cc: Matous Hybl <hyblmatous@gmail.com>, Miroslav Ondra <ondra@faster.cz>, 
- linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- devicetree@vger.kernel.org, 
- =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795273968; l=1427;
- i=cleverline1mc@gmail.com; s=20261121; h=from:subject:message-id;
- bh=WApAvtSzKPrLcGtYRifdtaAM+A81CWvw2/q5/+yJ1kQ=;
- b=h4uA8WUuBALQ2FRUKebfcFwq8+kH6St6F99HGuzVqUBLVZi6RYzrHHpm7mrEAIj97L3HiW+RY
- piRUPmrx7E7A5u7n19NLpQaIpyAesSY/gzGw0POSiqG4zftrx9QumKD
-X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
- pk=2UEUVmQyfsiFZkNS7dkgFg0rUmhbcMIytM6NYhxFt/Y=
-X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20261121 with auth_id=1594
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261121-sof-mtrace-wrap-v1-1-9798707c3439@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACK4AWsC/yXMwQrCMAyA4VcZORuwHR3UVxEPtUlnBLeRbG4w9
+ u5WPX6H/9/BWIUNLs0Oym8xGYcKd2ogP9LQMwpVgz/7zjnv0MaCr1lTZlw1TRioLRSJcgwt1Gp
+ SLrL9jtfb37bcn5zn7waO4wO9roLXcwAAAA==
+X-Change-ID: 20261121-sof-mtrace-wrap-5d3fd9ddc953
+To: yung-chuan.liao@linux.intel.com, broonie@kernel.org, 
+ lgirdwood@gmail.com, peter.ujfalusi@linux.intel.com
+Cc: linux-kernel@vger.kernel.org, sound-open-firmware@alsa-project.org, 
+ kai.vehmanen@linux.intel.com, tiwai@suse.com, 
+ pierre-louis.bossart@linux.dev, daniel.baluta@nxp.com, 
+ linux-sound@vger.kernel.org, perex@perex.cz
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795274787; l=2836;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=eCZ+OHYWPM9lk6X07kSRGna3tHg4IdTpUM5N3XCFjbA=;
+ b=gljffVztdZYIhKC+yfJh8dtwobmcl9RKf2zd3Vthk2kNVBmFUctSJ3Yrg54DcHdX/pg7VKPAQ
+ y40IMyriAuGCFTG3uky0QbP9j1vYeAE5Yp/zliVCPp0hw3d5fQfAaAX
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The amba-pl011 driver supports RS-485 and parses the generic RS-485
-properties with uart_get_rs485_mode(), but the binding does not allow
-them. Reference rs485.yaml.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-Fixes: 8d479237727c ("serial: amba-pl011: add RS485 support")
+When the log data wraps around the end of the slot,
+sof_ipc4_mtrace_dfs_read() copies it in two parts:
 
-Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
+	sof_mailbox_read(..., log_buffer, avail - write_ptr);
+	sof_mailbox_read(..., log_buffer + avail - write_ptr, write_ptr);
+
+This assumes that avail is still the full distance from read_ptr to
+write_ptr. But avail has just been cut down to count - sizeof(avail) if
+the user asked for less. If it ends up smaller than write_ptr,
+avail - write_ptr wraps around, and the first sof_mailbox_read() gets a
+length of about 4 GiB for the 4 KiB log_buffer.
+For example, with read_ptr = 4080 and write_ptr = 16, a read of 12 bytes
+gives avail = 8 and a copy of 0xfffffff8 bytes. If avail is cut but
+still larger than write_ptr, the two parts don't line up with read_ptr
+and the user gets the wrong bytes.
+
+Copy from read_ptr up to the end of the slot, but no more than avail,
+and take the rest from the start of the slot.
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: f4ea22f7aa75 ("ASoC: SOF: ipc4: Add support for mtrace log extraction")
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-The PL011 driver has supported RS-485 since v5.15, added in
-https://git.kernel.org/torvalds/c/8d479237727c, but dtbs_check rejects
-properties such as linux,rs485-enabled-at-boot-time on PL011 nodes.
-We hit this on a BCM2711 (CM4) board using two PL011 UARTs for RS-485.
-
-An AI assistant (Claude) helped check the driver and write commit message.
+Compile tested (x86_64, W=1). I don't have SOF hardware, so I checked
+the pointer arithmetic in userspace instead: the code of this function
+with the mailbox replaced by an array, under ASan. Without the patch a
+12-byte read at read_ptr 4080, write_ptr 16 copies 0xfffffff8 bytes,
+and a 104-byte read at read_ptr 4000 returns 16 wrong bytes; with it
+both return the expected data.
 ---
- Documentation/devicetree/bindings/serial/pl011.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ sound/soc/sof/ipc4-mtrace.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/serial/pl011.yaml b/Documentation/devicetree/bindings/serial/pl011.yaml
-index 3fcf2d042372..3c5f35eed04a 100644
---- a/Documentation/devicetree/bindings/serial/pl011.yaml
-+++ b/Documentation/devicetree/bindings/serial/pl011.yaml
-@@ -12,6 +12,7 @@ maintainers:
- allOf:
-   - $ref: /schemas/arm/primecell.yaml#
-   - $ref: serial.yaml#
-+  - $ref: rs485.yaml#
+diff --git a/sound/soc/sof/ipc4-mtrace.c b/sound/soc/sof/ipc4-mtrace.c
+index 064291e26974..0d5135d256c3 100644
+--- a/sound/soc/sof/ipc4-mtrace.c
++++ b/sound/soc/sof/ipc4-mtrace.c
+@@ -230,14 +230,17 @@ static ssize_t sof_ipc4_mtrace_dfs_read(struct file *file, char __user *buffer,
+ 		/* Read data between read pointer and write pointer */
+ 		sof_mailbox_read(sdev, log_buffer_offset + read_ptr, log_buffer, avail);
+ 	} else {
++		/* avail may have been cut to the user's count above */
++		u32 tail = min(avail, log_buffer_size - read_ptr);
++
+ 		/* read from read pointer to end of the slot */
+ 		sof_mailbox_read(sdev, log_buffer_offset + read_ptr, log_buffer,
+-				 avail - write_ptr);
+-		/* read from slot start to write pointer */
+-		if (write_ptr)
++				 tail);
++		/* read the rest from slot start */
++		if (avail > tail)
+ 			sof_mailbox_read(sdev, log_buffer_offset,
+-					 (u8 *)(log_buffer) + avail - write_ptr,
+-					 write_ptr);
++					 (u8 *)(log_buffer) + tail,
++					 avail - tail);
+ 	}
  
- # Need a custom select here or 'arm,primecell' will match on lots of nodes
- select:
+ 	/* first write the number of bytes we have gathered */
 
----
-base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
-change-id: 20261121-pl011-rs485-6e5113a8faad
 
-Best regards,
---  
-Kryštof Černý <cleverline1mc@gmail.com>
 
