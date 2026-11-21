@@ -1,11 +1,10 @@
 From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Sat, 21 Nov 2026 08:34:17 +0000
-Subject: [PATCH 3/4] arm64: dts: apple: t8122: Add NUB SPMI controller and
- PMIC
+Date: Sat, 21 Nov 2026 08:34:18 +0000
+Subject: [PATCH 4/4] arm64: dts: apple: t8122: Add SMC and its mailbox
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-t8122-smc-dt-v1-3-898f3f5d6228@gmail.com>
+Message-Id: <20261121-t8122-smc-dt-v1-4-898f3f5d6228@gmail.com>
 References: <20261121-t8122-smc-dt-v1-0-898f3f5d6228@gmail.com>
 In-Reply-To: <20261121-t8122-smc-dt-v1-0-898f3f5d6228@gmail.com>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
@@ -18,91 +17,79 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  mfd@lists.linux.dev, Michael Reeves <michael.reeves077@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795250077; l=2163;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795250077; l=2295;
  i=michael.reeves077@gmail.com; s=20261107; h=from:subject:message-id;
- bh=WIEK8D0DKokW1yUBnum23jVc4HEfCGnQdTPUuT8Oy9E=;
- b=W625NLC3d6xr9LAGJdlO6jThPUcK6j4G4VQEz5SeOSMndkaQlE96OwEsqIE8BG68Zx/nhPdvn
- GXGsKNpWsC+BWxcruLi4GZYC3bSEnM2BrNetv/6oOSDZmNjCM1kGY8H
+ bh=tpqBT90IBSHnW53MpijwPnOkQrD4pV6ieL92p27Jfk8=;
+ b=5YdoFcdoEGZzUWkidC4DWFjfIUFCfEhG23e0BOT0uEjv56GNE+fiE/672LMAcMunjlGLJDlkk
+ pEuX7BYpeZrCflBtA5dXomDOoX2COWI+Djr+5F0HQF5FSFdDpOvVMnr
 X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
  pk=ykwkLcuByJYb/cdLc2UuoYP03pIzwrscEZg30+4tJL8=
 X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20261107 with auth_id=1442
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Janne Grunau <j@jannau.net>
+Add the System Management Controller node, its ASC mailbox, and GPIO,
+hwmon, reboot, and RTC child nodes for the Apple M3 (T8122) SoC.
 
-Add the NUB SPMI controller node and its attached Stowe PMIC with the
-fixed NVMEM layout for the Apple M3 (T8122) SoC. These NVMEM cells
-provide boot stage, shutdown, panic, and RTC offset storage used by SMC.
-
+Co-developed-by: Sasha Finkelstein <k@chaosmail.tech>
+Signed-off-by: Sasha Finkelstein <k@chaosmail.tech>
+Co-developed-by: Janne Grunau <j@jannau.net>
 Signed-off-by: Janne Grunau <j@jannau.net>
 Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
- arch/arm64/boot/dts/apple/t8122.dtsi | 57 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 57 insertions(+)
+ arch/arm64/boot/dts/apple/t8122.dtsi | 45 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 45 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/apple/t8122.dtsi b/arch/arm64/boot/dts/apple/t8122.dtsi
-index 959ddf36efa1..3766da3c7b18 100644
+index 3766da3c7b18..c585634250fc 100644
 --- a/arch/arm64/boot/dts/apple/t8122.dtsi
 +++ b/arch/arm64/boot/dts/apple/t8122.dtsi
-@@ -411,6 +411,63 @@ wdt: watchdog@2e42b0000 {
- 			interrupts = <AIC_IRQ 432 IRQ_TYPE_LEVEL_HIGH>;
+@@ -468,6 +468,51 @@ rtc_offset: rtc-offset@f900 {
+ 			};
  		};
  
-+		nub_spmi: spmi@2e4714000 {
-+			compatible = "apple,t8122-spmi", "apple,t8103-spmi";
-+			reg = <0x2 0xe4714000 0x0 0x100>;
-+			#address-cells = <2>;
-+			#size-cells = <0>;
++		smc: smc@2ec400000 {
++			compatible = "apple,t8122-smc", "apple,t8103-smc";
++			reg = <0x2 0xec400000 0x0 0x4000>,
++			      <0x2 0xede00000 0x0 0x100000>;
++			reg-names = "smc", "sram";
++			mboxes = <&smc_mbox>;
 +
-+			pmic1: pmic@e {
-+				compatible = "apple,stowe-pmic", "apple,spmi-nvmem";
-+				reg = <0xe SPMI_USID>;
-+
-+				nvmem-layout {
-+					compatible = "fixed-layout";
-+					#address-cells = <1>;
-+					#size-cells = <1>;
-+
-+					fault_shadow: fault-shadow@867b {
-+						reg = <0x867b 0x10>;
-+					};
-+
-+					socd: socd@8b00 {
-+						reg = <0x8b00 0x400>;
-+					};
-+
-+					boot_stage: boot-stage@f701 {
-+						reg = <0xf701 0x1>;
-+					};
-+
-+					boot_error_count: boot-error-count@f702,0 {
-+						reg = <0xf702 0x1>;
-+						bits = <0 4>;
-+					};
-+
-+					panic_count: panic-count@f702,4 {
-+						reg = <0xf702 0x1>;
-+						bits = <4 4>;
-+					};
-+
-+					boot_error_stage: boot-error-stage@f703 {
-+						reg = <0xf703 0x1>;
-+					};
-+
-+					shutdown_flag: shutdown-flag@f70f,3 {
-+						reg = <0xf70f 0x1>;
-+						bits = <3 1>;
-+					};
-+
-+					pm_setting: pm-setting@f801 {
-+						reg = <0xf801 0x1>;
-+					};
-+
-+					rtc_offset: rtc-offset@f900 {
-+						reg = <0xf900 0x6>;
-+					};
-+				};
++			smc_gpio: gpio {
++				compatible = "apple,smc-gpio";
++				gpio-controller;
++				#gpio-cells = <2>;
 +			};
++
++			smc_hwmon: hwmon {
++				compatible = "apple,smc-hwmon";
++			};
++
++			smc_reboot: reboot {
++				compatible = "apple,smc-reboot";
++				nvmem-cells = <&shutdown_flag>, <&boot_stage>,
++					      <&boot_error_count>, <&panic_count>;
++				nvmem-cell-names = "shutdown_flag", "boot_stage",
++						   "boot_error_count", "panic_count";
++			};
++
++			rtc {
++				compatible = "apple,smc-rtc";
++				nvmem-cells = <&rtc_offset>;
++				nvmem-cell-names = "rtc_offset";
++			};
++		};
++
++		smc_mbox: mbox@2ec408000 {
++			compatible = "apple,t8122-asc-mailbox", "apple,asc-mailbox-v4";
++			reg = <0x2 0xec408000 0x0 0x4000>;
++			interrupt-parent = <&aic>;
++			interrupts = <AIC_IRQ 502 IRQ_TYPE_LEVEL_HIGH>,
++				     <AIC_IRQ 503 IRQ_TYPE_LEVEL_HIGH>,
++				     <AIC_IRQ 504 IRQ_TYPE_LEVEL_HIGH>,
++				     <AIC_IRQ 505 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "send-empty", "send-not-empty",
++					  "recv-empty", "recv-not-empty";
++			#mbox-cells = <0>;
 +		};
 +
  		pinctrl_smc: pinctrl@2ec820000 {
