@@ -1,11 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 21 Nov 2026 23:38:03 +0100
-Subject: [PATCH v3 09/12] arm64: dts: qcom: sdm845-shift-axolotl: Enable
- vbus support
+Date: Sat, 21 Nov 2026 23:38:04 +0100
+Subject: [PATCH v3 10/12] arm64: dts: qcom: sdm845-lg: Enable vbus support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-pmi8998-vbus-v3-9-91ba2e61a877@ixit.cz>
+Message-Id: <20261121-pmi8998-vbus-v3-10-91ba2e61a877@ixit.cz>
 References: <20261121-pmi8998-vbus-v3-0-91ba2e61a877@ixit.cz>
 In-Reply-To: <20261121-pmi8998-vbus-v3-0-91ba2e61a877@ixit.cz>
 To: Abel Vesa <abelvesa@kernel.org>, 
@@ -24,42 +23,45 @@ Cc: Richard Acayan <mailingradian@gmail.com>,
  linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=957; i=david@ixit.cz;
- h=from:subject:message-id; bh=2lgBmUBK0MaeAv9Oy1xMjAHeZ/2PGxZmYEJJF355C18=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrAh1b4BJsvRNFa2l8cfLZ4YY1SPxbJVnWYZzzH
- KQxHnJ/Ju+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawIdWwAKCRBgAj/E00kg
- cihpD/4vpQ/Ai/GFX6wI1ydBxLKNxq2GZDM14X30jXravqIIUy98BJWgXqgDjpevL58+1ZDPS/m
- qgwh71ivI4xlNmuTy7ajuK5Wnf6xXT3IT0uyfhoO2/+7aWal5goKbuxvOyms5/xP6TpgDNwDAwm
- 6TmH/SJDpGksTNi1o8k3YY+PQPrHu26yR4YYtzYGCh/hJm19Re0vC6HPKKxdqaF1jwsPZ5RCvbv
- E4MN6eHnhAPpERMQz3pYk29PeeFTFJ+RABz7ATKl1RraI0RmeX06tj7mdYhuHSxgtTdTiJMgrFw
- rWZVTJPlKiBMX4Jz5lh21u4lTB/dAWv9VKGyCOBqGTiY/XQkgdqEfLV+nCbVxTgdbL2ucmj3WxZ
- fUDi/53lcCcRNxl/CGEwAultmZcbgHym+XpM5X/z3xVTLa22lPwj0pbPBfq26B495LKZ9VYW7fi
- OIVVgMGpQlP2amkMLGvhOsNLqTatTvyqOTwQjCfMLSaa6pOxids2xcSqE00GSheN717P/RIlj9A
- 7FYRRjsPE+gVHzt6ag9KvmGId1HhltU7sIMoyMg8JSs7I6yncaQ+WJoiDRWk5uKB2/Feg0spHc9
- khoYYy/RDknoyqAMao2S2GPIdT3wghftMvIkiL6m5cDS0t1v8jbXwG2BymMPuyoL9DaMmhXnFJd
- gELXppbGgCiXiZg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1068; i=david@ixit.cz;
+ h=from:subject:message-id; bh=PavlMPZO7QvSw1lRn1wTc2SGr5e1GuOSIzQ2zRWRWLw=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrAh1bExgVMsWQiDaUrbVQemaVjcDi6CY13LLQN
+ iDwaTVRlQqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawIdWwAKCRBgAj/E00kg
+ chjqD/4ho11s8jHXBdU2Z9GBgWmUwQNoVS22goJDvSYQlRU9bO4lPjFg8HPd4Di4xloifGKE0Ct
+ SNWadEHktihYPuJgvmmkdWrHeEYuAmPSxXY21xgA4taOkNgDp4P2sGKgUOyC+f8mPmLVg2oTEeI
+ +Tl1ICXhJ76wGYCmST9eknEETn67xvMgTHW9NWpOXquk/OGdw7XK0zZdmD9L++WLgB1zaFSshf9
+ luFNFTZXw123GU1Vj6EOrvfOtyCPCZRnWg1F9f1ivloXmXN7FHieC2Zt8mb2lsZHXMsmZvyNTLF
+ Ibm18u7YuNifEku5hsSNrfepK8WDxup+mihW72/3jme/d8G/z9gQJwnXIL21NEeZO5deshdVhYu
+ pVu/13W8FsZSzZwm9LGw/xc3pZxpk+uo7Kt9IkfNdTQkUQqBQTe6gFwYJW1UB4KZ26BhKhh1zbU
+ dJwCknWWlsvtUsm6UgVA/3ll3VJX3sOILSg+AahSOgNWe6QGSgjbjnt9KzC2rReNUmINLL1XBPZ
+ tLmBcz/+rxK8+2DBKZGMAY/L0+WVm/STf/tmsce4KPqyjmuTaGQjBVfzg/3H6/kET+BB/32O5GJ
+ 3LECbvsfKz/bCETBYIowWO9Z0NSk/xw5ofBYrZ2EWmQrCxZqeylYmiD92+uRm27oSplEcDkT+Rj
+ ybCM7bs1QBAknKg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the PMI8998 VBUS regulator on SHIFT 6MQ.
+On LG G7 (judyln), vbus block was kept uncontrolled.
+LG V35 (judyp) doesn't have charger block wired yet in upstream, thus
+nothing was done, but we know from downstream this configuration is
+valid, thus enable vbus block too.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 7 +++++++
+ arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi | 7 +++++++
  1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-index 1b0eaeafbd517..124717214edd6 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-@@ -654,16 +654,23 @@ led-1 {
- 		color = <LED_COLOR_ID_YELLOW>;
- 		led-sources = <2>;
- 		led-max-microamp = <100000>;
- 		flash-max-microamp = <1100000>;
- 		flash-max-timeout-us = <1280000>;
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
+index 6989532584251..e868cf44956b5 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
+@@ -548,16 +548,23 @@ led@4 {
+ 
+ 		led@5 {
+ 			reg = <5>;
+ 			color = <LED_COLOR_ID_RED>;
+ 		};
  	};
  };
  
@@ -70,14 +72,14 @@ index 1b0eaeafbd517..124717214edd6 100644
 +	status = "okay";
 +};
 +
- &qup_uart9_rx {
- 	drive-strength = <2>;
- 	bias-pull-up;
+ &pmi8998_wled {
+ 	qcom,current-limit-microamp = <20000>;
+ 	qcom,ovp-millivolt = <29600>;
+ 	qcom,switching-freq = <800>;
+ 	qcom,cabc;
+ 	status = "okay";
  };
  
- &qup_uart9_tx {
- 	drive-strength = <2>;
- 	bias-disable;
 
 -- 
 2.55.0
