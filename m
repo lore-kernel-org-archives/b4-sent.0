@@ -1,11 +1,11 @@
 From: Alireza Haghdoost <haghdoost@uber.com>
-Date: Sat, 21 Nov 2026 08:41:04 -0800
-Subject: [PATCH v8 4/7] perf symbols: Check the file before reading lazy
- symbol names
+Date: Sat, 21 Nov 2026 08:41:05 -0800
+Subject: [PATCH v8 5/7] perf script: Add --lazy-load-symbols to load symbol
+ names lazily
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-perf-symbol-memory-send-v8-4-370561cbb5a7@uber.com>
+Message-Id: <20261121-perf-symbol-memory-send-v8-5-370561cbb5a7@uber.com>
 References: <20261121-perf-symbol-memory-send-v8-0-370561cbb5a7@uber.com>
 In-Reply-To: <20261121-perf-symbol-memory-send-v8-0-370561cbb5a7@uber.com>
 To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
@@ -18,345 +18,263 @@ To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
 Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Alireza Haghdoost <haghdoost@uber.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=11684; i=haghdoost@uber.com;
- h=from:subject:message-id; bh=JS869OEz8dw6yAAshowhllrx/6Wt2PsY8FPNOz6dads=;
- b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBrAcmuJDqeGN+xO3e1hxHFJKhVylmZQDUDR6GPo
- WidU9B8bUqJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCawHJrhsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAthjEg//U+toREe+iYYI5YeLYuqojeS2mtV7pYY
- VAVlyDt84cwWVk4qhv18AvNiGpzRinz9d1JLCOmfwJVcTn91gay1EDjEVNATCIq9/ORg9YTBvRJ
- IWWmI9AQHunx1a1D7KWplTl/fOHpCab9sreAGEuSmRHExZpaBbLWmnClxke/VmZX8oZF3wWBdEZ
- NIi7PV3EMnokPsdagL8HW7SfmoIoVSiWt6XjHryq7OmyWuGeqmHqZpdqkMDgbzX3HeXs3e9JvQe
- q6pHgTTKiebmBTq7zZc9cC397Ge3GcUXHtvJoCwgQpK4KCbXfuCUpDkyPoPWth6arviT7jv8Xwz
- Sx7GGIvdMBwDuXeSCtu3/wmFdtPL7D7hqmKeNRG/AnmgDZO5MNCMnhZ8qngTLpOTuAROYbuNQcn
- tqNBb+C3BYzGyEryPxDtOkCVHZM5eh2e5Ht5gX834XYA2hoeH5ysZUohh5O509AybWFPv62kPiQ
- ZLUd0h50X0O59LlfGGAsMCMXth6Gw/mkET0Vb5/2s0MamKY0LP3a4HWBp5U4KbYAhBFC26tJzYA
- potVZQAlpnGHbtDpX9Zn42n/ov5e5g80ekcobsGVhUTzQj5+/5TuBUorN6tL2py96EArXvXI4R7
- HMHjoYhcQHxR9Uh21owFX1kX0jG5YsbmL9FPB8yJ3OW2OXXj6yHc=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=9524; i=haghdoost@uber.com;
+ h=from:subject:message-id; bh=tlJIUoPpSy1y4jLw3r8xZ0bLXUYYFxAz4xSLlEjQLLA=;
+ b=owEBiAJ3/ZANAwAIAVNlBDxl2ALYAcsmYgBrAcmvN1yLRClSHBY9PASGdgx7d8V+VlnUUYqXh
+ kUlY2lRfgiJAk4EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCawHJrxsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtgUfA/2KC16mI9c+abIgwXFv7VBlcyxzXsO0xb
+ o62sroH48Fb39fPZs6qqYP+FX0+owd1S65KBFvDfi2tO+1bF2yxkJA1TljxrLitC2/RFd2DNWAg
+ EYce7ftD+8sSIDUKP1v25U0SrwD+JRUy3/aG25gaL371PMi5W3PZ7NQpvrIviPudgTr26sh+nQY
+ Gl6fI3ixBDnMhDIEVF59feZ2D2ABT+h0+kj6l4lTWNd49GbFODgk+jUXHg1Jh6+laYBlEZoAjI7
+ Jogl1ig7CUD17x9jrNQRnX4aPCrn4t1tBPiJA4UbHJH5TntFRmnJZka54qEaHOwHzJegTDXXlon
+ dfNQF2MnS3oIfoQ2EdthycpeGIF3PGTSZVZxdM1YrQXCypP+a2AC9RcZNFloh5Z88Znz9wt18m5
+ JY/4i84t4N6jPmuUXK70c++RkzMbdV6Kr+5K/lBhozWs4RFJYVcr7CSYSwe2wloLg/vjrhac71e
+ DswwU33JVsAuZFmA7fBqoM3tv6bM03BCPb2Jqbs1F6a8xU0XUiByvYtp6jQksf8MG9YmPjpTIZ8
+ XB8GqfLpmXYGqqixx9WUIihR97JHPDPCTSkpVvu8Dx7GhmF+Iv826ucuoEodd5MIvLEG3RiYaBy
+ SQiNgpnxcHpGJWd/2gYLHgEd4rtpp9y9koF3CpuXCy20D8UrkJQ==
 X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
  fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
 X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch makes perf check that a file is still the one it loaded
-before it reads lazy symbol names from it. A lazy name is read later
-from a file that perf opens again by path, at the offset that its
-string table had at load time. If the file was replaced in between,
-for example by a deploy, perf would read names from the wrong file and
-print wrong names without a warning. Eager loading rejects such a
-file, since symsrc__init() checks its build ID.
+This patch adds a --lazy-load-symbols option to perf script. With it,
+the ELF loader creates userspace .symtab and .dynsym symbols with lazy
+names, and perf reads a name only when a lookup returns that symbol.
+Eager loading stays the default.
 
-perf checks the file each time it opens it again. dso__set_lazy_file()
-records the file at load time. Nothing calls it yet: the next patch
-makes the ELF loader call it when it creates lazy symbols.
+perf script loads the whole ELF symbol table of every DSO that appears
+in a sample and keeps every symbol, with its demangled name, until exit.
+Most of those symbols are never sampled, and their names take most of
+the memory. On a large profile this is the main memory cost of perf
+script, and in a memory-limited cgroup it gets perf OOM-killed.
 
-If the DSO has a build ID, symsrc__init() matched the file with it at
-load time, so accept a file with that build ID, such as a copy of the
-same build. The build ID alone is not enough, since the offsets are
-only valid if the string tables did not move: objcopy
---add-gnu-debuglink keeps the build ID but moves .strtab, and strip
---strip-debug removes sections. So perf also records the index, offset
-and size of the .symtab and .dynsym string tables, and compares them.
+The loader still creates every symbol, so end fixup, duplicate
+selection, PLT synthesis and IFUNC marking do not change. It uses lazy
+names only if the string table is stored as is in the symbol table file,
+since names are read from it with pread().
 
-Reading the build ID each time is slow when most lookups load a name:
-the parity test on a 524 MiB binary, which loads 260k names one at a
-time, takes 9.3 seconds instead of 3.9. So perf also records the
-device, inode, size, mtime and ctime of the file, and reads the build
-ID only if they changed. The ctime changes when another file is copied
-over this one in place, even if its size and mtime are kept, as with
-cp -p. Then perf keeps the identity of the accepted file for later
-reads. With this, the test takes 4.1 seconds. A DSO without a build ID
-must keep the same identity.
+A few names are still read at load time: aliases that duplicate
+selection can tell apart only by name, such as the .dynsym copies of
+.symtab symbols, and IFUNC symbols, whose names PLT synthesis uses.
 
-If the file is not the one perf loaded, perf warns and shows the
-remaining lazy symbols of that DSO as "[unknown]" rather than print
-wrong names, without opening the file again. If the file cannot be
-opened or checked, for example because perf ran out of file descriptors
-or fstat() or a read of its ELF headers failed, perf warns once and
-shows the symbols it was reading the names of as "[unknown]", but tries
-again for later names, since the failure can be temporary. A file whose
-build ID cannot be read counts as not checked, since perf cannot tell a
-failed read from a missing build ID note; perf reads no names from it
-either.
+The offsets are only valid in the file that perf loaded, so the loader
+records the file and its string tables with dso__set_lazy_file(), and
+perf checks the file, as the previous patch describes, before it reads
+names from it.
 
-Like symsrc__init(), the check trusts the build ID: a file edited after
-linking without a new build ID, and with its string tables in place,
-gives the edited names.
+The kernel, modules, PPC64 .opd and .gnu_debugdata still load names
+eagerly.
 
-The unit tests later in this series cover these cases.
-
-No functional change, since no symbol has a lazy name yet.
+On a 45,073-sample callchain profile of a large C++ service (about 1M
+symbols), lazy loading cuts max RSS from 327 MiB to 174 MiB, with
+identical output. It saves little run time, 3.56 seconds against 3.75,
+because one of the binaries exports most of its symbols, and duplicate
+selection reads the names of each .dynsym copy and of the .symtab
+symbol that it copies.
 
 Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
 ---
- tools/perf/util/dso.h        |  33 +++++++++
- tools/perf/util/symbol-elf.c | 156 ++++++++++++++++++++++++++++++++++++++++++-
- tools/perf/util/symbol.h     |   3 +
- 3 files changed, 189 insertions(+), 3 deletions(-)
+ tools/perf/Documentation/perf-script.txt |  11 ++++
+ tools/perf/builtin-script.c              |   2 +
+ tools/perf/util/symbol-elf.c             | 108 +++++++++++++++++++++++++++----
+ 3 files changed, 110 insertions(+), 11 deletions(-)
 
-diff --git a/tools/perf/util/dso.h b/tools/perf/util/dso.h
-index 10eac0b31b7d..216a9bc9366b 100644
---- a/tools/perf/util/dso.h
-+++ b/tools/perf/util/dso.h
-@@ -282,6 +282,33 @@ struct dso_bpf_prog {
- 	struct perf_env	*env;
- };
+diff --git a/tools/perf/Documentation/perf-script.txt b/tools/perf/Documentation/perf-script.txt
+index f0228e784ced..4d04f5ecae8a 100644
+--- a/tools/perf/Documentation/perf-script.txt
++++ b/tools/perf/Documentation/perf-script.txt
+@@ -343,6 +343,17 @@ include::itrace.txt[]
  
-+/* A string table that lazy symbol names point into. */
-+struct dso_lazy_strtab {
-+	u64		shndx;
-+	u64		off;
-+	u64		size;
-+};
-+
-+/* The file that lazy symbol names are read from, as it was at load time. */
-+struct dso_lazy_file {
-+	u64		dev;
-+	u64		ino;
-+	u64		size;
-+	u64		mtime_sec;
-+	u64		mtime_nsec;
-+	/* Copying over the file in place, keeping its size and mtime, changes it. */
-+	u64		ctime_sec;
-+	u64		ctime_nsec;
-+	/* The string tables of .symtab and .dynsym. */
-+	struct dso_lazy_strtab strtab[2];
-+	/* symsrc__init() matched the file with the build ID of the DSO. */
-+	bool		check_build_id;
-+	/* The file changed after the names were loaded. */
-+	bool		rejected;
-+	/* perf warned that the file could not be opened or checked again. */
-+	bool		retry_warned;
-+};
-+
- struct auxtrace_cache;
+         Default: 127
  
- DECLARE_RC_STRUCT(dso) {
-@@ -321,6 +348,7 @@ DECLARE_RC_STRUCT(dso) {
- 	struct dso_bpf_prog bpf_prog;
- 	/* dso data file */
- 	struct dso_data	 data;
-+	struct dso_lazy_file lazy_file;
- 	struct dso_id	 id;
- 	unsigned int	 a2l_fails;
- 	int		 comp;
-@@ -503,6 +531,11 @@ static inline struct dso_data *dso__data(struct dso *dso)
- 	return &RC_CHK_ACCESS(dso)->data;
- }
- 
-+static inline struct dso_lazy_file *dso__lazy_file(struct dso *dso)
-+{
-+	return &RC_CHK_ACCESS(dso)->lazy_file;
-+}
++--lazy-load-symbols::
++	Read and demangle userspace ELF symbol names only when perf needs
++	them. By default, perf reads every symbol name from each binary
++	referenced by a sample. This option reduces memory use when samples
++	reference only a small fraction of a large binary's symbols. The
++	names are read while perf script runs. If a binary cannot be opened
++	then, or no longer matches the one perf loaded, perf warns and shows
++	the symbols whose names it cannot read as unknown. A binary matches
++	if it has the same build ID and string table layout or, without a
++	build ID, if it is the same unchanged file.
 +
- static inline u64 dso__db_id(const struct dso *dso)
- {
- 	return RC_CHK_ACCESS(dso)->db_id;
+ --ns::
+ 	Use 9 decimal places when displaying time (i.e. show the nanoseconds)
+ 
+diff --git a/tools/perf/builtin-script.c b/tools/perf/builtin-script.c
+index b6691ebb1b4e..88aaf9cfd132 100644
+--- a/tools/perf/builtin-script.c
++++ b/tools/perf/builtin-script.c
+@@ -4287,6 +4287,8 @@ int cmd_script(int argc, const char **argv)
+ 		     "Set the maximum stack depth when parsing the callchain, "
+ 		     "anything beyond the specified depth will be ignored. "
+ 		     "Default: kernel.perf_event_max_stack or " __stringify(PERF_MAX_STACK_DEPTH)),
++	OPT_BOOLEAN(0, "lazy-load-symbols", &symbol_conf.lazy_load_symbols,
++		    "Read symbol names only when they are needed"),
+ 	OPT_BOOLEAN(0, "reltime", &reltime, "Show time stamps relative to start"),
+ 	OPT_BOOLEAN(0, "deltatime", &deltatime, "Show time stamps relative to previous event"),
+ 	OPT_BOOLEAN('I', "show-info", &show_full_info,
 diff --git a/tools/perf/util/symbol-elf.c b/tools/perf/util/symbol-elf.c
-index 82d6a76176d2..468a0695809e 100644
+index 468a0695809e..76f4aecb8632 100644
 --- a/tools/perf/util/symbol-elf.c
 +++ b/tools/perf/util/symbol-elf.c
-@@ -6,6 +6,7 @@
- #include <string.h>
- #include <unistd.h>
- #include <inttypes.h>
-+#include <sys/stat.h>
- 
- #include "compress.h"
- #include "dso.h"
-@@ -1678,6 +1679,148 @@ static int read_symbol_names(struct dso *dso, int fd, struct symbol **syms, size
- 	return err;
+@@ -1871,6 +1871,52 @@ void dso__load_symbol_names(struct dso *dso, struct symbol **syms, size_t nr)
+ 	}
  }
  
-+static int lazy_file__stat(struct dso_lazy_file *lf, int fd)
-+{
-+	struct stat st;
-+
-+	if (fstat(fd, &st))
-+		return -1;
-+	lf->dev = st.st_dev;
-+	lf->ino = st.st_ino;
-+	lf->size = st.st_size;
-+	lf->mtime_sec = st.st_mtim.tv_sec;
-+	lf->mtime_nsec = st.st_mtim.tv_nsec;
-+	lf->ctime_sec = st.st_ctim.tv_sec;
-+	lf->ctime_nsec = st.st_ctim.tv_nsec;
-+	return 0;
-+}
-+
 +/*
-+ * Record that lazy names of @dso point into @strtab of the file of @fd, the
-+ * string table of .dynsym if @dynsym, else of .symtab. The caller holds the
-+ * DSO lock, as dso__load() does.
++ * symbols__fixup_duplicate() compares the names of symbols at the same
++ * address only when their size, type and binding tie. Load those names.
 + */
-+int dso__set_lazy_file(struct dso *dso, int fd, int dynsym,
-+		       const struct dso_lazy_strtab *strtab)
++static int dso__load_alias_names(struct dso *dso, int fd)
 +{
-+	struct dso_lazy_file *lf = dso__lazy_file(dso);
++	struct rb_node *nd = rb_first_cached(dso__symbols(dso));
 +
-+	if (lazy_file__stat(lf, fd))
-+		return -1;
-+	lf->strtab[dynsym] = *strtab;
-+	lf->check_build_id = dso__has_build_id(dso) && !symbol_conf.ignore_vmlinux_buildid;
-+	lf->rejected = false;
-+	lf->retry_warned = false;
-+	return 0;
-+}
++	while (nd) {
++		struct symbol *first = rb_entry(nd, struct symbol, rb_node);
++		struct rb_node *end = rb_next(nd), *a, *b;
 +
-+enum lazy_file_check {
-+	LAZY_FILE_MATCH,
-+	LAZY_FILE_MISMATCH,
-+	/* The file cannot be read, which can be temporary. */
-+	LAZY_FILE_ERROR,
-+};
++		while (end && rb_entry(end, struct symbol, rb_node)->start == first->start)
++			end = rb_next(end);
 +
-+/* Check that the file of @fd has the identity in @lf. */
-+static enum lazy_file_check lazy_file__check_stat(const struct dso_lazy_file *lf, int fd)
-+{
-+	struct dso_lazy_file now;
++		for (a = nd; a != end; a = rb_next(a)) {
++			for (b = rb_next(a); b != end; b = rb_next(b)) {
++				struct symbol *pair[2] = {
++					rb_entry(a, struct symbol, rb_node),
++					rb_entry(b, struct symbol, rb_node),
++				};
 +
-+	if (lazy_file__stat(&now, fd))
-+		return LAZY_FILE_ERROR;
-+	if (now.dev == lf->dev && now.ino == lf->ino && now.size == lf->size &&
-+	    now.mtime_sec == lf->mtime_sec && now.mtime_nsec == lf->mtime_nsec &&
-+	    now.ctime_sec == lf->ctime_sec && now.ctime_nsec == lf->ctime_nsec)
-+		return LAZY_FILE_MATCH;
-+	return LAZY_FILE_MISMATCH;
-+}
-+
-+/*
-+ * Check that the file of @fd has the build ID of @dso and the string tables
-+ * where @lf has them. A copy with an added section, such as a
-+ * .gnu_debuglink, keeps the build ID but can move the tables.
-+ */
-+static enum lazy_file_check lazy_file__check_build(const struct dso_lazy_file *lf,
-+						   struct dso *dso, int fd)
-+{
-+	enum lazy_file_check ret = LAZY_FILE_ERROR;
-+	u8 build_id[BUILD_ID_SIZE];
-+	struct build_id bid;
-+	GElf_Shdr shdr;
-+	size_t shnum;
-+	Elf *elf;
-+	int size;
-+
-+	elf = elf_begin(fd, PERF_ELF_C_READ_MMAP, NULL);
-+	if (!elf)
-+		return LAZY_FILE_ERROR;
-+	/* A failed read cannot be told from a missing build ID note. */
-+	size = elf_read_build_id(elf, build_id, sizeof(build_id));
-+	if (size <= 0)
-+		goto out;
-+	build_id__init(&bid, build_id, size);
-+	if (!dso__build_id_equal(dso, &bid)) {
-+		ret = LAZY_FILE_MISMATCH;
-+		goto out;
-+	}
-+	if (elf_getshdrnum(elf, &shnum))
-+		goto out;
-+	ret = LAZY_FILE_MATCH;
-+	for (size_t i = 0; ret == LAZY_FILE_MATCH && i < ARRAY_SIZE(lf->strtab); i++) {
-+		const struct dso_lazy_strtab *st = &lf->strtab[i];
-+
-+		if (!st->size)
-+			continue;
-+		/* A stripped copy can have fewer sections. */
-+		if (st->shndx >= shnum)
-+			ret = LAZY_FILE_MISMATCH;
-+		else if (!gelf_getshdr(elf_getscn(elf, st->shndx), &shdr))
-+			ret = LAZY_FILE_ERROR;
-+		else if (shdr.sh_type != SHT_STRTAB || (shdr.sh_flags & SHF_COMPRESSED) ||
-+			 shdr.sh_offset != st->off || shdr.sh_size != st->size)
-+			ret = LAZY_FILE_MISMATCH;
-+	}
-+out:
-+	elf_end(elf);
-+	return ret;
-+}
-+
-+/*
-+ * The name offsets are only valid in the file that dso__load() read. Accept
-+ * @fd if it is that file, or another file with the build ID of @dso and the
-+ * same string tables, such as a copy, and keep its identity for later reads.
-+ * If it is not, for example after the binary was replaced, reject it and
-+ * every later read for @dso. If it cannot be checked, do not read from it,
-+ * but let later reads try again.
-+ */
-+static bool dso__lazy_file_ok(struct dso *dso, int fd, const char *name)
-+{
-+	struct dso_lazy_file *lf = dso__lazy_file(dso);
-+	/* Reading the build ID at every lookup that loads a name is slow. */
-+	enum lazy_file_check status = lazy_file__check_stat(lf, fd);
-+
-+	if (status == LAZY_FILE_MATCH)
-+		return true;
-+	if (lf->check_build_id) {
-+		status = lazy_file__check_build(lf, dso, fd);
-+		if (status == LAZY_FILE_MATCH) {
-+			lazy_file__stat(lf, fd);
-+			return true;
++				if (symbol__choice_needs_names(pair[0], pair[1]) &&
++				    read_symbol_names(dso, fd, pair, 2))
++					return -1;
++			}
 +		}
++		nd = end;
 +	}
-+	if (status == LAZY_FILE_ERROR) {
-+		if (!lf->retry_warned)
-+			pr_warning("%s cannot be checked after its symbols were loaded, some of its symbol names are not shown\n",
-+				   name);
-+		lf->retry_warned = true;
-+		return false;
-+	}
-+	pr_warning("%s changed after its symbols were loaded, its symbol names are not shown\n",
-+		   name);
-+	lf->rejected = true;
-+	return false;
++	return 0;
 +}
 +
- /*
-  * A name that cannot be read becomes "[unknown]". The caller holds the
-  * DSO lock.
-@@ -1699,6 +1842,8 @@ void dso__load_symbol_names(struct dso *dso, struct symbol **syms, size_t nr)
- 		;
- 	if (i == nr)
- 		return;
-+	if (dso__lazy_file(dso)->rejected)
-+		goto out_unknown;
- 	if (!own_ns)
- 		nsinfo__mountns_enter(dso__nsinfo(dso), &nsc);
- 	name = dso__get_filename(dso, "", &decomp, type);
-@@ -1708,13 +1853,18 @@ void dso__load_symbol_names(struct dso *dso, struct symbol **syms, size_t nr)
- 		nsinfo__mountns_exit(&nsc);
++/* PLT synthesis names IRELATIVE slots after IFUNC symbols. Load those names. */
++static int dso__load_ifunc_names(struct dso *dso, int fd)
++{
++	struct symbol *pos;
++	struct rb_node *nd;
++
++	symbols__for_each_entry(dso__symbols(dso), pos, nd) {
++		if ((symbol__type(pos) == STT_GNU_IFUNC || symbol__ifunc_alias(pos)) &&
++		    read_symbol_names(dso, fd, &pos, 1))
++			return -1;
++	}
++	return 0;
++}
++
+ static int
+ dso__load_sym_internal(struct dso *dso, struct map *map, struct symsrc *syms_ss,
+ 		       struct symsrc *runtime_ss, int kmodule, int dynsym)
+@@ -1888,11 +1934,21 @@ dso__load_sym_internal(struct dso *dso, struct map *map, struct symsrc *syms_ss,
+ 	GElf_Sym sym;
+ 	Elf_Scn *sec, *sec_strndx;
+ 	Elf *elf;
+-	int nr = 0;
++	int nr = 0, nr_lazy = 0;
+ 	bool remap_kernel = false, adjust_kernel_syms = false;
+ 	u64 max_text_sh_offset = 0;
+ 	struct elf_phdr_cache phdr_cache = {};
+ 	struct elf_sec_cache_entry sec_cache[ELF_SEC_CACHE_SIZE];
++	/*
++	 * Names are read later from the file of dso__symtab_type(). The
++	 * .gnu_debugdata symbol table is a temporary file.
++	 */
++	bool lazy_allowed = symbol_conf.lazy_load_symbols && !dso__kernel(dso) &&
++			  !kmodule && syms_ss->type == dso__symtab_type(dso) &&
++			  syms_ss->type != DSO_BINARY_TYPE__GNU_DEBUGDATA &&
++			  !runtime_ss->opdsec;
++	bool lazy_names = false;
++	GElf_Shdr strshdr;
  
- 	if (fd >= 0) {
--		read_symbol_names(dso, fd, syms, nr);
-+		if (dso__lazy_file_ok(dso, fd, name))
-+			read_symbol_names(dso, fd, syms, nr);
- 		close(fd);
--	} else {
--		pr_debug("%s: cannot open the symbol table file\n", dso__long_name(dso));
-+	} else if (!dso__lazy_file(dso)->retry_warned) {
-+		/* The failure can be temporary, so later reads try again. */
-+		pr_warning("%s cannot be opened after its symbols were loaded, some of its symbol names are not shown\n",
-+			   name ?: dso__long_name(dso));
-+		dso__lazy_file(dso)->retry_warned = true;
+ 	if (kmap && !kmaps)
+ 		return -1;
+@@ -1928,6 +1984,17 @@ dso__load_sym_internal(struct dso *dso, struct map *map, struct symsrc *syms_ss,
+ 	if (symstrs == NULL)
+ 		goto out_elf_end;
+ 
++	/*
++	 * Names are read with pread(), so the string table must be stored as
++	 * is, and later reads must find it in the same place.
++	 */
++	if (lazy_allowed && gelf_getshdr(sec, &strshdr) &&
++	    strshdr.sh_type == SHT_STRTAB && !(strshdr.sh_flags & SHF_COMPRESSED) &&
++	    !dso__set_lazy_file(dso, syms_ss->fd, dynsym,
++				&(struct dso_lazy_strtab){ shdr.sh_link, strshdr.sh_offset,
++							   strshdr.sh_size }))
++		lazy_names = true;
++
+ 	sec_strndx = elf_getscn(runtime_ss->elf, runtime_ss->ehdr.e_shstrndx);
+ 	if (sec_strndx == NULL)
+ 		goto out_elf_end;
+@@ -2166,16 +2233,24 @@ dso__load_sym_internal(struct dso *dso, struct map *map, struct symsrc *syms_ss,
+ 			}
+ 		}
+ 
+-		if (!elf_name)
+-			elf_name = elf_sym__name(&sym, symstrs);
+-		demangled = dso__demangle_sym(dso, kmodule, elf_name);
+-		if (demangled != NULL)
+-			elf_name = demangled;
+-
+-		f = symbol__new(sym.st_value, sym.st_size,
+-				GELF_ST_BIND(sym.st_info),
+-				GELF_ST_TYPE(sym.st_info), elf_name);
+-		free(demangled);
++		if (lazy_names && sym.st_name < strshdr.sh_size) {
++			f = symbol__new_lazy(sym.st_value, sym.st_size,
++					     GELF_ST_BIND(sym.st_info),
++					     GELF_ST_TYPE(sym.st_info),
++					     strshdr.sh_offset + sym.st_name);
++			nr_lazy++;
++		} else {
++			if (!elf_name)
++				elf_name = elf_sym__name(&sym, symstrs);
++			demangled = dso__demangle_sym(dso, kmodule, elf_name);
++			if (demangled != NULL)
++				elf_name = demangled;
++
++			f = symbol__new(sym.st_value, sym.st_size,
++					GELF_ST_BIND(sym.st_info),
++					GELF_ST_TYPE(sym.st_info), elf_name);
++			free(demangled);
++		}
+ 		if (!f)
+ 			goto out_elf_end;
+ 
+@@ -2186,6 +2261,10 @@ dso__load_sym_internal(struct dso *dso, struct map *map, struct symsrc *syms_ss,
  	}
- 	if (name)
- 		dso__put_filename(dso, name, decomp);
-+out_unknown:
- 	for (i = 0; i < nr; i++) {
- 		if (symbol__needs_lazy_name(syms[i]))
- 			symbol__set_unknown_name(syms[i]);
-diff --git a/tools/perf/util/symbol.h b/tools/perf/util/symbol.h
-index d690cb1d021c..27def18f0f5c 100644
---- a/tools/perf/util/symbol.h
-+++ b/tools/perf/util/symbol.h
-@@ -271,6 +271,9 @@ int dso__load_sym(struct dso *dso, struct map *map, struct symsrc *syms_ss,
- 		  struct symsrc *runtime_ss, int kmodule);
- int dso__synthesize_plt_symbols(struct dso *dso, struct symsrc *ss);
- void dso__load_symbol_names(struct dso *dso, struct symbol **syms, size_t nr);
-+struct dso_lazy_strtab;
-+int dso__set_lazy_file(struct dso *dso, int fd, int dynsym,
-+		       const struct dso_lazy_strtab *strtab);
+ 	dso__put(curr_dso);
+ 	elf_phdr_cache__exit(&phdr_cache);
++
++	if (lazy_names)
++		pr_debug("%s: %d %s symbols with lazy names\n", dso__long_name(dso),
++			 nr_lazy, dynsym ? ".dynsym" : ".symtab");
+ 	return nr;
+ out_elf_end:
+ 	dso__put(curr_dso);
+@@ -2256,9 +2335,16 @@ int dso__load_sym(struct dso *dso, struct map *map, struct symsrc *syms_ss,
+ 	if (nr > 0) {
+ 		struct kmap *kmap = dso__kernel(dso) ? map__kmap(map) : NULL;
+ 		struct maps *kmaps = kmap ? map__kmaps(map) : NULL;
++		/* Lazy names are only in syms_ss, never in the kernel or modules. */
++		bool lazy = symbol_conf.lazy_load_symbols && !dso__kernel(dso) && !kmodule;
  
- char *dso__demangle_sym(struct dso *dso, int kmodule, const char *elf_name);
- 
+ 		symbols__fixup_end(dso__symbols(dso), false);
++		if (lazy && !symbol_conf.allow_aliases &&
++		    dso__load_alias_names(dso, syms_ss->fd))
++			return -1;
+ 		symbols__fixup_duplicate(dso__symbols(dso));
++		if (lazy && dso__load_ifunc_names(dso, syms_ss->fd))
++			return -1;
+ 		if (kmap) {
+ 			/*
+ 			 * We need to fixup this here too because we create new
 
 -- 
 Git-157)
