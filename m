@@ -1,16 +1,12 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Subject: [PATCH v4 0/3] media: rockchip: Add the IEP2 deinterlacer of
- RK3568/RK3588
-Date: Sat, 21 Nov 2026 14:25:36 +0000
-Message-Id: <20261121-iep2-v4-0-760cf25f322b@gmail.com>
+Date: Sat, 21 Nov 2026 14:25:37 +0000
+Subject: [PATCH v4 1/3] media: dt-bindings: Add Rockchip IEP2 deinterlacer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13Oyw6CMBAF0F8hXVtDh/KoK//DuCjtADXySIuNh
- vDvlocJcXmTe+7MRBxag45coolY9MaZvguBnyKiGtnVSI0OmUAMGWMspgYHoKWQQmWY54pzEqq
- Dxcq815nbfcvuVT5QjYtdGo1xY28/6x3Plt5vkm+TntGYygK1xlQCQ3atW2meZ9W3ZJn0cETpj
- iCgRBe5KJQWMk3/UXJAsD/vk4BQcCxFlYHQcETzPH8B7n4B2hQBAAA=
-X-Change-ID: 20261110-iep2-b9a9c6e77c44
+Message-Id: <20261121-iep2-v4-1-760cf25f322b@gmail.com>
+References: <20261121-iep2-v4-0-760cf25f322b@gmail.com>
+In-Reply-To: <20261121-iep2-v4-0-760cf25f322b@gmail.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
@@ -23,65 +19,149 @@ Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org,
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795271137; l=2350;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795271137; l=3925;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=G5R9VMIFiJU1tJNOmYpfUElrCWf6JYYQ7tduXHilQTo=;
- b=ZF5lg+BDUPoifHZlr601YFWm6SGCsP1AN87K283TtzRWDsLlHl5SL2TGW2Lv9oYTFxeFc4gKc
- hTIQcAzvEloCEcX2AMsVyk/x1pUuoIzYGbygGRUlUAdbcJPa5q9B+Oz
+ bh=CeX1QEjZuZNTsKtj8wHcP2hhIDK1JE/9M0cffwr9/u0=;
+ b=PlpZcWdBwyv5rqAHqUswJmO9fNm4dF5Vu4I44TWNiuzX2MchkseZXQ2IKRW8tkmOqjannb2V0
+ 59SOsILAbp7BCJ3wnrAdQOilpmmBGFd1nIHrTUvQfrerlxgTJQcPMLS
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a V4L2 mem2mem driver for the IEP2 deinterlacer of the RK3568 and
-RK3588, with its binding and the RK3588 DT node. The V4L2 side follows
-Alex Bee's IEP driver.
+Add a binding for the IEP2 deinterlacer of the RK3568 and RK3588 SoCs.
+It is a different block from the IEP of RK3228/RK3288/RK3328/RK3399,
+hence "iep2". The RK3588 block falls back to the RK3568 compatible.
 
-Tested on an Orange Pi 5 (RK3588S) with a 7.3-based kernel (KASAN,
-lockdep); build-tested on media next. v4l2-compliance 59/59, all four
-modes at 1080i without IOMMU faults, s2idle and deep suspend while
-streaming, unbind while streaming, forced watchdog and IOMMU fault
-resets. Not tested: RK3568. DMABUF imports of exactly the image size
-are refused, because of the 4 KiB OUTPUT padding (see 2/3).
+Clock and reset names follow the RGA binding. The resets are optional:
+the block has its own soft reset.
 
-One case is still open: a reset during a transfer, seen only with
-forced watchdog resets, can leave the IOMMU busy. Jobs then fail
-without DMA and the driver suspends at once so that PD_VDPU powers
-off, which restores it. While another device of the domain, e.g. a
-video decoder, keeps it on, the jobs keep failing.
-
-Developed with Claude (Anthropic), which wrote the code and the commit
-messages. I reviewed every change.
-
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Changes in v4:
-- 2/3: fail the probe if the IOMMU domain allocation fails (Sashiko)
-- Link to v3: https://patch.msgid.link/20261120-iep2-v3-0-e94eb9f629d2@gmail.com
+ .../bindings/media/rockchip,rk3568-iep2.yaml       | 95 ++++++++++++++++++++++
+ MAINTAINERS                                        |  6 ++
+ 2 files changed, 101 insertions(+)
 
----
-Arun Iyengar (3):
-      media: dt-bindings: Add Rockchip IEP2 deinterlacer
-      media: rockchip: Add IEP2 deinterlacer driver
-      arm64: dts: rockchip: Add IEP2 deinterlacer to RK3588
+diff --git a/Documentation/devicetree/bindings/media/rockchip,rk3568-iep2.yaml b/Documentation/devicetree/bindings/media/rockchip,rk3568-iep2.yaml
+new file mode 100644
+index 000000000000..0c7666de19f8
+--- /dev/null
++++ b/Documentation/devicetree/bindings/media/rockchip,rk3568-iep2.yaml
+@@ -0,0 +1,95 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/rockchip,rk3568-iep2.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Rockchip IEP2 image enhancement processor
++
++maintainers:
++  - Arun Iyengar <aiyengar1990@gmail.com>
++
++description:
++  Memory to memory video deinterlacer of the Rockchip RK3568 and RK3588
++  SoCs. It has its own IOMMU, with which it shares its interrupt line.
++
++properties:
++  compatible:
++    oneOf:
++      - const: rockchip,rk3568-iep2
++      - items:
++          - const: rockchip,rk3588-iep2
++          - const: rockchip,rk3568-iep2
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  clocks:
++    items:
++      - description: AXI bus clock
++      - description: AHB bus clock
++      - description: Core clock
++
++  clock-names:
++    items:
++      - const: aclk
++      - const: hclk
++      - const: sclk
++
++  resets:
++    items:
++      - description: AXI reset
++      - description: AHB reset
++      - description: Core reset
++
++  reset-names:
++    items:
++      - const: axi
++      - const: ahb
++      - const: core
++
++  power-domains:
++    maxItems: 1
++
++  iommus:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - clocks
++  - clock-names
++  - power-domains
++  - iommus
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/clock/rockchip,rk3588-cru.h>
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    #include <dt-bindings/power/rk3588-power.h>
++    #include <dt-bindings/reset/rockchip,rk3588-cru.h>
++
++    bus {
++      #address-cells = <2>;
++      #size-cells = <2>;
++
++      deinterlace@fdbb0000 {
++        compatible = "rockchip,rk3588-iep2", "rockchip,rk3568-iep2";
++        reg = <0x0 0xfdbb0000 0x0 0x500>;
++        interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
++        clocks = <&cru ACLK_IEP2P0>, <&cru HCLK_IEP2P0>,
++                 <&cru CLK_IEP2P0_CORE>;
++        clock-names = "aclk", "hclk", "sclk";
++        resets = <&cru SRST_A_IEP2P0>, <&cru SRST_H_IEP2P0>,
++                 <&cru SRST_IEP2P0_CORE>;
++        reset-names = "axi", "ahb", "core";
++        power-domains = <&power RK3588_PD_VDPU>;
++        iommus = <&iep_mmu>;
++      };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index f72ce07a4e38..90ec701edce6 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -24285,6 +24285,12 @@ S:	Maintained
+ F:	Documentation/devicetree/bindings/sound/rockchip,i2s-tdm.yaml
+ F:	sound/soc/rockchip/rockchip_i2s_tdm.*
+ 
++ROCKCHIP IEP2 DEINTERLACER DRIVER
++M:	Arun Iyengar <aiyengar1990@gmail.com>
++L:	linux-rockchip@lists.infradead.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/media/rockchip,rk3568-iep2.yaml
++
+ ROCKCHIP ISP V1 DRIVER
+ M:	Dafna Hirschfeld <dafna@fastmail.com>
+ M:	Laurent Pinchart <laurent.pinchart@ideasonboard.com>
 
- Documentation/admin-guide/media/rockchip-iep2.rst  |   32 +
- Documentation/admin-guide/media/v4l-drivers.rst    |    1 +
- .../bindings/media/rockchip,rk3568-iep2.yaml       |   95 ++
- MAINTAINERS                                        |    8 +
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      |   22 +
- drivers/media/platform/rockchip/Kconfig            |    1 +
- drivers/media/platform/rockchip/Makefile           |    1 +
- drivers/media/platform/rockchip/iep2/Kconfig       |   16 +
- drivers/media/platform/rockchip/iep2/Makefile      |    3 +
- drivers/media/platform/rockchip/iep2/iep2-regs.h   |  191 +++
- drivers/media/platform/rockchip/iep2/iep2.c        | 1319 ++++++++++++++++++++
- drivers/media/platform/rockchip/iep2/iep2.h        |  108 ++
- 12 files changed, 1797 insertions(+)
----
-base-commit: ccf78740d63813c452c035b57d17a650492562fa
-change-id: 20261110-iep2-b9a9c6e77c44
-
-Best regards,
---  
-Arun Iyengar <aiyengar1990@gmail.com>
+-- 
+2.55.0
 
