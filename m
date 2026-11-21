@@ -1,75 +1,69 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 21 Nov 2026 14:25:39 +0000
-Subject: [PATCH v4 3/3] arm64: dts: rockchip: Add IEP2 deinterlacer to
- RK3588
+From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+Date: Sat, 21 Nov 2026 16:10:33 +0100
+Subject: [PATCH] dt-bindings: serial: pl011: Reference rs485.yaml
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-iep2-v4-3-760cf25f322b@gmail.com>
-References: <20261121-iep2-v4-0-760cf25f322b@gmail.com>
-In-Reply-To: <20261121-iep2-v4-0-760cf25f322b@gmail.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Hans Verkuil <hverkuil@kernel.org>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Alex Bee <knaerzche@gmail.com>, Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795271137; l=1631;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=pLFuCmNVRbb5CYDpQgDI0o9UDTdkG7B7CO7SPDGMaZU=;
- b=yxgywoVv8poDbopGdZ3H0aaTxtZ8+BmvnJblZXzFqpRF5UH6QIyzGi5uegTEpaC9YT3TA/Nra
- 8AzvZY41eAVDXRKx96/bPlck1Tq4ZMwM3o2oyD2ZJB8kJP9XQ/ZOIRj
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261121-pl011-rs485-v1-1-0d18008f4a12@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGi0AWsC/yXMQQ5AMBBA0avIrDXplIq4ilgUgxFBOohE3F2xf
+ Iv/LxDyTAJFdIGng4WXOQDjCJrBzT0pboPBaJMhGlTrpBGVlzS3KiOLmLi8c66FUKyeOj6/W1n
+ 9lr0eqdneBdz3A/wxiwNvAAAA
+X-Change-ID: 20261121-pl011-rs485-6e5113a8faad
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Lino Sanfilippo <LinoSanfilippo@gmx.de>
+Cc: Matous Hybl <hyblmatous@gmail.com>, Miroslav Ondra <ondra@faster.cz>, 
+ linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ devicetree@vger.kernel.org, 
+ =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795273968; l=1427;
+ i=cleverline1mc@gmail.com; s=20261121; h=from:subject:message-id;
+ bh=WApAvtSzKPrLcGtYRifdtaAM+A81CWvw2/q5/+yJ1kQ=;
+ b=h4uA8WUuBALQ2FRUKebfcFwq8+kH6St6F99HGuzVqUBLVZi6RYzrHHpm7mrEAIj97L3HiW+RY
+ piRUPmrx7E7A5u7n19NLpQaIpyAesSY/gzGw0POSiqG4zftrx9QumKD
+X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
+ pk=2UEUVmQyfsiFZkNS7dkgFg0rUmhbcMIytM6NYhxFt/Y=
+X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20261121 with auth_id=1594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the IEP2 deinterlacer and its IOMMU to the RK3588 base dtsi. Both
-share GIC SPI 117 and sit in the VDPU power domain.
+The amba-pl011 driver supports RS-485 and parses the generic RS-485
+properties with uart_get_rs485_mode(), but the binding does not allow
+them. Reference rs485.yaml.
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Fixes: 8d479237727c ("serial: amba-pl011: add RS485 support")
+
+Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+The PL011 driver has supported RS-485 since v5.15, added in
+https://git.kernel.org/torvalds/c/8d479237727c, but dtbs_check rejects
+properties such as linux,rs485-enabled-at-boot-time on PL011 nodes.
+We hit this on a BCM2711 (CM4) board using two PL011 UARTs for RS-485.
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-index aa69fd3793fd..5297519bd251 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-@@ -1397,6 +1397,28 @@ vepu121_3_mmu: iommu@fdbac800 {
- 		#iommu-cells = <0>;
- 	};
+An AI assistant (Claude) helped check the driver and write commit message.
+---
+ Documentation/devicetree/bindings/serial/pl011.yaml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/serial/pl011.yaml b/Documentation/devicetree/bindings/serial/pl011.yaml
+index 3fcf2d042372..3c5f35eed04a 100644
+--- a/Documentation/devicetree/bindings/serial/pl011.yaml
++++ b/Documentation/devicetree/bindings/serial/pl011.yaml
+@@ -12,6 +12,7 @@ maintainers:
+ allOf:
+   - $ref: /schemas/arm/primecell.yaml#
+   - $ref: serial.yaml#
++  - $ref: rs485.yaml#
  
-+	iep: deinterlace@fdbb0000 {
-+		compatible = "rockchip,rk3588-iep2", "rockchip,rk3568-iep2";
-+		reg = <0x0 0xfdbb0000 0x0 0x500>;
-+		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH 0>;
-+		clocks = <&cru ACLK_IEP2P0>, <&cru HCLK_IEP2P0>, <&cru CLK_IEP2P0_CORE>;
-+		clock-names = "aclk", "hclk", "sclk";
-+		resets = <&cru SRST_A_IEP2P0>, <&cru SRST_H_IEP2P0>, <&cru SRST_IEP2P0_CORE>;
-+		reset-names = "axi", "ahb", "core";
-+		power-domains = <&power RK3588_PD_VDPU>;
-+		iommus = <&iep_mmu>;
-+	};
-+
-+	iep_mmu: iommu@fdbb0800 {
-+		compatible = "rockchip,rk3588-iommu", "rockchip,rk3568-iommu";
-+		reg = <0x0 0xfdbb0800 0x0 0x100>;
-+		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH 0>;
-+		clocks = <&cru ACLK_IEP2P0>, <&cru HCLK_IEP2P0>;
-+		clock-names = "aclk", "iface";
-+		power-domains = <&power RK3588_PD_VDPU>;
-+		#iommu-cells = <0>;
-+	};
-+
- 	vdec0: video-codec@fdc38000 {
- 		compatible = "rockchip,rk3588-vdec";
- 		reg = <0x0 0xfdc38000 0x0 0x100>,
+ # Need a custom select here or 'arm,primecell' will match on lots of nodes
+ select:
 
--- 
-2.55.0
+---
+base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
+change-id: 20261121-pl011-rs485-6e5113a8faad
+
+Best regards,
+--  
+Kryštof Černý <cleverline1mc@gmail.com>
 
