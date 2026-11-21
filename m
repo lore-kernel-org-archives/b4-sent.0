@@ -1,15 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v3 00/12] Enable Qualcomm VBUS block on PMI8998 and PM660
-Date: Sat, 21 Nov 2026 23:37:54 +0100
-Message-Id: <20261121-pmi8998-vbus-v3-0-91ba2e61a877@ixit.cz>
+Date: Sat, 21 Nov 2026 23:37:55 +0100
+Subject: [PATCH v3 01/12] regulator: dt-bindings: qcom,usb-vbus-regulator:
+ Add pmi8998 and pm660
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12N0Q6CIBhGX8VxHQ1+NLCr3qN1gYj5t5UOlFnOd
- w+szdXl2b5zvpl469B6csxm4mxAj90jgthlxLT6cbUU68gEGBw4A0n7O6qyVDRUo6cAUgmp87r
- RjESld7bBac2dLx/2Y3WzZkiNtGjRD517rn+Bp903LfhvOnDKaF4rVthCswbkCScc9uZFUjjAp
- nKu/lSIqjBSagkVKKY3dVmWN4OigPnzAAAA
-X-Change-ID: 20261027-pmi8998-vbus-227837a4dfa0
+Message-Id: <20261121-pmi8998-vbus-v3-1-91ba2e61a877@ixit.cz>
+References: <20261121-pmi8998-vbus-v3-0-91ba2e61a877@ixit.cz>
+In-Reply-To: <20261121-pmi8998-vbus-v3-0-91ba2e61a877@ixit.cz>
 To: Abel Vesa <abelvesa@kernel.org>, 
  Alexey Minnekhanov <alexeymin@minlexx.ru>, 
  Bjorn Andersson <andersson@kernel.org>, 
@@ -26,90 +24,157 @@ Cc: Richard Acayan <mailingradian@gmail.com>,
  linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2961; i=david@ixit.cz;
- h=from:subject:message-id; bh=OImt/nLXL2kIokFM/oPd0DirAEB3/8IPasOrbeEvB2A=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrAh1avifTQxrbPQJE0RvoKnBjQHFeuWxjodvzK
- ZaftvItqoOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawIdWgAKCRBgAj/E00kg
- ciUWEADBJs6O+Q+0LfJhX5AAna/uYamcaAMETjP4OSon5T7LaCQ8nfVwsxINcgfoX22O7Cfc1Sz
- 9FKRsgSHjsvp3raIeXLxKsQm0wpdEIvex3wwPbEq/GLIxZAJGyirBW4LkfnBBDCdM41K1SCzVcO
- qK4kZuweel5akob4FaY5tieSe1CPSuzU4L7zh0+px+gCvzCyGHEEfpoqVDrhjUURGcCBz/P2D5o
- l4V1WKS1nojNhIFqkhIPP0Bkbf7omcLICG4R3BYgMoC8QKP6a2hfxdN/PDj28dagGhPN3pBs46x
- 14kaed+zpU4UyNvCGEqhFGvEpUnkfgd80/+tfyHN9ny/wi2LILQ/MPooPdcIsmdTlbQvAkFSWcS
- 8mzRpQp06iKzIPJirElr9nU61atSgUF5KjK0xYBEoFYsv7pnii5+Mr3GoIZq2UZwznsMPN2mMnv
- +srt4CrgDKjrC3wqrcbGaCzXIyty54o+93oCwPCKCC16BpVXqCC9GyF+zXMeR+E7VGG1KotmU8m
- ao76bmyb/TwXbXCb6Ha5WwB9E66mYxxIHL06OyGiI0JDvQzwF03QnnrbzKwgOHO1Y/of+e6snBU
- r1hT7Srpa7cGsRMhm9EQbbBt+fM/XSGJoPDRmdMBTnWisWOpxqztfXQ3nHWwEMi1oAc+yT+hZfF
- fllyl2cswRiuj1Q==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3908; i=david@ixit.cz;
+ h=from:subject:message-id; bh=uY38OOoOv7AGRyzhEMqIBpg8bK80KZsXFqsa90ruurA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrAh1aZ71OU7nXEzGksm9JPBqUjPCMKJQIwl0AR
+ /GgYR1ikoGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawIdWgAKCRBgAj/E00kg
+ crzrEACvV8hZp+8Nvex937epX+wbnJpLE+R4rEnKDaBYvYJasLsS4i7V176Fpr1lzgZVqn2X2be
+ A24nn3e9hYzSDgRsGY1EahzxU7y1xxVS3uWfENPH6N2uv9/pOBPyFacjzD4Gb4AWW8Puh2ykUUO
+ n4uCZuUH5CEOMMXdEWGqznkA4C7/xVj/CmdxhPlZCDFR7/q9yZCM0qBsGY7yBrgvBtmTwfPLCqI
+ TIfLJhSqgYLFwbb77X6SUNuCYxJHOgH3+NDmfwENUA6f2qAjN4flYy0zsv5B3g+IketMeOBa1Wo
+ RuEvnRzsFV+WCrmNCdQXRPeFIWF/OkYce1VravKDOXYC8W/JibanTSZpalLa92uZQCtkiHjXyf2
+ DG/CLoB0+o7FxKF+ZRVY5Dgen78IevGVAvaErCy3WGB81nX8vTWFcKFs5uz1gL3s/BLl8tl+SLn
+ mvab9y/NQ46sotGVTyN5rjcJuF8XHDzwk9vfnkqEPEEILiAs95eFK9/uCNvgGwzrY4eBrsDK31J
+ kHWKa5HvJL08xthSrVv4NQxbHo3/RiVeTaZ6+G0BaHXCR+EU04LTmDTURyekkpf8rHG7EQJQD8m
+ SIm66DualkV8214cYVk/uZahvSA8HrDq8kjVkS42C/UbAAIGma9yK8ITT/x0IUW/p5Pa3+NzdAk
+ BTnzG7xO4yUobIg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Includes basic vbus regulator support for:
- - SHIFT 6MQ
- - Pixel 3 / 3a / 3 XL / 3a XL
- - OnePlus 6 / 6T
- - Xiaomi Poco F1
- - LG G7 / V35
+The VBUS register block on the PMI8998 and PM660 PMIC shares the design.
+Define corresponding compatible string, having the
+qcom,pmi8998-vbus-reg as a fallback.
 
-All devices we support using default range 0.5 - 1.5 A in downstream
-sources.
-
-Validated by looking for `qcom,otg-cl-ua` and default values when
-property is not set in the driver.
-
-This series shouldn't change existing behaviour (except register write
-execution order). Without Type-C driver this merely replace the write of
-the SMB charger to manually control the OTG block.
-
-As a follow-up with the latest upstreamed Type-C driver, this change
-will allow setting USB OTG, thus power devices connected to the phone.
+As a part of the definition properly define existing chips using
+min/max/multipleOf properties.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v3:
-- Limit OTG current from 3A / 500mA step to the 2A / 250mA step. (Markus)
-- s/pm8998/pmi8998/ typo. (Sashiko)
-- Reworded commit messages.
-- Link to v2: https://patch.msgid.link/20261118-pmi8998-vbus-v2-0-3c77a72b280a@ixit.cz
-
-Changes in v2:
-- pmi8998 and pm660 belongs into the different generation than pm8150b.
-  Adjust the device-tree, code, and commit msg accordingly. (Konrad)
-- Link to v1: https://patch.msgid.link/20261031-pmi8998-vbus-v1-0-4d805e5a0f27@ixit.cz
-
----
-David Heidelberg (12):
-      regulator: dt-bindings: qcom,usb-vbus-regulator: Add pmi8998 and pm660
-      regulator: qcom_usb_vbus: Fix the MODULE_LICENSE() string
-      regulator: qcom_usb_vbus: Add support for pmi8998
-      power: supply: qcom_smbx: Stop clearing software control select
-      arm64: dts: qcom: pmi8998: Add node for PMIC VBUS booster
-      arm64: dts: qcom: pm660: Add node for PMIC VBUS booster
-      arm64: dts: qcom: sdm845-google: Enable vbus support
-      arm64: dts: qcom: sdm845-oneplus: Enable vbus support
-      arm64: dts: qcom: sdm845-shift-axolotl: Enable vbus support
-      arm64: dts: qcom: sdm845-lg: Enable vbus support
-      arm64: dts: qcom: sdm845-xiaomi-beryllium: Enable vbus support
-      arm64: dts: qcom: sdm670-google: Enable vbus support
-
  .../regulator/qcom,usb-vbus-regulator.yaml         | 56 ++++++++++++++++++++--
- arch/arm64/boot/dts/qcom/pm660.dtsi                |  7 +++
- arch/arm64/boot/dts/qcom/pmi8998.dtsi              |  7 +++
- arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi |  7 +++
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi |  7 +++
- arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi     |  7 +++
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi |  7 +++
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts  |  7 +++
- .../dts/qcom/sdm845-xiaomi-beryllium-common.dtsi   |  7 +++
- drivers/power/supply/qcom_smbx.c                   | 14 ------
- drivers/regulator/qcom_usb_vbus-regulator.c        | 24 ++++++++--
- 11 files changed, 128 insertions(+), 22 deletions(-)
----
-base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
-change-id: 20261027-pmi8998-vbus-227837a4dfa0
+ 1 file changed, 52 insertions(+), 4 deletions(-)
 
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+diff --git a/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml b/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml
+index 024b34d0eb1a6..7e984ab9a1474 100644
+--- a/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml
++++ b/Documentation/devicetree/bindings/regulator/qcom,usb-vbus-regulator.yaml
+@@ -9,35 +9,38 @@ title: The Qualcomm PMIC VBUS output regulator driver
+ maintainers:
+   - Wesley Cheng <quic_wcheng@quicinc.com>
+ 
+ description: |
+   This regulator driver controls the VBUS output by the Qualcomm PMIC.  This
+   regulator will be enabled in situations where the device is required to
+   provide power to the connected peripheral.
+ 
+-  The pm8150b variant uses an OTG current-limit selector, supporting limits
+-  of 500 mA, 1000 mA, 1500 mA, 2000 mA, 2500 mA and 3000 mA.
++  The pm8150b and pmi8998 variant uses an OTG current-limit selector.
+ 
+   The pm4125 variant uses a different register layout with a 2-bit VBOOST
+-  voltage selector supporting output voltages of 4.25 V, 4.5 V, 4.75 V
+-  and 5.0 V.
++  voltage selector.
+ 
+ properties:
+   compatible:
+     oneOf:
+       - enum:
+           - qcom,pm8150b-vbus-reg
+           - qcom,pm4125-vbus-reg
++          - qcom,pmi8998-vbus-reg
+       - items:
+           - enum:
+               - qcom,pm6150-vbus-reg
+               - qcom,pm7250b-vbus-reg
+               - qcom,pmi632-vbus-reg
+           - const: qcom,pm8150b-vbus-reg
++      - items:
++          - enum:
++              - qcom,pm660-vbus-reg
++          - const: qcom,pmi8998-vbus-reg
+ 
+   reg:
+     maxItems: 1
+     description: VBUS output base address
+ 
+ allOf:
+   - $ref: regulator.yaml#
+   - if:
+@@ -45,26 +48,71 @@ allOf:
+         compatible:
+           contains:
+             enum:
+               - qcom,pm8150b-vbus-reg
+               - qcom,pm6150-vbus-reg
+               - qcom,pm7250b-vbus-reg
+               - qcom,pmi632-vbus-reg
+     then:
++      properties:
++        regulator-min-microamp:
++          multipleOf: 500000
++          minimum: 500000
++          maximum: 3000000
++
++        regulator-max-microamp:
++          multipleOf: 500000
++          minimum: 500000
++          maximum: 3000000
++
++      required:
++        - regulator-min-microamp
++        - regulator-max-microamp
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - qcom,pm660-vbus-reg
++              - qcom,pmi8998-vbus-reg
++    then:
++      properties:
++        regulator-min-microamp:
++          multipleOf: 250000
++          minimum: 250000
++          maximum: 2000000
++
++        regulator-max-microamp:
++          multipleOf: 250000
++          minimum: 250000
++          maximum: 2000000
++
+       required:
+         - regulator-min-microamp
+         - regulator-max-microamp
+ 
+   - if:
+       properties:
+         compatible:
+           contains:
+             const: qcom,pm4125-vbus-reg
+     then:
++      properties:
++        regulator-min-microvolt:
++          multipleOf: 250000
++          minimum: 4250000
++          maximum: 5000000
++
++        regulator-max-microvolt:
++          multipleOf: 250000
++          minimum: 4250000
++          maximum: 5000000
++
+       required:
+         - regulator-min-microvolt
+         - regulator-max-microvolt
+ 
+ required:
+   - compatible
+   - reg
+ 
+
+-- 
+2.55.0
 
