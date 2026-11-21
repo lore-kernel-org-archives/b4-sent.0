@@ -1,79 +1,164 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 21 Nov 2026 19:05:20 +0000
-Subject: [PATCH] drm/panfrost: Unmask the interrupts of a re-enabled
- address space
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v3 00/11] phy/drm: amlogic: Extract Meson HDMI TX PHY into
+ a dedicated driver
+Date: Sat, 21 Nov 2026 20:21:02 +0100
+Message-Id: <20261121-meson-drm-create-hdmitx-phy-v3-0-f8f471788076@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-panfrost-mmu-as-mask-v1-1-13ffb84d5562@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDtggm1Jr1K6mOhEpyVRMiqCe
- HfTdvkW/++gnIUVHtUOmVdRGVOBuVTQDpR6RumKwdb2Zow1OFEKedQZY1yQFCPpB8OV755q5xr
- voKRT5iDbb/t8/a2Lf3M7f19wHCddOqdMeAAAAA==
-X-Change-ID: 20261121-panfrost-mmu-as-mask-f5e7ba0994b9
-To: Boris Brezillon <boris.brezillon@collabora.com>, 
- Rob Herring <robh@kernel.org>, Steven Price <steven.price@arm.com>, 
- =?utf-8?q?Adri=C3=A1n_Larumbe?= <adrian.larumbe@collabora.com>, 
+X-B4-Tracking: v=1; b=H4sIAB/vAWsC/33NSw7CIBSF4a00jL0G6EscuQ/jgMKtYPoKYNOm6
+ d4tNSYdOTzJyfcvxKOz6Mk1WYjD0Xrbd9tITwlRRnZPBKu3TTjlBWMshxZ934F2LSiHMiAY3do
+ wwWBmyKTKqCzyTFNBNmFwWNtp1++P7/bv6oUqRDI+jPWhd/OeH1n8/Url39LIgIJAKpVIWXph6
+ iYbi825diSGRn6gOP1P8UiluuBci6qi5YFa1/UDmfVNOyIBAAA=
+X-Change-ID: 20261115-meson-drm-create-hdmitx-phy-4ac40a654d09
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Vinod Koul <vkoul@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
  Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795287919; l=1936;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=K0pQ9F7/VC+mXmqa5mrb5ZLu5JBV43cmtWNL0qBRLk8=;
- b=UTi0Pl9F3glZ6ZBQdexj6k4QpYeIH3xdTWKCxQwZRzr2XU/a/JTVxlvc7B02k0uyoGWKrATcT
- g+FcGFgPdCNDTEHA+NQjKMyEW6LFejD0V9/42nHHqn7aCUM0ZctiwOG
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Ulf Hansson <ulfh@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-phy@lists.infradead.org, dri-devel@lists.freedesktop.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>, linux-pm@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5894;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=vTJkeGax5z5LctDahtuxP5Od5f4eDgeDQ5B1KbVYiOg=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQzbjeyXDl8/+7XzfZr9tbenH3Nn+/Nkn841PLXY7UX9u8
+ ePA2mSzjlIWBjEuBlkxRZb+uZYn3l0+eubrHvUUmDmsTCBDGLg4BWAirdMZ/tdEl75fI5y6oFac
+ 51Ls54m95r/r9K//FJpRusde4RHb2yZGhtfeRq3FDXc2K98NnGTVVJD/1v/3rCzuRXcyLOrKvvy
+ awAUA
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Sashiko reported this in a review of an unrelated patch.
+This series moves the Amlogic Meson HDMI TX PHY handling (covering GXBB,
+GXL, GXM, and G12A SoCs) out of the meson_dw_hdmi DRM driver and into a
+dedicated generic PHY driver.
 
-After an unhandled fault the AS is in as_faulty_mask and its interrupts
-are masked. panfrost_mmu_as_get() re-enables the AS but writes
-MMU_INT_MASK before it clears the AS from as_faulty_mask, so the
-interrupts stay masked and the next fault on the AS hangs the job until
-the scheduler timeout. Clear the bit first.
+Until now, meson_dw_hdmi directly manipulated the HHI system controller
+registers (HHI_HDMI_PHY_CNTL0..5) to configure analog parameters, toggle
+resets, and manage power states, as well as manually ungating HDMI
+clocks and power domains already described in the DT.
 
-Fixes: ed7a34c57def ("drm/panfrost: Disable the AS on unhandled page faults")
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/20260811215454.A1C8D1F000E9@smtp.kernel.org/
-Cc: stable@vger.kernel.org
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+By extracting this logic into a standalone PHY driver under
+drivers/phy/amlogic/:
+- Hardware representation in the DT is cleaner, modeling the HDMI TX PHY
+  as a child node of the HHI syscon referenced via standard "phys"
+  properties.
+- The DRM bridge driver relies on the standard generic PHY API
+  (phy_init, phy_configure, phy_power_on/off, phy_exit) rather than
+  touching syscon registers directly.
+- Legacy DTs lacking the "phys" property remain supported via a
+  temporary fallback helper (meson_hdmi_phy_create_legacy) to preserve
+  backward compatibility to be removed on next phase of component
+  removal.
+
+Overview of the series:
+- Patches 1-3: Fix compatible matching in meson-gx-hhi-sysctrl bindings,
+  add the new amlogic,meson-hdmi-tx-phy DT schema, and allow the
+  "hdmi-phy" child node under the HHI syscon.
+- Patch 4: Add the new Meson HDMI TX PHY driver implementing the HDMI
+  PHY configuration ops, along with the temporary legacy creation
+  helper.
+- Patch 5: Document the optional "phys" and properties in the
+  amlogic,meson-dw-hdmi binding.
+- Patch 6: Make meson-ee-pwrc power up the domain memories when the
+  domain is already on at probe time, as this is a prerequisite for
+  dropping the explicit write from meson_dw_hdmi
+- Patches 7-8: Clean up manual HHI clock/power-domain writes in
+  meson_dw_hdmi (relying on runtime PM instead) and convert the driver
+  to use the generic PHY framework.
+- Patches 9-11: Add the "hdmi-phy" child node and wire up the "phys"
+  phandle for G12, GXBB, and GXL Device Trees.
+
+Tested on:
+- Khadas VIM1 (GXL)
+- dtbs_check and dt_binding_check run cleanly with no new warnings.
+
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
-Tested on a Mali-G31 (H616), 7.3.5 with 8a597d099b8b and e9672bf9382f:
-a heap fault after an unhandled fault got no MMU interrupt and the job
-timed out; with this patch as the only change it is handled at once.
+Changes in v3:
+- Patch 6: reuse meson_ee_pwrc_mem_power_up() in meson_ee_pwrc_on()
+  function.
+- Patch 8: revert the code to v1 and add a device link to solve
+  suspend/resume order in dpm_list.
+- Link to v2: https://patch.msgid.link/20261120-meson-drm-create-hdmitx-phy-v2-0-93d622d9bb07@aliel.fr
 
-Claude (Anthropic) wrote the patch and the commit message; I reviewed
-them and tested as above.
+Changes in v2:
+- Patches 5,9-11: Remove unecessary "phy-names" for uniq phy.
+                  Thanks to Neil's feedback.
+- Add Patch 6: Power up the memories when the domain is already on.
+               From Sashiko's feedback.
+- Patch 4: Add a 600MHz max_rate and a 25Mhz min_rate check and
+           exclude PHY_HDMI_MODE_FRL for phy_validate. Thx Sashiko.
+- Patch 8: Move phy_init in dw_hdmi_phy_init and phy_exit
+           in dw_hdmi_phy_disable. From Sashiko review.
+- Link to v1: https://patch.msgid.link/20261117-meson-drm-create-hdmitx-phy-v1-0-9e0ac931381c@aliel.fr
+
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Neil Armstrong <neil.armstrong@linaro.org>
+To: Kevin Hilman <khilman@baylibre.com>
+To: Jerome Brunet <jbrunet@baylibre.com>
+To: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+To: Vinod Koul <vkoul@kernel.org>
+To: Manivannan Sadhasivam <mani@kernel.org>
+To: Ronald Claveau <linux-kernel-dev@aliel.fr>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+To: Maxime Ripard <mripard@kernel.org>
+To: Thomas Zimmermann <tzimmermann@suse.de>
+To: Ulf Hansson <ulfh@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-amlogic@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-phy@lists.infradead.org
+Cc: dri-devel@lists.freedesktop.org
+Cc: linux-pm@vger.kernel.org
+
 ---
- drivers/gpu/drm/panfrost/panfrost_mmu.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Ronald Claveau (11):
+      dt-bindings: soc: amlogic: meson-gx-hhi-sysctrl: Fix compatible matching in conditionals
+      dt-bindings: phy: amlogic: Add Meson HDMI TX PHY binding
+      dt-bindings: soc: amlogic: meson-gx-hhi-sysctrl: Add hdmi-phy child node
+      phy: amlogic: Add Meson HDMI TX PHY driver
+      dt-bindings: display: amlogic,meson-dw-hdmi: Add phys
+      pmdomain: amlogic: meson-ee-pwrc: power up memories for boot-enabled domains
+      drm/meson: dw-hdmi: Drop manual HHI clock and memory PD setup
+      drm/meson: dw-hdmi: Use the generic PHY framework for the HDMI TX PHY
+      arm64: dts: amlogic: Add HDMI TX PHY node for G12
+      arm64: dts: amlogic: Add HDMI TX PHY node for GXBB
+      arm64: dts: amlogic: Add HDMI TX PHY node for GXL
 
-diff --git a/drivers/gpu/drm/panfrost/panfrost_mmu.c b/drivers/gpu/drm/panfrost/panfrost_mmu.c
-index faa62643c..98d52aca4 100644
---- a/drivers/gpu/drm/panfrost/panfrost_mmu.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_mmu.c
-@@ -283,9 +283,9 @@ int panfrost_mmu_as_get(struct panfrost_device *pfdev, struct panfrost_mmu *mmu)
- 			 * disabled. We need to re-enable the MMU after
- 			 * clearing+unmasking the AS interrupts.
- 			 */
-+			pfdev->as_faulty_mask &= ~mask;
- 			mmu_write(pfdev, MMU_INT_CLEAR, mask);
- 			mmu_write(pfdev, MMU_INT_MASK, ~pfdev->as_faulty_mask);
--			pfdev->as_faulty_mask &= ~mask;
- 			panfrost_mmu_enable(pfdev, mmu);
- 		}
- 
-
+ .../bindings/display/amlogic,meson-dw-hdmi.yaml    |   4 +
+ .../bindings/phy/amlogic,meson-hdmi-tx-phy.yaml    |  33 +++
+ .../soc/amlogic/amlogic,meson-gx-hhi-sysctrl.yaml  |  43 ++-
+ arch/arm64/boot/dts/amlogic/meson-g12-common.dtsi  |   6 +
+ arch/arm64/boot/dts/amlogic/meson-gxbb.dtsi        |   6 +
+ arch/arm64/boot/dts/amlogic/meson-gxl.dtsi         |   6 +
+ drivers/gpu/drm/meson/Kconfig                      |   2 +
+ drivers/gpu/drm/meson/meson_dw_hdmi.c              | 222 +++++++-------
+ drivers/phy/amlogic/Kconfig                        |  11 +
+ drivers/phy/amlogic/Makefile                       |   1 +
+ drivers/phy/amlogic/phy-meson-hdmi-tx.c            | 319 +++++++++++++++++++++
+ drivers/pmdomain/amlogic/meson-ee-pwrc.c           |  19 +-
+ include/linux/phy/phy-meson-hdmi-tx.h              |  19 ++
+ 13 files changed, 547 insertions(+), 144 deletions(-)
 ---
-base-commit: c408466a4dfaee4b12587e926c5b85e68c8b3c40
-change-id: 20261121-panfrost-mmu-as-mask-f5e7ba0994b9
+base-commit: 6d582d78fad9d828e575ca0cdcff8ea47a77220b
+change-id: 20261115-meson-drm-create-hdmitx-phy-4ac40a654d09
 
 Best regards,
 --  
-Arun Iyengar <aiyengar1990@gmail.com>
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
