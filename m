@@ -1,14 +1,12 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Subject: [PATCH 0/2] riscv/clk: sophgo: Fix EFI RTC on Milk-V Pioneer
-Date: Sat, 21 Nov 2026 18:38:06 +0800
-Message-Id: <20261121-b4-sg2042-efi-rtc-v1-0-19898b8ad497@iscas.ac.cn>
+Date: Sat, 21 Nov 2026 18:38:07 +0800
+Subject: [PATCH 1/2] riscv: efi: Map runtime MMIO with device attributes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMMQ6DMAyF4asgz7UUm9CBq1QdSDDUDGkV06oSy
- t0JMH56ev8GJlnFoG82yPJT03eqoFsD8TWkWVDHamDHdyImDB5tZucZZVLMa0TxY8fMHbWDQP1
- 9cl3+Z/PxvGzfsEhcjxCUsgNqcxa+dQAAAA==
-X-Change-ID: 20261121-b4-sg2042-efi-rtc-e4d5222513ae
+Message-Id: <20261121-b4-sg2042-efi-rtc-v1-1-19898b8ad497@iscas.ac.cn>
+References: <20261121-b4-sg2042-efi-rtc-v1-0-19898b8ad497@iscas.ac.cn>
+In-Reply-To: <20261121-b4-sg2042-efi-rtc-v1-0-19898b8ad497@iscas.ac.cn>
 To: Ard Biesheuvel <ardb@kernel.org>, 
  Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
  Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
@@ -22,45 +20,48 @@ Cc: Han Gao <rabenda.cn@gmail.com>, linux-efi@vger.kernel.org,
  linux-clk@vger.kernel.org, sophgo@lists.linux.dev, 
  Han Gao <gaohan@iscas.ac.cn>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795257496; l=1142;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795257496; l=1030;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=dT/cAMPkqhwiO+NmtZDAeUI+RgA0LLjV2VMwVQoEOVE=;
- b=FC7ThTXl38Ss0fnSg/4mwqUL1JUFP/nRR5YZZ9Bk32T3DV7XgF8zFNlDBS/VV/IdQ2NT1jZvE
- atOl+cn9WM9D1k1MLLRh6y5Gr2yM/TK/lvJwVM1CPf6X/Q5pk/UR3TE
+ bh=AXs3CmUyHq0DbOalkM59cymNHEWwCflCrFagmnUXH40=;
+ b=+R7iok8HWxtWVdFYvjuL61Ut91D/mbpDWKM53jRhVd4qqn7/sjzLv+Snse+8aZgLqEHJOOeid
+ xXeqEtr/y3EDSWZSeiif9VMkcf+BUQn8NS0Qrt/IbRR23abw8rzSlfq
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Pioneer firmware can take over the DS1307 on I2C0 and expose it through
-EFI runtime services, so Linux uses rtc-efi. I2C0 is then marked
-"reserved" in the device tree.
+EFI_MEMORY_MAPPED_IO regions are mapped with PAGE_KERNEL, so device
+registers end up mapped as normal memory.
 
-Two things break GetTime() in that setup:
+On Milk-V Pioneer, GetTime() reads the clock controller registers and
+faults:
 
-- RISC-V maps EFI runtime MMIO as normal memory, and firmware takes a
-  load access fault on the clock controller. Patch 1 maps it as I/O.
+  Oops - load access fault [#1]
+  Workqueue: efi_runtime efi_call_rts
+  status: 0000000200000120 badaddr: 0000007030012000 cause: 0000000000000005
 
-- I2C0 shares a clock gate with the other I2C controllers. Once Linux
-  runtime-suspends them, the gate goes off and GetTime() returns
-  EFI_NOT_READY. Patch 2 keeps gates used by reserved devices on.
+Use PAGE_KERNEL_IO for these regions.
 
-Tested on Milk-V Pioneer.
-
+Fixes: b91540d52a08 ("RISC-V: Add EFI runtime services")
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
-Han Gao (2):
-      riscv: efi: Map runtime MMIO with device attributes
-      clk: sophgo: sg2042-clkgen: Keep gates of reserved devices enabled
+ arch/riscv/kernel/efi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- arch/riscv/kernel/efi.c                |  2 +-
- drivers/clk/sophgo/clk-sg2042-clkgen.c | 38 +++++++++++++++++++++++++++++++++-
- 2 files changed, 38 insertions(+), 2 deletions(-)
----
-base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
-change-id: 20261121-b4-sg2042-efi-rtc-e4d5222513ae
+diff --git a/arch/riscv/kernel/efi.c b/arch/riscv/kernel/efi.c
+index 2d3cc57b4535..11e85d0ebc91 100644
+--- a/arch/riscv/kernel/efi.c
++++ b/arch/riscv/kernel/efi.c
+@@ -22,7 +22,7 @@ static __init pgprot_t efimem_to_pgprot_map(efi_memory_desc_t *md)
+ 	u32 type = md->type;
+ 
+ 	if (type == EFI_MEMORY_MAPPED_IO)
+-		return PAGE_KERNEL;
++		return PAGE_KERNEL_IO;
+ 
+ 	/* R-- */
+ 	if ((attr & (EFI_MEMORY_XP | EFI_MEMORY_RO)) ==
 
-Best regards,
---  
-Han Gao <gaohan@iscas.ac.cn>
+-- 
+2.55.0
 
