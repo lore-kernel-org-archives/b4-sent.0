@@ -1,15 +1,13 @@
 From: Cody Kang <codykang.hk@gmail.com>
-Subject: [PATCH v3 00/17] drm/spacemit: add SpacemiT K3 display support
-Date: Sat, 21 Nov 2026 15:40:39 +0800
-Message-Id: <20261121-k3-display-v3-0-ec419e8e96b8@gmail.com>
+Date: Sat, 21 Nov 2026 15:40:40 +0800
+Subject: [PATCH v3 01/17] dt-bindings: display: spacemit: add K3 Saturn DPU
+ controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPdKAWsC/1WNyw6CMBBFf4V0bU07VQqu/A/josAURuURio2E8
- O9SNBGXJ7nn3Ik57AkdO0UT69GTo7ZZQO0illemKZFTsTADAbHQUvG74gW57mFGjom1WMQaUxW
- zReh6tPRaY5frh90zu2E+hEJYVOSGth/XNy/D7huGwzbsJRfcAhgpzBGSWJ/L2tBjn7c1C2EPP
- zUR6Z8Ki6pAFzqVIrNabtV5nt+eaXDv8QAAAA==
-X-Change-ID: 20260713-k3-display-e8ffed67e936
+Message-Id: <20261121-k3-display-v3-1-ec419e8e96b8@gmail.com>
+References: <20261121-k3-display-v3-0-ec419e8e96b8@gmail.com>
+In-Reply-To: <20261121-k3-display-v3-0-ec419e8e96b8@gmail.com>
 To: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
  Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
@@ -33,200 +31,174 @@ Cc: Cody Kang <codykang@vsit.ai>, dri-devel@lists.freedesktop.org,
  spacemit@lists.linux.dev, linux-kernel@vger.kernel.org, 
  linux-phy@lists.infradead.org, linux-clk@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795246844; l=9241;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795246844; l=4704;
  i=codykang.hk@gmail.com; s=codykang; h=from:subject:message-id;
- bh=4Tvkhj/vuL6p65/H6W0t9kromXy0tFDd3ANMqOSeoj0=;
- b=NXfGNC3e5f145p1uzzbCkhlZmfGzxyaJjwQH50Jq5iOUDn1EflVyEpt0lk7XoHRHKkqxCsfKg
- Ey5CN+KGnUHDx5Gla0HqgzaPQ44nb7cJ0tN2QJIrN/27yyyXvg7jS1K
+ bh=B0FgBmi2uPlLPF6FJZuzQ4EXAJELGBx+dPQ5a+jWxGc=;
+ b=bbeBmZ28FJ72zoLSZQtZ17eaErYya1kCkBUjZ0XAjSs1SKMyZ5mZ44ONrCbCguBK/5zqFxzM5
+ bm9AOpo7OmMBwADEgUtkrymiQon2Jq1oGJb7a1QZr5PcR+rtUw3F6Vq
 X-Developer-Key: i=codykang.hk@gmail.com; a=ed25519;
  pk=Osn6/cs9Su/mHHw4P19cmVc3v2FMQfiWahjsN0vEkuk=
 X-Endpoint-Received: by B4 Relay for codykang.hk@gmail.com/codykang with auth_id=895
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds display support for the SpacemiT K3 [2], a RISC-V SoC:
-a new DRM driver, a new PHY driver and three new bindings.
+From: Cody Kang <codykang@vsit.ai>
 
-The display path is three blocks deep:
+Document the Saturn display processing unit found on the SpacemiT K3 SoC.
+The K3 instantiates two of them, one per display path. They share a
+compatible: an instance differs only in which register window, interrupt,
+clock and reset lines it takes.
 
-  Saturn DPU -> Innosilicon DP/eDP controller -> Innosilicon DP PHY
-
-New readers will find an introduction to this hardware in the v2 cover
-letter [3].
-
-In v3, two major changes, thanks to Thomas Zimmermann for the review
-that led to these:
-
-- The DPU driver lost its internal layers: the callback tables, the
-  tracepoints and the command-list grouping are gone.
-- Page-flip events go through the vblank machinery, and the DPU is
-  powered through runtime PM.
-
-The rest of the v3 changes please see below, with details in each patch's
-changelog.
-
-v2 ships in the Ubuntu 26.10 RISC-V kernel [4]. Thanks to Sarah Emery
-for two fixes found there.
-
-Thanks to Ze Huang for testing v2 on the K3 Pico-ITX. The Tested-by is
-not carried, because the DRM driver changed too much in v3.
-
-Ze, Sarah: if you have time to run v3, a retest would be very welcome.
-
-Sashiko AI review contributed total review comments: 51 items, which I
-accepted: 19 items.
-
-v3 repeated the full v1 test matrix on both boards, in built-in and
-modular configurations, with the module load/unload rounds of v2, plus
-page-flip and DPMS rounds and unloading the modules while a client is
-running.
-
-About the series:
-
-The DPU driver arrives as five staged patches (7 to 11) to keep each one
-a reasonable size. It becomes buildable with patch 11. Bisect safe.
-
-This series supports a single primary plane per CRTC and linear RGB
-scanout (no plane scaling, rotation, YUV or writeback). It does not
-support DSI, DSC or DP audio, and link rates are capped at HBR2.
-
-Based on v7.4-rc1.
-
-Testing this series needs a SpacemiT u-boot carrying display support:
-the branch at [1], or a later official release.
-
-Tested on two K3 boards:
-
-  - Pico-ITX: an eDP panel and an external DisplayPort monitor.
-  - CoM260-IFX: DisplayPort only, no eDP.
-
-Note: The eDP panel DTS enablement is not part of this series; a separate
-      series will follow showing how eDP can be verified.
-
-[1] https://github.com/spacemit-com/uboot-for-k3-display-verify/tree/k3-br-v1.0.y
-[2] https://www.spacemit.com/community/document/info?lang=en&nodepath=hardware/key_stone/k3
-[3] https://lore.kernel.org/r/20260809-k3-display-v2-0-327d7910bf71@gmail.com
-[4] https://launchpad.net/ubuntu/+source/linux-riscv/7.2.0-5.5.2
-
-Changes in v3:
-- drop the tracepoints, the hardware callback tables and the
-  constant-fill path; the Saturn register code is called directly
-  (Thomas Zimmermann)
-- one command list per channel, allocated once and submitted by its
-  owner; the grouping, sorting and chaining of lists is gone (Thomas
-  Zimmermann)
-- deliver the commit's event through the vblank machinery, armed from
-  the CFG_RDY interrupt (Thomas Zimmermann)
-- power the DPU through runtime PM, and stop the boot loader's pipeline
-  at probe instead of at the first modeset (Thomas Zimmermann)
-- add prepare_fb: the display MMU table is built once per GEM object
-  and the buffer's fences are waited for (Thomas Zimmermann)
-- program the plane from the clipped rectangles, and size its line
-  buffer in atomic_check (Thomas Zimmermann)
-- wrap only the hardware access in drm_dev_enter() (Thomas Zimmermann);
-  release the drm_device when the aggregate unbinds
-- map scanout buffers write-combining; fail AUX transfers fast when HPD
-  is low (Sarah Emery)
-- reject modes above 3840x2160, and bound framebuffers by what the RDMA
-  registers can address (Icenowy Zheng)
-- let the panel supply the modes on eDP (Guodong Xu)
-- leave the DPU's pixel clock at the rate it has; on DP and eDP the PHY
-  PLL is the pixel clock (Guodong Xu)
-- do not advertise a gamma table (Guodong Xu)
-- DT: order the display nodes by unit address; the Pico-ITX message
-  names the Type-C receptacle's DP alternate mode (Icenowy Zheng)
-- clk: the commit message names the binding that documents the two
-  clock inputs (Jerome Brunet)
-- MAINTAINERS: add Guodong Xu as maintainer; list Cody Kang with the
-  vsit.ai address
-- rebased onto v7.4-rc1: atomic_create_state replaces .reset
-- commit messages of patches 5, 7, 8, 9, 11, 12, 14 and 16 reworded
-- picked up Rob Herring's Reviewed-by on patch 4
-- Link to v2: https://patch.msgid.link/20260809-k3-display-v2-0-327d7910bf71@gmail.com
-
-Changes in v2:
-- unbind: keep the online IRQ alive until the teardown commits have
-  drained; module unload no longer rides two watchdog timeouts
-- bridge teardown on devres: reset via
-  devm_reset_control_get_exclusive_deasserted(), pxclk disable as a
-  devm action ordered against the PHY child (Philipp Zabel, Yao Zi)
-- all five DPU reset lines behind one reset_control_bulk_* pair
-  (Philipp Zabel, Guodong Xu)
-- bindings: port@1 is now required; the CoM260 board describes its DP
-  receptacle with a dp-connector node; redundant minItems dropped
-  (Rob Herring)
-- possible_crtcs derived from the input endpoint only
-- EDID reads through the AUX I2C adapter; write-1-to-clear interrupt
-  acks by plain write; assorted dead code dropped
-- picked up Rob Herring's Reviewed-by on patches 1-3
-- Link to v1: https://lore.kernel.org/r/20260725-k3-display-v1-0-6de34d80e86c@gmail.com
-
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Cody Kang <codykang@vsit.ai>
----
-Cody Kang (17):
-      dt-bindings: display: spacemit: add K3 Saturn DPU controller
-      dt-bindings: phy: add SpacemiT K3 Innosilicon DP PHY
-      dt-bindings: display: spacemit: add K3 Innosilicon DP/eDP controller
-      dt-bindings: soc: spacemit: allow eDP/DP PHY PLL pixel clocks on K3 APMU
-      phy: spacemit: add Innosilicon DP TX PHY driver
-      clk: spacemit: k3: parent eDP/DP pixel clock to the PHY PLL
-      drm/spacemit: add Saturn DPU register model
-      drm/spacemit: add Saturn DPU core types, cmdlist and display MMU
-      drm/spacemit: add Saturn DPU hardware backend
-      drm/spacemit: add Saturn DPU KMS pipeline
-      drm/spacemit: add Saturn DPU DRM device driver
-      drm/spacemit: add Innosilicon DP/eDP controller bridge driver
-      MAINTAINERS: add SpacemiT K3 display driver entry
-      riscv: dts: spacemit: k3: add display nodes
-      riscv: dts: spacemit: k3-pico-itx: enable the DisplayPort output
-      riscv: dts: spacemit: k3-com260-ifx: enable the DisplayPort output
-      riscv: defconfig: spacemit: k3: enable display driver
 
- .../display/spacemit/spacemit,k3-inno-dp.yaml      |  141 ++
- .../display/spacemit/spacemit,k3-saturn-dpu.yaml   |  132 ++
- .../bindings/phy/spacemit,k3-inno-dp-phy.yaml      |   48 +
- .../bindings/soc/spacemit/spacemit,k1-syscon.yaml  |   21 +-
- MAINTAINERS                                        |   11 +
- arch/riscv/boot/dts/spacemit/k3-com260-ifx.dts     |   27 +
- arch/riscv/boot/dts/spacemit/k3-display.dtsi       |  166 ++
- arch/riscv/boot/dts/spacemit/k3-pico-itx.dts       |   11 +
- arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi       |   22 +
- arch/riscv/configs/defconfig                       |    2 +
- drivers/clk/spacemit/ccu-k3.c                      |    4 +-
- drivers/gpu/drm/Kconfig                            |    1 +
- drivers/gpu/drm/Makefile                           |    1 +
- drivers/gpu/drm/spacemit/Kconfig                   |   37 +
- drivers/gpu/drm/spacemit/Makefile                  |   15 +
- drivers/gpu/drm/spacemit/dpu/dpu_saturn.c          |  353 ++++
- drivers/gpu/drm/spacemit/dpu/dpu_saturn.h          |   36 +
- drivers/gpu/drm/spacemit/dpu/dpu_saturn_hee.c      |  670 ++++++
- drivers/gpu/drm/spacemit/dpu/saturn_fbcmem.c       |   66 +
- drivers/gpu/drm/spacemit/dpu/saturn_fbcmem.h       |   16 +
- drivers/gpu/drm/spacemit/dpu/saturn_regs/dpu_int.h |   25 +
- drivers/gpu/drm/spacemit/dpu/saturn_regs/ops_hee.h |   47 +
- .../gpu/drm/spacemit/dpu/saturn_regs/reg_map_hee.h |   65 +
- .../drm/spacemit/dpu/saturn_regs/saturn_fields.h   |  312 +++
- drivers/gpu/drm/spacemit/spacemit_cmdlist.c        |  198 ++
- drivers/gpu/drm/spacemit/spacemit_cmdlist.h        |  133 ++
- drivers/gpu/drm/spacemit/spacemit_crtc.c           |  589 ++++++
- drivers/gpu/drm/spacemit/spacemit_crtc.h           |  133 ++
- drivers/gpu/drm/spacemit/spacemit_dmmu.c           |  119 ++
- drivers/gpu/drm/spacemit/spacemit_dmmu.h           |   80 +
- drivers/gpu/drm/spacemit/spacemit_dpu_ids.h        |   26 +
- drivers/gpu/drm/spacemit/spacemit_dpu_reg.h        |   99 +
- drivers/gpu/drm/spacemit/spacemit_drm.c            |  204 ++
- drivers/gpu/drm/spacemit/spacemit_drm.h            |   62 +
- drivers/gpu/drm/spacemit/spacemit_inno_dp.c        | 2186 ++++++++++++++++++++
- drivers/gpu/drm/spacemit/spacemit_inno_dp.h        |  328 +++
- drivers/gpu/drm/spacemit/spacemit_planes.c         |  332 +++
- drivers/phy/spacemit/Kconfig                       |   13 +
- drivers/phy/spacemit/Makefile                      |    1 +
- drivers/phy/spacemit/phy-k3-inno-dp.c              |  951 +++++++++
- 40 files changed, 7680 insertions(+), 3 deletions(-)
 ---
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20260713-k3-display-e8ffed67e936
+v3:
+- no change
+v2:
+- add Reviewed-by: Rob Herring (Arm)
+---
+ .../display/spacemit/spacemit,k3-saturn-dpu.yaml   | 132 +++++++++++++++++++++
+ 1 file changed, 132 insertions(+)
 
-Best regards,
---  
-Cody Kang <codykang.hk@gmail.com>
+diff --git a/Documentation/devicetree/bindings/display/spacemit/spacemit,k3-saturn-dpu.yaml b/Documentation/devicetree/bindings/display/spacemit/spacemit,k3-saturn-dpu.yaml
+new file mode 100644
+index 0000000000000..97ea9da4b68e4
+--- /dev/null
++++ b/Documentation/devicetree/bindings/display/spacemit/spacemit,k3-saturn-dpu.yaml
+@@ -0,0 +1,132 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/display/spacemit/spacemit,k3-saturn-dpu.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: SpacemiT K3 Saturn Display Processing Unit
++
++maintainers:
++  - Cody Kang <codykang.hk@gmail.com>
++
++description:
++  The Saturn DPU is the display processing unit of the SpacemiT K3 SoC. It
++  composes the display planes and drives the timing for one display path. Its
++  output goes to a DisplayPort or embedded DisplayPort controller. The K3 has
++  two instances.
++
++properties:
++  compatible:
++    const: spacemit,k3-saturn-dpu
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    items:
++      - description: Online (live display) compose path.
++      - description: Offline (writeback) compose path.
++
++  interrupt-names:
++    items:
++      - const: online
++      - const: offline
++
++  clocks:
++    items:
++      - description: Pixel clock.
++      - description: Memory clock for the compose pipeline.
++      - description: AXI bus clock.
++      - description: DSI escape clock.
++      - description: DSC clock.
++
++  clock-names:
++    items:
++      - const: pxclk
++      - const: mclk
++      - const: aclk
++      - const: escclk
++      - const: dscclk
++
++  resets:
++    items:
++      - description: Memory clock domain.
++      - description: LCD domain, shared with the downstream controller.
++      - description: DSI escape clock domain.
++      - description: AXI clock domain.
++      - description: DSC domain.
++
++  reset-names:
++    items:
++      - const: mclk
++      - const: lcd
++      - const: esc
++      - const: aclk
++      - const: dsc
++
++  ports:
++    $ref: /schemas/graph.yaml#/properties/ports
++
++    properties:
++      port@0:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Video output to the DisplayPort or eDP controller.
++
++    required:
++      - port@0
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - interrupt-names
++  - clocks
++  - clock-names
++  - resets
++  - reset-names
++  - ports
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/clock/spacemit,k3-clocks.h>
++    #include <dt-bindings/reset/spacemit,k3-resets.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    soc {
++        #address-cells = <2>;
++        #size-cells = <2>;
++
++        dpu@c0340000 {
++            compatible = "spacemit,k3-saturn-dpu";
++            reg = <0x0 0xc0340000 0x0 0x54000>;
++            interrupts = <90 IRQ_TYPE_LEVEL_HIGH>,
++                         <89 IRQ_TYPE_LEVEL_HIGH>;
++            interrupt-names = "online", "offline";
++            clocks = <&syscon_apmu CLK_APMU_LCD_PXCLK>,
++                     <&syscon_apmu CLK_APMU_LCD_MCLK>,
++                     <&syscon_apmu CLK_APMU_DPU_ACLK>,
++                     <&syscon_apmu CLK_APMU_DSI_ESC>,
++                     <&syscon_apmu CLK_APMU_LCD_DSC>;
++            clock-names = "pxclk", "mclk", "aclk", "escclk", "dscclk";
++            resets = <&syscon_apmu RESET_APMU_LCD_MCLK>,
++                     <&syscon_apmu RESET_APMU_LCD>,
++                     <&syscon_apmu RESET_APMU_DSI_ESC>,
++                     <&syscon_apmu RESET_APMU_DPU_ACLK>,
++                     <&syscon_apmu RESET_APMU_LCD_DSCCLK>;
++            reset-names = "mclk", "lcd", "esc", "aclk", "dsc";
++
++            ports {
++                #address-cells = <1>;
++                #size-cells = <0>;
++
++                port@0 {
++                    reg = <0>;
++                    endpoint {
++                        remote-endpoint = <&edp0_in>;
++                    };
++                };
++            };
++        };
++    };
+
+-- 
+2.43.0
 
