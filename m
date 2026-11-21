@@ -1,111 +1,105 @@
-From: Moad Tarrih <tarrihmoad@proton.me>
-Date: Sat, 21 Nov 2026 21:12:59 +0000
-Subject: [PATCH] platform/asus: asus-armoury: add power limits quirk for
- G814FP
+From: Jim Cromie <jim.cromie@gmail.com>
+Subject: [PATCH v3 0/6] drm/print,dyndbg: __drm_debug __read_mostly, uint
+ shrink, build fixes
+Date: Sat, 21 Nov 2026 14:22:53 -0700
+Message-Id: <20261121-rd-mostly-v3-0-89e74b23b491@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-asus-armoury-g814fp-v1-1-6b5ae34fd9c3@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CQAxA0auQrm0ynRAGvYpxUbBgTQTSMkZDu
- LujLt/i/w1cTMXhVG1g8lTXeSqgQwX9jadRUK/FEENsiGJA9uzI9pizvXFsqR4WTNKmRIG5kSO
- UcjEZ9PW7ni9/e+7u0q/fFez7BxZymrV3AAAA
-X-Change-ID: 20261120-asus-armoury-g814fp-7e87710aa6e9
-To: Corentin Chary <corentin.chary@gmail.com>, 
- "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
- Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
-Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Moad Tarrih <tarrihmoad@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795295586; l=2842;
- i=tarrihmoad@proton.me; s=20261108; h=from:subject:message-id;
- bh=DPUJpKF8RbaOpYEFNVa4zs2Ih/YJpmPkRRd8Np0e9P4=;
- b=eP3PVy4urFkTB9/mzoVzPMOYltucm29xHjRhMCWq+7pfbQYCQmvESY+YldNH7bx920a+H7OAt
- BaLw5p+EPqrCLQXagqv14iamJCo8VTKljT7tMIK4f1kWXEkFjcvSuvs
-X-Developer-Key: i=tarrihmoad@proton.me; a=ed25519;
- pk=wtwpmYxZldK7Qebavgtx7P5WmSQOiWjicK0506NOKLg=
-X-Endpoint-Received: by B4 Relay for tarrihmoad@proton.me/20261108 with auth_id=1453
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/03MQQqDMBBA0auEWTslmdZoXfUepYs0GTWgTUkkV
+ MS7F4UWtx/+WyBx9JygEQtEzj758IJGnAsBtjevjtE7aASQJC2vVGJ0OIY0DTNqQ62V1unWaSg
+ EvCO3/rNb90choPdpCnHe6ay2+lP0QckKJVL9rFylLuzI3rrR+OFkwwibkul/KkXyeBJKrGtZa
+ nYsydTHc13XLwnwPercAAAA
+X-Change-ID: 20260925-rd-mostly-6a2fc0cd6fd6
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Jason Baron <jbaron@akamai.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Jim Cromie <jim.cromie@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795296180; l=3008;
+ i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
+ bh=Zau8dBhEANl7tYMwKgNve822IH1DfMTFcsXZxbLchlw=;
+ b=+5W/OGApBUn9TFxMzwW4M3u5InVhsVQ/obNCS6z+Qr1EgJELGNrrlfdhyhiRCjYpbMyWnod0y
+ l/s988xi8iMBQjKmnJzA4ROSuqromCFp4nPJpw3woRYXjvSIhxb6Nlh
+X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
+ pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
+X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a power limits quirk entry for the ASUS ROG Strix G18 G814FP laptop.
-The limits and defaults were read from the Manual mode sliders in
-Armoury Crate on Windows.
+This series improves __drm_debug placement/sizing and fixes two build
+issues exposed when CONFIG_DRM_USE_DYNAMIC_DEBUG=y is enabled:        
 
-Without this entry the driver logs "No matching power limits found for
-this system" and the PPT and NVIDIA power attributes return -ENODEV.
+1. Mark __drm_debug as __read_mostly to move it out of the cacheline
+it currently shares with frequently written locks and structures.  In
+a 12-vkcube test, its read rate is ~83 kHz.
+    
+2. Fix spelling error in drivers/gpu/drm/Makefile, ie change "CFLAGS-"
+to "subdir-ccflags-".
 
-Signed-off-by: Moad Tarrih <tarrihmoad@proton.me>
+This adds -DDYNAMIC_DEBUG_MODULE to compilations in both drm and its
+subdirs, as needed with CONFIG_DYNAMIC_DEBUG_CORE=y but without
+CONFIG_DYNAMIC_DEBUG=y.
+
+3. Drop the unused `category` local in __drm_printfn_dbg() when
+CONFIG_DRM_USE_DYNAMIC_DEBUG=y expands __drm_debug_enabled() to true.
+
+4. Shrink __drm_debug and struct ddebug_class_param.bits from unsigned
+long back to (original) unsigned int, updating lib/dynamic_debug.c and        
+lib/test_dynamic_debug.c callers accordingly.               
+
+NOTES:
+
+drm and dyndbg are coupled on __drm_debug's size and type, so changing
+the size requires coordination between DRM and dyndbg.  The coupling
+allows dyndbg to still use the var to keep 'state', and allows drm to
+continue using it in the few cases where drm_*dbg doesnt quite fit.
+
+Because DRM_USE_DYNAMIC_DEBUG still depends on BROKEN, patches 2-4
+were build-tested with that dependency locally removed. That un-BROKEN
+patch is intentionally excluded here, as modular DRM probe-time
+drm.debug support (and external users like drivers/accel/) still
+need the separate/pending classmap fixup series.
+
+Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
-Tested on BIOS G814FP.317 (Ryzen 9 9955HX, RTX 5070 Laptop).
+Changes in v3:
+- dont need both ccflags-y and subdir-ccflags-y, latter covers former.
+- Link to v2: https://lore.kernel.org/r/20261120-rd-mostly-v2-0-88056ede02a8@gmail.com
 
-All values are the Armoury Crate Manual mode slider ranges. The entry
-matches G614FP, the 16" model of the same generation, except that the
-PL2/PL3 maximum is 162 W instead of 165 W.
-
-The GPU values agree with the ASUS GPU power specification for G814FP:
-https://rog.asus.com/us/articles/rog-gaming-laptops/the-complete-list-of-geforce-gpu-power-specifications-for-2025-rog-and-tuf-gaming-laptops
-
-I concluded `requires_fan_curve` to be `true` by setting it to false
-in a test build, writes to ppt_pl1_spl, ppt_pl2_sppt and ppt_pl3_fppt
-were accepted and read back, but the package still drew ~140 W under an
-all-core load, using `stress-ng` and turbostat to read the wattage.
-With a custom fan curve enabled, the same SPL 45 / SPPT 65 / FPPT 65
-limits held it at ~65 W.
----
- drivers/platform/asus/asus-armoury.h | 34 ++++++++++++++++++++++++++++++++++
- 1 file changed, 34 insertions(+)
-
-diff --git a/drivers/platform/asus/asus-armoury.h b/drivers/platform/asus/asus-armoury.h
-index 331c3bddf013..3b8937fefd9b 100644
---- a/drivers/platform/asus/asus-armoury.h
-+++ b/drivers/platform/asus/asus-armoury.h
-@@ -2638,6 +2638,40 @@ static const struct dmi_system_id power_limits[] = {
- 			.requires_fan_curve = false,
- 		},
- 	},
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_NAME, "G814FP"),
-+		},
-+		.driver_data = &(struct power_data) {
-+			.ac_data = &(struct power_limits) {
-+				.ppt_pl1_spl_min = 30,
-+				.ppt_pl1_spl_max = 120,
-+				.ppt_pl2_sppt_min = 65,
-+				.ppt_pl2_sppt_def = 140,
-+				.ppt_pl2_sppt_max = 162,
-+				.ppt_pl3_fppt_min = 65,
-+				.ppt_pl3_fppt_def = 140,
-+				.ppt_pl3_fppt_max = 162,
-+				.nv_temp_target_min = 75,
-+				.nv_temp_target_max = 87,
-+				.nv_dynamic_boost_min = 5,
-+				.nv_dynamic_boost_max = 15,
-+				.nv_tgp_min = 50,
-+				.nv_tgp_max = 100,
-+			},
-+			.dc_data = &(struct power_limits) {
-+				.ppt_pl1_spl_min = 25,
-+				.ppt_pl1_spl_max = 65,
-+				.ppt_pl2_sppt_min = 25,
-+				.ppt_pl2_sppt_max = 65,
-+				.ppt_pl3_fppt_min = 35,
-+				.ppt_pl3_fppt_max = 75,
-+				.nv_temp_target_min = 75,
-+				.nv_temp_target_max = 87,
-+			},
-+			.requires_fan_curve = true,
-+		},
-+	},
- 	{
- 		.matches = {
- 			DMI_MATCH(DMI_BOARD_NAME, "G814J"),
+Changes in v2:
+- Add subdir-ccflags- propagation in drivers/gpu/drm/Makefile (patch 2).
+- Add unused `category` warning fix under CONFIG_DRM_USE_DYNAMIC_DEBUG=y
+(patch 3). 
+- Add __drm_debug and ddebug_class_param.bits shrink to unsigned int
+(patch 4).
+- Link to v1: https://lore.kernel.org/r/20260926-rd-mostly-v1-0-28b7d714ed2c@gmail.com
 
 ---
-base-commit: 9c82959c37bf69c2ace8a0f975cf2129ec1fd982
-change-id: 20261120-asus-armoury-g814fp-7e87710aa6e9
+Jim Cromie (6):
+      drm/print: Mark __drm_debug as __read_mostly
+      drm: Fix incorrect CFLAGS-y spelling inside Makefile
+      fixup-makefile
+      drm: fix config dependent unused variable warning.
+      drm/print,dyndbg: restore __drm_debug to uint from ulong
+      drm-dyndbg: drop BROKEN on DRM_USE_DYNAMIC_DEBUG for testing (DONT_APPLY)
+
+ drivers/gpu/drm/Kconfig.debug | 1 -
+ drivers/gpu/drm/Makefile      | 3 ++-
+ drivers/gpu/drm/drm_print.c   | 7 +++----
+ include/drm/drm_print.h       | 2 +-
+ include/linux/dynamic_debug.h | 2 +-
+ lib/dynamic_debug.c           | 8 +++++---
+ lib/test_dynamic_debug.c      | 2 +-
+ 7 files changed, 13 insertions(+), 12 deletions(-)
+---
+base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
+change-id: 20260925-rd-mostly-6a2fc0cd6fd6
 
 Best regards,
---  
-Moad Tarrih <tarrihmoad@proton.me>
+-- 
+Jim Cromie <jim.cromie@gmail.com>
 
