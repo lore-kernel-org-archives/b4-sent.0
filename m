@@ -1,124 +1,100 @@
-From: Han Gao <gaohan@iscas.ac.cn>
-Date: Sat, 21 Nov 2026 18:38:08 +0800
-Subject: [PATCH 2/2] clk: sophgo: sg2042-clkgen: Keep gates of reserved
- devices enabled
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Sat, 21 Nov 2026 10:45:12 +0000
+Subject: [PATCH] clk: renesas: rzg2l: Don't mark a coupled clock enabled if
+ enabling fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-b4-sg2042-efi-rtc-v1-2-19898b8ad497@iscas.ac.cn>
-References: <20261121-b4-sg2042-efi-rtc-v1-0-19898b8ad497@iscas.ac.cn>
-In-Reply-To: <20261121-b4-sg2042-efi-rtc-v1-0-19898b8ad497@iscas.ac.cn>
-To: Ard Biesheuvel <ardb@kernel.org>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
- Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>, 
- Atish Patra <atish.patra@linux.dev>, Stephen Boyd <sboyd@kernel.org>, 
- Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, Chen Wang <chen.wang@linux.dev>, 
- Inochi Amaoto <inochiama@gmail.com>
-Cc: Han Gao <rabenda.cn@gmail.com>, linux-efi@vger.kernel.org, 
- linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-clk@vger.kernel.org, sophgo@lists.linux.dev, 
- Han Gao <gaohan@iscas.ac.cn>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795257496; l=2910;
- i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=FkwMGNzzFP9SAcLoWWEAD8DpNa60dTDRuCtVoBpvCok=;
- b=q3erWT1fwlHrNACKyfuHpCkIL80XgAGDT0V7qQ9mS+QUbZiQmrTwvliwagyujW22SWx/sZF6H
- bwT8bv9x9O2AhcQ4V7L6UQij2B8Mnqdpeu0VWzecd1SoDkGktQ2wX4c
-X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
- pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
-X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
+Message-Id: <20261121-rzg2l-coupled-clk-v1-1-c38c8299c176@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADh2AWsC/yXMTQqDMBBA4avIrDtg4k+gVyld6GTUsUElURHFu
+ 5vq8lu8d0BgLxzgnRzgeZUg4xChXglQVw0to9ho0KkuldIK/d5qhzQuk2OL5H5YUmMKm5rM5Ay
+ xmzw3st3Pz/dxWOqeaf6P4DwvpwpJMnUAAAA=
+X-Change-ID: 20261121-rzg2l-coupled-clk-6cf75d07374e
+To: sboyd@kernel.org, geert+renesas@glider.be
+Cc: linux-renesas-soc@vger.kernel.org, biju.das.jz@bp.renesas.com, 
+ linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
+ jbrunet+clk@baylibre.com, bmasney+clk@redhat.com, 
+ prabhakar.mahadev-lad.rj@bp.renesas.com
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795257912; l=2447;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=3y15QbBzV0RnkTxoTog+ECpsMR9NS7LppzilDPoTG4k=;
+ b=rBqqHHjt9+erqhzDjInR2FFJQu+aaY9fmkYHpZb5dHmxnwctDJWsFGz6zgxPgOIp3Fq5F0a2B
+ G8yjBTFWrESCs7jEMOcOAQwdPIlUM0WYIb1FlUMr3Hprq1eCWbt+baM
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On Milk-V Pioneer, firmware can own I2C0 to back the EFI RTC, with the
-node marked status = "reserved". I2C0 shares GATE_CLK_APB_I2C with the
-I2C controllers Linux uses. When those runtime-suspend, the gate is
-switched off under the firmware and GetTime() returns EFI_NOT_READY.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-Walk the reserved children of /soc and match their clock references,
-as done in commit 6aa175476490 ("clk: renesas: cpg-mssr: Ignore all
-clocks assigned to non-Linux system"). Unlike that driver, use
-CLK_IS_CRITICAL rather than CLK_IGNORE_UNUSED: the gate is shared with
-devices Linux drives, and their runtime PM would still turn it off.
+For coupled clocks, rzg2l_mod_clock_enable() sets clock->enabled before
+it touches the hardware, so that the sibling can see it:
 
-Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
+	clock->enabled = true;
+	...
+	return rzg2l_mod_clock_endisable(hw, true);
+
+If rzg2l_mod_clock_endisable() then fails, for example because polling
+the CLK_MON bit times out, the flag stays set. The clock core does not
+count the clock as enabled or call its disable callback when enabling
+fails, so nothing clears the flag for this failed enable.
+
+A later enable of the sibling then sees the stale flag and returns
+success without enabling or checking the hardware. Disabling that
+sibling skips the shared clock bit as well, because the failed clock
+still looks enabled.
+
+Clear the flag again when enabling fails.
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: 32897e6fff19 ("clk: renesas: rzg2l: Add support to handle coupled clocks")
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
- drivers/clk/sophgo/clk-sg2042-clkgen.c | 38 +++++++++++++++++++++++++++++++++-
- 1 file changed, 37 insertions(+), 1 deletion(-)
+Compile tested on arm64 with clang (W=1, no new warnings). I don't have an RZ/G2L board.
+---
+ drivers/clk/renesas/rzg2l-cpg.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/clk/sophgo/clk-sg2042-clkgen.c b/drivers/clk/sophgo/clk-sg2042-clkgen.c
-index 6abc2c973c49..414904965edf 100644
---- a/drivers/clk/sophgo/clk-sg2042-clkgen.c
-+++ b/drivers/clk/sophgo/clk-sg2042-clkgen.c
-@@ -11,6 +11,8 @@
- #include <linux/clk.h>
- #include <linux/clk-provider.h>
- #include <linux/io.h>
-+#include <linux/of.h>
-+#include <linux/of_clk.h>
- #include <linux/platform_device.h>
- #include <asm/div64.h>
+diff --git a/drivers/clk/renesas/rzg2l-cpg.c b/drivers/clk/renesas/rzg2l-cpg.c
+index dc2bcbab18f1..18c4ed362295 100644
+--- a/drivers/clk/renesas/rzg2l-cpg.c
++++ b/drivers/clk/renesas/rzg2l-cpg.c
+@@ -2080,10 +2080,11 @@ static int rzg2l_mod_clock_endisable(struct clk_hw *hw, bool enable)
+ static int rzg2l_mod_clock_enable(struct clk_hw *hw)
+ {
+ 	struct mod_clock *clock = to_mod_clock(hw);
++	struct rzg2l_cpg_priv *priv = clock->priv;
++	unsigned long flags;
++	int ret;
  
-@@ -840,6 +842,35 @@ static int sg2042_clk_register_divs(struct device *dev,
- 	return ret;
- }
+ 	if (clock->sibling) {
+-		struct rzg2l_cpg_priv *priv = clock->priv;
+-		unsigned long flags;
+ 		bool enabled;
  
-+static bool sg2042_clk_is_reserved(struct device_node *clkgen, unsigned int id)
-+{
-+	struct device_node *soc __free(device_node) = of_find_node_by_path("/soc");
-+	struct device_node *node;
-+
-+	for_each_reserved_child_of_node(soc, node) {
-+		unsigned int i, count = of_clk_get_parent_count(node);
-+
-+		for (i = 0; i < count; i++) {
-+			struct of_phandle_args clkspec;
-+			bool match;
-+
-+			if (of_parse_phandle_with_args(node, "clocks", "#clock-cells",
-+						       i, &clkspec))
-+				continue;
-+
-+			match = clkspec.np == clkgen && clkspec.args_count == 1 &&
-+				clkspec.args[0] == id;
-+			of_node_put(clkspec.np);
-+			if (match) {
-+				of_node_put(node);
-+				return true;
-+			}
-+		}
+ 		spin_lock_irqsave(&priv->rmw_lock, flags);
+@@ -2094,7 +2095,15 @@ static int rzg2l_mod_clock_enable(struct clk_hw *hw)
+ 			return 0;
+ 	}
+ 
+-	return rzg2l_mod_clock_endisable(hw, true);
++	ret = rzg2l_mod_clock_endisable(hw, true);
++	if (ret && clock->sibling) {
++		/* the clock core will not disable it, so don't count it */
++		spin_lock_irqsave(&priv->rmw_lock, flags);
++		clock->enabled = false;
++		spin_unlock_irqrestore(&priv->rmw_lock, flags);
 +	}
 +
-+	return false;
-+}
-+
- static int sg2042_clk_register_gates(struct device *dev,
- 				     struct sg2042_clk_data *clk_data,
- 				     const struct sg2042_gate_clock gate_clks[],
-@@ -850,7 +881,12 @@ static int sg2042_clk_register_gates(struct device *dev,
- 	int i, ret = 0;
++	return ret;
+ }
  
- 	for (i = 0; i < num_gate_clks; i++) {
-+		unsigned long flags;
-+
- 		gate = &gate_clks[i];
-+		flags = gate->hw.init->flags;
-+		if (sg2042_clk_is_reserved(dev->of_node, gate->id))
-+			flags |= CLK_IS_CRITICAL;
- 		hw = __devm_clk_hw_register_gate
- 			(dev,
- 			 NULL,
-@@ -858,7 +894,7 @@ static int sg2042_clk_register_gates(struct device *dev,
- 			 NULL,
- 			 gate->hw.init->parent_hws[0],
- 			 NULL,
--			 gate->hw.init->flags,
-+			 flags,
- 			 clk_data->iobase + gate->offset_enable,
- 			 gate->bit_idx,
- 			 0,
+ static void rzg2l_mod_clock_disable(struct clk_hw *hw)
 
--- 
-2.55.0
+
 
