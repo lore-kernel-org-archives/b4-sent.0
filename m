@@ -1,17 +1,12 @@
 From: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
-Subject: [PATCH v10 0/2] A proposal to add a gpio-enabled clock driver.
-Date: Sat, 21 Nov 2026 13:16:07 +0000
-Message-Id: <20261121-feature-clock-guard-v10-0-5d449739bb8c@bruker.com>
+Date: Sat, 21 Nov 2026 13:16:08 +0000
+Subject: [PATCH v10 1/2] dt-bindings: clock: Add gpio-enabled-clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJeZAWsC/43RzU7DMAwA4FdBORNk5z+ceA/EwXGzrRqsKN0q0
- LR3J92BglLQjrbkz39nMebS51E83p1FyVM/9sOhBgj3d4J3dNhm2Xc1IRQoBxqD3GQ6nkqW/Dr
- wXm5PVDq5UUCKtU3RWVEr30ve9B9X9vmlxrt+PA7l89plwjn7vzehBOlQe04Ggkn+KZXTPpcHH
- t7EDE5qQSzCOqJmhJU1NnRWG2gQvSB1lnVEVwSQmYAIDNkGMQvilVtHTEVy5JC0V8kjN4hdkIh
- 2HbEVMYqS7ViTI2oQ9wNRfh1x8zrgY9AJdWbVIP4GxFckdB1G60IXqUXCDUiYv6Mh6pA1KMIGi
- d8Iwl83iRVhZLBk4jzKL+RyuXwBvYdRROACAAA=
-X-Change-ID: 20260318-feature-clock-guard-f20a2c35b965
+Message-Id: <20261121-feature-clock-guard-v10-1-5d449739bb8c@bruker.com>
+References: <20261121-feature-clock-guard-v10-0-5d449739bb8c@bruker.com>
+In-Reply-To: <20261121-feature-clock-guard-v10-0-5d449739bb8c@bruker.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -22,99 +17,97 @@ Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org,
  devicetree@vger.kernel.org, Vyacheslav Yurkov <uvv.mail@gmail.com>, 
  Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795266970; l=3728;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795266970; l=2434;
  i=V.Yurkov.EXT@bruker.com; s=20260318; h=from:subject:message-id;
- bh=WSW5wx/mSC8oXiBVGrOyu6PgJaHE0ySq4NfVc7Wh0q8=;
- b=SPtE3G/TBzqpzeunjO8RxfFjyPgp0QqlPRA01/7/K0JN4o6AAldTo0YDCtVG+AeJCoy5mFGg4
- 96XQH9BzrYfBZXHynM9AbzniAw3TR3wikdUBXMGRdpBlnchcqe+LNVE
+ bh=f2PidYUyBCdaFNNQ/BVDjkj78Q6/18FvhAsIhyBPoqs=;
+ b=vgFxCE6QHrKkg/j54aiPLhL0g1OfACPu4/bea/ppMvC/e3XKHbJnFjRqG5BCwJbAZQWRlWu7P
+ hlawHWPlvmbAHfXz9lkrQWQcJhFtGnBZpOQ1tgaRjAb4R58wAS9wWo5
 X-Developer-Key: i=V.Yurkov.EXT@bruker.com; a=ed25519;
  pk=snJmgYVOKlp7aQtK9tWnEI7QTYxpPpJJvxdVsnxA7Fk=
 X-Endpoint-Received: by B4 Relay for V.Yurkov.EXT@bruker.com/20260318 with auth_id=686
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A gpio-enabled clock represents an input clock, which state is determined
-by a GPIO signal. It's similar to a gated-fixed-clock, but GPIO direction
-is inverted. Consumers can use the output clock to wait until the clock
-is ready and only then initialize / access dependent peripherals.
+Some clocks are switched on and off by hardware outside software
+control, which reports through a GPIO whether the clock is currently
+running. Software cannot enable such a clock, but its consumers must
+not use it before the GPIO indicates that it is running.
 
-The usage example for such a driver is when peripherals depend on PLLs in
-a FPGA, which can't be directly accessed by the CPU, but need a GPIO pin
-to check whether clock is actually usable. E.g. some of the IPs might not
-have a proper split between registers and IP core, which means that if an
-external clock and/or PLL lock is missing and one tries to access the 
-registers, the response never comes, thus the CPU stalls.
+Add a binding for a clock that passes its parent clock through
+unchanged and is considered enabled only while a GPIO signal is
+asserted. The parent clock determines the rate. The status GPIO is
+given by enabled-gpios, and poll-timeout-us bounds how long a consumer
+waits for the clock to become available.
 
-Signed-off-by: Vyacheslav Yurkov <uvv.mail@gmail.com>
 Signed-off-by: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 ---
-Changes in v10:
-- Use only sleep capable ops
-- Make commit messages more generic
-- Improve error handling for clock_prepare
-- Link to v9: https://lore.kernel.org/r/20261015-feature-clock-guard-v9-0-c1c05a498d9a@bruker.com
-
-Changes in v9:
-- Changed wordking from "locked" to "enabled" to be more generic
-- Use a separate DT schema file similar to other clock drivers
-- Add a timeout for polling in enable()/prepare()
-- Depending on whether GPIO can sleep or not use prepare() or enable()
-  set of ops respectively.
-- Decouple the implementation from exisiting drivers
-- Link to v8: https://lore.kernel.org/r/20260927-feature-clock-guard-v8-0-630938e302a1@bruker.com
-
-Changes in v8:
-- Fix return value of clk_gpio_locked_prepare()
-- Link to v7: https://lore.kernel.org/r/20260927-feature-clock-guard-v7-0-8dd19568d9a2@bruker.com
-
-Changes in v7:
-- Fix compatibility strings and schema errors.
-- Update GPIO pin name
-- Link to v6: https://lore.kernel.org/r/20260927-feature-clock-guard-v6-0-007983b13ec2@bruker.com
-
-Changes in v6:
-- Debug messages dropped.
-- The new driver is now an extension of exising clk-gpio drivers.
-- The controller doesn't enable the parent clock, the consumer is
-  supposed to do that instead.
-- Link to v5: https://lore.kernel.org/r/20260915-feature-clock-guard-v5-0-42ab5dc3a6aa@bruker.com
-
-Changes in v5:
-- Use existing DT binding with an additional property instead of adding
-  a new one
-- The driver is simplified in a way that it represents the actual HW
-  desgin without additional unrelated constructs
-- Aggregation is removed, now it's one clock input, one clock output
-- Link to v4: https://lore.kernel.org/r/20260726-feature-clock-guard-v4-0-e9c8b372b71c@bruker.com
-
-Changes in v4:
-- Removed driver specifics from DT binding
-- Link to v3: https://lore.kernel.org/r/20260603-feature-clock-guard-v3-0-01cca0aa04a5@bruker.com
-
-Changes in v3:
-- Removed unnecessary dt bindings
-- Improved HW description and commit messages
-- Link to v2: https://lore.kernel.org/r/20260510-feature-clock-guard-v2-0-6c25458d5340@bruker.com
-
-Changes in v2:
-- Renamed to clk-gpio-locked to express intent.
-- Provide enable() / is_enabled() operations so the clock behaves as
-  expected
-- Fixed DTS errors / warnings
-- Link to v1: https://lore.kernel.org/r/20260318-feature-clock-guard-v1-0-6137cb4084b7@bruker.com
-
+Our use case: peripheral clocks generated by FPGA PLLs, with the
+PLL-lock signals routed to GPIOs of the SoC.
 ---
-Vyacheslav Yurkov (2):
-      dt-bindings: clock: Add gpio-enabled-clock
-      clk: gpio: Add driver for GPIO-signalled clocks
+ .../bindings/clock/gpio-enabled-clock.yaml         | 55 ++++++++++++++++++++++
+ 1 file changed, 55 insertions(+)
 
- .../bindings/clock/gpio-enabled-clock.yaml         |  55 +++++++++++
- drivers/clk/clk-gpio.c                             | 107 +++++++++++++++++++++
- 2 files changed, 162 insertions(+)
----
-base-commit: 65e4fd942f72a9dba0e4e257290c4fa1aa756854
-change-id: 20260318-feature-clock-guard-f20a2c35b965
+diff --git a/Documentation/devicetree/bindings/clock/gpio-enabled-clock.yaml b/Documentation/devicetree/bindings/clock/gpio-enabled-clock.yaml
+new file mode 100644
+index 000000000000..76c1425931d2
+--- /dev/null
++++ b/Documentation/devicetree/bindings/clock/gpio-enabled-clock.yaml
+@@ -0,0 +1,55 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/clock/gpio-enabled-clock.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: GPIO Enabled Clock
++
++maintainers:
++  - Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
++
++properties:
++  compatible:
++    const: gpio-enabled-clock
++
++  clocks:
++    maxItems: 1
++
++  "#clock-cells":
++    const: 0
++
++  clock-output-names:
++    maxItems: 1
++
++  enabled-gpios:
++    description: GPIO that indicates whether the clock is enabled or disabled.
++    maxItems: 1
++
++  poll-timeout-us:
++    description: Timeout in microseconds for waiting for a GPIO signal.
++    default: 10
++    minimum: 10
++    maximum: 1000
++
++required:
++  - compatible
++  - clocks
++  - "#clock-cells"
++  - enabled-gpios
++  - clock-output-names
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++
++    clock {
++        compatible = "gpio-enabled-clock";
++        #clock-cells = <0>;
++        clocks = <&pll>;
++        clock-output-names = "gpio-enabled-clock";
++        enabled-gpios = <&gpio0 4 GPIO_ACTIVE_HIGH>;
++        poll-timeout-us = <20>;
++    };
 
-Best regards,
 -- 
-Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+2.34.1
 
