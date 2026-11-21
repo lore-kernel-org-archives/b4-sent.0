@@ -1,178 +1,120 @@
-From: =?utf-8?q?Aykut_C=C4=B1nc=C4=B1k?= <aykutcincik@ogr.eskisehir.edu.tr>
-Date: Sat, 21 Nov 2026 16:09:40 +0300
-Subject: [PATCH] ext4: discard inode preallocations when indirect block
- allocation fails
+From: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+Subject: [PATCH v10 0/2] A proposal to add a gpio-enabled clock driver.
+Date: Sat, 21 Nov 2026 13:16:07 +0000
+Message-Id: <20261121-feature-clock-guard-v10-0-5d449739bb8c@bruker.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261121-ext4-ind-discard-pa-v1-1-ee92928f7797@ogr.eskisehir.edu.tr>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMPQ6DMAxA4asgz7WEI/6vUnUIiQPuEFBMERLi7
- k3L+A3vnaCchBWG4oTEu6gsMYMeBbjZxolRfDaY0jREhpCPrUKJHr2os8njarHrQ1VTHXrbtpD
- LNXGQ4399vm7rZ3yz234ruK4vugv123cAAAA=
-X-Change-ID: 20261121-ext4-ind-discard-pa-89f4515f9a77
-To: Theodore Ts'o <tytso@mit.edu>, 
- Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
- Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, 
- syzbot+d79019213609e7056a19@syzkaller.appspotmail.com, 
- stable@vger.kernel.org, 
- =?utf-8?q?Aykut_C=C4=B1nc=C4=B1k?= <aykutcincik@ogr.eskisehir.edu.tr>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795266579; l=5732;
- i=aykutcincik@ogr.eskisehir.edu.tr; s=20261121; h=from:subject:message-id;
- bh=u2mp19xud4/0B/he8gKsRnxVzIf7SqxhCwexE7gjAkI=;
- b=jvo/6FBjNLAM0qCcxCqG6yF3tGE/Bv4Rm08gWTz5D56f2ECKbkB54ESwzFkyb4oB5cLve0xAD
- T3i5HTF05NWBpyH5eeyQHzEdh/jcwzDQHLC7KLKocJFT/HxC8PlIdVW
-X-Developer-Key: i=aykutcincik@ogr.eskisehir.edu.tr; a=ed25519;
- pk=0VzUGJI+NLEekrIgYW4SWfh5kCTg8XsSWzEwmTagNes=
-X-Endpoint-Received: by B4 Relay for aykutcincik@ogr.eskisehir.edu.tr/20261121 with auth_id=1593
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAJeZAWsC/43RzU7DMAwA4FdBORNk5z+ceA/EwXGzrRqsKN0q0
+ LR3J92BglLQjrbkz39nMebS51E83p1FyVM/9sOhBgj3d4J3dNhm2Xc1IRQoBxqD3GQ6nkqW/Dr
+ wXm5PVDq5UUCKtU3RWVEr30ve9B9X9vmlxrt+PA7l89plwjn7vzehBOlQe04Ggkn+KZXTPpcHH
+ t7EDE5qQSzCOqJmhJU1NnRWG2gQvSB1lnVEVwSQmYAIDNkGMQvilVtHTEVy5JC0V8kjN4hdkIh
+ 2HbEVMYqS7ViTI2oQ9wNRfh1x8zrgY9AJdWbVIP4GxFckdB1G60IXqUXCDUiYv6Mh6pA1KMIGi
+ d8Iwl83iRVhZLBk4jzKL+RyuXwBvYdRROACAAA=
+X-Change-ID: 20260318-feature-clock-guard-f20a2c35b965
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Brian Masney <bmasney@redhat.com>, 
+ Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Jyri Sarha <jsarha@ti.com>
+Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, Vyacheslav Yurkov <uvv.mail@gmail.com>, 
+ Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795266970; l=3728;
+ i=V.Yurkov.EXT@bruker.com; s=20260318; h=from:subject:message-id;
+ bh=WSW5wx/mSC8oXiBVGrOyu6PgJaHE0ySq4NfVc7Wh0q8=;
+ b=SPtE3G/TBzqpzeunjO8RxfFjyPgp0QqlPRA01/7/K0JN4o6AAldTo0YDCtVG+AeJCoy5mFGg4
+ 96XQH9BzrYfBZXHynM9AbzniAw3TR3wikdUBXMGRdpBlnchcqe+LNVE
+X-Developer-Key: i=V.Yurkov.EXT@bruker.com; a=ed25519;
+ pk=snJmgYVOKlp7aQtK9tWnEI7QTYxpPpJJvxdVsnxA7Fk=
+X-Endpoint-Received: by B4 Relay for V.Yurkov.EXT@bruker.com/20260318 with auth_id=686
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When ext4_alloc_branch() or ext4_splice_branch() fails after the data
-blocks have been allocated, the blocks are released with
-ext4_free_blocks().  For an indirect-mapped inode these blocks usually
-come from the inode preallocation (PA), and ext4_mb_use_inode_pa() has
-already subtracted them from pa_free.  Freeing them does not return
-them to the PA, so the PA still covers the logical range while pa_free
-no longer accounts for it.
+A gpio-enabled clock represents an input clock, which state is determined
+by a GPIO signal. It's similar to a gated-fixed-clock, but GPIO direction
+is inverted. Consumers can use the output clock to wait until the clock
+is ready and only then initialize / access dependent peripherals.
 
-Writeback retries the same logical range after such a failure, for
-example after sb_getblk() returns NULL with -ENOMEM for an indirect
-block that lies beyond the end of a shrunk loop device, and
-ext4_mb_use_preallocated() picks the same PA again.  This time pa_free
-is smaller than the requested length and the BUG_ON() in
-ext4_mb_use_inode_pa() fires:
+The usage example for such a driver is when peripherals depend on PLLs in
+a FPGA, which can't be directly accessed by the CPU, but need a GPIO pin
+to check whether clock is actually usable. E.g. some of the IPs might not
+have a proper split between registers and IP core, which means that if an
+external clock and/or PLL lock is missing and one tries to access the 
+registers, the response never comes, thus the CPU stalls.
 
-  kernel BUG at fs/ext4/mballoc.c:4779!
-  RIP: 0010:ext4_mb_use_inode_pa+0x557/0x890
-  Call Trace:
-   ext4_mb_use_preallocated+0xd96/0x1440
-   ext4_mb_new_blocks+0x72d/0x4900
-   ext4_ind_map_blocks+0x142c/0x2210
-   ext4_map_create_blocks+0x2be/0x5c0
-   ext4_map_blocks+0xbb2/0x1480
-   ext4_do_writepages+0x1dba/0x3a60
-   ext4_writepages+0x370/0x770
-   do_writepages+0x288/0x600
-   filemap_writeback+0x203/0x290
-   file_write_and_wait_range+0xf7/0x170
-   ext4_sync_file+0x418/0xdb0
-   do_fsync+0xda/0x240
-
-If the BUG_ON() is not reached, the mismatch shows up later as
-"freeing already freed block" and "ext4_mb_release_inode_pa: free N,
-pa_free M" errors when the PA is released.
-
-The extent-mapped path has handled this since mballoc was added by
-discarding the inode PAs before freeing the blocks in
-ext4_ext_map_blocks().  Do the same in both indirect error paths.
-
-An AI coding assistant (Claude Code with Claude Opus) was used to
-analyse the syzbot report, write a reproducer, trace the root cause with
-temporary printk instrumentation, and draft both the fix and this
-changelog.  I have reviewed the change and verified it as follows:
-without the fix the reproducer hits the BUG_ON() deterministically in
-QEMU (virtme-ng, KASAN and lockdep enabled); with the fix it ran 3/3
-times without BUG, KASAN or pa_free reports.  The ext4 KUnit tests pass,
-and a copy/write/delete workload on a no-extents filesystem leaves
-e2fsck clean.
-
-Reported-by: syzbot+d79019213609e7056a19@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=d79019213609e7056a19
-Fixes: c9de560ded61 ("ext4: Add multi block allocator for ext4")
-Cc: stable@vger.kernel.org
-Signed-off-by: Aykut Cıncık <aykutcincik@ogr.eskisehir.edu.tr>
+Signed-off-by: Vyacheslav Yurkov <uvv.mail@gmail.com>
+Signed-off-by: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 ---
-The syzbot reproducers no longer mount on current kernels (bigalloc with
-s_first_data_block != 0 is now rejected), so I used this reproducer instead:
+Changes in v10:
+- Use only sleep capable ops
+- Make commit messages more generic
+- Improve error handling for clock_prepare
+- Link to v9: https://lore.kernel.org/r/20261015-feature-clock-guard-v9-0-c1c05a498d9a@bruker.com
 
-  truncate -s 4M img
-  mkfs.ext4 -q -F -b 1024 -O ^extents,^huge_file,^has_journal,^metadata_csum,^64bit,^flex_bg img
-  losetup /dev/loop0 img
-  mount -o errors=continue /dev/loop0 /mnt
-  touch /mnt/f
-  ./shrink /mnt/f /dev/loop0
+Changes in v9:
+- Changed wordking from "locked" to "enabled" to be more generic
+- Use a separate DT schema file similar to other clock drivers
+- Add a timeout for polling in enable()/prepare()
+- Depending on whether GPIO can sleep or not use prepare() or enable()
+  set of ops respectively.
+- Decouple the implementation from exisiting drivers
+- Link to v8: https://lore.kernel.org/r/20260927-feature-clock-guard-v8-0-630938e302a1@bruker.com
 
-shrink.c writes 64 KiB, shrinks the loop device to 32 KiB with
-LOOP_SET_STATUS64 (lo_sizelimit), then rewrites and calls fsync().  The
-indirect block now lies beyond the end of the device, so sb_getblk() fails
-and ext4_alloc_branch() returns -ENOMEM.
+Changes in v8:
+- Fix return value of clk_gpio_locked_prepare()
+- Link to v7: https://lore.kernel.org/r/20260927-feature-clock-guard-v7-0-8dd19568d9a2@bruker.com
 
-shrink.c:
+Changes in v7:
+- Fix compatibility strings and schema errors.
+- Update GPIO pin name
+- Link to v6: https://lore.kernel.org/r/20260927-feature-clock-guard-v6-0-007983b13ec2@bruker.com
 
-  #include <fcntl.h>
-  #include <linux/loop.h>
-  #include <stdio.h>
-  #include <string.h>
-  #include <sys/ioctl.h>
-  #include <unistd.h>
+Changes in v6:
+- Debug messages dropped.
+- The new driver is now an extension of exising clk-gpio drivers.
+- The controller doesn't enable the parent clock, the consumer is
+  supposed to do that instead.
+- Link to v5: https://lore.kernel.org/r/20260915-feature-clock-guard-v5-0-42ab5dc3a6aa@bruker.com
 
-  int main(int argc, char **argv)
-  {
-  	static char buf[64 * 1024];
-  	struct loop_info64 li;
-  	int fd = open(argv[1], O_RDWR);
-  	int lfd = open(argv[2], O_RDWR);
+Changes in v5:
+- Use existing DT binding with an additional property instead of adding
+  a new one
+- The driver is simplified in a way that it represents the actual HW
+  desgin without additional unrelated constructs
+- Aggregation is removed, now it's one clock input, one clock output
+- Link to v4: https://lore.kernel.org/r/20260726-feature-clock-guard-v4-0-e9c8b372b71c@bruker.com
 
-  	if (fd < 0 || lfd < 0) { perror("open"); return 1; }
-  	memset(buf, 'a', sizeof(buf));
-  	pwrite(fd, buf, sizeof(buf), 0);
-  	if (ioctl(lfd, LOOP_GET_STATUS64, &li)) { perror("get"); return 1; }
-  	li.lo_sizelimit = 32 * 1024;
-  	if (ioctl(lfd, LOOP_SET_STATUS64, &li)) { perror("set"); return 1; }
-  	for (int r = 0; r < 8; r++) {
-  		pwrite(fd, buf, sizeof(buf), 0);
-  		printf("fsync %d: %d\n", r, fsync(fd));
-  	}
-  	return 0;
-  }
+Changes in v4:
+- Removed driver specifics from DT binding
+- Link to v3: https://lore.kernel.org/r/20260603-feature-clock-guard-v3-0-01cca0aa04a5@bruker.com
 
-With the fix applied, fsync() in this reproducer still does not return,
-because writeback treats -ENOMEM as transient and keeps retrying.  That
-behaviour predates this patch and is not changed by it.
+Changes in v3:
+- Removed unnecessary dt bindings
+- Improved HW description and commit messages
+- Link to v2: https://lore.kernel.org/r/20260510-feature-clock-guard-v2-0-6c25458d5340@bruker.com
 
-Two related problems in the same error paths are not addressed here and
-can be sent separately if wanted:
- - ext4_splice_branch() does not undo *where->p = where->key on failure.
- - The blocks are freed with a quota update even for delalloc-reserved
-   blocks, which can underflow i_blocks.
----
- fs/ext4/indirect.c | 7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index a495080df710..3b4ec1c3d5ec 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -389,6 +389,11 @@ static int ext4_alloc_branch(handle_t *handle,
- 	return 0;
- failed:
- 	if (i == indirect_blks) {
-+		/*
-+		 * The data blocks may come from the inode PA, which already
-+		 * counts them as used; drop the PA so they are not handed out twice.
-+		 */
-+		ext4_discard_preallocations(ar->inode);
- 		/* Free data blocks */
- 		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
- 				 ar->len, 0);
-@@ -493,6 +498,8 @@ static int ext4_splice_branch(handle_t *handle,
- 		ext4_free_blocks(handle, ar->inode, where[i].bh, 0, 1,
- 				 EXT4_FREE_BLOCKS_FORGET);
- 	}
-+	/* See ext4_alloc_branch(): the data blocks may belong to the inode PA. */
-+	ext4_discard_preallocations(ar->inode);
- 	ext4_free_blocks(handle, ar->inode, NULL, le32_to_cpu(where[num].key),
- 			 ar->len, 0);
- 
+Changes in v2:
+- Renamed to clk-gpio-locked to express intent.
+- Provide enable() / is_enabled() operations so the clock behaves as
+  expected
+- Fixed DTS errors / warnings
+- Link to v1: https://lore.kernel.org/r/20260318-feature-clock-guard-v1-0-6137cb4084b7@bruker.com
 
 ---
-base-commit: c44104f3642da720164042623e4832836aefdd8e
-change-id: 20261121-ext4-ind-discard-pa-89f4515f9a77
+Vyacheslav Yurkov (2):
+      dt-bindings: clock: Add gpio-enabled-clock
+      clk: gpio: Add driver for GPIO-signalled clocks
+
+ .../bindings/clock/gpio-enabled-clock.yaml         |  55 +++++++++++
+ drivers/clk/clk-gpio.c                             | 107 +++++++++++++++++++++
+ 2 files changed, 162 insertions(+)
+---
+base-commit: 65e4fd942f72a9dba0e4e257290c4fa1aa756854
+change-id: 20260318-feature-clock-guard-f20a2c35b965
 
 Best regards,
---  
-Aykut Cıncık <aykutcincik@ogr.eskisehir.edu.tr>
+-- 
+Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 
