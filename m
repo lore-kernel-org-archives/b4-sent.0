@@ -1,10 +1,11 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Sat, 21 Nov 2026 14:22:54 -0700
-Subject: [PATCH v3 1/6] drm/print: Mark __drm_debug as __read_mostly
+Date: Sat, 21 Nov 2026 14:22:55 -0700
+Subject: [PATCH v3 2/6] drm: Fix incorrect CFLAGS-y spelling inside
+ Makefile
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-rd-mostly-v3-1-89e74b23b491@gmail.com>
+Message-Id: <20261121-rd-mostly-v3-2-89e74b23b491@gmail.com>
 References: <20261121-rd-mostly-v3-0-89e74b23b491@gmail.com>
 In-Reply-To: <20261121-rd-mostly-v3-0-89e74b23b491@gmail.com>
 To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -16,47 +17,51 @@ To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795296180; l=1190;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795296180; l=1669;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=0kwXpdVLXiB5IO7ltNhfDof5ySe4FrwdEVRL0SZIEB8=;
- b=tn6BJvh9oiUTxvJTlzzVM+X6gScHEeV/BZlIdEL2dLB1C4jxADltsnJIs3SqIUhZ92zEra7Io
- YFQ0HmlLoVmC/W8BDUkxMcEFeP/fhOQWX3jFpqeZKzhbGyWT2BevnHz
+ bh=PNDrfsA84PuTN7eG4zqahY8+OYZihSCYKHCt1mJS2go=;
+ b=Q6kceBssgoFt7rOTiEK1VGH0yxbBzkdT5eBxc86olKaz7paVZQWDuXjWaVpVLbEseC9xpc0Tk
+ VqMMcCF4r5SBfRvBGFgkAqhtu9XVs9FyZ1VYoWMpKye1Q8lr7TOxUMQ
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Under a multi-client workload of 12 concurrent vkcubes on AMD iGPU,
-__drm_debug is read at ~83.3 kHz across multiple cores during atomic
-and vblank checks.
+DRM Makefile spelled CFLAGS-$(CONFIG_DRM_USE_DYNAMIC_DEBUG)
+incorrectly, which kbuild ignores.  So -D<flag> was omitted, breaking
+DRM dynamic debug callsites when CONFIG_DYNAMIC_DEBUG_CORE=y without
+CONFIG_DYNAMIC_DEBUG.
 
-But __drm_debug is written only when userspace does:
-  echo 0xff > /sys/module/drm/parameters/debug
+Replace "CFLAGS-" with "subdir-ccflags-", so that -D<flag> is added to
+drm-core and to drivers and helpers in the subdirectories.  "ccflags-y"
+only applies to the current directory.
 
-Currently the linker packs __drm_debug into .bss adjacent to hot
-structures: drm_lease_idr_object, drm_class, and drm_global_mutex,
-causing unnecessary cacheline invalidations.
+NOTE: When CONFIG_DYNAMIC_DEBUG=y, -DDYNAMIC_DEBUG_MODULE is redundant
+because defined(CONFIG_DYNAMIC_DEBUG) already enables callsites.
+Passing it unconditionally under CONFIG_DRM_USE_DYNAMIC_DEBUG avoids
+extra Makefile conditionals and keeps the preprocessor environment
+consistent across DYNAMIC_DEBUG=y and DYNAMIC_DEBUG_CORE=y builds.
 
-Mark __drm_debug as __read_mostly to relocate it to .data..read_mostly.
-
+Fixes: 84ec67288c10 ("drm_print: wrap drm_*_dbg in dyndbg descriptor factory macro")
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
- drivers/gpu/drm/drm_print.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/gpu/drm/Makefile | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/gpu/drm/drm_print.c b/drivers/gpu/drm/drm_print.c
-index 86cef1a37678..50cdeb1b15e2 100644
---- a/drivers/gpu/drm/drm_print.c
-+++ b/drivers/gpu/drm/drm_print.c
-@@ -40,7 +40,7 @@
-  * __drm_debug: Enable debug output.
-  * Bitmask of DRM_UT_x. See include/drm/drm_print.h for details.
-  */
--unsigned long __drm_debug;
-+unsigned long __drm_debug __read_mostly;
- EXPORT_SYMBOL(__drm_debug);
+diff --git a/drivers/gpu/drm/Makefile b/drivers/gpu/drm/Makefile
+index 2c6bc093a923..4a93c09f08d9 100644
+--- a/drivers/gpu/drm/Makefile
++++ b/drivers/gpu/drm/Makefile
+@@ -3,7 +3,8 @@
+ # Makefile for the drm device driver.  This driver provides support for the
+ # Direct Rendering Infrastructure (DRI) in XFree86 4.1.0 and higher.
  
- MODULE_PARM_DESC(debug, "Enable debug output, where each bit enables a debug category.\n"
+-CFLAGS-$(CONFIG_DRM_USE_DYNAMIC_DEBUG)	+= -DDYNAMIC_DEBUG_MODULE
++ccflags-$(CONFIG_DRM_USE_DYNAMIC_DEBUG)		+= -DDYNAMIC_DEBUG_MODULE
++subdir-ccflags-$(CONFIG_DRM_USE_DYNAMIC_DEBUG)	+= -DDYNAMIC_DEBUG_MODULE
+ 
+ # Unconditionally enable W=1 warnings locally
+ # --- begin copy-paste W=1 warnings from scripts/Makefile.warn
 
 -- 
 2.56.1
