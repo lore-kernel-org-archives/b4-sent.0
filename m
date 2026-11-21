@@ -1,11 +1,11 @@
 From: Yuugo Yoneda <yogo.0917.sabu@gmail.com>
-Date: Sat, 21 Nov 2026 21:43:12 +0900
-Subject: [PATCH RFC v2 02/13] dt-bindings: arm: add SiRF AT550 and Yupiteru
- YPL514si
+Date: Sat, 21 Nov 2026 21:43:13 +0900
+Subject: [PATCH RFC v2 03/13] dt-bindings: interrupt-controller: add SiRF
+ AT550 interrupt controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-at550-rfc-v1-v2-2-b0309d0789b2@gmail.com>
+Message-Id: <20261121-at550-rfc-v1-v2-3-b0309d0789b2@gmail.com>
 References: <20261121-at550-rfc-v1-v2-0-b0309d0789b2@gmail.com>
 In-Reply-To: <20261121-at550-rfc-v1-v2-0-b0309d0789b2@gmail.com>
 To: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org
@@ -22,70 +22,89 @@ Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
  linux-mmc@vger.kernel.org, linux-doc@vger.kernel.org, soc@lists.linux.dev
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795264991; l=1613;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795264991; l=2262;
  i=yogo.0917.sabu@gmail.com; s=ypl514-20261117; h=from:subject:message-id;
- bh=PQrX/FspDA33PekWwNtkQNVgZAR2YGwuuowr8uCQ39A=;
- b=hnIFHkpO/fOjyh207yCGUwqWuFV7rTti8wsPk3qoG+YRunLsOlNp/PFVSab7tls06HaRhzjRt
- Ty67dTXHUS3CP/JdaxriOUFj5TyhAF6X889ETQ40JFnH3O2TKbZ6Rz6
+ bh=hQXi5o6uDCTP4E56RNB4IhOxolk7346NKiavrfeMedA=;
+ b=WIlFzlInDyH3iaKROCkCJ79qmP2V3e+BWEsZN/YE/doff08yMT0dtpSHH8nNByCNmylgYiG82
+ Nu2OcIauQIDChC+JqCUewwkWIG3SeiWaUcRwUjYXPVXQQGJWWvxhspF
 X-Developer-Key: i=yogo.0917.sabu@gmail.com; a=ed25519;
  pk=TIQ8Tk4xQrxyn8rmk3GI2f5qg/kO6g2KZm7YOOyBHeg=
 X-Endpoint-Received: by B4 Relay for yogo.0917.sabu@gmail.com/ypl514-20261117 with auth_id=1550
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Devicetree binding schema for the SiRF AT550 SoC and the
-Yupiteru YPL514si board, and create the SIRF AT550 PLATFORM MAINTAINERS
-entry.
+Document the Devicetree binding for the 64-source level-sensitive
+interrupt controller in the SiRF AT550 SoC.
 
 Signed-off-by: Yuugo Yoneda <yogo.0917.sabu@gmail.com>
 ---
- .../devicetree/bindings/arm/sirf,at550.yaml        | 22 ++++++++++++++++++++++
- MAINTAINERS                                        |  5 +++++
- 2 files changed, 27 insertions(+)
+ .../interrupt-controller/sirf,at550-intc.yaml      | 46 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 2 files changed, 47 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/sirf,at550.yaml b/Documentation/devicetree/bindings/arm/sirf,at550.yaml
+diff --git a/Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml b/Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml
 new file mode 100644
-index 000000000..0234324e2
+index 000000000..7effe6c9b
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/arm/sirf,at550.yaml
-@@ -0,0 +1,22 @@
++++ b/Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml
+@@ -0,0 +1,46 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/arm/sirf,at550.yaml#
++$id: http://devicetree.org/schemas/interrupt-controller/sirf,at550-intc.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: SiRF AT550 platforms
++title: SiRF AT550 interrupt controller
 +
 +maintainers:
 +  - Yuugo Yoneda <yogo.0917.sabu@gmail.com>
 +
-+properties:
-+  $nodename:
-+    const: '/'
-+  compatible:
-+    items:
-+      - const: yupiteru,ypl514si
-+      - const: sirf,at550
++description:
++  The AT550 interrupt controller routes 64 level-sensitive interrupt sources to
++  the ARM1136 IRQ and FIQ inputs. Each source has a fixed active level; the
++  single interrupt cell is the source number.
 +
-+additionalProperties: true
++properties:
++  compatible:
++    const: sirf,at550-intc
++  reg:
++    maxItems: 1
++  interrupt-controller: true
++  '#interrupt-cells':
++    const: 1
++  '#address-cells':
++    const: 0
++
++required:
++  - compatible
++  - reg
++  - interrupt-controller
++  - '#interrupt-cells'
++
++additionalProperties: false
++
++examples:
++  - |
++    interrupt-controller@90020000 {
++        compatible = "sirf,at550-intc";
++        reg = <0x90020000 0x1000>;
++        interrupt-controller;
++        #interrupt-cells = <1>;
++        #address-cells = <0>;
++    };
 +
 +...
 diff --git a/MAINTAINERS b/MAINTAINERS
-index d73899016..a825b3bae 100644
+index a825b3bae..e052d9dde 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -25847,6 +25847,11 @@ F:	drivers/gpio/gpio-siox.c
- F:	drivers/siox/*
- F:	include/trace/events/siox.h
+@@ -25851,6 +25851,7 @@ SIRF AT550 PLATFORM
+ M:	Yuugo Yoneda <yogo.0917.sabu@gmail.com>
+ S:	Odd Fixes
+ F:	Documentation/devicetree/bindings/arm/sirf,at550.yaml
++F:	Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml
  
-+SIRF AT550 PLATFORM
-+M:	Yuugo Yoneda <yogo.0917.sabu@gmail.com>
-+S:	Odd Fixes
-+F:	Documentation/devicetree/bindings/arm/sirf,at550.yaml
-+
  SIS 190 ETHERNET DRIVER
  M:	Francois Romieu <romieu@fr.zoreil.com>
- L:	netdev@vger.kernel.org
 
 -- 
 2.56.0
