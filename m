@@ -1,92 +1,87 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 21 Nov 2026 14:25:24 +0000
-Subject: [PATCH v2 2/2] media: rkvdec: Decode monochrome H.264 to GREY
+Subject: [PATCH v4 0/3] media: rockchip: Add the IEP2 deinterlacer of
+ RK3568/RK3588
+Date: Sat, 21 Nov 2026 14:25:36 +0000
+Message-Id: <20261121-iep2-v4-0-760cf25f322b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-b4-h264-monochrome-grey-v2-2-ffe7f2383cbe@gmail.com>
-References: <20261121-b4-h264-monochrome-grey-v2-0-ffe7f2383cbe@gmail.com>
-In-Reply-To: <20261121-b4-h264-monochrome-grey-v2-0-ffe7f2383cbe@gmail.com>
-To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Heiko Stuebner <heiko@sntech.de>, 
- Detlev Casanova <detlev.casanova@collabora.com>, 
- Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
- Hans Verkuil <hverkuil@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13Oyw6CMBAF0F8hXVtDh/KoK//DuCjtADXySIuNh
+ vDvlocJcXmTe+7MRBxag45coolY9MaZvguBnyKiGtnVSI0OmUAMGWMspgYHoKWQQmWY54pzEqq
+ Dxcq815nbfcvuVT5QjYtdGo1xY28/6x3Plt5vkm+TntGYygK1xlQCQ3atW2meZ9W3ZJn0cETpj
+ iCgRBe5KJQWMk3/UXJAsD/vk4BQcCxFlYHQcETzPH8B7n4B2hQBAAA=
+X-Change-ID: 20261110-iep2-b9a9c6e77c44
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
 Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Hans Verkuil <hverkuil@kernel.org>, 
+ Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Alex Bee <knaerzche@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795271122; l=2530;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795271137; l=2350;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=PaUrtuP231glBes9RSGbgqUD4OET3z2k5Uwhdrm6JOc=;
- b=y/1yCxtIXKH7PSSDwSz4e9oAw7VMWTHsbk5cgfs2stAayL7ItyV+UH/eYU8x3y14IicrWk2X6
- 2wYgLxw2liUA5D3NqRvGnifFVnOWiFAaOe/mMmno+877gjvhS13jL+V
+ bh=G5R9VMIFiJU1tJNOmYpfUElrCWf6JYYQ7tduXHilQTo=;
+ b=ZF5lg+BDUPoifHZlr601YFWm6SGCsP1AN87K283TtzRWDsLlHl5SL2TGW2Lv9oYTFxeFc4gKc
+ hTIQcAzvEloCEcX2AMsVyk/x1pUuoIzYGbygGRUlUAdbcJPa5q9B+Oz
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The decoder writes only the luma plane of a 4:0:0 H.264 picture, but
-the driver offers NV12, so userspace gets a chroma plane the decoder
-never wrote (green or stale pictures). JVT-FR-EXT HPCAMOLQ_BRCM_B and
-HPCVMOLQ_BRCM_B fail although their luma is bit-exact.
+Add a V4L2 mem2mem driver for the IEP2 deinterlacer of the RK3568 and
+RK3588, with its binding and the RK3588 DT node. The V4L2 side follows
+Alex Bee's IEP driver.
 
-Offer GREY for 8-bit 4:0:0 streams. There is no V4L2 format for the
-packed 10-bit luma that 10-bit 4:0:0 would need, so those keep NV15.
+Tested on an Orange Pi 5 (RK3588S) with a 7.3-based kernel (KASAN,
+lockdep); build-tested on media next. v4l2-compliance 59/59, all four
+modes at 1080i without IOMMU faults, s2idle and deep suspend while
+streaming, unbind while streaming, forced watchdog and IOMMU fault
+resets. Not tested: RK3568. DMABUF imports of exactly the image size
+are refused, because of the 4 KiB OUTPUT padding (see 2/3).
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+One case is still open: a reset during a transfer, seen only with
+forced watchdog resets, can leave the IOMMU busy. Jobs then fail
+without DMA and the driver suspends at once so that PD_VDPU powers
+off, which restores it. While another device of the domain, e.g. a
+video decoder, keeps it on, the jobs keep failing.
+
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
+
 ---
- drivers/media/platform/rockchip/rkvdec/rkvdec-h264-common.c | 4 +++-
- drivers/media/platform/rockchip/rkvdec/rkvdec.c             | 4 ++++
- drivers/media/platform/rockchip/rkvdec/rkvdec.h             | 1 +
- 3 files changed, 8 insertions(+), 1 deletion(-)
+Changes in v4:
+- 2/3: fail the probe if the IOMMU domain allocation fails (Sashiko)
+- Link to v3: https://patch.msgid.link/20261120-iep2-v3-0-e94eb9f629d2@gmail.com
 
-diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec-h264-common.c b/drivers/media/platform/rockchip/rkvdec/rkvdec-h264-common.c
-index 54639512e456..8ad41c4e56c8 100644
---- a/drivers/media/platform/rockchip/rkvdec/rkvdec-h264-common.c
-+++ b/drivers/media/platform/rockchip/rkvdec/rkvdec-h264-common.c
-@@ -146,7 +146,9 @@ enum rkvdec_image_fmt rkvdec_h264_get_image_fmt(struct rkvdec_ctx *ctx,
- 		return RKVDEC_IMG_FMT_ANY;
- 
- 	if (sps->bit_depth_luma_minus8 == 0) {
--		if (sps->chroma_format_idc == 2)
-+		if (sps->chroma_format_idc == 0)
-+			return RKVDEC_IMG_FMT_400_8BIT;
-+		else if (sps->chroma_format_idc == 2)
- 			return RKVDEC_IMG_FMT_422_8BIT;
- 		else
- 			return RKVDEC_IMG_FMT_420_8BIT;
-diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec.c b/drivers/media/platform/rockchip/rkvdec/rkvdec.c
-index fbcd0f175ad3..548659d23bc2 100644
---- a/drivers/media/platform/rockchip/rkvdec/rkvdec.c
-+++ b/drivers/media/platform/rockchip/rkvdec/rkvdec.c
-@@ -414,6 +414,10 @@ static const struct rkvdec_decoded_fmt_desc rkvdec_h264_decoded_fmts[] = {
- 		.fourcc = V4L2_PIX_FMT_NV20,
- 		.image_fmt = RKVDEC_IMG_FMT_422_10BIT,
- 	},
-+	{
-+		.fourcc = V4L2_PIX_FMT_GREY,
-+		.image_fmt = RKVDEC_IMG_FMT_400_8BIT,
-+	},
- };
- 
- static const struct rkvdec_ctrl_desc rkvdec_vp9_ctrl_descs[] = {
-diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec.h b/drivers/media/platform/rockchip/rkvdec/rkvdec.h
-index a24be6638b6b..58c53a1f58b3 100644
---- a/drivers/media/platform/rockchip/rkvdec/rkvdec.h
-+++ b/drivers/media/platform/rockchip/rkvdec/rkvdec.h
-@@ -108,6 +108,7 @@ enum rkvdec_image_fmt {
- 	RKVDEC_IMG_FMT_420_10BIT,
- 	RKVDEC_IMG_FMT_422_8BIT,
- 	RKVDEC_IMG_FMT_422_10BIT,
-+	RKVDEC_IMG_FMT_400_8BIT,
- };
- 
- struct rkvdec_decoded_fmt_desc {
+---
+Arun Iyengar (3):
+      media: dt-bindings: Add Rockchip IEP2 deinterlacer
+      media: rockchip: Add IEP2 deinterlacer driver
+      arm64: dts: rockchip: Add IEP2 deinterlacer to RK3588
 
--- 
-2.55.0
+ Documentation/admin-guide/media/rockchip-iep2.rst  |   32 +
+ Documentation/admin-guide/media/v4l-drivers.rst    |    1 +
+ .../bindings/media/rockchip,rk3568-iep2.yaml       |   95 ++
+ MAINTAINERS                                        |    8 +
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      |   22 +
+ drivers/media/platform/rockchip/Kconfig            |    1 +
+ drivers/media/platform/rockchip/Makefile           |    1 +
+ drivers/media/platform/rockchip/iep2/Kconfig       |   16 +
+ drivers/media/platform/rockchip/iep2/Makefile      |    3 +
+ drivers/media/platform/rockchip/iep2/iep2-regs.h   |  191 +++
+ drivers/media/platform/rockchip/iep2/iep2.c        | 1319 ++++++++++++++++++++
+ drivers/media/platform/rockchip/iep2/iep2.h        |  108 ++
+ 12 files changed, 1797 insertions(+)
+---
+base-commit: ccf78740d63813c452c035b57d17a650492562fa
+change-id: 20261110-iep2-b9a9c6e77c44
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
