@@ -1,26 +1,25 @@
 From: Suyuan Wang <shyckless@gmail.com>
-Date: Sat, 21 Nov 2026 10:45:12 +0000
-Subject: [PATCH] clk: renesas: rzg2l: Don't mark a coupled clock enabled if
- enabling fails
+Date: Sat, 21 Nov 2026 11:21:13 +0000
+Subject: [PATCH net] nfc: only send the SE_IO response to privileged
+ listeners
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-rzg2l-coupled-clk-v1-1-c38c8299c176@gmail.com>
-X-B4-Tracking: v=1; b=H4sIADh2AWsC/yXMTQqDMBBA4avIrDtg4k+gVyld6GTUsUElURHFu
- 5vq8lu8d0BgLxzgnRzgeZUg4xChXglQVw0to9ho0KkuldIK/d5qhzQuk2OL5H5YUmMKm5rM5Ay
- xmzw3st3Pz/dxWOqeaf6P4DwvpwpJMnUAAAA=
-X-Change-ID: 20261121-rzg2l-coupled-clk-6cf75d07374e
-To: sboyd@kernel.org, geert+renesas@glider.be
-Cc: linux-renesas-soc@vger.kernel.org, biju.das.jz@bp.renesas.com, 
- linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
- jbrunet+clk@baylibre.com, bmasney+clk@redhat.com, 
- prabhakar.mahadev-lad.rj@bp.renesas.com
+Message-Id: <20261121-nfc-se-io-filter-v1-1-a28b383a6300@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKh+AWsC/yWMwQ6CMBAFf4W8M5vQopXwK8SD1K0uIYV0qzEh/
+ LtFjzPJzAblJKzoqw2J36KyxAKmruCft/hgknth2MY6Y6yhGDxpsQsFmTMnak+2u7TO+WY8o2R
+ r4iCf33JA5IzrX+prnNjnY4Z9/wLFCu53eQAAAA==
+X-Change-ID: 20261121-nfc-se-io-filter-34287366c0b5
+To: david@ixit.cz, kuba@kernel.org, edumazet@kernel.org, pabeni@redhat.com, 
+ davem@davemloft.net
+Cc: oe-linux-nfc@lists.linux.dev, horms@kernel.org, 
+ linux-kernel@vger.kernel.org, netdev@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795257912; l=2447;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795260073; l=3495;
  i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=3y15QbBzV0RnkTxoTog+ECpsMR9NS7LppzilDPoTG4k=;
- b=rBqqHHjt9+erqhzDjInR2FFJQu+aaY9fmkYHpZb5dHmxnwctDJWsFGz6zgxPgOIp3Fq5F0a2B
- G8yjBTFWrESCs7jEMOcOAQwdPIlUM0WYIb1FlUMr3Hprq1eCWbt+baM
+ bh=4d8GuF8Ba+/1/ZMaY9xY4YhAq9qRQO0d6gqeD0lMyaA=;
+ b=vkTC0F29g8hXjYrSjCLZgj7pbBGIXgpOYAbITdoHdXu6dorCWCCzSy5Gn+PVloXt0hZFJ+7Dz
+ 5XjXVYnDubNDiwi8tqI1BKFfpI+N+eFulezEa/3aeJ0mHSYwlsVR1oZ
 X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
  pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
 X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
@@ -28,73 +27,87 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Suyuan Wang <stevewong@hust.edu.cn>
 
-For coupled clocks, rzg2l_mod_clock_enable() sets clock->enabled before
-it touches the hardware, so that the sibling can see it:
+NFC_CMD_SE_IO sends an APDU to a secure element and needs CAP_NET_ADMIN
+(GENL_ADMIN_PERM). The response from the secure element is not sent
+back to the requester, though: se_io_cb() multicasts it with
+NFC_ATTR_SE_APDU on the "events" group, and generic netlink lets any
+user join that group. So an unprivileged user can read every response
+APDU that a privileged process exchanges with the secure element.
 
-	clock->enabled = true;
-	...
-	return rzg2l_mod_clock_endisable(hw, true);
+The response has to stay on the multicast group, because that is where
+userspace reads it: neard's seeld sends NFC_CMD_SE_IO on one socket and
+handles the response on the socket it has subscribed to "events".
+Requiring CAP_NET_ADMIN for the whole group would also hide the device
+and target events from unprivileged listeners.
 
-If rzg2l_mod_clock_endisable() then fails, for example because polling
-the CLK_MON bit times out, the flag stays set. The clock core does not
-count the clock as enabled or call its disable callback when enabling
-fails, so nothing clears the flag for this failed enable.
-
-A later enable of the sibling then sees the stale flag and returns
-success without enabling or checking the hardware. Disabling that
-sibling skips the shared clock bit as well, because the failed clock
-still looks enabled.
-
-Clear the flag again when enabling fails.
+So keep the multicast, but filter the receivers: deliver the SE_IO
+response only to sockets that were opened with CAP_NET_ADMIN in the
+initial user namespace, the capability that NFC_CMD_SE_IO itself needs.
+The check uses the credentials of the socket's opener, as
+do_one_broadcast() does, because se_io_cb() runs in the driver's
+context; a socket opened by a privileged process still gets the
+response after the process drops the capability or passes the socket
+on. Kernel sockets have no file and are skipped. Other events on the
+group are not affected.
 
 Found with a static analysis tool and checked by hand.
 
-Fixes: 32897e6fff19 ("clk: renesas: rzg2l: Add support to handle coupled clocks")
+Fixes: 5ce3f32b5264 ("NFC: netlink: SE API implementation")
 Cc: stable@vger.kernel.org
 Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
 Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
 Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-Compile tested on arm64 with clang (W=1, no new warnings). I don't have an RZ/G2L board.
----
- drivers/clk/renesas/rzg2l-cpg.c | 15 ++++++++++++---
- 1 file changed, 12 insertions(+), 3 deletions(-)
+Tested in QEMU (x86_64, KASAN) with a test-only NFC driver whose se_io
+answers from a work item. Four listeners subscribe to "events": root;
+a socket opened by root that then drops CAP_NET_ADMIN; and two sockets
+opened without the capability (root without CAP_NET_ADMIN, nobody).
+Root then does DEV_UP (which adds the secure element), ENABLE_SE and
+SE_IO.
 
-diff --git a/drivers/clk/renesas/rzg2l-cpg.c b/drivers/clk/renesas/rzg2l-cpg.c
-index dc2bcbab18f1..18c4ed362295 100644
---- a/drivers/clk/renesas/rzg2l-cpg.c
-+++ b/drivers/clk/renesas/rzg2l-cpg.c
-@@ -2080,10 +2080,11 @@ static int rzg2l_mod_clock_endisable(struct clk_hw *hw, bool enable)
- static int rzg2l_mod_clock_enable(struct clk_hw *hw)
- {
- 	struct mod_clock *clock = to_mod_clock(hw);
-+	struct rzg2l_cpg_priv *priv = clock->priv;
-+	unsigned long flags;
-+	int ret;
+Before: all four get SE_ADDED and the SE_IO response with the APDU.
+After:  root and the socket opened by root get both; the two sockets
+        opened without the capability get SE_ADDED only.
+
+Not tested on hardware (st21nfca and st-nci implement se_io).
+---
+ net/nfc/netlink.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/net/nfc/netlink.c b/net/nfc/netlink.c
+index 224bdfa2dd0d..ebacbdd7193b 100644
+--- a/net/nfc/netlink.c
++++ b/net/nfc/netlink.c
+@@ -1472,6 +1472,19 @@ struct se_io_ctx {
+ 	u32 se_idx;
+ };
  
- 	if (clock->sibling) {
--		struct rzg2l_cpg_priv *priv = clock->priv;
--		unsigned long flags;
- 		bool enabled;
- 
- 		spin_lock_irqsave(&priv->rmw_lock, flags);
-@@ -2094,7 +2095,15 @@ static int rzg2l_mod_clock_enable(struct clk_hw *hw)
- 			return 0;
- 	}
- 
--	return rzg2l_mod_clock_endisable(hw, true);
-+	ret = rzg2l_mod_clock_endisable(hw, true);
-+	if (ret && clock->sibling) {
-+		/* the clock core will not disable it, so don't count it */
-+		spin_lock_irqsave(&priv->rmw_lock, flags);
-+		clock->enabled = false;
-+		spin_unlock_irqrestore(&priv->rmw_lock, flags);
-+	}
++/*
++ * Only listeners whose socket was opened with the capability that
++ * NFC_CMD_SE_IO requires get the response APDU. Check the opener of the
++ * socket, as do_one_broadcast() does, since this runs in the driver's
++ * context. Kernel sockets have no file and get nothing.
++ */
++static int se_io_filter(struct sock *dsk, struct sk_buff *skb, void *data)
++{
++	struct file *file = dsk->sk_socket->file;
 +
-+	return ret;
- }
++	return !file || !file_ns_capable(file, &init_user_ns, CAP_NET_ADMIN);
++}
++
+ static void se_io_cb(void *context, u8 *apdu, size_t apdu_len, int err)
+ {
+ 	struct se_io_ctx *ctx = context;
+@@ -1496,7 +1509,8 @@ static void se_io_cb(void *context, u8 *apdu, size_t apdu_len, int err)
  
- static void rzg2l_mod_clock_disable(struct clk_hw *hw)
+ 	genlmsg_end(msg, hdr);
+ 
+-	genlmsg_multicast(&nfc_genl_family, msg, 0, 0, GFP_KERNEL);
++	genlmsg_multicast_netns_filtered(&nfc_genl_family, &init_net, msg, 0, 0,
++					 GFP_KERNEL, se_io_filter, NULL);
+ 
+ 	kfree(ctx);
+ 
 
 
 
