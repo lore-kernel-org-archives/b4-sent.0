@@ -1,10 +1,11 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Sun, 22 Nov 2026 00:01:46 +0300
-Subject: [PATCH v8 01/10] dt-bindings: vendor-prefixes: Add Securifi
+Date: Sun, 22 Nov 2026 00:01:47 +0300
+Subject: [PATCH v8 02/10] dt-bindings: arm: Add Cortina Systems CS7542 and
+ Securifi Almond+
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-b4-cs75xx-v8-1-5f971b0dc69c@gmail.com>
+Message-Id: <20261122-b4-cs75xx-v8-2-5f971b0dc69c@gmail.com>
 References: <20261122-b4-cs75xx-v8-0-5f971b0dc69c@gmail.com>
 In-Reply-To: <20261122-b4-cs75xx-v8-0-5f971b0dc69c@gmail.com>
 To: Arnd Bergmann <arnd@arndb.de>, Linus Walleij <linusw@kernel.org>, 
@@ -22,39 +23,64 @@ Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  Conor Dooley <conor.dooley@microchip.com>, 
  Fil Dunsky <filipp.dunsky@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795294929; l=944;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795294929; l=1646;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=573roVKzdDYFuCfGNESYptLR9xpcGKVT07rDsXKZwOU=;
- b=9IGSTp+UPPKwidUo+IM1fJmflAPWiRdgWJM34LaPqXfLkS6YSbKB5HlKAFo0OMxaOaa7XVoWu
- 0Udkp5udGS1BN/jxVxh2g71uO3xJxvsOdXh7b0LzaCN98LWeOnK7mO2
+ bh=ur5Y90DJUCyqB+ubnyEmmsptLVPvVwYRa4Bevb+7QSg=;
+ b=B5/+P0DJsOW/YHdPo//fCPFgKUQixMQbYcIlqD+bgRJXcRJMXCKJa5fH3XrbmRIcrZBmnG2tV
+ 0bEsaHtWg7KAFyrxjSaBzsCqQey9+AeRg9e+B/zGFwccQ/w2l+IV45/
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Securifi Ltd. makes the Almond series of touchscreen Wi-Fi routers.
-Add a vendor prefix for it.
+Add the top-level binding for boards built around the Cortina Systems
+CS7542 ("Goldengate G2") network processor, a dual Cortex-A9 SoC, and
+the first such board, the Securifi Almond+ touchscreen router.
 
 Reviewed-by: Linus Walleij <linusw@kernel.org>
 Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/arm/cortina.yaml | 31 ++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index 5471a06f9..f1f764ddb 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -1499,6 +1499,8 @@ patternProperties:
-     description: SDMC Technology Co., Ltd
-   "^seagate,.*":
-     description: Seagate Technology PLC
-+  "^securifi,.*":
-+    description: Securifi Ltd.
-   "^seeed,.*":
-     description: Seeed Technology Co., Ltd
-   "^seirobotics,.*":
+diff --git a/Documentation/devicetree/bindings/arm/cortina.yaml b/Documentation/devicetree/bindings/arm/cortina.yaml
+new file mode 100644
+index 000000000..1c04b1781
+--- /dev/null
++++ b/Documentation/devicetree/bindings/arm/cortina.yaml
+@@ -0,0 +1,31 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/arm/cortina.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Cortina Systems CS75xx platforms
++
++maintainers:
++  - Fil Dunsky <filipp.dunsky@gmail.com>
++
++description:
++  The CS75xx ("Goldengate G2") family are network processors from Cortina
++  Systems. The CS7542 has two Cortex-A9 cores with an SCU, GIC, private
++  timers and a PL310 L2 cache controller, a packet processing engine, three
++  PCIe root ports, a NAND flash controller and low speed peripherals.
++
++properties:
++  $nodename:
++    const: '/'
++  compatible:
++    oneOf:
++      - description: CS7542 based boards
++        items:
++          - enum:
++              - securifi,almondplus
++          - const: cortina,cs7542
++
++additionalProperties: true
++
++...
 
 -- 
 2.53.0
