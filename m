@@ -1,11 +1,10 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Sat, 21 Nov 2026 15:49:19 -0700
-Subject: [PATCH 1/6] vmlinux.lds.h: refactor BOUNDED_SECTION_* macros into
- bounded_sections.lds.h
+Date: Sat, 21 Nov 2026 15:49:20 -0700
+Subject: [PATCH 2/6] vmlinux.lds.h: drop unused HEADERED_SECTION* macros
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-vmlinux-lds-v1-1-49818f3f5cc0@gmail.com>
+Message-Id: <20261121-vmlinux-lds-v1-2-49818f3f5cc0@gmail.com>
 References: <20261121-vmlinux-lds-v1-0-49818f3f5cc0@gmail.com>
 In-Reply-To: <20261121-vmlinux-lds-v1-0-49818f3f5cc0@gmail.com>
 To: Arnd Bergmann <arnd@arndb.de>, Jason Baron <jbaron@akamai.com>, 
@@ -16,114 +15,35 @@ To: Arnd Bergmann <arnd@arndb.de>, Jason Baron <jbaron@akamai.com>,
 Cc: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org, 
  linux-modules@vger.kernel.org, Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795301375; l=4249;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795301375; l=1428;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=QfwV+7B9vW313W0NIzlE0FrPMVDG/3xJRQVA8/rQh7Y=;
- b=oLQ+RzrEt0IqT4TGsfBORZ3T52lAR2ndF00hCsv5QFp+agJcJg/Vf9yXhMoBMKv1wtFnObUOU
- Fw3gA9gr91vArCpHc26wI72f/SesPbgBmRMnyxYeOz/dLQTJ5Bk6PhT
+ bh=g5z+IDfPUrLi9ooJXrXG7eSrlGaOIyVCDk2Kag52knw=;
+ b=8Wjuc7MD0ocj9DKzUsHhTKX4gKapvtQNihvNKFW29mVEKxvKEEwX9qY3zacUro/LVHBkf+CYo
+ cxboaSyrpNEDEEFFreyZ7UrfwdzRscBLLDCAValR+sBLhQFeeHNbQu7
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move BOUNDED_SECTION_* macros to a new helper file:
-include/asm-generic/bounded_sections.lds.h and include it back into
-vmlinux.lds.h.  This allows its reuse later to fix a failure to keep
-dyndbg sections in some circumstances.
+These macros are unused, no point in carrying them any more.
 
-NOTES:
+NB: these macros were just moved to bounded_sections.lds.h, from
+vmlinux.lds.h, which is the known entity, and therefore more
+meaningful in the 1-line summary, so thats what I used as the topic.
 
-These macros are only for use in vmlinux.lds.h, where the _start &
-_end symbols are needed.  Modules keep sections separate in ELF
-sections, with their boundaries known, so the _start and _end are not
-useful, and may confuse tools not expecting them.
-
-This patch ignores a checkpatch warning, because new file is covered
-by "GENERIC INCLUDE/ASM HEADER FILES" in MAINTAINERS
-
-CC: Arnd Bergmann <arnd@arndb.de>
-CC: linux-arch@vger.kernel.org
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
-v3: move include to top
----
- include/asm-generic/bounded_sections.lds.h | 36 ++++++++++++++++++++++++++++++
- include/asm-generic/vmlinux.lds.h          | 31 +------------------------
- 2 files changed, 37 insertions(+), 30 deletions(-)
+ include/asm-generic/bounded_sections.lds.h | 15 ---------------
+ 1 file changed, 15 deletions(-)
 
 diff --git a/include/asm-generic/bounded_sections.lds.h b/include/asm-generic/bounded_sections.lds.h
-new file mode 100644
-index 000000000000..8c29293ca7fb
---- /dev/null
+index 8c29293ca7fb..268cdc34389b 100644
+--- a/include/asm-generic/bounded_sections.lds.h
 +++ b/include/asm-generic/bounded_sections.lds.h
-@@ -0,0 +1,36 @@
-+/* SPDX-License-Identifier: GPL-2.0-or-later */
-+
-+#ifndef _ASM_GENERIC_BOUNDED_SECTIONS_H
-+#define _ASM_GENERIC_BOUNDED_SECTIONS_H
-+
-+#define BOUNDED_SECTION_PRE_LABEL(_sec_, _label_, _BEGIN_, _END_)	\
-+	_BEGIN_##_label_ = .;						\
-+	KEEP(*(_sec_))							\
-+	_END_##_label_ = .;
-+
-+#define BOUNDED_SECTION_POST_LABEL(_sec_, _label_, _BEGIN_, _END_)	\
-+	_label_##_BEGIN_ = .;						\
-+	KEEP(*(_sec_))							\
-+	_label_##_END_ = .;
-+
-+#define BOUNDED_SECTION_BY(_sec_, _label_)				\
-+	BOUNDED_SECTION_PRE_LABEL(_sec_, _label_, __start, __stop)
-+
-+#define BOUNDED_SECTION(_sec)	 BOUNDED_SECTION_BY(_sec, _sec)
-+
-+#define HEADERED_SECTION_PRE_LABEL(_sec_, _label_, _BEGIN_, _END_, _HDR_) \
-+	_HDR_##_label_	= .;						\
-+	KEEP(*(.gnu.linkonce.##_sec_))					\
-+	BOUNDED_SECTION_PRE_LABEL(_sec_, _label_, _BEGIN_, _END_)
-+
-+#define HEADERED_SECTION_POST_LABEL(_sec_, _label_, _BEGIN_, _END_, _HDR_) \
-+	_label_##_HDR_ = .;						\
-+	KEEP(*(.gnu.linkonce.##_sec_))					\
-+	BOUNDED_SECTION_POST_LABEL(_sec_, _label_, _BEGIN_, _END_)
-+
-+#define HEADERED_SECTION_BY(_sec_, _label_)				\
-+	HEADERED_SECTION_PRE_LABEL(_sec_, _label_, __start, __stop)
-+
-+#define HEADERED_SECTION(_sec)	 HEADERED_SECTION_BY(_sec, _sec)
-+
-+#endif /* _ASM_GENERIC_BOUNDED_SECTIONS_H */
-diff --git a/include/asm-generic/vmlinux.lds.h b/include/asm-generic/vmlinux.lds.h
-index 3eb732942d69..5fed4194983c 100644
---- a/include/asm-generic/vmlinux.lds.h
-+++ b/include/asm-generic/vmlinux.lds.h
-@@ -50,6 +50,7 @@
-  *               [__nosave_begin, __nosave_end] for the nosave data
-  */
+@@ -18,19 +18,4 @@
  
-+#include <asm-generic/bounded_sections.lds.h>
- #include <asm-generic/codetag.lds.h>
+ #define BOUNDED_SECTION(_sec)	 BOUNDED_SECTION_BY(_sec, _sec)
  
- #ifndef LOAD_OFFSET
-@@ -211,36 +212,6 @@
- # endif
- #endif
- 
--#define BOUNDED_SECTION_PRE_LABEL(_sec_, _label_, _BEGIN_, _END_)	\
--	_BEGIN_##_label_ = .;						\
--	KEEP(*(_sec_))							\
--	_END_##_label_ = .;
--
--#define BOUNDED_SECTION_POST_LABEL(_sec_, _label_, _BEGIN_, _END_)	\
--	_label_##_BEGIN_ = .;						\
--	KEEP(*(_sec_))							\
--	_label_##_END_ = .;
--
--#define BOUNDED_SECTION_BY(_sec_, _label_)				\
--	BOUNDED_SECTION_PRE_LABEL(_sec_, _label_, __start, __stop)
--
--#define BOUNDED_SECTION(_sec)	 BOUNDED_SECTION_BY(_sec, _sec)
--
 -#define HEADERED_SECTION_PRE_LABEL(_sec_, _label_, _BEGIN_, _END_, _HDR_) \
 -	_HDR_##_label_	= .;						\
 -	KEEP(*(.gnu.linkonce.##_sec_))					\
@@ -139,9 +59,7 @@ index 3eb732942d69..5fed4194983c 100644
 -
 -#define HEADERED_SECTION(_sec)	 HEADERED_SECTION_BY(_sec, _sec)
 -
- #ifdef CONFIG_TRACE_BRANCH_PROFILING
- #define LIKELY_PROFILE()						\
- 	BOUNDED_SECTION_BY(_ftrace_annotated_branch, _annotated_branch_profile)
+ #endif /* _ASM_GENERIC_BOUNDED_SECTIONS_H */
 
 -- 
 2.56.1
