@@ -1,15 +1,13 @@
 From: Michael Reeves <michael.reeves077@gmail.com>
-Subject: [PATCH 0/4] arm64: dts: apple: Add CPU frequency scaling and OPPs
- for M3 family
-Date: Sat, 21 Nov 2026 11:42:45 +0000
-Message-Id: <20261121-m3-cpufreq-opp-v1-0-42a0c07c48a4@gmail.com>
+Date: Sat, 21 Nov 2026 11:42:46 +0000
+Subject: [PATCH 1/4] dt-bindings: cpufreq: apple,cluster-cpufreq: Add M3
+ family compatibles
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5AMBBA4avIrE1iKvF3FbGgBiNBtYhE3F2x/
- BbvXeDYCjsoggssH+JkmT0oDEAP9dwzSusNKlIJkSKcYtRm7yyvuBiDnLR5XGcpadWAj4zlTs5
- vWFa/3d6MrLf3Avf9AEyN2ORyAAAA
-X-Change-ID: 20261121-m3-cpufreq-opp-e6d93a871c2b
+Message-Id: <20261121-m3-cpufreq-opp-v1-1-42a0c07c48a4@gmail.com>
+References: <20261121-m3-cpufreq-opp-v1-0-42a0c07c48a4@gmail.com>
+In-Reply-To: <20261121-m3-cpufreq-opp-v1-0-42a0c07c48a4@gmail.com>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
  Neal Gompa <neal@gompa.dev>, "Rafael J. Wysocki" <rafael@kernel.org>, 
  Viresh Kumar <viresh.kumar@linaro.org>, Rob Herring <robh@kernel.org>, 
@@ -17,60 +15,51 @@ To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>,
  Conor Dooley <conor+dt@kernel.org>, Hector Martin <marcan@marcan.st>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Michael Reeves <michael.reeves077@gmail.com>, 
- Yureka Lilian <yureka@cyberchaos.dev>
+ linux-kernel@vger.kernel.org, Michael Reeves <michael.reeves077@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795261476; l=1447;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795261476; l=1356;
  i=michael.reeves077@gmail.com; s=20261107; h=from:subject:message-id;
- bh=Z4dkI5W8ztcVVMZtoORCNmVF+rOWhXkyUMdCS0a0i44=;
- b=t80PuFuDSmNmGuacvmqav0HLdW2brvX/rTQ/9inPNlLwQ+4JX35v137vUTAnctOTUad6XDxos
- +BOIFd5rjeIBFeAKeG33k90EUkLBj13Cbnf5EYbobgOsD0LHfGTZRdC
+ bh=+HvmgCEavFBOajIqGH23VOYZLXgPd/UuvSVcHqeHPKw=;
+ b=HljbQapLWB7r5SkMx2ZT1MQOvMAUVgBZEuBpZJ8vSJSusfQ4dKa1q873lhCb4troGRZzZnRTk
+ +qOmoZ1FalRDcEDSgBZ14cbXYFifDp3Mhs4BtnjYhnJV/O9eTN5Xyau
 X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
  pk=ykwkLcuByJYb/cdLc2UuoYP03pIzwrscEZg30+4tJL8=
 X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20261107 with auth_id=1442
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi folks,
+Add compatible strings for the Apple M3 family cluster cpufreq
+controllers:
 
-This series adds CPU frequency scaling support, operating performance
-point tables, and asymmetric CPU capacity values for the following 
-Apple M3 family SoCs:
+- apple,t8122-cluster-cpufreq (M3)
+- apple,t6030-cluster-cpufreq (M3 Pro)
+- apple,t6031-cluster-cpufreq (M3 Max / M3 Ultra)
 
-- T8122 (M3)
-- T6030 (M3 Pro)
-- T6031 / T6034 (M3 Max)
-
-On T6032 (M3 Ultra), the cores on the first die inherit this support
-from M3 Max, however those on the second are not supported yet.
-
-This series is based on apple-soc/dt-7.5.
-
-Thanks,
-Michael
+All three are compatible with the M2 (T8112) cluster cpufreq controller
+and fall back to "apple,t8112-cluster-cpufreq".
 
 Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
-Janne Grunau (2):
-      arm64: dts: apple: t8122: Add CPU frequency scaling and OPPs
-      arm64: dts: apple: t6030: Add CPU frequency scaling and OPPs
+ .../devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml          | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-Michael Reeves (1):
-      dt-bindings: cpufreq: apple,cluster-cpufreq: Add M3 family compatibles
+diff --git a/Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml b/Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
+index b51913a81791..516216cb6ad6 100644
+--- a/Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
++++ b/Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
+@@ -36,7 +36,11 @@ properties:
+           - const: apple,s5l8960x-cluster-cpufreq
+       - const: apple,s5l8960x-cluster-cpufreq
+       - items:
+-          - const: apple,t6020-cluster-cpufreq
++          - enum:
++              - apple,t6020-cluster-cpufreq
++              - apple,t6030-cluster-cpufreq
++              - apple,t6031-cluster-cpufreq
++              - apple,t8122-cluster-cpufreq
+           - const: apple,t8112-cluster-cpufreq
+ 
+   reg:
 
-Yureka Lilian (1):
-      arm64: dts: apple: t6031: Add CPU frequency scaling and OPPs
-
- .../bindings/cpufreq/apple,cluster-cpufreq.yaml    |   6 +-
- arch/arm64/boot/dts/apple/t6030.dtsi               | 228 +++++++++++++++++++++
- arch/arm64/boot/dts/apple/t6031-base.dtsi          | 213 +++++++++++++++++++
- arch/arm64/boot/dts/apple/t6031-dieX.dtsi          |  21 ++
- arch/arm64/boot/dts/apple/t8122.dtsi               | 210 +++++++++++++++++++
- 5 files changed, 677 insertions(+), 1 deletion(-)
----
-base-commit: 477f3d0f46b0d885f162a64d13ca51e2f7afa542
-change-id: 20261121-m3-cpufreq-opp-e6d93a871c2b
-
-Best regards,
---  
-Michael Reeves <michael.reeves077@gmail.com>
+-- 
+2.56.0
 
