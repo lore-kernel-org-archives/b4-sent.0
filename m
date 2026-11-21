@@ -1,69 +1,88 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Sat, 21 Nov 2026 19:55:54 +0200
-Subject: [PATCH v2] dt-bindings: gpu: arm,mali-utgard: add mt6572
+From: Han Gao <gaohan@iscas.ac.cn>
+Subject: [PATCH v2 0/2] clk: sophgo: sg2042: Keep gates used by firmware
+ enabled
+Date: Sun, 22 Nov 2026 02:18:03 +0800
+Message-Id: <20261122-b4-sg2042-efi-rtc-v2-0-6d087e03e4e8@iscas.ac.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261121-6572-dt-mali-v2-1-1c3925ec7ad1@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw6CMBBFf4XM2jFtCS9X/Idh0ZZBxgAlbSUaw
- r8LuHZ5knPPXSGQZwpwS1bwtHBgN+2gLgnYXk8PQm53BiVULkopMM8KhW3EUQ+MpalSI7NKC0u
- wT2ZPHb/P3L35cXiZJ9l4NA6j5xCd/5x/izy8P+lFosTOVKLMVWE6ldazd9FNo+bhat0IzbZtX
- z4eTkK/AAAA
-X-Change-ID: 20260810-6572-dt-mali-8b93b159a0ce
-To: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Heiko Stuebner <heiko@sntech.de>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
- Roman Vivchar <rva333@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795283760; l=1233;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=yarHUuGiHB5XDU5bIl2bWj8HreokggBNwjoTqcPSgT4=;
- b=aJF+XCEDjuAMvu1RDuLpBiDhOE3GNfJOGS8hGr/Vthvh9jCrPLfytowdDMsZZYu2JMsUjnYUt
- jcgdVQwbtEkDUvOJi/KLujbbBe5DSGFPRFwrlMSUrdInKFA/Sh+RBPX
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NwQ6CMBBEf4Xs2SV0LQqe/A/DoZQV1gOYbiUaw
+ r9b8O7xZWbeLKAchBUu2QKBZ1GZxgR0yMAPbuwZpUsMVNDJGDLYWtSeCkvId8EQPbLtSiIqzdE
+ xpN0zpOS9O2/Nj/XVPtjHTbQ1BtE4hc9+Oput988/GyzQ1FVdtZXrbH2+inqnufO5H6FZ1/ULo
+ QssGcYAAAA=
+X-Change-ID: 20261121-b4-sg2042-efi-rtc-e4d5222513ae
+To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen Wang <chen.wang@linux.dev>, 
+ Inochi Amaoto <inochiama@gmail.com>, Yao Zi <me@ziyao.cc>
+Cc: Chen Wang <unicorn_wang@outlook.com>, Han Gao <rabenda.cn@gmail.com>, 
+ linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
+ sophgo@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ Han Gao <gaohan@iscas.ac.cn>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795285099; l=2101;
+ i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
+ bh=JKiIHEduS5hiyWa/DdSePRqv7K8ib23Oio2mSrLYzzE=;
+ b=XWWBF8jXOUX1HUf4l5WASPoIi5NGWrSK+caiEitu8JsDdG/2CvTfkI2bnU89QdZszlgeJapa8
+ IJlfO1uGxpxBmw3X+sg0e100TBClDGnH9+QrWivGNSMX6UySEyjD9ab
+X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
+ pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
+X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a compatible string for the mt6572 Mali-400 MP1 GPU.
+On Milk-V Pioneer, firmware uses I2C0 for the EFI RTC and the serial
+flash for its own image and EFI variables. Both sit behind clock gates
+shared with devices Linux drives, so runtime PM on the Linux side can
+turn them off under the firmware, and GetTime() returns EFI_NOT_READY.
 
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+Let firmware list such gates in protected-clocks on the clkgen node,
+and keep them enabled.
+
+qcom, the only current user of protected-clocks, does not register such
+clocks at all. That would break the I2C controllers Linux uses, as the
+DesignWare driver needs the clock rate, so here they stay registered and
+are only kept on. I'm not sure this fits the intended use; suggestions
+welcome.
+
+Tested on Milk-V Pioneer.
+
+Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
 Changes in v2:
-- Pick Krzysztof's ack, resend
-- Link to v1: https://patch.msgid.link/20260810-6572-dt-mali-v1-1-fb908627bf23@protonmail.com
----
- Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml | 1 +
- 1 file changed, 1 insertion(+)
+- Drop the EFI MMIO patch, Ard is taking it through the EFI tree
+- Use protected-clocks instead of scanning reserved nodes under /soc
+  (Krzysztof)
+- Document protected-clocks in the binding
+- Link to v1: https://patch.msgid.link/20261121-b4-sg2042-efi-rtc-v1-0-19898b8ad497@iscas.ac.cn
 
-diff --git a/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml b/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml
-index c8d0d9192d92..6bdbab82126c 100644
---- a/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml
-+++ b/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml
-@@ -27,6 +27,7 @@ properties:
-               - allwinner,sun8i-h3-mali
-               - allwinner,sun8i-r40-mali
-               - allwinner,sun50i-a64-mali
-+              - mediatek,mt6572-mali
-               - rockchip,rk3036-mali
-               - rockchip,rk3066-mali
-               - rockchip,rk3128-mali
+To: Stephen Boyd <sboyd@kernel.org>
+To: Brian Masney <bmasney+clk@redhat.com>
+To: Jerome Brunet <jbrunet+clk@baylibre.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Chen Wang <chen.wang@linux.dev>
+To: Inochi Amaoto <inochiama@gmail.com>
+Cc: Chen Wang <unicorn_wang@outlook.com>
+Cc: linux-clk@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: sophgo@lists.linux.dev
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
-change-id: 20260810-6572-dt-mali-8b93b159a0ce
+Han Gao (2):
+      dt-bindings: clock: sophgo: Allow protected gate clocks on SG2042
+      clk: sophgo: Keep SG2042 gates listed in protected-clocks enabled
+
+ .../devicetree/bindings/clock/sophgo,sg2042-clkgen.yaml  |  2 ++
+ drivers/clk/sophgo/clk-sg2042-clkgen.c                   | 16 ++++++++++++++--
+ 2 files changed, 16 insertions(+), 2 deletions(-)
+---
+base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
+change-id: 20261121-b4-sg2042-efi-rtc-e4d5222513ae
 
 Best regards,
 --  
-Roman Vivchar <rva333@protonmail.com>
+Han Gao <gaohan@iscas.ac.cn>
 
