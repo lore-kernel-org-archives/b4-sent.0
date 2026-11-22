@@ -1,15 +1,13 @@
 From: Nick Dowsett <nick42d@gmail.com>
-Subject: [PATCH 0/4] platform/x86: clevo-laptop: add initial Rust driver
- for keyboard backlight
-Date: Sun, 22 Nov 2026 12:35:37 +0800
-Message-Id: <20261122-clevo-laptop-v1-0-881debf4d4b0@gmail.com>
+Date: Sun, 22 Nov 2026 12:35:38 +0800
+Subject: [PATCH 1/4] platform/x86: clevo-laptop: add minimal WMI driver
+ skeleton and Kbuild plumbing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqAIBBA0avErBNUyKSrRIvSqSYkRSuC6O5ZL
- d/i/wsSRsIETXFBxIMS+TVDlAWYuV8nZGSzQXKphJCcGYeHZ64Pmw9M1NyqShurag05CRFHOr9
- d2/1O+7Cg2d4H3PcD8Wxb43AAAAA=
-X-Change-ID: 20261120-clevo-laptop-170d658cd678
+Message-Id: <20261122-clevo-laptop-v1-1-881debf4d4b0@gmail.com>
+References: <20261122-clevo-laptop-v1-0-881debf4d4b0@gmail.com>
+In-Reply-To: <20261122-clevo-laptop-v1-0-881debf4d4b0@gmail.com>
 To: Hans de Goede <hansg@kernel.org>, 
  =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
  Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -26,59 +24,166 @@ Cc: Armin Wolf <W_Armin@gmx.de>, Werner Sembach <wse@tuxedocomputers.com>,
  linux-kernel@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
  rust-for-linux@vger.kernel.org, Nick Dowsett <nick42d@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795322140; l=1960;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795322140; l=4849;
  i=nick42d@gmail.com; h=from:subject:message-id;
- bh=p78MTrTYwQzdn9dfkJDldtBDVtC1Y5FQDIFCazyzkhc=;
- b=1LfJha8InVu8PtbAMRzAgT44KCMkucZ+h4g8DHDeSIe8mBmk4tAmSA6rBrrrMhHVJczjmHvfs
- T3z8LUxxnoZBx5vDonouDhQs6oABs4w5yQ+l3UbUu+56foRJTsD3+/v
+ bh=e9AdSz41EP3ywu8H4Pe835LANDmSykHvhG+wsu9VTm0=;
+ b=anPBWXAgeDelXVKsG1nyDfq5seJYrlBDPkqh3KwKnpA+NHh8NhWsZkOp8Ma8DT8s/zy84t9RA
+ rOGeCqw3QfpCihA5a8gVD9q+r1aJgvG9SSAbJGB4mhukqD3/VjtEWSA
 X-Developer-Key: i=nick42d@gmail.com; a=ed25519;
  pk=1uIkNexEofzEXNN3Y3QW5z8IrgjWaP0yH6Es51jxWOg=
 X-Endpoint-Received: by B4 Relay for nick42d@gmail.com/default with auth_id=1596
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds a new Rust platform driver MVP (`clevo-laptop`) for
-Clevo barebones and rebranded laptops (Metabox, Tuxedo, Sager, XMG,
-etc.), starting with 5-step white keyboard backlight control.
-
-It is intended as the first in-tree user of the Rust WMI abstractions,
-and a starting point to be extended to additional Clevo models and EC
-features.
-
-What's included:
-- Minimal driver skeleton, Kconfig/Makefile plumbing, and MAINTAINERS
-  entry.
-- Type-safe EC WMI query interface.
-- Driver registration and backlight type detection following
-  tuxedo-drivers business rules.
-
-Dependencies (not yet merged):
-- Markus Probst's Rust LED classdev abstractions (v28):
-  https://lore.kernel.org/all/20261113-rust_leds-v28-0-b8cf2f74fa57@posteo.de/
-- Rust WMI abstractions (change-id: 20261119-rust-wmi-c6b0e0fe97a7)
-  https://lore.kernel.org/all/20261122-rust-wmi-v1-0-63111d9e824c@gmail.com/
-- Rust DMI abstractions (change-id: 20261121-rust-dmi-c49d2041d7e2)
-  https://lore.kernel.org/all/20261122-rust-dmi-v1-1-4ace9449f872@gmail.com/
-
-Tested on a Clevo/Metabox NL57AU laptop.
+- Add `drivers/platform/x86/clevo-laptop.rs` with module implementation,
+  DMI board check, and Driver registration.
+- Add Kconfig and MAINTAINERS entries and Makefile wiring.
 
 Signed-off-by: Nick Dowsett <nick42d@gmail.com>
 ---
-Nick Dowsett (4):
-      platform/x86: clevo-laptop: add minimal WMI driver skeleton and Kbuild plumbing
-      platform/x86: clevo-laptop: add EC WMI query interface and BIOS feature check
-      platform/x86: clevo-laptop: probe keyboard backlight type and detect 5-step white backlight
-      platform/x86: clevo-laptop: register 5-step white keyboard backlight LED device
+ MAINTAINERS                          |  6 +++
+ drivers/platform/x86/Kconfig         | 17 +++++++++
+ drivers/platform/x86/Makefile        |  3 ++
+ drivers/platform/x86/clevo-laptop.rs | 72 ++++++++++++++++++++++++++++++++++++
+ 4 files changed, 98 insertions(+)
 
- MAINTAINERS                          |   6 +
- drivers/platform/x86/Kconfig         |  17 ++
- drivers/platform/x86/Makefile        |   3 +
- drivers/platform/x86/clevo-laptop.rs | 387 +++++++++++++++++++++++++++++++++++
- 4 files changed, 413 insertions(+)
----
-base-commit: 4843f6873f7c4835e62f2c73ba0fd538e57a2f22
-change-id: 20261120-clevo-laptop-170d658cd678
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 44540a1eb2b8..1130c293e84d 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -6566,6 +6566,12 @@ F:	scripts/Makefile.clang
+ F:	scripts/clang-tools/
+ K:	\b(?i:clang|llvm)\b
+ 
++CLEVO LAPTOP DRIVER
++M:	Nick Dowsett <nick42d@gmail.com>
++L:	platform-driver-x86@vger.kernel.org
++S:	Maintained
++F:	drivers/platform/x86/clevo-laptop.rs
++
+ CLK API
+ M:	Russell King <linux@armlinux.org.uk>
+ L:	linux-clk@vger.kernel.org
+diff --git a/drivers/platform/x86/Kconfig b/drivers/platform/x86/Kconfig
+index 9ce384e0475e..18aa4550c9f4 100644
+--- a/drivers/platform/x86/Kconfig
++++ b/drivers/platform/x86/Kconfig
+@@ -1059,6 +1059,23 @@ config OXP_EC
+ 
+ source "drivers/platform/x86/tuxedo/Kconfig"
+ 
++config CLEVO_LAPTOP
++	tristate "Clevo Laptop Platform Driver"
++	depends on RUST
++	depends on ACPI_WMI=y
++	depends on DMI
++	depends on LEDS_CLASS
++	help
++	  This driver provides platform support for Clevo barebones and
++	  rebranded laptops (Tuxedo, Metabox, Sager, XMG, etc.).
++	  Currently only Clevo NLx0AU boards (e.g. Metabox Edge NL57AU)
++	  with a 5-step white keyboard backlight are supported over WMI.
++	  It is intended to be extended with additional Clevo models and
++	  EC features over time.
++
++	  To compile this driver as a module, choose M here: the module
++	  will be called clevo-laptop.
++
+ endif # X86_PLATFORM_DEVICES
+ 
+ config P2SB
+diff --git a/drivers/platform/x86/Makefile b/drivers/platform/x86/Makefile
+index 229057234d00..070af05a2064 100644
+--- a/drivers/platform/x86/Makefile
++++ b/drivers/platform/x86/Makefile
+@@ -158,6 +158,9 @@ obj-$(CONFIG_SILICOM_PLATFORM)		+= silicom-platform.o
+ # TUXEDO
+ obj-y					+= tuxedo/
+ 
++# Clevo
++obj-$(CONFIG_CLEVO_LAPTOP)		+= clevo-laptop.o
++
+ # Winmate
+ obj-$(CONFIG_WINMATE_FM07_KEYS)		+= winmate-fm07-keys.o
+ 
+diff --git a/drivers/platform/x86/clevo-laptop.rs b/drivers/platform/x86/clevo-laptop.rs
+new file mode 100644
+index 000000000000..1d862c57b3fe
+--- /dev/null
++++ b/drivers/platform/x86/clevo-laptop.rs
+@@ -0,0 +1,72 @@
++// SPDX-License-Identifier: GPL-2.0
++
++//! Clevo Laptop Driver.
++//!
++//! Currently supports only the 5-step white keyboard backlight on Clevo
++//! NLx0AU boards (e.g., Metabox Edge NL57AU).
++//!
++//! Copyright (C) 2026 Nick Dowsett <nick42d@gmail.com>.
++//!
++//! Inspired by Tuxedo Computers' drivers.
++
++use kernel::{
++    device,
++    dmi,
++    prelude::*,
++    wmi, //
++};
++
++/// # Note
++///
++/// This GUID is non-unique (shared by Uniwill for example) and cannot be trusted
++/// to uniquely identify a Clevo device.
++const CLEVO_WMI_METHOD_GUID: &CStr = c"ABBC0F6D-8EA1-11D1-00A0-C90629100000";
++/// DMI board name allowlist, restricted to tested boards since the WMI GUID is not
++/// unique.
++const SUPPORTED_BOARDS: &[&CStr] = &[c"NLx0AU"];
++
++module! {
++    type: ClevoLaptopModule,
++    name: "clevo-laptop",
++    authors: ["Nick Dowsett <nick42d@gmail.com>"],
++    description: "Clevo Laptop Driver (Keyboard Backlight)",
++    license: "GPL",
++}
++
++/// RAII guard for Clevo Laptop Module holding all subsystem drivers e.g WMI.
++#[pin_data]
++struct ClevoLaptopModule {
++    #[pin]
++    _wmi_driver: wmi::Registration<WmiDriver>,
++}
++
++impl kernel::InPlaceModule for ClevoLaptopModule {
++    fn init(module: &'static ThisModule) -> impl PinInit<Self, Error> {
++        pin_init::pin_init_scope(move || {
++            if dmi::get_system_info(dmi::Field::BoardName)
++                .is_none_or(|board| !SUPPORTED_BOARDS.contains(&board))
++            {
++                return Err(ENODEV);
++            }
++            Ok(try_pin_init!(Self {
++                _wmi_driver <- wmi::Registration::new(c"clevo-laptop", module),
++            }))
++        })
++    }
++}
++
++/// RAII guard for Clevo WMI driver holding all subsystem devices e.g LED device.
++#[pin_data]
++struct WmiDriver {}
++
++kernel::wmi_device_table!(WMI_TABLE, [wmi::DeviceId::new(CLEVO_WMI_METHOD_GUID)]);
++
++impl wmi::Driver for WmiDriver {
++    type Data<'bound> = WmiDriver;
++    const ID_TABLE: wmi::IdTable = &WMI_TABLE;
++    fn probe<'bound>(
++        _dev: &'bound wmi::Device<device::Core<'_>>,
++    ) -> impl PinInit<Self::Data<'bound>, Error> + 'bound {
++        try_pin_init!(WmiDriver {})
++    }
++}
 
-Best regards,
---  
-Nick Dowsett <nick42d@gmail.com>
+-- 
+2.56.1
 
