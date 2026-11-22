@@ -1,11 +1,11 @@
 From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
-Date: Mon, 23 Nov 2026 02:04:54 +0800
-Subject: [PATCH sched_ext/for-7.4-fixes 1/2] sched_ext: Attach fair_server
- before tasks fall back to fair on disable
+Date: Mon, 23 Nov 2026 02:04:55 +0800
+Subject: [PATCH sched_ext/for-7.4-fixes 2/2] sched_ext: Start ext_server on
+ every enqueue
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-scx-dlsrv-v1-1-87c342d8246e@gmail.com>
+Message-Id: <20261123-scx-dlsrv-v1-2-87c342d8246e@gmail.com>
 References: <20261123-scx-dlsrv-v1-0-87c342d8246e@gmail.com>
 In-Reply-To: <20261123-scx-dlsrv-v1-0-87c342d8246e@gmail.com>
 To: Tejun Heo <tj@kernel.org>, David Vernet <void@manifault.com>, 
@@ -21,92 +21,79 @@ Cc: Joel Fernandes <joelagnelf@nvidia.com>, sched-ext@lists.linux.dev,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Hang Zhengyang <hang.zhengyang1010@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795370696; l=3219;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795370696; l=2788;
  i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
- bh=nZIUfbuOGTYsYcOP54zg7VH1iW7P5BzO0zfHVPDdacg=;
- b=7CgecdzBpDWmPQ+JV4LPQHJrvsL1ONJxu379+NJXAPNuMCNvriXWfwRcK17nY+MFZqjKpgDXt
- 46jlWcEQPI/DB1jd/NwyIKYhksNo0Qiz3wPBRIFzQWfYIPednQV7g+U
+ bh=IN+RzU0ozG0gu9jpgj8RQX7xnqAmt1p/9Ryev7xZsHs=;
+ b=PBlzI9W8mu3TSEauajkWdQrAzd1AqzlaCENqlVjkb4t0v+4rFy34xdXGM5gfws4X31CEenbmz
+ J5mBQnzaSbJDb/CHHWnwHEP9oZMXC+/uynAZfLq+Dk6hzmBLX9Vi1OS
 X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
  pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
 X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In full mode, the enable path detaches fair_server, since no task runs
-in the fair class. scx_root_disable() attaches it again only at the end,
-in the dl_server_swap_bw() loop. But tasks fall back to fair well before
-that. New forks and sched_setscheduler() calls do so once
-scx_switching_all is cleared, and the switch loop moves all other tasks.
-Until the swap, fair_server can't start, so an RT task that keeps a CPU
-starves the fair tasks there.
+Since commit a3a70caf7906 ("sched/deadline: Fix dl_server behaviour"),
+ext_server stops when a pick finds no task, and a later wakeup starts
+it again. But enqueue_task_scx() starts it only when
+rq->scx.nr_running goes from 0 to 1.
 
-Meanwhile, the disable path waits for RCU grace periods in
-percpu_down_write() of scx_fork_rwsem and scx_cgroup_ops_rwsem. A grace
-period can wait for a starved task, so the disable doesn't finish until
-the RT task stops. The starved task can be a reader preempted under
-PREEMPT_RCU, or the grace-period kthread itself. While the disable waits
-in the scx_cgroup_lock() after the switch loop, scx_fork_rwsem and
-cgroup_mutex are held, so forks wait too.
+For sched_ext, a pick can find no task while tasks are still counted on
+the rq. During a disable, scx_claim_exit() sets sch->aborting. After
+that, scx_consume_dispatch_q() no longer takes tasks from the
+scheduler's DSQs. nr_running stays above 0, so no enqueue restarts the
+server. An RT task that keeps the CPU then starves the sched_ext tasks
+there.
 
-To reproduce, load scx_simple, pin SCHED_NORMAL tasks (/proc walkers,
-stress-ng --fork) and a SCHED_FIFO spinner to CPU 1, and unload the
-scheduler 50 ms after the spinner starts. The disable can then get
-stuck in:
+A stress test hit this on a debug kernel. While CPU hotplug was
+disabling scx_simple, the server on CPU 0 stopped with 3 tasks counted.
+A SCHED_FIFO spinner then took the CPU with 15 tasks behind it. One of
+them was the RCU grace-period kthread:
 
-  synchronize_rcu_normal+0x1da/0x1f0
-  rcu_sync_enter+0x56/0x140
-  scx_root_disable+0x230/0x420
-  kthread_worker_fn+0xf0/0x270
+  rcu: rcu_preempt kthread starved for 65011 jiffies! ... ->state=R ->cpu=0
 
-until the spinner stops.
+The disable was waiting for a reader of scx_fork_rwsem and never
+finished.
 
-Attach fair_server before tasks start to fall back, the same way the
-enable path attaches ext_server before tasks switch to it. If the root
-domain can't fit both servers, the swap attaches fair_server as before.
+Call dl_server_start() on every enqueue. On a running server, it only
+clears dl_defer_idle. On a stopped server that ran in this period, it
+restarts the server at once and reschedules the CPU, even under an RT
+task. So while picks find nothing, each enqueue costs one extra pick.
+This lasts at most one server period (1 s by default).
 
-Fixes: e7b63427fdb4 ("sched_ext: Auto-register/unregister dl_server reservations")
-Cc: stable@vger.kernel.org # v7.2+
+Peter Zijlstra asked whether the server should start only when a task
+reaches the local DSQ [1]. That is not enough. A task often gets to the
+local DSQ only through this CPU's own pick, and that pick needs the
+server to run.
+
+This doesn't cover a task that another CPU dispatches to this CPU's
+local DSQ.
+
+Link: https://lore.kernel.org/all/20260202195035.GG1282955@noisy.programming.kicks-ass.net/ [1]
+Fixes: cd959a356205 ("sched_ext: Add a DL server for sched_ext tasks")
+Cc: stable@vger.kernel.org # v7.0+
 Signed-off-by: Hang Zhengyang <hang.zhengyang1010@gmail.com>
 ---
- kernel/sched/ext/ext.c | 19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
+ kernel/sched/ext/ext.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/kernel/sched/ext/ext.c b/kernel/sched/ext/ext.c
-index e8c30a21e03e..23294897dd6e 100644
+index 23294897dd6e..1031267508fd 100644
 --- a/kernel/sched/ext/ext.c
 +++ b/kernel/sched/ext/ext.c
-@@ -7576,6 +7576,21 @@ static void scx_root_disable(struct scx_sched *sch)
+@@ -2501,9 +2501,11 @@ static void enqueue_task_scx(struct rq *rq, struct task_struct *p, int core_enq_
+ 	if (SCX_HAS_OP(sch, runnable) && !task_on_rq_migrating(p))
+ 		SCX_CALL_OP_TASK(sch, runnable, rq, p, enq_flags);
  
- 	was_switched_all = scx_switched_all();
- 
+-	/* Start dl_server if this is the first task being enqueued */
+-	if (rq->scx.nr_running == 1)
+-		dl_server_start(&rq->ext_server);
 +	/*
-+	 * Tasks fall back to fair from here on. Attach fair_server now, or an
-+	 * RT task can starve them while we wait for RCU grace periods below.
-+	 * If its bandwidth doesn't fit, the swap at the end attaches it.
++	 * Start on every enqueue: a pick can stop the server while tasks
++	 * counted here are out of its reach.
 +	 */
-+	if (was_switched_all) {
-+		for_each_possible_cpu(cpu) {
-+			struct rq *rq = cpu_rq(cpu);
-+
-+			guard(rq_lock_irqsave)(rq);
-+			update_rq_clock(rq);
-+			dl_server_attach_bw(&rq->fair_server);
-+		}
-+	}
-+
- 	static_branch_disable(&__scx_switched_all);
- 	WRITE_ONCE(scx_switching_all, false);
- 	WRITE_ONCE(scx_task_switch_enabled, false);
-@@ -7626,8 +7641,8 @@ static void scx_root_disable(struct scx_sched *sch)
++	dl_server_start(&rq->ext_server);
  
- 	/*
- 	 * Re-balance the dl_server bandwidth reservations: detach ext_server
--	 * (no more sched_ext tasks) and reinstate fair_server if it was
--	 * previously detached because we were running in full mode.
-+	 * (no more sched_ext tasks) and attach fair_server if the attach
-+	 * above failed.
- 	 *
- 	 * Unlike the enable path, this runs on a recovery path that cannot
- 	 * fail, so we use dl_server_swap_bw() to atomically free ext_server's
+ 	scx_do_enqueue_task(rq, p, enq_flags, sticky_cpu);
+ out:
 
 -- 
 2.53.0
