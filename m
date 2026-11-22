@@ -1,11 +1,11 @@
 From: Nick Dowsett <nick42d@gmail.com>
-Date: Sun, 22 Nov 2026 12:35:40 +0800
-Subject: [PATCH 3/4] platform/x86: clevo-laptop: probe keyboard backlight
- type and detect 5-step white backlight
+Date: Sun, 22 Nov 2026 12:35:41 +0800
+Subject: [PATCH 4/4] platform/x86: clevo-laptop: register 5-step white
+ keyboard backlight LED device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-clevo-laptop-v1-3-881debf4d4b0@gmail.com>
+Message-Id: <20261122-clevo-laptop-v1-4-881debf4d4b0@gmail.com>
 References: <20261122-clevo-laptop-v1-0-881debf4d4b0@gmail.com>
 In-Reply-To: <20261122-clevo-laptop-v1-0-881debf4d4b0@gmail.com>
 To: Hans de Goede <hansg@kernel.org>, 
@@ -24,203 +24,194 @@ Cc: Armin Wolf <W_Armin@gmx.de>, Werner Sembach <wse@tuxedocomputers.com>,
  linux-kernel@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
  rust-for-linux@vger.kernel.org, Nick Dowsett <nick42d@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795322140; l=6319;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795322140; l=5814;
  i=nick42d@gmail.com; h=from:subject:message-id;
- bh=zhmmGSNR3OSLrzhCCRTFeuk7Hl8QAWk96pymxiIpueQ=;
- b=yvR0HYD40/ncdu8Rn5vvHwCpW32+HFnym+lcwVUt/kQXf8VZqAtjZ/zw+rWOd5Q9J8uHsgisK
- 23wRgPoV2+YDpdkCiVYPzx0Bzf6TkwdzJy0afKrKMCGMniDJIrPfdyd
+ bh=w57T94ShI0LShB2wRkuNbPlY4Amo9JRyqK2KuAoMqHs=;
+ b=DKQ/TUsRuX2U3+TE48LKKw1KN+3UVUItfycAQrEs8Oltw7SsALlGlZo28PWc58J8UxbMamZ9j
+ bR2yvY1GiytAwRQVKkLV3MSX3ZotBxc618ab7aPfD26+hGl3zrbmtTY
 X-Developer-Key: i=nick42d@gmail.com; a=ed25519;
  pk=1uIkNexEofzEXNN3Y3QW5z8IrgjWaP0yH6Es51jxWOg=
 X-Endpoint-Received: by B4 Relay for nick42d@gmail.com/default with auth_id=1596
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-- Add `GetSpecs` and `GetBiosFeatures2` EC queries and `KbBacklightType`
-  detection (with retries and BIOS features fallback for older devices).
-- Restrict probe to the supported 5-step white keyboard backlight.
+- Add `SetWhiteBrightness` EC command and `Brightness` wrapper.
+- Implement `LedOps` (`FixedColorLedOperations`) and register a
+  `white:kbd_backlight` LED class device during WMI probe.
 
 Signed-off-by: Nick Dowsett <nick42d@gmail.com>
 ---
- drivers/platform/x86/clevo-laptop.rs | 125 +++++++++++++++++++++++++++++++++++
- 1 file changed, 125 insertions(+)
+ drivers/platform/x86/clevo-laptop.rs | 100 +++++++++++++++++++++++++++++++++--
+ 1 file changed, 95 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/platform/x86/clevo-laptop.rs b/drivers/platform/x86/clevo-laptop.rs
-index 289b30c478ec..6f08bf295c07 100644
+index 6f08bf295c07..0a9cb96e7811 100644
 --- a/drivers/platform/x86/clevo-laptop.rs
 +++ b/drivers/platform/x86/clevo-laptop.rs
-@@ -13,6 +13,10 @@
+@@ -10,8 +10,14 @@
+ //! Inspired by Tuxedo Computers' drivers.
+ 
+ use kernel::{
++    self,
      device,
      dmi,
-     prelude::*,
-+    time::{
-+        delay::fsleep,
-+        Delta, //
++    led::{
++        self,
++        LedOps,
++        Normal, //
 +    },
-     wmi, //
- };
- 
-@@ -24,7 +28,12 @@
- /// DMI board name allowlist, restricted to tested boards since the WMI GUID is not
- /// unique.
- const SUPPORTED_BOARDS: &[&CStr] = &[c"NLx0AU"];
-+const CLEVO_EC_CMD_GET_SPECS: u8 = 0x0D;
+     prelude::*,
+     time::{
+         delay::fsleep,
+@@ -31,6 +37,7 @@
+ const CLEVO_EC_CMD_GET_SPECS: u8 = 0x0D;
  const CLEVO_EC_CMD_GET_BIOS_FEATURES_1: u8 = 0x52;
-+const CLEVO_EC_CMD_GET_BIOS_FEATURES_2: u8 = 0x7A;
-+const CLEVO_BIOS_FEATURE_CODE_WHITE_ONLY_KB: u32 = 0x4000_0000;
-+const CLEVO_BIOS_FEATURE_CODE_3_ZONE_RGB_KB: u32 = 0x0040_0000;
-+const CLEVO_BIOS_FEATURE_CODE_WHITE_ONLY_KB_MAX_5: u32 = 0x4000;
- const CLEVO_EC_WMI_INSTANCE: u8 = 0;
+ const CLEVO_EC_CMD_GET_BIOS_FEATURES_2: u8 = 0x7A;
++const CLEVO_EC_CMD_SET_KB_WHITE_LEDS: u8 = 0x27;
+ const CLEVO_BIOS_FEATURE_CODE_WHITE_ONLY_KB: u32 = 0x4000_0000;
+ const CLEVO_BIOS_FEATURE_CODE_3_ZONE_RGB_KB: u32 = 0x0040_0000;
+ const CLEVO_BIOS_FEATURE_CODE_WHITE_ONLY_KB_MAX_5: u32 = 0x4000;
+@@ -63,7 +70,7 @@ trait EcQuery {
+ #[pin_data]
+ struct ClevoLaptopModule {
+     #[pin]
+-    _wmi_driver: wmi::Registration<WmiDriver>,
++    _wmi_driver: wmi::Registration<WmiDriver<'static>>,
+ }
  
- module! {
-@@ -89,6 +98,17 @@ fn probe<'bound>(
+ impl kernel::InPlaceModule for ClevoLaptopModule {
+@@ -83,12 +90,14 @@ fn init(module: &'static ThisModule) -> impl PinInit<Self, Error> {
  
-             backend.query(GetBiosFeatures1).map_err(|_| ENODEV)?;
+ /// RAII guard for Clevo WMI driver holding all subsystem devices e.g LED device.
+ #[pin_data]
+-struct WmiDriver {}
++struct WmiDriver<'a> {
++    _led: LedRegistration<'a>,
++}
  
-+            // MVP: Only the NL57AU 5-step white backlight is supported.
-+            if backend.detect_backlight_type()? != Some(KbBacklightType::FixedColor) {
-+                return Err(ENODEV);
-+            }
-+            let has_white_5 = backend
-+                .query(GetBiosFeatures2)
-+                .is_ok_and(|feat2| feat2.has_white_only_kb_max_5());
-+            if !has_white_5 {
-+                return Err(ENODEV);
+ kernel::wmi_device_table!(WMI_TABLE, [wmi::DeviceId::new(CLEVO_WMI_METHOD_GUID)]);
+ 
+-impl wmi::Driver for WmiDriver {
+-    type Data<'bound> = WmiDriver;
++impl wmi::Driver for WmiDriver<'_> {
++    type Data<'bound> = WmiDriver<'bound>;
+     const ID_TABLE: wmi::IdTable = &WMI_TABLE;
+     fn probe<'bound>(
+         dev: &'bound wmi::Device<device::Core<'_>>,
+@@ -109,11 +118,64 @@ fn probe<'bound>(
+                 return Err(ENODEV);
+             }
+ 
+-            Ok(try_pin_init!(WmiDriver {}))
++            if let Err(e) = backend.query(SetWhiteBrightness(Brightness::OFF)) {
++                dev_dbg!(
++                    dev,
++                    "Error {e:?} setting keyboard brightness on initialization.\n"
++                );
 +            }
 +
-             Ok(try_pin_init!(WmiDriver {}))
++            let led_dev = KBox::pin_init(
++                led::DeviceBuilder::new()
++                    .name(c"white:kbd_backlight")
++                    .color(led::Color::White)
++                    .build(
++                        dev.as_ref(),
++                        try_pin_init!(FixedColorLedOperations { backend }),
++                    ),
++                GFP_KERNEL,
++            )?;
++
++            Ok(try_pin_init!(WmiDriver {
++                _led: LedRegistration::White5Step { _dev: led_dev },
++            }))
          })
      }
-@@ -127,6 +147,61 @@ fn query<Q>(&self, query: Q) -> Result<Q::Output>
-             }
-         }
-     }
-+    /// Detect backlight type e.g white.
-+    fn detect_backlight_type(&self) -> Result<Option<KbBacklightType>> {
-+        const MAX_RETRIES: usize = 3;
-+        const RETRY_SLEEP_DURATION: Delta = Delta::from_millis(50);
-+
-+        for attempt in 0..MAX_RETRIES {
-+            if attempt != 0 {
-+                pr_debug!(
-+                    "KbBacklightType::None probably wrong, retrying - attempt {} of {}\n",
-+                    attempt,
-+                    MAX_RETRIES - 1
-+                );
-+                fsleep(RETRY_SLEEP_DURATION);
-+            }
-+            if let Ok(specs) = self.query(GetSpecs) {
-+                let backlight_type = specs.kb_backlight_type();
-+                if backlight_type != Ok(None) {
-+                    return backlight_type.map_err(|_| ENODEV);
-+                }
-+            }
-+        }
-+
-+        // Check for devices <= Intel 8th gen (only white only, 3 zone RGB,
-+        // or no backlight on these devices)
-+        let feat1 = self.query(GetBiosFeatures1).map_err(|_| ENODEV)?;
-+        if feat1.has_3_zone_rgb_kb() {
-+            Ok(Some(KbBacklightType::ThreeZoneRgb))
-+        } else if feat1.has_white_only_kb() {
-+            Ok(Some(KbBacklightType::FixedColor))
-+        } else {
-+            Ok(None)
-+        }
-+    }
-+}
-+
-+/// Keyboard backlight type - e.g Fixed Color
-+#[derive(PartialEq)]
-+#[repr(u8)]
-+enum KbBacklightType {
-+    FixedColor = 0x01,
-+    ThreeZoneRgb = 0x02,
-+    OneZoneRgb = 0x06,
-+    PerKeyRgb = 0xF3,
-+}
-+impl KbBacklightType {
-+    const fn from_raw(raw: u8) -> Result<Option<Self>, u8> {
-+        match raw {
-+            0x01 => Ok(Some(KbBacklightType::FixedColor)),
-+            0x02 => Ok(Some(KbBacklightType::ThreeZoneRgb)),
-+            0x06 => Ok(Some(KbBacklightType::OneZoneRgb)),
-+            0xF3 => Ok(Some(KbBacklightType::PerKeyRgb)),
-+            0x00 => Ok(None),
-+            other => Err(other),
-+        }
-+    }
  }
  
- /// Args for a command sent to the EC.
-@@ -144,8 +219,12 @@ fn as_bytes(&self) -> &[u8] {
++/// RAII guard for Clevo LED device holding the appropriate sysfs device for the backlight type.
++enum LedRegistration<'a> {
++    White5Step {
++        _dev: Pin<
++            KBox<led::Device<'a, FixedColorLedOperations<'a, { Brightness::MAX_WHITE_5.raw() }>>>,
++        >,
++    },
++}
++
++/// Represents how to perform LED operations for a Clevo single-color LED keyboard, generic over
++/// `MAX_BRIGHTNESS`.
++#[pin_data]
++struct FixedColorLedOperations<'a, const MAX_BRIGHTNESS: u8> {
++    backend: EcInterface<'a>,
++}
++#[vtable]
++impl<'a, const MAX_BRIGHTNESS: u8> LedOps for FixedColorLedOperations<'a, MAX_BRIGHTNESS> {
++    const BLOCKING: bool = true;
++    const MAX_BRIGHTNESS: u32 = MAX_BRIGHTNESS as u32;
++    type Mode = Normal;
++
++    fn brightness_set<'bound>(
++        self: &<Self::Mode as led::Mode>::Device<'bound, Self>,
++        brightness: u32,
++    ) -> Result<()> {
++        let clamped = u8::try_from(brightness)
++            .unwrap_or(MAX_BRIGHTNESS)
++            .min(MAX_BRIGHTNESS);
++        self.backend
++            .query(SetWhiteBrightness(Brightness::new(clamped)))
++    }
++}
++
+ /// Interface to Clevo Embedded Controller.
+ enum EcInterface<'a> {
+     Wmi(&'a wmi::Device<device::Bound>),
+@@ -182,6 +244,20 @@ fn detect_backlight_type(&self) -> Result<Option<KbBacklightType>> {
+     }
+ }
+ 
++/// Keyboard backlight brightness level.
++#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
++struct Brightness(u8);
++impl Brightness {
++    const OFF: Self = Self(0);
++    const MAX_WHITE_5: Self = Self(5);
++    const fn new(val: u8) -> Self {
++        Self(val)
++    }
++    const fn raw(self) -> u8 {
++        self.0
++    }
++}
++
+ /// Keyboard backlight type - e.g Fixed Color
+ #[derive(PartialEq)]
+ #[repr(u8)]
+@@ -219,6 +295,8 @@ fn as_bytes(&self) -> &[u8] {
      }
  }
  
 +#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-+struct GetSpecs;
++struct SetWhiteBrightness(Brightness);
  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
- struct GetBiosFeatures1;
-+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-+struct GetBiosFeatures2;
+ struct GetSpecs;
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+@@ -226,6 +304,18 @@ fn as_bytes(&self) -> &[u8] {
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ struct GetBiosFeatures2;
  
++impl EcQuery for SetWhiteBrightness {
++    type Output = ();
++    fn cmd(&self) -> u8 {
++        CLEVO_EC_CMD_SET_KB_WHITE_LEDS
++    }
++    fn args(&self) -> EcMethodArgs {
++        EcMethodArgs::Scalar(self.0.raw().into())
++    }
++    fn deserialize_output(_output: &[u8]) -> Result<Self::Output> {
++        Ok(())
++    }
++}
  impl EcQuery for GetBiosFeatures1 {
      type Output = BiosFeatures1;
-@@ -163,10 +242,56 @@ fn deserialize_output(output: &[u8]) -> Result<Self::Output> {
-         Ok(feat)
-     }
- }
-+impl EcQuery for GetBiosFeatures2 {
-+    type Output = BiosFeatures2;
-+    fn cmd(&self) -> u8 {
-+        CLEVO_EC_CMD_GET_BIOS_FEATURES_2
-+    }
-+    fn args(&self) -> EcMethodArgs {
-+        EcMethodArgs::Scalar(0)
-+    }
-+    fn deserialize_output(output: &[u8]) -> Result<Self::Output> {
-+        let (feat, _) = BiosFeatures2::read_from_prefix(output).map_err(|_| ENODATA)?;
-+        Ok(feat)
-+    }
-+}
-+impl EcQuery for GetSpecs {
-+    type Output = Specs;
-+    fn cmd(&self) -> u8 {
-+        CLEVO_EC_CMD_GET_SPECS
-+    }
-+    fn args(&self) -> EcMethodArgs {
-+        EcMethodArgs::Scalar(0)
-+    }
-+    fn deserialize_output(output: &[u8]) -> Result<Self::Output> {
-+        let (specs, _) = Specs::read_from_prefix(output).map_err(|_| ENODATA)?;
-+        Ok(specs)
-+    }
-+}
- 
- #[derive(Debug, Clone, Copy, PartialEq, Eq, FromBytes)]
- struct BiosFeatures1(u32);
-+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromBytes)]
-+struct BiosFeatures2(u32);
-+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromBytes)]
-+struct Specs([u8; 16]);
- 
- impl BiosFeatures1 {
-     const INVALID: Self = Self(0xFFFF_FFFF);
-+    const fn has_white_only_kb(self) -> bool {
-+        (self.0 & CLEVO_BIOS_FEATURE_CODE_WHITE_ONLY_KB) != 0
-+    }
-+    const fn has_3_zone_rgb_kb(self) -> bool {
-+        (self.0 & CLEVO_BIOS_FEATURE_CODE_3_ZONE_RGB_KB) != 0
-+    }
-+}
-+impl BiosFeatures2 {
-+    const fn has_white_only_kb_max_5(self) -> bool {
-+        (self.0 & CLEVO_BIOS_FEATURE_CODE_WHITE_ONLY_KB_MAX_5) != 0
-+    }
-+}
-+impl Specs {
-+    const fn kb_backlight_type(&self) -> Result<Option<KbBacklightType>, u8> {
-+        KbBacklightType::from_raw(self.0[0x0F])
-+    }
- }
+     fn cmd(&self) -> u8 {
 
 -- 
 2.56.1
