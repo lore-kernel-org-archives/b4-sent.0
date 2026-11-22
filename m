@@ -1,10 +1,11 @@
 From: YanXin Li <fadouse@pm.me>
-Date: Sun, 22 Nov 2026 19:28:35 +0800
-Subject: [PATCH bpf v3 1/2] bpf: bound arena allocations to the user VMA
+Date: Sun, 22 Nov 2026 19:28:36 +0800
+Subject: [PATCH bpf v3 2/2] selftests/bpf: test arena allocation after a
+ short mmap
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-v3-1-1f94ae9a884a@pm.me>
+Message-Id: <20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-v3-2-1f94ae9a884a@pm.me>
 References: <20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-v3-0-1f94ae9a884a@pm.me>
 In-Reply-To: <20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-v3-0-1f94ae9a884a@pm.me>
 To: Alexei Starovoitov <ast@kernel.org>, 
@@ -15,103 +16,152 @@ Cc: Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>,
  Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
  Emil Tsalapatis <emil@etsalapatis.com>, 
  Ihor Solodrai <ihor.solodrai@linux.dev>, bpf@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
+ linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795346949; l=3854;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795346949; l=4570;
  i=fadouse@pm.me; s=b4-relay-20261122; h=from:subject:message-id;
- bh=NydRQKFXTXjxJi7zfPj1uOAvJMlBbK7Axhfoiyd0aNI=;
- b=ICvOVnTu+6PlSvU1tj91ffU42/BhMVeXtS6aucqm6B/gDO/IrNG5ohBfrABi/Pc1Mw8ZFS9re
- WpIgiwWwludBTBuA9GZLIOAt+0hx2W2cXPEjlrYIqVQbsNebKWWwC6h
+ bh=WJ8aXCi1+iUyH4McpRDagd4qctth2VlhQkByhvjsEx4=;
+ b=d2jg2htmvcEYhnHVgmTFYiziolnJacK1EUNbDFp5ePWthNmxSwUK3aTzSNmvuP9/qR3hZqisr
+ 6AoBSizMJWND7MidFcTp26cBG38wFPvuFe5JFX9Tl431H7O57snQ7DJ
 X-Developer-Key: i=fadouse@pm.me; a=ed25519;
  pk=b4DyzHJDRd8853IHUSKPA5wwzChj8eF4MTnZuyPz1PQ=
 X-Endpoint-Received: by B4 Relay for fadouse@pm.me/b4-relay-20261122 with auth_id=1597
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-An arena map initializes its free range tree to max_entries pages. When
-map_extra is zero, the first mmap() may cover fewer pages. Fixed-address
-allocations are bounded by the VMA size, but automatic allocations use
-range_tree_find() across the whole tree and can select a range beyond
-the VMA. arena_free_pages() clips frees to the VMA, so these pages
-cannot be released through the arena kfunc.
+Without map_extra, the first mmap of an arena can be shorter than the
+map's max_entries. Automatic allocations must stay within that VMA.
 
-With 4 KiB pages, set max_entries to 1 << 20 and mmap() a 288-page VMA
-at 0xffee0000, ending at the next 4 GiB boundary. A 287-page
-automatic allocation takes offsets [0, 287). A subsequent 288-page
-allocation starts at offset 287, so its kernel mapping starts at
-kern_vm_start + 0xfffff000. One page lies within the 4 GiB data band,
-eight lie in the arena's upper half-guard, and 279 lie beyond its
-requested vmalloc area. The first of those 279 is the vmalloc guard
-page. The remaining 278 lie beyond the full reservation. The current
-apply_to_page_range() path can install PTEs there. An unpatched local
-test returned a non-NULL pointer for this allocation. Another run
-triggered a WARNING in apply_range_set_cb() on a non-scratch PTE.
+Create an eight-page arena and mmap only four pages before loading a BPF
+program. Reuse the map FD so libbpf does not mmap the full arena. The
+program occupies offset zero and allocates two more pages, leaving one
+page within the VMA. A two-page request must fail, and a final one-page
+request must succeed. Before the preceding fix, the two-page request
+succeeds outside the VMA.
 
-Out-of-VMA offsets need not wrap the low 32 bits. For example, when
-the user VMA starts at a 4 GiB aligned address, they can still map
-inside the arena's kernel area. They remain invalid because the VMA
-does not cover them. The range-tree conversion replaced the bounded
-mtree_alloc_range() search with range_tree_find() over max_entries.
-The later switch from vm_area_map_pages() to apply_to_page_range()
-removed the vm_struct bounds check, allowing these selections to
-reach beyond the arena's vmalloc reservation.
+When JIT is disabled, arena map creation can succeed while loading a
+program that uses the map returns -EOPNOTSUPP. Skip the subtest in that
+case.
 
-On the first mmap() without map_extra, remove [vma_pages, max_entries)
-from the free range tree before publishing the VMA bounds. The VMA
-size is fixed after this mmap(), and the fault, reserve and free paths
-do not add offsets outside it. Automatic allocations consequently
-stay inside the VMA.
-
-This issue was found through LLM-assisted code audit and manual code
-inspection of kernel/bpf/arena.c, then checked with a Z3 SMT model and
-a custom BPF test in an x86-64 QEMU/KVM guest. The test kernel
-identified itself as 7.4.0-rc3-84074-gc44104f3642d. KASAN, UBSAN,
-lockdep and DEBUG_OBJECTS were enabled. After the patch, the
-288-page request returns NULL, the 287-page in-VMA request succeeds,
-and the test reports no kernel warnings.
-
-Fixes: b795379757eb ("bpf: Introduce range_tree data structure and use it in bpf arena")
-Cc: stable@vger.kernel.org
 Signed-off-by: YanXin Li <fadouse@pm.me>
 ---
- kernel/bpf/arena.c | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+ .../testing/selftests/bpf/prog_tests/arena_mmap.c  | 53 ++++++++++++++++++++++
+ .../testing/selftests/bpf/progs/arena_mmap_alloc.c | 32 +++++++++++++
+ 2 files changed, 85 insertions(+)
 
-diff --git a/kernel/bpf/arena.c b/kernel/bpf/arena.c
-index ec2bda1a6eb..94321dec638 100644
---- a/kernel/bpf/arena.c
-+++ b/kernel/bpf/arena.c
-@@ -694,6 +694,31 @@ static int arena_map_mmap(struct bpf_map *map, struct vm_area_struct *vma)
- 	if (remember_vma(arena, vma))
- 		return -ENOMEM;
+diff --git a/tools/testing/selftests/bpf/prog_tests/arena_mmap.c b/tools/testing/selftests/bpf/prog_tests/arena_mmap.c
+index f55d950720f..ff1fe0a6f22 100644
+--- a/tools/testing/selftests/bpf/prog_tests/arena_mmap.c
++++ b/tools/testing/selftests/bpf/prog_tests/arena_mmap.c
+@@ -2,6 +2,7 @@
  
-+	if (!arena->user_vm_start && vma_pages(vma) < map->max_entries) {
-+		/*
-+		 * Without map_extra, the first mmap() can be shorter than
-+		 * max_entries.  Remove offsets outside the VMA from the free
-+		 * range tree so automatic allocations stay within the VMA.
-+		 */
-+		unsigned long flags;
-+		int ret = -EBUSY;
+ #include <test_progs.h>
+ #include <sys/mman.h>
++#include "arena_mmap_alloc.skel.h"
+ 
+ #define ARENA_PAGES 8
+ 
+@@ -34,6 +35,56 @@ static void test_refused(__u64 map_extra, __u64 addr, int pages, int flags, int
+ 	close(fd);
+ }
+ 
++static void test_short_mmap_alloc(void)
++{
++	LIBBPF_OPTS(bpf_map_create_opts, map_opts, .map_flags = BPF_F_MMAPABLE);
++	LIBBPF_OPTS(bpf_test_run_opts, run_opts);
++	struct arena_mmap_alloc *skel = NULL;
++	size_t size = 4 * getpagesize();
++	void *area;
++	int fd, err;
 +
-+		if (!raw_res_spin_lock_irqsave(&arena->spinlock, flags)) {
-+			ret = range_tree_clear(&arena->rt, vma_pages(vma),
-+					       map->max_entries - vma_pages(vma));
-+			raw_res_spin_unlock_irqrestore(&arena->spinlock, flags);
-+			WARN_ON_ONCE(ret);
-+		}
-+		if (ret) {
-+			struct vma_list *vml = vma->vm_private_data;
-+
-+			list_del(&vml->head);
-+			vma->vm_private_data = NULL;
-+			kfree(vml);
-+			return ret;
-+		}
++	fd = bpf_map_create(BPF_MAP_TYPE_ARENA, "arena", 0, 0,
++			    ARENA_PAGES, &map_opts);
++	if (fd == -EOPNOTSUPP) {
++		test__skip();
++		return;
 +	}
++	if (!ASSERT_GE(fd, 0, "bpf_map_create"))
++		return;
 +
- 	arena->user_vm_start = vma->vm_start;
- 	arena->user_vm_end = vma->vm_end;
- 	/*
++	/* The short mapping must be the first mmap() of this arena. */
++	area = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++	if (!ASSERT_NEQ(area, MAP_FAILED, "short_mmap"))
++		goto out_close;
++
++	/* Reuse the map so libbpf does not mmap all ARENA_PAGES on load. */
++	skel = arena_mmap_alloc__open();
++	if (!ASSERT_OK_PTR(skel, "arena_mmap_alloc__open"))
++		goto out_unmap;
++	err = bpf_map__reuse_fd(skel->maps.arena, fd);
++	if (!ASSERT_OK(err, "reuse_arena_fd"))
++		goto out_destroy;
++	err = arena_mmap_alloc__load(skel);
++	if (err == -EOPNOTSUPP) {
++		test__skip();
++		goto out_destroy;
++	}
++	if (!ASSERT_OK(err, "arena_mmap_alloc__load"))
++		goto out_destroy;
++	err = bpf_prog_test_run_opts(bpf_program__fd(skel->progs.alloc_beyond_vma),
++				     &run_opts);
++	if (ASSERT_OK(err, "alloc_beyond_vma"))
++		ASSERT_OK(run_opts.retval, "alloc_beyond_vma_retval");
++
++out_destroy:
++	arena_mmap_alloc__destroy(skel);
++out_unmap:
++	munmap(area, size);
++out_close:
++	close(fd);
++}
++
+ void serial_test_arena_mmap(void)
+ {
+ 	__u64 page = getpagesize(), last = -(ARENA_PAGES * page);
+@@ -50,4 +101,6 @@ void serial_test_arena_mmap(void)
+ 		test_refused(0, -page, ARENA_PAGES, MAP_FIXED, 0);
+ 	if (test__start_subtest("map_extra_last_pages"))
+ 		test_refused(last, last, ARENA_PAGES, MAP_FIXED, 0);
++	if (test__start_subtest("short_mmap_alloc"))
++		test_short_mmap_alloc();
+ }
+diff --git a/tools/testing/selftests/bpf/progs/arena_mmap_alloc.c b/tools/testing/selftests/bpf/progs/arena_mmap_alloc.c
+new file mode 100644
+index 00000000000..3854afbebc4
+--- /dev/null
++++ b/tools/testing/selftests/bpf/progs/arena_mmap_alloc.c
+@@ -0,0 +1,32 @@
++// SPDX-License-Identifier: GPL-2.0
++
++#define BPF_NO_KFUNC_PROTOTYPES
++#include <vmlinux.h>
++#include <bpf/bpf_helpers.h>
++#include "bpf_arena_common.h"
++
++struct {
++	__uint(type, BPF_MAP_TYPE_ARENA);
++	__uint(map_flags, BPF_F_MMAPABLE);
++	__uint(max_entries, 8);
++} arena SEC(".maps");
++
++SEC("syscall")
++int alloc_beyond_vma(void *ctx)
++{
++	void __arena *page;
++
++	/* A successful allocation at offset zero can return a NULL pointer. */
++	bpf_arena_alloc_pages(&arena, NULL, 1, NUMA_NO_NODE, 0);
++	page = bpf_arena_alloc_pages(&arena, NULL, 2, NUMA_NO_NODE, 0);
++	if (!page)
++		return 1;
++	/* Only one of the four mmap()ed pages remains available. */
++	page = bpf_arena_alloc_pages(&arena, NULL, 2, NUMA_NO_NODE, 0);
++	if (page)
++		return 2;
++	page = bpf_arena_alloc_pages(&arena, NULL, 1, NUMA_NO_NODE, 0);
++	return page ? 0 : 3;
++}
++
++char _license[] SEC("license") = "GPL";
 
 -- 
 Git-157)
