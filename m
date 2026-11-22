@@ -1,91 +1,78 @@
 From: EMCP333 <emcp@enser.io>
-Date: Sun, 22 Nov 2026 05:13:43 +0000
-Subject: [PATCH] arm64: dts: qcom: sdm845-oneplus-fajita: Add the battery's
- design energy
+Subject: [PATCH 0/3] Touchscreen wakeup for the OnePlus 6 and 6T
+Date: Sun, 22 Nov 2026 05:13:49 +0000
+Message-Id: <20261122-b4-rmi4-wakeup-v1-0-1b662be4a9d6@enser.io>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-b4-fajita-battery-energy-v1-1-ce6f0d69947e@enser.io>
-X-B4-Tracking: v=1; b=H4sIAAZ6AmsC/yXMwQ6CMBAE0F8he3aVNi1Gf4V4aMsCy6GabSUSw
- r/b6vFNZmaHRMKU4N7sILRy4mcsUKcGwuziRMhDMehWd0ppjd7g6BbODr3LmWRDiiTThibojgZ
- LN9taKPOX0Mif33X/+Du9/UIh17/a8C4RenExzDWqvKzXs0EJGo7jC9YC32ycAAAA
-X-Change-ID: 20261122-b4-fajita-battery-energy-4c26ed5e9505
-To: Bjorn Andersson <andersson@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAA16AmsC/yXM0Q6CMAyF4Vchvbbq5hTwVYwX3ahSjZOsgiaEd
+ 3fTy6/p+WdQTsIKx2qGxJOoPGOGWVUQeopXRumywW7twRhr0TtMD3H4pjuPA+5b17impl3LHeT
+ RkPgin1/wdP5bR3/j8CqV8uFJGX2iGPpyKtxM9Tpng4Vl+QInVbR7kgAAAA==
+X-Change-ID: 20261122-b4-rmi4-wakeup-5948487a39ed
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>
-Cc: Abel Vesa <abelvesa@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Rinat Muhamedgaliev <rinat.muhamedgaliev@gmail.com>, 
- Hex Lindqvist <hex@freenixos.com>, linux-arm-msm@vger.kernel.org, 
+Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, "Jason A. Donenfeld" <Jason@zx2c4.com>, 
+ Matthias Schiffer <matthias.schiffer@ew.tq-group.com>, 
+ Vincent Huang <vincent.huang@tw.synaptics.com>, 
+ Abel Vesa <abelvesa@kernel.org>, Casey Connolly <casey.connolly@linaro.org>, 
+ linux-input@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  EMCP333 <emcp@enser.io>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795324423; l=2515;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795324430; l=2234;
  i=emcp@enser.io; s=ultron; h=from:subject:message-id;
- bh=deghCqiCJANOaAyPTby9MMGyOUPEwGJ7upq4xsrZF8k=;
- b=MeBE0hwlq1FbKxadWmdNqFHN+TiS9VoPkPHqQK0v2FtkTHR0mpDeSHXr4LRBGn9FA2RmvbnP2
- sN3XqwSFEZyAhEobm5a+B1u++GX6KT7e4boPANQOKiM58gCFPZIvSsR
+ bh=QsipX2VlKzNSrE69Li9weyplTtRqzi4er6aXQmYWKZU=;
+ b=Ujgb/6+o4SSZEZGHqa6k3zVuHNJ3GGH5slwBQhXUXAED0jiFfNVOj9jWe9PMmkOvOat5tntXw
+ RUsFCVng9YYBOz2bw0tTuDNeyk/bFb2F4BoTXQs17VohXNLhIqsxsOK
 X-Developer-Key: i=emcp@enser.io; a=ed25519;
  pk=5sG48Lul+Vn7OzXu3VZrCWk5uvEFPYMXYnAV0TZR/tY=
 X-Endpoint-Received: by B4 Relay for emcp@enser.io/ultron with auth_id=1598
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The fajita battery node has charge-full-design-microamp-hours but no
-energy-full-design-microwatt-hours. bq27xxx writes the design capacity
-and design energy into the bq27411's data memory only when both are
-set, so neither is written, and the driver warns at every probe:
+The Synaptics touchscreen on the OnePlus 6 and 6T is meant to wake the
+SoC from s2idle. The I2C core and the rmi4 driver already handle
+"wakeup-source", but rmi_i2c cuts the controller's supplies in system
+suspend right after it arms the wake interrupt. Unpowered, the
+controller cannot report a touch, and on these phones cutting the
+supplies also raises the attention interrupt, which ends every s2idle
+within a few seconds.
 
-  bq27xxx-battery 10-0055: missing battery:energy-full-design-microwatt-hours
+Patch 1 lets the rmi4 binding accept "wakeup-source". Patch 2 keeps an
+rmi4 I2C device that may wake the system powered in system suspend, as
+edt-ft5x06 does. Patch 3 sets the property in
+sdm845-oneplus-common.dtsi.
 
-The power supply core also leaves energy_full_design out of sysfs.
+Patches 1 and 2 are for the input tree and patch 3 for the Qualcomm
+tree. Patch 3 needs patch 1 for dtbs_check, and should not land before
+patch 2: without it, every s2idle on these phones ends at once.
 
-Add the design energy. The BLP685 pack is rated 3.85 V, 3700 mAh and
-14.24 Wh typical (3610 mAh and 13.89 Wh minimum); 3700 mAh is the
-capacity the node already uses, and 3700 mAh x 3.85 V = 14245000 uWh.
+Tested on a OnePlus 6T on v7.4-rc3 with all three patches, rmi_core and
+rmi_i2c built as modules from patch 2's commit. With nobody touching the
+phone, "rtcwake -m freeze -s 30" slept the full 30 seconds with no
+attention interrupt (2 of 2); without patch 2 it came back after 3 to 4
+seconds, one attention interrupt each time (3 of 3). A double-tap on the
+dark phone woke it from "rtcwake -m freeze -s 120" after 3 and 7
+seconds, one attention interrupt burst each. With wakeup disabled the
+supplies are cut as before and it slept the full 30 seconds (2 of 2).
 
-Some replacement packs carry a bq27541, which has no data memory
-update; on those units the property only adds energy_full_design.
+On v7.4-rc2, dt_binding_check is clean, dtbs_check reports nothing new
+for fajita or enchilada, and rmi_i2c.c builds cleanly with W=1.
 
-Tested on a OnePlus 6T whose gauge reports DeviceType 0x0421
-(bq27411), with this patch on a 6.18-based kernel. The first boot logs
-"update design-energy to 14245" and no longer warns, and
-energy_full_design reads 14245000. After a power-off, the next boot
-logs "design-energy has 14245". The boot that writes the data memory
-also logs "cfgupdate 0, retries 17": leaving config update took 17
-retries, and the driver warns after 3. The write itself completed, as
-the next boot shows.
-
-The code and this changelog were prepared with the help of an AI coding
-assistant. The submitter has reviewed both and takes responsibility for
-them.
-
-Signed-off-by: EMCP333 <emcp@enser.io>
 ---
-Also ran on v7.4-rc3 on the same phone, as this exact commit: the gauge
-reports DeviceType 0x0421, energy_full_design reads 14245000, and the
-boot logs "design-energy has 14245" (the data memory was written by an
-earlier boot).
----
- arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts | 1 +
- 1 file changed, 1 insertion(+)
+EMCP333 (3):
+      dt-bindings: input: syna,rmi4: Document wakeup-source
+      Input: synaptics-rmi4 - keep an I2C device that may wake the system powered
+      arm64: dts: qcom: sdm845-oneplus: Mark the touchscreen as a wakeup source
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts b/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-index e9d1a1c6ac..dc3a7a8f97 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-@@ -16,6 +16,7 @@ battery: battery {
- 		compatible = "simple-battery";
- 
- 		charge-full-design-microamp-hours = <3700000>;
-+		energy-full-design-microwatt-hours = <14245000>;
- 		voltage-min-design-microvolt = <3400000>;
- 		voltage-max-design-microvolt = <4400000>;
- 
-
+ .../devicetree/bindings/input/syna,rmi4.yaml       |  2 ++
+ .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi |  1 +
+ drivers/input/rmi4/rmi_i2c.c                       | 22 +++++++++++++++-------
+ 3 files changed, 18 insertions(+), 7 deletions(-)
 ---
 base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261122-b4-fajita-battery-energy-4c26ed5e9505
+change-id: 20261122-b4-rmi4-wakeup-5948487a39ed
 
 Best regards,
 --  
