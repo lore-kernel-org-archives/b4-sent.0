@@ -1,67 +1,123 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Subject: [PATCH v2 0/2] power: supply: qcom_battmgr: Apply the USB host
- current limit early
-Date: Mon, 23 Nov 2026 00:50:14 +0530
-Message-Id: <20261123-vantage-battmgr-v2-0-03a419078d0a@yahoo.com>
+Date: Mon, 23 Nov 2026 00:50:15 +0530
+Subject: [PATCH v2 1/2] power: supply: qcom_battmgr: Apply a USB input
+ current limit set early
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6DIBREr2L+ujSCArWr3qNxAfRXaKIYoKTGe
- PeiXXf5JjNvVogYHEa4VisEzC46PxVgpwqMVdOAxD0KA6uZoJQKktWUVIm1SmkcAulajoIJeWl
- MC2U1B3y6z2G89z+Ob/1Ck3bN3rAuJh+W4zLTvfffnimpidS8o1w2Ump5W5T1/mz8CP22bV/Aa
- rbCwAAAAA==
-X-Change-ID: 20261116-vantage-battmgr-945e626783c4
+Message-Id: <20261123-vantage-battmgr-v2-1-03a419078d0a@yahoo.com>
+References: <20261123-vantage-battmgr-v2-0-03a419078d0a@yahoo.com>
+In-Reply-To: <20261123-vantage-battmgr-v2-0-03a419078d0a@yahoo.com>
 To: Sebastian Reichel <sre@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Joonhoe Kim <26rote@gmail.com>, 
  phone-devel@vger.kernel.org, Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795375214; l=1656;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795375214; l=3188;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=GKw0fAYD2THqTePsaxcaYFmMb0GJeDBVUvNBjHIW/Zg=;
- b=SFJJnRpQGclZd2uAF7+00OqMR0H8exJbdBYTv4wTtGPq9oz3g+Qfb0P1eG7h3wqOMPHYu6oi6
- 62Cy0HQIredBebnY/x60ou5Pok96vvKDly07nh+aAa5BDt7fQ/GlajY
+ bh=QRPbpgdZl24zY0fmfpUSTMdKKg7OmwkB9BBBvw6YdvI=;
+ b=VDeQLu0wy3u3s42wJ7fJa3Pj37p5X9E1hoNLrrvZYhLt0Wz3ATphqRBFDYARjA+2RuSq8h7Om
+ WKxQ5/d/IzBCpt0I0KTB2Th7jpEwHMcmWxDxeXX2yn2YeiXy9tDJxKY
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the Motorola Signature the battery manager firmware keeps the input
-current limit of a USB host port at the 100 mA allowed before
-enumeration, so the phone discharges while it is connected to a
-computer. The dwc3 controller reports the current the host grants
-through usb-psy-name, and commit be5e7367bceb made the limit writable.
+The USB controller can report the current a USB host grants, e.g. with
+the usb-psy-name property of dwc3, before the battery manager service
+is up. The input current limit is then rejected with -EAGAIN and the
+firmware keeps the 100 mA allowed before enumeration, so a phone that is
+in use discharges while it is connected to a computer.
 
-The controller reports it before the battery manager service is up
-though, so the first patch keeps the limit and applies it once the
-service comes up. The second one applies it only to SDP, CDP and USB PD
-ports, like the downstream driver, so a dedicated charger is never
-throttled to what the controller reports.
+Remember the limit while the service is down and send it once the
+service comes up.
 
-Tested on a Motorola Signature: connected to a computer it charges after
-enumeration instead of discharging.
-
-I used an LLM (Claude) to help write these patches and their commit
-messages. I reviewed all of them and tested the result on the device.
-
+Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
-Changes in v2:
-- Drop the Assisted-by trailers and the LLM notes from the commit
-  messages, the LLM use is stated in this cover letter.
-- Link to v1: https://patch.msgid.link/20261116-vantage-battmgr-v1-0-7b59157377b7@yahoo.com
+ drivers/power/supply/qcom_battmgr.c | 45 +++++++++++++++++++++++++++++--------
+ 1 file changed, 36 insertions(+), 9 deletions(-)
 
----
-Venkat Yadlapati (2):
-      power: supply: qcom_battmgr: Apply a USB input current limit set early
-      power: supply: qcom_battmgr: Don't limit the input current of chargers
+diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
+index 431a35bcac80..fde9704d0acd 100644
+--- a/drivers/power/supply/qcom_battmgr.c
++++ b/drivers/power/supply/qcom_battmgr.c
+@@ -329,6 +329,10 @@ struct qcom_battmgr {
+ 
+ 	bool service_up;
+ 
++	/* USB input current limit set before the service was up, in uA */
++	bool usb_icl_pending;
++	u32 usb_icl;
++
+ 	struct qcom_battmgr_info info;
+ 	struct qcom_battmgr_status status;
+ 	struct qcom_battmgr_ac ac;
+@@ -1144,25 +1148,40 @@ static const struct power_supply_desc sc8280xp_usb_psy_desc = {
+ 		     BIT(POWER_SUPPLY_USB_TYPE_APPLE_BRICK_ID),
+ };
+ 
++static int qcom_battmgr_usb_set_icl(struct qcom_battmgr *battmgr, u32 icl)
++{
++	int ret;
++
++	mutex_lock(&battmgr->lock);
++	ret = qcom_battmgr_request_property(battmgr, BATTMGR_USB_PROPERTY_SET,
++					    USB_INPUT_CURR_LIMIT, icl);
++	mutex_unlock(&battmgr->lock);
++
++	return ret;
++}
++
+ static int qcom_battmgr_usb_set_property(struct power_supply *psy,
+ 					 enum power_supply_property psp,
+ 					 const union power_supply_propval *pval)
+ {
+ 	struct qcom_battmgr *battmgr = power_supply_get_drvdata(psy);
+-	int ret;
+-
+-	if (!battmgr->service_up)
+-		return -EAGAIN;
+ 
+ 	if (psp != POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT || pval->intval < 0)
+ 		return -EINVAL;
+ 
+-	mutex_lock(&battmgr->lock);
+-	ret = qcom_battmgr_request_property(battmgr, BATTMGR_USB_PROPERTY_SET,
+-					    USB_INPUT_CURR_LIMIT, pval->intval);
+-	mutex_unlock(&battmgr->lock);
++	/*
++	 * The USB controller can report the current a host grants before the
++	 * firmware service is up, apply it once the service comes up.
++	 */
++	if (!battmgr->service_up) {
++		battmgr->usb_icl = pval->intval;
++		battmgr->usb_icl_pending = true;
++		return 0;
++	}
+ 
+-	return ret;
++	battmgr->usb_icl_pending = false;
++
++	return qcom_battmgr_usb_set_icl(battmgr, pval->intval);
+ }
+ 
+ static int qcom_battmgr_usb_is_writeable(struct power_supply *psy,
+@@ -1742,6 +1761,14 @@ static void qcom_battmgr_enable_worker(struct work_struct *work)
+ 	ret = qcom_battmgr_request(battmgr, &req, sizeof(req));
+ 	if (ret)
+ 		dev_err(battmgr->dev, "failed to request power notifications\n");
++
++	if (battmgr->usb_icl_pending) {
++		battmgr->usb_icl_pending = false;
++		ret = qcom_battmgr_usb_set_icl(battmgr, battmgr->usb_icl);
++		if (ret)
++			dev_warn(battmgr->dev,
++				 "failed to set the USB input current limit: %d\n", ret);
++	}
+ }
+ 
+ static void qcom_battmgr_pdr_notify(void *priv, int state)
 
- drivers/power/supply/qcom_battmgr.c | 61 ++++++++++++++++++++++++++++++++-----
- 1 file changed, 53 insertions(+), 8 deletions(-)
----
-base-commit: 7071d4750856abbc68dfe431acc58a1d45dd42e8
-change-id: 20261116-vantage-battmgr-945e626783c4
-
-Best regards,
---  
-Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+-- 
+2.56.1
 
