@@ -1,14 +1,13 @@
 From: EMCP333 <emcp@enser.io>
-Subject: [PATCH 0/3] media: qcom: camss: Interconnect votes for SDM845
-Date: Sun, 22 Nov 2026 05:13:23 +0000
-Message-Id: <20261122-b4-camss-sdm845-icc-v1-0-0671ef770fd0@enser.io>
+Date: Sun, 22 Nov 2026 05:13:24 +0000
+Subject: [PATCH 1/3] dt-bindings: media: qcom,sdm845-camss: Add
+ interconnects
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPN5AmsC/yXMwQ6CMBAE0F8he3bV1irEXzEc2u0qa0IlXSUkh
- H+31eObzMwKyllY4dqskHkWlVcqMLsGaPDpwSixGOzRXoyxFoND8qMqahw7d0YhQhMdxY5OTKa
- Fspwy32X5vd76v/UTnkzvelUbwStjyD7RUKPKw9zuHWaysG1f+uk2bZcAAAA=
-X-Change-ID: 20261122-b4-camss-sdm845-icc-1d4cd8c3ec17
+Message-Id: <20261122-b4-camss-sdm845-icc-v1-1-0671ef770fd0@enser.io>
+References: <20261122-b4-camss-sdm845-icc-v1-0-0671ef770fd0@enser.io>
+In-Reply-To: <20261122-b4-camss-sdm845-icc-v1-0-0671ef770fd0@enser.io>
 To: Bryan O'Donoghue <bod@kernel.org>, 
  Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
  Loic Poulain <loic.poulain@oss.qualcomm.com>
@@ -21,56 +20,78 @@ Cc: Bryan O'Donoghue <bryan.odonoghue@linaro.org>,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  EMCP333 <emcp@enser.io>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795324405; l=1830;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795324405; l=2153;
  i=emcp@enser.io; s=ultron; h=from:subject:message-id;
- bh=0eKhIZ+ChtKI73qyKB4ZI4olHiQz7Q9wrSL2FmVT5UU=;
- b=/jIJzyp9G4JmqAhPZ393/BkZFtZPUci/21USxarhIHV2aEb6kzwHmXVbg00OrikYxV7dz66z1
- J83cxfN9EFyAwqbrmz/kcDcguCUvsJlSZWfb678acfiVWdgKqWzV/qv
+ bh=LulMe8vMo++IKeIIAh8v8M3uKtAlXb13KLuNcRYJ0PQ=;
+ b=v+A31bhfotuokwdDizd43svOLiboSnHvUQH/g4vvxlCFBFpkOb9zv8/7CTxMWPDod3R9TrjM6
+ 2oPkMrQelsaC2gnmqx1KhlVsUQPqC7WrmkHTIrYNs/MxWk0/KZtm3lm
 X-Developer-Key: i=emcp@enser.io; a=ed25519;
  pk=5sG48Lul+Vn7OzXu3VZrCWk5uvEFPYMXYnAV0TZR/tY=
 X-Endpoint-Received: by B4 Relay for emcp@enser.io/ultron with auth_id=1598
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-CAMSS on SDM845 declares no interconnect paths, so it never votes for
-memory bandwidth and runs on whatever the display happens to hold. With
-the display off, capture stalls: on a OnePlus 6T, 8 of 10 1080p
-captures stopped after 0-1 frames, against 10 of 10 complete with the
-display on.
+CAMSS on SDM845 reaches DDR through two camnoc HF ports and one SF
+port, and its registers through the config NoC. Describe the four
+paths, named as in the sm6150 binding, which has the same two HF ports.
 
-Patch 1 allows the four paths in the binding, patch 2 gives the driver
-a bandwidth table for SDM845, and patch 3 adds the paths to sdm845.dtsi.
+They are optional, so existing device trees stay valid. The driver
+votes on them where they are present.
 
-Patches 1 and 2 are for the media tree and patch 3 for the Qualcomm
-tree. The driver gets a NULL path, and so no votes, from a device tree
-without the paths, so patch 2 is safe on its own; patch 3 needs patch
-1 for dtbs_check.
+The code and this changelog were prepared with the help of an AI coding
+assistant. The submitter has reviewed both and takes responsibility for
+them.
 
-Tested on the phone with the postmarketOS sdm845 kernel (6.18): with
-the display off, 10 of 10 1080p captures of 100 frames complete, and
-the camnoc HF ports vote while streaming and not when idle. On
-v7.4-rc2, dt_binding_check and dtbs_check are clean and camss builds
-with W=1 and no warnings.
-
-The same three commits also ran on v7.4-rc3: with the display off, 10
-of 10 captures of 100 frames, no camss errors, and the camss bandwidth
-requests go from zero to non-zero while streaming and back to zero
-after.
-
+Signed-off-by: EMCP333 <emcp@enser.io>
 ---
-EMCP333 (3):
-      dt-bindings: media: qcom,sdm845-camss: Add interconnects
-      media: qcom: camss: Vote interconnect bandwidth on SDM845
-      arm64: dts: qcom: sdm845: Add CAMSS interconnects
+ .../devicetree/bindings/media/qcom,sdm845-camss.yaml | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
- .../bindings/media/qcom,sdm845-camss.yaml          | 20 +++++++++++++++++
- arch/arm64/boot/dts/qcom/sdm845.dtsi               | 10 +++++++++
- drivers/media/platform/qcom/camss/camss.c          | 26 ++++++++++++++++++++++
- 3 files changed, 56 insertions(+)
----
-base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261122-b4-camss-sdm845-icc-1d4cd8c3ec17
+diff --git a/Documentation/devicetree/bindings/media/qcom,sdm845-camss.yaml b/Documentation/devicetree/bindings/media/qcom,sdm845-camss.yaml
+index be09cf3a3b..8c87ecd406 100644
+--- a/Documentation/devicetree/bindings/media/qcom,sdm845-camss.yaml
++++ b/Documentation/devicetree/bindings/media/qcom,sdm845-camss.yaml
+@@ -76,6 +76,16 @@ properties:
+       - const: vfe1
+       - const: vfe_lite
+ 
++  interconnects:
++    maxItems: 4
++
++  interconnect-names:
++    items:
++      - const: ahb
++      - const: hf_0
++      - const: hf_1
++      - const: sf_mnoc
++
+   iommus:
+     maxItems: 4
+ 
+@@ -233,6 +243,7 @@ examples:
+     #include <dt-bindings/interrupt-controller/arm-gic.h>
+     #include <dt-bindings/clock/qcom,camcc-sdm845.h>
+     #include <dt-bindings/clock/qcom,gcc-sdm845.h>
++    #include <dt-bindings/interconnect/qcom,sdm845.h>
+ 
+     soc {
+       #address-cells = <2>;
+@@ -337,6 +348,15 @@ examples:
+           "vfe1",
+           "vfe_lite";
+ 
++        interconnects = <&gladiator_noc MASTER_APPSS_PROC 0 &config_noc SLAVE_CAMERA_CFG 0>,
++          <&mmss_noc MASTER_CAMNOC_HF0 0 &mem_noc SLAVE_EBI1 0>,
++          <&mmss_noc MASTER_CAMNOC_HF1 0 &mem_noc SLAVE_EBI1 0>,
++          <&mmss_noc MASTER_CAMNOC_SF 0 &mem_noc SLAVE_EBI1 0>;
++        interconnect-names = "ahb",
++          "hf_0",
++          "hf_1",
++          "sf_mnoc";
++
+         iommus = <&apps_smmu 0x0808 0x0>,
+           <&apps_smmu 0x0810 0x8>,
+           <&apps_smmu 0x0c08 0x0>,
 
-Best regards,
---  
-EMCP333 <emcp@enser.io>
+-- 
+2.47.3
 
