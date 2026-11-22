@@ -1,101 +1,75 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Sun, 22 Nov 2026 11:55:28 +0000
-Subject: [PATCH 3/3] cpufreq: s5pv210: Fix resource leaks on probe error
- paths
+From: YanXin Li <fadouse@pm.me>
+Subject: [PATCH bpf v4 0/2] bpf: bound arena allocations to the user VMA
+Date: Sun, 22 Nov 2026 20:35:35 +0800
+Message-Id: <20261122-b4-03-bpf-arena-vmalloc-oob-v4-8090cdc58ff8-v4-0-d542d1233623@pm.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-cpufreq-leaks-v1-3-96fc17ff7339@gmail.com>
-References: <20261122-cpufreq-leaks-v1-0-96fc17ff7339@gmail.com>
-In-Reply-To: <20261122-cpufreq-leaks-v1-0-96fc17ff7339@gmail.com>
-To: rafael@kernel.org, viresh.kumar@linaro.org, krzk@kernel.org, 
- peter.griffin@linaro.org
-Cc: linux-samsung-soc@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-pm@vger.kernel.org, alim.akhtar@samsung.com, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795348526; l=2583;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=u26GdNff9h8VDqjlemiKXHAuftopncbeRgVHJ/CpuKU=;
- b=CrzgHHiglo92NWgPpcnitjmDoIyGezX87Do2D12VT7kp6fyLOS0r3fq5gaaTll/JBZKRugRX3
- f5B2+44sqakD6BU6xI6LbdUulZpWYly5wOr4asrOv6uJ/lgLavdA7fG
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+X-B4-Tracking: v=1; b=H4sIAJfhAmsC/yWN0W7CMAxFfwX5edZSx2SBX0E8OIk9MnUtSqDah
+ Pj3tePxHl2d84CurWqH4+4BTZfa6zytg992kC8yfSrWsm4gR2EYiDAxOo/paihNJ8HlW8Zxzjj
+ PCRfG6A4ul7yPZhGNNB3ULJQUYTVem1r9+a+dYFXA+QX7PX1pvm2d7ZakK6YmU75sqOkov7jB9
+ 8w8ODYfmIp8kBsCO6ZAXjl6ij6IWilR4fn8AyNqmCDaAAAA
+X-Change-ID: 20261122-b4-03-bpf-arena-vmalloc-oob-v4-8090cdc58ff8-f2eb9eff6db8
+To: Alexei Starovoitov <ast@kernel.org>, 
+ Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>
+Cc: Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, bpf@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795350970; l=1694;
+ i=fadouse@pm.me; s=b4-relay-20261122; h=from:subject:message-id;
+ bh=e0ZiUtyczM9A0TUsQiCpAJ4gxT0Nz/VbMD25/XSK4E8=;
+ b=Jztxt8PhcyvKwjpW2x7GxAqcM0Y5UxoLrt7ySghXScqL8VYGr4htosk7yZLSWZU/61JkjLdj1
+ Oz50foA8PhqAutsLos5oDBzuKgar6YQVPy5fg1ecUq3lKrbr/rAyZ6v
+X-Developer-Key: i=fadouse@pm.me; a=ed25519;
+ pk=b4DyzHJDRd8853IHUSKPA5wwzChj8eF4MTnZuyPz1PQ=
+X-Endpoint-Received: by B4 Relay for fadouse@pm.me/b4-relay-20261122 with auth_id=1597
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+When map_extra is omitted, a short first mmap() can leave free arena
+pages beyond the user VMA. Automatic allocation can select those pages;
+near a 4 GiB boundary, the kernel mapping can extend past the arena's
+vmalloc reservation. Patch 1 confines the range tree to the VMA, and
+patch 2 adds a regression selftest.
 
-s5pv210_cpufreq_probe() returns the result of cpufreq_register_driver()
-directly:
-
-	register_reboot_notifier(&s5pv210_cpufreq_reboot_notifier);
-
-	return cpufreq_register_driver(&s5pv210_driver);
-
-If the registration fails, for example because s5pv210_cpu_init()
-fails, the resources taken by the probe itself are leaked: the two
-regulators and the clock and DMC register mappings. The reboot notifier
-also stays registered. (s5pv210_cpu_init() releases its own clocks on
-its error paths, and the cpufreq core tears down its own state.)
-
-Also, when a DMC node has a bad alias, the code jumps to err_clk_base
-and skips unmapping DMC registers that were already mapped for an
-earlier node.
-
-Unregister the reboot notifier and go through the existing unwind code
-when cpufreq_register_driver() fails, and jump to err_dmc on the alias
-error. The err_clk_base label has no users after this, so drop it.
-
-Found with a static analysis tool and checked by hand.
-
-Fixes: 6d4ed0f46af6 ("cpufreq: s5pv210: Make the driver multiplatform aware")
-Fixes: e0e5b2b4f427 ("cpufreq: s5pv210: Defer probe if getting regulators fail")
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
- drivers/cpufreq/s5pv210-cpufreq.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+Changes in v4:
+- Check the first allocation in the selftest and remove the incorrect
+  offset-zero NULL comment. Patch 1 is unchanged.
+- Link to v3: https://lore.kernel.org/r/20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-v3-0-1f94ae9a884a@pm.me
 
-diff --git a/drivers/cpufreq/s5pv210-cpufreq.c b/drivers/cpufreq/s5pv210-cpufreq.c
-index e64e84e1ee79..29b1c5d71a8b 100644
---- a/drivers/cpufreq/s5pv210-cpufreq.c
-+++ b/drivers/cpufreq/s5pv210-cpufreq.c
-@@ -634,7 +634,7 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
- 		if (id < 0 || id >= ARRAY_SIZE(dmc_base)) {
- 			dev_err(dev, "failed to get alias of dmc node '%pOFn'\n", dmc);
- 			result = id;
--			goto err_clk_base;
-+			goto err_dmc;
- 		}
- 
- 		dmc_base[id] = of_iomap(dmc, 0);
-@@ -655,7 +655,14 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
- 
- 	register_reboot_notifier(&s5pv210_cpufreq_reboot_notifier);
- 
--	return cpufreq_register_driver(&s5pv210_driver);
-+	result = cpufreq_register_driver(&s5pv210_driver);
-+	if (result)
-+		goto err_reboot_notifier;
-+
-+	return 0;
-+
-+err_reboot_notifier:
-+	unregister_reboot_notifier(&s5pv210_cpufreq_reboot_notifier);
- 
- err_dmc:
- 	for (id = 0; id < ARRAY_SIZE(dmc_base); ++id)
-@@ -664,7 +671,6 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
- 			dmc_base[id] = NULL;
- 		}
- 
--err_clk_base:
- 	iounmap(clk_base);
- 
- err_clock:
+To: Alexei Starovoitov <ast@kernel.org>
+To: Daniel Borkmann <daniel@iogearbox.net>
+To: Andrii Nakryiko <andrii@kernel.org>
+To: Eduard Zingerman <eddyz87@gmail.com>
+To: Kumar Kartikeya Dwivedi <memxor@gmail.com>
+Cc: Martin KaFai Lau <martin.lau@linux.dev>
+Cc: Song Liu <song@kernel.org>
+Cc: Yonghong Song <yonghong.song@linux.dev>
+Cc: Jiri Olsa <jolsa@kernel.org>
+Cc: Emil Tsalapatis <emil@etsalapatis.com>
+Cc: Ihor Solodrai <ihor.solodrai@linux.dev>
+Cc: bpf@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
--- 
-2.34.1
+---
+YanXin Li (2):
+      bpf: bound arena allocations to the user VMA
+      selftests/bpf: test arena allocation after a short mmap
+
+ kernel/bpf/arena.c                                 | 25 ++++++++++
+ .../testing/selftests/bpf/prog_tests/arena_mmap.c  | 53 ++++++++++++++++++++++
+ .../testing/selftests/bpf/progs/arena_mmap_alloc.c | 33 ++++++++++++++
+ 3 files changed, 111 insertions(+)
+---
+base-commit: c44104f3642da720164042623e4832836aefdd8e
+change-id: 20261122-b4-03-bpf-arena-vmalloc-oob-v4-8090cdc58ff8-f2eb9eff6db8
+
+Best regards,
+--  
+YanXin Li <fadouse@pm.me>
 
