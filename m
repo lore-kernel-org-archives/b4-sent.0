@@ -1,82 +1,81 @@
-From: Kevin Nguyen <kevinnguyen4221@gmail.com>
-Date: Sun, 22 Nov 2026 00:25:34 -0600
-Subject: [PATCH] libvhost-user: fail SET_LOG_BASE if mmap() of the log
- fails
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Sun, 22 Nov 2026 08:17:26 +0000
+Subject: [PATCH net] net: reuseport: honour SO_LOCK_FILTER in
+ SO_DETACH_REUSEPORT_BPF
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-libvhost-user-log-mmap-v1-1-4ccf0773426d@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAN2KAmsC/yXMMQ6DMAxA0asgz7VUR4WhV6k6JMEBV0BQDBES4
- u4NML7h/x2Uk7DCu9ohcRaVOBXQowLf26ljlLYYzNM0RIZwEJf7qAuupcQhdjiOdsYmmFeogyd
- rHZR4Thxku8af721d3Y/9ct7gOP7w1XKUegAAAA==
-X-Change-ID: 20261121-libvhost-user-log-mmap-6f24f5fc1aab
-To: qemu-devel@nongnu.org
-Cc: "Michael S. Tsirkin" <mst@redhat.com>, 
- Stefano Garzarella <sgarzare@redhat.com>, vhost-user@lists.linux.dev, 
- Kevin Nguyen <kevinnguyen4221@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795328743; l=2047;
- i=kevinnguyen4221@gmail.com; s=20261122; h=from:subject:message-id;
- bh=SxRVO/izDzYDID+FOGrsw/Qa/MKm2CvHM3VK68d+uuk=;
- b=1MSdQhGdWhkVii1UESGNaxMkTQKDGXTU6JioYZdIwlEli5ipOq4nTrKGrn/0cEXTYVe1fK8YQ
- CpUyAkqQ2eJDfuqFWHVzIYEGFOF1k50CTCUuvSUydt7PKmmBYk4kFcs
-X-Developer-Key: i=kevinnguyen4221@gmail.com; a=ed25519;
- pk=cBY2wqCM3aigaylJj7NwKyb/YiW+LT6+Ane7Mxc7p0s=
-X-Endpoint-Received: by B4 Relay for kevinnguyen4221@gmail.com/20261122 with auth_id=1599
+Message-Id: <20261122-reuseport-lock-filter-v1-1-a3e5324c8d55@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABWlAmsC/yWMQQrCMBBFr1Jm7UAzC0WvIi7a+KOjJSkzqQild
+ zcq/M378N5KDlM4nbqVDC91LblB2HUU70O+gfXamKSXfQgibFgcc7HKU4lPTjpVGPfD8dAGSWO
+ k5s6GpO9f90wZlS7/05fxgVi/Rdq2D9MIuAV+AAAA
+X-Change-ID: 20261122-reuseport-lock-filter-0a97a97e2fbc
+To: pabeni@redhat.com, edumazet@kernel.org, davem@davemloft.net, 
+ kuba@kernel.org, kuniyu@google.com, willemb@google.com
+Cc: netdev@vger.kernel.org, bpf@vger.kernel.org, martin.lau@linux.dev, 
+ linux-kernel@vger.kernel.org, horms@kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795335446; l=1823;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=mUix/dSzrnbiMpxouGrm26+4a6yRQiNkofJT/Rp0r4M=;
+ b=C1HoG1h2Yi2qB7Kdc+loDObrbf9S1VJqaIK5MIwN6f++LFKuMYPoKCW2ZkeSJiVs9NmNBGxi0
+ mtivHQUnok/AMsBnjA4qQrkHfDt9B432CJehtFfaLM26ZDiEE7c7I55
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If mmap() of the dirty log fd fails, vu_set_log_base_exec() only
-prints an error, then unmaps the previous log, stores MAP_FAILED in
-dev->log_table and replies as if the request succeeded. The next
-request completed with VHOST_F_LOG_ALL set writes through
-(uint8_t *)-1 and the backend crashes with SIGSEGV.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-Leave the existing log untouched and call vu_panic() instead, without
-sending a reply. Setting log_table to NULL would avoid the crash but
-silently stop dirty logging, so a migration could complete with
-missing pages. The SET_LOG_BASE reply has no status field, so dropping
-the connection is the only way to tell the frontend that logging
-failed.
+SO_LOCK_FILTER lets a process lock the filters on a socket before
+handing it to a less privileged one. Once it is set, the existing attach
+and detach paths reject changes to the socket's BPF filters with -EPERM,
+but SO_DETACH_REUSEPORT_BPF does not check SOCK_FILTER_LOCKED. So an
+unprivileged process that receives a locked socket can still remove the
+reuseport program, which then changes how packets and connections are
+spread over the whole reuseport group.
 
-Also save errno before close(fd), which may clobber it.
+Return -EPERM from reuseport_detach_prog() when the filter is locked,
+like sk_detach_filter() does.
 
-Resolves: https://gitlab.com/qemu-project/qemu/-/issues/4793
-Signed-off-by: Kevin Nguyen <kevinnguyen4221@gmail.com>
+Found with a static analysis tool and checked by hand.
+
+Fixes: 99f3a064bc2e ("bpf: net: Add SO_DETACH_REUSEPORT_BPF")
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
- subprojects/libvhost-user/libvhost-user.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+Tested in QEMU (x86_64): root binds a UDP socket with SO_REUSEPORT,
+attaches a reuseport cBPF program and sets SO_LOCK_FILTER, then a child
+running as nobody uses the inherited socket.
 
-diff --git a/subprojects/libvhost-user/libvhost-user.c b/subprojects/libvhost-user/libvhost-user.c
-index df21581033..f47612f9e7 100644
---- a/subprojects/libvhost-user/libvhost-user.c
-+++ b/subprojects/libvhost-user/libvhost-user.c
-@@ -1159,6 +1159,7 @@ vu_set_log_base_exec(VuDev *dev, VhostUserMsg *vmsg)
-     int fd;
-     uint64_t log_mmap_size, log_mmap_offset;
-     void *rc;
-+    int err;
- 
-     if (vmsg->fd_num != 1 ||
-         vmsg->size != sizeof(vmsg->payload.log)) {
-@@ -1174,9 +1175,11 @@ vu_set_log_base_exec(VuDev *dev, VhostUserMsg *vmsg)
- 
-     rc = mmap(0, log_mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
-               log_mmap_offset);
-+    err = errno;
-     close(fd);
-     if (rc == MAP_FAILED) {
--        perror("log mmap error");
-+        vu_panic(dev, "log mmap error: %s", strerror(err));
-+        return false;
-     }
- 
-     if (dev->log_table) {
+Before:
+  SO_ATTACH_REUSEPORT_CBPF: EPERM
+  SO_DETACH_FILTER:         EPERM
+  SO_DETACH_REUSEPORT_BPF:  succeeds, the program is gone
 
+After:
+
+SO_DETACH_REUSEPORT_BPF: EPERM as well
 ---
-base-commit: 8f66cb79044c370e3813c56ceb7a75a5ca2d0a0e
-change-id: 20261121-libvhost-user-log-mmap-6f24f5fc1aab
+ net/core/sock_reuseport.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Best regards,
---  
-Kevin Nguyen <kevinnguyen4221@gmail.com>
+diff --git a/net/core/sock_reuseport.c b/net/core/sock_reuseport.c
+index b9e5648fa4c5..cdff61161a70 100644
+--- a/net/core/sock_reuseport.c
++++ b/net/core/sock_reuseport.c
+@@ -727,6 +727,9 @@ int reuseport_detach_prog(struct sock *sk)
+ 	struct sock_reuseport *reuse;
+ 	struct bpf_prog *old_prog;
+ 
++	if (sock_flag(sk, SOCK_FILTER_LOCKED))
++		return -EPERM;
++
+ 	old_prog = NULL;
+ 	spin_lock_bh(&reuseport_lock);
+ 	reuse = rcu_dereference_protected(sk->sk_reuseport_cb,
+
+
 
