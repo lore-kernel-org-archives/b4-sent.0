@@ -1,106 +1,96 @@
 From: EMCP333 <emcp@enser.io>
-Date: Sun, 22 Nov 2026 05:13:02 +0000
-Subject: [PATCH] nfc: nxp-nci: i2c: Do not keep a fault taken in reset
- across power-up
+Date: Sun, 22 Nov 2026 05:13:07 +0000
+Subject: [PATCH] arm64: dts: qcom: sdm845-oneplus-fajita: Route the
+ microphones to MCLK
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-b4-nxp-nci-cold-fault-v1-1-fad784c73cfe@enser.io>
-X-B4-Tracking: v=1; b=H4sIAN15AmsC/yXMwQ6CMBAE0F8he3bVNoSqv2I8tMtW1pBCWiAkh
- H+nxeObzMwGiaNwgle1QeRFkgwhQ10qoM6GL6O02aDvulFKa3Q1hnXEQII09C16O/cTmof3/DT
- GONtA3o6Rvazn7/vzd5rdj2kqZ6XhbGJ00QbqSlR4W8y1xkga9v0ANA+UVpkAAAA=
-X-Change-ID: 20261122-b4-nxp-nci-cold-fault-78ffe9777ba6
-To: David Heidelberg <david@ixit.cz>
-Cc: oe-linux-nfc@lists.linux.dev, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Cl=C3=A9ment_Perrochaud?= <clement.perrochaud@nxp.com>, 
- Samuel Ortiz <sameo@linux.intel.com>, EMCP333 <emcp@enser.io>
+Message-Id: <20261122-b4-fajita-codec-mclk-v1-1-ee4bca21d8ba@enser.io>
+X-B4-Tracking: v=1; b=H4sIAOJ5AmsC/yXMwQ6CMBAE0F8he3aV1orRXzEetstWFrWYFokJ4
+ d+lenyTmZkhS1LJcK5mSDJp1iGuMJsKuKN4E9R2NdjaNsZYi95hoF5HQh5aYXzy445mbwK5kw9
+ NfYB1+koS9PO7vVz/zm/fC4/lqzQ8ZUGfKHJXosLddNw6TGxhWb5cZyAomAAAAA==
+X-Change-ID: 20261122-b4-fajita-codec-mclk-131fa49bf605
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: Abel Vesa <abelvesa@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Dylan Van Assche <me@dylanvanassche.be>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ EMCP333 <emcp@enser.io>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795324382; l=3002;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795324388; l=2514;
  i=emcp@enser.io; s=ultron; h=from:subject:message-id;
- bh=mB+rrVjlXf4RV4trPETUOgk0Sb3i1GXtUlZZsMRZRbk=;
- b=yyOeSlKhkgcaNvBbh6HL4cj3paoE+S1FtJkg8tZbr3E5Bg8XymaEKA2rbuZea+1JDEKmrn000
- WSA1891ZlwWCINpxN810Luw5YQYkfUJTJEeOt+i6U65+jaN4bI72+vt
+ bh=DGyS7iiSyD0F0W5165hIjMOEexnA6ODF4zyy8Qhxe84=;
+ b=MPSGHzz05h1QrnlkAVXZ9JRXshJXFKZpSpb6sX3os1zzdzqFHl1RSXes0z96fFYozLT4XnMsl
+ BEs3Zsx4KpLA2HsUkADPwgt7hB2Zvcor24BKNgGVeghlUjx9UfbIszz
 X-Developer-Key: i=emcp@enser.io; a=ed25519;
  pk=5sG48Lul+Vn7OzXu3VZrCWk5uvEFPYMXYnAV0TZR/tY=
 X-Endpoint-Received: by B4 Relay for emcp@enser.io/ultron with auth_id=1598
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On a OnePlus 6T (PN553), the controller powers up once after boot and
-never again. Each power-down logs a read error, and every later
-power-up times out:
+The WCD934x system clock is a DAPM supply widget, "MCLK", and the codec
+driver routes nothing into it, so each board has to. fajita connects it
+only to RX_BIAS, which only the playback paths use. A capture-only
+stream therefore powers the microphone input, ADC, decimator and SLIMbus
+TX path, but not the clock they run from, and records digital silence
+until something has started playback.
 
-  nxp-nci_i2c 3-0028: NFC: Read failed with error -121
-  nci: __nci_request: wait_for_completion_interruptible_timeout failed 0
-
-nxp_nci_close() holds info_lock while it drops EN and sets the mode to
-COLD, and the IRQ thread takes the same lock. An interrupt raised as
-the controller goes into reset is therefore handled after close() has
-finished, in COLD mode, where the IRQ thread treats it as -EREMOTEIO and
-records it in hard_fault. set_mode() clears hard_fault only on entry to
-COLD, which has already happened, so the fault survives into the next
-power-up: nxp_nci_i2c_write() returns it for CORE_RESET without touching
-the bus, and the request times out.
-
-Do not count an interrupt taken while the controller is held in reset
-as a fault, and clear hard_fault on every mode change, since each one
-drives EN/FW and so resets the controller.
+Route each analog microphone input to MCLK, as other WCD934x boards do
+for their microphones (sdm845-samsung-starqltechn,
+sdm850-huawei-matebook-e-2019).
 
 Tested on a OnePlus 6T with this change on the postmarketOS sdm845
-kernel (6.18): five power-up/power-down cycles through the NFC netlink
-interface all succeed, 0.03-0.04 s each, with no read errors. Without
-it, every power-up after the first times out.
+kernel (6.18). With no playback stream open, a recording from the
+bottom microphone powers MCLK while RX_BIAS stays off, and captures real
+signal (peak 22307 over 6 s). Without it, the same recording is
+constant zero. On v7.4-rc2, dtbs_check gives the same output before and
+after.
+
+The OnePlus 6 (enchilada) has the same routing and probably the same
+problem. It is left alone here because I cannot test it.
 
 The code and this changelog were prepared with the help of an AI coding
 assistant. The submitter has reviewed both and takes responsibility for
 them.
 
-Fixes: 6be88670fc59 ("NFC: nxp-nci_i2c: Add I2C support to NXP NCI driver")
+Fixes: b7b734286856 ("arm64: dts: qcom: sdm845-oneplus-*: add audio devices")
 Signed-off-by: EMCP333 <emcp@enser.io>
 ---
-Also ran on v7.4-rc3 on the same phone, as this exact commit: 5 of 5
-NFC_CMD_DEV_UP/DEV_DOWN cycles over netlink, 0.03-0.04 s each, no -121
-(EREMOTEIO).
+Also ran on v7.4-rc3 on the same phone, as this exact commit: with no
+playback open, DAPM MCLK is On and RX_BIAS Off, and the bottom mic
+records (956 distinct sample values, peak 654, in a quiet room; the
+failure is a constant zero).
 ---
- drivers/nfc/nxp-nci/i2c.c | 15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/nfc/nxp-nci/i2c.c b/drivers/nfc/nxp-nci/i2c.c
-index 9eec67c109..1ff8b5a2bb 100644
---- a/drivers/nfc/nxp-nci/i2c.c
-+++ b/drivers/nfc/nxp-nci/i2c.c
-@@ -52,8 +52,11 @@ static int nxp_nci_i2c_set_mode(void *phy_id,
- 	gpiod_set_value_cansleep(phy->gpiod_en, (mode != NXP_NCI_MODE_COLD) ? 1 : 0);
- 	usleep_range(10000, 15000);
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts b/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
+index e9d1a1c6ac..a03c1ea8fe 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
+@@ -51,10 +51,15 @@ &sound {
+ 	model = "OnePlus 6T";
+ 	audio-routing = "RX_BIAS", "MCLK",
+ 			"AMIC1", "MIC BIAS3",
++			"AMIC1", "MCLK",
+ 			"AMIC2", "MIC BIAS2",
++			"AMIC2", "MCLK",
+ 			"AMIC3", "MIC BIAS4",
++			"AMIC3", "MCLK",
+ 			"AMIC4", "MIC BIAS1",
+-			"AMIC5", "MIC BIAS3";
++			"AMIC4", "MCLK",
++			"AMIC5", "MIC BIAS3",
++			"AMIC5", "MCLK";
+ };
  
--	if (mode == NXP_NCI_MODE_COLD)
--		phy->hard_fault = 0;
-+	/*
-+	 * Each mode change drives EN/FW and resets the controller, so a fault
-+	 * recorded before it no longer applies.
-+	 */
-+	phy->hard_fault = 0;
- 
- 	return 0;
- }
-@@ -222,8 +225,12 @@ static irqreturn_t nxp_nci_i2c_irq_thread_fn(int irq, void *phy_id)
- 		r = nxp_nci_i2c_fw_read(phy, &skb);
- 		break;
- 	case NXP_NCI_MODE_COLD:
--		r = -EREMOTEIO;
--		break;
-+		/*
-+		 * The controller is held in reset, so there is nothing to read.
-+		 * The interrupt can arrive just after EN drops; it is not a bus
-+		 * fault.
-+		 */
-+		goto exit_irq_handled;
- 	}
- 
- 	if (r == -EREMOTEIO) {
+ &pmi8998_charger {
 
 ---
 base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261122-b4-nxp-nci-cold-fault-78ffe9777ba6
+change-id: 20261122-b4-fajita-codec-mclk-131fa49bf605
 
 Best regards,
 --  
