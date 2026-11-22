@@ -1,83 +1,50 @@
-From: Vencislav Atanasov <user890104@freemyipod.org>
-Date: Sun, 22 Nov 2026 23:00:11 +0200
-Subject: [PATCH v2] doc: Add section about mail providers which modify
- Message-ID
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/4] arm64: dts: qcom: qcs8550-retroidpocket: Enable
+ displays
+Date: Sun, 22 Nov 2026 15:46:15 -0600
+Message-Id: <20261122-rp-qcs8550-display-v1-0-d513d9819a34@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-doc-msgid-v2-1-10c717d50d1f@freemyipod.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NywqDMBBFf0Vm3ZSMrQ+68j+Ki2gmOgWNJFYqk
- n9vYrflrg4czj3Ak2Py8MgOcLSxZztHyC8Z9KOaBxKsI0Mu8xIRa6FtLyY/sBb6RoW6FygrVBD
- 9xZHhz9l6tj/27+5F/ZoCyRjZr9bt59mGyfvX3VDEybruTCnRdFVjHNG082L11boB2hDCF1SuU
- Oi5AAAA
-X-Change-ID: 20261118-doc-msgid-d3e5a451071a
-To: u-boot@lists.u-boot-project.org
-Cc: Tom Rini <trini@konsulko.com>, 
- Quentin Schulz <quentin.schulz@cherry.de>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Vencislav Atanasov <user890104@freemyipod.org>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795381222; l=2176;
- i=user890104@freemyipod.org; s=20261004; h=from:subject:message-id;
- bh=fmz+T9rLiN6nMaBX6pIg1i9TxswslFkT3LQYtgKgKWg=;
- b=01j2RROdROSZSOB7OlwOAvBgkobSvX/JUr1eYqxITXfqDgXWzXisXYEULN2jwEvClf4l7uLuV
- tt3rscQB/JqDp7HkKKw1455sjM5f13wkX8CQMq1m9VjcFUS0zRSCrae
-X-Developer-Key: i=user890104@freemyipod.org; a=ed25519;
- pk=klj5EgxMkX+YF0tPboUEB9kwBfthBgHWLhDOkwnmUus=
-X-Endpoint-Received: by B4 Relay for user890104@freemyipod.org/20261004 with auth_id=1558
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSwqAMAwA0atI1gZMsf6uIi6KjRoQrQ2IIt7d4
+ vItZh5QjsIKXfZA5FNU9i2B8gzGxW0zo/hkMIWpiAxhDHiM2lhboBcNq7vR123LhprSOwspDJE
+ nuf5pP7zvB+gfyFtkAAAA
+X-Change-ID: 20261121-rp-qcs8550-display-d799e2184da5
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795383979; l=788;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=UFvaZtlmbK3x3++gaX4C0nDXh3A1k4gRmCkgGdqnpQQ=;
+ b=H4xkYsRP8yGDCMsqsSuE56jB94upcwQstyYQc3y8KFK/Ot/5fRg3f+T9EbyVDTCQkqzwix5i6
+ YBo7VibGPlpB6x64qg1yRXULZuytc5+qXY3xt8h9akSXoPMDhcf7rWd
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A short debugging session revealed that AWS SES completely replaces
-the Message-ID header, even though the API is called SendRawEmail.
-
-Signed-off-by: Vencislav Atanasov <user890104@freemyipod.org>
----
-Changes in v2:
-- Reworded the paragraph
-- Used a different link to b4 docs
-- Link to v1: https://patch.msgid.link/20261118-doc-msgid-v1-1-1088bf601fb7@freemyipod.org
-
-To: u-boot@lists.u-boot-project.org
-Cc: Tom Rini <trini@konsulko.com>
-Cc: Quentin Schulz <quentin.schulz@cherry.de>
-Cc: Mattijs Korpershoek <mkorpershoek@kernel.org>
-Cc: Neil Armstrong <neil.armstrong@linaro.org>
----
- doc/develop/sending_patches.rst | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
-
-diff --git a/doc/develop/sending_patches.rst b/doc/develop/sending_patches.rst
-index 99581dc0ba0..027e7be028a 100644
---- a/doc/develop/sending_patches.rst
-+++ b/doc/develop/sending_patches.rst
-@@ -184,6 +184,20 @@ General Patch Submission Rules
-   cases, you did something wrong if your patch exceeds this limit. Think again
-   if you should not split it into separate logical parts.
- 
-+* If sending patches through your mail server is broken, doesn't work at all or
-+  is not possible, consider using `b4's web endpoint <b4-web-endpoint-link_>`_.
-+  It will allow you to send patches without using your mail server. A notable
-+  example is `Amazon Web Services' Simple E-mail Service (AWS SES)
-+  <aws-ses-sendrawemail-message-id-link_>`_. It modifies the Message-ID header
-+  and your individual patches don't point back to the cover letter and vice
-+  versa.
-+
-+.. _aws-ses-sendrawemail-message-id-link:
-+   https://docs.aws.amazon.com/ses/latest/APIReference/API_SendRawEmail.html#:~:text=Amazon%20SES%20automatically%20applies%20its%20own%20Message%2DID
-+
-+.. _b4-web-endpoint-link:
-+   https://b4.docs.kernel.org/en/latest/contributor/send.html#authenticating-with-the-web-submission-endpoint
-+
- Attributing Code, Copyrights, Signing
- -------------------------------------
- 
+This first cleans up unused / invalid backlight nodes, then enables the
+panel for each device.
 
 ---
-base-commit: 2f83ef8a7dd4a409b534ea68cd13b17b686cc53c
-change-id: 20261118-doc-msgid-d3e5a451071a
+Aaron Kling (4):
+      arm64: dts: qcom: qcs8550-retroidpocket-nova: Remove pwm backlight
+      arm64: dts: qcom: qcs8550-retroidpocket-nova: Enable panel
+      arm64: dts: qcom: qcs8550-retroidpocket-rp6: Remove pwm backlight
+      arm64: dts: qcom: qcs8550-retroidpocket-rp6: Enable panel
+
+ .../boot/dts/qcom/qcs8550-retroidpocket-nova.dts   | 49 ++++++++++++++++-----
+ .../boot/dts/qcom/qcs8550-retroidpocket-rp6.dts    | 51 +++++++++++++++++-----
+ 2 files changed, 76 insertions(+), 24 deletions(-)
+---
+base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
+change-id: 20261121-rp-qcs8550-display-d799e2184da5
 
 Best regards,
---  
-Vencislav Atanasov <user890104@freemyipod.org>
+-- 
+Aaron Kling <webgeek1234@gmail.com>
 
