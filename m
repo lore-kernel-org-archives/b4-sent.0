@@ -1,75 +1,74 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Sun, 22 Nov 2026 13:46:30 +0000
-Subject: [PATCH v2 2/2] ALSA: fireworks: Abort the transaction on a bus
- reset
+From: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+Subject: [PATCH v4 0/3] docs/translations/pt_BR: process: add
+ handling-regressions.rst
+Date: Sun, 22 Nov 2026 11:01:25 -0300
+Message-Id: <20261122-handling-regressions-v4-0-b6b9f2070290@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-firewire-busreset-v2-2-e104d785c8a1@gmail.com>
-References: <20261122-firewire-busreset-v2-0-e104d785c8a1@gmail.com>
-In-Reply-To: <20261122-firewire-busreset-v2-0-e104d785c8a1@gmail.com>
-To: o-takashi@sakamocchi.jp, clemens@ladisch.de, tiwai@suse.com
-Cc: stefanr@s5r6.in-berlin.de, linux-sound@vger.kernel.org, perex@perex.cz, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795355188; l=1920;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=fhg9NDjaNT8GJA64KhkdJLd88zbmeEobh1mF6AYpWhI=;
- b=lUwJGdBidPNerzLa0yBkLF9tU6IAej1hLyHVFB831ArGHR82Z/pk553D0kCvPm9jsmArt+bWc
- HzaBwnmNi9VC8uG1ryjSTNMmJ+YwujOqW9kBeRvgrW/4L34hDLl3/O5
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42Nyw7CIBBFf6VhLYZOSy2u/A/jgsdIMX0YqETT9
+ N+FunGnyzO5c85CAnqHgRyLhXiMLrhpTFDvCqI7OVqkziQmwKApSwCajqZ3o6UerceQ94EKXkq
+ umGYtMyS93j1e3XPTni8fDg91Qz1nV150LsyTf23dCHn3IxGBMgqcH4ziUom6OdlBun6vp4HkR
+ Kz+kVRJgpXhKEULom6/Jeu6vgG0JapWDwEAAA==
+X-Change-ID: 20261122-handling-regressions-951a5b0c080d
+To: linux-doc@vger.kernel.org
+Cc: corbet@lwn.net, skhan@linuxfoundation.org, danielmaraboo@gmail.com, 
+ rdunlap@infradead.org, Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795356085; l=2059;
+ i=dreduardocruz@gmail.com; s=20261119; h=from:subject:message-id;
+ bh=piaR4pVX3njhKNRnfIxX/CMHnLB9/5ah13wj0salF4k=;
+ b=KkXmyDkEZE0g/JHmRWS6jzCcLUuaCVAJ9XnBVNR5+xVsVO+vM9n9+pWtpha2+JglcJCrneGgD
+ RHyXuhBP8aXBex+Hb3xsZoWo3RqlagiwHbz1LdsTwdrxfyykuKVC3cH
+X-Developer-Key: i=dreduardocruz@gmail.com; a=ed25519;
+ pk=2dtL+BL/x70sROmAvlskv9dbjj274zlPkLBVu4gJJiA=
+X-Endpoint-Received: by B4 Relay for dreduardocruz@gmail.com/20261119 with auth_id=1571
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+This series adds the Brazilian Portuguese translation of
+Documentation/process/handling-regressions.rst, the document that
+describes what the "no regressions" rule means in practice for
+developers.
 
-When snd_efw_transaction_bus_reset() marks a transaction as
-STATE_BUS_RESET, snd_efw_transaction_run() sleeps and resends the
-command, but leaves the state as it is. The response to the resent
-command is then ignored, and the next wait returns at once, so the loop
-keeps resending the command without a retry limit until sending fails.
+The translation follows the original file as last changed by commit
+fdd100ee60a0 ("docs: process: use gender-neutral pronouns") and keeps
+its structure: section levels, literal blocks, URLs, :ref: roles and the
+regzbot commands are preserved verbatim.
 
-Fireworks devices also accept AV/C commands, and the AV/C general
-specification says that a bus reset discards any transaction in
-progress. Do the same as for FCP: end the transaction on a bus reset and
-return -EAGAIN. ERROR_DELAY_MS has no users left, so drop it.
+It is split in three parts to keep the review tractable. The last patch
+also wires the new document into the pt_BR process index.
 
-Found with a static analysis tool and checked by hand.
+Changes in v4:
+- Join the section titles that were still split over two lines and give
+  them a matching underline; one title had also lost its underline.
+- Rejoin the two #regzbot command lines whose URL had been moved to the
+  following line, which made the command unusable.
+- Use a single "::" before literal blocks instead of ":::".
 
-Suggested-by: Takashi Sakamoto <o-takashi@sakamocchi.jp>
-Fixes: bde8a8f23bbe ("ALSA: fireworks: Add transaction and some commands")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+Changes in v3:
+- Split the SPDX header back into two comment lines; the previous
+  version merged them into one, which breaks the directive.
+- Keep each section title on a single line with a matching underline.
+- Replace the remaining "etiqueta" and "maintainer" occurrences with
+  "tag" and "mantenedor", and use "flag day" consistently.
+- Fix wording issues found on review: "nem sequer compila", "versão
+  mainline ... de fato" instead of "adequada", and the AppArmor
+  sentence.
+- Keep proper nouns such as "Maintainers Summit 2024".
+
 ---
- sound/firewire/fireworks/fireworks_transaction.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Eduardo Pereira Cruz (3):
+      docs/translations/pt_BR: process: add handling-regressions.rst (1/3)
+      docs/translations/pt_BR: process: add handling-regressions.rst (2/3)
+      docs/translations/pt_BR: process: add handling-regressions.rst (3/3)
 
-diff --git a/sound/firewire/fireworks/fireworks_transaction.c b/sound/firewire/fireworks/fireworks_transaction.c
-index 5c859773fe06..bb9ab8ed52b5 100644
---- a/sound/firewire/fireworks/fireworks_transaction.c
-+++ b/sound/firewire/fireworks/fireworks_transaction.c
-@@ -34,7 +34,6 @@
- #define MEMORY_SPACE_EFW_RESPONSE	0xecc080000000ULL
- 
- #define ERROR_RETRIES 3
--#define ERROR_DELAY_MS 5
- #define EFC_TIMEOUT_MS 125
- 
- static DEFINE_SPINLOCK(instances_lock);
-@@ -99,7 +98,8 @@ int snd_efw_transaction_run(struct fw_unit *unit,
- 			ret = t.size;
- 			break;
- 		} else if (t.state == STATE_BUS_RESET) {
--			msleep(ERROR_DELAY_MS);
-+			ret = -EAGAIN;
-+			break;
- 		} else if (++tries >= ERROR_RETRIES) {
- 			dev_err(&t.unit->device, "EFW transaction timed out\n");
- 			ret = -EIO;
+ .../pt_BR/process/handling-regressions.rst         | 1136 ++++++++++++++++++++
+ 1 file changed, 1136 insertions(+)
+---
+base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
+change-id: 20261122-handling-regressions-951a5b0c080d
 
--- 
-2.34.1
+Best regards,
+--  
+Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 
