@@ -1,330 +1,332 @@
 From: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
-Date: Sun, 22 Nov 2026 13:08:45 -0300
-Subject: [PATCH 3/4] docs/translations/pt_BR: process: add
- maintainer-pgp-guide.rst (3/4)
+Date: Sun, 22 Nov 2026 13:08:46 -0300
+Subject: [PATCH 4/4] docs/translations/pt_BR: process: add
+ maintainer-pgp-guide.rst (4/4)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261122-maintainer-pgp-guide-pt-br-v1-3-01ce5941c5c2@gmail.com>
+Message-Id: <20261122-maintainer-pgp-guide-pt-br-v1-4-01ce5941c5c2@gmail.com>
 References: <20261122-maintainer-pgp-guide-pt-br-v1-0-01ce5941c5c2@gmail.com>
 In-Reply-To: <20261122-maintainer-pgp-guide-pt-br-v1-0-01ce5941c5c2@gmail.com>
 To: linux-doc@vger.kernel.org
 Cc: danielmaraboo@gmail.com, corbet@lwn.net, skhan@linuxfoundation.org, 
  rdunlap@infradead.org, Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795363722; l=12589;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795363722; l=13809;
  i=dreduardocruz@gmail.com; s=20261119; h=from:subject:message-id;
- bh=dKjQNIRvWhJaoEymbenBs7geHxnGG0xFt20nDZATkXg=;
- b=i1fq3Bs1GcO8wb9kAgq2PMwSQvUuS5g0wTPswoWuYW0yQKcsElcy9tW8AiV2l6TBERfy3AStm
- Sc1PEOfet+2B7RGvW8P9FWRE80a5NlliqUQWVnwOM5YTKcmteQWTVds
+ bh=WwZO9kC3rRbNLX5y6rS6DaDwrlIsnNblflitUqGr970=;
+ b=EFBGIVkYy+6GZ5UXqn7yc66x5HGhBgOURhvj/egb5GV95i84tSu3B/dOI0DObRi+EUqBBtyaH
+ 6Ez2Vv+2eg7BxLFFJlkboqOseKz6fiDE4ImwqbNIzGHS3v29D+CR/xa
 X-Developer-Key: i=dreduardocruz@gmail.com; a=ed25519;
  pk=2dtL+BL/x70sROmAvlskv9dbjj274zlPkLBVu4gJJiA=
 X-Endpoint-Received: by B4 Relay for dreduardocruz@gmail.com/20261119 with auth_id=1571
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Translate the smartcard chapter, including the device recommendations,
-the card configuration through gpg --card-edit and the migration of the
-subkeys to the card, plus the quick reference of common GnuPG
-operations.
+Finish the translation with the Git integration chapter (signed tags
+and commits, patatt) and the section on verifying kernel developer
+identities (WKD, DANE, TOFU and the kernel.org keyring).
 
 Signed-off-by: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 ---
- .../pt_BR/process/maintainer-pgp-guide.rst         | 286 +++++++++++++++++++++
- 1 file changed, 286 insertions(+)
+ Documentation/translations/pt_BR/process/index.rst |   1 +
+ .../pt_BR/process/maintainer-pgp-guide.rst         | 276 +++++++++++++++++++++
+ 2 files changed, 277 insertions(+)
 
+diff --git a/Documentation/translations/pt_BR/process/index.rst b/Documentation/translations/pt_BR/process/index.rst
+index d072f7e46767..a612b22e267c 100644
+--- a/Documentation/translations/pt_BR/process/index.rst
++++ b/Documentation/translations/pt_BR/process/index.rst
+@@ -46,6 +46,7 @@ devem estar familiarizados.
+    Adicionando uma nova chamada de Sistema <adding-syscalls>
+    Por que a classe de tipo "volatile" não deve ser usada <volatile-considered-harmful>
+    Como não Deixar as ioctls malfeitas <botching-up-ioctls>
++   Guia de PGP para mantenedores <maintainer-pgp-guide>
+ 
+ Guias de políticas e declarações de desenvolvedores
+ ---------------------------------------------------
 diff --git a/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst b/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst
-index 4e07d49e36d0..7808ef4730ae 100644
+index 7808ef4730ae..8cec13c6559b 100644
 --- a/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst
 +++ b/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst
-@@ -358,3 +358,289 @@ que ainda contém as suas chaves privadas.
+@@ -644,3 +644,279 @@ outra ponta.
  
- .. _smartcards:
+ .. _pgp_with_git:
  
-+Mova as subchaves para um dispositivo criptográfico dedicado
-+============================================================
++Usando PGP com o Git
++====================
 +
-+Embora a chave de Certificação esteja agora protegida contra vazamento ou
-+roubo, as subchaves continuam no seu diretório home. Qualquer pessoa que
-+consiga pôr as mãos nelas poderá decifrar a sua comunicação ou forjar as suas
-+assinaturas (se souber a passphrase). Além disso, a cada operação do GnuPG as
-+chaves são carregadas na memória do sistema e podem ser roubadas de lá por
-+malware suficientemente avançado (pense em Meltdown e Spectre).
++Uma das características centrais do Git é a sua natureza descentralizada --
++uma vez que um repositório é clonado no seu sistema, você tem o histórico
++completo do projeto, incluindo todas as suas tags, commits e ramos. No
++entanto, com centenas de repositórios clonados circulando, como alguém
++verifica que a sua cópia do linux.git não foi adulterada por um terceiro
++malicioso?
 +
-+Uma boa forma de proteger completamente as suas chaves é movê-las para um
-+dispositivo de hardware especializado, capaz de operações de smartcard.
++Ou o que acontece se um código malicioso for descoberto no kernel e a linha
++"Author" do commit disser que foi você quem fez, enquanto você tem quase
++certeza de que `não teve nada a ver com isso`_?
 +
-+Os benefícios dos smartcards
-+-----------------------------
++Para resolver essas duas questões, o Git introduziu a integração com PGP. Tags
++assinadas provam a integridade do repositório ao assegurar que o seu conteúdo
++é exatamente o mesmo da estação de trabalho do desenvolvedor que criou a tag,
++enquanto commits assinados tornam quase impossível alguém se passar por você
++sem ter acesso às suas chaves PGP.
 +
-+Um smartcard contém um chip criptográfico capaz de armazenar chaves privadas e
-+realizar operações criptográficas diretamente no próprio cartão. Como o
-+conteúdo das chaves nunca sai do smartcard, o sistema operacional do
-+computador em que você conecta o dispositivo não consegue recuperar as chaves
-+privadas. Isso é muito diferente da mídia criptografada que usamos antes para
-+backup -- enquanto aquele dispositivo está conectado e montado, o sistema
-+operacional consegue acessar o conteúdo das chaves privadas.
++.. _`não teve nada a ver com isso`: https://github.com/jayphelps/git-blame-someone-else
 +
-+Usar mídia externa criptografada não substitui ter um dispositivo com
-+capacidade de smartcard.
++Configure o Git para usar a sua chave PGP
++-----------------------------------------
 +
-+Dispositivos de smartcard disponíveis
-+-------------------------------------
++Se você tem apenas uma chave secreta no seu chaveiro, não precisa fazer nada
++extra, pois ela se torna a sua chave padrão. Porém, se tiver várias chaves
++secretas, você pode dizer ao Git qual chave deve ser usada (``[fpr]`` é a
++impressão digital da sua chave)::
 +
-+A menos que todos os seus laptops e estações de trabalho tenham leitores de
-+smartcard, o mais fácil é obter um dispositivo USB especializado que
-+implemente a funcionalidade de smartcard. Há várias opções disponíveis:
++    $ git config --global user.signingKey [fpr]
 +
-+- `Nitrokey Start`_: hardware aberto e software livre, baseado no `Gnuk`_ da
-+  FSI Japan. Uma das opções mais baratas, mas oferece menos recursos de
-+  segurança (como resistência a adulteração ou a alguns ataques de canal
-+  lateral).
-+- `Nitrokey 3`_: semelhante ao Nitrokey Start, mas mais resistente a
-+  adulteração e com mais recursos de segurança e formatos USB. Suporta
-+  criptografia ECC (ED25519 e NISTP).
-+- `Yubikey 5`_: hardware e software proprietários, mas mais barato que o
-+  Nitrokey e com conjunto semelhante de recursos. Suporta criptografia ECC
-+  (ED25519 e NISTP).
++Como trabalhar com tags assinadas
++---------------------------------
 +
-+A sua escolha dependerá de custo, disponibilidade de envio na sua região
-+geográfica e considerações sobre hardware aberto ou proprietário.
++Para criar uma tag assinada, passe a opção ``-s`` ao comando tag::
 +
-+.. note::
++    $ git tag -s [tagname]
 +
-+    Se você estiver listado em uma entrada `M:` no MAINTAINERS ou tiver uma
-+    conta no kernel.org, você `tem direito a um Nitrokey Start gratuito`_,
-+    cortesia da Linux Foundation.
++Nossa recomendação é sempre assinar as tags do Git, pois isso permite que
++outros desenvolvedores verifiquem que o repositório Git de onde estão puxando
++não foi alterado maliciosamente.
 +
-+.. _`Nitrokey Start`: https://www.nitrokey.com/products/nitrokeys
++Como verificar tags assinadas
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 +
-+.. _`Nitrokey 3`: https://www.nitrokey.com/products/nitrokeys
++Para verificar uma tag assinada, use o comando ``verify-tag``::
 +
-+.. _`Yubikey 5`: https://www.yubico.com/products/yubikey-5-overview/
++    $ git verify-tag [tagname]
 +
-+.. _Gnuk: https://www.fsij.org/doc-gnuk/
++Se você estiver puxando uma tag de outro fork do repositório do projeto, o Git
++deve verificar automaticamente a assinatura na ponta que você está puxando e
++mostrar os resultados durante a operação de merge::
 +
-+.. _`tem direito a um Nitrokey Start gratuito`: https://www.kernel.org/nitrokey-digital-tokens-for-kernel-developers.html
++    $ git pull [url] tags/sometag
 +
-+Configure o seu dispositivo de smartcard
-+----------------------------------------
++A mensagem de merge conterá algo como isto::
 +
-+O seu dispositivo de smartcard deve simplesmente funcionar (TM) no momento em
-+que você o conecta a qualquer estação de trabalho Linux moderna. Você pode
-+verificar executando::
++    Merge tag 'sometag' of [url]
++    [Tag message]
 +
-+    $ gpg --card-status
++    # gpg: Signature made [...]
++    # gpg: Good signature from [...]
 +
-+Se você vir os detalhes completos do smartcard, está tudo certo.
-+Infelizmente, diagnosticar todas as razões possíveis pelas quais as coisas
-+podem não funcionar para você está muito além do escopo deste guia. Se estiver
-+com dificuldade para fazer o cartão funcionar com o GnuPG, procure ajuda nos
-+canais de suporte habituais.
++Se você estiver verificando a tag Git de outra pessoa, primeiro precisará
++importar a chave PGP dela. Consulte a seção ":ref:`verify_identities`"
++abaixo.
 +
-+Para configurar o seu smartcard, você precisará usar o sistema de menus do
-+GnuPG, pois não há opções convenientes de linha de comando::
++Configure o Git para sempre assinar tags anotadas
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 +
-+    $ gpg --card-edit
-+    [...omitted...]
-+    gpg/card> admin
-+    Admin commands are allowed
-+    gpg/card> passwd
++É provável que, se você está criando uma tag anotada, queira assiná-la. Para
++forçar o Git a sempre assinar tags anotadas, defina uma opção de configuração
++global::
 +
-+Você deve definir o PIN do usuário (1), o PIN de administrador (3) e o Código
-+de Reset (4). Não deixe de anotar e guardar esses valores em local seguro --
-+especialmente o PIN de administrador e o Código de Reset (que permite apagar
-+completamente o smartcard). Você raramente precisará usar o PIN de
-+administrador, então inevitavelmente esquecerá qual é, se não anotar.
++    $ git config --global tag.forceSignAnnotated true
 +
-+Voltando ao menu principal do cartão, você também pode definir outros valores
-+(como nome, gênero, dados de login etc.), mas isso não é necessário e ainda
-+vazaria informação sobre o seu smartcard caso você o perca.
++Como trabalhar com commits assinados
++------------------------------------
 +
-+.. note::
++Também é possível criar commits assinados, mas eles têm utilidade limitada no
++desenvolvimento do kernel Linux. O fluxo de contribuição do kernel baseia-se
++no envio de patches, e converter commits em patches não preserva as
++assinaturas de commit do Git. Além disso, ao rebasear o seu próprio repositório
++sobre um upstream mais novo, as assinaturas PGP de commit acabam descartadas.
++Por essa razão, a maioria dos desenvolvedores do kernel não se dá ao trabalho
++de assinar os seus commits e ignora commits assinados em quaisquer
++repositórios externos nos quais se apoiam no trabalho.
 +
-+    Apesar do nome "PIN", nem o PIN do usuário nem o PIN de administrador do
-+    cartão precisam ser numéricos.
++Dito isso, se você tem a sua árvore Git de trabalho disponível publicamente em
++algum serviço de hospedagem Git (kernel.org, infradead.org, ozlabs.org ou
++outros), então a recomendação é assinar todos os seus commits Git, mesmo que
++os desenvolvedores upstream não se beneficiem diretamente da prática.
 +
-+.. warning::
++Recomendamos isso pelas seguintes razões:
 +
-+    Alguns dispositivos podem exigir que você mova as subchaves para o
-+    dispositivo antes de poder alterar a passphrase. Verifique a documentação
-+    fornecida pelo fabricante do dispositivo.
++1. Caso algum dia haja necessidade de fazer perícia de código ou rastrear a
++   proveniência do código, mesmo árvores mantidas externamente que carreguem
++   assinaturas PGP de commit serão valiosas para tais propósitos.
++2. Se você precisar reclonar o seu repositório local (por exemplo, após
++   reinstalar o sistema), isso permite verificar a integridade do repositório
++   antes de retomar o trabalho.
++3. Se alguém precisar fazer cherry-pick dos seus commits, isso permite
++   verificar rapidamente a integridade deles antes de aplicá-los.
 +
-+Mova as subchaves para o seu smartcard
-+--------------------------------------
++Criando commits assinados
++~~~~~~~~~~~~~~~~~~~~~~~~~
 +
-+Saia do menu do cartão (usando "q") e salve todas as alterações. Em seguida,
-+vamos mover as suas subchaves para o smartcard. Você precisará tanto da
-+passphrase da sua chave PGP quanto do PIN de administrador do cartão para a
-+maioria das operações::
++Para criar um commit assinado, passe a opção ``-S`` ao comando
++``git commit`` (é ``-S`` maiúsculo por colisão com outra opção)::
 +
-+    $ gpg --edit-key [fpr]
++    $ git commit -S
 +
-+    Secret subkeys are available.
-+
-+    pub  ed25519/AAAABBBBCCCCDDDD
-+         created: 2022-12-20  expires: 2024-12-19  usage: SC
-+         trust: ultimate      validity: ultimate
-+    ssb  cv25519/1111222233334444
-+         created: 2022-12-20  expires: never       usage: E
-+    ssb  ed25519/5555666677778888
-+         created: 2017-12-07  expires: never       usage: S
-+    [ultimate] (1). Alice Dev <adev@kernel.org>
-+
-+    gpg>
-+
-+Usar ``--edit-key`` nos coloca novamente no modo de menu, e você notará que
-+a listagem de chaves é um pouco diferente. Daqui em diante, todos os comandos
-+são feitos dentro desse modo de menu, indicado por ``gpg>``.
-+
-+Primeiro, vamos selecionar a chave que colocaremos no cartão -- você faz isso
-+digitando ``key 1`` (é a primeira da listagem, a subchave **[E]**)::
-+
-+    gpg> key 1
-+
-+Na saída, você deve agora ver ``ssb*`` na chave **[E]**. O ``*`` indica qual
-+chave está "selecionada" no momento. Funciona como um *toggle*, ou seja,
-+se você digitar ``key 1`` novamente, o ``*`` desaparece e a chave deixa de
-+estar selecionada.
-+
-+Agora, vamos mover essa chave para o smartcard::
-+
-+    gpg> keytocard
-+    Please select where to store the key:
-+       (2) Encryption key
-+    Your selection? 2
-+
-+Como é a nossa chave **[E]**, faz sentido colocá-la no slot de Criptografia.
-+Ao enviar a sua seleção, será pedida primeiro a passphrase da chave PGP e
-+depois o PIN de administrador. Se o comando retornar sem erro,
-+a sua chave foi movida.
-+
-+**Importante**: agora digite ``key 1`` novamente para desmarcar a primeira
-+chave, e ``key 2`` para selecionar a chave **[S]**::
-+
-+    gpg> key 1
-+    gpg> key 2
-+    gpg> keytocard
-+    Please select where to store the key:
-+       (1) Signature key
-+       (3) Authentication key
-+    Your selection? 1
-+
-+Você pode usar a chave **[S]** tanto para Assinatura quanto para Autenticação,
-+mas queremos garantir que ela fique no slot de Assinatura, então escolha
-+(1). Mais uma vez, se o seu comando retornar sem erro, a operação foi bem-sucedida::
-+
-+    gpg> q
-+    Save changes? (y/N) y
-+
-+Salvar as alterações excluirá do seu diretório home as chaves que você moveu
-+para o cartão (mas não há problema, porque as temos nos nossos backups, caso
-+precisemos fazer isso de novo para um smartcard de reposição).
-+
-+Verificando que as chaves foram movidas
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-+
-+Se você executar ``--list-secret-keys`` agora, verá uma diferença sutil na
-+saída::
-+
-+    $ gpg --list-secret-keys
-+    sec#  ed25519 2022-12-20 [SC] [expires: 2024-12-19]
-+          000000000000000000000000AAAABBBBCCCCDDDD
-+    uid           [ultimate] Alice Dev <adev@kernel.org>
-+    ssb>  cv25519 2022-12-20 [E] [expires: 2024-12-19]
-+    ssb>  ed25519 2022-12-20 [S]
-+
-+O ``>`` na saída ``ssb>`` indica que a subchave está disponível apenas no
-+smartcard. Se você voltar ao seu diretório de chaves secretas e olhar o
-+conteúdo, notará que os arquivos ``.key`` de lá foram substituídos por
-+stubs::
-+
-+    $ cd ~/.gnupg/private-keys-v1.d
-+    $ strings *.key | grep 'private-key'
-+
-+A saída deve conter ``shadowed-private-key`` para indicar que esses arquivos
-+são apenas stubs e o conteúdo real está no smartcard.
-+
-+Verificando que o smartcard está funcionando
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-+
-+Para verificar que o smartcard funciona como pretendido, você pode criar uma
-+assinatura::
-+
-+    $ echo "Hello world" | gpg --clearsign > /tmp/test.asc
-+    $ gpg --verify /tmp/test.asc
-+
-+O primeiro comando deve pedir o PIN do seu smartcard, e depois de executar
-+``gpg --verify`` a saída deve mostrar "Good signature".
-+
-+Parabéns, você acabou de tornar extremamente difícil roubar a sua identidade
-+digital de desenvolvedor!
-+
-+Outras operações comuns do GnuPG
-+--------------------------------
-+
-+Aqui está uma referência rápida para algumas operações comuns que você
-+precisará fazer com a sua chave PGP.
-+
-+Montando o seu armazenamento offline seguro
++Configure o Git para sempre assinar commits
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 +
-+Você precisará da sua chave de Certificação para qualquer uma das operações
-+abaixo, então primeiro será preciso montar o seu armazenamento de backup
-+offline e informar ao GnuPG para usá-lo::
++Você pode dizer ao Git para sempre assinar commits::
 +
-+    $ export GNUPGHOME=/media/disk/foo/gnupg-backup
-+    $ gpg --list-secret-keys
++    git config --global commit.gpgSign true
 +
-+Você quer garantir que vê ``sec`` e não ``sec#`` na saída (o ``#`` significa
-+que a chave não está disponível e você ainda está usando o local habitual do
-+diretório home).
++.. note::
 +
-+Estendendo a data de expiração da chave
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++    Não deixe de configurar o ``gpg-agent`` antes de ativar esta opção.
 +
-+A chave de Certificação tem, por padrão, data de expiração de 2 anos a partir
-+da criação. Isso é feito tanto por razões de segurança quanto para que chaves
-+obsoletas acabem sumindo dos keyservers.
++.. _verify_identities:
 +
-+Para estender a expiração da sua chave em um ano a partir da data atual,
-+basta executar::
++Como trabalhar com patches assinados
++-------------------------------------
 +
-+    $ gpg --quick-set-expire [fpr] 1y
++É possível usar a sua chave PGP para assinar patches enviados às listas de
++discussão de desenvolvedores do kernel. Como os mecanismos existentes de
++assinatura de e-mail (PGP-Mime ou PGP-inline) costumam causar problemas nas
++tarefas normais de revisão de código, você deve usar a ferramenta criada pelo
++kernel.org para esse propósito, que coloca assinaturas de atestação
++criptográfica nos cabeçalhos das mensagens (ao estilo DKIM):
 +
-+Você também pode usar uma data específica, se for mais fácil de lembrar (por
-+exemplo, seu aniversário, 1º de janeiro ou o Canada Day)::
++- `Patatt Patch Attestation`_
 +
-+    $ gpg --quick-set-expire [fpr] 2038-07-01
++.. _`Patatt Patch Attestation`: https://pypi.org/project/patatt/
 +
-+Lembre-se de enviar a chave atualizada de volta aos keyservers::
++Instalando e configurando o patatt
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 +
-+    $ gpg --send-key [fpr]
++.. note::
 +
-+Atualizando o seu diretório de trabalho após quaisquer mudanças
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++    Se você usa o B4 para enviar os seus patches, o patatt já está instalado
++    e integrado ao seu fluxo de trabalho.
 +
-+Depois de fazer qualquer mudança na sua chave usando o armazenamento offline,
-+você vai querer importar essas mudanças de volta ao seu diretório de trabalho
-+habitual::
++O patatt já está empacotado para muitas distribuições, então verifique lá
++primeiro. Você também pode instalá-lo a partir do pypi usando
++"``pip install patatt``".
 +
-+    $ gpg --export | gpg --homedir ~/.gnupg --import
-+    $ unset GNUPGHOME
++Se você já tem a sua chave PGP configurada com o Git (via o parâmetro de
++configuração ``user.signingKey``), então o patatt não requer configuração
++adicional. Você pode começar a assinar os seus patches instalando o hook do
++git-send-email no repositório que quiser::
 +
-+Usando o gpg-agent por ssh
-+~~~~~~~~~~~~~~~~~~~~~~~~~~
++    patatt install-hook
 +
-+Você pode encaminhar o seu gpg-agent por ssh se precisar assinar tags ou
-+commits em um sistema remoto. Consulte as instruções fornecidas no wiki do
-+GnuPG:
++Agora quaisquer patches que você enviar com ``git send-email`` serão
++automaticamente assinados com a sua assinatura criptográfica.
 +
-+- `Agent Forwarding over SSH`_
++Verificando assinaturas do patatt
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 +
-+Funciona melhor se você puder modificar as configurações do servidor sshd na
-+outra ponta.
++Se você usa o ``b4`` para obter e aplicar patches, ele tentará automaticamente
++verificar todas as assinaturas DKIM e patatt que encontrar, por exemplo::
 +
-+.. _`Agent Forwarding over SSH`: https://wiki.gnupg.org/AgentForwarding
++    $ b4 am 20220720205013.890942-1-broonie@kernel.org
++    [...]
++    Checking attestation on all messages, may take a moment...
++    ---
++      ✓ [PATCH v1 1/3] kselftest/arm64: Correct buffer allocation for SVE Z registers
++      ✓ [PATCH v1 2/3] arm64/sve: Document our actual ABI for clearing registers on syscall
++      ✓ [PATCH v1 3/3] kselftest/arm64: Enforce actual ABI for SVE syscalls
++      ---
++      ✓ Signed: openpgp/broonie@kernel.org
++      ✓ Signed: DKIM/kernel.org
 +
-+.. _pgp_with_git:
++.. note::
++
++    O patatt e o b4 ainda estão em desenvolvimento ativo; consulte a
++    documentação mais recente desses projetos para recursos novos ou
++    atualizados.
++
++.. _kernel_identities:
++
++Como verificar identidades de desenvolvedores do kernel
++=======================================================
++
++Assinar tags e commits é direto, mas como se faz para verificar que a chave
++usada para assinar algo pertence ao desenvolvedor real do kernel e não a um
++impostor malicioso?
++
++Configure a recuperação automática de chaves com WKD e DANE
++----------------------------------------------------------
++
++Se você ainda não é alguém com uma coleção extensa de chaves públicas de
++outros desenvolvedores, pode dar um impulso ao seu chaveiro contando com a
++descoberta e a recuperação automáticas de chaves. O GnuPG pode se apoiar em
++outras tecnologias de confiança delegada, a saber DNSSEC e TLS, para ajudá-lo,
++caso a perspectiva de começar a sua própria Teia de Confiança do zero seja
++intimidadora demais.
++
++Adicione o seguinte ao seu ``~/.gnupg/gpg.conf``::
++
++    auto-key-locate wkd,dane,local
++    auto-key-retrieve
++
++DNS-Based Authentication of Named Entities ("DANE") é um método para publicar
++chaves públicas no DNS e protegê-las usando zonas assinadas com DNSSEC. Web
++Key Directory ("WKD") é o método alternativo que usa consultas https para o
++mesmo propósito. Ao usar DANE ou WKD para procurar chaves públicas, o GnuPG
++validará certificados DNSSEC ou TLS, respectivamente, antes de adicionar as
++chaves recuperadas automaticamente ao seu chaveiro local.
++
++O kernel.org publica o WKD para todos os desenvolvedores que têm conta no
++kernel.org. Depois de fazer as mudanças acima no seu ``gpg.conf``, você pode
++recuperar automaticamente as chaves de Linus Torvalds e Greg Kroah-Hartman
++(se ainda não as tiver)::
++
++    $ gpg --locate-keys torvalds@kernel.org gregkh@kernel.org
++
++Se você tem conta no kernel.org, então deve `adicionar o UID do kernel.org à
++sua chave`_ para tornar o WKD mais útil para outros desenvolvedores do
++kernel.
++
++.. _`adicionar o UID do kernel.org à sua chave`: https://korg.docs.kernel.org/mail.html#adding-a-kernel-org-uid-to-your-pgp-key
++
++Web of Trust (WOT) versus Trust on First Use (TOFU)
++----------------------------------------------------
++
++O PGP incorpora um mecanismo de delegação de confiança conhecido como "Web of
++Trust". No fundo, é uma tentativa de substituir a necessidade de Autoridades
++Certificadoras centralizadas do mundo HTTPS/TLS. Em vez de vários fabricantes
++de software ditarem quem deve ser a sua entidade certificadora de confiança, o
++PGP deixa essa responsabilidade para cada usuário.
++
++Infelizmente, muito poucas pessoas entendem como a Web of Trust funciona.
++Embora ela ainda seja uma parte importante da especificação OpenPGP, versões
++recentes do GnuPG (2.2 e superiores) implementaram um mecanismo alternativo
++chamado "Trust on First Use" (TOFU). Você pode pensar no TOFU como "a
++abordagem de confiança ao estilo SSH". Com o SSH, na primeira vez que você se
++conecta a um sistema remoto, a impressão digital da chave dele é registrada e
++memorizada. Se a chave mudar no futuro, o cliente SSH avisará você e se
++recusará a conectar, forçando-o a decidir se confia ou não na chave alterada.
++De modo semelhante, na primeira vez que você importa a chave PGP de alguém,
++ela é considerada válida. Se em algum momento futuro o GnuPG encontrar outra
++chave com a mesma identidade, tanto a chave importada anteriormente quanto a
++nova serão marcadas para verificação, e você precisará descobrir manualmente
++qual delas manter.
++
++Recomendamos que você use o modelo de confiança combinado TOFU+PGP (que é o
++novo padrão no GnuPG v2). Para defini-lo, adicione (ou modifique) a
++configuração ``trust-model`` em ``~/.gnupg/gpg.conf``::
++
++    trust-model tofu+pgp
++
++.. _kernel_org_trust_repository:
++
++Usando o repositório de teia de confiança do kernel.org
++--------------------------------------------------------
++
++O kernel.org mantém um repositório Git com as chaves públicas dos
++desenvolvedores, como substituto para replicar redes de keyservers que se
++tornaram em grande parte inoperantes nos últimos anos. A documentação completa
++sobre como configurar esse repositório como a sua fonte de chaves públicas
++pode ser encontrada aqui:
++
++- `Kernel developer PGP Keyring`_
++
++Se você é desenvolvedor do kernel, considere enviar a sua chave para inclusão
++nesse chaveiro.
++
++.. _`Kernel developer PGP Keyring`: https://korg.docs.kernel.org/pgpkeys.html
 +
 
 -- 
