@@ -1,121 +1,95 @@
 From: YanXin Li <fadouse@pm.me>
-Date: Sun, 22 Nov 2026 20:45:52 +0800
-Subject: [PATCH net v2] net/sched: act_ife: return -EAGAIN after dropping
- rtnl_lock in load_metaops_and_vet()
+Date: Sun, 22 Nov 2026 20:46:37 +0800
+Subject: [PATCH v2] iommufd: reject mmap() of not-yet-finalized objects
+ with iommufd_try_inc_users()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-b4-02-act-ife-rtnl-uaf-v2-102eba468698-v2-1-67c413c45928@pm.me>
-X-B4-Tracking: v=1; b=H4sIAP/jAmsC/yWNQQ4CIQxFr2K6thE6DYNexbgoUBRj0MBoNMa7O
- 6PL9/Lz3xu6tqIddqs3NH2UXq51BlqvIJ6kHhVLmhnIkLOWCAOjIZQ4YcmKbaoXvEvGB6E1pEH
- Yebf1mLzd5lHiaIyD+ezWNJfnL7SHqhMc/rLfw1njtCSWWZCuGJrUeFpU04u8cJGbyGwN58ExJ
- RnJWMeGydGg7AfygxPNKXmFz+cL4NbH7NUAAAA=
-X-Change-ID: 20261122-b4-02-act-ife-rtnl-uaf-v2-102eba468698-d819f7ac7006
-To: Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@resnulli.us>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: Simon Horman <horms@kernel.org>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Message-Id: <20261122-b4-04-iommufd-mmap-uaf-v2-a67fd4229347-v2-1-5c108f208c89@pm.me>
+X-B4-Tracking: v=1; b=H4sIACzkAmsC/yWNQQ7CIBBFr2JYOxGGkVavYlwMMCjGtgas0TS9u
+ 60u38vP+5OqUrJUddxMqsgr1zz0C+B2o8KV+4tAjgsr1OiMQQRPoAny0HVjitB1/ICRE7wQ2DU
+ pEuLBUgMcvY4m7Y0JWi2xR5GU37+j0/nPdfQ3Cc+1vi48VwFfuA/XVRW58wdWuQtERlOyjjByg
+ 9o40oQOrVBrsbWOJcXYiprnL5okshDQAAAA
+X-Change-ID: 20261122-b4-04-iommufd-mmap-uaf-v2-a67fd4229347-adb0d1f511c0
+To: Jason Gunthorpe <jgg@ziepe.ca>, Kevin Tian <kevin.tian@intel.com>, 
+ "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>
+Cc: Robin Murphy <robin.murphy@arm.com>, Nicolin Chen <nicolinc@nvidia.com>, 
+ iommu@lists.linux.dev, linux-kernel@vger.kernel.org, stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795351585; l=3836;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795351630; l=3039;
  i=fadouse@pm.me; s=b4-relay-20261122; h=from:subject:message-id;
- bh=R6AZ0+3b44AwA7zPArm0D81n4+9WlR/R512inY1q7qw=;
- b=qsqZxqZfyp9Bt3IIxnnG4mcG2BZmBRa1SWt4lQo37rzuuRbhjD91d8zY5CWAGl8ou5LjCgfjV
- 0EKLwwLidTZC/RL7clsgPR6PzyWU6WG6fyi2f0uUrytz4i0ZxVU42Qg
+ bh=Z84dv3tFgdoJmnVouiJISUeePaqORmrrqKd4RPqN3QM=;
+ b=ToN2PGJXB+5WFnyUW173WnInnUMjF3W3Cd1ZCMQzK9yMGN309zX2gytW39ZMzuE0oIp/aITtJ
+ dHH8X6KtIzjATSBu6TXFoRlCD19Gp5zoxCKN65pYAa+fdkUvgcFd4ZG
 X-Developer-Key: i=fadouse@pm.me; a=ed25519;
  pk=b4DyzHJDRd8853IHUSKPA5wwzChj8eF4MTnZuyPz1PQ=
 X-Endpoint-Received: by B4 Relay for fadouse@pm.me/b4-relay-20261122 with auth_id=1597
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-load_metaops_and_vet() unlocks rtnl_lock() to invoke request_module()
-when an IFE metadata provider module (such as act_meta_mark) is not
-yet loaded, re-acquires rtnl_lock(), validates the metadata attribute,
-and returns 0.
+iommufd_fops_mmap() pins the owner of an mmap region with
+refcount_inc_not_zero(&immap->owner->users).  This can also pin an
+object still being constructed: IOMMU_VIOMMU_ALLOC publishes its
+immap in ictx->mt_mmap before the object is finalized, while
+ictx->objects still holds XA_ZERO_ENTRY and obj->users is 1.
 
-Returning 0 after dropping rtnl_lock() violates the serialization
-contract of RTNL-locked classifiers (cls_basic, cls_flow, cls_fw,
-cls_route, and cls_u32), which hold an unrefcounted filter pointer
-(fold) across tcf_exts_validate() -> tcf_ife_init().  A concurrent
-RTM_DELTFILTER can delete and RCU-free fold during the unlocked
-request_module() window, after which basic_change() executes
-list_replace_rcu(&fold->link, &fnew->link) and queues a second
-deletion on the freed filter.  Generic KASAN reports:
+A concurrent mmap() can take the reference.  If the creation ioctl
+then fails, for example when iommufd_ucmd_respond() faults on a
+read-only command buffer, iommufd_object_abort_and_destroy() erases
+and frees the immap.  iommufd_object_abort() warns about the extra
+users reference; a later VMA close dereferences the freed immap.  On
+the unpatched kernel, a CONFIG_IOMMUFD_TEST reproducer reported:
 
-  BUG: KASAN: slab-use-after-free in basic_change+0xf4c/0x1220
-  Read of size 8 at addr ffff88800e043c58 by task test_act_ife_rt/101
-  ...
-  Allocated by task 101:
-   basic_change+0x1e0/0x1220
-  Freed by task 57:
-   ...
-  Oops: general protection fault, probably for non-canonical address
-  KASAN: maybe wild-memory-access in range [0xdead000000000120-0xdead000000000127]
+  WARNING: drivers/iommu/iommufd/main.c:126 at iommufd_object_abort
+  BUG: KASAN: slab-use-after-free in iommufd_fops_vma_close
 
-Every other TC module autoloader that drops rtnl_lock() during filter
-updates (tc_action_load_ops(), tcf_em_validate(), and em_text_change())
-returns -EAGAIN so tc_new_tfilter() and tcf_action_add() unwind and
-replay under a fresh RTNL critical section.
+The reproducer needs no hardware IOMMU.  On production kernels, this
+requires a driver that publishes an mmap region before its creation
+ioctl can still fail, such as tegra241-cmdqv on real hardware.
 
-Manipulating TC filters requires CAP_NET_ADMIN in the target network
-namespace, which is reachable by an unprivileged local user inside a
-user and network namespace when CONFIG_USER_NS=y, CONFIG_MODULES=y,
-CONFIG_NET_ACT_IFE is enabled, and an IFE metadata module is not yet
-loaded.
+Use iommufd_try_inc_users() to check under the objects xarray lock
+that the owner is published before increasing users.  It returns
+-EBUSY for an unfinalized object, so mmap() returns -ENXIO.  The mmap
+path takes the objects lock under the mt_mmap lock; object teardown
+releases the objects lock before erasing the mmap entry.
 
-When load_metaops_and_vet() drops rtnl_lock() and loads the requested
-metadata module, drop the module reference and return -EAGAIN so the
-caller replays the request with fresh lookups.  With this change, the
-same concurrent RTM_NEWTFILTER and RTM_DELTFILTER sequence cleanly
-loads act_meta_mark, replays without touching the deleted filter, and
-completes with rc=0 and no KASAN or lockdep reports.  A finite
-two-thread state-space interleaving model found the old use-after-free
-and no use-after-free, double-free, or deadlock in its reachable states
-after the change.
+With this change, a finalized viommu can still be mmap()ed and
+unmapped.  In an x86-64 QEMU/KVM guest running mainline after
+v7.4-rc3 with Generic KASAN, UBSAN, lockdep, and DEBUG_OBJECTS, 3000
+aborted allocations racing two mmap()/munmap() loops produced no
+kernel splats.
 
-The vulnerable code is present in upstream mainline v7.4-rc3.
-Runtime verification and fix validation were performed in an x86-64
-QEMU/KVM guest running mainline after v7.4-rc3 with Generic KASAN,
-UBSAN, and lockdep.
-
-This issue was discovered through LLM-assisted code audit and manual
-code inspection of net/sched/act_ife.c.
-
-Fixes: ef6980b6becb ("introduce IFE action")
+Fixes: 56e9a0d8e53f ("iommufd: Add mmap interface")
 Cc: stable@vger.kernel.org
 Signed-off-by: YanXin Li <fadouse@pm.me>
 ---
 Changes in v2:
-- Resend via b4 because the archived v1 email has a corrupted diff and
-  cannot be applied.
-- State how the issue was discovered and clarify the finite model scope.
-- Link to v1: https://lore.kernel.org/r/20261122030728.9368-1-fadouse@pm.me
----
- net/sched/act_ife.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+- Resend via b4 because the archived v1 email gained a blank line in
+  the diff context and cannot be applied.
+- Shorten the commit message and correct the tested kernel version wording.
+- Link to v1: https://lore.kernel.org/r/20261122032416.11746-1-fadouse@pm.me
 
-diff --git a/net/sched/act_ife.c b/net/sched/act_ife.c
-index 5a527da0056..5d6ca124e00 100644
---- a/net/sched/act_ife.c
-+++ b/net/sched/act_ife.c
-@@ -275,6 +275,14 @@ static int load_metaops_and_vet(u32 metaid, void *val, int len, bool rtnl_held)
- 		if (rtnl_held)
- 			rtnl_lock();
- 		ops = find_ife_oplist(metaid);
-+		if (ops && rtnl_held) {
-+			/* We dropped the RTNL mutex in order to perform the
-+			 * module load. Tell the caller to replay the request
-+			 * under a fresh RTNL critical section.
-+			 */
-+			module_put(ops->owner);
-+			return -EAGAIN;
-+		}
- #endif
+Test baseline: c44104f3642d
+---
+ drivers/iommu/iommufd/main.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/iommu/iommufd/main.c b/drivers/iommu/iommufd/main.c
+index 9a921b15316..f0b4308fe34 100644
+--- a/drivers/iommu/iommufd/main.c
++++ b/drivers/iommu/iommufd/main.c
+@@ -601,7 +601,7 @@ static int iommufd_fops_mmap(struct file *filp, struct vm_area_struct *vma)
+ 	mtree_lock(&ictx->mt_mmap);
+ 	/* vma->vm_pgoff carries a page-shifted start position to an immap */
+ 	immap = mtree_load(&ictx->mt_mmap, vma->vm_pgoff << PAGE_SHIFT);
+-	if (!immap || !refcount_inc_not_zero(&immap->owner->users)) {
++	if (!immap || iommufd_try_inc_users(ictx, immap->owner)) {
+ 		mtree_unlock(&ictx->mt_mmap);
+ 		return -ENXIO;
  	}
- 
 
 ---
 base-commit: c44104f3642da720164042623e4832836aefdd8e
-change-id: 20261122-b4-02-act-ife-rtnl-uaf-v2-102eba468698-d819f7ac7006
+change-id: 20261122-b4-04-iommufd-mmap-uaf-v2-a67fd4229347-adb0d1f511c0
 
 Best regards,
 --  
