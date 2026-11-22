@@ -1,89 +1,77 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Sun, 22 Nov 2026 03:28:04 +0200
-Subject: [PATCH v2] drm/panfrost: Gate the RK3399 GPU clock in runtime
- suspend
+From: Nick Dowsett <nick42d@gmail.com>
+Subject: [PATCH 0/4] rust: wmi: add MVP of WMI abstractions
+Date: Sun, 22 Nov 2026 12:28:13 +0800
+Message-Id: <20261122-rust-wmi-v1-0-63111d9e824c@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-panfrost-rk3399-pm-rt-v2-1-40f1791aa1a8@iav.lv>
-X-B4-Tracking: v=1; b=H4sIACNFAmsC/4WNQQ6CMBBFr0Jm7ZiWomRceQ/DoilTmahApqTRE
- O5u5QIu30v++yskVuEEl2oF5SxJprFAfaggDH68M0pfGGpTn61xBmc/Rp3SgvpwjgjnF+qCgb2
- LwbZkeoKynZWjvPfurSs8SFom/ew32f7sv2K2aJGpaVxrT+Spv4rPx2eGbtu2L9QCNTu3AAAA
-To: Boris Brezillon <boris.brezillon@collabora.com>, 
- Rob Herring <robh@kernel.org>, Steven Price <steven.price@arm.com>, 
- =?utf-8?q?Adri=C3=A1n_Larumbe?= <adrian.larumbe@collabora.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Heiko Stuebner <heiko@sntech.de>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- Daniel Stone <daniel@fooishbar.org>, Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2536; i=iav@iav.lv;
- h=from:subject:message-id; bh=umYgCRkWKn6+vJ3cIJXDRixn24OfpDYOCpQZFsANalM=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDNlMroat6+Z90PcJ+3l1pcTdh/Frzuuo7PfaaDvV7GCc4
- HPTqiS5jlIWBjEuBlkxRZYJhzRuZSy5+tffw/wBzBxWJpAhDFycAjCRbE1Ghlu3NLbpc05mkjZo
- 8VFX/Jte8Un5/KfVS4J7Yy7dTi+O9mVkOHpv5s8/M3b1dwpsXvhv9y+2DypH1WYYBy5jytL6N4H
- xNRcA
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMywqAIBCF4VeJWSdoC6NeJVqUjTVBFk43EN89q
+ +UH/zkBGD0hQ50F8HgS0+oSVJ6BmTo3oqAhGQpZaKVUJfzBu7gWEkb3EqXFquxKSPnm0dL9XTX
+ tbz76Gc3+7iHGB1gJyq5sAAAA
+X-Change-ID: 20261119-rust-wmi-c6b0e0fe97a7
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Armin Wolf <W_Armin@gmx.de>
+Cc: =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
+ platform-driver-x86@vger.kernel.org, Nick Dowsett <nick42d@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795321700; l=1620;
+ i=nick42d@gmail.com; h=from:subject:message-id;
+ bh=LRMshCFfcJPtFSPE/6v1bGuREgTWrrb4IAOq+iyX/Wc=;
+ b=DLa0YILKrbgNriQJag537mI/mDpfQWW8SXl8SpcnVXH6tnkBsyBCjMPtp1+BlmtTjqOBVkWFR
+ 033bHYyzf1WC3ZaoD5IQn+66GiZgZ4j27BG9yh4hVXKrOR9SVQ0k4UK
+X-Developer-Key: i=nick42d@gmail.com; a=ed25519;
+ pk=1uIkNexEofzEXNN3Y3QW5z8IrgjWaP0yH6Es51jxWOg=
+X-Endpoint-Received: by B4 Relay for nick42d@gmail.com/default with auth_id=1596
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3399 Mali-T860 matches arm,mali-t860 and gets default_data, so
-panfrost enables aclk_gpu at probe and keeps it enabled until unbind;
-runtime suspend powers the GPU off but leaves the clock on.
+Hi there; new to the LKML here, long time Rustacean and Linux user.
 
-On ROCK Pi 4A restore from hibernation hangs in genpd_restore_noirq()
-of the GPU when the hibernated kernel had panfrost bound and the
-kernel that loads the image does not. There clk_disable_unused()
-gates aclk_gpu, while the restored image still holds an enable count
-on it, so powering the GPU domain back on does not ungate the clock.
-With the clock gated in runtime suspend, as on the Allwinner H616 and
-the Renesas RZ/G3L and RZ/G3E, restore completes.
+I have implemented this series to add an MVP of Rust abstractions for the
+WMI subsystem with the bare-minimum implemented to support an in-tree
+user, a Clevo laptop keyboard backlight driver
+(`https://github.com/nick42d/linux/pull/4`).
 
-Match rockchip,rk3399-mali to default_pm_rt_data.
+Patches to follow for the driver. Note it has two other dependencies:
+Markus Probst's LED classdev abstractions (v28) and basic DMI matching
+abstractions.
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
+This was not directly influenced by Ilya Gladyshev's previous attempt as
+I was not aware of it, upon review, the key difference is that I have
+used the newer buffer-based interface (no `acpi_object`), and implemented
+less functionality/callbacks.
+
+What's covered is driver probe, registration and unregistration, device
+id table, and a safe implementation of `wmidev_invoke_method` that
+returns an owned RAII buffer.
+
+Signed-off-by: Nick Dowsett <nick42d@gmail.com>
 ---
-Tested on ROCK Pi 4A, drm-misc-next c408466a4dfa with the rkvdec fix [1]
-applied: hibernation restores 9 of 9 with this patch (3 with an HDMI
-mode held, 3 right after glmark2-es2-drm, 3 idle), and the GPU renders
-after restore. With the GPU node left with arm,mali-t860 only, restore
-hangs 2 of 2, in genpd_restore_noirq() of the GPU.
-[1] fixes the same kind of hang in rkvdec, which otherwise hits first;
-this patch applies and builds without it.
+Nick Dowsett (4):
+      rust: wmi: add basic WMI device abstraction
+      rust: wmi: add DeviceId and wmi_device_table! macro
+      rust: wmi: add Driver trait, Adapter and implement RegistrationOps
+      rust: wmi: add Buffer and Device::invoke_method()
 
-[1] https://lore.kernel.org/r/20261030-rkvdec-runtime-pm-clocks-v2-1-8ff510a231de@iav.lv
-
-Changes in v2:
-- Name the SoCs that already use default_pm_rt_data
-- Say why restore hangs
-- Rebase onto drm-misc-next
-- Link to v1: https://lore.kernel.org/r/20261030-panfrost-rk3399-pm-rt-v1-1-e94437159a9d@iav.lv
+ MAINTAINERS                     |   1 +
+ rust/bindings/bindings_helper.h |   1 +
+ rust/kernel/lib.rs              |   2 +
+ rust/kernel/wmi.rs              | 361 ++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 365 insertions(+)
 ---
- drivers/gpu/drm/panfrost/panfrost_drv.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/drivers/gpu/drm/panfrost/panfrost_drv.c b/drivers/gpu/drm/panfrost/panfrost_drv.c
-index eeda113037fe..91acfa13ef42 100644
---- a/drivers/gpu/drm/panfrost/panfrost_drv.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_drv.c
-@@ -983,6 +983,7 @@ static const struct of_device_id dt_match[] = {
- 	  .data = &amlogic_data, },
- 	{ .compatible = "renesas,r9a08g046-mali", .data = &default_pm_rt_data },
- 	{ .compatible = "renesas,r9a09g047-mali", .data = &default_pm_rt_data },
-+	{ .compatible = "rockchip,rk3399-mali", .data = &default_pm_rt_data },
- 	{ .compatible = "arm,mali-t604", .data = &default_data, },
- 	{ .compatible = "arm,mali-t624", .data = &default_data, },
- 	{ .compatible = "arm,mali-t628", .data = &default_data, },
-
----
-base-commit: c408466a4dfaee4b12587e926c5b85e68c8b3c40
-change-id: 20261030-panfrost-rk3399-pm-rt-cea3fc1790d9
+base-commit: 4843f6873f7c4835e62f2c73ba0fd538e57a2f22
+change-id: 20261119-rust-wmi-c6b0e0fe97a7
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Nick Dowsett <nick42d@gmail.com>
 
