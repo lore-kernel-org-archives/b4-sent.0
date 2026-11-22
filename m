@@ -1,194 +1,75 @@
-From: Alvin Sun <alvin.sun@linux.dev>
-Date: Sun, 22 Nov 2026 20:50:29 +0800
-Subject: [PATCH v7 10/10] drm/tyr: add BO-related ioctls
+From: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+Date: Sun, 22 Nov 2026 10:08:30 -0300
+Subject: [PATCH v2] docs/translations/pt_BR: process: clarify patch
+ granularity
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-tyr-ioctls-v7-10-3a2af624b992@linux.dev>
-References: <20261122-tyr-ioctls-v7-0-3a2af624b992@linux.dev>
-In-Reply-To: <20261122-tyr-ioctls-v7-0-3a2af624b992@linux.dev>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Lyude Paul <lyude@redhat.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Johan Hovold <johan@kernel.org>
-Cc: Sami Tolvanen <samitolvanen@google.com>, rust-for-linux@vger.kernel.org, 
- dri-devel@lists.freedesktop.org, driver-core@lists.linux.dev, 
- Ke Sun <sunke@kylinos.cn>, Alvin Sun <alvin.sun@linux.dev>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261122-pt-br-5-posting-send2-v2-1-2a5cf9f667c3@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7RhmRExceQ/DopQBxkhL2ko0h
+ LsLeACXL3n//RmiBJUI12yGIJNG9W4FPmRge+M6QW1WBs65JGLGMWEd8Iyjj0ldh1Fcw8iloeZ
+ ki5zYwLodg7T63rv36sfxVT/Epi22Gb3G5MNnP55o8/59TISELJb5UpRtS3LrBqPPo/UDVMuyf
+ AHQ4sf3zAAAAA==
+X-Change-ID: 20261122-pt-br-5-posting-send2-26a1d3c4012a
+To: linux-doc@vger.kernel.org
+Cc: corbet@lwn.net, skhan@linuxfoundation.org, danielmaraboo@gmail.com, 
+ rdunlap@infradead.org, Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795352551; l=5762;
- i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=AzMnZarF2DGhywSoCR7Qyzkxwwb8F+ZXDPQo3lLLLzc=;
- b=LopV2a8Yja0UfwXM6/qSsFB1NHzY05tsSXBa7Ki9j9YbtkOcDfQaLGZ9bpJpMymMurEnWVQpM
- xMaGjhtDzLZDeyoICMHhum929cq1qp2Vh6HiNNxInmcgdWuqQKBpzQO
-X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
- pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
-X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795352909; l=2178;
+ i=dreduardocruz@gmail.com; s=20261119; h=from:subject:message-id;
+ bh=c58uGNc4Z4NMrxaT4PtvM3u4XHZh5Uh6h+ehiwoSUzU=;
+ b=CJ4jstM6DDpQYeuN00WhD8yTMimx+wkWIFsSr9WgajOCOJFYSXY4AeyYJd/tuoXdfBr11wWQE
+ yYLX5n3XEZfDGG0t/rE8yYmmFgvTKw9vOM6Z2lwY4Lwsy6RYB1EPJit
+X-Developer-Key: i=dreduardocruz@gmail.com; a=ed25519;
+ pk=2dtL+BL/x70sROmAvlskv9dbjj274zlPkLBVu4gJJiA=
+X-Endpoint-Received: by B4 Relay for dreduardocruz@gmail.com/20261119 with auth_id=1571
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement BO_CREATE and BO_MMAP_OFFSET so userspace can allocate GPU
-buffers and obtain a DRM mmap offset for the generic mmap path.
-BO_CREATE page-aligns the requested size and accepts NO_MMAP or WB_MMAP,
-which are mutually exclusive; an exclusive VM returns EOPNOTSUPP.
-BO_MMAP_OFFSET rejects NO_MMAP objects, which must never be CPU-mapped.
+Reword the guidance about patch granularity in 5.Posting.rst so that it
+reads naturally in Brazilian Portuguese and keeps the original meaning:
+a single patch may be reasonably large as long as it still contains one
+logical change.
 
-Co-developed-by: Sami Tolvanen <samitolvanen@google.com>
-Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
-Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
+Replace the reference to the developer's popularity with a neutral
+phrasing, avoiding the gendered expression used before.
+
+No functional change; documentation only.
+
+Signed-off-by: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 ---
- drivers/gpu/drm/tyr/driver.rs |  2 +
- drivers/gpu/drm/tyr/file.rs   | 94 +++++++++++++++++++++++++++++++++++++++++++
- drivers/gpu/drm/tyr/gem.rs    |  2 -
- 3 files changed, 96 insertions(+), 2 deletions(-)
+Changes in v2:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v1: https://patch.msgid.link/20261122-pt-br-5-posting-send2-v1-1-2ec22746ff1e@gmail.com
+---
+ Documentation/translations/pt_BR/process/5.Posting.rst | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/gpu/drm/tyr/driver.rs b/drivers/gpu/drm/tyr/driver.rs
-index 6869ab345d8fd..8632e6e820c97 100644
---- a/drivers/gpu/drm/tyr/driver.rs
-+++ b/drivers/gpu/drm/tyr/driver.rs
-@@ -237,6 +237,8 @@ impl drm::Driver for TyrDrmDriver {
-         (PANTHOR_VM_DESTROY, drm_panthor_vm_destroy, ioctl::RENDER_ALLOW, TyrDrmFileData::vm_destroy),
-         (PANTHOR_VM_BIND, drm_panthor_vm_bind, ioctl::RENDER_ALLOW, TyrDrmFileData::vm_bind),
-         (PANTHOR_VM_GET_STATE, drm_panthor_vm_get_state, ioctl::RENDER_ALLOW, TyrDrmFileData::vm_get_state),
-+        (PANTHOR_BO_CREATE, drm_panthor_bo_create, ioctl::RENDER_ALLOW, TyrDrmFileData::bo_create),
-+        (PANTHOR_BO_MMAP_OFFSET, drm_panthor_bo_mmap_offset, ioctl::RENDER_ALLOW, TyrDrmFileData::bo_mmap_offset),
-     }
- }
+diff --git a/Documentation/translations/pt_BR/process/5.Posting.rst b/Documentation/translations/pt_BR/process/5.Posting.rst
+index 2ac7e5557805..4e14405bae06 100644
+--- a/Documentation/translations/pt_BR/process/5.Posting.rst
++++ b/Documentation/translations/pt_BR/process/5.Posting.rst
+@@ -118,10 +118,10 @@ que podem ajudar consideravelmente:
+    problemas.
  
-diff --git a/drivers/gpu/drm/tyr/file.rs b/drivers/gpu/drm/tyr/file.rs
-index 8fccb42ab9e56..db57df68449cd 100644
---- a/drivers/gpu/drm/tyr/file.rs
-+++ b/drivers/gpu/drm/tyr/file.rs
-@@ -242,6 +242,100 @@ pub(crate) fn vm_get_state(
-             Ok(0)
-         })
-     }
-+
-+    pub(crate) fn bo_create(
-+        ddev: &TyrDrmDevice<Registered>,
-+        reg_data: &TyrDrmRegistrationData<'_>,
-+        bocreate: &mut uapi::drm_panthor_bo_create,
-+        file: &TyrDrmFile,
-+    ) -> Result<u32> {
-+        if bocreate.size == 0 || bocreate.pad != 0 {
-+            dev_dbg!(
-+                ddev.as_ref(),
-+                "Invalid BO_CREATE params: size={}, pad={}\n",
-+                bocreate.size,
-+                bocreate.pad
-+            );
-+            return Err(EINVAL);
-+        }
-+
-+        let no_mmap = uapi::drm_panthor_bo_flags_DRM_PANTHOR_BO_NO_MMAP;
-+        let wb_mmap = uapi::drm_panthor_bo_flags_DRM_PANTHOR_BO_WB_MMAP;
-+        let valid_flags = no_mmap | wb_mmap;
-+
-+        if bocreate.flags & !valid_flags != 0 {
-+            dev_dbg!(
-+                ddev.as_ref(),
-+                "Invalid BO_CREATE flags: {:#x}\n",
-+                bocreate.flags
-+            );
-+            return Err(EINVAL);
-+        }
-+        if bocreate.flags & no_mmap != 0 && bocreate.flags & wb_mmap != 0 {
-+            dev_dbg!(ddev.as_ref(), "BO_CREATE: NO_MMAP conflicts with WB_MMAP\n");
-+            return Err(EINVAL);
-+        }
-+
-+        if bocreate.exclusive_vm_id != 0 {
-+            dev_dbg!(ddev.as_ref(), "BO_CREATE: exclusive_vm_id not supported\n");
-+            return Err(EOPNOTSUPP);
-+        }
-+
-+        let size = usize::try_from(bocreate.size).map_err(|_| {
-+            dev_dbg!(
-+                ddev.as_ref(),
-+                "BO_CREATE size {:#x} too large\n",
-+                bocreate.size
-+            );
-+            EINVAL
-+        })?;
-+        let bo = file.inner_with(|pfile| {
-+            crate::gem::new_object(
-+                ddev,
-+                pfile.reg.pdev.as_ref(),
-+                size,
-+                bocreate.flags,
-+                reg_data.coherent,
-+            )
-+        })?;
-+        bocreate.handle = bo.create_handle(file)?;
-+        bocreate.size = u64::from_safe_cast(bo.size());
-+
-+        Ok(0)
-+    }
-+
-+    pub(crate) fn bo_mmap_offset(
-+        ddev: &TyrDrmDevice<Registered>,
-+        _reg_data: &TyrDrmRegistrationData<'_>,
-+        bommap: &mut uapi::drm_panthor_bo_mmap_offset,
-+        file: &TyrDrmFile,
-+    ) -> Result<u32> {
-+        if bommap.pad != 0 {
-+            dev_dbg!(
-+                ddev.as_ref(),
-+                "BO mmap offset pad not zero: {}\n",
-+                bommap.pad
-+            );
-+            return Err(EINVAL);
-+        }
-+
-+        let bo = crate::gem::lookup_handle(file, bommap.handle).inspect_err(|_| {
-+            dev_dbg!(ddev.as_ref(), "Invalid BO mmap handle: {}\n", bommap.handle);
-+        })?;
-+        if bo.flags() & uapi::drm_panthor_bo_flags_DRM_PANTHOR_BO_NO_MMAP != 0 {
-+            dev_dbg!(ddev.as_ref(), "BO mmap offset on NO_MMAP object\n");
-+            return Err(EPERM);
-+        }
-+        bommap.offset = bo.create_mmap_offset().inspect_err(|_| {
-+            dev_err!(
-+                ddev.as_ref(),
-+                "Failed to create mmap offset for handle {}\n",
-+                bommap.handle
-+            );
-+        })?;
-+
-+        Ok(0)
-+    }
- }
+  - No entanto, não exagere. Certa vez, um desenvolvedor enviou um conjunto de
+-   edições em um único arquivo como 500 patches separados — um ato que não o
+-   tornou a pessoa mais popular na lista de discussão do kernel. Um único patch
+-   pode ser razoavelmente grande, desde que ainda contenha uma única alteração
+-   *lógica*.
++   edições em um único arquivo como 500 patches separados — um ato que não
++   tornou essa pessoa a mais popular na lista de discussão do kernel. Um único
++   patch pode ser razoavelmente grande, desde que ainda contenha uma única
++   alteração *lógica*.
  
- fn vm_bind_exec_op(vm: &Vm<'_>, file: &TyrDrmFile, op: &VmBindOp) -> Result {
-diff --git a/drivers/gpu/drm/tyr/gem.rs b/drivers/gpu/drm/tyr/gem.rs
-index 55e2d67b96d98..d2ef121c8b1b6 100644
---- a/drivers/gpu/drm/tyr/gem.rs
-+++ b/drivers/gpu/drm/tyr/gem.rs
-@@ -45,7 +45,6 @@ pub(crate) struct BoData {
- 
- impl BoData {
-     /// Returns the flags the BO was created with.
--    #[expect(dead_code)]
-     pub(crate) fn flags(&self) -> u32 {
-         self.flags
-     }
-@@ -83,7 +82,6 @@ pub(crate) fn should_map_wc(coherent: bool, flags: u32) -> bool {
- }
- 
- /// Create a new GEM buffer object.
--#[expect(dead_code)]
- pub(crate) fn new_object(
-     ddev: &TyrDrmDevice,
-     pdev: &Device<Bound>,
+  - Pode ser tentador adicionar toda uma nova infraestrutura com uma série de
+    patches, mas deixar essa infraestrutura sem uso até que o patch final da série
 
--- 
-2.43.0
+---
+base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
+change-id: 20261122-pt-br-5-posting-send2-26a1d3c4012a
+
+Best regards,
+--  
+Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 
