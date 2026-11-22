@@ -1,242 +1,188 @@
 From: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
-Date: Sun, 22 Nov 2026 11:27:16 -0300
+Date: Sun, 22 Nov 2026 11:31:12 -0300
 Subject: [PATCH] docs/translations/pt_BR: process: add
- researcher-guidelines.rst
+ generated-content.rst
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261122-researcher-guidelines-pt-br-v1-1-95204d57bd16@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSQrCQBAF0KuEWluQboeIV5EsevgmJdKGqkSEk
- Lvb6vJt3koGFRhdmpUULzF5lgq3ayiNoQxgydXkW39yzntWGIKmEcrDIhkPKTCeZo7K57g/Hro
- 2RJ87qsOkuMn7t1/7v22Jd6T5W9K2fQA6TZvLfwAAAA==
-X-Change-ID: 20261122-researcher-guidelines-pt-br-8b35470ab2d7
+Message-Id: <20261122-generated-content-pt-br-v1-1-3462e22d7b5d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBBG4auUWTtgQonRq4iLJv2t4yItk6kIp
+ Xc36vJbvLdRhQoqXbqNFC+pMpcGd+goP4YygWVsJn/0wTnveUKBDoaR81wMxXgxTsoxh9CHdI7
+ 9KVKrF8Vd3r/z9fZ3XdMT2b472vcPjHhRNnsAAAA=
+X-Change-ID: 20261122-generated-content-pt-br-8c6646b98478
 To: linux-doc@vger.kernel.org
-Cc: skhan@linuxfoundation.org, rdunlap@infradead.org, 
- danielmaraboo@gmail.com, corbet@lwn.net, 
- Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+Cc: corbet@lwn.net, danielmaraboo@gmail.com, rdunlap@infradead.org, 
+ skhan@linuxfoundation.org, Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795357635; l=11377;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795357871; l=7364;
  i=dreduardocruz@gmail.com; s=20261119; h=from:subject:message-id;
- bh=AEafsHSLVn+H2ZaqUNm5mIjCX8lWhQQVZKW0AnWYat0=;
- b=J3rEwQGJsz1NPOXM2lFmUP9oCxao5rSXQlf1D05MK3bwYVUmpoLsG7IYm6sezPN7SJDkXc1EI
- R2arjnfyNyfDPVezoKRcESGJGr+leokj2dMolIXJQi3mwV5dC5BdcVP
+ bh=vo81soZDHoCodR9WtIkcpWbMvZKc7+lumNVuyAZ09og=;
+ b=WrnSfPoOEHN111ZAFEao4EkLSobIKCWMqL2x780NR7Xw0WwX5AYpNHBx2YGLao9bYOMKFy3u4
+ B1flBD2Vd5QCAJk6lWLrWyzC5JrqrgkDhjQxbywnIbKAGCTpPtKV3+q
 X-Developer-Key: i=dreduardocruz@gmail.com; a=ed25519;
  pk=2dtL+BL/x70sROmAvlskv9dbjj274zlPkLBVu4gJJiA=
 X-Endpoint-Received: by B4 Relay for dreduardocruz@gmail.com/20261119 with auth_id=1571
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Add the Brazilian Portuguese translation of
-Documentation/process/researcher-guidelines.rst, which describes what the
-kernel community considers acceptable research practice, including the
-guidance on surveys and on patches produced from research.
+Documentation/process/generated-content.rst, which describes the kernel
+community expectations for contributions generated with tools, including
+what to disclose in cover letters and changelogs.
 
-The translation follows the English original as last changed by commit
-fdd100ee60a0 ("docs: process: use gender-neutral pronouns"). The example
-commit log in the patches section is kept in English on purpose: it is a
-model of a real commit message, not prose to be translated.
+The translation follows the English original as last committed and keeps
+the four lists, the inline code spans naming the tools and the reference
+to the Developer's Certificate of Origin.
 
 Signed-off-by: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 ---
+ .../pt_BR/process/generated-content.rst            | 122 +++++++++++++++++++++
  Documentation/translations/pt_BR/process/index.rst |   1 +
- .../pt_BR/process/researcher-guidelines.rst        | 174 +++++++++++++++++++++
- 2 files changed, 175 insertions(+)
+ 2 files changed, 123 insertions(+)
 
+diff --git a/Documentation/translations/pt_BR/process/generated-content.rst b/Documentation/translations/pt_BR/process/generated-content.rst
+new file mode 100644
+index 000000000000..8ba3348c1692
+--- /dev/null
++++ b/Documentation/translations/pt_BR/process/generated-content.rst
+@@ -0,0 +1,122 @@
++.. SPDX-License-Identifier: GPL-2.0
++
++=========================================================
++Diretrizes do kernel para conteúdo gerado por ferramentas
++=========================================================
++
++Propósito
++=========
++
++Colaboradores do kernel usam ferramentas para gerar contribuições há muito
++tempo. Essas ferramentas podem aumentar o volume de contribuições. Ao mesmo
++tempo, o tempo disponível de revisores e mantenedores é um recurso escasso.
++Entender quais partes de uma contribuição vêm de humanos e quais vêm de
++ferramentas ajuda a preservar esses recursos e a manter o desenvolvimento
++do kernel saudável.
++
++O objetivo aqui é esclarecer as expectativas da comunidade em relação às
++ferramentas. Isso permite que todos se tornem mais produtivos e, ao mesmo
++tempo, mantenham altos níveis de confiança entre quem envia e quem revisa.
++
++Fora de escopo
++==============
++
++Estas diretrizes não se aplicam a ferramentas que fazem ajustes triviais em
++conteúdo preexistente. Nem dizem respeito a ferramentas que ajudam em
++tarefas rotineiras. Alguns exemplos:
++
++ - Correções de ortografia e gramática, como reescrever para o modo
++   imperativo
++ - Auxílios de digitação, como completar identificadores, boilerplate comum
++   ou padrões triviais
++ - Transformações puramente mecânicas, como renomear variáveis
++ - Reformatação, como rodar Lindent, ``clang-format`` ou ``rust-fmt``
++
++Mesmo quando o uso da ferramenta estiver fora de escopo, você ainda deve
++sempre considerar se o revisor saber qual ferramenta foi usada ajudaria na
++revisão da sua contribuição.
++
++Dentro do escopo
++================
++
++Estas diretrizes se aplicam quando uma quantidade significativa de conteúdo
++de uma contribuição ao kernel não foi escrita por uma pessoa na cadeia de
++Signed-off-by, mas foi criada por uma ferramenta.
++
++Detectar um problema e testar a correção para ele também faz parte do
++processo de desenvolvimento; se uma ferramenta foi usada para encontrar um
++problema tratado por uma mudança, isso deve ser anotado no changelog. Isso
++não apenas dá o crédito devido, como também ajuda outros desenvolvedores a
++conhecer essas ferramentas.
++
++Alguns exemplos:
++
++ - Qualquer correção sugerida por ferramenta, como ``checkpatch.pl --fix``
++ - Scripts Coccinelle
++ - Um chatbot gerou uma nova função no seu patch para ordenar entradas de
++   lista.
++ - Um arquivo .c do patch foi originalmente gerado por um assistente de
++   código, mas limpo à mão.
++ - O changelog foi gerado entregando o patch a uma ferramenta de IA
++   generativa e pedindo que ela escrevesse o changelog.
++ - O changelog foi traduzido de outro idioma.
++
++Em caso de dúvida, escolha a transparência e presuma que estas diretrizes
++se aplicam à sua contribuição.
++
++Diretrizes
++==========
++
++Primeiro, leia o Developer's Certificate of Origin:
++Documentation/process/submitting-patches.rst. As regras são simples e
++existem há muito tempo. Elas vêm cobrindo muitas contribuições geradas por
++ferramentas. Garanta que você entende toda a sua submissão e que está
++preparado para responder aos comentários de revisão.
++
++Segundo, ao fazer uma contribuição, seja transparente sobre a origem do
++conteúdo nas cover letters e nos changelogs. Você pode ser mais
++transparente incluindo informações como:
++
++ - Quais ferramentas foram usadas?
++ - A entrada fornecida às ferramentas usadas, como o script fonte do
++   Coccinelle.
++ - Se o código foi gerado em grande parte a partir de um único prompt ou de
++   um conjunto curto deles, inclua esses prompts. Para sessões mais longas,
++   inclua um resumo dos prompts e a natureza da assistência resultante.
++ - Quais partes do conteúdo foram afetadas por aquela ferramenta?
++ - Como a submissão foi testada e quais ferramentas foram usadas para
++   testar a correção?
++
++Como em todas as contribuições, cada mantenedor tem discricionariedade para
++escolher como lidar com a contribuição. Por exemplo, ele pode:
++
++ - Tratá-la como qualquer outra contribuição.
++ - Rejeitá-la de imediato.
++ - Tratar a contribuição de forma especial, por exemplo, pedindo testes
++   adicionais, revisando com escrutínio extra ou revisando com prioridade
++   menor do que o conteúdo gerado por humanos.
++ - Pedir outros passos especiais, como solicitar ao colaborador que
++   detalhe como a ferramenta ou o modelo foi treinado.
++ - Pedir a quem envia que explique a contribuição em mais detalhes, para
++   que o mantenedor tenha certeza de que a pessoa entende plenamente como o
++   código funciona.
++ - Sugerir um prompt melhor em vez de sugerir mudanças específicas no
++   código.
++
++Se as ferramentas permitirem gerar uma contribuição automaticamente, espere
++escrutínio adicional proporcional à quantidade gerada.
++
++Assim como ocorre com a saída de qualquer ferramenta, o resultado pode estar
++incorreto ou ser inadequado. Espera-se que você entenda e consiga defender
++tudo o que envia. Se não conseguir fazer isso, não envie as mudanças
++resultantes.
++
++Se enviar mesmo assim, os mantenedores têm o direito de rejeitar a sua
++série sem revisão detalhada.
++
++Referências
++===========
++
++Para diretrizes específicas sobre assistentes de código com IA, veja:
++
++* Documentation/process/coding-assistants.rst
 diff --git a/Documentation/translations/pt_BR/process/index.rst b/Documentation/translations/pt_BR/process/index.rst
-index d072f7e46767..ff2400cd4b30 100644
+index d072f7e46767..d2dd4bf02675 100644
 --- a/Documentation/translations/pt_BR/process/index.rst
 +++ b/Documentation/translations/pt_BR/process/index.rst
 @@ -46,6 +46,7 @@ devem estar familiarizados.
     Adicionando uma nova chamada de Sistema <adding-syscalls>
     Por que a classe de tipo "volatile" não deve ser usada <volatile-considered-harmful>
     Como não Deixar as ioctls malfeitas <botching-up-ioctls>
-+   Diretrizes para pesquisadores <researcher-guidelines>
++   Conteúdo gerado por ferramentas <generated-content>
  
  Guias de políticas e declarações de desenvolvedores
  ---------------------------------------------------
-diff --git a/Documentation/translations/pt_BR/process/researcher-guidelines.rst b/Documentation/translations/pt_BR/process/researcher-guidelines.rst
-new file mode 100644
-index 000000000000..ba8219c4ec9d
---- /dev/null
-+++ b/Documentation/translations/pt_BR/process/researcher-guidelines.rst
-@@ -0,0 +1,174 @@
-+.. SPDX-License-Identifier: GPL-2.0
-+
-+.. _researcher_guidelines:
-+
-+Diretrizes para pesquisadores
-++++++++++++++++++++++++++++++
-+
-+A comunidade do kernel Linux acolhe pesquisas transparentes sobre o kernel
-+Linux, as atividades envolvidas em produzi-lo e quaisquer outros subprodutos
-+do seu desenvolvimento. O Linux se beneficia muito desse tipo de pesquisa, e a
-+maioria dos aspectos do Linux é movida por pesquisa, de uma forma ou de outra.
-+
-+A comunidade agradece muito quando os pesquisadores compartilham resultados
-+preliminares antes de tornar os resultados públicos, especialmente se a
-+pesquisa envolver segurança. O envolvimento antecipado melhora tanto a
-+qualidade da pesquisa quanto a capacidade de o Linux evoluir a partir dela. Em
-+qualquer caso, recomenda-se compartilhar com a comunidade cópias de acesso
-+aberto da pesquisa publicada.
-+
-+Este documento procura esclarecer o que a comunidade do kernel Linux considera
-+práticas aceitáveis e inaceitáveis ao conduzir esse tipo de pesquisa. No
-+mínimo, tais pesquisas e atividades relacionadas devem seguir as regras padrão
-+de ética em pesquisa. Para mais contexto sobre ética em pesquisa em geral,
-+ética em tecnologia e pesquisa de comunidades de desenvolvedores em
-+particular, veja:
-+
-+* `History of Research Ethics <https://www.unlv.edu/research/ORI-HSR/history-ethics>`_
-+* `IEEE Ethics <https://www.ieee.org/about/ethics/index.html>`_
-+* `Developer and Researcher Views on the Ethics of Experiments on Open-Source Projects <https://arxiv.org/pdf/2112.13217.pdf>`_
-+
-+A comunidade do kernel Linux espera que todos que interagem com o projeto
-+participem de boa-fé para tornar o Linux melhor. Pesquisas sobre qualquer
-+artefato disponível publicamente (incluindo, mas não se limitando a
-+código-fonte) produzido pela comunidade do kernel Linux são bem-vindas,
-+embora pesquisas sobre desenvolvedores devam ser explicitamente opt-in.
-+
-+Pesquisa passiva baseada inteiramente em fontes disponíveis publicamente,
-+incluindo mensagens em listas de discussão públicas e commits em repositórios
-+públicos, é claramente permitida. Ainda assim, como em qualquer pesquisa, a
-+ética padrão deve ser seguida.
-+
-+Pesquisa ativa sobre o comportamento de desenvolvedores, porém, deve ser
-+feita com o acordo explícito dos desenvolvedores individuais envolvidos e
-+com divulgação completa a eles. Não se pode interagir com desenvolvedores,
-+nem realizar experimentos com eles, sem consentimento; isso também é ética
-+padrão em pesquisa.
-+
-+Questionários
-+=============
-+
-+Pesquisas frequentemente assumem a forma de questionários enviados a
-+mantenedores ou colaboradores. Como regra geral, porém, a comunidade do kernel
-+tira pouco valor desses questionários. O processo de desenvolvimento do kernel
-+funciona porque cada desenvolvedor se beneficia da sua participação, mesmo
-+trabalhando com outros que têm objetivos diferentes. Responder a um
-+questionário, no entanto, é uma demanda unilateral imposta a desenvolvedores
-+ocupados, sem benefício correspondente para eles nem para a comunidade do
-+kernel como um todo. Por essa razão, esse método de pesquisa é
-+desaconselhado.
-+
-+Os membros da comunidade do kernel já recebem e-mail em excesso e
-+provavelmente perceberão pedidos para responder a questionários como apenas mais uma
-+demanda
-+sobre o seu tempo. Enviar tais pedidos priva a comunidade de tempo valioso de
-+colaboradores e dificilmente produzirá respostas estatisticamente úteis.
-+
-+Como alternativa, os pesquisadores devem considerar participar de eventos de
-+desenvolvedores, promover sessões em que o projeto de pesquisa e os seus
-+benefícios aos participantes possam ser explicados, e interagir diretamente
-+com a comunidade nesses eventos. A informação obtida será muito mais rica do
-+que a de um questionário por e-mail, e a comunidade também ganhará com a
-+possibilidade de aprender com as suas percepções.
-+
-+Patches
-+=======
-+
-+Para esclarecer: enviar patches a desenvolvedores *é* interagir com eles, mas
-+eles já consentiram em receber *contribuições de boa-fé*. Enviar patches
-+deliberadamente falhos ou vulneráveis, ou contribuir com informação enganosa
-+nas discussões, não é algo consentido. Tal comunicação pode ser danosa ao
-+desenvolvedor (por exemplo, consumindo tempo, esforço e disposição) e danosa
-+ao projeto, ao erodir a confiança de toda a comunidade de desenvolvedores no
-+colaborador (e na organização do colaborador como um todo), minando esforços
-+para oferecer retorno construtivo aos colaboradores e colocando usuários
-+finais em risco de falhas de software.
-+
-+A participação de pesquisadores no desenvolvimento do próprio Linux, como a de
-+qualquer pessoa, é bem-vinda e incentivada. Pesquisar o código do Linux é
-+prática comum, especialmente no que diz respeito a desenvolver ou executar
-+ferramentas de análise que produzam resultados que permitam ação concreta.
-+
-+Ao interagir com a comunidade de desenvolvedores, enviar um patch tem sido
-+tradicionalmente a melhor forma de causar impacto. O Linux já tem muitos bugs
-+conhecidos; muito mais útil é ter correções verificadas. Antes de contribuir,
-+leia com atenção a documentação apropriada:
-+
-+* Documentation/process/development-process.rst
-+* Documentation/process/submitting-patches.rst
-+* Documentation/admin-guide/reporting-issues.rst
-+* Documentation/process/security-bugs.rst
-+
-+Em seguida, envie um patch (incluindo um log de commit com todos os detalhes
-+listados abaixo) e acompanhe qualquer retorno de outros desenvolvedores.
-+
-+Ao enviar patches produzidos a partir de pesquisa, os logs de commit devem
-+conter ao menos os detalhes a seguir, para que os desenvolvedores tenham
-+contexto adequado para entender a contribuição. Responda:
-+
-+* Qual é o problema específico encontrado?
-+* Como o problema poderia ser alcançado em um sistema em execução?
-+* Que efeito o problema teria sobre o sistema quando ocorresse?
-+* Como o problema foi encontrado? Inclua especificamente detalhes sobre
-+  qualquer teste, programas de análise estática ou dinâmica, e quaisquer
-+  outras ferramentas ou métodos usados para realizar o trabalho.
-+* Em qual versão do Linux o problema foi encontrado? É fortemente preferível
-+  usar a versão mais recente ou um branch recente do linux-next (veja
-+  Documentation/process/howto.rst).
-+* O que foi alterado para corrigir o problema, e por que se acredita que está
-+  correto?
-+* Como a mudança foi testada em compilação e em tempo de execução?
-+* Qual commit anterior esta mudança corrige? Isso deve ir em uma tag "Fixes:"
-+  como a documentação descreve.
-+* Quem mais revisou este patch? Isso deve ir em tags "Reviewed-by:"
-+  apropriadas; veja abaixo.
-+
-+Por exemplo::
-+
-+  From: Author <author@email>
-+  Subject: [PATCH] drivers/foo_bar: Add missing kfree()
-+
-+  The error path in foo_bar driver does not correctly free the allocated
-+  struct foo_bar_info. This can happen if the attached foo_bar device
-+  rejects the initialization packets sent during foo_bar_probe(). This
-+  would result in a 64 byte slab memory leak once per device attach,
-+  wasting memory resources over time.
-+
-+  This flaw was found using an experimental static analysis tool we are
-+  developing, LeakMagic[1], which reported the following warning when
-+  analyzing the v5.15 kernel release:
-+
-+   path/to/foo_bar.c:187: missing kfree() call?
-+
-+  Add the missing kfree() to the error path. No other references to
-+  this memory exist outside the probe function, so this is the only
-+  place it can be freed.
-+
-+  x86_64 and arm64 defconfig builds with CONFIG_FOO_BAR=y using GCC
-+  11.2 show no new warnings, and LeakMagic no longer warns about this
-+  code path. As we don't have a FooBar device to test with, no runtime
-+  testing was able to be performed.
-+
-+  [1] https://url/to/leakmagic/details
-+
-+  Reported-by: Researcher <researcher@email>
-+  Fixes: aaaabbbbccccdddd ("Introduce support for FooBar")
-+  Signed-off-by: Author <author@email>
-+  Reviewed-by: Reviewer <reviewer@email>
-+
-+Se você é colaborador de primeira viagem, recomenda-se que o próprio patch
-+seja verificado por outras pessoas em particular antes de ser publicado nas
-+listas públicas. (Isso é obrigatório se lhe disseram explicitamente que os
-+seus patches precisam de revisão interna mais cuidadosa.) Espera-se que essas
-+pessoas tenham a sua tag "Reviewed-by" incluída no patch resultante. Encontrar
-+outro desenvolvedor familiarizado com a contribuição ao Linux, especialmente
-+dentro da sua própria organização, e pedir que ele ajude com revisões antes de
-+enviar os patches às listas públicas costuma melhorar significativamente a
-+qualidade dos patches resultantes e, com isso, reduz a carga sobre os outros
-+desenvolvedores.
-+
-+Se ninguém puder ser encontrado para revisar patches internamente e você
-+precisar de ajuda para encontrar essa pessoa, ou se tiver qualquer outra
-+dúvida relacionada a este documento e às expectativas da comunidade de
-+desenvolvedores, entre em contato com a lista privada do Technical Advisory
-+Board: <tech-board@groups.linuxfoundation.org>.
 
 ---
 base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
-change-id: 20261122-researcher-guidelines-pt-br-8b35470ab2d7
+change-id: 20261122-generated-content-pt-br-8c6646b98478
 
 Best regards,
 --  
