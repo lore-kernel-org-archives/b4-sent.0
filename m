@@ -1,96 +1,73 @@
 From: EMCP333 <emcp@enser.io>
-Date: Sun, 22 Nov 2026 05:13:07 +0000
-Subject: [PATCH] arm64: dts: qcom: sdm845-oneplus-fajita: Route the
- microphones to MCLK
+Subject: [PATCH 0/2] media: venus: Fix end-of-stream and seeks on SDM845
+Date: Sun, 22 Nov 2026 05:13:15 +0000
+Message-Id: <20261122-b4-venus-eos-seek-v1-0-2e38912c7cf9@enser.io>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-b4-fajita-codec-mclk-v1-1-ee4bca21d8ba@enser.io>
-X-B4-Tracking: v=1; b=H4sIAOJ5AmsC/yXMwQ6CMBAE0F8he3aV1orRXzEetstWFrWYFokJ4
- d+lenyTmZkhS1LJcK5mSDJp1iGuMJsKuKN4E9R2NdjaNsZYi95hoF5HQh5aYXzy445mbwK5kw9
- NfYB1+koS9PO7vVz/zm/fC4/lqzQ8ZUGfKHJXosLddNw6TGxhWb5cZyAomAAAAA==
-X-Change-ID: 20261122-b4-fajita-codec-mclk-131fa49bf605
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: Abel Vesa <abelvesa@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Dylan Van Assche <me@dylanvanassche.be>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- EMCP333 <emcp@enser.io>
+X-B4-Tracking: v=1; b=H4sIAOt5AmsC/yXMzQrCMBAE4Fcpe3bVhKqtryIe8jO1UUhL1gah9
+ N1N9PgNM7OSIAUIXZuVEnKQMMUCtWvIjSY+wMEXkz7qs1Jas205Iy7CmIQFeLHHoHvVo+v8icp
+ uThjC5/d5u/8ti33CvetRbVgjYJtMdGONKg/5sm85OU3b9gXw/SnqlQAAAA==
+X-Change-ID: 20261122-b4-venus-eos-seek-def2919e88d5
+To: Vikash Garodia <vikash.garodia@oss.qualcomm.com>, 
+ Dikshita Agarwal <dikshita.agarwal@oss.qualcomm.com>
+Cc: Bryan O'Donoghue <bod@kernel.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Hans Verkuil <hverkuil@kernel.org>, 
+ Stanimir Varbanov <stanimir.varbanov@linaro.org>, 
+ linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, EMCP333 <emcp@enser.io>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795324388; l=2514;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795324396; l=1979;
  i=emcp@enser.io; s=ultron; h=from:subject:message-id;
- bh=DGyS7iiSyD0F0W5165hIjMOEexnA6ODF4zyy8Qhxe84=;
- b=MPSGHzz05h1QrnlkAVXZ9JRXshJXFKZpSpb6sX3os1zzdzqFHl1RSXes0z96fFYozLT4XnMsl
- BEs3Zsx4KpLA2HsUkADPwgt7hB2Zvcor24BKNgGVeghlUjx9UfbIszz
+ bh=iP7FYS+EUWbdvN2tGSghCLya/Epnwo8AlsueNNlxKd8=;
+ b=3SJ4nGg5MO7AHbPM4HnJT6atKVij5aE02Xdb7Kp/IFJ/qkQAXViTsx23qxP2PSXXLHUolhcAl
+ AUeItdKTwrcAp2HQV90Me3jveKK77HQ/9l00Y2+DYUs+G+hiUZklaH7
 X-Developer-Key: i=emcp@enser.io; a=ed25519;
  pk=5sG48Lul+Vn7OzXu3VZrCWk5uvEFPYMXYnAV0TZR/tY=
 X-Endpoint-Received: by B4 Relay for emcp@enser.io/ultron with auth_id=1598
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The WCD934x system clock is a DAPM supply widget, "MCLK", and the codec
-driver routes nothing into it, so each board has to. fajita connects it
-only to RX_BIAS, which only the playback paths use. A capture-only
-stream therefore powers the microphone input, ADC, decimator and SLIMbus
-TX path, but not the clock they run from, and records digital silence
-until something has started playback.
+Two fixes for the Venus decoder and encoder, found on a OnePlus 6T
+(SDM845, firmware VIDEO.VE.5.2-00050-PROD-1) while using it from
+GStreamer, ffmpeg and mpv.
 
-Route each analog microphone input to MCLK, as other WCD934x boards do
-for their microphones (sdm845-samsung-starqltechn,
-sdm850-huawei-matebook-e-2019).
+Patch 1 gives the end-of-stream buffer that the STOP commands queue a
+real, mapped address instead of the made-up 0xdeadb000. This firmware
+rejects the made-up address, which leaves the encoder unusable until
+reboot and decoder clients draining forever.
 
-Tested on a OnePlus 6T with this change on the postmarketOS sdm845
-kernel (6.18). With no playback stream open, a recording from the
-bottom microphone powers MCLK while RX_BIAS stays off, and captures real
-signal (peak 22307 over 6 s). Without it, the same recording is
-constant zero. On v7.4-rc2, dtbs_check gives the same output before and
-after.
+Patch 2 makes a CAPTURE STREAMON issued while OUTPUT is stopped for a
+seek take effect when OUTPUT restarts. That is the order GStreamer uses
+for every flushing seek, and without it the seek never completes.
 
-The OnePlus 6 (enchilada) has the same routing and probably the same
-problem. It is left alone here because I cannot test it.
+Both were tested on the phone with the postmarketOS sdm845 kernel
+(6.18). On v7.4-rc2 the driver builds with W=1 and no warnings.
 
-The code and this changelog were prepared with the help of an AI coding
-assistant. The submitter has reviewed both and takes responsibility for
-them.
+Both also ran on v7.4-rc3: three encodes drained by V4L2_ENC_CMD_STOP
+and decoded back (90 of 90 frames), and three flushing seeks through
+GStreamer completed in 0.02 s each, with no venus errors.
 
-Fixes: b7b734286856 ("arm64: dts: qcom: sdm845-oneplus-*: add audio devices")
-Signed-off-by: EMCP333 <emcp@enser.io>
+One related problem is not addressed here: from 1280x720 up, the encoder
+bitstream buffer is an eighth of the size used just below 720p, and
+this firmware produces nothing with it. Fixing that properly needs the
+firmware's own buffer requirement rather than a bigger guess, so it is
+left for a separate change.
+
 ---
-Also ran on v7.4-rc3 on the same phone, as this exact commit: with no
-playback open, DAPM MCLK is On and RX_BIAS Off, and the bottom mic
-records (956 distinct sample values, peak 654, in a quiet room; the
-failure is a constant zero).
----
- arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+EMCP333 (2):
+      media: venus: Signal end-of-stream with a mapped buffer
+      media: venus: vdec: Resume CAPTURE restarted during a seek
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts b/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-index e9d1a1c6ac..a03c1ea8fe 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-@@ -51,10 +51,15 @@ &sound {
- 	model = "OnePlus 6T";
- 	audio-routing = "RX_BIAS", "MCLK",
- 			"AMIC1", "MIC BIAS3",
-+			"AMIC1", "MCLK",
- 			"AMIC2", "MIC BIAS2",
-+			"AMIC2", "MCLK",
- 			"AMIC3", "MIC BIAS4",
-+			"AMIC3", "MCLK",
- 			"AMIC4", "MIC BIAS1",
--			"AMIC5", "MIC BIAS3";
-+			"AMIC4", "MCLK",
-+			"AMIC5", "MIC BIAS3",
-+			"AMIC5", "MCLK";
- };
- 
- &pmi8998_charger {
-
+ drivers/media/platform/qcom/venus/core.h    |  7 +++++
+ drivers/media/platform/qcom/venus/helpers.c | 40 +++++++++++++++++++++++++++++
+ drivers/media/platform/qcom/venus/helpers.h |  3 +++
+ drivers/media/platform/qcom/venus/vdec.c    | 33 +++++++++++++++++++++---
+ drivers/media/platform/qcom/venus/venc.c    |  7 ++++-
+ 5 files changed, 85 insertions(+), 5 deletions(-)
 ---
 base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261122-b4-fajita-codec-mclk-131fa49bf605
+change-id: 20261122-b4-venus-eos-seek-def2919e88d5
 
 Best regards,
 --  
