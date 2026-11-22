@@ -1,157 +1,292 @@
 From: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
-Date: Sun, 22 Nov 2026 13:08:43 -0300
-Subject: [PATCH 1/4] docs/translations/pt_BR: process: add
- maintainer-pgp-guide.rst (1/4)
+Date: Sun, 22 Nov 2026 13:08:44 -0300
+Subject: [PATCH 2/4] docs/translations/pt_BR: process: add
+ maintainer-pgp-guide.rst (2/4)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261122-maintainer-pgp-guide-pt-br-v1-1-01ce5941c5c2@gmail.com>
+Message-Id: <20261122-maintainer-pgp-guide-pt-br-v1-2-01ce5941c5c2@gmail.com>
 References: <20261122-maintainer-pgp-guide-pt-br-v1-0-01ce5941c5c2@gmail.com>
 In-Reply-To: <20261122-maintainer-pgp-guide-pt-br-v1-0-01ce5941c5c2@gmail.com>
 To: linux-doc@vger.kernel.org
 Cc: danielmaraboo@gmail.com, corbet@lwn.net, skhan@linuxfoundation.org, 
  rdunlap@infradead.org, Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795363722; l=5954;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795363722; l=12372;
  i=dreduardocruz@gmail.com; s=20261119; h=from:subject:message-id;
- bh=EJlrJWgTSTNQ8VVVl0iv3PrJ05mnog12cuiU3VTLIX4=;
- b=cI7J4agvajgR8hVBUlHDZwoqI3+8wdMqRZRhrDOrMbjL0yZgJWwAWyypDesWYAJD35OTijzM4
- pTRjzMa/ZN1DJG/dF3COmSKSIPqM41B0rt19k3Ulx+I5w8YVlTtzQtp
+ bh=C4iNQDl5JtYjV/glAd3couPQ1BGZQrblBzxgDjhFMcU=;
+ b=KO9UUxX7WTBEsQV65uXXwCyc70pv7bk426265/H+3Ff9O3Zd0ljvLWMwz6q1W2YcLIxUXkrEW
+ Cdyrx3tKhPmBzea3GsuMmFt4sm2/FeSiVDeM4GhupMeFyJjmsAJHOCE
 X-Developer-Key: i=dreduardocruz@gmail.com; a=ed25519;
  pk=2dtL+BL/x70sROmAvlskv9dbjj274zlPkLBVu4gJJiA=
 X-Endpoint-Received: by B4 Relay for dreduardocruz@gmail.com/20261119 with auth_id=1571
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Start the Brazilian Portuguese translation of the maintainer PGP guide:
-the introduction, the role of PGP in kernel development, the recommended
-GnuPG setup and the first part of key protection.
-
-The translation follows the English original as last changed by commit
-fdd100ee60a0 ("docs: process: use gender-neutral pronouns") and keeps
-the cross-reference labels, the note and warning directives, and every
-command and key listing verbatim.
+Translate the rest of the key protection chapter: removing the Certify
+key from the home directory, the keygrip handling and the details of
+the private-keys-v1 directory.
 
 Signed-off-by: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 ---
- .../pt_BR/process/maintainer-pgp-guide.rst         | 111 +++++++++++++++++++++
- 1 file changed, 111 insertions(+)
+ .../pt_BR/process/maintainer-pgp-guide.rst         | 249 +++++++++++++++++++++
+ 1 file changed, 249 insertions(+)
 
 diff --git a/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst b/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst
-new file mode 100644
-index 000000000000..a4ec5c5ef83b
---- /dev/null
+index a4ec5c5ef83b..4e07d49e36d0 100644
+--- a/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst
 +++ b/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst
-@@ -0,0 +1,111 @@
-+.. SPDX-License-Identifier: GPL-2.0
+@@ -109,3 +109,252 @@ o arquivo ``~/.gnupg/gpg-agent.conf`` para definir os seus próprios valores::
+ 
+ .. _protect_your_key:
+ 
++Proteja a sua chave PGP
++=======================
 +
-+.. _pgpguide:
++Este guia pressupõe que você já tenha uma chave PGP usada para o
++desenvolvimento do kernel Linux. Se ainda não tiver uma, consulte o documento
++"`Protecting Code Integrity`_" mencionado anteriormente para orientação sobre
++como criar uma nova.
 +
-+=======================================
++Você também deve criar uma nova chave se a atual for mais fraca que 2048 bits
++(RSA).
 +
-+Guia de PGP para mantenedores do kernel
-+=======================================
++Entendendo as subchaves PGP
++----------------------------
 +
-+:Author: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
++Uma chave PGP raramente consiste em um único par de chaves -- normalmente é uma
++coleção de subchaves independentes que podem ser usadas para propósitos
++diferentes, conforme as suas capacidades, atribuídas no momento da criação.
++O PGP define quatro capacidades que uma chave pode ter:
 +
-+Este documento é destinado aos desenvolvedores do kernel Linux e,
-+especialmente, aos mantenedores de subsistema. Ele contém um subconjunto das
-+informações discutidas no guia mais geral "`Protecting Code Integrity`_",
-+publicado pela Linux Foundation. Leia aquele documento para uma discussão mais
-+aprofundada sobre alguns dos tópicos mencionados neste guia.
++- chaves **[S]** podem ser usadas para assinar
++- chaves **[E]** podem ser usadas para criptografar
++- chaves **[A]** podem ser usadas para autenticar
++- chaves **[C]** podem ser usadas para certificar outras chaves
 +
-+.. _`Protecting Code Integrity`: https://github.com/lfit/itpol/blob/master/protecting-code-integrity.md
++A chave com a capacidade **[C]** costuma ser chamada de chave "mestra", mas
++essa terminologia é enganosa porque implica que a chave de Certificação pode
++ser usada no lugar de qualquer outra subchave da mesma cadeia (como uma "chave
++mestra" física pode abrir fechaduras feitas para outras chaves). Como não é o
++caso, este guia se referirá a ela como "a chave de Certificação" para evitar
++ambiguidade.
 +
-+O papel do PGP no desenvolvimento do kernel Linux
-+=================================================
++É fundamental entender completamente o seguinte:
 +
-+O PGP ajuda a garantir a integridade do código produzido pela comunidade de
-+desenvolvimento do kernel Linux e, em menor grau, a estabelecer canais de
-+comunicação confiáveis entre desenvolvedores por meio de troca de e-mails
-+assinados com PGP.
++1. Todas as subchaves são totalmente independentes entre si. Se você perder
++   uma subchave privada, ela não pode ser restaurada nem recriada a partir de
++   qualquer outra chave privada da sua cadeia.
++2. Com exceção da chave de Certificação, pode haver várias subchaves com
++   capacidades idênticas (por exemplo, você pode ter 2 subchaves de
++   criptografia válidas, 3 subchaves de assinatura válidas, mas apenas uma
++   subchave de certificação válida). Todas as subchaves são totalmente
++   independentes -- uma mensagem criptografada para uma subchave **[E]** não
++   pode ser decifrada com qualquer outra subchave **[E]** que você também
++   tenha.
++3. Uma única subchave pode ter múltiplas capacidades (por exemplo, a sua
++   chave **[C]** também pode ser a sua chave **[S]**).
 +
-+O código-fonte do kernel Linux está disponível em dois formatos principais:
++A chave que carrega a capacidade **[C]** (certificar) é a única que pode ser
++usada para indicar relacionamento com outras chaves. Somente a chave **[C]**
++pode ser usada para:
 +
-+- Repositórios de código distribuídos (Git)
-+- Instantâneos periódicos de versões (tarballs)
++- adicionar ou revogar outras chaves (subchaves) com capacidades S/E/A
++- adicionar, alterar ou revogar identidades (uids) associadas à chave
++- adicionar ou alterar a data de expiração dela mesma ou de qualquer subchave
++- assinar chaves de outras pessoas para fins de teia de confiança
 +
-+Tanto os repositórios Git quanto os tarballs carregam assinaturas PGP dos
-+desenvolvedores do kernel que criam as versões oficiais. Essas assinaturas
-+oferecem uma garantia criptográfica de que as versões baixáveis
-+disponibilizadas via kernel.org ou qualquer outro espelho são idênticas ao que
-+esses desenvolvedores têm em suas estações de trabalho. Para isso:
++Por padrão, o GnuPG cria o seguinte ao gerar novas chaves:
 +
-+- Repositórios Git fornecem assinaturas PGP em todas as tags
-+- tarballs fornecem assinaturas PGP destacadas junto com todos os downloads
++- Uma subchave que carrega as capacidades de Certificação e Assinatura
++  (**[SC]**)
++- Uma subchave separada com a capacidade de Criptografia (**[E]**)
 +
-+.. _devs_not_infra:
++Se você usou os parâmetros padrão ao gerar a sua chave, é isso que você terá.
++Você pode verificar executando ``gpg --list-secret-keys``, por exemplo::
 +
-+Confiar nos desenvolvedores, não na infraestrutura
-+--------------------------------------------------
++    sec   ed25519 2022-12-20 [SC] [expires: 2024-12-19]
++          000000000000000000000000AAAABBBBCCCCDDDD
++    uid           [ultimate] Alice Dev <adev@kernel.org>
++    ssb   cv25519 2022-12-20 [E] [expires: 2024-12-19]
 +
-+Desde o comprometimento dos sistemas centrais do kernel.org em 2011, o
-+princípio operacional principal do projeto Kernel Archives tem sido assumir que
-+qualquer parte da infraestrutura pode ser comprometida a qualquer momento. Por
-+essa razão, os administradores tomaram medidas deliberadas para enfatizar que a
-+confiança deve sempre ser depositada nos desenvolvedores e nunca na
-+infraestrutura de hospedagem de código, independentemente de quão boas sejam as
-+práticas de segurança desta última.
++A linha longa sob a entrada ``sec`` é a impressão digital da sua chave --
++sempre que você vir ``[fpr]`` nos exemplos abaixo, é a essa string de 40 caracteres que a abreviação se refere.
 +
-+O princípio orientador acima é a razão pela qual este guia é necessário.
-+Queremos garantir que, ao depositar confiança nos desenvolvedores, não
-+estejamos apenas transferindo a culpa por potenciais incidentes futuros de
-+segurança para outra pessoa. O objetivo é fornecer um conjunto de diretrizes
-+que os desenvolvedores possam usar para criar um ambiente de trabalho seguro e
-+proteger as chaves PGP usadas para estabelecer a integridade do próprio kernel
-+Linux.
++Garanta que a sua passphrase seja forte
++---------------------------------------
 +
-+.. _pgp_tools:
++O GnuPG usa passphrases para criptografar as suas chaves privadas antes de
++armazená-las em disco. Assim, mesmo que o seu diretório ``.gnupg`` vaze ou seja
++roubado por inteiro, os atacantes não podem usar as suas chaves privadas sem
++antes obter a passphrase para decifrá-las.
 +
-+Ferramentas PGP
-+===============
++É absolutamente essencial que as suas chaves privadas sejam protegidas por uma
++passphrase forte. Para defini-la ou alterá-la, use::
 +
-+Use GnuPG 2.4 ou mais recente
-+-----------------------------
++    $ gpg --change-passphrase [fpr]
 +
-+Sua distro já deve ter o GnuPG instalado por padrão; você só precisa verificar
-+se está usando uma versão razoavelmente recente. Para conferir, execute::
++Crie uma subchave de assinatura separada
++----------------------------------------
 +
-+    $ gpg --version | head -n1
++Nosso objetivo é proteger a sua chave de Certificação movendo-a para mídia
++offline; portanto, se você tem apenas uma chave combinada **[SC]**, deve criar
++uma subchave de assinatura separada::
 +
-+Se você tem a versão 2.4 ou superior, está tudo certo. Se tiver uma versão
-+anterior, você está usando uma versão do GnuPG que não é mais mantida e alguns
-+comandos deste guia podem não funcionar.
++    $ gpg --quick-addkey [fpr] ed25519 sign
 +
-+Configure as opções do gpg-agent
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++Faça backup da sua chave de Certificação para recuperação de desastres
++----------------------------------------------------------------------
 +
-+O agente do GnuPG é uma ferramenta auxiliar que inicia automaticamente sempre
-+que você usa o comando ``gpg`` e roda em segundo plano com o propósito de
-+guardar em cache a passphrase da chave privada. Há duas opções que você deve
-+conhecer para ajustar quando a passphrase deve expirar do cache:
++Quanto mais assinaturas de outros desenvolvedores você tiver na sua chave PGP de outros
++desenvolvedores, mais motivos você tem para criar uma versão de backup que
++viva em algo que não seja mídia digital, por razões de recuperação de
++desastres.
 +
-+- ``default-cache-ttl`` (segundos): se você usar a mesma chave novamente antes
-+  de o tempo de vida expirar, a contagem regressiva reinicia por outro período.
-+  O padrão é 600 (10 minutos).
-+- ``max-cache-ttl`` (segundos): independentemente de quão recentemente você usou
-+  a chave desde a primeira entrada da passphrase, se a contagem do tempo de
-+  vida máximo expirar, você terá de digitar a passphrase novamente. O padrão
-+  é 30 minutos.
++Uma boa forma de criar uma cópia impressa da sua chave privada é usar o
++software ``paperkey``, escrito exatamente para esse propósito. Veja ``man
++paperkey`` para mais detalhes sobre o formato de saída e os seus benefícios em
++relação a outras soluções. O paperkey já deve estar empacotado para a maioria
++das distribuições.
 +
-+Se você achar qualquer um desses padrões curto (ou longo) demais, pode editar
-+o arquivo ``~/.gnupg/gpg-agent.conf`` para definir os seus próprios valores::
++Execute o comando a seguir para criar um backup impresso da sua chave
++privada::
 +
-+    # set to 30 minutes for regular ttl, and 2 hours for max ttl
-+    default-cache-ttl 1800
-+    max-cache-ttl 7200
++    $ gpg --export-secret-key [fpr] | paperkey -o /tmp/key-backup.txt
++
++Imprima aquele arquivo e, com uma caneta, escreva a sua passphrase na margem
++do papel. **Isso é fortemente recomendado**, porque a impressão da chave
++ainda está criptografada com aquela passphrase e, se um dia você alterá-la,
++não vai se lembrar de qual era quando criou o backup -- *garantido*.
++
++Coloque a impressão resultante e a passphrase escrita à mão em um envelope e
++guarde em um lugar seguro e bem protegido, de preferência longe da sua casa,
++como um cofre de banco.
 +
 +.. note::
 +
-+    Não é mais necessário iniciar o gpg-agent manualmente no começo da sua
-+    sessão de shell. Você pode querer verificar os seus arquivos rc para
-+    remover qualquer coisa que tivesse para versões anteriores do GnuPG, pois
-+    pode não estar mais fazendo a coisa certa.
++    A chave ainda está criptografada com a sua passphrase, então imprimir até
++    em impressoras modernas "integradas à nuvem" deve continuar sendo uma
++    operação relativamente segura.
 +
-+.. _protect_your_key:
++Faça backup de todo o seu diretório GnuPG
++-----------------------------------------
++
++.. warning::
++
++    **!!!Não pule esta etapa!!!**
++
++É importante ter um backup prontamente disponível das suas chaves PGP
++caso precise recuperá-las. Isso é diferente da preparação para desastres que
++fizemos com o ``paperkey``. Você também dependerá dessas cópias externas sempre
++que precisar usar a sua chave de Certificação -- como ao fazer mudanças na sua
++própria chave ou ao assinar chaves de outras pessoas depois de conferências e
++summits.
++
++Comece obtendo um cartão de mídia externo (de preferência dois!) que você usará
++para fins de backup. Você precisará criar uma partição criptografada nesse
++dispositivo usando LUKS -- consulte a documentação da sua distro sobre como
++fazer isso.
++
++Para a passphrase de criptografia, você pode usar a mesma da sua chave PGP.
++
++Quando o processo de criptografia terminar, reinsira o dispositivo e garanta
++que ele seja montado corretamente. Copie todo o seu diretório ``.gnupg`` para
++o armazenamento criptografado::
++
++    $ cp -a ~/.gnupg /media/disk/foo/gnupg-backup
++
++Você deve agora testar para garantir que tudo ainda funciona::
++
++    $ gpg --homedir=/media/disk/foo/gnupg-backup --list-key [fpr]
++
++Se você não receber nenhum erro, está tudo certo. Desmonte o dispositivo,
++rotule-o de forma distinta para não sobrescrevê-lo por acidente e guarde-o em
++um lugar seguro -- mas não muito longe, porque você precisará usá-lo de vez em
++quando para coisas como editar identidades, adicionar ou revogar subchaves ou
++assinar chaves de outras pessoas.
++
++Remova a chave de Certificação do seu homedir
++---------------------------------------------
++
++Os arquivos no nosso diretório home não são tão bem protegidos quanto gostamos
++de pensar. Eles podem vazar ou ser roubados por muitos meios diferentes:
++
++- por acidente, ao fazer cópias rápidas do homedir para configurar uma nova
++  estação de trabalho
++- por negligência ou má-fé do administrador de sistemas
++- via backups mal protegidos
++- via malware em aplicativos de desktop (navegadores, leitores de pdf etc.)
++- via coerção ao cruzar fronteiras internacionais
++
++Proteger a sua chave com uma boa passphrase ajuda muito a reduzir o risco de
++qualquer um dos casos acima, mas passphrases podem ser descobertas via
++keyloggers, observação por cima do ombro ou qualquer número de outros meios.
++Por essa razão, a configuração recomendada é remover a sua chave de
++Certificação do diretório home e armazená-la em mídia offline.
++
++.. warning::
++
++    Consulte a seção anterior e garanta que você fez backup do seu diretório
++    GnuPG por inteiro. O que estamos prestes a fazer tornará a sua chave
++    inútil se você não tiver um backup utilizável!
++
++Primeiro, identifique o "keygrip" da sua chave de Certificação::
++
++    $ gpg --with-keygrip --list-key [fpr]
++
++A saída será algo como isto::
++
++    pub   ed25519 2022-12-20 [SC] [expires: 2022-12-19]
++          000000000000000000000000AAAABBBBCCCCDDDD
++          Keygrip = 1111000000000000000000000000000000000000
++    uid           [ultimate] Alice Dev <adev@kernel.org>
++    sub   cv25519 2022-12-20 [E] [expires: 2022-12-19]
++          Keygrip = 2222000000000000000000000000000000000000
++    sub   ed25519 2022-12-20 [S]
++          Keygrip = 3333000000000000000000000000000000000000
++
++Encontre a entrada de keygrip que está sob a linha ``pub`` (logo abaixo da
++impressão digital da chave de Certificação). Ela corresponderá diretamente a
++um arquivo no seu diretório ``~/.gnupg``::
++
++    $ cd ~/.gnupg/private-keys-v1.d
++    $ ls
++    1111000000000000000000000000000000000000.key
++    2222000000000000000000000000000000000000.key
++    3333000000000000000000000000000000000000.key
++
++Basta remover o arquivo .key correspondente ao keygrip da chave de
++Certificação::
++
++    $ cd ~/.gnupg/private-keys-v1.d
++    $ rm 1111000000000000000000000000000000000000.key
++
++Agora, se você emitir o comando ``--list-secret-keys``, ele mostrará que a
++chave de Certificação está ausente (o ``#`` indica que ela não está
++disponível)::
++
++    $ gpg --list-secret-keys
++    sec#  ed25519 2022-12-20 [SC] [expires: 2024-12-19]
++          000000000000000000000000AAAABBBBCCCCDDDD
++    uid           [ultimate] Alice Dev <adev@kernel.org>
++    ssb   cv25519 2022-12-20 [E] [expires: 2024-12-19]
++    ssb   ed25519 2022-12-20 [S]
++
++Você também deve remover quaisquer arquivos ``secring.gpg`` no diretório
++``~/.gnupg``, que podem ter sobrado de versões anteriores do GnuPG.
++
++Se você não tiver o diretório "private-keys-v1.d"
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++Se você não tiver um diretório ``~/.gnupg/private-keys-v1.d``, então as suas
++chaves secretas ainda estão armazenadas no arquivo legado ``secring.gpg``
++usado pelo GnuPG v1. Fazer qualquer mudança na sua chave, como alterar a
++passphrase ou adicionar uma subchave, deve converter automaticamente o formato
++antigo ``secring.gpg`` para usar ``private-keys-v1.d``.
++
++Depois de fazer isso, não deixe de excluir o arquivo ``secring.gpg`` obsoleto,
++que ainda contém as suas chaves privadas.
++
++.. _smartcards:
 +
 
 -- 
