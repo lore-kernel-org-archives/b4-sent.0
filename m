@@ -1,98 +1,66 @@
-From: =?utf-8?q?Omar_Yi=C4=9Fitcan_Meng=C3=BC?= <menguomary@gmail.com>
-Date: Sun, 22 Nov 2026 13:20:02 +0300
-Subject: [PATCH] jfs: fix integer overflow in dbDiscardAG() and validate
- dn_agfree
+From: YanXin Li <fadouse@pm.me>
+Subject: [PATCH bpf v3 0/2] bpf: bound arena allocations to the user VMA
+Date: Sun, 22 Nov 2026 19:28:34 +0800
+Message-Id: <20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-v3-0-1f94ae9a884a@pm.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261122-jfs-fix-dbdiscardag-overflow-v1-1-c3b3230242dc@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/yXMwQrCMAwA0F8pOS9gg1Ttr4iHrk1mhqzSzDkY+
- 3dRj+/yNjBuygbRbdB4UdM6QXS+c5DvaRoYtUB0QAcK3hPhKIaiK5a+qOXUShqwLtzkUd94PFO
- Q4BNd5ASdg2dj0fXXX29/26sfOc/fE/b9A5fMHyCAAAAA
-X-Change-ID: 20261122-jfs-fix-dbdiscardag-overflow-4826f61a29f7
-To: Dave Kleikamp <shaggy@kernel.org>
-Cc: jfs-discussion@lists.sourceforge.net, 
- Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- syzbot+29eda1328acf6cf2dbfb@syzkaller.appspotmail.com, 
- stable@vger.kernel.org, 
- =?utf-8?q?Omar_Yi=C4=9Fitcan_Meng=C3=BC?= <menguomary@gmail.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAOLRAmsC/yWN0WrDMAxFf6XouWK2ZLTQXyl9kG159UiTYndhJ
+ fTfm2yP93A5Z4VurVqH02GFZkvtdZ62wccDpKtOX4Y1bxvIkXhPhDGgY4z3gtpsUlxuOo5zwnm
+ OuDBmpZzIy8BJ0EvUpBK5kIfNeG9W6u9f7QybAi7/sP/Eb0uPvbPfonbD2HRK1x01G/WJO/xII
+ XgXCkugrJ/kvAQXSIgtDEwDi1rJeTB4vd7hg/Mn2gAAAA==
+X-Change-ID: 20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-16baca6b3f21
+To: Alexei Starovoitov <ast@kernel.org>, 
+ Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>
+Cc: Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, bpf@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795342801; l=2536;
- i=menguomary@gmail.com; s=20261121; h=from:subject:message-id;
- bh=hMHH4yTPBHZUdEF0MQBMA04GLD3DPYMcNION+cySEUY=;
- b=kFsqLNKFTA0bRSTpgK1ZizBPkY3/f3o5uFzQfSnERdVJVQeHu8RAQUcJumcVCIJDH3fcg7nxg
- EkbDzhuT90/B3FTj/M3cuwHSXd3FU+dqk0eFGzUfN9R6zORfLYpM7Um
-X-Developer-Key: i=menguomary@gmail.com; a=ed25519;
- pk=dgRbAFBMBZdJfvBTw9RBcE3WxXn6Yt7GOZFPRpQqpkY=
-X-Endpoint-Received: by B4 Relay for menguomary@gmail.com/20261121 with auth_id=1595
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795346949; l=1499;
+ i=fadouse@pm.me; s=b4-relay-20261122; h=from:subject:message-id;
+ bh=COKNqL4nI/46X68yJCZPIZvXWvI3Jps4kTw9tNbbcx4=;
+ b=EUNVg8NGYoj2WTffKgAt+mEAWKVgMBjshnXixmU9nBKOR62IA2jKTlLhlD62jRiONzl969mXP
+ GwS5SCeS8w7DywrzgUEUKTX3djnCXlWbv/XxOg1AU7trC7c+JLHy44F
+X-Developer-Key: i=fadouse@pm.me; a=ed25519;
+ pk=b4DyzHJDRd8853IHUSKPA5wwzChj8eF4MTnZuyPz1PQ=
+X-Endpoint-Received: by B4 Relay for fadouse@pm.me/b4-relay-20261122 with auth_id=1597
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If a corrupted JFS image has a negative per-AG free block count such as
-dn_agfree[agno] == -1, dbMount() currently accepts it without validation
-and stores -1 in bmp->db_agfree[agno].
-
-When FITRIM later calls dbDiscardAG() with minlen == 1, the signed s64
-value nblocks = -1 is implicitly converted to u64 max_ranges = U64_MAX.
-After do_div(max_ranges, minlen), max_ranges + 1 overflows u64 to 0,
-causing range_cnt to be 0 and kmalloc_objs(struct range2trim, 0, ...)
-to return ZERO_SIZE_PTR (0x10). Since totrim != NULL and the while loop
-(nblocks >= minlen) is skipped, tt->nblocks = 0 dereferences 0x18 and
-triggers a general protection fault.
-
-Fix this in two places:
-1. Validate bmp->db_agfree[i] >= 0 in dbMount() to reject corrupted
-   on-disk metadata at mount time with -EINVAL.
-2. Return early in dbDiscardAG() when nblocks < minlen, preventing any
-   negative nblocks (for example from runtime corruption) from
-   overflowing max_ranges + 1 and avoiding an unnecessary allocation
-   when an AG has fewer than minlen free blocks.
-
-Reported-by: syzbot+29eda1328acf6cf2dbfb@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=29eda1328acf6cf2dbfb
-Fixes: b40c2e665cd5 ("fs/jfs: TRIM support for JFS Filesystem")
-Cc: stable@vger.kernel.org
-Signed-off-by: Omar Yiğitcan Mengü <menguomary@gmail.com>
----
- fs/jfs/jfs_dmap.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
-
-diff --git a/fs/jfs/jfs_dmap.c b/fs/jfs/jfs_dmap.c
-index a841cf21d..94542ed93 100644
---- a/fs/jfs/jfs_dmap.c
-+++ b/fs/jfs/jfs_dmap.c
-@@ -293,8 +293,13 @@ int dbMount(struct inode *ipbmap)
- 		goto err_release_metapage;
- 	}
- 
--	for (i = 0; i < MAXAG; i++)
-+	for (i = 0; i < MAXAG; i++) {
- 		bmp->db_agfree[i] = le64_to_cpu(dbmp_le->dn_agfree[i]);
-+		if (bmp->db_agfree[i] < 0) {
-+			err = -EINVAL;
-+			goto err_release_metapage;
-+		}
-+	}
- 	bmp->db_agsize = le64_to_cpu(dbmp_le->dn_agsize);
- 	bmp->db_maxfreebud = dbmp_le->dn_maxfreebud;
- 
-@@ -1677,6 +1682,10 @@ s64 dbDiscardAG(struct inode *ip, int agno, s64 minlen)
- 	IWRITE_LOCK(ipbmap, RDWRLOCK_DMAP);
- 
- 	nblocks = bmp->db_agfree[agno];
-+	if (nblocks < minlen) {
-+		IWRITE_UNLOCK(ipbmap);
-+		return 0;
-+	}
- 	max_ranges = nblocks;
- 	do_div(max_ranges, minlen);
- 	range_cnt = min_t(u64, max_ranges + 1, 32 * 1024);
+When map_extra is omitted, a short first mmap() can leave free arena
+pages beyond the user VMA. Automatic allocation can select those pages;
+near a 4 GiB boundary, the kernel mapping can extend past the arena's
+vmalloc reservation. Patch 1 confines the range tree to the VMA, and
+patch 2 adds a regression selftest.
 
 ---
-base-commit: 4843f6873f7c4835e62f2c73ba0fd538e57a2f22
-change-id: 20261122-jfs-fix-dbdiscardag-overflow-4826f61a29f7
+Changes in v3:
+- Correct the 288-page boundary calculation and describe the vmalloc guard.
+- Distinguish out-of-VMA allocations from 32-bit wrap and limit claims to
+  what the local test establishes.
+- Remove the unreachable arena_adjust_tree() bound check.
+- Point Fixes at the range-tree conversion and identify the test commit.
+- Split the regression selftest into patch 2/2 and skip it when arena
+  program loading returns -EOPNOTSUPP with JIT disabled.
+- Link to v2: https://lore.kernel.org/r/20261122-b4-03-bpf-arena-vmalloc-oob-v2-5f6209c1a20e-v2-1-b2a9906e9676@pm.me
+
+---
+YanXin Li (2):
+      bpf: bound arena allocations to the user VMA
+      selftests/bpf: test arena allocation after a short mmap
+
+ kernel/bpf/arena.c                                 | 25 ++++++++++
+ .../testing/selftests/bpf/prog_tests/arena_mmap.c  | 53 ++++++++++++++++++++++
+ .../testing/selftests/bpf/progs/arena_mmap_alloc.c | 32 +++++++++++++
+ 3 files changed, 110 insertions(+)
+---
+base-commit: c44104f3642da720164042623e4832836aefdd8e
+change-id: 20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-16baca6b3f21
 
 Best regards,
 --  
-Omar Yiğitcan Mengü <menguomary@gmail.com>
+YanXin Li <fadouse@pm.me>
 
