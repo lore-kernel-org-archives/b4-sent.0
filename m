@@ -1,71 +1,98 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Sun, 22 Nov 2026 10:11:52 +0000
-Subject: [PATCH] iommu/qcom: Disable clocks if restoring the secure config
- fails
+From: =?utf-8?q?Omar_Yi=C4=9Fitcan_Meng=C3=BC?= <menguomary@gmail.com>
+Date: Sun, 22 Nov 2026 13:20:02 +0300
+Subject: [PATCH] jfs: fix integer overflow in dbDiscardAG() and validate
+ dn_agfree
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-qcom-iommu-v1-1-ecb20a28871f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAOe/AmsC/yXMTQ5AMBBA4avIrDXR8RtXEQtqMJIqLSIRd1csv
- 8V7FziyTA7K4AJLBzs2s4cMA1BjMw8kuPMGjDCTElGsymjBRutdYJLHqsAO0xTBB4ulns9vVtW
- /3d5OpLb3APf9AM6McwVuAAAA
-X-Change-ID: 20261122-qcom-iommu-2473c82d2552
-To: joro@8bytes.org, will@kernel.org, robin.clark@oss.qualcomm.com
-Cc: iommu@lists.linux.dev, robin.murphy@arm.com, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795342312; l=1475;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=1Eskb3u6fGizPUm16aNFvrkib/eJ2zFG+/IzmSV4X/Y=;
- b=ZOGKdTHhmGOSbeG4MiNOD9O4UG/bQnmgXpNcWMIuhzXL6CbNW60fDSSxuqAPYbf+CxdaRHuqT
- bUCoNBgV+eAA5fWSVT4jLwsfiqxAeW3ig/BT3bfrHFybV/AwxRrQ6hQ
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261122-jfs-fix-dbdiscardag-overflow-v1-1-c3b3230242dc@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/yXMwQrCMAwA0F8pOS9gg1Ttr4iHrk1mhqzSzDkY+
+ 3dRj+/yNjBuygbRbdB4UdM6QXS+c5DvaRoYtUB0QAcK3hPhKIaiK5a+qOXUShqwLtzkUd94PFO
+ Q4BNd5ASdg2dj0fXXX29/26sfOc/fE/b9A5fMHyCAAAAA
+X-Change-ID: 20261122-jfs-fix-dbdiscardag-overflow-4826f61a29f7
+To: Dave Kleikamp <shaggy@kernel.org>
+Cc: jfs-discussion@lists.sourceforge.net, 
+ Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ syzbot+29eda1328acf6cf2dbfb@syzkaller.appspotmail.com, 
+ stable@vger.kernel.org, 
+ =?utf-8?q?Omar_Yi=C4=9Fitcan_Meng=C3=BC?= <menguomary@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795342801; l=2536;
+ i=menguomary@gmail.com; s=20261121; h=from:subject:message-id;
+ bh=hMHH4yTPBHZUdEF0MQBMA04GLD3DPYMcNION+cySEUY=;
+ b=kFsqLNKFTA0bRSTpgK1ZizBPkY3/f3o5uFzQfSnERdVJVQeHu8RAQUcJumcVCIJDH3fcg7nxg
+ EkbDzhuT90/B3FTj/M3cuwHSXd3FU+dqk0eFGzUfN9R6zORfLYpM7Um
+X-Developer-Key: i=menguomary@gmail.com; a=ed25519;
+ pk=dgRbAFBMBZdJfvBTw9RBcE3WxXn6Yt7GOZFPRpQqpkY=
+X-Endpoint-Received: by B4 Relay for menguomary@gmail.com/20261121 with auth_id=1595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+If a corrupted JFS image has a negative per-AG free block count such as
+dn_agfree[agno] == -1, dbMount() currently accepts it without validation
+and stores -1 in bmp->db_agfree[agno].
 
-qcom_iommu_resume() enables the clocks and then, for an IOMMU with a
-power domain, calls qcom_scm_restore_sec_cfg(). If that call fails, the
-error is returned but the clocks stay enabled. The PM core then treats
-the device as still suspended, so qcom_iommu_suspend() will not run to
-turn them off.
+When FITRIM later calls dbDiscardAG() with minlen == 1, the signed s64
+value nblocks = -1 is implicitly converted to u64 max_ranges = U64_MAX.
+After do_div(max_ranges, minlen), max_ranges + 1 overflows u64 to 0,
+causing range_cnt to be 0 and kmalloc_objs(struct range2trim, 0, ...)
+to return ZERO_SIZE_PTR (0x10). Since totrim != NULL and the while loop
+(nblocks >= minlen) is skipped, tt->nblocks = 0 dereferences 0x18 and
+triggers a general protection fault.
 
-Disable the clocks again when qcom_scm_restore_sec_cfg() fails.
+Fix this in two places:
+1. Validate bmp->db_agfree[i] >= 0 in dbMount() to reject corrupted
+   on-disk metadata at mount time with -EINVAL.
+2. Return early in dbDiscardAG() when nblocks < minlen, preventing any
+   negative nblocks (for example from runtime corruption) from
+   overflowing max_ranges + 1 and avoiding an unnecessary allocation
+   when an AG has fewer than minlen free blocks.
 
-Found with a static analysis tool and checked by hand.
-
-Fixes: 268dd4edb748 ("iommu/qcom: restore IOMMU state if needed")
+Reported-by: syzbot+29eda1328acf6cf2dbfb@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=29eda1328acf6cf2dbfb
+Fixes: b40c2e665cd5 ("fs/jfs: TRIM support for JFS Filesystem")
 Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+Signed-off-by: Omar Yiğitcan Mengü <menguomary@gmail.com>
 ---
-Compile tested on arm64 (W=1). I don't have the hardware.
----
- drivers/iommu/arm/arm-smmu/qcom_iommu.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/jfs/jfs_dmap.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/iommu/arm/arm-smmu/qcom_iommu.c b/drivers/iommu/arm/arm-smmu/qcom_iommu.c
-index 96903cd9cfc2..52bcb8cf46b1 100644
---- a/drivers/iommu/arm/arm-smmu/qcom_iommu.c
-+++ b/drivers/iommu/arm/arm-smmu/qcom_iommu.c
-@@ -898,8 +898,11 @@ static int __maybe_unused qcom_iommu_resume(struct device *dev)
- 	if (ret < 0)
- 		return ret;
+diff --git a/fs/jfs/jfs_dmap.c b/fs/jfs/jfs_dmap.c
+index a841cf21d..94542ed93 100644
+--- a/fs/jfs/jfs_dmap.c
++++ b/fs/jfs/jfs_dmap.c
+@@ -293,8 +293,13 @@ int dbMount(struct inode *ipbmap)
+ 		goto err_release_metapage;
+ 	}
  
--	if (dev->pm_domain)
--		return qcom_scm_restore_sec_cfg(qcom_iommu->sec_id, 0);
-+	if (dev->pm_domain) {
-+		ret = qcom_scm_restore_sec_cfg(qcom_iommu->sec_id, 0);
-+		if (ret)
-+			clk_bulk_disable_unprepare(CLK_NUM, qcom_iommu->clks);
+-	for (i = 0; i < MAXAG; i++)
++	for (i = 0; i < MAXAG; i++) {
+ 		bmp->db_agfree[i] = le64_to_cpu(dbmp_le->dn_agfree[i]);
++		if (bmp->db_agfree[i] < 0) {
++			err = -EINVAL;
++			goto err_release_metapage;
++		}
 +	}
+ 	bmp->db_agsize = le64_to_cpu(dbmp_le->dn_agsize);
+ 	bmp->db_maxfreebud = dbmp_le->dn_maxfreebud;
  
- 	return ret;
- }
+@@ -1677,6 +1682,10 @@ s64 dbDiscardAG(struct inode *ip, int agno, s64 minlen)
+ 	IWRITE_LOCK(ipbmap, RDWRLOCK_DMAP);
+ 
+ 	nblocks = bmp->db_agfree[agno];
++	if (nblocks < minlen) {
++		IWRITE_UNLOCK(ipbmap);
++		return 0;
++	}
+ 	max_ranges = nblocks;
+ 	do_div(max_ranges, minlen);
+ 	range_cnt = min_t(u64, max_ranges + 1, 32 * 1024);
 
+---
+base-commit: 4843f6873f7c4835e62f2c73ba0fd538e57a2f22
+change-id: 20261122-jfs-fix-dbdiscardag-overflow-4826f61a29f7
 
+Best regards,
+--  
+Omar Yiğitcan Mengü <menguomary@gmail.com>
 
