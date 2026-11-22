@@ -1,15 +1,12 @@
 From: YanXin Li <fadouse@pm.me>
-Subject: [PATCH bpf v3 0/2] bpf: bound arena allocations to the user VMA
-Date: Sun, 22 Nov 2026 19:28:34 +0800
-Message-Id: <20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-v3-0-1f94ae9a884a@pm.me>
+Date: Sun, 22 Nov 2026 19:28:35 +0800
+Subject: [PATCH bpf v3 1/2] bpf: bound arena allocations to the user VMA
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOLRAmsC/yWN0WrDMAxFf6XouWK2ZLTQXyl9kG159UiTYndhJ
- fTfm2yP93A5Z4VurVqH02GFZkvtdZ62wccDpKtOX4Y1bxvIkXhPhDGgY4z3gtpsUlxuOo5zwnm
- OuDBmpZzIy8BJ0EvUpBK5kIfNeG9W6u9f7QybAi7/sP/Eb0uPvbPfonbD2HRK1x01G/WJO/xII
- XgXCkugrJ/kvAQXSIgtDEwDi1rJeTB4vd7hg/Mn2gAAAA==
-X-Change-ID: 20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-16baca6b3f21
+Message-Id: <20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-v3-1-1f94ae9a884a@pm.me>
+References: <20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-v3-0-1f94ae9a884a@pm.me>
+In-Reply-To: <20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-v3-0-1f94ae9a884a@pm.me>
 To: Alexei Starovoitov <ast@kernel.org>, 
  Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
  Eduard Zingerman <eddyz87@gmail.com>, 
@@ -20,47 +17,102 @@ Cc: Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>,
  Ihor Solodrai <ihor.solodrai@linux.dev>, bpf@vger.kernel.org, 
  linux-kernel@vger.kernel.org, stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795346949; l=1499;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795346949; l=3854;
  i=fadouse@pm.me; s=b4-relay-20261122; h=from:subject:message-id;
- bh=COKNqL4nI/46X68yJCZPIZvXWvI3Jps4kTw9tNbbcx4=;
- b=EUNVg8NGYoj2WTffKgAt+mEAWKVgMBjshnXixmU9nBKOR62IA2jKTlLhlD62jRiONzl969mXP
- GwS5SCeS8w7DywrzgUEUKTX3djnCXlWbv/XxOg1AU7trC7c+JLHy44F
+ bh=NydRQKFXTXjxJi7zfPj1uOAvJMlBbK7Axhfoiyd0aNI=;
+ b=ICvOVnTu+6PlSvU1tj91ffU42/BhMVeXtS6aucqm6B/gDO/IrNG5ohBfrABi/Pc1Mw8ZFS9re
+ WpIgiwWwludBTBuA9GZLIOAt+0hx2W2cXPEjlrYIqVQbsNebKWWwC6h
 X-Developer-Key: i=fadouse@pm.me; a=ed25519;
  pk=b4DyzHJDRd8853IHUSKPA5wwzChj8eF4MTnZuyPz1PQ=
 X-Endpoint-Received: by B4 Relay for fadouse@pm.me/b4-relay-20261122 with auth_id=1597
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When map_extra is omitted, a short first mmap() can leave free arena
-pages beyond the user VMA. Automatic allocation can select those pages;
-near a 4 GiB boundary, the kernel mapping can extend past the arena's
-vmalloc reservation. Patch 1 confines the range tree to the VMA, and
-patch 2 adds a regression selftest.
+An arena map initializes its free range tree to max_entries pages. When
+map_extra is zero, the first mmap() may cover fewer pages. Fixed-address
+allocations are bounded by the VMA size, but automatic allocations use
+range_tree_find() across the whole tree and can select a range beyond
+the VMA. arena_free_pages() clips frees to the VMA, so these pages
+cannot be released through the arena kfunc.
 
+With 4 KiB pages, set max_entries to 1 << 20 and mmap() a 288-page VMA
+at 0xffee0000, ending at the next 4 GiB boundary. A 287-page
+automatic allocation takes offsets [0, 287). A subsequent 288-page
+allocation starts at offset 287, so its kernel mapping starts at
+kern_vm_start + 0xfffff000. One page lies within the 4 GiB data band,
+eight lie in the arena's upper half-guard, and 279 lie beyond its
+requested vmalloc area. The first of those 279 is the vmalloc guard
+page. The remaining 278 lie beyond the full reservation. The current
+apply_to_page_range() path can install PTEs there. An unpatched local
+test returned a non-NULL pointer for this allocation. Another run
+triggered a WARNING in apply_range_set_cb() on a non-scratch PTE.
+
+Out-of-VMA offsets need not wrap the low 32 bits. For example, when
+the user VMA starts at a 4 GiB aligned address, they can still map
+inside the arena's kernel area. They remain invalid because the VMA
+does not cover them. The range-tree conversion replaced the bounded
+mtree_alloc_range() search with range_tree_find() over max_entries.
+The later switch from vm_area_map_pages() to apply_to_page_range()
+removed the vm_struct bounds check, allowing these selections to
+reach beyond the arena's vmalloc reservation.
+
+On the first mmap() without map_extra, remove [vma_pages, max_entries)
+from the free range tree before publishing the VMA bounds. The VMA
+size is fixed after this mmap(), and the fault, reserve and free paths
+do not add offsets outside it. Automatic allocations consequently
+stay inside the VMA.
+
+This issue was found through LLM-assisted code audit and manual code
+inspection of kernel/bpf/arena.c, then checked with a Z3 SMT model and
+a custom BPF test in an x86-64 QEMU/KVM guest. The test kernel
+identified itself as 7.4.0-rc3-84074-gc44104f3642d. KASAN, UBSAN,
+lockdep and DEBUG_OBJECTS were enabled. After the patch, the
+288-page request returns NULL, the 287-page in-VMA request succeeds,
+and the test reports no kernel warnings.
+
+Fixes: b795379757eb ("bpf: Introduce range_tree data structure and use it in bpf arena")
+Cc: stable@vger.kernel.org
+Signed-off-by: YanXin Li <fadouse@pm.me>
 ---
-Changes in v3:
-- Correct the 288-page boundary calculation and describe the vmalloc guard.
-- Distinguish out-of-VMA allocations from 32-bit wrap and limit claims to
-  what the local test establishes.
-- Remove the unreachable arena_adjust_tree() bound check.
-- Point Fixes at the range-tree conversion and identify the test commit.
-- Split the regression selftest into patch 2/2 and skip it when arena
-  program loading returns -EOPNOTSUPP with JIT disabled.
-- Link to v2: https://lore.kernel.org/r/20261122-b4-03-bpf-arena-vmalloc-oob-v2-5f6209c1a20e-v2-1-b2a9906e9676@pm.me
+ kernel/bpf/arena.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
----
-YanXin Li (2):
-      bpf: bound arena allocations to the user VMA
-      selftests/bpf: test arena allocation after a short mmap
+diff --git a/kernel/bpf/arena.c b/kernel/bpf/arena.c
+index ec2bda1a6eb..94321dec638 100644
+--- a/kernel/bpf/arena.c
++++ b/kernel/bpf/arena.c
+@@ -694,6 +694,31 @@ static int arena_map_mmap(struct bpf_map *map, struct vm_area_struct *vma)
+ 	if (remember_vma(arena, vma))
+ 		return -ENOMEM;
+ 
++	if (!arena->user_vm_start && vma_pages(vma) < map->max_entries) {
++		/*
++		 * Without map_extra, the first mmap() can be shorter than
++		 * max_entries.  Remove offsets outside the VMA from the free
++		 * range tree so automatic allocations stay within the VMA.
++		 */
++		unsigned long flags;
++		int ret = -EBUSY;
++
++		if (!raw_res_spin_lock_irqsave(&arena->spinlock, flags)) {
++			ret = range_tree_clear(&arena->rt, vma_pages(vma),
++					       map->max_entries - vma_pages(vma));
++			raw_res_spin_unlock_irqrestore(&arena->spinlock, flags);
++			WARN_ON_ONCE(ret);
++		}
++		if (ret) {
++			struct vma_list *vml = vma->vm_private_data;
++
++			list_del(&vml->head);
++			vma->vm_private_data = NULL;
++			kfree(vml);
++			return ret;
++		}
++	}
++
+ 	arena->user_vm_start = vma->vm_start;
+ 	arena->user_vm_end = vma->vm_end;
+ 	/*
 
- kernel/bpf/arena.c                                 | 25 ++++++++++
- .../testing/selftests/bpf/prog_tests/arena_mmap.c  | 53 ++++++++++++++++++++++
- .../testing/selftests/bpf/progs/arena_mmap_alloc.c | 32 +++++++++++++
- 3 files changed, 110 insertions(+)
----
-base-commit: c44104f3642da720164042623e4832836aefdd8e
-change-id: 20261122-b4-03-bpf-arena-vmalloc-oob-v3-da2dc21683c6-16baca6b3f21
-
-Best regards,
---  
-YanXin Li <fadouse@pm.me>
+-- 
+Git-157)
 
