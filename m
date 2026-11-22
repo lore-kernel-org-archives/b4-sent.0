@@ -1,93 +1,83 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sun, 22 Nov 2026 21:24:19 +0100
-Subject: [PATCH v2 2/2] rpmsg: char: Support waking up on endpoint rx
+From: Vencislav Atanasov <user890104@freemyipod.org>
+Date: Sun, 22 Nov 2026 23:00:11 +0200
+Subject: [PATCH v2] doc: Add section about mail providers which modify
+ Message-ID
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-rpmsg-qcom-glink-v2-2-d60419793095@ixit.cz>
-References: <20261122-rpmsg-qcom-glink-v2-0-d60419793095@ixit.cz>
-In-Reply-To: <20261122-rpmsg-qcom-glink-v2-0-d60419793095@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Mathieu Poirier <mathieu.poirier@linaro.org>
-Cc: Dylan Van Assche <git@dylanvanassche.be>, 
- Casey Connolly <casey.connolly@linaro.org>, linux-arm-msm@vger.kernel.org, 
- linux-remoteproc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Message-Id: <20261122-doc-msgid-v2-1-10c717d50d1f@freemyipod.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NywqDMBBFf0Vm3ZSMrQ+68j+Ki2gmOgWNJFYqk
+ n9vYrflrg4czj3Ak2Py8MgOcLSxZztHyC8Z9KOaBxKsI0Mu8xIRa6FtLyY/sBb6RoW6FygrVBD
+ 9xZHhz9l6tj/27+5F/ZoCyRjZr9bt59mGyfvX3VDEybruTCnRdFVjHNG082L11boB2hDCF1SuU
+ Oi5AAAA
+X-Change-ID: 20261118-doc-msgid-d3e5a451071a
+To: u-boot@lists.u-boot-project.org
+Cc: Tom Rini <trini@konsulko.com>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, 
+ Mattijs Korpershoek <mkorpershoek@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Vencislav Atanasov <user890104@freemyipod.org>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1867; i=david@ixit.cz;
- h=from:subject:message-id; bh=eIZGJEV5bvpHjBlQtn566xL+dxDC7tO9ywu0q8X1cHQ=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrA09ysuizp1NKtYdtgBIsteeqYI5UrgT3HaQue
- IP+ojKIP5CJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawNPcgAKCRBgAj/E00kg
- crObD/9zET8uD6rfp8sfJFqtGbV3/CcevOxnetsfGUZo3RHF24I6lulXMol7gNp6GETdPj/7+uh
- RZ3yCeOIID5XCnyNRbc87mtmPiBf33AC4jQv339fKgq2j8BVeea6NlGvx7e5874tvkTfRUy/KXJ
- Lvv65lH3cFe8Ho7MOpPX2bokJKVaGq7N9DGkqGUMkQPx8E2zmZUxkkhA6L9hnf7dff8obGIX7SQ
- xHSRok0FD3Uf6sYu/vMAi47qdF8F+W+GFXj7vA1EUbJtSFTVvZr05O0/hhsLSYDHW2zwt7d4Mn3
- BVJfMuyGDHoyMXIrRdKg4zlJ68Ts8mi1yLcU5SQI9BNg6mR/TZ/y0FoLDE7wUcXHpfm4lwMd+nW
- Iw4OedRlqSdfhUpQvDNgtxYozC+unhBFF3GK096OsDygeaMvFKFTJmeo/DiGhQpTJIYjwQhqB90
- ahbXpEr5v2yLNRmAS9CsFZjdqLL7lGH+QD7cJ2cBP+zmuUUAb0yhVIEF5vzkhN50JU4QJCsIjWe
- OF+apRKxBDtWjkOM0vbio7g5DM1NDXW83j3Xbgai1LeXn/l/Axrc+AkXAKUpxCghjc0jR47IgiE
- abdJhMSUXej45fI+5AnbyiMS50tro9bfkdpRRhQOO9XmLH0iQOSTAtOu68++GPk/mLRWlS8GjgF
- VejIIXG768DhhFw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795381222; l=2176;
+ i=user890104@freemyipod.org; s=20261004; h=from:subject:message-id;
+ bh=fmz+T9rLiN6nMaBX6pIg1i9TxswslFkT3LQYtgKgKWg=;
+ b=01j2RROdROSZSOB7OlwOAvBgkobSvX/JUr1eYqxITXfqDgXWzXisXYEULN2jwEvClf4l7uLuV
+ tt3rscQB/JqDp7HkKKw1455sjM5f13wkX8CQMq1m9VjcFUS0zRSCrae
+X-Developer-Key: i=user890104@freemyipod.org; a=ed25519;
+ pk=klj5EgxMkX+YF0tPboUEB9kwBfthBgHWLhDOkwnmUus=
+X-Endpoint-Received: by B4 Relay for user890104@freemyipod.org/20261004 with auth_id=1558
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Configure rpmsg character endpoint devices (/dev/rpmsgX) as wakeup
-capable and report a wakeup event when a message is received in
-rpmsg_ept_cb().
+A short debugging session revealed that AWS SES completely replaces
+the Message-ID header, even though the API is called SendRawEmail.
 
-This allows userspace to opt in to system wakeups per endpoint via
-sysfs (/sys/class/rpmsg/rpmsgX/power/wakeup), covering dynamically
-created endpoints opened through /dev/rpmsg_ctrlX across all rpmsg
-transports without enabling wakeup by default.
-
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Vencislav Atanasov <user890104@freemyipod.org>
 ---
- drivers/rpmsg/rpmsg_char.c | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v2:
+- Reworded the paragraph
+- Used a different link to b4 docs
+- Link to v1: https://patch.msgid.link/20261118-doc-msgid-v1-1-1088bf601fb7@freemyipod.org
 
-diff --git a/drivers/rpmsg/rpmsg_char.c b/drivers/rpmsg/rpmsg_char.c
-index d8868faacdc3a..94307d1e0338b 100644
---- a/drivers/rpmsg/rpmsg_char.c
-+++ b/drivers/rpmsg/rpmsg_char.c
-@@ -119,16 +119,17 @@ static int rpmsg_ept_cb(struct rpmsg_device *rpdev, void *buf, int len,
- 	skb_put_data(skb, buf, len);
- 
- 	spin_lock(&eptdev->queue_lock);
- 	skb_queue_tail(&eptdev->queue, skb);
- 	spin_unlock(&eptdev->queue_lock);
- 
- 	/* wake up any blocking processes, waiting for new data */
- 	wake_up_interruptible(&eptdev->readq);
-+	pm_wakeup_hard_event(&eptdev->dev);
- 
- 	return 0;
- }
- 
- static int rpmsg_ept_flow_cb(struct rpmsg_device *rpdev, void *priv, bool enable)
- {
- 	struct rpmsg_eptdev *eptdev = priv;
- 
-@@ -446,16 +447,17 @@ static struct rpmsg_eptdev *rpmsg_chrdev_eptdev_alloc(struct rpmsg_device *rpdev
- 	skb_queue_head_init(&eptdev->queue);
- 	init_waitqueue_head(&eptdev->readq);
- 
- 	device_initialize(dev);
- 	dev->class = &rpmsg_class;
- 	dev->parent = parent;
- 	dev->groups = rpmsg_eptdev_groups;
- 	dev_set_drvdata(dev, eptdev);
-+	device_set_wakeup_capable(dev, true);
- 
- 	cdev_init(&eptdev->cdev, &rpmsg_eptdev_fops);
- 	eptdev->cdev.owner = THIS_MODULE;
- 
- 	return eptdev;
- }
- 
- static int rpmsg_chrdev_eptdev_add(struct rpmsg_eptdev *eptdev, struct rpmsg_channel_info chinfo)
+To: u-boot@lists.u-boot-project.org
+Cc: Tom Rini <trini@konsulko.com>
+Cc: Quentin Schulz <quentin.schulz@cherry.de>
+Cc: Mattijs Korpershoek <mkorpershoek@kernel.org>
+Cc: Neil Armstrong <neil.armstrong@linaro.org>
+---
+ doc/develop/sending_patches.rst | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
--- 
-2.55.0
+diff --git a/doc/develop/sending_patches.rst b/doc/develop/sending_patches.rst
+index 99581dc0ba0..027e7be028a 100644
+--- a/doc/develop/sending_patches.rst
++++ b/doc/develop/sending_patches.rst
+@@ -184,6 +184,20 @@ General Patch Submission Rules
+   cases, you did something wrong if your patch exceeds this limit. Think again
+   if you should not split it into separate logical parts.
+ 
++* If sending patches through your mail server is broken, doesn't work at all or
++  is not possible, consider using `b4's web endpoint <b4-web-endpoint-link_>`_.
++  It will allow you to send patches without using your mail server. A notable
++  example is `Amazon Web Services' Simple E-mail Service (AWS SES)
++  <aws-ses-sendrawemail-message-id-link_>`_. It modifies the Message-ID header
++  and your individual patches don't point back to the cover letter and vice
++  versa.
++
++.. _aws-ses-sendrawemail-message-id-link:
++   https://docs.aws.amazon.com/ses/latest/APIReference/API_SendRawEmail.html#:~:text=Amazon%20SES%20automatically%20applies%20its%20own%20Message%2DID
++
++.. _b4-web-endpoint-link:
++   https://b4.docs.kernel.org/en/latest/contributor/send.html#authenticating-with-the-web-submission-endpoint
++
+ Attributing Code, Copyrights, Signing
+ -------------------------------------
+ 
+
+---
+base-commit: 2f83ef8a7dd4a409b534ea68cd13b17b686cc53c
+change-id: 20261118-doc-msgid-d3e5a451071a
+
+Best regards,
+--  
+Vencislav Atanasov <user890104@freemyipod.org>
 
