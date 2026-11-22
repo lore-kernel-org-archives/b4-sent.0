@@ -1,167 +1,96 @@
-From: Jerome Berclaz <jerome.berclaz@proton.me>
-Date: Sun, 22 Nov 2026 09:51:14 -0800
-Subject: [PATCH] soc/tegra: pmc: count the LP1 CPU power-good time in CLK_M
- cycles
+From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Subject: [PATCH sched_ext/for-7.4-fixes 0/2] sched_ext: Fix two gaps in
+ dl_server protection against RT starvation
+Date: Mon, 23 Nov 2026 02:04:53 +0800
+Message-Id: <20261123-scx-dlsrv-v1-0-87c342d8246e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-tegra-pmc-lp1-cpu-good-time-v1-1-152c7ad6113a@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrDIBAAwK+EPXfBFWpCv1J6ULMxG5ooakoh5
- O+17XEuc0DhLFzg1h2Q+SVF4tZAlw78bLfAKGMzaKUNkdZYOWSLafX4TIQ+7RhiHLHKyuioN4N
- yyl7NBG1ImSd5//b74++yu4V9/ZZwnh/UMceYfwAAAA==
-X-Change-ID: 20261122-tegra-pmc-lp1-cpu-good-time-b17680b0a56f
-To: Thierry Reding <thierry.reding@kernel.org>, 
- Jonathan Hunter <jonathanh@nvidia.com>, Joseph Lo <josephl@nvidia.com>, 
- Stephen Warren <swarren@nvidia.com>
-Cc: linux-tegra@vger.kernel.org, Svyatoslav Ryhel <clamor95@gmail.com>, 
- Jerome Berclaz <jerome.berclaz@proton.me>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5348;
- i=jerome.berclaz@proton.me; h=from:subject:message-id;
- bh=PUbBsuS8p5NxxEcsj1ST5CstRP8EiMHAWu4eqX4TRzo=;
- b=owGbwMvMwCVmvC9341tRgSLG02pJDNnM2nPmn0/YsUpd/mzBO+vV722cWSOXz8/pfy/tcGVFa
- etcsZO/O0pZGMS4GGTFFFlYGwxT559gCyjUn3cIZg4rE8gQBi5OAZjI+hiG36zrpc2D2PRmT2vf
- 5JPdsjJprtgF61/8c6zeu9i3LqvQzGVk6L8r4rpix4WwBx8FIhWmc00y+V9wx0B4BbvDWs4rfbd
- P8wIA
-X-Developer-Key: i=jerome.berclaz@proton.me; a=openpgp;
- fpr=058031659FC80650712F9EC233BE6DB1ED151072
-X-Endpoint-Received: by B4 Relay for jerome.berclaz@proton.me/default with auth_id=1608
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMUQrCMBAFr1L229UmxFa8ipQiyUu7IK3sSgmU3
+ t2gn8MMs5NBBUb3ZifFJibrUsGdGorzc5nAkiqTb33nnHdssXB6mW7cpxCQw/XmW1Dt34os5fd
+ 6kMUZaUT5XPKq3J8D/91wHF/iIpeIdAAAAA==
+X-Change-ID: 20261121-scx-dlsrv-7d44ef45820e
+To: Tejun Heo <tj@kernel.org>, David Vernet <void@manifault.com>, 
+ Andrea Righi <arighi@nvidia.com>, Changwoo Min <changwoo@igalia.com>, 
+ Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
+ Juri Lelli <juri.lelli@redhat.com>, 
+ Vincent Guittot <vincent.guittot@linaro.org>, 
+ Dietmar Eggemann <dietmar.eggemann@arm.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
+ Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
+ K Prateek Nayak <kprateek.nayak@amd.com>
+Cc: Joel Fernandes <joelagnelf@nvidia.com>, sched-ext@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Hang Zhengyang <hang.zhengyang1010@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795370696; l=2617;
+ i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
+ bh=aSZAQoVClVkjxIB0EoJguj0WIv5tGQ97jdqS31tG35g=;
+ b=iUyXsA1PyOnncV3w4VClrZYRB3zpFeScduXVAaZZYivIZA9bs7L0zuYlp3J+jZbID2ExlGqcV
+ 5LsITTAMHt5BAs5BS9UGBOM2rTwcQZSHpE0hiqglBTYuUjpqAOGu5pe
+X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
+ pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
+X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On LP1 entry the CPU rail is turned off through CPU_PWR_REQ and the
-system clock is switched to the 32 kHz clock, with an SCLK burst policy
-that moves SCLK to CLK_M on the wake-up interrupt (see
-tegra30_switch_cpu_to_clk32k()). The PMC counts its timers on its bus
-clock, so by the time it counts the CPU power-good delay on LP1 exit it
-runs from CLK_M, not from 32 kHz.
+These patches fix two cases where a dl_server should protect tasks from
+an RT task but isn't running. The starved tasks then hold up the
+scheduler disable. It doesn't finish until the RT task stops.
 
-tegra_pmc_enter_suspend_mode() converts nvidia,cpu-pwr-good-time with a
-32768 Hz rate for LP1. On the Microsoft Surface RT (Tegra 30, CPU rail on
-the TPS65911 VDDCTRL, assigned to EN1 = CPU_PWR_REQ with a 0 V sleep
-voltage) 2000 us becomes 66 ticks, i.e. a few microseconds at CLK_M
-(12 MHz). CPU0 is released long before the rail has ramped up and never
-runs. A snapshot of the wake path taken while the system was stuck showed
-the RTC interrupt pending and enabled in the LIC, SCLK in the IRQ burst
-state and the flow controller out of the halt state, but the CPU0
-partition still off and the CPU reset handler never reached.
+Patch 1: in full mode, the disable attaches fair_server only at the end.
+Tasks move back to fair long before that.
 
-Use the CLK_M rate for the power-good timer in LP1. The power-off timer
-keeps the 32 kHz rate, since it runs before the wake-up. On boards whose
-CPU rail stays on in LP1 this only lengthens the power-good wait to the
-intended time.
+Patch 2: a CPU's ext_server restarts only when the first sched_ext task
+is enqueued there. If it stops while tasks are still queued, nothing
+restarts it.
 
-Tested on a Surface RT with a 7.3.1-based kernel (libre-tegra tree) and
-nvidia,suspend-mode = <1>: CPUPWRGOOD_TIMER now reads 24000 instead of
-66, and LP1 suspend/resume works (20 of 20 cycles in one boot, woken by
-the RTC, the power button and the Windows button; resume takes about
-0.3 s). Mainline does not have a Surface RT device tree yet.
+Both came out of one stress test (scx_simple, CPU hotplug, stress-ng,
+SCHED_FIFO spinners). The patches don't depend on each other.
 
-The problem was investigated, and this change and its description written,
-with the help of an AI coding assistant (Claude); I reviewed the change and
-tested it on my device as described above.
+Tested on sched_ext/for-7.4-fixes (8e156b9218f9) in an 8 vCPU KVM guest
+with PREEMPT, PREEMPT_RCU and NO_HZ_FULL:
 
-Fixes: 95872f427eca ("ARM: tegra: add common LP1 suspend support")
-Signed-off-by: Jerome Berclaz <jerome.berclaz@proton.me>
----
-Found while getting LP1 suspend to work on a Microsoft Surface RT
-(libre-tegra kernel tree, https://codeberg.org/libre-tegra/linux/pulls/10).
-The Surface RT device tree is not in mainline yet; the maintainer of that
-tree suggested sending this fix here.
----
- drivers/soc/tegra/pmc.c | 28 +++++++++++++++++++++++++---
- 1 file changed, 25 insertions(+), 3 deletions(-)
+                         no patches    patch 1        patch 2   both
+  patch 1 repro          37/300 stuck  0/300          -         0/300
+  same, KASAN+lockdep    3/100 stuck   0/100          -         0/100
+  stress, KASAN+lockdep  hung, 4 min   hung, 2-5 min  1/3 hung  6/7 ok [*]
+  stress, no debug       -             2/2 ok         -         3/3 ok
+  selftests              -             38 ok, 2 skip  -         38 ok, 2 skip
+  messaging [**]         1.849 s       -              -         1.821 s
 
-diff --git a/drivers/soc/tegra/pmc.c b/drivers/soc/tegra/pmc.c
-index 721e9596b07d..f4931dc876d0 100644
---- a/drivers/soc/tegra/pmc.c
-+++ b/drivers/soc/tegra/pmc.c
-@@ -432,6 +432,7 @@ struct tegra_pmc_soc {
-  * @soc: pointer to SoC data structure
-  * @tz_only: flag specifying if the PMC can only be accessed via TrustZone
-  * @rate: currently configured rate of pclk
-+ * @clk_m_rate: rate of CLK_M, which clocks the PMC on LP1 exit
-  * @suspend_mode: lowest suspend mode available
-  * @cpu_good_time: CPU power good time (in microseconds)
-  * @cpu_off_time: CPU power off time (in microsecends)
-@@ -474,6 +475,7 @@ struct tegra_pmc {
- 	bool tz_only;
- 
- 	unsigned long rate;
-+	unsigned long clk_m_rate;
- 
- 	enum tegra_suspend_mode suspend_mode;
- 	u32 cpu_good_time;
-@@ -3139,6 +3141,15 @@ static int tegra_pmc_probe(struct platform_device *pdev)
- 		pmc->rate = clk_get_rate(pmc->clk);
- 	}
- 
-+	if (IS_ENABLED(CONFIG_PM_SLEEP)) {
-+		struct clk *clk_m = clk_get_sys(NULL, "clk_m");
-+
-+		if (!IS_ERR(clk_m)) {
-+			pmc->clk_m_rate = clk_get_rate(clk_m);
-+			clk_put(clk_m);
-+		}
-+	}
-+
- 	err = tegra_pmc_init(pmc);
- 	if (err < 0) {
- 		dev_err(&pdev->dev, "failed to initialize PMC: %d\n", err);
-@@ -3168,6 +3179,7 @@ static int tegra_pmc_probe(struct platform_device *pdev)
- #if defined(CONFIG_ARM)
- 	mutex_lock(&early_pmc->powergates_lock);
- 	early_pmc->rate = pmc->rate;
-+	early_pmc->clk_m_rate = pmc->clk_m_rate;
- 	iounmap(early_pmc->base);
- 	early_pmc->base = pmc->base;
- 	mutex_unlock(&early_pmc->powergates_lock);
-@@ -5141,17 +5153,27 @@ void tegra_pmc_set_suspend_mode(enum tegra_suspend_mode mode)
- 
- void tegra_pmc_enter_suspend_mode(enum tegra_suspend_mode mode)
- {
--	unsigned long long rate = 0;
-+	unsigned long long rate = 0, good_rate = 0;
- 	u64 ticks;
- 	u32 value;
- 
- 	switch (mode) {
- 	case TEGRA_SUSPEND_LP1:
-+		/*
-+		 * The CPU rail is switched off at 32 kHz, but the wake-up
-+		 * interrupt bursts SCLK (and with it the PMC clock) to CLK_M
-+		 * before the PMC counts the CPU power-good time, see the SCLK
-+		 * burst policy set up by tegra*_switch_cpu_to_clk32k. Count
-+		 * that time in CLK_M cycles so that the CPU rail has ramped up
-+		 * before CPU0 is released.
-+		 */
- 		rate = 32768;
-+		good_rate = early_pmc->clk_m_rate ?: rate;
- 		break;
- 
- 	case TEGRA_SUSPEND_LP2:
- 		rate = early_pmc->rate;
-+		good_rate = rate;
- 		break;
- 
- 	default:
-@@ -5159,9 +5181,9 @@ void tegra_pmc_enter_suspend_mode(enum tegra_suspend_mode mode)
- 	}
- 
- 	if (WARN_ON_ONCE(rate == 0))
--		rate = 100000000;
-+		rate = good_rate = 100000000;
- 
--	ticks = early_pmc->cpu_good_time * rate + USEC_PER_SEC - 1;
-+	ticks = early_pmc->cpu_good_time * good_rate + USEC_PER_SEC - 1;
- 	do_div(ticks, USEC_PER_SEC);
- 	tegra_pmc_writel(early_pmc, ticks, PMC_CPUPWRGOOD_TIMER);
- 
+  Each stress run is 15 minutes.
+  [*]  The 7th run stopped at 2.5 min. A fork stalled for 75 s with the
+       scheduler enabled, then went on. Not the disable hang. Cause not
+       found.
+  [**] perf bench sched messaging -g 8 -l 1000 under scx_simple, mean of
+       15 runs
+
+With patch 2 alone, the one stress hang was the problem patch 1 fixes.
+
+Patch 2's cost: during a scheduler reload, ext_server restarted and
+stopped 238 times in 41 ms on one CPU. I also ran an RT spinner with
+sched_ext tasks on the same CPU, under scx_simple and scx_central.
+There, patch 2 changed neither the restart count nor the time the RT
+task lost.
+
+I didn't test on bare metal, or with other schedulers outside that cost
+test. I didn't write selftests, because both hangs depend on timing.
+
+I used Claude Code to find the issues, write the patches and run the
+tests. I reran the reproducer and reviewed the patches.
 
 ---
-base-commit: 4843f6873f7c4835e62f2c73ba0fd538e57a2f22
-change-id: 20261122-tegra-pmc-lp1-cpu-good-time-b17680b0a56f
+Hang Zhengyang (2):
+      sched_ext: Attach fair_server before tasks fall back to fair on disable
+      sched_ext: Start ext_server on every enqueue
+
+ kernel/sched/ext/ext.c | 27 ++++++++++++++++++++++-----
+ 1 file changed, 22 insertions(+), 5 deletions(-)
+---
+base-commit: 8e156b9218f9f1f8b866d8e253145afdb01cf289
+change-id: 20261121-scx-dlsrv-7d44ef45820e
 
 Best regards,
---  
-Jerome Berclaz <jerome.berclaz@proton.me>
+-- 
+Hang Zhengyang <hang.zhengyang1010@gmail.com>
 
