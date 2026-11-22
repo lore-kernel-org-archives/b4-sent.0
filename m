@@ -1,117 +1,67 @@
-From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Sun, 22 Nov 2026 14:36:22 +0100
-Subject: [PATCH 2/2] arm64: dts: qcom: sc8180x: add SLPI remoteproc and
- FastRPC SDSP node
+From: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+Subject: [PATCH v3 0/3] docs/translations/pt_BR: process: add
+ handling-regressions.rst
+Date: Sun, 22 Nov 2026 10:46:15 -0300
+Message-Id: <20261122-handling-regressions-v3-0-e3d5ea982948@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-sc8180x-slpi-v1-2-345903fafc96@gmail.com>
-References: <20261122-sc8180x-slpi-v1-0-345903fafc96@gmail.com>
-In-Reply-To: <20261122-sc8180x-slpi-v1-0-345903fafc96@gmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Mathieu Poirier <mathieu.poirier@linaro.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-remoteproc@vger.kernel.org, 
- devicetree@vger.kernel.org, Robert Ijtsma <robertijtsma@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795354582; l=2608;
- i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=yGUHcnX9Uv3hxuQWDVbWZHXscLvJSjDoTVLl8oDv5rQ=;
- b=hi2hKlJqNVaqU5rmtYtziyt9DuDiRlztwT5VP3X106C26MbZWZKMqa3552oXie0W9CG6AKQRB
- aBLFKRmf5FrCe+18SWZyRD4U3UDEstQhyDcS+kPDblClz42LZlcoWGa
-X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
- pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
-X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNSQ7CMBAEvxLNGSPH4EA48Q+Ug5fBGZQFeUIEi
+ vJ37PAAjtWq7l6AMRIyXIoFIs7ENA4JDrsCXGuGgIJ8YlBSVWWplEih72gIImKIyNlnUevSaCu
+ dPEsPqfqMeKf3Nntrfswv+0A35a1stMTTGD/b76yy9+diVkIKpfXJW21sfayuoTfU7d3YQ7Ou6
+ xf16i3pygAAAA==
+X-Change-ID: 20261122-handling-regressions-951a5b0c080d
+To: linux-doc@vger.kernel.org
+Cc: danielmaraboo@gmail.com, corbet@lwn.net, rdunlap@infradead.org, 
+ skhan@linuxfoundation.org, Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795355175; l=1713;
+ i=dreduardocruz@gmail.com; s=20261119; h=from:subject:message-id;
+ bh=YpcH7Wuz8zhltadGzwQ/DeWsce5nuoJ8zr3aAt5Mu30=;
+ b=zfOkLdl+4V5WlR8Am5RhJj7/+7Q0jQPRQSDXZJfVQ1MjqtcU6gx/J7q1YzX4ItGFk9yp8dYcL
+ 18eWJy328ajBOnK1Vw/JGjaXxuRqEZyDqIEC4rV3AG4go/V+owhrnA9
+X-Developer-Key: i=dreduardocruz@gmail.com; a=ed25519;
+ pk=2dtL+BL/x70sROmAvlskv9dbjj274zlPkLBVu4gJJiA=
+X-Endpoint-Received: by B4 Relay for dreduardocruz@gmail.com/20261119 with auth_id=1571
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the disabled SLPI (Sensors Low-Power Island) remoteproc node at
-0x2400000 to sc8180x.dtsi along with its GLINK edge (dsps) and FastRPC
-SDSP compute context banks (SMMU SIDs 0x05a1..0x05a3), matching SM8150.
+This series adds the Brazilian Portuguese translation of
+Documentation/process/handling-regressions.rst, the document that
+describes what the "no regressions" rule means in practice for
+developers.
 
-Boards that reserve an SLPI memory region and ship SLPI firmware can
-enable remoteproc_slpi to expose SLPI-attached sensors over FastRPC and
-QMI SSC.
+The translation follows the original file as last changed by commit
+fdd100ee60a0 ("docs: process: use gender-neutral pronouns") and keeps
+its structure: section levels, literal blocks, URLs, :ref: roles and the
+regzbot commands are preserved verbatim.
 
-Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
+It is split in three parts to keep the review tractable. The last patch
+also wires the new document into the pt_BR process index.
+
+Changes in v3:
+- Split the SPDX header back into two comment lines; the previous
+  version merged them into one, which breaks the directive.
+- Keep each section title on a single line with a matching underline.
+- Replace the remaining "etiqueta" and "maintainer" occurrences with
+  "tag" and "mantenedor", and use "flag day" consistently.
+- Fix wording issues found on review: "nem sequer compila", "versão
+  mainline ... de fato" instead of "adequada", and the AppArmor
+  sentence.
+- Keep proper nouns such as "Maintainers Summit 2024".
+
 ---
- arch/arm64/boot/dts/qcom/sc8180x.dtsi | 61 +++++++++++++++++++++++++++++++++++
- 1 file changed, 61 insertions(+)
+Eduardo Pereira Cruz (3):
+      docs/translations/pt_BR: process: add handling-regressions.rst (1/3)
+      docs/translations/pt_BR: process: add handling-regressions.rst (2/3)
+      docs/translations/pt_BR: process: add handling-regressions.rst (3/3)
 
-diff --git a/arch/arm64/boot/dts/qcom/sc8180x.dtsi b/arch/arm64/boot/dts/qcom/sc8180x.dtsi
-index a85e321..ee1a83a 100644
---- a/arch/arm64/boot/dts/qcom/sc8180x.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sc8180x.dtsi
-@@ -2259,6 +2259,67 @@ tcsr_mutex: hwlock@1f40000 {
- 			#hwlock-cells = <1>;
- 		};
- 
-+		remoteproc_slpi: remoteproc@2400000 {
-+			compatible = "qcom,sc8180x-slpi-pas";
-+			reg = <0x0 0x02400000 0x0 0x4040>;
-+
-+			interrupts-extended = <&intc GIC_SPI 494 IRQ_TYPE_EDGE_RISING>,
-+					      <&slpi_smp2p_in 0 IRQ_TYPE_EDGE_RISING>,
-+					      <&slpi_smp2p_in 1 IRQ_TYPE_EDGE_RISING>,
-+					      <&slpi_smp2p_in 2 IRQ_TYPE_EDGE_RISING>,
-+					      <&slpi_smp2p_in 3 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "wdog", "fatal", "ready",
-+					  "handover", "stop-ack";
-+
-+			clocks = <&rpmhcc RPMH_CXO_CLK>;
-+			clock-names = "xo";
-+
-+			power-domains = <&rpmhpd SC8180X_LCX>,
-+					<&rpmhpd SC8180X_LMX>;
-+			power-domain-names = "lcx", "lmx";
-+
-+			qcom,qmp = <&aoss_qmp>;
-+
-+			qcom,smem-states = <&slpi_smp2p_out 0>;
-+			qcom,smem-state-names = "stop";
-+
-+			status = "disabled";
-+
-+			glink-edge {
-+				interrupts = <GIC_SPI 170 IRQ_TYPE_EDGE_RISING>;
-+				label = "dsps";
-+				qcom,remote-pid = <3>;
-+				mboxes = <&apss_shared 24>;
-+
-+				fastrpc {
-+					compatible = "qcom,fastrpc";
-+					qcom,glink-channels = "fastrpcglink-apps-dsp";
-+					label = "sdsp";
-+					qcom,non-secure-domain;
-+					#address-cells = <1>;
-+					#size-cells = <0>;
-+
-+					compute-cb@1 {
-+						compatible = "qcom,fastrpc-compute-cb";
-+						reg = <1>;
-+						iommus = <&apps_smmu 0x05a1 0x0>;
-+					};
-+
-+					compute-cb@2 {
-+						compatible = "qcom,fastrpc-compute-cb";
-+						reg = <2>;
-+						iommus = <&apps_smmu 0x05a2 0x0>;
-+					};
-+
-+					compute-cb@3 {
-+						compatible = "qcom,fastrpc-compute-cb";
-+						reg = <3>;
-+						iommus = <&apps_smmu 0x05a3 0x0>;
-+					};
-+				};
-+			};
-+		};
-+
- 		gpu: gpu@2c00000 {
- 			compatible = "qcom,adreno-680.1", "qcom,adreno";
- 
+ .../pt_BR/process/handling-regressions.rst         | 1141 ++++++++++++++++++++
+ 1 file changed, 1141 insertions(+)
+---
+base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
+change-id: 20261122-handling-regressions-951a5b0c080d
 
--- 
-2.56.0
+Best regards,
+--  
+Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 
