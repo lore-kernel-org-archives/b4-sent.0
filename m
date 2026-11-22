@@ -1,11 +1,11 @@
 From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Sun, 22 Nov 2026 14:35:49 +0100
-Subject: [PATCH 1/5] media: qcom: camss: vfe-17x: check status1 for RDI SOF
- interrupts
+Date: Sun, 22 Nov 2026 14:35:50 +0100
+Subject: [PATCH 2/5] media: qcom: camss: csid-gen2: fix RDI enable bit
+ manipulation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-camss-fixes-v1-1-9df4deb87ea2@gmail.com>
+Message-Id: <20261122-camss-fixes-v1-2-9df4deb87ea2@gmail.com>
 References: <20261122-camss-fixes-v1-0-9df4deb87ea2@gmail.com>
 In-Reply-To: <20261122-camss-fixes-v1-0-9df4deb87ea2@gmail.com>
 To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
@@ -15,41 +15,46 @@ To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>,
 Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Robert Ijtsma <robertijtsma@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795354550; l=1123;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795354550; l=1306;
  i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=/XplKxzo3xBe+qvINmUy9iYAgDI+ymaYkcn4JNfIyLM=;
- b=THI9NN12J8zHoYM+F9D7O4jV56puBXikRwbTvHTZW5S8l23e/4DVDRNNeeVT3upVMGxykRLZL
- 0IuSQQ7CGkSB0E0dooOCvWZZuZEr6x3Ln1bcUjEcagTO4WkUK4TuQPV
+ bh=zM0Uu42Ddbem/8g+LtmsRQWe2AGrOjZvPkoLX5fxwxQ=;
+ b=+HONEA34kOJw6KxpCU5Ac6z9m4aEkiH03Dyb7k/gaOCrt5fENaZZKDV0hXwqrK4jGpfSf6bv2
+ MvcaqqgraciArJTx3CB3YO7Ac36Bj1izsNrxbJ87yLxptFY6sQtECyw
 X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
  pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
 X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In vfe_isr(), STATUS_1_RDI_SOF(i) is a bitmask for VFE_IRQ_STATUS_1
-(status1), not VFE_IRQ_STATUS_0 (status0). Checking status0 instead
-tests the unrelated STATUS_0_IMAGE_COMPOSITE_DONE bits (27..30).
+In __csid_configure_rdi_stream(), shifting the u8 parameter `enable`
+(promoted to signed int) left by RDI_CFG0_ENABLE (31) shifts into the
+sign bit, and bitwise ORing never explicitly clears the enable bit when
+`enable` is zero.
 
-Check status1 against STATUS_1_RDI_SOF(i) as intended.
+Use BIT(RDI_CFG0_ENABLE) to explicitly set or clear the bit depending
+on `enable`, matching camss-csid-680.c.
 
-Fixes: 7319cdf189bb ("media: camss: Add support for VFE hardware version Titan 170")
+Fixes: 729fc005c8e2 ("media: qcom: camss: Split testgen, RDI and RX for CSID 170")
 Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
 ---
- drivers/media/platform/qcom/camss/camss-vfe-17x.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/media/platform/qcom/camss/camss-csid-gen2.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-vfe-17x.c b/drivers/media/platform/qcom/camss/camss-vfe-17x.c
-index 62c2405..502a0d4 100644
---- a/drivers/media/platform/qcom/camss/camss-vfe-17x.c
-+++ b/drivers/media/platform/qcom/camss/camss-vfe-17x.c
-@@ -356,7 +356,7 @@ static irqreturn_t vfe_isr(int irq, void *dev)
- 			vfe->isr_ops.reg_update(vfe, i);
+diff --git a/drivers/media/platform/qcom/camss/camss-csid-gen2.c b/drivers/media/platform/qcom/camss/camss-csid-gen2.c
+index eadcb2f..804c8fe 100644
+--- a/drivers/media/platform/qcom/camss/camss-csid-gen2.c
++++ b/drivers/media/platform/qcom/camss/camss-csid-gen2.c
+@@ -318,7 +318,10 @@ static void __csid_configure_rdi_stream(struct csid_device *csid, u8 enable, u8
+ 	writel_relaxed(val, csid->base + CSID_RDI_CTRL(port));
  
- 	for (i = VFE_LINE_RDI0; i < vfe->res->line_num; i++)
--		if (status0 & STATUS_1_RDI_SOF(i))
-+		if (status1 & STATUS_1_RDI_SOF(i))
- 			vfe->isr_ops.sof(vfe, i);
+ 	val = readl_relaxed(csid->base + CSID_RDI_CFG0(port));
+-	val |=  enable << RDI_CFG0_ENABLE;
++	if (enable)
++		val |= BIT(RDI_CFG0_ENABLE);
++	else
++		val &= ~BIT(RDI_CFG0_ENABLE);
+ 	writel_relaxed(val, csid->base + CSID_RDI_CFG0(port));
+ }
  
- 	for (i = 0; i < MSM_VFE_COMPOSITE_IRQ_NUM; i++)
 
 -- 
 2.56.0
