@@ -1,47 +1,61 @@
 From: Suyuan Wang <shyckless@gmail.com>
-Subject: [PATCH 0/3] cpufreq: Fix leaks on probe error paths in three
- drivers
-Date: Sun, 22 Nov 2026 11:55:25 +0000
-Message-Id: <20261122-cpufreq-leaks-v1-0-96fc17ff7339@gmail.com>
+Date: Sun, 22 Nov 2026 11:55:26 +0000
+Subject: [PATCH 1/3] cpufreq: highbank: Put cpu clock if clk notifier
+ registration fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAC3YAmsC/yXMQQ6CMBBG4auQWdukHQILr2JYlPJXRghCRwwJ4
- e4WXH6L93ZSJIHSvdgp4Ssq7ynD3QoKvZ+eMNJlE1uunWM2YV5jwmJG+EGN7VBFy62tfEm5mRO
- ibNfv0fyta/tC+JwTOo4fI8lzFXEAAAA=
-X-Change-ID: 20261122-cpufreq-leaks-0de5f02b05a3
+Message-Id: <20261122-cpufreq-leaks-v1-1-96fc17ff7339@gmail.com>
+References: <20261122-cpufreq-leaks-v1-0-96fc17ff7339@gmail.com>
+In-Reply-To: <20261122-cpufreq-leaks-v1-0-96fc17ff7339@gmail.com>
 To: rafael@kernel.org, viresh.kumar@linaro.org, krzk@kernel.org, 
  peter.griffin@linaro.org
 Cc: linux-samsung-soc@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-pm@vger.kernel.org, alim.akhtar@samsung.com, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795348526; l=860;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795348526; l=1132;
  i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=oIQfnl7M3LakYVj9eUuZPGGQrd8JJ9WvL2rZCs+mAW4=;
- b=Dw3HZ/Htimtqz09/4oos98ULzG9c99ofSXnu/hME1AhOvccUerU9jFEpxi3CIn2JVWTA75bqT
- +EypHFn1RYfDIPBzP27XmefoIKFhYx2jgt98BPARvGWAB54nuCsZXfq
+ bh=3C9gDTowDdRDGMzNw1WS33LAVCdBMhUpJeT844xhx+Y=;
+ b=0X9LBAEBk+Vp2Pf+pdsJFaRO6JRm6H0HvH6fJfTnuI2MlOfdyXeBZXhtU4qFfxba9VjBZ+tV8
+ 8LJG6ZBzf1lD8UR/mWAk6UTOgiD7U1TXrc4QfspH2i6yZawQLh8ub1v
 X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
  pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
 X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Three small fixes for resources that are not released when a cpufreq
-driver fails to probe: the cpu clock in highbank, the three clocks in
-kirkwood (also on unbind), and the regulators and register mappings in
-s5pv210, and its reboot notifier, when cpufreq_register_driver() fails.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-Found with a static analysis tool and checked by hand. Compile tested
-on arm (W=1, multi_v5 for kirkwood); I don't have the hardware.
+hb_cpufreq_driver_init() gets the cpu0 clock with clk_get() and then
+registers a clk notifier on it. If clk_notifier_register() fails, the
+function jumps to out_put_node and returns the error, but the clock
+reference is never dropped.
 
+Call clk_put() on that error path.
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: 6754f556103b ("cpufreq / highbank: add support for highbank cpufreq")
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-Suyuan Wang (3):
-      cpufreq: highbank: Put cpu clock if clk notifier registration fails
-      cpufreq: kirkwood: Put clocks on error and in remove
-      cpufreq: s5pv210: Fix resource leaks on probe error paths
+ drivers/cpufreq/highbank-cpufreq.c | 1 +
+ 1 file changed, 1 insertion(+)
 
- drivers/cpufreq/highbank-cpufreq.c |  1 +
- drivers/cpufreq/kirkwood-cpufreq.c | 15 ++++++++++++---
- drivers/cpufreq/s5pv210-cpufreq.c  | 12 +++++++++---
- 3 files changed, 22 insertions(+), 6 deletions(-)
+diff --git a/drivers/cpufreq/highbank-cpufreq.c b/drivers/cpufreq/highbank-cpufreq.c
+index a45864701143..ccdaff4384d2 100644
+--- a/drivers/cpufreq/highbank-cpufreq.c
++++ b/drivers/cpufreq/highbank-cpufreq.c
+@@ -89,6 +89,7 @@ static int __init hb_cpufreq_driver_init(void)
+ 	ret = clk_notifier_register(cpu_clk, &hb_cpufreq_clk_nb);
+ 	if (ret) {
+ 		pr_err("failed to register clk notifier: %d\n", ret);
++		clk_put(cpu_clk);
+ 		goto out_put_node;
+ 	}
+ 
+
+-- 
+2.34.1
 
