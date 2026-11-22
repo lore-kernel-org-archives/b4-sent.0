@@ -1,15 +1,12 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v2 0/2] rpmsg: glink: Offer wakeup capabilities
-Date: Sun, 22 Nov 2026 21:24:17 +0100
-Message-Id: <20261122-rpmsg-qcom-glink-v2-0-d60419793095@ixit.cz>
+Date: Sun, 22 Nov 2026 21:24:18 +0100
+Subject: [PATCH v2 1/2] rpmsg: glink: Support waking up on channel rx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/zXMQQ6CMBCF4auQWVvClILgynsYF6VOS2NpcWqMh
- nB3GxOXf/Let0Em9pThVG3A9PLZp1hCHiows46OhL+VBtnIDhEHweuSnXiYtAgXfLyLQesJm16
- 21nZQbiuT9e8febmWtlymz5lJ/6G2QTyikgpVPQ7tqHqBwuhAU21SjCmEz7nQmlOd2MG+fwElC
- 051pgAAAA==
-X-Change-ID: 20251118-rpmsg-qcom-glink-8aab10623ff5
+Message-Id: <20261122-rpmsg-qcom-glink-v2-1-d60419793095@ixit.cz>
+References: <20261122-rpmsg-qcom-glink-v2-0-d60419793095@ixit.cz>
+In-Reply-To: <20261122-rpmsg-qcom-glink-v2-0-d60419793095@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Mathieu Poirier <mathieu.poirier@linaro.org>
 Cc: Dylan Van Assche <git@dylanvanassche.be>, 
@@ -17,78 +14,96 @@ Cc: Dylan Van Assche <git@dylanvanassche.be>,
  linux-remoteproc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3470; i=david@ixit.cz;
- h=from:subject:message-id; bh=lTm79sP5N4nCYtqwli3hsRaQG2T1k37aH17D2Pp90kM=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrA09yN87Arpx4zHDSlaRNnlb7QYe663LjdDuCL
- o27J6X+XTaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawNPcgAKCRBgAj/E00kg
- ch5NEAC566yogcpJwCKgrZkbDk+lgF3bYCcnlCI1Hy52FxHt9HS5kpKbZAzq2iE63yvS+6N0kHm
- YoCPGSXr2fRRFqp0kKRATDk+qC1+9PrbEVnRmnzwlckERaAH7Lkk25AXHtqNYh+tqjDYgCoTUZS
- wN8BFhpXqeiTx7iqIHIr3QnOsVgDrDhXVqKDWy3g4e7SEkXdziGukNFVVA2KcaMm9j0Fnh2nh1E
- ec7Pb3Nf6bC/hjaevCMy1a/p5OB9D2V4BL7MNZbZPNMn+w37Ngof20ZaE0z5Zc7cWk/1OaEcESX
- owZtougwnAXtLlYhw2anbY/MLGAZWdSXPnOOoBh/XxPbjXml8dpgnKUgR2i1q+UrLEgGrWjh9Sg
- pC/1DxGYKMMRjzwpYIapUQPNiyeBDzS+urnzjBUQnSBprcy63tSwxLbQ4feRH/59LtJaN6s0e41
- 4choAag5jPQi8jmKOva/2kxDWHj1YCiqB8bfvSyX6FYKmnEaTzHiEThvnI/EFGdb1sAdwf1EtQF
- ux0R+bldKNbKpUxgm+8tDlT22QII5SCLQ23Mr7+/5F/NLOIAOLO0x8npNg/Wj+xDtboykNj1a1w
- xTj4RaudHUCzK4Hx8Tz6Sb/xr6tTFj3Lwpq0MrrR8fRlzHgK0WVw0Q7bR/Sp/bQM3ftqk8+MkFG
- 6zvmjsxoqjIFoKQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2360; i=david@ixit.cz;
+ h=from:subject:message-id; bh=06ZIYAQUhWWSAAEUAnmn8k9bBrxIJztSjTuxD93oOH8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrA09yMdhKSwVswez+9ehBpuUYcJ29+8JxL+s+j
+ d8AC6ovBrqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawNPcgAKCRBgAj/E00kg
+ cniVEACOoyCgN1DP4Wo2KEoeOdBiZGDfBZbVTaTfeV8harG1bv9zwlQei7kr/sHnOyngIq+aw3P
+ wcJp7O7LjErJaM46/1rBeMN/bdxaz2hlkgv6GKT3eOmyX5j6ymcdduSdovBWXe/UdXbNpaUwpkd
+ jmUfvJvPbd9yjBRZvZFnE7Gf1rR0Mn1R8l75zSJJ+i6ocjU+9HhO76o04fcBDFGEapyXZhaGK6y
+ u6T9hDFR1AKEXQ1KFZcg2ZntqMlCsZI/d1wrIgeL8xTGUKrGjMTKmEDCNElikFlgON94K6SBAZu
+ xCgPXR1RP9abb1TUWSXuRTDpj1lYuACobxZ+WKwwliCkQITeCOFvg+q3G3AFCy5W+lqrrjQYRTV
+ urgOc1X33Qh7ySML9ymvtZmXERLlykM2PxQGb+3mvhJfybUbCNNWLs8RpSgaRbKiFQ49Gf8Pcnt
+ 6elPc1zvyPqDSTcxtIPXkkSIAvWEtDJV5noreDJFfS8NeESDpPkszvTZ0xwlCyAzhV1ZSzOxuAS
+ vEJY2qG4us65Gm0Rq+YPCtUfPmzLEXyQp4BZlD5YxmqOw/ugckobS0KKgUXBxF4XgKq95Ye+95x
+ EiKzAk8zu71ppVMKMrchPe7Tgrm6qS4HecrJYeLiAFwBxiOKlABtR5WH++woDn2nXGIoeIQGIKe
+ rPwkGypTw7TaIUQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-LLM generated summary of the decision chosen here, feel free to skip to
-the changelog.
+From: Casey Connolly <casey.connolly@linaro.org>
 
-Trade-offs made:
-1. Sysfs power/wakeup switch vs per-socket EPOLLWAKEUP (from v1 review):
- - Chosen: Device-level sysfs power/wakeup (disabled by default).
- - Trade-off: Works immediately with existing userspace (ModemManager, sensor daemons, udev rules) without requiring application changes, at the
-cost of channel/endpoint granularity instead of per-socket granularity.
-2. Reporting wakeup only inside if (channel->ept.cb) under channel->recv_lock:
- - Chosen: Gate wakeup on an active endpoint callback rather than adding extra synchronization around channel->rpdev.
- - Trade-off: Keeps GLINK locking simple and avoids waking the system for packets that get dropped anyway (no consumer), while holding channel-
->recv_lock across pm_wakeup_hard_event() (a short spinlock path: dev->power.lock -> ws->lock).
-3. Solving /dev/rpmsg_ctrlX wakeup in rpmsg_char.c (Patch 2) instead of falling back to channel->rpdev in GLINK:
- - Chosen: Per-endpoint wakeup on /sys/class/rpmsg/rpmsgX/power/wakeup in rpmsg_char.
- - Trade-off: Transport-independent (works for GLINK, SMD, virtio-rpmsg) and covers locally-initiated endpoints that never have a per-channel
-channel->rpdev, without complicating GLINK's channel->rpdev lifetime. In return, userspace configures /sys/class/rpmsg/rpmsgX/power/wakeup
-after endpoint creation rather than the GLINK bus device, and directly bound rpmsg_chrdev channels expose two independent power/wakeup knobs
-(both off by default).
-4. Immediate hard wakeup (pm_wakeup_hard_event(), msec = 0) vs timed wakeup (pm_wakeup_event(..., msec)):
- - Chosen: Same as v1 (msec = 0, hard = true).
- - Trade-off: Immediately aborts suspend / wakes s2idle and bumps wakeup_count without holding the system awake for an arbitrary hardcoded
-timeout, relying on userspace/suspend managers (e.g. via /sys/power/wakeup_count) not to re-suspend before draining the queued message.
-5. Setting wakeup capability after rpmsg_register_device() in GLINK:
- - Chosen: Kept v1's placement in qcom_glink_rx_open().
- - Trade-off: Works via wakeup_sysfs_add() + a KOBJ_CHANGE uevent, though udev rules matching only ACTION=="add" could race with power/wakeup
-creation on the GLINK bus device (Patch 2 avoids this for /sys/class/rpmsg/rpmsgX by calling device_set_wakeup_capable() before
-cdev_device_add()).
+Configure all channels as wakeup capable and report a wakeup event
+when data is received.
 
-Changes in v2:
- - Use pm_wakeup_hard_event(&channel->ept.rpdev->dev) inside channel->recv_lock
-and the channel->ept.cb check to fix the NULL pointer dereference,
-dev->power.wakeup/rpdev use-after-free races, and CONFIG_PM_SLEEP=n build.
- - Fix subject prefix ("rpmsg: glink:") and comment typo.
- - Add a follow-up patch enabling per-endpoint wakeup on /dev/rpmsgX in
-rpmsg_char so dynamic /dev/rpmsg_ctrlX endpoints can also opt in to wakeup.
- - Link to v1: https://lore.kernel.org/all/20230117142414.983946-1-caleb.connolly@linaro.org/
+This allows userspace to "subscribe" to a particular channel where
+it is useful to wake up to process new data. The expected usecase
+is to allow for handling incoming SMS or phone calls where the only
+notification mechanism is via QRTR on the IPCRTR glink channel.
 
+As this behaviour is likely undesirable for most users, this patch
+doesn't enable a wakeup_source for any channels by default.
+
+Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
+Co-developed-by: David Heidelberg <david@ixit.cz>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Casey Connolly (1):
-      rpmsg: glink: Support waking up on channel rx
-
-David Heidelberg (1):
-      rpmsg: char: Support waking up on endpoint rx
-
  drivers/rpmsg/qcom_glink_native.c | 12 ++++++++++++
- drivers/rpmsg/rpmsg_char.c        |  2 ++
- 2 files changed, 14 insertions(+)
----
-base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
-change-id: 20251118-rpmsg-qcom-glink-8aab10623ff5
+ 1 file changed, 12 insertions(+)
 
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+diff --git a/drivers/rpmsg/qcom_glink_native.c b/drivers/rpmsg/qcom_glink_native.c
+index f848ab46161d1..02ac790251303 100644
+--- a/drivers/rpmsg/qcom_glink_native.c
++++ b/drivers/rpmsg/qcom_glink_native.c
+@@ -993,16 +993,17 @@ static int qcom_glink_rx_data(struct qcom_glink *glink, size_t avail)
+ 	if (!left_size) {
+ 		spin_lock(&channel->recv_lock);
+ 		if (channel->ept.cb) {
+ 			channel->ept.cb(channel->ept.rpdev,
+ 					intent->data,
+ 					intent->offset,
+ 					channel->ept.priv,
+ 					RPMSG_ADDR_ANY);
++			pm_wakeup_hard_event(&channel->ept.rpdev->dev);
+ 		}
+ 		spin_unlock(&channel->recv_lock);
+ 
+ 		intent->offset = 0;
+ 		channel->buf = NULL;
+ 
+ 		qcom_glink_rx_done(glink, channel, intent);
+ 	}
+@@ -1684,16 +1685,27 @@ static int qcom_glink_rx_open(struct qcom_glink *glink, unsigned int rcid,
+ 		rpdev->dev.of_node = node;
+ 		rpdev->dev.parent = glink->dev;
+ 		rpdev->dev.release = qcom_glink_rpdev_release;
+ 
+ 		ret = rpmsg_register_device(rpdev);
+ 		if (ret)
+ 			goto rcid_remove;
+ 
++		/*
++		 * Declare all channels as wakeup capable, but don't enable
++		 * waking up by default.
++		 *
++		 * Userspace may wish to be woken up for incoming messages on a
++		 * specific channel, for example to handle incoming calls or SMS
++		 * messages on the IPCRTR channel. This can be done by enabling
++		 * the wakeup source via sysfs.
++		 */
++		device_set_wakeup_capable(&rpdev->dev, true);
++
+ 		channel->rpdev = rpdev;
+ 	}
+ 
+ 	return 0;
+ 
+ rcid_remove:
+ 	spin_lock_irqsave(&glink->idr_lock, flags);
+ 	idr_remove(&glink->rcids, channel->rcid);
+
+-- 
+2.55.0
 
