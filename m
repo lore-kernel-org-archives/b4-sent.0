@@ -1,10 +1,11 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Sun, 22 Nov 2026 20:50:21 +0800
-Subject: [PATCH v7 02/10] rust: task: add task_size()
+Date: Sun, 22 Nov 2026 20:50:22 +0800
+Subject: [PATCH v7 03/10] rust: sync: arc: relax `ForeignOwnable` for
+ `Arc<T>`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-tyr-ioctls-v7-2-3a2af624b992@linux.dev>
+Message-Id: <20261122-tyr-ioctls-v7-3-3a2af624b992@linux.dev>
 References: <20261122-tyr-ioctls-v7-0-3a2af624b992@linux.dev>
 In-Reply-To: <20261122-tyr-ioctls-v7-0-3a2af624b992@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -25,84 +26,52 @@ Cc: Sami Tolvanen <samitolvanen@google.com>, rust-for-linux@vger.kernel.org,
  dri-devel@lists.freedesktop.org, driver-core@lists.linux.dev, 
  Ke Sun <sunke@kylinos.cn>, Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795352551; l=2517;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795352551; l=1389;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=ltCybRExPQSKXsCnz8UljjoTEH8sGi6OL1QQ7zSPhcQ=;
- b=MPmHqFSk+yRPtfW83Pc/pd82Q4DbwpLmiDzOi0fF6lOklYZd8u8u+Xam9npIlRYQXF+I6n1pH
- B8rf8k8DbUbCN4XFzWqSQ4gVBeCWMqacwuEOwjUjzM8RuLEZoJaNdgH
+ bh=E65clxOu/qjNbqNDrRBBfaWHB/W/gvw7JStoVkgnAT4=;
+ b=rgqWPnwJKctrGwdGQetlNd7KUGuTt9snjiLGs9rkxFX/uZ/s3JYn/fIkl14xeCpDuIU7Q8DR5
+ eMSwt09EjANBaVP8yqR/RkhcttZ+pW2Vok26yhRejB435C/8rQim/oy
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sami Tolvanen <samitolvanen@google.com>
+Drop the `'static` bound so that refcounted values borrowing from a
+driver registration scope can be foreign-owned by the XArray
+abstraction.
 
-A DRM driver that lets userspace pick GPU virtual addresses needs the
-address space size of the calling task, so it can offer a GPU range
-that the CPU can map at the same addresses. TASK_SIZE_OF() is a macro,
-so reading it from Rust needs a helper.
-
-Add CurrentTask::task_size(). It is bound to the current task because
-TASK_SIZE_OF() falls back to TASK_SIZE on architectures that do not
-define it, and TASK_SIZE describes current.
-
-Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
-[ Add the <linux/mm.h> include, needed where TASK_SIZE is defined in
-  <asm/pgtable.h> (e.g. riscv). - Alvin ]
-Co-developed-by: Alvin Sun <alvin.sun@linux.dev>
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
+Reviewed-by: Daniel Almeida <daniel.almeida@collabora.com>
+Reviewed-by: Gary Guo <gary@garyguo.net>
 ---
- rust/helpers/task.c |  6 ++++++
- rust/kernel/task.rs | 12 ++++++++++++
- 2 files changed, 18 insertions(+)
+ rust/kernel/sync/arc.rs | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/rust/helpers/task.c b/rust/helpers/task.c
-index b46b1433a67e8..b49bd40027154 100644
---- a/rust/helpers/task.c
-+++ b/rust/helpers/task.c
-@@ -1,6 +1,7 @@
- // SPDX-License-Identifier: GPL-2.0
+diff --git a/rust/kernel/sync/arc.rs b/rust/kernel/sync/arc.rs
+index 8ae0fe6f19ec0..9b582a815f888 100644
+--- a/rust/kernel/sync/arc.rs
++++ b/rust/kernel/sync/arc.rs
+@@ -363,11 +363,17 @@ pub fn into_unique_or_drop(this: Self) -> Option<Pin<UniqueArc<T>>> {
  
- #include <linux/kernel.h>
-+#include <linux/mm.h>
- #include <linux/sched/task.h>
+ // SAFETY: The pointer returned by `into_foreign` was originally allocated as an
+ // `KBox<ArcInner<T>>`, so that type is what determines the alignment.
+-unsafe impl<T: 'static> ForeignOwnable for Arc<T> {
++unsafe impl<T> ForeignOwnable for Arc<T> {
+     const FOREIGN_ALIGN: usize = <KBox<ArcInner<T>> as ForeignOwnable>::FOREIGN_ALIGN;
  
- __rust_helper void rust_helper_might_resched(void)
-@@ -13,6 +14,11 @@ __rust_helper struct task_struct *rust_helper_get_current(void)
- 	return current;
- }
+-    type Borrowed<'a> = ArcBorrow<'a, T>;
+-    type BorrowedMut<'a> = Self::Borrowed<'a>;
++    type Borrowed<'a>
++        = ArcBorrow<'a, T>
++    where
++        T: 'a;
++    type BorrowedMut<'a>
++        = Self::Borrowed<'a>
++    where
++        T: 'a;
  
-+__rust_helper unsigned long rust_helper_current_task_size(void)
-+{
-+	return TASK_SIZE_OF(current);
-+}
-+
- __rust_helper void rust_helper_get_task_struct(struct task_struct *t)
- {
- 	get_task_struct(t);
-diff --git a/rust/kernel/task.rs b/rust/kernel/task.rs
-index a733816fd5dd4..1978f54fe5897 100644
---- a/rust/kernel/task.rs
-+++ b/rust/kernel/task.rs
-@@ -317,6 +317,18 @@ pub fn mm(&self) -> Option<&MmWithUser> {
-         Some(unsafe { MmWithUser::from_raw(mm) })
-     }
- 
-+    /// Returns the size of the userspace address space of the current task.
-+    ///
-+    /// This is the first address above the userspace range, so it is smaller
-+    /// for a task running in compat mode than for a native one. See
-+    /// `TASK_SIZE_OF()` in [`include/linux/sched.h`](srctree/include/linux/sched.h).
-+    #[doc(alias = "TASK_SIZE_OF")]
-+    #[inline]
-+    pub fn task_size(&self) -> usize {
-+        // SAFETY: FFI call without preconditions, valid in any context.
-+        unsafe { bindings::current_task_size() as usize }
-+    }
-+
-     /// Access the pid namespace of the current task.
-     ///
-     /// This function does not touch the refcount of the namespace or use RCU protection.
+     fn into_foreign(self) -> *mut c_void {
+         ManuallyDrop::new(self).ptr.as_ptr().cast()
 
 -- 
 2.43.0
