@@ -1,292 +1,330 @@
 From: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
-Date: Sun, 22 Nov 2026 13:08:44 -0300
-Subject: [PATCH 2/4] docs/translations/pt_BR: process: add
- maintainer-pgp-guide.rst (2/4)
+Date: Sun, 22 Nov 2026 13:08:45 -0300
+Subject: [PATCH 3/4] docs/translations/pt_BR: process: add
+ maintainer-pgp-guide.rst (3/4)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261122-maintainer-pgp-guide-pt-br-v1-2-01ce5941c5c2@gmail.com>
+Message-Id: <20261122-maintainer-pgp-guide-pt-br-v1-3-01ce5941c5c2@gmail.com>
 References: <20261122-maintainer-pgp-guide-pt-br-v1-0-01ce5941c5c2@gmail.com>
 In-Reply-To: <20261122-maintainer-pgp-guide-pt-br-v1-0-01ce5941c5c2@gmail.com>
 To: linux-doc@vger.kernel.org
 Cc: danielmaraboo@gmail.com, corbet@lwn.net, skhan@linuxfoundation.org, 
  rdunlap@infradead.org, Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795363722; l=12372;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795363722; l=12589;
  i=dreduardocruz@gmail.com; s=20261119; h=from:subject:message-id;
- bh=C4iNQDl5JtYjV/glAd3couPQ1BGZQrblBzxgDjhFMcU=;
- b=KO9UUxX7WTBEsQV65uXXwCyc70pv7bk426265/H+3Ff9O3Zd0ljvLWMwz6q1W2YcLIxUXkrEW
- Cdyrx3tKhPmBzea3GsuMmFt4sm2/FeSiVDeM4GhupMeFyJjmsAJHOCE
+ bh=dKjQNIRvWhJaoEymbenBs7geHxnGG0xFt20nDZATkXg=;
+ b=i1fq3Bs1GcO8wb9kAgq2PMwSQvUuS5g0wTPswoWuYW0yQKcsElcy9tW8AiV2l6TBERfy3AStm
+ Sc1PEOfet+2B7RGvW8P9FWRE80a5NlliqUQWVnwOM5YTKcmteQWTVds
 X-Developer-Key: i=dreduardocruz@gmail.com; a=ed25519;
  pk=2dtL+BL/x70sROmAvlskv9dbjj274zlPkLBVu4gJJiA=
 X-Endpoint-Received: by B4 Relay for dreduardocruz@gmail.com/20261119 with auth_id=1571
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Translate the rest of the key protection chapter: removing the Certify
-key from the home directory, the keygrip handling and the details of
-the private-keys-v1 directory.
+Translate the smartcard chapter, including the device recommendations,
+the card configuration through gpg --card-edit and the migration of the
+subkeys to the card, plus the quick reference of common GnuPG
+operations.
 
 Signed-off-by: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
 ---
- .../pt_BR/process/maintainer-pgp-guide.rst         | 249 +++++++++++++++++++++
- 1 file changed, 249 insertions(+)
+ .../pt_BR/process/maintainer-pgp-guide.rst         | 286 +++++++++++++++++++++
+ 1 file changed, 286 insertions(+)
 
 diff --git a/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst b/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst
-index a4ec5c5ef83b..4e07d49e36d0 100644
+index 4e07d49e36d0..7808ef4730ae 100644
 --- a/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst
 +++ b/Documentation/translations/pt_BR/process/maintainer-pgp-guide.rst
-@@ -109,3 +109,252 @@ o arquivo ``~/.gnupg/gpg-agent.conf`` para definir os seus próprios valores::
+@@ -358,3 +358,289 @@ que ainda contém as suas chaves privadas.
  
- .. _protect_your_key:
+ .. _smartcards:
  
-+Proteja a sua chave PGP
-+=======================
++Mova as subchaves para um dispositivo criptográfico dedicado
++============================================================
 +
-+Este guia pressupõe que você já tenha uma chave PGP usada para o
-+desenvolvimento do kernel Linux. Se ainda não tiver uma, consulte o documento
-+"`Protecting Code Integrity`_" mencionado anteriormente para orientação sobre
-+como criar uma nova.
++Embora a chave de Certificação esteja agora protegida contra vazamento ou
++roubo, as subchaves continuam no seu diretório home. Qualquer pessoa que
++consiga pôr as mãos nelas poderá decifrar a sua comunicação ou forjar as suas
++assinaturas (se souber a passphrase). Além disso, a cada operação do GnuPG as
++chaves são carregadas na memória do sistema e podem ser roubadas de lá por
++malware suficientemente avançado (pense em Meltdown e Spectre).
 +
-+Você também deve criar uma nova chave se a atual for mais fraca que 2048 bits
-+(RSA).
++Uma boa forma de proteger completamente as suas chaves é movê-las para um
++dispositivo de hardware especializado, capaz de operações de smartcard.
 +
-+Entendendo as subchaves PGP
-+----------------------------
++Os benefícios dos smartcards
++-----------------------------
 +
-+Uma chave PGP raramente consiste em um único par de chaves -- normalmente é uma
-+coleção de subchaves independentes que podem ser usadas para propósitos
-+diferentes, conforme as suas capacidades, atribuídas no momento da criação.
-+O PGP define quatro capacidades que uma chave pode ter:
++Um smartcard contém um chip criptográfico capaz de armazenar chaves privadas e
++realizar operações criptográficas diretamente no próprio cartão. Como o
++conteúdo das chaves nunca sai do smartcard, o sistema operacional do
++computador em que você conecta o dispositivo não consegue recuperar as chaves
++privadas. Isso é muito diferente da mídia criptografada que usamos antes para
++backup -- enquanto aquele dispositivo está conectado e montado, o sistema
++operacional consegue acessar o conteúdo das chaves privadas.
 +
-+- chaves **[S]** podem ser usadas para assinar
-+- chaves **[E]** podem ser usadas para criptografar
-+- chaves **[A]** podem ser usadas para autenticar
-+- chaves **[C]** podem ser usadas para certificar outras chaves
++Usar mídia externa criptografada não substitui ter um dispositivo com
++capacidade de smartcard.
 +
-+A chave com a capacidade **[C]** costuma ser chamada de chave "mestra", mas
-+essa terminologia é enganosa porque implica que a chave de Certificação pode
-+ser usada no lugar de qualquer outra subchave da mesma cadeia (como uma "chave
-+mestra" física pode abrir fechaduras feitas para outras chaves). Como não é o
-+caso, este guia se referirá a ela como "a chave de Certificação" para evitar
-+ambiguidade.
++Dispositivos de smartcard disponíveis
++-------------------------------------
 +
-+É fundamental entender completamente o seguinte:
++A menos que todos os seus laptops e estações de trabalho tenham leitores de
++smartcard, o mais fácil é obter um dispositivo USB especializado que
++implemente a funcionalidade de smartcard. Há várias opções disponíveis:
 +
-+1. Todas as subchaves são totalmente independentes entre si. Se você perder
-+   uma subchave privada, ela não pode ser restaurada nem recriada a partir de
-+   qualquer outra chave privada da sua cadeia.
-+2. Com exceção da chave de Certificação, pode haver várias subchaves com
-+   capacidades idênticas (por exemplo, você pode ter 2 subchaves de
-+   criptografia válidas, 3 subchaves de assinatura válidas, mas apenas uma
-+   subchave de certificação válida). Todas as subchaves são totalmente
-+   independentes -- uma mensagem criptografada para uma subchave **[E]** não
-+   pode ser decifrada com qualquer outra subchave **[E]** que você também
-+   tenha.
-+3. Uma única subchave pode ter múltiplas capacidades (por exemplo, a sua
-+   chave **[C]** também pode ser a sua chave **[S]**).
++- `Nitrokey Start`_: hardware aberto e software livre, baseado no `Gnuk`_ da
++  FSI Japan. Uma das opções mais baratas, mas oferece menos recursos de
++  segurança (como resistência a adulteração ou a alguns ataques de canal
++  lateral).
++- `Nitrokey 3`_: semelhante ao Nitrokey Start, mas mais resistente a
++  adulteração e com mais recursos de segurança e formatos USB. Suporta
++  criptografia ECC (ED25519 e NISTP).
++- `Yubikey 5`_: hardware e software proprietários, mas mais barato que o
++  Nitrokey e com conjunto semelhante de recursos. Suporta criptografia ECC
++  (ED25519 e NISTP).
 +
-+A chave que carrega a capacidade **[C]** (certificar) é a única que pode ser
-+usada para indicar relacionamento com outras chaves. Somente a chave **[C]**
-+pode ser usada para:
-+
-+- adicionar ou revogar outras chaves (subchaves) com capacidades S/E/A
-+- adicionar, alterar ou revogar identidades (uids) associadas à chave
-+- adicionar ou alterar a data de expiração dela mesma ou de qualquer subchave
-+- assinar chaves de outras pessoas para fins de teia de confiança
-+
-+Por padrão, o GnuPG cria o seguinte ao gerar novas chaves:
-+
-+- Uma subchave que carrega as capacidades de Certificação e Assinatura
-+  (**[SC]**)
-+- Uma subchave separada com a capacidade de Criptografia (**[E]**)
-+
-+Se você usou os parâmetros padrão ao gerar a sua chave, é isso que você terá.
-+Você pode verificar executando ``gpg --list-secret-keys``, por exemplo::
-+
-+    sec   ed25519 2022-12-20 [SC] [expires: 2024-12-19]
-+          000000000000000000000000AAAABBBBCCCCDDDD
-+    uid           [ultimate] Alice Dev <adev@kernel.org>
-+    ssb   cv25519 2022-12-20 [E] [expires: 2024-12-19]
-+
-+A linha longa sob a entrada ``sec`` é a impressão digital da sua chave --
-+sempre que você vir ``[fpr]`` nos exemplos abaixo, é a essa string de 40 caracteres que a abreviação se refere.
-+
-+Garanta que a sua passphrase seja forte
-+---------------------------------------
-+
-+O GnuPG usa passphrases para criptografar as suas chaves privadas antes de
-+armazená-las em disco. Assim, mesmo que o seu diretório ``.gnupg`` vaze ou seja
-+roubado por inteiro, os atacantes não podem usar as suas chaves privadas sem
-+antes obter a passphrase para decifrá-las.
-+
-+É absolutamente essencial que as suas chaves privadas sejam protegidas por uma
-+passphrase forte. Para defini-la ou alterá-la, use::
-+
-+    $ gpg --change-passphrase [fpr]
-+
-+Crie uma subchave de assinatura separada
-+----------------------------------------
-+
-+Nosso objetivo é proteger a sua chave de Certificação movendo-a para mídia
-+offline; portanto, se você tem apenas uma chave combinada **[SC]**, deve criar
-+uma subchave de assinatura separada::
-+
-+    $ gpg --quick-addkey [fpr] ed25519 sign
-+
-+Faça backup da sua chave de Certificação para recuperação de desastres
-+----------------------------------------------------------------------
-+
-+Quanto mais assinaturas de outros desenvolvedores você tiver na sua chave PGP de outros
-+desenvolvedores, mais motivos você tem para criar uma versão de backup que
-+viva em algo que não seja mídia digital, por razões de recuperação de
-+desastres.
-+
-+Uma boa forma de criar uma cópia impressa da sua chave privada é usar o
-+software ``paperkey``, escrito exatamente para esse propósito. Veja ``man
-+paperkey`` para mais detalhes sobre o formato de saída e os seus benefícios em
-+relação a outras soluções. O paperkey já deve estar empacotado para a maioria
-+das distribuições.
-+
-+Execute o comando a seguir para criar um backup impresso da sua chave
-+privada::
-+
-+    $ gpg --export-secret-key [fpr] | paperkey -o /tmp/key-backup.txt
-+
-+Imprima aquele arquivo e, com uma caneta, escreva a sua passphrase na margem
-+do papel. **Isso é fortemente recomendado**, porque a impressão da chave
-+ainda está criptografada com aquela passphrase e, se um dia você alterá-la,
-+não vai se lembrar de qual era quando criou o backup -- *garantido*.
-+
-+Coloque a impressão resultante e a passphrase escrita à mão em um envelope e
-+guarde em um lugar seguro e bem protegido, de preferência longe da sua casa,
-+como um cofre de banco.
++A sua escolha dependerá de custo, disponibilidade de envio na sua região
++geográfica e considerações sobre hardware aberto ou proprietário.
 +
 +.. note::
 +
-+    A chave ainda está criptografada com a sua passphrase, então imprimir até
-+    em impressoras modernas "integradas à nuvem" deve continuar sendo uma
-+    operação relativamente segura.
++    Se você estiver listado em uma entrada `M:` no MAINTAINERS ou tiver uma
++    conta no kernel.org, você `tem direito a um Nitrokey Start gratuito`_,
++    cortesia da Linux Foundation.
 +
-+Faça backup de todo o seu diretório GnuPG
-+-----------------------------------------
++.. _`Nitrokey Start`: https://www.nitrokey.com/products/nitrokeys
 +
-+.. warning::
++.. _`Nitrokey 3`: https://www.nitrokey.com/products/nitrokeys
 +
-+    **!!!Não pule esta etapa!!!**
++.. _`Yubikey 5`: https://www.yubico.com/products/yubikey-5-overview/
 +
-+É importante ter um backup prontamente disponível das suas chaves PGP
-+caso precise recuperá-las. Isso é diferente da preparação para desastres que
-+fizemos com o ``paperkey``. Você também dependerá dessas cópias externas sempre
-+que precisar usar a sua chave de Certificação -- como ao fazer mudanças na sua
-+própria chave ou ao assinar chaves de outras pessoas depois de conferências e
-+summits.
++.. _Gnuk: https://www.fsij.org/doc-gnuk/
 +
-+Comece obtendo um cartão de mídia externo (de preferência dois!) que você usará
-+para fins de backup. Você precisará criar uma partição criptografada nesse
-+dispositivo usando LUKS -- consulte a documentação da sua distro sobre como
-+fazer isso.
++.. _`tem direito a um Nitrokey Start gratuito`: https://www.kernel.org/nitrokey-digital-tokens-for-kernel-developers.html
 +
-+Para a passphrase de criptografia, você pode usar a mesma da sua chave PGP.
++Configure o seu dispositivo de smartcard
++----------------------------------------
 +
-+Quando o processo de criptografia terminar, reinsira o dispositivo e garanta
-+que ele seja montado corretamente. Copie todo o seu diretório ``.gnupg`` para
-+o armazenamento criptografado::
++O seu dispositivo de smartcard deve simplesmente funcionar (TM) no momento em
++que você o conecta a qualquer estação de trabalho Linux moderna. Você pode
++verificar executando::
 +
-+    $ cp -a ~/.gnupg /media/disk/foo/gnupg-backup
++    $ gpg --card-status
 +
-+Você deve agora testar para garantir que tudo ainda funciona::
++Se você vir os detalhes completos do smartcard, está tudo certo.
++Infelizmente, diagnosticar todas as razões possíveis pelas quais as coisas
++podem não funcionar para você está muito além do escopo deste guia. Se estiver
++com dificuldade para fazer o cartão funcionar com o GnuPG, procure ajuda nos
++canais de suporte habituais.
 +
-+    $ gpg --homedir=/media/disk/foo/gnupg-backup --list-key [fpr]
++Para configurar o seu smartcard, você precisará usar o sistema de menus do
++GnuPG, pois não há opções convenientes de linha de comando::
 +
-+Se você não receber nenhum erro, está tudo certo. Desmonte o dispositivo,
-+rotule-o de forma distinta para não sobrescrevê-lo por acidente e guarde-o em
-+um lugar seguro -- mas não muito longe, porque você precisará usá-lo de vez em
-+quando para coisas como editar identidades, adicionar ou revogar subchaves ou
-+assinar chaves de outras pessoas.
++    $ gpg --card-edit
++    [...omitted...]
++    gpg/card> admin
++    Admin commands are allowed
++    gpg/card> passwd
 +
-+Remova a chave de Certificação do seu homedir
-+---------------------------------------------
++Você deve definir o PIN do usuário (1), o PIN de administrador (3) e o Código
++de Reset (4). Não deixe de anotar e guardar esses valores em local seguro --
++especialmente o PIN de administrador e o Código de Reset (que permite apagar
++completamente o smartcard). Você raramente precisará usar o PIN de
++administrador, então inevitavelmente esquecerá qual é, se não anotar.
 +
-+Os arquivos no nosso diretório home não são tão bem protegidos quanto gostamos
-+de pensar. Eles podem vazar ou ser roubados por muitos meios diferentes:
++Voltando ao menu principal do cartão, você também pode definir outros valores
++(como nome, gênero, dados de login etc.), mas isso não é necessário e ainda
++vazaria informação sobre o seu smartcard caso você o perca.
 +
-+- por acidente, ao fazer cópias rápidas do homedir para configurar uma nova
-+  estação de trabalho
-+- por negligência ou má-fé do administrador de sistemas
-+- via backups mal protegidos
-+- via malware em aplicativos de desktop (navegadores, leitores de pdf etc.)
-+- via coerção ao cruzar fronteiras internacionais
++.. note::
 +
-+Proteger a sua chave com uma boa passphrase ajuda muito a reduzir o risco de
-+qualquer um dos casos acima, mas passphrases podem ser descobertas via
-+keyloggers, observação por cima do ombro ou qualquer número de outros meios.
-+Por essa razão, a configuração recomendada é remover a sua chave de
-+Certificação do diretório home e armazená-la em mídia offline.
++    Apesar do nome "PIN", nem o PIN do usuário nem o PIN de administrador do
++    cartão precisam ser numéricos.
 +
 +.. warning::
 +
-+    Consulte a seção anterior e garanta que você fez backup do seu diretório
-+    GnuPG por inteiro. O que estamos prestes a fazer tornará a sua chave
-+    inútil se você não tiver um backup utilizável!
++    Alguns dispositivos podem exigir que você mova as subchaves para o
++    dispositivo antes de poder alterar a passphrase. Verifique a documentação
++    fornecida pelo fabricante do dispositivo.
 +
-+Primeiro, identifique o "keygrip" da sua chave de Certificação::
++Mova as subchaves para o seu smartcard
++--------------------------------------
 +
-+    $ gpg --with-keygrip --list-key [fpr]
++Saia do menu do cartão (usando "q") e salve todas as alterações. Em seguida,
++vamos mover as suas subchaves para o smartcard. Você precisará tanto da
++passphrase da sua chave PGP quanto do PIN de administrador do cartão para a
++maioria das operações::
 +
-+A saída será algo como isto::
++    $ gpg --edit-key [fpr]
 +
-+    pub   ed25519 2022-12-20 [SC] [expires: 2022-12-19]
-+          000000000000000000000000AAAABBBBCCCCDDDD
-+          Keygrip = 1111000000000000000000000000000000000000
-+    uid           [ultimate] Alice Dev <adev@kernel.org>
-+    sub   cv25519 2022-12-20 [E] [expires: 2022-12-19]
-+          Keygrip = 2222000000000000000000000000000000000000
-+    sub   ed25519 2022-12-20 [S]
-+          Keygrip = 3333000000000000000000000000000000000000
++    Secret subkeys are available.
 +
-+Encontre a entrada de keygrip que está sob a linha ``pub`` (logo abaixo da
-+impressão digital da chave de Certificação). Ela corresponderá diretamente a
-+um arquivo no seu diretório ``~/.gnupg``::
++    pub  ed25519/AAAABBBBCCCCDDDD
++         created: 2022-12-20  expires: 2024-12-19  usage: SC
++         trust: ultimate      validity: ultimate
++    ssb  cv25519/1111222233334444
++         created: 2022-12-20  expires: never       usage: E
++    ssb  ed25519/5555666677778888
++         created: 2017-12-07  expires: never       usage: S
++    [ultimate] (1). Alice Dev <adev@kernel.org>
 +
-+    $ cd ~/.gnupg/private-keys-v1.d
-+    $ ls
-+    1111000000000000000000000000000000000000.key
-+    2222000000000000000000000000000000000000.key
-+    3333000000000000000000000000000000000000.key
++    gpg>
 +
-+Basta remover o arquivo .key correspondente ao keygrip da chave de
-+Certificação::
++Usar ``--edit-key`` nos coloca novamente no modo de menu, e você notará que
++a listagem de chaves é um pouco diferente. Daqui em diante, todos os comandos
++são feitos dentro desse modo de menu, indicado por ``gpg>``.
 +
-+    $ cd ~/.gnupg/private-keys-v1.d
-+    $ rm 1111000000000000000000000000000000000000.key
++Primeiro, vamos selecionar a chave que colocaremos no cartão -- você faz isso
++digitando ``key 1`` (é a primeira da listagem, a subchave **[E]**)::
 +
-+Agora, se você emitir o comando ``--list-secret-keys``, ele mostrará que a
-+chave de Certificação está ausente (o ``#`` indica que ela não está
-+disponível)::
++    gpg> key 1
++
++Na saída, você deve agora ver ``ssb*`` na chave **[E]**. O ``*`` indica qual
++chave está "selecionada" no momento. Funciona como um *toggle*, ou seja,
++se você digitar ``key 1`` novamente, o ``*`` desaparece e a chave deixa de
++estar selecionada.
++
++Agora, vamos mover essa chave para o smartcard::
++
++    gpg> keytocard
++    Please select where to store the key:
++       (2) Encryption key
++    Your selection? 2
++
++Como é a nossa chave **[E]**, faz sentido colocá-la no slot de Criptografia.
++Ao enviar a sua seleção, será pedida primeiro a passphrase da chave PGP e
++depois o PIN de administrador. Se o comando retornar sem erro,
++a sua chave foi movida.
++
++**Importante**: agora digite ``key 1`` novamente para desmarcar a primeira
++chave, e ``key 2`` para selecionar a chave **[S]**::
++
++    gpg> key 1
++    gpg> key 2
++    gpg> keytocard
++    Please select where to store the key:
++       (1) Signature key
++       (3) Authentication key
++    Your selection? 1
++
++Você pode usar a chave **[S]** tanto para Assinatura quanto para Autenticação,
++mas queremos garantir que ela fique no slot de Assinatura, então escolha
++(1). Mais uma vez, se o seu comando retornar sem erro, a operação foi bem-sucedida::
++
++    gpg> q
++    Save changes? (y/N) y
++
++Salvar as alterações excluirá do seu diretório home as chaves que você moveu
++para o cartão (mas não há problema, porque as temos nos nossos backups, caso
++precisemos fazer isso de novo para um smartcard de reposição).
++
++Verificando que as chaves foram movidas
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++Se você executar ``--list-secret-keys`` agora, verá uma diferença sutil na
++saída::
 +
 +    $ gpg --list-secret-keys
 +    sec#  ed25519 2022-12-20 [SC] [expires: 2024-12-19]
 +          000000000000000000000000AAAABBBBCCCCDDDD
 +    uid           [ultimate] Alice Dev <adev@kernel.org>
-+    ssb   cv25519 2022-12-20 [E] [expires: 2024-12-19]
-+    ssb   ed25519 2022-12-20 [S]
++    ssb>  cv25519 2022-12-20 [E] [expires: 2024-12-19]
++    ssb>  ed25519 2022-12-20 [S]
 +
-+Você também deve remover quaisquer arquivos ``secring.gpg`` no diretório
-+``~/.gnupg``, que podem ter sobrado de versões anteriores do GnuPG.
++O ``>`` na saída ``ssb>`` indica que a subchave está disponível apenas no
++smartcard. Se você voltar ao seu diretório de chaves secretas e olhar o
++conteúdo, notará que os arquivos ``.key`` de lá foram substituídos por
++stubs::
 +
-+Se você não tiver o diretório "private-keys-v1.d"
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++    $ cd ~/.gnupg/private-keys-v1.d
++    $ strings *.key | grep 'private-key'
 +
-+Se você não tiver um diretório ``~/.gnupg/private-keys-v1.d``, então as suas
-+chaves secretas ainda estão armazenadas no arquivo legado ``secring.gpg``
-+usado pelo GnuPG v1. Fazer qualquer mudança na sua chave, como alterar a
-+passphrase ou adicionar uma subchave, deve converter automaticamente o formato
-+antigo ``secring.gpg`` para usar ``private-keys-v1.d``.
++A saída deve conter ``shadowed-private-key`` para indicar que esses arquivos
++são apenas stubs e o conteúdo real está no smartcard.
 +
-+Depois de fazer isso, não deixe de excluir o arquivo ``secring.gpg`` obsoleto,
-+que ainda contém as suas chaves privadas.
++Verificando que o smartcard está funcionando
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 +
-+.. _smartcards:
++Para verificar que o smartcard funciona como pretendido, você pode criar uma
++assinatura::
++
++    $ echo "Hello world" | gpg --clearsign > /tmp/test.asc
++    $ gpg --verify /tmp/test.asc
++
++O primeiro comando deve pedir o PIN do seu smartcard, e depois de executar
++``gpg --verify`` a saída deve mostrar "Good signature".
++
++Parabéns, você acabou de tornar extremamente difícil roubar a sua identidade
++digital de desenvolvedor!
++
++Outras operações comuns do GnuPG
++--------------------------------
++
++Aqui está uma referência rápida para algumas operações comuns que você
++precisará fazer com a sua chave PGP.
++
++Montando o seu armazenamento offline seguro
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++Você precisará da sua chave de Certificação para qualquer uma das operações
++abaixo, então primeiro será preciso montar o seu armazenamento de backup
++offline e informar ao GnuPG para usá-lo::
++
++    $ export GNUPGHOME=/media/disk/foo/gnupg-backup
++    $ gpg --list-secret-keys
++
++Você quer garantir que vê ``sec`` e não ``sec#`` na saída (o ``#`` significa
++que a chave não está disponível e você ainda está usando o local habitual do
++diretório home).
++
++Estendendo a data de expiração da chave
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++A chave de Certificação tem, por padrão, data de expiração de 2 anos a partir
++da criação. Isso é feito tanto por razões de segurança quanto para que chaves
++obsoletas acabem sumindo dos keyservers.
++
++Para estender a expiração da sua chave em um ano a partir da data atual,
++basta executar::
++
++    $ gpg --quick-set-expire [fpr] 1y
++
++Você também pode usar uma data específica, se for mais fácil de lembrar (por
++exemplo, seu aniversário, 1º de janeiro ou o Canada Day)::
++
++    $ gpg --quick-set-expire [fpr] 2038-07-01
++
++Lembre-se de enviar a chave atualizada de volta aos keyservers::
++
++    $ gpg --send-key [fpr]
++
++Atualizando o seu diretório de trabalho após quaisquer mudanças
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++Depois de fazer qualquer mudança na sua chave usando o armazenamento offline,
++você vai querer importar essas mudanças de volta ao seu diretório de trabalho
++habitual::
++
++    $ gpg --export | gpg --homedir ~/.gnupg --import
++    $ unset GNUPGHOME
++
++Usando o gpg-agent por ssh
++~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++Você pode encaminhar o seu gpg-agent por ssh se precisar assinar tags ou
++commits em um sistema remoto. Consulte as instruções fornecidas no wiki do
++GnuPG:
++
++- `Agent Forwarding over SSH`_
++
++Funciona melhor se você puder modificar as configurações do servidor sshd na
++outra ponta.
++
++.. _`Agent Forwarding over SSH`: https://wiki.gnupg.org/AgentForwarding
++
++.. _pgp_with_git:
 +
 
 -- 
