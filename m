@@ -1,204 +1,125 @@
-From: YanXin Li <fadouse@pm.me>
-Date: Sun, 22 Nov 2026 12:46:51 +0800
-Subject: [PATCH bpf v2] bpf: bound arena allocations to the user VMA
+From: EMCP333 <emcp@enser.io>
+Date: Sun, 22 Nov 2026 05:11:23 +0000
+Subject: [PATCH] serial: tegra: do the baud tolerance math in 64 bits
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-b4-03-bpf-arena-vmalloc-oob-v2-5f6209c1a20e-v2-1-b2a9906e9676@pm.me>
-X-B4-Tracking: v=1; b=H4sIALpzAmsC/yWN0W7CMAxFfwX5GQvH8ULhVyYenNSBoNJWyag2I
- f597fZ4j67OeUGzWqzBefeCaktpZRrXwfsdpJuOV8PSrxuYODjHjFGQPMY5o1YbFZeHDsOUcJo
- iLowfOTCdklMmQ8oU4il7UjFYjXO1XL7/ap+wKuDyD9sz3i19bZ3tFrUZxqpjum2o2qA/uMFDE
- nEk2QfhXo9MLggJB/YmnefOB7Xc953B+/0LMRrYLNoAAAA=
-X-Change-ID: 20261122-b4-03-bpf-arena-vmalloc-oob-v2-5f6209c1a20e-0f06b9f30a4e
-To: Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
- Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>
-Cc: Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- Emil Tsalapatis <emil@etsalapatis.com>, 
- Ihor Solodrai <ihor.solodrai@linux.dev>, bpf@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Message-Id: <20261122-b4-serial-tegra-baud-tolerance-v1-1-39907382281f@enser.io>
+X-B4-Tracking: v=1; b=H4sIAHp5AmsC/yWNwQ6CMBBEf4Xs2VVam0r8FeNhuyxQQ4ppCzEh/
+ LutHt9k3swOSaKXBPdmhyibT34JBdSpAZ4ojIK+Lwy61VYprdEZrArNmGWMhI7WHvMyS6TAggP
+ ba9sRd2wNlJF3lMF/fgeP55/T6l7Cua7WhqMk6Ko91ajiZbudDUbWcBxfsOFZvqIAAAA=
+X-Change-ID: 20261122-b4-serial-tegra-baud-tolerance-fc6308ac8c64
+To: Laxman Dewangan <ldewangan@nvidia.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>
+Cc: Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, 
+ Krishna Yarlagadda <kyarlagadda@nvidia.com>, linux-serial@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ EMCP333 <emcp@enser.io>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795322826; l=7440;
- i=fadouse@pm.me; s=b4-relay-20261122; h=from:subject:message-id;
- bh=DPOtTXYJ4A1Nsdzdq03zG2Y5kDlcW+p1iolpXZYER2w=;
- b=DA4j9fo2bRLcEcu9pwke58tYN2uokIfmZv5IhsOq04QPUxGY+/ZKHUdhW5CZAj5aAJ3QUxoo/
- 6hySkBljCgLAkwQ1KLnhrUauSnQhllFZHf+su0Y5fIiZblytKkqtIH0
-X-Developer-Key: i=fadouse@pm.me; a=ed25519;
- pk=b4DyzHJDRd8853IHUSKPA5wwzChj8eF4MTnZuyPz1PQ=
-X-Endpoint-Received: by B4 Relay for fadouse@pm.me/b4-relay-20261122 with auth_id=1597
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795324319; l=3906;
+ i=emcp@enser.io; s=ultron; h=from:subject:message-id;
+ bh=GXIk9AQVC2K8tTVlGwvFv8h3R35+N798W5Ucf2ARQvE=;
+ b=G/EK8deCg7wtRnWgFOWfHw6ZHJdTUxTHk9IExb1Hv0blbsDDDpfAiqpVu6QkkfQKOSwAbdcP1
+ S/HZNlh3NuCBcJO0Y/rrs+31xMe2Wi3Jftk2RnFdORd89ryHdXoeAi+
+X-Developer-Key: i=emcp@enser.io; a=ed25519;
+ pk=5sG48Lul+Vn7OzXu3VZrCWk5uvEFPYMXYnAV0TZR/tY=
+X-Endpoint-Received: by B4 Relay for emcp@enser.io/ultron with auth_id=1598
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-bpf_arena_alloc_pages() hands out page ranges from the arena's range
-tree, which is initialized to max_entries pages, while the kernel
-mapping of those pages is built at kern_vm_start + (u32)user_addr.
-The fixed-address path and bpf_arena_free_pages() both assume that a
-returned range stays inside the user VMA, so that its lower 32 bits
-do not wrap past the end of the arena's 4 GiB kernel vm area:
+On a 32-bit kernel both halves of the baud tolerance logic overflow
+`long`, so a Tegra20/30/114/124 board whose DT has an
+nvidia,adjust-baud-rates entry runs its fast UART rates at the wrong
+speed, and the range check then reports the wrong speed as fine.
 
-    long page_cnt_max = (user_vm_end - user_vm_start) >> PAGE_SHIFT;
-    ...
-    if (uaddr) {
-            ...
-            if (pgoff > page_cnt_max - page_cnt)
-                    return 0;   /* bound only on the fixed-address path */
-    }
-    ret = arena_adjust_tree(arena, uaddr, page_cnt, &pgoff);
-    ...
-    uaddr32 = (u32)(user_vm_start + pgoff * PAGE_SIZE);
+tegra_get_tolerance_rate() returns rate + rate * tolerance / 10000, with
+rate = 16 x baud. For any baud above ~986 kbaud, rate * tolerance
+exceeds 2^31 and wraps, so the adjustment comes out negative and the
+clock divider rounds the request down a further half step. On a Tegra
+Note 7 (pll_p 408 MHz, nvidia,adjust-baud-rates = <1000000 4000000 136>),
+read back from clk_summary:
 
-When map_extra is not given, arena_map_alloc() does not know the user
-address and accepts any mmap() length up to max_entries pages, and
-arena_get_unmapped_area() only requires that the mapping does not cross
-a 4 GiB boundary.  A process can therefore mmap() a VMA that ends
-exactly at a 4 GiB boundary while max_entries is much larger: for
-max_entries = 2^20 and a 288-page VMA at 0xffee0000, the range tree
-still holds free pages past the VMA, and arena_adjust_tree() hands
-them out on the uaddr == 0 path with no bound on pgoff + page_cnt
-against page_cnt_max.  A program that first allocates 287 pages and
-then asks for 288 more receives pgoff = 287, uaddr32 = 0xfffff000,
-and arena_alloc_pages() maps 288 pages at kern_vm_start + 0xfffff000:
-one page inside the VMA, then the arena's upper guard pages, and then
-258 pages into the vmalloc area past the end of the arena's own
-vmap area - installing PTEs into address space the arena does not own
-and returning a "success" pointer to the caller.
+    baud      wanted uartc   got uartc     actual baud   error
+    3000000   48652800       45333334      2833333       -5.56 %
+    1500000   24326400       23314286      1457143       -2.86 %
 
-The damage cannot be undone: arena_free_pages() clips every free to
-the VMA, so the pages mapped past kern_vm_start + 4 GiB are never
-freed, arena_map_free() only walks the arena's own area, and the stale
-PTEs and leaked pages survive the destruction of the map.  A second
-arena whose kernel area happens to follow the first one receives
-PTEs for pages it does not own; its user-visible arena_vm_fault()
-finds them with vmalloc_to_page() and maps another map's pages into
-its own user VMA.  When the walk instead reaches an already-mapped
-foreign PTE, apply_range_set_cb() reports
+Both "got" values follow exactly from the wrapped arithmetic. With 64-bit
+math the clock comes out at 48000000 and 24000000, i.e. 3000000 and
+1500000 baud exactly.
 
-    WARNING: kernel/bpf/arena.c:190 at apply_range_set_cb+0x4d9/0x830
+tegra_check_rate_in_range() is meant to catch this, and cannot: it
+computes (long)(configured - required) * 10000, which wraps for any
+delta above ~215 kHz. The -5.56 % above reads as -0.18 % and passes the
+window, so "configured baud rate is out of range" is never printed.
 
-after failing to install into the neighbour's page.  Any program that
-may use an arena map (CAP_BPF, or an arena delegated through a BPF
-token from a user namespace) can reach this; no race is needed.
+Found through Bluetooth: hci_ll moves a WL18xx on uartc to 3 Mbaud after
+the firmware download, the host lands 5.56 % low, and the controller
+never answers the next command (HCI_Reset times out). With this change
+the controller comes up at 3 Mbaud and scans. Tested on that board with
+an otherwise unmodified driver on a next-20260422-based kernel; 64-bit
+kernels are unaffected, as long is 64 bits there.
 
-Fix this on both sides.  On the first mmap() of a map created without
-map_extra, mark [vma_pages, max_entries) as allocated in the range
-tree, because nothing outside the VMA can ever be freed or mapped
-without wrapping; no program can allocate before user_vm_start is
-set, and the same mmap() path already serializes on arena->lock.  And
-reject pgoff ranges past the VMA in arena_adjust_tree() with -ERANGE,
-mirroring the existing page_cnt_max check of the fixed-address path,
-so that even a stale tree entry cannot hand out an unwrappable range.
+Use div_s64() for both expressions so the result does not depend on the
+width of long.
 
-This issue was found through LLM-assisted code audit and manual code
-inspection of kernel/bpf/arena.c, and then checked with a Z3 SMT model
-and reproduced locally with a custom BPF test program in an x86-64
-QEMU/KVM guest running v7.4-rc3 with KASAN, UBSAN, lockdep, and
-DEBUG_OBJECTS enabled.
+The code and this changelog were prepared with the help of an AI coding
+assistant. The submitter has reviewed both and takes responsibility for
+them.
 
-With a map created without map_extra and a 288-page VMA ending at a
-4 GiB boundary, calling bpf_arena_alloc_pages() reproduced both the
-out-of-VMA vmalloc mapping into an adjacent arena and the
-WARNING: kernel/bpf/arena.c:190 at apply_range_set_cb().  After
-applying the patch, the wrapped allocation returns NULL while in-VMA
-allocations continue to succeed with no kernel warnings.
-
-A test case and full validation logs are available on request.
-
-Fixes: 317460317a02 ("bpf: Introduce bpf_arena.")
-Cc: stable@vger.kernel.org
-Signed-off-by: YanXin Li <fadouse@pm.me>
+Fixes: f04a3cc8d455 ("serial: tegra: add support to adjust baud rate")
+Fixes: d781ec21bae6 ("serial: tegra: report clk rate errors")
+Signed-off-by: EMCP333 <emcp@enser.io>
 ---
-Changes in v2:
-- Resend via B4 Relay because the original email gained extra blank lines.
-- Document how the issue was found and verified.
-- No code changes.
-- Link to v1: https://lore.kernel.org/r/20261122031025.9771-1-fadouse@pm.me
----
- kernel/bpf/arena.c | 44 ++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 42 insertions(+), 2 deletions(-)
+ drivers/tty/serial/serial-tegra.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/kernel/bpf/arena.c b/kernel/bpf/arena.c
-index ec2bda1a6eb..8adc2d589c7 100644
---- a/kernel/bpf/arena.c
-+++ b/kernel/bpf/arena.c
-@@ -694,6 +694,34 @@ static int arena_map_mmap(struct bpf_map *map, struct vm_area_struct *vma)
- 	if (remember_vma(arena, vma))
- 		return -ENOMEM;
- 
-+	if (!arena->user_vm_start && vma_pages(vma) < map->max_entries) {
-+		/*
-+		 * The range tree spans max_entries pages, but the user VMA
-+		 * set below is smaller and its lower 32 bits do not wrap
-+		 * past the 32-bit boundary.  Mark the pages past the VMA as
-+		 * allocated so that bpf_arena_alloc_pages() can never hand
-+		 * out a range that would be mapped past the end of the
-+		 * arena's kernel vm area and could never be freed.
-+		 */
-+		unsigned long flags;
-+		int ret = -EBUSY;
-+
-+		if (!raw_res_spin_lock_irqsave(&arena->spinlock, flags)) {
-+			ret = range_tree_clear(&arena->rt, vma_pages(vma),
-+					       map->max_entries - vma_pages(vma));
-+			raw_res_spin_unlock_irqrestore(&arena->spinlock, flags);
-+			WARN_ON_ONCE(ret);
-+		}
-+		if (ret) {
-+			struct vma_list *vml = vma->vm_private_data;
-+
-+			list_del(&vml->head);
-+			vma->vm_private_data = NULL;
-+			kfree(vml);
-+			return ret;
-+		}
-+	}
-+
- 	arena->user_vm_start = vma->vm_start;
- 	arena->user_vm_end = vma->vm_end;
- 	/*
-@@ -743,7 +771,8 @@ static u64 clear_lo32(u64 val)
- 	return val & ~(u64)~0U;
- }
- 
--static int arena_adjust_tree(struct bpf_arena *arena, long uaddr, long page_cnt, long *pgoff)
-+static int arena_adjust_tree(struct bpf_arena *arena, long uaddr, long page_cnt,
-+			     long page_cnt_max, long *pgoff)
+diff --git a/drivers/tty/serial/serial-tegra.c b/drivers/tty/serial/serial-tegra.c
+index e93873a1d1..b5973c0a95 100644
+--- a/drivers/tty/serial/serial-tegra.c
++++ b/drivers/tty/serial/serial-tegra.c
+@@ -18,6 +18,7 @@
+ #include <linux/err.h>
+ #include <linux/io.h>
+ #include <linux/irq.h>
++#include <linux/math64.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/pagemap.h>
+@@ -365,11 +366,13 @@ static long tegra_get_tolerance_rate(struct tegra_uart_port *tup,
  {
- 	int ret;
+ 	int i;
  
-@@ -759,6 +788,17 @@ static int arena_adjust_tree(struct bpf_arena *arena, long uaddr, long page_cnt,
- 	if (ret < 0)
- 		return ret;
++	/* 64-bit: rate * tolerance overflows a 32-bit long */
+ 	for (i = 0; i < tup->n_adjustable_baud_rates; ++i) {
+ 		if (baud >= tup->baud_tolerance[i].lower_range_baud &&
+ 		    baud <= tup->baud_tolerance[i].upper_range_baud)
+-			return (rate + (rate *
+-				tup->baud_tolerance[i].tolerance) / 10000);
++			return rate + div_s64((s64)rate *
++					      tup->baud_tolerance[i].tolerance,
++					      10000);
+ 	}
  
-+	/*
-+	 * The range tree spans max_entries pages, but when map_extra was
-+	 * not given at arena creation time the user VMA, and hence the
-+	 * range whose lower 32 bits do not wrap past the 32-bit boundary,
-+	 * can be smaller.  A pgoff past the VMA would wrap uaddr32 past
-+	 * the 32-bit boundary, be mapped past the end of the arena's
-+	 * kernel vm area, and could never be freed, so reject it.
-+	 */
-+	if (ret > page_cnt_max - page_cnt)
-+		return -ERANGE;
-+
- 	*pgoff = ret;
+ 	return rate;
+@@ -379,8 +382,9 @@ static int tegra_check_rate_in_range(struct tegra_uart_port *tup)
+ {
+ 	long diff;
  
- 	return range_tree_clear(&arena->rt, *pgoff, page_cnt);
-@@ -812,7 +852,7 @@ static long arena_alloc_pages(struct bpf_arena *arena, long uaddr, long page_cnt
- 	if (raw_res_spin_lock_irqsave(&arena->spinlock, flags))
- 		goto out_free_pages;
- 
--	ret = arena_adjust_tree(arena, uaddr, page_cnt, &pgoff);
-+	ret = arena_adjust_tree(arena, uaddr, page_cnt, page_cnt_max, &pgoff);
- 	if (ret) {
- 		raw_res_spin_unlock_irqrestore(&arena->spinlock, flags);
- 		goto out_free_pages;
+-	diff = ((long)(tup->configured_rate - tup->required_rate) * 10000)
+-		/ tup->required_rate;
++	/* 64-bit: delta * 10000 overflows a 32-bit long above ~215 kHz */
++	diff = div_s64((s64)(tup->configured_rate - tup->required_rate) * 10000,
++		       tup->required_rate);
+ 	if (diff < (tup->cdata->error_tolerance_low_range * 100) ||
+ 	    diff > (tup->cdata->error_tolerance_high_range * 100)) {
+ 		dev_err(tup->uport.dev,
 
 ---
-base-commit: c44104f3642da720164042623e4832836aefdd8e
-change-id: 20261122-b4-03-bpf-arena-vmalloc-oob-v2-5f6209c1a20e-0f06b9f30a4e
+base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
+change-id: 20261122-b4-serial-tegra-baud-tolerance-fc6308ac8c64
 
 Best regards,
 --  
-YanXin Li <fadouse@pm.me>
+EMCP333 <emcp@enser.io>
 
