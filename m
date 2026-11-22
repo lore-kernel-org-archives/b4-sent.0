@@ -1,10 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sun, 22 Nov 2026 21:24:18 +0100
-Subject: [PATCH v2 1/2] rpmsg: glink: Support waking up on channel rx
+Date: Sun, 22 Nov 2026 21:24:19 +0100
+Subject: [PATCH v2 2/2] rpmsg: char: Support waking up on endpoint rx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-rpmsg-qcom-glink-v2-1-d60419793095@ixit.cz>
+Message-Id: <20261122-rpmsg-qcom-glink-v2-2-d60419793095@ixit.cz>
 References: <20261122-rpmsg-qcom-glink-v2-0-d60419793095@ixit.cz>
 In-Reply-To: <20261122-rpmsg-qcom-glink-v2-0-d60419793095@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -14,95 +14,79 @@ Cc: Dylan Van Assche <git@dylanvanassche.be>,
  linux-remoteproc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2360; i=david@ixit.cz;
- h=from:subject:message-id; bh=06ZIYAQUhWWSAAEUAnmn8k9bBrxIJztSjTuxD93oOH8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrA09yMdhKSwVswez+9ehBpuUYcJ29+8JxL+s+j
- d8AC6ovBrqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawNPcgAKCRBgAj/E00kg
- cniVEACOoyCgN1DP4Wo2KEoeOdBiZGDfBZbVTaTfeV8harG1bv9zwlQei7kr/sHnOyngIq+aw3P
- wcJp7O7LjErJaM46/1rBeMN/bdxaz2hlkgv6GKT3eOmyX5j6ymcdduSdovBWXe/UdXbNpaUwpkd
- jmUfvJvPbd9yjBRZvZFnE7Gf1rR0Mn1R8l75zSJJ+i6ocjU+9HhO76o04fcBDFGEapyXZhaGK6y
- u6T9hDFR1AKEXQ1KFZcg2ZntqMlCsZI/d1wrIgeL8xTGUKrGjMTKmEDCNElikFlgON94K6SBAZu
- xCgPXR1RP9abb1TUWSXuRTDpj1lYuACobxZ+WKwwliCkQITeCOFvg+q3G3AFCy5W+lqrrjQYRTV
- urgOc1X33Qh7ySML9ymvtZmXERLlykM2PxQGb+3mvhJfybUbCNNWLs8RpSgaRbKiFQ49Gf8Pcnt
- 6elPc1zvyPqDSTcxtIPXkkSIAvWEtDJV5noreDJFfS8NeESDpPkszvTZ0xwlCyAzhV1ZSzOxuAS
- vEJY2qG4us65Gm0Rq+YPCtUfPmzLEXyQp4BZlD5YxmqOw/ugckobS0KKgUXBxF4XgKq95Ye+95x
- EiKzAk8zu71ppVMKMrchPe7Tgrm6qS4HecrJYeLiAFwBxiOKlABtR5WH++woDn2nXGIoeIQGIKe
- rPwkGypTw7TaIUQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1867; i=david@ixit.cz;
+ h=from:subject:message-id; bh=eIZGJEV5bvpHjBlQtn566xL+dxDC7tO9ywu0q8X1cHQ=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrA09ysuizp1NKtYdtgBIsteeqYI5UrgT3HaQue
+ IP+ojKIP5CJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawNPcgAKCRBgAj/E00kg
+ crObD/9zET8uD6rfp8sfJFqtGbV3/CcevOxnetsfGUZo3RHF24I6lulXMol7gNp6GETdPj/7+uh
+ RZ3yCeOIID5XCnyNRbc87mtmPiBf33AC4jQv339fKgq2j8BVeea6NlGvx7e5874tvkTfRUy/KXJ
+ Lvv65lH3cFe8Ho7MOpPX2bokJKVaGq7N9DGkqGUMkQPx8E2zmZUxkkhA6L9hnf7dff8obGIX7SQ
+ xHSRok0FD3Uf6sYu/vMAi47qdF8F+W+GFXj7vA1EUbJtSFTVvZr05O0/hhsLSYDHW2zwt7d4Mn3
+ BVJfMuyGDHoyMXIrRdKg4zlJ68Ts8mi1yLcU5SQI9BNg6mR/TZ/y0FoLDE7wUcXHpfm4lwMd+nW
+ Iw4OedRlqSdfhUpQvDNgtxYozC+unhBFF3GK096OsDygeaMvFKFTJmeo/DiGhQpTJIYjwQhqB90
+ ahbXpEr5v2yLNRmAS9CsFZjdqLL7lGH+QD7cJ2cBP+zmuUUAb0yhVIEF5vzkhN50JU4QJCsIjWe
+ OF+apRKxBDtWjkOM0vbio7g5DM1NDXW83j3Xbgai1LeXn/l/Axrc+AkXAKUpxCghjc0jR47IgiE
+ abdJhMSUXej45fI+5AnbyiMS50tro9bfkdpRRhQOO9XmLH0iQOSTAtOu68++GPk/mLRWlS8GjgF
+ VejIIXG768DhhFw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Casey Connolly <casey.connolly@linaro.org>
+Configure rpmsg character endpoint devices (/dev/rpmsgX) as wakeup
+capable and report a wakeup event when a message is received in
+rpmsg_ept_cb().
 
-Configure all channels as wakeup capable and report a wakeup event
-when data is received.
+This allows userspace to opt in to system wakeups per endpoint via
+sysfs (/sys/class/rpmsg/rpmsgX/power/wakeup), covering dynamically
+created endpoints opened through /dev/rpmsg_ctrlX across all rpmsg
+transports without enabling wakeup by default.
 
-This allows userspace to "subscribe" to a particular channel where
-it is useful to wake up to process new data. The expected usecase
-is to allow for handling incoming SMS or phone calls where the only
-notification mechanism is via QRTR on the IPCRTR glink channel.
-
-As this behaviour is likely undesirable for most users, this patch
-doesn't enable a wakeup_source for any channels by default.
-
-Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
-Co-developed-by: David Heidelberg <david@ixit.cz>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/rpmsg/qcom_glink_native.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/rpmsg/rpmsg_char.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/rpmsg/qcom_glink_native.c b/drivers/rpmsg/qcom_glink_native.c
-index f848ab46161d1..02ac790251303 100644
---- a/drivers/rpmsg/qcom_glink_native.c
-+++ b/drivers/rpmsg/qcom_glink_native.c
-@@ -993,16 +993,17 @@ static int qcom_glink_rx_data(struct qcom_glink *glink, size_t avail)
- 	if (!left_size) {
- 		spin_lock(&channel->recv_lock);
- 		if (channel->ept.cb) {
- 			channel->ept.cb(channel->ept.rpdev,
- 					intent->data,
- 					intent->offset,
- 					channel->ept.priv,
- 					RPMSG_ADDR_ANY);
-+			pm_wakeup_hard_event(&channel->ept.rpdev->dev);
- 		}
- 		spin_unlock(&channel->recv_lock);
+diff --git a/drivers/rpmsg/rpmsg_char.c b/drivers/rpmsg/rpmsg_char.c
+index d8868faacdc3a..94307d1e0338b 100644
+--- a/drivers/rpmsg/rpmsg_char.c
++++ b/drivers/rpmsg/rpmsg_char.c
+@@ -119,16 +119,17 @@ static int rpmsg_ept_cb(struct rpmsg_device *rpdev, void *buf, int len,
+ 	skb_put_data(skb, buf, len);
  
- 		intent->offset = 0;
- 		channel->buf = NULL;
+ 	spin_lock(&eptdev->queue_lock);
+ 	skb_queue_tail(&eptdev->queue, skb);
+ 	spin_unlock(&eptdev->queue_lock);
  
- 		qcom_glink_rx_done(glink, channel, intent);
- 	}
-@@ -1684,16 +1685,27 @@ static int qcom_glink_rx_open(struct qcom_glink *glink, unsigned int rcid,
- 		rpdev->dev.of_node = node;
- 		rpdev->dev.parent = glink->dev;
- 		rpdev->dev.release = qcom_glink_rpdev_release;
- 
- 		ret = rpmsg_register_device(rpdev);
- 		if (ret)
- 			goto rcid_remove;
- 
-+		/*
-+		 * Declare all channels as wakeup capable, but don't enable
-+		 * waking up by default.
-+		 *
-+		 * Userspace may wish to be woken up for incoming messages on a
-+		 * specific channel, for example to handle incoming calls or SMS
-+		 * messages on the IPCRTR channel. This can be done by enabling
-+		 * the wakeup source via sysfs.
-+		 */
-+		device_set_wakeup_capable(&rpdev->dev, true);
-+
- 		channel->rpdev = rpdev;
- 	}
+ 	/* wake up any blocking processes, waiting for new data */
+ 	wake_up_interruptible(&eptdev->readq);
++	pm_wakeup_hard_event(&eptdev->dev);
  
  	return 0;
+ }
  
- rcid_remove:
- 	spin_lock_irqsave(&glink->idr_lock, flags);
- 	idr_remove(&glink->rcids, channel->rcid);
+ static int rpmsg_ept_flow_cb(struct rpmsg_device *rpdev, void *priv, bool enable)
+ {
+ 	struct rpmsg_eptdev *eptdev = priv;
+ 
+@@ -446,16 +447,17 @@ static struct rpmsg_eptdev *rpmsg_chrdev_eptdev_alloc(struct rpmsg_device *rpdev
+ 	skb_queue_head_init(&eptdev->queue);
+ 	init_waitqueue_head(&eptdev->readq);
+ 
+ 	device_initialize(dev);
+ 	dev->class = &rpmsg_class;
+ 	dev->parent = parent;
+ 	dev->groups = rpmsg_eptdev_groups;
+ 	dev_set_drvdata(dev, eptdev);
++	device_set_wakeup_capable(dev, true);
+ 
+ 	cdev_init(&eptdev->cdev, &rpmsg_eptdev_fops);
+ 	eptdev->cdev.owner = THIS_MODULE;
+ 
+ 	return eptdev;
+ }
+ 
+ static int rpmsg_chrdev_eptdev_add(struct rpmsg_eptdev *eptdev, struct rpmsg_channel_info chinfo)
 
 -- 
 2.55.0
