@@ -1,81 +1,151 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Sun, 22 Nov 2026 08:17:26 +0000
-Subject: [PATCH net] net: reuseport: honour SO_LOCK_FILTER in
- SO_DETACH_REUSEPORT_BPF
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Date: Sun, 22 Nov 2026 09:01:05 +0000
+Subject: [PATCH v2] mfd: syscon: Give each syscon its own lockdep class
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-reuseport-lock-filter-v1-1-a3e5324c8d55@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABWlAmsC/yWMQQrCMBBFr1Jm7UAzC0WvIi7a+KOjJSkzqQild
- zcq/M378N5KDlM4nbqVDC91LblB2HUU70O+gfXamKSXfQgibFgcc7HKU4lPTjpVGPfD8dAGSWO
- k5s6GpO9f90wZlS7/05fxgVi/Rdq2D9MIuAV+AAAA
-X-Change-ID: 20261122-reuseport-lock-filter-0a97a97e2fbc
-To: pabeni@redhat.com, edumazet@kernel.org, davem@davemloft.net, 
- kuba@kernel.org, kuniyu@google.com, willemb@google.com
-Cc: netdev@vger.kernel.org, bpf@vger.kernel.org, martin.lau@linux.dev, 
- linux-kernel@vger.kernel.org, horms@kernel.org
+Message-Id: <20261122-syscon-lockdep-v2-1-868056a6a808@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12Q22rDMAyGXyX4eh6R7Rwpo+9RemEpSus1ibs4C
+ Ssl774cOga7/ED6/096isC94yDK6Cl6nlxwvltAvUWCrra7sHTVwkLFKgWARIZHIN/JxtOt4ru
+ sQOsak5wUsliW7j3X7nsLPJ13DiN+Mg1rymui569xaRr2MdFyCHZrKqPDq6j4LaLmJkdbywkky
+ IqMNQTIOtHHS2td806+/Vhj0QaWC7RuKCMgzFSaY5rqnAxATVrVOtNcpAljjrbgAhUasSpeXRh
+ 8/9heMMFmtEuo+P+1m4TlKssKG8cG8z8JcZ7n+QcGrh23TwEAAA==
+X-Change-ID: 20261115-syscon-lockdep-d133fb58c2be
+To: Lee Jones <lee@kernel.org>, Arnd Bergmann <arnd@arndb.de>
+Cc: mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ Mark Brown <broonie@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ linux-rockchip@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795335446; l=1823;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=mUix/dSzrnbiMpxouGrm26+4a6yRQiNkofJT/Rp0r4M=;
- b=C1HoG1h2Yi2qB7Kdc+loDObrbf9S1VJqaIK5MIwN6f++LFKuMYPoKCW2ZkeSJiVs9NmNBGxi0
- mtivHQUnok/AMsBnjA4qQrkHfDt9B432CJehtFfaLM26ZDiEE7c7I55
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795338064; l=4034;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=891oUdhj4DaGdagCnYKDL4s/TeHvsuAZqehCwJn+lk0=;
+ b=20u1VWFtJ9IxfpiChtYKMa2hCcY2YOfQVM7WdqvVfAw9aTT+ndMiIRLUGz4AHmbeV6uIYswCC
+ c1oDlzufNhRAD0TlZyZGQBCap4B/Oq09srlpCeGsCy0zJ8yTPu/uQPh
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+All syscon regmaps share one lockdep class, as regmap_init_mmio() uses a
+static key per call site. Lockdep then mixes up unrelated syscons: on
+RK3588 the clock-gated VO1 GRF calls clk_enable() under its regmap lock,
+while the CRU's GRF gates take the SYS GRF regmap lock under enable_lock.
+This is reported as a circular dependency and disables lockdep.
 
-SO_LOCK_FILTER lets a process lock the filters on a socket before
-handing it to a less privileged one. Once it is set, the existing attach
-and detach paths reject changes to the socket's BPF filters with -EPERM,
-but SO_DETACH_REUSEPORT_BPF does not check SOCK_FILTER_LOCKED. So an
-unprivileged process that receives a locked socket can still remove the
-reuseport program, which then changes how packets and connections are
-spread over the whole reuseport group.
+Lock each syscon regmap with its own spinlock and lockdep class.
 
-Return -EPERM from reuseport_detach_prog() when the filter is locked,
-like sk_detach_filter() does.
-
-Found with a static analysis tool and checked by hand.
-
-Fixes: 99f3a064bc2e ("bpf: net: Add SO_DETACH_REUSEPORT_BPF")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Tested in QEMU (x86_64): root binds a UDP socket with SO_REUSEPORT,
-attaches a reuseport cBPF program and sets SO_LOCK_FILTER, then a child
-running as nobody uses the inherited socket.
+Tested on an Orange Pi 5 (RK3588S) with a 7.3 based kernel that has
+out-of-tree DisplayPort patches, lockdep and KASAN on. Without the patch
+lockdep reports the cycle during boot. With it /proc/lockdep shows one
+syscon lock -> enable_lock and enable_lock -> another syscon lock, there
+is no report and lockdep stays on. Build-tested on for-mfd-next.
 
-Before:
-  SO_ATTACH_REUSEPORT_CBPF: EPERM
-  SO_DETACH_FILTER:         EPERM
-  SO_DETACH_REUSEPORT_BPF:  succeeds, the program is gone
+Applies on top of "mfd: syscon: Put the clock after regmap_exit()":
+https://lore.kernel.org/r/20261119-syscon-clk-uaf-v1-1-dc4a4c1be353@gmail.com
 
-After:
-
-SO_DETACH_REUSEPORT_BPF: EPERM as well
+Developed with Claude (Anthropic), which wrote the code and the commit
+message. I reviewed every change.
 ---
- net/core/sock_reuseport.c | 3 +++
- 1 file changed, 3 insertions(+)
+Changes in v2:
+- __acquires/__releases: name the argument, not a local (Sashiko).
+- Link to v1: https://patch.msgid.link/20261120-syscon-lockdep-v1-1-aed779a004b8@gmail.com
+---
+ drivers/mfd/syscon.c | 36 +++++++++++++++++++++++++++++++++++-
+ 1 file changed, 35 insertions(+), 1 deletion(-)
 
-diff --git a/net/core/sock_reuseport.c b/net/core/sock_reuseport.c
-index b9e5648fa4c5..cdff61161a70 100644
---- a/net/core/sock_reuseport.c
-+++ b/net/core/sock_reuseport.c
-@@ -727,6 +727,9 @@ int reuseport_detach_prog(struct sock *sk)
- 	struct sock_reuseport *reuse;
- 	struct bpf_prog *old_prog;
+diff --git a/drivers/mfd/syscon.c b/drivers/mfd/syscon.c
+index 3ff4e024542b..480ac178968a 100644
+--- a/drivers/mfd/syscon.c
++++ b/drivers/mfd/syscon.c
+@@ -13,6 +13,7 @@
+ #include <linux/err.h>
+ #include <linux/hwspinlock.h>
+ #include <linux/list.h>
++#include <linux/lockdep.h>
+ #include <linux/mutex.h>
+ #include <linux/of.h>
+ #include <linux/of_address.h>
+@@ -20,6 +21,7 @@
+ #include <linux/reset.h>
+ #include <linux/mfd/syscon.h>
+ #include <linux/slab.h>
++#include <linux/spinlock.h>
  
-+	if (sock_flag(sk, SOCK_FILTER_LOCKED))
-+		return -EPERM;
+ static DEFINE_MUTEX(syscon_list_lock);
+ static LIST_HEAD(syscon_list);
+@@ -29,8 +31,29 @@ struct syscon {
+ 	struct regmap *regmap;
+ 	struct reset_control *reset;
+ 	struct list_head list;
++	spinlock_t lock;
++	unsigned long lock_flags;
++	struct lock_class_key lock_key;
+ };
+ 
++static void syscon_lock(void *arg)
++__acquires(&((struct syscon *)arg)->lock)
++{
++	struct syscon *syscon = arg;
++	unsigned long flags;
 +
- 	old_prog = NULL;
- 	spin_lock_bh(&reuseport_lock);
- 	reuse = rcu_dereference_protected(sk->sk_reuseport_cb,
++	spin_lock_irqsave(&syscon->lock, flags);
++	syscon->lock_flags = flags;
++}
++
++static void syscon_unlock(void *arg)
++__releases(&((struct syscon *)arg)->lock)
++{
++	struct syscon *syscon = arg;
++
++	spin_unlock_irqrestore(&syscon->lock, syscon->lock_flags);
++}
++
+ static const struct regmap_config syscon_regmap_config = {
+ 	.reg_bits = 32,
+ 	.val_bits = 32,
+@@ -114,12 +137,21 @@ static struct syscon *of_syscon_register(struct device_node *np, bool check_res)
+ 	if (!syscon_config.max_register)
+ 		syscon_config.max_register_is_0 = true;
+ 
++	lockdep_register_key(&syscon->lock_key);
++	spin_lock_init(&syscon->lock);
++	lockdep_set_class(&syscon->lock, &syscon->lock_key);
++	if (!syscon_config.use_hwlock) {
++		syscon_config.lock = syscon_lock;
++		syscon_config.unlock = syscon_unlock;
++		syscon_config.lock_arg = syscon;
++	}
++
+ 	regmap = regmap_init_mmio(NULL, base, &syscon_config);
+ 	kfree(syscon_config.name);
+ 	if (IS_ERR(regmap)) {
+ 		pr_err("regmap init failed\n");
+ 		ret = PTR_ERR(regmap);
+-		goto err_regmap;
++		goto err_key;
+ 	}
+ 
+ 	if (check_res) {
+@@ -159,6 +191,8 @@ static struct syscon *of_syscon_register(struct device_node *np, bool check_res)
+ 	regmap_exit(regmap);
+ 	if (!IS_ERR(clk))
+ 		clk_put(clk);
++err_key:
++	lockdep_unregister_key(&syscon->lock_key);
+ err_regmap:
+ 	iounmap(base);
+ 	return ERR_PTR(ret);
 
+---
+base-commit: 1cb7268b6638c411fc32f373e965eb8ba9e9b2b4
+change-id: 20261115-syscon-lockdep-d133fb58c2be
+prerequisite-message-id: <20261119-syscon-clk-uaf-v1-1-dc4a4c1be353@gmail.com>
+prerequisite-patch-id: 7cf33abeabb3eeaf1ba8ac6c461726fca87702cd
 
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
