@@ -1,200 +1,202 @@
 From: YanXin Li <fadouse@pm.me>
-Date: Sun, 22 Nov 2026 12:46:23 +0800
-Subject: [PATCH v2] erofs: validate fsoffset alignment and bound page reads
+Date: Sun, 22 Nov 2026 12:46:51 +0800
+Subject: [PATCH bpf v2] bpf: bound arena allocations to the user VMA
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-b4-01-erofs-fsoffset-oob-v2-9c629f3ad714-v2-1-2cfb14e36120@pm.me>
-X-B4-Tracking: v=1; b=H4sIAJ5zAmsC/yWNywrCMBBFf0WydjCZDGnqr4iLPCY2Io0ktSil/
- 26ry3O4nLuIxjVzE+fDIirPueUyboDHgwiDG28MOW4sUKJRChE8gVTAtaQGqZWUGk9QiocZoQ8
- G+6Rd7BRB8Nqx1F2QNogt96yc8vt3dbn+ub38ncO09/eFd43BVzeGYVeVH+4DuzwFIiUpaUMYX
- YdSGZKEBjWT1Wi1cZxitCzW9QuEh/V20gAAAA==
-X-Change-ID: 20261122-b4-01-erofs-fsoffset-oob-v2-9c629f3ad714-cb3ae037c08c
-To: Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>
-Cc: Yue Hu <zbestahu@gmail.com>, Jingbo Xu <jefflexu@163.com>, 
- Sandeep Dhavale <dhavale@google.com>, Hongbo Li <hongbohbli@tencent.com>, 
- Chunhai Guo <guochunhai@vivo.com>, Sheng Yong <shengyong@oppo.com>, 
- Wang Shuai <wangshuai@vivo.com>, linux-erofs@lists.ozlabs.org, 
+Message-Id: <20261122-b4-03-bpf-arena-vmalloc-oob-v2-5f6209c1a20e-v2-1-b2a9906e9676@pm.me>
+X-B4-Tracking: v=1; b=H4sIALpzAmsC/yWN0W7CMAxFfwX5GQvH8ULhVyYenNSBoNJWyag2I
+ f597fZ4j67OeUGzWqzBefeCaktpZRrXwfsdpJuOV8PSrxuYODjHjFGQPMY5o1YbFZeHDsOUcJo
+ iLowfOTCdklMmQ8oU4il7UjFYjXO1XL7/ap+wKuDyD9sz3i19bZ3tFrUZxqpjum2o2qA/uMFDE
+ nEk2QfhXo9MLggJB/YmnefOB7Xc953B+/0LMRrYLNoAAAA=
+X-Change-ID: 20261122-b4-03-bpf-arena-vmalloc-oob-v2-5f6209c1a20e-0f06b9f30a4e
+To: Alexei Starovoitov <ast@kernel.org>, 
+ Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>
+Cc: Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, bpf@vger.kernel.org, 
  linux-kernel@vger.kernel.org, stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795322797; l=7178;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795322826; l=7440;
  i=fadouse@pm.me; s=b4-relay-20261122; h=from:subject:message-id;
- bh=Wvl+4siWCTHC5VLaWnvqO2sRLCn+iDgqK8uK0hXOfC8=;
- b=/nf+CJBS+fU27OaAersTWTnqJ8v1KBQ51nisN8qdUoJWZiXmbE5xvy2CtsTCSWvxkHvpW+v5K
- 49/2XXmC6j6D840PoK8YWrYHPV95HfNIIVC9Nm8CWkeGJrCMrp6/jNa
+ bh=DPOtTXYJ4A1Nsdzdq03zG2Y5kDlcW+p1iolpXZYER2w=;
+ b=DA4j9fo2bRLcEcu9pwke58tYN2uokIfmZv5IhsOq04QPUxGY+/ZKHUdhW5CZAj5aAJ3QUxoo/
+ 6hySkBljCgLAkwQ1KLnhrUauSnQhllFZHf+su0Y5fIiZblytKkqtIH0
 X-Developer-Key: i=fadouse@pm.me; a=ed25519;
  pk=b4DyzHJDRd8853IHUSKPA5wwzChj8eF4MTnZuyPz1PQ=
 X-Endpoint-Received: by B4 Relay for fadouse@pm.me/b4-relay-20261122 with auth_id=1597
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-erofs_fc_parse_param() stores an arbitrary 64-bit fsoffset= mount
-option into sbi->dif0.fsoff without checking alignment, and
-erofs_fc_fill_super() calls erofs_read_superblock() before checking
-whether fsoffset is aligned to sb->s_blocksize.
+bpf_arena_alloc_pages() hands out page ranges from the arena's range
+tree, which is initialized to max_entries pages, while the kernel
+mapping of those pages is built at kern_vm_start + (u32)user_addr.
+The fixed-address path and bpf_arena_free_pages() both assume that a
+returned range stays inside the user VMA, so that its lower 32 bits
+do not wrap past the end of the arena's 4 GiB kernel vm area:
 
-In block-device mode, erofs_init_metabuf() sets buf->off to
-sbi->dif0.fsoff, and erofs_bread() maps a single PAGE_SIZE page via
-kmap_local_page() and returns buf->base + ((buf->off + offset) &
-~PAGE_MASK).  erofs_read_superblock() calls erofs_read_metabuf(&buf,
-sb, 0, false) and adds EROFS_SUPER_OFFSET (1024) to the returned
-pointer.  When (fsoffset & ~PAGE_MASK) + 1024 + sizeof(*dsb) exceeds
-PAGE_SIZE (including a valid 1024-byte-aligned fsoffset=3072 on a
-1 KiB-block image, or an unaligned fsoffset=4095), dsb points past
-the end of the mapped page.  On a 1 KiB-block EROFS image mounted
-at fsoffset=3072, Generic KASAN reports:
+    long page_cnt_max = (user_vm_end - user_vm_start) >> PAGE_SHIFT;
+    ...
+    if (uaddr) {
+            ...
+            if (pgoff > page_cnt_max - page_cnt)
+                    return 0;   /* bound only on the fixed-address path */
+    }
+    ret = arena_adjust_tree(arena, uaddr, page_cnt, &pgoff);
+    ...
+    uaddr32 = (u32)(user_vm_start + pgoff * PAGE_SIZE);
 
-  BUG: KASAN: use-after-free in erofs_fc_fill_super+0x2b04/0x36c0
-  Read of size 4 at addr ffff88800f8c1000 by task test_erofs_fsof/102
-  ...
-  erofs_fc_fill_super
-  get_tree_bdev_flags
-  erofs_fc_get_tree
-  vfs_get_tree
-  fc_mount
-  path_mount
-  __x64_sys_mount
+When map_extra is not given, arena_map_alloc() does not know the user
+address and accepts any mmap() length up to max_entries pages, and
+arena_get_unmapped_area() only requires that the mapping does not cross
+a 4 GiB boundary.  A process can therefore mmap() a VMA that ends
+exactly at a 4 GiB boundary while max_entries is much larger: for
+max_entries = 2^20 and a 288-page VMA at 0xffee0000, the range tree
+still holds free pages past the VMA, and arena_adjust_tree() hands
+them out on the uaddr == 0 path with no bound on pgoff + page_cnt
+against page_cnt_max.  A program that first allocates 287 pages and
+then asks for 288 more receives pgoff = 287, uaddr32 = 0xfffff000,
+and arena_alloc_pages() maps 288 pages at kern_vm_start + 0xfffff000:
+one page inside the VMA, then the arena's upper guard pages, and then
+258 pages into the vmalloc area past the end of the arena's own
+vmap area - installing PTEs into address space the arena does not own
+and returning a "success" pointer to the caller.
 
-The KASAN classification reflects that the adjacent physical page was
-free; the source-level operation is an out-of-page read at offset
-0x1000 past the mapped folio page.  Two related out-of-page reads
-occur on the same path: erofs_superblock_csum_verify() checksums up
-to (1 << blkszbits) - 1032 bytes past dsb->checksum before fsoffset
-alignment is checked (reading up to 2048 bytes past the page for a
-4 KiB-block image at fsoffset=2048), and erofs_read_metadata() bounds
-each memcpy() chunk by sb->s_blocksize - erofs_blkoff(sb, *offset)
-without accounting for buf->off (reading past the mapped page during
-z_erofs_parse_cfgs() even for a valid block-aligned fsoffset=2048).
+The damage cannot be undone: arena_free_pages() clips every free to
+the VMA, so the pages mapped past kern_vm_start + 4 GiB are never
+freed, arena_map_free() only walks the arena's own area, and the stale
+PTEs and leaked pages survive the destruction of the map.  A second
+arena whose kernel area happens to follow the first one receives
+PTEs for pages it does not own; its user-visible arena_vm_fault()
+finds them with vmalloc_to_page() and maps another map's pages into
+its own user VMA.  When the walk instead reaches an already-mapped
+foreign PTE, apply_range_set_cb() reports
 
-Mounting EROFS on a block device requires CAP_SYS_ADMIN in the
-initial user namespace.  A relevant boundary is a privileged image
-mounter or container runtime passing a caller-influenced fsoffset=
-option or mounting an EROFS image embedded at a sub-page block
-offset.
+    WARNING: kernel/bpf/arena.c:190 at apply_range_set_cb+0x4d9/0x830
 
-Reject fsoffset values that are not 512-byte aligned in
-erofs_fc_parse_param(), read the superblock via
-erofs_read_metabuf(&buf, sb, EROFS_SUPER_OFFSET, false), verify
-fsoffset alignment against (1UL << sbi->blkszbits) in
-erofs_read_superblock() before erofs_superblock_csum_verify(), pass
-dsb directly to erofs_superblock_csum_verify(), and clamp each copy
-in erofs_read_metadata() by PAGE_SIZE - offset_in_page(buf->off +
-*offset).  With this change, a valid 1 KiB-block image at
-fsoffset=3072 and a valid 2 KiB-block compressed-config image at
-fsoffset=2048 mount cleanly without KASAN reports, while misaligned
-fsoffset=2048 (4 KiB blocks) and fsoffset=4095 are rejected with
--EINVAL before any checksum or out-of-page access.  Z3 SMT checking
-confirms all three out-of-page conditions are unreachable for any
-valid block size and offset after the fix.  A test case and full
-validation logs are available on request.
+after failing to install into the neighbour's page.  Any program that
+may use an arena map (CAP_BPF, or an arena delegated through a BPF
+token from a user namespace) can reach this; no race is needed.
 
-The vulnerable code is present in upstream mainline v7.4-rc3.
-Runtime verification and fix validation were performed in an x86-64
-QEMU/KVM guest running v7.4-rc3 with Generic KASAN, UBSAN, and
-lockdep.
+Fix this on both sides.  On the first mmap() of a map created without
+map_extra, mark [vma_pages, max_entries) as allocated in the range
+tree, because nothing outside the VMA can ever be freed or mapped
+without wrapping; no program can allocate before user_vm_start is
+set, and the same mmap() path already serializes on arena->lock.  And
+reject pgoff ranges past the VMA in arena_adjust_tree() with -ERANGE,
+mirroring the existing page_cnt_max check of the fixed-address path,
+so that even a stale tree entry cannot hand out an unwrappable range.
 
-Fixes: c36ec00d7f67 ("erofs: add 'fsoffset' mount option to specify filesystem offset")
+This issue was found through LLM-assisted code audit and manual code
+inspection of kernel/bpf/arena.c, and then checked with a Z3 SMT model
+and reproduced locally with a custom BPF test program in an x86-64
+QEMU/KVM guest running v7.4-rc3 with KASAN, UBSAN, lockdep, and
+DEBUG_OBJECTS enabled.
+
+With a map created without map_extra and a 288-page VMA ending at a
+4 GiB boundary, calling bpf_arena_alloc_pages() reproduced both the
+out-of-VMA vmalloc mapping into an adjacent arena and the
+WARNING: kernel/bpf/arena.c:190 at apply_range_set_cb().  After
+applying the patch, the wrapped allocation returns NULL while in-VMA
+allocations continue to succeed with no kernel warnings.
+
+A test case and full validation logs are available on request.
+
+Fixes: 317460317a02 ("bpf: Introduce bpf_arena.")
 Cc: stable@vger.kernel.org
 Signed-off-by: YanXin Li <fadouse@pm.me>
 ---
 Changes in v2:
 - Resend via B4 Relay because the original email gained extra blank lines.
+- Document how the issue was found and verified.
 - No code changes.
-- Link to v1: https://lore.kernel.org/r/20261122030055.8408-1-fadouse@pm.me
+- Link to v1: https://lore.kernel.org/r/20261122031025.9771-1-fadouse@pm.me
 ---
- fs/erofs/super.c | 28 ++++++++++++++++------------
- 1 file changed, 16 insertions(+), 12 deletions(-)
+ kernel/bpf/arena.c | 44 ++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 42 insertions(+), 2 deletions(-)
 
-diff --git a/fs/erofs/super.c b/fs/erofs/super.c
-index e92a7fa90ae..66ba9dbd8ff 100644
---- a/fs/erofs/super.c
-+++ b/fs/erofs/super.c
-@@ -38,9 +38,9 @@ void _erofs_printk(struct super_block *sb, const char *fmt, ...)
- 	va_end(args);
+diff --git a/kernel/bpf/arena.c b/kernel/bpf/arena.c
+index ec2bda1a6eb..8adc2d589c7 100644
+--- a/kernel/bpf/arena.c
++++ b/kernel/bpf/arena.c
+@@ -694,6 +694,34 @@ static int arena_map_mmap(struct bpf_map *map, struct vm_area_struct *vma)
+ 	if (remember_vma(arena, vma))
+ 		return -ENOMEM;
+ 
++	if (!arena->user_vm_start && vma_pages(vma) < map->max_entries) {
++		/*
++		 * The range tree spans max_entries pages, but the user VMA
++		 * set below is smaller and its lower 32 bits do not wrap
++		 * past the 32-bit boundary.  Mark the pages past the VMA as
++		 * allocated so that bpf_arena_alloc_pages() can never hand
++		 * out a range that would be mapped past the end of the
++		 * arena's kernel vm area and could never be freed.
++		 */
++		unsigned long flags;
++		int ret = -EBUSY;
++
++		if (!raw_res_spin_lock_irqsave(&arena->spinlock, flags)) {
++			ret = range_tree_clear(&arena->rt, vma_pages(vma),
++					       map->max_entries - vma_pages(vma));
++			raw_res_spin_unlock_irqrestore(&arena->spinlock, flags);
++			WARN_ON_ONCE(ret);
++		}
++		if (ret) {
++			struct vma_list *vml = vma->vm_private_data;
++
++			list_del(&vml->head);
++			vma->vm_private_data = NULL;
++			kfree(vml);
++			return ret;
++		}
++	}
++
+ 	arena->user_vm_start = vma->vm_start;
+ 	arena->user_vm_end = vma->vm_end;
+ 	/*
+@@ -743,7 +771,8 @@ static u64 clear_lo32(u64 val)
+ 	return val & ~(u64)~0U;
  }
  
--static int erofs_superblock_csum_verify(struct super_block *sb, void *sbdata)
-+static int erofs_superblock_csum_verify(struct super_block *sb,
-+					struct erofs_super_block *dsb)
+-static int arena_adjust_tree(struct bpf_arena *arena, long uaddr, long page_cnt, long *pgoff)
++static int arena_adjust_tree(struct bpf_arena *arena, long uaddr, long page_cnt,
++			     long page_cnt_max, long *pgoff)
  {
--	struct erofs_super_block *dsb = sbdata + EROFS_SUPER_OFFSET;
- 	u32 len = 1 << EROFS_SB(sb)->blkszbits, crc;
- 
- 	if (len > EROFS_SUPER_OFFSET)
-@@ -109,7 +109,7 @@ void *erofs_read_metadata(struct super_block *sb, struct erofs_buf *buf,
- 	*lengthp = len;
- 
- 	for (i = 0; i < len; i += cnt) {
--		cnt = min_t(int, sb->s_blocksize - erofs_blkoff(sb, *offset),
-+		cnt = min_t(int, PAGE_SIZE - offset_in_page(buf->off + *offset),
- 			    len - i);
- 		ptr = erofs_bread(buf, *offset, true);
- 		if (IS_ERR(ptr)) {
-@@ -268,16 +268,14 @@ static int erofs_read_superblock(struct super_block *sb)
- 	struct erofs_sb_info *sbi = EROFS_SB(sb);
- 	struct erofs_buf buf = __EROFS_BUF_INITIALIZER;
- 	struct erofs_super_block *dsb;
--	void *data;
  	int ret;
  
--	data = erofs_read_metabuf(&buf, sb, 0, false);
--	if (IS_ERR(data)) {
-+	dsb = erofs_read_metabuf(&buf, sb, EROFS_SUPER_OFFSET, false);
-+	if (IS_ERR(dsb)) {
- 		erofs_err(sb, "cannot read erofs superblock");
--		return PTR_ERR(data);
-+		return PTR_ERR(dsb);
- 	}
+@@ -759,6 +788,17 @@ static int arena_adjust_tree(struct bpf_arena *arena, long uaddr, long page_cnt,
+ 	if (ret < 0)
+ 		return ret;
  
--	dsb = (struct erofs_super_block *)(data + EROFS_SUPER_OFFSET);
- 	ret = -EINVAL;
- 	if (le32_to_cpu(dsb->magic) != EROFS_SUPER_MAGIC_V1) {
- 		erofs_err(sb, "cannot find valid erofs superblock");
-@@ -289,6 +287,11 @@ static int erofs_read_superblock(struct super_block *sb)
- 		erofs_err(sb, "blkszbits %u isn't supported", sbi->blkszbits);
- 		goto out;
- 	}
-+	if (sbi->dif0.fsoff & ((1UL << sbi->blkszbits) - 1)) {
-+		erofs_err(sb, "fsoffset %llu is not aligned to block size %lu",
-+			  sbi->dif0.fsoff, 1UL << sbi->blkszbits);
-+		goto out;
-+	}
- 	if (dsb->dirblkbits) {
- 		erofs_err(sb, "dirblkbits %u isn't supported", dsb->dirblkbits);
- 		goto out;
-@@ -296,7 +299,7 @@ static int erofs_read_superblock(struct super_block *sb)
++	/*
++	 * The range tree spans max_entries pages, but when map_extra was
++	 * not given at arena creation time the user VMA, and hence the
++	 * range whose lower 32 bits do not wrap past the 32-bit boundary,
++	 * can be smaller.  A pgoff past the VMA would wrap uaddr32 past
++	 * the 32-bit boundary, be mapped past the end of the arena's
++	 * kernel vm area, and could never be freed, so reject it.
++	 */
++	if (ret > page_cnt_max - page_cnt)
++		return -ERANGE;
++
+ 	*pgoff = ret;
  
- 	sbi->feature_compat = le32_to_cpu(dsb->feature_compat);
- 	if (erofs_sb_has_sb_chksum(sbi)) {
--		ret = erofs_superblock_csum_verify(sb, data);
-+		ret = erofs_superblock_csum_verify(sb, dsb);
- 		if (ret)
- 			goto out;
- 	}
-@@ -569,6 +572,10 @@ static int erofs_fc_parse_param(struct fs_context *fc,
- 			clear_opt(&sbi->opt, DIRECT_IO);
- 		break;
- 	case Opt_fsoffset:
-+		if (result.uint_64 & (SECTOR_SIZE - 1))
-+			return invalfc(fc,
-+				       "fsoffset %llu is not 512-byte aligned",
-+				       result.uint_64);
- 		sbi->dif0.fsoff = result.uint_64;
- 		break;
- 	case Opt_inode_share:
-@@ -758,9 +765,6 @@ static int erofs_fc_fill_super(struct super_block *sb, struct fs_context *fc)
- 			return -EINVAL;
- 		}
- 	}
--	if (sbi->dif0.fsoff & (sb->s_blocksize - 1))
--		return invalfc(fc, "fsoffset %llu is not aligned to block size %lu",
--			       sbi->dif0.fsoff, sb->s_blocksize);
+ 	return range_tree_clear(&arena->rt, *pgoff, page_cnt);
+@@ -812,7 +852,7 @@ static long arena_alloc_pages(struct bpf_arena *arena, long uaddr, long page_cnt
+ 	if (raw_res_spin_lock_irqsave(&arena->spinlock, flags))
+ 		goto out_free_pages;
  
- 	if (test_opt(&sbi->opt, DAX_ALWAYS) && sbi->blkszbits != PAGE_SHIFT) {
- 		erofs_info(sb, "unsupported blocksize for DAX");
+-	ret = arena_adjust_tree(arena, uaddr, page_cnt, &pgoff);
++	ret = arena_adjust_tree(arena, uaddr, page_cnt, page_cnt_max, &pgoff);
+ 	if (ret) {
+ 		raw_res_spin_unlock_irqrestore(&arena->spinlock, flags);
+ 		goto out_free_pages;
 
 ---
 base-commit: c44104f3642da720164042623e4832836aefdd8e
-change-id: 20261122-b4-01-erofs-fsoffset-oob-v2-9c629f3ad714-cb3ae037c08c
+change-id: 20261122-b4-03-bpf-arena-vmalloc-oob-v2-5f6209c1a20e-0f06b9f30a4e
 
 Best regards,
 --  
