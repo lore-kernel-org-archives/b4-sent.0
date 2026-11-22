@@ -1,75 +1,67 @@
-From: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
-Date: Sun, 22 Nov 2026 10:08:30 -0300
-Subject: [PATCH v2] docs/translations/pt_BR: process: clarify patch
- granularity
+From: Oleg Antonyan <oleg.b.antonyan@gmail.com>
+Date: Sun, 22 Nov 2026 14:18:37 +0100
+Subject: [PATCH] ALSA: hda/realtek: Fix headset mic on ASUS Zenbook S 13
+ UX5304MA
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261122-pt-br-5-posting-send2-v2-1-2a5cf9f667c3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7RhmRExceQ/DopQBxkhL2ko0h
- LsLeACXL3n//RmiBJUI12yGIJNG9W4FPmRge+M6QW1WBs65JGLGMWEd8Iyjj0ldh1Fcw8iloeZ
- ki5zYwLodg7T63rv36sfxVT/Epi22Gb3G5MNnP55o8/59TISELJb5UpRtS3LrBqPPo/UDVMuyf
- AHQ4sf3zAAAAA==
-X-Change-ID: 20261122-pt-br-5-posting-send2-26a1d3c4012a
-To: linux-doc@vger.kernel.org
-Cc: corbet@lwn.net, skhan@linuxfoundation.org, danielmaraboo@gmail.com, 
- rdunlap@infradead.org, Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261122-ux5304ma-headset-mic-v1-1-80589ae749a8@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKzrAmsC/yXMQQ6CMBBG4auQWTtJO2KDXsWwqOVHxgQ0HTAkh
+ Ltbdfkt3tvIkBVGl2qjjLeaPqcCf6goDXG6g7UrJnESvBfhZT0dXT1GHhA7w8yjJoYATQh1484
+ 9lfSV0ev6217bv225PZDm74v2/QPbQQspeAAAAA==
+X-Change-ID: 20261122-ux5304ma-headset-mic-e2ee8664809f
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Stefan Binding <sbinding@opensource.cirrus.com>
+Cc: Takashi Iwai <tiwai@suse.de>, linux-sound@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Oleg Antonyan <oleg.b.antonyan@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795352909; l=2178;
- i=dreduardocruz@gmail.com; s=20261119; h=from:subject:message-id;
- bh=c58uGNc4Z4NMrxaT4PtvM3u4XHZh5Uh6h+ehiwoSUzU=;
- b=CJ4jstM6DDpQYeuN00WhD8yTMimx+wkWIFsSr9WgajOCOJFYSXY4AeyYJd/tuoXdfBr11wWQE
- yYLX5n3XEZfDGG0t/rE8yYmmFgvTKw9vOM6Z2lwY4Lwsy6RYB1EPJit
-X-Developer-Key: i=dreduardocruz@gmail.com; a=ed25519;
- pk=2dtL+BL/x70sROmAvlskv9dbjj274zlPkLBVu4gJJiA=
-X-Endpoint-Received: by B4 Relay for dreduardocruz@gmail.com/20261119 with auth_id=1571
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795353517; l=1835;
+ i=oleg.b.antonyan@gmail.com; s=20261122; h=from:subject:message-id;
+ bh=tTuD5gMzmbpXEeh4kAfA/ft27GJCym2dy3cdc5+lNNU=;
+ b=4TrP/nP+pzlrxDU+GUMC/J/I3G+a3TzxaR7aweX53XAOAUEl3sgzRbSnzwe7cltGJu2X5FKw4
+ CZxl6NTm/ZkDTdOUevh9EWvfhWv+T9HBSPAe+JwPj4PsWnEHc6Ks0my
+X-Developer-Key: i=oleg.b.antonyan@gmail.com; a=ed25519;
+ pk=AA4/X8a4Pvsu+cn8cLNZ3XDbM6VmZZJ57ZuDUycpXD0=
+X-Endpoint-Received: by B4 Relay for oleg.b.antonyan@gmail.com/20261122 with auth_id=1603
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Reword the guidance about patch granularity in 5.Posting.rst so that it
-reads naturally in Brazilian Portuguese and keeps the original meaning:
-a single patch may be reasonably large as long as it still contains one
-logical change.
+The ASUS Zenbook S 13 UX5304MA (1043:1c33) uses an ALC294 codec with
+CS35L41 amplifiers over SPI. Its BIOS leaves pin 0x19 unconfigured, so
+the headset mic on the combo jack does not work.
 
-Replace the reference to the developer's popularity with a neutral
-phrasing, avoiding the gendered expression used before.
+Use ALC294_FIXUP_ASUS_SPI_HEADSET_MIC like the UX3405MA and UX3402VA.
+It configures the headset mic pin and chains to
+ALC245_FIXUP_CS35L41_SPI_2 to keep the speakers working.
 
-No functional change; documentation only.
+Tested on a UX5304MA: headset mic, internal mic and speakers work.
 
-Signed-off-by: Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+Fixes: 61cbc08fdb04 ("ALSA: hda/realtek: Add quirks for ASUS 2024 Zenbooks")
+Cc: stable@vger.kernel.org
+Signed-off-by: Oleg Antonyan <oleg.b.antonyan@gmail.com>
 ---
-Changes in v2:
-- EDITME: describe what is new in this series revision.
-- EDITME: use bulletpoints and terse descriptions.
-- Link to v1: https://patch.msgid.link/20261122-pt-br-5-posting-send2-v1-1-2ec22746ff1e@gmail.com
----
- Documentation/translations/pt_BR/process/5.Posting.rst | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ sound/hda/codecs/realtek/alc269.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Documentation/translations/pt_BR/process/5.Posting.rst b/Documentation/translations/pt_BR/process/5.Posting.rst
-index 2ac7e5557805..4e14405bae06 100644
---- a/Documentation/translations/pt_BR/process/5.Posting.rst
-+++ b/Documentation/translations/pt_BR/process/5.Posting.rst
-@@ -118,10 +118,10 @@ que podem ajudar consideravelmente:
-    problemas.
- 
-  - No entanto, não exagere. Certa vez, um desenvolvedor enviou um conjunto de
--   edições em um único arquivo como 500 patches separados — um ato que não o
--   tornou a pessoa mais popular na lista de discussão do kernel. Um único patch
--   pode ser razoavelmente grande, desde que ainda contenha uma única alteração
--   *lógica*.
-+   edições em um único arquivo como 500 patches separados — um ato que não
-+   tornou essa pessoa a mais popular na lista de discussão do kernel. Um único
-+   patch pode ser razoavelmente grande, desde que ainda contenha uma única
-+   alteração *lógica*.
- 
-  - Pode ser tentador adicionar toda uma nova infraestrutura com uma série de
-    patches, mas deixar essa infraestrutura sem uso até que o patch final da série
+diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
+index a6b5e8987294..50bbb5b4529c 100644
+--- a/sound/hda/codecs/realtek/alc269.c
++++ b/sound/hda/codecs/realtek/alc269.c
+@@ -8213,7 +8213,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
+ 	SND_PCI_QUIRK(0x1043, 0x1bbd, "ASUS Z550MA", ALC255_FIXUP_ASUS_MIC_NO_PRESENCE),
+ 	SND_PCI_QUIRK(0x1043, 0x1c03, "ASUS UM3406HA", ALC294_FIXUP_ASUS_I2C_HEADSET_MIC),
+ 	SND_PCI_QUIRK(0x1043, 0x1c23, "Asus X55U", ALC269_FIXUP_LIMIT_INT_MIC_BOOST),
+-	SND_PCI_QUIRK(0x1043, 0x1c33, "ASUS UX5304MA", ALC245_FIXUP_CS35L41_SPI_2),
++	SND_PCI_QUIRK(0x1043, 0x1c33, "ASUS UX5304MA", ALC294_FIXUP_ASUS_SPI_HEADSET_MIC),
+ 	SND_PCI_QUIRK(0x1043, 0x1c43, "ASUS UX8406MA", ALC245_FIXUP_CS35L41_SPI_2),
+ 	SND_PCI_QUIRK(0x1043, 0x1c62, "ASUS GU603", ALC289_FIXUP_ASUS_GA401),
+ 	SND_PCI_QUIRK(0x1043, 0x1c63, "ASUS GU605M", ALC285_FIXUP_ASUS_GU605_SPI_SPEAKER2_TO_DAC1),
 
 ---
-base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
-change-id: 20261122-pt-br-5-posting-send2-26a1d3c4012a
+base-commit: 0dfd513a15573ffa21710f77c2926c3cbb81a7ed
+change-id: 20261122-ux5304ma-headset-mic-e2ee8664809f
 
 Best regards,
 --  
-Eduardo Pereira Cruz <dreduardocruz@gmail.com>
+Oleg Antonyan <oleg.b.antonyan@gmail.com>
 
