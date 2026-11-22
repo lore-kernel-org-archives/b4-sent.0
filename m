@@ -1,15 +1,13 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Subject: [PATCH 0/4] arm64: dts: qcom: qcs8550-retroidpocket: Enable
- displays
-Date: Sun, 22 Nov 2026 15:46:15 -0600
-Message-Id: <20261122-rp-qcs8550-display-v1-0-d513d9819a34@gmail.com>
+Date: Sun, 22 Nov 2026 15:46:16 -0600
+Subject: [PATCH 1/4] arm64: dts: qcom: qcs8550-retroidpocket-nova: Remove
+ pwm backlight
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSwqAMAwA0atI1gZMsf6uIi6KjRoQrQ2IIt7d4
- vItZh5QjsIKXfZA5FNU9i2B8gzGxW0zo/hkMIWpiAxhDHiM2lhboBcNq7vR123LhprSOwspDJE
- nuf5pP7zvB+gfyFtkAAAA
-X-Change-ID: 20261121-rp-qcs8550-display-d799e2184da5
+Message-Id: <20261122-rp-qcs8550-display-v1-1-d513d9819a34@gmail.com>
+References: <20261122-rp-qcs8550-display-v1-0-d513d9819a34@gmail.com>
+In-Reply-To: <20261122-rp-qcs8550-display-v1-0-d513d9819a34@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,34 +15,48 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795383979; l=788;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795383979; l=1203;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=UFvaZtlmbK3x3++gaX4C0nDXh3A1k4gRmCkgGdqnpQQ=;
- b=H4xkYsRP8yGDCMsqsSuE56jB94upcwQstyYQc3y8KFK/Ot/5fRg3f+T9EbyVDTCQkqzwix5i6
- YBo7VibGPlpB6x64qg1yRXULZuytc5+qXY3xt8h9akSXoPMDhcf7rWd
+ bh=179YKHLvNNa1LrCEnmKzvwXZC97Kf2YubmEHcIb0YwI=;
+ b=Eykh6KwoB5x0+roEJgHA/HVZqvPkoh7FKyFA0w2Q9xMGUY9XgzzWlwKkc8+36pUzeg0mJ6HKc
+ Ych0OYERGOzDAwingIzt1Z18qZaoHDmlxts84VEb6xEYhUd3CFA4raz
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This first cleans up unused / invalid backlight nodes, then enables the
-panel for each device.
+This device does not use a pwm backlight, it has a backlight controlled
+by dcs commands via the panel.
 
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Aaron Kling (4):
-      arm64: dts: qcom: qcs8550-retroidpocket-nova: Remove pwm backlight
-      arm64: dts: qcom: qcs8550-retroidpocket-nova: Enable panel
-      arm64: dts: qcom: qcs8550-retroidpocket-rp6: Remove pwm backlight
-      arm64: dts: qcom: qcs8550-retroidpocket-rp6: Enable panel
+ arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts | 12 ------------
+ 1 file changed, 12 deletions(-)
 
- .../boot/dts/qcom/qcs8550-retroidpocket-nova.dts   | 49 ++++++++++++++++-----
- .../boot/dts/qcom/qcs8550-retroidpocket-rp6.dts    | 51 +++++++++++++++++-----
- 2 files changed, 76 insertions(+), 24 deletions(-)
----
-base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
-change-id: 20261121-rp-qcs8550-display-d799e2184da5
+diff --git a/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts b/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts
+index 0a0546977a026..ef1356f4c34ce 100644
+--- a/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts
++++ b/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts
+@@ -10,18 +10,6 @@
+ 	model = "Retroid Pocket Nova";
+ 	compatible = "retroidpocket,nova", "qcom,qcs8550", "qcom,sm8550";
+ 
+-	backlight: backlight {
+-		compatible = "pwm-backlight";
+-		pwms = <&pmk8550_pwm 0 860000>;
+-		brightness-levels = <1023 0>;
+-		num-interpolated-steps = <1023>;
+-		default-brightness-level = <600>;
+-		power-supply = <&vph_pwr>;
+-		enable-gpios = <&pmk8550_gpios 5 GPIO_ACTIVE_HIGH>;
+-		pinctrl-0 = <&pwm_backlight_default>;
+-		pinctrl-names = "default";
+-	};
+-
+ 	vdd_disp_1v8: regulator-vdd-disp-1v8 {
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "vdd_disp_1v8";
 
-Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+2.56.0
 
