@@ -1,10 +1,10 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Date: Mon, 23 Nov 2026 00:37:49 +0530
-Subject: [PATCH v4 04/11] soc: qcom: ubwc: Add config for Molokai
+Date: Mon, 23 Nov 2026 00:37:50 +0530
+Subject: [PATCH v4 05/11] soc: qcom: pd-mapper: Add support for Molokai
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-molokai-soc-v4-4-851e5a9f4878@yahoo.com>
+Message-Id: <20261123-molokai-soc-v4-5-851e5a9f4878@yahoo.com>
 References: <20261123-molokai-soc-v4-0-851e5a9f4878@yahoo.com>
 In-Reply-To: <20261123-molokai-soc-v4-0-851e5a9f4878@yahoo.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -18,37 +18,35 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795374466; l=1024;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795374466; l=943;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=9lI0GDLg+ArIvmjuhBkr6Hwen5svXhSHz+Z0e79/fbg=;
- b=0OPQdu9iAsV5ofxbFyjRGWkLVQrDU3o4uxdeu5jcpSeS0ssCNUt+K/P3CMzaQL5K+cAt4rogB
- VrTxufy+h2pBoG9rAOh0zpdRfPUw8hjSMc0SLIYpw/eht7vSQzZn6yt
+ bh=IcJGBEFFIC1fLAxUDNSIKti4IwQ+MXiiJO13Sm2gbVs=;
+ b=HYkIeVzctKp6LHfZenicaHoFQbK51+hP8ykqv4hvrUOQ7HRWYHaLUIjCP10IL5HskF2EvYxF7
+ Sc0e7oI8a5gAmjWl3e6+9BlkilZwG63kiFc5tUhvnOkR4R7n6KRUwgs
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Molokai (SM8845) uses UBWC 6.0 with a highest bank bit of 16, like
-Kaanapali. Without an entry, the display subsystem fails to probe on
-Molokai based devices.
+Molokai (SM8845) has the same remoteproc protection domains as Kaanapali.
 
 Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
- drivers/soc/qcom/ubwc_config.c | 1 +
+ drivers/soc/qcom/qcom_pd_mapper.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/drivers/soc/qcom/ubwc_config.c b/drivers/soc/qcom/ubwc_config.c
-index 456995699fdb..7c1166c68551 100644
---- a/drivers/soc/qcom/ubwc_config.c
-+++ b/drivers/soc/qcom/ubwc_config.c
-@@ -130,6 +130,7 @@ static const struct of_device_id qcom_ubwc_configs[] __maybe_unused = {
- 	{ .compatible = "qcom,mahua", .data = &glymur_data },
- 	{ .compatible = "qcom,maili", .data = &ubwc_7_0_hbb16, },
- 	{ .compatible = "qcom,milos", .data = &milos_data },
-+	{ .compatible = "qcom,molokai", .data = &ubwc_6_0_hbb16 },
- 	{ .compatible = "qcom,msm8226", .data = &no_ubwc_data },
- 	{ .compatible = "qcom,msm8916", .data = &no_ubwc_data },
- 	{ .compatible = "qcom,msm8917", .data = &no_ubwc_data },
+diff --git a/drivers/soc/qcom/qcom_pd_mapper.c b/drivers/soc/qcom/qcom_pd_mapper.c
+index e38647f3d7fd..b7800d4f8370 100644
+--- a/drivers/soc/qcom/qcom_pd_mapper.c
++++ b/drivers/soc/qcom/qcom_pd_mapper.c
+@@ -634,6 +634,7 @@ static const struct of_device_id qcom_pdm_domains[] __maybe_unused = {
+ 	{ .compatible = "qcom,kaanapali", .data = kaanapali_domains, },
+ 	{ .compatible = "qcom,mahua", .data = glymur_domains, },
+ 	{ .compatible = "qcom,milos", .data = sm8550_domains, },
++	{ .compatible = "qcom,molokai", .data = kaanapali_domains, },
+ 	{ .compatible = "qcom,msm8226", .data = NULL, },
+ 	{ .compatible = "qcom,msm8909", .data = NULL, },
+ 	{ .compatible = "qcom,msm8916", .data = NULL, },
 
 -- 
 2.56.1
