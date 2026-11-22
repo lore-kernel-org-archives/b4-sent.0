@@ -1,22 +1,25 @@
 From: Suyuan Wang <shyckless@gmail.com>
-Date: Sun, 22 Nov 2026 10:08:16 +0000
-Subject: [PATCH] ALSA: sis7019: Don't shift the voice IRQ status by 32
+Date: Sun, 22 Nov 2026 10:11:52 +0000
+Subject: [PATCH] iommu/qcom: Disable clocks if restoring the secure config
+ fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-sis7019-voice-irq-v1-1-fa5d0cbecf62@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAA+/AmsC/yXMyw5AMBCF4VeRWWuiI0i9ilhQU8bCpYNIxLsrl
- l9Ozn+BkGcSKKMLPB0sPE8BOo7ADs3Uk+IuGDDBXGtEJSxFoo06ZrZh9Ksig5hnrk2NSyH8Fk+
- Oz69Z1b9lb0ey2xuC+34A7CfNPHUAAAA=
-X-Change-ID: 20261122-sis7019-voice-irq-e92265fb39f3
-To: perex@perex.cz, tiwai@suse.com
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <20261122-qcom-iommu-v1-1-ecb20a28871f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOe/AmsC/yXMTQ5AMBBA4avIrDXR8RtXEQtqMJIqLSIRd1csv
+ 8V7FziyTA7K4AJLBzs2s4cMA1BjMw8kuPMGjDCTElGsymjBRutdYJLHqsAO0xTBB4ulns9vVtW
+ /3d5OpLb3APf9AM6McwVuAAAA
+X-Change-ID: 20261122-qcom-iommu-2473c82d2552
+To: joro@8bytes.org, will@kernel.org, robin.clark@oss.qualcomm.com
+Cc: iommu@lists.linux.dev, robin.murphy@arm.com, 
+ linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795342095; l=2053;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795342312; l=1475;
  i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=huKzTa2eQDkgURxI5UqFkDNM3LidKvXVuHpanoNFwvI=;
- b=OLwzOqLLF7VtxbmUbAt4oriLbFnkIetFuSf13BKww5X9N0/3KAgYPO8/hew7/wv3lfG/+rvQ2
- E9cR7P7CvTZDSBQWQGwH5xeOF5gprTMqZAbxdu7VvgP/pVEYRHOe2r1
+ bh=1Eskb3u6fGizPUm16aNFvrkib/eJ2zFG+/IzmSV4X/Y=;
+ b=ZOGKdTHhmGOSbeG4MiNOD9O4UG/bQnmgXpNcWMIuhzXL6CbNW60fDSSxuqAPYbf+CxdaRHuqT
+ bUCoNBgV+eAA5fWSVT4jLwsfiqxAeW3ig/BT3bfrHFybV/AwxRrQ6hQ
 X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
  pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
 X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
@@ -24,62 +27,45 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Suyuan Wang <stevewong@hust.edu.cn>
 
-sis_voice_irq() walks the set bits of a PISR_A or PISR_B status word:
+qcom_iommu_resume() enables the clocks and then, for an IOMMU with a
+power domain, calls qcom_scm_restore_sec_cfg(). If that call fails, the
+error is returned but the clocks stay enabled. The PM core then treats
+the device as still suspended, so qcom_iommu_suspend() will not run to
+turn them off.
 
-	bit = __ffs(status);
-	status >>= bit + 1;
-
-When voice 31 or 63 interrupts, bit is 31 and status is shifted by 32,
-which is undefined for a u32. On x86 the shift count is masked to 0, so
-status does not change, the loop never ends, and voice keeps moving 32
-entries forward on every pass, past the end of sis->voices[], with
-sis_update_voice() called on whatever is there. All of this runs in the
-hard IRQ handler. Voices are handed out from 0 up, so voice 31 is in use
-once enough playback streams are open.
-
-Walk the bits with for_each_set_bit() and index the voice by bit number
-instead. The voices are still updated in the same order.
+Disable the clocks again when qcom_scm_restore_sec_cfg() fails.
 
 Found with a static analysis tool and checked by hand.
 
-Fixes: 175859bf1602 ("[ALSA] sis7019: support the SiS 7019 Audio Accelerator")
+Fixes: 268dd4edb748 ("iommu/qcom: restore IOMMU state if needed")
 Cc: stable@vger.kernel.org
 Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
 Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
 Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-Compile tested (i386, W=1). I don't have a SiS 7019, so I ran the old
-and new loop in userspace on the same status words: with 0x80000000 the
-old loop trips UBSan's shift check, and without it ASan reports a read
-past the 64-entry voice array; the new loop updates voice 31 (or 63)
-and stops.
+Compile tested on arm64 (W=1). I don't have the hardware.
 ---
- sound/pci/sis7019.c | 10 +++-------
- 1 file changed, 3 insertions(+), 7 deletions(-)
+ drivers/iommu/arm/arm-smmu/qcom_iommu.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/sound/pci/sis7019.c b/sound/pci/sis7019.c
-index fe5bda5af6a5..f31e62068ee3 100644
---- a/sound/pci/sis7019.c
-+++ b/sound/pci/sis7019.c
-@@ -278,15 +278,11 @@ static void sis_update_voice(struct voice *voice)
+diff --git a/drivers/iommu/arm/arm-smmu/qcom_iommu.c b/drivers/iommu/arm/arm-smmu/qcom_iommu.c
+index 96903cd9cfc2..52bcb8cf46b1 100644
+--- a/drivers/iommu/arm/arm-smmu/qcom_iommu.c
++++ b/drivers/iommu/arm/arm-smmu/qcom_iommu.c
+@@ -898,8 +898,11 @@ static int __maybe_unused qcom_iommu_resume(struct device *dev)
+ 	if (ret < 0)
+ 		return ret;
  
- static void sis_voice_irq(u32 status, struct voice *voice)
- {
-+	unsigned long bits = status;
- 	int bit;
+-	if (dev->pm_domain)
+-		return qcom_scm_restore_sec_cfg(qcom_iommu->sec_id, 0);
++	if (dev->pm_domain) {
++		ret = qcom_scm_restore_sec_cfg(qcom_iommu->sec_id, 0);
++		if (ret)
++			clk_bulk_disable_unprepare(CLK_NUM, qcom_iommu->clks);
++	}
  
--	while (status) {
--		bit = __ffs(status);
--		status >>= bit + 1;
--		voice += bit;
--		sis_update_voice(voice);
--		voice++;
--	}
-+	for_each_set_bit(bit, &bits, 32)
-+		sis_update_voice(&voice[bit]);
+ 	return ret;
  }
- 
- static irqreturn_t sis_interrupt(int irq, void *dev)
 
 
 
