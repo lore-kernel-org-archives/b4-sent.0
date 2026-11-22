@@ -1,112 +1,85 @@
-From: Leicheng Xie <leicheng.dev@gmail.com>
-Date: Sun, 22 Nov 2026 17:33:29 +0800
-Subject: [PATCH] Bluetooth: RFCOMM: Fix slab-use-after-free in
- rfcomm_dev_add()
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Sun, 22 Nov 2026 10:08:16 +0000
+Subject: [PATCH] ALSA: sis7019: Don't shift the voice IRQ status by 32
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-fix-rfcomm-dev-add-uaf-v1-1-cac5354752ed@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAOi2AmsC/x2MywqAIBAAf0X23EJr734lOoiutYcylCKI/j3pO
- DAzDySOwglG9UDkS5KEPQMVCuxq9oVRXGbQpW6JtEYvN0Zvw7ah4wuNc3gaj9Zz3VcddTQ0kOM
- jcjb/8TS/7wdFmz/PaAAAAA==
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- Gianluca Anzolin <gianluca@sottospazio.it>
-Cc: linux-bluetooth@vger.kernel.org, 
- syzbot+11542ff1d167fdffa1fc@syzkaller.appspotmail.com, 
- stable@vger.kernel.org, Leicheng Xie <leicheng.dev@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795340012; l=3276;
- i=leicheng.dev@gmail.com; s=20261122; h=from:subject:message-id;
- bh=wPiurJf5NAB3Lu8Avk81ILeINiSohz9dvVjdRquJVBo=;
- b=6Q+PSt3gaZkOQ7tAFw438TjcTSry2NO0bq7tgnocaG0Af45XxeX3tdpcInxYtCuzgXpbMPTwT
- b45gFQpGmg0DdahRCUttX80fmnMY/QBYxfLGSnB+OANXrPmPYYwCe7I
-X-Developer-Key: i=leicheng.dev@gmail.com; a=ed25519;
- pk=3Wc835kaGsdFoMvE39Cn0NKn+/y+alxEDJs7LjGUmis=
-X-Endpoint-Received: by B4 Relay for leicheng.dev@gmail.com/20261122 with auth_id=1600
+Message-Id: <20261122-sis7019-voice-irq-v1-1-fa5d0cbecf62@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAA+/AmsC/yXMyw5AMBCF4VeRWWuiI0i9ilhQU8bCpYNIxLsrl
+ l9Ozn+BkGcSKKMLPB0sPE8BOo7ADs3Uk+IuGDDBXGtEJSxFoo06ZrZh9Ksig5hnrk2NSyH8Fk+
+ Oz69Z1b9lb0ey2xuC+34A7CfNPHUAAAA=
+X-Change-ID: 20261122-sis7019-voice-irq-e92265fb39f3
+To: perex@perex.cz, tiwai@suse.com
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795342095; l=2053;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=huKzTa2eQDkgURxI5UqFkDNM3LidKvXVuHpanoNFwvI=;
+ b=OLwzOqLLF7VtxbmUbAt4oriLbFnkIetFuSf13BKww5X9N0/3KAgYPO8/hew7/wv3lfG/+rvQ2
+ E9cR7P7CvTZDSBQWQGwH5xeOF5gprTMqZAbxdu7VvgP/pVEYRHOe2r1
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__rfcomm_dev_add() inserts the newly allocated struct rfcomm_dev into
-rfcomm_dev_list and releases rfcomm_dev_lock while holding only the
-initial tty_port reference. Back in rfcomm_dev_add(), the device is
-registered with tty_port_register_device() and further initialized
-(dev->tty_dev assignment, reparenting, drvdata, sysfs attributes, and
-reading dev->id).
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-When RFCOMM_RELEASE_ONHUP is set, a concurrent task can open and close
-the RFCOMM TTY device as soon as it becomes visible on rfcomm_dev_list.
-rfcomm_tty_install() takes over the initial reference by setting
-RFCOMM_TTY_OWNED, and rfcomm_tty_cleanup() drops it to zero, freeing
-dev via rfcomm_dev_destruct() while rfcomm_dev_add() is still running:
+sis_voice_irq() walks the set bits of a PISR_A or PISR_B status word:
 
-  BUG: KASAN: slab-use-after-free in rfcomm_dev_add
-  Write of size 8 at addr ffff88800e85b3e0 by task rfcomm_uaf_poc/179
+	bit = __ffs(status);
+	status >>= bit + 1;
 
-Hold an extra tty_port reference in __rfcomm_dev_add() before dropping
-rfcomm_dev_lock, and release it at the end of rfcomm_dev_add() after
-caching dev->id. On the tty_port_register_device() failure path, use
-test_and_set_bit(RFCOMM_TTY_OWNED, &dev->status) before dropping the
-initial reference to match __rfcomm_release_dev() and prevent a leak or
-double-put if a concurrent open took ownership.
+When voice 31 or 63 interrupts, bit is 31 and status is shifted by 32,
+which is undefined for a u32. On x86 the shift count is masked to 0, so
+status does not change, the loop never ends, and voice keeps moving 32
+entries forward on every pass, past the end of sis->voices[], with
+sis_update_voice() called on whatever is there. All of this runs in the
+hard IRQ handler. Voices are handed out from 0 up, so voice 31 is in use
+once enough playback streams are open.
 
-Fixes: 5b899241874d ("Bluetooth: Release RFCOMM port when the last user closes the TTY")
-Reported-by: syzbot+11542ff1d167fdffa1fc@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=11542ff1d167fdffa1fc
+Walk the bits with for_each_set_bit() and index the voice by bit number
+instead. The voices are still updated in the same order.
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: 175859bf1602 ("[ALSA] sis7019: support the SiS 7019 Audio Accelerator")
 Cc: stable@vger.kernel.org
-Signed-off-by: Leicheng Xie <leicheng.dev@gmail.com>
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
- net/bluetooth/rfcomm/tty.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+Compile tested (i386, W=1). I don't have a SiS 7019, so I ran the old
+and new loop in userspace on the same status words: with 0x80000000 the
+old loop trips UBSan's shift check, and without it ASan reports a read
+past the 64-entry voice array; the new loop updates voice 31 (or 63)
+and stops.
+---
+ sound/pci/sis7019.c | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
 
-diff --git a/net/bluetooth/rfcomm/tty.c b/net/bluetooth/rfcomm/tty.c
-index 198c7dd1a95b..3a61c45b5b51 100644
---- a/net/bluetooth/rfcomm/tty.c
-+++ b/net/bluetooth/rfcomm/tty.c
-@@ -303,6 +303,9 @@ static struct rfcomm_dev *__rfcomm_dev_add(struct rfcomm_dev_req *req,
- 	   holds reference to this module. */
- 	__module_get(THIS_MODULE);
+diff --git a/sound/pci/sis7019.c b/sound/pci/sis7019.c
+index fe5bda5af6a5..f31e62068ee3 100644
+--- a/sound/pci/sis7019.c
++++ b/sound/pci/sis7019.c
+@@ -278,15 +278,11 @@ static void sis_update_voice(struct voice *voice)
  
-+	/* Hold an extra reference for rfcomm_dev_add() until setup completes */
-+	tty_port_get(&dev->port);
-+
- 	mutex_unlock(&rfcomm_dev_lock);
- 	return dev;
- 
-@@ -316,6 +319,7 @@ static int rfcomm_dev_add(struct rfcomm_dev_req *req, struct rfcomm_dlc *dlc)
+ static void sis_voice_irq(u32 status, struct voice *voice)
  {
- 	struct rfcomm_dev *dev;
- 	struct device *tty;
-+	int id;
++	unsigned long bits = status;
+ 	int bit;
  
- 	BT_DBG("id %d channel %d", req->dev_id, req->channel);
- 
-@@ -328,6 +332,8 @@ static int rfcomm_dev_add(struct rfcomm_dev_req *req, struct rfcomm_dlc *dlc)
- 	tty = tty_port_register_device(&dev->port, rfcomm_tty_driver,
- 			dev->id, NULL);
- 	if (IS_ERR(tty)) {
-+		if (!test_and_set_bit(RFCOMM_TTY_OWNED, &dev->status))
-+			tty_port_put(&dev->port);
- 		tty_port_put(&dev->port);
- 		return PTR_ERR(tty);
- 	}
-@@ -342,7 +348,10 @@ static int rfcomm_dev_add(struct rfcomm_dev_req *req, struct rfcomm_dlc *dlc)
- 	if (device_create_file(dev->tty_dev, &dev_attr_channel) < 0)
- 		BT_ERR("Failed to create channel attribute");
- 
--	return dev->id;
-+	id = dev->id;
-+	tty_port_put(&dev->port);
-+
-+	return id;
+-	while (status) {
+-		bit = __ffs(status);
+-		status >>= bit + 1;
+-		voice += bit;
+-		sis_update_voice(voice);
+-		voice++;
+-	}
++	for_each_set_bit(bit, &bits, 32)
++		sis_update_voice(&voice[bit]);
  }
  
- /* ---- Send buffer ---- */
+ static irqreturn_t sis_interrupt(int irq, void *dev)
 
----
-base-commit: 4843f6873f7c4835e62f2c73ba0fd538e57a2f22
-change-id: 20261122-fix-rfcomm-dev-add-uaf-cfe483717195
 
-Best regards,
--- 
-Leicheng Xie <leicheng.dev@gmail.com>
 
