@@ -1,187 +1,85 @@
-From: Mani Tofigh <mt4022@columbia.edu>
-Date: Mon, 23 Nov 2026 15:44:37 -0500
-Subject: [PATCH net v2] net: don't leave napi->timer queued when deleting a
- napi
+From: Binoy Ravindran <binoy@vt.edu>
+Subject: [PATCH 0/2] livepatch: Do not lose exiting tasks during a
+ transition
+Date: Mon, 23 Nov 2026 15:52:14 -0500
+Message-Id: <20261123-klp-series-v3-v1-0-427c95811d9b@vt.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-napi-timer-cancel-v2-1-00e6fc1be30f@columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NwQqDMBBEf0X23BQ3EpGe+h/Fw5qsdYtGSaK0i
- P9etfceZ3jzZoXIQTjCLVsh8CJRRr8HfcnAduSfrMTtGXSuS8S8UJ4mUUkGDsqSt9yrlnLSlWm
- dqRD23RS4lffpfIDnBPWvjHPzYpsO24F1EtMYPufzgif852RBhcoYWxZIzuiqvNuxn4dG6Mpuh
- nrbti+SlICLzAAAAA==
-X-Change-ID: 20261103-napi-timer-cancel-fa0a285fd581
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>
-Cc: Simon Horman <horms@kernel.org>, Andrew Lunn <andrew+netdev@lunn.ch>, 
- Martin Karsten <mkarsten@uwaterloo.ca>, Joe Damato <joe@dama.to>, 
- Dragos Tatulea <dtatulea@nvidia.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
- Stanislav Fomichev <sdf.kernel@gmail.com>, 
- Sridhar Samudrala <sridhar.samudrala@intel.com>, 
- Cosmin Ratiu <cratiu@nvidia.com>, Tariq Toukan <tariqt@nvidia.com>, 
- Wang Zhan <wang.zhan@smartx.com>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, tz2294@columbia.edu, 
- Mani Tofigh <mt4022@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAH6nBGsC/yXMQQ5AMBBA0avIrE3SVhCuIhbUlEFKWkQi7q5Yv
+ sX/F3hyTB7K6AJHB3tebICMI9BDY3tC7oJBCZVJqRKc5hX/Bo8Eu1TlRaZFWggDoVkdGT6/X1X
+ /9ns7kt7eCdz3AyO0XZhxAAAA
+X-Change-ID: 20261123-klp-series-v3-d52796c0590f
+To: "Paul E. McKenney" <paulmck@kernel.org>, 
+ Frederic Weisbecker <frederic@kernel.org>, 
+ Neeraj Upadhyay <neeraj.upadhyay@kernel.org>, 
+ Joel Fernandes <joelagnelf@nvidia.com>, 
+ Josh Triplett <josh@joshtriplett.org>, Boqun Feng <boqun@kernel.org>, 
+ Uladzislau Rezki <urezki@gmail.com>, Steven Rostedt <rostedt@goodmis.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Lai Jiangshan <jiangshanlai@gmail.com>, Zqiang <qiang.zhang@linux.dev>, 
+ Josh Poimboeuf <jpoimboe@kernel.org>, Miroslav Benes <mbenes@suse.cz>, 
+ Petr Mladek <pmladek@suse.com>, Joe Lawrence <joe.lawrence@redhat.com>, 
+ Song Liu <song@kernel.org>, Ingo Molnar <mingo@kernel.org>, 
+ Jiri Kosina <jikos@kernel.org>
+Cc: rcu@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ live-patching@vger.kernel.org, Yafang Shao <laoar.shao@gmail.com>, 
+ Jaidev Shastri <jaidevshastri@vt.edu>, Binoy Ravindran <binoy@vt.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795466676; l=6265;
- i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=DAjbjTcO41LIw37BT4Jor7jRDPzA0lF7xrJx5+OcZXE=;
- b=5MnTtsFeJIO++GpbRtxmiY9d64OSULsDSyYtSBaq3KgNIavxf5oinJpn6SzuZ/Wqp9QpptGRw
- u/az2bOV32EDBgcZ7h1v2rDWyGuLMyE3OZlmeLs4RnhgOi5U6d3rDqW
-X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
- pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
-X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795467163; l=2301;
+ i=binoy@vt.edu; s=20261123; h=from:subject:message-id;
+ bh=8jw45Z4MONwXpwW16fWs+bguoDA4AMUrsssB1NGSAis=;
+ b=KwX1UeAQbQ2O0SqnnT4zaR8qX7zMX5woDh7B1B/Zs6y+x/yTVWOb5SHeWmsDlEquYZcvv+U1a
+ AEJtznQ9PwBDyw4N/k3DQBV02yzIU27PJYtO8lumV7kE5bxG6CU15w/
+X-Developer-Key: i=binoy@vt.edu; a=ed25519;
+ pk=4cNdKPHP0InmhK/9bb7Tm2ZMUXUvLGfw1pmVt5b98fA=
+X-Endpoint-Received: by B4 Relay for binoy@vt.edu/20261123 with auth_id=1622
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A napi can be freed with its timer still queued.  napi_disable()
-cancels napi->timer, but napi_complete_done(), busy_poll_stop() and
-napi_suspend_irqs() start it without owning the napi and can do so
-right after the cancel.  netif_napi_del() only waits for that start to
-finish:
+After exit_notify(), a self-reaping task is unhashed from the task list
+but keeps running the rest of do_exit(). The livepatch transition walks
+the task list, so it can complete while such a task still runs code from
+a patch module that atomic replace is about to free. Yafang Shao and
+Petr Mladek discussed this race in [1]. It is hard to hit, but it is
+reachable by any livepatch that replaces a function on the exit path,
+for example a fix to do_exit() itself.
 
-  Task A (epoll_wait)                  Task B (queue reset)
-  napi_suspend_irqs()
-    rcu_read_lock()
-    napi = napi_by_id(id)
-                                       napi_disable_locked(napi)
-                                         hrtimer_cancel(&napi->timer)
-                                         napi_hash_del(napi)
-                                       netif_napi_del_locked(napi)
-                                         synchronize_net()
-                                         /* waits for Task A */
-    hrtimer_start(&napi->timer)
-    rcu_read_unlock()
-                                       kfree(rq)
-                                         /* timer still queued */
+Every exiting task is already on an RCU-tasks exit list from
+exit_tasks_rcu_start(), before exit_notify(), until
+exit_tasks_rcu_finish(). After that, do_exit() runs with preemption
+disabled until the final switch, so the task cannot sleep or be
+preempted. Patch 1 adds helpers to visit the tasks on these lists.
+Patch 2 makes every transition step, including reverse and force,
+visit them too. The exit path itself is unchanged. Kernels without
+CONFIG_TASKS_RCU have no exit lists and are not covered.
 
-With netdevsim and debug objects:
+We reproduced the crash with two atomic-replace livepatches of the
+CVE-2025-38424 fix, which replaces do_exit(). With a debug-only sleep
+after exit_notify(), 11 of 12 runs crash without the series and none
+with it. With it, there were also no crashes in 1,200 cycles of a /proc
+stress test or in 400 cycles with preempt=full. The measurements were
+taken on v6.12.1. This series is the forward port to v7.4-rc2. On
+mainline it has been build-tested only: it builds without new warnings
+with livepatch on, with livepatch on and preemption off, and with
+TASKS_RCU off. It has not yet been run on mainline. A reproducer and the
+logs are available on request.
 
-  [    3.073483] ODEBUG: free active (active state 0) object: 000000001504358f object type: hrtimer hint: napi_watchdog+0x0/0xa0
-  [    3.073515] WARNING: lib/debugobjects.c:629 at debug_print_object+0x1a4/0x3b0, CPU#0: napitimer/66
-  [    3.079603] CPU: 0 UID: 0 PID: 66 Comm: napitimer Tainted: G        W            7.3.0-17087-gd865f2677c44 #1 PREEMPT
-  [    3.084822] RIP: 0010:debug_print_object+0x1ae/0x3b0
-  ...
-  [    3.103822] Call Trace:
-  [    3.104408]  <TASK>
-  [    3.105933]  debug_check_no_obj_freed+0x496/0x5f0
-  [    3.109988]  kfree+0x33a/0x510
-  [    3.110715]  netdev_rx_queue_reconfig+0x357/0x580
-  [    3.111780]  netdev_rx_queue_restart+0x8f/0xc0
-  [    3.113924]  nsim_qreset_write+0x24d/0x350
-  [    3.117832]  full_proxy_write+0x109/0x1d0
-  [    3.118741]  vfs_write+0x1e3/0x1250
-  [    3.124758]  __x64_sys_pwrite64+0x18c/0x250
-  [    3.129645]  do_syscall_64+0xfb/0x590
-  [    3.131385]  entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
-Without debug objects, napi_watchdog() later runs on freed memory.
-
-Cancel the timer in __netif_napi_del_locked() right after clearing
-NAPI_STATE_LISTED, and start it in the three callers through a helper
-that cancels it again if LISTED is already clear.  Either the delete
-sees the queued timer or the start sees LISTED cleared.  The helper
-uses hrtimer_cancel() since hrtimer_try_to_cancel() doesn't dequeue a
-timer that is queued again while napi_watchdog() runs.  This also covers
-__netif_napi_del() callers that run their own grace period, and
-free_netdev().  With the fix, debug objects don't report a freed active
-timer anymore.
-
-Fixes: 6f8b12d661d0 ("net: napi: add hard irqs deferral feature")
-Fixes: 3fcbecbdeb04 ("net: Add control functions for irq suspension")
-Fixes: 58e2330bd455 ("net: napi: Avoid gro timer misfiring at end of busypoll")
-Suggested-by: Eric Dumazet <edumazet@kernel.org>
-Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
----
-Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/napitimer.c
----
-Changes in v2:
-- Cancel the timer in __netif_napi_del_locked() and re-check LISTED after
-  each start, instead of cancelling after the grace period in
-  netif_napi_del() and free_netdev() (Eric)
-- Use hrtimer_cancel() in the helper, since hrtimer_try_to_cancel()
-  doesn't dequeue a timer that is queued again while napi_watchdog() runs
-- Martin suggested re-checking NAPI_STATE_DISABLED, which also works and
-  is a bit smaller. It needs 8dc87fc5d6a0 though, which stable trees
-  before 6.18 don't have, and the bug goes back to 5.8. Happy to switch
-  if that's preferred.
-- Link to v1: https://patch.msgid.link/20261103-napi-timer-cancel-v1-1-55c631ad5286@columbia.edu
----
- net/core/dev.c | 27 +++++++++++++++++++++------
- 1 file changed, 21 insertions(+), 6 deletions(-)
-
-diff --git a/net/core/dev.c b/net/core/dev.c
-index cd0796a1dbfd..c39a588d9c0a 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -7019,6 +7019,19 @@ void __napi_schedule_irqoff(struct napi_struct *n)
- }
- EXPORT_SYMBOL(__napi_schedule_irqoff);
- 
-+/* Callers do not own @n, which can be deleted concurrently. */
-+static void napi_timer_start(struct napi_struct *n, unsigned long timeout)
-+{
-+	hrtimer_start(&n->timer, ns_to_ktime(timeout),
-+		      HRTIMER_MODE_REL_PINNED);
-+	/* Pairs with test_and_clear_bit(NAPI_STATE_LISTED)
-+	 * in __netif_napi_del_locked().
-+	 */
-+	smp_mb();
-+	if (unlikely(!test_bit(NAPI_STATE_LISTED, &n->state)))
-+		hrtimer_cancel(&n->timer);
-+}
-+
- bool napi_complete_done(struct napi_struct *n, int work_done)
- {
- 	unsigned long flags, val, new, timeout = 0;
-@@ -7083,8 +7096,7 @@ bool napi_complete_done(struct napi_struct *n, int work_done)
- 	}
- 
- 	if (timeout)
--		hrtimer_start(&n->timer, ns_to_ktime(timeout),
--			      HRTIMER_MODE_REL_PINNED);
-+		napi_timer_start(n, timeout);
- 	return ret;
- }
- EXPORT_SYMBOL(napi_complete_done);
-@@ -7171,8 +7183,7 @@ static void busy_poll_stop(struct napi_struct *napi, void *have_poll_lock,
- 		gro_flush_normal(&napi->gro, HZ >= 1000);
- 
- 		clear_bit(NAPI_STATE_SCHED, &napi->state);
--		hrtimer_start(&napi->timer, ns_to_ktime(timeout),
--			      HRTIMER_MODE_REL_PINNED);
-+		napi_timer_start(napi, timeout);
- 	} else {
- 		/* Use driver poll to re-enable device interrupts. */
- 		rc = napi->poll(napi, budget);
-@@ -7309,8 +7320,7 @@ void napi_suspend_irqs(unsigned int napi_id)
- 		unsigned long timeout = napi_get_irq_suspend_timeout(napi);
- 
- 		if (timeout)
--			hrtimer_start(&napi->timer, ns_to_ktime(timeout),
--				      HRTIMER_MODE_REL_PINNED);
-+			napi_timer_start(napi, timeout);
- 	}
- 	rcu_read_unlock();
- }
-@@ -7963,6 +7973,11 @@ void __netif_napi_del_locked(struct napi_struct *napi)
- 	if (!test_and_clear_bit(NAPI_STATE_LISTED, &napi->state))
- 		return;
- 
-+	/* Full barrier implied by test_and_clear_bit()
-+	 * pairs with napi_timer_start().
-+	 */
-+	hrtimer_cancel(&napi->timer);
-+
- 	/* Make sure NAPI is disabled (or was never enabled). */
- 	WARN_ON(!test_bit(NAPI_STATE_SCHED, &napi->state));
- 
+[1] https://lore.kernel.org/all/20250127063526.76687-1-laoar.shao@gmail.com/
 
 ---
-base-commit: 5677cf0e039b3cabf79d5aa10facbdb54aea93c6
-change-id: 20261103-napi-timer-cancel-fa0a285fd581
+Binoy Ravindran (2):
+      rcu-tasks: Add helpers to visit tasks on the exit lists
+      livepatch: Include exiting tasks in the transition
+
+ include/linux/rcupdate.h      |  9 ++++++
+ kernel/livepatch/transition.c | 72 +++++++++++++++++++++++++++++++++++++++++++
+ kernel/rcu/tasks.h            | 67 ++++++++++++++++++++++++++++++++++++----
+ 3 files changed, 142 insertions(+), 6 deletions(-)
+---
+base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
+change-id: 20261123-klp-series-v3-d52796c0590f
 
 Best regards,
 --  
-Mani Tofigh <mt4022@columbia.edu>
+Binoy Ravindran <binoy@vt.edu>
 
