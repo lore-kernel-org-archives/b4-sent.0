@@ -1,134 +1,103 @@
-From: YanXin Li <fadouse@pm.me>
-Date: Mon, 23 Nov 2026 21:31:27 +0800
-Subject: [PATCH net v3] net/sched: act_ife: return -EAGAIN after dropping
- rtnl_lock in load_metaops_and_vet()
+From: Ziqiang Xia <xiazq123666@gmail.com>
+Subject: [PATCH v2 0/2] platform/x86: Add Emdoor Intel EWMI platform driver
+Date: Mon, 23 Nov 2026 05:56:50 -0800
+Message-Id: <20261123-emdoor-intel-wmi-rfc-v2-0-3f4a03095f2e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-b4-02-act-ife-rtnl-uaf-v3-3e43796c4fc1-v3-1-93fa0f782cf4@pm.me>
-X-B4-Tracking: v=1; b=H4sIAC5ABGsC/yWNQQ4CIRAEv2Lm7EQYRkS/YjywMCjGoIHVaDb7d
- 1k9dqW7a4ImNUuDw2qCKq/c8r30YNYrCBdfzoI59gykyGpNBgdGRejDiDkJ1rHc8OkTvgwaYbP
- b28ApaHTbPhBxcU8R+tmjSsrvn+gIRUY4/WF7DlcJ46JYaoNvgkP1JVwWVOXmP7jATWDWipOxT
- NHvSGnLislStzpDzlgvKUYnMM9fUwmc+dUAAAA=
-X-Change-ID: 20261123-b4-02-act-ife-rtnl-uaf-v3-3e43796c4fc1-85026ee8d92d
-To: Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@resnulli.us>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: Simon Horman <horms@kernel.org>, 
- Stephen Hemminger <stephen@networkplumber.org>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7RjaRhpdeQ/DAtopjKGtaRE1h
+ LsLeACXL3n//RkyJaYMl2KGRBNnjmEFeSjA9E3oCNmuDLKUlRBCIXkbY0IOIw348ozJGZRCq5M
+ qW2VdBev0kcjxe8/e6h/nZ3snM26tzeg5jzF99t9JbN6fi0lgiVZrMk6q6qzaa+cbHo4meqiXZ
+ fkClestIcoAAAA=
+X-Change-ID: 20261113-emdoor-intel-wmi-rfc-2173530b3df6
+To: Armin Wolf <W_Armin@gmx.de>, Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-hwmon@vger.kernel.org, Ziqiang Xia <xiazq123666@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795440705; l=4563;
- i=fadouse@pm.me; s=b4-relay-20261122; h=from:subject:message-id;
- bh=7DHuyrQLhOeh9C5+PXyUekYvXmy1gMXBow6B9d9EIpY=;
- b=1ARe0+Az5wJGRagyMXgOjGKai5/2m6h4b0FcYuzsb5AL2bAT0wVmNFWD69XnvNlEasGTz2Q9R
- WtpyrwXlWr2AbLDbshhL8ae16cOQ5oZEzijJhcxv7WbtP2mqpFp+3vy
-X-Developer-Key: i=fadouse@pm.me; a=ed25519;
- pk=b4DyzHJDRd8853IHUSKPA5wwzChj8eF4MTnZuyPz1PQ=
-X-Endpoint-Received: by B4 Relay for fadouse@pm.me/b4-relay-20261122 with auth_id=1597
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795442211; l=3702;
+ i=xiazq123666@gmail.com; s=20261113; h=from:subject:message-id;
+ bh=Dtj6FFXmz6jNRcgW4ATc31osqTiaO6dYT0JZQJpSMtg=;
+ b=i7wM0m/u5DzKyBAKO4hmfWsYGNakAU9rti0pSc9jjv18rAyze0seYpgX8THUNqrRzba3hGokE
+ MJwdAXcGvg/BLGITGi7UAl8QCbI1wx4eF1wcO7yIPpyX4povREimYag
+X-Developer-Key: i=xiazq123666@gmail.com; a=ed25519;
+ pk=mrJQOUoyemvqamFAwqXZF59Z8eZnI11ZI+BEtDNxq7Q=
+X-Endpoint-Received: by B4 Relay for xiazq123666@gmail.com/20261113 with auth_id=1513
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-load_metaops_and_vet() unlocks rtnl_lock() to invoke request_module()
-when an IFE metadata provider module (such as act_meta_mark) is not
-yet loaded, re-acquires rtnl_lock(), validates the metadata attribute,
-and returns 0.
+This series adds a pure-WMI Linux platform driver for the Intel EWMI
+(\_SB.EWMI) interface found on Emdoor-based Intel laptops, verified on
+the MECHREVO Wujie 14 2026 (WUJIE Series-Lark4-LNL, Intel Core Ultra 5
+226V Lunar Lake, BIOS EM_LNL326_V1.0.19).
 
-Returning 0 after dropping rtnl_lock() breaks the RTNL serialization
-relied on by filter-replacement paths in classifiers such as cls_basic,
-cls_flow, cls_fw, cls_route, and cls_u32 (the existing-filter branch
-in u32_change()), which hold an unrefcounted filter pointer across
-tcf_exts_validate() -> tcf_ife_init().  In cls_basic, a concurrent
-RTM_DELTFILTER can delete and RCU-free fold during the unlocked
-request_module() window, after which basic_change() executes
-list_replace_rcu(&fold->link, &fnew->link) and queues a second
-deletion on the freed filter.  Generic KASAN reports:
+In response to review feedback on RFC v1 regarding direct EC register
+access, v2 removes every ec_read() call and every board/BIOS-specific EC
+offset so the driver operates strictly through standard ACPI WMI methods
+(WMCD and _WED(0xD0)) using wmi_driver / wmidev_invoke_method(), gated
+by WMI GUID and WMCD GVER protocol version 1.0.1.0:
+- Dual fan tachometers (fan1_input, fan2_input) via hwmon (WMCD GFNS)
+- Platform profile (balanced / performance) via WMCD GPFM / SPFM,
+  synced with Fn+X hardware profile-switch events
+- Read-only touchpad_enabled sysfs attribute via WMCD GTPS (0x03/0x07)
+- Sparse keymap input reporting for _WED(0xD0) hotkey events
 
-  BUG: KASAN: slab-use-after-free in basic_change+0xf4c/0x1220
-  Read of size 8 at addr ffff88800e043c58 by task test_act_ife_rt/101
-  ...
-  Allocated by task 101:
-   basic_change+0x1e0/0x1220
-  Freed by task 57:
-   ...
-  Oops: general protection fault, probably for non-canonical address
-  KASAN: maybe wild-memory-access in range [0xdead000000000120-0xdead000000000127]
+Notes on firmware quirks and dropped RFC v1 features:
+- Legacy WMAA-WMCB methods on this DSDT allocate an 8-byte Local0 inside
+  AML and define CreateField(Local0, 0x20, 0x3F, RES3), aborting with
+  AE_AML_BUFFER_LIMIT regardless of input buffer size; they are unused.
+- EC temperature sensors (TSR1..TSR4) are dropped because TSR2..TSR4 are
+  already exposed via int3403_thermal (SEN2..SEN4 under \_SB.IETM) and
+  CPU temperature is already covered by coretemp / x86_pkg_temp / TCPU.
+- fn_lock / win_lock (EC5D 20 ms mailbox race) and auto_power_on (WMCC
+  write-only with EC 0xF5 readback) are dropped so v2 has zero direct EC
+  access and zero per-BIOS DMI tables.
+- SPFM (0x03/0x0a) arms ZZTT/TIZZ before Notify(IETM, 0x88) and before
+  writing EC5F, so an EC scan during the notify can consume a stale EC5F
+  and return RTNC=0 without updating PPMD (or return RTNC=1). The driver
+  verifies WMCD 0x03/0x09 readback and reissues the absolute mode up to
+  3 times using pure WMI calls.
+- Sanitized ACPI tables (DSDT + SSDT1..SSDT28, Windows licensing table
+  omitted) and decoded ewmi.mof are available at:
+  https://gist.github.com/winddd666/8f739d1cab5beb503f606093ade10d65
 
-Other TC module autoloaders that drop rtnl_lock() during filter
-updates (tc_action_load_ops(), tcf_em_validate(), and em_text_change())
-return -EAGAIN so tc_new_tfilter() and tcf_action_add() unwind and
-replay under a fresh RTNL critical section.  (In cls_u32's new-key
-path, the error unwind in u32_change() still accesses an unpinned
-non-root hash table in idr_remove(&ht->handle_idr, handle); that is a
-separate pre-existing cls_u32 issue also reachable via
-tc_action_load_ops() and is not fixed here.)
-
-Manipulating TC filters requires CAP_NET_ADMIN in the target network
-namespace, which is reachable by an unprivileged local user inside a
-user and network namespace when CONFIG_USER_NS=y, CONFIG_MODULES=y,
-CONFIG_NET_ACT_IFE is enabled, and an IFE metadata module is not yet
-loaded.
-
-When load_metaops_and_vet() drops rtnl_lock() and loads the requested
-metadata module, drop the module reference and return -EAGAIN so the
-caller unwinds instead of continuing on the success path with stale
-pointers.  With this change, the same concurrent RTM_NEWTFILTER and
-RTM_DELTFILTER sequence on cls_basic cleanly loads act_meta_mark,
-replays without touching the deleted filter, and completes with rc=0
-and no KASAN or lockdep reports.  A finite two-thread state-space
-interleaving model of the cls_basic filter-replacement scenario found
-the old use-after-free and no use-after-free, double-free, or deadlock
-in its reachable states after the change.
-
-The vulnerable code is present in upstream mainline v7.4-rc3.
-Runtime verification and fix validation were performed in an x86-64
-QEMU/KVM guest running mainline after v7.4-rc3 with Generic KASAN,
-UBSAN, and lockdep.
-
-This issue was discovered through LLM-assisted code audit and manual
-code inspection of net/sched/act_ife.c.
-
-Fixes: ef6980b6becb ("introduce IFE action")
-Cc: stable@vger.kernel.org
-Signed-off-by: YanXin Li <fadouse@pm.me>
+Signed-off-by: Ziqiang Xia <xiazq123666@gmail.com>
 ---
-Changes in v3:
-- Remove the comment from the module-load retry path (Stephen Hemminger).
-- Clarify the scope in the commit message: note that cls_u32's new-key
-  error-unwind access to an unpinned non-root hash table in u32_change()
-  is a separate pre-existing cls_u32 issue also reachable via
-  tc_action_load_ops() and not fixed by this act_ife change.
-- Link to v2: https://lore.kernel.org/r/20261122-b4-02-act-ife-rtnl-uaf-v2-102eba468698-v2-1-67c413c45928@pm.me
-
 Changes in v2:
-- Resend via b4 because the archived v1 email has a corrupted diff and
-  cannot be applied.
-- State how the issue was discovered and clarify the finite model scope.
-- Link to v1: https://lore.kernel.org/r/20261122030728.9368-1-fadouse@pm.me
----
- net/sched/act_ife.c | 4 ++++
- 1 file changed, 4 insertions(+)
+- Drop RFC prefix.
+- Remove all direct ec_read() calls, ACPI_EC dependency, and per-BIOS
+  DMI/EC offset tables (drop temp_regs, fn_lock, win_lock, and
+  auto_power_on / WMCC driver).
+- Keep the driver strictly pure WMI (WMCD + _WED(0xD0)) using WMI GUID
+  matching and WMCD GVER (1.0.1.0) protocol version validation.
+- Update ABI documentation, Kconfig, and commit descriptions accordingly.
+- Link to v1: https://patch.msgid.link/20261113-emdoor-intel-wmi-rfc-v1-0-d77ecf23693b@gmail.com
 
-diff --git a/net/sched/act_ife.c b/net/sched/act_ife.c
-index 5a527da0056..68a111c7f86 100644
---- a/net/sched/act_ife.c
-+++ b/net/sched/act_ife.c
-@@ -275,6 +275,10 @@ static int load_metaops_and_vet(u32 metaid, void *val, int len, bool rtnl_held)
- 		if (rtnl_held)
- 			rtnl_lock();
- 		ops = find_ife_oplist(metaid);
-+		if (ops && rtnl_held) {
-+			module_put(ops->owner);
-+			return -EAGAIN;
-+		}
- #endif
- 	}
- 
+To: Armin Wolf <W_Armin@gmx.de>
+To: Ziqiang Xia <xiazq123666@gmail.com>
+To: Hans de Goede <hansg@kernel.org>
+To: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+To: Guenter Roeck <linux@roeck-us.net>
+Cc: platform-driver-x86@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-hwmon@vger.kernel.org
 
 ---
-base-commit: c44104f3642da720164042623e4832836aefdd8e
-change-id: 20261123-b4-02-act-ife-rtnl-uaf-v3-3e43796c4fc1-85026ee8d92d
+Ziqiang Xia (2):
+      Documentation: ABI: testing: Add emdoor-intel-wmi sysfs ABI
+      platform/x86: Add Emdoor Intel EWMI platform driver
+
+ .../ABI/testing/sysfs-bus-wmi-devices-emdoor-ewmi  |   7 +
+ MAINTAINERS                                        |   7 +
+ drivers/platform/x86/Kconfig                       |  16 +
+ drivers/platform/x86/Makefile                      |   1 +
+ drivers/platform/x86/emdoor-intel-wmi.c            | 494 +++++++++++++++++++++
+ 5 files changed, 525 insertions(+)
+---
+base-commit: 5680519168f65666d2c03cc6ed8fe2b7052aee12
+change-id: 20261113-emdoor-intel-wmi-rfc-2173530b3df6
 
 Best regards,
 --  
-YanXin Li <fadouse@pm.me>
+Ziqiang Xia <xiazq123666@gmail.com>
 
