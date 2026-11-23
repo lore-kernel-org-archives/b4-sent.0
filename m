@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 24 Nov 2026 02:52:54 +0800
-Subject: [PATCH v6 02/18] mm/memcontrol: allow update of LRU statistic
- without holding LRU lock
+Date: Tue, 24 Nov 2026 02:52:55 +0800
+Subject: [PATCH v6 03/18] mm/memcontrol: avoid potential counter leak when
+ reparenting local stats
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-mglru-fg-v6-2-8ffea39934a6@tencent.com>
+Message-Id: <20261124-mglru-fg-v6-3-8ffea39934a6@tencent.com>
 References: <20261124-mglru-fg-v6-0-8ffea39934a6@tencent.com>
 In-Reply-To: <20261124-mglru-fg-v6-0-8ffea39934a6@tencent.com>
 To: linux-mm@kvack.org
@@ -39,50 +39,98 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Tianyi Chen <hi@tychen.cc>, Kairui Song <kasong@tencent.com>, 
  Ridong Chen <ridong.chen@linux.dev>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459977; l=1434;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459977; l=3407;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=uwS4fBCD5iPVACjO21QQfl2NP0AqWyZwBPx9Plu/+9U=;
- b=2pyXTqy8HzStaaOCjTzObU1npNvY6ZTpilr+RXfXelh2BoV3pXDzkQDh7YtNKuBinOgbf7HIr
- Mou6SAdaUjTCLlAY7r+pWaP7/QlkLcjr09/iTRLHgrkUcRHYDfXKH4T
+ bh=DITLxusEF3jFekXchW/A6iHzf//ot6gPbXly+2fd+cQ=;
+ b=oQEvwa9i+84qyXpmUPi7pXNiCe/5dSBG7wL+wB1oC2sXK73KSejhjUMAwogTXAJ3+Pcs3FOdO
+ fyAevJbJU6HADPweDl0ahO3Xr133F1H4Ez41aJ+ynn60czLlmD8SsmG
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To enable moving file pages in folio_mark_accessed directly and lazily
-for MGLRU, allow updating the LRU statistic atomically without holding a
-lock. It may cause temporary counter underflow, which should be fine as
-the counter is eventually consistent and only serves as an estimate.
+lruvec_page_state_local() clamps negative values to zero on SMP.  That
+is right for readers reporting page counts, but can be wrong for
+reparenting once MGLRU updates the counters without the lruvec lock.
 
-Reviewed-by: Barry Song <baohua@kernel.org>
-Reviewed-by: Kunwu Chan <kunwu.chan@gmail.com>
-Tested-by: Andrew Morton <akpm@linux-foundation.org>
-Acked-by: Muchun Song (ByteDance) <muchun.song@linux.dev>
-Reviewed-by: Lian Wang <lianux.mm@gmail.com>
+Reparenting runs after the forced stats flush, so a negative is a real
+balance that has to move to the parent, not be discarded. We will
+introduce lockless MGLRU promotion which may cause following problem:
+
+ 1. A refs CAS on a folio on the child's lruvec moves it from
+    inactive to active, and its active/inactive counter update follows
+    as a separate step.
+
+ 2. A concurrent isolation of the folio reads the folio as active,
+    debits the child's NR_ACTIVE_* by delta before CSS_DYING is visible
+    to it.
+
+ 3. The child is killed, and the two __update_lru_size() calls from
+    step 1 land on the parent: NR_INACTIVE_* -delta, then NR_ACTIVE_*
+    +delta.
+
+The child is left with NR_ACTIVE_* -delta while the parent holds the
+matching +delta, and reparenting the child's raw value is what cancels
+the parent's credit.  However, if the child happens to hold few enough
+folios for that counter to be negative, lruvec_page_state_local() clamps
+the child's negative to zero, which drops the debit instead, so the
+parent keeps NR_ACTIVE_* overcounted by delta, and its active + inactive
+total overcounted as well, permanently: the child's local counters are
+gone once reparenting is done.
+
+So use a raw signed helper and reparent with that.  Ordinary readers
+still keep the clamp.
+
+Reported-by: Kunwu Chan <kunwu.chan@gmail.com>
+Closes: https://lore.kernel.org/linux-mm/CAN_Opa-+nb0vxQ+HsENCG2fEEMZoxG9Sy_DBC4CLkWjNLzDWKw@mail.gmail.com/
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mm_inline.h | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ mm/memcontrol.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index 2395ca8ee305..2edb9beef6d3 100644
---- a/include/linux/mm_inline.h
-+++ b/include/linux/mm_inline.h
-@@ -47,12 +47,11 @@ static __always_inline void __update_lru_size(struct lruvec *lruvec,
- {
- 	struct pglist_data *pgdat = lruvec_pgdat(lruvec);
- 
--	lockdep_assert_held(&lruvec->lru_lock);
- 	WARN_ON_ONCE(nr_pages != (int)nr_pages);
- 
- 	mod_lruvec_state(lruvec, NR_LRU_BASE + lru, nr_pages);
--	__mod_zone_page_state(&pgdat->node_zones[zid],
--				NR_ZONE_LRU_BASE + lru, nr_pages);
-+	mod_zone_page_state(&pgdat->node_zones[zid],
-+			    NR_ZONE_LRU_BASE + lru, nr_pages);
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index 091401cecf39..3f551e2e3206 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -562,11 +562,10 @@ unsigned long lruvec_page_state_monotonic(const struct lruvec *lruvec,
+ 	return (unsigned long)READ_ONCE(pn->lruvec_stats->state[i]);
  }
  
- static __always_inline void update_lru_size(struct lruvec *lruvec,
+-unsigned long lruvec_page_state_local(const struct lruvec *lruvec,
++static long __lruvec_page_state_local(const struct lruvec *lruvec,
+ 				      enum node_stat_item idx)
+ {
+ 	const struct mem_cgroup_per_node *pn;
+-	long x;
+ 	int i;
+ 
+ 	if (mem_cgroup_disabled())
+@@ -577,7 +576,14 @@ unsigned long lruvec_page_state_local(const struct lruvec *lruvec,
+ 		return 0;
+ 
+ 	pn = container_of_const(lruvec, struct mem_cgroup_per_node, lruvec);
+-	x = READ_ONCE(pn->lruvec_stats->state_local[i]);
++	return READ_ONCE(pn->lruvec_stats->state_local[i]);
++}
++
++unsigned long lruvec_page_state_local(const struct lruvec *lruvec,
++				      enum node_stat_item idx)
++{
++	long x = __lruvec_page_state_local(lruvec, idx);
++
+ #ifdef CONFIG_SMP
+ 	if (x < 0)
+ 		x = 0;
+@@ -595,7 +601,8 @@ void reparent_memcg_lruvec_state_local(struct mem_cgroup *memcg,
+ 
+ 	for_each_node(nid) {
+ 		struct lruvec *lruvec = mem_cgroup_lruvec(memcg, NODE_DATA(nid));
+-		unsigned long value = lruvec_page_state_local(lruvec, idx);
++		/* Reparent the raw value: the clamp drops the child's debit. */
++		long value = __lruvec_page_state_local(lruvec, idx);
+ 
+ 		__mod_memcg_lruvec_state(memcg, nid, idx, -value);
+ 		__mod_memcg_lruvec_state(parent, nid, idx, value);
 
 -- 
 2.56.1
