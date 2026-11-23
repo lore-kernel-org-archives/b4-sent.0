@@ -1,124 +1,134 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 23 Nov 2026 14:28:11 +0100
-Subject: [PATCH v11 2/2] arm64: dts: qcom: sdm845-google: Enable PMI8998
- camera flash LEDs
+From: YanXin Li <fadouse@pm.me>
+Date: Mon, 23 Nov 2026 21:31:27 +0800
+Subject: [PATCH net v3] net/sched: act_ife: return -EAGAIN after dropping
+ rtnl_lock in load_metaops_and_vet()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-pixel3-camera-v11-2-d00195d180dc@ixit.cz>
-References: <20261123-pixel3-camera-v11-0-d00195d180dc@ixit.cz>
-In-Reply-To: <20261123-pixel3-camera-v11-0-d00195d180dc@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Abel Vesa <abel.vesa@oss.qualcomm.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Petr Hodina <petr.hodina@protonmail.com>, 
- Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Message-Id: <20261123-b4-02-act-ife-rtnl-uaf-v3-3e43796c4fc1-v3-1-93fa0f782cf4@pm.me>
+X-B4-Tracking: v=1; b=H4sIAC5ABGsC/yWNQQ4CIRAEv2Lm7EQYRkS/YjywMCjGoIHVaDb7d
+ 1k9dqW7a4ImNUuDw2qCKq/c8r30YNYrCBdfzoI59gykyGpNBgdGRejDiDkJ1rHc8OkTvgwaYbP
+ b28ApaHTbPhBxcU8R+tmjSsrvn+gIRUY4/WF7DlcJ46JYaoNvgkP1JVwWVOXmP7jATWDWipOxT
+ NHvSGnLislStzpDzlgvKUYnMM9fUwmc+dUAAAA=
+X-Change-ID: 20261123-b4-02-act-ife-rtnl-uaf-v3-3e43796c4fc1-85026ee8d92d
+To: Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@resnulli.us>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: Simon Horman <horms@kernel.org>, 
+ Stephen Hemminger <stephen@networkplumber.org>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2281; i=david@ixit.cz;
- h=from:subject:message-id; bh=F5sq/PnEtjGmqazwQ+898n43o6XCMRwhDRliedBHnYI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrBD9sIxiiUQti76uzxmxCbXSPPNPXP+MIf3Pl7
- jsrnnTPRkyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawQ/bAAKCRBgAj/E00kg
- cuUND/95Laajx/9lats4rCo4YRkRAu1tJ281PJ7xa3EJeqvwmLWZAcJGLskOKOUO/2VUGTQHTab
- CFExrRuJG9dezrM8k7AFf+EmVjmFqrvv+mnsqefj6hTbwGmQSTlz7wUqZvpRStWTVMwDUIrML/6
- bPET9mQiPY1D2Sd41zyQdV5dRUslqRGVsIlErou/HUiiKF18sEJ7uISWqGtS4lr/n6sl7HcODr/
- 69iu6h2hQmA8JY8XxiXh29LzA0/F/HxRAmMwiGawum3uW55XVyfoNI1og/wDPTxLzpYr36XMdcP
- Shsg/mqBiPI1LmlaWJx6s9tq/Ass0dwBtLMB0Zw0ZR6Bo5x70QtKCVVYh1VeiPWkZqyGCA2N9ib
- V3lW2gSKnu794A7uusdvtt8AupPwbzxsAXm7TnAeMDGg4NUyrc+2jYS9zx/Jdku5kqDc9Ofp/+d
- aKhJsunLM261MO4qH17Xv4d/6fzFTEd5csr85rbgBXJKQHx4e54QkGaicqv/h30QT+cGtkxTy+V
- SSyXNDMMHZBHeaSILWNPPaVgJiwnWcIXIBRQ7jlCQIqGS3vrNgLkLOr27kQSxMqxrKS3q6JQr8l
- bdhoSniG/JTrR4Iu/ZMiqQofqaHg/S4zil8w6dUmriXLXfmZYsF6qYJRzlI3PMEmSht9TPAyZgi
- IP/0OyaL0iKMEQA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795440705; l=4563;
+ i=fadouse@pm.me; s=b4-relay-20261122; h=from:subject:message-id;
+ bh=7DHuyrQLhOeh9C5+PXyUekYvXmy1gMXBow6B9d9EIpY=;
+ b=1ARe0+Az5wJGRagyMXgOjGKai5/2m6h4b0FcYuzsb5AL2bAT0wVmNFWD69XnvNlEasGTz2Q9R
+ WtpyrwXlWr2AbLDbshhL8ae16cOQ5oZEzijJhcxv7WbtP2mqpFp+3vy
+X-Developer-Key: i=fadouse@pm.me; a=ed25519;
+ pk=b4DyzHJDRd8853IHUSKPA5wwzChj8eF4MTnZuyPz1PQ=
+X-Endpoint-Received: by B4 Relay for fadouse@pm.me/b4-relay-20261122 with auth_id=1597
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the PMI8998 flash LED block and describe two white flash LEDs
-used for the rear camera.
+load_metaops_and_vet() unlocks rtnl_lock() to invoke request_module()
+when an IFE metadata provider module (such as act_meta_mark) is not
+yet loaded, re-acquires rtnl_lock(), validates the metadata attribute,
+and returns 0.
 
-Configure the LED in flash mode with hardware limits matching the
-original device configuration, including maximum current and timeout.
+Returning 0 after dropping rtnl_lock() breaks the RTNL serialization
+relied on by filter-replacement paths in classifiers such as cls_basic,
+cls_flow, cls_fw, cls_route, and cls_u32 (the existing-filter branch
+in u32_change()), which hold an unrefcounted filter pointer across
+tcf_exts_validate() -> tcf_ife_init().  In cls_basic, a concurrent
+RTM_DELTFILTER can delete and RCU-free fold during the unlocked
+request_module() window, after which basic_change() executes
+list_replace_rcu(&fold->link, &fnew->link) and queues a second
+deletion on the freed filter.  Generic KASAN reports:
 
-In contrary to downstream, we can control both LEDs separately.
+  BUG: KASAN: slab-use-after-free in basic_change+0xf4c/0x1220
+  Read of size 8 at addr ffff88800e043c58 by task test_act_ife_rt/101
+  ...
+  Allocated by task 101:
+   basic_change+0x1e0/0x1220
+  Freed by task 57:
+   ...
+  Oops: general protection fault, probably for non-canonical address
+  KASAN: maybe wild-memory-access in range [0xdead000000000120-0xdead000000000127]
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Abel Vesa <abel.vesa@oss.qualcomm.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Other TC module autoloaders that drop rtnl_lock() during filter
+updates (tc_action_load_ops(), tcf_em_validate(), and em_text_change())
+return -EAGAIN so tc_new_tfilter() and tcf_action_add() unwind and
+replay under a fresh RTNL critical section.  (In cls_u32's new-key
+path, the error unwind in u32_change() still accesses an unpinned
+non-root hash table in idr_remove(&ht->handle_idr, handle); that is a
+separate pre-existing cls_u32 issue also reachable via
+tc_action_load_ops() and is not fixed here.)
+
+Manipulating TC filters requires CAP_NET_ADMIN in the target network
+namespace, which is reachable by an unprivileged local user inside a
+user and network namespace when CONFIG_USER_NS=y, CONFIG_MODULES=y,
+CONFIG_NET_ACT_IFE is enabled, and an IFE metadata module is not yet
+loaded.
+
+When load_metaops_and_vet() drops rtnl_lock() and loads the requested
+metadata module, drop the module reference and return -EAGAIN so the
+caller unwinds instead of continuing on the success path with stale
+pointers.  With this change, the same concurrent RTM_NEWTFILTER and
+RTM_DELTFILTER sequence on cls_basic cleanly loads act_meta_mark,
+replays without touching the deleted filter, and completes with rc=0
+and no KASAN or lockdep reports.  A finite two-thread state-space
+interleaving model of the cls_basic filter-replacement scenario found
+the old use-after-free and no use-after-free, double-free, or deadlock
+in its reachable states after the change.
+
+The vulnerable code is present in upstream mainline v7.4-rc3.
+Runtime verification and fix validation were performed in an x86-64
+QEMU/KVM guest running mainline after v7.4-rc3 with Generic KASAN,
+UBSAN, and lockdep.
+
+This issue was discovered through LLM-assisted code audit and manual
+code inspection of net/sched/act_ife.c.
+
+Fixes: ef6980b6becb ("introduce IFE action")
+Cc: stable@vger.kernel.org
+Signed-off-by: YanXin Li <fadouse@pm.me>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 27 ++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+Changes in v3:
+- Remove the comment from the module-load retry path (Stephen Hemminger).
+- Clarify the scope in the commit message: note that cls_u32's new-key
+  error-unwind access to an unpinned non-root hash table in u32_change()
+  is a separate pre-existing cls_u32 issue also reachable via
+  tc_action_load_ops() and not fixed by this act_ife change.
+- Link to v2: https://lore.kernel.org/r/20261122-b4-02-act-ife-rtnl-uaf-v2-102eba468698-v2-1-67c413c45928@pm.me
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index 1c1cc036dcfe8..4084b6215f8be 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -1,16 +1,17 @@
- // SPDX-License-Identifier: GPL-2.0-only
- 
- /dts-v1/;
- 
- #include <dt-bindings/arm/qcom,ids.h>
- #include <dt-bindings/dma/qcom-gpi.h>
- #include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/leds/common.h>
- #include <dt-bindings/media/video-interface-devices.h>
- #include <dt-bindings/media/video-interfaces.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- 
- #include "sdm845.dtsi"
- #include "pm8998.dtsi"
- #include "pmi8998.dtsi"
- 
-@@ -593,16 +594,42 @@ &pm8998_resin {
- };
- 
- &pmi8998_charger {
- 	monitored-battery = <&battery>;
- 
- 	status = "okay";
- };
- 
-+&pmi8998_flash {
-+	status = "okay";
-+
-+	/* upper part of the flash module */
-+	led-0 {
-+		function = LED_FUNCTION_FLASH;
-+		color = <LED_COLOR_ID_WHITE>;
-+		led-sources = <1>;
-+		led-max-microamp = <500000>;
-+		flash-max-microamp = <1500000>;
-+		flash-max-timeout-us = <1280000>;
-+		function-enumerator = <0>;
-+	};
-+
-+	/* lower part of the flash module */
-+	led-1 {
-+		function = LED_FUNCTION_FLASH;
-+		color = <LED_COLOR_ID_WHITE>;
-+		led-sources = <2>;
-+		led-max-microamp = <500000>;
-+		flash-max-microamp = <1500000>;
-+		flash-max-timeout-us = <1280000>;
-+		function-enumerator = <1>;
-+	};
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
- 
- &qupv3_id_1 {
- 	status = "okay";
- };
+Changes in v2:
+- Resend via b4 because the archived v1 email has a corrupted diff and
+  cannot be applied.
+- State how the issue was discovered and clarify the finite model scope.
+- Link to v1: https://lore.kernel.org/r/20261122030728.9368-1-fadouse@pm.me
+---
+ net/sched/act_ife.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/net/sched/act_ife.c b/net/sched/act_ife.c
+index 5a527da0056..68a111c7f86 100644
+--- a/net/sched/act_ife.c
++++ b/net/sched/act_ife.c
+@@ -275,6 +275,10 @@ static int load_metaops_and_vet(u32 metaid, void *val, int len, bool rtnl_held)
+ 		if (rtnl_held)
+ 			rtnl_lock();
+ 		ops = find_ife_oplist(metaid);
++		if (ops && rtnl_held) {
++			module_put(ops->owner);
++			return -EAGAIN;
++		}
+ #endif
+ 	}
  
 
--- 
-2.55.0
+---
+base-commit: c44104f3642da720164042623e4832836aefdd8e
+change-id: 20261123-b4-02-act-ife-rtnl-uaf-v3-3e43796c4fc1-85026ee8d92d
+
+Best regards,
+--  
+YanXin Li <fadouse@pm.me>
 
