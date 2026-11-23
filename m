@@ -1,102 +1,59 @@
 From: Suyuan Wang <shyckless@gmail.com>
-Date: Mon, 23 Nov 2026 05:21:20 +0000
-Subject: [PATCH v2 3/3] cpufreq: s5pv210: Fix resource leaks on probe error
- paths
+Subject: [PATCH v3 0/3] cpufreq: Fix leaks on probe error paths in three
+ drivers
+Date: Mon, 23 Nov 2026 05:40:42 +0000
+Message-Id: <20261123-cpufreq-leaks-v3-0-1f1e3f4f5a7b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-cpufreq-leaks-v2-3-29277f2f0ddd@gmail.com>
-References: <20261123-cpufreq-leaks-v2-0-29277f2f0ddd@gmail.com>
-In-Reply-To: <20261123-cpufreq-leaks-v2-0-29277f2f0ddd@gmail.com>
-To: rafael@kernel.org, peter.griffin@linaro.org, viresh.kumar@linaro.org, 
- krzk@kernel.org
-Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-samsung-soc@vger.kernel.org, alim.akhtar@samsung.com, 
- linux-pm@vger.kernel.org, zhongqiu.han@oss.qualcomm.com
+X-B4-Tracking: v=1; b=H4sIANrRA2sC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQyNj3eSC0rSi1ELdnNTE7GLd5KS0FFPDFBPjpFQLJaCegqLUtMwKsHn
+ RsRB+cWlSVmpyCcgQpdpaAJratyFxAAAA
+X-Change-ID: 20261123-cpufreq-leaks-cbfd51d43be8
+To: viresh.kumar@linaro.org, krzk@kernel.org, peter.griffin@linaro.org, 
+ rafael@kernel.org
+Cc: linux-kernel@vger.kernel.org, zhongqiu.han@oss.qualcomm.com, 
+ alim.akhtar@samsung.com, linux-pm@vger.kernel.org, 
+ linux-samsung-soc@vger.kernel.org, linux-arm-kernel@lists.infradead.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795411278; l=2668;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795412443; l=1356;
  i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=FvOlF8UNPCa6Xw/nvECVgrxkLK8Otjxui0GXRXiNPfI=;
- b=WIwqOW5wacTIg5maPfMnSat7qTxeqJQ5eiKOaWgfV0O+DsxXO/GkN0lQrdRtLIwKhLmkrdDbf
- jz/JTb0LVt0CzirEWV1U+/JX0KCzFhBgEIupei91H3GetPDeT0JfyAL
+ bh=hCDTxIrRIBEJ8uzexGJBO/WMptBy/NJuSC/LPl/uuvI=;
+ b=wTCgJpRhXo1QfJzkQpiNEKvF1DBjx7RADIcqO2hnQzXMu10hFoPvG/xJFlPQaU/cNielTXIYB
+ HuvkjZehewGCGNLvItHDc8oV6YBZnWfhqbBlPn4xgw93pKkp/bc6wMm
 X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
  pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
 X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+Three small fixes for resources that are not released when a cpufreq
+driver fails to probe: the cpu clock in highbank, the three clocks in
+kirkwood (also on unbind), and the regulators and register mappings in
+s5pv210, and its reboot notifier, when cpufreq_register_driver() fails.
 
-s5pv210_cpufreq_probe() returns the result of cpufreq_register_driver()
-directly:
+Found with a static analysis tool and checked by hand. Compile tested
+on arm (W=1, multi_v5 for kirkwood); I don't have the hardware.
 
-	register_reboot_notifier(&s5pv210_cpufreq_reboot_notifier);
+Changes in v3:
+- Add Zhongqiu's Reviewed-by from v1 to 1/3 and 2/3 (Viresh).
+  No other change.
 
-	return cpufreq_register_driver(&s5pv210_driver);
+Changes in v2:
+- 3/3: fix the Fixes tags. The regulator and reboot notifier leaks come
+  from e8b4c1986efb and fe7f1bcbff91, and e0e5b2b4f427 did not add a
+  leak (Zhongqiu Han). No code change.
+- 1/3, 2/3: unchanged.
 
-If the registration fails, for example because s5pv210_cpu_init()
-fails, the resources taken by the probe itself are leaked: the two
-regulators and the clock and DMC register mappings. The reboot notifier
-also stays registered. (s5pv210_cpu_init() releases its own clocks on
-its error paths, and the cpufreq core tears down its own state.)
-
-Also, when a DMC node has a bad alias, the code jumps to err_clk_base
-and skips unmapping DMC registers that were already mapped for an
-earlier node.
-
-Unregister the reboot notifier and go through the existing unwind code
-when cpufreq_register_driver() fails, and jump to err_dmc on the alias
-error. The err_clk_base label has no users after this, so drop it.
-
-Found with a static analysis tool and checked by hand.
-
-Fixes: e8b4c1986efb ("[CPUFREQ] S5PV210: Add arm/int voltage control support")
-Fixes: fe7f1bcbff91 ("[CPUFREQ] S5PV210: Add reboot notifier to prevent system hang")
-Fixes: 6d4ed0f46af6 ("cpufreq: s5pv210: Make the driver multiplatform aware")
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+v2: https://lore.kernel.org/all/20261123-cpufreq-leaks-v2-0-29277f2f0ddd@gmail.com/
+v1: https://lore.kernel.org/all/20261122-cpufreq-leaks-v1-0-96fc17ff7339@gmail.com/
 ---
- drivers/cpufreq/s5pv210-cpufreq.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+Suyuan Wang (3):
+      cpufreq: highbank: Put cpu clock if clk notifier registration fails
+      cpufreq: kirkwood: Put clocks on error and in remove
+      cpufreq: s5pv210: Fix resource leaks on probe error paths
 
-diff --git a/drivers/cpufreq/s5pv210-cpufreq.c b/drivers/cpufreq/s5pv210-cpufreq.c
-index e64e84e1ee79..29b1c5d71a8b 100644
---- a/drivers/cpufreq/s5pv210-cpufreq.c
-+++ b/drivers/cpufreq/s5pv210-cpufreq.c
-@@ -634,7 +634,7 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
- 		if (id < 0 || id >= ARRAY_SIZE(dmc_base)) {
- 			dev_err(dev, "failed to get alias of dmc node '%pOFn'\n", dmc);
- 			result = id;
--			goto err_clk_base;
-+			goto err_dmc;
- 		}
- 
- 		dmc_base[id] = of_iomap(dmc, 0);
-@@ -655,7 +655,14 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
- 
- 	register_reboot_notifier(&s5pv210_cpufreq_reboot_notifier);
- 
--	return cpufreq_register_driver(&s5pv210_driver);
-+	result = cpufreq_register_driver(&s5pv210_driver);
-+	if (result)
-+		goto err_reboot_notifier;
-+
-+	return 0;
-+
-+err_reboot_notifier:
-+	unregister_reboot_notifier(&s5pv210_cpufreq_reboot_notifier);
- 
- err_dmc:
- 	for (id = 0; id < ARRAY_SIZE(dmc_base); ++id)
-@@ -664,7 +671,6 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
- 			dmc_base[id] = NULL;
- 		}
- 
--err_clk_base:
- 	iounmap(clk_base);
- 
- err_clock:
-
--- 
-2.34.1
+ drivers/cpufreq/highbank-cpufreq.c |  1 +
+ drivers/cpufreq/kirkwood-cpufreq.c | 15 ++++++++++++---
+ drivers/cpufreq/s5pv210-cpufreq.c  | 12 +++++++++---
+ 3 files changed, 22 insertions(+), 6 deletions(-)
 
