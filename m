@@ -1,220 +1,156 @@
-From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Tue, 24 Nov 2026 00:43:57 +0100
-Subject: [PATCH v2 5/5] media: qcom: camss: video: factor pipeline stream
- start/stop into helper
+From: Arina Kharlamova <arina.kharlamova@mbzuai.ac.ae>
+Date: Tue, 24 Nov 2026 03:58:53 +0400
+Subject: [PATCH] slab: fix the kernel-doc of kmalloc_flex() on counter
+ overflow
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-camss-fixes-v2-5-231a5523cd59@gmail.com>
-References: <20261124-camss-fixes-v2-0-231a5523cd59@gmail.com>
-In-Reply-To: <20261124-camss-fixes-v2-0-231a5523cd59@gmail.com>
-To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- Robert Ijtsma <robertijtsma@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795477434; l=6145;
- i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=cw2sebxPTgI0BsRX0snuOY9H/0VCCimk2e0LvMdO0cQ=;
- b=+0vCu/P7GyPM1uHh0QIJfEc12tA0odd9DKfOstDWl4/FVFA+rCQC51JqPB2vO8eSWWImxS9OD
- vrgirMv01MdBD0ETmZxNkti4cblZ4CWywK0jhsADYIpY6nsD5yNe69a
-X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
- pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
-X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
+Message-Id: <20261124-slab-doc-v1-1-9f14dfce47c8@mbzuai.ac.ae>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM3QpAQBCG4VvRHNva3TbhVuRgfwYjoR2k5N4tD
+ p96v+8CxkjIUGcXRDyIaZkTVJ6BH+zco6CQDFrqQiltBE/WibB4ocrKeCtNkLKAlK8ROzq/q6b
+ 9zbsb0W/vHu77Aa5/koJsAAAA
+X-Change-ID: 20261124-slab-doc-1894ca04d006
+To: Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, Kees Cook <kees@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Vlastimil Babka <vbabka@kernel.org>, Harry Yoo <harry@kernel.org>, 
+ Hao Li <hao.li@linux.dev>, Christoph Lameter <cl@gentwo.org>, 
+ David Rientjes <rientjes@google.com>, 
+ Roman Gushchin <roman.gushchin@linux.dev>
+Cc: workflows@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org, 
+ linux-mm@kvack.org, Arina Kharlamova <arina.kharlamova@mbzuai.ac.ae>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795478335; l=6300;
+ i=arina.kharlamova@mbzuai.ac.ae; s=20261123; h=from:subject:message-id;
+ bh=5QShQXRZX54gNTgo0Gx3CJ2jzLByJpRHbpnqHOcnA1Q=;
+ b=1eSZpwSTpC+3FeEXiCh//wqMlujfe0v75aaKlaNcdfpPcrsBt+RFLknIU+B407OxXm5P23JDj
+ 87e/QpMtB2lBBq4wxtsV6OJt5sc0ya3E/trBJjv9gwM1F/sPOy9RgXc
+X-Developer-Key: i=arina.kharlamova@mbzuai.ac.ae; a=ed25519;
+ pk=DzQWwMpUtJvSDuzprqvRdbrC72n4Sq8dW6cq3NRt2Mk=
+X-Endpoint-Received: by B4 Relay for arina.kharlamova@mbzuai.ac.ae/20261123 with auth_id=1625
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If a subdevice fails to start partway through video_start_streaming(),
-previously started subdevices earlier in the pipeline (such as the VFE
-and CSID) are never stopped, leaking VFE stream counts and write master
-reservations. Conversely, video_stop_streaming() returns early on the
-first subdevice stop error, leaving remaining upstream subdevices
-running and skipping media pipeline teardown and buffer flushing.
+Commit fa5c82f4d2bb ("slab.h: disable completely broken overflow handling
+in flex allocations") removed the overflows_flex_counter_type() check from
+__alloc_flex(), but left the kernel-doc of __alloc_flex() and
+kmalloc_flex(), and the text in deprecated.rst, saying that the
+allocation fails when COUNT cannot be represented by the __counted_by()
+counter.
 
-Factor pipeline stream state changes into a shared helper,
-camss_subdev_pipeline_set_stream(), using v4l2_subdev_enable_streams()
-and v4l2_subdev_disable_streams(). Unwind partial start failures by
-disabling the pipeline (-EALREADY skips subdevices that were never
-enabled), and continue stopping remaining subdevices if an error occurs
-during teardown.
+The code instead allocates COUNT elements and stores COUNT into the
+counter, truncated to the counter's type. With a u8 counter,
+kmalloc_flex(*p, array, 256) returns a 256-element object whose counter
+is 0. With compilers that lack __builtin_counted_by_ref() the counter is
+not written at all.
 
-Iterate over each entity's sink pads with media_pad_remote_pad_first()
-rather than media_entity_remote_source_pad_unique() so entities with
-multiple active sink links (such as a VFE fed by both a CSID subdevice
-and a parameters video device) do not fail uniqueness checks.
+A caller that relies on the documented check and does not bound COUNT
+itself gets an object whose __counted_by() size is smaller than the
+allocation. Accesses inside the allocation are then reported by
+UBSAN_BOUNDS, and readers that loop up to the counter see fewer elements.
 
-Fixes: 0ac2586c410f ("media: camss: Add files which handle the video device nodes")
-Suggested-by: Loic Poulain <loic.poulain@oss.qualcomm.com>
-Link: https://lore.kernel.org/r/20261031041154.308030-3-xiaqinghuan@mail.ustc.edu.cn
-Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
+Make the documentation describe what the code does, and fix the
+Returns: text of overflows_flex_counter_type(), which still describes
+the inverted logic that the same commit corrected.
+
+Returning NULL, as the old text described, is not done here. Some
+callers allocate one element more than the counter can hold and then set
+the counter themselves: ext4_htree_store_dirent() calls kzalloc_flex()
+with ent_name->len + 1 elements for a struct whose name_len is a __u8,
+so a 255-byte name would then fail with -ENOMEM.
+
+Found while checking a summary of the kmalloc_obj() family against the
+v7.0 to v7.4-rc2 text of slab.h with a battery of inputs compiled by
+GCC 15.2, with the help of an AI coding assistant (Claude); I reviewed
+the analysis and the patch. A KUnit case (not part of this patch) that
+calls kmalloc_flex() with a u8 counter and COUNT 256 gets a non-NULL
+object with the counter 0 on v7.4-rc2 (UML, GCC 15.2.0); with
+UBSAN_BOUNDS, writing element 255 of that object reports "index 255 is
+out of range for type 'u32 [*]'". This patch changes comments only;
+scripts/kernel-doc -Wall reports the same warnings for slab.h and
+overflow.h before and after it.
+
+Fixes: fa5c82f4d2bb ("slab.h: disable completely broken overflow handling in flex allocations")
+Signed-off-by: Arina Kharlamova <arina.kharlamova@mbzuai.ac.ae>
 ---
- drivers/media/platform/qcom/camss/camss-video.c | 116 +++++++++++++++---------
- 1 file changed, 72 insertions(+), 44 deletions(-)
+ Documentation/process/deprecated.rst |  8 ++++----
+ include/linux/overflow.h             |  5 +++--
+ include/linux/slab.h                 | 15 +++++++++------
+ 3 files changed, 16 insertions(+), 12 deletions(-)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-video.c b/drivers/media/platform/qcom/camss/camss-video.c
-index 0852eb6..c19b0d1 100644
---- a/drivers/media/platform/qcom/camss/camss-video.c
-+++ b/drivers/media/platform/qcom/camss/camss-video.c
-@@ -7,12 +7,14 @@
-  * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
-  * Copyright (C) 2015-2018 Linaro Ltd.
+diff --git a/Documentation/process/deprecated.rst b/Documentation/process/deprecated.rst
+index 22a5e62c92ea..f8b7fb6f9629 100644
+--- a/Documentation/process/deprecated.rst
++++ b/Documentation/process/deprecated.rst
+@@ -405,7 +405,7 @@ become, respectively::
+ 	__auto_type ptr = kmalloc_obj(struct foo [, gfp] );
+ 
+ The argument gfp is optional, the default value is GFP_KERNEL.
+-If `ptr->flex_member` is annotated with __counted_by(), the allocation
+-will automatically fail if `count` is larger than the maximum
+-representable value that can be stored in the counter member associated
+-with `flex_member`.
++If `ptr->flex_member` is annotated with __counted_by(), the counter
++member associated with `flex_member` is set to `count` on compilers that
++support it. `count` is not checked against the type of the counter, so
++the caller must make sure it fits.
+diff --git a/include/linux/overflow.h b/include/linux/overflow.h
+index d0f04436343e..6ce610dbc12e 100644
+--- a/include/linux/overflow.h
++++ b/include/linux/overflow.h
+@@ -566,8 +566,9 @@ static __always_inline size_t __must_check size_sub(size_t minuend, size_t subtr
+  * @FAM: Member name of the FAM within @TYPE.
+  * @COUNT: Value to check against the __counted_by annotated @FAM's counter.
+  *
+- * Returns: true if @COUNT can be represented in the @FAM's counter. When
+- * @FAM is not annotated with __counted_by(), always returns true.
++ * Returns: true if @COUNT cannot be represented in the @FAM's counter.
++ * When @FAM is not annotated with __counted_by(), or the compiler cannot
++ * resolve the counter, @COUNT is checked against size_t.
   */
-+#include <linux/bits.h>
- #include <linux/slab.h>
- #include <media/media-entity.h>
- #include <media/v4l2-dev.h>
- #include <media/v4l2-device.h>
- #include <media/v4l2-ioctl.h>
- #include <media/v4l2-mc.h>
-+#include <media/v4l2-subdev.h>
- #include <media/videobuf2-dma-sg.h>
- 
- #include "camss-video.h"
-@@ -249,13 +251,73 @@ static int video_prepare_streaming(struct vb2_queue *q)
- 	return ret;
- }
- 
-+/*
-+ * camss_subdev_pipeline_set_stream - Enable or disable subdevices in pipeline
-+ * @video: CAMSS video device
-+ * @entity: Media entity whose upstream subdevices are toggled
-+ * @enable: true to enable streams, false to disable streams
+ #define overflows_flex_counter_type(TYPE, FAM, COUNT)		\
+ 	(overflows_type(COUNT, typeof_flex_counter(((TYPE *)NULL)->FAM)))
+diff --git a/include/linux/slab.h b/include/linux/slab.h
+index ad645967a3ee..69fa9066137f 100644
+--- a/include/linux/slab.h
++++ b/include/linux/slab.h
+@@ -1091,10 +1091,13 @@ void *kmalloc_nolock(size_t size, gfp_t gfp_flags, int node);
+  * @FAM: The name of the flexible array member of @TYPE structure.
+  * @COUNT: how many @FAM elements to allocate space for.
+  *
++ * If @FAM is annotated with __counted_by() and the compiler supports
++ * __builtin_counted_by_ref(), the counter member is set to @COUNT. @COUNT
++ * is not checked against the type of that member: a value it cannot
++ * represent is stored truncated, so the caller must bound @COUNT.
 + *
-+ * Walk upstream across all sink pads of @entity so entities with multiple
-+ * active sink links (such as a VFE fed by both a CSID subdevice and a
-+ * parameters video output node) do not fail uniqueness checks.
-+ *
-+ * Return: 0 on success, or the error code of the first subdevice that failed.
-+ */
-+static int camss_subdev_pipeline_set_stream(struct camss_video *video,
-+					    struct media_entity *entity,
-+					    bool enable)
-+{
-+	struct media_pad *sink_pad;
-+	int ret = 0;
-+
-+	media_entity_for_each_pad(entity, sink_pad) {
-+		struct v4l2_subdev *subdev;
-+		struct media_pad *pad;
-+		int err;
-+
-+		if (!(sink_pad->flags & MEDIA_PAD_FL_SINK))
-+			continue;
-+
-+		pad = media_pad_remote_pad_first(sink_pad);
-+		if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
-+			continue;
-+
-+		subdev = media_entity_to_v4l2_subdev(pad->entity);
-+		if (enable)
-+			err = v4l2_subdev_enable_streams(subdev, pad->index,
-+							 BIT_ULL(0));
-+		else
-+			err = v4l2_subdev_disable_streams(subdev, pad->index,
-+							  BIT_ULL(0));
-+
-+		if (err && err != -EALREADY && err != -ENOIOCTLCMD) {
-+			if (enable)
-+				return err;
-+
-+			dev_err(video->camss->dev,
-+				"Failed to stop %s pad %u: %d\n",
-+				pad->entity->name, pad->index, err);
-+			if (!ret)
-+				ret = err;
-+		}
-+
-+		err = camss_subdev_pipeline_set_stream(video, pad->entity,
-+						       enable);
-+		if (err) {
-+			if (enable)
-+				return err;
-+			if (!ret)
-+				ret = err;
-+		}
-+	}
-+
-+	return ret;
-+}
-+
- static int video_start_streaming(struct vb2_queue *q, unsigned int count)
- {
- 	struct camss_video *video = vb2_get_drv_priv(q);
- 	struct video_device *vdev = &video->vdev;
--	struct media_entity *entity;
--	struct media_pad *pad;
--	struct v4l2_subdev *subdev;
- 	int ret;
- 
- 	ret = video_device_pipeline_alloc_start(vdev);
-@@ -268,26 +330,15 @@ static int video_start_streaming(struct vb2_queue *q, unsigned int count)
- 	if (ret < 0)
- 		goto error;
- 
--	entity = &vdev->entity;
--	while (1) {
--		pad = &entity->pads[0];
--		if (!(pad->flags & MEDIA_PAD_FL_SINK))
--			break;
--
--		pad = media_pad_remote_pad_first(pad);
--		if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
--			break;
--
--		entity = pad->entity;
--		subdev = media_entity_to_v4l2_subdev(entity);
--
--		ret = v4l2_subdev_call(subdev, video, s_stream, 1);
--		if (ret < 0 && ret != -ENOIOCTLCMD)
--			goto error;
--	}
-+	ret = camss_subdev_pipeline_set_stream(video, &vdev->entity, true);
-+	if (ret < 0)
-+		goto error_stop_subdevs;
- 
- 	return 0;
- 
-+error_stop_subdevs:
-+	camss_subdev_pipeline_set_stream(video, &vdev->entity, false);
-+
- error:
- 	video_device_pipeline_stop(vdev);
- 
-@@ -301,31 +352,8 @@ static void video_stop_streaming(struct vb2_queue *q)
- {
- 	struct camss_video *video = vb2_get_drv_priv(q);
- 	struct video_device *vdev = &video->vdev;
--	struct media_entity *entity;
--	struct media_pad *pad;
--	struct v4l2_subdev *subdev;
--	int ret;
--
--	entity = &vdev->entity;
--	while (1) {
--		pad = &entity->pads[0];
--		if (!(pad->flags & MEDIA_PAD_FL_SINK))
--			break;
--
--		pad = media_pad_remote_pad_first(pad);
--		if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
--			break;
--
--		entity = pad->entity;
--		subdev = media_entity_to_v4l2_subdev(entity);
--
--		ret = v4l2_subdev_call(subdev, video, s_stream, 0);
- 
--		if (ret) {
--			dev_err(video->camss->dev, "Video pipeline stop failed: %d\n", ret);
--			return;
--		}
--	}
-+	camss_subdev_pipeline_set_stream(video, &vdev->entity, false);
- 
- 	video_device_pipeline_stop(vdev);
- 
+  * Returns: Newly allocated pointer to @TYPE with @COUNT-many trailing
+- * @FAM elements, or NULL on failure or if @COUNT cannot be represented
+- * by the member of @TYPE that counts the @FAM elements (annotated via
+- * __counted_by()).
++ * @FAM elements, or NULL on failure.
+  */
+ #define __alloc_flex(KMALLOC, GFP, TYPE, FAM, COUNT)			\
+ ({									\
+@@ -1137,9 +1140,9 @@ void *kmalloc_nolock(size_t size, gfp_t gfp_flags, int node);
+  * @...: optional GFP flags for the allocation (GFP_KERNEL when not specified).
+  *
+  * Returns: newly allocated pointer to @VAR_OR_TYPE on success, NULL on
+- * failure. If @FAM has been annotated with __counted_by(), the allocation
+- * will immediately fail if @COUNT is larger than what the type of the
+- * struct's counter variable can represent.
++ * failure. If @FAM has been annotated with __counted_by(), the struct's
++ * counter variable is set to @COUNT when the compiler supports it. @COUNT
++ * must fit in the type of that variable; it is not checked.
+  */
+ #define kmalloc_flex(VAR_OR_TYPE, FAM, COUNT, ...) \
+ 	__alloc_flex(kmalloc, default_gfp(__VA_ARGS__), typeof(VAR_OR_TYPE), FAM, COUNT)
 
--- 
-2.56.0
+---
+base-commit: 9b95c9eeec894e969d590f45f9b760e88ba92876
+change-id: 20261124-slab-doc-1894ca04d006
+
+Best regards,
+--  
+Arina Kharlamova <arina.kharlamova@mbzuai.ac.ae>
 
