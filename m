@@ -1,115 +1,88 @@
-From: "Josh Lafleur (Zipline)" <josh.lafleur@outlook.com>
-Date: Mon, 23 Nov 2026 11:21:44 -0800
-Subject: [PATCH 2/2] sched/rt: Restore pinned candidates for PUSH_IPI
- balancing
+From: Han Gao <gaohan@iscas.ac.cn>
+Date: Tue, 24 Nov 2026 03:29:24 +0800
+Subject: [PATCH] PCI: dwc: Split iATU windows at region limit boundaries
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-migrate-on-ipi-v1-2-eacfe7e4b808@outlook.com>
-References: <20261123-migrate-on-ipi-v1-0-eacfe7e4b808@outlook.com>
-In-Reply-To: <20261123-migrate-on-ipi-v1-0-eacfe7e4b808@outlook.com>
-To: Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
- Juri Lelli <juri.lelli@redhat.com>, 
- Vincent Guittot <vincent.guittot@linaro.org>, 
- Dietmar Eggemann <dietmar.eggemann@arm.com>, 
- Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
- Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
- K Prateek Nayak <kprateek.nayak@amd.com>, 
- Gauri Patwardhan <gauri.patwardhan@nutanix.com>, 
- Phil Auld <pauld@redhat.com>, Harshit Agarwal <harshit@nutanix.com>, 
- Jon Kohler <jon@nutanix.com>, Seiji Nishikawa <snishika@redhat.com>
-Cc: Rahul Chunduru <rahul.chunduru@nutanix.com>, 
- linux-kernel@vger.kernel.org, 
- "Josh Lafleur (Zipline)" <josh.lafleur@outlook.com>
+Message-Id: <20261124-dwc-iatu-boundary-v1-1-03c8e58514e1@iscas.ac.cn>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMPQqEMBBA4avI1Dtggqh4lWWLOBl1LKIkxh/Eu
+ xvX8iveOyGwFw7QZCd4XiXI5BLUJwMajOsZxSaDznWplC7QboRilojtFJ01/kDSXFYV1aYmBam
+ bPXey/5/f3+sQ25FpeUZwXTfl4h0hdQAAAA==
+X-Change-ID: 20261124-dwc-iatu-boundary-c2e677c8a8c1
+To: Jingoo Han <jingoohan1@gmail.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Charles Mirabile <cmirabil@redhat.com>, 
+ Randolph Lin <randolph@andestech.com>, Frank Li <Frank.Li@nxp.com>, 
+ Samuel Holland <samuel.holland@sifive.com>, 
+ Niklas Cassel <cassel@kernel.org>
+Cc: linux-pci@vger.kernel.org, Han Gao <rabenda.cn@gmail.com>, 
+ Han Gao <gaohan@iscas.ac.cn>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795461730; l=3070;
- i=josh.lafleur@outlook.com; s=20260930; h=from:subject:message-id;
- bh=xltmhTC4RivVjUMo09gIqOcjEP9mbokiZAZj+95EZ6g=;
- b=0YV6/7c+5cwgzNUPkUGAx13DqJZ7wyn8eIKKFO7PbXP4S4QivJ70H5drE25ME4KwOFRVOccSG
- AC1btqTljKgDrHVaiRajvKgXBEoYu2d78o0PxApzIPRK6+D6ubTRfX0
-X-Developer-Key: i=josh.lafleur@outlook.com; a=ed25519;
- pk=slf3cskRg11vRnFROP6D9bMBKyvvRNsP2Msvm4/qpmM=
-X-Endpoint-Received: by B4 Relay for josh.lafleur@outlook.com/20260930 with auth_id=1090
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795462168; l=2144;
+ i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
+ bh=LWq4t/W7/8Yh8qXqKLllSLq5ntvJqq5EalVbOE1tRmA=;
+ b=ues/A1ukD7yttv0kwYfT+pgX19+/wfooG488bmDtAKIbV4ss0drz8BXLUvRxFBtBrd0wuawkF
+ 3+ex+aQO1QXCWXE3O33Y01xP/EKixtnNnzg6UTzm1OiLcEHy6n2tlxx
+X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
+ pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
+X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit a7c81556ec4d ("sched: Fix migrate_disable() vs rt/dl
-balancing") added a PUSH_IPI fallback for a migrate-disabled RT
-candidate. It runs the stopper to move the running task so that the
-pinned task can run on its current CPU.
+dw_pcie_iatu_setup() splits a large window into region_limit + 1 sized
+chunks starting at the window base. If the window doesn't start on a
+region_limit boundary, the first chunk crosses one, the iATU programming
+helpers reject it and the host fails to probe.
 
-Commit dae5c0292080 ("sched/rt,dl: Skip migrate-disabled tasks when
-picking a push candidate") made the RT picker skip pinned candidates.
-This avoids futile ordinary pushes, but also prevents the push-IPI
-path from reaching that fallback.
+Stop each chunk at the next boundary instead. Inbound windows have the
+same problem.
 
-Select migrate-disabled candidates on the PUSH_IPI path, while
-continuing to skip them on ordinary pushes. An ordinary push can
-therefore still reach a movable task behind a pinned one. Use the
-same selection mode when retrying after a failed destination search;
-the head recheck for ordinary candidates continues to skip pinned
-tasks.
-
-The preceding patch allows the stopper target to pass the head
-recheck after the source rq lock is reacquired.
-
-Fixes: dae5c0292080 ("sched/rt,dl: Skip migrate-disabled tasks when picking a push candidate")
+Fixes: e9a5415adb20 ("PCI: dwc: Use multiple iATU windows for mapping large bridge windows and DMA ranges")
+Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- kernel/sched/rt.c | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+I hit this on a Zhihe A210, where the config and I/O windows sit at the
+start of a 4 GiB aligned aperture and the memory window follows them.
+---
+ drivers/pci/controller/dwc/pcie-designware-host.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/kernel/sched/rt.c b/kernel/sched/rt.c
-index 54a6533cffe07..bb0d125889bd1 100644
---- a/kernel/sched/rt.c
-+++ b/kernel/sched/rt.c
-@@ -1866,7 +1866,7 @@ static int find_lowest_rq(struct task_struct *task)
- 	return -1;
- }
+diff --git a/drivers/pci/controller/dwc/pcie-designware-host.c b/drivers/pci/controller/dwc/pcie-designware-host.c
+index bbb02458af58..37f7a48bf4f6 100644
+--- a/drivers/pci/controller/dwc/pcie-designware-host.c
++++ b/drivers/pci/controller/dwc/pcie-designware-host.c
+@@ -952,7 +952,10 @@ static int dw_pcie_iatu_setup(struct dw_pcie_rp *pp)
+ 			}
  
--static struct task_struct *pick_next_pushable_task(struct rq *rq)
-+static struct task_struct *pick_next_pushable_task(struct rq *rq, bool pull)
- {
- 	struct plist_head *head = &rq->rt.pushable_tasks;
- 	struct task_struct *i, *p = NULL;
-@@ -1875,8 +1875,9 @@ static struct task_struct *pick_next_pushable_task(struct rq *rq)
- 		return NULL;
+ 			atu.index = ob_iatu_index;
+-			atu.size = MIN(pci->region_limit + 1, res_size);
++			/* Don't cross a region_limit boundary */
++			atu.size = MIN(pci->region_limit + 1 -
++				       (atu.parent_bus_addr & pci->region_limit),
++				       res_size);
  
- 	plist_for_each_entry(i, head, pushable_tasks) {
--		/* skip tasks that cannot be migrated */
--		if (!task_on_cpu(rq, i) && !is_migration_disabled(i)) {
-+		/* Only the push-IPI path can push the current task instead. */
-+		if (!task_on_cpu(rq, i) &&
-+		    (pull || !is_migration_disabled(i))) {
- 			p = i;
- 			break;
- 		}
-@@ -1941,7 +1942,7 @@ static struct rq *find_lock_lowest_rq(struct task_struct *task, struct rq *rq)
- 			 */
- 			if (unlikely(is_migration_disabled(task) ||
- 				     !cpumask_test_cpu(lowest_rq->cpu, &task->cpus_mask) ||
--				     (task != pick_next_pushable_task(rq) &&
-+				     (task != pick_next_pushable_task(rq, false) &&
- 				      !stopper_push))) {
+ 			ret = dw_pcie_prog_outbound_atu(pci, &atu);
+ 			if (ret) {
+@@ -1030,7 +1033,11 @@ static int dw_pcie_iatu_setup(struct dw_pcie_rp *pp)
+ 				return -ENOMEM;
+ 			}
  
- 				double_unlock_balance(rq, lowest_rq);
-@@ -1976,7 +1977,7 @@ static int push_rt_task(struct rq *rq, bool pull)
- 	if (!rq->rt.overloaded)
- 		return 0;
- 
--	next_task = pick_next_pushable_task(rq);
-+	next_task = pick_next_pushable_task(rq, pull);
- 	if (!next_task)
- 		return 0;
- 
-@@ -2051,7 +2052,7 @@ static int push_rt_task(struct rq *rq, bool pull)
- 		 * run-queue and is also still the next task eligible for
- 		 * pushing.
- 		 */
--		task = pick_next_pushable_task(rq);
-+		task = pick_next_pushable_task(rq, pull);
- 		if (task == next_task) {
- 			/*
- 			 * The task hasn't migrated, and is still the next
+-			window_size = MIN(pci->region_limit + 1, res_size);
++			/* Don't cross a region_limit boundary */
++			window_size = MIN(pci->region_limit + 1 -
++					  ((res_start - entry->offset) &
++					   pci->region_limit),
++					  res_size);
+ 			ret = dw_pcie_prog_inbound_atu(pci, ib_iatu_index,
+ 						       PCIE_TLP_TYPE_MEM_RDWR, res_start,
+ 						       res_start - entry->offset, window_size);
 
--- 
-2.53.0
+---
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20261124-dwc-iatu-boundary-c2e677c8a8c1
+
+Best regards,
+--  
+Han Gao <gaohan@iscas.ac.cn>
 
