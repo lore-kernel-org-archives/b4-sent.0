@@ -1,10 +1,11 @@
 From: Igor Velkov <iav@iav.lv>
-Date: Mon, 23 Nov 2026 04:03:22 +0000
-Subject: [PATCH v2 7/8] lib: add a stream sink for block devices
+Date: Mon, 23 Nov 2026 04:03:23 +0000
+Subject: [PATCH v2 8/8] cmd: lwip: wget: write the download to a block
+ device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-b4-wget-blk-r4-v2-7-073d800a5aaa@iav.lv>
+Message-Id: <20261123-b4-wget-blk-r4-v2-8-073d800a5aaa@iav.lv>
 References: <20261123-b4-wget-blk-r4-v2-0-073d800a5aaa@iav.lv>
 In-Reply-To: <20261123-b4-wget-blk-r4-v2-0-073d800a5aaa@iav.lv>
 To: Jerome Forissier <jerome.forissier@arm.com>, 
@@ -15,687 +16,410 @@ Cc: Simon Glass <sjg@chromium.org>,
  Adriano Cordova <adrianox@gmail.com>, u-boot@lists.u-boot-project.org, 
  Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=21587; i=iav@iav.lv;
- h=from:subject:message-id; bh=aFhcjmHEXT322Rz7SvRUHsJgydv7HeXNhnEk2cnlzmY=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDNnMuzni4v1WpD2ueSvGni+c8tlM6Y/Gy1iJH4VzuPR99
- GawTH3cUcrCIMbFICumyDLhkMatjCVX//p7mD+AmcPKBDKEgYtTACbSepWRYcGNKm2JmP40ZrM1
- eYXK13uXBE8x8/ogwN54Q3c9V2bZK0aGl5s8fM85X1MPNjyy8quyg3LXrUYJIZYOtQ25rnI6wT8
- 5AA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=14865; i=iav@iav.lv;
+ h=from:subject:message-id; bh=rQDIhohO3RWIzazIUx6tqdDxn3YiGGxeBI20qSwMgjI=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDNnMuzn0FTS3lSuv+x7CnznjgfzsdTnri//fiZc6Hme7t
+ fOKUM3pjlIWBjEuBlkxRZYJhzRuZSy5+tffw/wBzBxWJpAhDFycAjCR2usMPxkDN3Id363gLP2o
+ r5t3k8DhiQzLnLV95zc8ub/11d9dWqsY/mkf87lbmyBd+9xBeMuSN+q+mQ7r9KRTF2y1j3JQrP1
+ YxQ4A
 X-Developer-Key: i=iav@iav.lv; a=openpgp;
  fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
 X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Writing a disk image while it downloads needs a writer that takes the
-data piece by piece and puts it on a block device, without the whole
-image in memory.
+wget loads a file into memory, so a disk image can be written only when
+it fits in RAM, and only after the whole download.
 
-Add sink_to_blk(). It takes the input through sink_write() in pieces of
-any size and writes it through a write buffer of a size the caller
-picks. sink_finish() pads the last block with zeroes, and sink_abort()
-drops the buffered tail of a stream that did not complete. Data that
-does not fit in the target area fails the stream. sink_finish() and
-sink_abort() read the partition table again, since the stream may have
-replaced it.
+Add options to the lwIP wget command that write the download to a block
+device while it arrives:
 
-sink_blk_area() turns "<dev>[.<hwpart>][:<part>|#<name>]" and a byte
-offset into a block range. Without a partition the range is the whole
-device, also on a partitioned one. A partition that lies outside the
-device is refused, and so are an empty <part> and "auto", which leave
-the choice of partition to U-Boot. An empty <dev> or <name> and "0x"
-without digits are refused for the same reason, and so is a number of
-more than 8 digits or above 0x7fffffff, which the device and partition
-lookups cut to an int. A <hwpart> that the device does not have is
-refused: one above 7 on MMC, which mmc_switch_part() takes modulo 8, and
-one other than 0 elsewhere, where the lookup takes any number.
-"ubi" is refused too: by that name the block layer finds the raw MTD
-device under the UBI volumes.
+  -o <if> <dev>[.<hwpart>][:<part>|#<name>]   the target
+  -s <offs>                                   byte offset into it
+  -b <wbuf>                                   write buffer size
 
-lib_test_sink_blk covers the area lookup and the writer on the sandbox
-MMC; sandbox_defconfig enables STREAM_SINK for it.
+Without a partition the target is the whole device, also on a
+partitioned one. The target size goes to wget as the buffer size, so a
+file whose Content-Length exceeds it is refused before anything is
+written, and wget says when a download does not fit. A reply other
+than 200 writes nothing, and a download that fails halfway drops the
+buffered tail. On success filesize holds the number of bytes written
+and fileaddr is deleted.
+WGET_STREAM enables the options; sandbox64_lwip builds them.
+
+A ROCK Pi 4A writes a 1.86 GB image to its SD card this way in 3 min
+16 s to 3 min 35 s with a 4 MiB buffer.
 
 Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- configs/sandbox_defconfig |   1 +
- include/stream_sink.h     |  84 +++++++++++++++
- lib/Kconfig               |   8 ++
- lib/Makefile              |   1 +
- lib/stream_sink.c         | 268 ++++++++++++++++++++++++++++++++++++++++++++++
- test/lib/Makefile         |   3 +
- test/lib/stream_sink.c    | 204 +++++++++++++++++++++++++++++++++++
- 7 files changed, 569 insertions(+)
+ cmd/Kconfig                      |   9 +++
+ cmd/lwip/wget.c                  | 130 ++++++++++++++++++++++++++++++++++++++-
+ configs/sandbox64_lwip_defconfig |   1 +
+ doc/usage/cmd/wget.rst           |  95 +++++++++++++++++++++++++++-
+ net/lwip/wget.c                  |  12 +++-
+ 5 files changed, 243 insertions(+), 4 deletions(-)
 
-diff --git a/configs/sandbox_defconfig b/configs/sandbox_defconfig
-index e8b462e7c11..f82114fe1fc 100644
---- a/configs/sandbox_defconfig
-+++ b/configs/sandbox_defconfig
-@@ -407,6 +407,7 @@ CONFIG_ECDSA_VERIFY=y
- CONFIG_RSASSA_PSS=y
- CONFIG_TPM=y
- CONFIG_TPM_AUTOSTART=y
-+CONFIG_STREAM_SINK=y
- CONFIG_ERRNO_STR=y
- CONFIG_GETOPT=y
- CONFIG_TEST_FDTDEC=y
-diff --git a/include/stream_sink.h b/include/stream_sink.h
-new file mode 100644
-index 00000000000..0f80e72bf9c
---- /dev/null
-+++ b/include/stream_sink.h
-@@ -0,0 +1,84 @@
-+/* SPDX-License-Identifier: GPL-2.0+ */
-+/*
-+ * Write a stream to a block device
-+ */
-+
-+#ifndef __STREAM_SINK_H
-+#define __STREAM_SINK_H
-+
-+#include <blk.h>
-+#include <linux/types.h>
-+
-+struct stream_sink;
-+
-+/**
-+ * sink_to_blk() - start writing a stream to a block device
-+ *
-+ * @dev:	the device
-+ * @start:	first block to write
-+ * @count:	blocks available from @start; more output fails the stream
-+ * @wbuf:	size of the write buffer, a multiple of the block size
-+ * Return:	the sink, or NULL with the reason printed
-+ */
-+struct stream_sink *sink_to_blk(struct blk_desc *dev, lbaint_t start,
-+				lbaint_t count, size_t wbuf);
-+
-+/**
-+ * sink_blk_area() - find the blocks that a command line names
-+ *
-+ * Without ":<part>" or "#<name>" the area is the whole device (or hardware
-+ * partition), which a raw write wants even where the device has a partition
-+ * table; ":0" names it too. An empty <part> and "auto" are refused: they
-+ * leave the choice of partition to U-Boot. An empty <dev> or <name>, "0x"
-+ * without digits, and a number of more than 8 digits or above 0x7fffffff are
-+ * refused for the same reason, and so is a <hwpart> that the device does not
-+ * have: one above 7 on MMC, one other than 0 elsewhere.
-+ *
-+ * @ifname:	interface, e.g. "mmc"
-+ * @dev_part:	"<dev>[.<hwpart>][:<part>|#<name>]"
-+ * @offs:	byte offset into the area, a multiple of the block size
-+ * @dev:	returns the device
-+ * @start:	returns the first block to write
-+ * @count:	returns the blocks from @start to the end of the area
-+ * Return:	0, or a negative error with the reason printed
-+ */
-+int sink_blk_area(const char *ifname, const char *dev_part, u64 offs,
-+		  struct blk_desc **dev, lbaint_t *start, lbaint_t *count);
-+
-+/**
-+ * sink_write() - feed the next piece of the stream
-+ *
-+ * @s:		the sink
-+ * @buf:	input data
-+ * @len:	length of @buf
-+ * Return:	0, or a negative error with the reason printed
-+ */
-+int sink_write(struct stream_sink *s, const void *buf, size_t len);
-+
-+/**
-+ * sink_finish() - complete the stream and release the sink
-+ *
-+ * This writes out what is still buffered, the last partial block padded with
-+ * zeroes, and frees @s. After a failed sink_write() it only frees @s and
-+ * returns that error.
-+ * Either way it reads the partition table again: the stream may have
-+ * replaced it.
-+ *
-+ * @s:		the sink
-+ * @outlen:	if not NULL, receives the number of bytes that sink_write()
-+ *		took, also when the stream failed
-+ * Return:	0, or a negative error with the reason printed
-+ */
-+int sink_finish(struct stream_sink *s, u64 *outlen);
-+
-+/**
-+ * sink_abort() - release the sink of a stream that did not complete
-+ *
-+ * Output already written stays where it is; this drops the buffered tail
-+ * and reads the partition table again.
-+ *
-+ * @s:		the sink
-+ */
-+void sink_abort(struct stream_sink *s);
-+
-+#endif /* __STREAM_SINK_H */
-diff --git a/lib/Kconfig b/lib/Kconfig
-index e86548985d8..0562ae49ef4 100644
---- a/lib/Kconfig
-+++ b/lib/Kconfig
-@@ -1096,6 +1096,14 @@ config SPL_ZSTD
- 
- endmenu
- 
-+config STREAM_SINK
-+	bool "Write a stream to a block device"
-+	depends on BLK && PARTITIONS
-+	help
-+	  Write data piece by piece as it arrives, for example from wget,
-+	  to a block device. Memory use does not grow with the data: the
-+	  sink needs only its write buffer.
-+
- config ERRNO_STR
- 	bool "Enable function for getting errno-related string message"
+diff --git a/cmd/Kconfig b/cmd/Kconfig
+index c64ca1807ef..b60e7b84939 100644
+--- a/cmd/Kconfig
++++ b/cmd/Kconfig
+@@ -2353,6 +2353,15 @@ config WGET_HTTPS
  	help
-diff --git a/lib/Makefile b/lib/Makefile
-index 925cb619807..db14b8804ee 100644
---- a/lib/Makefile
-+++ b/lib/Makefile
-@@ -91,6 +91,7 @@ obj-$(CONFIG_$(PHASE_)ASN1_DECODER_LEGACY) += asn1_decoder.o
- obj-$(CONFIG_$(PHASE_)ZLIB) += zlib/
- obj-$(CONFIG_$(PHASE_)ZSTD) += zstd/
- obj-$(CONFIG_$(PHASE_)GZIP) += gunzip.o
-+obj-$(CONFIG_$(PHASE_)STREAM_SINK) += stream_sink.o
- obj-$(CONFIG_$(PHASE_)LZO) += lzo/
- obj-$(CONFIG_$(PHASE_)LZMA) += lzma/
- obj-$(CONFIG_$(PHASE_)LZ4) += lz4_wrapper.o
-diff --git a/lib/stream_sink.c b/lib/stream_sink.c
-new file mode 100644
-index 00000000000..e05e9ff7152
---- /dev/null
-+++ b/lib/stream_sink.c
-@@ -0,0 +1,268 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * Write a stream to a block device
-+ *
-+ * The input arrives in pieces of any size, and memory use does not depend
-+ * on the size of the data.
-+ */
+ 	  Enable TLS over http for wget.
+ 
++config WGET_STREAM
++	bool "wget -o: write the download to a block device"
++	depends on CMD_WGET && NET_LWIP && BLK && PARTITIONS
++	select STREAM_SINK
++	help
++	  Add wget options that write the download to a block device, or
++	  a partition of it, while it arrives, so a disk image never has
++	  to fit in RAM.
 +
-+#include <blk.h>
+ config WGET_CACERT
+ 	bool "wget cacert"
+ 	depends on CMD_WGET
+diff --git a/cmd/lwip/wget.c b/cmd/lwip/wget.c
+index 531e886e986..499b464cdda 100644
+--- a/cmd/lwip/wget.c
++++ b/cmd/lwip/wget.c
+@@ -4,10 +4,16 @@
+ #include <command.h>
+ #include <env.h>
+ #include <image.h>
 +#include <limits.h>
 +#include <log.h>
-+#include <malloc.h>
-+#include <memalign.h>
-+#include <mmc.h>
-+#include <part.h>
+ #include <net.h>
 +#include <stream_sink.h>
-+#include <u-boot/schedule.h>
 +#include <vsprintf.h>
+ #include <lwip/altcp_tls.h>
 +#include <linux/ctype.h>
-+#include <linux/errno.h>
-+#include <linux/kernel.h>
-+#include <linux/math64.h>
-+#include <linux/string.h>
-+
-+struct stream_sink {
-+	u64 outlen;
-+	/* first error of sink_write(), returned by every later call */
-+	int err;
-+
-+	struct blk_desc *dev;
-+	lbaint_t blk;
-+	/* first block past the target area */
-+	lbaint_t end;
-+	u8 *wbuf;
-+	size_t wbuf_size;
-+	size_t fill;
-+};
-+
-+static int sink_blk_flush(struct stream_sink *s)
++#include <linux/sizes.h>
+ 
+-U_BOOT_CMD(wget, 4, 1, do_wget,
++U_BOOT_CMD(wget, 9, 1, do_wget,
+ 	   "boot image via network using HTTP/HTTPS protocol"
+ #if defined(CONFIG_WGET_CACERT)
+ 	   "\nwget cacert - configure wget root certificates"
+@@ -16,6 +22,14 @@ U_BOOT_CMD(wget, 4, 1, do_wget,
+ 	   "[loadAddress] url\n"
+ 	   "wget [loadAddress] [host:]path\n"
+ 	   "    - load file"
++#if defined(CONFIG_WGET_STREAM)
++	   "\nwget -o <interface> <dev>[.<hwpart>][:<part>|#<name>]\n"
++	   "     [-s offs] [-b wbuf] url\n"
++	   "    - write the file to a block device while it arrives;\n"
++	   "      without a partition to the whole device; offs is a byte\n"
++	   "      offset (hex) into the device or partition; wbuf is the\n"
++	   "      write buffer size (hex, default 100000)"
++#endif
+ #if defined(CONFIG_WGET_CACERT)
+ 	   "\nwget cacert <address> <length>\n"
+ 	   "    - provide CA certificates (0 0 to remove current)"
+@@ -176,15 +190,126 @@ static int parse_legacy_arg(char *arg, char *nurl, size_t rem)
+ 	return 0;
+ }
+ 
++static int wget_stream_sink(void *priv, const void *buf, size_t len)
 +{
-+	lbaint_t blocks = DIV_ROUND_UP(s->fill, s->dev->blksz);
-+
-+	if (!blocks)
-+		return 0;
-+	if (s->fill % s->dev->blksz)
-+		memset(s->wbuf + s->fill, 0,
-+		       blocks * s->dev->blksz - s->fill);
-+	if (blocks > s->end - s->blk) {
-+		log_err("sink: output does not fit in the target area\n");
-+		return -ENOSPC;
-+	}
-+	if (blk_dwrite(s->dev, s->blk, blocks, s->wbuf) != blocks) {
-+		log_err("sink: write error at block " LBAFU "\n", s->blk);
-+		return -EIO;
-+	}
-+	s->blk += blocks;
-+	s->fill = 0;
-+	schedule();
-+
-+	return 0;
-+}
-+
-+static int sink_blk_write(struct stream_sink *s, const u8 *buf, size_t len)
-+{
-+	size_t n;
-+	int ret;
-+
-+	while (len) {
-+		if (s->fill == s->wbuf_size) {
-+			ret = sink_blk_flush(s);
-+			if (ret)
-+				return ret;
-+		}
-+		n = min(len, s->wbuf_size - s->fill);
-+		memcpy(s->wbuf + s->fill, buf, n);
-+		s->fill += n;
-+		s->outlen += n;
-+		buf += n;
-+		len -= n;
-+	}
-+
-+	return 0;
-+}
-+
-+static void sink_free(struct stream_sink *s)
-+{
-+	free(s->wbuf);
-+	free(s);
-+}
-+
-+/* The stream may have replaced the partition table: read it again. */
-+static void sink_close(struct stream_sink *s)
-+{
-+	part_init(s->dev);
-+	sink_free(s);
++	return sink_write(priv, buf, len);
 +}
 +
 +/*
-+ * The device and partition lookups read "0x" without digits as 0 and keep
-+ * the low 32 bits of a number, as a signed int. Return the end of a number
-+ * that they read as written, and the number in @num, or NULL.
++ * Parse a hex number of 1 to 16 digits, with or without 0x; 0 on success.
++ * simple_strtoull() alone takes "0x" for 0.
 + */
-+static const char *sink_num(const char *str, int *num)
++static int parse_hex_u64(const char *str, u64 *val)
 +{
 +	const char *digits = str;
 +	char *end;
-+	ulong val;
 +
 +	if (digits[0] == '0' && tolower(digits[1]) == 'x')
 +		digits += 2;
-+	val = hextoul(str, &end);
-+	if (end == digits || end - digits > 8 || val > INT_MAX)
-+		return NULL;
-+	*num = val;
-+
-+	return end;
-+}
-+
-+int sink_blk_area(const char *ifname, const char *dev_part, u64 offs,
-+		  struct blk_desc **dev, lbaint_t *start, lbaint_t *count)
-+{
-+	struct disk_partition info;
-+	int devnum, hwpart = 0, part;
-+	const char *p;
-+	u64 skip;
-+	u32 rem;
-+
-+	/* the block layer takes "ubi" for the raw MTD device under the volumes */
-+	if (!strcmp(ifname, "ubi")) {
-+		log_err("sink: %s is not a block device\n", ifname);
-+		return -ENODEV;
-+	}
-+	/* a write must not land where U-Boot picks the device or partition */
-+	p = sink_num(dev_part, &devnum);
-+	if (p && *p == '.')
-+		p = sink_num(p + 1, &hwpart);
-+	if (!p || (*p && *p != ':' && *p != '#')) {
-+		log_err("sink: bad device number in %s '%s'\n", ifname,
-+			dev_part);
++	*val = simple_strtoull(str, &end, 16);
++	if (end == digits || end - digits > 16 || *end)
 +		return -EINVAL;
-+	}
-+	if (*p == ':') {
-+		p = sink_num(p + 1, &part);
-+		if (!p || *p) {
-+			log_err("sink: no partition number in %s %s\n", ifname,
-+				dev_part);
-+			return -EINVAL;
-+		}
-+	} else if (*p == '#' && !p[1]) {
-+		/* an empty name matches the first partition that has none */
-+		log_err("sink: no partition name in %s %s\n", ifname,
-+			dev_part);
-+		return -EINVAL;
-+	}
-+	/* mmc_switch_part() takes a hardware partition above 7 modulo 8 */
-+	if (hwpart > PART_ACCESS_MASK && !strcmp(ifname, "mmc")) {
-+		log_err("sink: no hardware partition %x on %s %x\n", hwpart,
-+			ifname, devnum);
-+		return -ENODEV;
-+	}
-+	if (strpbrk(dev_part, ":#")) {
-+		if (part_get_info_by_dev_and_name_or_num(ifname, dev_part, dev,
-+							 &info, 1) < 0)
-+			return -ENODEV;
-+		/* hostfs and 9p have partitions but no block device */
-+		if (!*dev) {
-+			log_err("sink: %s is not a block device\n", ifname);
-+			return -ENODEV;
-+		}
-+	} else {
-+		if (blk_get_device_by_str(ifname, dev_part, dev) < 0) {
-+			log_err("sink: no device %s %s\n", ifname, dev_part);
-+			return -ENODEV;
-+		}
-+		info.start = 0;
-+		info.size = (*dev)->lba;
-+	}
-+	/* a device without hardware partitions takes any number for one */
-+	if ((*dev)->hwpart != hwpart) {
-+		log_err("sink: no hardware partition %x on %s %x\n", hwpart,
-+			ifname, devnum);
-+		return -ENODEV;
-+	}
-+
-+	/* a broken partition table must not wrap the block math below */
-+	if (info.start >= (*dev)->lba || info.size > (*dev)->lba - info.start) {
-+		log_err("sink: %s %s lies outside the device\n", ifname,
-+			dev_part);
-+		return -EINVAL;
-+	}
-+	skip = div_u64_rem(offs, (*dev)->blksz, &rem);
-+	if (rem) {
-+		log_err("sink: offset %#llx is not a multiple of the block size %#lx\n",
-+			offs, (*dev)->blksz);
-+		return -EINVAL;
-+	}
-+	if (skip >= info.size) {
-+		log_err("sink: offset %#llx is past the end of %s %s\n",
-+			offs, ifname, dev_part);
-+		return -EINVAL;
-+	}
-+	*start = info.start + skip;
-+	*count = info.size - skip;
 +
 +	return 0;
 +}
 +
-+struct stream_sink *sink_to_blk(struct blk_desc *dev, lbaint_t start,
-+				lbaint_t count, size_t wbuf)
++/* Download @url and write it to a block device while it arrives. */
++static int wget_stream(const char *ifname, const char *dev_part, u64 offs,
++		       ulong wbuf, char *url)
 +{
++	struct wget_http_info info = {
++		.method = WGET_HTTP_METHOD_GET,
++		.sink = wget_stream_sink,
++	};
 +	struct stream_sink *s;
-+
-+	if (!wbuf || wbuf % dev->blksz) {
-+		log_err("sink: write buffer %#zx must be a nonzero multiple of the block size %#lx\n",
-+			wbuf, dev->blksz);
-+		return NULL;
-+	}
-+	if (!count || start + count < start || start + count > dev->lba) {
-+		log_err("sink: blocks " LBAFU "+" LBAFU " are outside the device\n",
-+			start, count);
-+		return NULL;
-+	}
-+
-+	s = calloc(1, sizeof(*s));
-+	if (!s) {
-+		log_err("sink: out of memory\n");
-+		return NULL;
-+	}
-+	s->wbuf = malloc_cache_aligned(wbuf);
-+	if (!s->wbuf) {
-+		log_err("sink: no memory for a write buffer of %#zx bytes\n",
-+			wbuf);
-+		sink_free(s);
-+		return NULL;
-+	}
-+	s->dev = dev;
-+	s->blk = start;
-+	s->end = start + count;
-+	s->wbuf_size = wbuf;
-+
-+	return s;
-+}
-+
-+int sink_write(struct stream_sink *s, const void *buf, size_t len)
-+{
-+	if (!s->err)
-+		s->err = sink_blk_write(s, buf, len);
-+
-+	return s->err;
-+}
-+
-+int sink_finish(struct stream_sink *s, u64 *outlen)
-+{
-+	int ret = s->err;
-+
-+	if (!ret)
-+		ret = sink_blk_flush(s);
-+	if (outlen)
-+		*outlen = s->outlen;
-+	sink_close(s);
-+
-+	return ret;
-+}
-+
-+void sink_abort(struct stream_sink *s)
-+{
-+	sink_close(s);
-+}
-diff --git a/test/lib/Makefile b/test/lib/Makefile
-index 9fc4a1a9b5d..af099777391 100644
---- a/test/lib/Makefile
-+++ b/test/lib/Makefile
-@@ -8,6 +8,9 @@ obj-$(CONFIG_$(PHASE_)UT_COMPRESSION) += compression.o
- ifeq ($(CONFIG_XPL_BUILD),)
- obj-y += abuf.o
- obj-y += alist.o
-+ifeq ($(CONFIG_SANDBOX)$(CONFIG_STREAM_SINK),yy)
-+obj-y += stream_sink.o
-+endif
- obj-$(CONFIG_ECDSA_VERIFY_MBEDTLS) += ecdsa.o
- obj-$(CONFIG_EFI_LOADER) += efi_device_path.o efi_memory.o
- obj-$(CONFIG_EFI_SECURE_BOOT) += efi_image_region.o
-diff --git a/test/lib/stream_sink.c b/test/lib/stream_sink.c
-new file mode 100644
-index 00000000000..42396041dbf
---- /dev/null
-+++ b/test/lib/stream_sink.c
-@@ -0,0 +1,204 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * Tests for writing a stream to a block device
-+ */
-+
-+#include <blk.h>
-+#include <part.h>
-+#include <stream_sink.h>
-+#include <u-boot/uuid.h>
-+#include <test/lib.h>
-+#include <test/test.h>
-+#include <test/ut.h>
-+
-+#define DATA_LEN	3000
-+
-+/* No two blocks of the data are alike, so that a misplaced one shows. */
-+static void fill(u8 *buf, size_t len, unsigned int seed)
-+{
-+	while (len--) {
-+		*buf++ = seed >> 16;
-+		seed = seed * 1103515245 + 12345;
-+	}
-+}
-+
-+/* Feed @len bytes of @src in pieces of @piece bytes. */
-+static int feed(struct stream_sink *s, const u8 *src, size_t len,
-+		size_t piece)
-+{
-+	size_t done, n;
++	struct blk_desc *dev;
++	lbaint_t start, count;
++	char size[17];
++	u64 outlen;
 +	int ret;
 +
-+	for (done = 0; done < len; done += n) {
-+		n = min(piece, len - done);
-+		ret = sink_write(s, src + done, n);
-+		if (ret)
-+			return ret;
++	if (sink_blk_area(ifname, dev_part, offs, &dev, &start, &count))
++		return CMD_RET_FAILURE;
++	s = sink_to_blk(dev, start, count, wbuf);
++	if (!s)
++		return CMD_RET_FAILURE;
++
++	/* refuse a file that cannot fit before any of it is written */
++	info.buffer_size = (u64)count * dev->blksz;
++	info.check_buffer_size = true;
++	info.sink_priv = s;
++	ret = wget_request(0, url, &info);
++	wget_info = &default_wget_info;
++
++	/* a failed download leaves its buffered tail unwritten */
++	if (ret) {
++		sink_abort(s);
++		return CMD_RET_FAILURE;
 +	}
++	if (sink_finish(s, &outlen))
++		return CMD_RET_FAILURE;
 +
-+	return 0;
-+}
-+
-+/* Give mmc2 two named partitions, as test/cmd/rw.c does, and one without. */
-+static int setup_partitions(struct unit_test_state *uts,
-+			    struct blk_desc **desc)
-+{
-+	char guid[UUID_STR_LEN + 1] = "";
-+	struct disk_partition parts[3] = {
-+		{ .start = 48, .size = 8, .name = "data" },
-+		{ .start = 56, .size = 16, .name = "log" },
-+		{ .start = 72, .size = 8, .name = "" },
-+	};
-+
-+	ut_asserteq(2, blk_get_device_by_str("mmc", "2", desc));
-+	if (CONFIG_IS_ENABLED(RANDOM_UUID)) {
-+		gen_rand_uuid_str(parts[0].uuid, UUID_STR_FORMAT_STD);
-+		gen_rand_uuid_str(parts[1].uuid, UUID_STR_FORMAT_STD);
-+		gen_rand_uuid_str(parts[2].uuid, UUID_STR_FORMAT_STD);
-+		gen_rand_uuid_str(guid, UUID_STR_FORMAT_STD);
++	/* the file is not in memory: no fileaddr goes with this filesize */
++	snprintf(size, sizeof(size), "%llx", outlen);
++	if (env_set("filesize", size) || env_set("fileaddr", NULL)) {
++		log_err("Could not set filesize or delete fileaddr\n");
++		return CMD_RET_FAILURE;
 +	}
-+	ut_assertok(gpt_restore(*desc, guid, parts, ARRAY_SIZE(parts)));
++	printf("%llu bytes written\n", outlen);
 +
-+	return 0;
++	return CMD_RET_SUCCESS;
 +}
 +
-+static int lib_test_sink_blk(struct unit_test_state *uts)
-+{
-+	u8 src[DATA_LEN], back[4096];
-+	struct blk_desc *desc, *dev;
-+	lbaint_t start, count;
-+	struct stream_sink *s;
-+	u64 outlen;
+ int do_wget(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
+ {
+ 	char *end;
+ 	char *url;
+ 	ulong dst_addr;
+ 	char nurl[1024];
++	const char *ifname = NULL, *dev_part = NULL;
++	u64 offs = 0, val;
++	ulong wbuf = SZ_1M;
++	bool has_offs = false, has_wbuf = false;
+ 
+ 	wget_info = &default_wget_info;
+ 
++	while (CONFIG_IS_ENABLED(WGET_STREAM) && argc > 1 &&
++	       argv[1][0] == '-') {
++		if (!strcmp(argv[1], "-o") && argc > 3 && !ifname) {
++			ifname = argv[2];
++			dev_part = argv[3];
++			argc -= 3;
++			argv += 3;
++		} else if (!strcmp(argv[1], "-s") && argc > 2 && !has_offs) {
++			if (parse_hex_u64(argv[2], &offs))
++				return CMD_RET_USAGE;
++			has_offs = true;
++			argc -= 2;
++			argv += 2;
++		} else if (!strcmp(argv[1], "-b") && argc > 2 && !has_wbuf) {
++			if (parse_hex_u64(argv[2], &val) || val > ULONG_MAX)
++				return CMD_RET_USAGE;
++			wbuf = val;
++			has_wbuf = true;
++			argc -= 2;
++			argv += 2;
++		} else if (!strcmp(argv[1], "-o") || !strcmp(argv[1], "-s") ||
++			   !strcmp(argv[1], "-b")) {
++			return CMD_RET_USAGE;
++		} else {
++			/* a path that starts with '-' */
++			break;
++		}
++	}
++	/* -s and -b need -o, and -o takes nothing but a URL */
++	if ((has_offs || has_wbuf) && !ifname)
++		return CMD_RET_USAGE;
++	if (ifname && argc != 2)
++		return CMD_RET_USAGE;
++	/* an empty line must not write the device again */
++	if (ifname && (flag & CMD_FLAG_REPEAT))
++		return CMD_RET_SUCCESS;
 +
-+	ut_assertok(setup_partitions(uts, &desc));
-+	fill(src, sizeof(src), 2);
+ #if CONFIG_IS_ENABLED(WGET_CACERT)
+ 	if (argc == 4 && !strncmp(argv[1], "cacert", strlen("cacert")))
+ 		return set_cacert(argv[2], argv[3]);
+@@ -219,6 +344,9 @@ int do_wget(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
+ 	if (parse_legacy_arg(url, nurl, sizeof(nurl)))
+ 		return CMD_RET_FAILURE;
+ 
++	if (CONFIG_IS_ENABLED(WGET_STREAM) && ifname)
++		return wget_stream(ifname, dev_part, offs, wbuf, nurl);
 +
-+	/* the whole device, with a byte offset, also as hardware partition 0 */
-+	ut_assertok(sink_blk_area("mmc", "2", 0x400, &dev, &start, &count));
-+	ut_asserteq_ptr(desc, dev);
-+	ut_asserteq(2, start);
-+	ut_asserteq(desc->lba - 2, count);
-+	ut_assertok(sink_blk_area("mmc", "2.0", 0, &dev, &start, &count));
-+	ut_asserteq(0, start);
-+	ut_asserteq(desc->lba, count);
-+	ut_assertok(sink_blk_area("mmc", "2:0", 0, &dev, &start, &count));
-+	ut_asserteq(0, start);
-+	ut_asserteq(desc->lba, count);
+ 	if (wget_do_request(dst_addr, nurl))
+ 		return CMD_RET_FAILURE;
+ 
+diff --git a/configs/sandbox64_lwip_defconfig b/configs/sandbox64_lwip_defconfig
+index 0e92728533f..ce5c503583e 100644
+--- a/configs/sandbox64_lwip_defconfig
++++ b/configs/sandbox64_lwip_defconfig
+@@ -3,3 +3,4 @@
+ CONFIG_SANDBOX=y
+ 
+ CONFIG_NET_LWIP=y
++CONFIG_WGET_STREAM=y
+diff --git a/doc/usage/cmd/wget.rst b/doc/usage/cmd/wget.rst
+index e6c33b87431..d14b70844c7 100644
+--- a/doc/usage/cmd/wget.rst
++++ b/doc/usage/cmd/wget.rst
+@@ -15,6 +15,8 @@ Synopsis
+     wget [address] url                  # lwIP only
+     wget cacert none|optional|required  # lwIP only
+     wget cacert <address> <size>        # lwIP only
++    wget -o <interface> <dev>[.<hwpart>][:<part>|#<name>]
++         [-s offs] [-b wbuf] url        # lwIP only
+ 
+ 
+ Description
+@@ -81,6 +83,44 @@ required
+     certificate verification is mandatory. If no root certificates have been
+     configured, HTTPS transfers will fail.
+ 
++Writing to a block device (lwIP only)
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 +
-+	/* a partition left to U-Boot's choice */
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "2:", 0, &dev, &start,
-+					   &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "2:auto", 0, &dev, &start,
-+					   &count));
++With -o, wget writes the file to a block device while it arrives instead of
++loading it into memory, so a disk image larger than RAM can be written. wget
++pads the last partial block with zeroes. A file whose Content-Length exceeds
++the target area is refused before anything is written; one sent without a
++length fails only when it reaches the end of the area, if it does not fit.
++Without a length, a connection that closes early looks like the end of the
++file: wget keeps what arrived and succeeds. A transfer that ends before its
++Content-Length fails, and so does one that goes past it, before the data past
++it is written. When the server answers with a status other than 200, or with
++a Transfer-Encoding such as chunked, which wget does not decode, wget writes
++nothing. A transfer that fails halfway leaves on the device what arrived,
++except the last write buffer; a failed write may leave part of the buffer it
++was writing. On success wget sets the filesize variable to the number of
++bytes written and deletes fileaddr. Each option may be given once.
 +
-+	/* a device, hardware partition or partition number that is not there */
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "", 0, &dev, &start,
-+					   &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "-", 0, &dev, &start,
-+					   &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", ":1", 0, &dev, &start,
-+					   &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "#log", 0, &dev, &start,
-+					   &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "2.:1", 0, &dev, &start,
-+					   &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "0x", 0, &dev, &start,
-+					   &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "2:0x", 0, &dev, &start,
-+					   &count));
++\-o <interface> <dev>[.<hwpart>][:<part>|#<name>]
++    the target. Without a partition the target is the whole device (or the
++    hardware partition), also when the device has a partition table; :0
++    names it too. With a partition number (hex, as in other commands) or
++    name the target is that partition. A ':' without a number and ':auto'
++    are refused, and so are an empty device number and an empty name, so
++    that U-Boot does not pick the device or the partition to write. A
++    hardware partition that the device does not have is refused: one
++    above 7 on MMC, one other than 0 elsewhere.
 +
-+	/* an empty name, which matches the partition that has none */
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "2#", 0, &dev, &start,
-+					   &count));
++\-s offs
++    byte offset (hex) into the target, a multiple of the block size; 0 by
++    default.
 +
-+	/* numbers that the lookups read as 2, 0, 1 and "auto" */
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "100000002", 0, &dev,
-+					   &start, &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "2.100000000", 0, &dev,
-+					   &start, &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "2:100000001", 0, &dev,
-+					   &start, &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "2:ffffffff", 0, &dev,
-+					   &start, &count));
++\-b wbuf
++    size (hex) of the write buffer, a multiple of the block size; 100000
++    (1 MiB) by default. A larger buffer gives fewer, longer writes.
 +
-+	/* a partition that is not on a block device */
-+	ut_asserteq(-ENODEV, sink_blk_area("hostfs", "0:1", 0, &dev, &start,
-+					   &count));
++-s and -b need -o; a download into memory goes to the address given.
 +
-+	/* a hardware partition above 7 on MMC, also at a second try */
-+	ut_asserteq(-ENODEV, sink_blk_area("mmc", "2.8", 0, &dev, &start,
-+					   &count));
-+	ut_asserteq(-ENODEV, sink_blk_area("mmc", "2.8", 0, &dev, &start,
-+					   &count));
+ 
+ Examples
+ --------
+@@ -172,6 +212,58 @@ https://cacerts.digicert.com/DigiCertTLSRSA4096RootG5.crt.
+    # The builtin certificates can be restored at any time
+    => wget cacert builtin
+ 
++Each form of the target, on an eMMC with a GPT that holds the partitions
++"boot" and "rootfs":
 +
-+	/* a partition by number and by name */
-+	ut_assertok(sink_blk_area("mmc", "2:1", 0, &dev, &start, &count));
-+	ut_asserteq(48, start);
-+	ut_asserteq(8, count);
-+	ut_assertok(sink_blk_area("mmc", "2#log", 0x200, &dev, &start,
-+				  &count));
-+	ut_asserteq(57, start);
-+	ut_asserteq(15, count);
++::
 +
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "2:1", 0x100, &dev, &start,
-+					   &count));
-+	ut_asserteq(-EINVAL, sink_blk_area("mmc", "2:1", 8 * 512, &dev,
-+					   &start, &count));
-+	ut_asserteq(-ENODEV, sink_blk_area("mmc", "9", 0, &dev, &start,
-+					   &count));
-+	ut_asserteq(-ENODEV, sink_blk_area("mmc", "2:7", 0, &dev, &start,
-+					   &count));
-+	ut_asserteq(-ENODEV, sink_blk_area("mmc", "2#none", 0, &dev, &start,
-+					   &count));
++   => wget ${loadaddr} http://192.168.1.65/disk.img     # into memory: no -o
++   => wget -o mmc 0 http://192.168.1.65/disk.img        # the whole device
++   => wget -o mmc 0:0 http://192.168.1.65/disk.img      # the same
++   => wget -o mmc 0 -s 8000 http://192.168.1.65/idbloader.img
++                                         # 32 KiB in, where a Rockchip SoC
++                                         # looks for its boot loader
++   => wget -o mmc 0:1 http://192.168.1.65/boot.img      # partition 1
++   => wget -o mmc 0#rootfs http://192.168.1.65/root.img # partition "rootfs"
++   => wget -o mmc 0#rootfs -s 400000 http://192.168.1.65/part.img
++                                         # 4 MiB into "rootfs"
++   => wget -o mmc 0.1 http://192.168.1.65/u-boot.bin    # boot0
++   => wget -o mmc 0.2 -s 40000 http://192.168.1.65/env.bin
++                                         # 256 KiB into boot1
++   => wget -o mmc 0.0:1 http://192.168.1.65/boot.img    # partition 1 of the
++                                         # user area, the same as 0:1
++   => wget -o mmc 0 -b 400000 http://192.168.1.65/disk.img
++                                         # with a 4 MiB write buffer
++   => wget cacert none
++   => wget -o mmc 0 https://example.com/disk.img        # HTTPS, the server
++                                         # not authenticated
 +
-+	/* 3000 bytes into "log", a 1 KiB buffer; the tail block is padded */
-+	memset(back, 0xff, sizeof(back));
-+	ut_asserteq(sizeof(back) / 512, blk_dwrite(desc, 56, 8, back));
-+	ut_assertok(sink_blk_area("mmc", "2#log", 0, &dev, &start, &count));
-+	s = sink_to_blk(dev, start, count, 1024);
-+	ut_assertnonnull(s);
-+	ut_assertok(feed(s, src, sizeof(src), 7));
-+	ut_assertok(sink_finish(s, &outlen));
-+	ut_asserteq(DATA_LEN, outlen);
-+	ut_asserteq(sizeof(back) / 512, blk_dread(desc, 56, 8, back));
-+	ut_asserteq_mem(src, back, DATA_LEN);
-+	ut_assert(!memchr_inv(back + DATA_LEN, 0, 3072 - DATA_LEN));
-+	ut_assert(!memchr_inv(back + 3072, 0xff, sizeof(back) - 3072));
++Writing into a partition, and two targets that wget refuses:
 +
-+	/* an aborted stream leaves the buffered tail unwritten */
-+	memset(back, 0xff, sizeof(back));
-+	ut_asserteq(sizeof(back) / 512, blk_dwrite(desc, 56, 8, back));
-+	s = sink_to_blk(dev, 56, 8, 1024);
-+	ut_assertnonnull(s);
-+	ut_assertok(feed(s, src, 1500, 1500));
-+	sink_abort(s);
-+	ut_asserteq(sizeof(back) / 512, blk_dread(desc, 56, 8, back));
-+	ut_asserteq_mem(src, back, 1024);
-+	ut_assert(!memchr_inv(back + 1024, 0xff, sizeof(back) - 1024));
++::
 +
-+	/* "data" is 4 KiB: the flush of the fifth KiB fails */
-+	s = sink_to_blk(dev, 48, 8, 1024);
-+	ut_assertnonnull(s);
-+	ut_assertok(feed(s, src, sizeof(src), sizeof(src)));
-+	ut_asserteq(-ENOSPC, feed(s, src, sizeof(src), sizeof(src)));
-+	ut_asserteq(-ENOSPC, sink_finish(s, NULL));
-+	/* the first block of "log" is as the aborted stream left it */
-+	ut_asserteq(1, blk_dread(desc, 56, 1, back));
-+	ut_asserteq_mem(src, back, 512);
++   => wget -o mmc 0#rootfs -s 400000 http://10.0.2.2:8099/small.bin
++   ##################################################
++   3000000 bytes transferred in 5282 ms (553.7 KiB/s)
++   Bytes transferred = 3000000 (2dc6c0 hex)
++   3000000 bytes written
++   => wget -o mmc 0: http://10.0.2.2:8099/boot.bin
++   sink: no partition number in mmc 0:
++   => wget -o mmc 0#boot http://10.0.2.2:8099/big.bin
++   wget: 12582912 bytes do not fit in 8388608 bytes
 +
-+	/* the write buffer must be a multiple of the block size */
-+	ut_assertnull(sink_to_blk(dev, 48, 8, 1000));
++Writing a disk image to the SD card of a ROCK Pi 4A with a 4 MiB write
++buffer:
 +
-+	/* a stream over the partition table: the device has none afterwards */
-+	ut_asserteq(PART_TYPE_EFI, desc->part_type);
-+	memset(back, 0, sizeof(back));
-+	s = sink_to_blk(dev, 0, 8, 1024);
-+	ut_assertnonnull(s);
-+	ut_assertok(feed(s, back, sizeof(back), sizeof(back)));
-+	ut_assertok(sink_finish(s, NULL));
-+	ut_asserteq(PART_TYPE_UNKNOWN, desc->part_type);
-+	ut_assertok(setup_partitions(uts, &desc));
++::
 +
-+	return 0;
-+}
-+LIB_TEST(lib_test_sink_blk, UTF_DM | UTF_SCAN_FDT | UTF_CONSOLE);
++   => dhcp
++   => wget -o mmc 1 -b 400000 http://192.168.1.65/ub-test/armbian.img
++   ##################################################
++   1862270976 bytes transferred in 197525 ms (9 MiB/s)
++   Bytes transferred = 1862270976 (6f000000 hex)
++   1862270976 bytes written
++
+ Configuration
+ -------------
+ 
+@@ -179,7 +271,8 @@ The command is only available if CONFIG_CMD_WGET=y.
+ To enable lwIP support set CONFIG_NET_LWIP=y. In this case, root certificates
+ support can be enabled via CONFIG_WGET_BUILTIN_CACERT=y
+ CONFIG_WGET_BUILTIN_CACERT_PATH=<some path> (for built-in certificates) and/or
+-CONFIG_WGET_CACERT=y (for the wget cacert command).
++CONFIG_WGET_CACERT=y (for the wget cacert command). CONFIG_WGET_STREAM=y adds
++the -o, -s and -b options.
+ 
+ TCP Selective Acknowledgments in the legacy network stack can be enabled via
+ CONFIG_PROT_TCP_SACK=y. This will improve the download speed. Selective
+diff --git a/net/lwip/wget.c b/net/lwip/wget.c
+index 4aeacb35ad7..cb4e7530f30 100644
+--- a/net/lwip/wget.c
++++ b/net/lwip/wget.c
+@@ -196,8 +196,12 @@ static int store_block(struct wget_ctx *ctx, void *src, u16_t len)
+ 	int ret;
+ 
+ 	/* Avoid overflow */
+-	if (wget_info->buffer_size && wget_info->buffer_size < ctx->size + len)
++	if (wget_info->buffer_size && wget_info->buffer_size < ctx->size + len) {
++		if (!wget_info->silent)
++			log_err("\nwget: the file does not fit in %llu bytes\n",
++				wget_info->buffer_size);
+ 		return -1;
++	}
+ 
+ 	/* data past the Content-Length is no part of the file */
+ 	if (wget_info->sink && ctx->content_len != HTTPC_CONTENT_LEN_INVALID &&
+@@ -397,8 +401,12 @@ static err_t httpc_headers_done_cb(httpc_state_t *connection, void *arg, struct
+ 
+ 	if (wget_info->check_buffer_size &&
+ 	    content_len != HTTPC_CONTENT_LEN_INVALID &&
+-	    content_len > wget_info->buffer_size)
++	    content_len > wget_info->buffer_size) {
++		if (!wget_info->silent)
++			log_err("wget: %llu bytes do not fit in %llu bytes\n",
++				content_len, wget_info->buffer_size);
+ 		return ERR_BUF;
++	}
+ 
+ 	ctx->content_len = content_len;
+ 
 
 -- 
 2.43.0
