@@ -1,16 +1,13 @@
 From: Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
-Subject: [PATCH v2 0/3] usb/phy: sunxi: Assert reset before deasserting on
- init
-Date: Mon, 23 Nov 2026 06:54:06 +0000
-Message-Id: <20261123-usb-sunxi-reset-fix-v2-0-4e51d3a64964@roadbobek.com>
+Date: Mon, 23 Nov 2026 06:54:07 +0000
+Subject: [PATCH v2 1/3] usb: musb: sunxi: Assert reset before deasserting
+ on init
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NwQ6CMBBEf8Xs2TXdhoB68j8Mh7asshqp6QLBE
- P7dgnePbzIzbwblJKxw3s2QeBSV2GWw+x2E1nV3RmkygzW2JKIKB/WoQzcJJlbu8SYTNuSMMVQ
- Uxp0gL9+Jc7y9Xusf6+AfHPr1am20on1Mn0070tr7bxgJDQbrq5INHwumS4qu8dHz8xDiC+plW
- b4tySluzAAAAA==
-X-Change-ID: 20261117-usb-sunxi-reset-fix-d1a0001440a9
+Message-Id: <20261123-usb-sunxi-reset-fix-v2-1-4e51d3a64964@roadbobek.com>
+References: <20261123-usb-sunxi-reset-fix-v2-0-4e51d3a64964@roadbobek.com>
+In-Reply-To: <20261123-usb-sunxi-reset-fix-v2-0-4e51d3a64964@roadbobek.com>
 To: Bin Liu <b-liu@ti.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
  Samuel Holland <samuel@sholland.org>, 
@@ -24,88 +21,69 @@ Cc: linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-phy@lists.infradead.org, 
  Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795416949; l=3231;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795416949; l=2005;
  i=admin@roadbobek.com; s=20261117; h=from:subject:message-id;
- bh=o4DGixHbPlv/wmE6A4a2ry81udTO6L0xxBAxUf67t/Q=;
- b=MiwFtyzfknvO4YOvokSa0ZFcN0x5K4it0EctWcPSiBPfa05z7gGm/THCuR94ANntFQeEDF4do
- 4F1EaYz6N7HCooIce+oMzx7c1k4KZo9IJKtQuYxIHB8iltqyWlqIm33
+ bh=4U8ofcJ5CaE3LjdH1VHfvFhhqtxQkjH9SyoARmkLRfM=;
+ b=fsb4YhStcZrL24l9lIdisnCkVahY3Uch2BAXtPeUtkG0+AyVTcJv286JSJ3tnvBbfEerDKshU
+ U8beRALeh26CoXmaqZtmU2Yv1jNwVek4mRLcGTpA7vS38jcbYYHzssS
 X-Developer-Key: i=admin@roadbobek.com; a=ed25519;
  pk=TcWSTwITMylwCZLYbw80sv2LQx1zButqiT90TFVvhas=
 X-Endpoint-Received: by B4 Relay for admin@roadbobek.com/20261117 with auth_id=1548
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 When a bootloader such as U-Boot (for example with
-CONFIG_USB_MUSB_HOST=y) initializes USB host mode and boots Linux
-without stopping USB first, both the MUSB controller and USB PHY
-reset lines are already deasserted when Linux probes them.
+CONFIG_USB_MUSB_HOST=y) initializes MUSB and boots Linux without
+stopping USB first, the controller reset line is already deasserted at
+probe time.
 
-Because reset_control_deassert() alone is a no-op on an already
-deasserted reset line, stale hardware register state persists across
-boot. On Allwinner A33, MUSB stays wedged in a_wait_bcon with
-DevCtl=0x99, Power=0xf0, and a frozen Frame counter even across
-hot-unplug and replug.
+In that case reset_control_deassert() in sunxi_musb_init() is a no-op
+and stale MUSB register state persists across boot. On Allwinner A33,
+MUSB stays wedged in a_wait_bcon with DevCtl=0x99, Power=0xf0, and a
+frozen Frame counter even across hot-unplug and replug.
 
-This series ensures both the MUSB controller and USB PHYs are reset
-cleanly regardless of prior bootloader state, and fixes a related
-PHY2 clock reference imbalance spotted during review:
-
-- Patch 1 uses devm_reset_control_get_exclusive() and briefly asserts
-  glue->rst in sunxi_musb_init().
-- Patch 2 uses devm_reset_control_get_exclusive() and asserts all PHY
-  resets in sun4i_usb_phy_probe() before registering the PHY provider,
-  avoiding disrupting shared PHY2 on SoCs with needs_phy2_siddq.
-- Patch 3 fixes a pre-existing phy2->clk2 reference imbalance in
-  sun4i_usb_phy_init() on SoCs with needs_phy2_siddq.
+Request exclusive reset control via devm_reset_control_get_exclusive()
+and assert glue->rst briefly before deasserting it when
+SUNXI_MUSB_FL_HAS_RESET is set so MUSB starts cleanly.
 
 Tested on an Allwinner A33 Q8 tablet (Laser MID-786).
 
+Fixes: 132e23775779 ("usb: musb: sunxi: Add support for musb controller in A31 SoC")
 Signed-off-by: Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
 ---
-Changes in v2:
-- Use devm_reset_control_get_exclusive() in both sunxi_musb_probe() and
-  sun4i_usb_phy_probe() (Philipp Zabel).
-- Move the USB PHY reset assertion from sun4i_usb_phy_init() to
-  sun4i_usb_phy_probe() so initializing PHY2 on SoCs with
-  needs_phy2_siddq does not reset an already active shared PHY2.
-- Add Fixes tags to both reset patches.
-- Add Patch 3 fixing the pre-existing phy2->clk2 clock reference
-  imbalance in sun4i_usb_phy_init().
-- Link to v1: https://patch.msgid.link/20261117-usb-sunxi-reset-fix-v1-0-c2b76e0e84e1@roadbobek.com
+ drivers/usb/musb/sunxi.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-To: Bin Liu <b-liu@ti.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-To: Chen-Yu Tsai <wens@kernel.org>
-To: Jernej Skrabec <jernej.skrabec@gmail.com>
-To: Samuel Holland <samuel@sholland.org>
-To: Philipp Zabel <p.zabel@pengutronix.de>
-To: Hans de Goede <hansg@kernel.org>
-To: Felipe Balbi <balbi@ti.com>
-To: Vinod Koul <vkoul@kernel.org>
-To: Neil Armstrong <neil.armstrong@linaro.org>
-To: Manivannan Sadhasivam <mani@kernel.org>
-To: Kishon Vijay Abraham I <kishon@kernel.org>
-To: Maxime Ripard <mripard@kernel.org>
-To: Andre Przywara <andre.przywara@arm.com>
-Cc: linux-usb@vger.kernel.org
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: linux-sunxi@lists.linux.dev
-Cc: linux-kernel@vger.kernel.org
-Cc: linux-phy@lists.infradead.org
+diff --git a/drivers/usb/musb/sunxi.c b/drivers/usb/musb/sunxi.c
+index a17b1c150626..5f63d519237b 100644
+--- a/drivers/usb/musb/sunxi.c
++++ b/drivers/usb/musb/sunxi.c
+@@ -9,6 +9,7 @@
+  */
+ 
+ #include <linux/clk.h>
++#include <linux/delay.h>
+ #include <linux/err.h>
+ #include <linux/extcon.h>
+ #include <linux/io.h>
+@@ -239,6 +240,8 @@ static int sunxi_musb_init(struct musb *musb)
+ 		goto error_sram_release;
+ 
+ 	if (test_bit(SUNXI_MUSB_FL_HAS_RESET, &glue->flags)) {
++		reset_control_assert(glue->rst);
++		usleep_range(10, 20);
+ 		ret = reset_control_deassert(glue->rst);
+ 		if (ret)
+ 			goto error_clk_disable;
+@@ -745,7 +748,7 @@ static int sunxi_musb_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	if (test_bit(SUNXI_MUSB_FL_HAS_RESET, &glue->flags)) {
+-		glue->rst = devm_reset_control_get(&pdev->dev, NULL);
++		glue->rst = devm_reset_control_get_exclusive(&pdev->dev, NULL);
+ 		if (IS_ERR(glue->rst))
+ 			return dev_err_probe(&pdev->dev, PTR_ERR(glue->rst),
+ 					     "Error getting reset\n");
 
----
-Bobek Brzeczyszczykiewicz (3):
-      usb: musb: sunxi: Assert reset before deasserting on init
-      phy: sun4i-usb: Assert PHY resets in sun4i_usb_phy_probe()
-      phy: sun4i-usb: Fix phy2->clk2 reference imbalance in sun4i_usb_phy_init()
-
- drivers/phy/allwinner/phy-sun4i-usb.c | 23 +++++++++++++++++++++--
- drivers/usb/musb/sunxi.c              |  5 ++++-
- 2 files changed, 25 insertions(+), 3 deletions(-)
----
-base-commit: 666539eecdf4db623f5e3c3e55cf9f2dfad24aa4
-change-id: 20261117-usb-sunxi-reset-fix-d1a0001440a9
-
-Best regards,
---  
-Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
+-- 
+2.53.0
 
