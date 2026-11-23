@@ -1,93 +1,98 @@
-From: Peder Bergan <peder.bergan@gmail.com>
-Date: Mon, 23 Nov 2026 17:43:32 +0100
-Subject: [PATCH v3] rust: bindgen: Preserve sched_statistics alignment
+From: Mani Tofigh <mt4022@columbia.edu>
+Date: Mon, 23 Nov 2026 12:21:34 -0500
+Subject: [PATCH] mm/shmem: don't drop a folio whose swap write failed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-fix-schedstats-bindgen-layout-v3-1-ef7e83c32b42@gmail.com>
-X-B4-Tracking: v=1; b=H4sIADNtBGsC/43OQW7CMBAF0KsgrzvFdkKQu+o9qi7G9iRxRRzkc
- SIQyt1rw4YdLP/oz9O/CaYUiMXX7iYSrYHDHEtoPnbCjRgHguBLFlrqTilloA8XYDeS54yZwYb
- oB4pwwuu8ZJCmOdiubdqjPIpinBOVh7v/8/vIvNg/crmitWGRCWzC6MZ6Ws6cE+G0TwtniHTJt
- TQGznO63leuqmLvDloVKJAHY7zXjex7/z1MGE6fbp5EHbTqJ03LV5oumnKtphaN6ZCetW3b/gG
- FBdU5TwEAAA==
-X-Change-ID: 20261119-fix-schedstats-bindgen-layout-0935b6434707
-To: Miguel Ojeda <ojeda@kernel.org>
-Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Carlos Llamas <cmllamas@google.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
- Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
- Jules Mercier <jules@les-mercier.fr>, rust-for-linux@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Message-Id: <20261123-shmem-swap-write-failed-v1-1-41a0115dfbf1@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTuJHQMhXsW4KO2PjBEkHRASw
+ t2puvwW721kSAqja7FRwkdN30OGOxUUOj88wBqzSc5SOScXtq5Hz7b4kZekE7j1+kLkJiBKXaI
+ upaJcjwmtrr/z7f63zc0TYfruaN8PouPc8XsAAAA=
+X-Change-ID: 20261123-shmem-swap-write-failed-bced285e8526
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Hugh Dickins <hughd@google.com>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, 
+ David Hildenbrand <david@kernel.org>, Kairui Song <kasong@tencent.com>
+Cc: Chris Mason <mason@kernel.org>, Chris Li <chrisl@kernel.org>, 
+ Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
+ Baoquan He <baoquan.he@linux.dev>, Barry Song <baohua@kernel.org>, 
+ Youngjun Park <youngjun.park@lge.com>, Tal Zussman <tz2294@columbia.edu>, 
+ linux-mm@kvack.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Mani Tofigh <mt4022@columbia.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795452214; l=2194;
- i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
- bh=BRNvzNrAOE8SCJYrQje8ClEabdCLlvZJpmkzsmH/zvc=;
- b=hvkGi2TTDZ5rlFhFS9Sj0TO7Yv3elJsXxiwEWUuUy1v46bGKVG2U1hni9P6f4iGj54YI5wpcU
- 02BmMXJGqIiBrB9Eps8k5D56uMKDNX3AMpRzcykH7ZknPalLBFaALjG
-X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
- pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
-X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795454494; l=2695;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=YZkS8z4nKi2wuUKuI1w38QEIWGBn1hka4U2KKfBBdd8=;
+ b=d1A2Jbz2YdcvzAkeX34oY+L/eDQiZJwjs+Ba8yDMxbqQPOWBbjimDgjlrMGcsx8rIoPhofk6v
+ r+eHSy/2jevAy45EgB0WGi0sTG14AtoEENRVU7lykD94wVL2tH1oNET
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With CONFIG_SCHEDSTATS disabled, struct sched_statistics is empty but
-still cache-line aligned. Bindgen omits the alignment of the empty
-type. Bindgen 0.73.2 also stopped forcing padding before over-aligned
-fields, so fields following stats can be misplaced in the generated
-task_struct. On the reported arm64 build, Rust Binder reads the wrong
-pointer via CurrentTask::mm() and rejects mmap() with -EINVAL.
+shmem_swapin_folio() drops a large folio that does not fit the mapping
+from the swap cache if the folio is neither dirty nor under writeback.
+The folio can belong to another file and be under swap writeback, when
+the swap entry was freed and reused before the swap cache lookup.
 
-Make sched_statistics opaque so bindgen uses the C size and alignment.
-Rust has no callers that access the fields of this type.
+Swap write completion does not take the folio lock.  On a failed write,
+swap_write_end() marks the folio dirty and then ends writeback.  Since
+dirty is tested first, the folio can look clean and written:
 
-Reported-by: Jules Mercier <jules@les-mercier.fr>
-Closes: https://github.com/Rust-for-Linux/linux/issues/1269
-Link: https://github.com/rust-lang/rust-bindgen/issues/3549
-Tested-by: Jules Mercier <jules@les-mercier.fr>
-Cc: stable@vger.kernel.org # 6.12.x
-Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
+  CPU0 (swapin of file Y)             CPU1 (swapout of file X)
+  -----------------------             ------------------------
+  shmem_swapin_folio()
+    folio_test_dirty() == false
+                                      swap_write_end(), failed write
+                                        folio_mark_dirty()
+                                        folio_end_writeback()
+    folio_test_writeback() == false
+    swap_cache_del_folio()
+    /* X's data is lost */
+
+The next swapin of X reads the slot whose write failed.
+
+Test writeback first.  Both flags are in folio->flags.  If the
+writeback test sees the write ended, the dirty test then sees the dirty
+bit set before it.
+
+With the fix, a folio whose swap write failed stays in the swap cache.
+
+Fixes: fc2c19648d68 ("mm/shmem: fix swapin livelock on a mismatched large swap cache folio")
+Suggested-by: Chris Mason <mason@kernel.org>
+Cc: stable@vger.kernel.org
+Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
-Changes in v3:
-
-- I generalized the comment to cover any types listed below it.
-- Link to v2: https://lore.kernel.org/rust-for-linux/20261120-fix-schedstats-bindgen-layout-v2-1-1c42e4a996ae@gmail.com/
-
-OpenAI Codex assisted with the bindgen change, validation and drafting.
+Managed to hit this by forcing the order in a VM, and it's gone with the fix.
 ---
- rust/bindgen_parameters | 6 ++++++
- 1 file changed, 6 insertions(+)
+ mm/shmem.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/rust/bindgen_parameters b/rust/bindgen_parameters
-index 5bab3cf063360..ef9379312fce9 100644
---- a/rust/bindgen_parameters
-+++ b/rust/bindgen_parameters
-@@ -26,6 +26,12 @@
- # warning. We don't need to peek into it anyway.
- --opaque-type spinlock
- 
-+# Bindgen omits the alignment of empty structs. Bindgen 0.73.2 also stopped
-+# forcing padding before over-aligned fields, so following fields can be
-+# misplaced. Making the types below opaque preserves their C alignment.
-+# https://github.com/rust-lang/rust-bindgen/issues/3549
-+--opaque-type sched_statistics
-+
- # enums that appear in indirect function calls should specify a cfi type
- --newtype-enum fwctl_rpc_scope
- --with-attribute-custom-enum=fwctl_rpc_scope='#[cfi_encoding="15fwctl_rpc_scope"]'
+diff --git a/mm/shmem.c b/mm/shmem.c
+index e351cd425d69..867f43315af1 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -2664,10 +2664,12 @@ static int shmem_swapin_folio(struct inode *inode, pgoff_t index,
+ 	 * A large folio that does not fit the mapping, e.g. because its swap
+ 	 * entries were freed and reused, would be found again on every retry.
+ 	 * Drop it from the swap cache so the retry can swap in a fitting one.
++	 * A failed swap write sets dirty and then ends writeback without the
++	 * folio lock, so test writeback before dirty.
+ 	 */
+ 	if (error == -EEXIST && folio && folio_test_large(folio) &&
+-	    !folio_test_anon(folio) && !folio_test_dirty(folio) &&
+-	    !folio_test_writeback(folio))
++	    !folio_test_anon(folio) && !folio_test_writeback(folio) &&
++	    !folio_test_dirty(folio))
+ 		swap_cache_del_folio(folio);
+ unlock:
+ 	if (folio)
 
 ---
-base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
-change-id: 20261119-fix-schedstats-bindgen-layout-0935b6434707
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20261123-shmem-swap-write-failed-bced285e8526
 
 Best regards,
 --  
-Peder Bergan <peder.bergan@gmail.com>
+Mani Tofigh <mt4022@columbia.edu>
 
