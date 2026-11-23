@@ -1,88 +1,176 @@
-From: Han Gao <gaohan@iscas.ac.cn>
-Date: Tue, 24 Nov 2026 03:29:24 +0800
-Subject: [PATCH] PCI: dwc: Split iATU windows at region limit boundaries
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v4 00/11] phy/drm: amlogic: Extract Meson HDMI TX PHY into
+ a dedicated driver
+Date: Mon, 23 Nov 2026 20:37:32 +0100
+Message-Id: <20261123-meson-drm-create-hdmitx-phy-v4-0-3fb94f5534ca@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-dwc-iatu-boundary-v1-1-03c8e58514e1@iscas.ac.cn>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMPQqEMBBA4avI1Dtggqh4lWWLOBl1LKIkxh/Eu
- xvX8iveOyGwFw7QZCd4XiXI5BLUJwMajOsZxSaDznWplC7QboRilojtFJ01/kDSXFYV1aYmBam
- bPXey/5/f3+sQ25FpeUZwXTfl4h0hdQAAAA==
-X-Change-ID: 20261124-dwc-iatu-boundary-c2e677c8a8c1
-To: Jingoo Han <jingoohan1@gmail.com>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- Charles Mirabile <cmirabil@redhat.com>, 
- Randolph Lin <randolph@andestech.com>, Frank Li <Frank.Li@nxp.com>, 
- Samuel Holland <samuel.holland@sifive.com>, 
- Niklas Cassel <cassel@kernel.org>
-Cc: linux-pci@vger.kernel.org, Han Gao <rabenda.cn@gmail.com>, 
- Han Gao <gaohan@iscas.ac.cn>
+X-B4-Tracking: v=1; b=H4sIAPyVBGsC/33NSwrCMBSF4a1Ixl7JTWLTOnIf4iBNbm3EPkhqU
+ aR7t1GE4qDDA4fvf7FIwVNkh82LBRp99F07D7XdMFub9kLg3byZ4CJDxD00FLsWXGjABjIDQe0
+ aPzygr5+gjFXcZHvleMFmoQ9U+cdHP52/O97LK9khkelR+zh04fnJj5h+v5JeLY0IHArixhYSZ
+ Y72aG6ebrsqsBQaxYISfJ0SiZIuE8IVZcn1HyWXFK5TcqaqvFIadZ5znS2oaZreWKqccW0BAAA
+ =
+X-Change-ID: 20261115-meson-drm-create-hdmitx-phy-4ac40a654d09
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Vinod Koul <vkoul@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Ulf Hansson <ulfh@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-phy@lists.infradead.org, dri-devel@lists.freedesktop.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>, linux-pm@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795462168; l=2144;
- i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=LWq4t/W7/8Yh8qXqKLllSLq5ntvJqq5EalVbOE1tRmA=;
- b=ues/A1ukD7yttv0kwYfT+pgX19+/wfooG488bmDtAKIbV4ss0drz8BXLUvRxFBtBrd0wuawkF
- 3+ex+aQO1QXCWXE3O33Y01xP/EKixtnNnzg6UTzm1OiLcEHy6n2tlxx
-X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
- pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
-X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6495;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=8BBL7D6KEkOqqUCYRvfX3FXKVr3yWufhCAQshS4EaPc=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQzbLNKZfXt3L3mZlbaw9uXdn/qqlp0xXdqvntzHP0hJLW
+ vGztsO3o5SFQYyLQVZMkaV/ruWJd5ePnvm6Rz0FZg4rE8gQBi5OAZjIxGJGhts1H0u2Jhi+rU+Q
+ 8tus8fBJqel6v6Oam5qS98inKhV+/8vwP9d7e85/VabS7c3rPz7Icl92l8Hw3vNKRiUxKbHJE6w
+ cGAA=
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-dw_pcie_iatu_setup() splits a large window into region_limit + 1 sized
-chunks starting at the window base. If the window doesn't start on a
-region_limit boundary, the first chunk crosses one, the iATU programming
-helpers reject it and the host fails to probe.
+This series moves the Amlogic Meson HDMI TX PHY handling (covering GXBB,
+GXL, GXM, and G12A SoCs) out of the meson_dw_hdmi DRM driver and into a
+dedicated generic PHY driver.
 
-Stop each chunk at the next boundary instead. Inbound windows have the
-same problem.
+Until now, meson_dw_hdmi directly manipulated the HHI system controller
+registers (HHI_HDMI_PHY_CNTL0..5) to configure analog parameters, toggle
+resets, and manage power states, as well as manually ungating HDMI
+clocks and power domains already described in the DT.
 
-Fixes: e9a5415adb20 ("PCI: dwc: Use multiple iATU windows for mapping large bridge windows and DMA ranges")
-Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
+By extracting this logic into a standalone PHY driver under
+drivers/phy/amlogic/:
+- Hardware representation in the DT is cleaner, modeling the HDMI TX PHY
+  as a child node of the HHI syscon referenced via standard "phys"
+  properties.
+- The DRM bridge driver relies on the standard generic PHY API
+  (phy_init, phy_configure, phy_power_on/off, phy_exit) rather than
+  touching syscon registers directly.
+- Legacy DTs lacking the "phys" property remain supported via a
+  temporary fallback helper (meson_hdmi_phy_create_legacy) to preserve
+  backward compatibility to be removed on next phase of component
+  removal.
+
+Overview of the series:
+- Patches 1-3: Fix compatible matching in meson-gx-hhi-sysctrl bindings,
+  add the new amlogic,meson-hdmi-tx-phy DT schema, and allow the
+  "hdmi-phy" child node under the HHI syscon.
+- Patch 4: Add the new Meson HDMI TX PHY driver implementing the HDMI
+  PHY configuration ops, along with the temporary legacy creation
+  helper.
+- Patch 5: Document the optional "phys" and properties in the
+  amlogic,meson-dw-hdmi binding.
+- Patch 6: Make meson-ee-pwrc power up the domain memories when the
+  domain is already on at probe time, as this is a prerequisite for
+  dropping the explicit write from meson_dw_hdmi
+- Patches 7-8: Clean up manual HHI clock/power-domain writes in
+  meson_dw_hdmi (relying on runtime PM instead) and convert the driver
+  to use the generic PHY framework.
+- Patches 9-11: Add the "hdmi-phy" child node and wire up the "phys"
+  phandle for G12, GXBB, and GXL Device Trees.
+
+Tested on:
+- Khadas VIM1 (GXL)
+- dtbs_check and dt_binding_check run cleanly with no new warnings.
+
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
-I hit this on a Zhihe A210, where the config and I/O windows sit at the
-start of a 4 GiB aligned aperture and the memory window follows them.
----
- drivers/pci/controller/dwc/pcie-designware-host.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+Changes in v4:
+- Patch 2: Change commit title. Sashiko and Neil review.
+- Patch 4: Change the phy min_rate to 15.9 MHz mathematical limit.
+           Thanks to Sashiko's review.
+- Patch 8: Drop introduced double free with phy_destroy.
+           Add missing device_link_remove()
+           Change the device_link order and use prepare/complete in the
+           VPU drv for drm_mode_config_helper. Sashiko's review.
+- Link to v3: https://patch.msgid.link/20261121-meson-drm-create-hdmitx-phy-v3-0-f8f471788076@aliel.fr
 
-diff --git a/drivers/pci/controller/dwc/pcie-designware-host.c b/drivers/pci/controller/dwc/pcie-designware-host.c
-index bbb02458af58..37f7a48bf4f6 100644
---- a/drivers/pci/controller/dwc/pcie-designware-host.c
-+++ b/drivers/pci/controller/dwc/pcie-designware-host.c
-@@ -952,7 +952,10 @@ static int dw_pcie_iatu_setup(struct dw_pcie_rp *pp)
- 			}
- 
- 			atu.index = ob_iatu_index;
--			atu.size = MIN(pci->region_limit + 1, res_size);
-+			/* Don't cross a region_limit boundary */
-+			atu.size = MIN(pci->region_limit + 1 -
-+				       (atu.parent_bus_addr & pci->region_limit),
-+				       res_size);
- 
- 			ret = dw_pcie_prog_outbound_atu(pci, &atu);
- 			if (ret) {
-@@ -1030,7 +1033,11 @@ static int dw_pcie_iatu_setup(struct dw_pcie_rp *pp)
- 				return -ENOMEM;
- 			}
- 
--			window_size = MIN(pci->region_limit + 1, res_size);
-+			/* Don't cross a region_limit boundary */
-+			window_size = MIN(pci->region_limit + 1 -
-+					  ((res_start - entry->offset) &
-+					   pci->region_limit),
-+					  res_size);
- 			ret = dw_pcie_prog_inbound_atu(pci, ib_iatu_index,
- 						       PCIE_TLP_TYPE_MEM_RDWR, res_start,
- 						       res_start - entry->offset, window_size);
+Changes in v3:
+- Patch 6: reuse meson_ee_pwrc_mem_power_up() in meson_ee_pwrc_on()
+  function.
+- Patch 8: revert the code to v1 and add a device link to solve
+  suspend/resume order in dpm_list.
+- Link to v2: https://patch.msgid.link/20261120-meson-drm-create-hdmitx-phy-v2-0-93d622d9bb07@aliel.fr
+
+Changes in v2:
+- Patches 5,9-11: Remove unecessary "phy-names" for uniq phy.
+                  Thanks to Neil's feedback.
+- Add Patch 6: Power up the memories when the domain is already on.
+               From Sashiko's feedback.
+- Patch 4: Add a 600MHz max_rate and a 25Mhz min_rate check and
+           exclude PHY_HDMI_MODE_FRL for phy_validate. Thx Sashiko.
+- Patch 8: Move phy_init in dw_hdmi_phy_init and phy_exit
+           in dw_hdmi_phy_disable. From Sashiko review.
+- Link to v1: https://patch.msgid.link/20261117-meson-drm-create-hdmitx-phy-v1-0-9e0ac931381c@aliel.fr
+
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Neil Armstrong <neil.armstrong@linaro.org>
+To: Kevin Hilman <khilman@baylibre.com>
+To: Jerome Brunet <jbrunet@baylibre.com>
+To: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+To: Vinod Koul <vkoul@kernel.org>
+To: Manivannan Sadhasivam <mani@kernel.org>
+To: Ronald Claveau <linux-kernel-dev@aliel.fr>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+To: Maxime Ripard <mripard@kernel.org>
+To: Thomas Zimmermann <tzimmermann@suse.de>
+To: Ulf Hansson <ulfh@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-amlogic@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-phy@lists.infradead.org
+Cc: dri-devel@lists.freedesktop.org
+Cc: linux-pm@vger.kernel.org
 
 ---
-base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
-change-id: 20261124-dwc-iatu-boundary-c2e677c8a8c1
+Ronald Claveau (11):
+      dt-bindings: soc: amlogic: meson-gx-hhi-sysctrl: Fix compatible matching in conditionals
+      dt-bindings: phy: amlogic: document the Amlogic Meson HDMI TX PHY
+      dt-bindings: soc: amlogic: meson-gx-hhi-sysctrl: Add hdmi-phy child node
+      phy: amlogic: Add Meson HDMI TX PHY driver
+      dt-bindings: display: amlogic,meson-dw-hdmi: Add phys
+      pmdomain: amlogic: meson-ee-pwrc: power up memories for boot-enabled domains
+      drm/meson: dw-hdmi: Drop manual HHI clock and memory PD setup
+      drm/meson: dw-hdmi: Use the generic PHY framework for the HDMI TX PHY
+      arm64: dts: amlogic: Add HDMI TX PHY node for G12
+      arm64: dts: amlogic: Add HDMI TX PHY node for GXBB
+      arm64: dts: amlogic: Add HDMI TX PHY node for GXL
+
+ .../bindings/display/amlogic,meson-dw-hdmi.yaml    |   4 +
+ .../bindings/phy/amlogic,meson-hdmi-tx-phy.yaml    |  33 +++
+ .../soc/amlogic/amlogic,meson-gx-hhi-sysctrl.yaml  |  43 ++-
+ arch/arm64/boot/dts/amlogic/meson-g12-common.dtsi  |   6 +
+ arch/arm64/boot/dts/amlogic/meson-gxbb.dtsi        |   6 +
+ arch/arm64/boot/dts/amlogic/meson-gxl.dtsi         |   6 +
+ drivers/gpu/drm/meson/Kconfig                      |   2 +
+ drivers/gpu/drm/meson/meson_drv.c                  |  16 +-
+ drivers/gpu/drm/meson/meson_dw_hdmi.c              | 223 +++++++-------
+ drivers/phy/amlogic/Kconfig                        |  11 +
+ drivers/phy/amlogic/Makefile                       |   1 +
+ drivers/phy/amlogic/phy-meson-hdmi-tx.c            | 319 +++++++++++++++++++++
+ drivers/pmdomain/amlogic/meson-ee-pwrc.c           |  19 +-
+ include/linux/phy/phy-meson-hdmi-tx.h              |  19 ++
+ 14 files changed, 561 insertions(+), 147 deletions(-)
+---
+base-commit: 6d582d78fad9d828e575ca0cdcff8ea47a77220b
+change-id: 20261115-meson-drm-create-hdmitx-phy-4ac40a654d09
 
 Best regards,
 --  
-Han Gao <gaohan@iscas.ac.cn>
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
