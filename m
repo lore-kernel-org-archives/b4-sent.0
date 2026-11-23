@@ -1,10 +1,10 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Mon, 23 Nov 2026 21:43:31 +0300
-Subject: [PATCH 3/8] clk: Add CS7542 PCIe gates and resets
+Date: Mon, 23 Nov 2026 21:43:32 +0300
+Subject: [PATCH 4/8] dt-bindings: phy: Describe CS7542 PCIe SerDes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-b4-cs7542-pcie-v1-3-4cde5201d404@gmail.com>
+Message-Id: <20261123-b4-cs7542-pcie-v1-4-4cde5201d404@gmail.com>
 References: <20261123-b4-cs7542-pcie-v1-0-4cde5201d404@gmail.com>
 In-Reply-To: <20261123-b4-cs7542-pcie-v1-0-4cde5201d404@gmail.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -22,232 +22,97 @@ Cc: Jingoo Han <jingoohan1@gmail.com>,
  linux-clk@vger.kernel.org, linux-phy@lists.infradead.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459409; l=6867;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459409; l=2484;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=IQ3oYOkjhHmvjI099J9lb0QbUnLsKlUN+CsHrOCPogE=;
- b=bBrX5NDk5ovSGT+tLFaV3zfxL6wseB3LnVHHNP2SUFSz95ISHr57Dpw2LjCtsKecVU+I9kmDx
- UQjG/nzmimsB4na7FHqEBMZhC34rIaABbK1hTYE7RVDGeTgD95cMzDU
+ bh=MyL1iV5O/zQ+yKb0w2UWGAKIr38mntIf4hXKW1lxhNg=;
+ b=CyfGYps0N0F18Ogfls7Z2cKPA0iJsxM7CQiMoFc/TJzEWtC25qzOYNTxxH81X6hJBysGBSLDN
+ TU81Lt4mtIRDulo+kyHKPPxoAmXXT8mJlbYOLX1OPihK/aFpDL2ZpW4
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use the shared global regmap for controller gates at bits 10, 12 and 14
-and block resets at bits 6 through 8. Keep the AXI reset-disable bit and
-SATA gates intact. Expose independent gate-only clocks and exclusive
-reset controls with the vendor reset pulse timing.
+Describe three Snow Bush lanes, their shared status bank, global reset
+controls and 24 MHz reference. PCIe is the only supported operating mode.
 
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
- drivers/clk/Kconfig           |  11 +++
- drivers/clk/Makefile          |   2 +
- drivers/clk/clk-cs7542-pcie.c | 168 ++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 181 insertions(+)
+ .../bindings/phy/cortina,cs7542-pcie-phy.yaml      | 67 ++++++++++++++++++++++
+ 1 file changed, 67 insertions(+)
 
-diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
-index 47b5265fe..4abd81260 100644
---- a/drivers/clk/Kconfig
-+++ b/drivers/clk/Kconfig
-@@ -605,4 +605,15 @@ config CLK_DIVIDER_KUNIT_TEST
- 	help
- 	  Kunit test for the clk-divider type.
- 
-+config COMMON_CLK_CS7542_PCIE
-+	tristate "Cortina Systems CS7542 PCIe control"
-+	depends on OF && HAS_IOMEM
-+	select MFD_SYSCON
-+	select RESET_CONTROLLER
-+	help
-+	  Enable the three PCIe clock gates and controller resets in the
-+	  CS7542 global control block. Shared registers use the parent syscon.
-+	  The clocks provide gating only, without a source frequency.
-+	  The module is called clk-cs7542-pcie.
-+
- endif
-diff --git a/drivers/clk/Makefile b/drivers/clk/Makefile
-index 16b1168c8..8ebb794d0 100644
---- a/drivers/clk/Makefile
-+++ b/drivers/clk/Makefile
-@@ -187,3 +187,5 @@ obj-y					+= xilinx/
- obj-$(CONFIG_COMMON_CLK_ZTE)		+= zte/
- obj-$(CONFIG_ARCH_ZYNQ)			+= zynq/
- obj-$(CONFIG_COMMON_CLK_ZYNQMP)         += zynqmp/
-+
-+obj-$(CONFIG_COMMON_CLK_CS7542_PCIE) += clk-cs7542-pcie.o
-diff --git a/drivers/clk/clk-cs7542-pcie.c b/drivers/clk/clk-cs7542-pcie.c
+diff --git a/Documentation/devicetree/bindings/phy/cortina,cs7542-pcie-phy.yaml b/Documentation/devicetree/bindings/phy/cortina,cs7542-pcie-phy.yaml
 new file mode 100644
-index 000000000..c39977a25
+index 000000000..9ccde6e05
 --- /dev/null
-+++ b/drivers/clk/clk-cs7542-pcie.c
-@@ -0,0 +1,168 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/* Cortina Systems CS7542 PCIe clock gates and controller resets. */
-+#include <linux/clk-provider.h>
-+#include <linux/delay.h>
-+#include <linux/mfd/syscon.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/platform_device.h>
-+#include <linux/regmap.h>
-+#include <linux/reset-controller.h>
++++ b/Documentation/devicetree/bindings/phy/cortina,cs7542-pcie-phy.yaml
+@@ -0,0 +1,67 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/phy/cortina,cs7542-pcie-phy.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+#define CS7542_PORTS	3
-+#define GLOBAL_RESET	0x04
-+#define GLOBAL_CONFIG	0x10
++title: Cortina Systems CS7542 PCIe SerDes
 +
-+struct cs7542_gate {
-+	struct clk_hw hw;
-+	struct regmap *map;
-+	u32 mask;
-+};
++maintainers:
++  - Fil Dunsky <filipp.dunsky@gmail.com>
 +
-+struct cs7542_control {
-+	struct reset_controller_dev rcdev;
-+	struct regmap *map;
-+	struct cs7542_gate gates[CS7542_PORTS];
-+	struct clk_hw_onecell_data *clks;
-+};
++description: |
++  Three Snow Bush SerDes lanes shared by PCIe and SATA. Only PCIe mode
++  with a 24 MHz reference is described. The PHY specifier is the lane
++  number, 0 through 2. The status resource contains the shared PHY
++  status registers, with a stride of 0x80 bytes per lane.
 +
-+static int cs7542_gate_prepare(struct clk_hw *hw)
-+{
-+	struct cs7542_gate *gate = container_of(hw, struct cs7542_gate, hw);
++properties:
++  compatible:
++    const: cortina,cs7542-pcie-phy
 +
-+	return regmap_update_bits(gate->map, GLOBAL_CONFIG, gate->mask, gate->mask);
-+}
++  reg:
++    items:
++      - description: Lane 0 programming registers
++      - description: Lane 1 programming registers
++      - description: Lane 2 programming registers
++      - description: Shared PHY status registers
 +
-+static void cs7542_gate_unprepare(struct clk_hw *hw)
-+{
-+	struct cs7542_gate *gate = container_of(hw, struct cs7542_gate, hw);
++  reg-names:
++    items:
++      - const: phy0
++      - const: phy1
++      - const: phy2
++      - const: status
 +
-+	regmap_update_bits(gate->map, GLOBAL_CONFIG, gate->mask, 0);
-+}
++  clocks:
++    maxItems: 1
++    description: 24 MHz SerDes reference clock
 +
-+static int cs7542_gate_is_prepared(struct clk_hw *hw)
-+{
-+	struct cs7542_gate *gate = container_of(hw, struct cs7542_gate, hw);
-+	unsigned int value;
-+	int ret;
++  cortina,global-syscon:
++    $ref: /schemas/types.yaml#/definitions/phandle
++    description: Global control syscon providing lane reset and mode selection
 +
-+	ret = regmap_read(gate->map, GLOBAL_CONFIG, &value);
-+	return ret ? ret : !!(value & gate->mask);
-+}
++  "#phy-cells":
++    const: 1
 +
-+static const struct clk_ops cs7542_gate_ops = {
-+	.prepare = cs7542_gate_prepare,
-+	.unprepare = cs7542_gate_unprepare,
-+	.is_prepared = cs7542_gate_is_prepared,
-+};
++required:
++  - compatible
++  - reg
++  - reg-names
++  - clocks
++  - cortina,global-syscon
++  - "#phy-cells"
 +
-+static int cs7542_reset_update(struct reset_controller_dev *rcdev,
-+			       unsigned long id, bool assert)
-+{
-+	struct cs7542_control *ctl = container_of(rcdev, struct cs7542_control, rcdev);
-+	u32 mask = BIT(6 + id);
++additionalProperties: false
 +
-+	return regmap_update_bits(ctl->map, GLOBAL_RESET, mask, assert ? mask : 0);
-+}
-+
-+static int cs7542_reset_assert(struct reset_controller_dev *rcdev, unsigned long id)
-+{
-+	return cs7542_reset_update(rcdev, id, true);
-+}
-+
-+static int cs7542_reset_deassert(struct reset_controller_dev *rcdev, unsigned long id)
-+{
-+	return cs7542_reset_update(rcdev, id, false);
-+}
-+
-+static int cs7542_reset_status(struct reset_controller_dev *rcdev, unsigned long id)
-+{
-+	struct cs7542_control *ctl = container_of(rcdev, struct cs7542_control, rcdev);
-+	unsigned int value;
-+	int ret;
-+
-+	ret = regmap_read(ctl->map, GLOBAL_RESET, &value);
-+	return ret ? ret : !!(value & BIT(6 + id));
-+}
-+
-+static int cs7542_reset_pulse(struct reset_controller_dev *rcdev, unsigned long id)
-+{
-+	int ret;
-+
-+	ret = cs7542_reset_assert(rcdev, id);
-+	if (ret)
-+		return ret;
-+	usleep_range(10000, 12000);
-+	ret = cs7542_reset_deassert(rcdev, id);
-+	if (ret)
-+		return ret;
-+	usleep_range(10000, 12000);
-+	return 0;
-+}
-+
-+static const struct reset_control_ops cs7542_reset_ops = {
-+	.assert = cs7542_reset_assert,
-+	.deassert = cs7542_reset_deassert,
-+	.status = cs7542_reset_status,
-+	.reset = cs7542_reset_pulse,
-+};
-+
-+static int cs7542_control_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	struct cs7542_control *ctl;
-+	int ret, i;
-+
-+	ctl = devm_kzalloc(dev, sizeof(*ctl), GFP_KERNEL);
-+	if (!ctl)
-+		return -ENOMEM;
-+	ctl->map = syscon_node_to_regmap(dev->of_node->parent);
-+	if (IS_ERR(ctl->map))
-+		return dev_err_probe(dev, PTR_ERR(ctl->map), "global register map\n");
-+	ctl->clks = devm_kzalloc(dev, struct_size(ctl->clks, hws, CS7542_PORTS), GFP_KERNEL);
-+	if (!ctl->clks)
-+		return -ENOMEM;
-+	ctl->clks->num = CS7542_PORTS;
-+	for (i = 0; i < CS7542_PORTS; i++) {
-+		struct cs7542_gate *gate = &ctl->gates[i];
-+		struct clk_init_data init = { .ops = &cs7542_gate_ops };
-+
-+		init.name = devm_kasprintf(dev, GFP_KERNEL, "%s.pcie%d", dev_name(dev), i);
-+		if (!init.name)
-+			return -ENOMEM;
-+		/* Gate-only controls: no source frequency is described or assumed. */
-+		gate->map = ctl->map;
-+		gate->mask = BIT(10 + 2 * i);
-+		gate->hw.init = &init;
-+		ret = devm_clk_hw_register(dev, &gate->hw);
-+		if (ret)
-+			return dev_err_probe(dev, ret, "clock gate %d\n", i);
-+		ctl->clks->hws[i] = &gate->hw;
-+	}
-+	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get, ctl->clks);
-+	if (ret)
-+		return ret;
-+	ctl->rcdev.owner = THIS_MODULE;
-+	ctl->rcdev.ops = &cs7542_reset_ops;
-+	ctl->rcdev.of_node = dev->of_node;
-+	ctl->rcdev.nr_resets = CS7542_PORTS;
-+	return devm_reset_controller_register(dev, &ctl->rcdev);
-+}
-+
-+static const struct of_device_id cs7542_control_match[] = {
-+	{ .compatible = "cortina,cs7542-pcie-control" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, cs7542_control_match);
-+
-+static struct platform_driver cs7542_control_driver = {
-+	.probe = cs7542_control_probe,
-+	.driver = {
-+		.name = "cs7542-pcie-control",
-+		.of_match_table = cs7542_control_match,
-+	},
-+};
-+module_platform_driver(cs7542_control_driver);
-+
-+MODULE_DESCRIPTION("Cortina Systems CS7542 PCIe clock gates and resets");
-+MODULE_LICENSE("GPL");
++examples:
++  - |
++    phy@f00a1000 {
++        compatible = "cortina,cs7542-pcie-phy";
++        reg = <0xf00a1000 0x400>, <0xf00a5000 0x400>,
++              <0xf00a9000 0x400>, <0xf00a0e00 0x180>;
++        reg-names = "phy0", "phy1", "phy2", "status";
++        clocks = <&ref24>;
++        cortina,global-syscon = <&global>;
++        #phy-cells = <1>;
++    };
 
 -- 
 2.53.0
