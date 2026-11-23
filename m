@@ -1,91 +1,56 @@
-From: Yongjian Wang <echoowall@gmail.com>
-Date: Mon, 23 Nov 2026 19:04:10 +0800
-Subject: [PATCH net-next v3 2/2] selftests/net: packetdrill: test
- tcp_mtu_probe_floor
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH 0/4] Various CCS fixes
+Date: Mon, 23 Nov 2026 13:02:38 +0100
+Message-Id: <20261123-ccs-clanked-fixes-v1-0-fb2bcc87a517@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-tcp-mtu-probing-doc-v1-v3-2-c288c2df9666@gmail.com>
-References: <20261123-tcp-mtu-probing-doc-v1-v3-0-c288c2df9666@gmail.com>
-In-Reply-To: <20261123-tcp-mtu-probing-doc-v1-v3-0-c288c2df9666@gmail.com>
-To: corbet@lwn.net, kuba@kernel.org, edumazet@kernel.org, pabeni@redhat.com, 
- davem@davemloft.net, shuah@kernel.org
-Cc: Yongjian Wang <echoowall@gmail.com>, ncardwell@google.com, 
- kuniyu@google.com, rdunlap@infradead.org, linux-kselftest@vger.kernel.org, 
- linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org, skhan@linuxfoundation.org, horms@kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBCF4auQWTtJWxDRqxAWdBhw0FTSAUJCu
+ DtVl19e/reDchRWeGQ7RF5F5RMS7CUDerZhYJQuGZxxpbUuRyJFerfhxR32srFiae7em9u1MK6
+ C1E2Rf0PK6uZvXfzINH+P4DhOO72qOXUAAAA=
+X-Change-ID: 20261123-ccs-clanked-fixes-609bb0754028
+To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Hans Verkuil <hverkuil@kernel.org>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Cc: linux-media@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795431849; l=2254;
- i=echoowall@gmail.com; s=20261026; h=from:subject:message-id;
- bh=L2mM/OhObLn59aLpNJ9Spn+BLz/qgLoUlYL6TTs8CZQ=;
- b=3V8xSAG8iabgXfHb/kqahTVUGbuhiAxkOHPUCsW3ZCsx63YVBJMhGj9eT4AgqJMBi2224D5Ab
- GlroLvG6p5qDpMJ7QPV0620sAitddv4LfNE36jGAfM1NGJJwWEXoq/J
-X-Developer-Key: i=echoowall@gmail.com; a=ed25519;
- pk=9XP6JhqjjPsHCF6UZZZTeqTRnXIa4+ufggnxXtTJ+no=
-X-Endpoint-Received: by B4 Relay for echoowall@gmail.com/20261026 with auth_id=1323
+X-Developer-Signature: v=1; a=openpgp-sha256; l=710; i=david@ixit.cz;
+ h=from:subject:message-id; bh=4jS0zlegs14tBmkkYCWRgSBLMv0d0gpAy+CK0t+l2YY=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrBCtfByf8u82W7vlbkVnFhTNe/cXBz1IUYhXn2
+ yz+6AEZUB2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawQrXwAKCRBgAj/E00kg
+ ctwOEACv/n/56lzpRaDfQ02SNgDw42EkAfeayv8QApQ3JtYtLDI0uSkPpdsVmHOpy1qwEqUkwyJ
+ Ej5jib+hHeVNu06xElYdDb0OhEts93Mj9PnlygaLYXwrdncjpJh0JMrGUhKesnnbzPcK/f33YPL
+ NjCYn2PAQfassOsT0j6mo1A3bOwrtoG6bOCYKQe8m2I/OSnIsP0GchJ1vQSrf2mcTTJZCdWSMeJ
+ DqfzQhvyoHQDc2V8HPgQoMdLCAW+4OtwQXu99U0vCTWt8B9CGK3XALVjkwMCZk3ndyerUjrxI+y
+ s7Lq4jZdCX3LBf0dIewH6pUHmAOO69hINjgI1HhqHP9FX9IQx6/Pk78C/axpwV2ZtcDRd2TLT/k
+ Cd3fXDWggbetSF+l8piRRF09ZIgTcOnc4AgM6xs4HPGszQsK0ALiF7uco8SA5L0sPMDiGgAp9/e
+ mkb9NJb0bEp1zi3NBzwjGCJTWJVznLIThegXZejHZmGE+MGlQIKOFkOAiozmwKwQmQBDRBORHra
+ g2hu0OMObB7dOb1Aw8mHhRTiFFYGFVFenzJbUPnGpLeM4FQJol8HwZxLwW1sfl55wveTbkEUtt2
+ YfEitwyyce8HoWdIqjnfo6UTZXomjrYfJ/bEijWi6McHitGO2/L2YdO38U63dDtb1luIpGS5ycv
+ UlB496SNCdcmZ8A==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tcp_mtu_probe_floor has no selftest coverage.
+First two seems to be no-brainers. Next two seems to be correct too.
 
-Add a test where a full-sized segment keeps timing out without any ICMP
-feedback. After the first detection falls back to tcp_base_mss, check
-that each further retransmission timeout halves the MSS, and that the
-MSS stops at tcp_mtu_probe_floor.
-
-Use tcp_retries1=1 and disable TLP, as in
-tcp_mtu_probing_blackhole_no_tlp_retries1_is_1.pkt, so that every
-retransmission comes from the RTO timer.
-
-Signed-off-by: Yongjian Wang <echoowall@gmail.com>
-Reviewed-by: Kuniyuki Iwashima <kuniyu@google.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../tcp_mtu_probing_blackhole_floor.pkt            | 37 ++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+David Heidelberg (4):
+      media: ccs: Use dev_dbg() instead of dev_err() in ccs_enum_mbus_code()
+      media: ccs: Fix sub-device index in ccs_cleanup()
+      media: ccs: Update PLL and blanking limits when pixel_array crop changes
+      media: ccs: Set V4L2_CTRL_FLAG_MODIFY_LAYOUT on flip controls
 
-diff --git a/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole_floor.pkt b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole_floor.pkt
-new file mode 100644
-index 000000000000..dd040d9beca0
---- /dev/null
-+++ b/tools/testing/selftests/net/packetdrill/tcp_mtu_probing_blackhole_floor.pkt
-@@ -0,0 +1,37 @@
-+// SPDX-License-Identifier: GPL-2.0
-+// Test that after black hole detection, each further retransmission timeout
-+// halves the MSS, but not below tcp_mtu_probe_floor.
-+
-+`./defaults.sh
-+sysctl -q net.ipv4.tcp_mtu_probing=1
-+sysctl -q net.ipv4.tcp_base_mss=1024
-+sysctl -q net.ipv4.tcp_mtu_probe_floor=300
-+sysctl -q net.ipv4.tcp_retries1=1
-+sysctl -q net.ipv4.tcp_early_retrans=0`
-+
-+    0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
-+   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
-+   +0 bind(3, ..., ...) = 0
-+   +0 listen(3, 1) = 0
-+
-+   +0 < S 0:0(0) win 65535 <mss 1460,nop,nop,sackOK>
-+   +0 > S. 0:0(0) ack 1 <mss 1460,nop,nop,sackOK>
-+  +.1 < . 1:1(0) ack 1 win 65535
-+   +0 accept(3, ..., ...) = 4
-+
-+   +0 write(4, ..., 1460) = 1460
-+   +0 > P. 1:1461(1460) ack 1
-+  +.3 > P. 1:1461(1460) ack 1
-+
-+// The first detection falls back to tcp_base_mss.
-+  +.6 > . 1:1025(1024) ack 1
-+
-+// Each further timeout halves the MSS.
-+ +1.2 > . 1:513(512) ack 1
-+
-+// Half of 512 is below tcp_mtu_probe_floor, so the floor is used.
-+ +2.4 > . 1:301(300) ack 1
-+
-+// The MSS does not go below the floor.
-+ +4.8 > . 1:301(300) ack 1
-+  +.1 < . 1:1(0) ack 1461 win 65535
+ drivers/media/i2c/ccs/ccs-core.c | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+---
+base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
+change-id: 20261123-ccs-clanked-fixes-609bb0754028
 
--- 
-Git-157)
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
