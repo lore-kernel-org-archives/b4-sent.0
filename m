@@ -1,11 +1,11 @@
 From: Suyuan Wang <shyckless@gmail.com>
-Date: Mon, 23 Nov 2026 00:53:06 +0000
-Subject: [PATCH 1/2] dmaengine: at_xdmac: Kill the channel tasklets in
- remove again
+Date: Mon, 23 Nov 2026 00:53:07 +0000
+Subject: [PATCH 2/2] dmaengine: idma64: Kill the channel tasklets in remove
+ again
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-dma-chancnt-v1-1-f0eea0a4bb63@gmail.com>
+Message-Id: <20261123-dma-chancnt-v1-2-f0eea0a4bb63@gmail.com>
 References: <20261123-dma-chancnt-v1-0-f0eea0a4bb63@gmail.com>
 In-Reply-To: <20261123-dma-chancnt-v1-0-f0eea0a4bb63@gmail.com>
 To: vkoul@kernel.org, ludovic.desroches@microchip.com
@@ -13,11 +13,11 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
  Frank.Li@kernel.org, allen.lkml@gmail.com, dave.jiang@intel.com, 
  dmaengine@vger.kernel.org, andriy.shevchenko@linux.intel.com
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795395185; l=1963;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795395185; l=1951;
  i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=0bu2ZG6YjZNYO8i4NTeIpO5xmk3AyoVwzgyIl6x73y0=;
- b=GN+9Tcxa5FdlvNodTuggieGgo/+wwVABpHuK75TugVN8dd466Y8HGsvRXU0on8ZU1XQA21oCK
- S5A7eaMLqmhBmmnCBans7qbDW/+3QfKLdOgtOHH+EXq4UTwUItjv2Rz
+ bh=GQuussW5tcaY3AFLXhEILE+dApPEjArrisGtHmyiqFk=;
+ b=ji9WRcuHGobYS9nt8jrwgQQ3y9toNeTxMkJ70wG2ign/Yyl02TFW/2ibsbLp6r13W6629PLua
+ fsVOoXzy6TrDFRy9TrznW54l/IaQlKsFPoPFz+2vE2QOmQMhZSihUx0
 X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
  pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
 X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
@@ -25,21 +25,21 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Suyuan Wang <stevewong@hust.edu.cn>
 
-at_xdmac_remove() kills the channel tasklets and frees the channel
-resources in a loop after free_irq():
+idma64_remove() frees the IRQ and then kills the channel tasklets, as
+the comment there says, so that no tasklet scheduled by the interrupt
+runs after removal:
 
-	for (i = 0; i < atxdmac->dma.chancnt; i++) {
+	for (i = 0; i < idma64->dma.chancnt; i++) {
 		...
-		tasklet_kill(&atchan->tasklet);
-		at_xdmac_free_chan_resources(&atchan->chan);
+		tasklet_kill(&idma64c->vchan.task);
 	}
 
 Since commit e81274cd6b52 ("dmaengine: add support to dynamic
 register/unregister of channels"), dma_async_device_unregister()
 unregisters each channel and decrements dma.chancnt for it, so the
-count is 0 by the time the loop runs and the loop does nothing. A
-tasklet scheduled by an interrupt can then run after atxdmac, which is
-devm-allocated, has been freed.
+count is 0 when this loop runs and no tasklet is killed. A tasklet
+scheduled by an interrupt can then run after the devm-allocated idma64
+and its channels have been freed.
 
 Read the channel count before unregistering the device.
 
@@ -51,31 +51,31 @@ Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
 Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
 Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
- drivers/dma/at_xdmac.c | 4 +++-
+ drivers/dma/idma64.c | 4 +++-
  1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/dma/at_xdmac.c b/drivers/dma/at_xdmac.c
-index ef0dfe9d37ba..ef4012c22573 100644
---- a/drivers/dma/at_xdmac.c
-+++ b/drivers/dma/at_xdmac.c
-@@ -2436,6 +2436,8 @@ static int at_xdmac_probe(struct platform_device *pdev)
- static void at_xdmac_remove(struct platform_device *pdev)
+diff --git a/drivers/dma/idma64.c b/drivers/dma/idma64.c
+index e3db213e564b..5d0df1defb14 100644
+--- a/drivers/dma/idma64.c
++++ b/drivers/dma/idma64.c
+@@ -604,6 +604,8 @@ static int idma64_probe(struct idma64_chip *chip)
+ static void idma64_remove(struct idma64_chip *chip)
  {
- 	struct at_xdmac	*atxdmac = (struct at_xdmac *)platform_get_drvdata(pdev);
+ 	struct idma64 *idma64 = chip->idma64;
 +	/* dma_async_device_unregister() decrements dma.chancnt to 0 */
-+	int		nr_channels = atxdmac->dma.chancnt;
- 	int		i;
++	unsigned short nr_chan = idma64->dma.chancnt;
+ 	unsigned short i;
  
- 	at_xdmac_off(atxdmac, true);
-@@ -2448,7 +2450,7 @@ static void at_xdmac_remove(struct platform_device *pdev)
+ 	dma_async_device_unregister(&idma64->dma);
+@@ -614,7 +616,7 @@ static void idma64_remove(struct idma64_chip *chip)
+ 	 */
+ 	devm_free_irq(chip->dev, chip->irq, idma64);
  
- 	free_irq(atxdmac->irq, atxdmac);
+-	for (i = 0; i < idma64->dma.chancnt; i++) {
++	for (i = 0; i < nr_chan; i++) {
+ 		struct idma64_chan *idma64c = &idma64->chan[i];
  
--	for (i = 0; i < atxdmac->dma.chancnt; i++) {
-+	for (i = 0; i < nr_channels; i++) {
- 		struct at_xdmac_chan *atchan = &atxdmac->chan[i];
- 
- 		tasklet_kill(&atchan->tasklet);
+ 		tasklet_kill(&idma64c->vchan.task);
 
 -- 
 2.34.1
