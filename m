@@ -1,11 +1,11 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Mon, 23 Nov 2026 21:44:10 +0300
-Subject: [PATCH net-next 1/5] dt-bindings: reset: Add Cortina CS7542
- network engine reset domain
+Date: Mon, 23 Nov 2026 21:44:11 +0300
+Subject: [PATCH net-next 2/5] reset: Add Cortina CS7542 network engine
+ domain control
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-b4-cs7542-ethernet-v1-1-fdb5e8c2d508@gmail.com>
+Message-Id: <20261123-b4-cs7542-ethernet-v1-2-fdb5e8c2d508@gmail.com>
 References: <20261123-b4-cs7542-ethernet-v1-0-fdb5e8c2d508@gmail.com>
 In-Reply-To: <20261123-b4-cs7542-ethernet-v1-0-fdb5e8c2d508@gmail.com>
 To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
@@ -18,90 +18,179 @@ To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>,
 Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459449; l=2664;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459449; l=5565;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=afQd1qV0B7xeIKmVAhfGJ0iLxscNrcmWGV+PpdebZtc=;
- b=tfTFkWIjfmcOGW0TyJsPhNwJ/7RsQQNGNr1PBzxNsUCebQE2Wyz4+JuGq072EW0dq4+4Z4BE8
- jSsGPN+vfVaCj+ze3S+IwQ9+oRNjzxQrLPDPyOBex52cVlc4QS+qzJK
+ bh=Ad0mfeyBbvzfZar0R5EFFyw87GP4uLfbc0CLfuGkDwY=;
+ b=Y1kLU2a4JK6H4FID7LfLwqIXJMTjXZtgobCgCmdZNXVXcHeu66v8erxtssLMEV41yW1On2LKq
+ lqixskegE8lDwvyNATBw6iPbcMb6q8Dc0iuW5yK27rjhuvNSIg/p89w
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the atomic reset domain required to stop all network-engine and
-LSO/SSP DMA users before releasing their mappings. Exclude the SDRAM
-controller and independent PCIe resets. Allow this provider as a child
-of the shared global syscon.
+Expose the NI, FE, TM, scheduler, QM, DMA-LSO/SSP and XRAM resets as one
+exclusive logical domain. Change all owned bits in one masked
+global-regmap update, preserve neighboring resets and require bounded
+hardware readback. Return an error for a partially asserted domain.
 
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
- .../bindings/reset/cortina,cs7542-ne-reset.yaml    | 42 ++++++++++++++++++++++
- .../soc/cortina/cortina,cs7542-syscon.yaml         |  4 +++
- 2 files changed, 46 insertions(+)
+ drivers/reset/Kconfig           |  10 ++++
+ drivers/reset/Makefile          |   2 +
+ drivers/reset/reset-cs7542-ne.c | 114 ++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 126 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/reset/cortina,cs7542-ne-reset.yaml b/Documentation/devicetree/bindings/reset/cortina,cs7542-ne-reset.yaml
-new file mode 100644
-index 000000000..8f5b5b835
---- /dev/null
-+++ b/Documentation/devicetree/bindings/reset/cortina,cs7542-ne-reset.yaml
-@@ -0,0 +1,42 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/reset/cortina,cs7542-ne-reset.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Cortina Systems CS7542 network engine reset domain
-+
-+maintainers:
-+  - Fil Dunsky <filipp.dunsky@gmail.com>
-+
-+description: |
-+  Child of the CS7542 global syscon. One reset domain covers NI, FE, TM,
-+  scheduler, queue manager, NI XRAM and the entire DMA block (LSO and SSP).
-+  SDRAM and unrelated peripheral reset bits are not modified. The consumer
-+  must own all these blocks exclusively. This reset is not suitable for a
-+  network-only consumer while a separate driver uses SSP DMA.
-+
-+properties:
-+  compatible:
-+    const: cortina,cs7542-ne-reset
-+
-+  "#reset-cells":
-+    const: 0
-+
-+required:
-+  - compatible
-+  - "#reset-cells"
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    syscon@f0000000 {
-+        compatible = "cortina,cs7542-syscon", "syscon", "simple-mfd";
-+        reg = <0xf0000000 0x100>;
-+        #clock-cells = <1>;
-+        reset-controller {
-+            compatible = "cortina,cs7542-ne-reset";
-+            #reset-cells = <0>;
-+        };
-+    };
-diff --git a/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml b/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml
-index fb074de87..5aca670cd 100644
---- a/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml
-+++ b/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml
-@@ -33,6 +33,10 @@ properties:
-     type: object
-     $ref: /schemas/pinctrl/cortina,cs7542-pinctrl.yaml#
+diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
+index eda9c698a..8218d639f 100644
+--- a/drivers/reset/Kconfig
++++ b/drivers/reset/Kconfig
+@@ -15,6 +15,16 @@ menuconfig RESET_CONTROLLER
  
-+  reset-controller:
-+    type: object
-+    $ref: /schemas/reset/cortina,cs7542-ne-reset.yaml#
+ if RESET_CONTROLLER
+ 
++config RESET_CS7542_NE
++	tristate "Cortina CS7542 network engine reset domain"
++	depends on OF && HAS_IOMEM
++	select MFD_SYSCON
++	help
++	  Control the combined NI/FE/TM/SCH/QM/XRAM and DMA-LSO/SSP domain.
++	  The consumer must exclusively own the entire network and DMA block.
++	  Use this with the network engine driver when no separate SSP DMA
++	  consumer is enabled; the NAND controller may operate through PIO.
 +
- required:
-   - compatible
-   - reg
+ config RESET_A10SR
+ 	tristate "Altera Arria10 System Resource Reset"
+ 	depends on MFD_ALTERA_A10SR || COMPILE_TEST
+diff --git a/drivers/reset/Makefile b/drivers/reset/Makefile
+index 489fafd6b..c24b8e281 100644
+--- a/drivers/reset/Makefile
++++ b/drivers/reset/Makefile
+@@ -55,3 +55,5 @@ obj-$(CONFIG_RESET_UNIPHIER) += reset-uniphier.o
+ obj-$(CONFIG_RESET_UNIPHIER_GLUE) += reset-uniphier-glue.o
+ obj-$(CONFIG_RESET_ZYNQ) += reset-zynq.o
+ obj-$(CONFIG_RESET_ZYNQMP) += reset-zynqmp.o
++
++obj-$(CONFIG_RESET_CS7542_NE) += reset-cs7542-ne.o
+diff --git a/drivers/reset/reset-cs7542-ne.c b/drivers/reset/reset-cs7542-ne.c
+new file mode 100644
+index 000000000..81442c6a9
+--- /dev/null
++++ b/drivers/reset/reset-cs7542-ne.c
+@@ -0,0 +1,114 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* The network engine and DMA-LSO/SSP reset domain has one exclusive owner. */
++#include <linux/bitfield.h>
++#include <linux/mfd/syscon.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/slab.h>
++#include <linux/platform_device.h>
++#include <linux/regmap.h>
++#include <linux/reset-controller.h>
++
++#define CS7542_GLOBAL_RESET	0x04
++/* NI, FE, TM, SCH, QM, DMA-LSO/SSP, NI XRAM; never reset SDRAM (bit 4). */
++#define CS7542_NE_RESET_MASK	(GENMASK(3, 0) | BIT(5) | BIT(16) | BIT(17))
++
++struct cs7542_ne_reset {
++	struct reset_controller_dev rcdev;
++	struct regmap *map;
++};
++
++static int cs7542_ne_reset_update(struct reset_controller_dev *rcdev,
++				  unsigned long id, bool asserted)
++{
++	struct cs7542_ne_reset *rst = container_of(rcdev, struct cs7542_ne_reset, rcdev);
++	unsigned int value, target = asserted ? CS7542_NE_RESET_MASK : 0;
++	int ret;
++
++	if (id)
++		return -EINVAL;
++	ret = regmap_update_bits(rst->map, CS7542_GLOBAL_RESET,
++				 CS7542_NE_RESET_MASK, target);
++	if (ret)
++		return ret;
++	return regmap_read_poll_timeout(rst->map, CS7542_GLOBAL_RESET, value,
++				       (value & CS7542_NE_RESET_MASK) == target,
++				       1, 1000);
++}
++
++static int cs7542_ne_reset_assert(struct reset_controller_dev *rcdev, unsigned long id)
++{
++	return cs7542_ne_reset_update(rcdev, id, true);
++}
++
++static int cs7542_ne_reset_deassert(struct reset_controller_dev *rcdev, unsigned long id)
++{
++	return cs7542_ne_reset_update(rcdev, id, false);
++}
++
++static int cs7542_ne_reset_status(struct reset_controller_dev *rcdev, unsigned long id)
++{
++	struct cs7542_ne_reset *rst = container_of(rcdev, struct cs7542_ne_reset, rcdev);
++	unsigned int value;
++	int ret;
++
++	if (id)
++		return -EINVAL;
++	ret = regmap_read(rst->map, CS7542_GLOBAL_RESET, &value);
++	if (ret)
++		return ret;
++	value &= CS7542_NE_RESET_MASK;
++	if (value && value != CS7542_NE_RESET_MASK)
++		return -EIO;
++	return !!value;
++}
++
++static int cs7542_ne_reset_xlate(struct reset_controller_dev *rcdev,
++				 const struct of_phandle_args *spec)
++{
++	return spec->args_count ? -EINVAL : 0;
++}
++
++static const struct reset_control_ops cs7542_ne_reset_ops = {
++	.assert = cs7542_ne_reset_assert,
++	.deassert = cs7542_ne_reset_deassert,
++	.status = cs7542_ne_reset_status,
++};
++
++static int cs7542_ne_reset_probe(struct platform_device *pdev)
++{
++	struct cs7542_ne_reset *rst;
++
++	rst = devm_kzalloc_obj(&pdev->dev, *rst);
++	if (!rst)
++		return -ENOMEM;
++	rst->map = syscon_node_to_regmap(pdev->dev.of_node->parent);
++	if (IS_ERR(rst->map))
++		return dev_err_probe(&pdev->dev, PTR_ERR(rst->map), "global syscon\n");
++	rst->rcdev.dev = &pdev->dev;
++	rst->rcdev.owner = THIS_MODULE;
++	rst->rcdev.ops = &cs7542_ne_reset_ops;
++	rst->rcdev.nr_resets = 1;
++	rst->rcdev.of_node = pdev->dev.of_node;
++	rst->rcdev.of_reset_n_cells = 0;
++	rst->rcdev.of_xlate = cs7542_ne_reset_xlate;
++	return devm_reset_controller_register(&pdev->dev, &rst->rcdev);
++}
++
++static const struct of_device_id cs7542_ne_reset_match[] = {
++	{ .compatible = "cortina,cs7542-ne-reset" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, cs7542_ne_reset_match);
++
++static struct platform_driver cs7542_ne_reset_driver = {
++	.probe = cs7542_ne_reset_probe,
++	.driver = {
++		.name = "cs7542-ne-reset",
++		.of_match_table = cs7542_ne_reset_match,
++	},
++};
++module_platform_driver(cs7542_ne_reset_driver);
++
++MODULE_DESCRIPTION("Cortina CS7542 exclusive network engine reset domain");
++MODULE_LICENSE("GPL");
 
 -- 
 2.53.0
