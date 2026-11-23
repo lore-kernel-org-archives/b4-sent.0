@@ -1,62 +1,63 @@
-From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Mon, 23 Nov 2026 21:44:14 +0300
-Subject: [PATCH net-next 5/5] MAINTAINERS: Add CS7542 network engine
- support
+From: Han Gao <gaohan@iscas.ac.cn>
+Date: Tue, 24 Nov 2026 02:44:45 +0800
+Subject: [PATCH] riscv: vdso: Define BUILD_VDSO
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-b4-cs7542-ethernet-v1-5-fdb5e8c2d508@gmail.com>
-References: <20261123-b4-cs7542-ethernet-v1-0-fdb5e8c2d508@gmail.com>
-In-Reply-To: <20261123-b4-cs7542-ethernet-v1-0-fdb5e8c2d508@gmail.com>
-To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Hans Ulli Kroll <ulli.kroll@googlemail.com>, 
- Linus Walleij <linusw@kernel.org>, Russell King <linux@armlinux.org.uk>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459449; l=1003;
- i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=G+m7gJTK/NeHqNoGXUe2fybpj2Fx+enthhwoUjEoXRw=;
- b=7ecsMKI92CxEavAgE91R7+aRS33PjSd5cBpv9g0WV8kA+QieWXLcDOLx0NYijgRNp1xIpfZUr
- 2EjrS+tfyxXAkzlfCo2vL7KTb7EQCGjP8pVNMjP32958r/NdAhVg+4h
-X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
- pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
-X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
+Message-Id: <20261124-riscv-vdso-build-vdso-v1-1-c52b0b3592dc@iscas.ac.cn>
+X-B4-Tracking: v=1; b=H4sIAJyJBGsC/yWMQQqAIBAAvyJ7TkjJir4SHSzXWogMlyQI/57Ub
+ eYw8wBjJGQYxAMREzGFo4iqBCybPVaU5IqDrnWrlG5kJF6STI6DnC/a3Y/Wzb7rTWO98VDaM6K
+ n+/uOU84vR63LbmcAAAA=
+X-Change-ID: 20261124-riscv-vdso-build-vdso-adbf7854af5f
+To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
+ Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>
+Cc: Drew Fustini <fustini@kernel.org>, Guo Ren <guoren@kernel.org>, 
+ Han Gao <rabenda.cn@gmail.com>, linux-riscv@lists.infradead.org, 
+ Han Gao <gaohan@iscas.ac.cn>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459491; l=1289;
+ i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
+ bh=dAS3hQxQuE0pYdjMaRRfsno7t7qwdj3jEoveU0f6oWg=;
+ b=YPNE9RlZxuADbrEQ9JR/ChY+NDusx5Ei/QLKFb9cujFmClqvAns64uITCNJZzvn7HsRzmfE6L
+ /PEZXb+MtO3AfClONlwsVevAQx7iL8yfowyl2z7/xMEydoxHkWkBNPB
+X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
+ pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
+X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Cover the Ethernet binding, network engine and reset provider under a
-dedicated CS7542 network engine entry.
+Unlike arm64, powerpc and others, riscv does not define BUILD_VDSO
+for its vDSO build, so header checks on it never apply here.
 
-Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
+The T-Head WRITE_ONCE errata needs it to keep its alternative out of
+the vDSO. Otherwise booting with CONFIG_DEBUG_VIRTUAL=y hits
+VIRTUAL_BUG_ON() in vmalloc_to_page().
+
+Link: https://lore.kernel.org/linux-riscv/CAJF2gTQ+cOYfQX=JsK6T6Aij79FU9RGuyxAAouyL958z8ABqng@mail.gmail.com/
+Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- MAINTAINERS | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Tested with the WRITE_ONCE errata V6 in qemu -cpu thead-c906.
+---
+ arch/riscv/kernel/vdso/Makefile | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index d8835aeca..e5d1edd7b 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2959,6 +2959,15 @@ F:	drivers/clk/clk-cs7542.c
- F:	drivers/pinctrl/pinctrl-cs7542.c
- F:	include/dt-bindings/clock/cortina,cs7542-clock.h
+diff --git a/arch/riscv/kernel/vdso/Makefile b/arch/riscv/kernel/vdso/Makefile
+index c023046a3fd75a95946babb96b3f9019ee2dec4a..b99645672634852df814e9d17c768bf82297079b 100644
+--- a/arch/riscv/kernel/vdso/Makefile
++++ b/arch/riscv/kernel/vdso/Makefile
+@@ -35,6 +35,7 @@ endif
  
-+ARM/CORTINA SYSTEMS CS7542 NETWORK ENGINE
-+M:	Fil Dunsky <filipp.dunsky@gmail.com>
-+L:	netdev@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/net/cortina,cs7542-ethernet.yaml
-+F:	Documentation/devicetree/bindings/reset/cortina,cs7542-ne-reset.yaml
-+F:	drivers/net/ethernet/cortina/cs752x_*
-+F:	drivers/reset/reset-cs7542-ne.c
-+
- ARM/CORTINA SYSTEMS GEMINI ARM ARCHITECTURE
- M:	Hans Ulli Kroll <ulli.kroll@googlemail.com>
- M:	Linus Walleij <linusw@kernel.org>
+ ccflags-y := -fno-stack-protector
+ ccflags-y += -DDISABLE_BRANCH_PROFILING
++ccflags-y += -DBUILD_VDSO
+ ccflags-y += -fno-builtin
+ ccflags-y += $(CONFIG_CC_OPT_INLINE_MEMSET)
+ ccflags-y += $(KBUILD_BASE_ISA)$(CFI_MARCH)
 
+---
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20261124-riscv-vdso-build-vdso-adbf7854af5f
+
+Best regards,
 -- 
-2.53.0
+Han Gao <gaohan@iscas.ac.cn>
 
