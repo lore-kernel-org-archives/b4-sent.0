@@ -1,226 +1,158 @@
-From: Peder Bergan <peder.bergan@gmail.com>
-Date: Mon, 23 Nov 2026 11:46:58 +0100
-Subject: [PATCH v3] rust: put C helper exports in a dedicated namespace
+From: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+Date: Mon, 23 Nov 2026 12:55:29 +0200
+Subject: [PATCH v2] EDAC/mc: Convert the poll period to jiffies when it is
+ changed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-rust-helper-namespace-v3-1-b83e2923324b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKEZBGsC/42QwW6FIBBFf8WwLq8CAmqa5v1H0wXgoDQqFtS0e
- Xn/XtCkadJFm1ndydyTO/eGIgQHEbXFDQXYXXR+ToI9FMgMau4Buy5pREsqCKElDltc8QDjAgH
- PaoK4KAOYS6gNkwCysyh5lwDWfRzcl9dTx02/gVkzLF9oFQHroGYz5FXGPv7CJluA95jvBxdXH
- z6PoDvJ3L8y7QQTzHSjSs45s1Zc+0m58WL8hHKmnf6LQhOFVIxwwWvLG/hJuZ+vpYxbam49/0X
- JGtXRXFs8nXhC03BCL0TIklUyMfsleOM6de2970fIwOfvYpKY3NoWWqjGKlYZqEgtjRZNxwyva
- 1Vpba1hxADvdG1TlPsXEvqpwswBAAA=
-X-Change-ID: 20261120-rust-helper-namespace-57e8c37ee7df
-To: Miguel Ojeda <ojeda@kernel.org>, Nathan Chancellor <nathan@kernel.org>, 
- Nicolas Schier <nsc@kernel.org>
-Cc: Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Luis Chamberlain <mcgrof@kernel.org>, Petr Pavlu <petr.pavlu@suse.com>, 
- Daniel Gomez <da.gomez@kernel.org>, Sami Tolvanen <samitolvanen@google.com>, 
- Aaron Tomlin <atomlin@atomlin.com>, rust-for-linux@vger.kernel.org, 
- linux-kbuild@vger.kernel.org, linux-modules@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Wedson Almeida Filho <wedsonaf@gmail.com>, 
- Giuliano Procida <gprocida@google.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795430822; l=7943;
- i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
- bh=nZ0NjEBZ990zQIlXVxBFgN/g8WkVDdpgNRTJN2ixXEs=;
- b=9ix/Ys9EtXKgSNM40MJy7DNpB9HTMGLqhOxzyrbpi3OU/QRslYPIvbIAxDAhi6F3vE+Y/8jAY
- FYxK3s4dpWGBVibSQd9+uOugPX/dahWNWSXQ+a3yUyQbrqbMPWV0Bc3
-X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
- pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
-X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
+Message-Id: <20261123-edac-mc-poll-msec-jiffies-v2-1-0407cc52556d@ahmedabdelfattah.dev>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NTQ6CMBBGr0K6dgxTErSuvIdhUdoZKeEvbW00h
+ Ltb8AIuX/K+960ikHcUxK1YhafkgpunDPJUCNPp6UngbGYhS1kjogKy2sBoYJmHAcZABnrHnBP
+ A7YWVrBlRGpH3iyd276P9aH4cXm1PJu7B3ehciLP/HOcJd++fn4SAwFRJpaor61LddTdmvbU0s
+ I5Rd2dLSTTbtn0BMlh3w98AAAA=
+X-Change-ID: 20261119-edac-mc-poll-msec-jiffies-fb7f926f112c
+To: Borislav Petkov <bp@alien8.de>, Tony Luck <tony.luck@intel.com>
+Cc: Qiuxu Zhuo <qzhuo@nvidia.com>, linux-edac@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795431333; l=5584;
+ i=me@ahmedabdelfattah.dev; s=20261106; h=from:subject:message-id;
+ bh=n19gK6o3sRSWNb0gfAuZ8xCRhx7uWKCKrQY4JcoU+gA=;
+ b=0HNrLZac5Wok4Ed+BV8WQnGeuQmK9bBXzryHZYf+2dHsC0ouws/cJBZ719etCXuW5BnVk7XzW
+ woVv7MJl0ncCEtBPGOjIprNAN3K6kA2LQ6F8oqENhFFuAKBFIzDHcIp
+X-Developer-Key: i=me@ahmedabdelfattah.dev; a=ed25519;
+ pk=DHEHKU4PddrkJ/iYMZpwyyXsFyIQ6ySjTttKLrt9YqI=
+X-Endpoint-Received: by B4 Relay for me@ahmedabdelfattah.dev/20261106 with auth_id=1438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The rust_helper_ prefix marks these C wrappers as Rust implementation
-details. Export them in RUST_HELPERS so modpost can detect accidental
-dependencies at build time.
+Writing edac_mc_poll_msec at run time re-arms every polled memory
+controller through edac_mc_reset_delay_period(), which passes the new
+value to edac_mod_work() as it is. mod_delayed_work() takes jiffies, so
+the first poll after the write comes that many jiffies later, not that
+many milliseconds: at HZ=300, writing 2000 puts the next poll 6.7 s
+out. edac_mc_workq_function() re-arms with msecs_to_jiffies(), so only
+that first poll is off.
 
-Rust generics and inlining can introduce calls through ordinary Rust
-abstractions. Have Kbuild mark modular Rust objects when the helpers
-are out of line. The marker survives composite module linking and is
-discarded at the final link.
+Before commit c4cf3b454eca ("EDAC: Rework workqueue handling") this
+path converted the value through edac_mc_workq_setup(), and
+edac_device_reset_delay_period() still does. Convert it here as well.
 
-When an eligible module uses an export from RUST_HELPERS provided by
-vmlinux, have modpost generate the import unless the module already
-declares it. This covers mixed-language modules such as kasan_test,
-whose module metadata comes from C.
+All other callers of edac_mod_work() and edac_queue_work() already pass
+jiffies. Name the arguments after the unit they are in: "jiffies" for
+the two workqueue helpers, and "msec" for edac_mc_reset_delay_period(),
+as edac_device_reset_delay_period() has it.
 
-Suggested-by: Wedson Almeida Filho <wedsonaf@gmail.com>
-Suggested-by: Miguel Ojeda <ojeda@kernel.org>
-Link: https://github.com/Rust-for-Linux/linux/issues/216
-Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
+Fixes: c4cf3b454eca ("EDAC: Rework workqueue handling")
+Reviewed-by: Qiuxu Zhuo <qzhuo@nvidia.com>
+Signed-off-by: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 ---
-This patch applies on top of Giuliano Procida's v5 series converting
-the Rust exports to assembly.
-https://lore.kernel.org/rust-for-linux/20261112121512.1670347-1-gprocida@google.com/
+I noticed this while timing ie31200_edac's polls in a KVM guest: the
+first poll after a write to edac_mc_poll_msec came late.
 
-In a strict x86-64 build with DWARF-based module versioning, I
-verified that modpost generated the import for modular KASAN and the
-Rust samples that reference helpers. I also confirmed that modpost
-rejects an external C-only module that uses a helper without
-importing RUST_HELPERS.
-
-OpenAI Codex assisted with coding, the commit message and build validation.
+Tested on v7.4-rc3+ (4405c18c95d2) at HZ=300, with ie31200_edac bound
+to a QEMU model of the Kaby Lake host bridge (a local device model, not
+upstream QEMU), timing edac_mc_workq_function() with a kprobe. Without
+the patch the first poll came 6.76 s after writing 2000 and 3.51 s after
+writing 1000, with the polls after it every 2.13 s and 1.01 s. With the
+patch the first poll comes 2.11 s and 1.02 s after the write, in line
+with the ones after it. Writes below 1000 are still rejected.
 ---
-Changes in v3:
-- Generate the namespace exports on top of the assembly conversion.
-- Use simply expanded Make assignments for the literal export formats.
-- Generate imports in modpost for modules with Rust objects that use
-  the helpers. Drop the module! and KASAN-specific imports.
-- Link to v2: https://patch.msgid.link/20261120-rust-helper-namespace-v2-1-14315658f59e@gmail.com
+Changes in v2:
+- Went through the callers of edac_mod_work() and edac_queue_work(). The
+  others already pass jiffies: edac_device keeps msecs_to_jiffies(msec)
+  in edac_dev->delay, edac_pci and the other edac_mc callers convert at
+  the call. So the fix is the same as in v1.
+- Renamed the "delay" argument of both helpers to "jiffies" (Borislav).
+  The "value" in the v1 hunk is edac_mc_reset_delay_period()'s argument
+  and is in milliseconds, so that one is now "msec". As an argument name
+  "jiffies" shadows the global one, which only W=2 complains about; I
+  can call it something else if you prefer.
+- Added Qiuxu's Reviewed-by and retested.
+- Link to v1: https://patch.msgid.link/20261119-edac-mc-poll-msec-jiffies-v1-1-fe329938fa09@ahmedabdelfattah.dev
 ---
- rust/Makefile          |  5 ++++-
- scripts/Makefile.build |  4 +++-
- scripts/mod/modpost.c  | 20 ++++++++++++++++----
- scripts/mod/modpost.h  |  3 +++
- 4 files changed, 26 insertions(+), 6 deletions(-)
+ drivers/edac/edac_mc.c     | 6 +++---
+ drivers/edac/edac_module.h | 6 +++---
+ drivers/edac/wq.c          | 8 ++++----
+ 3 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/rust/Makefile b/rust/Makefile
-index db1690c87e9b0..a6fce0d830ba4 100644
---- a/rust/Makefile
-+++ b/rust/Makefile
-@@ -569,9 +569,10 @@ $(obj)/helpers/helpers.bc $(obj)/helpers/helpers_module.bc: $(src)/helpers/helpe
+diff --git a/drivers/edac/edac_mc.c b/drivers/edac/edac_mc.c
+index fd70caa85574..6feb0809a959 100644
+--- a/drivers/edac/edac_mc.c
++++ b/drivers/edac/edac_mc.c
+@@ -483,12 +483,12 @@ static void edac_mc_workq_function(struct work_struct *work_req)
+ }
  
- rust_exports = $(NM) -p --defined-only $(1) | awk '$$2~/(T|R|D|B)/ && $$3!~/__(pfx|cfi|odr_asan)/ { printf $(2),$$3 }'
+ /*
+- * edac_mc_reset_delay_period(unsigned long value)
++ * edac_mc_reset_delay_period(unsigned long msec)
+  *
+  *	user space has updated our poll period value, need to
+  *	reset our workq delays
+  */
+-void edac_mc_reset_delay_period(unsigned long value)
++void edac_mc_reset_delay_period(unsigned long msec)
+ {
+ 	struct mem_ctl_info *mci;
+ 	struct list_head *item;
+@@ -499,7 +499,7 @@ void edac_mc_reset_delay_period(unsigned long value)
+ 		mci = list_entry(item, struct mem_ctl_info, link);
  
-+rust_export_format := "EXPORT_SYMBOL_GPL(%s)\n"
- quiet_cmd_exports = EXPORTS $@
-       cmd_exports = \
--	$(call rust_exports,$<,"EXPORT_SYMBOL_GPL(%s)\n") > $@
-+	$(call rust_exports,$<,$(rust_export_format)) > $@
- 
- $(obj)/exports_core_generated.h: $(obj)/core.o FORCE
- 	$(call if_changed,exports)
-@@ -585,6 +586,8 @@ $(obj)/exports_core_generated.h: $(obj)/core.o FORCE
- # function either. Therefore, we export all symbols from helpers and bindings.
- # In the future, this may be revisited to reduce the number of exports after
- # the compiler is informed about the places codegen is required.
-+$(obj)/exports_helpers_generated.h: private rust_export_format := \
-+	"EXPORT_SYMBOL_NS_GPL(%s, \"RUST_HELPERS\")\n"
- $(obj)/exports_helpers_generated.h: $(obj)/helpers/helpers.o FORCE
- 	$(call if_changed,exports)
- 
-diff --git a/scripts/Makefile.build b/scripts/Makefile.build
-index 873a9ed62a181..d9c49e0ce8a4e 100644
---- a/scripts/Makefile.build
-+++ b/scripts/Makefile.build
-@@ -364,13 +364,15 @@ rust_common_cmd = \
- # i.e. the outputs we would get for the different single targets (e.g. `.ll`)
- # would not match each other.
- 
-+# Mark modular Rust objects so modpost can identify them after a composite link.
- quiet_cmd_rustc_o_rs = $(RUSTC_OR_CLIPPY_QUIET) $(quiet_modtag) $@
-       cmd_rustc_o_rs = $(rust_common_cmd) --emit=$(if $(CONFIG_RUST_INLINE_HELPERS),llvm-bc=$(patsubst %.o,%.bc,$@),obj=$@) $< \
- 	$(if $(CONFIG_RUST_INLINE_HELPERS),;$(LLVM_LINK) --internalize --suppress-warnings $(patsubst %.o,%.bc,$@) \
- 		$(objtree)/rust/helpers/helpers$(if $(part-of-module),_module).bc -o $(patsubst %.o,%.m.bc,$@); \
- 		$(CC) $(CLANG_FLAGS) $(filter-out $(CC_FLAGS_LTO),$(KBUILD_CFLAGS)) \
- 		$(CC_FLAGS_RUST_INLINE_HELPERS) -Wno-override-module -c $(patsubst %.o,%.m.bc,$@) -o $@ \
--		$(cmd_ld_single)) \
-+		$(cmd_ld_single), \
-+		$(if $(part-of-module),; $(OBJCOPY) --add-section .discard.rust_helpers=/dev/null $@)) \
- 	$(cmd_objtool)
- 
- define rule_rustc_o_rs
-diff --git a/scripts/mod/modpost.c b/scripts/mod/modpost.c
-index 75374c64b8cc7..209a33e9ec8f9 100644
---- a/scripts/mod/modpost.c
-+++ b/scripts/mod/modpost.c
-@@ -29,6 +29,7 @@
- #include "../../include/linux/license.h"
- 
- #define MODULE_NS_PREFIX "module:"
-+#define RUST_HELPERS_NAMESPACE "RUST_HELPERS"
- 
- static bool module_enabled;
- /* Are we using CONFIG_MODVERSIONS? */
-@@ -534,6 +535,8 @@ static int parse_elf(struct elf_info *info, const char *filename)
- 		} else if (!strcmp(secname, ".no_trim_symbol")) {
- 			info->no_trim_symbol = (void *)hdr + sechdrs[i].sh_offset;
- 			info->no_trim_symbol_len = sechdrs[i].sh_size;
-+		} else if (!strcmp(secname, ".discard.rust_helpers")) {
-+			info->has_rust_object = true;
- 		}
- 
- 		if (sechdrs[i].sh_type == SHT_SYMTAB) {
-@@ -1617,6 +1620,7 @@ static void read_symbols(const char *modname)
+ 		if (mci->op_state == OP_RUNNING_POLL)
+-			edac_mod_work(&mci->work, value);
++			edac_mod_work(&mci->work, msecs_to_jiffies(msec));
  	}
+ 	mutex_unlock(&mem_ctls_mutex);
+ }
+diff --git a/drivers/edac/edac_module.h b/drivers/edac/edac_module.h
+index eceef5539186..762a331a5708 100644
+--- a/drivers/edac/edac_module.h
++++ b/drivers/edac/edac_module.h
+@@ -48,12 +48,12 @@ extern void edac_device_remove_sysfs(struct edac_device_ctl_info *edac_dev);
+ /* edac core workqueue: single CPU mode */
+ int edac_workqueue_setup(void);
+ void edac_workqueue_teardown(void);
+-bool edac_queue_work(struct delayed_work *work, unsigned long delay);
++bool edac_queue_work(struct delayed_work *work, unsigned long jiffies);
+ bool edac_stop_work(struct delayed_work *work);
+-bool edac_mod_work(struct delayed_work *work, unsigned long delay);
++bool edac_mod_work(struct delayed_work *work, unsigned long jiffies);
  
- 	if (!mod->is_vmlinux) {
-+		mod->has_rust_object = info.has_rust_object;
- 		license = get_modinfo(&info, "license");
- 		if (!license)
- 			mod_error(mod, "missing MODULE_LICENSE()\n");
-@@ -1797,10 +1801,15 @@ static void check_exports(struct module *mod)
+ extern void edac_device_reset_delay_period(struct edac_device_ctl_info *edac_dev, unsigned int msec);
+-extern void edac_mc_reset_delay_period(unsigned long value);
++extern void edac_mc_reset_delay_period(unsigned long msec);
  
- 		if (!verify_module_namespace(exp->namespace, basename) &&
- 		    !contains_namespace(&mod->imported_namespaces, exp->namespace)) {
--			modpost_log(!allow_missing_ns_imports, mod,
--				    "module uses symbol '%s' from namespace '%s', but does not import it.\n",
--				    exp->name, exp->namespace);
--			add_namespace(&mod->missing_namespaces, exp->namespace);
-+			if (mod->has_rust_object && exp->module->is_vmlinux &&
-+			    !strcmp(exp->namespace, RUST_HELPERS_NAMESPACE)) {
-+				mod->add_rust_helpers_import = true;
-+			} else {
-+				modpost_log(!allow_missing_ns_imports, mod,
-+					    "module uses symbol '%s' from namespace '%s', but does not import it.\n",
-+					    exp->name, exp->namespace);
-+				add_namespace(&mod->missing_namespaces, exp->namespace);
-+			}
- 		}
+ /*
+  * EDAC debugfs functions
+diff --git a/drivers/edac/wq.c b/drivers/edac/wq.c
+index ad3f516627c5..edeb7bbd3d68 100644
+--- a/drivers/edac/wq.c
++++ b/drivers/edac/wq.c
+@@ -3,15 +3,15 @@
  
- 		if (!mod->is_gpl_compatible && exp->is_gpl_only)
-@@ -2143,6 +2152,9 @@ static void write_mod_c_file(struct module *mod)
- 	add_extended_versions(&buf, mod);
- 	add_depends(&buf, mod);
+ static struct workqueue_struct *wq;
  
-+	if (mod->add_rust_helpers_import)
-+		buf_printf(&buf, "\nMODULE_IMPORT_NS(\"%s\");\n", RUST_HELPERS_NAMESPACE);
-+
- 	buf_printf(&buf, "\n");
- 	list_for_each_entry_safe(alias, next, &mod->aliases, node) {
- 		buf_printf(&buf, "MODULE_ALIAS(\"%s\");\n", alias->str);
-diff --git a/scripts/mod/modpost.h b/scripts/mod/modpost.h
-index 666beca685e48..58709cdd6ff25 100644
---- a/scripts/mod/modpost.h
-+++ b/scripts/mod/modpost.h
-@@ -126,6 +126,8 @@ struct module {
- 	bool seen;
- 	bool has_init;
- 	bool has_cleanup;
-+	bool has_rust_object;
-+	bool add_rust_helpers_import;
- 	char	     srcversion[25];
- 	// Missing namespace dependencies
- 	struct list_head missing_namespaces;
-@@ -149,6 +151,7 @@ struct elf_info {
- 	unsigned int modinfo_len;
- 	char         *no_trim_symbol;
- 	unsigned int no_trim_symbol_len;
-+	bool has_rust_object;
+-bool edac_queue_work(struct delayed_work *work, unsigned long delay)
++bool edac_queue_work(struct delayed_work *work, unsigned long jiffies)
+ {
+-	return queue_delayed_work(wq, work, delay);
++	return queue_delayed_work(wq, work, jiffies);
+ }
+ EXPORT_SYMBOL_GPL(edac_queue_work);
  
- 	/* support for 32bit section numbers */
+-bool edac_mod_work(struct delayed_work *work, unsigned long delay)
++bool edac_mod_work(struct delayed_work *work, unsigned long jiffies)
+ {
+-	return mod_delayed_work(wq, work, delay);
++	return mod_delayed_work(wq, work, jiffies);
+ }
+ EXPORT_SYMBOL_GPL(edac_mod_work);
  
 
 ---
-base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
-change-id: 20261120-rust-helper-namespace-57e8c37ee7df
-prerequisite-message-id: <20261112121512.1670347-1-gprocida@google.com>
-prerequisite-patch-id: 7b267dee3ce26971877fd38d926d288ec5ebceea
-prerequisite-patch-id: 803b08369cbc3be752a8173381f29272b02a52d5
-prerequisite-patch-id: e3377b86c82f833182ad5e9aff7c1a32c889ed50
-prerequisite-patch-id: 9ada5f687d87e2cbbe26870986d94afeef7dcc10
+base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
+change-id: 20261119-edac-mc-poll-msec-jiffies-fb7f926f112c
 
 Best regards,
 --  
-Peder Bergan <peder.bergan@gmail.com>
+Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 
