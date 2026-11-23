@@ -1,132 +1,111 @@
-From: Athira Palliprath <palliprath@chromium.org>
-Date: Mon, 23 Nov 2026 06:52:08 +0000
-Subject: [PATCH v2] mmc: core: poll busy at HS clock if CMD6 errors in
- mmc_select_hs400
+From: Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
+Subject: [PATCH v2 0/3] usb/phy: sunxi: Assert reset before deasserting on
+ init
+Date: Mon, 23 Nov 2026 06:54:06 +0000
+Message-Id: <20261123-usb-sunxi-reset-fix-v2-0-4e51d3a64964@roadbobek.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-fix-hs400-clock-v2-1-ad3b935bd9f9@chromium.org>
-X-B4-Tracking: v=1; b=H4sIAJfiA2sC/3WNTQ6CMBCFr0Jm7Zh2QGJdeQ/DotZCJwolUyUa0
- rtb2bt738v7WSF5YZ/gVK0gfuHEcSpAuwpcsNPgkW+FgRS1WpPCnt8YUqMUukd0dzSm6P6qGnI
- KSmsWXyLb4qUrHDg9o3y2g0X/3P9bi0aNpj0Q6fpobe3PLkgc+TXuowzQ5Zy/BylIY7EAAAA=
-X-Change-ID: 20261120-fix-hs400-clock-99400fb042c0
-To: Ulf Hansson <ulfh@kernel.org>, Ziyuan Xu <xzy.xu@rock-chips.com>
-Cc: linux-mmc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- palliprath@google.com, Athira Palliprath <palliprath@chromium.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795416730; l=4337;
- i=palliprath@chromium.org; s=20261118; h=from:subject:message-id;
- bh=LgH1THntmAvlqiGNxlcLpYqtPqoAxQtaL85fDfG/ZnQ=;
- b=kU4ot6vnYSfPC/tm5TT5gNcJTkEkEeW7Ooh0EGqLGPDmIiLl8QMQ0J14O522sygH7K+cKjzDv
- 3R1HBjwETOnAt8ItX0eS4Dss+i1630e6xGr92zprEvJAak5ZfmjkbSD
-X-Developer-Key: i=palliprath@chromium.org; a=ed25519;
- pk=OTJWz85nJwutJ218eeYfQMyFjDnPEnUi0L8N9EGsTa4=
-X-Endpoint-Received: by B4 Relay for palliprath@chromium.org/20261118 with auth_id=1580
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NwQ6CMBBEf8Xs2TXdhoB68j8Mh7asshqp6QLBE
+ P7dgnePbzIzbwblJKxw3s2QeBSV2GWw+x2E1nV3RmkygzW2JKIKB/WoQzcJJlbu8SYTNuSMMVQ
+ Uxp0gL9+Jc7y9Xusf6+AfHPr1am20on1Mn0070tr7bxgJDQbrq5INHwumS4qu8dHz8xDiC+plW
+ b4tySluzAAAAA==
+X-Change-ID: 20261117-usb-sunxi-reset-fix-d1a0001440a9
+To: Bin Liu <b-liu@ti.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Hans de Goede <hansg@kernel.org>, 
+ Felipe Balbi <balbi@ti.com>, Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Maxime Ripard <mripard@kernel.org>, Andre Przywara <andre.przywara@arm.com>
+Cc: linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ linux-phy@lists.infradead.org, 
+ Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795416949; l=3231;
+ i=admin@roadbobek.com; s=20261117; h=from:subject:message-id;
+ bh=o4DGixHbPlv/wmE6A4a2ry81udTO6L0xxBAxUf67t/Q=;
+ b=MiwFtyzfknvO4YOvokSa0ZFcN0x5K4it0EctWcPSiBPfa05z7gGm/THCuR94ANntFQeEDF4do
+ 4F1EaYz6N7HCooIce+oMzx7c1k4KZo9IJKtQuYxIHB8iltqyWlqIm33
+X-Developer-Key: i=admin@roadbobek.com; a=ed25519;
+ pk=TcWSTwITMylwCZLYbw80sv2LQx1zButqiT90TFVvhas=
+X-Endpoint-Received: by B4 Relay for admin@roadbobek.com/20261117 with auth_id=1548
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When switching from HS200 to HS in mmc_select_hs400(), some eMMC cards
-immediately switch to 52 MHz HS timing upon receiving CMD6, causing the
-host at 200 MHz to fail sampling the R1b response (-EILSEQ / -ETIMEDOUT)
-and leaving the host stuck at 200 MHz HS200 while the card is in 52 MHz
-HS mode.
+When a bootloader such as U-Boot (for example with
+CONFIG_USB_MUSB_HOST=y) initializes USB host mode and boots Linux
+without stopping USB first, both the MUSB controller and USB PHY
+reset lines are already deasserted when Linux probes them.
 
-To keep JEDEC JESD84-B51 ordering (send CMD6 first, then lower clock to
-<= 52 MHz), pass retries = 0 to __mmc_switch() and, if it fails with
--EILSEQ or -ETIMEDOUT, switch the host to HS timing and 52 MHz first
-before polling for busy completion at 52 MHz. Other error codes still
-fail immediately.
+Because reset_control_deassert() alone is a no-op on an already
+deasserted reset line, stale hardware register state persists across
+boot. On Allwinner A33, MUSB stays wedged in a_wait_bcon with
+DevCtl=0x99, Power=0xf0, and a frozen Frame counter even across
+hot-unplug and replug.
 
-Also temporarily set host->retune_crc_disable across the HS200->HS
-__mmc_switch() and fallback mmc_poll_for_busy(). Since mmc_select_hs400()
-runs right after HS200 tuning enables host->can_retune, an expected
--EILSEQ on CMD6 (or on a retried CMD13 while polling) would otherwise
-flag host->need_retune in mmc_request_done(), triggering invalid tuning
-at 52 MHz HS timing on resume/reset or leaving re-tuning pending after
-returning to HS400.
+This series ensures both the MUSB controller and USB PHYs are reset
+cleanly regardless of prior bootloader state, and fixes a related
+PHY2 clock reference imbalance spotted during review:
 
-The retries parameter in __mmc_switch() was added in
-commit 5e52a168be37 ("mmc: core: Add a retries parameter to __mmc_switch
-function") specifically so callers where retrying CMD6 is harmful (such
-as eMMC sanitize in commit 5b96247c68d8 ("mmc: core: Let eMMC sanitize
-not retry in case of timeout/failure")) can pass 0 instead of
-MMC_CMD_RETRIES. Passing 0 here trades off automatic retries if a
-transient bus error corrupts the CMD6 request itself at 200 MHz, in
-order to avoid retrying CMD6 at 200 MHz after the card has already
-switched to 52 MHz.
+- Patch 1 uses devm_reset_control_get_exclusive() and briefly asserts
+  glue->rst in sunxi_musb_init().
+- Patch 2 uses devm_reset_control_get_exclusive() and asserts all PHY
+  resets in sun4i_usb_phy_probe() before registering the PHY provider,
+  avoiding disrupting shared PHY2 on SoCs with needs_phy2_siddq.
+- Patch 3 fixes a pre-existing phy2->clk2 reference imbalance in
+  sun4i_usb_phy_init() on SoCs with needs_phy2_siddq.
 
-Fixes: 649c6059d237 ("mmc: mmc: Fix HS switch failure in mmc_select_hs400()")
-Signed-off-by: Athira Palliprath <palliprath@chromium.org>
+Tested on an Allwinner A33 Q8 tablet (Laser MID-786).
+
+Signed-off-by: Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
 ---
 Changes in v2:
-- Temporarily set host->retune_crc_disable across the HS200->HS
-  __mmc_switch() and fallback mmc_poll_for_busy() so expected -EILSEQ
-  errors do not set host->need_retune (reported by Sashiko AI review).
-- Link to v1: https://lore.kernel.org/r/20261120-fix-hs400-clock-v1-1-96522138aa3e@chromium.org
----
- drivers/mmc/core/mmc.c | 26 +++++++++++++++++++++++---
- 1 file changed, 23 insertions(+), 3 deletions(-)
+- Use devm_reset_control_get_exclusive() in both sunxi_musb_probe() and
+  sun4i_usb_phy_probe() (Philipp Zabel).
+- Move the USB PHY reset assertion from sun4i_usb_phy_init() to
+  sun4i_usb_phy_probe() so initializing PHY2 on SoCs with
+  needs_phy2_siddq does not reset an already active shared PHY2.
+- Add Fixes tags to both reset patches.
+- Add Patch 3 fixing the pre-existing phy2->clk2 clock reference
+  imbalance in sun4i_usb_phy_init().
+- Link to v1: https://patch.msgid.link/20261117-usb-sunxi-reset-fix-v1-0-c2b76e0e84e1@roadbobek.com
 
-diff --git a/drivers/mmc/core/mmc.c b/drivers/mmc/core/mmc.c
-index a02b04938e1a0..d4fc0bab690f6 100644
---- a/drivers/mmc/core/mmc.c
-+++ b/drivers/mmc/core/mmc.c
-@@ -1181,6 +1181,7 @@ static int mmc_select_hs_ddr(struct mmc_card *card)
- static int mmc_select_hs400(struct mmc_card *card)
- {
- 	struct mmc_host *host = card->host;
-+	bool retune_crc_disable;
- 	unsigned int max_dtr;
- 	int err = 0;
- 	u8 val;
-@@ -1192,13 +1193,22 @@ static int mmc_select_hs400(struct mmc_card *card)
- 	      host->ios.bus_width == MMC_BUS_WIDTH_8))
- 		return 0;
- 
--	/* Switch card to HS mode */
-+	/*
-+	 * Switch card to HS mode.
-+	 * Temporarily suppress CRC-triggered re-tuning because non-compliant
-+	 * cards may switch to 52 MHz HS immediately on CMD6, causing an
-+	 * expected -EILSEQ at 200 MHz (or on a retried CMD13 while polling)
-+	 * that would otherwise set host->need_retune.
-+	 */
- 	val = EXT_CSD_TIMING_HS;
-+	retune_crc_disable = host->retune_crc_disable;
-+	host->retune_crc_disable = true;
- 	err = __mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
- 			   EXT_CSD_HS_TIMING, val,
- 			   card->ext_csd.generic_cmd6_time, 0,
--			   false, true, MMC_CMD_RETRIES);
--	if (err) {
-+			   false, true, 0);
-+	if (err && err != -EILSEQ && err != -ETIMEDOUT) {
-+		host->retune_crc_disable = retune_crc_disable;
- 		pr_err("%s: switch to high-speed from hs200 failed, err:%d\n",
- 			mmc_hostname(host), err);
- 		return err;
-@@ -1215,6 +1225,16 @@ static int mmc_select_hs400(struct mmc_card *card)
- 	max_dtr = card->ext_csd.hs_max_dtr;
- 	mmc_set_clock(host, max_dtr);
- 
-+	if (err)
-+		err = mmc_poll_for_busy(card, card->ext_csd.generic_cmd6_time,
-+					true, MMC_BUSY_CMD6);
-+	host->retune_crc_disable = retune_crc_disable;
-+	if (err) {
-+		pr_err("%s: switch to high-speed from hs200 failed, err:%d\n",
-+		       mmc_hostname(host), err);
-+		return err;
-+	}
-+
- 	err = mmc_switch_status(card, true);
- 	if (err)
- 		goto out_err;
+To: Bin Liu <b-liu@ti.com>
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: Chen-Yu Tsai <wens@kernel.org>
+To: Jernej Skrabec <jernej.skrabec@gmail.com>
+To: Samuel Holland <samuel@sholland.org>
+To: Philipp Zabel <p.zabel@pengutronix.de>
+To: Hans de Goede <hansg@kernel.org>
+To: Felipe Balbi <balbi@ti.com>
+To: Vinod Koul <vkoul@kernel.org>
+To: Neil Armstrong <neil.armstrong@linaro.org>
+To: Manivannan Sadhasivam <mani@kernel.org>
+To: Kishon Vijay Abraham I <kishon@kernel.org>
+To: Maxime Ripard <mripard@kernel.org>
+To: Andre Przywara <andre.przywara@arm.com>
+Cc: linux-usb@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-sunxi@lists.linux.dev
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-phy@lists.infradead.org
 
 ---
-base-commit: d2616724e01132376c78872b8324f38659af9f28
-change-id: 20261120-fix-hs400-clock-99400fb042c0
+Bobek Brzeczyszczykiewicz (3):
+      usb: musb: sunxi: Assert reset before deasserting on init
+      phy: sun4i-usb: Assert PHY resets in sun4i_usb_phy_probe()
+      phy: sun4i-usb: Fix phy2->clk2 reference imbalance in sun4i_usb_phy_init()
+
+ drivers/phy/allwinner/phy-sun4i-usb.c | 23 +++++++++++++++++++++--
+ drivers/usb/musb/sunxi.c              |  5 ++++-
+ 2 files changed, 25 insertions(+), 3 deletions(-)
+---
+base-commit: 666539eecdf4db623f5e3c3e55cf9f2dfad24aa4
+change-id: 20261117-usb-sunxi-reset-fix-d1a0001440a9
 
 Best regards,
--- 
-Athira Palliprath <palliprath@chromium.org>
+--  
+Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
 
