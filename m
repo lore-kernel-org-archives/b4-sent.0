@@ -1,405 +1,113 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 23 Nov 2026 02:21:48 +0100
-Subject: [PATCH 3/3] arm64: dts: qcom: sdm845-oneplus: Enable front and
- back camera
+From: Joseph Telaak <joseph@telaak.dev>
+Subject: [PATCH v3 0/2] gpio: Add the Siflower SF19A2890 GPIO controller
+Date: Sun, 22 Nov 2026 20:37:17 -0500
+Message-Id: <20261122-sf19a2890-gpio-v3-0-3a4857ebc84a@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-op6-upstream-cameras-v1-3-234fb3b7bb18@ixit.cz>
-References: <20261123-op6-upstream-cameras-v1-0-234fb3b7bb18@ixit.cz>
-In-Reply-To: <20261123-op6-upstream-cameras-v1-0-234fb3b7bb18@ixit.cz>
-To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAM2YA2sC/2WOyw6CMBBFf4V0bQ0dChZX/odx0ZYBqgawhUZD+
+ HcLanwtz+See2ckDq1BR7bRSCx640zbBEhWEdG1bCqkpghMIIaMsRioK1kuQeQxrTrTUgUszQB
+ TKIUgQeoslua6FO4PD3aDOqLu55ZnwuJlCEv9O1Yb17f2trzh2Xx9LfLfRc9oTHmKPEs0FxsQu
+ x7PUp7WBXoyd3n49PM/H4KvhEhLVQiuuf7yp2m6A6XtDeUUAQAA
+X-Change-ID: 20261102-sf19a2890-gpio-b21562e52f88
+To: Linus Walleij <linusw@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Hans Verkuil <hverkuil@kernel.org>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, 
- Mauro Carvalho Chehab <mchehab+huawei@kernel.org>, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8366; i=david@ixit.cz;
- h=from:subject:message-id; bh=vioKixhUcBrwwUTgGKdctZDr3XqKcyo5CZdW0NlSvjI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrA5UvJrRVM3REvUFYaKzBnOFxLcevvLq8grDRj
- M1GP3jtwK+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawOVLwAKCRBgAj/E00kg
- cgpGD/44GKgcdCRaD1DZKWalH+uHCn2hy86fK3Vnro7d6NGQJMJ48JIdoLQTO/ThAFX83QFGeK0
- tbTAK8RHzvoOkWy8oTerirZjeak7W1HXHh9kVFk+vz+ikUG4f6/KHIMnpkO2hiscX1HhdQmi2/c
- vo01zVS+hax37F4acHBDomMQImYOnFajiSTogt72SEZGifackT+VMXR3sC5kMKzaGRvfldNrl5f
- KFiivchLFksdcEuTYyD4PrNq24Pk1OAv9F/hvIFjip9IhNJPTUgtNguaRsUYZPZtvR4pDF4Zbzt
- hao+kz0hkNxPZcE8kVCe+gZkM42e4sMLeLZoGLbFdqdNKE5bCNzVSbmPZFG3j8kNvh11746en3i
- YWnMW4CQWxgGDuORde6/oR95sHONbRUZ63qBz3IiW/Xc18x9DT4vc6Z3kAZZWi7F58VMjLVIPoD
- vXMWo9RtwyuTpmyZyte5K8gvPH0pnr9zs6mBV1TXI4lFEOvEnVgTU48U7drHKIVFa4tdlP/CPE9
- QR2ZEpnsI2p+ExjALvkchdUVTFC/RXW3pBYUV4oLVJ2h6fkkOLEM8N5zTB97y1T3VfDNTNZ957z
- MfcJbGilaHmnfjCla41mvAz6Nl60Jkhv7v508UFpxsbLPUy/HrKvGZXU5QlIbB6Jxyge+U6i2rY
- 09u/6l91Ehqy2cw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: Chuanhong Guo <gch981213@gmail.com>, Qingfang Deng <dqfext@gmail.com>, 
+ Michael Walle <mwalle@kernel.org>, linux-mips@vger.kernel.org, 
+ linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Joseph Telaak <joseph@telaak.dev>, 
+ Qingfang Deng <qingfang.deng@siflower.com.cn>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795397847; l=3796;
+ i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
+ bh=AXm0Qoo5A885Q3LTnrRzlB7VaojIjbXk/hv1msZoJPo=;
+ b=sI0vKKf/TJ9laYZhwu9XbhO4oc0WboOD0gtlj5K68soc3RYJ3Scpp5t/VFyLNvBJZgYvY8zy1
+ C0SB5IqI6kGAxE8jYCWPNyxHi8NNJnnksPlmOrLf/c1TmeH6ilOMKek
+X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
+ pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
+X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-OnePlus 6 and 6T now support one back and front camera using generic MIPI
-CCS driver.
+This series adds a binding and a driver for the GPIO controller of the
+Siflower SoCs, starting with the SF19A2890, a MIPS SoC for home routers.
+Each line has a register block of its own, and each group of 16 lines an
+interrupt.
 
- - Sony IMX376k (rear)
- - Sony IMX371 (front)
+The binding is Chuanhong Guo's and the driver Qingfang Deng's, both from
+Chuanhong's SF19A2890 branch [1], with my changes noted in each. The
+same controller is in Siflower's SF21 RISC-V SoCs; the binding has only
+the SF19A2890's compatible, the one I can test.
 
-Based on work of Robert Oscilowski.
+The SoC support itself (MACH_SIFLOWER_MIPS) goes through the MIPS tree;
+until then the driver builds with COMPILE_TEST.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Tested on a GL.iNet GL-SFT1200. Earlier, on v7.4-rc1: gpio-keys sees
+both buttons on both edges (the reset button on GPIO 27 as KEY_RESTART,
+the mode slide switch on GPIO 1 as BTN_0, 1 and 0 per slide);
+/sys/kernel/debug/gpio lists the 49 lines; the GSW150 switch comes out
+of reset through GPIO 0 and the SPI NAND uses GPIO 8 as its chip select.
+v3 was run again on OpenWrt's 6.18 kernel, with the driver backported
+along with the gpio tree's gpio-regmap: the same four lines work, and
+both buttons raise their interrupts on both edges through the driver's
+IRQ domain. The board's device tree sets no debounce, so the debounce
+path was not exercised.
+
+[1] https://github.com/981213/linux/commits/siflower-7.1
+
 ---
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 243 ++++++++++++++++++++-
- 1 file changed, 241 insertions(+), 2 deletions(-)
+Changes in v3:
+- Move the driver to gpio-regmap on regmap-mmio, with a
+  reg_mask_xlate() for the 0x40 stride between the lines' registers and
+  the debounce in set_config() (Linus).
+- Put the interrupts on an IRQ domain of the driver's own, with a
+  chained handler for each group of 16 lines, since gpio-regmap sets up
+  no gpio_irq_chip. The chained handlers are removed with devm.
+- Patch 1: add Krzysztof's Reviewed-by.
+- Link to v2: https://patch.msgid.link/20261109-sf19a2890-gpio-v2-0-b885fbd84c4c@telaak.dev
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index 1df09da3c4d71..92317f23bdd15 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -3,18 +3,21 @@
-  * SDM845 OnePlus 6(T) (enchilada / fajita) common device tree source
-  *
-  * Copyright (c) 2020, The Linux Foundation. All rights reserved.
-  */
- 
- /dts-v1/;
- 
- #include <dt-bindings/arm/qcom,ids.h>
-+#include <dt-bindings/clock/qcom,camcc-sdm845.h>
- #include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/leds/common.h>
-+#include <dt-bindings/media/video-interface-devices.h>
-+#include <dt-bindings/media/video-interfaces.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- #include <dt-bindings/sound/qcom,q6afe.h>
- #include <dt-bindings/sound/qcom,q6asm.h>
- 
- #include "sdm845.dtsi"
- #include "sdm845-wcd9340.dtsi"
- #include "pm8998.dtsi"
- #include "pmi8998.dtsi"
-@@ -262,16 +265,68 @@ vreg_pmu_ch0: ldo3 {
- 				regulator-name = "vreg_pmu_ch0";
- 			};
- 
- 			vreg_pmu_ch1: ldo4 {
- 				regulator-name = "vreg_pmu_ch1";
- 			};
- 		};
- 	};
-+
-+	front_cam_vdig: front-cam-vdig-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "front_cam_vdig";
-+
-+		regulator-min-microvolt = <1050000>;
-+		regulator-max-microvolt = <1050000>;
-+
-+		gpio = <&tlmm 117 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+
-+		vin-supply = <&vreg_s3a_1p35>;
-+	};
-+
-+	front_cam_vana: front-cam-vana-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "front_cam_vana";
-+
-+		regulator-min-microvolt = <2800000>;
-+		regulator-max-microvolt = <2800000>;
-+
-+		gpio = <&tlmm 104 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+
-+		vin-supply = <&vreg_bob>;
-+	};
-+
-+	sub_cam_vana: sub-cam-vana-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "sub_cam_vana";
-+
-+		regulator-min-microvolt = <2800000>;
-+		regulator-max-microvolt = <2800000>;
-+
-+		gpio = <&tlmm 78 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+
-+		vin-supply = <&vreg_bob>;
-+	};
-+
-+	sub_cam_vdig: sub-cam-vdig-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "sub_cam_vdig";
-+
-+		regulator-min-microvolt = <1050000>;
-+		regulator-max-microvolt = <1050000>;
-+
-+		gpio = <&tlmm 79 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+
-+		vin-supply = <&vreg_s3a_1p35>;
-+	};
- };
- 
- &adsp_pas {
- 	firmware-name = "qcom/sdm845/OnePlus/enchilada/adsp.mbn";
- 
- 	status = "okay";
- };
- 
-@@ -405,16 +460,22 @@ vreg_l26a_1p2: ldo26 {
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
- 		};
- 
- 		vreg_l28a_3p0: ldo28 {
- 			regulator-min-microvolt = <2856000>;
- 			regulator-max-microvolt = <3008000>;
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
- 		};
-+
-+		cam_vio_1p8:
-+		vreg_lvs1_1p8: lvs1 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
- 	};
- 
- 	regulators-1 {
- 		compatible = "qcom,pmi8998-rpmh-regulators";
- 		qcom,pmic-id = "b";
- 
- 		vdd-bob-supply = <&vph_pwr>;
- 
-@@ -437,32 +498,118 @@ regulators-2 {
- 
- 		vreg_s3c_0p6: smps3 {
- 			regulator-min-microvolt = <600000>;
- 			regulator-max-microvolt = <600000>;
- 		};
- 	};
- };
- 
-+&camss {
-+	vdda-phy-supply = <&vreg_l1a_0p875>;
-+	vdda-pll-supply = <&vreg_l26a_1p2>;
-+
-+	status = "okay";
-+
-+	ports {
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		port@1 {
-+			reg = <1>;
-+			csiphy1_ep: endpoint {
-+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
-+				data-lanes = <0 1 2 3>;
-+				remote-endpoint = <&imx376k_ep>;
-+			};
-+		};
-+
-+		port@2 {
-+			reg = <2>;
-+			csiphy2_ep: endpoint {
-+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
-+				data-lanes = <0 1 2 3>;
-+				remote-endpoint = <&imx371_ep>;
-+			};
-+		};
-+	};
-+};
-+
- &cci {
- 	status = "okay";
- };
- 
- &cci_i2c0 {
--	/* front sony,imx371 @10 */
-+	front_cam: camera@10 {
-+		compatible = "sony,imx371", "mipi-ccs";
-+		reg = <0x10>;
-+
-+		reset-gpios = <&tlmm 9 GPIO_ACTIVE_LOW>;
-+		pinctrl-0 = <&front_cam_default &cam_mclk1_default>;
-+		pinctrl-1 = <&front_cam_sleep &cam_mclk1_sleep>;
-+		pinctrl-names = "default", "sleep";
-+
-+		clocks = <&clock_camcc CAM_CC_MCLK1_CLK>;
-+		assigned-clocks = <&clock_camcc CAM_CC_MCLK1_CLK>;
-+		assigned-clock-rates = <24000000>;
-+
-+		vana-supply = <&front_cam_vana>;
-+		vcore-supply = <&front_cam_vdig>;
-+		vio-supply = <&cam_vio_1p8>;
-+
-+		orientation = <MEDIA_ORIENTATION_FRONT>;
-+		rotation = <90>;
-+
-+		port {
-+			imx371_ep: endpoint {
-+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
-+				data-lanes = <1 2 3 4>;
-+				link-frequencies = /bits/ 64 <654000000>;
-+				remote-endpoint = <&csiphy2_ep>;
-+			};
-+		};
-+	};
- 
- 	/* rear sony,imx519 @1a */
- 
- 	/* rear onnn,lc898217xc @72 */
- };
- 
- &cci_i2c1 {
- 	/* sa,sa3103 @0d */
- 
--	/* rear sony,imx376k @10 */
-+	sub_cam: camera@10 {
-+		compatible = "sony,imx376k", "mipi-ccs";
-+		reg = <0x10>;
-+
-+		reset-gpios = <&tlmm 23 GPIO_ACTIVE_LOW>;
-+		pinctrl-0 = <&sub_cam_default &cam_mclk2_default>;
-+		pinctrl-1 = <&sub_cam_sleep &cam_mclk2_sleep>;
-+		pinctrl-names = "default", "sleep";
-+
-+		clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
-+		assigned-clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
-+		assigned-clock-rates = <24000000>;
-+
-+		vana-supply = <&sub_cam_vana>;
-+		vcore-supply = <&sub_cam_vdig>;
-+		vio-supply = <&cam_vio_1p8>;
-+
-+		orientation = <MEDIA_ORIENTATION_BACK>;
-+		rotation = <270>;
-+
-+		port {
-+			imx376k_ep: endpoint {
-+				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
-+				data-lanes = <1 2 3 4>;
-+				link-frequencies = /bits/ 64 <500000000>;
-+				remote-endpoint = <&csiphy1_ep>;
-+			};
-+		};
-+	};
- 
- 	/* onnn,lc898217xc @74 */
- };
- 
- &cdsp_pas {
- 	firmware-name = "qcom/sdm845/OnePlus/enchilada/cdsp.mbn";
- 
- 	status = "okay";
-@@ -956,16 +1103,108 @@ &usb_1_hsphy {
- 	qcom,hstx-trim-value = <QUSB2_V2_HSTX_TRIM_21_6_MA>;
- 	qcom,preemphasis-level = <QUSB2_V2_PREEMPHASIS_5_PERCENT>;
- 	qcom,preemphasis-width = <QUSB2_V2_PREEMPHASIS_WIDTH_HALF_BIT>;
- };
- 
- &tlmm {
- 	gpio-reserved-ranges = <0 4>, <81 4>;
- 
-+	sub_cam_default: sub-cam-default-state {
-+		rst-pins {
-+			pins = "gpio23";
-+			function = "gpio";
-+			bias-disable;
-+			drive-strength = <2>;
-+		};
-+
-+		ana-pins {
-+			pins = "gpio78";
-+			function = "gpio";
-+			bias-disable;
-+			drive-strength = <2>;
-+		};
-+
-+		dig-pins {
-+			pins = "gpio79";
-+			function = "gpio";
-+			bias-disable;
-+			drive-strength = <2>;
-+		};
-+	};
-+
-+	sub_cam_sleep: sub-cam-sleep-state {
-+		rst-pins {
-+			pins = "gpio23";
-+			function = "gpio";
-+			bias-disable;
-+			drive-strength = <2>;
-+		};
-+
-+		ana-pins {
-+			pins = "gpio78";
-+			function = "gpio";
-+			bias-pull-down;
-+			drive-strength = <2>;
-+		};
-+
-+		dig-pins {
-+			pins = "gpio79";
-+			function = "gpio";
-+			bias-pull-down;
-+			drive-strength = <2>;
-+		};
-+	};
-+
-+	front_cam_default: front-cam-default-state {
-+		rst-pins {
-+			pins = "gpio9";
-+			function = "gpio";
-+			bias-disable;
-+			drive-strength = <2>;
-+		};
-+
-+		ana-pins {
-+			pins = "gpio104";
-+			function = "gpio";
-+			bias-disable;
-+			drive-strength = <2>;
-+		};
-+
-+		dig-pins {
-+			pins = "gpio117";
-+			function = "gpio";
-+			bias-disable;
-+			drive-strength = <2>;
-+		};
-+	};
-+
-+	front_cam_sleep: front-cam-sleep-state {
-+		rst-pins {
-+			pins = "gpio9";
-+			function = "gpio";
-+			bias-disable;
-+			drive-strength = <2>;
-+		};
-+
-+		ana-pins {
-+			pins = "gpio104";
-+			function = "gpio";
-+			bias-pull-down;
-+			drive-strength = <2>;
-+		};
-+
-+		dig-pins {
-+			pins = "gpio117";
-+			function = "gpio";
-+			bias-pull-down;
-+			drive-strength = <2>;
-+		};
-+	};
-+
- 	hall_sensor_default: hall-sensor-default-state {
- 		pins = "gpio124";
- 		function = "gpio";
- 		drive-strength = <2>;
- 		bias-disable;
- 	};
- 
- 	panel_vci_default: vci-state {
+Changes in v2:
+- Write my notes on Chuanhong's and Qingfang's patches as lists, with
+  Co-developed-by on the driver (Bartosz).
+- Get priv with gpiochip_get_data(), drop the two else branches, and add
+  a blank line after the header comment (Bartosz).
+- Get the reset with devm_reset_control_get_exclusive_deasserted(), as a
+  local, not in priv (Philipp), and drop the OF_GPIO dependency.
+- Name only the SF19A2890 in the Kconfig help and the binding's commit
+  message, since the other SoCs need compatibles of their own (Conor).
+- Drop the ngpios property, which the compatible implies: the driver
+  takes the number of lines from its match data, and the binding takes
+  exactly four interrupts (Conor).
+- Order the binding's properties and its required list (Conor).
+- Add a MAINTAINERS entry for the driver and its binding.
+- Use GPL-2.0-or-later, not the deprecated GPL-2.0+ SPDX identifier.
+- Use readl() and writel() directly, without wrapper functions (Linus).
+- No comma after the match table's sentinel, as Uwe asked of the
+  clock driver.
+- Drop the unused linux/pinctrl/consumer.h include.
+- Link to v1: https://patch.msgid.link/20261104-sf19a2890-gpio-v1-0-45e463c48728@telaak.dev
 
--- 
-2.55.0
+---
+Chuanhong Guo (1):
+      dt-bindings: gpio: Add Siflower SF19A2890 GPIO controller
+
+Qingfang Deng (1):
+      gpio: Add Siflower GPIO controller driver
+
+ .../bindings/gpio/siflower,sf19a2890-gpio.yaml     |  76 +++++
+ MAINTAINERS                                        |   7 +
+ drivers/gpio/Kconfig                               |  14 +
+ drivers/gpio/Makefile                              |   1 +
+ drivers/gpio/gpio-siflower.c                       | 344 +++++++++++++++++++++
+ 5 files changed, 442 insertions(+)
+---
+base-commit: d66b6b86d5a6278ca930112c634d03725beb7d9a
+change-id: 20261102-sf19a2890-gpio-b21562e52f88
+
+Best regards,
+--  
+Joseph Telaak <joseph@telaak.dev>
 
