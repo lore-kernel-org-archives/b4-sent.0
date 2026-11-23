@@ -1,11 +1,11 @@
 From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Tue, 24 Nov 2026 00:43:53 +0100
-Subject: [PATCH v2 1/5] media: qcom: camss: vfe-17x: check status1 for RDI
- SOF interrupts
+Date: Tue, 24 Nov 2026 00:43:54 +0100
+Subject: [PATCH v2 2/5] media: qcom: camss: csid-gen2: fix RDI enable bit
+ manipulation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-camss-fixes-v2-1-231a5523cd59@gmail.com>
+Message-Id: <20261124-camss-fixes-v2-2-231a5523cd59@gmail.com>
 References: <20261124-camss-fixes-v2-0-231a5523cd59@gmail.com>
 In-Reply-To: <20261124-camss-fixes-v2-0-231a5523cd59@gmail.com>
 To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
@@ -15,42 +15,55 @@ To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>,
 Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Robert Ijtsma <robertijtsma@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795477434; l=1156;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795477434; l=1833;
  i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=cOiMu0UC5T4AI1Z+1+u5gsRxJCQQU4nb1DclNNfn4hU=;
- b=mp2gnYCC0fI/ea3Kxfoad5BV516b2ZdYsi6fZHTwz29ZKP9gKAPTVj1UyvKjEZ77UOJxm8FJ3
- u6/G9VLQ4HiCoaZjWJNHpJ4doT++GDmcH5wy3V/cxK5m2TAAcYs0eAv
+ bh=HdZ/kiLTYzmyYGEK8RNIy5DJBdKNKjogTSj8Z7rvO+E=;
+ b=XkhckD3zoYg0tAT2Fys1PjQHYuZl06bniTUNdElDPtVTPPlmj1vPebSjh7BGfLM+RIAQihJ14
+ ILvIxh/YcUaAlbBxGjweAGrkgWmEPFpwIsEvSqJaV/InRyW/ybpzuRH
 X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
  pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
 X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In vfe_isr(), STATUS_1_RDI_SOF(i) is a bitmask for VFE_IRQ_STATUS_1
-(status1), not VFE_IRQ_STATUS_0 (status0). Checking status0 instead
-tests the unrelated STATUS_0_IMAGE_COMPOSITE_DONE bits (27..30).
+In __csid_configure_rdi_stream(), bitwise ORing `enable << RDI_CFG0_ENABLE`
+into `val` never clears the enable bit when `enable` is zero.
 
-Check status1 against STATUS_1_RDI_SOF(i) as intended.
+Change `enable` to bool and explicitly set or clear BIT(RDI_CFG0_ENABLE)
+depending on `enable`, matching camss-csid-680.c.
 
-Reviewed-by: Loic Poulain <loic.poulain@oss.qualcomm.com>
+Fixes: 729fc005c8e2 ("media: qcom: camss: Split testgen, RDI and RX for CSID 170")
 Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
 Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
 ---
- drivers/media/platform/qcom/camss/camss-vfe-17x.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/media/platform/qcom/camss/camss-csid-gen2.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-vfe-17x.c b/drivers/media/platform/qcom/camss/camss-vfe-17x.c
-index 62c2405..502a0d4 100644
---- a/drivers/media/platform/qcom/camss/camss-vfe-17x.c
-+++ b/drivers/media/platform/qcom/camss/camss-vfe-17x.c
-@@ -356,7 +356,7 @@ static irqreturn_t vfe_isr(int irq, void *dev)
- 			vfe->isr_ops.reg_update(vfe, i);
+diff --git a/drivers/media/platform/qcom/camss/camss-csid-gen2.c b/drivers/media/platform/qcom/camss/camss-csid-gen2.c
+index eadcb2f..57ccfeb 100644
+--- a/drivers/media/platform/qcom/camss/camss-csid-gen2.c
++++ b/drivers/media/platform/qcom/camss/camss-csid-gen2.c
+@@ -253,7 +253,8 @@ static void __csid_configure_testgen(struct csid_device *csid, u8 enable, u8 por
+ 	writel_relaxed(val, csid->base + CSID_TPG_CTRL);
+ }
  
- 	for (i = VFE_LINE_RDI0; i < vfe->res->line_num; i++)
--		if (status0 & STATUS_1_RDI_SOF(i))
-+		if (status1 & STATUS_1_RDI_SOF(i))
- 			vfe->isr_ops.sof(vfe, i);
+-static void __csid_configure_rdi_stream(struct csid_device *csid, u8 enable, u8 port, u8 vc)
++static void __csid_configure_rdi_stream(struct csid_device *csid, bool enable,
++					u8 port, u8 vc)
+ {
+ 	/* Source pads matching RDI channels on hardware. Pad 1 -> RDI0, Pad 2 -> RDI1, etc. */
+ 	struct v4l2_mbus_framefmt *input_format = &csid->fmt[MSM_CSID_PAD_FIRST_SRC + port];
+@@ -318,7 +319,10 @@ static void __csid_configure_rdi_stream(struct csid_device *csid, u8 enable, u8
+ 	writel_relaxed(val, csid->base + CSID_RDI_CTRL(port));
  
- 	for (i = 0; i < MSM_VFE_COMPOSITE_IRQ_NUM; i++)
+ 	val = readl_relaxed(csid->base + CSID_RDI_CFG0(port));
+-	val |=  enable << RDI_CFG0_ENABLE;
++	if (enable)
++		val |= BIT(RDI_CFG0_ENABLE);
++	else
++		val &= ~BIT(RDI_CFG0_ENABLE);
+ 	writel_relaxed(val, csid->base + CSID_RDI_CFG0(port));
+ }
+ 
 
 -- 
 2.56.0
