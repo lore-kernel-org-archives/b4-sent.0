@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 24 Nov 2026 02:53:04 +0800
-Subject: [PATCH v6 12/18] mm/damon: convert to LRU refs based operations
- for MGLRU
+Date: Tue, 24 Nov 2026 02:53:05 +0800
+Subject: [PATCH v6 13/18] mm/khugepaged: convert to LRU refs based
+ operations for MGLRU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-mglru-fg-v6-12-8ffea39934a6@tencent.com>
+Message-Id: <20261124-mglru-fg-v6-13-8ffea39934a6@tencent.com>
 References: <20261124-mglru-fg-v6-0-8ffea39934a6@tencent.com>
 In-Reply-To: <20261124-mglru-fg-v6-0-8ffea39934a6@tencent.com>
 To: linux-mm@kvack.org
@@ -39,44 +39,48 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Tianyi Chen <hi@tychen.cc>, Kairui Song <kasong@tencent.com>, 
  Ridong Chen <ridong.chen@linux.dev>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459977; l=1016;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459977; l=1410;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=ofT3DkXyC3h7ptCQPZjIa/LhrvPGmBU9+3gfY2rFnss=;
- b=o6eHIETcJuwaJUc97SH5F7SQ/kGVMK/yHu942m9yR9l+9EVkcSYS7fRXRI9yRCIPDg6wTwp7x
- /7/d/ERJJiaCtmPfVXmihoibf7n0JZz3OuQL/SSmum1iHaht3PhdLNZ
+ bh=ylGSrEczLifu/DdmhwMoGhk6njBmtr2EJO7xuMx10kQ=;
+ b=pXXLUep3I/vltYX0L1UH0GTTRjdiy0b3iBc9jWcCRdtT3cKw00OaEvGBk3uaweRY+TaoRFVrh
+ ZG6rFxHmKKzBv05zdRFuW60YLUnIX7HDic9FG8ptG6NTl5y6QM0dqWa
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-damon_pa_pageout() cleared PG_referenced directly, which under MGLRU
-corrupts the folio's refs count. That flag is now
-bit 0 of the count (LRU_REFS_FLAGS).
+For MGLRU, PG_referenced is only the lowest bit of the folio LRU refs
+count, so folios with nonzero even refs no longer have the bit set.
+folio_pte_referenced() testing the raw bit misses hot folios at
+refs 2, 4 or 6, under-counting the referenced folios of a candidate range
+and aborting otherwise good collapses with SCAN_LACK_REFERENCED_PAGE.
 
-Reset the count instead under MGLRU.
+Test the refs count directly when MGLRU is enabled, mirroring the
+smaps conversion.  The classical LRU keeps the plain bit test.
 
 Tested-by: Zhao Zhenzhuo <zhaozhengzhuo@uniontech.com>
 Reviewed-by: Kunwu Chan <kunwu.chan@gmail.com>
 Tested-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/damon/paddr.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ mm/khugepaged.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/mm/damon/paddr.c b/mm/damon/paddr.c
-index e89cb14ee17b..411e1d557ba3 100644
---- a/mm/damon/paddr.c
-+++ b/mm/damon/paddr.c
-@@ -279,7 +279,8 @@ static unsigned long damon_pa_pageout(struct damon_region *r,
- 		else
- 			*sz_filter_passed += folio_size(folio) / addr_unit;
- 
--		folio_clear_referenced(folio);
-+		/* The region is cold, better drop the hotness info. */
-+		folio_clear_lru_refs(folio);
- 		folio_test_clear_young(folio);
- 		if (!folio_isolate_lru(folio))
- 			goto put_folio;
+diff --git a/mm/khugepaged.c b/mm/khugepaged.c
+index 2dc4245814df..5e768481ac22 100644
+--- a/mm/khugepaged.c
++++ b/mm/khugepaged.c
+@@ -579,7 +579,9 @@ static bool folio_pte_referenced(struct folio *folio,
+ 		struct vm_area_struct *vma, unsigned long addr, pte_t pteval)
+ {
+ 	/* The folio was referenced previously ... */
+-	if (folio_test_young(folio) || folio_test_referenced(folio))
++	if (folio_test_young(folio))
++		return true;
++	if (folio_check_lru_refs(folio))
+ 		return true;
+ 	/* ... or the PTE mapping was recently used */
+ 	return pte_young(pteval) || mmu_notifier_test_young(vma->vm_mm, addr);
 
 -- 
 2.56.1
