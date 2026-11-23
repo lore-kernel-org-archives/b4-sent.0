@@ -1,111 +1,109 @@
-From: =?utf-8?q?Fr=C3=A9d=C3=A9ric_Aime?= <frederic.aime@gmail.com>
-Date: Mon, 23 Nov 2026 22:57:10 +0100
-Subject: [PATCH] platform/asus: asus-wmi: Detect Vivobook thermal policy
- without presence bit
+From: Fil Dunsky <filipp.dunsky@gmail.com>
+Subject: [PATCH v3 0/3] rtc: Add Cortina Systems CS7542 calendar clock
+ support
+Date: Tue, 24 Nov 2026 01:00:12 +0300
+Message-Id: <20261124-b4-cs7542-rtc-v3-0-53902bfbe0ae@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261123-proart-thermal-policy-v1-1-396374f9e1d8@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDtgRiLSq5Qu0jjqiDVhEkuLe
- HfTdvkW/++QWIUTXKsdlF+SJKwF5lKBn9w6MkpfDFRTaww1GDU4zZgn1qdbMIZF/Aeps7b1bBs
- aCEoblQd5/763+99pe8zs83cGx3ECY0vy6nkAAAA=
-X-Change-ID: 20261123-proart-thermal-policy-28556ce532f2
-To: Corentin Chary <corentin.chary@gmail.com>, 
- "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>
-Cc: Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Fr=C3=A9d=C3=A9ric_Aime?= <frederic.aime@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795471029; l=3936;
- i=frederic.aime@gmail.com; s=20261123; h=from:subject:message-id;
- bh=Wf3A0r7uX2ZUoDRLKINwzfnBD6nYGfliM3J1iNQZ+80=;
- b=je2sq2pyurw1z4J9SAwuhxejIsQmEHl9jcHi5ltd6GWMmYXi7s+v2fPBnsmB/20hDtkxB4jYT
- KhXsoEpQDGJCE1BDcBkGvkaQrWUBgHnOlGUKaXX/gQ3rvJk0Rprh9Go
-X-Developer-Key: i=frederic.aime@gmail.com; a=ed25519;
- pk=xkFcmpr+qwkxDu8LFMuiki1YjzZT/JWGb/oXAMSMFOE=
-X-Endpoint-Received: by B4 Relay for frederic.aime@gmail.com/20261123 with auth_id=1624
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NwQ6CMBAFf4X0bE13C5R48j+Mh7K0UCNiWmw0h
+ H+3xYsXPU7yZt7CgvHOBHYoFuZNdMFNtwRyVzAa9K033HWJGQqsAVDytuQUVFUi9zNxKxpoOqV
+ sp5El5+6Ndc+tdzp/ODzai6E5R/JicGGe/Gs7jJB3v9oRuOA1VVLVYK0W8tiP2l33NI0styP+t
+ THZEnRbSotEjfm213V9AwyMikr6AAAA
+X-Change-ID: 20261123-b4-cs7542-rtc-f0818d77fda2
+To: Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-rtc@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795471212; l=3972;
+ i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
+ bh=Sj4YCV8Y8oxQ28BgyN0TnodyFRFNZWfHAe8RuVb9Ha4=;
+ b=hZkqQdDvSTSzOy3Ge48RCYLbklX0Q+STk6tS8El0cDwtXsqEWg+iqPMEOPLLS1pR5hv3aluNT
+ jmL/ASdhuXHBNWARdJ/JIYyEuoQz+FDXdRc6XbntLAVpNvmR0rjrTpT
+X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
+ pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
+X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ProArt Studiobook 16 (H7604JV, BIOS H7604JV.305) implements the
-Vivobook-style thermal policy device 0x00110019: its WMNB DEVS handler
-calls ATKD.FANL(), which switches the EC fan curve, updates the DPTF OEM
-variable ODV0 (notifying IETM with 0x88) and selects the matching NVIDIA
-power table. This is what MyASUS uses on Windows to switch between
-Standard (0), Whisper (1), Performance (2) and Full Speed (3).
+Add the memory-mapped calendar clock of the CS7542, based on the GPL
+vendor and OpenWrt implementation. Use an independent OF/HAS_IOMEM
+Kconfig option so the driver can be reviewed without the pending
+platform series.
 
-However, its DSTS reply for this device does not set
-ASUS_WMI_DSTS_PRESENCE_BIT. It returns the current mode with the USER and
-BIOS bits set instead, e.g. 0x02060002 in Performance mode. As
-asus_wmi_dev_is_present() requires the presence bit, the device is never
-detected and no platform_profile is registered. power-profiles-daemon
-then falls back to its placeholder driver, the machine stays in
-Standard mode, and Intel DPTF (thermald --adaptive) keeps applying the
-Standard policy, which caps the CPU at PL1 30 W / PL2 55 W as soon as
-one of the board sensors reaches 65 °C.
+Decode the four-digit BCD year, bound retries across second changes and
+retain RTCEN after programming. Leave a disabled or reset RTC alone at
+probe and report its time as invalid until a known time is set. The RTC
+core validates the decoded calendar and handles absent alarm callbacks.
 
-Device IDs this BIOS does not implement still fail with -ENODEV, so a
-successful DSTS reply with both the USER and BIOS bits set reliably
-indicates that the device exists. Accept that pattern for the Vivobook
-thermal policy device in addition to the presence bit.
+The vendor-generated BCDYEAR register definition assigns all bits 15:0
+to year data and reserves bits 31:16. With the century and leap transitions
+below verified, advertise the representable 1970-9999 range. Alarm
+interrupts and suspend wake are not implemented; an earlier alarm
+prototype did not produce the expected IRQ and is not included.
 
-The existing Vivobook mapping matches this firmware: quiet -> 1
-(Whisper), balanced -> 0 (Standard), performance -> 2 (Performance).
-Tested on the H7604JV: power-profiles-daemon now uses the
-platform_profile driver, each profile switches the firmware mode (DSTS
-0x02060001 / 0x02060000 / 0x02060002) and ODV0 accordingly, and
-thermald --adaptive applies the matching OEM policy (e.g. PL1 130 W /
-PL2 157 W in performance instead of 30 W / 55 W).
+The three patches are the binding, driver/Kconfig/Makefile and a
+MAINTAINERS entry, based on v7.4-rc4 without the pending CS75xx platform
+or clock/pinctrl series.
 
-Signed-off-by: Frédéric Aime <frederic.aime@gmail.com>
----
- drivers/platform/asus/asus-wmi.c | 20 +++++++++++++++++++-
- 1 file changed, 19 insertions(+), 1 deletion(-)
+Validation:
+- strict source checkpatch: no errors, warnings or checks
+- complete minimal ARM vmlinux and modules builds, RTC built in and
+  modular, GCC 14.2, W=1, COMPILE_TEST=n, without the platform
+- actual read/set/probe functions with mocked MMIO and UBSAN: all 256
+  control-byte patterns, disabled/reset rejection, no probe MMIO writes,
+  known-time enable, 8030 BCD-year round trips from 1970 through 9999,
+  future boundary values, core calendar validation and retry/error paths
 
-diff --git a/drivers/platform/asus/asus-wmi.c b/drivers/platform/asus/asus-wmi.c
-index b33ebdb21..66a68944d 100644
---- a/drivers/platform/asus/asus-wmi.c
-+++ b/drivers/platform/asus/asus-wmi.c
-@@ -660,6 +660,24 @@ static bool asus_wmi_dev_is_present(struct asus_wmi *asus, u32 dev_id)
- 	return status == 0 && (retval & ASUS_WMI_DSTS_PRESENCE_BIT);
- }
- 
-+/*
-+ * Some BIOSes implement the Vivobook-style thermal policy device but leave
-+ * ASUS_WMI_DSTS_PRESENCE_BIT clear in its DSTS reply. The ProArt Studiobook 16
-+ * (H7604JV) for instance returns the current mode with the USER and BIOS bits
-+ * set (e.g. 0x02060002), while unsupported device IDs still fail with -ENODEV.
-+ * Accept that pattern as well so platform_profile works on these machines.
-+ */
-+static bool asus_wmi_throttle_thermal_policy_vivo_is_present(struct asus_wmi *asus)
-+{
-+	const u32 mask = ASUS_WMI_DSTS_USER_BIT | ASUS_WMI_DSTS_BIOS_BIT;
-+	u32 retval;
-+
-+	if (asus_wmi_get_devstate(asus, ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY_VIVO, &retval))
-+		return false;
-+
-+	return (retval & ASUS_WMI_DSTS_PRESENCE_BIT) || (retval & mask) == mask;
-+}
-+
- /* Keystone *******************************************************************/
- 
- static int keystone_check_present(struct asus_wmi *asus)
-@@ -5222,7 +5240,7 @@ static int asus_wmi_add(struct platform_device *pdev)
- 
- 	if (asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY))
- 		asus->throttle_thermal_policy_dev = ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY;
--	else if (asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY_VIVO))
-+	else if (asus_wmi_throttle_thermal_policy_vivo_is_present(asus))
- 		asus->throttle_thermal_policy_dev = ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY_VIVO;
- 
- 	if (asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_TUF_RGB_MODE))
+On Almond+, an exact driver RAM integration run on Linux 7.4-rc4 first
+verified no control changes on reprobe, EINVAL with RTCEN clear or CLKRST
+set, then setting known current UTC, enable/reset handling and counting.
+A second RAM fixture used the same operations with a widened range and
+raw calendar tracing to check these ten cases:
+- 1970 first-second tick; 2000 leap day; 2038 boundary tick
+- 2099 to 2100; 2100 February 28 to March 1
+- 2199 to 2200; 2200 February 28 to March 1
+- 2399 to 2400; 2400 February 28 to February 29
+- 9999 December 31, 23:59:58 to 23:59:59
+All passed. This is hardware evidence for those cases, not a hardware
+sweep of every encoded year. Each run restored current UTC before its
+watchdog return to installed OpenWrt; a fresh host UTC restoration was
+verified again afterwards. Firmware was not flashed. Earlier v1/v2
+RAM evidence is not counted as these v3 review and range tests.
 
 ---
-base-commit: 2268d837dea13a78639fa3dad60472bb67478709
-change-id: 20261123-proart-thermal-policy-28556ce532f2
+Changes in v3:
+- Preserve RTC enable/reset state at probe; report disabled/reset time
+  as invalid and initialise it only when setting a known time.
+- Let the core validate calendar fields and remove redundant ALARM
+  feature clearing and the two noisy probe messages.
+- Advertise 1970-9999 after checking the 16-bit BCD field, critical century
+  carries, Gregorian century leap rules and the 9999 endpoint on hardware.
+- Link to v2: https://patch.msgid.link/20261123-b4-cs7542-rtc-v2-0-31ab43f2cc8e@gmail.com
+
+Changes in v2:
+- Place RTC_DRV_CS75XX in the on-CPU RTC section, outside the HID section.
+- Keep the Makefile entry alphabetical. Driver C code is unchanged.
+- Link to v1: https://patch.msgid.link/20261123-b4-cs7542-rtc-v1-0-6c53761ffa03@gmail.com
+
+---
+Fil Dunsky (3):
+      dt-bindings: rtc: Add Cortina Systems CS7542 RTC
+      rtc: Add Cortina Systems CS7542 RTC driver
+      MAINTAINERS: Add Cortina Systems CS7542 RTC support
+
+ .../bindings/rtc/cortina,cs7542-rtc.yaml           |  48 +++++++
+ MAINTAINERS                                        |   7 +
+ drivers/rtc/Kconfig                                |   9 ++
+ drivers/rtc/Makefile                               |   1 +
+ drivers/rtc/rtc-cs75xx.c                           | 159 +++++++++++++++++++++
+ 5 files changed, 224 insertions(+)
+---
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20261123-b4-cs7542-rtc-f0818d77fda2
 
 Best regards,
 --  
-Frédéric Aime <frederic.aime@gmail.com>
+Fil Dunsky <filipp.dunsky@gmail.com>
 
