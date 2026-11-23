@@ -1,102 +1,110 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Mon, 23 Nov 2026 05:40:45 +0000
-Subject: [PATCH v3 3/3] cpufreq: s5pv210: Fix resource leaks on probe error
- paths
+From: Mani Tofigh <mt4022@columbia.edu>
+Date: Mon, 23 Nov 2026 01:07:56 -0500
+Subject: [PATCH v2] btrfs: fix loss of fsynced file after link into new dir
+ and unlink
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-cpufreq-leaks-v3-3-1f1e3f4f5a7b@gmail.com>
-References: <20261123-cpufreq-leaks-v3-0-1f1e3f4f5a7b@gmail.com>
-In-Reply-To: <20261123-cpufreq-leaks-v3-0-1f1e3f4f5a7b@gmail.com>
-To: viresh.kumar@linaro.org, krzk@kernel.org, peter.griffin@linaro.org, 
- rafael@kernel.org
-Cc: linux-kernel@vger.kernel.org, zhongqiu.han@oss.qualcomm.com, 
- alim.akhtar@samsung.com, linux-pm@vger.kernel.org, 
- linux-samsung-soc@vger.kernel.org, linux-arm-kernel@lists.infradead.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795412443; l=2668;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=FvOlF8UNPCa6Xw/nvECVgrxkLK8Otjxui0GXRXiNPfI=;
- b=YHjoUixbbisRBc20yzJITBCVBkZYoq99jZJO0FlFy11K0ajpexiY8I5rH4vZe9g2XV1PcsZlt
- TlXpH/WQHxEDku8Z+5OmsqNtWK6YR8uRuwaxQrbnUpfTleDlR2gzNaE
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+Message-Id: <20261123-btrfs-link-unlink-fsync-v2-1-ed3f9f63fbd7@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CQAyF4auQrm1iZwIJXsW4GMYOVE01UyAQw
+ t0dcfXyLd6/gXEWNrhUG2SexeStBe5UQRyC9oxyLwZ3dg2R89iNORm+RJ846THJVo0YfGiprol
+ 800J5fzInWY7y9fa3Td2D4/jLwb5/AXziXF57AAAA
+X-Change-ID: 20261123-btrfs-link-unlink-fsync-a3a915511369
+To: David Sterba <dsterba@suse.com>
+Cc: Chris Mason <mason@kernel.org>, Filipe Manana <fdmanana@suse.com>, 
+ linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ tz2294@columbia.edu, stable@vger.kernel.org, 
+ Mani Tofigh <mt4022@columbia.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795414075; l=3112;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=Tc91JtfYmxCuiF0usK0qEfcZgYz3hGtDsKZfAKcD+5w=;
+ b=M7IgzntfDd/wqtPf0wHciUSB5SEDcweEyRSuqVzvtgtZRBku0pV6oB/3gj7A9c0e+R8+QD24H
+ +L4yLy5ZV6TDAbcEUoc727CvBKhH0JdCYH7tWSZvejEMSzKI+lyIgtq
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+If we create a file, add a hard link to it in a new directory, remove
+its old name and then fsync the file through a file descriptor opened
+before the unlink, the file is gone after a power failure.  Example:
 
-s5pv210_cpufreq_probe() returns the result of cpufreq_register_driver()
-directly:
+  mkdir /mnt/A
+  fd = open("/mnt/A/foo", O_CREAT | O_WRONLY)
+  mkdir /mnt/A/B
+  ln /mnt/A/foo /mnt/A/B/bar
+  unlink /mnt/A/foo
+  fsync(fd)
+  <power fail>
 
-	register_reboot_notifier(&s5pv210_cpufreq_reboot_notifier);
+After log replay, B and B/bar don't exist and the file is gone.
 
-	return cpufreq_register_driver(&s5pv210_driver);
+The fsync uses the file's dentry, which is still the unlinked A/foo.
+The inode is new, so btrfs_log_all_parents() finds no parent in the
+commit root, and log_all_new_ancestors() then takes the fast path for a
+single link.  That path walks up from the dentry's parent A and never
+logs B.  On log replay the inode ref for B/bar is skipped because B
+doesn't exist, and the inode ends up with no links.
 
-If the registration fails, for example because s5pv210_cpu_init()
-fails, the resources taken by the probe itself are leaked: the two
-regulators and the clock and DMC register mappings. The reboot notifier
-also stays registered. (s5pv210_cpu_init() releases its own clocks on
-its error paths, and the cpufreq core tears down its own state.)
+Fix this by not taking the fast path when the inode had a link, unlink
+or rename in the current transaction.  The slow path finds the parents
+from the inode refs in the subvolume tree and logs B and A.  Also return
+early for an inode with a link count of 0, which has no parents to log.
 
-Also, when a DMC node has a bad alias, the code jumps to err_clk_base
-and skips unmapping DMC registers that were already mapped for an
-earlier node.
+The problem is old, e.g., v7.1 has it.  It was hidden by a transaction
+commit fallback between commit 0f24ea456ae1 ("btrfs: tracepoints: add
+trace event for btrfs_log_all_parents()") and
+commit 36f9aafa46f5 ("btrfs: fix unnecessary transaction commit fallback
+from btrfs_log_all_parents()").
 
-Unregister the reboot notifier and go through the existing unwind code
-when cpufreq_register_driver() fails, and jump to err_dmc on the alias
-error. The err_clk_base label has no users after this, so drop it.
+With the fix, the file survives log replay.
 
-Found with a static analysis tool and checked by hand.
-
-Fixes: e8b4c1986efb ("[CPUFREQ] S5PV210: Add arm/int voltage control support")
-Fixes: fe7f1bcbff91 ("[CPUFREQ] S5PV210: Add reboot notifier to prevent system hang")
-Fixes: 6d4ed0f46af6 ("cpufreq: s5pv210: Make the driver multiplatform aware")
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+CC: stable@vger.kernel.org
+Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
- drivers/cpufreq/s5pv210-cpufreq.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+Changes in v2:
+- Return early from log_all_new_ancestors() for an inode with a link
+  count of 0, to avoid a transaction commit (Filipe)
+- Drop the fdatasync mention and the reproducer paragraph (Filipe)
+- Rebase on btrfs for-next
+- Link to v1: https://lore.kernel.org/r/20261111-btrfs-link-unlink-fsync-v1-1-a817d4a890af@columbia.edu
+---
+ fs/btrfs/tree-log.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/cpufreq/s5pv210-cpufreq.c b/drivers/cpufreq/s5pv210-cpufreq.c
-index e64e84e1ee79..29b1c5d71a8b 100644
---- a/drivers/cpufreq/s5pv210-cpufreq.c
-+++ b/drivers/cpufreq/s5pv210-cpufreq.c
-@@ -634,7 +634,7 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
- 		if (id < 0 || id >= ARRAY_SIZE(dmc_base)) {
- 			dev_err(dev, "failed to get alias of dmc node '%pOFn'\n", dmc);
- 			result = id;
--			goto err_clk_base;
-+			goto err_dmc;
- 		}
+diff --git a/fs/btrfs/tree-log.c b/fs/btrfs/tree-log.c
+index 763487114f85..445374b06ee8 100644
+--- a/fs/btrfs/tree-log.c
++++ b/fs/btrfs/tree-log.c
+@@ -7541,11 +7541,19 @@ static int log_all_new_ancestors(struct btrfs_trans_handle *trans,
  
- 		dmc_base[id] = of_iomap(dmc, 0);
-@@ -655,7 +655,14 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
+ 	trace_btrfs_log_all_new_ancestors_enter(trans, inode);
  
- 	register_reboot_notifier(&s5pv210_cpufreq_reboot_notifier);
- 
--	return cpufreq_register_driver(&s5pv210_driver);
-+	result = cpufreq_register_driver(&s5pv210_driver);
-+	if (result)
-+		goto err_reboot_notifier;
++	if (inode->vfs_inode.i_nlink == 0) {
++		ret = 0;
++		goto out;
++	}
 +
-+	return 0;
-+
-+err_reboot_notifier:
-+	unregister_reboot_notifier(&s5pv210_cpufreq_reboot_notifier);
- 
- err_dmc:
- 	for (id = 0; id < ARRAY_SIZE(dmc_base); ++id)
-@@ -664,7 +671,6 @@ static int s5pv210_cpufreq_probe(struct platform_device *pdev)
- 			dmc_base[id] = NULL;
- 		}
- 
--err_clk_base:
- 	iounmap(clk_base);
- 
- err_clock:
+ 	/*
+ 	 * For a single hard link case, go through a fast path that does not
+-	 * need to iterate the fs/subvolume tree.
++	 * need to iterate the fs/subvolume tree. But not if the inode had a
++	 * link, unlink or rename in the current transaction, since the dentry
++	 * used for the fsync may then be an unlinked one.
+ 	 */
+-	if (inode->vfs_inode.i_nlink < 2) {
++	if (inode->vfs_inode.i_nlink < 2 &&
++	    inode->last_unlink_trans < trans->transid) {
+ 		ret = log_new_ancestors_fast(trans, inode, parent, ctx);
+ 		goto out;
+ 	}
 
--- 
-2.34.1
+---
+base-commit: 845c6105edd82f5d0aa72377ef6eb8592ac4e00a
+change-id: 20261123-btrfs-link-unlink-fsync-a3a915511369
+
+Best regards,
+--  
+Mani Tofigh <mt4022@columbia.edu>
 
