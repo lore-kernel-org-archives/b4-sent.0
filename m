@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Mon, 23 Nov 2026 13:02:41 +0100
-Subject: [PATCH 3/4] media: ccs: Update PLL and blanking limits when
- pixel_array crop changes
+Date: Mon, 23 Nov 2026 13:02:42 +0100
+Subject: [PATCH 4/4] media: ccs: Set V4L2_CTRL_FLAG_MODIFY_LAYOUT on flip
+ controls
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-ccs-clanked-fixes-v1-3-fb2bcc87a517@ixit.cz>
+Message-Id: <20261123-ccs-clanked-fixes-v1-4-fb2bcc87a517@ixit.cz>
 References: <20261123-ccs-clanked-fixes-v1-0-fb2bcc87a517@ixit.cz>
 In-Reply-To: <20261123-ccs-clanked-fixes-v1-0-fb2bcc87a517@ixit.cz>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
@@ -14,34 +14,32 @@ To: Sakari Ailus <sakari.ailus@linux.intel.com>,
  Laurent Pinchart <laurent.pinchart@ideasonboard.com>
 Cc: linux-media@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1591; i=david@ixit.cz;
- h=from:subject:message-id; bh=QGTTXuPwavl0KdtDE+/cVgC3PoTioJyQHFBbgY7e6Mk=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrBCtfrQZHr5QZNgqzaTA3wMqKow1YFr91SM4DR
- 2ld2lA5h/KJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawQrXwAKCRBgAj/E00kg
- cowoD/98zhQ4qAUK4OspU3IPh78f8LixDf4JaVX84noSwcQrQy0MZLz8wX2cpICq4Q4lz7Pmgsj
- xKBABRn7tQdWQjXQEoU0CtLO0vVI5bRInMGq/PxbTkK1WXYUvn/zMG2BARWR7jTSN+3vYV7FcGv
- rzNFPe4R+NQ1l0gPFuGcq9nZbPItohnT1miOH9gHZPiNOuWWWzHkBzzGrtYYLmjag4IH6BIPQOj
- ce/gdGz5ydHVoaYTZ3wN3tX7O0QBjsnDAcp+lM6GZYsGDg2j+q48iI6kK+yd3pqkREM5mftQSnm
- 2I7X0ffZgtukfEg38VwI8OvpYbXtJxvslrUz+aBdotWGYmbblM1y6YwdtBwwxfp5bxD8CHmkIAp
- FAtD/3FK2Wux6LO2J52RK3sZzHHUlsdXXMQKHSIU5TnLPqMzt8EbOR45VMnl8fBN+evzIF5UJ2j
- 6sYI3+raMNdpPk8wVNFEn2f9XLdq6dIUSBTqx7YZ9upgGzty9INSzX+PU3zRQjo75cO/P2g3KXR
- qBQaS6U5yfeJ1/bsEO/tik1l3Ea2Ba34k+BTTu8I5arIGeWt42cYl+G5mXSfIhLrpXmpkkC7x/m
- 1UiPRVTEDbeOwR4DxikItk5C1pMGy7VKrBZV6LnmxS6RLCBo1y6L2G1JhvUBcqnUeD6Ff7/hzUg
- yi79T1qs28+T/Ow==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1713; i=david@ixit.cz;
+ h=from:subject:message-id; bh=Jg+pYJt/4wg/fRRWkTLmCSQTZCnFKvaMIIyx5/S5q2M=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrBCtg6qFsZ6tF0hPcb6XkAiTKO+f0YLRVgPSSy
+ 4PzMS/9c8qJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawQrYAAKCRBgAj/E00kg
+ cvpWEAClfY1fOUUJpLgmeBUtZpRAGitUn+X83v+sk61fqol1Gd1ytQRVsJW5poY6OpDOqD7tD+Q
+ 1WhL3TZjpdxrbmSkXEQJZw4d5Cgx56/Gzp+bKZjIcGMwHtMZ2Cv7Rizndx8i6LJi5MVHZ0cwK/I
+ JWeY1iLZZvSTP8uLN1G/0jnwvcsvZmbsUlq83Eai6pIF4pUwC+BM47I2TA5QXCYYmmXV+eb3F8U
+ HCrpVr+cKH9m/N/QEFUEkZF3OQiLlPB4iamG0j1C7FZfvsturf+RtGxG7bSlWCc+7O8N3k1laz5
+ e+xdkAd1GwWUEs/c5jPXblHrwfFDiTy+zGxVTAXSNEiOXtPTn7k9kzEN3nQi77gQsKyguSH/zoW
+ 3D0tkzIezeG5k4kiDb2zQQoR9XWMy034q1Y6DeHWSts7Cm7CrV2LkOtwyBEBqNHoS671SalU+WM
+ pRleCkB9nP8x4yXR3zOw/42CJPr5qUgWh3yj3ybD2V7wULhsDS3XmBOavZzfC1+l7DkzE/9VeDo
+ wvs7jcfHJSG6Y9n50FZUSa1ib8jLHuIDdhEfRo8fhEaozGfmuX2DbnwN1JYTWqJ/ftV99NQJuZ+
+ EN5Xzb/LBZ2btKbkWKAhQSe3vcOV+mLr5uIJITvfI+kDY5Nl0EL5v1DVzX3sNvOynsqGnBnxqNb
+ jV3/wuKrDH6EP5w==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ccs_update_blanking() and __ccs_update_exposure_limits() compute the
-VBLANK, HBLANK, and EXPOSURE control ranges relative to the pixel_array
-source crop rectangle (pa_src). While ccs_set_compose() calls
-ccs_pll_blanking_update() for active selections, ccs_set_crop() never
-does, leaving blanking and exposure ranges stale after changing the
-analog crop rectangle.
+Changing V4L2_CID_HFLIP or V4L2_CID_VFLIP calls ccs_update_mbus_formats(),
+which XORs the default pixel order and changes the Bayer media bus format
+code exposed on the sub-device pads.
 
-Call ccs_pll_blanking_update() at the end of ccs_set_crop() when
-updating the active crop on the pixel_array sub-device.
+Per the V4L2 specification, controls that modify the pixel order / layout
+must advertise V4L2_CTRL_FLAG_MODIFY_LAYOUT so userspace (such as
+libcamera) knows that flips alter the Bayer pattern order.
 
 Fixes: ccfc97bdb5ae ("[media] smiapp: Add driver")
 Signed-off-by: David Heidelberg <david@ixit.cz>
@@ -50,30 +48,33 @@ Signed-off-by: David Heidelberg <david@ixit.cz>
  1 file changed, 4 insertions(+)
 
 diff --git a/drivers/media/i2c/ccs/ccs-core.c b/drivers/media/i2c/ccs/ccs-core.c
-index df636b8df0b51..85748c6110ecc 100644
+index 85748c6110ecc..756b5ee11f52e 100644
 --- a/drivers/media/i2c/ccs/ccs-core.c
 +++ b/drivers/media/i2c/ccs/ccs-core.c
-@@ -2573,16 +2573,20 @@ static int ccs_set_crop(struct v4l2_subdev *subdev,
- 	sel->r.left = min_t(int, sel->r.left, src_size.width - sel->r.width);
- 	sel->r.top = min_t(int, sel->r.top, src_size.height - sel->r.height);
+@@ -1047,19 +1047,23 @@ static int ccs_init_controls(struct ccs_sensor *sensor)
+ 	/* Exposure limits will be updated soon, use just something here. */
+ 	sensor->exposure = v4l2_ctrl_new_std(
+ 		&sensor->pixel_array->ctrl_handler, &ccs_ctrl_ops,
+ 		V4L2_CID_EXPOSURE, 0, 0, 1, 0);
  
- 	*crop = sel->r;
+ 	sensor->hflip = v4l2_ctrl_new_std(
+ 		&sensor->pixel_array->ctrl_handler, &ccs_ctrl_ops,
+ 		V4L2_CID_HFLIP, 0, 1, 1, 0);
++	if (sensor->hflip)
++		sensor->hflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
+ 	sensor->vflip = v4l2_ctrl_new_std(
+ 		&sensor->pixel_array->ctrl_handler, &ccs_ctrl_ops,
+ 		V4L2_CID_VFLIP, 0, 1, 1, 0);
++	if (sensor->vflip)
++		sensor->vflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
  
- 	if (ssd != sensor->pixel_array && sel->pad == CCS_PAD_SINK)
- 		ccs_propagate(subdev, sd_state, V4L2_SEL_TGT_CROP);
+ 	sensor->vblank = v4l2_ctrl_new_std(
+ 		&sensor->pixel_array->ctrl_handler, &ccs_ctrl_ops,
+ 		V4L2_CID_VBLANK, 0, 1, 1, 0);
  
-+	if (ssd == sensor->pixel_array &&
-+	    sel->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-+		return ccs_pll_blanking_update(sensor);
-+
- 	return 0;
- }
+ 	if (sensor->vblank)
+ 		sensor->vblank->flags |= V4L2_CTRL_FLAG_UPDATE;
  
- static void ccs_get_native_size(struct ccs_subdev *ssd, struct v4l2_rect *r)
- {
- 	r->top = 0;
- 	r->left = 0;
- 	r->width = CCS_LIM(ssd->sensor, X_ADDR_MAX) + 1;
 
 -- 
 2.55.0
