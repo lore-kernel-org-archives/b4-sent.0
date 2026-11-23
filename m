@@ -1,69 +1,65 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Mon, 23 Nov 2026 00:31:20 +0000
-Subject: [PATCH net] net/x25: inherit the listening socket's security label
- on accept
+From: Mani Tofigh <mt4022@columbia.edu>
+Subject: [PATCH v2 0/2] sched/wait: Queue non-exclusive waiters at the head
+ in do_wait_intr*()
+Date: Sun, 22 Nov 2026 19:35:11 -0500
+Message-Id: <20261122-b4-sched-wait-intr-head-v2-0-4a764b64e8ce@columbia.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-x25-v1-1-4432d3892f8b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAFeJA2sC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQyNj3QojU11DC7NUM3PjRAtDoxQloMqCotS0zAqwKdFKeaklSrEQweL
- SpKzU5BKQfqXaWgD+ODVGbAAAAA==
-X-Change-ID: 20261123-x25-186e673a812d
-To: davem@davemloft.net, kuba@kernel.org, ms@dev.tdt.de, 
- edumazet@kernel.org, pabeni@redhat.com
-Cc: netdev@vger.kernel.org, linux-x25@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-security-module@vger.kernel.org, 
- paul@paul-moore.com
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795393879; l=1370;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=XGoRm9Gpljgv4Y+6YNOH8RsisuTKbd1tc1zo4DvuC1o=;
- b=hnXxtrPN9egbQpZkz6j8eAD4973y57RXC/IPXVBw3HgfYsXcxTW/dYanVAypab2fkZJf5DoEk
- h8c4yugbM3IDu8UzdmiOMbP2e90i/qZPKMxaMYYZdoRsRIPbNtdc/qi
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNyw6CMBBFf8XM2jG0KfhY+R+GRR9TO0bBtAU1h
+ H+34Ad47+ok9zFBosiU4LSZINLIifuugNxuwAbdXQnZFQZZyUYUoVGYbCCHL80ZucsRA2mHtqa
+ Dr0ythFdQ2s9Int/r8qX9cRrMjWxe5pZE4JT7+FmvR7Hk/r+MAov31kvta3Ns1Nn29+FhWO/ID
+ dDO8/wF5aGI0dMAAAA=
+X-Change-ID: 20261111-b4-sched-wait-intr-head-c5e8f0b541f4
+To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>
+Cc: Oleg Nesterov <oleg@redhat.com>, 
+ Linus Torvalds <torvalds@linux-foundation.org>, 
+ Christian Brauner <brauner@kernel.org>, 
+ Michal Nazarewicz <mina86@mina86.com>, Wen Yang <wen.yang@linux.dev>, 
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ tz2294@columbia.edu, stable@vger.kernel.org, 
+ Mani Tofigh <mt4022@columbia.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795394112; l=1259;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=jCtwij91dfdagLsRWbPGL+dk8RepKRiMgOkxRuxT9C8=;
+ b=L9Ai5mlE7Lz8ZDESqwhYZFIsp7DHH5oMWaV98/BeDTOP2wlDq0TqoZk2Nw9vKWXqwoS1sNkXK
+ u6+Trf6KMOyASgkjM18QM5zTgqtmbVPKntcB/6XpTXWokmalKd43MpI
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+Patch 1 is the fix from v1, rebased on top of Linus's commit
+cea5f91daa3a ("wait-event: clean up the internal helper arguments").
+Patch 2 makes __wait_event_interruptible_locked() take wq_flags like
+___wait_event() now does, as Oleg suggested.
 
-x25_make_new() creates the socket that accept() returns by copying
-fields from the listening socket, but it never clones the listening
-socket's LSM security state -- there is no security_sk_clone(osk, sk).
-The accepted socket therefore keeps the security state that was newly
-allocated for it in x25_alloc_socket(), instead of inheriting the
-listening socket's security state.
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/evexcl.c
 
-Other accept paths (bluetooth, tipc, vsock, iucv) call
-security_sk_clone() for this. Do the same for X.25.
+gpiolib-cdev and cros_ec_chardev use the same helpers and can be
+polled too, so this fixes them as well.
 
-Found with a static analysis tool and checked by hand.
-
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-Compile tested on x86_64 (W=1, no new warnings). I don't have X.25
-hardware; the fix is by inspection.
+Changes in v2:
+- Rebased on Linus's master, on top of cea5f91daa3a.
+- New patch 2: pass wq_flags instead of a 0/1 "exclusive" argument (Oleg).
+- Link to v1: https://patch.msgid.link/20261111-b4-sched-wait-intr-head-v1-1-17cf2af5b964@columbia.edu
+- Discussion: https://lore.kernel.org/all/awMhxEuMHULvk8SA@redhat.com/
+
 ---
- net/x25/af_x25.c | 1 +
- 1 file changed, 1 insertion(+)
+Mani Tofigh (2):
+      sched/wait: Queue non-exclusive waiters at the head in do_wait_intr*()
+      sched/wait: Pass wq_flags to __wait_event_interruptible_locked()
 
-diff --git a/net/x25/af_x25.c b/net/x25/af_x25.c
-index f45c9ec7d2c6..802688d5ad56 100644
---- a/net/x25/af_x25.c
-+++ b/net/x25/af_x25.c
-@@ -598,6 +598,7 @@ static struct sock *x25_make_new(struct sock *osk)
- 	sk->sk_state       = TCP_ESTABLISHED;
- 	sk->sk_backlog_rcv = osk->sk_backlog_rcv;
- 	sock_copy_flags(sk, osk);
-+	security_sk_clone(osk, sk);
- 
- 	ox25 = x25_sk(osk);
- 	x25->t21        = ox25->t21;
+ include/linux/wait.h | 11 ++++++-----
+ kernel/sched/wait.c  | 16 ++++++++++++----
+ 2 files changed, 18 insertions(+), 9 deletions(-)
+---
+base-commit: 6e4122f0242a3262512ee3e6f2e7e6de0bd5792b
+change-id: 20261111-b4-sched-wait-intr-head-c5e8f0b541f4
 
-
+Best regards,
+--  
+Mani Tofigh <mt4022@columbia.edu>
 
