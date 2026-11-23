@@ -1,15 +1,13 @@
 From: Binoy Ravindran <binoy@vt.edu>
-Subject: [PATCH 0/2] livepatch: Do not lose exiting tasks during a
- transition
-Date: Mon, 23 Nov 2026 15:52:14 -0500
-Message-Id: <20261123-klp-series-v3-v1-0-427c95811d9b@vt.edu>
+Date: Mon, 23 Nov 2026 15:52:15 -0500
+Subject: [PATCH 1/2] rcu-tasks: Add helpers to visit tasks on the exit
+ lists
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAH6nBGsC/yXMQQ5AMBBA0avIrE3SVhCuIhbUlEFKWkQi7q5Yv
- sX/F3hyTB7K6AJHB3tebICMI9BDY3tC7oJBCZVJqRKc5hX/Bo8Eu1TlRaZFWggDoVkdGT6/X1X
- /9ns7kt7eCdz3AyO0XZhxAAAA
-X-Change-ID: 20261123-klp-series-v3-d52796c0590f
+Message-Id: <20261123-klp-series-v3-v1-1-427c95811d9b@vt.edu>
+References: <20261123-klp-series-v3-v1-0-427c95811d9b@vt.edu>
+In-Reply-To: <20261123-klp-series-v3-v1-0-427c95811d9b@vt.edu>
 To: "Paul E. McKenney" <paulmck@kernel.org>, 
  Frederic Weisbecker <frederic@kernel.org>, 
  Neeraj Upadhyay <neeraj.upadhyay@kernel.org>, 
@@ -26,60 +24,169 @@ Cc: rcu@vger.kernel.org, linux-kernel@vger.kernel.org,
  live-patching@vger.kernel.org, Yafang Shao <laoar.shao@gmail.com>, 
  Jaidev Shastri <jaidevshastri@vt.edu>, Binoy Ravindran <binoy@vt.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795467163; l=2301;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795467163; l=6044;
  i=binoy@vt.edu; s=20261123; h=from:subject:message-id;
- bh=8jw45Z4MONwXpwW16fWs+bguoDA4AMUrsssB1NGSAis=;
- b=KwX1UeAQbQ2O0SqnnT4zaR8qX7zMX5woDh7B1B/Zs6y+x/yTVWOb5SHeWmsDlEquYZcvv+U1a
- AEJtznQ9PwBDyw4N/k3DQBV02yzIU27PJYtO8lumV7kE5bxG6CU15w/
+ bh=rqHs0w3UOy9Xw9vI+yBkCYnZ7G4WelNoCJGsuFqHgcE=;
+ b=mw7+imUXCQaN0xhkxXztOeUYmcI0mZEeexUYx3DRVCPx3OEFWkWTTcNi/dWaXA1NlgDU6pubi
+ j067hk+6sycDhX+3Li0PuX6lxHgu4qT9Uu0GlrPsNiZlrLGxUh/G88f
 X-Developer-Key: i=binoy@vt.edu; a=ed25519;
  pk=4cNdKPHP0InmhK/9bb7Tm2ZMUXUvLGfw1pmVt5b98fA=
 X-Endpoint-Received: by B4 Relay for binoy@vt.edu/20261123 with auth_id=1622
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After exit_notify(), a self-reaping task is unhashed from the task list
-but keeps running the rest of do_exit(). The livepatch transition walks
-the task list, so it can complete while such a task still runs code from
-a patch module that atomic replace is about to free. Yafang Shao and
-Petr Mladek discussed this race in [1]. It is hard to hit, but it is
-reachable by any livepatch that replaces a function on the exit path,
-for example a fix to do_exit() itself.
+A task joins its CPU's RCU-tasks exit list in exit_tasks_rcu_start(),
+before exit_notify() unhashes it from the task list, and leaves it in
+exit_tasks_rcu_finish(), after do_exit() has disabled preemption for the
+final switch. While on the list the task is no longer found by
+for_each_process_thread(), but it still runs do_exit() and may sleep
+there. Code that must reach every task that can still be descheduled,
+such as the livepatch transition, has no way to find it.
 
-Every exiting task is already on an RCU-tasks exit list from
-exit_tasks_rcu_start(), before exit_notify(), until
-exit_tasks_rcu_finish(). After that, do_exit() runs with preemption
-disabled until the final switch, so the task cannot sleep or be
-preempted. Patch 1 adds helpers to visit the tasks on these lists.
-Patch 2 makes every transition step, including reverse and force,
-visit them too. The exit path itself is unchanged. Kernels without
-CONFIG_TASKS_RCU have no exit lists and are not covered.
+Add two helpers. rcu_tasks_visit_exiting() calls a function on each
+task on the exit lists under the list locks, without allocating.
+rcu_tasks_snapshot_exiting() copies the tasks into a caller-supplied
+array with a reference held on each, for callers that must sleep or take
+other locks while examining them. Without CONFIG_TASKS_RCU there are no
+exit lists, and the helpers do nothing.
 
-We reproduced the crash with two atomic-replace livepatches of the
-CVE-2025-38424 fix, which replaces do_exit(). With a debug-only sleep
-after exit_notify(), 11 of 12 runs crash without the series and none
-with it. With it, there were also no crashes in 1,200 cycles of a /proc
-stress test or in 400 cycles with preempt=full. The measurements were
-taken on v6.12.1. This series is the forward port to v7.4-rc2. On
-mainline it has been build-tested only: it builds without new warnings
-with livepatch on, with livepatch on and preemption off, and with
-TASKS_RCU off. It has not yet been run on mainline. A reproducer and the
-logs are available on request.
+rcu_tasks_postscan() keeps its place in an exit list with a bare
+list_head while it drops the lock to reschedule, relying on nobody else
+traversing the list. Move that cursor into struct rcu_tasks_percpu,
+next to the list it marks, so that the new helpers can recognize and
+skip it. Only the grace-period kthread runs postscan, one CPU's list at
+a time, so one cursor per CPU suffices.
 
-[1] https://lore.kernel.org/all/20250127063526.76687-1-laoar.shao@gmail.com/
-
+Reviewed-by: Jaidev Shastri <jaidevshastri@vt.edu>
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Binoy Ravindran <binoy@vt.edu>
 ---
-Binoy Ravindran (2):
-      rcu-tasks: Add helpers to visit tasks on the exit lists
-      livepatch: Include exiting tasks in the transition
+ include/linux/rcupdate.h |  9 +++++++
+ kernel/rcu/tasks.h       | 67 +++++++++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 70 insertions(+), 6 deletions(-)
 
- include/linux/rcupdate.h      |  9 ++++++
- kernel/livepatch/transition.c | 72 +++++++++++++++++++++++++++++++++++++++++++
- kernel/rcu/tasks.h            | 67 ++++++++++++++++++++++++++++++++++++----
- 3 files changed, 142 insertions(+), 6 deletions(-)
----
-base-commit: 7475ea8b58616b33c04afb976cf0fbaad9dd63fb
-change-id: 20261123-klp-series-v3-d52796c0590f
+diff --git a/include/linux/rcupdate.h b/include/linux/rcupdate.h
+index 3f74ae6d6e1f..55b8b4a0fa94 100644
+--- a/include/linux/rcupdate.h
++++ b/include/linux/rcupdate.h
+@@ -214,6 +214,15 @@ static inline void exit_tasks_rcu_start(void) { }
+ static inline void exit_tasks_rcu_finish(void) { }
+ #endif /* #else #ifdef CONFIG_TASKS_RCU_GENERIC */
+ 
++typedef void (*rcu_tasks_exiting_fn_t)(struct task_struct *t, void *arg);
++#ifdef CONFIG_TASKS_RCU
++void rcu_tasks_visit_exiting(rcu_tasks_exiting_fn_t fn, void *arg);
++int rcu_tasks_snapshot_exiting(struct task_struct **buf, int max);
++#else
++static inline void rcu_tasks_visit_exiting(rcu_tasks_exiting_fn_t fn, void *arg) { }
++static inline int rcu_tasks_snapshot_exiting(struct task_struct **buf, int max) { return 0; }
++#endif
++
+ /**
+  * cond_resched_tasks_rcu_qs - Report potential quiescent states to RCU
+  *
+diff --git a/kernel/rcu/tasks.h b/kernel/rcu/tasks.h
+index fcac7361ec51..a231d30ebf81 100644
+--- a/kernel/rcu/tasks.h
++++ b/kernel/rcu/tasks.h
+@@ -49,6 +49,7 @@ struct rcu_tasks_percpu {
+ 	struct rcu_head barrier_q_head;
+ 	struct list_head rtp_blkd_tasks;
+ 	struct list_head rtp_exit_list;
++	struct list_head rtp_exit_cursor;
+ 	int cpu;
+ 	int index;
+ 	struct rcu_tasks *rtpp;
+@@ -1068,7 +1069,6 @@ static void rcu_tasks_postscan(struct list_head *hop)
+ 		struct rcu_tasks_percpu *rtpcp = per_cpu_ptr(rcu_tasks.rtpcpu, cpu);
+ 		struct task_struct *t;
+ 		struct task_struct *t1;
+-		struct list_head tmp;
+ 
+ 		raw_spin_lock_irq_rcu_node(rtpcp);
+ 		list_for_each_entry_safe(t, t1, &rtpcp->rtp_exit_list, rcu_tasks_exit_list) {
+@@ -1081,14 +1081,15 @@ static void rcu_tasks_postscan(struct list_head *hop)
+ 				continue;
+ 
+ 			// Keep our place in the list while pausing.
+-			// Nothing else traverses this list, so adding a
+-			// bare list_head is OK.
+-			list_add(&tmp, &t->rcu_tasks_exit_list);
++			// The cursor lives in rtpcp so that the exit-list
++			// visitors can recognize and skip it.
++			list_add(&rtpcp->rtp_exit_cursor, &t->rcu_tasks_exit_list);
+ 			raw_spin_unlock_irq_rcu_node(rtpcp);
+ 			cond_resched(); // For CONFIG_PREEMPT=n kernels
+ 			raw_spin_lock_irq_rcu_node(rtpcp);
+-			t1 = list_entry(tmp.next, struct task_struct, rcu_tasks_exit_list);
+-			list_del(&tmp);
++			t1 = list_entry(rtpcp->rtp_exit_cursor.next, struct task_struct,
++					rcu_tasks_exit_list);
++			list_del(&rtpcp->rtp_exit_cursor);
+ 			j = jiffies + 1;
+ 		}
+ 		raw_spin_unlock_irq_rcu_node(rtpcp);
+@@ -1332,6 +1333,60 @@ void exit_tasks_rcu_finish(void)
+ 	raw_spin_unlock_irqrestore_rcu_node(rtpcp, flags);
+ }
+ 
++/*
++ * Call fn on every task on the exit lists, in place, with the per-CPU list
++ * lock held and interrupts disabled. fn must not sleep. Does not allocate.
++ * These are the tasks that have passed exit_tasks_rcu_start() but not
++ * exit_tasks_rcu_finish(). Once exit_notify() has run they are no longer on
++ * the task list, but they still run do_exit() and may sleep there.
++ */
++void rcu_tasks_visit_exiting(rcu_tasks_exiting_fn_t fn, void *arg)
++{
++	int cpu;
++	unsigned long flags;
++	struct task_struct *t;
++
++	for_each_possible_cpu(cpu) {
++		struct rcu_tasks_percpu *rtpcp = per_cpu_ptr(rcu_tasks.rtpcpu, cpu);
++
++		raw_spin_lock_irqsave_rcu_node(rtpcp, flags);
++		list_for_each_entry(t, &rtpcp->rtp_exit_list, rcu_tasks_exit_list) {
++			if (&t->rcu_tasks_exit_list == &rtpcp->rtp_exit_cursor)
++				continue;
++			fn(t, arg);
++		}
++		raw_spin_unlock_irqrestore_rcu_node(rtpcp, flags);
++	}
++}
++
++/*
++ * Copy up to max tasks on the exit lists into buf, taking a reference on
++ * each. Returns the number of tasks on the lists, which may exceed max.
++ */
++int rcu_tasks_snapshot_exiting(struct task_struct **buf, int max)
++{
++	int cpu, n = 0;
++	unsigned long flags;
++	struct task_struct *t;
++
++	for_each_possible_cpu(cpu) {
++		struct rcu_tasks_percpu *rtpcp = per_cpu_ptr(rcu_tasks.rtpcpu, cpu);
++
++		raw_spin_lock_irqsave_rcu_node(rtpcp, flags);
++		list_for_each_entry(t, &rtpcp->rtp_exit_list, rcu_tasks_exit_list) {
++			if (&t->rcu_tasks_exit_list == &rtpcp->rtp_exit_cursor)
++				continue;
++			if (n < max) {
++				get_task_struct(t);
++				buf[n] = t;
++			}
++			n++;
++		}
++		raw_spin_unlock_irqrestore_rcu_node(rtpcp, flags);
++	}
++	return n;
++}
++
+ #else /* #ifdef CONFIG_TASKS_RCU */
+ void exit_tasks_rcu_start(void) { }
+ void exit_tasks_rcu_finish(void) { }
 
-Best regards,
---  
-Binoy Ravindran <binoy@vt.edu>
+-- 
+2.39.5
 
