@@ -1,94 +1,83 @@
-From: Arina Kharlamova <arina.kharlamova@mbzuai.ac.ae>
-Date: Tue, 24 Nov 2026 03:37:45 +0400
-Subject: [PATCH] selinux: reject a 65535-byte xfrm context that ctx_len
- cannot hold
+From: Robert Ijtsma <robertijtsma@gmail.com>
+Subject: [PATCH v2 0/5] media: qcom: camss: fix VFE/CSID/video error
+ handling and register bugs
+Date: Tue, 24 Nov 2026 00:43:52 +0100
+Message-Id: <20261124-camss-fixes-v2-0-231a5523cd59@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-dev-v1-1-00b99ee684ec@mbzuai.ac.ae>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQyMT3ZTUMl1jIzNz4+RkC2MzUzMloMqCotS0zAqwKdGxEH5xaVJWanI
- JSKtSbS0AjuyniWcAAAA=
-X-Change-ID: 20261124-dev-32673cc83656
-To: Paul Moore <paul@paul-moore.com>, 
- Stephen Smalley <stephen.smalley.work@gmail.com>, 
- =?utf-8?q?Ondrej_Mosn=C3=A1=C4=8Dek?= <omosnacek@gmail.com>, 
- Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>
-Cc: selinux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-hardening@vger.kernel.org, stable@vger.kernel.org, 
- Arina Kharlamova <arina.kharlamova@mbzuai.ac.ae>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795477118; l=2642;
- i=arina.kharlamova@mbzuai.ac.ae; s=20261123; h=from:subject:message-id;
- bh=Z7AJMpvi6SLYbFT+owIrY8vSwJq5AGT0uGxXNqbrlAE=;
- b=Ar6QmklyIzqD+a5uCiu5IjDZKs7GTVmt6UryLLGPxeHsXub11JIu7vvJo8WDXBtpbHA9LBn3B
- 5m9am+0ZMXsDbMhnvdQPkyZt+lMZLvvHY//Z1rLqhVLarbTzka0VtzK
-X-Developer-Key: i=arina.kharlamova@mbzuai.ac.ae; a=ed25519;
- pk=DzQWwMpUtJvSDuzprqvRdbrC72n4Sq8dW6cq3NRt2Mk=
-X-Endpoint-Received: by B4 Relay for arina.kharlamova@mbzuai.ac.ae/20261123 with auth_id=1625
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NwQ6CMBBEf4Xs2Zp204B68j8Mh1IWWGOp6SLRE
+ P7dglePLzNvZgGhxCRwKRZINLNwHDPgoQA/uLEnxW1mQI2lMYjKuyCiOn6TKOvKynhCoy1CNp6
+ J9iALt/rH8mru5KdtYmsMLFNMn/1uNlvv//JslFbntrMtNaeKHF774Phx9DFAva7rF9nXceO4A
+ AAA
+X-Change-ID: 20261122-camss-fixes-4a671ce21042
+To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Loic Poulain <loic.poulain@oss.qualcomm.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ Robert Ijtsma <robertijtsma@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795477434; l=2793;
+ i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
+ bh=vYw1nPh4Klj7yHJJhzQwQj3DP4trkjzglC80GQbAh9g=;
+ b=f6LOdyOpXQ6PZYXfnrU/+X9zNYMIEEJmIqnb9ruI3YgBRDuFFTxrGwH+szN/WIP4+WOJdRVKg
+ sAM+MRsWE1GCZHVajo4+Tc2vcxZnWCJZWam8F5BDhRvfnwcJl37twud
+X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
+ pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
+X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 86c8db86af43 ("selinux: fix selinux_xfrm_alloc_user() to set
-correct ctx_len") made ctx_len count the terminating NUL. ctx_len is a
-__u16 and selinux_xfrm_alloc_user() only rejects str_len >= PAGE_SIZE.
-With 64K pages, str_len = 65535 passes, and ctx_len = str_len + 1 wraps
-to 0 (kmalloc_flex() stores the same truncated value first).
+This series fixes five bugs in the Qualcomm CAMSS driver found during
+Titan 175 (SC8180X) camera bring-up and code review:
 
-ctx_str[] is __counted_by(ctx_len), so the following memcpy() of
-str_len bytes is checked against a buffer of size 0. With
-CONFIG_FORTIFY_SOURCE this ends in __fortify_panic():
+1. vfe-17x: Check VFE_IRQ_STATUS_1 (status1) rather than
+   VFE_IRQ_STATUS_0 (status0) against STATUS_1_RDI_SOF(i) in vfe_isr().
+2. csid-gen2: Change `enable` to bool and use BIT(RDI_CFG0_ENABLE) to
+   explicitly set or clear bit 31 in __csid_configure_rdi_stream().
+3. csid: Release the parent device reference via parent_dev_ops->put()
+   on all csid_set_power() power-on failure paths.
+4. vfe: Destroy power_lock and stream_lock after unregistering VFE
+   subdevices and video nodes in msm_vfe_unregister_entities().
+5. video: Factor subdevice stream start/stop into a shared helper using
+   v4l2_subdev_enable_streams()/v4l2_subdev_disable_streams(), unwinding
+   partial start failures and continuing teardown on stop errors.
 
-  memcpy: detected buffer overflow: 65535 byte write of buffer size 0
-  kernel BUG at lib/string_helpers.c:1044!
-  ...
-   selinux_xfrm_state_alloc+0x18/0x24
-   security_xfrm_state_alloc+0x3c/0x6c
-
-The memory written stays inside the allocation (65536 bytes for the
-string); without FORTIFY_SOURCE the context is stored with ctx_len 0.
-
-A user context of 65535 bytes can reach this hook through PF_KEY
-(af_key.c only limits sadb_x_ctx_len to PAGE_SIZE); the xfrm netlink
-path cannot, because there uctx->len (a __u16) includes the header.
-
-Reject a str_len that does not leave room for the NUL in ctx_len.
-
-Found while surveying callers of kmalloc_flex() whose __counted_by()
-counter is narrower than the count, with the help of an AI coding
-assistant (Claude); I reviewed the analysis and the fix. Tested on
-v7.4-rc2, arm64 with ARM64_64K_PAGES, FORTIFY_SOURCE and SELinux, under
-QEMU (GCC 15.2.0), with a KUnit case that passes a 65535-byte context to
-security_xfrm_state_alloc(): the unpatched kernel hits the BUG above,
-the patched one returns -ENOMEM. The PF_KEY path itself was not
-exercised.
-
-Fixes: 86c8db86af43 ("selinux: fix selinux_xfrm_alloc_user() to set correct ctx_len")
-Cc: stable@vger.kernel.org
-Signed-off-by: Arina Kharlamova <arina.kharlamova@mbzuai.ac.ae>
+Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
 ---
- security/selinux/xfrm.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/security/selinux/xfrm.c b/security/selinux/xfrm.c
-index 8e00b3306574..181748bb5eb3 100644
---- a/security/selinux/xfrm.c
-+++ b/security/selinux/xfrm.c
-@@ -85,7 +85,8 @@ static int selinux_xfrm_alloc_user(struct xfrm_sec_ctx **ctxp,
- 		return -EINVAL;
- 
- 	str_len = uctx->ctx_len;
--	if (str_len >= PAGE_SIZE)
-+	/* ctx->ctx_len below includes the NUL and has to fit its type. */
-+	if (str_len >= PAGE_SIZE || str_len >= type_max(ctx->ctx_len))
- 		return -ENOMEM;
- 
- 	ctx = kmalloc_flex(*ctx, ctx_str, str_len + 1, gfp);
+Changes in v2:
+- Patch 1/5: Drop Fixes tag since vfe_isr_sof() is currently a no-op on
+  vfe-17x (Loic); collect Reviewed-by tags from Loic and Bryan.
+- Patch 2/5: Change `enable` parameter to `bool` (Loic), drop irrelevant
+  sign-bit remark from commit message, and add Bryan's Reviewed-by (Bryan).
+- Patch 3/5: Collect Reviewed-by tags from Loic and Bryan.
+- Patch 4/5: Collect Reviewed-by tags from Loic and Bryan.
+- Patch 5/5: Rework into a shared camss_subdev_pipeline_set_stream() helper
+  using v4l2_subdev_enable_streams()/v4l2_subdev_disable_streams() and
+  iterating entity sink pads rather than media_entity_remote_source_pad_unique()
+  so entities with multiple active sink links (e.g. VFE with CSID + params)
+  are handled cleanly (Loic). Dropped Bryan's v1 Reviewed-by due to rework.
+- Link to v1: https://patch.msgid.link/20261122-camss-fixes-v1-0-9df4deb87ea2@gmail.com
 
 ---
-base-commit: 347b0c5bacbe94bc99f7683e3c9269c77a0b9c92
-change-id: 20261124-dev-32673cc83656
+Robert Ijtsma (5):
+      media: qcom: camss: vfe-17x: check status1 for RDI SOF interrupts
+      media: qcom: camss: csid-gen2: fix RDI enable bit manipulation
+      media: qcom: camss: csid: release parent device on power-on failure
+      media: qcom: camss: vfe: destroy mutexes after unregistering entities
+      media: qcom: camss: video: factor pipeline stream start/stop into helper
+
+ .../media/platform/qcom/camss/camss-csid-gen2.c    |   8 +-
+ drivers/media/platform/qcom/camss/camss-csid.c     |  48 ++++-----
+ drivers/media/platform/qcom/camss/camss-vfe-17x.c  |   2 +-
+ drivers/media/platform/qcom/camss/camss-vfe.c      |   6 +-
+ drivers/media/platform/qcom/camss/camss-video.c    | 116 +++++++++++++--------
+ 5 files changed, 104 insertions(+), 76 deletions(-)
+---
+base-commit: 4843f6873f7c4835e62f2c73ba0fd538e57a2f22
+change-id: 20261122-camss-fixes-4a671ce21042
 
 Best regards,
 --  
-Arina Kharlamova <arina.kharlamova@mbzuai.ac.ae>
+Robert Ijtsma <robertijtsma@gmail.com>
 
