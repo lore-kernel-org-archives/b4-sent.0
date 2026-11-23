@@ -1,82 +1,65 @@
 From: Suyuan Wang <shyckless@gmail.com>
-Date: Mon, 23 Nov 2026 00:53:07 +0000
-Subject: [PATCH 2/2] dmaengine: idma64: Kill the channel tasklets in remove
- again
+Subject: [PATCH v2 0/2] dmaengine: Kill channel tasklets in remove again
+Date: Mon, 23 Nov 2026 01:17:36 +0000
+Message-Id: <20261123-dma-chancnt-v2-0-241b1672883e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-dma-chancnt-v1-2-f0eea0a4bb63@gmail.com>
-References: <20261123-dma-chancnt-v1-0-f0eea0a4bb63@gmail.com>
-In-Reply-To: <20261123-dma-chancnt-v1-0-f0eea0a4bb63@gmail.com>
-To: vkoul@kernel.org, ludovic.desroches@microchip.com
-Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Frank.Li@kernel.org, allen.lkml@gmail.com, dave.jiang@intel.com, 
- dmaengine@vger.kernel.org, andriy.shevchenko@linux.intel.com
+X-B4-Tracking: v=1; b=H4sIADCUA2sC/yXM0QpAMBTG8VfRubayqUNeRS5mOzjKaBspeXfD5
+ a+v739BIM8UoMku8HRw4NUlqDwDM2k3kmCbDKpQKKUqhV20eBfjokDEuqoNUiktpMfmaeDzq7X
+ d77D3M5n4JuC+H4UEbkFvAAAA
+X-Change-ID: 20261123-dma-chancnt-666878c6e31d
+To: ludovic.desroches@microchip.com, vkoul@kernel.org
+Cc: Frank.Li@kernel.org, dave.jiang@intel.com, linux-kernel@vger.kernel.org, 
+ andriy.shevchenko@linux.intel.com, dmaengine@vger.kernel.org, 
+ allen.lkml@gmail.com, linux-arm-kernel@lists.infradead.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795395185; l=1951;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795396657; l=1886;
  i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=GQuussW5tcaY3AFLXhEILE+dApPEjArrisGtHmyiqFk=;
- b=ji9WRcuHGobYS9nt8jrwgQQ3y9toNeTxMkJ70wG2ign/Yyl02TFW/2ibsbLp6r13W6629PLua
- fsVOoXzy6TrDFRy9TrznW54l/IaQlKsFPoPFz+2vE2QOmQMhZSihUx0
+ bh=M5gstoa5unIW6ysGcN08lUHOdZ09B3VvbPuhdhXnsik=;
+ b=LQs0pOspOgbUIO95yvZexbf4sS3I8++eHStsRQwYgm2jYqaZHEriAT7k94R/Nd/SEVvR1qzKk
+ Ztf/Alz9L51DCtlvbeNuOaqeczz3adTd1LScgJyiWWTK6z3k5yjeTHp
 X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
  pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
 X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+at_xdmac and idma64 kill their channel tasklets in remove() with a loop
+over dma.chancnt after dma_async_device_unregister(). Since commit
+e81274cd6b52, dma_async_device_unregister() unregisters each channel
+and decrements dma.chancnt for it, so chancnt is 0 when the loops run,
+they do nothing, and a tasklet scheduled by an interrupt can run after
+the devm-allocated driver data is gone.
 
-idma64_remove() frees the IRQ and then kills the channel tasklets, as
-the comment there says, so that no tasklet scheduled by the interrupt
-runs after removal:
+For at_xdmac, just making the loop run again is not enough, as the
+Sashiko review of v1 pointed out: the tasklets and
+at_xdmac_free_chan_resources() would then run after the channel
+devices are freed and the clock is disabled. v2 moves the IRQ, tasklet
+and channel cleanup in front of dma_async_device_unregister() and
+clk_disable_unprepare() instead. idma64 has no clock to disable and its
+virt-dma tasklet uses neither the registers nor the channel device, so
+patch 2 is unchanged.
 
-	for (i = 0; i < idma64->dma.chancnt; i++) {
-		...
-		tasklet_kill(&idma64c->vchan.task);
-	}
+These loops are also touched by Allen's "dmaengine: migrate channel
+tasklets to WQ_BH" series (v4, 01/33 and 04/33). The two fixes don't
+depend on that series. Whichever goes in second needs a trivial rebase.
 
-Since commit e81274cd6b52 ("dmaengine: add support to dynamic
-register/unregister of channels"), dma_async_device_unregister()
-unregisters each channel and decrements dma.chancnt for it, so the
-count is 0 when this loop runs and no tasklet is killed. A tasklet
-scheduled by an interrupt can then run after the devm-allocated idma64
-and its channels have been freed.
+Found with a static analysis tool and checked by hand. Compile tested
+on x86_64 with COMPILE_TEST (W=1); I don't have the hardware.
 
-Read the channel count before unregistering the device.
+Changes in v2:
+- 1/2: move free_irq(), the tasklet kills and the channel cleanup before
+  dma_async_device_unregister() and clk_disable_unprepare(), instead of
+  saving chancnt; add the Fixes tag for the original driver (Sashiko).
+- 2/2: unchanged.
 
-Found with a static analysis tool and checked by hand.
-
-Fixes: e81274cd6b52 ("dmaengine: add support to dynamic register/unregister of channels")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+v1: https://lore.kernel.org/all/20261123-dma-chancnt-v1-0-f0eea0a4bb63@gmail.com/
 ---
- drivers/dma/idma64.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Suyuan Wang (2):
+      dmaengine: at_xdmac: Kill the channel tasklets before unregistering
+      dmaengine: idma64: Kill the channel tasklets in remove again
 
-diff --git a/drivers/dma/idma64.c b/drivers/dma/idma64.c
-index e3db213e564b..5d0df1defb14 100644
---- a/drivers/dma/idma64.c
-+++ b/drivers/dma/idma64.c
-@@ -604,6 +604,8 @@ static int idma64_probe(struct idma64_chip *chip)
- static void idma64_remove(struct idma64_chip *chip)
- {
- 	struct idma64 *idma64 = chip->idma64;
-+	/* dma_async_device_unregister() decrements dma.chancnt to 0 */
-+	unsigned short nr_chan = idma64->dma.chancnt;
- 	unsigned short i;
- 
- 	dma_async_device_unregister(&idma64->dma);
-@@ -614,7 +616,7 @@ static void idma64_remove(struct idma64_chip *chip)
- 	 */
- 	devm_free_irq(chip->dev, chip->irq, idma64);
- 
--	for (i = 0; i < idma64->dma.chancnt; i++) {
-+	for (i = 0; i < nr_chan; i++) {
- 		struct idma64_chan *idma64c = &idma64->chan[i];
- 
- 		tasklet_kill(&idma64c->vchan.task);
-
--- 
-2.34.1
+ drivers/dma/at_xdmac.c | 19 ++++++++++++-------
+ drivers/dma/idma64.c   |  4 +++-
+ 2 files changed, 15 insertions(+), 8 deletions(-)
 
