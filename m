@@ -1,156 +1,107 @@
 From: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
-Date: Mon, 23 Nov 2026 12:55:29 +0200
-Subject: [PATCH v2] EDAC/mc: Convert the poll period to jiffies when it is
- changed
+Date: Mon, 23 Nov 2026 13:03:46 +0200
+Subject: [PATCH v2] x86/apic: Use the physical address for the local APIC
+ resource
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-edac-mc-poll-msec-jiffies-v2-1-0407cc52556d@ahmedabdelfattah.dev>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NTQ6CMBBGr0K6dgxTErSuvIdhUdoZKeEvbW00h
- Ltb8AIuX/K+960ikHcUxK1YhafkgpunDPJUCNPp6UngbGYhS1kjogKy2sBoYJmHAcZABnrHnBP
- A7YWVrBlRGpH3iyd276P9aH4cXm1PJu7B3ehciLP/HOcJd++fn4SAwFRJpaor61LddTdmvbU0s
- I5Rd2dLSTTbtn0BMlh3w98AAAA=
-X-Change-ID: 20261119-edac-mc-poll-msec-jiffies-fb7f926f112c
-To: Borislav Petkov <bp@alien8.de>, Tony Luck <tony.luck@intel.com>
-Cc: Qiuxu Zhuo <qzhuo@nvidia.com>, linux-edac@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+Message-Id: <20261123-x86-apic-lapic-resource-v2-1-4474a572aaaf@ahmedabdelfattah.dev>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6DIBREr2JYl0Zoo6Sr3qNx8YFP+Y1VA0hsj
+ Hcv2gN0M8lLZuatLGIgjOxWrSxgpkjjUECeKmY8DE/kZAszWctGiLrli2o4TGR4f2TAOM7BIEf
+ plAILqmlbVtZTQEfL8fzofhxn/UKT9ru94SmmMXwOdRZ7778lCy64VBavRl+cFngH/0YL2mLvI
+ CXwZ4uZddu2fQFRb2fD2wAAAA==
+X-Change-ID: 20261107-x86-apic-lapic-resource-e2f88ada8677
+To: Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, 
+ Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>, 
+ x86@kernel.org, "H. Peter Anvin" <hpa@zytor.com>, 
+ "Peter Zijlstra (Intel)" <peterz@infradead.org>
+Cc: Chao Gao <chao.gao@intel.com>, linux-kernel@vger.kernel.org, 
+ Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795431333; l=5584;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795431826; l=3170;
  i=me@ahmedabdelfattah.dev; s=20261106; h=from:subject:message-id;
- bh=n19gK6o3sRSWNb0gfAuZ8xCRhx7uWKCKrQY4JcoU+gA=;
- b=0HNrLZac5Wok4Ed+BV8WQnGeuQmK9bBXzryHZYf+2dHsC0ouws/cJBZ719etCXuW5BnVk7XzW
- woVv7MJl0ncCEtBPGOjIprNAN3K6kA2LQ6F8oqENhFFuAKBFIzDHcIp
+ bh=p400VXiAp13U+yYuNFSSnKSaZgbslssngT6wil6wIzw=;
+ b=2VnWAHyFn4bRSQqUqBq272f3f0aqF0rnYaPnO+bTpi3hzRguU1BCUmjeLyHFKBowiGaApwyQn
+ Pin5t8PR8dpC8QTErelHwpZ+rjI/RM/Re9KzHJuZLN4H/ZLE4dKJYBk
 X-Developer-Key: i=me@ahmedabdelfattah.dev; a=ed25519;
  pk=DHEHKU4PddrkJ/iYMZpwyyXsFyIQ6ySjTttKLrt9YqI=
 X-Endpoint-Received: by B4 Relay for me@ahmedabdelfattah.dev/20261106 with auth_id=1438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Writing edac_mc_poll_msec at run time re-arms every polled memory
-controller through edac_mc_reset_delay_period(), which passes the new
-value to edac_mod_work() as it is. mod_delayed_work() takes jiffies, so
-the first poll after the write comes that many jiffies later, not that
-many milliseconds: at HZ=300, writing 2000 puts the next poll 6.7 s
-out. edac_mc_workq_function() re-arms with msecs_to_jiffies(), so only
-that first poll is off.
+Since v6.6 the "Local APIC" entry is missing from /proc/iomem whenever
+the kernel maps the xAPIC itself.
 
-Before commit c4cf3b454eca ("EDAC: Rework workqueue handling") this
-path converted the value through edac_mc_workq_setup(), and
-edac_device_reset_delay_period() still does. Convert it here as well.
+lapic_insert_resource() takes the start of the resource from apic_phys,
+which used to hold mp_lapic_addr. Commit 81287ad65da5 ("x86/apic:
+Sanitize APIC address setup") moved that assignment to
+apic_set_fixmap(), where it became the fixmap virtual address:
 
-All other callers of edac_mod_work() and edac_queue_work() already pass
-jiffies. Name the arguments after the unit they are in: "jiffies" for
-the two workqueue helpers, and "msec" for edac_mc_reset_delay_period(),
-as edac_device_reset_delay_period() has it.
+	apic_phys = apic_mmio_base = APIC_BASE;
 
-Fixes: c4cf3b454eca ("EDAC: Rework workqueue handling")
-Reviewed-by: Qiuxu Zhuo <qzhuo@nvidia.com>
+Commit 78c32000848c ("x86/apic: Get rid of apic_phys") then replaced
+apic_phys with apic_mmio_base, which holds the same value:
+
+  APIC: Mapped APIC to ffffffffff5fc000 (        fee00000)
+
+insert_resource() rejects that range because it lies outside
+iomem_resource, and as the return value is not checked, the failure
+goes unnoticed.
+
+Without the resource the local APIC page is no longer marked busy. So
+apart from the line missing in /proc/iomem, CONFIG_IO_STRICT_DEVMEM
+does not stop /dev/mem from mapping the page any more, and in xAPIC
+mode the APIC registers can be read and written through it.
+
+Use mp_lapic_addr, which is the address apic_set_fixmap() maps. Keep
+the apic_mmio_base check, so the resource is still only added when the
+APIC was actually mapped.
+
+Fixes: 81287ad65da5 ("x86/apic: Sanitize APIC address setup")
 Signed-off-by: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
 ---
-I noticed this while timing ie31200_edac's polls in a KVM guest: the
-first poll after a write to edac_mc_poll_msec came late.
+This showed up while comparing /proc/iomem with the memory map of a
+QEMU guest.
 
-Tested on v7.4-rc3+ (4405c18c95d2) at HZ=300, with ie31200_edac bound
-to a QEMU model of the Kaby Lake host bridge (a local device model, not
-upstream QEMU), timing edac_mc_workq_function() with a kprobe. Without
-the patch the first poll came 6.76 s after writing 2000 and 3.51 s after
-writing 1000, with the polls after it every 2.13 s and 1.01 s. With the
-patch the first poll comes 2.11 s and 1.02 s after the write, in line
-with the ones after it. Writes below 1000 are still rejected.
+Tested on QEMU q35 with KVM (x86_64_defconfig + kvm_guest.config),
+booting with and without nox2apic. Without the patch there is no
+"Local APIC" entry in either case; with it both show
+
+  fee00000-fee00fff : Local APIC
+
+For the /dev/mem part I used v7.4-rc3+ (4405c18c95d2) with a
+distribution config that has CONFIG_IO_STRICT_DEVMEM=y, and a small
+program that maps one page of /dev/mem. Without the patch the page at
+0xfee00000 can be mapped. Booted with nox2apic, the APIC version
+register reads 0x00050014 through it and a write to the task priority
+register is accepted. With the patch the mmap() fails with EPERM in
+both boots, as it does for the IOAPIC page.
 ---
 Changes in v2:
-- Went through the callers of edac_mod_work() and edac_queue_work(). The
-  others already pass jiffies: edac_device keeps msecs_to_jiffies(msec)
-  in edac_dev->delay, edac_pci and the other edac_mc callers convert at
-  the call. So the fix is the same as in v1.
-- Renamed the "delay" argument of both helpers to "jiffies" (Borislav).
-  The "value" in the v1 hunk is edac_mc_reset_delay_period()'s argument
-  and is in milliseconds, so that one is now "msec". As an argument name
-  "jiffies" shadows the global one, which only W=2 complains about; I
-  can call it something else if you prefer.
-- Added Qiuxu's Reviewed-by and retested.
-- Link to v1: https://patch.msgid.link/20261119-edac-mc-poll-msec-jiffies-v1-1-fe329938fa09@ahmedabdelfattah.dev
+- Fixes: now names the commit that made apic_phys a virtual address
+  (Chao Gao)
+- Say what the missing resource changes for users (Chao Gao)
+- Link to v1: https://patch.msgid.link/20261107-x86-apic-lapic-resource-v1-1-28de4cb3fb1e@ahmedabdelfattah.dev
 ---
- drivers/edac/edac_mc.c     | 6 +++---
- drivers/edac/edac_module.h | 6 +++---
- drivers/edac/wq.c          | 8 ++++----
- 3 files changed, 10 insertions(+), 10 deletions(-)
+ arch/x86/kernel/apic/apic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/edac/edac_mc.c b/drivers/edac/edac_mc.c
-index fd70caa85574..6feb0809a959 100644
---- a/drivers/edac/edac_mc.c
-+++ b/drivers/edac/edac_mc.c
-@@ -483,12 +483,12 @@ static void edac_mc_workq_function(struct work_struct *work_req)
- }
+diff --git a/arch/x86/kernel/apic/apic.c b/arch/x86/kernel/apic/apic.c
+index 90025451ace2..17525b5daa0d 100644
+--- a/arch/x86/kernel/apic/apic.c
++++ b/arch/x86/kernel/apic/apic.c
+@@ -2667,7 +2667,7 @@ static int __init lapic_insert_resource(void)
+ 		return -1;
  
- /*
-- * edac_mc_reset_delay_period(unsigned long value)
-+ * edac_mc_reset_delay_period(unsigned long msec)
-  *
-  *	user space has updated our poll period value, need to
-  *	reset our workq delays
-  */
--void edac_mc_reset_delay_period(unsigned long value)
-+void edac_mc_reset_delay_period(unsigned long msec)
- {
- 	struct mem_ctl_info *mci;
- 	struct list_head *item;
-@@ -499,7 +499,7 @@ void edac_mc_reset_delay_period(unsigned long value)
- 		mci = list_entry(item, struct mem_ctl_info, link);
- 
- 		if (mci->op_state == OP_RUNNING_POLL)
--			edac_mod_work(&mci->work, value);
-+			edac_mod_work(&mci->work, msecs_to_jiffies(msec));
- 	}
- 	mutex_unlock(&mem_ctls_mutex);
- }
-diff --git a/drivers/edac/edac_module.h b/drivers/edac/edac_module.h
-index eceef5539186..762a331a5708 100644
---- a/drivers/edac/edac_module.h
-+++ b/drivers/edac/edac_module.h
-@@ -48,12 +48,12 @@ extern void edac_device_remove_sysfs(struct edac_device_ctl_info *edac_dev);
- /* edac core workqueue: single CPU mode */
- int edac_workqueue_setup(void);
- void edac_workqueue_teardown(void);
--bool edac_queue_work(struct delayed_work *work, unsigned long delay);
-+bool edac_queue_work(struct delayed_work *work, unsigned long jiffies);
- bool edac_stop_work(struct delayed_work *work);
--bool edac_mod_work(struct delayed_work *work, unsigned long delay);
-+bool edac_mod_work(struct delayed_work *work, unsigned long jiffies);
- 
- extern void edac_device_reset_delay_period(struct edac_device_ctl_info *edac_dev, unsigned int msec);
--extern void edac_mc_reset_delay_period(unsigned long value);
-+extern void edac_mc_reset_delay_period(unsigned long msec);
- 
- /*
-  * EDAC debugfs functions
-diff --git a/drivers/edac/wq.c b/drivers/edac/wq.c
-index ad3f516627c5..edeb7bbd3d68 100644
---- a/drivers/edac/wq.c
-+++ b/drivers/edac/wq.c
-@@ -3,15 +3,15 @@
- 
- static struct workqueue_struct *wq;
- 
--bool edac_queue_work(struct delayed_work *work, unsigned long delay)
-+bool edac_queue_work(struct delayed_work *work, unsigned long jiffies)
- {
--	return queue_delayed_work(wq, work, delay);
-+	return queue_delayed_work(wq, work, jiffies);
- }
- EXPORT_SYMBOL_GPL(edac_queue_work);
- 
--bool edac_mod_work(struct delayed_work *work, unsigned long delay)
-+bool edac_mod_work(struct delayed_work *work, unsigned long jiffies)
- {
--	return mod_delayed_work(wq, work, delay);
-+	return mod_delayed_work(wq, work, jiffies);
- }
- EXPORT_SYMBOL_GPL(edac_mod_work);
+ 	/* Put local APIC into the resource map. */
+-	lapic_resource.start = apic_mmio_base;
++	lapic_resource.start = mp_lapic_addr;
+ 	lapic_resource.end = lapic_resource.start + PAGE_SIZE - 1;
+ 	insert_resource(&iomem_resource, &lapic_resource);
  
 
 ---
-base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
-change-id: 20261119-edac-mc-poll-msec-jiffies-fb7f926f112c
+base-commit: d48723711bae9b8cdc56719c448ba42fef28cbee
+change-id: 20261107-x86-apic-lapic-resource-e2f88ada8677
 
 Best regards,
 --  
