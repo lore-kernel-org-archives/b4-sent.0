@@ -1,11 +1,11 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Mon, 23 Nov 2026 21:41:12 +0300
-Subject: [PATCH 1/5] dt-bindings: soc: Add Cortina Systems CS7542 global
- control block
+Date: Mon, 23 Nov 2026 21:41:13 +0300
+Subject: [PATCH 2/5] dt-bindings: pinctrl: Add Cortina Systems CS7542 pin
+ mux
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-cs7542-syscon-v1-1-49858e631449@gmail.com>
+Message-Id: <20261123-cs7542-syscon-v1-2-49858e631449@gmail.com>
 References: <20261123-cs7542-syscon-v1-0-49858e631449@gmail.com>
 In-Reply-To: <20261123-cs7542-syscon-v1-0-49858e631449@gmail.com>
 To: Bartosz Golaszewski <brgl@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -17,75 +17,94 @@ Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
  linux-gpio@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459271; l=2734;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459271; l=3060;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=FpK/rtN440rKXrT4wuja3g3AXioE5n0xbhhWrVDfiGg=;
- b=dMCDcND35ZLUQP4SaDj3fquLpIXW8sGrBp5IFWt31xYIFau+g7bRCwpKRiJdVq1YMl2o0cVpo
- gmIpD/GJ7YFCEATjt9Hn8mHKArGTmC3F5daYW6+oOYiB9smjW1mWfhz
+ bh=F7pjXfN4EBv+S1ypEhkh5BVaKDFizMnbeKv3RXHbfp0=;
+ b=w8dkZuv2wVtDFo9Ev6CsnIlivgO3sDNUIIHTMLKxbC8nlqrBQr1KZ8oLyKx46tGoO9O33Cy7/
+ StVSRq9sZfIDaPDpwNf8DMlihSaS3bGND+y2N6FyXPtGX8HwNfZ3M28
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the shared global register block and its strap-selected APB,
-CPU and AXI clocks. A pinctrl child will share the syscon regmap. Keep
-clock IDs in the order used by the previous out-of-tree CS75xx clock
-provider.
+Describe the GPIO/peripheral selector in the global control block.
+Expose GPIO selection for all five banks and the UART signals used by
+the OpenWrt port, without inventing routes for other peripherals.
+Register offsets and masks are kept out of the device tree ABI.
 
 AI assistance: Codex prepared this change from the existing OpenWrt port
 and GPL vendor sources.
 
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
- .../soc/cortina/cortina,cs7542-syscon.yaml         | 49 ++++++++++++++++++++++
- include/dt-bindings/clock/cortina,cs7542-clock.h   |  9 ++++
- 2 files changed, 58 insertions(+)
+ .../bindings/pinctrl/cortina,cs7542-pinctrl.yaml   | 84 ++++++++++++++++++++++
+ 1 file changed, 84 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml b/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml
+diff --git a/Documentation/devicetree/bindings/pinctrl/cortina,cs7542-pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/cortina,cs7542-pinctrl.yaml
 new file mode 100644
-index 000000000..fb074de87
+index 000000000..cd5c81a0d
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml
-@@ -0,0 +1,49 @@
++++ b/Documentation/devicetree/bindings/pinctrl/cortina,cs7542-pinctrl.yaml
+@@ -0,0 +1,84 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/soc/cortina/cortina,cs7542-syscon.yaml#
++$id: http://devicetree.org/schemas/pinctrl/cortina,cs7542-pinctrl.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Cortina Systems CS7542 global control block
++title: Cortina Systems CS7542 pin multiplexer
 +
 +maintainers:
 +  - Fil Dunsky <filipp.dunsky@gmail.com>
 +
 +description:
-+  The global control block contains the boot strap status, GPIO/peripheral
-+  mux registers, reset controls and the secondary CPU release register.
-+  It provides the APB, CPU and AXI clock rates selected by the boot straps.
-+  The clock specifiers are defined in dt-bindings/clock/cortina,cs7542-clock.h.
-+  The pin controller uses the same register map through its parent syscon.
++  The pin multiplexer is a child of the CS7542 global control syscon.
++  Five 32-bit registers select GPIO mode when a pin's bit is set, or the
++  peripheral signal when it is clear. Pin numbers match the five GPIO
++  banks, from gpio0 to gpio159. Initially only GPIO mode and the UART
++  signals on gpio72 through gpio77 are supported. Other peripheral
++  routes and electrical configuration are not described here.
++
++allOf:
++  - $ref: pinctrl.yaml#
 +
 +properties:
 +  compatible:
-+    items:
-+      - const: cortina,cs7542-syscon
-+      - const: syscon
-+      - const: simple-mfd
++    const: cortina,cs7542-pinctrl
 +
-+  reg:
-+    maxItems: 1
-+
-+  "#clock-cells":
-+    const: 1
-+
-+  pinctrl:
++patternProperties:
++  '-pins$':
 +    type: object
-+    $ref: /schemas/pinctrl/cortina,cs7542-pinctrl.yaml#
++    $ref: pinmux-node.yaml#
++    additionalProperties: false
++
++    properties:
++      function:
++        enum: [gpio, uart]
++
++      pins:
++        items:
++          pattern: '^gpio([0-9]|[1-9][0-9]|1[0-5][0-9])$'
++        minItems: 1
++        maxItems: 160
++
++    required:
++      - function
++      - pins
++
++    allOf:
++      - if:
++          properties:
++            function:
++              const: uart
++        then:
++          properties:
++            pins:
++              items:
++                enum: [gpio72, gpio73, gpio74, gpio75, gpio76, gpio77]
 +
 +required:
 +  - compatible
-+  - reg
-+  - "#clock-cells"
 +
 +additionalProperties: false
 +
@@ -95,22 +114,22 @@ index 000000000..fb074de87
 +        compatible = "cortina,cs7542-syscon", "syscon", "simple-mfd";
 +        reg = <0xf0000000 0x100>;
 +        #clock-cells = <1>;
++
++        pinctrl {
++            compatible = "cortina,cs7542-pinctrl";
++
++            reset-pins {
++                function = "gpio";
++                pins = "gpio37";
++            };
++
++            aux-uarts-pins {
++                function = "uart";
++                pins = "gpio72", "gpio73", "gpio74", "gpio75",
++                       "gpio76", "gpio77";
++            };
++        };
 +    };
-diff --git a/include/dt-bindings/clock/cortina,cs7542-clock.h b/include/dt-bindings/clock/cortina,cs7542-clock.h
-new file mode 100644
-index 000000000..34d544238
---- /dev/null
-+++ b/include/dt-bindings/clock/cortina,cs7542-clock.h
-@@ -0,0 +1,9 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
-+#ifndef _DT_BINDINGS_CLOCK_CORTINA_CS7542_H
-+#define _DT_BINDINGS_CLOCK_CORTINA_CS7542_H
-+
-+#define CS7542_CLK_APB	0
-+#define CS7542_CLK_CPU	1
-+#define CS7542_CLK_AXI	2
-+
-+#endif
 
 -- 
 2.53.0
