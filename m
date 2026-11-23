@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 24 Nov 2026 02:53:02 +0800
-Subject: [PATCH v6 10/18] mm/mglru, gup: mark folios referenced via a fast
- helper
+Date: Tue, 24 Nov 2026 02:53:03 +0800
+Subject: [PATCH v6 11/18] mm/mglru, smaps: convert to LRU refs based
+ operations for MGLRU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-mglru-fg-v6-10-8ffea39934a6@tencent.com>
+Message-Id: <20261124-mglru-fg-v6-11-8ffea39934a6@tencent.com>
 References: <20261124-mglru-fg-v6-0-8ffea39934a6@tencent.com>
 In-Reply-To: <20261124-mglru-fg-v6-0-8ffea39934a6@tencent.com>
 To: linux-mm@kvack.org
@@ -39,167 +39,115 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Tianyi Chen <hi@tychen.cc>, Kairui Song <kasong@tencent.com>, 
  Ridong Chen <ridong.chen@linux.dev>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459977; l=5455;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459977; l=3877;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=EDvLpnxrpVD1Kfz+v/3OI17Dk6Yj7fBAiXtjWEmtcfY=;
- b=n7lufqexladK34F/awLOMu/YkEQJxZMmTJft2kkPNiKhixsNSlw2tnT0Eri4RZ4Nl8hmLaSz7
- plNCLhLOSEeDefNIfoeK4sf8RYsnkDXloTqw6+THIDruqVfCyK7ORqH
+ bh=SyGC47j2sShmDrstNnpICQjj8oxfwuGK/s3C+V+Hk1k=;
+ b=zDeAcKA97ZXD5+wk30UPTAW0+f1NPxG7RvOr5muhguEVkFZjwS92VJecDA26puiKkUFemGJIY
+ FU8Dgte6mVHAd28IbxPk82XmytTsRUsfRtz/LrUROT9BqXOCuZBS2gq
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce folio_inc_lru_refs_fast(): raise refs from 0 to
-LRU_REFS_REFERENCED via cmpxchg, or just set PG_referenced for the
-classical LRU as before. No counter update or promotion is needed,
-nonzero MGLRU refs are left unchanged.
+PG_referenced is only the lowest bit of the folio LRU refs count
+(LRU_REFS_FLAGS) now, and MGLRU never kept it stable: promotion used to
+clear it, and now it toggles as the count grows. But with the LRU
+referenced count as a stable API now, we can use two helpers to provide
+in-kernel users a stable and sane reading of the referenced status of
+an LRU managed folio.
 
-The classical path is taken for a folio that is off the gen lists while
-MGLRU is off, not on lru_gen_enabled() alone: while MGLRU is being
-turned off, a folio can still be on a gen list after the static key
-flips, and setting PG_referenced there would bump its refs count.
+Add folio_check_lru_refs() and folio_clear_lru_refs(), which use the refs
+count when MGLRU is enabled and PG_referenced otherwise, and switch the
+smaps paths over to them. The lru_gen_enabled() test stays inside the
+helpers, so its static key is not splattered over the few call sites.
 
-That check uses lru_get_gen_flags(), so move the helper out of the
-CONFIG_LRU_GEN block, it is now built with the option off, where
-LRU_GEN_WIDTH is 0 and LRU_GEN_MASK is zero. Keep the decoded value in
-an int so the subtraction of the offset-by-one encoding cannot fold to
-ULONG_MAX before it happens to avoid -Woverflow error with CONFIG_WERROR.
+Convert smaps as the first user of them. MGLRU now reports every folio
+with a nonzero count, so the reading no longer flickers and clearing no
+longer results in an ambiguous status.
 
-This helper only aims to be fast, it exists so the gup fast path can
-stay a fast path. The new helper doesn't account for refs above
-LRU_REFS_REFERENCED but that's fine for now as GUP never used that
-or anything similar for CLRU either.
+The classical LRU case is unchanged.
 
-Convert the gup fast-path sites. No behavior change for classical LRU,
-no regression for MGLRU either. Just prepare for the following changes
-by providing a helper that follows the new convention.
-
-Tested-by: Zhao Zhenzhuo <zhaozhengzhuo@uniontech.com>
 Reviewed-by: Kunwu Chan <kunwu.chan@gmail.com>
+Tested-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mm_inline.h | 62 +++++++++++++++++++++++++++++++++++------------
- mm/gup.c                  |  6 ++---
- 2 files changed, 49 insertions(+), 19 deletions(-)
+ fs/proc/task_mmu.c        |  6 +++---
+ include/linux/mm_inline.h | 31 +++++++++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+), 3 deletions(-)
 
+diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
+index 540c936aad47..d2a524c6ad4b 100644
+--- a/fs/proc/task_mmu.c
++++ b/fs/proc/task_mmu.c
+@@ -890,7 +890,7 @@ static void smaps_account(struct mem_size_stats *mss, struct page *page,
+ 
+ 	mss->resident += size;
+ 	/* Accumulate the size in pages that have been accessed. */
+-	if (young || folio_test_young(folio) || folio_test_referenced(folio))
++	if (young || folio_test_young(folio) || folio_check_lru_refs(folio))
+ 		mss->referenced += size;
+ 
+ 	/*
+@@ -1690,7 +1690,7 @@ static int clear_refs_pte_range(pmd_t *pmd, unsigned long addr,
+ 		/* Clear accessed and referenced bits. */
+ 		pmdp_test_and_clear_young(vma, addr, pmd);
+ 		folio_test_clear_young(folio);
+-		folio_clear_referenced(folio);
++		folio_clear_lru_refs(folio);
+ out:
+ 		spin_unlock(ptl);
+ 		return 0;
+@@ -1719,7 +1719,7 @@ static int clear_refs_pte_range(pmd_t *pmd, unsigned long addr,
+ 		/* Clear accessed and referenced bits. */
+ 		ptep_test_and_clear_young(vma, addr, pte);
+ 		folio_test_clear_young(folio);
+-		folio_clear_referenced(folio);
++		folio_clear_lru_refs(folio);
+ 	}
+ 	pte_unmap_unlock(pte - 1, ptl);
+ 	cond_resched();
 diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index b15c3618a1f2..13c8b6bce349 100644
+index 13c8b6bce349..0f470ddf5c48 100644
 --- a/include/linux/mm_inline.h
 +++ b/include/linux/mm_inline.h
-@@ -105,6 +105,22 @@ static __always_inline enum lru_list folio_lru_list(const struct folio *folio)
- 	return lru;
+@@ -513,6 +513,37 @@ static __always_inline void folio_inc_lru_refs_fast(struct folio *folio)
+ 	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
  }
  
 +/**
-+ * lru_get_gen_flags - Return the LRU generation number from folio flags.
-+ * @flags: folio flags
++ * folio_check_lru_refs - Test if an LRU managed folio has been referenced.
++ * @folio: The folio to test.
 + *
-+ * Returns: A number between 0 and (MAX_NR_GENS - 1), inclusive. Returns
-+ * -1 if the flags indicate the folio is off the list (e.g., isolated).
++ * Returns true if the MGLRU refs count is nonzero, or PG_referenced is set,
++ * which is also correct for the non-MGLRU case. Kept as a separate helper,
++ * to avoid splattering the lru_gen_enabled() static key.
 + */
-+static inline int lru_get_gen_flags(unsigned long flags)
++static inline bool folio_check_lru_refs(const struct folio *folio)
 +{
-+	int gen = (int)((flags & LRU_GEN_MASK) >> LRU_GEN_PGOFF);
-+
-+	/* The gen is stored offset by one, so zero means off-list */
-+	VM_WARN_ON_ONCE(gen > MAX_NR_GENS);
-+	return gen - 1;
++	if (lru_gen_enabled())
++		return folio_lru_refs(folio) > 0;
++	return folio_test_referenced(folio);
 +}
 +
- #ifdef CONFIG_LRU_GEN
- 
- static inline bool lru_gen_switching(void)
-@@ -168,22 +184,6 @@ static inline void lru_set_gen_flags(unsigned long *flags, int gen)
- 	*flags |= (gen + 1UL) << LRU_GEN_PGOFF;
- }
- 
--/**
-- * lru_get_gen_flags - Return the LRU generation number from folio flags.
-- * @flags: folio flags
-- *
-- * Returns: A number between 0 and (MAX_NR_GENS - 1), inclusive. Returns
-- * -1 if the flags indicate the folio is off the list (e.g., isolated).
-- */
--static inline int lru_get_gen_flags(unsigned long flags)
--{
--	int gen = ((flags & LRU_GEN_MASK) >> LRU_GEN_PGOFF) - 1;
--
--	/* Exclude the legal -1 from the unsigned MAX_NR_GENS comparison */
--	VM_WARN_ON_ONCE(gen != -1 && gen >= MAX_NR_GENS);
--	return gen;
--}
--
- static inline int folio_lru_gen(const struct folio *folio)
- {
- 	return lru_get_gen_flags(READ_ONCE(*const_folio_flags(folio, 0)));
-@@ -483,6 +483,36 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- }
- #endif /* CONFIG_LRU_GEN */
- 
 +/**
-+ * folio_inc_lru_refs_fast - Bump folio refs count without promotion.
-+ * @folio: the folio
++ * folio_clear_lru_refs - Clear the referenced state of an LRU managed folio.
++ * @folio: The folio to clear.
 + *
-+ * Raise refs from 0 to LRU_REFS_REFERENCED and leave hotter folios
-+ * untouched. For a folio off the gen lists with MGLRU off, a plain
-+ * PG_referenced set.
++ * Reset the MGLRU refs count to zero, or clear PG_referenced, leaving
++ * PG_workingset alone for the non-MGLRU case. Kept as a separate helper
++ * just like folio_check_lru_refs().
 + */
-+static __always_inline void folio_inc_lru_refs_fast(struct folio *folio)
++static inline void folio_clear_lru_refs(struct folio *folio)
 +{
-+	unsigned long new_flags, old_flags = READ_ONCE(*folio_flags(folio, 0));
-+	unsigned int refs;
-+
-+	do {
-+		refs = lru_get_refs_flags(old_flags);
-+		if (lru_get_gen_flags(old_flags) < 0 && !lru_gen_enabled()) {
-+			/* For CLRU, just do folio_set_referenced() */
-+			if (refs & LRU_REFS_REFERENCED)
-+				break;
-+			refs |= LRU_REFS_REFERENCED;
-+		} else {
-+			if (refs)
-+				break;
-+			refs = LRU_REFS_REFERENCED;
-+		}
-+		new_flags = old_flags;
-+		lru_set_refs_flags(&new_flags, refs);
-+	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
++	if (lru_gen_enabled())
++		folio_set_lru_refs(folio, 0);
++	else
++		folio_clear_referenced(folio);
 +}
 +
  static __always_inline
  void lruvec_add_folio(struct lruvec *lruvec, struct folio *folio)
  {
-diff --git a/mm/gup.c b/mm/gup.c
-index 7605da0e06d8..da04bebfff43 100644
---- a/mm/gup.c
-+++ b/mm/gup.c
-@@ -2921,7 +2921,7 @@ static unsigned long gup_fast_pte_range(pmd_t pmd, pmd_t *pmdp,
- 			gup_put_folio(folio, 1, flags);
- 			goto pte_unmap;
- 		}
--		folio_set_referenced(folio);
-+		folio_inc_lru_refs_fast(folio);
- 		pages[nr_pages] = page;
- 		nr_pages++;
- 	} while (ptep++, addr += PAGE_SIZE, addr != end);
-@@ -2990,7 +2990,7 @@ static unsigned long gup_fast_pmd_leaf(pmd_t orig, pmd_t *pmdp,
- 
- 	for (i = 0; i < nr_pages; i++)
- 		*(pages++) = page++;
--	folio_set_referenced(folio);
-+	folio_inc_lru_refs_fast(folio);
- 	return nr_pages;
- }
- 
-@@ -3032,7 +3032,7 @@ static unsigned long gup_fast_pud_leaf(pud_t orig, pud_t *pudp,
- 
- 	for (i = 0; i < nr_pages; i++)
- 		*(pages++) = page++;
--	folio_set_referenced(folio);
-+	folio_inc_lru_refs_fast(folio);
- 	return nr_pages;
- }
- 
 
 -- 
 2.56.1
