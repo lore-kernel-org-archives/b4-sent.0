@@ -1,76 +1,139 @@
 From: Dave Airlie <airlied@redhat.com>
-Subject: [PATCH v2 0/3] nova/nouveau: add configs/module options to control
- binding behaviour (v2)
-Date: Mon, 23 Nov 2026 12:50:26 +1000
-Message-Id: <20261123-nova-nouveau-gsp-v2-0-5e8c27aa8555@redhat.com>
+Date: Mon, 23 Nov 2026 12:50:27 +1000
+Subject: [PATCH v2 1/3] drm/nouveau/nvkm: fix device leak on ctor failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ7CIBREr9L8tRg+EqWueg/TBcJvYSE00BJNw
- 93FHsDNJG+SebNDpuQpw73bIVHx2cfQQJw6ME6HmZi3jUFwcUXEnoVYdIutkN7YnBeGfFI3JWS
- vSEKbLYkm/z6Uj7Gx83mN6XM8FPy1f2QFGWfSWBJPIxEvYkhknV7PJr5grLV+AUqGK1mxAAAA
-X-Change-ID: 20261119-nova-nouveau-gsp-10f8782498e4
+Message-Id: <20261123-nova-nouveau-gsp-v2-1-5e8c27aa8555@redhat.com>
+References: <20261123-nova-nouveau-gsp-v2-0-5e8c27aa8555@redhat.com>
+In-Reply-To: <20261123-nova-nouveau-gsp-v2-0-5e8c27aa8555@redhat.com>
 To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
  Alexandre Courbot <acourbot@nvidia.com>
 Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
  nova-gpu@lists.linux.dev, Dave Airlie <airlied@redhat.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1789; i=airlied@redhat.com;
- h=from:subject:message-id; bh=IQCBoG1+S/7f8h44/YGxX/CWODzrYVl8kCsL3KZ4I/k=;
- b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBrA6n1R6zlkhvEaaCyFyedYEwVHp1wtW+AkOVc9
- 7oo+hB3yPSJAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCawOp9QAKCRAMdPNZecSG
- vtiVD/9mqrXacWm7aSQDVc5zvQqY304JMu/3BpMdQpx4kB4xbHO+kBdTPFoTvdo62Jehv2N02q/
- sCH7tp+qWk3jFaHcgIuNRn2qR6J12HOuDMNohpcBTotg7BWxjOQhonGxVe/VH6nNwub/f0lL1rA
- jTBOPMpikuD4A1ZN9xAxw3PFG1uRVhpTYoi54HSG62m/NNNNEMwApeatvTZ0OLebCgAdZcu7SBI
- BT5fopdwVmNF/DdIuKKX5eLMcCtJMEbB6X9h2wC3OawrhFrltQCbe9GkWzMAN3yjsRoUVSGBiOB
- VYdW9i7ISn/Z60qgphBZxXR6XIecq+7EzbhxRCY2mP8tzQHp6lYyYRSzzm0lcYXQtUJI4vUCeav
- ctpMeK89B6ekxielkKgJ7UZojWYniOFoL6Xt8tuL8JDDpC3BI4lCYr9BQVIL4TDpWqicQvg4Xeu
- KKoUalumlPR6SbgXtJXUsia47qUZUR8kFE6WS5oMbzbiAvBQuMRErFaW0xs2ViFr/CTSCtfIcix
- nUaK0zQfw0lnYWB0UjHHgu1OdyU+IfQX3LnqvLLVMgk6VcosdF8xcKBsXGabPtrmMBFMVjG1GJH
- usuGV0zBJpHSe3AagqGmTP10zA2iFm/KKZllfctGDGqBBH/fCVuPMx4LG+6fOK5nF2VSaRWlok8
- aUZg+xrKXqc8TwQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3909; i=airlied@redhat.com;
+ h=from:subject:message-id; bh=FxQfPnbiZkoWyGg4qBk10lfI9Hri+d/S962EuPutKEU=;
+ b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBrA6n6anMYHK63Q0J31oUW/5PpHvs2g5RpShL2F
+ L6Iu0Iq4nKJAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCawOp+gAKCRAMdPNZecSG
+ vvgvEACMoLrNbIEJ7IHYcOOhmSDlOr3dWKhKT5XQgLcWTBeQAKCu4EttfNbOYKMHH23Wq+oTWcp
+ 6+h+ckVmVkfrgI4B5SHp6ebSSexhM2VvIlRct091miELwNw4pVwWscNVr1qGTm3kcg8eeOA/0+g
+ 6uiZMW/KahcxS1BXtNz/oNz2vzuXhVJtwRlfANsICN1+e6RjO7IDQLcTdSh6lRNkO5qstgVVCHB
+ tccWaFNo7V1LSHiHjKmnZFL+xXLRmTPFZdCzEjOE+SKZFMYvcDBn2fmzbzETbOliwUtgk9Avqhx
+ 6c7f50m8m2KWe9DfqnuT57LSbMKb8Fape5k+ebLrSA98cCfWdMNduXhgIS/VEpppfGpGUQoxLa4
+ YC/RsTL7vC5oMG8zi3QzkKOBly/Uqx29cFvC0z3Uvik5VK85KXeQRhFXsInkcoB1KvQPci/PrwI
+ VD2r+WXUpwTA1U+sN/7m72vWr/llIbsO7RcMd6eNts6tX6i6vJhw/HvNTo0hXjQA48xnU6HPGvS
+ q0wc9RspgPccUSXXNPhCX8os1yheRbLnoUJHbwC5LMo4s7m0aj8VnzjffJoG+X70hRIbyYhbUuG
+ RTgaEr2Aaaa4yN4eiEhy1tW/VoQE7GzjfR/K8d/EEBnmzls97CNo6h+FusgdHh9iHqMqb0uBC94
+ yRefElBdy2DzMwg==
 X-Developer-Key: i=airlied@redhat.com; a=openpgp;
  fpr=10A6D91DA1B05BD29F6DEBAC0C74F35979C486BE
 X-Endpoint-Received: by B4 Relay for airlied@redhat.com/default with auth_id=1321
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We want to be able to build both nova and nouveau and maintain the
-status quo for now of nouveau binding to all GSP enabled GPUs.
+When adding a new failure path from device_ctor, the missing
+clean up paths in the current code were uncovered.
 
-In the future we may suggest switching the default to nova, but
-for now the default is to let users use command line options for testing
-and developers building their own kernel can set the kconfig.
+The device_del path doesn't work because it relies on initialisation
+that hadn't been done yet.
 
-This contains a precursor patch to fix the nouveau device cleanup paths.
+This patch cleans up the failure paths and initialises the
+things needed for the nvkm_device_del path to work.
 
-Signed-off-by: Dave Airlie <airlied@redhat.com>
+Fixes: 0d5dd3f301bb ("drm/nouveau/lib: various tweaks")
 ---
-Changes in v2:
-- nouveau dtor path is broken, so fix that before adding the new code. (Sashiko)
-- Link to v1: https://lore.kernel.org/r/20261119-nova-nouveau-gsp-v1-0-4cde2bc41132@redhat.com
+ drivers/gpu/drm/nouveau/nvkm/engine/device/base.c  | 13 ++++++++++---
+ drivers/gpu/drm/nouveau/nvkm/engine/device/pci.c   |  4 +++-
+ drivers/gpu/drm/nouveau/nvkm/engine/device/tegra.c | 13 +++++++++----
+ 3 files changed, 22 insertions(+), 8 deletions(-)
 
----
-Dave Airlie (3):
-      drm/nouveau/nvkm: fix device leak on ctor failure
-      drm/nouveau: add option to leave GSP-capable GPUs to other drivers
-      nova-core: only bind to GPUs when explicitly requested
+diff --git a/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c b/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c
+index a2ed8c4fe52a..625bb019736a 100644
+--- a/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c
++++ b/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c
+@@ -3152,10 +3152,19 @@ nvkm_device_ctor(const struct nvkm_device_func *func,
+ 	unsigned chipset;
+ 
+ 	mutex_lock(&nv_devices_mutex);
++
++	/* Set up the state that nvkm_device_del() relies on before anything
++	 * that can fail, so that a device whose construction failed can be
++	 * cleaned up by the caller with nvkm_device_del().
++	 */
++	device->func = func;
++	INIT_LIST_HEAD(&device->head);
++	INIT_LIST_HEAD(&device->subdev);
++	nvkm_intr_ctor(device);
++
+ 	if (nvkm_device_find_locked(handle))
+ 		goto done;
+ 
+-	device->func = func;
+ 	device->quirk = quirk;
+ 	device->dev = dev;
+ 	device->type = type;
+@@ -3165,7 +3174,6 @@ nvkm_device_ctor(const struct nvkm_device_func *func,
+ 	device->name = name;
+ 	list_add_tail(&device->head, &nv_devices);
+ 	device->debug = nvkm_dbgopt(device->dbgopt, "device");
+-	INIT_LIST_HEAD(&device->subdev);
+ 
+ 	mmio_base = device->func->resource_addr(device, NVKM_BAR0_PRI);
+ 	mmio_size = device->func->resource_size(device, NVKM_BAR0_PRI);
+@@ -3402,7 +3410,6 @@ nvkm_device_ctor(const struct nvkm_device_func *func,
+ 		device->name = device->chip->name;
+ 
+ 	mutex_init(&device->mutex);
+-	nvkm_intr_ctor(device);
+ 
+ #define NVKM_LAYOUT_ONCE(type,data,ptr)                                                      \
+ 	if (device->chip->ptr.inst) {                                                        \
+diff --git a/drivers/gpu/drm/nouveau/nvkm/engine/device/pci.c b/drivers/gpu/drm/nouveau/nvkm/engine/device/pci.c
+index 248623b91e29..269ccd4b482e 100644
+--- a/drivers/gpu/drm/nouveau/nvkm/engine/device/pci.c
++++ b/drivers/gpu/drm/nouveau/nvkm/engine/device/pci.c
+@@ -1705,8 +1705,10 @@ nvkm_device_pci_new(struct pci_dev *pci_dev, const char *cfg, const char *dbg,
+ 				    PCI_FUNC(pci_dev->devfn), name,
+ 			       cfg, dbg, &pdev->device);
+ 
+-	if (ret)
++	if (ret) {
++		nvkm_device_del(pdevice);
+ 		return ret;
++	}
+ 
+ 	/* Set DMA mask based on capabilities reported by the MMU subdev. */
+ 	if (pdev->device.mmu && !pdev->device.pci->agp.bridge)
+diff --git a/drivers/gpu/drm/nouveau/nvkm/engine/device/tegra.c b/drivers/gpu/drm/nouveau/nvkm/engine/device/tegra.c
+index 3c8d0878891a..eb4f43287796 100644
+--- a/drivers/gpu/drm/nouveau/nvkm/engine/device/tegra.c
++++ b/drivers/gpu/drm/nouveau/nvkm/engine/device/tegra.c
+@@ -332,15 +332,20 @@ nvkm_device_tegra_new(const struct nvkm_device_tegra_func *func,
+ 	ret = nvkm_device_ctor(&nvkm_device_tegra_func, NULL, &pdev->dev,
+ 			       NVKM_DEVICE_TEGRA, pdev->id, NULL,
+ 			       cfg, dbg, &tdev->device);
+-	if (ret)
+-		goto powerdown;
++	if (ret) {
++		struct nvkm_device *device = &tdev->device;
++
++		/* Cleans up the partially constructed device, including
++		 * powering it down and freeing tdev.
++		 */
++		nvkm_device_del(&device);
++		return ret;
++	}
+ 
+ 	*pdevice = &tdev->device;
+ 
+ 	return 0;
+ 
+-powerdown:
+-	nvkm_device_tegra_power_down(tdev);
+ remove:
+ 	nvkm_device_tegra_remove_iommu(tdev);
+ free:
 
- drivers/gpu/drm/nouveau/Kconfig                    | 17 +++++++++++++
- drivers/gpu/drm/nouveau/include/nvkm/core/pci.h    |  2 +-
- drivers/gpu/drm/nouveau/nouveau_drm.c              |  9 ++++++-
- drivers/gpu/drm/nouveau/nvkm/engine/device/base.c  | 29 +++++++++++++++++++---
- drivers/gpu/drm/nouveau/nvkm/engine/device/pci.c   |  8 +++---
- drivers/gpu/drm/nouveau/nvkm/engine/device/priv.h  |  2 +-
- drivers/gpu/drm/nouveau/nvkm/engine/device/tegra.c | 18 ++++++++++----
- drivers/gpu/nova-core/Kconfig                      | 21 ++++++++++++++++
- drivers/gpu/nova-core/driver.rs                    | 13 ++++++++++
- drivers/gpu/nova-core/nova_core.rs                 |  4 +++
- 10 files changed, 108 insertions(+), 15 deletions(-)
----
-base-commit: e55a991e09e3b44f0b0d8206bb523dc57c086341
-change-id: 20261119-nova-nouveau-gsp-10f8782498e4
-
-Best regards,
 -- 
-Dave Airlie <airlied@redhat.com>
+2.56.1
 
