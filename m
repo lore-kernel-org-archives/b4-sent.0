@@ -1,148 +1,73 @@
-From: Mani Tofigh <mt4022@columbia.edu>
-Date: Sun, 22 Nov 2026 19:25:15 -0500
-Subject: [PATCH bpf v2 4/4] selftests/bpf: Test rhtab deletes from inside a
- resize
+From: Dave Airlie <airlied@redhat.com>
+Date: Mon, 23 Nov 2026 10:25:26 +1000
+Subject: [PATCH] drm/nouveau/devinit/gf100-: fix double vbios init checks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261122-bpf-rhtab-irqs-disabled-v2-4-207aedcc2215@columbia.edu>
-References: <20261122-bpf-rhtab-irqs-disabled-v2-0-207aedcc2215@columbia.edu>
-In-Reply-To: <20261122-bpf-rhtab-irqs-disabled-v2-0-207aedcc2215@columbia.edu>
-To: Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
- Mykyta Yatsenko <yatsenko@meta.com>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- Andrew Morton <akpm@linux-foundation.org>, Shuah Khan <shuah@kernel.org>
-Cc: Thomas Graf <tgraf@suug.ch>, Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
- Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- Emil Tsalapatis <emil@etsalapatis.com>, 
- Ihor Solodrai <ihor.solodrai@linux.dev>, bpf@vger.kernel.org, 
- linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, tz2294@columbia.edu, 
- Mani Tofigh <mt4022@columbia.edu>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795393512; l=3329;
- i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=9el2Hu//XF7H7n6wCOTuZBRipgte5y1GXzMdDmYtqDk=;
- b=vBG6LrbpIAr++9Zz215gGlxXCBoIlBOmt54+VaYaziPIIojmkctwADigd28cCzhvBAFxIGn5R
- ft7lXRJQNcaApubwwaYPqBYXjlwOTZxr2QaBULP9qmfI5k+BbhrfoJc
-X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
- pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
-X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
+Message-Id: <20261123-nouveau-fix-disp-v1-1-ebdc525287ce@redhat.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQqAIBAAvyJ7biGNBPtKdJBcay8qihGIf086D
+ sNMg0KZqcAmGmR6uHAMA+Qk4LxtuAjZDQY1Ky2lWjDE+pCt6PlFxyWhVn413hntiWBkKdNw/3I
+ /ev8Aaxn27mIAAAA=
+X-Change-ID: 20261123-nouveau-fix-disp-62f59fd96fee
+To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
+ Dave Airlie <airlied@redhat.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1444; i=airlied@redhat.com;
+ h=from:subject:message-id; bh=fLgUkfu8VDBsHKAcmadqaVH0gSOhunpVuhNXOsf7LQ0=;
+ b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBrA4f4Li9p2SfqLVkMRYpuSKzNDxRgsYBBuKP6r
+ yBJoSLEYqqJAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCawOH+AAKCRAMdPNZecSG
+ vtJUEACnc96+K4mI4B03aLzxP3BEnCThCmG7zw4qa85DUJtAyA0go0Tklhwt4lkU7b6UQMTt4Vh
+ g2AFJzUNF2h8874mF91QgkbVP601i4jXjboTZX6l0FcGYj479/LIwaWgkah1CEGC/VOLv7ZwLyN
+ GT315QlkK97hwrc8K2YmKLj9fqO8Fk4fNg+EQZJSg5ipS2akDolnKW+267Yugu9M4n2Jwhol6IF
+ 7U23DJyqNq7XvLww2quVo1Jd6/La0NZbaihOeo9Z476Y7o3Ns43ZEEnxPAFhC2KgI2g0qM8ge/k
+ 1puseARHoo/x0hg86LahzQCI8brwk9NOwXufCISXCvU9gizPY4WP/XewKFDw2w/BYMqKNfMJgLm
+ gK/CffNVkrl3g13YFWZp+6LaLBrT2C7YKc9o6uUcTs3cmILZ/JvGVC9fne+TDtQDFP5l0qEtfsw
+ O00LVRmsU7utMy5/R2f7XkuTo/bQ3bKpW9GDOuShsq8LsCPLUth8xorDn7UH60J3Vt1Pnm3yqJx
+ sBycnRlMO9HpJPDARAKEf0IQIzWRDcOWfId7FX0TNgcvdD+K+qqixjw5aoZADi+xpFj4z5VKqi5
+ GMb90cCLJyRNS8Tm0Z9cmxzIl70mA4RLAeau+1N7rmuCQAdt60OWeO6dRsiF8sIecKL+UkXbGaY
+ TUUJE1ZfqkRcjbQ==
+X-Developer-Key: i=airlied@redhat.com; a=openpgp;
+ fpr=10A6D91DA1B05BD29F6DEBAC0C74F35979C486BE
+X-Endpoint-Received: by B4 Relay for airlied@redhat.com/default with auth_id=1321
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a kprobe program on rhashtable_jhash2() that deletes key 7 of a
-resizable hash map whenever the resize worker hashes it there, while
-user space keeps the table growing and shrinking.  The worker holds key
-7's bucket lock at that point, so the delete fails with -EBUSY.  Without
-the fix the CPU spins on that lock forever.
+The initial fix from 2017 wasn't updated for modern nouveau devinit
+disable paths.
 
-Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
+Fix that and just check if display exists instead.
+
+Fixes: 2139cb633d48 ("drm/nouveau/devinit/gf100-: try to avoid double-running vbios scripts")
+Signed-off-by: Dave Airlie <airlied@redhat.com>
 ---
- tools/testing/selftests/bpf/prog_tests/rhash.c   | 34 ++++++++++++++++++++++++
- tools/testing/selftests/bpf/progs/rhash_resize.c | 34 ++++++++++++++++++++++++
- 2 files changed, 68 insertions(+)
+ drivers/gpu/drm/nouveau/nvkm/subdev/devinit/gf100.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/tools/testing/selftests/bpf/prog_tests/rhash.c b/tools/testing/selftests/bpf/prog_tests/rhash.c
-index 0641bd5b0a9e..5afe07b32289 100644
---- a/tools/testing/selftests/bpf/prog_tests/rhash.c
-+++ b/tools/testing/selftests/bpf/prog_tests/rhash.c
-@@ -5,6 +5,7 @@
- #include <stdio.h>
- #include "rhash.skel.h"
- #include "bpf_iter_bpf_rhash_map.skel.h"
-+#include "rhash_resize.skel.h"
- #include <linux/bpf.h>
- #include <linux/perf_event.h>
- #include <sys/syscall.h>
-@@ -149,6 +150,36 @@ static void rhash_iter_test(void)
- 	bpf_iter_bpf_rhash_map__destroy(skel);
- }
- 
-+static void rhash_resize_test(void)
-+{
-+	struct rhash_resize *skel;
-+	int fd, i, n;
-+	__u64 val = 0;
-+
-+	skel = rhash_resize__open_and_load();
-+	if (!ASSERT_OK_PTR(skel, "rhash_resize__open_and_load"))
-+		return;
-+
-+	if (!ASSERT_OK(rhash_resize__attach(skel), "rhash_resize__attach"))
-+		goto out;
-+
-+	fd = bpf_map__fd(skel->maps.rhmap);
-+	/* let the resize worker run after each half */
-+	for (n = 0; n < 5000 && !skel->bss->busy; n++) {
-+		for (i = 0; i < 64; i++)
-+			bpf_map_update_elem(fd, &i, &val, BPF_ANY);
-+		usleep(100);
-+		for (i = 0; i < 64; i++)
-+			bpf_map_delete_elem(fd, &i);
-+		usleep(100);
-+	}
-+
-+	ASSERT_GT(skel->bss->hits, 0, "hits");
-+	ASSERT_GT(skel->bss->busy, 0, "busy");
-+out:
-+	rhash_resize__destroy(skel);
-+}
-+
- void test_rhash(void)
- {
- 	if (test__start_subtest("test_rhash_lookup_update"))
-@@ -186,4 +217,7 @@ void test_rhash(void)
- 
- 	if (test__start_subtest("test_rhash_iter"))
- 		rhash_iter_test();
-+
-+	if (test__start_subtest("test_rhash_resize"))
-+		rhash_resize_test();
- }
-diff --git a/tools/testing/selftests/bpf/progs/rhash_resize.c b/tools/testing/selftests/bpf/progs/rhash_resize.c
-new file mode 100644
-index 000000000000..5a1076b30bb0
---- /dev/null
-+++ b/tools/testing/selftests/bpf/progs/rhash_resize.c
-@@ -0,0 +1,34 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include <vmlinux.h>
-+#include <errno.h>
-+#include <bpf/bpf_helpers.h>
-+#include <bpf/bpf_tracing.h>
-+
-+char _license[] SEC("license") = "GPL";
-+
-+struct {
-+	__uint(type, BPF_MAP_TYPE_RHASH);
-+	__uint(map_flags, BPF_F_NO_PREALLOC);
-+	__uint(max_entries, 128);
-+	__type(key, int);
-+	__type(value, long);
-+} rhmap SEC(".maps");
-+
-+int hits;
-+int busy;
-+
-+/* The resize worker calls this with the key's bucket lock held */
-+SEC("kprobe/rhashtable_jhash2")
-+int BPF_KPROBE(rhash_resize_delete, const void *key, u32 length)
-+{
-+	int k;
-+
-+	if (length != 1 || bpf_probe_read_kernel(&k, sizeof(k), key) || k != 7)
-+		return 0;
-+
-+	__sync_fetch_and_add(&hits, 1);
-+	if (bpf_map_delete_elem(&rhmap, &k) == -EBUSY)
-+		__sync_fetch_and_add(&busy, 1);
-+	return 0;
-+}
+diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/devinit/gf100.c b/drivers/gpu/drm/nouveau/nvkm/subdev/devinit/gf100.c
+index 186e09ea0cb1..b256404c2454 100644
+--- a/drivers/gpu/drm/nouveau/nvkm/subdev/devinit/gf100.c
++++ b/drivers/gpu/drm/nouveau/nvkm/subdev/devinit/gf100.c
+@@ -107,12 +107,12 @@ gf100_devinit_preinit(struct nvkm_devinit *base)
+ 	 * VBIOS multiple times may have detrimental effects.
+ 	 */
+ 	if (base->post) {
+-		u64 disable = nvkm_devinit_disable(base);
++		nvkm_devinit_disable(base);
+ 		/* magic to detect whether or not x86 vbios code has
+ 		 * executed the devinit scripts to initialise the
+ 		 * board. only works if there's a display engine.
+ 		 */
+-		if (!(disable & (1ULL << NVKM_ENGINE_DISP))) {
++		if (device->disp) {
+ 			if (nvkm_rdvgac(device, 0, 0x00) ||
+ 			    nvkm_rdvgac(device, 0, 0x1a)) {
+ 				base->post = false;
 
+---
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20261123-nouveau-fix-disp-62f59fd96fee
+
+Best regards,
 -- 
-2.53.0
+Dave Airlie <airlied@redhat.com>
 
