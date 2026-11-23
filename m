@@ -1,73 +1,103 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Mon, 23 Nov 2026 20:37:43 +0100
-Subject: [PATCH v4 11/11] arm64: dts: amlogic: Add HDMI TX PHY node for GXL
+From: Samridh <samridh@modal.com>
+Date: Mon, 23 Nov 2026 19:54:44 +0000
+Subject: [PATCH v3] mm/shmem: avoid zeroing new folios twice with
+ init_on_alloc=1
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-meson-drm-create-hdmitx-phy-v4-11-3fb94f5534ca@aliel.fr>
-References: <20261123-meson-drm-create-hdmitx-phy-v4-0-3fb94f5534ca@aliel.fr>
-In-Reply-To: <20261123-meson-drm-create-hdmitx-phy-v4-0-3fb94f5534ca@aliel.fr>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Vinod Koul <vkoul@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Ulf Hansson <ulfh@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-phy@lists.infradead.org, dri-devel@lists.freedesktop.org, 
- Ronald Claveau <linux-kernel-dev@aliel.fr>, linux-pm@vger.kernel.org
+Message-Id: <20261123-samridh-shmem-send-v3-1-afc6a40bc187@modal.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/32NQQ7CIBBFr9KwFlOmsaWuvIdxQWEQjBQDlWia3
+ l2omy6MmdVL/rw3k4jBYiTHaiYBk43WjxmaXUWkEeMVqVWZCdTQMsY6GoULVhkajUNHI46K9lq
+ B4tAw5Ejy4yOgtq9Ver58OT6HG8qpmMrC2Dj58F6riZXd30BiNN/A+07rQwuqPzmvxH0vvSMlk
+ GCr4D8VkBUaUNRs0JJ1fKtYluUDWdpTfAkBAAA=
+X-Change-ID: 20261117-samridh-shmem-send-9fd2d8231e8e
+To: Hugh Dickins <hughd@google.com>, David Hildenbrand <david@kernel.org>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Samridh <samridh@modal.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1074;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=JP7lAwalWZ4HUjkBJydQfX0hMiglUBnijIXqwFKtcOI=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQzbLNLFph2LDl/9l8+XbE7wszkmsSG6amugpG7Htm77/s
- bBeYF/aUcrCIMbFICumyNI/1/LEu8tHz3zdo54CM4eVCWQIAxenAExkzhmG/2Wtkr9SuPazzffh
- fODmu9nMneeJEdMlY8n4htwXsuJrNRkZltnc1djpVuwbr/XEXmOT4/7FLlnfQg1Kg3cXfN69UF2
- GGQA=
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795463691; l=2736;
+ i=samridh@modal.com; s=20261117; h=from:subject:message-id;
+ bh=cB/X49bEfE/YxcJEqpPRK906snRfTv9QZQXwDDpM5iE=;
+ b=X7wVMmGKz2duhlMnJ04dtKau0IR8o6b1Ll9s74xW0fdxBH9twRT/0YfQ2a17/8K0DQ5WSQwi+
+ YgdAKfD3sxwDryqlYQJ+siJqBn8QdQwCWuav/MgO5qy373b6KQmohSj
+X-Developer-Key: i=samridh@modal.com; a=ed25519;
+ pk=+V5ZaIpEMOLG1b2MsSHY0Nm20lIADx5ia//FZeuqVgk=
+X-Endpoint-Received: by B4 Relay for samridh@modal.com/20261117 with auth_id=1554
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the HDMI TX PHY as a child of the HHI system controller, with
-the amlogic,meson-gxl-hdmi-tx-phy compatible and reference
-it from the HDMI TX node through "phys".
+shmem_get_folio_gfp() clears a new folio before marking it uptodate.
+With init_on_alloc=1 the page allocator has already zeroed it, so the
+folio ends up being zeroed twice.
 
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Skip the clear for a folio that was just allocated when
+user_alloc_needs_zeroing() says it is not needed, like anonymous memory
+does. Folios that are already in the page cache but not uptodate, such
+as those left by fallocate(), are still cleared, and so is every folio
+on CPUs with cache aliasing.
+
+Time to write one byte to each page of a new 4 GiB memfd mapping, with
+shmem_enabled=always and init_on_alloc=1 (median of 24 runs on 6.18.55,
+x86_64 VMs):
+
+                  before   after
+  Xeon 6975P-C    0.625s   0.420s
+  EPYC 9R14       0.216s   0.160s
+
+With 4K folios the times change by 3% or less, and init_on_alloc=0 is
+not affected. We found this while running gVisor, which keeps sandbox
+memory in a memfd.
+
+I wrote this patch with help from an AI coding assistant (Claude Code),
+then reviewed and tested it.
+
+Reviewed-by: Baolin Wang <baolin.wang@linux.alibaba.com>
+Signed-off-by: Samridh <samridh@modal.com>
 ---
- arch/arm64/boot/dts/amlogic/meson-gxl.dtsi | 6 ++++++
- 1 file changed, 6 insertions(+)
+Tested on 6.18.55 with this change backported, on Intel and AMD x86_64
+VMs, and build-tested on mm/core for-next. A simple test fills memory
+with data, frees it, and then checks that new memfd pages read as zero,
+with MADV_HUGEPAGE and MADV_NOHUGEPAGE on the fault and fallocate paths.
+It passes on both machines with init_on_alloc=1.
+---
+Changes in v3:
+- Move flush_dcache_folio() into the clear branch (David).
+- Link to v2: https://patch.msgid.link/20261118-samridh-shmem-send-v2-1-f2ea01bfc178@modal.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-gxl.dtsi b/arch/arm64/boot/dts/amlogic/meson-gxl.dtsi
-index f257fe3860f7..d205eec1cff7 100644
---- a/arch/arm64/boot/dts/amlogic/meson-gxl.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-gxl.dtsi
-@@ -328,6 +328,7 @@ &hdmi_tx {
- 		 <&clkc CLKID_GCLK_VENCI_INT0>;
- 	clock-names = "isfr", "iahb", "venci";
- 	power-domains = <&pwrc PWRC_GXBB_VPU_ID>;
-+	phys = <&hdmi_tx_phy>;
- 
- 	assigned-clocks = <&clkc CLKID_HDMI_SEL>,
- 			  <&clkc CLKID_HDMI>;
-@@ -342,6 +343,11 @@ clkc: clock-controller {
- 		clocks = <&xtal>;
- 		clock-names = "xtal";
- 	};
-+
-+	hdmi_tx_phy: hdmi-phy {
-+		compatible = "amlogic,meson-gxl-hdmi-tx-phy";
-+		#phy-cells = <0>;
-+	};
- };
- 
- &hwrng {
+Changes in v2:
+- Use user_alloc_needs_zeroing() instead of __GFP_ZERO (Baolin).
+- Link to v1: https://patch.msgid.link/20261117-samridh-shmem-send-v1-1-1b897ff562d9@modal.com
+---
+ mm/shmem.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
--- 
-2.56.1
+diff --git a/mm/shmem.c b/mm/shmem.c
+index c769d0bc7df9..0ab3b9146141 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -2810,9 +2810,12 @@ static int shmem_get_folio_gfp(struct inode *inode, pgoff_t index,
+ 	if (sgp != SGP_WRITE && !folio_test_uptodate(folio)) {
+ 		long i, n = folio_nr_pages(folio);
+ 
+-		for (i = 0; i < n; i++)
+-			clear_highpage(folio_page(folio, i));
+-		flush_dcache_folio(folio);
++		/* init_on_alloc already zeroed a new folio. */
++		if (!alloced || user_alloc_needs_zeroing()) {
++			for (i = 0; i < n; i++)
++				clear_highpage(folio_page(folio, i));
++			flush_dcache_folio(folio);
++		}
+ 		folio_mark_uptodate(folio);
+ 	}
+ 
+
+---
+base-commit: f7d95bf74091373fad7273db4557df9b5a902335
+change-id: 20261117-samridh-shmem-send-9fd2d8231e8e
+
+Best regards,
+--  
+Samridh <samridh@modal.com>
 
