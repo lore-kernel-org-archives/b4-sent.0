@@ -1,10 +1,10 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Mon, 23 Nov 2026 23:32:18 +0300
-Subject: [PATCH v2 4/8] dt-bindings: phy: Describe CS7542 PCIe SerDes
+Date: Mon, 23 Nov 2026 23:32:19 +0300
+Subject: [PATCH v2 5/8] phy: Add CS7542 PCIe SerDes support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-b4-cs7542-pcie-v2-4-f589a9cd0bef@gmail.com>
+Message-Id: <20261123-b4-cs7542-pcie-v2-5-f589a9cd0bef@gmail.com>
 References: <20261123-b4-cs7542-pcie-v2-0-f589a9cd0bef@gmail.com>
 In-Reply-To: <20261123-b4-cs7542-pcie-v2-0-f589a9cd0bef@gmail.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -22,97 +22,296 @@ Cc: Jingoo Han <jingoohan1@gmail.com>,
  linux-clk@vger.kernel.org, linux-phy@lists.infradead.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795465935; l=2484;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795465935; l=9297;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=MyL1iV5O/zQ+yKb0w2UWGAKIr38mntIf4hXKW1lxhNg=;
- b=UXKv6FgpeRwIkYXwJFceJBFMvFDJqHn2ytGbIl4h2Wd1rCSHkXQDOUS12Q5Lx1HC8egNLGh1g
- c89qdqk9MSACOCZ+I3uYzMj8RQtRoYJuSPK3TCzQWILStTqZXKbmnjk
+ bh=xbqhgVGjORFnQ5gPtfVS3sFJz4weZ5kVBK/LGnXuSak=;
+ b=MUSxUum1MJLt+e2T6Y8GAHpAgGq1H1etG6XJ04YCQDH64a5vh8Z7F1aUXhahMXMbnu7Vb4MxP
+ YFPFk3WpKAlBAWKsJ68EfQfhi8FhtDeIoZHrggR2GGSh3fpLwGV7kgE
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe three Snow Bush lanes, their shared status bank, global reset
-controls and 24 MHz reference. PCIe is the only supported operating mode.
+Provide per-lane generic PHYs using the vendor 24 MHz programming table
+and revision-dependent value. Sequence power and reset through the shared
+global regmap and fail on CMU lock timeout with balanced power cleanup.
+Use the shared PHY status bank without overlapping PCIe wrapper resources.
 
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
- .../bindings/phy/cortina,cs7542-pcie-phy.yaml      | 67 ++++++++++++++++++++++
- 1 file changed, 67 insertions(+)
+ drivers/phy/Kconfig           |  11 ++
+ drivers/phy/Makefile          |   2 +
+ drivers/phy/phy-cs7542-pcie.c | 232 ++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 245 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/phy/cortina,cs7542-pcie-phy.yaml b/Documentation/devicetree/bindings/phy/cortina,cs7542-pcie-phy.yaml
+diff --git a/drivers/phy/Kconfig b/drivers/phy/Kconfig
+index 105fbe408..77cff94fe 100644
+--- a/drivers/phy/Kconfig
++++ b/drivers/phy/Kconfig
+@@ -204,4 +204,15 @@ source "drivers/phy/tegra/Kconfig"
+ source "drivers/phy/ti/Kconfig"
+ source "drivers/phy/xilinx/Kconfig"
+ 
++config PHY_CS7542_PCIE
++	tristate "Cortina Systems CS7542 PCIe SerDes"
++	depends on OF && HAS_IOMEM && COMMON_CLK
++	select GENERIC_PHY
++	select MFD_SYSCON
++	help
++	  Support the three CS7542 Snow Bush SerDes lanes in PCIe mode
++	  with a 24 MHz reference clock. Lane resets share the global syscon.
++	  SATA mode and other reference frequencies are not supported.
++	  The module is called phy-cs7542-pcie.
++
+ endmenu
+diff --git a/drivers/phy/Makefile b/drivers/phy/Makefile
+index c6dd02003..54df29e74 100644
+--- a/drivers/phy/Makefile
++++ b/drivers/phy/Makefile
+@@ -55,3 +55,5 @@ obj-$(CONFIG_GENERIC_PHY)		+= allwinner/	\
+ 					   tegra/	\
+ 					   ti/		\
+ 					   xilinx/
++
++obj-$(CONFIG_PHY_CS7542_PCIE) += phy-cs7542-pcie.o
+diff --git a/drivers/phy/phy-cs7542-pcie.c b/drivers/phy/phy-cs7542-pcie.c
 new file mode 100644
-index 000000000..9ccde6e05
+index 000000000..d027baa93
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/phy/cortina,cs7542-pcie-phy.yaml
-@@ -0,0 +1,67 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/phy/cortina,cs7542-pcie-phy.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
++++ b/drivers/phy/phy-cs7542-pcie.c
+@@ -0,0 +1,232 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* CS7542 Snow Bush SerDes, PCIe mode with a 24 MHz reference clock. */
++#include <linux/bitfield.h>
++#include <linux/clk.h>
++#include <linux/delay.h>
++#include <linux/io.h>
++#include <linux/iopoll.h>
++#include <linux/mfd/syscon.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/phy/phy.h>
++#include <linux/platform_device.h>
++#include <linux/regmap.h>
 +
-+title: Cortina Systems CS7542 PCIe SerDes
++#define GLOBAL_JTAG_ID	0x00
++#define GLOBAL_PHY_CONTROL 0x14
++#define PHY_REFCLK_MASK(p) (3U << ((p) * 2))
++#define PHY_REFCLK_24MHZ(p) (2U << ((p) * 2))
++#define PHY_PD(p)	BIT(8 + (p))
++#define PHY_CMU_RESETN(p) BIT(16 + (p) * 4)
++#define PHY_LN0_RESETN(p) BIT(17 + (p) * 4)
++#define PHY_POR_N(p)	BIT(19 + (p) * 4)
++#define PHY_CMU_OK	BIT(18)
++#define PHY_STATUS_STRIDE 0x80
++#define SNOW_COM_REG0	0x00
++#define SNOW_REG0_CFG	0x00090006
++#define SNOW_REG0_AHB_RESETN BIT(0)
++#define SNOW_REV_REG	96
++#define SNOW_REV_REG_A0	0x5e082e00
++#define SNOW_REV_REG_A1	0x5e080600
++#define SNOW_COM_LANE_REG0 0xc8
++#define SNOW_LANE_REG0_CFG 0x400290c0
++#define SNOW_LANE_REG0_MASTER_RESETN BIT(1)
++#define CS7542_PORTS	3
 +
-+maintainers:
-+  - Fil Dunsky <filipp.dunsky@gmail.com>
++struct cs7542_serdes;
++struct cs7542_lane {
++	struct cs7542_serdes *serdes;
++	void __iomem *base;
++	struct phy *phy;
++	unsigned int id;
++};
 +
-+description: |
-+  Three Snow Bush SerDes lanes shared by PCIe and SATA. Only PCIe mode
-+  with a 24 MHz reference is described. The PHY specifier is the lane
-+  number, 0 through 2. The status resource contains the shared PHY
-+  status registers, with a stride of 0x80 bytes per lane.
++struct cs7542_serdes {
++	struct device *dev;
++	struct regmap *global;
++	void __iomem *status;
++	struct clk *ref;
++	struct cs7542_lane lanes[CS7542_PORTS];
++	u32 revision_value;
++};
 +
-+properties:
-+  compatible:
-+    const: cortina,cs7542-pcie-phy
++struct snow_reg {
++	u16 off;
++	u32 val;
++};
 +
-+  reg:
-+    items:
-+      - description: Lane 0 programming registers
-+      - description: Lane 1 programming registers
-+      - description: Lane 2 programming registers
-+      - description: Shared PHY status registers
++static const struct snow_reg snow_phy_24mhz[] = {
++	{ 0,   SNOW_REG0_CFG }, { 4,   0x000e0960 }, { 32,  0x68a00000 },
++	{ 44,  0x50040000 }, { 48,  0x40250270 }, { 52,  0x00004001 },
++	{ 100, 0xf0914200 }, { 104, 0x4c0c9048 }, { 108, 0x00000373 },
++	{ 124, 0x04841000 }, { 128, 0x000000e0 }, { 132, 0x04000023 },
++	{ 136, 0x68001038 }, { 140, 0x0d181ea2 }, { 144, 0x0000000c },
++	{ 196, 0x0f600000 }, { 200, SNOW_LANE_REG0_CFG }, { 204, 0x0000003c },
++	{ 208, 0xc68b8300 }, { 212, 0x98280301 }, { 216, 0xe1782819 },
++	{ 220, 0x00f410f0 }, { 232, 0xa0a0a000 }, { 236, 0xa0a0a0a0 },
++	{ 240, 0x9fc00068 }, { 244, 0x00000001 }, { 248, 0x00000000 },
++	{ 252, 0xd07e4130 }, { 256, 0x935285cc }, { 260, 0xb0dd49e0 },
++	{ 264, 0x0000020b }, { 300, 0xd8000000 }, { 304, 0x0001ff1a },
++	{ 308, 0xf0000000 }, { 312, 0xffffffff }, { 316, 0x3fc3c21c },
++	{ 320, 0x0000000a }, { 324, 0x00f80000 },
++};
 +
-+  reg-names:
-+    items:
-+      - const: phy0
-+      - const: phy1
-+      - const: phy2
-+      - const: status
++static int cs7542_phy_power_off(struct phy *phy)
++{
++	struct cs7542_lane *lane = phy_get_drvdata(phy);
++	unsigned int p = lane->id;
++	u32 mask = PHY_PD(p) | PHY_CMU_RESETN(p) | PHY_LN0_RESETN(p) | PHY_POR_N(p);
++	int ret;
 +
-+  clocks:
-+    maxItems: 1
-+    description: 24 MHz SerDes reference clock
++	ret = regmap_update_bits(lane->serdes->global, GLOBAL_PHY_CONTROL, mask, PHY_PD(p));
++	clk_disable_unprepare(lane->serdes->ref);
++	return ret;
++}
 +
-+  cortina,global-syscon:
-+    $ref: /schemas/types.yaml#/definitions/phandle
-+    description: Global control syscon providing lane reset and mode selection
++static int cs7542_phy_power_on(struct phy *phy)
++{
++	struct cs7542_lane *lane = phy_get_drvdata(phy);
++	struct cs7542_serdes *sd = lane->serdes;
++	unsigned int p = lane->id;
++	u32 mask, value;
++	int ret, i;
 +
-+  "#phy-cells":
-+    const: 1
++	ret = clk_prepare_enable(sd->ref);
++	if (ret)
++		return ret;
++	mask = PHY_PD(p) | PHY_CMU_RESETN(p) | PHY_LN0_RESETN(p) | PHY_POR_N(p) |
++	       PHY_REFCLK_MASK(p);
++	ret = regmap_update_bits(sd->global, GLOBAL_PHY_CONTROL, mask,
++				 PHY_PD(p) | PHY_REFCLK_24MHZ(p));
++	if (ret)
++		goto power_off;
++	msleep(100);
++	ret = regmap_update_bits(sd->global, GLOBAL_PHY_CONTROL, PHY_PD(p) | PHY_POR_N(p),
++				 PHY_POR_N(p));
++	if (ret)
++		goto power_off;
++	usleep_range(10, 20);
++	for (i = 0; i < ARRAY_SIZE(snow_phy_24mhz); i++) {
++		if (snow_phy_24mhz[i].off == SNOW_REV_REG + 4)
++			writel(sd->revision_value, lane->base + SNOW_REV_REG);
++		writel(snow_phy_24mhz[i].val, lane->base + snow_phy_24mhz[i].off);
++	}
++	writel(SNOW_REG0_CFG | SNOW_REG0_AHB_RESETN, lane->base + SNOW_COM_REG0);
++	ret = regmap_update_bits(sd->global, GLOBAL_PHY_CONTROL, PHY_CMU_RESETN(p),
++				 PHY_CMU_RESETN(p));
++	if (ret)
++		goto power_off;
++	ret = readl_poll_timeout(sd->status + p * PHY_STATUS_STRIDE, value,
++				 value & PHY_CMU_OK, 100, 100000);
++	if (ret) {
++		dev_err(sd->dev, "lane %u CMU did not lock\n", p);
++		goto power_off;
++	}
++	writel(SNOW_LANE_REG0_CFG | SNOW_LANE_REG0_MASTER_RESETN,
++	       lane->base + SNOW_COM_LANE_REG0);
++	ret = regmap_update_bits(sd->global, GLOBAL_PHY_CONTROL, PHY_LN0_RESETN(p),
++				 PHY_LN0_RESETN(p));
++	if (ret)
++		goto power_off;
++	msleep(100);
++	return 0;
 +
-+required:
-+  - compatible
-+  - reg
-+  - reg-names
-+  - clocks
-+  - cortina,global-syscon
-+  - "#phy-cells"
++power_off:
++	cs7542_phy_power_off(phy);
++	return ret;
++}
 +
-+additionalProperties: false
++static int cs7542_phy_set_mode(struct phy *phy, enum phy_mode mode, int submode)
++{
++	return mode == PHY_MODE_PCIE && !submode ? 0 : -EINVAL;
++}
 +
-+examples:
-+  - |
-+    phy@f00a1000 {
-+        compatible = "cortina,cs7542-pcie-phy";
-+        reg = <0xf00a1000 0x400>, <0xf00a5000 0x400>,
-+              <0xf00a9000 0x400>, <0xf00a0e00 0x180>;
-+        reg-names = "phy0", "phy1", "phy2", "status";
-+        clocks = <&ref24>;
-+        cortina,global-syscon = <&global>;
-+        #phy-cells = <1>;
-+    };
++static const struct phy_ops cs7542_phy_ops = {
++	.power_on = cs7542_phy_power_on,
++	.power_off = cs7542_phy_power_off,
++	.set_mode = cs7542_phy_set_mode,
++	.owner = THIS_MODULE,
++};
++
++static struct phy *cs7542_phy_xlate(struct device *dev, const struct of_phandle_args *args)
++{
++	struct cs7542_serdes *sd = dev_get_drvdata(dev);
++
++	if (args->args_count != 1 || args->args[0] >= CS7542_PORTS)
++		return ERR_PTR(-EINVAL);
++	return sd->lanes[args->args[0]].phy;
++}
++
++static int cs7542_phy_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct phy_provider *provider;
++	struct cs7542_serdes *sd;
++	unsigned int id;
++	int ret, i;
++
++	sd = devm_kzalloc(dev, sizeof(*sd), GFP_KERNEL);
++	if (!sd)
++		return -ENOMEM;
++	sd->dev = dev;
++	sd->global = syscon_regmap_lookup_by_phandle(dev->of_node, "cortina,global-syscon");
++	if (IS_ERR(sd->global))
++		return dev_err_probe(dev, PTR_ERR(sd->global), "global register map\n");
++	sd->ref = devm_clk_get(dev, NULL);
++	if (IS_ERR(sd->ref))
++		return dev_err_probe(dev, PTR_ERR(sd->ref), "reference clock\n");
++	if (clk_get_rate(sd->ref) != 24000000)
++		return dev_err_probe(dev, -EINVAL, "only 24 MHz reference supported\n");
++	ret = regmap_read(sd->global, GLOBAL_JTAG_ID, &id);
++	if (ret)
++		return ret;
++	switch (FIELD_GET(GENMASK(15, 12), id)) {
++	case 0:
++	case 1:
++		sd->revision_value = SNOW_REV_REG_A0;
++		break;
++	case 8:
++	case 9:
++		sd->revision_value = SNOW_REV_REG_A1;
++		break;
++	default:
++		return dev_err_probe(dev, -ENODEV, "unsupported silicon revision %#x\n", id);
++	}
++	sd->status = devm_platform_ioremap_resource(pdev, CS7542_PORTS);
++	if (IS_ERR(sd->status))
++		return PTR_ERR(sd->status);
++	for (i = 0; i < CS7542_PORTS; i++) {
++		struct cs7542_lane *lane = &sd->lanes[i];
++
++		lane->id = i;
++		lane->serdes = sd;
++		lane->base = devm_platform_ioremap_resource(pdev, i);
++		if (IS_ERR(lane->base))
++			return PTR_ERR(lane->base);
++		lane->phy = devm_phy_create(dev, NULL, &cs7542_phy_ops);
++		if (IS_ERR(lane->phy))
++			return PTR_ERR(lane->phy);
++		phy_set_drvdata(lane->phy, lane);
++	}
++	platform_set_drvdata(pdev, sd);
++	provider = devm_of_phy_provider_register(dev, cs7542_phy_xlate);
++	return PTR_ERR_OR_ZERO(provider);
++}
++
++static const struct of_device_id cs7542_phy_match[] = {
++	{ .compatible = "cortina,cs7542-pcie-phy" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, cs7542_phy_match);
++
++static struct platform_driver cs7542_phy_driver = {
++	.probe = cs7542_phy_probe,
++	.driver = {
++		.name = "cs7542-pcie-phy",
++		.of_match_table = cs7542_phy_match,
++	},
++};
++module_platform_driver(cs7542_phy_driver);
++
++MODULE_DESCRIPTION("Cortina Systems CS7542 PCIe SerDes");
++MODULE_LICENSE("GPL");
 
 -- 
 2.53.0
