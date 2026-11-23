@@ -1,16 +1,13 @@
 From: Mani Tofigh <mt4022@columbia.edu>
-Subject: [PATCH v2 0/2] sched/wait: Queue non-exclusive waiters at the head
+Date: Sun, 22 Nov 2026 19:35:12 -0500
+Subject: [PATCH v2 1/2] sched/wait: Queue non-exclusive waiters at the head
  in do_wait_intr*()
-Date: Sun, 22 Nov 2026 19:35:11 -0500
-Message-Id: <20261122-b4-sched-wait-intr-head-v2-0-4a764b64e8ce@columbia.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNyw6CMBBFf8XM2jG0KfhY+R+GRR9TO0bBtAU1h
- H+34Ad47+ok9zFBosiU4LSZINLIifuugNxuwAbdXQnZFQZZyUYUoVGYbCCHL80ZucsRA2mHtqa
- Dr0ythFdQ2s9Int/r8qX9cRrMjWxe5pZE4JT7+FmvR7Hk/r+MAov31kvta3Ns1Nn29+FhWO/ID
- dDO8/wF5aGI0dMAAAA=
-X-Change-ID: 20261111-b4-sched-wait-intr-head-c5e8f0b541f4
+Message-Id: <20261122-b4-sched-wait-intr-head-v2-1-4a764b64e8ce@columbia.edu>
+References: <20261122-b4-sched-wait-intr-head-v2-0-4a764b64e8ce@columbia.edu>
+In-Reply-To: <20261122-b4-sched-wait-intr-head-v2-0-4a764b64e8ce@columbia.edu>
 To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>
 Cc: Oleg Nesterov <oleg@redhat.com>, 
  Linus Torvalds <torvalds@linux-foundation.org>, 
@@ -20,46 +17,89 @@ Cc: Oleg Nesterov <oleg@redhat.com>,
  tz2294@columbia.edu, stable@vger.kernel.org, 
  Mani Tofigh <mt4022@columbia.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795394112; l=1259;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795394112; l=2797;
  i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=jCtwij91dfdagLsRWbPGL+dk8RepKRiMgOkxRuxT9C8=;
- b=L9Ai5mlE7Lz8ZDESqwhYZFIsp7DHH5oMWaV98/BeDTOP2wlDq0TqoZk2Nw9vKWXqwoS1sNkXK
- u6+Trf6KMOyASgkjM18QM5zTgqtmbVPKntcB/6XpTXWokmalKd43MpI
+ bh=t/EKiWQssfQXpF3qKY+ICig437H7rd2qHOCQVtDp+ik=;
+ b=hi28efIN5xw0rW8lQiQmA2+zT+36chA36KU7jbGMXczzHAIy4UrZqhhw3fCp1sc48I4ucPyEe
+ 13y386I3s5/ATqO3+fGstJNOY5FgHx+57ZWo4tav9uDc5o0l1U6Fqiq
 X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
  pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
 X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Patch 1 is the fix from v1, rebased on top of Linus's commit
-cea5f91daa3a ("wait-event: clean up the internal helper arguments").
-Patch 2 makes __wait_event_interruptible_locked() take wq_flags like
-___wait_event() now does, as Oleg suggested.
+A task blocked in read() on an eventfd or timerfd can sleep forever
+while the file is readable, if an epoll(EPOLLEXCLUSIVE) watcher of the
+same file was added before it.
 
-Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/evexcl.c
+eventfd and timerfd wait with wait_event_interruptible_locked_irq().
+do_wait_intr_irq() adds the reader at the tail, behind the exclusive
+epoll entry, and __wake_up_common() stops after waking that entry.  If
+the woken epoll task is killed or leaves without reading, nothing wakes
+the reader:
 
-gpiolib-cdev and cros_ec_chardev use the same helpers and can be
-polled too, so this fixes them as well.
+  Task E                   Task A                 Task C
+  epoll_wait(ep, -1)
+    /* EPOLLEXCLUSIVE */
+                           read(efd)
+                             /* queued after E */
+                                                  write(efd, 1)
+                                                    /* wakes E, stops */
+                                                  kill(E, SIGKILL)
+                           /* still asleep, efd is readable */
 
+A periodic timerfd doesn't wake A either, since the timer is restarted
+only by a read.
+
+prepare_to_wait_event() and add_wait_queue() add non-exclusive waiters
+at the head, which is what __wake_up_common() relies on.  eventfd did
+the same itself before it switched to these helpers.
+
+Do the same in do_wait_intr() and do_wait_intr_irq().  This only changes
+the order in which non-exclusive waiters are woken.  Each of them still
+gets every wakeup.  With the fix, A is woken by the write.
+
+Fixes: 22c43c81a51e ("wait_event_interruptible_locked() interface")
+Cc: stable@vger.kernel.org
+Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
-Changes in v2:
-- Rebased on Linus's master, on top of cea5f91daa3a.
-- New patch 2: pass wq_flags instead of a 0/1 "exclusive" argument (Oleg).
-- Link to v1: https://patch.msgid.link/20261111-b4-sched-wait-intr-head-v1-1-17cf2af5b964@columbia.edu
-- Discussion: https://lore.kernel.org/all/awMhxEuMHULvk8SA@redhat.com/
+ kernel/sched/wait.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
----
-Mani Tofigh (2):
-      sched/wait: Queue non-exclusive waiters at the head in do_wait_intr*()
-      sched/wait: Pass wq_flags to __wait_event_interruptible_locked()
+diff --git a/kernel/sched/wait.c b/kernel/sched/wait.c
+index f8d6d8b9d03e..342dec5fd937 100644
+--- a/kernel/sched/wait.c
++++ b/kernel/sched/wait.c
+@@ -319,8 +319,12 @@ EXPORT_SYMBOL(prepare_to_wait_event);
+  */
+ int do_wait_intr(wait_queue_head_t *wq, wait_queue_entry_t *wait)
+ {
+-	if (likely(list_empty(&wait->entry)))
+-		__add_wait_queue_entry_tail(wq, wait);
++	if (likely(list_empty(&wait->entry))) {
++		if (wait->flags & WQ_FLAG_EXCLUSIVE)
++			__add_wait_queue_entry_tail(wq, wait);
++		else
++			__add_wait_queue(wq, wait);
++	}
+ 
+ 	set_current_state(TASK_INTERRUPTIBLE);
+ 	if (signal_pending(current))
+@@ -336,8 +340,12 @@ EXPORT_SYMBOL(do_wait_intr);
+ 
+ int do_wait_intr_irq(wait_queue_head_t *wq, wait_queue_entry_t *wait)
+ {
+-	if (likely(list_empty(&wait->entry)))
+-		__add_wait_queue_entry_tail(wq, wait);
++	if (likely(list_empty(&wait->entry))) {
++		if (wait->flags & WQ_FLAG_EXCLUSIVE)
++			__add_wait_queue_entry_tail(wq, wait);
++		else
++			__add_wait_queue(wq, wait);
++	}
+ 
+ 	set_current_state(TASK_INTERRUPTIBLE);
+ 	if (signal_pending(current))
 
- include/linux/wait.h | 11 ++++++-----
- kernel/sched/wait.c  | 16 ++++++++++++----
- 2 files changed, 18 insertions(+), 9 deletions(-)
----
-base-commit: 6e4122f0242a3262512ee3e6f2e7e6de0bd5792b
-change-id: 20261111-b4-sched-wait-intr-head-c5e8f0b541f4
-
-Best regards,
---  
-Mani Tofigh <mt4022@columbia.edu>
+-- 
+2.53.0
 
