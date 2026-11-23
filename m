@@ -1,15 +1,12 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Subject: [PATCH 0/3] hwrng: Add Cortina Systems CS7542 random number
- generator
-Date: Mon, 23 Nov 2026 21:41:33 +0300
-Message-Id: <20261123-b4-cs7542-trng-v1-0-92d9ffcee531@gmail.com>
+Date: Mon, 23 Nov 2026 21:41:34 +0300
+Subject: [PATCH 1/3] dt-bindings: rng: Add Cortina Systems CS7542 TRNG
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMPQ6DMAxA4asgz1jC5qeiV0EdSDDgDqGKoUJC3
- J3Qjt/w3gEmUcXgmR0Q5aumS0igPAM/92ES1CEZuOCGiEt0FXp71BXjGsOE1JNrR/JD2TKk6BN
- l1P037F5/2+be4tf7Aud5AT2b1DVyAAAA
-X-Change-ID: 20261123-b4-cs7542-trng-1a1b9f1cd392
+Message-Id: <20261123-b4-cs7542-trng-v1-1-92d9ffcee531@gmail.com>
+References: <20261123-b4-cs7542-trng-v1-0-92d9ffcee531@gmail.com>
+In-Reply-To: <20261123-b4-cs7542-trng-v1-0-92d9ffcee531@gmail.com>
 To: Olivia Mackall <olivia@selenic.com>, 
  Herbert Xu <herbert@gondor.apana.org.au>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,72 +14,69 @@ To: Olivia Mackall <olivia@selenic.com>,
 Cc: linux-crypto@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459294; l=2873;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459294; l=1529;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=+5fdkP17MS5TugucRLc1SqQw0TM5TWxx5LmS9OinWPM=;
- b=EFCNN0/CVf4KaFDdPKiaayM2jbxBRe5MW+HGmsu9zePsIYfmrkoTcPS1ib5beUOjZ5cqYckJf
- NHISGsOTHKzBmTAzSFmdwY7uo8ot2660zzP6z6qMzLYAj7ZxTldlKVx
+ bh=h3Rkf84iDXCJIMnadYFK8kaa2zOPjoZm3reYLlt/sOc=;
+ b=CAksPJdPCf1i8DCqnPWzq8mAGuYAdij5H6veRCIsvGhokheBm/cE6ThpGZw1x7g7G1ryAJPRx
+ dxNjxnxvRTJBj4dxlUPfE6mikU3wyRqzBhwyXBH3UqEXft5mdB5SPxq
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Elliptic random number generator integrated in the CS7542,
-based on the GPL vendor and OpenWrt implementations. The driver has no
-platform Kconfig dependency. Its shared global scratch bit is updated
-through a syscon regmap rather than an overlapping raw ioremap.
+Describe the Elliptic TRNG register block and its reference to the
+shared global control syscon.
 
-Polling is bounded. A nonblocking read starts or resumes a pending
-transaction and returns immediately if data is not ready, instead of
-entering the blocking poll path. Partial output and failure cleanup
-preserve the caller's buffer bounds.
-
-The existing OpenWrt quality setting of 512 is retained for review.
-The output tests below only check access and obvious stuck output;
-they do not characterize entropy or establish this quality estimate.
-Feedback on that inherited policy is explicitly requested before
-publication of a final version.
-
-The three patches are the binding, the driver/Kconfig/Makefile and a
-MAINTAINERS entry. They apply to Linux v7.4-rc4 without the pending
-CS75xx platform or clock/pinctrl series. The TRNG syscon phandle can
-refer to a generic syscon; the local board integration uses the new
-CS7542 global-control binding being prepared separately.
-
-Validation:
-- binding schema, example compilation and style checks passed
-- strict source checkpatch with --no-signoff: no errors/warnings/checks
-- complete minimal ARM vmlinux and modules builds with both new
-  drivers built in and modular, COMPILE_TEST=n, without the platform
-- actual driver functions tested with mocked MMIO/regmap and UBSAN
-- exact sources booted in a Linux 7.4-rc4 RAM integration kernel on
-  Almond+, with platform v9, clock/pinctrl and the accepted watchdog
-
-The first nonblocking read returned EAGAIN and subsequent reads
-provided 4096 bytes. Output was neither all zero nor repetitions of one
-16-byte block; no entropy estimate is inferred from those tests.
-The final combined RAM test recorded 16 checks with no failures and
-returned to installed OpenWrt 6.18.64 through the watchdog. Both CPUs
-were online. The firmware was not flashed. Earlier incomplete or
-experimental alarm runs are not counted as this successful test.
-
+Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
-Fil Dunsky (3):
-      dt-bindings: rng: Add Cortina Systems CS7542 TRNG
-      hwrng: Add Cortina Systems CS7542 TRNG driver
-      MAINTAINERS: Add Cortina Systems CS7542 TRNG support
+ .../bindings/rng/cortina,cs7542-trng.yaml          | 38 ++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
 
- .../bindings/rng/cortina,cs7542-trng.yaml          |  38 +++++
- MAINTAINERS                                        |   7 +
- drivers/char/hw_random/Kconfig                     |  11 ++
- drivers/char/hw_random/Makefile                    |   1 +
- drivers/char/hw_random/cs75xx-trng.c               | 159 +++++++++++++++++++++
- 5 files changed, 216 insertions(+)
----
-base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
-change-id: 20261123-b4-cs7542-trng-1a1b9f1cd392
+diff --git a/Documentation/devicetree/bindings/rng/cortina,cs7542-trng.yaml b/Documentation/devicetree/bindings/rng/cortina,cs7542-trng.yaml
+new file mode 100644
+index 000000000..9118397d6
+--- /dev/null
++++ b/Documentation/devicetree/bindings/rng/cortina,cs7542-trng.yaml
+@@ -0,0 +1,38 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/rng/cortina,cs7542-trng.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Cortina Systems CS7542 true random number generator
++
++maintainers:
++  - Fil Dunsky <filipp.dunsky@gmail.com>
++
++properties:
++  compatible:
++    const: cortina,cs7542-trng
++
++  reg:
++    maxItems: 1
++
++  cortina,syscon:
++    $ref: /schemas/types.yaml#/definitions/phandle
++    description:
++      Global control syscon containing the scratch register at offset 0xc0.
++      Bit 5 is set before initializing the random number generator.
++
++required:
++  - compatible
++  - reg
++  - cortina,syscon
++
++additionalProperties: false
++
++examples:
++  - |
++    rng@f0600000 {
++        compatible = "cortina,cs7542-trng";
++        reg = <0xf0600000 0x20>;
++        cortina,syscon = <&global_control>;
++    };
 
-Best regards,
---  
-Fil Dunsky <filipp.dunsky@gmail.com>
+-- 
+2.53.0
 
