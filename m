@@ -1,256 +1,162 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Tue, 24 Nov 2026 02:53:10 +0800
-Subject: [PATCH v6 18/18] mm/mglru: make folio_inc_lru_refs lruvec lockless
+From: Lorenzo Argentieri <uni.lorenzo.a@gmail.com>
+Date: Mon, 23 Nov 2026 20:05:05 +0100
+Subject: [PATCH] ALSA: hda/realtek: Enable speaker amp on ONEXPLAYER X1 i
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-mglru-fg-v6-18-8ffea39934a6@tencent.com>
-References: <20261124-mglru-fg-v6-0-8ffea39934a6@tencent.com>
-In-Reply-To: <20261124-mglru-fg-v6-0-8ffea39934a6@tencent.com>
-To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Johannes Weiner <hannes@cmpxchg.org>, Muchun Song <muchun.song@linux.dev>, 
- Qi Zheng <qi.zheng@linux.dev>, Ying Huang <ying.huang@linux.alibaba.com>, 
- Chris Li <chrisl@kernel.org>, Baoquan He <baoquan.he@linux.dev>, 
- Nico Pache <nico.pache@linux.dev>, Usama Arif <usama.arif@linux.dev>, 
- Michal Hocko <mhocko@kernel.org>, Roman Gushchin <roman.gushchin@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, David Hildenbrand <david@kernel.org>, 
- Lorenzo Stoakes <ljs@kernel.org>, "Liam R. Howlett" <liam@infradead.org>, 
- Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
- Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
- Vlastimil Babka <vbabka@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Nhat Pham <nphamcs@gmail.com>, Youngjun Park <youngjun.park@lge.com>, 
- Zi Yan <ziy@nvidia.com>, Gregory Price <gourry@gourry.net>, 
- "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
- Lance Yang <lance.yang@linux.dev>, Hugh Dickins <hughd@google.com>, 
- SJ Park <sj@kernel.org>, David Rientjes <rientjes@google.com>, 
- Yu Zhao <yuzhao@google.com>, Vernon Yang <vernon2gm@gmail.com>, 
- Zicheng Wang <wangzicheng@honor.com>, Tal Zussman <tz2294@columbia.edu>, 
- Kairui Song <ryncsn@gmail.com>, Xiang Liu <liuxiang.277@bytedance.com>, 
- Ehab Ababneh <ehab.ababneh@intel.com>, 
- Zhao Zhenzhuo <zhaozhengzhuo@uniontech.com>, 
- Lian Wang <lianux.mm@gmail.com>, Joanne Koong <joannelkoong@gmail.com>, 
- Kunwu Chan <kunwu.chan@gmail.com>, Hui Zhu <hui.zhu@linux.dev>, 
- Maxim Muzafarov <maxmuzaf@gmail.com>, linux-kernel@vger.kernel.org, 
- cgroups@vger.kernel.org, damon@lists.linux.dev, linux-doc@vger.kernel.org, 
- Tianyi Chen <hi@tychen.cc>, Kairui Song <kasong@tencent.com>, 
- Ridong Chen <ridong.chen@linux.dev>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795459977; l=8138;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=98177vt1OglL82gztUX/EbOw0UvOi4GjiFKgTcy/MHo=;
- b=lBjYmotb+ySa2fIWkROeOCyMpcTaqydsJhwBMvXZJ4Uy1RPDLNQjk8vOBroK1JvAny2eG5OzE
- r+CJ+hmVAgqBKWNO6Lw8XYQN07RofDMXRn5buGju896Qbd0+UHf79zD
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+Message-Id: <20261123-oxp-x1-amp-v1-1-8b61da12d092@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MwQmAMAwF0FXCPxtoIyh2FfEgmmoOamlBCuLug
+ m+A96BoNi0I9CDrbcWuE4F8Q1j2+dyUbUUgiJPOe2n5qomr5/lIHKOTQVyrOvRoCClrtPpn4/S
+ +H+YFkA9cAAAA
+X-Change-ID: 20261123-oxp-x1-amp-ff029203ee97
+To: Takashi Iwai <tiwai@suse.com>, Jaroslav Kysela <perex@perex.cz>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Lorenzo Argentieri <uni.lorenzo.a@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795460705; l=5648;
+ i=uni.lorenzo.a@gmail.com; s=20261123; h=from:subject:message-id;
+ bh=p+vj4gtJ8f10edLkmyCCujVv4evAJNe4qqqgUaEN8Po=;
+ b=jzIfid0FwYIE/RjC4FARKhdvo3wKbzPkYochhS7oV6AkXPJcWWTCBawfXY8ZczjBepxNS3zL5
+ e9vI9dQIEoDDSS9oaQt4GkDAe1HGIiQ5uQO7QckOeCm+qXR3M60hFAI
+X-Developer-Key: i=uni.lorenzo.a@gmail.com; a=ed25519;
+ pk=b03MEcj4eqHxAtJC+G7tYbx5b58C77y/G5Sd5OgiaY0=
+X-Endpoint-Received: by B4 Relay for uni.lorenzo.a@gmail.com/20261123 with auth_id=1619
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The lruvec spinlock in folio_inc_lru_refs was only taken to keep
-concurrent aging from corrupting the size counters.  This is no
-longer needed: the per-generation counters are atomic, and the
-active/inactive ABI counters are updated per folio and linearized by
-the CAS on the folio flags, so concurrent aging can no longer corrupt
-them.  The same argument is what lets folio_reset_lru_refs() update
-the counters without the lruvec lock.
+The internal speakers of the ONE-NETBOOK ONEXPLAYER X1 i (Intel Core
+Ultra 7 155H, ALC245, subsystem ID 1f75:1602) are almost inaudible on
+Linux. They are driven by a Realtek smart amplifier at I2C address 0x10,
+behind the ALC245 coefficient tunnel. The firmware leaves the amplifier
+unconfigured, and the Windows driver programs it at initialization.
 
-Use folio_lruvec_live_get()/folio_lruvec_live_put() to hold the RCU
-read lock around the lruvec lookup, and drop the spinlock entirely.
+Add a fixup that replays the register writes of the Windows driver
+through the tunnel: coefficient 0x24 selects the amplifier, 0x25/0x26
+hold the register address, 0x28 the value, and writing 0xb023 to 0x29
+starts the transfer. Bit 5 of 0x29 is a self-clearing go bit; poll it
+instead of using a fixed delay (a write completes in about 200 us).
 
-Without the lock, aging can advance max_seq while a promotion is in
-flight.  Generations are indexed by seq % MAX_NR_GENS, so the folio
-flags can return to the value read earlier and the cmpxchg succeeds
-with a target gen computed from a stale max_seq.  Recheck max_seq after
-a gen-changing cmpxchg: if it moved, account the committed update and
-retry with LRU_REF_FORCE, which promotes the folio to the newest gen.
-The retry may count the access twice, which is acceptable and avoids
-folio_activate(), whose LRU lock causes latency jitter.  smp_rmb()
-orders the flags read, including the one returned by a failed
-cmpxchg(), before the max_seq read.
+The sequence was captured from Windows by the onexplayer2pro-audio-fix
+project and decoded here. Its reads and address probes were dropped,
+leaving 46 amplifier register writes. The fixup runs at every codec
+init, so the configuration is restored after system resume.
 
-Also simplify the post-CAS accounting guards: gen is only assigned
-non-negative values after the old_gen < 0 early exit, so gen != old_gen
-implies gen >= 0, and lru_gen_update_size() needs no explicit guard.
-The active/inactive ABI update keeps its gen >= 0 check because an
-off-LRU folio has no lruvec to update.
+Tested on ONEXPLAYER X1 i, BIOS 2.42, after a full power-off: a test
+tone played through the speakers and recorded by the internal microphone
+is about 50 dB louder with this fixup than without it.
 
-Tested-by: Andrew Morton <akpm@linux-foundation.org>
-Reviewed-by: Kunwu Chan <kunwu.chan@gmail.com>
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Link: https://github.com/feederchain/onexplayer2pro-audio-fix
+Signed-off-by: Lorenzo Argentieri <uni.lorenzo.a@gmail.com>
 ---
- include/linux/mm_inline.h | 10 +++++-----
- include/linux/mmzone.h    |  3 ++-
- mm/vmscan.c               | 51 +++++++++++++++++++++++++++++------------------
- 3 files changed, 39 insertions(+), 25 deletions(-)
+ sound/hda/codecs/realtek/alc269.c | 69 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 69 insertions(+)
 
-diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index b0f062e3a190..36b80a2a0e74 100644
---- a/include/linux/mm_inline.h
-+++ b/include/linux/mm_inline.h
-@@ -335,10 +335,9 @@ static inline bool lru_gen_is_old(struct lruvec *lruvec, int type, int gen)
- 	       gen == lru_gen_from_seq(min_seq + 1);
- }
- 
--static inline void lru_gen_update_size(struct lruvec *lruvec, struct folio *folio,
--				       int old_gen, int new_gen)
-+static inline void lru_gen_update_size(struct lruvec *lruvec, int type,
-+				       struct folio *folio, int old_gen, int new_gen)
- {
--	int type = folio_is_file_lru(folio);
- 	int zone = folio_zonenum(folio);
- 	int delta = folio_nr_pages(folio);
- 	struct lru_gen_folio *lrugen = &lruvec->lrugen;
-@@ -417,7 +416,7 @@ static inline bool __lru_gen_add_folio(struct lruvec *lruvec, struct folio *foli
- 	/* use the refs from the atomic snapshot to avoid raced update */
- 	refs = lru_get_refs_flags(flags);
- 
--	lru_gen_update_size(lruvec, folio, -1, gen);
-+	lru_gen_update_size(lruvec, type, folio, -1, gen);
- 	if (lru_refs_is_active(refs))
- 		lru += LRU_ACTIVE;
- 	__update_lru_size(lruvec, lru, zone, delta);
-@@ -447,6 +446,7 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- 	unsigned long flags;
- 	unsigned int refs;
- 	int gen;
-+	int type = folio_is_file_lru(folio);
- 	int zone = folio_zonenum(folio);
- 	int delta = folio_nr_pages(folio);
- 	enum lru_list lru = folio_is_file_lru(folio) * LRU_INACTIVE_FILE;
-@@ -470,7 +470,7 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- 	if (!reclaiming && ((max_seq - gen) % MAX_NR_GENS) < MIN_NR_GENS)
- 		folio_set_active(folio);
- 
--	lru_gen_update_size(lruvec, folio, gen, -1);
-+	lru_gen_update_size(lruvec, type, folio, gen, -1);
- 	if (lru_refs_is_active(refs))
- 		lru += LRU_ACTIVE;
- 	__update_lru_size(lruvec, lru, zone, -delta);
-diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
-index 42afb5375c27..14c58bbd1606 100644
---- a/include/linux/mmzone.h
-+++ b/include/linux/mmzone.h
-@@ -540,9 +540,10 @@ enum lruvec_flags {
- #define LRU_TIER_MIN		0U
- #define LRU_TIER_MAX		(MAX_NR_TIERS - 1)
- 
--/* Access source flags for folio_inc_lru_refs() */
-+/* Flags for folio_inc_lru_refs() */
- #define LRU_REF_MAPPED		0x1U
- #define LRU_REF_EXEC		0x2U
-+#define LRU_REF_FORCE		0x4U
- 
- #define LRU_REFS_REFERENCED	0x1
- #define LRU_REFS_WORKINGSET	0x2
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index ccf3497bd3a4..81797b71228f 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -876,37 +876,35 @@ void folio_inc_lru_refs(struct folio *folio, unsigned int flags)
- 	long nr_pages = folio_nr_pages(folio);
- 	struct lru_gen_folio *lrugen;
- 	struct lruvec *lruvec = NULL;
-+	bool aged = false;
- 
-+retry:
- 	old_flags = READ_ONCE(*folio_flags(folio, 0));
- 	do {
- 		new_flags = old_flags;
- 		old_gen = lru_get_gen_flags(old_flags);
- 		old_refs = lru_get_refs_flags(old_flags);
--		file = folio_flags_is_file_lru(&old_flags);
- 		refs = old_refs + 1;
- 		gen = old_gen;
-+		file = folio_flags_is_file_lru(&old_flags);
- 		if (old_gen < 0)
- 			goto out;
--		/*
--		 * Lock the lruvec if the folio is on-list. We are already
--		 * doing lazy promotion so in theory we don't need this,
--		 * but for now, concurrent aging would still corrupt the
--		 * size counters.  This is a temporary limitation and
--		 * will be lifted very soon, so the lock here is not a
--		 * performance concern.
--		 */
- 		if (!lruvec) {
--			lruvec = lruvec_live_lock_irq(folio_lruvec(folio));
-+			lruvec = folio_lruvec_live_get(folio);
- 			lrugen = &lruvec->lrugen;
- 		}
-+		/*
-+		 * Read the flags before max_seq, paired with the store of a
-+		 * gen, which samples max_seq first.
-+		 */
-+		smp_rmb();
- 		max_seq = READ_ONCE(lrugen->max_seq);
- 		max_gen = lru_gen_from_seq(max_seq);
- 		if (old_gen == max_gen)
- 			goto out;
--
--		if (flags & (LRU_REF_MAPPED | LRU_REF_EXEC)) {
--			/* Promote second page table access or executable */
--			if (refs > LRU_REFS_REFERENCED || flags & LRU_REF_EXEC)
-+		if (flags & (LRU_REF_MAPPED | LRU_REF_EXEC | LRU_REF_FORCE)) {
-+			if (lru_refs_is_workingset(refs) ||
-+			    flags & (LRU_REF_EXEC | LRU_REF_FORCE))
- 				gen = max_gen;
- 			/* First access only defers eviction of an old generation */
- 			else if (lru_gen_is_old(lruvec, file, old_gen))
-@@ -931,9 +929,19 @@ void folio_inc_lru_refs(struct folio *folio, unsigned int flags)
- 			break;
- 	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
- 
--	if (gen != old_gen)
--		lru_gen_update_size(lruvec, folio, old_gen, gen);
--	if (lru_refs_is_active(old_refs) != lru_refs_is_active(refs) && old_gen >= 0) {
-+	if (gen != old_gen) {
-+		/*
-+		 * Gen-index reuse can fool cmpxchg(). Retry locklessly, accepting
-+		 * an extra reference to avoid folio_activate() latency.
-+		 */
-+		if (unlikely(READ_ONCE(lrugen->max_seq) != max_seq)) {
-+			flags = LRU_REF_FORCE;
-+			aged = true;
-+		}
-+		lru_gen_update_size(lruvec, file, folio, old_gen, gen);
-+	}
-+
-+	if (lru_refs_is_active(old_refs) != lru_refs_is_active(refs) && gen >= 0) {
- 		enum lru_list lru = file * LRU_INACTIVE_FILE;
- 
- 		__update_lru_size(lruvec, lru + lru_refs_is_active(old_refs),
-@@ -941,8 +949,12 @@ void folio_inc_lru_refs(struct folio *folio, unsigned int flags)
- 		__update_lru_size(lruvec, lru + lru_refs_is_active(refs),
- 				  folio_zonenum(folio), nr_pages);
+diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
+index a6b5e8987..ca7fcc271 100644
+--- a/sound/hda/codecs/realtek/alc269.c
++++ b/sound/hda/codecs/realtek/alc269.c
+@@ -1909,6 +1909,69 @@ static void alc298_fixup_alc1316_amp(struct hda_codec *codec,
  	}
-+	if (aged) {
-+		aged = false;
-+		goto retry;
+ }
+ 
++/*
++ * The ONEXPLAYER X1 i drives its speakers through a Realtek smart amplifier at
++ * I2C address 0x10, reached over the ALC245 coefficient tunnel. The firmware
++ * leaves the amplifier unconfigured, so the speakers stay silent. The register
++ * writes below replay what the Windows driver does at initialization.
++ *
++ * Tunnel layout: coefficient 0x24 selects the amplifier, 0x25 and 0x26 carry
++ * the high and low halves of the register address, 0x28 the value, and 0x29
++ * commits. Bit 5 of the commit word is a self-clearing go bit; a write takes
++ * about 200 us.
++ */
++static void alc245_onexplayer_amp_write(struct hda_codec *codec, u32 reg, u8 val)
++{
++	int i;
++
++	alc_write_coef_idx(codec, 0x24, 0x0010);
++	alc_write_coef_idx(codec, 0x25, reg >> 16);
++	alc_write_coef_idx(codec, 0x26, reg & 0xffff);
++	alc_write_coef_idx(codec, 0x27, 0x0000);
++	alc_write_coef_idx(codec, 0x28, val);
++	alc_write_coef_idx(codec, 0x29, 0xb023);
++
++	for (i = 0; i < 10; i++) {
++		if (!(alc_read_coef_idx(codec, 0x29) & 0x0020))
++			return;
++		usleep_range(100, 200);
 +	}
- 	if (lruvec)
--		lruvec_unlock_irq(lruvec);
-+		folio_lruvec_live_put(lruvec);
- }
- 
- /**
-@@ -3527,12 +3539,13 @@ static int __folio_inc_gen(struct lruvec *lruvec, struct folio *folio,
- /* protect pages selected by the tier PID controller */
- static int folio_inc_gen(struct lruvec *lruvec, struct folio *folio, int old_gen)
++	codec_warn(codec, "amp write timeout, reg 0x%x\n", reg);
++}
++
++static void alc245_fixup_onexplayer_amp(struct hda_codec *codec,
++					const struct hda_fixup *fix, int action)
++{
++	static const struct {
++		u32 reg;
++		u8 val;
++	} init_seq[] = {
++		{ 0xf10a, 0x09 }, { 0xf104, 0xf6 }, { 0xf105, 0x22 },
++		{ 0xf10b, 0x2c }, { 0xf10b, 0x7c }, { 0xc000, 0x01 },
++		{ 0xf20d, 0x00 }, { 0xf212, 0x3e }, { 0xc001, 0x02 },
++		{ 0xc003, 0x22 }, { 0xc004, 0x44 }, { 0xc005, 0x44 },
++		{ 0xc007, 0x64 }, { 0xc00e, 0xe7 }, { 0xf223, 0x7f },
++		{ 0xf224, 0xdb }, { 0xf225, 0xee }, { 0xf226, 0x3f },
++		{ 0xf227, 0x0f }, { 0xf21a, 0x78 }, { 0xf242, 0x3c },
++		{ 0xc120, 0x40 }, { 0xc125, 0x03 }, { 0xc321, 0x0b },
++		{ 0xc200, 0xd8 }, { 0xc201, 0x27 }, { 0xc202, 0x0f },
++		{ 0xc400, 0x0e }, { 0xc401, 0x43 }, { 0xc402, 0xe0 },
++		{ 0xc403, 0x00 }, { 0xc404, 0x4c }, { 0xc406, 0x40 },
++		{ 0xc407, 0x02 }, { 0xc408, 0x3f }, { 0xc300, 0x01 },
++		{ 0x41001888, 0x00 }, { 0xc121, 0x0b }, { 0xf102, 0x00 },
++		{ 0xf103, 0x00 }, { 0xf104, 0xf5 }, { 0xf105, 0x23 },
++		{ 0xf109, 0x00 }, { 0xf10a, 0x0b }, { 0xf10b, 0x4c },
++		{ 0xf10b, 0x5c },
++	};
++	int i;
++
++	if (action != HDA_FIXUP_ACT_INIT)
++		return;
++
++	for (i = 0; i < ARRAY_SIZE(init_seq); i++)
++		alc245_onexplayer_amp_write(codec, init_seq[i].reg, init_seq[i].val);
++}
++
+ static void alc298_fixup_samsung_amp(struct hda_codec *codec,
+ 				     const struct hda_fixup *fix, int action)
  {
-+	int type = folio_is_file_lru(folio);
- 	int new_gen;
- 	bool gen_increased;
+@@ -4553,6 +4616,7 @@ enum {
+ 	ALC256_FIXUP_ASUS_SPEAKER_COEFS,
+ 	ALC245_FIXUP_MINISFORUM_V3_MIC_NO_PRESENCE,
+ 	ALC287_FIXUP_TAS2781_I2C_DAC,
++	ALC245_FIXUP_ONEXPLAYER_AMP,
+ };
  
- 	new_gen = __folio_inc_gen(lruvec, folio, old_gen, &gen_increased);
- 	if (gen_increased)
--		lru_gen_update_size(lruvec, folio, old_gen, new_gen);
-+		lru_gen_update_size(lruvec, type, folio, old_gen, new_gen);
+ /* A special fixup for Lenovo C940 and Yoga Duet 7;
+@@ -7472,6 +7536,10 @@ static const struct hda_fixup alc269_fixups[] = {
+ 		.chained = true,
+ 		.chain_id = ALC245_FIXUP_BASS_HP_DAC
+ 	},
++	[ALC245_FIXUP_ONEXPLAYER_AMP] = {
++		.type = HDA_FIXUP_FUNC,
++		.v.func = alc245_fixup_onexplayer_amp,
++	},
+ };
  
- 	return new_gen;
- }
+ static const struct hda_quirk alc269_fixup_tbl[] = {
+@@ -8750,6 +8818,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
+ 	SND_PCI_QUIRK(0x1f4c, 0xe001, "Minisforum V3 (SE)",
+ 		      ALC245_FIXUP_MINISFORUM_V3_MIC_NO_PRESENCE),
+ 	SND_PCI_QUIRK(0x1f66, 0x0105, "Ayaneo Portable Game Player", ALC287_FIXUP_CS35L41_I2C_2),
++	SND_PCI_QUIRK(0x1f75, 0x1602, "ONEXPLAYER X1 i", ALC245_FIXUP_ONEXPLAYER_AMP),
+ 	SND_PCI_QUIRK(0x2014, 0x800a, "Positivo ARN50", ALC269_FIXUP_LIMIT_INT_MIC_BOOST),
+ 	SND_PCI_QUIRK(0x2039, 0x0001, "Inspur S14-G1", ALC295_FIXUP_CHROME_BOOK),
+ 	SND_PCI_QUIRK(0x2145, 0x0001, "Star Labs StarFighter", ALC233_FIXUP_STARLABS_STARFIGHTER),
 
+---
+base-commit: 11ef0d515100259c7979f5b4c61b6ea97c6cdc27
+change-id: 20261123-oxp-x1-amp-ff029203ee97
+
+Best regards,
 -- 
-2.56.1
+Lorenzo Argentieri <uni.lorenzo.a@gmail.com>
 
