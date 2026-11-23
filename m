@@ -1,11 +1,11 @@
 From: Igor Velkov <iav@iav.lv>
-Date: Mon, 23 Nov 2026 04:03:16 +0000
-Subject: [PATCH v2 1/8] net: lwip: move HTTPC_CONTENT_LEN_INVALID to
- http_client.h
+Date: Mon, 23 Nov 2026 04:03:17 +0000
+Subject: [PATCH v2 2/8] net: lwip: wget: accept a reply without
+ Content-Length in the size check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-b4-wget-blk-r4-v2-1-073d800a5aaa@iav.lv>
+Message-Id: <20261123-b4-wget-blk-r4-v2-2-073d800a5aaa@iav.lv>
 References: <20261123-b4-wget-blk-r4-v2-0-073d800a5aaa@iav.lv>
 In-Reply-To: <20261123-b4-wget-blk-r4-v2-0-073d800a5aaa@iav.lv>
 To: Jerome Forissier <jerome.forissier@arm.com>, 
@@ -16,69 +16,53 @@ Cc: Simon Glass <sjg@chromium.org>,
  Adriano Cordova <adrianox@gmail.com>, u-boot@lists.u-boot-project.org, 
  Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2346; i=iav@iav.lv;
- h=from:subject:message-id; bh=I0WSHlQEBZMTKu3wIKgA7J/V/0zbYXGn/rWQDSqBYc8=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDNnMu1kPnDty8CRPTmLJjP2S73bHLvfXLH61g6tvwvmEM
- zmP2phaOkpZGMS4GGTFFFkmHNK4lbHk6l9/D/MHMHNYmUCGMHBxCsBE9LYw/K/xe5oSliN6eK/+
- 79TEGfU67f+7HHL84xYwZobN2N/9ro/hn6rPJWM7V5UPZ4VXnWmO949f3cInszKt661esue1w+7
- MfAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1562; i=iav@iav.lv;
+ h=from:subject:message-id; bh=ETSxIbVEcwmENePM4/U6sbJkihZFPwM4HjLMia8Lmh0=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDNnMu9m+7Td9KpzOkWKfsl22YkrwvN3ua3kDn8i1WycvT
+ jHh/pHSUcrCIMbFICumyDLhkMatjCVX//p7mD+AmcPKBDKEgYtTACbydj/Db5Z/YUWXGa0cZFWr
+ Hwttq+3rNA4V37hw/9440UT/qytbGxkZzh6R6uqaeqmAp0TVqZLpTvgO2aydYg852n135s56fD+
+ YFwA=
 X-Developer-Key: i=iav@iav.lv; a=openpgp;
  fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
 X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HTTP client passes HTTPC_CONTENT_LEN_INVALID to the headers callback
-when a reply has no usable Content-Length, but the value is defined in
-http_client.c only, and the header documents it as -1. Move the define
-to the header, so that a callback can test for it by name.
+lwIP passes 0xffffffff as the content length when a reply has no usable
+Content-Length header. With check_buffer_size set, wget compares that
+value with the buffer size and refuses the download whenever the
+buffer is smaller than 4 GiB, before any data arrives.
+
+Skip the check when the length is unknown, as the legacy wget does.
+store_block() still stops a download that outgrows the buffer. Writing
+the download to a block device, later in this series, sets
+check_buffer_size and needs this for a reply without a length.
+
+EFI HTTP is the one client that sets check_buffer_size so far. lwIP
+wget sends its HEAD requests as GET, into a 64 KiB buffer. Without a
+length, a body above 64 KiB now fails that request when the buffer
+fills, with status 0 instead of 200. A GET without a length still asks
+for a 4 GiB buffer, as before.
 
 Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- lib/lwip/lwip/src/apps/http/http_client.c         |  2 --
- lib/lwip/lwip/src/include/lwip/apps/http_client.h | 10 +++++++++-
- 2 files changed, 9 insertions(+), 3 deletions(-)
+ net/lwip/wget.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/lib/lwip/lwip/src/apps/http/http_client.c b/lib/lwip/lwip/src/apps/http/http_client.c
-index 6ed739e13fd..06533c55c22 100644
---- a/lib/lwip/lwip/src/apps/http/http_client.c
-+++ b/lib/lwip/lwip/src/apps/http/http_client.c
-@@ -87,8 +87,6 @@
- #define HTTPC_POLL_INTERVAL     1
- #define HTTPC_POLL_TIMEOUT      30 /* 15 seconds */
+diff --git a/net/lwip/wget.c b/net/lwip/wget.c
+index 96ee600c5e1..f0ba9b3d1ab 100644
+--- a/net/lwip/wget.c
++++ b/net/lwip/wget.c
+@@ -285,7 +285,9 @@ static err_t httpc_headers_done_cb(httpc_state_t *connection, void *arg, struct
  
--#define HTTPC_CONTENT_LEN_INVALID 0xFFFFFFFF
--
- /* GET request basic */
- #define HTTPC_REQ_11 "GET %s HTTP/1.1\r\n" /* URI */\
-     "User-Agent: %s\r\n" /* User-Agent */ \
-diff --git a/lib/lwip/lwip/src/include/lwip/apps/http_client.h b/lib/lwip/lwip/src/include/lwip/apps/http_client.h
-index 50403fb4cb3..322e51cc852 100644
---- a/lib/lwip/lwip/src/include/lwip/apps/http_client.h
-+++ b/lib/lwip/lwip/src/include/lwip/apps/http_client.h
-@@ -67,6 +67,13 @@ extern "C" {
-  */
- #define HTTP_DEFAULT_PORT         LWIP_IANA_PORT_HTTP
+ 	wget_lwip_fill_info(hdr, hdr_len, content_len);
  
-+/**
-+ * @ingroup httpc
-+ * Content length that the headers callback gets when the client read none
-+ * from the reply
-+ */
-+#define HTTPC_CONTENT_LEN_INVALID 0xFFFFFFFF
-+
- /**
-  * @ingroup httpc
-  * HTTP client result codes
-@@ -117,7 +124,8 @@ typedef void (*httpc_result_fn)(void *arg, httpc_result_t httpc_result, u32_t rx
-  * @param arg argument specified when initiating the request
-  * @param hdr header pbuf(s) (may contain data also)
-  * @param hdr_len length of the headers in 'hdr'
-- * @param content_len content length as received in the headers (-1 if not received)
-+ * @param content_len content length as received in the headers
-+ *                    (HTTPC_CONTENT_LEN_INVALID if not received)
-  * @return if != ERR_OK is returned, the connection is aborted
-  */
- typedef err_t (*httpc_headers_done_fn)(httpc_state_t *connection, void *arg, struct pbuf *hdr, u16_t hdr_len, u32_t content_len);
+-	if (wget_info->check_buffer_size && (ulong)content_len > wget_info->buffer_size)
++	if (wget_info->check_buffer_size &&
++	    content_len != HTTPC_CONTENT_LEN_INVALID &&
++	    (ulong)content_len > wget_info->buffer_size)
+ 		return ERR_BUF;
+ 
+ 	ctx->content_len = content_len;
 
 -- 
 2.43.0
