@@ -1,98 +1,96 @@
-From: Mani Tofigh <mt4022@columbia.edu>
-Date: Mon, 23 Nov 2026 12:21:34 -0500
-Subject: [PATCH] mm/shmem: don't drop a folio whose swap write failed
+From: Igor Velkov <iav@iav.lv>
+Date: Mon, 23 Nov 2026 17:33:26 +0000
+Subject: [PATCH v3] drm/panfrost: Enable GPU_PM_RT for RK3399
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-shmem-swap-write-failed-v1-1-41a0115dfbf1@columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTuJHQMhXsW4KO2PjBEkHRASw
- t2puvwW721kSAqja7FRwkdN30OGOxUUOj88wBqzSc5SOScXtq5Hz7b4kZekE7j1+kLkJiBKXaI
- upaJcjwmtrr/z7f63zc0TYfruaN8PouPc8XsAAAA=
-X-Change-ID: 20261123-shmem-swap-write-failed-bced285e8526
-To: Andrew Morton <akpm@linux-foundation.org>, 
- Hugh Dickins <hughd@google.com>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- David Hildenbrand <david@kernel.org>, Kairui Song <kasong@tencent.com>
-Cc: Chris Mason <mason@kernel.org>, Chris Li <chrisl@kernel.org>, 
- Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
- Baoquan He <baoquan.he@linux.dev>, Barry Song <baohua@kernel.org>, 
- Youngjun Park <youngjun.park@lge.com>, Tal Zussman <tz2294@columbia.edu>, 
- linux-mm@kvack.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Mani Tofigh <mt4022@columbia.edu>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795454494; l=2695;
- i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=YZkS8z4nKi2wuUKuI1w38QEIWGBn1hka4U2KKfBBdd8=;
- b=d1A2Jbz2YdcvzAkeX34oY+L/eDQiZJwjs+Ba8yDMxbqQPOWBbjimDgjlrMGcsx8rIoPhofk6v
- r+eHSy/2jevAy45EgB0WGi0sTG14AtoEENRVU7lykD94wVL2tH1oNET
-X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
- pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
-X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
+Message-Id: <20261123-panfrost-rk3399-pm-rt-v3-1-04c7c58d1140@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAOV4BGsC/4XOwQ6CMAyA4VchO1uzbijWk+9hPDSwyaIC6ciiI
+ by7g4OejMe/Sb92UtFJcFEdi0mJSyGGvsthN4WqW+6uDkKTWxlt9qithoE7L30cQW7WEsHwABm
+ hdmx9jRXphlTeHcT58Fzd8yV3G+LYy2s9k3CZ/hMTAoKjsrQV7oipOQVO23tSC5fMl0BjfhEmE
+ 6X2+S1kRj58iHme34wldAD6AAAA
+To: Boris Brezillon <boris.brezillon@collabora.com>, 
+ Rob Herring <robh@kernel.org>, Steven Price <steven.price@arm.com>, 
+ =?utf-8?q?Adri=C3=A1n_Larumbe?= <adrian.larumbe@collabora.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Heiko Stuebner <heiko@sntech.de>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ Daniel Stone <daniel@fooishbar.org>, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2865; i=iav@iav.lv;
+ h=from:subject:message-id; bh=jVdmdH5Fy/vduyoI4gZY5e3ymBwUoj6ShIzYh5QXSJg=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDNksFc8rdlg+iPedscv2zTeRq886bvTwXj389ETWup/Tx
+ Yx0XCpfd5SyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJvNjCyLDxom9Vt/Cntm3z
+ p2a3/bu646580qG17p4BC/eL/+p9a1fH8M+OY+r5VRVeDdumxLzwZV7zhZVPfseqbxx3Tm3hi2R
+ 78JkTAA==
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-shmem_swapin_folio() drops a large folio that does not fit the mapping
-from the swap cache if the folio is neither dirty nor under writeback.
-The folio can belong to another file and be under swap writeback, when
-the swap entry was freed and reused before the swap cache lookup.
+The RK3399 Mali-T860 matches arm,mali-t860 and gets default_data, so
+panfrost enables aclk_gpu at probe and keeps it enabled until unbind;
+runtime suspend powers the GPU off but leaves the clock on.
 
-Swap write completion does not take the folio lock.  On a failed write,
-swap_write_end() marks the folio dirty and then ends writeback.  Since
-dirty is tested first, the folio can look clean and written:
+On ROCK Pi 4A restore from hibernation hangs in genpd_restore_noirq()
+of the GPU when the hibernated kernel had panfrost bound and the
+kernel that loads the image does not. There clk_disable_unused()
+gates aclk_gpu, while the restored image still holds an enable count
+on it, so powering the GPU domain back on does not ungate the clock.
+With the clock gated in runtime suspend, as on the Allwinner H616 and
+the Renesas RZ/G3L and RZ/G3E, restore completes.
 
-  CPU0 (swapin of file Y)             CPU1 (swapout of file X)
-  -----------------------             ------------------------
-  shmem_swapin_folio()
-    folio_test_dirty() == false
-                                      swap_write_end(), failed write
-                                        folio_mark_dirty()
-                                        folio_end_writeback()
-    folio_test_writeback() == false
-    swap_cache_del_folio()
-    /* X's data is lost */
+Match rockchip,rk3399-mali to default_pm_rt_data, which differs from
+default_data only in GPU_PM_RT.
 
-The next swapin of X reads the slot whose write failed.
-
-Test writeback first.  Both flags are in folio->flags.  If the
-writeback test sees the write ended, the dirty test then sees the dirty
-bit set before it.
-
-With the fix, a folio whose swap write failed stays in the swap cache.
-
-Fixes: fc2c19648d68 ("mm/shmem: fix swapin livelock on a mismatched large swap cache folio")
-Suggested-by: Chris Mason <mason@kernel.org>
-Cc: stable@vger.kernel.org
-Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
+Reviewed-by: Steven Price <steven.price@arm.com>
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-Managed to hit this by forcing the order in a VM, and it's gone with the fix.
----
- mm/shmem.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+Tested on ROCK Pi 4A, drm-misc-next c408466a4dfa with the rkvdec fix [1]
+applied: hibernation restores 9 of 9 with this patch (3 with an HDMI
+mode held, 3 right after glmark2-es2-drm, 3 idle), and the GPU renders
+after restore. With the GPU node left with arm,mali-t860 only, restore
+hangs 2 of 2, in genpd_restore_noirq() of the GPU.
+[1] fixes the same kind of hang in rkvdec, which otherwise hits first;
+this patch applies and builds without it.
 
-diff --git a/mm/shmem.c b/mm/shmem.c
-index e351cd425d69..867f43315af1 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -2664,10 +2664,12 @@ static int shmem_swapin_folio(struct inode *inode, pgoff_t index,
- 	 * A large folio that does not fit the mapping, e.g. because its swap
- 	 * entries were freed and reused, would be found again on every retry.
- 	 * Drop it from the swap cache so the retry can swap in a fitting one.
-+	 * A failed swap write sets dirty and then ends writeback without the
-+	 * folio lock, so test writeback before dirty.
- 	 */
- 	if (error == -EEXIST && folio && folio_test_large(folio) &&
--	    !folio_test_anon(folio) && !folio_test_dirty(folio) &&
--	    !folio_test_writeback(folio))
-+	    !folio_test_anon(folio) && !folio_test_writeback(folio) &&
-+	    !folio_test_dirty(folio))
- 		swap_cache_del_folio(folio);
- unlock:
- 	if (folio)
+[1] https://lore.kernel.org/r/20261030-rkvdec-runtime-pm-clocks-v2-1-8ff510a231de@iav.lv
+
+Changes in v3:
+- Retitle as Steven suggested, say what GPU_PM_RT changes
+- Add Steven's Reviewed-by, given on v1 (same code)
+- Link to v2: https://lore.kernel.org/r/20261122-panfrost-rk3399-pm-rt-v2-1-40f1791aa1a8@iav.lv
+
+Changes in v2:
+- Name the SoCs that already use default_pm_rt_data
+- Say why restore hangs
+- Rebase onto drm-misc-next
+- Link to v1: https://lore.kernel.org/r/20261030-panfrost-rk3399-pm-rt-v1-1-e94437159a9d@iav.lv
+---
+ drivers/gpu/drm/panfrost/panfrost_drv.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/gpu/drm/panfrost/panfrost_drv.c b/drivers/gpu/drm/panfrost/panfrost_drv.c
+index eeda113037fe..91acfa13ef42 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_drv.c
++++ b/drivers/gpu/drm/panfrost/panfrost_drv.c
+@@ -983,6 +983,7 @@ static const struct of_device_id dt_match[] = {
+ 	  .data = &amlogic_data, },
+ 	{ .compatible = "renesas,r9a08g046-mali", .data = &default_pm_rt_data },
+ 	{ .compatible = "renesas,r9a09g047-mali", .data = &default_pm_rt_data },
++	{ .compatible = "rockchip,rk3399-mali", .data = &default_pm_rt_data },
+ 	{ .compatible = "arm,mali-t604", .data = &default_data, },
+ 	{ .compatible = "arm,mali-t624", .data = &default_data, },
+ 	{ .compatible = "arm,mali-t628", .data = &default_data, },
 
 ---
-base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
-change-id: 20261123-shmem-swap-write-failed-bced285e8526
+base-commit: c408466a4dfaee4b12587e926c5b85e68c8b3c40
+change-id: 20261030-panfrost-rk3399-pm-rt-cea3fc1790d9
 
 Best regards,
---  
-Mani Tofigh <mt4022@columbia.edu>
+-- 
+Igor Velkov <iav@iav.lv>
 
