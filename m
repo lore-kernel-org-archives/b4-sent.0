@@ -1,11 +1,10 @@
 From: Binoy Ravindran <binoy@vt.edu>
-Date: Tue, 24 Nov 2026 10:34:27 -0500
-Subject: [PATCH v2 1/3] rcu-tasks: Add helpers to visit tasks on the exit
- lists
+Date: Tue, 24 Nov 2026 10:34:28 -0500
+Subject: [PATCH v2 2/3] livepatch: Include exiting tasks in the transition
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-klp-series-v3-v2-1-50d20829a337@vt.edu>
+Message-Id: <20261124-klp-series-v3-v2-2-50d20829a337@vt.edu>
 References: <20261124-klp-series-v3-v2-0-50d20829a337@vt.edu>
 In-Reply-To: <20261124-klp-series-v3-v2-0-50d20829a337@vt.edu>
 To: "Paul E. McKenney" <paulmck@kernel.org>, 
@@ -24,176 +23,258 @@ Cc: rcu@vger.kernel.org, linux-kernel@vger.kernel.org,
  live-patching@vger.kernel.org, Yafang Shao <laoar.shao@gmail.com>, 
  Jaidev Shastri <jaidevshastri@vt.edu>, Binoy Ravindran <binoy@vt.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795534504; l=6595;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795534504; l=9609;
  i=binoy@vt.edu; s=20261123; h=from:subject:message-id;
- bh=yjPjOhb/Atfnqas8UHt57mA11woD8FJQKXxBGP8uW1s=;
- b=7WcIg3Wwxbq5Yevy5gZVbhcOeh+DZ9PovUAb89nhWdankZEKYOPYKAwetTscRwZ1fkd6W/2+v
- 1rSTlm8R9SjCFws/5anKENY5Hxjnom0XisyZZMAcOAySXSSgnE0t2cz
+ bh=XnMqwNzaNU1AF5/MG6N/6Y8Nr0WxhwQvs8LAFW65XSc=;
+ b=EV54nj0CaDPFbaxOUvbzfOSow1cqAkE8rveUEIICF4djSKfgSx1raACBV+Rr1f+lYqC7CiPvd
+ tLBDz+2MJ03BpkbcA3k4OCGJUgszq0zHHuFuJ8nPOdr4LBLu0JMyoDC
 X-Developer-Key: i=binoy@vt.edu; a=ed25519;
  pk=4cNdKPHP0InmhK/9bb7Tm2ZMUXUvLGfw1pmVt5b98fA=
 X-Endpoint-Received: by B4 Relay for binoy@vt.edu/20261123 with auth_id=1622
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A task joins its CPU's RCU-tasks exit list in exit_tasks_rcu_start(),
-before exit_notify() unhashes it from the task list, and leaves it in
-exit_tasks_rcu_finish(), after do_exit() has disabled preemption for the
-final switch. Once exit_notify() has unhashed it, the task is no longer
-found by for_each_process_thread(), but it still runs do_exit() and may
-sleep there. Code that must reach every task that can still be
-descheduled, such as the livepatch transition, has no way to find it.
+The transition walks tasks with for_each_process_thread(). A
+self-reaping task is unhashed in exit_notify() but keeps running the rest
+of do_exit(), so the walk never sees it. The transition can then
+complete, and with atomic replace the previous patch module can be
+freed, while that task is still executing, or about to return into, the
+previous module's copy of a patched function. This is the race discussed
+in the thread linked below.
 
-Add two helpers. rcu_tasks_visit_exiting() calls a function on each
-task on the exit lists under the list locks, without allocating.
-rcu_tasks_snapshot_exiting() copies the tasks into a caller-supplied
-array with a reference held on each, for callers that must sleep or take
-other locks while examining them. Without CONFIG_TASKS_RCU there are no
-exit lists, and the helpers do nothing.
+An exiting task is on an RCU-tasks exit list from exit_tasks_rcu_start(),
+before exit_notify(), until exit_tasks_rcu_finish(). Make every step of
+a transition also visit the tasks on these lists, using the helpers from
+the previous patch. klp_init_transition(), klp_start_transition(),
+klp_complete_transition(), klp_reverse_transition() and
+klp_force_transition() only set fields and flags. They walk the exit
+lists in place, under tasklist_lock, and skip tasks that are still
+hashed, so that each task is visited exactly once.
+klp_try_complete_transition() may inspect a task's stack, so it takes a
+snapshot with a reference on each task. If the snapshot cannot be
+allocated, or more tasks start exiting than it has room for, the
+transition is treated as incomplete and retried. An exiting task must
+therefore switch, like any other task, before the transition can
+complete.
 
-rcu_tasks_postscan() keeps its place in an exit list with a bare
-list_head while it drops the lock to reschedule, relying on nobody else
-traversing the list. Move that cursor into struct rcu_tasks_percpu,
-next to the list it marks, so that the new helpers can recognize and
-skip it. Only the grace-period kthread runs postscan, one CPU's list at
-a time, so one cursor per CPU suffices.
+After exit_tasks_rcu_finish() the task may be on neither list, but it
+can still run patched code until its final switch. do_exit() disables
+preemption before exit_tasks_rcu_finish(), so from then on the task
+cannot sleep, be preempted or migrate, and the next context switch on
+its CPU is its last. klp_synchronize_transition() returns only after
+every online CPU has switched context, so it waits out every task in this
+stretch. Call it in two places:
 
+- In klp_init_transition(), after patch_state has been set on every
+  task and before func->transition is set. An exiting task that the
+  walks did not visit had left the exit lists before or during them,
+  so it is gone before any function enters the transition.
+
+- In klp_try_complete_transition(), before klp_complete_transition().
+  A task that left the exit lists unswitched after the snapshot is gone
+  before func->transition is cleared and before the previous patch can
+  be freed.
+
+Covering the initialization and completion steps matters as well:
+otherwise an exiting task keeps a stale patch_state from an earlier
+transition, which can equal the new target. Likewise, the reverse path
+clears TIF_PATCH_PENDING on exiting tasks and the force path updates
+their patch state, so neither leaves an exiting task behind.
+klp_send_signals() is not extended: a task that has passed exit_notify()
+never returns to user space, so a fake signal cannot help it switch.
+
+The exit lists exist only with CONFIG_TASKS_RCU, which every kernel
+that can enable LIVEPATCH builds today. A following patch makes
+LIVEPATCH select it.
+
+Tested on v7.4-rc2, x86-64, under QEMU/KVM. Two klp-build livepatches
+that each replace do_exit() replace each other ten times per run while
+self-reaping tasks exit continuously, with a debug-only msleep() after
+exit_notify() to widen the window. Without this series, 9 of 12 runs
+crashed executing freed module memory after the previous patch was
+removed. With it, all 12 runs completed their 120 replace cycles
+without a fault. Without the delay, both kernels completed 60 cycles
+without a fault.
+
+Fixes: d83a7cb375ee ("livepatch: change to a per-task consistency model")
+Link: https://lore.kernel.org/all/20250127063526.76687-1-laoar.shao@gmail.com/
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Binoy Ravindran <binoy@vt.edu>
 ---
- include/linux/rcupdate.h |  9 +++++++
- kernel/rcu/tasks.h       | 69 +++++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 72 insertions(+), 6 deletions(-)
+ kernel/livepatch/transition.c | 98 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 98 insertions(+)
 
-diff --git a/include/linux/rcupdate.h b/include/linux/rcupdate.h
-index 3f74ae6d6e1f..55b8b4a0fa94 100644
---- a/include/linux/rcupdate.h
-+++ b/include/linux/rcupdate.h
-@@ -214,6 +214,15 @@ static inline void exit_tasks_rcu_start(void) { }
- static inline void exit_tasks_rcu_finish(void) { }
- #endif /* #else #ifdef CONFIG_TASKS_RCU_GENERIC */
- 
-+typedef void (*rcu_tasks_exiting_fn_t)(struct task_struct *t, void *arg);
-+#ifdef CONFIG_TASKS_RCU
-+void rcu_tasks_visit_exiting(rcu_tasks_exiting_fn_t fn, void *arg);
-+int rcu_tasks_snapshot_exiting(struct task_struct **buf, int max);
-+#else
-+static inline void rcu_tasks_visit_exiting(rcu_tasks_exiting_fn_t fn, void *arg) { }
-+static inline int rcu_tasks_snapshot_exiting(struct task_struct **buf, int max) { return 0; }
-+#endif
-+
- /**
-  * cond_resched_tasks_rcu_qs - Report potential quiescent states to RCU
-  *
-diff --git a/kernel/rcu/tasks.h b/kernel/rcu/tasks.h
-index fcac7361ec51..b5fa5a3a8503 100644
---- a/kernel/rcu/tasks.h
-+++ b/kernel/rcu/tasks.h
-@@ -33,6 +33,8 @@ typedef void (*postgp_func_t)(struct rcu_tasks *rtp);
-  * @barrier_q_head: RCU callback for barrier operation.
-  * @rtp_blkd_tasks: List of tasks blocked as readers.
-  * @rtp_exit_list: List of tasks in the latter portion of do_exit().
-+ * @rtp_exit_cursor: Placeholder that rcu_tasks_postscan() parks on @rtp_exit_list
-+ *	while it drops the lock, so that exit-list walkers can skip it.
-  * @cpu: CPU number corresponding to this entry.
-  * @index: Index of this CPU in rtpcp_array of the rcu_tasks structure.
-  * @rtpp: Pointer to the rcu_tasks structure.
-@@ -49,6 +51,7 @@ struct rcu_tasks_percpu {
- 	struct rcu_head barrier_q_head;
- 	struct list_head rtp_blkd_tasks;
- 	struct list_head rtp_exit_list;
-+	struct list_head rtp_exit_cursor;
- 	int cpu;
- 	int index;
- 	struct rcu_tasks *rtpp;
-@@ -1068,7 +1071,6 @@ static void rcu_tasks_postscan(struct list_head *hop)
- 		struct rcu_tasks_percpu *rtpcp = per_cpu_ptr(rcu_tasks.rtpcpu, cpu);
- 		struct task_struct *t;
- 		struct task_struct *t1;
--		struct list_head tmp;
- 
- 		raw_spin_lock_irq_rcu_node(rtpcp);
- 		list_for_each_entry_safe(t, t1, &rtpcp->rtp_exit_list, rcu_tasks_exit_list) {
-@@ -1081,14 +1083,15 @@ static void rcu_tasks_postscan(struct list_head *hop)
- 				continue;
- 
- 			// Keep our place in the list while pausing.
--			// Nothing else traverses this list, so adding a
--			// bare list_head is OK.
--			list_add(&tmp, &t->rcu_tasks_exit_list);
-+			// The cursor lives in rtpcp so that the exit-list
-+			// visitors can recognize and skip it.
-+			list_add(&rtpcp->rtp_exit_cursor, &t->rcu_tasks_exit_list);
- 			raw_spin_unlock_irq_rcu_node(rtpcp);
- 			cond_resched(); // For CONFIG_PREEMPT=n kernels
- 			raw_spin_lock_irq_rcu_node(rtpcp);
--			t1 = list_entry(tmp.next, struct task_struct, rcu_tasks_exit_list);
--			list_del(&tmp);
-+			t1 = list_entry(rtpcp->rtp_exit_cursor.next, struct task_struct,
-+					rcu_tasks_exit_list);
-+			list_del(&rtpcp->rtp_exit_cursor);
- 			j = jiffies + 1;
- 		}
- 		raw_spin_unlock_irq_rcu_node(rtpcp);
-@@ -1332,6 +1335,60 @@ void exit_tasks_rcu_finish(void)
- 	raw_spin_unlock_irqrestore_rcu_node(rtpcp, flags);
+diff --git a/kernel/livepatch/transition.c b/kernel/livepatch/transition.c
+index 2351a19ac2a9..1889aea5b6ff 100644
+--- a/kernel/livepatch/transition.c
++++ b/kernel/livepatch/transition.c
+@@ -10,6 +10,7 @@
+ #include <linux/cpu.h>
+ #include <linux/stacktrace.h>
+ #include <linux/static_call.h>
++#include <linux/slab.h>
+ #include "core.h"
+ #include "patch.h"
+ #include "transition.h"
+@@ -74,6 +75,84 @@ static void klp_synchronize_transition(void)
+ 	schedule_on_each_cpu(klp_sync);
  }
  
-+/*
-+ * Call fn on every task on the exit lists, in place, with the per-CPU list
-+ * lock held and interrupts disabled. fn must not sleep. Does not allocate.
-+ * These are the tasks that have passed exit_tasks_rcu_start() but not
-+ * exit_tasks_rcu_finish(). Once exit_notify() has run they are no longer on
-+ * the task list, but they still run do_exit() and may sleep there.
-+ */
-+void rcu_tasks_visit_exiting(rcu_tasks_exiting_fn_t fn, void *arg)
-+{
-+	int cpu;
-+	unsigned long flags;
-+	struct task_struct *t;
-+
-+	for_each_possible_cpu(cpu) {
-+		struct rcu_tasks_percpu *rtpcp = per_cpu_ptr(rcu_tasks.rtpcpu, cpu);
-+
-+		raw_spin_lock_irqsave_rcu_node(rtpcp, flags);
-+		list_for_each_entry(t, &rtpcp->rtp_exit_list, rcu_tasks_exit_list) {
-+			if (&t->rcu_tasks_exit_list == &rtpcp->rtp_exit_cursor)
-+				continue;
-+			fn(t, arg);
-+		}
-+		raw_spin_unlock_irqrestore_rcu_node(rtpcp, flags);
-+	}
-+}
++static bool klp_try_switch_task(struct task_struct *task);
 +
 +/*
-+ * Copy up to max tasks on the exit lists into buf, taking a reference on
-+ * each. Returns the number of tasks on the lists, which may exceed max.
++ * Tasks past exit_notify() are off the task list but still run do_exit() and its
++ * callees, possibly from this patch's or a replaced patch's code, so the
++ * transition must cover them too. The try step inspects stacks, which needs a
++ * reference on each task, so it works on a snapshot of the exit lists.
++ *
++ * The other steps run with tasklist_lock held and skip tasks that are still
++ * hashed, so every task is visited exactly once: an exiting task can be on
++ * both lists until release_task() unhashes it.
 + */
-+int rcu_tasks_snapshot_exiting(struct task_struct **buf, int max)
++static bool klp_visit_exiting_tasks(rcu_tasks_exiting_fn_t fn, void *arg)
 +{
-+	int cpu, n = 0;
-+	unsigned long flags;
-+	struct task_struct *t;
++	struct task_struct **xt;
++	int i, n, max;
 +
-+	for_each_possible_cpu(cpu) {
-+		struct rcu_tasks_percpu *rtpcp = per_cpu_ptr(rcu_tasks.rtpcpu, cpu);
-+
-+		raw_spin_lock_irqsave_rcu_node(rtpcp, flags);
-+		list_for_each_entry(t, &rtpcp->rtp_exit_list, rcu_tasks_exit_list) {
-+			if (&t->rcu_tasks_exit_list == &rtpcp->rtp_exit_cursor)
-+				continue;
-+			if (n < max) {
-+				get_task_struct(t);
-+				buf[n] = t;
-+			}
-+			n++;
-+		}
-+		raw_spin_unlock_irqrestore_rcu_node(rtpcp, flags);
++	/*
++	 * Size the array from a count taken now, plus slack for tasks that
++	 * start exiting before the copy is made. If even more arrive, report
++	 * an incomplete walk: klp_try_complete_transition() runs again later.
++	 */
++	max = rcu_tasks_snapshot_exiting(NULL, 0) + 64;
++	xt = kvmalloc_array(max, sizeof(*xt), GFP_KERNEL);
++	if (!xt)
++		return false;
++	n = rcu_tasks_snapshot_exiting(xt, max);
++	for (i = 0; i < min(n, max); i++) {
++		fn(xt[i], arg);
++		put_task_struct(xt[i]);
 +	}
-+	return n;
++	kvfree(xt);
++	return n <= max;
 +}
 +
- #else /* #ifdef CONFIG_TASKS_RCU */
- void exit_tasks_rcu_start(void) { }
- void exit_tasks_rcu_finish(void) { }
++static void klp_exiting_init(struct task_struct *t, void *arg)
++{
++	if (pid_alive(t))
++		return;	/* still on the task list: already visited */
++	t->patch_state = *(int *)arg;
++}
++
++static void klp_exiting_start(struct task_struct *t, void *arg)
++{
++	if (pid_alive(t))
++		return;	/* still on the task list: already visited */
++	if (t->patch_state != klp_target_state)
++		set_tsk_thread_flag(t, TIF_PATCH_PENDING);
++}
++
++static void klp_exiting_try(struct task_struct *t, void *arg)
++{
++	if (!klp_try_switch_task(t))
++		*(bool *)arg = false;
++}
++
++static void klp_exiting_complete(struct task_struct *t, void *arg)
++{
++	if (pid_alive(t))
++		return;	/* still on the task list: already visited */
++	clear_tsk_thread_flag(t, TIF_PATCH_PENDING);
++	t->patch_state = KLP_TRANSITION_IDLE;
++}
++
++static void klp_exiting_clear_pending(struct task_struct *t, void *arg)
++{
++	if (pid_alive(t))
++		return;	/* still on the task list: already visited */
++	clear_tsk_thread_flag(t, TIF_PATCH_PENDING);
++}
++
++static void klp_exiting_force(struct task_struct *t, void *arg)
++{
++	if (pid_alive(t))
++		return;	/* still on the task list: already visited */
++	klp_update_patch_state(t);
++}
++
+ /*
+  * The transition to the target patch state is complete.  Clean up the data
+  * structures.
+@@ -123,6 +202,7 @@ static void klp_complete_transition(void)
+ 		WARN_ON_ONCE(test_tsk_thread_flag(task, TIF_PATCH_PENDING));
+ 		task->patch_state = KLP_TRANSITION_IDLE;
+ 	}
++	rcu_tasks_visit_exiting(klp_exiting_complete, NULL);
+ 	read_unlock(&tasklist_lock);
+ 
+ 	for_each_possible_cpu(cpu) {
+@@ -450,6 +530,8 @@ void klp_try_complete_transition(void)
+ 		if (!klp_try_switch_task(task))
+ 			complete = false;
+ 	read_unlock(&tasklist_lock);
++	if (!klp_visit_exiting_tasks(klp_exiting_try, &complete))
++		complete = false;
+ 
+ 	/*
+ 	 * Ditto for the idle "swapper" tasks.
+@@ -489,6 +571,11 @@ void klp_try_complete_transition(void)
+ 	/* Done!  Now cleanup the data structures. */
+ 	klp_resched_disable();
+ 	patch = klp_transition_patch;
++	/*
++	 * A task can leave the exit lists unswitched after the snapshot. Wait until
++	 * every such task has made its final switch before completing.
++	 */
++	klp_synchronize_transition();
+ 	klp_complete_transition();
+ 
+ 	/*
+@@ -526,6 +613,7 @@ void klp_start_transition(void)
+ 	for_each_process_thread(g, task)
+ 		if (task->patch_state != klp_target_state)
+ 			set_tsk_thread_flag(task, TIF_PATCH_PENDING);
++	rcu_tasks_visit_exiting(klp_exiting_start, NULL);
+ 	read_unlock(&tasklist_lock);
+ 
+ 	/*
+@@ -579,6 +667,7 @@ void klp_init_transition(struct klp_patch *patch, int state)
+ 		WARN_ON_ONCE(task->patch_state != KLP_TRANSITION_IDLE);
+ 		task->patch_state = initial_state;
+ 	}
++	rcu_tasks_visit_exiting(klp_exiting_init, &initial_state);
+ 	read_unlock(&tasklist_lock);
+ 
+ 	/*
+@@ -590,6 +679,13 @@ void klp_init_transition(struct klp_patch *patch, int state)
+ 		task->patch_state = initial_state;
+ 	}
+ 
++	/*
++	 * A task that has passed exit_tasks_rcu_finish() is on neither list but
++	 * may still call patched code until its final switch. It runs with
++	 * preemption disabled, so this returns only after every such task is gone.
++	 */
++	klp_synchronize_transition();
++
+ 	/*
+ 	 * Enforce the order of the task->patch_state initializations and the
+ 	 * func->transition updates to ensure that klp_ftrace_handler() doesn't
+@@ -642,6 +738,7 @@ void klp_reverse_transition(void)
+ 	read_lock(&tasklist_lock);
+ 	for_each_process_thread(g, task)
+ 		clear_tsk_thread_flag(task, TIF_PATCH_PENDING);
++	rcu_tasks_visit_exiting(klp_exiting_clear_pending, NULL);
+ 	read_unlock(&tasklist_lock);
+ 
+ 	for_each_possible_cpu(cpu)
+@@ -714,6 +811,7 @@ void klp_force_transition(void)
+ 	read_lock(&tasklist_lock);
+ 	for_each_process_thread(g, task)
+ 		klp_update_patch_state(task);
++	rcu_tasks_visit_exiting(klp_exiting_force, NULL);
+ 	read_unlock(&tasklist_lock);
+ 
+ 	for_each_possible_cpu(cpu)
 
 -- 
 2.39.5
