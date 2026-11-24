@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Tue, 24 Nov 2026 14:09:57 -0800
-Subject: [PATCH net-next v12 09/15] net: ethernet: oa_tc6: Support for
- vendor specific MMS
+Date: Tue, 24 Nov 2026 14:09:58 -0800
+Subject: [PATCH net-next v12 10/15] net: ethernet: oa_tc6: APIs to
+ customize CONFIG0 settings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-s2500-mac-phy-support-v12-9-3575855d99f9@onsemi.com>
+Message-Id: <20261124-s2500-mac-phy-support-v12-10-3575855d99f9@onsemi.com>
 References: <20261124-s2500-mac-phy-support-v12-0-3575855d99f9@onsemi.com>
 In-Reply-To: <20261124-s2500-mac-phy-support-v12-0-3575855d99f9@onsemi.com>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -27,196 +27,222 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Ciprian Regus <ciprian.regus@analog.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795558193; l=6195;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795558193; l=7885;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=1MjkVLzuAaXBWXeuv00U8/V6OxD8o95U9vnwuGPge64=;
- b=FcqtpJ+3NRkXbSM9r/N2qDysZnvI1/tbj89cQiQvYctPz8CGCZDj3s6BHH+Hl79/RQ1x3weiD
- 7H406ZSmjnrC29rwzFRx/xHc2/DoGa4cvmf2WkVAgx0jJqXYEd5FqaR
+ bh=Tn4qWJ+KFSw9aGl6Q6VzMJbvXt57m8JvDM/gl/PybZM=;
+ b=p7j4SSbr4p/WbELw+XYJSjjMFLeABk2s9XCiDfhFcNKoYqAwNPwXE/okv24Q9uKPEARIlmr4P
+ bEwG/ORqH3yC94obRhUP1MvaBfZk8m8PzWvxjTnVTgcCBjkOPvpxKdq
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add vend1_mms to struct oa_tc6_quirks to let a vendor driver
-map MDIO_MMD_VEND1 to one of the vendor specific MMS values,
-10 to 15, in table 6 of the OPEN Alliance 10BASE-T1x MAC-PHY
-Serial Interface specification.
+Add oa_tc6_tx_credit_threshold_set() to let a vendor driver set the
+minimum transmit credits the MAC-PHY needs before it asserts the
+interrupt.
 
-The mapping must be known when oa_tc6_init() scans for the PHY,
-which can access MMD VEND1.
+Add the OA_TC6_CONFIG_RX_CUT_THROUGH quirk flag. When set,
+oa_tc6_init() enables receive cut-through before the SYNC bit is set.
+This can't be done after oa_tc6_init(), which sets the SYNC bit.
+The flag is ignored if the MAC-PHY does not report cut-through
+capability.
 
-A zero vend1_mms keeps the current behavior. A value outside 10 to 15
-makes oa_tc6_init() fail with -EINVAL.
+Existing drivers are not affected: the default credit threshold is
+unchanged and cut-through stays disabled unless the quirk is set.
 
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
-
 changes in v12
-  - Dropped Reviewed-by from Andrew Lunn as the code has changed.
-  - MMD VEND1 mapping is now part of the quirks, not an API.
-changes in v11
-  - Accidentally patch got removed
-changes in v10
-  - No change
-changes in v9
-  - No change
-changes in v8
-  - No change
-changes in v7
-  - No change
-changes in v6
-  - No change
-changes in v5
-  - no change
-changes in v4
-  - no change
-changes in v3
-  - no change
-changes in v2
-  - Moved the handling of vendor specific MMS mapping to separate patch
-  - new patch
+  - Moved the TX credit threshold API and the RX cut-through
+    quirk out of the S2500 driver patch.
+  - New patch in v12.
 ---
- Documentation/networking/oa-tc6-framework.rst | 12 +++++++++++-
- drivers/net/ethernet/oa_tc6/oa_tc6_main.c     | 22 ++++++++++++++++------
- drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h  |  6 +++++-
- include/linux/oa_tc6.h                        |  1 +
- 4 files changed, 33 insertions(+), 8 deletions(-)
+ Documentation/networking/oa-tc6-framework.rst | 20 +++++++++
+ drivers/net/ethernet/oa_tc6/oa_tc6_main.c     | 62 +++++++++++++++++++++++++++
+ drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h  |  1 +
+ include/linux/oa_tc6.h                        |  7 +++
+ 4 files changed, 90 insertions(+)
 
 diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
-index 390529419133..558dc25038d3 100644
+index 558dc25038d3..2ce95ae58923 100644
 --- a/Documentation/networking/oa-tc6-framework.rst
 +++ b/Documentation/networking/oa-tc6-framework.rst
-@@ -469,7 +469,17 @@ The include/linux/oa_tc6.h defines the following functions:
-                                            struct net_device *netdev, \
-                                            struct oa_tc6_quirks *quirks)
+@@ -476,6 +476,9 @@ The quirk_flags field supports:
  
--Initialize OA TC6 lib.
-+Initialize the OA TC6 lib. Pass ``NULL`` for quirks if no device-specific
-+settings are needed.
-+
-+The quirk_flags field supports:
-+
-+- OA_TC6_BROKEN_PHY: Leave MDIO bus registration and PHY connection to the
-+  vendor driver instead of the framework.
-+
-+A zero value for vend1_mms means no Clause 45 ``MDIO_MMD_VEND1``
-+mapping is requested; it does not select MMS 0. For any nonzero value
-+outside the range 10 through 15, ``oa_tc6_init()`` fails with ``-EINVAL``.
+ - OA_TC6_BROKEN_PHY: Leave MDIO bus registration and PHY connection to the
+   vendor driver instead of the framework.
++- OA_TC6_CONFIG_RX_CUT_THROUGH: Enable receive cut-through in the CONFIG0
++  register. It is ignored if the MAC-PHY does not report cut-through
++  capability.
  
- .. c:function:: void oa_tc6_exit(struct oa_tc6 *tc6)
+ A zero value for vend1_mms means no Clause 45 ``MDIO_MMD_VEND1``
+ mapping is requested; it does not select MMS 0. For any nonzero value
+@@ -519,6 +522,23 @@ Zero align receive frame feature can be enabled to align all receive ethernet
+ frames data to start at the beginning of any receive data chunk payload with a
+ start word offset (SWO) of zero.
+ 
++.. c:function:: int oa_tc6_tx_credit_threshold_set(struct oa_tc6 *tc6, \
++                                                   u8 thresh)
++
++Sets the minimum number of free transmit credits that must be available
++before the MAC-PHY asserts the interrupt. The default is one credit
++according to OPEN Alliance 10BASE-T1x MAC-PHY Serial Interface specification.
++
++The thresh argument is the encoded TXCTHRESH field value of the CONFIG0
++register, not the credit count:
++
++- 0: one or more credits (default)
++- 1: four or more credits
++- 2: eight or more credits (OA_TC6_CONFIG0_TXCTHRESH_8)
++- 3: sixteen or more credits
++
++A value above 3 does not fit the field and fails with -EINVAL.
++
+ .. c:function:: int oa_tc6_ptp_register(struct oa_tc6 *tc6, \
+                                         struct ptp_clock_info *info)
  
 diff --git a/drivers/net/ethernet/oa_tc6/oa_tc6_main.c b/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
-index c69ed576b41d..228cc2a3dc2d 100644
+index 228cc2a3dc2d..c078f22c32d6 100644
 --- a/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
 +++ b/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
-@@ -619,7 +619,7 @@ static int oa_tc6_mdiobus_write(struct mii_bus *bus, int addr, int regnum,
- 				     val);
+@@ -289,9 +289,29 @@ static int oa_tc6_update_standard_capability(struct oa_tc6 *tc6)
+ 		return ret;
+ 	if (regval & OA_TC6_STDCAP_FTSC_CAPABILITY) /* Timestamp */
+ 		tc6->ftsc_capable = true;
++	if (regval & OA_TC6_STDCAP_CTC_CAPABILITY) /* Cut-through */
++		tc6->ctc_capable = true;
+ 	return 0;
  }
  
--static int oa_tc6_get_phy_c45_mms(int devnum)
-+static int oa_tc6_get_phy_c45_mms(struct oa_tc6 *tc6, int devnum)
- {
- 	switch (devnum) {
- 	case MDIO_MMD_PCS:
-@@ -632,6 +632,8 @@ static int oa_tc6_get_phy_c45_mms(int devnum)
- 		return OA_TC6_PHY_C45_AUTO_NEG_MMS5;
- 	case MDIO_MMD_POWER_UNIT:
- 		return OA_TC6_PHY_C45_POWER_UNIT_MMS6;
-+	case MDIO_MMD_VEND1:
-+		return tc6->quirks.vend1_mms;
- 	default:
- 		return -EOPNOTSUPP;
- 	}
-@@ -645,7 +647,7 @@ int oa_tc6_mdiobus_read_c45(struct mii_bus *bus, int addr, int devnum,
- 	int mms;
- 	int ret;
- 
--	mms = oa_tc6_get_phy_c45_mms(devnum);
-+	mms = oa_tc6_get_phy_c45_mms(tc6, devnum);
- 	if (mms < 0)
- 		return mms;
- 
-@@ -663,7 +665,7 @@ int oa_tc6_mdiobus_write_c45(struct mii_bus *bus, int addr, int devnum,
- 	struct oa_tc6 *tc6 = bus->priv;
- 	int mms;
- 
--	mms = oa_tc6_get_phy_c45_mms(devnum);
-+	mms = oa_tc6_get_phy_c45_mms(tc6, devnum);
- 	if (mms < 0)
- 		return mms;
- 
-@@ -722,7 +724,7 @@ static int oa_tc6_phy_init(struct oa_tc6 *tc6)
- {
- 	int ret;
- 
--	if (tc6->quirk_flags & OA_TC6_BROKEN_PHY)
-+	if (tc6->quirks.quirk_flags & OA_TC6_BROKEN_PHY)
- 		return 0;
- 
- 	ret = oa_tc6_check_phy_reg_direct_access_capability(tc6);
-@@ -761,7 +763,7 @@ static int oa_tc6_phy_init(struct oa_tc6 *tc6)
- 
- static void oa_tc6_phy_exit(struct oa_tc6 *tc6)
- {
--	if (tc6->quirk_flags & OA_TC6_BROKEN_PHY)
-+	if (tc6->quirks.quirk_flags & OA_TC6_BROKEN_PHY)
- 		return;
- 
- 	phy_disconnect(tc6->phydev);
-@@ -1700,7 +1702,15 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev,
- 	init_completion(&tc6->ts_cfg_done);
- 
- 	if (quirks)
--		tc6->quirk_flags = quirks->quirk_flags;
-+		tc6->quirks = *quirks;
++static int oa_tc6_rx_cut_through_enable(struct oa_tc6 *tc6)
++{
++	u32 regval;
++	int ret;
 +
-+	if (!tc6->quirks.vend1_mms)
-+		tc6->quirks.vend1_mms = -EOPNOTSUPP;
-+	else if (tc6->quirks.vend1_mms < OA_TC6_VENDOR_MMS_MIN ||
-+		 tc6->quirks.vend1_mms > OA_TC6_VENDOR_MMS_MAX)
-+		return ERR_PTR(dev_err_probe(&spi->dev, -EINVAL,
-+					     "Invalid VEND1 MMS: %d\n",
-+					     tc6->quirks.vend1_mms));
++	if (!tc6->ctc_capable)
++		return 0;
++
++	ret = oa_tc6_read_register(tc6, OA_TC6_REG_CONFIG0, &regval);
++	if (ret)
++		return ret;
++
++	/* Set Receive Cut-Through Enable */
++	regval |= OA_TC6_CONFIG0_RXCTE;
++
++	return oa_tc6_write_register(tc6, OA_TC6_REG_CONFIG0, regval);
++}
++
+ static __be32 oa_tc6_prepare_ctrl_header(u32 addr, u8 length,
+ 					 enum oa_tc6_register_op reg_op)
+ {
+@@ -1618,6 +1638,36 @@ int oa_tc6_zero_align_receive_frame_enable(struct oa_tc6 *tc6)
+ }
+ EXPORT_SYMBOL_GPL(oa_tc6_zero_align_receive_frame_enable);
  
- 	/* Set the SPI controller to pump at realtime priority */
- 	tc6->spi->rt = true;
++/**
++ * oa_tc6_tx_credit_threshold_set - function to set the minimum number of free
++ * transmit credits needed before the MAC-PHY asserts the interrupt.
++ * @tc6: oa_tc6 struct.
++ * @thresh: transmit credit threshold field value, e.g.
++ *	OA_TC6_CONFIG0_TXCTHRESH_8.
++ *
++ * Return: 0 on success, -EINVAL if @thresh does not fit the TXCTHRESH
++ * field, otherwise a negative error code from the register access.
++ */
++int oa_tc6_tx_credit_threshold_set(struct oa_tc6 *tc6, u8 thresh)
++{
++	u32 regval;
++	int ret;
++
++	if (thresh > OA_TC6_CONFIG0_TXCTHRESH_16)
++		return -EINVAL;
++
++	ret = oa_tc6_read_register(tc6, OA_TC6_REG_CONFIG0, &regval);
++	if (ret)
++		return ret;
++
++	/* Set Transmit Credit Threshold */
++	regval &= ~OA_TC6_CONFIG0_TXCTHRESH_MASK;
++	regval |= FIELD_PREP(OA_TC6_CONFIG0_TXCTHRESH_MASK, thresh);
++
++	return oa_tc6_write_register(tc6, OA_TC6_REG_CONFIG0, regval);
++}
++EXPORT_SYMBOL_GPL(oa_tc6_tx_credit_threshold_set);
++
+ /**
+  * oa_tc6_start_xmit - function for sending the tx skb which consists ethernet
+  * frame.
+@@ -1779,6 +1829,18 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev,
+ 		return ERR_PTR(ret);
+ 	}
+ 
++	/* Cut-through bits must be configured before SYNC bit is set
++	 * in CONFIG0 register.
++	 */
++	if (tc6->quirks.quirk_flags & OA_TC6_CONFIG_RX_CUT_THROUGH) {
++		ret = oa_tc6_rx_cut_through_enable(tc6);
++		if (ret) {
++			dev_err(&tc6->spi->dev,
++				"Failed to enable RX cut-through: %d\n", ret);
++			return ERR_PTR(ret);
++		}
++	}
++
+ 	ret = oa_tc6_unmask_macphy_error_interrupts(tc6);
+ 	if (ret) {
+ 		dev_err(&tc6->spi->dev,
 diff --git a/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h b/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h
-index 014b48e7e27d..cc7cda673f1b 100644
+index cc7cda673f1b..245a1b316395 100644
 --- a/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h
 +++ b/drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h
-@@ -32,6 +32,10 @@
- #define OA_TC6_CTRL_HEADER_LENGTH		GENMASK(7, 1)
- #define OA_TC6_CTRL_HEADER_PARITY		BIT(0)
- 
-+/* Vendor-specific MMS range from Table 6 of OA TC6 specification. */
-+#define OA_TC6_VENDOR_MMS_MIN			10
-+#define OA_TC6_VENDOR_MMS_MAX			15
-+
- /* Data header */
- #define OA_TC6_DATA_HEADER_DATA_NOT_CTRL	BIT(31)
- #define OA_TC6_DATA_HEADER_DATA_VALID		BIT(21)
-@@ -131,7 +135,7 @@ struct oa_tc6 {
- 	bool int_flag;
- 	bool disable_traffic;
- 	bool prot_ctrl;
--	enum oa_tc6_quirk_flag quirk_flags;
-+	struct oa_tc6_quirks quirks;
- 	struct gpio_desc *reset_gpio;
+@@ -140,6 +140,7 @@ struct oa_tc6 {
  	struct list_head ttsc_skb_list;
  	struct ptp_clock *ptp_clock;
+ 	bool ftsc_capable; /* Timestamp capability */
++	bool ctc_capable;  /* cut-through capability */
+ 	u64 tx_hwtstamp_pkts;
+ 	u64 tx_hwtstamp_lost;
+ 	u64 tx_hwtstamp_err;
 diff --git a/include/linux/oa_tc6.h b/include/linux/oa_tc6.h
-index 32c25b5e2aa3..f34ed8218a7c 100644
+index f34ed8218a7c..35b536741d01 100644
 --- a/include/linux/oa_tc6.h
 +++ b/include/linux/oa_tc6.h
-@@ -86,6 +86,7 @@ enum oa_tc6_quirk_flag {
+@@ -20,6 +20,7 @@
+ /* Standard Capabilities Register */
+ #define OA_TC6_REG_STDCAP			0x0002
+ #define OA_TC6_STDCAP_DIRECT_PHY_REG_ACCESS	BIT(8)
++#define OA_TC6_STDCAP_CTC_CAPABILITY		BIT(7)
+ #define OA_TC6_STDCAP_FTSC_CAPABILITY		BIT(6)
  
- struct oa_tc6_quirks {
- 	enum oa_tc6_quirk_flag quirk_flags;
-+	int vend1_mms;
+ /* Reset Control and Status Register */
+@@ -30,6 +31,10 @@
+ #define OA_TC6_REG_CONFIG0			0x0004
+ #define OA_TC6_CONFIG0_SYNC			BIT(15)
+ #define OA_TC6_CONFIG0_ZARFE_ENABLE		BIT(12)
++#define OA_TC6_CONFIG0_TXCTHRESH_MASK		GENMASK(11, 10)
++#define OA_TC6_CONFIG0_TXCTHRESH_8		2	/* 0b10: >=8 credits */
++#define OA_TC6_CONFIG0_TXCTHRESH_16		3	/* 0b11: >=16 credits */
++#define OA_TC6_CONFIG0_RXCTE			BIT(8)
+ #define OA_TC6_CONFIG0_FTSE_ENABLE		BIT(7)
+ #define OA_TC6_CONFIG0_FTSS_64BIT_TSTAMP	BIT(6)
+ #define OA_TC6_CONFIG0_PROTE			BIT(5)
+@@ -82,6 +87,7 @@ struct oa_tc6;
+ 
+ enum oa_tc6_quirk_flag {
+ 	OA_TC6_BROKEN_PHY = BIT(0),
++	OA_TC6_CONFIG_RX_CUT_THROUGH = BIT(1),
  };
  
- struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev,
+ struct oa_tc6_quirks {
+@@ -104,6 +110,7 @@ int oa_tc6_read_registers(struct oa_tc6 *tc6, u32 address, u32 value[],
+ 			  u8 length);
+ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6 *tc6, struct sk_buff *skb);
+ int oa_tc6_zero_align_receive_frame_enable(struct oa_tc6 *tc6);
++int oa_tc6_tx_credit_threshold_set(struct oa_tc6 *tc6, u8 thresh);
+ int oa_tc6_mdiobus_read_c45(struct mii_bus *bus, int addr, int devnum,
+ 			    int regnum);
+ int oa_tc6_mdiobus_write_c45(struct mii_bus *bus, int addr, int devnum,
 
 -- 
 2.43.0
