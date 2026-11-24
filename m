@@ -1,68 +1,94 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Tue, 24 Nov 2026 04:41:48 +0000
-Subject: [PATCH] crypto: rockchip - Drop the runtime PM reference on DMA
- mapping errors
+From: Joseph Telaak <joseph@telaak.dev>
+Subject: [PATCH v2 0/2] pinctrl: Add the Siflower SF19A2890 pin controller
+Date: Mon, 23 Nov 2026 23:42:05 -0500
+Message-Id: <20261123-sf19a2890-pinctrl-v2-0-a10af32bc844@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-rk-crypto-v1-1-8fb89152fac0@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAIsVBWsC/yXM0QpAMBSA4VfRubayMcqryMVsB4dCZ4jk3Q2XX
- /39F3hkQg9ldAHjTp7mKUDGEdjeTB0KcsGgEpVLqTLBo7B8Luss0sLlThstU51A6BfGlo7vVdW
- //dYMaNd3APf9APANq8JtAAAA
-X-Change-ID: 20261124-rk-crypto-37d6d5a51350
-To: clabbe@baylibre.com, heiko@sntech.de, herbert@gondor.apana.org.au, 
- davem@davemloft.net
-Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-crypto@vger.kernel.org, linux-rockchip@lists.infradead.org
+X-B4-Tracking: v=1; b=H4sIAJ4VBWsC/22Oyw6CMBBFf4V0bU1bEcGV/2FY9DGVUQLYlkZD+
+ HcLaty4PJN775mJeHAInhyziTiI6LHvEohNRnQjuwtQNImJYKLgnAnqLa+kKCtGB+x0cC3VTJq
+ qOBjg+4Kk3uDA4mPdPNdv9qO6gg7L0Cfh4D4mWfjFGvShd8/1k8iX61ea/5FGThnNlSp30holt
+ T0FaKW8bQ1EUs/z/AKXBjQD2gAAAA==
+X-Change-ID: 20261102-sf19a2890-pinctrl-c0ad967de156
+To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
+Cc: Chuanhong Guo <gch981213@gmail.com>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+ linux-mips@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495308; l=1418;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=AgEW09Ja4be96HPfEZUyJHdtDhjRWUkcTv5e5vEm5VU=;
- b=z5SJG0ZYe/0QvbJ44vYq6t5KtYtYvnZ9FR9nBfe/4VDMot38yUW1Cah2mRq2R8ewl7/tCBvxf
- cFFlOCDNGk/CYbT9LKvmoQdE78WSY+9SQ7MYp4Mj+tExK4ZTiGIahjC
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495327; l=2900;
+ i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
+ bh=UI+HFCzlwsuHPDNUiBDjhxu5Nits6H2tsgExW6YLYlA=;
+ b=lBf91TEU2OD9oLixUJ+GxBp5O6s4duspTqvuAyIzenYsZPfXCYGenr+7O5vR+xSVFto02pExG
+ Vs+vIe8r+bfCVxs0I4poRlC59KUDYyfZiXwbhZoEcc1IjiDfwLAdBir
+X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
+ pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
+X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+This series adds a binding and a driver for the pin controller of the
+Siflower SF19A2890, a MIPS SoC for home routers. Each of its 49 pins has
+a register pair of its own: one for bias, input enable, Schmitt trigger
+and drive strength, one for the mux.
 
-rk_cipher_run() takes a runtime PM reference with
-pm_runtime_resume_and_get() at the start of every request. The normal
-exit path drops it again at the theend label.
+The driver is based on Chuanhong Guo's OpenWrt driver, which exposed the
+four mux modes as functions "func0" to "func3". Here the functions are
+named after the peripheral they connect, and each lists the pins it can
+use with the mode that selects it there. The tables cover the functions
+that the vendor firmware and the OpenWrt port use; the other modes are
+not documented.
 
-If dma_map_sg() fails, the function jumps to theend_sgs or theend_iv
-and returns the error without calling pm_runtime_put_autosuspend().
-Each such request leaves one usage count behind, so the device can no
-longer runtime suspend.
+checkpatch warns about -ENOTSUPP twice. That is what pinconf expects
+from pin_config_get() and pin_config_set() for a parameter the hardware
+lacks.
 
-Drop the reference on this error path too.
+The SoC support itself (MACH_SIFLOWER_MIPS) goes through the MIPS tree;
+until then the driver builds with COMPILE_TEST.
 
-Found with a static analysis tool and checked by hand.
+Tested on a GL.iNet GL-SFT1200: pinmux-pins gives every pin its owner:
+SPI, UART0, I2C0, RGMII and MDIO, and the GPIOs for the switch reset, the
+mode switch, the SPI chip select and the reset button. The console, the
+SPI NAND, the ET6326 on I2C and Ethernet work with the mux this driver
+sets. For all 49 pins, the bias, input enable, Schmitt trigger and drive
+strength in debugfs pinconf-pins match the pin configuration registers
+read with devmem; this board uses 6 and 27 mA, the two ends of the drive
+strength field.
 
-Fixes: 9dcd71c863a6 ("crypto: rockchip - Add support for RK3399")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-Compile tested on arm64 (W=1). I don't have the hardware.
+Changes in v2:
+- Order the example's child nodes and properties by name, for
+  dt-check-style --mode=strict.
+- Add a MAINTAINERS entry for the driver and its binding.
+- Include <linux/device-id/of.h> instead of <linux/mod_devicetable.h>
+  (Uwe).
+- Prefix the register macros with SF19A2890_: REG_PC clashed with an SH
+  ptrace header (kernel test robot). Convert the drive strength in one
+  helper, to keep the longer names within 80 columns.
+- Reference pincfg-node.yaml and pinmux-node.yaml the same way, both
+  under allOf (Conor).
+- Keep the named pins and the per-pin groups: the generic
+  dt_node_to_map helpers take pin numbers (Conor).
+- Link to v1: https://patch.msgid.link/20261104-sf19a2890-pinctrl-v1-0-4bb83afdbacf@telaak.dev
+
 ---
- drivers/crypto/rockchip/rk3288_crypto_skcipher.c | 1 +
- 1 file changed, 1 insertion(+)
+Joseph Telaak (2):
+      dt-bindings: pinctrl: Add Siflower SF19A2890 pin controller
+      pinctrl: Add Siflower SF19A2890 pin controller driver
 
-diff --git a/drivers/crypto/rockchip/rk3288_crypto_skcipher.c b/drivers/crypto/rockchip/rk3288_crypto_skcipher.c
-index e80f9148c012..3f285175a194 100644
---- a/drivers/crypto/rockchip/rk3288_crypto_skcipher.c
-+++ b/drivers/crypto/rockchip/rk3288_crypto_skcipher.c
-@@ -427,6 +427,7 @@ static int rk_cipher_run(struct crypto_engine *engine, void *async_req)
- 		dma_unmap_sg(rkc->dev, sgd, 1, DMA_FROM_DEVICE);
- 	}
- theend_iv:
-+	pm_runtime_put_autosuspend(rkc->dev);
- 	return err;
- }
- 
+ .../pinctrl/siflower,sf19a2890-pinctrl.yaml        | 113 +++++
+ MAINTAINERS                                        |   7 +
+ drivers/pinctrl/Kconfig                            |  14 +
+ drivers/pinctrl/Makefile                           |   1 +
+ drivers/pinctrl/pinctrl-sf19a2890.c                | 549 +++++++++++++++++++++
+ 5 files changed, 684 insertions(+)
+---
+base-commit: f33a24cc012d34f25bb9942681bd478a1757b806
+change-id: 20261102-sf19a2890-pinctrl-c0ad967de156
 
-
+Best regards,
+--  
+Joseph Telaak <joseph@telaak.dev>
 
