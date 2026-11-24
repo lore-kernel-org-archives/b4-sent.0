@@ -1,97 +1,79 @@
-From: Dennis Rijsdijk <hello@dennis.gg>
-Date: Tue, 24 Nov 2026 22:20:43 +0100
-Subject: [PATCH] ALSA: usb-audio: Add generic implicit feedback quirk for
- Elgato Wave:3
+From: Marko Zidaric <darkobas@gmail.com>
+Date: Tue, 24 Nov 2026 22:51:11 +0100
+Subject: [PATCH] arm64: dts: qcom: glymur-lenovo-yoga-slim7x: Enable
+ SMB2370_2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-b4-implicit-fb-v1-1-99c0526a01f0@dennis.gg>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5AMBBA4avIrE2iDYKriIW2U0b8pUUk4u6K5
- bd47wJPjslDFV3g6GDPyxwg4gh0384dIZtgkInMhZApqhR5WkfWvKFVaE3ZmqRQNjMEIVodWT6
- /Yd389rsaSG/vBe77AQvbFslyAAAA
-X-Change-ID: 20261124-b4-implicit-fb-fd9ad08bf5de
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dennis Rijsdijk <hello@dennis.gg>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795555255; l=3251;
- i=hello@dennis.gg; s=20261124; h=from:subject:message-id;
- bh=CzYUiFQBTbT9Wdib/6UNKHXDgSKzREc3eNWxs3jvMew=;
- b=DbonznYWejqOtUOztk3MIPT4LAC+q7AltktqxAfi3MCSaeBL99sZx5Y9WcajOEkxaar4VC5fW
- qyPiAOczWkUAcVDc7cxy8SkrZJzjpTzhl10IF0SUlea4Cu4C3zCSIGh
-X-Developer-Key: i=hello@dennis.gg; a=ed25519;
- pk=/uxm3Y6aevSpcZaCD38mlhmVoNlmJW2YgX3OS0SRGuM=
-X-Endpoint-Received: by B4 Relay for hello@dennis.gg/20261124 with auth_id=1632
+Message-Id: <20261124-yoga-slim7x-smb2370-v1-1-2656ec0226e7@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAM4GBmsC/yXMTQ6CMBBA4auQWTtJW5CKVzEsShlgDH/pCIEQ7
+ k7V5bd47wChwCTwTA4ItLLwNEboWwK+c2NLyHU0GGVyrU2G+9Q6lJ4Hu6EMlUmtQu9qm94fhcq
+ dhljOgRreftdX+bcs1Zv857uC87wAFoP3JHcAAAA=
+X-Change-ID: 20261124-yoga-slim7x-smb2370-cad7358906a1
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ Marko Zidaric <darkobas@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1376; i=darkobas@gmail.com;
+ h=from:subject:message-id; bh=PTLVAGVNPZeF9esS9Acb6R6hiwos8Jxkhf5ea1o2p+4=;
+ b=owGbwMvMwMGYxdFjFCjQw8R4Wi2JIZuN7dWEV9GreKrVaxiz9ULVUrwudAWmh2761+bvKDn9b
+ nrXpoRORn8WBkYOBksxRRa9w2tSrfhZA5uuRUyCGcTKBDJFWqSBAQhYGPhyE/NKjXSM9Ey1DfUM
+ gQwdIwYuTgGY6mOq7H/4HvyNtTpgd3hvPrNz5d9HHku2sgm1vdv2Tz7BRTmH8azTl3nz7vno9K9
+ UfDf/uCbfk6+Bk/udN/zRXCzF6ndL+kW4idlh97KDuvNkandl9BYYepXuc63Pn7n402d1S0k3Bp
+ GvcaLFNxed9/3FvzqwWXLBpxdla4/0Xig88PjJwqmpbh4doqUHVla9M0tV2TDVfmeG5YOFCUoTJ
+ Z6fnjLjxo70BLkDmnpJZqFZW/IX9wpc1VVQW3zEPEtI4iHvbZvyOWq6rn0XQwWkr2yUS7SSNRYO
+ KVXVKgjY9m6y+eMvpZ73N3xTemDyYIbHWknFJGP+QHun44muhecmHWk+uXm1DKOvx4vc0GdiVx4
+ L+gAA
+X-Developer-Key: i=darkobas@gmail.com; a=openpgp;
+ fpr=2EC3AC653A0F055182D658926A088C3251108C02
+X-Endpoint-Received: by B4 Relay for darkobas@gmail.com/default with auth_id=1633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Elgato Wave:3 (0fd9:0070) records digital silence from its
-microphone when capture is started while playback to its headphone
-jack is already running. Starting capture first works. With PipeWire
-this makes the microphone go silent when an application starts
-recording while audio is playing.
+The eUSB2 repeater of the third Type-C port sits on SMB2370_2, which is
+disabled by default. The board file only set status on the repeater
+child node, so usb_2 never probes.
 
-The Elgato XLR Dock had the same problem and was fixed by enforcing the
-generic implicit feedback mode. The same flag fixes the Wave:3: with it,
-capture returns audio in both start orders. One case remains at 96 kHz,
-which the device advertises but Elgato's specifications do not list
-(only 48 kHz): when playback starts first right after the device ran at
-48 kHz, capture is still occasionally silent (2 of 10 tries, against
-every try without the flag). At a steady rate, and at 48 kHz in all
-cases tried, it did not happen.
+Enable the PMIC node instead.
 
-Add a quirk entry for the device.
-
-The patch and this description were prepared with an AI coding
-assistant (Claude Code, Claude Opus 5.5); I reproduced the problem and
-tested the fix on the device.
-
-Link: https://lore.kernel.org/all/CAOUQ8cqoTYm-0xeh1jk6bPo7Qd81+rFBz+my-ByMudzZ_6E0wQ@mail.gmail.com/
-Signed-off-by: Dennis Rijsdijk <hello@dennis.gg>
+Fixes: a741ecde8949 ("arm64: dts: qcom: glymur: Add Lenovo Yoga Slim 7x Gen11")
+Signed-off-by: Marko Zidaric <darkobas@gmail.com>
 ---
-Tested on v7.4-rc4 with the stock driver and
-quirk_flags=0fd9:0070:generic_implicit_fb (same effect as this entry),
-Wave:3 firmware bcdDevice 1.24. Silence below means all-zero samples.
-
-- aplay/arecord on hw: directly, playback started first:
-  - 48 kHz: silent every time without the flag; with it, 0 silent in 60+
-    starts, also right after the device ran at 96 kHz.
-  - 96 kHz: silent without the flag; with it, 0 silent in 30 starts at a
-    steady rate, but 2 of 10 silent when a 48 kHz stream ran just before
-    (and 4 of 23 in runs where WirePlumber reopened the device at 48 kHz
-    in between).
-  - Capture-first, and stopping/restarting playback during capture, had
-    audio throughout at both rates.
-- PipeWire 1.6.10: capture started while music played had audio in 6/6
-  tries at 48 kHz and 8/8 with the clock forced to 96 kHz (it was silent
-  every time before), and after a WirePlumber restart.
-- No audible glitches on the headphones during listening sessions.
-
-Unrelated to this patch, also without the flag: at 96 kHz the first
-~12 ms of a capture that starts the endpoint are full-scale noise; this
-does not happen at 48 kHz.
+Tested on a Yoga Slim 7x Gen11 (83QR) on 7.4-rc3 only, by applying the
+equivalent change to the DTB; the affected lines are unchanged in
+current mainline.
 ---
- sound/usb/quirks.c | 2 ++
- 1 file changed, 2 insertions(+)
+ arch/arm64/boot/dts/qcom/glymur-lenovo-yoga-slim7x.dts | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/sound/usb/quirks.c b/sound/usb/quirks.c
-index bcc93e50b..bd00db820 100644
---- a/sound/usb/quirks.c
-+++ b/sound/usb/quirks.c
-@@ -2684,6 +2684,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
- 		   QUIRK_FLAG_FIXED_RATE),
- 	DEVICE_FLG(0x0fd9, 0x0008, /* Hauppauge HVR-950Q */
- 		   QUIRK_FLAG_SHARE_MEDIA_DEVICE | QUIRK_FLAG_ALIGN_TRANSFER),
-+	DEVICE_FLG(0x0fd9, 0x0070, /* Elgato Wave:3 */
-+		   QUIRK_FLAG_GENERIC_IMPLICIT_FB),
- 	DEVICE_FLG(0x0fd9, 0x00a6, /* Elgato XLR Dock */
- 		   QUIRK_FLAG_GENERIC_IMPLICIT_FB),
- 	DEVICE_FLG(0x1038, 0x1294, /* SteelSeries Arctis Pro Wireless */
+diff --git a/arch/arm64/boot/dts/qcom/glymur-lenovo-yoga-slim7x.dts b/arch/arm64/boot/dts/qcom/glymur-lenovo-yoga-slim7x.dts
+index 769f195c9..c6012e162 100644
+--- a/arch/arm64/boot/dts/qcom/glymur-lenovo-yoga-slim7x.dts
++++ b/arch/arm64/boot/dts/qcom/glymur-lenovo-yoga-slim7x.dts
+@@ -870,11 +870,13 @@ &smb2370_k_e2_eusb2_repeater {
+ 	vdd3-supply = <&vreg_l7b_e0>;
+ };
+ 
++&smb2370_l_e2 {
++	status = "okay";
++};
++
+ &smb2370_l_e2_eusb2_repeater {
+ 	vdd18-supply = <&vreg_l15b_e0>;
+ 	vdd3-supply = <&vreg_l7b_e0>;
+-
+-	status = "okay";
+ };
+ 
+ &swr0 {
 
 ---
-base-commit: c3c132d63840093a3ca4bd09e7434614c1bd07e3
-change-id: 20261124-b4-implicit-fb-fd9ad08bf5de
+base-commit: 8d7fe9885c62fc9a95bf55d9db244d9672a8aadc
+change-id: 20261124-yoga-slim7x-smb2370-cad7358906a1
 
 Best regards,
 --  
-Dennis Rijsdijk <hello@dennis.gg>
+Marko Zidaric <darkobas@gmail.com>
 
