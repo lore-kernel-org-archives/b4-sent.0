@@ -1,15 +1,13 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Subject: [PATCH v2 0/2] pinctrl: Add the Siflower SF19A2890 pin controller
-Date: Mon, 23 Nov 2026 23:42:05 -0500
-Message-Id: <20261123-sf19a2890-pinctrl-v2-0-a10af32bc844@telaak.dev>
+Date: Mon, 23 Nov 2026 23:42:06 -0500
+Subject: [PATCH v2 1/2] dt-bindings: pinctrl: Add Siflower SF19A2890 pin
+ controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJ4VBWsC/22Oyw6CMBBFf4V0bU1bEcGV/2FY9DGVUQLYlkZD+
- HcLaty4PJN775mJeHAInhyziTiI6LHvEohNRnQjuwtQNImJYKLgnAnqLa+kKCtGB+x0cC3VTJq
- qOBjg+4Kk3uDA4mPdPNdv9qO6gg7L0Cfh4D4mWfjFGvShd8/1k8iX61ea/5FGThnNlSp30holt
- T0FaKW8bQ1EUs/z/AKXBjQD2gAAAA==
-X-Change-ID: 20261102-sf19a2890-pinctrl-c0ad967de156
+Message-Id: <20261123-sf19a2890-pinctrl-v2-1-a10af32bc844@telaak.dev>
+References: <20261123-sf19a2890-pinctrl-v2-0-a10af32bc844@telaak.dev>
+In-Reply-To: <20261123-sf19a2890-pinctrl-v2-0-a10af32bc844@telaak.dev>
 To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
@@ -19,76 +17,164 @@ Cc: Chuanhong Guo <gch981213@gmail.com>,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495327; l=2900;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495327; l=4669;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=UI+HFCzlwsuHPDNUiBDjhxu5Nits6H2tsgExW6YLYlA=;
- b=lBf91TEU2OD9oLixUJ+GxBp5O6s4duspTqvuAyIzenYsZPfXCYGenr+7O5vR+xSVFto02pExG
- Vs+vIe8r+bfCVxs0I4poRlC59KUDYyfZiXwbhZoEcc1IjiDfwLAdBir
+ bh=iTyoSTe09I7B16n7YHrhvYb3JC5vGh8ZVWkZrBFowLk=;
+ b=fp8UIVwaXrMyz03ygr5JTFQkQnSbI9eqkHW4ZZPpHFX/Ct2DqTZUR+ORE12pWdHYIMswgy3dX
+ lodd2pqWGfSDl2xFIouYtD1Z/ADy48G89Il0mCLI7/fiv1w74mqiI5E
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds a binding and a driver for the pin controller of the
-Siflower SF19A2890, a MIPS SoC for home routers. Each of its 49 pins has
-a register pair of its own: one for bias, input enable, Schmitt trigger
-and drive strength, one for the mux.
+The pin controller of the Siflower SF19A2890 selects the function of
+each of its 49 pins and sets their bias, input enable, Schmitt trigger
+and drive strength. Each pin has a register pair of its own, and each
+pin state node holds subnodes that set some of its pins.
 
-The driver is based on Chuanhong Guo's OpenWrt driver, which exposed the
-four mux modes as functions "func0" to "func3". Here the functions are
-named after the peripheral they connect, and each lists the pins it can
-use with the mode that selects it there. The tables cover the functions
-that the vendor firmware and the OpenWrt port use; the other modes are
-not documented.
-
-checkpatch warns about -ENOTSUPP twice. That is what pinconf expects
-from pin_config_get() and pin_config_set() for a parameter the hardware
-lacks.
-
-The SoC support itself (MACH_SIFLOWER_MIPS) goes through the MIPS tree;
-until then the driver builds with COMPILE_TEST.
-
-Tested on a GL.iNet GL-SFT1200: pinmux-pins gives every pin its owner:
-SPI, UART0, I2C0, RGMII and MDIO, and the GPIOs for the switch reset, the
-mode switch, the SPI chip select and the reset button. The console, the
-SPI NAND, the ET6326 on I2C and Ethernet work with the mux this driver
-sets. For all 49 pins, the bias, input enable, Schmitt trigger and drive
-strength in debugfs pinconf-pins match the pin configuration registers
-read with devmem; this board uses 6 and 27 mA, the two ends of the drive
-strength field.
-
+Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
-Changes in v2:
-- Order the example's child nodes and properties by name, for
-  dt-check-style --mode=strict.
-- Add a MAINTAINERS entry for the driver and its binding.
-- Include <linux/device-id/of.h> instead of <linux/mod_devicetable.h>
-  (Uwe).
-- Prefix the register macros with SF19A2890_: REG_PC clashed with an SH
-  ptrace header (kernel test robot). Convert the drive strength in one
-  helper, to keep the longer names within 80 columns.
-- Reference pincfg-node.yaml and pinmux-node.yaml the same way, both
-  under allOf (Conor).
-- Keep the named pins and the per-pin groups: the generic
-  dt_node_to_map helpers take pin numbers (Conor).
-- Link to v1: https://patch.msgid.link/20261104-sf19a2890-pinctrl-v1-0-4bb83afdbacf@telaak.dev
+ .../pinctrl/siflower,sf19a2890-pinctrl.yaml        | 113 +++++++++++++++++++++
+ MAINTAINERS                                        |   6 ++
+ 2 files changed, 119 insertions(+)
 
----
-Joseph Telaak (2):
-      dt-bindings: pinctrl: Add Siflower SF19A2890 pin controller
-      pinctrl: Add Siflower SF19A2890 pin controller driver
+diff --git a/Documentation/devicetree/bindings/pinctrl/siflower,sf19a2890-pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/siflower,sf19a2890-pinctrl.yaml
+new file mode 100644
+index 000000000000..0bb7c896f9bd
+--- /dev/null
++++ b/Documentation/devicetree/bindings/pinctrl/siflower,sf19a2890-pinctrl.yaml
+@@ -0,0 +1,113 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/pinctrl/siflower,sf19a2890-pinctrl.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Siflower SF19A2890 pin controller
++
++maintainers:
++  - Joseph Telaak <joseph@telaak.dev>
++
++description:
++  The pin controller of the Siflower SF19A2890 selects the function of
++  each of its 49 pins and sets their bias, input enable, Schmitt trigger
++  and drive strength. The GPIO function is selected through the GPIO
++  controller, which maps its lines onto these pins with gpio-ranges.
++
++properties:
++  compatible:
++    const: siflower,sf19a2890-pinctrl
++
++  reg:
++    maxItems: 1
++
++patternProperties:
++  '-pins$':
++    type: object
++    description:
++      A pin state. Each subnode sets the function and configuration of
++      some of its pins.
++
++    patternProperties:
++      '^pins(-[a-z0-9]+)*$':
++        type: object
++        allOf:
++          - $ref: /schemas/pinctrl/pincfg-node.yaml#
++          - $ref: /schemas/pinctrl/pinmux-node.yaml#
++
++        properties:
++          pins:
++            items:
++              enum: [JTAG_TDO, JTAG_TDI, JTAG_TMS, JTAG_TCK, JTAG_RST,
++                     SPI_TXD, SPI_RXD, SPI_CLK, SPI_CSN, UART_TX, UART_RX,
++                     I2C_DAT, I2C_CLK, RGMII_GTX_CLK, RGMII_TXCLK,
++                     RGMII_TXD0, RGMII_TXD1, RGMII_TXD2, RGMII_TXD3,
++                     RGMII_TXCTL, RGMII_RXCLK, RGMII_RXD0, RGMII_RXD1,
++                     RGMII_RXD2, RGMII_RXD3, RGMII_RXCTL, RGMII_COL,
++                     RGMII_CRS, RGMII_MDC, RGMII_MDIO, HB0_PA_EN,
++                     HB0_LNA_EN, HB0_SW_CTRL0, HB0_SW_CTRL1, HB1_PA_EN,
++                     HB1_LNA_EN, HB1_SW_CTRL0, HB1_SW_CTRL1, LB0_PA_EN,
++                     LB0_LNA_EN, LB0_SW_CTRL0, LB0_SW_CTRL1, LB1_PA_EN,
++                     LB1_LNA_EN, LB1_SW_CTRL0, LB1_SW_CTRL1, CLK_OUT,
++                     EXT_CLK_IN, DRVVBUS0]
++            minItems: 1
++            maxItems: 49
++
++          function:
++            enum: [i2c0, jtag, mdio, pwm0, pwm1, rgmii, spi, uart0, uart1,
++                   uart2, wlan]
++
++          bias-disable: true
++
++          bias-pull-up: true
++
++          bias-pull-down: true
++
++          input-enable: true
++
++          input-schmitt-enable: true
++
++          input-schmitt-disable: true
++
++          drive-strength:
++            description: Output drive strength in mA.
++            enum: [6, 9, 12, 15, 18, 21, 24, 27]
++
++        required:
++          - pins
++
++        additionalProperties: false
++
++    additionalProperties: false
++
++required:
++  - compatible
++  - reg
++
++allOf:
++  - $ref: pinctrl.yaml#
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    pinctrl@19e3fc00 {
++        compatible = "siflower,sf19a2890-pinctrl";
++        reg = <0x19e3fc00 0x400>;
++
++        uart0-pins {
++            pins-rx {
++                bias-pull-up;
++                function = "uart0";
++                input-enable;
++                pins = "UART_RX";
++            };
++
++            pins-tx {
++                bias-pull-up;
++                function = "uart0";
++                pins = "UART_TX";
++            };
++        };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 9270abea0e12..9a31712feb5d 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -25077,6 +25077,12 @@ N:	sifive
+ K:	fu[57]40
+ K:	[^@]sifive
+ 
++SIFLOWER SF19A2890 PINCTRL DRIVER
++M:	Joseph Telaak <joseph@telaak.dev>
++L:	linux-gpio@vger.kernel.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/pinctrl/siflower,sf19a2890-pinctrl.yaml
++
+ SILEAD TOUCHSCREEN DRIVER
+ M:	Hans de Goede <hansg@kernel.org>
+ L:	linux-input@vger.kernel.org
 
- .../pinctrl/siflower,sf19a2890-pinctrl.yaml        | 113 +++++
- MAINTAINERS                                        |   7 +
- drivers/pinctrl/Kconfig                            |  14 +
- drivers/pinctrl/Makefile                           |   1 +
- drivers/pinctrl/pinctrl-sf19a2890.c                | 549 +++++++++++++++++++++
- 5 files changed, 684 insertions(+)
----
-base-commit: f33a24cc012d34f25bb9942681bd478a1757b806
-change-id: 20261102-sf19a2890-pinctrl-c0ad967de156
-
-Best regards,
---  
-Joseph Telaak <joseph@telaak.dev>
+-- 
+Git-155)
 
