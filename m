@@ -1,851 +1,390 @@
-From: Erlend Jacobsen <erlendjacobsen@pm.me>
-Date: Tue, 24 Nov 2026 16:50:21 +0100
-Subject: [PATCH v5] HID: rdmctmzt: add RDMCTMZT keyboard battery driver
+From: Dave Marquardt <davemarq@linux.ibm.com>
+Subject: [PATCH v19 00/13] scsi: ibmvfc: make ibmvfc support FPIN messages
+Date: Tue, 24 Nov 2026 10:16:41 -0600
+Message-Id: <20261124-ibmvfc-fpin-support-v19-0-2aaffe5fe7d2@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-b4-rdmctmzt-v5-1-16dde7075ce5@pm.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/33N3WrDMAyG4VsxOq5GJTupk6Pex+iBYymrB2mLn
- YX+kHsf6RikMHYo+J5XDyiakxZozQOyTqmk8wlaU20MxGM4fSgmgdYAb7kmYsbOYZYhjsN9xJq
- axgYR1p5hY+CStU/XZ+398HOXr+5T47gklsUxlfGcb893Ey27v8sTIaG4ynur1Ku1+8vwNigs1
- YnXzr46RkIfyctOQnRdXDv7j7NIWEVlWzXSb0NYO7d27tU5JGxix1YoiN/Vv26e528xJThEXAE
- AAA==
-X-Change-ID: 20261122-b4-rdmctmzt-61993add2ef2
-To: linux-input@vger.kernel.org
-Cc: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>, 
- linux-kernel@vger.kernel.org, Erlend Jacobsen <erlendjacobsen@pm.me>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795535420; l=26732;
- i=erlendjacobsen@pm.me; s=20261122; h=from:subject:message-id;
- bh=TdXnMBW1yBWh6qV7IHXxMYqIqr4YugYQB1jRHQ8PLyY=;
- b=saLz7hzfDcDLIpr0v48sDrvgXraMZuJ4tj92YAydmN6mmMOC5SlENZlrjmCYeQg+YO5cBlVMx
- BJu7msQP5MpCX7w0n13hdeY0hVITAIjAnFbb9oV8btpqYeqJbXGliDG
-X-Developer-Key: i=erlendjacobsen@pm.me; a=ed25519;
- pk=SkKXYooGBruZNtA629wl2v9ZJA3VdxTcmrehQAecfrc=
-X-Endpoint-Received: by B4 Relay for erlendjacobsen@pm.me/20261122 with auth_id=1609
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XRyU7DMBAG4FepcsaV96Un3gNx8DKmRm0SOYtaV
+ X137IIgVMlxrJlvfo1vzQA5wdAcdrcmw5yG1LWlIOZl1/ijbT8ApVAeGoqpxIYKlNx5jh7FPrV
+ omPq+yyMCcJYHrB2noimTfYaYLg/27f27Hib3CX6sVO2IuTuj8ZjB/tMx5wbjPSeccYwIGq8ZT
+ uH1lNrpsi+b97471/FjGsYuXx+xZ0Lrnh+D4dWEpQlhJJhlMUYVlHJPaI05E/YrEYzVhsSK5DS
+ R1kXLo/erEl9IRGxIvEgWOyyZ00FTsSqJpWQ2JFElLbSiEojSdlWSC4nKDUlWqXyCtVIoCOuZ1
+ J9UqA1JFckAiEiMsN6QVUkvpa076SIFqZlTXDFp2bN0v9+/ALG1DdHKAgAA
+X-Change-ID: 20260925-ibmvfc-fpin-support-eeba4d08b425
+To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <mkp@kernel.org>, 
+ Tyrel Datwyler <tyreld@linux.ibm.com>
+Cc: linux-scsi@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+ linux-kernel@vger.kernel.org, Dave Marquardt <davemarq@linux.ibm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795537005; l=20260;
+ i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
+ bh=I5MXk6nhTCaAkxpcNmjoP/HMTfZFbFpsXPwHT8kht8M=;
+ b=MEVdsdzQd0palfXRfsbaQvel8pTFDzhuaDYprKsiHD/Vgaf8GpmZdsjkwTvJN1mPyuRwMZdmT
+ iYIkd2blUkjC/unbJ/8bqJ3Zp518sDlXsrE4qHGyu8pFerF0VD9PiKW
+X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
+ pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
+X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Keyboards with the USB vendor ID 0x36b0 (manufacturer string
-"RDMCTMZT"), such as the Focus Lab CTRL87, report their battery level
-only on a vendor channel: the HID interface with the raw-HID application
-collection (usage page 0xff60, usage 0x61). The 2.4 GHz dongle (0x2002)
-forwards the query to the keyboard over the air; the keyboard (0x2009)
-answers it directly over USB. The query is a request/response session,
-so neither hid-input's battery strength usage nor a report descriptor
-fixup can expose it.
+This patch series adds FPIN (fabric performance impact notification)
+support to the ibmvfc (IBM Virtual Fibre Channel) driver. This comes
+in three flavors:
 
-Query the battery once a minute (session start 0xaa 0x10, battery status
-0xaa 0x30, session end 0xaa 0x11) and register a device-scope
-power_supply once the keyboard has answered, so that user space does not
-see a battery whose capacity cannot be read. A lost answer is retried
-after 5 s; the battery is marked not present after three polls in a row
-without the battery status, or at once when the dongle reports no link.
-The battery is named after the USB product ID and serial number, as
-hid-asus does, so that its name survives a replug; the keyboard and its
-dongle share a serial number.
+- basic, to recognize existing FPIN messages from the virtual I/O
+  server (VIOS) (patch 6)
+- full, supporting additional FPIN information and using its own
+  asynchronous sub-queue and interrupt (patches 8-12)
+- extended, supporting FC-LS-5 (patch 13)
 
-On the dongle, also read its link status (0xaa 0xd0), which it sends by
-itself on each link change, and report the link as the USB interface's
-wireless_status, as hid-logitech-hidpp and hid-corsair-void do. Byte 13
-of that report is 0x02 while the dongle has no link, but no other value
-proves an active link (the dongle with bcdDevice 0x0102 reports 0x00
-both when connected and when no connection has succeeded since
-power-up), so the link is taken as up only once the keyboard answers.
+Full and extended FPIN support requires a new asynchronous sub-queue
+with its own interrupt. The asynchronous sub-queue support requires
+ibmvfc to also support a new IBMVFC_NOOP command, which the driver
+recognizes and ignores (patch 7).
 
-All other interfaces are handled as by hid-generic.
+The asynchronous sub-queue work is split across five patches: patch 8
+defines the necessary data structures, patch 9 extends the async event
+handlers to accept events from the new queue, patch 10 adds the
+interrupt and drain routines for the queue, patch 11 extends channel
+registration to accommodate the new queue, and patch 12 registers the
+queue during channel initialization, advertises support to VIOS during
+NPIV login, and routes events from the queue to the handlers. Patches
+1-5 fix IRQ cleanup and error handling bugs exposed during that work.
+Patch 13 adds extended FPIN handling on top of the new queue.
 
-Tested with keyboard firmware 1.13 over USB and through the dongle
-(bcdDevice 0x0102 and 0x0105), including a switch between the two and
-the vendor's WebHID configurator in use on the same interface; and
-through the dongle with an open-source keyboard firmware: module reload,
-replug and system suspend/resume.
+All three modes convert an incoming FPIN message from VIOS to an FC
+extended link service message, in some cases using default values for
+information not provided by the VIOS FPIN message but expected in the
+FC ELS message. This FC ELS message is passed to fc_host_fpin_rcv for
+updating statistics and sending the information upstream by netlink
+multicast, where it may be read by listeners including the DM
+multipath daemon "multipathd."
 
-Signed-off-by: Erlend Jacobsen <erlendjacobsen@pm.me>
+Signed-off-by: Tyrel Datwyler <tyreld@linux.ibm.com>
+Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
+
 ---
-Known dongle issue, not handled by the driver: a USB reset while the dongle
-(bcdDevice 0x0102 and 0x0105) holds an unread report on its vendor
-interface stops that interface until the dongle is replugged; keys still
-work.
----
+Changes in v19:
+- patch 5 (fix resource leaks on partial queue allocation failure):
+  commit message only; describe the event pool leak fix first, and state
+  that a queue ibmvfc_alloc_queue() failed to allocate must not be
+  passed to ibmvfc_free_queue(), which no caller does
+- patch 6 (add basic FPIN support): initialize tgt and fpin to NULL in
+  ibmvfc_process_async_work() so the zero-identifier path does not call
+  kref_put() on an uninitialized pointer
+- patch 9 (extend async event handlers for async sub-CRQ events): for
+  events whose identifiers are all zero, use ibmvfc_basic_fpin_to_desc()
+  for main CRQ events and ibmvfc_full_fpin_to_desc() for async sub-CRQ
+  events, fixing a NULL crq dereference; drop a sentence from the commit
+  message that described a severity change made in patch 13
+- patch 12 (register and use asynchronous sub CRQ): zero active_queues
+  for the async, SCSI and NVMe channel sets when sub-CRQ registration
+  fails in ibmvfc_reenable_crq_queue() and ibmvfc_reset_crq(); treat the
+  NVMe channel count as 0 in ibmvfc_channel_setup() and
+  ibmvfc_channel_setup_done() when nvme_scrqs.scrqs is not allocated
+- patch 13 (handle extended FPIN events): default severity to 0 for
+  PORT_CLEARED and CONGESTION_CLEARED in ibmvfc_ext_fpin_to_desc(), as
+  the basic and full conversions do, unless the event sets
+  IBMVFC_FPIN_SEVERITY_VALID; build the descriptor after target
+  resolution so that host-scope LINK_CONGESTED and CONGESTION_CLEARED
+  sub-CRQ events (zero identifiers or no matching target) are validated
+  and converted with ibmvfc_ext_fpin_to_desc() like targeted events;
+  correct the commit message, which said ibmvfc_handle_async() was
+  changed and omitted the cleared-status severity default
+- Link to v18: https://lore.kernel.org/r/20261105-ibmvfc-fpin-support-v18-0-d683b74736a3@linux.ibm.com
+
+Changes in v18:
+- Removed stray diffs in commit message for patch 12.
+- Link to v17: https://lore.kernel.org/r/20261102-ibmvfc-fpin-support-v17-0-9ee5f195ac91@linux.ibm.com
+
+Changes in v17:
+- new patch 4 (fix stale rc and IRQ mapping leak in
+  ibmvfc_register_channel()): set rc = -EINVAL in the default: case of
+  the protocol switch to prevent a stale h_reg_sub_crq() return value
+  (0 or H_CLOSED) being returned to the caller after the sub-CRQ is
+  freed; introduce irq_mapping_failed: label to dispose the IRQ mapping
+  and clear scrq->irq before falling through to irq_failed, fixing a
+  leak when irq_create_mapping() succeeds but a later step fails
+- patch 5 (fix resource leaks on partial queue allocation failure):
+  add ibmvfc_free_event_pool() calls on the get_zeroed_page() and
+  dma_mapping_error() failure paths in ibmvfc_alloc_queue() to fix
+  an event pool leak when ibmvfc_init_event_pool() succeeds but a
+  later step fails; rename patch subject to reflect broader scope
+- patch 6 (add basic FPIN support): allocate fpin_workq after
+  ibmvfc_alloc_mem() in ibmvfc_probe() to prevent double-free of
+  resources that ibmvfc_alloc_mem() already unwound on failure; deliver
+  LINK_CONGESTED and CONGESTION_CLEARED events whose identifiers are all
+  zero as host-scope FPIN events, and silently drop other statuses with
+  no identifiers; set detecting_wwpn in the FPIN descriptors from
+  fc_host_port_name() instead of leaving it zero; add KUnit cases for the
+  host-scope and dropped zero-identifier events
+- patch 9 (extend async event handlers for async sub-CRQ events): add
+  assoc_id parameter to ibmvfc_find_target() and match on tgt->assoc_id
+  when nonzero; when an async sub-CRQ event has IBMVFC_ASYNC_ID_IS_ASSOC_ID
+  set, extract assoc_id from subq->id.assoc_id and pass it to the target
+  lookup so NVMe targets sharing a wwpn are distinguished by association ID;
+  propagate assoc_id into the ELS LOGO/PRLO/PLOGI target loops in
+  ibmvfc_handle_async() for the same reason; when no target is found for
+  a LINK_CONGESTED or CONGESTION_CLEARED event, fall back to a
+  host-scope descriptor as for basic FPIN; set detecting_wwpn in the
+  full FPIN descriptors; use a severity of 0 for PORT_CLEARED and
+  CONGESTION_CLEARED events
+- patch 10 (add interrupt routine for asynchronous sub CRQ): collect
+  async sub-CRQ events into a deferred list while holding host_lock and
+  q_lock and dispatch them after releasing both, re-taking host_lock
+  around each ibmvfc_handle_async() call, avoiding a potential lockdep
+  recursive locking warning from ibmvfc_handle_async() calling
+  ibmvfc_purge_requests() which acquires q_lock instances of the same
+  lockdep class
+- patch 11 (extend channel registration for async sub-CRQ): rename the
+  patch and correct its commit message, which said
+  ibmvfc_deregister_channel() was changed when only
+  ibmvfc_register_channel() is
+- patch 12 (register and use asynchronous sub CRQ): move
+  mq_enabled/do_enquiry flag clearing out of ibmvfc_reg_sub_crqs() and
+  into each caller; in ibmvfc_reenable_crq_queue() and
+  ibmvfc_reset_crq(), deregister all channel sets and clear mq_enabled
+  and do_enquiry if any ibmvfc_reg_sub_crqs() call fails, preventing
+  leaked hypervisor sub-CRQ registrations; set async_sub_crq_handle
+  unconditionally in ibmvfc_channel_setup() so the handle is sent to
+  VIOS even on the CANCEL_CHANNELS path
+- patch 13 (handle extended FPIN events): pass detecting_wwpn through
+  ibmvfc_ext_fpin_to_desc(); correct the @severity kernel-doc to say
+  severity is only carried by the congestion descriptor
+  (LINK_CONGESTED and CONGESTION_CLEARED); drop the redundant
+  IBMVFC_FPIN_EVENT_TYPE_VALID test in ibmvfc_ext_fpin_to_desc(); remove
+  volatile from the valid field of struct ibmvfc_async_subq_fpin; move
+  the static_assert() checks to file scope
+- Link to v16: https://lore.kernel.org/r/20261026-ibmvfc-fpin-support-v16-0-a900aa657ed5@linux.ibm.com
+
+Changes in v16:
+- new patch 4: fix unguarded dma_unmap_single() in ibmvfc_free_queue();
+  guard dma_unmap_single() and free_page() together under the msgs.handle
+  check to prevent calling dma_unmap_single() with address 0 on a
+  partially initialized queue
+- patch 5 (add basic FPIN support): restore per-adapter fpin_workq instead
+  of schedule_work(); destroy it after ibmvfc_release_crq_queue() in
+  ibmvfc_remove() to ensure in-flight work items drain before tgt_pool is
+  freed and to close the original race where queue_work() could be called
+  on a destroyed workqueue pointer; fix probe error unwind to call
+  destroy_workqueue() before ibmvfc_free_mem()
+- patch 10 (extend channel reg/dereg helpers): initialize scrq->hwq_id
+  before request_irq() so error logging in ibmvfc_toggle_scrq_irq() shows
+  the correct index if an early interrupt triggers before hwq_id was set
+- patch 11 (register and use asynchronous sub CRQ): clamp
+  scsi->active_queues and nvme->active_queues to max_queues in
+  ibmvfc_channel_setup_done() to prevent out-of-bounds scrqs[] access on
+  a malformed hypervisor response; take host_lock around bitfield writes
+  to mq_enabled, do_enquiry, and nvme_enabled in ibmvfc_reg_sub_crqs()
+  and ibmvfc_init_sub_crqs() to prevent lost updates from concurrent
+  read-modify-write on the packed bitfield word; remove mq_enabled guard
+  from ibmvfc_dereg_sub_crqs() to prevent previously registered channel
+  sets being skipped on teardown after a registration failure; change
+  ibmvfc_reg_sub_crqs() to return int and check its return value in
+  ibmvfc_init_sub_crqs() so each channel set failure triggers correct
+  per-set cleanup
+- Link to v15: https://patch.msgid.link/20261019-ibmvfc-fpin-support-v15-0-a858726e178a@linux.ibm.com
+
+Changes in v15:
+- patch 4 (add basic FPIN support): restore per-adapter fpin_workq instead
+  of schedule_work(); destroy it after ibmvfc_release_crq_queue() in
+  ibmvfc_remove() to ensure in-flight work items drain before tgt_pool is
+  freed and to close the original race where queue_work() could be called
+  on a destroyed workqueue pointer
+- patch 9 (extend channel reg/dereg helpers): initialize scrq->hwq_id
+  before request_irq() so error logging in ibmvfc_toggle_scrq_irq() shows
+  the correct index if an early interrupt triggers before hwq_id was set
+- patch 10 (register and use asynchronous sub CRQ): clamp scsi->active_queues
+  and nvme->active_queues to max_queues in ibmvfc_channel_setup_done() to
+  prevent out-of-bounds scrqs[] access on a malformed hypervisor response;
+  take host_lock around bitfield writes to mq_enabled, do_enquiry, and
+  nvme_enabled in ibmvfc_reg_sub_crqs() and ibmvfc_init_sub_crqs() to
+  prevent lost updates from concurrent read-modify-write on the packed
+  bitfield word
+- Link to v14: https://patch.msgid.link/20261015-ibmvfc-fpin-support-v14-0-a0b063b8d825@linux.ibm.com
+
+Changes in v14:
+- Fix double-free of sub-CRQ at the hypervisor level: guard
+  H_FREE_SUB_CRQ in ibmvfc_deregister_channel() on scrq->cookie != 0
+  and clear cookie to zero on success; also clear cookie in the
+  ibmvfc_register_channel() irq_failed: rollback path (patch 3)
+- Add SCSI_IBMVFC_KUNIT_TEST Kconfig entry, Makefile line, and
+  ibmvfc_kunit.c with ibmvfc_deregister_channel_guard_test() verifying
+  the cookie and msgs.handle guard paths (patch 3)
+- Fix wild pointer dereference in ibmvfc_handle_scrq(): change signature
+  to accept struct ibmvfc_queue *scrq and use &scrq->evt_pool for event
+  validation instead of &evt->queue->evt_pool (patch 5)
+- Fix NULL pointer dereference in ibmvfc_channel_setup_done() when
+  mq_enabled=0: compute async->active_queues from the VIOS response
+  guarded by async->scrqs != NULL; guard async->scrqs[0].cookie access
+  in ibmvfc_channel_setup() with a NULL check (patch 10)
+- Fix host state machine stall on ibmvfc_reg_sub_crqs() failure: clear
+  vhost->mq_enabled in addition to do_enquiry so ibmvfc_npiv_login_done()
+  takes the non-channel fallback path and wakes the work queue (patch 10)
+- Link to v13: https://patch.msgid.link/20261007-ibmvfc-fpin-support-v13-0-b816abfa4fcc@linux.ibm.com
+
+Changes in v13:
+- Updated to 7.4/scsi-staging base
+- Extend ibmvfc_common_fpin_to_desc() with a severity parameter;
+  ibmvfc_ext_fpin_to_desc() now honours IBMVFC_FPIN_SEVERITY_VALID
+  and propagates the severity from the VIOS rather than always
+  defaulting to FPIN_CONGN_SEVERITY_WARNING (patch 11)
+- Handle scsi_host_get() failure in ibmvfc_get_first_vhost() (patch 4)
+- Add kernel-doc comment to ibmvfc_get_first_vhost() (patch 4)
+- Use list_for_each_entry to find an online FCP/NVMe target rport in
+  KUnit tests rather than taking the first list entry unconditionally
+  (patches 4, 7, 11)
+- Link to v12: https://patch.msgid.link/20260930-ibmvfc-fpin-support-v12-0-53a3fff7d77b@linux.ibm.com
+
+Changes in v12:
+- Wrap ibmvfc_handle_async() invocations in KUnit tests with host_lock to
+  prevent races with workqueue destruction on concurrent device removal
+  (patches 4, 7, 11)
+- Add missing scsi_host_put() in success exit path of ibmvfc_async_fpin_test()
+  (patch 4)
+- Pass resolved tgt->wwpn into ibmvfc_full_fpin_to_desc() instead of subq->wwpn
+  so FPIN descriptors are correctly populated when subq->wwpn is 0 (patch 7)
+- Fix kernel-doc comments in ibmvfc_register_channel() and
+  ibmvfc_deregister_channel() that incorrectly directed passing a negative index
+  (patch 9)
+- Fix double registration of scsi_scrqs in ibmvfc_reenable_crq_queue() by
+  registering async_scrqs instead (patch 10)
+- Link to v11: https://lore.kernel.org/linux-scsi/20260925044900.414340-1-tyreld@linux.ibm.com/
+
+Changes in v11:
+- Split the IRQ cleanup and NULL-pointer fixes out of the "register and
+  use" patch into two dedicated bug-fix patches (patches 1-2 and 1-3),
+  making the series 11 patches instead of 9
+- Replaced the single ibmvfc_queue async_sub_crq field in ibmvfc_host with
+  an ibmvfc_channels async_scrqs field, reusing the existing channel
+  infrastructure for allocation, registration, and teardown (patches 6, 9, 10)
+- Added IBMVFC_PROTO_ASYNC to enum ibmvfc_protocol; ibmvfc_register_channel()
+  and ibmvfc_deregister_channel() now dispatch on protocol rather than a
+  negative-index sentinel (patch 9)
+- Added IBMVFC_ASYNC_SUB_CRQ_FMT format enum value and corresponding
+  async_scrq pointer in union ibmvfc_msgs (patch 6)
+- ibmvfc_alloc_channels() selects IBMVFC_ASYNC_SUB_CRQ_FMT for async
+  protocol channels so queues are sized for ibmvfc_async_sub_crq entries
+  (patch 10)
+- Link to v10: https://lore.kernel.org/linux-scsi/20260911021910.1038128-1-tyreld@linux.ibm.com/
+
+Changes in v10:
+- Fix ibmvfc_find_target() to use logical and (&&) instead of logical or (||)
+  when checking whether fc and nvme remote ports are NULL (patch 4)
+- Fix build issues due to missing & operator when referencing the host lock
+  during irqsave/restore calls (patch 4, patch 7, patch 8, patch 11)
+- Fix kunit build issues caused by inclusion of code meant for later patches
+  (patch 4, patch 7, patch 11)
+- Link to v9: https://lore.kernel.org/linux-scsi/20260911021910.1038128-1-tyreld@linux.ibm.com/
+
+Changes in v9:
+- Fix ibmvfc_find_target() to check for either a valid rport or nvme_remote_port
+  so nvme targets are not silently dropped (patch 4)
+- Restore xxx_host_remove() ordering and destroy async work queue prior to these
+  calls. Check that the host is not offline prior to enqueuing new async work
+  (patch 4)
+- Link to v8: https://lore.kernel.org/linux-scsi/20260909-ibmvfc-fpin-support-v8-0-b27183b055af@linux.ibm.com
+
+Changes in v8:
+- Split patch 6 into two patches: extend channel registration/deregistration
+  for async subq (patch 9), and clear sub-CRQ IRQ on registration failure
+  and guard teardown (patch 1)
+- Fixed NULL dereference in ibmvfc_deregister_channel() when called on
+  an unallocated queue: guard memset() behind scrq->msgs.handle check
+- Fixed variable-shadowing bug in ibmvfc_register_channel() error path
+  where H_FREE_SUB_CRQ hcall result clobbered the return code
+- Deregister and re-register async sub-CRQ in ibmvfc_reenable_crq_queue()
+  and ibmvfc_reset_crq() alongside SCSI channel queues
+- Link to v7: https://patch.msgid.link/20260831-ibmvfc-fpin-support-v7-0-77d0b9809080@linux.ibm.com
+
+Changes in v7:
+- Removed CRQ valid bit clearing to callers of ibmvfc_handle_async in
+  all cases
+- Added validity checks that IBMVFC_ASYNC_ID_IS_ASSOC_ID is clear
+  before using node_name
+- Fixed error path cleanup in ibmvfc_init_sub_crqs
+- Deregister and reregister async sub-CRQ in CRQ reset and reenable
+  code.
+- Moved work queue destruction after sub CRQs teardown in ibmvfc_remove
+- Modified async event handling code to use a tagged union rather than
+  void *.
+- Use WQ_UNBOUND rather than WQ_PERCPU for fpin workqueue, as FPIN
+  events should be rare. Hold q_lock only in
+  ibmvfc_drain_async_subq(), like ibmvfc_drain_sub_crq().
+- Hardened KUnit tests to use host_lock and kref.
+- Link to v6: https://patch.msgid.link/20260817-ibmvfc-fpin-support-v6-0-62a2d525e70d@linux.ibm.com
+
+Changes in v6:
+- Use alloc_workqueue rather than devm_alloc_workqueue, and add
+  explicit destroy_workqueue calls
+- Moved ibmvfc_find_target into patch 4
+- Link to v5: https://patch.msgid.link/20260806-ibmvfc-fpin-support-v5-0-13fd6f8a8f8b@linux.ibm.com
+
 Changes in v5:
-- Take a dongle link status that never arrived (at probe or after a
-  reset-resume) as a lost poll, not as no link, so it is retried after
-  5 s and does not hide a present battery (Sashiko review).
-- Link to v4: https://patch.msgid.link/20261124-b4-rdmctmzt-v4-1-9cb23d1ad876@pm.me
+- Incorporate changes for NVME-over-FC.
+- Removed now redundant fabric login patch.
+- Link to v4: https://patch.msgid.link/20260710-ibmvfc-fpin-support-v4-0-ef031ac19520@linux.ibm.com
 
 Changes in v4:
-- Store every link byte from the dongle in the raw event handler, so a
-  reply cannot overwrite a newer unsolicited one and leave a reconnected
-  keyboard unpolled for 60 s (Sashiko review).
-- Link to v3: https://patch.msgid.link/20261123-b4-rdmctmzt-v3-1-5ce2359df0aa@pm.me
+- Refactored channel registration
+- Check whether async work queue is allocated before using or freeing
+- Fixed work queue allocation/destruction
+- Skip basic KUnit test when there are no ibmvfc devices available
+- Fix target not found condition in ibmvfc_process_async_work
+- Link to v3: https://patch.msgid.link/20260702-ibmvfc-fpin-support-v3-0-d95b9747cf88@linux.ibm.com
 
 Changes in v3:
-- Reset the poll counters also when a keyboard taken as gone answers
-  again, so it is retried after 5 s, not 60 s (Sashiko review).
-- Link to v2: https://patch.msgid.link/20261123-b4-rdmctmzt-v2-1-8c18d7dac4bc@pm.me
+- Fixed latent bug, exposed by VFC_NOOP, related to dataless CRQs and events
+- Fixed FPIN TLV descriptor length calculations
+- Use safe list walker to walk targets in ibmvfc_process_async_work
+- Added write memory barriers after clearing CRQ valid field
+- Use per-vhost work queue for FPIN work
+- Link to v2: https://patch.msgid.link/20260608-ibmvfc-fpin-support-v2-0-d41f540fba5c@linux.ibm.com
 
-Changes in v2:
-- End the polling only on the driver's own stop (-ESHUTDOWN); any
-  transport error, -ENODEV included, is a lost poll (Sashiko review).
-- Reset the poll counters while the dongle reports no link, so a
-  reconnected keyboard is retried after 5 s, not 60 s (Sashiko review).
-- Link to v1: https://patch.msgid.link/20261122-b4-rdmctmzt-v1-1-d45883e1fe33@pm.me
----
- MAINTAINERS                |   6 +
- drivers/hid/Kconfig        |  12 +
- drivers/hid/Makefile       |   1 +
- drivers/hid/hid-ids.h      |   4 +
- drivers/hid/hid-rdmctmzt.c | 669 +++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 692 insertions(+)
-
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 4a69da715c58..d3adacc5053f 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -11703,6 +11703,12 @@ L:	linux-input@vger.kernel.org
- S:	Maintained
- F:	drivers/hid/hid-pulsar.c
- 
-+HID RDMCTMZT DRIVER
-+M:	Erlend Jacobsen <erlendjacobsen@pm.me>
-+L:	linux-input@vger.kernel.org
-+S:	Maintained
-+F:	drivers/hid/hid-rdmctmzt.c
-+
- HID SENSOR HUB DRIVERS
- M:	Jiri Kosina <jikos@kernel.org>
- M:	Jonathan Cameron <jic23@kernel.org>
-diff --git a/drivers/hid/Kconfig b/drivers/hid/Kconfig
-index d17d960ab5e2..c3aeee7e71db 100644
---- a/drivers/hid/Kconfig
-+++ b/drivers/hid/Kconfig
-@@ -1105,6 +1105,18 @@ config HID_RAZER
- 	Support for Razer devices that are not fully compliant with the
- 	HID standard.
- 
-+config HID_RDMCTMZT
-+	tristate "RDMCTMZT keyboards and 2.4 GHz dongles"
-+	depends on USB_HID
-+	select POWER_SUPPLY
-+	help
-+	  Support for the battery level and wireless link status of RDMCTMZT
-+	  keyboards (USB vendor ID 0x36b0), such as the Focus Lab CTRL87,
-+	  over USB and through their 2.4 GHz dongle.
-+
-+	  To compile this driver as a module, choose M here: the
-+	  module will be called hid-rdmctmzt.
-+
- config HID_PRIMAX
- 	tristate "Primax non-fully HID-compliant devices"
- 	help
-diff --git a/drivers/hid/Makefile b/drivers/hid/Makefile
-index dc30faaac969..d0ca9933eb95 100644
---- a/drivers/hid/Makefile
-+++ b/drivers/hid/Makefile
-@@ -123,6 +123,7 @@ obj-$(CONFIG_HID_PXRC)		+= hid-pxrc.o
- obj-$(CONFIG_HID_RAKK)		+= hid-rakk.o
- obj-$(CONFIG_HID_RAPOO) += hid-rapoo.o
- obj-$(CONFIG_HID_RAZER)	+= hid-razer.o
-+obj-$(CONFIG_HID_RDMCTMZT)	+= hid-rdmctmzt.o
- obj-$(CONFIG_HID_REDRAGON)	+= hid-redragon.o
- obj-$(CONFIG_HID_RETRODE)	+= hid-retrode.o
- obj-$(CONFIG_HID_ROCCAT)	+= hid-roccat.o hid-roccat-common.o \
-diff --git a/drivers/hid/hid-ids.h b/drivers/hid/hid-ids.h
-index c40d818417a2..59549ff57583 100644
---- a/drivers/hid/hid-ids.h
-+++ b/drivers/hid/hid-ids.h
-@@ -1275,6 +1275,10 @@
- #define USB_DEVICE_ID_RAZER_BLACKWIDOW_CLASSIC    0x011b
- #define USB_DEVICE_ID_RAZER_BLADE_14   0x011D
- 
-+#define USB_VENDOR_ID_RDMCTMZT			0x36b0
-+#define USB_DEVICE_ID_RDMCTMZT_DONGLE		0x2002
-+#define USB_DEVICE_ID_RDMCTMZT_CTRL87		0x2009
-+
- #define USB_VENDOR_ID_REALTEK		0x0bda
- #define USB_DEVICE_ID_REALTEK_READER	0x0152
- 
-diff --git a/drivers/hid/hid-rdmctmzt.c b/drivers/hid/hid-rdmctmzt.c
-new file mode 100644
-index 000000000000..278380565f48
---- /dev/null
-+++ b/drivers/hid/hid-rdmctmzt.c
-@@ -0,0 +1,669 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * HID driver for RDMCTMZT keyboards and their 2.4 GHz dongles (USB vendor
-+ * ID 0x36b0): the battery level.
-+ *
-+ * The keyboard firmware answers a battery query on its vendor channel, the
-+ * HID interface with the raw-HID application collection (usage page 0xff60,
-+ * usage 0x61, no report IDs): 32-byte reports on the dongle, 64-byte reports
-+ * on the keyboard over USB. The dongle passes the query to the keyboard over
-+ * the air and the answer back.
-+ *
-+ * Every request and answer starts with 0xaa and the command byte:
-+ *   0x10  start a session; other commands are only answered within one
-+ *   0x30  battery status
-+ *   0x11  end the session
-+ * Byte 4 of a request is the report size. An answer repeats the request up to
-+ * byte 6; byte 7 is 0x55 when the command was carried out (0x0f when it was
-+ * refused, for instance before the keyboard has measured its battery). The
-+ * battery status has the charge (0-100 %) in byte 8 and the charger state in
-+ * byte 9 (0 on battery, 1 charging, 2 full).
-+ *
-+ * The dongle answers 0xd0 itself, and sends one by itself when its link state
-+ * changes: byte 13 is 0x02 while it has no link to the keyboard (keyboard off,
-+ * or on USB). Any other value does not prove a link: dongle firmware 0x0102
-+ * reports 0x00 when connected, after a failed reconnect, and when the keyboard
-+ * has never connected since power-up. So the driver takes the link as up only
-+ * once the keyboard answers, and as down when byte 13 is 0x02 or after
-+ * RDM_MAX_FAILS polls without any answer. It reports this as the USB
-+ * interface's wireless_status, so user space hides the battery of a keyboard
-+ * that is not connected.
-+ *
-+ * A lost answer does not hide the battery: it is retried after RDM_RETRY_MS,
-+ * and the battery is marked not present only after RDM_MAX_FAILS polls in a
-+ * row without the battery status, or at once when the dongle reports no link.
-+ */
-+
-+#include <linux/cleanup.h>
-+#include <linux/completion.h>
-+#include <linux/device.h>
-+#include <linux/hid.h>
-+#include <linux/jiffies.h>
-+#include <linux/limits.h>
-+#include <linux/minmax.h>
-+#include <linux/module.h>
-+#include <linux/power_supply.h>
-+#include <linux/slab.h>
-+#include <linux/spinlock.h>
-+#include <linux/string.h>
-+#include <linux/usb.h>
-+#include <linux/workqueue.h>
-+
-+#include "hid-ids.h"
-+
-+#define RDM_VENDOR_USAGE		0xff600061
-+#define RDM_VENDOR_PREFIX		"RDMCTMZT "
-+
-+#define RDM_PREFIX			0xaa
-+#define RDM_CMD_START			0x10
-+#define RDM_CMD_STOP			0x11
-+#define RDM_CMD_BATTERY			0x30
-+/* The dongle's own link status, sent when the link changes */
-+#define RDM_DONGLE_STATUS		0xd0
-+
-+#define RDM_PREFIX_BYTE			0
-+#define RDM_CMD_BYTE			1
-+#define RDM_SIZE_BYTE			4
-+#define RDM_STATUS_BYTE			7
-+#define RDM_CAPACITY_BYTE		8
-+#define RDM_CHARGE_BYTE			9
-+#define RDM_LINK_BYTE			13
-+#define RDM_ANSWER_LEN			(RDM_LINK_BYTE + 1)
-+
-+#define RDM_STATUS_OK			0x55
-+#define RDM_MAX_CAPACITY		100
-+
-+#define RDM_LINK_NONE			0x02
-+/* No link byte received yet: probe, or a reset during suspend */
-+#define RDM_LINK_UNKNOWN		0xff
-+
-+enum rdm_charge_state {
-+	RDM_CHARGE_DISCHARGING	= 0,
-+	RDM_CHARGE_CHARGING	= 1,
-+	RDM_CHARGE_FULL		= 2,
-+};
-+
-+/* Over the air an answer takes up to two connection events of 100 ms */
-+#define RDM_TIMEOUT_MS			1000
-+#define RDM_FIRST_POLL_MS		2000
-+/* After a poll without the battery status */
-+#define RDM_RETRY_MS			5000
-+/* While the dongle's link byte allows a link, but the keyboard is silent */
-+#define RDM_SEARCH_MS			10000
-+#define RDM_POLL_MS			60000
-+#define RDM_MAX_FAILS			3
-+
-+struct rdm_device {
-+	struct hid_device *hdev;
-+	const char *model_name;
-+	/* Registered once the keyboard first answers */
-+	struct power_supply *battery;
-+	struct power_supply_desc battery_desc;
-+	struct delayed_work work;
-+	struct completion done;
-+	/* The dongle: report the radio link as wireless_status */
-+	bool dongle;
-+	/*
-+	 * Protects expect, answer, link, present, status, capacity,
-+	 * and stopping.
-+	 */
-+	spinlock_t lock;
-+	u8 *buf;
-+	size_t len;
-+	u8 expect;
-+	u8 answer[RDM_ANSWER_LEN];
-+	/* Byte 13 of the dongle's last 0xd0, or RDM_LINK_UNKNOWN */
-+	u8 link;
-+	bool present;
-+	int status;
-+	u8 capacity;
-+	bool stopping;
-+	/* Only used by the work; both count only polls with a link */
-+	unsigned int fails;	/* polls in a row without the battery status */
-+	unsigned int silent;	/* polls in a row without any answer */
-+	enum usb_wireless_status wireless;
-+};
-+
-+static const enum power_supply_property rdm_battery_props[] = {
-+	POWER_SUPPLY_PROP_PRESENT,
-+	POWER_SUPPLY_PROP_STATUS,
-+	POWER_SUPPLY_PROP_CAPACITY,
-+	POWER_SUPPLY_PROP_SCOPE,
-+	POWER_SUPPLY_PROP_MODEL_NAME,
-+	POWER_SUPPLY_PROP_MANUFACTURER,
-+};
-+
-+static int rdm_battery_get_property(struct power_supply *psy,
-+				    enum power_supply_property psp,
-+				    union power_supply_propval *val)
-+{
-+	struct rdm_device *rdm = power_supply_get_drvdata(psy);
-+
-+	switch (psp) {
-+	case POWER_SUPPLY_PROP_PRESENT:
-+		scoped_guard(spinlock_irqsave, &rdm->lock)
-+			val->intval = rdm->present;
-+		return 0;
-+	case POWER_SUPPLY_PROP_STATUS:
-+		scoped_guard(spinlock_irqsave, &rdm->lock)
-+			val->intval = rdm->present ? rdm->status :
-+						     POWER_SUPPLY_STATUS_UNKNOWN;
-+		return 0;
-+	case POWER_SUPPLY_PROP_CAPACITY:
-+		scoped_guard(spinlock_irqsave, &rdm->lock) {
-+			if (!rdm->present)
-+				return -ENODATA;
-+			val->intval = rdm->capacity;
-+		}
-+		return 0;
-+	case POWER_SUPPLY_PROP_SCOPE:
-+		val->intval = POWER_SUPPLY_SCOPE_DEVICE;
-+		return 0;
-+	case POWER_SUPPLY_PROP_MODEL_NAME:
-+		val->strval = rdm->model_name;
-+		return 0;
-+	case POWER_SUPPLY_PROP_MANUFACTURER:
-+		val->strval = "RDMCTMZT";
-+		return 0;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+/*
-+ * Only 0x02 rules out a link; the keyboard's answers decide the rest. That
-+ * includes RDM_LINK_UNKNOWN, so a lost link status is a lost poll, not a
-+ * report of no link.
-+ */
-+static bool rdm_link_may_be_up(u8 link)
-+{
-+	return link != RDM_LINK_NONE;
-+}
-+
-+static int rdm_decode_status(struct rdm_device *rdm, u8 charge)
-+{
-+	switch (charge) {
-+	case RDM_CHARGE_DISCHARGING:
-+		return POWER_SUPPLY_STATUS_DISCHARGING;
-+	case RDM_CHARGE_CHARGING:
-+		return POWER_SUPPLY_STATUS_CHARGING;
-+	case RDM_CHARGE_FULL:
-+		return POWER_SUPPLY_STATUS_FULL;
-+	default:
-+		hid_dbg(rdm->hdev, "unknown charger state: %u\n", charge);
-+		return POWER_SUPPLY_STATUS_UNKNOWN;
-+	}
-+}
-+
-+/* Send one command; its answer arrives in rdm_raw_event() */
-+static int rdm_send(struct rdm_device *rdm, u8 cmd)
-+{
-+	size_t raw_len = rdm->len + 1;
-+	int ret;
-+
-+	memset(rdm->buf, 0, raw_len);
-+	rdm->buf[0] = 0x00; /* unnumbered report ID */
-+	rdm->buf[1 + RDM_PREFIX_BYTE] = RDM_PREFIX;
-+	rdm->buf[1 + RDM_CMD_BYTE] = cmd;
-+	rdm->buf[1 + RDM_SIZE_BYTE] = rdm->len;
-+
-+	ret = hid_hw_output_report(rdm->hdev, rdm->buf, raw_len);
-+	/*
-+	 * -ESHUTDOWN from the transport (an endpoint flushed by a USB reset)
-+	 * is a lost poll; only rdm->stopping may end the polling.
-+	 */
-+	if (ret == -ESHUTDOWN)
-+		return -EIO;
-+	if (ret < 0)
-+		return ret;
-+	if (ret != raw_len)
-+		return -EIO;
-+
-+	return 0;
-+}
-+
-+/*
-+ * Send one command and wait for its answer: 0 once it is copied into @reply
-+ * (carried out or refused, checked via RDM_STATUS_BYTE).
-+ */
-+static int rdm_command(struct rdm_device *rdm, u8 cmd, u8 *reply)
-+{
-+	long time_left;
-+	int ret;
-+
-+	scoped_guard(spinlock_irqsave, &rdm->lock) {
-+		if (rdm->stopping)
-+			return -ESHUTDOWN;
-+		rdm->expect = cmd;
-+		rdm->answer[RDM_CMD_BYTE] = 0;
-+		reinit_completion(&rdm->done);
-+	}
-+
-+	ret = rdm_send(rdm, cmd);
-+	if (ret)
-+		goto out_clear;
-+
-+	time_left = wait_for_completion_interruptible_timeout(&rdm->done,
-+							      msecs_to_jiffies(RDM_TIMEOUT_MS));
-+	if (time_left <= 0) {
-+		ret = time_left ? (int)time_left : -ETIMEDOUT;
-+		goto out_clear;
-+	}
-+
-+	scoped_guard(spinlock_irqsave, &rdm->lock) {
-+		rdm->expect = 0;
-+		if (rdm->stopping)
-+			return -ESHUTDOWN;
-+		if (rdm->answer[RDM_CMD_BYTE] != cmd)
-+			return -ENOLINK;
-+		memcpy(reply, rdm->answer, RDM_ANSWER_LEN);
-+	}
-+	return 0;
-+
-+out_clear:
-+	scoped_guard(spinlock_irqsave, &rdm->lock) {
-+		rdm->expect = 0;
-+		if (rdm->stopping)
-+			ret = -ESHUTDOWN;
-+	}
-+	return ret;
-+}
-+
-+/*
-+ * Register the battery once the keyboard has answered: user space (UPower)
-+ * ignores a device battery whose capacity cannot be read when it appears.
-+ * Without an answer (the dongle with the keyboard on USB) there is none.
-+ */
-+static void rdm_battery_register(struct rdm_device *rdm)
-+{
-+	struct power_supply_config cfg = { .drv_data = rdm };
-+	struct power_supply *battery;
-+	int ret;
-+
-+	battery = devm_power_supply_register(&rdm->hdev->dev,
-+					     &rdm->battery_desc, &cfg);
-+	if (IS_ERR(battery)) {
-+		hid_err_ratelimited(rdm->hdev,
-+				    "cannot register the battery: %pe\n",
-+				    battery);
-+		return;
-+	}
-+
-+	ret = power_supply_powers(battery, &rdm->hdev->dev);
-+	if (ret)
-+		hid_warn(rdm->hdev, "cannot link battery to device: %d\n", ret);
-+
-+	rdm->battery = battery;
-+}
-+
-+/* The dongle's link byte, asked for now: an 0xd0 may have been missed */
-+static int rdm_dongle_linked(struct rdm_device *rdm, bool *linked)
-+{
-+	u8 reply[RDM_ANSWER_LEN];
-+	int ret;
-+
-+	/* rdm_raw_event() stores the link byte of the reply too */
-+	ret = rdm_command(rdm, RDM_DONGLE_STATUS, reply);
-+	if (ret == -ESHUTDOWN)
-+		return ret;
-+	if (ret)
-+		hid_dbg(rdm->hdev, "no link status: %d\n", ret);
-+
-+	scoped_guard(spinlock_irqsave, &rdm->lock) {
-+		*linked = rdm_link_may_be_up(rdm->link);
-+	}
-+	return 0;
-+}
-+
-+static int rdm_poll_keyboard(struct rdm_device *rdm, bool *linked,
-+			     bool *answered, bool *got, u8 *capacity,
-+			     int *status)
-+{
-+	u8 reply[RDM_ANSWER_LEN];
-+	int ret;
-+
-+	ret = rdm_command(rdm, RDM_CMD_START, reply);
-+	if (ret == -ESHUTDOWN)
-+		return ret;
-+	if (ret == -ENOLINK) {
-+		*linked = false;
-+		return 0;
-+	}
-+	if (ret)
-+		return 0;
-+
-+	/* Any answer, even a refusal, shows that the keyboard is linked */
-+	*answered = true;
-+	if (reply[RDM_STATUS_BYTE] == RDM_STATUS_OK) {
-+		ret = rdm_command(rdm, RDM_CMD_BATTERY, reply);
-+		if (ret == -ESHUTDOWN)
-+			return ret;
-+		if (ret == -ENOLINK) {
-+			*linked = false;
-+			return 0;
-+		}
-+		if (!ret && reply[RDM_STATUS_BYTE] == RDM_STATUS_OK) {
-+			*got = true;
-+			*capacity = min_t(u8, reply[RDM_CAPACITY_BYTE],
-+					  RDM_MAX_CAPACITY);
-+			*status = rdm_decode_status(rdm, reply[RDM_CHARGE_BYTE]);
-+		}
-+	}
-+
-+	ret = rdm_command(rdm, RDM_CMD_STOP, reply);
-+	if (ret == -ESHUTDOWN)
-+		return ret;
-+	if (ret == -ENOLINK)
-+		*linked = false;
-+
-+	return 0;
-+}
-+
-+static void rdm_battery_work(struct work_struct *work)
-+{
-+	struct rdm_device *rdm = container_of(to_delayed_work(work),
-+					      struct rdm_device, work);
-+	enum usb_wireless_status wireless = rdm->wireless;
-+	bool linked = true, answered = false, got = false;
-+	bool changed, present;
-+	unsigned int delay;
-+	u8 capacity = 0;
-+	int status = 0;
-+
-+	if (rdm->dongle && rdm_dongle_linked(rdm, &linked))
-+		return;
-+
-+	if (linked && rdm_poll_keyboard(rdm, &linked, &answered, &got,
-+					&capacity, &status))
-+		return;
-+
-+	if (!got)
-+		hid_dbg(rdm->hdev, "no battery status (linked %d, answered %d)\n",
-+			linked, answered);
-+
-+	if (!linked) {
-+		/* A keyboard that comes back starts with fresh counts */
-+		rdm->silent = 0;
-+		rdm->fails = 0;
-+		wireless = USB_WIRELESS_STATUS_DISCONNECTED;
-+	} else {
-+		/* So does one that answers after being taken as gone */
-+		if (answered && rdm->silent >= RDM_MAX_FAILS)
-+			rdm->fails = 0;
-+		rdm->silent = answered ? 0 : min(rdm->silent + 1, RDM_MAX_FAILS);
-+		rdm->fails = got ? 0 : min(rdm->fails + 1, RDM_MAX_FAILS);
-+		if (answered)
-+			wireless = USB_WIRELESS_STATUS_CONNECTED;
-+		else if (rdm->silent >= RDM_MAX_FAILS ||
-+			 rdm->wireless == USB_WIRELESS_STATUS_NA)
-+			wireless = USB_WIRELESS_STATUS_DISCONNECTED;
-+	}
-+
-+	/* Without a link the dongle reports when it comes back */
-+	if (got || !linked)
-+		delay = RDM_POLL_MS;
-+	else if (rdm->fails < RDM_MAX_FAILS)
-+		delay = RDM_RETRY_MS;
-+	else if (rdm->dongle && rdm->silent >= RDM_MAX_FAILS)
-+		delay = RDM_SEARCH_MS;
-+	else
-+		delay = RDM_POLL_MS;
-+
-+	scoped_guard(spinlock_irqsave, &rdm->lock) {
-+		if (rdm->stopping)
-+			return;
-+		present = linked &&
-+			  (got || (rdm->present && rdm->fails < RDM_MAX_FAILS));
-+		changed = rdm->present != present ||
-+			  (got && (rdm->capacity != capacity ||
-+				   rdm->status != status));
-+		rdm->present = present;
-+		if (got) {
-+			rdm->capacity = capacity;
-+			rdm->status = status;
-+		}
-+		queue_delayed_work(system_dfl_wq, &rdm->work,
-+				   msecs_to_jiffies(delay));
-+	}
-+
-+	if (rdm->dongle && wireless != rdm->wireless) {
-+		rdm->wireless = wireless;
-+		usb_set_wireless_status(to_usb_interface(rdm->hdev->dev.parent),
-+					wireless);
-+	}
-+
-+	if (present && got && !rdm->battery)
-+		rdm_battery_register(rdm);
-+	else if (changed && rdm->battery)
-+		power_supply_changed(rdm->battery);
-+}
-+
-+static int rdm_raw_event(struct hid_device *hdev, struct hid_report *report,
-+			 u8 *data, int size)
-+{
-+	struct rdm_device *rdm = hid_get_drvdata(hdev);
-+	bool changed = false;
-+
-+	if (!rdm || size < RDM_ANSWER_LEN || data[RDM_PREFIX_BYTE] != RDM_PREFIX)
-+		return 0;
-+
-+	guard(spinlock_irqsave)(&rdm->lock);
-+	/* Every link byte, asked for or not, so the newest one is kept */
-+	if (data[RDM_CMD_BYTE] == RDM_DONGLE_STATUS && rdm->dongle) {
-+		changed = data[RDM_LINK_BYTE] != rdm->link;
-+		rdm->link = data[RDM_LINK_BYTE];
-+	}
-+
-+	if (rdm->expect && data[RDM_CMD_BYTE] == rdm->expect) {
-+		memcpy(rdm->answer, data, RDM_ANSWER_LEN);
-+		rdm->expect = 0;
-+		complete(&rdm->done);
-+	} else if (changed) {
-+		/* The link to the keyboard came or went: ask now */
-+		if (rdm->expect && !rdm_link_may_be_up(rdm->link)) {
-+			rdm->expect = 0;
-+			complete(&rdm->done);
-+		}
-+		if (!rdm->stopping)
-+			mod_delayed_work(system_dfl_wq, &rdm->work, 0);
-+	}
-+	return 0;
-+}
-+
-+static bool rdm_is_vendor_interface(struct hid_device *hdev)
-+{
-+	for (unsigned int i = 0; i < hdev->maxcollection; i++) {
-+		if (hdev->collection[i].type == HID_COLLECTION_APPLICATION &&
-+		    hdev->collection[i].usage == RDM_VENDOR_USAGE)
-+			return true;
-+	}
-+	return false;
-+}
-+
-+/* End the work and any wait; rdm_resume_common() restarts it */
-+static void rdm_stop_polling(struct rdm_device *rdm)
-+{
-+	scoped_guard(spinlock_irqsave, &rdm->lock) {
-+		rdm->stopping = true;
-+		complete_all(&rdm->done);
-+	}
-+	cancel_delayed_work_sync(&rdm->work);
-+}
-+
-+static int rdm_probe(struct hid_device *hdev, const struct hid_device_id *id)
-+{
-+	struct hid_report *report_in, *report_out;
-+	struct rdm_device *rdm;
-+	size_t prefix_len;
-+	u32 report_len;
-+	int ret;
-+
-+	hdev->quirks |= HID_QUIRK_INPUT_PER_APP;
-+
-+	ret = hid_parse(hdev);
-+	if (ret)
-+		return ret;
-+
-+	/* Only the vendor interface has the query; the others work as usual */
-+	if (!rdm_is_vendor_interface(hdev))
-+		return hid_hw_start(hdev, HID_CONNECT_DEFAULT);
-+
-+	report_in = hdev->report_enum[HID_INPUT_REPORT].report_id_hash[0];
-+	report_out = hdev->report_enum[HID_OUTPUT_REPORT].report_id_hash[0];
-+	if (!report_in || !report_out ||
-+	    hdev->report_enum[HID_INPUT_REPORT].numbered ||
-+	    hdev->report_enum[HID_OUTPUT_REPORT].numbered) {
-+		hid_warn(hdev, "missing unnumbered vendor reports\n");
-+		return hid_hw_start(hdev, HID_CONNECT_DEFAULT);
-+	}
-+
-+	report_len = hid_report_len(report_out);
-+	if (hid_report_len(report_in) < RDM_ANSWER_LEN ||
-+	    report_len < RDM_ANSWER_LEN || report_len > U8_MAX) {
-+		hid_warn(hdev, "unexpected vendor report length\n");
-+		return hid_hw_start(hdev, HID_CONNECT_DEFAULT);
-+	}
-+
-+	rdm = devm_kzalloc(&hdev->dev, sizeof(*rdm), GFP_KERNEL);
-+	if (!rdm)
-+		return -ENOMEM;
-+
-+	rdm->len = report_len;
-+	/* Leading byte 0 holds the unnumbered report ID (0x00) */
-+	rdm->buf = devm_kzalloc(&hdev->dev, rdm->len + 1, GFP_KERNEL);
-+	if (!rdm->buf)
-+		return -ENOMEM;
-+
-+	rdm->hdev = hdev;
-+	prefix_len = str_has_prefix(hdev->name, RDM_VENDOR_PREFIX);
-+	rdm->model_name = hdev->name[prefix_len] ? hdev->name + prefix_len :
-+						   hdev->name;
-+	rdm->dongle = hid_is_usb(hdev) &&
-+		      hdev->product == USB_DEVICE_ID_RDMCTMZT_DONGLE;
-+	rdm->link = RDM_LINK_UNKNOWN;
-+	rdm->wireless = USB_WIRELESS_STATUS_NA;
-+	spin_lock_init(&rdm->lock);
-+	init_completion(&rdm->done);
-+	INIT_DELAYED_WORK(&rdm->work, rdm_battery_work);
-+
-+	/*
-+	 * Name the battery after the USB product ID and serial number, as
-+	 * hid-asus does: the HID device name changes with every replug, and
-+	 * user space keeps per-battery settings by name. The keyboard and its
-+	 * dongle share a serial number, so the product ID keeps them apart.
-+	 */
-+	if (hdev->uniq[0])
-+		rdm->battery_desc.name = devm_kasprintf(&hdev->dev, GFP_KERNEL,
-+							"rdmctmzt-%04x-%s-battery",
-+							hdev->product, hdev->uniq);
-+	else
-+		rdm->battery_desc.name = devm_kasprintf(&hdev->dev, GFP_KERNEL,
-+							"rdmctmzt-%s-battery",
-+							dev_name(&hdev->dev));
-+	if (!rdm->battery_desc.name)
-+		return -ENOMEM;
-+
-+	rdm->battery_desc.type = POWER_SUPPLY_TYPE_BATTERY;
-+	rdm->battery_desc.properties = rdm_battery_props;
-+	rdm->battery_desc.num_properties = ARRAY_SIZE(rdm_battery_props);
-+	rdm->battery_desc.get_property = rdm_battery_get_property;
-+
-+	hid_set_drvdata(hdev, rdm);
-+
-+	ret = hid_hw_start(hdev, HID_CONNECT_DEFAULT);
-+	if (ret)
-+		goto err_clear_drvdata;
-+
-+	/* Answers arrive as input reports, so keep the interface open */
-+	ret = hid_hw_open(hdev);
-+	if (ret)
-+		goto err_stop;
-+
-+	queue_delayed_work(system_dfl_wq, &rdm->work,
-+			   msecs_to_jiffies(RDM_FIRST_POLL_MS));
-+	return 0;
-+
-+err_stop:
-+	/* A dongle status may already have queued the work */
-+	rdm_stop_polling(rdm);
-+	hid_hw_stop(hdev);
-+err_clear_drvdata:
-+	hid_set_drvdata(hdev, NULL);
-+	return ret;
-+}
-+
-+static void rdm_remove(struct hid_device *hdev)
-+{
-+	struct rdm_device *rdm = hid_get_drvdata(hdev);
-+
-+	if (rdm) {
-+		rdm_stop_polling(rdm);
-+		if (rdm->dongle && rdm->wireless != USB_WIRELESS_STATUS_NA)
-+			usb_set_wireless_status(to_usb_interface(hdev->dev.parent),
-+						USB_WIRELESS_STATUS_NA);
-+		hid_hw_close(hdev);
-+	}
-+	hid_hw_stop(hdev);
-+}
-+
-+static int rdm_suspend(struct hid_device *hdev, pm_message_t message)
-+{
-+	struct rdm_device *rdm = hid_get_drvdata(hdev);
-+
-+	if (rdm)
-+		rdm_stop_polling(rdm);
-+	return 0;
-+}
-+
-+static int rdm_resume_common(struct hid_device *hdev, bool reset)
-+{
-+	struct rdm_device *rdm = hid_get_drvdata(hdev);
-+
-+	if (!rdm)
-+		return 0;
-+
-+	scoped_guard(spinlock_irqsave, &rdm->lock) {
-+		rdm->stopping = false;
-+		if (reset)
-+			rdm->link = RDM_LINK_UNKNOWN;
-+		queue_delayed_work(system_dfl_wq, &rdm->work, 0);
-+	}
-+	return 0;
-+}
-+
-+static int rdm_resume(struct hid_device *hdev)
-+{
-+	return rdm_resume_common(hdev, false);
-+}
-+
-+static int rdm_reset_resume(struct hid_device *hdev)
-+{
-+	if (hdev->claimed & HID_CLAIMED_INPUT)
-+		hidinput_reset_resume(hdev);
-+
-+	return rdm_resume_common(hdev, true);
-+}
-+
-+static const struct hid_device_id rdm_devices[] = {
-+	{ HID_USB_DEVICE(USB_VENDOR_ID_RDMCTMZT,
-+			 USB_DEVICE_ID_RDMCTMZT_DONGLE) },
-+	{ HID_USB_DEVICE(USB_VENDOR_ID_RDMCTMZT,
-+			 USB_DEVICE_ID_RDMCTMZT_CTRL87) },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(hid, rdm_devices);
-+
-+static struct hid_driver rdm_driver = {
-+	.name = "rdmctmzt",
-+	.id_table = rdm_devices,
-+	.probe = rdm_probe,
-+	.remove = rdm_remove,
-+	.raw_event = rdm_raw_event,
-+	.suspend = pm_ptr(rdm_suspend),
-+	.resume = pm_ptr(rdm_resume),
-+	.reset_resume = pm_ptr(rdm_reset_resume),
-+};
-+module_hid_driver(rdm_driver);
-+
-+MODULE_DESCRIPTION("HID driver for RDMCTMZT keyboards: battery level and link status");
-+MODULE_LICENSE("GPL");
+Highlights of changes in v2:
+- Refactored mostly common FPIN conversion routines and async event
+  processing into single routines with wrappers for differences.
+- Moved FPIN processing to a work queue to avoid conflicts with
+  fc_host_fpin_rcv and memory allocation
+- Set descriptor sizes correctly
+- Use target WWPN for basic FPIN descriptor
+- Split patch 4 into 3 patches, for definition, allocation, and use of
+  the asynchronous sub-queue for events
+- Link to v1: https://patch.msgid.link/20260408-ibmvfc-fpin-support-v1-0-52b06c464e03@linux.ibm.com
 
 ---
-base-commit: 4a30b295fc34467e0468a0c8aeef73ecbe876d07
-change-id: 20261122-b4-rdmctmzt-61993add2ef2
+Dave Marquardt (11):
+      scsi: ibmvfc: fix IRQ leak and guard deregister on channel reg failure
+      scsi: ibmvfc: fix stale rc and IRQ mapping leak in ibmvfc_register_channel()
+      scsi: ibmvfc: fix resource leaks on partial queue allocation failure
+      scsi: ibmvfc: add basic FPIN support
+      scsi: ibmvfc: add NOOP command support
+      scsi: ibmvfc: add FPIN extended flag and async sub-CRQ queue handle
+      scsi: ibmvfc: extend async event handlers for async sub-CRQ events
+      scsi: ibmvfc: add interrupt routine for asynchronous sub CRQ
+      scsi: ibmvfc: extend channel registration for async sub-CRQ
+      scsi: ibmvfc: register and use asynchronous sub CRQ for events
+      scsi: ibmvfc: handle extended FPIN events
+
+Tyrel Datwyler (2):
+      scsi: ibmvfc: fix potential clobbering of rc after failed irq setup
+      scsi: ibmvfc: fix potential NULL pointer dereference on failed queue allocation
+
+ drivers/scsi/Kconfig                 |   10 +
+ drivers/scsi/ibmvscsi/Makefile       |    1 +
+ drivers/scsi/ibmvscsi/ibmvfc-core.c  | 1018 ++++++++++++++++++++++++++++++----
+ drivers/scsi/ibmvscsi/ibmvfc.h       |   69 +++
+ drivers/scsi/ibmvscsi/ibmvfc_kunit.c |  584 +++++++++++++++++++
+ 5 files changed, 1582 insertions(+), 100 deletions(-)
+---
+base-commit: c3cff7fac01638ab58e85fe7df41a04fa25c5bae
+change-id: 20260925-ibmvfc-fpin-support-eeba4d08b425
 
 Best regards,
---  
-Erlend Jacobsen <erlendjacobsen@pm.me>
+-- 
+Dave Marquardt <davemarq@linux.ibm.com>
 
