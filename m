@@ -1,11 +1,11 @@
 From: Ernest Borowski <ernest.borowski.git@proton.me>
-Date: Tue, 24 Nov 2026 23:49:36 +0100
-Subject: [PATCH v2 02/11] iomap: add a helper to mark a range of a folio
- dirty
+Date: Tue, 24 Nov 2026 23:49:37 +0100
+Subject: [PATCH v2 03/11] ntfs: release delalloc reservations cut off by
+ truncate
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-b4-ntfs-delalloc-fixes-v2-2-f394c800ec03@proton.me>
+Message-Id: <20261124-b4-ntfs-delalloc-fixes-v2-3-f394c800ec03@proton.me>
 References: <20261124-b4-ntfs-delalloc-fixes-v2-0-f394c800ec03@proton.me>
 In-Reply-To: <20261124-b4-ntfs-delalloc-fixes-v2-0-f394c800ec03@proton.me>
 To: Namjae Jeon <linkinjeon@kernel.org>, Hyunchul Lee <hyc.lee@gmail.com>, 
@@ -16,83 +16,99 @@ Cc: Christian Brauner <brauner@kernel.org>, Christoph Hellwig <hch@lst.de>,
  linux-kernel@vger.kernel.org, Zhan Xusheng <zhanxusheng1024@gmail.com>, 
  stable@vger.kernel.org, Ernest Borowski <ernest.borowski.git@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2884;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3407;
  i=ernest.borowski.git@proton.me; s=default; h=from:subject:message-id;
- bh=i0mxnQ4RlIZOshN7UDhDAACtyhM3XWJqWt2QLrbCFUc=;
- b=owGbwMvMwCVWzJ65uCpJ5D/jabUkhmw2kfpnRkdrvuo8To/XeT6tzSlc+Yqky/ZHC5ZwC29sl
- 43vr57cUcrCIMbFICumyNLx/0aIT8i3T8vitPpg5rAygQxh4OIUgImInmFkmMbxpLUycMqCH9uu
- pJmtDvCdJ/ynqv/Ah9ser/jenT31/CXDfxdGNaWJdy7Z+h/7runOIbC/etNZ8cpLu2Kany+Z/4z
- jPhsA
+ bh=3nT+zUonqfx2kvoDVZIlPQfmCvPmSP51Ad2wiF9F3AM=;
+ b=owGbwMvMwCVWzJ65uCpJ5D/jabUkhmw2kXr90o281beWvL0Zy2Jz4uZy84q5HW7FkZwrn2YHN
+ rheWXqqo5SFQYyLQVZMkaXj/40Qn5Bvn5bFafXBzGFlAhnCwMUpABM5+4+R4QRjZI9L2GqlM+vP
+ rEpPW+rqtv/E89/MZm0F09/zcqXFJjMyLBSrDVT4uqiuSHpr0+OiuP/Cm5lTJkzVyhGLchHZV2D
+ EBAA=
 X-Developer-Key: i=ernest.borowski.git@proton.me; a=openpgp;
  fpr=88FFD8544C54F6F2A65E2A8E730769A37A6214FF
 X-Endpoint-Received: by B4 Relay for ernest.borowski.git@proton.me/default with auth_id=1589
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A filesystem that allocates in units larger than a block may need
-writeback to write blocks that a buffered write did not copy into.  ntfs
-reserves whole clusters for delayed allocation, and after a short copy
-into a cluster that was a hole, writeback must also write the rest of
-that cluster, or the cluster shows its old contents on the disk there.
-folio_mark_dirty() marks every block of the folio dirty, so the delalloc
-release that follows no longer finds the clean blocks of the clusters
-the write did not reach and keeps them reserved: with 1 KiB and 2 KiB
-clusters, writeback then allocates a cluster that holds no data.
+A buffered write into a hole turns the hole into an LCN_DELALLOC run and
+reserves its clusters in vol->dirty_clusters
+(ntfs_write_simple_iomap_begin_non_resident()).  Writeback hands the
+reservation back when ntfs_cluster_alloc() allocates the run.
 
-Add iomap_dirty_folio_range(), which marks the folio and only the blocks
-covering a byte range dirty.
+A truncate that cuts off delalloc runs before writeback drops their
+dirty folios, frees the clusters of the attribute with
+ntfs_cluster_free(), which skips everything that is not a real cluster,
+and removes the runs with ntfs_rl_truncate_nolock().  Nothing gives the
+reservation back, so the free space reported by statfs() and used by
+ntfs_available_clusters_count() shrinks by that many clusters until the
+volume is unmounted.  $Bitmap is not affected.
 
-"ntfs: zero the rest of a new cluster after a short buffered write"
-later in this series needs this, so it goes to stable with it.
+Workloads that rewrite files (open(O_TRUNC) + write) or truncate freshly
+written data lose free space quickly: a test that writes, truncates and
+punches holes in six 400 KiB files on a 128 MiB volume sees statfs()
+free space drop from 79 MB to zero in 80 seconds, after which writes
+fail with ENOSPC or come back short.  A 1 MiB buffered write followed by
+ftruncate(fd, 0) and sync leaves 256 (4 KiB) clusters reserved.
 
+Release the reservation of the delalloc runs that the shrink cuts off,
+before the runlist is truncated.
+
+Fixes: 495e90fa3348 ("ntfs: update attrib operations")
 Cc: stable@vger.kernel.org
 Signed-off-by: Ernest Borowski <ernest.borowski.git@proton.me>
 ---
- fs/iomap/buffered-io.c | 19 +++++++++++++++++++
- include/linux/iomap.h  |  1 +
- 2 files changed, 20 insertions(+)
+ fs/ntfs/attrib.c | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
-diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index 2eb8070e34..8c8851d16f 100644
---- a/fs/iomap/buffered-io.c
-+++ b/fs/iomap/buffered-io.c
-@@ -858,6 +858,25 @@ bool iomap_dirty_folio(struct address_space *mapping, struct folio *folio)
+diff --git a/fs/ntfs/attrib.c b/fs/ntfs/attrib.c
+index 6ee6b6bcac..4028c310fc 100644
+--- a/fs/ntfs/attrib.c
++++ b/fs/ntfs/attrib.c
+@@ -4383,6 +4383,37 @@ static int ntfs_attr_make_resident(struct ntfs_inode *ni, struct ntfs_attr_searc
+ 	return 0;
  }
- EXPORT_SYMBOL_GPL(iomap_dirty_folio);
  
-+/**
-+ * iomap_dirty_folio_range - mark a range of a folio dirty
-+ * @folio: the locked, uptodate folio
-+ * @off: byte offset of the range in @folio
-+ * @len: length of the range in bytes
++/*
++ * ntfs_release_delalloc_from - give back the reservation of delalloc runs
++ * @ni:		non-resident ntfs attribute whose runlist is about to be truncated
++ * @start_vcn:	first vcn that is cut off
 + *
-+ * Mark the blocks that cover [@off, @off + @len) and @folio dirty, but none
-+ * of the other blocks of @folio, so that writeback writes only those blocks.
++ * Delayed allocation reserves vol->dirty_clusters for every LCN_DELALLOC
++ * cluster when the buffered write is done and only gives it back when
++ * writeback allocates the clusters.  Runs cut off by a truncate never reach
++ * writeback (their dirty folios are dropped from the page cache), so their
++ * reservation has to be released here or it is lost until unmount.
++ *
++ * The runlist must be mapped completely and locked for writing.
 + */
-+void iomap_dirty_folio_range(struct folio *folio, size_t off, size_t len)
++static void ntfs_release_delalloc_from(struct ntfs_inode *ni, s64 start_vcn)
 +{
-+	struct address_space *mapping = folio->mapping;
++	struct runlist_element *rl = ni->runlist.rl;
++	s64 nr = 0;
 +
-+	ifs_alloc(mapping->host, folio, 0);
-+	iomap_set_range_dirty(folio, off, len);
-+	filemap_dirty_folio(mapping, folio);
++	lockdep_assert_held_write(&ni->runlist.lock);
++
++	for (; rl && rl->length; rl++) {
++		if (rl->lcn != LCN_DELALLOC || rl->vcn + rl->length <= start_vcn)
++			continue;
++		nr += rl->vcn + rl->length - max(rl->vcn, start_vcn);
++	}
++	if (!nr)
++		return;
++	ntfs_release_dirty_clusters(ni->vol, nr);
++	ni->i_dealloc_clusters -= min_t(s64, nr, ni->i_dealloc_clusters);
 +}
-+EXPORT_SYMBOL_GPL(iomap_dirty_folio_range);
 +
- static void
- iomap_write_failed(struct inode *inode, loff_t pos, unsigned len)
- {
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index 78a1b7603a..6a6e67b87f 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -445,6 +445,7 @@ struct folio *iomap_get_folio(struct iomap_iter *iter, loff_t pos, size_t len);
- bool iomap_release_folio(struct folio *folio, gfp_t gfp_flags);
- void iomap_invalidate_folio(struct folio *folio, size_t offset, size_t len);
- bool iomap_dirty_folio(struct address_space *mapping, struct folio *folio);
-+void iomap_dirty_folio_range(struct folio *folio, size_t off, size_t len);
- void iomap_folio_mark_uptodate(struct folio *folio);
- int iomap_file_unshare(struct inode *inode, loff_t pos, loff_t len,
- 		iomap_iter_next_fn next,
+ /*
+  * ntfs_non_resident_attr_shrink - shrink a non-resident, open ntfs attribute
+  * @ni:		non-resident ntfs attribute to shrink
+@@ -4479,6 +4510,8 @@ static int ntfs_non_resident_attr_shrink(struct ntfs_inode *ni,
+ 		}
+ 		ntfs_attr_put_search_ctx(ctx);
+ 
++		ntfs_release_delalloc_from(ni, first_free_vcn);
++
+ 		/* Truncate the runlist itself. */
+ 		if (ntfs_rl_truncate_nolock(vol, &ni->runlist, first_free_vcn)) {
+ 			/*
 
 -- 
 2.56.1
