@@ -1,11 +1,11 @@
 From: Ernest Borowski <ernest.borowski.git@proton.me>
-Date: Tue, 24 Nov 2026 23:49:39 +0100
-Subject: [PATCH v2 05/11] ntfs: keep delalloc reservations when a cluster
- allocation fails
+Date: Tue, 24 Nov 2026 23:49:40 +0100
+Subject: [PATCH v2 06/11] ntfs: release the delalloc reservations of an
+ evicted inode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-b4-ntfs-delalloc-fixes-v2-5-f394c800ec03@proton.me>
+Message-Id: <20261124-b4-ntfs-delalloc-fixes-v2-6-f394c800ec03@proton.me>
 References: <20261124-b4-ntfs-delalloc-fixes-v2-0-f394c800ec03@proton.me>
 In-Reply-To: <20261124-b4-ntfs-delalloc-fixes-v2-0-f394c800ec03@proton.me>
 To: Namjae Jeon <linkinjeon@kernel.org>, Hyunchul Lee <hyc.lee@gmail.com>, 
@@ -16,153 +16,115 @@ Cc: Christian Brauner <brauner@kernel.org>, Christoph Hellwig <hch@lst.de>,
  linux-kernel@vger.kernel.org, Zhan Xusheng <zhanxusheng1024@gmail.com>, 
  stable@vger.kernel.org, Ernest Borowski <ernest.borowski.git@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5991;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4574;
  i=ernest.borowski.git@proton.me; s=default; h=from:subject:message-id;
- bh=Ll5q/lv6mMUy3lMMuep0U4+NJtbPAmPZTKcpeMqtKPc=;
- b=owGbwMvMwCVWzJ65uCpJ5D/jabUkhmw2kfoba1KnFa+w/vw9kO3FYpuqyPK+74v33u06bHLe4
- P9k2cs6HaUsDGJcDLJiiiwd/2+E+IR8+7QsTqsPZg4rE8gQBi5OAZjIR1VGhn2C3VLbni4SvVt9
- 97vqmdrV625mZlc6l/Y2L+SoMT9Qq8Hwz0omTKHd8eenW2uL2a/0ljncPZ/Xlnvs7/r6IC7OH7x
- fuQA=
+ bh=m0GZy5Hxncz+i8T1+cTd1NfQBxBBQqqcjVOAbZiwO7o=;
+ b=owGbwMvMwCVWzJ65uCpJ5D/jabUkhmw2kQatHf3fNwrpO8x8tL1I0NG3VMTJUtldRbCOiXs70
+ 2o7n6iOUhYGMS4GWTFFlo7/N0J8Qr59Whan1Qczh5UJZAgDF6cATOTFckaG9fNfTVP++amAS6+z
+ mXWmwz2Nm0b3TurYe3c0t17tl40TYfifLX1dNqezMHzPpnbZG7fKwnXDF2zfu+XixO/pZ9ifWkS
+ xAAA=
 X-Developer-Key: i=ernest.borowski.git@proton.me; a=openpgp;
  fpr=88FFD8544C54F6F2A65E2A8E730769A37A6214FF
 X-Endpoint-Received: by B4 Relay for ernest.borowski.git@proton.me/default with auth_id=1589
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ntfs_cluster_alloc() sets vol->dirty_clusters to 0 when it fails after
-the free space check, which in practice means -ENOMEM or -EIO while it
-scans the bitmap.  vol->dirty_clusters is the sum of the reservations
-of every delalloc run on the volume, and those runs are still there, so
-the reset makes statfs() and the next allocations treat the reserved
-clusters as free.  Buffered writes then reserve the same clusters a
-second time, and writeback of the delayed data later fails with ENOSPC
-and loses it.
+When an inode is evicted with LCN_DELALLOC runs left in its runlist,
+truncate_inode_pages_final() drops their dirty folios and the clusters
+reserved for them in vol->dirty_clusters are never given back.  Only the
+deletion of a base inode released anything, using the per-inode
+i_dealloc_clusters counter.  This leaks free space until unmount when a
+named stream with delayed data is removed (ntfs_stream_finish_remove()
+truncates the page cache and ntfs_attr_rm() frees only real clusters),
+when a file is unlinked while one of its named streams has delayed data
+(ntfs_cleanup_deleted_inode() drops the stream inode, whose reservation
+is not covered by the base inode's counter), and when an inode that
+keeps a delalloc run no dirty folio covers (see the next patches) is
+evicted.
 
-ntfs_attr_map_cluster() has the converse problem on its own error
-paths: once the allocator succeeded for a delalloc run it has taken
-that run's reservation, but when the runlist copy, the runlist merge or
-the mapping pairs update fails afterwards, the clusters are freed and
-the run stays delalloc without a reservation.
+Reproducer: mount with streams_interface=windows, write 1 MiB to f:s,
+rm f:s (or rm f), sync: statfs() reports 256 (4 KiB) clusters less free
+space than after a remount.
 
-Reproducer (fault injection): write 4 MiB to file A without syncing,
-then fsync another file with /proc/thread-self/fail-nth set so that the
-kvzalloc() in ntfs_cluster_alloc() fails.  statfs() free space jumps
-back up by 1025 of the 1028 clusters A holds (4 KiB clusters). Writing a
-file of the size statfs() then reports and syncing loses about 4 MiB of
-that file's data; on 512 byte, 4 KiB and 64 KiB clusters alike.  Fault
-sites after the allocation (the runlist copy in ntfs_attr_map_cluster())
-raise the free space by the clusters of the failed request.
+Release the reservations of whatever delalloc runs are left in the
+runlist when any ntfs inode is evicted, and drop the counter-based
+release from the deletion path, which would release them twice.
 
-Leave vol->dirty_clusters alone when the allocation fails, and hold the
-reservation again when ntfs_attr_map_cluster() puts a delalloc run back
-after the allocator consumed it, before the clusters are freed, so that
-no other writer can reserve them in between.  If freeing them fails too,
-the run keeps the clusters and the hold is dropped again.  The error
-path after a failed mapping pairs update now returns the error without
-also reporting the freed clusters as allocated.
-
-Fixes: 11ccc9107dc4 ("ntfs: update runlist handling and cluster allocator")
+Fixes: b041ca562526 ("ntfs: update iomap and address space operations")
 Cc: stable@vger.kernel.org
 Signed-off-by: Ernest Borowski <ernest.borowski.git@proton.me>
 ---
- fs/ntfs/attrib.c   | 24 +++++++++++++++++++++++-
- fs/ntfs/lcnalloc.c |  1 -
- 2 files changed, 23 insertions(+), 2 deletions(-)
+ fs/ntfs/attrib.c | 12 +++++++-----
+ fs/ntfs/attrib.h |  1 +
+ fs/ntfs/inode.c  | 12 +++++++++++-
+ 3 files changed, 19 insertions(+), 6 deletions(-)
 
 diff --git a/fs/ntfs/attrib.c b/fs/ntfs/attrib.c
-index cdac846f37..7711b9df89 100644
+index 7711b9df89..f604a42673 100644
 --- a/fs/ntfs/attrib.c
 +++ b/fs/ntfs/attrib.c
-@@ -5428,6 +5428,19 @@ int ntfs_attr_truncate(struct ntfs_inode *ni, const s64 newsize)
- 				    HOLES_NO : HOLES_OK);
- }
- 
-+/*
-+ * The allocator has taken the reservation of a delalloc run whose clusters
-+ * are about to be freed again, the run staying delalloc: hold the
-+ * reservation again first, so that no other writer can reserve the freed
-+ * clusters in between.
-+ */
-+static void ntfs_map_cluster_rehold(struct ntfs_volume *vol, bool was_delalloc,
-+				    s64 clu_count)
-+{
-+	if (was_delalloc)
-+		ntfs_hold_dirty_clusters(vol, clu_count);
-+}
-+
- int ntfs_attr_map_cluster(struct ntfs_inode *ni, s64 vcn_start, s64 *lcn_start,
- 		s64 *lcn_count, s64 max_clu_count, bool *balloc, bool update_mp,
- 		bool skip_holes)
-@@ -5439,6 +5452,7 @@ int ntfs_attr_map_cluster(struct ntfs_inode *ni, s64 vcn_start, s64 *lcn_start,
- 	struct runlist_element *old_rl = NULL;
- 	s64 vcn = vcn_start, lcn, clu_count;
- 	s64 lcn_seek_from = -1;
-+	bool was_delalloc;
- 	int err = 0;
- 	size_t new_rl_count, old_rl_count;
- 
-@@ -5526,8 +5540,9 @@ int ntfs_attr_map_cluster(struct ntfs_inode *ni, s64 vcn_start, s64 *lcn_start,
- 	 * fallocate(), direct I/O or page_mkwrite() have none and must leave
- 	 * the reservations of other writers alone.
- 	 */
-+	was_delalloc = lcn == LCN_DELALLOC;
- 	rlc = ntfs_cluster_alloc(vol, vcn, clu_count, lcn_seek_from, DATA_ZONE,
--			false, true, lcn == LCN_DELALLOC);
-+			false, true, was_delalloc);
- 	if (IS_ERR(rlc)) {
- 		err = PTR_ERR(rlc);
- 		goto out;
-@@ -5541,6 +5556,7 @@ int ntfs_attr_map_cluster(struct ntfs_inode *ni, s64 vcn_start, s64 *lcn_start,
- 			 old_rl_count * sizeof(*old_rl), GFP_NOFS);
- 	if (!old_rl) {
- 		err = -ENOMEM;
-+		ntfs_map_cluster_rehold(vol, was_delalloc, clu_count);
- 		if (ntfs_cluster_free_from_rl(vol, rlc)) {
- 			ntfs_error(vol->sb,
- 				   "Failed to free cluster allocation after runlist backup failure.");
-@@ -5554,6 +5570,7 @@ int ntfs_attr_map_cluster(struct ntfs_inode *ni, s64 vcn_start, s64 *lcn_start,
- 	if (IS_ERR(rl)) {
- 		ntfs_error(vol->sb, "Failed to merge runlists");
- 		err = PTR_ERR(rl);
-+		ntfs_map_cluster_rehold(vol, was_delalloc, clu_count);
- 		if (ntfs_cluster_free_from_rl(vol, rlc))
- 			ntfs_error(vol->sb, "Failed to free hot clusters.");
- 		kvfree(rlc);
-@@ -5576,11 +5593,15 @@ int ntfs_attr_map_cluster(struct ntfs_inode *ni, s64 vcn_start, s64 *lcn_start,
- 		if (err) {
- 			s64 freed;
- 
-+			ntfs_map_cluster_rehold(vol, was_delalloc, clu_count);
- 			freed = ntfs_cluster_free(ni, vcn, clu_count, ctx);
- 			if (freed < 0 || freed != clu_count) {
- 				ntfs_error(vol->sb,
- 					   "Failed to free cluster allocation. Leaving inconsistent metadata.\n");
- 				NVolSetErrors(vol);
-+				/* The run keeps its clusters: drop the hold again. */
-+				if (was_delalloc)
-+					ntfs_release_dirty_clusters(vol, clu_count);
- 				goto out;
- 			}
- 
-@@ -5598,6 +5619,7 @@ int ntfs_attr_map_cluster(struct ntfs_inode *ni, s64 vcn_start, s64 *lcn_start,
- 					   "Failed to restore mapping pairs after allocation rollback.\n");
- 				NVolSetErrors(vol);
- 			}
-+			goto out;
+@@ -4390,13 +4390,15 @@ static int ntfs_attr_make_resident(struct ntfs_inode *ni, struct ntfs_attr_searc
+  *
+  * Delayed allocation reserves vol->dirty_clusters for every LCN_DELALLOC
+  * cluster when the buffered write is done and only gives it back when
+- * writeback allocates the clusters.  Runs cut off by a truncate never reach
+- * writeback (their dirty folios are dropped from the page cache), so their
+- * reservation has to be released here or it is lost until unmount.
++ * writeback allocates the clusters.  Runs cut off by a truncate, or left in
++ * the runlist of an inode that is evicted, never reach writeback (their dirty
++ * folios are dropped from the page cache), so their reservation has to be
++ * released here or it is lost until unmount.
+  *
+- * The runlist must be mapped completely and locked for writing.
++ * The runlist must be locked for writing.  It need not be mapped completely:
++ * delalloc runs only exist in fragments of the runlist that are mapped.
+  */
+-static void ntfs_release_delalloc_from(struct ntfs_inode *ni, s64 start_vcn)
++void ntfs_release_delalloc_from(struct ntfs_inode *ni, s64 start_vcn)
+ {
+ 	struct runlist_element *rl = ni->runlist.rl;
+ 	s64 nr = 0;
+diff --git a/fs/ntfs/attrib.h b/fs/ntfs/attrib.h
+index 9d6bf03202..faa2dfba3a 100644
+--- a/fs/ntfs/attrib.h
++++ b/fs/ntfs/attrib.h
+@@ -109,6 +109,7 @@ int ntfs_attr_fallocate(struct ntfs_inode *ni, loff_t start, loff_t byte_len, bo
+ int ntfs_non_resident_attr_insert_range(struct ntfs_inode *ni, s64 start_vcn, s64 len);
+ int ntfs_non_resident_attr_collapse_range(struct ntfs_inode *ni, s64 start_vcn, s64 len);
+ int ntfs_non_resident_attr_punch_hole(struct ntfs_inode *ni, s64 start_vcn, s64 len);
++void ntfs_release_delalloc_from(struct ntfs_inode *ni, s64 start_vcn);
+ int __ntfs_attr_truncate_vfs(struct ntfs_inode *ni, const s64 newsize,
+ 		const s64 i_size);
+ int ntfs_attr_expand(struct ntfs_inode *ni, const s64 newsize, const s64 prealloc_size);
+diff --git a/fs/ntfs/inode.c b/fs/ntfs/inode.c
+index 4fbdcd4596..911e68fa91 100644
+--- a/fs/ntfs/inode.c
++++ b/fs/ntfs/inode.c
+@@ -430,7 +430,6 @@ static int ntfs_non_resident_dealloc_clusters(struct ntfs_inode *ni)
  		}
- 	} else {
- 		VFS_I(ni)->i_blocks += clu_count << (vol->cluster_size_bits - 9);
-diff --git a/fs/ntfs/lcnalloc.c b/fs/ntfs/lcnalloc.c
-index 7e00016f42..2fbc24e4c6 100644
---- a/fs/ntfs/lcnalloc.c
-+++ b/fs/ntfs/lcnalloc.c
-@@ -799,7 +799,6 @@ switch_to_data1_zone:		search_zone = 2;
- 	} else if (err == -ENOSPC)
- 		ntfs_debug("No space left at all, err = -ENOSPC, first free lcn = 0x%llx.",
- 				vol->data1_zone_pos);
--	atomic64_set(&vol->dirty_clusters, 0);
+ 	}
  
- out_restore:
- 	up_write(&vol->lcnbmp_lock);
+-	ntfs_release_dirty_clusters(ni->vol, ni->i_dealloc_clusters);
+ 	ntfs_attr_put_search_ctx(actx);
+ 	return err;
+ }
+@@ -2459,6 +2458,17 @@ void ntfs_evict_big_inode(struct inode *vi)
+ 
+ 	truncate_inode_pages_final(&vi->i_data);
+ 
++	/*
++	 * The dirty folios dropped above never reach writeback.  Give back
++	 * the reservations of the delalloc runs they had, for named streams
++	 * and attribute inodes as well as for base inodes.
++	 */
++	if (NInoNonResident(ni) && ni->runlist.rl) {
++		down_write(&ni->runlist.lock);
++		ntfs_release_delalloc_from(ni, 0);
++		up_write(&ni->runlist.lock);
++	}
++
+ 	if (!vi->i_nlink) {
+ 		if (!NInoAttr(ni)) {
+ 			/* Never called with extent inodes */
 
 -- 
 2.56.1
