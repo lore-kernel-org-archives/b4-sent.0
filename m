@@ -1,11 +1,11 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Tue, 24 Nov 2026 16:38:34 -0700
-Subject: [PATCH v4 2/3] drm/print,dyndbg: restore __drm_debug to uint from
- ulong
+Date: Tue, 24 Nov 2026 16:38:35 -0700
+Subject: [PATCH v4 3/3] drm/print: fix drm_printer dynamic debug bit-test
+ bypass
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-rd-mostly-v4-2-26d60beb6666@gmail.com>
+Message-Id: <20261124-rd-mostly-v4-3-26d60beb6666@gmail.com>
 References: <20261124-rd-mostly-v4-0-26d60beb6666@gmail.com>
 In-Reply-To: <20261124-rd-mostly-v4-0-26d60beb6666@gmail.com>
 To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -18,141 +18,79 @@ To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795563513; l=5086;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795563513; l=2848;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=eas3Enj72cy5HyxvJIJLFk8ksG6u9MHGL2Mg4irO398=;
- b=O88JsASHmV4aIoMC/SeHmzOMn0NdbiUcmyaVTfOP8BL0gKXph8tnKGGjSFq4LY5wW8gK2xLz2
- 1ahJEVdhVwND6a41W4F0YM6zMNqajMidcDFE9pF83s60uLFkoDcH/YR
+ bh=y0RWdr4HR8Hk2DeVmjJ5zNw17ifUMWtuwVaP7R47qsw=;
+ b=o/UPdYHp3ZSlSA352RCmGdx4bwNiWNRBEtVQZfdCAr+VEeNWDZNiiVVuPpXN/Sg8lqYCYmBXN
+ l5Da1oeomWwAxTBPIr2u7bCiiC1yqxmfDqlQtWfq+pOzSgalBs1DPUK
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Restore __drm_debug and struct ddebug_class_param.bits to uint from
-ulong; 64 flags is more than we will ever need, and is not effectively
-usable with the interface:
+drm_debug_enabled() [$1] is the canonical bit-test for drm.debug.
+Commit 6ce6fae84536 ("drm_print: optimize drm_debug_enabled for
+jump-label") elaborated it into 4 names, controlled by
+CONFIG_DRM_USE_DYNAMIC_DEBUG:
 
-  # 64 bits would be unwieldy here
-  echo 0x12345678 > /sys/module/drm/parameters/debug
+A- $1_raw() - rename of the original bit-test.
+B- $1_instrumented() - like raw, but adds a pr_debug(), allowing us to
+   count callsite frequency and consider optimizing them later.
+C- __$1() - evaluates to 'true' when CONFIG_DRM_USE_DYNAMIC_DEBUG=y
+   (avoiding the bit-test where callsites are already guarded by a
+   dyndbg static-key), and forwards to A when =n.
+D- $1() - forwards to B when CONFIG_DRM_USE_DYNAMIC_DEBUG=y, and to A
+   when =n, for cases where an explicit bit-mask check is required.
 
-drm_debug_bitmap.bits points at extern __drm_debug so dyndbg updates
-it as shared state for drm_debug_enabled() and other ad-hoc debug
-checks outside classmaps' remit. That pointer coupling requires
-__drm_debug, module_param_named(..., uint), and
-ddebug_class_param.bits to change together in one commit.
+Later, commit 9fd6f61a297e ("drm/print: add drm_dbg_printer() for drm
+device specific printer") added a general-use __drm_printfn_dbg()
+function, but used __$1() instead of $1(). When
+CONFIG_DRM_USE_DYNAMIC_DEBUG=y, __$1() evaluates to 'true' and always
+prints.  This went unnoticed because CONFIG_DRM_USE_DYNAMIC_DEBUG was
+marked BROKEN.
 
-Accordingly, update lib/dynamic_debug.c to pass the local unsigned
-long `old_bits` to ddebug_apply_class_bitmap() (which uses
-test_bit()), format with 0x%x in param_get_dyndbg_classes(), and
-shrink DD_SYS_WRAP's backing variable in lib/test_dynamic_debug.c to
-unsigned int.
+With =y, this results in a flood of messages, and in CI-tests on slow
+serial consoles, creates bottlenecks, as seen in DRM-CI on i915 CML
+devices.  When IGT causes a mismatch in intel_pipe_config_compare(),
+the resulting UART storm causes a hard timeout after 20 minutes.
 
-Fixes: b9400852c080 ("dyndbg: add drm.debug style (drm/parameters/debug) bitmap support")
-Fixes: f158936b60a7 ("drm: POC drm on dyndbg - use in core, 2 helpers, 3 drivers.")
+NOTES:
+
+Drop the single-use `category` local variable and pass p->category
+directly (which previously also triggered an unused-variable warning
+under the old __$1() bypass).
+
+Because __drm_printfn_dbg() is a shared helper invoked via p->printfn
+with a runtime p->category, the callsite cannot be guarded by a
+static-key; we'd need a macro version and callsites where category is
+a compile-time constant.
+
+Replacing __$1() with $1() or $1_raw() would also work, but
+$1_instrumented() adds the pr_debug() in both =y and =n configs; when
+enabled it can provide call-freq data to inform further callsite
+optimization choices.
+
+Fixes: 9fd6f61a297e ("drm/print: add drm_dbg_printer() for drm device specific printer")
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
- drivers/gpu/drm/drm_print.c   | 4 ++--
- include/drm/drm_print.h       | 2 +-
- include/linux/dynamic_debug.h | 2 +-
- lib/dynamic_debug.c           | 8 +++++---
- lib/test_dynamic_debug.c      | 2 +-
- 5 files changed, 10 insertions(+), 8 deletions(-)
+ drivers/gpu/drm/drm_print.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/drivers/gpu/drm/drm_print.c b/drivers/gpu/drm/drm_print.c
-index 50cdeb1b15e2..2e7685849f44 100644
+index 2e7685849f44..3d26483975f2 100644
 --- a/drivers/gpu/drm/drm_print.c
 +++ b/drivers/gpu/drm/drm_print.c
-@@ -40,7 +40,7 @@
-  * __drm_debug: Enable debug output.
-  * Bitmask of DRM_UT_x. See include/drm/drm_print.h for details.
-  */
--unsigned long __drm_debug __read_mostly;
-+unsigned int __drm_debug __read_mostly;
- EXPORT_SYMBOL(__drm_debug);
+@@ -218,9 +218,8 @@ void __drm_printfn_dbg(struct drm_printer *p, struct va_format *vaf)
+ {
+ 	const struct drm_device *drm = p->arg;
+ 	const struct device *dev = drm ? drm->dev : NULL;
+-	enum drm_debug_category category = p->category;
  
- MODULE_PARM_DESC(debug, "Enable debug output, where each bit enables a debug category.\n"
-@@ -56,7 +56,7 @@ MODULE_PARM_DESC(debug, "Enable debug output, where each bit enables a debug cat
- "\t\tBit 9 (0x200) will enable DRMRES messages (managed resources code)");
+-	if (!__drm_debug_enabled(category))
++	if (!drm_debug_enabled_instrumented(p->category))
+ 		return;
  
- #if !defined(CONFIG_DRM_USE_DYNAMIC_DEBUG)
--module_param_named(debug, __drm_debug, ulong, 0600);
-+module_param_named(debug, __drm_debug, uint, 0600);
- #else
- /* classnames must match vals of enum drm_debug_category */
- DECLARE_DYNDBG_CLASSMAP(drm_debug_classes, DD_CLASS_TYPE_DISJOINT_BITS, 0,
-diff --git a/include/drm/drm_print.h b/include/drm/drm_print.h
-index 0805903c093b..d3c302a770e9 100644
---- a/include/drm/drm_print.h
-+++ b/include/drm/drm_print.h
-@@ -39,7 +39,7 @@ struct drm_device;
- struct seq_file;
- 
- /* Do *not* use outside of drm_print.[ch]! */
--extern unsigned long __drm_debug;
-+extern unsigned int __drm_debug;
- 
- /**
-  * DOC: print
-diff --git a/include/linux/dynamic_debug.h b/include/linux/dynamic_debug.h
-index 05743900a116..dc21e3a8e86f 100644
---- a/include/linux/dynamic_debug.h
-+++ b/include/linux/dynamic_debug.h
-@@ -124,7 +124,7 @@ struct _ddebug_info {
- 
- struct ddebug_class_param {
- 	union {
--		unsigned long *bits;
-+		unsigned int *bits;
- 		unsigned int *lvl;
- 	};
- 	char flags[8];
-diff --git a/lib/dynamic_debug.c b/lib/dynamic_debug.c
-index 18a71a9108d3..644f87d6969c 100644
---- a/lib/dynamic_debug.c
-+++ b/lib/dynamic_debug.c
-@@ -681,8 +681,9 @@ static int param_set_dyndbg_classnames(const char *instr, const struct kernel_pa
- 				continue;
- 			}
- 			curr_bits ^= BIT(cls_id);
--			totct += ddebug_apply_class_bitmap(dcp, &curr_bits, dcp->bits);
-+			totct += ddebug_apply_class_bitmap(dcp, &curr_bits, &old_bits);
- 			*dcp->bits = curr_bits;
-+			old_bits = curr_bits;
- 			v2pr_info("%s: changed bit %d:%s\n", KP_NAME(kp), cls_id,
- 				  map->class_names[cls_id]);
- 			break;
-@@ -754,7 +755,8 @@ int param_set_dyndbg_classes(const char *instr, const struct kernel_param *kp)
- 			inrep &= CLASSMAP_BITMASK(map->length);
- 		}
- 		v2pr_info("bits:%lx > %s\n", inrep, KP_NAME(kp));
--		totct += ddebug_apply_class_bitmap(dcp, &inrep, dcp->bits);
-+		old_bits = *dcp->bits;
-+		totct += ddebug_apply_class_bitmap(dcp, &inrep, &old_bits);
- 		*dcp->bits = inrep;
- 		break;
- 	case DD_CLASS_TYPE_LEVEL_NUM:
-@@ -796,7 +798,7 @@ int param_get_dyndbg_classes(char *buffer, const struct kernel_param *kp)
- 
- 	case DD_CLASS_TYPE_DISJOINT_NAMES:
- 	case DD_CLASS_TYPE_DISJOINT_BITS:
--		return scnprintf(buffer, PAGE_SIZE, "0x%lx\n", *dcp->bits);
-+		return scnprintf(buffer, PAGE_SIZE, "0x%x\n", *dcp->bits);
- 
- 	case DD_CLASS_TYPE_LEVEL_NAMES:
- 	case DD_CLASS_TYPE_LEVEL_NUM:
-diff --git a/lib/test_dynamic_debug.c b/lib/test_dynamic_debug.c
-index 77c2a669b6af..2fb9b3889f67 100644
---- a/lib/test_dynamic_debug.c
-+++ b/lib/test_dynamic_debug.c
-@@ -40,7 +40,7 @@ module_param_cb(do_prints, &param_ops_do_prints, NULL, 0600);
-  * - tie together sysname, mapname, bitsname, flagsname
-  */
- #define DD_SYS_WRAP(_model, _flags)					\
--	static unsigned long bits_##_model;				\
-+	static unsigned int bits_##_model;				\
- 	static struct ddebug_class_param _flags##_model = {		\
- 		.bits = &bits_##_model,					\
- 		.flags = #_flags,					\
+ 	__drm_dev_vprintk(dev, KERN_DEBUG, p->origin, p->prefix, vaf);
 
 -- 
 2.56.1
