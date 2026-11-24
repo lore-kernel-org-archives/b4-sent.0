@@ -1,241 +1,81 @@
-From: Jerome Berclaz <jerome.berclaz@proton.me>
-Date: Mon, 23 Nov 2026 19:19:50 -0800
-Subject: [PATCH] power: supply: surface-rt-ec: add charge_behaviour and
- report "Not charging"
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Tue, 24 Nov 2026 04:28:02 +0000
+Subject: [PATCH net] qede: Don't advertise XDP features on VFs without XDP
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-surface-rt-ec-charge-behaviour-v1-1-26b33fdbcd06@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNwQrCMBAFf6Xs2YUkFkF/RTyk64tdD61smiKU/
- rurHgeGmY0qTFHp0m1kWLXqPDnEQ0cy5ukB1rszpZBOMaYj12YlC9gWhrA75s6AMa86N+M+hF4
- yEEs+k0dehqLv3+B6+3NtwxOyfKu07x8BJyE/ggAAAA==
-X-Change-ID: 20261123-surface-rt-ec-charge-behaviour-4004caee1fa9
-To: Sebastian Reichel <sre@kernel.org>
-Cc: linux-pm@vger.kernel.org, linux-tegra@vger.kernel.org, 
- Svyatoslav Ryhel <clamor95@gmail.com>, 
- =?utf-8?q?Jonas_Schw=C3=B6bel?= <jonasschwoebel@yahoo.de>, 
- Jethro Bull <jethrob@hotmail.com>, 
- Jerome Berclaz <jerome.berclaz@proton.me>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7492;
- i=jerome.berclaz@proton.me; h=from:subject:message-id;
- bh=S7sUxLnqWmnFPeONxMfiyCH0lGGULc5XZup7yTcUs8Q=;
- b=owGbwMvMwCVmvC9341tRgSLG02pJDNmsTOHpV2VFb7t9FbAJjdh/9q1pIt+zJVE3Km/7zpoo6
- bpm6bG6jlIWBjEuBlkxRRbWBsPU+SfYAgr15x2CmcPKBDKEgYtTACZyzoKR4ejdkA1SM6Zuu3jb
- 7/KWJZezr66cfvhpe1P/92OX5W943Ohn+CuotUvrpFa/UkM0y5FM1l2m57Jr57B/dVJ9zmloX9k
- pwwcA
-X-Developer-Key: i=jerome.berclaz@proton.me; a=openpgp;
- fpr=058031659FC80650712F9EC233BE6DB1ED151072
-X-Endpoint-Received: by B4 Relay for jerome.berclaz@proton.me/default with auth_id=1608
+Message-Id: <20261124-qede-vf-xdp-v1-1-6fd99227d178@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAFESBWsC/yWMQQrCMBQFr1Le2g9JiCJeRVxo/qt+F7EmbSmU3
+ t2oyxmYWVFZjBWnbkXhbNVeuYHfdUiPa75TTBsjuHDwPkR5UylzL4sO4pz6/TGlGJVoxVDY2/K
+ 7nZE54vKXdbo9mcbvB9v2AU/A5ad0AAAA
+X-Change-ID: 20261124-qede-vf-xdp-00d158cc44de
+To: john.fastabend@gmail.com, pabeni@redhat.com, davem@davemloft.net, 
+ daniel@iogearbox.net, andrew+netdev@lunn.ch, edumazet@kernel.org, 
+ hawk@kernel.org, ast@kernel.org, kuba@kernel.org
+Cc: netdev@vger.kernel.org, lorenzo@kernel.org, bpf@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, sdf@fomichev.me
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795494482; l=2042;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=vQr3uhj8nir4mygw+a8Vo5cg0xdsW+ekBDQFJzRYxlk=;
+ b=lccUFniknjtEaGIRnCUPoKnsqeDfSk0tVWSy5f0m4CGQE4Oz8pusaHVqxEGqoy/LrGLkyA2eW
+ 4S5jj63+juYCBCK/B/NDKcq+RWol+4WGDCd1krEANM9AFA2l9E5c7Mq
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Surface RT's Windows firmware has a "Battery Thermal Limit" _DSM
-(4c2067e3-887d-475c-9720-4af1d3ed602e) on its battery device. Function 1
-takes a value from 0 to 100, which Microsoft documents as the percentage
-of the maximum charge rate, with 0 meaning that charging is stopped. The
-firmware writes it with an SMBus byte write to EC register 0x00 when the
-EC firmware major version (register 0x04) is 10 or later, and to
-register 0x0d otherwise.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-On EC firmware 0x0a.0x0d the EC charges at the full rate with 100 and
-does not charge at all with any lower value (0, 25, 50, 80, 90 and 99
-were tried): the adapter keeps powering the system and the battery
-current drops to zero within a minute. The EC keeps the value across
-adapter removal, suspend, reboot and power-off.
+A VF without XDP support gets qede_netdev_vf_ops, which has neither
+.ndo_bpf nor .ndo_xdp_xmit, but qede_init_ndev() still sets
 
-Expose this as the charge_behaviour property of the battery: "auto"
-writes 100, "inhibit-charge" writes 0. Pick the register the way the
-Windows firmware does; only register 0x00 has been tested.
+	ndev->xdp_features = NETDEV_XDP_ACT_BASIC | NETDEV_XDP_ACT_REDIRECT |
+			     NETDEV_XDP_ACT_NDO_XMIT;
 
-Also report POWER_SUPPLY_STATUS_NOT_CHARGING instead of DISCHARGING when
-the adapter is online and the EC is not charging, as happens with
-charging inhibited.
+for every device. The devmap code only allocates dev->xdp_bulkq when
+the device has .ndo_xdp_xmit, but the XDP redirect paths use
+NETDEV_XDP_ACT_NDO_XMIT to decide whether they can call bq_enqueue(),
+which dereferences dev->xdp_bulkq. So an XDP program running on another
+device can redirect a frame to such a VF, through a devmap or
+bpf_redirect(), and bq_enqueue() then dereferences a NULL xdp_bulkq.
 
-Tested on a Microsoft Surface RT with a 7.3.1-based kernel (libre-tegra
-tree): charge_behaviour reads "auto [inhibit-charge]" and the status is
-"Not charging" while inhibited on AC; writing "auto" resumes charging
-at about 0.9 A.
+Only set the XDP features when the device uses ops with XDP support,
+that is on a PF or on a VF with xdp_supported.
 
-The register and its semantics were found, and this change and its
-description written, with the help of an AI coding assistant (Claude),
-from the ACPI tables of the device's Windows firmware and Microsoft's
-battery documentation; I reviewed the change and tested it on my device
-as described above.
+Found with a static analysis tool and checked by hand.
 
-Signed-off-by: Jerome Berclaz <jerome.berclaz@proton.me>
+Fixes: 66c0e13ad236 ("drivers: net: turn on XDP features")
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
-Notes:
-- Only register 0x00 (EC firmware 10 and later) could be tested; the
-  register for older EC firmware, 0x0d, comes from the firmware's ACPI
-  code only.
-- The EC treats every value below 100 as "stop charging", so only
-  auto and inhibit-charge are offered.
-- The EC keeps the setting across power-off, so a userspace policy has
-  to restore "auto" itself, e.g. on shutdown; the driver leaves the
-  value alone on probe and removal.
+Compile tested on x86_64 (W=1, no new warnings). I don't have qede
+hardware.
 ---
- drivers/power/supply/surface-rt-ec.c | 96 +++++++++++++++++++++++++++++++++++-
- 1 file changed, 94 insertions(+), 2 deletions(-)
+ drivers/net/ethernet/qlogic/qede/qede_main.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/power/supply/surface-rt-ec.c b/drivers/power/supply/surface-rt-ec.c
-index b175bc63c504..164f475f97f8 100644
---- a/drivers/power/supply/surface-rt-ec.c
-+++ b/drivers/power/supply/surface-rt-ec.c
-@@ -11,7 +11,10 @@
- #include <linux/types.h>
+diff --git a/drivers/net/ethernet/qlogic/qede/qede_main.c b/drivers/net/ethernet/qlogic/qede/qede_main.c
+index 7ed17faced54..19d13ef27d10 100644
+--- a/drivers/net/ethernet/qlogic/qede/qede_main.c
++++ b/drivers/net/ethernet/qlogic/qede/qede_main.c
+@@ -890,8 +890,11 @@ static void qede_init_ndev(struct qede_dev *edev)
  
- /* Register Addresses (B=byte; W=word; S=string) */
-+#define REGB_CHARGE_LIMIT		0x00
- #define REGB_STATUS			0x02
-+#define REGB_FW_MAJOR			0x04
-+#define REGB_CHARGE_LIMIT_OLD		0x0d
- #define REGW_VOLTAGE_NOW		0x20
- #define REGW_CURRENT_NOW		0x24
- #define REGW_CAPACITY			0x28
-@@ -37,6 +40,7 @@ struct srt_ec_device {
+ 	ndev->hw_features = hw_features;
  
- 	unsigned int technology;
- 	unsigned int capacity;
-+	u8 charge_limit_reg;
+-	ndev->xdp_features = NETDEV_XDP_ACT_BASIC | NETDEV_XDP_ACT_REDIRECT |
+-			     NETDEV_XDP_ACT_NDO_XMIT;
++	/* qede_netdev_vf_ops has no XDP callbacks */
++	if (!IS_VF(edev) || edev->dev_info.xdp_supported)
++		ndev->xdp_features = NETDEV_XDP_ACT_BASIC |
++				     NETDEV_XDP_ACT_REDIRECT |
++				     NETDEV_XDP_ACT_NDO_XMIT;
  
- 	const char *serial;
- 	char manufacturer[13];
-@@ -45,6 +49,7 @@ struct srt_ec_device {
- 
- static const enum power_supply_property srt_bat_power_supply_props[] = {
- 	POWER_SUPPLY_PROP_CAPACITY,
-+	POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR,
- 	POWER_SUPPLY_PROP_CHARGE_NOW,
- 	POWER_SUPPLY_PROP_CHARGE_FULL,
- 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
-@@ -126,6 +131,64 @@ static int srt_bat_get_value(struct i2c_client *client, int reg, int *val)
- 	return 0;
- }
- 
-+/*
-+ * The charge limit is the value of the "Battery Thermal Limit" _DSM of the
-+ * Windows firmware (0 to 100 percent of the maximum charge rate). The EC
-+ * charges at the full rate with 100 and does not charge at all with any
-+ * lower value. It keeps the value across suspend, reboot and power-off.
-+ */
-+#define SRT_CHARGE_LIMIT_NONE		100
-+#define SRT_CHARGE_LIMIT_INHIBIT	0
-+
-+static int srt_ac_online(struct i2c_client *client)
-+{
-+	int ret = i2c_smbus_read_byte_data(client, REGB_ONLINE);
-+
-+	if (ret < 0)
-+		return ret;
-+
-+	return ret & BIT(0);
-+}
-+
-+static int srt_bat_power_supply_set_property(struct power_supply *psy,
-+					     enum power_supply_property psp,
-+					     const union power_supply_propval *val)
-+{
-+	struct srt_ec_device *srt = power_supply_get_drvdata(psy);
-+	u8 limit;
-+	int ret;
-+
-+	switch (psp) {
-+	case POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR:
-+		switch (val->intval) {
-+		case POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO:
-+			limit = SRT_CHARGE_LIMIT_NONE;
-+			break;
-+		case POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE:
-+			limit = SRT_CHARGE_LIMIT_INHIBIT;
-+			break;
-+		default:
-+			return -EINVAL;
-+		}
-+
-+		ret = i2c_smbus_write_byte_data(srt->client,
-+						srt->charge_limit_reg, limit);
-+		if (ret < 0)
-+			return ret;
-+
-+		power_supply_changed(psy);
-+		return 0;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static int srt_bat_property_is_writeable(struct power_supply *psy,
-+					 enum power_supply_property psp)
-+{
-+	return psp == POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR;
-+}
-+
- static int srt_bat_power_supply_get_property(struct power_supply *psy,
- 					     enum power_supply_property psp,
- 					     union power_supply_propval *val)
-@@ -170,10 +233,24 @@ static int srt_bat_power_supply_get_property(struct power_supply *psy,
- 		ret = srt_bat_get_value(client, REGB_ONLINE, &val->intval);
- 		break;
- 	case POWER_SUPPLY_PROP_STATUS:
--		if (srt->capacity < 100)
-+		if (srt->capacity < 100) {
- 			ret = srt_bat_get_value(client, REGB_STATUS, &val->intval);
--		else
-+			if (!ret && val->intval == POWER_SUPPLY_STATUS_DISCHARGING &&
-+			    srt_ac_online(client) > 0)
-+				val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
-+		} else {
- 			val->intval = POWER_SUPPLY_STATUS_FULL;
-+		}
-+		break;
-+	case POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR:
-+		ret = i2c_smbus_read_byte_data(client, srt->charge_limit_reg);
-+		if (ret < 0)
-+			break;
-+
-+		val->intval = ret == SRT_CHARGE_LIMIT_NONE ?
-+			      POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO :
-+			      POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE;
-+		ret = 0;
- 		break;
- 	case POWER_SUPPLY_PROP_TECHNOLOGY:
- 		val->intval = srt->technology;
-@@ -246,7 +323,11 @@ static const struct power_supply_desc srt_bat_power_supply_desc = {
- 	.type = POWER_SUPPLY_TYPE_BATTERY,
- 	.properties = srt_bat_power_supply_props,
- 	.num_properties = ARRAY_SIZE(srt_bat_power_supply_props),
-+	.charge_behaviours = BIT(POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO) |
-+			     BIT(POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE),
- 	.get_property = srt_bat_power_supply_get_property,
-+	.set_property = srt_bat_power_supply_set_property,
-+	.property_is_writeable = srt_bat_property_is_writeable,
- 	.external_power_changed = power_supply_changed,
- };
- 
-@@ -314,6 +395,17 @@ static int srt_ec_probe(struct i2c_client *client)
- 	else
- 		srt->technology = POWER_SUPPLY_TECHNOLOGY_UNKNOWN;
- 
-+	/*
-+	 * Like the Windows firmware, use the charge limit register of EC
-+	 * firmware 10 and later, and the older one before.
-+	 */
-+	ret = i2c_smbus_read_byte_data(client, REGB_FW_MAJOR);
-+	if (ret < 0)
-+		return ret;
-+
-+	srt->charge_limit_reg = ret >= 0x0a ? REGB_CHARGE_LIMIT :
-+					      REGB_CHARGE_LIMIT_OLD;
-+
- 	bat_cfg.drv_data = srt;
- 	bat_cfg.fwnode = dev_fwnode(dev);
- 
+ 	/* MTU range: 46 - 9600 */
+ 	ndev->min_mtu = ETH_ZLEN - ETH_HLEN;
 
----
-base-commit: 4843f6873f7c4835e62f2c73ba0fd538e57a2f22
-change-id: 20261123-surface-rt-ec-charge-behaviour-4004caee1fa9
 
-Best regards,
---  
-Jerome Berclaz <jerome.berclaz@proton.me>
 
