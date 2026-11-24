@@ -1,417 +1,107 @@
-From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Wed, 25 Nov 2026 00:01:35 +0100
-Subject: [PATCH net-next 3/3] net: ipa: add SC8180X (IPA v4.1)
- configuration data
+From: Phil Williams <phil.williams@advisoft.co.nz>
+Date: Wed, 25 Nov 2026 12:15:44 +1300
+Subject: [PATCH v2] iio: imu: st_lsm6dsx: set ts_sensitivity on parts
+ without freq_fine
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-qcom-ipa-sc8180x-v1-3-48a889acbe6b@gmail.com>
-References: <20261125-qcom-ipa-sc8180x-v1-0-48a889acbe6b@gmail.com>
-In-Reply-To: <20261125-qcom-ipa-sc8180x-v1-0-48a889acbe6b@gmail.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Alex Elder <elder@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Robert Ijtsma <robertijtsma@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795561294; l=13095;
- i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=FAOKxklbl2JNjTgB34XVej3V0HSEXyF/s+9+SKLtcMU=;
- b=ZcWx+JlC9FuzS8eLNO+aEqhDfmZSvhvlbdi8DeCBxpTOgyCLgelVOiqXgYS6ZFPIX8IQ1lRik
- QW5C6w+j35TBCAgmbaXbZzTMejH64bNPbCeH28BGt/dIjj+NdjFgrE/
-X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
- pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
-X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
+Message-Id: <20261125-st-lsm6dsx-ts-fallback-v2-1-ea0ea2512070@advisoft.co.nz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WOTQ6CMBCFr0K6dghTIzGuvIdh0Z+pVJGaTm1Qw
+ t0teACXX/Le+94smKInFqdqFpGyZx/GAnJXCdOr8UrgbWEhG9kiYgucYOBHa3mCxODUMGhl7mC
+ sRIcWad+QKOVnJOenbfjS/Zhf+kYmrWtrovecQnxv5oxr7q8kIyAclSkS5bTTh7Oy5XJwqTahH
+ j+iW5blC89ElLnTAAAA
+X-Change-ID: 20261116-st-lsm6dsx-ts-fallback-cd21f1d1e30e
+To: Lorenzo Bianconi <lorenzo@kernel.org>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Mario Tesi <martepisa@gmail.com>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jonathan Cameron <jic23@kernel.org>, stable@vger.kernel.org, 
+ Phil Williams <phil.williams@advisoft.co.nz>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795562143; l=2777;
+ i=phil.williams@advisoft.co.nz; s=kernel; h=from:subject:message-id;
+ bh=fGzBxiYeqCVBJr9qUvLqytWRj2H3OFvl+kp4md9filo=;
+ b=QpdXAjVXaPivFOUs6AdlJsF1sw2wxLPu6S1QzQ4gahR365MCZy6WI57iOzhxSM82kWsGkHoc8
+ lQw4Ov9aivoAmSu6UnA89XcMVmwtTIXb5o7kagE2LCOa1H9boLk45UD
+X-Developer-Key: i=phil.williams@advisoft.co.nz; a=ed25519;
+ pk=t0M8TApJRlA/rHh3lIu1XTiWO2+evmU8VnO43/qqLPk=
+X-Endpoint-Received: by B4 Relay for phil.williams@advisoft.co.nz/kernel with auth_id=1538
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the SC8180X (IPA v4.1) endpoint, resource group, shared memory,
-IMEM (0x146bd000, 8 KiB), and backward-compatibility configuration table
-(ipa_data_v4_1) and bind it to the qcom,sc8180x-ipa compatible.
+Commit 8abbf45fcda0 ("iio: st_lsm6dsx: Fixed calibrated timestamp
+calculation") takes the FIFO timestamp scale from ts_sensitivity.
+That field is only filled in for parts that have freq_fine. The
+untagged-FIFO parts are left at zero:
 
-Register offsets and endpoint/resource limits are derived from the
-downstream Qualcomm msm-4.14 poipu/sm8150 IPA v4.1 driver and SC8180X
-devicetree tables, adapted to the upstream ipa_mem_data layout.
+  LSM6DS3
+  LSM6DS3H
+  LSM6DSL, LSM6DSM, ISM330DLC and LSM6DS3TR-C
 
-Tested on Microsoft Surface Pro X SQ2 (SC8180X, Snapdragon X24 LTE
-modem) with rmnet_ipa0 MAPv4 and ModemManager qcom-soc QMAP bearers.
+st_lsm6dsx_read_fifo() multiplies the raw counter by hw->ts_gain, so
+every sample is published with the timestamp taken when the buffer
+was enabled. The accelerometer and gyroscope values still update.
+Userspace that integrates attitude from the timestamp delta treats a
+stuck timestamp as dt = 0.
 
-Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
+Set ts_sensitivity to the previous fixed scale of 25000 ns/tick on
+those entries. They have no freq_fine register, so ts_trim_coeff is
+left unset and no trim is applied.
+
+Fixes: 8abbf45fcda0 ("iio: st_lsm6dsx: Fixed calibrated timestamp calculation")
+Cc: stable@vger.kernel.org
+Suggested-by: Lorenzo Bianconi <lorenzo@kernel.org>
+Suggested-by: Jonathan Cameron <jic23@kernel.org>
+Signed-off-by: Phil Williams <phil.williams@advisoft.co.nz>
 ---
- drivers/net/ipa/Makefile             |   2 +-
- drivers/net/ipa/data/ipa_data-v4.1.c | 319 +++++++++++++++++++++++++++++++++++
- drivers/net/ipa/ipa_data.h           |   1 +
- drivers/net/ipa/ipa_main.c           |   4 +
- 4 files changed, 325 insertions(+), 1 deletion(-)
+Resending inline. The first copy went out as an attachment.
+No code changes.
+---
+Changes in v2:
+- Drop the ts_gain fallback in st_lsm6dsx_init_hw_timer() and set
+  .ts_sensitivity = 25000 in the LSM6DS3, LSM6DS3H and LSM6DSL settings
+  entries instead (Lorenzo, Jonathan).
+- Leave .ts_trim_coeff unset on those entries since they have no
+  freq_fine register (Francesco).
+- Link to v1: https://lore.kernel.org/r/20261116-st-lsm6dsx-ts-fallback-v1-1-8ace30afbfb5@advisoft.co.nz
+---
+ drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/net/ipa/Makefile b/drivers/net/ipa/Makefile
-index 2420af0..025a313 100644
---- a/drivers/net/ipa/Makefile
-+++ b/drivers/net/ipa/Makefile
-@@ -7,7 +7,7 @@ IPA_REG_VERSIONS	:=	3.1 3.5.1 4.1 4.2 4.5 4.7 4.9 4.11 5.0 5.5
- # Some IPA versions can reuse another set of GSI register definitions.
- GSI_REG_VERSIONS	:=	3.1 3.5.1 4.0 4.5 4.9 4.11 5.0
- 
--IPA_DATA_VERSIONS	:=	3.1 3.5.1 4.2 4.5 4.7 4.9 4.11 5.0 5.2 5.5
-+IPA_DATA_VERSIONS	:=	3.1 3.5.1 4.1 4.2 4.5 4.7 4.9 4.11 5.0 5.2 5.5
- 
- obj-$(CONFIG_QCOM_IPA)	+=	ipa.o
- 
-diff --git a/drivers/net/ipa/data/ipa_data-v4.1.c b/drivers/net/ipa/data/ipa_data-v4.1.c
-new file mode 100644
-index 0000000..9b52c60
---- /dev/null
-+++ b/drivers/net/ipa/data/ipa_data-v4.1.c
-@@ -0,0 +1,319 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
-+ * Copyright (C) 2026 Robin Snyders
-+ */
-+
-+#include <linux/array_size.h>
-+#include <linux/log2.h>
-+
-+#include "../ipa_data.h"
-+#include "../ipa_endpoint.h"
-+#include "../ipa_mem.h"
-+#include "../ipa_version.h"
-+
-+/** enum ipa_resource_type - IPA resource types for an SoC having IPA v4.1 */
-+enum ipa_resource_type {
-+	/* Source resource types; first must have value 0 */
-+	IPA_RESOURCE_TYPE_SRC_PKT_CONTEXTS		= 0,
-+	IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_LISTS,
-+	IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_BUFF,
-+	IPA_RESOURCE_TYPE_SRC_HPS_DMARS,
-+	IPA_RESOURCE_TYPE_SRC_ACK_ENTRIES,
-+
-+	/* Destination resource types; first must have value 0 */
-+	IPA_RESOURCE_TYPE_DST_DATA_SECTORS		= 0,
-+	IPA_RESOURCE_TYPE_DST_DPS_DMARS,
-+};
-+
-+/* Resource groups used for an SoC having IPA v4.1 */
-+enum ipa_rsrc_group_id {
-+	/* Source resource group identifiers */
-+	IPA_RSRC_GROUP_SRC_LWA_DL	= 0,
-+	IPA_RSRC_GROUP_SRC_UL_DL,
-+	IPA_RSRC_GROUP_SRC_UNUSED_2,
-+	IPA_RSRC_GROUP_SRC_UC_RX_Q,
-+	IPA_RSRC_GROUP_SRC_COUNT,	/* Last in set; not a source group */
-+
-+	/* Destination resource group identifiers */
-+	IPA_RSRC_GROUP_DST_LWA_DL	= 0,
-+	IPA_RSRC_GROUP_DST_UL_DL_DPL,
-+	IPA_RSRC_GROUP_DST_UNUSED_2,
-+	IPA_RSRC_GROUP_DST_UC_RX_Q,
-+	IPA_RSRC_GROUP_DST_COUNT,	/* Last; not a destination group */
-+};
-+
-+/* QSB configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_qsb_data ipa_qsb_data[] = {
-+	[IPA_QSB_MASTER_DDR] = {
-+		.max_writes	= 8,
-+		.max_reads	= 12,
-+	},
-+	[IPA_QSB_MASTER_PCIE] = {
-+		.max_writes	= 4,
-+		.max_reads	= 12,
-+	},
-+};
-+
-+/* Endpoint data for an SoC having IPA v4.1 */
-+static const struct ipa_gsi_endpoint_data ipa_gsi_endpoint_data[] = {
-+	[IPA_ENDPOINT_AP_COMMAND_TX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 4,
-+		.endpoint_id	= 5,
-+		.toward_ipa	= true,
-+		.channel = {
-+			.tre_count	= 512,
-+			.event_count	= 256,
-+			.tlv_count	= 20,
-+		},
-+		.endpoint = {
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_SRC_UL_DL,
-+				.dma_mode	= true,
-+				.dma_endpoint	= IPA_ENDPOINT_AP_LAN_RX,
-+				.tx = {
-+					.seq_type = IPA_SEQ_DMA,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_AP_LAN_RX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 5,
-+		.endpoint_id	= 10,
-+		.toward_ipa	= false,
-+		.channel = {
-+			.tre_count	= 256,
-+			.event_count	= 256,
-+			.tlv_count	= 9,
-+		},
-+		.endpoint = {
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_DST_UL_DL_DPL,
-+				.aggregation	= true,
-+				.status_enable	= true,
-+				.rx = {
-+					.buffer_size	= 8192,
-+					.pad_align	= ilog2(sizeof(u32)),
-+					.aggr_time_limit = 500,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_AP_MODEM_TX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 3,
-+		.endpoint_id	= 2,
-+		.toward_ipa	= true,
-+		.channel = {
-+			.tre_count	= 512,
-+			.event_count	= 512,
-+			.tlv_count	= 16,
-+		},
-+		.endpoint = {
-+			.filter_support	= true,
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_SRC_UL_DL,
-+				.checksum	= true,
-+				.qmap		= true,
-+				.status_enable	= true,
-+				.tx = {
-+					.seq_type = IPA_SEQ_2_PASS_SKIP_LAST_UC,
-+					.seq_rep_type = IPA_SEQ_REP_DMA_PARSER,
-+					.status_endpoint =
-+						IPA_ENDPOINT_MODEM_AP_RX,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_AP_MODEM_RX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 6,
-+		.endpoint_id	= 11,
-+		.toward_ipa	= false,
-+		.channel = {
-+			.tre_count	= 256,
-+			.event_count	= 256,
-+			.tlv_count	= 9,
-+		},
-+		.endpoint = {
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_DST_UL_DL_DPL,
-+				.checksum	= true,
-+				.qmap		= true,
-+				.aggregation	= true,
-+				.rx = {
-+					.buffer_size	= 8192,
-+					.aggr_time_limit = 500,
-+					.aggr_close_eof	= true,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_MODEM_COMMAND_TX] = {
-+		.ee_id		= GSI_EE_MODEM,
-+		.channel_id	= 1,
-+		.endpoint_id	= 4,
-+		.toward_ipa	= true,
-+	},
-+	[IPA_ENDPOINT_MODEM_LAN_RX] = {
-+		.ee_id		= GSI_EE_MODEM,
-+		.channel_id	= 4,
-+		.endpoint_id	= 14,
-+		.toward_ipa	= false,
-+	},
-+	[IPA_ENDPOINT_MODEM_AP_TX] = {
-+		.ee_id		= GSI_EE_MODEM,
-+		.channel_id	= 0,
-+		.endpoint_id	= 3,
-+		.toward_ipa	= true,
-+		.endpoint = {
-+			.filter_support	= true,
-+		},
-+	},
-+	[IPA_ENDPOINT_MODEM_AP_RX] = {
-+		.ee_id		= GSI_EE_MODEM,
-+		.channel_id	= 3,
-+		.endpoint_id	= 13,
-+		.toward_ipa	= false,
-+	},
-+};
-+
-+/* Source resource configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_resource ipa_resource_src[] = {
-+	{
-+		.limits[0] = { .min = 1, .max = 63 },
-+		.limits[1] = { .min = 1, .max = 63 },
-+		.limits[2] = { .min = 0, .max = 0 },
-+		.limits[3] = { .min = 1, .max = 63 },
-+	},
-+	{
-+		.limits[0] = { .min = 10, .max = 10 },
-+		.limits[1] = { .min = 10, .max = 10 },
-+		.limits[2] = { .min = 0, .max = 0 },
-+		.limits[3] = { .min = 8, .max = 8 },
-+	},
-+	{
-+		.limits[0] = { .min = 12, .max = 12 },
-+		.limits[1] = { .min = 14, .max = 14 },
-+		.limits[2] = { .min = 0, .max = 0 },
-+		.limits[3] = { .min = 8, .max = 8 },
-+	},
-+	{
-+		.limits[0] = { .min = 0, .max = 63 },
-+		.limits[1] = { .min = 0, .max = 63 },
-+		.limits[2] = { .min = 0, .max = 63 },
-+		.limits[3] = { .min = 0, .max = 63 },
-+	},
-+	{
-+		.limits[0] = { .min = 14, .max = 14 },
-+		.limits[1] = { .min = 20, .max = 20 },
-+		.limits[2] = { .min = 0, .max = 0 },
-+		.limits[3] = { .min = 14, .max = 14 },
-+	},
-+};
-+
-+/* Destination resource configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_resource ipa_resource_dst[] = {
-+	{
-+		.limits[0] = { .min = 4, .max = 4 },
-+		.limits[1] = { .min = 4, .max = 4 },
-+		.limits[2] = { .min = 3, .max = 3 },
-+		.limits[3] = { .min = 2, .max = 2 },
-+	},
-+	{
-+		.limits[0] = { .min = 2, .max = 63 },
-+		.limits[1] = { .min = 1, .max = 63 },
-+		.limits[2] = { .min = 1, .max = 2 },
-+		.limits[3] = { .min = 0, .max = 2 },
-+	},
-+};
-+
-+/* Resource configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_resource_data ipa_resource_data = {
-+	.rsrc_group_src_count	= IPA_RSRC_GROUP_SRC_COUNT,
-+	.rsrc_group_dst_count	= IPA_RSRC_GROUP_DST_COUNT,
-+	.resource_src_count	= ARRAY_SIZE(ipa_resource_src),
-+	.resource_src		= ipa_resource_src,
-+	.resource_dst_count	= ARRAY_SIZE(ipa_resource_dst),
-+	.resource_dst		= ipa_resource_dst,
-+};
-+
-+/* IPA-resident memory region data for an SoC having IPA v4.1 */
-+static const struct ipa_mem ipa_mem_local_data[] = {
-+	{ .id = IPA_MEM_UC_SHARED,         .offset = 0x0000, .size = 0x0080, .canary_count = 0, },
-+	{ .id = IPA_MEM_UC_INFO,           .offset = 0x0080, .size = 0x0200, .canary_count = 0, },
-+	{ .id = IPA_MEM_V4_FILTER_HASHED,  .offset = 0x0288, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V4_FILTER,         .offset = 0x0308, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V6_FILTER_HASHED,  .offset = 0x0388, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V6_FILTER,         .offset = 0x0408, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V4_ROUTE_HASHED,   .offset = 0x0488, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V4_ROUTE,          .offset = 0x0508, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V6_ROUTE_HASHED,   .offset = 0x0588, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V6_ROUTE,          .offset = 0x0608, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_MODEM_HEADER,      .offset = 0x0688, .size = 0x0140, .canary_count = 2, },
-+	/* No AP_HEADER: original size0, omitted for6.3.8 zero-region validation. */
-+	{ .id = IPA_MEM_MODEM_PROC_CTX,    .offset = 0x07d0, .size = 0x0200, .canary_count = 2, },
-+	{ .id = IPA_MEM_AP_PROC_CTX,       .offset = 0x09d0, .size = 0x0200, .canary_count = 0, },
-+	{ .id = IPA_MEM_PDN_CONFIG,        .offset = 0x0bd8, .size = 0x0050, .canary_count = 2, },
-+	{ .id = IPA_MEM_STATS_QUOTA_MODEM, .offset = 0x0c30, .size = 0x0060, .canary_count = 2, },
-+	{ .id = IPA_MEM_STATS_TETHERING,   .offset = 0x0c90, .size = 0x0140, .canary_count = 0, },
-+	{ .id = IPA_MEM_STATS_V4_FILTER,   .offset = 0x0dd0, .size = 0x0180, .canary_count = 0, },
-+	{ .id = IPA_MEM_STATS_V6_FILTER,   .offset = 0x0f50, .size = 0x0180, .canary_count = 0, },
-+	{ .id = IPA_MEM_STATS_V4_ROUTE,    .offset = 0x10d0, .size = 0x0180, .canary_count = 0, },
-+	{ .id = IPA_MEM_STATS_V6_ROUTE,    .offset = 0x1250, .size = 0x0180, .canary_count = 0, },
-+	{ .id = IPA_MEM_STATS_DROP,        .offset = 0x13d0, .size = 0x0020, .canary_count = 0, },
-+	{ .id = IPA_MEM_MODEM,             .offset = 0x13f0, .size = 0x100c, .canary_count = 0, },
-+	{ .id = IPA_MEM_UC_EVENT_RING,     .offset = 0x2400, .size = 0x0400, .canary_count = 1, },
-+};
-+
-+/* Memory configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_mem_data ipa_mem_data = {
-+	.local_count	= ARRAY_SIZE(ipa_mem_local_data),
-+	.local		= ipa_mem_local_data,
-+	.imem_addr	= 0x146bd000,
-+	.imem_size	= 0x00002000,
-+	.smem_size	= 0x00002000,
-+};
-+
-+/* Interconnect bandwidths are in 1000 byte/second units */
-+static const struct ipa_interconnect_data ipa_interconnect_data[] = {
-+	{
-+		.name			= "memory",
-+		.peak_bandwidth		= 600000,	/* 600 MBps */
-+		.average_bandwidth	= 80000,	/* 80 MBps */
-+	},
-+	/* Average bandwidth is unused for the next two interconnects */
-+	{
-+		.name			= "imem",
-+		.peak_bandwidth		= 350000,	/* 350 MBps */
-+		.average_bandwidth	= 0,		/* unused */
-+	},
-+	{
-+		.name			= "config",
-+		.peak_bandwidth		= 40000,	/* 40 MBps */
-+		.average_bandwidth	= 0,		/* unused */
-+	},
-+};
-+
-+/* Clock and interconnect configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_power_data ipa_power_data = {
-+	.core_clock_rate	= 100 * 1000 * 1000,	/* Hz */
-+	.interconnect_count	= ARRAY_SIZE(ipa_interconnect_data),
-+	.interconnect_data	= ipa_interconnect_data,
-+};
-+
-+/* Configuration data for an SoC having IPA v4.1 */
-+const struct ipa_data ipa_data_v4_1 = {
-+	.version		= IPA_VERSION_4_1,
-+	.backward_compat	= 0x39,
-+	.qsb_count		= ARRAY_SIZE(ipa_qsb_data),
-+	.qsb_data		= ipa_qsb_data,
-+	.modem_route_count	= 8,
-+	.endpoint_count		= ARRAY_SIZE(ipa_gsi_endpoint_data),
-+	.endpoint_data		= ipa_gsi_endpoint_data,
-+	.resource_data		= &ipa_resource_data,
-+	.mem_data		= &ipa_mem_data,
-+	.power_data		= &ipa_power_data,
-+};
-diff --git a/drivers/net/ipa/ipa_data.h b/drivers/net/ipa/ipa_data.h
-index 3eb9dc2..20da242 100644
---- a/drivers/net/ipa/ipa_data.h
-+++ b/drivers/net/ipa/ipa_data.h
-@@ -247,6 +247,7 @@ struct ipa_data {
- 
- extern const struct ipa_data ipa_data_v3_1;
- extern const struct ipa_data ipa_data_v3_5_1;
-+extern const struct ipa_data ipa_data_v4_1;
- extern const struct ipa_data ipa_data_v4_2;
- extern const struct ipa_data ipa_data_v4_5;
- extern const struct ipa_data ipa_data_v4_7;
-diff --git a/drivers/net/ipa/ipa_main.c b/drivers/net/ipa/ipa_main.c
-index 14ac2d2..fa26f36 100644
---- a/drivers/net/ipa/ipa_main.c
-+++ b/drivers/net/ipa/ipa_main.c
-@@ -648,6 +648,10 @@ static const struct of_device_id ipa_match[] = {
- 		.compatible	= "qcom,sdm845-ipa",
- 		.data		= &ipa_data_v3_5_1,
- 	},
-+	{
-+		.compatible	= "qcom,sc8180x-ipa",
-+		.data		= &ipa_data_v4_1,
-+	},
- 	{
- 		.compatible	= "qcom,sc7180-ipa",
- 		.data		= &ipa_data_v4_2,
+diff --git a/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c b/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
+index 823f8ac66..dffaf76b5 100644
+--- a/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
++++ b/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
+@@ -434,6 +434,7 @@ static const struct st_lsm6dsx_settings st_lsm6dsx_sensor_settings[] = {
+ 				.addr = 0x09,
+ 				.mask = GENMASK(5, 3),
+ 			},
++			.ts_sensitivity = 25000,
+ 		},
+ 		.event_settings = {
+ 			.sources = {
+@@ -601,6 +602,7 @@ static const struct st_lsm6dsx_settings st_lsm6dsx_sensor_settings[] = {
+ 				.addr = 0x09,
+ 				.mask = GENMASK(5, 3),
+ 			},
++			.ts_sensitivity = 25000,
+ 		},
+ 		.event_settings = {
+ 			.sources = {
+@@ -802,6 +804,7 @@ static const struct st_lsm6dsx_settings st_lsm6dsx_sensor_settings[] = {
+ 				.addr = 0x09,
+ 				.mask = GENMASK(5, 3),
+ 			},
++			.ts_sensitivity = 25000,
+ 		},
+ 		.shub_settings = {
+ 			.page_mux = {
 
--- 
-2.56.0
+---
+base-commit: fa2933aac170dd19c6a7f0d7b81a8f537e40915c
+change-id: 20261116-st-lsm6dsx-ts-fallback-cd21f1d1e30e
+
+Best regards,
+--  
+Phil Williams <phil.williams@advisoft.co.nz>
 
