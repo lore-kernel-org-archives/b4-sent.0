@@ -1,79 +1,112 @@
-From: Markus Haberlander <markus.haberlander@rosenberger.com>
-Date: Tue, 24 Nov 2026 10:22:38 +0100
-Subject: [PATCH v2] mfd: cgbc-core: Add support for conga-PA7
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Tue, 24 Nov 2026 09:57:36 +0000
+Subject: [PATCH net v2] l2tp: require CAP_NET_ADMIN to join the l2tp
+ multicast group
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-cgbc-conga-pa7-v2-1-18a114b1801c@rosenberger.com>
-X-B4-Tracking: v=1; b=H4sIAF1XBWsC/3WNQQ6CMBBFr0Jm7RjaGkhceQ/Dop0OpSa2ZIpEQ
- 7i7gGuXL3n//QUKS+QC12oB4TmWmNMG+lQBDTYFxug3Bl3rRiltkIIjpJyCxdG26KlpvWHN3jS
- wjUbhPr6P4L37cXm5B9O0V3ZjiGXK8jkeZ7V7f+OzQoW98artXa35Ym6SCyfHEljOlJ/Qrev6B
- WDrxr3EAAAA
-X-Change-ID: 20261123-cgbc-conga-pa7-dc67d3e2ed36
-To: Thomas Richard <thomas.richard@bootlin.com>, Lee Jones <lee@kernel.org>
-Cc: mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
- Markus Haberlander <markus.haberlander@rosenberger.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795512160; l=1669;
- i=markus.haberlander@rosenberger.com; s=20261123; h=from:subject:message-id;
- bh=IOEHi9ik+Gei7mZb0tLBs620x7KvO4P21+5TgD1iQJs=;
- b=/8vMuI5kp5xVkSw0F53JIvS5TevRM+LtzH1vjlnHPKRYKTMU1lsFeD10e1jxejYOjf3R/uMYa
- bsG8CYGNVwdAp5ESWSqFH1mKuSsZ1MXIW8Mqhz4EID1mVWMRl6vjSUj
-X-Developer-Key: i=markus.haberlander@rosenberger.com; a=ed25519;
- pk=baNIWlZCf58g17gE2FS6ir0ymNwyBXguoQENSJkXdeQ=
-X-Endpoint-Received: by B4 Relay for markus.haberlander@rosenberger.com/20261123 with auth_id=1612
+Message-Id: <20261124-l2tp-mcast-perm-v2-1-416741ccb334@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAI9fBWsC/yWMwQrCMBAFf6W8swtmrbX6K+IhxlVXbAzZWAql/
+ 27U4wzMzDDJKoZDMyPLqKavWIFXDcLdx5uQXiqD19w5xy09uSQagrdCSfJAftP3vOu2+5YdapW
+ yXHX6HY+IUnD6S3ufHxLK94Vl+QAGclJueAAAAA==
+X-Change-ID: 20261124-l2tp-mcast-perm-a38827659421
+To: pabeni@redhat.com, kuba@kernel.org, davem@davemloft.net, 
+ edumazet@kernel.org
+Cc: netdev@vger.kernel.org, maoyixie.tju@gmail.com, 
+ anilkaushikwireless@gmail.com, stephen@networkplumber.org, 
+ linux-kernel@vger.kernel.org, horms@kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795514255; l=3479;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=b8Zf/qow/0DrC6IfxZ7GE0dxZpPJKUEKTCMj81fhw0k=;
+ b=tdQFEPeV4B/PyXWBJ+HPGKmRisjKqFCKlazcLG93B0jtoHXtzuOGVGHO1yywQbySbWxKnMTdP
+ /QB3UIF+ZCFCPOg5cQwhHo4b6fGLQdgCe2M09h6fuGE7rYdKNpMiMG4
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The conga-PA7 is a Pico-ITX board with an Intel Elkhart Lake SoC, like
-the conga-SA7 SMARC module. Its board controller is of the same
-generation and is accessed through the same I/O ports, so the existing
-driver works with it once the board is matched.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-Match the board vendor and name.
+The l2tp generic netlink family sends a notification on its "l2tp"
+multicast group whenever a tunnel or session is created, modified or
+deleted. The message is built by the same l2tp_nl_tunnel_send() and
+l2tp_nl_session_send() helpers as the replies to TUNNEL_GET and
+SESSION_GET, so it carries the tunnel and session IDs, the addresses
+and ports, the statistics and, for L2TPv3 sessions with cookies
+configured, the local and peer cookies.
 
-Tested on a conga-PA7 (board revision A.2, BIOS PA70R026): the core
-driver loads through its DMI alias and adds its GPIO, I2C and hwmon
-cells.
+The tunnel and session commands, including the GET commands, need
+CAP_NET_ADMIN in the user namespace owning the network namespace
+(GENL_UNS_ADMIN_PERM), but generic netlink lets any user join a
+multicast group by default. So an unprivileged user in the same network
+namespace can read all of this by joining the group. Configured cookies
+help an L2TPv3 endpoint reject blindly injected packets, and leaking
+them weakens that.
 
-The patch and this changelog were drafted with the help of Claude
-Opus 5.5 and reviewed and tested by me.
+Commit ed267f783c0c ("l2tp: send netlink notifications in the tunnel's
+net namespace") already noted that a listener needs no privilege, but
+only stopped the notifications from reaching other network namespaces.
+This patch handles listeners in the tunnel's own namespace that join
+the group after the l2tp family is registered.
 
-Cc: stable@vger.kernel.org # 6.13.x
-Signed-off-by: Markus Haberlander <markus.haberlander@rosenberger.com>
+Mark the group with GENL_MCAST_CAP_NET_ADMIN, as was done for gtp in
+commit db627e71b6da ("gtp: Require 'CAP_NET_ADMIN' when joining the gtp
+multicast group"). genl_bind() then requires CAP_NET_ADMIN in the user
+namespace owning the network namespace, the same capability and
+namespace as the tunnel and session commands.
+
+genl_bind() only checks the flag for a group ID that a registered
+family owns. A socket that joins the ID before the l2tp family is
+registered, for example before l2tp_netlink is loaded, keeps getting
+the notifications. This affects every family that uses
+GENL_MCAST_CAP_*, including gtp, and is fixed separately in genetlink
+[1]. Backports need that fix too to cover this case.
+
+Found with a static analysis tool and checked by hand.
+
+Link: https://lore.kernel.org/all/20261123155503.2497063-1-anilkaushikwireless@gmail.com/ [1]
+Fixes: 33f72e6f0c67 ("l2tp : multicast notification to the registered listeners")
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
+Tested in QEMU (x86_64): three listeners join the "l2tp" group, then
+root creates an L2TPv3 tunnel and a session with a cookie.
+
+Before:
+  root: joined, gets TUNNEL_CREATE and SESSION_CREATE (with the cookie)
+  root without CAP_NET_ADMIN: same
+  nobody: same
+
+After:
+  root: joined, gets both notifications
+  root without CAP_NET_ADMIN: EPERM
+  nobody: EPERM
+
 Changes in v2:
-- Drop the remark on the empty system vendor and product name from the
-  commit message (as requested by Thomas Richard)
-- Link to v1: https://patch.msgid.link/20261123-cgbc-conga-pa7-v1-1-f3d17fb02e43@rosenberger.com
----
- drivers/mfd/cgbc-core.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+- Say in the commit message that joining the group ID before the family
+  is registered is not covered here, and that backports also need the
+  pending genetlink fix (Sashiko).
 
-diff --git a/drivers/mfd/cgbc-core.c b/drivers/mfd/cgbc-core.c
-index 8a63923d1..cd68d396d 100644
---- a/drivers/mfd/cgbc-core.c
-+++ b/drivers/mfd/cgbc-core.c
-@@ -379,6 +379,13 @@ static struct platform_driver cgbc_driver = {
+v1: https://lore.kernel.org/all/20261120-l2tp-mcast-perm-v1-1-22dbffa88655@gmail.com/
+---
+ net/l2tp/l2tp_netlink.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/l2tp/l2tp_netlink.c b/net/l2tp/l2tp_netlink.c
+index a07009d4cb00..c442e953df66 100644
+--- a/net/l2tp/l2tp_netlink.c
++++ b/net/l2tp/l2tp_netlink.c
+@@ -31,6 +31,7 @@ static struct genl_family l2tp_nl_family;
+ static const struct genl_multicast_group l2tp_multicast_group[] = {
+ 	{
+ 		.name = L2TP_GENL_MCGROUP,
++		.flags = GENL_MCAST_CAP_NET_ADMIN,
+ 	},
  };
  
- static const struct dmi_system_id cgbc_dmi_table[] __initconst = {
-+	{
-+		.ident = "PA7",
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_VENDOR, "congatec"),
-+			DMI_MATCH(DMI_BOARD_NAME, "conga-PA7"),
-+		},
-+	},
- 	{
- 		.ident = "SA7",
- 		.matches = {
 
----
-base-commit: 1cb7268b6638c411fc32f373e965eb8ba9e9b2b4
-change-id: 20261123-cgbc-conga-pa7-dc67d3e2ed36
 
-Best regards,
---  
-Markus Haberlander <markus.haberlander@rosenberger.com>
 
