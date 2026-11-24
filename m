@@ -1,10 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Tue, 24 Nov 2026 14:09:49 -0800
-Subject: [PATCH net-next v12 01/15] dt-bindings: net: add onsemi's S2500
+Date: Tue, 24 Nov 2026 14:09:50 -0800
+Subject: [PATCH net-next v12 02/15] Documentation: networking: Add
+ timestamp related APIs to OA TC6 framework
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-s2500-mac-phy-support-v12-1-3575855d99f9@onsemi.com>
+Message-Id: <20261124-s2500-mac-phy-support-v12-2-3575855d99f9@onsemi.com>
 References: <20261124-s2500-mac-phy-support-v12-0-3575855d99f9@onsemi.com>
 In-Reply-To: <20261124-s2500-mac-phy-support-v12-0-3575855d99f9@onsemi.com>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -24,159 +25,152 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  devicetree@vger.kernel.org, linux-doc@vger.kernel.org, 
  Jerry Ray <jerry.ray@microchip.com>, 
  Ciprian Regus <ciprian.regus@analog.com>, 
- Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795558193; l=4355;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795558193; l=5833;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=q9t30XlaBbVJWQqOwwkV/4rV3HxPdwscHINleug1/ps=;
- b=DoflO4W97N0DLp24MOr8F3nlFrPVWOM/S1cPMdAV4jXE3boHNHWb/cQ/C/PWYOts7N57MEEo8
- Dn4Q3rYzvJ0ArSMggKXkrWBF9u/6g9ZCjMK4nkaWjTtpirua5aoOor+
+ bh=e1D6w+f4ICdcIKoxkxfKUPKsEbTykb38slj0b2WqgHM=;
+ b=cwaJZXaWuvCMlHNJzofacuUvmYVqlMiZjvVxM2w4Wpwqigg0B58lyr+d2v3HrGMe6DjQz4HZc
+ EOgLCFv9d8VCryRvyyrpk07u1SLf21JspCsyXU6OifmDB8HkCljcC5B
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device tree binding for the onsemi S2500 IEEE 802.3cg
-compliant Ethernet transceiver device.
+Add new APIs to support hardware timestamp feature as defined in
+OPEN Alliance 10BASE-T1x MAC-PHY serial interface specification.
 
-S2500 has both Media Access Controller (MAC) and 10BASE-T1S
-Ethernet PHY. MAC implements 10 Mbps half duplex Ethernet
-MAC. Communication between the host and MAC-PHY is defined in
-OPEN Alliance 10BASE-T1x MACPHY Serial Interface document.
+Add the newer read/write APIs that take MMS as one of its parameters
+as these were not documented so far.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
 changes in v12
-  - No change
+  - Updated rx_filter behavior and return codes for oa_tc6_hwtstamp_set()
 changes in v11
-  - No change
+  - Changed the wording of timestamp support to make it more clear
 changes in v10
-  - No change
+  - Added new API oa_tc6_tx_credit_threshold_set
+  - Vendor introduced APIs to vendor support patch
 changes in v9
-  - No changes
+  - Added Reviewed tag
 changes in v8
-  - Changed the interrupt type to level triggered
-  - Added reset-gpios entry that was recently supported.
+  - Updated the order of the parameters in oa_tc6_read_register_mms
+    and oa_tc6_write_register_mms apis.
+  - Removed the reference to ioctl
 changes in v7
-  - Added the missing review tag
-  - Removed the word YAML from the commit message
+  - No change
 changes in v6
-  - Moved the signed off information to the right place.
+  - No change
 changes in v5
-  - no changes
-changes in v4:
-  - added spi-max-frequency as suggested by AI review
-  - changed interrupt to IRQ_TYPE_EDGE_FALLING as it is
-    being taken care in net (stable) branch
+  - Fixed "no blank line" issues in four places
+changes in v4
+  - Added information for new APIs in OA TC6 framework
 changes in v3
-  - Removed URL link that failed verification
+  - Added more information for documentation
 changes in v2
-  - removed spi-max-frequency entry
-  - changed the compatible string to s2500
+  - Removed the changes to the existing API
+  - Updated information about newly added APIs
 changes in v1
-  - Added the first version of YAML file for onsemi MAC-PHY
+  - Added changes to an existing API
+  - Added documentation to new hardware timestamp related APIs
 ---
- .../devicetree/bindings/net/onnn,s2500.yaml        | 71 ++++++++++++++++++++++
- MAINTAINERS                                        |  6 ++
- 2 files changed, 77 insertions(+)
+ Documentation/networking/oa-tc6-framework.rst | 76 +++++++++++++++++++++++++++
+ 1 file changed, 76 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/net/onnn,s2500.yaml b/Documentation/devicetree/bindings/net/onnn,s2500.yaml
-new file mode 100644
-index 000000000000..e1df674c0f1e
---- /dev/null
-+++ b/Documentation/devicetree/bindings/net/onnn,s2500.yaml
-@@ -0,0 +1,71 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/net/onnn,s2500.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: onsemi S2500 10BASE-T1S MACPHY Ethernet Controllers
-+
-+maintainers:
-+  - Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-+
-+description:
-+  The S2500 combines a Media Access Controller (MAC) and an
-+  Ethernet PHY to enable 10BASE-T1S networks. The Ethernet Media Access
-+  Controller (MAC) module implements a 10 Mbps half duplex Ethernet MAC,
-+  compatible with the IEEE 802.3 standard and a 10BASE-T1S physical layer
-+  transceiver integrated into the S2500. The communication between
-+  the host and the MAC-PHY is specified in the OPEN Alliance 10BASE-T1x
-+  MACPHY Serial Interface (TC6).
-+
-+allOf:
-+  - $ref: /schemas/net/ethernet-controller.yaml#
-+  - $ref: /schemas/spi/spi-peripheral-props.yaml#
-+
-+properties:
-+  compatible:
-+    const: onnn,s2500
-+
-+  reg:
-+    maxItems: 1
-+
-+  interrupts:
-+    description:
-+      Interrupt from MAC-PHY asserted in the event of Receive Chunks
-+      Available, Transmit Chunk Credits Available and Extended Status
-+      Event.
-+    maxItems: 1
-+
-+  reset-gpios:
-+    description:
-+      GPIO connected to the active-low RST_N pin of the MAC-PHY.
-+    maxItems: 1
-+
-+  spi-max-frequency:
-+    maximum: 25000000
-+
-+required:
-+  - compatible
-+  - reg
-+  - interrupts
-+  - spi-max-frequency
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/irq.h>
-+    spi {
-+      #address-cells = <1>;
-+      #size-cells = <0>;
-+
-+      ethernet@0 {
-+        compatible = "onnn,s2500";
-+        reg = <0>;
-+        pinctrl-names = "default";
-+        pinctrl-0 = <&eth0_pins>;
-+        interrupt-parent = <&gpio>;
-+        interrupts = <25 IRQ_TYPE_LEVEL_LOW>;
-+        spi-max-frequency = <15000000>;
-+      };
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 97308edec53d..679b3b9565a1 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -21033,6 +21033,12 @@ S:	Supported
- W:	http://www.onsemi.com
- F:	drivers/net/phy/ncn*
+diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
+index 2545ef694016..2df8455bf3ba 100644
+--- a/Documentation/networking/oa-tc6-framework.rst
++++ b/Documentation/networking/oa-tc6-framework.rst
+@@ -153,6 +153,13 @@ OPEN Alliance TC6 Framework
+ - Forwards the received Ethernet frame from 10Base-T1x MAC-PHY to n/w
+   subsystem.
  
-+ONSEMI S2500 10BASE-T1S MACPHY ETHERNET DRIVER
-+M:	Selvamani Rajagopal <selvamani.rajagopal@onsemi.com>
-+L:	netdev@vger.kernel.org
-+S:	Supported
-+F:	Documentation/devicetree/bindings/net/onnn,s2500.yaml
++- If supported and enabled, timestamps are stored in the skb. Transmit
++  timestamps are requested via the TSC header field and read from
++  timestamp capture register A, B or C. If the next capture register is busy,
++  the frame is transmitted without requesting a timestamp and the TX
++  timestamp error counter is incremented. Receive timestamps are
++  prepended to the frame when the RTSA footer bit is set.
 +
- OP-TEE DRIVER
- M:	Jens Wiklander <jenswi@kernel.org>
- L:	op-tee@lists.trustedfirmware.org (moderated for non-subscribers)
+ Data Transaction
+ ~~~~~~~~~~~~~~~~
+ 
+@@ -496,3 +503,72 @@ the MAC-PHY.
+ Zero align receive frame feature can be enabled to align all receive ethernet
+ frames data to start at the beginning of any receive data chunk payload with a
+ start word offset (SWO) of zero.
++
++.. c:function:: int oa_tc6_ptp_register(struct oa_tc6 *tc6, \
++                                        struct ptp_clock_info *info)
++
++Registers the PTP hardware clock (PHC) with the kernel. Returns 0 immediately
++when the MAC-PHY does not support hardware timestamp. Otherwise it sets the
++name field of ptp_clock_info and registers the clock. Initialization of the
++other fields in the ptp_clock_info structure is left to the vendor as the
++PHC registers and their programming are vendor specific. The fields max_adj,
++owner, and all the functions for the clock operations, like adjfine,
++gettimex64, settime64, adjtime are expected to be initialized in the
++structure before registering the hardware clock.
++
++.. c:function:: void oa_tc6_ptp_unregister(struct oa_tc6 *tc6)
++
++Unregisters the PTP hardware clock.
++
++.. c:function:: int oa_tc6_get_ts_info(struct oa_tc6 *tc6, \
++                                       struct kernel_ethtool_ts_info *info)
++
++Reports the hardware timestamping capabilities and PHC index in info when
++a PTP hardware clock is registered. Otherwise, info is left unchanged.
++Returns 0 (success) in both cases.
++
++.. c:function:: void oa_tc6_hwtstamp_get(struct oa_tc6 *tc6, \
++                                         struct kernel_hwtstamp_config *cfg)
++
++Returns hardware timestamp configuration. Part of net_device_ops callbacks.
++
++.. c:function:: void oa_tc6_get_ts_stats(struct oa_tc6 *tc6, \
++                                         struct ethtool_ts_stats *stats)
++
++Provides hardware timestamp related traffic statistics for ethtool.
++An unexpected TX capture for a frame still being transferred counts as a
++timestamp error, not a lost timestamp. A request abandoned after its frame
++was transmitted, without a capture, counts as lost; a late TTSC event for
++that request does not count as an error.
++
++.. c:function:: int oa_tc6_hwtstamp_set(struct oa_tc6 *tc6, \
++                                        struct kernel_hwtstamp_config *cfg)
++
++Helper to set hardware timestamp configuration. Part of net_device_ops
++callbacks.
++
++The MAC-PHY timestamps all received frames, so any rx_filter other than
++HWTSTAMP_FILTER_NONE, or tx_type HWTSTAMP_TX_ON, results in
++HWTSTAMP_FILTER_ALL. The rx_filter field of cfg is updated with the
++filter that was programmed.
++
++Returns 0 on success, otherwise:
++
++- -EOPNOTSUPP: no PTP hardware clock is registered.
++- -EIO: the interface is down, or the framework has stopped handling
++  traffic after an error.
++- -ERANGE: tx_type or rx_filter is not supported.
++- -ETIMEDOUT: the request was not picked up within 100 ms.
++- A negative error code from the register access.
++
++.. c:function:: int oa_tc6_write_register_mms(struct oa_tc6 *tc6, \
++                                              u8 mms, u16 address, \
++                                              u32 value)
++
++Write a single register addressed by @mms and @address in the MAC-PHY.
++
++.. c:function:: int oa_tc6_read_register_mms(struct oa_tc6 *tc6, \
++                                             u8 mms, u16 address, \
++                                             u32 *value)
++
++Read a single register addressed by @mms and @address in the MAC-PHY.
 
 -- 
 2.43.0
