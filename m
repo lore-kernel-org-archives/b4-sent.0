@@ -1,10 +1,10 @@
 From: Alireza Haghdoost <haghdoost@uber.com>
-Date: Tue, 24 Nov 2026 11:28:28 -0800
-Subject: [PATCH v9 5/7] perf report/top: Add --lazy-load-symbols
+Date: Tue, 24 Nov 2026 11:28:29 -0800
+Subject: [PATCH v9 6/7] perf test: Add lazy symbol loading unit tests
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-perf-symbol-memory-send-v9-5-56f298185eae@uber.com>
+Message-Id: <20261124-perf-symbol-memory-send-v9-6-56f298185eae@uber.com>
 References: <20261124-perf-symbol-memory-send-v9-0-56f298185eae@uber.com>
 In-Reply-To: <20261124-perf-symbol-memory-send-v9-0-56f298185eae@uber.com>
 To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
@@ -17,114 +17,729 @@ To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
 Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Alireza Haghdoost <haghdoost@uber.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4380; i=haghdoost@uber.com;
- h=from:subject:message-id; bh=ppNlZ3VOcLClwa+EW9IutebfWNly9+u9DmMSRGXy758=;
- b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBrBeWGZh4iQF23SP/Y42mypuFVMFz9EAybh/V5y
- hjctM41xl6JAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCawXlhhsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtizlw/+O2YceLqSGMpr4EXoCF1/P86+mBZY3AE
- 4c7ar5wUoEjUVE6ghOGrlA+GIEZWtixn6jYxnWVKEIBq+6sB/V9WonqZ0G3O90SMKCKF3PJkG5b
- 8mJSS6m9AyqN48PPeQyGyZsUs/FzpH9FQDiDCBCkpPEPvT/8aE6Fv1lhWBB+AYT/53u/53b3nRD
- jFYr+YILHh/EQu/bfUcKLqA8zS/XzE8yClE/0dvX/aUqh0v8hJubeaJl+Ku25GP+99fYi5hSIMB
- MeNFEXdbidsYmbBg1HYmnTB/F2qd2mM4eWSsOaratdB42RmXRBDxySF6Jy/idO6803UXd3U9SDx
- jlQbJTte8r03r3IsBfvFhRw3DnwYkn2KWGnZTvKBN8TlTrxKi6ZOXJkRq2Ixv35rxBFWtF85nz2
- V4TSyegQqUIQzfQvw3Rxilol7g+xS5UHYVcchF5vLaziGpewi2OYLP8zZ4mS1+jfyNh2ZzmkK/0
- Bs8t6AokLhZAL9vlzVqXvcOidEhfe0EhXemVa9tDtppc2HK6l9GKGMpB9rt/atlkXgLXWTfzl7y
- xluLmf7lnp+krOYS+Z2PWKcEFjtNKtpCnJDBWGbr/3DFhjOjJV+L6TKSNppULp1bQeAVN93+MlW
- yb8UIBeE3ek+pcSIEleyVUaVymzz3MF6vHWl634IalBc35mjdz+o=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=20441; i=haghdoost@uber.com;
+ h=from:subject:message-id; bh=qIMAg+wE+WljXZptSVqd4vZdPapcid5Dw20ldc/X71M=;
+ b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBrBeWGnpwBarW5W5hiXdj1jsXwbOBmb03bfK6mn
+ 26Mclmfn2GJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCawXlhhsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtgZ0BAAm53SuIAmsB4xC1B+C78Dee/zt8ptx0a
+ XqxXQpvsDidOg7Fbuv4qvkcLi4RkyQXU7VLbhOCQshCqTUvpvKYYBKllqI/F3bqwGwXcH7ZJVUe
+ oItg0GWFu1BcMh+zEEO7Sbmwapp9lSVfPN0vIKIko+ZfSyNxtHArQzIjJEusplP6oDrRZfxMA9N
+ Xj+WquRWV4c5nM2W7Hm7Ho6A7US+nW7hTeONtNudyjKNH6s2Z1tezHOF4U9y9HAsZsYR8uMWGlk
+ 4wkYiyLfuVbDBKTafoT6giqfKmXNgonMiBV1/XImElh9hoDM9uvG79Ex6mzGefNlqZJ6nOgkAe4
+ rHdkk4u2XEt85CfFRVzS70KIdUHYZEUvUDX+9m6PkZt3M4gxYmUwxiZq3gd7sAj19HbMhtXuVcL
+ oZ4BBSD9fa5TODYqJFguQDVyqcp7kke71UFOs21DyDSfw+HgOFMXn43I/GkfUNhfEtxvCvMN8af
+ rfVqlM2AJOXDYo7KVGZBRxxd2L2qu16PzAZb0FvbqzcM1Y1QxrmgJAoM91S4oQyRxdAN92DuhaW
+ sqtf1pZE9CTSc/EVskwhSobgQJJq+hEAVB2ZVDhJfIuge7ATleRRTK/8J9iwNDJoiduP6YVFxwp
+ lKtNN7iFC2lNcBjDNu/uq3EsraNoGgfEZmecq6orp/tEWc6/Hi30=
 X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
  fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
 X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch adds the --lazy-load-symbols option of perf script to perf
-report and perf top. Like perf script, they load the whole symbol table
-of every DSO that appears in a sample and keep every name until exit.
+Add a "Lazy symbol loading" unit test suite. It covers duplicate
+selection without names, lazy names that take one or more reads or
+cannot be read at all, lookups from several threads while another one
+walks the symbols, eager and lazy parity on a real DSO (perf itself,
+or the one given with --dso), and a file that cannot be opened for one
+name but gives the next one.
 
-The symbol code already handles both tools. The address lookups that
-build the histogram entries and call chains load the names of the
-symbols they return, and the TUI map browser gets all names from
-dso__named_symbols().
-
-perf top reads the names while it runs, which can be long, so a binary
-that is updated in the meantime can show wrong names. The documentation
-of perf top says so.
-
-Suggested-by: Namhyung Kim <namhyung@kernel.org>
 Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
 ---
- tools/perf/Documentation/perf-report.txt |  9 +++++++++
- tools/perf/Documentation/perf-top.txt    | 10 ++++++++++
- tools/perf/builtin-report.c              |  2 ++
- tools/perf/builtin-top.c                 |  2 ++
- 4 files changed, 23 insertions(+)
+ tools/perf/tests/Build          |   1 +
+ tools/perf/tests/builtin-test.c |   1 +
+ tools/perf/tests/symbol-lazy.c  | 647 ++++++++++++++++++++++++++++++++++++++++
+ tools/perf/tests/tests.h        |   1 +
+ 4 files changed, 650 insertions(+)
 
-diff --git a/tools/perf/Documentation/perf-report.txt b/tools/perf/Documentation/perf-report.txt
-index e145124d6c9a..b8c34bb4cd74 100644
---- a/tools/perf/Documentation/perf-report.txt
-+++ b/tools/perf/Documentation/perf-report.txt
-@@ -347,6 +347,15 @@ OPTIONS
- 
- 	Default: 127
- 
-+--lazy-load-symbols::
-+	Read and demangle userspace ELF symbol names only when perf needs
-+	them. By default, perf reads every symbol name from each binary
-+	referenced by a sample. This option reduces memory use when samples
-+	reference only a small fraction of a large binary's symbols. The
-+	names are read from the binaries while perf report runs, so the
-+	binaries must not change in the meantime. If a binary cannot be
-+	opened when a name is needed, perf shows that symbol as unknown.
+diff --git a/tools/perf/tests/Build b/tools/perf/tests/Build
+index 5eebb2ec5dde..1377dd465586 100644
+--- a/tools/perf/tests/Build
++++ b/tools/perf/tests/Build
+@@ -69,6 +69,7 @@ perf-test-y += sigtrap.o
+ perf-test-y += event_groups.o
+ perf-test-y += hybrid-merge.o
+ perf-test-y += symbols.o
++perf-test-y += symbol-lazy.o
+ perf-test-y += util.o
+ perf-test-y += hwmon_pmu.o
+ perf-test-y += tool_pmu.o
+diff --git a/tools/perf/tests/builtin-test.c b/tools/perf/tests/builtin-test.c
+index 01c78ef20b97..c447432dc41f 100644
+--- a/tools/perf/tests/builtin-test.c
++++ b/tools/perf/tests/builtin-test.c
+@@ -189,6 +189,7 @@ static struct test_suite *generic_tests[] = {
+ 	&suite__event_groups,
+ 	&suite__hybrid_merge,
+ 	&suite__symbols,
++	&suite__symbol_lazy,
+ 	&suite__util,
+ 	&suite__subcmd_help,
+ 	&suite__kallsyms_split,
+diff --git a/tools/perf/tests/symbol-lazy.c b/tools/perf/tests/symbol-lazy.c
+new file mode 100644
+index 000000000000..8bba54bf345b
+--- /dev/null
++++ b/tools/perf/tests/symbol-lazy.c
+@@ -0,0 +1,647 @@
++// SPDX-License-Identifier: GPL-2.0
++#include <elf.h>
++#include <fcntl.h>
++#include <inttypes.h>
++#include <limits.h>
++#include <pthread.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/mman.h>
++#include <sys/resource.h>
++#include <unistd.h>
++#include <linux/kernel.h>
 +
- -G::
- --inverted::
-         alias for inverted caller based call graph.
-diff --git a/tools/perf/Documentation/perf-top.txt b/tools/perf/Documentation/perf-top.txt
-index c5e96da6ed82..9ec039c8e0b9 100644
---- a/tools/perf/Documentation/perf-top.txt
-+++ b/tools/perf/Documentation/perf-top.txt
-@@ -218,6 +218,16 @@ Default is to monitor all CPUS.
- 
- 	Default: /proc/sys/kernel/perf_event_max_stack when present, 127 otherwise.
- 
-+--lazy-load-symbols::
-+	Read and demangle userspace ELF symbol names only when perf needs
-+	them. By default, perf reads every symbol name from each binary
-+	referenced by a sample. This option reduces memory use when samples
-+	reference only a small fraction of a large binary's symbols. The
-+	names are read from the binaries while perf top runs, so a binary
-+	that is updated in the meantime can show wrong names. If a binary
-+	cannot be opened when a name is needed, perf shows that symbol as
-+	unknown.
++#include "debug.h"
++#include "dso.h"
++#include "env.h"
++#include "machine.h"
++#include "map.h"
++#include "symbol.h"
++#include "symbol_conf.h"
++#include "tests.h"
++#include "thread.h"
++#include "util.h"
 +
- --ignore-callees=<regex>::
-         Ignore callees of the function(s) matching the given regex.
-         This has the effect of collecting the callers of each such
-diff --git a/tools/perf/builtin-report.c b/tools/perf/builtin-report.c
-index 6672a4d16529..8ca54463a84b 100644
---- a/tools/perf/builtin-report.c
-+++ b/tools/perf/builtin-report.c
-@@ -1414,6 +1414,8 @@ int cmd_report(int argc, const char **argv)
- 		    "Set the maximum stack depth when parsing the callchain, "
- 		    "anything beyond the specified depth will be ignored. "
- 		    "Default: kernel.perf_event_max_stack or " __stringify(PERF_MAX_STACK_DEPTH)),
-+	OPT_BOOLEAN(0, "lazy-load-symbols", &symbol_conf.lazy_load_symbols,
-+		    "Read symbol names only when they are needed"),
- 	OPT_BOOLEAN('G', "inverted", &report.inverted_callchain,
- 		    "alias for inverted call graph"),
- 	OPT_CALLBACK(0, "ignore-callees", NULL, "regex",
-diff --git a/tools/perf/builtin-top.c b/tools/perf/builtin-top.c
-index a79230b81300..02363e5c6460 100644
---- a/tools/perf/builtin-top.c
-+++ b/tools/perf/builtin-top.c
-@@ -1589,6 +1589,8 @@ int cmd_top(int argc, const char **argv)
- 	OPT_INTEGER(0, "max-stack", &top.max_stack,
- 		    "Set the maximum stack depth when parsing the callchain. "
- 		    "Default: kernel.perf_event_max_stack or " __stringify(PERF_MAX_STACK_DEPTH)),
-+	OPT_BOOLEAN(0, "lazy-load-symbols", &symbol_conf.lazy_load_symbols,
-+		    "Read symbol names only when they are needed"),
- 	OPT_CALLBACK(0, "ignore-callees", NULL, "regex",
- 		   "ignore callees of these functions in call graphs",
- 		   report_parse_ignore_callees_opt),
++static int test__symbol_lazy_choice(struct test_suite *test __maybe_unused,
++				    int subtest __maybe_unused)
++{
++	struct choice_case {
++		u64 len;
++		u8 type, binding;
++		bool needs_names;
++	} cases[] = {
++		{ 0x10, STT_FUNC, STB_GLOBAL, true },
++		{ 0, STT_FUNC, STB_GLOBAL, false },
++		{ 0x10, STT_NOTYPE, STB_GLOBAL, false },
++		{ 0x10, STT_GNU_IFUNC, STB_GLOBAL, true },
++		{ 0x10, STT_FUNC, STB_WEAK, false },
++		{ 0x10, STT_FUNC, STB_LOCAL, false },
++	};
++	struct symbol *a, *b;
++	int ret = TEST_OK;
++	size_t i;
++
++	a = symbol__new(0x1000, 0x10, STB_GLOBAL, STT_FUNC, "a");
++	if (!a)
++		return TEST_FAIL;
++	for (i = 0; i < ARRAY_SIZE(cases) && ret == TEST_OK; i++) {
++		b = symbol__new(0x1000, cases[i].len, cases[i].binding,
++				cases[i].type, "b");
++		if (!b ||
++		    symbol__choice_needs_names(a, b) != cases[i].needs_names ||
++		    symbol__choice_needs_names(b, a) != cases[i].needs_names) {
++			pr_debug("case %zu\n", i);
++			ret = TEST_FAIL;
++		}
++		if (b)
++			symbol__delete(b);
++	}
++	symbol__delete(a);
++	return ret;
++}
++
++#ifdef HAVE_LIBELF_SUPPORT
++#define LAZY_SYM_START	0x1000
++#define LAZY_SYM_SIZE	0x100
++
++struct lazy_fixture {
++	char path[PATH_MAX];
++	struct dso *dso;
++	char **names;
++	size_t nr;
++};
++
++static void lazy_fixture__exit(struct lazy_fixture *f)
++{
++	size_t i;
++
++	dso__put(f->dso);
++	for (i = 0; f->names && i < f->nr; i++)
++		free(f->names[i]);
++	free(f->names);
++	unlink(f->path);
++}
++
++/*
++ * Write @nr names to a file and add a lazy symbol for each to a new DSO,
++ * whose symbol table file is that file. Name i is @len[i] characters long,
++ * or has no terminating NUL before the end of the file if @len[i] is 0.
++ */
++static int lazy_fixture__init(struct lazy_fixture *f, const size_t *len, size_t nr)
++{
++	u64 off = 1;
++	size_t i;
++	FILE *fp;
++	int fd;
++
++	memset(f, 0, sizeof(*f));
++	strlcpy(f->path, "/tmp/perf-test-lazy-names-XXXXXX", sizeof(f->path));
++	fd = mkstemp(f->path);
++	if (fd < 0)
++		return -1;
++	fp = fdopen(fd, "w");
++	if (!fp) {
++		close(fd);
++		unlink(f->path);
++		return -1;
++	}
++	fputc('\0', fp);
++
++	f->names = calloc(nr, sizeof(*f->names));
++	f->dso = dso__new(f->path);
++	if (!f->names || !f->dso)
++		goto out_close;
++	f->nr = nr;
++	dso__set_symtab_type(f->dso, DSO_BINARY_TYPE__SYSTEM_PATH_DSO);
++
++	for (i = 0; i < nr; i++) {
++		size_t n = len[i] ?: 32;
++		struct symbol *sym;
++
++		f->names[i] = malloc(n + 1);
++		if (!f->names[i])
++			goto out_close;
++		for (size_t j = 0; j < n; j++)
++			f->names[i][j] = 'a' + (i + j) % 26;
++		f->names[i][n] = '\0';
++		if (fwrite(f->names[i], 1, n + !!len[i], fp) != n + !!len[i])
++			goto out_close;
++
++		sym = symbol__new_lazy(LAZY_SYM_START + i * LAZY_SYM_SIZE,
++				       LAZY_SYM_SIZE, STB_GLOBAL, STT_FUNC, off);
++		if (!sym)
++			goto out_close;
++		symbols__insert(dso__symbols(f->dso), sym);
++		off += n + !!len[i];
++	}
++	dso__set_lazy_names(f->dso, DSO_LAZY_NAMES__PENDING);
++	dso__set_loaded(f->dso);
++	if (fclose(fp)) {
++		lazy_fixture__exit(f);
++		return -1;
++	}
++	return 0;
++
++out_close:
++	fclose(fp);
++	lazy_fixture__exit(f);
++	return -1;
++}
++
++/* Add a lazy symbol at index @i whose name is past the end of the file. */
++static int lazy_fixture__add_unreadable(struct lazy_fixture *f, size_t i)
++{
++	struct symbol *sym = symbol__new_lazy(LAZY_SYM_START + i * LAZY_SYM_SIZE,
++					      LAZY_SYM_SIZE, STB_GLOBAL, STT_FUNC,
++					      1 << 30);
++
++	if (!sym)
++		return -1;
++	symbols__insert(dso__symbols(f->dso), sym);
++	return 0;
++}
++
++static bool lazy_symbol_ok(const struct symbol *sym, const struct lazy_fixture *f,
++			   size_t i)
++{
++	return (sym && sym->start == LAZY_SYM_START + i * LAZY_SYM_SIZE &&
++		!symbol__needs_lazy_name(sym) && !strcmp(sym->name, f->names[i]) &&
++		sym->namelen == strlen(f->names[i]));
++}
++
++static bool lazy_symbol_unknown(const struct symbol *sym, size_t i)
++{
++	return (sym && sym->start == LAZY_SYM_START + i * LAZY_SYM_SIZE &&
++		!symbol__needs_lazy_name(sym) && !strcmp(sym->name, "[unknown]"));
++}
++
++static int lazy_count_cb(struct symbol *sym __maybe_unused, void *data)
++{
++	(*(size_t *)data)++;
++	return 0;
++}
++
++static int lazy_count_names_cb(struct symbol *sym, void *data)
++{
++	*(size_t *)data += symbol__needs_lazy_name(sym);
++	return 0;
++}
++
++/* Count the symbols without loading their names. */
++static size_t lazy_nr_symbols(struct dso *dso)
++{
++	size_t nr = 0;
++
++	symbols__visit(dso__symbols(dso), lazy_count_cb, &nr);
++	return nr;
++}
++
++struct lazy_walk {
++	const struct lazy_fixture *f;
++	/* The first nr_ok names can be read, the others cannot. */
++	size_t nr_ok;
++	size_t i;
++	bool failed;
++};
++
++static int lazy_walk_cb(struct symbol *sym, void *data)
++{
++	struct lazy_walk *walk = data;
++	size_t i = walk->i++;
++
++	if (!(i < walk->nr_ok ? lazy_symbol_ok(sym, walk->f, i) : lazy_symbol_unknown(sym, i))) {
++		pr_debug("walk of name %zu failed\n", i);
++		walk->failed = true;
++	}
++	return 0;
++}
++
++/*
++ * Names of 10, 300 and 1000 characters, which take one, two and three
++ * reads, a name with no NUL before the end of the file, and an offset past
++ * the end of the file.
++ */
++static int test__symbol_lazy_names(struct test_suite *test __maybe_unused,
++				   int subtest __maybe_unused)
++{
++	static const size_t len[] = { 10, 300, 1000, 0 };
++	bool saved_lazy = symbol_conf.lazy_load_symbols;
++	struct lazy_walk walk = { .nr_ok = 3, };
++	struct lazy_fixture f;
++	struct symbol *sym;
++	int ret = TEST_FAIL;
++	size_t i;
++
++	symbol_conf.lazy_load_symbols = true;
++	if (lazy_fixture__init(&f, len, ARRAY_SIZE(len)))
++		goto out;
++	if (lazy_fixture__add_unreadable(&f, 4))
++		goto out_exit;
++
++	for (i = 0; i < 4; i++) {
++		sym = dso__find_symbol(f.dso, LAZY_SYM_START + i * LAZY_SYM_SIZE + 1);
++		if (!(i < 3 ? lazy_symbol_ok(sym, &f, i) : !sym)) {
++			pr_debug("lookup of name %zu failed\n", i);
++			goto out_exit;
++		}
++	}
++
++	/*
++	 * Sorting by name loads every name, and keeps the symbols whose name
++	 * cannot be read, named "[unknown]". Lookups still do not return them.
++	 */
++	dso__sort_by_name(f.dso);
++	walk.f = &f;
++	dso__for_each_symbol(f.dso, lazy_walk_cb, &walk);
++	if (walk.failed || walk.i != 5)
++		goto out_exit;
++	for (i = 3; i < 5; i++) {
++		if (dso__find_symbol_nocache(f.dso, LAZY_SYM_START + i * LAZY_SYM_SIZE)) {
++			pr_debug("unreadable name %zu was found\n", i);
++			goto out_exit;
++		}
++	}
++	sym = dso__find_symbol_by_name(f.dso, f.names[1], NULL);
++	if (!lazy_symbol_ok(sym, &f, 1))
++		goto out_exit;
++	ret = TEST_OK;
++out_exit:
++	lazy_fixture__exit(&f);
++out:
++	symbol_conf.lazy_load_symbols = saved_lazy;
++	return ret;
++}
++
++/*
++ * A file that cannot be opened for one name, as when perf runs out of file
++ * descriptors, must still give the names read after it can be opened again.
++ */
++static int test__symbol_lazy_open_failed(struct test_suite *test __maybe_unused,
++					 int subtest __maybe_unused)
++{
++	static const size_t len[] = { 10, 20, 30 };
++	bool saved_lazy = symbol_conf.lazy_load_symbols;
++	struct rlimit saved_limit, limit;
++	struct lazy_fixture f;
++	struct symbol *sym;
++	int ret = TEST_FAIL;
++	int fd;
++
++	symbol_conf.lazy_load_symbols = true;
++	if (lazy_fixture__init(&f, len, ARRAY_SIZE(len)))
++		goto out;
++	sym = dso__find_symbol_nocache(f.dso, LAZY_SYM_START);
++	if (!lazy_symbol_ok(sym, &f, 0) || getrlimit(RLIMIT_NOFILE, &saved_limit))
++		goto out_exit;
++	/* Lower the limit to the lowest free file descriptor, so open() fails. */
++	fd = open("/dev/null", O_RDONLY);
++	if (fd < 0)
++		goto out_exit;
++	close(fd);
++	limit = saved_limit;
++	limit.rlim_cur = fd;
++	if (setrlimit(RLIMIT_NOFILE, &limit))
++		goto out_exit;
++	sym = dso__find_symbol_nocache(f.dso, LAZY_SYM_START + LAZY_SYM_SIZE);
++	if (setrlimit(RLIMIT_NOFILE, &saved_limit))
++		goto out_exit;
++	if (sym) {
++		pr_debug("name 1 read while no file could be opened: %s\n", sym->name);
++		goto out_exit;
++	}
++	sym = dso__find_symbol_nocache(f.dso, LAZY_SYM_START + 2 * LAZY_SYM_SIZE);
++	if (lazy_symbol_ok(sym, &f, 2))
++		ret = TEST_OK;
++	else
++		pr_debug("name 2 not read after the file could be opened again\n");
++out_exit:
++	lazy_fixture__exit(&f);
++out:
++	symbol_conf.lazy_load_symbols = saved_lazy;
++	return ret;
++}
++
++#define NR_RACE_SYMS		256
++#define NR_RACE_UNREADABLE	16
++#define NR_RACE_ALL		(NR_RACE_SYMS + NR_RACE_UNREADABLE)
++#define NR_RACE_THREADS		4
++
++struct lazy_race {
++	struct lazy_fixture *f;
++	int id;
++	bool failed;
++};
++
++/*
++ * Look the symbols up in a different order in each thread. The symbols
++ * after the readable ones have names that cannot be read.
++ */
++static void *lazy_race_lookups(void *data)
++{
++	struct lazy_race *race = data;
++	struct lazy_fixture *f = race->f;
++	size_t i;
++
++	if (race->id == NR_RACE_THREADS - 1) {
++		struct lazy_walk walk = { .f = f, .nr_ok = f->nr, };
++
++		dso__for_each_symbol(f->dso, lazy_walk_cb, &walk);
++		race->failed = walk.failed;
++		return NULL;
++	}
++	for (i = 0; i < NR_RACE_ALL; i++) {
++		size_t k = (i * (2 * race->id + 1) + race->id * 17) % NR_RACE_ALL;
++		struct symbol *sym;
++
++		sym = dso__find_symbol_nocache(f->dso, LAZY_SYM_START + k * LAZY_SYM_SIZE);
++		if (!(k < f->nr ? lazy_symbol_ok(sym, f, k) : !sym))
++			race->failed = true;
++	}
++	return NULL;
++}
++
++static int test__symbol_lazy_race(struct test_suite *test __maybe_unused,
++				  int subtest __maybe_unused)
++{
++	bool saved_lazy = symbol_conf.lazy_load_symbols;
++	bool saved_singlethreaded = perf_singlethreaded;
++	struct lazy_race race[NR_RACE_THREADS];
++	pthread_t threads[NR_RACE_THREADS];
++	size_t len[NR_RACE_SYMS];
++	struct lazy_fixture f;
++	int ret = TEST_FAIL;
++	int i, nr_threads = 0;
++
++	for (i = 0; i < NR_RACE_SYMS; i++)
++		len[i] = 8 + i % 300;
++	symbol_conf.lazy_load_symbols = true;
++	if (lazy_fixture__init(&f, len, NR_RACE_SYMS))
++		goto out;
++	for (i = NR_RACE_SYMS; i < NR_RACE_ALL; i++) {
++		if (lazy_fixture__add_unreadable(&f, i))
++			goto out_exit;
++	}
++
++	/* Without this, the rwsems of the symbol array are not taken. */
++	perf_set_multithreaded();
++	for (i = 0; i < NR_RACE_THREADS; i++) {
++		race[i] = (struct lazy_race){ .f = &f, .id = i };
++		if (pthread_create(&threads[i], NULL, lazy_race_lookups, &race[i]))
++			break;
++		nr_threads++;
++	}
++	for (i = 0; i < nr_threads; i++)
++		pthread_join(threads[i], NULL);
++	if (saved_singlethreaded)
++		perf_set_singlethreaded();
++	if (nr_threads != NR_RACE_THREADS)
++		goto out_exit;
++	for (i = 0; i < NR_RACE_THREADS; i++) {
++		if (race[i].failed) {
++			pr_debug("thread %d failed\n", i);
++			goto out_exit;
++		}
++	}
++	if (lazy_nr_symbols(f.dso) != NR_RACE_ALL)
++		goto out_exit;
++	ret = TEST_OK;
++out_exit:
++	lazy_fixture__exit(&f);
++out:
++	symbol_conf.lazy_load_symbols = saved_lazy;
++	return ret;
++}
++
++struct sym_entry {
++	u64	start;
++	u64	end;
++	char	*name;
++};
++
++static int cmp_sym_entry(const void *a, const void *b)
++{
++	const struct sym_entry *sa = a, *sb = b;
++
++	if (sa->start != sb->start)
++		return sa->start < sb->start ? -1 : 1;
++	if (sa->end != sb->end)
++		return sa->end < sb->end ? -1 : 1;
++	return strcmp(sa->name, sb->name);
++}
++
++static int check_lazy_lookups(struct map *map, struct map *eager_map,
++			      const struct sym_entry *eager, size_t nr_eager)
++{
++	size_t i;
++	int k;
++
++	for (i = 0; i < nr_eager; i++) {
++		if (eager[i].end <= eager[i].start)
++			continue;
++		for (k = 0; k < 2; k++) {
++			u64 addr = k ? eager[i].end - 1 : eager[i].start;
++			struct symbol *want = map__find_symbol(eager_map, addr);
++			struct symbol *sym = map__find_symbol(map, addr);
++
++			if (!want != !sym ||
++			    (sym && (sym->start != want->start || sym->end != want->end ||
++				     strcmp(sym->name, want->name)))) {
++				pr_debug("lookup %#" PRIx64 ": eager %s, lazy %s\n", addr,
++					 want ? want->name : "[none]",
++					 sym ? sym->name : "[none]");
++				return TEST_FAIL;
++			}
++		}
++	}
++	return TEST_OK;
++}
++
++static void free_sym_entries(struct sym_entry *entries, size_t nr)
++{
++	size_t i;
++
++	for (i = 0; i < nr; i++)
++		free(entries[i].name);
++	free(entries);
++}
++
++struct sym_loader {
++	struct perf_env env;
++	struct machine *machine;
++	struct thread *thread;
++	struct map *map;
++};
++
++static void sym_loader__exit(struct sym_loader *l)
++{
++	map__put(l->map);
++	thread__put(l->thread);
++	machine__delete(l->machine);
++	perf_env__exit(&l->env);
++}
++
++static int sym_loader__init(struct sym_loader *l, const char *filename, bool lazy)
++{
++	struct dso *dso = NULL;
++	bool kernel;
++
++	memset(l, 0, sizeof(*l));
++	perf_env__init(&l->env);
++	symbol_conf.lazy_load_symbols = lazy;
++	l->machine = machine__new_host(&l->env);
++	if (l->machine)
++		l->thread = machine__findnew_thread(l->machine, getpid(), getpid());
++	if (l->thread)
++		dso = machine__findnew_dso(l->machine, filename);
++	/* map__new() cannot map a loaded kernel module, which has no lazy names. */
++	kernel = dso && dso__kernel(dso) != DSO_SPACE__USER;
++	dso__put(dso);
++	if (kernel) {
++		pr_debug("%s: kernel DSO\n", filename);
++		sym_loader__exit(l);
++		return TEST_SKIP;
++	}
++	if (l->thread)
++		l->map = map__new(l->machine, 0x100000, 0xffffffff, 0, &dso_id_empty,
++				  PROT_EXEC, /*flags=*/0, (char *)filename, l->thread);
++	if (!l->map) {
++		sym_loader__exit(l);
++		return TEST_FAIL;
++	}
++	if (dso__load(map__dso(l->map), l->map) <= 0) {
++		pr_debug("%s: no symbols loaded\n", filename);
++		sym_loader__exit(l);
++		return TEST_SKIP;
++	}
++	return TEST_OK;
++}
++
++struct sym_entries {
++	struct sym_entry *entries;
++	size_t nr, alloc;
++};
++
++static int add_sym_entry_cb(struct symbol *pos, void *data)
++{
++	struct sym_entries *e = data;
++
++	if (e->nr == e->alloc) {
++		size_t alloc = e->alloc ? e->alloc * 2 : 1024;
++		struct sym_entry *tmp = realloc(e->entries, alloc * sizeof(*tmp));
++
++		if (!tmp)
++			return -1;
++		e->entries = tmp;
++		e->alloc = alloc;
++	}
++	e->entries[e->nr].start = pos->start;
++	e->entries[e->nr].end = pos->end;
++	e->entries[e->nr].name = strdup(pos->name);
++	if (!e->entries[e->nr].name)
++		return -1;
++	e->nr++;
++	return 0;
++}
++
++static int get_sym_entries(struct dso *dso, struct sym_entry **entries_p, size_t *nr_p)
++{
++	struct sym_entries e = { NULL, 0, 0 };
++
++	if (dso__for_each_symbol(dso, add_sym_entry_cb, &e)) {
++		free_sym_entries(e.entries, e.nr);
++		return -1;
++	}
++	qsort(e.entries, e.nr, sizeof(*e.entries), cmp_sym_entry);
++	*entries_p = e.entries;
++	*nr_p = e.nr;
++	return 0;
++}
++
++/*
++ * Compare the symbols of a DSO (perf itself, or --dso) loaded eagerly and
++ * lazily. Lazy address lookups must agree with eager ones, and once every
++ * name is loaded, the ranges and names must match.
++ */
++static int test__symbol_lazy_parity(struct test_suite *test __maybe_unused,
++				    int subtest __maybe_unused)
++{
++	bool saved_lazy = symbol_conf.lazy_load_symbols;
++	struct sym_entry *eager = NULL, *lazy = NULL;
++	size_t nr_eager = 0, nr_lazy = 0, nr_names = 0, i;
++	struct sym_loader eager_l, lazy_l;
++	char filename[PATH_MAX];
++	int ret;
++
++	if (dso_to_test)
++		strlcpy(filename, dso_to_test, sizeof(filename));
++	else
++		perf_exe(filename, sizeof(filename));
++
++	ret = sym_loader__init(&eager_l, filename, false);
++	if (ret != TEST_OK)
++		goto out;
++	ret = sym_loader__init(&lazy_l, filename, true);
++	if (ret != TEST_OK) {
++		pr_debug("%s: loaded eagerly but not lazily\n", filename);
++		ret = TEST_FAIL;
++		goto out_eager;
++	}
++
++	ret = TEST_FAIL;
++	symbols__visit(dso__symbols(map__dso(lazy_l.map)), lazy_count_names_cb, &nr_names);
++	if (nr_names)
++		pr_debug("%s: %zu symbols with lazy names\n", filename, nr_names);
++	else
++		pr_debug("%s: no lazy names\n", filename);
++
++	/* Look up before and after dso__for_each_symbol() loads every name. */
++	if (get_sym_entries(map__dso(eager_l.map), &eager, &nr_eager) ||
++	    check_lazy_lookups(lazy_l.map, eager_l.map, eager, nr_eager) != TEST_OK ||
++	    get_sym_entries(map__dso(lazy_l.map), &lazy, &nr_lazy) ||
++	    check_lazy_lookups(lazy_l.map, eager_l.map, eager, nr_eager) != TEST_OK)
++		goto out_lazy;
++
++	pr_debug("%s: %zu eager and %zu lazy symbols\n", filename, nr_eager, nr_lazy);
++	for (i = 0; i < nr_eager && i < nr_lazy; i++) {
++		if (cmp_sym_entry(&eager[i], &lazy[i])) {
++			pr_debug("mismatch: eager %#" PRIx64 "-%#" PRIx64 " %s, lazy %#"
++				 PRIx64 "-%#" PRIx64 " %s\n",
++				 eager[i].start, eager[i].end, eager[i].name,
++				 lazy[i].start, lazy[i].end, lazy[i].name);
++			goto out_lazy;
++		}
++	}
++	if (nr_eager == nr_lazy)
++		ret = TEST_OK;
++out_lazy:
++	sym_loader__exit(&lazy_l);
++out_eager:
++	sym_loader__exit(&eager_l);
++out:
++	if (eager)
++		free_sym_entries(eager, nr_eager);
++	if (lazy)
++		free_sym_entries(lazy, nr_lazy);
++	symbol_conf.lazy_load_symbols = saved_lazy;
++	return ret;
++}
++
++#endif
++
++static struct test_case tests__symbol_lazy[] = {
++	TEST_CASE("Duplicate selection without names", symbol_lazy_choice),
++#ifdef HAVE_LIBELF_SUPPORT
++	TEST_CASE("Lazy symbol names", symbol_lazy_names),
++	TEST_CASE("Lazy symbol names loaded concurrently", symbol_lazy_race),
++	TEST_CASE("Lazy and eager symbol parity", symbol_lazy_parity),
++	TEST_CASE("Lazy symbol names after a failed open", symbol_lazy_open_failed),
++#endif
++	{ .name = NULL, }
++};
++
++struct test_suite suite__symbol_lazy = {
++	.desc = "Lazy symbol loading",
++	.test_cases = tests__symbol_lazy,
++};
+diff --git a/tools/perf/tests/tests.h b/tools/perf/tests/tests.h
+index af822885890d..d9e0b5ad92a2 100644
+--- a/tools/perf/tests/tests.h
++++ b/tools/perf/tests/tests.h
+@@ -199,6 +199,7 @@ DECLARE_SUITE(sigtrap);
+ DECLARE_SUITE(event_groups);
+ DECLARE_SUITE(hybrid_merge);
+ DECLARE_SUITE(symbols);
++DECLARE_SUITE(symbol_lazy);
+ DECLARE_SUITE(util);
+ DECLARE_SUITE(uncore_event_sorting);
+ DECLARE_SUITE(subcmd_help);
 
 -- 
 Git-157)
