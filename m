@@ -1,118 +1,84 @@
-From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Tue, 24 Nov 2026 04:43:29 +0300
-Subject: [PATCH net-next] net: dsa: qca8k: select two-byte headers during
- setup
+From: Abhiraj Dutta <abhirajdutta7@gmail.com>
+Date: Mon, 23 Nov 2026 21:17:57 -0500
+Subject: [PATCH] ALSA: hda/realtek: Fix duplicate LEDs on HP Spectre x360
+ 16-f2xxx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-b4-qca8k-two-byte-header-init-v1-1-c644025b69fa@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQrCMBBA4auUWTvQhJJWryIu8jO1ozDVZNRK6
- d2Nunw8+FYolJkKHJoVMj258Cw1zK6BOHk5E3KqDba1zhjbYejwHv1wRX3NGN5KOJFPlJGFFV2
- b+t7ZvRtGC9W4ZRp5+flHEFIUWhRO/1Me4UJRvzxs2wfs169JiwAAAA==
-X-Change-ID: 20261124-b4-qca8k-two-byte-header-init-60d7762968f2
-To: Christian Marangi <ansuelsmth@gmail.com>, Andrew Lunn <andrew@lunn.ch>, 
- Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795484608; l=4136;
- i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=uSCResecR5e/9XubjnoA9vw/Z2JIzLhyVXQwnSf9+wk=;
- b=MIGsySmIWqUTbQBiZq7Cy2qlQ28b0IFD2bHaE52W0juDjOglWVzMm1BZFmZJFZwitGaI6YaMn
- NW+/p52dFYYBUK6n+/QCk7tNLxaeScM+moHH4JZK+DQkR2zwnh5BXR0
-X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
- pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
-X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
+Message-Id: <20261123-hp-spectre-16-f2-led-fix-v1-1-a2a333dceeb5@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MQQqEMAwF0KuEvzZgqnTRqwyz0DbVgGhph0EQ7
+ y74DvAuNK2mDYEuVP1bs2NHIOkIcZ32RdkSAsH1zou4gdfCrWj8VWXxnB1vmjjbydOoMswp+jQ
+ LOkKpmu1868/3vh9jGemaagAAAA==
+X-Change-ID: 20261123-hp-spectre-16-f2-led-fix-a4e13bdc6db1
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: Takashi Iwai <tiwai@suse.de>, linux-sound@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Abhiraj Dutta <abhirajdutta7@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795486735; l=2648;
+ i=abhirajdutta7@gmail.com; s=20261122; h=from:subject:message-id;
+ bh=2fGkl4MnRAFoBN/vsCmVD26p7qRSOwU1KzcdavldMmo=;
+ b=1kMFy9uWM5jo+LSPu7W7mproAH6ITaAgaCkQSMjHlRjCut1TZfqS/EwqzfP6rCT9h0mnMH33E
+ pC7f44DbUH+CV0kLKjDvBwBp2dihoZSs/kA5niqvab8+rugJT80i1f6
+X-Developer-Key: i=abhirajdutta7@gmail.com; a=ed25519;
+ pk=3ETcWPbWUjdsP3Pv+/VwZOZKPt9O4SvxqiXNMNNY4gc=
+X-Endpoint-Received: by B4 Relay for abhirajdutta7@gmail.com/20261122 with auth_id=1610
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The QCA tagger handles two-byte switch headers, but setup only programs
-per-port header enable modes. The global HEADER_CTRL length selector can
-remain in four-byte mode when firmware configured it and no reset GPIO
-is supplied. Software tagger selection then disagrees with the switch.
+The EU0XXX fixup already sets up the mute and mic-mute LEDs, so chaining
+ALC245_FIXUP_HP_X360_MUTE_LEDS after it registers both LEDs twice
+(hda::mute_1 and hda::micmute_1 appear). Use the EU0XXX fixup directly.
 
-Clear the global four-byte selector before enabling CPU header ports or
-registering the user MDIO bus. Preserve the identifier and all other
-bits, and abort setup if the register update fails. The register access
-uses the existing MDIO transport before an in-band management conduit
-is available.
+The original commit message also got the SSID wrong: under SOF the PCI
+SSID is 103c:891e, not 103c:0000.
 
-Both ISIS and ISISC document the length selector at bit 16 of register
-0x98. This does not add support for the optional four-byte protocol.
-
-Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
+Fixes: e30ec632e1f0 ("ALSA: hda/realtek: Add quirk for HP Spectre x360 2-in-1 Laptop 16-f2xxx")
+Cc: stable@vger.kernel.org
+Signed-off-by: Abhiraj Dutta <abhirajdutta7@gmail.com>
 ---
-The QCA tagger always uses two-byte headers. Initialize the global switch
-length selector to match before enabling CPU header ports, rather than
-relying on firmware or an optional reset GPIO to have selected that mode.
-The register layout is shared by the supported ISIS and ISISC families.
+ sound/hda/codecs/realtek/alc269.c | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
 
-This is a standalone generic driver change and does not depend on the
-Cortina platform, Ethernet, PCIe or board DTS series. It adds no new tagger
-or hardware offload capability. The identifier and other register bits are
-preserved.
-
-The retained four-byte state mismatch was identified by source inspection;
-no four-byte firmware failure has been observed on the Almond+ test unit.
-ARM W=1 QCA driver/tagger builds pass on Linux 7.4 and Linux 6.18.64 with
-the existing upstream MDIO error-handling prerequisites. Source-helper
-fault-injection tests cover the early setup update and returned errors.
-Full ARM kernel builds with QCA8K built in and as a module also pass.
-
-An instrumented Linux RAM kernel on the Almond+ completed two QCA8337
-initializations. The read-clear-read snapshots were 0x00000000 throughout,
-with unrelated bits preserved. PHY reads, MDIO recovery and real MIB byte
-counter progress passed, along with 600 byte-exact ordinary DSA UDP echoes
-and 20 large ICMPv6 replies. The watchdog returned to the installed system.
-This covers the existing two-byte path; retained-four-byte handover has
-not been exercised. The source-helper fault tests remain software tests.
-
-Target net-next for now: this is a source-identified initialization issue,
-with no demonstrated regression or stable backport request. Maintainers
-can reassess the target if further evidence warrants it.
----
- drivers/net/dsa/qca/qca8k-8xxx.c | 8 ++++++++
- drivers/net/dsa/qca/qca8k.h      | 2 ++
- 2 files changed, 10 insertions(+)
-
-diff --git a/drivers/net/dsa/qca/qca8k-8xxx.c b/drivers/net/dsa/qca/qca8k-8xxx.c
-index 382753bcc..15b97dee3 100644
---- a/drivers/net/dsa/qca/qca8k-8xxx.c
-+++ b/drivers/net/dsa/qca/qca8k-8xxx.c
-@@ -1865,6 +1865,14 @@ qca8k_setup(struct dsa_switch *ds)
- 		return cpu_port;
- 	}
- 
-+	/* The QCA tagger uses two-byte headers, regardless of firmware setup. */
-+	ret = regmap_clear_bits(priv->regmap, QCA8K_REG_GLOBAL_HDR_CTRL,
-+				QCA8K_GLOBAL_HDR_CTRL_LEN_4B);
-+	if (ret) {
-+		dev_err(priv->dev, "failed selecting two-byte QCA headers\n");
-+		return ret;
-+	}
-+
- 	/* Parse CPU port config to be later used in phy_link mac_config */
- 	ret = qca8k_parse_port_config(priv);
- 	if (ret)
-diff --git a/drivers/net/dsa/qca/qca8k.h b/drivers/net/dsa/qca/qca8k.h
-index 956338893..4740fcf39 100644
---- a/drivers/net/dsa/qca/qca8k.h
-+++ b/drivers/net/dsa/qca/qca8k.h
-@@ -149,6 +149,8 @@
- #define   QCA8K_PORT_STATUS_LINK_AUTO			BIT(9)
- #define   QCA8K_PORT_STATUS_LINK_PAUSE			BIT(10)
- #define   QCA8K_PORT_STATUS_FLOW_AUTO			BIT(12)
-+#define QCA8K_REG_GLOBAL_HDR_CTRL			0x098
-+#define   QCA8K_GLOBAL_HDR_CTRL_LEN_4B		BIT(16)
- #define QCA8K_REG_PORT_HDR_CTRL(_i)			(0x9c + (_i * 4))
- #define   QCA8K_PORT_HDR_CTRL_RX_MASK			GENMASK(3, 2)
- #define   QCA8K_PORT_HDR_CTRL_TX_MASK			GENMASK(1, 0)
+diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
+index dfdcf8b98..406524178 100644
+--- a/sound/hda/codecs/realtek/alc269.c
++++ b/sound/hda/codecs/realtek/alc269.c
+@@ -4524,7 +4524,6 @@ enum {
+ 	ALC256_FIXUP_HEADPHONE_AMP_VOL,
+ 	ALC245_FIXUP_HP_SPECTRE_X360_EU0XXX,
+ 	ALC245_FIXUP_HP_SPECTRE_X360_16_AA0XXX,
+-	ALC245_FIXUP_HP_SPECTRE_X360_16_F2XXX,
+ 	ALC245_FIXUP_HP_ZBOOK_FIREFLY_G12A,
+ 	ALC285_FIXUP_ASUS_GA403U,
+ 	ALC285_FIXUP_ASUS_GA403U_HEADSET_MIC,
+@@ -7227,12 +7226,6 @@ static const struct hda_fixup alc269_fixups[] = {
+ 		.type = HDA_FIXUP_FUNC,
+ 		.v.func = alc245_fixup_hp_spectre_x360_16_aa0xxx,
+ 	},
+-	[ALC245_FIXUP_HP_SPECTRE_X360_16_F2XXX] = {
+-		.type = HDA_FIXUP_FUNC,
+-		.v.func = alc245_fixup_hp_spectre_x360_eu0xxx,
+-		.chained = true,
+-		.chain_id = ALC245_FIXUP_HP_X360_MUTE_LEDS
+-	},
+ 	[ALC245_FIXUP_HP_ZBOOK_FIREFLY_G12A] = {
+ 		.type = HDA_FIXUP_FUNC,
+ 		.v.func = alc245_fixup_hp_zbook_firefly_g12a,
+@@ -7876,7 +7869,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
+ 	SND_PCI_QUIRK(0x103c, 0x8902, "HP OMEN 16", ALC285_FIXUP_HP_MUTE_LED),
+ 	SND_PCI_QUIRK(0x103c, 0x890e, "HP 255 G8 Notebook PC", ALC236_FIXUP_HP_MUTE_LED_COEFBIT2),
+ 	SND_PCI_QUIRK(0x103c, 0x8919, "HP Pavilion Aero Laptop 13-be0xxx", ALC287_FIXUP_HP_GPIO_LED),
+-	SND_PCI_QUIRK(0x103c, 0x891e, "HP Spectre x360 2-in-1 Laptop 16-f2xxx", ALC245_FIXUP_HP_SPECTRE_X360_16_F2XXX),
++	SND_PCI_QUIRK(0x103c, 0x891e, "HP Spectre x360 2-in-1 Laptop 16-f2xxx", ALC245_FIXUP_HP_SPECTRE_X360_EU0XXX),
+ 	SND_PCI_QUIRK(0x103c, 0x896d, "HP ZBook Firefly 16 G9", ALC245_FIXUP_CS35L41_SPI_2_HP_GPIO_LED),
+ 	SND_PCI_QUIRK(0x103c, 0x896e, "HP EliteBook x360 830 G9", ALC245_FIXUP_CS35L41_SPI_2_HP_GPIO_LED),
+ 	SND_PCI_QUIRK(0x103c, 0x8971, "HP EliteBook 830 G9", ALC245_FIXUP_CS35L41_SPI_2_HP_GPIO_LED),
 
 ---
-base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
-change-id: 20261124-b4-qca8k-two-byte-header-init-60d7762968f2
+base-commit: 896ec6bbe7dd2f29aff1a12eb318a6828be1edd8
+change-id: 20261123-hp-spectre-16-f2-led-fix-a4e13bdc6db1
 
 Best regards,
---  
-Fil Dunsky <filipp.dunsky@gmail.com>
+-- 
+Abhiraj Dutta <abhirajdutta7@gmail.com>
 
