@@ -1,449 +1,165 @@
-From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Tue, 24 Nov 2026 23:46:58 +0100
-Subject: [PATCH 2/2] iio: light: add ams OSRAM TCS3430 XYZ and ambient
- light sensor driver
+From: Ernest Borowski <ernest.borowski.git@proton.me>
+Subject: [PATCH v2 00/11] ntfs: delayed allocation accounting and stale
+ data fixes, part 1
+Date: Tue, 24 Nov 2026 23:49:34 +0100
+Message-Id: <20261124-b4-ntfs-delalloc-fixes-v2-0-f394c800ec03@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-iio-tcs3430-v1-2-0f2a38a6a4c1@gmail.com>
-References: <20261124-iio-tcs3430-v1-0-0f2a38a6a4c1@gmail.com>
-In-Reply-To: <20261124-iio-tcs3430-v1-0-0f2a38a6a4c1@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Robert Ijtsma <robertijtsma@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WOyw6CMBBFf4V07WhbXsGV/2FY9DFIDbakrQRD+
+ Hdb/ACXZ+bek7uRgN5gINdiIx4XE4yzCfipIGoU9oFgdGLCKW8Y4xxkBTYOATROYpqcgsGsGKC
+ WotMVdm1ZlySVZ4/HI3Xv/Y/DWz5RxWzLCSkCgvTCqjGfsvRymC2uMQdGE6Lzn2PawrLo74qFA
+ QXa8magWmFFy9vsXXT2/ELS7/v+BRV9EgfvAAAA
+X-Change-ID: 20261122-b4-ntfs-delalloc-fixes-5ba9d4e97353
+To: Namjae Jeon <linkinjeon@kernel.org>, Hyunchul Lee <hyc.lee@gmail.com>, 
+ Baolin Liu <liubaolin12138@163.com>
+Cc: Christian Brauner <brauner@kernel.org>, Christoph Hellwig <hch@lst.de>, 
+ "Darrick J. Wong" <djwong@kernel.org>, ntfs@lists.linux.dev, 
+ linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Zhan Xusheng <zhanxusheng1024@gmail.com>, 
+ stable@vger.kernel.org, Ernest Borowski <ernest.borowski.git@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795560419; l=12434;
- i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=dtV6AhP8bkV0dJ+wEFVJkec7NYtVmfKkQQtBOiTI0mQ=;
- b=ziAJVhuM+OAA1HRIQ7YR7JyPyH5YGLQeIGyVOAMUwK8RHirBjzueVywvLWEzKzCjn3+5KROE/
- fX91bIUDFf9Axh28cjc4yBtdygbF/0dQ6SWgs2ZCAB7gVEfqL859H6E
-X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
- pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
-X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6581;
+ i=ernest.borowski.git@proton.me; s=default; h=from:subject:message-id;
+ bh=2QCJ1Lv8pJcwRXH4oO49eHdWn2O+fC7Yd8/UYJK0wuE=;
+ b=owGbwMvMwCVWzJ65uCpJ5D/jabUkhmw2kXrFqeeSr7lzOB58c8Mt955/8Z1L+3c4Ose/XfV/a
+ uD9uR9+d5SyMIhxMciKKbJ0/L8R4hPy7dOyOK0+mDmsTCBDGLg4BWAiyXcYGRpzV0g/V/k/+5h1
+ fGSvLc90N20XwdVTi214407WfJR+YMzwV/jRc7OUkPiyNZuffTqeu2G+8ZtjE79qLtv84d6Vrev
+ FtNgB
+X-Developer-Key: i=ernest.borowski.git@proton.me; a=openpgp;
+ fpr=88FFD8544C54F6F2A65E2A8E730769A37A6214FF
+X-Endpoint-Received: by B4 Relay for ernest.borowski.git@proton.me/default with auth_id=1589
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an IIO driver for the ams OSRAM TCS3430 ambient light and CIE 1931
-XYZ tristimulus color sensor (found at I2C address 0x39 on devices such
-as the Microsoft Surface Pro X).
+A write/truncate/punch-hole stress test on a 128 MiB volume showed the
+free space reported by statfs() falling from 79 MB to zero within 80
+seconds, after which writes failed with ENOSPC or came back short, while
+$Bitmap stayed correct.  The delalloc reservations in
+vol->dirty_clusters were not given back on several paths.  The same
+paths also had buffered writes into holes that exposed old disk
+contents.
 
-The driver exposes:
-- Illuminance (photopic Y channel) with raw counts and lux scale
-- Modified intensity channels for X, Y, Z, and IR1
-- Selectable hardware gain (1x, 4x, 16x, 64x, 128x) and integration time
-- Regulator management and system sleep suspend/resume support
+The series has four groups:
 
-Tested on Microsoft Surface Pro X SQ2 (SC8180X).
+Patches 1-2 (iomap) are small prerequisites for patches 8 and 10.  ntfs
+reserves delalloc space in whole clusters, and a cluster can be smaller
+than a folio (1 KiB or 2 KiB clusters with 512-byte blocks).  Patch 1
+passes each run of clean blocks to ->punch() in one call, so that ntfs
+sees a whole clean cluster and can release it.  Patch 2 adds
+iomap_dirty_folio_range(), which patch 10 uses to dirty part of a folio.
+For XFS and ext4 the only effect of patch 1 is fewer ->punch() calls,
+and patch 2 changes nothing for them.
 
-Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
+Patches 3-6 fix reservations that were lost or dropped: on truncate
+(3), when fallocate(), direct I/O or page_mkwrite() fill a hole (4),
+when a cluster allocation fails (5), and when a named stream is removed
+or an inode is evicted (6).
+
+Patches 7-8 handle a buffered write that fails after ->iomap_begin()
+reserved its clusters, which left delalloc runs that no data covers.
+Patch 7 fixes the runlist split helpers, which turned such a run into
+real clusters when it was punched or collapsed, and so corrupted
+$Bitmap.  Patch 8 turns the clusters the write did not use back into
+holes, so that no such run is left.
+
+Patches 9-11 fix buffered writes into holes that showed old disk
+contents or lost data written through a shared mapping:
+- patch 9: the zeroing of a new cluster's edges gave up as soon as
+  writeback allocated the cluster;
+- patch 10: a copy that stopped inside a new cluster left the rest of
+  the cluster unzeroed;
+- patch 11: when a write fault or writeback allocated the clusters
+  during the copy, the write zeroed blocks instead of reading them,
+  which overwrote data written through a shared mapping.
+
+All patches are Cc stable.  Dependencies:
+- patches 1, 2, 3, 4 and 7 apply on their own;
+- 5 needs 4, 6 needs 3, and 8 needs 6;
+- 9 needs 8, 10 needs 9 and 2, and 11 needs 9;
+- 8 also needs 1 to release clusters smaller than a folio.
+
+  3 --> 6 --> 8 --> 9 --> 10 <-- 2
+              ^     |
+              1     +--> 11
+  4 --> 5
+  7
+
+Zhan Xusheng's "ntfs: trim the sizes after a short write" [1] fixes the
+file size after a short write.  Both series add the same helper,
+which zeroes from a worker when the writer has a fatal signal pending
+(iomap_zero_range() refuses to run then); whichever lands second can
+share one copy.  Part 2 follows with five more patches: st_blocks of
+delalloc data, and the remaining stale data windows of write faults,
+writeback and direct I/O into holes.
+
+Each bug fixed here has a reproducer that fails before and passes after
+its fix.  The reproducers run in QEMU on a kernel with KASAN, lockdep
+and UBSAN, at 512 B, 1 KiB, 2 KiB, 4 KiB, 16 KiB and 64 KiB clusters,
+with ntfsck -n after every case, on Ubuntu 26.04 and Arch Linux.  On
+ntfs-next f674e4b6c315 the eight reproducers of these bugs
+(short_copy_stale, delalloc_accounting, delalloc_alloc_failure,
+delalloc_failed_write, delalloc_zero_race, stale_wb_race,
+delalloc_partial_fail, stale_write_mapping) pass with this series,
+except for the st_blocks check of delalloc_alloc_failure, which part 2
+fixes.  Every test that passed before still passes, also with [1] v9 and
+the forced wait suggested for it applied.
+
+  tests:                    https://github.com/xerrni/linux-ntfs
+  ntfs-next:                https://github.com/xerrni/linux-ntfs/actions/runs/45387973158
+  ntfs-next + this series:  https://github.com/xerrni/linux-ntfs/actions/runs/45416562964
+  ntfs-next + this series + [1] v9 + the forced wait:
+                            https://github.com/xerrni/linux-ntfs/actions/runs/45416568573
+
+[1] https://lore.kernel.org/all/20261124025932.2360848-1-zhanxusheng1024@gmail.com/
+
 ---
- MAINTAINERS                 |   1 +
- drivers/iio/light/Kconfig   |  10 ++
- drivers/iio/light/Makefile  |   1 +
- drivers/iio/light/tcs3430.c | 345 ++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 357 insertions(+)
+Changes in v2:
+- New patch 1 (iomap): one ->punch() call per run of clean blocks, so
+  that 1 KiB and 2 KiB clusters of a dirty folio are released after a
+  failed or short write (Hyunchul).
+- New patch 2 (iomap) and patch 10 (was 7): after a short copy, dirty
+  only the rest of the cluster, so the clusters the write did not reach
+  in the same folio are still released.
+- New patch 5, moved here from part 2: keep the reservations when a
+  cluster allocation fails, instead of resetting every file's
+  reservation or leaving a delalloc run with none (Hyunchul's question
+  on v1 patch 1).
+- New patch 11: revalidate the delalloc mapping when a write fault or
+  writeback allocated its clusters during the copy, instead of zeroing
+  data written through a shared mapping (Hyunchul).
+- Patches 3-4 and 6-9 are v1 patches 1-6, unchanged.
+- Cc the iomap maintainers and lists for patches 1 and 2.
+- Link to v1: https://patch.msgid.link/20261122-b4-ntfs-delalloc-fixes-v1-0-0726f0dce403@proton.me
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index b1cebc2..5194709 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1494,6 +1494,7 @@ M:	Robert Ijtsma <robertijtsma@gmail.com>
- L:	linux-iio@vger.kernel.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/iio/light/ams,tcs3430.yaml
-+F:	drivers/iio/light/tcs3430.c
- 
- AMT (Automatic Multicast Tunneling)
- M:	Taehee Yoo <ap420073@gmail.com>
-diff --git a/drivers/iio/light/Kconfig b/drivers/iio/light/Kconfig
-index 462fff1..09894cd 100644
---- a/drivers/iio/light/Kconfig
-+++ b/drivers/iio/light/Kconfig
-@@ -609,6 +609,16 @@ config TCS3414
- 	  This driver can also be built as a module.  If so, the module
- 	  will be called tcs3414.
- 
-+config TCS3430
-+	tristate "ams OSRAM TCS3430 ambient light and XYZ color sensor"
-+	depends on I2C
-+	help
-+	  If you say yes here you get support for the ams OSRAM TCS3430
-+	  ambient light and CIE 1931 XYZ tristimulus color sensor.
-+
-+	  This driver can also be built as a module.  If so, the module
-+	  will be called tcs3430.
-+
- config TCS3472
- 	tristate "TAOS TCS3472 color light-to-digital converter"
- 	depends on I2C
-diff --git a/drivers/iio/light/Makefile b/drivers/iio/light/Makefile
-index 6672ed0..cd7b42e 100644
---- a/drivers/iio/light/Makefile
-+++ b/drivers/iio/light/Makefile
-@@ -56,6 +56,7 @@ obj-$(CONFIG_ST_UVIS25)		+= st_uvis25_core.o
- obj-$(CONFIG_ST_UVIS25_I2C)	+= st_uvis25_i2c.o
- obj-$(CONFIG_ST_UVIS25_SPI)	+= st_uvis25_spi.o
- obj-$(CONFIG_TCS3414)		+= tcs3414.o
-+obj-$(CONFIG_TCS3430)		+= tcs3430.o
- obj-$(CONFIG_TCS3472)		+= tcs3472.o
- obj-$(CONFIG_SENSORS_TSL2563)	+= tsl2563.o
- obj-$(CONFIG_TSL2583)		+= tsl2583.o
-diff --git a/drivers/iio/light/tcs3430.c b/drivers/iio/light/tcs3430.c
-new file mode 100644
-index 0000000..138c8ab
---- /dev/null
-+++ b/drivers/iio/light/tcs3430.c
-@@ -0,0 +1,345 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * IIO driver for ams OSRAM TCS3430 Ambient Light and CIE 1931 XYZ Sensor
-+ *
-+ * Copyright (C) 2026 Robert Ijtsma <robertijtsma@gmail.com>
-+ *
-+ * Datasheet:
-+ *   https://look.ams-osram.com/m/43d518b4cd81e3f2/original/TCS3430-DS000539.pdf
-+ */
-+
-+#include <linux/array_size.h>
-+#include <linux/bitfield.h>
-+#include <linux/bits.h>
-+#include <linux/cleanup.h>
-+#include <linux/device.h>
-+#include <linux/err.h>
-+#include <linux/i2c.h>
-+#include <linux/math64.h>
-+#include <linux/mod_devicetable.h>
-+#include <linux/module.h>
-+#include <linux/mutex.h>
-+#include <linux/pm.h>
-+#include <linux/regulator/consumer.h>
-+#include <linux/types.h>
-+#include <linux/units.h>
-+
-+#include <linux/iio/iio.h>
-+
-+#define TCS3430_REG_ENABLE		0x80
-+#define   TCS3430_ENABLE_PON		BIT(0)
-+#define   TCS3430_ENABLE_AEN		BIT(1)
-+#define TCS3430_REG_ATIME		0x81
-+#define TCS3430_REG_CFG1		0x90
-+#define   TCS3430_CFG1_AGAIN_MASK	GENMASK(1, 0)
-+#define TCS3430_REG_ID			0x92
-+#define   TCS3430_ID_MASK		GENMASK(7, 2)
-+#define   TCS3430_ID_VAL		0xdc
-+#define TCS3430_REG_CH0DATAL		0x94
-+#define TCS3430_REG_CH1DATAL		0x96
-+#define TCS3430_REG_CH2DATAL		0x98
-+#define TCS3430_REG_CH3DATAL		0x9a
-+#define TCS3430_REG_CFG2		0x9f
-+#define   TCS3430_CFG2_DEFAULT		0x04
-+#define   TCS3430_CFG2_HGAIN		BIT(4)
-+#define TCS3430_REG_CFG3		0xab
-+#define   TCS3430_CFG3_DEFAULT		0x0c
-+#define TCS3430_REG_INTENAB		0xdd
-+
-+/* 72 integration cycles * 2.78 ms = 200.16 ms */
-+#define TCS3430_DEFAULT_ATIME_CYCLES	72
-+#define TCS3430_ATIME_STEP_US		2780
-+
-+/*
-+ * Photopic Y channel typical sensitivity from datasheet optical characteristics:
-+ * ~0.537 counts/lux at AGAIN = 16x and ATIME = 100 ms (36 cycles), giving:
-+ *   lux/count = 2980 / (gain * integration_time_ms)
-+ */
-+#define TCS3430_LUX_FACTOR		2980ULL
-+
-+static const int tcs3430_gains[] = { 1, 4, 16, 64, 128 };
-+
-+struct tcs3430_data {
-+	struct i2c_client *client;
-+	/* Protects device configuration across multi-register updates */
-+	struct mutex lock;
-+	u8 gain_idx;
-+};
-+
-+static int tcs3430_apply_gain(struct tcs3430_data *data, u8 gain_idx)
-+{
-+	u8 cfg1, cfg2;
-+	int ret;
-+
-+	if (gain_idx == 4) {
-+		cfg1 = FIELD_PREP(TCS3430_CFG1_AGAIN_MASK, 3);
-+		cfg2 = TCS3430_CFG2_DEFAULT | TCS3430_CFG2_HGAIN;
-+	} else {
-+		cfg1 = FIELD_PREP(TCS3430_CFG1_AGAIN_MASK, gain_idx);
-+		cfg2 = TCS3430_CFG2_DEFAULT;
-+	}
-+
-+	ret = i2c_smbus_write_byte_data(data->client, TCS3430_REG_CFG1, cfg1);
-+	if (ret)
-+		return ret;
-+
-+	ret = i2c_smbus_write_byte_data(data->client, TCS3430_REG_CFG2, cfg2);
-+	if (ret)
-+		return ret;
-+
-+	data->gain_idx = gain_idx;
-+	return 0;
-+}
-+
-+static int tcs3430_init_hw(struct tcs3430_data *data)
-+{
-+	struct i2c_client *client = data->client;
-+	int ret;
-+
-+	ret = i2c_smbus_write_byte_data(client, TCS3430_REG_ENABLE, 0x00);
-+	if (ret)
-+		return ret;
-+
-+	ret = i2c_smbus_write_byte_data(client, TCS3430_REG_ATIME,
-+					TCS3430_DEFAULT_ATIME_CYCLES - 1);
-+	if (ret)
-+		return ret;
-+
-+	ret = tcs3430_apply_gain(data, data->gain_idx);
-+	if (ret)
-+		return ret;
-+
-+	ret = i2c_smbus_write_byte_data(client, TCS3430_REG_CFG3,
-+					TCS3430_CFG3_DEFAULT);
-+	if (ret)
-+		return ret;
-+
-+	ret = i2c_smbus_write_byte_data(client, TCS3430_REG_INTENAB, 0x00);
-+	if (ret)
-+		return ret;
-+
-+	return i2c_smbus_write_byte_data(client, TCS3430_REG_ENABLE,
-+					 TCS3430_ENABLE_PON |
-+					 TCS3430_ENABLE_AEN);
-+}
-+
-+static void tcs3430_power_off(void *priv)
-+{
-+	struct tcs3430_data *data = priv;
-+
-+	i2c_smbus_write_byte_data(data->client, TCS3430_REG_ENABLE, 0x00);
-+}
-+
-+static int tcs3430_read_raw(struct iio_dev *indio_dev,
-+			    const struct iio_chan_spec *chan,
-+			    int *val, int *val2, long mask)
-+{
-+	struct tcs3430_data *data = iio_priv(indio_dev);
-+	int ret;
-+
-+	switch (mask) {
-+	case IIO_CHAN_INFO_RAW:
-+		guard(mutex)(&data->lock);
-+		ret = i2c_smbus_read_word_data(data->client, chan->address);
-+		if (ret < 0)
-+			return ret;
-+		*val = ret;
-+		return IIO_VAL_INT;
-+
-+	case IIO_CHAN_INFO_SCALE: {
-+		u32 itime_us = TCS3430_DEFAULT_ATIME_CYCLES * TCS3430_ATIME_STEP_US;
-+		u64 scale_nano;
-+		u32 rem;
-+		int gain;
-+
-+		scoped_guard(mutex, &data->lock)
-+			gain = tcs3430_gains[data->gain_idx];
-+
-+		scale_nano = div_u64(TCS3430_LUX_FACTOR * NSEC_PER_SEC * USEC_PER_MSEC,
-+				     (u32)gain * itime_us);
-+		*val = div_u64_rem(scale_nano, NSEC_PER_SEC, &rem);
-+		*val2 = rem;
-+		return IIO_VAL_INT_PLUS_NANO;
-+	}
-+
-+	case IIO_CHAN_INFO_HARDWAREGAIN:
-+		guard(mutex)(&data->lock);
-+		*val = tcs3430_gains[data->gain_idx];
-+		return IIO_VAL_INT;
-+
-+	case IIO_CHAN_INFO_INT_TIME:
-+		*val = 0;
-+		*val2 = TCS3430_DEFAULT_ATIME_CYCLES * TCS3430_ATIME_STEP_US;
-+		return IIO_VAL_INT_PLUS_MICRO;
-+
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static int tcs3430_write_raw(struct iio_dev *indio_dev,
-+			     const struct iio_chan_spec *chan,
-+			     int val, int val2, long mask)
-+{
-+	struct tcs3430_data *data = iio_priv(indio_dev);
-+	unsigned int i;
-+
-+	if (mask != IIO_CHAN_INFO_HARDWAREGAIN || val2 != 0)
-+		return -EINVAL;
-+
-+	for (i = 0; i < ARRAY_SIZE(tcs3430_gains); i++) {
-+		if (tcs3430_gains[i] == val) {
-+			guard(mutex)(&data->lock);
-+			return tcs3430_apply_gain(data, i);
-+		}
-+	}
-+
-+	return -EINVAL;
-+}
-+
-+static int tcs3430_read_avail(struct iio_dev *indio_dev,
-+			      const struct iio_chan_spec *chan,
-+			      const int **vals, int *type, int *length,
-+			      long mask)
-+{
-+	if (mask != IIO_CHAN_INFO_HARDWAREGAIN)
-+		return -EINVAL;
-+
-+	*vals = tcs3430_gains;
-+	*type = IIO_VAL_INT;
-+	*length = ARRAY_SIZE(tcs3430_gains);
-+	return IIO_AVAIL_LIST;
-+}
-+
-+#define TCS3430_INTENSITY_CHANNEL(_mod, _addr) {			\
-+	.type = IIO_INTENSITY,						\
-+	.modified = 1,							\
-+	.channel2 = (_mod),						\
-+	.address = (_addr),						\
-+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),			\
-+	.info_mask_shared_by_all = BIT(IIO_CHAN_INFO_HARDWAREGAIN) |	\
-+				   BIT(IIO_CHAN_INFO_INT_TIME),		\
-+	.info_mask_shared_by_all_available =				\
-+		BIT(IIO_CHAN_INFO_HARDWAREGAIN),			\
-+}
-+
-+static const struct iio_chan_spec tcs3430_channels[] = {
-+	{
-+		.type = IIO_LIGHT,
-+		.address = TCS3430_REG_CH1DATAL,
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-+				      BIT(IIO_CHAN_INFO_SCALE),
-+		.info_mask_shared_by_all = BIT(IIO_CHAN_INFO_HARDWAREGAIN) |
-+					   BIT(IIO_CHAN_INFO_INT_TIME),
-+		.info_mask_shared_by_all_available =
-+			BIT(IIO_CHAN_INFO_HARDWAREGAIN),
-+	},
-+	TCS3430_INTENSITY_CHANNEL(IIO_MOD_Z, TCS3430_REG_CH0DATAL),
-+	TCS3430_INTENSITY_CHANNEL(IIO_MOD_Y, TCS3430_REG_CH1DATAL),
-+	TCS3430_INTENSITY_CHANNEL(IIO_MOD_LIGHT_IR, TCS3430_REG_CH2DATAL),
-+	TCS3430_INTENSITY_CHANNEL(IIO_MOD_X, TCS3430_REG_CH3DATAL),
-+};
-+
-+static const struct iio_info tcs3430_info = {
-+	.read_raw = tcs3430_read_raw,
-+	.write_raw = tcs3430_write_raw,
-+	.read_avail = tcs3430_read_avail,
-+};
-+
-+static int tcs3430_probe(struct i2c_client *client)
-+{
-+	struct device *dev = &client->dev;
-+	struct tcs3430_data *data;
-+	struct iio_dev *indio_dev;
-+	int ret;
-+
-+	if (!i2c_check_functionality(client->adapter,
-+				     I2C_FUNC_SMBUS_BYTE_DATA |
-+				     I2C_FUNC_SMBUS_WORD_DATA))
-+		return -EOPNOTSUPP;
-+
-+	ret = devm_regulator_get_enable(dev, "vdd");
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to enable vdd supply\n");
-+
-+	indio_dev = devm_iio_device_alloc(dev, sizeof(*data));
-+	if (!indio_dev)
-+		return -ENOMEM;
-+
-+	data = iio_priv(indio_dev);
-+	data->client = client;
-+	data->gain_idx = 3; /* 64x default gain */
-+	i2c_set_clientdata(client, data);
-+
-+	ret = devm_mutex_init(dev, &data->lock);
-+	if (ret)
-+		return ret;
-+
-+	ret = i2c_smbus_read_byte_data(client, TCS3430_REG_ID);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "failed to read device ID\n");
-+	if ((ret & TCS3430_ID_MASK) != TCS3430_ID_VAL)
-+		dev_info(dev, "unexpected part ID 0x%02x\n", ret);
-+
-+	ret = tcs3430_init_hw(data);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to initialize device\n");
-+
-+	ret = devm_add_action_or_reset(dev, tcs3430_power_off, data);
-+	if (ret)
-+		return ret;
-+
-+	indio_dev->name = "tcs3430";
-+	indio_dev->info = &tcs3430_info;
-+	indio_dev->modes = INDIO_DIRECT_MODE;
-+	indio_dev->channels = tcs3430_channels;
-+	indio_dev->num_channels = ARRAY_SIZE(tcs3430_channels);
-+
-+	return devm_iio_device_register(dev, indio_dev);
-+}
-+
-+static int tcs3430_suspend(struct device *dev)
-+{
-+	struct tcs3430_data *data = dev_get_drvdata(dev);
-+
-+	guard(mutex)(&data->lock);
-+	return i2c_smbus_write_byte_data(data->client, TCS3430_REG_ENABLE, 0x00);
-+}
-+
-+static int tcs3430_resume(struct device *dev)
-+{
-+	struct tcs3430_data *data = dev_get_drvdata(dev);
-+
-+	guard(mutex)(&data->lock);
-+	return tcs3430_init_hw(data);
-+}
-+
-+static DEFINE_SIMPLE_DEV_PM_OPS(tcs3430_pm_ops, tcs3430_suspend,
-+				tcs3430_resume);
-+
-+static const struct of_device_id tcs3430_of_match[] = {
-+	{ .compatible = "ams,tcs3430" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, tcs3430_of_match);
-+
-+static const struct i2c_device_id tcs3430_id[] = {
-+	{ .name = "tcs3430" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(i2c, tcs3430_id);
-+
-+static struct i2c_driver tcs3430_driver = {
-+	.driver = {
-+		.name = "tcs3430",
-+		.of_match_table = tcs3430_of_match,
-+		.pm = pm_sleep_ptr(&tcs3430_pm_ops),
-+	},
-+	.probe = tcs3430_probe,
-+	.id_table = tcs3430_id,
-+};
-+module_i2c_driver(tcs3430_driver);
-+
-+MODULE_AUTHOR("Robert Ijtsma <robertijtsma@gmail.com>");
-+MODULE_DESCRIPTION("ams OSRAM TCS3430 Ambient Light and XYZ Color Sensor Driver");
-+MODULE_LICENSE("GPL");
+---
+Ernest Borowski (11):
+      iomap: punch out a run of clean blocks in one call
+      iomap: add a helper to mark a range of a folio dirty
+      ntfs: release delalloc reservations cut off by truncate
+      ntfs: do not consume delalloc reservations when filling holes
+      ntfs: keep delalloc reservations when a cluster allocation fails
+      ntfs: release the delalloc reservations of an evicted inode
+      ntfs: do not shift the cluster number of a delalloc run on split
+      ntfs: punch out the delalloc reservation of a failed buffered write
+      ntfs: zero new delalloc clusters even when writeback allocates them
+      ntfs: zero the rest of a new cluster after a short buffered write
+      ntfs: revalidate a buffered write's mapping after its clusters were allocated
 
--- 
-2.56.0
+ fs/iomap/buffered-io.c |  29 +++-
+ fs/ntfs/attrib.c       | 130 +++++++++++++++++-
+ fs/ntfs/attrib.h       |   2 +
+ fs/ntfs/inode.c        |  13 +-
+ fs/ntfs/inode.h        |   3 +
+ fs/ntfs/iomap.c        | 367 ++++++++++++++++++++++++++++++++++++++++---------
+ fs/ntfs/lcnalloc.c     |   1 -
+ fs/ntfs/runlist.c      |  13 +-
+ include/linux/iomap.h  |   1 +
+ 9 files changed, 485 insertions(+), 74 deletions(-)
+---
+base-commit: f674e4b6c315ebe742d08af80659386992d58ce9
+change-id: 20261122-b4-ntfs-delalloc-fixes-5ba9d4e97353
+
+Best regards,
+--  
+Ernest Borowski <ernest.borowski.git@proton.me>
 
