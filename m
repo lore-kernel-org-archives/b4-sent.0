@@ -1,11 +1,11 @@
 From: Ernest Borowski <ernest.borowski.git@proton.me>
-Date: Tue, 24 Nov 2026 23:49:43 +0100
-Subject: [PATCH v2 09/11] ntfs: zero new delalloc clusters even when
- writeback allocates them
+Date: Tue, 24 Nov 2026 23:49:44 +0100
+Subject: [PATCH v2 10/11] ntfs: zero the rest of a new cluster after a
+ short buffered write
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-b4-ntfs-delalloc-fixes-v2-9-f394c800ec03@proton.me>
+Message-Id: <20261124-b4-ntfs-delalloc-fixes-v2-10-f394c800ec03@proton.me>
 References: <20261124-b4-ntfs-delalloc-fixes-v2-0-f394c800ec03@proton.me>
 In-Reply-To: <20261124-b4-ntfs-delalloc-fixes-v2-0-f394c800ec03@proton.me>
 To: Namjae Jeon <linkinjeon@kernel.org>, Hyunchul Lee <hyc.lee@gmail.com>, 
@@ -16,257 +16,236 @@ Cc: Christian Brauner <brauner@kernel.org>, Christoph Hellwig <hch@lst.de>,
  linux-kernel@vger.kernel.org, Zhan Xusheng <zhanxusheng1024@gmail.com>, 
  stable@vger.kernel.org, Ernest Borowski <ernest.borowski.git@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=9573;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8448;
  i=ernest.borowski.git@proton.me; s=default; h=from:subject:message-id;
- bh=XEJQKTLIixRNBY3im1HoKIxgT03eHpIBNJyLu/JSGrU=;
- b=owGbwMvMwCVWzJ65uCpJ5D/jabUkhmw2kQaXA9JXLVMTjt9eGHZRse3a21sSYTHO52c7/BHti
- ZLTFXzRUcrCIMbFICumyNLx/0aIT8i3T8vitPpg5rAygQxh4OIUgImkrWP47xl5Un2Zwof+p68Y
- n8k3N9X+2WnFe+5IvLlG3+V9P10+LmD4H8+zZ76ObseHzqCNL0uZp+9Z8KI2MnE+90Ze4z6l7Dt
- 7WQA=
+ bh=Suy0TdC3K0sbN2qnqApRQjoBLBv/muIV4lpD2zt49E0=;
+ b=owGbwMvMwCVWzJ65uCpJ5D/jabUkhmw2kYbS78r3PzXlfzkqpp/Ef6uhuOy+/a2ZnjsY7l5e/
+ WK3x92SjlIWBjEuBlkxRZaO/zdCfEK+fVoWp9UHM4eVCWQIAxenAEzEahUjwzenb0fKZ8w/VXzn
+ QpaTSsP5GmOvUwFP/l24ly5RseDOh98M/0PFGQqWcs49Pffs/pQPvoddBF4v8ZjI+9OU/67SmhX
+ uDawA
 X-Developer-Key: i=ernest.borowski.git@proton.me; a=openpgp;
  fpr=88FFD8544C54F6F2A65E2A8E730769A37A6214FF
 X-Endpoint-Received: by B4 Relay for ernest.borowski.git@proton.me/default with auth_id=1589
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a buffered write starts or ends inside a cluster that is a hole,
-ntfs_write_simple_iomap_begin_non_resident() turns the hole into an
-LCN_DELALLOC run and then zeroes the part of the first and last cluster
-that the write does not cover, in the page cache, so that writeback
-writes whole clusters.  initialized_size already covers that part, and
-the clusters writeback allocates are not zeroed on disk.
+ntfs_write_simple_iomap_begin_non_resident() turns the holes a buffered
+write covers into LCN_DELALLOC runs, and zeroes in the page cache only
+the parts of the first and last cluster that the write will not cover.
+When the copy from user space stops inside a cluster (the source buffer
+runs into an unmapped page, or a fatal signal), only the bytes copied
+are dirty.  Writeback allocates the whole cluster and writes the dirty
+blocks, and the rest of the cluster keeps what the reused clusters held
+before.  Below initialized_size, for example a write into a hole of a
+sparse file, reads return that old data.
 
-The zeroing runs after mrec_lock and the runlist lock are dropped, and
-its ->iomap_valid() check, ntfs_iomap_valid(), calls the mapping stale
-as soon as the run is no longer delalloc.  Writeback that runs meanwhile
-(the background flusher, or FIEMAP_FLAG_SYNC and sync_file_range(),
-which do not take the inode lock) picks up the folios that were zeroed
-first, and ntfs_attr_map_cluster() allocates the whole delalloc run for
-them.  iomap_zero_range() then stops with -EPERM from
-ntfs_zero_read_iomap_end(), which the caller ignores.  The rest of the
-cluster is neither in the page cache nor on disk, so reads return what
-the reallocated clusters held before: data of deleted or truncated files.
+Reproducer: fill a file, fsync, truncate it to 0 and back up, write the
+last byte, then pwrite() 2.5 clusters at a cluster boundary from a
+buffer whose readable part ends 5096 bytes in: the write returns 5096,
+and after fsync and drop_caches the rest of the second cluster (4 KiB
+clusters) or of the first (64 KiB clusters) reads back the old file
+contents.
 
-Reproducer: fill a file, fsync, truncate it to 0 and back up, then write
-small pieces at unaligned offsets into the holes while other threads
-call FIEMAP with FIEMAP_FLAG_SYNC.  With 4 KiB and 64 KiB clusters the
-old contents show up within seconds, also without the FIEMAP threads.
-
-The validity check was there to keep the zeroing from overwriting data
-that an mmap write put into the new cluster in that window.  Hold the
-invalidate lock across ->iomap_begin() of a buffered write instead,
-which keeps page faults out from the moment the hole becomes delalloc
-until it is zeroed, and zero with the plain seek mapping, which zeroes
-delalloc and mapped ranges alike, so that writeback allocating the run
-no longer matters.  The error path of ->iomap_begin() now runs with the
-invalidate lock held.
+Mark the mappings that ->iomap_begin() made out of a hole, and on a
+short copy make writeback write the rest of the cluster the copy stopped
+in, before the unused delalloc clusters after it are punched out: under
+the invalidate lock, the blocks of that range in folios already in the
+page cache are marked dirty as they are, with iomap_dirty_folio_range()
+(they hold the zeroes __iomap_write_begin() put there, or data an mmap
+write added meanwhile, which must not be lost), and the rest of the
+range is zeroed while it is still delalloc (once a write fault or
+writeback has allocated it, an mmap write's data may have left the page
+cache; a follow-up series makes both zero a partly written cluster on
+the disk before mapping it).  The other blocks of those folios stay
+clean, so the punch still releases the clusters the write did not reach.
+When the writer has a fatal signal pending, iomap_zero_range() refuses
+to run in its context (-EINTR), so the zeroing is done from a worker
+then.
 
 Fixes: b041ca562526 ("ntfs: update iomap and address space operations")
 Cc: stable@vger.kernel.org
 Signed-off-by: Ernest Borowski <ernest.borowski.git@proton.me>
 ---
- fs/ntfs/iomap.c | 127 ++++++++++++++++++++++++--------------------------------
- 1 file changed, 55 insertions(+), 72 deletions(-)
+ fs/ntfs/iomap.c | 141 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 141 insertions(+)
 
 diff --git a/fs/ntfs/iomap.c b/fs/ntfs/iomap.c
-index 1909824c30..fd94d4b34f 100644
+index fd94d4b34f..928ccb685a 100644
 --- a/fs/ntfs/iomap.c
 +++ b/fs/ntfs/iomap.c
-@@ -297,39 +297,6 @@ static int ntfs_read_iomap_end(struct inode *inode, loff_t pos, loff_t length,
- DEFINE_IOMAP_ITER_NEXT_END(ntfs_read_iomap_next, ntfs_read_iomap_begin,
- 		ntfs_read_iomap_end);
- 
--/*
-- * Check that the cached iomap still matches the NTFS runlist before
-- * iomap_zero_range() is called. if the runlist changes while iomap is
-- * iterating a cached iomap, iomap_zero_range() may overwrite folios
-- * that have been already written with valid data.
-- */
--static bool ntfs_iomap_valid(struct inode *inode, const struct iomap *iomap)
--{
--	struct ntfs_inode *ni = NTFS_I(inode);
--	struct runlist_element *rl;
--	s64 vcn, lcn;
--
--	if (!NInoNonResident(ni))
--		return false;
--
--	vcn = iomap->offset >> ni->vol->cluster_size_bits;
--
--	down_read(&ni->runlist.lock);
--	rl = __ntfs_attr_find_vcn_nolock(&ni->runlist, vcn);
--	if (IS_ERR(rl)) {
--		up_read(&ni->runlist.lock);
--		return false;
--	}
--	lcn = ntfs_rl_vcn_to_lcn(rl, vcn);
--	up_read(&ni->runlist.lock);
--	return lcn == LCN_DELALLOC;
--}
--
--static const struct iomap_write_ops ntfs_zero_iomap_folio_ops = {
--	.put_folio = ntfs_iomap_put_folio,
--	.iomap_valid = ntfs_iomap_valid,
--};
--
- static int ntfs_seek_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 		unsigned int flags, struct iomap *iomap, struct iomap *srcmap)
- {
-@@ -337,17 +304,6 @@ static int ntfs_seek_iomap_begin(struct inode *inode, loff_t offset, loff_t leng
- 			srcmap, false, false);
- }
- 
--static int ntfs_zero_read_iomap_end(struct inode *inode, loff_t pos, loff_t length,
--		ssize_t written, unsigned int flags, struct iomap *iomap)
--{
--	if ((flags & IOMAP_ZERO) && (iomap->flags & IOMAP_F_STALE))
--		return -EPERM;
--	return written;
--}
--
--static DEFINE_IOMAP_ITER_NEXT_END(ntfs_zero_read_iomap_next,
--		ntfs_seek_iomap_begin, ntfs_zero_read_iomap_end);
--
- DEFINE_IOMAP_ITER_NEXT(ntfs_seek_iomap_next, ntfs_seek_iomap_begin);
- 
- int ntfs_dio_zero_range(struct inode *inode, loff_t offset, loff_t length)
-@@ -362,19 +318,28 @@ int ntfs_dio_zero_range(struct inode *inode, loff_t offset, loff_t length)
- 				     BLKDEV_ZERO_NOUNMAP);
- }
- 
-+/*
-+ * Zero the part of a new delalloc cluster that the buffered write does not
-+ * cover, in the page cache, so that writeback writes the whole cluster.
-+ * Writeback can allocate the delalloc run while this runs (the folios
-+ * zeroed first are dirty), so the zeroing must not depend on the mapping
-+ * staying delalloc: iomap_zero_range() zeroes delalloc and mapped ranges
-+ * alike.  The caller holds the invalidate lock, which keeps page faults
-+ * from putting data into the cluster meanwhile.
-+ */
- static int ntfs_zero_range(struct inode *inode, loff_t offset, loff_t length)
- {
--	return iomap_zero_range(inode,
--				offset, length,
--				NULL,
--				ntfs_zero_read_iomap_next,
--				&ntfs_zero_iomap_folio_ops,
-+	lockdep_assert_held_write(&inode->i_mapping->invalidate_lock);
-+
-+	return iomap_zero_range(inode, offset, length, NULL,
-+				ntfs_seek_iomap_next, &ntfs_iomap_folio_ops,
- 				NULL);
- }
- 
--static void ntfs_write_delalloc_release(struct inode *inode, loff_t pos,
--					loff_t length, ssize_t written,
--					unsigned int flags, struct iomap *iomap);
-+static void __ntfs_write_delalloc_release(struct inode *inode, loff_t pos,
-+					  loff_t length, ssize_t written,
-+					  unsigned int flags,
-+					  struct iomap *iomap);
- 
- static int ntfs_write_simple_iomap_begin_non_resident(struct inode *inode, loff_t offset,
- 						      loff_t length, struct iomap *iomap)
-@@ -528,8 +493,7 @@ static int ntfs_write_simple_iomap_begin_non_resident(struct inode *inode, loff_
- 							      z_start,
- 							      z_end - z_start);
- 			}
--			if ((!err || err == -EPERM) &&
--			    max_clu_count > 1 &&
-+			if (!err && max_clu_count > 1 &&
- 			    (iomap->length & vol->cluster_size_mask &&
- 			     end < ni->initialized_size)) {
- 				loff_t z_start, z_end;
-@@ -544,16 +508,15 @@ static int ntfs_write_simple_iomap_begin_non_resident(struct inode *inode, loff_
- 							      z_end - z_start);
- 			}
- 
--			if (err == -EPERM)
--				err = 0;
- 			if (err) {
- 				/*
- 				 * Nothing will be copied: drop the delalloc
- 				 * clusters that no zeroed folio covers.
- 				 */
--				ntfs_write_delalloc_release(inode, offset,
--							    iomap->length, 0,
--							    IOMAP_WRITE, iomap);
-+				__ntfs_write_delalloc_release(inode, offset,
-+							      iomap->length, 0,
-+							      IOMAP_WRITE,
-+							      iomap);
- 				return err;
- 			}
- 		}
-@@ -721,16 +684,27 @@ static int ntfs_write_iomap_begin_non_resident(struct inode *inode, loff_t offse
- 	struct ntfs_inode *mrec_ni = ntfs_inode_is_named_stream(ni) ?
- 			ntfs_base_inode(ni) : ni;
- 
--	mutex_lock(&mrec_ni->mrec_lock);
-+	if (ntfs_iomap_flags & NTFS_IOMAP_FLAGS_BEGIN) {
-+		int err;
- 
--	if (ntfs_iomap_flags & NTFS_IOMAP_FLAGS_BEGIN)
--		return  ntfs_write_simple_iomap_begin_non_resident(inode, offset,
--								   length, iomap);
--	else
--		return ntfs_write_da_iomap_begin_non_resident(inode,
--							      offset, length,
--							      flags, iomap,
--							      ntfs_iomap_flags);
-+		/*
-+		 * A hole becomes delalloc here and the rest of its partial
-+		 * clusters is zeroed after the locks below are dropped: keep
-+		 * page faults, which could write into those clusters, out
-+		 * until then.
-+		 */
-+		filemap_invalidate_lock(inode->i_mapping);
-+		mutex_lock(&mrec_ni->mrec_lock);
-+		err = ntfs_write_simple_iomap_begin_non_resident(inode, offset,
-+								 length, iomap);
-+		filemap_invalidate_unlock(inode->i_mapping);
-+		return err;
-+	}
-+
-+	mutex_lock(&mrec_ni->mrec_lock);
-+	return ntfs_write_da_iomap_begin_non_resident(inode, offset, length,
-+						      flags, iomap,
-+						      ntfs_iomap_flags);
- }
- 
- static int __ntfs_write_iomap_begin(struct inode *inode, loff_t offset,
-@@ -802,9 +776,10 @@ static void ntfs_write_delalloc_punch(struct inode *inode, loff_t offset,
-  * Punch them out again, keeping every cluster that has dirty data in the
-  * page cache.
+@@ -5,6 +5,7 @@
+  * Copyright (c) 2025 LG Electronics Co., Ltd.
   */
--static void ntfs_write_delalloc_release(struct inode *inode, loff_t pos,
--					loff_t length, ssize_t written,
--					unsigned int flags, struct iomap *iomap)
-+static void __ntfs_write_delalloc_release(struct inode *inode, loff_t pos,
-+					  loff_t length, ssize_t written,
-+					  unsigned int flags,
-+					  struct iomap *iomap)
- {
- 	struct ntfs_volume *vol = NTFS_I(inode)->vol;
- 	loff_t start_byte, end_byte;
-@@ -821,9 +796,17 @@ static void ntfs_write_delalloc_release(struct inode *inode, loff_t pos,
- 	if (start_byte >= end_byte)
- 		return;
  
--	filemap_invalidate_lock(inode->i_mapping);
- 	iomap_write_delalloc_release(inode, start_byte, end_byte, flags, iomap,
++#include <linux/workqueue.h>
+ #include <linux/writeback.h>
+ 
+ #include "attrib.h"
+@@ -12,6 +13,9 @@
+ #include "ntfs.h"
+ #include "iomap.h"
+ 
++/* iomap->flags: ->iomap_begin() turned a hole into this delalloc mapping */
++#define NTFS_IOMAP_F_WAS_HOLE		IOMAP_F_PRIVATE
++
+ static void ntfs_iomap_put_folio_non_resident(struct inode *inode, loff_t pos,
+ 					      unsigned int len, struct folio *folio)
+ {
+@@ -481,6 +485,9 @@ static int ntfs_write_simple_iomap_begin_non_resident(struct inode *inode, loff_
+ 		if (lcn <= LCN_HOLE) {
+ 			loff_t end = offset + length;
+ 
++			/* The whole mapping was a hole before this write. */
++			iomap->flags |= NTFS_IOMAP_F_WAS_HOLE;
++
+ 			if (vcn_ofs || ((vol->cluster_size > iomap->length) &&
+ 					end < ni->initialized_size)) {
+ 				loff_t z_start, z_end;
+@@ -800,11 +807,145 @@ static void __ntfs_write_delalloc_release(struct inode *inode, loff_t pos,
  				     ntfs_write_delalloc_punch);
+ }
+ 
++struct ntfs_zero_work {
++	struct work_struct work;
++	struct inode *inode;
++	loff_t pos;
++	loff_t len;
++	int err;
++};
++
++static void ntfs_zero_range_workfn(struct work_struct *work)
++{
++	struct ntfs_zero_work *zw = container_of(work, struct ntfs_zero_work,
++						 work);
++
++	zw->err = iomap_zero_range(zw->inode, zw->pos, zw->len, NULL,
++				   ntfs_seek_iomap_next, &ntfs_iomap_folio_ops,
++				   NULL);
 +}
 +
-+static void ntfs_write_delalloc_release(struct inode *inode, loff_t pos,
-+					loff_t length, ssize_t written,
-+					unsigned int flags, struct iomap *iomap)
++/*
++ * Like ntfs_zero_range(), but also for a writer that has a fatal signal
++ * pending: iomap_zero_range() then gives up with -EINTR, and a write cut
++ * short by SIGKILL is one whose cluster tail must still be zeroed.  Zero
++ * from a worker in that case, which has no signal to see; the caller's
++ * invalidate lock still keeps page faults out of the range.
++ */
++static int ntfs_zero_range_unkillable(struct inode *inode, loff_t pos,
++				      loff_t len)
 +{
-+	filemap_invalidate_lock(inode->i_mapping);
-+	__ntfs_write_delalloc_release(inode, pos, length, written, flags,
-+				      iomap);
++	struct ntfs_zero_work zw = { .inode = inode, .pos = pos, .len = len };
++
++	int err;
++
++	if (!fatal_signal_pending(current)) {
++		err = ntfs_zero_range(inode, pos, len);
++		/* the signal may also come while it zeroes */
++		if (err != -EINTR || !fatal_signal_pending(current))
++			return err;
++	}
++
++	lockdep_assert_held_write(&inode->i_mapping->invalidate_lock);
++	INIT_WORK_ONSTACK(&zw.work, ntfs_zero_range_workfn);
++	queue_work(system_unbound_wq, &zw.work);
++	flush_work(&zw.work);
++	destroy_work_on_stack(&zw.work);
++	return zw.err;
++}
++
++/* True if the cluster at byte @pos is still a delalloc run. */
++static bool ntfs_pos_is_delalloc(struct inode *inode, loff_t pos)
++{
++	struct ntfs_inode *ni = NTFS_I(inode);
++	s64 vcn = ntfs_bytes_to_cluster(ni->vol, pos);
++	struct runlist_element *rl;
++	s64 lcn;
++
++	down_read(&ni->runlist.lock);
++	rl = __ntfs_attr_find_vcn_nolock(&ni->runlist, vcn);
++	lcn = IS_ERR(rl) ? LCN_EINVAL : ntfs_rl_vcn_to_lcn(rl, vcn);
++	up_read(&ni->runlist.lock);
++	return lcn == LCN_DELALLOC;
++}
++
++/*
++ * Make writeback write all of [start, end), the rest of a cluster that was a
++ * hole and that a short buffered write filled only in part.  Folios in the
++ * page cache keep their contents (the zeroes __iomap_write_begin() put
++ * there, or data an mmap write added meanwhile), and only their blocks in
++ * the range are dirtied: other clean blocks of the folio may be holes, or
++ * delalloc clusters the write did not reach, which the caller punches out.
++ * The rest of the range is zeroed only while the cluster is still delalloc:
++ * once a write fault or writeback has allocated it, what an mmap write put
++ * there since may be on the disk only, and zeroing the page cache would
++ * overwrite it.  The caller holds the invalidate lock.
++ */
++static int ntfs_dirty_cluster_tail(struct inode *inode, loff_t start,
++				   loff_t end)
++{
++	struct folio *folio;
++	loff_t next;
++	int err = 0;
++
++	lockdep_assert_held_write(&inode->i_mapping->invalidate_lock);
++	while (!err && start < end) {
++		folio = filemap_lock_folio(inode->i_mapping,
++					   start >> PAGE_SHIFT);
++		if (IS_ERR(folio)) {
++			next = min_t(loff_t, round_up(start + 1, PAGE_SIZE),
++				     end);
++			if (ntfs_pos_is_delalloc(inode, start))
++				err = ntfs_zero_range_unkillable(inode, start,
++								 next - start);
++		} else {
++			bool uptodate = folio_test_uptodate(folio);
++			size_t off = offset_in_folio(folio, start);
++
++			next = min_t(loff_t, folio_pos(folio) +
++				     folio_size(folio), end);
++			if (uptodate)
++				iomap_dirty_folio_range(folio, off,
++							next - start);
++			folio_unlock(folio);
++			folio_put(folio);
++			if (!uptodate && ntfs_pos_is_delalloc(inode, start))
++				err = ntfs_zero_range_unkillable(inode, start,
++								 next - start);
++		}
++		start = next;
++	}
++	return err;
++}
++
+ static void ntfs_write_delalloc_release(struct inode *inode, loff_t pos,
+ 					loff_t length, ssize_t written,
+ 					unsigned int flags, struct iomap *iomap)
+ {
++	struct ntfs_volume *vol = NTFS_I(inode)->vol;
++
+ 	filemap_invalidate_lock(inode->i_mapping);
++	/*
++	 * A copy that stopped inside a cluster which was a hole leaves the
++	 * rest of that cluster neither written nor zeroed, but writeback
++	 * allocates the whole cluster and writes only the dirty blocks, so
++	 * the old contents of the cluster would show through.
++	 */
++	if (written && iomap->flags & NTFS_IOMAP_F_WAS_HOLE) {
++		loff_t start = pos + written;
++		loff_t end = min_t(loff_t, round_up(start, vol->cluster_size),
++				   i_size_read(inode));
++		int err = 0;
++
++		if (end > start)
++			err = ntfs_dirty_cluster_tail(inode, start, end);
++		if (err) {
++			ntfs_error(vol->sb,
++				   "Failed to zero [%lld, %lld) of inode 0x%llx after a short write: %d",
++				   start, end, NTFS_I(inode)->mft_no, err);
++			NVolSetErrors(vol);
++		}
++	}
+ 	__ntfs_write_delalloc_release(inode, pos, length, written, flags,
+ 				      iomap);
  	filemap_invalidate_unlock(inode->i_mapping);
- }
- 
 
 -- 
 2.56.1
