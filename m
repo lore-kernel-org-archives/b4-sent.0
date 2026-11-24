@@ -1,74 +1,106 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Tue, 24 Nov 2026 04:47:07 +0000
-Subject: [PATCH] ALSA: mixart: Don't touch the mailbox when the BAR mapping
- failed
+From: Nayeon Kim <nayeoni.kim@samsung.com>
+Date: Tue, 24 Nov 2026 13:52:01 +0900
+Subject: [PATCH] scsi: ufs: rpmb: Return -EIO instead of SCSI result on
+ failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-mixart-free-v1-1-13765d8d445b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMoWBWsC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQyMT3dzMisSiEt20otRUXQuTNEvz1GTDJDMLEyWgjoKi1LTMCrBp0bE
- QfnFpUlZqcgnICKXaWgBdPnQNbwAAAA==
-X-Change-ID: 20261124-mixart-free-84f97ec1b684
-To: tiwai@suse.com, perex@perex.cz
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495627; l=1657;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=KroNMBNLmqXWTwC1spkNnjxXDnIiXoTFsmYu+3KeonU=;
- b=GAspBgd8YPw6ltv7qrF8nA9eRiO3UmTQ86OaVDcOYWUL9OEtz7qm3/FnRkjgzwyP1GrQWhvdI
- CQD7uD8ekRuDKHyPBA5WVmjASfUJe4xJ9jw1zXLq/4Q8f4QbCulLwug
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+Message-Id: <20261124-b4-ufs-3-rpmb-errno-v1-1-65b54643ca21@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAPAXBWsC/yWMQQ6CMBBFr0K6dsTWRqpXMS7aMoUxsZAZMSaEu
+ 9vK8v3891YlyISibs2qGD8kNOUC+tCoOPo8IFBfWJmTuWhtLAQLSxI4A8+vAMicJ7jaPgXnMDn
+ dqWLOjIm+/+r9sbMs4YnxXVP1EbwgBPY5jnWamAbKbXe0rUQh2O1t+wGLT3W0nwAAAA==
+X-Change-ID: 20261124-b4-ufs-3-rpmb-errno-94dfb88ef817
+To: linux-scsi@vger.kernel.org, "Martin K. Petersen" <mkp@kernel.org>
+Cc: Alim Akhtar <alim.akhtar@samsung.com>, 
+ Jorge Ramirez-Ortiz <jorge.ramirez@oss.qualcomm.com>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ Bean Huo <beanhuo@micron.com>, Bart Van Assche <bvanassche@acm.org>, 
+ linux-kernel@vger.kernel.org, Stanley Jhu <stanleyjhu@google.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495921; l=2758;
+ i=nayeoni.kim@samsung.com; s=20261102; h=from:subject:message-id;
+ bh=bdGL8kCpC3JX6CQ4ZXGjUu6KFEVgq+FRVLoMwfb+mxQ=;
+ b=wnlsK2i51g07bFO0PCnWWMLUSjpX0nWdj7ZXkYNQkbY4oNEvhgkEPccbKvPY35vmSpw3leWS/
+ ZAr1jOewRBEBh7IU0o+hbOuN8qWaXYyH9Uv/WwDD3koZBzkQ/za6NgP
+X-Developer-Key: i=nayeoni.kim@samsung.com; a=ed25519;
+ pk=6rdU/EioX/vzm132vDyAq+TUk6SqpWqob+mz30+/n5E=
+X-Endpoint-Received: by B4 Relay for nayeoni.kim@samsung.com/20261102 with auth_id=1381
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+rpmb_route_frames() is documented to return a negative errno on
+failure, but ufs_sec_submit() returns the value of scsi_execute_cmd()
+as is. When a SECURITY PROTOCOL IN/OUT command fails, that value is a
+positive SCSI result such as SAM_STAT_CHECK_CONDITION or
+DID_ERROR << 16. ufs_rpmb_route_frames() passes it up and logs it as
+"ret=%d". Since scsi_execute_cmd() sets RQF_QUIET, the sense data is
+not logged anywhere.
 
-snd_mixart_probe() calls snd_mixart_free() when pci_ioremap_bar() fails
-for either BAR. snd_mixart_free() then unconditionally calls
+handle_rpc_func_rpmb_frames(), the only caller of rpmb_route_frames(),
+checks for a non-zero return, so OP-TEE still sees the failure.
 
-	snd_mixart_exit_mailbox(mgr);
+Log the SCSI result and sense data in ufs_sec_submit() and convert
+positive results to -EIO, as ufshcd_set_dev_pwr_mode() does.
 
-which masks the outbound mailbox interrupts by writing to
-MIXART_REG(mgr, MIXART_PCI_OMIMR_OFFSET), i.e. through mgr->mem[1].virt.
-mem[1].virt is still NULL if either BAR mapping fails, so the error
-path oopses on a write near address 0 instead of returning -EBUSY.
-
-Only call snd_mixart_exit_mailbox() when the register BAR is mapped. The
-rest of snd_mixart_free() already copes with a partly set up manager:
-iounmap() accepts NULL, and the IRQ and DMA buffers are checked before
-release.
-
-Found with a static analysis tool and checked by hand.
-
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+Signed-off-by: Nayeon Kim <nayeoni.kim@samsung.com>
 ---
-Compile tested on x86_64 (W=1, no new warnings). I don't have a miXart board.
+Based on 7.4/scsi-fixes because it depends on commit 7bc9b854cd68
+("scsi: ufs: rpmb: Decouple device lifecycle from devres to avoid UAF").
+Not urgent; fine for 7.5. Compile-tested (W=1) only.
 ---
- sound/pci/mixart/mixart.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ drivers/ufs/core/ufs-rpmb.c | 20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
 
-diff --git a/sound/pci/mixart/mixart.c b/sound/pci/mixart/mixart.c
-index f451554cff5f..0266467734ca 100644
---- a/sound/pci/mixart/mixart.c
-+++ b/sound/pci/mixart/mixart.c
-@@ -1066,8 +1066,9 @@ static int snd_mixart_free(struct mixart_mgr *mgr)
- 			snd_card_free(mgr->chip[i]->card);
- 	}
+diff --git a/drivers/ufs/core/ufs-rpmb.c b/drivers/ufs/core/ufs-rpmb.c
+index 6803f3e62d78..d94633700cdf 100644
+--- a/drivers/ufs/core/ufs-rpmb.c
++++ b/drivers/ufs/core/ufs-rpmb.c
+@@ -19,6 +19,7 @@
+ #include <linux/rpmb.h>
+ #include <linux/string.h>
+ #include <linux/list.h>
++#include <scsi/scsi_dbg.h>
+ #include <ufs/ufshcd.h>
+ #include <linux/unaligned.h>
+ #include "ufshcd-priv.h"
+@@ -55,10 +56,13 @@ static int ufs_sec_submit(struct ufs_rpmb_dev *ufs_rpmb, u16 spsp,
+ 	struct scsi_failures failures = {
+ 		.failure_definitions = failure_defs,
+ 	};
++	struct scsi_sense_hdr sshdr;
+ 	const struct scsi_exec_args exec_args = {
++		.sshdr = &sshdr,
+ 		.failures = &failures,
+ 	};
+ 	u8 cdb[12] = { };
++	int ret;
  
--	/* stop mailbox */
--	snd_mixart_exit_mailbox(mgr);
-+	/* stop mailbox, unless the register BAR was never mapped */
-+	if (mgr->mem[1].virt)
-+		snd_mixart_exit_mailbox(mgr);
+ 	if (!sdev || !scsi_device_online(sdev))
+ 		return -ENODEV;
+@@ -68,9 +72,19 @@ static int ufs_sec_submit(struct ufs_rpmb_dev *ufs_rpmb, u16 spsp,
+ 	put_unaligned_be16(spsp, &cdb[2]);
+ 	put_unaligned_be32(len, &cdb[6]);
  
- 	/* release irq  */
- 	if (mgr->irq >= 0)
+-	return scsi_execute_cmd(sdev, cdb, send ? REQ_OP_DRV_OUT : REQ_OP_DRV_IN,
+-				buffer, len, /*timeout=*/30 * HZ, /*retries=*/0,
+-				&exec_args);
++	ret = scsi_execute_cmd(sdev, cdb, send ? REQ_OP_DRV_OUT : REQ_OP_DRV_IN,
++			       buffer, len, /*timeout=*/30 * HZ, /*retries=*/0,
++			       &exec_args);
++	if (ret > 0) {
++		dev_err(&ufs_rpmb->dev,
++			"SECURITY PROTOCOL %s failed: result %#x\n",
++			send ? "OUT" : "IN", ret);
++		if (scsi_sense_valid(&sshdr))
++			scsi_print_sense_hdr(sdev, NULL, &sshdr);
++		ret = -EIO;
++	}
++
++	return ret;
+ }
+ 
+ /* UFS RPMB route frames implementation */
 
-
+---
+base-commit: efd68f17acca65f581b9f2fa9ba50c8643ab544d
+change-id: 20261124-b4-ufs-3-rpmb-errno-94dfb88ef817
 
