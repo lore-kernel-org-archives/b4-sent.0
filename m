@@ -1,16 +1,13 @@
 From: Umer Uddin <umer.uddin@mentallysanemainliners.org>
-Subject: [PATCH v2 0/2] Add USB support for Exynos7885 and enable USB and
- FG on gta3xllte
-Date: Tue, 24 Nov 2026 17:14:31 +0000
-Message-Id: <20261124-gta3xllte-usb-battery-v2-0-80bdcb1753bb@mentallysanemainliners.org>
+Date: Tue, 24 Nov 2026 17:14:32 +0000
+Subject: [PATCH v2 1/2] arm64: dts: exynos: exynos7885-gta3xllte: Enable
+ USB support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0K6toYWi+DKexgWLQwwprSmUwiEc
- HcBD+DyJe+/vzKCgEDskawswISE3u0gLwmre+064NjszGQqcyFEybuos9naCHwkw42OEcLCTan
- g1hSlhkKxffsJ0OJ8dl/Vj2k0b6jjETuMHin6sJzHkzi8fx+T4ClP61a19zxTUsJzABe1tQtpB
- 4NGZ9FBoKsPHau2bfsCNwuHCd0AAAA=
-X-Change-ID: 20261119-gta3xllte-usb-battery-b95e4d89ae85
+Message-Id: <20261124-gta3xllte-usb-battery-v2-1-80bdcb1753bb@mentallysanemainliners.org>
+References: <20261124-gta3xllte-usb-battery-v2-0-80bdcb1753bb@mentallysanemainliners.org>
+In-Reply-To: <20261124-gta3xllte-usb-battery-v2-0-80bdcb1753bb@mentallysanemainliners.org>
 To: Vinod Koul <vkoul@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
  Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -28,56 +25,67 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-phy@lists.infradead.org,
  David Virag <virag.david003@gmail.com>, 
  Umer Uddin <umer.uddin@mentallysanemainliners.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795540475; l=1538;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795540475; l=1489;
  i=umer.uddin@mentallysanemainliners.org; s=20261109;
- h=from:subject:message-id; bh=DAbTxT7juIbYgrW7oPFGFfAP35r9haHx3DRvlkx81nY=;
- b=5u5JzQXguPwZgd20NoD1oFChHbxoRiu8ukXHEVrS9kIdvqu3ceo4WL4ihus8l0GK8Uc/SkrDQ
- o2xb7qia5wvAcwqSWIcAXQ1QOgsXH5xF0wwxoGCf+oR6A9REvB8sfqJ
+ h=from:subject:message-id; bh=2sc//xhMdQLxeTbKn3e0zeBob0QS6bolzRWDj8BhCrE=;
+ b=o9CZzwH0fykt7/8/HjQfcWLgxRlRcPq8iqZ2/s6lVdr97PQOOvSlOul6xoVAVIbfyWATm2Ars
+ +sC8rjeEMvZCe5EoZMWLE90xrlQ9bLL38+0KOydi/u2YfilSj5hbyr2
 X-Developer-Key: i=umer.uddin@mentallysanemainliners.org; a=ed25519;
  pk=Hsgrt4A72CFTe27AI1AAWlnLsiQrlb4+T+cbrfWDhUA=
 X-Endpoint-Received: by B4 Relay for umer.uddin@mentallysanemainliners.org/20261109 with auth_id=1466
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi guys, this patch series enables USB and FG on gta3xllte. All is tested.
+The Samsung Galaxy Tab A 10.1 (2019) has a USB-C port capable of USB 2.0
+speeds, used both as host and device, and is used for charging the
+tablet.
 
-DT changes were tested with make dtbs_check W=1, and the dt styling check
-scripts with --mode strict flags, both of which returned no warnings.
-
-Please note this patch now depends on David Virag's changes for USB[1].
-
-Best regards,
-Umer
-
-[1] https://lore.kernel.org/linux-samsung-soc/20261123092244.1792040-1-virag.david003@gmail.com/T/#t
+The port is controlled by an S2MU005 IC. Until support for it is
+added, only USB device functionality is available, so enable the USB
+controller and PHY in peripheral mode.
 
 Signed-off-by: Umer Uddin <umer.uddin@mentallysanemainliners.org>
 ---
-Changes in v2:
-- Drop patches that are being picked up updated and corrected by David
-- Link to v1: https://patch.msgid.link/20261119-gta3xllte-usb-battery-v1-0-0cf5f763522e@mentallysanemainliners.org
+ .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Peter Griffin <peter.griffin@linaro.org>
-To: Alim Akhtar <alim.akhtar@samsung.com>
-Cc: devicetree@vger.kernel.org
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: linux-samsung-soc@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+diff --git a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
+index 03476f8b1200..57df878cb563 100644
+--- a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
++++ b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
+@@ -68,6 +68,12 @@ memory@80000000 {
+ 		      <0x0 0xc0000000 0x40000000>;
+ 	};
+ 
++	/* TODO: Remove this once PMIC is implemented */
++	reg_dummy: regulator-0 {
++		compatible = "regulator-fixed";
++		regulator-name = "dummy_reg";
++	};
++
+ 	reserved-memory {
+ 		ranges;
+ 		#address-cells = <2>;
+@@ -127,3 +133,19 @@ key_volup: key-volup-pins {
+ 		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
+ 	};
+ };
++
++&usbdrd {
++	vdd10-supply = <&reg_dummy>;
++	vdd33-supply = <&reg_dummy>;
++
++	status = "okay";
++};
++
++&usbdrd_dwc3 {
++	/* Force to peripheral until we have Type-C working */
++	dr_mode = "peripheral";
++};
++
++&usbdrd_phy {
++	status = "okay";
++};
 
----
-Umer Uddin (2):
-      arm64: dts: exynos: exynos7885-gta3xllte: Enable USB support
-      arm64: dts: exynos: exynos7885-gta3xllte: Enable FuelGauge support
-
- .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 50 ++++++++++++++++++++++
- 1 file changed, 50 insertions(+)
----
-base-commit: 9b369f9debe1253032abb90a9469fe44146835d1
-change-id: 20261119-gta3xllte-usb-battery-b95e4d89ae85
-
-Best regards,
---  
-Umer Uddin <umer.uddin@mentallysanemainliners.org>
+-- 
+2.56.1
 
