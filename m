@@ -1,11 +1,11 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Date: Mon, 23 Nov 2026 23:41:24 -0500
-Subject: [PATCH v5 4/6] dt-bindings: clock: Add Siflower SF19A2890
- peripheral clock/reset managers
+Date: Mon, 23 Nov 2026 23:41:25 -0500
+Subject: [PATCH v5 5/6] clk: siflower: Add SF19A2890 peripheral clock
+ driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-sf19a2890-sysm-v5-4-4ba44a0db17d@telaak.dev>
+Message-Id: <20261123-sf19a2890-sysm-v5-5-4ba44a0db17d@telaak.dev>
 References: <20261123-sf19a2890-sysm-v5-0-4ba44a0db17d@telaak.dev>
 In-Reply-To: <20261123-sf19a2890-sysm-v5-0-4ba44a0db17d@telaak.dev>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -19,317 +19,391 @@ Cc: Paul Burton <paulburton@kernel.org>,
  =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
  linux-mips@vger.kernel.org, linux-clk@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Conor Dooley <conor.dooley@microchip.com>, 
  Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495283; l=8716;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495283; l=12936;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=jhe/wmRGKRZEoUc58eWAge+X8p9oPBOwrKECt3T0S4I=;
- b=W0S7P6xFm9CHZwW4xOdu99dyO1DCyP4eXxf4zdLYjeWjpn3ngEfqM8Py1RwgL+gNtzkuAgGto
- NxZWNk9wtl9AEaoFyLp2R6JefmhEyDDnPFjhAnHx7PeKUK0KSSjxyYb
+ bh=zmcQCpj/KiTwJ+ABF5tyEjCzeZlBkh1P9Ob4cFI4Fs0=;
+ b=DP4zwnoNqRfNkaipux2uuO0NlODRE0Ht+YdMR51NJ/52jTaa62yOSK1D94qRBK8gCpkMuwhmE
+ Dbe5hIe8zlQADLLKIQWXABdqHmcbvvCtyR5J6Z533xvx6WiAu2o96JQ
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Each peripheral block of the Siflower SF19A2890 has a clock and reset
-manager of its own, with a reset register, a clock gate register and a
-bus output enable. The blocks differ in which gate and reset bits they
-use, so each has its own compatible, and clock N of a manager is its
-input clock N, gated. The header names the clocks and resets of each
-manager, since their meaning depends on the manager.
+manager with the block's clock gates, its resets and a bus output enable
+that the block needs to answer bus requests. Add a driver for the clock
+gates. It turns the bus output on with the first gate and off with the
+last, and leaves the resets to a reset driver, through an auxiliary
+device.
 
-Based on Chuanhong Guo's binding, which described every block with one
-compatible and its bit layout in properties.
+Based on the driver in Chuanhong Guo's SF19A2890 branch, which handled
+the resets too and described each block's bits with properties.
 
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Link: https://github.com/981213/linux/commit/37c81bebaf54
+Co-developed-by: Chuanhong Guo <gch981213@gmail.com>
+Signed-off-by: Chuanhong Guo <gch981213@gmail.com>
 Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
- .../clock/siflower,sf19a2890-periph-crm.yaml       | 166 +++++++++++++++++++++
- MAINTAINERS                                        |   2 +
- .../clock/siflower,sf19a2890-periph-crm.h          |  87 +++++++++++
- 3 files changed, 255 insertions(+)
+ MAINTAINERS                                    |   1 +
+ drivers/clk/siflower/Kconfig                   |  12 +
+ drivers/clk/siflower/Makefile                  |   1 +
+ drivers/clk/siflower/clk-sf19a2890-periphcrm.c | 306 +++++++++++++++++++++++++
+ 4 files changed, 320 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/clock/siflower,sf19a2890-periph-crm.yaml b/Documentation/devicetree/bindings/clock/siflower,sf19a2890-periph-crm.yaml
-new file mode 100644
-index 000000000000..f464cfffb2a2
---- /dev/null
-+++ b/Documentation/devicetree/bindings/clock/siflower,sf19a2890-periph-crm.yaml
-@@ -0,0 +1,166 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/clock/siflower,sf19a2890-periph-crm.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Siflower SF19A2890 peripheral clock and reset manager
-+
-+maintainers:
-+  - Joseph Telaak <joseph@telaak.dev>
-+
-+description: |
-+  Each peripheral, or group of peripherals, of the Siflower SF19A2890 has
-+  a clock and reset manager of its own: a reset register, a clock gate
-+  register, and a bus output enable that the peripherals need as well as
-+  their clocks to answer bus requests.
-+
-+  Clock N of the manager is input clock N, gated. The clocks and resets of
-+  each manager are defined in
-+  include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h.
-+
-+properties:
-+  compatible:
-+    enum:
-+      - siflower,sf19a2890-gmac-crm
-+      - siflower,sf19a2890-gpio-crm
-+      - siflower,sf19a2890-i2c-crm
-+      - siflower,sf19a2890-pwm-crm
-+      - siflower,sf19a2890-rf-crm
-+      - siflower,sf19a2890-spi-crm
-+      - siflower,sf19a2890-timer-crm
-+      - siflower,sf19a2890-uart-crm
-+      - siflower,sf19a2890-usb-crm
-+      - siflower,sf19a2890-wdt-crm
-+      - siflower,sf19a2890-wlan24-crm
-+      - siflower,sf19a2890-wlan5-crm
-+
-+  reg:
-+    maxItems: 1
-+
-+  clocks:
-+    minItems: 1
-+    maxItems: 6
-+
-+  "#clock-cells":
-+    const: 1
-+
-+  "#reset-cells":
-+    const: 1
-+
-+required:
-+  - compatible
-+  - reg
-+  - clocks
-+  - "#clock-cells"
-+  - "#reset-cells"
-+
-+allOf:
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: siflower,sf19a2890-gmac-crm
-+    then:
-+      properties:
-+        clocks:
-+          items:
-+            - description: GMAC bus clock
-+            - description: GMAC register clock
-+            - description: RGMII transmit reference clock
-+            - description: Timestamp unit clock
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - siflower,sf19a2890-wlan24-crm
-+              - siflower,sf19a2890-wlan5-crm
-+    then:
-+      properties:
-+        clocks:
-+          items:
-+            - description: AXI slave clock
-+            - description: AXI master clock
-+            - description: Radio platform clock
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: siflower,sf19a2890-rf-crm
-+    then:
-+      properties:
-+        clocks:
-+          items:
-+            - description: Test clock
-+            - description: AXI slave clock
-+            - description: Boot clock
-+            - description: Low-power clock
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: siflower,sf19a2890-usb-crm
-+    then:
-+      properties:
-+        clocks:
-+          items:
-+            - description: USB controller clock
-+            - description: AXI master clock
-+            - description: USB PHY reference clock
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: siflower,sf19a2890-spi-crm
-+    then:
-+      properties:
-+        clocks:
-+          items:
-+            - description: APB clock
-+            - description: SSP clock
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: siflower,sf19a2890-uart-crm
-+    then:
-+      properties:
-+        clocks:
-+          items:
-+            - description: UART0 APB clock
-+            - description: UART1 APB clock
-+            - description: UART2 APB clock
-+            - description: UART0 clock
-+            - description: UART1 clock
-+            - description: UART2 clock
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - siflower,sf19a2890-gpio-crm
-+              - siflower,sf19a2890-i2c-crm
-+              - siflower,sf19a2890-pwm-crm
-+              - siflower,sf19a2890-timer-crm
-+              - siflower,sf19a2890-wdt-crm
-+    then:
-+      properties:
-+        clocks:
-+          maxItems: 1
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/clock/siflower,sf19a2890-clk.h>
-+
-+    clock-controller@19e24c00 {
-+        compatible = "siflower,sf19a2890-uart-crm";
-+        reg = <0x19e24c00 0x10>;
-+        clocks = <&clk CLK_MUXDIV_PBUS>, <&clk CLK_MUXDIV_PBUS>,
-+                 <&clk CLK_MUXDIV_PBUS>, <&clk CLK_MUXDIV_UART>,
-+                 <&clk CLK_MUXDIV_UART>, <&clk CLK_MUXDIV_UART>;
-+        #clock-cells = <1>;
-+        #reset-cells = <1>;
-+    };
 diff --git a/MAINTAINERS b/MAINTAINERS
-index de087d1c255d..47a3a72a5d08 100644
+index 47a3a72a5d08..34ff7ec0b60e 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -25703,8 +25703,10 @@ M:	Joseph Telaak <joseph@telaak.dev>
- L:	linux-clk@vger.kernel.org
+@@ -25704,6 +25704,7 @@ L:	linux-clk@vger.kernel.org
  S:	Maintained
  F:	Documentation/devicetree/bindings/clock/siflower,sf19a2890-clk.yaml
-+F:	Documentation/devicetree/bindings/clock/siflower,sf19a2890-periph-crm.yaml
+ F:	Documentation/devicetree/bindings/clock/siflower,sf19a2890-periph-crm.yaml
++F:	drivers/clk/siflower/clk-sf19a2890-periphcrm.c
  F:	drivers/clk/siflower/clk-sf19a2890.c
  F:	include/dt-bindings/clock/siflower,sf19a2890-clk.h
-+F:	include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h
- 
- SILEAD TOUCHSCREEN DRIVER
- M:	Hans de Goede <hansg@kernel.org>
-diff --git a/include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h b/include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h
+ F:	include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h
+diff --git a/drivers/clk/siflower/Kconfig b/drivers/clk/siflower/Kconfig
+index ad1b04b4bb9b..fa09bca275b4 100644
+--- a/drivers/clk/siflower/Kconfig
++++ b/drivers/clk/siflower/Kconfig
+@@ -9,3 +9,15 @@ config CLK_SF19A2890
+ 	  and the muxes and dividers that feed the CPU, the buses and the
+ 	  peripherals. The GIC timer runs from the CPU clock, so a kernel
+ 	  for this SoC needs it built in.
++
++config CLK_SF19A2890_PERIPHCRM
++	bool "Clock driver for Siflower SF19A2890 peripherals"
++	depends on MACH_SIFLOWER_MIPS || COMPILE_TEST
++	default MACH_SIFLOWER_MIPS
++	select AUXILIARY_BUS
++	select RESET_CONTROLLER
++	help
++	  Supports the clocks of the peripheral clock and reset managers of
++	  the Siflower SF19A2890. Each peripheral block has one, with its
++	  clock gates, its resets and the bus output enable it needs to
++	  answer bus requests. The resets have a driver of their own.
+diff --git a/drivers/clk/siflower/Makefile b/drivers/clk/siflower/Makefile
+index 3f4d689f7d9b..c4f4e0b8820d 100644
+--- a/drivers/clk/siflower/Makefile
++++ b/drivers/clk/siflower/Makefile
+@@ -1,2 +1,3 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ obj-$(CONFIG_CLK_SF19A2890) += clk-sf19a2890.o
++obj-$(CONFIG_CLK_SF19A2890_PERIPHCRM) += clk-sf19a2890-periphcrm.o
+diff --git a/drivers/clk/siflower/clk-sf19a2890-periphcrm.c b/drivers/clk/siflower/clk-sf19a2890-periphcrm.c
 new file mode 100644
-index 000000000000..1cf54761fe72
+index 000000000000..95b3c6927067
 --- /dev/null
-+++ b/include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h
-@@ -0,0 +1,87 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
-+#ifndef __DT_BINDINGS_CLOCK_SIFLOWER_SF19A2890_PERIPH_CRM_H
-+#define __DT_BINDINGS_CLOCK_SIFLOWER_SF19A2890_PERIPH_CRM_H
++++ b/drivers/clk/siflower/clk-sf19a2890-periphcrm.c
+@@ -0,0 +1,306 @@
++// SPDX-License-Identifier: GPL-2.0-only
 +
-+/* siflower,sf19a2890-gmac-crm */
-+#define CLK_GMAC_BUS		0
-+#define CLK_GMAC_REG		1
-+#define CLK_GMAC_TX_REF		2
-+#define CLK_GMAC_TSU		3
++/*
++ * Siflower SF19A2890 peripheral clock and reset manager driver.
++ *
++ * Each managed block has three registers:
++ *   RESET    at base + 0x0  - per-peripheral reset bitmasks
++ *   CLK_GATE at base + 0x4  - one bit per clock gate
++ *   BOE      at base + 0xc  - shared Bus Output Enable; bits [1:0] must be set
++ *                             for any APB peripheral in the block to respond
++ *
++ * The resets are left to the reset driver, through an auxiliary device.
++ */
 +
-+#define RST_GMAC		0
++#include <linux/auxiliary_bus.h>
++#include <linux/clk-provider.h>
++#include <linux/device-id/of.h>
++#include <linux/idr.h>
++#include <linux/io.h>
++#include <linux/platform_device.h>
++#include <linux/slab.h>
++#include <linux/spinlock.h>
 +
-+/* siflower,sf19a2890-gpio-crm */
-+#define CLK_GPIO		0
++#include <dt-bindings/clock/siflower,sf19a2890-periph-crm.h>
 +
-+#define RST_GPIO		0
++#define REG_CLK_GATE	0x4
++#define REG_BOE		0xc
++#define BOE_EN		GENMASK(1, 0)
 +
-+/* siflower,sf19a2890-i2c-crm */
-+#define CLK_I2C			0
++struct sf19a2890_periphcrm_gate {
++	const char *name;
++	u8 bit;
++	unsigned long flags;
++};
 +
-+#define RST_I2C			0
++struct sf19a2890_periphcrm_data {
++	const struct sf19a2890_periphcrm_gate *gates;
++	unsigned int num_gates;
++};
 +
-+/* siflower,sf19a2890-pwm-crm */
-+#define CLK_PWM			0
++struct sf19a2890_periphcrm {
++	void __iomem *base;
++	spinlock_t lock;	/* serializes gate and BOE updates */
++	struct clk_hw_onecell_data clk_data;
++};
 +
-+#define RST_PWM			0
++struct sf19a2890_periphclk {
++	struct sf19a2890_periphcrm *crm;
++	struct clk_hw hw;
++	u32 idx;
++};
 +
-+/* siflower,sf19a2890-rf-crm */
-+#define CLK_RF_TEST		0
-+#define CLK_RF_AXIS		1
-+#define CLK_RF_BOOT		2
-+#define CLK_RF_LP		3
++static inline struct sf19a2890_periphclk *hw_to_periphclk(struct clk_hw *hw)
++{
++	return container_of(hw, struct sf19a2890_periphclk, hw);
++}
 +
-+#define RST_RF			0
++static int sf19a2890_periphclk_enable(struct clk_hw *hw)
++{
++	struct sf19a2890_periphclk *gate = hw_to_periphclk(hw);
++	struct sf19a2890_periphcrm *crm = gate->crm;
++	u32 reg;
 +
-+/* siflower,sf19a2890-spi-crm */
-+#define CLK_SPI_APB		0
-+#define CLK_SPI_SSP		1
++	guard(spinlock_irqsave)(&crm->lock);
++	reg = readl(crm->base + REG_CLK_GATE);
++	writel(reg | BIT(gate->idx), crm->base + REG_CLK_GATE);
++	writel(BOE_EN, crm->base + REG_BOE);
++	return 0;
++}
 +
-+#define RST_SPI			0
++static void sf19a2890_periphclk_disable(struct clk_hw *hw)
++{
++	struct sf19a2890_periphclk *gate = hw_to_periphclk(hw);
++	struct sf19a2890_periphcrm *crm = gate->crm;
++	u32 reg;
 +
-+/* siflower,sf19a2890-timer-crm */
-+#define CLK_TIMER		0
++	guard(spinlock_irqsave)(&crm->lock);
++	reg = readl(crm->base + REG_CLK_GATE);
++	reg &= ~BIT(gate->idx);
++	writel(reg, crm->base + REG_CLK_GATE);
++	if (reg == 0)
++		writel(0, crm->base + REG_BOE);
++}
 +
-+#define RST_TIMER		0
++static int sf19a2890_periphclk_is_enabled(struct clk_hw *hw)
++{
++	struct sf19a2890_periphclk *gate = hw_to_periphclk(hw);
++	struct sf19a2890_periphcrm *crm = gate->crm;
 +
-+/* siflower,sf19a2890-uart-crm */
-+#define CLK_UART0_APB		0
-+#define CLK_UART1_APB		1
-+#define CLK_UART2_APB		2
-+#define CLK_UART0		3
-+#define CLK_UART1		4
-+#define CLK_UART2		5
++	return !!(readl(crm->base + REG_CLK_GATE) & BIT(gate->idx));
++}
 +
-+#define RST_UART0		0
-+#define RST_UART1		1
-+#define RST_UART2		2
++static const struct clk_ops sf19a2890_periphclk_ops = {
++	.enable = sf19a2890_periphclk_enable,
++	.disable = sf19a2890_periphclk_disable,
++	.is_enabled = sf19a2890_periphclk_is_enabled,
++};
 +
-+/* siflower,sf19a2890-usb-crm */
-+#define CLK_USB			0
-+#define CLK_USB_AXIM		1
-+#define CLK_USB_PHY_REF		2
++#define GATE(_name, _bit, _flags) { .name = _name, .bit = _bit, .flags = _flags }
 +
-+#define RST_USB			0
-+#define RST_USB_PHY_POR		1
-+#define RST_USB_PHY		2
++#define CRM_DATA(_g)							\
++	{								\
++		.gates = sf19a2890_##_g##_gates,			\
++		.num_gates = ARRAY_SIZE(sf19a2890_##_g##_gates),	\
++	}
 +
-+/* siflower,sf19a2890-wdt-crm */
-+#define CLK_WDT			0
++static const struct sf19a2890_periphcrm_gate sf19a2890_gmac_gates[] = {
++	[CLK_GMAC_BUS] = GATE("gmac", 0, 0),
++	[CLK_GMAC_REG] = GATE("gmac_pclk", 1, 0),
++	[CLK_GMAC_TX_REF] = GATE("gmac_byp_ref", 2, 0),
++	[CLK_GMAC_TSU] = GATE("ethtsu", 3, 0),
++};
 +
-+#define RST_WDT			0
++static const struct sf19a2890_periphcrm_data sf19a2890_gmac_crm =
++	CRM_DATA(gmac);
 +
-+/* siflower,sf19a2890-wlan24-crm */
-+#define CLK_WLAN24_AXIS		0
-+#define CLK_WLAN24_AXIM		1
-+#define CLK_WLAN24_PLF		2
++static const struct sf19a2890_periphcrm_gate sf19a2890_wlan24_gates[] = {
++	[CLK_WLAN24_AXIS] = GATE("wlan24_axis", 0, 0),
++	[CLK_WLAN24_AXIM] = GATE("wlan24_axim", 1, 0),
++	[CLK_WLAN24_PLF] = GATE("wlan24_plf", 2, 0),
++};
 +
-+#define RST_WLAN24		0
++static const struct sf19a2890_periphcrm_gate sf19a2890_wlan5_gates[] = {
++	[CLK_WLAN5_AXIS] = GATE("wlan5_axis", 0, 0),
++	[CLK_WLAN5_AXIM] = GATE("wlan5_axim", 1, 0),
++	[CLK_WLAN5_PLF] = GATE("wlan5_plf", 2, 0),
++};
 +
-+/* siflower,sf19a2890-wlan5-crm */
-+#define CLK_WLAN5_AXIS		0
-+#define CLK_WLAN5_AXIM		1
-+#define CLK_WLAN5_PLF		2
++static const struct sf19a2890_periphcrm_data sf19a2890_wlan24_crm =
++	CRM_DATA(wlan24);
 +
-+#define RST_WLAN5		0
++static const struct sf19a2890_periphcrm_data sf19a2890_wlan5_crm =
++	CRM_DATA(wlan5);
 +
-+#endif /* __DT_BINDINGS_CLOCK_SIFLOWER_SF19A2890_PERIPH_CRM_H */
++static const struct sf19a2890_periphcrm_gate sf19a2890_rf_gates[] = {
++	[CLK_RF_TEST] = GATE("rf_dft", 0, 0),
++	[CLK_RF_AXIS] = GATE("rf_axis", 1, 0),
++	[CLK_RF_BOOT] = GATE("rf_boot", 2, 0),
++	[CLK_RF_LP] = GATE("rf_lp", 3, 0),
++};
++
++static const struct sf19a2890_periphcrm_data sf19a2890_rf_crm =
++	CRM_DATA(rf);
++
++/* Nothing describes a consumer of usb_axim, and gating it is not safe */
++static const struct sf19a2890_periphcrm_gate sf19a2890_usb_gates[] = {
++	[CLK_USB] = GATE("usb", 0, 0),
++	[CLK_USB_AXIM] = GATE("usb_axim", 2, CLK_IS_CRITICAL),
++	[CLK_USB_PHY_REF] = GATE("usbphy_ref", 3, 0),
++};
++
++static const struct sf19a2890_periphcrm_data sf19a2890_usb_crm =
++	CRM_DATA(usb);
++
++static const struct sf19a2890_periphcrm_gate sf19a2890_spi_gates[] = {
++	[CLK_SPI_APB] = GATE("spi_apb", 4, 0),
++	[CLK_SPI_SSP] = GATE("spi_ssp", 5, 0),
++};
++
++static const struct sf19a2890_periphcrm_data sf19a2890_spi_crm =
++	CRM_DATA(spi);
++
++/* UART0 carries the console from the bootloader on */
++static const struct sf19a2890_periphcrm_gate sf19a2890_uart_gates[] = {
++	[CLK_UART0_APB] = GATE("uart0_apb", 0, CLK_IS_CRITICAL),
++	[CLK_UART1_APB] = GATE("uart1_apb", 1, 0),
++	[CLK_UART2_APB] = GATE("uart2_apb", 2, 0),
++	[CLK_UART0] = GATE("uart0", 4, CLK_IS_CRITICAL),
++	[CLK_UART1] = GATE("uart1", 5, 0),
++	[CLK_UART2] = GATE("uart2", 6, 0),
++};
++
++static const struct sf19a2890_periphcrm_data sf19a2890_uart_crm =
++	CRM_DATA(uart);
++
++#define SINGLE_CRM(_name)						\
++	static const struct sf19a2890_periphcrm_gate sf19a2890_##_name##_gates[] = { \
++		GATE(#_name, 0, 0),					\
++	};								\
++	static const struct sf19a2890_periphcrm_data sf19a2890_##_name##_crm = \
++		CRM_DATA(_name)
++
++SINGLE_CRM(i2c0);
++SINGLE_CRM(pwm);
++SINGLE_CRM(timer);
++SINGLE_CRM(wdt);
++SINGLE_CRM(gpio);
++
++static DEFINE_IDA(sf19a2890_periphcrm_ida);
++
++static void sf19a2890_periphcrm_ida_free(void *data)
++{
++	ida_free(&sf19a2890_periphcrm_ida, (uintptr_t)data);
++}
++
++static int sf19a2890_periphcrm_probe(struct platform_device *pdev)
++{
++	const struct sf19a2890_periphcrm_data *data;
++	struct auxiliary_device *adev;
++	struct device *dev = &pdev->dev;
++	struct sf19a2890_periphclk *gates;
++	struct sf19a2890_periphcrm *crm;
++	u32 valid_gates = 0;
++	unsigned int i;
++	int ret, id;
++	u32 reg;
++
++	data = device_get_match_data(dev);
++	if (!data)
++		return -EINVAL;
++
++	crm = devm_kzalloc(dev, struct_size(crm, clk_data.hws, data->num_gates),
++			   GFP_KERNEL);
++	if (!crm)
++		return -ENOMEM;
++
++	crm->clk_data.num = data->num_gates;
++
++	gates = devm_kcalloc(dev, data->num_gates, sizeof(*gates), GFP_KERNEL);
++	if (!gates)
++		return -ENOMEM;
++
++	crm->base = devm_platform_ioremap_resource(pdev, 0);
++	if (IS_ERR(crm->base))
++		return PTR_ERR(crm->base);
++
++	spin_lock_init(&crm->lock);
++
++	/*
++	 * Clear any stale bits outside the block's gates so the BOE-disable
++	 * check in periphclk_disable() works correctly.
++	 */
++	for (i = 0; i < data->num_gates; i++)
++		valid_gates |= BIT(data->gates[i].bit);
++	reg = readl(crm->base + REG_CLK_GATE) & valid_gates;
++	writel(reg, crm->base + REG_CLK_GATE);
++
++	for (i = 0; i < data->num_gates; i++) {
++		const struct clk_parent_data parent = { .index = i };
++		struct clk_init_data init = {
++			.name = data->gates[i].name,
++			.ops = &sf19a2890_periphclk_ops,
++			.parent_data = &parent,
++			.num_parents = 1,
++			.flags = data->gates[i].flags,
++		};
++
++		gates[i].crm = crm;
++		gates[i].idx = data->gates[i].bit;
++		gates[i].hw.init = &init;
++
++		ret = devm_clk_hw_register(dev, &gates[i].hw);
++		if (ret)
++			return dev_err_probe(dev, ret,
++					     "failed to register gate %u\n", i);
++
++		crm->clk_data.hws[i] = &gates[i].hw;
++	}
++
++	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get,
++					  &crm->clk_data);
++	if (ret)
++		return ret;
++
++	/* Each block gets a reset device of its own, so they need distinct IDs */
++	id = ida_alloc(&sf19a2890_periphcrm_ida, GFP_KERNEL);
++	if (id < 0)
++		return id;
++
++	ret = devm_add_action_or_reset(dev, sf19a2890_periphcrm_ida_free,
++				       (void *)(uintptr_t)id);
++	if (ret)
++		return ret;
++
++	adev = __devm_auxiliary_device_create(dev, KBUILD_MODNAME, "reset",
++					      (void __force *)crm->base, id);
++	if (!adev)
++		return dev_err_probe(dev, -ENODEV, "failed to create the reset device\n");
++
++	return 0;
++}
++
++static const struct of_device_id sf19a2890_periphcrm_dt_ids[] = {
++	{ .compatible = "siflower,sf19a2890-gmac-crm", .data = &sf19a2890_gmac_crm },
++	{ .compatible = "siflower,sf19a2890-gpio-crm", .data = &sf19a2890_gpio_crm },
++	{ .compatible = "siflower,sf19a2890-i2c-crm", .data = &sf19a2890_i2c0_crm },
++	{ .compatible = "siflower,sf19a2890-pwm-crm", .data = &sf19a2890_pwm_crm },
++	{ .compatible = "siflower,sf19a2890-rf-crm", .data = &sf19a2890_rf_crm },
++	{ .compatible = "siflower,sf19a2890-spi-crm", .data = &sf19a2890_spi_crm },
++	{ .compatible = "siflower,sf19a2890-timer-crm", .data = &sf19a2890_timer_crm },
++	{ .compatible = "siflower,sf19a2890-uart-crm", .data = &sf19a2890_uart_crm },
++	{ .compatible = "siflower,sf19a2890-usb-crm", .data = &sf19a2890_usb_crm },
++	{ .compatible = "siflower,sf19a2890-wdt-crm", .data = &sf19a2890_wdt_crm },
++	{ .compatible = "siflower,sf19a2890-wlan24-crm", .data = &sf19a2890_wlan24_crm },
++	{ .compatible = "siflower,sf19a2890-wlan5-crm", .data = &sf19a2890_wlan5_crm },
++	{ /* sentinel */ }
++};
++
++static struct platform_driver sf19a2890_periphcrm_driver = {
++	.probe	= sf19a2890_periphcrm_probe,
++	.driver = {
++		.name		= "sf19a2890-periph-crm",
++		.of_match_table	= sf19a2890_periphcrm_dt_ids,
++	},
++};
++builtin_platform_driver(sf19a2890_periphcrm_driver);
 
 -- 
 Git-155)
