@@ -1,163 +1,96 @@
-From: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
-Date: Tue, 24 Nov 2026 03:21:26 +0200
-Subject: [PATCH v3] EDAC/mc: Convert the poll period to jiffies when it is
- changed
+From: Jim Cromie <jim.cromie@gmail.com>
+Subject: [PATCH v2 0/6] dyndbg,vmlinux.lds.h: fix i386 section alignment in
+ BOUNDED_SECTION macros
+Date: Mon, 23 Nov 2026 18:30:32 -0700
+Message-Id: <20261123-vmlinux-lds-v2-0-6f608abfa042@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-edac-mc-poll-msec-jiffies-v3-1-a377fda35aed@ahmedabdelfattah.dev>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43NzQ6CMBAE4FchPbuGLoLWk+9hPJR2V0r4MS02G
- sO7W/TiReNxkplvHiKQdxTEPnsIT9EFNw4pFKtMmEYPZwJnUxaYYyWlVEBWG+gNXMaugz6QgdY
- xJwK43rLCiqVEI9L+4ond7WUfT+8crnVLZlrApdG4MI3+/jqPcun98xMlSGAqUKlixzpXB930q
- V5b6lhPk27WlqJYLiN+oFj8QjGh+SbfGlNiWVb2CzrP8xPdgyVnNAEAAA==
-X-Change-ID: 20261119-edac-mc-poll-msec-jiffies-fb7f926f112c
-To: Borislav Petkov <bp@alien8.de>, Tony Luck <tony.luck@intel.com>
-Cc: Qiuxu Zhuo <qzhuo@nvidia.com>, linux-edac@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795483290; l=5834;
- i=me@ahmedabdelfattah.dev; s=20261106; h=from:subject:message-id;
- bh=jADiePoQwyKWlx1hQxkiCPwJnWF2b74pDalVFuubc6A=;
- b=htkZo4cGp+F7yGqN7zcLryOPbYzkS2swJeQ6vfLfbw8eiEE749i5oOFyGaUw710BqC9tC/qGr
- zo16EuLMSWYBJSYz8tj24bq+yLDTh1KPZDeqNHKMfiyDybSxoSHzA+b
-X-Developer-Key: i=me@ahmedabdelfattah.dev; a=ed25519;
- pk=DHEHKU4PddrkJ/iYMZpwyyXsFyIQ6ySjTttKLrt9YqI=
-X-Endpoint-Received: by B4 Relay for me@ahmedabdelfattah.dev/20261106 with auth_id=1438
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/23MMQ6DIBQA0KuQP0vDp2DQqfdoHCyC/gS0gZbYG
+ O7e1LnrG94B2SVyGXp2QHKFMm0r9Ew2DOwyrrPjNEHPQArZIkrkJQZa3zsPU+YP3SkUqFpjNDQ
+ Mnsl52s/tPjQMFsqvLX3OvOBP/z8FueCqM2j81WtrxW2OI4WL3SIMtdYvSLXNi6YAAAA=
+X-Change-ID: 20261121-vmlinux-lds-b59410146885
+To: Arnd Bergmann <arnd@arndb.de>, Jason Baron <jbaron@akamai.com>, 
+ Luis Chamberlain <mcgrof@kernel.org>, Petr Pavlu <petr.pavlu@suse.com>, 
+ Daniel Gomez <da.gomez@kernel.org>, Sami Tolvanen <samitolvanen@google.com>, 
+ Aaron Tomlin <atomlin@atomlin.com>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org, 
+ linux-modules@vger.kernel.org, Jim Cromie <jim.cromie@gmail.com>, 
+ Louis Chauvet <louis.chauvet@bootlin.com>, Joe Perches <joe@perches.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795483834; l=2874;
+ i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
+ bh=6NBOkHJt3QdBU+ak+6FV5tsQ+HpSrEWmsWMcv2DR53w=;
+ b=VeETTy30banfAaTjZ+p7CKuBzeaXn9flaRLzykZHo+EyHI91bEXZoJUlqytWg4UaA4wEWhgPB
+ CXwBzEoA+4PCh854cLIxqBiDOzmjes7+m0peoSe8xiDrWROTrh5D7Mh
+X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
+ pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
+X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Writing edac_mc_poll_msec at run time re-arms every polled memory
-controller through edac_mc_reset_delay_period(), which passes the new
-value to edac_mod_work() as it is. mod_delayed_work() takes jiffies, so
-the first poll after the write comes that many jiffies later, not that
-many milliseconds: at HZ=300, writing 2000 puts the next poll 6.7 s
-out. edac_mc_workq_function() re-arms with msecs_to_jiffies(), so only
-that first poll is off.
+This series fixes a latent i386 section-alignment bug by adding
+explicit alignments to the BOUNDED_SECTION_* linker script macros.
+On i386, struct _ddebug_classmap is 28 bytes, so without an explicit
+ALIGN(8) in the macro, a following __dyndbg section inherits 4-byte
+alignment instead of 8-byte alignment, causing a NULL pointer
+dereference in dynamic_debug_init().
 
-Before commit c4cf3b454eca ("EDAC: Rework workqueue handling") this
-path converted the value through edac_mc_workq_setup(), and
-edac_device_reset_delay_period() still does. Convert it here as well.
+1. Drop the unused HEADERED_SECTION* macros from vmlinux.lds.h.
 
-All other callers of edac_mod_work() and edac_queue_work() already pass
-jiffies. Name the arguments after the unit they are in: "jiffies" for
-the two workqueue helpers, and "msec" for edac_mc_reset_delay_period(),
-as edac_device_reset_delay_period() has it.
+2. Refactor BOUNDED_SECTION_* macros from vmlinux.lds.h into
+   include/asm-generic/bounded_sections.lds.h for reuse.
 
-Fixes: c4cf3b454eca ("EDAC: Rework workqueue handling")
-Signed-off-by: Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+3. Add explicit ALIGN(8) defaults to BOUNDED_SECTION_* (with _ALIGNED
+   variants for non-8-byte tables like ORC_UNWIND_TABLE,
+   EXCEPTION_TABLE, TRACEDATA, INIT_SETUP, and NOTES), fixing the i386
+   NULL deref in dynamic_debug_init().
+
+4. Remove now-redundant outer `. = ALIGN(8);` directives preceding
+   BOUNDED_SECTION* uses in vmlinux.lds.h.
+
+5. Add include/asm-generic/dyndbg.lds.h with DYNDBG_SECTIONS() for
+   vmlinux.lds.h and MOD_DYNDBG_SECTIONS() (`0 : ALIGN(8)` + `KEEP`) for
+   scripts/module.lds.S, fixing lost __dyndbg* sections in DRM modules
+   under CONFIG_DRM_USE_DYNAMIC_DEBUG=y.
+
+6. Generalize checkpatch linker script macro exceptions to match any
+   *.lds.h via a single `$is_linker_file` regex across all 4 checks.
+
+NB: most of this patchset was split out of a larger series fixing
+dyndbg-classmaps.
+
+Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
-I noticed this while timing ie31200_edac's polls in a KVM guest: the
-first poll after a write to edac_mc_poll_msec came late.
-
-Tested on v7.4-rc3+ (4405c18c95d2) at HZ=300, with ie31200_edac bound
-to a QEMU model of the Kaby Lake host bridge (a local device model, not
-upstream QEMU), timing edac_mc_workq_function() with a kprobe. Without
-the patch the first poll came 6.76 s after writing 2000 and 3.51 s after
-writing 1000, with the polls after it every 2.13 s and 1.01 s. With the
-patch the first poll comes 2.11 s and 1.02 s after the write, in line
-with the ones after it. Writes below 1000 are still rejected.
----
-Changes in v3:
-- Dropped Qiuxu's Reviewed-by: he gave it for the one-line conversion
-  in v1, and v2 added the argument renames on top of that (Borislav).
-- No code changes.
-- Link to v2: https://patch.msgid.link/20261123-edac-mc-poll-msec-jiffies-v2-1-0407cc52556d@ahmedabdelfattah.dev
-
 Changes in v2:
-- Went through the callers of edac_mod_work() and edac_queue_work(). The
-  others already pass jiffies: edac_device keeps msecs_to_jiffies(msec)
-  in edac_dev->delay, edac_pci and the other edac_mc callers convert at
-  the call. So the fix is the same as in v1.
-- Renamed the "delay" argument of both helpers to "jiffies" (Borislav).
-  The "value" in the v1 hunk is edac_mc_reset_delay_period()'s argument
-  and is in milliseconds, so that one is now "msec". As an argument name
-  "jiffies" shadows the global one, which only W=2 complains about; I
-  can call it something else if you prefer.
-- Added Qiuxu's Reviewed-by and retested.
-- Link to v1: https://patch.msgid.link/20261119-edac-mc-poll-msec-jiffies-v1-1-fe329938fa09@ahmedabdelfattah.dev
----
- drivers/edac/edac_mc.c     | 6 +++---
- drivers/edac/edac_module.h | 6 +++---
- drivers/edac/wq.c          | 8 ++++----
- 3 files changed, 10 insertions(+), 10 deletions(-)
-
-diff --git a/drivers/edac/edac_mc.c b/drivers/edac/edac_mc.c
-index fd70caa85574..6feb0809a959 100644
---- a/drivers/edac/edac_mc.c
-+++ b/drivers/edac/edac_mc.c
-@@ -483,12 +483,12 @@ static void edac_mc_workq_function(struct work_struct *work_req)
- }
- 
- /*
-- * edac_mc_reset_delay_period(unsigned long value)
-+ * edac_mc_reset_delay_period(unsigned long msec)
-  *
-  *	user space has updated our poll period value, need to
-  *	reset our workq delays
-  */
--void edac_mc_reset_delay_period(unsigned long value)
-+void edac_mc_reset_delay_period(unsigned long msec)
- {
- 	struct mem_ctl_info *mci;
- 	struct list_head *item;
-@@ -499,7 +499,7 @@ void edac_mc_reset_delay_period(unsigned long value)
- 		mci = list_entry(item, struct mem_ctl_info, link);
- 
- 		if (mci->op_state == OP_RUNNING_POLL)
--			edac_mod_work(&mci->work, value);
-+			edac_mod_work(&mci->work, msecs_to_jiffies(msec));
- 	}
- 	mutex_unlock(&mem_ctls_mutex);
- }
-diff --git a/drivers/edac/edac_module.h b/drivers/edac/edac_module.h
-index eceef5539186..762a331a5708 100644
---- a/drivers/edac/edac_module.h
-+++ b/drivers/edac/edac_module.h
-@@ -48,12 +48,12 @@ extern void edac_device_remove_sysfs(struct edac_device_ctl_info *edac_dev);
- /* edac core workqueue: single CPU mode */
- int edac_workqueue_setup(void);
- void edac_workqueue_teardown(void);
--bool edac_queue_work(struct delayed_work *work, unsigned long delay);
-+bool edac_queue_work(struct delayed_work *work, unsigned long jiffies);
- bool edac_stop_work(struct delayed_work *work);
--bool edac_mod_work(struct delayed_work *work, unsigned long delay);
-+bool edac_mod_work(struct delayed_work *work, unsigned long jiffies);
- 
- extern void edac_device_reset_delay_period(struct edac_device_ctl_info *edac_dev, unsigned int msec);
--extern void edac_mc_reset_delay_period(unsigned long value);
-+extern void edac_mc_reset_delay_period(unsigned long msec);
- 
- /*
-  * EDAC debugfs functions
-diff --git a/drivers/edac/wq.c b/drivers/edac/wq.c
-index ad3f516627c5..edeb7bbd3d68 100644
---- a/drivers/edac/wq.c
-+++ b/drivers/edac/wq.c
-@@ -3,15 +3,15 @@
- 
- static struct workqueue_struct *wq;
- 
--bool edac_queue_work(struct delayed_work *work, unsigned long delay)
-+bool edac_queue_work(struct delayed_work *work, unsigned long jiffies)
- {
--	return queue_delayed_work(wq, work, delay);
-+	return queue_delayed_work(wq, work, jiffies);
- }
- EXPORT_SYMBOL_GPL(edac_queue_work);
- 
--bool edac_mod_work(struct delayed_work *work, unsigned long delay)
-+bool edac_mod_work(struct delayed_work *work, unsigned long jiffies)
- {
--	return mod_delayed_work(wq, work, delay);
-+	return mod_delayed_work(wq, work, jiffies);
- }
- EXPORT_SYMBOL_GPL(edac_mod_work);
- 
+- Drop unused HEADERED_SECTION* macros from vmlinux.lds.h before
+  moving BOUNDED_SECTION_* to bounded_sections.lds.h.
+- Fix broken `/\.lds\.h$` regexes in checkpatch.pl (remove leading `/`).
+- Introduce single `$is_linker_file = '\.lds\.h$'` in checkpatch.pl
+  for all 4 `.lds.h` checks (Joe Perches).
+- Link to v1: https://lore.kernel.org/r/20261121-vmlinux-lds-v1-0-49818f3f5cc0@gmail.com
 
 ---
-base-commit: 4405c18c95d2d0f99f6c581ef0ee8591a1aa6ccd
-change-id: 20261119-edac-mc-poll-msec-jiffies-fb7f926f112c
+Jim Cromie (6):
+      vmlinux.lds.h: drop unused HEADERED_SECTION* macros
+      vmlinux.lds.h: refactor BOUNDED_SECTION_* macros into bounded_sections.lds.h
+      vmlinux.lds.h: fix ALIGN(8) omission causing NULL ptr on i386
+      vmlinux.lds.h: remove redundant ALIGN(8) directives
+      dyndbg.lds.h: fix lost dyndbg sections in modules
+      checkpatch: generalize linker script macro exceptions
+
+ MAINTAINERS                                |  1 +
+ include/asm-generic/bounded_sections.lds.h | 32 ++++++++++++++
+ include/asm-generic/dyndbg.lds.h           | 18 ++++++++
+ include/asm-generic/vmlinux.lds.h          | 68 ++++++------------------------
+ scripts/checkpatch.pl                      | 11 ++---
+ scripts/module.lds.S                       |  2 +
+ 6 files changed, 72 insertions(+), 60 deletions(-)
+---
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20261121-vmlinux-lds-b59410146885
 
 Best regards,
---  
-Ahmed Abdelfattah <me@ahmedabdelfattah.dev>
+-- 
+Jim Cromie <jim.cromie@gmail.com>
 
