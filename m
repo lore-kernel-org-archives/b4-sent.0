@@ -1,11 +1,11 @@
 From: Sai Sree Kartheek Adivi <s-adivi@ti.com>
-Date: Tue, 24 Nov 2026 17:15:03 +0530
-Subject: [PATCH v13 01/20] dmaengine: ti: k3-udma: Fix sporadic crash on
- AM62x
+Date: Tue, 24 Nov 2026 17:15:04 +0530
+Subject: [PATCH v13 02/20] dmaengine: ti: k3-udma: move macros to header
+ file
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-dma-upstream-v13-v13-1-bd4251fdc6d4@ti.com>
+Message-Id: <20261124-dma-upstream-v13-v13-2-bd4251fdc6d4@ti.com>
 References: <20261124-dma-upstream-v13-v13-0-bd4251fdc6d4@ti.com>
 In-Reply-To: <20261124-dma-upstream-v13-v13-0-bd4251fdc6d4@ti.com>
 To: Vignesh Raghavendra <vigneshr@ti.com>, Vinod Koul <vkoul@kernel.org>, 
@@ -18,66 +18,194 @@ Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org,
  sebin.francis@ti.com, Sai Sree Kartheek Adivi <s-adivi@ti.com>, 
  Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795520723; l=2302;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795520723; l=6609;
  i=s-adivi@ti.com; s=20261124; h=from:subject:message-id;
- bh=0QbFZNXvvMb+ue0ziAGKkg7DBgtCKZ+KVB36CbCIP+g=;
- b=MRewRL5HmtOr8dMHDtNNoJPPgWV02lzo2xXfLL/qI8dUiJyKIOfFBiHACm9/3gPEyXhCNTLlm
- ZN6RO5wDQ1CBKlWU1ak3bBEsCgPHEAKHEZuEqw0OTwXvAjJqtCbOeIS
+ bh=wdK85aolL4pp1GnSwri9uT5/1wDE9wR2Akcq7nvUHH0=;
+ b=vTe35zwNZ//Sr8dgdYP5y2BmY3SQdA9/ctz2DDKPaMhr7sLdM8d32DAIZWR7CnpdFoZzAy5Jr
+ GMQgHUj+WemAR1UTUjl2RM0BYWId0hC2E+5X/T0JROM3yElX/xXKRbJ
 X-Developer-Key: i=s-adivi@ti.com; a=ed25519;
  pk=EtOwVxmXDuYMgw3DqFtPDBpf8ZvbO89w1fJm4w5yPI8=
 X-Endpoint-Received: by B4 Relay for s-adivi@ti.com/20261124 with auth_id=1627
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Vignesh Raghavendra <vigneshr@ti.com>
+Move macros defined in k3-udma.c to k3-udma.h for better separation and
+reuse.
 
-ring_init_data is declared on stack and left uninitialized, so any
-field not explicitly assigned afterwards carries garbage. Every field
-that exists on struct k3_ringacc_init_data today (tisci, tisci_dev_id,
-num_rings) is set immediately below, so this is currently a no-op, but
-a later patch in this series adds a base_rt field to the same struct
-that is not set by this call site. Without this fix, that field would
-carry stack garbage here, and k3_ringacc_dmarings_init() could use a
-junk address for the ringrt base, causing a crash during ring pop:
-
-[    1.998239] cadence-qspi fc40000.spi: couldn't determine phase-detect-selector
-[    2.532106] Unable to handle kernel paging request at virtual address ffff800081a84b98
-[    2.540051] Mem abort info:
-[...]
-[    2.629987] Workqueue: events_unbound deferred_probe_work_func
-[    2.635832] pstate: 800000c5 (Nzcv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
-[    2.642787] pc : k3_ringacc_ring_pop+0x48/0x94
-[    2.647234] lr : udma_pop_from_ring+0x7c/0xb4
-[...]
-[    2.726250] Call trace:
-[    2.728691]  k3_ringacc_ring_pop+0x48/0x94
-[    2.732786]  udma_ring_irq_handler+0x34/0x218
-[    2.737141]  __handle_irq_event_percpu+0x60/0x14c
-[    2.741846]  handle_irq_event+0x4c/0xa8
-
-Fix this proactively by explicitly initializing the variable to 0,
-before the base_rt field is introduced.
-
-Fixes: 017794739702 ("dmaengine: ti: k3-udma: Initial support for K3 BCDMA")
-Signed-off-by: Vignesh Raghavendra <vigneshr@ti.com>
 Reviewed-by: Frank Li <Frank.Li@nxp.com>
 Signed-off-by: Sai Sree Kartheek Adivi <s-adivi@ti.com>
 ---
- drivers/dma/ti/k3-udma.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/dma/ti/k3-udma.c | 62 -----------------------------------------------
+ drivers/dma/ti/k3-udma.h | 63 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 63 insertions(+), 62 deletions(-)
 
 diff --git a/drivers/dma/ti/k3-udma.c b/drivers/dma/ti/k3-udma.c
-index 75bd1977fb423..6f3f0467fd5e0 100644
+index 6f3f0467fd5e0..086ecacc08cf2 100644
 --- a/drivers/dma/ti/k3-udma.c
 +++ b/drivers/dma/ti/k3-udma.c
-@@ -5467,7 +5467,7 @@ static int udma_probe(struct platform_device *pdev)
- 	if (ud->match_data->type == DMA_TYPE_UDMA) {
- 		ud->ringacc = of_k3_ringacc_get_by_phandle(dev->of_node, "ti,ringacc");
- 	} else {
--		struct k3_ringacc_init_data ring_init_data;
-+		struct k3_ringacc_init_data ring_init_data = { 0 };
+@@ -39,21 +39,6 @@ struct udma_static_tr {
+ 	u16 bstcnt; /* RPSTR1 */
+ };
  
- 		ring_init_data.tisci = ud->tisci_rm.tisci;
- 		ring_init_data.tisci_dev_id = ud->tisci_rm.tisci_dev_id;
+-#define K3_UDMA_MAX_RFLOWS		1024
+-#define K3_UDMA_DEFAULT_RING_SIZE	16
+-
+-/* How SRC/DST tag should be updated by UDMA in the descriptor's Word 3 */
+-#define UDMA_RFLOW_SRCTAG_NONE		0
+-#define UDMA_RFLOW_SRCTAG_CFG_TAG	1
+-#define UDMA_RFLOW_SRCTAG_FLOW_ID	2
+-#define UDMA_RFLOW_SRCTAG_SRC_TAG	4
+-
+-#define UDMA_RFLOW_DSTTAG_NONE		0
+-#define UDMA_RFLOW_DSTTAG_CFG_TAG	1
+-#define UDMA_RFLOW_DSTTAG_FLOW_ID	2
+-#define UDMA_RFLOW_DSTTAG_DST_TAG_LO	4
+-#define UDMA_RFLOW_DSTTAG_DST_TAG_HI	5
+-
+ struct udma_chan;
+ 
+ enum k3_dma_type {
+@@ -118,15 +103,6 @@ struct udma_oes_offsets {
+ 	u32 pktdma_rchan_flow;
+ };
+ 
+-#define UDMA_FLAG_PDMA_ACC32		BIT(0)
+-#define UDMA_FLAG_PDMA_BURST		BIT(1)
+-#define UDMA_FLAG_TDTYPE		BIT(2)
+-#define UDMA_FLAG_BURST_SIZE		BIT(3)
+-#define UDMA_FLAGS_J7_CLASS		(UDMA_FLAG_PDMA_ACC32 | \
+-					 UDMA_FLAG_PDMA_BURST | \
+-					 UDMA_FLAG_TDTYPE | \
+-					 UDMA_FLAG_BURST_SIZE)
+-
+ struct udma_match_data {
+ 	enum k3_dma_type type;
+ 	u32 psil_base;
+@@ -1837,38 +1813,6 @@ static int udma_alloc_rx_resources(struct udma_chan *uc)
+ 	return ret;
+ }
+ 
+-#define TISCI_BCDMA_BCHAN_VALID_PARAMS (			\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_EXTENDED_CH_TYPE_VALID)
+-
+-#define TISCI_BCDMA_TCHAN_VALID_PARAMS (			\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_SUPR_TDPKT_VALID)
+-
+-#define TISCI_BCDMA_RCHAN_VALID_PARAMS (			\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID)
+-
+-#define TISCI_UDMA_TCHAN_VALID_PARAMS (				\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_FILT_EINFO_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_FILT_PSWORDS_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_CHAN_TYPE_VALID |		\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_SUPR_TDPKT_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_FETCH_SIZE_VALID |		\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_CQ_QNUM_VALID |		\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_ATYPE_VALID)
+-
+-#define TISCI_UDMA_RCHAN_VALID_PARAMS (				\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_FETCH_SIZE_VALID |		\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_CQ_QNUM_VALID |		\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_CHAN_TYPE_VALID |		\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_IGNORE_SHORT_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_IGNORE_LONG_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_FLOWID_START_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_FLOWID_CNT_VALID |	\
+-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_ATYPE_VALID)
+-
+ static int udma_tisci_m2m_channel_config(struct udma_chan *uc)
+ {
+ 	struct udma_dev *ud = uc->ud;
+@@ -5381,12 +5325,6 @@ static enum dmaengine_alignment udma_get_copy_align(struct udma_dev *ud)
+ 	}
+ }
+ 
+-#define TI_UDMAC_BUSWIDTHS	(BIT(DMA_SLAVE_BUSWIDTH_1_BYTE) | \
+-				 BIT(DMA_SLAVE_BUSWIDTH_2_BYTES) | \
+-				 BIT(DMA_SLAVE_BUSWIDTH_3_BYTES) | \
+-				 BIT(DMA_SLAVE_BUSWIDTH_4_BYTES) | \
+-				 BIT(DMA_SLAVE_BUSWIDTH_8_BYTES))
+-
+ static int udma_probe(struct platform_device *pdev)
+ {
+ 	struct device_node *navss_node = pdev->dev.parent->of_node;
+diff --git a/drivers/dma/ti/k3-udma.h b/drivers/dma/ti/k3-udma.h
+index 9062a237cd167..750720cd06911 100644
+--- a/drivers/dma/ti/k3-udma.h
++++ b/drivers/dma/ti/k3-udma.h
+@@ -97,6 +97,69 @@
+ /* Address Space Select */
+ #define K3_ADDRESS_ASEL_SHIFT		48
+ 
++#define K3_UDMA_MAX_RFLOWS		1024
++#define K3_UDMA_DEFAULT_RING_SIZE	16
++
++/* How SRC/DST tag should be updated by UDMA in the descriptor's Word 3 */
++#define UDMA_RFLOW_SRCTAG_NONE		0
++#define UDMA_RFLOW_SRCTAG_CFG_TAG	1
++#define UDMA_RFLOW_SRCTAG_FLOW_ID	2
++#define UDMA_RFLOW_SRCTAG_SRC_TAG	4
++
++#define UDMA_RFLOW_DSTTAG_NONE		0
++#define UDMA_RFLOW_DSTTAG_CFG_TAG	1
++#define UDMA_RFLOW_DSTTAG_FLOW_ID	2
++#define UDMA_RFLOW_DSTTAG_DST_TAG_LO	4
++#define UDMA_RFLOW_DSTTAG_DST_TAG_HI	5
++
++#define UDMA_FLAG_PDMA_ACC32		BIT(0)
++#define UDMA_FLAG_PDMA_BURST		BIT(1)
++#define UDMA_FLAG_TDTYPE		BIT(2)
++#define UDMA_FLAG_BURST_SIZE		BIT(3)
++#define UDMA_FLAGS_J7_CLASS		(UDMA_FLAG_PDMA_ACC32 | \
++					 UDMA_FLAG_PDMA_BURST | \
++					 UDMA_FLAG_TDTYPE | \
++					 UDMA_FLAG_BURST_SIZE)
++
++#define TI_UDMAC_BUSWIDTHS	(BIT(DMA_SLAVE_BUSWIDTH_1_BYTE) | \
++				 BIT(DMA_SLAVE_BUSWIDTH_2_BYTES) | \
++				 BIT(DMA_SLAVE_BUSWIDTH_3_BYTES) | \
++				 BIT(DMA_SLAVE_BUSWIDTH_4_BYTES) | \
++				 BIT(DMA_SLAVE_BUSWIDTH_8_BYTES))
++
++/* TI_SCI Params */
++#define TISCI_BCDMA_BCHAN_VALID_PARAMS (			\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_EXTENDED_CH_TYPE_VALID)
++
++#define TISCI_BCDMA_TCHAN_VALID_PARAMS (			\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_SUPR_TDPKT_VALID)
++
++#define TISCI_BCDMA_RCHAN_VALID_PARAMS (			\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID)
++
++#define TISCI_UDMA_TCHAN_VALID_PARAMS (				\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_FILT_EINFO_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_FILT_PSWORDS_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_CHAN_TYPE_VALID |		\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_SUPR_TDPKT_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_FETCH_SIZE_VALID |		\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_CQ_QNUM_VALID |		\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_ATYPE_VALID)
++
++#define TISCI_UDMA_RCHAN_VALID_PARAMS (				\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_FETCH_SIZE_VALID |		\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_CQ_QNUM_VALID |		\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_CHAN_TYPE_VALID |		\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_IGNORE_SHORT_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_IGNORE_LONG_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_FLOWID_START_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_FLOWID_CNT_VALID |	\
++	TI_SCI_MSG_VALUE_RM_UDMAP_CH_ATYPE_VALID)
++
+ struct udma_dev;
+ struct udma_tchan;
+ struct udma_rchan;
 
 -- 
 2.55.0
