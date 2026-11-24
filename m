@@ -1,107 +1,99 @@
-From: Phil Williams <phil.williams@advisoft.co.nz>
-Date: Wed, 25 Nov 2026 12:15:44 +1300
-Subject: [PATCH v2] iio: imu: st_lsm6dsx: set ts_sensitivity on parts
- without freq_fine
+From: Jim Cromie <jim.cromie@gmail.com>
+Subject: [PATCH v4 0/3] drm/print,dyndbg: __drm_debug __read_mostly,
+ restore it to uint, printer fix
+Date: Tue, 24 Nov 2026 16:38:32 -0700
+Message-Id: <20261124-rd-mostly-v4-0-26d60beb6666@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-st-lsm6dsx-ts-fallback-v2-1-ea0ea2512070@advisoft.co.nz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WOTQ6CMBCFr0K6dghTIzGuvIdh0Z+pVJGaTm1Qw
- t0teACXX/Le+94smKInFqdqFpGyZx/GAnJXCdOr8UrgbWEhG9kiYgucYOBHa3mCxODUMGhl7mC
- sRIcWad+QKOVnJOenbfjS/Zhf+kYmrWtrovecQnxv5oxr7q8kIyAclSkS5bTTh7Oy5XJwqTahH
- j+iW5blC89ElLnTAAAA
-X-Change-ID: 20261116-st-lsm6dsx-ts-fallback-cd21f1d1e30e
-To: Lorenzo Bianconi <lorenzo@kernel.org>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Mario Tesi <martepisa@gmail.com>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jonathan Cameron <jic23@kernel.org>, stable@vger.kernel.org, 
- Phil Williams <phil.williams@advisoft.co.nz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795562143; l=2777;
- i=phil.williams@advisoft.co.nz; s=kernel; h=from:subject:message-id;
- bh=fGzBxiYeqCVBJr9qUvLqytWRj2H3OFvl+kp4md9filo=;
- b=QpdXAjVXaPivFOUs6AdlJsF1sw2wxLPu6S1QzQ4gahR365MCZy6WI57iOzhxSM82kWsGkHoc8
- lQw4Ov9aivoAmSu6UnA89XcMVmwtTIXb5o7kagE2LCOa1H9boLk45UD
-X-Developer-Key: i=phil.williams@advisoft.co.nz; a=ed25519;
- pk=t0M8TApJRlA/rHh3lIu1XTiWO2+evmU8VnO43/qqLPk=
-X-Endpoint-Received: by B4 Relay for phil.williams@advisoft.co.nz/kernel with auth_id=1538
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/13MTQqDMBBA4auEWZuSjBp/Vr1H6UKTUQNqSiJSE
+ e9eFFpCtw++t0MgbylAzXbwtNpg3Qw1yxIGemjmnrg1UDNAgUpUmHNv+OTCMm5cNdhpoY3qjIK
+ EwctTZ9/X6/FMGAw2LM5v13qVZ/1eVHRZJRccy7YwhczIoL73U2PHm3YTnJcVf1JKFLFELnhZi
+ lyRIYFN+S/TWMpYpqesqMhaTNuskrE8juMDuxeYdBYBAAA=
+X-Change-ID: 20260925-rd-mostly-6a2fc0cd6fd6
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Jason Baron <jbaron@akamai.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ Luca Coelho <luciano.coelho@intel.com>, Jani Nikula <jani.nikula@intel.com>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Jim Cromie <jim.cromie@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795563513; l=2697;
+ i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
+ bh=4UCbxxrKinpPTMCGiCL0XLcwvtLOOSiukBA+RJshUyc=;
+ b=DxACAMOt+FgpZsUaHjYbUUKrmcIuwfXHdGJ8q/3WSUID/afBNTT5Gs5s45BY7C8VVCtGf9Z/B
+ xLZXUirlnvbBXeu+MbnM3a6A/Ycqz7qZd8h76Fn4SVrzjJMtrq8Y598
+X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
+ pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
+X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 8abbf45fcda0 ("iio: st_lsm6dsx: Fixed calibrated timestamp
-calculation") takes the FIFO timestamp scale from ts_sensitivity.
-That field is only filled in for parts that have freq_fine. The
-untagged-FIFO parts are left at zero:
+This series improves __drm_debug placement/sizing and fixes a
+drm_dbg_printer() bypass exposed when CONFIG_DRM_USE_DYNAMIC_DEBUG=y:
 
-  LSM6DS3
-  LSM6DS3H
-  LSM6DSL, LSM6DSM, ISM330DLC and LSM6DS3TR-C
+1. Mark __drm_debug as __read_mostly to move it out of the cacheline
+   it currently shares with frequently written locks and structures. In
+   a 12-vkcube test, its read rate is ~83 kHz.
 
-st_lsm6dsx_read_fifo() multiplies the raw counter by hw->ts_gain, so
-every sample is published with the timestamp taken when the buffer
-was enabled. The accelerometer and gyroscope values still update.
-Userspace that integrates attitude from the timestamp delta treats a
-stuck timestamp as dt = 0.
+2. Shrink __drm_debug and struct ddebug_class_param.bits from unsigned
+   long back to (original) unsigned int, updating lib/dynamic_debug.c
+   and lib/test_dynamic_debug.c callers accordingly.
 
-Set ts_sensitivity to the previous fixed scale of 25000 ns/tick on
-those entries. They have no freq_fine register, so ts_trim_coeff is
-left unset and no trim is applied.
+3. Fix __drm_printfn_dbg() use of __drm_debug_enabled(), which always
+   prints when CONFIG_DRM_USE_DYNAMIC_DEBUG=y, disregarding p->category.
 
-Fixes: 8abbf45fcda0 ("iio: st_lsm6dsx: Fixed calibrated timestamp calculation")
-Cc: stable@vger.kernel.org
-Suggested-by: Lorenzo Bianconi <lorenzo@kernel.org>
-Suggested-by: Jonathan Cameron <jic23@kernel.org>
-Signed-off-by: Phil Williams <phil.williams@advisoft.co.nz>
+NOTES:
+
+drm and dyndbg are coupled on __drm_debug's size and type, so changing
+the size requires coordination between DRM and dyndbg. The coupling
+allows dyndbg to keep state in __drm_debug while letting drm use it in
+cases where static-key drm_*dbg() macros do not fit.
+
+Build-tested with BROKEN locally removed from DRM_USE_DYNAMIC_DEBUG to
+cover both Y/N cases. That un-BROKEN patch is intentionally excluded
+here as drm.debug still needs classmap fixes patchset.
+
+Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
-Resending inline. The first copy went out as an attachment.
-No code changes.
----
+Changes in v4:
+- Replace unused-variable workaround with proper __drm_printfn_dbg()
+  fix (per Sashiko review).
+- Drop drivers/gpu/drm/Makefile and DONT_APPLY un-BROKEN patches from
+  this series (deferred to classmap-inheritance series).
+- Link to v3: https://lore.kernel.org/r/20261121-rd-mostly-v3-0-89e74b23b491@gmail.com
+
+Changes in v3:
+- dont need both ccflags-y and subdir-ccflags-y, latter covers former.
+- Link to v2: https://lore.kernel.org/r/20261120-rd-mostly-v2-0-88056ede02a8@gmail.com
+
 Changes in v2:
-- Drop the ts_gain fallback in st_lsm6dsx_init_hw_timer() and set
-  .ts_sensitivity = 25000 in the LSM6DS3, LSM6DS3H and LSM6DSL settings
-  entries instead (Lorenzo, Jonathan).
-- Leave .ts_trim_coeff unset on those entries since they have no
-  freq_fine register (Francesco).
-- Link to v1: https://lore.kernel.org/r/20261116-st-lsm6dsx-ts-fallback-v1-1-8ace30afbfb5@advisoft.co.nz
----
- drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c b/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
-index 823f8ac66..dffaf76b5 100644
---- a/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
-+++ b/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
-@@ -434,6 +434,7 @@ static const struct st_lsm6dsx_settings st_lsm6dsx_sensor_settings[] = {
- 				.addr = 0x09,
- 				.mask = GENMASK(5, 3),
- 			},
-+			.ts_sensitivity = 25000,
- 		},
- 		.event_settings = {
- 			.sources = {
-@@ -601,6 +602,7 @@ static const struct st_lsm6dsx_settings st_lsm6dsx_sensor_settings[] = {
- 				.addr = 0x09,
- 				.mask = GENMASK(5, 3),
- 			},
-+			.ts_sensitivity = 25000,
- 		},
- 		.event_settings = {
- 			.sources = {
-@@ -802,6 +804,7 @@ static const struct st_lsm6dsx_settings st_lsm6dsx_sensor_settings[] = {
- 				.addr = 0x09,
- 				.mask = GENMASK(5, 3),
- 			},
-+			.ts_sensitivity = 25000,
- 		},
- 		.shub_settings = {
- 			.page_mux = {
+- Add subdir-ccflags- propagation in drivers/gpu/drm/Makefile (patch 2).
+- Add unused `category` warning fix under CONFIG_DRM_USE_DYNAMIC_DEBUG=y
+  (patch 3).
+- Add __drm_debug and ddebug_class_param.bits shrink to unsigned int
+  (patch 4).
+- Link to v1: https://lore.kernel.org/r/20260926-rd-mostly-v1-0-28b7d714ed2c@gmail.com
 
 ---
-base-commit: fa2933aac170dd19c6a7f0d7b81a8f537e40915c
-change-id: 20261116-st-lsm6dsx-ts-fallback-cd21f1d1e30e
+Jim Cromie (3):
+      drm/print: Mark __drm_debug as __read_mostly
+      drm/print,dyndbg: restore __drm_debug to uint from ulong
+      drm/print: fix drm_printer dynamic debug bit-test bypass
+
+ drivers/gpu/drm/drm_print.c   | 7 +++----
+ include/drm/drm_print.h       | 2 +-
+ include/linux/dynamic_debug.h | 2 +-
+ lib/dynamic_debug.c           | 8 +++++---
+ lib/test_dynamic_debug.c      | 2 +-
+ 5 files changed, 11 insertions(+), 10 deletions(-)
+---
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20260925-rd-mostly-6a2fc0cd6fd6
 
 Best regards,
---  
-Phil Williams <phil.williams@advisoft.co.nz>
+-- 
+Jim Cromie <jim.cromie@gmail.com>
 
