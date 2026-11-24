@@ -1,67 +1,86 @@
 From: "Louis H. Poulin II" <poulin.louis@student.oaklandcc.edu>
-Subject: [PATCH v2 0/2] kunit: tool: Preserve failures in parsed KTAP
- results
-Date: Tue, 24 Nov 2026 11:43:50 -0500
-Message-Id: <20261124-kunit-v2-v2-0-e1adbcad6b48@student.oaklandcc.edu>
+Date: Tue, 24 Nov 2026 11:43:51 -0500
+Subject: [PATCH v2 1/2] kunit: tool: Count failed suites with only skipped
+ tests
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
- vPSU3UzU4B8JSMDIzNDQyMT3ezSvMwS3TIj3RQDi1QzS0szCzNzIyWg8oKi1LTMCrBR0bG1tQB
- 9Lc+LWgAAAA==
-X-Change-ID: 20261124-kunit-v2-d08e69968672
+Message-Id: <20261124-kunit-v2-v2-1-e1adbcad6b48@student.oaklandcc.edu>
+References: <20261124-kunit-v2-v2-0-e1adbcad6b48@student.oaklandcc.edu>
+In-Reply-To: <20261124-kunit-v2-v2-0-e1adbcad6b48@student.oaklandcc.edu>
 To: Brendan Higgins <brendan.higgins@linux.dev>, 
  David Gow <david@davidgow.net>
 Cc: Rae Moar <raemoar63@gmail.com>, linux-kselftest@vger.kernel.org, 
  kunit-dev@googlegroups.com, linux-kernel@vger.kernel.org, 
  "Louis H. Poulin II" <poulin.louis@student.oaklandcc.edu>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795538631; l=1626;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795538631; l=2838;
  i=poulin.louis@student.oaklandcc.edu; s=20261123; h=from:subject:message-id;
- bh=FMmuGf0BvxD0W/kVIvoDe3PsvdyB9kbT8Oxfr84qE2A=;
- b=R/6HJuE+JO6Wx1KCO8BgcX6FZE6aa2X3Rvu4wlCprUZwj+kKrgu17Au3kouPr40TRp1JSvJ+Y
- 4wbeMPw5Du6A0CVyEIQ0own1xh0BDIFU4GpSTjxToTP3TXJe+XqjMaS
+ bh=xh9sNC2jcUJyidrIOBVwX3s9EcjKEehFHQ3B5Y11RuI=;
+ b=0ojOw3R2JUt7QEPqZWNFyndqLiWe91EEeNg+VL2FhuHnfOmjszpQHmB+kSUk3LFhNW+tM1Xw0
+ yrrw43AkjtfDVhlYl2AkgOHLvsm5kOSJnJkYq6fZOlPgrHHrdT/Dks7
 X-Developer-Key: i=poulin.louis@student.oaklandcc.edu; a=ed25519;
  pk=LwBiuOLz0gqWTufz54rXgw2coado8UrJcWQ13DbYfxw=
 X-Endpoint-Received: by B4 Relay for poulin.louis@student.oaklandcc.edu/20261123 with auth_id=1616
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The KUnit tool's saved-log parser does not consistently propagate two
-failure conditions. A suite reporting not ok with only skipped children
-leaves the run SKIPPED. A result with an out-of-sequence number can
-still be counted as successful, so kunit.py parse may exit 0 for that
-malformed log.
+A suite can report not ok while all its child cases are skipped.
+The parser retains the suite status as FAILURE but counts only the
+skipped children. The run status is then derived from those counts and
+incorrectly reports SKIPPED.
 
-Patch 1 preserves the suite's reported failure in aggregate counts.
-Patch 2 marks out-of-sequence result records as failed. It depends on
-patch 1 for a malformed parent suite whose child tests are all skipped.
+When a suite reports failure and the child aggregate is SKIPPED, add
+a failed count for the suite, as is already done when child aggregate
+is SUCCESS. Cover a correctly numbered failing suite with a skipped
+child.
 
-Tested: kunit_tool_test.py (100 tests, all pass) and strict checkpatch
-on both patches. No live kernel run was performed.
-
-Changes in v2:
-- Resend using b4; v1 was mangled by line wrapping in the mail client
-  (reported by David Gow).
-- Rebase onto v7.4-rc1; no changes under tools/testing/kunit since v1.
-- Patch 1: move the Fixes: tag adjacent to Signed-off-by:. No code change.
-- Patch 2: no change.
-
-v1: https://lore.kernel.org/r/CAGQButum4PYb4A%2Bhmqg-bJZbf4L3KkH6rT9tn-0_NTs3xLhGYw@mail.gmail.com
-
+Fixes: d65d07cb5b01 ("kunit: tool: improve compatibility of kunit_parser with KTAP specification")
 Signed-off-by: Louis H. Poulin II <poulin.louis@student.oaklandcc.edu>
 ---
-Louis H. Poulin II (2):
-      kunit: tool: Count failed suites with only skipped tests
-      kunit: tool: Fail on out-of-sequence test numbers
+ tools/testing/kunit/kunit_parser.py    |  4 +++-
+ tools/testing/kunit/kunit_tool_test.py | 13 +++++++++++++
+ 2 files changed, 16 insertions(+), 1 deletion(-)
 
- tools/testing/kunit/kunit_parser.py    | 15 +++---
- tools/testing/kunit/kunit_tool_test.py | 92 ++++++++++++++++++++++++++++++++--
- 2 files changed, 98 insertions(+), 9 deletions(-)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261124-kunit-v2-d08e69968672
+diff --git a/tools/testing/kunit/kunit_parser.py b/tools/testing/kunit/kunit_parser.py
+index d722874b..dce365d1 100644
+--- a/tools/testing/kunit/kunit_parser.py
++++ b/tools/testing/kunit/kunit_parser.py
+@@ -694,7 +694,9 @@ def bubble_up_test_results(test: Test) -> None:
+ 	elif test.counts.get_status() == TestStatus.TEST_CRASHED:
+ 		test.status = TestStatus.TEST_CRASHED
+ 
+-	if status == TestStatus.FAILURE and test.counts.get_status() == TestStatus.SUCCESS:
++	# Preserve a failing suite result when its children all pass or skip.
++	if (status == TestStatus.FAILURE and
++			test.counts.get_status() in (TestStatus.SUCCESS, TestStatus.SKIPPED)):
+ 		counts.add_status(status)
+ 
+ def parse_test(lines: LineStream, expected_num: int, log: List[str], is_subtest: bool, printer: Printer) -> Test:
+diff --git a/tools/testing/kunit/kunit_tool_test.py b/tools/testing/kunit/kunit_tool_test.py
+index 85ae2175..5fd386d0 100755
+--- a/tools/testing/kunit/kunit_tool_test.py
++++ b/tools/testing/kunit/kunit_tool_test.py
+@@ -265,6 +265,19 @@ class KUnitParserTest(unittest.TestCase):
+ 		self.assertEqual(kunit_parser.TestStatus.SKIPPED, result.status)
+ 		self.assertEqual(result.counts, kunit_parser.TestCounts(skipped=5))
+ 
++	def test_failed_suite_with_skipped_child_fails(self):
++		output = ['KTAP version 1', '1..1',
++			'    KTAP version 1', '    # Subtest: suite', '    1..1',
++			'    ok 1 - case # SKIP reason', 'not ok 1 - suite']
++		result = kunit_parser.parse_run_tests(output, stdout)
++		suite = result.subtests[0]
++		self.assertEqual(kunit_parser.TestStatus.SKIPPED, suite.subtests[0].status)
++		self.assertEqual(kunit_parser.TestStatus.FAILURE, suite.status)
++		self.assertEqual(suite.counts,
++			kunit_parser.TestCounts(failed=1, skipped=1))
++		self.assertEqual(kunit_parser.TestStatus.FAILURE, result.status)
++		self.assertEqual(result.counts, suite.counts)
++
+ 	def test_ignores_hyphen(self):
+ 		hyphen_log = _test_data_path('test_strip_hyphen.log')
+ 		with open(hyphen_log) as file:
 
-Best regards,
 -- 
-Louis H. Poulin II <poulin.louis@student.oaklandcc.edu>
+2.56.1
 
