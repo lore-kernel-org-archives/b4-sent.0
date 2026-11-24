@@ -1,89 +1,97 @@
 From: Ahmet Zeren <niko3x@proton.me>
-Subject: [PATCH RFT rtw-next 0/2] wifi: rtw88: honour rate, retries and
- bandwidth of injected frames
-Date: Tue, 24 Nov 2026 11:32:29 +0300
-Message-Id: <20261124-b4-rtw88-inject-v1-0-f7457e496924@proton.me>
+Date: Tue, 24 Nov 2026 11:32:30 +0300
+Subject: [PATCH RFT rtw-next 1/2] wifi: rtw88: use the rate, bandwidth and
+ GI of injected frames
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ7CIBBFr9L8tZMUJAY9gAcw3RkXpQw6LtAAa
- pOmdxd0+X7+ewsyJ+GMQ7cg8VuyPGIFtekw3cZ4ZRJfGbrXO6W0IWcolY+1JPHOUyEf3Db0e+1
- HY1GtZ+Ig8694xuk4tK0KFHkuuPwP+eWa27pY1y8yCr2zhAAAAA==
-X-Change-ID: 20261124-b4-rtw88-inject-dfb3f092da48
+Message-Id: <20261124-b4-rtw88-inject-v1-1-f7457e496924@proton.me>
+References: <20261124-b4-rtw88-inject-v1-0-f7457e496924@proton.me>
+In-Reply-To: <20261124-b4-rtw88-inject-v1-0-f7457e496924@proton.me>
 To: Ping-Ke Shih <pkshih@realtek.com>
 Cc: linux-wireless@vger.kernel.org, Luka Gejak <luka.gejak@linux.dev>, 
  Bitterblue Smith <rtl8821cerfe2@gmail.com>, linux-kernel@vger.kernel.org, 
  Ahmet Zeren <niko3x@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795509151; l=2902;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795509151; l=2582;
  i=niko3x@proton.me; s=20261119; h=from:subject:message-id;
- bh=418Z9+5osAr5Zw2V0Hv6Br6WPMtAU3n8k5065gZHPgc=;
- b=mRUq7T0abH37TpK3Ri9sWXmIHYHnlOvjuV3C0QdBqgHJz1jhlGjbxCDSzw0oPS0A8I3TryjNd
- WtW+RjnefEpCchMEGCd1pYYpH8nfZ2QNPns3ZkVAKlrhUnxrfAf0nxv
+ bh=FhYrSNa12y54f8TuWwnmFaCq9qmcQT+x3fX15vMZZZc=;
+ b=Pfz+HMBDDp8gwVceUa9jV43NL2drTr8CtMLKA/mEZwrIvfnm+SpoEg2FN3RX7jk7ehqpBWRum
+ RQ9VmTjaavPDBv0hBCPJbYevSBhMbdh6KQmgSXBLk12619+kLenCMnE
 X-Developer-Key: i=niko3x@proton.me; a=ed25519;
  pk=J4zNm2pudzQ/wF+pQ8xO+wW6jpcNa9EJ2C1g4DUAjhM=
 X-Endpoint-Received: by B4 Relay for niko3x@proton.me/20261119 with auth_id=1575
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rtw88 ignores most of the radiotap header of injected frames: the
-firmware rate adaptation picks the rate, the frames are sent at 20 MHz,
-and the radiotap retry count and NO_ACK have no effect. The same was
-recently fixed in rtw89, and Ping-Ke agreed to take similar patches for
-rtw88 in the thread "rtw88: injected frames ignore radiotap rate and
-retry count".
+Injected frames ignore the rate, bandwidth and guard interval requested
+in their radiotap header. Data frames have no station, so USE_RATE is not
+set and the firmware rate adaptation picks the rate. Management frames
+are sent at the lowest basic rate.
 
-Patch 1 uses the injected legacy, HT or VHT rate, bandwidth and guard
-interval, without rate fallback.
+Use the injected rate, bandwidth and guard interval and disable rate
+fallback, like rtw89 does since commit e96abe4fd7cd ("wifi: rtw89:
+consider data rate/bandwidth/GI for injected packets"). Injected frames
+without a radiotap rate are unchanged.
 
-Patch 2 programs the TX descriptor retry limit for injected frames, sets
-max_rate_tries so the radiotap retry count is no longer clamped to zero,
-and reports NO_ACK frames as such.
-
-Non-injected frames are not affected. Injected frames without a radiotap
-rate keep the current rate selection. Keeping the sequence number of
-injected management frames (IEEE80211_TX_CTL_ASSIGN_SEQ, also done in
-rtw89) is not covered here.
-
-These are compile tested only, I have no rtw88 hardware. Luka offered to
-test. A way to test, with the rtw88 device in monitor mode and a second
-radio sniffing the same channel:
-- inject data frames with a radiotap rate, HT MCS or VHT MCS, with and
-  without short GI, and check they arrive at that rate
-- set the monitor interface to a 40 or 80 MHz channel first (e.g.
-  "iw dev wlan0 set freq 5180 80 5210"; mac80211 drops frames asking for
-  more than the channel width), then inject frames asking for 40 or
-  80 MHz and check the bandwidth on the sniffer
-- inject unicast frames to an absent station with a radiotap rate and
-  retries 0 and 6: the sniffer should see 1 and 7 copies of each frame
-  (mac80211 ignores the retry count without a rate, and caps it at 30);
-  with the NO_ACK flag it should see 1 copy
-- a quick check that normal station mode still works
-Please mention the chip, the bus and the band you tested.
-
-checkpatch --strict, W=1 and sparse are clean for each patch.
-
-AI tool use (Documentation/process/generated-content.rst): the patches
-were written with help from Claude Code (Claude Opus 5.5). It was asked
-to apply the rtl8xxxu injection fixes to rtw88, using the rtw89
-changes as a model, check the descriptor bits against rtl8xxxu, and
-review the result. I have reviewed the changes and take responsibility
-for them.
-
+Signed-off-by: Ahmet Zeren <niko3x@proton.me>
 ---
-Ahmet Zeren (2):
-      wifi: rtw88: use the rate, bandwidth and GI of injected frames
-      wifi: rtw88: honour the retry count and NO_ACK of injected frames
+ drivers/net/wireless/realtek/rtw88/tx.c | 35 +++++++++++++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
 
- drivers/net/wireless/realtek/rtw88/main.c |  1 +
- drivers/net/wireless/realtek/rtw88/main.h |  2 ++
- drivers/net/wireless/realtek/rtw88/tx.c   | 49 ++++++++++++++++++++++++++++++-
- drivers/net/wireless/realtek/rtw88/tx.h   |  2 ++
- 4 files changed, 53 insertions(+), 1 deletion(-)
----
-base-commit: 8b29fd95e2d3cb80564eb7cb34248b844422ba1e
-change-id: 20261124-b4-rtw88-inject-dfb3f092da48
+diff --git a/drivers/net/wireless/realtek/rtw88/tx.c b/drivers/net/wireless/realtek/rtw88/tx.c
+index 701ed7c4f3f..dd5537d0cf1 100644
+--- a/drivers/net/wireless/realtek/rtw88/tx.c
++++ b/drivers/net/wireless/realtek/rtw88/tx.c
+@@ -405,6 +405,38 @@ out:
+ 	}
+ }
+ 
++static void rtw_tx_injected_pkt_info_update(struct rtw_dev *rtwdev,
++					    struct rtw_tx_pkt_info *pkt_info,
++					    struct ieee80211_tx_info *info)
++{
++	struct ieee80211_tx_rate *rate = &info->control.rates[0];
++	u8 nss, mcs;
++
++	if (!(info->control.flags & IEEE80211_TX_CTRL_RATE_INJECT))
++		return;
++
++	if (rate->flags & IEEE80211_TX_RC_VHT_MCS) {
++		nss = ieee80211_rate_get_vht_nss(rate);
++		mcs = ieee80211_rate_get_vht_mcs(rate);
++		pkt_info->rate = DESC_RATEVHT1SS_MCS0 + (nss - 1) * 10 + mcs;
++	} else if (rate->flags & IEEE80211_TX_RC_MCS) {
++		pkt_info->rate = DESC_RATEMCS0 + rate->idx;
++	} else {
++		pkt_info->rate = ieee80211_get_tx_rate(rtwdev->hw, info)->hw_value;
++	}
++
++	if (rate->flags & IEEE80211_TX_RC_80_MHZ_WIDTH)
++		pkt_info->bw = RTW_CHANNEL_WIDTH_80;
++	else if (rate->flags & IEEE80211_TX_RC_40_MHZ_WIDTH)
++		pkt_info->bw = RTW_CHANNEL_WIDTH_40;
++	else
++		pkt_info->bw = RTW_CHANNEL_WIDTH_20;
++
++	pkt_info->short_gi = rate->flags & IEEE80211_TX_RC_SHORT_GI;
++	pkt_info->use_rate = true;
++	pkt_info->dis_rate_fallback = true;
++}
++
+ void rtw_tx_pkt_info_update(struct rtw_dev *rtwdev,
+ 			    struct rtw_tx_pkt_info *pkt_info,
+ 			    struct ieee80211_sta *sta,
+@@ -432,6 +464,9 @@ void rtw_tx_pkt_info_update(struct rtw_dev *rtwdev,
+ 	else if (ieee80211_is_data(fc))
+ 		rtw_tx_data_pkt_info_update(rtwdev, pkt_info, sta, skb);
+ 
++	if (unlikely(info->flags & IEEE80211_TX_CTL_INJECTED))
++		rtw_tx_injected_pkt_info_update(rtwdev, pkt_info, info);
++
+ 	bmc = is_broadcast_ether_addr(hdr->addr1) ||
+ 	      is_multicast_ether_addr(hdr->addr1);
+ 
 
-Best regards,
---  
-Ahmet Zeren <niko3x@proton.me>
+-- 
+2.56.1
 
