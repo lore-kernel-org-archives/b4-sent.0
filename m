@@ -1,112 +1,79 @@
-From: Suyuan Wang <shyckless@gmail.com>
-Date: Tue, 24 Nov 2026 09:57:36 +0000
-Subject: [PATCH net v2] l2tp: require CAP_NET_ADMIN to join the l2tp
- multicast group
+From: Andreas Claesson <andreas@aclaesson.com>
+Date: Tue, 24 Nov 2026 10:35:31 +0000
+Subject: [PATCH] Revert "HID: corsair: cancel LED work again after
+ unregistering the LED"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-l2tp-mcast-perm-v2-1-416741ccb334@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAI9fBWsC/yWMwQrCMBAFf6W8swtmrbX6K+IhxlVXbAzZWAql/
- 27U4wzMzDDJKoZDMyPLqKavWIFXDcLdx5uQXiqD19w5xy09uSQagrdCSfJAftP3vOu2+5YdapW
- yXHX6HY+IUnD6S3ufHxLK94Vl+QAGclJueAAAAA==
-X-Change-ID: 20261124-l2tp-mcast-perm-a38827659421
-To: pabeni@redhat.com, kuba@kernel.org, davem@davemloft.net, 
- edumazet@kernel.org
-Cc: netdev@vger.kernel.org, maoyixie.tju@gmail.com, 
- anilkaushikwireless@gmail.com, stephen@networkplumber.org, 
- linux-kernel@vger.kernel.org, horms@kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795514255; l=3479;
- i=shyckless@gmail.com; s=default; h=from:subject:message-id;
- bh=b8Zf/qow/0DrC6IfxZ7GE0dxZpPJKUEKTCMj81fhw0k=;
- b=tdQFEPeV4B/PyXWBJ+HPGKmRisjKqFCKlazcLG93B0jtoHXtzuOGVGHO1yywQbySbWxKnMTdP
- /QB3UIF+ZCFCPOg5cQwhHo4b6fGLQdgCe2M09h6fuGE7rYdKNpMiMG4
-X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
- pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
-X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
+Message-Id: <20261124-hid-corsair-revert-redundant-cancel-v1-1-ba4c1418cfa8@aclaesson.com>
+X-B4-Tracking: v=1; b=H4sIAHJoBWsC/yWNQQrCMBBFr1Jm7YBJSi1eRVwkk9GOSCqTtAild
+ 3fU1ect/nsbVFbhCuduA+VVqszFwB06oCmWO6NkY/BHPzjne5wkI81aoyjagbXZ5KXkWBpSLMR
+ PHMMpJDcm7sMAZnop3+T9q1yuf65LejC1rxr2/QMSB1rVhwAAAA==
+X-Change-ID: 20261124-hid-corsair-revert-redundant-cancel-8373b18be436
+To: Benjamin Tissoires <bentiss@kernel.org>, Jiri Kosina <jikos@kernel.org>
+Cc: linux-kernel@vger.kernel.org, 
+ Danish Khateeb <danishkhateeb03@gmail.com>, linux-input@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795516530; l=2023;
+ i=andreas@aclaesson.com; s=20261109; h=from:subject:message-id;
+ bh=BJPb3ySj05euN2/xgTFuifJLkqlbmlH2K5dSAKbRMZA=;
+ b=YGPG6bKX40TrHCZ1fi7j4asb2LuIQjbsfjOo8WdQ3Ipc4DIIoKkgYKec26pxdpfMFGf+rzD73
+ Diy+ytSxsU9DSMCLHj4sUJDQ6gBa4FEmHft2W7p8uv0mU/YrGP2WfS+
+X-Developer-Key: i=andreas@aclaesson.com; a=ed25519;
+ pk=oC+38UX0rqcrEjNMgnKAF1zmrTUMbQ2aH/P5Z4TZOIQ=
+X-Endpoint-Received: by B4 Relay for andreas@aclaesson.com/20261109 with auth_id=1465
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Suyuan Wang <stevewong@hust.edu.cn>
+This reverts commit e624a56578e551b77ee66eef74dc2efcd42deb08.
 
-The l2tp generic netlink family sends a notification on its "l2tp"
-multicast group whenever a tunnel or session is created, modified or
-deleted. The message is built by the same l2tp_nl_tunnel_send() and
-l2tp_nl_session_send() helpers as the replies to TUNNEL_GET and
-SESSION_GET, so it carries the tunnel and session IDs, the addresses
-and ports, the statistics and, for L2TPv3 sessions with cookies
-configured, the local and peer cookies.
+It added a cancel_work_sync() after led_classdev_unregister()
+in k90_cleanup_backlight() and k90_cleanup_macro_functions(), because
+unregistering the LED turns it off and that used to queue the work
+again.
 
-The tunnel and session commands, including the GET commands, need
-CAP_NET_ADMIN in the user namespace owning the network namespace
-(GENL_UNS_ADMIN_PERM), but generic netlink lets any user join a
-multicast group by default. So an unprivileged user in the same network
-namespace can read all of this by joining the group. Configured cookies
-help an L2TPv3 endpoint reject blindly injected packets, and leaking
-them weakens that.
+Commit cc8d022e8679 ("HID: corsair: use disable_work_sync() to tear down
+the LED workers") was applied to the same branch and fixes the same
+problem differently: the work is disabled before the LED is
+unregistered, so the LED-off request can no longer queue it. The added
+cancel_work_sync() calls therefore do nothing, and the comment above
+them is no longer true.
 
-Commit ed267f783c0c ("l2tp: send netlink notifications in the tunnel's
-net namespace") already noted that a listener needs no privilege, but
-only stopped the notifications from reaching other network namespaces.
-This patch handles listeners in the tunnel's own namespace that join
-the group after the l2tp family is registered.
+No functional change.
 
-Mark the group with GENL_MCAST_CAP_NET_ADMIN, as was done for gtp in
-commit db627e71b6da ("gtp: Require 'CAP_NET_ADMIN' when joining the gtp
-multicast group"). genl_bind() then requires CAP_NET_ADMIN in the user
-namespace owning the network namespace, the same capability and
-namespace as the tunnel and session commands.
-
-genl_bind() only checks the flag for a group ID that a registered
-family owns. A socket that joins the ID before the l2tp family is
-registered, for example before l2tp_netlink is loaded, keeps getting
-the notifications. This affects every family that uses
-GENL_MCAST_CAP_*, including gtp, and is fixed separately in genetlink
-[1]. Backports need that fix too to cover this case.
-
-Found with a static analysis tool and checked by hand.
-
-Link: https://lore.kernel.org/all/20261123155503.2497063-1-anilkaushikwireless@gmail.com/ [1]
-Fixes: 33f72e6f0c67 ("l2tp : multicast notification to the registered listeners")
-Cc: stable@vger.kernel.org
-Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
-Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
+Assisted-by: Claude:claude-mythos-5-2
+Signed-off-by: Andreas Claesson <andreas@aclaesson.com>
 ---
-Tested in QEMU (x86_64): three listeners join the "l2tp" group, then
-root creates an L2TPv3 tunnel and a session with a cookie.
+ drivers/hid/hid-corsair.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-Before:
-  root: joined, gets TUNNEL_CREATE and SESSION_CREATE (with the cookie)
-  root without CAP_NET_ADMIN: same
-  nobody: same
-
-After:
-  root: joined, gets both notifications
-  root without CAP_NET_ADMIN: EPERM
-  nobody: EPERM
-
-Changes in v2:
-- Say in the commit message that joining the group ID before the family
-  is registered is not covered here, and that backports also need the
-  pending genetlink fix (Sashiko).
-
-v1: https://lore.kernel.org/all/20261120-l2tp-mcast-perm-v1-1-22dbffa88655@gmail.com/
----
- net/l2tp/l2tp_netlink.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/net/l2tp/l2tp_netlink.c b/net/l2tp/l2tp_netlink.c
-index a07009d4cb00..c442e953df66 100644
---- a/net/l2tp/l2tp_netlink.c
-+++ b/net/l2tp/l2tp_netlink.c
-@@ -31,6 +31,7 @@ static struct genl_family l2tp_nl_family;
- static const struct genl_multicast_group l2tp_multicast_group[] = {
- 	{
- 		.name = L2TP_GENL_MCGROUP,
-+		.flags = GENL_MCAST_CAP_NET_ADMIN,
- 	},
- };
+diff --git a/drivers/hid/hid-corsair.c b/drivers/hid/hid-corsair.c
+index a9f2a0447f2d..f966005d69dd 100644
+--- a/drivers/hid/hid-corsair.c
++++ b/drivers/hid/hid-corsair.c
+@@ -526,8 +526,6 @@ static void k90_cleanup_backlight(struct hid_device *dev)
+ 		drvdata->backlight->removed = true;
+ 		disable_work_sync(&drvdata->backlight->work);
+ 		led_classdev_unregister(&drvdata->backlight->cdev);
+-		/* unregister turns the LED off, which re-queues the work */
+-		cancel_work_sync(&drvdata->backlight->work);
+ 		kfree(drvdata->backlight->cdev.name);
+ 		kfree(drvdata->backlight);
+ 	}
+@@ -544,8 +542,6 @@ static void k90_cleanup_macro_functions(struct hid_device *dev)
+ 		k90->record_led.removed = true;
+ 		disable_work_sync(&k90->record_led.work);
+ 		led_classdev_unregister(&k90->record_led.cdev);
+-		/* unregister turns the LED off, which re-queues the work */
+-		cancel_work_sync(&k90->record_led.work);
+ 		kfree(k90->record_led.cdev.name);
  
+ 		kfree(k90);
 
+---
+base-commit: 10bc1d627c297097cfdc099377f8a13efdfffd86
+change-id: 20261124-hid-corsair-revert-redundant-cancel-8373b18be436
 
+Best regards,
+--  
+Andreas Claesson <andreas@aclaesson.com>
 
