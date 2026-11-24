@@ -1,304 +1,68 @@
-From: Joseph Telaak <joseph@telaak.dev>
-Date: Mon, 23 Nov 2026 23:41:26 -0500
-Subject: [PATCH v5 6/6] reset: Add Siflower SF19A2890 peripheral reset
- driver
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Tue, 24 Nov 2026 04:41:48 +0000
+Subject: [PATCH] crypto: rockchip - Drop the runtime PM reference on DMA
+ mapping errors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-sf19a2890-sysm-v5-6-4ba44a0db17d@telaak.dev>
-References: <20261123-sf19a2890-sysm-v5-0-4ba44a0db17d@telaak.dev>
-In-Reply-To: <20261123-sf19a2890-sysm-v5-0-4ba44a0db17d@telaak.dev>
-To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
- Thomas Bogendoerfer <tsbogend@alpha.franken.de>
-Cc: Paul Burton <paulburton@kernel.org>, 
- Jiaxun Yang <jiaxun.yang@flygoat.com>, Chuanhong Guo <gch981213@gmail.com>, 
- Yao Zi <me@ziyao.cc>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
- linux-mips@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joseph Telaak <joseph@telaak.dev>
+Message-Id: <20261124-rk-crypto-v1-1-8fb89152fac0@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAIsVBWsC/yXM0QpAMBSA4VfRubayMcqryMVsB4dCZ4jk3Q2XX
+ /39F3hkQg9ldAHjTp7mKUDGEdjeTB0KcsGgEpVLqTLBo7B8Luss0sLlThstU51A6BfGlo7vVdW
+ //dYMaNd3APf9APANq8JtAAAA
+X-Change-ID: 20261124-rk-crypto-37d6d5a51350
+To: clabbe@baylibre.com, heiko@sntech.de, herbert@gondor.apana.org.au, 
+ davem@davemloft.net
+Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-crypto@vger.kernel.org, linux-rockchip@lists.infradead.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495283; l=9809;
- i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=tH3G7I3tf7pzBkrIwalM9DcMheb+KjROQWqrMyyrX4M=;
- b=eHNqvau0CxnnsVRw52bxecO5TEsrWbScseUOxy9c4wXYm6gS9nu9JjuaNbbOjFVzvx45tiy7+
- Gbe90jWrHLKCc0ixvXZ3rLHF7GBf58MLxxoM680tVvb0L1MD65dhAI/
-X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
- pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
-X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495308; l=1418;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=AgEW09Ja4be96HPfEZUyJHdtDhjRWUkcTv5e5vEm5VU=;
+ b=z5SJG0ZYe/0QvbJ44vYq6t5KtYtYvnZ9FR9nBfe/4VDMot38yUW1Cah2mRq2R8ewl7/tCBvxf
+ cFFlOCDNGk/CYbT9LKvmoQdE78WSY+9SQ7MYp4Mj+tExK4ZTiGIahjC
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a driver for the resets of the Siflower SF19A2890 peripheral clock
-and reset managers. It binds to the auxiliary device that their clock
-driver creates and uses the registers that driver has mapped. Where an
-IP has a reset line for each of its clock domains, as the PL011 UARTs
-and the PL022 SPI controller do, one reset drives all of them, since
-they have to be asserted together.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-Based on the reset part of the driver in Chuanhong Guo's SF19A2890
-branch.
+rk_cipher_run() takes a runtime PM reference with
+pm_runtime_resume_and_get() at the start of every request. The normal
+exit path drops it again at the theend label.
 
-Link: https://github.com/981213/linux/commit/37c81bebaf54
-Co-developed-by: Chuanhong Guo <gch981213@gmail.com>
-Signed-off-by: Chuanhong Guo <gch981213@gmail.com>
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+If dma_map_sg() fails, the function jumps to theend_sgs or theend_iv
+and returns the error without calling pm_runtime_put_autosuspend().
+Each such request leaves one usage count behind, so the device can no
+longer runtime suspend.
+
+Drop the reference on this error path too.
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: 9dcd71c863a6 ("crypto: rockchip - Add support for RK3399")
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
- MAINTAINERS                               |   1 +
- drivers/reset/Kconfig                     |  11 ++
- drivers/reset/Makefile                    |   1 +
- drivers/reset/reset-sf19a2890-periphcrm.c | 194 ++++++++++++++++++++++++++++++
- 4 files changed, 207 insertions(+)
+Compile tested on arm64 (W=1). I don't have the hardware.
+---
+ drivers/crypto/rockchip/rk3288_crypto_skcipher.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 34ff7ec0b60e..ae47322d15dd 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -25706,6 +25706,7 @@ F:	Documentation/devicetree/bindings/clock/siflower,sf19a2890-clk.yaml
- F:	Documentation/devicetree/bindings/clock/siflower,sf19a2890-periph-crm.yaml
- F:	drivers/clk/siflower/clk-sf19a2890-periphcrm.c
- F:	drivers/clk/siflower/clk-sf19a2890.c
-+F:	drivers/reset/reset-sf19a2890-periphcrm.c
- F:	include/dt-bindings/clock/siflower,sf19a2890-clk.h
- F:	include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h
+diff --git a/drivers/crypto/rockchip/rk3288_crypto_skcipher.c b/drivers/crypto/rockchip/rk3288_crypto_skcipher.c
+index e80f9148c012..3f285175a194 100644
+--- a/drivers/crypto/rockchip/rk3288_crypto_skcipher.c
++++ b/drivers/crypto/rockchip/rk3288_crypto_skcipher.c
+@@ -427,6 +427,7 @@ static int rk_cipher_run(struct crypto_engine *engine, void *async_req)
+ 		dma_unmap_sg(rkc->dev, sgd, 1, DMA_FROM_DEVICE);
+ 	}
+ theend_iv:
++	pm_runtime_put_autosuspend(rkc->dev);
+ 	return err;
+ }
  
-diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
-index eda9c698a95f..6e2f6cceb3cb 100644
---- a/drivers/reset/Kconfig
-+++ b/drivers/reset/Kconfig
-@@ -295,6 +295,17 @@ config RESET_SCMI
- 	  This driver uses SCMI Message Protocol to interact with the
- 	  firmware controlling all the reset signals.
- 
-+config RESET_SF19A2890_PERIPHCRM
-+	tristate "Siflower SF19A2890 peripheral reset controller"
-+	depends on MACH_SIFLOWER_MIPS || COMPILE_TEST
-+	select AUXILIARY_BUS
-+	default CLK_SF19A2890_PERIPHCRM
-+	help
-+	  Supports the resets of the peripheral clock and reset managers of
-+	  the Siflower SF19A2890, one manager for each peripheral block.
-+	  The driver binds to the auxiliary device that their clock driver
-+	  creates, so it needs CLK_SF19A2890_PERIPHCRM to do anything.
-+
- config RESET_SIMPLE
- 	bool "Simple Reset Controller Driver" if COMPILE_TEST || EXPERT
- 	default ARCH_ASPEED || ARCH_BCMBCA || ARCH_BITMAIN || ARCH_REALTEK || ARCH_SOPHGO || ARCH_STM32 || (ARCH_INTEL_SOCFPGA && ARM64) || ARCH_SUNXI || ARC
-diff --git a/drivers/reset/Makefile b/drivers/reset/Makefile
-index 489fafd6bbe3..d4b707505c3d 100644
---- a/drivers/reset/Makefile
-+++ b/drivers/reset/Makefile
-@@ -39,6 +39,7 @@ obj-$(CONFIG_RESET_RASPBERRYPI) += reset-raspberrypi.o
- obj-$(CONFIG_RESET_RZG2L_USBPHY_CTRL) += reset-rzg2l-usbphy-ctrl.o
- obj-$(CONFIG_RESET_RZV2H_USB2PHY) += reset-rzv2h-usb2phy.o
- obj-$(CONFIG_RESET_SCMI) += reset-scmi.o
-+obj-$(CONFIG_RESET_SF19A2890_PERIPHCRM) += reset-sf19a2890-periphcrm.o
- obj-$(CONFIG_RESET_SIMPLE) += reset-simple.o
- obj-$(CONFIG_RESET_SKY1) += reset-sky1.o
- obj-$(CONFIG_RESET_SKY1_AUDSS) += reset-sky1-audss.o
-diff --git a/drivers/reset/reset-sf19a2890-periphcrm.c b/drivers/reset/reset-sf19a2890-periphcrm.c
-new file mode 100644
-index 000000000000..54b476237bd4
---- /dev/null
-+++ b/drivers/reset/reset-sf19a2890-periphcrm.c
-@@ -0,0 +1,194 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Siflower SF19A2890 peripheral reset driver
-+ *
-+ * The peripheral clock and reset managers keep their resets in the first
-+ * register of the block. Their clock driver creates an auxiliary device for
-+ * them and passes the mapped registers in its platform data.
-+ */
-+
-+#include <linux/auxiliary_bus.h>
-+#include <linux/bits.h>
-+#include <linux/device.h>
-+#include <linux/io.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/reset-controller.h>
-+#include <linux/spinlock.h>
-+
-+#include <dt-bindings/clock/siflower,sf19a2890-periph-crm.h>
-+
-+#define REG_RESET	0x0
-+
-+struct sf19a2890_periphrst_data {
-+	const u32 *masks;
-+	unsigned int num_resets;
-+};
-+
-+struct sf19a2890_periphrst {
-+	struct reset_controller_dev rcdev;
-+	void __iomem *base;
-+	spinlock_t lock;	/* serializes reset register updates */
-+	const u32 *masks;
-+};
-+
-+static inline struct sf19a2890_periphrst *
-+rcdev_to_periphrst(struct reset_controller_dev *rcdev)
-+{
-+	return container_of(rcdev, struct sf19a2890_periphrst, rcdev);
-+}
-+
-+static int sf19a2890_periphrst_update(struct reset_controller_dev *rcdev,
-+				      unsigned long id, bool assert)
-+{
-+	struct sf19a2890_periphrst *rst = rcdev_to_periphrst(rcdev);
-+	u32 reg;
-+
-+	guard(spinlock_irqsave)(&rst->lock);
-+	reg = readl(rst->base + REG_RESET);
-+	if (assert)
-+		reg |= rst->masks[id];
-+	else
-+		reg &= ~rst->masks[id];
-+	writel(reg, rst->base + REG_RESET);
-+	return 0;
-+}
-+
-+static int sf19a2890_periphrst_assert(struct reset_controller_dev *rcdev,
-+				      unsigned long id)
-+{
-+	return sf19a2890_periphrst_update(rcdev, id, true);
-+}
-+
-+static int sf19a2890_periphrst_deassert(struct reset_controller_dev *rcdev,
-+					unsigned long id)
-+{
-+	return sf19a2890_periphrst_update(rcdev, id, false);
-+}
-+
-+static int sf19a2890_periphrst_status(struct reset_controller_dev *rcdev,
-+				      unsigned long id)
-+{
-+	struct sf19a2890_periphrst *rst = rcdev_to_periphrst(rcdev);
-+
-+	return !!(readl(rst->base + REG_RESET) & rst->masks[id]);
-+}
-+
-+static const struct reset_control_ops sf19a2890_periphrst_ops = {
-+	.assert = sf19a2890_periphrst_assert,
-+	.deassert = sf19a2890_periphrst_deassert,
-+	.status = sf19a2890_periphrst_status,
-+};
-+
-+#define RST_DATA(_name)							\
-+	static const struct sf19a2890_periphrst_data sf19a2890_##_name##_rst = { \
-+		.masks = sf19a2890_##_name##_masks,			\
-+		.num_resets = ARRAY_SIZE(sf19a2890_##_name##_masks),	\
-+	}
-+
-+/*
-+ * A reset that covers several bits drives the reset lines of all the clock
-+ * domains of one IP, which have to be asserted together.
-+ */
-+static const u32 sf19a2890_single_masks[] = { BIT(0) };
-+
-+RST_DATA(single);
-+
-+/* The two sides of an asynchronous AXI bridge */
-+static const u32 sf19a2890_gmac_masks[] = { [RST_GMAC] = GENMASK(1, 0) };
-+
-+RST_DATA(gmac);
-+
-+/* The AXI slave, AXI master and platform domains */
-+static const u32 sf19a2890_wlan_masks[] = { GENMASK(2, 0) };
-+
-+RST_DATA(wlan);
-+
-+/* The DWC2 controller's clock domains, then the PHY's */
-+static const u32 sf19a2890_usb_masks[] = {
-+	[RST_USB] = GENMASK(2, 0),
-+	[RST_USB_PHY_POR] = BIT(3),
-+	[RST_USB_PHY] = BIT(4),
-+};
-+
-+RST_DATA(usb);
-+
-+/* The PL022's PRESETn and nSSPRST */
-+static const u32 sf19a2890_spi_masks[] = { [RST_SPI] = GENMASK(5, 4) };
-+
-+RST_DATA(spi);
-+
-+/* Each PL011's PRESETn and nUARTRST */
-+static const u32 sf19a2890_uart_masks[] = {
-+	[RST_UART0] = BIT(0) | BIT(4),
-+	[RST_UART1] = BIT(1) | BIT(5),
-+	[RST_UART2] = BIT(2) | BIT(6),
-+};
-+
-+RST_DATA(uart);
-+
-+static const struct of_device_id sf19a2890_periphrst_ids[] = {
-+	{ .compatible = "siflower,sf19a2890-gmac-crm", .data = &sf19a2890_gmac_rst },
-+	{ .compatible = "siflower,sf19a2890-gpio-crm", .data = &sf19a2890_single_rst },
-+	{ .compatible = "siflower,sf19a2890-i2c-crm", .data = &sf19a2890_single_rst },
-+	{ .compatible = "siflower,sf19a2890-pwm-crm", .data = &sf19a2890_single_rst },
-+	{ .compatible = "siflower,sf19a2890-rf-crm", .data = &sf19a2890_wlan_rst },
-+	{ .compatible = "siflower,sf19a2890-spi-crm", .data = &sf19a2890_spi_rst },
-+	{ .compatible = "siflower,sf19a2890-timer-crm", .data = &sf19a2890_single_rst },
-+	{ .compatible = "siflower,sf19a2890-uart-crm", .data = &sf19a2890_uart_rst },
-+	{ .compatible = "siflower,sf19a2890-usb-crm", .data = &sf19a2890_usb_rst },
-+	{ .compatible = "siflower,sf19a2890-wdt-crm", .data = &sf19a2890_single_rst },
-+	{ .compatible = "siflower,sf19a2890-wlan24-crm", .data = &sf19a2890_wlan_rst },
-+	{ .compatible = "siflower,sf19a2890-wlan5-crm", .data = &sf19a2890_wlan_rst },
-+	{ /* sentinel */ }
-+};
-+
-+static int sf19a2890_periphrst_probe(struct auxiliary_device *adev,
-+				     const struct auxiliary_device_id *id)
-+{
-+	const struct sf19a2890_periphrst_data *data;
-+	struct device *dev = &adev->dev;
-+	const struct of_device_id *match;
-+	struct sf19a2890_periphrst *rst;
-+
-+	/* The OF node is the parent's, so device_get_match_data() cannot be used */
-+	match = of_match_node(sf19a2890_periphrst_ids, dev->of_node);
-+	if (!match)
-+		return -ENODEV;
-+	data = match->data;
-+
-+	rst = devm_kzalloc(dev, sizeof(*rst), GFP_KERNEL);
-+	if (!rst)
-+		return -ENOMEM;
-+
-+	rst->base = (void __iomem __force *)dev_get_platdata(dev);
-+	if (!rst->base)
-+		return -EINVAL;
-+
-+	spin_lock_init(&rst->lock);
-+	rst->masks = data->masks;
-+	rst->rcdev.owner = THIS_MODULE;
-+	rst->rcdev.nr_resets = data->num_resets;
-+	rst->rcdev.ops = &sf19a2890_periphrst_ops;
-+	rst->rcdev.of_node = dev->of_node;
-+	rst->rcdev.dev = dev;
-+
-+	return devm_reset_controller_register(dev, &rst->rcdev);
-+}
-+
-+static const struct auxiliary_device_id sf19a2890_periphrst_aux_ids[] = {
-+	{ .name = "clk_sf19a2890_periphcrm.reset" },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(auxiliary, sf19a2890_periphrst_aux_ids);
-+
-+static struct auxiliary_driver sf19a2890_periphrst_driver = {
-+	.probe = sf19a2890_periphrst_probe,
-+	.id_table = sf19a2890_periphrst_aux_ids,
-+};
-+module_auxiliary_driver(sf19a2890_periphrst_driver);
-+
-+MODULE_AUTHOR("Chuanhong Guo <gch981213@gmail.com>");
-+MODULE_AUTHOR("Joseph Telaak <joseph@telaak.dev>");
-+MODULE_DESCRIPTION("Siflower SF19A2890 peripheral reset driver");
-+MODULE_LICENSE("GPL");
 
--- 
-Git-155)
+
 
