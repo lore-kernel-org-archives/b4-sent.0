@@ -1,11 +1,11 @@
 From: Sai Sree Kartheek Adivi <s-adivi@ti.com>
-Date: Tue, 24 Nov 2026 17:15:20 +0530
-Subject: [PATCH v13 18/20] dmaengine: ti: k3-udma-v2: Add support for
- PKTDMA V2
+Date: Tue, 24 Nov 2026 17:15:21 +0530
+Subject: [PATCH v13 19/20] dmaengine: ti: k3-udma-v2: Update glue layer to
+ support PKTDMA V2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-dma-upstream-v13-v13-18-bd4251fdc6d4@ti.com>
+Message-Id: <20261124-dma-upstream-v13-v13-19-bd4251fdc6d4@ti.com>
 References: <20261124-dma-upstream-v13-v13-0-bd4251fdc6d4@ti.com>
 In-Reply-To: <20261124-dma-upstream-v13-v13-0-bd4251fdc6d4@ti.com>
 To: Vignesh Raghavendra <vigneshr@ti.com>, Vinod Koul <vkoul@kernel.org>, 
@@ -17,484 +17,400 @@ Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
  sebin.francis@ti.com, Sai Sree Kartheek Adivi <s-adivi@ti.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795520724; l=16049;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795520724; l=13872;
  i=s-adivi@ti.com; s=20261124; h=from:subject:message-id;
- bh=zFe7iCIGOT1KnIa0m2SMT4geGBLUn0/bCkZlpzZa5GA=;
- b=G9NI5G1KBQ435wJ7DED4bDRmN8u78af6Tguynh7Sz2EwBY/cNOkvoxJKVlMoYdzUTgaro4+/w
- P5lhEHVLqA/AKPEkmlfIOwZsl41Ry+v+xBUaT61deZ6xEayFrijP876
+ bh=bHxeE83uSDmZeHn0L8pix2/hfsPaG6sGhBnO0c0WLdE=;
+ b=Kb3TzvxYfrzhwNArKvVjbRWFzKleChurSdQGhnenuFi18wFkpraQHaK0T+9On/xk4+1hgeBox
+ AAbZDf96yBQA1Z3Wlf85PpiPuRkaXvO3Gw9BpaJYQKr9NauD7PTn4tl
 X-Developer-Key: i=s-adivi@ti.com; a=ed25519;
  pk=EtOwVxmXDuYMgw3DqFtPDBpf8ZvbO89w1fJm4w5yPI8=
 X-Endpoint-Received: by B4 Relay for s-adivi@ti.com/20261124 with auth_id=1627
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PKTDMA V2 is different than the existing PKTDMA supported by the
-k3-udma driver.
+Update glue layer to support PKTDMA V2 for non DMAengine users.
 
-The changes in PKTDMA V2 are:
-- Autopair: There is no longer a need for PSIL pair and AUTOPAIR bit
-  needs to set in the RT_CTL register.
-- Static channel mapping: Each channel is mapped to a single
-  peripheral.
-- Direct IRQs: There is no INT-A and interrupt lines from DMA are
-  directly connected to GIC.
-- Remote side configuration handled by DMA. So no need to write to
-  PEER registers to START / STOP / PAUSE / TEARDOWN.
-- Unified Channel Space: Tx and Rx channels share a single register
-  space. Each channel index is specifically fixed in hardware as either
-  Tx or Rx in an interleaved manner.
+The updates include
+- Handling absence of TISCI
+- Direct IRQs
+- Autopair: Lack of PSIL pair.
 
 Reviewed-by: Vignesh Raghavendra <vigneshr@ti.com>
 Signed-off-by: Sai Sree Kartheek Adivi <s-adivi@ti.com>
 ---
- drivers/dma/ti/k3-udma-common.c  |  33 ++++--
- drivers/dma/ti/k3-udma-glue.c    |  23 ++++
- drivers/dma/ti/k3-udma-private.c |  22 +++-
- drivers/dma/ti/k3-udma-v2.c      | 236 ++++++++++++++++++++++++++++++++++++---
- drivers/dma/ti/k3-udma.h         |   3 +
- 5 files changed, 291 insertions(+), 26 deletions(-)
+ drivers/dma/ti/Kconfig           |   2 +-
+ drivers/dma/ti/k3-udma-glue.c    | 190 ++++++++++++++++++++++++++++++---------
+ drivers/dma/ti/k3-udma-private.c |   5 ++
+ drivers/dma/ti/k3-udma.h         |  13 +++
+ 4 files changed, 169 insertions(+), 41 deletions(-)
 
-diff --git a/drivers/dma/ti/k3-udma-common.c b/drivers/dma/ti/k3-udma-common.c
-index 42d918c6ba168..42c4064d72b4f 100644
---- a/drivers/dma/ti/k3-udma-common.c
-+++ b/drivers/dma/ti/k3-udma-common.c
-@@ -2496,8 +2496,15 @@ static int pktdma_setup_resources(struct udma_dev *ud)
- 
- 	ud->tchan_map = devm_bitmap_zalloc(dev, ud->tchan_cnt, GFP_KERNEL);
- 	ud->tchans = devm_kzalloc_objs(dev, *ud->tchans, ud->tchan_cnt);
--	ud->rchan_map = devm_bitmap_zalloc(dev, ud->rchan_cnt, GFP_KERNEL);
--	ud->rchans = devm_kzalloc_objs(dev, *ud->rchans, ud->rchan_cnt);
-+	if (ud->match_data->version == K3_UDMA_V1) {
-+		ud->rchan_map = devm_bitmap_zalloc(dev, ud->rchan_cnt, GFP_KERNEL);
-+		ud->rchans = devm_kzalloc_objs(dev, *ud->rchans, ud->rchan_cnt);
-+	} else {
-+		ud->rchan_map = ud->tchan_map;
-+		ud->rchans = ud->tchans;
-+		ud->chan_map = ud->tchan_map;
-+		ud->chans = ud->tchans;
-+	}
- 	ud->rflow_in_use = devm_kzalloc_objs(dev, unsigned long,
- 					     BITS_TO_LONGS(ud->rflow_cnt));
- 	ud->rflows = devm_kzalloc_objs(dev, *ud->rflows, ud->rflow_cnt);
-@@ -2600,13 +2607,21 @@ int k3_udma_setup_resources(struct udma_dev *ud)
- 		}
- 		break;
- 	case DMA_TYPE_PKTDMA:
--		dev_info(dev,
--			 "Channels: %d (tchan: %u, rchan: %u)\n",
--			 ch_count,
--			 ud->tchan_cnt - bitmap_weight(ud->tchan_map,
--						       ud->tchan_cnt),
--			 ud->rchan_cnt - bitmap_weight(ud->rchan_map,
--						       ud->rchan_cnt));
-+		if (ud->match_data->version == K3_UDMA_V1) {
-+			dev_info(dev,
-+				 "Channels: %d (tchan: %u, rchan: %u)\n",
-+				 ch_count,
-+				 ud->tchan_cnt - bitmap_weight(ud->tchan_map,
-+							       ud->tchan_cnt),
-+				 ud->rchan_cnt - bitmap_weight(ud->rchan_map,
-+							       ud->rchan_cnt));
-+		} else {
-+			dev_info(dev,
-+				 "Channels: %d (tchan + rchan: %u)\n",
-+				 ch_count,
-+				 ud->chan_cnt - bitmap_weight(ud->chan_map,
-+							      ud->chan_cnt));
-+		}
- 		break;
- 	default:
- 		break;
+diff --git a/drivers/dma/ti/Kconfig b/drivers/dma/ti/Kconfig
+index e6a2cf37062e7..e7a579f42b584 100644
+--- a/drivers/dma/ti/Kconfig
++++ b/drivers/dma/ti/Kconfig
+@@ -68,7 +68,7 @@ config TI_K3_UDMA_COMMON
+ config TI_K3_UDMA_GLUE_LAYER
+ 	tristate "Texas Instruments UDMA Glue layer for non DMAengine users"
+ 	depends on ARCH_K3 || COMPILE_TEST
+-	depends on TI_K3_UDMA
++	depends on TI_K3_UDMA || TI_K3_UDMA_V2
+ 	help
+ 	  Say y here to support the K3 NAVSS DMA glue interface
+ 	  If unsure, say N.
 diff --git a/drivers/dma/ti/k3-udma-glue.c b/drivers/dma/ti/k3-udma-glue.c
-index 34b282d9a727a..d25f8f46a4301 100644
+index d25f8f46a4301..681e084f8893e 100644
 --- a/drivers/dma/ti/k3-udma-glue.c
 +++ b/drivers/dma/ti/k3-udma-glue.c
-@@ -166,6 +166,29 @@ static int of_k3_udma_glue_parse_chn(struct device_node *chn_np,
- 		goto out_put_spec;
+@@ -12,6 +12,7 @@
+ #include <linux/dma-mapping.h>
+ #include <linux/io.h>
+ #include <linux/init.h>
++#include <linux/iopoll.h>
+ #include <linux/of.h>
+ #include <linux/platform_device.h>
+ #include <linux/soc/ti/k3-ringacc.h>
+@@ -267,6 +268,23 @@ static int k3_udma_glue_cfg_tx_chn(struct k3_udma_glue_tx_channel *tx_chn)
+ 	const struct udma_tisci_rm *tisci_rm = tx_chn->common.tisci_rm;
+ 	struct ti_sci_msg_rm_udmap_tx_ch_cfg req;
  
- 	thread_id = dma_spec.args[0];
++	if (!tisci_rm->tisci) {
++		u32 val = 0;
 +
-+	/*
-+	 * V2 PKTDMA DT specifiers encode the hardware flow/channel ID in
-+	 * args[0] rather than the PSI-L thread ID used by V1. Resolve the
-+	 * PSI-L thread ID before the common path checks the direction bit.
-+	 */
-+	if (common->udmax->match_data->version == K3_UDMA_V2 &&
-+	    xudma_is_pktdma(common->udmax)) {
-+		struct psil_endpoint_config *ep_cfg;
-+		u32 psil_thread_id;
-+		bool dev_to_mem;
++		if (tx_chn->tx_pause_on_err)
++			val |= UDMA_CHAN_CFG_PAUSE_ON_ERR;
++		if (tx_chn->tx_filt_einfo)
++			val |= UDMA_CHAN_CFG_FILT_EINFO;
++		if (tx_chn->tx_filt_pswords)
++			val |= UDMA_CHAN_CFG_FILT_PSWORDS;
++		if (tx_chn->tx_supr_tdpkt)
++			val |= UDMA_CHAN_CFG_TX_SUPR_TDPKT;
 +
-+		ep_cfg = psil_get_ep_config_by_id(thread_id, true,
-+						  &psil_thread_id, &dev_to_mem);
-+		if (IS_ERR(ep_cfg)) {
-+			dev_err(common->dev,
-+				"No PSI-L config for flow %u\n", thread_id);
-+			ret = PTR_ERR(ep_cfg);
-+			goto out_put_spec;
++		xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_CFG_REG, val);
++
++		return 0;
++	}
++
+ 	memset(&req, 0, sizeof(req));
+ 
+ 	req.valid_params = TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID |
+@@ -528,21 +546,39 @@ int k3_udma_glue_enable_tx_chn(struct k3_udma_glue_tx_channel *tx_chn)
+ {
+ 	int ret;
+ 
+-	ret = xudma_navss_psil_pair(tx_chn->common.udmax,
+-				    tx_chn->common.src_thread,
+-				    tx_chn->common.dst_thread);
+-	if (ret) {
+-		dev_err(tx_chn->common.dev, "PSI-L request err %d\n", ret);
+-		return ret;
+-	}
++	if (tx_chn->common.udmax->match_data->version == K3_UDMA_V1) {
++		ret = xudma_navss_psil_pair(tx_chn->common.udmax,
++					    tx_chn->common.src_thread,
++					    tx_chn->common.dst_thread);
++		if (ret) {
++			dev_err(tx_chn->common.dev, "PSI-L request err %d\n", ret);
++			return ret;
 +		}
-+		thread_id = psil_thread_id;
-+	}
-+
- 	if (dma_spec.args_count == 2) {
- 		if (dma_spec.args[1] > 2 && !xudma_is_pktdma(common->udmax)) {
- 			dev_err(common->dev, "Invalid channel atype: %u\n",
-diff --git a/drivers/dma/ti/k3-udma-private.c b/drivers/dma/ti/k3-udma-private.c
-index d2501e074bcfb..3f6235cd4d72a 100644
---- a/drivers/dma/ti/k3-udma-private.c
-+++ b/drivers/dma/ti/k3-udma-private.c
-@@ -190,16 +190,30 @@ EXPORT_SYMBOL(xudma_is_pktdma);
  
- int xudma_pktdma_tflow_get_irq(struct udma_dev *ud, int udma_tflow_id)
- {
--	const struct udma_oes_offsets *oes = &ud->soc_data->oes;
-+	if (ud->match_data->version == K3_UDMA_V1) {
-+		const struct udma_oes_offsets *oes = &ud->soc_data->oes;
+-	tx_chn->psil_paired = true;
++		tx_chn->psil_paired = true;
  
--	return msi_get_virq(ud->dev, udma_tflow_id + oes->pktdma_tchan_flow);
-+		return msi_get_virq(ud->dev, udma_tflow_id + oes->pktdma_tchan_flow);
-+	}
-+	struct platform_device *pdev = to_platform_device(ud->dev);
-+	char irq_name[10];
+-	xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_PEER_RT_EN_REG,
+-			    UDMA_PEER_RT_EN_ENABLE);
++		xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_PEER_RT_EN_REG,
++				    UDMA_PEER_RT_EN_ENABLE);
+ 
+-	xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_CTL_REG,
+-			    UDMA_CHAN_RT_CTL_EN);
++		xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_CTL_REG,
++				    UDMA_CHAN_RT_CTL_EN);
++	} else {
++		u32 val;
 +
-+	snprintf(irq_name, sizeof(irq_name), "tx-%u", udma_tflow_id);
-+	return platform_get_irq_byname(pdev, irq_name);
++		xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_CTL_REG,
++				    UDMA_CHAN_RT_CTL_AUTOPAIR | UDMA_CHAN_RT_CTL_EN);
++
++		ret = read_poll_timeout(xudma_tchanrt_read, val,
++					val & (UDMA_CHAN_RT_CTL_PAIR_COMPLETE |
++					       UDMA_CHAN_RT_CTL_PAIR_TIMEOUT),
++					100, 500, false,
++					tx_chn->udma_tchanx, UDMA_CHAN_RT_CTL_REG);
++		if (ret || (val & UDMA_CHAN_RT_CTL_PAIR_TIMEOUT)) {
++			dev_err(tx_chn->common.dev, "TX channel autopair timeout\n");
++			xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_CTL_REG, 0);
++			return -ETIMEDOUT;
++		}
++	}
+ 
+ 	k3_udma_glue_dump_tx_rt_chn(tx_chn, "txchn en");
+ 	return 0;
+@@ -576,8 +612,16 @@ void k3_udma_glue_tdown_tx_chn(struct k3_udma_glue_tx_channel *tx_chn,
+ 
+ 	k3_udma_glue_dump_tx_rt_chn(tx_chn, "txchn tdown1");
+ 
+-	xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_CTL_REG,
+-			    UDMA_CHAN_RT_CTL_EN | UDMA_CHAN_RT_CTL_TDOWN);
++	if (tx_chn->common.udmax->match_data->version == K3_UDMA_V1) {
++		xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_CTL_REG,
++				    UDMA_CHAN_RT_CTL_EN | UDMA_CHAN_RT_CTL_TDOWN);
++	} else {
++		xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_PEER_REG(8),
++				    UDMA_CHAN_RT_PEER_REG8_FLUSH);
++		val = xudma_tchanrt_read(tx_chn->udma_tchanx, UDMA_CHAN_RT_CTL_REG);
++		xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_CTL_REG,
++				    val | UDMA_CHAN_RT_CTL_TDOWN);
++	}
+ 
+ 	val = xudma_tchanrt_read(tx_chn->udma_tchanx, UDMA_CHAN_RT_CTL_REG);
+ 
+@@ -592,10 +636,12 @@ void k3_udma_glue_tdown_tx_chn(struct k3_udma_glue_tx_channel *tx_chn,
+ 		i++;
+ 	}
+ 
+-	val = xudma_tchanrt_read(tx_chn->udma_tchanx,
+-				 UDMA_CHAN_RT_PEER_RT_EN_REG);
+-	if (sync && (val & UDMA_PEER_RT_EN_ENABLE))
+-		dev_err(tx_chn->common.dev, "TX tdown peer not stopped\n");
++	if (tx_chn->common.udmax->match_data->version == K3_UDMA_V1) {
++		val = xudma_tchanrt_read(tx_chn->udma_tchanx,
++					 UDMA_CHAN_RT_PEER_RT_EN_REG);
++		if (sync && (val & UDMA_PEER_RT_EN_ENABLE))
++			dev_err(tx_chn->common.dev, "TX tdown peer not stopped\n");
++	}
+ 	k3_udma_glue_dump_tx_rt_chn(tx_chn, "txchn tdown2");
  }
- EXPORT_SYMBOL(xudma_pktdma_tflow_get_irq);
+ EXPORT_SYMBOL_GPL(k3_udma_glue_tdown_tx_chn);
+@@ -708,7 +754,6 @@ static int k3_udma_glue_cfg_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
+ 			   TI_SCI_MSG_VALUE_RM_UDMAP_CH_CHAN_TYPE_VALID |
+ 			   TI_SCI_MSG_VALUE_RM_UDMAP_CH_ATYPE_VALID;
  
- int xudma_pktdma_rflow_get_irq(struct udma_dev *ud, int udma_rflow_id)
- {
--	const struct udma_oes_offsets *oes = &ud->soc_data->oes;
-+	if (ud->match_data->version == K3_UDMA_V1) {
-+		const struct udma_oes_offsets *oes = &ud->soc_data->oes;
+-	req.nav_id = tisci_rm->tisci_dev_id;
+ 	req.index = rx_chn->udma_rchan_id;
+ 	req.rx_fetch_size = rx_chn->common.hdesc_size >> 2;
+ 	/*
+@@ -728,11 +773,24 @@ static int k3_udma_glue_cfg_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
+ 	req.rx_chan_type = TI_SCI_RM_UDMAP_CHAN_TYPE_PKT_PBRR;
+ 	req.rx_atype = rx_chn->common.atype_asel;
+ 
++	if (!tisci_rm->tisci) {
++		u32 val = 0;
 +
-+		return msi_get_virq(ud->dev, udma_rflow_id + oes->pktdma_rchan_flow);
++		if (!rx_chn->common.epib)
++			val |= UDMA_CHAN_CFG_FILT_EINFO;
++		if (!rx_chn->common.psdata_size)
++			val |= UDMA_CHAN_CFG_FILT_PSWORDS;
++
++		xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_CFG_REG, val);
++
++		return 0;
 +	}
-+	struct platform_device *pdev = to_platform_device(ud->dev);
-+	char irq_name[10];
- 
--	return msi_get_virq(ud->dev, udma_rflow_id + oes->pktdma_rchan_flow);
-+	snprintf(irq_name, sizeof(irq_name), "rx-%u", udma_rflow_id);
-+	return platform_get_irq_byname(pdev, irq_name);
- }
- EXPORT_SYMBOL(xudma_pktdma_rflow_get_irq);
-diff --git a/drivers/dma/ti/k3-udma-v2.c b/drivers/dma/ti/k3-udma-v2.c
-index b401d4ba17ded..7d3dd9c552c3a 100644
---- a/drivers/dma/ti/k3-udma-v2.c
-+++ b/drivers/dma/ti/k3-udma-v2.c
-@@ -610,7 +610,7 @@ static int udma_v2_alloc_rx_resources(struct udma_chan *uc)
- 
- 	rflow = uc->rflow;
- 	if (ud->tflow_cnt)
--		fd_ring_id = ud->tflow_cnt + rflow->id;
-+		fd_ring_id = rflow->id;
- 	else
- 		fd_ring_id = uc->rchan->id;
- 	ret = k3_ringacc_request_rings_pair(ud->ringacc, fd_ring_id, -1,
-@@ -803,6 +803,155 @@ static int bcdma_v2_alloc_chan_resources(struct dma_chan *chan)
++
++	req.nav_id = tisci_rm->tisci_dev_id;
+ 	ret = tisci_rm->tisci_udmap_ops->rx_ch_cfg(tisci_rm->tisci, &req);
+ 	if (ret)
+ 		dev_err(rx_chn->common.dev, "rchan%d cfg failed %d\n",
+-			rx_chn->udma_rchan_id, ret);
+-
++				rx_chn->udma_rchan_id, ret);
  	return ret;
  }
  
-+static int pktdma_v2_alloc_chan_resources(struct dma_chan *chan)
-+{
-+	struct udma_chan *uc = to_udma_chan(chan);
-+	struct udma_dev *ud = to_udma_dev(chan->device);
-+	struct platform_device *pdev = to_platform_device(ud->dev);
-+	char irq_name[10];
-+	u32 irq_ring_idx;
-+	int ret;
+@@ -781,8 +839,11 @@ static int k3_udma_glue_cfg_rx_flow(struct k3_udma_glue_rx_channel *rx_chn,
+ 	}
+ 
+ 	if (xudma_is_pktdma(rx_chn->common.udmax)) {
+-		rx_ringfdq_id = flow->udma_rflow_id +
++		if (tisci_rm->tisci)
++			rx_ringfdq_id = flow->udma_rflow_id +
+ 				xudma_get_rflow_ring_offset(rx_chn->common.udmax);
++		else
++			rx_ringfdq_id = flow->udma_rflow_id;
+ 		rx_ring_id = 0;
+ 	} else {
+ 		rx_ring_id = flow_cfg->ring_rxq_id;
+@@ -829,6 +890,21 @@ static int k3_udma_glue_cfg_rx_flow(struct k3_udma_glue_rx_channel *rx_chn,
+ 		rx_ringfdq_id = k3_ringacc_get_ring_id(flow->ringrxfdq);
+ 	}
+ 
++	if (!tisci_rm->tisci) {
++		u32 val = 0;
 +
-+	/*
-+	 * Make sure that the completion is in a known state:
-+	 * No teardown, the channel is idle
-+	 */
-+	reinit_completion(&uc->teardown_completed);
-+	complete_all(&uc->teardown_completed);
-+	uc->state = UDMA_CHAN_IS_IDLE;
++		if (rx_chn->common.epib)
++			val |= UDMA_FLOWRT_RFA_RX_EINFO_PRESENT;
++		if (rx_chn->common.psdata_size)
++			val |= UDMA_FLOWRT_RFA_RX_PSINFO_PRESENT;
++		if (flow_cfg->rx_error_handling)
++			val |= UDMA_FLOWRT_RFA_RX_ERROR_HANDLING;
 +
-+	switch (uc->config.dir) {
-+	case DMA_MEM_TO_DEV:
-+		/* Slave transfer synchronized - mem to dev (TX) transfer */
-+		dev_dbg(uc->ud->dev, "%s: chan%d as MEM-to-DEV\n", __func__,
-+			uc->id);
++		xudma_rflowrt_write(flow->udma_rflow, UDMA_RX_FLOWRT_RFA, val);
++		rx_chn->flows_ready++;
++		return 0;
++	}
 +
-+		ret = udma_v2_alloc_tx_resources(uc);
+ 	memset(&req, 0, sizeof(req));
+ 
+ 	req.valid_params =
+@@ -1334,6 +1410,9 @@ int k3_udma_glue_rx_flow_enable(struct k3_udma_glue_rx_channel *rx_chn,
+ 	if (!rx_chn->remote)
+ 		return -EINVAL;
+ 
++	if (!tisci_rm->tisci)
++		return 0;
++
+ 	rx_ring_id = k3_ringacc_get_ring_id(flow->ringrx);
+ 	rx_ringfdq_id = k3_ringacc_get_ring_id(flow->ringrxfdq);
+ 
+@@ -1375,6 +1454,9 @@ int k3_udma_glue_rx_flow_disable(struct k3_udma_glue_rx_channel *rx_chn,
+ 	if (!rx_chn->remote)
+ 		return -EINVAL;
+ 
++	if (!tisci_rm->tisci)
++		return 0;
++
+ 	memset(&req, 0, sizeof(req));
+ 	req.valid_params =
+ 			TI_SCI_MSG_VALUE_RM_UDMAP_FLOW_DEST_QNUM_VALID |
+@@ -1410,21 +1492,39 @@ int k3_udma_glue_enable_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
+ 	if (rx_chn->flows_ready < rx_chn->flow_num)
+ 		return -EINVAL;
+ 
+-	ret = xudma_navss_psil_pair(rx_chn->common.udmax,
+-				    rx_chn->common.src_thread,
+-				    rx_chn->common.dst_thread);
+-	if (ret) {
+-		dev_err(rx_chn->common.dev, "PSI-L request err %d\n", ret);
+-		return ret;
+-	}
++	if (rx_chn->common.udmax->match_data->version == K3_UDMA_V1) {
++		ret = xudma_navss_psil_pair(rx_chn->common.udmax,
++					    rx_chn->common.src_thread,
++					    rx_chn->common.dst_thread);
 +		if (ret) {
-+			uc->config.remote_thread_id = -1;
++			dev_err(rx_chn->common.dev, "PSI-L request err %d\n", ret);
 +			return ret;
 +		}
+ 
+-	rx_chn->psil_paired = true;
++		rx_chn->psil_paired = true;
+ 
+-	xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_CTL_REG,
+-			    UDMA_CHAN_RT_CTL_EN);
++		xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_CTL_REG,
++				    UDMA_CHAN_RT_CTL_EN);
+ 
+-	xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_PEER_RT_EN_REG,
+-			    UDMA_PEER_RT_EN_ENABLE);
++		xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_PEER_RT_EN_REG,
++				    UDMA_PEER_RT_EN_ENABLE);
++	} else {
++		u32 val;
 +
-+		uc->config.src_thread = ud->psil_base + uc->tchan->id;
-+		uc->config.dst_thread = uc->config.remote_thread_id;
-+		uc->config.dst_thread |= K3_PSIL_DST_THREAD_ID_OFFSET;
++		xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_CTL_REG,
++				    UDMA_CHAN_RT_CTL_AUTOPAIR | UDMA_CHAN_RT_CTL_EN);
 +
-+		/*
-+		 * Use the tx flow ID here, matching how the TX ring itself
-+		 * was addressed in udma_v2_alloc_tx_resources() and how the
-+		 * glue layer (xudma_pktdma_tflow_get_irq()) looks up this
-+		 * same IRQ, instead of mapped_channel_id.
-+		 */
-+		irq_ring_idx = uc->tchan->tflow_id;
-+		break;
-+	case DMA_DEV_TO_MEM:
-+		/* Slave transfer synchronized - dev to mem (RX) transfer */
-+		dev_dbg(uc->ud->dev, "%s: chan%d as DEV-to-MEM\n", __func__,
-+			uc->id);
-+
-+		ret = udma_v2_alloc_rx_resources(uc);
-+		if (ret) {
-+			uc->config.remote_thread_id = -1;
-+			return ret;
-+		}
-+
-+		uc->config.src_thread = uc->config.remote_thread_id;
-+		uc->config.dst_thread = (ud->psil_base + uc->rchan->id) |
-+					K3_PSIL_DST_THREAD_ID_OFFSET;
-+
-+		/* Use the rx flow ID here, see the DMA_MEM_TO_DEV case above */
-+		irq_ring_idx = uc->rflow->id;
-+		udma_write(uc->rflow->reg_rt, UDMA_RX_FLOWRT_RFA, BIT(28));
-+		break;
-+	default:
-+		/* Can not happen */
-+		dev_err(uc->ud->dev, "%s: chan%d invalid direction (%u)\n",
-+			__func__, uc->id, uc->config.dir);
-+		return -EINVAL;
-+	}
-+
-+	/* check if the channel configuration was successful */
-+	if (ret)
-+		goto err_res_free;
-+
-+	if (udma_is_chan_running(uc)) {
-+		dev_warn(ud->dev, "chan%d: is running!\n", uc->id);
-+		ud->reset_chan(uc, false);
-+		if (udma_is_chan_running(uc)) {
-+			dev_err(ud->dev, "chan%d: won't stop!\n", uc->id);
-+			ret = -EBUSY;
-+			goto err_res_free;
++		ret = read_poll_timeout(xudma_rchanrt_read, val,
++					val & (UDMA_CHAN_RT_CTL_PAIR_COMPLETE |
++					       UDMA_CHAN_RT_CTL_PAIR_TIMEOUT),
++					100, 500, false,
++					rx_chn->udma_rchanx, UDMA_CHAN_RT_CTL_REG);
++		if (ret || (val & UDMA_CHAN_RT_CTL_PAIR_TIMEOUT)) {
++			dev_err(rx_chn->common.dev, "RX channel autopair timeout\n");
++			xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_CTL_REG, 0);
++			return -ETIMEDOUT;
 +		}
 +	}
-+
-+	uc->dma_dev = dmaengine_get_dma_device(chan);
-+	uc->hdesc_pool = dma_pool_create(uc->name, uc->dma_dev,
-+					 uc->config.hdesc_size, ud->desc_align,
-+					 0);
-+	if (!uc->hdesc_pool) {
-+		dev_err(ud->ddev.dev,
-+			"Descriptor pool allocation failed\n");
-+		uc->use_dma_pool = false;
-+		ret = -ENOMEM;
-+		goto err_res_free;
-+	}
-+
-+	uc->use_dma_pool = true;
-+
-+	uc->psil_paired = true;
-+
-+	INIT_DELAYED_WORK(&uc->tx_drain.work, udma_check_tx_completion);
-+
-+	udma_reset_rings(uc);
-+
-+	if (uc->config.dir == DMA_MEM_TO_DEV)
-+		snprintf(irq_name, sizeof(irq_name), "tx-%u", irq_ring_idx);
-+	else
-+		snprintf(irq_name, sizeof(irq_name), "rx-%u", irq_ring_idx);
-+	uc->irq_num_ring = platform_get_irq_byname(pdev, irq_name);
-+	if (uc->irq_num_ring < 0) {
-+		ret = uc->irq_num_ring;
-+		goto err_res_free;
-+	}
-+
-+	ret = request_irq(uc->irq_num_ring, udma_v2_ring_irq_handler,
-+			  IRQF_SHARED | IRQF_TRIGGER_HIGH, uc->name, uc);
-+
-+	if (ret) {
-+		dev_err(ud->dev, "chan%d: ring irq request failed\n", uc->id);
-+		goto err_irq_free;
-+	}
-+
-+	uc->irq_num_udma = 0;
-+
-+	if (uc->tchan)
-+		dev_dbg(ud->dev,
-+			"chan%d: tchan%d, tflow%d, Remote thread: 0x%04x\n",
-+			uc->id, uc->tchan->id, uc->tchan->tflow_id,
-+			uc->config.remote_thread_id);
-+	else if (uc->rchan)
-+		dev_dbg(ud->dev,
-+			"chan%d: rchan%d, rflow%d, Remote thread: 0x%04x\n",
-+			uc->id, uc->rchan->id, uc->rflow->id,
-+			uc->config.remote_thread_id);
-+	return 0;
-+
-+err_irq_free:
-+	uc->irq_num_ring = 0;
-+err_res_free:
-+	udma_free_tx_resources(uc);
-+	udma_free_rx_resources(uc);
-+
-+	udma_reset_uchan(uc);
-+
-+	if (uc->use_dma_pool) {
-+		dma_pool_destroy(uc->hdesc_pool);
-+		uc->use_dma_pool = false;
-+	}
-+
-+	return ret;
-+}
-+
- static enum dma_status udma_v2_tx_status(struct dma_chan *chan,
- 					 dma_cookie_t cookie,
- 					 struct dma_tx_state *txstate)
-@@ -1065,11 +1214,34 @@ static struct udma_match_data bcdma_v2_am62l_data = {
- 	.rchan_cnt = 128,
- };
  
-+static struct udma_match_data pktdma_v2_am62l_data = {
-+	.type = DMA_TYPE_PKTDMA,
-+	.version = K3_UDMA_V2,
-+	.psil_base = 0x1000,
-+	.enable_memcpy_support = false, /* PKTDMA does not support MEM_TO_MEM */
-+	.flags = UDMA_FLAGS_J7_CLASS,
-+	.statictr_z_mask = GENMASK(23, 0),
-+	.burst_size = {
-+		TI_SCI_RM_UDMAP_CHAN_BURST_SIZE_64_BYTES, /* Normal Channels */
-+		0, /* No H Channels */
-+		0, /* No UH Channels */
-+	},
-+	.tchan_cnt = 97,
-+	.rchan_cnt = 97,
-+	.chan_cnt = 97,
-+	.tflow_cnt = 112,
-+	.rflow_cnt = 112,
-+};
-+
- static const struct of_device_id udma_of_match[] = {
- 	{
- 		.compatible = "ti,am62l-dmss-bcdma",
- 		.data = &bcdma_v2_am62l_data,
- 	},
-+	{
-+		.compatible = "ti,am62l-dmss-pktdma",
-+		.data = &pktdma_v2_am62l_data,
-+	},
- 	{ /* Sentinel */ },
- };
+ 	k3_udma_glue_dump_rx_rt_chn(rx_chn, "rxrt en");
+ 	return 0;
+@@ -1461,8 +1561,16 @@ void k3_udma_glue_tdown_rx_chn(struct k3_udma_glue_rx_channel *rx_chn,
  
-@@ -1088,15 +1260,23 @@ static int udma_v2_get_mmrs(struct platform_device *pdev, struct udma_dev *ud)
- 	if (IS_ERR(ud->mmrs[V2_MMR_GCFG]))
- 		return PTR_ERR(ud->mmrs[V2_MMR_GCFG]);
+ 	k3_udma_glue_dump_rx_rt_chn(rx_chn, "rxrt tdown1");
  
--	ud->bchan_cnt = ud->match_data->bchan_cnt;
--	/* There are no tchan and rchan in BCDMA_V2.
-+	/* There are no tchan and rchan in BCDMA_V2 and PKTDMA_V2.
- 	 * Duplicate chan as tchan and rchan to keep the common code
--	 * in k3-udma-common.c functional for BCDMA_V2.
-+	 * in k3-udma-common.c functional.
- 	 */
--	ud->chan_cnt = ud->match_data->chan_cnt;
--	ud->tchan_cnt = ud->match_data->chan_cnt;
--	ud->rchan_cnt = ud->match_data->chan_cnt;
--	ud->rflow_cnt = ud->chan_cnt;
-+	if (ud->match_data->type == DMA_TYPE_BCDMA) {
-+		ud->bchan_cnt = ud->match_data->bchan_cnt;
-+		ud->chan_cnt = ud->match_data->chan_cnt;
-+		ud->tchan_cnt = ud->match_data->chan_cnt;
-+		ud->rchan_cnt = ud->match_data->chan_cnt;
-+		ud->rflow_cnt = ud->chan_cnt;
-+	} else if (ud->match_data->type == DMA_TYPE_PKTDMA) {
-+		ud->chan_cnt = ud->match_data->chan_cnt;
-+		ud->tchan_cnt = ud->match_data->tchan_cnt;
-+		ud->rchan_cnt = ud->match_data->rchan_cnt;
-+		ud->tflow_cnt = ud->match_data->tflow_cnt;
-+		ud->rflow_cnt = ud->match_data->rflow_cnt;
+-	xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_PEER_RT_EN_REG,
+-			    UDMA_PEER_RT_EN_ENABLE | UDMA_PEER_RT_EN_TEARDOWN);
++	if (rx_chn->common.udmax->match_data->version == K3_UDMA_V1) {
++		xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_PEER_RT_EN_REG,
++				    UDMA_PEER_RT_EN_ENABLE | UDMA_PEER_RT_EN_TEARDOWN);
++	} else {
++		xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_PEER_REG(8),
++				    UDMA_CHAN_RT_PEER_REG8_FLUSH);
++		val = xudma_rchanrt_read(rx_chn->udma_rchanx, UDMA_CHAN_RT_CTL_REG);
++		xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_CTL_REG,
++				    val | UDMA_CHAN_RT_CTL_TDOWN);
 +	}
  
- 	for (i = 1; i < V2_MMR_LAST; i++) {
- 		if (i == V2_MMR_BCHANRT && ud->bchan_cnt == 0)
-@@ -1150,6 +1330,7 @@ static int udma_v2_probe(struct platform_device *pdev)
- 	ud->reset_chan = udma_v2_reset_chan;
- 	ud->decrement_byte_counters = udma_v2_decrement_byte_counters;
- 	ud->bcdma_setup_sci_resources = NULL;
-+	ud->pktdma_setup_sci_resources = NULL;
+ 	val = xudma_rchanrt_read(rx_chn->udma_rchanx, UDMA_CHAN_RT_CTL_REG);
  
- 	ret = udma_v2_get_mmrs(pdev, ud);
- 	if (ret)
-@@ -1157,7 +1338,24 @@ static int udma_v2_probe(struct platform_device *pdev)
+@@ -1477,10 +1585,12 @@ void k3_udma_glue_tdown_rx_chn(struct k3_udma_glue_rx_channel *rx_chn,
+ 		i++;
+ 	}
  
- 	struct k3_ringacc_init_data ring_init_data = {0};
- 
--	ring_init_data.num_rings = ud->bchan_cnt + ud->chan_cnt;
-+	if (ud->match_data->type == DMA_TYPE_BCDMA) {
-+		ring_init_data.num_rings = ud->bchan_cnt + ud->chan_cnt;
-+	} else if (ud->match_data->type == DMA_TYPE_PKTDMA) {
-+		/*
-+		 * tflow_cnt == rflow_cnt on this hardware and tx/rx flow IDs
-+		 * for a given channel coincide, so a single ring array sized
-+		 * to rflow_cnt covers both; any extra flow indices beyond a
-+		 * channel's own ID are reserved for that channel and not
-+		 * reused elsewhere, so there is no collision.
-+		 */
-+		ring_init_data.num_rings = ud->rflow_cnt;
-+
-+		ud->rflow_rt = devm_platform_ioremap_resource_byname(pdev, "ringrt");
-+		if (IS_ERR(ud->rflow_rt))
-+			return PTR_ERR(ud->rflow_rt);
-+
-+		ring_init_data.base_rt = ud->rflow_rt;
+-	val = xudma_rchanrt_read(rx_chn->udma_rchanx,
+-				 UDMA_CHAN_RT_PEER_RT_EN_REG);
+-	if (sync && (val & UDMA_PEER_RT_EN_ENABLE))
+-		dev_err(rx_chn->common.dev, "TX tdown peer not stopped\n");
++	if (rx_chn->common.udmax->match_data->version == K3_UDMA_V1) {
++		val = xudma_rchanrt_read(rx_chn->udma_rchanx,
++					 UDMA_CHAN_RT_PEER_RT_EN_REG);
++		if (sync && (val & UDMA_PEER_RT_EN_ENABLE))
++			dev_err(rx_chn->common.dev, "TX tdown peer not stopped\n");
 +	}
+ 	k3_udma_glue_dump_rx_rt_chn(rx_chn, "rxrt tdown2");
+ }
+ EXPORT_SYMBOL_GPL(k3_udma_glue_tdown_rx_chn);
+diff --git a/drivers/dma/ti/k3-udma-private.c b/drivers/dma/ti/k3-udma-private.c
+index 3f6235cd4d72a..1acab00bbd5a9 100644
+--- a/drivers/dma/ti/k3-udma-private.c
++++ b/drivers/dma/ti/k3-udma-private.c
+@@ -3,6 +3,10 @@
+  *  Copyright (C) 2019 Texas Instruments Incorporated - http://www.ti.com
+  *  Author: Peter Ujfalusi <peter.ujfalusi@ti.com>
+  */
++#include <linux/irq.h>
++#include <linux/irqchip.h>
++#include <linux/irqdomain.h>
++#include <linux/interrupt.h>
+ #include <linux/of.h>
+ #include <linux/of_platform.h>
  
- 	ud->ringacc = k3_ringacc_dmarings_init(pdev, &ring_init_data);
+@@ -181,6 +185,7 @@ void xudma_##res##rt_write(struct udma_##res *p, int reg, u32 val)	\
+ EXPORT_SYMBOL(xudma_##res##rt_write)
+ XUDMA_RT_IO_FUNCTIONS(tchan);
+ XUDMA_RT_IO_FUNCTIONS(rchan);
++XUDMA_RT_IO_FUNCTIONS(rflow);
  
-@@ -1166,8 +1364,10 @@ static int udma_v2_probe(struct platform_device *pdev)
- 
- 	dma_cap_set(DMA_SLAVE, ud->ddev.cap_mask);
- 
--	dma_cap_set(DMA_CYCLIC, ud->ddev.cap_mask);
--	ud->ddev.device_prep_dma_cyclic = udma_prep_dma_cyclic;
-+	if (ud->match_data->type != DMA_TYPE_PKTDMA) {
-+		dma_cap_set(DMA_CYCLIC, ud->ddev.cap_mask);
-+		ud->ddev.device_prep_dma_cyclic = udma_prep_dma_cyclic;
-+	}
- 
- 	ud->ddev.device_config = udma_slave_config;
- 	ud->ddev.device_prep_slave_sg = udma_prep_slave_sg;
-@@ -1181,8 +1381,18 @@ static int udma_v2_probe(struct platform_device *pdev)
- 	ud->ddev.dbg_summary_show = udma_dbg_summary_show;
- #endif
- 
--	ud->ddev.device_alloc_chan_resources =
--		bcdma_v2_alloc_chan_resources;
-+	switch (ud->match_data->type) {
-+	case DMA_TYPE_BCDMA:
-+		ud->ddev.device_alloc_chan_resources =
-+			bcdma_v2_alloc_chan_resources;
-+		break;
-+	case DMA_TYPE_PKTDMA:
-+		ud->ddev.device_alloc_chan_resources =
-+			pktdma_v2_alloc_chan_resources;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
- 
- 	ud->ddev.device_free_chan_resources = udma_free_chan_resources;
- 
+ int xudma_is_pktdma(struct udma_dev *ud)
+ {
 diff --git a/drivers/dma/ti/k3-udma.h b/drivers/dma/ti/k3-udma.h
-index 13d47234967a4..cd705fcc94f08 100644
+index cd705fcc94f08..b71e8129459c4 100644
 --- a/drivers/dma/ti/k3-udma.h
 +++ b/drivers/dma/ti/k3-udma.h
-@@ -28,8 +28,11 @@
- #define UDMA_RX_FLOW_ID_FW_OES_REG	0x80
- #define UDMA_RX_FLOW_ID_FW_STATUS_REG	0x88
+@@ -86,6 +86,17 @@
+ #define UDMA_CHAN_RT_CTL_PAIR_COMPLETE BIT(16)
+ #define UDMA_CHAN_RT_CTL_ERROR		BIT(0)
  
-+#define UDMA_RX_FLOWRT_RFA             0x8
++/* UDMA_CHAN_CFG_REG */
++#define UDMA_CHAN_CFG_PAUSE_ON_ERR	BIT(31)
++#define UDMA_CHAN_CFG_FILT_EINFO	BIT(30)
++#define UDMA_CHAN_CFG_FILT_PSWORDS	BIT(29)
++#define UDMA_CHAN_CFG_TX_SUPR_TDPKT	BIT(8)
 +
- /* BCHANRT/TCHANRT/RCHANRT registers */
- #define UDMA_CHAN_RT_CTL_REG		0x0
-+#define UDMA_CHAN_RT_CFG_REG		0x4
- #define UDMA_CHAN_RT_SWTRIG_REG		0x8
- #define UDMA_CHAN_RT_STDATA_REG		0x80
++/* UDMA_RX_FLOWRT_RFA */
++#define UDMA_FLOWRT_RFA_RX_EINFO_PRESENT	BIT(30)
++#define UDMA_FLOWRT_RFA_RX_PSINFO_PRESENT	BIT(29)
++#define UDMA_FLOWRT_RFA_RX_ERROR_HANDLING	BIT(28)
++
+ /* UDMA_CHAN_RT_PDMA_STATE_REG */
+ #define UDMA_CHAN_RT_PDMA_STATE_IN_EVT		BIT(31)
+ #define UDMA_CHAN_RT_PDMA_STATE_TDOWN		BIT(30)
+@@ -714,6 +725,8 @@ u32 xudma_rchanrt_read(struct udma_rchan *rchan, int reg);
+ void xudma_rchanrt_write(struct udma_rchan *rchan, int reg, u32 val);
+ bool xudma_rflow_is_gp(struct udma_dev *ud, int id);
+ int xudma_get_rflow_ring_offset(struct udma_dev *ud);
++u32 xudma_rflowrt_read(struct udma_rflow *rflow, int reg);
++void xudma_rflowrt_write(struct udma_rflow *rflow, int reg, u32 val);
+ 
+ int xudma_is_pktdma(struct udma_dev *ud);
  
 
 -- 
