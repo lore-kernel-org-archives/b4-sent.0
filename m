@@ -1,84 +1,129 @@
-From: Abhiraj Dutta <abhirajdutta7@gmail.com>
-Date: Mon, 23 Nov 2026 21:17:57 -0500
-Subject: [PATCH] ALSA: hda/realtek: Fix duplicate LEDs on HP Spectre x360
- 16-f2xxx
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH v2 0/9] media: i2c: it6625: add HDMI audio capture over I2S
+Date: Tue, 24 Nov 2026 11:04:37 +0800
+Message-Id: <20261124-upstream-it6625-alsa-i2s-v2-0-a154685f6989@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-hp-spectre-16-f2-led-fix-v1-1-a2a333dceeb5@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MQQqEMAwF0KuEvzZgqnTRqwyz0DbVgGhph0EQ7
- y74DvAuNK2mDYEuVP1bs2NHIOkIcZ32RdkSAsH1zou4gdfCrWj8VWXxnB1vmjjbydOoMswp+jQ
- LOkKpmu1868/3vh9jGemaagAAAA==
-X-Change-ID: 20261123-hp-spectre-16-f2-led-fix-a4e13bdc6db1
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: Takashi Iwai <tiwai@suse.de>, linux-sound@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Abhiraj Dutta <abhirajdutta7@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795486735; l=2648;
- i=abhirajdutta7@gmail.com; s=20261122; h=from:subject:message-id;
- bh=2fGkl4MnRAFoBN/vsCmVD26p7qRSOwU1KzcdavldMmo=;
- b=1kMFy9uWM5jo+LSPu7W7mproAH6ITaAgaCkQSMjHlRjCut1TZfqS/EwqzfP6rCT9h0mnMH33E
- pC7f44DbUH+CV0kLKjDvBwBp2dihoZSs/kA5niqvab8+rugJT80i1f6
-X-Developer-Key: i=abhirajdutta7@gmail.com; a=ed25519;
- pk=3ETcWPbWUjdsP3Pv+/VwZOZKPt9O4SvxqiXNMNNY4gc=
-X-Endpoint-Received: by B4 Relay for abhirajdutta7@gmail.com/20261122 with auth_id=1610
+X-B4-Tracking: v=1; b=H4sIAMX+BGsC/3WNyw6CMBBFf4XM2iFtUWhZ+R+GRQujTCKPtBU1h
+ H+34trlOck9d4VAnilAna3gaeHA05hAHTJoezveCLlLDEqoUgpp8DGH6MkOyLEs1QntPVhkFdB
+ YTcVRV7pzLaT57OnKrz19aRL3HOLk3/vTIr/2F5Wi+B9dJAp0zkhSujJOyDNHyttpyOMTmm3bP
+ j16ZyjBAAAA
+X-Change-ID: 20261019-upstream-it6625-alsa-i2s-9a8e34878dbc
+To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Hans Verkuil <hverkuil+cisco@kernel.org>, 
+ Hans Verkuil <hverkuil@kernel.org>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Mark Brown <broonie@kernel.org>, 
+ Liam Girdwood <lgirdwood@gmail.com>, linux-sound@vger.kernel.org, 
+ linux-api@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795489507; l=4862;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=vE3mJuwHS/greoet4bzWeW4mkaCUK2qOxxGLDNg9Lvw=;
+ b=pgmH8rQI6cfhR1PMXnLyweUlaqR5DA93b4VupL8ghoS8YCi8aNyJgRvVfdXAB9lAcr+Up4+tN
+ S5ntJGMQ5fIDMEZnp3G3VTIylfknggcFI05CuFqhiV+4UUHy8OBDd2d
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The EU0XXX fixup already sets up the mute and mic-mute LEDs, so chaining
-ALC245_FIXUP_HP_X360_MUTE_LEDS after it registers both LEDs twice
-(hda::mute_1 and hda::micmute_1 appear). Use the EU0XXX fixup directly.
+IT6625 and IT6626 decode the audio of their HDMI input and output it on
+an I2S interface, driving the bit and frame clocks themselves. The audio
+format is not configurable by the host; the bridge reports the stream it
+passes through in read-only status registers.
 
-The original commit message also got the SSID wrong: under SOF the PCI
-SSID is 103c:891e, not 103c:0000.
+This series adds an ASoC capture DAI to the IT6625 V4L2 driver, so that
+this audio can be recorded through a SoC I2S controller, for example
+with simple-audio-card. It also adds standard V4L2 controls for the
+audio state of an HDMI receiver, and uses them in tc358743 and IT6625.
 
-Fixes: e30ec632e1f0 ("ALSA: hda/realtek: Add quirk for HP Spectre x360 2-in-1 Laptop 16-f2xxx")
-Cc: stable@vger.kernel.org
-Signed-off-by: Abhiraj Dutta <abhirajdutta7@gmail.com>
+Patches 1 and 2 add read-only DV RX controls for the audio sampling
+rate, audio presence and audio type to the V4L2 core.
+Patch 3 makes tc358743 report the standard rate and presence controls
+next to its custom ones.
+Patch 4 adds the '#sound-dai-cells' and 'ite,i2s-data-lanes' properties
+to the IT6625 binding.
+Patch 5 decodes the IT6625 audio status registers with FIELD_GET() and
+reads them in one place.
+Patch 6 adds the I2S capture DAI for LPCM.
+Patch 7 extends the DAI to compressed (IEC 61937) and HBR streams, and
+reports the stream type through the standard audio type control.
+Patch 8 switches IT6625 from its driver-specific audio rate and presence
+controls to the standard ones.
+Patch 9 removes the IT6625 driver-specific audio controls from the uAPI.
+They came with the driver, which is in v7.4-rc1 but not in a released
+kernel yet.
+
+The series is based on media next.
+
+Tested by capturing HDMI audio from a signal generator, a PC and a
+second HDMI output looped back to the bridge, through an SoC I2S
+controller with simple-audio-card:
+- LPCM at 32 kHz to 192 kHz with 2 channels on one data line and 8
+  channels on four data lines, from 16-bit and 24-bit sources. 128 kHz
+  was not captured, as the I2S controller used does not support it.
+- AC-3, DTS-HD and TrueHD bitstreams, captured bit-exact, including
+  high bit rate streams on four data lines.
+- Rate, channel and coding changes, unplug, AV mute and pause/resume
+  while capturing, and the audio controls with no capture open.
+One-bit, multi-stream and 3D audio could not be tested; the driver
+rejects them.
+
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- sound/hda/codecs/realtek/alc269.c | 9 +--------
- 1 file changed, 1 insertion(+), 8 deletions(-)
-
-diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
-index dfdcf8b98..406524178 100644
---- a/sound/hda/codecs/realtek/alc269.c
-+++ b/sound/hda/codecs/realtek/alc269.c
-@@ -4524,7 +4524,6 @@ enum {
- 	ALC256_FIXUP_HEADPHONE_AMP_VOL,
- 	ALC245_FIXUP_HP_SPECTRE_X360_EU0XXX,
- 	ALC245_FIXUP_HP_SPECTRE_X360_16_AA0XXX,
--	ALC245_FIXUP_HP_SPECTRE_X360_16_F2XXX,
- 	ALC245_FIXUP_HP_ZBOOK_FIREFLY_G12A,
- 	ALC285_FIXUP_ASUS_GA403U,
- 	ALC285_FIXUP_ASUS_GA403U_HEADSET_MIC,
-@@ -7227,12 +7226,6 @@ static const struct hda_fixup alc269_fixups[] = {
- 		.type = HDA_FIXUP_FUNC,
- 		.v.func = alc245_fixup_hp_spectre_x360_16_aa0xxx,
- 	},
--	[ALC245_FIXUP_HP_SPECTRE_X360_16_F2XXX] = {
--		.type = HDA_FIXUP_FUNC,
--		.v.func = alc245_fixup_hp_spectre_x360_eu0xxx,
--		.chained = true,
--		.chain_id = ALC245_FIXUP_HP_X360_MUTE_LEDS
--	},
- 	[ALC245_FIXUP_HP_ZBOOK_FIREFLY_G12A] = {
- 		.type = HDA_FIXUP_FUNC,
- 		.v.func = alc245_fixup_hp_zbook_firefly_g12a,
-@@ -7876,7 +7869,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
- 	SND_PCI_QUIRK(0x103c, 0x8902, "HP OMEN 16", ALC285_FIXUP_HP_MUTE_LED),
- 	SND_PCI_QUIRK(0x103c, 0x890e, "HP 255 G8 Notebook PC", ALC236_FIXUP_HP_MUTE_LED_COEFBIT2),
- 	SND_PCI_QUIRK(0x103c, 0x8919, "HP Pavilion Aero Laptop 13-be0xxx", ALC287_FIXUP_HP_GPIO_LED),
--	SND_PCI_QUIRK(0x103c, 0x891e, "HP Spectre x360 2-in-1 Laptop 16-f2xxx", ALC245_FIXUP_HP_SPECTRE_X360_16_F2XXX),
-+	SND_PCI_QUIRK(0x103c, 0x891e, "HP Spectre x360 2-in-1 Laptop 16-f2xxx", ALC245_FIXUP_HP_SPECTRE_X360_EU0XXX),
- 	SND_PCI_QUIRK(0x103c, 0x896d, "HP ZBook Firefly 16 G9", ALC245_FIXUP_CS35L41_SPI_2_HP_GPIO_LED),
- 	SND_PCI_QUIRK(0x103c, 0x896e, "HP EliteBook x360 830 G9", ALC245_FIXUP_CS35L41_SPI_2_HP_GPIO_LED),
- 	SND_PCI_QUIRK(0x103c, 0x8971, "HP EliteBook 830 G9", ALC245_FIXUP_CS35L41_SPI_2_HP_GPIO_LED),
+Changes in v2:
+- New patches 1 and 2: standard read-only DV RX controls
+  V4L2_CID_DV_RX_AUDIO_SAMPLING_RATE, V4L2_CID_DV_RX_AUDIO_PRESENT and
+  V4L2_CID_DV_RX_AUDIO_TYPE, documented in ext-ctrls-dv.rst.
+- New patch 3: tc358743 also reports the standard rate and presence
+  controls.
+- Drop the patch documenting the driver-specific IT6625 controls
+  (it6625.rst); the standard controls are documented in the core.
+- Patch 6 (I2S capture DAI): .shutdown re-arms the rate settle polling
+  when a rate is still settling, and .startup, .hw_params and .prepare
+  also update the V4L2 audio controls when they refresh the status.
+- Patch 7: report the audio type through V4L2_CID_DV_RX_AUDIO_TYPE
+  instead of a driver-specific control.
+- New patch 8: IT6625 uses the standard rate and presence controls.
+- New patch 9: remove the IT6625 driver-specific audio controls and the
+  V4L2_CID_USER_IT6625_BASE reservation.
+- Patch 4 (binding): add the Reviewed-by tag; no change.
+- Rebase on the current media next, which now contains the IT6625 reset
+  timing and DV timings fixes.
+- Link to v1: https://lore.kernel.org/r/20261103-upstream-it6625-alsa-i2s-v1-0-bb91e2879b01@ite.com.tw
 
 ---
-base-commit: 896ec6bbe7dd2f29aff1a12eb318a6828be1edd8
-change-id: 20261123-hp-spectre-16-f2-led-fix-a4e13bdc6db1
+Hermes Wu (9):
+      media: v4l2-ctrls: add DV RX audio sampling rate and present controls
+      media: v4l2-ctrls: add the DV RX audio type control
+      media: i2c: tc358743: also report the standard audio controls
+      dt-bindings: media: ite,it6625: add audio DAI properties
+      media: i2c: it6625: decode audio status fields with FIELD_GET()
+      media: i2c: it6625: add I2S audio capture DAI
+      media: i2c: it6625: capture compressed and HBR audio, not just LPCM
+      media: i2c: it6625: use the standard audio rate and present controls
+      media: uapi: it6625: remove the driver-specific audio controls
+
+ .../devicetree/bindings/media/i2c/ite,it6625.yaml  |  23 +-
+ .../userspace-api/media/v4l/ext-ctrls-dv.rst       |  35 +
+ MAINTAINERS                                        |   1 -
+ drivers/media/i2c/Kconfig                          |   1 +
+ drivers/media/i2c/it6625.c                         | 905 ++++++++++++++++++---
+ drivers/media/i2c/tc358743.c                       |  31 +-
+ drivers/media/v4l2-core/v4l2-ctrls-defs.c          |  17 +
+ include/uapi/linux/it6625.h                        |  25 -
+ include/uapi/linux/v4l2-controls.h                 |  15 +-
+ 9 files changed, 910 insertions(+), 143 deletions(-)
+---
+base-commit: 48fe5a7834cc10081887d7bcd9ff0a4cadc3fa8c
+change-id: 20261019-upstream-it6625-alsa-i2s-9a8e34878dbc
 
 Best regards,
 -- 
-Abhiraj Dutta <abhirajdutta7@gmail.com>
+Hermes Wu <Hermes.wu@ite.com.tw>
 
