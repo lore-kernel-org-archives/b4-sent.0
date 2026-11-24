@@ -1,86 +1,91 @@
-From: Junho Cha <junho.cha@xcena.com>
-Date: Tue, 24 Nov 2026 18:15:47 +0900
-Subject: [PATCH] cxl/region: Reject freeing the HPA of a region with
- attached targets
+From: Fil Dunsky <filipp.dunsky@gmail.com>
+Date: Tue, 24 Nov 2026 12:21:59 +0300
+Subject: [PATCH] watchdog: arm_twd: Protect the clock snapshot until
+ notifier registration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-junhomax-fix-cxl-region-free-hpa-targets-v1-1-9229ae407595@xcena.com>
-X-B4-Tracking: v=1; b=H4sIAMJVBWsC/yWNwQ6CMBBEf4Xs2Y1QiKK/Yjxsy9KWaCHbYpoQ/
- t2ixzeZebNBZPEc4V5tIPzx0c+hQHOqwDgKltEPhUHV6tI0qsNpDW5+U8bRZzT5hcK2bHAUZnQ
- LYSKxnCLWfdvTlTq+tQMU3SJcJr+rx/PPcdUTm3T4j4amyKiFgnFHVOTnwDnBvn8BCleAoKcAA
- AA=
-X-Change-ID: 20261124-junhomax-fix-cxl-region-free-hpa-targets-0838a7a4e93d
-To: linux-cxl@vger.kernel.org, Dave Jiang <dave.jiang@intel.com>
-Cc: Li Ming <ming.li@zohomail.com>, Vishal Verma <vishal.l.verma@intel.com>, 
- Richard Cheng <icheng@nvidia.com>, Jonathan Cameron <jic23@kernel.org>, 
- Davidlohr Bueso <dave@stgolabs.net>, 
- Ben Cheatham <benjamin.cheatham@amd.com>, 
- Alison Schofield <alison.schofield@intel.com>, 
- Ira Weiny <iweiny@kernel.org>, linux-kernel@vger.kernel.org
+Message-Id: <20261124-arm-twd-clock-notifier-v1-1-62933570ae27@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ6CMBBA4auQWTsJbQpGr2Jc4HQK409rplVJC
+ He3yvJbvLdAZhXOcGwWUH5LlhQrzK4BmoY4MoqvBtva3hjrcNAHlo9Huie6YUxFgrCi25Pxh45
+ 9GxzU+KkcZP6PT+fN+XW5MpXfDdb1C5QDF3B6AAAA
+X-Change-ID: 20261124-arm-twd-clock-notifier-47c1d95ed0f4
+To: Guenter Roeck <linux@roeck-us.net>, linux-watchdog@vger.kernel.org
+Cc: Wim Van Sebroeck <wim@linux-watchdog.org>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795511746; l=2089;
- i=junho.cha@xcena.com; s=20261113; h=from:subject:message-id;
- bh=+shOErfbEre4hWHhIGr07nm3Q4E88vlfKVuH7VEIVN0=;
- b=Ge33xovHF4kL3qvaSeua03PXbWl189Ali97k6c0IKfwT5MsoMTw2ugPgYv7y4m36Rs2A0/Dbp
- GkWNGdbPA8NAccyrj3JxeFGeKlETm7M4BfZIDNdJhAzXOQ1CmEp9aVs
-X-Developer-Key: i=junho.cha@xcena.com; a=ed25519;
- pk=OkFm4PnuJSze1AVqDdvnpHO7nnDQIheH2qYwg2a6Dyc=
-X-Endpoint-Received: by B4 Relay for junho.cha@xcena.com/20261113 with auth_id=1507
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795512118; l=2819;
+ i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
+ bh=p2sYExYr/jO4sa/Pzc9YiL7jgTYBz7CEinmU5GG86Do=;
+ b=VKSH9DQH5NzG5wXNQbbOG5bM9NbRQJgeAnhBSlyzzi6f4pHjXYtULw/lPg3h+b5QIcFQJ/Czw
+ eEoM9dcRDujDm1+ygFz9bhuJ7EyXNGWMydoWQ6zWkzX9PVC+5WhAtZm
+X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
+ pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
+X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-free_hpa() only refuses once the region is CXL_CONFIG_ACTIVE. With
-some targets attached, root can write 0 to size, which returns the
-region to CXL_CONFIG_IDLE and lets interleave_ways,
-interleave_granularity and size change while the attached endpoint
-decoders keep their old settings.
+A clock rate change can complete after clk_get_rate() returns but before
+probe registers the clock notifier. The driver then misses that change
+and keeps the old rate when programming the watchdog counter.
 
-The region can then be committed with endpoint decoders that do not
-match it. If interleave_ways shrinks so that an attached target's
-position is out of range, attaching targets until nr_targets reaches
-the new interleave_ways can lead to a NULL dereference in
-cxl_region_setup_targets(). Deleting the region and later unbinding
-that target's memdev can lead to a use-after-free in
-__cxl_decoder_detach(). All three were reproduced with cxl_test.
+Take temporary rate exclusivity before reading the clock rate and release
+it after registering the notifier. This protects the snapshot against
+changes from other consumers, including changes to an ancestor clock,
+until subsequent transitions can be observed. Release the protection on
+the zero-rate and notifier registration error paths as well.
 
-Refuse to free the HPA while any target is attached. libcxl never
-writes 0 to size, so cxl-cli is not affected.
-
-Fixes: 384e624bb211 ("cxl/region: Attach endpoint decoders")
-Cc: stable@vger.kernel.org
-Signed-off-by: Junho Cha <junho.cha@xcena.com>
+Fixes: 52d91ea73e05 ("watchdog: Add ARM TWD (MPCore private) watchdog driver")
+Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
-Tested with cxl_test before and after the change on cxl/next, v6.12 and
-v6.16. The patch applies unchanged to v6.1, v6.6, v6.12 and v6.18.
-Writing 0 to size after detaching all targets still works. Before
-commit b3a88225519c ("cxl/region: Consolidate cxl_decoder_kill_region()
-and cxl_region_detach()"), the use-after-free case only triggers a
-warning.
----
- drivers/cxl/core/region.c | 4 ++++
- 1 file changed, 4 insertions(+)
+This is a single-fix follow-up against watchdog-next, rather than a new
+revision of the accepted driver series. A rate change from another CCF
+consumer can finish between the rate snapshot and notifier installation.
+Temporary rate exclusivity closes that handoff without retaining the CCF
+prepare lock or holding the watchdog mutex across a CCF call.
 
-diff --git a/drivers/cxl/core/region.c b/drivers/cxl/core/region.c
-index 237172b33f55..53965f1e4719 100644
---- a/drivers/cxl/core/region.c
-+++ b/drivers/cxl/core/region.c
-@@ -772,6 +772,10 @@ static int free_hpa(struct cxl_region *cxlr)
- 	if (!p->res)
- 		return 0;
+Validation: the old and fixed clock-backed probe branches, actual CCF
+functions and the actual TWD notifier were exercised with 25 deterministic
+interleaving/unwind cases under both GCC and Clang ASan/UBSan. The full
+modified driver also builds as an ARM module with W=1, with all imports
+resolved. These are offline checks; no changing-clock hardware test is
+claimed. The separate maximum-timeout policy for future faster clock
+rates is unchanged.
+---
+ drivers/watchdog/arm_twd_wdt.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/watchdog/arm_twd_wdt.c b/drivers/watchdog/arm_twd_wdt.c
+index f83770109..aa974da23 100644
+--- a/drivers/watchdog/arm_twd_wdt.c
++++ b/drivers/watchdog/arm_twd_wdt.c
+@@ -553,13 +553,21 @@ static int twd_wdt_probe(struct platform_device *pdev)
+ 		return dev_err_probe(dev, PTR_ERR(clk), "failed to get clock\n");
  
-+	/* Attached targets hold the current geometry, detach them first */
-+	if (p->nr_targets)
-+		return -EBUSY;
+ 	if (clk) {
++		/* Keep the rate snapshot stable until its notifier is installed. */
++		ret = clk_rate_exclusive_get(clk);
++		if (ret)
++			return dev_err_probe(dev, ret, "failed to protect clock rate\n");
 +
- 	if (p->state >= CXL_CONFIG_ACTIVE)
- 		return -EBUSY;
+ 		wdt->rate = clk_get_rate(clk);
+-		if (!wdt->rate)
++		if (!wdt->rate) {
++			clk_rate_exclusive_put(clk);
+ 			return dev_err_probe(dev, -EINVAL, "clock rate is zero\n");
++		}
  
+ 		wdt->max_rate = wdt->rate;
+ 		wdt->clk_nb.notifier_call = twd_wdt_clk_notify;
+ 		ret = devm_clk_notifier_register(dev, clk, &wdt->clk_nb);
++		clk_rate_exclusive_put(clk);
+ 		if (ret)
+ 			return dev_err_probe(dev, ret, "failed to register clock notifier\n");
+ 	} else {
 
 ---
-base-commit: 32af7819352bae9c690ebe277a44eceb501d5c68
-change-id: 20261124-junhomax-fix-cxl-region-free-hpa-targets-0838a7a4e93d
+base-commit: 43495d289b7cc30f95791fb7cd7999d766b659b8
+change-id: 20261124-arm-twd-clock-notifier-47c1d95ed0f4
 
 Best regards,
 --  
-Junho Cha <junho.cha@xcena.com>
+Fil Dunsky <filipp.dunsky@gmail.com>
 
