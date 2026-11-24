@@ -1,655 +1,74 @@
-From: Joseph Telaak <joseph@telaak.dev>
-Date: Mon, 23 Nov 2026 23:42:07 -0500
-Subject: [PATCH v2 2/2] pinctrl: Add Siflower SF19A2890 pin controller
- driver
+From: Suyuan Wang <shyckless@gmail.com>
+Date: Tue, 24 Nov 2026 04:47:07 +0000
+Subject: [PATCH] ALSA: mixart: Don't touch the mailbox when the BAR mapping
+ failed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-sf19a2890-pinctrl-v2-2-a10af32bc844@telaak.dev>
-References: <20261123-sf19a2890-pinctrl-v2-0-a10af32bc844@telaak.dev>
-In-Reply-To: <20261123-sf19a2890-pinctrl-v2-0-a10af32bc844@telaak.dev>
-To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
-Cc: Chuanhong Guo <gch981213@gmail.com>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
- linux-mips@vger.kernel.org, linux-gpio@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joseph Telaak <joseph@telaak.dev>
+Message-Id: <20261124-mixart-free-v1-1-13765d8d445b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMoWBWsC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQyMT3dzMisSiEt20otRUXQuTNEvz1GTDJDMLEyWgjoKi1LTMCrBp0bE
+ QfnFpUlZqcgnICKXaWgBdPnQNbwAAAA==
+X-Change-ID: 20261124-mixart-free-84f97ec1b684
+To: tiwai@suse.com, perex@perex.cz
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495328; l=19907;
- i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=mN/lvzTTnUnACNZv8ePGbFm571cW1aZj10Cn9hS7c10=;
- b=0bDJH8xhanrV9ZX/SGsEiX41EVlplsBTHuUfF4puBpox2GEMgGGxZs1j9YTnQMEr8lXVAt6m9
- vg3HxCasHIRC3lbBCYR18okHtUTgAvpzwHk/zbypIci4nQTPcOfA9hA
-X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
- pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
-X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795495627; l=1657;
+ i=shyckless@gmail.com; s=default; h=from:subject:message-id;
+ bh=KroNMBNLmqXWTwC1spkNnjxXDnIiXoTFsmYu+3KeonU=;
+ b=GAspBgd8YPw6ltv7qrF8nA9eRiO3UmTQ86OaVDcOYWUL9OEtz7qm3/FnRkjgzwyP1GrQWhvdI
+ CQD7uD8ekRuDKHyPBA5WVmjASfUJe4xJ9jw1zXLq/4Q8f4QbCulLwug
+X-Developer-Key: i=shyckless@gmail.com; a=ed25519;
+ pk=pMtccVGiWES3bV+7YBFuBclkvq2n2HBHQ5azaBrK2lY=
+X-Endpoint-Received: by B4 Relay for shyckless@gmail.com/default with auth_id=1498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a driver for the pin controller of the Siflower SF19A2890. Each pin
-is a group of its own. The functions are named after the peripheral
-they connect, and each lists the pins it can use with the mux mode that
-selects it there. The function tables cover what the vendor firmware and
-the OpenWrt port use; the rest of the modes are undocumented.
+From: Suyuan Wang <stevewong@hust.edu.cn>
 
-Based on the OpenWrt driver by Chuanhong Guo, which exposed the mux
-modes as functions "func0" to "func3". That driver was itself based on
-the BCM2835 pin controller driver.
+snd_mixart_probe() calls snd_mixart_free() when pci_ioremap_bar() fails
+for either BAR. snd_mixart_free() then unconditionally calls
 
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+	snd_mixart_exit_mailbox(mgr);
+
+which masks the outbound mailbox interrupts by writing to
+MIXART_REG(mgr, MIXART_PCI_OMIMR_OFFSET), i.e. through mgr->mem[1].virt.
+mem[1].virt is still NULL if either BAR mapping fails, so the error
+path oopses on a write near address 0 instead of returning -EBUSY.
+
+Only call snd_mixart_exit_mailbox() when the register BAR is mapped. The
+rest of snd_mixart_free() already copes with a partly set up manager:
+iounmap() accepts NULL, and the IRQ and DMA buffers are checked before
+release.
+
+Found with a static analysis tool and checked by hand.
+
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Cc: stable@vger.kernel.org
+Co-developed-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Kaixuan Li <kaixuan.li@ntu.edu.sg>
+Signed-off-by: Suyuan Wang <stevewong@hust.edu.cn>
 ---
- MAINTAINERS                         |   1 +
- drivers/pinctrl/Kconfig             |  14 +
- drivers/pinctrl/Makefile            |   1 +
- drivers/pinctrl/pinctrl-sf19a2890.c | 549 ++++++++++++++++++++++++++++++++++++
- 4 files changed, 565 insertions(+)
+Compile tested on x86_64 (W=1, no new warnings). I don't have a miXart board.
+---
+ sound/pci/mixart/mixart.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 9a31712feb5d..743dcfc869e4 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -25082,6 +25082,7 @@ M:	Joseph Telaak <joseph@telaak.dev>
- L:	linux-gpio@vger.kernel.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/pinctrl/siflower,sf19a2890-pinctrl.yaml
-+F:	drivers/pinctrl/pinctrl-sf19a2890.c
+diff --git a/sound/pci/mixart/mixart.c b/sound/pci/mixart/mixart.c
+index f451554cff5f..0266467734ca 100644
+--- a/sound/pci/mixart/mixart.c
++++ b/sound/pci/mixart/mixart.c
+@@ -1066,8 +1066,9 @@ static int snd_mixart_free(struct mixart_mgr *mgr)
+ 			snd_card_free(mgr->chip[i]->card);
+ 	}
  
- SILEAD TOUCHSCREEN DRIVER
- M:	Hans de Goede <hansg@kernel.org>
-diff --git a/drivers/pinctrl/Kconfig b/drivers/pinctrl/Kconfig
-index dc7138302c55..1321eb679fcd 100644
---- a/drivers/pinctrl/Kconfig
-+++ b/drivers/pinctrl/Kconfig
-@@ -562,6 +562,20 @@ config PINCTRL_SCMI
- 	  It uses SCMI Message Protocol to interact with the
- 	  firmware providing all the pinctrl controls.
+-	/* stop mailbox */
+-	snd_mixart_exit_mailbox(mgr);
++	/* stop mailbox, unless the register BAR was never mapped */
++	if (mgr->mem[1].virt)
++		snd_mixart_exit_mailbox(mgr);
  
-+config PINCTRL_SF19A2890
-+	tristate "Siflower SF19A2890 pin controller"
-+	depends on MACH_SIFLOWER_MIPS || COMPILE_TEST
-+	depends on OF
-+	default MACH_SIFLOWER_MIPS
-+	select PINMUX
-+	select PINCONF
-+	select GENERIC_PINCONF
-+	help
-+	  Support for the pin controller of the Siflower SF19A2890 SoC. It
-+	  selects the function of each pin and sets its bias, input enable,
-+	  Schmitt trigger and drive strength. The SoC's GPIO controller uses
-+	  it to switch pins to GPIO.
-+
- config PINCTRL_SINGLE
- 	tristate "One-register-per-pin type device tree based pinctrl driver"
- 	depends on OF
-diff --git a/drivers/pinctrl/Makefile b/drivers/pinctrl/Makefile
-index ce0825f4fc1b..2cb2c229c8f4 100644
---- a/drivers/pinctrl/Makefile
-+++ b/drivers/pinctrl/Makefile
-@@ -57,6 +57,7 @@ obj-$(CONFIG_PINCTRL_RK805)	+= pinctrl-rk805.o
- obj-$(CONFIG_PINCTRL_ROCKCHIP)	+= pinctrl-rockchip.o
- obj-$(CONFIG_PINCTRL_RP1)       += pinctrl-rp1.o
- obj-$(CONFIG_PINCTRL_SCMI)	+= pinctrl-scmi.o
-+obj-$(CONFIG_PINCTRL_SF19A2890)	+= pinctrl-sf19a2890.o
- obj-$(CONFIG_PINCTRL_SINGLE)	+= pinctrl-single.o
- obj-$(CONFIG_PINCTRL_ST) 	+= pinctrl-st.o
- obj-$(CONFIG_PINCTRL_STMFX) 	+= pinctrl-stmfx.o
-diff --git a/drivers/pinctrl/pinctrl-sf19a2890.c b/drivers/pinctrl/pinctrl-sf19a2890.c
-new file mode 100644
-index 000000000000..5873a73ad4b9
---- /dev/null
-+++ b/drivers/pinctrl/pinctrl-sf19a2890.c
-@@ -0,0 +1,549 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * Siflower SF19A2890 pin controller
-+ *
-+ * Based on the OpenWrt driver by Chuanhong Guo <gch981213@gmail.com>,
-+ * which was based on the Broadcom BCM2835 GPIO unit driver:
-+ * Copyright (C) 2012 Chris Boot, Simon Arlott, Stephen Warren
-+ */
-+
-+#include <linux/array_size.h>
-+#include <linux/bitfield.h>
-+#include <linux/bits.h>
-+#include <linux/device-id/of.h>
-+#include <linux/io.h>
-+#include <linux/module.h>
-+#include <linux/platform_device.h>
-+#include <linux/seq_file.h>
-+
-+#include <linux/pinctrl/pinconf-generic.h>
-+#include <linux/pinctrl/pinconf.h>
-+#include <linux/pinctrl/pinctrl.h>
-+#include <linux/pinctrl/pinmux.h>
-+
-+#define SF19A2890_NUM_PINS	49
-+
-+/* Pad configuration */
-+#define SF19A2890_PC(pin)		((pin) * 0x8)
-+#define  SF19A2890_PC_OEN		BIT(7)
-+#define  SF19A2890_PC_ST		BIT(6)
-+#define  SF19A2890_PC_IE		BIT(5)
-+#define  SF19A2890_PC_PD		BIT(4)
-+#define  SF19A2890_PC_PU		BIT(3)
-+#define  SF19A2890_PC_DS		GENMASK(2, 0)
-+
-+#define SF19A2890_DRIVE_MIN_MA		6
-+#define SF19A2890_DRIVE_STEP_MA		3
-+
-+/*
-+ * Pin mux. With FUNC_SW clear, the pad's output enable is forced by
-+ * PC_OEN; with it set, the GPIO or the function drives it. FMUX_SEL picks
-+ * the GPIO, and MODE the function, when FMUX_SEL is clear.
-+ */
-+#define SF19A2890_PMX(pin)		((pin) * 0x8 + 0x4)
-+#define  SF19A2890_PMX_FUNC_SW		BIT(3)
-+#define  SF19A2890_PMX_FMUX_SEL		BIT(2)
-+#define  SF19A2890_PMX_MODE		GENMASK(1, 0)
-+
-+struct sf19a2890_pinctrl {
-+	struct device *dev;
-+	void __iomem *base;
-+	struct pinctrl_dev *pctl;
-+};
-+
-+static const struct pinctrl_pin_desc sf19a2890_pins[] = {
-+	PINCTRL_PIN(0, "JTAG_TDO"),
-+	PINCTRL_PIN(1, "JTAG_TDI"),
-+	PINCTRL_PIN(2, "JTAG_TMS"),
-+	PINCTRL_PIN(3, "JTAG_TCK"),
-+	PINCTRL_PIN(4, "JTAG_RST"),
-+	PINCTRL_PIN(5, "SPI_TXD"),
-+	PINCTRL_PIN(6, "SPI_RXD"),
-+	PINCTRL_PIN(7, "SPI_CLK"),
-+	PINCTRL_PIN(8, "SPI_CSN"),
-+	PINCTRL_PIN(9, "UART_TX"),
-+	PINCTRL_PIN(10, "UART_RX"),
-+	PINCTRL_PIN(11, "I2C_DAT"),
-+	PINCTRL_PIN(12, "I2C_CLK"),
-+	PINCTRL_PIN(13, "RGMII_GTX_CLK"),
-+	PINCTRL_PIN(14, "RGMII_TXCLK"),
-+	PINCTRL_PIN(15, "RGMII_TXD0"),
-+	PINCTRL_PIN(16, "RGMII_TXD1"),
-+	PINCTRL_PIN(17, "RGMII_TXD2"),
-+	PINCTRL_PIN(18, "RGMII_TXD3"),
-+	PINCTRL_PIN(19, "RGMII_TXCTL"),
-+	PINCTRL_PIN(20, "RGMII_RXCLK"),
-+	PINCTRL_PIN(21, "RGMII_RXD0"),
-+	PINCTRL_PIN(22, "RGMII_RXD1"),
-+	PINCTRL_PIN(23, "RGMII_RXD2"),
-+	PINCTRL_PIN(24, "RGMII_RXD3"),
-+	PINCTRL_PIN(25, "RGMII_RXCTL"),
-+	PINCTRL_PIN(26, "RGMII_COL"),
-+	PINCTRL_PIN(27, "RGMII_CRS"),
-+	PINCTRL_PIN(28, "RGMII_MDC"),
-+	PINCTRL_PIN(29, "RGMII_MDIO"),
-+	PINCTRL_PIN(30, "HB0_PA_EN"),
-+	PINCTRL_PIN(31, "HB0_LNA_EN"),
-+	PINCTRL_PIN(32, "HB0_SW_CTRL0"),
-+	PINCTRL_PIN(33, "HB0_SW_CTRL1"),
-+	PINCTRL_PIN(34, "HB1_PA_EN"),
-+	PINCTRL_PIN(35, "HB1_LNA_EN"),
-+	PINCTRL_PIN(36, "HB1_SW_CTRL0"),
-+	PINCTRL_PIN(37, "HB1_SW_CTRL1"),
-+	PINCTRL_PIN(38, "LB0_PA_EN"),
-+	PINCTRL_PIN(39, "LB0_LNA_EN"),
-+	PINCTRL_PIN(40, "LB0_SW_CTRL0"),
-+	PINCTRL_PIN(41, "LB0_SW_CTRL1"),
-+	PINCTRL_PIN(42, "LB1_PA_EN"),
-+	PINCTRL_PIN(43, "LB1_LNA_EN"),
-+	PINCTRL_PIN(44, "LB1_SW_CTRL0"),
-+	PINCTRL_PIN(45, "LB1_SW_CTRL1"),
-+	PINCTRL_PIN(46, "CLK_OUT"),
-+	PINCTRL_PIN(47, "EXT_CLK_IN"),
-+	PINCTRL_PIN(48, "DRVVBUS0"),
-+};
-+
-+static_assert(ARRAY_SIZE(sf19a2890_pins) == SF19A2890_NUM_PINS);
-+
-+/* A pin that a function can use, and the mux mode that selects it */
-+struct sf19a2890_func_pin {
-+	unsigned int pin;
-+	u8 mode;
-+};
-+
-+struct sf19a2890_function {
-+	const char *name;
-+	const char * const *groups;
-+	const struct sf19a2890_func_pin *pins;
-+	unsigned int npins;
-+};
-+
-+/*
-+ * Each pin is a group of its own, named after the pin. A function's group
-+ * list names the pins it can use, in the same order as its pin table.
-+ */
-+#define SF19A2890_FUNCTION(_name, ...)					\
-+	static const struct sf19a2890_func_pin sf19a2890_##_name##_pins[] = { \
-+		__VA_ARGS__						\
-+	}
-+
-+#define PIN_MODE(_pin, _mode)	{ .pin = (_pin), .mode = (_mode) }
-+
-+SF19A2890_FUNCTION(jtag, PIN_MODE(0, 0), PIN_MODE(1, 0), PIN_MODE(2, 0),
-+		   PIN_MODE(3, 0), PIN_MODE(4, 0));
-+static const char * const sf19a2890_jtag_groups[] = {
-+	"JTAG_TDO", "JTAG_TDI", "JTAG_TMS", "JTAG_TCK", "JTAG_RST",
-+};
-+
-+SF19A2890_FUNCTION(uart1, PIN_MODE(0, 1), PIN_MODE(1, 1), PIN_MODE(2, 1),
-+		   PIN_MODE(3, 1));
-+static const char * const sf19a2890_uart1_groups[] = {
-+	"JTAG_TDO", "JTAG_TDI", "JTAG_TMS", "JTAG_TCK",
-+};
-+
-+SF19A2890_FUNCTION(pwm0, PIN_MODE(3, 3));
-+static const char * const sf19a2890_pwm0_groups[] = { "JTAG_TCK" };
-+
-+SF19A2890_FUNCTION(pwm1, PIN_MODE(4, 2));
-+static const char * const sf19a2890_pwm1_groups[] = { "JTAG_RST" };
-+
-+SF19A2890_FUNCTION(spi, PIN_MODE(5, 0), PIN_MODE(6, 0), PIN_MODE(7, 0),
-+		   PIN_MODE(8, 0));
-+static const char * const sf19a2890_spi_groups[] = {
-+	"SPI_TXD", "SPI_RXD", "SPI_CLK", "SPI_CSN",
-+};
-+
-+/* UART0's CTS and RTS are on the I2C pins */
-+SF19A2890_FUNCTION(uart0, PIN_MODE(9, 0), PIN_MODE(10, 0), PIN_MODE(11, 0),
-+		   PIN_MODE(12, 0));
-+static const char * const sf19a2890_uart0_groups[] = {
-+	"UART_TX", "UART_RX", "I2C_DAT", "I2C_CLK",
-+};
-+
-+SF19A2890_FUNCTION(uart2, PIN_MODE(11, 1), PIN_MODE(12, 1));
-+static const char * const sf19a2890_uart2_groups[] = { "I2C_DAT", "I2C_CLK" };
-+
-+SF19A2890_FUNCTION(i2c0, PIN_MODE(11, 2), PIN_MODE(12, 2));
-+static const char * const sf19a2890_i2c0_groups[] = { "I2C_DAT", "I2C_CLK" };
-+
-+SF19A2890_FUNCTION(rgmii, PIN_MODE(14, 0), PIN_MODE(15, 0), PIN_MODE(16, 0),
-+		   PIN_MODE(17, 0), PIN_MODE(18, 0), PIN_MODE(19, 0),
-+		   PIN_MODE(20, 0), PIN_MODE(21, 0), PIN_MODE(22, 0),
-+		   PIN_MODE(23, 0), PIN_MODE(24, 0), PIN_MODE(25, 0));
-+static const char * const sf19a2890_rgmii_groups[] = {
-+	"RGMII_TXCLK", "RGMII_TXD0", "RGMII_TXD1", "RGMII_TXD2",
-+	"RGMII_TXD3", "RGMII_TXCTL", "RGMII_RXCLK", "RGMII_RXD0",
-+	"RGMII_RXD1", "RGMII_RXD2", "RGMII_RXD3", "RGMII_RXCTL",
-+};
-+
-+SF19A2890_FUNCTION(mdio, PIN_MODE(28, 0), PIN_MODE(29, 0));
-+static const char * const sf19a2890_mdio_groups[] = {
-+	"RGMII_MDC", "RGMII_MDIO",
-+};
-+
-+/* The power amplifier, LNA and antenna switch controls of the radios */
-+SF19A2890_FUNCTION(wlan, PIN_MODE(30, 0), PIN_MODE(31, 0), PIN_MODE(32, 0),
-+		   PIN_MODE(33, 0), PIN_MODE(34, 0), PIN_MODE(35, 0),
-+		   PIN_MODE(36, 0), PIN_MODE(37, 0), PIN_MODE(38, 0),
-+		   PIN_MODE(39, 0), PIN_MODE(40, 0), PIN_MODE(41, 0),
-+		   PIN_MODE(42, 0), PIN_MODE(43, 0), PIN_MODE(44, 0),
-+		   PIN_MODE(45, 0));
-+static const char * const sf19a2890_wlan_groups[] = {
-+	"HB0_PA_EN", "HB0_LNA_EN", "HB0_SW_CTRL0", "HB0_SW_CTRL1",
-+	"HB1_PA_EN", "HB1_LNA_EN", "HB1_SW_CTRL0", "HB1_SW_CTRL1",
-+	"LB0_PA_EN", "LB0_LNA_EN", "LB0_SW_CTRL0", "LB0_SW_CTRL1",
-+	"LB1_PA_EN", "LB1_LNA_EN", "LB1_SW_CTRL0", "LB1_SW_CTRL1",
-+};
-+
-+#define FUNCTION(_name)							\
-+	{								\
-+		.name = #_name,						\
-+		.groups = sf19a2890_##_name##_groups,			\
-+		.pins = sf19a2890_##_name##_pins,			\
-+		.npins = ARRAY_SIZE(sf19a2890_##_name##_pins),		\
-+	}
-+
-+static const struct sf19a2890_function sf19a2890_functions[] = {
-+	FUNCTION(i2c0),
-+	FUNCTION(jtag),
-+	FUNCTION(mdio),
-+	FUNCTION(pwm0),
-+	FUNCTION(pwm1),
-+	FUNCTION(rgmii),
-+	FUNCTION(spi),
-+	FUNCTION(uart0),
-+	FUNCTION(uart1),
-+	FUNCTION(uart2),
-+	FUNCTION(wlan),
-+};
-+
-+static u32 sf19a2890_pinctrl_read(struct sf19a2890_pinctrl *pc, u32 reg)
-+{
-+	return readl(pc->base + reg);
-+}
-+
-+static void sf19a2890_pinctrl_write(struct sf19a2890_pinctrl *pc, u32 reg,
-+				    u32 val)
-+{
-+	writel(val, pc->base + reg);
-+}
-+
-+static void sf19a2890_pinctrl_rmw(struct sf19a2890_pinctrl *pc, u32 reg,
-+				  u32 clr, u32 set)
-+{
-+	u32 val = sf19a2890_pinctrl_read(pc, reg);
-+
-+	sf19a2890_pinctrl_write(pc, reg, (val & ~clr) | set);
-+}
-+
-+static unsigned int sf19a2890_drive_ma(u32 conf)
-+{
-+	return SF19A2890_DRIVE_MIN_MA +
-+	       FIELD_GET(SF19A2890_PC_DS, conf) * SF19A2890_DRIVE_STEP_MA;
-+}
-+
-+static int sf19a2890_get_groups_count(struct pinctrl_dev *pctldev)
-+{
-+	return SF19A2890_NUM_PINS;
-+}
-+
-+static const char *sf19a2890_get_group_name(struct pinctrl_dev *pctldev,
-+					    unsigned int selector)
-+{
-+	return sf19a2890_pins[selector].name;
-+}
-+
-+static int sf19a2890_get_group_pins(struct pinctrl_dev *pctldev,
-+				    unsigned int selector,
-+				    const unsigned int **pins,
-+				    unsigned int *num_pins)
-+{
-+	*pins = &sf19a2890_pins[selector].number;
-+	*num_pins = 1;
-+
-+	return 0;
-+}
-+
-+static void sf19a2890_pin_dbg_show(struct pinctrl_dev *pctldev,
-+				   struct seq_file *s, unsigned int offset)
-+{
-+	struct sf19a2890_pinctrl *pc = pinctrl_dev_get_drvdata(pctldev);
-+	u32 conf = sf19a2890_pinctrl_read(pc, SF19A2890_PC(offset));
-+	u32 mux = sf19a2890_pinctrl_read(pc, SF19A2890_PMX(offset));
-+
-+	if (!(mux & SF19A2890_PMX_FUNC_SW))
-+		seq_printf(s, "forced %s",
-+			   conf & SF19A2890_PC_OEN ? "input" : "output");
-+	else if (mux & SF19A2890_PMX_FMUX_SEL)
-+		seq_puts(s, "gpio");
-+	else
-+		seq_printf(s, "mode %lu", FIELD_GET(SF19A2890_PMX_MODE, mux));
-+
-+	seq_printf(s, "%s%s%s%s drive %u mA",
-+		   conf & SF19A2890_PC_IE ? " input" : "",
-+		   conf & SF19A2890_PC_ST ? " schmitt" : "",
-+		   conf & SF19A2890_PC_PU ? " pull-up" : "",
-+		   conf & SF19A2890_PC_PD ? " pull-down" : "",
-+		   sf19a2890_drive_ma(conf));
-+}
-+
-+static const struct pinctrl_ops sf19a2890_pctl_ops = {
-+	.get_groups_count = sf19a2890_get_groups_count,
-+	.get_group_name = sf19a2890_get_group_name,
-+	.get_group_pins = sf19a2890_get_group_pins,
-+	.pin_dbg_show = sf19a2890_pin_dbg_show,
-+	.dt_node_to_map = pinconf_generic_dt_node_to_map_all,
-+	.dt_free_map = pinconf_generic_dt_free_map,
-+};
-+
-+static int sf19a2890_pmx_free(struct pinctrl_dev *pctldev, unsigned int pin)
-+{
-+	struct sf19a2890_pinctrl *pc = pinctrl_dev_get_drvdata(pctldev);
-+
-+	/* Back to a forced input with the input buffer off */
-+	sf19a2890_pinctrl_rmw(pc, SF19A2890_PC(pin), SF19A2890_PC_IE,
-+			      SF19A2890_PC_OEN);
-+	sf19a2890_pinctrl_rmw(pc, SF19A2890_PMX(pin), SF19A2890_PMX_FUNC_SW, 0);
-+
-+	return 0;
-+}
-+
-+static int sf19a2890_get_functions_count(struct pinctrl_dev *pctldev)
-+{
-+	return ARRAY_SIZE(sf19a2890_functions);
-+}
-+
-+static const char *sf19a2890_get_function_name(struct pinctrl_dev *pctldev,
-+					       unsigned int selector)
-+{
-+	return sf19a2890_functions[selector].name;
-+}
-+
-+static int sf19a2890_get_function_groups(struct pinctrl_dev *pctldev,
-+					 unsigned int selector,
-+					 const char * const **groups,
-+					 unsigned int * const num_groups)
-+{
-+	*groups = sf19a2890_functions[selector].groups;
-+	*num_groups = sf19a2890_functions[selector].npins;
-+
-+	return 0;
-+}
-+
-+static int sf19a2890_set_mux(struct pinctrl_dev *pctldev,
-+			     unsigned int func_selector,
-+			     unsigned int group_selector)
-+{
-+	struct sf19a2890_pinctrl *pc = pinctrl_dev_get_drvdata(pctldev);
-+	const struct sf19a2890_function *func =
-+		&sf19a2890_functions[func_selector];
-+	unsigned int pin = sf19a2890_pins[group_selector].number;
-+	unsigned int i;
-+
-+	for (i = 0; i < func->npins; i++) {
-+		if (func->pins[i].pin != pin)
-+			continue;
-+
-+		sf19a2890_pinctrl_write(pc, SF19A2890_PMX(pin),
-+					SF19A2890_PMX_FUNC_SW |
-+					FIELD_PREP(SF19A2890_PMX_MODE,
-+						   func->pins[i].mode));
-+		return 0;
-+	}
-+
-+	return -EINVAL;
-+}
-+
-+static int sf19a2890_gpio_request_enable(struct pinctrl_dev *pctldev,
-+					 struct pinctrl_gpio_range *range,
-+					 unsigned int pin)
-+{
-+	struct sf19a2890_pinctrl *pc = pinctrl_dev_get_drvdata(pctldev);
-+
-+	sf19a2890_pinctrl_write(pc, SF19A2890_PMX(pin),
-+				SF19A2890_PMX_FUNC_SW | SF19A2890_PMX_FMUX_SEL);
-+	/* The GPIO block reads the pad back through the input buffer */
-+	sf19a2890_pinctrl_rmw(pc, SF19A2890_PC(pin), 0, SF19A2890_PC_IE);
-+
-+	return 0;
-+}
-+
-+static void sf19a2890_gpio_disable_free(struct pinctrl_dev *pctldev,
-+					struct pinctrl_gpio_range *range,
-+					unsigned int pin)
-+{
-+	sf19a2890_pmx_free(pctldev, pin);
-+}
-+
-+static const struct pinmux_ops sf19a2890_pmx_ops = {
-+	.free = sf19a2890_pmx_free,
-+	.get_functions_count = sf19a2890_get_functions_count,
-+	.get_function_name = sf19a2890_get_function_name,
-+	.get_function_groups = sf19a2890_get_function_groups,
-+	.set_mux = sf19a2890_set_mux,
-+	.gpio_request_enable = sf19a2890_gpio_request_enable,
-+	.gpio_disable_free = sf19a2890_gpio_disable_free,
-+	.strict = true,
-+};
-+
-+static int sf19a2890_pinconf_get(struct pinctrl_dev *pctldev,
-+				 unsigned int pin, unsigned long *config)
-+{
-+	struct sf19a2890_pinctrl *pc = pinctrl_dev_get_drvdata(pctldev);
-+	enum pin_config_param param = pinconf_to_config_param(*config);
-+	u32 val = sf19a2890_pinctrl_read(pc, SF19A2890_PC(pin));
-+	u32 arg;
-+
-+	switch (param) {
-+	case PIN_CONFIG_BIAS_DISABLE:
-+		if (val & (SF19A2890_PC_PU | SF19A2890_PC_PD))
-+			return -EINVAL;
-+		arg = 1;
-+		break;
-+	case PIN_CONFIG_BIAS_PULL_UP:
-+		if (!(val & SF19A2890_PC_PU))
-+			return -EINVAL;
-+		arg = 1;
-+		break;
-+	case PIN_CONFIG_BIAS_PULL_DOWN:
-+		if (!(val & SF19A2890_PC_PD))
-+			return -EINVAL;
-+		arg = 1;
-+		break;
-+	case PIN_CONFIG_INPUT_ENABLE:
-+		if (!(val & SF19A2890_PC_IE))
-+			return -EINVAL;
-+		arg = 1;
-+		break;
-+	case PIN_CONFIG_INPUT_SCHMITT_ENABLE:
-+		if (!(val & SF19A2890_PC_ST))
-+			return -EINVAL;
-+		arg = 1;
-+		break;
-+	case PIN_CONFIG_DRIVE_STRENGTH:
-+		arg = sf19a2890_drive_ma(val);
-+		break;
-+	default:
-+		return -ENOTSUPP;
-+	}
-+
-+	*config = pinconf_to_config_packed(param, arg);
-+
-+	return 0;
-+}
-+
-+static int sf19a2890_pinconf_set(struct pinctrl_dev *pctldev,
-+				 unsigned int pin, unsigned long *configs,
-+				 unsigned int num_configs)
-+{
-+	struct sf19a2890_pinctrl *pc = pinctrl_dev_get_drvdata(pctldev);
-+	u32 val = sf19a2890_pinctrl_read(pc, SF19A2890_PC(pin));
-+	unsigned int i;
-+	u32 arg;
-+
-+	for (i = 0; i < num_configs; i++) {
-+		arg = pinconf_to_config_argument(configs[i]);
-+
-+		switch (pinconf_to_config_param(configs[i])) {
-+		case PIN_CONFIG_BIAS_DISABLE:
-+			val &= ~(SF19A2890_PC_PU | SF19A2890_PC_PD);
-+			break;
-+		case PIN_CONFIG_BIAS_PULL_UP:
-+			val &= ~SF19A2890_PC_PD;
-+			val |= SF19A2890_PC_PU;
-+			break;
-+		case PIN_CONFIG_BIAS_PULL_DOWN:
-+			val &= ~SF19A2890_PC_PU;
-+			val |= SF19A2890_PC_PD;
-+			break;
-+		case PIN_CONFIG_INPUT_ENABLE:
-+			if (arg)
-+				val |= SF19A2890_PC_IE;
-+			else
-+				val &= ~SF19A2890_PC_IE;
-+			break;
-+		case PIN_CONFIG_INPUT_SCHMITT_ENABLE:
-+			if (arg)
-+				val |= SF19A2890_PC_ST;
-+			else
-+				val &= ~SF19A2890_PC_ST;
-+			break;
-+		case PIN_CONFIG_DRIVE_STRENGTH:
-+			if (arg < SF19A2890_DRIVE_MIN_MA)
-+				return -EINVAL;
-+			arg -= SF19A2890_DRIVE_MIN_MA;
-+			if (arg % SF19A2890_DRIVE_STEP_MA)
-+				return -EINVAL;
-+			arg /= SF19A2890_DRIVE_STEP_MA;
-+			if (arg > FIELD_MAX(SF19A2890_PC_DS))
-+				return -EINVAL;
-+			val &= ~SF19A2890_PC_DS;
-+			val |= FIELD_PREP(SF19A2890_PC_DS, arg);
-+			break;
-+		default:
-+			return -ENOTSUPP;
-+		}
-+	}
-+
-+	sf19a2890_pinctrl_write(pc, SF19A2890_PC(pin), val);
-+
-+	return 0;
-+}
-+
-+static const struct pinconf_ops sf19a2890_pinconf_ops = {
-+	.is_generic = true,
-+	.pin_config_get = sf19a2890_pinconf_get,
-+	.pin_config_set = sf19a2890_pinconf_set,
-+};
-+
-+static const struct pinctrl_desc sf19a2890_pinctrl_desc = {
-+	.name = "sf19a2890-pinctrl",
-+	.pins = sf19a2890_pins,
-+	.npins = ARRAY_SIZE(sf19a2890_pins),
-+	.pctlops = &sf19a2890_pctl_ops,
-+	.pmxops = &sf19a2890_pmx_ops,
-+	.confops = &sf19a2890_pinconf_ops,
-+	.owner = THIS_MODULE,
-+};
-+
-+static int sf19a2890_pinctrl_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	struct sf19a2890_pinctrl *pc;
-+
-+	pc = devm_kzalloc(dev, sizeof(*pc), GFP_KERNEL);
-+	if (!pc)
-+		return -ENOMEM;
-+
-+	pc->dev = dev;
-+
-+	pc->base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(pc->base))
-+		return PTR_ERR(pc->base);
-+
-+	pc->pctl = devm_pinctrl_register(dev, &sf19a2890_pinctrl_desc, pc);
-+	if (IS_ERR(pc->pctl))
-+		return dev_err_probe(dev, PTR_ERR(pc->pctl),
-+				     "failed to register pinctrl\n");
-+
-+	return 0;
-+}
-+
-+static const struct of_device_id sf19a2890_pinctrl_match[] = {
-+	{ .compatible = "siflower,sf19a2890-pinctrl" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, sf19a2890_pinctrl_match);
-+
-+static struct platform_driver sf19a2890_pinctrl_driver = {
-+	.probe = sf19a2890_pinctrl_probe,
-+	.driver = {
-+		.name = "sf19a2890-pinctrl",
-+		.of_match_table = sf19a2890_pinctrl_match,
-+		.suppress_bind_attrs = true,
-+	},
-+};
-+module_platform_driver(sf19a2890_pinctrl_driver);
-+
-+MODULE_DESCRIPTION("Siflower SF19A2890 pin controller driver");
-+MODULE_LICENSE("GPL");
+ 	/* release irq  */
+ 	if (mgr->irq >= 0)
 
--- 
-Git-155)
+
 
