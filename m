@@ -1,189 +1,83 @@
-From: "Louis H. Poulin II" <poulin.louis@student.oaklandcc.edu>
-Date: Tue, 24 Nov 2026 11:43:52 -0500
-Subject: [PATCH v2 2/2] kunit: tool: Fail on out-of-sequence test numbers
+From: Umer Uddin <umer.uddin@mentallysanemainliners.org>
+Subject: [PATCH v2 0/2] Add USB support for Exynos7885 and enable USB and
+ FG on gta3xllte
+Date: Tue, 24 Nov 2026 17:14:31 +0000
+Message-Id: <20261124-gta3xllte-usb-battery-v2-0-80bdcb1753bb@mentallysanemainliners.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-kunit-v2-v2-2-e1adbcad6b48@student.oaklandcc.edu>
-References: <20261124-kunit-v2-v2-0-e1adbcad6b48@student.oaklandcc.edu>
-In-Reply-To: <20261124-kunit-v2-v2-0-e1adbcad6b48@student.oaklandcc.edu>
-To: Brendan Higgins <brendan.higgins@linux.dev>, 
- David Gow <david@davidgow.net>
-Cc: Rae Moar <raemoar63@gmail.com>, linux-kselftest@vger.kernel.org, 
- kunit-dev@googlegroups.com, linux-kernel@vger.kernel.org, 
- "Louis H. Poulin II" <poulin.louis@student.oaklandcc.edu>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795538631; l=7561;
- i=poulin.louis@student.oaklandcc.edu; s=20261123; h=from:subject:message-id;
- bh=9gIm8lwEHUBfPgQsOux5N4mfKiU+6pcgKwtui91p1t4=;
- b=f4nQNOjB4AHdvJL1btW6LZtQfAeiO1Vg0vrOlewhReNYB94rc1wHXYHf9SKuDY3j/MMWwxD6k
- 5wmnTQeIjl1DuIN03PB/4/dKhhO0FEhY+a0tBjltfV/jRgYc0OI9Hmv
-X-Developer-Key: i=poulin.louis@student.oaklandcc.edu; a=ed25519;
- pk=LwBiuOLz0gqWTufz54rXgw2coado8UrJcWQ13DbYfxw=
-X-Endpoint-Received: by B4 Relay for poulin.louis@student.oaklandcc.edu/20261123 with auth_id=1616
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0K6toYWi+DKexgWLQwwprSmUwiEc
+ HcBD+DyJe+/vzKCgEDskawswISE3u0gLwmre+064NjszGQqcyFEybuos9naCHwkw42OEcLCTan
+ g1hSlhkKxffsJ0OJ8dl/Vj2k0b6jjETuMHin6sJzHkzi8fx+T4ClP61a19zxTUsJzABe1tQtpB
+ 4NGZ9FBoKsPHau2bfsCNwuHCd0AAAA=
+X-Change-ID: 20261119-gta3xllte-usb-battery-b95e4d89ae85
+To: Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Marek Szyprowski <m.szyprowski@samsung.com>, 
+ Sylwester Nawrocki <s.nawrocki@samsung.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-phy@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-samsung-soc@vger.kernel.org, Henri Ommer <henri@ommer.net>, 
+ David Virag <virag.david003@gmail.com>, 
+ Umer Uddin <umer.uddin@mentallysanemainliners.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795540475; l=1538;
+ i=umer.uddin@mentallysanemainliners.org; s=20261109;
+ h=from:subject:message-id; bh=DAbTxT7juIbYgrW7oPFGFfAP35r9haHx3DRvlkx81nY=;
+ b=5u5JzQXguPwZgd20NoD1oFChHbxoRiu8ukXHEVrS9kIdvqu3ceo4WL4ihus8l0GK8Uc/SkrDQ
+ o2xb7qia5wvAcwqSWIcAXQ1QOgsXH5xF0wwxoGCf+oR6A9REvB8sfqJ
+X-Developer-Key: i=umer.uddin@mentallysanemainliners.org; a=ed25519;
+ pk=Hsgrt4A72CFTe27AI1AAWlnLsiQrlb4+T+cbrfWDhUA=
+X-Endpoint-Received: by B4 Relay for umer.uddin@mentallysanemainliners.org/20261109 with auth_id=1466
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-KTAP requires numbering to start at 1 and increase by one at each
-nesting level. The parser notes a mismatch as an error but can still
-mark an ok or skipped result as successful. A saved log with duplicate
-numbers can make kunit.py parse exit 0.
+Hi guys, this patch series enables USB and FG on gta3xllte. All is tested.
 
-After decoding ok or SKIP, mark a wrongly numbered result as FAILURE.
-The result record is malformed even if the test assertion printed ok.
-It then contributes to both failed and error counts. This avoids a
-broader policy of failing on every parse error, which would also
-change late-plan handling. The preceding patch preserves this failure
-when a parent suite has only skipped children.
+DT changes were tested with make dtbs_check W=1, and the dt styling check
+scripts with --mode strict flags, both of which returned no warnings.
 
-This change covers numbering mismatches only. A missing numbered line
-can flag subsequent results whose numbers differ from their expected
-positions. Other malformed or truncated logs retain their existing
-status policy.
+Please note this patch now depends on David Virag's changes for USB[1].
 
-Commit 14e594a1fc8b ("kunit: tool: fix count of tests if late test
-plan") deliberately kept a parsed pass despite missing results after
-a late plan. Its fixture also had an unrelated ok 4 result. Number
-that result as ok 1 to keep the plan test focused, and cover a wrong
-first number separately. Add duplicate, SKIP, nested-suite, missing
-number and CLI exit-code tests.
+Best regards,
+Umer
 
-Signed-off-by: Louis H. Poulin II <poulin.louis@student.oaklandcc.edu>
+[1] https://lore.kernel.org/linux-samsung-soc/20261123092244.1792040-1-virag.david003@gmail.com/T/#t
+
+Signed-off-by: Umer Uddin <umer.uddin@mentallysanemainliners.org>
 ---
- tools/testing/kunit/kunit_parser.py    | 11 ++---
- tools/testing/kunit/kunit_tool_test.py | 79 ++++++++++++++++++++++++++++++++--
- 2 files changed, 82 insertions(+), 8 deletions(-)
+Changes in v2:
+- Drop patches that are being picked up updated and corrected by David
+- Link to v1: https://patch.msgid.link/20261119-gta3xllte-usb-battery-v1-0-0cf5f763522e@mentallysanemainliners.org
 
-diff --git a/tools/testing/kunit/kunit_parser.py b/tools/testing/kunit/kunit_parser.py
-index dce365d1..38547312 100644
---- a/tools/testing/kunit/kunit_parser.py
-+++ b/tools/testing/kunit/kunit_parser.py
-@@ -423,11 +423,6 @@ def parse_test_result(lines: LineStream, test: Test,
- 	else:
- 		test.name = match.group(4)
- 
--	# Check test num
--	num = int(match.group(2))
--	if num != expected_num:
--		test.add_error(printer, f'Expected test number {expected_num} but found {num}')
--
- 	# Set status of test object
- 	status = match.group(1)
- 	if skip_match:
-@@ -437,6 +432,12 @@ def parse_test_result(lines: LineStream, test: Test,
- 		test.status = TestStatus.SUCCESS
- 	else:
- 		test.status = TestStatus.FAILURE
-+
-+	# A malformed result must not make the run successful.
-+	num = int(match.group(2))
-+	if num != expected_num:
-+		test.add_error(printer, f'Expected test number {expected_num} but found {num}')
-+		test.status = TestStatus.FAILURE
- 	return True
- 
- def parse_diagnostic(lines: LineStream) -> List[str]:
-diff --git a/tools/testing/kunit/kunit_tool_test.py b/tools/testing/kunit/kunit_tool_test.py
-index 5fd386d0..6a3011de 100755
---- a/tools/testing/kunit/kunit_tool_test.py
-+++ b/tools/testing/kunit/kunit_tool_test.py
-@@ -410,13 +410,78 @@ class KUnitParserTest(unittest.TestCase):
- 	def test_parse_late_test_plan(self):
- 		output = """
- 		TAP version 13
--		ok 4 test4
-+		ok 1 test1
- 		1..4
- 		"""
- 		result = kunit_parser.parse_run_tests(output.splitlines(), stdout)
--		# Missing test results after test plan should alert a suspected test crash.
-+		# Keep this test focused on a late plan, not result numbering.
- 		self.assertEqual(kunit_parser.TestStatus.SUCCESS, result.status)
--		self.assertEqual(result.counts, kunit_parser.TestCounts(passed=1, errors=2))
-+		self.assertEqual(result.counts, kunit_parser.TestCounts(passed=1, errors=1))
-+
-+	def test_wrong_first_number_fails(self):
-+		output = ['KTAP version 1', '1..1', 'ok 4 - fourth']
-+		result = kunit_parser.parse_run_tests(output, stdout)
-+		self.assertEqual(kunit_parser.TestStatus.FAILURE, result.status)
-+		self.assertEqual(result.counts, kunit_parser.TestCounts(failed=1, errors=1))
-+
-+	def test_repeated_test_number_fails(self):
-+		output = ['KTAP version 1', '1..2', 'ok 1 - first', 'ok 1 - second']
-+		result = kunit_parser.parse_run_tests(output, stdout)
-+		self.assertEqual(kunit_parser.TestStatus.FAILURE, result.status)
-+		self.assertEqual(result.counts,
-+			kunit_parser.TestCounts(passed=1, failed=1, errors=1))
-+
-+	def test_missing_number_fails_later_results(self):
-+		output = ['KTAP version 1', '1..3',
-+			'ok 1 - first', 'ok 3 - third', 'ok 4 - fourth']
-+		result = kunit_parser.parse_run_tests(output, stdout)
-+		self.assertEqual(kunit_parser.TestStatus.FAILURE, result.status)
-+		self.assertEqual(result.counts,
-+			kunit_parser.TestCounts(passed=1, failed=2, errors=2))
-+
-+	def test_wrong_numbered_skip_fails(self):
-+		output = ['KTAP version 1', '1..1', 'ok 2 - skipped # SKIP reason']
-+		result = kunit_parser.parse_run_tests(output, stdout)
-+		self.assertEqual(kunit_parser.TestStatus.FAILURE, result.status)
-+		self.assertEqual(result.counts, kunit_parser.TestCounts(failed=1, errors=1))
-+
-+	def test_wrong_numbered_suite_result_fails(self):
-+		output = ['KTAP version 1', '1..1',
-+			'    KTAP version 1', '    # Subtest: suite', '    1..1',
-+			'    ok 1 - case', 'ok 2 - suite']
-+		result = kunit_parser.parse_run_tests(output, stdout)
-+		suite = result.subtests[0]
-+		self.assertEqual(kunit_parser.TestStatus.SUCCESS, suite.subtests[0].status)
-+		self.assertEqual(kunit_parser.TestStatus.FAILURE, suite.status)
-+		self.assertEqual(suite.counts,
-+			kunit_parser.TestCounts(passed=1, failed=1, errors=1))
-+		self.assertEqual(kunit_parser.TestStatus.FAILURE, result.status)
-+		self.assertEqual(result.counts, suite.counts)
-+
-+	def test_wrong_numbered_nested_case_fails(self):
-+		output = ['KTAP version 1', '1..1',
-+			'    KTAP version 1', '    # Subtest: suite', '    1..1',
-+			'    ok 2 - case', 'ok 1 - suite']
-+		result = kunit_parser.parse_run_tests(output, stdout)
-+		suite = result.subtests[0]
-+		self.assertEqual(kunit_parser.TestStatus.FAILURE, suite.subtests[0].status)
-+		self.assertEqual(suite.counts,
-+			kunit_parser.TestCounts(failed=1, errors=1))
-+		self.assertEqual(kunit_parser.TestStatus.FAILURE, result.status)
-+		self.assertEqual(result.counts, suite.counts)
-+
-+	def test_wrong_numbered_suite_with_skipped_child_fails(self):
-+		output = ['KTAP version 1', '1..1',
-+			'    KTAP version 1', '    # Subtest: suite', '    1..1',
-+			'    ok 1 - case # SKIP reason', 'ok 2 - suite']
-+		result = kunit_parser.parse_run_tests(output, stdout)
-+		suite = result.subtests[0]
-+		self.assertEqual(kunit_parser.TestStatus.SKIPPED, suite.subtests[0].status)
-+		self.assertEqual(kunit_parser.TestStatus.FAILURE, suite.status)
-+		self.assertEqual(suite.counts,
-+			kunit_parser.TestCounts(failed=1, skipped=1, errors=1))
-+		self.assertEqual(kunit_parser.TestStatus.FAILURE, result.status)
-+		self.assertEqual(result.counts, suite.counts)
- 
- def line_stream_from_strs(strs: Iterable[str]) -> kunit_parser.LineStream:
- 	return kunit_parser.LineStream(enumerate(strs, start=1))
-@@ -797,6 +862,14 @@ class KUnitMainTest(unittest.TestCase):
- 		self.assertEqual(self.linux_source_mock.run_kernel.call_count, 1)
- 		self.print_mock.assert_any_call(StrContains('Could not find any KTAP output.'))
- 
-+	def test_parse_duplicate_number_exits_failure(self):
-+		with tempfile.NamedTemporaryFile(mode='w+', delete=True) as log:
-+			log.write('KTAP version 1\n1..2\nok 1 - first\nok 1 - second\n')
-+			log.flush()
-+			with self.assertRaises(SystemExit) as result:
-+				kunit.main(['parse', log.name])
-+		self.assertEqual(result.exception.code, 1)
-+
- 	def test_exec_no_tests(self):
- 		self.linux_source_mock.run_kernel = mock.Mock(return_value=['TAP version 14', '1..0'])
- 		with self.assertRaises(SystemExit) as e:
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Peter Griffin <peter.griffin@linaro.org>
+To: Alim Akhtar <alim.akhtar@samsung.com>
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-samsung-soc@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
--- 
-2.56.1
+---
+Umer Uddin (2):
+      arm64: dts: exynos: exynos7885-gta3xllte: Enable USB support
+      arm64: dts: exynos: exynos7885-gta3xllte: Enable FuelGauge support
+
+ .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 50 ++++++++++++++++++++++
+ 1 file changed, 50 insertions(+)
+---
+base-commit: 9b369f9debe1253032abb90a9469fe44146835d1
+change-id: 20261119-gta3xllte-usb-battery-b95e4d89ae85
+
+Best regards,
+--  
+Umer Uddin <umer.uddin@mentallysanemainliners.org>
 
