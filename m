@@ -1,125 +1,172 @@
-From: Sergei Khomenkov <shomenkow@gmail.com>
-Date: Tue, 24 Nov 2026 16:40:19 +0300
-Subject: [PATCH v3 3/3] media: verisilicon: leave room for the JPEG header
- and one stream burst
+From: Sai Sree Kartheek Adivi <s-adivi@ti.com>
+Date: Tue, 24 Nov 2026 19:30:48 +0530
+Subject: [PATCH] arm64: dts: ti: k3-am625-sk-common: Add TPIC2810 LED
+ expander support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-hantro-buflimit-v3-3-780903970ca0@gmail.com>
-References: <20261124-hantro-buflimit-v3-0-780903970ca0@gmail.com>
-In-Reply-To: <20261124-hantro-buflimit-v3-0-780903970ca0@gmail.com>
-To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Hans Verkuil <hverkuil@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
- Chen-Yu Tsai <wenst@chromium.org>, 
- Hugues Fruchet <hugues.fruchet@foss.st.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, 
- linux-stm32@st-md-mailman.stormreply.com, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Sergei Khomenkov <shomenkow@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795527620; l=4102;
- i=shomenkow@gmail.com; s=20261104; h=from:subject:message-id;
- bh=TiSzcOqC25j0e7itf9kkOEO+cKiYOn5aUH2hDB8nhgU=;
- b=jW5fYvcKbkWssPYObNaxhqM72zSZMbb7b9O5FS5MeHiXeZaCt+uToeE5hT7tZlwAb6E5w6MmS
- /2PZNFVgMCDCCXe4zrVtiIAfl6r4rv5Z1iSXTCBy4U2fQf7khO2rOPZ
-X-Developer-Key: i=shomenkow@gmail.com; a=ed25519;
- pk=FwuHDVe7aiISDMLmQEcMC+RflEIJ6kEp/ekwznWXmI8=
-X-Endpoint-Received: by B4 Relay for shomenkow@gmail.com/20261104 with auth_id=1409
+Message-Id: <20261124-am62x-tpic2810-v1-1-2b9fcb76a3c3@ti.com>
+X-B4-Tracking: v=1; b=H4sIAI+YBWsC/x3MQQqAIBBA0avErBNyKJGuEi1Gm2oWWWiEIN09a
+ fkW/xdIHIUTjE2ByI8kOUOFbhvwO4WNlSzVgB0arbFXdBjM6r7Eo9WdGsg6dotxZA3U6Iq8Sv6
+ H0/y+HwQaJ2BgAAAA
+X-Change-ID: 20261124-am62x-tpic2810-5a8bebd6ba86
+To: Nishanth Menon <nm@ti.com>, Vignesh Raghavendra <vigneshr@ti.com>, 
+ Tero Kristo <kristo@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sebin Francis <sebin.francis@ti.com>, 
+ Sai Sree Kartheek Adivi <s-adivi@ti.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795528855; l=3619;
+ i=s-adivi@ti.com; s=20261124; h=from:subject:message-id;
+ bh=/kJ/e4Uy/UPyHeMJ7jIEfjC0cSg4x5LGcObEFevGZNY=;
+ b=x5aVq+vkKXct/6HmiNcrxjs/5fzPvK2EOk+DZo8nFvXPs7JJ/RuAYk/0Iwy/C5sEYPgxl4Zgs
+ 6CFUCTX+ilgAyO5ophtdXnr7bJF+E4SVU7I0B3PVNpTRNYoku0M5nfE
+X-Developer-Key: i=s-adivi@ti.com; a=ed25519;
+ pk=EtOwVxmXDuYMgw3DqFtPDBpf8ZvbO89w1fJm4w5yPI8=
+X-Endpoint-Received: by B4 Relay for s-adivi@ti.com/20261124 with auth_id=1627
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hantro_try_fmt() keeps any non-zero CAPTURE sizeimage of the JPEG
-encoder, however small. The CPU writes the 624-byte header into the
-plane, and on the RK3026 the H1 then writes at least one 64-byte burst
-even with a stream limit of 0, so a smaller plane is written past its
-end. A plane smaller than the header also makes the WARN_ON() in
-hantro_h1_jpeg_enc_set_buffers() fire on every job.
+The AM625 SK and AM62x SIP SK EVMs both have a TPIC2810 I2C GPIO
+expander at address 0x60 on WKUP_I2C0, driving 8 user LEDs. Describe it
+in the shared k3-am625-sk-common.dtsi, mirroring the AM642 SK support:
 
-Add a minimum plane size to struct hantro_fmt, set it to header_size +
-64 in the JPEG encoder formats of the Rockchip and STM32MP25 variants,
-and raise a smaller coded sizeimage to it in hantro_try_fmt().
+- add the WKUP_I2C0 pinmux
+- enable wkup_i2c0 with the TPIC2810 node
+- add a gpio-leds node for the 8 outputs
 
-Fixes: 775fec69008d ("media: add Rockchip VPU JPEG encoder driver")
-Cc: stable@vger.kernel.org
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Sergei Khomenkov <shomenkow@gmail.com>
+CONFIG_GPIO_TPIC2810 is already enabled in the arm64 defconfig.
+
+Signed-off-by: Sai Sree Kartheek Adivi <s-adivi@ti.com>
 ---
-Found with an LLM coding assistant while porting mainline Linux to a
-Rockchip RK3026 board; the assistant also drafted this change. Tested
-on that board: a sizeimage of 1 or 600 now reads back 688, and frames
-that do not fit a 688-byte plane stop exactly at its end. Not tested on
-other SoCs.
----
- drivers/media/platform/verisilicon/hantro.h           | 2 ++
- drivers/media/platform/verisilicon/hantro_v4l2.c      | 3 +++
- drivers/media/platform/verisilicon/rockchip_vpu_hw.c  | 1 +
- drivers/media/platform/verisilicon/stm32mp25_vpu_hw.c | 1 +
- 4 files changed, 7 insertions(+)
+ arch/arm64/boot/dts/ti/k3-am625-sk-common.dtsi | 93 ++++++++++++++++++++++++++
+ 1 file changed, 93 insertions(+)
 
-diff --git a/drivers/media/platform/verisilicon/hantro.h b/drivers/media/platform/verisilicon/hantro.h
-index 0353de154a1e..f51beae79f1f 100644
---- a/drivers/media/platform/verisilicon/hantro.h
-+++ b/drivers/media/platform/verisilicon/hantro.h
-@@ -286,6 +286,7 @@ struct hantro_ctx {
-  * @codec_mode:	Codec mode related to this format. See
-  *		enum hantro_codec_mode.
-  * @header_size: Optional header size. Currently used by JPEG encoder.
-+ * @min_size:	Optional minimum sizeimage, for bitstream formats.
-  * @max_depth:	Maximum depth, for bitstream formats
-  * @enc_fmt:	Format identifier for encoder registers.
-  * @frmsize:	Supported range of frame sizes (only for bitstream formats).
-@@ -297,6 +298,7 @@ struct hantro_fmt {
- 	u32 fourcc;
- 	enum hantro_codec_mode codec_mode;
- 	int header_size;
-+	u32 min_size;
- 	int max_depth;
- 	enum hantro_enc_fmt enc_fmt;
- 	struct v4l2_frmsize_stepwise frmsize;
-diff --git a/drivers/media/platform/verisilicon/hantro_v4l2.c b/drivers/media/platform/verisilicon/hantro_v4l2.c
-index 83af9fa1ce94..b3dbc0629d25 100644
---- a/drivers/media/platform/verisilicon/hantro_v4l2.c
-+++ b/drivers/media/platform/verisilicon/hantro_v4l2.c
-@@ -394,6 +394,9 @@ static int hantro_try_fmt(const struct hantro_ctx *ctx,
- 		 */
- 		pix_mp->plane_fmt[0].sizeimage = fmt->header_size +
- 			pix_mp->width * pix_mp->height * fmt->max_depth;
-+	} else {
-+		pix_mp->plane_fmt[0].sizeimage =
-+			max(pix_mp->plane_fmt[0].sizeimage, fmt->min_size);
- 	}
+diff --git a/arch/arm64/boot/dts/ti/k3-am625-sk-common.dtsi b/arch/arm64/boot/dts/ti/k3-am625-sk-common.dtsi
+index 8e07d2c2e62fd..7d5b16568aa9c 100644
+--- a/arch/arm64/boot/dts/ti/k3-am625-sk-common.dtsi
++++ b/arch/arm64/boot/dts/ti/k3-am625-sk-common.dtsi
+@@ -91,6 +91,74 @@ vcc_1v8: regulator-5 {
+ 		regulator-always-on;
+ 		regulator-boot-on;
+ 	};
++
++	led-controller {
++		compatible = "gpio-leds";
++
++		led-0 {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <1>;
++			gpios = <&exp2 0 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-1 {
++			color = <LED_COLOR_ID_RED>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <2>;
++			gpios = <&exp2 1 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-2 {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <3>;
++			gpios = <&exp2 2 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-3 {
++			color = <LED_COLOR_ID_AMBER>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <4>;
++			gpios = <&exp2 3 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-4 {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <5>;
++			gpios = <&exp2 4 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-5 {
++			color = <LED_COLOR_ID_RED>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <6>;
++			gpios = <&exp2 5 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-6 {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <7>;
++			gpios = <&exp2 6 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-7 {
++			color = <LED_COLOR_ID_AMBER>;
++			function = LED_FUNCTION_HEARTBEAT;
++			function-enumerator = <8>;
++			linux,default-trigger = "heartbeat";
++			gpios = <&exp2 7 GPIO_ACTIVE_HIGH>;
++		};
++	};
+ };
  
- 	return 0;
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-index d201b058e5e8..ab5abe2c78ad 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-@@ -50,6 +50,7 @@ static const struct hantro_fmt rockchip_vpu_enc_fmts[] = {
- 		.codec_mode = HANTRO_MODE_JPEG_ENC,
- 		.max_depth = 2,
- 		.header_size = JPEG_HEADER_SIZE,
-+		.min_size = JPEG_HEADER_SIZE + 64,	/* header + one burst */
- 		.frmsize = {
- 			.min_width = 96,
- 			.max_width = 8192,
-diff --git a/drivers/media/platform/verisilicon/stm32mp25_vpu_hw.c b/drivers/media/platform/verisilicon/stm32mp25_vpu_hw.c
-index 833821120b20..3f337554e936 100644
---- a/drivers/media/platform/verisilicon/stm32mp25_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/stm32mp25_vpu_hw.c
-@@ -83,6 +83,7 @@ static const struct hantro_fmt stm32mp25_venc_fmts[] = {
- 		.codec_mode = HANTRO_MODE_JPEG_ENC,
- 		.max_depth = 2,
- 		.header_size = JPEG_HEADER_SIZE,
-+		.min_size = JPEG_HEADER_SIZE + 64,	/* header + one burst */
- 		.frmsize = {
- 			.min_width = 96,
- 			.max_width = FMT_4K_WIDTH,
+ &main_pmx0 {
+@@ -160,6 +228,15 @@ AM62X_IOPAD(0x01d4, PIN_INPUT, 7) /* (B15) UART0_RTSn.GPIO1_23 */
+ 	};
+ };
+ 
++&mcu_pmx0 {
++	tpic_pins_default: tpic-default-pins {
++		pinctrl-single,pins = <
++			AM62X_MCU_IOPAD(0x004c, PIN_INPUT, 0) /* (B9) WKUP_I2C0_SCL */
++			AM62X_MCU_IOPAD(0x0050, PIN_INPUT, 0) /* (A9) WKUP_I2C0_SDA */
++		>;
++	};
++};
++
+ &main_gpio0 {
+ 	bootph-all;
+ };
+@@ -196,6 +273,22 @@ exp1: gpio@22 {
+ 	};
+ };
+ 
++&wkup_i2c0 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&tpic_pins_default>;
++	clock-frequency = <400000>;
++
++	exp2: gpio@60 {
++		compatible = "ti,tpic2810";
++		reg = <0x60>;
++		gpio-controller;
++		#gpio-cells = <2>;
++		gpio-line-names = "LED0", "LED1", "LED2", "LED3",
++				   "LED4", "LED5", "LED6", "LED7";
++	};
++};
++
+ &sdhci0 {
+ 	bootph-all;
+ 	non-removable;
 
--- 
-2.53.0
+---
+base-commit: 566085204d669ed4bd0d8d230b10f94f963e2481
+change-id: 20261124-am62x-tpic2810-5a8bebd6ba86
+
+Best regards,
+--  
+Sai Sree Kartheek Adivi <s-adivi@ti.com>
 
