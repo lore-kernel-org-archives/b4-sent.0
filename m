@@ -1,16 +1,12 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Subject: [PATCH v4 0/3] drm/print,dyndbg: __drm_debug __read_mostly,
- restore it to uint, printer fix
-Date: Tue, 24 Nov 2026 16:38:32 -0700
-Message-Id: <20261124-rd-mostly-v4-0-26d60beb6666@gmail.com>
+Date: Tue, 24 Nov 2026 16:38:33 -0700
+Subject: [PATCH v4 1/3] drm/print: Mark __drm_debug as __read_mostly
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/13MTQqDMBBA4auEWZuSjBp/Vr1H6UKTUQNqSiJSE
- e9eFFpCtw++t0MgbylAzXbwtNpg3Qw1yxIGemjmnrg1UDNAgUpUmHNv+OTCMm5cNdhpoY3qjIK
- EwctTZ9/X6/FMGAw2LM5v13qVZ/1eVHRZJRccy7YwhczIoL73U2PHm3YTnJcVf1JKFLFELnhZi
- lyRIYFN+S/TWMpYpqesqMhaTNuskrE8juMDuxeYdBYBAAA=
-X-Change-ID: 20260925-rd-mostly-6a2fc0cd6fd6
+Message-Id: <20261124-rd-mostly-v4-1-26d60beb6666@gmail.com>
+References: <20261124-rd-mostly-v4-0-26d60beb6666@gmail.com>
+In-Reply-To: <20261124-rd-mostly-v4-0-26d60beb6666@gmail.com>
 To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
  Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
  David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
@@ -21,79 +17,48 @@ To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795563513; l=2697;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795563513; l=1190;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=4UCbxxrKinpPTMCGiCL0XLcwvtLOOSiukBA+RJshUyc=;
- b=DxACAMOt+FgpZsUaHjYbUUKrmcIuwfXHdGJ8q/3WSUID/afBNTT5Gs5s45BY7C8VVCtGf9Z/B
- xLZXUirlnvbBXeu+MbnM3a6A/Ycqz7qZd8h76Fn4SVrzjJMtrq8Y598
+ bh=0kwXpdVLXiB5IO7ltNhfDof5ySe4FrwdEVRL0SZIEB8=;
+ b=ul6W9MBN64ibnfJ1t5pYRmaNb1F+Hfvp1o7FmaC3hv9ACtMb1yyUs5cOGUlWmTokyfZXA7HJT
+ XyZa4ezFnOSDk0/oaBz0hjYC6x0G1o5THepmYG3klPWLsie3HkL0cbt
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series improves __drm_debug placement/sizing and fixes a
-drm_dbg_printer() bypass exposed when CONFIG_DRM_USE_DYNAMIC_DEBUG=y:
+Under a multi-client workload of 12 concurrent vkcubes on AMD iGPU,
+__drm_debug is read at ~83.3 kHz across multiple cores during atomic
+and vblank checks.
 
-1. Mark __drm_debug as __read_mostly to move it out of the cacheline
-   it currently shares with frequently written locks and structures. In
-   a 12-vkcube test, its read rate is ~83 kHz.
+But __drm_debug is written only when userspace does:
+  echo 0xff > /sys/module/drm/parameters/debug
 
-2. Shrink __drm_debug and struct ddebug_class_param.bits from unsigned
-   long back to (original) unsigned int, updating lib/dynamic_debug.c
-   and lib/test_dynamic_debug.c callers accordingly.
+Currently the linker packs __drm_debug into .bss adjacent to hot
+structures: drm_lease_idr_object, drm_class, and drm_global_mutex,
+causing unnecessary cacheline invalidations.
 
-3. Fix __drm_printfn_dbg() use of __drm_debug_enabled(), which always
-   prints when CONFIG_DRM_USE_DYNAMIC_DEBUG=y, disregarding p->category.
-
-NOTES:
-
-drm and dyndbg are coupled on __drm_debug's size and type, so changing
-the size requires coordination between DRM and dyndbg. The coupling
-allows dyndbg to keep state in __drm_debug while letting drm use it in
-cases where static-key drm_*dbg() macros do not fit.
-
-Build-tested with BROKEN locally removed from DRM_USE_DYNAMIC_DEBUG to
-cover both Y/N cases. That un-BROKEN patch is intentionally excluded
-here as drm.debug still needs classmap fixes patchset.
+Mark __drm_debug as __read_mostly to relocate it to .data..read_mostly.
 
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
-Changes in v4:
-- Replace unused-variable workaround with proper __drm_printfn_dbg()
-  fix (per Sashiko review).
-- Drop drivers/gpu/drm/Makefile and DONT_APPLY un-BROKEN patches from
-  this series (deferred to classmap-inheritance series).
-- Link to v3: https://lore.kernel.org/r/20261121-rd-mostly-v3-0-89e74b23b491@gmail.com
+ drivers/gpu/drm/drm_print.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Changes in v3:
-- dont need both ccflags-y and subdir-ccflags-y, latter covers former.
-- Link to v2: https://lore.kernel.org/r/20261120-rd-mostly-v2-0-88056ede02a8@gmail.com
+diff --git a/drivers/gpu/drm/drm_print.c b/drivers/gpu/drm/drm_print.c
+index 86cef1a37678..50cdeb1b15e2 100644
+--- a/drivers/gpu/drm/drm_print.c
++++ b/drivers/gpu/drm/drm_print.c
+@@ -40,7 +40,7 @@
+  * __drm_debug: Enable debug output.
+  * Bitmask of DRM_UT_x. See include/drm/drm_print.h for details.
+  */
+-unsigned long __drm_debug;
++unsigned long __drm_debug __read_mostly;
+ EXPORT_SYMBOL(__drm_debug);
+ 
+ MODULE_PARM_DESC(debug, "Enable debug output, where each bit enables a debug category.\n"
 
-Changes in v2:
-- Add subdir-ccflags- propagation in drivers/gpu/drm/Makefile (patch 2).
-- Add unused `category` warning fix under CONFIG_DRM_USE_DYNAMIC_DEBUG=y
-  (patch 3).
-- Add __drm_debug and ddebug_class_param.bits shrink to unsigned int
-  (patch 4).
-- Link to v1: https://lore.kernel.org/r/20260926-rd-mostly-v1-0-28b7d714ed2c@gmail.com
-
----
-Jim Cromie (3):
-      drm/print: Mark __drm_debug as __read_mostly
-      drm/print,dyndbg: restore __drm_debug to uint from ulong
-      drm/print: fix drm_printer dynamic debug bit-test bypass
-
- drivers/gpu/drm/drm_print.c   | 7 +++----
- include/drm/drm_print.h       | 2 +-
- include/linux/dynamic_debug.h | 2 +-
- lib/dynamic_debug.c           | 8 +++++---
- lib/test_dynamic_debug.c      | 2 +-
- 5 files changed, 11 insertions(+), 10 deletions(-)
----
-base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
-change-id: 20260925-rd-mostly-6a2fc0cd6fd6
-
-Best regards,
 -- 
-Jim Cromie <jim.cromie@gmail.com>
+2.56.1
 
