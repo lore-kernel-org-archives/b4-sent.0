@@ -1,104 +1,190 @@
-From: Umer Uddin <umer.uddin@mentallysanemainliners.org>
-Date: Tue, 24 Nov 2026 17:14:33 +0000
-Subject: [PATCH v2 2/2] arm64: dts: exynos: exynos7885-gta3xllte: Enable
- FuelGauge support
+From: Sai Sree Kartheek Adivi <s-adivi@ti.com>
+Date: Tue, 24 Nov 2026 22:52:40 +0530
+Subject: [PATCH v2] arm64: dts: ti: k3-am625-sk-common: Add TPIC2810 LED
+ expander support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-gta3xllte-usb-battery-v2-2-80bdcb1753bb@mentallysanemainliners.org>
-References: <20261124-gta3xllte-usb-battery-v2-0-80bdcb1753bb@mentallysanemainliners.org>
-In-Reply-To: <20261124-gta3xllte-usb-battery-v2-0-80bdcb1753bb@mentallysanemainliners.org>
-To: Vinod Koul <vkoul@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
+Message-Id: <20261124-am62x-tpic2810-v2-1-91115ba8e2dd@ti.com>
+X-B4-Tracking: v=1; b=H4sIAN/HBWsC/3XMQQ7CIBCF4as0s3ZMmSqiK+9hugBK7SxaGiCkp
+ uHuYvcu/5e8b4foArsIj2aH4DJH9ksNOjVgJ728HfJQG6glKQRdUM+SNkwrW1KixatWxplBGq0
+ k1NMa3MjbAb762hPH5MPn8LP4rX+pLFAgmftozU3qznbPxGfrZ+hLKV8nbhlFqQAAAA==
+X-Change-ID: 20261124-am62x-tpic2810-5a8bebd6ba86
+To: Nishanth Menon <nm@ti.com>, Vignesh Raghavendra <vigneshr@ti.com>, 
+ Tero Kristo <kristo@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Marek Szyprowski <m.szyprowski@samsung.com>, 
- Sylwester Nawrocki <s.nawrocki@samsung.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>
-Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-phy@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-samsung-soc@vger.kernel.org, Henri Ommer <henri@ommer.net>, 
- David Virag <virag.david003@gmail.com>, 
- Umer Uddin <umer.uddin@mentallysanemainliners.org>
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sebin Francis <sebin.francis@ti.com>, 
+ Sai Sree Kartheek Adivi <s-adivi@ti.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795540475; l=1850;
- i=umer.uddin@mentallysanemainliners.org; s=20261109;
- h=from:subject:message-id; bh=8/qztykzuOZxhphrQU0aaqpVGh+Y9V0/eepwjkmIL64=;
- b=xxN/SEUrsf6G7DRd8I0L5w+daJviKds2Eahv+vUd/iz34IS2lEXrKVYDWEwVRAzpwya3rwvqS
- Cbv1s6dlKyhC8AzPDFguGL+FpCdY6gsbVNFnBdPLpThnm5NJygo6SSe
-X-Developer-Key: i=umer.uddin@mentallysanemainliners.org; a=ed25519;
- pk=Hsgrt4A72CFTe27AI1AAWlnLsiQrlb4+T+cbrfWDhUA=
-X-Endpoint-Received: by B4 Relay for umer.uddin@mentallysanemainliners.org/20261109 with auth_id=1466
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795540969; l=4368;
+ i=s-adivi@ti.com; s=20261124; h=from:subject:message-id;
+ bh=ehVtq9ntD1a3UcuBE08CQeJf9PzsTkL2oMpSs6MAAtc=;
+ b=tBbLfdDuHaobWR9sYvDmPJd8Y0sruMmEsKnGSRj8AH65Ihz+nauwVaoUUMNTGZFUQQ9JIYtpa
+ tpTkypliMtoBqF47rJgMoM2WVdVm6nxrVC1vaP7NCsByHSaOXW5a29G
+X-Developer-Key: i=s-adivi@ti.com; a=ed25519;
+ pk=EtOwVxmXDuYMgw3DqFtPDBpf8ZvbO89w1fJm4w5yPI8=
+X-Endpoint-Received: by B4 Relay for s-adivi@ti.com/20261124 with auth_id=1627
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Samsung Galaxy Tab A 10.1 (2019) has a S2MU005 Multi Function Device
-(MFD). It contains PMIC, FG and EXTCON. This commit enables the FG, to be
-used with a simple battery device to allow for battery percentages to be
-reported.
+The AM625 SK and AM62x SIP SK EVMs both have a TPIC2810 I2C GPIO
+expander at address 0x60 on WKUP_I2C0, driving 8 user LEDs. Describe it
+in the shared k3-am625-sk-common.dtsi, mirroring the AM642 SK support:
 
-Signed-off-by: Umer Uddin <umer.uddin@mentallysanemainliners.org>
+- add the WKUP_I2C0 pinmux
+- enable wkup_i2c0 with the TPIC2810 node
+- add a gpio-leds node for the 8 outputs
+
+CONFIG_GPIO_TPIC2810 is already enabled in the arm64 defconfig.
+
+Signed-off-by: Sai Sree Kartheek Adivi <s-adivi@ti.com>
 ---
- .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 28 ++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+Changes in v2:
+- Fix dt-check-style warnings: move led-controller before opp-table,
+  reorder properties, fix alignment
+- Pinmux alignment/line-length warning left as is, to match the existing
+  style of the file
+- Link to v1: https://serenity.dal.design.ti.com/lore/linux-patch-review/20261124-am62x-tpic2810-v1-1-2b9fcb76a3c3@ti.com
 
-diff --git a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
-index 57df878cb563..1c0af6f89396 100644
---- a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
-+++ b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
-@@ -22,6 +22,13 @@ aliases {
- 		serial2 = &serial_2;
- 	};
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+To: Nishanth Menon <nm@ti.com>
+To: Vignesh Raghavendra <vigneshr@ti.com>
+To: Tero Kristo <kristo@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+---
+ arch/arm64/boot/dts/ti/k3-am625-sk-common.dtsi | 94 ++++++++++++++++++++++++++
+ 1 file changed, 94 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/ti/k3-am625-sk-common.dtsi b/arch/arm64/boot/dts/ti/k3-am625-sk-common.dtsi
+index 8e07d2c2e62fd..2d2b82b0de8ad 100644
+--- a/arch/arm64/boot/dts/ti/k3-am625-sk-common.dtsi
++++ b/arch/arm64/boot/dts/ti/k3-am625-sk-common.dtsi
+@@ -8,6 +8,74 @@
+ #include "k3-am62x-sk-common.dtsi"
  
-+	battery: battery {
-+		compatible = "simple-battery";
-+		charge-full-design-microamp-hours = <6000000>;
-+		voltage-min-design-microvolt = <3300000>;
-+		voltage-max-design-microvolt = <4350000>;
+ / {
++	led-controller {
++		compatible = "gpio-leds";
++
++		led-0 {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <1>;
++			gpios = <&exp2 0 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-1 {
++			color = <LED_COLOR_ID_RED>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <2>;
++			gpios = <&exp2 1 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-2 {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <3>;
++			gpios = <&exp2 2 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-3 {
++			color = <LED_COLOR_ID_AMBER>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <4>;
++			gpios = <&exp2 3 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-4 {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <5>;
++			gpios = <&exp2 4 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-5 {
++			color = <LED_COLOR_ID_RED>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <6>;
++			gpios = <&exp2 5 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-6 {
++			color = <LED_COLOR_ID_GREEN>;
++			function = LED_FUNCTION_INDICATOR;
++			function-enumerator = <7>;
++			gpios = <&exp2 6 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led-7 {
++			color = <LED_COLOR_ID_AMBER>;
++			function = LED_FUNCTION_HEARTBEAT;
++			function-enumerator = <8>;
++			gpios = <&exp2 7 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "heartbeat";
++		};
 +	};
 +
- 	chosen {
- 		ranges;
- 		#address-cells = <2>;
-@@ -86,6 +93,20 @@ cont_splash_mem: framebuffer@ec000000 {
+ 	opp-table {
+ 		/* Add 1.4GHz OPP for am625-sk board. Requires VDD_CORE to be at 0.85V */
+ 		opp-1400000000 {
+@@ -160,6 +228,15 @@ AM62X_IOPAD(0x01d4, PIN_INPUT, 7) /* (B15) UART0_RTSn.GPIO1_23 */
  	};
  };
  
-+&i2c_0 {
-+	status = "okay";
-+
-+	fuel-gauge@3b {
-+		compatible = "samsung,s2mu005-fuel-gauge";
-+		reg = <0x3b>;
-+		interrupt-parent = <&gpa2>;
-+		interrupts = <4 IRQ_TYPE_EDGE_BOTH>;
-+		pinctrl-0 = <&fuel_irq>;
-+		pinctrl-names = "default";
-+		monitored-battery = <&battery>;
++&mcu_pmx0 {
++	tpic_pins_default: tpic-default-pins {
++		pinctrl-single,pins = <
++			AM62X_MCU_IOPAD(0x004c, PIN_INPUT, 0) /* (B9) WKUP_I2C0_SCL */
++			AM62X_MCU_IOPAD(0x0050, PIN_INPUT, 0) /* (A9) WKUP_I2C0_SDA */
++		>;
 +	};
 +};
 +
- &mmc_0 {
- 	bus-width = <8>;
- 	cap-mmc-highspeed;
-@@ -112,6 +133,13 @@ &oscclk {
+ &main_gpio0 {
+ 	bootph-all;
+ };
+@@ -196,6 +273,23 @@ exp1: gpio@22 {
+ 	};
  };
  
- &pinctrl_alive {
-+	fuel_irq: fuel-irq-pins {
-+		samsung,pins = "gpa2-4";
-+		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
-+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
-+		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
-+	};
++&wkup_i2c0 {
++	clock-frequency = <400000>;
++	pinctrl-0 = <&tpic_pins_default>;
++	pinctrl-names = "default";
 +
- 	key_power: key-power-pins {
- 		samsung,pins = "gpa1-7";
- 		samsung,pin-function = <EXYNOS_PIN_FUNC_F>;
++	status = "okay";
++
++	exp2: gpio@60 {
++		compatible = "ti,tpic2810";
++		reg = <0x60>;
++		gpio-controller;
++		#gpio-cells = <2>;
++		gpio-line-names = "LED0", "LED1", "LED2", "LED3",
++				  "LED4", "LED5", "LED6", "LED7";
++	};
++};
++
+ &sdhci0 {
+ 	bootph-all;
+ 	non-removable;
 
--- 
-2.56.1
+---
+base-commit: 566085204d669ed4bd0d8d230b10f94f963e2481
+change-id: 20261124-am62x-tpic2810-5a8bebd6ba86
+
+Best regards,
+--  
+Sai Sree Kartheek Adivi <s-adivi@ti.com>
 
