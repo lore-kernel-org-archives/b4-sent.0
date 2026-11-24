@@ -1,11 +1,10 @@
 From: Sai Sree Kartheek Adivi <s-adivi@ti.com>
-Date: Tue, 24 Nov 2026 17:15:15 +0530
-Subject: [PATCH v13 13/20] drivers: soc: ti: k3-ringacc: handle absence of
- tisci
+Date: Tue, 24 Nov 2026 17:15:16 +0530
+Subject: [PATCH v13 14/20] dt-bindings: dma: ti: Add K3 BCDMA V2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-dma-upstream-v13-v13-13-bd4251fdc6d4@ti.com>
+Message-Id: <20261124-dma-upstream-v13-v13-14-bd4251fdc6d4@ti.com>
 References: <20261124-dma-upstream-v13-v13-0-bd4251fdc6d4@ti.com>
 In-Reply-To: <20261124-dma-upstream-v13-v13-0-bd4251fdc6d4@ti.com>
 To: Vignesh Raghavendra <vigneshr@ti.com>, Vinod Koul <vkoul@kernel.org>, 
@@ -15,375 +14,246 @@ To: Vignesh Raghavendra <vigneshr@ti.com>, Vinod Koul <vkoul@kernel.org>,
  Conor Dooley <conor+dt@kernel.org>
 Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
- sebin.francis@ti.com, Sai Sree Kartheek Adivi <s-adivi@ti.com>
+ sebin.francis@ti.com, Sai Sree Kartheek Adivi <s-adivi@ti.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795520724; l=11619;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795520724; l=10154;
  i=s-adivi@ti.com; s=20261124; h=from:subject:message-id;
- bh=RjpH58LQn/sIqsaO0zS7uBAOD+lV6jEHfbvDLrpoGhM=;
- b=+yqHTDrbmw1uw9Zfodr7aEgsvBQDbIJxb4IP9vIfVjjqabO7DwBdsUr6EFVtneoBLJIt8qqGL
- HznDpNlGsZ2BJXDmHT00QWgty6hLGKaBsde+EUDjJ1Igar3UtxMLDT0
+ bh=jVCUluK1cvGd7oocLuHoN95f+XBuGyRTXDLHcUnGO2k=;
+ b=ZCdWDXMVzbACPsecPjM+mr7V53a2UqeySruHgNfERSjm/0eoCq6KvqEIBdbKDsSHcO3SIlFiP
+ EwU1KA1abeJDmIARclyDL6wrjFVPBTjv3gdjZTPLXh58H3N1JlDFa40
 X-Developer-Key: i=s-adivi@ti.com; a=ed25519;
  pk=EtOwVxmXDuYMgw3DqFtPDBpf8ZvbO89w1fJm4w5yPI8=
 X-Endpoint-Received: by B4 Relay for s-adivi@ti.com/20261124 with auth_id=1627
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Handle absence of tisci with direct register writes. This will support
-platforms that do not have tisci firmware like AM62L.
+New binding document for Texas Instruments K3 Block Copy DMA (BCDMA) V2.
 
-Reviewed-by: Vignesh Raghavendra <vigneshr@ti.com>
+BCDMA V2 is introduced as part of AM62L.
+
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Sai Sree Kartheek Adivi <s-adivi@ti.com>
 ---
- drivers/soc/ti/k3-ringacc.c       | 209 ++++++++++++++++++++++++++++++++++----
- include/linux/soc/ti/k3-ringacc.h |  18 ++++
- 2 files changed, 208 insertions(+), 19 deletions(-)
+ .../bindings/dma/ti/ti,am62l-dmss-bcdma.yaml       | 211 +++++++++++++++++++++
+ 1 file changed, 211 insertions(+)
 
-diff --git a/drivers/soc/ti/k3-ringacc.c b/drivers/soc/ti/k3-ringacc.c
-index 8c5f685e10f68..8094bb821f5f9 100644
---- a/drivers/soc/ti/k3-ringacc.c
-+++ b/drivers/soc/ti/k3-ringacc.c
-@@ -7,6 +7,7 @@
- 
- #include <linux/dma-mapping.h>
- #include <linux/io.h>
-+#include <linux/iopoll.h>
- #include <linux/module.h>
- #include <linux/of.h>
- #include <linux/platform_device.h>
-@@ -46,6 +47,53 @@ struct k3_ring_rt_regs {
- 	u32	hwindx;
- };
- 
-+#define K3_RINGACC_RT_CFG_REGS_OFS	0x40
-+#define K3_DMARING_CFG_ADDR_HI_MASK	GENMASK(3, 0)
-+#define K3_DMARING_CFG_ASEL_SHIFT	16
-+#define K3_DMARING_CFG_SIZE_MASK	GENMASK(15, 0)
+diff --git a/Documentation/devicetree/bindings/dma/ti/ti,am62l-dmss-bcdma.yaml b/Documentation/devicetree/bindings/dma/ti/ti,am62l-dmss-bcdma.yaml
+new file mode 100644
+index 0000000000000..76184485ebcba
+--- /dev/null
++++ b/Documentation/devicetree/bindings/dma/ti/ti,am62l-dmss-bcdma.yaml
+@@ -0,0 +1,211 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++# Copyright (C) 2026 Texas Instruments Incorporated
++# Author: Sai Sree Kartheek Adivi <s-adivi@ti.com>
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/dma/ti/ti,am62l-dmss-bcdma.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+/**
-+ * struct k3_ring_cfg_regs - The RA Configuration Registers region
-+ *
-+ * @ba_lo: Ring Base Address Low Register
-+ * @ba_hi: Ring Base Address High Register
-+ * @size: Ring Size Register
-+ */
-+struct k3_ring_cfg_regs {
-+	u32	ba_lo;
-+	u32	ba_hi;
-+	u32	size;
-+};
++title: Texas Instruments K3 DMSS BCDMA V2
 +
-+#define K3_RINGACC_RT_INT_REGS_OFS		0x140
-+#define K3_RINGACC_RT_INT_ENABLE_SET_COMPLETE	BIT(0)
-+#define K3_RINGACC_RT_INT_ENABLE_SET_TR			BIT(2)
++maintainers:
++  - Sai Sree Kartheek Adivi <s-adivi@ti.com>
 +
-+/**
-+ * struct k3_ring_intr_regs {
-+ *
-+ * @enable_set: Ring Interrupt Enable Register
-+ * @resv_1: Reserved
-+ * @clr: Ring Interrupt Clear Register
-+ * @resv_2: Reserved
-+ * @status_set: Ring Interrupt Status Set Register
-+ * @resv_3: Reserved
-+ * @status: Ring Interrupt Status Register
-+ * @resv_4: Reserved
-+ * @status_masked: Ring Interrupt Status Masked Register
-+ */
-+struct k3_ring_intr_regs {
-+	u32	enable_set;
-+	u32	resv_1;
-+	u32	clr;
-+	u32	resv_2;
-+	u32	status_set;
-+	u32	resv_3;
-+	u32	status;
-+	u32	resv_4;
-+	u32	status_masked;
-+};
++description:
++  The BCDMA V2 is intended to perform similar functions as the TR
++  mode channels of K3 UDMA-P.
++  BCDMA V2 includes block copy channels and Split channels.
 +
- #define K3_RINGACC_RT_REGS_STEP			0x1000
- #define K3_DMARING_RT_REGS_STEP			0x2000
- #define K3_DMARING_RT_REGS_REVERSE_OFS		0x1000
-@@ -139,6 +187,8 @@ struct k3_ring_state {
-  * struct k3_ring - RA Ring descriptor
-  *
-  * @rt: Ring control/status registers
-+ * @cfg: Ring config registers
-+ * @intr: Ring interrupt registers
-  * @fifos: Ring queues registers
-  * @proxy: Ring Proxy Datapath registers
-  * @ring_mem_dma: Ring buffer dma address
-@@ -158,6 +208,8 @@ struct k3_ring_state {
-  */
- struct k3_ring {
- 	struct k3_ring_rt_regs __iomem *rt;
-+	struct k3_ring_cfg_regs __iomem *cfg;
-+	struct k3_ring_intr_regs __iomem *intr;
- 	struct k3_ring_fifo_regs __iomem *fifos;
- 	struct k3_ringacc_proxy_target_regs  __iomem *proxy;
- 	dma_addr_t	ring_mem_dma;
-@@ -467,15 +519,49 @@ static void k3_ringacc_ring_reset_sci(struct k3_ring *ring)
- 	struct k3_ringacc *ringacc = ring->parent;
- 	int ret;
- 
--	ring_cfg.nav_id = ringacc->tisci_dev_id;
--	ring_cfg.index = ring->ring_id;
--	ring_cfg.valid_params = TI_SCI_MSG_VALUE_RM_RING_COUNT_VALID;
--	ring_cfg.count = ring->size;
-+	/*
-+	 * The register-poll path below uses the atomic poll variant because
-+	 * this function can be called from atomic context (e.g. K3 UDMA V2's
-+	 * autopair-timeout cleanup, which runs under uc->vc.lock, including
-+	 * from hardirq context). This is only safe because K3 UDMA V2 never
-+	 * sets ringacc->tisci, so this function always takes this branch for
-+	 * V2 callers. If V2 ever gains TI SCI firmware-managed ring support,
-+	 * the branch below will need an atomic-safe path as well, since a
-+	 * TI SCI mailbox RPC cannot be made non-sleeping.
-+	 */
-+	if (!ringacc->tisci) {
-+		u32 reg;
++  Block copy channels mainly used for memory to memory transfers, but with
++  optional triggers a block copy channel can service peripherals by accessing
++  directly to memory mapped registers or area.
 +
-+		if (!ring->cfg)
-+			return;
++  Split channels can be used to service PSI-L based peripherals.
++  The peripherals can be PSI-L native or legacy, non PSI-L native peripherals
++  with PDMAs. PDMA is tasked to act as a bridge between the PSI-L fabric and the
++  legacy peripheral.
 +
-+		reg = readl(&ring->cfg->size);
-+		reg &= ~K3_DMARING_CFG_SIZE_MASK;
-+		writel(reg, &ring->cfg->size);
++allOf:
++  - $ref: /schemas/dma/dma-controller.yaml#
 +
-+		ret = readl_poll_timeout_atomic(&ring->cfg->size, reg,
-+						 !(reg & K3_DMARING_CFG_SIZE_MASK),
-+						 1, 100);
-+		if (ret) {
-+			dev_err(ringacc->dev, "ring %d size clear timeout\n",
-+				ring->ring_id);
-+			return;
-+		}
- 
--	ret = ringacc->tisci_ring_ops->set_cfg(ringacc->tisci, &ring_cfg);
--	if (ret)
--		dev_err(ringacc->dev, "TISCI reset ring fail (%d) ring_idx %d\n",
--			ret, ring->ring_id);
-+		reg = readl(&ring->cfg->size);
-+		reg |= ring->size;
-+		writel(reg, &ring->cfg->size);
-+	} else {
-+		ring_cfg.nav_id = ringacc->tisci_dev_id;
-+		ring_cfg.index = ring->ring_id;
-+		ring_cfg.valid_params = TI_SCI_MSG_VALUE_RM_RING_COUNT_VALID;
-+		ring_cfg.count = ring->size;
++properties:
++  compatible:
++    const: ti,am62l-dmss-bcdma
 +
-+		ret = ringacc->tisci_ring_ops->set_cfg(ringacc->tisci, &ring_cfg);
-+		if (ret)
-+			dev_err(ringacc->dev, "TISCI reset ring fail (%d) ring_idx %d\n",
-+				ret, ring->ring_id);
-+	}
- }
- 
- void k3_ringacc_ring_reset(struct k3_ring *ring)
-@@ -501,6 +587,9 @@ static void k3_ringacc_ring_reconfig_qmode_sci(struct k3_ring *ring,
- 	ring_cfg.valid_params = TI_SCI_MSG_VALUE_RM_RING_MODE_VALID;
- 	ring_cfg.mode = mode;
- 
-+	if (!ringacc->tisci)
-+		return;
++  reg:
++    items:
++      - description: BCDMA Control & Status Registers region
++      - description: Block Copy Channel Realtime Registers region
++      - description: Channel Realtime Registers region
++      - description: Ring Realtime Registers region
 +
- 	ret = ringacc->tisci_ring_ops->set_cfg(ringacc->tisci, &ring_cfg);
- 	if (ret)
- 		dev_err(ringacc->dev, "TISCI reconf qmode fail (%d) ring_idx %d\n",
-@@ -576,10 +665,40 @@ static void k3_ringacc_ring_free_sci(struct k3_ring *ring)
- 	ring_cfg.index = ring->ring_id;
- 	ring_cfg.valid_params = TI_SCI_MSG_VALUE_RM_ALL_NO_ORDER;
- 
--	ret = ringacc->tisci_ring_ops->set_cfg(ringacc->tisci, &ring_cfg);
--	if (ret)
--		dev_err(ringacc->dev, "TISCI ring free fail (%d) ring_idx %d\n",
--			ret, ring->ring_id);
-+	if (!ringacc->tisci) {
-+		u32 reg;
++  reg-names:
++    items:
++      - const: gcfg
++      - const: bchanrt
++      - const: chanrt
++      - const: ringrt
 +
-+		writel(K3_RINGACC_RT_INT_ENABLE_SET_COMPLETE | K3_RINGACC_RT_INT_ENABLE_SET_TR,
-+		       &ring->intr->clr);
++  "#dma-cells":
++    const: 4
++    description: |
++      cell 1: Trigger type for the channel
++        0 - disable / no trigger
++        1 - internal channel event
++        2 - external signal
++        3 - timer manager event
 +
-+		reg = readl(&ring->cfg->size);
-+		reg &= ~K3_DMARING_CFG_SIZE_MASK;
-+		writel(reg, &ring->cfg->size);
++      cell 2: parameter for the trigger:
++        if cell 1 is 0 (disable / no trigger):
++          Unused, ignored
++        if cell 1 is 1 (internal channel event):
++          channel number whose TR event should trigger the current channel.
++        if cell 1 is 2 or 3 (external signal or timer manager event):
++          index of global interfaces that come into the DMA.
 +
-+		ret = readl_poll_timeout(&ring->cfg->size, reg,
-+					  !(reg & K3_DMARING_CFG_SIZE_MASK),
-+					  1, 100);
-+		if (ret) {
-+			dev_err(ringacc->dev, "ring %d size clear timeout\n",
-+				ring->ring_id);
-+			return;
-+		}
++          Please refer to the device documentation for global interface indexes.
 +
-+		reg = readl(&ring->cfg->size);
-+		reg |= ring_cfg.count & K3_DMARING_CFG_SIZE_MASK;
++      cell 3: Channel ID for the peripheral
++        This is the mapped_channel_id assigned to the peripheral in the PSI-L
++        endpoint map. For XYMF peripherals (SPI, CRC32) each chip-select/FIFO
++        has a distinct channel ID; use the channel ID for the specific
++        direction and chip-select being requested. Use 0 for triggered
++        block-copy channels (cell 1 != 0).
 +
-+		writel(reg, &ring->cfg->size);
++        Please refer to the device documentation for the channel map.
 +
-+		writel(ring_cfg.addr_lo, &ring->cfg->ba_lo);
-+		writel((ring_cfg.addr_hi & K3_DMARING_CFG_ADDR_HI_MASK) +
-+				(ring_cfg.asel << K3_DMARING_CFG_ASEL_SHIFT),
-+				&ring->cfg->ba_hi);
-+	} else {
-+		ret = ringacc->tisci_ring_ops->set_cfg(ringacc->tisci, &ring_cfg);
-+		if (ret)
-+			dev_err(ringacc->dev, "TISCI ring free fail (%d) ring_idx %d\n",
-+				ret, ring->ring_id);
-+	}
- }
- 
- int k3_ringacc_ring_free(struct k3_ring *ring)
-@@ -670,15 +789,36 @@ int k3_ringacc_get_ring_irq_num(struct k3_ring *ring)
- }
- EXPORT_SYMBOL_GPL(k3_ringacc_get_ring_irq_num);
- 
-+u32 k3_ringacc_ring_get_irq_status(struct k3_ring *ring)
-+{
-+	struct k3_ringacc *ringacc = ring->parent;
-+	struct k3_ring *fwd_ring = &ringacc->rings[ring->ring_id];
++      cell 4: ASEL value for the channel
 +
-+	if (!fwd_ring->intr)
-+		return 0;
++  interrupts:
++    maxItems: 75
++    description:
++      Interrupts for DMA channels.
 +
-+	return readl(&fwd_ring->intr->status);
-+}
-+EXPORT_SYMBOL_GPL(k3_ringacc_ring_get_irq_status);
++  interrupt-names:
++    minItems: 75
++    maxItems: 75
++    items:
++      pattern: "^chan([0-9]|1[0-3]|1[6-9]|2[0-9]|3[0-9]|4[0-7]|4[89]|5[0-3]|6[4-8]|8[01]|12[89]|13[0-9]|14[0-3])$"
++    description:
++      The name of the interrupt corresponding to the DMA channel.
 +
-+void k3_ringacc_ring_clear_irq(struct k3_ring *ring, u32 status)
-+{
-+	struct k3_ringacc *ringacc = ring->parent;
-+	struct k3_ring *fwd_ring = &ringacc->rings[ring->ring_id];
++required:
++  - compatible
++  - reg
++  - reg-names
++  - "#dma-cells"
++  - interrupts
++  - interrupt-names
 +
-+	if (!fwd_ring->intr)
-+		return;
++unevaluatedProperties: false
 +
-+	writel(status, &fwd_ring->intr->status);
-+}
-+EXPORT_SYMBOL_GPL(k3_ringacc_ring_clear_irq);
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
 +
- static int k3_ringacc_ring_cfg_sci(struct k3_ring *ring)
- {
- 	struct ti_sci_msg_rm_ring_cfg ring_cfg = { 0 };
- 	struct k3_ringacc *ringacc = ring->parent;
- 	int ret;
- 
--	if (!ringacc->tisci)
--		return -EINVAL;
--
- 	ring_cfg.nav_id = ringacc->tisci_dev_id;
- 	ring_cfg.index = ring->ring_id;
- 	ring_cfg.valid_params = TI_SCI_MSG_VALUE_RM_ALL_NO_ORDER;
-@@ -689,6 +829,24 @@ static int k3_ringacc_ring_cfg_sci(struct k3_ring *ring)
- 	ring_cfg.size = ring->elm_size;
- 	ring_cfg.asel = ring->asel;
- 
-+	if (!ringacc->tisci) {
-+		u32 reg;
++    dma-controller@485c4000 {
++        compatible = "ti,am62l-dmss-bcdma";
++        reg = <0x485c4000 0x4000>,
++              <0x48880000 0x10000>,
++              <0x48800000 0x80000>,
++              <0x47000000 0x200000>;
++        reg-names = "gcfg", "bchanrt", "chanrt", "ringrt";
 +
-+		writel(ring_cfg.addr_lo, &ring->cfg->ba_lo);
-+		writel((ring_cfg.addr_hi & K3_DMARING_CFG_ADDR_HI_MASK) +
-+				(ring_cfg.asel << K3_DMARING_CFG_ASEL_SHIFT),
-+				&ring->cfg->ba_hi);
++        #dma-cells = <4>;
 +
-+		reg = readl(&ring->cfg->size);
-+		reg &= ~K3_DMARING_CFG_SIZE_MASK;
-+		reg |= ring_cfg.count & K3_DMARING_CFG_SIZE_MASK;
-+
-+		writel(reg, &ring->cfg->size);
-+		writel(K3_RINGACC_RT_INT_ENABLE_SET_COMPLETE | K3_RINGACC_RT_INT_ENABLE_SET_TR,
-+		       &ring->intr->enable_set);
-+		return 0;
-+	}
-+
- 	ret = ringacc->tisci_ring_ops->set_cfg(ringacc->tisci, &ring_cfg);
- 	if (ret)
- 		dev_err(ringacc->dev, "TISCI config ring fail (%d) ring_idx %d\n",
-@@ -1347,6 +1505,11 @@ static int k3_ringacc_probe_dt(struct k3_ringacc *ringacc)
- 		return PTR_ERR(ringacc->rm_gp_range);
- 	}
- 
-+	if (!IS_ENABLED(CONFIG_TI_SCI_INTA_MSI_DOMAIN)) {
-+		dev_err(dev, "TI_SCI_INTA_MSI_DOMAIN is required for a DT-probed ringacc with ti,sci\n");
-+		return -ENODEV;
-+	}
-+
- 	return ti_sci_inta_msi_domain_alloc_irqs(ringacc->dev,
- 						 ringacc->rm_gp_range);
- }
-@@ -1481,9 +1644,12 @@ struct k3_ringacc *k3_ringacc_dmarings_init(struct platform_device *pdev,
- 
- 	mutex_init(&ringacc->req_lock);
- 
--	base_rt = devm_platform_ioremap_resource_byname(pdev, "ringrt");
--	if (IS_ERR(base_rt))
--		return ERR_CAST(base_rt);
-+	base_rt = data->base_rt;
-+	if (!base_rt) {
-+		base_rt = devm_platform_ioremap_resource_byname(pdev, "ringrt");
-+		if (IS_ERR(base_rt))
-+			return ERR_CAST(base_rt);
-+	}
- 
- 	ringacc->rings = devm_kzalloc(dev,
- 				      sizeof(*ringacc->rings) *
-@@ -1499,6 +1665,10 @@ struct k3_ringacc *k3_ringacc_dmarings_init(struct platform_device *pdev,
- 		struct k3_ring *ring = &ringacc->rings[i];
- 
- 		ring->rt = base_rt + K3_DMARING_RT_REGS_STEP * i;
-+		ring->cfg = base_rt + K3_RINGACC_RT_CFG_REGS_OFS +
-+			    K3_DMARING_RT_REGS_STEP * i;
-+		ring->intr = base_rt + K3_RINGACC_RT_INT_REGS_OFS +
-+			     K3_DMARING_RT_REGS_STEP * i;
- 		ring->parent = ringacc;
- 		ring->ring_id = i;
- 		ring->proxy_id = K3_RINGACC_PROXY_NOT_USED;
-@@ -1512,7 +1682,8 @@ struct k3_ringacc *k3_ringacc_dmarings_init(struct platform_device *pdev,
- 		ring->flags = K3_RING_FLAG_REVERSE;
- 	}
- 
--	ringacc->tisci_ring_ops = &ringacc->tisci->ops.rm_ring_ops;
-+	if (ringacc->tisci)
-+		ringacc->tisci_ring_ops = &ringacc->tisci->ops.rm_ring_ops;
- 
- 	dev_info(dev, "Number of rings: %u\n", ringacc->num_rings);
- 
-diff --git a/include/linux/soc/ti/k3-ringacc.h b/include/linux/soc/ti/k3-ringacc.h
-index 7b7fc237c08f5..2a9b7834bc430 100644
---- a/include/linux/soc/ti/k3-ringacc.h
-+++ b/include/linux/soc/ti/k3-ringacc.h
-@@ -156,6 +156,23 @@ u32 k3_ringacc_get_ring_id(struct k3_ring *ring);
-  */
- int k3_ringacc_get_ring_irq_num(struct k3_ring *ring);
- 
-+/**
-+ * k3_ringacc_ring_get_irq_status - Get the irq status for the ring
-+ * @ring: pointer on ring
-+ *
-+ * Returns the interrupt status
-+ */
-+u32 k3_ringacc_ring_get_irq_status(struct k3_ring *ring);
-+
-+/**
-+ * k3_ringacc_ring_clear_irq - Clear the given interrupts
-+ * @ring: pointer on ring
-+ * @status: mask of interrupt status bits to clear
-+ *
-+ * Clears only the interrupt status bits set in @status on the ring
-+ */
-+void k3_ringacc_ring_clear_irq(struct k3_ring *ring, u32 status);
-+
- /**
-  * k3_ringacc_ring_cfg - ring configure
-  * @ring: pointer on ring
-@@ -263,6 +280,7 @@ struct k3_ringacc_init_data {
- 	const struct ti_sci_handle *tisci;
- 	u32 tisci_dev_id;
- 	u32 num_rings;
-+	void __iomem *base_rt;
- };
- 
- struct k3_ringacc *k3_ringacc_dmarings_init(struct platform_device *pdev,
++        interrupts = <GIC_SPI 352 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 353 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 356 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 357 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 360 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 361 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 364 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 365 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 368 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 369 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 372 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 373 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 376 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 377 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 321 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 321 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 321 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 321 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 324 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 325 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 324 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 325 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 324 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 325 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 324 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 325 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 328 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 328 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 328 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 328 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 332 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 333 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 332 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 333 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 332 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 333 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 332 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 333 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 384 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 385 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 386 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 387 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 388 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 389 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 50 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 482 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 482 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 548 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 548 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 516 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 517 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 518 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 519 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 520 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 521 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 522 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 523 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 524 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 525 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 526 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 527 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 528 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 529 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 530 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 531 IRQ_TYPE_LEVEL_HIGH>;
++        interrupt-names = "chan0", "chan1", "chan2", "chan3", "chan4",
++                          "chan5", "chan6", "chan7", "chan8", "chan9",
++                          "chan10", "chan11", "chan12", "chan13",
++                          "chan16", "chan17", "chan18", "chan19",
++                          "chan20", "chan21", "chan22", "chan23",
++                          "chan24", "chan25", "chan26", "chan27",
++                          "chan28", "chan29", "chan30", "chan31",
++                          "chan32", "chan33", "chan34", "chan35",
++                          "chan36", "chan37", "chan38", "chan39",
++                          "chan40", "chan41", "chan42", "chan43",
++                          "chan44", "chan45", "chan46", "chan47",
++                          "chan48", "chan49", "chan50", "chan51",
++                          "chan52", "chan53", "chan64", "chan65",
++                          "chan66", "chan80", "chan81", "chan67",
++                          "chan68", "chan128", "chan129", "chan130",
++                          "chan131", "chan132", "chan133", "chan134",
++                          "chan135", "chan136", "chan137", "chan138",
++                          "chan139", "chan140", "chan141", "chan142",
++                          "chan143";
++    };
 
 -- 
 2.55.0
