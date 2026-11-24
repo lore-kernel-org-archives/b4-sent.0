@@ -1,126 +1,254 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 24 Nov 2026 23:02:47 +0100
-Subject: [PATCH v4] media: qcom: camss: Don't reject sensor links faster
- than 4x the CSIPHY timer
+From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Subject: [PATCH net-next v12 00/15] Support for onsemi's S2500 10BASE-T1S
+ MAC-PHY
+Date: Tue, 24 Nov 2026 14:09:48 -0800
+Message-Id: <20261124-s2500-mac-phy-support-v12-0-3575855d99f9@onsemi.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-csiphy-sdm845-limits-v4-1-f39f9149b62e@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XNywrCMBCF4VeRrI1kJr3pyvcQF00ysSNeSlNLa
- +m7myooLsTlgZnvH0WghimIzWIUDXUc+HqJI1kuhK3Ky4Eku7gFKsxUgSht4LoaZHDnIknlic/
- cBmmAtDOlT50uRHytG/LcP9nd/rXDzRzJtrM1X1Qc2mszPLsdzHd/Eh1IkE5nyvjcxozfcs/ty
- t7FHOjwQ6wh+UFgJDJEZ9IyI+PVN6HfBCjMfxA6EjYt1pATJKDyDzFN0wOlc7/vTgEAAA==
-X-Change-ID: 20260822-csiphy-sdm845-limits-b1e3dbaf5d38
-To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Todor Tomov <todor.too@gmail.com>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Bjorn Andersson <andersson@kernel.org>, linux-media@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3233; i=david@ixit.cz;
- h=from:subject:message-id; bh=ochRMDocSCeX7Q8h0M1gcBIPdY3ayiUWJfkM116gdZ4=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrBgmIfWQ8kSxonNKGJu66CneXdPYw15r2NNJLO
- OiPPPEZlN2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawYJiAAKCRBgAj/E00kg
- cuXuD/9woMc8aXmQRwX/klS4HBOrhKnWOdHCx+CqlQASJ6KXM2UP3OiVqfwUFjeg74wu+Fqr7li
- VW2g/jK/fmUrVZDchZKZ7wABQrkJlTC6sW/tZJBVjWTe5FuM0oRTeSRrNsxMNkOSCm3aJwnlwcF
- PicfOLHXVEMzBRBH2YZ/dqpsyIFC+ONY+y2LIgni+yCoIp5hH/vTx4mlQai5fUgDWXJ/OunT1Ts
- Fe4yLzcjVaxtA16bOWb1RMoNUx8xxMel3tQHDIiPhEcmnTyvw/UT8Tyef7Tm9ogQ0yHdPn1k9Kl
- sC8uPr6hbD8Mmsmo71bzbiszimmMt9Bv57bKVSm6sWR/86VkUCraoAcdR7ShAv613Wq4EIUG2dt
- 3mCQQ2JjOo3WNeDr5uQ0wTEG4ANZ7hv1vUi5oiqQ/pCNAF8cbHEp3D9FmRP7LzcGaVD/Vd0r25o
- 2kam/INm9jDLtRcZFXYrnC3CjaomGL93h+jym2324De2wk//KxLLeScNbWoNaZbSk4/ly+U/RQf
- lRknt/rIkBS9cHAtRzjaxrpAu+ccOdWxLlO2HxU3J7Lr2wD/z089mu2hcF0fSqmsm5dyfgVc66M
- ZVNONOg6VfPDrcNhBVPpymXRrQFfh5kKeaB4O+CY78d3pib8TVDF9RTEETRaWKKwOA1jvIye9Wm
- 9UhKuqHJUHzMijw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAC0LBmsC/3XRS27DIBAG4KtUrEs1A+bVVe9RdQF43FAptmUcK
+ 1GUuxe7VZPKYgnDfD8DV5ZpSpTZ69OVTbSknIa+LFA8P7F48P0n8dSWDSZAaNCAPAsFwI8+8vF
+ w4fk0jsM086aTnpyALhjJSu84UZfOG/zOepp5T+eZffxU8il8UZxXdj17SHkepst2h6XZOn7TV
+ CVtaTjwlkpaRBl1a9+GPtMxvcThuIUs6oHBpsaowlhnTROM6IxQO0Y/MMLVGF0YtJGMK2VpcMe
+ YO2PA1hhTmMbYaI3xHr3bMfbOOFFlbGEMAaL3MUrYM+6PQYDqUG594kgdYQuhg3bHINwdBF1zE
+ AokMSivXbAqmD2EDxDKKoTrYB5t+VB0SsR/0O12+wYfcqeHzQIAAA==
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
+ Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
+ Richard Cochran <richardcochran@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Simon Horman <horms@kernel.org>, 
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, Eric Dumazet <edumazet@kernel.org>, 
+ Piergiorgio Beruto <piergiorgio.beruto@gmail.com>, 
+ Eric Dumazet <edumazet@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Jerry Ray <jerry.ray@microchip.com>, 
+ Ciprian Regus <ciprian.regus@analog.com>, 
+ Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795558193; l=10232;
+ i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
+ bh=Xsdx3629A/Jol/9s0osfmNOcTlbJxOJ8u7SwaA3F1LE=;
+ b=UR/3qePJUR729WLijzQ1jW+RapkA/21f7sdgTnhyAF4pFEyIpA7MTKZBhtSp65IystGC2BQjN
+ +4FDvmh7kowCw9bh9dZzgpzvUN0k1f+tVCi/1MFnjNBqo8gualKxrzh
+X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
+ pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
+X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The timer clock has no such relationship to the link rate. Both the 2ph
-and 3ph code use it only as the reference for csiphy_settle_cnt_calc(),
-where a faster link makes the settle count smaller, not larger: at
-269.33 MHz the count converges to 16 as the link rate grows. The vendor
-driver pins the timer to 269.33 MHz for every sensor (it is the highest
-rate in the SDM845 clock plan) and streams this exact link with it.
+This patch series brings support for onsemi's S2500, an
+IEEE 802.3cg compliant 10BASE-T1S Ethernet transceiver with an
+integrated Media Access Controller (MAC-PHY).
 
-Clamp to the highest listed rate instead of failing, the same way the
-unknown-link-rate case is already handled.
+The driver works with the OA TC6 framework that is already
+present, and supports hardware timestamping. The framework gets
+hardware timestamp support, a quirk to map MDIO_MMD_VEND1 to a
+vendor MMS, an API to set the TX credit threshold, an RX
+cut-through quirk and handling of the frame drop (FD) bit. It
+also moves to its own directory. A device tree binding is added
+and the framework documentation is updated.
 
-Solves issue on sdm845 that caps the link at ~1.02 GHz,
-so the Samsung S5K2X7SP, ~2.3 Gbps/lane, link 1.15 GHz) fails with
-Pixel clock is too high for CSIPHY
+Through ethtool, the driver provides a register dump, MAC, PHY
+and RMON statistics, timestamp statistics and self-test,
+including PHY loopback.
 
-Fixes: bbde31047434 ("media: camss: Use optimal clock frequency rates")
-Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
-Reviewed-by: Loic Poulain <loic.poulain@oss.qualcomm.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+As S2500 has an internal PHY, onsemi's PHY driver is extended to
+support it. A new PHY core helper, genphy_loopback_no_speed(), is
+added for its loopback and is also used by the dp83867 driver.
+
+Changes to the current behavior:
+- NCN26000: enhanced noise immunity (ENI) is now enabled and
+  disabled together with PLCA.
+- OA TC6 framework users: frames flagged with FD are dropped,
+  received frames shorter than an Ethernet header are dropped,
+  and drivers selecting OA_TC6 now depend on PTP_1588_CLOCK_OPTIONAL
+
+Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 ---
-Tested on SHIFT 6MQ with sdm845-next-20260820-9.
----
+Changes in v12:
+- Map MDIO_MMD_VEND1 to vendor MMS through a quirk parameter in oa_tc6_init
+- Do not drop a TX frame when no timestamp capture register is free, send
+  it without a timestamp and count an error
+- Fix races in timestamp configuration and in interface down handling
+- Link to v11: https://lore.kernel.org/r/20261113-s2500-mac-phy-support-v11-0-7a186141952c@onsemi.com
+
+Changes in v11:
+- Create new patches to move vendor changes to its own patch
+- Improve commit message to be more informative of the changes
+- Add clarity to kernel documentation in oa-tc6-framework.rst
+- Fix issues potential Oops issue in S2500 driver.
+- Add logic to take care of frame drop bit from MAC-PHY 
+- Link to v10: https://lore.kernel.org/r/20261106-s2500-mac-phy-support-v10-0-31b5a69b85b7@onsemi.com
+
+Changes in v10:
+ - Removed config_intr callback in S2500 PHY driver
+ - Removed writing status0/config0 from s2500 driver
+ - Implemented API to set tx credit threshold and 
+   to enable RX cut-through mode
+ - Drop the frame when frame drop bit in footer is set
+ - Module name restored back to oa_tc6.ko from oa_tc6_mod.ko
+- Link to v9: https://lore.kernel.org/r/20261009-s2500-mac-phy-support-v9-0-dcefe1d0bf0d@onsemi.com
+
+Changes in v9:
+- Renamed the new phy API from having "fixed_speed" to "no_speed"
+- Fixed compilation issue due to having changes in the wrong patch
+- Added the MAINTAINERS changes to where files were introduced.
+- Fixed coding style issues reported.
+- Moved the order of patches so that selftest changes goes after
+  s2500 support.
+- Made Pier's email ID consistent across to be consistent across 
+  the codebase.
+
+- Link to v8: https://lore.kernel.org/r/20260928-s2500-mac-phy-support-v8-0-7e011aacc309@onsemi.com
+
+Changes in v8:
+- Modified to use newer MMD based read/write APIs
+- clean up by removing unused definitions/initializations
+- Better handling of timestamp capture events by using
+  bit fields so that we don't lose any event
+- timestamp skb queue is protected with spinlock
+- added reset-gpio in YAML file as support is recently added
+- removed ioctl from OA TC6 framework as it is not needed.
+
+- Link to v7: https://lore.kernel.org/all/20260708-s2500-mac-phy-support-v7-0-478c877aa1a9@onsemi.com
+
+Changes in v7:
+- Fixed compiler warning due to prototype mismatch
+- Moved the order of patches to ensure dt-bindings comes first
+  before it is being used
+- Added missing review tag
+- Added missing MODULE_DEVICE_TABLE
+- OA_TC6 framework enables 64 bit timestamping mode by default.
+
+- Compiler related warnings fixed.
+- Link to v6: https://lore.kernel.org/r/20260629-s2500-mac-phy-support-v6-0-18ce79500371@onsemi.com
+
+Changes in v6:
+- Changes to ensure onsemi code stay within 80 columns.
+- Fixed the error of "not described in comments section"
+  in comments section.
+
+- Fixed compiler warnings.
+- Link to v5: https://patch.msgid.link/20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com
+
+Changes in v5:
+ - kernel doc related changes in oa_tc.c, onsemi driver files and
+  oa tc6 rst file
+- Link to v4: https://lore.kernel.org/r/20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com
+
 Changes in v4:
-- Fix stranded ` and rebased a top of next-20261120.
-- Link to v3: https://patch.msgid.link/20261027-csiphy-sdm845-limits-v3-1-c58917e14107@ixit.cz
+ - Added return value comment for genphy_read/write_phy_mmd functions
+ - Added genphy_loopback_fixed_speed helper function to be used in
+   set_loopback callbacks
+ - Updated networking documentation for OA TC6 framework to elaborate
+   on what is expected in the ptp_clock_info structure for registration.
+ - added spi-max-frequency in YAML file based on alert from sashiko-bot
+ - Removed model/version from the onsemi driver's private structure as
+   they were useful as "information-only" data.
+ - Replaced the non-standard selftest with Linux's standard selftest
+   and made it as a separate patch
+ - Changed bit manipulation, shift operations to use macros so that
+   it is clean and readable.
+ - added new read_register and write_register apis with _mms postfix
+   so that MMS (memory map selector) can be given as a parameter.
+ - Fixed the wrong condition check with NETIF_F_RXFCS to subtract
+   FCS size from the length of the frame.
+ - Link to v3: https://lore.kernel.org/r/CY8PR02MB92499C9080614FA3CEB8CD0483162@CY8PR02MB9249.namprd02.prod.outlook.com
 
 Changes in v3:
-- Added R-b and Fixes: tag.
-- Link to v2: https://patch.msgid.link/20260914-csiphy-sdm845-limits-v2-1-622db5a6ebf0@ixit.cz
+ - Moved OA TC6 framework to its own directory.
+ - Split changes to smaller patches based on feedback.
+ - Added PHY loopback support as a separate patch.
+ - New, read and write register APIs with extra parameter MMS
+ - Link to v2: https://lore.kernel.org/r/CY8PR02MB924920C8825C7AE5D22EFA4483382@CY8PR02MB9249.namprd02.prod.outlook.com
 
 Changes in v2:
-- Drop the camcc change entirely; the 269.33 MHz ceiling stands. (Konrad)
-- Fix the check in camss instead: clamp the timer clock to the highest
-  listed rate rather than failing, matching the vendor driver.
-- Link to v1: https://patch.msgid.link/20260822-csiphy-sdm845-limits-v1-1-d360bf7cd38f@ixit.cz
----
- drivers/media/platform/qcom/camss/camss-csiphy.c | 16 +++++++---------
- 1 file changed, 7 insertions(+), 9 deletions(-)
+ - API to add vendor specific MMS to mdio device map.
+ - Link to v1: https://lore.kernel.org/r/CY8PR02MB9249D083B637477C254F9B0583322@CY8PR02MB9249.namprd02.prod.outlook.com
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.c b/drivers/media/platform/qcom/camss/camss-csiphy.c
-index cdb803843792c..459175709670f 100644
---- a/drivers/media/platform/qcom/camss/camss-csiphy.c
-+++ b/drivers/media/platform/qcom/camss/camss-csiphy.c
-@@ -159,25 +159,23 @@ static int csiphy_set_clock_rates_legacy(struct csiphy_device *csiphy)
- 			long round_rate;
- 
- 			camss_add_clock_margin(&min_rate);
- 
- 			for (j = 0; j < clock->nfreqs; j++)
- 				if (min_rate < clock->freq[j])
- 					break;
- 
--			if (j == clock->nfreqs) {
--				dev_err(dev,
--					"Pixel clock is too high for CSIPHY\n");
--				return -EINVAL;
--			}
--
--			/* if sensor pixel clock is not available */
--			/* set highest possible CSIPHY clock rate */
--			if (min_rate == 0)
-+			/*
-+			 * The timer clock is only the reference for the
-+			 * settle count and does not need to track the link
-+			 * rate. Use the highest listed rate when the link is
-+			 * faster than the table covers or unknown.
-+			 */
-+			if (j == clock->nfreqs || min_rate == 0)
- 				j = clock->nfreqs - 1;
- 
- 			round_rate = clk_round_rate(clock->clk, clock->freq[j]);
- 			if (round_rate < 0) {
- 				dev_err(dev, "clk round rate failed: %ld\n",
- 					round_rate);
- 				return -EINVAL;
- 			}
+To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>
+To: Andrew Lunn <andrew+netdev@lunn.ch>
+To: David S. Miller <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
+To: Simon Horman <horms@kernel.org>
+To: Jonathan Corbet <corbet@lwn.net>
+To: Shuah Khan <skhan@linuxfoundation.org>
+To: Randy Dunlap <rdunlap@infradead.org>
+To: Richard Cochran <richardcochran@gmail.com>
+To: Andrew Lunn <andrew@lunn.ch>
+To: Heiner Kallweit <hkallweit1@gmail.com>
+To: Russell King <linux@armlinux.org.uk>
+To: Eric Dumazet <edumazet@kernel.org>
+To: Piergiorgio Beruto <piergiorgio.beruto@gmail.com>
+Cc: Selva Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Cc: netdev@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-doc@vger.kernel.org
 
 ---
-base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
-change-id: 20260822-csiphy-sdm845-limits-b1e3dbaf5d38
+Selvamani Rajagopal (15):
+      dt-bindings: net: add onsemi's S2500
+      Documentation: networking: Add timestamp related APIs to OA TC6 framework
+      net: ethernet: oa_tc6: Move oa_tc6.c to its own directory
+      net: ethernet: oa_tc6: Move constant definitions to header file
+      net: ethernet: microchip: lan865x: Depends on PTP_1588_CLOCK_OPTIONAL
+      net: ethernet: adi: adin1140: Depends on PTP_1588_CLOCK_OPTIONAL
+      net: ethernet: oa_tc6: Support for hardware timestamp
+      net: ethernet: oa_tc6: Drop frames if footer has FD bit set
+      net: ethernet: oa_tc6: Support for vendor specific MMS
+      net: ethernet: oa_tc6: APIs to customize CONFIG0 settings
+      net: phy: ncn26000: Enable enhanced noise immunity
+      net: phy: Add helper to modify only the PHY loopback bit
+      net: phy: ncn26000: Support for onsemi's S2500 internal phy
+      net: phy: dp83867: Use genphy_loopback_no_speed()
+      net: ethernet: onsemi: s2500: Add driver support for S2500
+
+ .../devicetree/bindings/net/onnn,s2500.yaml        |  71 +++
+ Documentation/networking/oa-tc6-framework.rst      | 113 ++++-
+ MAINTAINERS                                        |  11 +-
+ drivers/net/ethernet/Kconfig                       |  13 +-
+ drivers/net/ethernet/Makefile                      |   3 +-
+ drivers/net/ethernet/adi/Kconfig                   |   1 +
+ drivers/net/ethernet/microchip/lan865x/Kconfig     |   1 +
+ drivers/net/ethernet/oa_tc6/Kconfig                |  16 +
+ drivers/net/ethernet/oa_tc6/Makefile               |   7 +
+ .../ethernet/{oa_tc6.c => oa_tc6/oa_tc6_main.c}    | 561 ++++++++++++++++-----
+ drivers/net/ethernet/oa_tc6/oa_tc6_ptp.c           |  68 +++
+ drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h       | 186 +++++++
+ drivers/net/ethernet/oa_tc6/oa_tc6_tstamp.c        | 304 +++++++++++
+ drivers/net/ethernet/onsemi/Kconfig                |  21 +
+ drivers/net/ethernet/onsemi/Makefile               |   6 +
+ drivers/net/ethernet/onsemi/s2500/Kconfig          |  20 +
+ drivers/net/ethernet/onsemi/s2500/Makefile         |   6 +
+ drivers/net/ethernet/onsemi/s2500/s2500_ethtool.c  | 389 ++++++++++++++
+ drivers/net/ethernet/onsemi/s2500/s2500_hw_def.h   | 165 ++++++
+ drivers/net/ethernet/onsemi/s2500/s2500_main.c     | 496 ++++++++++++++++++
+ drivers/net/ethernet/onsemi/s2500/s2500_ptp.c      | 156 ++++++
+ drivers/net/phy/Kconfig                            |   2 +-
+ drivers/net/phy/dp83867.c                          |  11 +-
+ drivers/net/phy/ncn26000.c                         |  68 ++-
+ drivers/net/phy/phy_device.c                       |  24 +
+ include/linux/oa_tc6.h                             |  33 ++
+ include/linux/phy.h                                |   2 +
+ 27 files changed, 2602 insertions(+), 152 deletions(-)
+---
+base-commit: c2621b518b38ed38e280e008aa33e6c2d302f8cc
+change-id: 20260601-s2500-mac-phy-support-4f3ae920fb73
 
 Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
