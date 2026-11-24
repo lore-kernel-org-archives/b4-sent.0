@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Tue, 24 Nov 2026 14:09:50 -0800
-Subject: [PATCH net-next v12 02/15] Documentation: networking: Add
- timestamp related APIs to OA TC6 framework
+Date: Tue, 24 Nov 2026 14:09:51 -0800
+Subject: [PATCH net-next v12 03/15] net: ethernet: oa_tc6: Move oa_tc6.c to
+ its own directory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-s2500-mac-phy-support-v12-2-3575855d99f9@onsemi.com>
+Message-Id: <20261124-s2500-mac-phy-support-v12-3-3575855d99f9@onsemi.com>
 References: <20261124-s2500-mac-phy-support-v12-0-3575855d99f9@onsemi.com>
 In-Reply-To: <20261124-s2500-mac-phy-support-v12-0-3575855d99f9@onsemi.com>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -27,150 +27,159 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Ciprian Regus <ciprian.regus@analog.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795558193; l=5833;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795558193; l=5311;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=e1D6w+f4ICdcIKoxkxfKUPKsEbTykb38slj0b2WqgHM=;
- b=cwaJZXaWuvCMlHNJzofacuUvmYVqlMiZjvVxM2w4Wpwqigg0B58lyr+d2v3HrGMe6DjQz4HZc
- EOgLCFv9d8VCryRvyyrpk07u1SLf21JspCsyXU6OifmDB8HkCljcC5B
+ bh=vlw5eNMTC4LNhgd270HyNjbHfMnHwq4t5ETJmVYjW1Q=;
+ b=9xA35KVJa4h7zuCX11PgeXVZZd0CZk1FQgpbQm6jAURtZbgnZr7dEbhdcX+S3waE5qKudjyK2
+ yTiuxu0waPsBFjRyNkKNMIFLGqQSZlqa/gnQa86EuIBfojwyoDEZTBw
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add new APIs to support hardware timestamp feature as defined in
-OPEN Alliance 10BASE-T1x MAC-PHY serial interface specification.
+Move oa_tc6.c to its own directory, drivers/net/ethernet/oa_tc6.
+File oa_tc6.c is renamed to oa_tc6_main.c to maintain the kernel
+module's name as oa_tc6.
 
-Add the newer read/write APIs that take MMS as one of its parameters
-as these were not documented so far.
+Having a separate oa_tc6 directory will facilitate adding more
+files as subsequent patches will add files for hardware timestamping
+and PTP support.
 
 Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
 changes in v12
-  - Updated rx_filter behavior and return codes for oa_tc6_hwtstamp_set()
+  - Changed the commit message to remove the term "patch series".
 changes in v11
-  - Changed the wording of timestamp support to make it more clear
+  - Mentioned the renaming of oa_tc6.c in the commit message
 changes in v10
-  - Added new API oa_tc6_tx_credit_threshold_set
-  - Vendor introduced APIs to vendor support patch
+  - Kernel module restored to oa_tc6.ko from oa_tc6_mod.ko
 changes in v9
-  - Added Reviewed tag
+  - Changed MAINTAINERS to add "all files" under oa_tc6
+  - Added the missing "if COMPILE_TEST"
+  - Added Reviewed by tag
 changes in v8
-  - Updated the order of the parameters in oa_tc6_read_register_mms
-    and oa_tc6_write_register_mms apis.
-  - Removed the reference to ioctl
+  - No change
 changes in v7
   - No change
 changes in v6
   - No change
 changes in v5
-  - Fixed "no blank line" issues in four places
+  - No change
 changes in v4
-  - Added information for new APIs in OA TC6 framework
+  - Removed reference to onsemi in Kconfig files
 changes in v3
-  - Added more information for documentation
-changes in v2
-  - Removed the changes to the existing API
-  - Updated information about newly added APIs
-changes in v1
-  - Added changes to an existing API
-  - Added documentation to new hardware timestamp related APIs
+  - Moved oa_tc6.c to its own, oa_tc6 directory under ethernet.
+  - First patch
 ---
- Documentation/networking/oa-tc6-framework.rst | 76 +++++++++++++++++++++++++++
- 1 file changed, 76 insertions(+)
+ MAINTAINERS                                             |  2 +-
+ drivers/net/ethernet/Kconfig                            | 12 +-----------
+ drivers/net/ethernet/Makefile                           |  2 +-
+ drivers/net/ethernet/oa_tc6/Kconfig                     | 15 +++++++++++++++
+ drivers/net/ethernet/oa_tc6/Makefile                    |  7 +++++++
+ drivers/net/ethernet/{oa_tc6.c => oa_tc6/oa_tc6_main.c} |  0
+ 6 files changed, 25 insertions(+), 13 deletions(-)
 
-diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
-index 2545ef694016..2df8455bf3ba 100644
---- a/Documentation/networking/oa-tc6-framework.rst
-+++ b/Documentation/networking/oa-tc6-framework.rst
-@@ -153,6 +153,13 @@ OPEN Alliance TC6 Framework
- - Forwards the received Ethernet frame from 10Base-T1x MAC-PHY to n/w
-   subsystem.
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 679b3b9565a1..ccc9dbf67731 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -21063,7 +21063,7 @@ M:	Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
+ L:	netdev@vger.kernel.org
+ S:	Maintained
+ F:	Documentation/networking/oa-tc6-framework.rst
+-F:	drivers/net/ethernet/oa_tc6.c
++F:	drivers/net/ethernet/oa_tc6/*
+ F:	include/linux/oa_tc6.h
  
-+- If supported and enabled, timestamps are stored in the skb. Transmit
-+  timestamps are requested via the TSC header field and read from
-+  timestamp capture register A, B or C. If the next capture register is busy,
-+  the frame is transmitted without requesting a timestamp and the TX
-+  timestamp error counter is incremented. Receive timestamps are
-+  prepended to the frame when the RTSA footer bit is set.
-+
- Data Transaction
- ~~~~~~~~~~~~~~~~
+ OPEN FIRMWARE AND FLATTENED DEVICE TREE
+diff --git a/drivers/net/ethernet/Kconfig b/drivers/net/ethernet/Kconfig
+index c2b0161d0bec..5758e0fbbca5 100644
+--- a/drivers/net/ethernet/Kconfig
++++ b/drivers/net/ethernet/Kconfig
+@@ -135,6 +135,7 @@ source "drivers/net/ethernet/netronome/Kconfig"
+ source "drivers/net/ethernet/8390/Kconfig"
+ source "drivers/net/ethernet/nvidia/Kconfig"
+ source "drivers/net/ethernet/nxp/Kconfig"
++source "drivers/net/ethernet/oa_tc6/Kconfig"
+ source "drivers/net/ethernet/oki-semi/Kconfig"
  
-@@ -496,3 +503,72 @@ the MAC-PHY.
- Zero align receive frame feature can be enabled to align all receive ethernet
- frames data to start at the beginning of any receive data chunk payload with a
- start word offset (SWO) of zero.
+ config ETHOC
+@@ -147,17 +148,6 @@ config ETHOC
+ 	help
+ 	  Say Y here if you want to use the OpenCores 10/100 Mbps Ethernet MAC.
+ 
+-config OA_TC6
+-	tristate "OPEN Alliance TC6 10BASE-T1x MAC-PHY support" if COMPILE_TEST
+-	depends on SPI
+-	select PHYLIB
+-	help
+-	  This library implements OPEN Alliance TC6 10BASE-T1x MAC-PHY
+-	  Serial Interface protocol for supporting 10BASE-T1x MAC-PHYs.
+-
+-	  To know the implementation details, refer documentation in
+-	  <file:Documentation/networking/oa-tc6-framework.rst>.
+-
+ source "drivers/net/ethernet/pasemi/Kconfig"
+ source "drivers/net/ethernet/pensando/Kconfig"
+ source "drivers/net/ethernet/qlogic/Kconfig"
+diff --git a/drivers/net/ethernet/Makefile b/drivers/net/ethernet/Makefile
+index a306dae23bcb..e0e86c249e42 100644
+--- a/drivers/net/ethernet/Makefile
++++ b/drivers/net/ethernet/Makefile
+@@ -72,6 +72,7 @@ obj-$(CONFIG_NET_VENDOR_NETRONOME) += netronome/
+ obj-$(CONFIG_NET_VENDOR_NI) += ni/
+ obj-$(CONFIG_NET_VENDOR_NVIDIA) += nvidia/
+ obj-$(CONFIG_LPC_ENET) += nxp/
++obj-$(CONFIG_OA_TC6) += oa_tc6/
+ obj-$(CONFIG_NET_VENDOR_OKI) += oki-semi/
+ obj-$(CONFIG_ETHOC) += ethoc.o
+ obj-$(CONFIG_NET_VENDOR_PASEMI) += pasemi/
+@@ -105,5 +106,4 @@ obj-$(CONFIG_NET_VENDOR_XILINX) += xilinx/
+ obj-$(CONFIG_NET_VENDOR_XIRCOM) += xircom/
+ obj-$(CONFIG_NET_VENDOR_SYNOPSYS) += synopsys/
+ obj-$(CONFIG_NET_VENDOR_PENSANDO) += pensando/
+-obj-$(CONFIG_OA_TC6) += oa_tc6.o
+ obj-$(CONFIG_NET_VENDOR_ZTE) += zte/
+diff --git a/drivers/net/ethernet/oa_tc6/Kconfig b/drivers/net/ethernet/oa_tc6/Kconfig
+new file mode 100644
+index 000000000000..ec2787eae4b1
+--- /dev/null
++++ b/drivers/net/ethernet/oa_tc6/Kconfig
+@@ -0,0 +1,15 @@
++# SPDX-License-Identifier: GPL-2.0-only
++#
++# OA TC6 10BASE-T1x MAC-PHY configuration
++#
 +
-+.. c:function:: int oa_tc6_ptp_register(struct oa_tc6 *tc6, \
-+                                        struct ptp_clock_info *info)
++config OA_TC6
++	tristate "OPEN Alliance TC6 10BASE-T1x MAC-PHY support" if COMPILE_TEST
++	depends on SPI
++	select PHYLIB
++	help
++	  This library implements OPEN Alliance TC6 10BASE-T1x MAC-PHY
++	  Serial Interface protocol for supporting 10BASE-T1x MAC-PHYs.
 +
-+Registers the PTP hardware clock (PHC) with the kernel. Returns 0 immediately
-+when the MAC-PHY does not support hardware timestamp. Otherwise it sets the
-+name field of ptp_clock_info and registers the clock. Initialization of the
-+other fields in the ptp_clock_info structure is left to the vendor as the
-+PHC registers and their programming are vendor specific. The fields max_adj,
-+owner, and all the functions for the clock operations, like adjfine,
-+gettimex64, settime64, adjtime are expected to be initialized in the
-+structure before registering the hardware clock.
++	  To know the implementation details, refer documentation in
++	  <file:Documentation/networking/oa-tc6-framework.rst>.
+diff --git a/drivers/net/ethernet/oa_tc6/Makefile b/drivers/net/ethernet/oa_tc6/Makefile
+new file mode 100644
+index 000000000000..c51621fae8be
+--- /dev/null
++++ b/drivers/net/ethernet/oa_tc6/Makefile
+@@ -0,0 +1,7 @@
++# SPDX-License-Identifier: GPL-2.0-only
++#
++# Makefile for OA TC6 10BASE-T1x MAC-PHY
++#
 +
-+.. c:function:: void oa_tc6_ptp_unregister(struct oa_tc6 *tc6)
-+
-+Unregisters the PTP hardware clock.
-+
-+.. c:function:: int oa_tc6_get_ts_info(struct oa_tc6 *tc6, \
-+                                       struct kernel_ethtool_ts_info *info)
-+
-+Reports the hardware timestamping capabilities and PHC index in info when
-+a PTP hardware clock is registered. Otherwise, info is left unchanged.
-+Returns 0 (success) in both cases.
-+
-+.. c:function:: void oa_tc6_hwtstamp_get(struct oa_tc6 *tc6, \
-+                                         struct kernel_hwtstamp_config *cfg)
-+
-+Returns hardware timestamp configuration. Part of net_device_ops callbacks.
-+
-+.. c:function:: void oa_tc6_get_ts_stats(struct oa_tc6 *tc6, \
-+                                         struct ethtool_ts_stats *stats)
-+
-+Provides hardware timestamp related traffic statistics for ethtool.
-+An unexpected TX capture for a frame still being transferred counts as a
-+timestamp error, not a lost timestamp. A request abandoned after its frame
-+was transmitted, without a capture, counts as lost; a late TTSC event for
-+that request does not count as an error.
-+
-+.. c:function:: int oa_tc6_hwtstamp_set(struct oa_tc6 *tc6, \
-+                                        struct kernel_hwtstamp_config *cfg)
-+
-+Helper to set hardware timestamp configuration. Part of net_device_ops
-+callbacks.
-+
-+The MAC-PHY timestamps all received frames, so any rx_filter other than
-+HWTSTAMP_FILTER_NONE, or tx_type HWTSTAMP_TX_ON, results in
-+HWTSTAMP_FILTER_ALL. The rx_filter field of cfg is updated with the
-+filter that was programmed.
-+
-+Returns 0 on success, otherwise:
-+
-+- -EOPNOTSUPP: no PTP hardware clock is registered.
-+- -EIO: the interface is down, or the framework has stopped handling
-+  traffic after an error.
-+- -ERANGE: tx_type or rx_filter is not supported.
-+- -ETIMEDOUT: the request was not picked up within 100 ms.
-+- A negative error code from the register access.
-+
-+.. c:function:: int oa_tc6_write_register_mms(struct oa_tc6 *tc6, \
-+                                              u8 mms, u16 address, \
-+                                              u32 value)
-+
-+Write a single register addressed by @mms and @address in the MAC-PHY.
-+
-+.. c:function:: int oa_tc6_read_register_mms(struct oa_tc6 *tc6, \
-+                                             u8 mms, u16 address, \
-+                                             u32 *value)
-+
-+Read a single register addressed by @mms and @address in the MAC-PHY.
++obj-$(CONFIG_OA_TC6) += oa_tc6.o
++oa_tc6-objs := oa_tc6_main.o
+diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6/oa_tc6_main.c
+similarity index 100%
+rename from drivers/net/ethernet/oa_tc6.c
+rename to drivers/net/ethernet/oa_tc6/oa_tc6_main.c
 
 -- 
 2.43.0
