@@ -1,121 +1,241 @@
-From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Tue, 24 Nov 2026 11:04:46 +0800
-Subject: [PATCH v2 9/9] media: uapi: it6625: remove the driver-specific
- audio controls
+From: Jerome Berclaz <jerome.berclaz@proton.me>
+Date: Mon, 23 Nov 2026 19:19:50 -0800
+Subject: [PATCH] power: supply: surface-rt-ec: add charge_behaviour and
+ report "Not charging"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-upstream-it6625-alsa-i2s-v2-9-a154685f6989@ite.com.tw>
-References: <20261124-upstream-it6625-alsa-i2s-v2-0-a154685f6989@ite.com.tw>
-In-Reply-To: <20261124-upstream-it6625-alsa-i2s-v2-0-a154685f6989@ite.com.tw>
-To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Hans Verkuil <hverkuil+cisco@kernel.org>, 
- Hans Verkuil <hverkuil@kernel.org>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Mark Brown <broonie@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, linux-sound@vger.kernel.org, 
- linux-api@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795489507; l=3311;
- i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=6SaU9xnFrmm0KhiPbAskmhGNEZNumQBEu9u4f3AH160=;
- b=BAF4d0WKa6m7EEPENgMldLYWOoxoUUZsbvuud3OlhwNDeSnAPzjoGBpI2m/N8+abxbK/7agEh
- ZsMZNFek1jeCXHiX9vqtH7Te2rsnLkPE3Z23g4WUhyuhc3PRbxfeAFd
-X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
- pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
-X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
+Message-Id: <20261123-surface-rt-ec-charge-behaviour-v1-1-26b33fdbcd06@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNwQrCMBAFf6Xs2YUkFkF/RTyk64tdD61smiKU/
+ rurHgeGmY0qTFHp0m1kWLXqPDnEQ0cy5ukB1rszpZBOMaYj12YlC9gWhrA75s6AMa86N+M+hF4
+ yEEs+k0dehqLv3+B6+3NtwxOyfKu07x8BJyE/ggAAAA==
+X-Change-ID: 20261123-surface-rt-ec-charge-behaviour-4004caee1fa9
+To: Sebastian Reichel <sre@kernel.org>
+Cc: linux-pm@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ Svyatoslav Ryhel <clamor95@gmail.com>, 
+ =?utf-8?q?Jonas_Schw=C3=B6bel?= <jonasschwoebel@yahoo.de>, 
+ Jethro Bull <jethrob@hotmail.com>, 
+ Jerome Berclaz <jerome.berclaz@proton.me>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7492;
+ i=jerome.berclaz@proton.me; h=from:subject:message-id;
+ bh=S7sUxLnqWmnFPeONxMfiyCH0lGGULc5XZup7yTcUs8Q=;
+ b=owGbwMvMwCVmvC9341tRgSLG02pJDNmsTOHpV2VFb7t9FbAJjdh/9q1pIt+zJVE3Km/7zpoo6
+ bpm6bG6jlIWBjEuBlkxRRbWBsPU+SfYAgr15x2CmcPKBDKEgYtTACZyzoKR4ejdkA1SM6Zuu3jb
+ 7/KWJZezr66cfvhpe1P/92OX5W943Ohn+CuotUvrpFa/UkM0y5FM1l2m57Jr57B/dVJ9zmloX9k
+ pwwcA
+X-Developer-Key: i=jerome.berclaz@proton.me; a=openpgp;
+ fpr=058031659FC80650712F9EC233BE6DB1ED151072
+X-Endpoint-Received: by B4 Relay for jerome.berclaz@proton.me/default with auth_id=1608
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-V4L2_CID_IT6625_AUDIO_SAMPLING_RATE and V4L2_CID_IT6625_AUDIO_PRESENT
-have been replaced by the standard V4L2_CID_DV_RX_AUDIO_SAMPLING_RATE
-and V4L2_CID_DV_RX_AUDIO_PRESENT controls, and the driver no longer uses
-them. They were added together with the driver and are not part of any
-released kernel yet.
+The Surface RT's Windows firmware has a "Battery Thermal Limit" _DSM
+(4c2067e3-887d-475c-9720-4af1d3ed602e) on its battery device. Function 1
+takes a value from 0 to 100, which Microsoft documents as the percentage
+of the maximum charge rate, with 0 meaning that charging is stopped. The
+firmware writes it with an SMBus byte write to EC register 0x00 when the
+EC firmware major version (register 0x04) is 10 or later, and to
+register 0x0d otherwise.
 
-Remove the uAPI header and the V4L2_CID_USER_IT6625_BASE reservation.
+On EC firmware 0x0a.0x0d the EC charges at the full rate with 100 and
+does not charge at all with any lower value (0, 25, 50, 80, 90 and 99
+were tried): the adapter keeps powering the system and the battery
+current drops to zero within a minute. The EC keeps the value across
+adapter removal, suspend, reboot and power-off.
+
+Expose this as the charge_behaviour property of the battery: "auto"
+writes 100, "inhibit-charge" writes 0. Pick the register the way the
+Windows firmware does; only register 0x00 has been tested.
+
+Also report POWER_SUPPLY_STATUS_NOT_CHARGING instead of DISCHARGING when
+the adapter is online and the EC is not charging, as happens with
+charging inhibited.
+
+Tested on a Microsoft Surface RT with a 7.3.1-based kernel (libre-tegra
+tree): charge_behaviour reads "auto [inhibit-charge]" and the status is
+"Not charging" while inhibited on AC; writing "auto" resumes charging
+at about 0.9 A.
+
+The register and its semantics were found, and this change and its
+description written, with the help of an AI coding assistant (Claude),
+from the ACPI tables of the device's Windows firmware and Microsoft's
+battery documentation; I reviewed the change and tested it on my device
+as described above.
+
+Signed-off-by: Jerome Berclaz <jerome.berclaz@proton.me>
 ---
- MAINTAINERS                        |  1 -
- drivers/media/i2c/it6625.c         |  1 -
- include/uapi/linux/it6625.h        | 25 -------------------------
- include/uapi/linux/v4l2-controls.h |  6 ------
- 4 files changed, 33 deletions(-)
+Notes:
+- Only register 0x00 (EC firmware 10 and later) could be tested; the
+  register for older EC firmware, 0x0d, comes from the firmware's ACPI
+  code only.
+- The EC treats every value below 100 as "stop charging", so only
+  auto and inhibit-charge are offered.
+- The EC keeps the setting across power-off, so a userspace policy has
+  to restore "auto" itself, e.g. on shutdown; the driver leaves the
+  value alone on probe and removal.
+---
+ drivers/power/supply/surface-rt-ec.c | 96 +++++++++++++++++++++++++++++++++++-
+ 1 file changed, 94 insertions(+), 2 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index f4456f4589a1b86b140ab578d149884d46a3320a..a7a315f0e80585be26fe2b52a62c19e469cb5703 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -14271,7 +14271,6 @@ S:	Maintained
- T:	git git://linuxtv.org/media.git
- F:	Documentation/devicetree/bindings/media/i2c/ite,it6625.yaml
- F:	drivers/media/i2c/it6625.c
--F:	include/uapi/linux/it6625.h
+diff --git a/drivers/power/supply/surface-rt-ec.c b/drivers/power/supply/surface-rt-ec.c
+index b175bc63c504..164f475f97f8 100644
+--- a/drivers/power/supply/surface-rt-ec.c
++++ b/drivers/power/supply/surface-rt-ec.c
+@@ -11,7 +11,10 @@
+ #include <linux/types.h>
  
- IVTV VIDEO4LINUX DRIVER
- M:	Andy Walls <awalls@md.metrocast.net>
-diff --git a/drivers/media/i2c/it6625.c b/drivers/media/i2c/it6625.c
-index e4487e8111b94b2fa9f599e37ecd2b8a11425862..64c1cec26edfcb0e0105e00e1b7ba5960252aae7 100644
---- a/drivers/media/i2c/it6625.c
-+++ b/drivers/media/i2c/it6625.c
-@@ -33,7 +33,6 @@
- #include <sound/pcm.h>
- #include <sound/pcm_params.h>
- #include <sound/soc.h>
--#include <uapi/linux/it6625.h>
+ /* Register Addresses (B=byte; W=word; S=string) */
++#define REGB_CHARGE_LIMIT		0x00
+ #define REGB_STATUS			0x02
++#define REGB_FW_MAJOR			0x04
++#define REGB_CHARGE_LIMIT_OLD		0x0d
+ #define REGW_VOLTAGE_NOW		0x20
+ #define REGW_CURRENT_NOW		0x24
+ #define REGW_CAPACITY			0x28
+@@ -37,6 +40,7 @@ struct srt_ec_device {
  
- static int debug;
- module_param(debug, int, 0644);
-diff --git a/include/uapi/linux/it6625.h b/include/uapi/linux/it6625.h
-deleted file mode 100644
-index a895658aaf6a80d3fb624cdece33c5135161c72d..0000000000000000000000000000000000000000
---- a/include/uapi/linux/it6625.h
-+++ /dev/null
-@@ -1,25 +0,0 @@
--/* SPDX-License-Identifier: GPL-2.0+ WITH Linux-syscall-note */
--/*
-- * Controls header for IT6625/IT6626 driver
-- */
--
--#ifndef _UAPI_LINUX_IT6625_H
--#define _UAPI_LINUX_IT6625_H
--
--#include <linux/v4l2-controls.h>
--
--/*
-- * Currently detected HDMI audio sampling rate, in Hz. Read-only.
-- * 0 means the rate is unavailable/unknown: no audio is currently
-- * present on the input, the hardware reported a sample-rate id this
-- * driver doesn't recognize, or the status read itself failed. Never a
-- * literal 0 Hz sample rate.
-- */
--#define V4L2_CID_IT6625_AUDIO_SAMPLING_RATE	(V4L2_CID_USER_IT6625_BASE + 0)
--
--/*
-- * Whether HDMI audio is currently present on the input. Read-only.
-- */
--#define V4L2_CID_IT6625_AUDIO_PRESENT		(V4L2_CID_USER_IT6625_BASE + 1)
--
--#endif /* _UAPI_LINUX_IT6625_H */
-diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
-index 942a1df3057e3e49c9111f6a27ec1883d964bf64..a2d4ea909e01f9b705d30b680ef382f5fcd39714 100644
---- a/include/uapi/linux/v4l2-controls.h
-+++ b/include/uapi/linux/v4l2-controls.h
-@@ -249,12 +249,6 @@ enum v4l2_colorfx {
-  */
- #define V4L2_CID_USER_DCMIPP_BASE		(V4L2_CID_USER_BASE + 0x1240)
+ 	unsigned int technology;
+ 	unsigned int capacity;
++	u8 charge_limit_reg;
  
--/*
-- * The base for IT6625/IT6626 driver controls.
-- * We reserve 16 controls for this driver.
-- */
--#define V4L2_CID_USER_IT6625_BASE		(V4L2_CID_USER_BASE + 0x1250)
--
- /* MPEG-class control IDs */
- /* The MPEG controls are applicable to all codec controls
-  * and the 'MPEG' part of the define is historical */
+ 	const char *serial;
+ 	char manufacturer[13];
+@@ -45,6 +49,7 @@ struct srt_ec_device {
+ 
+ static const enum power_supply_property srt_bat_power_supply_props[] = {
+ 	POWER_SUPPLY_PROP_CAPACITY,
++	POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR,
+ 	POWER_SUPPLY_PROP_CHARGE_NOW,
+ 	POWER_SUPPLY_PROP_CHARGE_FULL,
+ 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+@@ -126,6 +131,64 @@ static int srt_bat_get_value(struct i2c_client *client, int reg, int *val)
+ 	return 0;
+ }
+ 
++/*
++ * The charge limit is the value of the "Battery Thermal Limit" _DSM of the
++ * Windows firmware (0 to 100 percent of the maximum charge rate). The EC
++ * charges at the full rate with 100 and does not charge at all with any
++ * lower value. It keeps the value across suspend, reboot and power-off.
++ */
++#define SRT_CHARGE_LIMIT_NONE		100
++#define SRT_CHARGE_LIMIT_INHIBIT	0
++
++static int srt_ac_online(struct i2c_client *client)
++{
++	int ret = i2c_smbus_read_byte_data(client, REGB_ONLINE);
++
++	if (ret < 0)
++		return ret;
++
++	return ret & BIT(0);
++}
++
++static int srt_bat_power_supply_set_property(struct power_supply *psy,
++					     enum power_supply_property psp,
++					     const union power_supply_propval *val)
++{
++	struct srt_ec_device *srt = power_supply_get_drvdata(psy);
++	u8 limit;
++	int ret;
++
++	switch (psp) {
++	case POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR:
++		switch (val->intval) {
++		case POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO:
++			limit = SRT_CHARGE_LIMIT_NONE;
++			break;
++		case POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE:
++			limit = SRT_CHARGE_LIMIT_INHIBIT;
++			break;
++		default:
++			return -EINVAL;
++		}
++
++		ret = i2c_smbus_write_byte_data(srt->client,
++						srt->charge_limit_reg, limit);
++		if (ret < 0)
++			return ret;
++
++		power_supply_changed(psy);
++		return 0;
++	default:
++		return -EINVAL;
++	}
++}
++
++static int srt_bat_property_is_writeable(struct power_supply *psy,
++					 enum power_supply_property psp)
++{
++	return psp == POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR;
++}
++
+ static int srt_bat_power_supply_get_property(struct power_supply *psy,
+ 					     enum power_supply_property psp,
+ 					     union power_supply_propval *val)
+@@ -170,10 +233,24 @@ static int srt_bat_power_supply_get_property(struct power_supply *psy,
+ 		ret = srt_bat_get_value(client, REGB_ONLINE, &val->intval);
+ 		break;
+ 	case POWER_SUPPLY_PROP_STATUS:
+-		if (srt->capacity < 100)
++		if (srt->capacity < 100) {
+ 			ret = srt_bat_get_value(client, REGB_STATUS, &val->intval);
+-		else
++			if (!ret && val->intval == POWER_SUPPLY_STATUS_DISCHARGING &&
++			    srt_ac_online(client) > 0)
++				val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
++		} else {
+ 			val->intval = POWER_SUPPLY_STATUS_FULL;
++		}
++		break;
++	case POWER_SUPPLY_PROP_CHARGE_BEHAVIOUR:
++		ret = i2c_smbus_read_byte_data(client, srt->charge_limit_reg);
++		if (ret < 0)
++			break;
++
++		val->intval = ret == SRT_CHARGE_LIMIT_NONE ?
++			      POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO :
++			      POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE;
++		ret = 0;
+ 		break;
+ 	case POWER_SUPPLY_PROP_TECHNOLOGY:
+ 		val->intval = srt->technology;
+@@ -246,7 +323,11 @@ static const struct power_supply_desc srt_bat_power_supply_desc = {
+ 	.type = POWER_SUPPLY_TYPE_BATTERY,
+ 	.properties = srt_bat_power_supply_props,
+ 	.num_properties = ARRAY_SIZE(srt_bat_power_supply_props),
++	.charge_behaviours = BIT(POWER_SUPPLY_CHARGE_BEHAVIOUR_AUTO) |
++			     BIT(POWER_SUPPLY_CHARGE_BEHAVIOUR_INHIBIT_CHARGE),
+ 	.get_property = srt_bat_power_supply_get_property,
++	.set_property = srt_bat_power_supply_set_property,
++	.property_is_writeable = srt_bat_property_is_writeable,
+ 	.external_power_changed = power_supply_changed,
+ };
+ 
+@@ -314,6 +395,17 @@ static int srt_ec_probe(struct i2c_client *client)
+ 	else
+ 		srt->technology = POWER_SUPPLY_TECHNOLOGY_UNKNOWN;
+ 
++	/*
++	 * Like the Windows firmware, use the charge limit register of EC
++	 * firmware 10 and later, and the older one before.
++	 */
++	ret = i2c_smbus_read_byte_data(client, REGB_FW_MAJOR);
++	if (ret < 0)
++		return ret;
++
++	srt->charge_limit_reg = ret >= 0x0a ? REGB_CHARGE_LIMIT :
++					      REGB_CHARGE_LIMIT_OLD;
++
+ 	bat_cfg.drv_data = srt;
+ 	bat_cfg.fwnode = dev_fwnode(dev);
+ 
 
--- 
-2.34.1
+---
+base-commit: 4843f6873f7c4835e62f2c73ba0fd538e57a2f22
+change-id: 20261123-surface-rt-ec-charge-behaviour-4004caee1fa9
+
+Best regards,
+--  
+Jerome Berclaz <jerome.berclaz@proton.me>
 
