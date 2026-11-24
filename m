@@ -1,11 +1,11 @@
 From: Dave Marquardt <davemarq@linux.ibm.com>
-Date: Tue, 24 Nov 2026 10:16:45 -0600
-Subject: [PATCH v19 04/13] scsi: ibmvfc: fix stale rc and IRQ mapping leak
- in ibmvfc_register_channel()
+Date: Tue, 24 Nov 2026 10:16:46 -0600
+Subject: [PATCH v19 05/13] scsi: ibmvfc: fix resource leaks on partial
+ queue allocation failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-ibmvfc-fpin-support-v19-4-2aaffe5fe7d2@linux.ibm.com>
+Message-Id: <20261124-ibmvfc-fpin-support-v19-5-2aaffe5fe7d2@linux.ibm.com>
 References: <20261124-ibmvfc-fpin-support-v19-0-2aaffe5fe7d2@linux.ibm.com>
 In-Reply-To: <20261124-ibmvfc-fpin-support-v19-0-2aaffe5fe7d2@linux.ibm.com>
 To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
@@ -17,67 +17,83 @@ To: Madhavan Srinivasan <maddy@linux.ibm.com>,
 Cc: linux-scsi@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
  linux-kernel@vger.kernel.org, Dave Marquardt <davemarq@linux.ibm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795537005; l=1891;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795537005; l=2781;
  i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
- bh=R1fwBOFIv7ALLwmtsW+fLJtMBhHyBifL/pLD08lbt+c=;
- b=/dgiwgVPFh+cHntIdLk4XQ1IKnKkNv86H0HLU2FIdbyNkRWMGYpuuqH6xuCD1G2paUjwdm9e2
- vg6LMC96/k1ABqNX01wFFg3sdTEPsSLb/mfUreRWiziqxCM6v30b4BN
+ bh=wxC/5k+1fH+x2U7saJs/+NtXgLmv0/MHv+liqk2H5Nc=;
+ b=Xn25L7tzoxW0DFJ3eERDPFphWEVHFe/ITk20wzD06/5d+OKYEwsZpDZGbwaQ7ADxiG7rLpFr/
+ r4kQNj5xp2hDiGr2U2oA+IOXVqPVG6wLVbxgqMjfut7iWa47qQxopFa
 X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
  pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
 X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The default: case of the protocol switch in ibmvfc_register_channel()
-jumps to irq_failed without setting rc, leaving a stale value from
-h_reg_sub_crq() (0 or H_CLOSED) that the caller sees as success even
-though the sub-CRQ was just freed. The mapping created by
-irq_create_mapping() is also never disposed, leaving scrq->irq non-zero.
+ibmvfc_alloc_queue() leaks the event pool on both failure paths
+after ibmvfc_init_event_pool() succeeds: neither the
+get_zeroed_page() failure path nor the dma_mapping_error() failure
+path calls ibmvfc_free_event_pool(). No caller compensates, since
+ibmvfc_init_crq() returns immediately on ibmvfc_alloc_queue()
+failure, ibmvfc_alloc_channels() only unwinds previously succeeded
+queues, and ibmvfc_alloc_mem() jumps to a label that does not free
+the failed queue. Add ibmvfc_free_event_pool() calls on both error
+paths in ibmvfc_alloc_queue() to close the leak.
 
-Set rc = -EINVAL in the default: case. Introduce an irq_mapping_failed:
-label that calls irq_dispose_mapping() and clears scrq->irq before
-falling through to irq_failed, and jump to it from both the default:
-case and the request_irq() failure path, eliminating the duplicate
-inline dispose/clear in the latter.
+ibmvfc_free_queue() also unconditionally calls dma_unmap_single()
+and free_page(), even if the message page was never allocated. In
+that case msgs.handle and msg_token are both zero/NULL, and calling
+dma_unmap_single() with address 0 is unsafe on many architectures.
+Guard dma_unmap_single() and free_page() together under a
+msgs.handle check.
+
+ibmvfc_alloc_queue() releases everything it allocated when it
+fails, so a queue it failed to allocate must not be passed to
+ibmvfc_free_queue(): ibmvfc_free_event_pool() does not reset the
+pool size or pointers, so the stale values would be used again. No
+caller does this.
 
 Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
 ---
- drivers/scsi/ibmvscsi/ibmvfc-core.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ drivers/scsi/ibmvscsi/ibmvfc-core.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/scsi/ibmvscsi/ibmvfc-core.c b/drivers/scsi/ibmvscsi/ibmvfc-core.c
-index 65829c3d2eea..77c685f6f959 100644
+index 77c685f6f959..e04c80050b98 100644
 --- a/drivers/scsi/ibmvscsi/ibmvfc-core.c
 +++ b/drivers/scsi/ibmvscsi/ibmvfc-core.c
-@@ -6429,16 +6429,15 @@ static int ibmvfc_register_channel(struct ibmvfc_host *vhost,
- 	default:
- 		dev_err(dev, "Unknown channel protocol (%d)\n",
- 			channels->protocol);
--		goto irq_failed;
-+		rc = -EINVAL;
-+		goto irq_mapping_failed;
+@@ -914,9 +914,11 @@ static void ibmvfc_free_queue(struct ibmvfc_host *vhost,
+ {
+ 	struct device *dev = vhost->dev;
+ 
+-	dma_unmap_single(dev, queue->msg_token, PAGE_SIZE, DMA_BIDIRECTIONAL);
+-	free_page((unsigned long)queue->msgs.handle);
+-	queue->msgs.handle = NULL;
++	if (queue->msgs.handle) {
++		dma_unmap_single(dev, queue->msg_token, PAGE_SIZE, DMA_BIDIRECTIONAL);
++		free_page((unsigned long)queue->msgs.handle);
++		queue->msgs.handle = NULL;
++	}
+ 
+ 	ibmvfc_free_event_pool(vhost, queue);
+ }
+@@ -6303,8 +6305,10 @@ static int ibmvfc_alloc_queue(struct ibmvfc_host *vhost,
  	}
  
- 	rc = request_irq(scrq->irq, scrq->handler, 0, scrq->name, scrq);
+ 	queue->msgs.handle = (void *)get_zeroed_page(GFP_KERNEL);
+-	if (!queue->msgs.handle)
++	if (!queue->msgs.handle) {
++		ibmvfc_free_event_pool(vhost, queue);
+ 		return -ENOMEM;
++	}
  
- 	if (rc) {
- 		dev_err(dev, "Couldn't register sub-crq[%d] irq\n", index);
--		irq_dispose_mapping(scrq->irq);
--		scrq->irq = 0;
--		goto irq_failed;
-+		goto irq_mapping_failed;
+ 	queue->msg_token = dma_map_single(dev, queue->msgs.handle, PAGE_SIZE,
+ 					  DMA_BIDIRECTIONAL);
+@@ -6312,6 +6316,7 @@ static int ibmvfc_alloc_queue(struct ibmvfc_host *vhost,
+ 	if (dma_mapping_error(dev, queue->msg_token)) {
+ 		free_page((unsigned long)queue->msgs.handle);
+ 		queue->msgs.handle = NULL;
++		ibmvfc_free_event_pool(vhost, queue);
+ 		return -ENOMEM;
  	}
  
- 	scrq->hwq_id = index;
-@@ -6446,6 +6445,9 @@ static int ibmvfc_register_channel(struct ibmvfc_host *vhost,
- 	LEAVE;
- 	return 0;
- 
-+irq_mapping_failed:
-+	irq_dispose_mapping(scrq->irq);
-+	scrq->irq = 0;
- irq_failed:
- 	do {
- 		hcall_rc = plpar_hcall_norets(H_FREE_SUB_CRQ, vdev->unit_address, scrq->cookie);
 
 -- 
 2.56.1
