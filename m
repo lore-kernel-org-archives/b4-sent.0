@@ -1,15 +1,13 @@
 From: Hermes Wu <Hermes.wu@ite.com.tw>
-Subject: [PATCH v2 0/9] media: i2c: it6625: add HDMI audio capture over I2S
-Date: Tue, 24 Nov 2026 11:04:37 +0800
-Message-Id: <20261124-upstream-it6625-alsa-i2s-v2-0-a154685f6989@ite.com.tw>
+Date: Tue, 24 Nov 2026 11:04:38 +0800
+Subject: [PATCH v2 1/9] media: v4l2-ctrls: add DV RX audio sampling rate
+ and present controls
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMX+BGsC/3WNyw6CMBBFf4XM2iFtUWhZ+R+GRQujTCKPtBU1h
- H+34trlOck9d4VAnilAna3gaeHA05hAHTJoezveCLlLDEqoUgpp8DGH6MkOyLEs1QntPVhkFdB
- YTcVRV7pzLaT57OnKrz19aRL3HOLk3/vTIr/2F5Wi+B9dJAp0zkhSujJOyDNHyttpyOMTmm3bP
- j16ZyjBAAAA
-X-Change-ID: 20261019-upstream-it6625-alsa-i2s-9a8e34878dbc
+Message-Id: <20261124-upstream-it6625-alsa-i2s-v2-1-a154685f6989@ite.com.tw>
+References: <20261124-upstream-it6625-alsa-i2s-v2-0-a154685f6989@ite.com.tw>
+In-Reply-To: <20261124-upstream-it6625-alsa-i2s-v2-0-a154685f6989@ite.com.tw>
 To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
  Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,111 +17,96 @@ To: Hermes Wu <Hermes.Wu@ite.com.tw>,
 Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Mark Brown <broonie@kernel.org>, 
  Liam Girdwood <lgirdwood@gmail.com>, linux-sound@vger.kernel.org, 
- linux-api@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ linux-api@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795489507; l=4862;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795489507; l=4280;
  i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=vE3mJuwHS/greoet4bzWeW4mkaCUK2qOxxGLDNg9Lvw=;
- b=pgmH8rQI6cfhR1PMXnLyweUlaqR5DA93b4VupL8ghoS8YCi8aNyJgRvVfdXAB9lAcr+Up4+tN
- S5ntJGMQ5fIDMEZnp3G3VTIylfknggcFI05CuFqhiV+4UUHy8OBDd2d
+ bh=uONLhvOawBsUyg64gstD6rmmzirFK6ytrgkdbVqwlM8=;
+ b=t+GfKiFThuL8fWNAo3CF4Yrm8Ek3DT75KcBZ23nXzADx+NpigbJNn9U/HfLF/R+Ap0r7Nw4Rz
+ CXPqRhjD+1qBc3NEVOzboThjWh5VSHbIzhCGZF1vFnfMmszkqHlvhuj
 X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
  pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
 X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-IT6625 and IT6626 decode the audio of their HDMI input and output it on
-an I2S interface, driving the bit and frame clocks themselves. The audio
-format is not configurable by the host; the bridge reports the stream it
-passes through in read-only status registers.
+HDMI and DisplayPort receivers can report whether the source sends audio
+and at which sampling rate. Drivers expose this today through
+driver-specific controls (tc358743 and IT6625 each define their own pair),
+so userspace has to know every driver to find it.
 
-This series adds an ASoC capture DAI to the IT6625 V4L2 driver, so that
-this audio can be recorded through a SoC I2S controller, for example
-with simple-audio-card. It also adds standard V4L2 controls for the
-audio state of an HDMI receiver, and uses them in tc358743 and IT6625.
-
-Patches 1 and 2 add read-only DV RX controls for the audio sampling
-rate, audio presence and audio type to the V4L2 core.
-Patch 3 makes tc358743 report the standard rate and presence controls
-next to its custom ones.
-Patch 4 adds the '#sound-dai-cells' and 'ite,i2s-data-lanes' properties
-to the IT6625 binding.
-Patch 5 decodes the IT6625 audio status registers with FIELD_GET() and
-reads them in one place.
-Patch 6 adds the I2S capture DAI for LPCM.
-Patch 7 extends the DAI to compressed (IEC 61937) and HBR streams, and
-reports the stream type through the standard audio type control.
-Patch 8 switches IT6625 from its driver-specific audio rate and presence
-controls to the standard ones.
-Patch 9 removes the IT6625 driver-specific audio controls from the uAPI.
-They came with the driver, which is in v7.4-rc1 but not in a released
-kernel yet.
-
-The series is based on media next.
-
-Tested by capturing HDMI audio from a signal generator, a PC and a
-second HDMI output looped back to the bridge, through an SoC I2S
-controller with simple-audio-card:
-- LPCM at 32 kHz to 192 kHz with 2 channels on one data line and 8
-  channels on four data lines, from 16-bit and 24-bit sources. 128 kHz
-  was not captured, as the I2S controller used does not support it.
-- AC-3, DTS-HD and TrueHD bitstreams, captured bit-exact, including
-  high bit rate streams on four data lines.
-- Rate, channel and coding changes, unplug, AV mute and pause/resume
-  while capturing, and the audio controls with no capture open.
-One-bit, multi-stream and 3D audio could not be tested; the driver
-rejects them.
-
-Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
+Add two standard read-only controls to the DV control class:
+V4L2_CID_DV_RX_AUDIO_SAMPLING_RATE, the sampling rate in Hz, 0 when no
+audio is received or the rate is not known, and
+V4L2_CID_DV_RX_AUDIO_PRESENT, whether audio is received. Drivers set
+the range of the sampling rate control.
 ---
-Changes in v2:
-- New patches 1 and 2: standard read-only DV RX controls
-  V4L2_CID_DV_RX_AUDIO_SAMPLING_RATE, V4L2_CID_DV_RX_AUDIO_PRESENT and
-  V4L2_CID_DV_RX_AUDIO_TYPE, documented in ext-ctrls-dv.rst.
-- New patch 3: tc358743 also reports the standard rate and presence
-  controls.
-- Drop the patch documenting the driver-specific IT6625 controls
-  (it6625.rst); the standard controls are documented in the core.
-- Patch 6 (I2S capture DAI): .shutdown re-arms the rate settle polling
-  when a rate is still settling, and .startup, .hw_params and .prepare
-  also update the V4L2 audio controls when they refresh the status.
-- Patch 7: report the audio type through V4L2_CID_DV_RX_AUDIO_TYPE
-  instead of a driver-specific control.
-- New patch 8: IT6625 uses the standard rate and presence controls.
-- New patch 9: remove the IT6625 driver-specific audio controls and the
-  V4L2_CID_USER_IT6625_BASE reservation.
-- Patch 4 (binding): add the Reviewed-by tag; no change.
-- Rebase on the current media next, which now contains the IT6625 reset
-  timing and DV timings fixes.
-- Link to v1: https://lore.kernel.org/r/20261103-upstream-it6625-alsa-i2s-v1-0-bb91e2879b01@ite.com.tw
+ Documentation/userspace-api/media/v4l/ext-ctrls-dv.rst | 10 ++++++++++
+ drivers/media/v4l2-core/v4l2-ctrls-defs.c              |  5 +++++
+ include/uapi/linux/v4l2-controls.h                     |  2 ++
+ 3 files changed, 17 insertions(+)
 
----
-Hermes Wu (9):
-      media: v4l2-ctrls: add DV RX audio sampling rate and present controls
-      media: v4l2-ctrls: add the DV RX audio type control
-      media: i2c: tc358743: also report the standard audio controls
-      dt-bindings: media: ite,it6625: add audio DAI properties
-      media: i2c: it6625: decode audio status fields with FIELD_GET()
-      media: i2c: it6625: add I2S audio capture DAI
-      media: i2c: it6625: capture compressed and HBR audio, not just LPCM
-      media: i2c: it6625: use the standard audio rate and present controls
-      media: uapi: it6625: remove the driver-specific audio controls
+diff --git a/Documentation/userspace-api/media/v4l/ext-ctrls-dv.rst b/Documentation/userspace-api/media/v4l/ext-ctrls-dv.rst
+index 5918dde83efb324cd27cc4c771245cd2c38d0b0e..a9117912e9cb255a2ce452147858d927e9e3c27a 100644
+--- a/Documentation/userspace-api/media/v4l/ext-ctrls-dv.rst
++++ b/Documentation/userspace-api/media/v4l/ext-ctrls-dv.rst
+@@ -158,3 +158,13 @@ enum v4l2_dv_it_content_type -
+     from a computer as opposed to content from a TV broadcast or an
+     analog source. See ``V4L2_CID_DV_TX_IT_CONTENT_TYPE`` for the
+     available content types.
++
++``V4L2_CID_DV_RX_AUDIO_SAMPLING_RATE (integer)``
++    Reads the sampling rate, in Hz, of the audio that the receiver
++    receives from the source. It is 0 if no audio is received, or if the
++    receiver cannot determine the sampling rate. This read-only control
++    is applicable to HDMI and DisplayPort connectors.
++
++``V4L2_CID_DV_RX_AUDIO_PRESENT (boolean)``
++    Detects whether the receiver receives audio from the source. This
++    read-only control is applicable to HDMI and DisplayPort connectors.
+diff --git a/drivers/media/v4l2-core/v4l2-ctrls-defs.c b/drivers/media/v4l2-core/v4l2-ctrls-defs.c
+index e062f2088490470c42d6c579ff7675be454a29b0..579b2d297cc8246dddb4e8d4ab74aed1e6084744 100644
+--- a/drivers/media/v4l2-core/v4l2-ctrls-defs.c
++++ b/drivers/media/v4l2-core/v4l2-ctrls-defs.c
+@@ -1180,6 +1180,8 @@ const char *v4l2_ctrl_get_name(u32 id)
+ 	case V4L2_CID_DV_RX_POWER_PRESENT:	return "Power Present";
+ 	case V4L2_CID_DV_RX_RGB_RANGE:		return "Rx RGB Quantization Range";
+ 	case V4L2_CID_DV_RX_IT_CONTENT_TYPE:	return "Rx IT Content Type";
++	case V4L2_CID_DV_RX_AUDIO_SAMPLING_RATE: return "Rx Audio Sampling Rate";
++	case V4L2_CID_DV_RX_AUDIO_PRESENT:	return "Rx Audio Present";
+ 
+ 	case V4L2_CID_FM_RX_CLASS:		return "FM Radio Receiver Controls";
+ 	case V4L2_CID_TUNE_DEEMPHASIS:		return "De-Emphasis";
+@@ -1317,6 +1319,7 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
+ 	case V4L2_CID_RDS_RX_TRAFFIC_ANNOUNCEMENT:
+ 	case V4L2_CID_RDS_RX_TRAFFIC_PROGRAM:
+ 	case V4L2_CID_RDS_RX_MUSIC_SPEECH:
++	case V4L2_CID_DV_RX_AUDIO_PRESENT:
+ 		*type = V4L2_CTRL_TYPE_BOOLEAN;
+ 		*min = 0;
+ 		*max = *step = 1;
+@@ -1682,6 +1685,8 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
+ 	case V4L2_CID_DV_TX_EDID_PRESENT:
+ 	case V4L2_CID_DV_RX_POWER_PRESENT:
+ 	case V4L2_CID_DV_RX_IT_CONTENT_TYPE:
++	case V4L2_CID_DV_RX_AUDIO_SAMPLING_RATE:
++	case V4L2_CID_DV_RX_AUDIO_PRESENT:
+ 	case V4L2_CID_RDS_RX_PTY:
+ 	case V4L2_CID_RDS_RX_PS_NAME:
+ 	case V4L2_CID_RDS_RX_RADIO_TEXT:
+diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
+index d17e41d51d2ec1ccb9e8ceb3ccc89ebc4381a4cd..52124b7acdeab787978029aa49ea75d0ad4cc534 100644
+--- a/include/uapi/linux/v4l2-controls.h
++++ b/include/uapi/linux/v4l2-controls.h
+@@ -1301,6 +1301,8 @@ enum v4l2_dv_it_content_type {
+ #define V4L2_CID_DV_RX_POWER_PRESENT		(V4L2_CID_DV_CLASS_BASE + 100)
+ #define V4L2_CID_DV_RX_RGB_RANGE		(V4L2_CID_DV_CLASS_BASE + 101)
+ #define V4L2_CID_DV_RX_IT_CONTENT_TYPE		(V4L2_CID_DV_CLASS_BASE + 102)
++#define V4L2_CID_DV_RX_AUDIO_SAMPLING_RATE	(V4L2_CID_DV_CLASS_BASE + 103)
++#define V4L2_CID_DV_RX_AUDIO_PRESENT		(V4L2_CID_DV_CLASS_BASE + 104)
+ 
+ #define V4L2_CID_FM_RX_CLASS_BASE		(V4L2_CTRL_CLASS_FM_RX | 0x900)
+ #define V4L2_CID_FM_RX_CLASS			(V4L2_CTRL_CLASS_FM_RX | 1)
 
- .../devicetree/bindings/media/i2c/ite,it6625.yaml  |  23 +-
- .../userspace-api/media/v4l/ext-ctrls-dv.rst       |  35 +
- MAINTAINERS                                        |   1 -
- drivers/media/i2c/Kconfig                          |   1 +
- drivers/media/i2c/it6625.c                         | 905 ++++++++++++++++++---
- drivers/media/i2c/tc358743.c                       |  31 +-
- drivers/media/v4l2-core/v4l2-ctrls-defs.c          |  17 +
- include/uapi/linux/it6625.h                        |  25 -
- include/uapi/linux/v4l2-controls.h                 |  15 +-
- 9 files changed, 910 insertions(+), 143 deletions(-)
----
-base-commit: 48fe5a7834cc10081887d7bcd9ff0a4cadc3fa8c
-change-id: 20261019-upstream-it6625-alsa-i2s-9a8e34878dbc
-
-Best regards,
 -- 
-Hermes Wu <Hermes.wu@ite.com.tw>
+2.34.1
 
