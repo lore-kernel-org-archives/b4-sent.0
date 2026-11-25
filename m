@@ -1,77 +1,101 @@
-From: Sylvain Chouleur <schouleur@snap.com>
-Date: Wed, 25 Nov 2026 17:15:53 +0100
-Subject: [PATCH] perf/arm-cmn: Use at least 2 bits per XP coordinate in
- node IDs
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v4 0/9] Pixel 3 XL display panel support
+Date: Wed, 25 Nov 2026 19:12:44 +0100
+Message-Id: <20261125-crosshatch-panel-v4-0-120adc58e737@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-arm-cmn-xyidbits-v1-1-6f7bee891859@snap.com>
-X-B4-Tracking: v=1; b=H4sIALgJB2sC/yXMQQqDMBBA0avIrB0wA0bxKqWLmIx1BGPJaLGId
- zety7f4/wDlJKzQFQck/ojKEjNMWYAfXXwxSsgGqsgaQzW6NKOfI+5fCb2sisZWjeUwUOsIcvZ
- OPMj+Xz6et3XrJ/br7wPneQGnp47/dAAAAA==
-X-Change-ID: 20261125-arm-cmn-xyidbits-16076edf28a2
-To: Robin Murphy <robin.murphy@arm.com>, Will Deacon <will@kernel.org>, 
- Mark Rutland <mark.rutland@arm.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-perf-users@vger.kernel.org, 
- stable@vger.kernel.org, Sylvain Chouleur <schouleur@snap.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23N0Q6CIBTG8VdxXEcDMsCueo/WBR4OSWvqwJzVf
+ Pcwt2bLy287v/95kYjBYySH7EUC9j76pk4j32QEKlNfkHqbNhFMSKYZpxCaGCvTQUVbU+ONMgm
+ ojSxcqRxJrA3o/PBJns7zjvfyitBNnemi8rFrwuPzs+fT3ZwvBPvP95wyalFisefCmkIe/eC7L
+ TzJFO/FkucrXCTOtN2DKp0SDn757ss5Z3qF7xLXytocIXcKFnwcxzfKcvqWPgEAAA==
+X-Change-ID: 20260801-crosshatch-panel-06ce8a69fb7f
+To: Dzmitry Sankouski <dsankouski@gmail.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>
+Cc: Marco Mattiolo <marco.mattiolo@hotmail.it>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Petr Vorel <petr.vorel@gmail.com>, dri-devel@lists.freedesktop.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>, Abel Vesa <abel.vesa@oss.qualcomm.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795623374; l=2076;
- i=schouleur@snap.com; s=20261125; h=from:subject:message-id;
- bh=sa9PZCg2nW0vzlkWYPAJtFCSQhJMIg5Z6aFqeJbc3f0=;
- b=v8agyqySqDUxULbbTkNaysEzgYXGF2W7BwMxU/Z+NgcPXhzJMgZl8a//oBEcG1GqcKYbqI8kz
- 7drwmw6dVbvAOmVnsA5sFaXDQwNFBEmM+zMoEN6tmjRLvhpuZbWVJFD
-X-Developer-Key: i=schouleur@snap.com; a=ed25519;
- pk=T9TO/S3sm76Hkq5JdP/4AATQ2J2jGtskIHx0NY9lD4I=
-X-Endpoint-Received: by B4 Relay for schouleur@snap.com/20261125 with auth_id=1639
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2435; i=david@ixit.cz;
+ h=from:subject:message-id; bh=YE6uRQHX3frxMj/6HJyZlh9S6ry+tb/5u1Co16RoWHM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrByUdjIHhZsyDm0D45ADd1nzAhvMIdNhRlEJ5d
+ RCRlmigj2uJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawclHQAKCRBgAj/E00kg
+ cg6PD/wIDgT0i2YnmMltMCXjiIiAXM7Tw57g64kdw/CpoMXAUVGO8gTBower1KaV9G1lfUZ3j/T
+ adSF4+iDlSVVnvWSziJt1q9/IvBnuaG3gkZihfTny2Zu3cJzYMUZMYdESChgwU1ygiKcnrcl275
+ 6X5QS8Qc8ziYWAW9XHZLiAXP72IGpxMERZ10+jVix7nZZO7sP/SS9WkTuhGL4ngwXirv6gv2J5/
+ QN54hIgeSn0joz7ixjB5sMgaa2LK1mLMLTigRv33fdczbAbfknRM03nCEf2HCc1ZDa/g16PQP6Y
+ 2376qchOrs1BIfcSZBnA3NgpptvHHF3j9QdDEGT+JIcp6zG/q/VpCchnWpC/qb8MI4jNFHIQNJ6
+ wuSNepz4G0OLYjt419nikOg20EomKQ+MgCYVniixO4aOrMuMCKbzZNEVH9o5aly+A+dAPqFeDqF
+ UOy4gFHtaN+2b7vtYVGOtXCXPv9v28GLA8fwtwGRsFPsmWh/t2k4G/LZQSz4A1sufMmOEGLxy1D
+ EjlFh65pvCb3IBRnqYXDh/tDcT1Eml8uaN+HNijtMLTh+Hj1BBYKdSpd045bstPLcoW93Khkpii
+ nKNSmXsH36ZUzTgiBCMjBC/bFPyJo2LzqBawhhQr7OIPcdGnmMvEmBg1hdIrhcWXKP25CtGaFuu
+ Ca5N7Cd2m2xpfog==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The X and Y coordinates in a CMN/CI-700 node ID are encoded in 2 bits
-each for any mesh up to 4x4 (7-bit node IDs), and in 3 bits each for
-larger meshes (9-bit node IDs). The width does not shrink for smaller
-meshes: a 2x2 mesh still uses 2 bits per coordinate.
+Introduce Samsung AMB630QY01 (Google Pixel 3 XL) panel.
 
-arm_cmn_xyidbits() derives the width from the actual mesh dimensions,
-which yields 1 bit for a mesh with both dimensions <= 2. On such a
-mesh arm_cmn_node_to_xp() then decodes every device on the X=1 column
-into the wrong XP: X=1,Y=0 devices are attributed to XP (0,1), and
-X=1,Y=1 devices to an index past the end of the XP array. Their PMU
-events end up programmed into another XP's DTM, with the port/device
-select of the intended XP, so the counters silently read zero while
-the rest of the mesh works.
+Includes refactoring and improvements to the S6E3HA8 DDIC which is also
+used by Samsung S9 (Korea version).
 
-Observed on a CI-700 r3 with a 2x2 mesh (part 0x43a), where the SBSX
-and HN-D nodes on the X=1 column never counted although the XP flit
-counters showed the traffic. Forcing a minimum of 2 coordinate bits
-matches the documented node ID format and makes all nodes count;
-the minimum had been there until the node ID refactor dropped it.
+Patches 7 and 9 switch to the new compatibles, so they must not reach
+the qcom tree before the driver patches land.
 
-Fixes: e79634b53e39 ("perf/arm-cmn: Refactor node ID handling. Again.")
-Cc: stable@vger.kernel.org
-Signed-off-by: Sylvain Chouleur <schouleur@snap.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/perf/arm-cmn.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Changes in v4:
+- Entire allOf goes after required: block. Now really. (Krzysztof)
+- Improved wording of 1st commit. (Krzysztof)
+- Link to v3: https://patch.msgid.link/20261108-crosshatch-panel-v3-0-87dd4ec4f7cc@ixit.cz
 
-diff --git a/drivers/perf/arm-cmn.c b/drivers/perf/arm-cmn.c
-index 68a096c1fe6b..5f369c7a7a35 100644
---- a/drivers/perf/arm-cmn.c
-+++ b/drivers/perf/arm-cmn.c
-@@ -406,7 +406,8 @@ struct arm_cmn_nodeid {
- 
- static int arm_cmn_xyidbits(const struct arm_cmn *cmn)
- {
--	return fls((cmn->mesh_x - 1) | (cmn->mesh_y - 1));
-+	/* Node IDs never use fewer than 2 bits per XP coordinate */
-+	return fls((cmn->mesh_x - 1) | (cmn->mesh_y - 1) | 2);
- }
- 
- static struct arm_cmn_nodeid arm_cmn_nid(const struct arm_cmn_node *dn)
+Changes in v3:
+- Entire allOf goes after required: block. (Krzysztof)
+- Expalin dt-bindings changes more explicitly. (Krzysztof)
+- Dropped "Really assert reset on the failure" as requested by (Krzysztof)
+- Not addressed: "No, this is wrong. You just broke all the users of
+  this DTS.", due to non-existent usage outside of Linux and DTB for
+  this device being shipped always together with the kernel.
+- Link to v2: https://patch.msgid.link/20260924-crosshatch-panel-v2-0-08d5c7bf72fc@ixit.cz
+
+Changes in v2:
+- Rebase on top of next-20260923.
+- Cosmetic fix s/Cosmtetic/Cosmetic/ fix in the commit msg. (Neil)
+- Link to v1: https://patch.msgid.link/20260920-crosshatch-panel-v1-0-de6e9512da96@ixit.cz
 
 ---
-base-commit: 4dce97c6c265544342e716e62fd24bbb232590c5
-change-id: 20261125-arm-cmn-xyidbits-16076edf28a2
+David Heidelberg (9):
+      dt-bindings: display: panel: s6e3ha8: Adjust to reflect the DDIC and panel used
+      dt-bindings: display: panel: s6e3ha8: Add AMB630QY01 panel
+      drm/panel: s6e3ha8: Introduce AMB577PX01 panel compatible
+      drm/panel: s6e3ha8: Prepare for supporting multiple panels
+      drm/panel: s6e3ha8: Correct the polarity logic within
+      drm/panel: s6e3ha8: Assert reset GPIO in unprepare
+      drm/panel: s6e3ha8: Add Samsung AMB630QY01 (Google Pixel 3 XL) panel
+      arm64: dts: qcom: sdm845-samsung-starqltechn: Update panel compatible
+      arm64: dts: qcom: sdm845-google-crosshatch: Add display panel
+
+ .../bindings/display/panel/samsung,s6e3ha8.yaml    |  52 +++-
+ .../boot/dts/qcom/sdm845-google-crosshatch.dts     |  60 +++-
+ .../boot/dts/qcom/sdm845-samsung-starqltechn.dts   |   4 +-
+ drivers/gpu/drm/panel/panel-samsung-s6e3ha8.c      | 304 +++++++++++++++++----
+ 4 files changed, 354 insertions(+), 66 deletions(-)
+---
+base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
+change-id: 20260801-crosshatch-panel-06ce8a69fb7f
 
 Best regards,
 --  
-Sylvain Chouleur <schouleur@snap.com>
+David Heidelberg <david@ixit.cz>
 
