@@ -1,96 +1,77 @@
-From: Umer Uddin <umer.uddin@mentallysanemainliners.org>
-Date: Wed, 25 Nov 2026 16:12:42 +0000
-Subject: [PATCH v3 2/2] arm64: dts: exynos: exynos7885-gta3xllte: Enable
- FuelGauge support
+From: Sylvain Chouleur <schouleur@snap.com>
+Date: Wed, 25 Nov 2026 17:15:53 +0100
+Subject: [PATCH] perf/arm-cmn: Use at least 2 bits per XP coordinate in
+ node IDs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-gta3xllte-usb-battery-v3-2-2ef962bf5423@mentallysanemainliners.org>
-References: <20261125-gta3xllte-usb-battery-v3-0-2ef962bf5423@mentallysanemainliners.org>
-In-Reply-To: <20261125-gta3xllte-usb-battery-v3-0-2ef962bf5423@mentallysanemainliners.org>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>
-Cc: Umer Uddin <umer.uddin@mentallysanemainliners.org>, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-samsung-soc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Henri Ommer <henri@ommer.net>, David Virag <virag.david003@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795623167; l=1850;
- i=umer.uddin@mentallysanemainliners.org; s=20261109;
- h=from:subject:message-id; bh=1xi6TN0cxIIMdEWPE8CrGdgk4y/rnvekhNW2VzWmKzE=;
- b=Ng7NpeXzQis6U9eUxFGZh4M8hXp50VKddJ3WiOfFHPTupT8MCJ3QsyBkAe3EdtWqSdkJHGCvu
- xJ4XCytoJNYDWRiaQKnl4LFccNYDIGrAK+VgQqbs0pTn2kmIFCoSL/Y
-X-Developer-Key: i=umer.uddin@mentallysanemainliners.org; a=ed25519;
- pk=Hsgrt4A72CFTe27AI1AAWlnLsiQrlb4+T+cbrfWDhUA=
-X-Endpoint-Received: by B4 Relay for umer.uddin@mentallysanemainliners.org/20261109 with auth_id=1466
+Message-Id: <20261125-arm-cmn-xyidbits-v1-1-6f7bee891859@snap.com>
+X-B4-Tracking: v=1; b=H4sIALgJB2sC/yXMQQqDMBBA0avIrB0wA0bxKqWLmIx1BGPJaLGId
+ zety7f4/wDlJKzQFQck/ojKEjNMWYAfXXwxSsgGqsgaQzW6NKOfI+5fCb2sisZWjeUwUOsIcvZ
+ OPMj+Xz6et3XrJ/br7wPneQGnp47/dAAAAA==
+X-Change-ID: 20261125-arm-cmn-xyidbits-16076edf28a2
+To: Robin Murphy <robin.murphy@arm.com>, Will Deacon <will@kernel.org>, 
+ Mark Rutland <mark.rutland@arm.com>
+Cc: linux-arm-kernel@lists.infradead.org, linux-perf-users@vger.kernel.org, 
+ stable@vger.kernel.org, Sylvain Chouleur <schouleur@snap.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795623374; l=2076;
+ i=schouleur@snap.com; s=20261125; h=from:subject:message-id;
+ bh=sa9PZCg2nW0vzlkWYPAJtFCSQhJMIg5Z6aFqeJbc3f0=;
+ b=v8agyqySqDUxULbbTkNaysEzgYXGF2W7BwMxU/Z+NgcPXhzJMgZl8a//oBEcG1GqcKYbqI8kz
+ 7drwmw6dVbvAOmVnsA5sFaXDQwNFBEmM+zMoEN6tmjRLvhpuZbWVJFD
+X-Developer-Key: i=schouleur@snap.com; a=ed25519;
+ pk=T9TO/S3sm76Hkq5JdP/4AATQ2J2jGtskIHx0NY9lD4I=
+X-Endpoint-Received: by B4 Relay for schouleur@snap.com/20261125 with auth_id=1639
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Samsung Galaxy Tab A 10.1 (2019) has a S2MU005 Multi Function Device
-(MFD). It contains PMIC, FG and EXTCON. This commit enables the FG, to be
-used with a simple battery device to allow for battery percentages to be
-reported.
+The X and Y coordinates in a CMN/CI-700 node ID are encoded in 2 bits
+each for any mesh up to 4x4 (7-bit node IDs), and in 3 bits each for
+larger meshes (9-bit node IDs). The width does not shrink for smaller
+meshes: a 2x2 mesh still uses 2 bits per coordinate.
 
-Signed-off-by: Umer Uddin <umer.uddin@mentallysanemainliners.org>
+arm_cmn_xyidbits() derives the width from the actual mesh dimensions,
+which yields 1 bit for a mesh with both dimensions <= 2. On such a
+mesh arm_cmn_node_to_xp() then decodes every device on the X=1 column
+into the wrong XP: X=1,Y=0 devices are attributed to XP (0,1), and
+X=1,Y=1 devices to an index past the end of the XP array. Their PMU
+events end up programmed into another XP's DTM, with the port/device
+select of the intended XP, so the counters silently read zero while
+the rest of the mesh works.
+
+Observed on a CI-700 r3 with a 2x2 mesh (part 0x43a), where the SBSX
+and HN-D nodes on the X=1 column never counted although the XP flit
+counters showed the traffic. Forcing a minimum of 2 coordinate bits
+matches the documented node ID format and makes all nodes count;
+the minimum had been there until the node ID refactor dropped it.
+
+Fixes: e79634b53e39 ("perf/arm-cmn: Refactor node ID handling. Again.")
+Cc: stable@vger.kernel.org
+Signed-off-by: Sylvain Chouleur <schouleur@snap.com>
 ---
- .../arm64/boot/dts/exynos/exynos7885-gta3xllte.dts | 28 ++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+ drivers/perf/arm-cmn.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
-index c71101ed0ba9..466ae0874880 100644
---- a/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
-+++ b/arch/arm64/boot/dts/exynos/exynos7885-gta3xllte.dts
-@@ -22,6 +22,13 @@ aliases {
- 		serial2 = &serial_2;
- 	};
+diff --git a/drivers/perf/arm-cmn.c b/drivers/perf/arm-cmn.c
+index 68a096c1fe6b..5f369c7a7a35 100644
+--- a/drivers/perf/arm-cmn.c
++++ b/drivers/perf/arm-cmn.c
+@@ -406,7 +406,8 @@ struct arm_cmn_nodeid {
  
-+	battery: battery {
-+		compatible = "simple-battery";
-+		charge-full-design-microamp-hours = <6000000>;
-+		voltage-min-design-microvolt = <3300000>;
-+		voltage-max-design-microvolt = <4350000>;
-+	};
-+
- 	chosen {
- 		ranges;
- 		#address-cells = <2>;
-@@ -86,6 +93,20 @@ cont_splash_mem: framebuffer@ec000000 {
- 	};
- };
+ static int arm_cmn_xyidbits(const struct arm_cmn *cmn)
+ {
+-	return fls((cmn->mesh_x - 1) | (cmn->mesh_y - 1));
++	/* Node IDs never use fewer than 2 bits per XP coordinate */
++	return fls((cmn->mesh_x - 1) | (cmn->mesh_y - 1) | 2);
+ }
  
-+&i2c_0 {
-+	status = "okay";
-+
-+	fuel-gauge@3b {
-+		compatible = "samsung,s2mu005-fuel-gauge";
-+		reg = <0x3b>;
-+		interrupt-parent = <&gpa2>;
-+		interrupts = <4 IRQ_TYPE_EDGE_BOTH>;
-+		pinctrl-0 = <&fuel_irq>;
-+		pinctrl-names = "default";
-+		monitored-battery = <&battery>;
-+	};
-+};
-+
- &mmc_0 {
- 	bus-width = <8>;
- 	cap-mmc-highspeed;
-@@ -112,6 +133,13 @@ &oscclk {
- };
- 
- &pinctrl_alive {
-+	fuel_irq: fuel-irq-pins {
-+		samsung,pins = "gpa2-4";
-+		samsung,pin-function = <EXYNOS_PIN_FUNC_EINT>;
-+		samsung,pin-pud = <EXYNOS_PIN_PULL_NONE>;
-+		samsung,pin-drv = <EXYNOS5420_PIN_DRV_LV1>;
-+	};
-+
- 	key_power: key-power-pins {
- 		samsung,pins = "gpa1-7";
- 		samsung,pin-function = <EXYNOS_PIN_FUNC_F>;
+ static struct arm_cmn_nodeid arm_cmn_nid(const struct arm_cmn_node *dn)
 
--- 
-2.56.1
+---
+base-commit: 4dce97c6c265544342e716e62fd24bbb232590c5
+change-id: 20261125-arm-cmn-xyidbits-16076edf28a2
+
+Best regards,
+--  
+Sylvain Chouleur <schouleur@snap.com>
 
