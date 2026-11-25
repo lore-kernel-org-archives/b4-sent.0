@@ -1,11 +1,11 @@
 From: Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
-Date: Wed, 25 Nov 2026 14:11:17 +0000
-Subject: [PATCH v3 2/3] phy: sun4i-usb: Assert PHY resets in
- sun4i_usb_phy_probe()
+Date: Wed, 25 Nov 2026 14:11:18 +0000
+Subject: [PATCH v3 3/3] phy: sun4i-usb: Fix phy2->clk2 reference imbalance
+ in sun4i_usb_phy_init()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-usb-sunxi-reset-fix-v3-2-855c43694f78@roadbobek.com>
+Message-Id: <20261125-usb-sunxi-reset-fix-v3-3-855c43694f78@roadbobek.com>
 References: <20261125-usb-sunxi-reset-fix-v3-0-855c43694f78@roadbobek.com>
 In-Reply-To: <20261125-usb-sunxi-reset-fix-v3-0-855c43694f78@roadbobek.com>
 To: Bin Liu <b-liu@ti.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -22,79 +22,45 @@ Cc: linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-phy@lists.infradead.org, 
  Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795615875; l=2483;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795615875; l=1149;
  i=admin@roadbobek.com; s=20261117; h=from:subject:message-id;
- bh=LiuKo9Ttgw8d9A6ryR0X7JCOtqPXd1JaEy/qalojwDQ=;
- b=gdEBaetcH0wgmM9Sf/Iy0fQmkG9aFmKrFH8hzHGPJvYstHT9vdotV/WmZmDZXHsPQyO+VUjLs
- /aOifbZsNShA5xRtDXcjfQurRB898fS4x7u45ic1jEpBfylzmN36f7A
+ bh=2/RvSPv9KdaGKCqwuU1CPvhUhe3Y2XomCyvU8DfERlY=;
+ b=ocSYCrrc2L52i1L2hwM5KG3OM5fNqH5g0u+XCJpMlDYYjs1MWgFkLcSL+tZk2dIREQyt3b38K
+ R0KCT0jsMv6D9UODCAba35OcD7RBvf2T3rSRlUr1Iyo9SyN+TmIbMh9
 X-Developer-Key: i=admin@roadbobek.com; a=ed25519;
  pk=TcWSTwITMylwCZLYbw80sv2LQx1zButqiT90TFVvhas=
 X-Endpoint-Received: by B4 Relay for admin@roadbobek.com/20261117 with auth_id=1548
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a bootloader initializes USB before booting Linux without first
-tearing down the controller, phy->reset may already be deasserted when
-Linux probes the USB PHY driver.
+In sun4i_usb_phy_init(), the needs_phy2_siddq path enables phy2->clk2
+to access the REG_HCI_PHY_CTL PMU register for PHY2, but then disables
+phy->clk2 instead of phy2->clk2.
 
-Because reset_control_deassert() alone is a no-op on an already
-deasserted reset line, stale USB PHY state can persist across the
-bootloader-to-kernel handoff. Asserting phy->reset inside
-sun4i_usb_phy_init(), however, could disrupt active PHYs on SoCs with
-needs_phy2_siddq (such as the Allwinner H616), where PHY0, PHY1, and
-PHY3 depend on PHY2 remaining out of reset once enabled.
+This leaks a prepare/enable reference on phy2->clk2 while prematurely
+disabling phy->clk2, causing a clock disable/unprepare underflow when
+sun4i_usb_phy_exit() later runs.
 
-Request exclusive reset controls via devm_reset_control_get_exclusive()
-and assert all PHY resets in sun4i_usb_phy_probe() before registering
-the PHY provider so every PHY starts from a clean reset state before
-any consumer calls sun4i_usb_phy_init().
+Disable and unprepare phy2->clk2 instead of phy->clk2.
 
-Tested on an Allwinner A33 Q8 tablet (Laser MID-786).
-
-Fixes: ba4bdc9e1dc0 ("PHY: sunxi: Add driver for sunxi usb phy")
+Fixes: b45c6d80325b ("phy: sun4i-usb: Introduce port2 SIDDQ quirk")
 Signed-off-by: Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
 ---
- drivers/phy/allwinner/phy-sun4i-usb.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+ drivers/phy/allwinner/phy-sun4i-usb.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/phy/allwinner/phy-sun4i-usb.c b/drivers/phy/allwinner/phy-sun4i-usb.c
-index f26eed0db17e..a62558124d2d 100644
+index a62558124d2d..6e35eb77c879 100644
 --- a/drivers/phy/allwinner/phy-sun4i-usb.c
 +++ b/drivers/phy/allwinner/phy-sun4i-usb.c
-@@ -787,7 +787,7 @@ static int sun4i_usb_phy_probe(struct platform_device *pdev)
- 			continue;
+@@ -318,7 +318,7 @@ static int sun4i_usb_phy_init(struct phy *_phy)
+ 			writel(val, phy2->pmu + REG_HCI_PHY_CTL);
+ 		}
  
- 		snprintf(name, sizeof(name), "usb%d_reset", i);
--		phy->reset = devm_reset_control_get(dev, name);
-+		phy->reset = devm_reset_control_get_exclusive(dev, name);
- 		if (IS_ERR(phy->reset)) {
- 			if (PTR_ERR(phy->reset) == -ENOENT)
- 				break;
-@@ -855,6 +855,25 @@ static int sun4i_usb_phy_probe(struct platform_device *pdev)
+-		clk_disable_unprepare(phy->clk2);
++		clk_disable_unprepare(phy2->clk2);
  	}
- 	data->num_phys = i;
  
-+	/*
-+	 * Assert reset on each PHY before they get deasserted in
-+	 * sun4i_usb_phy_init(), in case the bootloader left them active.
-+	 */
-+	for (i = 0; i < data->num_phys; i++) {
-+		struct sun4i_usb_phy *phy = data->phys + i;
-+
-+		if (data->cfg->missing_phys & BIT(i))
-+			continue;
-+
-+		ret = reset_control_assert(phy->reset);
-+		if (ret) {
-+			dev_err(dev, "Err asserting reset on PHY: %d\n", ret);
-+			return ret;
-+		}
-+	}
-+
-+	usleep_range(10, 20); /* hold PHY in reset briefly */
-+
- 	data->id_det_irq = gpiod_to_irq(data->id_det_gpio);
- 	if (data->id_det_irq > 0) {
- 		ret = devm_request_irq(dev, data->id_det_irq,
+ 	if (phy->pmu && data->cfg->hci_phy_ctl_clear) {
 
 -- 
 2.53.0
