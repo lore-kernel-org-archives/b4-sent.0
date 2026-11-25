@@ -1,11 +1,11 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Wed, 25 Nov 2026 10:33:45 +0100
-Subject: [PATCH RFC v4 03/15] dt-bindings: PCI: nxp,s32g-pcie: One PHY per
- lane
+Date: Wed, 25 Nov 2026 10:33:46 +0100
+Subject: [PATCH RFC v4 04/15] net: pcs: xpcs: allow a PCS to opt out of
+ soft reset and EEE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-s32g_serdes-v4-3-3bfe0589be8d@oss.nxp.com>
+Message-Id: <20261125-s32g_serdes-v4-4-3bfe0589be8d@oss.nxp.com>
 References: <20261125-s32g_serdes-v4-0-3bfe0589be8d@oss.nxp.com>
 In-Reply-To: <20261125-s32g_serdes-v4-0-3bfe0589be8d@oss.nxp.com>
 To: Vincent Guittot <vincent.guittot@linaro.org>, 
@@ -40,49 +40,87 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org,
  linux-pci@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795599274; l=1169;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795599274; l=2142;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=2T8jUwEi3ltYre4gdZGzsO3mt+/q6xBMsHs8FYuEF3c=;
- b=XbAHEFssMX3nbhcwDXGXMqYOtnF2zGW+H0r80LanO7vG672d2emcQaF/5/QcYFy2PXzjshoH5
- 5Z9n+6m6KtKAsPR5RSPzrFIdTz7Sr2W6MhknODVlgLZvrBRJR5fdO1S
+ bh=XscJymCuOoPX6VkV4O1nIKYSBnUzCtjWiHRRdPqdbMk=;
+ b=iE2FYHKkZBcU6n24n7zNpgnccWxNcvMAikDlY+jLN6198179BHbRw1XeT2teHMY9FSK6wFUv8
+ dIL2U1KySspC9q2iEtKQHhV1fidG8GKop8Oba4PFSWj7J2idWFs6aFx
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SerDes binding describes a link with one phys entry per lane,
-<lane PHY_TYPE_PCIE 0 0>. Allow up to two entries on the root port, and
-make the example reference lane 0 that way.
+Add a quirks mask to struct dw_xpcs_desc, with two flags:
+
+ - DW_XPCS_QUIRK_NO_SOFT_RESET: no soft reset in pcs_pre_config(). When
+   the XPCS shares its PMA with another controller, the reset belongs
+   to a bring-up sequence owned by the platform.
+
+ - DW_XPCS_QUIRK_NO_EEE: VR_MII_EEE_MCTRL0/1 are not implemented and
+   must not be written.
+
+No entry sets a quirk yet, so there is no functional change.
 
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ drivers/net/pcs/pcs-xpcs.c | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml b/Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml
-index 66a050028278..b90d169f57ed 100644
---- a/Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml
-+++ b/Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml
-@@ -57,7 +57,9 @@ properties:
-         maxItems: 1
+diff --git a/drivers/net/pcs/pcs-xpcs.c b/drivers/net/pcs/pcs-xpcs.c
+index 6466e0ff2a98..442c64a731b7 100644
+--- a/drivers/net/pcs/pcs-xpcs.c
++++ b/drivers/net/pcs/pcs-xpcs.c
+@@ -158,10 +158,20 @@ struct dw_xpcs_compat {
+ 	int (*pma_config)(struct dw_xpcs *xpcs);
+ };
  
-       phys:
--        maxItems: 1
-+        minItems: 1
-+        maxItems: 2
-+        description: One entry per SerDes lane of the link.
++/*
++ * The integration owns the PCS reset sequence: skip the soft reset in
++ * pcs_pre_config(). Only for PCS without Clause 73, whose fault recovery
++ * still resets.
++ */
++#define DW_XPCS_QUIRK_NO_SOFT_RESET	BIT(0)
++/* VR_MII_EEE_MCTRL0/1 are not implemented */
++#define DW_XPCS_QUIRK_NO_EEE		BIT(1)
++
+ struct dw_xpcs_desc {
+ 	u32 id;
+ 	u32 mask;
+ 	const struct dw_xpcs_compat *compat;
++	unsigned int quirks;
+ };
  
-     required:
-       - reg
-@@ -124,7 +126,7 @@ examples:
-                 ranges;
+ static const struct dw_xpcs_compat *
+@@ -729,6 +739,9 @@ static void xpcs_pre_config(struct phylink_pcs *pcs, phy_interface_t interface)
+ 		dev_err(&xpcs->mdiodev->dev, "switch interface failed: %pe\n",
+ 			ERR_PTR(ret));
  
-                 device_type = "pci";
--                phys = <&serdes0 PHY_TYPE_PCIE 0 0>;
-+                phys = <&serdes0 0 PHY_TYPE_PCIE 0 0>;
-             };
-         };
-     };
++	if (xpcs->desc->quirks & DW_XPCS_QUIRK_NO_SOFT_RESET)
++		xpcs->need_reset = false;
++
+ 	if (!xpcs->need_reset)
+ 		return;
+ 
+@@ -1318,6 +1331,9 @@ static void xpcs_disable_eee(struct phylink_pcs *pcs)
+ {
+ 	struct dw_xpcs *xpcs = phylink_pcs_to_xpcs(pcs);
+ 
++	if (xpcs->desc->quirks & DW_XPCS_QUIRK_NO_EEE)
++		return;
++
+ 	xpcs_config_eee(xpcs, false);
+ }
+ 
+@@ -1325,6 +1341,9 @@ static void xpcs_enable_eee(struct phylink_pcs *pcs)
+ {
+ 	struct dw_xpcs *xpcs = phylink_pcs_to_xpcs(pcs);
+ 
++	if (xpcs->desc->quirks & DW_XPCS_QUIRK_NO_EEE)
++		return;
++
+ 	xpcs_config_eee(xpcs, true);
+ }
+ 
 
 -- 
 2.55.0
