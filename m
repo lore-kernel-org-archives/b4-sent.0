@@ -1,56 +1,110 @@
 From: Ilia Snezhkov <iasnezhkov@gmail.com>
-To: broonie@kernel.org
-Cc: lgirdwood@gmail.com, matthias.bgg@gmail.com, 
- angelogioacchino.delregno@collabora.com, linux-mediatek@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] regulator: mt6358: fix MT6366 VDRAM2 vosel_mask
-Date: Wed, 25 Nov 2026 23:48:22 +0000
-Message-Id: <20261125234822.94684-1-iasnezhkov@gmail.com>
+To: heikki.krogerus@linux.intel.com, gregkh@linuxfoundation.org
+Cc: hdegoede@redhat.com, linux-usb@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+Subject: [PATCH] usb: roles: serialize registered checks and unregister
+ under sw->lock
+Date: Wed, 25 Nov 2026 23:48:25 +0000
+Message-Id: <20261125234825.94733-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795650502; l=1559;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795650505; l=2685;
  i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
- bh=NR5lTAGqEZZZ+e0evyu7yj4VBUXqt2FNsTxclnP6kJ8=;
- b=U30rDd2xT5dzziJ5z1nFS+q2oq2JPjQNp/vgG3PCxQ8HRFoChmiCTmCUY5fbDqPXvN9a1EY65
- vOV0au3HUU4ArN+3oNOWH3Xs7QsTAftTpHXQWWemy0OL/6BJ8GVJStW
+ bh=GuND8n2xqj5QQdwL+68NjBweSNAn1cbbNFIZ1io33u8=;
+ b=VX6Qt7SJnnMShPHXs0AFA3PZgzsq8zQ9J0kvT4+DaIasbDiJWcAhIvaOm7WqJxoTjdV2aHnlu
+ Pov7pAV68lICjkt3ZjvroL0Xh5HTPEM+j4lia4hOjBqdxq0PHrIzQuH
 X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
  pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
 X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mt6366_regulators[] declares VDRAM2 with vosel_mask = 0x10 (a single
-bit, bit 4) on MT6358_LDO_VDRAM2_ELR0, even though vdram2_selectors[]
-uses values { 0, 12 } (0x0 and 0xc) which live in bits 3:0.
+usb_role_switch_set_role() and usb_role_switch_get_role() check
+sw->registered outside sw->lock, while usb_role_switch_unregister()
+clears sw->registered without acquiring sw->lock.
 
-MT6358 in the same file (mt6358_regulators[]) and MediaTek's downstream
-MT6358/MT6366 regulator driver both use vosel_mask = 0xf on
-MT6358_LDO_VDRAM2_ELR0.
+A consumer can observe sw->registered == true, be preempted before
+acquiring sw->lock, and still invoke sw->set() or sw->get() after
+usb_role_switch_unregister() has returned and the provider driver has
+torn down its state. Likewise, an in-flight callback already holding
+sw->lock is not drained before usb_role_switch_unregister() returns.
 
-Change MT6366 VDRAM2 vosel_mask from 0x10 to 0xf.
+Move the sw->registered check inside sw->lock in both
+usb_role_switch_set_role() and usb_role_switch_get_role(), and clear
+sw->registered under sw->lock in usb_role_switch_unregister() so new
+callbacks are rejected and in-flight callbacks finish before the
+provider continues teardown.
 
-Found and drafted with an AI coding assistant while auditing MT6366.
+Found and drafted with an AI coding assistant.
 
-Fixes: f0e3c6261af1 ("regulator: mt6366: Add support for MT6366 regulator")
+Fixes: b787a3e78175 ("usb: roles: don't get/set_role() when usb_role_switch is unregistered")
 Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
 ---
- drivers/regulator/mt6358-regulator.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/usb/roles/class.c | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/regulator/mt6358-regulator.c b/drivers/regulator/mt6358-regulator.c
-index d6a0ec4..1d62c25 100644
---- a/drivers/regulator/mt6358-regulator.c
-+++ b/drivers/regulator/mt6358-regulator.c
-@@ -604,7 +604,7 @@ static const struct mt6358_regulator_info mt6366_regulators[] = {
- 	MT6366_REG_FIXED("vrf18", VRF18, "vs1-ldo1", MT6358_LDO_VRF18_CON0, 0, 1800000),
- 	MT6366_REG_FIXED("vaud28", VAUD28, "vsys-ldo1", MT6358_LDO_VAUD28_CON0, 0, 2800000),
- 	MT6366_LDO("vdram2", VDRAM2, vdram2, "vs2-ldo1",
--		   MT6358_LDO_VDRAM2_CON0, 0, MT6358_LDO_VDRAM2_ELR0, 0x10),
-+		   MT6358_LDO_VDRAM2_CON0, 0, MT6358_LDO_VDRAM2_ELR0, 0xf),
- 	MT6366_LDO("vsim1", VSIM1, vsim, "vsys-ldo1",
- 		   MT6358_LDO_VSIM1_CON0, 0, MT6358_VSIM1_ANA_CON0, 0xf00),
- 	MT6366_LDO("vibr", VIBR, vibr, "vsys-ldo3",
+diff --git a/drivers/usb/roles/class.c b/drivers/usb/roles/class.c
+index edec139..3370294 100644
+--- a/drivers/usb/roles/class.c
++++ b/drivers/usb/roles/class.c
+@@ -79,10 +79,11 @@ int usb_role_switch_set_role(struct usb_role_switch *sw, enum usb_role role)
+ 	if (IS_ERR_OR_NULL(sw))
+ 		return 0;
+ 
+-	if (!sw->registered)
+-		return -EOPNOTSUPP;
+-
+ 	mutex_lock(&sw->lock);
++	if (!sw->registered) {
++		ret = -EOPNOTSUPP;
++		goto out;
++	}
+ 
+ 	ret = sw->set(sw, role);
+ 	if (!ret) {
+@@ -90,6 +91,7 @@ int usb_role_switch_set_role(struct usb_role_switch *sw, enum usb_role role)
+ 		kobject_uevent(&sw->dev.kobj, KOBJ_CHANGE);
+ 	}
+ 
++out:
+ 	mutex_unlock(&sw->lock);
+ 
+ 	return ret;
+@@ -105,18 +107,21 @@ EXPORT_SYMBOL_GPL(usb_role_switch_set_role);
+  */
+ enum usb_role usb_role_switch_get_role(struct usb_role_switch *sw)
+ {
+-	enum usb_role role;
++	enum usb_role role = USB_ROLE_NONE;
+ 
+-	if (IS_ERR_OR_NULL(sw) || !sw->registered)
++	if (IS_ERR_OR_NULL(sw))
+ 		return USB_ROLE_NONE;
+ 
+ 	mutex_lock(&sw->lock);
++	if (!sw->registered)
++		goto out;
+ 
+ 	if (sw->get)
+ 		role = sw->get(sw);
+ 	else
+ 		role = sw->role;
+ 
++out:
+ 	mutex_unlock(&sw->lock);
+ 
+ 	return role;
+@@ -423,7 +428,9 @@ void usb_role_switch_unregister(struct usb_role_switch *sw)
+ {
+ 	if (IS_ERR_OR_NULL(sw))
+ 		return;
++	mutex_lock(&sw->lock);
+ 	sw->registered = false;
++	mutex_unlock(&sw->lock);
+ 	if (dev_fwnode(&sw->dev))
+ 		component_del(&sw->dev, &connector_ops);
+ 	device_unregister(&sw->dev);
 -- 
 2.54.0 (Apple Git-157)
 
