@@ -1,119 +1,130 @@
-From: Jim Cromie <jim.cromie@gmail.com>
-Date: Wed, 25 Nov 2026 11:12:53 -0700
-Subject: [PATCH] printk.h: fix overzealous pr_fmt in pr_debug_ratelimited
+From: Fil Dunsky <filipp.dunsky@gmail.com>
+Subject: [PATCH v3 0/3] Add Cortina Systems CS7542 NAND controller support
+Date: Wed, 25 Nov 2026 21:15:27 +0300
+Message-Id: <20261125-b4-cs7542-nand-v3-0-0b6d141c102e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-pr-fmt-v1-1-3ff6832f5a50@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MQQqAIBAF0KsMf52gglFeJVpYjTWLLDQikO4e9
- A7wKgpn4QJPFZlvKXIkeDINYd5CWlnJAk+w2rbGWKfOrOJ+KRMm3XcuxhAYDeHMHOX5o2F83w+
- DeFh9WAAAAA==
-X-Change-ID: 20261125-pr-fmt-1ab0985ffaae
-To: Petr Mladek <pmladek@suse.com>, John Ogness <john.ogness@linutronix.de>, 
- Steven Rostedt <rostedt@goodmis.org>, 
- Sergey Senozhatsky <senozhatsky@chromium.org>, 
- Jason Baron <jbaron@akamai.com>, Andrew Morton <akpm@linux-foundation.org>, 
- "Jason A. Donenfeld" <Jason@zx2c4.com>
-Cc: printk@lists.linux.dev, linux-kernel@vger.kernel.org, 
- Philipp Hahn <phahn-oss@avm.de>, Jim Cromie <jim.cromie@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795630377; l=3384;
- i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=uOvWjbH4KvP4BQLaAj5dHyvqdupRAiJBag5rGoYC/rU=;
- b=YR0qTxKl9oZCoqySBkW/7EM5j+ArZb3giU7KjThUd6isgDvVbW20zFhOZRXDD+7HE4sSEjDi0
- dFwdOthk8+sC7F2h0pAhZjmm9WGHdnf+NUdCa/muL/xrs7414BkplXI
-X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
- pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
-X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBQFr0K6tua3BUpZeQ/jAsoHaqSYFhsN4
+ e62uHGjy0nezFuJR2fQkzpbicNgvJltBHHIiB4bOyA1XWTCgZeMcUHbnGovi5xT29iOVlIpiQI
+ ApCJRujvszXMPni8f9o/2inpJlbQYjV9m99ofA0u7n/HAKFCpkUmlgTHkp2FqzO2o54mkeOD/d
+ R511akeqhKqQuTf+rZtbxP7tc79AAAA
+X-Change-ID: 20261123-b4-cs7542-nand-87997e300079
+To: Miquel Raynal <miquel.raynal@bootlin.com>, 
+ Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-mtd@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795630527; l=5154;
+ i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
+ bh=FxytYVQh1Bi01rQ9dueEmTxTm7lLV6AVOQ9uoQMr0ck=;
+ b=ETC/jJXYJFGf9J0x7cJw9IJcjfyyNxoX+S+PdnQVFwhN3n3mnhF8wlsUudz0e7tD9PuvsqTME
+ aqd2yTEZdKFCWL01PuA8JBQCRRLnND7tsGx4S27ZXCV48KjEVKiuxZH
+X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
+ pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
+X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Historically, the CONFIG_DYNAMIC_DEBUG implementation of
-pr_debug_ratelimited() passed raw fmt to both metadata and runtime:
+Add the NAND controller used by the Securifi Almond+ (CS7542, two Cortex-A9
+CPUs). This is an independent binding/driver/MAINTAINERS series on
+Linux v7.4-rc4; it does not depend on ARCH_CORTINA_ACCESS or the platform
+series.
 
-  DEFINE_DYNAMIC_DEBUG_METADATA(descriptor, fmt);
-  if (unlikely(...) && __ratelimit(&_rs))
-     __dynamic_pr_debug(&descriptor, fmt, ##__VA_ARGS__);
+The controller sequences complete command/address/data transactions. Use
+exec_op with explicit capability checking and cached ID, ONFI and page reads
+for NAND core's split operations. Retain firmware-initialized bus timing.
+This version supports large-page, 8-bit NAND with on-host Hamming ECC using
+256-byte steps and the existing OOB layout. It uses programmed I/O; DMA and
+unverified BCH modes are deliberately outside this initial implementation.
 
-While descriptor metadata was clean, emitted dmesg records lacked the
-pr_fmt prefix present in the !CONFIG_DYNAMIC_DEBUG fallbacks.
+Validation:
+- Full independent ARM vmlinux and modules builds, driver both =y and =m,
+  COMPILE_TEST=n, without the platform series.
+- Binding schema/example and strict source checkpatch pass.
+- Actual decoder functions: 292 boundary, address and sequence cases under
+  UBSAN. Address packing: 655360 cases cover every Almond+ page and
+  two-row-cycle large-page geometries. Actual Hamming correction function: 20485 cases covering every
+  single-data-bit position, invalid hardware offsets and error propagation.
+- Linux 7.4-rc4 booted in RAM on Almond+. NAND identification, all-device
+  bad-block scan, OOB reads and SHA256 of five existing protected regions
+  passed without new ECC failures.
+- The real UBI stack created a temporary two-LEB volume, wrote and verified
+  two 253952-byte patterns, removed the volume and reattached with the
+  original bad-block reserve. All 14 protected partition/configuration
+  checksums matched after returning to installed OpenWrt 6.18.64; the five
+  original UBI volumes and normal reserve remained intact.
 
-In 2015, commit 515a9adce0f0 ("include/linux/printk.h: include pr_fmt
-in pr_debug_ratelimited") fixed the missing prefix by wrapping fmt in
-__dynamic_pr_debug() with pr_fmt().  However, it also wrapped fmt in
-the metadata macro:
+V2 adds 630 actual attach-function geometry/ECC cases and repeats the full
+independent ARM =y/=m builds. V2 also booted Linux 7.4 in RAM with a single
+read-only partition: identification, bad-block scan, OOB reads and hashes
+of six protected regions including calibration passed, with no new ECC
+failures and automatic return to installed OpenWrt. The previous UBI
+write test above was on v1; it was not repeated on v2.
 
-  DEFINE_DYNAMIC_DEBUG_METADATA(descriptor, pr_fmt(fmt));
+On Almond+, I booted v3 in RAM with all 16 NAND partitions read-only.
+I read and verified 56 MiB against SHA-256 hashes of seven existing
+regions. Raw and generic OOB reads returned identical 64-byte buffers
+in all four banks. ECC reported five corrections and no uncorrectable
+errors. The fixed controller exposed no manual sysfs bind/unbind
+controls. That run was read-only.
 
-This causes two problems:
+A subsequent Linux 7.4-rc4 RAM run used the unchanged v3 driver for a
+fresh UBI write/erase test. It created a temporary two-LEB volume and
+wrote and compared two 253952-byte patterns. Between the patterns,
+UBI_IOCEBER erased both LEBs and flushed physical erasure; reading the
+volume returned 253952 bytes of 0xff. The test removed only its newly
+created volume and restored the original bad-block reserve. All five
+original volumes, reserve 80/free 0/bad 0, 13 protected data hashes and
+15 configuration files matched after watchdog returned to OpenWrt.
+The four LCD services and normal watchdog were running afterward.
 
-  1. Build failure when pr_fmt() expands to multiple arguments, e.g.:
-       #define pr_fmt(fmt) KBUILD_MODNAME ".%s " fmt, __func__
-     Passing pr_fmt(fmt) into DEFINE_DYNAMIC_DEBUG_METADATA() expands
-     across the comma in DEFINE_DYNAMIC_DEBUG_METADATA_CLS(), supplying
-     4 arguments where it takes 3.
+No kernel image was installed by these RAM tests. Board integration used
+for testing is kept separate from this series.
 
-  2. Metadata pollution even for single-argument pr_fmt(): baking the
-     prefix into .format breaks anchored queries such as:
-       echo format "^foo" > /proc/dynamic_debug/control
-
-Drop the pr_fmt() wrapper from DEFINE_DYNAMIC_DEBUG_METADATA() in
-pr_debug_ratelimited(), restoring consistency with dynamic_pr_debug,
-dev_dbg_ratelimited, and net_dbg_ratelimited.  Update
-lib/test_dynamic_debug.c to exercise pr_fmt() with __func__ in
-pr_debug_ratelimited().
-
-Reported-by: Philipp Hahn <phahn-oss@avm.de>
-Link: https://lore.kernel.org/lkml/a5e3c89fe5f4126873d58dd3472e66c56550ff91.1773779753.git.phahn-oss@avm.de/
-Fixes: 515a9adce0f0 ("include/linux/printk.h: include pr_fmt in pr_debug_ratelimited")
-Cc: Jason A. Donenfeld <Jason@zx2c4.com>
-Cc: Petr Mladek <pmladek@suse.com>
-Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
- include/linux/printk.h   | 2 +-
- lib/test_dynamic_debug.c | 4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+Changes in v3:
+- Honor the current interface tWB maximum before polling R/B.
+- Suppress unsafe manual sysfs bind/unbind on fixed SoC flash.
+- Add actual-function timing regressions and repeat ARM built-in/module builds.
+- Link to v2: https://patch.msgid.link/20261123-b4-cs7542-nand-v2-0-9d9f08608534@gmail.com
 
-diff --git a/include/linux/printk.h b/include/linux/printk.h
-index f594c1266bfd..cd29fb467b05 100644
---- a/include/linux/printk.h
-+++ b/include/linux/printk.h
-@@ -742,7 +742,7 @@ do {									\
- 	static DEFINE_RATELIMIT_STATE(_rs,				\
- 				      DEFAULT_RATELIMIT_INTERVAL,	\
- 				      DEFAULT_RATELIMIT_BURST);		\
--	DEFINE_DYNAMIC_DEBUG_METADATA(descriptor, pr_fmt(fmt));		\
-+	DEFINE_DYNAMIC_DEBUG_METADATA(descriptor, fmt);			\
- 	if (DYNAMIC_DEBUG_BRANCH(descriptor) &&				\
- 	    __ratelimit(&_rs))						\
- 		__dynamic_pr_debug(&descriptor, pr_fmt(fmt), ##__VA_ARGS__);	\
-diff --git a/lib/test_dynamic_debug.c b/lib/test_dynamic_debug.c
-index 77c2a669b6af..cf1e3b5f6f0f 100644
---- a/lib/test_dynamic_debug.c
-+++ b/lib/test_dynamic_debug.c
-@@ -6,7 +6,7 @@
-  *      Jim Cromie	<jim.cromie@gmail.com>
-  */
- 
--#define pr_fmt(fmt) "test_dd: " fmt
-+#define pr_fmt(fmt) "test_dd: %s " fmt, __func__
- 
- #include <linux/module.h>
- 
-@@ -155,7 +155,7 @@ static int __init test_dynamic_debug_init(void)
- 
- static void __exit test_dynamic_debug_exit(void)
- {
--	pr_debug("exited\n");
-+	pr_debug_ratelimited("exited\n");
- }
- 
- module_init(test_dynamic_debug_init);
+Changes in v2:
+- Reject unsupported page/OOB layouts and incompatible ECC requests.
+- Use 64-bit arithmetic before extracting the page bank.
+- Reject invalid hardware error-bit indices, preserve DT labels,
+  use the core OOB write helper and standard final-read polling.
+- Link to v1: https://patch.msgid.link/20261123-b4-cs7542-nand-v1-0-7ce179c011e2@gmail.com
 
+To: Fil Dunsky <filipp.dunsky@gmail.com>
+To: Miquel Raynal <miquel.raynal@bootlin.com>
+To: Richard Weinberger <richard@nod.at>
+To: Vignesh Raghavendra <vigneshr@ti.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+Cc: linux-mtd@lists.infradead.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Fil Dunsky (3):
+      dt-bindings: mtd: Add Cortina CS7542 NAND controller
+      mtd: rawnand: Add Cortina CS7542 controller support
+      MAINTAINERS: Add Cortina CS7542 NAND controller entry
+
+ .../bindings/mtd/cortina,cs7542-nand.yaml          |  66 ++
+ MAINTAINERS                                        |   7 +
+ drivers/mtd/nand/raw/Kconfig                       |  12 +
+ drivers/mtd/nand/raw/Makefile                      |   1 +
+ drivers/mtd/nand/raw/cs752x_nand.c                 | 814 +++++++++++++++++++++
+ 5 files changed, 900 insertions(+)
 ---
 base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
-change-id: 20261125-pr-fmt-1ab0985ffaae
+change-id: 20261123-b4-cs7542-nand-87997e300079
 
 Best regards,
--- 
-Jim Cromie <jim.cromie@gmail.com>
+--  
+Fil Dunsky <filipp.dunsky@gmail.com>
 
