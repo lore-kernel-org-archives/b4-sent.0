@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Wed, 25 Nov 2026 10:33:53 +0100
-Subject: [PATCH RFC v4 11/15] MAINTAINERS: Add NXP S32G SerDes entry
+Date: Wed, 25 Nov 2026 10:33:54 +0100
+Subject: [PATCH RFC v4 12/15] arm64: dts: s32g: Add SCMI reset controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-s32g_serdes-v4-11-3bfe0589be8d@oss.nxp.com>
+Message-Id: <20261125-s32g_serdes-v4-12-3bfe0589be8d@oss.nxp.com>
 References: <20261125-s32g_serdes-v4-0-3bfe0589be8d@oss.nxp.com>
 In-Reply-To: <20261125-s32g_serdes-v4-0-3bfe0589be8d@oss.nxp.com>
 To: Vincent Guittot <vincent.guittot@linaro.org>, 
@@ -39,56 +39,57 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org,
  linux-pci@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795599274; l=1513;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795599274; l=1237;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=86svSsXyW7XbXvUHtBhNIUJ9Mfx/TitxfATul2iPoAs=;
- b=Gn3XzjwMZOtGZ1tpGqksVlxXFvvg/WVPIMYMlFPNjKYIjT+/z53UTUVfoAcEhSfLFZO4pJrFP
- rnLdd3g1YLCBeMxaKmPQkCpeiJ+E+6Aemr9FWq/nclrrZL9SVwY4VL1
+ bh=l/V60bH7c4MUIrvfEGRqXVRIYRgJeQupX/xfO3YQ/kc=;
+ b=2hlcYHc724i5xgwbHJrrPvFzLGsD+Yg7R+zpFWle7rFwYq58Nc0xacCZeQW6osTBrTKojV+Zl
+ bRRMqKdmJ+4Cx8drYl0A1xFK0r1iqnoHcC4MNjzUsmGQLxqm/rHiGpz
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Vincent Guittot <vincent.guittot@linaro.org>
+Add the SCMI reset domain protocol node (protocol@16) for S32G2 and
+S32G3, so that on-SoC controllers can use SCMI resets.
 
-Add an entry for the S32G SerDes PHY driver, the S32G XPCS glue, the
-S32G part of pcs-xpcs, their headers and the SerDes binding. netdev is
-listed because the PCS code lives in drivers/net/pcs/.
-
-Signed-off-by: Vincent Guittot <vincent.guittot@linaro.org>
-[jan.petrous: dropped the shared core entry along with the core]
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- MAINTAINERS | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ arch/arm64/boot/dts/freescale/s32g2.dtsi | 5 +++++
+ arch/arm64/boot/dts/freescale/s32g3.dtsi | 5 +++++
+ 2 files changed, 10 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 742c4e6b291f..cb465ba42d73 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -3449,6 +3449,22 @@ S:	Maintained
- F:	Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml
- F:	drivers/pci/controller/dwc/pcie-nxp-s32g*
- 
-+ARM/NXP S32G SERDES DRIVER
-+M:	Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>
-+M:	Ciprian Marian Costea <ciprianmarian.costea@oss.nxp.com>
-+M:	Jan Petrous <jan.petrous@oss.nxp.com>
-+R:	NXP S32 Linux Team <s32@nxp.com>
-+L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
-+L:	linux-phy@lists.infradead.org
-+L:	netdev@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/phy/nxp,s32g-serdes.yaml
-+F:	drivers/net/pcs/pcs-nxp-s32g-xpcs.c
-+F:	drivers/net/pcs/pcs-xpcs-s32g.c
-+F:	drivers/phy/freescale/phy-nxp-s32g-serdes.c
-+F:	include/linux/pcs/pcs-nxp-s32g-xpcs.h
-+F:	include/linux/phy/nxp-s32g-serdes.h
+diff --git a/arch/arm64/boot/dts/freescale/s32g2.dtsi b/arch/arm64/boot/dts/freescale/s32g2.dtsi
+index a7e5977bc146..ff5d2a061d50 100644
+--- a/arch/arm64/boot/dts/freescale/s32g2.dtsi
++++ b/arch/arm64/boot/dts/freescale/s32g2.dtsi
+@@ -100,6 +100,11 @@ clks: protocol@14 {
+ 				reg = <0x14>;
+ 				#clock-cells = <1>;
+ 			};
 +
- ARM/NXP S32G/S32R DWMAC ETHERNET DRIVER
- M:	Jan Petrous <jan.petrous@oss.nxp.com>
- R:	s32@nxp.com
++			scmi_reset: protocol@16 {
++				reg = <0x16>;
++				#reset-cells = <1>;
++			};
+ 		};
+ 
+ 		psci {
+diff --git a/arch/arm64/boot/dts/freescale/s32g3.dtsi b/arch/arm64/boot/dts/freescale/s32g3.dtsi
+index 0770af61a2c4..fbe87475bcf6 100644
+--- a/arch/arm64/boot/dts/freescale/s32g3.dtsi
++++ b/arch/arm64/boot/dts/freescale/s32g3.dtsi
+@@ -139,6 +139,11 @@ clks: protocol@14 {
+ 				reg = <0x14>;
+ 				#clock-cells = <1>;
+ 			};
++
++			scmi_reset: protocol@16 {
++				reg = <0x16>;
++				#reset-cells = <1>;
++			};
+ 		};
+ 
+ 		psci: psci {
 
 -- 
 2.55.0
