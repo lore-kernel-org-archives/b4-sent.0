@@ -1,218 +1,170 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Wed, 25 Nov 2026 10:33:57 +0100
-Subject: [PATCH RFC v4 15/15] arm64: dts: s32g: Add S32G3-RDB3 SerDes
- routing variants
+From: Joel Granados <joel.granados@kernel.org>
+Date: Wed, 25 Nov 2026 10:40:51 +0100
+Subject: [PATCH] sysctl: Test rounding behaviour in jiffy-ms transformation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-s32g_serdes-v4-15-3bfe0589be8d@oss.nxp.com>
-References: <20261125-s32g_serdes-v4-0-3bfe0589be8d@oss.nxp.com>
-In-Reply-To: <20261125-s32g_serdes-v4-0-3bfe0589be8d@oss.nxp.com>
-To: Vincent Guittot <vincent.guittot@linaro.org>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
- Ciprian Marian Costea <ciprianmarian.costea@oss.nxp.com>, 
- NXP S32 Linux Team <s32@nxp.com>, Vinod Koul <vkoul@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Bogdan Hamciuc <bogdan.hamciuc@nxp.com>, 
- Ionut Vicovan <ionut.vicovan@nxp.com>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Chester Lin <chester62515@gmail.com>, Matthias Brugger <mbrugger@suse.com>, 
- Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, 
- Richard Cochran <richardcochran@gmail.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org, 
- netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, imx@lists.linux.dev, 
- linux-pci@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795599274; l=5200;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=ey+259q8NVdz+nmA6w91HlJzOAXDIhQhflExVQ+Y8o0=;
- b=O0br6DpDGuG00R9/Celm9Vz7oEv9fLtAFCfkd5v/N6CHAZKEdn/Imv4bxMILlCtnoOJSiljUK
- aZxBB69RSipClJeod4fr8tGUD+wbk0T49UrIEPVkvvKgfIFgP0hgD4B
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+Message-Id: <20261125-lklm-jiffy_rounding-v1-1-ccf2ddf7bd3a@kernel.org>
+X-B4-Tracking: v=1; b=H4sIACKtBmsC/x3MTQ5AMBBA4avIrDXRoSSuIiLolPFT0oYQcXeN5
+ bd47wFPjslDGT3g6GTPmw2QcQT92NqBBOtgwARzKVGJZV5WMbExd+O2w2q2g+iyHAulO0WYQih
+ 3R4av/1rV7/sBEgGHdmUAAAA=
+X-Change-ID: 20261125-lklm-jiffy_rounding-b46275db5e23
+To: Kees Cook <kees@kernel.org>, Avi Weiss <thnkslprpt@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4128;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=RpJAkbVCo3PiYqOJBu0qHd458RHdZ3KqXhVVUhOgvQ4=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGsGrSQ6ZjTQW/We47+1WsXkCJbRiidHpMEGS
+ lr2z3gOOCCzTIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJrBq0kAAoJELqXzVK3
+ lkFP+jYL/is73B+3x3Osc7NEipbbmNU9I5mXOvA209ipSqD1KBtjF7DGJMiIGvZ6d+KMOFqKXe5
+ 3mbamOYNw0Pud0yvxoMRYzV6hH0fw1q7a2Ld9ZSwd5Dc63kfTpfZCfcWlsb7nFi8TB2F8ktCatX
+ 70m5sHYTAU80Vg+AruwwQMG10TPQZSDUDdbZxTotXlot4V4Sd6bwcgEy15wG9HGD3UzLB9tOh4Z
+ 4EdrSVAMTlzajZootfipaLg3dhy93Y9QLQTebbZqddtkyyLUqwuUg1wmcCsl9SrZKILnFe5VN1D
+ 7OsaVtC+4GmrJCRF4zqch9jUl1HRdJA8McAWUWwxxSyCRQ03kqwy1+9QJ7U7+f40uNIHv75mqa0
+ JUwVzht7FhMsQhbOhweq7aeQZ4VmwQQUGxFRLli4GdWhkV8d2VfX9b0/M0Ar2S4KSfwI/1KFLye
+ HLjn+AfsKqWTo10e9we7E0+lH8SEh4V6HqKShfB4jPGIQI4TA07MdLX4OTbFtrcflrjGOd49bT7
+ JA=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The S32G3-VNP-RDB3 wires GMAC0 to an on-board KSZ9031 RGMII PHY by
-default. Add two board variants which route GMAC0 over SerDes_0 for
-SGMII instead:
+Add two tests over int_ms_jiffies and ulong_ms_jiffies:
 
-  - mode 1: PCIe x1 on lane 0, GMAC0 SGMII (XPCS0) on lane 1;
-  - mode 3: GMAC0 SGMII (XPCS0) on lane 0. Lane 1 (XPCS1, PFE_MAC2)
-    has no consumer, as there is no PFE driver, and is not described.
+1. roundup_on_write writes 1 ms and requires the read to be at least 1.
+   One millisecond is exact at HZ=1000 and rounds up to one jiffy below
+   that, reading back as 10, 4 and 3 ms at HZ=100, 250 and 300.
+2. stable_rewrite writes a random ms value, writes back what it reads,
+   and requires the second read to match the first.
 
-The variants are full .dts files that include s32g399a-rdb3.dts, not
-overlays: they drop the phy-handle of GMAC0, and /delete-property/ has
-no effect in an overlay.
-
-The routing is described by the consumers: the PCIe root ports
-reference lane 0 with PHY_TYPE_PCIE, GMAC0 references its lane with
-PHY_TYPE_SGMII and XPCS0, and takes the PCS from the SerDes through
-pcs-handle.
-
-The mode 1 variant also enables both PCIe root complexes: PCIe_0
-reaches the M.2 slots when board switch SW17-2 is ON, PCIe_1 the PCIe
-card slot. SerDes_1 carries only PCIe_1 on lane 0, as there is no PFE
-driver to reference lane 1, and runs the first matching mode, PCIe x2,
-with an x1 link.
-
-The SGMII lane goes to the on-board SJA1110 switch, which the variants
-do not describe, so the MAC side is a fixed 1G link.
-
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- arch/arm64/boot/dts/freescale/Makefile             |  2 +
- .../dts/freescale/s32g399a-rdb3-serdes-mode1.dts   | 65 ++++++++++++++++++++++
- .../dts/freescale/s32g399a-rdb3-serdes-mode3.dts   | 40 +++++++++++++
- 3 files changed, 107 insertions(+)
+These tests make sure that the fix that was recently merged [1], stays
+fixed.
 
-diff --git a/arch/arm64/boot/dts/freescale/Makefile b/arch/arm64/boot/dts/freescale/Makefile
-index a80cccf34eb5..f92670254c6a 100644
---- a/arch/arm64/boot/dts/freescale/Makefile
-+++ b/arch/arm64/boot/dts/freescale/Makefile
-@@ -1047,5 +1047,7 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mm-phygate-tauri-l-rs232-rs485.dtb
- dtb-$(CONFIG_ARCH_S32) += s32g274a-evb.dtb
- dtb-$(CONFIG_ARCH_S32) += s32g274a-rdb2.dtb
- dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3.dtb
-+dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3-serdes-mode1.dtb
-+dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3-serdes-mode3.dtb
- dtb-$(CONFIG_ARCH_S32) += s32n79-rdb.dtb
- dtb-$(CONFIG_ARCH_S32) += s32v234-evb.dtb
-diff --git a/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode1.dts b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode1.dts
-new file mode 100644
-index 000000000000..c881376db27a
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode1.dts
-@@ -0,0 +1,65 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
-+/*
-+ * Copyright 2021-2026 NXP
-+ *
-+ * NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3),
-+ * SerDes_0 Mode 1: PCIe x1 (lane 0) + 1G SGMII via GMAC0 (XPCS0, lane 1).
-+ */
-+
-+#include <dt-bindings/phy/phy.h>
-+#include "s32g399a-rdb3.dts"
-+
-+/ {
-+	model = "NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3), SerDes_0 Mode 1";
-+};
-+
-+&serdes0 {
-+	status = "okay";
-+};
-+
-+/*
-+ * SerDes_1: PCIe_1 on lane 0. Lane 1 (PFE) has no consumer, so the first
-+ * matching mode, PCIe x2, is used.
-+ */
-+&serdes1 {
-+	status = "okay";
-+};
-+
-+/*
-+ * PCIe_0 reaches the M.2 slots (M-key or E-key) when board switch SW17-2 is
-+ * ON, PCIe_1 the PCIe card slot.
-+ */
-+&pcie0 {
-+	status = "okay";
-+};
-+
-+&pcie0_rp {
-+	num-lanes = <1>;
-+	phys = <&serdes0 0 PHY_TYPE_PCIE 0 0>;
-+};
-+
-+&pcie1 {
-+	status = "okay";
-+};
-+
-+&pcie1_rp {
-+	num-lanes = <1>;
-+	phys = <&serdes1 0 PHY_TYPE_PCIE 0 0>;
-+};
-+
-+&gmac0 {
-+	/delete-property/ phy-handle;
-+	clocks = <&clks 24>, <&clks 17>, <&clks 16>, <&clks 15>;
-+	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
-+	phy-mode = "sgmii";
-+	phys = <&serdes0 1 PHY_TYPE_SGMII 0 1000>;
-+	pcs-handle = <&serdes0>;
-+	status = "okay";
-+
-+	/* The lane goes to the on-board SJA1110 switch, not described here */
-+	fixed-link {
-+		speed = <1000>;
-+		full-duplex;
-+		pause;
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode3.dts b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode3.dts
-new file mode 100644
-index 000000000000..8b90d5f14d2a
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode3.dts
-@@ -0,0 +1,40 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
-+/*
-+ * Copyright 2021-2026 NXP
-+ *
-+ * NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3),
-+ * SerDes_0 Mode 3: 1G SGMII via GMAC0 (XPCS0, lane 0). Lane 1 (XPCS1,
-+ * PFE_MAC2) is not described.
-+ */
-+
-+#include <dt-bindings/phy/phy.h>
-+#include "s32g399a-rdb3.dts"
-+
-+/ {
-+	model = "NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3), SerDes_0 Mode 3";
-+};
-+
-+/*
-+ * SerDes_0 mode 3: GMAC0 via XPCS0 on lane 0. Lane 1, PFE_MAC2 via XPCS1,
-+ * has no consumer, as there is no PFE driver.
-+ */
-+&serdes0 {
-+	status = "okay";
-+};
-+
-+&gmac0 {
-+	/delete-property/ phy-handle;
-+	clocks = <&clks 24>, <&clks 17>, <&clks 16>, <&clks 15>;
-+	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
-+	phy-mode = "sgmii";
-+	phys = <&serdes0 0 PHY_TYPE_SGMII 0 1000>;
-+	pcs-handle = <&serdes0>;
-+	status = "okay";
-+
-+	/* The lane goes to the on-board SJA1110 switch, not described here */
-+	fixed-link {
-+		speed = <1000>;
-+		full-duplex;
-+		pause;
-+	};
-+};
+[1] https://lore.kernel.org/all/awH4Fh-XofdwwRqZ@hobbes
+---
+ lib/test_sysctl.c                        | 13 ++++++++-
+ tools/testing/selftests/sysctl/sysctl.sh | 50 ++++++++++++++++++++++++++++++++
+ 2 files changed, 62 insertions(+), 1 deletion(-)
 
+diff --git a/lib/test_sysctl.c b/lib/test_sysctl.c
+index 65ce423461707170367a5df14999b571705251d0..40da8748c2ad283a8ac9fa9b859e8556e2dc3564 100644
+--- a/lib/test_sysctl.c
++++ b/lib/test_sysctl.c
+@@ -29,6 +29,7 @@
+ 
+ static int i_zero;
+ static int i_one_hundred = 100;
++static unsigned long ul_one = 1;
+ static int match_int_ok = 1;
+ 
+ enum {
+@@ -52,6 +53,7 @@ struct test_sysctl_data {
+ 	int int_jiffies;
+ 	int int_ms_jiffies;
+ 	int int_userhz_jiffies;
++	ulong ulong_ms_jiffies;
+ 
+ 	unsigned int uint_0001;
+ 
+@@ -72,10 +74,11 @@ static struct test_sysctl_data test_data = {
+ 
+ 	.boot_int = 0,
+ 
+-	/* One second in each converter's unit; all three store HZ jiffies. */
++	/* One second in each converter's unit; all four store HZ jiffies. */
+ 	.int_jiffies = HZ,
+ 	.int_ms_jiffies = HZ,
+ 	.int_userhz_jiffies = HZ,
++	.ulong_ms_jiffies = HZ,
+ 
+ 	.uint_0001 = 314,
+ 
+@@ -144,6 +147,14 @@ static const struct ctl_table test_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec_userhz_jiffies,
+ 	},
++	{
++		.procname	= "ulong_ms_jiffies",
++		.data		= &test_data.ulong_ms_jiffies,
++		.maxlen		= sizeof(ulong),
++		.mode		= 0644,
++		.proc_handler	= proc_doulongvec_ms_jiffies_minmax,
++		.extra1		= &ul_one,
++	},
+ 	{
+ 		.procname	= "uint_0001",
+ 		.data		= &test_data.uint_0001,
+diff --git a/tools/testing/selftests/sysctl/sysctl.sh b/tools/testing/selftests/sysctl/sysctl.sh
+index ad1ee0fccd7cefb066caf23d8aad42abfa046ba0..d24ac6c5a027248afbad4ee0331800fb00aa8978 100755
+--- a/tools/testing/selftests/sysctl/sysctl.sh
++++ b/tools/testing/selftests/sysctl/sysctl.sh
+@@ -351,6 +351,56 @@ test_int_jiffies_negative()
+ 	assert_content "$t" "1" || RET=$KSFT_FAIL
+ }
+ 
++# Writing 1 ms reads back 10, 4, 3 and 1 ms at HZ=100, 250, 300 and 1000
++# respectively. Here we make sure that it is >= to 1.
++test_jiffies_conv_roundup_on_write()
++{
++	local m="${SYSCTL}/int_ms_jiffies"
++	local l="${SYSCTL}/ulong_ms_jiffies"
++	local f got
++
++	[[ -f "$m" && -f "$l" ]] || { RET=$KSFT_SKIP; return; }
++
++	for f in "$m" "$l"; do
++		if ! printf '%s' "1" > "$f" 2>/dev/null; then
++			ktap_print_msg "$f: write of 1 rejected"
++			RET=$KSFT_FAIL
++			continue
++		fi
++		got=$(cat "$f")
++		if [[ ! "$got" =~ ^[0-9]+$ ]] || (( got < 1 )); then
++			ktap_print_msg "$f: wrote 1, got '$got', want >= 1"
++			RET=$KSFT_FAIL
++		fi
++	done
++}
++
++# Check that writing back what was just read does not change it again.
++test_jiffies_conv_stable_rewrite()
++{
++	local m="${SYSCTL}/int_ms_jiffies"
++	local l="${SYSCTL}/ulong_ms_jiffies"
++	local orig=$RANDOM
++	local f first
++
++	[[ -f "$m" && -f "$l" ]] || { RET=$KSFT_SKIP; return; }
++
++	for f in "$m" "$l"; do
++		if ! printf '%s' "$orig" > "$f" 2>/dev/null; then
++			ktap_print_msg "$f: write of $orig rejected"
++			RET=$KSFT_FAIL
++			continue
++		fi
++		first=$(cat "$f")
++		if ! printf '%s' "$first" > "$f" 2>/dev/null; then
++			ktap_print_msg "$f: rewrite of '$first' rejected"
++			RET=$KSFT_FAIL
++			continue
++		fi
++		assert_content "$f" "$first" || RET=$KSFT_FAIL
++	done
++}
++
+ test_uint_plain()
+ {
+ 	local t="${SYSCTL}/uint_0001"
+
+---
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20261125-lklm-jiffy_rounding-b46275db5e23
+
+Best regards,
 -- 
-2.55.0
+Joel Granados <joel.granados@kernel.org>
 
