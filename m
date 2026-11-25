@@ -1,97 +1,104 @@
-From: Jim Cromie <jim.cromie@gmail.com>
-Date: Tue, 24 Nov 2026 16:38:35 -0700
-Subject: [PATCH v4 3/3] drm/print: fix drm_printer dynamic debug bit-test
- bypass
+From: Bingfang Guo <bingfangguo@tencent.com>
+Date: Wed, 25 Nov 2026 04:32:19 +0000
+Subject: [PATCH v2] mm/mglru: skip oom killing for order != 0 allocs in
+ kswapd
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-rd-mostly-v4-3-26d60beb6666@gmail.com>
-References: <20261124-rd-mostly-v4-0-26d60beb6666@gmail.com>
-In-Reply-To: <20261124-rd-mostly-v4-0-26d60beb6666@gmail.com>
-To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Jason Baron <jbaron@akamai.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- Luca Coelho <luciano.coelho@intel.com>, Jani Nikula <jani.nikula@intel.com>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Jim Cromie <jim.cromie@gmail.com>
+Message-Id: <20261125-fix-mglru-kswapd-age-v2-1-4cc37437af9b@tencent.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ6CMBBFr0Jm7RhaEcSV9zAsShmgKi1pC2pI7
+ 27BuHMxi5e8+W8BR1aRg3OygKVZOWV0BL5LQPZCd4SqiQw85TmLh6164dA97IR39xRjgyI65el
+ QpjnLZJHlEF9HS9HbZq/Vl91U30j6dWs1euW8se+tO7PV+yWK/4mZIcOatW1DMhN05BdPWpL2e
+ 2kGqEIIH9I7E4fMAAAA
+X-Change-ID: 20261026-fix-mglru-kswapd-age-98390614c746
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Johannes Weiner <hannes@cmpxchg.org>, David Hildenbrand <david@kernel.org>, 
+ Michal Hocko <mhocko@kernel.org>, Qi Zheng <qi.zheng@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
+ Kairui Song <kasong@tencent.com>, Barry Song <baohua@kernel.org>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, Baoquan He <baoquan.he@linux.dev>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, Yu Zhao <yuzhao@google.com>, 
+ Bingfang Guo <bfguo@icloud.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Bingfang Guo <bingfangguo@tencent.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795563513; l=2848;
- i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=y0RWdr4HR8Hk2DeVmjJ5zNw17ifUMWtuwVaP7R47qsw=;
- b=o/UPdYHp3ZSlSA352RCmGdx4bwNiWNRBEtVQZfdCAr+VEeNWDZNiiVVuPpXN/Sg8lqYCYmBXN
- l5Da1oeomWwAxTBPIr2u7bCiiC1yqxmfDqlQtWfq+pOzSgalBs1DPUK
-X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
- pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
-X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795581142; l=2716;
+ i=bingfangguo@tencent.com; s=20260905; h=from:subject:message-id;
+ bh=qV2l1gYt5Q96N5XOUnCBfwyMyXQq9VOKcjW+/oh4RQU=;
+ b=S50EhNmVKqI1zc8Itdg9ig9CLE0dcM5ia7nxqwpj/tzGTLAG6/LlpCYTP4xUP/YJbJAfurPnW
+ JIZfOZMkqW5BSmD9w/7MpCOjXskbmcPqC3VT2QBmY65mCiJkaw3fCeU
+X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
+ pk=7YoBtD5pTW/XZHfmJ9x+FaHVq1TstMOvF31LTY3F+0w=
+X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260905 with auth_id=1006
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-drm_debug_enabled() [$1] is the canonical bit-test for drm.debug.
-Commit 6ce6fae84536 ("drm_print: optimize drm_debug_enabled for
-jump-label") elaborated it into 4 names, controlled by
-CONFIG_DRM_USE_DYNAMIC_DEBUG:
+We observed that when MGLRU min_ttl is set and the system is highly
+fragmented, high order allocations (e.g. order == 9) will fail and wake
+up kswapd. It can not make any progress, while pushing generations of
+memcgs so that they all end up younger than min_ttl_ms, repeatedly
+triggering the OOM killer in lru_gen_age_node(). Then the whole process
+repeats until all processes are killed and the kernel panics.
 
-A- $1_raw() - rename of the original bit-test.
-B- $1_instrumented() - like raw, but adds a pr_debug(), allowing us to
-   count callsite frequency and consider optimizing them later.
-C- __$1() - evaluates to 'true' when CONFIG_DRM_USE_DYNAMIC_DEBUG=y
-   (avoiding the bit-test where callsites are already guarded by a
-   dyndbg static-key), and forwards to A when =n.
-D- $1() - forwards to B when CONFIG_DRM_USE_DYNAMIC_DEBUG=y, and to A
-   when =n, for cases where an explicit bit-mask check is required.
+The purpose of the min_ttl is to prevent thrashing when all memcgs are
+too young to reclaim instead of preventing fragmentation. So fix this by
+restoring the behavior in commit 30d77b7eef019 ("mm/mglru: fix
+ineffective protection calculation"), which skips OOM killer invocations
+in lru_gen_age_node() for sc->order != 0.
 
-Later, commit 9fd6f61a297e ("drm/print: add drm_dbg_printer() for drm
-device specific printer") added a general-use __drm_printfn_dbg()
-function, but used __$1() instead of $1(). When
-CONFIG_DRM_USE_DYNAMIC_DEBUG=y, __$1() evaluates to 'true' and always
-prints.  This went unnoticed because CONFIG_DRM_USE_DYNAMIC_DEBUG was
-marked BROKEN.
-
-With =y, this results in a flood of messages, and in CI-tests on slow
-serial consoles, creates bottlenecks, as seen in DRM-CI on i915 CML
-devices.  When IGT causes a mismatch in intel_pipe_config_compare(),
-the resulting UART storm causes a hard timeout after 20 minutes.
-
-NOTES:
-
-Drop the single-use `category` local variable and pass p->category
-directly (which previously also triggered an unused-variable warning
-under the old __$1() bypass).
-
-Because __drm_printfn_dbg() is a shared helper invoked via p->printfn
-with a runtime p->category, the callsite cannot be guarded by a
-static-key; we'd need a macro version and callsites where category is
-a compile-time constant.
-
-Replacing __$1() with $1() or $1_raw() would also work, but
-$1_instrumented() adds the pr_debug() in both =y and =n configs; when
-enabled it can provide call-freq data to inform further callsite
-optimization choices.
-
-Fixes: 9fd6f61a297e ("drm/print: add drm_dbg_printer() for drm device specific printer")
-Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Fixes: 30d77b7eef019 ("mm/mglru: fix ineffective protection calculation")
+Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
 ---
- drivers/gpu/drm/drm_print.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+==== Testing ====
 
-diff --git a/drivers/gpu/drm/drm_print.c b/drivers/gpu/drm/drm_print.c
-index 2e7685849f44..3d26483975f2 100644
---- a/drivers/gpu/drm/drm_print.c
-+++ b/drivers/gpu/drm/drm_print.c
-@@ -218,9 +218,8 @@ void __drm_printfn_dbg(struct drm_printer *p, struct va_format *vaf)
+Tested on a VM with 6 cores and 6GiB of memory, HZ=1000, MGLRU enabled,
+min_ttl_ms set to 1000, and a workload that fragments the memory then
+allocates 2M pages.
+
+Without the patch, kswapd kills all processes and panics the system even
+with plenty of memory available. With the patch, allocations fail but
+the system remains stable.
+
+--
+Changes in v2:
+- Reword the comments to explain the purpose clearly. (Kairui)
+- Relax the skip condition to sc->order != 0 for soundness. (sashiko)
+- Rebase to mm-unstable.
+- Cc stable.
+- Link to v1: https://lore.kernel.org/all/20261027-fix-mglru-kswapd-age-v1-1-b1ffdec4ae52@tencent.com/
+---
+ mm/vmscan.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 836f50814ffa..9fadc6f9da49 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -4351,7 +4351,7 @@ static void lru_gen_age_node(struct pglist_data *pgdat, struct scan_control *sc)
  {
- 	const struct drm_device *drm = p->arg;
- 	const struct device *dev = drm ? drm->dev : NULL;
--	enum drm_debug_category category = p->category;
+ 	struct mem_cgroup *memcg;
+ 	unsigned long min_ttl = READ_ONCE(lru_gen_min_ttl);
+-	bool reclaimable = !min_ttl;
++	bool reclaimable = !min_ttl || sc->order;
  
--	if (!__drm_debug_enabled(category))
-+	if (!drm_debug_enabled_instrumented(p->category))
- 		return;
+ 	VM_WARN_ON_ONCE(!current_is_kswapd());
  
- 	__drm_dev_vprintk(dev, KERN_DEBUG, p->origin, p->prefix, vaf);
+@@ -4371,6 +4371,9 @@ static void lru_gen_age_node(struct pglist_data *pgdat, struct scan_control *sc)
+ 	 * The main goal is to OOM kill if every generation from all memcgs is
+ 	 * younger than min_ttl. However, another possibility is all memcgs are
+ 	 * either too small or below min.
++	 *
++	 * OOM killing for fragmentation is not desired. So skip this when
++	 * sc->order != 0.
+ 	 */
+ 	if (!reclaimable && mutex_trylock(&oom_lock)) {
+ 		struct oom_control oc = {
 
+---
+base-commit: a3d0117e02bfa1c3bb6c50e7afe42bbecdbb3459
+change-id: 20261026-fix-mglru-kswapd-age-98390614c746
+
+Best regards,
 -- 
-2.56.1
+Bingfang Guo <bingfangguo@tencent.com>
 
