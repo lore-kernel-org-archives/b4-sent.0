@@ -1,104 +1,96 @@
 From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Wed, 25 Nov 2026 12:13:37 +0100
-Subject: [PATCH] arm64: dts: qcom: sc8180x: add IPA node
+Date: Wed, 25 Nov 2026 12:36:56 +0100
+Subject: [PATCH] drm/msm/dp: clear AUX_TRANS_CTRL on reset and enable
+ HPD_REFTIMER
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-sc8180x-dts-ipa-v1-1-12e54c7e13b5@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAODCBmsC/x3MQQqAIBBA0avErBtQwdCuEi1Mp5qNhRMhRHdPW
- r7F/w8IFSaBsXug0M3CR27QfQdxD3kj5NQMRplBa2NRotNOVUyXIJ8BlXLkydrolwStOgutXP/
- jNL/vB4SIn6NhAAAA
-X-Change-ID: 20261125-sc8180x-dts-ipa-008e9e55c9bd
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Robert Ijtsma <robertijtsma@gmail.com>
+Message-Id: <20261125-drm-msm-dp-aux-resume-v1-1-17f5a40b9a61@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAFfIBmsC/x3MMQqAMAxA0atIZgO2YLVeRRzUppqhKgmKIN7d4
+ viG/x9QEiaFrnhA6GLlfcswZQHzOm4LIYdssJV1xtgagyRMmjAcOJ43CumZCH3r42Qn3wRXQ24
+ Pocj3/+2H9/0AI4wKsGcAAAA=
+X-Change-ID: 20261125-drm-msm-dp-aux-resume-989fb2b97d65
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Stephen Boyd <swboyd@chromium.org>, Vara Reddy <quic_varar@quicinc.com>, 
+ Guenter Roeck <groeck@chromium.org>
+Cc: Chandan Uddaraju <chandanu@codeaurora.org>, 
+ linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, Robert Ijtsma <robertijtsma@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795605216; l=2739;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795606616; l=2417;
  i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=d35IiIlbv8warTqyu0RnwigzG9v3xGp9TFd/CxAMx0o=;
- b=r3R/YJo7unyUuYBFlfVlfHvo5PmYAcWld7tzWbd+eoQ1+FgYf9la5tgdwbfo/sxZStQG415As
- fdhBHN8V393ANmGOkKq4ScsBtnFRrHRXN3nUi64DOZsjGb3Yx7T//KE
+ bh=+w3WryHW52WZHIQwqGhCofikKiZ/0IuvGEhWNHLjCn0=;
+ b=ltcA/KwYNwrXXIpJz1KcowA3irEz+fjhPBvQcHZAOHC5Ekm7xY8tBM0JHTVGvy27uw5LFdycS
+ rDystoXd6UtBw7VQtJoX+opc+LmCccRmsIWRIR+HKu9b71VR5h9YB0a
 X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
  pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
 X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the disabled IPA v4.1 (ipa@1e40000) SoC node to sc8180x.dtsi with
-its register regions, GIC and SMP2P interrupts, RPMh core clock,
-interconnects, SMMU streams, AOSS QMP handle, and SMP2P SMEM states so
-board devicetrees can enable IPA with their board-specific firmware and
-reserved memory region.
+On boards using an external HPD bridge (such as Microsoft Surface Pro X /
+SC8180X), internal HPD_CTRL is never enabled via msm_dp_aux_hpd_enable().
+Across runtime PM or s2idle suspend/resume power collapse, two AUX
+controller issues prevent reliable link re-training:
+
+1. msm_dp_aux_reset() does not clear REG_DP_AUX_TRANS_CTRL before
+   pulsing DP_AUX_CTRL_RESET, which can leave a stale transaction bit
+   latched across reset.
+2. msm_dp_aux_enable() relies on msm_dp_aux_hpd_enable() to set
+   DP_DP_HPD_REFTIMER_ENABLE; when internal HPD is unused, AUX timeouts
+   can stall after power collapse because the 1us reference timer is off.
+
+Clear REG_DP_AUX_TRANS_CTRL in msm_dp_aux_reset() and ensure
+DP_DP_HPD_REFTIMER_ENABLE is set in msm_dp_aux_enable().
+
+Tested on Microsoft Surface Pro X SQ2 (SC8180X) across s2idle suspend
+and resume.
+
+Fixes: c943b4948b58 ("drm/msm/dp: add displayPort driver support")
 
 Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
 ---
-Depends-on: https://lore.kernel.org/r/20261125-qcom-ipa-sc8180x-v1-0-48a889acbe6b@gmail.com
-The "qcom,sc8180x-ipa" binding patch in that series carries a
-Reviewed-by from Krzysztof Kozlowski.
+Ensure AUX reset clears REG_DP_AUX_TRANS_CTRL and msm_dp_aux_enable()
+enables the 1us HPD reference timer even when internal HPD is unused.
 ---
- arch/arm64/boot/dts/qcom/sc8180x.dtsi | 43 +++++++++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
+ drivers/gpu/drm/msm/dp/dp_aux.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sc8180x.dtsi b/arch/arm64/boot/dts/qcom/sc8180x.dtsi
-index be79608b7161a0786463fe93e22798080ebba93c..d30e56fec6303ca0043b68c6c0f739c9614aa5fc 100644
---- a/arch/arm64/boot/dts/qcom/sc8180x.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sc8180x.dtsi
-@@ -2261,6 +2261,49 @@ ufs_mem_phy: phy-wrapper@1d87000 {
- 			status = "disabled";
- 		};
+diff --git a/drivers/gpu/drm/msm/dp/dp_aux.c b/drivers/gpu/drm/msm/dp/dp_aux.c
+index b52393dcc067049529a51a9885990e5da663d802..2584dbf96043121b79310689b01ee21edc223107 100644
+--- a/drivers/gpu/drm/msm/dp/dp_aux.c
++++ b/drivers/gpu/drm/msm/dp/dp_aux.c
+@@ -76,6 +76,8 @@ static void msm_dp_aux_reset(struct msm_dp_aux_private *aux)
+ {
+ 	u32 aux_ctrl;
  
-+		ipa: ipa@1e40000 {
-+			compatible = "qcom,sc8180x-ipa";
-+			reg = <0x0 0x01e40000 0x0 0x7000>,
-+			      <0x0 0x01e47000 0x0 0x4000>,
-+			      <0x0 0x01e04000 0x0 0x2c000>;
-+			reg-names = "ipa-reg",
-+				    "ipa-shared",
-+				    "gsi";
++	msm_dp_write_aux(aux, REG_DP_AUX_TRANS_CTRL, 0);
 +
-+			interrupts-extended = <&intc GIC_SPI 311 IRQ_TYPE_EDGE_RISING>,
-+					      <&intc GIC_SPI 432 IRQ_TYPE_LEVEL_HIGH>,
-+					      <&modem_smp2p_ipa_in 0 IRQ_TYPE_EDGE_RISING>,
-+					      <&modem_smp2p_ipa_in 1 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "ipa",
-+					  "gsi",
-+					  "ipa-clock-query",
-+					  "ipa-setup-ready";
+ 	aux_ctrl = msm_dp_read_aux(aux, REG_DP_AUX_CTRL);
+ 
+ 	aux_ctrl |= DP_AUX_CTRL_RESET;
+@@ -88,7 +90,12 @@ static void msm_dp_aux_reset(struct msm_dp_aux_private *aux)
+ 
+ static void msm_dp_aux_enable(struct msm_dp_aux_private *aux)
+ {
+-	u32 aux_ctrl;
++	u32 aux_ctrl, reftimer;
 +
-+			clocks = <&rpmhcc RPMH_IPA_CLK>;
-+			clock-names = "core";
-+
-+			interconnects = <&aggre2_noc MASTER_IPA QCOM_ICC_TAG_ALWAYS
-+					 &mc_virt SLAVE_EBI_CH0 QCOM_ICC_TAG_ALWAYS>,
-+					<&aggre2_noc MASTER_IPA QCOM_ICC_TAG_ALWAYS
-+					 &system_noc SLAVE_OCIMEM QCOM_ICC_TAG_ALWAYS>,
-+					<&gem_noc MASTER_AMPSS_M0 QCOM_ICC_TAG_ALWAYS
-+					 &config_noc SLAVE_IPA_CFG QCOM_ICC_TAG_ALWAYS>;
-+			interconnect-names = "memory",
-+					     "imem",
-+					     "config";
-+
-+			iommus = <&apps_smmu 0x520 0x0>,
-+				 <&apps_smmu 0x522 0x0>;
-+
-+			qcom,qmp = <&aoss_qmp>;
-+			qcom,smem-states = <&modem_smp2p_ipa_out 0>,
-+					   <&modem_smp2p_ipa_out 1>;
-+			qcom,smem-state-names = "ipa-clock-enabled-valid",
-+						"ipa-clock-enabled";
-+
-+			status = "disabled";
-+		};
-+
- 		tcsr_mutex: hwlock@1f40000 {
- 			compatible = "qcom,tcsr-mutex";
- 			reg = <0x0 0x01f40000 0x0 0x40000>;
++	/* Keep the 1us AUX/HPD reference timer running without internal HPD. */
++	reftimer = msm_dp_read_aux(aux, REG_DP_DP_HPD_REFTIMER);
++	reftimer |= DP_DP_HPD_REFTIMER_ENABLE;
++	msm_dp_write_aux(aux, REG_DP_DP_HPD_REFTIMER, reftimer);
+ 
+ 	aux_ctrl = msm_dp_read_aux(aux, REG_DP_AUX_CTRL);
+ 
 
 ---
-base-commit: ef922b721a5e99348fc1f5801fdeb427ee14ee9f
-change-id: 20261125-sc8180x-dts-ipa-008e9e55c9bd
+base-commit: 4dce97c6c265544342e716e62fd24bbb232590c5
+change-id: 20261125-drm-msm-dp-aux-resume-989fb2b97d65
 
 Best regards,
 -- 
