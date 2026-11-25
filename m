@@ -1,14 +1,12 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Subject: [PATCH 0/4] PCI: qcom: Recalibrate the PHY on temperature drift
-Date: Wed, 25 Nov 2026 11:17:40 +0100
-Message-Id: <20261125-glymur-thermal-fix-v1-0-b93a9feae156@oss.qualcomm.com>
+Date: Wed, 25 Nov 2026 11:17:41 +0100
+Subject: [PATCH 1/4] thermal/of: Add thermal_zone_get_zone_by_node() API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAMS1BmsC/yXM3QpAQBCG4VvRHJvaXUW5FTlYazDy1ywiuXeLw
- +er773AkzB5yKMLhHb2PE8BOo7AdXZqCbkOBqNMqpVOsB3OcRNcO5LRDtjwgTprapdYZbPUQDg
- uQmH+okX5229VT259S3DfDzAArdl2AAAA
-X-Change-ID: 20261013-glymur-thermal-fix-17fdc3a0a762
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261125-glymur-thermal-fix-v1-1-b93a9feae156@oss.qualcomm.com>
+References: <20261125-glymur-thermal-fix-v1-0-b93a9feae156@oss.qualcomm.com>
+In-Reply-To: <20261125-glymur-thermal-fix-v1-0-b93a9feae156@oss.qualcomm.com>
 To: "Rafael J. Wysocki" <rafael@kernel.org>, 
  Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
  Lukasz Luba <lukasz.luba@arm.com>, Manivannan Sadhasivam <mani@kernel.org>, 
@@ -23,82 +21,89 @@ Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org,
  devicetree@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2723;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2400;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=HgrmnZrPJ03VUOGr7acN3x0L+JRf71NfChjXIGvBIFI=;
- b=owEBbAGT/pANAwAKAVWfEeb+kc71AcsmYgBrBrXJN0nx0VuywW13Z9P5yu8BfPQgfO99OfSiF
- NpXFGodvkaJATIEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCawa1yQAKCRBVnxHm/pHO
- 9Y3KB/i2GophMZJQXPNfRUIqmFp7Af4cCz0vRGPONdERPpK8uIZobxvZyQ55b86iy2gt4z7Wrlh
- PpQQCgB3OnFqVkd3uC3IVbsMUC73LjQMWrcBWuoh8L6Fs8+CTWJxyadQR8JJhQEPBg8FuN62FRm
- KWeoWjWA2DkDymTW5d0MqpnmYofjpHBRzk1BwnIL3jizZfApARfb7sgZNBwK/zv8FJ2eWSciaMh
- rt4FTGVf57sYWGLdhWLQ/fOUAh9RBYyHQszHolrm0R+2iNcXn9RcFSZ3T/uA1waJvkpzqEAxwuL
- EcYzRdUIAal2GHmHSaaqCrvYcCXgtMiJOhq0brfJWnWX9wU=
+ bh=5k4BZ2Ul4s1/TwVfhXlkb5ymb3YEzOmcYly7NzusMwk=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBrBrXN8u8ZRLWNBFP4jw+2gD9HawI4nmGTJbgqY
+ CxNRmHYXOuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCawa1zQAKCRBVnxHm/pHO
+ 9WFCB/9mmUu/B7ciK+Msk45jcGrCF0JgSFpXipyfDaWN8v8q21uXAhXH8wqe6hRfLUcRgbp/TTP
+ YEWv4vT+qRMs1A3TwV5hf7+h5UQ5L1F/E6zey9l9gsFE/Y/rox8MRkC6k+oDVqVajiNaewEQXkC
+ 5IrojZYtt5oa/ZN4BViWSe9uJcNKLIR/PKsR1lxd/m5eZTUJcQLJO8yH0wGOQkLuCMS2Jtj/hrt
+ fe35TS0SMQYNus95gqsRdnJg05oEjjuTIpVp4oCz4CLPBRXt/Rbgu+UWPK6gbmbK3un73VpoYNZ
+ TtMg1as8xc5Gspm/PAI+RovSpPsViwSp5ZxbwzZ+k/CkKXYS
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Problem Statement
-=================
-
-Some PCIe PHY instances on SoCs like Glymur benefit from periodic
-recalibration to compensate for temperature-related drift and maintain
-stable link operation. Otherwise there is a potential for a link drop.
-
-The PHY gets calibrated when the link trains and it cannot recalibrate
-itself while the link is up, so the recalibration has to be driven by
-software.
-
-Proposal
-========
-
-The PCIe controller driver triggers the recalibration with a PCIe link
-speed switch once the temperature change on a polled sensor exceeds the
-defined threshold. For this purpose, the driver needs to know which
-sensors track the PHY temperature and the drift temperature. Both of them
-vary per platform, so they come from DT.
-
-Once a zone has drifted far enough, the driver performs the link speed
-switching by scaling down the Target Link Speed to 2.5 GT/s and then
-restoring the original Target Link Speed. This forces the link to run
-Equalization again, which recalibrates the PHY against the current
-temperature, thereby maintaining stable link operation. Equalization only
-runs on a speed change to 8.0 GT/s or above.
-
-Patch 1 adds a lookup from a DT node to its thermal zone, which the driver
-needs for resolving the phandles it is handed. Patch 2 adds the new DT
-binding property to specify the tuples of thermal zones and their drift
-temperature. Patch 3 adds support for reading those zones on an interval
-and recalibrating the PHY once one of them has drifted far enough.
-
-Finally, patch 4 wires up the two Glymur PCIe controllers that use this,
-pointing each one at the sensor that tracks the temperature of the PHY it
-feeds.
-
-Testing
-=======
-
-Tested on the Glymur CRD, on the two controllers patch 4 describes.
+Add an API to allow the drivers to get a registered thermal zone from OF
+node.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
-Manivannan Sadhasivam (4):
-      thermal/of: Add thermal_zone_get_zone_by_node() API
-      dt-bindings: PCI: qcom,pcie-x1e80100: Add qcom,pcie-recalibration-thermal-zones
-      PCI: qcom: Recalibrate the PHY on temperature drift
-      arm64: dts: qcom: glymur: Describe the PCIe thermal inputs
+ drivers/thermal/thermal_of.c | 21 +++++++++++++++++++++
+ include/linux/thermal.h      |  8 ++++++++
+ 2 files changed, 29 insertions(+)
 
- .../bindings/pci/qcom,pcie-x1e80100.yaml           |  31 +++
- arch/arm64/boot/dts/qcom/glymur.dtsi               |   4 +
- drivers/pci/controller/dwc/pcie-qcom.c             | 224 +++++++++++++++++++++
- drivers/thermal/thermal_of.c                       |  21 ++
- include/linux/thermal.h                            |   8 +
- 5 files changed, 288 insertions(+)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261013-glymur-thermal-fix-17fdc3a0a762
+diff --git a/drivers/thermal/thermal_of.c b/drivers/thermal/thermal_of.c
+index 9e96fb1b033e..e38f67c19c8e 100644
+--- a/drivers/thermal/thermal_of.c
++++ b/drivers/thermal/thermal_of.c
+@@ -530,6 +530,27 @@ void devm_thermal_of_zone_unregister(struct device *dev, struct thermal_zone_dev
+ }
+ EXPORT_SYMBOL_GPL(devm_thermal_of_zone_unregister);
+ 
++/**
++ * thermal_zone_get_zone_by_node() - get a registered zone from its OF node
++ * @np: device tree node of the thermal zone
++ *
++ * Thermal zones described in the device tree are registered using the name
++ * of their device tree node, so resolve @np to its registered thermal zone
++ * by that name.
++ *
++ * Return: a valid thermal zone on success, an ERR_PTR otherwise (-EINVAL for
++ * an invalid argument, -ENODEV if no zone matches @np and -EEXIST if the name
++ * is not unique).
++ */
++struct thermal_zone_device *thermal_zone_get_zone_by_node(struct device_node *np)
++{
++	if (!np)
++		return ERR_PTR(-EINVAL);
++
++	return thermal_zone_get_zone_by_name(np->name);
++}
++EXPORT_SYMBOL_GPL(thermal_zone_get_zone_by_node);
++
+ /**
+  * thermal_of_cooling_device_register() - register an OF thermal cooling device
+  * @np:		a pointer to a device tree node.
+diff --git a/include/linux/thermal.h b/include/linux/thermal.h
+index 306ad17aed89..c5278d1ff0ef 100644
+--- a/include/linux/thermal.h
++++ b/include/linux/thermal.h
+@@ -216,6 +216,8 @@ devm_thermal_of_child_cooling_device_register(struct device *dev,
+ 					      struct device_node *np,
+ 					      const char *type, void *devdata,
+ 					      const struct thermal_cooling_device_ops *ops);
++
++struct thermal_zone_device *thermal_zone_get_zone_by_node(struct device_node *np);
+ #else
+ 
+ static inline
+@@ -254,6 +256,12 @@ devm_thermal_of_child_cooling_device_register(struct device *dev,
+ {
+ 	return ERR_PTR(-ENODEV);
+ }
++
++static inline struct thermal_zone_device *
++thermal_zone_get_zone_by_node(struct device_node *np)
++{
++	return ERR_PTR(-ENODEV);
++}
+ #endif
+ 
+ int for_each_thermal_trip(struct thermal_zone_device *tz,
 
-Best regards,
---  
-மணிவண்ணன் சதாசிவம்
+-- 
+2.43.0
 
