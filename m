@@ -1,161 +1,118 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 25 Nov 2026 14:08:16 +0100
-Subject: [PATCH v3 5/5] arm64: dts: qcom: sdm845-google: drop panel
- regulator-always-on
+From: Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
+Subject: [PATCH v3 0/3] usb/phy: sunxi: Assert reset before deasserting on
+ init
+Date: Wed, 25 Nov 2026 14:11:15 +0000
+Message-Id: <20261125-usb-sunxi-reset-fix-v3-0-855c43694f78@roadbobek.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-fix-blueline-panel-v3-5-914b4a30b73e@ixit.cz>
-References: <20261125-fix-blueline-panel-v3-0-914b4a30b73e@ixit.cz>
-In-Reply-To: <20261125-fix-blueline-panel-v3-0-914b4a30b73e@ixit.cz>
-To: Abel Vesa <abelvesa@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, David Airlie <airlied@gmail.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, Jessica Zhang <jesszhan0024@gmail.com>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- Maxime Ripard <mripard@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Rob Herring <robh@kernel.org>, 
- Simona Vetter <simona@ffwll.ch>, Sumit Semwal <sumit.semwal@linaro.org>, 
- Thomas Zimmermann <tzimmermann@suse.de>, Vinod Koul <vkoul@kernel.org>
-Cc: devicetree@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NzQ7CIBAGX8VwFsNSpNaT72E88LNaNBYDLalp+
+ u5CvRhjPM7m25mJRAwOI9mvJhIwueh8l6Far4hpVXdB6mxmwhmXAFDTIWoah250NGDEnp7dSC0
+ oxhgIwVRD8ucjYD4v1uPpzXHQVzR9UZVF62Lvw3PJJii7/4UElFHDdS2R4U4gHIJXVnuNt43xd
+ 1IqiX94ePXbw7NH4BZspaRopPj2zPP8Ajai8LQUAQAA
+X-Change-ID: 20261117-usb-sunxi-reset-fix-d1a0001440a9
+To: Bin Liu <b-liu@ti.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, Felipe Balbi <balbi@ti.com>, 
+ Hans de Goede <hansg@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Maxime Ripard <mripard@kernel.org>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Andre Przywara <andre.przywara@arm.com>
+Cc: linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ linux-phy@lists.infradead.org, 
+ Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3724; i=david@ixit.cz;
- h=from:subject:message-id; bh=7MbJWcOA7VgDjyx+wISNbX3wFon6Upjhtfj1PpZjQxE=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrBt3BP5Lf1wO+j5Mx/5MSPqPEcwqPoMlGv/Zcc
- PrK11+eEfiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawbdwQAKCRBgAj/E00kg
- clXoD/41wH4jQ2DlT9BhUtMArglYyo7sqm5aOY7yyZ5mM5eH9losiXE56sS8ihyEO/UZAN5vyDQ
- QDPdpORQ5pxnA2Mmc1pxQYCl0TeEbjsxXji3wZ0CItqXEk/wettggKnb5hlaBU1z6EiGdp2f7De
- Mx1IbciyUHEgSW9yzzuv94ZzWIkAVaKEi8gUiMSJBatJn7WFrpQrxD7aEGm2KV5vlsWKB7SqSJW
- WtS4okXZrAbEGQGFRH+hFgddp0eHGZX3WAEyBgR0NaPt0sUoFMW2QmovUFAeEScVCy+puZdKwe3
- GLE9pPCZyPRWgEdk2bl1XaxnnZJ+wa/Z724pbryOPx/XGP2Cld7DAgiQaTNYxTvK5Q0puBUoaFx
- eWFbqdupYvQ9r5fBAt6tFu+0LbK8To9ylptdOYwzFmLIFBfH/saQDQARRgI2gznL3xATV1UDMrA
- AJECdsfywp8KZqvE189QTe0NBFsktAw71L0A2LmT9dX699c0isV8Ks52dU6+xiIpECizTFSNkUI
- 00CT5xZYa5XTm+WDFmyDHZWqEsV5erwrwWzHdrPAVkBvdC968m108HfBR0uJhLewZr0V5fW0x1T
- b8SspazuuKf3Ee33ppR0y8O2/uONXGz/KohqS0E8O833dylOAUCa8kRBRT5hd5w8EVAWcVwaZbv
- O8PzMa64wMKLTqA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795615875; l=3498;
+ i=admin@roadbobek.com; s=20261117; h=from:subject:message-id;
+ bh=+B8CLcwaE8CfSA+NkGkpTmSXXtzNtTtQgGGXSeGISc8=;
+ b=PVQl9NNhVlYgrt+BFNS0PQjwG3tLirodfZuRu7QGB/C+s4Xn2tBpeTy4G1/C/3Q+BnG3vXN5S
+ Bn0icsaIpxzD7TVWdLGZUgePtf4KY2oyLplJbgROK28EJ4Oo0EtN0HB
+X-Developer-Key: i=admin@roadbobek.com; a=ed25519;
+ pk=TcWSTwITMylwCZLYbw80sv2LQx1zButqiT90TFVvhas=
+X-Endpoint-Received: by B4 Relay for admin@roadbobek.com/20261117 with auth_id=1548
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Drop the regulator-always-on workaround from vreg_l14a_1p8 (vddi) and
-vreg_l28a_3p0 (vpnl/vci) now that the LG SW43408 panel driver keeps vpnl
-paired with vddi, allowing both rails to power down on Pixel 3 when
-neither the panel nor the touchscreen requires vddi.
+When a bootloader such as U-Boot (for example with
+CONFIG_USB_MUSB_HOST=y) initializes USB host mode and boots Linux
+without stopping USB first, both the MUSB controller and USB PHY
+reset lines are already deasserted when Linux probes them.
 
-Define the supplies on Pixel 3 XL's framebuffer0 node so simpledrm keeps
-the panel powered once regulator late cleanup runs, while intentionally
-leaving them off Pixel 3's framebuffer0 node so simpledrm handover does
-not drop vpnl independently of vddi.
+Because reset_control_deassert() alone is a no-op on an already
+deasserted reset line, stale hardware register state persists across
+boot. On Allwinner A33, MUSB stays wedged in a_wait_bcon with
+DevCtl=0x99, Power=0xf0, and a frozen Frame counter even across
+hot-unplug and replug.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+This series ensures both the MUSB controller and USB PHYs are reset
+cleanly regardless of prior bootloader state, and fixes a related
+PHY2 clock reference imbalance spotted during review:
+
+- Patch 1 uses devm_reset_control_get_exclusive() and briefly asserts
+  glue->rst in sunxi_musb_init().
+- Patch 2 uses devm_reset_control_get_exclusive() and asserts all PHY
+  resets in sun4i_usb_phy_probe() before registering the PHY provider,
+  avoiding disrupting shared PHY2 on SoCs with needs_phy2_siddq.
+- Patch 3 fixes a pre-existing phy2->clk2 reference imbalance in
+  sun4i_usb_phy_init() on SoCs with needs_phy2_siddq.
+
+Tested on an Allwinner A33 Q8 tablet (Laser MID-786).
+
+Signed-off-by: Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts   |  2 ++
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi    | 10 ----------
- arch/arm64/boot/dts/qcom/sdm845-google-crosshatch.dts |  3 +++
- 3 files changed, 5 insertions(+), 10 deletions(-)
+Changes in v3:
+- Check the return value of reset_control_assert(glue->rst) in
+  sunxi_musb_init() and jump to error_clk_disable on failure
+  (Philipp Zabel).
+- Link to v2: https://patch.msgid.link/20261123-usb-sunxi-reset-fix-v2-0-4e51d3a64964@roadbobek.com
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts b/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-index a000c75494f1c..f916f4dbb89c5 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-@@ -14,16 +14,18 @@ &battery {
- 	voltage-min-design-microvolt = <3600000>;
- 	voltage-max-design-microvolt = <4400000>;
- };
- 
- &framebuffer0 {
- 	width = <1080>;
- 	height = <2160>;
- 	stride = <(1080 * 4)>;
-+
-+	/* intentionally no supplies here, see the LG SW43408 driver */
- };
- 
- &i2c2 {
- 	clock-frequency = <1000000>;
- 
- 	status = "okay";
- 
- 	/* ST,FTS @ 49 */
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index 3c9656b88b696..c025b2df4ea25 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -246,21 +246,16 @@ vreg_l13a_2p95: ldo13 {
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
- 		};
- 
- 		vreg_l14a_1p8: ldo14 {
- 			regulator-min-microvolt = <1800000>;
- 			regulator-max-microvolt = <1800000>;
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
- 			regulator-boot-on;
--			/*
--			 * We can't properly bring the panel back if it gets turned off
--			 * so keep it's regulators always on for now.
--			 */
--			regulator-always-on;
- 		};
- 
- 		vreg_l17a_1p3: ldo17 {
- 			regulator-min-microvolt = <1304000>;
- 			regulator-max-microvolt = <1304000>;
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
- 		};
- 
-@@ -308,21 +303,16 @@ vreg_l26a_1p2: ldo26 {
- 			regulator-boot-on;
- 		};
- 
- 		vreg_l28a_3p0: ldo28 {
- 			regulator-min-microvolt = <2856000>;
- 			regulator-max-microvolt = <3008000>;
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_LPM>;
- 			regulator-boot-on;
--			/*
--			 * We can't properly bring the panel back if it gets turned off
--			 * so keep it's regulators always on for now.
--			 */
--			regulator-always-on;
- 		};
- 	};
- 
- 	regulators-1 {
- 		compatible = "qcom,pmi8998-rpmh-regulators";
- 		qcom,pmic-id = "b";
- 
- 		vdd-bob-supply = <&vph_pwr>;
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-crosshatch.dts b/arch/arm64/boot/dts/qcom/sdm845-google-crosshatch.dts
-index 2a81ca1d00b1b..7591c6ebb1cb9 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-crosshatch.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-crosshatch.dts
-@@ -19,16 +19,19 @@ &dispcc {
- 	/* Disable for now so simple-framebuffer continues working */
- 	status = "disabled";
- };
- 
- &framebuffer0 {
- 	width = <1440>;
- 	height = <2960>;
- 	stride = <(1440 * 4)>;
-+
-+	vddi-supply = <&vreg_l14a_1p8>;
-+	vci-supply = <&vreg_l28a_3p0>;
- };
- 
- &mdss {
- 	/* Disable for now so simple-framebuffer continues working */
- 	status = "disabled";
- };
- 
- &wifi {
+Changes in v2:
+- Use devm_reset_control_get_exclusive() in both sunxi_musb_probe() and
+  sun4i_usb_phy_probe() (Philipp Zabel).
+- Move the USB PHY reset assertion from sun4i_usb_phy_init() to
+  sun4i_usb_phy_probe() so initializing PHY2 on SoCs with
+  needs_phy2_siddq does not reset an already active shared PHY2.
+- Add Fixes tags to both reset patches.
+- Add Patch 3 fixing the pre-existing phy2->clk2 clock reference
+  imbalance in sun4i_usb_phy_init().
+- Link to v1: https://patch.msgid.link/20261117-usb-sunxi-reset-fix-v1-0-c2b76e0e84e1@roadbobek.com
 
--- 
-2.55.0
+To: Bin Liu <b-liu@ti.com>
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: Chen-Yu Tsai <wens@kernel.org>
+To: Jernej Skrabec <jernej.skrabec@gmail.com>
+To: Samuel Holland <samuel@sholland.org>
+To: Philipp Zabel <p.zabel@pengutronix.de>
+To: Felipe Balbi <balbi@ti.com>
+To: Hans de Goede <hansg@kernel.org>
+To: Vinod Koul <vkoul@kernel.org>
+To: Neil Armstrong <neil.armstrong@linaro.org>
+To: Manivannan Sadhasivam <mani@kernel.org>
+To: Maxime Ripard <mripard@kernel.org>
+To: Kishon Vijay Abraham I <kishon@kernel.org>
+To: Andre Przywara <andre.przywara@arm.com>
+Cc: linux-usb@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-sunxi@lists.linux.dev
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-phy@lists.infradead.org
+
+---
+Bobek Brzeczyszczykiewicz (3):
+      usb: musb: sunxi: Assert reset before deasserting on init
+      phy: sun4i-usb: Assert PHY resets in sun4i_usb_phy_probe()
+      phy: sun4i-usb: Fix phy2->clk2 reference imbalance in sun4i_usb_phy_init()
+
+ drivers/phy/allwinner/phy-sun4i-usb.c | 23 +++++++++++++++++++++--
+ drivers/usb/musb/sunxi.c              |  7 ++++++-
+ 2 files changed, 27 insertions(+), 3 deletions(-)
+---
+base-commit: 666539eecdf4db623f5e3c3e55cf9f2dfad24aa4
+change-id: 20261117-usb-sunxi-reset-fix-d1a0001440a9
+
+Best regards,
+--  
+Bobek Brzeczyszczykiewicz <admin@roadbobek.com>
 
