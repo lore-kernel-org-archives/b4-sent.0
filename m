@@ -1,72 +1,63 @@
-From: Binoy Ravindran <binoy@vt.edu>
-Date: Wed, 25 Nov 2026 18:11:48 -0500
-Subject: [PATCH v3 3/3] livepatch: Select TASKS_RCU
+From: Ilia Snezhkov <iasnezhkov@gmail.com>
+To: lee@kernel.org
+Cc: matthias.bgg@gmail.com, angelogioacchino.delregno@collabora.com, 
+ linux-mediatek@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org
+Subject: [PATCH] mfd: mt6358: fix MT6358_AUD_TOP and MT6358_MISC_TOP
+ interrupt status bit shifts
+Date: Wed, 25 Nov 2026 23:48:20 +0000
+Message-Id: <20261125234820.94635-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-klp-series-v3-v3-3-b1e0f79af331@vt.edu>
-References: <20261125-klp-series-v3-v3-0-b1e0f79af331@vt.edu>
-In-Reply-To: <20261125-klp-series-v3-v3-0-b1e0f79af331@vt.edu>
-To: "Paul E. McKenney" <paulmck@kernel.org>, 
- Frederic Weisbecker <frederic@kernel.org>, 
- Neeraj Upadhyay <neeraj.upadhyay@kernel.org>, 
- Joel Fernandes <joelagnelf@nvidia.com>, 
- Josh Triplett <josh@joshtriplett.org>, Boqun Feng <boqun@kernel.org>, 
- Uladzislau Rezki <urezki@gmail.com>, Steven Rostedt <rostedt@goodmis.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Lai Jiangshan <jiangshanlai@gmail.com>, Zqiang <qiang.zhang@linux.dev>, 
- Josh Poimboeuf <jpoimboe@kernel.org>, Miroslav Benes <mbenes@suse.cz>, 
- Petr Mladek <pmladek@suse.com>, Joe Lawrence <joe.lawrence@redhat.com>, 
- Song Liu <song@kernel.org>, Ingo Molnar <mingo@kernel.org>, 
- Jiri Kosina <jikos@kernel.org>
-Cc: rcu@vger.kernel.org, linux-kernel@vger.kernel.org, 
- live-patching@vger.kernel.org, Yafang Shao <laoar.shao@gmail.com>, 
- Jaidev Shastri <jaidevshastri@vt.edu>, Binoy Ravindran <binoy@vt.edu>
+Content-Transfer-Encoding: 8bit
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795648326; l=1360;
- i=binoy@vt.edu; s=20261123; h=from:subject:message-id;
- bh=O07DZ6njJy/t9NEqF60nH7AFPGu6AH+JcyxcLxcqN68=;
- b=hTqH85UxJt6RZeHENYlKuc6P1efIPyhLZTzhr/RuQOIg6OPmzKe4cJLTnKZlEyPzRynceEwmf
- nLqpiCHuojsAaU3UyTxyzK1++faIIHDRgLCEwQw9C7sRkfVp34koRAN
-X-Developer-Key: i=binoy@vt.edu; a=ed25519;
- pk=4cNdKPHP0InmhK/9bb7Tm2ZMUXUvLGfw1pmVt5b98fA=
-X-Endpoint-Received: by B4 Relay for binoy@vt.edu/20261123 with auth_id=1622
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795650500; l=1414;
+ i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
+ bh=CJD3RtuSi+tWsdxFPCGavRJOeasqCKE/cFgR4AGmT1E=;
+ b=jFumlAP5ZBfX9e8ufTxPUCAnsD5dqr3aDBM/ntE2X8rf8eBwGwpbG9ohmxiaM094HkUFERLBk
+ sNCgBgUIjz4AeuhE33HEDaA310bImMeslbn6YyGC0w7ZklpNeHR8cvP
+X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
+ pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
+X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The transition finds exiting tasks through the RCU-tasks exit lists,
-which exist only with CONFIG_TASKS_RCU. Every kernel that can enable
-LIVEPATCH already builds TASKS_RCU. TASKS_RCU defaults to
-NEED_TASKS_RCU && PREEMPTION. LIVEPATCH depends on dynamic ftrace, so
-FUNCTION_TRACER is set, and it selects NEED_TASKS_RCU. Every
-architecture that selects HAVE_LIVEPATCH also selects
-ARCH_HAS_PREEMPT_LAZY, which rules out PREEMPT_VOLUNTARY, and none
-selects ARCH_NO_PREEMPT, which PREEMPT_NONE requires, so PREEMPTION is
-always set.
+In enum mt6358_irq_top_status_shift, MT6358_AUD_TOP immediately follows
+MT6358_HK_TOP (5), assigning it bit 6 and MT6358_MISC_TOP bit 7.
 
-Select TASKS_RCU explicitly, so that the dependency is documented and
-holds even if those defaults change. This changes no configuration
-today.
+On MT6358 and MT6366 hardware, TOP_INT_STATUS0 leaves bit 6 reserved
+(corresponding to XPP_TOP on MT6357); AUD_TOP is bit 7 and MISC_TOP is
+bit 8, matching MT6359_AUD_TOP = 7 in include/linux/mfd/mt6359/core.h,
+MT6357_AUD_TOP (7) in include/linux/mfd/mt6357/core.h, and MediaTek's
+downstream MT6358/MT6366 MFD headers.
 
-Suggested-by: Yafang Shao <laoar.shao@gmail.com>
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Binoy Ravindran <binoy@vt.edu>
+Because mt6358_irq_handler() tests BIT(irqd->pmic_ints[i].top_offset)
+against TOP_INT_STATUS0, audio, ACCDET, and SPI_CMD_ALERT interrupts
+are never dispatched on MT6358/MT6366.
+
+Set MT6358_AUD_TOP = 7 so MT6358_AUD_TOP is 7 and MT6358_MISC_TOP is 8.
+
+Found and drafted with an AI coding assistant while auditing MT6366.
+
+Fixes: 2b91c28f2abd ("mfd: Add support for the MediaTek MT6358 PMIC")
+Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
 ---
- kernel/livepatch/Kconfig | 1 +
- 1 file changed, 1 insertion(+)
+ include/linux/mfd/mt6358/core.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/kernel/livepatch/Kconfig b/kernel/livepatch/Kconfig
-index 4c0a9c18d0b2..683d6993e207 100644
---- a/kernel/livepatch/Kconfig
-+++ b/kernel/livepatch/Kconfig
-@@ -12,6 +12,7 @@ config LIVEPATCH
- 	depends on KALLSYMS_ALL
- 	depends on HAVE_LIVEPATCH
- 	depends on !TRIM_UNUSED_KSYMS
-+	select TASKS_RCU
- 	help
- 	  Say Y here if you want to support kernel live patching.
- 	  This option has no runtime impact until a kernel "patch"
-
+diff --git a/include/linux/mfd/mt6358/core.h b/include/linux/mfd/mt6358/core.h
+index 68578e2..5c96607 100644
+--- a/include/linux/mfd/mt6358/core.h
++++ b/include/linux/mfd/mt6358/core.h
+@@ -32,7 +32,7 @@ enum mt6358_irq_top_status_shift {
+ 	MT6358_SCK_TOP,
+ 	MT6358_BM_TOP,
+ 	MT6358_HK_TOP,
+-	MT6358_AUD_TOP,
++	MT6358_AUD_TOP = 7,
+ 	MT6358_MISC_TOP,
+ };
+ 
 -- 
-2.39.5
+2.54.0 (Apple Git-157)
+
 
