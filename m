@@ -1,84 +1,66 @@
 From: Ilia Snezhkov <iasnezhkov@gmail.com>
-To: jic23@kernel.org, dlechner@baylibre.com, nuno.sa@analog.com, 
- andy@kernel.org
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] iio: inkern: guard fwnode_xlate with info_exist_lock
-Date: Wed, 25 Nov 2026 23:48:27 +0000
-Message-Id: <20261125234827.94791-1-iasnezhkov@gmail.com>
+To: broonie@kernel.org, lgirdwood@gmail.com
+Cc: perex@perex.cz, tiwai@suse.com, matthias.bgg@gmail.com, 
+ angelogioacchino.delregno@collabora.com, linux-sound@vger.kernel.org, 
+ linux-mediatek@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org
+Subject: [PATCH] ASoC: mediatek: mtk-btcvsd: guard against 0xdeadfeed in
+ btcvsd_tx_clean_buffer()
+Date: Wed, 25 Nov 2026 23:48:30 +0000
+Message-Id: <20261125234830.94895-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795650508; l=2248;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795650510; l=1783;
  i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
- bh=UwI8MEOFQMNXYrZCfHn2V0m8wxZqqR1RYDKf/G0SIio=;
- b=rTYVmb1iDg1w9r+pQu3nCr/1QL3iCZWFQzBPwBrnjrGm/KhD0BTxuqrwN9TuMeW/I+OPjWKoW
- Ex0DWM6YHhmBC2RYJ9mZ047mkZG6667zSfQlo5HmEBy7xs1xZArOQRF
+ bh=W9UyHqccaU9sJaYlkqCsX581VyBG8Z+037komTBj1Ts=;
+ b=F9wU7UgJiGB2P7BStff8lAWPeen21Nkm66rJ9rRHWpCkZFY0WYH0G/B5l0W93ngFGlAbZw9Ud
+ 4ETAUZd1+ooDxOSjHeaJt/7+hfBhl3sX3fMZ/KatqJ8iz7nMHDgESuG
 X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
  pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
 X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__fwnode_iio_channel_get() dereferences indio_dev->info->fwnode_xlate
-and invokes it without holding info_exist_lock. Concurrent
-iio_device_unregister() clears indio_dev->info under info_exist_lock,
-allowing a NULL dereference or callback execution during provider
-teardown.
+mtk_btcvsd_read_from_bt() and mtk_btcvsd_write_to_bt() both reject the
+0xdeadfeed sentinel returned by the BT connsys SRAM pointer register
+when BT SRAM is unpowered or resetting, and check the SRAM address
+before dereferencing it. btcvsd_tx_clean_buffer(), however, casts each
+stored bt_sram_addr[] entry straight to a pointer and writes mute frames
+through mtk_btcvsd_snd_data_transfer() without checking for 0xdeadfeed
+or NULL.
 
-Hold iio_dev_opaque->info_exist_lock with scoped_guard(mutex, ...)
-matching the rest of inkern.c, return -ENODEV if indio_dev->info is
-NULL, and bounds-check the translated index against
-indio_dev->num_channels before indexing indio_dev->channels.
+If an invalid or reset SRAM address is recorded or cleared concurrently
+around hw_free / mute transitions, btcvsd_tx_clean_buffer() dereferences
+an invalid address in atomic context under tx_lock.
 
-Found and drafted with an AI coding assistant.
+Skip any bt_sram_addr[] slot holding 0xdeadfeed or 0 before transferring
+mute data.
 
-Fixes: acd8256723f2 ("iio: inkern: Add of_xlate function to struct iio_info")
+Found and drafted with an AI coding assistant while bringing up MT6789.
+
+Fixes: 4bd8597dc36c ("ASoC: mediatek: add btcvsd driver")
+Fixes: d067b3378a78 ("ASoC: mediatek: mtk-btcvsd: Add checks for write and read of mtk_btcvsd_snd")
 Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
 ---
- drivers/iio/inkern.c | 19 ++++++++++++++-----
- 1 file changed, 14 insertions(+), 5 deletions(-)
+ sound/soc/mediatek/common/mtk-btcvsd.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/drivers/iio/inkern.c b/drivers/iio/inkern.c
-index 1f22275..1a64b71 100644
---- a/drivers/iio/inkern.c
-+++ b/drivers/iio/inkern.c
-@@ -145,6 +145,7 @@ static int __fwnode_iio_channel_get(struct iio_channel *channel,
- 				    struct fwnode_handle *fwnode, int index)
- {
- 	struct fwnode_reference_args iiospec;
-+	struct iio_dev_opaque *iio_dev_opaque;
- 	struct device *idev;
- 	struct iio_dev *indio_dev;
- 	int err;
-@@ -162,15 +163,23 @@ static int __fwnode_iio_channel_get(struct iio_channel *channel,
- 	}
+diff --git a/sound/soc/mediatek/common/mtk-btcvsd.c b/sound/soc/mediatek/common/mtk-btcvsd.c
+index 19329dd..1f52567 100644
+--- a/sound/soc/mediatek/common/mtk-btcvsd.c
++++ b/sound/soc/mediatek/common/mtk-btcvsd.c
+@@ -341,6 +341,10 @@ static int btcvsd_tx_clean_buffer(struct mtk_btcvsd_snd *bt)
+ 		dev_info(bt->dev, "%s(), clean addr 0x%lx\n", __func__,
+ 			 bt->tx->buffer_info.bt_sram_addr[i]);
  
- 	indio_dev = dev_to_iio_dev(idev);
-+	iio_dev_opaque = to_iio_dev_opaque(indio_dev);
- 	channel->indio_dev = indio_dev;
--	if (indio_dev->info->fwnode_xlate)
--		index = indio_dev->info->fwnode_xlate(indio_dev, &iiospec);
--	else
--		index = __fwnode_iio_simple_xlate(indio_dev, &iiospec);
-+	scoped_guard(mutex, &iio_dev_opaque->info_exist_lock) {
-+		if (!indio_dev->info)
-+			index = -ENODEV;
-+		else if (indio_dev->info->fwnode_xlate)
-+			index = indio_dev->info->fwnode_xlate(indio_dev, &iiospec);
-+		else
-+			index = __fwnode_iio_simple_xlate(indio_dev, &iiospec);
-+		if (index >= indio_dev->num_channels)
-+			index = -EINVAL;
-+		if (index >= 0)
-+			channel->channel = &indio_dev->channels[index];
-+	}
- 	fwnode_handle_put(iiospec.fwnode);
- 	if (index < 0)
- 		goto err_put;
--	channel->channel = &indio_dev->channels[index];
++		if (bt->tx->buffer_info.bt_sram_addr[i] == 0xdeadfeed ||
++		    !bt->tx->buffer_info.bt_sram_addr[i])
++			continue;
++
+ 		dst = (void *)bt->tx->buffer_info.bt_sram_addr[i];
  
- 	return 0;
- 
+ 		mtk_btcvsd_snd_data_transfer(BT_SCO_DIRECT_ARM2BT,
 -- 
 2.54.0 (Apple Git-157)
 
