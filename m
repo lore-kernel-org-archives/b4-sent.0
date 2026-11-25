@@ -1,62 +1,56 @@
 From: Ilia Snezhkov <iasnezhkov@gmail.com>
-To: lee@kernel.org
-Cc: matthias.bgg@gmail.com, angelogioacchino.delregno@collabora.com, 
- linux-mediatek@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org
-Subject: [PATCH] mfd: mt6358: fix MT6358_AUD_TOP and MT6358_MISC_TOP
- interrupt status bit shifts
-Date: Wed, 25 Nov 2026 23:48:20 +0000
-Message-Id: <20261125234820.94635-1-iasnezhkov@gmail.com>
+To: broonie@kernel.org
+Cc: lgirdwood@gmail.com, matthias.bgg@gmail.com, 
+ angelogioacchino.delregno@collabora.com, linux-mediatek@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] regulator: mt6358: fix MT6366 VDRAM2 vosel_mask
+Date: Wed, 25 Nov 2026 23:48:22 +0000
+Message-Id: <20261125234822.94684-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795650500; l=1414;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795650502; l=1559;
  i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
- bh=CJD3RtuSi+tWsdxFPCGavRJOeasqCKE/cFgR4AGmT1E=;
- b=jFumlAP5ZBfX9e8ufTxPUCAnsD5dqr3aDBM/ntE2X8rf8eBwGwpbG9ohmxiaM094HkUFERLBk
- sNCgBgUIjz4AeuhE33HEDaA310bImMeslbn6YyGC0w7ZklpNeHR8cvP
+ bh=NR5lTAGqEZZZ+e0evyu7yj4VBUXqt2FNsTxclnP6kJ8=;
+ b=U30rDd2xT5dzziJ5z1nFS+q2oq2JPjQNp/vgG3PCxQ8HRFoChmiCTmCUY5fbDqPXvN9a1EY65
+ vOV0au3HUU4ArN+3oNOWH3Xs7QsTAftTpHXQWWemy0OL/6BJ8GVJStW
 X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
  pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
 X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In enum mt6358_irq_top_status_shift, MT6358_AUD_TOP immediately follows
-MT6358_HK_TOP (5), assigning it bit 6 and MT6358_MISC_TOP bit 7.
+mt6366_regulators[] declares VDRAM2 with vosel_mask = 0x10 (a single
+bit, bit 4) on MT6358_LDO_VDRAM2_ELR0, even though vdram2_selectors[]
+uses values { 0, 12 } (0x0 and 0xc) which live in bits 3:0.
 
-On MT6358 and MT6366 hardware, TOP_INT_STATUS0 leaves bit 6 reserved
-(corresponding to XPP_TOP on MT6357); AUD_TOP is bit 7 and MISC_TOP is
-bit 8, matching MT6359_AUD_TOP = 7 in include/linux/mfd/mt6359/core.h,
-MT6357_AUD_TOP (7) in include/linux/mfd/mt6357/core.h, and MediaTek's
-downstream MT6358/MT6366 MFD headers.
+MT6358 in the same file (mt6358_regulators[]) and MediaTek's downstream
+MT6358/MT6366 regulator driver both use vosel_mask = 0xf on
+MT6358_LDO_VDRAM2_ELR0.
 
-Because mt6358_irq_handler() tests BIT(irqd->pmic_ints[i].top_offset)
-against TOP_INT_STATUS0, audio, ACCDET, and SPI_CMD_ALERT interrupts
-are never dispatched on MT6358/MT6366.
-
-Set MT6358_AUD_TOP = 7 so MT6358_AUD_TOP is 7 and MT6358_MISC_TOP is 8.
+Change MT6366 VDRAM2 vosel_mask from 0x10 to 0xf.
 
 Found and drafted with an AI coding assistant while auditing MT6366.
 
-Fixes: 2b91c28f2abd ("mfd: Add support for the MediaTek MT6358 PMIC")
+Fixes: f0e3c6261af1 ("regulator: mt6366: Add support for MT6366 regulator")
 Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
 ---
- include/linux/mfd/mt6358/core.h | 2 +-
+ drivers/regulator/mt6358-regulator.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/mfd/mt6358/core.h b/include/linux/mfd/mt6358/core.h
-index 68578e2..5c96607 100644
---- a/include/linux/mfd/mt6358/core.h
-+++ b/include/linux/mfd/mt6358/core.h
-@@ -32,7 +32,7 @@ enum mt6358_irq_top_status_shift {
- 	MT6358_SCK_TOP,
- 	MT6358_BM_TOP,
- 	MT6358_HK_TOP,
--	MT6358_AUD_TOP,
-+	MT6358_AUD_TOP = 7,
- 	MT6358_MISC_TOP,
- };
- 
+diff --git a/drivers/regulator/mt6358-regulator.c b/drivers/regulator/mt6358-regulator.c
+index d6a0ec4..1d62c25 100644
+--- a/drivers/regulator/mt6358-regulator.c
++++ b/drivers/regulator/mt6358-regulator.c
+@@ -604,7 +604,7 @@ static const struct mt6358_regulator_info mt6366_regulators[] = {
+ 	MT6366_REG_FIXED("vrf18", VRF18, "vs1-ldo1", MT6358_LDO_VRF18_CON0, 0, 1800000),
+ 	MT6366_REG_FIXED("vaud28", VAUD28, "vsys-ldo1", MT6358_LDO_VAUD28_CON0, 0, 2800000),
+ 	MT6366_LDO("vdram2", VDRAM2, vdram2, "vs2-ldo1",
+-		   MT6358_LDO_VDRAM2_CON0, 0, MT6358_LDO_VDRAM2_ELR0, 0x10),
++		   MT6358_LDO_VDRAM2_CON0, 0, MT6358_LDO_VDRAM2_ELR0, 0xf),
+ 	MT6366_LDO("vsim1", VSIM1, vsim, "vsys-ldo1",
+ 		   MT6358_LDO_VSIM1_CON0, 0, MT6358_VSIM1_ANA_CON0, 0xf00),
+ 	MT6366_LDO("vibr", VIBR, vibr, "vsys-ldo3",
 -- 
 2.54.0 (Apple Git-157)
 
