@@ -1,224 +1,211 @@
-From: Victor Mora <vjmoralesmora@protonmail.com>
-Date: Wed, 25 Nov 2026 20:50:03 +0100
-Subject: [PATCH] phy: qcom: edp: Fix v8 PLL and SSC configuration for RBR,
- HBR and HBR2
+From: Joseph Telaak <joseph@telaak.dev>
+Subject: [PATCH v6 0/6] clk: Add the Siflower SF19A2890 clock manager and
+ peripheral clock and reset managers
+Date: Wed, 25 Nov 2026 15:24:47 -0500
+Message-Id: <20261125-sf19a2890-sysm-v6-0-181875c10682@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-glymur-edp-pll-v1-1-068a4d95a12f@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQyNT3fScytzSIt3UlALdgpwc3WRzkyTLZLPUFINEUyWgpoKi1LTMCrC
- B0bG1tQCM71O1YAAAAA==
-X-Change-ID: 20261125-glymur-edp-pll-c74b9c6ed0a5
-To: Vinod Koul <vkoul@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Ritesh Kumar <ritesh.kumar@oss.qualcomm.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Nabige Aala <nabige.aala@oss.qualcomm.com>, 
- Gopikrishna Garmidi <gopikrishna.garmidi@oss.qualcomm.com>, 
- Victor Mora <vjmoralesmora@protonmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795636209; l=6678;
- i=vjmoralesmora@protonmail.com; s=20261125; h=from:subject:message-id;
- bh=qVbeo/jP78rlkyjkxHPovLbmwjPdXqdr2Ue/1EwP/2o=;
- b=+ywXwrPPjb5pfkkpk1XDX9PZr6m2OwvqvR9SZ2xGaU8iOYC9NLdiQ1069m1bnukja57np3O6F
- 7oXHRwpncKaBCRktkO56BnmJKYlkyX94swPyZjU/Y6zlGloBUeaZViu
-X-Developer-Key: i=vjmoralesmora@protonmail.com; a=ed25519;
- pk=xX1yECoFrpZB2EbulsFDxl+S7K3ggttCl3mCaW5rSV8=
-X-Endpoint-Received: by B4 Relay for vjmoralesmora@protonmail.com/20261125 with auth_id=1642
+X-B4-Tracking: v=1; b=H4sIABBEB2sC/2XQ3U4DIRAF4FdpuBbDDOyy65Xv0fSCn8GitlXYE
+ ptm3122alzl8pD5zpC5skwpUmYPmytLVGKOp2MN/d2Gub05PhGPvmaGAnsAgTwHGA0Oo+D5kg/
+ cOAjWWQTvO1bRW6IQP26F291Xzmf7TG5aWr4nEr2f66bpd2wf83RKl9s3CiyvPxvV/40FuOBGB
+ eOE9mFA+TjRqzEv954KW7oKrjxA47F6j8FZjZJUgMbLte8bL6u3QlunBynNoBuvVh6bixW1eBs
+ InBo7Qmp8t/ay8V31yhqljPAWtP/j53n+BBuL8izUAQAA
+X-Change-ID: 20261102-sf19a2890-sysm-ac1fbcb21dd5
+To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
+ Thomas Bogendoerfer <tsbogend@alpha.franken.de>
+Cc: Paul Burton <paulburton@kernel.org>, 
+ Jiaxun Yang <jiaxun.yang@flygoat.com>, Chuanhong Guo <gch981213@gmail.com>, 
+ Yao Zi <me@ziyao.cc>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+ linux-mips@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joseph Telaak <joseph@telaak.dev>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795638293; l=9065;
+ i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
+ bh=VpA0kqClLc5YSFfPt0R5xdNwLxlg3Gwqt0JMJXbAyHM=;
+ b=VkEYzl/5IfyYO4mEl5T2PD/zwUmrlzO2WBbkP4G7HitLhGPpaLVubsKawgscjtgh+uHgHmE2h
+ XelsjlOjFE9BLJbxnTxqnQIz+xirCRvRd/9PQxKrBBzO9qQyJrO0Zql
+X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
+ pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
+X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On Glymur, the eDP PHY PLL does not lock at RBR, HBR and HBR2, leaving
-the panel black. qcom_edp_com_configure_pll_v8() uses values for those
-rates that do not match the v8 DP PLL programming sequence, VCO_TUNE1/2
-are fixed to the HBR3 values, and the same SSC step size is used for
-every rate.
+The Siflower SF19A2890, a MIPS SoC for home routers, has a clock manager
+with its PLLs and the muxes and dividers that feed the CPU, the buses
+and the peripherals, and for each peripheral block a small clock and
+reset manager with its gates, its resets and a bus output enable. This
+series adds bindings and drivers for both. The peripheral managers'
+resets have a reset driver of their own, which binds to an auxiliary
+device that their clock driver creates.
 
-Use the per-rate values from the v8 DP PHY tables posted for the QMP
-combo PHY [1], which use the same QSERDES COM register layout, and
-program VCO_TUNE1/2 and BIN_VCOCAL_HSCLK_SEL_1 per rate.
+The drivers are based on Chuanhong Guo's, from his SF19A2890 branch [1].
+The peripheral managers' binding is rewritten: Chuanhong's described
+every block with one compatible and its bit layout in properties
+(siflower,valid-gates, siflower,reset-masks and so on); here each block
+has its own compatible and the layouts are tables in the drivers. Clock
+N of a block is its input clock N, gated.
 
-Tested on a Lenovo IdeaPad Slim 5 13Q8Y11 (Snapdragon X2 Plus,
-X2P-42-100) with a CSW MND307QS3-1 1920x1200 eDP panel, using a local
-devicetree based on kalambo-crd.dts. Without this patch the panel
-stays black. With it, and with the PHY status read from 0x114 instead
-of 0x0e0 (needed separately on this machine, see the Nord series [2]),
-link training succeeds at HBR (2.7 Gbps), 2 lanes. RBR, HBR2 and HBR3
-were not tested on hardware (the panel supports up to HBR).
+Following Conor's review of Chuanhong's SF21 clock binding, the header
+has no count at its end.
 
-Link: https://lore.kernel.org/r/20260828-glymur-phy-v3-v3-3-8e73ce7c4636@oss.qualcomm.com # [1]
-Link: https://lore.kernel.org/r/20261116-nord-drv-dt-v3-9-e3d3bf0e2c49@oss.qualcomm.com # [2]
-Fixes: add66a6673bc ("phy: qcom: edp: Add Glymur platform support")
-Assisted-by: LLM
-Signed-off-by: Victor Mora <vjmoralesmora@protonmail.com>
----
-Hi,
+The GIC timer runs from the CPU clock and probes before the platform
+bus, so the clock manager registers that clock and its PLLs from
+CLK_OF_DECLARE_DRIVER and the other clocks from a platform driver.
 
-On Glymur, the eDP PHY PLL doesn't lock at RBR/HBR/HBR2, so the panel
-on my laptop stays black. This patch uses the per-rate values from the
-v8 DP combo PHY table update [1].
+Patch 1 adds MACH_SIFLOWER_MIPS, which the drivers depend on. It is
+the Kconfig part of patch 2 of the MIPS series [2], whose next version
+will carry the same patch, with the kmalloc.h override in a patch of its
+own, so that whichever of the clk and MIPS trees takes it first can put
+it on an immutable branch for the other. Thomas, would you ack it for
+that?
 
-Ritesh, Abel: could you confirm the eDP PHY should use the same values
-as the combo DP PHY?
+Tested on a GL.iNet GL-SFT1200: the rates in clk_summary match the
+vendor firmware's (CMN PLL 1.5 GHz, buses 300, 300 and 375 MHz, PBUS
+100 MHz, UART 125 MHz, GMAC reference 125 MHz, USB PHY reference
+50 MHz), and the CPU clock reads 800 MHz, the rate the GIC timer was
+checked at against a reference clock with the MIPS series; the console,
+DDR and buses survive the unused clock sweep; the UART, SPI NAND, I2C,
+GPIO, GMAC, USB and watchdog drivers probe with these clocks and resets;
+and the I2C controller works again after an unbind and bind, which
+cycles its reset. v4 was booted again on the same board: the GIC timer
+runs from the early CPU clock (0.02 s off the host over 292 s), the
+other clocks come from the platform driver at the same rates, with no
+orphans or deferred devices, and the same drivers probe.
+v5 was booted on the same board too: each of the twelve peripheral
+clock and reset managers binds and gets a reset device of its own, which
+the new reset driver serves, at the same rates and with no orphans or
+deferred devices, and an I2C unbind and bind asserts and releases its
+reset bit.
 
-On this laptop the panel also needs the PHY status register at 0x114
-instead of 0x0e0. Since the Nord series [2] adds the per-SoC
-phy_status_reg field, I'll suggest setting it there for Glymur rather
-than sending a conflicting patch.
-
-I couldn't find an existing fix on the list; apologies if this is
-already being handled internally.
-
-[1] https://lore.kernel.org/r/20260828-glymur-phy-v3-v3-3-8e73ce7c4636@oss.qualcomm.com
-[2] https://lore.kernel.org/r/20261116-nord-drv-dt-v3-9-e3d3bf0e2c49@oss.qualcomm.com
-
-Thanks!
----
- drivers/phy/qualcomm/phy-qcom-edp.c                | 68 ++++++++++++++++------
- .../phy/qualcomm/phy-qcom-qmp-qserdes-dp-com-v8.h  |  1 +
- 2 files changed, 50 insertions(+), 19 deletions(-)
-
-diff --git a/drivers/phy/qualcomm/phy-qcom-edp.c b/drivers/phy/qualcomm/phy-qcom-edp.c
-index a3c893f72908..d7813cd8d5df 100644
---- a/drivers/phy/qualcomm/phy-qcom-edp.c
-+++ b/drivers/phy/qualcomm/phy-qcom-edp.c
-@@ -914,15 +914,20 @@ static int qcom_edp_com_configure_ssc_v8(const struct qcom_edp *edp)
- 	u32 step1;
- 	u32 step2;
- 
-+	/* Per-rate SSC step sizes from the v8 DP PLL programming sequence */
- 	switch (dp_opts->link_rate) {
- 	case 1620:
--	case 2700:
--	case 8100:
--		step1 = 0x5b;
-+		step1 = 0x83;
- 		step2 = 0x02;
- 		break;
- 
-+	case 2700:
- 	case 5400:
-+		step1 = 0x18;
-+		step2 = 0x02;
-+		break;
-+
-+	case 8100:
- 		step1 = 0x5b;
- 		step2 = 0x02;
- 		break;
-@@ -953,31 +958,53 @@ static int qcom_edp_com_configure_pll_v8(const struct qcom_edp *edp)
- 	u32 code1_mode0;
- 	u32 code2_mode0;
- 	u32 hsclk_sel;
-+	u32 vco_tune1_mode0;
-+	u32 vco_tune2_mode0;
- 
-+	/*
-+	 * Per-rate PLL values from the v8 DP PLL programming sequence, as
-+	 * used for the v8 DP PHY in the QMP combo PHY driver.
-+	 */
- 	switch (dp_opts->link_rate) {
- 	case 1620:
- 		hsclk_sel = 0x5;
--		dec_start_mode0 = 0x34;
--		div_frac_start2_mode0 = 0xc0;
--		div_frac_start3_mode0 = 0x0b;
--		lock_cmp1_mode0 = 0x37;
--		lock_cmp2_mode0 = 0x04;
--		code1_mode0 = 0x71;
--		code2_mode0 = 0x0c;
-+		dec_start_mode0 = 0x54;
-+		div_frac_start2_mode0 = 0x00;
-+		div_frac_start3_mode0 = 0x06;
-+		lock_cmp1_mode0 = 0x1c;
-+		lock_cmp2_mode0 = 0x02;
-+		code1_mode0 = 0x8d;
-+		code2_mode0 = 0x27;
-+		vco_tune1_mode0 = 0xfe;
-+		vco_tune2_mode0 = 0x00;
- 		break;
- 
- 	case 2700:
--		hsclk_sel = 0x3;
--		dec_start_mode0 = 0x34;
--		div_frac_start2_mode0 = 0xc0;
--		div_frac_start3_mode0 = 0x0b;
--		lock_cmp1_mode0 = 0x07;
-+		hsclk_sel = 0x4;
-+		dec_start_mode0 = 0x46;
-+		div_frac_start2_mode0 = 0x00;
-+		div_frac_start3_mode0 = 0x05;
-+		lock_cmp1_mode0 = 0x08;
- 		lock_cmp2_mode0 = 0x07;
--		code1_mode0 = 0x71;
--		code2_mode0 = 0x0c;
-+		code1_mode0 = 0xf6;
-+		code2_mode0 = 0x20;
-+		vco_tune1_mode0 = 0xae;
-+		vco_tune2_mode0 = 0x02;
- 		break;
- 
- 	case 5400:
-+		hsclk_sel = 0x3;
-+		dec_start_mode0 = 0x46;
-+		div_frac_start2_mode0 = 0x00;
-+		div_frac_start3_mode0 = 0x05;
-+		lock_cmp1_mode0 = 0x10;
-+		lock_cmp2_mode0 = 0x0e;
-+		code1_mode0 = 0xf6;
-+		code2_mode0 = 0x20;
-+		vco_tune1_mode0 = 0xae;
-+		vco_tune2_mode0 = 0x02;
-+		break;
-+
- 	case 8100:
- 		hsclk_sel = 0x2;
- 		dec_start_mode0 = 0x4f;
-@@ -987,6 +1014,8 @@ static int qcom_edp_com_configure_pll_v8(const struct qcom_edp *edp)
- 		lock_cmp2_mode0 = 0x15;
- 		code1_mode0 = 0x14;
- 		code2_mode0 = 0x25;
-+		vco_tune1_mode0 = 0xa0;
-+		vco_tune2_mode0 = 0x01;
- 		break;
- 
- 	default:
-@@ -1022,11 +1051,12 @@ static int qcom_edp_com_configure_pll_v8(const struct qcom_edp *edp)
- 	writel(0x00, edp->pll + DP_QSERDES_V8_COM_VCO_TUNE_CTRL);
- 	writel(0x1f, edp->pll + DP_QSERDES_V8_COM_BIAS_EN_CLKBUFLR_EN);
- 	writel(0x00, edp->pll + DP_QSERDES_V8_COM_CORE_CLK_EN);
--	writel(0xa0, edp->pll + DP_QSERDES_V8_COM_VCO_TUNE1_MODE0);
--	writel(0x01, edp->pll + DP_QSERDES_V8_COM_VCO_TUNE2_MODE0);
-+	writel(vco_tune1_mode0, edp->pll + DP_QSERDES_V8_COM_VCO_TUNE1_MODE0);
-+	writel(vco_tune2_mode0, edp->pll + DP_QSERDES_V8_COM_VCO_TUNE2_MODE0);
- 
- 	writel(code1_mode0, edp->pll + DP_QSERDES_V8_COM_BIN_VCOCAL_CMP_CODE1_MODE0);
- 	writel(code2_mode0, edp->pll + DP_QSERDES_V8_COM_BIN_VCOCAL_CMP_CODE2_MODE0);
-+	writel(hsclk_sel, edp->pll + DP_QSERDES_V8_COM_BIN_VCOCAL_HSCLK_SEL_1);
- 
- 	return 0;
- }
-diff --git a/drivers/phy/qualcomm/phy-qcom-qmp-qserdes-dp-com-v8.h b/drivers/phy/qualcomm/phy-qcom-qmp-qserdes-dp-com-v8.h
-index 93edabb830af..870835656f8f 100644
---- a/drivers/phy/qualcomm/phy-qcom-qmp-qserdes-dp-com-v8.h
-+++ b/drivers/phy/qualcomm/phy-qcom-qmp-qserdes-dp-com-v8.h
-@@ -45,6 +45,7 @@
- #define DP_QSERDES_V8_COM_CORE_CLK_EN			0x170
- #define DP_QSERDES_V8_COM_CMN_CONFIG_1			0x174
- #define DP_QSERDES_V8_COM_SVS_MODE_CLK_SEL		0x180
-+#define DP_QSERDES_V8_COM_BIN_VCOCAL_HSCLK_SEL_1	0x1a0
- #define DP_QSERDES_V8_COM_CLK_FWD_CONFIG_1		0x2f4
- #define DP_QSERDES_V8_COM_CMN_STATUS			0x314
- #define DP_QSERDES_V8_COM_C_READY_STATUS		0x33c
+[1] https://github.com/981213/linux/commits/siflower-7.1
+[2] https://patch.msgid.link/20261111-sf19a2890-mips-v2-0-36730fa4f5a6@telaak.dev
 
 ---
-base-commit: 495f98f8dc61da7c5d9ad11ac7d07ee2cd2154cc
-change-id: 20261125-glymur-edp-pll-c74b9c6ed0a5
+Changes in v6:
+- Patch 1: move the kmalloc.h override to the MIPS series, as a patch of
+  its own, and say in the help what the kernel leaves out (Brian).
+- Patch 3: put each clock registered at probe in the provider data
+  before registering it, so that its orphans find it as it registers
+  (Brian, Sashiko).
+- Patches 3, 5 and 6: add blank lines before returns (Brian).
+- Patch 5: prefix the gate names with gate_, so that names like gpio and
+  wdt cannot collide with another provider's clocks (Brian).
+- Patch 5: order the declarations in probe longest first, put each gate
+  in the provider data before registering it, and suppress the bind
+  attributes, as patch 3 does (Brian).
+- Patches 5 and 6: allocate with devm_kzalloc_flex(), devm_kzalloc_objs()
+  and devm_kzalloc_obj() (Philipp).
+- Patch 6: move the comment on the reset masks that cover several bits
+  to the masks field (Philipp).
+- Patch 6: depend on OF, since the driver only matches by its parent's
+  OF node (Sashiko, kernel test robot).
+- Link to v5: https://patch.msgid.link/20261123-sf19a2890-sysm-v5-0-4ba44a0db17d@telaak.dev
+
+Changes in v5:
+- Patches 2 to 5 were patches 1 to 4 in v4.
+- Patch 1 (new): add MACH_SIFLOWER_MIPS, patch 2 of the MIPS series
+  without its MAINTAINERS line, for an immutable branch between the clk
+  and MIPS trees (Brian, Sashiko).
+- Patches 3 and 5: make myself the author, with Chuanhong's
+  Co-developed-by and Signed-off-by and a Link to his commit, in place of
+  the lists of my changes (Brian).
+- Patch 3: hand out each clock registered at probe as soon as it is
+  registered, and leave the orphans to the clock framework (Brian,
+  Sashiko).
+- Patch 5: describe the driver at a higher level in the commit message
+  (Brian).
+- Patch 5: move the resets to a reset driver, patch 6, which binds to an
+  auxiliary device that the clock driver creates; drop Philipp's
+  Reviewed-by, since the reset code moved (Brian).
+- Link to v4: https://patch.msgid.link/20261122-sf19a2890-sysm-v4-0-bbfe1c495e2e@telaak.dev
+
+Changes in v4:
+- Patch 2: register only the CPU clock and the PLLs it may run from
+  early, from CLK_OF_DECLARE_DRIVER, and the other clocks from a
+  platform driver (Brian).
+- Patch 2: compute the PLL rate with div_u64() on the parent rate,
+  without first dividing it by refdiv (Brian).
+- Patch 2: map the mux values with a table and clk_mux_val_to_index()
+  and clk_mux_index_to_val(); a value outside the table now leaves the
+  clock an orphan instead of reading as the 40 MHz oscillator (Brian).
+- Patch 2: change only the source field when setting a mux parent,
+  keeping MUXDIV_USE_NCO (Brian).
+- Patch 2: drop CLK_SET_RATE_PARENT from the CPU clock, which had no
+  effect: the PLLs cannot change rate (Brian).
+- Patch 2: join lines that fit and add blank lines (Brian).
+- Link to v3: https://patch.msgid.link/20261116-sf19a2890-sysm-v3-0-b07bc7833a87@telaak.dev
+
+Changes in v3:
+- Patches 1 and 2: name the NPU clock CLK_MUXDIV_NPU_PE, without the _CLK
+  suffix that no other clock has (Brian).
+- Patch 3: add Conor's Ack.
+- Patch 4: take the spinlock with guard(spinlock_irqsave) (Philipp).
+- Patch 4: explain each multi-bit reset group in the commit message, not
+  just the GMAC's (Philipp).
+- Patch 4: add Philipp's Reviewed-by.
+- Link to v2: https://patch.msgid.link/20261111-sf19a2890-sysm-v2-0-d2fcb723e4f1@telaak.dev
+
+Changes in v2:
+- Write my notes on Chuanhong's patches as lists, with Co-developed-by.
+- Use GPL-2.0-only, not the deprecated GPL-2.0 identifier, in the clock
+  header's SPDX line.
+- Add a MAINTAINERS entry for the drivers, their bindings and the
+  headers, with an F: line per driver, since drivers/clk/siflower/ will
+  also hold the SF21 drivers.
+- Include <linux/device-id/of.h> instead of <linux/mod_devicetable.h>
+  (Uwe).
+- Word the error messages the same way, and use the current SPDX
+  identifiers in the new files.
+- Explain in the commit message why some resets cover more than one bit
+  (Philipp, Chuanhong).
+- Patch 1: add Conor's Ack.
+- Patch 2: with the PLL's fractional modulator on, scale the fraction by
+  the reference rate, not by the integer VCO rate; and reject a rate of 0
+  in the mux dividers instead of dividing by it.
+- Patch 3: add include/dt-bindings/clock/siflower,sf19a2890-periph-crm.h,
+  naming the clocks and resets of each manager, instead of listing the
+  resets in the description; patch 4 indexes its tables by it (Conor).
+- Patch 4: no comma after the match table's sentinel (Uwe).
+- Link to v1: https://patch.msgid.link/20261104-sf19a2890-sysm-v1-0-a4fac07df823@telaak.dev
+
+---
+Chuanhong Guo (1):
+      MIPS: Add support for Siflower MIPS SoCs
+
+Joseph Telaak (5):
+      dt-bindings: clock: Add Siflower SF19A2890 clock manager
+      clk: siflower: Add SF19A2890 clock manager driver
+      dt-bindings: clock: Add Siflower SF19A2890 peripheral clock/reset managers
+      clk: siflower: Add SF19A2890 peripheral clock driver
+      reset: Add Siflower SF19A2890 peripheral reset driver
+
+ .../bindings/clock/siflower,sf19a2890-clk.yaml     |  57 +++
+ .../clock/siflower,sf19a2890-periph-crm.yaml       | 166 +++++++
+ MAINTAINERS                                        |  12 +
+ arch/mips/Kconfig                                  |  33 ++
+ drivers/clk/Kconfig                                |   1 +
+ drivers/clk/Makefile                               |   1 +
+ drivers/clk/siflower/Kconfig                       |  23 +
+ drivers/clk/siflower/Makefile                      |   3 +
+ drivers/clk/siflower/clk-sf19a2890-periphcrm.c     | 306 +++++++++++++
+ drivers/clk/siflower/clk-sf19a2890.c               | 501 +++++++++++++++++++++
+ drivers/reset/Kconfig                              |  12 +
+ drivers/reset/Makefile                             |   1 +
+ drivers/reset/reset-sf19a2890-periphcrm.c          | 195 ++++++++
+ include/dt-bindings/clock/siflower,sf19a2890-clk.h |  27 ++
+ .../clock/siflower,sf19a2890-periph-crm.h          |  87 ++++
+ 15 files changed, 1425 insertions(+)
+---
+base-commit: fc1f8f0ceb3b949b58c2f7819976644f5cf84249
+change-id: 20261102-sf19a2890-sysm-ac1fbcb21dd5
 
 Best regards,
--- 
-Victor Mora <vjmoralesmora@protonmail.com>
+--  
+Joseph Telaak <joseph@telaak.dev>
 
