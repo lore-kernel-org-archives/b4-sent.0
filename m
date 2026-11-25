@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Wed, 25 Nov 2026 10:33:55 +0100
-Subject: [PATCH RFC v4 13/15] arm64: dts: s32g: Add SerDes controller nodes
+Date: Wed, 25 Nov 2026 10:33:56 +0100
+Subject: [PATCH RFC v4 14/15] arm64: dts: s32g: Add PCIe controller nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-s32g_serdes-v4-13-3bfe0589be8d@oss.nxp.com>
+Message-Id: <20261125-s32g_serdes-v4-14-3bfe0589be8d@oss.nxp.com>
 References: <20261125-s32g_serdes-v4-0-3bfe0589be8d@oss.nxp.com>
 In-Reply-To: <20261125-s32g_serdes-v4-0-3bfe0589be8d@oss.nxp.com>
 To: Vincent Guittot <vincent.guittot@linaro.org>, 
@@ -39,116 +39,231 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org,
  linux-pci@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795599274; l=3600;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795599274; l=8174;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=dcO9jRk3SJhIq8VC26nfvLMtB2oUb3ElUxxnM7do7KQ=;
- b=F3dQzM1oXkyzvZBR6BCAlyYbN2dFCk0QO32eA+NJbp+we14/iP+uGQPU4zMZbqI8xBe43EhO5
- UqrV4pyUu7MC7dmtH6DRcsO3B8vZNV5WykYfB4lBgz6hP7ORx8Kfxsv
+ bh=4hEy+CFkkzDf8s4SiBEzs7e2GrzS7v0Nc6GdSnPh+L8=;
+ b=V4wC68x4C2n9U3RVLjh/krysblPQcprKZ81C/Qc6SVpZM33LH67QzUIGKMqL5qrY/TWFx+pRQ
+ Zos3EQ5XTpmC9/QJhcLHWGwI8ulnX4yumEIrU7CsFWjzwGXGTIkHE2O
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the two SerDes subsystem nodes of S32G2 and S32G3, disabled. Each
-is a four-cell PHY provider; a board device tree enables an instance
-and describes the routing through the phys references of the PCIe
-root ports and Ethernet controllers.
+Add the two PCIe controllers of S32G2 and S32G3, disabled. PCIe_0 pairs
+with SerDes_0 and PCIe_1 with SerDes_1. A board device tree enables a
+controller and references the lanes of the matching SerDes from its
+root port, one phys entry per lane. The nodes of both SoCs differ only
+in the compatible.
+
+The configuration space (0x5f_ffffe000 and 0x4f_ffffe000) lies above
+the 32-bit window mapped by soc@0, so the controllers sit at the device
+tree root.
+
+The root ports are labelled (pcie0_rp, pcie1_rp), so that boards and
+overlays can extend them by label.
+
+Add '#address-cells = <0>' to the GIC nodes: the PCIe interrupt-map
+entries name the GIC as their interrupt parent, and dtc warns without
+it.
 
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- arch/arm64/boot/dts/freescale/s32g2.dtsi | 30 ++++++++++++++++++++++++++++++
- arch/arm64/boot/dts/freescale/s32g3.dtsi | 30 ++++++++++++++++++++++++++++++
- 2 files changed, 60 insertions(+)
+ arch/arm64/boot/dts/freescale/s32g2.dtsi | 81 ++++++++++++++++++++++++++++++++
+ arch/arm64/boot/dts/freescale/s32g3.dtsi | 81 ++++++++++++++++++++++++++++++++
+ 2 files changed, 162 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/freescale/s32g2.dtsi b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-index ff5d2a061d50..0b070f7b5f22 100644
+index 0b070f7b5f22..1b6affb15d03 100644
 --- a/arch/arm64/boot/dts/freescale/s32g2.dtsi
 +++ b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-@@ -877,6 +877,36 @@ gmac0mdio: mdio {
- 			};
+@@ -916,7 +916,88 @@ gic: interrupt-controller@50800000 {
+ 			      <0x50420000 0x2000>;
+ 			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
+ 			interrupt-controller;
++			#address-cells = <0>;
+ 			#interrupt-cells = <3>;
  		};
- 
-+		serdes0: serdes@40480000 {
-+			compatible = "nxp,s32g2-serdes0", "nxp,s32g2-serdes";
-+			reg = <0x40480000 0x108>,
-+			      <0x40483008 0x10>,
-+			      <0x40482000 0x800>,
-+			      <0x40482800 0x800>;
-+			reg-names = "ss-pcie", "pcie-phy", "xpcs0", "xpcs1";
-+			clocks = <&clks 1>, <&clks 2>, <&clks 3>, <&clks 4>;
-+			clock-names = "axi", "aux", "apb", "ref";
-+			resets = <&scmi_reset 9>, <&scmi_reset 8>;
-+			reset-names = "serdes", "pcie";
-+			#phy-cells = <4>;
-+			status = "disabled";
-+		};
+ 	};
 +
-+		serdes1: serdes@44180000 {
-+			compatible = "nxp,s32g2-serdes1", "nxp,s32g2-serdes";
-+			reg = <0x44180000 0x108>,
-+			      <0x44183008 0x10>,
-+			      <0x44182000 0x800>,
-+			      <0x44182800 0x800>;
-+			reg-names = "ss-pcie", "pcie-phy", "xpcs0", "xpcs1";
-+			clocks = <&clks 1>, <&clks 2>, <&clks 3>, <&clks 4>;
-+			clock-names = "axi", "aux", "apb", "ref";
-+			resets = <&scmi_reset 11>, <&scmi_reset 10>;
-+			reset-names = "serdes", "pcie";
-+			#phy-cells = <4>;
-+			status = "disabled";
-+		};
++	/*
++	 * The PCIe config space (0x5f_ffffe000 / 0x4f_ffffe000) lies above the
++	 * 32-bit window mapped by soc@0, so the controllers are not under it.
++	 */
++	pcie0: pcie@40400000 {
++		compatible = "nxp,s32g2-pcie";
++		reg = <0x00 0x40400000 0x0 0x00001000>,	/* dbi */
++		      <0x00 0x40420000 0x0 0x00001000>,	/* dbi2 */
++		      <0x00 0x40460000 0x0 0x00001000>,	/* atu */
++		      <0x00 0x40470000 0x0 0x00001000>,	/* dma */
++		      <0x00 0x40481000 0x0 0x000000f8>,	/* ctrl */
++		      <0x5f 0xffffe000 0x0 0x00002000>;	/* config */
++		reg-names = "dbi", "dbi2", "atu", "dma", "ctrl", "config";
++		dma-coherent;
++		#address-cells = <3>;
++		#size-cells = <2>;
++		device_type = "pci";
++		ranges = <0x01000000 0x0 0x00000000 0x5f 0xfffe0000 0x0 0x00010000>,
++			 <0x02000000 0x0 0x00000000 0x58 0x00000000 0x0 0x80000000>,
++			 <0x43000000 0x1 0x00000000 0x59 0x00000000 0x6 0xfffe0000>;
++		bus-range = <0x0 0xff>;
++		linux,pci-domain = <0>;
++		interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>,
++			     <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "msi", "dma";
++		#interrupt-cells = <1>;
++		interrupt-map-mask = <0 0 0 0x7>;
++		interrupt-map = <0 0 0 1 &gic GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 2 &gic GIC_SPI 129 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 3 &gic GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 4 &gic GIC_SPI 131 IRQ_TYPE_LEVEL_HIGH>;
++		status = "disabled";
 +
- 		gic: interrupt-controller@50800000 {
- 			compatible = "arm,gic-v3";
- 			reg = <0x50800000 0x10000>,
++		pcie0_rp: pcie@0 {
++			reg = <0x0 0x0 0x0 0x0 0x0>;
++			#address-cells = <3>;
++			#size-cells = <2>;
++			ranges;
++			device_type = "pci";
++		};
++	};
++
++	pcie1: pcie@44100000 {
++		compatible = "nxp,s32g2-pcie";
++		reg = <0x00 0x44100000 0x0 0x00001000>,	/* dbi */
++		      <0x00 0x44120000 0x0 0x00001000>,	/* dbi2 */
++		      <0x00 0x44160000 0x0 0x00001000>,	/* atu */
++		      <0x00 0x44170000 0x0 0x00001000>,	/* dma */
++		      <0x00 0x44181000 0x0 0x000000f8>,	/* ctrl */
++		      <0x4f 0xffffe000 0x0 0x00002000>;	/* config */
++		reg-names = "dbi", "dbi2", "atu", "dma", "ctrl", "config";
++		dma-coherent;
++		#address-cells = <3>;
++		#size-cells = <2>;
++		device_type = "pci";
++		ranges = <0x01000000 0x0 0x00000000 0x4f 0xfffe0000 0x0 0x00010000>,
++			 <0x02000000 0x0 0x00000000 0x48 0x00000000 0x0 0x80000000>,
++			 <0x43000000 0x1 0x00000000 0x49 0x00000000 0x6 0xfffe0000>;
++		bus-range = <0x0 0xff>;
++		linux,pci-domain = <1>;
++		interrupts = <GIC_SPI 216 IRQ_TYPE_LEVEL_HIGH>,
++			     <GIC_SPI 214 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "msi", "dma";
++		#interrupt-cells = <1>;
++		interrupt-map-mask = <0 0 0 0x7>;
++		interrupt-map = <0 0 0 1 &gic GIC_SPI 219 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 2 &gic GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 3 &gic GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 4 &gic GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
++		status = "disabled";
++
++		pcie1_rp: pcie@0 {
++			reg = <0x0 0x0 0x0 0x0 0x0>;
++			#address-cells = <3>;
++			#size-cells = <2>;
++			ranges;
++			device_type = "pci";
++		};
++	};
+ };
 diff --git a/arch/arm64/boot/dts/freescale/s32g3.dtsi b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-index fbe87475bcf6..0d03daa881bf 100644
+index 0d03daa881bf..9eed2428732a 100644
 --- a/arch/arm64/boot/dts/freescale/s32g3.dtsi
 +++ b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-@@ -956,6 +956,21 @@ gmac0mdio: mdio {
- 			};
- 		};
+@@ -1056,6 +1056,7 @@ serdes1: serdes@44180000 {
  
-+		serdes0: serdes@40480000 {
-+			compatible = "nxp,s32g3-serdes0", "nxp,s32g3-serdes";
-+			reg = <0x40480000 0x108>,
-+			      <0x40483008 0x10>,
-+			      <0x40482000 0x800>,
-+			      <0x40482800 0x800>;
-+			reg-names = "ss-pcie", "pcie-phy", "xpcs0", "xpcs1";
-+			clocks = <&clks 1>, <&clks 2>, <&clks 3>, <&clks 4>;
-+			clock-names = "axi", "aux", "apb", "ref";
-+			resets = <&scmi_reset 9>, <&scmi_reset 8>;
-+			reset-names = "serdes", "pcie";
-+			#phy-cells = <4>;
-+			status = "disabled";
-+		};
-+
- 		swt8: watchdog@40500000 {
- 			compatible = "nxp,s32g3-swt", "nxp,s32g2-swt";
- 			reg = <0x40500000 0x1000>;
-@@ -1024,6 +1039,21 @@ stm11: timer@4052c000 {
- 			status = "disabled";
- 		};
- 
-+		serdes1: serdes@44180000 {
-+			compatible = "nxp,s32g3-serdes1", "nxp,s32g3-serdes";
-+			reg = <0x44180000 0x108>,
-+			      <0x44183008 0x10>,
-+			      <0x44182000 0x800>,
-+			      <0x44182800 0x800>;
-+			reg-names = "ss-pcie", "pcie-phy", "xpcs0", "xpcs1";
-+			clocks = <&clks 1>, <&clks 2>, <&clks 3>, <&clks 4>;
-+			clock-names = "axi", "aux", "apb", "ref";
-+			resets = <&scmi_reset 11>, <&scmi_reset 10>;
-+			reset-names = "serdes", "pcie";
-+			#phy-cells = <4>;
-+			status = "disabled";
-+		};
-+
  		gic: interrupt-controller@50800000 {
  			compatible = "arm,gic-v3";
++			#address-cells = <0>;
  			#interrupt-cells = <3>;
+ 			interrupt-controller;
+ 			reg = <0x50800000 0x10000>,
+@@ -1067,6 +1068,86 @@ gic: interrupt-controller@50800000 {
+ 		};
+ 	};
+ 
++	/*
++	 * The PCIe config space (0x5f_ffffe000 / 0x4f_ffffe000) lies above the
++	 * 32-bit window mapped by soc@0, so the controllers are not under it.
++	 */
++	pcie0: pcie@40400000 {
++		compatible = "nxp,s32g3-pcie", "nxp,s32g2-pcie";
++		reg = <0x00 0x40400000 0x0 0x00001000>,	/* dbi */
++		      <0x00 0x40420000 0x0 0x00001000>,	/* dbi2 */
++		      <0x00 0x40460000 0x0 0x00001000>,	/* atu */
++		      <0x00 0x40470000 0x0 0x00001000>,	/* dma */
++		      <0x00 0x40481000 0x0 0x000000f8>,	/* ctrl */
++		      <0x5f 0xffffe000 0x0 0x00002000>;	/* config */
++		reg-names = "dbi", "dbi2", "atu", "dma", "ctrl", "config";
++		dma-coherent;
++		#address-cells = <3>;
++		#size-cells = <2>;
++		device_type = "pci";
++		ranges = <0x01000000 0x0 0x00000000 0x5f 0xfffe0000 0x0 0x00010000>,
++			 <0x02000000 0x0 0x00000000 0x58 0x00000000 0x0 0x80000000>,
++			 <0x43000000 0x1 0x00000000 0x59 0x00000000 0x6 0xfffe0000>;
++		bus-range = <0x0 0xff>;
++		linux,pci-domain = <0>;
++		interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>,
++			     <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "msi", "dma";
++		#interrupt-cells = <1>;
++		interrupt-map-mask = <0 0 0 0x7>;
++		interrupt-map = <0 0 0 1 &gic GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 2 &gic GIC_SPI 129 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 3 &gic GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 4 &gic GIC_SPI 131 IRQ_TYPE_LEVEL_HIGH>;
++		status = "disabled";
++
++		pcie0_rp: pcie@0 {
++			reg = <0x0 0x0 0x0 0x0 0x0>;
++			#address-cells = <3>;
++			#size-cells = <2>;
++			ranges;
++			device_type = "pci";
++		};
++	};
++
++	pcie1: pcie@44100000 {
++		compatible = "nxp,s32g3-pcie", "nxp,s32g2-pcie";
++		reg = <0x00 0x44100000 0x0 0x00001000>,	/* dbi */
++		      <0x00 0x44120000 0x0 0x00001000>,	/* dbi2 */
++		      <0x00 0x44160000 0x0 0x00001000>,	/* atu */
++		      <0x00 0x44170000 0x0 0x00001000>,	/* dma */
++		      <0x00 0x44181000 0x0 0x000000f8>,	/* ctrl */
++		      <0x4f 0xffffe000 0x0 0x00002000>;	/* config */
++		reg-names = "dbi", "dbi2", "atu", "dma", "ctrl", "config";
++		dma-coherent;
++		#address-cells = <3>;
++		#size-cells = <2>;
++		device_type = "pci";
++		ranges = <0x01000000 0x0 0x00000000 0x4f 0xfffe0000 0x0 0x00010000>,
++			 <0x02000000 0x0 0x00000000 0x48 0x00000000 0x0 0x80000000>,
++			 <0x43000000 0x1 0x00000000 0x49 0x00000000 0x6 0xfffe0000>;
++		bus-range = <0x0 0xff>;
++		linux,pci-domain = <1>;
++		interrupts = <GIC_SPI 216 IRQ_TYPE_LEVEL_HIGH>,
++			     <GIC_SPI 214 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "msi", "dma";
++		#interrupt-cells = <1>;
++		interrupt-map-mask = <0 0 0 0x7>;
++		interrupt-map = <0 0 0 1 &gic GIC_SPI 219 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 2 &gic GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 3 &gic GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>,
++				<0 0 0 4 &gic GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
++		status = "disabled";
++
++		pcie1_rp: pcie@0 {
++			reg = <0x0 0x0 0x0 0x0 0x0>;
++			#address-cells = <3>;
++			#size-cells = <2>;
++			ranges;
++			device_type = "pci";
++		};
++	};
++
+ 	timer {
+ 		compatible = "arm,armv8-timer";
+ 		interrupt-parent = <&gic>;
 
 -- 
 2.55.0
