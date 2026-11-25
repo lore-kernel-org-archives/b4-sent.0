@@ -1,83 +1,176 @@
 From: Ernest Borowski <ernest.borowski.git@proton.me>
-Subject: [PATCH 0/4] fstests: ntfs support and three buffered write tests
-Date: Wed, 25 Nov 2026 20:03:42 +0100
-Message-Id: <20261125-ntfs-reproducers-v1-0-0cc67533d803@proton.me>
+Date: Wed, 25 Nov 2026 20:03:43 +0100
+Subject: [PATCH 1/4] common: add support for the ntfs driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBG4avIrBvIBBTaq4gLTX7tdBFlRosg3
- t20Lr/FewcZVGD0qg5SfMVkzgX8qCi++zzBSSqm4EPDHGqX19GcYtE5bRFqLnnw4PnpG+6pZIt
- ilP2/bLvbtg0fxPX3ofO8AJT3HC50AAAA
-X-Change-ID: 20261125-ntfs-reproducers-d0e1b019061a
+Message-Id: <20261125-ntfs-reproducers-v1-1-0cc67533d803@proton.me>
+References: <20261125-ntfs-reproducers-v1-0-0cc67533d803@proton.me>
+In-Reply-To: <20261125-ntfs-reproducers-v1-0-0cc67533d803@proton.me>
 To: fstests@vger.kernel.org, Zorro Lang <zlang@kernel.org>
 Cc: ntfs@lists.linux.dev, Namjae Jeon <linkinjeon@kernel.org>, 
  Hyunchul Lee <hyc.lee@gmail.com>, Zhan Xusheng <zhanxusheng1024@gmail.com>, 
  Ernest Borowski <ernest.borowski.git@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2462;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5171;
  i=ernest.borowski.git@proton.me; s=default; h=from:subject:message-id;
- bh=XBaQBfKYzKkAfsMoyeeX7k9F8LyBCcyRyZ9ahXpBzLg=;
- b=owGbwMvMwCVWzJ65uCpJ5D/jabUkhmx2Q75f0vVsKXEdK/d+MrKc/PqpwykPZudlG65fm+R76
- cyqJ+ZlHaUsDGJcDLJiiiwd/2+E+IR8+7QsTqsPZg4rE8gQBi5OAZhIpgEjw5OvIRu/XxN5v72A
- rUYucZa4p9a8BwlRn/kTQxZoqPbXmTAyPBSJvuPLs+//w+i4ggNVMjMcK0NnLjB5P/vM8od+cp7
- JnAA=
+ bh=1GKZuARJn7zy6GxqUepj3DnNsqVUAqgax3wRkoiSBi0=;
+ b=owGbwMvMwCVWzJ65uCpJ5D/jabUkhmx2Q77tByNVj+7/avihgKGk8nXaF9UHYptlz+0+9No/j
+ 9eY/2dsRykLgxgXg6yYIkvH/xshPiHfPi2L0+qDmcPKBDKEgYtTACayuprhf+5Gg8ZfVfO9QpNS
+ hH9/Nc3L/Xa/R6fIafHehh88dyTTFjAyTPecXcs1fd6tk+fjrp9hE9m598aku5L1GsWHPt6V27I
+ gkg8A
 X-Developer-Key: i=ernest.borowski.git@proton.me; a=openpgp;
  fpr=88FFD8544C54F6F2A65E2A8E730769A37A6214FF
 X-Endpoint-Received: by B4 Relay for ernest.borowski.git@proton.me/default with auth_id=1589
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series lets fstests run on the ntfs driver in fs/ntfs and adds three
-generic tests for buffered write bugs found in it.
+Volumes for the ntfs driver (fs/ntfs) are made and checked with mkfs.ntfs
+and fsck.ntfs from ntfsprogs-plus, but FSTYP=ntfs only gets the generic
+fallbacks today. mkfs.ntfs zeroes the whole device unless it is given
+--quick and refuses a device that is not a partition unless it is given
+--force, _scratch_mkfs_sized and _scratch_mkfs_blocksized skip every test
+that calls them, and the tests that require metadata journaling run
+although the driver only checks and empties $LogFile at mount and never
+logs a change. Call mkfs.ntfs directly with --quick and --force and filter
+its warnings about the device geometry, pass the size to mkfs.ntfs in
+sectors and the block size as the cluster size unless MKFS_OPTIONS sets one
+(mkfs.ntfs refuses a second -c), check that mkfs.ntfs and fsck.ntfs are
+installed, and list ntfs among the filesystems without metadata journaling.
+Mount with -i, so that mount -t ntfs always uses the kernel driver and
+never a mount.ntfs helper.
+The check keeps the generic "fsck -t ntfs -n" path, which runs ntfsck.
 
-Patch 1 adds FSTYP=ntfs for the kernel driver. Volumes are made with
-mkfs.ntfs and checked with fsck.ntfs from ntfsprogs-plus [1]. Mounts pass
--i, so that mount(8) always uses the kernel driver.
-
-Patches 2-4 add the tests. Each names its fix with _fixed_by_fs_commit;
-none of the fixes is merged yet:
-
-- generic/816 checks the size after a buffered write runs out of space.
-  Fixed by "ntfs: trim the sizes after a short write" from Zhan Xusheng,
-  at v10 now [2].
-- generic/817 runs fallocate, punch hole, collapse and insert range after
-  a buffered write that faulted. Fixed by patches 7 and 8 of the ntfs
-  delalloc series [3].
-- generic/818 makes a short copy into a hole over freed blocks and checks
-  that no old data shows. Fixed by patch 10 of the same series.
-
-The tests need only xfs_io and one small helper, src/pwrite-short-copy.c.
-I ran them on ntfs-next at cluster sizes 512, 4096 and 65536. All three
-fail on ntfs-next as it is; with the delalloc series 817 and 818 pass; with
-Zhan's patch on top all three pass.
-
-[1] https://github.com/ntfsprogs-plus/ntfsprogs-plus
-[2] https://lore.kernel.org/r/20261125051247.2880928-1-zhanxusheng1024@gmail.com
-[3] https://lore.kernel.org/r/20261124-b4-ntfs-delalloc-fixes-v2-0-f394c800ec03@proton.me
-
+Signed-off-by: Ernest Borowski <ernest.borowski.git@proton.me>
 ---
-Ernest Borowski (4):
-      common: add support for the ntfs driver
-      generic: check the size after a buffered write runs out of space
-      generic: test fallocate after a buffered write that faulted
-      generic: test a short copy into a hole of reused blocks
+ common/config |  9 +++++++++
+ common/rc     | 37 ++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 45 insertions(+), 1 deletion(-)
 
- .gitignore              |   1 +
- common/config           |   9 +++++
- common/rc               |  37 +++++++++++++++++-
- src/Makefile            |   2 +-
- src/pwrite-short-copy.c | 101 ++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/816       |  67 ++++++++++++++++++++++++++++++++
- tests/generic/816.out   |   2 +
- tests/generic/817       |  83 +++++++++++++++++++++++++++++++++++++++
- tests/generic/817.out   |   2 +
- tests/generic/818       |  58 +++++++++++++++++++++++++++
- tests/generic/818.out   |   2 +
- 11 files changed, 362 insertions(+), 2 deletions(-)
----
-base-commit: 71641219a506ac62bfa231592394265ca812670e
-change-id: 20261125-ntfs-reproducers-d0e1b019061a
+diff --git a/common/config b/common/config
+index 69e5d833..2b164c7d 100644
+--- a/common/config
++++ b/common/config
+@@ -335,6 +335,7 @@ export MKFS_AFS_PROG="false"
+ export MKFS_CIFS_PROG="false"
+ export MKFS_OVERLAY_PROG="false"
+ export MKFS_REISER4_PROG=$(type -P mkfs.reiser4)
++export MKFS_NTFS_PROG=$(type -P mkfs.ntfs)
+ export E2FSCK_PROG=$(type -P e2fsck)
+ export TUNE2FS_PROG=$(type -P tune2fs)
+ export FSCK_OVERLAY_PROG=$(type -P fsck.overlay)
+@@ -409,6 +410,10 @@ _common_mount_opts()
+ 	ubifs)
+ 		echo $UBIFS_MOUNT_OPTIONS
+ 		;;
++	ntfs)
++		# -i: always mount the kernel driver, never a mount.ntfs helper
++		echo "-i $NTFS_MOUNT_OPTIONS"
++		;;
+ 	*)
+ 		;;
+ 	esac
+@@ -550,6 +555,10 @@ _source_specific_fs()
+ 		;;
+ 	pvfs2)
+ 		;;
++	ntfs)
++		[ "$MKFS_NTFS_PROG" = "" ] && _fatal "mkfs.ntfs not found"
++		type -P fsck.ntfs >/dev/null || _fatal "fsck.ntfs not found"
++		;;
+ 	ubifs)
+ 		[ "$UBIUPDATEVOL_PROG" = "" ] && _fatal "ubiupdatevol not found"
+ 		. ./common/ubifs
+diff --git a/common/rc b/common/rc
+index 750a8d83..2c37bdb1 100644
+--- a/common/rc
++++ b/common/rc
+@@ -904,6 +904,9 @@ _test_mkfs()
+     btrfs)
+         $MKFS_BTRFS_PROG $MKFS_OPTIONS $* $TEST_DEV > /dev/null
+ 	;;
++    ntfs)
++	$MKFS_NTFS_PROG --quick --force $MKFS_OPTIONS $* $TEST_DEV > /dev/null
++	;;
+     ext2|ext3|ext4)
+ 	$MKFS_PROG -t $FSTYP -- -F $MKFS_OPTIONS $* $TEST_DEV
+ 	;;
+@@ -953,6 +956,9 @@ _try_mkfs_dev()
+     btrfs)
+         $MKFS_BTRFS_PROG $MKFS_OPTIONS $*
+ 	;;
++    ntfs)
++	$MKFS_NTFS_PROG --quick --force $MKFS_OPTIONS $*
++	;;
+     ext2|ext3|ext4)
+ 	$MKFS_PROG -t $FSTYP -- -F $MKFS_OPTIONS $*
+ 	;;
+@@ -1069,6 +1075,15 @@ _scratch_mkfs()
+ 		mkfs_cmd="$MKFS_BCACHEFS_PROG"
+ 		mkfs_filter="cat"
+ 		;;
++	ntfs)
++		# --quick skips zeroing the whole device, --force formats a
++		# device that is not a partition; drop the warnings about that
++		# and about the boot geometry of such a device
++		mkfs_cmd="$MKFS_NTFS_PROG --quick --force"
++		mkfs_filter="grep -v -e \"is entire device\" -e \"forced anyway\""
++		mkfs_filter+=" -e \"could not be obtained automatically\""
++		mkfs_filter+=" -e \"boot from\""
++		;;
+ 	*)
+ 		mkfs_cmd="yes | $MKFS_PROG -t $FSTYP --"
+ 		mkfs_filter="cat"
+@@ -1313,6 +1328,9 @@ _try_scratch_mkfs_sized()
+ 		# If no block size is given by local.confg or parameter, blocksize_opt is empty.
+ 		# Let MKFS_BCACHEFS_PROG decide block size on its own.
+ 		;;
++	ntfs)
++		def_blksz=`echo $MKFS_OPTIONS | sed -rn 's/.*(-c|--cluster-size)[ =]?+([0-9]+).*/\2/p'`
++		;;
+ 	esac
+ 
+ 	[ -n "$def_blksz" ] && blocksize=$def_blksz
+@@ -1425,6 +1443,16 @@ _try_scratch_mkfs_sized()
+ 	bcachefs)
+ 		$MKFS_BCACHEFS_PROG $MKFS_OPTIONS --fs_size=$fssize $blocksize_opt "$@" $SCRATCH_DEV
+ 		;;
++	ntfs)
++		# mkfs.ntfs refuses a second -c, and takes the size in sectors
++		# after the device
++		local cluster_opt="-c $blocksize"
++		local sector_size=`blockdev --getss $SCRATCH_DEV`
++
++		[ -n "$def_blksz" ] && cluster_opt=""
++		$MKFS_NTFS_PROG --quick --force $MKFS_OPTIONS $cluster_opt "$@" \
++			$SCRATCH_DEV $((fssize / sector_size))
++		;;
+ 	*)
+ 		_notrun "Filesystem $FSTYP not supported in _scratch_mkfs_sized"
+ 		;;
+@@ -1517,6 +1545,13 @@ _scratch_mkfs_blocksized()
+ 	udf)
+ 		_scratch_mkfs -b $blocksize
+ 		;;
++	ntfs)
++		# mkfs.ntfs refuses a second -c, so the size asked for here
++		# replaces one in MKFS_OPTIONS
++		MKFS_OPTIONS=$(echo $MKFS_OPTIONS | \
++			sed -E 's/(-c|--cluster-size)[ =]?[0-9]+//') \
++			_scratch_mkfs -c $blocksize
++		;;
+ 	*)
+ 		_notrun "Filesystem $FSTYP not supported in _scratch_mkfs_blocksized"
+ 		;;
+@@ -4386,7 +4421,7 @@ _has_metadata_journaling()
+ 	fi
+ 
+ 	case "$FSTYP" in
+-	ext2|vfat|msdos|udf|exfat|tmpfs|hfs|hfsplus)
++	ext2|vfat|msdos|udf|exfat|ntfs|tmpfs|hfs|hfsplus)
+ 		echo "$FSTYP does not support metadata journaling"
+ 		return 1
+ 		;;
 
-Best regards,
---  
-Ernest Borowski <ernest.borowski.git@proton.me>
+-- 
+2.56.1
 
