@@ -1,141 +1,81 @@
-From: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-Date: Wed, 25 Nov 2026 08:09:32 +0000
-Subject: [PATCH v2 3/3] regmap: kunit: add tests for values wider than
- val_bits
+From: the-catman <thecatman12@proton.me>
+Date: Wed, 25 Nov 2026 10:39:00 +0200
+Subject: [PATCH] platform/x86: hp-wmi: Add support for HP OMEN 16-ae0xxx
+ (8CC0)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-regmap-kunit-val-bits-v2-3-81db3b79cd3f@gmail.com>
-References: <20261125-regmap-kunit-val-bits-v2-0-81db3b79cd3f@gmail.com>
-In-Reply-To: <20261125-regmap-kunit-val-bits-v2-0-81db3b79cd3f@gmail.com>
-To: Mark Brown <broonie@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
- Johan Hovold <johan@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: Andy Shevchenko <andriy.shevchenko@intel.com>, 
- Jonathan Cameron <jic23@kernel.org>, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, driver-core@lists.linux.dev, 
- linux-sound@vger.kernel.org, Neo Chang <YLCHANG2@nuvoton.com>, 
- Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795594173; l=3961;
- i=raffaele.tranfaglia@gmail.com; s=20261011; h=from:subject:message-id;
- bh=O/bSq8ATRnJpAzSNzffwCRkaLe7Q98YDcHwxyFy4JF4=;
- b=/DGtjIuBeVus/HvctOSVZo7v3yNnwtSu8S2bLD2z51pi9Aq59jfoUKZXMhVKmbx1eJSpVIjji
- /ED7tGdJQv7BFN6cmpr9Y1GEh6acoxal5dRyO9Uff+8/WI+TB0aUPYc
-X-Developer-Key: i=raffaele.tranfaglia@gmail.com; a=ed25519;
- pk=mweuSGNM6vguCTdqa+aiHwMXdgk70suj2wolzCp6XGM=
-X-Endpoint-Received: by B4 Relay for raffaele.tranfaglia@gmail.com/20261011 with auth_id=1160
+Message-Id: <20261125-master-v1-1-e1d881b3b9d6@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6DIBCF4auYWZcE0EHwKsbFOI4tC7UF2zQx3
+ r2kLr+Xl/+ALClKhq46IMkn5ritBeZWAT9ovYuKUzFYbZ0xFtVCeZek2nacfe1YkBjK+Zlkjt9
+ /qB8uJ3m9S2+/Rhgpi+JtWeLeVc6wnogD2jHU2nvfhNpNGpkltOiQkH2guYHhPH9WGe7dpAAAA
+ A==
+X-Change-ID: 20261125-master-77bf836ce5ac
+To: Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
+Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ the-catman <thecatman12@proton.me>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795595939; l=2098;
+ i=thecatman12@proton.me; s=20261125; h=from:subject:message-id;
+ bh=M0yFpvmo2x5mUnBrp9FOVjlBIXzYzVqyJCYqNxofh8c=;
+ b=65A/lvkz+js5Gg3beosykTNyR3Ezg/8o30lRw64I7BgvJAbFbG0IRJBylL04uuRt0TOhQK1s0
+ TqV2K+kTh2tC/7Wgmsc80rd1llV/Sz51l6eHwfDEGVcOGONyhFsgy6d
+X-Developer-Key: i=thecatman12@proton.me; a=ed25519;
+ pk=JZyk9fkPTWRMiA5uAyXbspvMRf6+lV/HhmhAgXXUfNs=
+X-Endpoint-Received: by B4 Relay for thecatman12@proton.me/20261125 with auth_id=1635
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add two test cases writing 0xffffff0f with regmap_write() to a regmap
-with val_bits = 16, and check that only the low 16 bits reach the bus
-and can be read back:
+The HP OMEN 16-ae0xxx (board ID 8CC0) has the same WMI interface as
+other Victus S boards, but requires quirks for correctly switching
+thermal profile (similar to HP Omen 16-wf1xxx, board ID 8C78).
 
-- write_wider_than_val_bits uses the RAM regmap, a bus that only
-  provides reg_write()/reg_read();
-- raw_write_wider_than_val_bits uses the raw RAM regmap, which goes
-  through the value formatters.
+Without an entry, the driver falls back to the generic HP thermal
+profile path, whose query fails on this board
+("hp_wmi: query 0x4c returned error 0x6"), so no platform profile is
+registered and the EC can't be switched out of its default mode from
+Linux.
 
-Signed-off-by: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
+Add the DMI board name to the hp_wmi_feature_boards[] table and map it
+to omen_v1_board_params.
+
+Tested on an HP OMEN 16-ae0xxx (i7-14700HX, RTX 4070 Laptop GPU,
+BIOS F.14): the platform profile registers with low-power, balanced
+and performance, the profile read back from the EC matches the
+selected one, fan RPMs are readable, and switching profiles changes
+the CPU power limits programmed by the firmware (MSR PL1/PL2 of
+55/130 W in low-power and balanced, 130/130 W in performance).
+
+Signed-off-by: the-catman <thecatman12@proton.me>
 ---
- drivers/base/regmap/regmap-kunit.c | 60 ++++++++++++++++++++++++++++++++++++++
- 1 file changed, 60 insertions(+)
+Tested on Ubuntu's 7.0.0-44 kernel with the equivalent pre-rework entry
+(victus_s_thermal_profile_boards[] -> omen_v1_thermal_params), which
+matches what omen_v1_board_params selects in for-next.
+---
+ drivers/platform/x86/hp/hp-wmi.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/drivers/base/regmap/regmap-kunit.c b/drivers/base/regmap/regmap-kunit.c
-index c948219f46a3..b8b14995a548 100644
---- a/drivers/base/regmap/regmap-kunit.c
-+++ b/drivers/base/regmap/regmap-kunit.c
-@@ -319,6 +319,33 @@ static void basic_read_write(struct kunit *test)
- 	KUNIT_EXPECT_EQ(test, config.cache_type == REGCACHE_NONE, data->read[0]);
- }
- 
-+static void write_wider_than_val_bits(struct kunit *test)
-+{
-+	const struct regmap_test_param *param = test->param_value;
-+	struct regmap *map;
-+	struct regmap_config config;
-+	struct regmap_ram_data *data;
-+	unsigned int rval;
-+
-+	config = test_regmap_config;
-+	config.val_bits = 16;
-+
-+	map = gen_regmap(test, &config, &data);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(map));
-+	if (IS_ERR(map))
-+		return;
-+
-+	/* Write a value with bits set above val_bits */
-+	KUNIT_EXPECT_EQ(test, 0, regmap_write(map, param->from_reg, 0xffffff0f));
-+
-+	/* The bus should only have seen the low val_bits bits */
-+	KUNIT_EXPECT_EQ(test, 0xff0f, data->vals[param->from_reg]);
-+
-+	/* And that is what we should read back */
-+	KUNIT_EXPECT_EQ(test, 0, regmap_read(map, param->from_reg, &rval));
-+	KUNIT_EXPECT_EQ(test, 0xff0f, rval);
-+}
-+
- static void bulk_write(struct kunit *test)
- {
- 	struct regmap *map;
-@@ -2004,6 +2031,37 @@ static void raw_write_read_single(struct kunit *test)
- 	KUNIT_EXPECT_EQ(test, val, rval);
- }
- 
-+static void raw_write_wider_than_val_bits(struct kunit *test)
-+{
-+	struct regmap *map;
-+	struct regmap_config config;
-+	struct regmap_ram_data *data;
-+	void *hw_val;
-+	unsigned int rval;
-+
-+	config = raw_regmap_config;
-+
-+	map = gen_raw_regmap(test, &config, &data);
-+	KUNIT_ASSERT_FALSE(test, IS_ERR(map));
-+	if (IS_ERR(map))
-+		return;
-+
-+	hw_val = data->vals;
-+
-+	/* Write a value with bits set above val_bits */
-+	KUNIT_EXPECT_EQ(test, 0, regmap_write(map, 0, 0xffffff0f));
-+
-+	/* The "hardware" should only have seen the low val_bits bits */
-+	if (config.val_format_endian == REGMAP_ENDIAN_BIG)
-+		KUNIT_EXPECT_EQ(test, 0xff0f, be16_to_cpup(hw_val));
-+	else
-+		KUNIT_EXPECT_EQ(test, 0xff0f, le16_to_cpup(hw_val));
-+
-+	/* And that is what we should read back */
-+	KUNIT_EXPECT_EQ(test, 0, regmap_read(map, 0, &rval));
-+	KUNIT_EXPECT_EQ(test, 0xff0f, rval);
-+}
-+
- static void raw_write(struct kunit *test)
- {
- 	struct regmap *map;
-@@ -2249,6 +2307,7 @@ static void raw_ranges(struct kunit *test)
- 
- static struct kunit_case regmap_test_cases[] = {
- 	KUNIT_CASE_PARAM(basic_read_write, regcache_types_gen_params),
-+	KUNIT_CASE_PARAM(write_wider_than_val_bits, regcache_types_gen_params),
- 	KUNIT_CASE_PARAM(read_bypassed, real_cache_types_gen_params),
- 	KUNIT_CASE_PARAM(read_bypassed_volatile, real_cache_types_gen_params),
- 	KUNIT_CASE_PARAM(bulk_write, regcache_types_gen_params),
-@@ -2286,6 +2345,7 @@ static struct kunit_case regmap_test_cases[] = {
- 	KUNIT_CASE_PARAM(raw_read_defaults_single, raw_test_types_gen_params),
- 	KUNIT_CASE_PARAM(raw_read_defaults, raw_test_types_gen_params),
- 	KUNIT_CASE_PARAM(raw_write_read_single, raw_test_types_gen_params),
-+	KUNIT_CASE_PARAM(raw_write_wider_than_val_bits, raw_test_types_gen_params),
- 	KUNIT_CASE_PARAM(raw_write, raw_test_types_gen_params),
- 	KUNIT_CASE_PARAM(raw_noinc_write, raw_test_types_gen_params),
- 	KUNIT_CASE_PARAM(raw_sync, raw_test_cache_types_gen_params),
+diff --git a/drivers/platform/x86/hp/hp-wmi.c b/drivers/platform/x86/hp/hp-wmi.c
+index 16cfac5..376e8a1 100644
+--- a/drivers/platform/x86/hp/hp-wmi.c
++++ b/drivers/platform/x86/hp/hp-wmi.c
+@@ -325,6 +325,10 @@ static const struct dmi_system_id hp_wmi_feature_boards[] __initconst = {
+ 		.matches = { DMI_MATCH(DMI_BOARD_NAME, "8C9C") },
+ 		.driver_data = (void *)&victus_s_board_params,
+ 	},
++	{
++		.matches = { DMI_MATCH(DMI_BOARD_NAME, "8CC0") },
++		.driver_data = (void *)&omen_v1_board_params,
++	},
+ 	{
+ 		.matches = { DMI_MATCH(DMI_BOARD_NAME, "8D26") },
+ 		.driver_data = (void *)&omen_v1_legacy_board_params,
 
+---
+base-commit: 61c0dac952b9308884936d05cce97565a5c89af4
+change-id: 20261125-master-77bf836ce5ac
+
+Best regards,
 -- 
-2.56.0
+the-catman <thecatman12@proton.me>
 
