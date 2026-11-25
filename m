@@ -1,103 +1,80 @@
-From: shorezero <shorezero@proton.me>
-Date: Wed, 25 Nov 2026 10:43:08 -0500
-Subject: [PATCH] gpiolib: acpi: Add ignore_wake quirk for Lenovo Legion Pro
- 5 16ADR10
+From: Kyle Hendry <khendry@reliablecontrols.com>
+Subject: [PATCH v3 0/3] clk: renesas: r9a06g032: Add reset controller to
+ clear resets for mii converter
+Date: Wed, 25 Nov 2026 07:53:42 -0800
+Message-Id: <20261125-rzn1-miic-resets-v3-0-f25a4b656d71@reliablecontrols.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-legion-gpio-wake-v1-1-8d49be040868@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQyNT3ZzUdKAS3fSCzHzd8sTsVF0DixQzUwNDI+NUcwsloLaCotS0zAq
- wkdGxEH5xaVJWanIJyByl2loAIKrvNXQAAAA=
-X-Change-ID: 20261125-legion-gpio-wake-08d650123e78
-To: Mika Westerberg <westeri@kernel.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
-Cc: linux-gpio@vger.kernel.org, linux-acpi@vger.kernel.org, 
- shorezero <shorezero@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2981; i=shorezero@proton.me;
- h=from:subject:message-id; bh=HKljuG8IXgLzJKgOm9anjabO6803T7j6Njn0CeH5tXA=;
- b=owGbwMvMwCU25VMaw6w3TVmMp9WSGLLZmfglm7/svsSxsoQp98T2YrYVxfflVxku9OVcuC1/8
- aV7x5g/d5SyMIhxMciKKbLoKtbMvVe5/EiHKXM4zBxWJpAhDFycAjCR6+8ZGY6Yf9Ty6D1cZ7Iu
- vKQg+vWxg9u5l00uzOOYLa9UHXbcoo/hf8GeU/GXHuxtNrp9f9MxneyHroxls5+oRLOGLD74arP
- yNX4A
-X-Developer-Key: i=shorezero@proton.me; a=openpgp;
- fpr=2D217C9DDE79A7C48835035794F266009AEC826A
-X-Endpoint-Received: by B4 Relay for shorezero@proton.me/default with auth_id=1637
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XNTQ6CMBCG4auQrq3pDPKjK+9hXLR1kEmAmpY0K
+ uHuFtyYqMv3S+aZSQTyTEEcskl4ihzYDSnyTSZsq4crSb6kFqiwBIWV9M8BZM9spadAY5B1ruo
+ CCq3RKpHObp4avq/k6Zy65TA6/1g/RFjWNwaw/8YiSCUbIkJjsDZmd/TUsTYdWTeM3nVha10vF
+ jfih4Xqh4WLBbbRZVWXUJg/1jzPL0cR4O0HAQAA
+X-Change-ID: 20261027-rzn1-miic-resets-8308515aa2c0
+To: Geert Uytterhoeven <geert+renesas@glider.be>, 
+ Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Magnus Damm <magnus.damm@gmail.com>, 
+ Fabrizio Castro <fabrizio.castro.jz@renesas.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-renesas-soc@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Kyle Hendry <khendry@reliablecontrols.com>, 
+ Wolfram Sang <wsa+renesas@sang-engineering.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795622048; l=1905;
+ i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
+ bh=qttgeoFz50m6xocphqe7rfGCN4ggYj2FjV0TRRZ7opM=;
+ b=oEMenEM8aLeiWc1ZnKj1lpXCi6n9l26UZDFUGoSR/RsCpTBs7G3WUbzEKVlbTL44Q+GENko+N
+ 14R9dmzhtLHCwC+EnrbsNhnlozsGAk2ZD9B3W0bJ3WiyffLtQ27LA+H
+X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
+ pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
+X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the Lenovo Legion Pro 5 16ADR10 (83LT) the system resumes from S3
-immediately after entering it, unless an external display is being
-driven by the discrete NVIDIA GPU. A lid-close suspend therefore turns
-into a suspend/resume loop (36 cycles in 11 minutes, about 10% battery).
+On the rzn1, there are two resets for the mii converter in the system
+controller. If they are not cleared by the bootloader then the kernel needs
+to do it. 
 
-With pm_debug_messages enabled the wake is attributed to pin 4 of the
-AMD GPIO controller:
-
-  PM: Triggering wakeup from IRQ 7
-  GPIO 4 is active: 0x30047c00
-
-Pin 4 is the only ACPI event interrupt the firmware declares
-(\_SB.GPIO._AEI: GpioInt Edge, ActiveBoth, ExclusiveAndWake, debounce
-0x1F4). Its _EVT handler only deals with the dGPU: in hybrid graphics
-mode it runs the EC eject handshake (\_SB.GZFD.HTPE) and then does
-Notify(\_SB.PCI0.GPP0.PEGP, 0x81). Lid events are delivered by the EC
-through GPE 0x07, not through this pin.
-
-Booting with gpiolib_acpi.ignore_wake=AMDI0030:00@4 makes suspend hold
-(an RTC-timed suspend and a real lid-close suspend on battery with
-nothing attached), and opening the lid still wakes the machine. Add a
-DMI quirk to apply this automatically.
-
-The investigation and this patch were prepared with an AI coding
-assistant (Anthropic Claude: Opus 5.5 and Fable 5.2 models, run through
-the Hermes agent). It collected and analysed the kernel logs,
-disassembled the ACPI tables with iasl, proposed the test matrix, and
-drafted the quirk entry and this changelog. I ran the hardware tests on
-my machine and reviewed the change. Testing: the quirk entry was build-
-tested with W=1 and passes checkpatch.pl --strict; the runtime behaviour
-was verified with the equivalent gpiolib_acpi.ignore_wake= command line
-parameter on 7.3.6, not with a kernel containing this patch.
-
-Signed-off-by: shorezero <shorezero@proton.me>
----
- drivers/gpio/gpiolib-acpi-quirks.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
-
-diff --git a/drivers/gpio/gpiolib-acpi-quirks.c b/drivers/gpio/gpiolib-acpi-quirks.c
-index 3f89a8760..07613e13a 100644
---- a/drivers/gpio/gpiolib-acpi-quirks.c
-+++ b/drivers/gpio/gpiolib-acpi-quirks.c
-@@ -465,6 +465,22 @@ static const struct dmi_system_id gpiolib_acpi_quirks[] __initconst = {
- 			.ignore_wake = "GTCH7503:00@10",
- 		},
- 	},
-+	{
-+		/*
-+		 * Spurious wakeups from the dGPU event pin (_AEI pin 4, handled
-+		 * by _EVT -> Notify(\_SB.PCI0.GPP0.PEGP, 0x81)): the system
-+		 * resumes from S3 immediately unless an external display is
-+		 * driven by the dGPU. Lid wake uses the EC GPE and is unaffected.
-+		 * Found in BIOS RLCN29WW, hybrid graphics mode.
-+		 */
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "LENOVO"),
-+			DMI_MATCH(DMI_PRODUCT_NAME, "83LT"),
-+		},
-+		.driver_data = &(struct acpi_gpiolib_dmi_quirk) {
-+			.ignore_wake = "AMDI0030:00@4",
-+		},
-+	},
- 	{} /* Terminating entry */
- };
- 
+To handle this, I've added a reset controller interface to the clock
+driver so the miic driver can deassert them.
 
 ---
-base-commit: 4dce97c6c265544342e716e62fd24bbb232590c5
-change-id: 20261125-legion-gpio-wake-08d650123e78
+Changes in v3:
+- Move reset_controller_dev to end of priv structure
+- Index resets from 0
+- Link to v2: https://lore.kernel.org/r/20261120-rzn1-miic-resets-v2-0-f1cfa678615b@reliablecontrols.com
+
+Changes in v2:
+- Drop patches for pcs-rzn1-miic to be submitted separately to netdev
+- Add reset_controller_dev to r9a06g032_priv fix build error
+- Use designated initializers for the reset bit definitions
+- Change macro for getting priv data to static inline
+- Drop unnecessary reset from controller ops
+- Remove debugging argument from r9a06g032_reset_set
+- Remove configuration of of_reset_n_cells 
+- Add #reset-cells to required and example in schema
+- Make r9a06g032_reset_status correctly return the active low status
+- Move reset controller register earlier in probe to better handle failure
+- Link to v1: https://lore.kernel.org/r/20261119-rzn1-miic-resets-v1-0-feee2bb28bb4@reliablecontrols.com
+
+---
+Kyle Hendry (3):
+      dt-bindings: clock: r9a06g032-sysctrl: Document reset cells
+      clk: renesas: r9a06g032: Add reset controller
+      ARM: dts: renesas: r9a06g032: Add #reset-cells to system controller node
+
+ .../bindings/clock/renesas,r9a06g032-sysctrl.yaml  |  5 ++
+ arch/arm/boot/dts/renesas/r9a06g032.dtsi           |  1 +
+ drivers/clk/renesas/r9a06g032-clocks.c             | 59 ++++++++++++++++++++++
+ include/dt-bindings/clock/r9a06g032-sysctrl.h      |  3 ++
+ 4 files changed, 68 insertions(+)
+---
+base-commit: 7d650c5db382c8226965b01a31e16fcf2df1d096
+change-id: 20261027-rzn1-miic-resets-8308515aa2c0
 
 Best regards,
---  
-shorezero <shorezero@proton.me>
+-- 
+Kyle Hendry <khendry@reliablecontrols.com>
 
