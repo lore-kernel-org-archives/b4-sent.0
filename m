@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 25 Nov 2026 19:12:45 +0100
-Subject: [PATCH v4 1/9] dt-bindings: display: panel: s6e3ha8: Adjust to
- reflect the DDIC and panel used
+Date: Wed, 25 Nov 2026 19:12:46 +0100
+Subject: [PATCH v4 2/9] dt-bindings: display: panel: s6e3ha8: Add
+ AMB630QY01 panel
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-crosshatch-panel-v4-1-120adc58e737@ixit.cz>
+Message-Id: <20261125-crosshatch-panel-v4-2-120adc58e737@ixit.cz>
 References: <20261125-crosshatch-panel-v4-0-120adc58e737@ixit.cz>
 In-Reply-To: <20261125-crosshatch-panel-v4-0-120adc58e737@ixit.cz>
 To: Dzmitry Sankouski <dsankouski@gmail.com>, 
@@ -24,78 +24,63 @@ Cc: Marco Mattiolo <marco.mattiolo@hotmail.it>,
  linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3098; i=david@ixit.cz;
- h=from:subject:message-id; bh=izTTRiBpx1JipD+dbLjNqF77ZbLX4nMkT+eXkb5bPYw=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrByUehr4emA3qeY3gQxZgr/wAfiHOTvNYwo+Kc
- YOA1+5sXx2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawclHgAKCRBgAj/E00kg
- cq2ZD/9ZtNuvtR/a/J56Ln883I8IIqwF8RZlVQb30sIuL9c0rKrIfCxazKZ+poIZKG+p041E1lb
- Z6LNCHtUlmYo/Y0v+L0WjDHKAIdcURh7AeP4YoBfIOssgbIu0zbSI5wsv1Hnyx023dsUpavnxYz
- vMv55atqo2FnMDQCMZkfiEV0YEzAaCLG2MDvL23KDP3G6uwp2VBuC9WJbh/AFcE3IVHel8LafRj
- 9aK0MrvrD/UMSjffJKLxk/ffmT1w4gyn+43Z4NxkK8IEHaf3/NXhrNo9vvVhQWaHWiavhv1uA5j
- D2m6ivG4wU8asYllkq6NgZtoLrj3mnN7JfOoH1lqdVZBQQDy2vf8qnVc0BtlpDZz82IPz+uoN7r
- tFybrJD4AkuVoDaVg2acPCzvDu+ickmrBgLpZrR1aaSuI7kbDLfPOqsADirmKWIMhWJukIOUPA9
- TTTpaIC5R+fCj4ga+JtUEN+ERsJ7b/Hu8/p6BAwZF9Hy2Kp5UADscWB5qfUqp7y/x7Q3EknRDmk
- BFuyA3tbGSjp+TBJKD3/a4y0bc+PYp3u7aRa6K6R7yurC77bnAPC//UwM/bSt0rvLmE/wtQ0sEp
- zOL9fHs1DS7peLZBsB8vLFHZ/M73x9xIRilsGcUSPDt7EmnDYXLWQZelYLUlORfxRxAnYgwPJ8x
- 60gjP/EteLBSagw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2487; i=david@ixit.cz;
+ h=from:subject:message-id; bh=mC8AWb9/wpYUNjQLE+eLink1Uhfk70DQlwnA9VEtlKc=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrByUejL8AtgBYzPVdIcvPj5T6tFrZfzE7x+RoM
+ sRRyksk90GJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawclHgAKCRBgAj/E00kg
+ ctfQD/90e/k3ENh7szg3P0M33+nPf8hHTEHVPf2DbroDtR9HdOAjEabP3MvL68Jlv7hXMRJkr9A
+ NE5pizhQnTXo94A/G6jcegBVYIgsPrnnxNcNUDR7q/fdzh0qBeCMYa0lvoOJglbJIsKFXY5sBu/
+ fDnD+EUAn/EXYi50bmnldcvZPGzhiByY6ck36pXfNkN4cWG0nezzDMMfLCnToaJGltQNHt53m+u
+ 8sRUD1W02vn+j1+j+et9QcWNcY0ixP3fpnr23RNSGH4QW7TGoMztEA3PU5IiOzJ+JsQ5CTnlcEd
+ Ystd990v/3mp8wDiO6W4HnfD+Q1i9RmXe4mn0ZuuUTCzojrpjkJ6oZ3+NEuUxOUS1t4dOUoUTSU
+ mWdQZpARBjK0icMvPziukP3J4Tjewu53rgT3K0KgZGD42TNppbnoqfzYNOFosVMDPrnoWxvX2Hn
+ hSOtMT/T27ZHpyDGGEo6rciv5n7fiDBuqW7nHyK51ALHppKhLR44QMZLdOiUT4fePV5YSwvoFE1
+ k3fU8qQNGA0DPuetbtRKE8o0PrMmr6X7Ge0rRnG7O72vb4nr93vqaRh+CFDgjWCwnWe6FX/56D4
+ hNr7+8IwDFiGbK4LJO6WXHG7Mo3AlmGNx/OUsEEPZSf6pe+M7zBYU39WbvUhEfKokK2RcjTmOlB
+ liVQYombNOJfVqw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-S6E3HA8 is the DDIC, while the panel used on the Samsung Galaxy S9 is
-the Samsung AMB577PX01. Introduce a compatible reflecting that using
-established practice 'vendor,ddic-panel' format. Adjust the example,
-and deprecate the DDIC-only samsung,s6e3ha8 compatible as
-the DDIC isn't able to auto-detect the panel attached anyway.
-
-We're going to introduce another panel with different sequence, so keep
-calling original panel sequence just by the DDIC name is confusing.
-While we're at it, we can cleanly fix reversed GPIO polarity.
-
-Update the polarity to better match newly introduced compatibles with
-fixed logic.
+The Google Pixel 3 XL uses a Samsung AMB630QY01 6.3" 1440x2960 flexible
+AMOLED panel with direct ELVDD/ELVSS supplies.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../bindings/display/panel/samsung,s6e3ha8.yaml         | 17 ++++++++++++-----
- 1 file changed, 12 insertions(+), 5 deletions(-)
+ .../bindings/display/panel/samsung,s6e3ha8.yaml    | 37 +++++++++++++++++++---
+ 1 file changed, 32 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/devicetree/bindings/display/panel/samsung,s6e3ha8.yaml b/Documentation/devicetree/bindings/display/panel/samsung,s6e3ha8.yaml
-index 00ce5a4e1c6be..ca250b1b91712 100644
+index ca250b1b91712..db7ebda59c13c 100644
 --- a/Documentation/devicetree/bindings/display/panel/samsung,s6e3ha8.yaml
 +++ b/Documentation/devicetree/bindings/display/panel/samsung,s6e3ha8.yaml
-@@ -1,28 +1,35 @@
- # SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
- %YAML 1.2
- ---
- $id: http://devicetree.org/schemas/display/panel/samsung,s6e3ha8.yaml#
- $schema: http://devicetree.org/meta-schemas/core.yaml#
- 
+@@ -7,48 +7,75 @@ $schema: http://devicetree.org/meta-schemas/core.yaml#
  title: Samsung s6e3ha8 AMOLED DSI panel
  
--description: The s6e3ha8 is a 1440x2960 DPI display panel from Samsung Mobile
--  Displays (SMD).
-+description: |
-+  The s6e3ha8 is a display driver IC used in 1440x2960 AMOLED panels from
-+  Samsung Mobile Displays (SMD).
-+
-+  Known panels:
-+    - AMB577PX01, 5.77", Samsung Galaxy S9 (samsung,s6e3ha8-amb577px01)
+ description: |
+   The s6e3ha8 is a display driver IC used in 1440x2960 AMOLED panels from
+   Samsung Mobile Displays (SMD).
+ 
+   Known panels:
+     - AMB577PX01, 5.77", Samsung Galaxy S9 (samsung,s6e3ha8-amb577px01)
++    - AMB630QY01, 6.3", Google Pixel 3 XL (samsung,s6e3ha8-amb630qy01)
  
  maintainers:
    - Dzmitry Sankouski <dsankouski@gmail.com>
  
- allOf:
-   - $ref: panel-common.yaml#
- 
+-allOf:
+-  - $ref: panel-common.yaml#
+-
  properties:
    compatible:
--    const: samsung,s6e3ha8
-+    oneOf:
-+      - const: samsung,s6e3ha8-amb577px01
-+      - const: samsung,s6e3ha8
-+        deprecated: true
+     oneOf:
+-      - const: samsung,s6e3ha8-amb577px01
++      - enum:
++          - samsung,s6e3ha8-amb577px01
++          - samsung,s6e3ha8-amb630qy01
+       - const: samsung,s6e3ha8
+         deprecated: true
  
    reg:
      maxItems: 1
@@ -104,32 +89,53 @@ index 00ce5a4e1c6be..ca250b1b91712 100644
      description: VDD regulator
  
    vci-supply:
-@@ -44,23 +51,23 @@ examples:
+     description: VCI regulator
+ 
+   vddr-supply:
+     description: VDDR regulator
+ 
++  vddpos-supply:
++    description: positive boost supply regulator (ELVDD)
++
++  vddneg-supply:
++    description: negative boost supply regulator (ELVSS)
++
+ required:
+   - compatible
+   - reset-gpios
+   - vdd3-supply
+   - vci-supply
+-  - vddr-supply
++
++allOf:
++  - $ref: panel-common.yaml#
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - samsung,s6e3ha8
++              - samsung,s6e3ha8-amb577px01
++    then:
++      required:
++        - vddr-supply
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: samsung,s6e3ha8-amb630qy01
++    then:
++      required:
++        - vddpos-supply
++        - vddneg-supply
+ 
+ unevaluatedProperties: false
+ 
+ examples:
    - |
      #include <dt-bindings/gpio/gpio.h>
  
      dsi {
-         #address-cells = <1>;
-         #size-cells = <0>;
- 
-         panel@0 {
--            compatible = "samsung,s6e3ha8";
-+            compatible = "samsung,s6e3ha8-amb577px01";
-             reg = <0>;
-             vci-supply = <&s2dos05_ldo4>;
-             vddr-supply = <&s2dos05_buck1>;
-             vdd3-supply = <&s2dos05_ldo1>;
-             te-gpios = <&tlmm 10 GPIO_ACTIVE_HIGH>;
--            reset-gpios = <&tlmm 6 GPIO_ACTIVE_HIGH>;
-+            reset-gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
-             pinctrl-0 = <&sde_dsi_active &sde_te_active_sleep>;
-             pinctrl-1 = <&sde_dsi_suspend &sde_te_active_sleep>;
-             pinctrl-names = "default", "sleep";
- 
-             port {
-                 panel_in: endpoint {
-                     remote-endpoint = <&mdss_dsi0_out>;
-                 };
 
 -- 
 2.55.0
