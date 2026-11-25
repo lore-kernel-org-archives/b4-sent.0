@@ -1,11 +1,11 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Wed, 25 Nov 2026 13:34:09 +0300
-Subject: [PATCH v4 1/6] dt-bindings: soc: Add Cortina Systems CS7542 global
- controls
+Date: Wed, 25 Nov 2026 13:34:10 +0300
+Subject: [PATCH v4 2/6] dt-bindings: pinctrl: Add Cortina Systems CS7542
+ pin mux
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-cs7542-syscon-v4-1-3337bb0d3b48@gmail.com>
+Message-Id: <20261125-cs7542-syscon-v4-2-3337bb0d3b48@gmail.com>
 References: <20261125-cs7542-syscon-v4-0-3337bb0d3b48@gmail.com>
 In-Reply-To: <20261125-cs7542-syscon-v4-0-3337bb0d3b48@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,77 +17,90 @@ Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
  linux-gpio@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795602848; l=4010;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795602848; l=3414;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=oMbBnadNt9Zr1iGu4MirHsHTm5dEUH08qquCfQb14rE=;
- b=DoBnnbRDu80WwSff4+ab4qgPwFmqoclnUkU7h7nAjaH/T7eLngif5afGfFuW7cKjZvdP71WG1
- kJH3cw9f+H/AHyGmmv4hbhHTlnbtrWanMxWMmOnV7GW9q0LjbyXWVgF
+ bh=GXF3eV4Di05M7txSyaOSbXKuZUwi57EYWkuShSLxJwk=;
+ b=pAWFBWv4AImGwJ4AUClltaW/LmOcv8n8fPdvAKH7T07b5F02HYkqOM/eiyHX/CqsaatHb/T20
+ OjpwlcGQkgkDrmSTRi0HIPBha1tVzOsQn52mVBb7r9Pu1sFeaIqQU4z
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the shared syscon, its strap-selected clocks, three PCIe
-gates and level resets. Reserve the former group reset ID and assign
-individual IDs to the seven network reset signals.
+Describe the GPIO and UART mux functions and reference the child
+schema from the global control block.
 
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
- .../soc/cortina/cortina,cs7542-syscon.yaml         | 55 ++++++++++++++++++++++
- include/dt-bindings/clock/cortina,cs7542-clock.h   | 13 +++++
- include/dt-bindings/reset/cortina,cs7542-reset.h   | 19 ++++++++
- 3 files changed, 87 insertions(+)
+ .../bindings/pinctrl/cortina,cs7542-pinctrl.yaml   | 84 ++++++++++++++++++++++
+ .../soc/cortina/cortina,cs7542-syscon.yaml         |  4 ++
+ 2 files changed, 88 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml b/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml
+diff --git a/Documentation/devicetree/bindings/pinctrl/cortina,cs7542-pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/cortina,cs7542-pinctrl.yaml
 new file mode 100644
-index 000000000..561bb7b63
+index 000000000..cd5c81a0d
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml
-@@ -0,0 +1,55 @@
++++ b/Documentation/devicetree/bindings/pinctrl/cortina,cs7542-pinctrl.yaml
+@@ -0,0 +1,84 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/soc/cortina/cortina,cs7542-syscon.yaml#
++$id: http://devicetree.org/schemas/pinctrl/cortina,cs7542-pinctrl.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Cortina Systems CS7542 global control block
++title: Cortina Systems CS7542 pin multiplexer
 +
 +maintainers:
 +  - Fil Dunsky <filipp.dunsky@gmail.com>
 +
 +description:
-+  The global control block contains the boot strap status, GPIO/peripheral
-+  mux registers, reset controls and the secondary CPU release register.
-+  It provides the APB, CPU and AXI clock rates selected by the boot straps,
-+  and the three PCIe clock gates and controller reset lines. Individual
-+  reset lines control NI, FE, TM, scheduler, QM, NI XRAM and the entire DMA
-+  block (LSO and SSP). The network engine consumer must acquire all seven
-+  lines exclusively; it cannot run concurrently with a separate SSP DMA
-+  user. SDRAM is excluded. Reset identifier 3 is reserved.
-+  Clock specifiers are defined in dt-bindings/clock/cortina,cs7542-clock.h;
-+  reset specifiers are defined in dt-bindings/reset/cortina,cs7542-reset.h.
-+  The pin controller uses the same register map through its parent syscon.
++  The pin multiplexer is a child of the CS7542 global control syscon.
++  Five 32-bit registers select GPIO mode when a pin's bit is set, or the
++  peripheral signal when it is clear. Pin numbers match the five GPIO
++  banks, from gpio0 to gpio159. Initially only GPIO mode and the UART
++  signals on gpio72 through gpio77 are supported. Other peripheral
++  routes and electrical configuration are not described here.
++
++allOf:
++  - $ref: pinctrl.yaml#
 +
 +properties:
 +  compatible:
-+    items:
-+      - const: cortina,cs7542-syscon
-+      - const: syscon
-+      - const: simple-mfd
++    const: cortina,cs7542-pinctrl
 +
-+  reg:
-+    maxItems: 1
++patternProperties:
++  '-pins$':
++    type: object
++    $ref: pinmux-node.yaml#
++    additionalProperties: false
 +
-+  "#clock-cells":
-+    const: 1
++    properties:
++      function:
++        enum: [gpio, uart]
 +
-+  "#reset-cells":
-+    const: 1
++      pins:
++        items:
++          pattern: '^gpio([0-9]|[1-9][0-9]|1[0-5][0-9])$'
++        minItems: 1
++        maxItems: 160
++
++    required:
++      - function
++      - pins
++
++    allOf:
++      - if:
++          properties:
++            function:
++              const: uart
++        then:
++          properties:
++            pins:
++              items:
++                enum: [gpio72, gpio73, gpio74, gpio75, gpio76, gpio77]
 +
 +required:
 +  - compatible
-+  - reg
-+  - "#clock-cells"
 +
 +additionalProperties: false
 +
@@ -97,52 +110,37 @@ index 000000000..561bb7b63
 +        compatible = "cortina,cs7542-syscon", "syscon", "simple-mfd";
 +        reg = <0xf0000000 0x100>;
 +        #clock-cells = <1>;
-+        #reset-cells = <1>;
++
++        pinctrl {
++            compatible = "cortina,cs7542-pinctrl";
++
++            reset-pins {
++                function = "gpio";
++                pins = "gpio37";
++            };
++
++            aux-uarts-pins {
++                function = "uart";
++                pins = "gpio72", "gpio73", "gpio74", "gpio75",
++                       "gpio76", "gpio77";
++            };
++        };
 +    };
-diff --git a/include/dt-bindings/clock/cortina,cs7542-clock.h b/include/dt-bindings/clock/cortina,cs7542-clock.h
-new file mode 100644
-index 000000000..c68c6ba20
---- /dev/null
-+++ b/include/dt-bindings/clock/cortina,cs7542-clock.h
-@@ -0,0 +1,13 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
-+#ifndef _DT_BINDINGS_CLOCK_CORTINA_CS7542_H
-+#define _DT_BINDINGS_CLOCK_CORTINA_CS7542_H
+diff --git a/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml b/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml
+index 561bb7b63..fe839e46e 100644
+--- a/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml
++++ b/Documentation/devicetree/bindings/soc/cortina/cortina,cs7542-syscon.yaml
+@@ -38,6 +38,10 @@ properties:
+   "#reset-cells":
+     const: 1
+ 
++  pinctrl:
++    type: object
++    $ref: /schemas/pinctrl/cortina,cs7542-pinctrl.yaml#
 +
-+#define CS7542_CLK_APB	0
-+#define CS7542_CLK_CPU	1
-+#define CS7542_CLK_AXI	2
-+
-+#define CS7542_CLK_PCIE0	3
-+#define CS7542_CLK_PCIE1	4
-+#define CS7542_CLK_PCIE2	5
-+
-+#endif
-diff --git a/include/dt-bindings/reset/cortina,cs7542-reset.h b/include/dt-bindings/reset/cortina,cs7542-reset.h
-new file mode 100644
-index 000000000..4998ca11d
---- /dev/null
-+++ b/include/dt-bindings/reset/cortina,cs7542-reset.h
-@@ -0,0 +1,19 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
-+#ifndef _DT_BINDINGS_RESET_CORTINA_CS7542_H
-+#define _DT_BINDINGS_RESET_CORTINA_CS7542_H
-+
-+#define CS7542_RESET_PCIE0	0
-+#define CS7542_RESET_PCIE1	1
-+#define CS7542_RESET_PCIE2	2
-+
-+/* Reserved legacy composite ID; never reinterpret it as an individual line. */
-+#define CS7542_RESET_NE		3
-+#define CS7542_RESET_NI		4
-+#define CS7542_RESET_FE		5
-+#define CS7542_RESET_TM		6
-+#define CS7542_RESET_SCH		7
-+#define CS7542_RESET_QM		8
-+#define CS7542_RESET_DMA		9
-+#define CS7542_RESET_NI_XRAM	10
-+
-+#endif
+ required:
+   - compatible
+   - reg
 
 -- 
 2.53.0
