@@ -1,11 +1,11 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Wed, 25 Nov 2026 10:33:44 +0100
-Subject: [PATCH RFC v4 02/15] dt-bindings: net: nxp,s32-dwmac: Document
- pcs-handle
+Date: Wed, 25 Nov 2026 10:33:45 +0100
+Subject: [PATCH RFC v4 03/15] dt-bindings: PCI: nxp,s32g-pcie: One PHY per
+ lane
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-s32g_serdes-v4-2-3bfe0589be8d@oss.nxp.com>
+Message-Id: <20261125-s32g_serdes-v4-3-3bfe0589be8d@oss.nxp.com>
 References: <20261125-s32g_serdes-v4-0-3bfe0589be8d@oss.nxp.com>
 In-Reply-To: <20261125-s32g_serdes-v4-0-3bfe0589be8d@oss.nxp.com>
 To: Vincent Guittot <vincent.guittot@linaro.org>, 
@@ -40,89 +40,49 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org,
  linux-pci@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795599274; l=2480;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795599274; l=1169;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=XvSbxkQlAkTxdnIVmZ2WLc0f8gwakCGU+LGgQcKuPyU=;
- b=WRCaqxowpj4b59FfSwGMljIDNOKr0FtOfHQsD8XUEWyRyPDGaq00tpV/gVejjd7NuOoZWsm0T
- iZvcnn4B57hDVUU7GaEoD50g4JIwpPIsrH2dooqiKY7mepjIXU9ypx2
+ bh=2T8jUwEi3ltYre4gdZGzsO3mt+/q6xBMsHs8FYuEF3c=;
+ b=XbAHEFssMX3nbhcwDXGXMqYOtnF2zGW+H0r80LanO7vG672d2emcQaF/5/QcYFy2PXzjshoH5
+ 5Z9n+6m6KtKAsPR5RSPzrFIdTz7Sr2W6MhknODVlgLZvrBRJR5fdO1S
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With SGMII, the PCS is one of the SerDes XPCS instances. The MAC
-references its SerDes lane through phys, with the lane, the PHY type,
-the XPCS instance and the highest speed in the argument cells, and the
-SerDes node that provides the PCS through pcs-handle.
-
-The pcs-handle type comes from ethernet-controller.yaml. Only
-maxItems: 1 is added, as the MAC has a single PCS.
-
-phy-mode "sgmii" requires both properties, and each of them requires
-the other.
+The SerDes binding describes a link with one phys entry per lane,
+<lane PHY_TYPE_PCIE 0 0>. Allow up to two entries on the root port, and
+make the example reference lane 0 that way.
 
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- .../devicetree/bindings/net/nxp,s32-dwmac.yaml     | 30 +++++++++++++++++++++-
- 1 file changed, 29 insertions(+), 1 deletion(-)
+ Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml b/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
-index fcad2274302d..219a033b889d 100644
---- a/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
-+++ b/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
-@@ -15,7 +15,8 @@ description:
-   The SoC series S32G2xx and S32G3xx feature one DWMAC instance,
-   the SoC S32R45 has two instances. The devices can use RGMII/RMII/MII
-   interface over Pinctrl device or the output can be routed
--  to the embedded SerDes for SGMII connectivity.
-+  to the embedded SerDes for SGMII connectivity, in which case the
-+  SerDes lane is referenced via phys and the PCS via pcs-handle.
-   The DWMAC instances have connected all RX/TX queues interrupts,
-   enabling load balancing of data traffic across all CPU cores.
+diff --git a/Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml b/Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml
+index 66a050028278..b90d169f57ed 100644
+--- a/Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml
++++ b/Documentation/devicetree/bindings/pci/nxp,s32g-pcie.yaml
+@@ -57,7 +57,9 @@ properties:
+         maxItems: 1
  
-@@ -81,6 +82,19 @@ properties:
-       - const: rx
-       - const: ptp_ref
+       phys:
+-        maxItems: 1
++        minItems: 1
++        maxItems: 2
++        description: One entry per SerDes lane of the link.
  
-+  pcs-handle:
-+    maxItems: 1
-+    description:
-+      phandle pointing to the SerDes node that provides the SGMII PCS for
-+      this MAC. See
-+      Documentation/devicetree/bindings/phy/nxp,s32g-serdes.yaml.
-+
-+  phys:
-+    maxItems: 1
-+    description:
-+      The SerDes lane that carries the SGMII link, with the lane, the PHY
-+      type, the XPCS instance and the highest speed in the argument cells.
-+
-   power-domains:
-     maxItems: 1
+     required:
+       - reg
+@@ -124,7 +126,7 @@ examples:
+                 ranges;
  
-@@ -88,8 +102,22 @@ required:
-   - clocks
-   - clock-names
- 
-+dependentRequired:
-+  pcs-handle: [ phys ]
-+  phys: [ pcs-handle ]
-+
- allOf:
-   - $ref: snps,dwmac.yaml#
-+  - if:
-+      properties:
-+        phy-mode:
-+          const: sgmii
-+      required:
-+        - phy-mode
-+    then:
-+      required:
-+        - pcs-handle
-+        - phys
- 
- unevaluatedProperties: false
- 
+                 device_type = "pci";
+-                phys = <&serdes0 PHY_TYPE_PCIE 0 0>;
++                phys = <&serdes0 0 PHY_TYPE_PCIE 0 0>;
+             };
+         };
+     };
 
 -- 
 2.55.0
