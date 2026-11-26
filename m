@@ -1,10 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 26 Nov 2026 09:54:14 +0000
-Subject: [PATCH v4 2/3] iommu/arm-smmu-v3: Enable an optional clock
+Date: Thu, 26 Nov 2026 09:54:15 +0000
+Subject: [PATCH v4 3/3] arm64: dts: rockchip: Add the clock and reset of
+ the RK3588 PCIe SMMU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-smmu-v3-pcie-pd-v4-2-c340c2dbd1d2@gmail.com>
+Message-Id: <20261126-smmu-v3-pcie-pd-v4-3-c340c2dbd1d2@gmail.com>
 References: <20261126-smmu-v3-pcie-pd-v4-0-c340c2dbd1d2@gmail.com>
 In-Reply-To: <20261126-smmu-v3-pcie-pd-v4-0-c340c2dbd1d2@gmail.com>
 To: Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
@@ -21,57 +22,39 @@ Cc: Pranjal Shrivastava <praan@google.com>,
  Finley Xiao <finley.xiao@rock-chips.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795686852; l=1455;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795686852; l=1037;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=lCcYyOtmQB3eNSuw9WLfzwzQ/FRb4bdLv3eGq+ciMVc=;
- b=xJ5TqNglUYP4qkntJy9fB78WeKA2qNRggzpgnu2o5dsQ/3h5cv0EehwW8w/8UYZh5zN/pU5t0
- XwRWI1cW4I6CkGfU1bYIGfwSOTJ4oyJWyE05Q8boO3/1nAabR0MuIvc
+ bh=t/g+pNBiRoD0rdFZrx0NxcKY5w4/gVZZrK4FzRkJKzY=;
+ b=dVSUoKZCcDEloFC8vGOhrfdcx4yBewn57BI5g7crGv4jL/SfdhTDB9uFGDppVN77KMuJ8kT0C
+ Tfb0dv1eFSWA8V3LiU8bhh9Xp7cBBr4nPLuYxSxqs9HaP1F07VPhODm
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the RK3588 the PCIe SMMU's clock is gated as unused when no PCIe
-controller holds it, and the CR0 write at shutdown then hangs. Enable
-the clock from the firmware node, if any, while the driver is bound.
+With no PCIe controller enabled (e.g. Orange Pi 5, M.2 in SATA mode),
+ACLK_MMU_PCIE is gated as unused and reboot hangs in SMMU shutdown.
 
+Fixes: da92d3dfc871 ("arm64: dts: rockchip: enable the mmu600_pcie IOMMU on the rk3588 SoC")
+Reviewed-by: Sebastian Reichel <sebastian.reichel@collabora.com>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-index 100b34f07032..beea222dcf57 100644
---- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-+++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-@@ -12,6 +12,7 @@
- #include <linux/acpi.h>
- #include <linux/acpi_iort.h>
- #include <linux/bitops.h>
-+#include <linux/clk.h>
- #include <linux/crash_dump.h>
- #include <linux/delay.h>
- #include <linux/err.h>
-@@ -5786,12 +5787,19 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
- 	resource_size_t ioaddr;
- 	struct arm_smmu_device *smmu;
- 	struct device *dev = &pdev->dev;
-+	struct clk *clk;
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+index aa69fd3793fd..45c1bb335447 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+@@ -559,6 +559,8 @@ mmu600_pcie: iommu@fc900000 {
+ 			     <GIC_SPI 374 IRQ_TYPE_EDGE_RISING 0>,
+ 			     <GIC_SPI 367 IRQ_TYPE_EDGE_RISING 0>;
+ 		interrupt-names = "eventq", "gerror", "priq", "cmdq-sync";
++		clocks = <&cru ACLK_MMU_PCIE>;
++		resets = <&cru SRST_A_MMU_PCIE>;
+ 		#iommu-cells = <1>;
+ 	};
  
- 	smmu = devm_kzalloc_obj(dev, *smmu);
- 	if (!smmu)
- 		return -ENOMEM;
- 	smmu->dev = dev;
- 
-+	/* Before the firmware probe, which may take a CMDQV reference */
-+	clk = devm_clk_get_optional_enabled(dev, NULL);
-+	if (IS_ERR(clk))
-+		return dev_err_probe(dev, PTR_ERR(clk),
-+				     "failed to enable clock\n");
-+
- 	if (dev->of_node) {
- 		ret = arm_smmu_device_dt_probe(pdev, smmu);
- 	} else {
 
 -- 
 2.55.0
