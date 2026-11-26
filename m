@@ -1,137 +1,290 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 26 Nov 2026 11:03:06 +0000
-Subject: [PATCH v4 2/2] media: verisilicon: Reset the VDPU2 decoder after
- an error
+From: Xiubo Li <xiubo.li@clyso.com>
+Subject: [PATCH v8 0/5] ceph: reduce mdsc->mutex contention in the cephfs
+ kclient
+Date: Thu, 26 Nov 2026 12:06:10 +0100
+Message-Id: <20261126-ceph-mdsc-mutex-optimization-v8-0-5bb2299ef4ee@clyso.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-vdpu2-errreset-v4-2-a955b1c8b119@gmail.com>
-References: <20261126-vdpu2-errreset-v4-0-a955b1c8b119@gmail.com>
-In-Reply-To: <20261126-vdpu2-errreset-v4-0-a955b1c8b119@gmail.com>
-To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Heiko Stuebner <heiko@sntech.de>, Jonas Karlman <jonas@kwiboo.se>, 
- Boris Brezillon <boris.brezillon@collabora.com>, 
- Hans Verkuil <hverkuil@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Arun Iyengar <aiyengar1990@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43Ny26DMBQE0F+JvK4rX9v4kVX/o+rCj0txVQLCB
+ CWN+PeaVGpRWNDlSDNnbiTjkDCT4+FGBpxSTt2pBPN0IKFxp3ekKZZMOOOKaRA0YN/QNuZA2/O
+ IF9r1Y2rTlxvLkGrU0nnlfTCeFKIfsE6XO//69pPz2X9gGBdzaTQpj91wvf9PsPT+eTUBZdQ6r
+ FwAUQUhX8LnNXfPoWvJcjXxNVbtYHzBGBrwmivNN5j4wwzADiYKFpkAACnB1htMrjG+g8mC1cE
+ Jr6Xitd1g1RozO1hVMB2FqJxwEJl/xNQK43YHUwWTSlmhQvDRxkdM/2IAnO1gumBOIqJmyJgwa
+ 2ye52/kR9v0qAIAAA==
+X-Change-ID: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795690985; l=3990;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=TORRPWXC3iBgtHVwjl5GcrAeI92+toU+vqsHJf1bUUM=;
- b=q5SYi+x00w+QhyqAcfCqPAUb8vbpICcWTRhLfaSkZboRS6ZSlxE+icwYxvBQbjK7XOZ9xVbJy
- wsdbWt9z9ZxBBmQV209az8OsZcNacxbuBs7Uqh9p1WQqUQD6RTBuWv5
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795691181; l=13953;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=iwfNGKN0K6NkiRlDk0lrR7qeg8ecVo6sxNkFeKXMJmo=;
+ b=vKPRgDsTXO6B55GaRh4kuV1VK5DKiRV2rrNurvqgurXrS5lbJJUyIzldQrlyZChK5vIX9GU6k
+ 9S83I4XBWgDBbONS/wE6KQXBBYKaXgpphL3q0evBB9rzXGOH0cOpm8n
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Ignore interrupts the decoder did not raise and report the error type.
+This series reduces mdsc->mutex hold times from hundreds of
+microseconds to tens of microseconds on the hot request-submit and
+reply-handling paths.
 
-After a bus, stream or ASO error or a timeout, soft-reset the decoder
-before its buffers go back to userspace: it may still be active.
-If only its input buffer ran empty, the decoder stays enabled; a later
-interrupt or the driver's watchdog then ends the job.
+The approach is incremental:
+  1. Convert oldest_tid to atomic64_t so that __prepare_send_request()
+     and __send_request() no longer need the mutex.
+  2. Replace the request_tree rbtree with an xarray for O(1) lookups
+     and internally-locked iteration.
+  3. Add a dedicated wait_list_lock spinlock so wait-list operations
+     no longer depend on the global mutex.
+  4. Move mdsc->mutex acquisition inside __do_request(), then release
+     it during the send phase (message construction and path walking),
+     leaving only the brief setup/teardown under the lock.
+  5. Narrow the mutex scope in replay_unsafe_requests() similarly.
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+Tested with concurrent readdir + stat on a 5000-file directory
+(32 threads).  bpftrace measurements show:
+
+                 before         after
+  __do_request   354-2327 us    10-68 us    (34x)
+  handle_reply   51-416 us     10-32 us    (13x)
+  submit_request 89-211 us     10-41 us    (5x)
+
+Benchmark results from test_i_caps (aggregate cache test):
+
+  | Test                | Before   | After    | Improvement |
+  |---------------------|----------|----------|-------------|
+  | stat storm ST       | 692k/s   | 1,420k/s | +105% (2.1x)|
+  | stat storm MT       | 722k/s   | 1,373k/s | +90%  (1.9x)|
+  | open/close          | 403k/s   | 524k/s   | +30%        |
+  | stat hot (cache)    | 353k/s   | 540k/s   | +53%        |
+  | readdir             | 877/s    | 832/s    | ~0%         |
+  | Total time          | 195s     | 121s     | -38%  (1.6x)|
+
+The 2x stat throughput gain comes from __do_request() no longer
+holding mdsc->mutex during the __send_request() phase, so dentry
+path walking and message encoding in create_request_message()
+run outside the lock.
+
+No functional changes intended.
+
+Testing for 24+ hours:
+
+The runtime validation ran on a vstart cluster (3 active + 3 standby
+MDS) with a 32-thread metadata load generator and a kernel built with
+CONFIG_PROVE_LOCKING, CONFIG_DEBUG_LIST and CONFIG_DETECT_HUNG_TASK:
+
+- fsstress + dbench smoke runs: clean.
+- r1, single-MDS failover churn: 108 failovers across 4 runs, every
+  session reconnected, no lost wakeups, no hangs.
+- r2, double "ceph mds fail" chaos: ~90 double-fail cycles across
+  2 runs, zero hangs, zero kernel warnings, clean teardown.
+- r3, double-fail plus victim processes SIGKILLed every 50-400 ms
+  (5084 kills in one run) to exercise the request abort path: zero
+  warnings, zero list-corruption reports, zero refcount issues.
+- r4 (double mds fail + evict churn + 8 victim processes killed at
+  200-2000 ms): one 32-minute run FAILED -- a worker was stuck in
+  truncate for ~15 minutes at shutdown, the join oracle's first hit
+  across all runs.  Live-kernel forensics (drgn against /proc/kcore)
+  showed the wedge is unrelated to this series: the double-fail had
+  dropped the inode's dirty caps in the session-loss path (caps.c)
+  without cleaning up the page wrbuffer refs, so the ceph_inode_work()
+  kworker spun forever in __ceph_do_pending_vmtruncate()'s flush
+  branch -- with no dirty caps, ceph_writepages_start() returns
+  -ENODATA without writing, the refs never drain, and the loop holds
+  i_truncate_mutex indefinitely, starving concurrent truncates (and,
+  via setattr's inode lock and vfs_unlink()'s target-inode lock,
+  unlinks).  Every link of that chain is in caps.c/inode.c/addr.c/VFS
+  code untouched by these patches; it is a pre-existing consistency
+  bug (dirty caps dropped without wrbuffer-ref cleanup on session
+  loss, plus an unbounded flush loop) to be fixed separately.  (The
+  r4 evict trigger was skipped in this run as debugfs was not
+  mounted; session eviction itself had been exercised in earlier
+  testing.)
+
+No lockdep reports, list corruption, refcount warnings, or hung tasks
+across the whole campaign.  The campaign also exposed two pre-existing
+mainline bugs (a NULL oldest-snapc dereference in the writeback path
+and a request abort-path use-after-free), both reproducible without
+this series on a vanilla 7.2 kernel and fixed separately.
+
+The whole test code could be find in:
+https://tracker.ceph.com/issues/80086
+Or
+https://tracker.ceph.com/issues/80084
+
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- .../platform/verisilicon/rockchip_vpu2_regs.h      |  4 +++
- .../media/platform/verisilicon/rockchip_vpu_hw.c   | 40 +++++++++++++++++++---
- 2 files changed, 40 insertions(+), 4 deletions(-)
+Changes in v8:
+- Only patch 5/5 is changed; patches 1-4 are identical to v7.
+- patch 5:
+  - Replace the CEPH_MDS_R_REPLAY_WAIT bit with the r_replay_waiters
+    count, which only the waiters change.  release_dispatch() cleared
+    REPLAY_WAIT when it woke the waiter, so a waiter that had not gone
+    to sleep yet when the owner consumed RESEND and claimed
+    DISPATCHING again was never woken by the second release, and the
+    reconnect hung with session->s_mutex held.  (Alex Markuze)
+  - Do not wait for CEPH_DENTRY_ASYNC_CREATE_BIT in the thread that
+    submits an async create.  A forward arriving during the first send
+    makes that thread re-dispatch the request through the RESEND
+    restart, and the bit is only cleared by ceph_finish_async_create(),
+    which the same thread runs after ceph_mdsc_submit_request()
+    returns.  (Alex Markuze)
+- Link to v7: https://patch.msgid.link/20261120-ceph-mdsc-mutex-optimization-v7-0-a4eee70e0038@clyso.com
 
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu2_regs.h b/drivers/media/platform/verisilicon/rockchip_vpu2_regs.h
-index 49e40889545b..d11c84a18161 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu2_regs.h
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu2_regs.h
-@@ -347,6 +347,10 @@
- #define     VDPU_REG_INTERRUPT_DEC_RDY_INT		BIT(4)
- #define     VDPU_REG_INTERRUPT_DEC_IRQ_DIS		BIT(1)
- #define     VDPU_REG_INTERRUPT_DEC_IRQ			BIT(0)
-+#define     VDPU_REG_INTERRUPT_DEC_ERRORS		(VDPU_REG_INTERRUPT_DEC_TIMEOUT | \
-+						 VDPU_REG_INTERRUPT_DEC_ERROR_INT | \
-+						 VDPU_REG_INTERRUPT_DEC_ASO_INT | \
-+						 VDPU_REG_INTERRUPT_DEC_BUS_INT)
- #define VDPU_REG_AXI_CTRL			0x0e0
- #define     VDPU_REG_AXI_DEC_SEL			BIT(23)
- #define     VDPU_REG_CONFIG_DEC_DATA_DISC_E		BIT(22)
-diff --git a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-index 4bc1bdb41c70..69552195c974 100644
---- a/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-+++ b/drivers/media/platform/verisilicon/rockchip_vpu_hw.c
-@@ -7,6 +7,7 @@
-  */
- 
- #include <linux/clk.h>
-+#include <linux/iopoll.h>
- 
- #include "hantro.h"
- #include "hantro_jpeg.h"
-@@ -384,17 +385,49 @@ static irqreturn_t rockchip_vpu1_vepu_irq(int irq, void *dev_id)
- 	return IRQ_HANDLED;
- }
- 
-+static void rockchip_vpu2_dec_soft_reset(struct hantro_dev *vpu)
-+{
-+	u32 val;
-+
-+	vdpu_write(vpu, 0, VDPU_REG_EN_FLAGS);
-+	vdpu_write(vpu, 1, VDPU_REG_SOFT_RESET);
-+	if (read_poll_timeout_atomic(vdpu_read, val, !val, 0, 5, false, vpu,
-+				     VDPU_REG_SOFT_RESET))
-+		dev_warn_ratelimited(vpu->dev, "decoder soft reset timed out\n");
-+}
-+
- static irqreturn_t rockchip_vpu2_vdpu_irq(int irq, void *dev_id)
- {
- 	struct hantro_dev *vpu = dev_id;
- 	enum vb2_buffer_state state;
--	u32 status;
-+	u32 status, en;
- 
- 	status = vdpu_read(vpu, VDPU_REG_INTERRUPT);
-+	if (!(status & VDPU_REG_INTERRUPT_DEC_IRQ))
-+		return IRQ_NONE;
-+
-+	/* Read DEC_E with the status, before the clear. */
-+	en = vdpu_read(vpu, VDPU_REG_EN_FLAGS);
-+	vdpu_write(vpu, 0, VDPU_REG_INTERRUPT);
-+
- 	state = (status & VDPU_REG_INTERRUPT_DEC_RDY_INT) ?
- 		VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR;
-+	if (state == VB2_BUF_STATE_ERROR) {
-+		if (status & VDPU_REG_INTERRUPT_DEC_BUS_INT)
-+			dev_warn_ratelimited(vpu->dev, "bus error detected.\n");
-+		if (status & VDPU_REG_INTERRUPT_DEC_ERROR_INT)
-+			dev_warn_ratelimited(vpu->dev, "decode error detected.\n");
-+		if (status & VDPU_REG_INTERRUPT_DEC_TIMEOUT)
-+			dev_warn_ratelimited(vpu->dev, "frame decode timed out.\n");
-+
-+		/* Buffer empty: a later interrupt or the watchdog ends the job. */
-+		if (!(status & VDPU_REG_INTERRUPT_DEC_ERRORS) &&
-+		    (en & VDPU_REG_INTERRUPT_DEC_E))
-+			return IRQ_HANDLED;
-+
-+		rockchip_vpu2_dec_soft_reset(vpu);
-+	}
- 
--	vdpu_write(vpu, 0, VDPU_REG_INTERRUPT);
- 	vdpu_write(vpu, 0, VDPU_REG_AXI_CTRL);
- 
- 	hantro_irq_done(vpu, state);
-@@ -482,8 +515,7 @@ static void rockchip_vpu2_dec_reset(struct hantro_ctx *ctx)
- 	struct hantro_dev *vpu = ctx->dev;
- 
- 	vdpu_write(vpu, VDPU_REG_INTERRUPT_DEC_IRQ_DIS, VDPU_REG_INTERRUPT);
--	vdpu_write(vpu, 0, VDPU_REG_EN_FLAGS);
--	vdpu_write(vpu, 1, VDPU_REG_SOFT_RESET);
-+	rockchip_vpu2_dec_soft_reset(vpu);
- }
- 
- static void rockchip_vpu2_enc_reset(struct hantro_ctx *ctx)
+Changes in v7:
+- Patches 1-3 are identical to v6.
+- patch 4: add the missing braces around the s_unsafe loop in
+  replay_unsafe_requests().  Only r_attempts++ was inside the loop,
+  and __send_request() ran once after it on a request pointer derived
+  from the list head, so a reconnect with patch 4 alone replayed no
+  unsafe request and touched a bogus pointer.  Patch 5 rewrites the
+  function, so the series result is unchanged; this keeps patch 4
+  bisectable.  Found by -Wmisleading-indentation.
+- patch 5:
+  - replay_unsafe_requests() no longer skips a request whose
+    CEPH_MDS_R_DISPATCHING is held.  The owner may already have queued
+    the request message on the connection that send_mds_reconnect()
+    resets, and nothing would send it again, so the caller waited
+    forever.  The replay now waits for the owner to release the bit,
+    rescans, and replays the request itself.  The owner never takes
+    session->s_mutex in its send window, so the wait cannot deadlock.
+    (Alex Markuze)
+  - Add release_dispatch() and use it on every DISPATCHING release
+    path.  The replay flags its wait with the new
+    CEPH_MDS_R_REPLAY_WAIT bit, and release_dispatch() calls
+    wake_up_bit() only when that bit is set, so the common release
+    stays one atomic clear plus a plain test_bit() under mdsc->mutex,
+    without a lookup in the kernel-wide bit_wait_table.
+  - __do_request() and replay_unsafe_requests() copy r_attempts and
+    r_num_fwd into the new r_send_attempts and r_send_num_fwd under
+    mdsc->mutex, and __prepare_send_request() encodes num_retry and
+    num_fwd, and checks for retry overflow, from the copies.
+    cleanup_session_requests() and handle_forward() may rewrite the
+    originals while the message is built, which encoded num_retry as
+    255 and ext_num_retry as 0xffffffff.  (Alex Markuze)
+  - __do_request() resets r_resend_mds before dropping mdsc->mutex, so
+    that a forward arriving in the send window is not undone.
+- Link to v6: https://patch.msgid.link/20260829-ceph-mdsc-mutex-optimization-v6-0-466936ccbd9d@clyso.com
 
--- 
-2.55.0
+Changes in v6:
+- Only patch 5/5 is changed; patches 1-4 are identical to v5.
+- Replace the ad-hoc r_attempts dispatch gate with an explicit
+  ownership protocol.  __do_request() and replay_unsafe_requests()
+  claim CEPH_MDS_R_DISPATCHING under mdsc->mutex before the unlocked
+  prepare/send window and release it on exit, so only one context ever
+  rebuilds and sends a request's message.  A claim consumes any
+  pending CEPH_MDS_R_RESEND.
+- cleanup_session_requests() and handle_forward() set
+  CEPH_MDS_R_RESEND under mdsc->mutex when they see DISPATCHING held,
+  instead of relying on r_attempts == 0 to trigger a resend.  Fixes
+  the v5 race where cleanup_session_requests() could zero r_attempts
+  while a sender was between the mutex release and __send_request(),
+  letting a second __do_request() in and double ceph_msg_put() the
+  request message.
+- On release, the owner consumes a pending CEPH_MDS_R_RESEND
+  and re-dispatches the request through __do_request() (restart label)
+  as long as it is still registered in the request xarray.
+- __wake_requests() now takes mdsc->mutex and splices the wait
+  list under it, pinning a reference on each request in the same
+  critical section as the list_del_init().  This fixes the v5 lockless
+  walk of the spliced list against concurrent list_del_init() by the
+  park paths, and serializes the SESSION_OPEN wake in handle_session()
+  against the park decision in __do_request().
+- Collector exclusivity — kick_requests(), __wake_requests()
+  and replay_unsafe_requests() skip any request whose r_aux_item is
+  non-empty (checked under mdsc->mutex), so two concurrent collectors
+  can no longer add the same node to their local lists.
+- The re-park paths in __do_request() now list_del_init() the
+  request before list_add()ing it onto a wait list, so re-parking is
+  idempotent (needed now that a request can re-enter __do_request()
+  through the RESEND restart loop).
+- __do_request() refuses to dispatch GOT_UNSAFE requests,
+  clearing any pending RESEND/DISPATCHING bits, so an unsafe request
+  is never parked on a wait list.  Together with the exclusivity
+  predicate this guarantees a request is never both wait-listed and on
+  session->s_unsafe, and replay_unsafe_requests() remains the only
+  replayer of unsafe requests.
+- replay_unsafe_requests() claims DISPATCHING in both collect
+  loops, and after __send_request() consumes a pending RESEND and
+  re-dispatches through __do_request().
+- send_mds_reconnect() drops snap_rwsem before calling
+  __wake_requests(), which now takes mdsc->mutex internally (lock
+  order).
+- Link to v5: https://patch.msgid.link/20260818-ceph-mdsc-mutex-optimization-v5-0-7d335a3a1d0b@clyso.com
+
+Changes in v5:
+- patch 4: add INIT_LIST_HEAD(&req->r_aux_item) in ceph_mdsc_create_request().
+- patch 5: keep requests on session->s_unsafe during replay; use r_aux_item
+  only as a walk list.
+- Link to v4: https://patch.msgid.link/20260812-ceph-mdsc-mutex-optimization-v4-0-fca3b7462f94@clyso.com
+
+Changes in v4:
+- Fix ref leak in __register_request() xa_store error path
+- Fix r_attempts data race: move r_attempts++ from
+  __prepare_send_request() (lockless) into __do_request() and
+  replay_unsafe_requests() under mdsc->mutex.  Adjust the retry
+  overflow check accordingly.
+- Fix kick_requests() list corruption: detach r_wait from the local
+  kick_list before calling __do_request().
+- Fix collect-then-replay list-node races in both kick_requests()
+  and replay_unsafe_requests(): introduce r_aux_item, a dedicated
+  list_head for temporary local list iteration, so that concurrent
+  __unregister_request() cannot corrupt the iterator.
+- Link to v3: https://patch.msgid.link/20260811-ceph-mdsc-mutex-optimization-v3-0-d031114419f4@clyso.com
+
+Changes in v3:
+- Restrict CEPH_FS to 64BIT to prevent xarray index truncation of
+  u64 transaction IDs on 32-bit platforms, instead of the previous
+  #if BITS_PER_LONG guard.  There are no 32-bit users.
+  The survey: https://lore.kernel.org/ceph-devel/CAOJNxR+XiUxR1GNUgd8T18x2KH8kstWtpxwL-mwwE0i_qospJA@mail.gmail.com/T/#t
+- Fix two plain reads of oldest_tid in the writer paths to use
+  READ_ONCE() for consistency with the lockless read side.
+- Replace the original replay_unsafe_requests() change with a
+  proper collect-then-replay pattern: unsafe list entries and
+  matching old xarray entries are gathered under the mutex with a
+  reference taken, then replayed outside it.  Taking a reference
+  ensures a concurrent reply handler cannot free an entry out
+  from under the local-list iterator.
+- Rewrite all commit messages as descriptive prose, focusing on
+  the problem and the approach rather than enumerating modified
+  functions.
+- Link to v2: https://patch.msgid.link/20260715-ceph-mdsc-mutex-optimization-v2-0-90e81b726724@clyso.com
+
+Changes in v2:
+- Add xa_store() error handling and bail out on failure in the submit path
+- Guard xarray conversion with BITS_PER_LONG==64, fall back to rbtree on 32-bit
+- Fix missing mutex_unlock on early-return path in __do_request()
+- Move mutex_unlock before __wake_requests() and kick_requests() calls to
+  avoid recursive lock acquisition
+- Pin requests with ceph_mdsc_get_request() across lockless __send_request()
+  in replay_unsafe_requests() to prevent use-after-free
+- Keep mdsc->mutex held on 32-bit for rb_first()/rb_next() iteration in
+  replay_unsafe_requests()
+- Drop stale "called under mdsc->mutex" comment on __wake_requests()
+- Add benchmark results from test_i_caps (2.1x stat throughput improvement)
+- Link to v1: https://patch.msgid.link/20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com
+
+---
+Xiubo Li (5):
+      ceph: use READ_ONCE/WRITE_ONCE for oldest_tid
+      ceph: replace the request_tree rbtree with an xarray keyed by r_tid
+      ceph: add wait_list_lock for wait-list serialization
+      ceph: move mdsc->mutex into __do_request()
+      ceph: narrow mdsc->mutex scope in replay_unsafe_requests
+
+ fs/ceph/Kconfig      |   1 +
+ fs/ceph/debugfs.c    |   6 +-
+ fs/ceph/mds_client.c | 701 ++++++++++++++++++++++++++++++++++++++++-----------
+ fs/ceph/mds_client.h |  57 ++++-
+ 4 files changed, 612 insertions(+), 153 deletions(-)
+---
+base-commit: dee30ce1286a0d18b14545ecac345e4cf4a80511
+change-id: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
+
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
