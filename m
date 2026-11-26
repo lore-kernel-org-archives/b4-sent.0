@@ -1,92 +1,133 @@
-From: Daniel Svendsen <das@emlogic.no>
-Date: Thu, 26 Nov 2026 01:15:35 +0100
-Subject: [PATCH] eeprom: at24: wait for write cycle before releasing
- runtime PM
+From: Ilia Snezhkov <iasnezhkov@gmail.com>
+To: heikki.krogerus@linux.intel.com, gregkh@linuxfoundation.org, 
+ linux@roeck-us.net
+Cc: badhri@google.com, shufan_lee@richtek.com, linux-usb@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+Subject: [PATCH] usb: typec: tcpci_rt1711h: restart DRP toggling on Ra/Open
+ in TOGGLING
+Date: Thu, 26 Nov 2026 00:33:08 +0000
+Message-Id: <20261126003308.48940-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-at24-write-cycle-v1-1-ec9c38617130@emlogic.no>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/yXMywrCMBBG4Vcps3YgGaRSX0Vc1MkfO6VUSVIvl
- L67UZff4pyVMpIh07FZKeFh2W5zhd81pEM/X8EWqkmctN5Ly32RPT+TFbC+dQIfFCEG52IXhWp
- 2T4j2+i1P57/zchmh5fuhbfsATyB/BHQAAAA=
-X-Change-ID: 20261126-at24-write-cycle-7cedfd00f9f2
-To: Bartosz Golaszewski <brgl@kernel.org>, 
- Srinivas Kandagatla <srini@kernel.org>
-Cc: Bibby Hsieh <bibby.hsieh@mediatek.com>, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Daniel Svendsen <das@emlogic.no>
+Content-Transfer-Encoding: 8bit
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795652175; l=2263;
- i=das@emlogic.no; s=20261125; h=from:subject:message-id;
- bh=jcPKGomz5djCGzdGpnaBBVY00UgyabG9Lq9DL7YvIlg=;
- b=E0uKLD3Ha7ZC/+CmF60IMx8YtdMMTlBT+Z0LdwwmzzUaMLHHRKShaDzMFiZH2ZMzteyt+Mnt7
- tvOEjBbvdT8A+yQ/gbUwxly6jwSCdkNSFrBYosuU79fgK4RlWNenY5u
-X-Developer-Key: i=das@emlogic.no; a=ed25519;
- pk=NOuNK5ezs2CmhXHDzJ0VumKw5T6c3m0ayEJIk/HKbyA=
-X-Endpoint-Received: by B4 Relay for das@emlogic.no/20261125 with auth_id=1644
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795653188; l=4594;
+ i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
+ bh=48DbZvenyoxSQC7pGCnI1KXfaG2DTeuuUgLBgoGs71c=;
+ b=bcWv86hvlPh2cPfbmwLklE4wWfQw8FOHZukHKNnU9UmWJEOatPVmFd8r0xg4QVYGO8RgFJ+Xb
+ f5OGUCXC3mCB3WGro977IpNVHl/xZv5E900SX0pQeIysIS0c/SgbgYs
+X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
+ pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
+X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-at24_regmap_write() returns as soon as the chip has ACKed the
-transfer, but the EEPROM only programs the data afterwards, during its
-internal write cycle (typically up to 5 ms). For all but the last
-chunk, the following write is NACKed and retried until that cycle has
-finished. After the last chunk nothing waits, and at24_write() drops
-its runtime PM reference right away. When vcc is controlled through
-runtime PM and has no other users, at24_suspend() disables the
-regulator in the middle of the write cycle and the last chunk is lost,
-while the write is reported as successful.
+When a DRP port using RT1711H/RT1715 or its ETEK ET7303/ET7304
+compatible silicon is connected via an e-marked USB-C cable (for example
+to a USB-C PD charger whose own port is temporarily open), the hardware
+can stop DRP toggling during its Rp phase upon detecting a single Ra
+pull-down, reporting CC_STATUS with LOOKING4CONNECTION=0,
+CONNECTRESULT=0 (Rp), and (CC1=Ra, CC2=Open).
 
-This was seen on a board where the EEPROM supply is a switchable
-regulator used only by at24: 32-byte writes with a 16-byte page size
-programmed just the first 16 bytes.
+In tcpm_cc_change(), case TOGGLING only transitions out of TOGGLING for
+source (Rd), sink (Rp), audio accessory (Ra+Ra), and debug accessory
+states. (Ra, Open), (Open, Ra), and (Open, Open) fall through with no
+state change and no call to tcpm_start_toggling(). Because the TCPC has
+already exited hardware toggling, the port remains permanently wedged
+presenting Rp: PD chargers never see Rd and never source VBUS, and
+subsequent USB host connections fail to enumerate until another
+TCPC_CMD_LOOK4CONNECTION command is issued. (fusb302 handles the same
+condition by restarting toggling on unexpected CC states.)
 
-Wait for the write cycle to finish before releasing runtime PM by
-doing a one-byte read of the last written address. at24_regmap_read()
-retries while the chip NACKs, up to write_timeout.
+In rt1711h_irq(), when TCPC_ALERT_CC_STATUS fires with
+TCPC_CC_STATUS_TOGGLING clear while tcpm_port_is_toggling() is true and
+TCPC_ROLE_CTRL_DRP is set, decode (cc1, cc2) identically to
+tcpci_get_cc(). If the state is (Open, Open), (Ra, Open), or (Open, Ra),
+clear TCPC_ALERT_CC_STATUS, preserve RP_VAL while resetting CC1/CC2 to
+Rd with the RT1711H DRP=0 settle delay matching
+rt1711h_start_drp_toggling(), re-enable DRP, and issue
+TCPC_CMD_LOOK4CONNECTION. Return IRQ_HANDLED so any co-occurring alert
+bits remain pending on the level-low IRQ line and re-enter cleanly.
 
-Fixes: cd5676db0574 ("misc: eeprom: at24: support pm_runtime control")
-Cc: stable@vger.kernel.org
-Signed-off-by: Daniel Svendsen <das@emlogic.no>
+Observed and verified on hardware (MT6789 phone with ETEK ET7303
+VID 0x6DCF PID 0x1711 DID 0x2173 and Anker/Apple USB-C PD chargers with
+e-marked C-to-C cables) as well as a 1542-case host state-machine test
+covering all 64 CC states, RP_VAL preservation, co-occurring alerts, and
+I2C error fallbacks.
+
+Drafted with an AI coding assistant.
+
+Fixes: ce08eaeb6388 ("staging: typec: rt1711h typec chip driver")
+Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
 ---
- drivers/nvmem/at24.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ drivers/usb/typec/tcpm/tcpci_rt1711h.c | 47 ++++++++++++++++++++++++++
+ 1 file changed, 47 insertions(+)
 
-diff --git a/drivers/nvmem/at24.c b/drivers/nvmem/at24.c
-index b9db13cc3e33..03cd83e5caff 100644
---- a/drivers/nvmem/at24.c
-+++ b/drivers/nvmem/at24.c
-@@ -482,6 +482,7 @@ static int at24_write(void *priv, unsigned int off, void *val, size_t count)
- 	struct at24_data *at24;
- 	struct device *dev;
- 	char *buf = val;
-+	char dummy;
- 	int ret;
- 
- 	at24 = priv;
-@@ -514,11 +515,17 @@ static int at24_write(void *priv, unsigned int off, void *val, size_t count)
- 		count -= ret;
- 	}
- 
-+	/*
-+	 * Wait for the last chunk's internal write cycle to finish before
-+	 * dropping the runtime PM reference, which may switch off vcc.
-+	 */
-+	ret = at24_regmap_read(at24, &dummy, off - 1, 1);
-+
- 	mutex_unlock(&at24->lock);
- 
- 	pm_runtime_put(dev);
- 
--	return 0;
-+	return ret < 0 ? ret : 0;
+diff --git a/drivers/usb/typec/tcpm/tcpci_rt1711h.c b/drivers/usb/typec/tcpm/tcpci_rt1711h.c
+index 0581659..e03eca7 100644
+--- a/drivers/usb/typec/tcpm/tcpci_rt1711h.c
++++ b/drivers/usb/typec/tcpm/tcpci_rt1711h.c
+@@ -253,6 +253,51 @@ static int rt1711h_start_drp_toggling(struct tcpci *tcpci,
+ 	return 0;
  }
  
- static int at24_make_dummy_client(struct at24_data *at24, unsigned int index,
++static bool rt1711h_cc_needs_retoggle(enum typec_cc_status cc1,
++				      enum typec_cc_status cc2)
++{
++	return (cc1 == TYPEC_CC_OPEN && cc2 == TYPEC_CC_OPEN) ||
++	       (cc1 == TYPEC_CC_RA && cc2 == TYPEC_CC_OPEN) ||
++	       (cc1 == TYPEC_CC_OPEN && cc2 == TYPEC_CC_RA);
++}
++
++static bool rt1711h_restart_toggling(struct rt1711h_chip *chip, u8 status)
++{
++	struct tcpm_port *port = tcpci_get_tcpm_port(chip->tcpci);
++	enum typec_cc_status cc1, cc2;
++	unsigned int base;
++	u8 role = 0;
++	int ret;
++
++	if (!tcpm_port_is_toggling(port))
++		return false;
++	ret = rt1711h_read8(chip, TCPC_ROLE_CTRL, &role);
++	if (ret < 0 || !(role & TCPC_ROLE_CTRL_DRP))
++		return false;
++	cc1 = tcpci_to_typec_cc(FIELD_GET(TCPC_CC_STATUS_CC1, status),
++				status & TCPC_CC_STATUS_TERM ||
++				tcpc_presenting_rd(role, CC1));
++	cc2 = tcpci_to_typec_cc(FIELD_GET(TCPC_CC_STATUS_CC2, status),
++				status & TCPC_CC_STATUS_TERM ||
++				tcpc_presenting_rd(role, CC2));
++	if (!rt1711h_cc_needs_retoggle(cc1, cc2))
++		return false;
++	base = (role & TCPC_ROLE_CTRL_RP_VAL) |
++	       FIELD_PREP(TCPC_ROLE_CTRL_CC1, TCPC_ROLE_CTRL_CC_RD) |
++	       FIELD_PREP(TCPC_ROLE_CTRL_CC2, TCPC_ROLE_CTRL_CC_RD);
++	ret = rt1711h_write8(chip, TCPC_ALERT, TCPC_ALERT_CC_STATUS);
++	if (ret < 0)
++		return false;
++	ret = rt1711h_write8(chip, TCPC_ROLE_CTRL, base);
++	if (ret < 0)
++		return false;
++	usleep_range(500, 1000);
++	ret = rt1711h_write8(chip, TCPC_ROLE_CTRL, base | TCPC_ROLE_CTRL_DRP);
++	if (ret < 0)
++		return false;
++	return rt1711h_write8(chip, TCPC_COMMAND, TCPC_CMD_LOOK4CONNECTION) == 0;
++}
++
+ static irqreturn_t rt1711h_irq(int irq, void *dev_id)
+ {
+ 	int ret;
+@@ -274,6 +319,8 @@ static irqreturn_t rt1711h_irq(int irq, void *dev_id)
+ 		/* Clear cc change event triggered by starting toggling */
+ 		if (status & TCPC_CC_STATUS_TOGGLING)
+ 			rt1711h_write8(chip, TCPC_ALERT, TCPC_ALERT_CC_STATUS);
++		else if (rt1711h_restart_toggling(chip, status))
++			return IRQ_HANDLED;
+ 		else
+ 			rt1711h_init_cc_params(chip, status);
+ 	}
+-- 
+2.54.0 (Apple Git-157)
 
----
-base-commit: ebb7a8dc1e74c705daffe11c2faf38ec2628f838
-change-id: 20261126-at24-write-cycle-7cedfd00f9f2
-
-Best regards,
---  
-Daniel Svendsen <das@emlogic.no>
 
