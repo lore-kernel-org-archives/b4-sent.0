@@ -1,56 +1,68 @@
-From: Kyle Hendry <khendry@reliablecontrols.com>
-Date: Thu, 26 Nov 2026 08:11:07 -0800
-Subject: [PATCH v4 3/3] ARM: dts: renesas: r9a06g032: Add #reset-cells to
- system controller node
+From: Felipe Pesce <coding@fpesce.com>
+Date: Thu, 26 Nov 2026 13:41:46 -0300
+Subject: [PATCH] ALSA: hda/cirrus: Control SPDIF out pin on MacBookPro 11,1
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-rzn1-miic-resets-v4-3-4f73af81d779@reliablecontrols.com>
-References: <20261126-rzn1-miic-resets-v4-0-4f73af81d779@reliablecontrols.com>
-In-Reply-To: <20261126-rzn1-miic-resets-v4-0-4f73af81d779@reliablecontrols.com>
-To: Geert Uytterhoeven <geert+renesas@glider.be>, 
- Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Magnus Damm <magnus.damm@gmail.com>, 
- Fabrizio Castro <fabrizio.castro.jz@renesas.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-renesas-soc@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Wolfram Sang <wsa+renesas@sang-engineering.com>, 
- Kyle Hendry <khendry@reliablecontrols.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795709473; l=804;
- i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=WWyo4QGHfN4nIjzzAN5Okr3IhbwMhhhW3P0Osmvu8I4=;
- b=1XkYumVv41gu/rXPKVLmjuniWX+x9G/DjTFLjPBGDrQXdnP9iZG0juGPy79WISILKfVd+C/Cv
- 5EnR/l0ELsNBLpGMhwpq2Pzm/21dXBNGtNrqfTwmB/MjsqmKj8JAtM+
-X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
- pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
-X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
+Message-Id: <20261126-macbookpro11-1-spdif-v1-1-8316370457f8@fpesce.com>
+X-B4-Tracking: v=1; b=H4sIAElhCGsC/x3MTQrCMBBA4auUWTvoRJKCVxEX+Zm0gzQJExGh9
+ O5Gl9/ivR06q3CH27SD8lu61DJApwni6svCKGkYzMU4IuNw8zHU+mxaiZCwtyQZ3TXYNFv2ds4
+ w0qac5fPf3h/DwXfGoL7E9TerKouU8+b7ixWO4wuOkJ4khgAAAA==
+X-Change-ID: 20261126-macbookpro11-1-spdif-63b5d75ea57f
+To: Takashi Iwai <tiwai@suse.com>, Jaroslav Kysela <perex@perex.cz>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Felipe Pesce <coding@fpesce.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795711305; l=1846;
+ i=coding@fpesce.com; s=20261126; h=from:subject:message-id;
+ bh=aXC3IyVGZ218SrwScWZYu42Cdp/Cm3nySQ3+C2EcmKw=;
+ b=iMepBdKxNB1cmw4S796X9Ifw/WumI8mu62kXExFL4hHOpT38pMgmSjyE23TM0pMDfcNawrTH8
+ yshixN97rbkDAvAbKcXtnVrNlQ644MwPqsFdRNuNRO7IJ2M5CK0MNQo
+X-Developer-Key: i=coding@fpesce.com; a=ed25519;
+ pk=cQ6L0+gycqDMWGyg+5rl+808vU//qlaPY0zjUWM2Two=
+X-Endpoint-Received: by B4 Relay for coding@fpesce.com/20261126 with auth_id=1655
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update the rzn1 system controller node with cells for the reset controller
+The MacBookPro 11,1 (CS4208, codec SSID 0x106b5d00) has the same
+combo headphone / mini-TOSLINK jack as the MacBookPro 11,2, but is
+missing from cs4208_mac_fixup_tbl, so it only gets the default GPIO0
+fixup. As a result the "IEC958 Playback Switch" does not touch the
+SPDIF pin (0x21), whose pin control stays at PIN_OUT, and the red
+optical light in the jack turns on whenever the codec is powered up,
+even with no optical cable plugged in.
 
-Reviewed-by: Wolfram Sang <wsa+renesas@sang-engineering.com>
-Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
+Apply the CS4208_MBP11 fixup to this model as well. Tested with
+model=mbp11 on a MacBookPro11,1: turning off the IEC958 switch now
+clears the pin control and the light stays off across runtime
+suspend/resume, while analog headphone, speaker and mic are
+unaffected.
+
+Signed-off-by: Felipe Pesce <coding@fpesce.com>
 ---
- arch/arm/boot/dts/renesas/r9a06g032.dtsi | 1 +
+The codec SSID was read from /sys/class/sound/hwC1D0/subsystem_id on a
+MacBookPro11,1 (DMI product_name) running Debian 6.12.
+---
+ sound/hda/codecs/cirrus/cs420x.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/arch/arm/boot/dts/renesas/r9a06g032.dtsi b/arch/arm/boot/dts/renesas/r9a06g032.dtsi
-index 5455dccfbdd0..f2bf087f7ad2 100644
---- a/arch/arm/boot/dts/renesas/r9a06g032.dtsi
-+++ b/arch/arm/boot/dts/renesas/r9a06g032.dtsi
-@@ -146,6 +146,7 @@ sysctrl: system-controller@4000c000 {
- 			compatible = "renesas,r9a06g032-sysctrl";
- 			reg = <0x4000c000 0x1000>;
- 			#clock-cells = <1>;
-+			#reset-cells = <1>;
- 			#power-domain-cells = <0>;
+diff --git a/sound/hda/codecs/cirrus/cs420x.c b/sound/hda/codecs/cirrus/cs420x.c
+index 85c2ecf46d3834984d17bc8c67b274ac1938502c..160c4e10714e81fb4de0a25e4835c4387f184c39 100644
+--- a/sound/hda/codecs/cirrus/cs420x.c
++++ b/sound/hda/codecs/cirrus/cs420x.c
+@@ -576,6 +576,7 @@ static const struct hda_quirk cs4208_fixup_tbl[] = {
  
- 			clocks = <&ext_mclk>, <&ext_rtc_clk>,
+ /* codec SSID matching */
+ static const struct hda_quirk cs4208_mac_fixup_tbl[] = {
++	SND_PCI_QUIRK(0x106b, 0x5d00, "MacBookPro 11,1", CS4208_MBP11),
+ 	SND_PCI_QUIRK(0x106b, 0x5e00, "MacBookPro 11,2", CS4208_MBP11),
+ 	SND_PCI_QUIRK(0x106b, 0x6c00, "MacMini 7,1", CS4208_MACMINI),
+ 	SND_PCI_QUIRK(0x106b, 0x7100, "MacBookAir 6,1", CS4208_MBA6),
 
+---
+base-commit: 40212b29a6f718d4e7fb3275cede181cb8e137cf
+change-id: 20261126-macbookpro11-1-spdif-63b5d75ea57f
+
+Best regards,
 -- 
-2.53.0
+Felipe Pesce <coding@fpesce.com>
 
