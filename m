@@ -1,11 +1,11 @@
 From: Peder Bergan <peder.bergan@gmail.com>
-Date: Thu, 26 Nov 2026 17:53:15 +0100
-Subject: [PATCH 1/3] drm/panic: Check QR alignment centers one axis at a
- time
+Date: Thu, 26 Nov 2026 17:53:16 +0100
+Subject: [PATCH 2/3] drm/panic: Apply the QR mask while drawing data
+ modules
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-perf-drm-panic-qr-v1-1-51856937dc4d@gmail.com>
+Message-Id: <20261126-perf-drm-panic-qr-v1-2-51856937dc4d@gmail.com>
 References: <20261126-perf-drm-panic-qr-v1-0-51856937dc4d@gmail.com>
 In-Reply-To: <20261126-perf-drm-panic-qr-v1-0-51856937dc4d@gmail.com>
 To: Jocelyn Falempe <jfalempe@redhat.com>, 
@@ -15,60 +15,104 @@ Cc: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
  dri-devel@lists.freedesktop.org, rust-for-linux@vger.kernel.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795711998; l=1856;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795711998; l=3294;
  i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
- bh=s2q8rdTFeCLN5bHoYDEz1EAk1bfn2gf/0qI/0v1epNE=;
- b=ZfZ7KBdVFd7SeRGeNdUGHSQKNc2jubIGoqCU/aVY3tNkQJpKdCNopEjtU6bmADCEHL6TVamaZ
- 4ielgeyFJfxBPfkTgdA2+BeQYzZMT3X3IAypVkonb7abK1vIyyXfo6a
+ bh=ZAbo9XJK8sS3xUaaH1sSP/WDCUTJVmN5DS5JCEvtWZk=;
+ b=wCS7L6+UV4zWSP45BF52yYOERefTbJ+dfA57nTVQ50Okvuv4wZQY0GGvdRE2tJHV+CNi53p1r
+ nrgmXwv9H3aDbXiSKoMijuZF6otTmNKNDMGw70J3hhWDXWKhIeiEvf4
 X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
  pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
 X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-is_alignment() scans pairs of alignment centers each time it tests
-whether a module is reserved. At version 40 there are seven centers
-per axis, so a lookup can visit 49 pairs.
+After placing data and remainder modules, apply_mask() scans the whole
+image to invert the unreserved modules covered by checkerboard mask 0.
+Data placement already visits every unreserved module once.
 
-Each center covers a five-module span, and adjacent centers are at
-least 12 modules apart. Find the unique matching center on each axis
-and apply the existing finder-pattern exclusion to that pair. The
-lookup now needs at most 14 center tests.
+Apply mask 0 while drawing each data module and each zero-valued
+remainder module. This removes the separate image pass and its buffer
+read-modify-write operations. The format information still advertises
+mask 0.
 
 Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
 ---
- drivers/gpu/drm/drm_panic_helper_qr.rs | 19 ++++++++-----------
- 1 file changed, 8 insertions(+), 11 deletions(-)
+ drivers/gpu/drm/drm_panic_helper_qr.rs | 35 +++++++++++-----------------------
+ 1 file changed, 11 insertions(+), 24 deletions(-)
 
 diff --git a/drivers/gpu/drm/drm_panic_helper_qr.rs b/drivers/gpu/drm/drm_panic_helper_qr.rs
-index 4941731fb60fa..c6ed395c05bd2 100644
+index c6ed395c05bd2..1d96ae855052a 100644
 --- a/drivers/gpu/drm/drm_panic_helper_qr.rs
 +++ b/drivers/gpu/drm/drm_panic_helper_qr.rs
-@@ -746,17 +746,14 @@ fn draw_alignments(&mut self) {
+@@ -691,12 +691,6 @@ fn set(&mut self, x: u8, y: u8) {
+         self.data[off] = v;
+     }
  
-     fn is_alignment(&self, x: u8, y: u8) -> bool {
-         let positions = self.version.alignment_pattern();
--        for &ax in positions.iter() {
--            for &ay in positions.iter() {
--                if self.is_finder(ax, ay) {
--                    continue;
+-    /// Invert a module color.
+-    fn xor(&mut self, x: u8, y: u8) {
+-        let off = y as usize * self.stride as usize + x as usize / 8;
+-        self.data[off] ^= 0x80 >> (x % 8);
+-    }
+-
+     /// Draw a light square at (x, y) top left corner.
+     fn draw_square(&mut self, x: u8, y: u8, size: u8) {
+         for k in 0..size {
+@@ -864,37 +858,31 @@ fn next_available(&self, x: u8, y: u8) -> (u8, u8) {
+         (x, y)
+     }
+ 
++    /// Draw an unreserved module with checkerboard mask 0.
++    fn draw_data_module(&mut self, x: u8, y: u8, bit: bool) {
++        let invert = (x ^ y) % 2 == 0;
++        if !(bit ^ invert) {
++            self.set(x, y);
++        }
++    }
++
+     fn draw_data(&mut self, data: impl Iterator<Item = u8>) {
+         let (mut x, mut y) = (self.width - 1, self.width - 1);
+         for byte in data {
+             for s in 0..8 {
+-                if byte & (0x80 >> s) == 0 {
+-                    self.set(x, y);
 -                }
--                if x >= ax - 2 && x <= ax + 2 && y >= ay - 2 && y <= ay + 2 {
--                    return true;
++                self.draw_data_module(x, y, byte & (0x80 >> s) != 0);
+                 (x, y) = self.next_available(x, y);
+             }
+         }
+-        // Set the remaining modules (0, 3 or 7 depending on version).
+-        // because 0 correspond to a light module.
++        // The remaining modules encode zero before masking.
+         while !self.is_last(x, y) {
+             if !self.is_reserved(x, y) {
+-                self.set(x, y);
++                self.draw_data_module(x, y, false);
+             }
+             (x, y) = self.next(x, y);
+         }
+     }
+ 
+-    /// Apply checkerboard mask to all non-reserved modules.
+-    fn apply_mask(&mut self) {
+-        for x in 0..self.width {
+-            for y in 0..self.width {
+-                if (x ^ y) % 2 == 0 && !self.is_reserved(x, y) {
+-                    self.xor(x, y);
 -                }
 -            }
 -        }
--        false
-+        // Centers are at least 12 modules apart, so their five-module spans are disjoint.
-+        let Some(&ax) = positions.iter().find(|&&center| x.abs_diff(center) <= 2) else {
-+            return false;
-+        };
-+        let Some(&ay) = positions.iter().find(|&&center| y.abs_diff(center) <= 2) else {
-+            return false;
-+        };
-+        !self.is_finder(ax, ay)
+-    }
+-
+     /// Draw the QR code with the provided data iterator.
+     fn draw_all(&mut self, data: impl Iterator<Item = u8>) {
+         // First clear the table, as it may have already some data.
+@@ -905,7 +893,6 @@ fn draw_all(&mut self, data: impl Iterator<Item = u8>) {
+         self.draw_version_info();
+         self.draw_data(data);
+         self.draw_maskinfo();
+-        self.apply_mask();
      }
+ }
  
-     // Timing pattern: 2 dotted line between the finder patterns.
 
 -- 
 2.56.1
