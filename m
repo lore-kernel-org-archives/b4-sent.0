@@ -1,11 +1,10 @@
 From: Paul Sajna <sajattack@postmarketos.org>
-Date: Thu, 26 Nov 2026 11:20:45 -0700
-Subject: [PATCH v8 1/4] dt-bindings: leds: aw2013: Add awinic,aw2027
- compatible
+Date: Thu, 26 Nov 2026 11:20:46 -0700
+Subject: [PATCH v8 2/4] leds: aw2013: Use dev_err_probe
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-aw2013-aw20xx-rename-v8-1-b6960baa102c@postmarketos.org>
+Message-Id: <20261126-aw2013-aw20xx-rename-v8-2-b6960baa102c@postmarketos.org>
 References: <20261126-aw2013-aw20xx-rename-v8-0-b6960baa102c@postmarketos.org>
 In-Reply-To: <20261126-aw2013-aw20xx-rename-v8-0-b6960baa102c@postmarketos.org>
 To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
@@ -16,55 +15,108 @@ To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>,
 Cc: Nikita Travkin <nikita@trvn.ru>, linux-leds@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- Paul Sajna <sajattack@postmarketos.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ Paul Sajna <sajattack@postmarketos.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795717245; l=1313;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795717245; l=2927;
  i=sajattack@postmarketos.org; s=20250413; h=from:subject:message-id;
- bh=w/6qEc2cwOI6T/xUHNJh3OifoyGO3FRpW1FATx28UoM=;
- b=dp1bSdfEAgOHHn3XRT+jMPi0IbTO6Or2jMi8OcHqs4bpVBkJcEcAnK3ZiA9Wgp8it3u778dAH
- B6csUUEuacWCPIZjZ0+uXX17nww7bi3IqEKTm2S206ZHTgsbruXSw6c
+ bh=rIyhe4A4huXwEKMyPwjJskxf3n5dD7r22StUzeRvRTw=;
+ b=zs3fl+sSAXBO5fGR1BaMl0N1Z5C+hR+lpbyFlPmO4TWTNMGAAkWp3gBzwvSO/kbIRtmD53NZh
+ n6zKO3oWjiDArI5Q0NoR1DqABRBPfqR8zAim9SElgKi5IQXCMF8xL1G
 X-Developer-Key: i=sajattack@postmarketos.org; a=ed25519;
  pk=ZFE/UBqiz9Wr8b+zBL27opOjw5x5ket5JFqks/VQGeM=
 X-Endpoint-Received: by B4 Relay for sajattack@postmarketos.org/20250413 with auth_id=1505
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The aw2027 is largely the same as the aw2013, with the
-exception of the way the max current is written to registers.
-This exception makes it different enough to not work without
-driver modifications, but similar enough to fall under the
-umbrella of the same driver.
+Failure to use dev_err_probe() for regulator requests violates
+LED subsystem guidelines. (At least according to sashiko [1])
 
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+The original driver didn't use it, but it's worth cleaning up
+while I'm here.
+
+[1]: https://github.com/sashiko-dev/sashiko/blob/main/third_party/prompts/kernel/subsystem/leds.md?plain=1#L71
+
+Reviewed-by: Griffin Kroah-Hartman <griffin@kroah.com>
+Reviewed-by: David Heidelberg <david@ixit.cz>
+
 Signed-off-by: Paul Sajna <sajattack@postmarketos.org>
 ---
- Documentation/devicetree/bindings/leds/leds-aw2013.yaml | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ drivers/leds/leds-aw2013.c | 30 ++++++++++++++----------------
+ 1 file changed, 14 insertions(+), 16 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/leds/leds-aw2013.yaml b/Documentation/devicetree/bindings/leds/leds-aw2013.yaml
-index 26238446f2bd..1ad165cfe34a 100644
---- a/Documentation/devicetree/bindings/leds/leds-aw2013.yaml
-+++ b/Documentation/devicetree/bindings/leds/leds-aw2013.yaml
-@@ -4,7 +4,7 @@
- $id: http://devicetree.org/schemas/leds/leds-aw2013.yaml#
- $schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/drivers/leds/leds-aw2013.c b/drivers/leds/leds-aw2013.c
+index cf20e94920fd..2937a0f92d92 100644
+--- a/drivers/leds/leds-aw2013.c
++++ b/drivers/leds/leds-aw2013.c
+@@ -361,9 +361,8 @@ static int aw2013_probe(struct i2c_client *client)
  
--title: AWINIC AW2013 3-channel LED Driver
-+title: AWINIC AW2013/AW2027 3-channel LED Driver
+ 	chip->regmap = devm_regmap_init_i2c(client, &aw2013_regmap_config);
+ 	if (IS_ERR(chip->regmap)) {
+-		ret = PTR_ERR(chip->regmap);
+-		dev_err(&client->dev, "Failed to allocate register map: %d\n",
+-			ret);
++		ret = dev_err_probe(&client->dev, PTR_ERR(chip->regmap),
++				    "Failed to allocate register map\n");
+ 		goto error;
+ 	}
  
- maintainers:
-   - Nikita Travkin <nikitos.tr@gmail.com>
-@@ -15,7 +15,9 @@ description: |
+@@ -373,45 +372,44 @@ static int aw2013_probe(struct i2c_client *client)
+ 				      ARRAY_SIZE(chip->regulators),
+ 				      chip->regulators);
+ 	if (ret < 0) {
+-		if (ret != -EPROBE_DEFER)
+-			dev_err(&client->dev,
+-				"Failed to request regulators: %d\n", ret);
++		dev_err_probe(&client->dev, ret,
++			      "Failed to request regulators\n");
+ 		goto error;
+ 	}
  
- properties:
-   compatible:
--    const: awinic,aw2013
-+    enum:
-+      - awinic,aw2013
-+      - awinic,aw2027
+ 	ret = regulator_bulk_enable(ARRAY_SIZE(chip->regulators),
+ 				    chip->regulators);
+ 	if (ret) {
+-		dev_err(&client->dev,
+-			"Failed to enable regulators: %d\n", ret);
++		dev_err_probe(&client->dev, ret,
++			      "Failed to enable regulators\n");
+ 		goto error;
+ 	}
  
-   reg:
-     maxItems: 1
+ 	ret = regmap_read(chip->regmap, AW2013_RSTR, &chipid);
+ 	if (ret) {
+-		dev_err(&client->dev, "Failed to read chip ID: %d\n",
+-			ret);
++		dev_err_probe(&client->dev, ret,
++			      "Failed to read chip ID\n");
+ 		goto error_reg;
+ 	}
+ 
+ 	if (chipid != AW2013_RSTR_CHIP_ID) {
+-		dev_err(&client->dev, "Chip reported wrong ID: %x\n",
+-			chipid);
+-		ret = -ENODEV;
++		ret = dev_err_probe(&client->dev, -ENODEV,
++				    "Chip reported wrong ID: %x\n",
++				     chipid);
+ 		goto error_reg;
+ 	}
+ 
+ 	ret = regmap_write(chip->regmap, AW2013_RSTR, AW2013_RSTR_RESET);
+ 	if (ret) {
+-		dev_err(&client->dev, "Failed to reset chip: %d\n", ret);
++		dev_err_probe(&client->dev, ret, "Failed to reset chip\n");
+ 		goto error_reg;
+ 	}
+ 
+ 	ret = regulator_bulk_disable(ARRAY_SIZE(chip->regulators),
+ 				     chip->regulators);
+ 	if (ret) {
+-		dev_err(&client->dev,
+-			"Failed to disable regulators: %d\n", ret);
++		dev_err_probe(&client->dev, ret,
++			      "Failed to disable regulators\n");
+ 		goto error;
+ 	}
+ 
 
 -- 
 2.56.0
