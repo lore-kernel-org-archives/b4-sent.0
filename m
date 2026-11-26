@@ -1,10 +1,10 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 06:18:41 +0000
-Subject: [PATCH 6.12.y v2 1/4] virtgpu: don't reset on shutdown
+Date: Thu, 26 Nov 2026 06:18:42 +0000
+Subject: [PATCH 6.12.y v2 2/4] virtio: add virtio_device_shutdown() helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-virtio-final-v2-1-4cfd5590e924@certik.com>
+Message-Id: <20261126-virtio-final-v2-2-4cfd5590e924@certik.com>
 References: <20261126-virtio-final-v2-0-4cfd5590e924@certik.com>
 In-Reply-To: <20261126-virtio-final-v2-0-4cfd5590e924@certik.com>
 To: stable@vger.kernel.org
@@ -13,171 +13,119 @@ Cc: "Michael S. Tsirkin" <mst@redhat.com>,
  Eric Auger <eric.auger@redhat.com>, Jason Wang <jasowang@redhat.com>, 
  virtualization@lists.linux.dev
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795673921; l=8215;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795673921; l=3867;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=4xAxWTSuZqbMWX5IyUhmanX2InaxqlkwCQNhyBUjFSE=;
- b=qNfBRKcLDpsUPzvVKb8uQUgT45aFSakmzpDPQXX8YG8CYNV6G448H0F0X3QUp38MBNHiPiPoe
- uvxoWi3FEPnAvfoY1KlTRMfybPNBwMFg/A72SJK8Rkwfuj7iHG9BsZA
+ bh=IcRCbKCQ8/HNKH9FULxInqnnyB/eMIUHgoJ8eusL0Kw=;
+ b=rC4KBoBX5N4hV6jb97hQRvcrTjezt/PyFAPDtSODnOGqv9FIRQiL0SD9YvMyJMo96S/9bIy8C
+ BwLoujBMBLNCRIHaEa6khzswu6ngAVE3A9X/DDbaWL2A/LHfjRR6RS0
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: "Michael S. Tsirkin" <mst@redhat.com>
+From: "Denis V. Lunev" <den@openvz.org>
 
-commit 183a08715af1491d381b4e22efd61578fbe05fa5 upstream.
+commit 0d8aebe089b4ba887e792884cf041ce9f1040ff4 upstream.
 
-It looks like GPUs are used after shutdown is invoked.
-Thus, breaking virtio gpu in the shutdown callback is not a good idea -
-guest hangs attempting to finish console drawing, with these warnings:
+The generic virtio bus .shutdown handler, virtio_dev_shutdown(), breaks
+and resets a device once it has established that the driver has no
+.shutdown of its own. A driver that does implement .shutdown, to quiesce
+its own activity first, still needs the same break and reset afterwards
+and would otherwise have to open code it.
 
-[   20.504464] WARNING: CPU: 0 PID: 568 at drivers/gpu/drm/virtio/virtgpu_vq.c:358 virtio_gpu_queue_ctrl_sgs+0x236/0x290 [virtio_gpu]
-[   20.505685] Modules linked in: nft_fib_inet nft_fib_ipv4 nft_fib_ipv6 nft_fib nft_reject_inet nf_reject_ipv4 nf_reject_ipv6 nft_reject nft_ct nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 rfkill ip_set nf_tables nfnetlink vfat fat intel_rapl_msr intel_rapl_common intel_uncore_frequency_common nfit libnvdimm kvm_intel kvm rapl iTCO_wdt iTCO_vendor_support virtio_gpu virtio_dma_buf pcspkr drm_shmem_helper i2c_i801 drm_kms_helper lpc_ich i2c_smbus virtio_balloon joydev drm fuse xfs libcrc32c ahci libahci crct10dif_pclmul crc32_pclmul crc32c_intel libata virtio_net ghash_clmulni_intel net_failover virtio_blk failover serio_raw dm_mirror dm_region_hash dm_log dm_mod
-[   20.511847] CPU: 0 PID: 568 Comm: kworker/0:3 Kdump: loaded Tainted: G        W         -------  ---  5.14.0-578.6675_1757216455.el9.x86_64 #1
-[   20.513157] Hardware name: Red Hat KVM/RHEL, BIOS edk2-20241117-3.el9 11/17/2024
-[   20.513918] Workqueue: events drm_fb_helper_damage_work [drm_kms_helper]
-[   20.514626] RIP: 0010:virtio_gpu_queue_ctrl_sgs+0x236/0x290 [virtio_gpu]
-[   20.515332] Code: 00 00 48 85 c0 74 0c 48 8b 78 08 48 89 ee e8 51 50 00 00 65 ff 0d 42 e3 74 3f 0f 85 69 ff ff ff 0f 1f 44 00 00 e9 5f ff ff ff <0f> 0b e9 3f ff ff ff 48 83 3c 24 00 74 0e 49 8b 7f 40 48 85 ff 74
-[   20.517272] RSP: 0018:ff34f0a8c0787ad8 EFLAGS: 00010282
-[   20.517820] RAX: 00000000fffffffb RBX: 0000000000000000 RCX: 0000000000000820
-[   20.518565] RDX: 0000000000000000 RSI: ff34f0a8c0787be0 RDI: ff218bef03a26300
-[   20.519308] RBP: ff218bef03a26300 R08: 0000000000000001 R09: ff218bef07224360
-[   20.520059] R10: 0000000000008dc0 R11: 0000000000000002 R12: ff218bef02630028
-[   20.520806] R13: ff218bef0263fb48 R14: ff218bef00cb8000 R15: ff218bef07224360
-[   20.521555] FS:  0000000000000000(0000) GS:ff218bef7ba00000(0000) knlGS:0000000000000000
-[   20.522397] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   20.522996] CR2: 000055ac4f7871c0 CR3: 000000010b9f2002 CR4: 0000000000771ef0
-[   20.523740] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[   20.524477] DR3: 0000000000000000 DR6: 00000000fffe07f0 DR7: 0000000000000400
-[   20.525223] PKRU: 55555554
-[   20.525515] Call Trace:
-[   20.525777]  <TASK>
-[   20.526003]  ? show_trace_log_lvl+0x1c4/0x2df
-[   20.526464]  ? show_trace_log_lvl+0x1c4/0x2df
-[   20.526925]  ? virtio_gpu_queue_fenced_ctrl_buffer+0x82/0x2c0 [virtio_gpu]
-[   20.527643]  ? virtio_gpu_queue_ctrl_sgs+0x236/0x290 [virtio_gpu]
-[   20.528282]  ? __warn+0x7e/0xd0
-[   20.528621]  ? virtio_gpu_queue_ctrl_sgs+0x236/0x290 [virtio_gpu]
-[   20.529256]  ? report_bug+0x100/0x140
-[   20.529643]  ? handle_bug+0x3c/0x70
-[   20.530010]  ? exc_invalid_op+0x14/0x70
-[   20.530421]  ? asm_exc_invalid_op+0x16/0x20
-[   20.530862]  ? virtio_gpu_queue_ctrl_sgs+0x236/0x290 [virtio_gpu]
-[   20.531506]  ? virtio_gpu_queue_ctrl_sgs+0x174/0x290 [virtio_gpu]
-[   20.532148]  virtio_gpu_queue_fenced_ctrl_buffer+0x82/0x2c0 [virtio_gpu]
-[   20.532843]  virtio_gpu_primary_plane_update+0x3e2/0x460 [virtio_gpu]
-[   20.533520]  drm_atomic_helper_commit_planes+0x108/0x320 [drm_kms_helper]
-[   20.534233]  drm_atomic_helper_commit_tail+0x45/0x80 [drm_kms_helper]
-[   20.534914]  commit_tail+0xd2/0x130 [drm_kms_helper]
-[   20.535446]  drm_atomic_helper_commit+0x11b/0x140 [drm_kms_helper]
-[   20.536097]  drm_atomic_commit+0xa4/0xe0 [drm]
-[   20.536588]  ? __pfx___drm_printfn_info+0x10/0x10 [drm]
-[   20.537162]  drm_atomic_helper_dirtyfb+0x192/0x270 [drm_kms_helper]
-[   20.537823]  drm_fbdev_shmem_helper_fb_dirty+0x43/0xa0 [drm_shmem_helper]
-[   20.538536]  drm_fb_helper_damage_work+0x87/0x160 [drm_kms_helper]
-[   20.539188]  process_one_work+0x194/0x380
-[   20.539612]  worker_thread+0x2fe/0x410
-[   20.540007]  ? __pfx_worker_thread+0x10/0x10
-[   20.540456]  kthread+0xdd/0x100
-[   20.540791]  ? __pfx_kthread+0x10/0x10
-[   20.541190]  ret_from_fork+0x29/0x50
-[   20.541566]  </TASK>
-[   20.541802] ---[ end trace 0000000000000000 ]---
+Factor the break + synchronize_cbs + reset sequence out of
+virtio_dev_shutdown() into an exported virtio_device_shutdown() helper so
+such drivers can reuse it instead of duplicating the core logic.
 
-It looks like the shutdown is called in the middle of console drawing, so
-we should either wait for it to finish, or let drm handle the shutdown.
+No functional change.
 
-This patch implements this second option:
-
-Add an option for drivers to bypass the common break+reset handling.
-As DRM is careful to flush/synchronize outstanding buffers, it looks like
-GPU can just have a NOP there.
-
-Reviewed-by: Eric Auger <eric.auger@redhat.com>
-Tested-by: Eric Auger <eric.auger@redhat.com>
-Fixes: 8bd2fa086a04 ("virtio: break and reset virtio devices on device_shutdown()")
-Cc: Eric Auger <eauger@redhat.com>
-Cc: Jocelyn Falempe <jfalempe@redhat.com>
+Signed-off-by: Denis V. Lunev <den@openvz.org>
+Reviewed-by: David Hildenbrand (Arm) <david@kernel.org>
 Signed-off-by: Michael S. Tsirkin <mst@redhat.com>
-Message-Id: <8490dbeb6f79ed039e6c11d121002618972538a3.1744293540.git.mst@redhat.com>
-[ adapted to 6.12: no reset_prepare/reset_done in struct virtio_driver, add only .shutdown ]
+Message-ID: <20260624140846.2616797-2-den@openvz.org>
+[ adapted to 6.12: no virtio_irq_get_affinity(), put the helper above virtio_dev_shutdown() ]
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
- drivers/gpu/drm/virtio/virtgpu_drv.c |    9 +++++++++
- drivers/virtio/virtio.c              |    6 ++++++
- include/linux/virtio.h               |    3 +++
- 3 files changed, 18 insertions(+)
+ drivers/virtio/virtio.c |   41 +++++++++++++++++++++++++++--------------
+ include/linux/virtio.h  |    1 +
+ 2 files changed, 28 insertions(+), 14 deletions(-)
 
 Changes in v2
-v2: resent through a whitespace-safe path; v1 <CAFaZ9eqZCgDaXJ=2QSBmHVz9WEL4cpthQX02xVesUB5G3NRQWg@mail.gmail.com> was damaged by my mail client and does not apply.
+v2: resent through a whitespace-safe path; v1 <CAFaZ9eovUow4CR0U-iaUtFHbvf2Dk97Vs6hz6hZWh747R6Xr-Q@mail.gmail.com> was damaged by my mail client and does not apply.
 
 The backport and the test runs were prepared with AI coding tools
 (OpenAI Codex agents, with review by Claude). I went over the result
 before signing off.
 
-diff --git a/drivers/gpu/drm/virtio/virtgpu_drv.c b/drivers/gpu/drm/virtio/virtgpu_drv.c
-index 44d99e89bb9b..92332f9d1796 100644
---- a/drivers/gpu/drm/virtio/virtgpu_drv.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_drv.c
-@@ -126,6 +126,14 @@ static void virtio_gpu_remove(struct virtio_device *vdev)
- 	drm_dev_put(dev);
- }
- 
-+static void virtio_gpu_shutdown(struct virtio_device *vdev)
-+{
-+	/*
-+	 * drm does its own synchronization on shutdown.
-+	 * Do nothing here, opt out of device reset.
-+	 */
-+}
-+
- static void virtio_gpu_config_changed(struct virtio_device *vdev)
- {
- 	struct drm_device *dev = vdev->priv;
-@@ -160,6 +168,7 @@ static struct virtio_driver virtio_gpu_driver = {
- 	.id_table = id_table,
- 	.probe = virtio_gpu_probe,
- 	.remove = virtio_gpu_remove,
-+	.shutdown = virtio_gpu_shutdown,
- 	.config_changed = virtio_gpu_config_changed
- };
- 
 diff --git a/drivers/virtio/virtio.c b/drivers/virtio/virtio.c
-index 078e5483b22f..8241024f0890 100644
+index 8241024f0890..f70ae3a672f7 100644
 --- a/drivers/virtio/virtio.c
 +++ b/drivers/virtio/virtio.c
-@@ -391,6 +391,12 @@ static void virtio_dev_shutdown(struct device *_d)
- 	if (!drv)
- 		return;
+@@ -379,6 +379,32 @@ static void virtio_dev_remove(struct device *_d)
+ 	of_node_put(dev->dev.of_node);
+ }
  
-+	/* If the driver has its own shutdown method, use that. */
-+	if (drv->shutdown) {
-+		drv->shutdown(dev);
-+		return;
-+	}
++/**
++ * virtio_device_shutdown - break and reset a device on shutdown
++ * @dev: the device
++ *
++ * Drivers with their own .shutdown method should quiesce their activity and
++ * then call this to stop the device the way the generic shutdown path does.
++ */
++void virtio_device_shutdown(struct virtio_device *dev)
++{
++	/*
++	 * Some devices get wedged if you kick them after they are
++	 * reset. Mark all vqs as broken to make sure we don't.
++	 */
++	virtio_break_device(dev);
++	/*
++	 * Guarantee that any callback will see vq->broken as true.
++	 */
++	virtio_synchronize_cbs(dev);
++	/*
++	 * As IOMMUs are reset on shutdown, this will block device access to memory.
++	 * Some devices get wedged if this happens, so reset to make sure it does not.
++	 */
++	dev->config->reset(dev);
++}
++EXPORT_SYMBOL_GPL(virtio_device_shutdown);
 +
- 	/*
- 	 * Some devices get wedged if you kick them after they are
- 	 * reset. Mark all vqs as broken to make sure we don't.
+ static void virtio_dev_shutdown(struct device *_d)
+ {
+ 	struct virtio_device *dev = dev_to_virtio(_d);
+@@ -397,20 +423,7 @@ static void virtio_dev_shutdown(struct device *_d)
+ 		return;
+ 	}
+ 
+-	/*
+-	 * Some devices get wedged if you kick them after they are
+-	 * reset. Mark all vqs as broken to make sure we don't.
+-	 */
+-	virtio_break_device(dev);
+-	/*
+-	 * Guarantee that any callback will see vq->broken as true.
+-	 */
+-	virtio_synchronize_cbs(dev);
+-	/*
+-	 * As IOMMUs are reset on shutdown, this will block device access to memory.
+-	 * Some devices get wedged if this happens, so reset to make sure it does not.
+-	 */
+-	dev->config->reset(dev);
++	virtio_device_shutdown(dev);
+ }
+ 
+ static const struct bus_type virtio_bus = {
 diff --git a/include/linux/virtio.h b/include/linux/virtio.h
-index 3ad94d939d28..2759e2c24d6e 100644
+index 2759e2c24d6e..2d8820c0832a 100644
 --- a/include/linux/virtio.h
 +++ b/include/linux/virtio.h
-@@ -204,6 +204,8 @@ size_t virtio_max_dma_size(const struct virtio_device *vdev);
-  *    changes; may be called in interrupt context.
-  * @freeze: optional function to call during suspend/hibernation.
-  * @restore: optional function to call on resume.
-+ * @shutdown: synchronize with the device on shutdown. If provided, replaces
-+ *    the virtio core implementation.
-  */
- struct virtio_driver {
- 	struct device_driver driver;
-@@ -219,6 +221,7 @@ struct virtio_driver {
- 	void (*config_changed)(struct virtio_device *dev);
- 	int (*freeze)(struct virtio_device *dev);
- 	int (*restore)(struct virtio_device *dev);
-+	void (*shutdown)(struct virtio_device *dev);
- };
+@@ -180,6 +180,7 @@ int virtio_device_freeze(struct virtio_device *dev);
+ int virtio_device_restore(struct virtio_device *dev);
+ #endif
+ void virtio_reset_device(struct virtio_device *dev);
++void virtio_device_shutdown(struct virtio_device *dev);
  
- #define drv_to_virtio(__drv)	container_of_const(__drv, struct virtio_driver, driver)
+ size_t virtio_max_dma_size(const struct virtio_device *vdev);
+ 
 
