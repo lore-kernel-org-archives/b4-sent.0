@@ -1,11 +1,11 @@
 From: Jing Lin <kayano050408@gmail.com>
-Date: Thu, 26 Nov 2026 14:37:05 +0800
-Subject: [PATCH v9 2/6] usb: gadget: gadgetfs: isolate ep0_write() buffer
- and reduce setup race
+Date: Thu, 26 Nov 2026 14:37:06 +0800
+Subject: [PATCH v9 3/6] usb: gadget: gadgetfs: fix ep0 setup_abort tracking
+ and reporting
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-gadgetfs-ep0-v9-2-81b464c6e641@gmail.com>
+Message-Id: <20261126-gadgetfs-ep0-v9-3-81b464c6e641@gmail.com>
 References: <20261126-gadgetfs-ep0-v9-0-81b464c6e641@gmail.com>
 In-Reply-To: <20261126-gadgetfs-ep0-v9-0-81b464c6e641@gmail.com>
 To: Neill Kapron <nkapron@google.com>, 
@@ -15,142 +15,244 @@ Cc: Alan Stern <stern@rowland.harvard.edu>, linux-usb@vger.kernel.org,
  syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com, 
  stable@vger.kernel.org, Jing Lin <kayano050408@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795675024; l=4414;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795675025; l=8073;
  i=kayano050408@gmail.com; s=20261126; h=from:subject:message-id;
- bh=RVJHc4be5aHnDrJZDAsXTiK0Nae84ZkXu+4RgSSPN6g=;
- b=id5dB3M9gxzBvZHwPBSRQRxNiNEwG+LFhj8s6VK4M20GcXueT43mG9LqYxtPOcdfOTHS8Zonz
- ihi8n949GjnDsTjZAuUdW0tTiUiYBLFsyb6BrXq56CXXBARKDt/LMiZ
+ bh=wDQtIk5OzzL/YProskk/THeKk2QZ9dJHqaVAYLqAO/A=;
+ b=UxUzVxwfxOcL4fpPdtF5YJDS1b6VgyhTu8eYYIvKjdcjDBjNR/j545KpKgEsjGG8xSF8v07Ar
+ 3kW/TwYxq1IAWETUaUZUIp/krtAWiBZwMy2VinT2sJ13cbsBixqDmx2
 X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
  pk=40M3hugIx++9w3nkAoFXGcN/vLWsPMGDYdbduV+lUlI=
 X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/20261126 with auth_id=1648
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For a delegated control-IN request, ep0_write() prepares dev->req and
-copies the response from userspace with copy_from_user() after dropping
-dev->lock.  A control request that arrives during that unlocked copy can
-point req->buf at dev->dev or dev->config, letting copy_from_user()
-overwrite a descriptor buffer, or supersede the transfer that userspace
-is responding to.
+Several ep0 state transitions lose setup_abort notifications or leave
+dev->state stuck in STATE_DEV_SETUP:
 
-Copy non-empty control-IN payloads from userspace into a private buffer
-with memdup_user() before leaving STATE_DEV_SETUP or modifying dev->req,
-and count setup callbacks in dev->setup_generation so ep0_write() can
-discard a superseded response after retaking dev->lock.  This eliminates
-the copy_from_user() race window, leaving only the unavoidable window
-after dev->lock is dropped to call usb_ep_queue().
+1. ep0_poll() clears dev->setup_abort when reporting EPOLLHUP, so the
+   following ep0_read() or ep0_write() never sees -EIDRM.
+
+2. gadgetfs_disconnect() sets dev->state to STATE_DEV_UNCONNECTED before
+   calling next_event(GADGETFS_DISCONNECT), skipping the STATE_DEV_SETUP
+   check that sets dev->setup_abort.
+
+3. gadgetfs_setup() skips setting dev->setup_abort on early returns,
+   leaves an uncollected GADGETFS_SETUP event queued when a non-delegated
+   request supersedes it, and leaves dev->state in STATE_DEV_SETUP when
+   aborting an active delegated transfer so in-kernel responses are not
+   queued.
+
+Report EPOLLHUP in ep0_poll() without clearing setup_abort, consume
+setup_abort via ep0_check_abort() in ep0_read() and ep0_write(), update
+dev->state after next_event() in gadgetfs_disconnect(), and discard any
+stale GADGETFS_SETUP event and record setup_abort at the start of
+gadgetfs_setup().
 
 Fixes: 1da177e4c3f41 ("Linux-2.6.12-rc2")
-Suggested-by: Alan Stern <stern@rowland.harvard.edu>
 Cc: stable@vger.kernel.org
 Signed-off-by: Jing Lin <kayano050408@gmail.com>
 ---
- drivers/usb/gadget/legacy/inode.c | 65 +++++++++++++++++++++++++++------------
- 1 file changed, 46 insertions(+), 19 deletions(-)
+ drivers/usb/gadget/legacy/inode.c | 101 ++++++++++++++++++++++++--------------
+ 1 file changed, 65 insertions(+), 36 deletions(-)
 
 diff --git a/drivers/usb/gadget/legacy/inode.c b/drivers/usb/gadget/legacy/inode.c
-index 911419a4e1a3..a0dc350a7a0d 100644
+index a0dc350a7a0d..4915906d782c 100644
 --- a/drivers/usb/gadget/legacy/inode.c
 +++ b/drivers/usb/gadget/legacy/inode.c
-@@ -142,6 +142,7 @@ struct dev_data {
- 	unsigned			setup_wLength;
- 	bool				ep0_req_queued;
- 	void				*ep0_req_buf;
-+	unsigned int			setup_generation;
+@@ -1096,6 +1096,23 @@ static int queue_ep0_req(struct dev_data *dev, bool process_ctx)
+ 	return ret;
+ }
  
- 	/* the rest is basically write-once */
- 	struct usb_config_descriptor	*config, *hs_config;
-@@ -1319,27 +1320,50 @@ ep0_write (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
- 
- 		len = min_t(size_t, len, dev->setup_wLength);
- 		if (dev->setup_in) {
--			retval = setup_req (dev->gadget->ep0, dev->req, len);
--			if (retval == 0) {
--				dev->state = STATE_DEV_CONNECTED;
--				++dev->udc_usage;
-+			unsigned int	generation = dev->setup_generation;
-+			bool		zero = len < dev->setup_wLength;
-+			void		*kbuf = NULL;
++/*
++ * Consume a pending setup abort and report it to userspace.  Called with
++ * dev->lock held.  Return to the connected state so that the next event
++ * read is not misdirected into the control data path, without overwriting
++ * a state that disconnect or unbind already changed.
++ */
++static bool ep0_check_abort(struct dev_data *dev)
++{
++	if (!dev->setup_abort)
++		return false;
 +
-+			if (len > 0) {
- 				spin_unlock_irq(&dev->lock);
--				if (copy_from_user(dev->req->buf, buf, len))
--					retval = -EFAULT;
-+				kbuf = memdup_user(buf, len);
- 				spin_lock_irq(&dev->lock);
--				--dev->udc_usage;
--				if (retval < 0) {
--					clean_req(dev->gadget->ep0, dev->req);
--				} else {
--					if (len < dev->setup_wLength)
--						dev->req->zero = 1;
--					retval = queue_ep0_req(dev, true);
--					if (retval == 0)
--						retval = len;
++	dev->setup_abort = 0;
++	if (dev->state == STATE_DEV_SETUP)
++		dev->state = STATE_DEV_CONNECTED;
++	return true;
++}
++
+ static ssize_t
+ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
+ {
+@@ -1110,8 +1127,7 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
+ 	}
+ 
+ 	/* report fd mode change before acting on it */
+-	if (dev->setup_abort) {
+-		dev->setup_abort = 0;
++	if (ep0_check_abort(dev)) {
+ 		retval = -EIDRM;
+ 		goto done;
+ 	}
+@@ -1262,11 +1278,29 @@ ep0_read (struct file *fd, char __user *buf, size_t len, loff_t *ptr)
+ 	return retval;
+ }
+ 
++/* Called with dev->lock held.  Drop a queued event of @type, if any. */
++static void ep0_discard_event(struct dev_data *dev,
++			      enum usb_gadgetfs_event_type type)
++{
++	unsigned int			i;
++
++	for (i = 0; i != dev->ev_next; i++) {
++		if (dev->event[i].type != type)
++			continue;
++		DBG(dev, "discard old event[%d] %d\n", i, type);
++		dev->ev_next--;
++		if (i == dev->ev_next)
++			break;
++		/* indices start at zero, for simplicity */
++		memmove(&dev->event[i], &dev->event[i + 1],
++			sizeof(struct usb_gadgetfs_event) * (dev->ev_next - i));
++	}
++}
++
+ static struct usb_gadgetfs_event *
+ next_event (struct dev_data *dev, enum usb_gadgetfs_event_type type)
+ {
+ 	struct usb_gadgetfs_event	*event;
+-	unsigned			i;
+ 
+ 	switch (type) {
+ 	/* these events purge the queue */
+@@ -1280,18 +1314,7 @@ next_event (struct dev_data *dev, enum usb_gadgetfs_event_type type)
+ 	case GADGETFS_SETUP:		/* previous request timed out */
+ 	case GADGETFS_SUSPEND:		/* same effect */
+ 		/* these events can't be repeated */
+-		for (i = 0; i != dev->ev_next; i++) {
+-			if (dev->event [i].type != type)
+-				continue;
+-			DBG(dev, "discard old event[%d] %d\n", i, type);
+-			dev->ev_next--;
+-			if (i == dev->ev_next)
+-				break;
+-			/* indices start at zero, for simplicity */
+-			memmove (&dev->event [i], &dev->event [i + 1],
+-				sizeof (struct usb_gadgetfs_event)
+-					* (dev->ev_next - i));
+-		}
++		ep0_discard_event(dev, type);
+ 		break;
+ 	default:
+ 		BUG ();
+@@ -1311,8 +1334,7 @@ ep0_write (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
+ 	ssize_t			retval = -ESRCH;
+ 
+ 	/* report fd mode change before acting on it */
+-	if (dev->setup_abort) {
+-		dev->setup_abort = 0;
++	if (ep0_check_abort(dev)) {
+ 		retval = -EIDRM;
+ 
+ 	/* data and/or status stage for control request */
+@@ -1336,13 +1358,9 @@ ep0_write (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
+ 			 * Reject the write if a new control request arrived
+ 			 * while dev->lock was dropped for memdup_user().
+ 			 */
+-			if (dev->setup_generation != generation) {
++			if (ep0_check_abort(dev) ||
++			    dev->setup_generation != generation) {
+ 				kfree(kbuf);
+-				if (dev->setup_abort) {
+-					dev->setup_abort = 0;
+-					if (dev->state == STATE_DEV_SETUP)
+-						dev->state = STATE_DEV_CONNECTED;
 -				}
-+				if (IS_ERR(kbuf))
-+					return PTR_ERR(kbuf);
-+			}
- 
--				return retval;
-+			/*
-+			 * Reject the write if a new control request arrived
-+			 * while dev->lock was dropped for memdup_user().
-+			 */
-+			if (dev->setup_generation != generation) {
-+				kfree(kbuf);
-+				if (dev->setup_abort) {
-+					dev->setup_abort = 0;
-+					if (dev->state == STATE_DEV_SETUP)
-+						dev->state = STATE_DEV_CONNECTED;
-+				}
-+				return -EIDRM;
-+			}
-+			if (dev->state != STATE_DEV_SETUP || !dev->setup_in) {
-+				kfree(kbuf);
-+				return -ECANCELED;
+ 				return -EIDRM;
  			}
-+			if (dev->setup_out_ready || dev->ep0_req_queued) {
-+				kfree(kbuf);
-+				return -EBUSY;
-+			}
+ 			if (dev->state != STATE_DEV_SETUP || !dev->setup_in) {
+@@ -1433,9 +1451,8 @@ ep0_poll (struct file *fd, poll_table *wait)
+ 
+ 	spin_lock_irq(&dev->lock);
+ 
+-	/* report fd mode change before acting on it */
++	/* report fd mode change without consuming it before read/write */
+ 	if (dev->setup_abort) {
+-		dev->setup_abort = 0;
+ 		mask = EPOLLHUP;
+ 		goto out;
+ 	}
+@@ -1548,6 +1565,24 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 	/* invalidate userspace copies started for an older control request */
+ 	dev->setup_generation++;
+ 
++	/*
++	 * If userspace has not collected a previous GADGETFS_SETUP event,
++	 * this SETUP supersedes it; drop it before any early return or
++	 * in-kernel handling so ep0_read() cannot enter STATE_DEV_SETUP
++	 * for an abandoned transfer.
++	 */
++	ep0_discard_event(dev, GADGETFS_SETUP);
 +
-+			dev->state = STATE_DEV_CONNECTED;
-+			dev->ep0_req_buf = kbuf;
-+			dev->req->buf = len ? kbuf : dev->rbuf;
-+			dev->req->length = len;
-+			dev->req->zero = zero;
-+			dev->req->complete = dev_req_complete;
-+			retval = queue_ep0_req(dev, true);
-+			if (retval == 0)
-+				retval = len;
-+			return retval;
- 
- 		/* can stall some OUT transfers */
- 		} else if (dev->setup_can_stall) {
-@@ -1520,6 +1544,10 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
- 	u16				w_value = le16_to_cpu(ctrl->wValue);
- 	u16				w_length = le16_to_cpu(ctrl->wLength);
- 
-+	spin_lock(&dev->lock);
-+	/* invalidate userspace copies started for an older control request */
-+	dev->setup_generation++;
++	/*
++	 * Record abort of an active delegated transfer and return to the
++	 * connected state before any early return or in-kernel response.
++	 */
++	if (dev->state == STATE_DEV_SETUP) {
++		dev->setup_abort = 1;
++		dev->state = STATE_DEV_CONNECTED;
++		ep0_readable(dev);
++	}
 +
  	if (w_length > RBUF_SIZE) {
  		if (ctrl->bRequestType & USB_DIR_IN) {
  			/* Cast away the const, we are going to overwrite on purpose. */
-@@ -1528,11 +1556,10 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
- 			*temp = cpu_to_le16(RBUF_SIZE);
- 			w_length = RBUF_SIZE;
- 		} else {
-+			spin_unlock(&dev->lock);
- 			return value;
- 		}
- 	}
--
--	spin_lock(&dev->lock);
- 	if (dev->ep0_req_queued) {
+@@ -1564,7 +1599,6 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
  		spin_unlock(&dev->lock);
  		return -EBUSY;
+ 	}
+-	dev->setup_abort = 0;
+ 	if (dev->state == STATE_DEV_UNCONNECTED) {
+ 		if (gadget_is_dualspeed(gadget)
+ 				&& gadget->speed == USB_SPEED_HIGH
+@@ -1580,14 +1614,7 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 		event = next_event (dev, GADGETFS_CONNECT);
+ 		event->u.speed = gadget->speed;
+ 		ep0_readable (dev);
+-
+-	/* host may have given up waiting for response.  we can miss control
+-	 * requests handled lower down (device/endpoint status and features);
+-	 * then ep0_{read,write} will report the wrong status. controller
+-	 * driver will have aborted pending i/o.
+-	 */
+-	} else if (dev->state == STATE_DEV_SETUP)
+-		dev->setup_abort = 1;
++	}
+ 
+ 	req->buf = dev->rbuf;
+ 	switch (ctrl->bRequest) {
+@@ -1937,12 +1964,13 @@ gadgetfs_disconnect (struct usb_gadget *gadget)
+ 	unsigned long		flags;
+ 
+ 	spin_lock_irqsave (&dev->lock, flags);
+-	if (dev->state == STATE_DEV_UNCONNECTED)
++	if (dev->state == STATE_DEV_UNCONNECTED ||
++	    dev->state == STATE_DEV_UNBOUND)
+ 		goto exit;
+-	dev->state = STATE_DEV_UNCONNECTED;
+ 
+ 	INFO (dev, "disconnected\n");
+ 	next_event (dev, GADGETFS_DISCONNECT);
++	dev->state = STATE_DEV_UNCONNECTED;
+ 	ep0_readable (dev);
+ exit:
+ 	spin_unlock_irqrestore (&dev->lock, flags);
+@@ -2145,6 +2173,7 @@ gadget_dev_open (struct inode *inode, struct file *fd)
+ 	spin_lock_irq(&dev->lock);
+ 	if (dev->state == STATE_DEV_DISABLED) {
+ 		dev->ev_next = 0;
++		dev->setup_abort = 0;
+ 		dev->state = STATE_DEV_OPENED;
+ 		fd->private_data = dev;
+ 		get_dev (dev);
 
 -- 
 Git-155)
