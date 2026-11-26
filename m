@@ -1,92 +1,94 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 26 Nov 2026 16:57:33 +0000
-Subject: [PATCH RFC] media: doc: dev-encoder: Define CAPTURE sizeimage
- across OUTPUT changes
+Subject: [PATCH v3 0/5] media: verisilicon: Fix the JPEG encoder format
+ handling
+Date: Thu, 26 Nov 2026 17:00:52 +0000
+Message-Id: <20261126-hantro-jpeg-enc-fixes-v3-0-07357d84a64b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-b4-v4l2-enc-sizeimage-v1-1-dd2cb99bd717@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCMBBFr1L+2gGThmrdCh7ArbjoxFFHNEqmF
- rH07kZdvs9/b4RJVjGsqhFZBjW9pwJuViGeu3QS0kNh+LlvnPMNcaAhXD1JimT6Fr115bRsI4e
- aF4FbRnEfWY76+nV32G7W2P9He/JFYv8tYpo+V+2VLH4AAAA=
-X-Change-ID: 20261126-b4-v4l2-enc-sizeimage-89cb43b74b9b
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Hans Verkuil <hverkuil@kernel.org>
-Cc: Tomasz Figa <tfiga@chromium.org>, linux-media@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNyw6DIBBFf8Ww7jSA7676H00XCoNiqhiwpI3x3
+ wt246bp8s7ce85KHFqNjlySlVj02mkzhZCeEiL6ZuoQtAyZcMoLxhiFcFysgWHGDnASoPQLHdR
+ KVa0qmqxmioTtbHF/hOnt/s3u2Q4olgiLjV67xdj3LvYs9v45PAMKSmRSlFhXueTXbmz04yzMS
+ KLD8yOF/6LwQJFIUyyyVJS5PFK2bfsAA4/sWBIBAAA=
+X-Change-ID: 20261110-hantro-jpeg-enc-fixes-9ff8bf6a491f
+To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>, 
+ Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
+ Hans Verkuil <hverkuil@kernel.org>, 
+ Boris Brezillon <boris.brezillon@collabora.com>, 
+ Andrzej Pietrasiewicz <andrzej.p@collabora.com>
+Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ Sergei Khomenkov <shomenkow@gmail.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795712252; l=2845;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795712452; l=2725;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=XKGgebnQg4fTpw0GKxAwBfwheI/TATP21n+3dmlxlw4=;
- b=BtgJpIITvXnpZo8HC5f0uWbkNs9IXNi/JXpL+4BP/Xuz5sIw/9XZeJ+7GoW/u9iembj1tQvuK
- IYOYmnjMQ0lC0ODVE1wBA2aIi7mKceVuBQiaSUqmersHlSDTeQXSOdg
+ bh=Jk9ltudzLGJ5X0zC94Mk8NkNqBgItiMI3b+1wG84SiM=;
+ b=ApY1KF73XXUXDH3C0VEMRV5ZZDNEiArQ47FtiQBbFbzfex+990Kq9Xg/yhEIt/qJ3HFpxFc3m
+ RT1jcf93sQHC17hDvk411/FLiBoO6r/BvJJwvlLF4HTnx6B6cj9Jtbf
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The encoder sets the CAPTURE width and height from the OUTPUT format,
-but the specification doesn't say what happens to sizeimage then. A
-client leaving sizeimage to the encoder (0) gets a size for the coded
-size at the time of the CAPTURE S_FMT, usually the default resolution,
-as the OUTPUT format is set later.
+This series fixes the format handling of the Hantro JPEG encoders, found
+with v4l2-ctl, v4l2-compliance and GStreamer on the RK3588 VEPU121.
 
-Document that setting the OUTPUT format updates the coded size, and a
-sizeimage chosen by the encoder with it. A size requested by the client
-is not reduced, so clients setting one keep their buffers.
+Patch 1 keeps the coded format while CAPTURE buffers exist. Patch 2 sets
+the coded size from the OUTPUT format. Patch 3 reports the fixed JPEG
+colorimetry. Patch 4 restores the raw format descriptor when a CAPTURE
+S_FMT can't reset it; this was the IOMMU fault at IOVA 0 seen with
+v4l2-ctl --stream-mmap. Patch 5 limits the frame size to 8176x8176.
+
+The VEPU2 stream limit in 64-bit words is patch 2 of Sergei Khomenkov's
+v3 [1].
+
+[1] https://lore.kernel.org/r/20261124-hantro-buflimit-v3-0-780903970ca0@gmail.com
+[2] https://lore.kernel.org/r/20261126-b4-v4l2-enc-sizeimage-v1-1-dd2cb99bd717@gmail.com
+
+Based on v7.4-rc1; on top of [1], patches 3 and 5 need git am -3.
+
+Tested on Orange Pi 5 (RK3588S, VEPU121), v7.3-based KASAN kernel that
+also carries the change of [1] 2/3: GStreamer encodes (NV12/I420/YUY2,
+720p to 4K) and v4l2-compliance pass. The v2 reproducer no longer
+faults; its 8 frames end in buffer full, as the CAPTURE sizeimage stays
+at the 96x32 default (6768 bytes). The dev-encoder.rst proposal for
+that case is [2]. H1 untested.
+
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Spec proposal asked for in the review of the Hantro JPEG encoder
-fixes [1].
+Changes in v3:
+- Dropped the CAPTURE sizeimage minimum (v2 2/7) and the job-time
+  geometry check (v2 4/7) (Nicolas); with [1], a too small CAPTURE
+  buffer ends in buffer full
+- Spec proposal for the CAPTURE sizeimage sent as [2] (Nicolas)
+- Patch 2: only width/height follow OUTPUT; sizeimage and -EBUSY dropped
+- Patch 4: only restore the descriptor in hantro_reset_raw_fmt()
+- Patch 5: Fixes tag (Sashiko)
+- Shorter commit messages and comments
+- Link to v2: https://patch.msgid.link/20261112-hantro-jpeg-enc-fixes-v2-0-de03e643c75d@gmail.com
 
-[1] https://lore.kernel.org/r/7a5a79bf8e1bfe698b7a49aa9580eb3858c25993.camel@collabora.com
-
-Today vicodec, allegro and iris ignore the client's sizeimage; venus and
-wave5 recompute or raise it on OUTPUT S_FMT; hantro, coda, mtk-vcodec and
-s5p-mfc never update it. No driver change here.
-
-Open point: a G_FMT/S_FMT round trip (v4l2-ctl) passes the old default
-back as a non-zero sizeimage, so it then counts as the client's choice.
-
-Developed with Claude (Anthropic), which wrote the text and the commit
-message. I reviewed it.
 ---
- Documentation/userspace-api/media/v4l/dev-encoder.rst | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+Arun Iyengar (5):
+      media: verisilicon: Keep the encoder CAPTURE format while buffers exist
+      media: verisilicon: Keep the encoder coded size in sync with OUTPUT
+      media: verisilicon: Report fixed JPEG colorimetry on the encoder
+      media: verisilicon: Restore the encoder raw format when its reset fails
+      media: verisilicon: rockchip: Limit the JPEG encoder to 8176x8176
 
-diff --git a/Documentation/userspace-api/media/v4l/dev-encoder.rst b/Documentation/userspace-api/media/v4l/dev-encoder.rst
-index cdad276d00bc..64f1297dab3f 100644
---- a/Documentation/userspace-api/media/v4l/dev-encoder.rst
-+++ b/Documentation/userspace-api/media/v4l/dev-encoder.rst
-@@ -156,7 +156,8 @@ Initialization
- 
-      ``sizeimage``
-          desired size of ``CAPTURE`` buffers; the encoder may adjust it to
--         match hardware requirements.
-+         match hardware requirements. If 0, the encoder chooses it for the
-+         coded size and again when the coded size changes, see step 3.
- 
-      ``width``, ``height``
-          ignored (read-only).
-@@ -230,6 +231,12 @@ Initialization
-      default values, based on the new resolution, as described in the next
-      step.
- 
-+   * Setting the ``OUTPUT`` format sets the ``CAPTURE`` ``width`` and
-+     ``height`` to the new coded size. A ``CAPTURE`` ``sizeimage`` chosen by
-+     the encoder (the client passed 0, or the encoder ignores the client's
-+     value) is chosen again for the new coded size. A ``sizeimage`` requested
-+     by the client is not reduced.
-+
- 4. Set the raw frame interval on the ``OUTPUT`` queue via
-    :c:func:`VIDIOC_S_PARM`. This also sets the coded frame interval on the
-    ``CAPTURE`` queue to the same value.
-
+ drivers/media/platform/verisilicon/hantro_v4l2.c   | 26 ++++++++++++++++++++--
+ .../media/platform/verisilicon/rockchip_vpu_hw.c   |  7 ++++--
+ 2 files changed, 29 insertions(+), 4 deletions(-)
 ---
 base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261126-b4-v4l2-enc-sizeimage-89cb43b74b9b
+change-id: 20261110-hantro-jpeg-enc-fixes-9ff8bf6a491f
 
 Best regards,
 --  
