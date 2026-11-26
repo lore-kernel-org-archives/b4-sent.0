@@ -1,77 +1,84 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 26 Nov 2026 19:51:30 +0000
-Subject: [PATCH v5 4/4] arm64: dts: rockchip: Add IEP2 deinterlacer to
- RK3588
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v2 0/2] drm/panel: visionox-rm69299: Move off/sleep DSI
+ commands to disable()
+Date: Thu, 26 Nov 2026 20:57:05 +0100
+Message-Id: <20261126-visionox-rm69299-enable-v2-0-d4aca6d50b05@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-iep2-v5-4-3deac0976f10@gmail.com>
-References: <20261126-iep2-v5-0-3deac0976f10@gmail.com>
-In-Reply-To: <20261126-iep2-v5-0-3deac0976f10@gmail.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-rockchip@lists.infradead.org, linux-media@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
- Hans Verkuil <hverkuil@kernel.org>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Alex Bee <knaerzche@gmail.com>, Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795722687; l=1631;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=pLFuCmNVRbb5CYDpQgDI0o9UDTdkG7B7CO7SPDGMaZU=;
- b=alHddsvsruCU7g11zR0BvJGXQYO6bpOx0AAe6gWdgS0Sh/ZGoU/3GK0SwCsupSBCow5AyPtDf
- 9etk8sa0MR4Cty6Wj3u3qvSj0PN0Ab9w0elVXIDA1KEThQ73jR86FK2
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7ZhSyFRceQ/DAukUJlFKWiUY0
+ rtb8QAu38//728QOQhHOBcbBF4kip8y6EMB/dhNA6PYzKCVJlVrg7+KXzE8qNFNgzx1tzujIld
+ ZU5EjqiGv58BO1t18bTOPEp8+vPejpfym/51LiQpdZyxpq8mezCXKsPbz6+jDAG1K6QPf5vt4w
+ AAAAA==
+X-Change-ID: 20260427-visionox-rm69299-enable-06f3d736f664
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Douglas Anderson <dianders@chromium.org>
+Cc: =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>, 
+ Alexander Martinz <amartinz@shiftphones.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1779; i=david@ixit.cz;
+ h=from:subject:message-id; bh=zx7Xk0+dBLLt7XNzmT5ldQdB0NoABe+yn3rRzjyup5o=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBrCI8T/ieL2eb52pIq9DciCixcwcUo+reruVXgG
+ V8Xr6y6X0OJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCawiPEwAKCRBgAj/E00kg
+ cntRD/0TcjHQGiTMuRZ8wgwimLKu5mpvx5Rcyug9el5hUYhPcCc5krClaYJqmSHUWGrIncQwwZt
+ /XaXnHneLkJvuD/JsAvwpDQXC8ogF8DCwGcYPw3ulNp4kwA/GYTO/m/lI5I4QYgaBD2v2+L2EA9
+ 0bqh1QIsx2qdmpZdHuSUaiZ5ivl5wVVZOlockQeLGVP3TjflrPclgBrTQphvoHfYk1H991udv+4
+ Zj8Zt1u65Kci/L74JyHh16/ewh9paqMMlfd4bmpN9F9IDtioh/AsHO6sfAqfQsdiJOkHxDXoIs9
+ CpAu/R4VRcT9/wVzZZYgGPZbTnqOmpLZQkXoMzCSdVtOQBLBqWZzzdKHoqQdmzJ5NCTBCGJoaEF
+ Tpj3uyx1bBmIB6CTQEOEEbhcye61mT/ecQ4w+M2a6bQ8FoHdO6N8WvhBDFTsy7pxSGQgSp/ZBAn
+ hScX9+44ihAo4QQS0DbhYI5LAJ74aXJedM9Rmag+zYxntb27uJA+yb1OGJQCDph/f9B9kG0M0WB
+ Q2HgUCUOSplSslwYc32kLbxqDG+Nqesd/p5uPvCB2jObPNovv5fZzyAEFyB5gnV3bkJsYym7KVn
+ 1Xa7xze+Px5JKu+9pY+WjEohBapk9i7+UOh806oSpU0ReeX8qRjnH64CE7n+lSMyBp1nBVmMD7r
+ BTPG1QjtIrTjwNA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the IEP2 deinterlacer and its IOMMU to the RK3588 base dtsi. Both
-share GIC SPI 117 and sit in the VDPU power domain.
+On video-mode MSM DSI hosts with prepare_prev_first set, panel
+unprepare() runs after the DPU timing engine has been disabled and
+before the DSI host bridge post_disable() resets the video engine.
+Sending DCS SET_DISPLAY_OFF in unprepare() therefore times out on every
+screen blank/unblank on the SHIFT6mq:
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+  msm_dsi ae94000.dsi: [drm:dsi_cmds2buf_tx] *ERROR* wait for video done timed out
+  dsi_cmds2buf_tx: cmd dma tx failed, type=0x5, data0=0x28, len=4, ret=-110
+  panel-visionox-rm69299 ae94000.dsi.0: sending DCS SET_DISPLAY_OFF failed: -110
+
+Move only the display-off / enter-sleep DCS commands from unprepare()
+into disable() while keeping the power-on and initialization sequence in
+prepare() (where the link is in LP11 before video starts), and fold
+power_off() into unprepare().
+
 ---
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+Changes in v2:
+- Keep power-on and init DSI commands in prepare() instead of moving
+  them to enable() (Neil, Dmitry).
+- Only fold visionox_rm69299_power_off() into unprepare(), keeping
+  visionox_rm69299_power_on() for prepare() (Neil Armstrong).
+- Verified on SHIFT6mq across repeated blank/unblank and
+  backlight cycles with zero DSI timeouts and no stuck disp_cc clocks.
+- Link to v1: https://patch.msgid.link/20260427-visionox-rm69299-enable-v1-0-fa7d62d26d87@sigxcpu.org
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-index aa69fd3793fd..5297519bd251 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-@@ -1397,6 +1397,28 @@ vepu121_3_mmu: iommu@fdbac800 {
- 		#iommu-cells = <0>;
- 	};
- 
-+	iep: deinterlace@fdbb0000 {
-+		compatible = "rockchip,rk3588-iep2", "rockchip,rk3568-iep2";
-+		reg = <0x0 0xfdbb0000 0x0 0x500>;
-+		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH 0>;
-+		clocks = <&cru ACLK_IEP2P0>, <&cru HCLK_IEP2P0>, <&cru CLK_IEP2P0_CORE>;
-+		clock-names = "aclk", "hclk", "sclk";
-+		resets = <&cru SRST_A_IEP2P0>, <&cru SRST_H_IEP2P0>, <&cru SRST_IEP2P0_CORE>;
-+		reset-names = "axi", "ahb", "core";
-+		power-domains = <&power RK3588_PD_VDPU>;
-+		iommus = <&iep_mmu>;
-+	};
-+
-+	iep_mmu: iommu@fdbb0800 {
-+		compatible = "rockchip,rk3588-iommu", "rockchip,rk3568-iommu";
-+		reg = <0x0 0xfdbb0800 0x0 0x100>;
-+		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH 0>;
-+		clocks = <&cru ACLK_IEP2P0>, <&cru HCLK_IEP2P0>;
-+		clock-names = "aclk", "iface";
-+		power-domains = <&power RK3588_PD_VDPU>;
-+		#iommu-cells = <0>;
-+	};
-+
- 	vdec0: video-codec@fdc38000 {
- 		compatible = "rockchip,rk3588-vdec";
- 		reg = <0x0 0xfdc38000 0x0 0x100>,
+---
+Guido Günther (2):
+      drm/panel: visionox-rm69299: Move off/sleep DSI commands to disable()
+      drm/panel: visionox-rm69299: Move power_off() into unprepare()
 
--- 
-2.55.0
+ drivers/gpu/drm/panel/panel-visionox-rm69299.c | 23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
+---
+base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
+change-id: 20260427-visionox-rm69299-enable-06f3d736f664
+
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
