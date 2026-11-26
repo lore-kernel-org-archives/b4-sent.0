@@ -1,100 +1,108 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 06:18:44 +0000
-Subject: [PATCH 6.12.y v2 4/4] virtio_balloon: quiesce balloon work before
- device shutdown
+From: Jing Lin <kayano050408@gmail.com>
+Subject: [PATCH v9 0/6] usb: gadget: gadgetfs: fix ep0 request lifetime and
+ control races
+Date: Thu, 26 Nov 2026 14:37:03 +0800
+Message-Id: <20261126-gadgetfs-ep0-v9-0-81b464c6e641@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-virtio-final-v2-4-4cfd5590e924@certik.com>
-References: <20261126-virtio-final-v2-0-4cfd5590e924@certik.com>
-In-Reply-To: <20261126-virtio-final-v2-0-4cfd5590e924@certik.com>
-To: stable@vger.kernel.org
-Cc: "Michael S. Tsirkin" <mst@redhat.com>, 
- "Denis V. Lunev" <den@openvz.org>, David Hildenbrand <david@kernel.org>, 
- Eric Auger <eric.auger@redhat.com>, Jason Wang <jasowang@redhat.com>, 
- virtualization@lists.linux.dev
+X-B4-Tracking: v=1; b=H4sIAI/TB2sC/1WNyw6CMBREf4XctTWlUF4r/8OwqOW2XCOUtEg0h
+ H+XohuT2Zxk5swKAT1hgCZZweNCgdy4Q31KQPdqtMio2xkEF0WaioJZ1VmcTWA4cWa0EFJmXKp
+ Swj6ZPBp6Hbpr++XwvN1Rz9ERGz2F2fn38bdUsfdTp/xfvVQxnFWm5nmWyzI3eLGDosdZuwHab
+ ds+1xKosL0AAAA=
+X-Change-ID: 20261126-gadgetfs-ep0-fc2255305a75
+To: Neill Kapron <nkapron@google.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Alan Stern <stern@rowland.harvard.edu>, linux-usb@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com, 
+ stable@vger.kernel.org, Jing Lin <kayano050408@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795673921; l=3090;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=YxT0JEcZt8be1Aod6X8plRSlx7+82SPoYFncZ9ti8IE=;
- b=UgO1apl0z0LJE8kVRiZ9zir503rVvLFWs8V6CuuHmaeib+SvAPyv1AFZA3rdymu7RxtiqSiJP
- xs6LPUIMkX8Au/Y6X6+61gROyuFmnawCJvKoLCtaPjsnOkTdwaQZdUe
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795675024; l=3893;
+ i=kayano050408@gmail.com; s=20261126; h=from:subject:message-id;
+ bh=fvfwlA9wimqwVKnxLxvsfDJkX3M7MoycSS4Qn4OBS1Q=;
+ b=bOdNzpvTZmi8LCOaQlCH7+dUQtZxXvvh+W5jRQ9aPcskDohwk8u7hmklZFJyCd5b3DMxArj+F
+ O67PO+YlGOwDubELwbd44C4W50HkfAi2dEKj/R1/gnWwvbeovTFJmzj
+X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
+ pk=40M3hugIx++9w3nkAoFXGcN/vLWsPMGDYdbduV+lUlI=
+X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/20261126 with auth_id=1648
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: "Denis V. Lunev" <den@openvz.org>
+This series fixes the ep0 request lifetime on unbind, control buffer and
+setup_abort state races, lost completed control-OUT transfers, event
+counter underflow, and the const cast in gadgetfs_setup().
 
-commit 7e17eef04600c399c7e0f5ce765da5cf9d40d8e1 upstream.
+1/6 tracks active ep0 requests and waits for completion after
+    usb_ep_dequeue() in gadgetfs_unbind() before freeing dev->req, while
+    keeping descriptor buffers out of kfree().
+2/6 copies delegated control-IN payloads into a private memdup_user()
+    buffer before touching dev->req and drops responses superseded
+    during the unlocked copy.
+3/6 fixes setup_abort tracking across ep0_poll(), gadgetfs_disconnect(),
+    and early returns or in-kernel requests in gadgetfs_setup().
+4/6 preserves completed control-OUT payloads until ep0_read() collects
+    them, leaving ep0 unqueued so the controller NAKs newly arriving
+    control transfers in the meantime and replaying the deferred setup
+    afterwards.
+5/6 dequeues ep0 events before dropping dev->lock for copy_to_user() to
+    prevent dev->ev_next underflow.
+6/6 removes the const cast on ctrl->wLength in gadgetfs_setup().
 
-Commit 8bd2fa086a04 ("virtio: break and reset virtio devices on
-device_shutdown()") added a generic virtio bus .shutdown handler that
-breaks and resets every virtio device during device_shutdown(), i.e. on
-reboot and kexec.
+The setup() callback runs in atomic context and may not sleep, so a
+mutex cannot serialize it against ep0_read() and ep0_write(); shared ep0
+state remains protected by dev->lock.
 
-virtio_balloon provides no .shutdown of its own, so that generic path
-runs while the balloon's asynchronous work is still armed. Once the
-device has been broken, virtqueue_add_inbuf() in
-virtballoon_free_page_report() returns -EIO and trips its
-WARN_ON_ONCE(). On a kernel booted with panic_on_warn that turns an
-ordinary reboot, for example a kexec based upgrade, into a fatal panic
-in the middle of device_shutdown(), so the machine never reaches the
-new kernel.
-
-Relaxing that single WARN_ON_ONCE() would only hide the symptom: the
-inflate/deflate and OOM paths do not warn, they call
-wait_event(vb->acked, ...) and would instead block forever on a broken
-queue that can no longer complete. The device has to be quiesced, not
-just kept quiet.
-
-Add a .shutdown handler that quiesces the balloon via the shared
-virtballoon_quiesce() helper while the device is still alive, and only
-then breaks and resets it via virtio_device_shutdown(). Unlike
-virtballoon_remove() the balloon workqueue is not destroyed, as shutdown
-does not free the device and cancel_work_sync() together with stop_update
-already prevent any further work from being queued.
-
-Fixes: 8bd2fa086a04 ("virtio: break and reset virtio devices on device_shutdown()")
-Signed-off-by: Denis V. Lunev <den@openvz.org>
-Reviewed-by: David Hildenbrand (Arm) <david@kernel.org>
-Signed-off-by: Michael S. Tsirkin <mst@redhat.com>
-Message-ID: <20260624140846.2616797-4-den@openvz.org>
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
- drivers/virtio/virtio_balloon.c |    7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v9:
+- Split the first two patches into single-purpose patches (1/6 through
+  4/6) so each problem is addressed separately.
+- Drop the rejected usb_ep_dequeue() fallback (ep0_req_free) in 1/6.
+- Allocate a private buffer with memdup_user() for control-IN writes in
+  2/6 instead of copying through a stack buffer, and clarify that the
+  generation check narrows rather than eliminates the unlocked window.
+- Preserve properly completed control-OUT transfers in 4/6 by deferring
+  any subsequent SETUP (leaving ep0 without a queued request so the UDC
+  NAKs it) until userspace reads the completed OUT payload, then replay
+  the deferred SETUP.
+- Drop the STATE_DEV_UNBOUND event-read changes from this series.  For
+  context on how unbind can happen before close(ep0): unloading the UDC
+  driver (usb_del_gadget_udc()) or writing to
+  /sys/bus/gadget/drivers/gadgetfs/unbind runs gadgetfs_unbind() while
+  userspace still holds the open ep0 descriptor, where a queued
+  GADGETFS_SETUP event could otherwise put dev->state back into
+  STATE_DEV_SETUP on the next read().  If that case is worth guarding
+  against, a small follow-up patch can clear dev->ev_next and wake
+  dev->wait in gadgetfs_unbind() and check STATE_DEV_UNBOUND before
+  delivering events in ep0_read().
+- Use a local events[N_EVENT] array in 5/6 instead of sharing a buffer
+  with control-OUT reads.
+- Link to v8: https://patch.msgid.link/20261110-gadgetfs-ep0-v8-v8-0-8f90434574fe@gmail.com
 
-Changes in v2
-v2: resent through a whitespace-safe path; v1 <CAFaZ9epp-Y8efod8a7CQuQqYEjk5L_ruwP+c1SoBRPjdu9uGyQ@mail.gmail.com> was damaged by my mail client and does not apply.
+To: Neill Kapron <nkapron@google.com>
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Alan Stern <stern@rowland.harvard.edu>
+Cc: linux-usb@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com
+Cc: stable@vger.kernel.org
+Signed-off-by: Jing Lin <kayano050408@gmail.com>
 
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
+---
+Jing Lin (6):
+      usb: gadget: gadgetfs: fix ep0 request lifetime on unbind
+      usb: gadget: gadgetfs: isolate ep0_write() buffer and reduce setup race
+      usb: gadget: gadgetfs: fix ep0 setup_abort tracking and reporting
+      usb: gadget: gadgetfs: NAK new setups until control-OUT data is read
+      usb: gadget: gadgetfs: prevent ep0 event counter underflow
+      usb: gadget: gadgetfs: avoid writing through the const setup pointer
 
-diff --git a/drivers/virtio/virtio_balloon.c b/drivers/virtio/virtio_balloon.c
-index 726aef5be178..efa77daa93b8 100644
---- a/drivers/virtio/virtio_balloon.c
-+++ b/drivers/virtio/virtio_balloon.c
-@@ -1159,6 +1159,12 @@ static void virtballoon_remove(struct virtio_device *vdev)
- 	kfree(vb);
- }
- 
-+static void virtballoon_shutdown(struct virtio_device *vdev)
-+{
-+	virtballoon_quiesce(vdev->priv);
-+	virtio_device_shutdown(vdev);
-+}
-+
- #ifdef CONFIG_PM_SLEEP
- static int virtballoon_freeze(struct virtio_device *vdev)
- {
-@@ -1229,6 +1235,7 @@ static struct virtio_driver virtio_balloon_driver = {
- 	.validate =	virtballoon_validate,
- 	.probe =	virtballoon_probe,
- 	.remove =	virtballoon_remove,
-+	.shutdown =	virtballoon_shutdown,
- 	.config_changed = virtballoon_changed,
- #ifdef CONFIG_PM_SLEEP
- 	.freeze	=	virtballoon_freeze,
+ drivers/usb/gadget/legacy/inode.c | 514 +++++++++++++++++++++++++++-----------
+ 1 file changed, 366 insertions(+), 148 deletions(-)
+---
+base-commit: 90d6263e867be7089b3d3323bef8d2accd327c77
+change-id: 20261126-gadgetfs-ep0-fc2255305a75
+
+Best regards,
+--  
+Jing Lin <kayano050408@gmail.com>
 
