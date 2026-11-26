@@ -1,95 +1,148 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 12:14:15 +0000
-Subject: [PATCH 5.15.y] bpf: Clear buf on error in __bpf_get_task_stack
+Date: Thu, 26 Nov 2026 12:21:49 +0000
+Subject: [PATCH 6.1.y] Bluetooth: hci_sysfs: Fix NULL pointer dereference
+ in device_del()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-so1b-bpf-515-v1-1-03acb4631a9c@certik.com>
-X-B4-Tracking: v=1; b=H4sIAJYiCGsC/02NzQrCMBCEX6Xs2a3dYCL4KuIhP1sbkaRkqyil7
- 26iF4/zMfPNCsIlssCpW6HwM0rMqQbadeAnm66MMdQMalCGSBmUTA7dPKImjcRWG6fDcDBHqJO
- 58BhfX90ZdE+6f8Plx+XhbuyX5mpNZ4XRFZv81JBwCkvOd2x8//8B2/YBv3Z7dqUAAAA=
-X-Change-ID: 20261126-so1b-bpf-515-1ea56b5d0467
+Message-Id: <20261126-so1b-bt-61-v1-1-8d8aab8cdda7@certik.com>
+X-B4-Tracking: v=1; b=H4sIAFwkCGsC/0WNQQ7CMAwEv1L5jAvuwVR8BXGIU0ODUILigEBV/
+ 04CB4472p1dwDQHNTh0C2R9Bgsp1kCbDvzs4kUxTDXDsBuYaGC0RIJSkAlpP7Inr8I8Qh3cs57
+ D6ys7AvfUv+H0w/aQq/rSRK0ozhQlu+jnhkzjVFK6YePb/wGs6wfPlBC0oAAAAA==
+X-Change-ID: 20261126-so1b-bt-61-1786c1ceb668
 To: stable@vger.kernel.org
-Cc: Jiri Olsa <jolsa@kernel.org>, Andrii Nakryiko <andrii@kernel.org>, 
- Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
- bpf@vger.kernel.org
+Cc: Krystian Kaniewski <krystianmkaniewski@gmail.com>, 
+ Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
+ Marcel Holtmann <marcel@holtmann.org>, linux-bluetooth@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795695254; l=2361;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795695708; l=4951;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=BMDL3A0/tlxrmRgMDwvaLHJhFSpu3XBsNg3zFHP17+0=;
- b=3R3df+Bn1R7wlrDwKrYQSJttf6fYzizf/dcs5kvvNK63mwzoA0ekqGyvSSPO9WfjqbqtuNx7E
- i/fpGuNQpdXDhsKSwBUniKdHR3MfZRPROVB6te5LSmHAAnoIFq5hFX3
+ bh=AOy+xS7hWv9W3/G8I56JVzz4ZYrY5cSCIxB/uF4Cbxg=;
+ b=9cwHTY3N6WIzmbMAT9KH1Rt/TJNmQyTvNO8w4O0Q1LdYtzOr2jal5fci36k6FvRzVE/YR7pnb
+ 9wYXXYSz1VuCQLn/Ryvpx/+CzyC4mOIbkXUuf7eYPxJURIs1kwhAP4T
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Jiri Olsa <jolsa@kernel.org>
+From: Krystian Kaniewski <krystianmkaniewski@gmail.com>
 
-commit f5d242825ca417bb6afe35fde6e8880f97ca43fb upstream.
+commit 9b851b09b392da68bd715601f10a5adb2d8d19b8 upstream.
 
-Both bpf_get_task_stack and bpf_get_task_stack_sleepable helpers that
-use __bpf_get_task_stack have buf defined as ARG_PTR_TO_UNINIT_MEM
-argument and we should initialize the buf on every return path.
+A NULL pointer dereference in klist_put() occurs when a child device (such
+as a BNEP network device in bnep_session) is concurrently being
+unregistered while hci_conn_del_sysfs() reparents child devices.
 
-Adding missing buf memset for __bpf_get_task_stack fail paths. This
-provides deterministic buffer contents, which is useful when the buffer
-is used directly as a map key.
+This is caused by a race condition between hci_conn_del_sysfs() and
+concurrent child device unregistration (e.g. bnep_session calling
+unregister_netdev()). During device unregistration, device_del() snapshots
+a non-NULL parent pointer. Concurrently, hci_conn_del_sysfs() finds the
+child device using device_find_any_child() and calls device_move() to
+reparent it to NULL, which removes the node from its parent's klist and
+clears knode_parent. Subsequently, device_del() calls
+klist_del(&dev->p->knode_parent) using the stale parent snapshot, causing
+klist_put() to dereference knode_klist(n)->put on an already removed node,
+resulting in a NULL pointer dereference.
 
-Fixes: 06ab134ce8ec ("bpf: Refcount task stack in bpf_get_task_stack")
-Fixes: b992f01e6615 ("bpf: Guard against accessing NULL pt_regs in bpf_get_task_stack()")
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Signed-off-by: Jiri Olsa <jolsa@kernel.org>
-Signed-off-by: Andrii Nakryiko <andrii@kernel.org>
-Link: https://lore.kernel.org/bpf/20260803210149.296496-10-jolsa@kernel.org
-[ adapted to 5.15.y: use bpf_get_task_stack() ]
+This race was introduced by commit 27aabf27fd01 ("Bluetooth: fix
+use-after-free in device_for_each_child()"), which replaced
+device_find_child(..., __match_tty) with device_find_any_child() in
+hci_conn_del_sysfs(). That change was intended to avoid a use-after-free
+where conn->dev outlived its parent hdev->dev when child devices held
+references to conn->dev, because conn->dev only held a reference to
+hdev->dev while registered in sysfs.
+
+Fix the issue properly by taking an explicit reference to the parent device
+with get_device(&hdev->dev) in hci_conn_init_sysfs() and dropping it with
+put_device(parent) in bt_link_release() when the conn device is freed. This
+ensures that hdev->dev remains valid for the entire lifecycle of conn->dev,
+resolving the underlying use-after-free. With the parent reference held
+properly, restore the __match_tty filter in hci_conn_del_sysfs() so that
+device_move() is only invoked on persistent RFCOMM TTY devices as
+originally intended, eliminating the race condition with unregistering
+network devices.
+
+Fixes: 27aabf27fd01 ("Bluetooth: fix use-after-free in device_for_each_child()")
+Assisted-by: Gemini:gemini-3.7-flash syzbot
+Reported-by: syzbot+6df45dd3d03e1a9aca96@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=6df45dd3d03e1a9aca96
+Link: https://syzkaller.appspot.com/ai_job?id=f1c0e740-db21-40af-a9ff-84db0fd8b8bd
+Signed-off-by: Krystian Kaniewski <krystianmkaniewski@gmail.com>
+Signed-off-by: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+[ adapted to 6.1.y: device_find_child() match callback takes void * ]
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
-6.1.y and newer already have this fix. This branch has no
-__bpf_get_task_stack(); the same code sits directly in
-bpf_get_task_stack(), so the two memsets go there.
+6.6.y and newer already have this fix. The only change from upstream
+is the __match_tty() signature: device_find_child() takes a void *
+match argument on this branch.
 
-Tested on v5.15.226:
-- x86_64 allmodconfig W=1 build of kernel/bpf/stackmap.o, base vs
-  patched, no new warnings
-- booted the patched kernel under QEMU/KVM. I didn't run a BPF test
-  that hits the two error paths.
+Tested on v6.1.193:
+- x86_64 allmodconfig W=1 build of net/bluetooth/hci_sysfs.o, base
+  vs patched, no new warnings
+- booted the patched kernel with CONFIG_BT=y under QEMU/KVM. I didn't
+  reproduce the race.
 
 The backport and the test runs were prepared with AI coding tools
 (OpenAI Codex agents, with review by Claude). I went over the result
 before signing off.
 ---
- kernel/bpf/stackmap.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ net/bluetooth/hci_sysfs.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
 
-diff --git a/kernel/bpf/stackmap.c b/kernel/bpf/stackmap.c
-index e04571c1833f..ca1a15c94724 100644
---- a/kernel/bpf/stackmap.c
-+++ b/kernel/bpf/stackmap.c
-@@ -530,14 +530,17 @@ BPF_CALL_4(bpf_get_task_stack, struct task_struct *, task, void *, buf,
- 	struct pt_regs *regs;
- 	long res = -EINVAL;
- 
--	if (!try_get_task_stack(task))
-+	if (!try_get_task_stack(task)) {
-+		memset(buf, 0, size);
- 		return -EFAULT;
-+	}
- 
- 	regs = task_pt_regs(task);
- 	if (regs)
- 		res = __bpf_get_stack(regs, task, NULL, buf, size, flags);
-+	else
-+		memset(buf, 0, size);
- 	put_task_stack(task);
--
- 	return res;
+diff --git a/net/bluetooth/hci_sysfs.c b/net/bluetooth/hci_sysfs.c
+index b1886e517a78..89cd9ea1ba43 100644
+--- a/net/bluetooth/hci_sysfs.c
++++ b/net/bluetooth/hci_sysfs.c
+@@ -11,7 +11,10 @@ static struct class *bt_class;
+ static void bt_link_release(struct device *dev)
+ {
+ 	struct hci_conn *conn = to_hci_conn(dev);
++	struct device *parent = dev->parent;
++
+ 	kfree(conn);
++	put_device(parent);
  }
  
+ static const struct device_type bt_link = {
+@@ -19,6 +22,16 @@ static const struct device_type bt_link = {
+ 	.release = bt_link_release,
+ };
+ 
++/*
++ * The rfcomm tty device will possibly retain even when conn
++ * is down, and sysfs doesn't support move zombie device,
++ * so we should move the device before conn device is destroyed.
++ */
++static int __match_tty(struct device *dev, void *data)
++{
++	return !strncmp(dev_name(dev), "rfcomm", 6);
++}
++
+ void hci_conn_init_sysfs(struct hci_conn *conn)
+ {
+ 	struct hci_dev *hdev = conn->hdev;
+@@ -27,7 +40,7 @@ void hci_conn_init_sysfs(struct hci_conn *conn)
+ 
+ 	conn->dev.type = &bt_link;
+ 	conn->dev.class = bt_class;
+-	conn->dev.parent = &hdev->dev;
++	conn->dev.parent = get_device(&hdev->dev);
+ 
+ 	device_initialize(&conn->dev);
+ }
+@@ -67,7 +80,7 @@ void hci_conn_del_sysfs(struct hci_conn *conn)
+ 	while (1) {
+ 		struct device *dev;
+ 
+-		dev = device_find_any_child(&conn->dev);
++		dev = device_find_child(&conn->dev, NULL, __match_tty);
+ 		if (!dev)
+ 			break;
+ 		device_move(dev, NULL, DPM_ORDER_DEV_LAST);
 
 ---
-base-commit: 4f2df9a01754521fbba3493e8ad91ef65515e68c
-change-id: 20261126-so1b-bpf-515-1ea56b5d0467
+base-commit: 1ca1436ccc68275d0b43b6a730b3940fcc46b7c2
+change-id: 20261126-so1b-bt-61-1786c1ceb668
 
 Best regards,
 --  
