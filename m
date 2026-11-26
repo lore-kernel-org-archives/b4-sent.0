@@ -1,90 +1,71 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Date: Thu, 26 Nov 2026 10:45:47 +0900
-Subject: [PATCH] xfs: punch delalloc blocks past EOF before mapping a pNFS
- layout
+Subject: [PATCH v2 0/2] exportfs, xfs, nfsd: map a whole pNFS block layout
+ in one ->map_blocks call
+Date: Thu, 26 Nov 2026 10:52:24 +0900
+Message-Id: <20261126-xfs-nfsd-map-blocks-v2-0-6d85b1388739@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-xfs-pnfs-delalloc-eof-v1-1-509deb79a255@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAEqPB2sC/x2MywqAIBAAfyX23EIaGfQr0cHHWguioRCB+O9Jl
- 4E5zFQolJkKbEOFTA8XTrGLGAewl44nIbvuICephJAKX1/wjh2Ogg4hWaTkcV3MLNWkyRoLvb0
- zeX7/73609gHZHh15ZwAAAA==
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIANiQB2sC/32NTQ6CMBSEr0Le2mfaBqpx5T0Ii/4BjbYlfUowp
+ He3cgCX32Tmmx3IZe8Ibs0O2a2efIoVxKkBM6s4OfS2MggmJGfsittIGEeyGNSC+pnMg7DlF9t
+ pqZRrBdTlkt3ot8PaD5VnT6+UP8fJyn/pf9/KkWEnWe0Ya4yWd1KB3nE6mxRgKKV8AbAM9Le4A
+ AAA
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+ Christoph Hellwig <hch@lst.de>, Carlos Maiolino <cem@kernel.org>, 
+ Amir Goldstein <amir73il@gmail.com>
 Cc: "Darrick J. Wong" <djwong@kernel.org>, Dave Chinner <dgc@kernel.org>, 
- Christoph Hellwig <hch@lst.de>, Chuck Lever <cel@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
+ Sergey Bashirov <sergeybashirov@gmail.com>, 
+ Christian Brauner <brauner@kernel.org>, linux-nfs@vger.kernel.org, 
+ linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795657546; l=2347;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795657944; l=1642;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=V363AEekfhVNmNgFRwTSiV54vNvZ++lzcBIxwNKpDXM=;
- b=QfPaSk/iTM48NWJBRh6hlUOsMSA7R7UxCc8uUT+wcBjKEdN/6+kBRYDn5lz2DaJurf7YbBVY6
- 0Rr+HhvA0+RBKhDcl7dLR0L0elHdE2IOn9l4rs4OZDH7AByGXEsCbco
+ bh=CHe9NdNoNWMN3OZLg6eYv1P0qljzfmwefVyC+JLRYlU=;
+ b=Z1FcxTUa6ywlKOAf0WRvfAHZbKqu+vWqFtZRcueStNEhUsXV3vakq9dGoNWDBwzG/KlU8r7Q7
+ seKi7tbjqBQCux9qLbNB9S3rpkBy3JzalZsPbA2BSFwjjDr8yGL9zQL
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Writeback on fragmented free space can leave speculative
-preallocation past EOF as delalloc. A LAYOUTGET over it BUG()s on
-XFS_DEBUG kernels. Other kernels warn in nfsd and refuse the layout.
-A LAYOUTCOMMIT past it moves EOF over it. Inode reclaim then asserts.
+nfsd gets a pNFS block layout from XFS with one ->map_blocks call per
+extent. Patch 2 lets one call return all of them, as Christoph and
+Darrick suggested, and patch 1 prepares XFS for it. fstests and pynfs
+give the same results with and without the series.
 
-Punch it after the flush. Delalloc past EOF holds no data.
+The series needs four fixes. The first two are posted separately, and
+the other two are in nfsd-testing:
 
-Fixes: 527851124d10 ("xfs: implement pNFS export operations")
-Cc: stable@vger.kernel.org
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
-Tested with pynfs on XFS_DEBUG, with free space fragmented as in
-xfs/538 and the bmap_alloc_minlen_extent error tag set. LAYOUTGETs over
-the 512 KiB left delalloc no longer assert. Neither does eviction after
-a LAYOUTCOMMIT past it. The pynfs block tests and fstests over pNFS
-show no change (BLOCK3, generic/075, 112 and 127 fail either way).
+- nfsd: stop a block layout at the maximum file size
+- xfs: punch delalloc blocks past EOF before mapping a pNFS layout
+- nfsd: do not return overlapping extents in a block layout
+- nfsd: do not allocate blocks for an RW layout with a minlength of zero
 
-xfs_bmap_punch_delalloc_range() takes the same arguments in the 6.18.y
-and 7.3.y stable trees. Older trees need them adjusted (5.10.y and
-5.15.y take a start block and a length).
----
- fs/xfs/xfs_pnfs.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Once they are in mainline, I will rebase the series for the VFS tree,
+as Chuck suggested.
 
-diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index 945f7a3e11c..4a6c1a399d7 100644
---- a/fs/xfs/xfs_pnfs.c
-+++ b/fs/xfs/xfs_pnfs.c
-@@ -11,6 +11,7 @@
- #include "xfs_inode.h"
- #include "xfs_trans.h"
- #include "xfs_bmap.h"
-+#include "xfs_bmap_util.h"
- #include "xfs_iomap.h"
- #include "xfs_pnfs.h"
- #include <linux/exportfs_block.h>
-@@ -192,6 +193,18 @@ xfs_fs_map_blocks(
- 	if (WARN_ON_ONCE(error))
- 		goto out_unlock;
- 
-+	/*
-+	 * Writeback stops allocating a delalloc extent once the page it writes
-+	 * is covered, so speculative preallocation past EOF can stay delalloc.
-+	 * Delalloc past EOF never holds data. Punch all of it, as
-+	 * xfs_free_eofblocks() does for preallocated files, so that a layout
-+	 * never maps it and a LAYOUTCOMMIT never moves EOF over it.
-+	 */
-+	if (ip->i_delayed_blks)
-+		xfs_bmap_punch_delalloc_range(ip, XFS_DATA_FORK,
-+				round_up(XFS_ISIZE(ip), mp->m_sb.sb_blocksize),
-+				LLONG_MAX, NULL);
-+
- 	end_fsb = XFS_B_TO_FSB(mp, (xfs_ufsize_t)offset + length);
- 	offset_fsb = XFS_B_TO_FSBT(mp, offset);
- 
+Changes in v2:
+- Drop v1 patches 1-3 and 6, now in mainline (2 in another form).
+- Fold the interface, the XFS loop and the nfsd caller into one patch.
+- Allocate the mapping array with kvmalloc (Chuck).
+- Keep nfsd's trim of a mapping that starts below the offset, instead
+  of refusing it.
 
 ---
-base-commit: 5e7b6fe39324913f6416c854c6ed3a1793aaba8e
-change-id: 20261126-xfs-pnfs-delalloc-eof-75b3260aecbc
+Daejun Park (2):
+      xfs: factor the mapping of one pNFS extent out of xfs_fs_map_blocks()
+      exportfs, xfs, nfsd: map a whole pNFS block layout in one ->map_blocks call
+
+ fs/nfsd/blocklayout.c          | 137 ++++++++++++++++++----------------
+ fs/xfs/xfs_pnfs.c              | 163 +++++++++++++++++++++++++----------------
+ include/linux/exportfs_block.h |  17 +++--
+ 3 files changed, 187 insertions(+), 130 deletions(-)
+---
+base-commit: 25527067098f9d95562244fd64749ebaae3077f9
+change-id: 20261008-xfs-nfsd-map-blocks-417d5b6aae42
 
 Best regards,
 -- 
