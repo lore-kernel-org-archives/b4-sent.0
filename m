@@ -1,24 +1,24 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 12:22:52 +0000
-Subject: [PATCH 6.1.y] wifi: mt76: mt7915: clear wcid mask under mutex
+Date: Thu, 26 Nov 2026 12:24:11 +0000
+Subject: [PATCH 6.6.y] wifi: mt76: mt7915: clear wcid mask under mutex
  after RCU pointer clear
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-so1-mt-61-v1-1-0ffc1ce5c949@certik.com>
-X-B4-Tracking: v=1; b=H4sIAJskCGsC/z2Myw7CIBAAf6XZs1u7mODjV4wHoIvFKBgWjabpv
- wuaeJzJZGYQzoEFDt0MmZ9BQooVaNWBm0w8M4axMqhBaSKlURLhraAmtOS9Hbb7jaYd1P6e2Yf
- X93UE3VP/htNPy8Ne2JX2aaE1wmiziW5qSjiOJaUrNr/+/2FZPlBoQo2eAAAA
-X-Change-ID: 20261126-so1-mt-61-b1ffb0793618
+Message-Id: <20261126-so1-mt-66-v1-1-429a17b69783@certik.com>
+X-B4-Tracking: v=1; b=H4sIAOokCGsC/z2MQQ7CIBAAv9Ls2a2CcaN+xXgAuliMQsOi0TT9u
+ 6CJx5lMZgbhHFjg2M2Q+RkkpFhBrTpwo4kXxjBUBr3RpJQmlKTwXpAIjdodvN17q2gLtZ8y+/D
+ 6vk5APfVvOP+0POyVXWmfFlojjDab6MamhONQUrph8+v/H5blA4kzXGmeAAAA
+X-Change-ID: 20261126-so1-mt-66-a159fb8fb163
 To: stable@vger.kernel.org
 Cc: Felix Fietkau <nbd@nbd.name>, Lorenzo Bianconi <lorenzo@kernel.org>, 
  linux-wireless@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795695771; l=2803;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795695850; l=2795;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=BkE0m2cISHMa7wUZVEILWzsYSDPiQWwct5nsfphc2Ps=;
- b=I1eHDPM93R5LGwF5WQQThC2waim3ncf0rHWdkp3ftjfd4fZp0Gh+BmO/2bW/rtb7VWoBHWKdX
- 3wUUNMbuaboBpGG3QGBBMaeWYwUP30sRdo5dcLvzGsZPn3sCwX28chF
+ bh=2Yvt6AJuNvts0+ANo6CU0QtnmDtVLXdldOC/Am3e2gA=;
+ b=w+O49ZjIy9egfIJbvByoykDXAcgK+TPmDWIgXps9KXkT+HQlgsgluVsBhtUMsjgUuGRE14I11
+ s3n5Sy3qv3eApIubLJz/OVseZUi3g8Z6+GuM348Hf//IpAMb0gzWPZ2
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
@@ -41,13 +41,13 @@ cleared.
 Fixes: f3049b88b2b3 ("wifi: mt76: mt7915: allocate vif wcid in the same range as stations")
 Link: https://patch.msgid.link/20260722082610.2699628-8-nbd@nbd.name
 Signed-off-by: Felix Fietkau <nbd@nbd.name>
-[ adapted to 6.1.y: context only, older mt7915_mcu_add_sta() and sta_poll_lock ]
+[ adapted to 6.6.y: context only, older mt7915_mcu_add_sta() call ]
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
 6.12.y and newer already have this fix. The moved line is the same as
 upstream; only the surrounding context differs on this branch.
 
-Tested on v6.1.193:
+Tested on v6.6.163:
 - x86_64 allmodconfig W=1 build of
   drivers/net/wireless/mediatek/mt76/mt7915/main.o, base vs patched,
   no new warnings
@@ -62,10 +62,10 @@ before signing off.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/net/wireless/mediatek/mt76/mt7915/main.c b/drivers/net/wireless/mediatek/mt76/mt7915/main.c
-index dde451d818ba..6ed4c9879b6e 100644
+index 864f636666e5..017181c1a2ea 100644
 --- a/drivers/net/wireless/mediatek/mt76/mt7915/main.c
 +++ b/drivers/net/wireless/mediatek/mt76/mt7915/main.c
-@@ -297,7 +297,6 @@ static void mt7915_remove_interface(struct ieee80211_hw *hw,
+@@ -306,7 +306,6 @@ static void mt7915_remove_interface(struct ieee80211_hw *hw,
  
  	mt7915_mcu_add_bss_info(phy, vif, false);
  	mt7915_mcu_add_sta(dev, vif, NULL, false);
@@ -73,18 +73,18 @@ index dde451d818ba..6ed4c9879b6e 100644
  
  	mutex_lock(&dev->mt76.mutex);
  	mt76_testmode_reset(phy->mt76, true);
-@@ -313,6 +312,7 @@ static void mt7915_remove_interface(struct ieee80211_hw *hw,
+@@ -322,6 +321,7 @@ static void mt7915_remove_interface(struct ieee80211_hw *hw,
  	mutex_lock(&dev->mt76.mutex);
  	dev->mt76.vif_mask &= ~BIT_ULL(mvif->mt76.idx);
  	phy->omac_mask &= ~BIT_ULL(mvif->mt76.omac_idx);
 +	mt76_wcid_mask_clear(dev->mt76.wcid_mask, mvif->sta.wcid.idx);
  	mutex_unlock(&dev->mt76.mutex);
  
- 	spin_lock_bh(&dev->sta_poll_lock);
+ 	spin_lock_bh(&dev->mt76.sta_poll_lock);
 
 ---
-base-commit: 1ca1436ccc68275d0b43b6a730b3940fcc46b7c2
-change-id: 20261126-so1-mt-61-b1ffb0793618
+base-commit: e2bb30811e063ce0db964484357973b855b06572
+change-id: 20261126-so1-mt-66-a159fb8fb163
 
 Best regards,
 --  
