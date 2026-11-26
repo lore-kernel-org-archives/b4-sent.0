@@ -1,107 +1,55 @@
 From: Ilia Snezhkov <iasnezhkov@gmail.com>
-To: peter.wang@mediatek.com, stanley.chu@mediatek.com, 
- martin.petersen@oracle.com, James.Bottomley@HansenPartnership.com
+To: jic23@kernel.org, dlechner@baylibre.com, nuno.sa@analog.com, 
+ andy@kernel.org
 Cc: matthias.bgg@gmail.com, angelogioacchino.delregno@collabora.com, 
- louisalexis.eyraud@collabora.com, linux-scsi@vger.kernel.org, 
- linux-mediatek@lists.infradead.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 3/3] scsi: ufs: mediatek: round scalable clock bounds to
- clk_round_rate()
-Date: Thu, 26 Nov 2026 03:10:11 +0000
-Message-Id: <20261126031008.27506-4-iasnezhkov@gmail.com>
-In-Reply-To: <20261126031008.27506-1-iasnezhkov@gmail.com>
-References: <20261126031008.27506-1-iasnezhkov@gmail.com>
+ linux-iio@vger.kernel.org, linux-mediatek@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 0/3] iio: adc: mt6359: fix scale divisor, request bits,
+ and MT6358 VBAT ratio
+Date: Thu, 26 Nov 2026 03:10:13 +0000
+Message-Id: <20261126031013.27701-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795662608; l=3051;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795662614; l=1327;
  i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
- bh=MuIq1TvnjCaHK1YyQad7wOf3RnvQAYoWa7G/0M98I2c=;
- b=oH1rvPdfuZPM6eSf5SJfZh3FEeViLmw03zRzbmT1vwVo0mWByrcy5Fph1kijf2WqWDBGi97Kg
- 7979edxEa4/DkIVBKl6GGF3N9wZ8kKBgwzeoTHJEtsX+Chccj7wmQbA
+ bh=OJBJnrsWEBcdIqX9tTDRPWz8dYrgSAiAenBKdUU78aQ=;
+ b=WjH7t30eM0qc/rABAntiZN6AkXBDKMP1DypfOyz3kKvoHJnBeV7WfvVDnaztz6JLw8Wl9L81M
+ lpDermSM0wVC9VeAKu3VZYFgBy4p3AeKsBXrMKi84/6ToDqn/mByunj
 X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
  pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
 X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ufshcd_devfreq_target() determines scale_up via an exact equality check
-against clki->max_freq after rounding the target frequency. When a DT
-freq-table-hz lists a nominal value that a PLL-derived clock cannot hit
-exactly (for example, msdcpll_d2 on MT6789 delivers 191999939 Hz for a
-192000000 Hz DT maximum), clk_round_rate() produces a rate that never
-equals clki->max_freq, so devfreq scales down once and can never scale
-back up.
+This short series fixes three bugs in drivers/iio/adc/mt6359-auxadc.c
+introduced in commit 3587914bf61d ("iio: adc: Add support for MediaTek
+MT6357/8/9 Auxiliary ADC"):
 
-Round clki->max_freq and clki->min_freq with clk_round_rate() in
-ufs_mtk_init_clocks() for ufs_sel (and ufs_fde when present) before
-ufshcd_devfreq_init() builds the OPP table from those bounds, keeping
-clki->curr_freq synchronized with the rounded bound and skipping the
-adjustment if rounding fails, overflows u32, or collapses min >= max.
+1. IIO_CHAN_INFO_SCALE omits dividing by (1 << chan->scan_type.realbits),
+   causing processed readings and sysfs scales to be 4096x or 32768x too
+   large. Use IIO_VAL_FRACTIONAL with shifted denominator when
+   denominator > 1, and IIO_VAL_FRACTIONAL_LOG2 otherwise (avoiding
+   division by zero on unpopulated descriptors such as MT6357 VDCXO).
+2. MT6357 ISENSE/VCDT and MT6358 VCDT use PMIC_AUXADC_RQST0 bit 0
+   (BATADC) instead of their hardware request bits (1 and 2).
+3. MT6358 VBAT impedance uses r_ratio 7/2 (MT6359) instead of 3/1
+   (MT6358/MT6366, matching MT6358 BATADC).
 
-Fixes: b7dbc686f60b ("scsi: ufs: ufs-mediatek: Support clk-scaling to optimize power consumption")
-Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
----
-Changes since v1:
-- Use IS_ERR_OR_NULL(clki->clk) and cast max_rounded to u64 before
-  comparing against U32_MAX for 32-bit cleanliness.
-- Found on hardware and drafted with an AI coding assistant.
+Changes in v2:
+- Move the AI coding assistant note below the --- separator in all three
+  patches (per Jonathan Cameron's feedback on v1). No code changes.
 
- drivers/ufs/host/ufs-mediatek.c | 35 +++++++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+Found and drafted with an AI coding assistant.
 
-diff --git a/drivers/ufs/host/ufs-mediatek.c b/drivers/ufs/host/ufs-mediatek.c
-index 09b7993..4de72ae 100644
---- a/drivers/ufs/host/ufs-mediatek.c
-+++ b/drivers/ufs/host/ufs-mediatek.c
-@@ -967,6 +967,37 @@ static u32 ufs_mtk_get_ufs_hci_version(struct ufs_hba *hba)
- 	return hba->ufs_version;
- }
- 
-+static void ufs_mtk_round_clk_freq(struct ufs_hba *hba,
-+				   struct ufs_clk_info *clki)
-+{
-+	long max_rounded, min_rounded;
-+
-+	if (IS_ERR_OR_NULL(clki->clk) || !clki->max_freq || !clki->min_freq)
-+		return;
-+
-+	max_rounded = clk_round_rate(clki->clk, clki->max_freq);
-+	min_rounded = clk_round_rate(clki->clk, clki->min_freq);
-+	if (max_rounded <= 0 || min_rounded <= 0 ||
-+	    min_rounded >= max_rounded || (u64)max_rounded > U32_MAX)
-+		return;
-+
-+	if (max_rounded != clki->max_freq) {
-+		dev_dbg(hba->dev, "%s: max_freq %u rounds to %ld\n",
-+			clki->name, clki->max_freq, max_rounded);
-+		if (clki->curr_freq == clki->max_freq)
-+			clki->curr_freq = max_rounded;
-+		clki->max_freq = max_rounded;
-+	}
-+
-+	if (min_rounded != clki->min_freq) {
-+		dev_dbg(hba->dev, "%s: min_freq %u rounds to %ld\n",
-+			clki->name, clki->min_freq, min_rounded);
-+		if (clki->curr_freq == clki->min_freq)
-+			clki->curr_freq = min_rounded;
-+		clki->min_freq = min_rounded;
-+	}
-+}
-+
- /**
-  * ufs_mtk_init_clocks - Init mtk driver private clocks
-  *
-@@ -1022,6 +1053,10 @@ static void ufs_mtk_init_clocks(struct ufs_hba *hba)
- 		return;
- 	}
- 
-+	ufs_mtk_round_clk_freq(hba, host->mclk.ufs_sel_clki);
-+	if (host->mclk.ufs_fde_clki)
-+		ufs_mtk_round_clk_freq(hba, host->mclk.ufs_fde_clki);
-+
- 	/*
- 	 * Default get vcore if dts have these settings.
- 	 * No matter clock scaling support or not. (may disable by customer)
+Ilia Snezhkov (3):
+  iio: adc: mt6359: divide scale by ADC resolution
+  iio: adc: mt6359: fix MT6357 ISENSE/VCDT and MT6358 VCDT request bits
+  iio: adc: mt6359: fix MT6358 VBAT impedance resistance ratio
+
+ drivers/iio/adc/mt6359-auxadc.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
+
 -- 
 2.54.0 (Apple Git-157)
 
