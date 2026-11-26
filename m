@@ -1,455 +1,401 @@
-From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Thu, 26 Nov 2026 09:14:07 +0100
-Subject: [PATCH net-next v2 3/3] net: ipa: add SC8180X (IPA v4.1)
- configuration data
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Thu, 26 Nov 2026 17:21:02 +0900
+Subject: [PATCH v3] xfs: skip the fsync flush when a later flush has
+ completed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-qcom-ipa-sc8180x-v2-3-89eba621da95@gmail.com>
-References: <20261126-qcom-ipa-sc8180x-v2-0-89eba621da95@gmail.com>
-In-Reply-To: <20261126-qcom-ipa-sc8180x-v2-0-89eba621da95@gmail.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Alex Elder <elder@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Robert Ijtsma <robertijtsma@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795680844; l=14262;
- i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=j5l/eqt+FJwLhpdre8SQqqsOXMfSFCyck8xJ/a/BNVM=;
- b=+vDwoYtn7UOeE9XqDBrGTY4TTfyzZFEc1Us3LT4nB9ktp85STYCERh8SFrqj8MMPtIa9OLoG/
- kPbx69Ps8tLBvCAMyP7K8Tmw4fz6rH6KJH7Ao8WBNATnnV8YwSLdnln
-X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
- pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
-X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
+Message-Id: <20261126-xfs-fsync-flush-seq-v3-1-830f5dd79fae@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAO3rB2sC/33NQQ6CMBCF4auQrh3TDimCK+9hXECZQhMB7UgDI
+ dzdwkoT4/J/yXyzCCbviMU5WYSn4NgNfYz0kAjTln1D4OrYAiVmSkkNk2WwPPcG7H3kFpiekKc
+ lobE2Q9QiXj48WTft6vUWu3X8Gvy8PwlqW/97QYEELIqqtpowN+mFy47HvjmaoRObGPBDUeq3g
+ lGptJHSoK7xlH0r67q+Af4dn1z+AAAA
+To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, Dave Chinner <dgc@kernel.org>, 
+ "Darrick J. Wong" <djwong@kernel.org>, Amir Goldstein <amir73il@gmail.com>, 
+ Brian Foster <bfoster@redhat.com>, Pankaj Raghav <pankaj.raghav@linux.dev>, 
+ linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795681262; l=13602;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=vzT2Rt/enTMo0aDqVXmMlExUthUUiFIy5YYe9FN0M9M=;
+ b=1IaAQSEjAIil32bh/BYJwacUErCtVZ3ZVEXRGlRfpliInWcXaWsD5LfbqooVYgK9vSmGTV26E
+ O58i8HjSJwRDXEJhqHVq31+arfl26+g7G1iT4hALEJs6FKLrtHYGPIW
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the SC8180X (IPA v4.1) endpoint, resource group, shared memory,
-and backward-compatibility configuration table (ipa_data_v4_1) and bind
-it to the qcom,sc8180x-ipa compatible.
+Since commit 47c7d0b19502 ("xfs: fix incorrect log_flushed on
+fsync"), fsync sends its own cache flush unless its log force pushed
+out the iclog it waited for. With concurrent fsyncs, these flushes can
+limit throughput.
 
-The IPA IMEM slice is described via the devicetree sram property rather
-than hardcoding deprecated imem_addr/imem_size fields in ipa_mem_data.
+Number the flushes that the log and fsync send to each buftarg. Skip
+the fsync flush when a flush submitted after the data writes completed
+has succeeded.
 
-Register offsets and endpoint/resource limits are derived from the
-downstream Qualcomm msm-4.14 poipu/sm8150 IPA v4.1 driver and SC8180X
-devicetree tables, adapted to the upstream ipa_mem_data layout.
+An fsync that skips relies on the status of the covering flush, as
+the log does. It misses a failed preflush sent with data if a driver
+drops that error.
 
-Tested on Microsoft Surface Pro X SQ2 (SC8180X, Snapdragon X24 LTE
-modem) with rmnet_ipa0 MAPv4 and ModemManager qcom-soc QMAP bearers.
+QEMU guest, 990 PRO NVMe SSD, before -> after:
 
-Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
+  fio 4KiB writes + fsync to preallocated files, mean of 2 runs
+    16 jobs: 1023 -> 4226 fsyncs/s, mean fsync latency 15.6 -> 3.8 ms
+     1 job:  387 -> 391 fsyncs/s
+  dbench -t 30, MB/s and max latency, mean of 3 runs
+    4 AGs, 128 clients:               1968 -> 6857, 0.4 -> 0.4 s
+    4 AGs, 256 clients:               3220 -> 6219, 0.3 -> 2.4 s
+    4 AGs, 256 clients, no flushes:   6527 -> 6369, 13.8 -> 14.7 s
+    4 AGs, 512 clients:               4699 -> 5126, 0.4 -> 22.3 s
+    32 AGs, 512 clients:              4812 -> 3256, 0.5 -> 21.6 s
+    32 AGs, 512 clients, no flushes:  3515 -> 3419, 28.4 -> 27.8 s
+    32 AGs, 512 clients, 1 GiB log:   5095 -> 9353, 0.4 -> 2.2 s
+    (no flushes: guest queue/write_cache set to write through)
+    (latencies over a second are unlink() calls in the inodegc throttle)
+
+Suggested-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- drivers/net/ipa/Makefile             |   2 +-
- drivers/net/ipa/data/ipa_data-v4.1.c | 354 +++++++++++++++++++++++++++++++++++
- drivers/net/ipa/ipa_data.h           |   1 +
- drivers/net/ipa/ipa_main.c           |   4 +
- 4 files changed, 360 insertions(+), 1 deletion(-)
+Christoph's 2017 mail with the sequence counter idea:
+https://lore.kernel.org/20170830142134.GA650@lst.de
 
-diff --git a/drivers/net/ipa/Makefile b/drivers/net/ipa/Makefile
-index 2420af0d8325099d6483b886eac40f227e050616..025a3135fa5174fb5d7c7cc8d8877417f95feb0d 100644
---- a/drivers/net/ipa/Makefile
-+++ b/drivers/net/ipa/Makefile
-@@ -7,7 +7,7 @@ IPA_REG_VERSIONS	:=	3.1 3.5.1 4.1 4.2 4.5 4.7 4.9 4.11 5.0 5.5
- # Some IPA versions can reuse another set of GSI register definitions.
- GSI_REG_VERSIONS	:=	3.1 3.5.1 4.0 4.5 4.9 4.11 5.0
+The fio and dbench numbers are from this patch on for-next 5e7b6fe39324,
+8 vCPUs, virtio-blk (cache=none) on an SSD without power loss
+protection, mkfs.xfs -K with the default geometry (4 AGs, 64 MiB log)
+unless noted. "No flushes" means that the guest's queue/write_cache was
+set to write through, so the guest block layer drops flushes and FUA.
+The SSD cache stays on.
+
+fstests -g quick on 5e7b6fe39324 with and without the patch (loop
+devices, XFS_DEBUG, KASAN, lockdep, no DAX): the same 5 failures.
+
+Dave's questions on v2 (v2 numbers in
+https://lore.kernel.org/r/20261117023345epcms2p5117009330b6c600f68c598d5e08aef5e@epcms2p5):
+at 1024 clients, MB/s rises 6% with 4 AGs and falls 10% with 32 AGs.
+With 4 AGs, log writes per fsync rise from 0.11-0.14 to 0.37 at 256 and
+512 clients. With flushes, log writes peak at 5324/s (12284/s with a
+1 GiB log). With the 64 MiB log, the patch reaches the inodegc throttle
+(0.88-1.00 throttle events per unlink(), under 0.10 otherwise) from
+256 clients with 4 AGs and 512 with 32 AGs, and the base from 1024. With
+no flushes, the base also reaches it at 256 clients (4 AGs) and 512
+(32 AGs), with 1.07-1.15 log writes per fsync at 256. Both kernels then
+do 13.4-17.7k log writes/s at 256 clients, with MB/s within run-to-run
+spread (6242-6953 against 5995-6608). At 512 clients with 32 AGs,
+dropping the flushes takes the base from 4778 to 3515 MB/s. With a 1 GiB
+log, the patch takes 32 AGs and 512 clients from 5095 to 9353 MB/s. The
+loss in the commit log is with the default 64 MiB log. With that log,
+78-87% of the patch's log reservations at 512 clients sleep for log
+space, against under 3% for the base.
+
+A dm-log-writes test written for this series (v2 on 48326a2382d8 without
+CONFIG_FS_DAX, 8 fsync writers, internal log) lost no fsync-ed block in
+528 replays. At least 33319 of 48048 fsyncs skipped their flush through
+the new check. A variant that samples before the writeback loses 16 of
+528. The test needs "dm-log-writes: log earlier flushes' writes when a
+later flush completes" from the dm tree. v2 and v3 behave differently
+only for DAX files.
+
+Bio-based dm dropped the error of a failed preflush sent with data until
+commit e92cd41e8e5e ("dm: fail a REQ_PREFLUSH bio with data when its
+preflush fails", in v7.4-rc3, not yet in for-next). From the code,
+bcache in writeback mode still drops it. Not tested.
+
+Changes in v3:
+- Merge the two patches into one
+- Keep initialized declarations first in xlog_flush_async(), and give
+  lseq its own line in xlog_flush_data_caches()
+- Drop the IS_DAX() check and its comment in xfs_file_fsync(), so DAX
+  files take the new skip too
+- Describe the flush status caveat in the commit log
+- Call the fio workload writes to preallocated files, not append, and
+  remeasure it on the current for-next
+- Add dbench results to the commit log, and answer Dave's questions
+  below ---
+- Say below --- that the dm case is fixed by e92cd41e8e5e
+- Drop Brian's Reviewed-by tags because the patches were merged and
+  the DAX check changed
+- Rebase onto the current for-next
+---
+ fs/xfs/xfs_buf.c      | 40 ++++++++++++++++++++++++++++++++++++++++
+ fs/xfs/xfs_buf.h      | 43 +++++++++++++++++++++++++++++++++++++++++++
+ fs/xfs/xfs_file.c     | 14 +++++++++++---
+ fs/xfs/xfs_log.c      | 29 ++++++++++++++++++++++-------
+ fs/xfs/xfs_log_priv.h |  1 +
+ 5 files changed, 117 insertions(+), 10 deletions(-)
+
+diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
+index 6c93b4f5629..2862cbdeda4 100644
+--- a/fs/xfs/xfs_buf.c
++++ b/fs/xfs/xfs_buf.c
+@@ -1772,6 +1772,46 @@ xfs_init_buftarg(
+ 	return -ENOMEM;
+ }
  
--IPA_DATA_VERSIONS	:=	3.1 3.5.1 4.2 4.5 4.7 4.9 4.11 5.0 5.2 5.5
-+IPA_DATA_VERSIONS	:=	3.1 3.5.1 4.1 4.2 4.5 4.7 4.9 4.11 5.0 5.2 5.5
- 
- obj-$(CONFIG_QCOM_IPA)	+=	ipa.o
- 
-diff --git a/drivers/net/ipa/data/ipa_data-v4.1.c b/drivers/net/ipa/data/ipa_data-v4.1.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..9e12419684d744cdc79c32f0333e52b437f7f824
---- /dev/null
-+++ b/drivers/net/ipa/data/ipa_data-v4.1.c
-@@ -0,0 +1,354 @@
-+// SPDX-License-Identifier: GPL-2.0
++/* Record that the flush numbered @seq completed successfully. */
++void
++xfs_buftarg_flush_done(
++	struct xfs_buftarg	*btp,
++	s64			seq)
++{
++	s64			old = atomic64_read(&btp->bt_flush_completed);
 +
-+/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
-+ * Copyright (C) 2026 Robert Ijtsma
++	while (seq > old &&
++	       !atomic64_try_cmpxchg(&btp->bt_flush_completed, &old, seq))
++		;
++}
++
++/*
++ * Return true if a flush has been submitted and completed since @submit_seq
++ * was sampled. If so, all writes that completed before @submit_seq was sampled
++ * are on stable storage.
 + */
++bool
++xfs_buftarg_flushed_since(
++	struct xfs_buftarg	*btp,
++	s64			submit_seq)
++{
++	return atomic64_read(&btp->bt_flush_completed) > submit_seq;
++}
 +
-+#include <linux/array_size.h>
-+#include <linux/bits.h>
-+#include <linux/log2.h>
++/* Flush the device cache and record it. */
++int
++xfs_buftarg_flush(
++	struct xfs_buftarg	*btp)
++{
++	s64			seq = xfs_buftarg_flush_start(btp);
++	int			error;
 +
-+#include "../ipa_data.h"
-+#include "../ipa_endpoint.h"
-+#include "../ipa_mem.h"
-+#include "../ipa_reg.h"
-+#include "../ipa_version.h"
++	error = blkdev_issue_flush(btp->bt_bdev);
++	if (!error)
++		xfs_buftarg_flush_done(btp, seq);
++	return error;
++}
 +
-+/** enum ipa_resource_type - IPA resource types for an SoC having IPA v4.1 */
-+enum ipa_resource_type {
-+	/* Source resource types; first must have value 0 */
-+	IPA_RESOURCE_TYPE_SRC_PKT_CONTEXTS		= 0,
-+	IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_LISTS,
-+	IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_BUFF,
-+	IPA_RESOURCE_TYPE_SRC_HPS_DMARS,
-+	IPA_RESOURCE_TYPE_SRC_ACK_ENTRIES,
-+
-+	/* Destination resource types; first must have value 0 */
-+	IPA_RESOURCE_TYPE_DST_DATA_SECTORS		= 0,
-+	IPA_RESOURCE_TYPE_DST_DPS_DMARS,
-+};
-+
-+/* Resource groups used for an SoC having IPA v4.1 */
-+enum ipa_rsrc_group_id {
-+	/* Source resource group identifiers */
-+	IPA_RSRC_GROUP_SRC_LWA_DL	= 0,
-+	IPA_RSRC_GROUP_SRC_UL_DL,
-+	IPA_RSRC_GROUP_SRC_UNUSED_2,
-+	IPA_RSRC_GROUP_SRC_UC_RX_Q,
-+	IPA_RSRC_GROUP_SRC_COUNT,	/* Last in set; not a source group */
-+
-+	/* Destination resource group identifiers */
-+	IPA_RSRC_GROUP_DST_LWA_DL	= 0,
-+	IPA_RSRC_GROUP_DST_UL_DL_DPL,
-+	IPA_RSRC_GROUP_DST_UNUSED_2,
-+	IPA_RSRC_GROUP_DST_UC_RX_Q,
-+	IPA_RSRC_GROUP_DST_COUNT,	/* Last; not a destination group */
-+};
-+
-+/* QSB configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_qsb_data ipa_qsb_data[] = {
-+	[IPA_QSB_MASTER_DDR] = {
-+		.max_writes	= 8,
-+		.max_reads	= 12,
-+	},
-+	[IPA_QSB_MASTER_PCIE] = {
-+		.max_writes	= 4,
-+		.max_reads	= 12,
-+	},
-+};
-+
-+/* Endpoint data for an SoC having IPA v4.1 */
-+static const struct ipa_gsi_endpoint_data ipa_gsi_endpoint_data[] = {
-+	[IPA_ENDPOINT_AP_COMMAND_TX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 4,
-+		.endpoint_id	= 5,
-+		.toward_ipa	= true,
-+		.channel = {
-+			.tre_count	= 256,
-+			.event_count	= 256,
-+			.tlv_count	= 20,
-+		},
-+		.endpoint = {
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_SRC_UL_DL,
-+				.dma_mode	= true,
-+				.dma_endpoint	= IPA_ENDPOINT_AP_LAN_RX,
-+				.tx = {
-+					.seq_type = IPA_SEQ_DMA,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_AP_LAN_RX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 5,
-+		.endpoint_id	= 10,
-+		.toward_ipa	= false,
-+		.channel = {
-+			.tre_count	= 256,
-+			.event_count	= 256,
-+			.tlv_count	= 9,
-+		},
-+		.endpoint = {
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_DST_UL_DL_DPL,
-+				.aggregation	= true,
-+				.status_enable	= true,
-+				.rx = {
-+					.buffer_size	= 8192,
-+					.pad_align	= ilog2(sizeof(u32)),
-+					.aggr_time_limit = 500,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_AP_MODEM_TX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 3,
-+		.endpoint_id	= 2,
-+		.toward_ipa	= true,
-+		.channel = {
-+			.tre_count	= 512,
-+			.event_count	= 512,
-+			.tlv_count	= 16,
-+		},
-+		.endpoint = {
-+			.filter_support	= true,
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_SRC_UL_DL,
-+				.checksum	= true,
-+				.qmap		= true,
-+				.status_enable	= true,
-+				.tx = {
-+					.seq_type = IPA_SEQ_2_PASS_SKIP_LAST_UC,
-+					.seq_rep_type = IPA_SEQ_REP_DMA_PARSER,
-+					.status_endpoint =
-+						IPA_ENDPOINT_MODEM_AP_RX,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_AP_MODEM_RX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 6,
-+		.endpoint_id	= 11,
-+		.toward_ipa	= false,
-+		.channel = {
-+			.tre_count	= 256,
-+			.event_count	= 256,
-+			.tlv_count	= 9,
-+		},
-+		.endpoint = {
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_DST_UL_DL_DPL,
-+				.checksum	= true,
-+				.qmap		= true,
-+				.aggregation	= true,
-+				.rx = {
-+					.buffer_size	= 8192,
-+					.aggr_time_limit = 500,
-+					.aggr_close_eof	= true,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_MODEM_AP_TX] = {
-+		.ee_id		= GSI_EE_MODEM,
-+		.channel_id	= 0,
-+		.endpoint_id	= 3,
-+		.toward_ipa	= true,
-+		.endpoint = {
-+			.filter_support	= true,
-+		},
-+	},
-+	[IPA_ENDPOINT_MODEM_AP_RX] = {
-+		.ee_id		= GSI_EE_MODEM,
-+		.channel_id	= 3,
-+		.endpoint_id	= 13,
-+		.toward_ipa	= false,
-+	},
-+};
-+
-+/* Source resource configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_resource ipa_resource_src[] = {
-+	[IPA_RESOURCE_TYPE_SRC_PKT_CONTEXTS] = {
-+		.limits[IPA_RSRC_GROUP_SRC_LWA_DL] = {
-+			.min = 1,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UL_DL] = {
-+			.min = 1,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UC_RX_Q] = {
-+			.min = 1,	.max = 63,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_LISTS] = {
-+		.limits[IPA_RSRC_GROUP_SRC_LWA_DL] = {
-+			.min = 10,	.max = 10,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UL_DL] = {
-+			.min = 10,	.max = 10,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UC_RX_Q] = {
-+			.min = 8,	.max = 8,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_BUFF] = {
-+		.limits[IPA_RSRC_GROUP_SRC_LWA_DL] = {
-+			.min = 12,	.max = 12,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UL_DL] = {
-+			.min = 14,	.max = 14,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UC_RX_Q] = {
-+			.min = 8,	.max = 8,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_SRC_HPS_DMARS] = {
-+		.limits[IPA_RSRC_GROUP_SRC_LWA_DL] = {
-+			.min = 0,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UL_DL] = {
-+			.min = 0,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UNUSED_2] = {
-+			.min = 0,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UC_RX_Q] = {
-+			.min = 0,	.max = 63,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_SRC_ACK_ENTRIES] = {
-+		.limits[IPA_RSRC_GROUP_SRC_LWA_DL] = {
-+			.min = 14,	.max = 14,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UL_DL] = {
-+			.min = 20,	.max = 20,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_UC_RX_Q] = {
-+			.min = 14,	.max = 14,
-+		},
-+	},
-+};
-+
-+/* Destination resource configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_resource ipa_resource_dst[] = {
-+	[IPA_RESOURCE_TYPE_DST_DATA_SECTORS] = {
-+		.limits[IPA_RSRC_GROUP_DST_LWA_DL] = {
-+			.min = 4,	.max = 4,
-+		},
-+		.limits[IPA_RSRC_GROUP_DST_UL_DL_DPL] = {
-+			.min = 4,	.max = 4,
-+		},
-+		.limits[IPA_RSRC_GROUP_DST_UNUSED_2] = {
-+			.min = 3,	.max = 3,
-+		},
-+		.limits[IPA_RSRC_GROUP_DST_UC_RX_Q] = {
-+			.min = 2,	.max = 2,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_DST_DPS_DMARS] = {
-+		.limits[IPA_RSRC_GROUP_DST_LWA_DL] = {
-+			.min = 2,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_DST_UL_DL_DPL] = {
-+			.min = 1,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_DST_UNUSED_2] = {
-+			.min = 1,	.max = 2,
-+		},
-+		.limits[IPA_RSRC_GROUP_DST_UC_RX_Q] = {
-+			.min = 0,	.max = 2,
-+		},
-+	},
-+};
-+
-+/* Resource configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_resource_data ipa_resource_data = {
-+	.rsrc_group_src_count	= IPA_RSRC_GROUP_SRC_COUNT,
-+	.rsrc_group_dst_count	= IPA_RSRC_GROUP_DST_COUNT,
-+	.resource_src_count	= ARRAY_SIZE(ipa_resource_src),
-+	.resource_src		= ipa_resource_src,
-+	.resource_dst_count	= ARRAY_SIZE(ipa_resource_dst),
-+	.resource_dst		= ipa_resource_dst,
-+};
-+
-+/* IPA-resident memory region data for an SoC having IPA v4.1 */
-+static const struct ipa_mem ipa_mem_local_data[] = {
-+	{ .id = IPA_MEM_UC_SHARED,         .offset = 0x0000, .size = 0x0080, .canary_count = 0, },
-+	{ .id = IPA_MEM_UC_INFO,           .offset = 0x0080, .size = 0x0200, .canary_count = 0, },
-+	{ .id = IPA_MEM_V4_FILTER_HASHED,  .offset = 0x0288, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V4_FILTER,         .offset = 0x0308, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V6_FILTER_HASHED,  .offset = 0x0388, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V6_FILTER,         .offset = 0x0408, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V4_ROUTE_HASHED,   .offset = 0x0488, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V4_ROUTE,          .offset = 0x0508, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V6_ROUTE_HASHED,   .offset = 0x0588, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_V6_ROUTE,          .offset = 0x0608, .size = 0x0078, .canary_count = 2, },
-+	{ .id = IPA_MEM_MODEM_HEADER,      .offset = 0x0688, .size = 0x0140, .canary_count = 2, },
-+	/* No AP_HEADER: original size 0, omitted as zero-size regions are invalid. */
-+	{ .id = IPA_MEM_MODEM_PROC_CTX,    .offset = 0x07d0, .size = 0x0200, .canary_count = 2, },
-+	{ .id = IPA_MEM_AP_PROC_CTX,       .offset = 0x09d0, .size = 0x0200, .canary_count = 0, },
-+	{ .id = IPA_MEM_PDN_CONFIG,        .offset = 0x0bd8, .size = 0x0050, .canary_count = 2, },
-+	{ .id = IPA_MEM_STATS_QUOTA_MODEM, .offset = 0x0c30, .size = 0x0060, .canary_count = 2, },
-+	{ .id = IPA_MEM_STATS_TETHERING,   .offset = 0x0c90, .size = 0x0140, .canary_count = 0, },
-+	{ .id = IPA_MEM_STATS_V4_FILTER,   .offset = 0x0dd0, .size = 0x0180, .canary_count = 0, },
-+	{ .id = IPA_MEM_STATS_V6_FILTER,   .offset = 0x0f50, .size = 0x0180, .canary_count = 0, },
-+	{ .id = IPA_MEM_STATS_V4_ROUTE,    .offset = 0x10d0, .size = 0x0180, .canary_count = 0, },
-+	{ .id = IPA_MEM_STATS_V6_ROUTE,    .offset = 0x1250, .size = 0x0180, .canary_count = 0, },
-+	{ .id = IPA_MEM_STATS_DROP,        .offset = 0x13d0, .size = 0x0020, .canary_count = 0, },
-+	{ .id = IPA_MEM_MODEM,             .offset = 0x13f0, .size = 0x100c, .canary_count = 0, },
-+	{ .id = IPA_MEM_UC_EVENT_RING,     .offset = 0x2400, .size = 0x0400, .canary_count = 1, },
-+};
-+
-+/* Memory configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_mem_data ipa_mem_data = {
-+	.local_count	= ARRAY_SIZE(ipa_mem_local_data),
-+	.local		= ipa_mem_local_data,
-+	.smem_size	= 0x00002000,
-+};
-+
-+/* Interconnect bandwidths are in 1000 byte/second units */
-+static const struct ipa_interconnect_data ipa_interconnect_data[] = {
-+	{
-+		.name			= "memory",
-+		.peak_bandwidth		= 600000,	/* 600 MBps */
-+		.average_bandwidth	= 80000,	/* 80 MBps */
-+	},
-+	/* Average bandwidth is unused for the next two interconnects */
-+	{
-+		.name			= "imem",
-+		.peak_bandwidth		= 350000,	/* 350 MBps */
-+		.average_bandwidth	= 0,		/* unused */
-+	},
-+	{
-+		.name			= "config",
-+		.peak_bandwidth		= 40000,	/* 40 MBps */
-+		.average_bandwidth	= 0,		/* unused */
-+	},
-+};
-+
-+/* Clock and interconnect configuration data for an SoC having IPA v4.1 */
-+static const struct ipa_power_data ipa_power_data = {
-+	.core_clock_rate	= 100 * 1000 * 1000,	/* Hz */
-+	.interconnect_count	= ARRAY_SIZE(ipa_interconnect_data),
-+	.interconnect_data	= ipa_interconnect_data,
-+};
-+
-+/* Configuration data for an SoC having IPA v4.1 */
-+const struct ipa_data ipa_data_v4_1 = {
-+	.version		= IPA_VERSION_4_1,
-+	.backward_compat	= BIT(BCR_CMDQ_L_LACK_ONE_ENTRY) |
-+				  BIT(BCR_SUSPEND_L2_IRQ) |
-+				  BIT(BCR_HOLB_DROP_L2_IRQ) |
-+				  BIT(BCR_DUAL_TX),
-+	.qsb_count		= ARRAY_SIZE(ipa_qsb_data),
-+	.qsb_data		= ipa_qsb_data,
-+	.modem_route_count	= 8,
-+	.endpoint_count		= ARRAY_SIZE(ipa_gsi_endpoint_data),
-+	.endpoint_data		= ipa_gsi_endpoint_data,
-+	.resource_data		= &ipa_resource_data,
-+	.mem_data		= &ipa_mem_data,
-+	.power_data		= &ipa_power_data,
-+};
-diff --git a/drivers/net/ipa/ipa_data.h b/drivers/net/ipa/ipa_data.h
-index 3eb9dc2ce3398d07954c5a7e5be85292323b9b0f..20da2424b7da66f6c72ae05c33e88789bb1d7033 100644
---- a/drivers/net/ipa/ipa_data.h
-+++ b/drivers/net/ipa/ipa_data.h
-@@ -247,6 +247,7 @@ struct ipa_data {
+ struct xfs_buftarg *
+ xfs_alloc_buftarg(
+ 	struct xfs_mount	*mp,
+diff --git a/fs/xfs/xfs_buf.h b/fs/xfs/xfs_buf.h
+index a4729253b56..08282e1b3c8 100644
+--- a/fs/xfs/xfs_buf.h
++++ b/fs/xfs/xfs_buf.h
+@@ -103,6 +103,17 @@ struct xfs_buftarg {
+ 	unsigned int		bt_awu_max;
  
- extern const struct ipa_data ipa_data_v3_1;
- extern const struct ipa_data ipa_data_v3_5_1;
-+extern const struct ipa_data ipa_data_v4_1;
- extern const struct ipa_data ipa_data_v4_2;
- extern const struct ipa_data ipa_data_v4_5;
- extern const struct ipa_data ipa_data_v4_7;
-diff --git a/drivers/net/ipa/ipa_main.c b/drivers/net/ipa/ipa_main.c
-index 14ac2d2faf7c236c96a5cb3f91e3361c463de32d..fa26f36f64e5808890093147f2065fab9fd0a1bb 100644
---- a/drivers/net/ipa/ipa_main.c
-+++ b/drivers/net/ipa/ipa_main.c
-@@ -648,6 +648,10 @@ static const struct of_device_id ipa_match[] = {
- 		.compatible	= "qcom,sdm845-ipa",
- 		.data		= &ipa_data_v3_5_1,
- 	},
-+	{
-+		.compatible	= "qcom,sc8180x-ipa",
-+		.data		= &ipa_data_v4_1,
-+	},
- 	{
- 		.compatible	= "qcom,sc7180-ipa",
- 		.data		= &ipa_data_v4_2,
+ 	struct rhashtable	bt_hash;
++
++	/*
++	 * Cache flush tracking: a flush that takes the next number from
++	 * xfs_buftarg_flush_start() before it is submitted records it here
++	 * once it completes without error, keeping the highest number. A
++	 * completed flush with a number above a sample taken after some
++	 * writes completed covers those writes. Flushes without a number
++	 * are not counted.
++	 */
++	atomic64_t		bt_flush_submitted;
++	atomic64_t		bt_flush_completed;
+ };
+ 
+ struct xfs_buf_map {
+@@ -356,6 +367,38 @@ xfs_buf_update_cksum(struct xfs_buf *bp, unsigned long cksum_offset)
+ struct xfs_buftarg *xfs_alloc_buftarg(struct xfs_mount *mp,
+ 		struct file *bdev_file);
+ extern void xfs_free_buftarg(struct xfs_buftarg *);
++
++/*
++ * Sample the flush submit counter of @btp. Call this after the writes that a
++ * flush must cover have completed. Flushes take their number before they are
++ * submitted, so a flush numbered above the sample was submitted after it and
++ * covers those writes once it succeeds. xfs_buftarg_flushed_since() checks
++ * for such a flush.
++ */
++static inline s64
++xfs_buftarg_flush_seq(
++	struct xfs_buftarg	*btp)
++{
++	/*
++	 * Order the read after the write completions the caller waited for.
++	 * Pairs with the fully ordered atomic64_inc_return() that
++	 * xfs_buftarg_flush_start() does before the flush is submitted.
++	 */
++	smp_mb();
++	return atomic64_read(&btp->bt_flush_submitted);
++}
++
++/* Call right before submitting a cache flush to @btp. */
++static inline s64
++xfs_buftarg_flush_start(
++	struct xfs_buftarg	*btp)
++{
++	return atomic64_inc_return(&btp->bt_flush_submitted);
++}
++
++void xfs_buftarg_flush_done(struct xfs_buftarg *btp, s64 seq);
++bool xfs_buftarg_flushed_since(struct xfs_buftarg *btp, s64 submit_seq);
++int xfs_buftarg_flush(struct xfs_buftarg *btp);
+ extern void xfs_buftarg_wait(struct xfs_buftarg *);
+ extern void xfs_buftarg_drain(struct xfs_buftarg *);
+ int xfs_configure_buftarg(struct xfs_buftarg *btp, unsigned int sectorsize,
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 8070a07e601..e5bb67ca2c7 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -87,7 +87,9 @@ xfs_file_fsync(
+ 	int			datasync)
+ {
+ 	struct xfs_inode	*ip = XFS_I(file->f_mapping->host);
++	struct xfs_buftarg	*btp = xfs_inode_buftarg(ip);
+ 	int			log_flushed = 0;
++	s64			submit_seq;
+ 	int			error;
+ 
+ 	trace_xfs_file_fsync(ip);
+@@ -95,6 +97,7 @@ xfs_file_fsync(
+ 	error = file_write_and_wait_range(file, start, end);
+ 	if (error)
+ 		return error;
++	submit_seq = xfs_buftarg_flush_seq(btp);
+ 
+ 	if (xfs_is_shutdown(ip->i_mount))
+ 		return -EIO;
+@@ -119,12 +122,17 @@ xfs_file_fsync(
+ 	 * file data target cache here. This can happen for fdatasync/O_DSYNC
+ 	 * when no metadata needed to be committed.
+ 	 *
++	 * Flush the file data target unless a flush submitted to it after the
++	 * data writes above completed has already finished. That is usually
++	 * the flush before an iclog written out by this log force or by
++	 * another task, or another fsync's flush.
++	 *
+ 	 * Use the inode's actual file data target rather than assuming the
+ 	 * main data device.
+ 	 */
+-	if (!log_flushed)
+-		return blkdev_issue_flush(xfs_inode_buftarg(ip)->bt_bdev);
+-	return 0;
++	if (log_flushed || xfs_buftarg_flushed_since(btp, submit_seq))
++		return 0;
++	return xfs_buftarg_flush(btp);
+ }
+ 
+ static int
+diff --git a/fs/xfs/xfs_log.c b/fs/xfs/xfs_log.c
+index 74b324f915a..b46f9c1ce8e 100644
+--- a/fs/xfs/xfs_log.c
++++ b/fs/xfs/xfs_log.c
+@@ -1211,6 +1211,8 @@ xlog_ioend_work(
+ 		xlog_force_shutdown(log, SHUTDOWN_LOG_IO_ERROR);
+ 	}
+ 
++	if (!error && iclog->ic_flush_seq)
++		xfs_buftarg_flush_done(log->l_targ, iclog->ic_flush_seq);
+ 	xlog_state_done_syncing(iclog);
+ 	bio_uninit(&iclog->ic_bio);
+ 
+@@ -1570,19 +1572,21 @@ xlog_flush_end_io(
+ 	bio_put(bio);
+ }
+ 
+-static void
++static s64
+ xlog_flush_async(
+ 	struct xlog_flush_done	*done,
+-	struct block_device	*bdev)
++	struct xfs_buftarg	*btp)
+ {
++	s64			seq = xfs_buftarg_flush_start(btp);
+ 	struct bio		*bio;
+ 
+-	bio = bio_alloc(bdev, 0, REQ_OP_WRITE | REQ_PREFLUSH | REQ_SYNC,
++	bio = bio_alloc(btp->bt_bdev, 0, REQ_OP_WRITE | REQ_PREFLUSH | REQ_SYNC,
+ 			GFP_NOFS);
+ 	bio->bi_private = done;
+ 	bio->bi_end_io = xlog_flush_end_io;
+ 	atomic_inc(&done->pending);
+ 	submit_bio(bio);
++	return seq;
+ }
+ 
+ /*
+@@ -1605,16 +1609,18 @@ xlog_flush_data_caches(
+ 		.pending	= ATOMIC_INIT(1),
+ 		.done		= COMPLETION_INITIALIZER_ONSTACK(done.done),
+ 	};
++	s64			dseq = 0, rseq = 0;
++	s64			lseq;
+ 
+ 	*did_flush = false;
+ 	if (mp->m_ddev_targp != mp->m_logdev_targp &&
+ 	    bdev_write_cache(mp->m_ddev_targp->bt_bdev)) {
+-		xlog_flush_async(&done, mp->m_ddev_targp->bt_bdev);
++		dseq = xlog_flush_async(&done, mp->m_ddev_targp);
+ 		*did_flush = true;
+ 	}
+ 	if (mp->m_rtdev_targp && mp->m_rtdev_targp != mp->m_ddev_targp &&
+ 	    bdev_write_cache(mp->m_rtdev_targp->bt_bdev)) {
+-		xlog_flush_async(&done, mp->m_rtdev_targp->bt_bdev);
++		rseq = xlog_flush_async(&done, mp->m_rtdev_targp);
+ 		*did_flush = true;
+ 	}
+ 
+@@ -1623,12 +1629,17 @@ xlog_flush_data_caches(
+ 		 * If we flushed any other device, also use an async flush for
+ 		 * the log device so that all flushes happen in parallel.
+ 		 */
+-		xlog_flush_async(&done, mp->m_logdev_targp->bt_bdev);
++		lseq = xlog_flush_async(&done, mp->m_logdev_targp);
+ 
+ 		xlog_flush_done(&done);
+ 		wait_for_completion(&done.done);
+ 		if (done.status)
+ 			return -EIO;
++		if (dseq)
++			xfs_buftarg_flush_done(mp->m_ddev_targp, dseq);
++		if (rseq)
++			xfs_buftarg_flush_done(mp->m_rtdev_targp, rseq);
++		xfs_buftarg_flush_done(mp->m_logdev_targp, lseq);
+ 	}
+ 
+ 	return 0;
+@@ -1678,14 +1689,18 @@ xlog_write_iclog(
+ 	iclog->ic_bio.bi_iter.bi_sector = log->l_logBBstart + bno;
+ 	iclog->ic_bio.bi_end_io = xlog_bio_end_io;
+ 	iclog->ic_bio.bi_private = iclog;
++	iclog->ic_flush_seq = 0;
+ 
+ 	if (iclog->ic_flags & XLOG_ICL_NEED_FLUSH) {
+ 		if (xlog_flush_data_caches(log->l_mp, &did_flush))
+ 			goto shutdown;
+ 	}
+ 	if (!did_flush &&
+-	    (iclog->ic_flags & (XLOG_ICL_NEED_FLUSH | XLOG_ICL_NEED_FLUSH_LOG)))
++	    (iclog->ic_flags &
++	     (XLOG_ICL_NEED_FLUSH | XLOG_ICL_NEED_FLUSH_LOG))) {
+ 		iclog->ic_bio.bi_opf |= REQ_PREFLUSH;
++		iclog->ic_flush_seq = xfs_buftarg_flush_start(log->l_targ);
++	}
+ 	if (iclog->ic_flags & XLOG_ICL_NEED_FUA)
+ 		iclog->ic_bio.bi_opf |= REQ_FUA;
+ 
+diff --git a/fs/xfs/xfs_log_priv.h b/fs/xfs/xfs_log_priv.h
+index 529720a4984..df0f13c4e04 100644
+--- a/fs/xfs/xfs_log_priv.h
++++ b/fs/xfs/xfs_log_priv.h
+@@ -222,6 +222,7 @@ struct xlog_in_core {
+ #endif
+ 	struct semaphore	ic_sema;
+ 	struct work_struct	ic_end_io_work;
++	s64			ic_flush_seq;	/* buftarg flush number */
+ 	struct bio		ic_bio;
+ 	struct bio_vec		ic_bvec[];
+ };
 
+---
+base-commit: 5e7b6fe39324913f6416c854c6ed3a1793aaba8e
+change-id: 20261105-xfs-fsync-flush-seq-83ae2cff6225
+
+Best regards,
 -- 
-2.47.3
+Daejun Park <daejun7.park@samsung.com>
 
