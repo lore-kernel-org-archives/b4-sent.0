@@ -1,110 +1,81 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 10:31:58 +0000
-Subject: [PATCH 5.10.y v2 2/2] KVM: x86: Acquire kvm->srcu when handling
- KVM_SET_VCPU_EVENTS
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Subject: [PATCH v4 0/2] media: verisilicon: Fix VDPU2 decoder error
+ handling
+Date: Thu, 26 Nov 2026 11:03:04 +0000
+Message-Id: <20261126-vdpu2-errreset-v4-0-a955b1c8b119@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-kvm-510d-v2-2-bcba96aa2088@certik.com>
-References: <20261126-kvm-510d-v2-0-bcba96aa2088@certik.com>
-In-Reply-To: <20261126-kvm-510d-v2-0-bcba96aa2088@certik.com>
-To: stable@vger.kernel.org
-Cc: Sean Christopherson <seanjc@google.com>, 
- Paolo Bonzini <pbonzini@redhat.com>, kvm@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795689116; l=3140;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=PMK0gZrBAmRQrVrXOfeI0jd8iITYPjI9GzoyJjp5PyQ=;
- b=AsNEqMlI3dBGqzOWLi52zGIO5UhAN1dWaR5vo5DfilLwILCQivK0vI/dLLcKXv5gMX6lGoj2f
- 5Nd/fukKfjZAugt/rMjZ6/vW6yPksZRXjnGnE2WfM5pnDrYWGqGPl1P
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2XNTQ6CMBCG4auQrq3pP9WV9zAuCp1CjYppodEQ7
+ m7BmBBcfsk874woQvAQ0bEYUYDko+8eeYhdgerWPBrA3uaNGGGKUipxss+BYQghQIQea6V1SQg
+ /cMNRRs8Azr+W4Pny3XGorlD3c2W+aH3su/BePiY63/3ih208UUyw084IwitluDk1d+Nv+7q7o
+ zme2Ioz8sdZ5toJcFKCsgBbztec/nGeOSl5JUFW1iqx5tM0fQB6SH54PAEAAA==
+X-Change-ID: 20261115-vdpu2-errreset-8688700393a3
+To: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>, Jonas Karlman <jonas@kwiboo.se>, 
+ Boris Brezillon <boris.brezillon@collabora.com>, 
+ Hans Verkuil <hverkuil@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Arun Iyengar <aiyengar1990@gmail.com>, stable@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795690985; l=1888;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=11oMye5IkP9PU+O+uZwvxvHF43EAO+r22v9RqX+wWWA=;
+ b=46EXLdYywrCDMrE7/4LRwjV52TTjcTlQPOOTob2WPUNbuO4utqURogAo66ZFyD0dwAugtxaHO
+ OWr3wB+yxhICoDmr2YJp0c8pOdGsIgeop8IxufxYqpfNRdhvIJEAkTM
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sean Christopherson <seanjc@google.com>
+The VDPU2 decoder reports failed decodes as done, and after an error
+its interrupt handler can finish a job while the decoder may still be
+active.
 
-commit 4bcdd831d9d01e0fb64faea50732b59b2ee88da1 upstream.
+Tested on Orange Pi 5 (RK3588S), v7.3-based KASAN kernel:
+5 bus errors and 5 timeouts, simulated by a test-only patch that injects
+the status bits, each reset once and ended the job;
+buffer-empty kept the job, output bit-exact; 186 resets in error-stream
+stress, no watchdog; VP8 61/61 and H.264 conformance unchanged.
+Build-tested on media next. MPEG-2, RK3399 and RK3568 untested.
 
-Grab kvm->srcu when processing KVM_SET_VCPU_EVENTS, as KVM will forcibly
-leave nested VMX/SVM if SMM mode is being toggled, and leaving nested VMX
-reads guest memory.
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
 
-Note, kvm_vcpu_ioctl_x86_set_vcpu_events() can also be called from KVM_RUN
-via sync_regs(), which already holds SRCU.  I.e. trying to precisely use
-kvm_vcpu_srcu_read_lock() around the problematic SMM code would cause
-problems.  Acquiring SRCU isn't all that expensive, so for simplicity,
-grab it unconditionally for KVM_SET_VCPU_EVENTS.
-
- =============================
- WARNING: suspicious RCU usage
- 6.10.0-rc7-332d2c1d713e-next-vm #552 Not tainted
- -----------------------------
- include/linux/kvm_host.h:1027 suspicious rcu_dereference_check() usage!
-
- other info that might help us debug this:
-
- rcu_scheduler_active = 2, debug_locks = 1
- 1 lock held by repro/1071:
-  #0: ffff88811e424430 (&vcpu->mutex){+.+.}-{3:3}, at: kvm_vcpu_ioctl+0x7d/0x970 [kvm]
-
- stack backtrace:
- CPU: 15 PID: 1071 Comm: repro Not tainted 6.10.0-rc7-332d2c1d713e-next-vm #552
- Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 0.0.0 02/06/2015
- Call Trace:
-  <TASK>
-  dump_stack_lvl+0x7f/0x90
-  lockdep_rcu_suspicious+0x13f/0x1a0
-  kvm_vcpu_gfn_to_memslot+0x168/0x190 [kvm]
-  kvm_vcpu_read_guest+0x3e/0x90 [kvm]
-  nested_vmx_load_msr+0x6b/0x1d0 [kvm_intel]
-  load_vmcs12_host_state+0x432/0xb40 [kvm_intel]
-  vmx_leave_nested+0x30/0x40 [kvm_intel]
-  kvm_vcpu_ioctl_x86_set_vcpu_events+0x15d/0x2b0 [kvm]
-  kvm_arch_vcpu_ioctl+0x1107/0x1750 [kvm]
-  ? mark_held_locks+0x49/0x70
-  ? kvm_vcpu_ioctl+0x7d/0x970 [kvm]
-  ? kvm_vcpu_ioctl+0x497/0x970 [kvm]
-  kvm_vcpu_ioctl+0x497/0x970 [kvm]
-  ? lock_acquire+0xba/0x2d0
-  ? find_held_lock+0x2b/0x80
-  ? do_user_addr_fault+0x40c/0x6f0
-  ? lock_release+0xb7/0x270
-  __x64_sys_ioctl+0x82/0xb0
-  do_syscall_64+0x6c/0x170
-  entry_SYSCALL_64_after_hwframe+0x4b/0x53
- RIP: 0033:0x7ff11eb1b539
-  </TASK>
-
-Fixes: f7e570780efc ("KVM: x86: Forcibly leave nested virt when SMM state is toggled")
-Cc: stable@vger.kernel.org
-Link: https://lore.kernel.org/r/20240723232055.3643811-1-seanjc@google.com
-Signed-off-by: Sean Christopherson <seanjc@google.com>
-[ adapted to 5.10.y: open-coded srcu_read_lock() as in the 5.15.y backport ]
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
+Changes in v4:
+- Patch 2: soft-reset the decoder after a bus, stream or ASO error
+  or a timeout, before finishing the job (Nicolas)
+- Rebased on media next
+- Link to v3: https://patch.msgid.link/20261121-vdpu2-errreset-v3-0-073b5e5bdd64@gmail.com
 
- arch/x86/kvm/x86.c | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v3:
+- Patch 2: read DEC_E before clearing the status, as G2 does (Sashiko)
+- Link to v2: https://patch.msgid.link/20261120-vdpu2-errreset-v2-0-8f4ef55e6dee@gmail.com
 
-diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
-index 69ab4e317422..d0bbf595dd47 100644
---- a/arch/x86/kvm/x86.c
-+++ b/arch/x86/kvm/x86.c
-@@ -4970,7 +4970,9 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
- 		if (copy_from_user(&events, argp, sizeof(struct kvm_vcpu_events)))
- 			break;
- 
-+		vcpu->srcu_idx = srcu_read_lock(&vcpu->kvm->srcu);
- 		r = kvm_vcpu_ioctl_x86_set_vcpu_events(vcpu, &events);
-+		srcu_read_unlock(&vcpu->kvm->srcu, vcpu->srcu_idx);
- 		break;
- 	}
- 	case KVM_GET_DEBUGREGS: {
+Changes in v2:
+- Patch 2: no reset after an error; handle the interrupt like the G2
+  handler instead (Nicolas)
+- Link to v1: https://patch.msgid.link/20261119-vdpu2-errreset-v1-0-f8fa403b6a3a@gmail.com
 
--- 
-2.43.0
+---
+Arun Iyengar (2):
+      media: verisilicon: Don't report VDPU2 decoder errors as success
+      media: verisilicon: Reset the VDPU2 decoder after an error
+
+ .../platform/verisilicon/rockchip_vpu2_regs.h      |  4 +++
+ .../media/platform/verisilicon/rockchip_vpu_hw.c   | 42 +++++++++++++++++++---
+ 2 files changed, 41 insertions(+), 5 deletions(-)
+---
+base-commit: b4e3c4b6a36fd76f57bf3e48638f68ddecc54ba4
+change-id: 20261115-vdpu2-errreset-8688700393a3
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
