@@ -1,166 +1,92 @@
-From: Weidong Wang <weidongw@illinois.edu>
-Date: Wed, 25 Nov 2026 21:40:02 -0600
-Subject: [PATCH net v2] net/rds: tcp: bound the message length announced by
- the peer
+From: Ilia Snezhkov <iasnezhkov@gmail.com>
+To: jic23@kernel.org, dlechner@baylibre.com, nuno.sa@analog.com, 
+ andy@kernel.org
+Cc: Arnav Kapoor <kapoorarnav43@gmail.com>, linux-iio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+Subject: [PATCH v2] iio: inkern: guard fwnode_xlate with info_exist_lock
+Date: Thu, 26 Nov 2026 06:06:15 +0000
+Message-Id: <20261126060615.63790-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-h047-send-v2-1-b29031cf6b93@illinois.edu>
-X-B4-Tracking: v=1; b=H4sIABGqB2sC/02NQQ6CQAxFr0K6dgwtIMSV9zAsgClSQwYyBaIh3
- N0BXbh8Py/vr6DshRWu0QqeF1EZXAA6RdB0lXuwERsYKKYLIsami9PcKDtrsrBlNk2poASCP3p
- u5XW07uB4gvI76lw/uZn2yq51otPg38fjgof8i+NffEGDhnLKq6SwddvYm/S9uEH0zHaGctu2D
- 436Eq68AAAA
-X-Change-ID: 20261110-h047-send-52025d442823
-To: Allison Henderson <achender@kernel.org>, 
- Andy Grover <andy.grover@oracle.com>
-Cc: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- netdev@vger.kernel.org, linux-rdma@vger.kernel.org, 
- rds-devel@oss.oracle.com, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Zijie Zhao <zijie4@illinois.edu>, 
- Weidong Wang <weidongw@illinois.edu>
+Content-Transfer-Encoding: 8bit
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795664403; l=5926;
- i=weidongw@illinois.edu; s=20261108; h=from:subject:message-id;
- bh=bSkQAfudci/H1SL4hYaSArW1+3HJjjLr5iIlEdGVrd8=;
- b=tgAYzk4sJtBiOsvxlCJhJlDpdGyhvajNWsBNw2I8vnQt8m2j6IwKlScko4M0oT2Qz0/JNE+KO
- Tyols1fJOkYCU+Ox3W4JiCL0vcQaMZmNxiOW5D7RC9DpEDpKp6W8aY1
-X-Developer-Key: i=weidongw@illinois.edu; a=ed25519;
- pk=DR2S1xPEa5sELrWPfOpvUphJQ2VHC+MDc/wJavE/ifg=
-X-Endpoint-Received: by B4 Relay for weidongw@illinois.edu/20261108 with auth_id=1449
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795673175; l=2870;
+ i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
+ bh=LZxT2J+30sK/RMg/s6ys55XZRZuLrJ3zmuWig2KBQD8=;
+ b=zBrKnF6eF+8xtdTuXbda98riCLhYhDmBuYAII0irbpbLvslAgG9uvIj7McgP202pcRhp7NZeZ
+ OT8YDaXEpIjCIY4qVZmTUj1gzuqVB1lgpJcxAWMIypyTi4Dw5qZehTF
+X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
+ pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
+X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rds_tcp_data_recv() takes the payload length of an incoming message from
-the peer's header and queues pskb_extract() clones of the received data
-on the incoming message until that many bytes have arrived. Nothing
-checks the length, so a peer that announces h_len = 0xffffffff and keeps
-sending makes the receiver hold up to 4 GiB per connection. The clones
-are no longer on the socket's receive queue, so they are not charged to
-the socket and TCP keeps the receive window open.
+__fwnode_iio_channel_get() dereferences indio_dev->info->fwnode_xlate
+and invokes it without holding info_exist_lock. Concurrent
+iio_device_unregister() clears indio_dev->info under info_exist_lock,
+allowing a NULL dereference or callback execution during provider
+teardown.
 
-Senders are limited to RDS_MAX_MSG_SIZE in rds_sendmsg(). Apply the same
-limit on receive: when a header exceeds it, drop the connection once,
-then consume and discard the rest of the stream until the connection is
-shut down. Discarding keeps the receive queue draining, so
-rds_tcp_conn_path_shutdown() can finish as soon as the peer closes
-instead of waiting out its 5 second limit.
+Hold iio_dev_opaque->info_exist_lock with scoped_guard(mutex, ...)
+matching the rest of inkern.c, and return -EPROBE_DEFER if
+indio_dev->info is NULL. Since iio_device_unregister() calls
+cdev_device_del() before clearing indio_dev->info, seeing a NULL info
+pointer corresponds to racing right before device removal from
+iio_bus_type, where !idev already returns -EPROBE_DEFER. Using
+-EPROBE_DEFER also avoids colliding with the -ENODEV sentinel used by
+callers to continue parent or map-list lookups and avoids the named
+lookup -EINVAL fallback in __fwnode_iio_channel_get_by_name().
 
-RDS_MAX_MSG_SIZE has been enforced on send since v4.11; a peer running
-an older kernel could still send larger messages over TCP, and such
-connections are now dropped.
-
-The issue was discovered by an AI code review agent (an LLM-based
-bug-finding tool developed by Zijie Zhao and the submitter) and
-confirmed by triggering it on an unmodified kernel, without error
-injection, on x86_64 under QEMU: a plain TCP client in a second network
-namespace connects to the rds_tcp listener (port 16385), sends one RDS
-header with h_len = 0xffffffff and then 1 GiB of payload. The receiver
-held about 1.1 GiB until the connection was closed; the same 1 GiB sent
-as 1 MiB messages held about 60 MiB.
-
-With this patch the connection is dropped right after the header and
-nothing is held, while the 1 MiB messages are processed as before. A
-client that closes on the receiver's FIN sees the shutdown complete
-within milliseconds; one that keeps sending is reset at the 5 second
-limit, and what it sends until then is discarded. The RDS selftest
-(tools/testing/selftests/net/rds, rds_run.sh -T tcp, also with -l 10
--c 10 -u 10) passes with the patch applied.
-
-The reproducer, fix and changelog were drafted with AI assistance
-(Claude), then reviewed and tested by the submitter.
-
-Fixes: 70041088e3b9 ("RDS: Add TCP transport to RDS")
-Cc: stable@vger.kernel.org
-Cc: Zijie Zhao <zijie4@illinois.edu>
-Signed-off-by: Weidong Wang <weidongw@illinois.edu>
+Fixes: acd8256723f2 ("iio: inkern: Add of_xlate function to struct iio_info")
+Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
 ---
-Tested on v7.4-rc1 (05441d697f7f), x86_64, KASAN, QEMU/KVM, 3 GiB
-guest; net/rds/tcp_recv.c is the same in net, where the patch applies
-as is. Setup: rds_tcp listener in the initial netns (10.0.0.2); a plain
-TCP client (no AF_RDS) in a second netns (10.0.0.1) over a veth pair.
-
-                   1 GiB after one header     1 GiB as 1 MiB
-                   with h_len = 0xffffffff    messages (control)
-  unpatched        ~1.1 GiB held until close  50-80 MiB
-  v2               dropped after the header,  50-80 MiB, processed
-                   nothing held               as before
-
-This client never closes, so it is reset at the 5 s shutdown limit; v2
-reads and discards what it sends until then (~460 MiB here), where v1
-stopped reading and let the receive window close.
-
-Shutdown after the drop (one oversized header and 64 KiB, the client
-closes as soon as it sees the receiver's FIN), timed with kprobes:
-
-                   rds_tcp_conn_path_shutdown()   rds_conn_path_drop()
-  v1               5344 ms                        62 calls
-  v2               7 ms                           3 calls
-
-A normal close (unpatched kernel, client closes first) also makes 3
-rds_conn_path_drop() calls.
-
-selftests/net/rds: rds_run.sh -T tcp and rds_run.sh -T tcp -l 10 -c 10
--u 10 pass with the patch. No KASAN/UBSAN reports; checkpatch clean.
-
-The limit is per connection; a peer with several source addresses gets
-one connection per address. The reproducer is not attached (AI-found
-issue, see security-bugs.rst) and can be shared on request.
-
 Changes in v2:
-- Drop the connection once, when the oversized header completes, then
-  consume and discard the rest of the stream until it is shut down. v1
-  consumed nothing after the check, so the receive queue never drained:
-  rds_tcp_conn_path_shutdown() ran its whole 5 s loop and each round
-  called rds_conn_path_drop() again (reported by Sashiko).
-- Only the TCP receive path is bounded. The IB receive path also takes
-  h_len from the peer; I will look at it separately.
-- Allison's Reviewed-by is not carried over, since the patch changed.
-- Link to v1: https://patch.msgid.link/20261111-h047-send-v1-1-2727a38dbfcd@illinois.edu
----
- net/rds/tcp_recv.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+- Return -EPROBE_DEFER instead of -ENODEV when indio_dev->info is NULL
+  so callers do not treat it as the "no channel on this node, keep
+  looking" sentinel and named lookups do not overwrite it to -EINVAL
+  (Arnav Kapoor).
+- Drop the unrelated indio_dev->num_channels bounds check from this
+  locking fix (Arnav Kapoor).
+- Move the AI coding assistant note below the --- separator.
 
-diff --git a/net/rds/tcp_recv.c b/net/rds/tcp_recv.c
-index ffe843ca219c..4ca25b9d25d4 100644
---- a/net/rds/tcp_recv.c
-+++ b/net/rds/tcp_recv.c
-@@ -210,9 +210,29 @@ static int rds_tcp_data_recv(read_descriptor_t *desc, struct sk_buff *skb,
- 					be32_to_cpu(tinc->ti_inc.i_hdr.h_len);
- 				tinc->ti_inc.i_rx_lat_trace[RDS_MSG_RX_START] =
- 					local_clock();
-+				/*
-+				 * The payload is queued on tinc until the
-+				 * whole message has arrived, so a peer must
-+				 * not announce more than a sender is allowed
-+				 * to send.
-+				 */
-+				if (tc->t_tinc_data_rem > RDS_MAX_MSG_SIZE)
-+					rds_conn_path_drop(cp, false);
- 			}
- 		}
+Link: https://lore.kernel.org/r/20261125234827.94791-1-iasnezhkov@gmail.com
+Found and drafted with an AI coding assistant.
+
+ drivers/iio/inkern.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/iio/inkern.c b/drivers/iio/inkern.c
+index 1f22275..5d3c6ab 100644
+--- a/drivers/iio/inkern.c
++++ b/drivers/iio/inkern.c
+@@ -145,6 +145,7 @@ static int __fwnode_iio_channel_get(struct iio_channel *channel,
+ 				    struct fwnode_handle *fwnode, int index)
+ {
+ 	struct fwnode_reference_args iiospec;
++	struct iio_dev_opaque *iio_dev_opaque;
+ 	struct device *idev;
+ 	struct iio_dev *indio_dev;
+ 	int err;
+@@ -162,10 +163,15 @@ static int __fwnode_iio_channel_get(struct iio_channel *channel,
+ 	}
  
-+		/*
-+		 * After an oversized header the connection is being dropped:
-+		 * consume and discard the rest of the stream until it is shut
-+		 * down, so that the receive queue drains and the shutdown is
-+		 * not held up.
-+		 */
-+		if (!tc->t_tinc_hdr_rem &&
-+		    tc->t_tinc_data_rem > RDS_MAX_MSG_SIZE) {
-+			left = 0;
-+			break;
-+		}
-+
- 		if (left && tc->t_tinc_data_rem) {
- 			to_copy = min(tc->t_tinc_data_rem, left);
- 
-
----
-base-commit: 05441d697f7f9a927264f4058cbbc6a03dfcac9d
-change-id: 20261110-h047-send-52025d442823
-
-Best regards,
---  
-Weidong Wang <weidongw@illinois.edu>
+ 	indio_dev = dev_to_iio_dev(idev);
++	iio_dev_opaque = to_iio_dev_opaque(indio_dev);
+ 	channel->indio_dev = indio_dev;
+-	if (indio_dev->info->fwnode_xlate)
+-		index = indio_dev->info->fwnode_xlate(indio_dev, &iiospec);
+-	else
+-		index = __fwnode_iio_simple_xlate(indio_dev, &iiospec);
++	scoped_guard(mutex, &iio_dev_opaque->info_exist_lock) {
++		if (!indio_dev->info)
++			index = -EPROBE_DEFER;
++		else if (indio_dev->info->fwnode_xlate)
++			index = indio_dev->info->fwnode_xlate(indio_dev, &iiospec);
++		else
++			index = __fwnode_iio_simple_xlate(indio_dev, &iiospec);
++	}
+ 	fwnode_handle_put(iiospec.fwnode);
+ 	if (index < 0)
+ 		goto err_put;
+-- 
+2.54.0 (Apple Git-157)
 
