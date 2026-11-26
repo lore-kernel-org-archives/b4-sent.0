@@ -1,11 +1,11 @@
 From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Thu, 26 Nov 2026 09:14:06 +0100
-Subject: [PATCH net-next v2 2/3] net: ipa: add IPA v4.1 register
- definitions
+Date: Thu, 26 Nov 2026 09:14:07 +0100
+Subject: [PATCH net-next v2 3/3] net: ipa: add SC8180X (IPA v4.1)
+ configuration data
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-qcom-ipa-sc8180x-v2-2-89eba621da95@gmail.com>
+Message-Id: <20261126-qcom-ipa-sc8180x-v2-3-89eba621da95@gmail.com>
 References: <20261126-qcom-ipa-sc8180x-v2-0-89eba621da95@gmail.com>
 In-Reply-To: <20261126-qcom-ipa-sc8180x-v2-0-89eba621da95@gmail.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -17,557 +17,438 @@ Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Robert Ijtsma <robertijtsma@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795680844; l=18733;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795680844; l=14262;
  i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=QBK7woHTm8ykLTj6c7koSqr6xj5A8+5atPUg49E4MxY=;
- b=ZSyvuzX5ZBNQsQBfsOKj5Ot2o04/pQ7XmJO9h+TAg9XRGDG1vV05aTXFn+sLNyNSk/VuNnVc3
- wLrC90SBPKbDGIjftOfZp8NgMdUvjEmMuQab2eBp2vsn7mEdyvSRbpQ
+ bh=j5l/eqt+FJwLhpdre8SQqqsOXMfSFCyck8xJ/a/BNVM=;
+ b=+vDwoYtn7UOeE9XqDBrGTY4TTfyzZFEc1Us3LT4nB9ktp85STYCERh8SFrqj8MMPtIa9OLoG/
+ kPbx69Ps8tLBvCAMyP7K8Tmw4fz6rH6KJH7Ao8WBNATnnV8YwSLdnln
 X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
  pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
 X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the IPA v4.1 register table (ipa_regs_v4_1) and map IPA_VERSION_4_1
-to gsi_regs_v4_0 so SC8180X IPA v4.1 hardware can be driven by the
-Qualcomm IPA driver.
+Add the SC8180X (IPA v4.1) endpoint, resource group, shared memory,
+and backward-compatibility configuration table (ipa_data_v4_1) and bind
+it to the qcom,sc8180x-ipa compatible.
+
+The IPA IMEM slice is described via the devicetree sram property rather
+than hardcoding deprecated imem_addr/imem_size fields in ipa_mem_data.
+
+Register offsets and endpoint/resource limits are derived from the
+downstream Qualcomm msm-4.14 poipu/sm8150 IPA v4.1 driver and SC8180X
+devicetree tables, adapted to the upstream ipa_mem_data layout.
+
+Tested on Microsoft Surface Pro X SQ2 (SC8180X, Snapdragon X24 LTE
+modem) with rmnet_ipa0 MAPv4 and ModemManager qcom-soc QMAP bearers.
 
 Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
 ---
- drivers/net/ipa/Makefile           |   2 +-
- drivers/net/ipa/gsi_reg.c          |   1 +
- drivers/net/ipa/ipa_reg.c          |   2 +
- drivers/net/ipa/ipa_reg.h          |   1 +
- drivers/net/ipa/reg/ipa_reg-v4.1.c | 472 +++++++++++++++++++++++++++++++++++++
- 5 files changed, 477 insertions(+), 1 deletion(-)
+ drivers/net/ipa/Makefile             |   2 +-
+ drivers/net/ipa/data/ipa_data-v4.1.c | 354 +++++++++++++++++++++++++++++++++++
+ drivers/net/ipa/ipa_data.h           |   1 +
+ drivers/net/ipa/ipa_main.c           |   4 +
+ 4 files changed, 360 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/net/ipa/Makefile b/drivers/net/ipa/Makefile
-index e148ec3c1a10103a1d5de1707f3b599ac5b3cd7d..2420af0d8325099d6483b886eac40f227e050616 100644
+index 2420af0d8325099d6483b886eac40f227e050616..025a3135fa5174fb5d7c7cc8d8877417f95feb0d 100644
 --- a/drivers/net/ipa/Makefile
 +++ b/drivers/net/ipa/Makefile
-@@ -2,7 +2,7 @@
- #
- # Makefile for the Qualcomm IPA driver.
- 
--IPA_REG_VERSIONS	:=	3.1 3.5.1 4.2 4.5 4.7 4.9 4.11 5.0 5.5
-+IPA_REG_VERSIONS	:=	3.1 3.5.1 4.1 4.2 4.5 4.7 4.9 4.11 5.0 5.5
- 
+@@ -7,7 +7,7 @@ IPA_REG_VERSIONS	:=	3.1 3.5.1 4.1 4.2 4.5 4.7 4.9 4.11 5.0 5.5
  # Some IPA versions can reuse another set of GSI register definitions.
  GSI_REG_VERSIONS	:=	3.1 3.5.1 4.0 4.5 4.9 4.11 5.0
-diff --git a/drivers/net/ipa/gsi_reg.c b/drivers/net/ipa/gsi_reg.c
-index e13cf835a013c9988873ca0a866dcf4155bef19f..bad9fc86a1ba720f93288e411d42d9d81d865ccb 100644
---- a/drivers/net/ipa/gsi_reg.c
-+++ b/drivers/net/ipa/gsi_reg.c
-@@ -96,6 +96,7 @@ static const struct regs *gsi_regs(struct gsi *gsi)
- 	case IPA_VERSION_3_5_1:
- 		return &gsi_regs_v3_5_1;
  
-+	case IPA_VERSION_4_1:
- 	case IPA_VERSION_4_2:
- 		return &gsi_regs_v4_0;
+-IPA_DATA_VERSIONS	:=	3.1 3.5.1 4.2 4.5 4.7 4.9 4.11 5.0 5.2 5.5
++IPA_DATA_VERSIONS	:=	3.1 3.5.1 4.1 4.2 4.5 4.7 4.9 4.11 5.0 5.2 5.5
  
-diff --git a/drivers/net/ipa/ipa_reg.c b/drivers/net/ipa/ipa_reg.c
-index 30bd69f4c147cdf23e020b99f2ec5cb06aa37c06..06dffc0718c2a8822795cfaec7066c357e86f523 100644
---- a/drivers/net/ipa/ipa_reg.c
-+++ b/drivers/net/ipa/ipa_reg.c
-@@ -114,6 +114,8 @@ static const struct regs *ipa_regs(enum ipa_version version)
- 		return &ipa_regs_v3_1;
- 	case IPA_VERSION_3_5_1:
- 		return &ipa_regs_v3_5_1;
-+	case IPA_VERSION_4_1:
-+		return &ipa_regs_v4_1;
- 	case IPA_VERSION_4_2:
- 		return &ipa_regs_v4_2;
- 	case IPA_VERSION_4_5:
-diff --git a/drivers/net/ipa/ipa_reg.h b/drivers/net/ipa/ipa_reg.h
-index 61b7c441ae95dd08b9e6360e28aadd66051cb90a..8bf908ecfcc84e32cbe1ebdf92979687cde48e2a 100644
---- a/drivers/net/ipa/ipa_reg.h
-+++ b/drivers/net/ipa/ipa_reg.h
-@@ -631,6 +631,7 @@ enum ipa_reg_ipa_irq_uc_field_id {
+ obj-$(CONFIG_QCOM_IPA)	+=	ipa.o
  
- extern const struct regs ipa_regs_v3_1;
- extern const struct regs ipa_regs_v3_5_1;
-+extern const struct regs ipa_regs_v4_1;
- extern const struct regs ipa_regs_v4_2;
- extern const struct regs ipa_regs_v4_5;
- extern const struct regs ipa_regs_v4_7;
-diff --git a/drivers/net/ipa/reg/ipa_reg-v4.1.c b/drivers/net/ipa/reg/ipa_reg-v4.1.c
+diff --git a/drivers/net/ipa/data/ipa_data-v4.1.c b/drivers/net/ipa/data/ipa_data-v4.1.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..5a80c4a5dc68491dc7848d0f579a8429b0bf84ca
+index 0000000000000000000000000000000000000000..9e12419684d744cdc79c32f0333e52b437f7f824
 --- /dev/null
-+++ b/drivers/net/ipa/reg/ipa_reg-v4.1.c
-@@ -0,0 +1,472 @@
++++ b/drivers/net/ipa/data/ipa_data-v4.1.c
+@@ -0,0 +1,354 @@
 +// SPDX-License-Identifier: GPL-2.0
 +
-+/* Copyright (C) 2022 Linaro Ltd. */
++/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
++ * Copyright (C) 2026 Robert Ijtsma
++ */
 +
 +#include <linux/array_size.h>
 +#include <linux/bits.h>
-+#include <linux/types.h>
++#include <linux/log2.h>
 +
++#include "../ipa_data.h"
++#include "../ipa_endpoint.h"
++#include "../ipa_mem.h"
 +#include "../ipa_reg.h"
 +#include "../ipa_version.h"
 +
-+static const u32 reg_comp_cfg_fmask[] = {
-+						/* Bit 0 reserved */
-+	[GSI_SNOC_BYPASS_DIS]				= BIT(1),
-+	[GEN_QMB_0_SNOC_BYPASS_DIS]			= BIT(2),
-+	[GEN_QMB_1_SNOC_BYPASS_DIS]			= BIT(3),
-+	[IPA_DCMP_FAST_CLK_EN]				= BIT(4),
-+	[IPA_QMB_SELECT_CONS_EN]			= BIT(5),
-+	[IPA_QMB_SELECT_PROD_EN]			= BIT(6),
-+	[GSI_MULTI_INORDER_RD_DIS]			= BIT(7),
-+	[GSI_MULTI_INORDER_WR_DIS]			= BIT(8),
-+	[GEN_QMB_0_MULTI_INORDER_RD_DIS]		= BIT(9),
-+	[GEN_QMB_1_MULTI_INORDER_RD_DIS]		= BIT(10),
-+	[GEN_QMB_0_MULTI_INORDER_WR_DIS]		= BIT(11),
-+	[GEN_QMB_1_MULTI_INORDER_WR_DIS]		= BIT(12),
-+	[GEN_QMB_0_SNOC_CNOC_LOOP_PROT_DIS]		= BIT(13),
-+	[GSI_SNOC_CNOC_LOOP_PROT_DISABLE]		= BIT(14),
-+	[GSI_MULTI_AXI_MASTERS_DIS]			= BIT(15),
-+	[IPA_QMB_SELECT_GLOBAL_EN]			= BIT(16),
-+	[ATOMIC_FETCHER_ARB_LOCK_DIS]			= GENMASK(20, 17),
-+						/* Bits 21-31 reserved */
++/** enum ipa_resource_type - IPA resource types for an SoC having IPA v4.1 */
++enum ipa_resource_type {
++	/* Source resource types; first must have value 0 */
++	IPA_RESOURCE_TYPE_SRC_PKT_CONTEXTS		= 0,
++	IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_LISTS,
++	IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_BUFF,
++	IPA_RESOURCE_TYPE_SRC_HPS_DMARS,
++	IPA_RESOURCE_TYPE_SRC_ACK_ENTRIES,
++
++	/* Destination resource types; first must have value 0 */
++	IPA_RESOURCE_TYPE_DST_DATA_SECTORS		= 0,
++	IPA_RESOURCE_TYPE_DST_DPS_DMARS,
 +};
 +
-+REG_FIELDS(COMP_CFG, comp_cfg, 0x0000003c);
++/* Resource groups used for an SoC having IPA v4.1 */
++enum ipa_rsrc_group_id {
++	/* Source resource group identifiers */
++	IPA_RSRC_GROUP_SRC_LWA_DL	= 0,
++	IPA_RSRC_GROUP_SRC_UL_DL,
++	IPA_RSRC_GROUP_SRC_UNUSED_2,
++	IPA_RSRC_GROUP_SRC_UC_RX_Q,
++	IPA_RSRC_GROUP_SRC_COUNT,	/* Last in set; not a source group */
 +
-+static const u32 reg_clkon_cfg_fmask[] = {
-+	[CLKON_RX]					= BIT(0),
-+	[CLKON_PROC]					= BIT(1),
-+	[TX_WRAPPER]					= BIT(2),
-+	[CLKON_MISC]					= BIT(3),
-+	[RAM_ARB]					= BIT(4),
-+	[FTCH_HPS]					= BIT(5),
-+	[FTCH_DPS]					= BIT(6),
-+	[CLKON_HPS]					= BIT(7),
-+	[CLKON_DPS]					= BIT(8),
-+	[RX_HPS_CMDQS]					= BIT(9),
-+	[HPS_DPS_CMDQS]					= BIT(10),
-+	[DPS_TX_CMDQS]					= BIT(11),
-+	[RSRC_MNGR]					= BIT(12),
-+	[CTX_HANDLER]					= BIT(13),
-+	[ACK_MNGR]					= BIT(14),
-+	[D_DCPH]					= BIT(15),
-+	[H_DCPH]					= BIT(16),
-+						/* Bit 17 reserved */
-+	[NTF_TX_CMDQS]					= BIT(18),
-+	[CLKON_TX_0]					= BIT(19),
-+	[CLKON_TX_1]					= BIT(20),
-+	[CLKON_FNR]					= BIT(21),
-+	[QSB2AXI_CMDQ_L]				= BIT(22),
-+	[AGGR_WRAPPER]					= BIT(23),
-+	[RAM_SLAVEWAY]					= BIT(24),
-+	[CLKON_QMB]					= BIT(25),
-+	[WEIGHT_ARB]					= BIT(26),
-+	[GSI_IF]					= BIT(27),
-+	[CLKON_GLOBAL]					= BIT(28),
-+	[GLOBAL_2X_CLK]					= BIT(29),
-+						/* Bits 30-31 reserved */
++	/* Destination resource group identifiers */
++	IPA_RSRC_GROUP_DST_LWA_DL	= 0,
++	IPA_RSRC_GROUP_DST_UL_DL_DPL,
++	IPA_RSRC_GROUP_DST_UNUSED_2,
++	IPA_RSRC_GROUP_DST_UC_RX_Q,
++	IPA_RSRC_GROUP_DST_COUNT,	/* Last; not a destination group */
 +};
 +
-+REG_FIELDS(CLKON_CFG, clkon_cfg, 0x00000044);
-+
-+static const u32 reg_route_fmask[] = {
-+	[ROUTE_DIS]					= BIT(0),
-+	[ROUTE_DEF_PIPE]				= GENMASK(5, 1),
-+	[ROUTE_DEF_HDR_TABLE]				= BIT(6),
-+	[ROUTE_DEF_HDR_OFST]				= GENMASK(16, 7),
-+	[ROUTE_FRAG_DEF_PIPE]				= GENMASK(21, 17),
-+						/* Bits 22-23 reserved */
-+	[ROUTE_DEF_RETAIN_HDR]				= BIT(24),
-+						/* Bits 25-31 reserved */
++/* QSB configuration data for an SoC having IPA v4.1 */
++static const struct ipa_qsb_data ipa_qsb_data[] = {
++	[IPA_QSB_MASTER_DDR] = {
++		.max_writes	= 8,
++		.max_reads	= 12,
++	},
++	[IPA_QSB_MASTER_PCIE] = {
++		.max_writes	= 4,
++		.max_reads	= 12,
++	},
 +};
 +
-+REG_FIELDS(ROUTE, route, 0x00000048);
-+
-+static const u32 reg_shared_mem_size_fmask[] = {
-+	[MEM_SIZE]					= GENMASK(15, 0),
-+	[MEM_BADDR]					= GENMASK(31, 16),
++/* Endpoint data for an SoC having IPA v4.1 */
++static const struct ipa_gsi_endpoint_data ipa_gsi_endpoint_data[] = {
++	[IPA_ENDPOINT_AP_COMMAND_TX] = {
++		.ee_id		= GSI_EE_AP,
++		.channel_id	= 4,
++		.endpoint_id	= 5,
++		.toward_ipa	= true,
++		.channel = {
++			.tre_count	= 256,
++			.event_count	= 256,
++			.tlv_count	= 20,
++		},
++		.endpoint = {
++			.config = {
++				.resource_group	= IPA_RSRC_GROUP_SRC_UL_DL,
++				.dma_mode	= true,
++				.dma_endpoint	= IPA_ENDPOINT_AP_LAN_RX,
++				.tx = {
++					.seq_type = IPA_SEQ_DMA,
++				},
++			},
++		},
++	},
++	[IPA_ENDPOINT_AP_LAN_RX] = {
++		.ee_id		= GSI_EE_AP,
++		.channel_id	= 5,
++		.endpoint_id	= 10,
++		.toward_ipa	= false,
++		.channel = {
++			.tre_count	= 256,
++			.event_count	= 256,
++			.tlv_count	= 9,
++		},
++		.endpoint = {
++			.config = {
++				.resource_group	= IPA_RSRC_GROUP_DST_UL_DL_DPL,
++				.aggregation	= true,
++				.status_enable	= true,
++				.rx = {
++					.buffer_size	= 8192,
++					.pad_align	= ilog2(sizeof(u32)),
++					.aggr_time_limit = 500,
++				},
++			},
++		},
++	},
++	[IPA_ENDPOINT_AP_MODEM_TX] = {
++		.ee_id		= GSI_EE_AP,
++		.channel_id	= 3,
++		.endpoint_id	= 2,
++		.toward_ipa	= true,
++		.channel = {
++			.tre_count	= 512,
++			.event_count	= 512,
++			.tlv_count	= 16,
++		},
++		.endpoint = {
++			.filter_support	= true,
++			.config = {
++				.resource_group	= IPA_RSRC_GROUP_SRC_UL_DL,
++				.checksum	= true,
++				.qmap		= true,
++				.status_enable	= true,
++				.tx = {
++					.seq_type = IPA_SEQ_2_PASS_SKIP_LAST_UC,
++					.seq_rep_type = IPA_SEQ_REP_DMA_PARSER,
++					.status_endpoint =
++						IPA_ENDPOINT_MODEM_AP_RX,
++				},
++			},
++		},
++	},
++	[IPA_ENDPOINT_AP_MODEM_RX] = {
++		.ee_id		= GSI_EE_AP,
++		.channel_id	= 6,
++		.endpoint_id	= 11,
++		.toward_ipa	= false,
++		.channel = {
++			.tre_count	= 256,
++			.event_count	= 256,
++			.tlv_count	= 9,
++		},
++		.endpoint = {
++			.config = {
++				.resource_group	= IPA_RSRC_GROUP_DST_UL_DL_DPL,
++				.checksum	= true,
++				.qmap		= true,
++				.aggregation	= true,
++				.rx = {
++					.buffer_size	= 8192,
++					.aggr_time_limit = 500,
++					.aggr_close_eof	= true,
++				},
++			},
++		},
++	},
++	[IPA_ENDPOINT_MODEM_AP_TX] = {
++		.ee_id		= GSI_EE_MODEM,
++		.channel_id	= 0,
++		.endpoint_id	= 3,
++		.toward_ipa	= true,
++		.endpoint = {
++			.filter_support	= true,
++		},
++	},
++	[IPA_ENDPOINT_MODEM_AP_RX] = {
++		.ee_id		= GSI_EE_MODEM,
++		.channel_id	= 3,
++		.endpoint_id	= 13,
++		.toward_ipa	= false,
++	},
 +};
 +
-+REG_FIELDS(SHARED_MEM_SIZE, shared_mem_size, 0x00000054);
-+
-+static const u32 reg_qsb_max_writes_fmask[] = {
-+	[GEN_QMB_0_MAX_WRITES]				= GENMASK(3, 0),
-+	[GEN_QMB_1_MAX_WRITES]				= GENMASK(7, 4),
-+						/* Bits 8-31 reserved */
++/* Source resource configuration data for an SoC having IPA v4.1 */
++static const struct ipa_resource ipa_resource_src[] = {
++	[IPA_RESOURCE_TYPE_SRC_PKT_CONTEXTS] = {
++		.limits[IPA_RSRC_GROUP_SRC_LWA_DL] = {
++			.min = 1,	.max = 63,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UL_DL] = {
++			.min = 1,	.max = 63,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UC_RX_Q] = {
++			.min = 1,	.max = 63,
++		},
++	},
++	[IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_LISTS] = {
++		.limits[IPA_RSRC_GROUP_SRC_LWA_DL] = {
++			.min = 10,	.max = 10,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UL_DL] = {
++			.min = 10,	.max = 10,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UC_RX_Q] = {
++			.min = 8,	.max = 8,
++		},
++	},
++	[IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_BUFF] = {
++		.limits[IPA_RSRC_GROUP_SRC_LWA_DL] = {
++			.min = 12,	.max = 12,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UL_DL] = {
++			.min = 14,	.max = 14,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UC_RX_Q] = {
++			.min = 8,	.max = 8,
++		},
++	},
++	[IPA_RESOURCE_TYPE_SRC_HPS_DMARS] = {
++		.limits[IPA_RSRC_GROUP_SRC_LWA_DL] = {
++			.min = 0,	.max = 63,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UL_DL] = {
++			.min = 0,	.max = 63,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UNUSED_2] = {
++			.min = 0,	.max = 63,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UC_RX_Q] = {
++			.min = 0,	.max = 63,
++		},
++	},
++	[IPA_RESOURCE_TYPE_SRC_ACK_ENTRIES] = {
++		.limits[IPA_RSRC_GROUP_SRC_LWA_DL] = {
++			.min = 14,	.max = 14,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UL_DL] = {
++			.min = 20,	.max = 20,
++		},
++		.limits[IPA_RSRC_GROUP_SRC_UC_RX_Q] = {
++			.min = 14,	.max = 14,
++		},
++	},
 +};
 +
-+REG_FIELDS(QSB_MAX_WRITES, qsb_max_writes, 0x00000074);
-+
-+static const u32 reg_qsb_max_reads_fmask[] = {
-+	[GEN_QMB_0_MAX_READS]				= GENMASK(3, 0),
-+	[GEN_QMB_1_MAX_READS]				= GENMASK(7, 4),
-+						/* Bits 8-15 reserved */
-+	[GEN_QMB_0_MAX_READS_BEATS]			= GENMASK(23, 16),
-+	[GEN_QMB_1_MAX_READS_BEATS]			= GENMASK(31, 24),
++/* Destination resource configuration data for an SoC having IPA v4.1 */
++static const struct ipa_resource ipa_resource_dst[] = {
++	[IPA_RESOURCE_TYPE_DST_DATA_SECTORS] = {
++		.limits[IPA_RSRC_GROUP_DST_LWA_DL] = {
++			.min = 4,	.max = 4,
++		},
++		.limits[IPA_RSRC_GROUP_DST_UL_DL_DPL] = {
++			.min = 4,	.max = 4,
++		},
++		.limits[IPA_RSRC_GROUP_DST_UNUSED_2] = {
++			.min = 3,	.max = 3,
++		},
++		.limits[IPA_RSRC_GROUP_DST_UC_RX_Q] = {
++			.min = 2,	.max = 2,
++		},
++	},
++	[IPA_RESOURCE_TYPE_DST_DPS_DMARS] = {
++		.limits[IPA_RSRC_GROUP_DST_LWA_DL] = {
++			.min = 2,	.max = 63,
++		},
++		.limits[IPA_RSRC_GROUP_DST_UL_DL_DPL] = {
++			.min = 1,	.max = 63,
++		},
++		.limits[IPA_RSRC_GROUP_DST_UNUSED_2] = {
++			.min = 1,	.max = 2,
++		},
++		.limits[IPA_RSRC_GROUP_DST_UC_RX_Q] = {
++			.min = 0,	.max = 2,
++		},
++	},
 +};
 +
-+REG_FIELDS(QSB_MAX_READS, qsb_max_reads, 0x00000078);
-+
-+static const u32 reg_filt_rout_hash_flush_fmask[] = {
-+	[IPV6_ROUTER_HASH]				= BIT(0),
-+						/* Bits 1-3 reserved */
-+	[IPV6_FILTER_HASH]				= BIT(4),
-+						/* Bits 5-7 reserved */
-+	[IPV4_ROUTER_HASH]				= BIT(8),
-+						/* Bits 9-11 reserved */
-+	[IPV4_FILTER_HASH]				= BIT(12),
-+						/* Bits 13-31 reserved */
++/* Resource configuration data for an SoC having IPA v4.1 */
++static const struct ipa_resource_data ipa_resource_data = {
++	.rsrc_group_src_count	= IPA_RSRC_GROUP_SRC_COUNT,
++	.rsrc_group_dst_count	= IPA_RSRC_GROUP_DST_COUNT,
++	.resource_src_count	= ARRAY_SIZE(ipa_resource_src),
++	.resource_src		= ipa_resource_src,
++	.resource_dst_count	= ARRAY_SIZE(ipa_resource_dst),
++	.resource_dst		= ipa_resource_dst,
 +};
 +
-+REG_FIELDS(FILT_ROUT_HASH_FLUSH, filt_rout_hash_flush, 0x000014c);
-+
-+/* Valid bits defined by ipa->available */
-+REG_STRIDE(STATE_AGGR_ACTIVE, state_aggr_active, 0x000000b4, 0x0004);
-+
-+REG(IPA_BCR, ipa_bcr, 0x000001d0);
-+
-+static const u32 reg_local_pkt_proc_cntxt_fmask[] = {
-+	[IPA_BASE_ADDR]					= GENMASK(16, 0),
-+						/* Bits 17-31 reserved */
++/* IPA-resident memory region data for an SoC having IPA v4.1 */
++static const struct ipa_mem ipa_mem_local_data[] = {
++	{ .id = IPA_MEM_UC_SHARED,         .offset = 0x0000, .size = 0x0080, .canary_count = 0, },
++	{ .id = IPA_MEM_UC_INFO,           .offset = 0x0080, .size = 0x0200, .canary_count = 0, },
++	{ .id = IPA_MEM_V4_FILTER_HASHED,  .offset = 0x0288, .size = 0x0078, .canary_count = 2, },
++	{ .id = IPA_MEM_V4_FILTER,         .offset = 0x0308, .size = 0x0078, .canary_count = 2, },
++	{ .id = IPA_MEM_V6_FILTER_HASHED,  .offset = 0x0388, .size = 0x0078, .canary_count = 2, },
++	{ .id = IPA_MEM_V6_FILTER,         .offset = 0x0408, .size = 0x0078, .canary_count = 2, },
++	{ .id = IPA_MEM_V4_ROUTE_HASHED,   .offset = 0x0488, .size = 0x0078, .canary_count = 2, },
++	{ .id = IPA_MEM_V4_ROUTE,          .offset = 0x0508, .size = 0x0078, .canary_count = 2, },
++	{ .id = IPA_MEM_V6_ROUTE_HASHED,   .offset = 0x0588, .size = 0x0078, .canary_count = 2, },
++	{ .id = IPA_MEM_V6_ROUTE,          .offset = 0x0608, .size = 0x0078, .canary_count = 2, },
++	{ .id = IPA_MEM_MODEM_HEADER,      .offset = 0x0688, .size = 0x0140, .canary_count = 2, },
++	/* No AP_HEADER: original size 0, omitted as zero-size regions are invalid. */
++	{ .id = IPA_MEM_MODEM_PROC_CTX,    .offset = 0x07d0, .size = 0x0200, .canary_count = 2, },
++	{ .id = IPA_MEM_AP_PROC_CTX,       .offset = 0x09d0, .size = 0x0200, .canary_count = 0, },
++	{ .id = IPA_MEM_PDN_CONFIG,        .offset = 0x0bd8, .size = 0x0050, .canary_count = 2, },
++	{ .id = IPA_MEM_STATS_QUOTA_MODEM, .offset = 0x0c30, .size = 0x0060, .canary_count = 2, },
++	{ .id = IPA_MEM_STATS_TETHERING,   .offset = 0x0c90, .size = 0x0140, .canary_count = 0, },
++	{ .id = IPA_MEM_STATS_V4_FILTER,   .offset = 0x0dd0, .size = 0x0180, .canary_count = 0, },
++	{ .id = IPA_MEM_STATS_V6_FILTER,   .offset = 0x0f50, .size = 0x0180, .canary_count = 0, },
++	{ .id = IPA_MEM_STATS_V4_ROUTE,    .offset = 0x10d0, .size = 0x0180, .canary_count = 0, },
++	{ .id = IPA_MEM_STATS_V6_ROUTE,    .offset = 0x1250, .size = 0x0180, .canary_count = 0, },
++	{ .id = IPA_MEM_STATS_DROP,        .offset = 0x13d0, .size = 0x0020, .canary_count = 0, },
++	{ .id = IPA_MEM_MODEM,             .offset = 0x13f0, .size = 0x100c, .canary_count = 0, },
++	{ .id = IPA_MEM_UC_EVENT_RING,     .offset = 0x2400, .size = 0x0400, .canary_count = 1, },
 +};
 +
-+/* Offset must be a multiple of 8 */
-+REG_FIELDS(LOCAL_PKT_PROC_CNTXT, local_pkt_proc_cntxt, 0x000001e8);
-+
-+/* Valid bits defined by ipa->available */
-+REG_STRIDE(AGGR_FORCE_CLOSE, aggr_force_close, 0x000001ec, 0x0004);
-+
-+static const u32 reg_counter_cfg_fmask[] = {
-+						/* Bits 0-3 reserved */
-+	[AGGR_GRANULARITY]				= GENMASK(8, 4),
-+						/* Bits 9-31 reserved */
++/* Memory configuration data for an SoC having IPA v4.1 */
++static const struct ipa_mem_data ipa_mem_data = {
++	.local_count	= ARRAY_SIZE(ipa_mem_local_data),
++	.local		= ipa_mem_local_data,
++	.smem_size	= 0x00002000,
 +};
 +
-+REG_FIELDS(COUNTER_CFG, counter_cfg, 0x000001f0);
-+
-+static const u32 reg_ipa_tx_cfg_fmask[] = {
-+						/* Bits 0-1 reserved */
-+	[PREFETCH_ALMOST_EMPTY_SIZE_TX0]		= GENMASK(5, 2),
-+	[DMAW_SCND_OUTSD_PRED_THRESHOLD]		= GENMASK(9, 6),
-+	[DMAW_SCND_OUTSD_PRED_EN]			= BIT(10),
-+	[DMAW_MAX_BEATS_256_DIS]			= BIT(11),
-+	[PA_MASK_EN]					= BIT(12),
-+	[PREFETCH_ALMOST_EMPTY_SIZE_TX1]		= GENMASK(16, 13),
-+						/* Bits 17-31 reserved */
++/* Interconnect bandwidths are in 1000 byte/second units */
++static const struct ipa_interconnect_data ipa_interconnect_data[] = {
++	{
++		.name			= "memory",
++		.peak_bandwidth		= 600000,	/* 600 MBps */
++		.average_bandwidth	= 80000,	/* 80 MBps */
++	},
++	/* Average bandwidth is unused for the next two interconnects */
++	{
++		.name			= "imem",
++		.peak_bandwidth		= 350000,	/* 350 MBps */
++		.average_bandwidth	= 0,		/* unused */
++	},
++	{
++		.name			= "config",
++		.peak_bandwidth		= 40000,	/* 40 MBps */
++		.average_bandwidth	= 0,		/* unused */
++	},
 +};
 +
-+REG_FIELDS(IPA_TX_CFG, ipa_tx_cfg, 0x000001fc);
-+
-+static const u32 reg_flavor_0_fmask[] = {
-+	[MAX_PIPES]					= GENMASK(3, 0),
-+						/* Bits 4-7 reserved */
-+	[MAX_CONS_PIPES]				= GENMASK(12, 8),
-+						/* Bits 13-15 reserved */
-+	[MAX_PROD_PIPES]				= GENMASK(20, 16),
-+						/* Bits 21-23 reserved */
-+	[PROD_LOWEST]					= GENMASK(27, 24),
-+						/* Bits 28-31 reserved */
++/* Clock and interconnect configuration data for an SoC having IPA v4.1 */
++static const struct ipa_power_data ipa_power_data = {
++	.core_clock_rate	= 100 * 1000 * 1000,	/* Hz */
++	.interconnect_count	= ARRAY_SIZE(ipa_interconnect_data),
++	.interconnect_data	= ipa_interconnect_data,
 +};
 +
-+REG_FIELDS(FLAVOR_0, flavor_0, 0x00000210);
-+
-+static const u32 reg_idle_indication_cfg_fmask[] = {
-+	[ENTER_IDLE_DEBOUNCE_THRESH]			= GENMASK(15, 0),
-+	[CONST_NON_IDLE_ENABLE]				= BIT(16),
-+						/* Bits 17-31 reserved */
++/* Configuration data for an SoC having IPA v4.1 */
++const struct ipa_data ipa_data_v4_1 = {
++	.version		= IPA_VERSION_4_1,
++	.backward_compat	= BIT(BCR_CMDQ_L_LACK_ONE_ENTRY) |
++				  BIT(BCR_SUSPEND_L2_IRQ) |
++				  BIT(BCR_HOLB_DROP_L2_IRQ) |
++				  BIT(BCR_DUAL_TX),
++	.qsb_count		= ARRAY_SIZE(ipa_qsb_data),
++	.qsb_data		= ipa_qsb_data,
++	.modem_route_count	= 8,
++	.endpoint_count		= ARRAY_SIZE(ipa_gsi_endpoint_data),
++	.endpoint_data		= ipa_gsi_endpoint_data,
++	.resource_data		= &ipa_resource_data,
++	.mem_data		= &ipa_mem_data,
++	.power_data		= &ipa_power_data,
 +};
-+
-+REG_FIELDS(IDLE_INDICATION_CFG, idle_indication_cfg, 0x00000220);
-+
-+static const u32 reg_src_rsrc_grp_01_rsrc_type_fmask[] = {
-+	[X_MIN_LIM]					= GENMASK(5, 0),
-+						/* Bits 6-7 reserved */
-+	[X_MAX_LIM]					= GENMASK(13, 8),
-+						/* Bits 14-15 reserved */
-+	[Y_MIN_LIM]					= GENMASK(21, 16),
-+						/* Bits 22-23 reserved */
-+	[Y_MAX_LIM]					= GENMASK(29, 24),
-+						/* Bits 30-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(SRC_RSRC_GRP_01_RSRC_TYPE, src_rsrc_grp_01_rsrc_type,
-+		  0x00000400, 0x0020);
-+
-+static const u32 reg_src_rsrc_grp_23_rsrc_type_fmask[] = {
-+	[X_MIN_LIM]					= GENMASK(5, 0),
-+						/* Bits 6-7 reserved */
-+	[X_MAX_LIM]					= GENMASK(13, 8),
-+						/* Bits 14-15 reserved */
-+	[Y_MIN_LIM]					= GENMASK(21, 16),
-+						/* Bits 22-23 reserved */
-+	[Y_MAX_LIM]					= GENMASK(29, 24),
-+						/* Bits 30-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(SRC_RSRC_GRP_23_RSRC_TYPE, src_rsrc_grp_23_rsrc_type,
-+		  0x00000404, 0x0020);
-+
-+static const u32 reg_dst_rsrc_grp_01_rsrc_type_fmask[] = {
-+	[X_MIN_LIM]					= GENMASK(5, 0),
-+						/* Bits 6-7 reserved */
-+	[X_MAX_LIM]					= GENMASK(13, 8),
-+						/* Bits 14-15 reserved */
-+	[Y_MIN_LIM]					= GENMASK(21, 16),
-+						/* Bits 22-23 reserved */
-+	[Y_MAX_LIM]					= GENMASK(29, 24),
-+						/* Bits 30-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(DST_RSRC_GRP_01_RSRC_TYPE, dst_rsrc_grp_01_rsrc_type,
-+		  0x00000500, 0x0020);
-+
-+static const u32 reg_dst_rsrc_grp_23_rsrc_type_fmask[] = {
-+	[X_MIN_LIM]					= GENMASK(5, 0),
-+						/* Bits 6-7 reserved */
-+	[X_MAX_LIM]					= GENMASK(13, 8),
-+						/* Bits 14-15 reserved */
-+	[Y_MIN_LIM]					= GENMASK(21, 16),
-+						/* Bits 22-23 reserved */
-+	[Y_MAX_LIM]					= GENMASK(29, 24),
-+						/* Bits 30-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(DST_RSRC_GRP_23_RSRC_TYPE, dst_rsrc_grp_23_rsrc_type,
-+		  0x00000504, 0x0020);
-+
-+static const u32 reg_endp_init_cfg_fmask[] = {
-+	[FRAG_OFFLOAD_EN]				= BIT(0),
-+	[CS_OFFLOAD_EN]					= GENMASK(2, 1),
-+	[CS_METADATA_HDR_OFFSET]			= GENMASK(6, 3),
-+						/* Bit 7 reserved */
-+	[CS_GEN_QMB_MASTER_SEL]				= BIT(8),
-+						/* Bits 9-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_CFG, endp_init_cfg, 0x00000808, 0x0070);
-+
-+static const u32 reg_endp_init_nat_fmask[] = {
-+	[NAT_EN]					= GENMASK(1, 0),
-+						/* Bits 2-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_NAT, endp_init_nat, 0x0000080c, 0x0070);
-+
-+static const u32 reg_endp_init_hdr_fmask[] = {
-+	[HDR_LEN]					= GENMASK(5, 0),
-+	[HDR_OFST_METADATA_VALID]			= BIT(6),
-+	[HDR_OFST_METADATA]				= GENMASK(12, 7),
-+	[HDR_ADDITIONAL_CONST_LEN]			= GENMASK(18, 13),
-+	[HDR_OFST_PKT_SIZE_VALID]			= BIT(19),
-+	[HDR_OFST_PKT_SIZE]				= GENMASK(25, 20),
-+	[HDR_A5_MUX]					= BIT(26),
-+	[HDR_LEN_INC_DEAGG_HDR]				= BIT(27),
-+	[HDR_METADATA_REG_VALID]			= BIT(28),
-+						/* Bits 29-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_HDR, endp_init_hdr, 0x00000810, 0x0070);
-+
-+static const u32 reg_endp_init_hdr_ext_fmask[] = {
-+	[HDR_ENDIANNESS]				= BIT(0),
-+	[HDR_TOTAL_LEN_OR_PAD_VALID]			= BIT(1),
-+	[HDR_TOTAL_LEN_OR_PAD]				= BIT(2),
-+	[HDR_PAYLOAD_LEN_INC_PADDING]			= BIT(3),
-+	[HDR_TOTAL_LEN_OR_PAD_OFFSET]			= GENMASK(9, 4),
-+	[HDR_PAD_TO_ALIGNMENT]				= GENMASK(13, 10),
-+						/* Bits 14-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_HDR_EXT, endp_init_hdr_ext, 0x00000814, 0x0070);
-+
-+REG_STRIDE(ENDP_INIT_HDR_METADATA_MASK, endp_init_hdr_metadata_mask,
-+	   0x00000818, 0x0070);
-+
-+static const u32 reg_endp_init_mode_fmask[] = {
-+	[ENDP_MODE]					= GENMASK(2, 0),
-+						/* Bit 3 reserved */
-+	[DEST_PIPE_INDEX]				= GENMASK(8, 4),
-+						/* Bits 9-11 reserved */
-+	[BYTE_THRESHOLD]				= GENMASK(27, 12),
-+	[PIPE_REPLICATION_EN]				= BIT(28),
-+	[PAD_EN]					= BIT(29),
-+	[HDR_FTCH_DISABLE]				= BIT(30),
-+						/* Bit 31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_MODE, endp_init_mode, 0x00000820, 0x0070);
-+
-+static const u32 reg_endp_init_aggr_fmask[] = {
-+	[AGGR_EN]					= GENMASK(1, 0),
-+	[AGGR_TYPE]					= GENMASK(4, 2),
-+	[BYTE_LIMIT]					= GENMASK(9, 5),
-+	[TIME_LIMIT]					= GENMASK(14, 10),
-+	[PKT_LIMIT]					= GENMASK(20, 15),
-+	[SW_EOF_ACTIVE]					= BIT(21),
-+	[FORCE_CLOSE]					= BIT(22),
-+						/* Bit 23 reserved */
-+	[HARD_BYTE_LIMIT_EN]				= BIT(24),
-+						/* Bits 25-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_AGGR, endp_init_aggr, 0x00000824, 0x0070);
-+
-+static const u32 reg_endp_init_hol_block_en_fmask[] = {
-+	[HOL_BLOCK_EN]					= BIT(0),
-+						/* Bits 1-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_HOL_BLOCK_EN, endp_init_hol_block_en,
-+		  0x0000082c, 0x0070);
-+
-+static const u32 reg_endp_init_hol_block_timer_fmask[] = {
-+	[TIMER_BASE_VALUE] = GENMASK(31, 0),
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_HOL_BLOCK_TIMER, endp_init_hol_block_timer,
-+		  0x00000830, 0x0070);
-+
-+static const u32 reg_endp_init_deaggr_fmask[] = {
-+	[DEAGGR_HDR_LEN]				= GENMASK(5, 0),
-+	[SYSPIPE_ERR_DETECTION]				= BIT(6),
-+	[PACKET_OFFSET_VALID]				= BIT(7),
-+	[PACKET_OFFSET_LOCATION]			= GENMASK(13, 8),
-+	[IGNORE_MIN_PKT_ERR]				= BIT(14),
-+						/* Bit 15 reserved */
-+	[MAX_PACKET_LEN]				= GENMASK(31, 16),
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_DEAGGR, endp_init_deaggr, 0x00000834, 0x0070);
-+
-+static const u32 reg_endp_init_rsrc_grp_fmask[] = {
-+	[ENDP_RSRC_GRP] = GENMASK(1, 0),
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_RSRC_GRP, endp_init_rsrc_grp, 0x00000838, 0x0070);
-+
-+static const u32 reg_endp_init_seq_fmask[] = {
-+	[SEQ_TYPE]					= GENMASK(7, 0),
-+	[SEQ_REP_TYPE]					= GENMASK(15, 8),
-+						/* Bits 16-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_SEQ, endp_init_seq, 0x0000083c, 0x0070);
-+
-+static const u32 reg_endp_status_fmask[] = {
-+	[STATUS_EN]					= BIT(0),
-+	[STATUS_ENDP]					= GENMASK(5, 1),
-+						/* Bits 6-7 reserved */
-+	[STATUS_LOCATION]				= BIT(8),
-+	[STATUS_PKT_SUPPRESS]				= BIT(9),
-+						/* Bits 10-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_STATUS, endp_status, 0x00000840, 0x0070);
-+
-+/* Valid bits defined by enum ipa_irq_id; only used for GSI_EE_AP */
-+REG(IPA_IRQ_STTS, ipa_irq_stts, 0x00003008 + 0x1000 * GSI_EE_AP);
-+
-+/* Valid bits defined by enum ipa_irq_id; only used for GSI_EE_AP */
-+REG(IPA_IRQ_EN, ipa_irq_en, 0x0000300c + 0x1000 * GSI_EE_AP);
-+
-+/* Valid bits defined by enum ipa_irq_id; only used for GSI_EE_AP */
-+REG(IPA_IRQ_CLR, ipa_irq_clr, 0x00003010 + 0x1000 * GSI_EE_AP);
-+
-+static const u32 reg_ipa_irq_uc_fmask[] = {
-+	[UC_INTR]					= BIT(0),
-+						/* Bits 1-31 reserved */
-+};
-+
-+REG_FIELDS(IPA_IRQ_UC, ipa_irq_uc, 0x0000301c + 0x1000 * GSI_EE_AP);
-+
-+/* Valid bits defined by ipa->available */
-+REG_STRIDE(IRQ_SUSPEND_INFO, irq_suspend_info,
-+	   0x00003030 + 0x1000 * GSI_EE_AP, 0x0004);
-+
-+/* Valid bits defined by ipa->available */
-+REG_STRIDE(IRQ_SUSPEND_EN, irq_suspend_en,
-+	   0x00003034 + 0x1000 * GSI_EE_AP, 0x0004);
-+
-+/* Valid bits defined by ipa->available */
-+REG_STRIDE(IRQ_SUSPEND_CLR, irq_suspend_clr,
-+	   0x00003038 + 0x1000 * GSI_EE_AP, 0x0004);
-+
-+static const u32 reg_endp_init_ctrl_fmask[] = {
-+	[ENDP_DELAY]					= BIT(1),
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_INIT_CTRL, endp_init_ctrl, 0x800, 0x70);
-+
-+static const u32 reg_endp_filter_router_hsh_cfg_fmask[] = {
-+	[FILTER_HASH_MSK_SRC_ID]			= BIT(0),
-+	[FILTER_HASH_MSK_SRC_IP]			= BIT(1),
-+	[FILTER_HASH_MSK_DST_IP]			= BIT(2),
-+	[FILTER_HASH_MSK_SRC_PORT]			= BIT(3),
-+	[FILTER_HASH_MSK_DST_PORT]			= BIT(4),
-+	[FILTER_HASH_MSK_PROTOCOL]			= BIT(5),
-+	[FILTER_HASH_MSK_METADATA]			= BIT(6),
-+	[FILTER_HASH_MSK_ALL]				= GENMASK(6, 0),
-+						/* Bits 7-15 reserved */
-+	[ROUTER_HASH_MSK_SRC_ID]			= BIT(16),
-+	[ROUTER_HASH_MSK_SRC_IP]			= BIT(17),
-+	[ROUTER_HASH_MSK_DST_IP]			= BIT(18),
-+	[ROUTER_HASH_MSK_SRC_PORT]			= BIT(19),
-+	[ROUTER_HASH_MSK_DST_PORT]			= BIT(20),
-+	[ROUTER_HASH_MSK_PROTOCOL]			= BIT(21),
-+	[ROUTER_HASH_MSK_METADATA]			= BIT(22),
-+	[ROUTER_HASH_MSK_ALL]				= GENMASK(22, 16),
-+						/* Bits 23-31 reserved */
-+};
-+
-+REG_STRIDE_FIELDS(ENDP_FILTER_ROUTER_HSH_CFG, endp_filter_router_hsh_cfg,
-+		  0x0000085c, 0x0070);
-+
-+static const struct reg *reg_array[] = {
-+	[ENDP_INIT_CTRL] = &reg_endp_init_ctrl,
-+	[ENDP_FILTER_ROUTER_HSH_CFG] = &reg_endp_filter_router_hsh_cfg,
-+	[COMP_CFG]			= &reg_comp_cfg,
-+	[CLKON_CFG]			= &reg_clkon_cfg,
-+	[ROUTE]				= &reg_route,
-+	[SHARED_MEM_SIZE]		= &reg_shared_mem_size,
-+	[QSB_MAX_WRITES]		= &reg_qsb_max_writes,
-+	[QSB_MAX_READS]			= &reg_qsb_max_reads,
-+
-+	[FILT_ROUT_HASH_FLUSH]		= &reg_filt_rout_hash_flush,
-+	[STATE_AGGR_ACTIVE]		= &reg_state_aggr_active,
-+	[IPA_BCR]			= &reg_ipa_bcr,
-+	[LOCAL_PKT_PROC_CNTXT]		= &reg_local_pkt_proc_cntxt,
-+	[AGGR_FORCE_CLOSE]		= &reg_aggr_force_close,
-+	[COUNTER_CFG]			= &reg_counter_cfg,
-+	[IPA_TX_CFG]			= &reg_ipa_tx_cfg,
-+	[FLAVOR_0]			= &reg_flavor_0,
-+	[IDLE_INDICATION_CFG]		= &reg_idle_indication_cfg,
-+	[SRC_RSRC_GRP_01_RSRC_TYPE]	= &reg_src_rsrc_grp_01_rsrc_type,
-+	[SRC_RSRC_GRP_23_RSRC_TYPE]	= &reg_src_rsrc_grp_23_rsrc_type,
-+	[DST_RSRC_GRP_01_RSRC_TYPE]	= &reg_dst_rsrc_grp_01_rsrc_type,
-+	[DST_RSRC_GRP_23_RSRC_TYPE]	= &reg_dst_rsrc_grp_23_rsrc_type,
-+	[ENDP_INIT_CFG]			= &reg_endp_init_cfg,
-+	[ENDP_INIT_NAT]			= &reg_endp_init_nat,
-+	[ENDP_INIT_HDR]			= &reg_endp_init_hdr,
-+	[ENDP_INIT_HDR_EXT]		= &reg_endp_init_hdr_ext,
-+	[ENDP_INIT_HDR_METADATA_MASK]	= &reg_endp_init_hdr_metadata_mask,
-+	[ENDP_INIT_MODE]		= &reg_endp_init_mode,
-+	[ENDP_INIT_AGGR]		= &reg_endp_init_aggr,
-+	[ENDP_INIT_HOL_BLOCK_EN]	= &reg_endp_init_hol_block_en,
-+	[ENDP_INIT_HOL_BLOCK_TIMER]	= &reg_endp_init_hol_block_timer,
-+	[ENDP_INIT_DEAGGR]		= &reg_endp_init_deaggr,
-+	[ENDP_INIT_RSRC_GRP]		= &reg_endp_init_rsrc_grp,
-+	[ENDP_INIT_SEQ]			= &reg_endp_init_seq,
-+	[ENDP_STATUS]			= &reg_endp_status,
-+	[IPA_IRQ_STTS]			= &reg_ipa_irq_stts,
-+	[IPA_IRQ_EN]			= &reg_ipa_irq_en,
-+	[IPA_IRQ_CLR]			= &reg_ipa_irq_clr,
-+	[IPA_IRQ_UC]			= &reg_ipa_irq_uc,
-+	[IRQ_SUSPEND_INFO]		= &reg_irq_suspend_info,
-+	[IRQ_SUSPEND_EN]		= &reg_irq_suspend_en,
-+	[IRQ_SUSPEND_CLR]		= &reg_irq_suspend_clr,
-+};
-+
-+const struct regs ipa_regs_v4_1 = {
-+	.reg_count	= ARRAY_SIZE(reg_array),
-+	.reg		= reg_array,
-+};
+diff --git a/drivers/net/ipa/ipa_data.h b/drivers/net/ipa/ipa_data.h
+index 3eb9dc2ce3398d07954c5a7e5be85292323b9b0f..20da2424b7da66f6c72ae05c33e88789bb1d7033 100644
+--- a/drivers/net/ipa/ipa_data.h
++++ b/drivers/net/ipa/ipa_data.h
+@@ -247,6 +247,7 @@ struct ipa_data {
+ 
+ extern const struct ipa_data ipa_data_v3_1;
+ extern const struct ipa_data ipa_data_v3_5_1;
++extern const struct ipa_data ipa_data_v4_1;
+ extern const struct ipa_data ipa_data_v4_2;
+ extern const struct ipa_data ipa_data_v4_5;
+ extern const struct ipa_data ipa_data_v4_7;
+diff --git a/drivers/net/ipa/ipa_main.c b/drivers/net/ipa/ipa_main.c
+index 14ac2d2faf7c236c96a5cb3f91e3361c463de32d..fa26f36f64e5808890093147f2065fab9fd0a1bb 100644
+--- a/drivers/net/ipa/ipa_main.c
++++ b/drivers/net/ipa/ipa_main.c
+@@ -648,6 +648,10 @@ static const struct of_device_id ipa_match[] = {
+ 		.compatible	= "qcom,sdm845-ipa",
+ 		.data		= &ipa_data_v3_5_1,
+ 	},
++	{
++		.compatible	= "qcom,sc8180x-ipa",
++		.data		= &ipa_data_v4_1,
++	},
+ 	{
+ 		.compatible	= "qcom,sc7180-ipa",
+ 		.data		= &ipa_data_v4_2,
 
 -- 
 2.47.3
