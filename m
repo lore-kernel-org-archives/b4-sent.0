@@ -1,24 +1,24 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 06:04:58 +0000
-Subject: [PATCH v2 5.10.y] pid_namespace: prevent TIF_NOTIFY_SIGNAL from
+Date: Thu, 26 Nov 2026 06:04:45 +0000
+Subject: [PATCH v2 5.15.y] pid_namespace: prevent TIF_NOTIFY_SIGNAL from
  interrupting the reaper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-pid-510-v2-1-f528abaf9d3c@certik.com>
-X-B4-Tracking: v=1; b=H4sIAAnMB2sC/y2MywrCMBAAf6Xs2dQkkCD+injIY2NXJCnZVpTSf
- zdRjzMMswFjJWQ4DxtUfBJTyQ30YYAwuXxDQbExaKmtUtqKmaIwSgqJyToMKRh3glbPFRO9vqc
- LmFHJ8Q3Xn+fV3zEsfdNL7xiFry6HqSvGHJdSHqL7438P+/4BHb50JpsAAAA=
-X-Change-ID: 20261126-pid-510-0ef6aecfc5a8
+Message-Id: <20261126-pid-515-v2-1-7f7ca8955797@certik.com>
+X-B4-Tracking: v=1; b=H4sIAPzLB2sC/y2MywrCMBAAf6Xs2VSzklj8FfGQx2pXJCnZKkrpv
+ 5uoxxmGWUCoMAkcuwUKPVk4pwq46SCMLl1JcawMuEOrNVo1cVRGGzVEGwfch4NGglpPhS78+p5
+ OYHpt+jecf14e/kZhbptWeiekfHEpjE0JpTjnfFfNb/97WNcPL2yHLpsAAAA=
+X-Change-ID: 20261126-pid-515-8d6d823c712e
 To: stable@vger.kernel.org
 Cc: Christian Brauner <brauner@kernel.org>, Oleg Nesterov <oleg@redhat.com>, 
  linux-kernel@vger.kernel.org, Sasha Levin <sashal@kernel.org>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795673098; l=3176;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795673084; l=3176;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=3NDn9fE75xOZ9wPgLWG/nqyjoyHoMyS/t4NUADphw4s=;
- b=ZuwHO1MkeOvSWFTeov5kOKS7DzuukPs21HVsYnEKy1mke2c8g94OYkC+0c6qsi5EZDIhFn+A1
- ykh8ydyoHNaA/1YIJBLHt85lRc+OPfJOP7DfbwCS9iishvlnEUij49Z
+ bh=NTwKCRqRaZQa2oaPT2BuiJfwuLkiWEctDvxTR2Fk/QA=;
+ b=BbhStkw6O3dU/hOHy+LJPaSq5sxQnnTIzQjt7+9FMSA4mRbiciBEecb5ZpRWIHc2l+uAach0/
+ Gpx6ptmrUOdBQZeRVI3sEQbS46r/IC7exAdv4TClaLDbM0bYUACmULr
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
@@ -52,25 +52,25 @@ Reviewed-by: Oleg Nesterov <oleg@redhat.com>
 Cc: stable@vger.kernel.org
 Suggested-by: Oleg Nesterov <oleg@redhat.com>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
-[ adapted to 5.10: explicit save/restore instead of guard() to avoid a declaration-after-statement warning ]
+[ adapted to 5.15: explicit save/restore instead of guard() to avoid a declaration-after-statement warning ]
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
  kernel/pid_namespace.c |    5 ++++-
  1 file changed, 4 insertions(+), 1 deletion(-)
 
 Changes in v2
-v2: resent through a whitespace-safe path; v1 <CAFaZ9ep64RtaNeyK42OVLSCwD_g-E5RqjP4qbK0=45unkG=Zag@mail.gmail.com> was damaged by my mail client and does not apply.
-v2: dropped the signal helper patch, Sasha already posted it as <20261028224958.2405498-1-sashal@kernel.org>; this patch depends on it.
+v2: resent through a whitespace-safe path; v1 <CAFaZ9epucF3AKE=B3mB9JD1sAcorBQDsgre_Wnv8Sati=tomPg@mail.gmail.com> was damaged by my mail client and does not apply.
+v2: dropped the signal helper patch, Sasha already posted it as <20261028212317.2257095-1-sashal@kernel.org>; this patch depends on it.
 
 The backport and the test runs were prepared with AI coding tools
 (OpenAI Codex agents, with review by Claude). I went over the result
 before signing off.
 
 diff --git a/kernel/pid_namespace.c b/kernel/pid_namespace.c
-index e032b1ce7964..2c525208b6ad 100644
+index 40b011f88067..d3e860d3678a 100644
 --- a/kernel/pid_namespace.c
 +++ b/kernel/pid_namespace.c
-@@ -174,6 +174,7 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
+@@ -167,6 +167,7 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
  {
  	int nr;
  	int rc;
@@ -78,7 +78,7 @@ index e032b1ce7964..2c525208b6ad 100644
  	struct task_struct *task, *me = current;
  	int init_pids = thread_group_leader(me) ? 1 : 2;
  	struct pid *pid;
-@@ -219,9 +220,10 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
+@@ -212,9 +213,10 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
  	 * kernel_wait4() will also block until our children traced from the
  	 * parent namespace are detached and become EXIT_DEAD.
  	 */
@@ -90,7 +90,7 @@ index e032b1ce7964..2c525208b6ad 100644
  		rc = kernel_wait4(-1, NULL, __WALL, NULL);
  	} while (rc != -ECHILD);
  
-@@ -277,6 +279,7 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
+@@ -270,6 +272,7 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
  		current->signal->group_exit_code = pid_ns->reboot;
  
  	acct_exit_ns(pid_ns);
