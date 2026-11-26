@@ -1,79 +1,121 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 26 Nov 2026 09:56:52 +0000
-Subject: [PATCH net] net: stmmac: dwmac-sun8i: Drop received MAC control
- frames
+Date: Thu, 26 Nov 2026 10:01:19 +0000
+Subject: [PATCH v4] pmdomain: rockchip: remove subdomain links before the
+ domains on error
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-sun8i-emac-ctl-frames-v1-1-e90ac94bc8c7@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMzQrCMBAGX6Xs2YX8QGl9FfEQ16+6YqNkUxFK3
- 92oxxmYWclQFEb7bqWCl5o+cgO/60iuKV/Aem5MwYXe+xDYljwoY07CUu88lTTD2A+9uAgX4zh
- Sa58Fk75/3wNlVDr+pS2nG6R+j7RtHx4Uktp+AAAA
-X-Change-ID: 20261122-sun8i-emac-ctl-frames-186c03e03399
-To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- LABBE Corentin <clabbe.montjoie@gmail.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
- Arun Iyengar <aiyengar1990@gmail.com>
+Message-Id: <20261126-pmdomain-rockchip-v4-1-c793cbec970a@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NyQ6CMBSF4VcxXVvTgdGV72FcdISqUNJioyG8u
+ y1u0BCXJ/nvdyfglTPKg+NuAk4F443t48j2OyBa1jcKGhk3IIgUGGMEh07ajpkeOituojUDpFl
+ dMqJKLXUO4t3glDbPxTxfPts/+FWJMUGpaI0frXstTwNO3T8/YIhgwWvNCsUZq4pTE4P7QdgOJ
+ D+QtUC2BBKFXMg6I4xQqctfga4FuiXQKPAS0Vowinj1Jczz/AZU6LbgSAEAAA==
+X-Change-ID: 20261110-pmdomain-rockchip-3497a2e7fdf5
+To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Shawn Lin <shawn.lin@rock-chips.com>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Kevin Hilman <khilman@linaro.org>, Caesar Wang <wxt@rock-chips.com>, 
+ Elaine Zhang <zhangqing@rock-chips.com>
+Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Yao Zi <me@ziyao.cc>, Igor Pecovnik <igor@armbian.com>, 
+ stable@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795687012; l=1712;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795687278; l=3318;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Df1pc3deUNfFedjsrZXgOgDGpSA2ac6nDP3eQt7sHjQ=;
- b=q1CFqPkAPrZs2g4vYOtNI7W132Z93BqBt+PMmQcYJrCbvoGMx1oQRQ56FW2IJjE/AxxRTsLpF
- cGg2wV7DhB8CGRTgggaEvZwlps5LJbUI6CBLya36IvQZsO+UGB2dDE4
+ bh=uck8uxhwuf0y7xOwjlHVWqB3IaYYgJtnjsA3v9+m38k=;
+ b=sRUvDBPRpSUbm6kCsepTLQEUjX7F+fdk2Qa4Tux6yLrT9dKMKjvPTx94+soL/DDWuCHWOxAnQ
+ 570nDuozAeOCmeA3ljSrNpMaWT3yMRspv7kTsM6Xwuj1oruD9RhePPd
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sun8i_dwmac_set_filter() sets CTL_FRM_FILTER to "receive all control
-frames", so every PAUSE frame reaches the stack and is counted in
-rx_dropped. Leave it at 0, "drop", as the Allwinner BSP does; the MAC
-still obeys PAUSE.
+When probe fails after some domains were registered, the cleanup calls
+pm_genpd_remove() in domain id order. That fails with -EBUSY for every
+domain that is still a parent. Reversing the order does not help: on
+RK3588 RKVDEC0/1 have a parent with a lower and one with a higher id.
+devm then frees those domains while they are still on gpd_list.
 
-Fixes: 9f93ac8d4085 ("net-next: stmmac: Add dwmac-sun8i")
+Remove the parent/child links first, depth first over the DT nodes.
+
+Fixes: 79d12b7a7f22 ("soc: rockchip: power-domain: use pm_genpd_remove in error cleanup")
+Cc: stable@vger.kernel.org
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Tested on an Orange Pi Zero2 (H616), net/main, MAC loopback: TX still
-waits 32.6 ms per PAUSE; rx_dropped per 20 PAUSE frames 20 -> 0.
-Claude (AI) helped find the cause and write the patch; I reviewed and
-tested it.
----
- drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+Tested as v1 (same code) on an Orange Pi 5 (RK3588S), v7.3 based
+kernel, with a test device tree that makes the PD_FEC clock appear late:
+no freed domain left on gpd_list, and the controller binds later with
+all 26 domains. The rebase is build-tested only.
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-index 2ece7ba9dd73..f669bf22b7dc 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-@@ -192,7 +192,6 @@ static const struct emac_variant emac_variant_h616_emac1 = {
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
+---
+Changes in v4:
+- Rebased on the pmdomain fixes branch
+- Fix only; the pm_qos error code and dev_err_probe() changes go to next
+  separately
+- Dropped "don't report probe deferral as an error": Yao Zi's patch in
+  next covers part of it, the cleanup series the rest
+- Link to v3: https://patch.msgid.link/20261113-pmdomain-rockchip-v3-0-b7039ca30b87@gmail.com
+---
+ drivers/pmdomain/rockchip/pm-domains.c | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
+
+diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
+index 563614a7bf66..81a9163b43cc 100644
+--- a/drivers/pmdomain/rockchip/pm-domains.c
++++ b/drivers/pmdomain/rockchip/pm-domains.c
+@@ -993,12 +993,45 @@ static void rockchip_pm_remove_one_domain(struct rockchip_pm_domain *pd)
+ 	/* devm will free our memory */
+ }
  
- /* Used in EMAC_RX_FRM_FLT */
- #define EMAC_FRM_FLT_RXALL              BIT(0)
--#define EMAC_FRM_FLT_CTL                BIT(13)
- #define EMAC_FRM_FLT_MULTICAST          BIT(16)
++static struct generic_pm_domain *
++rockchip_pm_node_to_genpd(struct rockchip_pmu *pmu, struct device_node *node)
++{
++	u32 id;
++
++	if (of_property_read_u32(node, "reg", &id) ||
++	    id >= pmu->genpd_data.num_domains)
++		return NULL;
++
++	return pmu->genpd_data.domains[id];
++}
++
++/* Remove the links depth first, so each child has no subdomains left. */
++static void rockchip_pm_remove_subdomains(struct rockchip_pmu *pmu,
++					  struct device_node *parent)
++{
++	struct generic_pm_domain *parent_domain, *child_domain;
++
++	parent_domain = rockchip_pm_node_to_genpd(pmu, parent);
++
++	for_each_child_of_node_scoped(parent, np) {
++		rockchip_pm_remove_subdomains(pmu, np);
++
++		child_domain = rockchip_pm_node_to_genpd(pmu, np);
++		if (parent_domain && child_domain)
++			pm_genpd_remove_subdomain(parent_domain, child_domain);
++	}
++}
++
+ static void rockchip_pm_domain_cleanup(struct rockchip_pmu *pmu)
+ {
+ 	struct generic_pm_domain *genpd;
+ 	struct rockchip_pm_domain *pd;
+ 	int i;
  
- /* Used in RX_CTL1*/
-@@ -720,7 +719,7 @@ static void sun8i_dwmac_set_filter(struct mac_device_info *hw,
- 	struct netdev_hw_addr *ha;
- 	int macaddrs = netdev_uc_count(dev) + netdev_mc_count(dev) + 1;
- 
--	v = EMAC_FRM_FLT_CTL;
-+	v = 0;
- 
- 	if (dev->flags & IFF_PROMISC) {
- 		v = EMAC_FRM_FLT_RXALL;
++	/* pm_genpd_remove() refuses a domain that still has subdomains */
++	for_each_available_child_of_node_scoped(pmu->dev->of_node, np)
++		rockchip_pm_remove_subdomains(pmu, np);
++
+ 	for (i = 0; i < pmu->genpd_data.num_domains; i++) {
+ 		genpd = pmu->genpd_data.domains[i];
+ 		if (genpd) {
 
 ---
-base-commit: e509726660dd06ce107437aecf7c106c9d3fc1e7
-change-id: 20261122-sun8i-emac-ctl-frames-186c03e03399
+base-commit: faa6cd23f6269990b09ec63849239aae5cdb238b
+change-id: 20261110-pmdomain-rockchip-3497a2e7fdf5
 
 Best regards,
 --  
