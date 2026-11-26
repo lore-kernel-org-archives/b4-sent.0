@@ -1,98 +1,148 @@
-From: Fabricio Akio <fabricioakio@gmail.com>
-Date: Wed, 25 Nov 2026 23:50:23 -0300
-Subject: [PATCH] soc: qcom: smp2p: Reset the last values only when the
- remote restarted
+From: Igor Velkov <iav@iav.lv>
+Date: Thu, 26 Nov 2026 04:53:36 +0200
+Subject: [PATCH] configs: odroid-n2: enable the SPI NOR flash
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261125-smp2p-ssr-reset-v1-1-ed442ed77950@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QqCQBBG4VeRuW7AHXKRXiW6cPW3RsiWGYtAf
- HfXuvwuzlnJYQqnS7WS4aOur7kgnCrqH918B+tQTFJLDEEa9meWzO7GBsfCsYnn1NUtUhAqVTa
- M+v0dr7e//Z0m9MuxoW3bAZY5wDRzAAAA
-X-Change-ID: 20261125-smp2p-ssr-reset-6564ba08eb12
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Deepak Kumar Singh <deepak.singh@oss.qualcomm.com>, 
- Chris Lew <chris.lew@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Fabricio Akio <fabricioakio@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795661423; l=2678;
- i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
- bh=Q1U2Pn/P1zafs/QofbW7Fr6+lX5ctVwV3JDZo//cqlw=;
- b=fvQpswV/HFL8fUj6KP2gcsjHea7zGyKS1Mz8UbNpHenHk50qWSa9BJc/b7Q/mIkTGo/QR93Yz
- sfdHHbhs5EgA9MGXbnRBqUwdathOTYkjwdQVBGLvoqvwdH6nJ2uD2tI
-X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
- pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
-X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
+Message-Id: <20261126-b4-n2-spi-nor-v1-1-4fd806d0fa00@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAC+fB2sC/x3MPQqAMAxA4atIZgNtsf5dRRy0ppqlSgIiFO9uc
+ fyG9zIoCZPCWGUQuln5TAW2riAcS9oJeSsGZ1xrrWtxbTA51IsxnYLRDKsP3tLW9VCaSyjy8/+
+ m+X0/Ts29e18AAAA=
+To: Neil Armstrong <neil.armstrong@linaro.org>, u-boot-amlogic@groups.io
+Cc: Tom Rini <trini@konsulko.com>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
+ u-boot@lists.u-boot-project.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4536; i=iav@iav.lv;
+ h=from:subject:message-id; bh=VYaPFTtVFfxBx3u0j2uhGXyauX6iBflpyXSxLToNX+E=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDNns8w34ti3u1mlxNw29/ukN2+/+M0ZSczgnm/o5fazrs
+ fm5yoa/o5SFQYyLQVZMkWXCIY1bGUuu/vX3MH8AM4eVCWQIAxenAEyk8yUjw4871sLGN5V/uCUv
+ m3vAVzNTe3GpboLAv6oqWY4TPMy3ORgZTknXXdnl+bug7frN6edrk/elP/ixgnHWx3nx/v7tm/4
+ +ZwEA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Once the SSR ack feature is negotiated, qcom_smp2p_check_ssr() clears
-last_value of every inbound entry on each interrupt. Every bit that is
-set is then reported as a new rising edge whenever the remote signals
-anything: on the SDM630 ADSP, stopping the DSP raises its ready and
-handover interrupts again.
+The SPI NOR of the ODROID-N2/N2+ shares the SoC pins BOOT_3..BOOT_7
+with the eMMC data lines D3..D7, so the device tree has spifc disabled
+and the defconfig has no SPI support. Enable both, and describe how to
+write the flash in the board documentation.
 
-Clear the values only when a restart of the remote is detected.
+Normal boot does not touch the flash: there is no SF boot target or
+bootdev, and the environment is not in SPI. The first probe of the SPI
+controller ("sf probe") muxes BOOT_4..BOOT_6 and the chip select
+(BOOT_14) to the flash, while the eMMC stays set up for eight lines, so
+the eMMC must not be accessed after that until reset. On an N2+, an
+eMMC access after "sf probe" also made the boot ROM fail to read the
+SPI NOR after the reset.
 
-Fixes: 42c4cf5d4828 ("soc: qcom: smp2p: Add support for smp2p v2")
-Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
+The 4-bit eMMC setup used on the VIM3 does not help: pin 7 of the
+flash (RESET# on the MX25U6435F) is on eMMC D3, and on an N2+ eMMC reads
+in 4-bit mode broke writes to the flash under Linux.
+
+An OS booted through EFI without its own device tree gets this one,
+where spifc and the 8-bit eMMC claim the same pins.
+
+Tested on an ODROID-N2+ (MX25U6435F; spi-max-frequency 104 MHz, about
+83 MHz after the controller divider): the eMMC comes up with the same
+bus width with and without this patch; sf update of 1 MiB reads back
+equal; the board boots from the SPI NOR after reset. Boards with an XTX
+flash were not tested.
+
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-In v1 and v2 of the series that added the reset it ran only when a
-restart was detected and the remote's version was above 1; v3 dropped
-both conditions:
-https://lore.kernel.org/r/20250923-smp2p-v1-2-2c045af73dac@oss.qualcomm.com
-https://lore.kernel.org/r/20251103152929.2434911-3-deepak.singh@oss.qualcomm.com
-https://lore.kernel.org/r/20260127-smp2pv2-v3-2-4060b859b1e2@oss.qualcomm.com
+ arch/arm/dts/meson-g12b-odroid-n2-u-boot.dtsi |  9 +++++++++
+ configs/odroid-n2_defconfig                   |  9 +++++++++
+ doc/board/amlogic/odroid-n2.rst               | 21 +++++++++++++++++++++
+ 3 files changed, 39 insertions(+)
 
-Tested on a Motorola Moto X4 (SDM630), whose board file is not in
-mainline yet, on sdm660-mainline's 7.2 kernel, the same build with and
-without this patch. Stopping the ADSP:
-
-  without: smp2p_notify_in: smp2p-adsp: slave-kernel: status:0x86 val:0x86
-  with:    smp2p_notify_in: smp2p-adsp: slave-kernel: status:0x80 val:0x86
-
-Without it the ready and handover interrupts are counted again, and that
-kernel, which predates bb7c5d6f5b41 ("remoteproc: qcom: q6v5: Make
-handover IRQ one-shot"), logs "Handover signaled, but it already
-happened". With it, every start of the ADSP after a stop or a crash
-still traces "SSR detected" and raises ready.
-
-The ADSP's smp2p item reports version 1. No version 2 remote was tested:
-that such a remote's restart is still detected, so that the reset still
-runs for it, is taken from the description of 42c4cf5d4828.
----
- drivers/soc/qcom/smp2p.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/soc/qcom/smp2p.c b/drivers/soc/qcom/smp2p.c
-index cf06a49149be..d7f7345104e0 100644
---- a/drivers/soc/qcom/smp2p.c
-+++ b/drivers/soc/qcom/smp2p.c
-@@ -194,13 +194,16 @@ static bool qcom_smp2p_check_ssr(struct qcom_smp2p *smp2p)
- 
- 	restart_done = in->flags & BIT(SMP2P_FLAGS_RESTART_DONE_BIT);
- 	restart = restart_done != smp2p->ssr_ack;
-+	if (!restart)
-+		return false;
+diff --git a/arch/arm/dts/meson-g12b-odroid-n2-u-boot.dtsi b/arch/arm/dts/meson-g12b-odroid-n2-u-boot.dtsi
+index a92f9e9ff13..1dfb521e65f 100644
+--- a/arch/arm/dts/meson-g12b-odroid-n2-u-boot.dtsi
++++ b/arch/arm/dts/meson-g12b-odroid-n2-u-boot.dtsi
+@@ -11,3 +11,12 @@
+ 	status = "okay";
+ 	vref-supply = <&vddao_1v8>;
+ };
 +
- 	list_for_each_entry(entry, &smp2p->inbound, node) {
- 		if (!entry->value)
- 			continue;
- 		entry->last_value = 0;
- 	}
- 
--	return restart;
-+	return true;
- }
- 
- static void qcom_smp2p_do_ssr_ack(struct qcom_smp2p *smp2p)
++/*
++ * The SPI NOR shares BOOT_3..BOOT_7 with eMMC D3..D7. Probing spifc
++ * ("sf probe") muxes BOOT_4..BOOT_6 to it; do not access the eMMC after
++ * that until reset.
++ */
++&spifc {
++	status = "okay";
++};
+diff --git a/configs/odroid-n2_defconfig b/configs/odroid-n2_defconfig
+index 73a1a08afde..1f237d928ba 100644
+--- a/configs/odroid-n2_defconfig
++++ b/configs/odroid-n2_defconfig
+@@ -30,6 +30,7 @@ CONFIG_CMD_DFU=y
+ CONFIG_CMD_GPIO=y
+ # CONFIG_CMD_LOADS is not set
+ CONFIG_CMD_MMC=y
++CONFIG_CMD_SPI=y
+ CONFIG_CMD_USB=y
+ CONFIG_CMD_USB_MASS_STORAGE=y
+ # CONFIG_CMD_SETEXPR is not set
+@@ -40,6 +41,11 @@ CONFIG_ADC=y
+ CONFIG_SARADC_MESON=y
+ CONFIG_DFU_RAM=y
+ CONFIG_MMC_MESON_GX=y
++CONFIG_MTD=y
++CONFIG_DM_MTD=y
++CONFIG_DM_SPI_FLASH=y
++CONFIG_SPI_FLASH_MACRONIX=y
++CONFIG_SPI_FLASH_XTX=y
+ CONFIG_DM_MDIO=y
+ CONFIG_DM_MDIO_MUX=y
+ CONFIG_ETH_DESIGNWARE_MESON8B=y
+@@ -55,6 +61,9 @@ CONFIG_DM_REGULATOR_FIXED=y
+ CONFIG_DEBUG_UART_ANNOUNCE=y
+ CONFIG_DEBUG_UART_SKIP_INIT=y
+ CONFIG_MESON_SERIAL=y
++CONFIG_SPI=y
++CONFIG_DM_SPI=y
++CONFIG_MESON_SPIFC=y
+ CONFIG_USB=y
+ CONFIG_DM_USB_GADGET=y
+ CONFIG_USB_XHCI_HCD=y
+diff --git a/doc/board/amlogic/odroid-n2.rst b/doc/board/amlogic/odroid-n2.rst
+index 5222a21c808..194edde081b 100644
+--- a/doc/board/amlogic/odroid-n2.rst
++++ b/doc/board/amlogic/odroid-n2.rst
+@@ -130,3 +130,24 @@ Then write U-Boot to SD or eMMC with:
+     $ DEV=/dev/boot_device
+     $ dd if=fip/u-boot.bin.sd.bin of=$DEV conv=fsync,notrunc bs=512 skip=1 seek=1
+     $ dd if=fip/u-boot.bin.sd.bin of=$DEV conv=fsync,notrunc bs=1 count=440
++
++Writing U-Boot to the SPI NOR
++-----------------------------
++
++The SPI NOR shares the SoC pins BOOT_3..BOOT_7 with the eMMC data lines
++D3..D7. The boot ROM reads it when the boot switch is set to SPI at power-on.
++
++U-Boot uses the eMMC with all eight data lines. The first probe of the SPI
++controller, for instance by "sf probe", muxes BOOT_4..BOOT_6 to the flash,
++and the eMMC must not be accessed after that until reset. Load the image
++first, from the eMMC or any other device, then write it:
++
++.. code-block:: none
++
++    => load mmc 1:1 ${loadaddr} u-boot.bin
++    => sf probe
++    => sf update ${loadaddr} 0 ${filesize}
++    => reset
++
++Here u-boot.bin is the signed image from the steps above (fip/u-boot.bin, or
++u-boot.bin in the build-fip.sh output directory), not u-boot.bin.sd.bin.
 
 ---
-base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
-change-id: 20261125-smp2p-ssr-reset-6564ba08eb12
+base-commit: 9d67454e920b3908529c9fc642a8c911db040896
+change-id: 20261126-b4-n2-spi-nor-f09b5c51ed78
 
 Best regards,
---  
-Fabricio Akio <fabricioakio@gmail.com>
+-- 
+Igor Velkov <iav@iav.lv>
 
