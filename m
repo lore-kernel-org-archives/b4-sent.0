@@ -1,24 +1,24 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 14:04:40 +0000
-Subject: [PATCH 6.1.y] staging: rtl8723bs: rtw_mlme: add bounds checks
+Date: Thu, 26 Nov 2026 14:05:01 +0000
+Subject: [PATCH 5.15.y] staging: rtl8723bs: rtw_mlme: add bounds checks
  before ie_length subtraction
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-so3-rtl-61-v1-1-96e1a9756c6d@certik.com>
-X-B4-Tracking: v=1; b=H4sIAHc8CGsC/0WNwQrCMBBEf6Xs2a3dCCn4K+IhSTc2UhLJpqKU/
- ruJHjzOY+bNBsI5sMC52yDzM0hIsQY6dOBmE2+MYaoZ1KA0kdIo6YS5LKgJzUgDezUqTx7q4JH
- Zh9dXdgHdU/+G6w/Lau/sShO1ojXCaLOJbm5IOE4lpQUbP/4PYN8/IDVoAKAAAAA=
-X-Change-ID: 20261126-so3-rtl-61-a710ef272f1f
+Message-Id: <20261126-so3-rtl-515-v1-1-4a4860c4ff9d@certik.com>
+X-B4-Tracking: v=1; b=H4sIAIw8CGsC/02NzQ7CIBCEX6XZs1sLFRJ9FeOBn63FNGBYNJqm7
+ y7oxeN8mflmBaYciOHUrZDpGTikWIPYdeBmE6+EwdcMcpBaCKmR04i5LKiEwlGZgzL6OEzWQ13
+ cM03h9bWdQfVC9W+4/Dg/7I1caarWtIYJbTbRzQ0xRV9SWrDx/d8FbNsHq6J0G6MAAAA=
+X-Change-ID: 20261126-so3-rtl-515-35a45a690fbd
 To: stable@vger.kernel.org
 Cc: Salman Alghamdi <me@cipherat.com>, Luka Gejak <luka.gejak@linux.dev>, 
  linux-staging@lists.linux.dev
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795701879; l=3160;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795701900; l=3165;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=Ys/Tq/5BzFedQ5FeXcg5z6hbVsf4FzrQ3pyU6hVxDVo=;
- b=Aod7ceNg2c2M1EeuPXDQYQ14tfANlBzgEBeYhzCujpJepWpDLYaqagFWS+09GdG9mlk7ovGuU
- Yd8FNfKNqv1AnDa+lBpn3yLHNqz6cmBLb9Rt5bi27WG2qvUGmOVdrS0
+ bh=6UeFlLleWiTIa8ypce3Y897LteBNHsXxh9xJYKGuAZg=;
+ b=DQ+AR0L5K5YgqF5OyGT+9czaFiHbNBqRbUYrHH1y4lKIl87w0JVRABjQMJT3hpeM9Iafcquam
+ gSeKS01ijAKBnE6aYrVwBF0lOLVo3qPEqkua3CE6YkkQHJtW38iS8G6
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
@@ -39,14 +39,14 @@ Signed-off-by: Salman Alghamdi <me@cipherat.com>
 Reviewed-by: Luka Gejak <luka.gejak@linux.dev>
 Link: https://patch.msgid.link/20260513203455.31792-1-me@cipherat.com
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-[ adapted to 6.1.y: preserve branch WPS helper-call spacing ]
+[ adapted to 5.15.y: preserve branch WPS helper-call spacing ]
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
 6.6.y and newer already have this fix. The added lines are the
 same as upstream. The WPS lookup next to them keeps this branch's
 older spacing, which is why it doesn't cherry-pick cleanly.
 
-Tested on v6.1.193:
+Tested on v5.15.226:
 - x86_64 allmodconfig W=1 build of
   drivers/staging/rtl8723bs/core/rtw_mlme.o, base vs patched, no new
   warnings
@@ -62,10 +62,10 @@ before signing off.
  1 file changed, 10 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/staging/rtl8723bs/core/rtw_mlme.c b/drivers/staging/rtl8723bs/core/rtw_mlme.c
-index ac3a08e6727f..8a83d1fedeac 100644
+index 6480252a5ade..b31a1fc964ef 100644
 --- a/drivers/staging/rtl8723bs/core/rtw_mlme.c
 +++ b/drivers/staging/rtl8723bs/core/rtw_mlme.c
-@@ -658,6 +658,8 @@ int rtw_is_desired_network(struct adapter *adapter, struct wlan_network *pnetwor
+@@ -656,6 +656,8 @@ int rtw_is_desired_network(struct adapter *adapter, struct wlan_network *pnetwor
  	privacy = pnetwork->network.privacy;
  
  	if (check_fwstate(pmlmepriv, WIFI_UNDER_WPS)) {
@@ -74,8 +74,8 @@ index ac3a08e6727f..8a83d1fedeac 100644
  		if (rtw_get_wps_ie(pnetwork->network.ies+_FIXED_IE_LENGTH_, pnetwork->network.ie_length-_FIXED_IE_LENGTH_, NULL, &wps_ielen))
  			return true;
  		else
-@@ -672,11 +674,15 @@ int rtw_is_desired_network(struct adapter *adapter, struct wlan_network *pnetwor
- 			bselected = false;
+@@ -670,11 +672,15 @@ int rtw_is_desired_network(struct adapter *adapter, struct wlan_network *pnetwor
+ 	    bselected = false;
  
  		if (psecuritypriv->ndisauthtype == Ndis802_11AuthModeWPA2PSK) {
 -			p = rtw_get_ie(pnetwork->network.ies + _BEACON_IE_OFFSET_, WLAN_EID_RSN, &ie_len, (pnetwork->network.ie_length - _BEACON_IE_OFFSET_));
@@ -96,8 +96,8 @@ index ac3a08e6727f..8a83d1fedeac 100644
  
 
 ---
-base-commit: 1ca1436ccc68275d0b43b6a730b3940fcc46b7c2
-change-id: 20261126-so3-rtl-61-a710ef272f1f
+base-commit: 4f2df9a01754521fbba3493e8ad91ef65515e68c
+change-id: 20261126-so3-rtl-515-35a45a690fbd
 
 Best regards,
 --  
