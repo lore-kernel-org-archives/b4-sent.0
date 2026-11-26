@@ -1,11 +1,10 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 26 Nov 2026 09:54:13 +0000
-Subject: [PATCH v4 1/3] dt-bindings: iommu: arm,smmu-v3: Allow a clock and
- a reset
+Date: Thu, 26 Nov 2026 09:54:14 +0000
+Subject: [PATCH v4 2/3] iommu/arm-smmu-v3: Enable an optional clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-smmu-v3-pcie-pd-v4-1-c340c2dbd1d2@gmail.com>
+Message-Id: <20261126-smmu-v3-pcie-pd-v4-2-c340c2dbd1d2@gmail.com>
 References: <20261126-smmu-v3-pcie-pd-v4-0-c340c2dbd1d2@gmail.com>
 In-Reply-To: <20261126-smmu-v3-pcie-pd-v4-0-c340c2dbd1d2@gmail.com>
 To: Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
@@ -22,46 +21,57 @@ Cc: Pranjal Shrivastava <praan@google.com>,
  Finley Xiao <finley.xiao@rock-chips.com>, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795686852; l=1077;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795686852; l=1455;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=9WAa2NdMh1o7WUxCm4TzGQvYKe0WZ6XQgmX515d4dVY=;
- b=63waUiGI4v4hVMEjm6yVga02Blx6wFdxNGsI+dbposPNbEuhb18980OuRakdTPp+VVaQsUOGO
- /ZmW8GMDDSLBeLjkEeviM7rzy50ZhUwDuQ7kbei48AeyuTzjG8qXsJS
+ bh=lCcYyOtmQB3eNSuw9WLfzwzQ/FRb4bdLv3eGq+ciMVc=;
+ b=xJ5TqNglUYP4qkntJy9fB78WeKA2qNRggzpgnu2o5dsQ/3h5cv0EehwW8w/8UYZh5zN/pU5t0
+ XwRWI1cW4I6CkGfU1bYIGfwSOTJ4oyJWyE05Q8boO3/1nAabR0MuIvc
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3588 PCIe MMU-600 has a clock (ACLK_MMU_PCIE) and a reset
-(SRST_A_MMU_PCIE) in the CRU. When no PCIe controller holds the clock,
-it is gated as unused and the SMMU stops responding. Allow one clock and
-one reset.
+On the RK3588 the PCIe SMMU's clock is gated as unused when no PCIe
+controller holds it, and the CR0 write at shutdown then hangs. Enable
+the clock from the firmware node, if any, while the driver is bound.
 
-Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml | 8 ++++++++
+ drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c | 8 ++++++++
  1 file changed, 8 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml b/Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml
-index 3c044e4f03d4..9ab80142a485 100644
---- a/Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml
-+++ b/Documentation/devicetree/bindings/iommu/arm,smmu-v3.yaml
-@@ -63,6 +63,14 @@ properties:
+diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
+index 100b34f07032..beea222dcf57 100644
+--- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
++++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
+@@ -12,6 +12,7 @@
+ #include <linux/acpi.h>
+ #include <linux/acpi_iort.h>
+ #include <linux/bitops.h>
++#include <linux/clk.h>
+ #include <linux/crash_dump.h>
+ #include <linux/delay.h>
+ #include <linux/err.h>
+@@ -5786,12 +5787,19 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
+ 	resource_size_t ioaddr;
+ 	struct arm_smmu_device *smmu;
+ 	struct device *dev = &pdev->dev;
++	struct clk *clk;
  
-   msi-parent: true
+ 	smmu = devm_kzalloc_obj(dev, *smmu);
+ 	if (!smmu)
+ 		return -ENOMEM;
+ 	smmu->dev = dev;
  
-+  clocks:
-+    maxItems: 1
-+    description:
-+      Clock of the SMMU's register and memory interfaces.
++	/* Before the firmware probe, which may take a CMDQV reference */
++	clk = devm_clk_get_optional_enabled(dev, NULL);
++	if (IS_ERR(clk))
++		return dev_err_probe(dev, PTR_ERR(clk),
++				     "failed to enable clock\n");
 +
-+  resets:
-+    maxItems: 1
-+
-   nvidia,cmdqv:
-     description: |
-       A phandle to its pairing CMDQV extension for an implementation on NVIDIA
+ 	if (dev->of_node) {
+ 		ret = arm_smmu_device_dt_probe(pdev, smmu);
+ 	} else {
 
 -- 
 2.55.0
