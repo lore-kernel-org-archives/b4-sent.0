@@ -4,55 +4,56 @@ To: daniel.lezcano@linaro.org, rafael@kernel.org, rui.zhang@intel.com,
 Cc: matthias.bgg@gmail.com, angelogioacchino.delregno@collabora.com, 
  linux-pm@vger.kernel.org, linux-mediatek@lists.infradead.org, 
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 0/4] thermal/drivers/mediatek/lvts_thermal: CALSCALE,
- overflow, locking, and IRQ NULL fixes
-Date: Thu, 26 Nov 2026 00:53:21 +0000
-Message-Id: <20261126005321.71799-1-iasnezhkov@gmail.com>
+Subject: [PATCH 1/4] thermal/drivers/mediatek/lvts_thermal: write
+ LVTS_CALSCALE in lvts_ctrl_configure()
+Date: Thu, 26 Nov 2026 00:53:22 +0000
+Message-Id: <20261126005321.71799-2-iasnezhkov@gmail.com>
+In-Reply-To: <20261126005321.71799-1-iasnezhkov@gmail.com>
+References: <20261126005321.71799-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795654401; l=1422;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795654401; l=1283;
  i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
- bh=1leBQV0oOy+uaHay4Mtb/7QLKwo9KRyb8z4zbg9Ip+0=;
- b=DeRs6vSDkiq3HlMNkbRcNnW3B5O7KAkhffqnwDzmX6U2qhxHqi0eXsj9mhdRLyfXYaWKli22y
- GRhmRV3HisQCtTnGthdRZ2KmLygbd82pbzpxD0EvLttrM4wcePGGj9V
+ bh=DfpU2QqoC6gb2t4TCCBuYupqgxwpLO6QVGeUXzAFNXc=;
+ b=2bySduS9R3VaEm073Or1qqjPHuTmVrGNaFcC5OQ3+Hzxz0rBhNpPxGJrdIyjy0OFVMdrBP23H
+ VOVIOeoOk4oA+ttzyrJlMXKFNcbVolhIaKRP+68BAlRlYpSfVYocuvB
 X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
  pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
 X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This four-patch series fixes four bugs in
-drivers/thermal/mediatek/lvts_thermal.c:
+lvts_ctrl_configure() assigns 0x300 and LVTS_CALSCALE_CONF (0x300) to
+the local variable `value`, then immediately overwrites `value` with the
+LVTS_MSRCTL0 filter setting without ever writing LVTS_CALSCALE (0x0048).
 
-1. Write LVTS_CALSCALE_CONF (0x300) to the LVTS_CALSCALE register instead
-   of overwriting a local variable and discarding it.
-2. Avoid 32-bit overflow and unsigned truncation in
-   lvts_temp_to_raw_mt7988(), and skip converting high == INT_MAX in
-   lvts_set_trips() while masking high-offset IRQ.
-3. Serialize lvts_set_trips() with a per-controller spinlock_t in
-   struct lvts_ctrl so concurrent updates across thermal zones on the
-   same controller cannot corrupt shared thresholds or LVTS_MONINT via
-   unsynchronized RMW.
-4. Check lvts_ctrl->sensors[i].tz before calling
-   thermal_zone_device_update() in lvts_ctrl_irq_handler() for disabled
-   or DT-absent sensor slots.
+Remove the dead duplicate assignment and write LVTS_CALSCALE_CONF to
+LVTS_CALSCALE(lvts_ctrl->base), matching the comment above it and
+MediaTek's downstream soc_temp_lvts initialization sequence.
 
-Found and drafted with an AI coding assistant while bringing up MT6789.
+Found and drafted with an AI coding assistant.
 
-Ilia Snezhkov (4):
-  thermal/drivers/mediatek/lvts_thermal: write LVTS_CALSCALE in
-    lvts_ctrl_configure()
-  thermal/drivers/mediatek/lvts_thermal: avoid 32-bit overflow in
-    lvts_temp_to_raw_mt7988() and INT_MAX trips
-  thermal/drivers/mediatek/lvts_thermal: serialize lvts_set_trips() per
-    controller
-  thermal/drivers/mediatek/lvts_thermal: skip sensors without a thermal
-    zone in IRQ
+Fixes: f5f633b18234 ("thermal/drivers/mediatek: Add the Low Voltage Thermal Sensor driver")
+Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
+---
+ drivers/thermal/mediatek/lvts_thermal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- drivers/thermal/mediatek/lvts_thermal.c | 30 ++++++++++++++++---------
- 1 file changed, 20 insertions(+), 10 deletions(-)
-
+diff --git a/drivers/thermal/mediatek/lvts_thermal.c b/drivers/thermal/mediatek/lvts_thermal.c
+index 350fffd..e034c6c 100644
+--- a/drivers/thermal/mediatek/lvts_thermal.c
++++ b/drivers/thermal/mediatek/lvts_thermal.c
+@@ -1197,8 +1197,8 @@ static int lvts_ctrl_configure(struct device *dev, struct lvts_ctrl *lvts_ctrl)
+ 	/*
+ 	 * LVTS_CALSCALE : ADC voltage round
+ 	 */
+-	value = 0x300;
+ 	value = LVTS_CALSCALE_CONF;
++	writel(value, LVTS_CALSCALE(lvts_ctrl->base));
+ 
+ 	/*
+ 	 * LVTS_MSRCTL0 : Sensor filtering strategy
 -- 
 2.54.0 (Apple Git-157)
 
