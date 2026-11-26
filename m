@@ -1,92 +1,80 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 12:24:11 +0000
-Subject: [PATCH 6.6.y] wifi: mt76: mt7915: clear wcid mask under mutex
- after RCU pointer clear
+From: Roman Vivchar <rva333@protonmail.com>
+Subject: [PATCH 0/8] arm64: mediatek: initial support for mt6768
+Date: Thu, 26 Nov 2026 14:39:53 +0200
+Message-Id: <20261126-6768-init-v1-0-abc364a2447e@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-so1-mt-66-v1-1-429a17b69783@certik.com>
-X-B4-Tracking: v=1; b=H4sIAOokCGsC/z2MQQ7CIBAAv9Ls2a2CcaN+xXgAuliMQsOi0TT9u
- 6CJx5lMZgbhHFjg2M2Q+RkkpFhBrTpwo4kXxjBUBr3RpJQmlKTwXpAIjdodvN17q2gLtZ8y+/D
- 6vk5APfVvOP+0POyVXWmfFlojjDab6MamhONQUrph8+v/H5blA4kzXGmeAAAA
-X-Change-ID: 20261126-so1-mt-66-a159fb8fb163
-To: stable@vger.kernel.org
-Cc: Felix Fietkau <nbd@nbd.name>, Lorenzo Bianconi <lorenzo@kernel.org>, 
- linux-wireless@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795695850; l=2795;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=2Yvt6AJuNvts0+ANo6CU0QtnmDtVLXdldOC/Am3e2gA=;
- b=w+O49ZjIy9egfIJbvByoykDXAcgK+TPmDWIgXps9KXkT+HQlgsgluVsBhtUMsjgUuGRE14I11
- s3n5Sy3qv3eApIubLJz/OVseZUi3g8Z6+GuM348Hf//IpAMb0gzWPZ2
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBBA0avIrDXRUSWuIhZag7EoaRGJuLti+
+ ZKff0EgzxSgTi7wdHDgxUXINAE7dW4kwX00YIZaStRCl7oS7HgTqkCjeoN5meUQ+9XTwOf3atr
+ fYTcz2e0dwH0/cHtiXm0AAAA=
+X-Change-ID: 20261126-6768-init-452b4db23703
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Sean Wang <sean.wang@mediatek.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, 
+ Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>, Philipp Zabel <p.zabel@pengutronix.de>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, 
+ Thomas Gleixner <tglx@kernel.org>, Radu Rendec <radu@rendec.net>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
+ linux-serial@vger.kernel.org, linux-watchdog@vger.kernel.org, 
+ Roman Vivchar <rva333@protonmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795696875; l=1911;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=OuksRoDHKFpT/R8LxjmQb4PYxWFGU2toCTWUqRQ83nI=;
+ b=M8pLRwIso+8rS6ShJtdTTZ8LXr45utWV3TwSmwDKcanvlFd8lSNaDtyAwkSlI9x8SUU2U0dwx
+ or4OP3XkIa0Ahz+lp+/izRarO7wnUi18pqJzDcMEGt5RNvk2QYQ1y0h
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Felix Fietkau <nbd@nbd.name>
+This series adds basic support for the MediaTek mt6768 SoC and Xiaomi
+Redmi Note 9 smartphone (codenamed "merlin").
 
-commit 6486e11a6e2f679597af2d5bb48c3b07a2b2a7ba upstream.
+The mt6768 is a 64-bit SoC featuring six Cortex-A55 and two Cortex-A75
+cores, typically paired with LPDDR4X memory and found in low to mid range
+phones.
 
-mt7915_remove_interface() cleared the wcid mask bit with no lock held and
-before clearing the RCU wcid pointer. The mask is a non-atomic RMW shared
-with the allocators, which all run under dev->mt76.mutex; on DBDC the two
-wiphys share one mt76_dev, so this raced add_interface/sta_add on the
-other band and could leak or double-hand-out a wcid. Clearing the bit
-before the RCU pointer also let a concurrent allocation reuse the index
-and publish its wcid, which the subsequent NULL assignment then wiped.
-Move the clear into the existing mutex section, after the RCU pointer is
-cleared.
+This series requires custom TF-A and U-Boot forks, because the device
+shipped with broken PSCI implementation and bootloader that pollutes dtb.
+TF-A: https://github.com/mt6768-mainline/arm-trusted-firmware
+U-Boot: https://github.com/mt6768-mainline/u-boot
 
-Fixes: f3049b88b2b3 ("wifi: mt76: mt7915: allocate vif wcid in the same range as stations")
-Link: https://patch.msgid.link/20260722082610.2699628-8-nbd@nbd.name
-Signed-off-by: Felix Fietkau <nbd@nbd.name>
-[ adapted to 6.6.y: context only, older mt7915_mcu_add_sta() call ]
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
-6.12.y and newer already have this fix. The moved line is the same as
-upstream; only the surrounding context differs on this branch.
+Roman Vivchar (8):
+      dt-bindings: arm: mediatek: add mt6768
+      dt-bindings: serial: mediatek,uart: add mt6768
+      dt-bindings: watchdog: mediatek,mtk-wdt: add mt6768
+      dt-bindings: timer: mediatek,timer: add mt6768
+      dt-bindings: interrupt-controller: mediatek,mt6577-sysirq: add mt6768
+      watchdog: mediatek: add mt6768
+      arm64: dts: mediatek: add initial mt6768 support
+      arm64: dts: mediatek: mt6768: add Xiaomi Redmi Note 9 support
 
-Tested on v6.6.163:
-- x86_64 allmodconfig W=1 build of
-  drivers/net/wireless/mediatek/mt76/mt7915/main.o, base vs patched,
-  no new warnings
-- booted the patched kernel with CONFIG_MT7915E=y under QEMU/KVM. I
-  don't have mt7915 hardware, so the remove path wasn't run.
-
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
+ .../devicetree/bindings/arm/mediatek.yaml          |   4 +
+ .../mediatek,mt6577-sysirq.yaml                    |   1 +
+ .../devicetree/bindings/serial/mediatek,uart.yaml  |   1 +
+ .../devicetree/bindings/timer/mediatek,timer.yaml  |   1 +
+ .../bindings/watchdog/mediatek,mtk-wdt.yaml        |   1 +
+ arch/arm64/boot/dts/mediatek/Makefile              |   1 +
+ .../boot/dts/mediatek/mt6768-xiaomi-merlin.dts     |  42 +++
+ arch/arm64/boot/dts/mediatek/mt6768.dtsi           | 418 +++++++++++++++++++++
+ drivers/watchdog/mtk_wdt.c                         |  22 ++
+ include/dt-bindings/reset/mediatek,mt6768-wdt.h    |  19 +
+ 10 files changed, 510 insertions(+)
 ---
- drivers/net/wireless/mediatek/mt76/mt7915/main.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/net/wireless/mediatek/mt76/mt7915/main.c b/drivers/net/wireless/mediatek/mt76/mt7915/main.c
-index 864f636666e5..017181c1a2ea 100644
---- a/drivers/net/wireless/mediatek/mt76/mt7915/main.c
-+++ b/drivers/net/wireless/mediatek/mt76/mt7915/main.c
-@@ -306,7 +306,6 @@ static void mt7915_remove_interface(struct ieee80211_hw *hw,
- 
- 	mt7915_mcu_add_bss_info(phy, vif, false);
- 	mt7915_mcu_add_sta(dev, vif, NULL, false);
--	mt76_wcid_mask_clear(dev->mt76.wcid_mask, mvif->sta.wcid.idx);
- 
- 	mutex_lock(&dev->mt76.mutex);
- 	mt76_testmode_reset(phy->mt76, true);
-@@ -322,6 +321,7 @@ static void mt7915_remove_interface(struct ieee80211_hw *hw,
- 	mutex_lock(&dev->mt76.mutex);
- 	dev->mt76.vif_mask &= ~BIT_ULL(mvif->mt76.idx);
- 	phy->omac_mask &= ~BIT_ULL(mvif->mt76.omac_idx);
-+	mt76_wcid_mask_clear(dev->mt76.wcid_mask, mvif->sta.wcid.idx);
- 	mutex_unlock(&dev->mt76.mutex);
- 
- 	spin_lock_bh(&dev->mt76.sta_poll_lock);
-
----
-base-commit: e2bb30811e063ce0db964484357973b855b06572
-change-id: 20261126-so1-mt-66-a159fb8fb163
+base-commit: 9437046953b2fb3bf55b36582450ea0267df82a7
+change-id: 20261126-6768-init-452b4db23703
 
 Best regards,
 --  
-Dickson Wu <dickson.wu@certik.com>
+Roman Vivchar <rva333@protonmail.com>
 
