@@ -1,101 +1,91 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 06:04:45 +0000
-Subject: [PATCH v2 5.15.y] pid_namespace: prevent TIF_NOTIFY_SIGNAL from
- interrupting the reaper
+Subject: [PATCH 6.12.y v2 0/4] virtio_balloon: quiesce balloon work before
+ device shutdown
+Date: Thu, 26 Nov 2026 06:18:40 +0000
+Message-Id: <20261126-virtio-final-v2-0-4cfd5590e924@certik.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-pid-515-v2-1-7f7ca8955797@certik.com>
-X-B4-Tracking: v=1; b=H4sIAPzLB2sC/y2MywrCMBAAf6Xs2VSzklj8FfGQx2pXJCnZKkrpv
- 5uoxxmGWUCoMAkcuwUKPVk4pwq46SCMLl1JcawMuEOrNVo1cVRGGzVEGwfch4NGglpPhS78+p5
- OYHpt+jecf14e/kZhbptWeiekfHEpjE0JpTjnfFfNb/97WNcPL2yHLpsAAAA=
-X-Change-ID: 20261126-pid-515-8d6d823c712e
+X-B4-Tracking: v=1; b=H4sIAEHPB2sC/02NzQ7CIBCEX6XZs1sLUWp8FeOBn8WuacAANpqm7
+ y7oxeN8mflmhUyJKcO5WyHRwpljqEHuOrCTDjdCdjWDHKQSQipcOBWO6DnoGU/jURwGM3qnNdT
+ JI5Hn11d3AdUL2b/h+uP5ae5kS3O1ptGZ0CQd7NRQpuBKjDM2vv//gG37AAinix2lAAAA
+X-Change-ID: 20261126-virtio-final-875140b7fdaa
 To: stable@vger.kernel.org
-Cc: Christian Brauner <brauner@kernel.org>, Oleg Nesterov <oleg@redhat.com>, 
- linux-kernel@vger.kernel.org, Sasha Levin <sashal@kernel.org>
+Cc: "Michael S. Tsirkin" <mst@redhat.com>, 
+ "Denis V. Lunev" <den@openvz.org>, David Hildenbrand <david@kernel.org>, 
+ Eric Auger <eric.auger@redhat.com>, Jason Wang <jasowang@redhat.com>, 
+ virtualization@lists.linux.dev
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795673084; l=3176;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795673921; l=2322;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=NTwKCRqRaZQa2oaPT2BuiJfwuLkiWEctDvxTR2Fk/QA=;
- b=BbhStkw6O3dU/hOHy+LJPaSq5sxQnnTIzQjt7+9FMSA4mRbiciBEecb5ZpRWIHc2l+uAach0/
- Gpx6ptmrUOdBQZeRVI3sEQbS46r/IC7exAdv4TClaLDbM0bYUACmULr
+ bh=ZT+5Ez28VjKU98DLLctCFr+rz8Hd8Cde9lAjru5yUy0=;
+ b=9PfDIFEZgwlj/0l2msItZnuU1f/ifDvV1DPMOF0MTpIPRGlvQ40tpsR/ME6W4BEt+4zezYW5c
+ bohXAhM7CJbDT4iCY/6pU+kWr/jsadhOSHaL5irOxQGJhyiS+YAstjQ
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Christian Brauner <brauner@kernel.org>
+Hi,
 
-commit 5c0985dd3c32fc2bbd0e8beaf13cf52cd97376a2 upstream.
+This backports the fix for CVE-2026-90129 to 6.12.y, the same four
+commits 6.18.y has:
 
-Since commit 7fea700e04bd ("zap_pid_ns_processes: clear
-TIF_NOTIFY_SIGNAL along with TIF_SIGPENDING") zap_pid_ns_processes()
-clears TIF_NOTIFY_SIGNAL before every kernel_wait4() call. Otherwise
-kernel_wait4() doesn't sleep and returns -ERESTARTSYS if
-signal_pending() is true and the reaper busy-waits.
+  183a08715af1 virtgpu: don't reset on shutdown
+  0d8aebe089b4 virtio: add virtio_device_shutdown() helper
+  29536a923a94 virtio_balloon: factor out virtballoon_quiesce()
+  7e17eef04600 virtio_balloon: quiesce balloon work before device shutdown
 
-But clearing TIF_NOTIFY_SIGNAL doesn't fix it. It can get raised again.
-For example, klp_send_signals() sets it raw against any task that hasn't
-transitioned yet. And it keeps sending it until the livepatch finishes.
+Since 8bd2fa086a04 the generic virtio shutdown breaks and resets the
+device while the balloon's work items can still be running against it.
+Patch 4 quiesces that work first. Patches 1-3 are what it builds on.
 
-The sleep loop waiting for pid_allocated to drop has the same problem
-and it doesn't even clear anything. So a schedule() in
-TASK_INTERRUPTIBLE returns immediately.
+3 and 4 are clean picks. 1 and 2 needed small changes. 6.12 has no
+reset_prepare/reset_done in struct virtio_driver, so patch 1 adds only
+the .shutdown member. 6.12 has no virtio_irq_get_affinity(), so patch 2
+puts the new helper right above virtio_dev_shutdown(). The function
+bodies match upstream.
 
-Use a no_notify_signal guard. signal_pending() will ignore
-TIF_NOTIFY_SIGNAL and the pid namespace reaper sleeps until a child
-exits or free_pid() wakes it.
+Tested on v6.12.119:
+- x86_64 allmodconfig W=1 build of the touched objects, base vs
+  patched, no new warnings
+- x86_64 defconfig plus the touched virtio options boots and powers off
+  under QEMU/KVM
+- The race needs a balloon with free page reporting plus a reboot or
+  kexec while it's busy. I didn't reproduce that.
 
-Link: https://patch.msgid.link/20260824-work-tif_notify_signal-v2-5-6609e42b3157@kernel.org
-Fixes: 7fea700e04bd ("zap_pid_ns_processes: clear TIF_NOTIFY_SIGNAL along with TIF_SIGPENDING")
-Reviewed-by: Oleg Nesterov <oleg@redhat.com>
-Cc: stable@vger.kernel.org
-Suggested-by: Oleg Nesterov <oleg@redhat.com>
-Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
-[ adapted to 5.15: explicit save/restore instead of guard() to avoid a declaration-after-statement warning ]
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
----
- kernel/pid_namespace.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+6.1.y and 6.6.y need this too. I'll follow up for those once they're
+tested.
 
 Changes in v2
-v2: resent through a whitespace-safe path; v1 <CAFaZ9epucF3AKE=B3mB9JD1sAcorBQDsgre_Wnv8Sati=tomPg@mail.gmail.com> was damaged by my mail client and does not apply.
-v2: dropped the signal helper patch, Sasha already posted it as <20261028212317.2257095-1-sashal@kernel.org>; this patch depends on it.
+v2: resent through a whitespace-safe path; v1 was damaged by my mail client and does not apply.
 
 The backport and the test runs were prepared with AI coding tools
 (OpenAI Codex agents, with review by Claude). I went over the result
 before signing off.
 
-diff --git a/kernel/pid_namespace.c b/kernel/pid_namespace.c
-index 40b011f88067..d3e860d3678a 100644
---- a/kernel/pid_namespace.c
-+++ b/kernel/pid_namespace.c
-@@ -167,6 +167,7 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
- {
- 	int nr;
- 	int rc;
-+	unsigned int no_notify_flags;
- 	struct task_struct *task, *me = current;
- 	int init_pids = thread_group_leader(me) ? 1 : 2;
- 	struct pid *pid;
-@@ -212,9 +213,10 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
- 	 * kernel_wait4() will also block until our children traced from the
- 	 * parent namespace are detached and become EXIT_DEAD.
- 	 */
-+	/* Task work must not busy-loop the reaper, see signal_pending(). */
-+	no_notify_flags = no_notify_signal_save();
- 	do {
- 		clear_thread_flag(TIF_SIGPENDING);
--		clear_thread_flag(TIF_NOTIFY_SIGNAL);
- 		rc = kernel_wait4(-1, NULL, __WALL, NULL);
- 	} while (rc != -ECHILD);
- 
-@@ -270,6 +272,7 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
- 		current->signal->group_exit_code = pid_ns->reboot;
- 
- 	acct_exit_ns(pid_ns);
-+	no_notify_signal_restore(no_notify_flags);
- 	return;
- }
- 
+Thanks,
+Dickson
+
+---
+Denis V. Lunev (3):
+      virtio: add virtio_device_shutdown() helper
+      virtio_balloon: factor out virtballoon_quiesce()
+      virtio_balloon: quiesce balloon work before device shutdown
+
+Michael S. Tsirkin (1):
+      virtgpu: don't reset on shutdown
+
+ drivers/gpu/drm/virtio/virtgpu_drv.c |  9 ++++++++
+ drivers/virtio/virtio.c              | 41 ++++++++++++++++++++++++++----------
+ drivers/virtio/virtio_balloon.c      | 34 ++++++++++++++++++++++++------
+ include/linux/virtio.h               |  4 ++++
+ 4 files changed, 70 insertions(+), 18 deletions(-)
+---
+base-commit: e2e4b92c2b2a3ae78423cb343951cb5d2241b405
+change-id: 20261126-virtio-final-875140b7fdaa
+
+Best regards,
+--  
+Dickson Wu <dickson.wu@certik.com>
 
