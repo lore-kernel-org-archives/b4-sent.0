@@ -1,105 +1,58 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 14:05:01 +0000
-Subject: [PATCH 5.15.y] staging: rtl8723bs: rtw_mlme: add bounds checks
- before ie_length subtraction
+From: Robert Ijtsma <robertijtsma@gmail.com>
+Subject: [PATCH v2 0/3] arm64: dts: qcom: sc8180x: add IMEM and IPA nodes
+Date: Thu, 26 Nov 2026 15:10:15 +0100
+Message-Id: <20261126-sc8180x-dts-ipa-v2-0-e919ed1643c1@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-so3-rtl-515-v1-1-4a4860c4ff9d@certik.com>
-X-B4-Tracking: v=1; b=H4sIAIw8CGsC/02NzQ7CIBCEX6XZs1sLFRJ9FeOBn63FNGBYNJqm7
- y7oxeN8mflmBaYciOHUrZDpGTikWIPYdeBmE6+EwdcMcpBaCKmR04i5LKiEwlGZgzL6OEzWQ13
- cM03h9bWdQfVC9W+4/Dg/7I1caarWtIYJbTbRzQ0xRV9SWrDx/d8FbNsHq6J0G6MAAAA=
-X-Change-ID: 20261126-so3-rtl-515-35a45a690fbd
-To: stable@vger.kernel.org
-Cc: Salman Alghamdi <me@cipherat.com>, Luka Gejak <luka.gejak@linux.dev>, 
- linux-staging@lists.linux.dev
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795701900; l=3165;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=6UeFlLleWiTIa8ypce3Y897LteBNHsXxh9xJYKGuAZg=;
- b=DQ+AR0L5K5YgqF5OyGT+9czaFiHbNBqRbUYrHH1y4lKIl87w0JVRABjQMJT3hpeM9Iafcquam
- gSeKS01ijAKBnE6aYrVwBF0lOLVo3qPEqkua3CE6YkkQHJtW38iS8G6
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-B4-Tracking: v=1; b=H4sIAMc9CGsC/3WNzQrCMBCEX6Xs2ZUkGk178j2khzRZ2wX7Q1JCp
+ eTdjb3LnL6B+WaHSIEpQlPtEChx5HkqoE4VuMFOPSH7wqCEukmpNEZnpBEb+jUiLxaFMFST1q7
+ uPJTVEujF22F8toUHjuscPsdBkr/2vytJLFGkr+5O8tLpRz9afp/dPEKbc/4Cor6m264AAAA=
+X-Change-ID: 20261125-sc8180x-dts-ipa-008e9e55c9bd
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Robert Ijtsma <robertijtsma@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795702215; l=1209;
+ i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
+ bh=Q6eOgzYuDQdWByH1Fa1iUBFwIliyQWN4q9ZxgGtM9pw=;
+ b=ZjDAAWAcf6DtlMt3HbRW7rtIMrNrbhn9AYmWSPDBXaCBPWScGpesoj1ijewXc6C/YHT/EdB+c
+ paFEFqvB8VMC2etZPeGZZ50y/F9EQrUZMp2Y4/3I7n96rO9+Vjg18BX
+X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
+ pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
+X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Salman Alghamdi <me@cipherat.com>
+Depends-on: https://lore.kernel.org/r/20261126-qcom-ipa-sc8180x-v2-0-89eba621da95@gmail.com
+The "qcom,sc8180x-ipa" binding patch in that series carries a
+Reviewed-by from Krzysztof Kozlowski.
 
-commit 88e994c57a79f62d5338231d8d37ee8dd98baffe upstream.
-
-Add guards to ensure ie_length is large enough before subtracting
-fixed IE offsets to prevent unsigned integer underflow.
-
-Fixes: 2038fe84b8bd ("staging: rtl8723bs: fix spacing around operators")
-Fixes: d3fcee1b78a5 ("staging: rtl8723bs: fix camel case in struct wlan_bssid_ex")
-Closes: https://lore.kernel.org/linux-staging/DI2H39EAAFBZ.3KI5NWN02AQ2S@linux.dev/
-Cc: stable <stable@kernel.org>
-Signed-off-by: Salman Alghamdi <me@cipherat.com>
-Reviewed-by: Luka Gejak <luka.gejak@linux.dev>
-Link: https://patch.msgid.link/20260513203455.31792-1-me@cipherat.com
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-[ adapted to 5.15.y: preserve branch WPS helper-call spacing ]
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
 ---
-6.6.y and newer already have this fix. The added lines are the
-same as upstream. The WPS lookup next to them keeps this branch's
-older spacing, which is why it doesn't cherry-pick cleanly.
-
-Tested on v5.15.226:
-- x86_64 allmodconfig W=1 build of
-  drivers/staging/rtl8723bs/core/rtw_mlme.o, base vs patched, no new
-  warnings
-- booted the patched kernel with the driver built as a module under
-  QEMU/KVM. I don't have rtl8723bs hardware, so the scan path wasn't
-  run.
-
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
----
- drivers/staging/rtl8723bs/core/rtw_mlme.c | 14 ++++++++++----
- 1 file changed, 10 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/staging/rtl8723bs/core/rtw_mlme.c b/drivers/staging/rtl8723bs/core/rtw_mlme.c
-index 6480252a5ade..b31a1fc964ef 100644
---- a/drivers/staging/rtl8723bs/core/rtw_mlme.c
-+++ b/drivers/staging/rtl8723bs/core/rtw_mlme.c
-@@ -656,6 +656,8 @@ int rtw_is_desired_network(struct adapter *adapter, struct wlan_network *pnetwor
- 	privacy = pnetwork->network.privacy;
- 
- 	if (check_fwstate(pmlmepriv, WIFI_UNDER_WPS)) {
-+		if (pnetwork->network.ie_length < _FIXED_IE_LENGTH_)
-+			return false;
- 		if (rtw_get_wps_ie(pnetwork->network.ies+_FIXED_IE_LENGTH_, pnetwork->network.ie_length-_FIXED_IE_LENGTH_, NULL, &wps_ielen))
- 			return true;
- 		else
-@@ -670,11 +672,15 @@ int rtw_is_desired_network(struct adapter *adapter, struct wlan_network *pnetwor
- 	    bselected = false;
- 
- 		if (psecuritypriv->ndisauthtype == Ndis802_11AuthModeWPA2PSK) {
--			p = rtw_get_ie(pnetwork->network.ies + _BEACON_IE_OFFSET_, WLAN_EID_RSN, &ie_len, (pnetwork->network.ie_length - _BEACON_IE_OFFSET_));
--			if (p && ie_len > 0)
--				bselected = true;
--			else
-+			if (pnetwork->network.ie_length < _BEACON_IE_OFFSET_) {
- 				bselected = false;
-+			} else {
-+				p = rtw_get_ie(pnetwork->network.ies + _BEACON_IE_OFFSET_, WLAN_EID_RSN, &ie_len, (pnetwork->network.ie_length - _BEACON_IE_OFFSET_));
-+				if (p && ie_len > 0)
-+					bselected = true;
-+				else
-+					bselected = false;
-+			}
- 		}
- 	}
- 
+Changes in v2:
+- Document qcom,sc8180x-imem in Documentation/devicetree/bindings/sram/sram.yaml.
+- Add the SC8180X IMEM SRAM node (sram@14680000) with the IPA modem tables
+  slice (0x3d000, 8 KiB) and reference it via sram = <&ipa_modem_tables> on
+  the IPA node instead of relying on hardcoded driver IMEM addresses.
+- Link to v1: https://lore.kernel.org/r/20261125-sc8180x-dts-ipa-v1-1-12e54c7e13b5@gmail.com
 
 ---
-base-commit: 4f2df9a01754521fbba3493e8ad91ef65515e68c
-change-id: 20261126-so3-rtl-515-35a45a690fbd
+Robert Ijtsma (3):
+      dt-bindings: sram: Document qcom,sc8180x-imem compatible
+      arm64: dts: qcom: sc8180x: add IMEM node
+      arm64: dts: qcom: sc8180x: add IPA node
+
+ Documentation/devicetree/bindings/sram/sram.yaml |  1 +
+ arch/arm64/boot/dts/qcom/sc8180x.dtsi            | 60 ++++++++++++++++++++++++
+ 2 files changed, 61 insertions(+)
+---
+base-commit: ef922b721a5e99348fc1f5801fdeb427ee14ee9f
+change-id: 20261125-sc8180x-dts-ipa-008e9e55c9bd
 
 Best regards,
---  
-Dickson Wu <dickson.wu@certik.com>
+-- 
+Robert Ijtsma <robertijtsma@gmail.com>
 
