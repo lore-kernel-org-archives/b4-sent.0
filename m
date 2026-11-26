@@ -1,526 +1,131 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Thu, 26 Nov 2026 07:50:32 +0100
-Subject: [PATCH v2 2/2] ceph: serialize O_APPEND writes across clients on
- Fx
+From: Jaegyun Lee <dreams200260@g.skku.edu>
+Date: Thu, 26 Nov 2026 16:43:40 +0900
+Subject: [PATCH v2] usb: gadget: f_fs: fix UAF read in INTERFACE_REVMAP
+ ioctl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-ceph-append-excl-v2-2-e8707d123d77@clyso.com>
-References: <20261126-ceph-append-excl-v2-0-e8707d123d77@clyso.com>
-In-Reply-To: <20261126-ceph-append-excl-v2-0-e8707d123d77@clyso.com>
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Anthony D'Atri <anthony.datri@gmail.com>, Xiubo Li <xiubo.li@clyso.com>
+Message-Id: <20261126-ffs-revmap-v2-1-445e86b561dc@g.skku.edu>
+X-B4-Tracking: v=1; b=H4sIACvjB2sC/22OSw6DMAwFr4KyblDsqulnxT0qFgk4kKICigG1Q
+ ty9Ce2yy3l+HnsVTMETi1u2ikCLZz/0EfCQiao1fUPS15EFKtQAqKVzLGPxaUZ5vihQJw1ktRJ
+ xYQzk/GuX3csv82wfVE3JkBrWMEkbTF+1Kfp5Uopp3HqehvDen1kgaf7eXUCCJDgiOu0MXlXR5
+ Nx1c071LMpt2z6zA4bZ1gAAAA==
+X-Change-ID: 20261126-ffs-revmap-78010561eb60
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Neill Kapron <nkapron@google.com>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Jaegyun Lee <dreams200260@g.skku.edu>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795675836; l=19259;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=8KL6I6KrYmKCUqT31+7LOnNBsWLwe7pL6OW0lu4w9BY=;
- b=5EZCq8zwy6TiXR/sZ3t/g1rQqQ7M/23ZNyAtlIMeTkuufJzBPdKhQV7yAa5r4DT9BhYYS+RIl
- jZqJa/fOJ5xBqlaU3WzKCOqx4seVq/VwvihivKdMmFSKZKPXgpdNH4G
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795679021; l=3771;
+ i=dreams200260@g.skku.edu; s=20261126; h=from:subject:message-id;
+ bh=mGP4dJRI5dVKVVI3t6CcFy7i3MLxyMc37ZVLWnt4iuA=;
+ b=krablm811VIvfZOl5mHT85JdNyqt3jcsZjyaxRN09r7gstCHL10qMqILnDC1PoStAdByJfRZ9
+ itXQ8tvCthuAbfxtf/I/E6QEB00w6jPss/zOnsSI9+ySr3+u3Ku/GH6
+X-Developer-Key: i=dreams200260@g.skku.edu; a=ed25519;
+ pk=vQE4ltNw5Q74mXWk3rPpCfclWKMKcHJ7J9YJ+gqaLUs=
+X-Endpoint-Received: by B4 Relay for dreams200260@g.skku.edu/20261126 with auth_id=1649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-An O_APPEND write takes its offset from the cached i_size, but with two
-clients writing a file the filelock is in MIX and both hold Fw, so a
-client may append at an end of file that another client has already
-moved, and overwrite what that client appended.  Re-reading i_size
-after ceph_get_caps() does not help there: neither client waits for
-caps, and the other client's size reaches us only after it flushed its
-caps.
+ffs_ep0_ioctl() snapshots ffs->func without any lock or reference:
 
-The MDS can now hand Fx to O_APPEND writers one at a time, in request
-order (CEPHFS_FEATURE_APPEND_EXCL): a client asks for its turn with
-CEPH_CLIENT_CAPS_APPEND in a cap update, the MDS gathers the other
-writers' Fw first, so that their size updates are applied, and sends
-the size with Fx.  While a client holds Fx no other client can write
-the file, so i_size is the true end of file.
+	struct ffs_function *func = ffs->func;
+	ret = func ? ffs_func_revmap_intf(func, value) : -ENODEV;
 
-When the auth MDS supports it, let an O_APPEND write need Fx as well as
-Fw, and ask the auth MDS for a turn while it waits.  Ask once per turn,
-and again only if the auth cap moved (an export or an MDS restart may
-have lost the request) or after CEPH_GET_CAPS_WAIT_TIMEOUT: the waiter
-is woken by every cap message, and answering each of them with another
-request would flood the MDS.
+ffs_func_revmap_intf() then walks func->interfaces_nums for
+interfaces_count iterations. ffs_func_unbind() first sets
+ffs->func = NULL, then after drain_workqueue() kfrees func->eps --
+the allocation chunk that also holds interfaces_nums -- and later
+still writes func->interfaces_nums = NULL.
 
-The MDS revokes Fx as soon as the next client asks for a turn, maybe
-before the waiting write could take its cap refs.  Keep a revoked Fx,
-with Fw and Fb, until then, or the turn would be lost before it was
-used.  The write's Fx and Fw refs then hold the hand-over back until
-it is done, and the cap flush that releases Fw carries the new size.
-Only the write that was waiting when Fx came may use it while it is
-being revoked: a later one, e.g. this client's next write while the
-revoke waits for our dirty data to be written back, gives the turn up
-and asks for a new one, or the other clients would never get theirs.
-So does a write that needs more max_size than it has, which the MDS
-cannot grant while it takes Fx back.
+An ioctl that read ffs->func before the NULL write can therefore be
+inside the revmap walk while the chunk is freed.
+John Keeping noted this in 2021:
+https://lkml.rescloud.iu.edu/2112.0/00724.html
 
-Once it holds Fx, the write moves to i_size as before; if that range
-needs more max_size, it drops its refs and asks again instead of
-writing less.
+The following is the KASAN log:
 
-The feature is checked when the write starts, but the auth cap may move
-to an MDS without it while the write waits for Fx, e.g. on an export or
-after a failover to an older MDS.  That MDS may keep the filelock in
-MIX and never send Fx.  So the waiter checks the auth session again
-whenever it wakes up: once that session is open without APPEND_EXCL, it
-stops asking for a turn and the write falls back to Fw only, as with an
-older MDS.
+  BUG: KASAN: slab-use-after-free in ffs_ep0_ioctl+0x29b/0x300
+  Read of size 2 at addr ffff888051b4925a by task park/9666
+  CPU: 1 UID: 0 PID: 9666 Comm: park Not tainted 7.4.0-rc3-g666539eecdf4 #1 PREEMPT(full)
+  Call Trace:
+   ffs_ep0_ioctl+0x29b/0x300
+   __x64_sys_ioctl+0x18f/0x210
+   do_syscall_64+0x132/0x7c0
+  Allocated by task 9675:
+   __kmalloc_noprof+0x357/0x810
+   ffs_func_bind+0xbd1/0x1b00
+   usb_add_function+0x219/0x8a0
+   configfs_composite_bind+0xcd5/0x17f0
+   gadget_bind_driver+0x288/0xc80
+  Freed by task 9675:
+   kfree+0x2ca/0x6e0
+   ffs_func_unbind+0x2f2/0x570
+   purge_configs_funcs+0x283/0x520
+   configfs_composite_unbind+0xae/0x210
+   gadget_unbind_driver+0x211/0x520
+   ...
+   gadget_dev_desc_UDC_store+0x18a/0x2f0
+  The buggy address is located 602 bytes inside of
+   freed 2048-byte region (kmalloc-2k)
 
-Link: https://tracker.ceph.com/issues/7333
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+Take ffs->eps_lock around the REVMAP snapshot and walk, and do the
+ffs->func = NULL store in ffs_func_unbind() under the same lock. A walk
+that started before the store finishes before it, and every later
+ioctl sees NULL, so the walk can no longer overlap the free of the eps
+chunk.
+
+Reproduced and tested in QEMU (dummy_hcd) only, not on real UDC
+hardware.
+
+Fixes: ddf8abd25994 ("USB: f_fs: the FunctionFS driver")
+Cc: stable@vger.kernel.org
+Assisted-by: ZCode:GLM-5.4
+Signed-off-by: Jaegyun Lee <dreams200260@g.skku.edu>
 ---
- fs/ceph/caps.c               | 217 +++++++++++++++++++++++++++++++++++++++++++
- fs/ceph/file.c               |  38 ++++++--
- fs/ceph/inode.c              |   3 +
- fs/ceph/mds_client.h         |   4 +-
- fs/ceph/super.h              |  14 +++
- include/linux/ceph/ceph_fs.h |   1 +
- 6 files changed, 269 insertions(+), 8 deletions(-)
+Changes in v2:
+- Keep clearing ffs->func in its original place in ffs_func_unbind(),
+  before functionfs_unbind(), and only do that store under eps_lock;
+  leave the eps free path unchanged (Sashiko review).
+- Link to v1: https://patch.msgid.link/20261126-ffs-revmap-v1-1-e1322f6fa290@g.skku.edu
+---
+ drivers/usb/gadget/function/f_fs.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
-index fd6f3a372271..e74fcaf273db 100644
---- a/fs/ceph/caps.c
-+++ b/fs/ceph/caps.c
-@@ -1056,6 +1056,44 @@ static bool __ceph_is_any_revoking(const struct ceph_inode_info *ci)
- 	return false;
- }
+diff --git a/drivers/usb/gadget/function/f_fs.c b/drivers/usb/gadget/function/f_fs.c
+index c64a268e98a43..df55c2cba6101 100644
+--- a/drivers/usb/gadget/function/f_fs.c
++++ b/drivers/usb/gadget/function/f_fs.c
+@@ -687,8 +687,13 @@ static long ffs_ep0_ioctl(struct file *file, unsigned code, unsigned long value)
+ 	long ret;
  
-+/*
-+ * The caps that an O_APPEND write waiting for its turn keeps while the
-+ * MDS revokes them, see ceph_get_append_caps().
-+ */
-+#define CEPH_APPEND_TURN_CAPS	(CEPH_CAP_FILE_EXCL | CEPH_CAP_FILE_WR | \
-+				 CEPH_CAP_FILE_BUFFER)
+ 	if (code == FUNCTIONFS_INTERFACE_REVMAP) {
+-		struct ffs_function *func = ffs->func;
++		struct ffs_function *func;
++		unsigned long flags;
 +
-+/*
-+ * Whether the auth MDS is known not to serialize O_APPEND writes: an
-+ * O_APPEND write that started on an MDS with CEPHFS_FEATURE_APPEND_EXCL
-+ * may be waiting for Fx when the auth cap moves to an MDS without it.
-+ * That MDS can keep the filelock in MIX and never send Fx, so the write
-+ * must fall back to Fw, see ceph_get_append_caps().  The features come
-+ * with the session open (also after a reconnect), so only trust them
-+ * once the session is open.
-+ */
-+static bool __ceph_append_excl_unsupported(struct ceph_inode_info *ci)
-+{
-+	struct ceph_cap *auth = ci->i_auth_cap;
-+
-+	lockdep_assert_held(&ci->i_ceph_lock);
-+
-+	return auth &&
-+	       READ_ONCE(auth->session->s_state) == CEPH_MDS_SESSION_OPEN &&
-+	       !test_bit(CEPHFS_FEATURE_APPEND_EXCL, &auth->session->s_features);
-+}
-+
-+static int __ceph_append_turn_caps(struct ceph_inode_info *ci,
-+				   int implemented)
-+{
-+	lockdep_assert_held(&ci->i_ceph_lock);
-+
-+	if (ci->i_append_waiting && !ci->i_append_yield &&
-+	    (implemented & CEPH_CAP_FILE_EXCL))
-+		return implemented & CEPH_APPEND_TURN_CAPS;
-+	return 0;
-+}
-+
- int __ceph_caps_used(struct ceph_inode_info *ci)
- {
- 	int used = 0;
-@@ -2270,6 +2308,13 @@ void ceph_check_caps(struct ceph_inode_info *ci, int flags)
- 	 */
- 	issued = __ceph_caps_issued(ci, &implemented);
++		spin_lock_irqsave(&ffs->eps_lock, flags);
++		func = ffs->func;
+ 		ret = func ? ffs_func_revmap_intf(func, value) : -ENODEV;
++		spin_unlock_irqrestore(&ffs->eps_lock, flags);
+ 	} else if (gadget && gadget->ops->ioctl) {
+ 		ret = gadget->ops->ioctl(gadget, code, value);
+ 	} else {
+@@ -4205,7 +4210,9 @@ static void ffs_func_unbind(struct usb_configuration *c,
  
-+	/*
-+	 * An O_APPEND write that asked for Fx must be able to use it: do
-+	 * not let the revoke for the next appender, which may come right
-+	 * with the grant, complete before the write took its cap refs.
-+	 */
-+	used |= __ceph_append_turn_caps(ci, implemented);
-+
- 	revoking = implemented & ~issued;
+ 	if (ffs->func == func) {
+ 		ffs_func_eps_disable(func);
++		spin_lock_irqsave(&ffs->eps_lock, flags);
+ 		ffs->func = NULL;
++		spin_unlock_irqrestore(&ffs->eps_lock, flags);
+ 	}
  
- 	want = file_wanted;
-@@ -2459,6 +2504,13 @@ void ceph_check_caps(struct ceph_inode_info *ci, int flags)
- 				goto ack;
- 		}
- 
-+		/* an O_APPEND write asks for its turn */
-+		if ((flags & CHECK_CAPS_APPEND) && cap == ci->i_auth_cap &&
-+		    !(cap->implemented & CEPH_CAP_FILE_EXCL)) {
-+			doutc(cl, "asking for the O_APPEND turn\n");
-+			goto ack;
-+		}
-+
- 		/* things we might delay */
- 		if ((cap->issued & ~retain) == 0)
- 			continue;     /* nope, all good */
-@@ -2497,6 +2549,10 @@ void ceph_check_caps(struct ceph_inode_info *ci, int flags)
- 
- 		mds = cap->mds;  /* remember mds, so we don't repeat */
- 
-+		if ((flags & CHECK_CAPS_APPEND) && cap == ci->i_auth_cap &&
-+		    !(cap->implemented & CEPH_CAP_FILE_EXCL))
-+			mflags |= CEPH_CLIENT_CAPS_APPEND;
-+
- 		__prep_cap(&arg, ci, cap, CEPH_CAP_OP_UPDATE, mflags, cap_used,
- 			   want, retain, flushing, flush_tid, oldest_flush_tid);
- 
-@@ -3120,6 +3176,35 @@ static int try_get_cap_refs(struct inode *inode, int need, int want,
- 
- 	have = __ceph_caps_issued(ci, &implemented);
- 
-+	if ((need & CEPH_CAP_FILE_EXCL) && ci->i_append_waiting &&
-+	    !(implemented & CEPH_CAP_FILE_EXCL) &&
-+	    __ceph_append_excl_unsupported(ci)) {
-+		doutc(cl, "%p %llx.%llx auth mds%d has no APPEND_EXCL\n",
-+		      inode, ceph_vinop(inode), ci->i_auth_cap->mds);
-+		ret = -EOPNOTSUPP;
-+		goto out_unlock;
-+	}
-+
-+	if ((need & CEPH_CAP_FILE_EXCL) && ci->i_append_waiting) {
-+		if (!(implemented & CEPH_CAP_FILE_EXCL) ||
-+		    (have & CEPH_CAP_FILE_EXCL)) {
-+			ci->i_append_yield = false;
-+		} else if (!(have & CEPH_CAP_FILE_EXCL) &&
-+			   !ci->i_append_yield) {
-+			/*
-+			 * Fx is being revoked for the next appender, but it
-+			 * stays ours until we ack, see ceph_check_caps().
-+			 * Not if we need more max_size: the MDS cannot
-+			 * grant that while it takes Fx back, so give the
-+			 * turn up and ask for a new one.
-+			 */
-+			if (endoff > (loff_t)ci->i_max_size)
-+				ci->i_append_yield = true;
-+			else
-+				have |= implemented & CEPH_APPEND_TURN_CAPS;
-+		}
-+	}
-+
- 	if (have & need & CEPH_CAP_FILE_WR) {
- 		if (endoff >= 0 && endoff > (loff_t)ci->i_max_size) {
- 			doutc(cl, "%p %llx.%llx endoff %llu > maxsize %llu\n",
-@@ -3349,6 +3434,59 @@ int ceph_try_get_caps(struct inode *inode, int need, int want,
- 	return ret;
- }
- 
-+/*
-+ * An O_APPEND write is waiting for Fx: ack a revoke of the turn it gave
-+ * up, and ask the auth MDS for a turn if we have none.  Ask once per
-+ * turn; again only if the auth cap moved (an export or an MDS restart
-+ * may have lost the request) or after CEPH_GET_CAPS_WAIT_TIMEOUT.  We
-+ * are woken by every cap message, often with no news for us, and must
-+ * not answer each of them with another request.
-+ */
-+static void ceph_append_kick(struct ceph_inode_info *ci)
-+{
-+	struct ceph_cap *auth;
-+	int implemented, flags;
-+
-+	for (int i = 0; i < 2; i++) {
-+		flags = 0;
-+		spin_lock(&ci->i_ceph_lock);
-+		__ceph_caps_issued(ci, &implemented);
-+		auth = ci->i_auth_cap;
-+		if (implemented & CEPH_CAP_FILE_EXCL)
-+			ci->i_append_asked = 0;  /* that turn came */
-+		if (ci->i_append_waiting && auth) {
-+			if (!(implemented & CEPH_CAP_FILE_EXCL)) {
-+				/* try_get_cap_refs() will fall back to Fw */
-+				if (__ceph_append_excl_unsupported(ci)) {
-+					spin_unlock(&ci->i_ceph_lock);
-+					return;
-+				}
-+				if (!ci->i_append_asked ||
-+				    ci->i_append_asked_mds != auth->mds ||
-+				    ci->i_append_asked_mseq != auth->mseq ||
-+				    time_after(jiffies, ci->i_append_asked +
-+					       CEPH_GET_CAPS_WAIT_TIMEOUT)) {
-+					ci->i_append_asked = jiffies ?: 1;
-+					ci->i_append_asked_mds = auth->mds;
-+					ci->i_append_asked_mseq = auth->mseq;
-+					flags = CHECK_CAPS_AUTHONLY |
-+						CHECK_CAPS_APPEND;
-+				}
-+			} else if (ci->i_append_yield &&
-+				   !(auth->issued & CEPH_CAP_FILE_EXCL)) {
-+				flags = CHECK_CAPS_AUTHONLY;
-+			}
-+		}
-+		spin_unlock(&ci->i_ceph_lock);
-+		if (!flags)
-+			return;
-+		ceph_check_caps(ci, flags);
-+		if (flags & CHECK_CAPS_APPEND)
-+			return;
-+		/* the revoke may be acked now: ask for a new turn */
-+	}
-+}
-+
- /*
-  * Wait for caps, and take cap references.  If we can't get a WR cap
-  * due to a small max_size, make sure we check_max_size (and possibly
-@@ -3400,6 +3538,8 @@ int __ceph_get_caps(struct inode *inode, struct ceph_file_info *fi, int need,
- 			/* make sure used fmode not timeout */
- 			ceph_get_fmode(ci, flags, FMODE_WAIT_BIAS);
- 			add_wait_queue(&ci->i_cap_wq, &wait);
-+			if (need & CEPH_CAP_FILE_EXCL)
-+				ceph_append_kick(ci);
- 
- 			flags |= NON_BLOCKING;
- 			while (!(ret = try_get_cap_refs(inode, need, want,
-@@ -3421,6 +3561,8 @@ int __ceph_get_caps(struct inode *inode, struct ceph_file_info *fi, int need,
- 					ret = -EUCLEAN;
- 					break;
- 				}
-+				if (need & CEPH_CAP_FILE_EXCL)
-+					ceph_append_kick(ci);
- 			}
- 
- 			remove_wait_queue(&ci->i_cap_wq, &wait);
-@@ -3509,6 +3651,81 @@ int ceph_get_caps(struct file *filp, int need, int want, loff_t endoff,
- 	return __ceph_get_caps(inode, fi, need, want, endoff, got);
- }
- 
-+/*
-+ * Whether the auth MDS serializes O_APPEND writes, see
-+ * ceph_get_append_caps().
-+ */
-+bool ceph_append_excl_supported(struct ceph_inode_info *ci)
-+{
-+	bool ret;
-+
-+	spin_lock(&ci->i_ceph_lock);
-+	ret = ci->i_auth_cap &&
-+	      test_bit(CEPHFS_FEATURE_APPEND_EXCL,
-+		       &ci->i_auth_cap->session->s_features);
-+	spin_unlock(&ci->i_ceph_lock);
-+	return ret;
-+}
-+
-+/*
-+ * Get the caps for an O_APPEND write.
-+ *
-+ * The end of file that the write was placed at may be out of date: two
-+ * clients appending to a file both hold Fw with the filelock in MIX,
-+ * and nothing makes one wait for the other.  Ask the MDS for Fx
-+ * instead (CEPH_CLIENT_CAPS_APPEND).  It hands Fx to the appending
-+ * clients one at a time, in request order, after it gathered the
-+ * other writers' Fw so that their size updates are applied, and sends
-+ * that size with Fx.  While we hold Fx no other client can write the
-+ * file, so i_size is the true end of file.
-+ *
-+ * The MDS revokes Fx again as soon as another client asks for a turn,
-+ * maybe before we could take our cap refs: keep a revoked Fx (with Fw
-+ * and Fb) until then, see ceph_check_caps().  Our Fx and Fw refs then
-+ * hold the hand-over back until the write is done, and the cap flush
-+ * that releases Fw carries our new size.
-+ *
-+ * Returns -EOPNOTSUPP if the auth cap moved to an MDS without
-+ * CEPHFS_FEATURE_APPEND_EXCL while we waited: the caller must then get
-+ * Fw only, as with an older MDS.
-+ */
-+int ceph_get_append_caps(struct file *filp, int want, loff_t endoff,
-+			 int *got)
-+{
-+	struct ceph_inode_info *ci = ceph_inode(file_inode(filp));
-+	int ret, issued, implemented;
-+
-+	spin_lock(&ci->i_ceph_lock);
-+	/*
-+	 * A revoked Fx belongs to the write that waited for it.  A new
-+	 * write that finds Fx being revoked already, e.g. the next one of
-+	 * this client while the revoke waits for our dirty data, must let
-+	 * the revoke complete and wait for a turn of its own, or the
-+	 * other clients would never get one.
-+	 */
-+	issued = __ceph_caps_issued(ci, &implemented);
-+	if (!ci->i_append_waiting &&
-+	    (implemented & ~issued & CEPH_CAP_FILE_EXCL))
-+		ci->i_append_yield = true;
-+	ci->i_append_waiting++;
-+	spin_unlock(&ci->i_ceph_lock);
-+
-+	ret = ceph_get_caps(filp, CEPH_CAP_FILE_WR | CEPH_CAP_FILE_EXCL, want,
-+			    endoff, got);
-+
-+	spin_lock(&ci->i_ceph_lock);
-+	if (--ci->i_append_waiting == 0)
-+		ci->i_append_yield = false;
-+	if (ret == 0)
-+		ci->i_append_asked = 0;  /* our turn came, ask for the next */
-+	spin_unlock(&ci->i_ceph_lock);
-+
-+	/* ack a revoke that we held back for this write */
-+	if (ret < 0)
-+		ceph_check_caps(ci, CHECK_CAPS_AUTHONLY);
-+	return ret;
-+}
-+
- /*
-  * Take cap refs.  Caller must already know we hold at least one ref
-  * on the caps in question or we don't know this is safe.
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index 75fb12be209b..44e630e146c3 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -2500,6 +2500,7 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	ssize_t count, written = 0;
- 	int err, want = 0, got;
- 	bool direct_lock = false;
-+	bool append_excl = false;
- 	u32 map_flags;
- 	u64 pool_flags;
- 	loff_t pos;
-@@ -2578,18 +2579,30 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		want |= CEPH_CAP_FILE_BUFFER;
- 	if (fi->fmode & CEPH_FILE_MODE_LAZY)
- 		want |= CEPH_CAP_FILE_LAZYIO;
-+	if (iocb->ki_flags & IOCB_APPEND)
-+		append_excl = ceph_append_excl_supported(ci);
-+get_caps:
- 	got = 0;
--	err = ceph_get_caps(file, CEPH_CAP_FILE_WR, want, pos + count, &got);
-+	if (append_excl)
-+		err = ceph_get_append_caps(file, want, pos + count, &got);
-+	else
-+		err = ceph_get_caps(file, CEPH_CAP_FILE_WR, want, pos + count,
-+				    &got);
-+	if (err == -EOPNOTSUPP && append_excl) {
-+		/* the auth cap moved to an MDS without APPEND_EXCL */
-+		append_excl = false;
-+		goto get_caps;
-+	}
- 	if (err < 0)
- 		goto out;
- 
- 	/*
--	 * For O_APPEND writes we may have waited for Fwx exclusive caps
--	 * while the previous Fwx holder (another client) extended the
--	 * file.  i_size has been updated via the cap grant message from
--	 * the MDS, but ki_pos is still the old EOF.  Re-read i_size here
--	 * (no extra MDS round-trip needed) and adjust ki_pos to the true
--	 * EOF.  Since we hold Fwx, no other client can change the file.
-+	 * For O_APPEND writes we may have waited for caps while another
-+	 * client extended the file, so ki_pos may be an old EOF.  Re-read
-+	 * i_size here and adjust ki_pos.  With append_excl we hold Fx: no
-+	 * other client can change the file, and i_size is the true EOF
-+	 * that the MDS sent with Fx.  Without it this only helps if the
-+	 * cap grant we waited for brought the other client's size.
- 	 */
- 	if (iocb->ki_flags & IOCB_APPEND) {
- 		loff_t cur_eof = i_size_read(inode);
-@@ -2615,6 +2628,17 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 			 * necessary.
- 			 */
- 			spin_lock(&ci->i_ceph_lock);
-+			if (pos + count > (loff_t)ci->i_max_size &&
-+			    append_excl) {
-+				/*
-+				 * Ask for more max_size with the new
-+				 * range; we keep the turn if Fx is not
-+				 * being revoked.
-+				 */
-+				spin_unlock(&ci->i_ceph_lock);
-+				ceph_put_cap_refs(ci, got);
-+				goto get_caps;
-+			}
- 			if (pos + count > (loff_t)ci->i_max_size) {
- 				loff_t max_size = ci->i_max_size;
- 
-diff --git a/fs/ceph/inode.c b/fs/ceph/inode.c
-index 2e5d1256a3a5..9e586c7e40b7 100644
---- a/fs/ceph/inode.c
-+++ b/fs/ceph/inode.c
-@@ -710,6 +710,9 @@ struct inode *ceph_alloc_inode(struct super_block *sb)
- 	ci->i_fx_ref = 0;
- 	ci->i_wrbuffer_ref = 0;
- 	ci->i_wrbuffer_ref_head = 0;
-+	ci->i_append_waiting = 0;
-+	ci->i_append_yield = false;
-+	ci->i_append_asked = 0;
- 	atomic_set(&ci->i_filelock_ref, 0);
- 	atomic_set(&ci->i_shared_gen, 1);
- 	ci->i_rdcache_gen = 0;
-diff --git a/fs/ceph/mds_client.h b/fs/ceph/mds_client.h
-index ff9ba09f3b59..750cc72d53a6 100644
---- a/fs/ceph/mds_client.h
-+++ b/fs/ceph/mds_client.h
-@@ -38,8 +38,9 @@ enum ceph_feature_type {
- 	CEPHFS_FEATURE_HAS_OWNER_UIDGID,
- 	CEPHFS_FEATURE_MDS_AUTH_CAPS_CHECK,
- 	CEPHFS_FEATURE_SUBVOLUME_METRICS,
-+	CEPHFS_FEATURE_APPEND_EXCL = 25,
- 
--	CEPHFS_FEATURE_MAX = CEPHFS_FEATURE_SUBVOLUME_METRICS,
-+	CEPHFS_FEATURE_MAX = CEPHFS_FEATURE_APPEND_EXCL,
- };
- 
- #define CEPHFS_FEATURES_CLIENT_SUPPORTED {	\
-@@ -57,6 +58,7 @@ enum ceph_feature_type {
- 	CEPHFS_FEATURE_HAS_OWNER_UIDGID,	\
- 	CEPHFS_FEATURE_MDS_AUTH_CAPS_CHECK,	\
- 	CEPHFS_FEATURE_SUBVOLUME_METRICS,	\
-+	CEPHFS_FEATURE_APPEND_EXCL,		\
- }
- 
- /*
-diff --git a/fs/ceph/super.h b/fs/ceph/super.h
-index b11083ad1da7..2fbeef60b23c 100644
---- a/fs/ceph/super.h
-+++ b/fs/ceph/super.h
-@@ -254,6 +254,7 @@ struct ceph_cap {
- #define CHECK_CAPS_FLUSH        2  /* flush any dirty caps */
- #define CHECK_CAPS_NOINVAL      4  /* don't invalidate pagecache */
- #define CHECK_CAPS_FLUSH_FORCE  8  /* force flush any caps */
-+#define CHECK_CAPS_APPEND      16  /* ask the auth MDS for an O_APPEND turn */
- 
- struct ceph_cap_flush {
- 	u64 tid;
-@@ -529,6 +530,16 @@ struct ceph_inode_info {
- 	int i_pin_ref;
- 	int i_rd_ref, i_rdcache_ref, i_wr_ref, i_wb_ref, i_fx_ref;
- 	int i_wrbuffer_ref, i_wrbuffer_ref_head;
-+	/*
-+	 * An O_APPEND write is waiting for its turn (Fx) from the MDS, see
-+	 * ceph_get_append_caps(); i_append_yield: it gave that turn up.
-+	 */
-+	int i_append_waiting;
-+	bool i_append_yield;
-+	/* when and where it last asked for a turn, see ceph_append_kick() */
-+	unsigned long i_append_asked;
-+	int i_append_asked_mds;
-+	u32 i_append_asked_mseq;
- 	atomic_t i_filelock_ref;
- 	atomic_t i_shared_gen;       /* increment each time we get FILE_SHARED */
- 	u32 i_rdcache_gen;      /* incremented each time we get FILE_CACHE. */
-@@ -1459,6 +1470,9 @@ extern int __ceph_get_caps(struct inode *inode, struct ceph_file_info *fi,
- 			   int need, int want, loff_t endoff, int *got);
- extern int ceph_get_caps(struct file *filp, int need, int want,
- 			 loff_t endoff, int *got);
-+extern bool ceph_append_excl_supported(struct ceph_inode_info *ci);
-+extern int ceph_get_append_caps(struct file *filp, int want, loff_t endoff,
-+				int *got);
- extern int ceph_try_get_caps(struct inode *inode,
- 			     int need, int want, bool nonblock, int *got);
- 
-diff --git a/include/linux/ceph/ceph_fs.h b/include/linux/ceph/ceph_fs.h
-index d70bbce1a1b2..d3f4953f12df 100644
---- a/include/linux/ceph/ceph_fs.h
-+++ b/include/linux/ceph/ceph_fs.h
-@@ -773,6 +773,7 @@ extern const char *ceph_cap_op_name(int op);
- #define CEPH_CLIENT_CAPS_SYNC			(1<<0)
- #define CEPH_CLIENT_CAPS_NO_CAPSNAP		(1<<1)
- #define CEPH_CLIENT_CAPS_PENDING_CAPSNAP	(1<<2)
-+#define CEPH_CLIENT_CAPS_APPEND			(1<<3) /* O_APPEND turn wanted */
- 
- /*
-  * caps message, used for capability callbacks, acks, requests, etc.
+ 	/* Drain any pending AIO completions */
 
--- 
-2.53.0
+---
+base-commit: 666539eecdf4db623f5e3c3e55cf9f2dfad24aa4
+change-id: 20261126-ffs-revmap-78010561eb60
+
+Best regards,
+--  
+Jaegyun Lee <dreams200260@g.skku.edu>
 
