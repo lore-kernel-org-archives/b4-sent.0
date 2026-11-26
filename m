@@ -1,94 +1,167 @@
 From: Peder Bergan <peder.bergan@gmail.com>
-Date: Thu, 26 Nov 2026 18:39:33 +0100
-Subject: [PATCH v2] rust: drm: enable standard fdinfo for Rust drivers
+Date: Thu, 26 Nov 2026 19:06:03 +0100
+Subject: [PATCH] rust_binder: Reuse the free-index node in the range
+ allocator
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-fix-drm-rust-fdinfo-v2-1-b1653edf1e4f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIANRuCGsC/32OQQ6CMBBFr0K6dpQBIuDKexgWpZ1CjbSmBYIh3
- N0Wo0uXb/Lm5a/Mk9Pk2SVZmaNZe21NgOyQMNFz0xFoGZhlaXZGxBqUXkC6AdzkR1BSG2WhIix
- ViVLWImfh8+koaHv11nzYT+2dxBhT0Wi5J2gdN6KPp2/w9CsbWsYo9tqP1r32fTPG4P8pMwKCw
- FQVmBdFVclrN3D9OAo7sGbbtjeTtMqY8QAAAA==
-X-Change-ID: 20261119-fix-drm-rust-fdinfo-8e17f71dd9c3
-To: Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>
-Cc: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Trevor Gross <tmgross@umich.edu>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Asahi Lina <lina+kernel@asahilina.net>, Lyude Paul <lyude@redhat.com>, 
- dri-devel@lists.freedesktop.org, rust-for-linux@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-api@vger.kernel.org, 
- Janne Grunau <j@jannau.net>
+Message-Id: <20261126-perf-binder-range-allocator-v1-1-7d924585d735@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAp1CGsC/3XOywrCMBCF4Vcps3bQtBIvryIucpnYkZqUSZVC6
+ bub1LXLfzh8zAKZhCnDtVlA6MOZUyyhdg243sQHIfvS0B5arVSrcSQJaDl6EpRtYIYhOTMlwXD
+ uuos3J3/0GoowCgWeN/12/3V+2ye5qZJ1YU0mtMVxfT3V3P/ByzuCL84OI80TrOsX692SZrwAA
+ AA=
+X-Change-ID: 20261126-perf-binder-range-allocator-f8339da7d4d6
+To: Alice Ryhl <aliceryhl@google.com>, Carlos Llamas <cmllamas@google.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
+ Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
+ rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795714775; l=2361;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795716366; l=5590;
  i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
- bh=Q2j2ETDtWfIZSvsCcbvYzOAWgDMeNdy/ivFkVQ1rlgI=;
- b=YYMlzYjjLBwQBVI/TNvkEOL/k8jXJiwB84BgOOL63cPbtrPY3kuMOpeybnCbtCTlUNTMtE5iS
- de4hmC1qM6jBEaYPOQWBjk4ig7ze5HxEge8udesd6l5BdVExQZ7ioNV
+ bh=3jMl1KWm85vv+EltZXMoB8Zdgw2mYRi6WhSgIiUrKJQ=;
+ b=MTASfgjO6rL+lTcBKghWU+k9rP5hZ1Uvm7edBlMQMbJkNOvEVuO0oqZU6HmOTbXdCaJy8XjYM
+ 2MO6TjT36/sBAC0oqTvakpRjZmSyImTG/SlrMq6nd5dtcQQ4Rd5DCL6
 X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
  pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
 X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-DRM monitoring tools use drm-driver and drm-client-id in procfs fdinfo
-to identify DRM clients. The common Rust DRM file operations leave
-show_fdinfo unset, so these entries are missing for those clients.
+A tree reservation prepares a spare free-index node so releasing the
+buffer can reinsert the free range without allocating under the
+process spinlock. When the allocator selects a range, it removes and
+frees that range's existing free-index node.
 
-Set show_fdinfo to drm_show_fdinfo. The DRM core helper emits the
-standard client information. Rust DRM does not yet expose the optional
-driver-specific statistics hook.
+Convert the detached node into an RBTreeNodeReservation and store it
+with the buffer. The release path can initialize the key after
+coalescing the range. This reduces preparation from three fresh node
+allocations to two and avoids one free under the process spinlock
+per successful tree reservation, for both exact fits and splits.
 
-Closes: https://github.com/Rust-for-Linux/linux/issues/1266
-Tested-by: Janne Grunau <j@jannau.net>
-Reviewed-by: Janne Grunau <j@jannau.net>
-Reviewed-by: Gary Guo <gary@garyguo.net>
-Reviewed-by: Alice Ryhl <aliceryhl@google.com>
 Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
 ---
-Danilo, VTABLE.fops points to UnregisteredDevice::FOPS. Procfs calls
-FOPS.show_fdinfo, so this patch installs drm_show_fdinfo there. The helper
-calls VTABLE.show_fdinfo when the driver supplies additional statistics.
-
-Matt Mireles reported the missing fdinfo fields on an Asahi kernel and
-suggested using this helper.
-
-Janne Grunau tested v1 with the downstream Asahi driver on Apple silicon.
+I compared the disassembly of the original and patched kernels.
+I traced queued oneway transactions in x86-64 KVM guests. The traces
+confirmed node reuse in both exact-fit and split reservations. Local
+KUnit tests covered reservation and release, coalescing with both
+neighbors, quota and no-fit rejection, and promotion and demotion.
 
 OpenAI Codex assisted with coding and testing.
 ---
-Changes in v2:
-- Rebase onto drm-rust-next and set the callback in UnregisteredDevice::FOPS
-  now that the file operations have moved to drm::device.
-- Drop the Fixes tag and clarify that Rust DRM has yet to expose the
-  optional driver statistics hook.
-- Add the Reviewed-by and Tested-by tags from v1.
-- Link to v1: https://patch.msgid.link/20261119-fix-drm-rust-fdinfo-v1-1-c10f4134488d@gmail.com
----
- rust/kernel/drm/device.rs | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/android/binder/range_alloc/tree.rs | 55 +++++++++++++-----------------
+ 1 file changed, 23 insertions(+), 32 deletions(-)
 
-diff --git a/rust/kernel/drm/device.rs b/rust/kernel/drm/device.rs
-index 1c5b0abb492be..c460ba3706bf9 100644
---- a/rust/kernel/drm/device.rs
-+++ b/rust/kernel/drm/device.rs
-@@ -273,6 +273,7 @@ extern "C" fn fops_open(inode: *mut bindings::inode, filp: *mut bindings::file)
-         fops.read = Some(bindings::drm_read);
-         fops.llseek = Some(bindings::noop_llseek);
-         fops.mmap = Some(bindings::drm_gem_mmap);
-+        fops.show_fdinfo = Some(bindings::drm_show_fdinfo);
-         fops.fop_flags = bindings::FOP_UNSIGNED_OFFSET;
+diff --git a/drivers/android/binder/range_alloc/tree.rs b/drivers/android/binder/range_alloc/tree.rs
+index f0cd46f223d56..5a225d9aa63ad 100644
+--- a/drivers/android/binder/range_alloc/tree.rs
++++ b/drivers/android/binder/range_alloc/tree.rs
+@@ -139,12 +139,6 @@ pub(crate) fn debug_print(&self, m: &SeqFile) -> Result {
+         Ok(())
+     }
  
-         fops
+-    fn find_best_match(&mut self, size: usize) -> Option<&mut Descriptor<T>> {
+-        let free_cursor = self.free_tree.cursor_lower_bound(&(size, 0))?;
+-        let ((_, offset), ()) = free_cursor.current();
+-        self.tree.get_mut(offset)
+-    }
+-
+     /// Try to reserve a new buffer, using the provided allocation if necessary.
+     pub(crate) fn reserve_new(
+         &mut self,
+@@ -164,32 +158,34 @@ pub(crate) fn reserve_new(
+             self.free_oneway_space
+         };
+ 
+-        let (found_size, found_off, tree_node, free_tree_node) = match self.find_best_match(size) {
+-            None => {
++        let desc = self
++            .free_tree
++            .cursor_lower_bound(&(size, 0))
++            .and_then(|cursor| {
++                let ((_, offset), ()) = cursor.current();
++                self.tree.get_mut(offset)
++            })
++            .ok_or_else(|| {
+                 pr_warn_ratelimited!("ENOSPC from range_alloc.reserve_new - size: {}\n", size);
+-                return Err(ENOSPC);
+-            }
+-            Some(desc) => {
+-                let found_size = desc.size;
+-                let found_offset = desc.offset;
++                ENOSPC
++            })?;
++        let found_size = desc.size;
++        let found_off = desc.offset;
+ 
+-                // In case we need to break up the descriptor
+-                let new_desc = Descriptor::new(found_offset + size, found_size - size);
+-                let (tree_node, free_tree_node, desc_node_res) = alloc.initialize(new_desc);
+-
+-                desc.state = Some((
+-                    DescriptorState::new(is_oneway, debug_id, pid),
+-                    desc_node_res,
+-                ));
+-                desc.size = size;
+-
+-                (found_size, found_offset, tree_node, free_tree_node)
+-            }
+-        };
++        // Keep the removed index node so releasing this buffer can restore a free range
++        // without allocating under the lock.
++        let free_node_res = self
++            .free_tree
++            .remove_node(&(found_size, found_off))
++            .ok_or(EINVAL)?
++            .into_reservation();
++        desc.state = Some((DescriptorState::new(is_oneway, debug_id, pid), free_node_res));
++        desc.size = size;
+         self.free_oneway_space = new_oneway_space;
+-        self.free_tree.remove(&(found_size, found_off));
+ 
+         if found_size != size {
++            let remainder = Descriptor::new(found_off + size, found_size - size);
++            let (tree_node, free_tree_node) = alloc.initialize(remainder);
+             self.tree.insert(tree_node);
+             self.free_tree.insert(free_tree_node);
+         }
+@@ -430,18 +426,15 @@ fn try_change_state<F, Data>(&mut self, f: F) -> Result<Data>
+ pub(crate) struct ReserveNewTreeAlloc<T> {
+     tree_node_res: RBTreeNodeReservation<usize, Descriptor<T>>,
+     free_tree_node_res: FreeNodeRes,
+-    desc_node_res: FreeNodeRes,
+ }
+ 
+ impl<T> ReserveNewTreeAlloc<T> {
+     pub(crate) fn try_new() -> Result<Self> {
+         let tree_node_res = RBTreeNodeReservation::new(GFP_KERNEL)?;
+         let free_tree_node_res = RBTreeNodeReservation::new(GFP_KERNEL)?;
+-        let desc_node_res = RBTreeNodeReservation::new(GFP_KERNEL)?;
+         Ok(Self {
+             tree_node_res,
+             free_tree_node_res,
+-            desc_node_res,
+         })
+     }
+ 
+@@ -451,14 +444,12 @@ fn initialize(
+     ) -> (
+         RBTreeNode<usize, Descriptor<T>>,
+         RBTreeNode<FreeKey, ()>,
+-        FreeNodeRes,
+     ) {
+         let size = desc.size;
+         let offset = desc.offset;
+         (
+             self.tree_node_res.into_node(offset, desc),
+             self.free_tree_node_res.into_node((size, offset), ()),
+-            self.desc_node_res,
+         )
+     }
+ }
 
 ---
-base-commit: 4325f4aad9727a6e8e7f10c5d2ebf490470cf938
-change-id: 20261119-fix-drm-rust-fdinfo-8e17f71dd9c3
+base-commit: 917fcbf033154a6c8d83cfa6c88f012b71eb37b2
+change-id: 20261126-perf-binder-range-allocator-f8339da7d4d6
 
 Best regards,
 --  
