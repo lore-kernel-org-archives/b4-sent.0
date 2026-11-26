@@ -1,368 +1,136 @@
-From: Paul Sajna <sajattack@postmarketos.org>
-Date: Thu, 26 Nov 2026 11:20:48 -0700
-Subject: [PATCH v8 4/4] leds: aw2013: Add AW2027 support
+From: Joseph Telaak <joseph@telaak.dev>
+Subject: [PATCH v3 0/5] MIPS: Add support for the Siflower SF19A2890
+Date: Thu, 26 Nov 2026 14:21:28 -0500
+Message-Id: <20261126-sf19a2890-mips-v3-0-1f808d38ab37@telaak.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-aw2013-aw20xx-rename-v8-4-b6960baa102c@postmarketos.org>
-References: <20261126-aw2013-aw20xx-rename-v8-0-b6960baa102c@postmarketos.org>
-In-Reply-To: <20261126-aw2013-aw20xx-rename-v8-0-b6960baa102c@postmarketos.org>
-To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIALiGCGsC/2WNyQ6CMBRFf4V0bU1bsIMr/8O4eMCr1AEIxUZD+
+ HdbjInD8iT3nDsRj4NDT7bZRAYMzruujZCvMlI10B6RujoyEUxIzpmg3nIDQhtGr673FEolamP
+ AKqNIlPoBrbsvwf3hxf5WnrAaUyUtGufHbngsj4Gn3Tte/MYDp4wioGZaMLBS70a8AJzXNQaS6
+ kF8+Jz/+SL6uVQ5s1DYDcgvf57nJ/yEp5r/AAAA
+X-Change-ID: 20261102-sf19a2890-mips-ab72d99af797
+To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Nikita Travkin <nikitos.tr@gmail.com>, 
- Alexey Min <alexeymin@minlexx.ru>, David Heidelberg <david@ixit.cz>, 
- Griffin Kroah-Hartman <griffin@kroah.com>
-Cc: Nikita Travkin <nikita@trvn.ru>, linux-leds@vger.kernel.org, 
+ Conor Dooley <conor+dt@kernel.org>, Paul Burton <paulburton@kernel.org>
+Cc: Jiaxun Yang <jiaxun.yang@flygoat.com>, 
+ Chuanhong Guo <gch981213@gmail.com>, Stephen Boyd <sboyd@kernel.org>, 
+ Brian Masney <bmasney+clk@redhat.com>, linux-mips@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- Paul Sajna <sajattack@postmarketos.org>
+ Joseph Telaak <joseph@telaak.dev>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795717245; l=10476;
- i=sajattack@postmarketos.org; s=20250413; h=from:subject:message-id;
- bh=1FJkx8VVFkI2TtgCsDln50TK7YYt1GkyFhmo6kYJk0k=;
- b=cPTOlxXWuKYCIK/07LLilgMpPe0Ea8Kk0ldH6r2lf2EVwrA2FjigXQAfu+fnJ8GZUVUQlsBdP
- 2Q9aiSjYqU2BY1oUV7XDvMVqddhWZ3xwY+vRRSs4GTEAMCZBJGavosN
-X-Developer-Key: i=sajattack@postmarketos.org; a=ed25519;
- pk=ZFE/UBqiz9Wr8b+zBL27opOjw5x5ket5JFqks/VQGeM=
-X-Endpoint-Received: by B4 Relay for sajattack@postmarketos.org/20250413 with auth_id=1505
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795720890; l=4992;
+ i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
+ bh=NDJVn2qtq0h1fvaOlluk96FKNRDn4kyq5YVOFaXbS3c=;
+ b=o0Zf7feQVx3tXxRn1Y2vJsbcROW++R3mqWxSj4+EuovdLJ7csFjZkCjC4JMoKh8wZlMEmRoT2
+ Nm1IsIqfOMZDCESlTFtkW9QaK5/XZZoLA+QV89Uu3R60EOgwLVakHuf
+X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
+ pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
+X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The AW2027 is basically the same as the AW2013.
+This series adds basic support for the Siflower SF19A2890, a MIPS
+interAptiv SoC (two cores, two VPEs each) for home routers, and for the
+GL.iNet GL-SFT1200 ("Opal") travel router built on it. It boots to a
+shell on the PL011 console with all four CPUs up.
 
-It differs in:
-- the max current (30mA rather than 15)
-- the number of current levels for colour-mixing (16 rather than 4)
-- the supply voltage max
-- the charge indicator (unsupported by our driver at this time)
+Patches 1 and 3 are Chuanhong Guo's patch from January 2025 [1], rebased
+and split in two: patch 1 adds MACH_SIFLOWER_MIPS, patch 3 the kmalloc.h
+override. Jiaxun asked then why it does not use MIPS_GENERIC. It does:
+MACH_SIFLOWER_MIPS selects MIPS_GENERIC and MACH_GENERIC_CORE and boots
+through arch/mips/generic, the way MACH_REALTEK_RTL and MACH_INGENIC_SOC
+do. What it avoids is MIPS_GENERIC_KERNEL, which selects
+MIPS_L1_CACHE_SHIFT_7 and takes ARCH_DMA_MINALIGN 128 from
+mach-generic/kmalloc.h, so that with DMA_NONCOHERENT no kmalloc cache
+below 128 bytes exists. The interAptiv's L1 and L2 lines are 32 bytes
+(the boot log reports both).
 
-The max current register (imax) also moves from LCFG to GCR2, and the
-selectable current levels for colour-mixing (LCFG_CUR) take their place.
+On a GL-SFT1200 (128 MB) booted to an idle initramfs, 62 s after boot:
 
-The current driver implementation provided here sets the global imax to
-it's maximum, and scales each led to the closest value using the local
-imax. It's the best result achievable short of adding custom sysfs
-entries and mucking up the linux interfaces.
+                                       MemFree   Slab   kmalloc-128 objs
+  this series (MACH_SIFLOWER_MIPS)     107444    4832   1497
+  MIPS_GENERIC_KERNEL                  106442    5252   5538
+  MIPS_GENERIC_KERNEL, DMA_MINALIGN 32 107660    4732   1497
 
-Comparison of all AW20XX chips https://www.awinic.com/en/productCompareList?id=47&ids=1022,74,96,75,72,71,928,927,73,76,578
-AW2027 datasheet: https://doc.awinic.com/doc/202507/77b87097-27bf-48cd-af9b-9b615064c1e1.pdf
-Vendor driver: https://www.awinic.com/en/driver/AW2027DNR/454
+(kB, means of two boots.) So the whole difference, about 1 MB, comes
+from the 128-byte kmalloc alignment; the larger L1_CACHE_SHIFT costs
+nothing measurable. If the generic kernel sized its kmalloc alignment
+from the probed cache lines at run time, as arm64 does, this board could
+use MIPS_GENERIC_KERNEL, and I can send that change in place of a
+platform of its own if you prefer.
 
-Reviewed-by: Nikita Travkin <nikita@trvn.ru>
-Signed-off-by: Paul Sajna <sajattack@postmarketos.org>
+The SoC's clock controller has a driver of its own, sent to the clk
+tree [2]. Its drivers depend on MACH_SIFLOWER_MIPS, so the clk series
+carries patch 1 of this series as its own patch 1, unchanged, and
+whichever of the MIPS and clk trees takes it first can put it on an
+immutable branch for the other. Thomas, would you ack it there, or
+take it and provide the branch?
+
+Until that driver is merged, the dtsi describes the clock rates the
+bootloader programs with fixed clocks; a later patch replaces them. The
+pin controller, GPIO, USB PHY, DWC2 and GMAC drivers go to their own
+trees.
+
+Patch 2 adds a MAINTAINERS entry for the SoC. Its "N: sf19a2890" also
+matches the SoC's drivers in other trees, which add entries of their
+own.
+
+Tested on a GL-SFT1200, booted from U-Boot over TFTP: the initramfs
+shell on ttyAMA0; four CPUs, with CPUs 1-3 taken offline and back
+online; the GIC timer within 0.06 s of a reference clock over 298 s; and
+the UART divisors U-Boot programs (IBRD 0x43, FBRD 0x34), which confirm
+the 125 MHz UART clock in the device tree.
+
+[1] https://lore.kernel.org/r/20250120015254.124447-1-gch981213@gmail.com
+[2] https://lore.kernel.org/r/20261125-sf19a2890-sysm-v6-0-181875c10682@telaak.dev
+
 ---
- drivers/leds/leds-aw2013.c | 180 ++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 145 insertions(+), 35 deletions(-)
+Changes in v3:
+- Split Chuanhong's patch: MACH_SIFLOWER_MIPS first, as the clk series
+  carries it, and the kmalloc.h override in patch 3 (Brian, on the clk
+  series).
+- Lengthen the MACH_SIFLOWER_MIPS help.
+- Put the platform patch first and the bindings and MAINTAINERS entry
+  second; the kmalloc.h patch adds its F: line.
+- Collect Conor's Acked-by on the bindings.
+- Link to v2: https://patch.msgid.link/20261111-sf19a2890-mips-v2-0-36730fa4f5a6@telaak.dev
 
-diff --git a/drivers/leds/leds-aw2013.c b/drivers/leds/leds-aw2013.c
-index 7fe7e9dae903..246f6ac1fd15 100644
---- a/drivers/leds/leds-aw2013.c
-+++ b/drivers/leds/leds-aw2013.c
-@@ -1,5 +1,5 @@
- // SPDX-License-Identifier: GPL-2.0+
--// Driver for Awinic AW2013 3-channel LED driver
-+// Driver for Awinic AW20XX 3-channel LED drivers
- 
- #include <linux/i2c.h>
- #include <linux/leds.h>
-@@ -20,13 +20,15 @@
- #define AW2013_GCR 0x01
- #define AW2013_GCR_ENABLE BIT(0)
- 
-+#define AW20XX_GCR2 0x04
-+
- /* LED channel enable register */
- #define AW2013_LCTR 0x30
- #define AW2013_LCTR_LE(x) BIT((x))
- 
- /* LED channel control registers */
- #define AW2013_LCFG(x) (0x31 + (x))
--#define AW2013_LCFG_IMAX_MASK (BIT(0) | BIT(1)) // Should be 0-3
-+#define AW2013_IMAX_MASK (BIT(0) | BIT(1)) // Should be 0-3
- #define AW2013_LCFG_MD BIT(4)
- #define AW2013_LCFG_FI BIT(5)
- #define AW2013_LCFG_FO BIT(6)
-@@ -51,6 +53,16 @@
- 
- #define AW2013_TIME_STEP 130 /* ms */
- 
-+/* AW2027-specific defines */
-+#define AW2016_23_27_33_CHIPID 0x09 /* vendor shared same chipid between several chips */
-+#define AW2027_REG_MAX 0x7f /* copied from vendor driver, but only up to 0x3F is documented */
-+#define AW2027_LOCAL_IMAX_MASK GENMASK(3, 0)
-+
-+#define AW2027_GLOBAL_IMAX_15MA 0
-+#define AW2027_GLOBAL_IMAX_30MA 1
-+#define AW2027_GLOBAL_IMAX_5MA  2
-+#define AW2027_GLOBAL_IMAX_10MA 3
-+
- struct aw2013;
- 
- struct aw2013_led {
-@@ -60,16 +72,91 @@ struct aw2013_led {
- 	unsigned int imax;
- };
- 
-+struct aw2013_chipdef {
-+	u8 chip_id;
-+	const struct regmap_config *regmap_cfg;
-+	u32 default_imax;
-+	u32 local_imax_mask;
-+	bool gcr2_imax;
-+	unsigned int current_levels;
-+	unsigned int current_max_ua;
-+};
-+
- struct aw2013 {
- 	struct mutex mutex; /* held when writing to registers */
- 	struct regulator_bulk_data regulators[2];
- 	struct i2c_client *client;
- 	struct aw2013_led leds[AW2013_MAX_LEDS];
- 	struct regmap *regmap;
-+	const struct aw2013_chipdef *cdef;
- 	int num_leds;
- 	bool enabled;
- };
- 
-+static const struct regmap_config aw2013_regmap_config = {
-+	.reg_bits = 8,
-+	.val_bits = 8,
-+	.max_register = AW2013_REG_MAX,
-+};
-+
-+static const struct regmap_config aw2027_regmap_config = {
-+	.reg_bits = 8,
-+	.val_bits = 8,
-+	.max_register = AW2027_REG_MAX,
-+};
-+
-+static const struct aw2013_chipdef aw2013_chipdef = {
-+	.chip_id = AW2013_RSTR_CHIP_ID,
-+	.regmap_cfg = &aw2013_regmap_config,
-+	.default_imax = 1, /* 5mA */
-+	.gcr2_imax = false,
-+	.local_imax_mask = AW2013_IMAX_MASK,
-+	.current_levels = 4,
-+	.current_max_ua = 15000,
-+};
-+
-+static const struct aw2013_chipdef aw2027_chipdef = {
-+	.chip_id = AW2016_23_27_33_CHIPID,
-+	.regmap_cfg = &aw2027_regmap_config,
-+	.default_imax = 3, /* 6mA */
-+	.gcr2_imax = true,
-+	.local_imax_mask = AW2027_LOCAL_IMAX_MASK,
-+	.current_levels = 16,
-+	.current_max_ua = 30000,
-+};
-+
-+/**
-+ * aw2013_microamp_to_imax() - Finds the closest current step to the given microamp
-+ * @microamp: Desired current in microamps
-+ * @cdef: Chip definition
-+ *
-+ * Return: The closest current-step to the given microamp, rounded down
-+ * and limited by the max current step possible for the chip.
-+ */
-+static inline u32 aw2013_microamp_to_imax(u32 microamp, const struct aw2013_chipdef *cdef)
-+{
-+	u32 max_current_step = cdef->current_levels - 1;
-+	u32 closest_current_step_floor = (microamp * max_current_step) / cdef->current_max_ua;
-+
-+	return min_t(u32, closest_current_step_floor, max_current_step);
-+}
-+
-+static int aw2027_set_global_imax(struct aw2013 *chip)
-+{
-+	return regmap_update_bits(chip->regmap,
-+				 AW20XX_GCR2,
-+				 AW2013_IMAX_MASK,
-+				 AW2027_GLOBAL_IMAX_30MA);
-+}
-+
-+static int aw20xx_set_local_imax(struct aw2013 *chip, struct aw2013_led *led, u32 imax)
-+{
-+	return regmap_update_bits(chip->regmap,
-+				 AW2013_LCFG(led->num),
-+				 chip->cdef->local_imax_mask,
-+				 imax);
-+}
-+
- static int aw2013_chip_init(struct aw2013 *chip)
- {
- 	int ret;
-@@ -81,11 +168,25 @@ static int aw2013_chip_init(struct aw2013 *chip)
- 		return ret;
- 	}
- 
-+	if (chip->cdef->gcr2_imax) {
-+		/*
-+		 * AW2027 supports 4-step global imax, and also a 16-step control for limiting
-+		 * individual current per LED. This doesn't map to the single value the
-+		 * devicetree provides super well, so set global imax to maximum, and
-+		 * local imax to whatever gets us closest to the value in the devicetree.
-+		 */
-+		ret = aw2027_set_global_imax(chip);
-+		if (ret) {
-+			dev_err(&chip->client->dev,
-+				"Failed to set maximum global current: %d\n",
-+				ret);
-+			return ret;
-+		}
-+	}
-+
-+	/* AW2013 only supports 4-step individual current per LED */
- 	for (int i = 0; i < chip->num_leds; i++) {
--		ret = regmap_update_bits(chip->regmap,
--					 AW2013_LCFG(chip->leds[i].num),
--					 AW2013_LCFG_IMAX_MASK,
--					 chip->leds[i].imax);
-+		ret = aw20xx_set_local_imax(chip, &chip->leds[i], chip->leds[i].imax);
- 		if (ret) {
- 			dev_err(&chip->client->dev,
- 				"Failed to set maximum current for led %d: %d\n",
-@@ -291,9 +392,9 @@ static int aw2013_probe_dt(struct aw2013 *chip)
- 		init_data.fwnode = of_fwnode_handle(child);
- 
- 		if (!of_property_read_u32(child, "led-max-microamp", &imax)) {
--			led->imax = min_t(u32, imax / 5000, 3);
-+			led->imax = aw2013_microamp_to_imax(imax, chip->cdef);
- 		} else {
--			led->imax = 1; // 5mA
-+			led->imax = chip->cdef->default_imax;
- 			dev_info(&chip->client->dev,
- 				 "DT property led-max-microamp is missing\n");
- 		}
-@@ -303,17 +404,12 @@ static int aw2013_probe_dt(struct aw2013 *chip)
- 
- 		mutex_lock(&chip->mutex);
- 		chip->num_leds = ++i;
--		if (chip->enabled) {
--			ret = regmap_update_bits(chip->regmap,
--						 AW2013_LCFG(led->num),
--						 AW2013_LCFG_IMAX_MASK,
--						 led->imax);
--			if (ret) {
--				mutex_unlock(&chip->mutex);
--				return ret;
--			}
--		}
-+		ret = aw20xx_set_local_imax(chip, led, led->imax);
- 		mutex_unlock(&chip->mutex);
-+		if (ret)
-+			return dev_err_probe(&chip->client->dev, ret,
-+					"Failed to set maximum current for led %d\n",
-+					led->num);
- 
- 		ret = devm_led_classdev_register_ext(&chip->client->dev,
- 						     &led->cdev, &init_data);
-@@ -332,18 +428,18 @@ static void aw2013_chip_disable_action(void *data)
- 	aw2013_chip_disable(data);
- }
- 
--static const struct regmap_config aw2013_regmap_config = {
--	.reg_bits = 8,
--	.val_bits = 8,
--	.max_register = AW2013_REG_MAX,
--};
- 
- static int aw2013_probe(struct i2c_client *client)
- {
- 	struct aw2013 *chip;
-+	const struct aw2013_chipdef *cdef;
- 	int ret;
- 	unsigned int chipid;
- 
-+	cdef = device_get_match_data(&client->dev);
-+	if (!cdef)
-+		return -ENODEV;
-+
- 	chip = devm_kzalloc_obj(&client->dev, *chip);
- 	if (!chip)
- 		return -ENOMEM;
-@@ -355,9 +451,10 @@ static int aw2013_probe(struct i2c_client *client)
- 	mutex_lock(&chip->mutex);
- 
- 	chip->client = client;
-+	chip->cdef = cdef;
- 	i2c_set_clientdata(client, chip);
- 
--	chip->regmap = devm_regmap_init_i2c(client, &aw2013_regmap_config);
-+	chip->regmap = devm_regmap_init_i2c(client, chip->cdef->regmap_cfg);
- 	if (IS_ERR(chip->regmap)) {
- 		ret = dev_err_probe(&client->dev, PTR_ERR(chip->regmap),
- 				    "Failed to allocate register map\n");
-@@ -390,7 +487,7 @@ static int aw2013_probe(struct i2c_client *client)
- 		goto error_reg;
- 	}
- 
--	if (chipid != AW2013_RSTR_CHIP_ID) {
-+	if (chipid != chip->cdef->chip_id) {
- 		ret = dev_err_probe(&client->dev, -ENODEV,
- 				    "Chip reported wrong ID: %x\n",
- 				     chipid);
-@@ -403,21 +500,28 @@ static int aw2013_probe(struct i2c_client *client)
- 		goto error_reg;
- 	}
- 
-+	mutex_unlock(&chip->mutex);
-+
-+	ret = devm_add_action(&client->dev, aw2013_chip_disable_action, chip);
-+	if (ret)
-+		goto error_reg_no_mutex;
-+
-+	ret = aw2013_probe_dt(chip);
-+	if (ret) {
-+		dev_err_probe(&client->dev, ret,
-+			      "Failed to parse devicetree\n");
-+		goto error_reg_no_mutex;
-+	}
-+
- 	ret = regulator_bulk_disable(ARRAY_SIZE(chip->regulators),
- 				     chip->regulators);
- 	if (ret) {
- 		dev_err_probe(&client->dev, ret,
- 			      "Failed to disable regulators\n");
--		goto error;
--	}
--
--	mutex_unlock(&chip->mutex);
--
--	ret = devm_add_action(&client->dev, aw2013_chip_disable_action, chip);
--	if (ret)
- 		return ret;
-+	}
- 
--	return aw2013_probe_dt(chip);
-+	return 0;
- 
- error_reg:
- 	regulator_bulk_disable(ARRAY_SIZE(chip->regulators),
-@@ -426,10 +530,16 @@ static int aw2013_probe(struct i2c_client *client)
- error:
- 	mutex_unlock(&chip->mutex);
- 	return ret;
-+
-+error_reg_no_mutex:
-+	regulator_bulk_disable(ARRAY_SIZE(chip->regulators),
-+			       chip->regulators);
-+	return ret;
- }
- 
- static const struct of_device_id aw2013_match_table[] = {
--	{ .compatible = "awinic,aw2013", },
-+	{ .compatible = "awinic,aw2013", .data = &aw2013_chipdef },
-+	{ .compatible = "awinic,aw2027", .data = &aw2027_chipdef },
- 	{ /* sentinel */ },
- };
- 
-@@ -446,5 +556,5 @@ static struct i2c_driver aw2013_driver = {
- module_i2c_driver(aw2013_driver);
- 
- MODULE_AUTHOR("Nikita Travkin <nikitos.tr@gmail.com>");
--MODULE_DESCRIPTION("AW2013 LED driver");
-+MODULE_DESCRIPTION("AW20XX LED driver");
- MODULE_LICENSE("GPL v2");
+Changes in v2:
+- Write my note on Chuanhong's patch as a list.
+- Drop drivers/gpio/gpio-siflower.c from the MAINTAINERS entry; the GPIO
+  series now adds an entry of its own (Conor).
+- Use the current SPDX identifiers in the new files.
+- Order the dtsi's nodes and properties as dt-check-style --mode=strict
+  expects, with a blank line before status.
+- Link to v1: https://patch.msgid.link/20261104-sf19a2890-mips-v1-0-eae80820af68@telaak.dev
 
--- 
-2.56.0
+---
+Chuanhong Guo (2):
+      MIPS: Add support for Siflower MIPS SoCs
+      MIPS: siflower: Override the kmalloc alignment
+
+Joseph Telaak (3):
+      dt-bindings: mips: Add Siflower SF19A2890 based boards
+      MIPS: dts: Add Siflower SF19A2890 and GL.iNet GL-SFT1200
+      MIPS: configs: Add sf19a2890_defconfig
+
+ .../devicetree/bindings/mips/siflower.yaml         | 26 ++++++
+ MAINTAINERS                                        | 10 +++
+ arch/mips/Kconfig                                  | 33 ++++++++
+ arch/mips/boot/dts/Makefile                        |  1 +
+ arch/mips/boot/dts/siflower/Makefile               |  2 +
+ .../dts/siflower/sf19a2890-glinet-gl-sft1200.dts   | 27 ++++++
+ arch/mips/boot/dts/siflower/sf19a2890.dtsi         | 97 ++++++++++++++++++++++
+ arch/mips/configs/sf19a2890_defconfig              | 15 ++++
+ arch/mips/generic/Platform                         |  1 +
+ arch/mips/include/asm/mach-siflower/kmalloc.h      |  9 ++
+ 10 files changed, 221 insertions(+)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261102-sf19a2890-mips-ab72d99af797
+
+Best regards,
+--  
+Joseph Telaak <joseph@telaak.dev>
 
