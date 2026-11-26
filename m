@@ -1,148 +1,103 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 13:58:37 +0000
-Subject: [PATCH 5.15.y] Bluetooth: hci_sysfs: Fix NULL pointer dereference
- in device_del()
+Date: Thu, 26 Nov 2026 14:00:31 +0000
+Subject: [PATCH 5.10.y] staging: rtl8723bs: rtw_mlme: add bounds checks
+ before ie_length subtraction
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-so1b-bt-515-v1-1-e657824c0e45@certik.com>
-X-B4-Tracking: v=1; b=H4sIAAw7CGsC/02NQQ7CMAwEv1L5jAsOSgV8peIQpy4NQgmKAwJV/
- TsNXDjuaHd2BpUcROHUzJDlGTSkuAbaNOAnFy+CYVgzmJ3piEyHmoiRC1qyyIf9kdmLk9HDurh
- nGcPra+vBtmTbN5x/XB98FV+qqjbZqSBnF/1UkUocSko3rHz7dwHL8gHwngL2owAAAA==
-X-Change-ID: 20261126-so1b-bt-515-b839bbceaefc
+Message-Id: <20261126-so3-rtl-510-v1-1-4c22f41706db@certik.com>
+X-B4-Tracking: v=1; b=H4sIAH47CGsC/02NwQ7CIBBEf6XZs1uBWqr+ivEAdLWYBgyLRtP03
+ wW9eJyXmTcLMCVPDMdmgURPzz6GEuSmATeZcCX0Y8mghNJSKo0cO0x5xl4KNDQcdmavXTcIKIt
+ 7oot/fW0n6Fsp2jecf5wf9kYuV1VtWsOENpngpoqYwphjnLHy7d8FrOsHbw5u7aMAAAA=
+X-Change-ID: 20261126-so3-rtl-510-ae794a86c370
 To: stable@vger.kernel.org
-Cc: Krystian Kaniewski <krystianmkaniewski@gmail.com>, 
- Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
- Marcel Holtmann <marcel@holtmann.org>, linux-bluetooth@vger.kernel.org
+Cc: Salman Alghamdi <me@cipherat.com>, Luka Gejak <luka.gejak@linux.dev>, 
+ linux-staging@lists.linux.dev
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795701516; l=4954;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795701630; l=3127;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=YDEClDvnL/97beq6Fz8yjuMxJhlC9v3p+nU96NvxVoQ=;
- b=Q8XXJIUwbTeo/PTcLm4fMXcxNFn8IThehr4UX2Xp6LJB9tFjFVzBN9uWLlnZnODfuB8x+EmdS
- 7V5HOoGK52tDj6tV6dbA7vzxqmIseokd27AgDaFXWg3N4rdkb3jzlyT
+ bh=V3GPftrUasuRGRSXywo9YOVzZnazbn9fCfCl0Gt8TVA=;
+ b=hi6hubty2MowvZbbN+TZYZoR2veLkggcyuMBGp8Onqe/TpjgY7rPBHOcaeCVivjQeVCEVqE3m
+ 4u5jNH7IgNJCJy4FhqPyVkZd4y1atv8gxpXPip8y/27wq8f6/TV5+Ti
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Krystian Kaniewski <krystianmkaniewski@gmail.com>
+From: Salman Alghamdi <me@cipherat.com>
 
-commit 9b851b09b392da68bd715601f10a5adb2d8d19b8 upstream.
+commit 88e994c57a79f62d5338231d8d37ee8dd98baffe upstream.
 
-A NULL pointer dereference in klist_put() occurs when a child device (such
-as a BNEP network device in bnep_session) is concurrently being
-unregistered while hci_conn_del_sysfs() reparents child devices.
+Add guards to ensure ie_length is large enough before subtracting
+fixed IE offsets to prevent unsigned integer underflow.
 
-This is caused by a race condition between hci_conn_del_sysfs() and
-concurrent child device unregistration (e.g. bnep_session calling
-unregister_netdev()). During device unregistration, device_del() snapshots
-a non-NULL parent pointer. Concurrently, hci_conn_del_sysfs() finds the
-child device using device_find_any_child() and calls device_move() to
-reparent it to NULL, which removes the node from its parent's klist and
-clears knode_parent. Subsequently, device_del() calls
-klist_del(&dev->p->knode_parent) using the stale parent snapshot, causing
-klist_put() to dereference knode_klist(n)->put on an already removed node,
-resulting in a NULL pointer dereference.
-
-This race was introduced by commit 27aabf27fd01 ("Bluetooth: fix
-use-after-free in device_for_each_child()"), which replaced
-device_find_child(..., __match_tty) with device_find_any_child() in
-hci_conn_del_sysfs(). That change was intended to avoid a use-after-free
-where conn->dev outlived its parent hdev->dev when child devices held
-references to conn->dev, because conn->dev only held a reference to
-hdev->dev while registered in sysfs.
-
-Fix the issue properly by taking an explicit reference to the parent device
-with get_device(&hdev->dev) in hci_conn_init_sysfs() and dropping it with
-put_device(parent) in bt_link_release() when the conn device is freed. This
-ensures that hdev->dev remains valid for the entire lifecycle of conn->dev,
-resolving the underlying use-after-free. With the parent reference held
-properly, restore the __match_tty filter in hci_conn_del_sysfs() so that
-device_move() is only invoked on persistent RFCOMM TTY devices as
-originally intended, eliminating the race condition with unregistering
-network devices.
-
-Fixes: 27aabf27fd01 ("Bluetooth: fix use-after-free in device_for_each_child()")
-Assisted-by: Gemini:gemini-3.7-flash syzbot
-Reported-by: syzbot+6df45dd3d03e1a9aca96@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=6df45dd3d03e1a9aca96
-Link: https://syzkaller.appspot.com/ai_job?id=f1c0e740-db21-40af-a9ff-84db0fd8b8bd
-Signed-off-by: Krystian Kaniewski <krystianmkaniewski@gmail.com>
-Signed-off-by: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
-[ adapted to 5.15.y: device_find_child() match callback takes void * ]
+Fixes: 2038fe84b8bd ("staging: rtl8723bs: fix spacing around operators")
+Fixes: d3fcee1b78a5 ("staging: rtl8723bs: fix camel case in struct wlan_bssid_ex")
+Closes: https://lore.kernel.org/linux-staging/DI2H39EAAFBZ.3KI5NWN02AQ2S@linux.dev/
+Cc: stable <stable@kernel.org>
+Signed-off-by: Salman Alghamdi <me@cipherat.com>
+Reviewed-by: Luka Gejak <luka.gejak@linux.dev>
+Link: https://patch.msgid.link/20260513203455.31792-1-me@cipherat.com
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+[ adapted to 5.10.y: use IELength, IEs, and _RSN_IE_2_ ]
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
-6.6.y and newer already have this fix. The only change from upstream
-is the __match_tty() signature: device_find_child() takes a void *
-match argument on this branch.
+6.6.y and newer already have this fix. This branch still uses
+the older IELength/IEs field names and _RSN_IE_2_; the added checks
+are otherwise the same as upstream.
 
-Tested on v5.15.226:
-- x86_64 allmodconfig W=1 build of net/bluetooth/hci_sysfs.o, base
-  vs patched, no new warnings
-- booted the patched kernel with CONFIG_BT=y under QEMU/KVM. I didn't
-  reproduce the race.
+Tested on v5.10.275:
+- x86_64 allmodconfig W=1 build of
+  drivers/staging/rtl8723bs/core/rtw_mlme.o, base vs patched, no new
+  warnings
+- booted the patched kernel with the driver built as a module under
+  QEMU/KVM. I don't have rtl8723bs hardware, so the scan path wasn't
+  run.
 
 The backport and the test runs were prepared with AI coding tools
 (OpenAI Codex agents, with review by Claude). I went over the result
 before signing off.
 ---
- net/bluetooth/hci_sysfs.c | 17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+ drivers/staging/rtl8723bs/core/rtw_mlme.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/net/bluetooth/hci_sysfs.c b/net/bluetooth/hci_sysfs.c
-index b1886e517a78..89cd9ea1ba43 100644
---- a/net/bluetooth/hci_sysfs.c
-+++ b/net/bluetooth/hci_sysfs.c
-@@ -11,7 +11,10 @@ static struct class *bt_class;
- static void bt_link_release(struct device *dev)
- {
- 	struct hci_conn *conn = to_hci_conn(dev);
-+	struct device *parent = dev->parent;
-+
- 	kfree(conn);
-+	put_device(parent);
- }
+diff --git a/drivers/staging/rtl8723bs/core/rtw_mlme.c b/drivers/staging/rtl8723bs/core/rtw_mlme.c
+index c7fab90550f0..a172121b8171 100644
+--- a/drivers/staging/rtl8723bs/core/rtw_mlme.c
++++ b/drivers/staging/rtl8723bs/core/rtw_mlme.c
+@@ -723,6 +723,8 @@ int rtw_is_desired_network(struct adapter *adapter, struct wlan_network *pnetwor
+ 	privacy = pnetwork->network.Privacy;
  
- static const struct device_type bt_link = {
-@@ -19,6 +22,16 @@ static const struct device_type bt_link = {
- 	.release = bt_link_release,
- };
+ 	if (check_fwstate(pmlmepriv, WIFI_UNDER_WPS)) {
++		if (pnetwork->network.IELength < _FIXED_IE_LENGTH_)
++			return false;
+ 		if (rtw_get_wps_ie(pnetwork->network.IEs+_FIXED_IE_LENGTH_, pnetwork->network.IELength-_FIXED_IE_LENGTH_, NULL, &wps_ielen))
+ 			return true;
+ 		else
+@@ -737,11 +739,15 @@ int rtw_is_desired_network(struct adapter *adapter, struct wlan_network *pnetwor
+ 	    bselected = false;
  
-+/*
-+ * The rfcomm tty device will possibly retain even when conn
-+ * is down, and sysfs doesn't support move zombie device,
-+ * so we should move the device before conn device is destroyed.
-+ */
-+static int __match_tty(struct device *dev, void *data)
-+{
-+	return !strncmp(dev_name(dev), "rfcomm", 6);
-+}
-+
- void hci_conn_init_sysfs(struct hci_conn *conn)
- {
- 	struct hci_dev *hdev = conn->hdev;
-@@ -27,7 +40,7 @@ void hci_conn_init_sysfs(struct hci_conn *conn)
+ 		if (psecuritypriv->ndisauthtype == Ndis802_11AuthModeWPA2PSK) {
+-			p = rtw_get_ie(pnetwork->network.IEs + _BEACON_IE_OFFSET_, _RSN_IE_2_, &ie_len, (pnetwork->network.IELength - _BEACON_IE_OFFSET_));
+-			if (p && ie_len > 0)
+-				bselected = true;
+-			else
++			if (pnetwork->network.IELength < _BEACON_IE_OFFSET_) {
+ 				bselected = false;
++			} else {
++				p = rtw_get_ie(pnetwork->network.IEs + _BEACON_IE_OFFSET_, _RSN_IE_2_, &ie_len, (pnetwork->network.IELength - _BEACON_IE_OFFSET_));
++				if (p && ie_len > 0)
++					bselected = true;
++				else
++					bselected = false;
++			}
+ 		}
+ 	}
  
- 	conn->dev.type = &bt_link;
- 	conn->dev.class = bt_class;
--	conn->dev.parent = &hdev->dev;
-+	conn->dev.parent = get_device(&hdev->dev);
- 
- 	device_initialize(&conn->dev);
- }
-@@ -67,7 +80,7 @@ void hci_conn_del_sysfs(struct hci_conn *conn)
- 	while (1) {
- 		struct device *dev;
- 
--		dev = device_find_any_child(&conn->dev);
-+		dev = device_find_child(&conn->dev, NULL, __match_tty);
- 		if (!dev)
- 			break;
- 		device_move(dev, NULL, DPM_ORDER_DEV_LAST);
 
 ---
-base-commit: 4f2df9a01754521fbba3493e8ad91ef65515e68c
-change-id: 20261126-so1b-bt-515-b839bbceaefc
+base-commit: 99112ea818e35b606397c84fbc05e6fadb6ea162
+change-id: 20261126-so3-rtl-510-ae794a86c370
 
 Best regards,
 --  
