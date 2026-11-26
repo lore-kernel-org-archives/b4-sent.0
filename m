@@ -1,62 +1,108 @@
-From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Thu, 26 Nov 2026 12:27:35 +0300
-Subject: [PATCH net-next v3 3/3] MAINTAINERS: Add Cortina CS7542 MDIO
- controller entry
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Subject: [PATCH v4 00/17] drm/panfrost: Resume long jobs instead of
+ resetting, and mapping error path fixes
+Date: Thu, 26 Nov 2026 09:36:43 +0000
+Message-Id: <20261126-panfrost-long-jobs-v4-0-23579629ceca@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-b4-cs7542-mdio-v3-3-35739a0f3225@gmail.com>
-References: <20261126-b4-cs7542-mdio-v3-0-35739a0f3225@gmail.com>
-In-Reply-To: <20261126-b4-cs7542-mdio-v3-0-35739a0f3225@gmail.com>
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, Andrew Lunn <andrew+netdev@lunn.ch>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795685252; l=883;
- i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=pa+eVVj3dWWEgeMEgkzxsEwVYcHck8BeW/HLISWO33s=;
- b=9RlLK4Mr4o+DSwZ/23ESsstNH1NT5bxxAh3/Qu/deQkLEcTP/lYEVu3cJJMW3cZpkF3kkhSPu
- wxWTMDDsgEbDGXmbS6wCJd/JHEQdMbX1rQz4Z3SInJYzL6UtqsUVflO
-X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
- pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
-X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NTQ6CMBQE4KuQrq3pD0Jx5T2Miwd9QAlQ0iLRE
+ O5uwQ0xxOUkM9/MxKMz6Mk1monDyXhj+xDiU0SKGvoKqdEhE8FEwjlndIC+dNaPtLV9RRube8q
+ TWAqVgoCCkzAcHJbmtaH3xzf7Z95gMa7S2qiNH617b68TX3t/DyZOGRXxhalMZoBK36oOTHsub
+ EfWg0nsCXFIiEAAS5RkGqTOsl9C7gl5SMhAKAaYKi1VmeCeWJblA6u4phVMAQAA
+X-Change-ID: 20261110-panfrost-long-jobs-1643287a2ac1
+To: Boris Brezillon <boris.brezillon@collabora.com>, 
+ Rob Herring <robh@kernel.org>, Steven Price <steven.price@arm.com>, 
+ =?utf-8?q?Adri=C3=A1n_Larumbe?= <adrian.larumbe@collabora.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795685806; l=3740;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=MuMFK5jO5fKWatEuOQyDpCntuKMcI66DhXJph8CZWSY=;
+ b=awhPy25Y6qlxTk2fZxxx9dZqagO3/tHmG4IOvwA0b204D6qCaV/GFNaoF0wvJht+83hbSPvJL
+ mPa0pN9iZz0Avsq/Dw8+vNbrFaTCtFopVeinB3fl9L0d+BCkldxMEmM
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-List the binding and driver under the author maintaining the Almond+
-platform support, together with the appropriate subsystem mailing list.
+Fixes for problems found running the GLES, Vulkan and OpenCL
+conformance tests with Mesa on a Mali-G31 (Allwinner H616), and for
+problems Sashiko found around them:
+- 1-4, 14, 15: reset and timeout paths vs power management, heap BO
+  cache sync, a mapping being freed.
+- 5-8: BO mapping error paths.
+- 9-13: races around panfrost_reset().
+- 16: soft-stop and resume a job still active at the timeout.
+- 17: name the BOs around an unhandled page fault.
 
-Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
+Open points: a job that keeps reaching task boundaries is never killed;
+stopping a long job holds all slots (here at most 349 ms); 16 can go
+separately.
 
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
+Tested on v7.3 with Mesa 26.2: no regressions in 1196 dEQP/KHR cases
+and 9 OpenCL CTS groups. 2-4 and 9-12 were not reproduced.
+
+Developed with Claude (Anthropic) as coding assistant (investigation,
+code, commit messages); I reviewed them and ran the tests.
+
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v4:
+- New patches 1, 14 and 15 (Sashiko on v3). Patch 2 clears
+  reset.pending in runtime resume and leaves system sleep to patch 1.
+- Shorter commit messages and comments; test results in 1, 6, 7, 14
+  and 15.
+- Renumbered: v3 1-12 are now 2-13, v3 13 and 14 are now 16 and 17.
+- Rebased onto the current drm-misc-next.
+- Link to v3: https://patch.msgid.link/20261113-panfrost-long-jobs-v3-0-80ae78d38f6e@gmail.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 44540a1eb..312d3b4af 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -6918,6 +6918,13 @@ S:	Maintained
- F:	Documentation/hwmon/corsair-psu.rst
- F:	drivers/hwmon/corsair-psu.c
- 
-+CORTINA SYSTEMS CS7542 MDIO CONTROLLER
-+M:	Fil Dunsky <filipp.dunsky@gmail.com>
-+L:	netdev@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/net/cortina,cs7542-mdio.yaml
-+F:	drivers/net/mdio/mdio-cs75xx.c
-+
- COUNTER SUBSYSTEM
- M:	William Breathitt Gray <wbg@kernel.org>
- L:	linux-iio@vger.kernel.org
+Changes in v3:
+- Patch 1: disable the reset work across system sleep (Sashiko).
+- New patches 7, 10 and 11 (Sashiko); shorter messages and comments.
+- Renumbered and rebased onto the current drm-misc-next.
+- Link to v2: https://patch.msgid.link/20261112-panfrost-long-jobs-v2-0-a06830da3d99@gmail.com
 
--- 
-2.53.0
+Changes in v2:
+- New patches 1-3, 7 and 8 for Sashiko's findings on v1.
+- Patches 6, 10 and 11 reworked and v1 4/7 dropped after Sashiko's review.
+- Renumbered and rebased onto the current drm-misc-next.
+- Link to v1: https://lore.kernel.org/r/20261110-panfrost-long-jobs-v1-0-24508939ae8d@gmail.com
+
+---
+Arun Iyengar (17):
+      drm/panfrost: Freeze the reset workqueue during system sleep
+      drm/panfrost: Power the GPU up for a reset queued from the MMU code
+      drm/panfrost: Refuse to sync the CPU caches of a heap BO
+      drm/panfrost: Don't take a reference on a mapping that is being freed
+      drm/panfrost: Don't WARN when a GEM mapping cannot get its pages
+      drm/panfrost: Unwind a failed GPU mapping without dropping its pages
+      drm/panfrost: Give back the pages of a heap chunk that failed to map
+      drm/panfrost: Don't WARN for a heap folio a neighbouring chunk filled
+      drm/panfrost: Don't signal a job cancelled from _NEXT at a reset as done
+      drm/panfrost: Don't cancel a job that completed during a reset
+      drm/panfrost: Drop the cycle counter only for a job that holds it
+      drm/panfrost: Don't take a job that was never started for done
+      drm/panfrost: Wait for the soft-stopped slots with the live slot status
+      drm/panfrost: Keep the GPU powered in the job timeout handler
+      drm/panfrost: Keep the job interrupts masked during a reset
+      drm/panfrost: Soft-stop and resume a job that outlives the timeout
+      drm/panfrost: Name the BOs around an unhandled page fault
+
+ drivers/gpu/drm/panfrost/panfrost_device.c |   1 +
+ drivers/gpu/drm/panfrost/panfrost_gem.c    |   3 +
+ drivers/gpu/drm/panfrost/panfrost_job.c    | 254 ++++++++++++++++++++++-------
+ drivers/gpu/drm/panfrost/panfrost_job.h    |   3 +
+ drivers/gpu/drm/panfrost/panfrost_mmu.c    | 145 ++++++++++++++--
+ 5 files changed, 333 insertions(+), 73 deletions(-)
+---
+base-commit: 8a6e49c8557d3ba0fe4c7f1cb7f428289b13bfed
+change-id: 20261110-panfrost-long-jobs-1643287a2ac1
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
