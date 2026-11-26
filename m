@@ -1,15 +1,13 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Subject: [PATCH v4 0/3] Add Cortina Systems CS7542 NAND controller support
-Date: Thu, 26 Nov 2026 15:45:26 +0300
-Message-Id: <20261126-b4-cs7542-nand-v4-0-38e488f6f8b1@gmail.com>
+Date: Thu, 26 Nov 2026 15:45:27 +0300
+Subject: [PATCH v4 1/3] dt-bindings: mtd: Add Cortina CS7542 NAND
+ controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NQQ6CMBCF4auQrq2ZaQulrryHcQFlgBoBQ5FoC
- He34IZodPmS+f6ZmKfekWeHaGI9jc67rg1D7SJm66ytiLsibCZAJIhC8lxx63WsBG+ztuCpNka
- TBABtWEC3nkr3WIOn83v7e34hOyyV5aJ2fuj65/pxxOXuZ3xEDlxbQm0sIJI4Vk3mrnvbNWyJj
- +I/F4GbwpSQJpDGUn1yueXxF5eBQ54UqNAiCNryeZ5fz+BxRjwBAAA=
-X-Change-ID: 20261123-b4-cs7542-nand-87997e300079
+Message-Id: <20261126-b4-cs7542-nand-v4-1-38e488f6f8b1@gmail.com>
+References: <20261126-b4-cs7542-nand-v4-0-38e488f6f8b1@gmail.com>
+In-Reply-To: <20261126-b4-cs7542-nand-v4-0-38e488f6f8b1@gmail.com>
 To: Miquel Raynal <miquel.raynal@bootlin.com>, 
  Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,100 +15,127 @@ To: Miquel Raynal <miquel.raynal@bootlin.com>,
 Cc: linux-mtd@lists.infradead.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795697127; l=4360;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795697127; l=3294;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=wQpDUS5b0pYxv/jtguM6xqTqewPkbwxTjWJdoV23J8Q=;
- b=jqEQpn7bmgur8voLImXxF37PWNK0HpjRiGsLyBN4uiuJJihAoHnmHnl3GluetgtBhgI7lX6nt
- SPCdr2NXWWYAKi4UePZq3FYhHXk+UC5byzS29/F4RokceCacFl7OIdM
+ bh=0qXWSMESZjG+Rrjv+OyLzyU3xQh2VijD/dbwXnwp4EU=;
+ b=6Xh007pP+0rd3BhzNs8CxzXOIzhKTw55L6h1HFjQJ0aVw7ilbZ7Np1dNQLfgAofC2AjR+7EE5
+ l5OoepbX0OoBivjd1PnsGTKpS3LlBLJLZ6p9YXCGpzX8xNjZ8tn7CD7
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the CS7542 programmed-I/O NAND controller independently of the
-platform series and ARCH_CORTINA_ACCESS.
+Describe the flash controller registers, optional banked data aperture,
+AXI bus clock, flash interrupt and shared flash reset. The controller has
+two chip selects, 8/16-bit bus support and Hamming/BCH hardware, rather
+than only the configuration supported by the initial driver.
 
-Describe the hardware's two chip selects, 8/16-bit bus and Hamming/BCH
-capabilities in the binding. The initial driver supports one connected
-8-bit target on either CS, on-host Hamming with 256-byte steps, software
-ECC and raw operation. It preserves firmware bus timing by retaining
-the AXI clock rate. The optional flash reset is acquired without a pulse;
-PIO polls completion without claiming the flash IRQ or shared SSP DMA.
+Inherit the standard NAND chip ECC properties. The example explicitly
+selects the ROM-compatible 256-byte Hamming layout used on Almond+.
+Firmware initializes the NAND bus timing.
 
-Validate generic operation descriptors separately from execution. Use
-NAND core page-operation builders in the hardware ECC callbacks instead
-of assembling read/program opcodes independently. Preserve the existing
-Almond+ Hamming/OOB layout.
-
-Validation of this v4 candidate:
-- Full ARM vmlinux/modules builds with the driver =y and =m, without the
-  platform series and with COMPILE_TEST=n; software Hamming enabled.
-- Binding/example validation and strict source checkpatch.
-- Actual NAND core builders and the driver validator: 9815 cases each
-  against native and OpenWrt 6.18 headers, GCC and Clang ASan/UBSan.
-- Actual hardware-ECC sequencing versus v3: 240 cases per compiler,
-  including command/address registers, CS/bank selection, main/ECC/OOB
-  ordering and fault cleanup.
-- Exact driver compilation with the installed OpenWrt 6.18.64 headers.
-
-The exact new NAND driver booted on Almond+ in a combined OpenWrt
-6.18.64 RAM kernel. It read 56 MiB of protected regions with matching
-SHA-256 and matched raw/generic 64-byte OOB reads in all four banks.
-The real UBI stack created a temporary two-LEB volume, wrote/compared
-two 253952-byte patterns, physically erased both LEBs and read back ff.
-The temporary volume was removed and the normal reserve restored to
-80 blocks (free 0/bad 0, original five volumes intact). The independent
-fixed-deadline watchdog returned to installed OpenWrt automatically;
-all 13 protected hashes and all configuration hashes matched, and the
-four LCD services and normal 30-second watchdog were running.
-
-The RAM run tested the retained hardware Hamming layout. Software ECC
-was checked by compilation and the core-operation host tests, rather
-than changing the ECC format of the existing flash. No kernel image
-was installed by the RAM test. Native driver source bytes were identical
-to the tested 6.18 integration; the native full builds are separate.
-
+Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
-Changes in v4:
-- Address Miquel Raynal's binding and driver review on v2.
-- Describe controller capabilities rather than only the initial driver.
-- Add the AXI clock, flash IRQ, optional reset and data aperture binding.
-- Separate supports_op() and remove the NAND opcode whitelist.
-- Use core page helpers for hardware ECC; allow software ECC/raw transfers.
-- Support either chip select and reject multiple connected targets explicitly.
-- Preserve bus timing through clock rate exclusivity; do not pulse flash reset.
-- Clarify the vendor EXTADDR convention; retain the existing Hamming layout.
-- Link to v3: https://patch.msgid.link/20261125-b4-cs7542-nand-v3-0-0b6d141c102e@gmail.com
+ .../bindings/mtd/cortina,cs7542-nand.yaml          | 90 ++++++++++++++++++++++
+ 1 file changed, 90 insertions(+)
 
-To: Fil Dunsky <filipp.dunsky@gmail.com>
-To: Miquel Raynal <miquel.raynal@bootlin.com>
-To: Richard Weinberger <richard@nod.at>
-To: Vignesh Raghavendra <vigneshr@ti.com>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-mtd@lists.infradead.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+diff --git a/Documentation/devicetree/bindings/mtd/cortina,cs7542-nand.yaml b/Documentation/devicetree/bindings/mtd/cortina,cs7542-nand.yaml
+new file mode 100644
+index 000000000..3b7fdf6ee
+--- /dev/null
++++ b/Documentation/devicetree/bindings/mtd/cortina,cs7542-nand.yaml
+@@ -0,0 +1,90 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/mtd/cortina,cs7542-nand.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Cortina Systems CS7542 NAND controller
++
++maintainers:
++  - Fil Dunsky <filipp.dunsky@gmail.com>
++
++description:
++  The flash controller has two NAND chip selects and supports 8-bit and
++  16-bit devices, programmed I/O, hardware Hamming ECC with 256-byte or
++  512-byte steps, and hardware BCH ECC. It is on the AXI peripheral bus.
++  The data aperture selects a bank through the controller registers.
++  The flash controller also has access to the shared SSP DMA engine;
++  the programmed-I/O interface does not require that DMA resource.
++  Firmware initializes the NAND bus timing.
++
++allOf:
++  - $ref: nand-controller.yaml#
++
++properties:
++  compatible:
++    const: cortina,cs7542-nand
++
++  reg:
++    minItems: 1
++    items:
++      - description: Flash controller registers
++      - description: Banked NAND data aperture
++
++  reg-names:
++    minItems: 1
++    items:
++      - const: regs
++      - const: data
++
++  clocks:
++    maxItems: 1
++    description: AXI bus clock
++
++  interrupts:
++    maxItems: 1
++    description: Flash controller interrupt
++
++  resets:
++    maxItems: 1
++    description: Shared flash controller reset
++
++patternProperties:
++  "^nand@[01]$":
++    type: object
++    $ref: raw-nand-chip.yaml#
++    properties:
++      reg:
++        minimum: 0
++        maximum: 1
++    unevaluatedProperties: false
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - interrupts
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++
++    nand-controller@f0050000 {
++        compatible = "cortina,cs7542-nand";
++        reg = <0xf0050000 0x300>, <0xe0000000 0x08000000>;
++        reg-names = "regs", "data";
++        clocks = <&axi_clk>;
++        interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        nand@0 {
++            reg = <0>;
++            nand-ecc-mode = "hw";
++            nand-ecc-algo = "hamming";
++            nand-ecc-step-size = <256>;
++            nand-ecc-strength = <1>;
++        };
++    };
 
----
-Fil Dunsky (3):
-      dt-bindings: mtd: Add Cortina CS7542 NAND controller
-      mtd: rawnand: Add Cortina CS7542 controller support
-      MAINTAINERS: Add Cortina CS7542 NAND controller entry
-
- .../bindings/mtd/cortina,cs7542-nand.yaml          |  90 +++
- MAINTAINERS                                        |   7 +
- drivers/mtd/nand/raw/Kconfig                       |  12 +
- drivers/mtd/nand/raw/Makefile                      |   1 +
- drivers/mtd/nand/raw/cs752x_nand.c                 | 743 +++++++++++++++++++++
- 5 files changed, 853 insertions(+)
----
-base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
-change-id: 20261123-b4-cs7542-nand-87997e300079
-
-Best regards,
---  
-Fil Dunsky <filipp.dunsky@gmail.com>
+-- 
+2.53.0
 
