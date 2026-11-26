@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 26 Nov 2026 10:01:25 +0000
-Subject: [PATCH 2/3] pmdomain: rockchip: use dev_err_probe() in the probe
- path
+Date: Thu, 26 Nov 2026 10:01:26 +0000
+Subject: [PATCH 3/3] pmdomain: rockchip: report domain errors where they
+ happen
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-pmdomain-rockchip-cleanup-v1-2-a19f5ea7d555@gmail.com>
+Message-Id: <20261126-pmdomain-rockchip-cleanup-v1-3-a19f5ea7d555@gmail.com>
 References: <20261126-pmdomain-rockchip-cleanup-v1-0-a19f5ea7d555@gmail.com>
 In-Reply-To: <20261126-pmdomain-rockchip-cleanup-v1-0-a19f5ea7d555@gmail.com>
 To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
@@ -15,163 +15,114 @@ Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Yao Zi <me@ziyao.cc>, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795687283; l=4842;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795687283; l=3430;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=EuQMv/4YZ9MKBCAwmy2pWeQx5JPLsPHE+V7fKlPqOcE=;
- b=PkWY7V9lN6YIaE5jS+PW/vU+Ml5zf9WOW6JDrNkQEWpdrHtdPrqAE7zHSQl56yI17wpz0+JnB
- F02kVG33IuUCwYpNho0/o2KlnExh/zWPiELveBTgGBoa4qa7KkpzuQ2
+ bh=3AtAbt0gF5z4t2/yujfDXZ8Drlb6obYk/ZkMiiGPe04=;
+ b=j+aLrJix27Oqfi1XC8nUFAK/8l0MqREaHGMArIJ+AoRbOnYDN/6wIpgqSGW7t7ylhckA+sm7l
+ ipCOyxDq/MlB4wbav21x1xx2dYDoIlwQTlTtDuW8lyrdmaFRAmyIEdS
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert the dev_err() and return pairs in the probe path to
-dev_err_probe(). The return values do not change.
+Print the clock prepare and pm_qos failures with dev_err_probe() and
+drop the callers' "failed to handle node" messages. Each error is now
+reported once, and -ENOMEM stays quiet.
 
+Suggested-by: Sebastian Reichel <sebastian.reichel@collabora.com>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/pmdomain/rockchip/pm-domains.c | 82 ++++++++++++++--------------------
- 1 file changed, 33 insertions(+), 49 deletions(-)
+ drivers/pmdomain/rockchip/pm-domains.c | 40 +++++++++++++++-------------------
+ 1 file changed, 17 insertions(+), 23 deletions(-)
 
 diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
-index b52bdf0e8a19..9d5a79c6d4f9 100644
+index 9d5a79c6d4f9..c3df32934120 100644
 --- a/drivers/pmdomain/rockchip/pm-domains.c
 +++ b/drivers/pmdomain/rockchip/pm-domains.c
-@@ -842,28 +842,22 @@ static int rockchip_pm_add_one_domain(struct rockchip_pmu *pmu,
- 	int error;
- 
- 	error = of_property_read_u32(node, "reg", &id);
--	if (error) {
--		dev_err(pmu->dev,
--			"%pOFn: failed to retrieve domain id (reg): %d\n",
--			node, error);
--		return -EINVAL;
--	}
-+	if (error)
-+		return dev_err_probe(pmu->dev, -EINVAL,
-+				     "%pOFn: failed to retrieve domain id (reg)\n",
-+				     node);
- 
--	if (id >= pmu->info->num_domains) {
--		dev_err(pmu->dev, "%pOFn: invalid domain id %d\n",
--			node, id);
--		return -EINVAL;
--	}
-+	if (id >= pmu->info->num_domains)
-+		return dev_err_probe(pmu->dev, -EINVAL,
-+				     "%pOFn: invalid domain id %d\n", node, id);
- 	/* RK3588 has domains with two parents (RKVDEC0/RKVDEC1) */
- 	if (pmu->genpd_data.domains[id])
- 		return 0;
- 
- 	pd_info = &pmu->info->domain_info[id];
--	if (!pd_info->pwr_mask && !pd_info->req_mask) {
--		dev_err(pmu->dev, "%pOFn: undefined domain id %d\n",
--			node, id);
--		return -EINVAL;
--	}
-+	if (!pd_info->pwr_mask && !pd_info->req_mask)
-+		return dev_err_probe(pmu->dev, -EINVAL,
-+				     "%pOFn: undefined domain id %d\n", node, id);
- 
- 	pd = devm_kzalloc_obj(pmu->dev, *pd);
- 	if (!pd)
-@@ -1072,12 +1066,10 @@ static int rockchip_pm_add_subdomain(struct rockchip_pmu *pmu,
- 		u32 idx;
- 
- 		error = of_property_read_u32(parent, "reg", &idx);
--		if (error) {
--			dev_err(pmu->dev,
--				"%pOFn: failed to retrieve domain id (reg): %d\n",
--				parent, error);
--			return error;
--		}
-+		if (error)
-+			return dev_err_probe(pmu->dev, error,
-+					     "%pOFn: failed to retrieve domain id (reg)\n",
-+					     parent);
- 		parent_domain = pmu->genpd_data.domains[idx];
- 
- 		error = rockchip_pm_add_one_domain(pmu, np,
-@@ -1091,23 +1083,20 @@ static int rockchip_pm_add_subdomain(struct rockchip_pmu *pmu,
+@@ -881,17 +881,19 @@ static int rockchip_pm_add_one_domain(struct rockchip_pmu *pmu,
+ 	for (i = 0; i < pd->num_clks; i++) {
+ 		pd->clks[i].clk = of_clk_get(node, i);
+ 		if (IS_ERR(pd->clks[i].clk)) {
+-			error = PTR_ERR(pd->clks[i].clk);
+-			dev_err_probe(pmu->dev, error,
+-				      "%pOFn: failed to get clk at index %d: %d\n",
+-				      node, i, error);
++			error = dev_err_probe(pmu->dev, PTR_ERR(pd->clks[i].clk),
++					      "%pOFn: failed to get clk at index %d\n",
++					      node, i);
+ 			goto err_put_clocks;
  		}
- 
- 		error = of_property_read_u32(np, "reg", &idx);
--		if (error) {
--			dev_err(pmu->dev,
--				"%pOFn: failed to retrieve domain id (reg): %d\n",
--				np, error);
--			return error;
--		}
-+		if (error)
-+			return dev_err_probe(pmu->dev, error,
-+					     "%pOFn: failed to retrieve domain id (reg)\n",
-+					     np);
- 		child_domain = pmu->genpd_data.domains[idx];
- 
- 		error = pm_genpd_add_subdomain(parent_domain, child_domain);
--		if (error) {
--			dev_err(pmu->dev, "%s failed to add subdomain %s: %d\n",
--				parent_domain->name, child_domain->name, error);
--			return error;
--		} else {
--			dev_dbg(pmu->dev, "%s add subdomain: %s\n",
--				parent_domain->name, child_domain->name);
--		}
-+		if (error)
-+			return dev_err_probe(pmu->dev, error,
-+					     "%s failed to add subdomain %s\n",
-+					     parent_domain->name, child_domain->name);
-+
-+		dev_dbg(pmu->dev, "%s add subdomain: %s\n",
-+			parent_domain->name, child_domain->name);
- 
- 		error = rockchip_pm_add_subdomain(pmu, np);
- 		if (error)
-@@ -1126,10 +1115,8 @@ static int rockchip_pm_domain_probe(struct platform_device *pdev)
- 	const struct rockchip_pmu_info *pmu_info;
- 	int error;
- 
--	if (!np) {
--		dev_err(dev, "device tree node not found\n");
--		return -ENODEV;
--	}
-+	if (!np)
-+		return dev_err_probe(dev, -ENODEV, "device tree node not found\n");
- 
- 	pmu_info = device_get_match_data(dev);
- 
-@@ -1146,16 +1133,13 @@ static int rockchip_pm_domain_probe(struct platform_device *pdev)
- 	pmu->genpd_data.num_domains = pmu_info->num_domains;
- 
- 	parent = dev->parent;
--	if (!parent) {
--		dev_err(dev, "no parent for syscon devices\n");
--		return -ENODEV;
--	}
-+	if (!parent)
-+		return dev_err_probe(dev, -ENODEV, "no parent for syscon devices\n");
- 
- 	pmu->regmap = syscon_node_to_regmap(parent->of_node);
--	if (IS_ERR(pmu->regmap)) {
--		dev_err(dev, "no regmap available\n");
--		return PTR_ERR(pmu->regmap);
--	}
-+	if (IS_ERR(pmu->regmap))
-+		return dev_err_probe(dev, PTR_ERR(pmu->regmap),
-+				     "no regmap available\n");
- 
- 	/*
- 	 * Configure power up and down transition delays for CORE
-@@ -1204,7 +1188,7 @@ static int rockchip_pm_domain_probe(struct platform_device *pdev)
- 
- 	error = of_genpd_add_provider_onecell(np, &pmu->genpd_data);
- 	if (error) {
--		dev_err(dev, "failed to add provider: %d\n", error);
-+		dev_err_probe(dev, error, "failed to add provider\n");
- 		goto err_out;
  	}
  
+ 	error = clk_bulk_prepare(pd->num_clks, pd->clks);
+-	if (error)
++	if (error) {
++		dev_err_probe(pmu->dev, error,
++			      "%pOFn: failed to prepare clocks\n", node);
+ 		goto err_put_clocks;
++	}
+ 
+ 	pd->num_qos = of_count_phandle_with_args(node, "pm_qos",
+ 						 NULL);
+@@ -916,13 +918,18 @@ static int rockchip_pm_add_one_domain(struct rockchip_pmu *pmu,
+ 		for (j = 0; j < pd->num_qos; j++) {
+ 			qos_node = of_parse_phandle(node, "pm_qos", j);
+ 			if (!qos_node) {
+-				error = -ENODEV;
++				error = dev_err_probe(pmu->dev, -ENODEV,
++						      "%pOFn: failed to get pm_qos %d\n",
++						      node, j);
+ 				goto err_unprepare_clocks;
+ 			}
+ 			pd->qos_regmap[j] = syscon_node_to_regmap(qos_node);
+ 			of_node_put(qos_node);
+ 			if (IS_ERR(pd->qos_regmap[j])) {
+-				error = PTR_ERR(pd->qos_regmap[j]);
++				error = dev_err_probe(pmu->dev,
++						      PTR_ERR(pd->qos_regmap[j]),
++						      "%pOFn: failed to get pm_qos %d regmap\n",
++						      node, j);
+ 				goto err_unprepare_clocks;
+ 			}
+ 		}
+@@ -1074,13 +1081,8 @@ static int rockchip_pm_add_subdomain(struct rockchip_pmu *pmu,
+ 
+ 		error = rockchip_pm_add_one_domain(pmu, np,
+ 						   to_rockchip_pd(parent_domain));
+-		if (error) {
+-			if (error != -EPROBE_DEFER)
+-				dev_err(pmu->dev,
+-					"failed to handle node %pOFn: %d\n",
+-					np, error);
++		if (error)
+ 			return error;
+-		}
+ 
+ 		error = of_property_read_u32(np, "reg", &idx);
+ 		if (error)
+@@ -1162,20 +1164,12 @@ static int rockchip_pm_domain_probe(struct platform_device *pdev)
+ 
+ 	for_each_available_child_of_node_scoped(np, node) {
+ 		error = rockchip_pm_add_one_domain(pmu, node, NULL);
+-		if (error) {
+-			if (error != -EPROBE_DEFER)
+-				dev_err(dev, "failed to handle node %pOFn: %d\n",
+-					node, error);
++		if (error)
+ 			goto err_out;
+-		}
+ 
+ 		error = rockchip_pm_add_subdomain(pmu, node);
+-		if (error < 0) {
+-			if (error != -EPROBE_DEFER)
+-				dev_err(dev, "failed to handle subdomain node %pOFn: %d\n",
+-					node, error);
++		if (error < 0)
+ 			goto err_out;
+-		}
+ 
+ 		/* A domain left on is not fatal; carry on with the others. */
+ 		rockchip_pm_power_off_subtree(pmu, node);
 
 -- 
 2.55.0
