@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 26 Nov 2026 09:36:52 +0000
-Subject: [PATCH v4 09/17] drm/panfrost: Don't signal a job cancelled from
- _NEXT at a reset as done
+Date: Thu, 26 Nov 2026 09:36:53 +0000
+Subject: [PATCH v4 10/17] drm/panfrost: Don't cancel a job that completed
+ during a reset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-panfrost-long-jobs-v4-9-23579629ceca@gmail.com>
+Message-Id: <20261126-panfrost-long-jobs-v4-10-23579629ceca@gmail.com>
 References: <20261126-panfrost-long-jobs-v4-0-23579629ceca@gmail.com>
 In-Reply-To: <20261126-panfrost-long-jobs-v4-0-23579629ceca@gmail.com>
 To: Boris Brezillon <boris.brezillon@collabora.com>, 
@@ -17,79 +17,49 @@ To: Boris Brezillon <boris.brezillon@collabora.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795685806; l=2563;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795685806; l=1339;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=+0lclni43/Dq9naPCbsA255rI8BnM42gaj99yqkxcKM=;
- b=mp8iYk+cJtwnQxaMxBqxP4D+0JO1vRtXy0kDV2IjZ64YBBmHnBWIKTvkIcTIgY8YzWY1XjWyZ
- Nw2kDrRgvISD74foRvPqBNV0qqBrYqmiOgHh6ogxgcduW362QVu9549
+ bh=3lUBnktZkSvOacj1VqiKAjZOrqk7CYYBcx6fKO/61xk=;
+ b=QOC1f2Xvp2yll8tHGNoYUUQCDqpNDP+S+DbA6TlYqU7HbbSIv3Vh5JrnjrDRvxL6PX8rkqLCk
+ amGqoYBjnRsCxA8HeSjA1IMcIG8Jbd5KX8q01t7eZl/QQsicd18tGcn
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-panfrost_reset() cancels the job in _NEXT with JS_COMMAND_NOP and
-soft-stops the running one. If the running job completes instead,
-panfrost_jm_handle_irq() takes the cancelled job for done too: its
-fence is signalled and it never runs.
+A job that completes during panfrost_reset() has its jc cleared, so
+drm_sched_start() cancels it. Return its done fence instead. Depends
+on the previous patch. Not reproduced.
 
-As the Arm driver does, read JS_HEAD_NEXT after the NOP; if it still
-holds the job, take it off the slot and restart it with the others.
-Found by Sashiko. Not reproduced.
-
-Fixes: 030761e097b4 ("drm/panfrost: Queue jobs on the hardware")
+Fixes: 03877d621db0 ("drm/scheduler: mark jobs without fence as canceled")
 Cc: stable@vger.kernel.org
 Reported-by: Sashiko <sashiko-bot@kernel.org>
 Closes: https://lore.kernel.org/all/sashiko-outbox-206581@kernel.org/
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/gpu/drm/panfrost/panfrost_job.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+v4: shorter commit message.
+---
+ drivers/gpu/drm/panfrost/panfrost_job.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/gpu/drm/panfrost/panfrost_job.c b/drivers/gpu/drm/panfrost/panfrost_job.c
-index b5b523cb2..c9bd3555f 100644
+index c9bd3555f..a64c33047 100644
 --- a/drivers/gpu/drm/panfrost/panfrost_job.c
 +++ b/drivers/gpu/drm/panfrost/panfrost_job.c
-@@ -659,6 +659,7 @@ static void
- panfrost_reset(struct panfrost_device *pfdev,
- 	       struct drm_sched_job *bad)
- {
-+	struct panfrost_job *evicted[NUM_JOB_SLOTS] = {};
- 	u32 js_state, js_state_mask = 0xffffffff;
- 	unsigned int i, j;
- 	bool cookie;
-@@ -694,11 +695,22 @@ panfrost_reset(struct panfrost_device *pfdev,
- 	job_write(pfdev, JOB_INT_MASK, 0);
- 	synchronize_irq(pfdev->js->irq);
+@@ -409,11 +409,9 @@ static struct dma_fence *panfrost_job_run(struct drm_sched_job *sched_job)
+ 	if (unlikely(job->base.s_fence->finished.error))
+ 		return NULL;
  
-+	spin_lock(&pfdev->js->job_lock);
- 	for (i = 0; i < NUM_JOB_SLOTS; i++) {
- 		/* Cancel the next job and soft-stop the running job. */
- 		job_write(pfdev, JS_COMMAND_NEXT(i), JS_COMMAND_NOP);
-+
-+		/* Never started: take it off, or the IRQ handler completes it. */
-+		if (pfdev->jobs[i][1] &&
-+		    (job_read(pfdev, JS_HEAD_NEXT_LO(i)) ||
-+		     job_read(pfdev, JS_HEAD_NEXT_HI(i)))) {
-+			evicted[i] = pfdev->jobs[i][1];
-+			pfdev->jobs[i][1] = NULL;
-+		}
-+
- 		job_write(pfdev, JS_COMMAND(i), JS_COMMAND_SOFT_STOP);
- 	}
-+	spin_unlock(&pfdev->js->job_lock);
+-	/* Nothing to execute: can happen if the job has finished while
+-	 * we were resetting the GPU.
+-	 */
++	/* Done in the reset: drm_sched_start() cancels it without a fence */
+ 	if (!job->jc)
+-		return NULL;
++		return dma_fence_get(job->done_fence);
  
- 	/* Wait at most 10ms for soft-stops to complete */
- 	ret = readl_poll_timeout(pfdev->iomem + JOB_INT_JS_STATE, js_state,
-@@ -720,6 +732,9 @@ panfrost_reset(struct panfrost_device *pfdev,
- 	 */
- 	spin_lock(&pfdev->js->job_lock);
- 	for (i = 0; i < NUM_JOB_SLOTS; i++) {
-+		if (evicted[i])
-+			pfdev->jobs[i][pfdev->jobs[i][0] ? 1 : 0] = evicted[i];
-+
- 		for (j = 0; j < ARRAY_SIZE(pfdev->jobs[0]) && pfdev->jobs[i][j]; j++) {
- 			if (pfdev->jobs[i][j]->requirements & PANFROST_JD_REQ_CYCLE_COUNT ||
- 			    pfdev->jobs[i][j]->is_profiled)
+ 	fence = panfrost_fence_create(pfdev, slot);
+ 	if (IS_ERR(fence))
 
 -- 
 2.55.0
