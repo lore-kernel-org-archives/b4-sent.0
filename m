@@ -1,169 +1,139 @@
-From: Peder Bergan <peder.bergan@gmail.com>
-Date: Thu, 26 Nov 2026 19:06:03 +0100
-Subject: [PATCH] rust_binder: Reuse the free-index node in the range
- allocator
+From: Paul Sajna <sajattack@postmarketos.org>
+Subject: [PATCH v8 0/4] leds: aw2013: Add AW2027 support
+Date: Thu, 26 Nov 2026 11:20:44 -0700
+Message-Id: <20261126-aw2013-aw20xx-rename-v8-0-b6960baa102c@postmarketos.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-perf-binder-range-allocator-v1-1-7d924585d735@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAp1CGsC/3XOywrCMBCF4Vcps3bQtBIvryIucpnYkZqUSZVC6
- bub1LXLfzh8zAKZhCnDtVlA6MOZUyyhdg243sQHIfvS0B5arVSrcSQJaDl6EpRtYIYhOTMlwXD
- uuos3J3/0GoowCgWeN/12/3V+2ye5qZJ1YU0mtMVxfT3V3P/ByzuCL84OI80TrOsX692SZrwAA
- AA=
-X-Change-ID: 20261126-perf-binder-range-allocator-f8339da7d4d6
-To: Alice Ryhl <aliceryhl@google.com>, Carlos Llamas <cmllamas@google.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
- Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
- rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795716366; l=5590;
- i=peder.bergan@gmail.com; s=kernel-contributions; h=from:subject:message-id;
- bh=3jMl1KWm85vv+EltZXMoB8Zdgw2mYRi6WhSgIiUrKJQ=;
- b=MTASfgjO6rL+lTcBKghWU+k9rP5hZ1Uvm7edBlMQMbJkNOvEVuO0oqZU6HmOTbXdCaJy8XjYM
- 2MO6TjT36/sBAC0oqTvakpRjZmSyImTG/SlrMq6nd5dtcQQ4Rd5DCL6
-X-Developer-Key: i=peder.bergan@gmail.com; a=ed25519;
- pk=39790pn1YZCulHBoUG1uiQI1Hm01EvhBEa2zVrS/yN0=
-X-Endpoint-Received: by B4 Relay for peder.bergan@gmail.com/kernel-contributions with auth_id=1395
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43SwU7DMAwG4FeZcibIdppk3Yn3QByc1N0qtHWkp
+ RRNfXfSgWAHIjhFfyR//g++qEFSJ4PabS4qydQNXX/KYXu3UfHAp73orslZEZCDGrzmNwI012e
+ edZITH0U3LRkTbU0Yncqj5yRtN1/Zx6ecD90w9un9umXC9fcPcEINOtbsmxaJPeDDuR/GI6dnG
+ fvhvk97tboTfVsIYAsWZQthKzHknt7bgmVuLKSCZdZeHLBtGrAQXMGqfqy8uWBVGvWWnKU6iAR
+ LBcveWMVeNvcKFK0YMlwDFyz3H8tliyxKZFMBh1iw/K1VFSyfLWHLBtFw5etfrOXzYJK8vObzG
+ 7+uZlk+AET2SNCcAgAA
+X-Change-ID: 20260907-aw2013-aw20xx-rename-df233c5921c6
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Nikita Travkin <nikitos.tr@gmail.com>, 
+ Alexey Min <alexeymin@minlexx.ru>, David Heidelberg <david@ixit.cz>, 
+ Griffin Kroah-Hartman <griffin@kroah.com>
+Cc: Nikita Travkin <nikita@trvn.ru>, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ Paul Sajna <sajattack@postmarketos.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795717245; l=4284;
+ i=sajattack@postmarketos.org; s=20250413; h=from:subject:message-id;
+ bh=DaMBc1I+vyjS2XIQqBToYqHwD3JDgEqh/8IYfGmPB4s=;
+ b=hxfYpf21WjnrxDYcUt46H6Hj7AR2vKFn/OdZ79Nww+IkzPOcS/yRQ1RGoOaXcwcu/Qvj1GVKs
+ Ex1ad0/Fpq2Av1pDEK6zEr+JS4M/OsfDX99bHVi1+/N6rGLAsxgDwrt
+X-Developer-Key: i=sajattack@postmarketos.org; a=ed25519;
+ pk=ZFE/UBqiz9Wr8b+zBL27opOjw5x5ket5JFqks/VQGeM=
+X-Endpoint-Received: by B4 Relay for sajattack@postmarketos.org/20250413 with auth_id=1505
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A tree reservation prepares a spare free-index node so releasing the
-buffer can reinsert the free range without allocating under the
-process spinlock. When the allocator selects a range, it removes and
-frees that range's existing free-index node.
+Refer to PATCH 4 for a full description of the similarities and
+differences between AW2013 and AW2027.
 
-Convert the detached node into an RBTreeNodeReservation and store it
-with the buffer. The release path can initialize the key after
-coalescing the range. This reduces preparation from three fresh node
-allocations to two and avoids one free under the process spinlock
-per successful tree reservation, for both exact fits and splits.
+I'm hoping the sashiko reviews about unbalanced regulators that I was
+struggling to fix are covered by
+https://lore.kernel.org/linux-leds/20261021123406.3163547-1-lee@kernel.org/
+and I can drop my failed attempts to fix them.
+Let me know if I misunderstood.
 
-Signed-off-by: Peder Bergan <peder.bergan@gmail.com>
+I'll do my best to address all of Sashiko's comments, but it might take
+me some time to circle back, don't bother reviewing until I've done
+this.
+
+This PATCH resulted out of discussions pertaining to
+sdm660-mainline/linux, a close-to-mainline fork for Qualcomm Snapdragon 660
+devices, specifically for the BlackBerry KEY2 Keyboard Backlight,
+in the following GitHub PR: https://github.com/sdm660-mainline/linux/pull/218
+
+Signed-off-by: Paul Sajna <sajattack@postmarketos.org>
 ---
-I compared the disassembly of the original and patched kernels.
-I traced queued oneway transactions in x86-64 KVM guests. The traces
-confirmed node reuse in both exact-fit and split reservations. Local
-KUnit tests covered reservation and release, coalescing with both
-neighbors, quota and no-fit rejection, and promotion and demotion.
+Changes in v8:
+- Fix commit subject for c99 for loops commit
+- Combine local imax setting for both chips into a single function,
+  reduce duplicate loops
+- Remove excessive comments
+- simplify mutex unlock in aw2013_probe_dt
+- Link to v7: https://lore.kernel.org/r/20261114-aw2013-aw20xx-rename-v7-0-ea5a3113a479@postmarketos.org
 
-OpenAI Codex assisted with coding and testing.
----
- drivers/android/binder/range_alloc/tree.rs | 55 +++++++++++++-----------------
- 1 file changed, 23 insertions(+), 32 deletions(-)
+Changes in v7:
+- Fix multiple imax setting/regulators per Sashiko
+- Small description updates to AW20XX per Heidelberg
+- Reorder dev_err_probe commit so that introducing new code using
+  dev_err_probe is cleaner
+- Simplify dev_err_probe, prevent unneccessary assignment
+- Revert early return / else suggested by Heidelberg, Travkin and I both
+  prefer else
+- Lower Hex
+- split c99 for-loops to separate commit
+- simplify aw2027_set_local_imax and aw2027_set_global_imax
+- Link to v6: https://patch.msgid.link/20261112-aw2013-aw20xx-rename-v6-0-251eca340abc@postmarketos.org
 
-diff --git a/drivers/android/binder/range_alloc/tree.rs b/drivers/android/binder/range_alloc/tree.rs
-index f0cd46f223d56..5a225d9aa63ad 100644
---- a/drivers/android/binder/range_alloc/tree.rs
-+++ b/drivers/android/binder/range_alloc/tree.rs
-@@ -139,12 +139,6 @@ pub(crate) fn debug_print(&self, m: &SeqFile) -> Result {
-         Ok(())
-     }
- 
--    fn find_best_match(&mut self, size: usize) -> Option<&mut Descriptor<T>> {
--        let free_cursor = self.free_tree.cursor_lower_bound(&(size, 0))?;
--        let ((_, offset), ()) = free_cursor.current();
--        self.tree.get_mut(offset)
--    }
--
-     /// Try to reserve a new buffer, using the provided allocation if necessary.
-     pub(crate) fn reserve_new(
-         &mut self,
-@@ -164,32 +158,34 @@ pub(crate) fn reserve_new(
-             self.free_oneway_space
-         };
- 
--        let (found_size, found_off, tree_node, free_tree_node) = match self.find_best_match(size) {
--            None => {
-+        let desc = self
-+            .free_tree
-+            .cursor_lower_bound(&(size, 0))
-+            .and_then(|cursor| {
-+                let ((_, offset), ()) = cursor.current();
-+                self.tree.get_mut(offset)
-+            })
-+            .ok_or_else(|| {
-                 pr_warn_ratelimited!("ENOSPC from range_alloc.reserve_new - size: {}\n", size);
--                return Err(ENOSPC);
--            }
--            Some(desc) => {
--                let found_size = desc.size;
--                let found_offset = desc.offset;
-+                ENOSPC
-+            })?;
-+        let found_size = desc.size;
-+        let found_off = desc.offset;
- 
--                // In case we need to break up the descriptor
--                let new_desc = Descriptor::new(found_offset + size, found_size - size);
--                let (tree_node, free_tree_node, desc_node_res) = alloc.initialize(new_desc);
--
--                desc.state = Some((
--                    DescriptorState::new(is_oneway, debug_id, pid),
--                    desc_node_res,
--                ));
--                desc.size = size;
--
--                (found_size, found_offset, tree_node, free_tree_node)
--            }
--        };
-+        // Keep the removed index node so releasing this buffer can restore a free range
-+        // without allocating under the lock.
-+        let free_node_res = self
-+            .free_tree
-+            .remove_node(&(found_size, found_off))
-+            .ok_or(EINVAL)?
-+            .into_reservation();
-+        desc.state = Some((DescriptorState::new(is_oneway, debug_id, pid), free_node_res));
-+        desc.size = size;
-         self.free_oneway_space = new_oneway_space;
--        self.free_tree.remove(&(found_size, found_off));
- 
-         if found_size != size {
-+            let remainder = Descriptor::new(found_off + size, found_size - size);
-+            let (tree_node, free_tree_node) = alloc.initialize(remainder);
-             self.tree.insert(tree_node);
-             self.free_tree.insert(free_tree_node);
-         }
-@@ -430,18 +426,15 @@ fn try_change_state<F, Data>(&mut self, f: F) -> Result<Data>
- pub(crate) struct ReserveNewTreeAlloc<T> {
-     tree_node_res: RBTreeNodeReservation<usize, Descriptor<T>>,
-     free_tree_node_res: FreeNodeRes,
--    desc_node_res: FreeNodeRes,
- }
- 
- impl<T> ReserveNewTreeAlloc<T> {
-     pub(crate) fn try_new() -> Result<Self> {
-         let tree_node_res = RBTreeNodeReservation::new(GFP_KERNEL)?;
-         let free_tree_node_res = RBTreeNodeReservation::new(GFP_KERNEL)?;
--        let desc_node_res = RBTreeNodeReservation::new(GFP_KERNEL)?;
-         Ok(Self {
-             tree_node_res,
-             free_tree_node_res,
--            desc_node_res,
-         })
-     }
- 
-@@ -451,14 +444,12 @@ fn initialize(
-     ) -> (
-         RBTreeNode<usize, Descriptor<T>>,
-         RBTreeNode<FreeKey, ()>,
--        FreeNodeRes,
-     ) {
-         let size = desc.size;
-         let offset = desc.offset;
-         (
-             self.tree_node_res.into_node(offset, desc),
-             self.free_tree_node_res.into_node((size, offset), ()),
--            self.desc_node_res,
-         )
-     }
- }
+Changes in v6:
+- Fix the compile error introduced by my unchecked hasty rebase
+- Some adjustments per David Heidelberg's comments
+- Link to v5: https://patch.msgid.link/20261112-aw2013-aw20xx-rename-v5-0-b2c5e323a90a@postmarketos.org
+
+Changes in v5:
+- Drop move of chip->num_leds
+- Make aw2013_microamp_to_imax more readable
+- rebase to next-20261112 for Lee's changes
+- Link to v4: https://lore.kernel.org/linux-leds/20261108-aw2013-aw20xx-rename-v4-0-826529beeb52@postmarketos.org/
+
+Changes in v4:
+- Drop sashiko fixes covered by https://lore.kernel.org/linux-leds/20261021123406.3163547-1-lee@kernel.org/
+- Rename the chip id register value to reflect that it covers more chips
+  (https://www.awinic.com/en/driver/AW2027DNR/640)
+- Address preliminary review comments from Lee Jones
+- Link to v3: https://lore.kernel.org/r/20261012-aw2013-aw20xx-rename-v3-0-cab1fdd050b6@postmarketos.org
+
+Changes in v3:
+- Drop rename
+- Capitalize commit subject
+- Extra tweaks to cleanup patches (preventing more unbalanced regulator
+  stuff)
+- Whitespace fiddling
+- Link to v2: https://lore.kernel.org/r/20261005-aw2013-aw20xx-rename-v2-0-108ecbdf2775@postmarketos.org
+
+Changes in v2:
+- Reduce renames to internal driver scope, to prevent breaking compat
+- Address Sashiko Review Comments
+- Split renames into a separate commit to make the actual changes easier
+to identify
+- Change from RFC to PATCH
+- Link to v1: https://lore.kernel.org/r/20260907-aw2013-aw20xx-rename-v1-0-c9a7df12a701@postmarketos.org
+
+To: Lee Jones <lee@kernel.org>
+To: Pavel Machek <pavel@kernel.org>
+To: Griffin Kroah-Hartman <griffin@kroah.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Nikita Travkin <nikitos.tr@gmail.com>
+Cc: linux-leds@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: 917fcbf033154a6c8d83cfa6c88f012b71eb37b2
-change-id: 20261126-perf-binder-range-allocator-f8339da7d4d6
+Paul Sajna (4):
+      dt-bindings: leds: aw2013: Add awinic,aw2027 compatible
+      leds: aw2013: Use dev_err_probe
+      leds: aw2013: Leverage C99 for-loops
+      leds: aw2013: Add AW2027 support
+
+ .../devicetree/bindings/leds/leds-aw2013.yaml      |   6 +-
+ drivers/leds/leds-aw2013.c                         | 216 +++++++++++++++------
+ 2 files changed, 165 insertions(+), 57 deletions(-)
+---
+base-commit: 6d582d78fad9d828e575ca0cdcff8ea47a77220b
+change-id: 20260907-aw2013-aw20xx-rename-df233c5921c6
 
 Best regards,
 --  
-Peder Bergan <peder.bergan@gmail.com>
+Paul Sajna <sajattack@postmarketos.org>
 
