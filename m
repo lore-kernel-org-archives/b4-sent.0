@@ -1,597 +1,181 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Thu, 26 Nov 2026 22:37:09 +0100
-Subject: [PATCH net-next 5/5] selftests: net: add a scale test for LISP
+From: Mostafa Amin <mostafa.amin@windriver.com>
+Date: Thu, 26 Nov 2026 17:12:39 -0500
+Subject: [PATCH] fs/ntfs3: serialize size changes with
+ mapping->invalidate_lock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-for-upstream-lisp-v1-v1-5-7382a4bcfd9b@free.fr>
-References: <20261126-for-upstream-lisp-v1-v1-0-7382a4bcfd9b@free.fr>
-In-Reply-To: <20261126-for-upstream-lisp-v1-v1-0-7382a4bcfd9b@free.fr>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Vincent Jardin <vjardin@free.fr>, Donald Hunter <donald.hunter@gmail.com>, 
- Nicolas Dichtel <nicolas.dichtel@6wind.com>, 
- Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, Shuah Khan <shuah@kernel.org>
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- linux-doc@vger.kernel.org, linux-kselftest@vger.kernel.org
+Message-Id: <20261126-fix-krn-ntfs3-inline-read-v1-1-30d32e60a4f5@windriver.com>
+X-B4-Tracking: v=1; b=H4sIANauCGsC/x2MQQqAMAzAviI9W3CbDvQr4kFmp0Wp0okI4t8dH
+ gNJHkikTAm64gGlixPvksGUBYRllJmQp8xgK+uNsR4j37iqoJwxOWTZWAiVxglb52NT2RBq00D
+ uD6Us/+9+eN8P3b/+DGsAAAA=
+To: Konstantin Komarov <almaz.alexandrovich@paragon-software.com>
+Cc: ntfs3@lists.linux.dev, 
+ syzbot+079e16bc964fb91acb4a@syzkaller.appspotmail.com, 
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Mostafa Amin <mostafa.amin@windriver.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795729035; l=16062;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=WqBfcj0k8Xgono35BXpqD6wdTsUfUyPlySeKL0YGQ9A=;
- b=ELK2yidj1uQEG/ZQUoqYG/gJ54LSkrZcaGD/tKUUbUVp91GNswdhhUpjEWHKsPtcaZblPretz
- 2ySJyvJJWDdCM6FeC1JQdWVhEqx2cEqX8A6n+f8MJxX7L8y7deMjI0W
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795731160; l=5919;
+ i=mostafa.amin@windriver.com; s=20261126; h=from:subject:message-id;
+ bh=XmeI61S+G6pjD7VI+NxHnOwVHDxsLsOyxgnSQMrMyvQ=;
+ b=OLuKjlFUHKqs6hefA7Vlu5Qxgeab18KkjBAxvZuyo37JMXNgduh/qVX8CwXSwvIwMG+i6yYFD
+ DzrpjlndoJ+AyE2G2+A/wicLzLl4Cd/yNp9zfU/KIcTvnha5KzNEQEK
+X-Developer-Key: i=mostafa.amin@windriver.com; a=ed25519;
+ pk=miyC6GYBn9SqytJ6Cgwe1MLT98rhnwuFEIO8ErmAetY=
+X-Endpoint-Received: by B4 Relay for mostafa.amin@windriver.com/20261126 with auth_id=1656
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Scenario: an xTR with the mappings of many remote sites on one LISP
-device.
-1 nexthop per site, half of them with an IPv4 RLOC and half with an
-IPv6 one, and 4 routes per site, 2 IPv4 and 2 IPv6 EID prefixes.
+syzbot reported a WARNING in iomap_read_inline_data() ("size >
+iomap->length") triggered by concurrent ftruncate() and mmap() page
+faults on a resident NTFS3 file:
 
-Another xTR stands for all the sites.
+  CPU0 (filemap_fault)               CPU1 (ntfs_setattr / write_iter)
+  --------------------               --------------------------------
+  filemap_invalidate_lock_shared()
+  ntfs_read_folio()
+    ntfs_iomap_begin()
+      attr_data_get_block()
+        iomap->length = 5
+                                     truncate_setsize(inode, 20)
+                                       i_size_write(inode, 20)
+                                     ntfs_set_size(inode, 20)
+    iomap_read_inline_data()
+      size = i_size_read(inode) = 20
+      WARN_ON_ONCE(20 > 5) -> -EIO
 
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+iomap_read_inline_data() copies i_size_read(inode) - iomap->offset bytes
+out of iomap->inline_data and warns with -EIO if that exceeds
+iomap->length.  In ntfs3, attr_data_get_block_locked() snapshots a
+resident $DATA attribute into an allocated page under ni_lock and sets
+iomap->length to res.data_size, dropping ni_lock before returning from
+ntfs_iomap_begin().
+
+Meanwhile, ntfs_setattr() updates inode->i_size via truncate_setsize()
+before ntfs_set_size() grows res.data_size and without holding
+mapping->invalidate_lock.  Extending writes in ntfs_file_write_iter()
+and preallocation in ntfs_fallocate() likewise resize the attribute and
+inode->i_size via ntfs_set_size() without mapping->invalidate_lock,
+allowing a concurrent page fault or buffered read to observe the new
+inode->i_size against an inline iomap built from the old resident size.
+
+Serialize regular-file size and resident/non-resident layout changes
+against pagecache readers and faults with filemap_invalidate_lock():
+
+  - In ntfs_setattr(), hold mapping->invalidate_lock across ATTR_SIZE
+    updates; when extending, truncate any stray pagecache beyond oldsize
+    and run ntfs_set_size() before pagecache_isize_extended() so i_size
+    never leads res.data_size or transiently changes on error.
+  - In ntfs_file_write_iter(), reject extending IOCB_NOWAIT writes with
+    -EAGAIN and hold mapping->invalidate_lock around ntfs_set_size().
+  - In ntfs_fallocate(), hold mapping->invalidate_lock across all modes,
+    including default preallocation which converts resident files to
+    non-resident and extends i_size.
+
+Fixes: 099ef9ab9203 ("fs/ntfs3: implement iomap-based file operations")
+Reported-by: syzbot+079e16bc964fb91acb4a@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=079e16bc964fb91acb4a
+Cc: stable@vger.kernel.org
+Signed-off-by: Mostafa Amin <mostafa.amin@windriver.com>
 ---
- tools/testing/selftests/net/Makefile      |   1 +
- tools/testing/selftests/net/lisp_scale.sh | 532 ++++++++++++++++++++++++++++++
- 2 files changed, 533 insertions(+)
+Tested on v7.4-rc4 (x86_64 QEMU/KVM, 4 vCPUs, CONFIG_KASAN=y,
+CONFIG_PROVE_LOCKING=y, CONFIG_UBSAN=y, CONFIG_DEBUG_ATOMIC_SLEEP=y,
+CONFIG_DEBUG_KMEMLEAK=y, panic_on_warn=1):
+  - syzbot C reproducer (ftruncate vs mmap + MADV_DONTNEED): 3/3
+    crashes before fix, 0/10 crashes after fix, 3/3 crashes with fix
+    reverted.
+  - Extending pwrite + fsync + POSIX_FADV_DONTNEED race and
+    resident-to-nonresident data-integrity suite: 1/1 crash before
+    fix, 0/3 after fix.
+  - W=1 build of fs/ntfs3/ on debug (CONFIG_NTFS3_FS=y) and
+    allmodconfig (CONFIG_NTFS3_FS=m): 0 warnings.
 
-diff --git a/tools/testing/selftests/net/Makefile b/tools/testing/selftests/net/Makefile
-index 7263049ab7c44..27a1e9e6b4ed3 100644
---- a/tools/testing/selftests/net/Makefile
-+++ b/tools/testing/selftests/net/Makefile
-@@ -64,6 +64,7 @@ TEST_PROGS := \
- 	l2tp.sh \
- 	link_netns.py \
- 	lisp.sh \
-+	lisp_scale.sh \
- 	lwt_dst_cache_ref_loop.sh \
- 	macvlan_mcast_shared_mac.sh \
- 	msg_zerocopy.sh \
-diff --git a/tools/testing/selftests/net/lisp_scale.sh b/tools/testing/selftests/net/lisp_scale.sh
-new file mode 100755
-index 0000000000000..badba6491a42c
---- /dev/null
-+++ b/tools/testing/selftests/net/lisp_scale.sh
-@@ -0,0 +1,532 @@
-+#!/bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+# Copyright (c) 2026 Vincent Jardin <vjardin@free.fr>, Free Mobile
-+#
-+# Scale of the LISP data plane of drivers/net/lisp.c: the mappings of many
-+# remote sites on one device of an xTR. A site is an RLOC, which is a nexthop,
-+# and EID prefixes, which are routes to it. The sites with an even number have
-+# an IPv4 RLOC, the others an IPv6 one. Each site has two IPv4 and two IPv6 EID
-+# prefixes.
-+#
-+# x2 stands for all the remote sites: their RLOCs and their EIDs are local to
-+# it, and it answers to the EIDs of x1.
-+#
-+#   x1 (VRF "site")                                    x2
-+#   172.16.0.1, fd01::1    lisp101 ...... lisp101      10.0.0.0/8, fd00::/16
-+#   192.0.2.1, 2001:db8:1::1  veth        veth         198.18.0.0/15,
-+#                                                      2001:db8:ffff::/48
-+#
-+# LISP_SITES is the number of sites: 40000 by default, 8000 on a slow machine,
-+# which is also the least: the tests change sites of their own, below 8000.
-+
-+source lib.sh
-+
-+if [[ $KSFT_MACHINE_SLOW == yes ]]; then
-+	: "${LISP_SITES:=8000}"
-+else
-+	: "${LISP_SITES:=40000}"
-+fi
-+
-+ALL_TESTS="
-+	install_test
-+	stats_test
-+	move_test
-+	replace_test
-+	withdraw_test
-+	churn_test
-+	down_test
-+"
-+
-+X1_RLOC4=192.0.2.1
-+X1_RLOC6=2001:db8:1::1
-+
-+# The nexthop of a site has its number plus 1 as ID. Those of the sites that
-+# move are above the others, and the groups above them.
-+NH_MOVED=1000000
-+NH_GROUP=2000000
-+
-+################################################################################
-+# Helpers
-+
-+site_addr()
-+{
-+	local site=$1; shift
-+	local format=$1; shift
-+
-+	awk -v i="$site" "BEGIN { printf \"$format\", $* }"
-+}
-+
-+site_rloc()
-+{
-+	local site=$1; shift
-+
-+	if (( site % 2 )); then
-+		site_addr "$site" "2001:db8:ffff:%x::1" i
-+	else
-+		site_addr "$site" "198.18.%d.%d" "int(i / 256), i % 256"
-+	fi
-+}
-+
-+# The IPv4 RLOC that a site gets when a test moves it.
-+site_moved_rloc()
-+{
-+	site_addr "$1" "198.19.%d.%d" "int(i / 256), i % 256"
-+}
-+
-+site_eid4()
-+{
-+	site_addr "$1" "10.%d.%d.129" "int(i / 256), i % 256"
-+}
-+
-+site_eid6()
-+{
-+	site_addr "$1" "fd00:%x:1::1" i
-+}
-+
-+sites_batch()
-+{
-+	local family=$1; shift
-+	local first=$1; shift
-+	local last=$1; shift
-+	local program=$1; shift
-+
-+	awk -v first="$first" -v last="$last" -v moved="$NH_MOVED" \
-+	    -v group="$NH_GROUP" "
-+	BEGIN {
-+		for (i = first; i < last; i++) {
-+			nh = i + 1
-+			hi = int(i / 256)
-+			lo = i % 256
-+			if (i % 2) {
-+				encap = \"ip6\"
-+				rloc = sprintf(\"2001:db8:ffff:%x::1\", i)
+Not tested: sparse/smatch/coccinelle, non-x86_64 runtime, full xfstests.
+---
+ fs/ntfs3/file.c | 34 ++++++++++++++++++++++++----------
+ 1 file changed, 24 insertions(+), 10 deletions(-)
+
+diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
+index 6c84a3e1c7fe..33fb6dd91503 100644
+--- a/fs/ntfs3/file.c
++++ b/fs/ntfs3/file.c
+@@ -518,12 +518,9 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
+ 		goto out;
+ 	}
+ 
+-	if (mode & (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_COLLAPSE_RANGE |
+-		    FALLOC_FL_INSERT_RANGE)) {
+-		inode_dio_wait(inode);
+-		filemap_invalidate_lock(mapping);
+-		map_locked = true;
+-	}
++	inode_dio_wait(inode);
++	filemap_invalidate_lock(mapping);
++	map_locked = true;
+ 
+ 	if (mode & FALLOC_FL_PUNCH_HOLE) {
+ 		u32 frame_size;
+@@ -736,15 +733,25 @@ int ntfs_setattr(const struct mnt_idmap *idmap, struct dentry *dentry,
+ 			goto out;
+ 		}
+ 		inode_dio_wait(inode);
++		filemap_invalidate_lock(inode->i_mapping);
+ 		oldsize = i_size_read(inode);
+ 		newsize = attr->ia_size;
+ 
+ 		if (newsize != oldsize) {
+-			truncate_setsize(inode, newsize);
+-
+-			err = ntfs_set_size(inode, newsize);
++			if (newsize > oldsize) {
++				truncate_pagecache(inode, oldsize);
++				err = ntfs_set_size(inode, newsize);
++				if (!err)
++					pagecache_isize_extended(inode, oldsize,
++								 newsize);
 +			} else {
-+				encap = \"ip\"
-+				rloc = sprintf(\"198.18.%d.%d\", hi, lo)
++				truncate_setsize(inode, newsize);
++				err = ntfs_set_size(inode, newsize);
++				if (err)
++					i_size_write(inode, oldsize);
 +			}
-+			$program
+ 			if (err) {
+-				i_size_write(inode, oldsize);
++				filemap_invalidate_unlock(inode->i_mapping);
+ 				goto out;
+ 			}
+ 
+@@ -753,6 +760,7 @@ int ntfs_setattr(const struct mnt_idmap *idmap, struct dentry *dentry,
+ 			inode_set_mtime_to_ts(inode,
+ 					      inode_set_ctime_current(inode));
+ 		}
++		filemap_invalidate_unlock(inode->i_mapping);
+ 	}
+ 
+ 	setattr_copy(idmap, inode, attr);
+@@ -1288,11 +1296,17 @@ static ssize_t ntfs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	endbyte = vbo + ret;
+ 
+ 	if (endbyte > inode->i_size) {
++		if (iocb->ki_flags & IOCB_NOWAIT) {
++			ret = -EAGAIN;
++			goto out;
 +		}
-+	}" | ip -n "$x1" ${family:+-$family} -batch -
-+}
-+
-+SITE_ROUTES='
-+	printf "route %s 10.%d.%d.0/25 vrf site nhid %d\n", cmd, hi, lo, to
-+	printf "route %s 10.%d.%d.128/25 vrf site nhid %d\n", cmd, hi, lo, to
-+	printf "route %s fd00:%x:0::/64 vrf site nhid %d\n", cmd, i, to
-+	printf "route %s fd00:%x:1::/64 vrf site nhid %d\n", cmd, i, to
-+'
-+
-+sites_add()
-+{
-+	local first=$1; shift
-+	local last=$1; shift
-+
-+	sites_batch 6 "$first" "$last" '
-+		printf "nexthop add id %d encap %s dst %s dev lisp101\n", \
-+			nh, encap, rloc
-+	' && sites_batch "" "$first" "$last" \
-+		"cmd = \"add\"; to = nh; $SITE_ROUTES"
-+}
-+
-+count_nexthops()
-+{
-+	ip -n "$x1" nexthop show dev lisp101 | wc -l
-+}
-+
-+count_routes()
-+{
-+	local family=$1; shift
-+
-+	ip -n "$x1" "-$family" route show vrf site | grep -c " nhid "
-+}
-+
-+site_ping()
-+{
-+	local site=$1; shift
-+
-+	ip netns exec "$x1" ping -q -c 1 -W 2 -I site "$(site_eid4 "$site")" \
-+		> /dev/null 2>&1 &&
-+	ip netns exec "$x1" ping -q -c 1 -W 2 -I site "$(site_eid6 "$site")" \
-+		> /dev/null 2>&1
-+}
-+
-+rloc_filter()
-+{
-+	local rloc=$1; shift
-+	local protocol=ip
-+
-+	[[ $rloc == *:* ]] && protocol=ipv6
-+	tc -n "$x2" filter add dev eth0 ingress protocol $protocol pref 1 \
-+		flower dst_ip "$rloc" action pass
-+}
-+
-+rloc_packets()
-+{
-+	tc -n "$x2" -j -s filter show dev eth0 ingress pref 1 |
-+		jq '[.[] | select(.options.actions) |
-+		     .options.actions[0].stats.packets] | add'
-+	tc -n "$x2" filter del dev eth0 ingress pref 1
-+}
-+
-+site_check()
-+{
-+	local site=$1; shift
-+	local rloc=$1; shift
-+
-+	rloc_filter "$rloc"
-+	site_ping "$site"
-+	check_err $? "no answer from the site $site"
-+	(( $(rloc_packets) == 2 ))
-+	check_err $? "the site $site is not reached through $rloc"
-+}
-+
-+elapsed()
-+{
-+	local start=$1; shift
-+
-+	echo "$(( $(timestamp_ms) - start )) ms"
-+}
-+
-+################################################################################
-+# Setup
-+
-+setup()
-+{
-+	local ns
-+
-+	setup_ns x1 x2 || return
-+
-+	ip link add eth0 netns "$x1" type veth peer name eth0 netns "$x2"
-+	for ns in "$x1" "$x2"; do
-+		ip netns exec "$ns" sysctl -wq net.ipv4.ip_forward=1
-+		ip netns exec "$ns" sysctl -wq net.ipv6.conf.all.forwarding=1
-+		ip -n "$ns" link set eth0 up
-+	done
-+
-+	ip -n "$x1" addr add $X1_RLOC4/30 dev eth0
-+	ip -n "$x1" addr add $X1_RLOC6/64 dev eth0 nodad
-+	ip -n "$x1" route add 198.18.0.0/15 via 192.0.2.2
-+	ip -n "$x1" -6 route add 2001:db8:ffff::/48 via 2001:db8:1::2
-+	ip -n "$x1" link add site type vrf table 10
-+	ip -n "$x1" link set site up
-+	ip -n "$x1" link add lisp101 type lisp id 101 \
-+		local $X1_RLOC4 local $X1_RLOC6 || return
-+	ip -n "$x1" link set lisp101 master site up
-+	ip -n "$x1" addr add 172.16.0.1/32 dev lisp101
-+	ip -n "$x1" addr add fd01::1/128 dev lisp101 nodad
-+
-+	ip -n "$x2" addr add 192.0.2.2/30 dev eth0
-+	ip -n "$x2" addr add 2001:db8:1::2/64 dev eth0 nodad
-+	ip -n "$x2" route add local 198.18.0.0/15 dev lo
-+	ip -n "$x2" -6 route add local 2001:db8:ffff::/48 dev lo
-+	ip -n "$x2" route add local 10.0.0.0/8 dev lo
-+	ip -n "$x2" -6 route add local fd00::/16 dev lo
-+	ip -n "$x2" link add lisp101 type lisp id 101
-+	ip -n "$x2" link set lisp101 up
-+	ip -n "$x2" route add 172.16.0.1/32 encap ip dst $X1_RLOC4 dev lisp101
-+	ip -n "$x2" -6 route add fd01::1/128 encap ip6 dst $X1_RLOC6 \
-+		dev lisp101
-+	tc -n "$x2" qdisc add dev eth0 clsact
-+}
-+
-+cleanup()
-+{
-+	cleanup_all_ns
-+}
-+
-+################################################################################
-+# Tests
-+
-+install_test()
-+{
-+	local start
-+	local site
-+
-+	RET=0
-+
-+	start=$(timestamp_ms)
-+	sites_add 0 "$LISP_SITES"
-+	check_err $? "the sites are not installed"
-+	log_info "$LISP_SITES sites installed in $(elapsed "$start")"
-+
-+	(( $(count_nexthops) == LISP_SITES ))
-+	check_err $? "unexpected count of nexthops"
-+	(( $(count_routes 4) == 2 * LISP_SITES ))
-+	check_err $? "unexpected count of IPv4 routes"
-+	(( $(count_routes 6) == 2 * LISP_SITES ))
-+	check_err $? "unexpected count of IPv6 routes"
-+
-+	for site in 0 1 $((LISP_SITES / 2)) $((LISP_SITES / 2 + 1)) \
-+		    $((LISP_SITES - 2)) $((LISP_SITES - 1)); do
-+		site_check "$site" "$(site_rloc "$site")"
-+	done
-+
-+	log_test "$LISP_SITES sites: $LISP_SITES nexthops, $((4 * LISP_SITES)) routes"
-+}
-+
-+stats_test()
-+{
-+	local rx_before
-+	local tx_before
-+	local packets
-+	local i
-+
-+	RET=0
-+
-+	ip -n "$x1" nexthop add id $NH_GROUP group 6001/6002
-+	sites_batch "" 6000 6064 "cmd = \"replace\"; to = group; $SITE_ROUTES"
-+
-+	tx_before=$(ip -n "$x1" -j -s link show dev lisp101 |
-+		    jq '.[0].stats64.tx.packets')
-+	rx_before=$(ip -n "$x1" -j -s link show dev lisp101 |
-+		    jq '.[0].stats64.rx.packets')
-+	for i in $(seq 6000 6063); do
-+		site_ping "$i"
-+		check_err $? "no answer from the site $i"
-+	done
-+
-+	(( $(ip -n "$x1" -j -s link show dev lisp101 |
-+	     jq '.[0].stats64.tx.packets') == tx_before + 128 ))
-+	check_err $? "unexpected count of sent packets"
-+	(( $(ip -n "$x1" -j -s link show dev lisp101 |
-+	     jq '.[0].stats64.rx.packets') == rx_before + 128 ))
-+	check_err $? "unexpected count of received packets"
-+
-+	packets=$(ip -n "$x1" -j -s nexthop show id $NH_GROUP |
-+		  jq -c '[.[0].group_stats[].packets]')
-+	(( $(jq 'add' <<< "$packets") >= 128 ))
-+	check_err $? "unexpected count of the packets of the group: $packets"
-+	[[ $(jq 'min' <<< "$packets") != 0 ]]
-+	check_err $? "an RLOC of the group is not used: $packets"
-+
-+	sites_batch "" 6000 6064 "cmd = \"replace\"; to = nh; $SITE_ROUTES"
-+	ip -n "$x1" nexthop del id $NH_GROUP
-+	log_test "Counters of the device and of a group"
-+}
-+
-+move_test()
-+{
-+	local start
-+
-+	RET=0
-+
-+	start=$(timestamp_ms)
-+	sites_batch 6 1000 2000 '
-+		printf "nexthop add id %d encap ip dst 198.19.%d.%d dev lisp101\n", \
-+			moved + i, hi, lo
-+	' && sites_batch "" 1000 2000 \
-+		"cmd = \"replace\"; to = moved + i; $SITE_ROUTES" &&
-+	sites_batch "" 1000 2000 'printf "nexthop del id %d\n", nh'
-+	check_err $? "the sites are not moved"
-+	log_info "1000 sites moved to new nexthops in $(elapsed "$start")"
-+
-+	(( $(count_nexthops) == LISP_SITES ))
-+	check_err $? "unexpected count of nexthops"
-+	site_check 1000 "$(site_moved_rloc 1000)"
-+	site_check 1999 "$(site_moved_rloc 1999)"
-+	site_check 2000 "$(site_rloc 2000)"
-+
-+	log_test "RLOC changed with new nexthops"
-+}
-+
-+replace_test()
-+{
-+	local start
-+
-+	RET=0
-+
-+	start=$(timestamp_ms)
-+	sites_batch 6 2000 2100 '
-+		printf "nexthop replace id %d encap ip dst 198.19.%d.%d dev lisp101\n", \
-+			nh, hi, lo
-+	'
-+	check_err $? "the nexthops are not replaced"
-+	log_info "100 nexthops replaced in $(elapsed "$start")"
-+
-+	site_check 2000 "$(site_moved_rloc 2000)"
-+	site_check 2099 "$(site_moved_rloc 2099)"
-+	site_check 2100 "$(site_rloc 2100)"
-+
-+	log_test "RLOC changed in place"
-+}
-+
-+withdraw_test()
-+{
-+	local start
-+
-+	RET=0
-+
-+	start=$(timestamp_ms)
-+	sites_batch "" 3000 4000 '
-+		printf "route del 10.%d.%d.0/25 vrf site\n", hi, lo
-+		printf "route del 10.%d.%d.128/25 vrf site\n", hi, lo
-+		printf "route del fd00:%x:0::/64 vrf site\n", i
-+		printf "route del fd00:%x:1::/64 vrf site\n", i
-+	' && sites_batch "" 3000 4000 'printf "nexthop del id %d\n", nh'
-+	check_err $? "the sites are not withdrawn"
-+	log_info "1000 sites withdrawn in $(elapsed "$start")"
-+
-+	start=$(timestamp_ms)
-+	sites_batch "" 4000 4100 'printf "nexthop del id %d\n", nh'
-+	check_err $? "the nexthops are not removed"
-+	log_info "100 nexthops removed with their routes in $(elapsed "$start")"
-+
-+	(( $(count_nexthops) == LISP_SITES - 1100 ))
-+	check_err $? "unexpected count of nexthops"
-+	(( $(count_routes 4) == 2 * (LISP_SITES - 1100) ))
-+	check_err $? "unexpected count of IPv4 routes"
-+	(( $(count_routes 6) == 2 * (LISP_SITES - 1100) ))
-+	check_err $? "unexpected count of IPv6 routes"
-+
-+	site_ping 3500
-+	check_fail $? "an answer from a site that left"
-+	site_ping 4050
-+	check_fail $? "an answer from a site whose nexthop was removed"
-+	site_check 4100 "$(site_rloc 4100)"
-+
-+	log_test "Sites withdrawn"
-+}
-+
-+churn_test()
-+{
-+	local loops=()
-+	local pids=()
-+	local rounds=0
-+	local site
-+	local out
-+	local pid
-+
-+	RET=0
-+
-+	out=$(mktemp -d)
-+	for site in 5500 5501; do
-+		ip netns exec "$x1" ping -q -f -w 10 -I site \
-+			"$(site_eid4 "$site")" > "$out/$site.4" 2>&1 &
-+		pids+=($!)
-+		ip netns exec "$x1" ping -q -f -w 10 -I site \
-+			"$(site_eid6 "$site")" > "$out/$site.6" 2>&1 &
-+		pids+=($!)
-+	done
-+
-+	for site in 5000 5001; do
-+		while :; do
-+			ip netns exec "$x1" ping -q -f -w 1 -I site \
-+				"$(site_eid4 "$site")"
-+			ip netns exec "$x1" ping -q -f -w 1 -I site \
-+				"$(site_eid6 "$site")"
-+		done > /dev/null 2>&1 &
-+		loops+=($!)
-+	done
-+
-+	while kill -0 "${pids[0]}" 2> /dev/null; do
-+		sites_batch "" 5000 5200 'printf "nexthop del id %d\n", nh'
-+		sites_add 5000 5200
-+		check_err $? "the sites are not installed again"
-+		sites_batch 6 5000 5016 '
-+			printf "nexthop replace id %d encap ip dst 198.19.%d.%d dev lisp101\n", \
-+				nh, hi, lo
-+		'
-+		sites_batch 6 5000 5016 '
-+			printf "nexthop replace id %d encap %s dst %s dev lisp101\n", \
-+				nh, encap, rloc
-+		'
-+		rounds=$((rounds + 1))
-+	done
-+	log_info "$rounds rounds of changes under traffic"
-+
-+	for pid in "${loops[@]}"; do
-+		kill_process "$pid"
-+	done
-+	for pid in "${pids[@]}"; do
-+		wait "$pid"
-+		check_err $? "no answer from a site that did not change"
-+	done
-+	# The ping that a loop was running goes on for a second without it.
-+	ip netns pids "$x1" | xargs -r kill 2> /dev/null
-+
-+	# The changes of the other sites cost them less than half their packets.
-+	for site in 5500 5501; do
-+		awk '/packets transmitted/ { n++; if ($4 * 2 < $1) lost = 1 }
-+		     END { exit lost || n != 2 }' "$out/$site.4" "$out/$site.6"
-+		check_err $? "most packets of a site that did not change are lost"
-+	done
-+	rm -rf "$out"
-+
-+	(( $(count_nexthops) == LISP_SITES - 1100 ))
-+	check_err $? "unexpected count of nexthops"
-+	site_check 5002 "$(site_rloc 5002)"
-+	site_check 5199 "$(site_rloc 5199)"
-+	site_check 5500 "$(site_rloc 5500)"
-+
-+	log_test "Mappings changed under traffic"
-+}
-+
-+down_test()
-+{
-+	local start
-+	local pid
-+
-+	RET=0
-+
-+	ip netns exec "$x1" ping -q -f -w 4 -I site "$(site_eid4 7500)" \
-+		> /dev/null 2>&1 &
-+	pid=$!
-+
-+	start=$(timestamp_ms)
-+	ip -n "$x1" link set lisp101 down
-+	log_info "device down with its nexthops and routes in $(elapsed "$start")"
-+	(( $(count_nexthops) == 0 ))
-+	check_err $? "nexthops outlive the device"
-+	(( $(count_routes 4) == 0 && $(count_routes 6) == 0 ))
-+	check_err $? "routes outlive the device"
-+
-+	ip -n "$x1" link set lisp101 up
-+	ip -n "$x1" addr add fd01::1/128 dev lisp101 nodad
-+	sites_add 7000 7100
-+	check_err $? "no site can be installed again"
-+	site_check 7000 "$(site_rloc 7000)"
-+	site_check 7099 "$(site_rloc 7099)"
-+
-+	start=$(timestamp_ms)
-+	ip -n "$x1" link del lisp101
-+	log_info "device deleted in $(elapsed "$start")"
-+	(( $(ip -n "$x1" nexthop | wc -l) == 0 ))
-+	check_err $? "nexthops outlive the device"
-+	wait $pid
-+
-+	log_test "Device down and deleted"
-+}
-+
-+################################################################################
-+# Main
-+
-+require_command jq
-+
-+if ! ip link help lisp 2>&1 | grep -q "^Usage: ... lisp"; then
-+	echo "SKIP: iproute2 does not know the lisp devices"
-+	exit "$ksft_skip"
-+fi
-+
-+if (( LISP_SITES < 8000 || LISP_SITES > 65536 )); then
-+	echo "SKIP: LISP_SITES must be between 8000 and 65536"
-+	exit "$ksft_skip"
-+fi
-+
-+trap cleanup EXIT
-+
-+setup_ns probe
-+out=$(ip -n "$probe" link add lisp0 type lisp id 1 2>&1)
-+if [[ $out == *"Unknown device type"* ]]; then
-+	echo "SKIP: the kernel does not have the lisp devices (CONFIG_LISP)"
-+	exit "$ksft_skip"
-+fi
-+cleanup_ns "$probe"
-+
-+if ! setup; then
-+	echo "FAIL: the setup of the test failed"
-+	exit "$ksft_fail"
-+fi
-+
-+tests_run
-+
-+exit "$EXIT_STATUS"
+ 		/*
+ 		 * Normal files: increase file size, allocate space.
+ 		 * Sparse/Compressed: increase file size. No space allocated.
+ 		 */
++		filemap_invalidate_lock(inode->i_mapping);
+ 		ret = ntfs_set_size(inode, endbyte);
++		filemap_invalidate_unlock(inode->i_mapping);
+ 		if (ret)
+ 			goto out;
+ 	}
 
+---
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20261126-fix-krn-ntfs3-inline-read-936f502cc415
+
+Best regards,
 -- 
-2.43.0
+Mostafa Amin <mostafa.amin@windriver.com>
 
