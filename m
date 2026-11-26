@@ -1,148 +1,65 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Thu, 26 Nov 2026 04:53:36 +0200
-Subject: [PATCH] configs: odroid-n2: enable the SPI NOR flash
+From: Ilia Snezhkov <iasnezhkov@gmail.com>
+To: matthias.bgg@gmail.com, angelogioacchino.delregno@collabora.com, 
+ robh@kernel.org, krzk+dt@kernel.org, conor+dt@kernel.org, 
+ broonie@kernel.org
+Cc: flora.fu@mediatek.com, amergnat@baylibre.com, leilk.liu@mediatek.com, 
+ me@adomerle.pw, devicetree@vger.kernel.org, linux-spi@vger.kernel.org, 
+ linux-mediatek@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org
+Subject: [PATCH v3 0/4] soc/spi: mediatek: Add MT6789 PMIC wrapper and SPI
+ support
+Date: Thu, 26 Nov 2026 03:10:01 +0000
+Message-Id: <20261126031001.27288-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-b4-n2-spi-nor-v1-1-4fd806d0fa00@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAC+fB2sC/x3MPQqAMAxA4atIZgNtsf5dRRy0ppqlSgIiFO9uc
- fyG9zIoCZPCWGUQuln5TAW2riAcS9oJeSsGZ1xrrWtxbTA51IsxnYLRDKsP3tLW9VCaSyjy8/+
- m+X0/Ts29e18AAAA=
-To: Neil Armstrong <neil.armstrong@linaro.org>, u-boot-amlogic@groups.io
-Cc: Tom Rini <trini@konsulko.com>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- u-boot@lists.u-boot-project.org, Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4536; i=iav@iav.lv;
- h=from:subject:message-id; bh=VYaPFTtVFfxBx3u0j2uhGXyauX6iBflpyXSxLToNX+E=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDNns8w34ti3u1mlxNw29/ukN2+/+M0ZSczgnm/o5fazrs
- fm5yoa/o5SFQYyLQVZMkWXCIY1bGUuu/vX3MH8AM4eVCWQIAxenAEyk8yUjw4871sLGN5V/uCUv
- m3vAVzNTe3GpboLAv6oqWY4TPMy3ORgZTknXXdnl+bug7frN6edrk/elP/ixgnHWx3nx/v7tm/4
- +ZwEA
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Content-Transfer-Encoding: 8bit
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795662602; l=1679;
+ i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
+ bh=SSX2MYOf3hgS1EqmIn9zqqUiKL7h1Rp1ieInLyB7OCU=;
+ b=kZ4V4FHt5o6RJ84Bp3g3s0xjpvWPzQOsDjGML3O1B52VHOCFPMhhOum+G1PN6q3ETTWrCUKcU
+ ZUq2vfVPek7BUFMMOgYFhTO4q6ONCAGHkmYUEs1mxts+L7MRvCsmp34
+X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
+ pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
+X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SPI NOR of the ODROID-N2/N2+ shares the SoC pins BOOT_3..BOOT_7
-with the eMMC data lines D3..D7, so the device tree has spifc disabled
-and the defconfig has no SPI support. Enable both, and describe how to
-write the flash in the board documentation.
+This series continues the stalled July 2025 MediaTek MT6789 (Helio G99)
+initial bring-up patches originally posted by Arseniy Velikanov (on CC):
+- pwrap v1: https://lore.kernel.org/linux-mediatek/20250715225746.1321-1-me@adomerle.pw/
+- spi v1:   https://lore.kernel.org/linux-mediatek/20250715231921.4527-1-me@adomerle.pw/
 
-Normal boot does not touch the flash: there is no SF boot target or
-bootdev, and the environment is not in SPI. The first probe of the SPI
-controller ("sf probe") muxes BOOT_4..BOOT_6 and the chip select
-(BOOT_14) to the flash, while the eMMC stays set up for eight lines, so
-the eMMC must not be accessed after that until reset. On an N2+, an
-eMMC access after "sf probe" also made the boot ROM fail to read the
-SPI NOR after the reset.
+Original authorship and Signed-off-by are preserved on patches 1, 3,
+and 4.
 
-The 4-bit eMMC setup used on the VIM3 does not help: pin 7 of the
-flash (RESET# on the MX25U6435F) is on eMMC D3, and on an N2+ eMMC reads
-in 4-bit mode broke writes to the flash under Linux.
+Changes since v2:
+- Patch 2 (new): guard PWRAP_WDT_SRC_EN, PWRAP_WDT_SRC_EN_1, and cold
+  pwrap_init() with !HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB) so
+  arbiter SoCs (MT6873, MT8195, MT6789) do not write wdt_src to offset
+  0x0 (PWRAP_INIT_DONE2) during probe.
+- Patch 3 (was 2/3): add [PWRAP_INT_FLG] = 0x458 and
+  [PWRAP_INT_CLR] = 0x45C to mt6789_regs[] matching PMIF-SPI bank 3
+  (INT_EN at 0x450, int_en_all = 0x180000) so pwrap_interrupt() does
+  not clobber offset 0x0 and leave a level-high IRQ asserted.
+- Patch 4 (was 3/3): renumbered to 4/4, unchanged.
 
-An OS booted through EFI without its own device tree gets this one,
-where spifc and the 8-bit eMMC claim the same pins.
+The v3 rebase and fixes were prepared with an AI coding assistant.
 
-Tested on an ODROID-N2+ (MX25U6435F; spi-max-frequency 104 MHz, about
-83 MHz after the controller divider): the eMMC comes up with the same
-bus width with and without this patch; sf update of 1 MiB reads back
-equal; the board boots from the SPI NOR after reset. Boards with an XTX
-flash were not tested.
+Base: torvalds/linux master 4dce97c6c265.
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
----
- arch/arm/dts/meson-g12b-odroid-n2-u-boot.dtsi |  9 +++++++++
- configs/odroid-n2_defconfig                   |  9 +++++++++
- doc/board/amlogic/odroid-n2.rst               | 21 +++++++++++++++++++++
- 3 files changed, 39 insertions(+)
+Arseniy Velikanov (3):
+  dt-bindings: soc: mediatek: pwrap: Add compatible for MT6789
+  soc: mediatek: mtk-pmic-pwrap: Add MT6789 support
+  dt-bindings: spi: mediatek,spi-mt65xx: Add compatible for MT6789
 
-diff --git a/arch/arm/dts/meson-g12b-odroid-n2-u-boot.dtsi b/arch/arm/dts/meson-g12b-odroid-n2-u-boot.dtsi
-index a92f9e9ff13..1dfb521e65f 100644
---- a/arch/arm/dts/meson-g12b-odroid-n2-u-boot.dtsi
-+++ b/arch/arm/dts/meson-g12b-odroid-n2-u-boot.dtsi
-@@ -11,3 +11,12 @@
- 	status = "okay";
- 	vref-supply = <&vddao_1v8>;
- };
-+
-+/*
-+ * The SPI NOR shares BOOT_3..BOOT_7 with eMMC D3..D7. Probing spifc
-+ * ("sf probe") muxes BOOT_4..BOOT_6 to it; do not access the eMMC after
-+ * that until reset.
-+ */
-+&spifc {
-+	status = "okay";
-+};
-diff --git a/configs/odroid-n2_defconfig b/configs/odroid-n2_defconfig
-index 73a1a08afde..1f237d928ba 100644
---- a/configs/odroid-n2_defconfig
-+++ b/configs/odroid-n2_defconfig
-@@ -30,6 +30,7 @@ CONFIG_CMD_DFU=y
- CONFIG_CMD_GPIO=y
- # CONFIG_CMD_LOADS is not set
- CONFIG_CMD_MMC=y
-+CONFIG_CMD_SPI=y
- CONFIG_CMD_USB=y
- CONFIG_CMD_USB_MASS_STORAGE=y
- # CONFIG_CMD_SETEXPR is not set
-@@ -40,6 +41,11 @@ CONFIG_ADC=y
- CONFIG_SARADC_MESON=y
- CONFIG_DFU_RAM=y
- CONFIG_MMC_MESON_GX=y
-+CONFIG_MTD=y
-+CONFIG_DM_MTD=y
-+CONFIG_DM_SPI_FLASH=y
-+CONFIG_SPI_FLASH_MACRONIX=y
-+CONFIG_SPI_FLASH_XTX=y
- CONFIG_DM_MDIO=y
- CONFIG_DM_MDIO_MUX=y
- CONFIG_ETH_DESIGNWARE_MESON8B=y
-@@ -55,6 +61,9 @@ CONFIG_DM_REGULATOR_FIXED=y
- CONFIG_DEBUG_UART_ANNOUNCE=y
- CONFIG_DEBUG_UART_SKIP_INIT=y
- CONFIG_MESON_SERIAL=y
-+CONFIG_SPI=y
-+CONFIG_DM_SPI=y
-+CONFIG_MESON_SPIFC=y
- CONFIG_USB=y
- CONFIG_DM_USB_GADGET=y
- CONFIG_USB_XHCI_HCD=y
-diff --git a/doc/board/amlogic/odroid-n2.rst b/doc/board/amlogic/odroid-n2.rst
-index 5222a21c808..194edde081b 100644
---- a/doc/board/amlogic/odroid-n2.rst
-+++ b/doc/board/amlogic/odroid-n2.rst
-@@ -130,3 +130,24 @@ Then write U-Boot to SD or eMMC with:
-     $ DEV=/dev/boot_device
-     $ dd if=fip/u-boot.bin.sd.bin of=$DEV conv=fsync,notrunc bs=512 skip=1 seek=1
-     $ dd if=fip/u-boot.bin.sd.bin of=$DEV conv=fsync,notrunc bs=1 count=440
-+
-+Writing U-Boot to the SPI NOR
-+-----------------------------
-+
-+The SPI NOR shares the SoC pins BOOT_3..BOOT_7 with the eMMC data lines
-+D3..D7. The boot ROM reads it when the boot switch is set to SPI at power-on.
-+
-+U-Boot uses the eMMC with all eight data lines. The first probe of the SPI
-+controller, for instance by "sf probe", muxes BOOT_4..BOOT_6 to the flash,
-+and the eMMC must not be accessed after that until reset. Load the image
-+first, from the eMMC or any other device, then write it:
-+
-+.. code-block:: none
-+
-+    => load mmc 1:1 ${loadaddr} u-boot.bin
-+    => sf probe
-+    => sf update ${loadaddr} 0 ${filesize}
-+    => reset
-+
-+Here u-boot.bin is the signed image from the steps above (fip/u-boot.bin, or
-+u-boot.bin in the build-fip.sh output directory), not u-boot.bin.sd.bin.
+Ilia Snezhkov (1):
+  soc: mediatek: mtk-pmic-pwrap: Skip WDT source and init on arbiter SoCs
 
----
-base-commit: 9d67454e920b3908529c9fc642a8c911db040896
-change-id: 20261126-b4-n2-spi-nor-f09b5c51ed78
+ .../bindings/soc/mediatek/mediatek,pwrap.yaml |  1 +
+ .../bindings/spi/mediatek,spi-mt65xx.yaml     |  4 +++
+ drivers/soc/mediatek/mtk-pmic-wrap.c          | 44 ++++++++++++++++---
+ 3 files changed, 43 insertions(+), 6 deletions(-)
 
-Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+2.54.0 (Apple Git-157)
 
