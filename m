@@ -1,10 +1,10 @@
 From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Thu, 26 Nov 2026 15:10:17 +0100
-Subject: [PATCH v2 2/3] arm64: dts: qcom: sc8180x: add IMEM node
+Date: Thu, 26 Nov 2026 15:10:18 +0100
+Subject: [PATCH v2 3/3] arm64: dts: qcom: sc8180x: add IPA node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-sc8180x-dts-ipa-v2-2-e919ed1643c1@gmail.com>
+Message-Id: <20261126-sc8180x-dts-ipa-v2-3-e919ed1643c1@gmail.com>
 References: <20261126-sc8180x-dts-ipa-v2-0-e919ed1643c1@gmail.com>
 In-Reply-To: <20261126-sc8180x-dts-ipa-v2-0-e919ed1643c1@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -14,51 +14,83 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Robert Ijtsma <robertijtsma@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795702215; l=1181;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795702215; l=2437;
  i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=rDI8dY7d2yAfqJnRnUuDpYfbnBT2kMndnLO0zvD8B3Q=;
- b=jQr9IKkUH8ADF2LBEVmig2kTt3UH3oHL3CXoxmXm/oGn9xJeqYxkCt1ejIHfPOviCM74Uh3oJ
- M7M1kpwSZfUCRGyNBo8WFLDRLyNdlANNFpob4xkR1xsTEaYZI5aEwWI
+ bh=6rP+6epRG7aDWDFkrRhxq3T1T9kA81d5s9trFI8/GvQ=;
+ b=2jY8GawJF80ipXEPC19qYmeEVJT/5PX9LStRTWIu/BrEmADS+JZ9kqUBn/8c+9iY6SoeUAhOF
+ 0Rso25u9e+sDxQ0V8K2dS8tB+NuF+e74qwvEMoVWaelX+Respr4NQIa
 X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
  pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
 X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the SC8180X IMEM SRAM node (sram@14680000) and describe the 8 KiB
-IPA modem tables region (0x146bd000) as a child slice so IPA can map
-it via the devicetree sram phandle.
+Add the disabled IPA v4.1 (ipa@1e40000) SoC node to sc8180x.dtsi with
+its register regions, GIC and SMP2P interrupts, RPMh core clock,
+interconnects, SMMU streams, AOSS QMP handle, SMP2P SMEM states, and
+IMEM sram reference so board devicetrees can enable IPA with their
+board-specific firmware and reserved memory region.
 
 Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sc8180x.dtsi | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+ arch/arm64/boot/dts/qcom/sc8180x.dtsi | 45 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 45 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/sc8180x.dtsi b/arch/arm64/boot/dts/qcom/sc8180x.dtsi
-index be79608b7161a0786463fe93e22798080ebba93c..7865054a3fafb85e34daa31b985e3c66f8d7e03f 100644
+index 7865054a3fafb85e34daa31b985e3c66f8d7e03f..149d8062551b0d940006a8fc4c7f3235f468d6a2 100644
 --- a/arch/arm64/boot/dts/qcom/sc8180x.dtsi
 +++ b/arch/arm64/boot/dts/qcom/sc8180x.dtsi
-@@ -3623,6 +3623,21 @@ spmi_bus: spmi@c440000 {
- 			#interrupt-cells = <4>;
+@@ -2261,6 +2261,51 @@ ufs_mem_phy: phy-wrapper@1d87000 {
+ 			status = "disabled";
  		};
  
-+		sram@14680000 {
-+			compatible = "qcom,sc8180x-imem", "mmio-sram";
-+			reg = <0x0 0x14680000 0x0 0x40000>;
-+			ranges = <0x0 0x0 0x14680000 0x40000>;
++		ipa: ipa@1e40000 {
++			compatible = "qcom,sc8180x-ipa";
++			reg = <0x0 0x01e40000 0x0 0x7000>,
++			      <0x0 0x01e47000 0x0 0x4000>,
++			      <0x0 0x01e04000 0x0 0x2c000>;
++			reg-names = "ipa-reg",
++				    "ipa-shared",
++				    "gsi";
 +
-+			no-memory-wc;
++			interrupts-extended = <&intc GIC_SPI 311 IRQ_TYPE_EDGE_RISING>,
++					      <&intc GIC_SPI 432 IRQ_TYPE_LEVEL_HIGH>,
++					      <&modem_smp2p_ipa_in 0 IRQ_TYPE_EDGE_RISING>,
++					      <&modem_smp2p_ipa_in 1 IRQ_TYPE_EDGE_RISING>;
++			interrupt-names = "ipa",
++					  "gsi",
++					  "ipa-clock-query",
++					  "ipa-setup-ready";
 +
-+			#address-cells = <1>;
-+			#size-cells = <1>;
++			clocks = <&rpmhcc RPMH_IPA_CLK>;
++			clock-names = "core";
 +
-+			ipa_modem_tables: modem-tables-sram@3d000 {
-+				reg = <0x3d000 0x2000>;
-+			};
++			interconnects = <&aggre2_noc MASTER_IPA QCOM_ICC_TAG_ALWAYS
++					 &mc_virt SLAVE_EBI_CH0 QCOM_ICC_TAG_ALWAYS>,
++					<&aggre2_noc MASTER_IPA QCOM_ICC_TAG_ALWAYS
++					 &system_noc SLAVE_OCIMEM QCOM_ICC_TAG_ALWAYS>,
++					<&gem_noc MASTER_AMPSS_M0 QCOM_ICC_TAG_ALWAYS
++					 &config_noc SLAVE_IPA_CFG QCOM_ICC_TAG_ALWAYS>;
++			interconnect-names = "memory",
++					     "imem",
++					     "config";
++
++			iommus = <&apps_smmu 0x520 0x0>,
++				 <&apps_smmu 0x522 0x0>;
++
++			qcom,qmp = <&aoss_qmp>;
++			qcom,smem-states = <&modem_smp2p_ipa_out 0>,
++					   <&modem_smp2p_ipa_out 1>;
++			qcom,smem-state-names = "ipa-clock-enabled-valid",
++						"ipa-clock-enabled";
++
++			sram = <&ipa_modem_tables>;
++
++			status = "disabled";
 +		};
 +
- 		apps_smmu: iommu@15000000 {
- 			compatible = "qcom,sc8180x-smmu-500", "arm,mmu-500";
- 			reg = <0 0x15000000 0 0x100000>;
+ 		tcsr_mutex: hwlock@1f40000 {
+ 			compatible = "qcom,tcsr-mutex";
+ 			reg = <0x0 0x01f40000 0x0 0x40000>;
 
 -- 
 2.47.3
