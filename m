@@ -1,114 +1,97 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Thu, 26 Nov 2026 14:40:01 +0200
-Subject: [PATCH 8/8] arm64: dts: mediatek: mt6768: add Xiaomi Redmi Note 9
- support
+From: Jing Lin <kayano050408@gmail.com>
+Subject: [PATCH v10 0/6] usb: gadget: gadgetfs: fix ep0 request lifetime
+ and control races
+Date: Thu, 26 Nov 2026 21:44:50 +0900
+Message-Id: <20261126-gadgetfs-ep0-v10-0-8add6d9cace2@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-6768-init-v1-8-abc364a2447e@protonmail.com>
-References: <20261126-6768-init-v1-0-abc364a2447e@protonmail.com>
-In-Reply-To: <20261126-6768-init-v1-0-abc364a2447e@protonmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Sean Wang <sean.wang@mediatek.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, 
- Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>, Philipp Zabel <p.zabel@pengutronix.de>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, 
- Thomas Gleixner <tglx@kernel.org>, Radu Rendec <radu@rendec.net>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- linux-serial@vger.kernel.org, linux-watchdog@vger.kernel.org, 
- Roman Vivchar <rva333@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795696875; l=2173;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=ZShCzvXiUl5hDnYMk19Pl4AsLIEnkMmW90NbhX636XU=;
- b=ViSO2Xd7qbcrP7tQ7Atr+iYYMlaWMHJsqTCykJzxr0uCF8iTh/kzta/JBbCKByfGXu/q+i76N
- xu7CAp2Bv25AX3wx/KMpUMiLnMgY9UoN/v3UswcgIon89zN6d1xOCN9
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+X-B4-Tracking: v=1; b=H4sIAMIpCGsC/3WNQQ6CMBREr0L+2pq20iquvIdhUcqnfCOUtNhoC
+ HeX4trlTN68WSBiIIxwLRYImCiSH7cg+KEA25vRIaN2K0ByqYWQmjnTOpy7yHDirLNSKnXiypw
+ VbJMpYEfv3Xevfzm+mgfaOTsy0VOcffjsh6nK3B91qhhnF9GUurQadSlubjD0PFo/QL2u6xdFh
+ /U6uwAAAA==
+X-Change-ID: 20261126-gadgetfs-ep0-fc2255305a75
+To: Neill Kapron <nkapron@google.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Alan Stern <stern@rowland.harvard.edu>, linux-usb@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com, 
+ stable@vger.kernel.org, Jing Lin <kayano050408@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795697092; l=3154;
+ i=kayano050408@gmail.com; s=20261106-gadgetfs-gmail;
+ h=from:subject:message-id; bh=p1lLMpmlt9kkScFn61Zfzl16KKY6YuNALR7PHkXUvx8=;
+ b=O2mkzLygLtk7Y+w9TR/AvEQBl0FICi95CRZek/N04F0038+LYWq54dOzcil2PtA9CW21UDMWg
+ jkq+vZAmk/rBO/iBDl1L6DlTyvyOb49/gunXuwmramUEgmalvDJ0V67
+X-Developer-Key: i=kayano050408@gmail.com; a=ed25519;
+ pk=DtAI52kU3F0sVbAiS4n+5b4UKMnVF398eKHlj3H9KBY=
+X-Endpoint-Received: by B4 Relay for kayano050408@gmail.com/20261106-gadgetfs-gmail with auth_id=1433
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Xiaomi Redmi Note 9 is a budget phone released in 2020. It features up to
-6 GB of LPDDR4X memory and 128 GB eMMC, powered by the MediaTek Helio G85
-SoC.
+This series fixes the ep0 request lifetime on unbind, control buffer and
+setup_abort state races, lost completed control-OUT transfers, event
+counter underflow, and the const cast in gadgetfs_setup().
 
-Add initial devicetree support for this device. It can currently boot to
-a UART shell and use the simple-framebuffer provided by U-Boot for
-display output.
+1/6 tracks active ep0 requests and waits for completion after
+    usb_ep_dequeue() in gadgetfs_unbind() before freeing dev->req, while
+    keeping descriptor buffers out of kfree().
+2/6 copies delegated control-IN payloads into a private memdup_user()
+    buffer before touching dev->req and drops responses superseded
+    during the unlocked copy.
+3/6 fixes setup_abort tracking across ep0_poll(), gadgetfs_disconnect(),
+    ep0_read() event waits, and early returns or in-kernel requests in
+    gadgetfs_setup().
+4/6 preserves completed control-OUT payloads until ep0_read() collects
+    them, leaving ep0 unqueued so the controller NAKs newly arriving
+    control transfers in the meantime and replaying the deferred setup
+    afterwards.
+5/6 dequeues ep0 events before dropping dev->lock for copy_to_user() to
+    prevent dev->ev_next underflow.
+6/6 removes the const cast on ctrl->wLength in gadgetfs_setup().
 
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+The setup() callback runs in atomic context and may not sleep, so a
+mutex cannot serialize it against ep0_read() and ep0_write(); shared ep0
+state remains protected by dev->lock.
+
 ---
- arch/arm64/boot/dts/mediatek/Makefile              |  1 +
- .../boot/dts/mediatek/mt6768-xiaomi-merlin.dts     | 42 ++++++++++++++++++++++
- 2 files changed, 43 insertions(+)
+Changes in v10:
+- Re-check setup_abort and dev->state in ep0_read() after waking from
+  the event wait before jumping to scan: (3/6).
+- Track the active control-OUT request with dev->setup_out_generation so
+  ep0_complete() ignores requests superseded before completion, and
+  check setup_generation in the ep0_read() control-OUT wait path (4/6).
+- Recheck dev->state and dev->setup_generation after queue_ep0_req()
+  re-acquires dev->lock in gadgetfs_do_setup(), increment
+  setup_generation on disconnect and unbind, and verify generation and
+  state before calling usb_ep_set_halt() in ep0_process_pending_setup()
+  (4/6).
+- Link to v9: https://patch.msgid.link/20261126-gadgetfs-ep0-v9-0-81b464c6e641@gmail.com
 
-diff --git a/arch/arm64/boot/dts/mediatek/Makefile b/arch/arm64/boot/dts/mediatek/Makefile
-index a86fb313b1a9..4fe50c95321f 100644
---- a/arch/arm64/boot/dts/mediatek/Makefile
-+++ b/arch/arm64/boot/dts/mediatek/Makefile
-@@ -1,6 +1,7 @@
- # SPDX-License-Identifier: GPL-2.0
- dtb-$(CONFIG_ARCH_MEDIATEK) += mt2712-evb.dtb
- dtb-$(CONFIG_ARCH_MEDIATEK) += mt6755-evb.dtb
-+dtb-$(CONFIG_ARCH_MEDIATEK) += mt6768-xiaomi-merlin.dtb
- dtb-$(CONFIG_ARCH_MEDIATEK) += mt6779-evb.dtb
- dtb-$(CONFIG_ARCH_MEDIATEK) += mt6795-evb.dtb
- dtb-$(CONFIG_ARCH_MEDIATEK) += mt6795-sony-xperia-m5.dtb
-diff --git a/arch/arm64/boot/dts/mediatek/mt6768-xiaomi-merlin.dts b/arch/arm64/boot/dts/mediatek/mt6768-xiaomi-merlin.dts
-new file mode 100644
-index 000000000000..f95bac31caf3
---- /dev/null
-+++ b/arch/arm64/boot/dts/mediatek/mt6768-xiaomi-merlin.dts
-@@ -0,0 +1,42 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * Copyright (c) 2025-2026 Roman Vivchar <rva333@protonmail.com>
-+ */
-+
-+/dts-v1/;
-+#include "mt6768.dtsi"
-+
-+/ {
-+	model = "Xiaomi Redmi Note 9";
-+	compatible = "xiaomi,merlin", "mediatek,mt6768";
-+	chassis-type = "handset";
-+
-+	aliases {
-+		serial0 = &uart0;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:921600n8";
-+	};
-+
-+	memory@40000000 {
-+		device_type = "memory";
-+		reg = <0 0x40000000 0 0>;
-+	};
-+
-+	reserved-memory {
-+		ranges;
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+
-+		/* 384 KiB reserved for ARM Trusted Firmware */
-+		secmon@4ce00000 {
-+			reg = <0 0x4ce00000 0 0x60000>;
-+			no-map;
-+		};
-+	};
-+};
-+
-+&uart0 {
-+	status = "okay";
-+};
+To: Neill Kapron <nkapron@google.com>
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Alan Stern <stern@rowland.harvard.edu>
+Cc: linux-usb@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: syzbot+c73e1942197af9f54ca3@syzkaller.appspotmail.com
+Cc: stable@vger.kernel.org
+Signed-off-by: Jing Lin <kayano050408@gmail.com>
 
--- 
-2.56.1
+---
+Jing Lin (6):
+      usb: gadget: gadgetfs: fix ep0 request lifetime on unbind
+      usb: gadget: gadgetfs: isolate ep0_write() buffer and reduce setup race
+      usb: gadget: gadgetfs: fix ep0 setup_abort tracking and reporting
+      usb: gadget: gadgetfs: NAK new setups until control-OUT data is read
+      usb: gadget: gadgetfs: prevent ep0 event counter underflow
+      usb: gadget: gadgetfs: avoid writing through the const setup pointer
+
+ drivers/usb/gadget/legacy/inode.c | 551 +++++++++++++++++++++++++++-----------
+ 1 file changed, 399 insertions(+), 152 deletions(-)
+---
+base-commit: 90d6263e867be7089b3d3323bef8d2accd327c77
+change-id: 20261126-gadgetfs-ep0-fc2255305a75
+
+Best regards,
+--  
+Jing Lin <kayano050408@gmail.com>
 
