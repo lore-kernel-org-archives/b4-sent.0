@@ -1,25 +1,25 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Thu, 26 Nov 2026 13:27:45 +0000
-Subject: [PATCH 5.10.y] Bluetooth: hci_sysfs: Fix NULL pointer dereference
+Date: Thu, 26 Nov 2026 13:58:37 +0000
+Subject: [PATCH 5.15.y] Bluetooth: hci_sysfs: Fix NULL pointer dereference
  in device_del()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-so1b-bt-510-v1-1-bff6435e792d@certik.com>
-X-B4-Tracking: v=1; b=H4sIANEzCGsC/02NzQrCMBCEX6Xs2a3ZQAr1VcRDfrY2IolkW1FK3
- 91ELx7nY+abDYRLZIFTt0HhZ5SYUw106MDPNl0ZY6gZtNIDkR5QMjl0CxpSOBmlwjiwpZGhLh6
- Fp/j62s5gelL9Gy4/Lqu7sV+aqjWdFUZXbPJzQ8IpLDnfsfHj3wXs+wdAO7bZowAAAA==
-X-Change-ID: 20261126-so1b-bt-510-f500d96ea19e
+Message-Id: <20261126-so1b-bt-515-v1-1-e657824c0e45@certik.com>
+X-B4-Tracking: v=1; b=H4sIAAw7CGsC/02NQQ7CMAwEv1L5jAsOSgV8peIQpy4NQgmKAwJV/
+ TsNXDjuaHd2BpUcROHUzJDlGTSkuAbaNOAnFy+CYVgzmJ3piEyHmoiRC1qyyIf9kdmLk9HDurh
+ nGcPra+vBtmTbN5x/XB98FV+qqjbZqSBnF/1UkUocSko3rHz7dwHL8gHwngL2owAAAA==
+X-Change-ID: 20261126-so1b-bt-515-b839bbceaefc
 To: stable@vger.kernel.org
 Cc: Krystian Kaniewski <krystianmkaniewski@gmail.com>, 
  Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
  Marcel Holtmann <marcel@holtmann.org>, linux-bluetooth@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795699665; l=4954;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795701516; l=4954;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=2oX3LmQzgfr3BLUZlIpwA7c1t5yFys2nt+Hejx0BAwk=;
- b=Q/WMqm6+5wK4cct2DfIgsskUFNO6dHHehcU5WtF07Vc4fpJ73yhbvSNB2PbNtUYtfz0ynUHut
- ph9reLzilTfDMGr/E357CMprNkw0FblVHYFt3HRjbXRV18gAsn336hF
+ bh=YDEClDvnL/97beq6Fz8yjuMxJhlC9v3p+nU96NvxVoQ=;
+ b=Q8XXJIUwbTeo/PTcLm4fMXcxNFn8IThehr4UX2Xp6LJB9tFjFVzBN9uWLlnZnODfuB8x+EmdS
+ 7V5HOoGK52tDj6tV6dbA7vzxqmIseokd27AgDaFXWg3N4rdkb3jzlyT
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
@@ -69,14 +69,14 @@ Closes: https://syzkaller.appspot.com/bug?extid=6df45dd3d03e1a9aca96
 Link: https://syzkaller.appspot.com/ai_job?id=f1c0e740-db21-40af-a9ff-84db0fd8b8bd
 Signed-off-by: Krystian Kaniewski <krystianmkaniewski@gmail.com>
 Signed-off-by: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
-[ adapted to 5.10.y: device_find_child() match callback takes void * ]
+[ adapted to 5.15.y: device_find_child() match callback takes void * ]
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
 6.6.y and newer already have this fix. The only change from upstream
 is the __match_tty() signature: device_find_child() takes a void *
 match argument on this branch.
 
-Tested on v5.10.275:
+Tested on v5.15.226:
 - x86_64 allmodconfig W=1 build of net/bluetooth/hci_sysfs.o, base
   vs patched, no new warnings
 - booted the patched kernel with CONFIG_BT=y under QEMU/KVM. I didn't
@@ -90,7 +90,7 @@ before signing off.
  1 file changed, 15 insertions(+), 2 deletions(-)
 
 diff --git a/net/bluetooth/hci_sysfs.c b/net/bluetooth/hci_sysfs.c
-index 1b4d81ffb4b5..3d5e76992552 100644
+index b1886e517a78..89cd9ea1ba43 100644
 --- a/net/bluetooth/hci_sysfs.c
 +++ b/net/bluetooth/hci_sysfs.c
 @@ -11,7 +11,10 @@ static struct class *bt_class;
@@ -141,8 +141,8 @@ index 1b4d81ffb4b5..3d5e76992552 100644
  		device_move(dev, NULL, DPM_ORDER_DEV_LAST);
 
 ---
-base-commit: 99112ea818e35b606397c84fbc05e6fadb6ea162
-change-id: 20261126-so1b-bt-510-f500d96ea19e
+base-commit: 4f2df9a01754521fbba3493e8ad91ef65515e68c
+change-id: 20261126-so1b-bt-515-b839bbceaefc
 
 Best regards,
 --  
