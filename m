@@ -1,75 +1,90 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Date: Thu, 26 Nov 2026 10:45:24 +0900
-Subject: [PATCH] nfsd: stop a block layout at the maximum file size
+Date: Thu, 26 Nov 2026 10:45:47 +0900
+Subject: [PATCH] xfs: punch delalloc blocks past EOF before mapping a pNFS
+ layout
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-nfsd-block-maxbytes-v1-1-1869942523f9@samsung.com>
-X-B4-Tracking: v=1; b=H4sIADOPB2sC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQyMz3by04hTdpJz85Gzd3MSKpMqS1GJdI9M0c3NT05QkY4NEJaDOgqL
- UtMwKsKnRsbW1ADkIto9lAAAA
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>
-Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
- Christoph Hellwig <hch@lst.de>, Sergey Bashirov <sergeybashirov@gmail.com>, 
- linux-nfs@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+Message-Id: <20261126-xfs-pnfs-delalloc-eof-v1-1-509deb79a255@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAEqPB2sC/x2MywqAIBAAfyX23EIaGfQr0cHHWguioRCB+O9Jl
+ 4E5zFQolJkKbEOFTA8XTrGLGAewl44nIbvuICephJAKX1/wjh2Ogg4hWaTkcV3MLNWkyRoLvb0
+ zeX7/73609gHZHh15ZwAAAA==
+To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
+Cc: "Darrick J. Wong" <djwong@kernel.org>, Dave Chinner <dgc@kernel.org>, 
+ Christoph Hellwig <hch@lst.de>, Chuck Lever <cel@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795657523; l=1992;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795657546; l=2347;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=NszbfrGTuRyaQObY/OY6rQ5VCgbAPzgwgkSXEuIR8lY=;
- b=13UcwiZpfABYvEKSs3/K7KnvvOT5MTk6vV+4Z0WbZ8B4cz7NB7xvfKFFpkmO9q0mhNaPdoa9p
- UqaUecEXjJoAi/bmHFbaJS1MrFk3+m0CEbkHINIXwqXKkGsmN6P5kl5
+ bh=V363AEekfhVNmNgFRwTSiV54vNvZ++lzcBIxwNKpDXM=;
+ b=QfPaSk/iTM48NWJBRh6hlUOsMSA7R7UxCc8uUT+wcBjKEdN/6+kBRYDn5lz2DaJurf7YbBVY6
+ 0Rr+HhvA0+RBKhDcl7dLR0L0elHdE2IOn9l4rs4OZDH7AByGXEsCbco
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-nfsd4_block_proc_layoutget() calls ->map_blocks again for the rest of
-the range after each extent. If the range runs past the maximum file
-size, an extent from XFS reaches that size. The next call then asks
-for an offset at or past it. Since commit 29f3c1be4e55 ("xfs: clamp
-the pNFS layout range to the maximum file size"), xfs_fs_map_blocks()
-rejects such an offset with -EINVAL. The LAYOUTGET then fails with
-NFS4ERR_INVAL. pynfs GETLAYOUT1, a READ for NFS4_UINT64_MAX, fails
-this way.
+Writeback on fragmented free space can leave speculative
+preallocation past EOF as delalloc. A LAYOUTGET over it BUG()s on
+XFS_DEBUG kernels. Other kernels warn in nfsd and refuse the layout.
+A LAYOUTCOMMIT past it moves EOF over it. Inode reclaim then asserts.
 
-Stop the loop at an extent that reaches the maximum file size.
+Punch it after the flush. Delalloc past EOF holds no data.
 
-Fixes: cc6c40e09d7b ("NFSD/blocklayout: Support multiple extents per LAYOUTGET")
+Fixes: 527851124d10 ("xfs: implement pNFS export operations")
+Cc: stable@vger.kernel.org
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-pynfs GETLAYOUT1 and a READ for NFS4_UINT64_MAX at offset 4096 of a
-64 KiB file now get a layout up to 2^63. fstests generic/075, 091 and
-263 over the block and SCSI layouts, and the pynfs block tests over
-the block layout, give the same results as on nfsd-testing (generic/075
-fails with fsx errors on both).
+Tested with pynfs on XFS_DEBUG, with free space fragmented as in
+xfs/538 and the bmap_alloc_minlen_extent error tag set. LAYOUTGETs over
+the 512 KiB left delalloc no longer assert. Neither does eviction after
+a LAYOUTCOMMIT past it. The pynfs block tests and fstests over pNFS
+show no change (BLOCK3, generic/075, 112 and 127 fail either way).
 
-7.4 and 7.3.y (with the backport of 29f3c1be4e55) return the
-NFS4ERR_INVAL, so they may want this in stable. Older LTS kernels map
-one extent per LAYOUTGET.
+xfs_bmap_punch_delalloc_range() takes the same arguments in the 6.18.y
+and 7.3.y stable trees. Older trees need them adjusted (5.10.y and
+5.15.y take a start block and a length).
 ---
- fs/nfsd/blocklayout.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/xfs/xfs_pnfs.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index 23f2365787e..c8942191b5f 100644
---- a/fs/nfsd/blocklayout.c
-+++ b/fs/nfsd/blocklayout.c
-@@ -182,7 +182,9 @@ nfsd4_block_proc_layoutget(struct svc_rqst *rqstp, struct inode *inode,
- 		}
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index 945f7a3e11c..4a6c1a399d7 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -11,6 +11,7 @@
+ #include "xfs_inode.h"
+ #include "xfs_trans.h"
+ #include "xfs_bmap.h"
++#include "xfs_bmap_util.h"
+ #include "xfs_iomap.h"
+ #include "xfs_pnfs.h"
+ #include <linux/exportfs_block.h>
+@@ -192,6 +193,18 @@ xfs_fs_map_blocks(
+ 	if (WARN_ON_ONCE(error))
+ 		goto out_unlock;
  
- 		bex_length = bex->len - (offset - bex->foff);
--		if (bex_length >= length) {
-+		/* There is nothing to map past the maximum file size. */
-+		if (bex_length >= length ||
-+		    bex->foff + bex->len >= inode->i_sb->s_maxbytes) {
- 			bl->nr_extents = i + 1;
- 			break;
- 		}
++	/*
++	 * Writeback stops allocating a delalloc extent once the page it writes
++	 * is covered, so speculative preallocation past EOF can stay delalloc.
++	 * Delalloc past EOF never holds data. Punch all of it, as
++	 * xfs_free_eofblocks() does for preallocated files, so that a layout
++	 * never maps it and a LAYOUTCOMMIT never moves EOF over it.
++	 */
++	if (ip->i_delayed_blks)
++		xfs_bmap_punch_delalloc_range(ip, XFS_DATA_FORK,
++				round_up(XFS_ISIZE(ip), mp->m_sb.sb_blocksize),
++				LLONG_MAX, NULL);
++
+ 	end_fsb = XFS_B_TO_FSB(mp, (xfs_ufsize_t)offset + length);
+ 	offset_fsb = XFS_B_TO_FSBT(mp, offset);
+ 
 
 ---
-base-commit: 6f174a0eca19e69a14c34b0ed56b60d484f22fd6
-change-id: 20261126-nfsd-block-maxbytes-25f7755db30a
+base-commit: 5e7b6fe39324913f6416c854c6ed3a1793aaba8e
+change-id: 20261126-xfs-pnfs-delalloc-eof-75b3260aecbc
 
 Best regards,
 -- 
