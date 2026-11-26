@@ -1,92 +1,86 @@
-From: Ilia Snezhkov <iasnezhkov@gmail.com>
-To: jic23@kernel.org, dlechner@baylibre.com, nuno.sa@analog.com, 
- andy@kernel.org
-Cc: Arnav Kapoor <kapoorarnav43@gmail.com>, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-Subject: [PATCH v2] iio: inkern: guard fwnode_xlate with info_exist_lock
-Date: Thu, 26 Nov 2026 06:06:15 +0000
-Message-Id: <20261126060615.63790-1-iasnezhkov@gmail.com>
+From: Dmitry Safonov <dima@arista.com>
+Date: Thu, 26 Nov 2026 06:08:35 +0000
+Subject: [PATCH] perf/build: Include linux/string.h by jitdump.c for
+ strlcpy()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795673175; l=2870;
- i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
- bh=LZxT2J+30sK/RMg/s6ys55XZRZuLrJ3zmuWig2KBQD8=;
- b=zBrKnF6eF+8xtdTuXbda98riCLhYhDmBuYAII0irbpbLvslAgG9uvIj7McgP202pcRhp7NZeZ
- OT8YDaXEpIjCIY4qVZmTUj1gzuqVB1lgpJcxAWMIypyTi4Dw5qZehTF
-X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
- pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
-X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261126-perf-string-h-v1-1-8f5c39ff30f0@arista.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCMBBFr1Jm7UCTYhZeRVxM4rQZwVhmYhFK7
+ 26iy/f57+1grMIGl2EH5U1MXqWBOw2QMpWFUe6NwY8+OOcDrqwzWlUpC2YcKbhIU5g4nKE5q/I
+ sn1/vevuzveODU+2R/ohkjFGppNynJ1llheP4AnTHBl+KAAAA
+X-Change-ID: 20261126-perf-string-h-0a61ba363e65
+To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ James Clark <james.clark@linaro.org>
+Cc: Arnaldo Carvalho de Melo <acme@redhat.com>, 
+ linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dmitry Safonov <0x7f454c46@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795673322; l=1805;
+ i=dima@arista.com; s=20250521; h=from:subject:message-id;
+ bh=g9y3VzWr2i/uTd9kE3tOPKSuvKsRe85S2o8Ykr74pG8=;
+ b=MPmy2s67QLHmgUQymeQX9y6X8dAbiW1d4DWOxW1B2i8riTk56eTwXyUhMUhNJ5ywqB/mTcEFq
+ XtVVRb29W8xACVOIvjt0fBS8nystM/maKHsW1eSR5vMJZyLC+NtIUqx
+X-Developer-Key: i=dima@arista.com; a=ed25519;
+ pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
+X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__fwnode_iio_channel_get() dereferences indio_dev->info->fwnode_xlate
-and invokes it without holding info_exist_lock. Concurrent
-iio_device_unregister() clears indio_dev->info under info_exist_lock,
-allowing a NULL dereference or callback execution during provider
-teardown.
+jit_open() now calls strlcpy(), but jitdump.c only includes the libc
+<string.h>. With glibc older than 2.38, that header does not declare
+strlcpy(), causing the build to fail:
 
-Hold iio_dev_opaque->info_exist_lock with scoped_guard(mutex, ...)
-matching the rest of inkern.c, and return -EPROBE_DEFER if
-indio_dev->info is NULL. Since iio_device_unregister() calls
-cdev_device_del() before clearing indio_dev->info, seeing a NULL info
-pointer corresponds to racing right before device removal from
-iio_bus_type, where !idev already returns -EPROBE_DEFER. Using
--EPROBE_DEFER also avoids colliding with the -ENODEV sentinel used by
-callers to continue parent or map-list lookups and avoids the named
-lookup -EINVAL fallback in __fwnode_iio_channel_get_by_name().
+util/jitdump.c:246:17: error: implicit declaration of function 'strlcpy'; did you mean 'strncpy'? [-Wimplicit-function-declaration]
+  246 |                 strlcpy(jd->dir, dname, sizeof(jd->dir));
+      |                 ^~~~~~~
+      |                 strncpy
 
-Fixes: acd8256723f2 ("iio: inkern: Add of_xlate function to struct iio_info")
-Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
+Current mainline gets the declaration indirectly through symbol.h after
+commit 5a9dd835894c ("perf symbols: skip livepatch symbols when loading
+kallsyms"). Stable trees are affected, in my case it's v6.12.119 with
+stable backport/commit 649bf062b91d ("perf jitdump: Use dirname()
+return value in jit_open()")
+
+Replace <string.h> with <linux/string.h>, which includes the libc header
+and declares the tools strlcpy() implementation.
+
+Fixes: 4eddf7d9e341 ("perf jitdump: Use dirname() return value in jit_open()")
+Signed-off-by: Dmitry Safonov <dima@arista.com>
 ---
-Changes in v2:
-- Return -EPROBE_DEFER instead of -ENODEV when indio_dev->info is NULL
-  so callers do not treat it as the "no channel on this node, keep
-  looking" sentinel and named lookups do not overwrite it to -EINVAL
-  (Arnav Kapoor).
-- Drop the unrelated indio_dev->num_channels bounds check from this
-  locking fix (Arnav Kapoor).
-- Move the AI coding assistant note below the --- separator.
+ tools/perf/util/jitdump.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Link: https://lore.kernel.org/r/20261125234827.94791-1-iasnezhkov@gmail.com
-Found and drafted with an AI coding assistant.
-
- drivers/iio/inkern.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
-
-diff --git a/drivers/iio/inkern.c b/drivers/iio/inkern.c
-index 1f22275..5d3c6ab 100644
---- a/drivers/iio/inkern.c
-+++ b/drivers/iio/inkern.c
-@@ -145,6 +145,7 @@ static int __fwnode_iio_channel_get(struct iio_channel *channel,
- 				    struct fwnode_handle *fwnode, int index)
- {
- 	struct fwnode_reference_args iiospec;
-+	struct iio_dev_opaque *iio_dev_opaque;
- 	struct device *idev;
- 	struct iio_dev *indio_dev;
- 	int err;
-@@ -162,10 +163,15 @@ static int __fwnode_iio_channel_get(struct iio_channel *channel,
- 	}
+diff --git a/tools/perf/util/jitdump.c b/tools/perf/util/jitdump.c
+index 45a05316b3ca..626a12280ca3 100644
+--- a/tools/perf/util/jitdump.c
++++ b/tools/perf/util/jitdump.c
+@@ -5,7 +5,6 @@
+ #include <libgen.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+-#include <string.h>
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <inttypes.h>
+@@ -16,6 +15,7 @@
+ #include <linux/stringify.h>
+ #include <linux/kernel.h>
+ #include <linux/unaligned.h>
++#include <linux/string.h>
  
- 	indio_dev = dev_to_iio_dev(idev);
-+	iio_dev_opaque = to_iio_dev_opaque(indio_dev);
- 	channel->indio_dev = indio_dev;
--	if (indio_dev->info->fwnode_xlate)
--		index = indio_dev->info->fwnode_xlate(indio_dev, &iiospec);
--	else
--		index = __fwnode_iio_simple_xlate(indio_dev, &iiospec);
-+	scoped_guard(mutex, &iio_dev_opaque->info_exist_lock) {
-+		if (!indio_dev->info)
-+			index = -EPROBE_DEFER;
-+		else if (indio_dev->info->fwnode_xlate)
-+			index = indio_dev->info->fwnode_xlate(indio_dev, &iiospec);
-+		else
-+			index = __fwnode_iio_simple_xlate(indio_dev, &iiospec);
-+	}
- 	fwnode_handle_put(iiospec.fwnode);
- 	if (index < 0)
- 		goto err_put;
--- 
-2.54.0 (Apple Git-157)
+ #include "event.h"
+ #include "debug.h"
+
+---
+base-commit: 40212b29a6f718d4e7fb3275cede181cb8e137cf
+change-id: 20261126-perf-string-h-0a61ba363e65
+
+Best regards,
+--  
+Dmitry Safonov <dima@arista.com>
 
