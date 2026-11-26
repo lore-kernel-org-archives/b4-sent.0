@@ -1,17 +1,13 @@
 From: Paul Sajna <sajattack@postmarketos.org>
-Subject: [PATCH v8 0/4] leds: aw2013: Add AW2027 support
-Date: Thu, 26 Nov 2026 11:20:44 -0700
-Message-Id: <20261126-aw2013-aw20xx-rename-v8-0-b6960baa102c@postmarketos.org>
+Date: Thu, 26 Nov 2026 11:20:45 -0700
+Subject: [PATCH v8 1/4] dt-bindings: leds: aw2013: Add awinic,aw2027
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43SwU7DMAwG4FeZcibIdppk3Yn3QByc1N0qtHWkp
- RRNfXfSgWAHIjhFfyR//g++qEFSJ4PabS4qydQNXX/KYXu3UfHAp73orslZEZCDGrzmNwI012e
- edZITH0U3LRkTbU0Yncqj5yRtN1/Zx6ecD90w9un9umXC9fcPcEINOtbsmxaJPeDDuR/GI6dnG
- fvhvk97tboTfVsIYAsWZQthKzHknt7bgmVuLKSCZdZeHLBtGrAQXMGqfqy8uWBVGvWWnKU6iAR
- LBcveWMVeNvcKFK0YMlwDFyz3H8tliyxKZFMBh1iw/K1VFSyfLWHLBtFw5etfrOXzYJK8vObzG
- 7+uZlk+AET2SNCcAgAA
-X-Change-ID: 20260907-aw2013-aw20xx-rename-df233c5921c6
+Message-Id: <20261126-aw2013-aw20xx-rename-v8-1-b6960baa102c@postmarketos.org>
+References: <20261126-aw2013-aw20xx-rename-v8-0-b6960baa102c@postmarketos.org>
+In-Reply-To: <20261126-aw2013-aw20xx-rename-v8-0-b6960baa102c@postmarketos.org>
 To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Nikita Travkin <nikitos.tr@gmail.com>, 
@@ -23,117 +19,53 @@ Cc: Nikita Travkin <nikita@trvn.ru>, linux-leds@vger.kernel.org,
  Paul Sajna <sajattack@postmarketos.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795717245; l=4284;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795717245; l=1313;
  i=sajattack@postmarketos.org; s=20250413; h=from:subject:message-id;
- bh=DaMBc1I+vyjS2XIQqBToYqHwD3JDgEqh/8IYfGmPB4s=;
- b=hxfYpf21WjnrxDYcUt46H6Hj7AR2vKFn/OdZ79Nww+IkzPOcS/yRQ1RGoOaXcwcu/Qvj1GVKs
- Ex1ad0/Fpq2Av1pDEK6zEr+JS4M/OsfDX99bHVi1+/N6rGLAsxgDwrt
+ bh=w/6qEc2cwOI6T/xUHNJh3OifoyGO3FRpW1FATx28UoM=;
+ b=dp1bSdfEAgOHHn3XRT+jMPi0IbTO6Or2jMi8OcHqs4bpVBkJcEcAnK3ZiA9Wgp8it3u778dAH
+ B6csUUEuacWCPIZjZ0+uXX17nww7bi3IqEKTm2S206ZHTgsbruXSw6c
 X-Developer-Key: i=sajattack@postmarketos.org; a=ed25519;
  pk=ZFE/UBqiz9Wr8b+zBL27opOjw5x5ket5JFqks/VQGeM=
 X-Endpoint-Received: by B4 Relay for sajattack@postmarketos.org/20250413 with auth_id=1505
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Refer to PATCH 4 for a full description of the similarities and
-differences between AW2013 and AW2027.
+The aw2027 is largely the same as the aw2013, with the
+exception of the way the max current is written to registers.
+This exception makes it different enough to not work without
+driver modifications, but similar enough to fall under the
+umbrella of the same driver.
 
-I'm hoping the sashiko reviews about unbalanced regulators that I was
-struggling to fix are covered by
-https://lore.kernel.org/linux-leds/20261021123406.3163547-1-lee@kernel.org/
-and I can drop my failed attempts to fix them.
-Let me know if I misunderstood.
-
-I'll do my best to address all of Sashiko's comments, but it might take
-me some time to circle back, don't bother reviewing until I've done
-this.
-
-This PATCH resulted out of discussions pertaining to
-sdm660-mainline/linux, a close-to-mainline fork for Qualcomm Snapdragon 660
-devices, specifically for the BlackBerry KEY2 Keyboard Backlight,
-in the following GitHub PR: https://github.com/sdm660-mainline/linux/pull/218
-
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Paul Sajna <sajattack@postmarketos.org>
 ---
-Changes in v8:
-- Fix commit subject for c99 for loops commit
-- Combine local imax setting for both chips into a single function,
-  reduce duplicate loops
-- Remove excessive comments
-- simplify mutex unlock in aw2013_probe_dt
-- Link to v7: https://lore.kernel.org/r/20261114-aw2013-aw20xx-rename-v7-0-ea5a3113a479@postmarketos.org
+ Documentation/devicetree/bindings/leds/leds-aw2013.yaml | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-Changes in v7:
-- Fix multiple imax setting/regulators per Sashiko
-- Small description updates to AW20XX per Heidelberg
-- Reorder dev_err_probe commit so that introducing new code using
-  dev_err_probe is cleaner
-- Simplify dev_err_probe, prevent unneccessary assignment
-- Revert early return / else suggested by Heidelberg, Travkin and I both
-  prefer else
-- Lower Hex
-- split c99 for-loops to separate commit
-- simplify aw2027_set_local_imax and aw2027_set_global_imax
-- Link to v6: https://patch.msgid.link/20261112-aw2013-aw20xx-rename-v6-0-251eca340abc@postmarketos.org
+diff --git a/Documentation/devicetree/bindings/leds/leds-aw2013.yaml b/Documentation/devicetree/bindings/leds/leds-aw2013.yaml
+index 26238446f2bd..1ad165cfe34a 100644
+--- a/Documentation/devicetree/bindings/leds/leds-aw2013.yaml
++++ b/Documentation/devicetree/bindings/leds/leds-aw2013.yaml
+@@ -4,7 +4,7 @@
+ $id: http://devicetree.org/schemas/leds/leds-aw2013.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
+ 
+-title: AWINIC AW2013 3-channel LED Driver
++title: AWINIC AW2013/AW2027 3-channel LED Driver
+ 
+ maintainers:
+   - Nikita Travkin <nikitos.tr@gmail.com>
+@@ -15,7 +15,9 @@ description: |
+ 
+ properties:
+   compatible:
+-    const: awinic,aw2013
++    enum:
++      - awinic,aw2013
++      - awinic,aw2027
+ 
+   reg:
+     maxItems: 1
 
-Changes in v6:
-- Fix the compile error introduced by my unchecked hasty rebase
-- Some adjustments per David Heidelberg's comments
-- Link to v5: https://patch.msgid.link/20261112-aw2013-aw20xx-rename-v5-0-b2c5e323a90a@postmarketos.org
-
-Changes in v5:
-- Drop move of chip->num_leds
-- Make aw2013_microamp_to_imax more readable
-- rebase to next-20261112 for Lee's changes
-- Link to v4: https://lore.kernel.org/linux-leds/20261108-aw2013-aw20xx-rename-v4-0-826529beeb52@postmarketos.org/
-
-Changes in v4:
-- Drop sashiko fixes covered by https://lore.kernel.org/linux-leds/20261021123406.3163547-1-lee@kernel.org/
-- Rename the chip id register value to reflect that it covers more chips
-  (https://www.awinic.com/en/driver/AW2027DNR/640)
-- Address preliminary review comments from Lee Jones
-- Link to v3: https://lore.kernel.org/r/20261012-aw2013-aw20xx-rename-v3-0-cab1fdd050b6@postmarketos.org
-
-Changes in v3:
-- Drop rename
-- Capitalize commit subject
-- Extra tweaks to cleanup patches (preventing more unbalanced regulator
-  stuff)
-- Whitespace fiddling
-- Link to v2: https://lore.kernel.org/r/20261005-aw2013-aw20xx-rename-v2-0-108ecbdf2775@postmarketos.org
-
-Changes in v2:
-- Reduce renames to internal driver scope, to prevent breaking compat
-- Address Sashiko Review Comments
-- Split renames into a separate commit to make the actual changes easier
-to identify
-- Change from RFC to PATCH
-- Link to v1: https://lore.kernel.org/r/20260907-aw2013-aw20xx-rename-v1-0-c9a7df12a701@postmarketos.org
-
-To: Lee Jones <lee@kernel.org>
-To: Pavel Machek <pavel@kernel.org>
-To: Griffin Kroah-Hartman <griffin@kroah.com>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Nikita Travkin <nikitos.tr@gmail.com>
-Cc: linux-leds@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-
----
-Paul Sajna (4):
-      dt-bindings: leds: aw2013: Add awinic,aw2027 compatible
-      leds: aw2013: Use dev_err_probe
-      leds: aw2013: Leverage C99 for-loops
-      leds: aw2013: Add AW2027 support
-
- .../devicetree/bindings/leds/leds-aw2013.yaml      |   6 +-
- drivers/leds/leds-aw2013.c                         | 216 +++++++++++++++------
- 2 files changed, 165 insertions(+), 57 deletions(-)
----
-base-commit: 6d582d78fad9d828e575ca0cdcff8ea47a77220b
-change-id: 20260907-aw2013-aw20xx-rename-df233c5921c6
-
-Best regards,
---  
-Paul Sajna <sajattack@postmarketos.org>
+-- 
+2.56.0
 
