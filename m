@@ -1,61 +1,81 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Thu, 26 Nov 2026 09:54:15 +0000
-Subject: [PATCH v4 3/3] arm64: dts: rockchip: Add the clock and reset of
- the RK3588 PCIe SMMU
+Date: Thu, 26 Nov 2026 09:56:52 +0000
+Subject: [PATCH net] net: stmmac: dwmac-sun8i: Drop received MAC control
+ frames
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-smmu-v3-pcie-pd-v4-3-c340c2dbd1d2@gmail.com>
-References: <20261126-smmu-v3-pcie-pd-v4-0-c340c2dbd1d2@gmail.com>
-In-Reply-To: <20261126-smmu-v3-pcie-pd-v4-0-c340c2dbd1d2@gmail.com>
-To: Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Niklas Cassel <cassel@kernel.org>
-Cc: Pranjal Shrivastava <praan@google.com>, 
- linux-arm-kernel@lists.infradead.org, iommu@lists.linux.dev, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-rockchip@lists.infradead.org, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Shawn Lin <shawn.lin@rock-chips.com>, Simon Xue <xxm@rock-chips.com>, 
- Finley Xiao <finley.xiao@rock-chips.com>, 
+Message-Id: <20261126-sun8i-emac-ctl-frames-v1-1-e90ac94bc8c7@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMzQrCMBAGX6Xs2YX8QGl9FfEQ16+6YqNkUxFK3
+ 92oxxmYWclQFEb7bqWCl5o+cgO/60iuKV/Aem5MwYXe+xDYljwoY07CUu88lTTD2A+9uAgX4zh
+ Sa58Fk75/3wNlVDr+pS2nG6R+j7RtHx4Uktp+AAAA
+X-Change-ID: 20261122-sun8i-emac-ctl-frames-186c03e03399
+To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ LABBE Corentin <clabbe.montjoie@gmail.com>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795686852; l=1037;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795687012; l=1712;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=t/g+pNBiRoD0rdFZrx0NxcKY5w4/gVZZrK4FzRkJKzY=;
- b=dVSUoKZCcDEloFC8vGOhrfdcx4yBewn57BI5g7crGv4jL/SfdhTDB9uFGDppVN77KMuJ8kT0C
- Tfb0dv1eFSWA8V3LiU8bhh9Xp7cBBr4nPLuYxSxqs9HaP1F07VPhODm
+ bh=Df1pc3deUNfFedjsrZXgOgDGpSA2ac6nDP3eQt7sHjQ=;
+ b=q1CFqPkAPrZs2g4vYOtNI7W132Z93BqBt+PMmQcYJrCbvoGMx1oQRQ56FW2IJjE/AxxRTsLpF
+ cGg2wV7DhB8CGRTgggaEvZwlps5LJbUI6CBLya36IvQZsO+UGB2dDE4
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With no PCIe controller enabled (e.g. Orange Pi 5, M.2 in SATA mode),
-ACLK_MMU_PCIE is gated as unused and reboot hangs in SMMU shutdown.
+sun8i_dwmac_set_filter() sets CTL_FRM_FILTER to "receive all control
+frames", so every PAUSE frame reaches the stack and is counted in
+rx_dropped. Leave it at 0, "drop", as the Allwinner BSP does; the MAC
+still obeys PAUSE.
 
-Fixes: da92d3dfc871 ("arm64: dts: rockchip: enable the mmu600_pcie IOMMU on the rk3588 SoC")
-Reviewed-by: Sebastian Reichel <sebastian.reichel@collabora.com>
+Fixes: 9f93ac8d4085 ("net-next: stmmac: Add dwmac-sun8i")
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 2 ++
- 1 file changed, 2 insertions(+)
+Tested on an Orange Pi Zero2 (H616), net/main, MAC loopback: TX still
+waits 32.6 ms per PAUSE; rx_dropped per 20 PAUSE frames 20 -> 0.
+Claude (AI) helped find the cause and write the patch; I reviewed and
+tested it.
+---
+ drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-index aa69fd3793fd..45c1bb335447 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-@@ -559,6 +559,8 @@ mmu600_pcie: iommu@fc900000 {
- 			     <GIC_SPI 374 IRQ_TYPE_EDGE_RISING 0>,
- 			     <GIC_SPI 367 IRQ_TYPE_EDGE_RISING 0>;
- 		interrupt-names = "eventq", "gerror", "priq", "cmdq-sync";
-+		clocks = <&cru ACLK_MMU_PCIE>;
-+		resets = <&cru SRST_A_MMU_PCIE>;
- 		#iommu-cells = <1>;
- 	};
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
+index 2ece7ba9dd73..f669bf22b7dc 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
+@@ -192,7 +192,6 @@ static const struct emac_variant emac_variant_h616_emac1 = {
  
+ /* Used in EMAC_RX_FRM_FLT */
+ #define EMAC_FRM_FLT_RXALL              BIT(0)
+-#define EMAC_FRM_FLT_CTL                BIT(13)
+ #define EMAC_FRM_FLT_MULTICAST          BIT(16)
+ 
+ /* Used in RX_CTL1*/
+@@ -720,7 +719,7 @@ static void sun8i_dwmac_set_filter(struct mac_device_info *hw,
+ 	struct netdev_hw_addr *ha;
+ 	int macaddrs = netdev_uc_count(dev) + netdev_mc_count(dev) + 1;
+ 
+-	v = EMAC_FRM_FLT_CTL;
++	v = 0;
+ 
+ 	if (dev->flags & IFF_PROMISC) {
+ 		v = EMAC_FRM_FLT_RXALL;
 
--- 
-2.55.0
+---
+base-commit: e509726660dd06ce107437aecf7c106c9d3fc1e7
+change-id: 20261122-sun8i-emac-ctl-frames-186c03e03399
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
