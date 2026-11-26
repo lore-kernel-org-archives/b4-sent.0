@@ -1,15 +1,12 @@
 From: Joseph Telaak <joseph@telaak.dev>
-Subject: [PATCH v3 0/5] MIPS: Add support for the Siflower SF19A2890
-Date: Thu, 26 Nov 2026 14:21:28 -0500
-Message-Id: <20261126-sf19a2890-mips-v3-0-1f808d38ab37@telaak.dev>
+Date: Thu, 26 Nov 2026 14:21:29 -0500
+Subject: [PATCH v3 1/5] MIPS: Add support for Siflower MIPS SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALiGCGsC/2WNyQ6CMBRFf4V0bU1bsIMr/8O4eMCr1AEIxUZD+
- HdbjInD8iT3nDsRj4NDT7bZRAYMzruujZCvMlI10B6RujoyEUxIzpmg3nIDQhtGr673FEolamP
- AKqNIlPoBrbsvwf3hxf5WnrAaUyUtGufHbngsj4Gn3Tte/MYDp4wioGZaMLBS70a8AJzXNQaS6
- kF8+Jz/+SL6uVQ5s1DYDcgvf57nJ/yEp5r/AAAA
-X-Change-ID: 20261102-sf19a2890-mips-ab72d99af797
+Message-Id: <20261126-sf19a2890-mips-v3-1-1f808d38ab37@telaak.dev>
+References: <20261126-sf19a2890-mips-v3-0-1f808d38ab37@telaak.dev>
+In-Reply-To: <20261126-sf19a2890-mips-v3-0-1f808d38ab37@telaak.dev>
 To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Paul Burton <paulburton@kernel.org>
@@ -17,120 +14,87 @@ Cc: Jiaxun Yang <jiaxun.yang@flygoat.com>,
  Chuanhong Guo <gch981213@gmail.com>, Stephen Boyd <sboyd@kernel.org>, 
  Brian Masney <bmasney+clk@redhat.com>, linux-mips@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joseph Telaak <joseph@telaak.dev>, 
- Conor Dooley <conor.dooley@microchip.com>
+ Joseph Telaak <joseph@telaak.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795720890; l=4992;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795720890; l=2176;
  i=joseph@telaak.dev; s=20261104; h=from:subject:message-id;
- bh=NDJVn2qtq0h1fvaOlluk96FKNRDn4kyq5YVOFaXbS3c=;
- b=o0Zf7feQVx3tXxRn1Y2vJsbcROW++R3mqWxSj4+EuovdLJ7csFjZkCjC4JMoKh8wZlMEmRoT2
- Nm1IsIqfOMZDCESlTFtkW9QaK5/XZZoLA+QV89Uu3R60EOgwLVakHuf
+ bh=ziqqvVYU3GmZibawv8t72n+ZZ3zc07HtvebkWxBkx+8=;
+ b=e3a0UFJ9Jt3B2ozl7AUcbIBFFgzu612gR9SV6e9RsIlujh9PrqBmZvHAAhP5Ka35GAGjFegsp
+ hXGHBK7yK5/BTw2vSgDIlY3gvA8IBtgCLGNBWj7bmCnHrR9+OQDEdMC
 X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
  pk=oQI+UfddlZ0wK2ac4WKOGNjUl1ZEN8j9ZVFSqEDoNP0=
 X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261104 with auth_id=1404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds basic support for the Siflower SF19A2890, a MIPS
-interAptiv SoC (two cores, two VPEs each) for home routers, and for the
-GL.iNet GL-SFT1200 ("Opal") travel router built on it. It boots to a
-shell on the PL011 console with all four CPUs up.
+From: Chuanhong Guo <gch981213@gmail.com>
 
-Patches 1 and 3 are Chuanhong Guo's patch from January 2025 [1], rebased
-and split in two: patch 1 adds MACH_SIFLOWER_MIPS, patch 3 the kmalloc.h
-override. Jiaxun asked then why it does not use MIPS_GENERIC. It does:
-MACH_SIFLOWER_MIPS selects MIPS_GENERIC and MACH_GENERIC_CORE and boots
-through arch/mips/generic, the way MACH_REALTEK_RTL and MACH_INGENIC_SOC
-do. What it avoids is MIPS_GENERIC_KERNEL, which selects
-MIPS_L1_CACHE_SHIFT_7 and takes ARCH_DMA_MINALIGN 128 from
-mach-generic/kmalloc.h, so that with DMA_NONCOHERENT no kmalloc cache
-below 128 bytes exists. The interAptiv's L1 and L2 lines are 32 bytes
-(the boot log reports both).
+Siflower MIPS SoCs like SF19A2890 use a dual-core MIPS InterAptiv
+processor, built-in GMAC, USB, dual-band WiFi and various other
+peripherals.
 
-On a GL-SFT1200 (128 MB) booted to an idle initramfs, 62 s after boot:
+Notably, they use some ARM PLxxx peripherals, and ARM_AMBA is
+selected for the drivers.
 
-                                       MemFree   Slab   kmalloc-128 objs
-  this series (MACH_SIFLOWER_MIPS)     107444    4832   1497
-  MIPS_GENERIC_KERNEL                  106442    5252   5538
-  MIPS_GENERIC_KERNEL, DMA_MINALIGN 32 107660    4732   1497
+Most devices on the market with this chip come with 64M or less
+DRAM, so a MACH_SIFLOWER_MIPS is created with reduced features
+instead of using the generic kernel.
 
-(kB, means of two boots.) So the whole difference, about 1 MB, comes
-from the 128-byte kmalloc alignment; the larger L1_CACHE_SHIFT costs
-nothing measurable. If the generic kernel sized its kmalloc alignment
-from the probed cache lines at run time, as arm64 does, this board could
-use MIPS_GENERIC_KERNEL, and I can send that change in place of a
-platform of its own if you prefer.
-
-The SoC's clock controller has a driver of its own, sent to the clk
-tree [2]. Its drivers depend on MACH_SIFLOWER_MIPS, so the clk series
-carries patch 1 of this series as its own patch 1, unchanged, and
-whichever of the MIPS and clk trees takes it first can put it on an
-immutable branch for the other. Thomas, would you ack it there, or
-take it and provide the branch?
-
-Until that driver is merged, the dtsi describes the clock rates the
-bootloader programs with fixed clocks; a later patch replaces them. The
-pin controller, GPIO, USB PHY, DWC2 and GMAC drivers go to their own
-trees.
-
-Patch 2 adds a MAINTAINERS entry for the SoC. Its "N: sf19a2890" also
-matches the SoC's drivers in other trees, which add entries of their
-own.
-
-Tested on a GL-SFT1200, booted from U-Boot over TFTP: the initramfs
-shell on ttyAMA0; four CPUs, with CPUs 1-3 taken offline and back
-online; the GIC timer within 0.06 s of a reference clock over 298 s; and
-the UART divisors U-Boot programs (IBRD 0x43, FBRD 0x34), which confirm
-the 125 MHz UART clock in the device tree.
-
-[1] https://lore.kernel.org/r/20250120015254.124447-1-gch981213@gmail.com
-[2] https://lore.kernel.org/r/20261125-sf19a2890-sysm-v6-0-181875c10682@telaak.dev
-
+Signed-off-by: Chuanhong Guo <gch981213@gmail.com>
+[Joseph Telaak:
+  - rebase on v7.4-rc1 and use the "MIPS:" prefix
+  - longer Kconfig help
+  - commit message grammar and paragraphs
+  - move the kmalloc.h override to a patch of its own]
+Signed-off-by: Joseph Telaak <joseph@telaak.dev>
 ---
-Changes in v3:
-- Split Chuanhong's patch: MACH_SIFLOWER_MIPS first, as the clk series
-  carries it, and the kmalloc.h override in patch 3 (Brian, on the clk
-  series).
-- Lengthen the MACH_SIFLOWER_MIPS help.
-- Put the platform patch first and the bindings and MAINTAINERS entry
-  second; the kmalloc.h patch adds its F: line.
-- Collect Conor's Acked-by on the bindings.
-- Link to v2: https://patch.msgid.link/20261111-sf19a2890-mips-v2-0-36730fa4f5a6@telaak.dev
+ arch/mips/Kconfig | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
-Changes in v2:
-- Write my note on Chuanhong's patch as a list.
-- Drop drivers/gpio/gpio-siflower.c from the MAINTAINERS entry; the GPIO
-  series now adds an entry of its own (Conor).
-- Use the current SPDX identifiers in the new files.
-- Order the dtsi's nodes and properties as dt-check-style --mode=strict
-  expects, with a blank line before status.
-- Link to v1: https://patch.msgid.link/20261104-sf19a2890-mips-v1-0-eae80820af68@telaak.dev
+diff --git a/arch/mips/Kconfig b/arch/mips/Kconfig
+index ed17c9b1624c..549bc7d13dd9 100644
+--- a/arch/mips/Kconfig
++++ b/arch/mips/Kconfig
+@@ -937,6 +937,39 @@ config SIBYTE_BIGSUR
+ 	select ZONE_DMA32 if 64BIT
+ 	select SWIOTLB if ARCH_DMA_ADDR_T_64BIT && PCI
+ 
++config MACH_SIFLOWER_MIPS
++	bool "Siflower MIPS SoCs"
++	select MIPS_GENERIC
++	select MACH_GENERIC_CORE
++	select ARM_AMBA
++	select BOOT_RAW
++	select CEVT_R4K
++	select CLKSRC_MIPS_GIC
++	select COMMON_CLK
++	select CPU_MIPSR2_IRQ_EI
++	select CPU_MIPSR2_IRQ_VI
++	select CSRC_R4K
++	select DMA_NONCOHERENT
++	select IRQ_MIPS_CPU
++	select MIPS_CPU_SCACHE
++	select MIPS_GIC
++	select MIPS_L1_CACHE_SHIFT_5
++	select NO_EXCEPT_FILL
++	select SMP_UP if SMP
++	select SYS_HAS_CPU_MIPS32_R2
++	select SYS_SUPPORTS_32BIT_KERNEL
++	select SYS_SUPPORTS_LITTLE_ENDIAN
++	select SYS_SUPPORTS_MIPS16
++	select SYS_SUPPORTS_MIPS_CPS
++	select SYS_SUPPORTS_MULTITHREADING
++	select USE_OF
++	help
++	  Select this to build a kernel which supports SoCs from Siflower
++	  with MIPS InterAptiv cores, like Siflower SF19A2890. These have
++	  ARM PrimeCell peripherals, so ARM_AMBA is selected. Most boards
++	  with them have 64M of DRAM or less, so this kernel leaves out the
++	  generic kernel's support for other boards.
++
+ config SNI_RM
+ 	bool "SNI RM200/300/400"
+ 	select ARC_MEMORY
 
----
-Chuanhong Guo (2):
-      MIPS: Add support for Siflower MIPS SoCs
-      MIPS: siflower: Override the kmalloc alignment
-
-Joseph Telaak (3):
-      dt-bindings: mips: Add Siflower SF19A2890 based boards
-      MIPS: dts: Add Siflower SF19A2890 and GL.iNet GL-SFT1200
-      MIPS: configs: Add sf19a2890_defconfig
-
- .../devicetree/bindings/mips/siflower.yaml         | 26 ++++++
- MAINTAINERS                                        | 10 +++
- arch/mips/Kconfig                                  | 33 ++++++++
- arch/mips/boot/dts/Makefile                        |  1 +
- arch/mips/boot/dts/siflower/Makefile               |  2 +
- .../dts/siflower/sf19a2890-glinet-gl-sft1200.dts   | 27 ++++++
- arch/mips/boot/dts/siflower/sf19a2890.dtsi         | 97 ++++++++++++++++++++++
- arch/mips/configs/sf19a2890_defconfig              | 15 ++++
- arch/mips/generic/Platform                         |  1 +
- arch/mips/include/asm/mach-siflower/kmalloc.h      |  9 ++
- 10 files changed, 221 insertions(+)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261102-sf19a2890-mips-ab72d99af797
-
-Best regards,
---  
-Joseph Telaak <joseph@telaak.dev>
+-- 
+Git-155)
 
