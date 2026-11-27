@@ -1,59 +1,77 @@
-From: Demeter Barna <me@fromdisposition.org>
-Date: Fri, 27 Nov 2026 00:49:41 +0000
-Subject: [PATCH] ASoC: qcom: sm8250: Add SM8350 sound card
+From: Jerome Berclaz <jerome.berclaz@proton.me>
+Subject: [PATCH 0/4] media: tegra-vde: less cache maintenance, reject CABAC
+ early
+Date: Thu, 26 Nov 2026 16:55:44 -0800
+Message-Id: <20261126-tegra-vde-fixes-v1-0-fa4a7c1d24cc@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-sm8350-sndcard-v1-1-50cbf3db3cb0@fromdisposition.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrA2YiUbxKtKFJpM6glEybRHEu
- 5u2y7f4/wShxCTQFyck+rDwFjN0WYCbx/gkxT4bsEKrNbZK1s40lZLo3Zi8CmhsG+rGdh4hR3u
- iwMdvODz+lve0kHt9L3BdN+9fkRdyAAAA
-X-Change-ID: 20261127-sm8350-sndcard-f2367f4568d2
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Demeter Barna <me@fromdisposition.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ5EQBCE4VeRPm8nZg6CV9k4MKppByvTViTi3
+ Q2OXyp/HWSICqM6OyhiU9PfnOA+GYWxnQew9snkc1845wteMcSWtx4susNYBFWQvCo7KSlVS8Q
+ zpOjbvLZ/NyGs9w2d5wWK5/AOcwAAAA==
+X-Change-ID: 20261126-tegra-vde-fixes-ffe9cf098bf8
+To: Dmitry Osipenko <digetx@gmail.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-media@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jerome Berclaz <jerome.berclaz@proton.me>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795740603; l=989;
- i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
- bh=l+setiCU0+OrwLSvwV20cOvWy7hUFpop6hCa7bB/D/A=;
- b=AltFMW1XNwO+2+LBNBGdAAQvrRf7cfvJfXrIswCfQtiQgL/YZ0H6E9aJSwSTdZOoa+67UvSpq
- lqLnz9F5XjyA3JVjG//wp7kpKozWHAUoW946+XasIn5A3RPg5118co1
-X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
- pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
-X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2262;
+ i=jerome.berclaz@proton.me; s=2026-11; h=from:subject:message-id;
+ bh=pSN+aMWG4bSfy4wRZg6S1xm4J1XJvjMCKBOGZErTLfM=;
+ b=owGbwMvMwCVmvC9341tRgSLG02pJDNkcV4XuuO9cuz2+xlJvdjD70VWPKngOH+KYoPlu8/tVe
+ 3c9Y+pd3VHKwiDGxSArpsjC2mCYOv8EW0Ch/rxDMHNYmUCGMHBxCsBEZvgy/M8/8prT8eiT30zx
+ 0y1SSycvm/ZvbvT3wzdiL3+ubo7L5WRg+CtqY3/0ravbUd473gsFzxtEvbwfs8g1ZtkHbYZ1qkd
+ 2/eIGAA==
+X-Developer-Key: i=jerome.berclaz@proton.me; a=openpgp;
+ fpr=058031659FC80650712F9EC233BE6DB1ED151072
+X-Endpoint-Received: by B4 Relay for jerome.berclaz@proton.me/2026-11 with auth_id=1658
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Give the SM8350 sound card its own driver name, so UCM files can tell
-it from SM8250.
+These patches came out of getting hardware H.264 playback working well on a
+Tegra30 device (Microsoft Surface RT) with mpv and FFmpeg's V4L2 request
+hwaccel. The decoder sits behind the SMMU there, so buffers use
+vb2_dma_sg_memops with cached pages, and cache maintenance turned out to be
+the largest kernel cost of playback.
 
-Signed-off-by: Demeter Barna <me@fromdisposition.org>
----
-The qcom,sm8350-sndcard binding this matches is already in for-7.5
-(a5b5d062b40c).
----
- sound/soc/qcom/sm8250.c | 1 +
- 1 file changed, 1 insertion(+)
+Patches 1 and 3 shrink what gets cleaned for the bitstream (OUTPUT)
+buffers: a smaller default size derived from the frame size, and cleaning
+only the bytes the hardware reads instead of the whole buffer (FFmpeg
+allocates width x height x 3/2, while a coded frame is usually a few KB).
+Patch 2 lets clients that never read decoded frames through the CPU skip
+the capture-side sync with the existing cache hint flags, as the MediaTek
+decoder already allows. Patch 4 rejects CABAC in try_ctrl, so that setting
+the controls fails right away instead of the decode job failing later.
+Userspace that ignores buffer error flags otherwise shows broken frames.
 
-diff --git a/sound/soc/qcom/sm8250.c b/sound/soc/qcom/sm8250.c
-index d0015e5f5..ba0aaf428 100644
---- a/sound/soc/qcom/sm8250.c
-+++ b/sound/soc/qcom/sm8250.c
-@@ -231,6 +231,7 @@ static const struct of_device_id snd_sm8250_dt_match[] = {
- 	{ .compatible = "qcom,qrb5165-rb5-sndcard", .data = "sm8250" },
- 	{ .compatible = "qcom,sdm660-sndcard", .data = "sdm660" },
- 	{ .compatible = "qcom,sm8250-sndcard", .data = "sm8250" },
-+	{ .compatible = "qcom,sm8350-sndcard", .data = "sm8350" },
- 	{}
- };
- 
+Tested on the Surface RT with the same patches on a 7.3.1-based kernel
+(720p/1080p H.264, mpv and GStreamer). On 720p playback, the v7/l2c210
+cache maintenance functions had been about 21% of all CPU samples in the
+decoding thread before patch 1. Build-tested on media/next for ARM
+(tegra_defconfig, W=1), each patch individually.
+
+A follow-up RFC will add CABAC, weighted prediction and High profile
+support on Tegra30, by parsing slice headers in software. With it,
+patch 4's check only remains for SoCs without that support.
+
+These patches were developed with the help of an AI assistant;
+I have reviewed them and tested them on the device.
 
 ---
-base-commit: 0fe506c81cc421509660163da72dac79adfb959a
-change-id: 20261127-sm8350-sndcard-f2367f4568d2
+Jerome Berclaz (4):
+      media: tegra-vde: size the bitstream buffer from the frame size
+      media: tegra-vde: allow cache hints on the capture queue
+      media: tegra-vde: clean only the used part of the bitstream buffer
+      media: tegra-vde: reject CABAC in the H.264 PPS control
+
+ drivers/media/platform/nvidia/tegra-vde/v4l2.c | 71 +++++++++++++++++++++++++-
+ 1 file changed, 69 insertions(+), 2 deletions(-)
+---
+base-commit: b7ac871daee981f1963f632586ff9b9d898ce5dd
+change-id: 20261126-tegra-vde-fixes-ffe9cf098bf8
 
 Best regards,
 --  
-Demeter Barna <me@fromdisposition.org>
+Jerome Berclaz <jerome.berclaz@proton.me>
 
