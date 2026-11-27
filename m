@@ -1,87 +1,100 @@
-From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Fri, 27 Nov 2026 22:03:31 +0300
-Subject: [PATCH] i2c: cs75xx: Disable the controller before releasing its
- IRQ
+From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+Subject: [PATCH v2 0/2] interconnect: qcom: Add the Molokai interconnect
+ providers
+Date: Sat, 28 Nov 2026 00:35:52 +0530
+Message-Id: <20261128-molokai-icc-v2-0-7806842d166b@yahoo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-i2c-cs75xx-irq-teardown-v1-1-f6acd781af04@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCQAxA0auUrA00gWnBq4iLMY0aF1NNqg6U3
- t1Rl2/x/wqhbhqw71ZwfVnYXBpo14Fcc7ko2tQM3PNAxCMaC0qMqVY0f+Ci2af5XTDlfmCVRIk
- YWn13PVv9nQ/Hv+N5uqks3x1s2wdEWE97ewAAAA==
-X-Change-ID: 20261127-i2c-cs75xx-irq-teardown-5a062ec51512
-To: Andi Shyti <andi.shyti@kernel.org>
-Cc: linux-i2c@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795806210; l=2481;
- i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=H8bWwANLWzhb+hTYvLCYBcRvBSWNfP9Xtsa2d31C1Nk=;
- b=qmgG547+jw6GW3bGVGWtiElxcn0Eg/+RbwUnQ8zCGD0lg1HRXszHaKksLpZWE8u8Abjn/nER4
- GxHNK5Wd9TrC1oldyPens+dZ/PQa64RtS3x+6C8T1R4qWLJ+wBOB89X
-X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
- pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
-X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNyw6CMBBFf4XM2ppO5enK/zAsahlkVBjTIpEQ/
+ l3AuHB5knPPnSCQZwpwjCbwNHBg6RYwuwhcY7srKa4WBqNNimgy1cpD7pYVO6fwgLF1lS6KJId
+ l8fRU83urncsvh9flRq5fE6vRcOjFj9vdgKv3K+d/5QGVVjYhzJK41nlanUbbiOydtFDO8/wBS
+ 1UXvrgAAAA=
+X-Change-ID: 20261127-molokai-icc-1314acd09958
+To: Georgi Djakov <djakov@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Abel Vesa <abel.vesa@oss.qualcomm.com>, linux-arm-msm@vger.kernel.org, 
+ linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795806352; l=3168;
+ i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
+ bh=OLY8f5RTTQRtYbj7FHrGwVS/UNeuccZVvC2l7+O5rZo=;
+ b=SOG3hH0S+ubC5Vw2XwK5K8aZedCtRBe7ctvfFALmoPiygSz23zInbTqpjpO9bpIWFnFGwqxzA
+ 2uF52Nlpc0EClItGhM1JU5vxxSEZMwCt6lBIUpryy+Rihz8JyzatJyC
+X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
+ pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
+X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Managed resources are released in reverse registration order. Registering
-the disable action before the IRQ causes free_irq() to run while the
-controller is still enabled during probe failure or driver removal.
+Molokai (SM8845) is derived from Kaanapali, but its NoCs are not the
+same: the aggregate NoC is split into aggre1 and aggre2, the MMSS NoC
+config and service ports are split into HF and SF halves, many QoS
+ports moved, and QUP4, SDCC4, SP, QPACE and a few config slaves are
+gone. This series adds the binding and a Molokai driver.
 
-Register the disable action after devm_request_irq() so that the adapter
-is removed first, then the interrupt source is disabled, and finally the
-handler is freed and synchronized before the clock and mapping disappear.
-Disable the controller explicitly if requesting the IRQ fails.
+It replaces "interconnect: qcom: Don't read back BCMs without an RPMh
+address" [1], where Konrad asked to fix the driver instead. Molokai used
+the Kaanapali driver, which votes on the QPC0 BCM that the Molokai
+command DB does not have; the read back of that BCM hung RPMh. The
+Molokai driver has no QPC0, and it programs the Molokai QoS offsets
+instead of the Kaanapali ones.
 
-Fixes: 3fdb0e8ef0d4 ("i2c: Add Cortina Systems CS75xx I2C controller driver")
-Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
+The topology and QoS settings come from the Molokai driver in
+Motorola's downstream kernel. The upstream Kaanapali driver matches the
+downstream Kaanapali one node for node, so the driver is the Kaanapali
+one with the downstream Kaanapali to Molokai differences applied.
+
+The binding header includes the Kaanapali one and only adds the new
+MMSS nodes: molokai.dtsi builds on kaanapali.dtsi and inherits its
+interconnect paths, and a header with its own numbering would redefine
+the same macros with other values. If a standalone header is preferred,
+molokai.dtsi would have to override every inherited interconnect path,
+or stop building on kaanapali.dtsi; I can rework it that way.
+
+Tested on the Motorola Signature with molokai.dtsi switched to these
+providers (Molokai SoC series v5 [2]) and the generic
+read back fix reverted: all 14 providers probe, there are no RPMh
+timeouts, and the display, GPU, touchscreen and audio work with QoS
+programming enabled.
+
+[1] https://lore.kernel.org/all/20261123-icc-bcm-readback-v2-1-bacee81398e5@yahoo.com/
+[2] https://lore.kernel.org/all/20261128-molokai-soc-v5-0-144801dfad7f@yahoo.com/
+
+I used an LLM (Claude) to help write these patches and their commit
+messages. I reviewed all of them and tested the result on the device.
+
+Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
-This is a focused follow-up to the driver accepted in i2c/i2c as
-3fdb0e8ef0d4, rather than a reroll of the complete I2C series.
-
-Move the managed disable action after the IRQ registration, and disable
-the configured controller explicitly if requesting the IRQ fails. The
-adapter is removed before the source is disabled, then free_irq() drains
-any handler before the clock and register mapping are released.
-
-The driver postimage matches the correction already compiled in native
-ARM and OpenWrt 6.18.64 builds and installed on Almond+. Focused tests
-using the actual cleanup source cover successful teardown, request_irq
-failure, action-registration failure and adapter-registration failure.
-No hardware fault injection is claimed.
----
- drivers/i2c/busses/i2c-cs75xx.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/i2c/busses/i2c-cs75xx.c b/drivers/i2c/busses/i2c-cs75xx.c
-index 49a14f27b..c5365448c 100644
---- a/drivers/i2c/busses/i2c-cs75xx.c
-+++ b/drivers/i2c/busses/i2c-cs75xx.c
-@@ -344,12 +344,15 @@ static int cs75xx_i2c_probe(struct platform_device *pdev)
- 	writel(0, i2c->base + CS75XX_I2C_IE);
- 	writel(CS75XX_I2C_INT_DONE, i2c->base + CS75XX_I2C_INT);
- 
--	ret = devm_add_action_or_reset(dev, cs75xx_i2c_disable, i2c);
--	if (ret)
--		return ret;
--
- 	ret = devm_request_irq(dev, i2c->irq, cs75xx_i2c_isr, 0, dev_name(dev),
- 			       i2c);
-+	if (ret) {
-+		cs75xx_i2c_disable(i2c);
-+		return ret;
-+	}
-+
-+	/* Quiesce the source before devres releases the interrupt handler. */
-+	ret = devm_add_action_or_reset(dev, cs75xx_i2c_disable, i2c);
- 	if (ret)
- 		return ret;
- 
+Changes in v2:
+- Route the crypto engine through the A2NOC slave instead of A1NOC: it
+  sits on aggre2, the downstream A1NOC link was left over from Kaanapali
+  (Sashiko). Tested: the SCM crypto path now goes through
+  qnm_aggre2_noc.
+- Cover: point to v5 of the Molokai SoC series.
+- Link to v1: https://patch.msgid.link/20261128-molokai-icc-v1-0-a5e1754f086d@yahoo.com
 
 ---
-base-commit: 3fdb0e8ef0d477ce4b9a9c5ebd370e64d7ae4ed8
-change-id: 20261127-i2c-cs75xx-irq-teardown-5a062ec51512
+Venkat Yadlapati (2):
+      dt-bindings: interconnect: qcom: Add Molokai RPMh NoC
+      interconnect: qcom: Add Molokai interconnect provider driver
+
+ .../bindings/interconnect/qcom,molokai-rpmh.yaml   |  144 ++
+ drivers/interconnect/qcom/Kconfig                  |   11 +
+ drivers/interconnect/qcom/Makefile                 |    2 +
+ drivers/interconnect/qcom/molokai.c                | 1753 ++++++++++++++++++++
+ .../dt-bindings/interconnect/qcom,molokai-rpmh.h   |   26 +
+ 5 files changed, 1936 insertions(+)
+---
+base-commit: e5aad2bdbbee783611d32599f89cea3f12f9593d
+change-id: 20261127-molokai-icc-1314acd09958
 
 Best regards,
 --  
-Fil Dunsky <filipp.dunsky@gmail.com>
+Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 
