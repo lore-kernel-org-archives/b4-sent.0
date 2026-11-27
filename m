@@ -1,93 +1,112 @@
+From: Fil Dunsky <filipp.dunsky@gmail.com>
+Subject: [PATCH v5 0/6] soc: cortina: Add CS7542 global clocks, reset
+ controller and pinctrl
+Date: Fri, 27 Nov 2026 23:50:25 +0300
+Message-Id: <20261127-cs7542-syscon-v5-0-d5a373c72b05@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-unix-atmark2-v1-1-d164028cdae7@certik.com>
-X-B4-Tracking: v=1; b=H4sIACToCWsC/yWMSw7CMAwFr1J5jaUmoiC4CmLhJC41nwTFKapU9
- e4ksJzRe7OCchZWOHcrZP6ISooVzK4DP1G8MUqoDLa3B2PsEecoC1J5UX5YtMEMPPT70dIJ6uW
- deZTll7tA5ALXv9TZ3dmXFmozR8roMkU/NaUcQ0npic3Dtn0BLmo985UAAAA=
-X-Change-ID: 20261127-unix-atmark2-2d15e504f2a9
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 16:04:41 +0000
-Subject: [PATCH net] af_unix: return 0 for SIOCATMARK on listeners
-To: netdev@vger.kernel.org
-Cc: Kuniyuki Iwashima <kuniyu@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Willem de Bruijn <willemb@google.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NQQ6CMBCF4auYrq1pZ6YUXXkP44KWFmsUDEWiM
+ dzdghvF6PIl8/3zYNG1wUW2WTxY6/oQQ1OnoZYLZg9FXTkeyrQZCMikBOQ2akXA4z3apuagsVS
+ krC48sGQurfPhNvV2+9eOV3N0thsj48UhxK5p79PDXo53v9q95ILTOle5y1ASrbfVuQinlW3Ob
+ Gz38FdD0tKWmgwoAP+l8a/GpL20QhdSC/T5XNO7VnNNSSOiNkaUaOhDD8PwBCDD1Bp2AQAA
+X-Change-ID: 20261123-cs7542-syscon-273d545c7af2
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
+ Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Linus Walleij <linusw@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
+ linux-gpio@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795811364; l=2688;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=6FClBD8KxA1vZvrrT75+LOHaN5SjejVjVPoreOXqzTo=;
- b=XULMB6I44C976PZ/a15uKmebkiYhMf3vqE/y3H1mNhgz94oVsQLGr4AcromAFKhmPLQl5pCzo
- xHSoob5ok9cC9t/TC4gMx3KzkrL6FfCryIDMz7eu9YFi9D6ryxmuB+1
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795812625; l=4219;
+ i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
+ bh=LKT0ZdEPrI0e86I7NHg3yxfQRlaUYUC+x/f2lAMoCoI=;
+ b=BGh+iEkGCfRMeFsWmQsYxehsmgWZqwiDmArsRn+m4MwCj6IRt+538ZKbvZ6KDmedjW96Mt4Ja
+ +VfI2Ojy2tWCfUMv23okesLvP21eYmXKTKhfSac3ARy7bdrIZIVF+7e
+X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
+ pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
+X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-AF_UNIX listeners cannot receive out-of-band data, but SIOCATMARK
-currently peeks at sk_receive_queue.  That queue contains connection
-requests, and unix_accept() can dequeue and free its head under
-sk_receive_queue.lock without taking u->iolock.  As a result, SIOCATMARK
-can read the freed skb.
+The CS7542 global register block selects the CPU and bus clocks, gates
+the three PCIe ports and provides the PCIe and network reset lines. Its
+pinctrl child selects GPIO or peripheral functions on the same pads.
+This series includes the clock changes previously posted in the global
+controls series together with the original clock and pinctrl patches.
 
-Take u->iolock and the state lock in stream receive order.  Return 0
-for TCP_LISTEN, and keep both locks over the receive-queue inspection.
-This prevents a concurrent listen() transition between the state check
-and the queue access.
+The early clock provider supplies timer clocks before platform devices
+probe. A separate platform driver in drivers/reset/ uses the same
+syscon regmap. The PCIe and Ethernet consumers control the timing and
+ordering of their own resets.
 
-Fixes: e400cfa38bb0 ("af_unix: Fix wrong ioctl(SIOCATMARK) when consumed OOB skb is at the head.")
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+The global reset provider also exposes the separate flash reset at
+RESET bit 14, for NAND consumers to acquire without asserting a pulse.
+
+Validation: both binding commits pass dt_binding_check independently.
+The clock driver builds in, and the reset and pinctrl drivers build both
+built-in and as modules on ARM with W=1/-Werror, COMPILE_TEST disabled and
+without the platform series. The equivalent OpenWrt backport has been
+exercised on Almond+; these checks do not claim fault injection on hardware.
+
+Changes in v5:
+- Treat failed regmap reads as unprepared in the PCIe gate state callback.
+- Use devm_kzalloc_obj() for the native reset controller allocation.
+- Describe the separate flash reset and add its reset identifier.
+- Retain Linus Walleij's Reviewed-by on the unchanged pinctrl driver.
+- Link to v4: https://patch.msgid.link/20261125-cs7542-syscon-v4-0-3337bb0d3b48@gmail.com
+
+Changes in v4:
+- Combine the strap-selected clocks and PCIe gates in one clock driver.
+- Move reset registration to a separate driver in drivers/reset/.
+- Expose the seven network-engine reset lines individually. Leave the
+  PCIe reset pulse timing to the PCIe driver.
+- Fold in the global-controls binding and its clock and reset IDs.
+- Global-controls v1: https://lore.kernel.org/all/20261124-b4-cs7542-global-controls-v1-0-12548785df2c@gmail.com/
+- Link to v3: https://lore.kernel.org/all/20261123-cs7542-syscon-v3-0-f1c07a1703f8@gmail.com/
+
+Changes in v3:
+- Introduce the parent pinctrl property and schema reference together with
+  the pinctrl binding in patch 2, so patch 1 validates independently.
+- Re-run dt_binding_check and examples at both binding commits. The final
+  source tree and driver code are unchanged from v2.
+- Link to v2: https://patch.msgid.link/20261123-cs7542-syscon-v2-0-1cd74b2522f9@gmail.com
+
+Changes in v2:
+- Identify GPIO mux functions with function_is_gpio so strict ownership
+  allows a GPIO consumer after the default GPIO state; UART stays exclusive.
+- Link to v1: https://patch.msgid.link/20261123-cs7542-syscon-v1-0-49858e631449@gmail.com
+
 ---
-This is the listener case left after d119775f2bad ("af_unix: Reject
-SIOCATMARK on non-stream sockets"). The earlier queue-lock proposal
-for the same lifetime problem was redirected toward rejecting
-unsupported sockets:
-https://lore.kernel.org/netdev/f6cbbc8da90e95584847b5ceb60aae830d1631c2.1775731983.git.wangjiexun2025@gmail.com/
+Fil Dunsky (6):
+      dt-bindings: soc: Add Cortina Systems CS7542 global controls
+      dt-bindings: pinctrl: Add Cortina Systems CS7542 pin mux
+      clk: Add Cortina Systems CS7542 clocks
+      reset: Add Cortina Systems CS7542 global reset controller
+      pinctrl: Add Cortina Systems CS7542 pin multiplexer
+      MAINTAINERS: Add CS7542 global control support
 
-net-next 387f48167305 ("af_unix: Remove MSG_OOB.") removes SIOCATMARK
-along with AF_UNIX OOB, so this is only for net and stable.
+ .../bindings/pinctrl/cortina,cs7542-pinctrl.yaml   |  84 +++++++++
+ .../soc/cortina/cortina,cs7542-syscon.yaml         |  60 +++++++
+ MAINTAINERS                                        |  12 ++
+ drivers/clk/Kconfig                                |   9 +
+ drivers/clk/Makefile                               |   1 +
+ drivers/clk/clk-cs7542.c                           | 161 +++++++++++++++++
+ drivers/pinctrl/Kconfig                            |  13 ++
+ drivers/pinctrl/Makefile                           |   1 +
+ drivers/pinctrl/pinctrl-cs7542.c                   | 195 +++++++++++++++++++++
+ drivers/reset/Kconfig                              |  10 ++
+ drivers/reset/Makefile                             |   1 +
+ drivers/reset/reset-cs7542.c                       | 135 ++++++++++++++
+ include/dt-bindings/clock/cortina,cs7542-clock.h   |  13 ++
+ include/dt-bindings/reset/cortina,cs7542-reset.h   |  20 +++
+ 14 files changed, 715 insertions(+)
+---
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20261123-cs7542-syscon-273d545c7af2
 
-Tested under UML with KASAN as uid 65534 with no capabilities: one
-thread loops SIOCATMARK on a listener while others connect and accept.
-Stock 7.3.6 and a mainline snapshot hit a slab-use-after-free in
-unix_ioctl() (freed by unix_accept()) within 30-45 s, as does the patch
-reverted. With the patch, 300 s runs (about 24M ioctls and 36k accepts
-on 7.3.6) were clean. A second test races listen() against SIOCATMARK
-on the same socket: 20/20 clean. tools/testing/selftests/net/af_unix
-msg_oob passed 60/60. A reproducer is available if it helps.
-
-This was found and the fix prepared with AI coding tools (OpenAI Codex
-agents, with review by Claude). I went over the analysis and the patch
-before signing off.
-
- net/unix/af_unix.c | 6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
-index 91c1d6cad497..1ba12617d55a 100644
---- a/net/unix/af_unix.c
-+++ b/net/unix/af_unix.c
-@@ -3344,6 +3344,10 @@ static int unix_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
- 				return -EOPNOTSUPP;
- 
- 			mutex_lock(&u->iolock);
-+			unix_state_lock(sk);
-+
-+			if (sk->sk_state == TCP_LISTEN)
-+				goto out_unlock;
- 
- 			skb = skb_peek(&sk->sk_receive_queue);
- 			if (skb) {
-@@ -3358,6 +3362,8 @@ static int unix_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
- 					answ = 1;
- 			}
- 
-+out_unlock:
-+			unix_state_unlock(sk);
- 			mutex_unlock(&u->iolock);
- 
- 			err = put_user(answ, (int __user *)arg);
--- 
-2.43.0
+Best regards,
+--  
+Fil Dunsky <filipp.dunsky@gmail.com>
 
