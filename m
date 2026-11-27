@@ -1,61 +1,69 @@
 From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Fri, 27 Nov 2026 21:32:24 +0800
-Subject: [PATCH RESEND v4 2/3] pwm: loongson: Reset the counters before
- enabling PWM
+Date: Fri, 27 Nov 2026 21:32:25 +0800
+Subject: [PATCH RESEND v4 3/3] pwm: loongson: Use field helpers for period
+ validation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261127-pwm-loongson-fix-v4-2-607f325b74d4@gmail.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261127-pwm-loongson-fix-v4-3-607f325b74d4@gmail.com>
 References: <20261127-pwm-loongson-fix-v4-0-607f325b74d4@gmail.com>
 In-Reply-To: <20261127-pwm-loongson-fix-v4-0-607f325b74d4@gmail.com>
 To: Binbin Zhou <zhoubinbin@loongson.cn>, 
  =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>
 Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  "Imported from f20260920-pwm-loongson-fix-v4-0-41b36b3c6497"@gmail.com, 
- Keguang Zhang <keguang.zhang@gmail.com>, stable@vger.kernel.org
+ Keguang Zhang <keguang.zhang@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795786349; l=1375;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795786349; l=1574;
  i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=nEffXoAuY0LXvNjn27LU1Ds6mcGSPElXiuPjP4r7awA=;
- b=ZB6/mPRpggxjXqpMw+PQxxBcr7XBNTXFyP0f5LOwzzfn8+/KTNrnXSx27T4SoWr60ydsrGBSd
- lbdpV78SKvJCROA1kEtfRv87GHevahMN77XE4zJZGexQS+OIhvnZZHq
+ bh=dw6b52g9dClE8N8lKTN5RhDZ6+WGuUSpcSRiL+WUkiM=;
+ b=HjhaJuQ2+PE91tNSjPT0IAc9Lb7ik2E4CZ4uOg3zWjd6Djh2DPbTdfoFpMh92oXetLYhe0quc
+ dvWhxRcrWqRA2szbzXX7Q9DZJYuz0qQ5ia3g4/ipH/TCriDim+e6FLd
 X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
  pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
 X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PWM controller may retain its initial hardware state when the driver
-binds. Reset the counters before enabling to ensure that the PWM starts
-from a known state.
+Use FIELD_FIT() to validate the calculated period value and FIELD_MAX()
+to get the maximum value allowed by the 32-bit period field.
 
-Fixes: 2b62c89448dd ("pwm: Add Loongson PWM controller support")
-Fixes: 0de9b836a3bc ("pwm: loongson: Reload PWM configuration through counter reset")
-Cc: stable@vger.kernel.org
-Suggested-by: Uwe Kleine-König <ukleinek@kernel.org>
 Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
- drivers/pwm/pwm-loongson.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ drivers/pwm/pwm-loongson.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/pwm/pwm-loongson.c b/drivers/pwm/pwm-loongson.c
-index 0ec773fba813..6f609fd0b90b 100644
+index 6f609fd0b90b..33367c7473a3 100644
 --- a/drivers/pwm/pwm-loongson.c
 +++ b/drivers/pwm/pwm-loongson.c
-@@ -110,6 +110,14 @@ static int pwm_loongson_enable(struct pwm_chip *chip, struct pwm_device *pwm)
- 	struct pwm_loongson_ddata *ddata = to_pwm_loongson_ddata(chip);
+@@ -22,6 +22,7 @@
+  */
  
- 	val = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_CTRL);
+ #include <linux/acpi.h>
++#include <linux/bitfield.h>
+ #include <linux/clk.h>
+ #include <linux/device.h>
+ #include <linux/init.h>
+@@ -37,6 +38,8 @@
+ #define LOONGSON_PWM_REG_PERIOD		0x8 /* Pulse Period Buffer Register */
+ #define LOONGSON_PWM_REG_CTRL		0xc /* Control Register */
+ 
++#define LOONGSON_PWM_PERIOD_MASK	GENMASK(31, 0)
 +
-+	/*
-+	 * Ensure that the values of LOW and PERIOD are sampled into
-+	 * the shadow register when the hardware starts running.
-+	 */
-+	if (!(val & LOONGSON_PWM_CTRL_REG_RST))
-+		pwm_loongson_writel(ddata, val | LOONGSON_PWM_CTRL_REG_RST, LOONGSON_PWM_REG_CTRL);
-+
- 	val &= ~LOONGSON_PWM_CTRL_REG_RST;
- 	val |= LOONGSON_PWM_CTRL_REG_EN;
- 	pwm_loongson_writel(ddata, val, LOONGSON_PWM_REG_CTRL);
+ /* Control register bits */
+ #define LOONGSON_PWM_CTRL_REG_EN	BIT(0)  /* Counter Enable Bit */
+ #define LOONGSON_PWM_CTRL_REG_OE	BIT(3)  /* Pulse Output Enable Control Bit, Valid Low */
+@@ -133,8 +136,8 @@ static int pwm_loongson_config(struct pwm_chip *chip, struct pwm_device *pwm,
+ 
+ 	/* period = period_ns * ddata->clk_rate / NSEC_PER_SEC */
+ 	period = mul_u64_u64_div_u64(period_ns, ddata->clk_rate, NSEC_PER_SEC);
+-	if (period > U32_MAX)
+-		period = U32_MAX;
++	if (!FIELD_FIT(LOONGSON_PWM_PERIOD_MASK, period))
++		period = FIELD_MAX(LOONGSON_PWM_PERIOD_MASK);
+ 
+ 	/* duty = duty_ns * ddata->clk_rate / NSEC_PER_SEC */
+ 	duty = mul_u64_u64_div_u64_roundup(duty_ns, ddata->clk_rate, NSEC_PER_SEC);
 
 -- 
 2.53.0
