@@ -1,11 +1,10 @@
 From: Fabio Forni <development@redaril.me>
-Date: Sat, 28 Nov 2026 00:22:09 +0100
-Subject: [PATCH v2 1/2] drivers: core: platform: Add
- platform_get_match_data() helper
+Date: Sat, 28 Nov 2026 00:22:10 +0100
+Subject: [PATCH v2 2/2] iio: afe: iio-rescale: Add platform IDs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-iio_rescale_platform_ids-v2-1-4c35f16c4f77@redaril.me>
+Message-Id: <20261128-iio_rescale_platform_ids-v2-2-4c35f16c4f77@redaril.me>
 References: <20261128-iio_rescale_platform_ids-v2-0-4c35f16c4f77@redaril.me>
 In-Reply-To: <20261128-iio_rescale_platform_ids-v2-0-4c35f16c4f77@redaril.me>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -17,86 +16,74 @@ To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
 Cc: driver-core@lists.linux.dev, linux-kernel@vger.kernel.org, 
  linux-iio@vger.kernel.org, Fabio Forni <development@redaril.me>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2613;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2198;
  i=development@redaril.me; h=from:subject:message-id;
- bh=rc/1GfvZE2caXdT5SgAYu19YzMLIslhAQZef0ezkqlo=;
- b=owGbwMvMwCXWeKho1tqFWemMp9WSGLK5BDYmlpf3L+LeVz9x/Vt1ze/S6WsKGX/GM2W56R7NE
- pcSu+TSUcrCIMbFICumyPLfyWhTt5mJ0a1+iVqYOaxMIEMYuDgFYCJ60xn+R/H1XtZSOhpTMUvZ
- qj7YLfCpWuY7/3ctOV2u07T+3Vq9kpHhvYLQdrG9UVJRD1fqTFc7lvLu8tvlZS0/JD6nsf2v5Op
- mBQA=
+ bh=+PVgHL+3DkpqptfD2E18XEnVam67vefeMn6aj+Kl9CY=;
+ b=owGbwMvMwCXWeKho1tqFWemMp9WSGLK5BDbNlek/4JOwjClMI4CvsbQ2SJLH1idQcLPmqWMvT
+ 9884abbUcrCIMbFICumyPLfyWhTt5mJ0a1+iVqYOaxMIEMYuDgFYCICsxj+l23g6Fk/W40ru0Ux
+ c3V21z53Scl3XydmrZfj9GT4UHloGiPD4hkFVfE92gFFc9hClzXavJ2xduU3bam7TxibCheeqOV
+ hBQA=
 X-Developer-Key: i=development@redaril.me; a=openpgp;
  fpr=FF4232B28B363432DA8F187D81C2729AADA16A67
 X-Endpoint-Received: by B4 Relay for development@redaril.me/default with auth_id=1033
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-device_get_match_data() retrieves driver data through the device's
-fwnode. However, software nodes don't implement
-fwnode->device_get_match_data(), so for a platform device that is
-dynamically instantiated, device_get_match_data() is of no use.
-platform_get_device_id() can be used instead, but this doesn't make the
-driver code abstract enough.
+When a rescaler is dynamically instantiated and configured with swnode,
+device_get_match_data() will always set rescale->cfg to NULL, because
+device_get_match_data() is unimplemented for software nodes.
 
-Add the platform_get_match_data() helper, so that driver data can be
-retrieved from platform_device's fwnode *or* device_id as a fallback.
+Define a platform_device_id table (a replica of the of_device_id table)
+and call the platform_get_match_data() helper, to deal with both
+swnode-based and non-swnode-based instantiation methods.
 
 Signed-off-by: Fabio Forni <development@redaril.me>
 ---
- drivers/base/platform.c         | 28 ++++++++++++++++++++++++++++
- include/linux/platform_device.h |  2 ++
- 2 files changed, 30 insertions(+)
+ drivers/iio/afe/iio-rescale.c | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/base/platform.c b/drivers/base/platform.c
-index 3593d45f4a7a..7db56ffbb6b1 100644
---- a/drivers/base/platform.c
-+++ b/drivers/base/platform.c
-@@ -1090,6 +1090,34 @@ int __init_or_module __platform_driver_probe(struct platform_driver *drv,
- }
- EXPORT_SYMBOL_GPL(__platform_driver_probe);
+diff --git a/drivers/iio/afe/iio-rescale.c b/drivers/iio/afe/iio-rescale.c
+index c01292a15a29..c268dbaaaea6 100644
+--- a/drivers/iio/afe/iio-rescale.c
++++ b/drivers/iio/afe/iio-rescale.c
+@@ -518,6 +518,21 @@ static const struct of_device_id rescale_match[] = {
+ };
+ MODULE_DEVICE_TABLE(of, rescale_match);
  
-+/**
-+ * platform_get_match_data - get match data from fwnode or device ID
-+ * @pdev: platform device to get data of
-+ *
-+ * Get match data from fwnode if available, otherwise get match data
-+ * from pdev's platform_device_id->driver_data. driver_data is
-+ * cast into a void* pointer.
-+ *
-+ * Return: -ENODATA if no match data is available.
-+ */
-+const void *platform_get_match_data(const struct platform_device *pdev)
-+{
-+	const struct platform_device_id *id;
-+	const void *ret;
++static const struct platform_device_id rescale_platform_ids[] = {
++	{ .name = "current-sense-amplifier",
++	  .driver_data = (kernel_ulong_t)&rescale_cfg[CURRENT_SENSE_AMPLIFIER] },
++	{ .name = "current-sense-shunt",
++	  .driver_data = (kernel_ulong_t)&rescale_cfg[CURRENT_SENSE_SHUNT] },
++	{ .name = "voltage-divider",
++	  .driver_data = (kernel_ulong_t)&rescale_cfg[VOLTAGE_DIVIDER] },
++	{ .name = "temperature-sense-rtd",
++	  .driver_data = (kernel_ulong_t)&rescale_cfg[TEMP_SENSE_RTD] },
++	{ .name = "temperature-transducer",
++	  .driver_data = (kernel_ulong_t)&rescale_cfg[TEMP_TRANSDUCER] },
++	{ }
++};
++MODULE_DEVICE_TABLE(platform, rescale_platform_ids);
 +
-+	ret = device_get_match_data(&pdev->dev);
-+	if (ret)
-+		return ret;
-+
-+	id = platform_get_device_id(pdev);
-+	if (id && id->driver_data)
-+		return (const void *)id->driver_data;
-+
-+	return ERR_PTR(dev_err_probe(&pdev->dev, -ENODATA,
-+				     "no match data available"));
-+}
-+EXPORT_SYMBOL_GPL(platform_get_match_data);
-+
- /**
-  * __platform_create_bundle - register driver and create corresponding device
-  * @driver: platform driver structure
-diff --git a/include/linux/platform_device.h b/include/linux/platform_device.h
-index 3bd0f1f0d870..426148768b38 100644
---- a/include/linux/platform_device.h
-+++ b/include/linux/platform_device.h
-@@ -326,6 +326,8 @@ static inline void platform_set_drvdata(struct platform_device *pdev,
- 	dev_set_drvdata(&pdev->dev, data);
- }
+ static int rescale_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -548,7 +563,7 @@ static int rescale_probe(struct platform_device *pdev)
  
-+const void *platform_get_match_data(const struct platform_device *pdev);
-+
- /* module_platform_driver() - Helper macro for drivers that don't do
-  * anything special in module init/exit.  This eliminates a lot of
-  * boilerplate.  Each module may only use this macro once, and
+ 	rescale = iio_priv(indio_dev);
+ 
+-	rescale->cfg = device_get_match_data(dev);
++	rescale->cfg = platform_get_match_data(pdev);
+ 	rescale->numerator = 1;
+ 	rescale->denominator = 1;
+ 	rescale->offset = 0;
+@@ -603,6 +618,7 @@ static struct platform_driver rescale_driver = {
+ 		.name = "iio-rescale",
+ 		.of_match_table = rescale_match,
+ 	},
++	.id_table = rescale_platform_ids,
+ };
+ module_platform_driver(rescale_driver);
+ 
 
 -- 
 2.56.1
