@@ -1,15 +1,13 @@
 From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-Subject: [PATCH 0/4] spi: dt-bindings: bcm2835-spi, ARM: dts: bcm2711: Add
- DMA to spi0, i2s and sdhost
-Date: Fri, 27 Nov 2026 16:21:05 +0100
-Message-Id: <20261127-bcm2835-spi-dma-v1-0-8b134991ba2e@gmail.com>
+Date: Fri, 27 Nov 2026 16:21:06 +0100
+Subject: [PATCH 1/4] spi: dt-bindings: brcm,bcm2835-spi: Add dmas and
+ dma-names
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAOGfCWsC/yXMywqDQAxA0V+RrBuYTOuD/kpxMY+oKWhlokUQ/
- 91pXZ7FvTsoJ2GFZ7FD4q+ofKYMuhUQBjf1jBKzwRpbEVlCH0bb3EvUWTCODr03DcfKUP1wkKs
- 5cSfb//hqL+vq3xyW3waO4wTZQaGdcwAAAA==
-X-Change-ID: 20261121-bcm2835-spi-dma-bb08ed60174a
+Message-Id: <20261127-bcm2835-spi-dma-v1-1-8b134991ba2e@gmail.com>
+References: <20261127-bcm2835-spi-dma-v1-0-8b134991ba2e@gmail.com>
+In-Reply-To: <20261127-bcm2835-spi-dma-v1-0-8b134991ba2e@gmail.com>
 To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -25,62 +23,64 @@ Cc: Conor Dooley <conor.dooley@microchip.com>, linux-spi@vger.kernel.org,
  =?utf-8?q?Matou=C5=A1_H=C3=BDbl?= <hyblmatous@gmail.com>, 
  =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795792928; l=2083;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795792928; l=1665;
  i=cleverline1mc@gmail.com; s=20261121; h=from:subject:message-id;
- bh=GPAK2NN455l9SD+f8GSczRZqWij+l+kvBXDhsd9fwxQ=;
- b=vvKn9I4Hb52gOfCftXc+IgXPHf5l8Ol8880tjxh574m4hCmWVSNxE/N128JXpFPkR51lsl46i
- Ed3jpXibhG9AvJZYKcBQiX0J5oo2iiWk6ToQs2s3uqTswf36tBR6bMm
+ bh=qVwzj9YtYL53uYDnPyCdzi1pxK78x9hB7h8+EBasjyc=;
+ b=W5YThTyWtWNBznWDQ5RjgWHC76GiJzR/P/5D9VGh5DK5IchJJ57bcKp0bmIjCOj6VEYZ+0oVo
+ hyr9v1AtyrsC9+0Ean6h/ASIx469R27KQ8kzrpg80JfyYatwJVM7W8e
 X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
  pk=2UEUVmQyfsiFZkNS7dkgFg0rUmhbcMIytM6NYhxFt/Y=
 X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20261121 with auth_id=1594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-I'm moving Unipi devices from the Raspberry Pi downstream kernel
-to the CIP kernel and plan to upstream the gaps I find along the way.
-This is the first of them.
+The driver requests optional "tx" and "rx" DMA channels, and
+bcm2835-common.dtsi has set them on the SPI node since commit
+cbbe88333062 ("ARM: bcm283x: Enable DMA support for SPI controller"),
+but the schema from the conversion to dtschema does not allow them.
+dtbs_check is silent only because no in-tree board enables the node;
+with spi0 enabled on a BCM2837 board it reports:
 
-On BCM2711 (Raspberry Pi 4, CM4), spi0, i2s and sdhost have no DMA
-channels in the device tree, although the same controllers get them on
-BCM2835/6/7 from bcm2835-common.dtsi. spi0 then runs in PIO mode, and
-i2s, which has no PIO fallback, doesn't work.
+  spi@7e204000 (brcm,bcm2835-spi): Unevaluated properties are not allowed ('dma-names', 'dmas' were unexpected)
 
-Patch 1 documents dmas and dma-names in the bcm2835-spi binding. The
-driver already requests them and bcm2835-common.dtsi already sets them;
-dtbs_check doesn't flag that only because no in-tree board enables
-spi0. The i2s and sdhost bindings already describe their channels.
+Document both properties.
 
-Patches 2-4 add the dmas to bcm2711.dtsi, one controller per patch, so
-each can be applied or reverted on its own. spi0 and i2s were tested on
-a Raspberry Pi 4 B; sdhost only for probe and DMA binding, because
-nothing on that board is wired to its pins.
-
-Patch 1 is for the SPI tree, patches 2-4 for the Broadcom SoC tree.
-There is no build dependency: without patch 1, patch 2 only adds a
-dtbs_check warning for boards that enable spi0.
-
-Checked with dt_binding_check for brcm,bcm2835-spi.yaml and with
-dtbs_check on arm and arm64 (bcm2711-rpi-4-b, bcm2711-rpi-400,
-bcm2711-rpi-cm4-io, and on arm also bcm2837-rpi-3-b and bcm2835-rpi-b):
-no warnings.
-
-An AI assistant (Claude) helped write the commit messages and this
-cover letter.
-
+Fixes: 85ce0dc28ffd ("spi: dt-bindings: brcm,bcm2835-spi: convert to dtschema")
+Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
 ---
-Kryštof Černý (4):
-      spi: dt-bindings: brcm,bcm2835-spi: Add dmas and dma-names
-      ARM: dts: broadcom: bcm2711: Add DMA to spi0
-      ARM: dts: broadcom: bcm2711: Add DMA to i2s
-      ARM: dts: broadcom: bcm2711: Add DMA to sdhost
-
  Documentation/devicetree/bindings/spi/brcm,bcm2835-spi.yaml | 12 ++++++++++++
- arch/arm/boot/dts/broadcom/bcm2711.dtsi                     |  9 +++++++++
- 2 files changed, 21 insertions(+)
----
-base-commit: 909ef7a9a30fa139e69e555e3606680f5cca7726
-change-id: 20261121-bcm2835-spi-dma-bb08ed60174a
+ 1 file changed, 12 insertions(+)
 
-Best regards,
---  
-Kryštof Černý <cleverline1mc@gmail.com>
+diff --git a/Documentation/devicetree/bindings/spi/brcm,bcm2835-spi.yaml b/Documentation/devicetree/bindings/spi/brcm,bcm2835-spi.yaml
+index 94da68792194..8d2919ce6096 100644
+--- a/Documentation/devicetree/bindings/spi/brcm,bcm2835-spi.yaml
++++ b/Documentation/devicetree/bindings/spi/brcm,bcm2835-spi.yaml
+@@ -30,6 +30,16 @@ properties:
+   clocks:
+     maxItems: 1
+ 
++  dmas:
++    items:
++      - description: TX DMA channel
++      - description: RX DMA channel
++
++  dma-names:
++    items:
++      - const: tx
++      - const: rx
++
+ required:
+   - compatible
+   - reg
+@@ -45,6 +55,8 @@ examples:
+         reg = <0x7e204000 0x1000>;
+         interrupts = <2 22>;
+         clocks = <&clk_spi>;
++        dmas = <&dma 6>, <&dma 7>;
++        dma-names = "tx", "rx";
+         #address-cells = <1>;
+         #size-cells = <0>;
+     };
+
+-- 
+2.47.3
 
