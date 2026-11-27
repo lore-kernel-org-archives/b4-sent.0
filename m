@@ -1,28 +1,13 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Subject: [PATCH 0/3] ARM: dts: cortina: Enable CS7542 Almond+ peripherals
-Date: Fri, 27 Nov 2026 23:59:28 +0300
-Message-Id: <20261127-b4-cs7542-peripherals-dts-v1-0-7ce24b842b3a@gmail.com>
+Date: Fri, 27 Nov 2026 23:59:29 +0300
+Subject: [PATCH 1/3] ARM: dts: cortina: Describe CS7542 peripheral
+ controllers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/41U0W4bRwz8FUPPvYDLXXJ3jaLofxR54JJc+xrbc
- iTFcRDk30vZcQEdGtQCJOEOO7MkZ4bfd0c/rH7cXV993x38aT2u+4d4SL9d7fRWHm58WS2edwj
- IKWFeRln0WKng8hjIx1s/yN1xsVN8pyAIaS1t7gL/ePC5Pr9w//Xx9fn4ZfztejoT/jxx8M9f4
- tLT67HdkKMvur+/X0/XV4OlT8lFvaRWdXC3rNSalDHm1JzUycbrZfd+PMpLtddXv/8sFt+KfX5
- envoCS5qaRodh0OufN/ey3n2Iu/74FR7ewOvDSZcnCoaJwyspea/6/wypvzHcPK775YmDIVdxE
- 5D4tXfU8G8DK0YJLQgMGsDoXFvjdxCkRQ73y+mrLV/tdB5DWlpKzaA0nebvKuGNQe/2+ml52J/
- WufpheUpBxthzpgriuJ3po5z09oVKkozuKhkFqxDmwsYpWwn+mQg9DRTO7RLFFAfGyCoijVJzJ
- 04z3ubJkMU8d55z9ksUkWmZyXuo3SgX0FIQS26INAmmTc5c+wZVpbWa0Zr1mIpN5AEVO54nmAx
- nLRqfVDeoObwXIGTymS25MsZ0SyIprACcZFrVTV9QvQHB+c/IQZMBO0GYfXoUNnvMJtqmTV8ZU
- o4I9EGzsjBB2DAuSYPzmAk4Fz8zbFDeeLpAx1a7cBTrdUJvNlgtZBClRC1v+irdpdTu3IbajLj
- Vjl5jFBkGoo6uipbrpi8f1nqtGEKqmXNFKLM36hxeo4wx0Nkml0tUZsDQN3EG9+xhzZ4BFbMOo
- W6lZZduLV2iUk25RhstWU4FLM60qKtBLAfRLoIoUSBsKpTQaOhovXCzCmChOnHPM0QsDMZGgq9
- 6/XcUYqN8VmmfIg/7ZXw7+XIbpBGG9WE9vSZCuRRAinU15ZeJiI5ce+2RiKRZipZkYlwiRZmL5
- R7CNUy66XrEhs3MiJChjdS4hCSxSyYK5ZhhgjTD7hu/CYV2QAPHaKXEAvWYnWCEssZ2Felq4Vi
- +RA1oGZhaGjMSdZ4MlTwgRKqUIF5xDZFo41LzGQo6cwf1zi1sWmmEg7jE2FNuo89YPBu/hZ3P0
- ew5VlLyHPFLVssgJNcZBaOTAtVxiWpmdaIxdYhzFJZUGMo8KLyUYsGVHMSWdh9//PgHzKsNWek
- GAAA=
-X-Change-ID: 20261123-b4-cs7542-peripherals-dts-dfa20a5c748f
+Message-Id: <20261127-b4-cs7542-peripherals-dts-v1-1-7ce24b842b3a@gmail.com>
+References: <20261127-b4-cs7542-peripherals-dts-v1-0-7ce24b842b3a@gmail.com>
+In-Reply-To: <20261127-b4-cs7542-peripherals-dts-v1-0-7ce24b842b3a@gmail.com>
 To: Russell King <linux@armlinux.org.uk>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
@@ -31,110 +16,439 @@ To: Russell King <linux@armlinux.org.uk>, Rob Herring <robh@kernel.org>,
 Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795813168; l=5734;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795813168; l=12071;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=6Or3mAfqJgt3Mk70H6WetS/Z7QWVCsD3NX9KPcQ2sKE=;
- b=EUITBK+MoyOS+B03rJA6nIqgPymg9Tbm78GTUasqPRldDT7MPIoQomepVMNMzs6x9ACO/pxM9
- K2jmztc0fPKBhJKArGEnS5jVKq0wvcYg/wHt8bIP+MluWTCZcf4iUpq
+ bh=e2mylpsi+UNf0UKQ0a9a9Z12LfwJLBgmUI633+jZlAM=;
+ b=4J2bGBFJQlH+YLwi3IS5R0MXXhl6H0581tJzKlYuEwvsUEPJJjo6JzseDk0LNqAdoY4t1+UEl
+ Ez4FLRWoS2lB9mSz2O/oiTUmrV+YUci6POuYbHDMLkWUItrXKXq7GQG
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the CS7542 controllers in cs7542.dtsi and the Almond+ wiring in
-cs7542-securifi-almondplus.dts. Enable the peripheral drivers in
-multi_v7_defconfig. Platform v9 supplies the minimal bootable SoC and board
-descriptions; this series completes them using the subsystem bindings.
+Describe the shared global clock and pin controllers, peripheral
+interrupt controller and GPIO banks, I2C, watchdog, RTC, TRNG, NAND PIO
+controller, MDIO, network engine and three PCIe root ports.
 
-Use the global syscon for clocks and seven independent network-engine
-resets. Describe all three PCIe Root Ports, with one owner for GPIO92
-shared by the Wi-Fi endpoints. Put endpoint addresses and factory NVMEM
-cells on the actual PCI children. Both QCA8337 CPU links use rgmii-id,
-matching the tested board wiring. The MDIO input is the APB clock, as
-confirmed by a differentiating clock-domain measurement on Almond+.
-
-The NAND node describes the AXI clock, interrupt, data aperture and
-separate flash reset from the vendor resources and posted NAND v5 binding.
-The NAND driver has passed the recorded Almond+ checks; that is driver
-evidence, not execution of this publication commit. The board properties
-follow the tested OpenWrt integration.
-
-Validation: the final sources pass unsuppressed preprocessing/dtc and
-complete board schema validation. Reset/clock specifiers, PCIe addresses,
-shared PERST ownership and NVMEM cells were checked explicitly. The final
-dependency stack is checked with b4 against the base commit below.
-Earlier combined revisions passed full native ARM builds and RAM tests;
-no new hardware result is claimed for these DT-only changes.
-
-Clock/reset/pinctrl v5, MDIO v4, Ethernet v4, NAND v5 and PCIe v3 are now
-posted. Prerequisites select their published code and binding patches;
-independent MAINTAINERS-only additions are not needed by this DTS stack.
-The bindings and drivers can proceed through their subsystem trees, with
-this board series following once those dependencies are available.
-No offload-specific overrides or personal LCD package are included.
+Use the global syscon for clocks and resets, a separate PCIe PHY
+provider and the complete exclusive Ethernet DMA/reset domain. Keep the
+optional controllers disabled until the board supplies wiring, reserved
+memory and endpoint descriptions. Replace the fixed APB assumption with
+strap-selected clocks.
 
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
-Fil Dunsky (3):
-      ARM: dts: cortina: Describe CS7542 peripheral controllers
-      ARM: dts: cortina: Enable Almond+ board peripherals
-      ARM: multi_v7_defconfig: Enable CS7542 board peripherals
+ arch/arm/boot/dts/cortina/cs7542.dtsi | 321 ++++++++++++++++++++++++++++++++--
+ 1 file changed, 311 insertions(+), 10 deletions(-)
 
- .../dts/cortina/cs7542-securifi-almondplus.dts     | 342 ++++++++++++++++++++-
- arch/arm/boot/dts/cortina/cs7542.dtsi              | 321 ++++++++++++++++++-
- arch/arm/configs/multi_v7_defconfig                |  16 +
- 3 files changed, 666 insertions(+), 13 deletions(-)
----
-base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
-change-id: 20261123-b4-cs7542-peripherals-dts-dfa20a5c748f
-prerequisite-message-id: <20261122-b4-cs75xx-v9-0-1fc1b90bd097@gmail.com>
-prerequisite-patch-id: 104c6fb668f30ac8c2c5b3b6c524c18caa8808c4
-prerequisite-patch-id: e7d503348cbec7558cd084162133f8e34df1c1bc
-prerequisite-patch-id: 1d5770db02b983d012f6c58806fbf3f5291a06c9
-prerequisite-patch-id: 8515988ae3509d4289a8d845803353f5ed412982
-prerequisite-patch-id: 6c0137d52f201d8ec085ee6cc7b2d49af15583d8
-prerequisite-patch-id: f591d13e0d394441e3cd28149633c1133bfb79ee
-prerequisite-patch-id: b3dad3ee0f7e08ea9e942fd83f3d2a06ff8fb164
-prerequisite-patch-id: 4fdf33aaedc9ca7f4d7a59b48e4ae55c497462e4
-prerequisite-patch-id: 9b4a468b7b74861017ef533ba0a5574bc14b212e
-prerequisite-patch-id: 1f232c94dd3fc0d862203b7c0c1449e6ba9a6859
-prerequisite-message-id: <20261120-cs75xx-intc-v5-0-f2be75c5e97c@gmail.com>
-prerequisite-patch-id: d1aa6857057b1e76a68ba14d4ea17352ffa90c7e
-prerequisite-patch-id: 1fd32c18f2d4a7700528bf45da72b30b62744171
-prerequisite-message-id: <20261119-cs75xx-gpio-v6-0-37aeda0aaedd@gmail.com>
-prerequisite-patch-id: 7189d6a033e0e18b87b72f3f9b49a1c71a97a2b8
-prerequisite-patch-id: a70999df9edd8fbb4ea81ca7e782aa89f52b4a06
-prerequisite-message-id: <20261124-cs75xx-i2c-v8-0-d0800b967886@gmail.com>
-prerequisite-patch-id: 1ccad6a46a6b3391a0244edbdbc4949b6614e271
-prerequisite-patch-id: ac9ec16b2e96d5580a256823ab1330098380ae32
-prerequisite-message-id: <20261121-arm-twd-wdt-v9-1-8118d048cfde@gmail.com>
-prerequisite-patch-id: e8d416021a43d45b01ac95877bb1c42a46d30153
-prerequisite-message-id: <20261124-arm-twd-clock-notifier-v1-1-62933570ae27@gmail.com>
-prerequisite-patch-id: 66eb0299dcb45847726974805c675a856fea149d
-prerequisite-patch-id: a1ab9eca32a27a52346d613d4611f152e1b2a638
-prerequisite-patch-id: 65d46bb3caaa8518ee561f65d3f603ade396fff9
-prerequisite-patch-id: 55dc4f1e91fc85340c4422438225f50fdf636799
-prerequisite-patch-id: 7a88732d8d9fdedf26b0729211211d2f74cccc17
-prerequisite-patch-id: 7fbe9405265ef3d1ec62811415a46c0061afd7c8
-prerequisite-patch-id: 07e805007e8d5e0c1d06e50a9ffe799f9d61bb35
-prerequisite-patch-id: 5301369d9b5f76a650c5e6c01b63bf10634e9ffe
-prerequisite-patch-id: 5e86fea092879a6940e7f098db6cd346ac515837
-prerequisite-patch-id: 49ea479e68bcdf4bb792e712130b22cb9cc2d378
-prerequisite-patch-id: ebd89772638cdde67204f9859648c532072f8f64
-prerequisite-patch-id: 3602aa81630ee3e18d9302c23cba59d483ea9d81
-prerequisite-patch-id: 1713798d81d3140dea98cb980a4bac9aa22a3780
-prerequisite-patch-id: ead1ebcb89468d700d8875693f405460d6d5a2c8
-prerequisite-message-id: <20261124-b4-qca8k-two-byte-header-init-v1-1-c644025b69fa@gmail.com>
-prerequisite-patch-id: 48d4c38319b803b22db91864e3321abdb6ab32b0
-prerequisite-patch-id: 9d8ec97932a1c3a4c41dad64e27364d395e8821c
-prerequisite-patch-id: 1b20a366220308b1864130aaef2a53816101f442
-prerequisite-patch-id: 0a571205b2bb84488ae379a21ab734caa9cd15a6
-prerequisite-patch-id: b08306581bf5dcd6d5543b00ee75105dc67c2355
-prerequisite-patch-id: def18de6690ce96865075b4bb64cb8138b9f8cf7
-prerequisite-patch-id: 6a6f50f93cfd1e3df21d74b525ecf4882e5c057b
-prerequisite-patch-id: 8dd7f2d65905ec5c2dc0bc66b56301048436a6d1
+diff --git a/arch/arm/boot/dts/cortina/cs7542.dtsi b/arch/arm/boot/dts/cortina/cs7542.dtsi
+index 29b0b7da8..3d827502c 100644
+--- a/arch/arm/boot/dts/cortina/cs7542.dtsi
++++ b/arch/arm/boot/dts/cortina/cs7542.dtsi
+@@ -3,6 +3,8 @@
+  * Device Tree Source for the Cortina Systems CS7542 SoC
+  */
+ 
++#include <dt-bindings/clock/cortina,cs7542-clock.h>
++#include <dt-bindings/reset/cortina,cs7542-reset.h>
+ #include <dt-bindings/interrupt-controller/arm-gic.h>
+ 
+ / {
+@@ -10,11 +12,10 @@
+ 	#size-cells = <1>;
+ 	interrupt-parent = <&gic>;
+ 
+-	/* Rate is selected by the boot strap pins, set by the board */
+-	apb_clk: clock-apb {
++	ref24: clock-24mhz {
+ 		compatible = "fixed-clock";
+ 		#clock-cells = <0>;
+-		clock-output-names = "apb";
++		clock-frequency = <24000000>;
+ 	};
+ 
+ 	cpus {
+@@ -26,6 +27,7 @@
+ 			compatible = "arm,cortex-a9";
+ 			reg = <0>;
+ 			next-level-cache = <&l2>;
++			clocks = <&global CS7542_CLK_CPU>;
+ 		};
+ 
+ 		cpu@1 {
+@@ -35,6 +37,7 @@
+ 			enable-method = "cortina,cs7542-smp";
+ 			cpu-release-addr = <0 0xf00000b8>;
+ 			next-level-cache = <&l2>;
++			clocks = <&global CS7542_CLK_CPU>;
+ 		};
+ 	};
+ 
+@@ -44,11 +47,227 @@
+ 		#address-cells = <1>;
+ 		#size-cells = <1>;
+ 
++		pcie0: pcie@80000000 {
++			compatible = "cortina,cs7542-pcie";
++			reg = <0x80000000 0x1000>, <0x80001000 0x1000>, <0xf00a0000 0x100>;
++			reg-names = "dbi", "config", "app";
++			#address-cells = <3>;
++			#size-cells = <2>;
++			device_type = "pci";
++			linux,pci-domain = <0>;
++			bus-range = <0 0xff>;
++			num-lanes = <1>;
++			ranges = <0x82000000 0 0x80200000 0x80200000 0 0x1fe00000>;
++			interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "msi";
++			clocks = <&global CS7542_CLK_PCIE0>;
++			resets = <&global CS7542_RESET_PCIE0>;
++			phys = <&serdes 0>;
++			phy-names = "pcie";
++			#interrupt-cells = <1>;
++			interrupt-map-mask = <0 0 0 7>;
++			interrupt-map = <0 0 0 1 &pcie0_intc 1>,
++					<0 0 0 2 &pcie0_intc 2>,
++					<0 0 0 3 &pcie0_intc 3>,
++					<0 0 0 4 &pcie0_intc 4>;
++			status = "disabled";
++
++			pcie0_port: pcie@0,0 {
++				compatible = "pciclass,0604";
++				reg = <0 0 0 0 0>;
++				device_type = "pci";
++				#address-cells = <3>;
++				#size-cells = <2>;
++				ranges;
++			};
++
++			pcie0_intc: interrupt-controller {
++				#address-cells = <0>;
++				#interrupt-cells = <1>;
++				interrupt-controller;
++			};
++		};
++
++		pcie1: pcie@a0000000 {
++			compatible = "cortina,cs7542-pcie";
++			reg = <0xa0000000 0x1000>, <0xa0001000 0x1000>, <0xf00a0400 0x100>;
++			reg-names = "dbi", "config", "app";
++			#address-cells = <3>;
++			#size-cells = <2>;
++			device_type = "pci";
++			linux,pci-domain = <1>;
++			bus-range = <0 0xff>;
++			num-lanes = <1>;
++			ranges = <0x82000000 0 0xa0200000 0xa0200000 0 0x1fe00000>;
++			interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "msi";
++			clocks = <&global CS7542_CLK_PCIE1>;
++			resets = <&global CS7542_RESET_PCIE1>;
++			phys = <&serdes 1>;
++			phy-names = "pcie";
++			#interrupt-cells = <1>;
++			interrupt-map-mask = <0 0 0 7>;
++			interrupt-map = <0 0 0 1 &pcie1_intc 1>,
++					<0 0 0 2 &pcie1_intc 2>,
++					<0 0 0 3 &pcie1_intc 3>,
++					<0 0 0 4 &pcie1_intc 4>;
++			status = "disabled";
++
++			pcie1_port: pcie@0,0 {
++				compatible = "pciclass,0604";
++				reg = <0 0 0 0 0>;
++				device_type = "pci";
++				#address-cells = <3>;
++				#size-cells = <2>;
++				ranges;
++			};
++
++			pcie1_intc: interrupt-controller {
++				#address-cells = <0>;
++				#interrupt-cells = <1>;
++				interrupt-controller;
++			};
++		};
++
++		pcie2: pcie@c0000000 {
++			compatible = "cortina,cs7542-pcie";
++			reg = <0xc0000000 0x1000>, <0xc0001000 0x1000>, <0xf00a0800 0x100>;
++			reg-names = "dbi", "config", "app";
++			#address-cells = <3>;
++			#size-cells = <2>;
++			device_type = "pci";
++			linux,pci-domain = <2>;
++			bus-range = <0 0xff>;
++			num-lanes = <1>;
++			ranges = <0x82000000 0 0xc0200000 0xc0200000 0 0x1fe00000>;
++			interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "msi";
++			clocks = <&global CS7542_CLK_PCIE2>;
++			resets = <&global CS7542_RESET_PCIE2>;
++			phys = <&serdes 2>;
++			phy-names = "pcie";
++			#interrupt-cells = <1>;
++			interrupt-map-mask = <0 0 0 7>;
++			interrupt-map = <0 0 0 1 &pcie2_intc 1>,
++					<0 0 0 2 &pcie2_intc 2>,
++					<0 0 0 3 &pcie2_intc 3>,
++					<0 0 0 4 &pcie2_intc 4>;
++			status = "disabled";
++
++			pcie2_port: pcie@0,0 {
++				compatible = "pciclass,0604";
++				reg = <0 0 0 0 0>;
++				device_type = "pci";
++				#address-cells = <3>;
++				#size-cells = <2>;
++				ranges;
++			};
++
++			pcie2_intc: interrupt-controller {
++				#address-cells = <0>;
++				#interrupt-cells = <1>;
++				interrupt-controller;
++			};
++		};
++
++		global: syscon@f0000000 {
++			compatible = "cortina,cs7542-syscon", "syscon", "simple-mfd";
++			reg = <0xf0000000 0x100>;
++			#clock-cells = <1>;
++			#reset-cells = <1>;
++
++			pinctrl: pinctrl {
++				compatible = "cortina,cs7542-pinctrl";
++			};
++		};
++
++		ethernet: ethernet@f0010000 {
++			compatible = "cortina,cs7542-ethernet";
++			reg = <0xf0010000 0x500>,
++			      <0xf0090000 0x800>, <0xf0020000 0x4000>,
++			      <0xf0030000 0x400>, <0xf0040000 0x800>,
++			      <0xf0060000 0x100>, <0xf0400000 0x100000>;
++			reg-names = "ni", "dma", "fe", "qm", "tm",
++				    "sch", "xram";
++			interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "eth0", "eth1", "eth2";
++			resets = <&global CS7542_RESET_NI>,
++				 <&global CS7542_RESET_FE>,
++				 <&global CS7542_RESET_TM>,
++				 <&global CS7542_RESET_SCH>,
++				 <&global CS7542_RESET_QM>,
++				 <&global CS7542_RESET_DMA>,
++				 <&global CS7542_RESET_NI_XRAM>;
++			reset-names = "ni", "fe", "tm", "sch", "qm", "dma", "xram";
++			#address-cells = <1>;
++			#size-cells = <0>;
++			cortina,global-syscon = <&global>;
++			status = "disabled";
++
++			gmac0: ethernet-port@0 {
++				reg = <0>;
++				status = "disabled";
++			};
++
++			gmac1: ethernet-port@1 {
++				reg = <1>;
++				status = "disabled";
++			};
++
++			gmac2: ethernet-port@2 {
++				reg = <2>;
++				status = "disabled";
++			};
++		};
++
++		nandc: nand-controller@f0050000 {
++			compatible = "cortina,cs7542-nand";
++			reg = <0xf0050000 0x300>, <0xe0000000 0x08000000>;
++			reg-names = "regs", "data";
++			interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&global CS7542_CLK_AXI>;
++			resets = <&global CS7542_RESET_FLASH>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "disabled";
++		};
++
++		intc: interrupt-controller@f0070004 {
++			compatible = "cortina,cs7542-intc";
++			reg = <0xf0070004 0x8>;
++			interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-controller;
++			#interrupt-cells = <1>;
++		};
++
++		mdio0: mdio@f00700a0 {
++			compatible = "cortina,cs7542-mdio";
++			reg = <0xf00700a0 0x14>;
++			clocks = <&global CS7542_CLK_APB>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "disabled";
++		};
++
++		i2c: i2c@f00700e8 {
++			compatible = "cortina,cs7542-i2c";
++			reg = <0xf00700e8 0x28>;
++			interrupt-parent = <&intc>;
++			interrupts = <11>;
++			clocks = <&global CS7542_CLK_APB>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			status = "disabled";
++		};
++
+ 		uart0: serial@f0070110 {
+ 			compatible = "cortina,cs7542-uart";
+ 			reg = <0xf0070110 0x30>;
+ 			interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&apb_clk>;
++			clocks = <&global CS7542_CLK_APB>;
+ 
+ 			status = "disabled";
+ 		};
+@@ -57,7 +276,7 @@
+ 			compatible = "cortina,cs7542-uart";
+ 			reg = <0xf0070140 0x30>;
+ 			interrupts = <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&apb_clk>;
++			clocks = <&global CS7542_CLK_APB>;
+ 
+ 			status = "disabled";
+ 		};
+@@ -66,7 +285,7 @@
+ 			compatible = "cortina,cs7542-uart";
+ 			reg = <0xf0070170 0x30>;
+ 			interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&apb_clk>;
++			clocks = <&global CS7542_CLK_APB>;
+ 
+ 			status = "disabled";
+ 		};
+@@ -75,8 +294,90 @@
+ 			compatible = "cortina,cs7542-uart";
+ 			reg = <0xf00701a0 0x30>;
+ 			interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&apb_clk>;
++			clocks = <&global CS7542_CLK_APB>;
++
++			status = "disabled";
++		};
++
++		gpio0: gpio@f00701d0 {
++			compatible = "cortina,cs7542-gpio";
++			reg = <0xf00701d0 0x20>;
++			interrupt-parent = <&intc>;
++			interrupts = <6>;
++			gpio-controller;
++			#gpio-cells = <2>;
++			interrupt-controller;
++			#interrupt-cells = <2>;
++		};
++
++		gpio1: gpio@f00701f0 {
++			compatible = "cortina,cs7542-gpio";
++			reg = <0xf00701f0 0x20>;
++			interrupt-parent = <&intc>;
++			interrupts = <7>;
++			gpio-controller;
++			#gpio-cells = <2>;
++			interrupt-controller;
++			#interrupt-cells = <2>;
++		};
++
++		gpio2: gpio@f0070210 {
++			compatible = "cortina,cs7542-gpio";
++			reg = <0xf0070210 0x20>;
++			interrupt-parent = <&intc>;
++			interrupts = <8>;
++			gpio-controller;
++			#gpio-cells = <2>;
++			interrupt-controller;
++			#interrupt-cells = <2>;
++		};
++
++		gpio3: gpio@f0070230 {
++			compatible = "cortina,cs7542-gpio";
++			reg = <0xf0070230 0x20>;
++			interrupt-parent = <&intc>;
++			interrupts = <9>;
++			gpio-controller;
++			#gpio-cells = <2>;
++			interrupt-controller;
++			#interrupt-cells = <2>;
++		};
++
++		gpio4: gpio@f0070250 {
++			compatible = "cortina,cs7542-gpio";
++			reg = <0xf0070250 0x20>;
++			interrupt-parent = <&intc>;
++			interrupts = <10>;
++			gpio-controller;
++			#gpio-cells = <2>;
++			interrupt-controller;
++			#interrupt-cells = <2>;
++		};
++
++		serdes: phy@f00a1000 {
++			compatible = "cortina,cs7542-pcie-phy";
++			reg = <0xf00a1000 0x400>, <0xf00a5000 0x400>,
++			      <0xf00a9000 0x400>, <0xf00a0e00 0x180>;
++			reg-names = "phy0", "phy1", "phy2", "status";
++			clocks = <&ref24>;
++			cortina,global-syscon = <&global>;
++			#phy-cells = <1>;
++		};
++
++		trng: rng@f0600000 {
++			compatible = "cortina,cs7542-trng";
++			reg = <0xf0600000 0x20>;
++			cortina,syscon = <&global>;
++			status = "disabled";
++		};
+ 
++		rtc0: rtc@f4920000 {
++			compatible = "cortina,cs7542-rtc";
++			reg = <0xf4920000 0x50>;
++			interrupt-names = "alarm", "periodic";
++			interrupt-parent = <&gic>;
++			interrupts = <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH>,
++					<GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>;
+ 			status = "disabled";
+ 		};
+ 
+@@ -99,21 +400,21 @@
+ 			compatible = "arm,cortex-a9-global-timer";
+ 			reg = <0xf8000200 0x20>;
+ 			interrupts = <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_EDGE_RISING)>;
+-			clocks = <&apb_clk>;
++			clocks = <&global CS7542_CLK_APB>;
+ 		};
+ 
+ 		timer@f8000600 {
+ 			compatible = "arm,cortex-a9-twd-timer";
+ 			reg = <0xf8000600 0x20>;
+ 			interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_EDGE_RISING)>;
+-			clocks = <&apb_clk>;
++			clocks = <&global CS7542_CLK_APB>;
+ 		};
+ 
+ 		watchdog@f8000620 {
+ 			compatible = "arm,cortex-a9-twd-wdt";
+ 			reg = <0xf8000620 0x20>;
+ 			interrupts = <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_EDGE_RISING)>;
+-			clocks = <&apb_clk>;
++			clocks = <&global CS7542_CLK_APB>;
+ 		};
+ 
+ 		gic: interrupt-controller@f8001000 {
 
-Best regards,
---  
-Fil Dunsky <filipp.dunsky@gmail.com>
+-- 
+2.53.0
 
