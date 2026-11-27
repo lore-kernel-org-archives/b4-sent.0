@@ -1,11 +1,10 @@
 From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Fri, 27 Nov 2026 16:04:00 +0530
-Subject: [PATCH v2 5/7] iio: add probe error messages to hid humidity and
- temperature drivers
+Date: Fri, 27 Nov 2026 16:04:01 +0530
+Subject: [PATCH v2 6/7] iio: Simplify trigger setup error checks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-19-oct-hid-iio-unified-print-framework-v2-5-3f476fe1a940@gmail.com>
+Message-Id: <20261127-19-oct-hid-iio-unified-print-framework-v2-6-3f476fe1a940@gmail.com>
 References: <20261127-19-oct-hid-iio-unified-print-framework-v2-0-3f476fe1a940@gmail.com>
 In-Reply-To: <20261127-19-oct-hid-iio-unified-print-framework-v2-0-3f476fe1a940@gmail.com>
 To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>, 
@@ -14,77 +13,105 @@ To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>,
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
  Andy Shevchenko <andy@kernel.org>
 Cc: linux-input@vger.kernel.org, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
+ linux-kernel@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>, 
+ Joshua Crofts <crofts@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795775655; l=2747;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795775655; l=3522;
  i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=ZN+WHoqE9qU2ewu4pc1p2V/3TtyK73/jGZBLtNQtK8w=;
- b=dB/qKhcUNlC1QUpZbrpr9ulUu09qcXXAYyfTb90k97kqd0YbfgkOJP+ogvbZZRQt2lkj9XH9p
- wTmE7pJTrTyDnuozWdykqgjHc8QCFL7SuES4GqDSaW/FEkmK7y0+0pQ
+ bh=pmCyyi/Q00a7W06XN+DdDqeCpGYAnLZhG3rV6Fd81Co=;
+ b=VGrql/2ZZGijcxbJbKqbMEwcZ+cchfxxNM4xVRamqubMcJhGGLic7cLWpJmh/jpaTI5XR4LN9
+ coRr998xlC9B/2d8MN+ZOpzgNwpiu4ZoxyAA01ZeQtwqhK7J8ZIwQ8z
 X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
  pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
 X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hid_sensor_parse_common_attributes() and the driver-specific
-*_parse_report() helpers may fail during probe without emitting any
-diagnostic information. Add error messages for these failure paths so
-that probe failures can be more easily identified from kernel logs,
-while preserving the original error codes.
+devm_hid_sensor_setup_trigger() returns 0 on success and a
+negative error code on failure. Replace open-coded error checks
+using:
+	if (ret < 0)
+with:
+	if (ret)
+across HID sensor drivers using the helper.
 
-This also improves consistency with other HID IIO drivers that provide
-probe-time diagnostics.
+This simplifies the code and aligns it with common kernel
+error-handling style without changing behavior.
 
+Suggested-by: Joshua Crofts <crofts@kernel.org>
 Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
 ---
- drivers/iio/humidity/hid-sensor-humidity.c       | 4 ++--
- drivers/iio/temperature/hid-sensor-temperature.c | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ drivers/iio/accel/hid-sensor-accel-3d.c              | 2 +-
+ drivers/iio/gyro/hid-sensor-gyro-3d.c                | 2 +-
+ drivers/iio/light/hid-sensor-als.c                   | 2 +-
+ drivers/iio/magnetometer/hid-sensor-magn-3d.c        | 2 +-
+ drivers/iio/position/hid-sensor-custom-intel-hinge.c | 2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/iio/humidity/hid-sensor-humidity.c b/drivers/iio/humidity/hid-sensor-humidity.c
-index 95dc4c4726f2..388a7b02fa1d 100644
---- a/drivers/iio/humidity/hid-sensor-humidity.c
-+++ b/drivers/iio/humidity/hid-sensor-humidity.c
-@@ -210,7 +210,7 @@ static int hid_humidity_probe(struct platform_device *pdev)
- 					humidity_sensitivity_addresses,
- 					ARRAY_SIZE(humidity_sensitivity_addresses));
- 	if (ret)
--		return ret;
-+		return dev_err_probe(dev, ret, "failed to setup common attributes\n");
+diff --git a/drivers/iio/accel/hid-sensor-accel-3d.c b/drivers/iio/accel/hid-sensor-accel-3d.c
+index 414d62d2249f..d75ee16b8f45 100644
+--- a/drivers/iio/accel/hid-sensor-accel-3d.c
++++ b/drivers/iio/accel/hid-sensor-accel-3d.c
+@@ -372,7 +372,7 @@ static int hid_accel_3d_probe(struct platform_device *pdev)
  
- 	humid_chans = devm_kmemdup(&pdev->dev, humidity_channels,
- 				   sizeof(humidity_channels), GFP_KERNEL);
-@@ -220,7 +220,7 @@ static int hid_humidity_probe(struct platform_device *pdev)
- 	ret = humidity_parse_report(pdev, hsdev, humid_chans,
- 				    HID_USAGE_SENSOR_HUMIDITY, humid_st);
- 	if (ret)
--		return ret;
-+		return dev_err_probe(dev, ret, "failed to setup attributes\n");
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &accel_state->common_attributes);
+-	if (ret < 0)
++	if (ret)
+ 		return ret;
  
- 	indio_dev->channels = humid_chans;
- 	indio_dev->num_channels = ARRAY_SIZE(humidity_channels);
-diff --git a/drivers/iio/temperature/hid-sensor-temperature.c b/drivers/iio/temperature/hid-sensor-temperature.c
-index 6c112b444627..ef657c1cb043 100644
---- a/drivers/iio/temperature/hid-sensor-temperature.c
-+++ b/drivers/iio/temperature/hid-sensor-temperature.c
-@@ -207,7 +207,7 @@ static int hid_temperature_probe(struct platform_device *pdev)
- 					temperature_sensitivity_addresses,
- 					ARRAY_SIZE(temperature_sensitivity_addresses));
- 	if (ret)
--		return ret;
-+		return dev_err_probe(dev, ret, "failed to setup common attributes\n");
+ 	accel_state->callbacks.send_event = accel_3d_proc_event;
+diff --git a/drivers/iio/gyro/hid-sensor-gyro-3d.c b/drivers/iio/gyro/hid-sensor-gyro-3d.c
+index cc81ac2ccdd1..d5acb38268af 100644
+--- a/drivers/iio/gyro/hid-sensor-gyro-3d.c
++++ b/drivers/iio/gyro/hid-sensor-gyro-3d.c
+@@ -308,7 +308,7 @@ static int hid_gyro_3d_probe(struct platform_device *pdev)
  
- 	temp_chans = devm_kmemdup(&pdev->dev, temperature_channels,
- 				  sizeof(temperature_channels), GFP_KERNEL);
-@@ -217,7 +217,7 @@ static int hid_temperature_probe(struct platform_device *pdev)
- 	ret = temperature_parse_report(pdev, hsdev, temp_chans,
- 				       HID_USAGE_SENSOR_TEMPERATURE, temp_st);
- 	if (ret)
--		return ret;
-+		return dev_err_probe(dev, ret, "failed to setup attributes\n");
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &gyro_state->common_attributes);
+-	if (ret < 0)
++	if (ret)
+ 		return ret;
  
- 	indio_dev->channels = temp_chans;
- 	indio_dev->num_channels = ARRAY_SIZE(temperature_channels);
+ 	gyro_state->callbacks.send_event = gyro_3d_proc_event;
+diff --git a/drivers/iio/light/hid-sensor-als.c b/drivers/iio/light/hid-sensor-als.c
+index ef864a2ba4b6..9b3c8d8345b9 100644
+--- a/drivers/iio/light/hid-sensor-als.c
++++ b/drivers/iio/light/hid-sensor-als.c
+@@ -409,7 +409,7 @@ static int hid_als_probe(struct platform_device *pdev)
+ 
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &als_state->common_attributes);
+-	if (ret < 0)
++	if (ret)
+ 		return ret;
+ 
+ 	als_state->callbacks.send_event = als_proc_event;
+diff --git a/drivers/iio/magnetometer/hid-sensor-magn-3d.c b/drivers/iio/magnetometer/hid-sensor-magn-3d.c
+index 3a8fbe1655dd..c179fcd364b9 100644
+--- a/drivers/iio/magnetometer/hid-sensor-magn-3d.c
++++ b/drivers/iio/magnetometer/hid-sensor-magn-3d.c
+@@ -484,7 +484,7 @@ static int hid_magn_3d_probe(struct platform_device *pdev)
+ 
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &magn_state->magn_flux_attributes);
+-	if (ret < 0)
++	if (ret)
+ 		return ret;
+ 
+ 	magn_state->callbacks.send_event = magn_3d_proc_event;
+diff --git a/drivers/iio/position/hid-sensor-custom-intel-hinge.c b/drivers/iio/position/hid-sensor-custom-intel-hinge.c
+index 4c59d8a0e7cd..9bc0262b27c4 100644
+--- a/drivers/iio/position/hid-sensor-custom-intel-hinge.c
++++ b/drivers/iio/position/hid-sensor-custom-intel-hinge.c
+@@ -309,7 +309,7 @@ static int hid_hinge_probe(struct platform_device *pdev)
+ 	atomic_set(&st->common_attributes.data_ready, 0);
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, indio_dev->name,
+ 					    &st->common_attributes);
+-	if (ret < 0)
++	if (ret)
+ 		return ret;
+ 
+ 	st->callbacks.send_event = hinge_proc_event;
 
 -- 
 2.34.1
