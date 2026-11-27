@@ -1,15 +1,13 @@
 From: Kyle Hendry <khendry@reliablecontrols.com>
-Subject: [PATCH net-next 0/3] net: pcs: rzn1-miic: Deassert resets on RZ/N1
-Date: Fri, 27 Nov 2026 10:14:24 -0800
-Message-Id: <20261127-miic-reset-consumer-v1-0-3cab78b94e23@reliablecontrols.com>
+Date: Fri, 27 Nov 2026 10:14:25 -0800
+Subject: [PATCH net-next 1/3] dt-bindings: net: pcs: renesas,rzn1-miic:
+ Document rzn1 resets
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02OTQ6CMBCFr9LM2iadAqXlKsZFGQbtgqItGCLx7
- jbqguXL+/t2yJwCZ+jEDomfIYc5FoEnAXTz8coyDEWDVtogaiOnEEgmzrxImmNeJ04Sx6F2znF
- Ng4LSvCcew/ZdPUMsycjbApefk/ixlpvlb/c+c1maprB0QhD1FoeGK2x75VkTGUMeyWhLirxTr
- dN2dDUc+TrxpVO6lekV8YCYpa2UbbDxXpPqnjVc3u8PwvRDBfQAAAA=
-X-Change-ID: 20261126-miic-reset-consumer-1fd4999e4cd0
+Message-Id: <20261127-miic-reset-consumer-v1-1-3cab78b94e23@reliablecontrols.com>
+References: <20261127-miic-reset-consumer-v1-0-3cab78b94e23@reliablecontrols.com>
+In-Reply-To: <20261127-miic-reset-consumer-v1-0-3cab78b94e23@reliablecontrols.com>
 To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@linux.dev>, 
  Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
@@ -24,44 +22,101 @@ To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@linux.dev>,
 Cc: linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
  devicetree@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795803312; l=1416;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795803312; l=2601;
  i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=JO2AL8nQm/4CThDoEoEqZG8cMRX9Fw2AqtMC/yqXsaE=;
- b=9QNZSFuzxGcaVgPGdtuz7Jqdawua3j0FN29mZ/5bemR5zmJgDPve5gruqIZ9bapync18DkU6X
- hr4kXa/5ITVD66KdgVQuPNa+6l3o2l5Y/BaEWeV/Ok8TCyEra5TPdRZ
+ bh=Ibwr9Byd7qZ2f5BKwWGgbhsxQYwHLNF4ceUXnYnnfDo=;
+ b=yHlYztCF4RgXSb5SjpfwAO+1qVE3+hH6i1NxfDR86V8tK8v6w5SHRhjWYoNutBMn37o3oqb/T
+ IivGNQJR3n9AAXvu1TfN9pDumxrsh3mnHondCJFjXi4uIXYVW6/BgV0
 X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
  pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
 X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Two resets are held at boot and need to be cleared for the mii converted
-to work. They are in the system controller managed by the clock driver and
-are supported by this series:
-https://lore.kernel.org/linux-renesas-soc/20261126-rzn1-miic-resets-v4-0-4f73af81d779@reliablecontrols.com
-
-Add the reset information to the rzn1 info structure and device tree so
-the miic driver can clear the resets the same way the rz/t2h does.
+On the rzn1, there are two resets for the miic. Add documentation for them.
 
 Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
 ---
-Kyle Hendry (3):
-      dt-bindings: net: pcs: renesas,rzn1-miic: Document rzn1 resets
-      net: pcs: rzn1-miic: Add resets to rzn1 info structure
-      ARM: dts: renesas: r9a06g032: Add resets to mii converter
-
  .../bindings/net/pcs/renesas,rzn1-miic.yaml        | 36 +++++++++++++++-------
- arch/arm/boot/dts/renesas/r9a06g032.dtsi           |  3 ++
- drivers/net/pcs/pcs-rzn1-miic.c                    |  7 +++++
- 3 files changed, 35 insertions(+), 11 deletions(-)
----
-base-commit: ccb81d5e317b0ae2cc66ca1c628c0ca907928f94
-change-id: 20261126-miic-reset-consumer-1fd4999e4cd0
-prerequisite-change-id: 20261027-rzn1-miic-resets-8308515aa2c0:v4
-prerequisite-patch-id: be35edd6b8532456aa90c8b32fb7e1d7adbde798
-prerequisite-patch-id: 077c1ad53beb244026822f9591c1808527f852db
-prerequisite-patch-id: b56a4d7c0efa9bb17aa898bdc619733f30f9097c
+ 1 file changed, 25 insertions(+), 11 deletions(-)
 
-Best regards,
+diff --git a/Documentation/devicetree/bindings/net/pcs/renesas,rzn1-miic.yaml b/Documentation/devicetree/bindings/net/pcs/renesas,rzn1-miic.yaml
+index f9d39114e667..5ad1f993e8bd 100644
+--- a/Documentation/devicetree/bindings/net/pcs/renesas,rzn1-miic.yaml
++++ b/Documentation/devicetree/bindings/net/pcs/renesas,rzn1-miic.yaml
+@@ -51,14 +51,12 @@ properties:
+       - const: hclk
+ 
+   resets:
+-    items:
+-      - description: Converter register reset
+-      - description: Converter reset
++    minItems: 2
++    maxItems: 2
+ 
+   reset-names:
+-    items:
+-      - const: rst
+-      - const: crst
++    minItems: 2
++    maxItems: 2
+ 
+   renesas,miic-switch-portin:
+     description: MII Switch PORTIN configuration. This value should use one of
+@@ -109,8 +107,14 @@ allOf:
+       properties:
+         renesas,miic-switch-portin:
+           enum: [1, 2]
+-        resets: false
+-        reset-names: false
++        resets:
++          items:
++            - description: Timestamp selector reset
++            - description: Converter reset
++        reset-names:
++          items:
++            - const: rst_ts
++            - const: rst_miic
+       patternProperties:
+         "^mii-conv@[0-5]$":
+           properties:
+@@ -161,9 +165,14 @@ allOf:
+       properties:
+         renesas,miic-switch-portin:
+           const: 0
+-      required:
+-        - resets
+-        - reset-names
++      resets:
++        items:
++          - description: Converter register reset
++          - description: Converter reset
++      reset-names:
++        items:
++          - const: rst
++          - const: crst
+       patternProperties:
+         "^mii-conv@[0-5]$":
+           properties:
+@@ -210,6 +219,8 @@ required:
+   - reg
+   - clocks
+   - clock-names
++  - resets
++  - reset-names
+   - power-domains
+ 
+ additionalProperties: false
+@@ -229,6 +240,9 @@ examples:
+               <&sysctrl R9A06G032_CLK_RMII_REF>,
+               <&sysctrl R9A06G032_HCLK_SWITCH_RG>;
+       clock-names = "mii_ref", "rgmii_ref", "rmii_ref", "hclk";
++      resets = <&sysctrl R9A06G032_RST_TS>,
++               <&sysctrl R9A06G032_RST_MIIC>;
++      reset-names = "rst_ts", "rst_miic";
+       renesas,miic-switch-portin = <MIIC_GMAC2_PORT>;
+       power-domains = <&sysctrl>;
+ 
+
 -- 
-Kyle Hendry <khendry@reliablecontrols.com>
+2.53.0
 
