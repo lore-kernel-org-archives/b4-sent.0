@@ -1,112 +1,300 @@
 From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Subject: [PATCH v2 0/7] HID: iio: Unify probe-path logging
-Date: Fri, 27 Nov 2026 16:03:55 +0530
-Message-Id: <20261127-19-oct-hid-iio-unified-print-framework-v2-0-3f476fe1a940@gmail.com>
+Date: Fri, 27 Nov 2026 16:03:56 +0530
+Subject: [PATCH v2 1/7] iio: Remove redundant probe error messages for HID
+ device drivers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAJNcCWsC/42OTQ6CMBSEr2K69pm2CBVX3sOwgP7AU2lJW1BDu
- LsFLmAymy+ZzDczCdqjDuR6mInXEwZ0NgE/HojsattqQJWYcMoLRlkJKU5G6FABooPRokGtYPB
- oIxhf9/rt/BMyeRHiLJiRIiNpbPDa4GcT3audw9g8tIzr+troMETnv9uTia29Xcpo/q90YkCBN
- llBVZnnXJW3tq/xdZKuJ9WyLD8rOCJz7gAAAA==
-X-Change-ID: 20261019-19-oct-hid-iio-unified-print-framework-3c877471fc73
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261127-19-oct-hid-iio-unified-print-framework-v2-1-3f476fe1a940@gmail.com>
+References: <20261127-19-oct-hid-iio-unified-print-framework-v2-0-3f476fe1a940@gmail.com>
+In-Reply-To: <20261127-19-oct-hid-iio-unified-print-framework-v2-0-3f476fe1a940@gmail.com>
 To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>, 
  Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
  David Lechner <dlechner@baylibre.com>, 
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
  Andy Shevchenko <andy@kernel.org>
 Cc: linux-input@vger.kernel.org, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>, 
- Joshua Crofts <crofts@kernel.org>
+ linux-kernel@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795775655; l=3783;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795775655; l=10007;
  i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=bpNV8vBzENgP8GtCrU3v7oWc2k9XQlhvPB2UVdV3Xh8=;
- b=CbUH6/t9LfnZL7SYM7siPLQuJzPYug4GGTM2/cUjHt7j7sKOfcQ3f5a2hPrTWNFudMgHMVCiT
- bfDEaIJ2agLATa5lb8CW9zlWUxXNs0EFAUwAC8VdCKNcTqq45MSW6gO
+ bh=hLRybqqLhTLHMvSp2FxME1GWpO/LWPhzWnyve6U2utw=;
+ b=uiqaCSKBGHqYp631mdbRlVggNzc1OZTrBQ/JcWArX/AG7/sXim7D8EVkZlu3pDeFbCFKIyghw
+ IEWcM6Y9/PBCUEd8xtRJ0GwxXmdd4uXn1NZ3HuN5Ffn7W3pMZfSAph6
 X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
  pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
 X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series provides consistent support for logs in probe() path for
-HID IIO drivers with suggestion and input from Jonathan.
+devm_hid_sensor_setup_trigger() already logs an error when the request
+fails for trigger allocation or registration failure, making the
+explicit dev_err() redundant.
 
-This is followup series on top of multiple sub-series submitted for HID
-IIO device drivers which included fixes, devm support, cleanup and using
-preferred kernel coding style. This series adopts a common logging
-approach throughout the HID IIO device drivers in probe path.
+Similarly, devm_sensor_hub_register_callback() returns -EINVAL, -ENOMEM
+or 0 (success), making the dev_err() in the probe path redundant.
 
-The result is more consistent error reporting and improved
-maintainability across the HID IIO subsystem for following drivers:
-find drivers/iio/ -name "*hid*.c"
-drivers/iio/orientation/hid-sensor-rotation.c
-drivers/iio/orientation/hid-sensor-incl-3d.c
-drivers/iio/gyro/hid-sensor-gyro-3d.c
-drivers/iio/pressure/hid-sensor-press.c
-drivers/iio/temperature/hid-sensor-temperature.c
-drivers/iio/common/hid-sensors/hid-sensor-trigger.c
-drivers/iio/common/hid-sensors/hid-sensor-attributes.c
-drivers/iio/humidity/hid-sensor-humidity.c
-drivers/iio/light/hid-sensor-prox.c
-drivers/iio/light/hid-sensor-als.c
-drivers/iio/magnetometer/hid-sensor-magn-3d.c
-drivers/iio/position/hid-sensor-custom-intel-hinge.c
-drivers/iio/accel/hid-sensor-accel-3d.c
-
-Additionally, I have kept changes specific to logical diff instead of
-driver specific and covered all HID IIO device drivers.
-
-Testing:
-  - Compiled with W=1 for each patch in series
-PS:
-- Sashiko reported an issue in a different driver and noted that it is not
-  introduced by this series. I have taken this feedback into account and
-  will address the actual issue in a separate series focus on that driver.
+Remove both messages from HID-IIO device drivers.
 
 Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
 ---
-Changes in v2:
-- Following suggestion of Joshua, remove the comparison and change the
-  checks to `if (ret)` as respective devm_*() API `return 0` on success.
-- Link to v1: https://patch.msgid.link/20261105-19-oct-hid-iio-unified-print-framework-v1-0-0b360d9552d9@gmail.com
+ drivers/iio/accel/hid-sensor-accel-3d.c              | 8 ++------
+ drivers/iio/gyro/hid-sensor-gyro-3d.c                | 8 ++------
+ drivers/iio/light/hid-sensor-als.c                   | 8 ++------
+ drivers/iio/light/hid-sensor-prox.c                  | 8 ++------
+ drivers/iio/magnetometer/hid-sensor-magn-3d.c        | 8 ++------
+ drivers/iio/orientation/hid-sensor-incl-3d.c         | 8 ++------
+ drivers/iio/orientation/hid-sensor-rotation.c        | 8 ++------
+ drivers/iio/position/hid-sensor-custom-intel-hinge.c | 8 ++------
+ drivers/iio/pressure/hid-sensor-press.c              | 8 ++------
+ 9 files changed, 18 insertions(+), 54 deletions(-)
 
-To: Jiri Kosina <jikos@kernel.org>
-To: Jonathan Cameron <jic23@kernel.org>
-To: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
-To: David Lechner <dlechner@baylibre.com>
-To: Nuno Sá <nuno.sa@analog.com>
-To: Andy Shevchenko <andy@kernel.org>
-Cc: linux-input@vger.kernel.org
-Cc: linux-iio@vger.kernel.org
+diff --git a/drivers/iio/accel/hid-sensor-accel-3d.c b/drivers/iio/accel/hid-sensor-accel-3d.c
+index 7ba0228f18b4..51f1ae6b222f 100644
+--- a/drivers/iio/accel/hid-sensor-accel-3d.c
++++ b/drivers/iio/accel/hid-sensor-accel-3d.c
+@@ -377,20 +377,16 @@ static int hid_accel_3d_probe(struct platform_device *pdev)
+ 
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &accel_state->common_attributes);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "trigger setup failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	accel_state->callbacks.send_event = accel_3d_proc_event;
+ 	accel_state->callbacks.capture_sample = accel_3d_capture_sample;
+ 	accel_state->callbacks.pdev = pdev;
+ 	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage,
+ 						&accel_state->callbacks);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "callback reg failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	return devm_iio_device_register(dev, indio_dev);
+ }
+diff --git a/drivers/iio/gyro/hid-sensor-gyro-3d.c b/drivers/iio/gyro/hid-sensor-gyro-3d.c
+index 66778315e86d..ebf34365819c 100644
+--- a/drivers/iio/gyro/hid-sensor-gyro-3d.c
++++ b/drivers/iio/gyro/hid-sensor-gyro-3d.c
+@@ -314,10 +314,8 @@ static int hid_gyro_3d_probe(struct platform_device *pdev)
+ 
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &gyro_state->common_attributes);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "trigger setup failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	gyro_state->callbacks.send_event = gyro_3d_proc_event;
+ 	gyro_state->callbacks.capture_sample = gyro_3d_capture_sample;
+@@ -325,10 +323,8 @@ static int hid_gyro_3d_probe(struct platform_device *pdev)
+ 	ret = devm_sensor_hub_register_callback(dev, hsdev,
+ 						HID_USAGE_SENSOR_GYRO_3D,
+ 						&gyro_state->callbacks);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "callback reg failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	return devm_iio_device_register(dev, indio_dev);
+ }
+diff --git a/drivers/iio/light/hid-sensor-als.c b/drivers/iio/light/hid-sensor-als.c
+index f531f25d1b63..452ac6a9651a 100644
+--- a/drivers/iio/light/hid-sensor-als.c
++++ b/drivers/iio/light/hid-sensor-als.c
+@@ -413,20 +413,16 @@ static int hid_als_probe(struct platform_device *pdev)
+ 
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &als_state->common_attributes);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "trigger setup failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	als_state->callbacks.send_event = als_proc_event;
+ 	als_state->callbacks.capture_sample = als_capture_sample;
+ 	als_state->callbacks.pdev = pdev;
+ 	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage,
+ 						&als_state->callbacks);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "callback reg failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	return devm_iio_device_register(dev, indio_dev);
+ }
+diff --git a/drivers/iio/light/hid-sensor-prox.c b/drivers/iio/light/hid-sensor-prox.c
+index 355b7b02868c..af4becb2e7dd 100644
+--- a/drivers/iio/light/hid-sensor-prox.c
++++ b/drivers/iio/light/hid-sensor-prox.c
+@@ -302,20 +302,16 @@ static int hid_prox_probe(struct platform_device *pdev)
+ 
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &prox_state->common_attributes);
+-	if (ret) {
+-		dev_err(&pdev->dev, "trigger setup failed\n");
++	if (ret)
+ 		return ret;
+-	}
+ 
+ 	prox_state->callbacks.send_event = prox_proc_event;
+ 	prox_state->callbacks.capture_sample = prox_capture_sample;
+ 	prox_state->callbacks.pdev = pdev;
+ 	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage,
+ 						&prox_state->callbacks);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "callback reg failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	return devm_iio_device_register(dev, indio_dev);
+ }
+diff --git a/drivers/iio/magnetometer/hid-sensor-magn-3d.c b/drivers/iio/magnetometer/hid-sensor-magn-3d.c
+index 4f4cc441770c..5dd36cfd0ca7 100644
+--- a/drivers/iio/magnetometer/hid-sensor-magn-3d.c
++++ b/drivers/iio/magnetometer/hid-sensor-magn-3d.c
+@@ -499,10 +499,8 @@ static int hid_magn_3d_probe(struct platform_device *pdev)
+ 
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &magn_state->magn_flux_attributes);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "trigger setup failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	magn_state->callbacks.send_event = magn_3d_proc_event;
+ 	magn_state->callbacks.capture_sample = magn_3d_capture_sample;
+@@ -510,10 +508,8 @@ static int hid_magn_3d_probe(struct platform_device *pdev)
+ 	ret = devm_sensor_hub_register_callback(dev, hsdev,
+ 						HID_USAGE_SENSOR_COMPASS_3D,
+ 						&magn_state->callbacks);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "callback reg failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	return devm_iio_device_register(dev, indio_dev);
+ }
+diff --git a/drivers/iio/orientation/hid-sensor-incl-3d.c b/drivers/iio/orientation/hid-sensor-incl-3d.c
+index b5f70732d035..4570a698cf0e 100644
+--- a/drivers/iio/orientation/hid-sensor-incl-3d.c
++++ b/drivers/iio/orientation/hid-sensor-incl-3d.c
+@@ -346,10 +346,8 @@ static int hid_incl_3d_probe(struct platform_device *pdev)
+ 
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &incl_state->common_attributes);
+-	if (ret) {
+-		dev_err(&pdev->dev, "trigger setup failed\n");
++	if (ret)
+ 		return ret;
+-	}
+ 
+ 	incl_state->callbacks.send_event = incl_3d_proc_event;
+ 	incl_state->callbacks.capture_sample = incl_3d_capture_sample;
+@@ -357,10 +355,8 @@ static int hid_incl_3d_probe(struct platform_device *pdev)
+ 	ret = devm_sensor_hub_register_callback(dev, hsdev,
+ 						HID_USAGE_SENSOR_INCLINOMETER_3D,
+ 						&incl_state->callbacks);
+-	if (ret) {
+-		dev_err(&pdev->dev, "callback reg failed\n");
++	if (ret)
+ 		return ret;
+-	}
+ 
+ 	return devm_iio_device_register(dev, indio_dev);
+ }
+diff --git a/drivers/iio/orientation/hid-sensor-rotation.c b/drivers/iio/orientation/hid-sensor-rotation.c
+index f97c278f16cb..d74fee4b56c8 100644
+--- a/drivers/iio/orientation/hid-sensor-rotation.c
++++ b/drivers/iio/orientation/hid-sensor-rotation.c
+@@ -359,20 +359,16 @@ static int hid_dev_rot_probe(struct platform_device *pdev)
+ 
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &rot_state->common_attributes);
+-	if (ret) {
+-		dev_err(&pdev->dev, "trigger setup failed\n");
++	if (ret)
+ 		return ret;
+-	}
+ 
+ 	rot_state->callbacks.send_event = dev_rot_proc_event;
+ 	rot_state->callbacks.capture_sample = dev_rot_capture_sample;
+ 	rot_state->callbacks.pdev = pdev;
+ 	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage,
+ 						&rot_state->callbacks);
+-	if (ret) {
+-		dev_err(&pdev->dev, "callback reg failed\n");
++	if (ret)
+ 		return ret;
+-	}
+ 
+ 	return devm_iio_device_register(dev, indio_dev);
+ }
+diff --git a/drivers/iio/position/hid-sensor-custom-intel-hinge.c b/drivers/iio/position/hid-sensor-custom-intel-hinge.c
+index 101d84b533c9..0b5e3f71e962 100644
+--- a/drivers/iio/position/hid-sensor-custom-intel-hinge.c
++++ b/drivers/iio/position/hid-sensor-custom-intel-hinge.c
+@@ -313,19 +313,15 @@ static int hid_hinge_probe(struct platform_device *pdev)
+ 	atomic_set(&st->common_attributes.data_ready, 0);
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, indio_dev->name,
+ 					    &st->common_attributes);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "trigger setup failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	st->callbacks.send_event = hinge_proc_event;
+ 	st->callbacks.capture_sample = hinge_capture_sample;
+ 	st->callbacks.pdev = pdev;
+ 	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage, &st->callbacks);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "callback reg failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	return devm_iio_device_register(dev, indio_dev);
+ }
+diff --git a/drivers/iio/pressure/hid-sensor-press.c b/drivers/iio/pressure/hid-sensor-press.c
+index 8ebb8f54a0cb..b081990ffc03 100644
+--- a/drivers/iio/pressure/hid-sensor-press.c
++++ b/drivers/iio/pressure/hid-sensor-press.c
+@@ -281,10 +281,8 @@ static int hid_press_probe(struct platform_device *pdev)
+ 
+ 	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
+ 					    &press_state->common_attributes);
+-	if (ret) {
+-		dev_err(&pdev->dev, "trigger setup failed\n");
++	if (ret)
+ 		return ret;
+-	}
+ 
+ 	press_state->callbacks.send_event = press_proc_event;
+ 	press_state->callbacks.capture_sample = press_capture_sample;
+@@ -292,10 +290,8 @@ static int hid_press_probe(struct platform_device *pdev)
+ 	ret = devm_sensor_hub_register_callback(dev, hsdev,
+ 						HID_USAGE_SENSOR_PRESSURE,
+ 						&press_state->callbacks);
+-	if (ret < 0) {
+-		dev_err(&pdev->dev, "callback reg failed\n");
++	if (ret < 0)
+ 		return ret;
+-	}
+ 
+ 	return devm_iio_device_register(dev, indio_dev);
+ }
 
----
-Sanjay Chitroda (7):
-      iio: Remove redundant probe error messages for HID device drivers
-      iio: Remove redundant devm_kmemdup() allocation failure messages
-      iio: magnetometer: hid-sensor-magn-3d: drop redundant probe error messages
-      iio: Use dev_err_probe() in HID IIO device drivers
-      iio: add probe error messages to hid humidity and temperature drivers
-      iio: Simplify trigger setup error checks
-      iio: Simplify callback registration error checks
-
- drivers/iio/accel/hid-sensor-accel-3d.c            | 27 +++++---------
- drivers/iio/gyro/hid-sensor-gyro-3d.c              | 24 ++++---------
- drivers/iio/humidity/hid-sensor-humidity.c         |  4 +--
- drivers/iio/light/hid-sensor-als.c                 | 20 ++++-------
- drivers/iio/light/hid-sensor-prox.c                | 20 ++++-------
- drivers/iio/magnetometer/hid-sensor-magn-3d.c      | 41 ++++++----------------
- drivers/iio/orientation/hid-sensor-incl-3d.c       | 24 ++++---------
- drivers/iio/orientation/hid-sensor-rotation.c      | 20 ++++-------
- .../iio/position/hid-sensor-custom-intel-hinge.c   | 20 ++++-------
- drivers/iio/pressure/hid-sensor-press.c            | 24 ++++---------
- drivers/iio/temperature/hid-sensor-temperature.c   |  4 +--
- 11 files changed, 69 insertions(+), 159 deletions(-)
----
-base-commit: 39508411b82d4dc29dd245bb471ec9ecc1111c9d
-change-id: 20261019-19-oct-hid-iio-unified-print-framework-3c877471fc73
-
-Best regards,
---  
-Sanjay Chitroda <sanjayembeddedse@gmail.com>
+-- 
+2.34.1
 
