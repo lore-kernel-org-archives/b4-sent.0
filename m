@@ -1,78 +1,108 @@
-From: Demeter Barna <me@fromdisposition.org>
-Date: Fri, 27 Nov 2026 15:24:26 +0000
-Subject: [PATCH v3 2/2] arm64: dts: qcom: sm8350: Add the inline crypto
- engine
+From: Zhendong Liu <yzddmr6@gmail.com>
+Date: Fri, 27 Nov 2026 23:24:37 +0800
+Subject: [PATCH v2] drm/msm/dsi: Fix double put of the PHY device on probe
+ deferral
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-b4-sm8350-ice-v3-2-39c5b4f562cd@fromdisposition.org>
-References: <20261127-b4-sm8350-ice-v3-0-39c5b4f562cd@fromdisposition.org>
-In-Reply-To: <20261127-b4-sm8350-ice-v3-0-39c5b4f562cd@fromdisposition.org>
-To: Abel Vesa <abelvesa@kernel.org>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org, 
- devicetree@vger.kernel.org, Demeter Barna <me@fromdisposition.org>, 
- Abel Vesa <abel.vesa@oss.qualcomm.com>
+Message-Id: <20261127-upstream2-msm-dsi-phy-ref-v2-1-be82aab71166@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALSgCWsC/42Oyw6CMBBFf8V07SAtL+PK/zAs+higxgLpAJEQ/
+ t0WE9cuz507J3djhN4isdtpYx4XS3boA4jzielO9i2CNYGZSEXJuUhhHmnyKJ0ARw4MWRi7FTw
+ 2oLDJjMbMNFiy8D+G0L4P96P+Ms3qiXqKwthQkhCUl73uYvRTX47DUiU5eJ3FZmdpGvx6zFx4N
+ P6zaOHAwYiyUtfKFHnR3Fsn7SvRg2P1vu8ffpuClv4AAAA=
+X-Change-ID: 20261120-upstream2-msm-dsi-phy-ref-bef3dce3dfe6
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>
+Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Miaoqian Lin <linmq006@gmail.com>, 
+ Christophe JAILLET <christophe.jaillet@wanadoo.fr>, 
+ linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Zhendong Liu <yzddmr6@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795793066; l=1526;
- i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
- bh=zxW8jDNFW4qc/Eyi8Ue01FHv0GrQD3Xmn2cTviIeaNA=;
- b=YVuDA781UT1ExpM5nAp2kWVtTBsxtJv1HThvvaNBihcqIkFZNXPyLbty9KoIrSEKvmWIPOFqi
- gwK1ciGqO2ACu3cgwOolHFsBe/GCltvYk+J7u3w6O5KX/wiB3VE9UPJ
-X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
- pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
-X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795793078; l=2946;
+ i=yzddmr6@gmail.com; s=20261028; h=from:subject:message-id;
+ bh=7pDeVytCnO+Ht8gillWTKBsW0hZk8jkNgWUnJt2sCQc=;
+ b=OP/iel1IqGfob8BkPZuho3vNQCEgYSMhN1s5aYKbitq3QmqUqaPt8DOPBLz+9gYhVM0WI8chv
+ FLaoDIVNTruAwtKO+up8aAXOqEGzDbNxK6geJVWNHxPH5Pf8bqEBBP1
+X-Developer-Key: i=yzddmr6@gmail.com; a=ed25519;
+ pk=QLT2mwairk4R38oU379hkHynqjoLrlqd0Cl1ERUqIqY=
+X-Endpoint-Received: by B4 Relay for yzddmr6@gmail.com/20261028 with auth_id=1489
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the UFS inline crypto engine at 0x1d88000 and hand it to the
-UFS host controller with qcom,ice. The region is 0x18000, as on SM8450
-and later SoCs; it is clocked by the UFS ICE core and AHB clocks and
-powered by the UFS PHY GDSC, as on SM8450. Without it the UFS driver
-logs "Disabling inline encryption support" and fscrypt has no hardware
-path.
+Since commit 6977cc89c875 ("drm/msm/dsi: Fix some reference counted
+resource leaks"), dsi_get_phy() stores the PHY device it looked up in
+msm_dsi->phy_dev before it checks whether the PHY driver has bound, and
+dsi_destroy() drops that reference. dsi_init() calls dsi_destroy() when
+dsi_get_phy() fails.
 
-Reviewed-by: Abel Vesa <abel.vesa@oss.qualcomm.com>
-Signed-off-by: Demeter Barna <me@fromdisposition.org>
+Commit c04c3148ca12 ("drm/msm/dsi: Fix missing put_device() call in
+dsi_get_phy") then added a put_device() for the case where the PHY
+device exists but has no driver data yet. In that case the reference is
+now dropped twice, once in dsi_get_phy() and again in dsi_destroy(), so
+each probe deferral for this reason takes one reference too many from
+the PHY platform device. Enough deferrals underflow its refcount and
+free it while it is still registered.
+
+fw_devlink normally keeps the DSI host from probing before its PHY has
+bound. The path is reached with fw_devlink=permissive or off, and after
+the deferred probe timeout when no driver matches the PHY device, as
+the device link is relaxed then and every probe retry of the DSI host
+drops another reference.
+
+Drop the put_device() and leave the reference to dsi_destroy(). This
+effectively reverts that commit and brings back the single check that
+it split in two.
+
+The double put was found with the help of an AI coding assistant during
+a review of the driver.
+
+Fixes: c04c3148ca12 ("drm/msm/dsi: Fix missing put_device() call in dsi_get_phy")
+Signed-off-by: Zhendong Liu <yzddmr6@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sm8350.dtsi | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Found by reading the code; I have not hit this on hardware, and there
+is no reproducer. Build-tested only: drivers/gpu/drm/msm/ with W=1
+(arm64 defconfig) on the base commit below, no new warnings.
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8350.dtsi b/arch/arm64/boot/dts/qcom/sm8350.dtsi
-index 7b9966e8f..bc38c7173 100644
---- a/arch/arm64/boot/dts/qcom/sm8350.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8350.dtsi
-@@ -2135,6 +2135,8 @@ &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>,
- 				<0 0>,
- 				<0 0>,
- 				<0 0>;
-+			qcom,ice = <&ice>;
-+
- 			status = "disabled";
- 		};
- 
-@@ -2160,6 +2162,17 @@ ufs_mem_phy: phy@1d87000 {
- 			status = "disabled";
- 		};
- 
-+		ice: crypto@1d88000 {
-+			compatible = "qcom,sm8350-inline-crypto-engine",
-+				     "qcom,inline-crypto-engine";
-+			reg = <0 0x01d88000 0 0x18000>;
-+			clocks = <&gcc GCC_UFS_PHY_ICE_CORE_CLK>,
-+				 <&gcc GCC_UFS_PHY_AHB_CLK>;
-+			clock-names = "core",
-+				      "iface";
-+			power-domains = <&gcc UFS_PHY_GDSC>;
-+		};
-+
- 		cryptobam: dma-controller@1dc4000 {
- 			compatible = "qcom,bam-v1.7.4", "qcom,bam-v1.7.0";
- 			reg = <0 0x01dc4000 0 0x24000>;
+I used an AI coding assistant for this work. It found the double put
+while reviewing the driver and drafted this patch and changelog. I have
+reviewed the change.
+---
+Changes in v2:
+- Use my legal name in the From: and Signed-off-by: lines, as requested.
+- Link to v1: https://patch.msgid.link/20261120-upstream2-msm-dsi-phy-ref-v1-1-d267b87d545f@gmail.com
+---
+ drivers/gpu/drm/msm/dsi/dsi.c | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
 
--- 
-2.53.0
+diff --git a/drivers/gpu/drm/msm/dsi/dsi.c b/drivers/gpu/drm/msm/dsi/dsi.c
+index 090726be5061..5f9a1409432a 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi.c
++++ b/drivers/gpu/drm/msm/dsi/dsi.c
+@@ -44,12 +44,7 @@ static int dsi_get_phy(struct msm_dsi *msm_dsi)
+ 
+ 	of_node_put(phy_node);
+ 
+-	if (!phy_pdev) {
+-		DRM_DEV_ERROR(&pdev->dev, "%s: phy driver is not ready\n", __func__);
+-		return -EPROBE_DEFER;
+-	}
+-	if (!msm_dsi->phy) {
+-		put_device(&phy_pdev->dev);
++	if (!phy_pdev || !msm_dsi->phy) {
+ 		DRM_DEV_ERROR(&pdev->dev, "%s: phy driver is not ready\n", __func__);
+ 		return -EPROBE_DEFER;
+ 	}
+
+---
+base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
+change-id: 20261120-upstream2-msm-dsi-phy-ref-bef3dce3dfe6
+
+Best regards,
+--  
+Zhendong Liu <yzddmr6@gmail.com>
 
