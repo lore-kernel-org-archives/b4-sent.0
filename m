@@ -1,71 +1,77 @@
-From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-Date: Fri, 27 Nov 2026 16:21:09 +0100
-Subject: [PATCH 4/4] ARM: dts: broadcom: bcm2711: Add DMA to sdhost
+From: Demeter Barna <me@fromdisposition.org>
+Subject: [PATCH v3 0/2] arm64: dts: qcom: sm8350: Add the inline crypto
+ engine
+Date: Fri, 27 Nov 2026 15:24:24 +0000
+Message-Id: <20261127-b4-sm8350-ice-v3-0-39c5b4f562cd@fromdisposition.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261127-bcm2835-spi-dma-v1-4-8b134991ba2e@gmail.com>
-References: <20261127-bcm2835-spi-dma-v1-0-8b134991ba2e@gmail.com>
-In-Reply-To: <20261127-bcm2835-spi-dma-v1-0-8b134991ba2e@gmail.com>
-To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOQQ6CMBAF0KuQrq1pCyXFlfcwLko7hTGBkhaJh
+ nB3W9wYo8uf/Hl/VhIhIERyKlYSYMGIfkyhPBTE9HrsgKJNmQgmas6ZpG1F46BKySgaoOC0rSQ
+ 0pagFSTdTAIeP3btc3zne2xuYOSO50WOcfXjugwvPvX/2wimjTkqoQSvgRp9d8IPFOPmIc/rz6
+ ENH8soiPp3m2xHZsRJU1aj0K/vtbNv2ApYFu5QOAQAA
+X-Change-ID: 20261105-b4-sm8350-ice-efad45e93262
+To: Abel Vesa <abelvesa@kernel.org>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Florian Fainelli <florian.fainelli@broadcom.com>, 
- Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>, 
- Ray Jui <ray.jui@broadcom.com>, Scott Branden <scott.branden@broadcom.com>, 
- Kanak Shilledar <kanakshilledar111@protonmail.com>, 
- Stefan Wahren <wahrenst@gmx.net>, Florian Fanelli <f.fainelli@gmail.com>, 
- Eric Anholt <eric@anholt.net>
-Cc: Conor Dooley <conor.dooley@microchip.com>, linux-spi@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-rpi-kernel@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, Miroslav Ondra <ondra@faster.cz>, 
- =?utf-8?q?Matou=C5=A1_H=C3=BDbl?= <hyblmatous@gmail.com>, 
- =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-crypto@vger.kernel.org, 
+ devicetree@vger.kernel.org, Demeter Barna <me@fromdisposition.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Abel Vesa <abel.vesa@oss.qualcomm.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795792928; l=1245;
- i=cleverline1mc@gmail.com; s=20261121; h=from:subject:message-id;
- bh=/3A1iVIGEOw8HTcWNipf4TWXImmbOVBsqjUojsiUWt4=;
- b=VCfdHD94pBgq/9ZwoeVithEmUptRa44rd0G0LBgq5ZCYGee/qKBnsr7Q5Dnues8r6YQKBlxjj
- cXOmfx7dOBlDojaQA6Cz4l1rfPKOkeQM0VWyJuqBez2grlZjLIv0At8
-X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
- pk=2UEUVmQyfsiFZkNS7dkgFg0rUmhbcMIytM6NYhxFt/Y=
-X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20261121 with auth_id=1594
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795793066; l=1656;
+ i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
+ bh=kWxMQLo7ohxE4T9YHeCEZxmxXgiJKDWlketpNvOdZy0=;
+ b=C7JhKntAjq/5VgGVzZy5b05GWrq+4akbyF0Oc/ezuiRaVtUVs8XNLfvBJXH4Xtik6jz3NWzXN
+ 7mGwodTD32kCZq2xXADVS6t24qhRTMe0G3PuMRlAChPBUEObFDjVLQY
+X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
+ pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
+X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On BCM2835/6/7, sdhost gets its DMA channel from bcm2835-common.dtsi.
-Commit 7dbe8c62ceeb ("ARM: dts: Add minimal Raspberry Pi 4 support")
-added the BCM2711 DMA controller but gave sdhost no channel, so a
-BCM2711 board that enables sdhost runs it in PIO mode:
+SM8350 has an inline crypto engine (ICE v3.2.0) next to its UFS host,
+but sm8350.dtsi does not describe it, so ufs-qcom runs without inline
+encryption. Add the compatible to the binding and the node to
+sm8350.dtsi, as on SM8450.
 
-  sdhost-bcm2835 fe202000.mmc: unable to initialise DMA channel. Falling back to PIO
+The TrustZone offers the raw-key SCM calls but not
+GENERATE/PREPARE/IMPORT_ICE_KEY, so qcom-ice uses raw keys.
 
-Add the same dmas as on BCM2835/6/7; the BCM2711 legacy DMA engine uses
-the same DREQ number.
+Tested on a Razer Edge 5G with fscrypt v2 on ext4: "AES-256-XTS using
+blk-crypto (native)", and files written with and without inlinecrypt
+read back correctly either way. dtbs_check is clean for all SM8350
+boards.
 
-Tested on a Raspberry Pi 4 B: the driver gets its channel and reports
-"DMA enabled". Nothing on that board is wired to the sdhost pins, so
-transfers are untested.
-
-Fixes: 7dbe8c62ceeb ("ARM: dts: Add minimal Raspberry Pi 4 support")
-Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
+Signed-off-by: Demeter Barna <me@fromdisposition.org>
 ---
- arch/arm/boot/dts/broadcom/bcm2711.dtsi | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v3:
+- dts: region size 0x18000.
+- Rebased on next-20261126.
+- Picked up the Reviewed-by tags.
+- Link to v2: https://patch.msgid.link/20261109-b4-sm8350-ice-v2-0-fd5e84985e90@fromdisposition.org
 
-diff --git a/arch/arm/boot/dts/broadcom/bcm2711.dtsi b/arch/arm/boot/dts/broadcom/bcm2711.dtsi
-index 0680a0b1ca67..e18f11fb7f00 100644
---- a/arch/arm/boot/dts/broadcom/bcm2711.dtsi
-+++ b/arch/arm/boot/dts/broadcom/bcm2711.dtsi
-@@ -1155,6 +1155,8 @@ &sdhci {
- 
- &sdhost {
- 	interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
-+	dmas = <&dma 13>;
-+	dma-names = "rx-tx";
- };
- 
- &spi {
+Changes in v2:
+- dt-bindings: drop SM8350 from the legacy single-clock list. It was
+  added there by mistake; SM8350 does not need the exemption, its node
+  has both clocks and the power domain.
+- Link to v1: https://patch.msgid.link/20261105-b4-sm8350-ice-v1-0-f55e6ea8e1ca@fromdisposition.org
 
--- 
-2.47.3
+---
+Demeter Barna (2):
+      dt-bindings: crypto: qcom,inline-crypto-engine: Add SM8350
+      arm64: dts: qcom: sm8350: Add the inline crypto engine
+
+ .../bindings/crypto/qcom,inline-crypto-engine.yaml          |  1 +
+ arch/arm64/boot/dts/qcom/sm8350.dtsi                        | 13 +++++++++++++
+ 2 files changed, 14 insertions(+)
+---
+base-commit: a9c48428cbd8d96b26f92631d0db6f8519c5fcc5
+change-id: 20261105-b4-sm8350-ice-efad45e93262
+
+Best regards,
+--  
+Demeter Barna <me@fromdisposition.org>
 
