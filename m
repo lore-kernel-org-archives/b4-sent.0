@@ -1,168 +1,74 @@
-From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Fri, 27 Nov 2026 23:59:31 +0300
-Subject: [PATCH 3/3] ARM: multi_v7_defconfig: Enable CS7542 board
- peripherals
+From: Dickson Wu <dickson.wu@certik.com>
+Subject: [PATCH nf 0/2] netfilter: reject mismatched conntrack template
+ protocols
+Date: Fri, 27 Nov 2026 21:09:11 +0000
+Message-Id: <20261127-nf-ctproto2-v1-0-b5383cef8da2@certik.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-b4-cs7542-peripherals-dts-v1-3-7ce24b842b3a@gmail.com>
-References: <20261127-b4-cs7542-peripherals-dts-v1-0-7ce24b842b3a@gmail.com>
-In-Reply-To: <20261127-b4-cs7542-peripherals-dts-v1-0-7ce24b842b3a@gmail.com>
-To: Russell King <linux@armlinux.org.uk>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
- Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>
-Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAHfxCWsC/yWMQQrCMBBFr1Jm7UAa0KpXEReZZGIjMimZVITSu
+ 5vo8j3+fxsol8QK12GDwu+kKUuD8TCAn508GFNoDNbY0zjaCSWir0vJNVs0R3OmcKHINEF7LIV
+ j+vxqN5AI97/TlZ7sa8/0FTllpOLEz10pS6g5v7B72PcvpZGukZMAAAA=
+X-Change-ID: 20261127-nf-ctproto2-0508bd9bfeb7
+To: netfilter-devel@vger.kernel.org
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, 
+ Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>, 
+ coreteam@netfilter.org, netdev@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795813168; l=3974;
- i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=vT4krSx42qoR3S8n7cGSEM30fEtc2yONk4X37rZ0GVY=;
- b=JnNh2OsqjQB8T29kElxKlhthkalR+XyeKtbWKGwlRRQDveyITHgUctsYWVPZPKvJHx5ysYhU+
- /UISyGB0bWCCKzsgqmP4NrKH/fXN3P1qFDVKK96dvzj+S+q3iKUnjRM
-X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
- pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
-X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795813751; l=1932;
+ i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
+ bh=i71b4CrHv+7F8+HFRek3oHZywpCTEPpzNL6nhGvS7bs=;
+ b=0QGhu63aw7WiHz1z/nQvM94YRULFZEao8KtCxvIQ9FTkEq7AA/mWJNe+8wwsv58CdZU/qPobT
+ S+DwaR0rcYdBBF0aUyQ9PWDplR7BNi3bbh/m2b+H7bFe3Rrwl2bIzFC
+X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
+ pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
+X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Build the shared providers and boot-critical storage, watchdog and
-network support for Almond+. Enable the QCA8337 switch driver and U-Boot
-environment NVMEM layout needed for its factory MAC addresses. Existing
-generic ath9k/ath10k and xHCI support supplies the PCIe endpoint
-drivers.
+xt_CT under nft_compat can attach a helper or timeout policy selected from
+NFTA_RULE_COMPAT_PROTO to packets of another protocol. The helper mismatch
+also affects act_ct through the common template assignment path.
 
-Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
+Reject mismatched helpers and timeout policies when a conntrack copies its
+template state.
+
+Tested under UML with KASAN, with the trigger running as uid 1000 in new
+user and network namespaces (namespace-local CAP_NET_ADMIN only):
+
+- nft_compat xt_CT with the H.323 RAS helper on TCP: stock panics in
+  mangle_contents(); patched completes; reverted panics again.
+- act_ct with the RAS helper on TCP: stock panics in ras_help() from the
+  receive softirq; patched completes; reverted panics again.
+- xt_CT with an ICMP timeout policy on TCP: stock gives a KASAN
+  slab-out-of-bounds read in nf_conntrack_tcp_packet(); patched keeps the
+  default TCP timeout; reverted reads out of bounds again.
+- Matching-protocol controls still work: UDP H.323, TCP FTP, and ICMP
+  and UDP timeout policies.
+
+W=1 builds are clean. The rule-load checks in xt_CT and nft_ct already
+require an exact protocol match, so valid configurations are unaffected.
+The gap is nft_compat not enforcing its compat protocol per packet, and
+act_ct.
+
+A reproducer is available if it helps.
+
+This was found and the fix prepared with AI coding tools (OpenAI Codex
+agents, with review by Claude). I went over the analysis and the patch
+before signing off.
+
 ---
- arch/arm/configs/multi_v7_defconfig | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Dickson Wu (2):
+      netfilter: conntrack: reject helper protocol mismatch
+      netfilter: conntrack: reject timeout protocol mismatch
 
-diff --git a/arch/arm/configs/multi_v7_defconfig b/arch/arm/configs/multi_v7_defconfig
-index 23f144359..dde9393ba 100644
---- a/arch/arm/configs/multi_v7_defconfig
-+++ b/arch/arm/configs/multi_v7_defconfig
-@@ -177,6 +177,7 @@ CONFIG_NFC_S3FWRN5_I2C=m
- CONFIG_PCIEPORTBUS=y
- CONFIG_PCI_MVEBU=y
- CONFIG_PCI_TEGRA=y
-+CONFIG_PCIE_CS7542=y
- CONFIG_PCIE_RCAR_HOST=y
- CONFIG_PCI_RCAR_GEN2=y
- CONFIG_PCI_LAYERSCAPE=y
-@@ -203,6 +204,7 @@ CONFIG_MTD_CFI_INTELEXT=y
- CONFIG_MTD_PHYSMAP=y
- CONFIG_MTD_PHYSMAP_OF=y
- CONFIG_MTD_RAW_NAND=y
-+CONFIG_MTD_NAND_CS752X=y
- CONFIG_MTD_NAND_DENALI_DT=y
- CONFIG_MTD_NAND_OMAP2=y
- CONFIG_MTD_NAND_OMAP_BCH=y
-@@ -252,12 +254,14 @@ CONFIG_B53_SPI_DRIVER=m
- CONFIG_B53_MDIO_DRIVER=m
- CONFIG_B53_MMAP_DRIVER=m
- CONFIG_NET_DSA_BCM_SF2=m
-+CONFIG_NET_DSA_QCA8K=m
- CONFIG_NET_DSA_RZN1_A5PSW=m
- CONFIG_SUN4I_EMAC=y
- CONFIG_SPI_AX88796C=m
- CONFIG_BCMGENET=m
- CONFIG_BGMAC_BCMA=y
- CONFIG_SYSTEMPORT=m
-+CONFIG_CS7542_ETHERNET=y
- CONFIG_MACB=y
- CONFIG_NET_CALXEDA_XGMAC=y
- CONFIG_FTGMAC100=m
-@@ -300,6 +304,7 @@ CONFIG_CAN_C_CAN=m
- CONFIG_CAN_C_CAN_PLATFORM=m
- CONFIG_CAN_RCAR=m
- CONFIG_CAN_MCP251X=y
-+CONFIG_MDIO_CS75XX=y
- CONFIG_MDIO_MSCC_MIIM=m
- CONFIG_USB_PEGASUS=y
- CONFIG_USB_RTL8152=m
-@@ -409,6 +414,7 @@ CONFIG_VIRTIO_CONSOLE=y
- CONFIG_ASPEED_KCS_IPMI_BMC=m
- CONFIG_ASPEED_BT_IPMI_BMC=m
- CONFIG_HW_RANDOM=y
-+CONFIG_HW_RANDOM_CS75XX=y
- CONFIG_HW_RANDOM_ST=y
- CONFIG_HW_RANDOM_QCOM=m
- CONFIG_TCG_TPM=m
-@@ -423,6 +429,7 @@ CONFIG_I2C_ASPEED=m
- CONFIG_I2C_AT91=m
- CONFIG_I2C_BCM2835=y
- CONFIG_I2C_CADENCE=y
-+CONFIG_I2C_CS75XX=y
- CONFIG_I2C_DAVINCI=y
- CONFIG_I2C_DESIGNWARE_CORE=y
- CONFIG_I2C_DIGICOLOR=m
-@@ -480,6 +487,7 @@ CONFIG_SPI_XILINX=y
- CONFIG_SPI_SPIDEV=y
- CONFIG_SPMI=y
- CONFIG_PINCTRL_AS3722=y
-+CONFIG_PINCTRL_CS7542=y
- CONFIG_PINCTRL_MCP23S08=m
- CONFIG_PINCTRL_MICROCHIP_SGPIO=y
- CONFIG_PINCTRL_OCELOT=y
-@@ -492,6 +500,7 @@ CONFIG_PINCTRL_QCOM_SSBI_PMIC=y
- CONFIG_PINCTRL_RZA2=y
- CONFIG_PINCTRL_RZN1=y
- CONFIG_GPIO_ASPEED_SGPIO=y
-+CONFIG_GPIO_CS75XX=y
- CONFIG_GPIO_DAVINCI=y
- CONFIG_GPIO_DWAPB=y
- CONFIG_GPIO_EM=y
-@@ -568,6 +577,7 @@ CONFIG_UNIPHIER_THERMAL=y
- CONFIG_DA9063_WATCHDOG=m
- CONFIG_XILINX_WATCHDOG=y
- CONFIG_ARM_SP805_WATCHDOG=y
-+CONFIG_ARM_TWD_WATCHDOG=y
- CONFIG_AT91SAM9X_WATCHDOG=y
- CONFIG_SAMA5D4_WATCHDOG=y
- CONFIG_S3C2410_WATCHDOG=m
-@@ -1018,6 +1028,7 @@ CONFIG_EDAC_HIGHBANK_L2=y
- CONFIG_RTC_CLASS=y
- CONFIG_RTC_DRV_AC100=y
- CONFIG_RTC_DRV_AS3722=y
-+CONFIG_RTC_DRV_CS75XX=y
- CONFIG_RTC_DRV_DS1307=y
- CONFIG_RTC_DRV_HYM8563=m
- CONFIG_RTC_DRV_MAX8907=y
-@@ -1097,6 +1108,7 @@ CONFIG_CHROME_PLATFORMS=y
- CONFIG_CROS_EC=m
- CONFIG_CROS_EC_I2C=m
- CONFIG_CROS_EC_SPI=m
-+CONFIG_COMMON_CLK_CS7542=y
- CONFIG_COMMON_CLK_MAX77686=y
- CONFIG_COMMON_CLK_RK808=m
- CONFIG_COMMON_CLK_SCMI=y
-@@ -1223,14 +1235,17 @@ CONFIG_PWM_TIECAP=m
- CONFIG_PWM_TWL=m
- CONFIG_PWM_TWL_LED=m
- CONFIG_PWM_VT8500=y
-+CONFIG_CS75XX_INTC=y
- CONFIG_KEYSTONE_IRQ=y
- CONFIG_RESET_MCHP_SPARX5=y
- CONFIG_RESET_SCMI=y
-+CONFIG_RESET_CS7542=y
- CONFIG_RESET_TI_SCI=m
- CONFIG_RESET_TI_SYSCON=m
- CONFIG_PHY_SUN4I_USB=y
- CONFIG_PHY_SUN9I_USB=y
- CONFIG_PHY_BRCM_USB=m
-+CONFIG_PHY_CS7542_PCIE=y
- CONFIG_PHY_HIX5HD2_SATA=y
- CONFIG_PHY_BERLIN_SATA=y
- CONFIG_PHY_BERLIN_USB=y
-@@ -1264,6 +1279,7 @@ CONFIG_NVMEM_RMEM=m
- CONFIG_NVMEM_ROCKCHIP_EFUSE=m
- CONFIG_NVMEM_STM32_ROMEM=m
- CONFIG_NVMEM_SUNXI_SID=y
-+CONFIG_NVMEM_U_BOOT_ENV=y
- CONFIG_NVMEM_VF610_OCOTP=y
- CONFIG_FSI=m
- CONFIG_FSI_MASTER_GPIO=m
+ net/netfilter/nf_conntrack_core.c   | 10 +++++++---
+ net/netfilter/nf_conntrack_helper.c |  2 ++
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+---
+base-commit: 734bef548a96e8774d6eef5dfa2026c6edc4e80b
+change-id: 20261127-nf-ctproto2-0508bd9bfeb7
 
--- 
-2.53.0
+Best regards,
+--  
+Dickson Wu <dickson.wu@certik.com>
 
