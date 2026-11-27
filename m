@@ -1,230 +1,67 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 17:26:44 +0000
-Subject: [PATCH 6.12.y] block: Remove queue freezing from several sysfs
- store callbacks
+From: Kyle Hendry <khendry@reliablecontrols.com>
+Subject: [PATCH net-next 0/3] net: pcs: rzn1-miic: Deassert resets on RZ/N1
+Date: Fri, 27 Nov 2026 10:14:24 -0800
+Message-Id: <20261127-miic-reset-consumer-v1-0-3cab78b94e23@reliablecontrols.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-blk-612b-v1-1-07924ada0464@certik.com>
-X-B4-Tracking: v=1; b=H4sIAFO9CWsC/zWMQQ7CIBAAv9Ls2a1CIxq/YjywsFq0AcPWpqbp3
- wWNx5lMZgHhHFjg1CyQeQoSUiygNg243sYbY/CFQe+0UUofkIYHGqUJ993RkKHOe2Io+TPzNcz
- f1RlMq3T7hsvPy4vu7Mb6qSVZYaRso+urEo5+TGnA6rf/P6zrB8f3bl6dAAAA
-X-Change-ID: 20261127-blk-612b-5386b6b3ddbe
-In-Reply-To: <2025122946-opt-excuse-6662@gregkh>
-References: <2025122946-opt-excuse-6662@gregkh>
-To: stable@vger.kernel.org
-Cc: Bart Van Assche <bvanassche@acm.org>, Jens Axboe <axboe@kernel.dk>, 
- Nilay Shroff <nilay@linux.ibm.com>, Christoph Hellwig <hch@lst.de>, 
- Ming Lei <ming.lei@redhat.com>, linux-block@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795800404; l=6857;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=mgnMvUxtXsZfwZhNhKxk6V5OQWLXLPv1gwtIFRV02AY=;
- b=BOZkfvmk6IMO9zxRsiKOPeDmGEcsKS45Y8VNn/vRc8ugIKC/zti8+kw/lfwb05go1xEEtkruh
- tsRCLCyoEr4BNde9nuR/HOdMDpJbQ8DFVdEORBslFfJrZRU9w5NKM+e
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02OTQ6CMBCFr9LM2iadAqXlKsZFGQbtgqItGCLx7
+ jbqguXL+/t2yJwCZ+jEDomfIYc5FoEnAXTz8coyDEWDVtogaiOnEEgmzrxImmNeJ04Sx6F2znF
+ Ng4LSvCcew/ZdPUMsycjbApefk/ixlpvlb/c+c1maprB0QhD1FoeGK2x75VkTGUMeyWhLirxTr
+ dN2dDUc+TrxpVO6lekV8YCYpa2UbbDxXpPqnjVc3u8PwvRDBfQAAAA=
+X-Change-ID: 20261126-miic-reset-consumer-1fd4999e4cd0
+To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@linux.dev>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Geert Uytterhoeven <geert+renesas@glider.be>, 
+ Magnus Damm <magnus.damm@gmail.com>, 
+ Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>, 
+ Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
+ devicetree@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795803312; l=1416;
+ i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
+ bh=JO2AL8nQm/4CThDoEoEqZG8cMRX9Fw2AqtMC/yqXsaE=;
+ b=9QNZSFuzxGcaVgPGdtuz7Jqdawua3j0FN29mZ/5bemR5zmJgDPve5gruqIZ9bapync18DkU6X
+ hr4kXa/5ITVD66KdgVQuPNa+6l3o2l5Y/BaEWeV/Ok8TCyEra5TPdRZ
+X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
+ pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
+X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Bart Van Assche <bvanassche@acm.org>
+Two resets are held at boot and need to be cleared for the mii converted
+to work. They are in the system controller managed by the clock driver and
+are supported by this series:
+https://lore.kernel.org/linux-renesas-soc/20261126-rzn1-miic-resets-v4-0-4f73af81d779@reliablecontrols.com
 
-commit 935a20d1bebf6236076785fac3ff81e3931834e9 upstream.
+Add the reset information to the rzn1 info structure and device tree so
+the miic driver can clear the resets the same way the rz/t2h does.
 
-Freezing the request queue from inside sysfs store callbacks may cause a
-deadlock in combination with the dm-multipath driver and the
-queue_if_no_path option. Additionally, freezing the request queue slows
-down system boot on systems where sysfs attributes are set synchronously.
-
-Fix this by removing the blk_mq_freeze_queue() / blk_mq_unfreeze_queue()
-calls from the store callbacks that do not strictly need these callbacks.
-Add the __data_racy annotation to request_queue.rq_timeout to suppress
-KCSAN data race reports about the rq_timeout reads.
-
-This patch may cause a small delay in applying the new settings.
-
-For all the attributes affected by this patch, I/O will complete
-correctly whether the old or the new value of the attribute is used.
-
-This patch affects the following sysfs attributes:
-* io_poll_delay
-* io_timeout
-* nomerges
-* read_ahead_kb
-* rq_affinity
-
-Here is an example of a deadlock triggered by running test srp/002
-if this patch is not applied:
-
-task:multipathd
-Call Trace:
- <TASK>
- __schedule+0x8c1/0x1bf0
- schedule+0xdd/0x270
- schedule_preempt_disabled+0x1c/0x30
- __mutex_lock+0xb89/0x1650
- mutex_lock_nested+0x1f/0x30
- dm_table_set_restrictions+0x823/0xdf0
- __bind+0x166/0x590
- dm_swap_table+0x2a7/0x490
- do_resume+0x1b1/0x610
- dev_suspend+0x55/0x1a0
- ctl_ioctl+0x3a5/0x7e0
- dm_ctl_ioctl+0x12/0x20
- __x64_sys_ioctl+0x127/0x1a0
- x64_sys_call+0xe2b/0x17d0
- do_syscall_64+0x96/0x3a0
- entry_SYSCALL_64_after_hwframe+0x4b/0x53
- </TASK>
-task:(udev-worker)
-Call Trace:
- <TASK>
- __schedule+0x8c1/0x1bf0
- schedule+0xdd/0x270
- blk_mq_freeze_queue_wait+0xf2/0x140
- blk_mq_freeze_queue_nomemsave+0x23/0x30
- queue_ra_store+0x14e/0x290
- queue_attr_store+0x23e/0x2c0
- sysfs_kf_write+0xde/0x140
- kernfs_fop_write_iter+0x3b2/0x630
- vfs_write+0x4fd/0x1390
- ksys_write+0xfd/0x230
- __x64_sys_write+0x76/0xc0
- x64_sys_call+0x276/0x17d0
- do_syscall_64+0x96/0x3a0
- entry_SYSCALL_64_after_hwframe+0x4b/0x53
- </TASK>
-
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: Ming Lei <ming.lei@redhat.com>
-Cc: Nilay Shroff <nilay@linux.ibm.com>
-Cc: Martin Wilck <mwilck@suse.com>
-Cc: Benjamin Marzinski <bmarzins@redhat.com>
-Cc: stable@vger.kernel.org
-Fixes: af2814149883 ("block: freeze the queue in queue_attr_store")
-Signed-off-by: Bart Van Assche <bvanassche@acm.org>
-Reviewed-by: Nilay Shroff <nilay@linux.ibm.com>
-Signed-off-by: Jens Axboe <axboe@kernel.dk>
-[ adapted to 6.12.y: skip the freeze in queue_attr_store() instead ]
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
 ---
-This failed to apply to 6.12.y. 6.12 still freezes the queue in
-queue_attr_store() for every attribute, so instead of dropping the
-freeze from each callback, this skips it in the dispatcher for the same
-six stores the 6.18.y copy covers (read_ahead_kb, nomerges, rq_affinity,
-io_poll, io_poll_delay, io_timeout), keeping sysfs_lock and the NOIO
-scope. io_poll writes are ignored on 6.12 anyway. It also carries the
-WRITE_ONCE()/READ_ONCE() rq_timeout accesses from d23977fee1ee, since a
-request can now read the timeout while it's being written.
+Kyle Hendry (3):
+      dt-bindings: net: pcs: renesas,rzn1-miic: Document rzn1 resets
+      net: pcs: rzn1-miic: Add resets to rzn1 info structure
+      ARM: dts: renesas: r9a06g032: Add resets to mii converter
 
-Tested on 6.12.119: allmodconfig W=1 of the touched objects, base vs
-patched, no new warnings. Both kernels booted under QEMU/KVM, and on
-each I wrote valid and invalid values to every queue attribute of 11
-block devices during NVMe I/O (461 checks passed on both), plus NVMe
-polling and rejected poll writes on a RAM disk. I didn't reproduce the
-dm-multipath deadlock itself.
-
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
+ .../bindings/net/pcs/renesas,rzn1-miic.yaml        | 36 +++++++++++++++-------
+ arch/arm/boot/dts/renesas/r9a06g032.dtsi           |  3 ++
+ drivers/net/pcs/pcs-rzn1-miic.c                    |  7 +++++
+ 3 files changed, 35 insertions(+), 11 deletions(-)
 ---
- block/blk-settings.c   |  2 +-
- block/blk-sysfs.c      | 26 ++++++++++++++++++++++++--
- include/linux/blkdev.h |  2 +-
- 3 files changed, 26 insertions(+), 4 deletions(-)
-
-diff --git a/block/blk-settings.c b/block/blk-settings.c
-index d72a283401c3..1a173d443750 100644
---- a/block/blk-settings.c
-+++ b/block/blk-settings.c
-@@ -21,7 +21,7 @@
- 
- void blk_queue_rq_timeout(struct request_queue *q, unsigned int timeout)
- {
--	q->rq_timeout = timeout;
-+	WRITE_ONCE(q->rq_timeout, timeout);
- }
- EXPORT_SYMBOL_GPL(blk_queue_rq_timeout);
- 
-diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c
-index d53ffff112ff..2b0dbbe45f20 100644
---- a/block/blk-sysfs.c
-+++ b/block/blk-sysfs.c
-@@ -88,11 +88,22 @@ queue_ra_store(struct gendisk *disk, const char *page, size_t count)
- {
- 	unsigned long ra_kb;
- 	ssize_t ret;
-+	struct request_queue *q = disk->queue;
- 
- 	ret = queue_var_store(&ra_kb, page, count);
- 	if (ret < 0)
- 		return ret;
--	disk->bdi->ra_pages = ra_kb >> (PAGE_SHIFT - 10);
-+	/*
-+	 * The ->ra_pages change below is protected by ->limits_lock because it
-+	 * is usually calculated from the queue limits by
-+	 * queue_limits_commit_update().
-+	 *
-+	 * bdi->ra_pages reads are not serialized against bdi->ra_pages writes.
-+	 * Use WRITE_ONCE() to write bdi->ra_pages once.
-+	 */
-+	mutex_lock(&q->limits_lock);
-+	WRITE_ONCE(disk->bdi->ra_pages, ra_kb >> (PAGE_SHIFT - 10));
-+	mutex_unlock(&q->limits_lock);
- 	return ret;
- }
- 
-@@ -342,7 +353,8 @@ static ssize_t queue_poll_store(struct gendisk *disk, const char *page,
- 
- static ssize_t queue_io_timeout_show(struct gendisk *disk, char *page)
- {
--	return sprintf(page, "%u\n", jiffies_to_msecs(disk->queue->rq_timeout));
-+	return sysfs_emit(page, "%u\n",
-+			jiffies_to_msecs(READ_ONCE(disk->queue->rq_timeout)));
- }
- 
- static ssize_t queue_io_timeout_store(struct gendisk *disk, const char *page,
-@@ -701,11 +713,21 @@ queue_attr_store(struct kobject *kobj, struct attribute *attr,
- 	}
- 
- 	mutex_lock(&q->sysfs_lock);
-+	if (entry == &queue_ra_entry || entry == &queue_nomerges_entry ||
-+	    entry == &queue_rq_affinity_entry || entry == &queue_poll_entry ||
-+	    entry == &queue_poll_delay_entry || entry == &queue_io_timeout_entry) {
-+		noio_flag = memalloc_noio_save();
-+		res = entry->store(disk, page, length);
-+		memalloc_noio_restore(noio_flag);
-+		goto unlock;
-+	}
-+
- 	blk_mq_freeze_queue(q);
- 	noio_flag = memalloc_noio_save();
- 	res = entry->store(disk, page, length);
- 	memalloc_noio_restore(noio_flag);
- 	blk_mq_unfreeze_queue(q);
-+unlock:
- 	mutex_unlock(&q->sysfs_lock);
- 	return res;
- }
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 33f5b16c0fd9..eb60179e3b36 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -460,7 +460,7 @@ struct request_queue {
- 	 */
- 	unsigned long		queue_flags;
- 
--	unsigned int		rq_timeout;
-+	unsigned int __data_racy rq_timeout;
- 
- 	unsigned int		queue_depth;
- 
-
----
-base-commit: e2e4b92c2b2a3ae78423cb343951cb5d2241b405
-change-id: 20261127-blk-612b-5386b6b3ddbe
+base-commit: ccb81d5e317b0ae2cc66ca1c628c0ca907928f94
+change-id: 20261126-miic-reset-consumer-1fd4999e4cd0
+prerequisite-change-id: 20261027-rzn1-miic-resets-8308515aa2c0:v4
+prerequisite-patch-id: be35edd6b8532456aa90c8b32fb7e1d7adbde798
+prerequisite-patch-id: 077c1ad53beb244026822f9591c1808527f852db
+prerequisite-patch-id: b56a4d7c0efa9bb17aa898bdc619733f30f9097c
 
 Best regards,
---  
-Dickson Wu <dickson.wu@certik.com>
+-- 
+Kyle Hendry <khendry@reliablecontrols.com>
 
