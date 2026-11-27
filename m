@@ -1,144 +1,83 @@
-From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Fri, 27 Nov 2026 16:04:02 +0530
-Subject: [PATCH v2 7/7] iio: Simplify callback registration error checks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-19-oct-hid-iio-unified-print-framework-v2-7-3f476fe1a940@gmail.com>
-References: <20261127-19-oct-hid-iio-unified-print-framework-v2-0-3f476fe1a940@gmail.com>
-In-Reply-To: <20261127-19-oct-hid-iio-unified-print-framework-v2-0-3f476fe1a940@gmail.com>
-To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>, 
- Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795775655; l=4750;
- i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=mGLaKUDpq2xrxFyO4D1gwOJXhOtVXrnf8YKu9o1By3I=;
- b=JGK1JRUAMSKl0bz8dFdCKS6CwY6mNPNXmb74SMesd85P+fEuWcfvj3IYiSOyNOqfjC5HxJXMC
- 4JVCEj+0rzZB1Y8ixrUjx+VrAUBnY1WNz2MnTSfGzulUyra3BQtsGsF
-X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
- pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
-X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
+Message-Id: <20261127-ktls-net-v1-1-a047fdb54612@certik.com>
+X-B4-Tracking: v=1; b=H4sIAK5fCWsC/yWMywrCMBAAf6Xs2QU3Fl+/Ij0k6cZGy0ayUYTSf
+ 2+ixxmGWUA5R1a4dgtk/kSNSSrQrgM/WbkzxrEymL05EpkTPsusKFzQBHs4E4eezAVq/soc4ve
+ 3ukENYPhLfbsH+9ImLXNWGV224qemlGUsKc3YPKzrBuQy0KCRAAAA
+X-Change-ID: 20261127-ktls-net-2fa381ef4129
+From: Dickson Wu <dickson.wu@certik.com>
+Date: Fri, 27 Nov 2026 08:47:22 +0000
+Subject: [PATCH net] tls: rx: fix skb extension reference leak
+To: netdev@vger.kernel.org
+Cc: John Fastabend <john.fastabend@gmail.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Willem de Bruijn <willemb@google.com>, 
+ Simon Horman <horms@kernel.org>, security@kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795776430; l=2316;
+ i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
+ bh=ZT9LWyJjTuc2AU4pnEhY6CiCH+8k4KmgqGBYXiphoUY=;
+ b=KGxIvDDLwpFRYgdm+3LyKKsEUxfv3yV3taUjwPxDtsXdp7ZF5+eevhRkvnDYsDqwkUZ43NP7c
+ orcFTUu/RXdDdqib2VXMKu6M81n/keFbTbRmjonCNqDb6qqroK5mupn
+X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
+ pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
+X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-devm_sensor_hub_register_callback() returns 0 on success and a
-negative error code on failure. Replace open-coded error checks
-using:
-	if (ret < 0)
-with:
-	if (ret)
-across HID sensor drivers using the helper.
+tls_strp_load_anchor_with_queue() reuses strp->anchor for every record
+and calls skb_copy_header() to copy the header of the first queued skb
+onto it. skb_copy_header() goes through __copy_skb_header(), which uses
+__skb_ext_copy(): it takes a reference on the source skb's extensions
+and overwrites the anchor's extension pointer without dropping the
+reference the anchor already held. When the received skbs carry
+extensions, for example TC_SKB_EXT set by tc or SKB_EXT_BRIDGE_NF set
+by br_netfilter, every reload of the anchor leaks one skb_ext.
 
-This simplifies the code and aligns it with common kernel
-error-handling style without changing behavior.
+skbuff_ext_cache is not charged to the memory cgroup, so the leaked
+objects also escape memcg limits.
 
-Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
+Drop the anchor's extensions with skb_ext_reset() before copying the
+new header.
+
+Fixes: 84c61fe1a75b ("tls: rx: do not use the standard strparser")
+Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
- drivers/iio/accel/hid-sensor-accel-3d.c              | 2 +-
- drivers/iio/gyro/hid-sensor-gyro-3d.c                | 2 +-
- drivers/iio/light/hid-sensor-als.c                   | 2 +-
- drivers/iio/light/hid-sensor-prox.c                  | 2 +-
- drivers/iio/magnetometer/hid-sensor-magn-3d.c        | 2 +-
- drivers/iio/position/hid-sensor-custom-intel-hinge.c | 2 +-
- drivers/iio/pressure/hid-sensor-press.c              | 2 +-
- 7 files changed, 7 insertions(+), 7 deletions(-)
+Tested on x86_64 UML with KASAN and kmemleak at v7.4-rc4:
+- kTLS RX receiving 5,000 one-byte records whose skbs carried
+  TC_SKB_EXT (tc flower in a user namespace) or SKB_EXT_BRIDGE_NF
+  (bridge with br_netfilter): skbuff_ext_cache grew by exactly 5,000
+  objects and kmemleak reported 4,900 to 4,978 unreferenced objects
+  from __skb_ext_alloc. With the fix: no growth and no reports. With the
+  fix reverted: 5,000 again.
+- The same kTLS traffic without extensions, and plain TCP with
+  extensions: no leak before or after the fix.
+- On v6.1.193 (bridge path, run from a user namespace) kmemleak
+  reported 3,038 leaked skb_ext objects before the fix and none after.
+  The patch applies unchanged to 6.1.y, 6.6.y, 6.12.y and 6.18.y.
 
-diff --git a/drivers/iio/accel/hid-sensor-accel-3d.c b/drivers/iio/accel/hid-sensor-accel-3d.c
-index d75ee16b8f45..386dbbda57d4 100644
---- a/drivers/iio/accel/hid-sensor-accel-3d.c
-+++ b/drivers/iio/accel/hid-sensor-accel-3d.c
-@@ -380,7 +380,7 @@ static int hid_accel_3d_probe(struct platform_device *pdev)
- 	accel_state->callbacks.pdev = pdev;
- 	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage,
- 						&accel_state->callbacks);
--	if (ret < 0)
-+	if (ret)
- 		return ret;
- 
- 	return devm_iio_device_register(dev, indio_dev);
-diff --git a/drivers/iio/gyro/hid-sensor-gyro-3d.c b/drivers/iio/gyro/hid-sensor-gyro-3d.c
-index d5acb38268af..c89e5a7a3222 100644
---- a/drivers/iio/gyro/hid-sensor-gyro-3d.c
-+++ b/drivers/iio/gyro/hid-sensor-gyro-3d.c
-@@ -317,7 +317,7 @@ static int hid_gyro_3d_probe(struct platform_device *pdev)
- 	ret = devm_sensor_hub_register_callback(dev, hsdev,
- 						HID_USAGE_SENSOR_GYRO_3D,
- 						&gyro_state->callbacks);
--	if (ret < 0)
-+	if (ret)
- 		return ret;
- 
- 	return devm_iio_device_register(dev, indio_dev);
-diff --git a/drivers/iio/light/hid-sensor-als.c b/drivers/iio/light/hid-sensor-als.c
-index 9b3c8d8345b9..a7783b947564 100644
---- a/drivers/iio/light/hid-sensor-als.c
-+++ b/drivers/iio/light/hid-sensor-als.c
-@@ -417,7 +417,7 @@ static int hid_als_probe(struct platform_device *pdev)
- 	als_state->callbacks.pdev = pdev;
- 	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage,
- 						&als_state->callbacks);
--	if (ret < 0)
-+	if (ret)
- 		return ret;
- 
- 	return devm_iio_device_register(dev, indio_dev);
-diff --git a/drivers/iio/light/hid-sensor-prox.c b/drivers/iio/light/hid-sensor-prox.c
-index 4d0c7dffc252..b793d7abc0f5 100644
---- a/drivers/iio/light/hid-sensor-prox.c
-+++ b/drivers/iio/light/hid-sensor-prox.c
-@@ -306,7 +306,7 @@ static int hid_prox_probe(struct platform_device *pdev)
- 	prox_state->callbacks.pdev = pdev;
- 	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage,
- 						&prox_state->callbacks);
--	if (ret < 0)
-+	if (ret)
- 		return ret;
- 
- 	return devm_iio_device_register(dev, indio_dev);
-diff --git a/drivers/iio/magnetometer/hid-sensor-magn-3d.c b/drivers/iio/magnetometer/hid-sensor-magn-3d.c
-index c179fcd364b9..742dc4130e66 100644
---- a/drivers/iio/magnetometer/hid-sensor-magn-3d.c
-+++ b/drivers/iio/magnetometer/hid-sensor-magn-3d.c
-@@ -493,7 +493,7 @@ static int hid_magn_3d_probe(struct platform_device *pdev)
- 	ret = devm_sensor_hub_register_callback(dev, hsdev,
- 						HID_USAGE_SENSOR_COMPASS_3D,
- 						&magn_state->callbacks);
--	if (ret < 0)
-+	if (ret)
- 		return ret;
- 
- 	return devm_iio_device_register(dev, indio_dev);
-diff --git a/drivers/iio/position/hid-sensor-custom-intel-hinge.c b/drivers/iio/position/hid-sensor-custom-intel-hinge.c
-index 9bc0262b27c4..4773577dcd57 100644
---- a/drivers/iio/position/hid-sensor-custom-intel-hinge.c
-+++ b/drivers/iio/position/hid-sensor-custom-intel-hinge.c
-@@ -316,7 +316,7 @@ static int hid_hinge_probe(struct platform_device *pdev)
- 	st->callbacks.capture_sample = hinge_capture_sample;
- 	st->callbacks.pdev = pdev;
- 	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage, &st->callbacks);
--	if (ret < 0)
-+	if (ret)
- 		return ret;
- 
- 	return devm_iio_device_register(dev, indio_dev);
-diff --git a/drivers/iio/pressure/hid-sensor-press.c b/drivers/iio/pressure/hid-sensor-press.c
-index 2d098ed35ff6..8b41e1461993 100644
---- a/drivers/iio/pressure/hid-sensor-press.c
-+++ b/drivers/iio/pressure/hid-sensor-press.c
-@@ -284,7 +284,7 @@ static int hid_press_probe(struct platform_device *pdev)
- 	ret = devm_sensor_hub_register_callback(dev, hsdev,
- 						HID_USAGE_SENSOR_PRESSURE,
- 						&press_state->callbacks);
--	if (ret < 0)
-+	if (ret)
- 		return ret;
- 
- 	return devm_iio_device_register(dev, indio_dev);
+A reproducer is available if it helps.
 
+This was found and the fix prepared with AI coding tools (OpenAI Codex
+agents, with review by Claude). I went over the analysis and the patch
+before signing off.
+
+ net/tls/tls_strp.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/tls/tls_strp.c b/net/tls/tls_strp.c
+index 53d3256d0..8ad7f339d 100644
+--- a/net/tls/tls_strp.c
++++ b/net/tls/tls_strp.c
+@@ -475,6 +475,7 @@ static void tls_strp_load_anchor_with_queue(struct tls_strparser *strp, int len)
+ 
+ 	skb_shinfo(strp->anchor)->frag_list = first;
+ 
++	skb_ext_reset(strp->anchor);
+ 	skb_copy_header(strp->anchor, first);
+ 	strp->anchor->destructor = NULL;
+ 
 -- 
-2.34.1
+2.43.0
 
