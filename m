@@ -1,69 +1,73 @@
+From: Dickson Wu <dickson.wu@certik.com>
+Subject: [PATCH bluetooth-next 0/2] Bluetooth: SMP: keep pairing keys
+ private until pairing completes
+Date: Fri, 27 Nov 2026 21:19:16 +0000
+Message-Id: <20261127-bt-smp-n-v1-0-e123c04c15be@certik.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-nf-ctproto2-v1-2-b5383cef8da2@certik.com>
-References: <20261127-nf-ctproto2-v1-0-b5383cef8da2@certik.com>
-In-Reply-To: <20261127-nf-ctproto2-v1-0-b5383cef8da2@certik.com>
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 18:12:11 +0000
-Subject: [PATCH nf 2/2] netfilter: conntrack: reject timeout protocol
- mismatch
-To: netfilter-devel@vger.kernel.org
-Cc: Pablo Neira Ayuso <pablo@netfilter.org>, 
- Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>, 
- coreteam@netfilter.org, netdev@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIANTzCWsC/yWMwQrDIBBEfyXsuQtRaJT+SulBzbZa0k1wTQiE/
+ Hu1Pb6ZeXOAUE4kcOsOyLQlSTNXUJcOQnT8IkxjZdC9HpTSBn1B+SzIaG0fBqvd1RgLdb5keqb
+ 9d3UHP61U5rlEZNoLPP69rP5NobS/ZngnhD47DrFFQjxWZ8KWw3l+ASo8Q0qcAAAA
+X-Change-ID: 20261127-bt-smp-n-880c682a5778
+To: linux-bluetooth@vger.kernel.org
+Cc: Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ Marcel Holtmann <marcel@holtmann.org>, 
+ Johan Hedberg <johan.hedberg@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795813751; l=1700;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795814356; l=2169;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=Eg6xkj+hY1owkOvEJ4GABU50fLTvmFKF8elU28QXiLA=;
- b=oQJEjG8SDM1uaAltfSS+4Av6J+vYRwdh8fP+1R0NWtMt83wZiynX6hdaYU8esYS0JtxHzbwPh
- sjPFjR4/HUQB5ywmvoPiXxV7QYsnSFqcmp01yLeNqVMtWjhPtE3bltD
+ bh=02FxCK96bQDMry6ZNVOOlcvZDo/u/NT5xXIMJ9SA1Nw=;
+ b=W8VmTdtMOSzDAPbmn8hZ/MfaxJlHMqc1+jMG9uVnn8vfQfw2YjN2bCpHkIjY8xCFa0h2dUQLm
+ SWujmAOICs3CJHH8mCYck3kjEWgC2AwNM1mgOCsw+3/M3o5Yf2VnL88
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A conntrack template can carry a timeout policy selected from rule
-metadata instead of the packet protocol. nft_compat does not enforce its
-compatibility protocol when evaluating packets, so an ICMP or UDP policy
-can be copied to a TCP conntrack.
+An incomplete pairing can share an IRK registry entry with another pairing,
+then free it during teardown. CTKD can replace an LTK retained by an
+incomplete LE pairing and free it from the BR/EDR pairing context. A second
+LE link can retype a retained LTK as an STK that the LTK Request handler
+frees. The series keeps received or generated keys private to each pairing
+context and publishes registry updates only after pairing completes.
 
-Timeout data is laid out for one protocol tracker, so an ICMP policy on
-a TCP conntrack makes nf_conntrack_tcp_packet() read past the end of the
-timeout object. Copy a template timeout only when its protocol matches
-the new conntrack.
+Tested under UML with KASAN and a VHCI controller, no radio, on
+bluetooth-next f57f78086ab5 and mainline 9437ee8b6cf6 (patch 2 needed
+context adjustment for mainline). Stock and explicitly reverted kernels
+hit slab-use-after-free in list_del_rcu() from smp_chan_destroy() for all
+three cases (shared IRK, CTKD LTK, second-link STK). With the series all
+three pass, and so do normal LE LTK storage, CTKD derivation and storage,
+LTK and IRK replacement on re-pairing, and RPA resolution. Patch 1 builds
+on its own and net/bluetooth/ is W=1 clean. A reproducer is available if
+it helps.
 
-Fixes: 24de58f46516 ("netfilter: xt_CT: allow to attach timeout policy + glue code")
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
----
+These need a peer whose Just Works pairing requests get accepted, so a
+default bluetoothd with an agent does not accept them silently.
+
+Patch 1 is near "Bluetooth: SMP: Use pairing data for IRK notifications"
+on the list, which fixes a different Load IRKs race in the same IRK
+notification code, so the two may need rebasing against each other.
+
 This was found and the fix prepared with AI coding tools (OpenAI Codex
 agents, with review by Claude). I went over the analysis and the patch
 before signing off.
 
- net/netfilter/nf_conntrack_core.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+---
+Dickson Wu (2):
+      Bluetooth: SMP: Defer IRK updates until pairing completes
+      Bluetooth: SMP: Keep pending LTKs private
 
-diff --git a/net/netfilter/nf_conntrack_core.c b/net/netfilter/nf_conntrack_core.c
-index 931b76aacd..eaae27bf09 100644
---- a/net/netfilter/nf_conntrack_core.c
-+++ b/net/netfilter/nf_conntrack_core.c
-@@ -1782,9 +1782,13 @@ init_conntrack(struct net *net, struct nf_conn *tmpl,
- 
- 	timeout_ext = tmpl ? nf_ct_timeout_find(tmpl) : NULL;
- 
--	if (timeout_ext)
--		nf_ct_timeout_ext_add(ct, rcu_dereference(timeout_ext->timeout),
--				      GFP_ATOMIC);
-+	if (timeout_ext) {
-+		struct nf_ct_timeout *timeout;
-+
-+		timeout = rcu_dereference(timeout_ext->timeout);
-+		if (timeout && timeout->l4proto->l4proto == nf_ct_protonum(ct))
-+			nf_ct_timeout_ext_add(ct, timeout, GFP_ATOMIC);
-+	}
- 
- 	nf_ct_acct_ext_add(ct, GFP_ATOMIC);
- 	nf_ct_tstamp_ext_add(ct, GFP_ATOMIC);
--- 
-2.43.0
+ include/net/bluetooth/hci_core.h |  5 +++
+ net/bluetooth/hci_core.c         | 76 +++++++++++++++++++++++++++++++---------
+ net/bluetooth/hci_event.c        | 16 ++++++---
+ net/bluetooth/smp.c              | 73 +++++++++++++++++++++++++-------------
+ 4 files changed, 125 insertions(+), 45 deletions(-)
+---
+base-commit: f57f78086ab54f3b3122fbaeba2c842ba7bb6d00
+change-id: 20261127-bt-smp-n-880c682a5778
+
+Best regards,
+--  
+Dickson Wu <dickson.wu@certik.com>
 
