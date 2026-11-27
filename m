@@ -1,88 +1,105 @@
-From: Paul Sajna <sajattack@postmarketos.org>
-Date: Fri, 27 Nov 2026 09:51:14 -0700
-Subject: [PATCH v2] arm64: dts: qcom: sdm845-lg-judyln: Drop qcom,te-source
- property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-judyln-panel-glitch-fix-v2-1-f47fd12a04d9@postmarketos.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7ZgORExceQ/DopQBRrFt2kIkh
- LtbuYB/937y398gchCOcCs2CLxIFGczlKcCzKjtwChdZihVWVMOPudunSx6bXnCYZJkRuzlg3S
- tSbVEF6oM5LUPnOvD/GgyjxKTC+txtNCv/e9cCAnZMFOvNLWVunsX01uHFycXzy4M0Oz7/gU/T
- Mz5xQAAAA==
-X-Change-ID: 20261111-judyln-panel-glitch-fix-17610b11513c
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Amir Dahan <system64fumo@tuta.io>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- David Heidelberg <david@ixit.cz>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- ~postmarketos/upstreaming@lists.sr.ht, 
- Paul Sajna <sajattack@postmarketos.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795798281; l=1790;
- i=sajattack@postmarketos.org; s=20250413; h=from:subject:message-id;
- bh=QD858q0abRHms4/gLi2x4dtZ1gb3zWYst2XjfprddGA=;
- b=sxi2bspfe3pgmn1yvsCZD7dg/KW1GXBqTqovrrXDwD4TaUEaJRsLWe+03yfRGCEhvqC4wRGqV
- xvx1OTKrd3yCQgynZJ82mzl1cFWVlIU5544gmif09ApNmTSdVJmHPc6
-X-Developer-Key: i=sajattack@postmarketos.org; a=ed25519;
- pk=ZFE/UBqiz9Wr8b+zBL27opOjw5x5ket5JFqks/VQGeM=
-X-Endpoint-Received: by B4 Relay for sajattack@postmarketos.org/20250413 with auth_id=1505
+Message-Id: <20261127-ktls-recwait-v1-1-81155599e61e@certik.com>
+X-B4-Tracking: v=1; b=H4sIAIS3CWsC/yWMSw7CMAwFr1J5jSUSBFG5CmLhJIYaqgTF4SNVv
+ TsJLGf03iygXIQVjsMChV+iklMDsxkgTJSujBIbg93agzHW4b3OioXDm6QiOed24z6YSCO0y6P
+ wRT6/3AkSVzj/pT79jUPtoT7zpIy+UApTV8op1pxn7B7W9QtzdyRplQAAAA==
+X-Change-ID: 20261127-ktls-recwait-a777395c1da9
+From: Dickson Wu <dickson.wu@certik.com>
+Date: Fri, 27 Nov 2026 14:01:16 +0000
+Subject: [PATCH net] tls: avoid recursion in tls_rx_rec_wait()
+To: netdev@vger.kernel.org
+Cc: John Fastabend <john.fastabend@gmail.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Willem de Bruijn <willemb@google.com>, 
+ Simon Horman <horms@kernel.org>, security@kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795798916; l=3158;
+ i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
+ bh=rZeJn4EPp2cBQrhNXU2Mo53D8TwNxpANd8sKyNzy5mg=;
+ b=iJwGOSvpnsl63KLZjPggQM5WQoytsb/8muG0PrCwGhIo2o3ucGkTRk1+eiQEomg/LzkrmD5Jf
+ lqAxYgl2dJmBUPR6qOoDLjUNBGrWxmTTqE4l+HgnwmkyBHIly9WK3MK
+X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
+ pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
+X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It was introduced without proper verification, and causes
-graphical glitches on the display.
+When a ready record disappears from the TCP receive queue while the
+socket lock is released, tls_strp_msg_load() returns false and
+tls_rx_rec_wait() retries by calling itself.
 
-The default value of mdp_vsync_p is correct.
+The self-call was expected to become a loop, but the wait entry is
+address-taken and live across the call, so the compiler keeps a real
+call. GCC 13.3 and Clang 18.1 both do this on x86_64 defconfig and on a
+distro config, with and without KASAN, costing 128 to 288 bytes of
+stack per retry. A local user can keep draining the queue with
+TCP_ZEROCOPY_RECEIVE while a reader waits and overflow the kernel
+stack. With CONFIG_VMAP_STACK that hits the guard page and panics.
 
-Fixes: c6c66aa3ef33 ("arm64: dts: qcom: sdm845-lg-judyln: Add display panel")
+Go back to the top of the function instead, as suggested when the
+retry was added, resetting released and ret to what the recursive call
+used.
 
-Reviewed-by: David Heidelberg <david@ixit.cz>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Paul Sajna <sajattack@postmarketos.org>
+Suggested-by: Paolo Abeni <pabeni@redhat.com>
+Link: https://lore.kernel.org/netdev/b3a83032-8ed4-4d5d-9df9-6dbd02acac1c@redhat.com/
+Fixes: 6db015fc4b5d ("tls: handle data disappearing from under the TLS ULP")
+Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
-Changes in v2:
-- Reword commit message
-- Link to v1: https://lore.kernel.org/r/20261111-judyln-panel-glitch-fix-v1-1-ecee1f0a1b30@postmarketos.org
+Tested under x86_64 UML (VMAP_STACK, 16 KiB stack, PANIC_ON_OOPS) with a
+small UML-only change so the guard page hit gets reported, networking
+code otherwise stock:
 
-To: Bjorn Andersson <andersson@kernel.org>
-To: Konrad Dybcio <konradybcio@kernel.org>
-To: Abel Vesa <abelvesa@kernel.org>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Amir Dahan <system64fumo@tuta.io>
-To: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
-To: Paul Sajna <sajattack@postmarketos.org>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- arch/arm64/boot/dts/qcom/sdm845-lg-judyln.dts | 1 -
- 1 file changed, 1 deletion(-)
+- Stock and with the patch reverted: an unprivileged process (uid
+  1000, also tried as uid 65534 in its own user and net namespace)
+  draining a waiting kTLS reader with TCP_ZEROCOPY_RECEIVE hit the
+  stack guard page within 50 retry cycles under KASAN, and within 100
+  cycles on a non-KASAN GCC build.
+- Patched: the same driver completed 5000 drains, up to 743 in a row
+  inside a single recvmsg() call, with no panic.
+- Blocking, non-blocking, MSG_WAITALL, MSG_PEEK, a 4 MiB transfer and
+  EOF on close behave the same on stock and patched.
+- W=1 build of net/tls/ is clean.
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-lg-judyln.dts b/arch/arm64/boot/dts/qcom/sdm845-lg-judyln.dts
-index 349faa123ff1..e54e46a1a6dd 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-lg-judyln.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-lg-judyln.dts
-@@ -111,7 +111,6 @@ &mdss_dsi0_phy {
- &mdss_dsi0_out {
- 	data-lanes = <0 1 2 3>;
- 	remote-endpoint = <&panel_in>;
--	qcom,te-source = "mdp_vsync_e";
- };
+The tls module has to be built in or already loaded, since an
+unprivileged TCP_ULP setsockopt won't autoload it. A reproducer is
+available if it helps.
+
+This was found and the fix prepared with AI coding tools (OpenAI Codex
+agents, with review by Claude). I went over the analysis and the patch
+before signing off.
+
+diff --git a/net/tls/tls_sw.c b/net/tls/tls_sw.c
+index 226e0f176fdc..363aae36ac69 100644
+--- a/net/tls/tls_sw.c
++++ b/net/tls/tls_sw.c
+@@ -1104,9 +1104,11 @@ tls_rx_rec_wait(struct sock *sk, bool nonblock, bool released, bool has_copied)
+ 	struct tls_context *tls_ctx = tls_get_ctx(sk);
+ 	struct tls_sw_context_rx *ctx = tls_sw_ctx_rx(tls_ctx);
+ 	DEFINE_WAIT_FUNC(wait, woken_wake_function);
+-	int ret = 0;
++	int ret;
+ 	long timeo;
  
- &ibb {
-
----
-base-commit: aaa2f954c21b205a0bcd0961e5b2be4e82e58455
-change-id: 20261111-judyln-panel-glitch-fix-17610b11513c
-
-Best regards,
---  
-Paul Sajna <sajattack@postmarketos.org>
++retry:
++	ret = 0;
+ 	/* a rekey is pending, let userspace deal with it */
+ 	if (unlikely(ctx->key_update_pending))
+ 		return -EKEYEXPIRED;
+@@ -1167,8 +1169,10 @@ tls_rx_rec_wait(struct sock *sk, bool nonblock, bool released, bool has_copied)
+ 			return sock_intr_errno(timeo);
+ 	}
+ 
+-	if (unlikely(!tls_strp_msg_load(&ctx->strp, released)))
+-		return tls_rx_rec_wait(sk, nonblock, false, has_copied);
++	if (unlikely(!tls_strp_msg_load(&ctx->strp, released))) {
++		released = false;
++		goto retry;
++	}
+ 
+ 	return 1;
+ }
+-- 
+2.43.0
 
