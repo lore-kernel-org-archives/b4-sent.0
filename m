@@ -1,77 +1,99 @@
-From: Hank Liou <hank.liou@mediatek.com>
-Date: Fri, 27 Nov 2026 14:12:56 +0800
-Subject: [PATCH] phy: phy-mtk-dp: Suppress sysfs bind/unbind
+From: Igor Velkov <iav@iav.lv>
+Subject: [PATCH RFC 00/10] coresight: cpu-debug: Sample CPUs that ignore a
+ backtrace request
+Date: Fri, 27 Nov 2026 08:38:37 +0200
+Message-Id: <20261127-b4-coresight-cpu-debug-lockup-v1-0-69d3ad1e0fc8@iav.lv>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-phy-mtk-dp-suppress-bind-v1-1-eb64c6e39240@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIAGcfCWsC/x2MQQqDMBAAvyJ7dqGJWsWvSA/GbOpSjCFrRQn5e
- 0OPwzCTQCgyCYxVgkgnC+++gKorWNbZvwnZFgb90E+ldI9hvXE7PmgDyjeESCJo2FvslqFzfdN
- aRwZKXpTj67+eXjn/APeP2aZqAAAA
-X-Change-ID: 20261127-phy-mtk-dp-suppress-bind-5c85f734dfeb
-To: Vinod Koul <vkoul@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>
-Cc: Chunfeng Yun <chunfeng.yun@mediatek.com>, 
- Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Markus Schneider-Pargmann <msp@baylibre.com>, CK Hu <ck.hu@mediatek.com>, 
- linux-phy@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- dri-devel@lists.freedesktop.org, Hank Liou <hank.liou@mediatek.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795759976; l=1859;
- i=hank.liou@mediatek.com; s=20261126; h=from:subject:message-id;
- bh=O3jXFQr6H1w8UsvUZJ9qBE1F3KBO3rzzg1q1UUmq4PE=;
- b=0Qq9O8JaNLT8C+2TcaCnF7eQXA+zB8jRSZrFJjKrHanyORj07ENpyhfdLhjuUmcbhxvvAtinQ
- qlksxz2dR4sDTTdl3HiVOxkzXmeqU+Q3aqgo1eD3lvZ57A98med4pIm
-X-Developer-Key: i=hank.liou@mediatek.com; a=ed25519;
- pk=oQN2zU+HMrJQgqX4bhL5CVRrBmac4amZ/53yK20L/6M=
-X-Endpoint-Received: by B4 Relay for hank.liou@mediatek.com/20261126 with auth_id=1646
+X-B4-Tracking: v=1; b=H4sIAG0lCWsC/x3MSwqDMBAA0KvIrDtghvqh20IP4La40HEShxYTk
+ qYI4t0bunybd0CSqJLgVh0Q5atJ/VZgLhXwOm1OUJdioJpaY6jD+YrsoyR16wc5ZFxkzg7fnl8
+ 5oAix7S031NZQjhDF6v7/nzA87jCe5w8AweO2dAAAAA==
+To: Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Mike Leach <mike.leach@arm.com>, James Clark <james.clark@linaro.org>, 
+ Leo Yan <leo.yan@arm.com>, Andrew Morton <akpm@linux-foundation.org>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>
+Cc: coresight@lists.linaro.org, linux-arm-kernel@lists.infradead.org, 
+ linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, 
+ Douglas Anderson <dianders@chromium.org>, Petr Mladek <pmladek@suse.com>, 
+ Feng Tang <feng.tang@linux.alibaba.com>, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3489; i=iav@iav.lv;
+ h=from:subject:message-id; bh=gXgmcxVrhW5A349eiU5DHHZZZboqxKqUTaFzFTfYD+g=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDNmcqvmvhBccvul/xsgszyM0T225kmO4EZeQvVHkWgWGs
+ DMtb451lLIwiHExyIopskw4pHErY8nVv/4e5g9g5rAygQxh4OIUgIl88mH473hLprH6aOZV43tP
+ nhhIZVtUCko9Vpz1ZULV7gv5L6wmujMyHH/QPiN2oX1D9dblcoqy2l8Y3kWceqpX0L5HsqaZXdO
+ HEwA=
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mtk_dp_register_phy() registers the "mediatek-dp-phy" platform device
-as a child of mtk_dp and caches the struct phy returned by
-devm_phy_get() in mtk_dp->phy. The PHY driver still exposes the sysfs
-unbind attribute, so root can unbind the child while mediatek-drm-dp
-stays bound. devres then frees the struct phy, and the next
-phy_configure(), phy_reset() or phy_init() call from mtk_dp uses freed
-memory.
+A CPU locked up with interrupts masked does not answer a backtrace IPI
+unless the IPI is an NMI. This series samples its PC through the
+external debug interface where nmi_trigger_cpumask_backtrace() gives up
+on it, as discussed with Leo [1], and removes the panic notifier: a
+panic alone no longer prints the dump, panic_sys_info=all_bt gives it
+for the CPUs that do not respond.
 
-This was observed on a MT8188 Chromebook running a ChromeOS 6.1 kernel:
-after unbinding the PHY device from sysfs, plugging in a DP monitor
-panics in phy_reset() from the HPD IRQ thread.
+Patches 1-4 fix the driver as it is: the documentation, two runtime PM
+issues, and an unbounded loop hit at panic today and on a running
+system after patch 8. They do not depend on the rest and can go
+separately with Fixes: tags. Patch 5 adds the EDPRSR.R check that 8
+relies on, 6 prepares 8, 7 adds the notification to lib/nmi_backtrace.c,
+8 adds the hook, 9 removes the panic notifier, 10 lowers the log level.
 
-The legacy PHY device is only created and destroyed by its parent, so
-set suppress_bind_attrs to drop the bind/unbind attributes and let the
-PHY go away only together with mtk_dp.
+lib/nmi_backtrace.c has no maintainer entry. I would expect the series
+to go through the coresight tree with an ack for patch 7, or patch 7
+through mm-nonmm first, whichever you prefer.
 
-Fixes: f70ac097a2cf ("drm/mediatek: Add MT8195 Embedded DisplayPort driver")
-Signed-off-by: Hank Liou <hank.liou@mediatek.com>
+Tested on RK3399 (helios64), the series applied on 7.4-rc4, buddy hard
+lockup detector, no pseudo-NMI: LKDTM HARDLOCKUP on an A53 and on an A72
+gives "EDPCSR: lkdtm_HARDLOCKUP+0x14/0x38". SysRq-l with a CPU spinning
+in an IPI handler dumps that CPU and the system keeps running; so does
+a panic with panic_sys_info=all_bt. With pseudo-NMI the CPU answers and
+nothing is dumped. Not tested: the idle path, the notifier in NMI
+context, other SoCs, ACPI; arm32 is only built.
+
+In every run idle_cpu() was 0 for the stuck CPU at the time of the
+notification, also for a CPU that entered the spin from its idle task
+with all movable tasks moved away, so the idle path was never taken. A
+test module running the register sequence of debug_read_regs() on an
+idle core raises an SError on RK3399. Should the idle path (with the
+EDPRCR power request) and skip_idle stay? Without them patch 7 needs
+only the cpumask, debug_force_cpu_powered_up() goes away, and a CPU is
+sampled only if EDPRSR shows it accessible. skip_idle defaults to 0 as
+proposed in [1]; on RK3399 it would have to be 1.
+
+[1] https://lore.kernel.org/r/20261118104917.GW9176@e132581.arm.com
+
 ---
-Other PHY drivers disable sysfs bind/unbind for the same reason, e.g. commit 6aeec986f1bc ("phy: samsung: disable bind/unbind platform driver feature"): their consumers have no way to be told that the PHY went away.
----
- drivers/phy/mediatek/phy-mtk-dp.c | 1 +
- 1 file changed, 1 insertion(+)
+Igor Velkov (10):
+      Documentation: coresight: cpu-debug: Fix the module parameter name
+      coresight: cpu-debug: Make the enable parameter read-only in sysfs
+      coresight: cpu-debug: Publish the per-CPU data under debug_lock
+      coresight: cpu-debug: Bound the power up retries
+      coresight: cpu-debug: Do not sample a core that is in reset
+      coresight: cpu-debug: Factor out debug_read_pcsr()
+      lib/nmi_backtrace: notify about CPUs that ignore a backtrace request
+      coresight: cpu-debug: Dump CPUs that ignore a backtrace request
+      coresight: cpu-debug: Remove the panic notifier
+      coresight: cpu-debug: Print the dump at the warning level
 
-diff --git a/drivers/phy/mediatek/phy-mtk-dp.c b/drivers/phy/mediatek/phy-mtk-dp.c
-index 0048e1a8c6..924f08ed4d 100644
---- a/drivers/phy/mediatek/phy-mtk-dp.c
-+++ b/drivers/phy/mediatek/phy-mtk-dp.c
-@@ -828,6 +828,7 @@ static struct platform_driver mtk_dp_phy_driver = {
- 	.driver = {
- 		.name = "mediatek-dp-phy",
- 		.of_match_table = mtk_dp_phy_of_match,
-+		.suppress_bind_attrs = true,
- 	},
- };
- module_platform_driver(mtk_dp_phy_driver);
-
+ Documentation/admin-guide/kernel-parameters.txt    |  10 +
+ .../trace/coresight/coresight-cpu-debug.rst        |  55 +++--
+ drivers/hwtracing/coresight/Kconfig                |   8 +-
+ drivers/hwtracing/coresight/coresight-cpu-debug.c  | 244 +++++++++++++--------
+ include/linux/nmi.h                                |  28 +++
+ lib/nmi_backtrace.c                                |  56 +++++
+ 6 files changed, 283 insertions(+), 118 deletions(-)
 ---
-base-commit: ebb7a8dc1e74c705daffe11c2faf38ec2628f838
-change-id: 20261127-phy-mtk-dp-suppress-bind-5c85f734dfeb
+base-commit: b7d7462c7f973b65de511db6bebb99fb29946ed8
+change-id: 20261127-b4-coresight-cpu-debug-lockup-ee2cf8fc5260
 
 Best regards,
 -- 
-Hank Liou <hank.liou@mediatek.com>
+Igor Velkov <iav@iav.lv>
 
