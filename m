@@ -1,11 +1,11 @@
 From: Andrei Aleksandrov <aladex@gmail.com>
-Date: Fri, 27 Nov 2026 08:38:42 +0100
-Subject: [PATCH RFC v2 1/2] ALSA: usb-audio: Add Windows volume scale quirk
- for EPOS GSX 1000 v2
+Date: Fri, 27 Nov 2026 08:38:43 +0100
+Subject: [PATCH RFC v2 2/2] ALSA: usb-audio: Handle the EPOS GSX 1000 v2
+ volume ring in the driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-gsx1000-v2-1-0a0f20f1a2da@gmail.com>
+Message-Id: <20261127-gsx1000-v2-2-0a0f20f1a2da@gmail.com>
 References: <20261127-gsx1000-v2-0-0a0f20f1a2da@gmail.com>
 In-Reply-To: <20261127-gsx1000-v2-0-0a0f20f1a2da@gmail.com>
 To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
@@ -13,297 +13,242 @@ Cc: Dmitry Torokhov <dmitry.torokhov@gmail.com>,
  linux-input@vger.kernel.org, linux-sound@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Andrei Aleksandrov <aladex@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795765121; l=9759;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795765121; l=7745;
  i=aladex@gmail.com; s=20261127; h=from:subject:message-id;
- bh=pvfXcRNfw7BWeeSPsfOu+xn4R1sxBGxCSBVrvTYGylA=;
- b=CoBVE+OCroDu1uXQobzliuoDFLlfDSD4KiJtsiRBpejsQFxi+QzhIPmvPNui/ypNVOPOPRab+
- coxPcvy5XTSDcsGwwJDYs8mf6WaQyK9tOrQdMmmzzvWq8On6DE6ECP7
+ bh=LKmyIFGQs/e6UdYS47l4eBiS1d+lPwIJQts+XxND7RI=;
+ b=+0zwVrakw4os5Q25GpHDb8/qkLT3EXhcm5EyoYBXEjrh9B1h3y9Otq7qEjK/+2C/WLMhfREmb
+ 5nPSPF8bRlxCyn9ol7XkJ46f/wGhpwjZ1IT4+7q4MPjV8geLs6AW5w+
 X-Developer-Key: i=aladex@gmail.com; a=ed25519;
  pk=BRFQEVGQ1X027TItMW+SIsAtbYscopzlk1EJT8Girkg=
 X-Endpoint-Received: by B4 Relay for aladex@gmail.com/20261127 with auth_id=1663
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The EPOS / Sennheiser GSX 1000 v2 (1395:00b1) is a UAC1 device whose game
-output volume lives in Feature Unit 12 on interface 3. The descriptor
-claims -74..0 dB with 1 dB resolution, but the device expects the volume
-in the finer steps that the Windows inbox driver writes: Windows maps its
-0..100 % scale to fractional dB values (raw = trunc(dB * 256)) and writes
-them to channels 1 and 2, leaving the master channel alone. The number on
-the device display is derived from that value and shows the Windows
-percent.
+The volume ring of the GSX 1000 v2 is an encoder that does not report
+its direction. The device sends HID Vol+/Vol- (consumer usages 0xe9 and
+0xea, report 2 on interface 5) until the volume the host writes to FU 12
+matches the ring position, one event per detent. Windows answers every
+event with a 2 % step on its volume scale; the device compares the
+written value with 1/256 dB precision and stops asking once it matches.
 
-With the stock 1 dB control the device never sees the value it expects.
-The display drifts from the desktop volume, and the volume ring (which
-sends HID Vol+/Vol- until the host volume matches the ring position, see
-the next patch) keeps correcting forever.
+On Linux these events reach the desktop as global KEY_VOLUMEUP and
+KEY_VOLUMEDOWN, the desktop applies its own step size (5 % by default in
+KDE), the result does not match the ring, and the device keeps
+correcting: the volume oscillates or runs away. Existing workarounds
+remap the keys to "reserved" in hwdb, which disables the ring.
 
-Replace the FU 12 volume with a single 0..100 control that writes the
-exact Windows value to channels 1 and 2. The table was measured with
-USBPcap from a 0 -> 100 -> 0 sweep on Windows; up and down produced the
-same 101 values. The control has no dB TLV on purpose, so user space maps
-its volume linearly onto the steps and the device shows the same number as
-the desktop. The value is written again on probe and on resume, because
-the device falls back to -1 dB on reconnect.
+Register an input handler that filters KEY_VOLUMEUP/KEY_VOLUMEDOWN only
+from input devices whose parent is this USB device, so another keyboard
+or another GSX is not affected. Each press steps the control added in the
+previous patch by 2, as Windows does, and notifies user space; the
+device then sees the expected value and the ring, the desktop volume and
+the display stay in sync. The step runs in a work item because the
+filter is called in atomic context and the USB write sleeps.
 
-Captures and the decoded protocol:
+Tested with a GSX 1000 v2 (firmware 2.13) on PipeWire/KDE: slow and fast
+turns in both directions, 0 -> 100 % by the ring, slider changes,
+unplug/replug and suspend/resume (the desktop volume is restored on the
+device).
+usbmon shows one SET_CUR pair per detent and no reversals, as in the
+Windows captures.
+
 Link: https://github.com/Aladex/epos-gsx
-
 Signed-off-by: Andrei Aleksandrov <aladex@gmail.com>
 ---
- sound/usb/mixer_maps.c   |  11 +++
- sound/usb/mixer_quirks.c | 203 +++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 214 insertions(+)
+ sound/usb/mixer_quirks.c | 152 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 152 insertions(+)
 
-diff --git a/sound/usb/mixer_maps.c b/sound/usb/mixer_maps.c
-index 9218ca6314ad..7db0de3e55b1 100644
---- a/sound/usb/mixer_maps.c
-+++ b/sound/usb/mixer_maps.c
-@@ -566,6 +566,12 @@ static const struct usbmix_name_map avermedia_gc553pro_map[] = {
-  * Control map entries
-  */
- 
-+/* EPOS GSX 1000 v2: FU 12 volume is provided by a mixer quirk */
-+static const struct usbmix_name_map epos_gsx1000_map[] = {
-+	{ 12, NULL, UAC_FU_VOLUME },
-+	{ 0 }
-+};
-+
- static const struct usbmix_ctl_map usbmix_ctl_maps[] = {
- 	{
- 		.id = USB_ID(0x041e, 0x3000),
-@@ -799,6 +805,11 @@ static const struct usbmix_ctl_map usbmix_ctl_maps[] = {
- 		.id = USB_ID(0x1532, 0x0552),
- 		.map = razer_barracuda_x_2_4_map,
- 	},
-+	{
-+		/* EPOS GSX 1000 v2 */
-+		.id = USB_ID(0x1395, 0x00b1),
-+		.map = epos_gsx1000_map,
-+	},
- 	{
- 		/* Sennheiser Communications Headset [PC 8] */
- 		.id = USB_ID(0x1395, 0x0025),
 diff --git a/sound/usb/mixer_quirks.c b/sound/usb/mixer_quirks.c
-index 4c7d68311f20..50d640844003 100644
+index 50d640844003..94ebd34ed128 100644
 --- a/sound/usb/mixer_quirks.c
 +++ b/sound/usb/mixer_quirks.c
-@@ -4656,6 +4656,206 @@ static int snd_xiisound_init_fu_pins(struct usb_mixer_interface *mixer)
+@@ -4689,10 +4689,17 @@ static const s16 snd_gsx1000_vol_table[SND_GSX1000_VOL_STEPS + 1] = {
+ 	0,
+ };
+ 
++#define SND_GSX1000_RING_STEP	2	/* one ring detent, as on Windows */
++
+ struct snd_gsx1000_vol {
+ 	struct usb_mixer_elem_list list;	/* kctl private data */
+ 	struct mutex lock;			/* serializes value and USB writes */
+ 	unsigned int value;			/* 0..SND_GSX1000_VOL_STEPS */
++	struct work_struct ring_work;
++	atomic_t ring_delta;
++	struct input_handler ih;
++	struct input_device_id id_table[2];
++	bool ih_registered;
+ };
+ 
+ #define to_gsx1000_vol(l)	container_of(l, struct snd_gsx1000_vol, list)
+@@ -4807,10 +4814,151 @@ static const struct snd_kcontrol_new snd_gsx1000_vol_control = {
+ 	.put = snd_gsx1000_vol_put,
+ };
+ 
++/*
++ * The ring keeps sending Vol+/Vol- until the host volume matches the ring
++ * position, one detent per event.  Answer these requests here instead of
++ * passing them on as global volume keys, so the desktop does not apply its
++ * own step size to them and only this card is affected.
++ */
++static void snd_gsx1000_ring_work(struct work_struct *work)
++{
++	struct snd_gsx1000_vol *vol =
++		container_of(work, struct snd_gsx1000_vol, ring_work);
++	int delta = atomic_xchg(&vol->ring_delta, 0);
++	int value, changed;
++
++	if (!delta)
++		return;
++
++	CLASS(snd_usb_lock, pm)(vol->list.mixer->chip);
++	if (pm.err < 0)
++		return;
++
++	scoped_guard(mutex, &vol->lock) {
++		value = clamp_t(int, vol->value + delta * SND_GSX1000_RING_STEP,
++				0, SND_GSX1000_VOL_STEPS);
++		changed = __snd_gsx1000_vol_set(vol, value);
++	}
++	if (changed > 0)
++		snd_ctl_notify(vol->list.mixer->chip->card,
++			       SNDRV_CTL_EVENT_MASK_VALUE, &vol->list.kctl->id);
++}
++
++#if IS_REACHABLE(CONFIG_INPUT)
++static bool snd_gsx1000_ih_filter(struct input_handle *handle,
++				  unsigned int type, unsigned int code,
++				  int value)
++{
++	struct snd_gsx1000_vol *vol =
++		container_of(handle->handler, struct snd_gsx1000_vol, ih);
++
++	if (type != EV_KEY ||
++	    (code != KEY_VOLUMEUP && code != KEY_VOLUMEDOWN))
++		return false;
++
++	/* Act on presses only; swallow releases and repeats as well */
++	if (value == 1) {
++		atomic_add(code == KEY_VOLUMEUP ? 1 : -1, &vol->ring_delta);
++		schedule_work(&vol->ring_work);
++	}
++	return true;
++}
++
++static bool snd_gsx1000_ih_match(struct input_handler *handler,
++				 struct input_dev *dev)
++{
++	struct snd_gsx1000_vol *vol =
++		container_of(handler, struct snd_gsx1000_vol, ih);
++	struct usb_device *snd_dev = vol->list.mixer->chip->dev;
++	struct device *parent;
++
++	/* Only the HID interface of this very card, not an identical one */
++	for (parent = dev->dev.parent; parent; parent = parent->parent) {
++		if (parent == &snd_dev->dev)
++			return true;
++	}
++	return false;
++}
++
++static int snd_gsx1000_ih_connect(struct input_handler *handler,
++				  struct input_dev *dev,
++				  const struct input_device_id *id)
++{
++	struct input_handle *handle;
++	int err;
++
++	handle = kzalloc_obj(*handle);
++	if (!handle)
++		return -ENOMEM;
++
++	handle->dev = dev;
++	handle->handler = handler;
++	handle->name = handler->name;
++
++	err = input_register_handle(handle);
++	if (err)
++		goto err_free;
++
++	err = input_open_device(handle);
++	if (err)
++		goto err_unregister;
++
++	return 0;
++
++err_unregister:
++	input_unregister_handle(handle);
++err_free:
++	kfree(handle);
++	return err;
++}
++
++static void snd_gsx1000_ih_disconnect(struct input_handle *handle)
++{
++	input_close_device(handle);
++	input_unregister_handle(handle);
++	kfree(handle);
++}
++
++static void snd_gsx1000_ih_register(struct snd_gsx1000_vol *vol)
++{
++	struct usb_mixer_interface *mixer = vol->list.mixer;
++	struct input_device_id *id = &vol->id_table[0];
++	int err;
++
++	id->flags = INPUT_DEVICE_ID_MATCH_VENDOR | INPUT_DEVICE_ID_MATCH_PRODUCT |
++		    INPUT_DEVICE_ID_MATCH_EVBIT | INPUT_DEVICE_ID_MATCH_KEYBIT;
++	id->vendor = USB_ID_VENDOR(mixer->chip->usb_id);
++	id->product = USB_ID_PRODUCT(mixer->chip->usb_id);
++	id->evbit[BIT_WORD(EV_KEY)] = BIT_MASK(EV_KEY);
++	id->keybit[BIT_WORD(KEY_VOLUMEUP)] = BIT_MASK(KEY_VOLUMEUP);
++
++	vol->ih.filter = snd_gsx1000_ih_filter;
++	vol->ih.match = snd_gsx1000_ih_match;
++	vol->ih.connect = snd_gsx1000_ih_connect;
++	vol->ih.disconnect = snd_gsx1000_ih_disconnect;
++	vol->ih.name = "snd-usb-gsx1000-ring";
++	vol->ih.id_table = vol->id_table;
++
++	err = input_register_handler(&vol->ih);
++	if (err)
++		usb_audio_warn(mixer->chip,
++			       "GSX 1000: cannot register ring handler: %d\n", err);
++	else
++		vol->ih_registered = true;
++}
++#else
++static void snd_gsx1000_ih_register(struct snd_gsx1000_vol *vol) {}
++#endif /* IS_REACHABLE(CONFIG_INPUT) */
++
+ static void snd_gsx1000_vol_free(struct snd_kcontrol *kctl)
+ {
+ 	struct snd_gsx1000_vol *vol = to_gsx1000_vol(snd_kcontrol_chip(kctl));
+ 
++#if IS_REACHABLE(CONFIG_INPUT)
++	if (vol->ih_registered)
++		input_unregister_handler(&vol->ih);
++#endif
++	cancel_work_sync(&vol->ring_work);
+ 	mutex_destroy(&vol->lock);
+ 	kfree(vol);
+ 	kctl->private_data = NULL;
+@@ -4834,6 +4982,8 @@ static int snd_gsx1000_controls_create(struct usb_mixer_interface *mixer)
+ 	vol->list.resume = snd_gsx1000_vol_resume;
+ 	vol->value = SND_GSX1000_VOL_DEFAULT;
+ 	mutex_init(&vol->lock);
++	INIT_WORK(&vol->ring_work, snd_gsx1000_ring_work);
++	atomic_set(&vol->ring_delta, 0);
+ 
+ 	kctl = snd_ctl_new1(&snd_gsx1000_vol_control, &vol->list);
+ 	if (!kctl) {
+@@ -4853,6 +5003,8 @@ static int snd_gsx1000_controls_create(struct usb_mixer_interface *mixer)
+ 	if (err < 0)
+ 		usb_audio_warn(mixer->chip,
+ 			       "GSX 1000: cannot set initial volume: %d\n", err);
++
++	snd_gsx1000_ih_register(vol);
  	return 0;
  }
  
-+/*
-+ * EPOS / Sennheiser GSX 1000 v2
-+ *
-+ * The volume ring does not report its direction: it sends HID Vol+/Vol-
-+ * until the host volume written to FU 12 matches the ring position, and the
-+ * display shows the host volume on the Windows audio-taper scale.  The
-+ * descriptor claims 1 dB resolution, but Windows writes fractional dB values,
-+ * so a 1 dB grid never lands on the value the device expects.
-+ *
-+ * Replace the FU 12 volume with a 0..100 control on the Windows scale.  The
-+ * control has no dB TLV, so user space maps its volume linearly to these
-+ * steps and the number on the device matches the desktop volume percent.
-+ */
-+#define SND_GSX1000_CTRL_IFNUM	3
-+#define SND_GSX1000_FU_ID	12
-+#define SND_GSX1000_VOL_STEPS	100
-+#define SND_GSX1000_VOL_DEFAULT	60
-+
-+/* Volume per percent in 1/256 dB, as written by the Windows inbox driver */
-+static const s16 snd_gsx1000_vol_table[SND_GSX1000_VOL_STEPS + 1] = {
-+	-18944, -15718, -13978, -12781, -11866, -11126, -10505, -9969, -9498, -9078,
-+	-8699, -8354, -8037, -7743, -7471, -7216, -6977, -6751, -6538, -6336,
-+	-6144, -5961, -5787, -5620, -5459, -5305, -5157, -5014, -4877, -4744,
-+	-4615, -4491, -4370, -4253, -4140, -4029, -3922, -3818, -3716, -3617,
-+	-3520, -3426, -3334, -3244, -3156, -3070, -2986, -2904, -2823, -2744,
-+	-2667, -2591, -2517, -2444, -2372, -2301, -2232, -2164, -2098, -2032,
-+	-1967, -1904, -1841, -1780, -1719, -1660, -1601, -1543, -1486, -1430,
-+	-1375, -1320, -1266, -1213, -1161, -1109, -1058, -1008, -958, -909,
-+	-860, -812, -765, -718, -672, -627, -582, -537, -493, -449,
-+	-406, -364, -321, -280, -238, -198, -157, -117, -78, -38,
-+	0,
-+};
-+
-+struct snd_gsx1000_vol {
-+	struct usb_mixer_elem_list list;	/* kctl private data */
-+	struct mutex lock;			/* serializes value and USB writes */
-+	unsigned int value;			/* 0..SND_GSX1000_VOL_STEPS */
-+};
-+
-+#define to_gsx1000_vol(l)	container_of(l, struct snd_gsx1000_vol, list)
-+
-+/*
-+ * Caller holds a snd_usb_lock reference and vol->lock, taken in that order:
-+ * the lock reference may autoresume the device, and resume calls
-+ * snd_gsx1000_vol_resume(), which takes vol->lock.
-+ */
-+static int snd_gsx1000_vol_write(struct snd_gsx1000_vol *vol)
-+{
-+	struct snd_usb_audio *chip = vol->list.mixer->chip;
-+	__le16 buf;
-+	int ch, err;
-+
-+	/*
-+	 * Windows writes the same value to channels 1 and 2 and leaves the
-+	 * master channel alone, so expose a single value and do the same.
-+	 */
-+	buf = cpu_to_le16((u16)snd_gsx1000_vol_table[vol->value]);
-+	for (ch = 0; ch < 2; ch++) {
-+		err = snd_usb_ctl_msg(chip->dev, usb_sndctrlpipe(chip->dev, 0),
-+				      UAC_SET_CUR,
-+				      USB_RECIP_INTERFACE | USB_TYPE_CLASS | USB_DIR_OUT,
-+				      (UAC_FU_VOLUME << 8) | (ch + 1),
-+				      (SND_GSX1000_FU_ID << 8) | SND_GSX1000_CTRL_IFNUM,
-+				      &buf, sizeof(buf));
-+		if (err < 0)
-+			return err;
-+	}
-+	return 0;
-+}
-+
-+/* Returns 1 if the value changed, 0 if not, or a negative error */
-+static int __snd_gsx1000_vol_set(struct snd_gsx1000_vol *vol, unsigned int value)
-+{
-+	unsigned int old;
-+	int err;
-+
-+	lockdep_assert_held(&vol->lock);
-+	if (value == vol->value)
-+		return 0;
-+	old = vol->value;
-+	vol->value = value;
-+	err = snd_gsx1000_vol_write(vol);
-+	if (err < 0) {
-+		vol->value = old;
-+		return err;
-+	}
-+	return 1;
-+}
-+
-+static int snd_gsx1000_vol_set(struct snd_gsx1000_vol *vol, unsigned int value)
-+{
-+	CLASS(snd_usb_lock, pm)(vol->list.mixer->chip);
-+	if (pm.err < 0)
-+		return pm.err;
-+
-+	guard(mutex)(&vol->lock);
-+	return __snd_gsx1000_vol_set(vol, value);
-+}
-+
-+static int snd_gsx1000_vol_info(struct snd_kcontrol *kcontrol,
-+				struct snd_ctl_elem_info *uinfo)
-+{
-+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-+	uinfo->count = 1;
-+	uinfo->value.integer.min = 0;
-+	uinfo->value.integer.max = SND_GSX1000_VOL_STEPS;
-+	uinfo->value.integer.step = 1;
-+	return 0;
-+}
-+
-+static int snd_gsx1000_vol_get(struct snd_kcontrol *kcontrol,
-+			       struct snd_ctl_elem_value *ucontrol)
-+{
-+	struct snd_gsx1000_vol *vol = to_gsx1000_vol(snd_kcontrol_chip(kcontrol));
-+
-+	ucontrol->value.integer.value[0] = READ_ONCE(vol->value);
-+	return 0;
-+}
-+
-+static int snd_gsx1000_vol_put(struct snd_kcontrol *kcontrol,
-+			       struct snd_ctl_elem_value *ucontrol)
-+{
-+	struct snd_gsx1000_vol *vol = to_gsx1000_vol(snd_kcontrol_chip(kcontrol));
-+	long value = ucontrol->value.integer.value[0];
-+
-+	if (value < 0 || value > SND_GSX1000_VOL_STEPS)
-+		return -EINVAL;
-+	return snd_gsx1000_vol_set(vol, value);
-+}
-+
-+static int snd_gsx1000_vol_resume(struct usb_mixer_elem_list *list)
-+{
-+	struct snd_gsx1000_vol *vol = to_gsx1000_vol(list);
-+
-+	/* Resume holds chip->active, so this does not autoresume again */
-+	CLASS(snd_usb_lock, pm)(list->mixer->chip);
-+	if (pm.err < 0)
-+		return pm.err;
-+
-+	guard(mutex)(&vol->lock);
-+	return snd_gsx1000_vol_write(vol);
-+}
-+
-+static const struct snd_kcontrol_new snd_gsx1000_vol_control = {
-+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-+	.name = "PCM Playback Volume",
-+	.info = snd_gsx1000_vol_info,
-+	.get = snd_gsx1000_vol_get,
-+	.put = snd_gsx1000_vol_put,
-+};
-+
-+static void snd_gsx1000_vol_free(struct snd_kcontrol *kctl)
-+{
-+	struct snd_gsx1000_vol *vol = to_gsx1000_vol(snd_kcontrol_chip(kctl));
-+
-+	mutex_destroy(&vol->lock);
-+	kfree(vol);
-+	kctl->private_data = NULL;
-+}
-+
-+static int snd_gsx1000_controls_create(struct usb_mixer_interface *mixer)
-+{
-+	struct snd_gsx1000_vol *vol;
-+	struct snd_kcontrol *kctl;
-+	int err;
-+
-+	if (mixer->hostif->desc.bInterfaceNumber != SND_GSX1000_CTRL_IFNUM)
-+		return 0;
-+
-+	vol = kzalloc_obj(*vol);
-+	if (!vol)
-+		return -ENOMEM;
-+
-+	vol->list.mixer = mixer;
-+	vol->list.id = SND_GSX1000_FU_ID;
-+	vol->list.resume = snd_gsx1000_vol_resume;
-+	vol->value = SND_GSX1000_VOL_DEFAULT;
-+	mutex_init(&vol->lock);
-+
-+	kctl = snd_ctl_new1(&snd_gsx1000_vol_control, &vol->list);
-+	if (!kctl) {
-+		mutex_destroy(&vol->lock);
-+		kfree(vol);
-+		return -ENOMEM;
-+	}
-+	kctl->private_free = snd_gsx1000_vol_free;
-+
-+	/* On failure the control is freed together with vol */
-+	err = snd_usb_mixer_add_list(&vol->list, kctl, false, true);
-+	if (err < 0)
-+		return err;
-+
-+	/* The device falls back to -1 dB on reconnect; make it match the control */
-+	err = snd_gsx1000_vol_resume(&vol->list);
-+	if (err < 0)
-+		usb_audio_warn(mixer->chip,
-+			       "GSX 1000: cannot set initial volume: %d\n", err);
-+	return 0;
-+}
-+
- int snd_usb_mixer_apply_create_quirk(struct usb_mixer_interface *mixer)
- {
- 	int err = 0;
-@@ -4852,6 +5052,9 @@ int snd_usb_mixer_apply_create_quirk(struct usb_mixer_interface *mixer)
- 	case USB_ID(0x1c75, 0xaf02): /* Arturia AudioFuse */
- 		err = snd_audiofuse_controls_create(mixer);
- 		break;
-+	case USB_ID(0x1395, 0x00b1): /* EPOS GSX 1000 v2 */
-+		err = snd_gsx1000_controls_create(mixer);
-+		break;
- 	}
- 
- 	return err;
 
 -- 
 2.56.1
