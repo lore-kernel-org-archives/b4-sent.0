@@ -1,10 +1,10 @@
 From: Nick Dowsett <nick42d@gmail.com>
-Date: Fri, 27 Nov 2026 19:02:49 +0800
-Subject: [PATCH v2 1/4] rust: wmi: add basic WMI device abstraction
+Date: Fri, 27 Nov 2026 19:02:50 +0800
+Subject: [PATCH v2 2/4] rust: wmi: add DeviceId and wmi_device_table! macro
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-rust-wmi-v2-1-5bfafabd6a6e@gmail.com>
+Message-Id: <20261127-rust-wmi-v2-2-5bfafabd6a6e@gmail.com>
 References: <20261127-rust-wmi-v2-0-5bfafabd6a6e@gmail.com>
 In-Reply-To: <20261127-rust-wmi-v2-0-5bfafabd6a6e@gmail.com>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -21,165 +21,102 @@ To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>,
 Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
  platform-driver-x86@vger.kernel.org, Nick Dowsett <nick42d@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795777382; l=5667;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795777382; l=2936;
  i=nick42d@gmail.com; s=20261127; h=from:subject:message-id;
- bh=NqLE0httKlFvmMsJh2OQmeBDiskD2AOxrW1TgQXi5Ww=;
- b=NAXbE+BK/0xj0yLbogWHaXoxS7jApLT1jmntGpBg19hzfkQlXPcgLI3+YeuCX/xYmfwBk07f5
- XvagUdn3VEFAEmyG5/X7pvLlGqpUxgicThUuGVJ9wstRgvljc6vgrb8
+ bh=H0X1G2laYUTK70oLjzC7CZtH2UqOBWIa7sfwgkRyp88=;
+ b=trrd1YxGluSOeMtaUutG20HesIhsqNjqItJIlV1bb7cJdFlHcGdmnrRez9xl1laMIgH5e0tHv
+ K+WBIi0u9OyB9Ywq/Z3o4z0i8g85xLulzQ9LzKA8vG1xFPiN0+Rphrd
 X-Developer-Key: i=nick42d@gmail.com; a=ed25519;
  pk=rewGRrQm8GTjt8ii+wLiI2tUWP5gtTF4pntVEMNXrj8=
 X-Endpoint-Received: by B4 Relay for nick42d@gmail.com/20261127 with auth_id=1660
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-- Adds the `kernel::wmi` module
-- Exposes `linux/wmi.h` to bindgen.
-- Adds `rust/kernel/wmi.rs` to MAINTAINERS.
-- Implements `wmi::Device<Ctx>` wrapper around `struct wmi_device`.
+- Add `wmi::DeviceId` wrapping `struct wmi_device_id`.
+- Implements `wmi::IdTable` and the `wmi_device_table!`.
 
 Signed-off-by: Nick Dowsett <nick42d@gmail.com>
 ---
- MAINTAINERS                     |  1 +
- rust/bindings/bindings_helper.h |  1 +
- rust/kernel/lib.rs              |  2 +
- rust/kernel/wmi.rs              | 93 +++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 97 insertions(+)
+ rust/kernel/wmi.rs | 60 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 60 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 44540a1eb2b8..f58a44003d78 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -422,6 +422,7 @@ F:	Documentation/driver-api/wmi.rst
- F:	Documentation/wmi/
- F:	drivers/platform/wmi/
- F:	include/uapi/linux/wmi.h
-+F:	rust/kernel/wmi.rs
- 
- ACRN HYPERVISOR SERVICE MODULE
- M:	Fei Li <fei1.li@intel.com>
-diff --git a/rust/bindings/bindings_helper.h b/rust/bindings/bindings_helper.h
-index 3791af0aadc7..81652d0dfed1 100644
---- a/rust/bindings/bindings_helper.h
-+++ b/rust/bindings/bindings_helper.h
-@@ -94,6 +94,7 @@
- #include <linux/tracepoint.h>
- #include <linux/usb.h>
- #include <linux/wait.h>
-+#include <linux/wmi.h>
- #include <linux/workqueue.h>
- #include <linux/xarray.h>
- #include <net/genetlink.h>
-diff --git a/rust/kernel/lib.rs b/rust/kernel/lib.rs
-index 1ab41129d557..b9713bd16313 100644
---- a/rust/kernel/lib.rs
-+++ b/rust/kernel/lib.rs
-@@ -147,6 +147,8 @@
- pub mod uaccess;
- #[cfg(CONFIG_USB = "y")]
- pub mod usb;
-+#[cfg(CONFIG_ACPI_WMI = "y")]
-+pub mod wmi;
- pub mod workqueue;
- pub mod xarray;
- 
 diff --git a/rust/kernel/wmi.rs b/rust/kernel/wmi.rs
-new file mode 100644
-index 000000000000..f821bf35220e
---- /dev/null
+index f821bf35220e..f7fbde29177b 100644
+--- a/rust/kernel/wmi.rs
 +++ b/rust/kernel/wmi.rs
-@@ -0,0 +1,93 @@
-+// SPDX-License-Identifier: GPL-2.0
+@@ -7,6 +7,8 @@
+ use crate::{
+     bindings,
+     device,
++    device_id::RawDeviceId,
++    prelude::*,
+     sync::aref::AlwaysRefCounted,
+     types::Opaque, //
+ };
+@@ -15,6 +17,64 @@
+     ptr::NonNull, //
+ };
+ 
++/// IdTable type for WMI drivers.
++pub type IdTable = &'static dyn crate::device_id::IdTable<DeviceId, ()>;
 +
-+//! Abstractions for WMI (Windows Management Instrumentation).
-+//!
-+//! C header: [`include/linux/wmi.h`](srctree/include/linux/wmi.h)
-+
-+use crate::{
-+    bindings,
-+    device,
-+    sync::aref::AlwaysRefCounted,
-+    types::Opaque, //
-+};
-+use core::{
-+    marker::PhantomData,
-+    ptr::NonNull, //
-+};
-+
-+/// A WMI bus device ([`struct wmi_device`]).
++/// A WMI device ID wrapping [`struct wmi_device_id`].
++///
++/// [`struct wmi_device_id`]: srctree/include/linux/device-id/wmi.h
 +///
 +/// # Invariants
-+/// - `Device` wraps an in-place `Opaque<bindings::wmi_device>` allocated and always
-+///   reference-counted in a thread-safe way by the C subsystem.
-+/// - Instances are never constructed or moved by value in Rust, they are only accessed behind
-+///   `&Device<Ctx>` or `ARef<Device<device::Normal>>`.
-+///
-+/// [`struct wmi_device`]: srctree/include/linux/wmi.h
++/// `self.0.guid_string` is a valid, null-terminated string of length [`bindings::UUID_STRING_LEN`].
 +#[repr(transparent)]
-+pub struct Device<Ctx: device::DeviceContext = device::Normal> {
-+    ptr: Opaque<bindings::wmi_device>,
-+    _marker: PhantomData<Ctx>,
++#[derive(Clone, Copy)]
++pub struct DeviceId(bindings::wmi_device_id);
++// SAFETY: `DeviceId` is a `#[repr(transparent)]` wrapper of `wmi_device_id`.
++// `wmi_device_id` does not have any invariants, so it's safe to transmute to it.
++unsafe impl RawDeviceId for DeviceId {
++    type RawType = bindings::wmi_device_id;
 +}
-+
-+// SAFETY: `Device<Ctx>` is a transparent wrapper of `Opaque<bindings::wmi_device>` whose
-+// representation does not depend on `Ctx`.
-+crate::impl_device_context_deref!(unsafe { Device });
-+crate::impl_device_context_into_aref!(Device);
-+
-+// SAFETY: By the invariant, `Device<Normal>` is never moved by value in Rust.
-+// If sent to another thread as `ARef<Device<Normal>>`, the reference-counting
-+// is performed in a thread-safe way.
-+unsafe impl Send for Device<device::Normal> {}
-+
-+// SAFETY:
-+// - All that `&Device<Normal>` can do is increment its reference count (thread-safe)
-+// and perform a reference conversion to `&device::Device<Normal>`.
-+// - All methods on `&device::Device<Normal>` are thread safe.
-+unsafe impl Sync for Device<device::Normal> {}
-+
-+// SAFETY:
-+// - By the type invariant, all instances of `Device` are reference-counted.
-+// - Increments to the reference count keep the object alive in memory at least
-+//   until matching decrements (`dec_ref` via `put_device`) are performed.
-+unsafe impl AlwaysRefCounted for Device<device::Normal> {
-+    #[inline]
-+    fn inc_ref(&self) {
-+        self.as_ref().inc_ref();
-+    }
-+    #[inline]
-+    unsafe fn dec_ref(obj: NonNull<Self>) {
-+        // CAST: `Device` is a `#[repr(transparent)]` wrapper of `Opaque<bindings::wmi_device>`.
-+        let wdev: *mut bindings::wmi_device = obj.cast().as_ptr();
-+        // SAFETY:
-+        // - The safety requirements of `dec_ref` guarantee that `obj` is a valid pointer with a
-+        //   non-zero reference count.
-+        // - `put_device` safely decrements the refcount and triggers release cleanup when it
-+        //   reaches 0.
-+        unsafe { bindings::put_device(&raw mut (*wdev).dev) };
-+    }
-+}
-+impl<Ctx: device::DeviceContext> Device<Ctx> {
-+    /// Returns the raw pointer to the underlying `bindings::wmi_device`.
-+    #[inline]
-+    fn as_raw(&self) -> *mut bindings::wmi_device {
-+        self.ptr.get()
++impl DeviceId {
++    const WMI_UUID_LEN: usize = crate::num::casts::u32_as_usize(bindings::UUID_STRING_LEN);
++    /// Creates a new [`DeviceId`].
++    ///
++    /// Fails at compile time if `guid.len()` is not [`bindings::UUID_STRING_LEN`].
++    #[inline(always)]
++    pub const fn new(guid: &'static CStr) -> Self {
++        let src = guid.to_bytes_with_nul();
++        // NOTE: Function is marked `#[inline(always)]` to help compiler optimise the error path.
++        build_assert!(
++            src.len() == Self::WMI_UUID_LEN + 1,
++            "WMI DeviceId length incorrect"
++        );
++        let mut id: bindings::wmi_device_id = pin_init::zeroed();
++        // TODO: Upgrade to core::slice::copy_from_slice(src) once rustc>=1.87
++        let mut i = 0;
++        while i < src.len() {
++            id.guid_string[i] = src[i];
++            i += 1;
++        }
++        // INVARIANT:
++        // - All bytes were copied from a Rust `&'static CStr`.
++        // - The build assert above guarantees `id` to meet the length invariant.
++        Self(id)
 +    }
 +}
 +
-+impl<Ctx: device::DeviceContext> AsRef<device::Device<Ctx>> for Device<Ctx> {
-+    #[inline]
-+    fn as_ref(&self) -> &device::Device<Ctx> {
-+        // SAFETY:
-+        // - By the type invariant on `Device<Ctx>`, `self.as_raw()` is a valid pointer to
-+        //   a `wmi_device which embeds a `device`.
-+        // - If you have a reference to a `Device<Ctx>`, then the reference count must be
-+        //   non-zero.
-+        // - If you have a reference to a `Device<Ctx>`, it is either:
-+        //   - Borrowed from an `ARef<Device<Normal>>` that cannot be dropped and decrement
-+        //     reference count to zero whilst the reference is held.
-+        //   - Derived from a scope (such as a callback) that guarantees that reference count
-+        //     will not be reduced to zero whilst that reference is held.
-+        unsafe { device::Device::from_raw(&raw mut (*self.as_raw()).dev) }
-+    }
++/// Create a WMI [`IdTable`] with an "alias" for modpost.
++#[macro_export]
++macro_rules! wmi_device_table {
++    ($table_name:ident, [$($id:expr),* $(,)?]) => {
++        $crate::module_device_table!(
++            "wmi",
++            $crate::wmi::DeviceId,
++            $table_name,
++            @none,
++            [$($id),*]
++        );
++    };
 +}
++
+ /// A WMI bus device ([`struct wmi_device`]).
+ ///
+ /// # Invariants
 
 -- 
 2.56.1
