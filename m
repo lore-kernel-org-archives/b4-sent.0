@@ -1,79 +1,87 @@
-From: Ahmet Zeren <niko3x@proton.me>
-Date: Fri, 27 Nov 2026 21:53:25 +0300
-Subject: [PATCH wireless-next] wifi: mac80211: don't mark NO_ACK frames as
- failed in TX status radiotap
+From: Fil Dunsky <filipp.dunsky@gmail.com>
+Date: Fri, 27 Nov 2026 22:03:31 +0300
+Subject: [PATCH] i2c: cs75xx: Disable the controller before releasing its
+ IRQ
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-b4-mac80211-noack-v1-1-c7e6f7c56d3c@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMSQ7CMAwAv1L5jKU6LaTwFcQhcQ2YJUVxgUpV/
- 06A42g0M4NJVjHYVTNkeanpkArQqgI+h3QS1L4wuNptiJzH2OI9cFc7IkxD4Cs2fdfw1nO79hF
- K98hy1On33MNbs9zEDJNMIxz+2p7xIjx+v7AsH+LMv8eEAAAA
-X-Change-ID: 20261127-b4-mac80211-noack-3d83c97c457b
-To: Johannes Berg <johannes@sipsolutions.net>
-Cc: linux-wireless@vger.kernel.org, Luka Gejak <luka.gejak@linux.dev>, 
- Ahmet Zeren <niko3x@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795805607; l=2102;
- i=niko3x@proton.me; s=20261119; h=from:subject:message-id;
- bh=M1kdcetf79sRn55NV0lLAtC+P4wolqACj8MViFJSKg0=;
- b=A4kx9IBIzRJ8nRev7m+QjAeLwq5A825LhA+TsgTAw4Gn5FUpfecrf4Aws2w9cDfNvgv4NzUYw
- kpceCAtOKpzDAJJZ/jc1WgPF41jExgtVhFgaGD/IdqVwi+4xLT9spZo
-X-Developer-Key: i=niko3x@proton.me; a=ed25519;
- pk=J4zNm2pudzQ/wF+pQ8xO+wW6jpcNa9EJ2C1g4DUAjhM=
-X-Endpoint-Received: by B4 Relay for niko3x@proton.me/20261119 with auth_id=1575
+Message-Id: <20261127-i2c-cs75xx-irq-teardown-v1-1-f6acd781af04@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCQAxA0auUrA00gWnBq4iLMY0aF1NNqg6U3
+ t1Rl2/x/wqhbhqw71ZwfVnYXBpo14Fcc7ko2tQM3PNAxCMaC0qMqVY0f+Ci2af5XTDlfmCVRIk
+ YWn13PVv9nQ/Hv+N5uqks3x1s2wdEWE97ewAAAA==
+X-Change-ID: 20261127-i2c-cs75xx-irq-teardown-5a062ec51512
+To: Andi Shyti <andi.shyti@kernel.org>
+Cc: linux-i2c@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795806210; l=2481;
+ i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
+ bh=H8bWwANLWzhb+hTYvLCYBcRvBSWNfP9Xtsa2d31C1Nk=;
+ b=qmgG547+jw6GW3bGVGWtiElxcn0Eg/+RbwUnQ8zCGD0lg1HRXszHaKksLpZWE8u8Abjn/nER4
+ GxHNK5Wd9TrC1oldyPens+dZ/PQa64RtS3x+6C8T1R4qWLJ+wBOB89X
+X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
+ pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
+X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ieee80211_add_tx_radiotap_header() sets IEEE80211_RADIOTAP_F_TX_FAIL for
-every unicast frame without IEEE80211_TX_STAT_ACK. That includes NO_ACK
-frames that the driver reported with IEEE80211_TX_STAT_NOACK_TRANSMITTED,
-i.e. frames that were sent successfully, so monitor interfaces show them
-as failed.
+Managed resources are released in reverse registration order. Registering
+the disable action before the IRQ causes free_irq() to run while the
+controller is still enabled during probe failure or driver removal.
 
-Don't set TX_FAIL when IEEE80211_TX_STAT_NOACK_TRANSMITTED is set.
+Register the disable action after devm_request_irq() so that the adapter
+is removed first, then the interrupt source is disabled, and finally the
+handler is freed and synchronized before the clock and mapping disappear.
+Disable the controller explicitly if requesting the IRQ fails.
 
-Tested with rtl8xxxu on an RTL8192CU (0bda:8178), on Linux 7.3.4 where
-this code is the same: injected unicast NO_ACK frames were shown as
-failed on the monitor interface and no longer are, and acked and unacked
-frames are shown as before.
-
-Reported-by: Luka Gejak <luka.gejak@linux.dev>
-Closes: https://lore.kernel.org/linux-wireless/20261127115929.40205-1-luka.gejak@linux.dev/
-Signed-off-by: Ahmet Zeren <niko3x@proton.me>
+Fixes: 3fdb0e8ef0d4 ("i2c: Add Cortina Systems CS75xx I2C controller driver")
+Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
-Luka noticed this while reviewing rtw88 injection patches, which now
-report sent NO_ACK frames with IEEE80211_TX_STAT_NOACK_TRANSMITTED;
-rtl8xxxu and rtw89 do the same.
+This is a focused follow-up to the driver accepted in i2c/i2c as
+3fdb0e8ef0d4, rather than a reroll of the complete I2C series.
 
-AI tool use (Documentation/process/generated-content.rst): the patch was
-written with help from Claude Code (Claude Opus 5.5). It was asked to
-make the change Luka suggested and to test it on the RTL8192CU with a
-patched mac80211 module. I have reviewed and tested the change and take
-responsibility for it.
+Move the managed disable action after the IRQ registration, and disable
+the configured controller explicitly if requesting the IRQ fails. The
+adapter is removed before the source is disabled, then free_irq() drains
+any handler before the clock and register mapping are released.
+
+The driver postimage matches the correction already compiled in native
+ARM and OpenWrt 6.18.64 builds and installed on Almond+. Focused tests
+using the actual cleanup source cover successful teardown, request_irq
+failure, action-registration failure and adapter-registration failure.
+No hardware fault injection is claimed.
 ---
- net/mac80211/status.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ drivers/i2c/busses/i2c-cs75xx.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/net/mac80211/status.c b/net/mac80211/status.c
-index 5d1807ab46e..48db461d8da 100644
---- a/net/mac80211/status.c
-+++ b/net/mac80211/status.c
-@@ -315,7 +315,8 @@ ieee80211_add_tx_radiotap_header(struct ieee80211_local *local,
+diff --git a/drivers/i2c/busses/i2c-cs75xx.c b/drivers/i2c/busses/i2c-cs75xx.c
+index 49a14f27b..c5365448c 100644
+--- a/drivers/i2c/busses/i2c-cs75xx.c
++++ b/drivers/i2c/busses/i2c-cs75xx.c
+@@ -344,12 +344,15 @@ static int cs75xx_i2c_probe(struct platform_device *pdev)
+ 	writel(0, i2c->base + CS75XX_I2C_IE);
+ 	writel(CS75XX_I2C_INT_DONE, i2c->base + CS75XX_I2C_INT);
  
- 	/* IEEE80211_RADIOTAP_TX_FLAGS */
- 	txflags = 0;
--	if (!(info->flags & IEEE80211_TX_STAT_ACK) &&
-+	if (!(info->flags & (IEEE80211_TX_STAT_ACK |
-+			     IEEE80211_TX_STAT_NOACK_TRANSMITTED)) &&
- 	    !is_multicast_ether_addr(hdr->addr1))
- 		txflags |= IEEE80211_RADIOTAP_F_TX_FAIL;
+-	ret = devm_add_action_or_reset(dev, cs75xx_i2c_disable, i2c);
+-	if (ret)
+-		return ret;
+-
+ 	ret = devm_request_irq(dev, i2c->irq, cs75xx_i2c_isr, 0, dev_name(dev),
+ 			       i2c);
++	if (ret) {
++		cs75xx_i2c_disable(i2c);
++		return ret;
++	}
++
++	/* Quiesce the source before devres releases the interrupt handler. */
++	ret = devm_add_action_or_reset(dev, cs75xx_i2c_disable, i2c);
+ 	if (ret)
+ 		return ret;
  
 
 ---
-base-commit: 18d0bedbb5f0538396cb7f763ed9cd1dd69c5b23
-change-id: 20261127-b4-mac80211-noack-3d83c97c457b
+base-commit: 3fdb0e8ef0d477ce4b9a9c5ebd370e64d7ae4ed8
+change-id: 20261127-i2c-cs75xx-irq-teardown-5a062ec51512
 
 Best regards,
 --  
-Ahmet Zeren <niko3x@proton.me>
+Fil Dunsky <filipp.dunsky@gmail.com>
 
