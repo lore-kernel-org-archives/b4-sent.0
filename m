@@ -1,83 +1,80 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 06:32:42 +0000
-Subject: [PATCH 6.6.y] nfsd: fix possible badness in FREE_STATEID
+Date: Fri, 27 Nov 2026 06:35:09 +0000
+Subject: [PATCH 5.15.y] PCI: Free released resource after coalescing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-so5-nfsd-66-v1-1-2ae77e2e4983@certik.com>
-X-B4-Tracking: v=1; b=H4sIAAkkCWsC/02NSw7CMAxEr1J5jUsTUUO5CmKRj0ODUILigkBV7
- 04DG5bzNPNmBuESWeDYzFD4GSXmtAa1acCNJl0Yo18z6E6TUnqPkntMQTwSYa/tcHC7QEPnYV3
- cC4f4+tpOQC21bzj/sDzsld1UTbVojTDaYpIbKxJOfsr5hpVv/x5gWT692TfdogAAAA==
-X-Change-ID: 20261127-so5-nfsd-66-52b98c4f690d
+Message-Id: <20261127-so5-pci-515-v1-1-58c7cedf2a45@certik.com>
+X-B4-Tracking: v=1; b=H4sIAJwkCWsC/02NzQ7CIBCEX6XZs1sBQ237KsYDP6vFGGjYajRN3
+ 13Qi8f5MvPNCkw5EMPYrJDpGTikWILcNeAmE6+EwZcMSqhOSnVEThpnF1BLjQch/NAPvhedh7K
+ YM13C62s7gW6lbt9w/nF+2Bu5papq0xomtNlEN1XEFP2S0h0r3/9dwLZ9ADz0FIOjAAAA
+X-Change-ID: 20261127-so5-pci-515-300d989d806d
 To: stable@vger.kernel.org
-Cc: Olga Kornievskaia <okorniev@redhat.com>, linux-nfs@vger.kernel.org
+Cc: Ross Lagerwall <ross.lagerwall@citrix.com>, 
+ Bjorn Helgaas <bhelgaas@google.com>, linux-pci@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795761161; l=2166;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795761308; l=1901;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=jwP/hO3okQ18uwZiBI2Bo8/D+D1SaDtOva3Z/IN1YhA=;
- b=9bTRfHpYoDSJjOyWaPD0dwexwSfC4PlGG26jRbGgfENMnoridzZCe0h7+2kksymHRDJvcx09h
- TaSlYwhEBbsCrcVlHQWAJeLG74lolKxLzaSh4g2O9U6elnyR4jPFcDw
+ bh=Q3ipk5VBhPFIagCrOUrYLKD41qorDNeCk/xbTMJ0NYs=;
+ b=g31RX7ICmsUEZ+CZFUWSl48NbQylBjFTR0E9pdvUexHT7lguAnw/pRaFit0c2bLmDD00pzQKA
+ ZO7cswPFJrxC82GV/aHHstfGnnqpCmbQhufcf0GThnzs31Beef2+CXu
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Olga Kornievskaia <okorniev@redhat.com>
+From: Ross Lagerwall <ross.lagerwall@citrix.com>
 
-commit c88c150a467fcb670a1608e2272beeee3e86df6e upstream.
+commit 8ec9c1d5d0a5a4744516adb483b97a238892f9d5 upstream.
 
-When multiple FREE_STATEIDs are sent for the same delegation stateid,
-it can lead to a possible either use-after-free or counter refcount
-underflow errors.
+release_resource() doesn't actually free the resource or resource list
+entry so free the resource list entry to avoid a leak.
 
-In nfsd4_free_stateid() under the client lock we find a delegation
-stateid, however the code drops the lock before calling nfs4_put_stid(),
-that allows another FREE_STATE to find the stateid again. The first one
-will proceed to then free the stateid which leads to either
-use-after-free or decrementing already zeroed counter.
-
-Fixes: 3f29cc82a84c ("nfsd: split sc_status out of sc_type")
-Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
-Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Closes: https://lore.kernel.org/r/878r9sga1t.fsf@kernel.org/
+Fixes: e54223275ba1 ("PCI: Release resource invalidated by coalescing")
+Link: https://lore.kernel.org/r/20230906110846.225369-1-ross.lagerwall@citrix.com
+Reported-by: Kalle Valo <kvalo@kernel.org>
+Tested-by: Kalle Valo <kvalo@kernel.org>
+Signed-off-by: Ross Lagerwall <ross.lagerwall@citrix.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+Cc: stable@vger.kernel.org      # v5.16+
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
-6.12.y and newer already have this fix.
+6.1.y and newer already have this fix. 5.15.y has the coalescing
+prerequisite as 26277a425020.
 
-Tested on v6.6.163:
-- x86_64 allmodconfig W=1 build of fs/nfsd/nfs4state.o, base vs
+Tested on v5.15.226:
+- x86_64 allmodconfig W=1 build of drivers/pci/probe.o, base vs
   patched, no new warnings
-- under QEMU/KVM, base and patched: mounted a loopback NFSv4.1 export
-  and ran open, lock, write, read, close and unlink. FREE_STATEID on a
-  revoked delegation wasn't exercised.
+- booted the patched kernel under QEMU/KVM. I didn't have a PCI
+  topology that hits the invalidated window path.
 
 The backport and the test runs were prepared with AI coding tools
 (OpenAI Codex agents, with review by Claude). I went over the result
 before signing off.
 
-fs/nfsd/nfs4state.c | 1 +
+drivers/pci/probe.c | 1 +
  1 file changed, 1 insertion(+)
 ---
- fs/nfsd/nfs4state.c | 1 +
+ drivers/pci/probe.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1087ce23d499..73145f485995 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -7037,6 +7037,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	switch (s->sc_type) {
- 	case SC_TYPE_DELEG:
- 		if (s->sc_status & SC_STATUS_REVOKED) {
-+			s->sc_status |= SC_STATUS_CLOSED;
- 			spin_unlock(&s->sc_lock);
- 			dp = delegstateid(s);
- 			list_del_init(&dp->dl_recall_lru);
+diff --git a/drivers/pci/probe.c b/drivers/pci/probe.c
+index 1403b1e50142..d5db12f13a22 100644
+--- a/drivers/pci/probe.c
++++ b/drivers/pci/probe.c
+@@ -1001,6 +1001,7 @@ static int pci_register_host_bridge(struct pci_host_bridge *bridge)
+ 		res = window->res;
+ 		if (!res->flags && !res->start && !res->end) {
+ 			release_resource(res);
++			resource_list_destroy_entry(window);
+ 			continue;
+ 		}
+ 
 
 ---
-base-commit: e2bb30811e063ce0db964484357973b855b06572
-change-id: 20261127-so5-nfsd-66-52b98c4f690d
+base-commit: 4f2df9a01754521fbba3493e8ad91ef65515e68c
+change-id: 20261127-so5-pci-515-300d989d806d
 
 Best regards,
 --  
