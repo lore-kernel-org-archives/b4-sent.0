@@ -1,11 +1,11 @@
 From: Jerome Berclaz <jerome.berclaz@proton.me>
-Date: Thu, 26 Nov 2026 16:55:46 -0800
-Subject: [PATCH 2/4] media: tegra-vde: allow cache hints on the capture
- queue
+Date: Thu, 26 Nov 2026 16:55:47 -0800
+Subject: [PATCH 3/4] media: tegra-vde: clean only the used part of the
+ bitstream buffer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-tegra-vde-fixes-v1-2-fa4a7c1d24cc@proton.me>
+Message-Id: <20261126-tegra-vde-fixes-v1-3-fa4a7c1d24cc@proton.me>
 References: <20261126-tegra-vde-fixes-v1-0-fa4a7c1d24cc@proton.me>
 In-Reply-To: <20261126-tegra-vde-fixes-v1-0-fa4a7c1d24cc@proton.me>
 To: Dmitry Osipenko <digetx@gmail.com>, 
@@ -15,45 +15,98 @@ To: Dmitry Osipenko <digetx@gmail.com>,
 Cc: linux-media@vger.kernel.org, linux-tegra@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jerome Berclaz <jerome.berclaz@proton.me>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1318;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2968;
  i=jerome.berclaz@proton.me; s=2026-11; h=from:subject:message-id;
- bh=zLiW2FSkpXZ0lI6JCWYLwvCRGSU1EAnRKmDeIdvXN4w=;
- b=owGbwMvMwCVmvC9341tRgSLG02pJDNkcV4VWqzXuZJ1mpRj3xPfMG+YES+9T0W0fvux4YHsm5
- K6xsUB0RykLgxgXg6yYIgtrg2Hq/BNsAYX68w7BzGFlAhnCwMUpABPx2sjI8HR97oGZc4/FdJ68
- l7/JokFpV2w576HqtDkSRcc8597cuYrhN/vOk6sPPOX0XfukpGVWk6DjyeO5Dk2huw+2ne2e6Fp
- 9nRkA
+ bh=rI4bjGiLaIB/dHE/FaYnR9GQxHnftZtGARPOU0E1YCI=;
+ b=owGbwMvMwCVmvC9341tRgSLG02pJDNkcV4V/Rd0O/F/wautk1ydMOXbaby9t+9PbE/Ihevr/T
+ K6X/7fVdZSyMIhxMciKKbKwNhimzj/BFlCoP+8QzBxWJpAhDFycAjCR4COMDF1/1h5/8+aECuOb
+ 78x22a4MMbtlG1ZcMDqX9CaCf8l6g+uMDCcFrUsvGDDqO8Ttmuq1tGyjV5L8og7d3RtvKrucrxP
+ 4yg0A
 X-Developer-Key: i=jerome.berclaz@proton.me; a=openpgp;
  fpr=058031659FC80650712F9EC233BE6DB1ED151072
 X-Endpoint-Received: by B4 Relay for jerome.berclaz@proton.me/2026-11 with auth_id=1658
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 When the decoder sits behind the SMMU, buffers use vb2_dma_sg_memops,
-i.e. cached pages, and vb2 cleans and invalidates every decoded frame
-(1.4 MB at 720p) on each QBUF and DQBUF. A client that hands the frames
-to the display or GPU as dma-bufs never reads them through the CPU, and
-when it does, the dma-buf begin/end_cpu_access ops do the sync.
+i.e. cached pages, and vb2 cleans the whole bitstream (OUTPUT) buffer
+from the CPU caches on every QBUF. FFmpeg's V4L2 request decoder makes
+these buffers width * height * 3 / 2 bytes, 1.4 MB at 720p, while a coded
+frame is usually a few KB, so most of that work is wasted: it was the
+largest remaining kernel cost of hardware H.264 playback on a Tegra30.
 
-Set allow_cache_hints on the capture queue so that such clients can pass
-V4L2_BUF_FLAG_NO_CACHE_CLEAN / V4L2_BUF_FLAG_NO_CACHE_INVALIDATE, as the
-MediaTek decoder already allows.
+The hardware only reads the coded data and the zero padding that
+tegra_buf_prepare() writes after it. Clean that range from
+tegra_buf_prepare() and let vb2 skip its whole-buffer sync. OUTPUT
+buffers are never synced for the CPU on DQBUF already (DMA_TO_DEVICE).
 
 Signed-off-by: Jerome Berclaz <jerome.berclaz@proton.me>
 ---
- drivers/media/platform/nvidia/tegra-vde/v4l2.c | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/media/platform/nvidia/tegra-vde/v4l2.c | 33 ++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
 diff --git a/drivers/media/platform/nvidia/tegra-vde/v4l2.c b/drivers/media/platform/nvidia/tegra-vde/v4l2.c
-index 9fe31b5c0275..cd25307ad9db 100644
+index cd25307ad9db..3269ca75593f 100644
 --- a/drivers/media/platform/nvidia/tegra-vde/v4l2.c
 +++ b/drivers/media/platform/nvidia/tegra-vde/v4l2.c
-@@ -385,6 +385,7 @@ static int tegra_queue_init(void *priv,
- 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
- 	dst_vq->type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
- 	dst_vq->io_modes = VB2_DMABUF | VB2_MMAP;
-+	dst_vq->allow_cache_hints = 1;
- 	dst_vq->lock = &vde->v4l2_lock;
- 	dst_vq->dma_attrs = dma_attrs;
- 	dst_vq->mem_ops = mem_ops;
+@@ -12,6 +12,7 @@
+  * Copyright (C) 2019 Boris Brezillon <boris.brezillon@collabora.com>
+  */
+ 
++#include <linux/dma-mapping.h>
+ #include <linux/err.h>
+ #include <linux/slab.h>
+ 
+@@ -214,6 +215,30 @@ static void tegra_buf_cleanup(struct vb2_buffer *vb)
+ 	__tegra_buf_cleanup(vb, vb->num_planes);
+ }
+ 
++/*
++ * With the SMMU the buffers are cached pages (vb2_dma_sg), and vb2 would
++ * clean the whole bitstream buffer on every QBUF, although the hardware
++ * only reads the coded data and its padding. Clean just that range.
++ */
++static void tegra_sync_coded_data(struct vb2_buffer *vb, unsigned int plane,
++				  size_t size)
++{
++	struct device *dev = vb->vb2_queue->dev;
++	struct sg_table *sgt = vb2_dma_sg_plane_desc(vb, plane);
++	struct scatterlist *sg;
++	unsigned int i;
++
++	for_each_sgtable_dma_sg(sgt, sg, i) {
++		size_t len = min_t(size_t, sg_dma_len(sg), size);
++
++		dma_sync_single_for_device(dev, sg_dma_address(sg), len,
++					   DMA_TO_DEVICE);
++		size -= len;
++		if (!size)
++			break;
++	}
++}
++
+ static int tegra_buf_prepare(struct vb2_buffer *vb)
+ {
+ 	struct vb2_queue *vq = vb->vb2_queue;
+@@ -264,11 +289,19 @@ static int tegra_buf_prepare(struct vb2_buffer *vb)
+ 			if (vb_data)
+ 				memset(vb_data + offset + size, 0,
+ 				       hw_size - offset - size);
++
++			if (ctx->vde->domain && vb->memory == VB2_MEMORY_MMAP)
++				tegra_sync_coded_data(vb, i, hw_size);
+ 		}
+ 
+ 		tb->dma_addr[i] = tb->dma_base[i] + offset;
+ 	}
+ 
++	/* the range in use was synced above, skip vb2's whole-buffer sync */
++	if (V4L2_TYPE_IS_OUTPUT(vq->type) && ctx->vde->domain &&
++	    vb->memory == VB2_MEMORY_MMAP)
++		vb->skip_cache_sync_on_prepare = 1;
++
+ 	switch (pixfmt->pixelformat) {
+ 	case V4L2_PIX_FMT_YVU420M:
+ 		swap(tb->dma_addr[1], tb->dma_addr[2]);
 
 -- 
 2.53.0
