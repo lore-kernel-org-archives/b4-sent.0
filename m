@@ -1,364 +1,188 @@
-From: Murad Dadashev <llamapersonaltv@gmail.com>
-Date: Fri, 27 Nov 2026 11:35:21 +0300
-Subject: [PATCH 10/10] wifi: mt76: mt7603: add AP mode support for USB
- devices
+From: Tjerk Kusters <tkusters@aweta.nl>
+Date: Fri, 27 Nov 2026 09:43:59 +0100
+Subject: [PATCH net] igb: leave room for the Rx timestamp header in 2 KiB
+ build_skb buffers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-mt7603u-v1-10-369bee9846f8@gmail.com>
-References: <20261127-mt7603u-v1-0-369bee9846f8@gmail.com>
-In-Reply-To: <20261127-mt7603u-v1-0-369bee9846f8@gmail.com>
-To: Felix Fietkau <nbd@nbd.name>, Lorenzo Bianconi <lorenzo@kernel.org>, 
- Ryder Lee <ryder.lee@mediatek.com>, Shayne Chen <shayne.chen@mediatek.com>, 
- Sean Wang <sean.wang@mediatek.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- Murad Dadashev <llamapersonaltv@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795768526; l=11243;
- i=llamapersonaltv@gmail.com; s=20261127; h=from:subject:message-id;
- bh=oIVDiznFtbEiHfDvKaI3R8UWpSS1eTZBq/2J5Ma2jH8=;
- b=9MwGLt2g//Dgqwvsj+k/fqD8Vp/Ev0YGP7n1ewGEvr16R2S9fwU0dhLqmq8xzrc4+PJLFWFTr
- YF1y0VYQtQoDaEya+hA7MFAVo4cw+g67J0RUu6ocNRYet5c4oaZ0PbD
-X-Developer-Key: i=llamapersonaltv@gmail.com; a=ed25519;
- pk=CeMIX207ioWRbMAA6A2GYgT+DpeVlKHVn7I0KjfHeCg=
-X-Endpoint-Received: by B4 Relay for llamapersonaltv@gmail.com/20261127 with auth_id=1664
+Message-Id: <20261127-igb-skb-pad-v1-1-7e069eaf16d7@aweta.nl>
+X-B4-Tracking: v=1; b=H4sIAM5CCWsC/yWMwQrCMBAFf6W8cxeSgFH7K+Ihada6FmLJVhFK/
+ 72xPc7AzALlIqzomgWFv6LyzhVs26B/hjwwSaoMZ5y31p1Jhkg6RppCoku6eg4meDYn1GIq/JD
+ ffrsh84z7IfUTX9zP/w/WdQMLR1Z2dAAAAA==
+X-Change-ID: 20261127-igb-skb-pad-8d96ea0a6e05
+To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
+ Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
+ Jesper Dangaard Brouer <hawk@kernel.org>, 
+ John Fastabend <john.fastabend@gmail.com>, 
+ Stanislav Fomichev <sdf@fomichev.me>, 
+ Sven Auhagen <sven.auhagen@voleatech.de>
+Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
+ bpf@vger.kernel.org, stable@vger.kernel.org, 
+ Tjerk Kusters <tkusters@aweta.nl>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795769042; l=7109;
+ i=tkusters@aweta.nl; s=20260619; h=from:subject:message-id;
+ bh=LHZjkEOidXK7kx+tT6vj/G3tkhiPxIUoim+0JCqFf24=;
+ b=AEkgnroG0gFyvAxAf2gDtHDf0wW2hJiBZV8LFjagw2b1mNptyxATLN3Htuf4uOhCZNK1fOU1e
+ ipDBqw2GDHqAhCAz9ML1zYapEPSHFJVzaKpQXXJQtNZE9v4CGCfgbmN
+X-Developer-Key: i=tkusters@aweta.nl; a=ed25519;
+ pk=JYRpYQ3+LrphEabgnxcbiOUpwvNP8WDDMcLzz+cwKsk=
+X-Endpoint-Received: by B4 Relay for tkusters@aweta.nl/20260619 with auth_id=831
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-USB devices have no pre-TBTT interrupt and no beacon or CAB rings.
-Instead, arm an hrtimer from the TSF ahead of each TBTT. From a work
-item, flush the hardware BCN and BMC queues and queue the beacon and
-buffered broadcast frames on the management endpoint, with the target
-hardware queue set in the TXD.
+On 2 KiB build_skb Rx rings (PAGE_SIZE < 8192, legacy-rx off),
+igb_skb_pad() places the DMA start so that exactly
+IGB_MAX_FRAME_BUILD_SKB bytes (1536 on x86_64) are left before
+skb_shared_info, and RLPML, or the PF pool limit in VMOLR when VFs are
+allocated, is set to the same value. With Rx timestamping on, 82580 and
+later MACs write a 16-byte timestamp header in front of the frame, so a
+frame of more than 1520 bytes (without FCS) runs into skb_shared_info.
+napi_build_skb() then zeroes the start of skb_shared_info, which holds
+the last bytes of the frame, and __skb_put() moves skb->tail past
+skb->end.
 
-Tested on a 0e8d:7603 dongle with hostapd and a WPA2 client at about
-56 Mbit/s in each direction.
+The MAC has checked the TCP or UDP checksum before that, so the payload
+is delivered with its last bytes zeroed and without an error. Any
+sender on the link can trigger this with frames of 1525 to 1536 bytes on
+the wire, for example double-tagged frames or a peer with a larger MTU.
+Any Rx timestamp filter is enough, as these MACs then timestamp all
+packets. With XDP_TX, or XDP_REDIRECT to a device or CPU map,
+xdp_update_frame_from_buff() hits the "missing reserved tailroom" WARN
+for each such frame and drops it.
 
-Signed-off-by: Murad Dadashev <llamapersonaltv@gmail.com>
+Before commit 9cbc948b5a20 ("igb: add XDP support"),
+IGB_MAX_FRAME_BUILD_SKB left room for the header. That commit fixed the
+frame size at 1536 bytes and gave the rest of the 2 KiB buffer to the
+headroom. Reserve the header again in igb_skb_pad(). IGB_SKB_PAD is the
+same for all build_skb rings, so the headroom goes from 192 to 176 bytes
+on x86_64 for 2 KiB and for 3 KiB rings, and XDP programs have 16 bytes
+less for bpf_xdp_adjust_head() and metadata. It was already below
+XDP_PACKET_HEADROOM. The frame limit, the buffer size selection and the
+MTU range for XDP do not change. IGB_2K_TOO_SMALL_WITH_PADDING already
+counts the header, so the headroom stays at least NET_SKB_PAD.
+
+That commit also took the header out of igb_rx_bufsz(), which is the
+length of the DMA sync when a buffer goes to the hardware. Add
+igb_rx_dma_len() for the two syncs. igb_rx_bufsz() itself stays as it
+is, because it is also the frame size limit for XDP.
+
+Tested on an I350 with kernel 7.3.1 (igb in net is the same apart from
+the treewide kmalloc_obj conversions) at MTU 1500, with the Rx timestamp
+filter set to ALL. A peer sent UDP datagrams of 0xff bytes in frames of
+1521 to 1532 bytes (without FCS). Before this patch they were delivered
+with their last 1 to 12 bytes zeroed, starting 1520 bytes into the
+frame, and pings with a 0xff pattern of those sizes failed. With this
+patch all of them arrive intact, also with an XDP program attached.
+Frames of 1533 bytes and more are dropped by the MAC, as before. With
+the timestamp filter off, and at MTU 3000 (3 KiB rings), nothing
+changes. Frames that a VF sends to the PF, of up to 1536 bytes, arrive
+intact with and without this patch; the MAC does not put the header in
+front of them.
+
+This was found by the Sashiko AI review of another igb series.
+
+Link: https://lore.kernel.org/all/179551973551.3135.7270095499525377709@kernel.org/
+Fixes: 9cbc948b5a20 ("igb: add XDP support")
+Cc: stable@vger.kernel.org
+Signed-off-by: Tjerk Kusters <tkusters@aweta.nl>
 ---
- drivers/net/wireless/mediatek/mt76/mt7603/beacon.c | 217 +++++++++++++++++++--
- drivers/net/wireless/mediatek/mt76/mt7603/init.c   |   3 +
- drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h |   7 +
- drivers/net/wireless/mediatek/mt76/mt7603/usb.c    |   1 +
- 4 files changed, 208 insertions(+), 20 deletions(-)
+The Sashiko AI review reported this on v4 to v7 of my igb Rx timestamp
+series; it is older than that series. Most recently:
+https://lore.kernel.org/all/179551973551.3135.7270095499525377709@kernel.org/
 
-diff --git a/drivers/net/wireless/mediatek/mt76/mt7603/beacon.c b/drivers/net/wireless/mediatek/mt76/mt7603/beacon.c
-index acca98139f92e50caf4801ea0dc23a4407acb4e0..30509da0d41e7d02b1e98ea800fb19db00f71fe7 100644
---- a/drivers/net/wireless/mediatek/mt76/mt7603/beacon.c
-+++ b/drivers/net/wireless/mediatek/mt76/mt7603/beacon.c
-@@ -26,6 +26,28 @@ mt7603_mac_stuck_beacon_recovery(struct mt7603_dev *dev)
- 	mt76_clear(dev, MT_WF_CFG_OFF_WOCCR, MT_WF_CFG_OFF_WOCCR_TMAC_GC_DIS);
- }
+This patch is independent of that series and applies on its own.
+
+At MTU 1500, iperf3 TCP and UDP from a peer run at line rate (938 and
+950 Mbit/s) with and without this patch, with the Rx timestamp filter
+off and on, and the receiver's CPU load does not change measurably
+(6 runs of 10 s per case, the differences are within the spread).
+
+The patch and its description were prepared with the help of an AI
+coding assistant (Claude). I reviewed them and ran the tests described in
+the commit message on my test bench.
+---
+ drivers/net/ethernet/intel/igb/igb.h      | 21 +++++++++++++++++----
+ drivers/net/ethernet/intel/igb/igb_main.c |  4 ++--
+ 2 files changed, 19 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/ethernet/intel/igb/igb.h b/drivers/net/ethernet/intel/igb/igb.h
+index 8c9b02058cec..74e441a140c1 100644
+--- a/drivers/net/ethernet/intel/igb/igb.h
++++ b/drivers/net/ethernet/intel/igb/igb.h
+@@ -153,9 +153,9 @@ struct vf_mac_filter {
  
-+static bool
-+mt7603_flush_bss_queues(struct mt7603_dev *dev, int idx)
-+{
-+	u32 om_idx = idx ? idx | 0x10 : 0;
-+	u32 val;
-+
-+	val = MT_DMA_FQCR0_BUSY | MT_DMA_FQCR0_MODE |
-+	      FIELD_PREP(MT_DMA_FQCR0_TARGET_BSS, om_idx) |
-+	      FIELD_PREP(MT_DMA_FQCR0_DEST_PORT_ID, 3) |
-+	      FIELD_PREP(MT_DMA_FQCR0_DEST_QUEUE_ID, 8);
-+
-+	mt76_wr(dev, MT_DMA_FQCR0, val |
-+		FIELD_PREP(MT_DMA_FQCR0_TARGET_QID, MT_TX_HW_QUEUE_BCN));
-+	if (!mt76_poll(dev, MT_DMA_FQCR0, MT_DMA_FQCR0_BUSY, 0, 5000))
-+		return false;
-+
-+	mt76_wr(dev, MT_DMA_FQCR0, val |
-+		FIELD_PREP(MT_DMA_FQCR0_TARGET_QID, MT_TX_HW_QUEUE_BMC));
-+
-+	return mt76_poll(dev, MT_DMA_FQCR0, MT_DMA_FQCR0_BUSY, 0, 5000);
-+}
-+
- static void
- mt7603_update_beacon_iter(void *priv, u8 *mac, struct ieee80211_vif *vif)
- {
-@@ -33,8 +55,6 @@ mt7603_update_beacon_iter(void *priv, u8 *mac, struct ieee80211_vif *vif)
- 	struct mt76_dev *mdev = &dev->mt76;
- 	struct mt7603_vif *mvif = (struct mt7603_vif *)vif->drv_priv;
- 	struct sk_buff *skb = NULL;
--	u32 om_idx = mvif->idx;
--	u32 val;
- 
- 	if (!(mdev->beacon_mask & BIT(mvif->idx)))
- 		return;
-@@ -43,26 +63,9 @@ mt7603_update_beacon_iter(void *priv, u8 *mac, struct ieee80211_vif *vif)
- 	if (!skb)
- 		return;
- 
--	if (om_idx)
--		om_idx |= 0x10;
--	val = MT_DMA_FQCR0_BUSY | MT_DMA_FQCR0_MODE |
--		FIELD_PREP(MT_DMA_FQCR0_TARGET_BSS, om_idx) |
--		FIELD_PREP(MT_DMA_FQCR0_DEST_PORT_ID, 3) |
--		FIELD_PREP(MT_DMA_FQCR0_DEST_QUEUE_ID, 8);
--
- 	spin_lock_bh(&dev->ps_lock);
- 
--	mt76_wr(dev, MT_DMA_FQCR0, val |
--		FIELD_PREP(MT_DMA_FQCR0_TARGET_QID, MT_TX_HW_QUEUE_BCN));
--	if (!mt76_poll(dev, MT_DMA_FQCR0, MT_DMA_FQCR0_BUSY, 0, 5000)) {
--		dev->beacon_check = MT7603_WATCHDOG_TIMEOUT;
--		dev_kfree_skb(skb);
--		goto out;
--	}
--
--	mt76_wr(dev, MT_DMA_FQCR0, val |
--		FIELD_PREP(MT_DMA_FQCR0_TARGET_QID, MT_TX_HW_QUEUE_BMC));
--	if (!mt76_poll(dev, MT_DMA_FQCR0, MT_DMA_FQCR0_BUSY, 0, 5000)) {
-+	if (!mt7603_flush_bss_queues(dev, mvif->idx)) {
- 		dev->beacon_check = MT7603_WATCHDOG_TIMEOUT;
- 		dev_kfree_skb(skb);
- 		goto out;
-@@ -179,6 +182,172 @@ void mt7603_pre_tbtt_tasklet(struct tasklet_struct *t)
- 		 ((1 << (MT7603_MAX_INTERFACES - 1)) - 1)));
- }
- 
-+static void
-+mt7603_get_beacon_iter(void *priv, u8 *mac, struct ieee80211_vif *vif)
-+{
-+	struct beacon_bc_data *data = priv;
-+	struct mt7603_dev *dev = data->dev;
-+	struct mt7603_vif *mvif = (struct mt7603_vif *)vif->drv_priv;
-+	struct sk_buff *skb;
-+
-+	if (!(dev->mt76.beacon_mask & BIT(mvif->idx)))
-+		return;
-+
-+	skb = ieee80211_beacon_get(mt76_hw(dev), vif, 0);
-+	if (!skb)
-+		return;
-+
-+	IEEE80211_SKB_CB(skb)->control.vif = vif;
-+	__skb_queue_tail(&data->q, skb);
-+}
-+
-+static void
-+mt7603_queue_bss_frame(struct mt7603_dev *dev, struct sk_buff *skb,
-+		       enum mt76_txq_id qid)
-+{
-+	struct mt76_queue *q = dev->mphy.q_tx[MT_TXQ_PSD];
-+	struct ieee80211_vif *vif = IEEE80211_SKB_CB(skb)->control.vif;
-+	struct mt7603_vif *mvif = (struct mt7603_vif *)vif->drv_priv;
-+
-+	spin_lock_bh(&q->lock);
-+	mt76_tx_queue_skb(dev, q, qid, skb, &mvif->sta.wcid, NULL);
-+	spin_unlock_bh(&q->lock);
-+}
-+
-+static void
-+mt7603_kick_bss_queue(struct mt7603_dev *dev)
-+{
-+	struct mt76_queue *q = dev->mphy.q_tx[MT_TXQ_PSD];
-+
-+	spin_lock_bh(&q->lock);
-+	mt76_queue_kick(dev, q);
-+	spin_unlock_bh(&q->lock);
-+}
-+
-+static void
-+mt7603_start_pre_tbtt_timer(struct mt7603_dev *dev)
-+{
-+	u32 period = dev->mt76.beacon_int * 1024;
-+	u32 lead = 2 * MT7603_PRE_TBTT_TIME;
-+	s64 delay;
-+	u64 tsf;
-+	u32 rem;
-+
-+	if (!period)
-+		return;
-+
-+	mt76_set(dev, MT_LPON_T0CR, MT_LPON_T0CR_MODE);
-+	tsf = mt76_rr(dev, MT_LPON_UTTR0);
-+	tsf |= (u64)mt76_rr(dev, MT_LPON_UTTR1) << 32;
-+	rem = do_div(tsf, period);
-+
-+	delay = (s64)period - rem - lead;
-+	if (delay < lead / 2)
-+		delay += period;
-+
-+	hrtimer_start(&dev->pre_tbtt_timer, ns_to_ktime(delay * NSEC_PER_USEC),
-+		      HRTIMER_MODE_REL);
-+}
-+
-+void mt7603_stop_pre_tbtt_timer(struct mt7603_dev *dev)
-+{
-+	WRITE_ONCE(dev->pre_tbtt_enabled, false);
-+	do {
-+		hrtimer_cancel(&dev->pre_tbtt_timer);
-+		cancel_work_sync(&dev->pre_tbtt_work);
-+	} while (hrtimer_active(&dev->pre_tbtt_timer));
-+}
-+EXPORT_SYMBOL_GPL(mt7603_stop_pre_tbtt_timer);
-+
-+enum hrtimer_restart mt7603_pre_tbtt_timer(struct hrtimer *timer)
-+{
-+	struct mt7603_dev *dev = container_of(timer, struct mt7603_dev,
-+					      pre_tbtt_timer);
-+
-+	queue_work(system_highpri_wq, &dev->pre_tbtt_work);
-+
-+	return HRTIMER_NORESTART;
-+}
-+
-+void mt7603_pre_tbtt_work(struct work_struct *work)
-+{
-+	struct mt7603_dev *dev = container_of(work, struct mt7603_dev,
-+					      pre_tbtt_work);
-+	struct beacon_bc_data data = {};
-+	struct sk_buff *skb;
-+	int i, nframes;
-+
-+	if (!READ_ONCE(dev->pre_tbtt_enabled) || !dev->mt76.beacon_mask)
-+		return;
-+
-+	if (dev->mphy.offchannel)
-+		goto out;
-+
-+	data.dev = dev;
-+	__skb_queue_head_init(&data.q);
-+
-+	mt76_wr(dev, MT_WF_ARB_CAB_FLUSH, GENMASK(30, 16) | BIT(0));
-+
-+	ieee80211_iterate_active_interfaces_atomic(mt76_hw(dev),
-+						   IEEE80211_IFACE_ITER_RESUME_ALL,
-+						   mt7603_get_beacon_iter, &data);
-+
-+	while ((skb = __skb_dequeue(&data.q)) != NULL) {
-+		struct ieee80211_vif *vif = IEEE80211_SKB_CB(skb)->control.vif;
-+		struct mt7603_vif *mvif = (struct mt7603_vif *)vif->drv_priv;
-+
-+		if (!mt7603_flush_bss_queues(dev, mvif->idx)) {
-+			dev_kfree_skb(skb);
-+			continue;
-+		}
-+
-+		mt7603_queue_bss_frame(dev, skb, MT_TXQ_BEACON);
-+	}
-+
-+	mt76_csa_check(&dev->mt76);
-+	if (dev->mt76.csa_complete) {
-+		mt76_csa_finish(&dev->mt76);
-+		goto kick;
-+	}
-+
-+	do {
-+		nframes = skb_queue_len(&data.q);
-+		ieee80211_iterate_active_interfaces_atomic(mt76_hw(dev),
-+							   IEEE80211_IFACE_ITER_RESUME_ALL,
-+							   mt7603_add_buffered_bc, &data);
-+	} while (nframes != skb_queue_len(&data.q) &&
-+		 skb_queue_len(&data.q) < 8);
-+
-+	if (skb_queue_empty(&data.q))
-+		goto kick;
-+
-+	for (i = 0; i < ARRAY_SIZE(data.tail); i++) {
-+		if (data.tail[i])
-+			mt76_skb_set_moredata(data.tail[i], false);
-+	}
-+
-+	while ((skb = __skb_dequeue(&data.q)) != NULL)
-+		mt7603_queue_bss_frame(dev, skb, MT_TXQ_CAB);
-+
-+	mt7603_kick_bss_queue(dev);
-+
-+	for (i = 0; i < ARRAY_SIZE(data.count); i++)
-+		mt76_wr(dev, MT_WF_ARB_CAB_COUNT_B0_REG(i),
-+			data.count[i] << MT_WF_ARB_CAB_COUNT_B0_SHIFT(i));
-+
-+	mt76_wr(dev, MT_WF_ARB_CAB_START,
-+		MT_WF_ARB_CAB_START_BSSn(0) |
-+		(MT_WF_ARB_CAB_START_BSS0n(1) *
-+		 ((1 << (MT7603_MAX_INTERFACES - 1)) - 1)));
-+	goto out;
-+
-+kick:
-+	mt7603_kick_bss_queue(dev);
-+out:
-+	if (READ_ONCE(dev->pre_tbtt_enabled))
-+		mt7603_start_pre_tbtt_timer(dev);
-+}
-+
- void mt7603_beacon_set_timer(struct mt7603_dev *dev, int idx, int intval)
- {
- 	u32 pre_tbtt = MT7603_PRE_TBTT_TIME / 64;
-@@ -194,6 +363,8 @@ void mt7603_beacon_set_timer(struct mt7603_dev *dev, int idx, int intval)
- 		mt7603_irq_disable(dev, MT_INT_MAC_IRQ3);
- 		mt76_clear(dev, MT_ARB_SCR, MT_ARB_SCR_BCNQ_OPMODE_MASK);
- 		mt76_wr(dev, MT_HW_INT_MASK(3), 0);
-+		if (!mt76_is_mmio(&dev->mt76))
-+			mt7603_stop_pre_tbtt_timer(dev);
- 		return;
- 	}
- 
-@@ -224,4 +395,10 @@ void mt7603_beacon_set_timer(struct mt7603_dev *dev, int idx, int intval)
- 		mt76_set(dev, MT_LPON_SBTOR(0), MT_LPON_SBTOR_SUB_BSS_EN);
+ /* Attempt to maximize the headroom available for incoming frames.  We
+  * use a 2K buffer for receives and need 1536/1534 to store the data for
+- * the frame.  This leaves us with 512 bytes of room.  From that we need
+- * to deduct the space needed for the shared info and the padding needed
+- * to IP align the frame.
++ * the frame, plus IGB_TS_HDR_LEN for the timestamp the hardware can place
++ * in front of it.  From the rest we need to deduct the space needed for
++ * the shared info and the padding needed to IP align the frame.
+  *
+  * Note: For cache line sizes 256 or larger this value is going to end
+  *	 up negative.  In these cases we should fall back to the 3K
+@@ -190,7 +190,7 @@ static inline int igb_skb_pad(void)
+ 	if (IGB_2K_TOO_SMALL_WITH_PADDING)
+ 		rx_buf_len = IGB_RXBUFFER_3072 + SKB_DATA_ALIGN(NET_IP_ALIGN);
  	else
- 		mt76_clear(dev, MT_LPON_SBTOR(0), MT_LPON_SBTOR_SUB_BSS_EN);
-+
-+	if (!mt76_is_mmio(&dev->mt76)) {
-+		WRITE_ONCE(dev->pre_tbtt_enabled, true);
-+		if (!hrtimer_active(&dev->pre_tbtt_timer))
-+			mt7603_start_pre_tbtt_timer(dev);
-+	}
+-		rx_buf_len = IGB_RXBUFFER_1536;
++		rx_buf_len = IGB_RXBUFFER_1536 + IGB_TS_HDR_LEN;
+ 
+ 	/* if needed make room for NET_IP_ALIGN */
+ 	rx_buf_len -= NET_IP_ALIGN;
+@@ -421,6 +421,19 @@ static inline unsigned int igb_rx_bufsz(struct igb_ring *ring)
+ 	return IGB_RXBUFFER_2048;
  }
-diff --git a/drivers/net/wireless/mediatek/mt76/mt7603/init.c b/drivers/net/wireless/mediatek/mt76/mt7603/init.c
-index d1db7176c0fa9ed451ed8bfa45071ace36493f67..87abbed8b2a1aa1c945e8a3f86239de758206784 100644
---- a/drivers/net/wireless/mediatek/mt76/mt7603/init.c
-+++ b/drivers/net/wireless/mediatek/mt76/mt7603/init.c
-@@ -528,6 +528,9 @@ int mt7603_register_device(struct mt7603_dev *dev)
  
- 	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7603_mac_work);
- 	tasklet_setup(&dev->mt76.pre_tbtt_tasklet, mt7603_pre_tbtt_tasklet);
-+	INIT_WORK(&dev->pre_tbtt_work, mt7603_pre_tbtt_work);
-+	hrtimer_setup(&dev->pre_tbtt_timer, mt7603_pre_tbtt_timer,
-+		      CLOCK_MONOTONIC, HRTIMER_MODE_REL);
- 
- 	dev->slottime = 9;
- 	dev->sensitivity_limit = 28;
-diff --git a/drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h b/drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h
-index 1b50c6b4bb8faf277e126f9c18fefbaa88150d41..f30e866e5cffe5b6d5113a43a5f0649c060c8a7d 100644
---- a/drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h
-+++ b/drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h
-@@ -121,6 +121,10 @@ struct mt7603_dev {
- 
- 	struct work_struct ps_work;
- 
-+	struct hrtimer pre_tbtt_timer;
-+	struct work_struct pre_tbtt_work;
-+	bool pre_tbtt_enabled;
++/* Number of bytes the hardware can write to an Rx buffer. On 2K build_skb
++ * rings the frame is limited to IGB_MAX_FRAME_BUILD_SKB, and the timestamp
++ * header comes in front of it.
++ */
++static inline unsigned int igb_rx_dma_len(struct igb_ring *ring)
++{
++#if (PAGE_SIZE < 8192)
++	if (ring_uses_build_skb(ring) && !ring_uses_large_buffer(ring))
++		return IGB_MAX_FRAME_BUILD_SKB + IGB_TS_HDR_LEN;
++#endif
++	return igb_rx_bufsz(ring);
++}
 +
- 	u32 rxfilter;
+ static inline unsigned int igb_rx_pg_order(struct igb_ring *ring)
+ {
+ #if (PAGE_SIZE < 8192)
+diff --git a/drivers/net/ethernet/intel/igb/igb_main.c b/drivers/net/ethernet/intel/igb/igb_main.c
+index 131df3e09ba1..67fd24d71746 100644
+--- a/drivers/net/ethernet/intel/igb/igb_main.c
++++ b/drivers/net/ethernet/intel/igb/igb_main.c
+@@ -5084,7 +5084,7 @@ void igb_clean_rx_ring(struct igb_ring *rx_ring)
+ 		dma_sync_single_range_for_cpu(rx_ring->dev,
+ 					      buffer_info->dma,
+ 					      buffer_info->page_offset,
+-					      igb_rx_bufsz(rx_ring),
++					      igb_rx_dma_len(rx_ring),
+ 					      DMA_FROM_DEVICE);
  
- 	struct mt7603_sta global_sta;
-@@ -278,6 +282,9 @@ void mt7603_sta_remove(struct mt76_dev *mdev, struct ieee80211_vif *vif,
- 		       struct ieee80211_sta *sta);
+ 		/* free resources associated with mapping */
+@@ -9225,7 +9225,7 @@ void igb_alloc_rx_buffers(struct igb_ring *rx_ring, u16 cleaned_count)
+ 	bi = &rx_ring->rx_buffer_info[i];
+ 	i -= rx_ring->count;
  
- void mt7603_pre_tbtt_tasklet(struct tasklet_struct *t);
-+void mt7603_pre_tbtt_work(struct work_struct *work);
-+enum hrtimer_restart mt7603_pre_tbtt_timer(struct hrtimer *timer);
-+void mt7603_stop_pre_tbtt_timer(struct mt7603_dev *dev);
+-	bufsz = igb_rx_bufsz(rx_ring);
++	bufsz = igb_rx_dma_len(rx_ring);
  
- void mt7603_update_channel(struct mt76_phy *mphy);
- 
-diff --git a/drivers/net/wireless/mediatek/mt76/mt7603/usb.c b/drivers/net/wireless/mediatek/mt76/mt7603/usb.c
-index 9fbfb2a7cd00674bb1dbf9015ba22b149b73f4e9..2254de2f88c76c3bfe4a1c6d996dbe1d7ecd0730 100644
---- a/drivers/net/wireless/mediatek/mt76/mt7603/usb.c
-+++ b/drivers/net/wireless/mediatek/mt76/mt7603/usb.c
-@@ -321,6 +321,7 @@ static void mt7603u_disconnect(struct usb_interface *usb_intf)
- 
- 	if (test_bit(MT76_STATE_REGISTERED, &dev->mphy.state)) {
- 		mt76_unregister_device(&dev->mt76);
-+		mt7603_stop_pre_tbtt_timer(dev);
- 		cancel_work_sync(&dev->rate_work);
- 		cancel_work_sync(&dev->ps_work);
- 	}
+ 	do {
+ 		if (!igb_alloc_mapped_page(rx_ring, bi))
 
--- 
-2.47.3
+---
+base-commit: cc7fe6e741730fef549e484379281736d32746f0
+change-id: 20261127-igb-skb-pad-8d96ea0a6e05
+
+Best regards,
+--  
+Tjerk Kusters <tkusters@aweta.nl>
 
