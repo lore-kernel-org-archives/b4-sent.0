@@ -1,100 +1,72 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Fri, 27 Nov 2026 23:37:41 +0100
-Subject: [PATCH iproute2-next 3/3] testsuite: add test for lisp
+From: Fabio Forni <development@redaril.me>
+Subject: [PATCH v2 0/2] iio: afe: rescale: Get driver data using
+ platform_get_match_data()
+Date: Sat, 28 Nov 2026 00:22:08 +0100
+Message-Id: <20261128-iio_rescale_platform_ids-v2-0-4c35f16c4f77@redaril.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-iproute2-lisp-v1-3-df8ea175bc06@free.fr>
-References: <20261127-iproute2-lisp-v1-0-df8ea175bc06@free.fr>
-In-Reply-To: <20261127-iproute2-lisp-v1-0-df8ea175bc06@free.fr>
-To: David Ahern <dsahern@kernel.org>, 
- Stephen Hemminger <stephen@networkplumber.org>
-Cc: netdev@vger.kernel.org, Matthieu Baerts <matttbe@kernel.org>, 
- Vincent Jardin <vjardin@free.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795819063; l=2428;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=WXV+PDL4dcCQwPuXlvDRBbz0HV1YFgXClHcIX/Zyvgs=;
- b=QPx5sQVmJPzptU9SthlUiSkF6FIHbKrfQ5PQg+mrHOIHfnFLFwiY8zJ3NfCZT3xRJFdfh10Ri
- 10PkHB/DXOeC54IfswMr2ztOyEL9wVoAXh/KjMmEeUH+3Qecik7pv5F
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/43NQQqDMBBA0auEWZuSCVKrq95DRIZkrANqZCLSI
+ t691BN0+xfvH5BZhTM05gDlXbKkBRrjCwNhpOXFViI0Brzzd3TuYUVSr5wDTdyvE21D0rmXmK2
+ LnqpIoa5KgsLAqjzI+6LbrjAwSt6Sfq7Tjr/6B7qjReuwHjBgWTrvn8qRVKbbzNCd5/kF5OXzM
+ MEAAAA=
+X-Change-ID: 20261008-iio_rescale_platform_ids-0d2a7dac974a
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
+ Johan Hovold <johan@kernel.org>, Peter Rosin <peda@lysator.liu.se>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: driver-core@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ linux-iio@vger.kernel.org, Fabio Forni <development@redaril.me>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1477;
+ i=development@redaril.me; h=from:subject:message-id;
+ bh=PBSXqgaqkOnXYBgeJ3eZjM3FUUbpqsbEEol5o21C8RY=;
+ b=owGbwMvMwCXWeKho1tqFWemMp9WSGLK5BDYGOIhX22z/7WaSd0JtVqqBuj3bzVO603imL392k
+ qt1Q4FgRykLgxgXg6yYIst/J6NN3WYmRrf6JWph5rAygQxh4OIUgIlsZGP4p2329/PqD0fsq3cX
+ rEzefsbd+WPikT+5WVvP7m729AzsmsbI0Kl4YepSJ+4jaXZrp0r/iZRe6tSr4hQl9587Lzri/1s
+ TZgA=
+X-Developer-Key: i=development@redaril.me; a=openpgp;
+ fpr=FF4232B28B363432DA8F187D81C2729AADA16A67
+X-Endpoint-Received: by B4 Relay for development@redaril.me/default with auth_id=1033
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-LISP checks
+Add a new helper to get data when drivers are bound using platform_device
+plus swnodes, that typically happpens when such drivers are dynamically
+instantiated.
 
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+As swnodes do not implement device_get_match_data(), a fallback mechanism
+is needed to access driver_data inside platform_device_id structs. While
+drivers can have such logic locally, Andy Shevchenko suggested to add a
+global helper for this situation. See discussion in v1. 
+
+v1 was about adding the logic above in iio-rescale: the same goal applies
+to this revision. iio-rescale is modified to call the new
+platform_get_match_data() helper.
+
+Signed-off-by: Fabio Forni <development@redaril.me>
 ---
- testsuite/tests/ip/link/add_type_lisp.t | 59 +++++++++++++++++++++++++++++++++
- 1 file changed, 59 insertions(+)
+Changes in v2:
+- Add platform_get_match_data()
+- Use platform_get_match_data() in iio-rescale
+- Use imperative mood throughout commits and cover letter
+- Link to v1: https://lore.kernel.org/r/20261008-iio_rescale_platform_ids-v1-1-019f1c144022@redaril.me
 
-diff --git a/testsuite/tests/ip/link/add_type_lisp.t b/testsuite/tests/ip/link/add_type_lisp.t
-new file mode 100755
-index 00000000..d42f6dd3
---- /dev/null
-+++ b/testsuite/tests/ip/link/add_type_lisp.t
-@@ -0,0 +1,59 @@
-+#!/bin/sh
-+# SPDX-License-Identifier: GPL-2.0-or-later
-+# Copyright (c) 2026 Vincent Jardin <vjardin@free.fr>, Free Mobile
-+
-+. lib/generic.sh
-+
-+# Skip test on a kernel without LISP
-+NEW_DEV="$(rand_dev)"
-+$IP link add dev "$NEW_DEV" type lisp id 1 2> /dev/null || ts_skip
-+$IP link del dev "$NEW_DEV"
-+
-+ts_log "[Testing Add LISP interface (instance ID)]"
-+NEW_DEV="$(rand_dev)"
-+
-+ts_ip "$0" "Add $NEW_DEV LISP interface (instance ID)" link add dev "$NEW_DEV" type lisp id 101
-+
-+ts_ip "$0" "Show $NEW_DEV LISP interface (instance ID)" -d link show dev "$NEW_DEV"
-+test_on "$NEW_DEV"
-+test_on "lisp id 101"
-+test_on_not "external"
-+test_on_not "local"
-+
-+ts_ip "$0" "Del $NEW_DEV LISP interface (instance ID)" link del dev "$NEW_DEV"
-+
-+
-+ts_log "[Testing Add LISP interface (local RLOCs)]"
-+NEW_DEV="$(rand_dev)"
-+
-+ts_ip "$0" "Add $NEW_DEV LISP interface (local RLOCs)" link add dev "$NEW_DEV" type lisp id 16777215 local 192.0.2.1 local 2001:db8::1
-+
-+ts_ip "$0" "Show $NEW_DEV LISP interface (local RLOCs)" -d link show dev "$NEW_DEV"
-+test_on "$NEW_DEV"
-+test_on "lisp id 16777215"
-+test_on "local 192.0.2.1"
-+test_on "local 2001:db8::1"
-+
-+ts_ip "$0" "Show $NEW_DEV LISP interface (local RLOCs, JSON)" -d -j link show dev "$NEW_DEV"
-+test_on '"id":16777215'
-+test_on '"local":"192.0.2.1"'
-+test_on '"local6":"2001:db8::1"'
-+
-+ts_ip "$0" "Del $NEW_DEV LISP interface (local RLOCs)" link del dev "$NEW_DEV"
-+
-+
-+ts_log "[Testing Add LISP interface (metadata)]"
-+NEW_DEV="$(rand_dev)"
-+
-+ts_ip "$0" "Add $NEW_DEV LISP interface (metadata)" link add dev "$NEW_DEV" type lisp external
-+
-+ts_ip "$0" "Show $NEW_DEV LISP interface (metadata)" -d link show dev "$NEW_DEV"
-+test_on "$NEW_DEV"
-+test_on "lisp external"
-+test_on_not "lisp id"
-+
-+ts_ip "$0" "Show $NEW_DEV LISP interface (metadata, JSON)" -d -j link show dev "$NEW_DEV"
-+test_on '"external":true'
-+
-+ts_ip "$0" "Del $NEW_DEV LISP interface (metadata)" link del dev "$NEW_DEV"
-+
+---
+Fabio Forni (2):
+      drivers: core: platform: Add platform_get_match_data() helper
+      iio: afe: iio-rescale: Add platform IDs
 
+ drivers/base/platform.c         | 28 ++++++++++++++++++++++++++++
+ drivers/iio/afe/iio-rescale.c   | 18 +++++++++++++++++-
+ include/linux/platform_device.h |  2 ++
+ 3 files changed, 47 insertions(+), 1 deletion(-)
+---
+base-commit: 4dce97c6c265544342e716e62fd24bbb232590c5
+change-id: 20261008-iio_rescale_platform_ids-0d2a7dac974a
+
+Best regards,
 -- 
-2.43.0
+Fabio Forni <development@redaril.me>
 
