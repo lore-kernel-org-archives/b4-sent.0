@@ -1,11 +1,11 @@
 From: Juraj Sladek <juraj.sladek@littleit.sk>
-Date: Fri, 27 Nov 2026 13:15:54 +0000
-Subject: [PATCH net 1/2] net: dsa: realtek: rtl8365mb: reset SerDes data
- path when conduit comes up
+Date: Fri, 27 Nov 2026 13:15:55 +0000
+Subject: [PATCH net 2/2] net: dsa: realtek: rtl8365mb: soft reset switch
+ core after conduit comes up
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-rtl8365mb-hsgmii-fix-v1-1-f2827126aa6a@littleit.sk>
+Message-Id: <20261127-rtl8365mb-hsgmii-fix-v1-2-f2827126aa6a@littleit.sk>
 References: <20261127-rtl8365mb-hsgmii-fix-v1-0-f2827126aa6a@littleit.sk>
 In-Reply-To: <20261127-rtl8365mb-hsgmii-fix-v1-0-f2827126aa6a@littleit.sk>
 To: Linus Walleij <linusw@kernel.org>, 
@@ -18,162 +18,168 @@ To: Linus Walleij <linusw@kernel.org>,
 Cc: Johan Alvarado <contact@c127.dev>, netdev@vger.kernel.org, 
  Juraj Sladek <juraj.sladek@littleit.sk>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795785355; l=5683;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795785355; l=6803;
  i=juraj.sladek@littleit.sk; s=20261127; h=from:subject:message-id;
- bh=0YUSMA7OC6o+AJt4wzQ06SzhSjjaDllSgGI4mRa2E5s=;
- b=thEX+Vwxp7Sex2jlME4gfPBQ5NrIooUZ7X6gaT59LF9dceoRsXoLXkgLe382M9JZNhyErJAdR
- GZ0HoE1c4l2B5I29iJy8YwPIZZEMhPgWsTZRJLF1I5sgsOiSLDig3xs
+ bh=1Q6/LriyS2YpTV3L2s9x6aaNqhP0a/207xyHQO0fT0o=;
+ b=R0fNhEtgX65umWEt2f/B0LVCuRsMS63UiRbPgIAw9Qc6DfP0yzbaEPwu5ethqv7o8oK69hBDx
+ yTNURou16D5DbSBIeIbmzT+pjBRzH7re93qDzmDgn8LR+9DH3A7z0xN
 X-Developer-Key: i=juraj.sladek@littleit.sk; a=ed25519;
  pk=AqKiPr9Cm4+alKqIg7OT5xi2bB7LmUEaCQbSaKx1bCs=
 X-Endpoint-Received: by B4 Relay for juraj.sladek@littleit.sk/20261127 with auth_id=1667
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SerDes of the external interface is configured from phylink long
-before the conduit Ethernet controller starts transmitting on the link.
-On a TP-Link Archer AX55 v1, where the IPQ5018 GMAC is connected to port
-6 of an RTL8367S over a 2500base-x (HSGMII) fixed link, the SerDes
-receiver regularly comes out of this in a state where every frame
-received from the CPU is counted with an FCS error, so the CPU port does
-not work at all until the switch is reset.
+With the SerDes data path reset on conduit up in place, about one in
+five boots of a TP-Link Archer AX55 v1 (IPQ5018 GMAC connected to port 6
+of an RTL8367S over 2500base-x) still ends up with a CPU port that
+receives the frames sent by the CPU - port 6 ifInUcastPkts rises, with no
+FCS errors and no drops - but never forwards them to any user port.
+Traffic from the user ports to the CPU keeps working. In this state
+PORT_DEBUG_INFO_CTRL3 (0x091A) reads 0x0000 instead of 0x0035, while all
+the configuration registers are identical to a good boot. The state can
+also turn by itself, or start out, as one where the frames from the CPU
+are forwarded but corrupted (random MAC addresses, malformed payloads),
+without any trace in PORT_DEBUG_INFO_CTRL3.
 
-rtl8365mb_pcs_config() already resets the SerDes data path right after
-taking the SerDes out of reset. Repeating that reset once the link
-partner actually transmits recovers the receiver, so factor it out and
-call it again from the .conduit_state_change() callback when the conduit
-becomes operational.
+None of these recover the port: another SerDes data path reset, toggling
+the forced link or the mode of the external interface, toggling the
+HSGMII MAC selection in SDS_MISC, or running the whole PCS configuration
+again. A soft reset of the switch core (CHIP_RESET.SW_RST) recovers it
+every time, and it keeps the configuration programmed by the driver,
+including the VLAN setup; the MIB counters are not cleared either.
+
+Soft reset the switch core 3 seconds after the conduit becomes
+operational. That is the delay used in all the testing below; it has
+not been tuned. The reset is done unconditionally, since the corrupted
+forwarding variant cannot be detected from PORT_DEBUG_INFO_CTRL3.
+
+Tested on the AX55 by rebooting with the switch held in hardware reset
+(reset GPIO asserted through the reboot) and checking traffic on a LAN
+port after each boot:
+
+  without this patch:    14 of 70 boots broken; a SW_RST issued at
+                         runtime recovered all 9 broken boots it was
+                         tried on
+  with this patch:       0 of 40 boots broken (and 0 of 30 with an
+                         equivalent debug implementation)
+  power cycle boots:     10 of 10 good with this patch
 
 Fixes: 987137345f33 ("net: dsa: realtek: rtl8365mb: add HSGMII support for RTL8367S")
 Signed-off-by: Juraj Sladek <juraj.sladek@littleit.sk>
 ---
- drivers/net/dsa/realtek/rtl8365mb_main.c | 66 +++++++++++++++++++++++++-------
- 1 file changed, 53 insertions(+), 13 deletions(-)
+ drivers/net/dsa/realtek/rtl8365mb_main.c | 54 ++++++++++++++++++++++++++++++--
+ 1 file changed, 52 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/dsa/realtek/rtl8365mb_main.c b/drivers/net/dsa/realtek/rtl8365mb_main.c
-index da06f952a..54d90121e 100644
+index 54d90121e..f30758110 100644
 --- a/drivers/net/dsa/realtek/rtl8365mb_main.c
 +++ b/drivers/net/dsa/realtek/rtl8365mb_main.c
-@@ -858,6 +858,7 @@ struct rtl8365mb_port {
-  * @pcs: PCS for the SerDes external interface
+@@ -859,6 +859,7 @@ struct rtl8365mb_port {
   * @sds_supported: SerDes tuning parameters match the chip option, so the
   *                 SerDes interface modes can be advertised
-+ * @sds_in_use: the SerDes external interface has been configured
+  * @sds_in_use: the SerDes external interface has been configured
++ * @sds_core_reset_work: switch core soft reset after the conduit comes up
   *
   * Private data for this driver.
   */
-@@ -870,6 +871,7 @@ struct rtl8365mb {
- 	struct rtl8365mb_port ports[RTL8365MB_MAX_NUM_PORTS];
+@@ -872,6 +873,7 @@ struct rtl8365mb {
  	struct phylink_pcs pcs;
  	bool sds_supported;
-+	bool sds_in_use;
+ 	bool sds_in_use;
++	struct delayed_work sds_core_reset_work;
  };
  
  #define pcs_to_rtl8365mb(_pcs) container_of((_pcs), struct rtl8365mb, pcs)
-@@ -1380,6 +1382,24 @@ static int rtl8365mb_sds_raise_rate_limits(struct realtek_priv *priv)
- 				  RTL8365MB_PORT6_EGRESSBW_CTRL1_MASK);
- }
- 
-+/* Reset the SerDes data path and resync its PLL, mirroring what the vendor
-+ * firmware does right after deasserting the SerDes reset. This flushes the
-+ * FIFOs and ensures a clean state for the link, preventing silent drops and
-+ * CRC errors.
-+ */
-+static int rtl8365mb_sds_reset_datapath(struct realtek_priv *priv)
-+{
-+	int ret;
-+
-+	ret = rtl8365mb_sds_write(priv, RTL8365MB_SDS_REG_BMCR,
-+				  RTL8365MB_SDS_BMCR_DPRST_PHASE1);
-+	if (ret)
-+		return ret;
-+
-+	return rtl8365mb_sds_write(priv, RTL8365MB_SDS_REG_BMCR,
-+				   RTL8365MB_SDS_BMCR_DPRST_PHASE2);
-+}
-+
- static int rtl8365mb_pcs_config(struct phylink_pcs *pcs, unsigned int neg_mode,
- 				phy_interface_t interface,
- 				const unsigned long *advertising,
-@@ -1467,18 +1487,7 @@ static int rtl8365mb_pcs_config(struct phylink_pcs *pcs, unsigned int neg_mode,
- 	if (ret)
- 		return ret;
- 
--	/* Reset the SerDes data path and resync its PLL, mirroring what the
--	 * vendor firmware does right after deasserting the SerDes reset.
--	 * This flushes the FIFOs and ensures a clean state for the link,
--	 * preventing silent drops and CRC errors.
--	 */
--	ret = rtl8365mb_sds_write(priv, RTL8365MB_SDS_REG_BMCR,
--				  RTL8365MB_SDS_BMCR_DPRST_PHASE1);
--	if (ret)
--		return ret;
--
--	ret = rtl8365mb_sds_write(priv, RTL8365MB_SDS_REG_BMCR,
--				  RTL8365MB_SDS_BMCR_DPRST_PHASE2);
-+	ret = rtl8365mb_sds_reset_datapath(priv);
- 	if (ret)
- 		return ret;
- 
-@@ -1492,7 +1501,13 @@ static int rtl8365mb_pcs_config(struct phylink_pcs *pcs, unsigned int neg_mode,
- 	val &= ~RTL8365MB_SDS_NWAY_EN_MASK;
- 	val |= RTL8365MB_SDS_NWAY_RESTART_MASK;
- 
--	return rtl8365mb_sds_write(priv, RTL8365MB_SDS_REG_NWAY, val);
-+	ret = rtl8365mb_sds_write(priv, RTL8365MB_SDS_REG_NWAY, val);
-+	if (ret)
-+		return ret;
-+
-+	mb->sds_in_use = true;
-+
-+	return 0;
- }
- 
- static bool rtl8365mb_interface_is_serdes(phy_interface_t interface)
-@@ -3079,6 +3094,29 @@ static int rtl8365mb_reset_chip(struct realtek_priv *priv)
+@@ -3094,11 +3096,48 @@ static int rtl8365mb_reset_chip(struct realtek_priv *priv)
  					20000, 1e6);
  }
  
-+/* The SerDes is configured from phylink long before the conduit Ethernet
-+ * controller starts transmitting on the link, so its receiver initially locks
-+ * on an idle line. On an RTL8367S connected to an IPQ5018 over HSGMII this
-+ * regularly left the switch receiving every frame from the CPU with an FCS
-+ * error. Reset the SerDes data path again once the conduit is up.
++/* On an RTL8367S connected to an IPQ5018 over HSGMII, the port MAC behind the
++ * SerDes occasionally ends up, after the link comes up, in a state where the
++ * frames received from the CPU are counted (ifInUcastPkts rises, no FCS
++ * errors) but never forwarded to any user port, while the switch to CPU
++ * direction keeps working. The port debug information register
++ * (PORT_DEBUG_INFO_CTRL3, 0x091A) then reads 0x0000 instead of 0x0035. This
++ * state can also turn, by itself, into one where those frames are forwarded
++ * but corrupted, or show up like that from the start, without any trace in
++ * the port debug information. Neither a SerDes data path reset nor re-running
++ * the SerDes configuration recovers from any of this, but a switch core soft
++ * reset does, and it keeps the configuration done by this driver, including
++ * the VLAN setup.
 + */
-+static void rtl8365mb_conduit_state_change(struct dsa_switch *ds,
-+					   const struct net_device *conduit,
-+					   bool operational)
++static void rtl8365mb_sds_core_reset_work(struct work_struct *work)
 +{
-+	struct realtek_priv *priv = ds->priv;
-+	struct rtl8365mb *mb = priv->chip_data;
++	struct rtl8365mb *mb = container_of(to_delayed_work(work),
++					    struct rtl8365mb,
++					    sds_core_reset_work);
++	struct realtek_priv *priv = mb->priv;
++	u32 val;
 +	int ret;
 +
-+	if (!operational || !mb->sds_in_use)
-+		return;
-+
-+	ret = rtl8365mb_sds_reset_datapath(priv);
++	ret = regmap_update_bits(priv->map, RTL8365MB_CHIP_RESET_REG,
++				 RTL8365MB_CHIP_RESET_SW_MASK,
++				 RTL8365MB_CHIP_RESET_SW_MASK);
++	if (!ret)
++		ret = regmap_read_poll_timeout(priv->map,
++					       RTL8365MB_CHIP_RESET_REG, val,
++					       !(val & RTL8365MB_CHIP_RESET_SW_MASK),
++					       1000, 100000);
 +	if (ret)
-+		dev_err(priv->dev, "failed to reset SerDes data path: %pe\n",
++		dev_err(priv->dev, "failed to soft reset switch core: %pe\n",
 +			ERR_PTR(ret));
 +}
 +
+ /* The SerDes is configured from phylink long before the conduit Ethernet
+  * controller starts transmitting on the link, so its receiver initially locks
+  * on an idle line. On an RTL8367S connected to an IPQ5018 over HSGMII this
+  * regularly left the switch receiving every frame from the CPU with an FCS
+- * error. Reset the SerDes data path again once the conduit is up.
++ * error. Reset the SerDes data path again once the conduit is up, and soft
++ * reset the switch core a few seconds later, see
++ * rtl8365mb_sds_core_reset_work().
+  */
+ static void rtl8365mb_conduit_state_change(struct dsa_switch *ds,
+ 					   const struct net_device *conduit,
+@@ -3108,13 +3147,20 @@ static void rtl8365mb_conduit_state_change(struct dsa_switch *ds,
+ 	struct rtl8365mb *mb = priv->chip_data;
+ 	int ret;
+ 
+-	if (!operational || !mb->sds_in_use)
++	if (!operational) {
++		cancel_delayed_work(&mb->sds_core_reset_work);
++		return;
++	}
++
++	if (!mb->sds_in_use)
+ 		return;
+ 
+ 	ret = rtl8365mb_sds_reset_datapath(priv);
+ 	if (ret)
+ 		dev_err(priv->dev, "failed to reset SerDes data path: %pe\n",
+ 			ERR_PTR(ret));
++
++	schedule_delayed_work(&mb->sds_core_reset_work, 3 * HZ);
+ }
+ 
  static int rtl8365mb_setup(struct dsa_switch *ds)
- {
- 	struct realtek_priv *priv = ds->priv;
-@@ -3093,6 +3131,7 @@ static int rtl8365mb_setup(struct dsa_switch *ds)
- 	cpu = &mb->cpu;
+@@ -3132,6 +3178,8 @@ static int rtl8365mb_setup(struct dsa_switch *ds)
  
  	mb->pcs.ops = &rtl8365mb_pcs_ops;
-+	mb->sds_in_use = false;
+ 	mb->sds_in_use = false;
++	INIT_DELAYED_WORK(&mb->sds_core_reset_work,
++			  rtl8365mb_sds_core_reset_work);
  
  	/* The SerDes has no link interrupt wired up, so phylink must poll the
  	 * PCS for link changes when it tracks the link through pcs_get_state()
-@@ -3414,6 +3453,7 @@ static int rtl8365mb_set_mac_eee(struct dsa_switch *ds, int port,
- }
+@@ -3323,7 +3371,9 @@ static int rtl8365mb_setup(struct dsa_switch *ds)
+ static void rtl8365mb_teardown(struct dsa_switch *ds)
+ {
+ 	struct realtek_priv *priv = ds->priv;
++	struct rtl8365mb *mb = priv->chip_data;
  
- static const struct dsa_switch_ops rtl8365mb_switch_ops = {
-+	.conduit_state_change = rtl8365mb_conduit_state_change,
- 	.get_tag_protocol = rtl8365mb_get_tag_protocol,
- 	.change_tag_protocol = rtl8365mb_change_tag_protocol,
- 	.setup = rtl8365mb_setup,
++	cancel_delayed_work_sync(&mb->sds_core_reset_work);
+ 	rtl8365mb_stats_teardown(priv);
+ 	rtl8365mb_irq_teardown(priv);
+ }
 
 -- 
 2.53.0
