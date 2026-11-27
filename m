@@ -1,108 +1,76 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 02:10:12 +0000
-Subject: [PATCH 5.15.y] ipvlan: inherit needed_headroom and needed_tailroom
- from phy_dev
+From: Ilia Snezhkov <iasnezhkov@gmail.com>
+To: broonie@kernel.org
+Cc: matthias.bgg@gmail.com, angelogioacchino.delregno@collabora.com, 
+ Roman Vivchar <rva333@protonmail.com>, linux-spi@vger.kernel.org, 
+ linux-mediatek@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org
+Subject: [PATCH v2] spi: mt65xx: set host->max_speed_hz in probe
+Date: Fri, 27 Nov 2026 02:49:58 +0000
+Message-Id: <20261127024958.8686-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-so4-ipvlan-515-v1-1-b8cbc7c7d37a@certik.com>
-X-B4-Tracking: v=1; b=H4sIAIPmCGsC/1WNwQ6CMBBEf4Xs2UVaXUV/xXhoyyo1pCVdJBrCv
- 9vqyeO8zLxZQDh5FjhXCySevfgYclCbClxvwp3RdzmDbvRBKX1EiXv04zyYgKQIdyey1DYtMRP
- k0Zj45l9f4QWoVlS/4frj8rQPdlOxlaY1wmiTCa4vSDh0U4wDFr79f4F1/QAd4xrXqQAAAA==
-X-Change-ID: 20261127-so4-ipvlan-515-395b58085ee5
-To: stable@vger.kernel.org
-Cc: Eric Dumazet <edumazet@google.com>, Hangbin Liu <liuhangbin@kylinos.cn>, 
- netdev@vger.kernel.org
+Content-Transfer-Encoding: 8bit
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795745411; l=3601;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=GYY8CNKD4Vhjb/fIaxt5s/tjtVosIUaiFaM2oQ7VzIM=;
- b=tKTy0AN2eUJGg5vBTnjHo9d7J41zM8UTuKCppWpapAux50zL7AuTf2NqqYmepuRgw43zLAoub
- xkutM8LIvBlDA7iq0r7J9W8N2ruEfEVnMXgCmpOmTE2v2csNyCxfJrl
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795747798; l=2087;
+ i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
+ bh=BHEc+LMfLY+B72htL0cr2zKEFVE9SAYFoEO0zNM8fBc=;
+ b=DBC5DI8rLzSjNB7e94V8D1QT17kFycbLd5NUg1CceltKs4S3ZJvIEDGJUjybmYKQNV8H70PKs
+ Ypvz0G2lGCzDQsCq6+T5dew+szLokLaPehr+AAD1u1rH0Ynt2fNyw5X
+X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
+ pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
+X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Eric Dumazet <edumazet@google.com>
+spi-mt65xx leaves host->max_speed_hz unset (0). When a client device
+omits spi-max-frequency in DT, spi_setup() keeps spi->max_speed_hz == 0,
+and transfers or spi-mem ops without an explicit speed reach
+mtk_spi_prepare_transfer() with speed_hz == 0 and mtk_spi_transfer_wait()
+with mem->spi->max_speed_hz == 0, causing division by zero in both
+DIV_ROUND_UP(mdata->spi_clk_hz, speed_hz) and
+div_u64(ms, mem->spi->max_speed_hz).
 
-commit e16e960d55a40d36bd7c2494cc005e757dc9a1ef upstream.
+Validate that spi_clk_hz is at least 2 Hz and set host->max_speed_hz to
+mdata->spi_clk_hz / 2 (the controller's maximum SCK rate at div = 1,
+sck_time = 1) so the SPI core populates spi->max_speed_hz,
+xfer->speed_hz, and op->max_freq for all transfer paths.
 
-ipvlan devices inherit hard_header_len from phy_dev during ipvlan_init(),
-but leave needed_headroom and needed_tailroom set to 0.
-
-When the underlying phy_dev (or stacked lower device) requires extra headroom
-or tailroom for headers/trailers (e.g. macsec, ipsec, wireguard, tunnels, or
-veth with rx headroom), upper layers calculating packet headroom and tailroom
-fail to reserve sufficient space.
-
-This can result in reallocation overhead, skb headroom underflows, or KASAN
-slab-use-after-free crashes when dev_hard_header() / ipvlan_hard_header()
-prepends header data or when lower devices append tailroom.
-
-Fix this by:
-1. Inheriting needed_headroom and needed_tailroom from phy_dev in ipvlan_init().
-2. Propagating needed_headroom and needed_tailroom updates to attached ipvlans
-   in ipvlan_device_event() when receiving NETDEV_FEAT_CHANGE events.
-
-Fixes: 2ad7bf363841 ("ipvlan: Initial check-in of the IPVLAN driver.")
-Reported-by: syzbot+1f9fd0f4b601cf88d6e6@syzkaller.appspotmail.com
-Closes: https://lore.kernel.org/netdev/6a720a21.40259c87.584f4.04bb.GAE@google.com/T/#u
-Reported-by: Tangxin Xie <xietangxin@h-partners.com>
-Closes: https://lore.kernel.org/netdev/CANn89i+1EW-sFNK8xoq98gMbPCeLS7e=+rs9gHfLg5Wj+4x0sw@mail.gmail.com/T/#mcc6307f115e500df23ea2980d5669fe95f20b6b4
-Signed-off-by: Eric Dumazet <edumazet@google.com>
-Reviewed-by: Hangbin Liu <liuhangbin@kylinos.cn>
-Link: https://patch.msgid.link/20260806103857.115541-1-edumazet@google.com
-Signed-off-by: Jakub Kicinski <kuba@kernel.org>
-[ adapted to 5.15.y: keep this branch's direct GSO limit assignments ]
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+Fixes: a568231f4632 ("spi: mediatek: Add spi bus for Mediatek MT8173")
+Suggested-by: Roman Vivchar <rva333@protonmail.com>
+Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
 ---
-6.1.y and newer already have this fix. 5.15.y sets gso_max_size and
-gso_max_segs directly instead of calling netif_inherit_tso_max(), so
-the two new assignments sit next to those lines; the added lines are
-the same as upstream.
+Changes in v2:
+- Set host->max_speed_hz = mdata->spi_clk_hz / 2 in mtk_spi_probe()
+  (and reject spi_clk_hz < 2) instead of only guarding speed_hz in
+  mtk_spi_prepare_transfer(), covering mtk_spi_transfer_wait() as well
+  (suggested by Roman Vivchar).
+- Move AI coding assistant disclosure below ---.
+- Link to v1: https://lore.kernel.org/r/20261126003314.49090-1-iasnezhkov@gmail.com
 
-Tested on v5.15.226:
-- x86_64 allmodconfig W=1 build of drivers/net/ipvlan/ipvlan_main.o,
-  base vs patched, no new warnings
-- booted the patched kernel under QEMU/KVM. I didn't run a test that
-  stacks ipvlan on a device needing extra headroom.
+Found and drafted with an AI coding assistant.
 
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
----
- drivers/net/ipvlan/ipvlan_main.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ drivers/spi/spi-mt65xx.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/drivers/net/ipvlan/ipvlan_main.c b/drivers/net/ipvlan/ipvlan_main.c
-index fe4399af8eea..ca97d1de6a9a 100644
---- a/drivers/net/ipvlan/ipvlan_main.c
-+++ b/drivers/net/ipvlan/ipvlan_main.c
-@@ -144,6 +144,8 @@ static int ipvlan_init(struct net_device *dev)
- 	dev->gso_max_size = phy_dev->gso_max_size;
- 	dev->gso_max_segs = phy_dev->gso_max_segs;
- 	dev->hard_header_len = phy_dev->hard_header_len;
-+	dev->needed_headroom = phy_dev->needed_headroom;
-+	dev->needed_tailroom = phy_dev->needed_tailroom;
+diff --git a/drivers/spi/spi-mt65xx.c b/drivers/spi/spi-mt65xx.c
+index 8b4deef..7e94b4d 100644
+--- a/drivers/spi/spi-mt65xx.c
++++ b/drivers/spi/spi-mt65xx.c
+@@ -1285,6 +1285,14 @@ static int mtk_spi_probe(struct platform_device *pdev)
+ 	}
  
- 	netdev_lockdep_set_classes(dev);
+ 	mdata->spi_clk_hz = clk_get_rate(mdata->spi_clk);
++	if (mdata->spi_clk_hz < 2) {
++		clk_disable_unprepare(mdata->spi_clk);
++		clk_disable_unprepare(mdata->spi_hclk);
++		return dev_err_probe(dev, -EINVAL, "invalid spi-clk rate %u\n",
++				     mdata->spi_clk_hz);
++	}
++
++	host->max_speed_hz = mdata->spi_clk_hz / 2;
  
-@@ -768,6 +770,8 @@ static int ipvlan_device_event(struct notifier_block *unused,
- 		list_for_each_entry(ipvlan, &port->ipvlans, pnode) {
- 			ipvlan->dev->gso_max_size = dev->gso_max_size;
- 			ipvlan->dev->gso_max_segs = dev->gso_max_segs;
-+			ipvlan->dev->needed_headroom = dev->needed_headroom;
-+			ipvlan->dev->needed_tailroom = dev->needed_tailroom;
- 			netdev_update_features(ipvlan->dev);
- 		}
- 		break;
+ 	if (mdata->dev_comp->no_need_unprepare) {
+ 		clk_disable(mdata->spi_clk);
+-- 
+2.54.0 (Apple Git-157)
 
----
-base-commit: 4f2df9a01754521fbba3493e8ad91ef65515e68c
-change-id: 20261127-so4-ipvlan-515-395b58085ee5
-
-Best regards,
---  
-Dickson Wu <dickson.wu@certik.com>
 
