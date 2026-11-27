@@ -1,405 +1,511 @@
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-kvt1-virtio-d-v1-2-bfa9ce1cece5@certik.com>
+Message-Id: <20261127-kvt1-virtio-d-v1-3-bfa9ce1cece5@certik.com>
 References: <20261127-kvt1-virtio-d-v1-0-bfa9ce1cece5@certik.com>
 In-Reply-To: <20261127-kvt1-virtio-d-v1-0-bfa9ce1cece5@certik.com>
 From: Dickson Wu <dickson.wu@certik.com>
 Date: Fri, 27 Nov 2026 02:56:40 +0000
-Subject: [PATCH kvmtool 2/3] virtio: 9p: Validate unsigned string lengths
+Subject: [PATCH kvmtool 3/3] virtio: Reject invalid 9p buffers and queue
+ indices
 To: will@kernel.org, kvm@vger.kernel.org
 Cc: julien.thierry.kdev@gmail.com
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795779125; l=11371;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795779125; l=15331;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=o6X0HtkOcoY2kDoDcooOC1li281WYIXjPWL9hzAPaTU=;
- b=Cs1ifiRQqXrjYlRQGAuYaaxZukL64A6F8LaiWDaGPzgzFZIV8lIvf8zxqKKEhDWvsQf5KnCUe
- 3qVd2VgtHt8BCHsGUJg+LOVCcVHH7b1KIsD12+R4Krb8dM9zTlDzjA9
+ bh=Jk6cr/MJvOtXITKDkkOORdERn7+E0Z/qQdQtVN1Gink=;
+ b=tfOmuzzAY7uHyVsDwhQujEdjxectAPY1jomB/GcpEsuhrLVOB3vMbKiKqs670PSyHmtLJukG3
+ uvCxeIdxHpUBU5A7crDKcRCTOyQIwEnId82uediWt4UYXTPss8EjvoK
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A guest can provide a 9p string length that exceeds the remaining
-request. The decoder may then copy incomplete data and use a malformed
-string. Lengths with the high bit set are valid unsigned protocol
-values when the complete string is present. Truncated fixed-width
-fields can also leave decoded values uninitialized, including string
-pointers that handlers free on decode errors.
+A guest can supply an unmapped 9p request or reply descriptor, notify
+a queue index beyond the device count, or send a short 9p header whose
+missing tag would be read for an error reply. A short first 9p iovec
+can also underflow the Tread or Twrite data adjustment. An invalid
+modern MMIO queue selector reaches out-of-range queue memory through
+selected-queue registers.
 
-Decode string lengths as unsigned 16-bit values and check all bytes
-before allocating or copying. Report truncated fixed-width reads
-through the decoder so callers can reject partial fields. Initialize
-cleanup-owned string pointers before decoding.
+Complete invalid requests without data and require a full header
+before dispatch. Check decoded fields before handlers use them. Skip
+Tread and Twrite headers across bounded iovecs, preserving valid split
+requests. Ignore out-of-range modern PCI and MMIO notifications and
+reject invalid modern MMIO queue selections.
 
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
- virtio/9p-pdu.c |  59 +++++++++++++++++++++-------
- virtio/9p.c     | 100 ++++++++++++++++++++++++++++++++----------------
- 2 files changed, 114 insertions(+), 45 deletions(-)
+ virtio/9p-pdu.c      |   2 +
+ virtio/9p.c          | 238 +++++++++++++++++++++++++++++--------------
+ virtio/core.c        |   3 +
+ virtio/mmio-modern.c |   9 +-
+ virtio/pci-modern.c  |   3 +
+ 5 files changed, 178 insertions(+), 77 deletions(-)
 
 diff --git a/virtio/9p-pdu.c b/virtio/9p-pdu.c
-index c0b95e0..2e8c12f 100644
+index 2e8c12f..4939b67 100644
 --- a/virtio/9p-pdu.c
 +++ b/virtio/9p-pdu.c
-@@ -7,10 +7,11 @@
- #include <linux/compiler.h>
- #include <linux/9p.h>
- 
--static void virtio_p9_pdu_read(struct p9_pdu *pdu, void *data, size_t size)
-+static int virtio_p9_pdu_read(struct p9_pdu *pdu, void *data, size_t size)
- {
- 	size_t len;
--	int i, copied = 0;
-+	size_t copied = 0;
-+	int i;
- 	u16 iov_cnt = pdu->out_iov_cnt;
- 	size_t offset = pdu->read_offset;
- 	struct iovec *iov = pdu->out_iov;
-@@ -29,6 +30,7 @@ static void virtio_p9_pdu_read(struct p9_pdu *pdu, void *data, size_t size)
- 		}
- 	}
- 	pdu->read_offset += copied;
-+	return size ? EINVAL : 0;
- }
- 
- static void virtio_p9_pdu_write(struct p9_pdu *pdu,
-@@ -64,55 +66,86 @@ static void virtio_p9_wstat_free(struct p9_wstat *stbuf)
- 	free(stbuf->muid);
- }
- 
-+static size_t virtio_p9_pdu_remaining(struct p9_pdu *pdu)
-+{
-+	size_t total = 0;
-+	u16 i;
-+
-+	for (i = 0; i < pdu->out_iov_cnt; i++)
-+		total += pdu->out_iov[i].iov_len;
-+
-+	return total > pdu->read_offset ? total - pdu->read_offset : 0;
-+}
-+
- static int virtio_p9_decode(struct p9_pdu *pdu, const char *fmt, va_list ap)
- {
- 	int retval = 0;
- 	const char *ptr;
- 
--	for (ptr = fmt; *ptr; ptr++) {
-+	for (ptr = fmt; *ptr && !retval; ptr++) {
- 		switch (*ptr) {
- 		case 'b':
- 		{
- 			int8_t *val = va_arg(ap, int8_t *);
--			virtio_p9_pdu_read(pdu, val, sizeof(*val));
-+			retval = virtio_p9_pdu_read(pdu, val, sizeof(*val));
- 		}
- 		break;
- 		case 'w':
- 		{
- 			int16_t le_val;
- 			int16_t *val = va_arg(ap, int16_t *);
--			virtio_p9_pdu_read(pdu, &le_val, sizeof(le_val));
--			*val = le16toh(le_val);
-+			retval = virtio_p9_pdu_read(pdu, &le_val, sizeof(le_val));
-+			if (!retval)
-+				*val = le16toh(le_val);
- 		}
- 		break;
- 		case 'd':
- 		{
- 			int32_t le_val;
- 			int32_t *val = va_arg(ap, int32_t *);
--			virtio_p9_pdu_read(pdu, &le_val, sizeof(le_val));
--			*val = le32toh(le_val);
-+			retval = virtio_p9_pdu_read(pdu, &le_val, sizeof(le_val));
-+			if (!retval)
-+				*val = le32toh(le_val);
- 		}
- 		break;
- 		case 'q':
- 		{
- 			int64_t le_val;
- 			int64_t *val = va_arg(ap, int64_t *);
--			virtio_p9_pdu_read(pdu, &le_val, sizeof(le_val));
--			*val = le64toh(le_val);
-+			retval = virtio_p9_pdu_read(pdu, &le_val, sizeof(le_val));
-+			if (!retval)
-+				*val = le64toh(le_val);
- 		}
- 		break;
- 		case 's':
- 		{
--			int16_t len;
-+			u16 len, le_len;
- 			char **str = va_arg(ap, char **);
-+			*str = NULL;
- 
--			virtio_p9_pdu_readf(pdu, "w", &len);
-+			if (virtio_p9_pdu_remaining(pdu) < sizeof(len)) {
-+				retval = EINVAL;
-+				break;
-+			}
-+			retval = virtio_p9_pdu_read(pdu, &le_len, sizeof(le_len));
-+			if (retval)
-+				break;
-+			len = le16toh(le_len);
-+			if (virtio_p9_pdu_remaining(pdu) < len) {
-+				retval = EINVAL;
-+				break;
-+			}
- 			*str = malloc(len + 1);
- 			if (*str == NULL) {
- 				retval = ENOMEM;
- 				break;
- 			}
--			virtio_p9_pdu_read(pdu, *str, len);
-+			retval = virtio_p9_pdu_read(pdu, *str, len);
-+			if (retval) {
-+				free(*str);
-+				*str = NULL;
-+				break;
-+			}
- 			(*str)[len] = 0;
- 		}
- 		break;
+@@ -47,6 +47,8 @@ static void virtio_p9_pdu_write(struct p9_pdu *pdu,
+ 			offset -= iov[i].iov_len;
+ 			continue;
+ 		} else {
++			if (!iov[i].iov_base)
++				return;
+ 			len = MIN(iov[i].iov_len - offset, size);
+ 			memcpy(iov[i].iov_base + offset, data, len);
+ 			size -= len;
 diff --git a/virtio/9p.c b/virtio/9p.c
-index 07dd244..9bcc31d 100644
+index 9bcc31d..2adcff8 100644
 --- a/virtio/9p.c
 +++ b/virtio/9p.c
-@@ -171,8 +171,14 @@ static void virtio_p9_version(struct p9_dev *p9dev,
- 			      struct p9_pdu *pdu, u32 *outlen)
+@@ -6,6 +6,7 @@
+ #include "kvm/virtio-9p.h"
+ #include "kvm/guest_compat.h"
+ #include "kvm/builtin-setup.h"
++#include "kvm/iovec.h"
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -129,20 +130,36 @@ static void virtio_p9_set_reply_header(struct p9_pdu *pdu, u32 size)
+ 	virtio_p9_pdu_writef(pdu, "dbw", size, cmd + 1, tag);
+ }
+ 
+-static u16 virtio_p9_update_iov_cnt(struct iovec iov[], u32 count, int iov_cnt)
++static int virtio_p9_data_iov(const struct iovec src[], u16 count,
++			      size_t skip, size_t limit, bool require_full,
++			      struct iovec dst[])
  {
- 	u32 msize;
--	char *version;
--	virtio_p9_pdu_readf(pdu, "ds", &msize, &version);
-+	char *version = NULL;
-+	int err;
+-	int i;
+-	u32 total = 0;
+-	for (i = 0; (i < iov_cnt) && (total < count); i++) {
+-		if (total + iov[i].iov_len > count) {
+-			/* we don't need this iov fully */
+-			iov[i].iov_len -= ((total + iov[i].iov_len) - count);
+-			i++;
+-			break;
++	size_t total = 0;
++	u16 i;
++	int used = 0;
 +
-+	err = virtio_p9_pdu_readf(pdu, "ds", &msize, &version);
-+	if (err) {
-+		virtio_p9_error_reply(p9dev, pdu, err, outlen);
++	for (i = 0; i < count; i++) {
++		if (src[i].iov_len > SIZE_MAX - total)
++			return -1;
++		total += src[i].iov_len;
++	}
++	if (total < skip || (require_full && total - skip < limit))
++		return -1;
++
++	for (i = 0; i < count && limit; i++) {
++		size_t len = src[i].iov_len;
++
++		if (skip >= len) {
++			skip -= len;
++			continue;
+ 		}
+-		total += iov[i].iov_len;
++		dst[used].iov_base = (char *)src[i].iov_base + skip;
++		dst[used].iov_len = MIN(len - skip, limit);
++		limit -= dst[used].iov_len;
++		skip = 0;
++		used++;
+ 	}
+-	return i;
++	return used;
+ }
+ 
+ static void virtio_p9_error_reply(struct p9_dev *p9dev,
+@@ -199,7 +216,10 @@ static void virtio_p9_clunk(struct p9_dev *p9dev,
+ {
+ 	u32 fid;
+ 
+-	virtio_p9_pdu_readf(pdu, "d", &fid);
++	if (virtio_p9_pdu_readf(pdu, "d", &fid)) {
++		virtio_p9_error_reply(p9dev, pdu, EINVAL, outlen);
 +		return;
 +	}
- 	/*
- 	 * reply with the same msize the client sent us
- 	 * Error out if the request is not for 9P2000.L
-@@ -327,7 +333,7 @@ static void virtio_p9_create(struct p9_dev *p9dev,
- 			     struct p9_pdu *pdu, u32 *outlen)
- {
- 	int fd, ret;
--	char *name;
-+	char *name = NULL;
- 	size_t size;
- 	struct stat st;
- 	struct p9_qid qid;
-@@ -336,8 +342,10 @@ static void virtio_p9_create(struct p9_dev *p9dev,
- 	char *tmp_path;
- 	u32 dfid_val, flags, mode, gid;
+ 	close_fid(p9dev, fid);
  
--	virtio_p9_pdu_readf(pdu, "dsddd", &dfid_val,
--			    &name, &flags, &mode, &gid);
-+	errno = virtio_p9_pdu_readf(pdu, "dsddd", &dfid_val,
-+				    &name, &flags, &mode, &gid);
+ 	*outlen = pdu->write_offset;
+@@ -298,7 +318,9 @@ static void virtio_p9_open(struct p9_dev *p9dev,
+ 	struct p9_fid *new_fid;
+ 
+ 
+-	virtio_p9_pdu_readf(pdu, "dd", &fid, &flags);
++	errno = virtio_p9_pdu_readf(pdu, "dd", &fid, &flags);
 +	if (errno)
 +		goto err_out;
- 	dfid = get_fid(p9dev, dfid_val);
+ 	new_fid = get_fid(p9dev, fid);
  
- 	if (get_full_path(full_path, sizeof(full_path), dfid, name) != 0)
-@@ -388,15 +396,17 @@ static void virtio_p9_mkdir(struct p9_dev *p9dev,
- 			    struct p9_pdu *pdu, u32 *outlen)
- {
- 	int ret;
--	char *name;
-+	char *name = NULL;
- 	struct stat st;
- 	struct p9_qid qid;
- 	struct p9_fid *dfid;
- 	char full_path[PATH_MAX];
- 	u32 dfid_val, mode, gid;
+ 	if (lstat(new_fid->abs_path, &st) < 0)
+@@ -459,7 +481,9 @@ static void virtio_p9_walk(struct p9_dev *p9dev,
+ 	u32 fid_val, newfid_val;
  
--	virtio_p9_pdu_readf(pdu, "dsdd", &dfid_val,
--			    &name, &mode, &gid);
-+	errno = virtio_p9_pdu_readf(pdu, "dsdd", &dfid_val,
-+				    &name, &mode, &gid);
+ 
+-	virtio_p9_pdu_readf(pdu, "ddw", &fid_val, &newfid_val, &nwname);
++	errno = virtio_p9_pdu_readf(pdu, "ddw", &fid_val, &newfid_val, &nwname);
 +	if (errno)
 +		goto err_out;
- 	dfid = get_fid(p9dev, dfid_val);
+ 	new_fid	= get_fid(p9dev, newfid_val);
  
- 	if (get_full_path(full_path, sizeof(full_path), dfid, name) != 0)
-@@ -469,7 +479,9 @@ static void virtio_p9_walk(struct p9_dev *p9dev,
- 			char *str;
- 			int ret;
- 
--			virtio_p9_pdu_readf(pdu, "s", &str);
-+			errno = virtio_p9_pdu_readf(pdu, "s", &str);
-+			if (errno)
-+				goto err_out;
- 
- 			/* Format the new path we're 'walk'ing into */
- 			ret = snprintf(tmp, sizeof(tmp), "%s/%s", new_fid->path, str);
-@@ -517,18 +529,20 @@ err_out:
- static void virtio_p9_attach(struct p9_dev *p9dev,
- 			     struct p9_pdu *pdu, u32 *outlen)
+ 	nwqid = 0;
+@@ -593,36 +617,39 @@ static void virtio_p9_read(struct p9_dev *p9dev,
  {
--	char *uname;
--	char *aname;
-+	char *uname = NULL;
-+	char *aname = NULL;
- 	struct stat st;
- 	struct p9_qid qid;
+ 	u64 offset;
+ 	u32 fid_val;
+-	u16 iov_cnt;
+-	void *iov_base;
+-	size_t iov_len;
++	struct iovec data_iov[VIRTQUEUE_NUM];
++	int data_count;
+ 	u32 count, rcount;
++	ssize_t res;
  	struct p9_fid *fid;
- 	u32 fid_val, afid, uid;
  
--	virtio_p9_pdu_readf(pdu, "ddssd", &fid_val, &afid,
--			    &uname, &aname, &uid);
-+	errno = virtio_p9_pdu_readf(pdu, "ddssd", &fid_val, &afid,
-+				    &uname, &aname, &uid);
+-
++	if (virtio_p9_data_iov(pdu->out_iov, pdu->out_iov_cnt,
++			       sizeof(struct p9_msg) + sizeof(u32) + sizeof(u64) +
++			       sizeof(u32), 0, false, data_iov) < 0 ||
++	    virtio_p9_data_iov(pdu->in_iov, pdu->in_iov_cnt,
++			       VIRTIO_9P_HDR_LEN + sizeof(u32), 0, false,
++			       data_iov) < 0) {
++		*outlen = 0;
++		return;
++	}
+ 	rcount = 0;
+-	virtio_p9_pdu_readf(pdu, "dqd", &fid_val, &offset, &count);
++	if (virtio_p9_pdu_readf(pdu, "dqd", &fid_val, &offset, &count)) {
++		virtio_p9_error_reply(p9dev, pdu, EINVAL, outlen);
++		return;
++	}
+ 	fid = get_fid(p9dev, fid_val);
  
- 	free(uname);
- 	free(aname);
+-	iov_base = pdu->in_iov[0].iov_base;
+-	iov_len  = pdu->in_iov[0].iov_len;
+-	iov_cnt  = pdu->in_iov_cnt;
+-	pdu->in_iov[0].iov_base += VIRTIO_9P_HDR_LEN + sizeof(u32);
+-	pdu->in_iov[0].iov_len -= VIRTIO_9P_HDR_LEN + sizeof(u32);
+-	pdu->in_iov_cnt = virtio_p9_update_iov_cnt(pdu->in_iov,
+-						   count,
+-						   pdu->in_iov_cnt);
+-	rcount = preadv(fid->fd, pdu->in_iov,
+-			pdu->in_iov_cnt, offset);
++	data_count = virtio_p9_data_iov(pdu->in_iov, pdu->in_iov_cnt,
++					VIRTIO_9P_HDR_LEN + sizeof(u32), count,
++					false, data_iov);
++	res = preadv(fid->fd, data_iov, data_count, offset);
++	if (res < 0) {
++		virtio_p9_error_reply(p9dev, pdu, errno, outlen);
++		return;
++	}
++	rcount = res;
+ 	if (rcount > count)
+ 		rcount = count;
+-	/*
+-	 * Update the iov_base back, so that rest of
+-	 * pdu_writef works correctly.
+-	 */
+-	pdu->in_iov[0].iov_base = iov_base;
+-	pdu->in_iov[0].iov_len  = iov_len;
+-	pdu->in_iov_cnt         = iov_cnt;
+ 
+ 	pdu->write_offset = VIRTIO_9P_HDR_LEN;
+ 	virtio_p9_pdu_writef(pdu, "d", rcount);
+@@ -651,7 +678,9 @@ static void virtio_p9_readdir(struct p9_dev *p9dev,
+ 	u64 offset, old_offset;
+ 
+ 	rcount = 0;
+-	virtio_p9_pdu_readf(pdu, "dqd", &fid_val, &offset, &count);
++	errno = virtio_p9_pdu_readf(pdu, "dqd", &fid_val, &offset, &count);
 +	if (errno)
 +		goto err_out;
+ 	fid = get_fid(p9dev, fid_val);
  
- 	if (lstat(p9dev->root_dir, &st) < 0)
+ 	if (!is_dir(fid)) {
+@@ -708,7 +737,9 @@ static void virtio_p9_getattr(struct p9_dev *p9dev,
+ 	struct p9_fid *fid;
+ 	struct p9_stat_dotl statl;
+ 
+-	virtio_p9_pdu_readf(pdu, "dq", &fid_val, &request_mask);
++	errno = virtio_p9_pdu_readf(pdu, "dq", &fid_val, &request_mask);
++	if (errno)
++		goto err_out;
+ 	fid = get_fid(p9dev, fid_val);
+ 	if (lstat(fid->abs_path, &st) < 0)
  		goto err_out;
-@@ -884,7 +898,9 @@ static void virtio_p9_rename(struct p9_dev *p9dev,
- 	struct p9_fid *fid, *new_fid;
- 	char full_path[PATH_MAX], *new_name;
- 
--	virtio_p9_pdu_readf(pdu, "dds", &fid_val, &new_fid_val, &new_name);
-+	errno = virtio_p9_pdu_readf(pdu, "dds", &fid_val, &new_fid_val, &new_name);
-+	if (errno)
-+		goto err_out;
- 	fid = get_fid(p9dev, fid_val);
- 	new_fid = get_fid(p9dev, new_fid_val);
- 
-@@ -963,15 +979,17 @@ static void virtio_p9_mknod(struct p9_dev *p9dev,
- 			    struct p9_pdu *pdu, u32 *outlen)
- {
- 	int ret;
--	char *name;
-+	char *name = NULL;
- 	struct stat st;
- 	struct p9_fid *dfid;
- 	struct p9_qid qid;
- 	char full_path[PATH_MAX];
- 	u32 fid_val, mode, major, minor, gid;
- 
--	virtio_p9_pdu_readf(pdu, "dsdddd", &fid_val, &name, &mode,
--			    &major, &minor, &gid);
-+	errno = virtio_p9_pdu_readf(pdu, "dsdddd", &fid_val, &name, &mode,
-+				    &major, &minor, &gid);
-+	if (errno)
-+		goto err_out;
- 
- 	dfid = get_fid(p9dev, fid_val);
- 
-@@ -1039,9 +1057,11 @@ static void virtio_p9_symlink(struct p9_dev *p9dev,
- 	struct p9_qid qid;
- 	struct p9_fid *dfid;
- 	char new_name[PATH_MAX];
--	char *old_path, *name;
-+	char *old_path = NULL, *name = NULL;
- 
--	virtio_p9_pdu_readf(pdu, "dssd", &fid_val, &name, &old_path, &gid);
-+	errno = virtio_p9_pdu_readf(pdu, "dssd", &fid_val, &name, &old_path, &gid);
-+	if (errno)
-+		goto err_out;
- 
- 	dfid = get_fid(p9dev, fid_val);
- 
-@@ -1073,12 +1093,14 @@ static void virtio_p9_link(struct p9_dev *p9dev,
- 			   struct p9_pdu *pdu, u32 *outlen)
- {
- 	int ret;
--	char *name;
-+	char *name = NULL;
- 	u32 fid_val, dfid_val;
- 	struct p9_fid *dfid, *fid;
- 	char full_path[PATH_MAX];
- 
--	virtio_p9_pdu_readf(pdu, "dds", &dfid_val, &fid_val, &name);
-+	errno = virtio_p9_pdu_readf(pdu, "dds", &dfid_val, &fid_val, &name);
-+	if (errno)
-+		goto err_out;
- 
- 	dfid = get_fid(p9dev, dfid_val);
- 	fid =  get_fid(p9dev, fid_val);
-@@ -1104,12 +1126,17 @@ static void virtio_p9_lock(struct p9_dev *p9dev,
- 			   struct p9_pdu *pdu, u32 *outlen)
- {
- 	u8 ret;
-+	int err;
- 	u32 fid_val;
- 	struct p9_flock flock;
- 
--	virtio_p9_pdu_readf(pdu, "dbdqqds", &fid_val, &flock.type,
--			    &flock.flags, &flock.start, &flock.length,
--			    &flock.proc_id, &flock.client_id);
-+	err = virtio_p9_pdu_readf(pdu, "dbdqqds", &fid_val, &flock.type,
-+				  &flock.flags, &flock.start, &flock.length,
-+				  &flock.proc_id, &flock.client_id);
-+	if (err) {
-+		virtio_p9_error_reply(p9dev, pdu, err, outlen);
-+		return;
-+	}
- 
- 	/* Just return success */
- 	ret = P9_LOCK_SUCCESS;
-@@ -1123,11 +1150,16 @@ static void virtio_p9_lock(struct p9_dev *p9dev,
- static void virtio_p9_getlock(struct p9_dev *p9dev,
- 			      struct p9_pdu *pdu, u32 *outlen)
- {
-+	int err;
- 	u32 fid_val;
- 	struct p9_getlock glock;
--	virtio_p9_pdu_readf(pdu, "dbqqds", &fid_val, &glock.type,
--			    &glock.start, &glock.length, &glock.proc_id,
--			    &glock.client_id);
-+	err = virtio_p9_pdu_readf(pdu, "dbqqds", &fid_val, &glock.type,
-+				  &glock.start, &glock.length, &glock.proc_id,
-+				  &glock.client_id);
-+	if (err) {
-+		virtio_p9_error_reply(p9dev, pdu, err, outlen);
-+		return;
-+	}
- 
- 	/* Just return success */
- 	glock.type = F_UNLCK;
-@@ -1193,14 +1225,16 @@ static void virtio_p9_renameat(struct p9_dev *p9dev,
- 			       struct p9_pdu *pdu, u32 *outlen)
- {
- 	int ret;
--	char *old_name, *new_name;
-+	char *old_name = NULL, *new_name = NULL;
- 	u32 old_dfid_val, new_dfid_val;
- 	struct p9_fid *old_dfid, *new_dfid;
- 	char old_full_path[PATH_MAX], new_full_path[PATH_MAX];
- 
- 
--	virtio_p9_pdu_readf(pdu, "dsds", &old_dfid_val, &old_name,
--			    &new_dfid_val, &new_name);
-+	errno = virtio_p9_pdu_readf(pdu, "dsds", &old_dfid_val, &old_name,
-+				    &new_dfid_val, &new_name);
-+	if (errno)
-+		goto err_out;
- 
- 	old_dfid = get_fid(p9dev, old_dfid_val);
- 	new_dfid = get_fid(p9dev, new_dfid_val);
-@@ -1235,12 +1269,14 @@ static void virtio_p9_unlinkat(struct p9_dev *p9dev,
- 			       struct p9_pdu *pdu, u32 *outlen)
- {
- 	int ret;
--	char *name;
-+	char *name = NULL;
- 	u32 fid_val, flags;
+@@ -756,7 +787,9 @@ static void virtio_p9_setattr(struct p9_dev *p9dev,
  	struct p9_fid *fid;
- 	char full_path[PATH_MAX];
+ 	struct p9_iattr_dotl p9attr;
  
--	virtio_p9_pdu_readf(pdu, "dsd", &fid_val, &name, &flags);
-+	errno = virtio_p9_pdu_readf(pdu, "dsd", &fid_val, &name, &flags);
+-	virtio_p9_pdu_readf(pdu, "dI", &fid_val, &p9attr);
++	errno = virtio_p9_pdu_readf(pdu, "dI", &fid_val, &p9attr);
 +	if (errno)
 +		goto err_out;
  	fid = get_fid(p9dev, fid_val);
  
- 	if (get_full_path(full_path, sizeof(full_path), fid, name) != 0)
+ 	if (p9attr.valid & ATTR_MODE) {
+@@ -829,33 +862,34 @@ static void virtio_p9_write(struct p9_dev *p9dev,
+ 	u32 fid_val;
+ 	u32 count;
+ 	ssize_t res;
+-	u16 iov_cnt;
+-	void *iov_base;
+-	size_t iov_len;
++	struct iovec data_iov[VIRTQUEUE_NUM];
++	int data_count;
+ 	struct p9_fid *fid;
+ 	/* u32 fid + u64 offset + u32 count */
+ 	int twrite_size = sizeof(u32) + sizeof(u64) + sizeof(u32);
+ 
+-	virtio_p9_pdu_readf(pdu, "dqd", &fid_val, &offset, &count);
++	if (virtio_p9_data_iov(pdu->out_iov, pdu->out_iov_cnt,
++			       sizeof(struct p9_msg) + twrite_size, 0, false,
++			       data_iov) < 0 ||
++	    virtio_p9_data_iov(pdu->in_iov, pdu->in_iov_cnt,
++			       VIRTIO_9P_HDR_LEN + sizeof(u32), 0, false,
++			       data_iov) < 0) {
++		*outlen = 0;
++		return;
++	}
++	errno = virtio_p9_pdu_readf(pdu, "dqd", &fid_val, &offset, &count);
++	if (errno)
++		goto err_out;
+ 	fid = get_fid(p9dev, fid_val);
+ 
+-	iov_base = pdu->out_iov[0].iov_base;
+-	iov_len  = pdu->out_iov[0].iov_len;
+-	iov_cnt  = pdu->out_iov_cnt;
+-
+-	/* Adjust the iovec to skip the header and meta data */
+-	pdu->out_iov[0].iov_base += (sizeof(struct p9_msg) + twrite_size);
+-	pdu->out_iov[0].iov_len -=  (sizeof(struct p9_msg) + twrite_size);
+-	pdu->out_iov_cnt = virtio_p9_update_iov_cnt(pdu->out_iov, count,
+-						    pdu->out_iov_cnt);
+-	res = pwritev(fid->fd, pdu->out_iov, pdu->out_iov_cnt, offset);
+-	/*
+-	 * Update the iov_base back, so that rest of
+-	 * pdu_readf works correctly.
+-	 */
+-	pdu->out_iov[0].iov_base = iov_base;
+-	pdu->out_iov[0].iov_len  = iov_len;
+-	pdu->out_iov_cnt         = iov_cnt;
++	data_count = virtio_p9_data_iov(pdu->out_iov, pdu->out_iov_cnt,
++					sizeof(struct p9_msg) + twrite_size,
++					 count, true, data_iov);
++	if (data_count < 0) {
++		errno = EINVAL;
++		goto err_out;
++	}
++	res = pwritev(fid->fd, data_iov, data_count, offset);
+ 
+ 	if (res < 0)
+ 		goto err_out;
+@@ -875,7 +909,9 @@ static void virtio_p9_remove(struct p9_dev *p9dev,
+ 	u32 fid_val;
+ 	struct p9_fid *fid;
+ 
+-	virtio_p9_pdu_readf(pdu, "d", &fid_val);
++	errno = virtio_p9_pdu_readf(pdu, "d", &fid_val);
++	if (errno)
++		goto err_out;
+ 	fid = get_fid(p9dev, fid_val);
+ 
+ 	ret = remove(fid->abs_path);
+@@ -927,7 +963,9 @@ static void virtio_p9_readlink(struct p9_dev *p9dev,
+ 	struct p9_fid *fid;
+ 	char target_path[PATH_MAX];
+ 
+-	virtio_p9_pdu_readf(pdu, "d", &fid_val);
++	errno = virtio_p9_pdu_readf(pdu, "d", &fid_val);
++	if (errno)
++		goto err_out;
+ 	fid = get_fid(p9dev, fid_val);
+ 
+ 	memset(target_path, 0, PATH_MAX);
+@@ -953,7 +991,9 @@ static void virtio_p9_statfs(struct p9_dev *p9dev,
+ 	struct p9_fid *fid;
+ 	struct statfs stat_buf;
+ 
+-	virtio_p9_pdu_readf(pdu, "d", &fid_val);
++	errno = virtio_p9_pdu_readf(pdu, "d", &fid_val);
++	if (errno)
++		goto err_out;
+ 	fid = get_fid(p9dev, fid_val);
+ 
+ 	ret = statfs(fid->abs_path, &stat_buf);
+@@ -1026,7 +1066,9 @@ static void virtio_p9_fsync(struct p9_dev *p9dev,
+ 	struct p9_fid *fid;
+ 	u32 fid_val, datasync;
+ 
+-	virtio_p9_pdu_readf(pdu, "dd", &fid_val, &datasync);
++	errno = virtio_p9_pdu_readf(pdu, "dd", &fid_val, &datasync);
++	if (errno)
++		goto err_out;
+ 	fid = get_fid(p9dev, fid_val);
+ 
+ 	if (fid->dir)
+@@ -1300,7 +1342,10 @@ static void virtio_p9_flush(struct p9_dev *p9dev,
+ {
+ 	u16 tag, oldtag;
+ 
+-	virtio_p9_pdu_readf(pdu, "ww", &tag, &oldtag);
++	if (virtio_p9_pdu_readf(pdu, "ww", &tag, &oldtag)) {
++		virtio_p9_error_reply(p9dev, pdu, EINVAL, outlen);
++		return;
++	}
+ 	virtio_p9_pdu_writef(pdu, "w", tag);
+ 	*outlen = pdu->write_offset;
+ 	virtio_p9_set_reply_header(pdu, *outlen);
+@@ -1351,6 +1396,18 @@ static p9_handler *virtio_9p_dotl_handler [] = {
+ 	[P9_TRENAME]      = virtio_p9_rename,
+ };
+ 
++static bool virtio_p9_iov_valid(struct iovec iov[], u16 count)
++{
++	u16 i;
++
++	for (i = 0; i < count; i++) {
++		if (iov[i].iov_len && !iov[i].iov_base)
++			return false;
++	}
++
++	return true;
++}
++
+ static struct p9_pdu *virtio_p9_pdu_init(struct kvm *kvm, struct virt_queue *vq)
+ {
+ 	struct p9_pdu *pdu = calloc(1, sizeof(*pdu));
+@@ -1364,18 +1421,41 @@ static struct p9_pdu *virtio_p9_pdu_init(struct kvm *kvm, struct virt_queue *vq)
+ 					ARRAY_SIZE(pdu->in_iov), pdu->out_iov,
+ 					ARRAY_SIZE(pdu->out_iov),
+ 					&pdu->in_iov_cnt, &pdu->out_iov_cnt);
++	if (!virtio_p9_iov_valid(pdu->in_iov, pdu->in_iov_cnt) ||
++	    !virtio_p9_iov_valid(pdu->out_iov, pdu->out_iov_cnt))
++		pdu->out_iov_cnt = 0;
+ 	return pdu;
+ }
+ 
+-static u8 virtio_p9_get_cmd(struct p9_pdu *pdu)
++static bool virtio_p9_get_cmd(struct p9_pdu *pdu, u8 *cmd)
+ {
+-	struct p9_msg *msg;
+-	/*
+-	 * we can peek directly into pdu for a u8
+-	 * value. The host endianess won't be an issue
+-	 */
+-	msg = pdu->out_iov[0].iov_base;
+-	return msg->cmd;
++	size_t offset = sizeof(u32);
++	size_t remaining = VIRTIO_9P_HDR_LEN;
++	u16 i;
++
++	for (i = 0; i < pdu->out_iov_cnt && remaining; i++) {
++		if (pdu->out_iov[i].iov_len >= remaining)
++			remaining = 0;
++		else
++			remaining -= pdu->out_iov[i].iov_len;
++	}
++	if (remaining)
++		return false;
++
++	for (i = 0; i < pdu->out_iov_cnt; i++) {
++		if (offset >= pdu->out_iov[i].iov_len) {
++			offset -= pdu->out_iov[i].iov_len;
++			continue;
++		}
++
++		if (!pdu->out_iov[i].iov_base)
++			return false;
++
++		*cmd = *((u8 *)pdu->out_iov[i].iov_base + offset);
++		return true;
++	}
++
++	return false;
+ }
+ 
+ static bool virtio_p9_do_io_request(struct kvm *kvm, struct p9_dev_job *job)
+@@ -1391,7 +1471,14 @@ static bool virtio_p9_do_io_request(struct kvm *kvm, struct p9_dev_job *job)
+ 	p9dev = job->p9dev;
+ 
+ 	p9pdu = virtio_p9_pdu_init(kvm, vq);
+-	cmd = virtio_p9_get_cmd(p9pdu);
++	if (!p9pdu)
++		return false;
++	if (iov_size(p9pdu->in_iov, p9pdu->in_iov_cnt) <
++	    VIRTIO_9P_HDR_LEN || !virtio_p9_get_cmd(p9pdu, &cmd)) {
++		virt_queue__set_used_elem(vq, p9pdu->queue_head, 0);
++		free(p9pdu);
++		return true;
++	}
+ 
+ 	if ((cmd >= ARRAY_SIZE(virtio_9p_dotl_handler)) ||
+ 	    !virtio_9p_dotl_handler[cmd])
+@@ -1412,7 +1499,8 @@ static void virtio_p9_do_io(struct kvm *kvm, void *param)
+ 	struct virt_queue *vq  = job->vq;
+ 
+ 	while (virt_queue__available(vq)) {
+-		virtio_p9_do_io_request(kvm, job);
++		if (!virtio_p9_do_io_request(kvm, job))
++			break;
+ 	}
+ 
+ 	if (virtio_queue__should_signal(vq))
+diff --git a/virtio/core.c b/virtio/core.c
+index 6d1eeea..67520d4 100644
+--- a/virtio/core.c
++++ b/virtio/core.c
+@@ -456,6 +456,9 @@ bool virtio_queue__should_signal(struct virt_queue *vq)
+ {
+ 	u16 old_idx, new_idx, event_idx;
+ 
++	if (!vq->enabled)
++		return false;
++
+ 	/*
+ 	 * Use mb to assure used idx has been increased before we signal the
+ 	 * guest, and we don't read a stale value for used_event. Without a mb
+diff --git a/virtio/mmio-modern.c b/virtio/mmio-modern.c
+index 7787508..fa20c98 100644
+--- a/virtio/mmio-modern.c
++++ b/virtio/mmio-modern.c
+@@ -81,9 +81,13 @@ static void virtio_mmio_config_out(struct kvm_cpu *vcpu,
+ 	switch (addr) {
+ 	case VIRTIO_MMIO_DEVICE_FEATURES_SEL:
+ 	case VIRTIO_MMIO_DRIVER_FEATURES_SEL:
+-	case VIRTIO_MMIO_QUEUE_SEL:
+ 		*(u32 *)(((void *)&vmmio->hdr) + addr) = val;
+ 		break;
++	case VIRTIO_MMIO_QUEUE_SEL:
++		if (val >= vdev->ops->get_vq_count(kvm, vmmio->dev))
++			break;
++		vmmio->hdr.queue_sel = val;
++		break;
+ 	case VIRTIO_MMIO_STATUS:
+ 		vmmio->hdr.status = val;
+ 		virtio_notify_status(kvm, vdev, vmmio->dev, val);
+@@ -108,7 +112,8 @@ static void virtio_mmio_config_out(struct kvm_cpu *vcpu,
+ 			virtio_mmio_exit_vq(kvm, vdev, vmmio->hdr.queue_sel);
+ 		break;
+ 	case VIRTIO_MMIO_QUEUE_NOTIFY:
+-		vdev->ops->notify_vq(vmmio->kvm, vmmio->dev, val);
++		if (val < vdev->ops->get_vq_count(vmmio->kvm, vmmio->dev))
++			vdev->ops->notify_vq(vmmio->kvm, vmmio->dev, val);
+ 		break;
+ 	case VIRTIO_MMIO_INTERRUPT_ACK:
+ 		vmmio->hdr.interrupt_state &= ~val;
+diff --git a/virtio/pci-modern.c b/virtio/pci-modern.c
+index 2b234a7..94bee60 100644
+--- a/virtio/pci-modern.c
++++ b/virtio/pci-modern.c
+@@ -128,6 +128,9 @@ static bool virtio_pci__notify_write(struct virtio_device *vdev,
+ 	u16 vq = ioport__read16(data);
+ 	struct virtio_pci *vpci = vdev->virtio;
+ 
++	if (vq >= vdev->ops->get_vq_count(vpci->kvm, vpci->dev))
++		return true;
++
+ 	vdev->ops->notify_vq(vpci->kvm, vpci->dev, vq);
+ 
+ 	return true;
