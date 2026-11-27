@@ -1,11 +1,11 @@
 From: Kalash Nainwal <kalash@nexthop.ai>
-Date: Fri, 27 Nov 2026 15:15:50 -0700
-Subject: [PATCH net-next v3 1/2] tcp: add net.ipv4.tcp_l3mdev_exempt_ports
- sysctl
+Date: Fri, 27 Nov 2026 15:15:51 -0700
+Subject: [PATCH net-next v3 2/2] selftests: net: add
+ tcp_l3mdev_exempt_ports test
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-tcp-l3mdev-exempt-ports-v3-1-f875b1184f26@nexthop.ai>
+Message-Id: <20261127-tcp-l3mdev-exempt-ports-v3-2-f875b1184f26@nexthop.ai>
 References: <20261127-tcp-l3mdev-exempt-ports-v3-0-f875b1184f26@nexthop.ai>
 In-Reply-To: <20261127-tcp-l3mdev-exempt-ports-v3-0-f875b1184f26@nexthop.ai>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -21,225 +21,349 @@ Cc: Shuah Khan <shuah@kernel.org>, Joel Granados <joel.granados@kernel.org>,
  linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
  Kalash Nainwal <kalash@nexthop.ai>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8120; i=kalash@nexthop.ai;
- h=from:subject:message-id; bh=5reibsbuzDSrVOEzP9MNCD1ZLeANVjBu39yjDwiQZsM=;
- b=owEB7QES/pANAwAKAdTKslu1X9B2AcsmYgBrCgEVTrSIyVwHsHmIa6pXfyYBZitjwnz0e11mx
- dklUy35CKeJAbMEAAEKAB0WIQSWKdfHnHcAucb08LDUyrJbtV/QdgUCawoBFQAKCRDUyrJbtV/Q
- dsbWC/4xCpEXkt987uu7Q1g5CgvrJbz9LdsMcZTrkYPWVVbD1nnKMFjoMUoxKCbu0n4IdWNa+QX
- g7h92ekO1Rac+KmCs/96D+Od+xhEBShySO2viD0nDy48wItahALknElubNCia1/v5t06wNzdQcv
- aDBTRRR7aNkj8M/YcZSwd1onUiAoIflC4GOWSGxHn1evi4SryWceTOp03sCBAyH5Bd7UZwrH5Be
- hcH2cc+wBNwHkDslpQvq3hXl+s/f1dMm5VP7teCmaLEYO2ZNj619jHz4kBalqim6OEYNf0/gYNn
- sC4SaEaGq/0aXsdGVekK6/brjBHDAb6cZYSQ9BEX+g9Z1F5GOYlfGVQOx0wNieHYKcDFziAZuDP
- WEnsghwu/cngVKhhxoSePybmpIgh04ZZud0eJL0umKOUjkcuu7EUPeiMZconhI81sGdV3IHhInp
- BrgzwSqXxcUMzc0b36pYx6ux9+lnkB/OWf76WXn05K+xDuAltWAOcd1bN/2d4v/yH8cGg=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8762; i=kalash@nexthop.ai;
+ h=from:subject:message-id; bh=JB0AlyIeGDOZNdLEDmQcmGtRfeZxLqLPys9K5j/F9xo=;
+ b=owEB7QES/pANAwAKAdTKslu1X9B2AcsmYgBrCgEVxpZOZaVZSeyAmuiI2LlSTqXdKvWsRgXOS
+ C1caqWA0D+JAbMEAAEKAB0WIQSWKdfHnHcAucb08LDUyrJbtV/QdgUCawoBFQAKCRDUyrJbtV/Q
+ dilwDACjTAKIOB3TQnGimjL/YQN6wijEgrOHiTAagLcHUDTRmpGFqpKxGv/io5xoLKioLgleG5i
+ d7lBa3ZAqc2WCKFuuwev+Wt4ueG/pKbZIrNhJfLtuxGKvy/PBSr5GSvR23ZP0CfstUufU7crmA0
+ bxxk2l9/K7l9Q0tSPC2aZnMPZ8KRj+w+6C8C2gaOwJacgzU7cvdD+twCgAx184O8Jbq/LtCpvBx
+ A0FqVRPfpU0oo/mR1HAldGmoYZfQu0HADnUlMNReq36ggPbQUU2FulVQzUDt24PugRocZmd3nSF
+ DHHASKtm9K53Kdo6hKj/prkddZdsmWHMbvAQWxyBRUn+9g1p0zgniwzGsJi/rAth+/g23uswd0I
+ Tq4CO9wWLGRQb7dvIOJmXTOdwDpNbThT8DO+oHQ65P8zZgFnWAXWjntI2dPV1Qf9a1ZiFySPrxl
+ efnlwDQdRonnJs2t9pUp2e0k71xsiKNEllHv73uadkD1C4hhAiVoNq5biqSJbAHsyFdTg=
 X-Developer-Key: i=kalash@nexthop.ai; a=openpgp;
  fpr=9629D7C79C7700B9C6F4F0B0D4CAB25BB55FD076
 X-Endpoint-Received: by B4 Relay for kalash@nexthop.ai/default with auth_id=1588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With tcp_l3mdev_accept=1, an unbound listener also matches connections
-that arrive in a VRF. If a VRF-bound listener exists on the same port
-and both use SO_REUSEPORT, the lookup returns whichever is first in the
-listen bucket, not the VRF-bound one. Since AF_INET and AF_INET6
-reuseport sockets are inserted at opposite ends of the bucket, the same
-setup can pick the VRF-bound listener for IPv4 and the unbound one for
-IPv6.
-
-This breaks, for example, a BGP daemon with a TCP-MD5 key only on its
-VRF-bound listener: IPv6 peers in the VRF reach the unbound listener
-and the session comes up without MD5.
-
-Add net.ipv4.tcp_l3mdev_exempt_ports, a per-netns port list in the
-same format as ip_local_reserved_ports. For a listed port, an unbound
-listener does not match connections that arrive in a VRF, so only a
-listener bound to the VRF or to the receiving device can take them.
-Only listener lookup changes. Other ports and default-VRF traffic are
-not affected. The default is empty.
-
-This is opt-in rather than a change to the lookup itself. With both
-listeners present, existing setups get a stable result that depends on
-creation order and address family; making the bound listener always
-win would change that for every tcp_l3mdev_accept user.
+Check that with tcp_l3mdev_accept=1 and the port listed in
+tcp_l3mdev_exempt_ports, a VRF connection goes to the listener bound to
+the VRF or to the receiving device (in both listener creation orders)
+and is refused by an unbound-only listener, and that default-VRF
+connections still reach the unbound listener. Covers IPv4 and IPv6.
 
 Signed-off-by: Kalash Nainwal <kalash@nexthop.ai>
 ---
- Documentation/networking/ip-sysctl.rst             | 24 ++++++++++++++++++++++
- .../net_cachelines/netns_ipv4_sysctl.rst           |  1 +
- include/net/ip.h                                   | 15 ++++++++++++++
- include/net/netns/ipv4.h                           |  3 +++
- net/ipv4/inet_hashtables.c                         |  5 +++++
- net/ipv4/sysctl_net_ipv4.c                         | 21 +++++++++++++++++++
- net/ipv6/inet6_hashtables.c                        |  4 ++++
- 7 files changed, 73 insertions(+)
+ tools/testing/selftests/net/Makefile               |   1 +
+ .../selftests/net/tcp_l3mdev_exempt_ports.sh       | 297 +++++++++++++++++++++
+ 2 files changed, 298 insertions(+)
 
-diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
-index 468d3df998a..4e0b5a4e77e 100644
---- a/Documentation/networking/ip-sysctl.rst
-+++ b/Documentation/networking/ip-sysctl.rst
-@@ -619,6 +619,30 @@ tcp_l3mdev_accept - BOOLEAN
- 
- 	Default: 0 (disabled)
- 
-+tcp_l3mdev_exempt_ports - list of comma separated ranges
-+	TCP ports for which tcp_l3mdev_accept does not apply to listener
-+	lookup. When tcp_l3mdev_accept is enabled, a listen socket that is
-+	not bound to a device also matches connections that arrive in an L3
-+	domain (e.g., a VRF). For a port in this list, such a socket does
-+	not match these connections; only a listen socket bound to the L3
-+	master device or to the receiving device can accept them.
-+	Connections that do not arrive in an L3 domain are not affected.
-+	This applies to both IPv4 and IPv6.
+diff --git a/tools/testing/selftests/net/Makefile b/tools/testing/selftests/net/Makefile
+index fb0a6466205..45b4c3c3738 100644
+--- a/tools/testing/selftests/net/Makefile
++++ b/tools/testing/selftests/net/Makefile
+@@ -110,6 +110,7 @@ TEST_PROGS := \
+ 	stress_reuseport_listen.sh \
+ 	tcp_ecmp_failover.sh \
+ 	tcp_fastopen_backup_key.sh \
++	tcp_l3mdev_exempt_ports.sh \
+ 	test_bridge_backup_port.sh \
+ 	test_bridge_neigh_suppress.sh \
+ 	test_ingress_egress_chaining.sh \
+diff --git a/tools/testing/selftests/net/tcp_l3mdev_exempt_ports.sh b/tools/testing/selftests/net/tcp_l3mdev_exempt_ports.sh
+new file mode 100755
+index 00000000000..f98774b8ba4
+--- /dev/null
++++ b/tools/testing/selftests/net/tcp_l3mdev_exempt_ports.sh
+@@ -0,0 +1,297 @@
++#!/bin/bash
++# SPDX-License-Identifier: GPL-2.0
++#
++# Test net.ipv4.tcp_l3mdev_exempt_ports.
++#
++# With tcp_l3mdev_accept=1, a listener that is not bound to a device also
++# matches connections that arrive in a VRF. For a port listed in
++# tcp_l3mdev_exempt_ports it must not: only a listener bound to the VRF
++# or to the receiving device may take such a connection. Connections in
++# the default VRF are not affected.
++#
++#  ns_c (client in VRF)       ns_s (server)       ns_d (client, default VRF)
++#      veth0 ------------- veth_vrf [vrf red]
++#                             veth_def ----------------- veth0
 +
-+	Only the choice of listen socket changes. Lookup of established
-+	sockets and bind() port conflict checks still follow
-+	tcp_l3mdev_accept.
++# ns_s, ns_c and ns_d are assigned by setup_ns, and the test functions
++# are called through ALL_TESTS.
++# shellcheck disable=SC2154,SC2329
 +
-+	This is useful when the same port has both an unbound listener and
-+	a listener bound to a VRF, and VRF connections must reach the
-+	VRF-bound one (for example, when only it has TCP-MD5 or TCP-AO
-+	keys configured).
++source lib.sh
 +
-+	The format is the same as ip_local_reserved_ports, e.g.
-+	"179,5000-5010". Writing to the file replaces the current list.
++PORT=12345
++OTHER_PORT=23456
++VRF=red
++VRF_TABLE=1000
 +
-+	Default: empty
++VRF_SRV4=172.16.1.1
++VRF_CLI4=172.16.1.2
++DEF_SRV4=172.16.2.1
++DEF_CLI4=172.16.2.2
++VRF_SRV6=2001:db8:1::1
++VRF_CLI6=2001:db8:1::2
++DEF_SRV6=2001:db8:2::1
++DEF_CLI6=2001:db8:2::2
 +
- tcp_low_latency - BOOLEAN
- 	This is a legacy option, it has no effect anymore.
- 
-diff --git a/Documentation/networking/net_cachelines/netns_ipv4_sysctl.rst b/Documentation/networking/net_cachelines/netns_ipv4_sysctl.rst
-index 2833ce6cba1..d531213d69e 100644
---- a/Documentation/networking/net_cachelines/netns_ipv4_sysctl.rst
-+++ b/Documentation/networking/net_cachelines/netns_ipv4_sysctl.rst
-@@ -150,6 +150,7 @@ struct_ping_group_range         ping_group_range
- atomic_t                        dev_addr_genid
- unsigned_int                    sysctl_udp_child_hash_entries
- unsigned_long*                  sysctl_local_reserved_ports
-+unsigned_long*                  sysctl_tcp_l3mdev_exempt_ports
- int                             sysctl_ip_prot_sock
- struct_mr_table*                mrt
- struct_list_head                mr_tables
-diff --git a/include/net/ip.h b/include/net/ip.h
-index 5035b313a26..a5f9efe15b2 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -396,6 +396,21 @@ static inline bool inet_port_requires_bind_service(struct net *net, unsigned sho
- }
- #endif
- 
-+/* For ports listed in net.ipv4.tcp_l3mdev_exempt_ports, a listener that
-+ * is not bound to a device does not match connections received on an L3
-+ * master device slave, even with tcp_l3mdev_accept=1. Only listener
-+ * lookup uses this. Applies to IPv4 and IPv6.
-+ */
-+static inline bool tcp_port_l3mdev_exempt(const struct net *net,
-+					  unsigned short port)
++# Servers that must not get a connection are stopped by the test, so this
++# only needs to be longer than any wait before the client connects.
++SRV_TIMEOUT=20
++
++ALL_TESTS="
++	unbound_listener
++	vrf_and_unbound_listeners
++	slave_and_unbound_listeners
++	default_vrf_unaffected
++"
++
++cleanup()
 +{
-+#if defined(CONFIG_SYSCTL) && defined(CONFIG_NET_L3_MASTER_DEV)
-+	if (net->ipv4.sysctl_tcp_l3mdev_exempt_ports)
-+		return test_bit(port, net->ipv4.sysctl_tcp_l3mdev_exempt_ports);
-+#endif
-+	return false;
++	cleanup_all_ns
 +}
 +
- __be32 inet_current_timestamp(void);
- 
- /* From inetpeer.c */
-diff --git a/include/net/netns/ipv4.h b/include/net/netns/ipv4.h
-index 3efbc7f4b4f..bff91c8b30c 100644
---- a/include/net/netns/ipv4.h
-+++ b/include/net/netns/ipv4.h
-@@ -271,6 +271,9 @@ struct netns_ipv4 {
- 
- #ifdef CONFIG_SYSCTL
- 	unsigned long *sysctl_local_reserved_ports;
-+#ifdef CONFIG_NET_L3_MASTER_DEV
-+	unsigned long *sysctl_tcp_l3mdev_exempt_ports;
-+#endif
- 	int sysctl_ip_prot_sock;
- #endif
- 
-diff --git a/net/ipv4/inet_hashtables.c b/net/ipv4/inet_hashtables.c
-index 860145d810e..063f6dd00a6 100644
---- a/net/ipv4/inet_hashtables.c
-+++ b/net/ipv4/inet_hashtables.c
-@@ -362,6 +362,11 @@ static inline int compute_score(struct sock *sk, const struct net *net,
- 
- 		if (!inet_sk_bound_dev_eq(net, sk->sk_bound_dev_if, dif, sdif))
- 			return -1;
++setup_fail()
++{
++	echo "FAIL: setup"
++	exit "$ksft_fail"
++}
 +
-+		if (!sk->sk_bound_dev_if && sdif &&
-+		    tcp_port_l3mdev_exempt(net, hnum))
-+			return -1;
++setup()
++{
++	setup_ns ns_s ns_c ns_d || exit "$ksft_skip"
 +
- 		score =  sk->sk_bound_dev_if ? 2 : 1;
- 
- 		if (sk->sk_family == PF_INET)
-diff --git a/net/ipv4/sysctl_net_ipv4.c b/net/ipv4/sysctl_net_ipv4.c
-index 9df93ad219d..153b21f607a 100644
---- a/net/ipv4/sysctl_net_ipv4.c
-+++ b/net/ipv4/sysctl_net_ipv4.c
-@@ -903,6 +903,13 @@ static const struct ctl_table ipv4_net_table[] = {
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_ONE,
- 	},
-+	{
-+		.procname	= "tcp_l3mdev_exempt_ports",
-+		.data		= &init_net.ipv4.sysctl_tcp_l3mdev_exempt_ports,
-+		.maxlen		= 65536,
-+		.mode		= 0644,
-+		.proc_handler	= proc_do_large_bitmap,
-+	},
- #endif
- 	{
- 		.procname	= "tcp_mtu_probing",
-@@ -1708,10 +1715,21 @@ static __net_init int ipv4_sysctl_init_net(struct net *net)
- 	if (!net->ipv4.sysctl_local_reserved_ports)
- 		goto err_ports;
- 
-+#ifdef CONFIG_NET_L3_MASTER_DEV
-+	net->ipv4.sysctl_tcp_l3mdev_exempt_ports =
-+		kzalloc(65536 / 8, GFP_KERNEL);
-+	if (!net->ipv4.sysctl_tcp_l3mdev_exempt_ports)
-+		goto err_l3mdev_ports;
-+#endif
++	if ! ip -n "$ns_s" link add "$VRF" type vrf table "$VRF_TABLE"; then
++		echo "SKIP: VRF not supported"
++		exit "$ksft_skip"
++	fi
 +
- 	proc_fib_multipath_hash_set_seed(net, 0);
- 
- 	return 0;
- 
-+#ifdef CONFIG_NET_L3_MASTER_DEV
-+err_l3mdev_ports:
-+	kfree(net->ipv4.sysctl_local_reserved_ports);
-+#endif
- err_ports:
- 	unregister_net_sysctl_table(net->ipv4.ipv4_hdr);
- err_reg:
-@@ -1729,6 +1747,9 @@ static __net_exit void ipv4_sysctl_exit_net(struct net *net)
- 	unregister_net_sysctl_table(net->ipv4.ipv4_hdr);
- 	kfree(table);
- 	kfree(net->ipv4.sysctl_local_reserved_ports);
-+#ifdef CONFIG_NET_L3_MASTER_DEV
-+	kfree(net->ipv4.sysctl_tcp_l3mdev_exempt_ports);
-+#endif
- }
- 
- static __net_initdata struct pernet_operations ipv4_sysctl_ops = {
-diff --git a/net/ipv6/inet6_hashtables.c b/net/ipv6/inet6_hashtables.c
-index 1eea584d80d..43c52b56e8b 100644
---- a/net/ipv6/inet6_hashtables.c
-+++ b/net/ipv6/inet6_hashtables.c
-@@ -141,6 +141,10 @@ static inline int compute_score(struct sock *sk, const struct net *net,
- 		if (!inet_sk_bound_dev_eq(net, sk->sk_bound_dev_if, dif, sdif))
- 			return -1;
- 
-+		if (!sk->sk_bound_dev_if && sdif &&
-+		    tcp_port_l3mdev_exempt(net, hnum))
-+			return -1;
++	if ! ip netns exec "$ns_s" \
++	     test -e /proc/sys/net/ipv4/tcp_l3mdev_exempt_ports; then
++		echo "SKIP: net.ipv4.tcp_l3mdev_exempt_ports not supported"
++		exit "$ksft_skip"
++	fi
 +
- 		score =  sk->sk_bound_dev_if ? 2 : 1;
- 		if (READ_ONCE(sk->sk_incoming_cpu) == raw_smp_processor_id())
- 			score++;
++	ip -n "$ns_s" -batch - <<-EOF || setup_fail
++		link set $VRF up
++		link add veth_vrf type veth peer name veth0 netns $ns_c
++		link set veth_vrf master $VRF
++		link set veth_vrf up
++		addr add $VRF_SRV4/24 dev veth_vrf
++		addr add $VRF_SRV6/64 dev veth_vrf nodad
++		link add veth_def type veth peer name veth0 netns $ns_d
++		link set veth_def up
++		addr add $DEF_SRV4/24 dev veth_def
++		addr add $DEF_SRV6/64 dev veth_def nodad
++	EOF
++
++	ip -n "$ns_c" -batch - <<-EOF || setup_fail
++		link set veth0 up
++		addr add $VRF_CLI4/24 dev veth0
++		addr add $VRF_CLI6/64 dev veth0 nodad
++	EOF
++
++	ip -n "$ns_d" -batch - <<-EOF || setup_fail
++		link set veth0 up
++		addr add $DEF_CLI4/24 dev veth0
++		addr add $DEF_CLI6/64 dev veth0 nodad
++	EOF
++
++	ip netns exec "$ns_s" sysctl -wq net.ipv4.tcp_l3mdev_accept=1 ||
++		setup_fail
++}
++
++set_exempt()
++{
++	ip netns exec "$ns_s" sysctl -wq net.ipv4.tcp_l3mdev_exempt_ports="$1"
++}
++
++# Start a server in the background. nettest sets SO_REUSEPORT on its
++# listeners, so an unbound and a device-bound listener can share the port.
++# $1: IP version, $2: device to bind to, or "unbound"
++start_server()
++{
++	local args=()
++
++	[ "$1" = 6 ] && args+=(-6)
++	[ "$2" != unbound ] && args+=(-I "$2")
++	ip netns exec "$ns_s" nettest "${args[@]}" -s -p "$PORT" \
++		-t "$SRV_TIMEOUT" -q &
++}
++
++# Stop a server, ignoring its exit code.
++stop_server()
++{
++	kill "$1" 2>/dev/null
++	wait "$1" 2>/dev/null
++}
++
++# Stop a server that must not have received a connection. It must still
++# be running: had it accepted the connection or timed out, it would have
++# exited.
++# $1: pid, $2: name for the error message
++stop_idle_server()
++{
++	kill -0 "$1" 2>/dev/null
++	check_err $? "$2 exited, expected it to still be waiting"
++	stop_server "$1"
++}
++
++# $1: client netns, $2: IP version, $3: server address
++connect()
++{
++	local args=()
++
++	[ "$2" = 6 ] && args+=(-6)
++	ip netns exec "$1" nettest "${args[@]}" -r "$3" -p "$PORT" -t 2 -q
++}
++
++listeners_are()
++{
++	local n
++
++	n=$(ip netns exec "$ns_s" ss -Hltn "sport = :$PORT" | wc -l)
++	[ "$n" -eq "$1" ]
++}
++
++# $1: number of listeners to wait for on $PORT
++wait_listeners()
++{
++	slowwait 2 listeners_are "$1"
++}
++
++unbound_listener()
++{
++	local ver addr pid
++
++	for ver in 4 6; do
++		addr=$VRF_SRV4
++		[ "$ver" = 6 ] && addr=$VRF_SRV6
++
++		RET=0
++		set_exempt "$OTHER_PORT"
++		start_server "$ver" unbound
++		pid=$!
++		if wait_listeners 1; then
++			connect "$ns_c" "$ver" "$addr"
++			check_err $? "VRF connection failed"
++			wait "$pid"
++			check_err $? "unbound listener did not get the conn"
++		else
++			check_err 1 "listener did not start"
++			stop_server "$pid"
++		fi
++		log_test "IPv$ver: not exempt, unbound listener gets VRF conn"
++
++		RET=0
++		set_exempt "$PORT"
++		start_server "$ver" unbound
++		pid=$!
++		if wait_listeners 1; then
++			connect "$ns_c" "$ver" "$addr"
++			check_fail $? "VRF connection succeeded"
++			stop_idle_server "$pid" "unbound listener"
++		else
++			check_err 1 "listener did not start"
++			stop_server "$pid"
++		fi
++		log_test "IPv$ver: exempt, unbound listener gets no VRF conn"
++	done
++	set_exempt ""
++}
++
++# An unbound listener and a listener bound to $1 on the port. The VRF
++# connection must reach the bound one, whichever was created first.
++# $1: the VRF device, or the VRF slave device the connection arrives on
++bound_and_unbound_listeners()
++{
++	local dev=$1
++	local ver addr order first second pid_first pid_second
++	local pid_bound pid_unbound
++
++	set_exempt "$PORT"
++	for ver in 4 6; do
++		addr=$VRF_SRV4
++		[ "$ver" = 6 ] && addr=$VRF_SRV6
++
++		for order in "unbound $dev" "$dev unbound"; do
++			read -r first second <<< "$order"
++			RET=0
++
++			pid_second=
++			start_server "$ver" "$first"
++			pid_first=$!
++			if wait_listeners 1; then
++				start_server "$ver" "$second"
++				pid_second=$!
++			fi
++			if [ -z "$pid_second" ] || ! wait_listeners 2; then
++				check_err 1 "listeners did not start"
++				stop_server "$pid_first"
++				[ -n "$pid_second" ] &&
++					stop_server "$pid_second"
++				log_test "IPv$ver: exempt, $first first"
++				continue
++			fi
++
++			if [ "$first" = unbound ]; then
++				pid_unbound=$pid_first
++				pid_bound=$pid_second
++			else
++				pid_bound=$pid_first
++				pid_unbound=$pid_second
++			fi
++
++			connect "$ns_c" "$ver" "$addr"
++			check_err $? "VRF connection failed"
++			wait "$pid_bound"
++			check_err $? "$dev listener did not get the connection"
++			stop_idle_server "$pid_unbound" "unbound listener"
++
++			log_test "IPv$ver: exempt, $first first, $dev wins"
++		done
++	done
++	set_exempt ""
++}
++
++vrf_and_unbound_listeners()
++{
++	bound_and_unbound_listeners "$VRF"
++}
++
++slave_and_unbound_listeners()
++{
++	bound_and_unbound_listeners veth_vrf
++}
++
++default_vrf_unaffected()
++{
++	local ver addr pid
++
++	set_exempt "$PORT"
++	for ver in 4 6; do
++		addr=$DEF_SRV4
++		[ "$ver" = 6 ] && addr=$DEF_SRV6
++
++		RET=0
++		start_server "$ver" unbound
++		pid=$!
++		if wait_listeners 1; then
++			connect "$ns_d" "$ver" "$addr"
++			check_err $? "default VRF connection failed"
++			wait "$pid"
++			check_err $? "unbound listener did not get the conn"
++		else
++			check_err 1 "listener did not start"
++			stop_server "$pid"
++		fi
++		log_test "IPv$ver: exempt, unbound listener gets default conn"
++	done
++	set_exempt ""
++}
++
++trap cleanup EXIT
++
++check_gen_prog nettest
++setup
++tests_run
++
++exit "$EXIT_STATUS"
 
 -- 
 2.43.0
