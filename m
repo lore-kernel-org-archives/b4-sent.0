@@ -1,119 +1,229 @@
-From: Anh Nguyen Hoang <anhnh.4work@gmail.com>
-Date: Fri, 27 Nov 2026 00:52:48 -0600
-Subject: [PATCH] parisc: pci-dma: Handle allocation failures in
- arch_dma_alloc()
+From: Dickson Wu <dickson.wu@certik.com>
+Date: Fri, 27 Nov 2026 07:12:14 +0000
+Subject: [PATCH 5.10.y] hfsplus: fix slab-out-of-bounds read in
+ hfsplus_uni2asc()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-kbug-l001-v1-1-db0b44ec71d5@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAL8oCWsC/yXM0QpAMBSA4VfRubba2Qp5FbmwOeMgtCEl7264/
- OrvvyCQZwpQJhd4OjjwMkdgmoDtm7kjwW00KKkyRJWL0eydmKREYYwutEanXG4h9qsnx+f3qur
- fYTcD2e0dwH0/vn+DrW0AAAA=
-X-Change-ID: 20261127-kbug-l001-bb38331f2f7c
-To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- Helge Deller <deller@gmx.de>
-Cc: linux-parisc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Anh Nguyen Hoang <anhnh.4work@gmail.com>
+Message-Id: <20261127-so5-hfsplus-510-v1-1-7bce0139b35d@certik.com>
+X-B4-Tracking: v=1; b=H4sIAE0tCWsC/12NwQ6CMBBEf4Xs2UXaSKv8ivHQlq3UkJZ0wWgI/
+ y7Vm8d5mXmzAlMOxNBVK2R6Bg4p7kEcKnCDiXfC0O8ZZCOVEFIjpxYHz9O4MLaiwV65k1Rea30
+ 5w76aMvnw+hqv0Naiqd9w+3Fe7IPcXHSlaQ0T2myiGwpiiv2c0oiFH/9uYNs+imkmB6sAAAA=
+X-Change-ID: 20261127-so5-hfsplus-510-d6c426f77798
+To: stable@vger.kernel.org
+Cc: Kang Chen <k.chen@smail.nju.edu.cn>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>, linux-fsdevel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795762368; l=3623;
- i=anhnh.4work@gmail.com; s=20261127; h=from:subject:message-id;
- bh=LbWh1p0JWyiyRtWO0aSmkJ1gB8M+YbXem8D4tGZGGVc=;
- b=DJdh6gcbpAwHy70+KQkuktnNPas6c90im+HCxTO8qLwfHB4z5hX/Xy5hEyRxfG6wQMj8OIxBf
- 3IsrWwsnSBeBw7oJQclHGzpPhL9uUtAV+O0Drfs3mZfRC/gaaQ/bRT9
-X-Developer-Key: i=anhnh.4work@gmail.com; a=ed25519;
- pk=9NJ/0SKqaFZmt1/I5XY11TZSNY2ys6RWB3gvqzrLHmI=
-X-Endpoint-Received: by B4 Relay for anhnh.4work@gmail.com/20261127 with auth_id=1662
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795763533; l=8506;
+ i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
+ bh=r08xme+LJmtE2virVQX+u476Saf7nmCbrMz6FfBhGhY=;
+ b=VcZVh6DfYRoi3iYcb1JrS8XrSPEgA4lAfooUmwbF3a+1EM3HG6Z2OS1T7JwPtEJkurc/wAwqO
+ BrZRpXr5iaQB32DjfyhjzfFa4N3GbAwo699My5D4JHCGXtd4FhUtds0
+X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
+ pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
+X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-arch_dma_alloc() does not check the return value of __get_free_pages().
-If the allocation fails, the function carries on with paddr == 0: it
-calls flush_kernel_dcache_range(0, size), maps __pa(0) uncached into
-the range reserved by pcxl_alloc_range(), stores __pa(0) in *dma_handle
-and returns the non-NULL virtual address of that range.
+From: Kang Chen <k.chen@smail.nju.edu.cn>
 
-The return value of map_uncached_pages() is ignored as well. It returns
--ENOMEM when pte_alloc_kernel() fails, in which case the returned
-virtual range is left unmapped.
+commit bea3e1d4467bcf292c8e54f080353d556d355e26 upstream.
 
-In both cases dma_direct_alloc() passes the non-NULL address on, so the
-driver is told that the coherent allocation succeeded and then uses a
-buffer which is not backed by the pages it expects, or not mapped at
-all.
+BUG: KASAN: slab-out-of-bounds in hfsplus_uni2asc+0xa71/0xb90 fs/hfsplus/unicode.c:186
+Read of size 2 at addr ffff8880289ef218 by task syz.6.248/14290
 
-Check both results. If the page allocation fails, release the reserved
-PCXL range and return NULL. If the mapping fails, additionally free
-the pages. Call unmap_uncached_pages() there too, so that the error
-path does not depend on how far the walk got before it failed; it
-skips empty page directory entries and clearing an empty PTE is
-harmless.
+CPU: 0 UID: 0 PID: 14290 Comm: syz.6.248 Not tainted 6.16.4 #1 PREEMPT(full)
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.15.0-1 04/01/2014
+Call Trace:
+ <TASK>
+ __dump_stack lib/dump_stack.c:94 [inline]
+ dump_stack_lvl+0x116/0x1b0 lib/dump_stack.c:120
+ print_address_description mm/kasan/report.c:378 [inline]
+ print_report+0xca/0x5f0 mm/kasan/report.c:482
+ kasan_report+0xca/0x100 mm/kasan/report.c:595
+ hfsplus_uni2asc+0xa71/0xb90 fs/hfsplus/unicode.c:186
+ hfsplus_listxattr+0x5b6/0xbd0 fs/hfsplus/xattr.c:738
+ vfs_listxattr+0xbe/0x140 fs/xattr.c:493
+ listxattr+0xee/0x190 fs/xattr.c:924
+ filename_listxattr fs/xattr.c:958 [inline]
+ path_listxattrat+0x143/0x360 fs/xattr.c:988
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0xcb/0x4c0 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7fe0e9fae16d
+Code: 02 b8 ff ff ff ff c3 66 0f 1f 44 00 00 f3 0f 1e fa 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 a8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007fe0eae67f98 EFLAGS: 00000246 ORIG_RAX: 00000000000000c3
+RAX: ffffffffffffffda RBX: 00007fe0ea205fa0 RCX: 00007fe0e9fae16d
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000200000000000
+RBP: 00007fe0ea0480f0 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007fe0ea206038 R14: 00007fe0ea205fa0 R15: 00007fe0eae48000
+ </TASK>
 
-This only affects machines with a PCX-L or PCX-L2 CPU, the only ones
-for which arch_dma_alloc() does not return NULL right away.
+Allocated by task 14290:
+ kasan_save_stack+0x24/0x50 mm/kasan/common.c:47
+ kasan_save_track+0x14/0x30 mm/kasan/common.c:68
+ poison_kmalloc_redzone mm/kasan/common.c:377 [inline]
+ __kasan_kmalloc+0xaa/0xb0 mm/kasan/common.c:394
+ kasan_kmalloc include/linux/kasan.h:260 [inline]
+ __do_kmalloc_node mm/slub.c:4333 [inline]
+ __kmalloc_noprof+0x219/0x540 mm/slub.c:4345
+ kmalloc_noprof include/linux/slab.h:909 [inline]
+ hfsplus_find_init+0x95/0x1f0 fs/hfsplus/bfind.c:21
+ hfsplus_listxattr+0x331/0xbd0 fs/hfsplus/xattr.c:697
+ vfs_listxattr+0xbe/0x140 fs/xattr.c:493
+ listxattr+0xee/0x190 fs/xattr.c:924
+ filename_listxattr fs/xattr.c:958 [inline]
+ path_listxattrat+0x143/0x360 fs/xattr.c:988
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0xcb/0x4c0 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
 
-Found by an automated code scan and confirmed by code inspection.
-Reproduced in qemu (B160L, PCX-L2) with page allocation fault
-injection: without this change a failed page allocation makes
-dma_alloc_coherent() return a valid looking address with DMA handle
-0xf0000000, and a failed page table allocation is reported as success
-too. With this change both return NULL.
+When hfsplus_uni2asc is called from hfsplus_listxattr,
+it actually passes in a struct hfsplus_attr_unistr*.
+The size of the corresponding structure is different from that of hfsplus_unistr,
+so the previous fix (94458781aee6) is insufficient.
+The pointer on the unicode buffer is still going beyond the allocated memory.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Assisted-by: Claude:claude-fable-5-2
-Signed-off-by: Anh Nguyen Hoang <anhnh.4work@gmail.com>
+This patch introduces two warpper functions hfsplus_uni2asc_xattr_str and
+hfsplus_uni2asc_str to process two unicode buffers,
+struct hfsplus_attr_unistr* and struct hfsplus_unistr* respectively.
+When ustrlen value is bigger than the allocated memory size,
+the ustrlen value is limited to an safe size.
+
+Fixes: 94458781aee6 ("hfsplus: fix slab-out-of-bounds read in hfsplus_uni2asc()")
+Signed-off-by: Kang Chen <k.chen@smail.nju.edu.cn>
+Reviewed-by: Viacheslav Dubeyko <slava@dubeyko.com>
+Signed-off-by: Viacheslav Dubeyko <slava@dubeyko.com>
+Link: https://lore.kernel.org/r/20250909031316.1647094-1-k.chen@smail.nju.edu.cn
+Signed-off-by: Viacheslav Dubeyko <slava@dubeyko.com>
+Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
-Tested in qemu-system-hppa 11.1.3 (B160L, PA7300LC) with
-generic-32bit_defconfig plus FAIL_PAGE_ALLOC. A test-only initcall calls
-dma_alloc_coherent() and fails one chosen page allocation through
-current->fail_nth.
-Before: a failed __get_free_pages() returns vaddr 0x00048000 with DMA
-handle 0xf0000000 (__pa(0)); a failed page table allocation also
-returns success.
-After: both return NULL (300 and 297 injected failures), with no leaked
-PCXL ranges or pages.
-No Cc: stable added; please add it if warranted.
+5.15.y and newer already have this fix. 5.10.y already has
+76a4c6636a69, the backport of 94458781aee6 with the same subject; this
+is its follow-up (Fixes: 94458781aee6).
 
-Testing:
-- Compile-tested on parisc (allmodconfig, W=1):
-  arch/parisc/kernel/pci-dma.o; no new warnings.
-- checkpatch.pl --strict: no errors or warnings.
+Tested on v5.10.275:
+- x86_64 allmodconfig W=1 build of the 21 fs/hfsplus objects, base vs
+  patched, no new warnings
+- booted the patched kernel under QEMU/KVM. I didn't mount an HFS+
+  volume.
+
+The backport and the test runs were prepared with AI coding tools
+(OpenAI Codex agents, with review by Claude). I went over the result
+before signing off.
+
+fs/hfsplus/dir.c        |  2 +-
 ---
- arch/parisc/kernel/pci-dma.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ fs/hfsplus/dir.c        |  2 +-
+ fs/hfsplus/hfsplus_fs.h |  8 ++++++--
+ fs/hfsplus/unicode.c    | 24 +++++++++++++++++++-----
+ fs/hfsplus/xattr.c      |  6 +++---
+ 4 files changed, 29 insertions(+), 11 deletions(-)
 
-diff --git a/arch/parisc/kernel/pci-dma.c b/arch/parisc/kernel/pci-dma.c
-index bf9f192c826e..6e2d340921fe 100644
---- a/arch/parisc/kernel/pci-dma.c
-+++ b/arch/parisc/kernel/pci-dma.c
-@@ -412,12 +412,22 @@ void *arch_dma_alloc(struct device *dev, size_t size,
- 	size = 1 << (order + PAGE_SHIFT);
- 	vaddr = pcxl_alloc_range(size);
- 	paddr = __get_free_pages(gfp | __GFP_ZERO, order);
-+	if (!paddr)
-+		goto out_free_range;
- 	flush_kernel_dcache_range(paddr, size);
- 	paddr = __pa(paddr);
--	map_uncached_pages(vaddr, size, paddr);
-+	if (map_uncached_pages(vaddr, size, paddr))
-+		goto out_unmap;
- 	*dma_handle = (dma_addr_t) paddr;
- 
- 	return (void *)vaddr;
-+
-+out_unmap:
-+	unmap_uncached_pages(vaddr, size);
-+	free_pages((unsigned long)__va(paddr), order);
-+out_free_range:
-+	pcxl_free_range(vaddr, size);
-+	return NULL;
+diff --git a/fs/hfsplus/dir.c b/fs/hfsplus/dir.c
+index 4f3ef53b95d9..797bf045b2f7 100644
+--- a/fs/hfsplus/dir.c
++++ b/fs/hfsplus/dir.c
+@@ -212,7 +212,7 @@ static int hfsplus_readdir(struct file *file, struct dir_context *ctx)
+ 			fd.entrylength);
+ 		type = be16_to_cpu(entry.type);
+ 		len = NLS_MAX_CHARSET_SIZE * HFSPLUS_MAX_STRLEN;
+-		err = hfsplus_uni2asc(sb, &fd.key->cat.name, strbuf, &len);
++		err = hfsplus_uni2asc_str(sb, &fd.key->cat.name, strbuf, &len);
+ 		if (err)
+ 			goto out;
+ 		if (type == HFSPLUS_FOLDER) {
+diff --git a/fs/hfsplus/hfsplus_fs.h b/fs/hfsplus/hfsplus_fs.h
+index ae4e8f304116..b0e3e743046d 100644
+--- a/fs/hfsplus/hfsplus_fs.h
++++ b/fs/hfsplus/hfsplus_fs.h
+@@ -520,8 +520,12 @@ int hfsplus_strcasecmp(const struct hfsplus_unistr *s1,
+ 		       const struct hfsplus_unistr *s2);
+ int hfsplus_strcmp(const struct hfsplus_unistr *s1,
+ 		   const struct hfsplus_unistr *s2);
+-int hfsplus_uni2asc(struct super_block *sb, const struct hfsplus_unistr *ustr,
+-		    char *astr, int *len_p);
++int hfsplus_uni2asc_str(struct super_block *sb,
++			const struct hfsplus_unistr *ustr, char *astr,
++			int *len_p);
++int hfsplus_uni2asc_xattr_str(struct super_block *sb,
++			      const struct hfsplus_attr_unistr *ustr,
++			      char *astr, int *len_p);
+ int hfsplus_asc2uni(struct super_block *sb, struct hfsplus_unistr *ustr,
+ 		    int max_unistr_len, const char *astr, int len);
+ int hfsplus_hash_dentry(const struct dentry *dentry, struct qstr *str);
+diff --git a/fs/hfsplus/unicode.c b/fs/hfsplus/unicode.c
+index ebd326799f35..11e08a4a18b2 100644
+--- a/fs/hfsplus/unicode.c
++++ b/fs/hfsplus/unicode.c
+@@ -143,9 +143,8 @@ static u16 *hfsplus_compose_lookup(u16 *p, u16 cc)
+ 	return NULL;
  }
  
- void arch_dma_free(struct device *dev, size_t size, void *vaddr,
+-int hfsplus_uni2asc(struct super_block *sb,
+-		const struct hfsplus_unistr *ustr,
+-		char *astr, int *len_p)
++static int hfsplus_uni2asc(struct super_block *sb, const struct hfsplus_unistr *ustr,
++		    int max_len, char *astr, int *len_p)
+ {
+ 	const hfsplus_unichr *ip;
+ 	struct nls_table *nls = HFSPLUS_SB(sb)->nls;
+@@ -158,8 +157,8 @@ int hfsplus_uni2asc(struct super_block *sb,
+ 	ip = ustr->unicode;
+ 
+ 	ustrlen = be16_to_cpu(ustr->length);
+-	if (ustrlen > HFSPLUS_MAX_STRLEN) {
+-		ustrlen = HFSPLUS_MAX_STRLEN;
++	if (ustrlen > max_len) {
++		ustrlen = max_len;
+ 		pr_err("invalid length %u has been corrected to %d\n",
+ 			be16_to_cpu(ustr->length), ustrlen);
+ 	}
+@@ -280,6 +279,21 @@ int hfsplus_uni2asc(struct super_block *sb,
+ 	return res;
+ }
+ 
++inline int hfsplus_uni2asc_str(struct super_block *sb,
++			       const struct hfsplus_unistr *ustr, char *astr,
++			       int *len_p)
++{
++	return hfsplus_uni2asc(sb, ustr, HFSPLUS_MAX_STRLEN, astr, len_p);
++}
++
++inline int hfsplus_uni2asc_xattr_str(struct super_block *sb,
++				     const struct hfsplus_attr_unistr *ustr,
++				     char *astr, int *len_p)
++{
++	return hfsplus_uni2asc(sb, (const struct hfsplus_unistr *)ustr,
++			       HFSPLUS_ATTR_MAX_STRLEN, astr, len_p);
++}
++
+ /*
+  * Convert one or more ASCII characters into a single unicode character.
+  * Returns the number of ASCII characters corresponding to the unicode char.
+diff --git a/fs/hfsplus/xattr.c b/fs/hfsplus/xattr.c
+index 2438cd759620..644b3cd5fe52 100644
+--- a/fs/hfsplus/xattr.c
++++ b/fs/hfsplus/xattr.c
+@@ -738,9 +738,9 @@ ssize_t hfsplus_listxattr(struct dentry *dentry, char *buffer, size_t size)
+ 			goto end_listxattr;
+ 
+ 		xattr_name_len = NLS_MAX_CHARSET_SIZE * HFSPLUS_ATTR_MAX_STRLEN;
+-		if (hfsplus_uni2asc(inode->i_sb,
+-			(const struct hfsplus_unistr *)&fd.key->attr.key_name,
+-					strbuf, &xattr_name_len)) {
++		if (hfsplus_uni2asc_xattr_str(inode->i_sb,
++					      &fd.key->attr.key_name, strbuf,
++					      &xattr_name_len)) {
+ 			pr_err("unicode conversion failed\n");
+ 			res = -EIO;
+ 			goto end_listxattr;
 
 ---
-base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
-change-id: 20261127-kbug-l001-bb38331f2f7c
+base-commit: 99112ea818e35b606397c84fbc05e6fadb6ea162
+change-id: 20261127-so5-hfsplus-510-d6c426f77798
 
 Best regards,
 --  
-Anh Nguyen Hoang <anhnh.4work@gmail.com>
+Dickson Wu <dickson.wu@certik.com>
 
