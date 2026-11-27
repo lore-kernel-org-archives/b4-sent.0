@@ -1,11 +1,11 @@
 From: Murad Dadashev <llamapersonaltv@gmail.com>
-Date: Fri, 27 Nov 2026 11:35:17 +0300
-Subject: [PATCH 06/10] wifi: mt76: mt7603: defer WTBL updates when register
- access can sleep
+Date: Fri, 27 Nov 2026 11:35:18 +0300
+Subject: [PATCH 07/10] wifi: mt76: mt7603: skip PCIe specific setup on
+ non-MMIO buses
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-mt7603u-v1-6-369bee9846f8@gmail.com>
+Message-Id: <20261127-mt7603u-v1-7-369bee9846f8@gmail.com>
 References: <20261127-mt7603u-v1-0-369bee9846f8@gmail.com>
 In-Reply-To: <20261127-mt7603u-v1-0-369bee9846f8@gmail.com>
 To: Felix Fietkau <nbd@nbd.name>, Lorenzo Bianconi <lorenzo@kernel.org>, 
@@ -17,292 +17,179 @@ Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
  Murad Dadashev <llamapersonaltv@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795768526; l=9247;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795768526; l=6545;
  i=llamapersonaltv@gmail.com; s=20261127; h=from:subject:message-id;
- bh=Vk5De/9hWLwKs50xfkLnB/Q8/ooC2MK/9jdwGTeu/+0=;
- b=dFnqVPeAvwePEgZztm1nk7KxhGiZZ8zrBdW/YTnRh8JGiFPPcYiDAUaBqTB3iHPwk32NoxeDJ
- DYDH4YwGqGRAryDQ3STvJXIQEdsvlB/+PIAKO1jvFuND8jtKPmdt4w1
+ bh=7hNOZZrAbeMscPWoLKhgzZSs39hMPOTAK7zA0t6r4A8=;
+ b=cqaYJ8vijeYtM89rdaLWTn+xndOIiN/bW6Iq6BMATMbRkjjh59pKKmR4sefTdcTfpl3uvDs9x
+ nbOGmLzUyZrDVm8tF/y1k5yBJzHNmLF3mpamUjzjBzUG8U3gOm9ZWvp
 X-Developer-Key: i=llamapersonaltv@gmail.com; a=ed25519;
  pk=CeMIX207ioWRbMAA6A2GYgT+DpeVlKHVn7I0KjfHeCg=
 X-Endpoint-Received: by B4 Relay for llamapersonaltv@gmail.com/20261127 with auth_id=1664
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-WTBL rate, SMPS and power save updates are issued from atomic context:
-under mt76.lock and ps_lock, from the TX path and from mac80211's
-sta_rate_tbl_update callback. That is fine with MMIO, but register
-access over USB sleeps.
+Prepare the shared code for MT7603U:
 
-On non-MMIO buses, queue rate updates and apply them, together with
-the SMPS setting, from a work item. Record power save transitions per
-station and write them from a separate work item. In sta_remove, call
-mt7603_filter_tx() outside ps_lock on these buses.
+- do not touch the PCIe interrupt, WPDMA and PCIe remap registers
+- skip the DMA watchdog and reset in mac_work, which rely on the WPDMA
+  registers
+- skip the LED callbacks, which run in atomic context
+- start the MAC without DMA setup and do not reload the firmware if
+  the bus driver already loaded it
+- USB takes physical addresses, so mt7603_reg_map() passes them through
+- the firmware download bypass queue is 8 on USB
 
 No functional change for MT7603E and MT76x8.
 
 Signed-off-by: Murad Dadashev <llamapersonaltv@gmail.com>
 ---
- drivers/net/wireless/mediatek/mt76/mt7603/init.c   |   4 +
- drivers/net/wireless/mediatek/mt76/mt7603/mac.c    | 136 ++++++++++++++++++++-
- drivers/net/wireless/mediatek/mt76/mt7603/main.c   |  12 +-
- drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h |  13 ++
- 4 files changed, 156 insertions(+), 9 deletions(-)
+ drivers/net/wireless/mediatek/mt76/mt7603/core.c   |  3 +++
+ drivers/net/wireless/mediatek/mt76/mt7603/init.c   | 30 ++++++++++++++--------
+ drivers/net/wireless/mediatek/mt76/mt7603/mac.c    |  5 ++--
+ drivers/net/wireless/mediatek/mt76/mt7603/mcu.c    |  4 ++-
+ drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h |  6 +++--
+ 5 files changed, 32 insertions(+), 16 deletions(-)
 
+diff --git a/drivers/net/wireless/mediatek/mt76/mt7603/core.c b/drivers/net/wireless/mediatek/mt76/mt7603/core.c
+index a99e4d3156eb94d580fe6b8c262b8f7c19368fb2..52f8f075c7e85a1f1238714f065e314bea1706d0 100644
+--- a/drivers/net/wireless/mediatek/mt76/mt7603/core.c
++++ b/drivers/net/wireless/mediatek/mt76/mt7603/core.c
+@@ -62,6 +62,9 @@ u32 mt7603_reg_map(struct mt7603_dev *dev, u32 addr)
+ 	u32 base = addr & MT_MCU_PCIE_REMAP_2_BASE;
+ 	u32 offset = addr & MT_MCU_PCIE_REMAP_2_OFFSET;
+ 
++	if (mt76_is_usb(&dev->mt76))
++		return addr;
++
+ 	dev->bus_ops->wr(&dev->mt76, MT_MCU_PCIE_REMAP_2, base);
+ 
+ 	return MT_PCIE_REMAP_BASE_2 + offset;
 diff --git a/drivers/net/wireless/mediatek/mt76/mt7603/init.c b/drivers/net/wireless/mediatek/mt76/mt7603/init.c
-index d4d631958c56fc0ee54596c5fed7a983fcf0278b..66b65ec2add7ccdd4d205ee203d10b3d221cae7b 100644
+index 66b65ec2add7ccdd4d205ee203d10b3d221cae7b..d1db7176c0fa9ed451ed8bfa45071ace36493f67 100644
 --- a/drivers/net/wireless/mediatek/mt76/mt7603/init.c
 +++ b/drivers/net/wireless/mediatek/mt76/mt7603/init.c
-@@ -513,6 +513,10 @@ int mt7603_register_device(struct mt7603_dev *dev)
- 	dev->mt76.bus = bus_ops;
+@@ -224,7 +224,8 @@ mt7603_mac_init(struct mt7603_dev *dev)
+ 		MT_DMA_TCFR_TXS_AGGR_COUNT | /* Maximum count */
+ 		MT_DMA_TCFR_TXS_BIT_MAP);
  
- 	spin_lock_init(&dev->ps_lock);
-+	spin_lock_init(&dev->rate_lock);
-+	INIT_LIST_HEAD(&dev->rate_list);
-+	INIT_WORK(&dev->rate_work, mt7603_rate_work);
-+	INIT_WORK(&dev->ps_work, mt7603_ps_work);
+-	mt76_wr(dev, MT_MCU_PCIE_REMAP_1, MT_PSE_WTBL_2_PHYS_ADDR);
++	if (mt76_is_mmio(&dev->mt76))
++		mt76_wr(dev, MT_MCU_PCIE_REMAP_1, MT_PSE_WTBL_2_PHYS_ADDR);
  
- 	INIT_DELAYED_WORK(&dev->mphy.mac_work, mt7603_mac_work);
- 	tasklet_setup(&dev->mt76.pre_tbtt_tasklet, mt7603_pre_tbtt_tasklet);
+ 	for (i = 0; i < MT7603_WTBL_SIZE; i++)
+ 		mt7603_wtbl_clear(dev, i);
+@@ -281,18 +282,23 @@ mt7603_init_hardware(struct mt7603_dev *dev)
+ {
+ 	int i, ret;
+ 
+-	mt76_wr(dev, MT_INT_SOURCE_CSR, ~0);
++	if (mt76_is_mmio(&dev->mt76))
++		mt76_wr(dev, MT_INT_SOURCE_CSR, ~0);
+ 
+ 	ret = mt7603_eeprom_init(dev);
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	ret = mt7603_dma_init(dev);
+-	if (ret)
+-		return ret;
++	if (mt76_is_mmio(&dev->mt76)) {
++		ret = mt7603_dma_init(dev);
++		if (ret)
++			return ret;
+ 
+-	mt76_wr(dev, MT_WPDMA_GLO_CFG, 0x52000850);
+-	mt7603_mac_dma_start(dev);
++		mt76_wr(dev, MT_WPDMA_GLO_CFG, 0x52000850);
++		mt7603_mac_dma_start(dev);
++	} else {
++		mt7603_mac_start(dev);
++	}
+ 	dev->rxfilter = mt76_rr(dev, MT_WF_RFCR);
+ 	set_bit(MT76_STATE_INITIALIZED, &dev->mphy.state);
+ 
+@@ -302,9 +308,11 @@ mt7603_init_hardware(struct mt7603_dev *dev)
+ 		mt76_poll(dev, MT_PSE_RTA, MT_PSE_RTA_BUSY, 0, 5000);
+ 	}
+ 
+-	ret = mt7603_mcu_init(dev);
+-	if (ret)
+-		return ret;
++	if (!dev->mcu_running) {
++		ret = mt7603_mcu_init(dev);
++		if (ret)
++			return ret;
++	}
+ 
+ 	mt7603_dma_sched_init(dev);
+ 	mt7603_mcu_set_eeprom(dev);
+@@ -549,7 +557,7 @@ int mt7603_register_device(struct mt7603_dev *dev)
+ 	ieee80211_hw_set(hw, NEEDS_UNIQUE_STA_ADDR);
+ 
+ 	/* init led callbacks */
+-	if (IS_ENABLED(CONFIG_MT76_LEDS)) {
++	if (IS_ENABLED(CONFIG_MT76_LEDS) && mt76_is_mmio(&dev->mt76)) {
+ 		dev->mphy.leds.cdev.brightness_set = mt7603_led_set_brightness;
+ 		dev->mphy.leds.cdev.blink_set = mt7603_led_set_blink;
+ 	}
 diff --git a/drivers/net/wireless/mediatek/mt76/mt7603/mac.c b/drivers/net/wireless/mediatek/mt76/mt7603/mac.c
-index fb5e06d04e5a943a4536676fdf7676e6789db6df..efe680d67e4af728dbef32290a55e4279926f532 100644
+index efe680d67e4af728dbef32290a55e4279926f532..3758d55c299b6f143ef87dc70e72e6250695a409 100644
 --- a/drivers/net/wireless/mediatek/mt76/mt7603/mac.c
 +++ b/drivers/net/wireless/mediatek/mt76/mt7603/mac.c
-@@ -236,17 +236,12 @@ void mt7603_wtbl_set_smps(struct mt7603_dev *dev, struct mt7603_sta *sta,
- }
+@@ -2033,7 +2033,8 @@ void mt7603_mac_work(struct work_struct *work)
+ 	if (dev->mphy.mac_work_count == 10)
+ 		mt7603_false_cca_check(dev);
  
- static void
--__mt7603_wtbl_set_ps(struct mt7603_dev *dev, struct mt7603_sta *sta,
-+mt7603_wtbl_write_ps(struct mt7603_dev *dev, struct mt7603_sta *sta,
- 		     bool enabled, bool filter)
- {
- 	int idx = sta->wcid.idx;
- 	u32 addr;
+-	if (mt7603_watchdog_check(dev, &dev->rx_pse_check,
++	if (mt76_is_mmio(&dev->mt76) &&
++	    (mt7603_watchdog_check(dev, &dev->rx_pse_check,
+ 				  RESET_CAUSE_RX_PSE_BUSY,
+ 				  mt7603_rx_pse_busy) ||
+ 	    mt7603_watchdog_check(dev, &dev->beacon_check,
+@@ -2051,7 +2052,7 @@ void mt7603_mac_work(struct work_struct *work)
+ 	    mt7603_watchdog_check(dev, &dev->mcu_hang,
+ 				  RESET_CAUSE_MCU_HANG,
+ 				  NULL) ||
+-	    dev->reset_cause[RESET_CAUSE_RESET_FAILED]) {
++	    dev->reset_cause[RESET_CAUSE_RESET_FAILED])) {
+ 		dev->beacon_check = 0;
+ 		dev->tx_dma_check = 0;
+ 		dev->tx_hang_check = 0;
+diff --git a/drivers/net/wireless/mediatek/mt76/mt7603/mcu.c b/drivers/net/wireless/mediatek/mt76/mt7603/mcu.c
+index cf81fc2e252a37e1d40c1f297b1c9688c054ca40..dea48b85d0dd8b03f3b25e45598a0bfa3e19b57a 100644
+--- a/drivers/net/wireless/mediatek/mt76/mt7603/mcu.c
++++ b/drivers/net/wireless/mediatek/mt76/mt7603/mcu.c
+@@ -164,7 +164,9 @@ int mt7603_load_firmware(struct mt7603_dev *dev)
  
--	lockdep_assert_held(&dev->ps_lock);
--
--	if (sta->ps == enabled)
--		return;
--
- 	mt76_wr(dev, MT_PSE_RTA,
- 		FIELD_PREP(MT_PSE_RTA_TAG_ID, idx) |
- 		FIELD_PREP(MT_PSE_RTA_PORT_ID, 0) |
-@@ -264,6 +259,55 @@ __mt7603_wtbl_set_ps(struct mt7603_dev *dev, struct mt7603_sta *sta,
- 	mt76_rmw(dev, addr + 3 * 4, MT_WTBL1_W3_POWER_SAVE,
- 		 enabled * MT_WTBL1_W3_POWER_SAVE);
- 	mt76_clear(dev, MT_WTBL1_OR, MT_WTBL1_OR_PSM_WRITE);
-+}
-+
-+void mt7603_ps_work(struct work_struct *work)
-+{
-+	struct mt7603_dev *dev = container_of(work, struct mt7603_dev,
-+					      ps_work);
-+	int i;
-+
-+	mutex_lock(&dev->mt76.mutex);
-+	for (i = 0; i < MT7603_WTBL_SIZE; i++) {
-+		struct mt76_wcid *wcid;
-+		struct mt7603_sta *msta;
-+		bool filter;
-+
-+		wcid = rcu_dereference_protected(dev->mt76.wcid[i],
-+						 lockdep_is_held(&dev->mt76.mutex));
-+		if (!wcid || !wcid->sta)
-+			continue;
-+
-+		msta = container_of(wcid, struct mt7603_sta, wcid);
-+		if (!test_and_clear_bit(MT7603_PS_PENDING, &msta->ps_pending))
-+			continue;
-+
-+		filter = test_and_clear_bit(MT7603_PS_FILTER,
-+					    &msta->ps_pending);
-+		mt7603_wtbl_write_ps(dev, msta, READ_ONCE(msta->ps), filter);
-+	}
-+	mutex_unlock(&dev->mt76.mutex);
-+}
-+
-+static void
-+__mt7603_wtbl_set_ps(struct mt7603_dev *dev, struct mt7603_sta *sta,
-+		     bool enabled, bool filter)
-+{
-+	lockdep_assert_held(&dev->ps_lock);
-+
-+	if (sta->ps == enabled)
-+		return;
-+
-+	if (!mt76_is_mmio(&dev->mt76)) {
-+		sta->ps = enabled;
-+		if (enabled && filter)
-+			set_bit(MT7603_PS_FILTER, &sta->ps_pending);
-+		set_bit(MT7603_PS_PENDING, &sta->ps_pending);
-+		queue_work(dev->mt76.wq, &dev->ps_work);
-+		return;
-+	}
-+
-+	mt7603_wtbl_write_ps(dev, sta, enabled, filter);
- 	sta->ps = enabled;
- }
+ 	/* switch to bypass mode */
+ 	mt76_rmw(dev, MT_SCH_4, MT_SCH_4_FORCE_QID,
+-		 MT_SCH_4_BYPASS | FIELD_PREP(MT_SCH_4_FORCE_QID, 5));
++		 MT_SCH_4_BYPASS |
++		 FIELD_PREP(MT_SCH_4_FORCE_QID,
++			    mt76_is_usb(&dev->mt76) ? 8 : 5));
  
-@@ -751,9 +795,89 @@ mt7603_mac_tx_rate_val(struct mt7603_dev *dev,
- 	return rateval;
- }
- 
-+struct mt7603_rate_desc {
-+	struct list_head node;
-+	struct mt7603_sta *sta;
-+	u16 wcid_idx;
-+	bool has_probe;
-+	struct ieee80211_tx_rate probe_rate;
-+	struct ieee80211_tx_rate rates[4];
-+};
-+
-+static void
-+__mt7603_wtbl_set_rates(struct mt7603_dev *dev, struct mt7603_sta *sta,
-+			struct ieee80211_tx_rate *probe_rate,
-+			struct ieee80211_tx_rate *rates);
-+
-+void mt7603_rate_work(struct work_struct *work)
-+{
-+	struct mt7603_dev *dev = container_of(work, struct mt7603_dev,
-+					      rate_work);
-+	struct mt7603_rate_desc *desc, *tmp;
-+	LIST_HEAD(list);
-+
-+	spin_lock_bh(&dev->rate_lock);
-+	list_splice_init(&dev->rate_list, &list);
-+	spin_unlock_bh(&dev->rate_lock);
-+
-+	list_for_each_entry_safe(desc, tmp, &list, node) {
-+		list_del(&desc->node);
-+
-+		mutex_lock(&dev->mt76.mutex);
-+		if (rcu_access_pointer(dev->mt76.wcid[desc->wcid_idx]) ==
-+		    &desc->sta->wcid) {
-+			struct ieee80211_sta *sta;
-+
-+			sta = container_of((void *)desc->sta,
-+					   struct ieee80211_sta, drv_priv);
-+			__mt7603_wtbl_set_rates(dev, desc->sta,
-+						desc->has_probe ?
-+						&desc->probe_rate : NULL,
-+						desc->rates);
-+			mt7603_wtbl_set_smps(dev, desc->sta,
-+					     sta->deflink.smps_mode ==
-+					     IEEE80211_SMPS_DYNAMIC);
-+		}
-+		mutex_unlock(&dev->mt76.mutex);
-+
-+		kfree(desc);
-+	}
-+}
-+
- void mt7603_wtbl_set_rates(struct mt7603_dev *dev, struct mt7603_sta *sta,
- 			   struct ieee80211_tx_rate *probe_rate,
- 			   struct ieee80211_tx_rate *rates)
-+{
-+	struct mt7603_rate_desc *desc;
-+
-+	if (mt76_is_mmio(&dev->mt76)) {
-+		__mt7603_wtbl_set_rates(dev, sta, probe_rate, rates);
-+		return;
-+	}
-+
-+	desc = kzalloc(sizeof(*desc), GFP_ATOMIC);
-+	if (!desc)
-+		return;
-+
-+	desc->sta = sta;
-+	desc->wcid_idx = sta->wcid.idx;
-+	if (probe_rate) {
-+		desc->has_probe = true;
-+		desc->probe_rate = *probe_rate;
-+	}
-+	memcpy(desc->rates, rates, sizeof(desc->rates));
-+
-+	spin_lock_bh(&dev->rate_lock);
-+	list_add_tail(&desc->node, &dev->rate_list);
-+	spin_unlock_bh(&dev->rate_lock);
-+
-+	queue_work(dev->mt76.wq, &dev->rate_work);
-+}
-+
-+static void
-+__mt7603_wtbl_set_rates(struct mt7603_dev *dev, struct mt7603_sta *sta,
-+			struct ieee80211_tx_rate *probe_rate,
-+			struct ieee80211_tx_rate *rates)
- {
- 	struct ieee80211_tx_rate *ref;
- 	int wcid = sta->wcid.idx;
-diff --git a/drivers/net/wireless/mediatek/mt76/mt7603/main.c b/drivers/net/wireless/mediatek/mt76/mt7603/main.c
-index 80dafe89e2c54c1148611b89c7cd65885214463c..ca4f66bde33a668d9f4cff85512a082407eaaf44 100644
---- a/drivers/net/wireless/mediatek/mt76/mt7603/main.c
-+++ b/drivers/net/wireless/mediatek/mt76/mt7603/main.c
-@@ -379,9 +379,13 @@ mt7603_sta_remove(struct mt76_dev *mdev, struct ieee80211_vif *vif,
- 
- 	spin_lock_bh(&dev->ps_lock);
- 	__skb_queue_purge(&msta->psq);
--	mt7603_filter_tx(dev, mvif->idx, wcid->idx, true);
-+	if (mt76_is_mmio(mdev))
-+		mt7603_filter_tx(dev, mvif->idx, wcid->idx, true);
- 	spin_unlock_bh(&dev->ps_lock);
- 
-+	if (!mt76_is_mmio(mdev))
-+		mt7603_filter_tx(dev, mvif->idx, wcid->idx, true);
-+
- 	spin_lock_bh(&mdev->sta_poll_lock);
- 	if (!list_empty(&msta->wcid.poll_list))
- 		list_del_init(&msta->wcid.poll_list);
-@@ -714,8 +718,10 @@ mt7603_sta_rate_tbl_update(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
- 	msta->n_rates = i;
- 	mt7603_wtbl_set_rates(dev, msta, NULL, msta->rates);
- 	msta->rate_probe = false;
--	mt7603_wtbl_set_smps(dev, msta,
--			     sta->deflink.smps_mode == IEEE80211_SMPS_DYNAMIC);
-+	if (mt76_is_mmio(&dev->mt76))
-+		mt7603_wtbl_set_smps(dev, msta,
-+				     sta->deflink.smps_mode ==
-+				     IEEE80211_SMPS_DYNAMIC);
- 	spin_unlock_bh(&dev->mt76.lock);
- }
- 
+ 	val = mt76_rr(dev, MT_TOP_MISC2);
+ 	if (val & BIT(1)) {
 diff --git a/drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h b/drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h
-index 8559a1ee06cd79a00ec4e382065f24f5180a8a21..6c4836fbd2264288b99b0b6780f66b776a92e930 100644
+index 6c4836fbd2264288b99b0b6780f66b776a92e930..1b50c6b4bb8faf277e126f9c18fefbaa88150d41 100644
 --- a/drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h
 +++ b/drivers/net/wireless/mediatek/mt76/mt7603/mt7603.h
-@@ -81,8 +81,13 @@ struct mt7603_sta {
+@@ -210,12 +210,14 @@ void mt7603_init_debugfs(struct mt7603_dev *dev);
  
- 	u8 ps;
- 	u8 ps_sleeping;
-+
-+	unsigned long ps_pending;
- };
+ static inline void mt7603_irq_enable(struct mt7603_dev *dev, u32 mask)
+ {
+-	mt76_set_irq_mask(&dev->mt76, MT_INT_MASK_CSR, 0, mask);
++	if (mt76_is_mmio(&dev->mt76))
++		mt76_set_irq_mask(&dev->mt76, MT_INT_MASK_CSR, 0, mask);
+ }
  
-+#define MT7603_PS_PENDING	0
-+#define MT7603_PS_FILTER	1
-+
- struct mt7603_vif {
- 	struct mt7603_sta sta; /* must be first */
+ static inline void mt7603_irq_disable(struct mt7603_dev *dev, u32 mask)
+ {
+-	mt76_set_irq_mask(&dev->mt76, MT_INT_MASK_CSR, mask, 0);
++	if (mt76_is_mmio(&dev->mt76))
++		mt76_set_irq_mask(&dev->mt76, MT_INT_MASK_CSR, mask, 0);
+ }
  
-@@ -110,6 +115,12 @@ struct mt7603_dev {
- 
- 	u8 tx_ant;
- 
-+	struct work_struct rate_work;
-+	struct list_head rate_list;
-+	spinlock_t rate_lock;
-+
-+	struct work_struct ps_work;
-+
- 	u32 rxfilter;
- 
- 	struct mt7603_sta global_sta;
-@@ -189,6 +200,8 @@ int mt7603_dma_init(struct mt7603_dev *dev);
- void mt7603_dma_cleanup(struct mt7603_dev *dev);
- int mt7603_mcu_init(struct mt7603_dev *dev);
- int mt7603_load_firmware(struct mt7603_dev *dev);
-+void mt7603_rate_work(struct work_struct *work);
-+void mt7603_ps_work(struct work_struct *work);
- void mt7603_mcu_fill_msg(struct mt7603_dev *dev, struct sk_buff *skb,
- 			 int cmd, int *wait_seq);
- int mt7603_mcu_parse_response(struct mt76_dev *mdev, int cmd,
+ void mt7603_mac_reset_counters(struct mt7603_dev *dev);
 
 -- 
 2.47.3
