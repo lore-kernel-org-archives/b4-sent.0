@@ -1,229 +1,89 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 07:12:14 +0000
-Subject: [PATCH 5.10.y] hfsplus: fix slab-out-of-bounds read in
- hfsplus_uni2asc()
+From: Andrei Aleksandrov <aladex@gmail.com>
+Subject: [PATCH RFC 0/2] ALSA: usb-audio: Make the EPOS GSX 1000 v2 volume
+ ring work
+Date: Fri, 27 Nov 2026 08:15:20 +0100
+Message-Id: <20261127-gsx1000-v1-0-833554c37b82@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-so5-hfsplus-510-v1-1-7bce0139b35d@certik.com>
-X-B4-Tracking: v=1; b=H4sIAE0tCWsC/12NwQ6CMBBEf4Xs2UXaSKv8ivHQlq3UkJZ0wWgI/
- y7Vm8d5mXmzAlMOxNBVK2R6Bg4p7kEcKnCDiXfC0O8ZZCOVEFIjpxYHz9O4MLaiwV65k1Rea30
- 5w76aMvnw+hqv0Naiqd9w+3Fe7IPcXHSlaQ0T2myiGwpiiv2c0oiFH/9uYNs+imkmB6sAAAA=
-X-Change-ID: 20261127-so5-hfsplus-510-d6c426f77798
-To: stable@vger.kernel.org
-Cc: Kang Chen <k.chen@smail.nju.edu.cn>, 
- Viacheslav Dubeyko <slava@dubeyko.com>, linux-fsdevel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795763533; l=8506;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=r08xme+LJmtE2virVQX+u476Saf7nmCbrMz6FfBhGhY=;
- b=VcZVh6DfYRoi3iYcb1JrS8XrSPEgA4lAfooUmwbF3a+1EM3HG6Z2OS1T7JwPtEJkurc/wAwqO
- BrZRpXr5iaQB32DjfyhjzfFa4N3GbAwo699My5D4JHCGXtd4FhUtds0
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQyNz3fTiCkMDAwNdS1ODNCNLc3MTAwsDJaDqgqLUtMwKsEnRSkFuzkq
+ xEMHi0qSs1OQSkBlKtbUAxIqMdnAAAAA=
+X-Change-ID: 20261127-gsx1000-950f29774080
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-input@vger.kernel.org, linux-sound@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Andrei Aleksandrov <aladex@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795763720; l=2896;
+ i=aladex@gmail.com; s=20261127; h=from:subject:message-id;
+ bh=Cx5E16DVxiKC2W4AXUGiE4DSUnwoqavuCDkkSrkCAGU=;
+ b=/FLIARca831KI99M2Hcc6myUHvdtGx/mI4TXGlV5zWmzSOlqmag+JNTZkIRBB4qduNEd8uorU
+ Pg224/1KH9rDDKSEzgLOjFosffB5ildc4BkuL6UEUahhlnhf56BPzz/
+X-Developer-Key: i=aladex@gmail.com; a=ed25519;
+ pk=BRFQEVGQ1X027TItMW+SIsAtbYscopzlk1EJT8Girkg=
+X-Endpoint-Received: by B4 Relay for aladex@gmail.com/20261127 with auth_id=1663
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Kang Chen <k.chen@smail.nju.edu.cn>
+The volume ring of the EPOS / Sennheiser GSX 1000 v2 has never worked on
+Linux: turning it makes the volume oscillate or run down, and the usual
+workaround is to disable it with a hwdb rule [1][2][3]. This series makes
+it behave as on Windows, based on USB captures of the Windows inbox
+driver (usbaudio.sys + HID, there is no vendor driver):
 
-commit bea3e1d4467bcf292c8e54f080353d556d355e26 upstream.
+- the ring sends HID Vol+/Vol- until the volume the host writes to FU 12
+  matches the ring position, and compares it with 1/256 dB precision;
+- Windows writes fractional dB values from its 0..100 % scale to
+  channels 1 and 2 of FU 12, in 2 % steps per ring detent.
 
-BUG: KASAN: slab-out-of-bounds in hfsplus_uni2asc+0xa71/0xb90 fs/hfsplus/unicode.c:186
-Read of size 2 at addr ffff8880289ef218 by task syz.6.248/14290
+Patch 1 replaces the 1 dB FU 12 volume with a 0..100 control that writes
+the exact values measured from Windows. Patch 2 answers the ring's
+Vol+/Vol- in the driver with the Windows step.
 
-CPU: 0 UID: 0 PID: 14290 Comm: syz.6.248 Not tainted 6.16.4 #1 PREEMPT(full)
-Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.15.0-1 04/01/2014
-Call Trace:
- <TASK>
- __dump_stack lib/dump_stack.c:94 [inline]
- dump_stack_lvl+0x116/0x1b0 lib/dump_stack.c:120
- print_address_description mm/kasan/report.c:378 [inline]
- print_report+0xca/0x5f0 mm/kasan/report.c:482
- kasan_report+0xca/0x100 mm/kasan/report.c:595
- hfsplus_uni2asc+0xa71/0xb90 fs/hfsplus/unicode.c:186
- hfsplus_listxattr+0x5b6/0xbd0 fs/hfsplus/xattr.c:738
- vfs_listxattr+0xbe/0x140 fs/xattr.c:493
- listxattr+0xee/0x190 fs/xattr.c:924
- filename_listxattr fs/xattr.c:958 [inline]
- path_listxattrat+0x143/0x360 fs/xattr.c:988
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0xcb/0x4c0 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7fe0e9fae16d
-Code: 02 b8 ff ff ff ff c3 66 0f 1f 44 00 00 f3 0f 1e fa 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 a8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007fe0eae67f98 EFLAGS: 00000246 ORIG_RAX: 00000000000000c3
-RAX: ffffffffffffffda RBX: 00007fe0ea205fa0 RCX: 00007fe0e9fae16d
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000200000000000
-RBP: 00007fe0ea0480f0 R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
-R13: 00007fe0ea206038 R14: 00007fe0ea205fa0 R15: 00007fe0eae48000
- </TASK>
+This is an RFC because of two design choices I would like your opinion
+on:
 
-Allocated by task 14290:
- kasan_save_stack+0x24/0x50 mm/kasan/common.c:47
- kasan_save_track+0x14/0x30 mm/kasan/common.c:68
- poison_kmalloc_redzone mm/kasan/common.c:377 [inline]
- __kasan_kmalloc+0xaa/0xb0 mm/kasan/common.c:394
- kasan_kmalloc include/linux/kasan.h:260 [inline]
- __do_kmalloc_node mm/slub.c:4333 [inline]
- __kmalloc_noprof+0x219/0x540 mm/slub.c:4345
- kmalloc_noprof include/linux/slab.h:909 [inline]
- hfsplus_find_init+0x95/0x1f0 fs/hfsplus/bfind.c:21
- hfsplus_listxattr+0x331/0xbd0 fs/hfsplus/xattr.c:697
- vfs_listxattr+0xbe/0x140 fs/xattr.c:493
- listxattr+0xee/0x190 fs/xattr.c:924
- filename_listxattr fs/xattr.c:958 [inline]
- path_listxattrat+0x143/0x360 fs/xattr.c:988
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0xcb/0x4c0 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
+1. The new control has no dB TLV, on purpose: with a TLV, PipeWire and
+   PulseAudio map their volume through the dB curve, and the number on
+   the device display no longer matches the desktop percent. Without it
+   they map linearly onto the 101 steps and the display matches, as on
+   Windows. Would you prefer a TLV (e.g. a DB_RANGE over the table)
+   instead, accepting the display mismatch?
 
-When hfsplus_uni2asc is called from hfsplus_listxattr,
-it actually passes in a struct hfsplus_attr_unistr*.
-The size of the corresponding structure is different from that of hfsplus_unistr,
-so the previous fix (94458781aee6) is insufficient.
-The pointer on the unicode buffer is still going beyond the allocated memory.
+2. Patch 2 registers an input handler with a .filter callback that
+   swallows KEY_VOLUMEUP/KEY_VOLUMEDOWN from this card's own HID
+   interface. Subscribing to HID input from mixer_quirks.c has a
+   precedent (the DualSense jack detection), filtering does not. Is this
+   acceptable in snd-usb-audio, should it be optional (a module
+   parameter), or would you rather see it done elsewhere?
 
-This patch introduces two warpper functions hfsplus_uni2asc_xattr_str and
-hfsplus_uni2asc_str to process two unicode buffers,
-struct hfsplus_attr_unistr* and struct hfsplus_unistr* respectively.
-When ustrlen value is bigger than the allocated memory size,
-the ustrlen value is limited to an safe size.
+Only 1395:00b1 is enabled. The GSX 1000 v1 (005e, 00a0) and GSX 1200
+(005f, 00a1) are likely similar, but I have no captures of them.
 
-Fixes: 94458781aee6 ("hfsplus: fix slab-out-of-bounds read in hfsplus_uni2asc()")
-Signed-off-by: Kang Chen <k.chen@smail.nju.edu.cn>
-Reviewed-by: Viacheslav Dubeyko <slava@dubeyko.com>
-Signed-off-by: Viacheslav Dubeyko <slava@dubeyko.com>
-Link: https://lore.kernel.org/r/20250909031316.1647094-1-k.chen@smail.nju.edu.cn
-Signed-off-by: Viacheslav Dubeyko <slava@dubeyko.com>
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+The captures, their decoding and a DKMS package of the same code (in
+use on 7.3) are at https://github.com/Aladex/epos-gsx.
+
+Disclosure: the reverse engineering and these patches were prepared with
+the help of an AI coding assistant. I reviewed the code, and I tested it
+on my own device; the captures are from my hardware.
+
+[1] https://bugs.launchpad.net/bugs/1821496
+[2] https://gitlab.freedesktop.org/pipewire/pipewire/-/issues/3714
+[3] https://github.com/evilphish/sennheiser-gsx-1000
+
+Signed-off-by: Andrei Aleksandrov <aladex@gmail.com>
 ---
-5.15.y and newer already have this fix. 5.10.y already has
-76a4c6636a69, the backport of 94458781aee6 with the same subject; this
-is its follow-up (Fixes: 94458781aee6).
+Andrei Aleksandrov (2):
+      ALSA: usb-audio: Add Windows volume scale quirk for EPOS GSX 1000 v2
+      ALSA: usb-audio: Handle the EPOS GSX 1000 v2 volume ring in the driver
 
-Tested on v5.10.275:
-- x86_64 allmodconfig W=1 build of the 21 fs/hfsplus objects, base vs
-  patched, no new warnings
-- booted the patched kernel under QEMU/KVM. I didn't mount an HFS+
-  volume.
-
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
-
-fs/hfsplus/dir.c        |  2 +-
+ sound/usb/mixer_maps.c   |  11 ++
+ sound/usb/mixer_quirks.c | 343 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 354 insertions(+)
 ---
- fs/hfsplus/dir.c        |  2 +-
- fs/hfsplus/hfsplus_fs.h |  8 ++++++--
- fs/hfsplus/unicode.c    | 24 +++++++++++++++++++-----
- fs/hfsplus/xattr.c      |  6 +++---
- 4 files changed, 29 insertions(+), 11 deletions(-)
-
-diff --git a/fs/hfsplus/dir.c b/fs/hfsplus/dir.c
-index 4f3ef53b95d9..797bf045b2f7 100644
---- a/fs/hfsplus/dir.c
-+++ b/fs/hfsplus/dir.c
-@@ -212,7 +212,7 @@ static int hfsplus_readdir(struct file *file, struct dir_context *ctx)
- 			fd.entrylength);
- 		type = be16_to_cpu(entry.type);
- 		len = NLS_MAX_CHARSET_SIZE * HFSPLUS_MAX_STRLEN;
--		err = hfsplus_uni2asc(sb, &fd.key->cat.name, strbuf, &len);
-+		err = hfsplus_uni2asc_str(sb, &fd.key->cat.name, strbuf, &len);
- 		if (err)
- 			goto out;
- 		if (type == HFSPLUS_FOLDER) {
-diff --git a/fs/hfsplus/hfsplus_fs.h b/fs/hfsplus/hfsplus_fs.h
-index ae4e8f304116..b0e3e743046d 100644
---- a/fs/hfsplus/hfsplus_fs.h
-+++ b/fs/hfsplus/hfsplus_fs.h
-@@ -520,8 +520,12 @@ int hfsplus_strcasecmp(const struct hfsplus_unistr *s1,
- 		       const struct hfsplus_unistr *s2);
- int hfsplus_strcmp(const struct hfsplus_unistr *s1,
- 		   const struct hfsplus_unistr *s2);
--int hfsplus_uni2asc(struct super_block *sb, const struct hfsplus_unistr *ustr,
--		    char *astr, int *len_p);
-+int hfsplus_uni2asc_str(struct super_block *sb,
-+			const struct hfsplus_unistr *ustr, char *astr,
-+			int *len_p);
-+int hfsplus_uni2asc_xattr_str(struct super_block *sb,
-+			      const struct hfsplus_attr_unistr *ustr,
-+			      char *astr, int *len_p);
- int hfsplus_asc2uni(struct super_block *sb, struct hfsplus_unistr *ustr,
- 		    int max_unistr_len, const char *astr, int len);
- int hfsplus_hash_dentry(const struct dentry *dentry, struct qstr *str);
-diff --git a/fs/hfsplus/unicode.c b/fs/hfsplus/unicode.c
-index ebd326799f35..11e08a4a18b2 100644
---- a/fs/hfsplus/unicode.c
-+++ b/fs/hfsplus/unicode.c
-@@ -143,9 +143,8 @@ static u16 *hfsplus_compose_lookup(u16 *p, u16 cc)
- 	return NULL;
- }
- 
--int hfsplus_uni2asc(struct super_block *sb,
--		const struct hfsplus_unistr *ustr,
--		char *astr, int *len_p)
-+static int hfsplus_uni2asc(struct super_block *sb, const struct hfsplus_unistr *ustr,
-+		    int max_len, char *astr, int *len_p)
- {
- 	const hfsplus_unichr *ip;
- 	struct nls_table *nls = HFSPLUS_SB(sb)->nls;
-@@ -158,8 +157,8 @@ int hfsplus_uni2asc(struct super_block *sb,
- 	ip = ustr->unicode;
- 
- 	ustrlen = be16_to_cpu(ustr->length);
--	if (ustrlen > HFSPLUS_MAX_STRLEN) {
--		ustrlen = HFSPLUS_MAX_STRLEN;
-+	if (ustrlen > max_len) {
-+		ustrlen = max_len;
- 		pr_err("invalid length %u has been corrected to %d\n",
- 			be16_to_cpu(ustr->length), ustrlen);
- 	}
-@@ -280,6 +279,21 @@ int hfsplus_uni2asc(struct super_block *sb,
- 	return res;
- }
- 
-+inline int hfsplus_uni2asc_str(struct super_block *sb,
-+			       const struct hfsplus_unistr *ustr, char *astr,
-+			       int *len_p)
-+{
-+	return hfsplus_uni2asc(sb, ustr, HFSPLUS_MAX_STRLEN, astr, len_p);
-+}
-+
-+inline int hfsplus_uni2asc_xattr_str(struct super_block *sb,
-+				     const struct hfsplus_attr_unistr *ustr,
-+				     char *astr, int *len_p)
-+{
-+	return hfsplus_uni2asc(sb, (const struct hfsplus_unistr *)ustr,
-+			       HFSPLUS_ATTR_MAX_STRLEN, astr, len_p);
-+}
-+
- /*
-  * Convert one or more ASCII characters into a single unicode character.
-  * Returns the number of ASCII characters corresponding to the unicode char.
-diff --git a/fs/hfsplus/xattr.c b/fs/hfsplus/xattr.c
-index 2438cd759620..644b3cd5fe52 100644
---- a/fs/hfsplus/xattr.c
-+++ b/fs/hfsplus/xattr.c
-@@ -738,9 +738,9 @@ ssize_t hfsplus_listxattr(struct dentry *dentry, char *buffer, size_t size)
- 			goto end_listxattr;
- 
- 		xattr_name_len = NLS_MAX_CHARSET_SIZE * HFSPLUS_ATTR_MAX_STRLEN;
--		if (hfsplus_uni2asc(inode->i_sb,
--			(const struct hfsplus_unistr *)&fd.key->attr.key_name,
--					strbuf, &xattr_name_len)) {
-+		if (hfsplus_uni2asc_xattr_str(inode->i_sb,
-+					      &fd.key->attr.key_name, strbuf,
-+					      &xattr_name_len)) {
- 			pr_err("unicode conversion failed\n");
- 			res = -EIO;
- 			goto end_listxattr;
-
----
-base-commit: 99112ea818e35b606397c84fbc05e6fadb6ea162
-change-id: 20261127-so5-hfsplus-510-d6c426f77798
+base-commit: 486060b97284c95384744f030706f89e1980a46e
+change-id: 20261127-gsx1000-950f29774080
 
 Best regards,
 --  
-Dickson Wu <dickson.wu@certik.com>
+Andrei Aleksandrov <aladex@gmail.com>
 
