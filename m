@@ -1,255 +1,89 @@
-From: Andrei Aleksandrov <aladex@gmail.com>
-Date: Fri, 27 Nov 2026 08:38:43 +0100
-Subject: [PATCH RFC v2 2/2] ALSA: usb-audio: Handle the EPOS GSX 1000 v2
- volume ring in the driver
+From: Robert Ijtsma <robertijtsma@gmail.com>
+Subject: [PATCH v3 0/2] iio: light: add support for ams OSRAM TCS3430
+Date: Fri, 27 Nov 2026 09:12:48 +0100
+Message-Id: <20261127-iio-tcs3430-v3-0-e191a40a4ae9@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-gsx1000-v2-2-0a0f20f1a2da@gmail.com>
-References: <20261127-gsx1000-v2-0-0a0f20f1a2da@gmail.com>
-In-Reply-To: <20261127-gsx1000-v2-0-0a0f20f1a2da@gmail.com>
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- linux-input@vger.kernel.org, linux-sound@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Andrei Aleksandrov <aladex@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795765121; l=7745;
- i=aladex@gmail.com; s=20261127; h=from:subject:message-id;
- bh=LKmyIFGQs/e6UdYS47l4eBiS1d+lPwIJQts+XxND7RI=;
- b=+0zwVrakw4os5Q25GpHDb8/qkLT3EXhcm5EyoYBXEjrh9B1h3y9Otq7qEjK/+2C/WLMhfREmb
- 5nPSPF8bRlxCyn9ol7XkJ46f/wGhpwjZ1IT4+7q4MPjV8geLs6AW5w+
-X-Developer-Key: i=aladex@gmail.com; a=ed25519;
- pk=BRFQEVGQ1X027TItMW+SIsAtbYscopzlk1EJT8Girkg=
-X-Endpoint-Received: by B4 Relay for aladex@gmail.com/20261127 with auth_id=1663
+X-B4-Tracking: v=1; b=H4sIAIA7CWsC/22NQQ7CIBQFr9KwFgOflhZX3sO4QErbb7QYqETT9
+ O5C3dTE5SRv5s0kWI82kEMxE28jBnRjArEriBn02FuKbWICDCTnUFJERycTRCkYha4STa0qqG1
+ LkvHwtsPXWjudvxyel6s1U07kxYBhcv693kWed//LkVNGWQdaNFrq0vBjf9d42xt3J7kcYevKX
+ xeSK00lQLXAFFdbd1mWD7qXnzL0AAAA
+X-Change-ID: 20261124-iio-tcs3430-2f53879527ed
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Robert Ijtsma <robertijtsma@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795767168; l=2793;
+ i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
+ bh=Et/l27YtcKEISI6lN7W3Gjj8ZZUwqHD71s8HMID2vHk=;
+ b=k0FMvHMwng07hSnPZ1075uN9j3w4uxD9DygJjEgMRacDTfnwx/k2DmD4AOV7oe8IeXAws6pSb
+ 1bCylw3FQRKCrDxB3JR+6Us0Q1qm1QFVd2AVC8R3kYTmHsvrCnE6Mao
+X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
+ pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
+X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The volume ring of the GSX 1000 v2 is an encoder that does not report
-its direction. The device sends HID Vol+/Vol- (consumer usages 0xe9 and
-0xea, report 2 on interface 5) until the volume the host writes to FU 12
-matches the ring position, one event per detent. Windows answers every
-event with a 2 % step on its volume scale; the device compares the
-written value with 1/256 dB precision and stops asking once it matches.
+Add Devicetree binding documentation and an IIO driver for the ams OSRAM
+TCS3430 ambient light and CIE 1931 XYZ tristimulus color sensor.
 
-On Linux these events reach the desktop as global KEY_VOLUMEUP and
-KEY_VOLUMEDOWN, the desktop applies its own step size (5 % by default in
-KDE), the result does not match the ring, and the device keeps
-correcting: the volume oscillates or runs away. Existing workarounds
-remap the keys to "reserved" in hwdb, which disables the ring.
+Tested on Microsoft Surface Pro X SQ2 (SC8180X), where the sensor is
+connected on I2C at 0x39 and used for ambient light sensing.
 
-Register an input handler that filters KEY_VOLUMEUP/KEY_VOLUMEDOWN only
-from input devices whose parent is this USB device, so another keyboard
-or another GSX is not affected. Each press steps the control added in the
-previous patch by 2, as Windows does, and notifies user space; the
-device then sees the expected value and the ring, the desktop volume and
-the display stay in sync. The step runs in a work item because the
-filter is called in atomic context and the USB write sleeps.
-
-Tested with a GSX 1000 v2 (firmware 2.13) on PipeWire/KDE: slow and fast
-turns in both directions, 0 -> 100 % by the ring, slider changes,
-unplug/replug and suspend/resume (the desktop volume is restored on the
-device).
-usbmon shows one SET_CUR pair per detent and no reversals, as in the
-Windows captures.
-
-Link: https://github.com/Aladex/epos-gsx
-Signed-off-by: Andrei Aleksandrov <aladex@gmail.com>
+Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
 ---
- sound/usb/mixer_quirks.c | 152 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 152 insertions(+)
+Changes in v3:
+- Import the IIO_GTS_HELPER module namespace via MODULE_IMPORT_NS("IIO_GTS_HELPER")
+  so modular builds (CONFIG_TCS3430=m) pass modpost.
+- Enable REGCACHE_MAPLE with a volatile register table (0x92..0x9b) and
+  regcache_cache_only()/regcache_mark_dirty()/regcache_sync() across
+  suspend/resume (Andy Shevchenko).
+- Align Kconfig tristate prompt, top driver comment, and MODULE_DESCRIPTION(),
+  and keep driver-separation rationale in the commit message rather than
+  Kconfig help (Andy Shevchenko).
+- Simplify tcs3430_set_scale() to drop the keep_time boolean, rename
+  in_range to gain_in_range in tcs3430_set_itime(), use local regmap
+  variables for readability, add blank lines after guard(mutex)(), and
+  keep dev_dbg()/DEFINE_SIMPLE_DEV_PM_OPS() on single lines (Andy Shevchenko).
+- Link to v2: https://lore.kernel.org/r/20261126-iio-tcs3430-v2-0-6c5329d20919@gmail.com
 
-diff --git a/sound/usb/mixer_quirks.c b/sound/usb/mixer_quirks.c
-index 50d640844003..94ebd34ed128 100644
---- a/sound/usb/mixer_quirks.c
-+++ b/sound/usb/mixer_quirks.c
-@@ -4689,10 +4689,17 @@ static const s16 snd_gsx1000_vol_table[SND_GSX1000_VOL_STEPS + 1] = {
- 	0,
- };
- 
-+#define SND_GSX1000_RING_STEP	2	/* one ring detent, as on Windows */
-+
- struct snd_gsx1000_vol {
- 	struct usb_mixer_elem_list list;	/* kctl private data */
- 	struct mutex lock;			/* serializes value and USB writes */
- 	unsigned int value;			/* 0..SND_GSX1000_VOL_STEPS */
-+	struct work_struct ring_work;
-+	atomic_t ring_delta;
-+	struct input_handler ih;
-+	struct input_device_id id_table[2];
-+	bool ih_registered;
- };
- 
- #define to_gsx1000_vol(l)	container_of(l, struct snd_gsx1000_vol, list)
-@@ -4807,10 +4814,151 @@ static const struct snd_kcontrol_new snd_gsx1000_vol_control = {
- 	.put = snd_gsx1000_vol_put,
- };
- 
-+/*
-+ * The ring keeps sending Vol+/Vol- until the host volume matches the ring
-+ * position, one detent per event.  Answer these requests here instead of
-+ * passing them on as global volume keys, so the desktop does not apply its
-+ * own step size to them and only this card is affected.
-+ */
-+static void snd_gsx1000_ring_work(struct work_struct *work)
-+{
-+	struct snd_gsx1000_vol *vol =
-+		container_of(work, struct snd_gsx1000_vol, ring_work);
-+	int delta = atomic_xchg(&vol->ring_delta, 0);
-+	int value, changed;
-+
-+	if (!delta)
-+		return;
-+
-+	CLASS(snd_usb_lock, pm)(vol->list.mixer->chip);
-+	if (pm.err < 0)
-+		return;
-+
-+	scoped_guard(mutex, &vol->lock) {
-+		value = clamp_t(int, vol->value + delta * SND_GSX1000_RING_STEP,
-+				0, SND_GSX1000_VOL_STEPS);
-+		changed = __snd_gsx1000_vol_set(vol, value);
-+	}
-+	if (changed > 0)
-+		snd_ctl_notify(vol->list.mixer->chip->card,
-+			       SNDRV_CTL_EVENT_MASK_VALUE, &vol->list.kctl->id);
-+}
-+
-+#if IS_REACHABLE(CONFIG_INPUT)
-+static bool snd_gsx1000_ih_filter(struct input_handle *handle,
-+				  unsigned int type, unsigned int code,
-+				  int value)
-+{
-+	struct snd_gsx1000_vol *vol =
-+		container_of(handle->handler, struct snd_gsx1000_vol, ih);
-+
-+	if (type != EV_KEY ||
-+	    (code != KEY_VOLUMEUP && code != KEY_VOLUMEDOWN))
-+		return false;
-+
-+	/* Act on presses only; swallow releases and repeats as well */
-+	if (value == 1) {
-+		atomic_add(code == KEY_VOLUMEUP ? 1 : -1, &vol->ring_delta);
-+		schedule_work(&vol->ring_work);
-+	}
-+	return true;
-+}
-+
-+static bool snd_gsx1000_ih_match(struct input_handler *handler,
-+				 struct input_dev *dev)
-+{
-+	struct snd_gsx1000_vol *vol =
-+		container_of(handler, struct snd_gsx1000_vol, ih);
-+	struct usb_device *snd_dev = vol->list.mixer->chip->dev;
-+	struct device *parent;
-+
-+	/* Only the HID interface of this very card, not an identical one */
-+	for (parent = dev->dev.parent; parent; parent = parent->parent) {
-+		if (parent == &snd_dev->dev)
-+			return true;
-+	}
-+	return false;
-+}
-+
-+static int snd_gsx1000_ih_connect(struct input_handler *handler,
-+				  struct input_dev *dev,
-+				  const struct input_device_id *id)
-+{
-+	struct input_handle *handle;
-+	int err;
-+
-+	handle = kzalloc_obj(*handle);
-+	if (!handle)
-+		return -ENOMEM;
-+
-+	handle->dev = dev;
-+	handle->handler = handler;
-+	handle->name = handler->name;
-+
-+	err = input_register_handle(handle);
-+	if (err)
-+		goto err_free;
-+
-+	err = input_open_device(handle);
-+	if (err)
-+		goto err_unregister;
-+
-+	return 0;
-+
-+err_unregister:
-+	input_unregister_handle(handle);
-+err_free:
-+	kfree(handle);
-+	return err;
-+}
-+
-+static void snd_gsx1000_ih_disconnect(struct input_handle *handle)
-+{
-+	input_close_device(handle);
-+	input_unregister_handle(handle);
-+	kfree(handle);
-+}
-+
-+static void snd_gsx1000_ih_register(struct snd_gsx1000_vol *vol)
-+{
-+	struct usb_mixer_interface *mixer = vol->list.mixer;
-+	struct input_device_id *id = &vol->id_table[0];
-+	int err;
-+
-+	id->flags = INPUT_DEVICE_ID_MATCH_VENDOR | INPUT_DEVICE_ID_MATCH_PRODUCT |
-+		    INPUT_DEVICE_ID_MATCH_EVBIT | INPUT_DEVICE_ID_MATCH_KEYBIT;
-+	id->vendor = USB_ID_VENDOR(mixer->chip->usb_id);
-+	id->product = USB_ID_PRODUCT(mixer->chip->usb_id);
-+	id->evbit[BIT_WORD(EV_KEY)] = BIT_MASK(EV_KEY);
-+	id->keybit[BIT_WORD(KEY_VOLUMEUP)] = BIT_MASK(KEY_VOLUMEUP);
-+
-+	vol->ih.filter = snd_gsx1000_ih_filter;
-+	vol->ih.match = snd_gsx1000_ih_match;
-+	vol->ih.connect = snd_gsx1000_ih_connect;
-+	vol->ih.disconnect = snd_gsx1000_ih_disconnect;
-+	vol->ih.name = "snd-usb-gsx1000-ring";
-+	vol->ih.id_table = vol->id_table;
-+
-+	err = input_register_handler(&vol->ih);
-+	if (err)
-+		usb_audio_warn(mixer->chip,
-+			       "GSX 1000: cannot register ring handler: %d\n", err);
-+	else
-+		vol->ih_registered = true;
-+}
-+#else
-+static void snd_gsx1000_ih_register(struct snd_gsx1000_vol *vol) {}
-+#endif /* IS_REACHABLE(CONFIG_INPUT) */
-+
- static void snd_gsx1000_vol_free(struct snd_kcontrol *kctl)
- {
- 	struct snd_gsx1000_vol *vol = to_gsx1000_vol(snd_kcontrol_chip(kctl));
- 
-+#if IS_REACHABLE(CONFIG_INPUT)
-+	if (vol->ih_registered)
-+		input_unregister_handler(&vol->ih);
-+#endif
-+	cancel_work_sync(&vol->ring_work);
- 	mutex_destroy(&vol->lock);
- 	kfree(vol);
- 	kctl->private_data = NULL;
-@@ -4834,6 +4982,8 @@ static int snd_gsx1000_controls_create(struct usb_mixer_interface *mixer)
- 	vol->list.resume = snd_gsx1000_vol_resume;
- 	vol->value = SND_GSX1000_VOL_DEFAULT;
- 	mutex_init(&vol->lock);
-+	INIT_WORK(&vol->ring_work, snd_gsx1000_ring_work);
-+	atomic_set(&vol->ring_delta, 0);
- 
- 	kctl = snd_ctl_new1(&snd_gsx1000_vol_control, &vol->list);
- 	if (!kctl) {
-@@ -4853,6 +5003,8 @@ static int snd_gsx1000_controls_create(struct usb_mixer_interface *mixer)
- 	if (err < 0)
- 		usb_audio_warn(mixer->chip,
- 			       "GSX 1000: cannot set initial volume: %d\n", err);
-+
-+	snd_gsx1000_ih_register(vol);
- 	return 0;
- }
- 
+Changes in v2:
+- Replace hardwaregain control with standard IIO _scale and configurable
+  integration time using the IIO GTS helper (Jonathan Cameron).
+- Hold data->lock across the entire IIO_CHAN_INFO_SCALE path in
+  tcs3430_read_raw() (Jonathan Cameron).
+- Convert register I/O to regmap_i2c (Joshua Crofts).
+- Wrap guard(mutex) declarations in tcs3430_read_raw() switch cases in
+  enclosing blocks to fix Clang -Wjump-misses-init / cleanup scoping
+  (kernel test robot, Joshua Crofts).
+- Use switch(mask) in tcs3430_read_avail() and tcs3430_write_raw(), and
+  drop unused linux/mod_devicetable.h include (Joshua Crofts).
+- Drop redundant L: mailing-list line from MAINTAINERS (Joshua Crofts).
+- Pick up Krzysztof Kozlowski's Reviewed-by on dt-bindings.
+- Link to v1: https://patch.msgid.link/20261124-iio-tcs3430-v1-0-0f2a38a6a4c1@gmail.com
 
+---
+Robert Ijtsma (2):
+      dt-bindings: iio: light: add ams OSRAM TCS3430
+      iio: light: add ams OSRAM TCS3430 XYZ and ambient light sensor driver
+
+ .../devicetree/bindings/iio/light/ams,tcs3430.yaml |  52 ++
+ MAINTAINERS                                        |   6 +
+ drivers/iio/light/Kconfig                          |  12 +
+ drivers/iio/light/Makefile                         |   1 +
+ drivers/iio/light/tcs3430.c                        | 521 +++++++++++++++++++++
+ 5 files changed, 592 insertions(+)
+---
+base-commit: 4843f6873f7c4835e62f2c73ba0fd538e57a2f22
+change-id: 20261124-iio-tcs3430-2f53879527ed
+
+Best regards,
 -- 
-2.56.1
+Robert Ijtsma <robertijtsma@gmail.com>
 
