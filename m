@@ -1,80 +1,90 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 06:35:09 +0000
-Subject: [PATCH 5.15.y] PCI: Free released resource after coalescing
+Date: Fri, 27 Nov 2026 06:39:32 +0000
+Subject: [PATCH 5.15.y] scsi: qla2xxx: Completely fix fcport double free
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-so5-pci-515-v1-1-58c7cedf2a45@certik.com>
-X-B4-Tracking: v=1; b=H4sIAJwkCWsC/02NzQ7CIBCEX6XZs1sBQ237KsYDP6vFGGjYajRN3
- 13Qi8f5MvPNCkw5EMPYrJDpGTikWILcNeAmE6+EwZcMSqhOSnVEThpnF1BLjQch/NAPvhedh7K
- YM13C62s7gW6lbt9w/nF+2Bu5papq0xomtNlEN1XEFP2S0h0r3/9dwLZ9ADz0FIOjAAAA
-X-Change-ID: 20261127-so5-pci-515-300d989d806d
+Message-Id: <20261127-so5-qla-515-v1-1-fc31e58ffd78@certik.com>
+X-B4-Tracking: v=1; b=H4sIAKMlCWsC/02NSw7CMAxEr1J5jUsSYZC4CmKRj0uDqgTigkBV7
+ 04CG5bzNPNmAeESWeDYLVD4GSXmVIPedOBHmy6MMdQMRpm91uaAkgnvk0XShE6TUd6rXVAD1MW
+ t8BBfX9sJqNfUv+H84/JwV/ZzU7Wms8Loik1+bEg4hTnnCRvf/l3Aun4A8fPAd6MAAAA=
+X-Change-ID: 20261127-so5-qla-515-b1520cc04d0f
 To: stable@vger.kernel.org
-Cc: Ross Lagerwall <ross.lagerwall@citrix.com>, 
- Bjorn Helgaas <bhelgaas@google.com>, linux-pci@vger.kernel.org
+Cc: Vladimir Riabchun <ferr.lambarginio@gmail.com>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>, 
+ linux-scsi@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795761308; l=1901;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795761571; l=2352;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=Q3ipk5VBhPFIagCrOUrYLKD41qorDNeCk/xbTMJ0NYs=;
- b=g31RX7ICmsUEZ+CZFUWSl48NbQylBjFTR0E9pdvUexHT7lguAnw/pRaFit0c2bLmDD00pzQKA
- ZO7cswPFJrxC82GV/aHHstfGnnqpCmbQhufcf0GThnzs31Beef2+CXu
+ bh=5PFq0t+9kyJ3bNqaWKXqN6KsLjWHosGjNZwrSng1BcI=;
+ b=t81OAqjPnvuQC/yzrIuJo2vhHiIKCcAVPY/P8neWlpn4bBBH/XV03XQD0SPIHjwY4h1OfO49l
+ wJGliHubiwnBDwNHJakqtP5jdaDneDOMwgaGXarIUxokRkShICiB+Ws
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Ross Lagerwall <ross.lagerwall@citrix.com>
+From: Vladimir Riabchun <ferr.lambarginio@gmail.com>
 
-commit 8ec9c1d5d0a5a4744516adb483b97a238892f9d5 upstream.
+commit c0b7da13a04bd70ef6070bfb9ea85f582294560a upstream.
 
-release_resource() doesn't actually free the resource or resource list
-entry so free the resource list entry to avoid a leak.
+In qla24xx_els_dcmd_iocb() sp->free is set to qla2x00_els_dcmd_sp_free().
+When an error happens, this function is called by qla2x00_sp_release(),
+when kref_put() releases the first and the last reference.
 
-Closes: https://lore.kernel.org/r/878r9sga1t.fsf@kernel.org/
-Fixes: e54223275ba1 ("PCI: Release resource invalidated by coalescing")
-Link: https://lore.kernel.org/r/20230906110846.225369-1-ross.lagerwall@citrix.com
-Reported-by: Kalle Valo <kvalo@kernel.org>
-Tested-by: Kalle Valo <kvalo@kernel.org>
-Signed-off-by: Ross Lagerwall <ross.lagerwall@citrix.com>
-Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
-Cc: stable@vger.kernel.org      # v5.16+
+qla2x00_els_dcmd_sp_free() frees fcport by calling qla2x00_free_fcport().
+Doing it one more time after kref_put() is a bad idea.
+
+Fixes: 82f522ae0d97 ("scsi: qla2xxx: Fix double free of fcport")
+Fixes: 4895009c4bb7 ("scsi: qla2xxx: Prevent command send on chip reset")
+Signed-off-by: Vladimir Riabchun <ferr.lambarginio@gmail.com>
+Signed-off-by: Farhat Abbas <fabbas@cloudlinux.com>
+Link: https://patch.msgid.link/aYsDln9NFQQsPDgg@vova-pc
+Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
-6.1.y and newer already have this fix. 5.15.y has the coalescing
-prerequisite as 26277a425020.
+6.1.y and newer already have this fix.
 
 Tested on v5.15.226:
-- x86_64 allmodconfig W=1 build of drivers/pci/probe.o, base vs
-  patched, no new warnings
-- booted the patched kernel under QEMU/KVM. I didn't have a PCI
-  topology that hits the invalidated window path.
+- x86_64 allmodconfig W=1 build of the qla2xxx driver and target objects,
+  base vs patched, no new warnings
+- booted the patched kernel under QEMU/KVM. I don't have QLogic Fibre
+  Channel hardware, so the ELS error paths weren't exercised.
 
 The backport and the test runs were prepared with AI coding tools
 (OpenAI Codex agents, with review by Claude). I went over the result
 before signing off.
 
-drivers/pci/probe.c | 1 +
- 1 file changed, 1 insertion(+)
+drivers/scsi/qla2xxx/qla_iocb.c | 2 --
+ 1 file changed, 2 deletions(-)
 ---
- drivers/pci/probe.c | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/scsi/qla2xxx/qla_iocb.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/drivers/pci/probe.c b/drivers/pci/probe.c
-index 1403b1e50142..d5db12f13a22 100644
---- a/drivers/pci/probe.c
-+++ b/drivers/pci/probe.c
-@@ -1001,6 +1001,7 @@ static int pci_register_host_bridge(struct pci_host_bridge *bridge)
- 		res = window->res;
- 		if (!res->flags && !res->start && !res->end) {
- 			release_resource(res);
-+			resource_list_destroy_entry(window);
- 			continue;
- 		}
+diff --git a/drivers/scsi/qla2xxx/qla_iocb.c b/drivers/scsi/qla2xxx/qla_iocb.c
+index f080e1952927..3984b42fe0dd 100644
+--- a/drivers/scsi/qla2xxx/qla_iocb.c
++++ b/drivers/scsi/qla2xxx/qla_iocb.c
+@@ -2754,7 +2754,6 @@ qla24xx_els_dcmd_iocb(scsi_qla_host_t *vha, int els_opcode,
+ 	if (!elsio->u.els_logo.els_logo_pyld) {
+ 		/* ref: INIT */
+ 		kref_put(&sp->cmd_kref, qla2x00_sp_release);
+-		qla2x00_free_fcport(fcport);
+ 		return QLA_FUNCTION_FAILED;
+ 	}
+ 
+@@ -2779,7 +2778,6 @@ qla24xx_els_dcmd_iocb(scsi_qla_host_t *vha, int els_opcode,
+ 	if (rval != QLA_SUCCESS) {
+ 		/* ref: INIT */
+ 		kref_put(&sp->cmd_kref, qla2x00_sp_release);
+-		qla2x00_free_fcport(fcport);
+ 		return QLA_FUNCTION_FAILED;
+ 	}
  
 
 ---
 base-commit: 4f2df9a01754521fbba3493e8ad91ef65515e68c
-change-id: 20261127-so5-pci-515-300d989d806d
+change-id: 20261127-so5-qla-515-b1520cc04d0f
 
 Best regards,
 --  
