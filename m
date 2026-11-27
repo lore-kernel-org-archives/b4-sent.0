@@ -1,11 +1,10 @@
 From: Nick Dowsett <nick42d@gmail.com>
-Date: Fri, 27 Nov 2026 19:02:51 +0800
-Subject: [PATCH v2 3/4] rust: wmi: add Driver trait, Adapter and implement
- RegistrationOps
+Date: Fri, 27 Nov 2026 19:02:52 +0800
+Subject: [PATCH v2 4/4] rust: wmi: add Buffer and Device::invoke_method()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-rust-wmi-v2-3-5bfafabd6a6e@gmail.com>
+Message-Id: <20261127-rust-wmi-v2-4-5bfafabd6a6e@gmail.com>
 References: <20261127-rust-wmi-v2-0-5bfafabd6a6e@gmail.com>
 In-Reply-To: <20261127-rust-wmi-v2-0-5bfafabd6a6e@gmail.com>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -22,179 +21,157 @@ To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>,
 Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
  platform-driver-x86@vger.kernel.org, Nick Dowsett <nick42d@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795777382; l=6617;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795777382; l=5608;
  i=nick42d@gmail.com; s=20261127; h=from:subject:message-id;
- bh=Yr/cV4bFQCpsCIJouPt3fyTS/uUCj24+sQv4ztfNN4g=;
- b=oocXIrckJJYiL4FowQMun3GCoMuuBgUIH3fw3ykOKGrWiNVvBPlI2qqAP/6TvwCBAlgsX1Bje
- xZIYNqPbf6NBC7EgjwrtIopzoeQ9FFuSxec08klN+OQSSshU6ZjOidV
+ bh=O7obddgUP9HSPTKHNV9B4ghMFjoxhu9TL4QbXxN6nhQ=;
+ b=ILzk/2gDAqgHkX1N5roGOVEY0CXYH74RLORgX8pqavcxaa8WJXa9N0CPB4mchPQsiYHfBF5JO
+ d57RdFYPiQCDDklXsNOWs32G9eQsucnlYVg48dyuTvmcndK0OFRC4WV
 X-Developer-Key: i=nick42d@gmail.com; a=ed25519;
  pk=rewGRrQm8GTjt8ii+wLiI2tUWP5gtTF4pntVEMNXrj8=
 X-Endpoint-Received: by B4 Relay for nick42d@gmail.com/20261127 with auth_id=1660
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-- Implements the `wmi::Driver` trait.
-- Adds adapter implementing `driver::DriverLayout` and
-  `driver::RegistrationOps` - `wmi::Adapter<T: Driver>`.
-- Adds `wmi::Registration<T>` type alias for convenience.
+- Adds safe `wmi::Buffer` RAII abstraction wrapping an owned
+  `struct wmi_buffer`.
+- Implement `Device::invoke_method()` - safe abstraction for
+  `wmidev_invoke_method`.
+- Also implement `Sync` for `Device<device::Bound>`.
 
 Signed-off-by: Nick Dowsett <nick42d@gmail.com>
 ---
- rust/kernel/wmi.rs | 127 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 125 insertions(+), 2 deletions(-)
+ rust/kernel/wmi.rs | 101 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 100 insertions(+), 1 deletion(-)
 
 diff --git a/rust/kernel/wmi.rs b/rust/kernel/wmi.rs
-index f7fbde29177b..235c4a2cef6a 100644
+index 235c4a2cef6a..3cd5bed6066f 100644
 --- a/rust/kernel/wmi.rs
 +++ b/rust/kernel/wmi.rs
-@@ -8,15 +8,138 @@
-     bindings,
-     device,
-     device_id::RawDeviceId,
-+    driver,
-+    error,
-     prelude::*,
-     sync::aref::AlwaysRefCounted,
--    types::Opaque, //
-+    types::Opaque,
-+    ThisModule, //
+@@ -17,7 +17,9 @@
  };
  use core::{
      marker::PhantomData,
-     ptr::NonNull, //
+-    ptr::NonNull, //
++    ops::Deref,
++    ptr::NonNull,
++    slice, //
  };
  
-+/// Type alias for [`driver::Registration<Adapter<T>>`], the registration of
-+/// a WMI driver wrapping a [`struct wmi_driver`].
-+///
-+/// When this struct is dropped the driver will be unregistered.
-+///
-+/// [`struct wmi_driver`]: srctree/include/linux/wmi.h
-+pub type Registration<T> = driver::Registration<Adapter<T>>;
-+
-+/// WMI driver trait.
-+///
-+/// Drivers must implement this trait in order to register a WMI driver.
-+///
-+/// # Examples
-+///
-+/// ```
-+/// # use kernel::{device::Core, prelude::*, wmi};
-+/// struct MyDriver;
-+///
-+/// kernel::wmi_device_table!(
-+///     MY_DRIVER_WMI_TABLE,
-+///     [wmi::DeviceId::new(c"00000000-0000-0000-0000-000000000000")]
-+/// );
-+///
-+/// impl wmi::Driver for MyDriver {
-+///     type Data<'bound> = Self;
-+///     const ID_TABLE: wmi::IdTable = &MY_DRIVER_WMI_TABLE;
-+///
-+///     fn probe<'bound>(
-+///         _dev: &'bound wmi::Device<Core<'_>>,
-+///     ) -> impl PinInit<Self::Data<'bound>, Error> + 'bound {
-+///         Err(ENODEV)
-+///     }
-+/// }
-+/// ```
-+pub trait Driver {
-+    /// The type of the driver's bus device private data.
-+    type Data<'bound>: Send + 'bound;
-+    /// The table of WMI device IDs supported by the driver.
-+    const ID_TABLE: IdTable;
-+    /// The `probe` callback is called when the WMI driver is bound to a matching WMI device.
-+    /// Allocating driver-specific data structures and initializing interfaces to other kernel
-+    /// subsystems should normally be done in this function.
-+    fn probe<'bound>(
-+        dev: &'bound Device<device::Core<'_>>,
-+    ) -> impl PinInit<Self::Data<'bound>, Error> + 'bound;
-+}
-+
-+/// Adapter to allow [`Driver`] to be used with [`driver::Registration`].
-+pub struct Adapter<T: Driver>(T);
-+
-+// SAFETY:
-+// - `wmi_driver` is a C struct.
-+// - Since `T` is a driver, `T::Data` is by definition the type of its
-+//   device private data.
-+// - `wmi_driver` embeds a `device_driver` at offset `DEVICE_DRIVER_OFFSET`
-+//   as per `core::mem::offset_of!()`.
-+unsafe impl<T: Driver> driver::DriverLayout for Adapter<T> {
-+    type DriverType = bindings::wmi_driver;
-+    type DriverData<'bound> = T::Data<'bound>;
-+    const DEVICE_DRIVER_OFFSET: usize = core::mem::offset_of!(Self::DriverType, driver);
-+}
-+
-+// SAFETY: It's always valid to unregister a registered `wmi_driver`.
-+unsafe impl<T: Driver> driver::RegistrationOps for Adapter<T> {
-+    unsafe fn register(
-+        reg: &Opaque<Self::DriverType>,
-+        name: &'static CStr,
-+        module: &'static ThisModule,
-+    ) -> Result {
-+        // SAFETY:
-+        // - It's safe to set the fields of `wmi_driver` on initialization.
-+        // - All set fields meet the invariants of `wmi_driver`.
-+        unsafe {
-+            // SAFETY: `name` is valid for the static lifetime.
-+            (*reg.get()).driver.name = name.as_char_ptr();
-+            // SAFETY: This callback will only be called with a pointer to a `wmi_device`
-+            // valid for the lifetime of the callback.
-+            (*reg.get()).probe = Some(Self::probe_callback);
-+            // SAFETY: `T::ID_TABLE` is valid for the static lifetime.
-+            (*reg.get()).id_table = T::ID_TABLE.as_ptr();
-+            // Per the documentation, new WMI drivers should be allowed to be instantiated
-+            // multiple times (see `Documentation/wmi/driver-development-guide.rst`).
-+            (*reg.get()).no_singleton = true;
-+        }
-+
-+        // SAFETY: `reg` is a valid `wmi_driver`.
-+        error::to_result(unsafe { bindings::__wmi_driver_register(reg.get(), module.as_ptr()) })
-+    }
-+    unsafe fn unregister(wdrv: &Opaque<Self::DriverType>) {
-+        // SAFETY: `wdrv` is a valid `wmi_driver` previously registered with `register()`.
-+        unsafe { bindings::wmi_driver_unregister(wdrv.get()) };
-+    }
-+}
-+
-+impl<T: Driver> Adapter<T> {
-+    /// C wrapper for [`Driver::probe`] function to use it as a C function pointer.
-+    ///
-+    /// # Safety
-+    /// - The caller must ensure that `wdev` is a pointer to a `wmi_device` valid for
-+    ///   the lifetime of the callback.
-+    unsafe extern "C" fn probe_callback(
-+        wdev: *mut bindings::wmi_device,
-+        _context: *const c_void,
-+    ) -> c_int {
-+        // SAFETY:
-+        // - As per the safety requirement for the function, `wdev` is a pointer to a
-+        //   `struct wmi_device` valid for the lifetime of the callback.
-+        //   This is the definition of the Core and CoreInternal marker lifetime.
-+        // - `Device` is `#[repr(transparent)]` over `struct wmi_device`.
-+        let wdev = unsafe { &*wdev.cast::<Device<device::CoreInternal<'_>>>() };
-+        let data = T::probe(wdev);
-+        // As per the C driver subsystem documentation, the return type of a driver
-+        // probe callback is 0 on success or a kernel error code on failure.
-+        error::from_result(|| {
-+            wdev.as_ref().set_drvdata(data)?;
-+            Ok(0)
-+        })
-+    }
-+}
-+
- /// IdTable type for WMI drivers.
- pub type IdTable = &'static dyn crate::device_id::IdTable<DeviceId, ()>;
+ /// Type alias for [`driver::Registration<Adapter<T>>`], the registration of
+@@ -229,6 +231,11 @@ unsafe impl Send for Device<device::Normal> {}
+ // - All methods on `&device::Device<Normal>` are thread safe.
+ unsafe impl Sync for Device<device::Normal> {}
  
-@@ -140,7 +263,7 @@ impl<Ctx: device::DeviceContext> AsRef<device::Device<Ctx>> for Device<Ctx> {
++// SAFETY:
++// - As per `&Device<Normal>`, but `&Device<Bound>` also has the method `invoke_method()`,
++//   which wraps the internally synchronised `bindings::wmidev_invoke_method()`.
++unsafe impl Sync for Device<device::Bound> {}
++
+ // SAFETY:
+ // - By the type invariant, all instances of `Device` are reference-counted.
+ // - Increments to the reference count keep the object alive in memory at least
+@@ -258,6 +265,71 @@ fn as_raw(&self) -> *mut bindings::wmi_device {
+     }
+ }
+ 
++impl Device<device::Bound> {
++    /// Calls `wmidev_invoke_method`.
++    ///
++    /// # Examples
++    ///
++    /// ```
++    /// # use kernel::{device::Bound, prelude::*, wmi};
++    /// const METHOD_ID: u32 = 0xB105;
++    /// const METHOD_ARGS: [u8; 1] = [0];
++    /// fn method_returning_u32(wdev: &wmi::Device<Bound>) -> Result<u32> {
++    ///     let output: wmi::Buffer = wdev
++    ///         .invoke_method(0, METHOD_ID, &METHOD_ARGS, size_of::<u32>())?;
++    ///     let output_as_bytes: [u8; 4] = output
++    ///         .get(..size_of::<u32>())
++    ///         .and_then(|buf| buf.try_into().ok())
++    ///         .ok_or(ENODATA)?;
++    ///     let output_u32 = u32::from_le_bytes(output_as_bytes);
++    ///     dev_dbg!(wdev.as_ref(), "WMI output: {}\n", output_u32);
++    ///     Ok(output_u32)
++    /// }
++    /// ```
++    #[inline]
++    pub fn invoke_method(
++        &self,
++        instance: u8,
++        method_id: u32,
++        input: &[u8],
++        min_output_size: usize,
++    ) -> Result<Buffer> {
++        let mut out_buf = bindings::wmi_buffer::default();
++        let in_buf = bindings::wmi_buffer {
++            length: input.len(),
++            // NOTE1: Even if the input slice is empty, this will create a dangling pointer
++            // rather than a null pointer as Rust references are always non-null.
++            // NOTE2: The input parameter to wmidev_invoke_method is expected to be read-only,
++            // however, we cast to a mutable pointer here purely to meet the type definition of
++            // `wmi_buffer`.
++            data: input.as_ptr().cast_mut().cast::<c_void>(),
++        };
++        // SAFETY:
++        // - By type invariants, `self.as_raw()` points to a valid, live `wmi_device`.
++        // - `out_buf` and `in_buf` are pointers to valid, live `wmi_buffer`s.
++        // - `in_buf` contains a pointer to an allocation behind a Rust reference (which therefore
++        //   lives as long as this method call) with length less than or equal to the allocation
++        //   size, or contains a dangling pointer with length 0.
++        // - The allocation in `in_buf` will not be mutated - the C implementation declares the in
++        //   parameter as const.
++        let status = unsafe {
++            bindings::wmidev_invoke_method(
++                self.as_raw(),
++                instance,
++                method_id,
++                &raw const in_buf,
++                &raw mut out_buf,
++                min_output_size,
++            )
++        };
++        error::to_result(status)?;
++
++        // INVARIANT: `wmidev_invoke_method` was confirmed to succeed. On success
++        // it returns a `wmi_buffer` satisfying `Buffer`'s invariants, which we
++        // hand to the caller as the new owner.
++        Ok(Buffer(out_buf))
++    }
++}
+ impl<Ctx: device::DeviceContext> AsRef<device::Device<Ctx>> for Device<Ctx> {
+     #[inline]
      fn as_ref(&self) -> &device::Device<Ctx> {
-         // SAFETY:
-         // - By the type invariant on `Device<Ctx>`, `self.as_raw()` is a valid pointer to
--        //   a `wmi_device which embeds a `device`.
-+        //   a `wmi_device` which embeds a `device`.
-         // - If you have a reference to a `Device<Ctx>`, then the reference count must be
-         //   non-zero.
-         // - If you have a reference to a `Device<Ctx>`, it is either:
+@@ -274,3 +346,30 @@ fn as_ref(&self) -> &device::Device<Ctx> {
+         unsafe { device::Device::from_raw(&raw mut (*self.as_raw()).dev) }
+     }
+ }
++
++/// An owned, 8-byte aligned output buffer.
++///
++/// # Invariants
++/// - `self.0.data` is a pointer to an 8-byte aligned owned buffer of length
++///   at least `self.0.length` and freeable with `kfree()`.
++pub struct Buffer(bindings::wmi_buffer);
++impl Deref for Buffer {
++    type Target = [u8];
++    #[inline]
++    fn deref(&self) -> &[u8] {
++        if self.0.length == 0 {
++            return &[];
++        }
++        // SAFETY: By the type invariant, `self.0.length != 0` guarantees `self.0.data`
++        // points to an owned buffer of length at least `self.0.length`.
++        unsafe { slice::from_raw_parts(self.0.data.cast::<u8>(), self.0.length) }
++    }
++}
++impl Drop for Buffer {
++    #[inline]
++    fn drop(&mut self) {
++        // SAFETY: By the type invariant, `self.0.data` is exclusively owned and
++        // freeable with `kfree()`.
++        unsafe { bindings::kfree(self.0.data) };
++    }
++}
 
 -- 
 2.56.1
