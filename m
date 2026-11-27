@@ -1,83 +1,86 @@
+From: Nick Dowsett <nick42d@gmail.com>
+Subject: [PATCH v2 0/4] rust: wmi: add ACPI WMI bus abstractions
+Date: Fri, 27 Nov 2026 19:02:48 +0800
+Message-Id: <20261127-rust-wmi-v2-0-5bfafabd6a6e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-ktls-net-v1-1-a047fdb54612@certik.com>
-X-B4-Tracking: v=1; b=H4sIAK5fCWsC/yWMywrCMBAAf6Xs2QU3Fl+/Ij0k6cZGy0ayUYTSf
- 2+ixxmGWUA5R1a4dgtk/kSNSSrQrgM/WbkzxrEymL05EpkTPsusKFzQBHs4E4eezAVq/soc4ve
- 3ukENYPhLfbsH+9ImLXNWGV224qemlGUsKc3YPKzrBuQy0KCRAAAA
-X-Change-ID: 20261127-ktls-net-2fa381ef4129
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 08:47:22 +0000
-Subject: [PATCH net] tls: rx: fix skb extension reference leak
-To: netdev@vger.kernel.org
-Cc: John Fastabend <john.fastabend@gmail.com>, 
- Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Willem de Bruijn <willemb@google.com>, 
- Simon Horman <horms@kernel.org>, security@kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795776430; l=2316;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=ZT9LWyJjTuc2AU4pnEhY6CiCH+8k4KmgqGBYXiphoUY=;
- b=KGxIvDDLwpFRYgdm+3LyKKsEUxfv3yV3taUjwPxDtsXdp7ZF5+eevhRkvnDYsDqwkUZ43NP7c
- orcFTUu/RXdDdqib2VXMKu6M81n/keFbTbRmjonCNqDb6qqroK5mupn
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/0WNQQ6CMBBFr0Jm7Zi2miKuvIdhAWWAMUJNC1VDe
+ ncLmrh8yfvvL+DJMXk4Zws4CuzZjgnULgPTV2NHyE1iUEJpKWWBbvYTPgdGo2tBoqUir3JI+sN
+ Ry68tdS2/7Of6RmZa96vRs5+se29fQa7eL6vUPxskCtSH9NUUdFJHc+mGiu97YwcoY4wfTeZ9x
+ LIAAAA=
+X-Change-ID: 20261119-rust-wmi-c6b0e0fe97a7
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Armin Wolf <W_Armin@gmx.de>
+Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
+ platform-driver-x86@vger.kernel.org, Nick Dowsett <nick42d@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795777382; l=1961;
+ i=nick42d@gmail.com; s=20261127; h=from:subject:message-id;
+ bh=2hHid/ofHgHaK/BRgZmTbjHrJRvc3ibg8IsjVO6o5mU=;
+ b=we5Lhv6/SyTPqkxY8A/SFnFWWN39viazN8AGD7NdJHpuSB9asmpVsgDK1Fn6I6nSVw274UQPC
+ KXtoUgJ5TXvCbWJAW6YP0g+ALk/Siodj3BHofe9zbEdZJxgU1D53IIs
+X-Developer-Key: i=nick42d@gmail.com; a=ed25519;
+ pk=rewGRrQm8GTjt8ii+wLiI2tUWP5gtTF4pntVEMNXrj8=
+X-Endpoint-Received: by B4 Relay for nick42d@gmail.com/20261127 with auth_id=1660
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tls_strp_load_anchor_with_queue() reuses strp->anchor for every record
-and calls skb_copy_header() to copy the header of the first queued skb
-onto it. skb_copy_header() goes through __copy_skb_header(), which uses
-__skb_ext_copy(): it takes a reference on the source skb's extensions
-and overwrites the anchor's extension pointer without dropping the
-reference the anchor already held. When the received skbs carry
-extensions, for example TC_SKB_EXT set by tc or SKB_EXT_BRIDGE_NF set
-by br_netfilter, every reload of the anchor leaks one skb_ext.
+Hi there; new to the LKML here, long time Rustacean and Linux user.
 
-skbuff_ext_cache is not charged to the memory cgroup, so the leaked
-objects also escape memcg limits.
+I have implemented this series to add an MVP of Rust abstractions for the
+WMI subsystem (`include/linux/wmi.h`) with the bare-minimum
+implemented to support an in-tree user, a Clevo laptop keyboard
+backlight driver [1].
 
-Drop the anchor's extensions with skb_ext_reset() before copying the
-new header.
+Note the driver has two other dependencies: Markus Probst's LED
+classdev abstractions and basic DMI matching abstractions.
 
-Fixes: 84c61fe1a75b ("tls: rx: do not use the standard strparser")
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+[1] https://lore.kernel.org/all/20261122-clevo-laptop-v1-0-881debf4d4b0@gmail.com/
+
+This was not directly influenced by Ilya Gladyshev's previous attempt as
+I was not aware of it, the key difference here is that I have used the
+newer buffer-based interface (no `acpi_object`), and implemented less of
+the callbacks initially.
+
+What's covered is driver probe, registration and unregistration, device
+id table, and a safe implementation of `wmidev_invoke_method` that
+returns an owned RAII buffer.
+
 ---
-Tested on x86_64 UML with KASAN and kmemleak at v7.4-rc4:
-- kTLS RX receiving 5,000 one-byte records whose skbs carried
-  TC_SKB_EXT (tc flower in a user namespace) or SKB_EXT_BRIDGE_NF
-  (bridge with br_netfilter): skbuff_ext_cache grew by exactly 5,000
-  objects and kmemleak reported 4,900 to 4,978 unreferenced objects
-  from __skb_ext_alloc. With the fix: no growth and no reports. With the
-  fix reverted: 5,000 again.
-- The same kTLS traffic without extensions, and plain TCP with
-  extensions: no leak before or after the fix.
-- On v6.1.193 (bridge path, run from a user namespace) kmemleak
-  reported 3,038 leaked skb_ext objects before the fix and none after.
-  The patch applies unchanged to 6.1.y, 6.6.y, 6.12.y and 6.18.y.
+Changes in v2:
+- Add inline annotations (Sashiko)
+- Add / standardise `// INVARIANT:` documentation (Sashiko).
+- Additional comments documenting device construction state, expand
+  abbreviation in module documentation, and fix typos.
+- Rebased onto v7.4-rc4.
+- Link to v1: https://patch.msgid.link/20261122-rust-wmi-v1-0-63111d9e824c@gmail.com
 
-A reproducer is available if it helps.
+---
+Nick Dowsett (4):
+      rust: wmi: add basic WMI device abstraction
+      rust: wmi: add DeviceId and wmi_device_table! macro
+      rust: wmi: add Driver trait, Adapter and implement RegistrationOps
+      rust: wmi: add Buffer and Device::invoke_method()
 
-This was found and the fix prepared with AI coding tools (OpenAI Codex
-agents, with review by Claude). I went over the analysis and the patch
-before signing off.
+ MAINTAINERS                     |   1 +
+ rust/bindings/bindings_helper.h |   1 +
+ rust/kernel/lib.rs              |   2 +
+ rust/kernel/wmi.rs              | 375 ++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 379 insertions(+)
+---
+base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
+change-id: 20261119-rust-wmi-c6b0e0fe97a7
 
- net/tls/tls_strp.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/net/tls/tls_strp.c b/net/tls/tls_strp.c
-index 53d3256d0..8ad7f339d 100644
---- a/net/tls/tls_strp.c
-+++ b/net/tls/tls_strp.c
-@@ -475,6 +475,7 @@ static void tls_strp_load_anchor_with_queue(struct tls_strparser *strp, int len)
- 
- 	skb_shinfo(strp->anchor)->frag_list = first;
- 
-+	skb_ext_reset(strp->anchor);
- 	skb_copy_header(strp->anchor, first);
- 	strp->anchor->destructor = NULL;
- 
--- 
-2.43.0
+Best regards,
+--  
+Nick Dowsett <nick42d@gmail.com>
 
