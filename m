@@ -1,70 +1,101 @@
-From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Fri, 27 Nov 2026 21:32:25 +0800
-Subject: [PATCH RESEND v4 3/3] pwm: loongson: Use field helpers for period
- validation
+From: Rongen Wang <security@nitrohex.com>
+Subject: [PATCH v2 0/2] scsi: target: iscsi: Fix adding a connection to a
+ session that is going away
+Date: Fri, 27 Nov 2026 22:52:17 +0900
+Message-Id: <20261127-b4-lio-iscsi-session-closing-v2-0-a3ac8e88cbad@nitrohex.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-pwm-loongson-fix-v4-3-607f325b74d4@gmail.com>
-References: <20261127-pwm-loongson-fix-v4-0-607f325b74d4@gmail.com>
-In-Reply-To: <20261127-pwm-loongson-fix-v4-0-607f325b74d4@gmail.com>
-To: Binbin Zhou <zhoubinbin@loongson.cn>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>
-Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- "Imported from f20260920-pwm-loongson-fix-v4-0-41b36b3c6497"@gmail.com, 
- Keguang Zhang <keguang.zhang@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795786349; l=1574;
- i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=dw6b52g9dClE8N8lKTN5RhDZ6+WGuUSpcSRiL+WUkiM=;
- b=HjhaJuQ2+PE91tNSjPT0IAc9Lb7ik2E4CZ4uOg3zWjd6Djh2DPbTdfoFpMh92oXetLYhe0quc
- dvWhxRcrWqRA2szbzXX7Q9DZJYuz0qQ5ia3g4/ipH/TCriDim+e6FLd
-X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
- pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
-X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
+X-B4-Tracking: v=1; b=H4sIABGLCWsC/42NQQ6CMBBFr0K6dgxtgKor72FY0DKFMdiSDhIM4
+ e5SvIDLl7z//ioYIyGLW7aKiDMxBb+DOmXC9o3vEKjdWahcVVIqDaaAgQIQWyZg5DQAOwQm30G
+ lXVGWOr8WFsWeGCM6Wo78o/4xv80T7ZSayeiJpxA/x/8sk/fn1SxBgm2dMsagu+jm7mmKocflb
+ MNL1Nu2fQGBSs483QAAAA==
+X-Change-ID: 20261127-b4-lio-iscsi-session-closing-67f4557094ce
+To: "Martin K. Petersen" <mkp@kernel.org>
+Cc: linux-scsi@vger.kernel.org, target-devel@vger.kernel.org, 
+ stable@vger.kernel.org, Rongen Wang <security@nitrohex.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795787544; l=3684;
+ i=security@nitrohex.com; s=nitrohex; h=from:subject:message-id;
+ bh=FJxkAExIpijc1W5AmHMxIwSKUeapmDr1hiW+kDfw7Xo=;
+ b=DV/GYPuyLxRQ3MobJp3vc/xrY846H6W3PatC7Hp34WPr0ABGiKxeLir4vc/aq1zPCTDzmZnVa
+ exQ2xoPdVWJD2n5/+FgFV/5tHPoBNVfFeAOSqo/eRUS5Isw5A8OMxVM
+X-Developer-Key: i=security@nitrohex.com; a=ed25519;
+ pk=Jk5NuTVJdxr1CTP4RuYaG31zSgsNlyFzVo9sphZTqt0=
+X-Endpoint-Received: by B4 Relay for security@nitrohex.com/nitrohex with auth_id=1652
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use FIELD_FIT() to validate the calculated period value and FIELD_MAX()
-to get the maximum value allowed by the 32-bit period field.
+A Login Request with a non-zero TSIH can complete after the session it
+joins has lost its last connection. Patch 1 makes
+iscsi_post_login_handler() refuse such a login when the session is
+being closed or its Time2Retain timer has expired. Patch 2 keeps the
+Time2Retain handler from expiring a session while such a login holds
+it; without patch 2 the session that patch 1 refuses to join is never
+freed.
 
-Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
+Based on mkp/scsi.git 7.4/scsi-fixes (4be084ac36f9). Patch 2 changes
+iscsit_time2retain_work() from b30d7199af28 ("scsi: target: iscsi: Run
+the Time2Retain handler in process context"), which is in that tree and
+marked for stable. Patch 1 also applies to mainline 9437ee8b6cf6.
+
+Tested on that tree under QEMU, iSCSI/TCP, with KASAN and again with
+KASAN plus PROVE_LOCKING, DEBUG_ATOMIC_SLEEP and DEBUG_OBJECTS_TIMERS /
+DEBUG_OBJECTS_WORK:
+
+- Last connection reset while a TSIH != 0 login is parked (the v1
+  case): the login is refused, no report.
+- DefaultTime2Retain=2, last connection logged out with CLOSE_CONNECTION
+  while a TSIH != 0 login is parked, login finished after the timer ran
+  out: the login continues the session, I/O works, and the session is
+  freed when that connection is reset or logs out. Without the series,
+  and with v1, the connection joins the half closed session and its
+  logout gives the KASAN report quoted in patch 1. With patch 1 alone
+  the login is refused and the session stays allocated.
+- The same with DefaultTime2Retain=1 and the final Login PDU sent
+  0.6 s to 1.4 s after the logout, 40 rounds: every login continues its
+  session, no session is left allocated, no report. With v1, 14 of the
+  16 rounds that ran into the expiry gave KASAN reports; with patch 1
+  alone 17 sessions were left allocated.
+- MaxConnections=2: adding a connection to a live session, I/O on both,
+  logouts, a fresh login, and session continuation after a
+  CLOSE_CONNECTION logout still work.
+- NodeACL removed while a TSIH != 0 login is parked: no report.
+
+The refusal path in __iscsi_target_login_thread() (login completed by
+its first PDU) was not reached by these tests; iSER and cxgbit were not
+tested. No W=1 warnings in drivers/target/iscsi/, checkpatch clean.
+
+Reproducers for both cases go to the maintainer privately and are not
+posted here.
+
 ---
- drivers/pwm/pwm-loongson.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+Changes in v2:
+- Patch 1: also refuse the login when the Time2Retain timer has
+  expired, check under se_tpg->session_lock and sess->conn_lock like
+  the session lookups do, and stop the timer before session_lock is
+  dropped (Sashiko review)
+- Patch 1: take over the session parameters and release
+  conn->param_list only after the check (Sashiko review)
+- New patch 2: do not let Time2Retain expire a session while a login
+  holds a usage count
+- Sashiko review of v1: https://sashiko.dev/#/patchset/20261127-b4-lio-iscsi-session-closing-v1-1-cdf2bbbef87a@nitrohex.com
+- Link to v1: https://patch.msgid.link/20261127-b4-lio-iscsi-session-closing-v1-1-cdf2bbbef87a@nitrohex.com
 
-diff --git a/drivers/pwm/pwm-loongson.c b/drivers/pwm/pwm-loongson.c
-index 6f609fd0b90b..33367c7473a3 100644
---- a/drivers/pwm/pwm-loongson.c
-+++ b/drivers/pwm/pwm-loongson.c
-@@ -22,6 +22,7 @@
-  */
- 
- #include <linux/acpi.h>
-+#include <linux/bitfield.h>
- #include <linux/clk.h>
- #include <linux/device.h>
- #include <linux/init.h>
-@@ -37,6 +38,8 @@
- #define LOONGSON_PWM_REG_PERIOD		0x8 /* Pulse Period Buffer Register */
- #define LOONGSON_PWM_REG_CTRL		0xc /* Control Register */
- 
-+#define LOONGSON_PWM_PERIOD_MASK	GENMASK(31, 0)
-+
- /* Control register bits */
- #define LOONGSON_PWM_CTRL_REG_EN	BIT(0)  /* Counter Enable Bit */
- #define LOONGSON_PWM_CTRL_REG_OE	BIT(3)  /* Pulse Output Enable Control Bit, Valid Low */
-@@ -133,8 +136,8 @@ static int pwm_loongson_config(struct pwm_chip *chip, struct pwm_device *pwm,
- 
- 	/* period = period_ns * ddata->clk_rate / NSEC_PER_SEC */
- 	period = mul_u64_u64_div_u64(period_ns, ddata->clk_rate, NSEC_PER_SEC);
--	if (period > U32_MAX)
--		period = U32_MAX;
-+	if (!FIELD_FIT(LOONGSON_PWM_PERIOD_MASK, period))
-+		period = FIELD_MAX(LOONGSON_PWM_PERIOD_MASK);
- 
- 	/* duty = duty_ns * ddata->clk_rate / NSEC_PER_SEC */
- 	duty = mul_u64_u64_div_u64_roundup(duty_ns, ddata->clk_rate, NSEC_PER_SEC);
+---
+Rongen Wang (2):
+      scsi: target: iscsi: Refuse to add a connection to a session being closed
+      scsi: target: iscsi: Do not let Time2Retain expire a session in use
 
--- 
-2.53.0
+ drivers/target/iscsi/iscsi_target_erl0.c  |  21 ++++++
+ drivers/target/iscsi/iscsi_target_login.c | 117 ++++++++++++++++++++++++------
+ drivers/target/iscsi/iscsi_target_login.h |   4 +-
+ drivers/target/iscsi/iscsi_target_nego.c  |   5 +-
+ 4 files changed, 121 insertions(+), 26 deletions(-)
+---
+base-commit: 4be084ac36f95f95e21a1e39207e87326967a73d
+change-id: 20261127-b4-lio-iscsi-session-closing-67f4557094ce
+
+Best regards,
+--  
+Rongen Wang <security@nitrohex.com>
 
