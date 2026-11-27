@@ -1,121 +1,90 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 05:35:37 +0000
-Subject: [PATCH 6.6.y] ALSA: seq: Don't leak the extension cell pointer in
- the bounce payload
+Date: Fri, 27 Nov 2026 06:22:13 +0000
+Subject: [PATCH 5.10.y] binfmt_misc: restore write access before closing
+ files opened by open_exec()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-so5-alsa-66-v1-1-e6baeea4106a@certik.com>
-X-B4-Tracking: v=1; b=H4sIAKgWCWsC/02NSw7CMAxEr1J5jQsJJQiugljk41KjKqnigkBV7
- 04CG5bzNPNmAaHMJHBuFsj0ZOEUS1CbBvxg442QQ8mgd9oopY8o6YB2FIvGIPWOgjrtfUcdlMW
- UqefX13YB05r2Ddcfloe7k5+rqRadFUKXbfRDRUIxzCmNWPn27wHW9QPWIRLiogAAAA==
-X-Change-ID: 20261127-so5-alsa-66-efbed193c4e4
+Message-Id: <20261127-so5-binfmt-510-v1-1-c62790b381f0@certik.com>
+X-B4-Tracking: v=1; b=H4sIAJQhCWsC/1WNwQ7CIBBEf6XZs1sBi1p/xXgoZWvXKBi2Gk3Tf
+ xf05HFeZt7MIJSYBA7VDImeLBxDDnpVQT924UzIPmcwymy1NjuUaNFxGG4TWq1w8M76trF702w
+ gj+6JBn59hUewtVb1G04/Lg93oX4qttJ0nRC61IV+LEgo+CnGKxa+/n+BZfkA78i26qkAAAA=
+X-Change-ID: 20261127-so5-binfmt-510-fdb5d9458243
 To: stable@vger.kernel.org
-Cc: HyeongJun An <sammiee5311@gmail.com>, Takashi Iwai <tiwai@suse.de>, 
- linux-sound@vger.kernel.org
+Cc: Zilin Guan <zilin@seu.edu.cn>, Christian Brauner <brauner@kernel.org>, 
+ linux-fsdevel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795757736; l=4003;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795760532; l=2237;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=nGJ91NaFovr+BISLWd06H/MX3/Mv38Fa6V8EKicAbJ4=;
- b=ZlYd1JYkTfkU4c4meREjx9iDEgpue9uA7XF0TuuIpDNQqouvJ9FY8KlhMqzT3mr0baCEvwwUT
- xswXe7PBP8ADbGbuuSQBvqgKWCS3TzxPWNTf6kuDYeuqNpd/l9m3lX+
+ bh=WGqX07O3Yi7vqeSiFE0eOykUyKkDkZfXWYalnmxLXzM=;
+ b=WXem5htlu0I1lz4Nrw5iKOXToGaWW7MuGffZBYGS7Q5dm/kTDOemaNJ+BtprgQxvAdkwRksYn
+ wofqhZAox0tD5Atsd+7yEfOYo4xBxt8E4lRIKo9YEL3o2mxbVRv3eGZ
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: HyeongJun An <sammiee5311@gmail.com>
+From: Zilin Guan <zilin@seu.edu.cn>
 
-commit 59e1592d3c270ff4642d5d6dc55c545306eb0693 upstream.
+commit 90f601b497d76f40fa66795c3ecf625b6aced9fd upstream.
 
-The bounce_error_event() embeds the failed event in the bounce payload
-by pointing data.ext.ptr at it.  When that event is a queued
-variable-length event, its own data.ext.ptr holds the address of its
-first extension cell, put there by snd_seq_event_dup().  The payload
-goes out verbatim through snd_seq_expand_var_event(), so the address
-reaches userspace.
+bm_register_write() opens an executable file using open_exec(), which
+internally calls do_open_execat() and denies write access on the file to
+avoid modification while it is being executed.
 
-That is the same address commit 705dd6dcbc0e ("ALSA: seq: Clear
-variable event pointer on read") removed from the event header.  The
-read path still clears it there, just above the call that expands the
-payload.
+However, when an error occurs, bm_register_write() closes the file using
+filp_close() directly. This does not restore the write permission, which
+may cause subsequent write operations on the same file to fail.
 
-Embed a sanitised copy instead, treated exactly as snd_seq_read()
-treats the header.  A stack copy is enough because delivery is
-synchronous and snd_seq_event_dup() copies before returning.
+Fix this by calling exe_file_allow_write_access() before filp_close() to
+restore the write permission properly.
 
-An unprivileged client reaches this by setting SNDRV_SEQ_FILTER_BOUNCE,
-queueing a variable-length event to a port that does not exist and
-reading the bounce back.  Eight bytes on 64-bit, from its own pool.
-
-Fixes: efc86691e4d8 ("ALSA: seq: Fix kernel heap address leak in bounce_error_event()")
-Assisted-by: Claude:claude-opus-5
-Signed-off-by: HyeongJun An <sammiee5311@gmail.com>
-Link: https://patch.msgid.link/20260811131835.3837024-1-sammiee5311@gmail.com
-Signed-off-by: Takashi Iwai <tiwai@suse.de>
+Fixes: e7850f4d844e ("binfmt_misc: fix possible deadlock in bm_register_write")
+Signed-off-by: Zilin Guan <zilin@seu.edu.cn>
+Link: https://patch.msgid.link/20251105022923.1813587-1-zilin@seu.edu.cn
+Signed-off-by: Christian Brauner <brauner@kernel.org>
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
-6.1.y, 6.12.y and newer already have this fix.
+5.15.y and newer already have this fix.
 
-Tested on v6.6.163:
-- x86_64 allmodconfig W=1 build of sound/core/seq/seq_clientmgr.o,
-  base vs patched, no new warnings
-- booted the patched kernel under QEMU/KVM with snd-seq-dummy, passed a
-  note between two ports and checked the error bounce for a rejected
-  fixed-length event. I didn't run a variable-length bounce.
+Tested on v5.10.275:
+- x86_64 allmodconfig W=1 build of fs/binfmt_misc.o, base vs patched,
+  no new warnings
+- under QEMU/KVM: an F-flag registration with a non-executable or
+  missing interpreter is rejected and the interpreter can be opened
+  for writing afterwards, and a normal F-flag handler registers and
+  removes cleanly. I didn't reach the error exit after open_exec().
 
 The backport and the test runs were prepared with AI coding tools
 (OpenAI Codex agents, with review by Claude). I went over the result
 before signing off.
 
-sound/core/seq/seq_clientmgr.c | 16 ++++++++++------
- 1 file changed, 10 insertions(+), 6 deletions(-)
+fs/binfmt_misc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 ---
- sound/core/seq/seq_clientmgr.c | 16 ++++++++++------
- 1 file changed, 10 insertions(+), 6 deletions(-)
+ fs/binfmt_misc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/sound/core/seq/seq_clientmgr.c b/sound/core/seq/seq_clientmgr.c
-index f039fd6ee3a7..de17b66cd16b 100644
---- a/sound/core/seq/seq_clientmgr.c
-+++ b/sound/core/seq/seq_clientmgr.c
-@@ -578,7 +578,7 @@ static int bounce_error_event(struct snd_seq_client *client,
- 			      struct snd_seq_event *event,
- 			      int err, int atomic, int hop)
- {
--	struct snd_seq_event bounce_ev;
-+	struct snd_seq_event bounce_ev, quoted;
- 	int result;
+diff --git a/fs/binfmt_misc.c b/fs/binfmt_misc.c
+index ab14522dcd5b..ce6b5ab4bb84 100644
+--- a/fs/binfmt_misc.c
++++ b/fs/binfmt_misc.c
+@@ -827,8 +827,10 @@ static ssize_t bm_register_write(struct file *file, const char __user *buffer,
+ 	inode_unlock(d_inode(root));
  
- 	if (client == NULL ||
-@@ -594,15 +594,19 @@ static int bounce_error_event(struct snd_seq_client *client,
- 		 * For user clients, send SNDRV_SEQ_EVENT_BOUNCE with the
- 		 * original event embedded as variable-length data.  This
- 		 * avoids exposing data.quote.event (a kernel pointer) to
--		 * userspace.  The variable-length path in snd_seq_event_dup()
--		 * copies the event data from data.ext.ptr into chained cells,
--		 * and snd_seq_expand_var_event() copies only the data content
--		 * -- never the pointer -- to userspace.
-+		 * userspace.  Sanitise the embedded copy too - a queued
-+		 * variable-length event carries the address of its own
-+		 * extension cell, and the payload goes out verbatim.
- 		 */
-+		quoted = *event;
-+		if (snd_seq_ev_is_variable(&quoted)) {
-+			quoted.data.ext.len &= ~SNDRV_SEQ_EXT_MASK;
-+			quoted.data.ext.ptr = NULL;
+ 	if (err) {
+-		if (f)
++		if (f) {
++			exe_file_allow_write_access(f);
+ 			filp_close(f, NULL);
 +		}
- 		bounce_ev.type = SNDRV_SEQ_EVENT_BOUNCE;
- 		bounce_ev.flags = SNDRV_SEQ_EVENT_LENGTH_VARIABLE;
- 		bounce_ev.data.ext.len = sizeof(struct snd_seq_event);
--		bounce_ev.data.ext.ptr = (char *)event;
-+		bounce_ev.data.ext.ptr = (char *)&quoted;
- 	} else {
- 		/*
- 		 * For kernel clients, quote the event pointer directly.
+ 		kfree(e);
+ 		return err;
+ 	}
 
 ---
-base-commit: e2bb30811e063ce0db964484357973b855b06572
-change-id: 20261127-so5-alsa-66-efbed193c4e4
+base-commit: 99112ea818e35b606397c84fbc05e6fadb6ea162
+change-id: 20261127-so5-binfmt-510-fdb5d9458243
 
 Best regards,
 --  
