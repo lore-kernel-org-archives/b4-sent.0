@@ -1,11 +1,11 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Fri, 27 Nov 2026 16:27:05 +0100
-Subject: [PATCH v5 04/12] phy: amlogic: rename Meson8 HDMI TX PHY driver to
- be SoC-generic
+Date: Fri, 27 Nov 2026 16:27:06 +0100
+Subject: [PATCH v5 05/12] phy: amlogic: meson-hdmi-tx: Add GXBB, GXL, GXM
+ and G12A support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-meson-drm-create-hdmitx-phy-v5-4-88c43eb95468@aliel.fr>
+Message-Id: <20261127-meson-drm-create-hdmitx-phy-v5-5-88c43eb95468@aliel.fr>
 References: <20261127-meson-drm-create-hdmitx-phy-v5-0-88c43eb95468@aliel.fr>
 In-Reply-To: <20261127-meson-drm-create-hdmitx-phy-v5-0-88c43eb95468@aliel.fr>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -23,221 +23,510 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-phy@lists.infradead.org, dri-devel@lists.freedesktop.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>, linux-pm@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7248;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=16124;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=+Sa3VAnyG7mxwHscfV5CH9pZg3lPumtOGpHuVXBmS/s=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQzbnwt5Xj6Wd3k9onfpsRdnRCCPpnnW/HmjKPD90eolYd
- 5uxzR+VjlIWBjEuBlkxRZb+uZYn3l0+eubrHvUUmDmsTCBDGLg4BWAiTv8Z/odJNgW9vOv6aJ3G
- 83mrjEsrFwq/6Jkd/vbhwVn7E4+sqlrPyPBk65wnz87aNnB23V2+7uAkueadGtN3qiZ8sEjdmrl
- v9jNWAA==
+ bh=NTBs97DfwG0vi9rOD5s28+413MIcEak0TE0xF2PdIi0=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQzbnwn4O/Umn15S81tm86OvJwMS7rw4+mfjt1eZ/EtO7m
+ J73Pv1+uaOUhUGMi0FWTJGlf67liXeXj575ukc9BWYOKxPIEAYuTgGYSO1mRoZjHsLyOe8+Mge9
+ MN6wfOm+6Yuu2b7iL7wv5TBt25MF9077MDL8mC16cYa18vnXXp3MSzfsW35w5m9BPr55P/lneYr
+ 8PGDLDwA=
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HDMI TX PHY driver is currently named after the Meson8 family
-(Meson8, Meson8b and Meson8m2), but the same IP block is found, with
-SoC-specific register programming, on the newer GXBB, GXL, GXM and
-G12A SoCs.
+Extend the Meson8 HDMI TX PHY driver  for the HDMI TX PHY found on
+Amlogic GXBB, GXL, GXM and G12A SoCs. The PHY is controlled through
+the HHI_HDMI_PHY_CNTL0..5 registers of the same HHI system controller,
+but differ in the analog settings, in the CNTL1 enable bits
+(FIFO enable and FIFO write enable on GXBB and newer) and in the
+presence of CNTL3 to CNTL5. The PHY node is a child of the HHI syscon,
+so the regmap is still obtained from the parent syscon.
 
-In preparation for adding support for these SoCs, make the driver
-generic:
+To support this, move the Meson8 hardcoded values into per-SoC match
+data (register init values, rate table and maximum TMDS character
+rate). The TMDS clock is now only requested on Meson8, the only SoC
+where it is needed.
 
- - rename phy-meson8-hdmi-tx.c to phy-meson-hdmi-tx.c
- - rename the Kconfig symbol PHY_MESON8_HDMI_TX to PHY_MESON_HDMI_TX
-   and update the Makefile accordingly
- - drop the "(ARCH_MESON && ARM)" dependency in favour of
-   "ARCH_MESON", since the driver is no longer ARM32-only, and
-   select GENERIC_PHY
- - rename the phy_meson8_hdmi_tx_* symbols to meson_hdmi_phy_*
- - update the platform driver name, the Kconfig help text and the
-   module description
- - drop the unused <linux/property.h> include
+The driver now implements the generic PHY HDMI configuration options:
+.validate() accepts only 8 bpc and a TMDS character rate covered by
+the per-SoC table, .configure() programs the analog settings matching
+that rate, and .power_on()/.power_off() handle the reset sequence and
+the return to the initial state. The Meson8 behaviour is preserved,
+except that the analog settings are now programmed from .configure()
+instead of .power_on(), and that the reset sequence uses
+read-modify-write updates of the CNTL1 enable bits.
 
-No functional change intended: the only supported compatible remains
-"amlogic,meson8-hdmi-tx-phy".
+The per-SoC register values and rate thresholds for GXBB and newer are
+taken from the existing HDMI TX code in meson_dw_hdmi.c, so that the
+PHY handling can be moved out of the display driver.
+
+For DTs that do not provide a "phys" property on the HDMI TX node,
+export meson_hdmi_phy_create_legacy() so that the display driver can
+still create the PHY itself. It is marked as deprecated and will be
+removed together with the fallback in meson_dw_hdmi.c.
 
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- drivers/phy/amlogic/Kconfig                        |  9 ++--
- drivers/phy/amlogic/Makefile                       |  2 +-
- .../{phy-meson8-hdmi-tx.c => phy-meson-hdmi-tx.c}  | 54 +++++++++++-----------
- 3 files changed, 33 insertions(+), 32 deletions(-)
+ drivers/phy/amlogic/phy-meson-hdmi-tx.c | 341 ++++++++++++++++++++++++++------
+ include/linux/phy/phy-meson-hdmi-tx.h   |  19 ++
+ 2 files changed, 305 insertions(+), 55 deletions(-)
 
-diff --git a/drivers/phy/amlogic/Kconfig b/drivers/phy/amlogic/Kconfig
-index ce7ba3eb2a8e..294996869e83 100644
---- a/drivers/phy/amlogic/Kconfig
-+++ b/drivers/phy/amlogic/Kconfig
-@@ -2,14 +2,15 @@
- #
- # Phy drivers for Amlogic platforms
- #
--config PHY_MESON8_HDMI_TX
--	tristate "Meson8, Meson8b and Meson8m2 HDMI TX PHY driver"
--	depends on (ARCH_MESON && ARM) || COMPILE_TEST
-+config PHY_MESON_HDMI_TX
-+	tristate "Meson HDMI TX PHY driver"
-+	depends on ARCH_MESON || COMPILE_TEST
- 	depends on OF
-+	select GENERIC_PHY
- 	select MFD_SYSCON
- 	help
- 	  Enable this to support the HDMI TX PHYs found in Meson8,
--	  Meson8b and Meson8m2 SoCs.
-+	  Meson8b, Meson8m2, GXBB, GXL, GXM and G12A SoCs.
- 	  If unsure, say N.
- 
- config PHY_MESON8B_USB2
-diff --git a/drivers/phy/amlogic/Makefile b/drivers/phy/amlogic/Makefile
-index 91e3b9790c03..2611ec8a056d 100644
---- a/drivers/phy/amlogic/Makefile
-+++ b/drivers/phy/amlogic/Makefile
-@@ -1,5 +1,5 @@
- # SPDX-License-Identifier: GPL-2.0-only
--obj-$(CONFIG_PHY_MESON8_HDMI_TX)		+= phy-meson8-hdmi-tx.o
-+obj-$(CONFIG_PHY_MESON_HDMI_TX)			+= phy-meson-hdmi-tx.o
- obj-$(CONFIG_PHY_MESON8B_USB2)			+= phy-meson8b-usb2.o
- obj-$(CONFIG_PHY_MESON_GXL_USB2)		+= phy-meson-gxl-usb2.o
- obj-$(CONFIG_PHY_MESON_G12A_USB2)		+= phy-meson-g12a-usb2.o
-diff --git a/drivers/phy/amlogic/phy-meson8-hdmi-tx.c b/drivers/phy/amlogic/phy-meson-hdmi-tx.c
-similarity index 68%
-rename from drivers/phy/amlogic/phy-meson8-hdmi-tx.c
-rename to drivers/phy/amlogic/phy-meson-hdmi-tx.c
-index f6b5df74a58f..e4e606ab4eef 100644
---- a/drivers/phy/amlogic/phy-meson8-hdmi-tx.c
+diff --git a/drivers/phy/amlogic/phy-meson-hdmi-tx.c b/drivers/phy/amlogic/phy-meson-hdmi-tx.c
+index e4e606ab4eef..158b13e26a55 100644
+--- a/drivers/phy/amlogic/phy-meson-hdmi-tx.c
 +++ b/drivers/phy/amlogic/phy-meson-hdmi-tx.c
-@@ -1,6 +1,7 @@
+@@ -1,18 +1,27 @@
  // SPDX-License-Identifier: GPL-2.0+
  /*
-- * Meson8, Meson8b and Meson8m2 HDMI TX PHY.
-+ * Amlogic Meson HDMI TX PHY driver
-+ * (Meson8/8b/8m2)
+  * Amlogic Meson HDMI TX PHY driver
+- * (Meson8/8b/8m2)
++ * (Meson8/8b/8m2, GXBB / GXL / GXM / G12A)
   *
   * Copyright (C) 2021 Martin Blumenstingl <martin.blumenstingl@googlemail.com>
++ * Copyright (C) 2026 Ronald Claveau <linux-kernel-dev@aliel.fr>
++ *
++ * GXBB+ support Based on meson_dw_hdmi.c:
++ * Copyright (C) 2016 BayLibre, SAS
++ * Author: Neil Armstrong <narmstrong@baylibre.com>
++ * Copyright (C) 2015 Amlogic, Inc. All rights reserved.
   */
-@@ -13,7 +14,6 @@
+ 
+ #include <linux/bitfield.h>
+ #include <linux/bits.h>
+ #include <linux/clk.h>
++#include <linux/delay.h>
+ #include <linux/mfd/syscon.h>
+ #include <linux/module.h>
  #include <linux/of.h>
  #include <linux/phy/phy.h>
++#include <linux/phy/phy-hdmi.h>
++#include <linux/phy/phy-meson-hdmi-tx.h>
  #include <linux/platform_device.h>
--#include <linux/property.h>
  #include <linux/regmap.h>
  
- /*
-@@ -32,30 +32,30 @@
+@@ -22,26 +31,167 @@
+  * Magic register values in the driver below are taken from the vendor
+  * BSP / kernel.
+  */
+-#define HHI_HDMI_PHY_CNTL0				0x3a0
+-	#define HHI_HDMI_PHY_CNTL0_HDMI_CTL1		GENMASK(31, 16)
+-	#define HHI_HDMI_PHY_CNTL0_HDMI_CTL0		GENMASK(15, 0)
+-
+-#define HHI_HDMI_PHY_CNTL1				0x3a4
+-	#define HHI_HDMI_PHY_CNTL1_CLOCK_ENABLE		BIT(1)
+-	#define HHI_HDMI_PHY_CNTL1_SOFT_RESET		BIT(0)
++#define HHI_HDMI_PHY_CNTL0	0x3a0 /* 0xe8 */
++#define HHI_HDMI_PHY_CNTL1	0x3a4 /* 0xe9 */
++#define  PHY_CNTL1_INIT		0x03900000
++#define  PHY_INVERT		BIT(17)
++#define  PHY_CNTL1_SOFT_RESET	BIT(0)
++#define  PHY_CNTL1_CLOCK_EN	BIT(1)
++#define  PHY_CNTL1_FIFO_EN	BIT(2)	/* GXBB and newer */
++#define  PHY_CNTL1_FIFO_WR_EN	BIT(3)	/* GXBB and newer */
++
++#define HHI_HDMI_PHY_CNTL2	0x3a8 /* 0xea */
++#define HHI_HDMI_PHY_CNTL3	0x3ac /* 0xeb, GXBB and newer */
++#define HHI_HDMI_PHY_CNTL4	0x3b0 /* 0xec */
++#define HHI_HDMI_PHY_CNTL5	0x3b4 /* 0xed, G12A */
++
++/* The code resets the PHY 3 times in a row */
++#define PHY_RESET_COUNT		3
++
++struct meson_hdmi_phy_rate {
++	unsigned int min_rate;	/* TMDS character rate, in Hz */
++	u32 cntl0;
++	u32 cntl3;		/* only used if has_cntl3 */
++	u32 cntl5;		/* only used if has_cntl5 */
++};
  
- #define HHI_HDMI_PHY_CNTL2				0x3a8
+-#define HHI_HDMI_PHY_CNTL2				0x3a8
++struct meson_hdmi_phy_data {
++	const struct meson_hdmi_phy_rate *rates;
++	unsigned int num_rates;
++	unsigned int max_rate;	/* Hz, TMDS character rate maximum */
++	bool has_tmds_clk;	/* Meson8 only */
++	bool has_cntl3;
++	bool has_cntl5;
++	u32 cntl0_init;
++	u32 cntl1_init;
++	u32 cntl1_en;		/* CNTL1 enable bits (clock, fifo, ...) */
++};
  
--struct phy_meson8_hdmi_tx_priv {
-+struct meson_hdmi_phy {
- 	struct regmap		*hhi;
- 	struct clk		*tmds_clk;
+ struct meson_hdmi_phy {
+-	struct regmap		*hhi;
+-	struct clk		*tmds_clk;
++	struct regmap *hhi;
++	struct clk *tmds_clk;	/* optional, Meson8 only */
++	const struct meson_hdmi_phy_data *data;
++};
++
++/* Meson8, Meson8b, Meson8m2 */
++static const struct meson_hdmi_phy_rate meson8_rates[] = {
++	/* 2.97Gbps */
++	{ 297000000, 0x08c31e8b },
++	/* below 2.97Gbps, down to 250Mbps */
++	{ 25000000,  0x08c34d0b },
++};
++
++/* GXBB */
++static const struct meson_hdmi_phy_rate gxbb_rates[] = {
++	/* 5.94Gbps, 3.7125Gbps */
++	{ 371250000, 0x33353245, 0x2100115b },
++	/* 2.97Gbps */
++	{ 297000000, 0x33634283, 0xb000115b },
++	/* 1.485Gbps, down to 159Mbps */
++	{ 15900000,  0x33632122, 0x2000115b },
++};
++
++/* GXL / GXM */
++static const struct meson_hdmi_phy_rate gxl_rates[] = {
++	/* 5.94Gbps, 3.7125Gbps */
++	{ 371250000, 0x333d3282, 0x2136315b },
++	/* 2.97Gbps */
++	{ 297000000, 0x33303382, 0x2036315b },
++	/* 1.485Gbps */
++	{ 148500000, 0x33303362, 0x2016315b },
++	/* 742.5Mbps, down to 159Mbps */
++	{ 15900000,  0x33604142, 0x0016315b },
++};
++
++/* G12A */
++static const struct meson_hdmi_phy_rate g12a_rates[] = {
++	/* 5.94Gbps, 3.7125Gbps */
++	{ 371250000, 0x37eb65c4, 0x2ab0ff3b, 0x0000080b },
++	/* 2.97Gbps */
++	{ 297000000, 0x33eb6262, 0x2ab0ff3b, 0x00000003 },
++	/* 1.485Gbps, down to 159Mbps */
++	{ 15900000,  0x33eb4242, 0x2ab0ff3b, 0x00000003 },
++};
++
++static const struct meson_hdmi_phy_data meson8_data = {
++	.rates = meson8_rates,
++	.num_rates = ARRAY_SIZE(meson8_rates),
++	.max_rate = 297000000, /* HDMI 1.4b limited to 4k@30 */
++	.has_tmds_clk = true,
++	.cntl0_init = 0x08418d00,
++	.cntl1_init = 0x0,
++	.cntl1_en = PHY_CNTL1_CLOCK_EN,
++};
++
++static const struct meson_hdmi_phy_data gxbb_data = {
++	.rates = gxbb_rates,
++	.num_rates = ARRAY_SIZE(gxbb_rates),
++	.max_rate  = 600000000, /* HDMI 2.0 */
++	.has_cntl3 = true,
++	.cntl0_init = 0x0,
++	.cntl1_init = PHY_CNTL1_INIT | PHY_INVERT,
++	.cntl1_en = PHY_CNTL1_CLOCK_EN | PHY_CNTL1_FIFO_EN |
++		    PHY_CNTL1_FIFO_WR_EN,
++};
++
++static const struct meson_hdmi_phy_data gxl_data = {
++	.rates = gxl_rates,
++	.num_rates = ARRAY_SIZE(gxl_rates),
++	.max_rate  = 600000000, /* HDMI 2.0 */
++	.has_cntl3 = true,
++	.cntl0_init = 0x0,
++	.cntl1_init = PHY_CNTL1_INIT,
++	.cntl1_en = PHY_CNTL1_CLOCK_EN | PHY_CNTL1_FIFO_EN |
++		    PHY_CNTL1_FIFO_WR_EN,
++};
++
++static const struct meson_hdmi_phy_data g12a_data = {
++	.rates = g12a_rates,
++	.num_rates = ARRAY_SIZE(g12a_rates),
++	.max_rate  = 600000000, /* HDMI 2.0 */
++	.has_cntl3 = true,
++	.has_cntl5 = true,
++	.cntl0_init = 0x000b4242, /* Bandgap */
++	.cntl1_init = PHY_CNTL1_INIT,
++	.cntl1_en = PHY_CNTL1_CLOCK_EN | PHY_CNTL1_FIFO_EN |
++		    PHY_CNTL1_FIFO_WR_EN,
  };
  
--static int phy_meson8_hdmi_tx_init(struct phy *phy)
-+static int meson_hdmi_phy_init(struct phy *phy)
++static const struct meson_hdmi_phy_rate *
++meson_hdmi_phy_find_rate(const struct meson_hdmi_phy_data *data, u64 rate)
++{
++	unsigned int i;
++
++	if (rate > data->max_rate)
++		return NULL;
++
++	for (i = 0; i < data->num_rates; i++)
++		if (rate >= data->rates[i].min_rate)
++			return &data->rates[i];
++
++	return NULL;
++}
++
++/* Fallback to init mode: CNTL1 first, then CNTL0 (order matters) */
++static void meson_hdmi_phy_set_init_state(struct meson_hdmi_phy *priv)
++{
++	regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL1, priv->data->cntl1_init);
++	regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL0, priv->data->cntl0_init);
++}
++
+ static int meson_hdmi_phy_init(struct phy *phy)
  {
--	struct phy_meson8_hdmi_tx_priv *priv = phy_get_drvdata(phy);
-+	struct meson_hdmi_phy *priv = phy_get_drvdata(phy);
+ 	struct meson_hdmi_phy *priv = phy_get_drvdata(phy);
++	int ret;
  
- 	return clk_prepare_enable(priv->tmds_clk);
+-	return clk_prepare_enable(priv->tmds_clk);
++	/* No-op if there is no clock (GXBB and newer) */
++	ret = clk_prepare_enable(priv->tmds_clk);
++	if (ret)
++		return ret;
++
++	meson_hdmi_phy_set_init_state(priv);
++
++	return 0;
  }
  
--static int phy_meson8_hdmi_tx_exit(struct phy *phy)
-+static int meson_hdmi_phy_exit(struct phy *phy)
- {
--	struct phy_meson8_hdmi_tx_priv *priv = phy_get_drvdata(phy);
-+	struct meson_hdmi_phy *priv = phy_get_drvdata(phy);
- 
- 	clk_disable_unprepare(priv->tmds_clk);
- 
+ static int meson_hdmi_phy_exit(struct phy *phy)
+@@ -53,33 +203,64 @@ static int meson_hdmi_phy_exit(struct phy *phy)
  	return 0;
  }
  
--static int phy_meson8_hdmi_tx_power_on(struct phy *phy)
+-static int meson_hdmi_phy_power_on(struct phy *phy)
++static int meson_hdmi_phy_configure(struct phy *phy,
++				    union phy_configure_opts *opts)
+ {
+ 	struct meson_hdmi_phy *priv = phy_get_drvdata(phy);
+-	unsigned int i;
+-	u16 hdmi_ctl0;
++	const struct meson_hdmi_phy_rate *r;
++
++	r = meson_hdmi_phy_find_rate(priv->data, opts->hdmi.tmds_char_rate);
++	if (!r)
++		return -EINVAL;
++
++	regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL0, r->cntl0);
++	if (priv->data->has_cntl3)
++		regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL3, r->cntl3);
++	if (priv->data->has_cntl5)
++		regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL5, r->cntl5);
++
++	/* Disable clock, (and fifo, fifo_wr where present), release reset */
++	regmap_update_bits(priv->hhi, HHI_HDMI_PHY_CNTL1,
++			   priv->data->cntl1_en | PHY_CNTL1_SOFT_RESET, 0);
+ 
+-	if (clk_get_rate(priv->tmds_clk) >= 2970UL * 1000 * 1000)
+-		hdmi_ctl0 = 0x1e8b;
+-	else
+-		hdmi_ctl0 = 0x4d0b;
++	return 0;
++}
++
++static int meson_hdmi_phy_validate(struct phy *phy, enum phy_mode mode,
++				   int submode, union phy_configure_opts *opts)
++{
++	struct meson_hdmi_phy *priv = phy_get_drvdata(phy);
+ 
+-	regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL0,
+-		     FIELD_PREP(HHI_HDMI_PHY_CNTL0_HDMI_CTL1, 0x08c3) |
+-		     FIELD_PREP(HHI_HDMI_PHY_CNTL0_HDMI_CTL0, hdmi_ctl0));
++	if (mode != PHY_MODE_HDMI || submode != PHY_HDMI_MODE_TMDS)
++		return -EINVAL;
+ 
+-	regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL1, 0x0);
++	if (opts->hdmi.bpc != 8)
++		return -EINVAL;
+ 
+-	/* Reset three times, just like the vendor driver does */
+-	for (i = 0; i < 3; i++) {
+-		regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL1,
+-			     HHI_HDMI_PHY_CNTL1_CLOCK_ENABLE |
+-			     HHI_HDMI_PHY_CNTL1_SOFT_RESET);
+-		usleep_range(1000, 2000);
++	if (!meson_hdmi_phy_find_rate(priv->data, opts->hdmi.tmds_char_rate))
++		return -EINVAL;
++
++	return 0;
++}
+ 
+-		regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL1,
+-			     HHI_HDMI_PHY_CNTL1_CLOCK_ENABLE);
+-		usleep_range(1000, 2000);
 +static int meson_hdmi_phy_power_on(struct phy *phy)
- {
--	struct phy_meson8_hdmi_tx_priv *priv = phy_get_drvdata(phy);
++{
 +	struct meson_hdmi_phy *priv = phy_get_drvdata(phy);
- 	unsigned int i;
- 	u16 hdmi_ctl0;
++	u32 en = priv->data->cntl1_en;
++	u32 mask = en | PHY_CNTL1_SOFT_RESET;
++	int i;
++
++	/* Reset PHY 3 times in a row */
++	for (i = 0; i < PHY_RESET_COUNT; i++) {
++		/* Enable and software reset */
++		regmap_update_bits(priv->hhi, HHI_HDMI_PHY_CNTL1,
++				   mask, mask);
++		fsleep(2000);
++
++		/* Enable and unreset */
++		regmap_update_bits(priv->hhi, HHI_HDMI_PHY_CNTL1,
++				   mask, en);
++		fsleep(2000);
+ 	}
  
-@@ -85,9 +85,9 @@ static int phy_meson8_hdmi_tx_power_on(struct phy *phy)
+ 	return 0;
+@@ -89,9 +270,7 @@ static int meson_hdmi_phy_power_off(struct phy *phy)
+ {
+ 	struct meson_hdmi_phy *priv = phy_get_drvdata(phy);
+ 
+-	regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL0,
+-		     FIELD_PREP(HHI_HDMI_PHY_CNTL0_HDMI_CTL1, 0x0841) |
+-		     FIELD_PREP(HHI_HDMI_PHY_CNTL0_HDMI_CTL0, 0x8d00));
++	meson_hdmi_phy_set_init_state(priv);
+ 
  	return 0;
  }
- 
--static int phy_meson8_hdmi_tx_power_off(struct phy *phy)
-+static int meson_hdmi_phy_power_off(struct phy *phy)
- {
--	struct phy_meson8_hdmi_tx_priv *priv = phy_get_drvdata(phy);
-+	struct meson_hdmi_phy *priv = phy_get_drvdata(phy);
- 
- 	regmap_write(priv->hhi, HHI_HDMI_PHY_CNTL0,
- 		     FIELD_PREP(HHI_HDMI_PHY_CNTL0_HDMI_CTL1, 0x0841) |
-@@ -96,18 +96,18 @@ static int phy_meson8_hdmi_tx_power_off(struct phy *phy)
- 	return 0;
- }
- 
--static const struct phy_ops phy_meson8_hdmi_tx_ops = {
--	.init		= phy_meson8_hdmi_tx_init,
--	.exit		= phy_meson8_hdmi_tx_exit,
--	.power_on	= phy_meson8_hdmi_tx_power_on,
--	.power_off	= phy_meson8_hdmi_tx_power_off,
-+static const struct phy_ops meson_hdmi_phy_ops = {
-+	.init		= meson_hdmi_phy_init,
-+	.exit		= meson_hdmi_phy_exit,
-+	.power_on	= meson_hdmi_phy_power_on,
-+	.power_off	= meson_hdmi_phy_power_off,
+@@ -99,41 +278,90 @@ static int meson_hdmi_phy_power_off(struct phy *phy)
+ static const struct phy_ops meson_hdmi_phy_ops = {
+ 	.init		= meson_hdmi_phy_init,
+ 	.exit		= meson_hdmi_phy_exit,
++	.configure	= meson_hdmi_phy_configure,
++	.validate	= meson_hdmi_phy_validate,
+ 	.power_on	= meson_hdmi_phy_power_on,
+ 	.power_off	= meson_hdmi_phy_power_off,
  	.owner		= THIS_MODULE,
  };
  
--static int phy_meson8_hdmi_tx_probe(struct platform_device *pdev)
-+static int meson_hdmi_phy_probe(struct platform_device *pdev)
+-static int meson_hdmi_phy_probe(struct platform_device *pdev)
++static struct phy *meson_hdmi_phy_alloc(struct device *dev,
++					struct regmap *hhi,
++					struct clk *tmds_clk,
++					const struct meson_hdmi_phy_data *data)
  {
- 	struct device_node *np = pdev->dev.of_node;
--	struct phy_meson8_hdmi_tx_priv *priv;
-+	struct meson_hdmi_phy *priv;
- 	struct phy_provider *phy_provider;
- 	struct resource *res;
+-	struct device_node *np = pdev->dev.of_node;
+ 	struct meson_hdmi_phy *priv;
+-	struct phy_provider *phy_provider;
+-	struct resource *res;
  	struct phy *phy;
-@@ -128,7 +128,7 @@ static int phy_meson8_hdmi_tx_probe(struct platform_device *pdev)
- 	if (IS_ERR(priv->tmds_clk))
- 		return PTR_ERR(priv->tmds_clk);
  
--	phy = devm_phy_create(&pdev->dev, np, &phy_meson8_hdmi_tx_ops);
-+	phy = devm_phy_create(&pdev->dev, np, &meson_hdmi_phy_ops);
+-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+-	if (!res)
+-		return -EINVAL;
+-
+-	priv = devm_kzalloc_obj(&pdev->dev, *priv);
++	priv = devm_kzalloc_obj(dev, *priv);
+ 	if (!priv)
+-		return -ENOMEM;
++		return ERR_PTR(-ENOMEM);
+ 
+-	priv->hhi = syscon_node_to_regmap(np->parent);
+-	if (IS_ERR(priv->hhi))
+-		return PTR_ERR(priv->hhi);
++	priv->hhi = hhi;
++	priv->tmds_clk = tmds_clk;
++	priv->data = data;
+ 
+-	priv->tmds_clk = devm_clk_get(&pdev->dev, NULL);
+-	if (IS_ERR(priv->tmds_clk))
+-		return PTR_ERR(priv->tmds_clk);
+-
+-	phy = devm_phy_create(&pdev->dev, np, &meson_hdmi_phy_ops);
++	phy = devm_phy_create(dev, NULL, &meson_hdmi_phy_ops);
  	if (IS_ERR(phy))
- 		return PTR_ERR(phy);
+-		return PTR_ERR(phy);
++		return phy;
  
-@@ -140,21 +140,21 @@ static int phy_meson8_hdmi_tx_probe(struct platform_device *pdev)
- 	return PTR_ERR_OR_ZERO(phy_provider);
+ 	phy_set_drvdata(phy, priv);
+ 
++	return phy;
++}
++
++/*
++ * DEPRECATED: only for DTs without a "phys" property on the HDMI TX node.
++ * Remove together with the fallback in meson_dw_hdmi.c.
++ */
++struct phy *meson_hdmi_phy_create_legacy(struct device *dev,
++					 struct regmap *hhi,
++					 enum meson_hdmi_phy_soc soc)
++{
++	static const struct meson_hdmi_phy_data *const soc_data[] = {
++		[MESON_HDMI_PHY_GXBB] = &gxbb_data,
++		[MESON_HDMI_PHY_GXL]  = &gxl_data,
++		[MESON_HDMI_PHY_G12A] = &g12a_data,
++	};
++
++	if (soc >= ARRAY_SIZE(soc_data))
++		return ERR_PTR(-EINVAL);
++
++	return meson_hdmi_phy_alloc(dev, hhi, NULL, soc_data[soc]);
++}
++EXPORT_SYMBOL_GPL(meson_hdmi_phy_create_legacy);
++
++static int meson_hdmi_phy_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	const struct meson_hdmi_phy_data *data;
++	struct phy_provider *phy_provider;
++	struct clk *tmds_clk = NULL;
++	struct regmap *hhi;
++	struct phy *phy;
++
++	data = of_device_get_match_data(dev);
++	if (!data)
++		return -EINVAL;
++
++	/* The PHY node is a child of the HHI syscon */
++	hhi = syscon_node_to_regmap(dev->of_node->parent);
++	if (IS_ERR(hhi))
++		return dev_err_probe(dev, PTR_ERR(hhi),
++				     "failed to get HHI regmap\n");
++
++	if (data->has_tmds_clk) {
++		tmds_clk = devm_clk_get(dev, NULL);
++		if (IS_ERR(tmds_clk))
++			return dev_err_probe(dev, PTR_ERR(tmds_clk),
++					     "failed to get TMDS clock\n");
++	}
++
++	phy = meson_hdmi_phy_alloc(dev, hhi, tmds_clk, data);
++	if (IS_ERR(phy))
++		return dev_err_probe(dev, PTR_ERR(phy),
++				     "failed to create PHY\n");
++
+ 	phy_provider = devm_of_phy_provider_register(&pdev->dev,
+ 						     of_phy_simple_xlate);
+ 
+@@ -141,7 +369,10 @@ static int meson_hdmi_phy_probe(struct platform_device *pdev)
  }
  
--static const struct of_device_id phy_meson8_hdmi_tx_of_match[] = {
-+static const struct of_device_id meson_hdmi_phy_of_match[] = {
- 	{ .compatible = "amlogic,meson8-hdmi-tx-phy" },
+ static const struct of_device_id meson_hdmi_phy_of_match[] = {
+-	{ .compatible = "amlogic,meson8-hdmi-tx-phy" },
++	{ .compatible = "amlogic,meson8-hdmi-tx-phy",     .data = &meson8_data },
++	{ .compatible = "amlogic,meson-gxbb-hdmi-tx-phy", .data = &gxbb_data },
++	{ .compatible = "amlogic,meson-gxl-hdmi-tx-phy",  .data = &gxl_data },
++	{ .compatible = "amlogic,meson-g12a-hdmi-tx-phy", .data = &g12a_data },
  	{ /* sentinel */ }
  };
--MODULE_DEVICE_TABLE(of, phy_meson8_hdmi_tx_of_match);
-+MODULE_DEVICE_TABLE(of, meson_hdmi_phy_of_match);
- 
--static struct platform_driver phy_meson8_hdmi_tx_driver = {
--	.probe	= phy_meson8_hdmi_tx_probe,
-+static struct platform_driver meson_hdmi_phy_driver = {
-+	.probe	= meson_hdmi_phy_probe,
- 	.driver	= {
--		.name		= "phy-meson8-hdmi-tx",
--		.of_match_table	= phy_meson8_hdmi_tx_of_match,
-+		.name		= "meson-hdmi-tx-phy",
-+		.of_match_table	= meson_hdmi_phy_of_match,
- 	},
- };
--module_platform_driver(phy_meson8_hdmi_tx_driver);
-+module_platform_driver(meson_hdmi_phy_driver);
- 
- MODULE_AUTHOR("Martin Blumenstingl <martin.blumenstingl@googlemail.com>");
--MODULE_DESCRIPTION("Meson8, Meson8b and Meson8m2 HDMI TX PHY driver");
-+MODULE_DESCRIPTION("Amlogic Meson HDMI TX PHY driver");
- MODULE_LICENSE("GPL v2");
+ MODULE_DEVICE_TABLE(of, meson_hdmi_phy_of_match);
+diff --git a/include/linux/phy/phy-meson-hdmi-tx.h b/include/linux/phy/phy-meson-hdmi-tx.h
+new file mode 100644
+index 000000000000..fe76a5f7efdb
+--- /dev/null
++++ b/include/linux/phy/phy-meson-hdmi-tx.h
+@@ -0,0 +1,19 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++#ifndef __PHY_MESON_HDMI_TX_H
++#define __PHY_MESON_HDMI_TX_H
++
++struct device;
++struct regmap;
++
++enum meson_hdmi_phy_soc {
++	MESON_HDMI_PHY_GXBB,
++	MESON_HDMI_PHY_GXL,	/* GXL and GXM */
++	MESON_HDMI_PHY_G12A,
++};
++
++/* DEPRECATED: compat for DTs without "phys" on the HDMI TX node */
++struct phy *meson_hdmi_phy_create_legacy(struct device *dev,
++					 struct regmap *hhi,
++					 enum meson_hdmi_phy_soc soc);
++
++#endif /* __PHY_MESON_HDMI_TX_H */
 
 -- 
 2.56.1
