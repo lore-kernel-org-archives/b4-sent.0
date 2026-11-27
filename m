@@ -1,109 +1,83 @@
 From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 06:30:27 +0000
-Subject: [PATCH 5.15.y] netfilter: flowtable_offload: fix using
- __this_cpu_add in preemptible
+Date: Fri, 27 Nov 2026 06:32:42 +0000
+Subject: [PATCH 6.6.y] nfsd: fix possible badness in FREE_STATEID
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-so5-nf-515-v1-1-ce02c323f842@certik.com>
-X-B4-Tracking: v=1; b=H4sIAIIjCWsC/0WNwQ7CIBBEf6XZs1uFQG38lcYD0MViDBi2NjVN/
- 13Qg8d5mXmzAVMOxHBpNsi0BA4pliAODbjJxBthGEsGeZKdEPKMnDRGj1po7JSxSklv+p6gDJ6
- ZfFi/sgF0K3T7huuP88veyc3VVJvWMKHNJrqpIqY4zik9sPLj/wH2/QPcl1T/oQAAAA==
-X-Change-ID: 20261127-so5-nf-515-64ab442fa88e
+Message-Id: <20261127-so5-nfsd-66-v1-1-2ae77e2e4983@certik.com>
+X-B4-Tracking: v=1; b=H4sIAAkkCWsC/02NSw7CMAxEr1J5jUsTUUO5CmKRj0ODUILigkBV7
+ 04DG5bzNPNmBuESWeDYzFD4GSXmtAa1acCNJl0Yo18z6E6TUnqPkntMQTwSYa/tcHC7QEPnYV3
+ cC4f4+tpOQC21bzj/sDzsld1UTbVojTDaYpIbKxJOfsr5hpVv/x5gWT692TfdogAAAA==
+X-Change-ID: 20261127-so5-nfsd-66-52b98c4f690d
 To: stable@vger.kernel.org
-Cc: Xin Long <lucien.xin@gmail.com>, 
- Pablo Neira Ayuso <pablo@netfilter.org>, netfilter-devel@vger.kernel.org
+Cc: Olga Kornievskaia <okorniev@redhat.com>, linux-nfs@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795761026; l=3298;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795761161; l=2166;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=DPEyyVIOnnhk/htjRMSlOemmYqz4g1GxjdwvS3F9YOs=;
- b=MeaNcLNv9bCcv5l7LrlZ0n/o/xYXKR9dWAyklAuUAcmIIky9a+iT6ARLq/w+v1/WChbKXDpWz
- N2d7yUEluinBOhhfRNXVbH7zgx6ZgjHsB/COR7BiqJYP2ZmqAy4HP+P
+ bh=jwP/hO3okQ18uwZiBI2Bo8/D+D1SaDtOva3Z/IN1YhA=;
+ b=9bTRfHpYoDSJjOyWaPD0dwexwSfC4PlGG26jRbGgfENMnoridzZCe0h7+2kksymHRDJvcx09h
+ TaSlYwhEBbsCrcVlHQWAJeLG74lolKxLzaSh4g2O9U6elnyR4jPFcDw
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Xin Long <lucien.xin@gmail.com>
+From: Olga Kornievskaia <okorniev@redhat.com>
 
-commit a81047154e7ce4eb8769d5d21adcbc9693542a79 upstream.
+commit c88c150a467fcb670a1608e2272beeee3e86df6e upstream.
 
-flow_offload_queue_work() can be called in workqueue without
-bh disabled, like the call trace showed in my act_ct testing,
-calling NF_FLOW_TABLE_STAT_INC() there would cause a call
-trace:
+When multiple FREE_STATEIDs are sent for the same delegation stateid,
+it can lead to a possible either use-after-free or counter refcount
+underflow errors.
 
-  BUG: using __this_cpu_add() in preemptible [00000000] code: kworker/u4:0/138560
-  caller is flow_offload_queue_work+0xec/0x1b0 [nf_flow_table]
-  Workqueue: act_ct_workqueue tcf_ct_flow_table_cleanup_work [act_ct]
-  Call Trace:
-   <TASK>
-   dump_stack_lvl+0x33/0x46
-   check_preemption_disabled+0xc3/0xf0
-   flow_offload_queue_work+0xec/0x1b0 [nf_flow_table]
-   nf_flow_table_iterate+0x138/0x170 [nf_flow_table]
-   nf_flow_table_free+0x140/0x1a0 [nf_flow_table]
-   tcf_ct_flow_table_cleanup_work+0x2f/0x2b0 [act_ct]
-   process_one_work+0x6a3/0x1030
-   worker_thread+0x8a/0xdf0
+In nfsd4_free_stateid() under the client lock we find a delegation
+stateid, however the code drops the lock before calling nfs4_put_stid(),
+that allows another FREE_STATE to find the stateid again. The first one
+will proceed to then free the stateid which leads to either
+use-after-free or decrementing already zeroed counter.
 
-This patch fixes it by using NF_FLOW_TABLE_STAT_INC_ATOMIC()
-instead in flow_offload_queue_work().
-
-Note that for FLOW_CLS_REPLACE branch in flow_offload_queue_work(),
-it may not be called in preemptible path, but it's good to use
-NF_FLOW_TABLE_STAT_INC_ATOMIC() for all cases in
-flow_offload_queue_work().
-
-Fixes: b038177636f8 ("netfilter: nf_flow_table: count pending offload workqueue tasks")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
+Fixes: 3f29cc82a84c ("nfsd: split sc_status out of sc_type")
+Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
+Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
-6.1.y and newer already have this fix.
+6.12.y and newer already have this fix.
 
-Tested on v5.15.226:
-- x86_64 allmodconfig W=1 build of net/netfilter/nf_flow_table_offload.o,
-  base vs patched, no new warnings
-- booted base and patched kernels under QEMU/KVM and ran the netfilter
-  software flowtable cases, all passing on both. Hardware offload wasn't
-  available, so the offload counters weren't exercised.
+Tested on v6.6.163:
+- x86_64 allmodconfig W=1 build of fs/nfsd/nfs4state.o, base vs
+  patched, no new warnings
+- under QEMU/KVM, base and patched: mounted a loopback NFSv4.1 export
+  and ran open, lock, write, read, close and unlink. FREE_STATEID on a
+  revoked delegation wasn't exercised.
 
 The backport and the test runs were prepared with AI coding tools
 (OpenAI Codex agents, with review by Claude). I went over the result
 before signing off.
 
-net/netfilter/nf_flow_table_offload.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+fs/nfsd/nfs4state.c | 1 +
+ 1 file changed, 1 insertion(+)
 ---
- net/netfilter/nf_flow_table_offload.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/net/netfilter/nf_flow_table_offload.c b/net/netfilter/nf_flow_table_offload.c
-index 60e9c03d697f..3400a31c7df7 100644
---- a/net/netfilter/nf_flow_table_offload.c
-+++ b/net/netfilter/nf_flow_table_offload.c
-@@ -1056,13 +1056,13 @@ static void flow_offload_queue_work(struct flow_offload_work *offload)
- 	struct net *net = read_pnet(&offload->flowtable->net);
- 
- 	if (offload->cmd == FLOW_CLS_REPLACE) {
--		NF_FLOW_TABLE_STAT_INC(net, count_wq_add);
-+		NF_FLOW_TABLE_STAT_INC_ATOMIC(net, count_wq_add);
- 		queue_work(nf_flow_offload_add_wq, &offload->work);
- 	} else if (offload->cmd == FLOW_CLS_DESTROY) {
--		NF_FLOW_TABLE_STAT_INC(net, count_wq_del);
-+		NF_FLOW_TABLE_STAT_INC_ATOMIC(net, count_wq_del);
- 		queue_work(nf_flow_offload_del_wq, &offload->work);
- 	} else {
--		NF_FLOW_TABLE_STAT_INC(net, count_wq_stats);
-+		NF_FLOW_TABLE_STAT_INC_ATOMIC(net, count_wq_stats);
- 		queue_work(nf_flow_offload_stats_wq, &offload->work);
- 	}
- }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1087ce23d499..73145f485995 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -7037,6 +7037,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	switch (s->sc_type) {
+ 	case SC_TYPE_DELEG:
+ 		if (s->sc_status & SC_STATUS_REVOKED) {
++			s->sc_status |= SC_STATUS_CLOSED;
+ 			spin_unlock(&s->sc_lock);
+ 			dp = delegstateid(s);
+ 			list_del_init(&dp->dl_recall_lru);
 
 ---
-base-commit: 4f2df9a01754521fbba3493e8ad91ef65515e68c
-change-id: 20261127-so5-nf-515-64ab442fa88e
+base-commit: e2bb30811e063ce0db964484357973b855b06572
+change-id: 20261127-so5-nfsd-66-52b98c4f690d
 
 Best regards,
 --  
