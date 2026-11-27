@@ -1,541 +1,121 @@
 From: Patrick Fischer <admin@tsv-stahl-riesa.de>
-Date: Sat, 28 Nov 2026 00:38:57 +0100
-Subject: [PATCH v4 2/2] iio: light: Add Capella CM3217 ambient light sensor
- driver
+Subject: [PATCH v2 0/2] thermal: tegra: Fix SOC_THERM temperatures on
+ Tegra114
+Date: Sat, 28 Nov 2026 00:44:37 +0100
+Message-Id: <20261128-upstream-soctherm-t114-v2-0-abba0b143037@tsv-stahl-riesa.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-upstream-iio-cm3217-v4-2-fdab04f40bbc@tsv-stahl-riesa.de>
-References: <20261128-upstream-iio-cm3217-v4-0-fdab04f40bbc@tsv-stahl-riesa.de>
-In-Reply-To: <20261128-upstream-iio-cm3217-v4-0-fdab04f40bbc@tsv-stahl-riesa.de>
-To: Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Kevin Tsai <ktsai@capellamicro.com>, 
- Svyatoslav Ryhel <clamor95@gmail.com>, linux-iio@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Patrick Fischer <admin@tsv-stahl-riesa.de>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WPyw6CMBBFf4V07ZhOhQKu/A/DAtpRauSRTmk0h
+ H+Xx9rlSe69J3cWTN4Ri2syC0/RsRv6FdQpEaat+yeBsysLJZVGqS4wjRw81R3wYEJLvoOAmEK
+ ZlWh0k+el1WItj54e7rMP36uDeWpeZMK2tiVax2Hw390cccsdEpT6nyQiSDBFnlksFcoivQWOw
+ KFu37C9qM+WRLUsyw+eKDEM1wAAAA==
+X-Change-ID: 20261023-upstream-soctherm-t114-9591c6b779d6
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, 
+ Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: Svyatoslav Ryhel <clamor95@gmail.com>, 
+ Mikko Perttunen <mperttunen@nvidia.com>, linux-pm@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Patrick Fischer <admin@tsv-stahl-riesa.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795822755; l=15784;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795823083; l=4026;
  i=admin@tsv-stahl-riesa.de; s=20261020; h=from:subject:message-id;
- bh=V65BBs1DN58k70an/Dv6NBfRNR/WkSSt4tZOuQ/ybP0=;
- b=czQzY5/Dpejx5y+BAX/psYrv5AhUOzli6Lz6yO8mgYvti3SPpeH2qPCdGTD26aCP+TbSzRm92
- xXHx/7Uzk59Cm7c7HDBq/TB8UXjEioEwYI5LXRPSxNTiHNncmf5lhAQ
+ bh=HMbDX/tvfwFB9yCKapyd4+Ik7HuObbH7taQimA/KzxA=;
+ b=izg2hsSXyYuLLiU64w9sd/5EJAUCtmU0aZRCYpn2chN/5KNw1JgxGHCh4v2BKtyjZtaNO9fN5
+ TckFW0yaljrDmE0EhR2FSWJEzQMHu7Vb6r5+aCDRiFPblQKxopf2WH7
 X-Developer-Key: i=admin@tsv-stahl-riesa.de; a=ed25519;
  pk=D+v6EloYcEY9PIUHFyTM5sqcGIU/fIXzLUdkR8vjAtk=
 X-Endpoint-Received: by B4 Relay for admin@tsv-stahl-riesa.de/20261020 with auth_id=1251
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The CM3217 has no registers and no ID. Writing a byte to address 0x10
-or 0x11 sets command byte 1 or 2, reading a byte from 0x10 or 0x11
-returns the high or low byte of the 16-bit light count. The second
-address always follows the first one. The binding lists both, but the
-driver derives the second one from the first instead of reading it from
-firmware, which also covers new_device.
+On the NVIDIA Tegra Note 7 (Tegra114) all four SOC_THERM zones read 0 C
+with mainline, in idle and under load, so throttling and thermtrip have
+no effect on this SoC. There are two separate causes:
 
-Command byte 1 holds the shutdown bit and the IT_T field (1/2 T, 1 T,
-2 T or 4 T), command byte 2 the FD_IT field (800 ms down to 66 ms). The
-count scales linearly with both. The driver exposes FD_IT as the
-integration time and IT_T through the scale, so the scale list offers
-four ranges for each integration time.
+1. tegra_calc_shared_calib() sign-extends the whole fuse word instead of
+   the SHIFT_CP field. On Tegra114, where SHIFT_CP is not in the low
+   bits, this distorts the calibration of every sensor.
 
-The datasheet is not public. The bit fields, the reserved bits that are
-written as 1 and the startup setting of 2 T and 100 ms come from NVIDIA's
-downstream drivers (drivers/staging/iio/light/cm3217.c in the 3.4 kernel
-rel-tegranote-r8 and the 3.10 kernel
-android-tegra-flounder-3.10-nougat-mr1.1). One value differs: the vendor
-header defines 4 T as 4 << 2, which is outside the two-bit field. On a
-Tegra Note 7 field value 3 gave four times the 1 T count, so the driver
-uses that. For the resolution, Capella gives a range of 0.01875 to
-119156 lux. The driver takes 0.01875 lux per count at 4 T and 800 ms.
-This matches both the upper end (65535 counts at 1/2 T and 66 ms) and
-the 0.3 lux per count that the NVIDIA 3.4 driver uses at 2 T and 100 ms.
+2. The hardware calculates THERMA * capture in 24 bits and discards the
+   result above 2^24 (TCALC_OVER set, TEMP_VALID cleared). With the
+   calibration in 0.5 C units a Tegra114 sensor is only valid for
+   T < (2048 + THERMB) / 2, which is far below the thermtrip
+   temperature. Patch 2 switches Tegra114 to 1 C units, as the
+   downstream driver does. The fuse calibration stays in 0.5 C units,
+   as discussed in the review of the Tegra114 series [1].
 
-The sensor has no data-ready flag, and a new setting only takes effect
-when the conversion in progress ends. A conversion takes IT_T times
-FD_IT, up to 3.2 s. Leaving shutdown starts a new one at once, so the
-driver passes through shutdown on every change and waits one conversion
-period plus a margin before it reads the count. The timing was measured
-on a Tegra Note 7.
+Patch 1 is Svyatoslav's fix, unchanged apart from the Fixes and stable
+tags and a sentence on why the other SoCs are not affected. Without
+patch 2 it gives three zones that work only up to about 45-53 C on this
+device.
 
-Tool use: Claude Code wrote this driver from the downstream drivers and
-from my measurements on the device.
+Zone temperatures on a Tegra Note 7 (P1640) in C, idle / after 60 s of
+load on all four cores:
 
-Tested-by: Svyatoslav Ryhel <clamor95@gmail.com> # Tegratab P1988
-Signed-off-by: Patrick Fischer <admin@tsv-stahl-riesa.de>
+               mainline   patch 1      patches 1+2
+  cpu           0 / 0     41.5 / 55.5*   43 / 63
+  gpu           0 / 0      0   / 0       39 / 55
+  pllx          0 / 0     44   / 52.5*   43 / 62
+  mem           0 / 0     39   / 50.5    39 / 53
+  thermistor      -       34   / 39      34 / 42
+
+  * the sensors behind the zone were already invalid, the zone stayed
+    below the real temperature
+
+"thermistor" is the board thermistor on the PMIC GPADC, as a
+reference. With both patches all eight sensors stay valid and thermtrip,
+throttle and trip thresholds are programmed as 102, 100 and 90 C.
+
+Tested with v7.3 on the Tegra Note 7 P1640 (me) and P1988 (Svyatoslav,
+all four zones work). The series is unchanged on top of
+thermal/linux-next, but only build tested there.
+Thermtrip and the hardware throttle were not provoked on purpose, the
+highest temperature seen was 98 C. Suspend/resume was not tested.
+
+The series is independent of "thermal/drivers/tegra/soctherm: Program
+throttrip with hot trip temperature" [2], which is still pending; they
+apply in either order.
+
+Tool use (see Documentation/process/generated-content.rst): patch 2,
+its changelog and this cover letter were prepared with an LLM coding
+assistant (Claude Code). It evaluated the SOC_THERM register dumps from
+the device, recalculated the calibration from the fuse values, wrote
+the code change and drafted the texts from my measurements and
+instructions. I reviewed the change and ran all tests on the device.
+Patch 1 is Svyatoslav's own work.
+
+[1] https://lore.kernel.org/all/22816196.EfDdHjke4D@senjougahara/
+[2] https://lore.kernel.org/all/20261020-upstream-soctherm-throttrip-v1-1-c67f8a02ec3b@tsv-stahl-riesa.de/
+
 ---
-Svyatoslav's Tested-by was given on v1. Since then there was no
-functional change apart from how the driver gets the second address
-(v1: fixed 0x11, v4: device address plus one, which gives the same
-0x11).
+Changes in v2:
+- Patch 2: commit message replaced by Mikko's shorter version, with
+  one sentence on what the coding assistant did. No code change.
+- Collected Mikko's Reviewed-by on patch 1 and Svyatoslav's Tested-by
+  on patch 2.
+- Rebased onto the current thermal/linux-next, no conflicts.
+- Link to v1: https://patch.msgid.link/20261106-upstream-soctherm-t114-v1-0-c875d1921084@tsv-stahl-riesa.de
+
 ---
- drivers/iio/light/Kconfig  |  10 ++
- drivers/iio/light/Makefile |   1 +
- drivers/iio/light/cm3217.c | 420 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 431 insertions(+)
+Patrick Fischer (1):
+      thermal/drivers/tegra: Avoid SOC_THERM calculation overflow on Tegra114
 
-diff --git a/drivers/iio/light/Kconfig b/drivers/iio/light/Kconfig
-index 0b266084e837..c097c3232af4 100644
---- a/drivers/iio/light/Kconfig
-+++ b/drivers/iio/light/Kconfig
-@@ -196,6 +196,16 @@ config BH1780
- 	  To compile this driver as a module, choose M here: the module will
- 	  be called bh1780.
- 
-+config CM3217
-+	tristate "Capella CM3217 ambient light sensor"
-+	depends on I2C
-+	help
-+	  Say Y here to build support for the Capella Microsystems CM3217
-+	  ambient light sensor.
-+
-+	  To compile this driver as a module, choose M here: the module will
-+	  be called cm3217.
-+
- config CM32181
- 	depends on I2C
- 	tristate "CM32181 driver"
-diff --git a/drivers/iio/light/Makefile b/drivers/iio/light/Makefile
-index 9fc046e636a2..5daff8ef0daa 100644
---- a/drivers/iio/light/Makefile
-+++ b/drivers/iio/light/Makefile
-@@ -20,6 +20,7 @@ obj-$(CONFIG_AS7343)		+= as7343.o
- obj-$(CONFIG_BH1745)		+= bh1745.o
- obj-$(CONFIG_BH1750)		+= bh1750.o
- obj-$(CONFIG_BH1780)		+= bh1780.o
-+obj-$(CONFIG_CM3217)		+= cm3217.o
- obj-$(CONFIG_CM32181)		+= cm32181.o
- obj-$(CONFIG_CM3232)		+= cm3232.o
- obj-$(CONFIG_CM3323)		+= cm3323.o
-diff --git a/drivers/iio/light/cm3217.c b/drivers/iio/light/cm3217.c
-new file mode 100644
-index 000000000000..5edd4d21d08c
---- /dev/null
-+++ b/drivers/iio/light/cm3217.c
-@@ -0,0 +1,420 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Capella CM3217 ambient light sensor driver
-+ *
-+ * The CM3217 has no registers. It answers on two fixed I2C addresses:
-+ * writing a byte to 0x10 or 0x11 sets command byte 1 or 2, reading a byte
-+ * from 0x10 or 0x11 returns the MSB or LSB of the 16-bit light count.
-+ *
-+ * Copyright (C) 2026 Patrick Fischer <admin@tsv-stahl-riesa.de>
-+ */
-+
-+#include <linux/array_size.h>
-+#include <linux/bitfield.h>
-+#include <linux/bits.h>
-+#include <linux/build_bug.h>
-+#include <linux/cleanup.h>
-+#include <linux/delay.h>
-+#include <linux/device.h>
-+#include <linux/err.h>
-+#include <linux/i2c.h>
-+#include <linux/ktime.h>
-+#include <linux/mod_devicetable.h>
-+#include <linux/module.h>
-+#include <linux/mutex.h>
-+#include <linux/pm.h>
-+#include <linux/regulator/consumer.h>
-+#include <linux/time64.h>
-+#include <linux/types.h>
-+#include <linux/units.h>
-+
-+#include <linux/iio/iio.h>
-+
-+#define CM3217_CMD1_RSVD	BIT(5)		/* reserved, set to 1 */
-+#define CM3217_CMD1_IT_T	GENMASK(3, 2)	/* 1/2 T, 1 T, 2 T, 4 T */
-+#define CM3217_CMD1_WDM		BIT(1)		/* set to 1 like the vendor driver */
-+#define CM3217_CMD1_SD		BIT(0)		/* shutdown when set */
-+
-+#define CM3217_CMD2_FD_IT	GENMASK(7, 5)
-+
-+#define CM3217_IT_T_2T		2
-+#define CM3217_FD_IT_100MS	5
-+
-+/*
-+ * The finest resolution is 0.01875 lux per count, at 4 T and 800 ms. The
-+ * resolution is inversely proportional to IT_T and FD_IT, so keep it as
-+ * nanolux per count times milliseconds.
-+ */
-+#define CM3217_NLUX_MS		(18750000ULL * 800)	/* 0.01875 lux * 800 ms */
-+
-+#define CM3217_MARGIN_MS	10
-+
-+/* FD_IT settings in seconds, indexed by the field value */
-+static const int cm3217_int_time_avail[][2] = {
-+	{ 0, 800000 }, { 0, 400000 }, { 0, 266000 }, { 0, 200000 },
-+	{ 0, 130000 }, { 0, 100000 }, { 0, 80000 }, { 0, 66000 },
-+};
-+
-+/* Split nanolux into the integer and nano parts of IIO_VAL_INT_PLUS_NANO */
-+#define CM3217_NLUX_TO_VAL(nlux)	{ (nlux) / NANO, (nlux) % NANO }
-+
-+/* Scale in lux per count at FD_IT = ms milliseconds and IT_T = 1/2 T << it_t */
-+#define CM3217_SCALE(ms, it_t) \
-+	CM3217_NLUX_TO_VAL((CM3217_NLUX_MS << (3 - (it_t))) / (ms))
-+
-+#define CM3217_SCALES(ms) {					\
-+	CM3217_SCALE(ms, 0), CM3217_SCALE(ms, 1),		\
-+	CM3217_SCALE(ms, 2), CM3217_SCALE(ms, 3),		\
-+}
-+
-+/* Available scales, indexed by FD_IT and then by IT_T */
-+static const int cm3217_scale_avail[][4][2] = {
-+	CM3217_SCALES(800), CM3217_SCALES(400),
-+	CM3217_SCALES(266), CM3217_SCALES(200),
-+	CM3217_SCALES(130), CM3217_SCALES(100),
-+	CM3217_SCALES(80), CM3217_SCALES(66),
-+};
-+
-+static_assert(ARRAY_SIZE(cm3217_scale_avail) == ARRAY_SIZE(cm3217_int_time_avail));
-+
-+struct cm3217_data {
-+	struct i2c_client *client;
-+	struct i2c_client *client_lsb;
-+	/* protects the command bytes and ready */
-+	struct mutex lock;
-+	u8 cmd1;
-+	u8 cmd2;
-+	ktime_t ready;
-+};
-+
-+static unsigned int cm3217_conv_ms(struct cm3217_data *data)
-+	__must_hold(&data->lock)
-+{
-+	unsigned int fd_it = FIELD_GET(CM3217_CMD2_FD_IT, data->cmd2);
-+	unsigned int it_t = FIELD_GET(CM3217_CMD1_IT_T, data->cmd1);
-+
-+	return ((cm3217_int_time_avail[fd_it][1] / USEC_PER_MSEC) << it_t) / 2;
-+}
-+
-+static int cm3217_power_down(struct cm3217_data *data, u8 cmd1)
-+{
-+	return i2c_smbus_write_byte(data->client, cmd1 | CM3217_CMD1_SD);
-+}
-+
-+/*
-+ * A new setting only takes effect when the conversion in progress ends,
-+ * which can take up to 3.2 s. Leaving shutdown starts a new conversion
-+ * right away, so pass through shutdown on every change.
-+ */
-+static int cm3217_write_cmd(struct cm3217_data *data, u8 cmd1, u8 cmd2)
-+	__must_hold(&data->lock)
-+{
-+	unsigned int conv_ms;
-+	int ret;
-+
-+	ret = cm3217_power_down(data, cmd1);
-+	if (ret)
-+		return ret;
-+
-+	ret = i2c_smbus_write_byte(data->client_lsb, cmd2);
-+	if (ret)
-+		return ret;
-+
-+	ret = i2c_smbus_write_byte(data->client, cmd1);
-+	if (ret)
-+		return ret;
-+
-+	data->cmd1 = cmd1;
-+	data->cmd2 = cmd2;
-+
-+	/*
-+	 * The first count is ready after one conversion. The conversion time
-+	 * is only the nominal one, so add 10 % and a fixed margin.
-+	 */
-+	conv_ms = cm3217_conv_ms(data);
-+	conv_ms += conv_ms / 10 + CM3217_MARGIN_MS;
-+	data->ready = ktime_add_ms(ktime_get(), conv_ms);
-+
-+	return 0;
-+}
-+
-+static int cm3217_read_count(struct cm3217_data *data, int *val)
-+	__must_hold(&data->lock)
-+{
-+	int lsb, msb;
-+	s64 wait_ms;
-+
-+	wait_ms = ktime_ms_delta(data->ready, ktime_get());
-+	if (wait_ms > 0)
-+		msleep(wait_ms);
-+
-+	lsb = i2c_smbus_read_byte(data->client_lsb);
-+	if (lsb < 0)
-+		return lsb;
-+
-+	msb = i2c_smbus_read_byte(data->client);
-+	if (msb < 0)
-+		return msb;
-+
-+	*val = msb << 8 | lsb;
-+
-+	return 0;
-+}
-+
-+static const struct iio_chan_spec cm3217_channels[] = {
-+	{
-+		.type = IIO_LIGHT,
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-+				      BIT(IIO_CHAN_INFO_SCALE),
-+		.info_mask_separate_available = BIT(IIO_CHAN_INFO_SCALE),
-+		.info_mask_shared_by_all = BIT(IIO_CHAN_INFO_INT_TIME),
-+		.info_mask_shared_by_all_available = BIT(IIO_CHAN_INFO_INT_TIME),
-+	},
-+};
-+
-+static int cm3217_read_raw(struct iio_dev *indio_dev,
-+			   struct iio_chan_spec const *chan,
-+			   int *val, int *val2, long mask)
-+{
-+	struct cm3217_data *data = iio_priv(indio_dev);
-+	unsigned int fd_it, it_t;
-+	int ret;
-+
-+	guard(mutex)(&data->lock);
-+
-+	fd_it = FIELD_GET(CM3217_CMD2_FD_IT, data->cmd2);
-+	it_t = FIELD_GET(CM3217_CMD1_IT_T, data->cmd1);
-+
-+	switch (mask) {
-+	case IIO_CHAN_INFO_RAW:
-+		ret = cm3217_read_count(data, val);
-+		if (ret)
-+			return ret;
-+		return IIO_VAL_INT;
-+	case IIO_CHAN_INFO_SCALE:
-+		*val = cm3217_scale_avail[fd_it][it_t][0];
-+		*val2 = cm3217_scale_avail[fd_it][it_t][1];
-+		return IIO_VAL_INT_PLUS_NANO;
-+	case IIO_CHAN_INFO_INT_TIME:
-+		*val = cm3217_int_time_avail[fd_it][0];
-+		*val2 = cm3217_int_time_avail[fd_it][1];
-+		return IIO_VAL_INT_PLUS_MICRO;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static int cm3217_read_avail(struct iio_dev *indio_dev,
-+			     struct iio_chan_spec const *chan,
-+			     const int **vals, int *type, int *length,
-+			     long mask)
-+{
-+	struct cm3217_data *data = iio_priv(indio_dev);
-+	unsigned int fd_it;
-+
-+	switch (mask) {
-+	case IIO_CHAN_INFO_SCALE:
-+		scoped_guard(mutex, &data->lock)
-+			fd_it = FIELD_GET(CM3217_CMD2_FD_IT, data->cmd2);
-+		*vals = (const int *)cm3217_scale_avail[fd_it];
-+		*length = 2 * ARRAY_SIZE(cm3217_scale_avail[0]);
-+		*type = IIO_VAL_INT_PLUS_NANO;
-+		return IIO_AVAIL_LIST;
-+	case IIO_CHAN_INFO_INT_TIME:
-+		*vals = (const int *)cm3217_int_time_avail;
-+		*length = 2 * ARRAY_SIZE(cm3217_int_time_avail);
-+		*type = IIO_VAL_INT_PLUS_MICRO;
-+		return IIO_AVAIL_LIST;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static int cm3217_find_scale_avail(unsigned int fd_it, int val, int val2)
-+{
-+	for (unsigned int i = 0; i < ARRAY_SIZE(cm3217_scale_avail[0]); i++) {
-+		if (cm3217_scale_avail[fd_it][i][0] == val &&
-+		    cm3217_scale_avail[fd_it][i][1] == val2)
-+			return i;
-+	}
-+
-+	return -EINVAL;
-+}
-+
-+static int cm3217_find_int_time_avail(int val, int val2)
-+{
-+	for (unsigned int i = 0; i < ARRAY_SIZE(cm3217_int_time_avail); i++) {
-+		if (cm3217_int_time_avail[i][0] == val &&
-+		    cm3217_int_time_avail[i][1] == val2)
-+			return i;
-+	}
-+
-+	return -EINVAL;
-+}
-+
-+static int cm3217_write_raw(struct iio_dev *indio_dev,
-+			    struct iio_chan_spec const *chan,
-+			    int val, int val2, long mask)
-+{
-+	struct cm3217_data *data = iio_priv(indio_dev);
-+	unsigned int fd_it;
-+	u8 cmd1, cmd2;
-+	int i;
-+
-+	guard(mutex)(&data->lock);
-+
-+	switch (mask) {
-+	case IIO_CHAN_INFO_SCALE:
-+		fd_it = FIELD_GET(CM3217_CMD2_FD_IT, data->cmd2);
-+		i = cm3217_find_scale_avail(fd_it, val, val2);
-+		if (i < 0)
-+			return i;
-+
-+		cmd1 = data->cmd1;
-+		FIELD_MODIFY(CM3217_CMD1_IT_T, &cmd1, i);
-+
-+		return cm3217_write_cmd(data, cmd1, data->cmd2);
-+	case IIO_CHAN_INFO_INT_TIME:
-+		i = cm3217_find_int_time_avail(val, val2);
-+		if (i < 0)
-+			return i;
-+
-+		cmd2 = FIELD_PREP(CM3217_CMD2_FD_IT, i);
-+
-+		return cm3217_write_cmd(data, data->cmd1, cmd2);
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static int cm3217_write_raw_get_fmt(struct iio_dev *indio_dev,
-+				    struct iio_chan_spec const *chan,
-+				    long mask)
-+{
-+	switch (mask) {
-+	case IIO_CHAN_INFO_SCALE:
-+		return IIO_VAL_INT_PLUS_NANO;
-+	case IIO_CHAN_INFO_INT_TIME:
-+		return IIO_VAL_INT_PLUS_MICRO;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static const struct iio_info cm3217_info = {
-+	.read_raw = cm3217_read_raw,
-+	.read_avail = cm3217_read_avail,
-+	.write_raw = cm3217_write_raw,
-+	.write_raw_get_fmt = cm3217_write_raw_get_fmt,
-+};
-+
-+static void cm3217_power_off(void *_data)
-+{
-+	struct cm3217_data *data = _data;
-+
-+	cm3217_power_down(data, data->cmd1);
-+}
-+
-+static int cm3217_probe(struct i2c_client *client)
-+{
-+	struct device *dev = &client->dev;
-+	struct iio_dev *indio_dev;
-+	struct cm3217_data *data;
-+	u8 cmd1, cmd2;
-+	int ret;
-+
-+	indio_dev = devm_iio_device_alloc(dev, sizeof(*data));
-+	if (!indio_dev)
-+		return -ENOMEM;
-+
-+	data = iio_priv(indio_dev);
-+	data->client = client;
-+	i2c_set_clientdata(client, indio_dev);
-+
-+	ret = devm_mutex_init(dev, &data->lock);
-+	if (ret)
-+		return ret;
-+
-+	ret = devm_regulator_get_enable(dev, "vdd");
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to enable vdd supply\n");
-+
-+	/*
-+	 * The binding lists both addresses, but they are fixed and the second
-+	 * one always follows the first, so there is no need to look it up.
-+	 */
-+	data->client_lsb = devm_i2c_new_dummy_device(dev, client->adapter, client->addr + 1);
-+	if (IS_ERR(data->client_lsb))
-+		return dev_err_probe(dev, PTR_ERR(data->client_lsb),
-+				     "failed to register second address\n");
-+
-+	/* Start with the setting of the vendor driver: 2 T, 100 ms */
-+	cmd1 = CM3217_CMD1_RSVD | CM3217_CMD1_WDM |
-+	       FIELD_PREP(CM3217_CMD1_IT_T, CM3217_IT_T_2T);
-+	cmd2 = FIELD_PREP(CM3217_CMD2_FD_IT, CM3217_FD_IT_100MS);
-+
-+	scoped_guard(mutex, &data->lock) {
-+		ret = cm3217_write_cmd(data, cmd1, cmd2);
-+		if (ret)
-+			return dev_err_probe(dev, ret, "failed to power on\n");
-+	}
-+
-+	ret = devm_add_action_or_reset(dev, cm3217_power_off, data);
-+	if (ret)
-+		return ret;
-+
-+	indio_dev->name = "cm3217";
-+	indio_dev->info = &cm3217_info;
-+	indio_dev->channels = cm3217_channels;
-+	indio_dev->num_channels = ARRAY_SIZE(cm3217_channels);
-+	indio_dev->modes = INDIO_DIRECT_MODE;
-+
-+	return devm_iio_device_register(dev, indio_dev);
-+}
-+
-+static int cm3217_suspend(struct device *dev)
-+{
-+	struct cm3217_data *data = iio_priv(dev_get_drvdata(dev));
-+
-+	guard(mutex)(&data->lock);
-+
-+	return cm3217_power_down(data, data->cmd1);
-+}
-+
-+static int cm3217_resume(struct device *dev)
-+{
-+	struct cm3217_data *data = iio_priv(dev_get_drvdata(dev));
-+
-+	guard(mutex)(&data->lock);
-+
-+	return cm3217_write_cmd(data, data->cmd1, data->cmd2);
-+}
-+
-+static DEFINE_SIMPLE_DEV_PM_OPS(cm3217_pm_ops, cm3217_suspend, cm3217_resume);
-+
-+static const struct i2c_device_id cm3217_id[] = {
-+	{ .name = "cm3217" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(i2c, cm3217_id);
-+
-+static const struct of_device_id cm3217_of_match[] = {
-+	{ .compatible = "capella,cm3217" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, cm3217_of_match);
-+
-+static struct i2c_driver cm3217_driver = {
-+	.driver = {
-+		.name = "cm3217",
-+		.of_match_table = cm3217_of_match,
-+		.pm = pm_sleep_ptr(&cm3217_pm_ops),
-+	},
-+	.probe = cm3217_probe,
-+	.id_table = cm3217_id,
-+};
-+module_i2c_driver(cm3217_driver);
-+
-+MODULE_AUTHOR("Patrick Fischer <admin@tsv-stahl-riesa.de>");
-+MODULE_DESCRIPTION("Capella CM3217 ambient light sensor driver");
-+MODULE_LICENSE("GPL");
+Svyatoslav Ryhel (1):
+      thermal: tegra: soctherm-fuse: Fix shifted_cp extension
 
--- 
-2.56.1
+ drivers/thermal/tegra/soctherm-fuse.c     | 17 +++++++++++++----
+ drivers/thermal/tegra/soctherm.c          | 21 +++++++++++++--------
+ drivers/thermal/tegra/soctherm.h          |  6 ++++++
+ drivers/thermal/tegra/tegra114-soctherm.c |  4 +++-
+ 4 files changed, 35 insertions(+), 13 deletions(-)
+---
+base-commit: f79e51c70ef3209103fbe0200a1a012eaad763d9
+change-id: 20261023-upstream-soctherm-t114-9591c6b779d6
+
+Best regards,
+--  
+Patrick Fischer <admin@tsv-stahl-riesa.de>
 
