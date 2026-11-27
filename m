@@ -1,11 +1,10 @@
 From: Yuugo Yoneda <yogo.0917.sabu@gmail.com>
-Date: Fri, 27 Nov 2026 19:13:11 +0900
-Subject: [PATCH RFC v3 10/13] mmc: sdhci-at550: add SiRF AT550
- programmed-I/O host driver
+Date: Fri, 27 Nov 2026 19:13:12 +0900
+Subject: [PATCH RFC v3 11/13] ARM: at550: add SiRF AT550 platform support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-at550-rfc-v1-v3-10-f2221008912b@gmail.com>
+Message-Id: <20261127-at550-rfc-v1-v3-11-f2221008912b@gmail.com>
 References: <20261127-at550-rfc-v1-v3-0-f2221008912b@gmail.com>
 In-Reply-To: <20261127-at550-rfc-v1-v3-0-f2221008912b@gmail.com>
 To: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org
@@ -24,127 +23,195 @@ Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  linux-mmc@vger.kernel.org, linux-doc@vger.kernel.org, soc@lists.linux.dev, 
  Yuugo Yoneda <yogo.0917.sabu@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795774399; l=3663;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795774399; l=7327;
  i=yogo.0917.sabu@gmail.com; s=ypl514-20261117; h=from:subject:message-id;
- bh=zroMOlHblXPaJRW0XvRKrL7RwM+BR4h2/zPNcw5DK2Y=;
- b=rlDtAeNkTvi8vm6bH4zbOW+5ouocRpS8BdSbOofqm3ULLVwiOKqC95wdHMf/QeJ7mrWACXCQ0
- xOplD8EiZW0DSOMbx6CUE9IwG/zTpRodVK8z3BP6CgjlJ1sSziFQnAw
+ bh=g6ge5X6XsBt04lxoEmM1xnac5neJbBmEIx9wfufwKCc=;
+ b=gvOi66DNwjQKRfZfXuximtEHecPUwujgnREea5IVZRhDPtf3mJ7OwvM4xJaXqEXUFPnYAsyxv
+ WMjldKJsMdQAHPk5Dlx3IJ2RVVhED2b/4Q7bbWFMobofhFLhkRv6Pt8
 X-Developer-Key: i=yogo.0917.sabu@gmail.com; a=ed25519;
  pk=TIQ8Tk4xQrxyn8rmk3GI2f5qg/kO6g2KZm7YOOyBHeg=
 X-Endpoint-Received: by B4 Relay for yogo.0917.sabu@gmail.com/ypl514-20261117 with auth_id=1550
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a platform SDHCI host driver for the SiRF AT550 using programmed
-I/O, as CPU-to-controller DMA address translation is not yet validated.
+Add minimal Devicetree machine support for the SiRF AT550 SoC, selecting
+CPU_ARM1136R1 (matching MIDR 0x4117b365) alongside ARM_ERRATA_411920,
+AT550_IRQ, and CLKSRC_AT550.
 
-Use sdhci_pltfm_init() with default platform ops and
-sdhci_pltfm_remove(), leaving bus width, clock limits, and
-card-discovery constraints to the device tree.
+Document the RAM-boot firmware handoff contract and initial platform
+limits in Documentation/arch/arm/at550.rst.
 
 Signed-off-by: Yuugo Yoneda <yogo.0917.sabu@gmail.com>
 ---
- MAINTAINERS                    |  1 +
- drivers/mmc/host/Kconfig       | 10 +++++++++
- drivers/mmc/host/Makefile      |  2 ++
- drivers/mmc/host/sdhci-at550.c | 50 ++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 63 insertions(+)
+ Documentation/arch/arm/at550.rst | 56 ++++++++++++++++++++++++++++++++++++++++
+ Documentation/arch/arm/index.rst |  1 +
+ MAINTAINERS                      |  2 ++
+ arch/arm/Kconfig                 |  1 +
+ arch/arm/Makefile                |  1 +
+ arch/arm/mach-at550/Kconfig      | 13 ++++++++++
+ arch/arm/mach-at550/Makefile     |  2 ++
+ arch/arm/mach-at550/at550.c      | 11 ++++++++
+ 8 files changed, 87 insertions(+)
 
+diff --git a/Documentation/arch/arm/at550.rst b/Documentation/arch/arm/at550.rst
+new file mode 100644
+index 000000000..3d1d8a77c
+--- /dev/null
++++ b/Documentation/arch/arm/at550.rst
+@@ -0,0 +1,56 @@
++.. SPDX-License-Identifier: GPL-2.0-only
++
++SiRF AT550 and Yupiteru YPL514si
++================================
++
++The initial AT550 port supports the ARM1136 CPU, the 64-source interrupt
++controller, the low 32 bits of the system counter and match channel zero,
++polled resistive touch input, and SDHCI programmed I/O. The YPL514si board
++can use a firmware-configured 480 by 272 RGB565 simple framebuffer.
++
++Firmware handoff
++----------------
++
++Use the standard ARM boot protocol and a flattened device tree. Firmware must
++initialize SDRAM, peripheral clocks, and pin multiplexing before entering the
++kernel. No firmware-specific virtual mappings or page-table inspection are
++used by the Linux drivers.
++
++The bootloader must update the following parts of the board device tree:
++
++* Supply the actual Linux-owned region in the memory node. The zero size in
++  the source DTS is a placeholder, not a description of all installed memory.
++  RAM still owned by another operating system must not be advertised to Linux.
++* Set the fixed counter clock frequency to the rate after the programmed
++  hardware divider. The driver deliberately does not reset the counter or
++  change the divider. A zero rate is rejected.
++* Disable the timer watchdog before handing the timer block to Linux.
++* Enable the simple framebuffer only when its physical address, dimensions,
++  stride, and format have been verified. Reserve its memory with a no-map
++  reserved-memory node so simplefb does not alias the ARM linear mapping.
++* Enable the touch and SD nodes only for peripherals actually handed to Linux.
++  The touchscreen driver rejects an active streaming/AUX configuration.
++
++A Windows CE RAM loader is one possible bootloader. Its allocation checks,
++volatile driver registration, MMU transition, and DT fixups are outside the
++kernel port. The Linux Image and all its runtime memory must fit inside the
++region returned to the kernel; a static firmware RAM mapping is insufficient
++proof that memory is available.
++
++Initial limits
++--------------
++
++The port depends on firmware clock and pin setup; cold reset initialization
++and clock-tree programming are not implemented. Board suspend is disabled in
++the defconfig because firmware state restoration has not been established.
++
++DMA address translation has not been validated, so the SDHCI driver uses PIO.
++The YPL514si DT disables MMC and SDIO discovery and limits SD to 25 MHz and
++3.3 V. Filesystem write support, card removal, and suspend/resume require
++separate hardware validation. No flash or bootloader update is required to
++use the RAM boot path.
++
++The touchscreen exports raw coordinates. Initial five-point affine calibration
++is performed in userspace, rather than placing a board-specific transform in
++the input driver. GPS/baseband, USB, UART, and native LCD modesetting are not
++part of the initial support.
+diff --git a/Documentation/arch/arm/index.rst b/Documentation/arch/arm/index.rst
+index b15621093..9cf1fb834 100644
+--- a/Documentation/arch/arm/index.rst
++++ b/Documentation/arch/arm/index.rst
+@@ -62,6 +62,7 @@ SoC-specific documents
+    stm32/stm32mp157-overview
+    stm32/stm32-dma-mdma-chaining
+ 
++   at550
+    sunxi
+ 
+    samsung/index
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 1164152dc..9d02a79a2 100644
+index 9d02a79a2..1f9c8c08b 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -25858,6 +25858,7 @@ F:	Documentation/devicetree/bindings/timer/sirf,at550-timer.yaml
+@@ -25850,11 +25850,13 @@ F:	include/trace/events/siox.h
+ SIRF AT550 PLATFORM
+ M:	Yuugo Yoneda <yogo.0917.sabu@gmail.com>
+ S:	Odd Fixes
++F:	Documentation/arch/arm/at550.rst
+ F:	Documentation/devicetree/bindings/arm/sirf,at550.yaml
+ F:	Documentation/devicetree/bindings/input/touchscreen/sirf,at550-ts.yaml
+ F:	Documentation/devicetree/bindings/interrupt-controller/sirf,at550-intc.yaml
+ F:	Documentation/devicetree/bindings/mmc/sirf,at550-sdhci.yaml
+ F:	Documentation/devicetree/bindings/timer/sirf,at550-timer.yaml
++F:	arch/arm/mach-at550/
  F:	drivers/clocksource/timer-at550.c
  F:	drivers/input/touchscreen/at550-ts.c
  F:	drivers/irqchip/irq-at550.c
-+F:	drivers/mmc/host/sdhci-at550.c
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index 0cc289a71..7fcf2a28f 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -367,6 +367,7 @@ source "arch/arm/mach-artpec/Kconfig"
  
- SIS 190 ETHERNET DRIVER
- M:	Francois Romieu <romieu@fr.zoreil.com>
-diff --git a/drivers/mmc/host/Kconfig b/drivers/mmc/host/Kconfig
-index 79bfc425e..72e7c279a 100644
---- a/drivers/mmc/host/Kconfig
-+++ b/drivers/mmc/host/Kconfig
-@@ -1125,3 +1125,13 @@ config MMC_LITEX
- 	  module will be called litex_mmc.
+ source "arch/arm/mach-aspeed/Kconfig"
  
- 	  If unsure, say N.
-+
-+config MMC_SDHCI_AT550
-+	tristate "SiRF AT550 SDHCI host"
-+	depends on MMC_SDHCI_PLTFM && OF
-+	help
-+	  Say Y to enable the AT550 removable SD host using programmed I/O.
-+	  Firmware must configure the peripheral clock and pin multiplexing.
-+	  DMA address translation is not supported by this initial driver.
-+	  Card discovery and bus frequency are configured by the device tree.
-+	  To build as a module, choose M; it will be called sdhci-at550.
-diff --git a/drivers/mmc/host/Makefile b/drivers/mmc/host/Makefile
-index fd043afab..6f7b0dd14 100644
---- a/drivers/mmc/host/Makefile
-+++ b/drivers/mmc/host/Makefile
-@@ -115,3 +115,5 @@ endif
++source "arch/arm/mach-at550/Kconfig"
+ source "arch/arm/mach-at91/Kconfig"
  
- obj-$(CONFIG_MMC_SDHCI_XENON)	+= sdhci-xenon-driver.o
- sdhci-xenon-driver-y		+= sdhci-xenon.o sdhci-xenon-phy.o
-+
-+obj-$(CONFIG_MMC_SDHCI_AT550) += sdhci-at550.o
-diff --git a/drivers/mmc/host/sdhci-at550.c b/drivers/mmc/host/sdhci-at550.c
+ source "arch/arm/mach-axxia/Kconfig"
+diff --git a/arch/arm/Makefile b/arch/arm/Makefile
+index 573813ef5..508cbad8b 100644
+--- a/arch/arm/Makefile
++++ b/arch/arm/Makefile
+@@ -176,6 +176,7 @@ machine-$(CONFIG_ARCH_ACTIONS)		+= actions
+ machine-$(CONFIG_ARCH_ALPINE)		+= alpine
+ machine-$(CONFIG_ARCH_ARTPEC)		+= artpec
+ machine-$(CONFIG_ARCH_ASPEED)           += aspeed
++machine-$(CONFIG_ARCH_AT550)		+= at550
+ machine-$(CONFIG_ARCH_AT91)		+= at91
+ machine-$(CONFIG_ARCH_AXXIA)		+= axxia
+ machine-$(CONFIG_ARCH_BCM)		+= bcm
+diff --git a/arch/arm/mach-at550/Kconfig b/arch/arm/mach-at550/Kconfig
 new file mode 100644
-index 000000000..c1f7399ad
+index 000000000..b3a0c1874
 --- /dev/null
-+++ b/drivers/mmc/host/sdhci-at550.c
-@@ -0,0 +1,50 @@
++++ b/arch/arm/mach-at550/Kconfig
+@@ -0,0 +1,13 @@
++# SPDX-License-Identifier: GPL-2.0-only
++config ARCH_AT550
++	bool "SiRF AT550 platforms"
++	depends on ARCH_MULTI_V6
++	select ARM_ERRATA_411920
++	select AT550_IRQ
++	select CLKSRC_AT550
++	select CPU_ARM1136R1
++	help
++	  Support SiRF AT550 systems, including the Yupiteru YPL514si.
++	  The initial support uses firmware-configured peripheral clocks,
++	  pin multiplexing and SDRAM. A bootloader-supplied device tree must
++	  describe the usable RAM region and the divided counter clock rate.
+diff --git a/arch/arm/mach-at550/Makefile b/arch/arm/mach-at550/Makefile
+new file mode 100644
+index 000000000..98a51d234
+--- /dev/null
++++ b/arch/arm/mach-at550/Makefile
+@@ -0,0 +1,2 @@
++# SPDX-License-Identifier: GPL-2.0-only
++obj-y += at550.o
+diff --git a/arch/arm/mach-at550/at550.c b/arch/arm/mach-at550/at550.c
+new file mode 100644
+index 000000000..affcc9eb3
+--- /dev/null
++++ b/arch/arm/mach-at550/at550.c
+@@ -0,0 +1,11 @@
 +// SPDX-License-Identifier: GPL-2.0-only
-+/* Standard SDHCI PIO only: do not assume CPU/PCI DMA address equivalence. */
-+#include <linux/mmc/host.h>
-+#include <linux/module.h>
-+#include <linux/platform_device.h>
++#include <asm/mach/arch.h>
 +
-+#include "sdhci-pltfm.h"
-+
-+static const struct sdhci_pltfm_data at550_sdhci_data = {
-+	.quirks = SDHCI_QUIRK_BROKEN_DMA | SDHCI_QUIRK_BROKEN_ADMA,
-+	.quirks2 = SDHCI_QUIRK2_NO_1_8_V,
++static const char *const at550_dt_compat[] __initconst = {
++	"sirf,at550",
++	NULL,
 +};
 +
-+static int at550_sdhci_probe(struct platform_device *pdev)
-+{
-+	struct sdhci_host *host;
-+	int ret;
-+
-+	host = sdhci_pltfm_init(pdev, &at550_sdhci_data, 0);
-+	if (IS_ERR(host))
-+		return PTR_ERR(host);
-+
-+	ret = mmc_of_parse(host->mmc);
-+	if (ret)
-+		return ret;
-+
-+	sdhci_get_property(pdev);
-+
-+	return sdhci_add_host(host);
-+}
-+
-+static const struct of_device_id at550_sdhci_of_match[] = {
-+	{ .compatible = "sirf,at550-sdhci" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, at550_sdhci_of_match);
-+
-+static struct platform_driver at550_sdhci_driver = {
-+	.probe = at550_sdhci_probe,
-+	.remove = sdhci_pltfm_remove,
-+	.driver = {
-+		.name = "sdhci-at550",
-+		.of_match_table = at550_sdhci_of_match,
-+		.pm = &sdhci_pltfm_pmops,
-+	},
-+};
-+module_platform_driver(at550_sdhci_driver);
-+
-+MODULE_DESCRIPTION("SiRF AT550 SDHCI PIO host");
-+MODULE_LICENSE("GPL");
++DT_MACHINE_START(AT550_DT, "SiRF AT550")
++	.dt_compat = at550_dt_compat,
++MACHINE_END
 
 -- 
 2.56.1
