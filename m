@@ -1,11 +1,11 @@
 From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Fri, 27 Nov 2026 21:32:23 +0800
-Subject: [PATCH RESEND v4 1/3] pwm: loongson: Fix low pulse buffer register
- handling
+Date: Fri, 27 Nov 2026 21:32:24 +0800
+Subject: [PATCH RESEND v4 2/3] pwm: loongson: Reset the counters before
+ enabling PWM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-pwm-loongson-fix-v4-1-607f325b74d4@gmail.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261127-pwm-loongson-fix-v4-2-607f325b74d4@gmail.com>
 References: <20261127-pwm-loongson-fix-v4-0-607f325b74d4@gmail.com>
 In-Reply-To: <20261127-pwm-loongson-fix-v4-0-607f325b74d4@gmail.com>
 To: Binbin Zhou <zhoubinbin@loongson.cn>, 
@@ -14,101 +14,48 @@ Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org,
  "Imported from f20260920-pwm-loongson-fix-v4-0-41b36b3c6497"@gmail.com, 
  Keguang Zhang <keguang.zhang@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795786349; l=3560;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795786349; l=1375;
  i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=DFazlz12Y6/wBIS6Dam/b9mRin3D6Nzh0Lwh4VsJ77g=;
- b=F1S+cjVPx2cGUd30vfgrtNyngtI2i5floNkR6Ftpo5t3TBUWvjdJNIk3+ziX4s71NDetBNWfD
- P/39O+Vtaz/A7Ib1NQT0lnzg7/T6HxL9v8AN11T7AxY6J8AS0jWmsvm
+ bh=nEffXoAuY0LXvNjn27LU1Ds6mcGSPElXiuPjP4r7awA=;
+ b=ZB6/mPRpggxjXqpMw+PQxxBcr7XBNTXFyP0f5LOwzzfn8+/KTNrnXSx27T4SoWr60ydsrGBSd
+ lbdpV78SKvJCROA1kEtfRv87GHevahMN77XE4zJZGexQS+OIhvnZZHq
 X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
  pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
 X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Loongson PWM register at offset 0x4 is documented as the Low
-Pulse Buffer Register, which stores the low pulse width rather than
-the duty cycle.
-
-However, this register was incorrectly defined and treated as a
-duty-cycle register. As a result, the duty cycle and low pulse cycle
-are swapped in the generated PWM waveform.
-
-Program the low pulse (period - duty) into the register and
-adjust pwm_loongson_get_state() accordingly when reconstructing the
-duty cycle.
+The PWM controller may retain its initial hardware state when the driver
+binds. Reset the counters before enabling to ensure that the PWM starts
+from a known state.
 
 Fixes: 2b62c89448dd ("pwm: Add Loongson PWM controller support")
+Fixes: 0de9b836a3bc ("pwm: loongson: Reload PWM configuration through counter reset")
 Cc: stable@vger.kernel.org
+Suggested-by: Uwe Kleine-König <ukleinek@kernel.org>
 Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
- drivers/pwm/pwm-loongson.c | 29 +++++++++++++++++------------
- 1 file changed, 17 insertions(+), 12 deletions(-)
+ drivers/pwm/pwm-loongson.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 diff --git a/drivers/pwm/pwm-loongson.c b/drivers/pwm/pwm-loongson.c
-index 4e8b54c8016c..0ec773fba813 100644
+index 0ec773fba813..6f609fd0b90b 100644
 --- a/drivers/pwm/pwm-loongson.c
 +++ b/drivers/pwm/pwm-loongson.c
-@@ -33,7 +33,7 @@
- #include <linux/units.h>
- 
- /* Loongson PWM registers */
--#define LOONGSON_PWM_REG_DUTY		0x4 /* Low Pulse Buffer Register */
-+#define LOONGSON_PWM_REG_LOW		0x4 /* Low Pulse Buffer Register */
- #define LOONGSON_PWM_REG_PERIOD		0x8 /* Pulse Period Buffer Register */
- #define LOONGSON_PWM_REG_CTRL		0xc /* Control Register */
- 
-@@ -120,20 +120,20 @@ static int pwm_loongson_enable(struct pwm_chip *chip, struct pwm_device *pwm)
- static int pwm_loongson_config(struct pwm_chip *chip, struct pwm_device *pwm,
- 			       u64 duty_ns, u64 period_ns)
- {
--	u64 duty, period;
-+	u64 low, duty, period;
+@@ -110,6 +110,14 @@ static int pwm_loongson_enable(struct pwm_chip *chip, struct pwm_device *pwm)
  	struct pwm_loongson_ddata *ddata = to_pwm_loongson_ddata(chip);
  
--	/* duty = duty_ns * ddata->clk_rate / NSEC_PER_SEC */
--	duty = mul_u64_u64_div_u64(duty_ns, ddata->clk_rate, NSEC_PER_SEC);
--	if (duty > U32_MAX)
--		duty = U32_MAX;
--
- 	/* period = period_ns * ddata->clk_rate / NSEC_PER_SEC */
- 	period = mul_u64_u64_div_u64(period_ns, ddata->clk_rate, NSEC_PER_SEC);
- 	if (period > U32_MAX)
- 		period = U32_MAX;
- 
--	pwm_loongson_writel(ddata, duty, LOONGSON_PWM_REG_DUTY);
-+	/* duty = duty_ns * ddata->clk_rate / NSEC_PER_SEC */
-+	duty = mul_u64_u64_div_u64_roundup(duty_ns, ddata->clk_rate, NSEC_PER_SEC);
-+	duty = min(duty, period);
-+	low = period - duty;
+ 	val = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_CTRL);
 +
-+	pwm_loongson_writel(ddata, low, LOONGSON_PWM_REG_LOW);
- 	pwm_loongson_writel(ddata, period, LOONGSON_PWM_REG_PERIOD);
- 
- 	return 0;
-@@ -168,15 +168,20 @@ static int pwm_loongson_apply(struct pwm_chip *chip, struct pwm_device *pwm,
- static int pwm_loongson_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
- 				  struct pwm_state *state)
- {
--	u32 duty, period, ctrl;
-+	u32 low, period, ctrl;
- 	struct pwm_loongson_ddata *ddata = to_pwm_loongson_ddata(chip);
- 
--	duty = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_DUTY);
-+	low = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_LOW);
- 	period = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_PERIOD);
- 	ctrl = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_CTRL);
- 
--	/* duty & period have a max of 2^32, so we can't overflow */
--	state->duty_cycle = DIV64_U64_ROUND_UP((u64)duty * NSEC_PER_SEC, ddata->clk_rate);
-+	/* low & period have a max of 2^32 - 1, so we can't overflow */
-+	if (low >= period)
-+		state->duty_cycle = 0;
-+	else
-+		state->duty_cycle =
-+		    DIV64_U64_ROUND_UP((u64)(period - low) * NSEC_PER_SEC, ddata->clk_rate);
++	/*
++	 * Ensure that the values of LOW and PERIOD are sampled into
++	 * the shadow register when the hardware starts running.
++	 */
++	if (!(val & LOONGSON_PWM_CTRL_REG_RST))
++		pwm_loongson_writel(ddata, val | LOONGSON_PWM_CTRL_REG_RST, LOONGSON_PWM_REG_CTRL);
 +
- 	state->period = DIV64_U64_ROUND_UP((u64)period * NSEC_PER_SEC, ddata->clk_rate);
- 	state->polarity = (ctrl & LOONGSON_PWM_CTRL_REG_INVERT) ? PWM_POLARITY_INVERSED :
- 			  PWM_POLARITY_NORMAL;
+ 	val &= ~LOONGSON_PWM_CTRL_REG_RST;
+ 	val |= LOONGSON_PWM_CTRL_REG_EN;
+ 	pwm_loongson_writel(ddata, val, LOONGSON_PWM_REG_CTRL);
 
 -- 
 2.53.0
