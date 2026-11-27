@@ -1,11 +1,11 @@
 From: Ahmet Zeren <niko3x@proton.me>
-Date: Fri, 27 Nov 2026 11:59:59 +0300
-Subject: [PATCH RFT rtw-next v2 1/2] wifi: rtw88: use the rate, bandwidth
- and GI of injected frames
+Date: Fri, 27 Nov 2026 12:00:00 +0300
+Subject: [PATCH RFT rtw-next v2 2/2] wifi: rtw88: honour the retry count
+ and NO_ACK of injected frames
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-b4-rtw88-inject-v2-1-f9701b9243a3@proton.me>
+Message-Id: <20261127-b4-rtw88-inject-v2-2-f9701b9243a3@proton.me>
 References: <20261127-b4-rtw88-inject-v2-0-f9701b9243a3@proton.me>
 In-Reply-To: <20261127-b4-rtw88-inject-v2-0-f9701b9243a3@proton.me>
 To: Ping-Ke Shih <pkshih@realtek.com>
@@ -13,84 +13,122 @@ Cc: linux-wireless@vger.kernel.org, Luka Gejak <luka.gejak@linux.dev>,
  Bitterblue Smith <rtl8821cerfe2@gmail.com>, linux-kernel@vger.kernel.org, 
  Ahmet Zeren <niko3x@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795770000; l=2582;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795770000; l=4930;
  i=niko3x@proton.me; s=20261119; h=from:subject:message-id;
- bh=FhYrSNa12y54f8TuWwnmFaCq9qmcQT+x3fX15vMZZZc=;
- b=2qZllMslEIoqqQfuU7er/nYfcqlWngHobLmvSRT+likvQP3ryNUusWTFCJzTi5Q++uzKIzd7e
- wRILA2UjkkEAF5EMlUMu6YxC6QsiSIm423eQXJ+ieayraFfYCeMDGab
+ bh=POOXTH3H0L3oyee8z36H+ZnuQn4Fh7XcOGuPBQbULUU=;
+ b=8qWHhhf9NWi8e6rK9TvWkG2sBZfZjETpMs+88M1I4qfGjeaqUl+8GsNroyaT56s5RBun8aB/3
+ h6PyjGJFLr+Duhu7fqdFebQf+xo8LHoBzoVNKQh2I4i3sRKuF/3+//G
 X-Developer-Key: i=niko3x@proton.me; a=ed25519;
  pk=J4zNm2pudzQ/wF+pQ8xO+wW6jpcNa9EJ2C1g4DUAjhM=
 X-Endpoint-Received: by B4 Relay for niko3x@proton.me/20261119 with auth_id=1575
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Injected frames ignore the rate, bandwidth and guard interval requested
-in their radiotap header. Data frames have no station, so USE_RATE is not
-set and the firmware rate adaptation picks the rate. Management frames
-are sent at the lowest basic rate.
+max_rate_tries is not set, so mac80211 clamps the radiotap retry count
+of injected frames to zero, and the TX descriptor retry limit is never
+programmed. Injected unicast frames, even NO_ACK ones, are retried up to
+the default limit, so frames to an absent station stall injection. The
+TX report path also reports NO_ACK frames as not acked.
 
-Use the injected rate, bandwidth and guard interval and disable rate
-fallback, like rtw89 does since commit e96abe4fd7cd ("wifi: rtw89:
-consider data rate/bandwidth/GI for injected packets"). Injected frames
-without a radiotap rate are unchanged.
+Limit max_rate_tries by both the TX descriptor retry limit and
+IEEE80211_MAX_TX_RETRY, and program the descriptor retry limit for
+injected frames: no retries for NO_ACK frames, otherwise the radiotap
+retry count if the frame has a usable radiotap rate. In the TX report,
+report NO_ACK frames that were sent as IEEE80211_TX_STAT_NOACK_TRANSMITTED
+rather than acked; this includes group addressed frames.
+
+rtw89 got similar changes in commit 92608bb5f14f ("wifi: rtw89: honor
+ASSIGN_SEQ, retries, and NO_ACK for injected frames"). The retry limit
+fields are at the same place as TXDESC40_RETRY_LIMIT_* in the
+RTL8192EU/RTL8723BU TX descriptor of rtl8xxxu.
 
 Signed-off-by: Ahmet Zeren <niko3x@proton.me>
 ---
- drivers/net/wireless/realtek/rtw88/tx.c | 35 +++++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+ drivers/net/wireless/realtek/rtw88/main.c |  1 +
+ drivers/net/wireless/realtek/rtw88/main.h |  3 +++
+ drivers/net/wireless/realtek/rtw88/tx.c   | 16 ++++++++++++++--
+ drivers/net/wireless/realtek/rtw88/tx.h   |  2 ++
+ 4 files changed, 20 insertions(+), 2 deletions(-)
 
+diff --git a/drivers/net/wireless/realtek/rtw88/main.c b/drivers/net/wireless/realtek/rtw88/main.c
+index 826e1bc3724..c715a6e86a1 100644
+--- a/drivers/net/wireless/realtek/rtw88/main.c
++++ b/drivers/net/wireless/realtek/rtw88/main.c
+@@ -2273,6 +2273,7 @@ int rtw_register_hw(struct rtw_dev *rtwdev, struct ieee80211_hw *hw)
+ 		max_tx_headroom += RTW_SDIO_DATA_PTR_ALIGN;
+ 
+ 	hw->extra_tx_headroom = max_tx_headroom;
++	hw->max_rate_tries = min(RTW_TX_DATA_RTY_LMT_MAX + 1, IEEE80211_MAX_TX_RETRY);
+ 	hw->queues = IEEE80211_NUM_ACS;
+ 	hw->txq_data_size = sizeof(struct rtw_txq);
+ 	hw->sta_data_size = sizeof(struct rtw_sta_info);
+diff --git a/drivers/net/wireless/realtek/rtw88/main.h b/drivers/net/wireless/realtek/rtw88/main.h
+index 525f17590ad..7888033376c 100644
+--- a/drivers/net/wireless/realtek/rtw88/main.h
++++ b/drivers/net/wireless/realtek/rtw88/main.h
+@@ -625,6 +625,9 @@ struct rtw_tx_pkt_info {
+ 	bool stbc;
+ 	bool ldpc;
+ 	bool dis_rate_fallback;
++	bool rty_lmt_en;
++	u8 data_rty_lmt;
++#define RTW_TX_DATA_RTY_LMT_MAX	0x3f
+ 	bool bmc;
+ 	bool use_rate;
+ 	bool ls;
 diff --git a/drivers/net/wireless/realtek/rtw88/tx.c b/drivers/net/wireless/realtek/rtw88/tx.c
-index 701ed7c4f3f..dd5537d0cf1 100644
+index dd5537d0cf1..32621b5c4fa 100644
 --- a/drivers/net/wireless/realtek/rtw88/tx.c
 +++ b/drivers/net/wireless/realtek/rtw88/tx.c
-@@ -405,6 +405,38 @@ out:
- 	}
- }
+@@ -66,7 +66,9 @@ void rtw_tx_fill_tx_desc(struct rtw_dev *rtwdev,
+ 		      le32_encode_bits(pkt_info->nav_use_hdr, RTW_TX_DESC_W3_NAVUSEHDR) |
+ 		      le32_encode_bits(pkt_info->ampdu_factor, RTW_TX_DESC_W3_MAX_AGG_NUM);
  
-+static void rtw_tx_injected_pkt_info_update(struct rtw_dev *rtwdev,
-+					    struct rtw_tx_pkt_info *pkt_info,
-+					    struct ieee80211_tx_info *info)
-+{
-+	struct ieee80211_tx_rate *rate = &info->control.rates[0];
-+	u8 nss, mcs;
-+
-+	if (!(info->control.flags & IEEE80211_TX_CTRL_RATE_INJECT))
-+		return;
-+
-+	if (rate->flags & IEEE80211_TX_RC_VHT_MCS) {
-+		nss = ieee80211_rate_get_vht_nss(rate);
-+		mcs = ieee80211_rate_get_vht_mcs(rate);
-+		pkt_info->rate = DESC_RATEVHT1SS_MCS0 + (nss - 1) * 10 + mcs;
-+	} else if (rate->flags & IEEE80211_TX_RC_MCS) {
-+		pkt_info->rate = DESC_RATEMCS0 + rate->idx;
-+	} else {
-+		pkt_info->rate = ieee80211_get_tx_rate(rtwdev->hw, info)->hw_value;
+-	tx_desc->w4 = le32_encode_bits(pkt_info->rate, RTW_TX_DESC_W4_DATARATE);
++	tx_desc->w4 = le32_encode_bits(pkt_info->rate, RTW_TX_DESC_W4_DATARATE) |
++		      le32_encode_bits(pkt_info->rty_lmt_en, RTW_TX_DESC_W4_RTY_LMT_EN) |
++		      le32_encode_bits(pkt_info->data_rty_lmt, RTW_TX_DESC_W4_DATA_RTY_LMT);
+ 
+ 	if (rtwdev->chip->old_datarate_fb_limit)
+ 		tx_desc->w4 |= le32_encode_bits(0x1f, RTW_TX_DESC_W4_DATARATE_FB_LIMIT);
+@@ -224,7 +226,9 @@ static void rtw_tx_report_tx_status(struct rtw_dev *rtwdev,
+ 
+ 	info = IEEE80211_SKB_CB(skb);
+ 	ieee80211_tx_info_clear_status(info);
+-	if (acked)
++	if (acked && info->flags & IEEE80211_TX_CTL_NO_ACK)
++		info->flags |= IEEE80211_TX_STAT_NOACK_TRANSMITTED;
++	else if (acked)
+ 		info->flags |= IEEE80211_TX_STAT_ACK;
+ 	else
+ 		info->flags &= ~IEEE80211_TX_STAT_ACK;
+@@ -412,6 +416,14 @@ static void rtw_tx_injected_pkt_info_update(struct rtw_dev *rtwdev,
+ 	struct ieee80211_tx_rate *rate = &info->control.rates[0];
+ 	u8 nss, mcs;
+ 
++	if (info->flags & IEEE80211_TX_CTL_NO_ACK) {
++		pkt_info->rty_lmt_en = true;
++		pkt_info->data_rty_lmt = 0;
++	} else if (info->control.flags & IEEE80211_TX_CTRL_RATE_INJECT) {
++		pkt_info->rty_lmt_en = true;
++		pkt_info->data_rty_lmt = rate->count - 1;
 +	}
 +
-+	if (rate->flags & IEEE80211_TX_RC_80_MHZ_WIDTH)
-+		pkt_info->bw = RTW_CHANNEL_WIDTH_80;
-+	else if (rate->flags & IEEE80211_TX_RC_40_MHZ_WIDTH)
-+		pkt_info->bw = RTW_CHANNEL_WIDTH_40;
-+	else
-+		pkt_info->bw = RTW_CHANNEL_WIDTH_20;
-+
-+	pkt_info->short_gi = rate->flags & IEEE80211_TX_RC_SHORT_GI;
-+	pkt_info->use_rate = true;
-+	pkt_info->dis_rate_fallback = true;
-+}
-+
- void rtw_tx_pkt_info_update(struct rtw_dev *rtwdev,
- 			    struct rtw_tx_pkt_info *pkt_info,
- 			    struct ieee80211_sta *sta,
-@@ -432,6 +464,9 @@ void rtw_tx_pkt_info_update(struct rtw_dev *rtwdev,
- 	else if (ieee80211_is_data(fc))
- 		rtw_tx_data_pkt_info_update(rtwdev, pkt_info, sta, skb);
+ 	if (!(info->control.flags & IEEE80211_TX_CTRL_RATE_INJECT))
+ 		return;
  
-+	if (unlikely(info->flags & IEEE80211_TX_CTL_INJECTED))
-+		rtw_tx_injected_pkt_info_update(rtwdev, pkt_info, info);
-+
- 	bmc = is_broadcast_ether_addr(hdr->addr1) ||
- 	      is_multicast_ether_addr(hdr->addr1);
- 
+diff --git a/drivers/net/wireless/realtek/rtw88/tx.h b/drivers/net/wireless/realtek/rtw88/tx.h
+index 168f48e8785..b6c687d33db 100644
+--- a/drivers/net/wireless/realtek/rtw88/tx.h
++++ b/drivers/net/wireless/realtek/rtw88/tx.h
+@@ -46,6 +46,8 @@ struct rtw_tx_desc {
+ #define RTW_TX_DESC_W3_MAX_AGG_NUM GENMASK(21, 17)
+ #define RTW_TX_DESC_W4_DATARATE GENMASK(6, 0)
+ #define RTW_TX_DESC_W4_DATARATE_FB_LIMIT GENMASK(12, 8)
++#define RTW_TX_DESC_W4_RTY_LMT_EN BIT(17)
++#define RTW_TX_DESC_W4_DATA_RTY_LMT GENMASK(23, 18)
+ #define RTW_TX_DESC_W4_RTSRATE GENMASK(28, 24)
+ #define RTW_TX_DESC_W5_DATA_SHORT BIT(4)
+ #define RTW_TX_DESC_W5_DATA_BW GENMASK(6, 5)
 
 -- 
 2.56.1
