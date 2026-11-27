@@ -1,73 +1,143 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Subject: [PATCH bluetooth-next 0/2] Bluetooth: SMP: keep pairing keys
- private until pairing completes
-Date: Fri, 27 Nov 2026 21:19:16 +0000
-Message-Id: <20261127-bt-smp-n-v1-0-e123c04c15be@certik.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANTzCWsC/yWMwQrDIBBEfyXsuQtRaJT+SulBzbZa0k1wTQiE/
- Hu1Pb6ZeXOAUE4kcOsOyLQlSTNXUJcOQnT8IkxjZdC9HpTSBn1B+SzIaG0fBqvd1RgLdb5keqb
- 9d3UHP61U5rlEZNoLPP69rP5NobS/ZngnhD47DrFFQjxWZ8KWw3l+ASo8Q0qcAAAA
-X-Change-ID: 20261127-bt-smp-n-880c682a5778
+Message-Id: <20261127-bt-smp-n-v1-1-e123c04c15be@certik.com>
+References: <20261127-bt-smp-n-v1-0-e123c04c15be@certik.com>
+In-Reply-To: <20261127-bt-smp-n-v1-0-e123c04c15be@certik.com>
+From: Dickson Wu <dickson.wu@certik.com>
+Date: Fri, 27 Nov 2026 15:31:51 +0000
+Subject: [PATCH bluetooth-next 1/2] Bluetooth: SMP: Defer IRK updates until
+ pairing completes
 To: linux-bluetooth@vger.kernel.org
 Cc: Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
  Marcel Holtmann <marcel@holtmann.org>, 
  Johan Hedberg <johan.hedberg@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795814356; l=2169;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795814356; l=3994;
  i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=02FxCK96bQDMry6ZNVOOlcvZDo/u/NT5xXIMJ9SA1Nw=;
- b=W8VmTdtMOSzDAPbmn8hZ/MfaxJlHMqc1+jMG9uVnn8vfQfw2YjN2bCpHkIjY8xCFa0h2dUQLm
- SWujmAOICs3CJHH8mCYck3kjEWgC2AwNM1mgOCsw+3/M3o5Yf2VnL88
+ bh=xcwj8WZ/dFluIe0JR28QFFTUFzVXNxId8GhbSTKloLk=;
+ b=elCItR9I9cQpbQOSPaUKRzfG+rE3idU7JaqIJ6IfCPuwosMaBlsp1BbJtNExgZnfUv6hZ91jP
+ Bc02eR2U7Y4C47Tq3iJV/NbMjspnft0Xc1hdGp3aqmmt1I5Sp2mDjCS
 X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
  pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
 X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-An incomplete pairing can share an IRK registry entry with another pairing,
-then free it during teardown. CTKD can replace an LTK retained by an
-incomplete LE pairing and free it from the BR/EDR pairing context. A second
-LE link can retype a retained LTK as an STK that the LTK Request handler
-frees. The series keeps received or generated keys private to each pairing
-context and publishes registry updates only after pairing completes.
+hci_add_irk() can return an existing entry when two pairing contexts
+distribute the same identity. Both contexts save that pointer in
+remote_irk. If either pairing fails, smp_chan_destroy() removes and frees
+the shared entry, leaving the other context with a dangling pointer.
 
-Tested under UML with KASAN and a VHCI controller, no radio, on
-bluetooth-next f57f78086ab5 and mainline 9437ee8b6cf6 (patch 2 needed
-context adjustment for mainline). Stock and explicitly reverted kernels
-hit slab-use-after-free in list_del_rcu() from smp_chan_destroy() for all
-three cases (shared IRK, CTKD LTK, second-link STK). With the series all
-three pass, and so do normal LE LTK storage, CTKD derivation and storage,
-LTK and IRK replacement on re-pairing, and RPA resolution. Patch 1 builds
-on its own and net/bluetooth/ is W=1 clean. A reproducer is available if
-it helps.
+Keep the received IRK in the pairing context and add or update the
+resolving list only when pairing completes. Incomplete contexts no longer
+share list entries, while completed re-pairings still update an existing
+IRK.
 
-These need a peer whose Just Works pairing requests get accepted, so a
-default bluetoothd with an agent does not accept them silently.
-
-Patch 1 is near "Bluetooth: SMP: Use pairing data for IRK notifications"
-on the list, which fixes a different Load IRKs race in the same IRK
-notification code, so the two may need rebasing against each other.
-
+Fixes: 759331d7cc66 ("Bluetooth: Fix clearing SMP keys if pairing fails")
+Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+---
 This was found and the fix prepared with AI coding tools (OpenAI Codex
 agents, with review by Claude). I went over the analysis and the patch
 before signing off.
 
----
-Dickson Wu (2):
-      Bluetooth: SMP: Defer IRK updates until pairing completes
-      Bluetooth: SMP: Keep pending LTKs private
+ net/bluetooth/smp.c | 39 ++++++++++++++++++++-------------------
+ 1 file changed, 20 insertions(+), 19 deletions(-)
 
- include/net/bluetooth/hci_core.h |  5 +++
- net/bluetooth/hci_core.c         | 76 +++++++++++++++++++++++++++++++---------
- net/bluetooth/hci_event.c        | 16 ++++++---
- net/bluetooth/smp.c              | 73 +++++++++++++++++++++++++-------------
- 4 files changed, 125 insertions(+), 45 deletions(-)
----
-base-commit: f57f78086ab54f3b3122fbaeba2c842ba7bb6d00
-change-id: 20261127-bt-smp-n-880c682a5778
-
-Best regards,
---  
-Dickson Wu <dickson.wu@certik.com>
-
+diff --git a/net/bluetooth/smp.c b/net/bluetooth/smp.c
+index 62a6b1e8f7cb..3a0fbc291878 100644
+--- a/net/bluetooth/smp.c
++++ b/net/bluetooth/smp.c
+@@ -111,7 +111,7 @@ struct smp_chan {
+ 	struct smp_csrk	*responder_csrk;
+ 	struct smp_ltk	*ltk;
+ 	struct smp_ltk	*responder_ltk;
+-	struct smp_irk	*remote_irk;
++	bool		remote_irk_pending;
+ 	u8		*link_key;
+ 	unsigned long	flags;
+ 	u8		method;
+@@ -763,11 +763,6 @@ static void smp_chan_destroy(struct l2cap_conn *conn)
+ 			list_del_rcu(&smp->responder_ltk->list);
+ 			kfree_rcu(smp->responder_ltk, rcu);
+ 		}
+-
+-		if (smp->remote_irk) {
+-			list_del_rcu(&smp->remote_irk->list);
+-			kfree_rcu(smp->remote_irk, rcu);
+-		}
+ 	}
+ 
+ 	chan->data = NULL;
+@@ -1043,16 +1038,29 @@ static void smp_notify_keys(struct l2cap_conn *conn)
+ 				SMP_AUTH_BONDING);
+ 	}
+ 
+-	if (smp->remote_irk) {
+-		mgmt_new_irk(hdev, smp->remote_irk, persistent);
++	if (smp->remote_irk_pending) {
++		struct smp_irk *irk;
++		bdaddr_t rpa;
++
++		if (hci_bdaddr_is_rpa(&hcon->dst, hcon->dst_type))
++			bacpy(&rpa, &hcon->dst);
++		else
++			bacpy(&rpa, BDADDR_ANY);
++
++		irk = hci_add_irk(hdev, &smp->id_addr, smp->id_addr_type,
++				  smp->irk, &rpa);
++		if (!irk)
++			goto notify_csrk;
++
++		mgmt_new_irk(hdev, irk, persistent);
+ 
+ 		/* Now that user space can be considered to know the
+ 		 * identity address track the connection based on it
+ 		 * from now on (assuming this is an LE link).
+ 		 */
+ 		if (hcon->type == LE_LINK) {
+-			bacpy(&hcon->dst, &smp->remote_irk->bdaddr);
+-			hcon->dst_type = smp->remote_irk->addr_type;
++			bacpy(&hcon->dst, &irk->bdaddr);
++			hcon->dst_type = irk->addr_type;
+ 			/* Use a short delay to make sure the new address is
+ 			 * propagated _before_ the channels.
+ 			 */
+@@ -1062,6 +1070,7 @@ static void smp_notify_keys(struct l2cap_conn *conn)
+ 		}
+ 	}
+ 
++notify_csrk:
+ 	if (smp->csrk) {
+ 		smp->csrk->bdaddr_type = hcon->dst_type;
+ 		bacpy(&smp->csrk->bdaddr, &hcon->dst);
+@@ -2540,7 +2549,6 @@ int smp_cancel_and_remove_pairing(struct hci_dev *hdev, bdaddr_t *bdaddr,
+ 		 * remove and free already invalidated rcu list entries. */
+ 		smp->ltk = NULL;
+ 		smp->responder_ltk = NULL;
+-		smp->remote_irk = NULL;
+ 
+ 		if (test_bit(SMP_FLAG_COMPLETE, &smp->flags))
+ 			smp_failure(conn, 0);
+@@ -2656,7 +2664,6 @@ static int smp_cmd_ident_addr_info(struct l2cap_conn *conn,
+ 	struct l2cap_chan *chan = conn->smp;
+ 	struct smp_chan *smp = chan->data;
+ 	struct hci_conn *hcon = conn->hcon;
+-	bdaddr_t rpa;
+ 
+ 	bt_dev_dbg(hcon->hdev, "");
+ 
+@@ -2703,13 +2710,7 @@ static int smp_cmd_ident_addr_info(struct l2cap_conn *conn,
+ 	bacpy(&smp->id_addr, &info->bdaddr);
+ 	smp->id_addr_type = info->addr_type;
+ 
+-	if (hci_bdaddr_is_rpa(&hcon->dst, hcon->dst_type))
+-		bacpy(&rpa, &hcon->dst);
+-	else
+-		bacpy(&rpa, BDADDR_ANY);
+-
+-	smp->remote_irk = hci_add_irk(conn->hcon->hdev, &smp->id_addr,
+-				      smp->id_addr_type, smp->irk, &rpa);
++	smp->remote_irk_pending = true;
+ 
+ distribute:
+ 	if (!(smp->remote_key_dist & KEY_DIST_MASK))
