@@ -1,11 +1,10 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Fri, 27 Nov 2026 23:50:29 +0300
-Subject: [PATCH v5 4/6] reset: Add Cortina Systems CS7542 global reset
- controller
+Date: Fri, 27 Nov 2026 23:50:30 +0300
+Subject: [PATCH v5 5/6] pinctrl: Add Cortina Systems CS7542 pin multiplexer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-cs7542-syscon-v5-4-d5a373c72b05@gmail.com>
+Message-Id: <20261127-cs7542-syscon-v5-5-d5a373c72b05@gmail.com>
 References: <20261127-cs7542-syscon-v5-0-d5a373c72b05@gmail.com>
 In-Reply-To: <20261127-cs7542-syscon-v5-0-d5a373c72b05@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,205 +16,273 @@ Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
  linux-gpio@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795812625; l=6229;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795812625; l=8372;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=5K/vLm2oN+ZIV0+W8dyIY0j0kBlKvVn48Mt8RDzub30=;
- b=AI+Ckwyf3gSHB7rj+xju635VFx3u/GPNDNEwIsP30QRmRLCvcBo/26eXi+m9xaKwLixnmunW7
- ubhSK1027XLC1VrtsUU5Pu72JiZIAGB1Q+RSA1Qs8WfBSrlrkrf/H63
+ bh=swKgo2GIeH24alE68CiVQWwTM+uJD9TyCwLGYdF3ylU=;
+ b=fSvldvx2EYXm6dp+8dk4BQk43grvFl9FPGv2iE6XMC6H3Kfny7GoQp3f+RUrPWLd0QYjvRx+Y
+ UMP2Uwj0eCNCTADUYaAt+9ieGf8lmEQFKa/iElwQ4iDnQ+81iHGZive
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use the shared syscon regmap to control three PCIe and seven network
-engine reset signals. PCIe consumers supply their own assert and
-recovery timing. Verify level transitions of the network resets before
-the consumer releases DMA buffers. Reject the unassigned group ID to
-preserve exclusive ownership of the underlying lines.
+Use the global syscon regmap for the five GPIO mux registers. Each
+bit selects GPIO when set and a peripheral signal when clear. Support
+GPIO on all 160 lines and the six UART pins exercised by the OpenWrt
+port. Do not guess mux settings for the other peripherals.
 
-The clock provider registers early for timers. Match the platform
-device for the same syscon when reset consumers can probe.
+Use masked regmap updates so independent pins and users of the shared
+block retain their settings. No register changes are made merely by
+probing; only a selected state or a GPIO request changes a pin.
+Register and initialize the controller before enabling its own hogs.
 
+AI assistance: Codex prepared this change from the existing OpenWrt port
+and GPL vendor sources.
+
+Reviewed-by: Linus Walleij <linusw@kernel.org>
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
- drivers/reset/Kconfig        |  10 ++++
- drivers/reset/Makefile       |   1 +
- drivers/reset/reset-cs7542.c | 135 +++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 146 insertions(+)
+ drivers/pinctrl/Kconfig          |  13 +++
+ drivers/pinctrl/Makefile         |   1 +
+ drivers/pinctrl/pinctrl-cs7542.c | 195 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 209 insertions(+)
 
-diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
-index eda9c698a..544cb79fa 100644
---- a/drivers/reset/Kconfig
-+++ b/drivers/reset/Kconfig
-@@ -73,6 +73,16 @@ config RESET_BRCMSTB_RESCAL
- 	  This enables the RESCAL reset controller for SATA, PCIe0, or PCIe1 on
- 	  BCM7216 or the BCM2712.
+diff --git a/drivers/pinctrl/Kconfig b/drivers/pinctrl/Kconfig
+index dc7138302..89f247cb2 100644
+--- a/drivers/pinctrl/Kconfig
++++ b/drivers/pinctrl/Kconfig
+@@ -188,6 +188,19 @@ config PINCTRL_BM1880
+ 	help
+ 	  Pinctrl driver for Bitmain BM1880 SoC.
  
-+config RESET_CS7542
-+	tristate "Cortina Systems CS7542 reset controller"
++config PINCTRL_CS7542
++	tristate "Cortina Systems CS7542 pin multiplexer"
 +	depends on OF && HAS_IOMEM
 +	select MFD_SYSCON
++	select PINMUX
++	select GENERIC_PINCONF
 +	help
-+	  Control the individual PCIe and network engine reset signals in
-+	  the CS7542 global register block.
-+	  The PCIe controllers have independent level resets. The network
-+	  engine uses seven reset lines, including the shared DMA block.
++	  Select GPIO mode or the supported peripheral signals in the CS7542
++	  global control block. This driver shares the syscon register map
++	  with the clock provider and leaves unrelated pins unchanged.
++	  Electrical pin configuration and other peripheral routes are not
++	  implemented.
 +
- config RESET_DR1V90
- 	tristate "Anlogic DR1V90 reset controller"
- 	depends on ARCH_ANLOGIC || COMPILE_TEST
-diff --git a/drivers/reset/Makefile b/drivers/reset/Makefile
-index 489fafd6b..df183fc0a 100644
---- a/drivers/reset/Makefile
-+++ b/drivers/reset/Makefile
-@@ -14,6 +14,7 @@ obj-$(CONFIG_RESET_BCM6345) += reset-bcm6345.o
- obj-$(CONFIG_RESET_BERLIN) += reset-berlin.o
- obj-$(CONFIG_RESET_BRCMSTB) += reset-brcmstb.o
- obj-$(CONFIG_RESET_BRCMSTB_RESCAL) += reset-brcmstb-rescal.o
-+obj-$(CONFIG_RESET_CS7542) += reset-cs7542.o
- obj-$(CONFIG_RESET_DR1V90) += reset-dr1v90.o
- obj-$(CONFIG_RESET_EIC7700) += reset-eic7700.o
- obj-$(CONFIG_RESET_EIC7700_HSP) += reset-eic7700-hsp.o
-diff --git a/drivers/reset/reset-cs7542.c b/drivers/reset/reset-cs7542.c
+ config PINCTRL_CY8C95X0
+ 	tristate "Cypress CY8C95X0 I2C pinctrl and GPIO driver"
+ 	depends on I2C
+diff --git a/drivers/pinctrl/Makefile b/drivers/pinctrl/Makefile
+index ce0825f4f..59541be4d 100644
+--- a/drivers/pinctrl/Makefile
++++ b/drivers/pinctrl/Makefile
+@@ -23,6 +23,7 @@ obj-$(CONFIG_PINCTRL_AW9523)	+= pinctrl-aw9523.o
+ obj-$(CONFIG_PINCTRL_AXP209)	+= pinctrl-axp209.o
+ obj-$(CONFIG_PINCTRL_BM1880)	+= pinctrl-bm1880.o
+ obj-$(CONFIG_PINCTRL_CY8C95X0)	+= pinctrl-cy8c95x0.o
++obj-$(CONFIG_PINCTRL_CS7542)	+= pinctrl-cs7542.o
+ obj-$(CONFIG_PINCTRL_DA850_PUPD) += pinctrl-da850-pupd.o
+ obj-$(CONFIG_PINCTRL_DA9062)	+= pinctrl-da9062.o
+ obj-$(CONFIG_PINCTRL_DIGICOLOR)	+= pinctrl-digicolor.o
+diff --git a/drivers/pinctrl/pinctrl-cs7542.c b/drivers/pinctrl/pinctrl-cs7542.c
 new file mode 100644
-index 000000000..6b68a2109
+index 000000000..748682675
 --- /dev/null
-+++ b/drivers/reset/reset-cs7542.c
-@@ -0,0 +1,135 @@
++++ b/drivers/pinctrl/pinctrl-cs7542.c
+@@ -0,0 +1,195 @@
 +// SPDX-License-Identifier: GPL-2.0-only
-+/* Cortina Systems CS7542 global reset controller */
++/* Cortina Systems CS7542 GPIO/peripheral pin multiplexer */
 +
 +#include <linux/bits.h>
++#include <linux/err.h>
 +#include <linux/mfd/syscon.h>
 +#include <linux/module.h>
 +#include <linux/of.h>
 +#include <linux/platform_device.h>
 +#include <linux/regmap.h>
-+#include <linux/reset-controller.h>
 +#include <linux/slab.h>
 +
-+#include <dt-bindings/reset/cortina,cs7542-reset.h>
++#include <linux/pinctrl/pinconf-generic.h>
++#include <linux/pinctrl/pinctrl.h>
++#include <linux/pinctrl/pinmux.h>
 +
-+#define CS7542_GLOBAL_RESET	0x04
++#include "pinctrl-utils.h"
 +
-+static const u32 cs7542_reset_masks[] = {
-+	[CS7542_RESET_PCIE0] = BIT(6),
-+	[CS7542_RESET_PCIE1] = BIT(7),
-+	[CS7542_RESET_PCIE2] = BIT(8),
-+	[CS7542_RESET_NI] = BIT(0),
-+	[CS7542_RESET_FE] = BIT(1),
-+	[CS7542_RESET_TM] = BIT(2),
-+	[CS7542_RESET_SCH] = BIT(3),
-+	[CS7542_RESET_QM] = BIT(5),
-+	[CS7542_RESET_DMA] = BIT(16),
-+	[CS7542_RESET_NI_XRAM] = BIT(17),
-+	[CS7542_RESET_FLASH] = BIT(14),
++#define CS7542_GPIO_MUX		0x1c
++#define CS7542_NUM_PINS		160
++#define CS7542_UART_FIRST	72
++#define CS7542_UART_LAST	77
++
++enum cs7542_function {
++	CS7542_FUNCTION_GPIO,
++	CS7542_FUNCTION_UART,
 +};
 +
-+struct cs7542_reset {
-+	struct reset_controller_dev rcdev;
++struct cs7542_pinctrl {
 +	struct regmap *map;
++	struct pinctrl_desc desc;
++	struct pinctrl_pin_desc pins[CS7542_NUM_PINS];
++	const char *groups[CS7542_NUM_PINS];
 +};
 +
-+static int cs7542_reset_update(struct reset_controller_dev *rcdev,
-+			       unsigned long id, bool assert)
++static const char * const cs7542_functions[] = { "gpio", "uart" };
++static const char * const cs7542_uart_groups[] = {
++	"gpio72", "gpio73", "gpio74", "gpio75", "gpio76", "gpio77",
++};
++
++static int cs7542_get_groups_count(struct pinctrl_dev *pctldev)
 +{
-+	struct cs7542_reset *rst = container_of(rcdev, struct cs7542_reset, rcdev);
-+	u32 mask = cs7542_reset_masks[id];
-+	u32 target = assert ? mask : 0;
-+	unsigned int value;
-+	int ret;
-+
-+	ret = regmap_update_bits(rst->map, CS7542_GLOBAL_RESET, mask, target);
-+	if (ret || id < CS7542_RESET_NI)
-+		return ret;
-+
-+	return regmap_read_poll_timeout(rst->map, CS7542_GLOBAL_RESET, value,
-+					(value & mask) == target, 1, 1000);
++	return CS7542_NUM_PINS;
 +}
 +
-+static int cs7542_reset_assert(struct reset_controller_dev *rcdev,
-+			       unsigned long id)
++static const char *cs7542_get_group_name(struct pinctrl_dev *pctldev,
++					 unsigned int group)
 +{
-+	return cs7542_reset_update(rcdev, id, true);
++	struct cs7542_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
++
++	return pctl->groups[group];
 +}
 +
-+static int cs7542_reset_deassert(struct reset_controller_dev *rcdev,
-+				 unsigned long id)
++static int cs7542_get_group_pins(struct pinctrl_dev *pctldev,
++				 unsigned int group, const unsigned int **pins,
++				 unsigned int *num_pins)
 +{
-+	return cs7542_reset_update(rcdev, id, false);
++	struct cs7542_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
++
++	*pins = &pctl->pins[group].number;
++	*num_pins = 1;
++	return 0;
 +}
 +
-+static int cs7542_reset_status(struct reset_controller_dev *rcdev,
-+			       unsigned long id)
-+{
-+	struct cs7542_reset *rst = container_of(rcdev, struct cs7542_reset, rcdev);
++static const struct pinctrl_ops cs7542_pinctrl_ops = {
++	.get_groups_count = cs7542_get_groups_count,
++	.get_group_name = cs7542_get_group_name,
++	.get_group_pins = cs7542_get_group_pins,
++	.dt_node_to_map = pinconf_generic_dt_node_to_map_pin,
++	.dt_free_map = pinctrl_utils_free_map,
++};
 +
-+	return regmap_test_bits(rst->map, CS7542_GLOBAL_RESET, cs7542_reset_masks[id]);
++static int cs7542_get_functions_count(struct pinctrl_dev *pctldev)
++{
++	return ARRAY_SIZE(cs7542_functions);
 +}
 +
-+static int cs7542_reset_xlate(struct reset_controller_dev *rcdev,
-+			      const struct of_phandle_args *spec)
++static const char *cs7542_get_function_name(struct pinctrl_dev *pctldev,
++					    unsigned int function)
 +{
-+	unsigned int id = spec->args[0];
++	return cs7542_functions[function];
++}
 +
-+	if (id >= rcdev->nr_resets || !cs7542_reset_masks[id])
++static int cs7542_get_function_groups(struct pinctrl_dev *pctldev,
++				      unsigned int function,
++				      const char * const **groups,
++				      unsigned int *num_groups)
++{
++	struct cs7542_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
++
++	if (function == CS7542_FUNCTION_GPIO) {
++		*groups = pctl->groups;
++		*num_groups = CS7542_NUM_PINS;
++	} else {
++		*groups = cs7542_uart_groups;
++		*num_groups = ARRAY_SIZE(cs7542_uart_groups);
++	}
++	return 0;
++}
++
++static int cs7542_set_mux(struct pinctrl_dev *pctldev, unsigned int function,
++			  unsigned int group)
++{
++	struct cs7542_pinctrl *pctl = pinctrl_dev_get_drvdata(pctldev);
++	unsigned int mask;
++
++	if (group >= CS7542_NUM_PINS || function >= ARRAY_SIZE(cs7542_functions))
++		return -EINVAL;
++	if (function == CS7542_FUNCTION_UART &&
++	    (group < CS7542_UART_FIRST || group > CS7542_UART_LAST))
 +		return -EINVAL;
 +
-+	return id;
++	mask = BIT(group % 32);
++	return regmap_update_bits(pctl->map, CS7542_GPIO_MUX + (group / 32) * 4,
++				  mask, function == CS7542_FUNCTION_GPIO ? mask : 0);
 +}
 +
-+static const struct reset_control_ops cs7542_reset_ops = {
-+	.assert = cs7542_reset_assert,
-+	.deassert = cs7542_reset_deassert,
-+	.status = cs7542_reset_status,
++static int cs7542_gpio_request_enable(struct pinctrl_dev *pctldev,
++				      struct pinctrl_gpio_range *range,
++				      unsigned int pin)
++{
++	return cs7542_set_mux(pctldev, CS7542_FUNCTION_GPIO, pin);
++}
++
++static bool cs7542_function_is_gpio(struct pinctrl_dev *pctldev,
++				    unsigned int selector)
++{
++	return selector == CS7542_FUNCTION_GPIO;
++}
++
++static const struct pinmux_ops cs7542_pinmux_ops = {
++	.get_functions_count = cs7542_get_functions_count,
++	.get_function_name = cs7542_get_function_name,
++	.get_function_groups = cs7542_get_function_groups,
++	.function_is_gpio = cs7542_function_is_gpio,
++	.set_mux = cs7542_set_mux,
++	.gpio_request_enable = cs7542_gpio_request_enable,
++	.strict = true,
 +};
 +
-+static int cs7542_reset_probe(struct platform_device *pdev)
++static int cs7542_pinctrl_probe(struct platform_device *pdev)
 +{
 +	struct device *dev = &pdev->dev;
-+	struct cs7542_reset *rst;
++	struct cs7542_pinctrl *pctl;
++	struct pinctrl_dev *pctldev;
++	unsigned int i;
++	int ret;
 +
-+	/* Clock-only descriptions also use this syscon. */
-+	if (!of_property_present(dev->of_node, "#reset-cells"))
-+		return 0;
-+
-+	rst = devm_kzalloc_obj(dev, *rst);
-+	if (!rst)
++	pctl = devm_kzalloc(dev, sizeof(*pctl), GFP_KERNEL);
++	if (!pctl)
 +		return -ENOMEM;
 +
-+	rst->map = syscon_node_to_regmap(dev->of_node);
-+	if (IS_ERR(rst->map))
-+		return dev_err_probe(dev, PTR_ERR(rst->map), "cannot get global regmap\n");
++	pctl->map = syscon_node_to_regmap(dev->of_node->parent);
++	if (IS_ERR(pctl->map))
++		return dev_err_probe(dev, PTR_ERR(pctl->map), "cannot get global regmap\n");
 +
-+	rst->rcdev.owner = THIS_MODULE;
-+	rst->rcdev.dev = dev;
-+	rst->rcdev.of_node = dev->of_node;
-+	rst->rcdev.ops = &cs7542_reset_ops;
-+	rst->rcdev.nr_resets = ARRAY_SIZE(cs7542_reset_masks);
-+	rst->rcdev.of_reset_n_cells = 1;
-+	rst->rcdev.of_xlate = cs7542_reset_xlate;
++	for (i = 0; i < CS7542_NUM_PINS; i++) {
++		pctl->groups[i] = devm_kasprintf(dev, GFP_KERNEL, "gpio%u", i);
++		if (!pctl->groups[i])
++			return -ENOMEM;
++		pctl->pins[i].number = i;
++		pctl->pins[i].name = pctl->groups[i];
++	}
 +
-+	return devm_reset_controller_register(dev, &rst->rcdev);
++	pctl->desc.name = dev_name(dev);
++	pctl->desc.owner = THIS_MODULE;
++	pctl->desc.pins = pctl->pins;
++	pctl->desc.npins = CS7542_NUM_PINS;
++	pctl->desc.pctlops = &cs7542_pinctrl_ops;
++	pctl->desc.pmxops = &cs7542_pinmux_ops;
++
++	ret = devm_pinctrl_register_and_init(dev, &pctl->desc, pctl, &pctldev);
++	if (ret)
++		return dev_err_probe(dev, ret, "cannot register pin controller\n");
++
++	return pinctrl_enable(pctldev);
 +}
 +
-+static const struct of_device_id cs7542_reset_of_match[] = {
-+	{ .compatible = "cortina,cs7542-syscon" },
++static const struct of_device_id cs7542_pinctrl_match[] = {
++	{ .compatible = "cortina,cs7542-pinctrl" },
 +	{ }
 +};
-+MODULE_DEVICE_TABLE(of, cs7542_reset_of_match);
++MODULE_DEVICE_TABLE(of, cs7542_pinctrl_match);
 +
-+static struct platform_driver cs7542_reset_driver = {
-+	.probe = cs7542_reset_probe,
++static struct platform_driver cs7542_pinctrl_driver = {
++	.probe = cs7542_pinctrl_probe,
 +	.driver = {
-+		.name = "cs7542-reset",
-+		.of_match_table = cs7542_reset_of_match,
-+		.suppress_bind_attrs = true,
++		.name = "cs7542-pinctrl",
++		.of_match_table = cs7542_pinctrl_match,
 +	},
 +};
-+module_platform_driver(cs7542_reset_driver);
++module_platform_driver(cs7542_pinctrl_driver);
 +
-+MODULE_DESCRIPTION("Cortina Systems CS7542 global reset controller");
++MODULE_DESCRIPTION("Cortina Systems CS7542 pin multiplexer");
 +MODULE_LICENSE("GPL");
 
 -- 
