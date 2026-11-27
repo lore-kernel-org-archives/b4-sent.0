@@ -1,140 +1,123 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Fri, 27 Nov 2026 08:38:47 +0200
-Subject: [PATCH RFC 10/10] coresight: cpu-debug: Print the dump at the
- warning level
+From: Dickson Wu <dickson.wu@certik.com>
+Date: Fri, 27 Nov 2026 05:35:37 +0000
+Subject: [PATCH 6.6.y] ALSA: seq: Don't leak the extension cell pointer in
+ the bounce payload
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-b4-coresight-cpu-debug-lockup-v1-10-69d3ad1e0fc8@iav.lv>
-References: <20261127-b4-coresight-cpu-debug-lockup-v1-0-69d3ad1e0fc8@iav.lv>
-In-Reply-To: <20261127-b4-coresight-cpu-debug-lockup-v1-0-69d3ad1e0fc8@iav.lv>
-To: Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Mike Leach <mike.leach@arm.com>, James Clark <james.clark@linaro.org>, 
- Leo Yan <leo.yan@arm.com>, Andrew Morton <akpm@linux-foundation.org>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>
-Cc: coresight@lists.linaro.org, linux-arm-kernel@lists.infradead.org, 
- linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, 
- Douglas Anderson <dianders@chromium.org>, Petr Mladek <pmladek@suse.com>, 
- Feng Tang <feng.tang@linux.alibaba.com>, Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3896; i=iav@iav.lv;
- h=from:subject:message-id; bh=GCm7+tmPZo0cIkK8iPjB0jGTJ009NE8OZzHsJ6RWlHA=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDNmcqiXz/09TsGsyPXvvBUfXipd7OoqmvfQ19tR3f7m79
- B535MvZHaUsDGJcDLJiiiwTDmncylhy9a+/h/kDmDmsTCBDGLg4BWAiAf6MDPdqecSNy8X+Py/T
- LEy7fChNt6qdJf33/f9f3TWmXgnf9YWRocF6R198nnRh7No5vtP0RSa8sn51VaNsa3BpUbO4pvY
- UNgA=
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Message-Id: <20261127-so5-alsa-66-v1-1-e6baeea4106a@certik.com>
+X-B4-Tracking: v=1; b=H4sIAKgWCWsC/02NSw7CMAxEr1J5jQsJJQiugljk41KjKqnigkBV7
+ 04CG5bzNPNmAaHMJHBuFsj0ZOEUS1CbBvxg442QQ8mgd9oopY8o6YB2FIvGIPWOgjrtfUcdlMW
+ UqefX13YB05r2Ddcfloe7k5+rqRadFUKXbfRDRUIxzCmNWPn27wHW9QPWIRLiogAAAA==
+X-Change-ID: 20261127-so5-alsa-66-efbed193c4e4
+To: stable@vger.kernel.org
+Cc: HyeongJun An <sammiee5311@gmail.com>, Takashi Iwai <tiwai@suse.de>, 
+ linux-sound@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795757736; l=4003;
+ i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
+ bh=nGJ91NaFovr+BISLWd06H/MX3/Mv38Fa6V8EKicAbJ4=;
+ b=ZlYd1JYkTfkU4c4meREjx9iDEgpue9uA7XF0TuuIpDNQqouvJ9FY8KlhMqzT3mr0baCEvwwUT
+ xswXe7PBP8ADbGbuuSQBvqgKWCS3TzxPWNTf6kuDYeuqNpd/l9m3lX+
+X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
+ pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
+X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The dump comes from backtrace requests, which also happen on a system
-that keeps running, for example on SysRq-l or on an RCU stall warning.
+From: HyeongJun An <sammiee5311@gmail.com>
 
-Print it at the warning level, like the "these CPUS still haven't
-responded" line it follows.
+commit 59e1592d3c270ff4642d5d6dc55c545306eb0693 upstream.
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
+The bounce_error_event() embeds the failed event in the bounce payload
+by pointing data.ext.ptr at it.  When that event is a queued
+variable-length event, its own data.ext.ptr holds the address of its
+first extension cell, put there by snd_seq_event_dup().  The payload
+goes out verbatim through snd_seq_expand_var_event(), so the address
+reaches userspace.
+
+That is the same address commit 705dd6dcbc0e ("ALSA: seq: Clear
+variable event pointer on read") removed from the event header.  The
+read path still clears it there, just above the call that expands the
+payload.
+
+Embed a sanitised copy instead, treated exactly as snd_seq_read()
+treats the header.  A stack copy is enough because delivery is
+synchronous and snd_seq_event_dup() copies before returning.
+
+An unprivileged client reaches this by setting SNDRV_SEQ_FILTER_BOUNCE,
+queueing a variable-length event to a port that does not exist and
+reading the bounce back.  Eight bytes on 64-bit, from its own pool.
+
+Fixes: efc86691e4d8 ("ALSA: seq: Fix kernel heap address leak in bounce_error_event()")
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: HyeongJun An <sammiee5311@gmail.com>
+Link: https://patch.msgid.link/20260811131835.3837024-1-sammiee5311@gmail.com
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
- drivers/hwtracing/coresight/coresight-cpu-debug.c | 44 +++++++++++------------
- 1 file changed, 22 insertions(+), 22 deletions(-)
+6.1.y, 6.12.y and newer already have this fix.
 
-diff --git a/drivers/hwtracing/coresight/coresight-cpu-debug.c b/drivers/hwtracing/coresight/coresight-cpu-debug.c
-index 5c5a1f6a6e33..860c31b4e025 100644
---- a/drivers/hwtracing/coresight/coresight-cpu-debug.c
-+++ b/drivers/hwtracing/coresight/coresight-cpu-debug.c
-@@ -321,8 +321,8 @@ static unsigned long debug_adjust_pc(struct debug_drvdata *drvdata)
- 	 * case and print info for notice.
- 	 */
- 	if (pc & BIT(1))
--		dev_emerg(drvdata->dev,
--			  "Instruction offset is implementation defined\n");
-+		dev_warn(drvdata->dev,
-+			 "Instruction offset is implementation defined\n");
- 	else
- 		pc = (pc & EDPCSR_ARM_INST_MASK) - arm_inst_offset;
- 
-@@ -335,38 +335,38 @@ static void debug_dump_regs(struct debug_drvdata *drvdata)
- 	struct device *dev = drvdata->dev;
- 	unsigned long pc;
- 
--	dev_emerg(dev, " EDPRSR:  %08x (Power:%s Reset:%s DLK:%s)\n",
--		  drvdata->edprsr,
--		  drvdata->edprsr & EDPRSR_PU ? "On" : "Off",
--		  drvdata->edprsr & EDPRSR_R ? "Yes" : "No",
--		  drvdata->edprsr & EDPRSR_DLK ? "Lock" : "Unlock");
-+	dev_warn(dev, " EDPRSR:  %08x (Power:%s Reset:%s DLK:%s)\n",
-+		 drvdata->edprsr,
-+		 drvdata->edprsr & EDPRSR_PU ? "On" : "Off",
-+		 drvdata->edprsr & EDPRSR_R ? "Yes" : "No",
-+		 drvdata->edprsr & EDPRSR_DLK ? "Lock" : "Unlock");
- 
- 	if (!debug_access_permitted(drvdata)) {
--		dev_emerg(dev, "No permission to access debug registers!\n");
-+		dev_warn(dev, "No permission to access debug registers!\n");
- 		return;
- 	}
- 
- 	if (drvdata->edpcsr == EDPCSR_PROHIBITED) {
--		dev_emerg(dev, "CPU is in Debug state or profiling is prohibited!\n");
-+		dev_warn(dev, "CPU is in Debug state or profiling is prohibited!\n");
- 		return;
- 	}
- 
- 	pc = debug_adjust_pc(drvdata);
--	dev_emerg(dev, " EDPCSR:  %pS\n", (void *)pc);
-+	dev_warn(dev, " EDPCSR:  %pS\n", (void *)pc);
- 
- 	if (drvdata->edcidsr_present)
--		dev_emerg(dev, " EDCIDSR: %08x\n", drvdata->edcidsr);
-+		dev_warn(dev, " EDCIDSR: %08x\n", drvdata->edcidsr);
- 
- 	if (drvdata->edvidsr_present)
--		dev_emerg(dev, " EDVIDSR: %08x (State:%s Mode:%s Width:%dbits VMID:%x)\n",
--			  drvdata->edvidsr,
--			  drvdata->edvidsr & EDVIDSR_NS ?
--			  "Non-secure" : "Secure",
--			  drvdata->edvidsr & EDVIDSR_E3 ? "EL3" :
-+		dev_warn(dev, " EDVIDSR: %08x (State:%s Mode:%s Width:%dbits VMID:%x)\n",
-+			 drvdata->edvidsr,
-+			 drvdata->edvidsr & EDVIDSR_NS ?
-+			 "Non-secure" : "Secure",
-+			 drvdata->edvidsr & EDVIDSR_E3 ? "EL3" :
- 				(drvdata->edvidsr & EDVIDSR_E2 ?
- 				 "EL2" : "EL1/0"),
--			  drvdata->edvidsr & EDVIDSR_HV ? 64 : 32,
--			  drvdata->edvidsr & (u32)EDVIDSR_VMID);
-+			 drvdata->edvidsr & EDVIDSR_HV ? 64 : 32,
-+			 drvdata->edvidsr & (u32)EDVIDSR_VMID);
- }
- 
- static void debug_init_arch_data(void *info)
-@@ -441,18 +441,18 @@ static int debug_stall_notifier_call(struct notifier_block *self,
- 			continue;
- 
- 		if (!banner) {
--			pr_emerg("ARM external debug module:\n");
-+			pr_warn("ARM external debug module:\n");
- 			banner = true;
- 		}
- 
- 		idle = cpumask_test_cpu(cpu, stall->idle);
- 		if (idle && READ_ONCE(debug_skip_idle)) {
--			dev_emerg(drvdata->dev, "CPU[%d]: idle, not sampled\n",
--				  drvdata->cpu);
-+			dev_warn(drvdata->dev, "CPU[%d]: idle, not sampled\n",
-+				 drvdata->cpu);
- 			continue;
- 		}
- 
--		dev_emerg(drvdata->dev, "CPU[%d]:\n", drvdata->cpu);
-+		dev_warn(drvdata->dev, "CPU[%d]:\n", drvdata->cpu);
- 
- 		if (idle)
- 			debug_read_regs(drvdata);
+Tested on v6.6.163:
+- x86_64 allmodconfig W=1 build of sound/core/seq/seq_clientmgr.o,
+  base vs patched, no new warnings
+- booted the patched kernel under QEMU/KVM with snd-seq-dummy, passed a
+  note between two ports and checked the error bounce for a rejected
+  fixed-length event. I didn't run a variable-length bounce.
 
--- 
-2.43.0
+The backport and the test runs were prepared with AI coding tools
+(OpenAI Codex agents, with review by Claude). I went over the result
+before signing off.
+
+sound/core/seq/seq_clientmgr.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
+---
+ sound/core/seq/seq_clientmgr.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/sound/core/seq/seq_clientmgr.c b/sound/core/seq/seq_clientmgr.c
+index f039fd6ee3a7..de17b66cd16b 100644
+--- a/sound/core/seq/seq_clientmgr.c
++++ b/sound/core/seq/seq_clientmgr.c
+@@ -578,7 +578,7 @@ static int bounce_error_event(struct snd_seq_client *client,
+ 			      struct snd_seq_event *event,
+ 			      int err, int atomic, int hop)
+ {
+-	struct snd_seq_event bounce_ev;
++	struct snd_seq_event bounce_ev, quoted;
+ 	int result;
+ 
+ 	if (client == NULL ||
+@@ -594,15 +594,19 @@ static int bounce_error_event(struct snd_seq_client *client,
+ 		 * For user clients, send SNDRV_SEQ_EVENT_BOUNCE with the
+ 		 * original event embedded as variable-length data.  This
+ 		 * avoids exposing data.quote.event (a kernel pointer) to
+-		 * userspace.  The variable-length path in snd_seq_event_dup()
+-		 * copies the event data from data.ext.ptr into chained cells,
+-		 * and snd_seq_expand_var_event() copies only the data content
+-		 * -- never the pointer -- to userspace.
++		 * userspace.  Sanitise the embedded copy too - a queued
++		 * variable-length event carries the address of its own
++		 * extension cell, and the payload goes out verbatim.
+ 		 */
++		quoted = *event;
++		if (snd_seq_ev_is_variable(&quoted)) {
++			quoted.data.ext.len &= ~SNDRV_SEQ_EXT_MASK;
++			quoted.data.ext.ptr = NULL;
++		}
+ 		bounce_ev.type = SNDRV_SEQ_EVENT_BOUNCE;
+ 		bounce_ev.flags = SNDRV_SEQ_EVENT_LENGTH_VARIABLE;
+ 		bounce_ev.data.ext.len = sizeof(struct snd_seq_event);
+-		bounce_ev.data.ext.ptr = (char *)event;
++		bounce_ev.data.ext.ptr = (char *)&quoted;
+ 	} else {
+ 		/*
+ 		 * For kernel clients, quote the event pointer directly.
+
+---
+base-commit: e2bb30811e063ce0db964484357973b855b06572
+change-id: 20261127-so5-alsa-66-efbed193c4e4
+
+Best regards,
+--  
+Dickson Wu <dickson.wu@certik.com>
 
