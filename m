@@ -1,276 +1,113 @@
-From: Rongen Wang <security@nitrohex.com>
-Date: Fri, 27 Nov 2026 21:00:44 +0900
-Subject: [PATCH] scsi: target: iscsi: Refuse to add a connection to a
- session being closed
+From: Dickson Wu <dickson.wu@certik.com>
+Date: Fri, 27 Nov 2026 12:18:44 +0000
+Subject: [PATCH 5.10.y-cip] usb: cdns3: gadget: fix state inconsistency on
+ gadget init failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-b4-lio-iscsi-session-closing-v1-1-cdf2bbbef87a@nitrohex.com>
-X-B4-Tracking: v=1; b=H4sIAOxwCWsC/yXMQQrCMBBG4auUWTvQhLRBryIu7DitIyWR/FWE0
- rub6vJbvLcStJiCTs1KRd8Gy6nCHRqS+zVNynarJt/63jkfeQg8W2aDwBiKPWCZMyxN3McxdF1
- sj0GU6uJZdLTPb3++/I3X8FBZ9idt2xcy63D0gAAAAA==
-X-Change-ID: 20261127-b4-lio-iscsi-session-closing-67f4557094ce
-To: "Martin K. Petersen" <mkp@kernel.org>
-Cc: linux-scsi@vger.kernel.org, target-devel@vger.kernel.org, 
- stable@vger.kernel.org, Rongen Wang <security@nitrohex.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795780851; l=10396;
- i=security@nitrohex.com; s=nitrohex; h=from:subject:message-id;
- bh=Y5v0HOOMEKgzfoq/9MoX/iEb5+HGxicU3xh+mZENOQ8=;
- b=BDDiYemAcGDuyuLAg16rCjpOCy7tcgZcTujnLSdYtXekAJOlFEc/kEhSNJHh0xQQYzTCMozy+
- f0xmshGvAeUAVHdGQq6QvSCOb064riLUrmxR3THC4LRNlNC8ciZ405D
-X-Developer-Key: i=security@nitrohex.com; a=ed25519;
- pk=Jk5NuTVJdxr1CTP4RuYaG31zSgsNlyFzVo9sphZTqt0=
-X-Endpoint-Received: by B4 Relay for security@nitrohex.com/nitrohex with auth_id=1652
+Message-Id: <20261127-cip-cdns3-510c-v1-1-56e5faa149b9@certik.com>
+X-B4-Tracking: v=1; b=H4sIACN1CWsC/1WNSQ7CMAxFr1J5jUscCFW5CmKRwdAglFZxQaCqd
+ yeBFcv//rSAcI4scGwWyPyMEsdUBG0a8INNV8YYigat9IFId+jjhD4k2aEh5ZGU6veu602wBKU
+ 0Zb7E13fwBKYl1b5rBc4/Tx7uxn6uizXtrDC6bJMfKhJOYR7HO1a+/X+Cdf0AJv9l660AAAA=
+X-Change-ID: 20261127-cip-cdns3-510c-10094b795da1
+To: cip-dev@lists.cip-project.org
+Cc: Pavel Machek <pavel@nabladev.com>, 
+ Nobuhiro Iwamatsu <nobuhiro.iwamatsu.x90@mail.toshiba>, 
+ Ulrich Hecht <uli@fpond.eu>, Yongchao Wu <yongchao.wu@autochips.com>, 
+ linux-usb@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795781924; l=3161;
+ i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
+ bh=x04zYySOqW6oAsloCVLgGDTamN9GWZ6GjsXXpIAZjo8=;
+ b=jy2jvFay7J6X+CuBJu/uxcCtkOiiTmflG5dxWulypM0ZufJ61IM3kLXa7x27MvK+HqgBZa6Im
+ LpVfgGSWdRNDAE2lchqlBhsNdI2BOn+jhL3l3bvwcab0y6qkihQET1X
+X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
+ pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
+X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A Login Request with a non-zero TSIH adds a connection to an existing
-session. iscsi_login_non_zero_tsih_s2() looks the session up when the
-first Login PDU arrives, checks once that it is not being closed and
-takes a session usage count. The login then stays pending for as long
-as the initiator delays its next Login PDU.
+From: Yongchao Wu <yongchao.wu@autochips.com>
 
-If the last connection of the session fails in the meantime,
-iscsit_close_connection() sets session_fall_back_to_erl0 and calls
-iscsit_close_session(), which waits for the usage count held by the
-pending login. Nothing stops that login from completing:
-iscsi_login_post_auth_non_zero_tsih() only compares nconn + 1 with
-MaxConnections, and iscsi_post_login_handler() adds the connection to
-sess->sess_conn_list and drops the usage count. iscsit_close_session()
-then frees the session while the new connection is in full feature
-phase, and the first PDU received on it reads the freed session:
+commit c32f8748d70c8fc77676ad92ed76cede17bf2c48 upstream.
 
-  BUG: KASAN: slab-use-after-free in iscsit_get_rx_pdu+0x2338/0x3330
-  Read of size 8 at addr ffff88800b19fde0 by task iscsi_trx/156
-  Call Trace:
-   iscsit_get_rx_pdu+0x2338/0x3330
-   iscsi_target_rx_thread+0x139/0x2f0
-   kthread+0x2e8/0x3c0
-  Freed by task 154:
-   kfree+0x127/0x3b0
-   iscsit_close_session+0x3a2/0x570
-   iscsit_close_connection+0x134d/0x20f0
-   iscsit_take_action_for_connection_exit+0x1b5/0x360
-   iscsi_target_rx_thread+0x251/0x2f0
+When cdns3_gadget_start() fails, the DRD hardware is left in gadget mode
+while software state remains INACTIVE, creating hardware/software state
+inconsistency.
 
-Without KASAN the same sequence ends in a NULL pointer dereference in
-iscsit_get_rx_pdu() and, when the NOP-In timer of the new connection
-fires, in a panic in softirq context.
+When switching to host mode via sysfs:
+  echo host > /sys/class/usb_role/13180000.usb-role-switch/role
 
-Check the session state again in iscsi_post_login_handler(), under
-sess->conn_lock, before the connection is added.
-iscsit_close_connection() decides under the same lock whether it closed
-the last connection, so either the new connection is counted before
-that decision or the login sees the flags and is refused.
+The role state is not set to CDNS_ROLE_STATE_ACTIVE due to the error,
+so cdns_role_stop() skips cleanup because state is still INACTIVE.
+This violates the DRD controller design specification (Figure22),
+which requires returning to idle state before switching roles.
 
-Move the transition to TARG_CONN_STATE_LOGGED_IN after that check. The
-RX and TX kthreads were started before the final Login Response was
-sent and leave a connection alone while it is still in
-TARG_CONN_STATE_IN_LOGIN, so a refused connection can be stopped the
-same way the error path of iscsi_target_do_tx_login_io() stops it, and
-then released with iscsi_target_login_sess_out(). The initiator has
-already received the final Login Response and sees the connection
-dropped, as if the session had been closed a moment earlier.
+This leads to a synchronous external abort in xhci_gen_setup() when
+setting up the host controller:
 
-The problem was found and this patch was drafted with the help of an AI
-assistant (Claude Mythos 5.2, Anthropic, via Claude Code); the result
-was reviewed and tested as described below the cut line.
+[  516.440698] configfs-gadget 13180000.usb: failed to start g1: -19
+[  516.442035] cdns-usb3 13180000.usb: Failed to add gadget
+[  516.443278] cdns-usb3 13180000.usb: set role 2 has failed
+...
+[ 1301.375722] xhci-hcd xhci-hcd.1.auto: xHCI Host Controller
+[ 1301.377716] Internal error: synchronous external abort: 96000010 [#1] PREEMPT SMP
+[ 1301.382485] pc : xhci_gen_setup+0xa4/0x408
+[ 1301.393391] backtrace:
+    ...
+    xhci_gen_setup+0xa4/0x408    <-- CRASH
+    xhci_plat_setup+0x44/0x58
+    usb_add_hcd+0x284/0x678
+    ...
+    cdns_role_set+0x9c/0xbc        <-- Role switch
 
-Fixes: e48354ce078c ("iscsi-target: Add iSCSI fabric support for target v4.1")
-Cc: stable@vger.kernel.org
-Signed-off-by: Rongen Wang <security@nitrohex.com>
+Fix by calling cdns_drd_gadget_off() in the error path to properly
+clean up the DRD gadget state.
+
+Fixes: 7733f6c32e36 ("usb: cdns3: Add Cadence USB3 DRD Driver")
+Cc: stable <stable@kernel.org>
+Signed-off-by: Yongchao Wu <yongchao.wu@autochips.com>
+Acked-by: Peter Chen <peter.chen@kernel.org>
+Link: https://patch.msgid.link/20260401001000.5761-1-yongchao.wu@autochips.com
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+[ adapted to 5.10.y-cip: use gadget.c and cdns3_drd_gadget_off() ]
+Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
-Based on mkp/scsi.git 7.4/scsi-fixes (4be084ac36f9). It also applies
-to mainline 9437ee8b6cf6 and to linux-7.3.y, 6.18.y and 6.12.y.
+5.10 has the old cdns3 layout, so the call goes in gadget.c and uses
+cdns3_drd_gadget_off(). This failed to apply to 5.10.y and never made
+it into a 5.10.y release, and 5.10.y is now end-of-life, so I'm sending
+it here.
 
-Tested on that tree with KASAN under QEMU, iSCSI/TCP: the reproducer's
-second login is refused ("iSCSI session SID 1 is shutting down,
-refusing to add CID 2") without a KASAN report, and adding a connection
-to a live session with MaxConnections=2, logouts, a fresh login and
-session continuation after a CLOSE_CONNECTION logout still work.
-Without the patch the same tree gives the report above. The refusal
-path in __iscsi_target_login_thread() (login completed by its first
-PDU) was not reached by these tests; iSER and cxgbit were not tested.
-No W=1 warnings in drivers/target/iscsi/.
+Tested on 5.10.275-cip80: the touched object
+drivers/usb/cdns3/gadget.o builds with W=1. The same change on
+v5.10.275 built with no new W=1 diagnostics and booted under QEMU. I
+don't have Cadence hardware, so the failing-init path itself wasn't
+exercised.
 
-The reproducer was sent to the maintainer privately and is not posted
-here.
+The backport and the test runs were prepared with AI coding tools
+(OpenAI Codex agents, with review by Claude). I went over the result
+before signing off.
 ---
- drivers/target/iscsi/iscsi_target_login.c | 85 ++++++++++++++++++++++++++-----
- drivers/target/iscsi/iscsi_target_login.h |  4 +-
- drivers/target/iscsi/iscsi_target_nego.c  |  5 +-
- 3 files changed, 80 insertions(+), 14 deletions(-)
+ drivers/usb/cdns3/gadget.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/target/iscsi/iscsi_target_login.c b/drivers/target/iscsi/iscsi_target_login.c
-index fda04eb15d..7176280004 100644
---- a/drivers/target/iscsi/iscsi_target_login.c
-+++ b/drivers/target/iscsi/iscsi_target_login.c
-@@ -644,10 +644,41 @@ int iscsit_start_kthreads(struct iscsit_conn *conn)
- 	return ret;
- }
- 
--void iscsi_post_login_handler(
--	struct iscsi_np *np,
--	struct iscsit_conn *conn,
--	u8 zero_tsih)
-+/*
-+ * Undo iscsit_start_kthreads() for a connection that is still in
-+ * TARG_CONN_STATE_IN_LOGIN.  Both kthreads leave the connection alone in
-+ * that state and only wait for kthread_stop().
-+ */
-+void iscsit_stop_kthreads(struct iscsit_conn *conn)
-+{
-+	if (conn->rx_thread && conn->rx_thread_active) {
-+		send_sig(SIGINT, conn->rx_thread, 1);
-+		complete(&conn->rx_login_comp);
-+		kthread_stop(conn->rx_thread);
-+		conn->rx_thread_active = false;
-+	}
-+	if (conn->tx_thread && conn->tx_thread_active) {
-+		send_sig(SIGINT, conn->tx_thread, 1);
-+		kthread_stop(conn->tx_thread);
-+		conn->tx_thread_active = false;
-+	}
-+	spin_lock(&iscsit_global->ts_bitmap_lock);
-+	bitmap_release_region(iscsit_global->ts_bitmap, conn->bitmap_id,
-+			      get_order(1));
-+	spin_unlock(&iscsit_global->ts_bitmap_lock);
-+}
-+
-+/*
-+ * Returns 0 once the connection has been made part of its session.
-+ *
-+ * Returns -1 if a connection that is being added to an existing session
-+ * (TSIH != 0) can not be attached because the session started to shut down
-+ * while the login was in progress.  The connection is then still in
-+ * TARG_CONN_STATE_IN_LOGIN and the caller has to stop its kthreads and
-+ * release it with iscsi_target_login_sess_out().
-+ */
-+int iscsi_post_login_handler(struct iscsi_np *np, struct iscsit_conn *conn,
-+			     u8 zero_tsih)
- {
- 	int stop_timer = 0;
- 	struct iscsit_session *sess = conn->sess;
-@@ -657,12 +688,6 @@ void iscsi_post_login_handler(
- 
- 	iscsit_inc_conn_usage_count(conn);
- 
--	iscsit_collect_login_stats(conn, ISCSI_STATUS_CLS_SUCCESS,
--			ISCSI_LOGIN_STATUS_ACCEPT);
--
--	pr_debug("Moving to TARG_CONN_STATE_LOGGED_IN.\n");
--	conn->conn_state = TARG_CONN_STATE_LOGGED_IN;
--
- 	iscsi_set_connection_parameters(conn->conn_ops, conn->param_list);
- 	/*
- 	 * SCSI Initiator -> SCSI Target Port Mapping
-@@ -674,6 +699,32 @@ void iscsi_post_login_handler(
- 		conn->param_list = NULL;
- 
- 		spin_lock_bh(&sess->conn_lock);
-+		/*
-+		 * The session was located from ISID+TSIH when the first Login
-+		 * Request arrived, and since then only the session usage count
-+		 * kept it alive.  If its last connection went away in the
-+		 * meantime, iscsit_close_connection() has already committed to
-+		 * iscsit_close_session(), which frees the session as soon as
-+		 * the usage count is dropped.  Do not attach a new connection
-+		 * to a session that is being shut down.  iscsit_close_connection()
-+		 * makes that decision under sess->conn_lock as well.
-+		 */
-+		if (atomic_read(&sess->session_fall_back_to_erl0) ||
-+		    atomic_read(&sess->session_logout) ||
-+		    atomic_read(&sess->session_close)) {
-+			spin_unlock_bh(&sess->conn_lock);
-+			pr_err("iSCSI session SID %u is shutting down, refusing to add CID %u\n",
-+			       sess->sid, conn->cid);
-+			iscsit_dec_conn_usage_count(conn);
-+			return -1;
-+		}
-+
-+		iscsit_collect_login_stats(conn, ISCSI_STATUS_CLS_SUCCESS,
-+					   ISCSI_LOGIN_STATUS_ACCEPT);
-+
-+		pr_debug("Moving to TARG_CONN_STATE_LOGGED_IN.\n");
-+		conn->conn_state = TARG_CONN_STATE_LOGGED_IN;
-+
- 		atomic_set(&sess->session_continuation, 0);
- 		if (sess->session_state == TARG_SESS_STATE_FAILED) {
- 			pr_debug("Moving to"
-@@ -714,9 +765,15 @@ void iscsi_post_login_handler(
- 			spin_unlock_bh(&se_tpg->session_lock);
- 		}
- 		iscsit_dec_session_usage_count(sess);
--		return;
-+		return 0;
+diff --git a/drivers/usb/cdns3/gadget.c b/drivers/usb/cdns3/gadget.c
+index d0378ecd0c98..b6cb690208cd 100644
+--- a/drivers/usb/cdns3/gadget.c
++++ b/drivers/usb/cdns3/gadget.c
+@@ -3418,6 +3418,7 @@ static int __cdns3_gadget_init(struct cdns3 *cdns)
+ 	ret = cdns3_gadget_start(cdns);
+ 	if (ret) {
+ 		pm_runtime_put_sync(cdns->dev);
++		cdns3_drd_gadget_off(cdns);
+ 		return ret;
  	}
  
-+	iscsit_collect_login_stats(conn, ISCSI_STATUS_CLS_SUCCESS,
-+				   ISCSI_LOGIN_STATUS_ACCEPT);
-+
-+	pr_debug("Moving to TARG_CONN_STATE_LOGGED_IN.\n");
-+	conn->conn_state = TARG_CONN_STATE_LOGGED_IN;
-+
- 	iscsi_set_session_parameters(sess->sess_ops, conn->param_list, 1);
- 	iscsi_release_param_list(conn->param_list);
- 	conn->param_list = NULL;
-@@ -769,6 +826,7 @@ void iscsi_post_login_handler(
- 	 */
- 	complete(&conn->rx_login_comp);
- 	iscsit_dec_conn_usage_count(conn);
-+	return 0;
- }
- 
- int iscsit_setup_np(
-@@ -1321,7 +1379,10 @@ static int __iscsi_target_login_thread(struct iscsi_np *np)
- 	if (ret == 1) {
- 		tpg_np = conn->tpg_np;
- 
--		iscsi_post_login_handler(np, conn, zero_tsih);
-+		if (iscsi_post_login_handler(np, conn, zero_tsih) < 0) {
-+			iscsit_stop_kthreads(conn);
-+			goto new_sess_out;
-+		}
- 		iscsit_deaccess_np(np, tpg, tpg_np);
- 	}
- 
-diff --git a/drivers/target/iscsi/iscsi_target_login.h b/drivers/target/iscsi/iscsi_target_login.h
-index 03c7d695d5..d2c6169adb 100644
---- a/drivers/target/iscsi/iscsi_target_login.h
-+++ b/drivers/target/iscsi/iscsi_target_login.h
-@@ -20,7 +20,9 @@ extern int iscsit_get_login_rx(struct iscsit_conn *, struct iscsi_login *);
- extern int iscsit_put_login_tx(struct iscsit_conn *, struct iscsi_login *, u32);
- extern void iscsit_free_conn(struct iscsit_conn *);
- extern int iscsit_start_kthreads(struct iscsit_conn *);
--extern void iscsi_post_login_handler(struct iscsi_np *, struct iscsit_conn *, u8);
-+void iscsit_stop_kthreads(struct iscsit_conn *conn);
-+int iscsi_post_login_handler(struct iscsi_np *np, struct iscsit_conn *conn,
-+			     u8 zero_tsih);
- extern void iscsi_target_login_sess_out(struct iscsit_conn *, bool, bool);
- extern int iscsi_target_login_thread(void *);
- 
-diff --git a/drivers/target/iscsi/iscsi_target_nego.c b/drivers/target/iscsi/iscsi_target_nego.c
-index ccd468e26f..23f6dffb79 100644
---- a/drivers/target/iscsi/iscsi_target_nego.c
-+++ b/drivers/target/iscsi/iscsi_target_nego.c
-@@ -640,7 +640,10 @@ static void iscsi_target_do_login_rx(struct work_struct *work)
- 		iscsit_stop_login_timer(conn);
- 		cancel_delayed_work(&conn->login_work);
- 		iscsi_target_nego_release(conn);
--		iscsi_post_login_handler(np, conn, zero_tsih);
-+		if (iscsi_post_login_handler(np, conn, zero_tsih) < 0) {
-+			iscsit_stop_kthreads(conn);
-+			iscsi_target_login_sess_out(conn, zero_tsih, true);
-+		}
- 		iscsit_deaccess_np(np, tpg, tpg_np);
- 	}
- 	return;
 
 ---
-base-commit: 4be084ac36f95f95e21a1e39207e87326967a73d
-change-id: 20261127-b4-lio-iscsi-session-closing-67f4557094ce
+base-commit: bd8b111cdf1d9897bf4d826b7305a9c16bfe5f71
+change-id: 20261127-cip-cdns3-510c-10094b795da1
 
 Best regards,
 --  
-Rongen Wang <security@nitrohex.com>
+Dickson Wu <dickson.wu@certik.com>
 
