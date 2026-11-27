@@ -1,128 +1,97 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Fri, 27 Nov 2026 13:09:38 +0000
-Subject: [PATCH 5.10.y-cip] usb: gadget: f_fs: copy only received bytes on
- short ep0 read
+From: Ricardo Pardini <ricardo@pardini.net>
+Subject: [PATCH v2 0/4] rockchip: fix on-board SATA on RK3588 and RK356x
+Date: Fri, 27 Nov 2026 14:12:57 +0100
+Message-Id: <20261127-rk3588-sata-fixes-v2027-01-v2-0-dbdf7770972a@pardini.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-cip-ffs-510b-v1-1-740c3a4fb9b3@certik.com>
-X-B4-Tracking: v=1; b=H4sIABGBCWsC/02Nyw6CMBBFf4XM2kFaoCb+CnHRx1RqTEs6aDSEf
- 7fVjct77msDphyI4dxskOkZOKRYhDg0YGcdr4TBFQ2yk0oIeUIbFvSecRSdQekGJVU/9Ep4KJU
- lkw+v79wEYyu69l0LcPl5/DA3smvdq2mjmdBkHe1cEVN0a0p3rPz4/wP7/gGP86ZQqQAAAA==
-X-Change-ID: 20261127-cip-ffs-510b-2d462634361f
-To: cip-dev@lists.cip-project.org
-Cc: Pavel Machek <pavel@nabladev.com>, 
- Nobuhiro Iwamatsu <nobuhiro.iwamatsu.x90@mail.toshiba>, 
- Ulrich Hecht <uli@fpond.eu>, 
- Michael Bommarito <michael.bommarito@gmail.com>, linux-usb@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIANqBCWsC/32NzQ6CMBAGX4X07Jpu+bF48j0MhwKLrCaFtLXRE
+ N7dAnePk539ZhGeHJMX12wRjiJ7nmwCdcpENxr7IOA+sVBSVShVAe6Vl1qDN8HAwB/yENPtAhJ
+ B16odUJq8RCXSwOxoN9L/vTnYv9sndWFb3IyRfZjcd69H3LwjhLL+F4oIEqgsOqOp0gPq22xcz
+ 5bPloJo1nX9AdPQxWzYAAAA
+X-Change-ID: 20261024-rk3588-sata-fixes-v2027-01-892bf10a3512
+To: u-boot@lists.u-boot-project.org, Simon Glass <sjg@chromium.org>, 
+ Kever Yang <kever.yang@rock-chips.com>, Eugen Hristev <ehristev@kernel.org>, 
+ Jon Lin <jon.lin@rock-chips.com>
+Cc: Tom Rini <trini@konsulko.com>, Peng Fan <peng.fan@nxp.com>, 
+ Ricardo Pardini <ricardo@pardini.net>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, 
+ Quentin Schulz <u-boot@0leil.net>, Jonas Karlman <jonas@kwiboo.se>, 
+ Heiko Stuebner <heiko@sntech.de>, Julius Lehmann <lehmanju@devpi.de>, 
+ Yifeng Zhao <yifeng.zhao@rock-chips.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795784977; l=4141;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=DJqW2fanrrMBxibpJCrploJciD5vVQ8YJRECDs4tOi0=;
- b=i8Hl5WVTQgwvcj1ou3S2krOCa26XAw5gHG95oKNPxSQLFQPGHMExQ9CzUPfFVArwqZOP0Rp9c
- 4TC87YgFKZSCaZ6PpjuQeQ/xPCDvwdxrKOjQ3khP+FuVpLpKYTLA5vU
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3009; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=DTCo8lpu7MajxLVaWrDtdaiCkp3xKbvJsTY1bbfUMJg=;
+ b=owEBbQGS/pANAwAKATteP+Oex+3pAcsmYgBrCYIZOIH1R92sqFQBsRn+vi0qly7E7kBXh/C7G
+ gBAum6PI2KJATMEAAEKAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCawmCGQAKCRA7Xj/jnsft
+ 6WNDCACiX5V0RvoeuCyyiPWH7VSMlx5boJhhVNgrEIeCLYqRwGehHHRh2v24wAQ9G4NyYjdd1WV
+ R7AXby9nCd1UPdwdJSaNnJcjCIxGE+E10IVwMswIGo30Sj3cvo9YCh4f4TsnSW2d8qCLeYbBjC0
+ nLty4GLiKcqpa8q17zWQPXQoctbFQ6+aRcqjoF94YWGfzl2MWEhTW1AKo/A0mh9BvzBPHpIsgIX
+ DfEhbgOvWufrbzaH4dyFweXlOy0GCF82PqUcNztEN2cW7MqHo0NuAMdJpmcTIkZKdTjRbJDpI2j
+ uz+yLLWVJOUAewAM97zkffGGwrtW5CHTjF5NPMgaEBZGjLNK
+X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
+ fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
+X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Michael Bommarito <michael.bommarito@gmail.com>
+This makes the on-board SATA controllers (dwc_ahci) work on RK3588,
+and on RK356x sata1/sata2 again. They currently fail to probe, and
+fixing that exposes two more problems once a disk is actually used:
 
-commit 4e036c10e7f4df5d951c69cc3697bc8e209c6d02 upstream.
+A: dwc_ahci only looks for the PHY on the controller node, but the
+   RK3588 DT has it in the sata-port@0 subnode, so probe always fails.
+   RK356x sata1/sata2 have the same problem since the v7.1 DT sync.
+   The PHY is now found like Linux's libahci_platform does it: the
+   first PHY, ignoring phy-names (1/4), of the sata-port subnodes if
+   any, else of the controller (2/4). The binding allows one PHY per
+   node and phy-names is optional, so RK3576, RK3568 sata0 and TI DRA7
+   get the same PHY as before.
+B: AHCI reports disks one sector too large since the scsi +1 fix [1],
+   which breaks e.g. UMS when the host reads the backup GPT.
+C: sata2 links at 1.5 Gb/s only, due to a wrong GRF offset (see the
+   RK3588 TRM); Rockchip fixed it in their BSP kernel [2], and the
+   same fix was sent for Linux [3].
 
-ffs_ep0_read() allocates its control-OUT data buffer with
-kmalloc() (not kzalloc) at the Length value from the Setup
-packet, then copies that full len to userspace regardless of
-how many bytes were actually received:
+The misplaced write in (C) lands in PHP_GRF_PHP_CON0[2:0], which are
+the PCIe link reset grant bits, and turns on the one for pcie3x2
+whenever a combphy is put in SATA mode. I don't know of any effect
+from that, but this series stops it too.
 
-    data = kmalloc(len, GFP_KERNEL);
-    ...
-    ret = __ffs_ep0_queue_wait(ffs, data, len);
-    if ((ret > 0) && (copy_to_user(buf, data, len)))
-            ret = -EFAULT;
+Tested with an mSATA SSD on sata2 (combphy2_psu): scsi scan, booting
+via bootstd, and UMS all work, with the link at 6 Gb/s. Only tested
+on RK3588.
 
-__ffs_ep0_queue_wait() returns req->actual, which on a short
-control OUT transfer is strictly less than len.  The
-copy_to_user() call still copies len bytes, so on a short OUT
-the last (len - ret) bytes of the kmalloc() buffer --
-uninitialised slab residue -- are delivered to the FunctionFS
-daemon.
-
-Short ep0 OUT completions are specified USB control-transfer
-behavior and are produced by in-tree UDCs:
-
-  * dwc2 continues on req->actual < req->length for ep0 DATA OUT
-    (short-not-ok is the only ep0-OUT stall path).
-  * aspeed_udc ends ep0 OUT on rx_len < ep->ep.maxpacket.
-  * renesas_usbf logs "ep0 short packet" and completes the
-    request.
-  * dwc3 stalls on short IN but not on short OUT.
-
-A short ep0 OUT is therefore not evidence of a broken UDC; it is
-a normal condition f_fs has to cope with.  The sibling gadgetfs
-implementation in drivers/usb/gadget/legacy/inode.c already does
-this correctly via min(len, dev->req->actual) before
-copy_to_user().  This patch brings f_fs.c to the same safe
-pattern rather than trimming at a defensive layer.
-
-The bug is reached from the FunctionFS device node, which in
-real deployments is owned by the privileged gadget daemon
-(adbd, UMS, composite gadget services, etc.); it is not
-reachable from unprivileged userspace.  Linux host stacks
-normally reject short-wLength control OUTs before they reach
-the gadget, so reproducing this required a build that
-bypasses that host-side check.  With the bypass in place, a
-1-byte payload on a 64-byte Setup produces 63 bytes of
-non-canary slab residue in the daemon's read buffer.
-
-Fix by copying only ret (actually received) bytes to
-userspace.
-
-Fixes: ddf8abd25994 ("USB: f_fs: the FunctionFS driver")
-Cc: stable <stable@kernel.org>
-Assisted-by: Claude:claude-opus-4-7
-Signed-off-by: Michael Bommarito <michael.bommarito@gmail.com>
-Link: https://patch.msgid.link/20260419160359.1577270-1-michael.bommarito@gmail.com
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-[ adapted to 5.10.y-cip: keep the branch's likely/unlikely wrappers around the EP0 copy ]
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
----
-5.10 wraps the EP0 read condition in likely() and unlikely(). The
-backport keeps those wrappers and uses the completed length for the copy.
-
-Tested on 5.10.272-cip79: drivers/usb/gadget/function/f_fs.o built
-with W=1 before and after the patch, with no new diagnostics. The same
-paired build passed on the 5.10.275-cip80 tip. On v5.10.275, the
-patched kernel booted in QEMU and passed the FunctionFS dummy-HCD
-endpoint creation smoke test. That test covered endpoint setup. The
-runtime test was not rerun on the CIP tip.
-
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
----
- drivers/usb/gadget/function/f_fs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/usb/gadget/function/f_fs.c b/drivers/usb/gadget/function/f_fs.c
-index bb0b7c1e050b..5ad3ce302650 100644
---- a/drivers/usb/gadget/function/f_fs.c
-+++ b/drivers/usb/gadget/function/f_fs.c
-@@ -598,7 +598,7 @@ static ssize_t ffs_ep0_read(struct file *file, char __user *buf,
- 
- 		/* unlocks spinlock */
- 		ret = __ffs_ep0_queue_wait(ffs, data, len);
--		if (likely(ret > 0) && unlikely(copy_to_user(buf, data, len)))
-+		if (likely(ret > 0) && unlikely(copy_to_user(buf, data, ret)))
- 			ret = -EFAULT;
- 		goto done_mutex;
- 
+[1] https://lore.kernel.org/u-boot/20241026-fix-scsi-disksize-v2-1-bc6be9a6043d@devpi.de/
+[2] https://github.com/rockchip-linux/kernel/commit/2f5fe2c0bbd4fa95102aadd60da1100989103aa0
+[3] https://patch.msgid.link/20261109-rk3588-combphy-sata2-6g-v1-1-e9135c91de6a@pardini.net
 
 ---
-base-commit: bd8b111cdf1d9897bf4d826b7305a9c16bfe5f71
-change-id: 20261127-cip-ffs-510b-2d462634361f
+Changes in v2:
+- v1 1/3 split in two, getting the PHY the same way as Linux's
+  libahci_platform (Quentin):
+  - 1/4: always the first PHY, ignoring phy-names
+  - 2/4: only from the sata-port subnodes if there are any, else from
+    the controller node; stop at the first enabled subnode; replaces
+    v1's "ata: dwc_ahci: fall back to the PHY in the sata-port subnode"
+- 3/4, 4/4 (were 2/3, 3/3): collect Quentin's Reviewed-by
+- Link to v1: https://patch.msgid.link/20261109-rk3588-sata-fixes-v2027-01-v1-0-e54ca8e68f18@pardini.net
+
+---
+Ricardo Pardini (4):
+      ata: dwc_ahci: use the first PHY, ignoring phy-names
+      ata: dwc_ahci: get the PHY from the sata-port subnodes if any
+      ata: ahci: return the last LBA from emulated READ CAPACITY
+      phy: rockchip: naneng-combphy: fix RK3588 SATA pipe_con1 register offset
+
+ drivers/ata/ahci.c                                 |  8 +++++---
+ drivers/ata/dwc_ahci.c                             | 16 ++++++++++++++--
+ drivers/phy/rockchip/phy-rockchip-naneng-combphy.c |  2 +-
+ 3 files changed, 20 insertions(+), 6 deletions(-)
+---
+base-commit: 934995f642a21ca7f35fa9aed5f061394fcba243
+change-id: 20261024-rk3588-sata-fixes-v2027-01-892bf10a3512
 
 Best regards,
 --  
-Dickson Wu <dickson.wu@certik.com>
+Ricardo Pardini <ricardo@pardini.net>
 
