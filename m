@@ -1,11 +1,11 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Fri, 27 Nov 2026 16:27:07 +0100
-Subject: [PATCH v5 06/12] dt-bindings: display: amlogic,meson-dw-hdmi: Add
- phys
+Date: Fri, 27 Nov 2026 16:27:08 +0100
+Subject: [PATCH v5 07/12] pmdomain: amlogic: meson-ee-pwrc: power up
+ memories for boot-enabled domains
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-meson-drm-create-hdmitx-phy-v5-6-88c43eb95468@aliel.fr>
+Message-Id: <20261127-meson-drm-create-hdmitx-phy-v5-7-88c43eb95468@aliel.fr>
 References: <20261127-meson-drm-create-hdmitx-phy-v5-0-88c43eb95468@aliel.fr>
 In-Reply-To: <20261127-meson-drm-create-hdmitx-phy-v5-0-88c43eb95468@aliel.fr>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -23,53 +23,87 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-phy@lists.infradead.org, dri-devel@lists.freedesktop.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>, linux-pm@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1278;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2681;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=gEM9bIkhQe1Q+n5KKc7w/RzPzlM5UABBv5gf7bLSb8c=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQzbnwglzElaKKM5o3jc1dV4fA8cnnxObWZ70/TmR3qwWw
- DF5XYBTRykLgxgXg6yYIkv/XMsT7y4fPfN1j3oKzBxWJpAhDFycAjCRtwoMfzh8WXmO/p0g/dOt
- 3ePkm77X0oHXZCKbfnpoCBznueoTNYeR4bvj0dM3q05vVy20qN+/V1Zxu1rX+nzX7o+ZFdIrOAq
- DWAA=
+ bh=2pSroicxmn87L6WpeMI1TQ71NJdXRXfygd9gmAxHGRQ=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQzbnwkmna0x2M3+6ml8XrZtddFambW/Dxc1lXx4JPv93o
+ T1xxdEjHaUsDGJcDLJiiiz9cy1PvLt89MzXPeopMHNYmUCGMHBxCsBEnLcxMnyMCes8suaC0xc7
+ g5nuIYE+5xr1JJQeS036GXDwyqvtr1sY/gpwfyxnPeW8JaWlRnJCq6XP+1zvTQUPmApfTf8ZLn6
+ CkxsA
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HDMI TX PHY now has its own binding and driver. Describe the link
-between the HDMI TX controller and its PHY with a "phys" property
-holding a single phandle, and update the example accordingly.
+When a power domain is found already powered on at probe time (typically
+the VPU domain left enabled by the bootloader), the driver registers the
+genpd in the ON state with GENPD_FLAG_ALWAYS_ON and never calls
+meson_ee_pwrc_on(). As a result, the memory power-down bits of the domain
+are not touched.
 
-The property is optional so that existing DT, which do not describe
-the PHY, keep validating; the driver falls back to creating the PHY
-itself in that case.
+pwrc_ee_is_powered_off() only checks the top-level sleep bit, so a
+bootloader that enabled the VPU without waking every memory block
+leaves those memories powered down, and nothing in the genpd framework
+will wake them since pm_runtime_resume_and_get() is a no-op for an
+always-on domain.
+
+This is a preparatory change: a following patch drops the explicit
+HHI_MEM_PD_REG0 write from the meson_dw_hdmi driver, which relies on the
+power domain to power the HDMITX memory.
 
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- Documentation/devicetree/bindings/display/amlogic,meson-dw-hdmi.yaml | 4 ++++
- 1 file changed, 4 insertions(+)
+ drivers/pmdomain/amlogic/meson-ee-pwrc.c | 19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/display/amlogic,meson-dw-hdmi.yaml b/Documentation/devicetree/bindings/display/amlogic,meson-dw-hdmi.yaml
-index 416fe263ac92..7ece4ea262bd 100644
---- a/Documentation/devicetree/bindings/display/amlogic,meson-dw-hdmi.yaml
-+++ b/Documentation/devicetree/bindings/display/amlogic,meson-dw-hdmi.yaml
-@@ -108,6 +108,9 @@ properties:
+diff --git a/drivers/pmdomain/amlogic/meson-ee-pwrc.c b/drivers/pmdomain/amlogic/meson-ee-pwrc.c
+index 338f70d77bf0..b3ae5cd7bea8 100644
+--- a/drivers/pmdomain/amlogic/meson-ee-pwrc.c
++++ b/drivers/pmdomain/amlogic/meson-ee-pwrc.c
+@@ -392,11 +392,21 @@ static int meson_ee_pwrc_off(struct generic_pm_domain *domain)
+ 	return 0;
+ }
  
-   sound-name-prefix: true
- 
-+  phys:
-+    maxItems: 1
++static void meson_ee_pwrc_mem_power_up(struct meson_ee_pwrc_domain *dom)
++{
++	int i;
 +
- required:
-   - compatible
-   - reg
-@@ -136,6 +139,7 @@ examples:
-         power-domains = <&pd_vpu>;
-         #address-cells = <1>;
-         #size-cells = <0>;
-+        phys = <&hdmi_tx_phy>;
++	for (i = 0; i < dom->desc.mem_pd_count; i++)
++		regmap_update_bits(dom->pwrc->regmap_hhi,
++				   dom->desc.mem_pd[i].reg,
++				   dom->desc.mem_pd[i].mask, 0);
++}
++
+ static int meson_ee_pwrc_on(struct generic_pm_domain *domain)
+ {
+ 	struct meson_ee_pwrc_domain *pwrc_domain =
+ 		container_of(domain, struct meson_ee_pwrc_domain, base);
+-	int i, ret;
++	int ret;
  
-         /* VPU VENC Input */
-         hdmi_tx_venc_port: port@0 {
+ 	if (pwrc_domain->desc.top_pd)
+ 		regmap_update_bits(pwrc_domain->pwrc->regmap_ao,
+@@ -404,10 +414,7 @@ static int meson_ee_pwrc_on(struct generic_pm_domain *domain)
+ 				   pwrc_domain->desc.top_pd->sleep_mask, 0);
+ 	udelay(20);
+ 
+-	for (i = 0 ; i < pwrc_domain->desc.mem_pd_count ; ++i)
+-		regmap_update_bits(pwrc_domain->pwrc->regmap_hhi,
+-				   pwrc_domain->desc.mem_pd[i].reg,
+-				   pwrc_domain->desc.mem_pd[i].mask, 0);
++	meson_ee_pwrc_mem_power_up(pwrc_domain);
+ 
+ 	udelay(20);
+ 
+@@ -478,6 +485,8 @@ static int meson_ee_pwrc_init_domain(struct platform_device *pdev,
+          * prepare/enable counters won't be in sync.
+          */
+ 	if (dom->num_clks && dom->desc.is_powered_off && !dom->desc.is_powered_off(dom)) {
++		meson_ee_pwrc_mem_power_up(dom);
++
+ 		ret = clk_bulk_prepare_enable(dom->num_clks, dom->clks);
+ 		if (ret)
+ 			return ret;
 
 -- 
 2.56.1
