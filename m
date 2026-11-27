@@ -1,16 +1,13 @@
 From: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
-Subject: [PATCH v2 0/2] interconnect: qcom: Add the Molokai interconnect
- providers
-Date: Sat, 28 Nov 2026 00:35:52 +0530
-Message-Id: <20261128-molokai-icc-v2-0-7806842d166b@yahoo.com>
+Date: Sat, 28 Nov 2026 00:35:53 +0530
+Subject: [PATCH v2 1/2] dt-bindings: interconnect: qcom: Add Molokai RPMh
+ NoC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNyw6CMBBFf4XM2ppO5enK/zAsahlkVBjTIpEQ/
- l3AuHB5knPPnSCQZwpwjCbwNHBg6RYwuwhcY7srKa4WBqNNimgy1cpD7pYVO6fwgLF1lS6KJId
- l8fRU83urncsvh9flRq5fE6vRcOjFj9vdgKv3K+d/5QGVVjYhzJK41nlanUbbiOydtFDO8/wBS
- 1UXvrgAAAA=
-X-Change-ID: 20261127-molokai-icc-1314acd09958
+Message-Id: <20261128-molokai-icc-v2-1-7806842d166b@yahoo.com>
+References: <20261128-molokai-icc-v2-0-7806842d166b@yahoo.com>
+In-Reply-To: <20261128-molokai-icc-v2-0-7806842d166b@yahoo.com>
 To: Georgi Djakov <djakov@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
@@ -22,79 +19,218 @@ Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795806352; l=3168;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795806352; l=6144;
  i=venkat.yadlapati@yahoo.com; s=20261023; h=from:subject:message-id;
- bh=OLY8f5RTTQRtYbj7FHrGwVS/UNeuccZVvC2l7+O5rZo=;
- b=SOG3hH0S+ubC5Vw2XwK5K8aZedCtRBe7ctvfFALmoPiygSz23zInbTqpjpO9bpIWFnFGwqxzA
- 2uF52Nlpc0EClItGhM1JU5vxxSEZMwCt6lBIUpryy+Rihz8JyzatJyC
+ bh=Xxt8D8wMK92grXZn8O4mppTs+YgJ/y35V+I07aULN64=;
+ b=uvSIv40tP9LTLYHLrFSmhq/uXmDIYkGSkvywDUM+198kUqAUo9DD3zjfSuCwkjUiJ5fp9RQeo
+ ZTqs8a0ADz3C7RQRmWc5gztvhi/UDswVyhUfPfFSMRzL4rw9NWRuzo2
 X-Developer-Key: i=venkat.yadlapati@yahoo.com; a=ed25519;
  pk=e8KStCtEMvUP1Se/riB/KVnDAQFEVR2Dw2PcuA8/eME=
 X-Endpoint-Received: by B4 Relay for venkat.yadlapati@yahoo.com/20261023 with auth_id=1303
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Molokai (SM8845) is derived from Kaanapali, but its NoCs are not the
-same: the aggregate NoC is split into aggre1 and aggre2, the MMSS NoC
-config and service ports are split into HF and SF halves, many QoS
-ports moved, and QUP4, SDCC4, SP, QPACE and a few config slaves are
-gone. This series adds the binding and a Molokai driver.
+Document the RPMh Network-On-Chip interconnect providers of the Qualcomm
+Molokai (SM8845) SoC.
 
-It replaces "interconnect: qcom: Don't read back BCMs without an RPMh
-address" [1], where Konrad asked to fix the driver instead. Molokai used
-the Kaanapali driver, which votes on the QPC0 BCM that the Molokai
-command DB does not have; the read back of that BCM hung RPMh. The
-Molokai driver has no QPC0, and it programs the Molokai QoS offsets
-instead of the Kaanapali ones.
+Molokai is close to Kaanapali, but its NoCs differ: the aggregate NoC is
+split into aggre1 (0x16e0000) and aggre2 (0x1700000), the MMSS NoC config
+and service ports are split into HF and SF halves, and some masters and
+slaves are missing. aggre1 needs the UFS and USB3 AXI clocks for QoS
+programming, aggre2 the IPA clock.
 
-The topology and QoS settings come from the Molokai driver in
-Motorola's downstream kernel. The upstream Kaanapali driver matches the
-downstream Kaanapali one node for node, so the driver is the Kaanapali
-one with the downstream Kaanapali to Molokai differences applied.
-
-The binding header includes the Kaanapali one and only adds the new
-MMSS nodes: molokai.dtsi builds on kaanapali.dtsi and inherits its
-interconnect paths, and a header with its own numbering would redefine
-the same macros with other values. If a standalone header is preferred,
-molokai.dtsi would have to override every inherited interconnect path,
-or stop building on kaanapali.dtsi; I can rework it that way.
-
-Tested on the Motorola Signature with molokai.dtsi switched to these
-providers (Molokai SoC series v5 [2]) and the generic
-read back fix reverted: all 14 providers probe, there are no RPMh
-timeouts, and the display, GPU, touchscreen and audio work with QoS
-programming enabled.
-
-[1] https://lore.kernel.org/all/20261123-icc-bcm-readback-v2-1-bacee81398e5@yahoo.com/
-[2] https://lore.kernel.org/all/20261128-molokai-soc-v5-0-144801dfad7f@yahoo.com/
-
-I used an LLM (Claude) to help write these patches and their commit
-messages. I reviewed all of them and tested the result on the device.
+The header keeps the Kaanapali IDs for every node the two SoCs share and
+adds only the new MMSS config nodes, so molokai.dtsi can keep the
+interconnect paths it inherits from kaanapali.dtsi.
 
 Signed-off-by: Venkat Yadlapati <venkat.yadlapati@yahoo.com>
 ---
-Changes in v2:
-- Route the crypto engine through the A2NOC slave instead of A1NOC: it
-  sits on aggre2, the downstream A1NOC link was left over from Kaanapali
-  (Sashiko). Tested: the SCM crypto path now goes through
-  qnm_aggre2_noc.
-- Cover: point to v5 of the Molokai SoC series.
-- Link to v1: https://patch.msgid.link/20261128-molokai-icc-v1-0-a5e1754f086d@yahoo.com
+ .../bindings/interconnect/qcom,molokai-rpmh.yaml   | 144 +++++++++++++++++++++
+ .../dt-bindings/interconnect/qcom,molokai-rpmh.h   |  26 ++++
+ 2 files changed, 170 insertions(+)
 
----
-Venkat Yadlapati (2):
-      dt-bindings: interconnect: qcom: Add Molokai RPMh NoC
-      interconnect: qcom: Add Molokai interconnect provider driver
+diff --git a/Documentation/devicetree/bindings/interconnect/qcom,molokai-rpmh.yaml b/Documentation/devicetree/bindings/interconnect/qcom,molokai-rpmh.yaml
+new file mode 100644
+index 000000000000..fd94f6dae1a6
+--- /dev/null
++++ b/Documentation/devicetree/bindings/interconnect/qcom,molokai-rpmh.yaml
+@@ -0,0 +1,144 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/interconnect/qcom,molokai-rpmh.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Qualcomm RPMh Network-On-Chip Interconnect on Molokai
++
++maintainers:
++  - Venkat Yadlapati <venkat.yadlapati@yahoo.com>
++
++description: |
++  RPMh interconnect providers support system bandwidth requirements through
++  RPMh hardware accelerators known as Bus Clock Manager (BCM). The provider is
++  able to communicate with the BCM through the Resource State Coordinator (RSC)
++  associated with each execution environment. Provider nodes must point to at
++  least one RPMh device child node pertaining to their RSC and each provider
++  can map to multiple RPMh resources.
++
++  See also: include/dt-bindings/interconnect/qcom,molokai-rpmh.h
++
++properties:
++  compatible:
++    enum:
++      - qcom,molokai-aggre1-noc
++      - qcom,molokai-aggre2-noc
++      - qcom,molokai-clk-virt
++      - qcom,molokai-cnoc-cfg
++      - qcom,molokai-cnoc-main
++      - qcom,molokai-gem-noc
++      - qcom,molokai-lpass-ag-noc
++      - qcom,molokai-lpass-lpiaon-noc
++      - qcom,molokai-lpass-lpicx-noc
++      - qcom,molokai-mc-virt
++      - qcom,molokai-mmss-noc
++      - qcom,molokai-nsp-noc
++      - qcom,molokai-pcie-anoc
++      - qcom,molokai-system-noc
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    minItems: 1
++    maxItems: 2
++
++required:
++  - compatible
++
++allOf:
++  - $ref: qcom,rpmh-common.yaml#
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - qcom,molokai-clk-virt
++              - qcom,molokai-mc-virt
++    then:
++      properties:
++        reg: false
++    else:
++      required:
++        - reg
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - qcom,molokai-pcie-anoc
++    then:
++      properties:
++        clocks:
++          items:
++            - description: aggre-NOC PCIe AXI clock
++            - description: cfg-NOC PCIe a-NOC AHB clock
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - qcom,molokai-aggre1-noc
++    then:
++      properties:
++        clocks:
++          items:
++            - description: aggre UFS PHY AXI clock
++            - description: aggre USB3 PRIM AXI clock
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - qcom,molokai-aggre2-noc
++    then:
++      properties:
++        clocks:
++          items:
++            - description: RPMH CC IPA clock
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - qcom,molokai-aggre1-noc
++              - qcom,molokai-aggre2-noc
++              - qcom,molokai-pcie-anoc
++    then:
++      required:
++        - clocks
++    else:
++      properties:
++        clocks: false
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    clk_virt: interconnect-0 {
++      compatible = "qcom,molokai-clk-virt";
++      #interconnect-cells = <2>;
++      qcom,bcm-voters = <&apps_bcm_voter>;
++    };
++
++    aggre1_noc: interconnect@16e0000 {
++      compatible = "qcom,molokai-aggre1-noc";
++      reg = <0x016e0000 0x16400>;
++      #interconnect-cells = <2>;
++      clocks = <&gcc_aggre_ufs_phy_axi_clk>,
++               <&gcc_aggre_usb3_prim_axi_clk>;
++      qcom,bcm-voters = <&apps_bcm_voter>;
++    };
++
++    aggre2_noc: interconnect@1700000 {
++      compatible = "qcom,molokai-aggre2-noc";
++      reg = <0x01700000 0x22400>;
++      #interconnect-cells = <2>;
++      clocks = <&rpmhcc_ipa_clk>;
++      qcom,bcm-voters = <&apps_bcm_voter>;
++    };
+diff --git a/include/dt-bindings/interconnect/qcom,molokai-rpmh.h b/include/dt-bindings/interconnect/qcom,molokai-rpmh.h
+new file mode 100644
+index 000000000000..88efa9f1d7a7
+--- /dev/null
++++ b/include/dt-bindings/interconnect/qcom,molokai-rpmh.h
+@@ -0,0 +1,26 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
++/*
++ * Molokai interconnect IDs
++ *
++ * Molokai keeps the Kaanapali node IDs for every node the two SoCs share,
++ * so this only adds the nodes Kaanapali does not have. On Molokai the
++ * aggre1-noc and aggre2-noc providers use the Kaanapali aggre-noc IDs,
++ * and cnoc-main also carries SLAVE_PCIE_CFG.
++ */
++
++#ifndef __DT_BINDINGS_INTERCONNECT_QCOM_MOLOKAI_H
++#define __DT_BINDINGS_INTERCONNECT_QCOM_MOLOKAI_H
++
++#include <dt-bindings/interconnect/qcom,kaanapali-rpmh.h>
++
++/* cnoc-cfg */
++#define SLAVE_CNOC_MNOC_HF_CFG			36
++#define SLAVE_CNOC_MNOC_SF_CFG			37
++
++/* mmss-noc */
++#define MASTER_CNOC_MNOC_HF_CFG			15
++#define MASTER_CNOC_MNOC_SF_CFG			16
++#define SLAVE_SERVICE_MNOC_HF			17
++#define SLAVE_SERVICE_MNOC_SF			18
++
++#endif
 
- .../bindings/interconnect/qcom,molokai-rpmh.yaml   |  144 ++
- drivers/interconnect/qcom/Kconfig                  |   11 +
- drivers/interconnect/qcom/Makefile                 |    2 +
- drivers/interconnect/qcom/molokai.c                | 1753 ++++++++++++++++++++
- .../dt-bindings/interconnect/qcom,molokai-rpmh.h   |   26 +
- 5 files changed, 1936 insertions(+)
----
-base-commit: e5aad2bdbbee783611d32599f89cea3f12f9593d
-change-id: 20261127-molokai-icc-1314acd09958
-
-Best regards,
---  
-Venkat Yadlapati <venkat.yadlapati@yahoo.com>
+-- 
+2.56.1
 
