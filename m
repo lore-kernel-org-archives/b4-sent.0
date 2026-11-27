@@ -1,11 +1,11 @@
 From: Jerome Berclaz <jerome.berclaz@proton.me>
-Date: Thu, 26 Nov 2026 16:55:47 -0800
-Subject: [PATCH 3/4] media: tegra-vde: clean only the used part of the
- bitstream buffer
+Date: Thu, 26 Nov 2026 16:55:48 -0800
+Subject: [PATCH 4/4] media: tegra-vde: reject CABAC in the H.264 PPS
+ control
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261126-tegra-vde-fixes-v1-3-fa4a7c1d24cc@proton.me>
+Message-Id: <20261126-tegra-vde-fixes-v1-4-fa4a7c1d24cc@proton.me>
 References: <20261126-tegra-vde-fixes-v1-0-fa4a7c1d24cc@proton.me>
 In-Reply-To: <20261126-tegra-vde-fixes-v1-0-fa4a7c1d24cc@proton.me>
 To: Dmitry Osipenko <digetx@gmail.com>, 
@@ -15,98 +15,78 @@ To: Dmitry Osipenko <digetx@gmail.com>,
 Cc: linux-media@vger.kernel.org, linux-tegra@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jerome Berclaz <jerome.berclaz@proton.me>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2968;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2068;
  i=jerome.berclaz@proton.me; s=2026-11; h=from:subject:message-id;
- bh=rI4bjGiLaIB/dHE/FaYnR9GQxHnftZtGARPOU0E1YCI=;
- b=owGbwMvMwCVmvC9341tRgSLG02pJDNkcV4V/Rd0O/F/wautk1ydMOXbaby9t+9PbE/Ihevr/T
- K6X/7fVdZSyMIhxMciKKbKwNhimzj/BFlCoP+8QzBxWJpAhDFycAjCR4COMDF1/1h5/8+aECuOb
- 78x22a4MMbtlG1ZcMDqX9CaCf8l6g+uMDCcFrUsvGDDqO8Ttmuq1tGyjV5L8og7d3RtvKrucrxP
- 4yg0A
+ bh=NZ+kTJWfPnT6RQwMaC2cHK5fnvyB/x7ZJqxE5rk0RxU=;
+ b=owGbwMvMwCVmvC9341tRgSLG02pJDNkcV4XTLu15nvkyJMj9wvMPH2b+3f9DXK/EasM75il3l
+ 083z1x5s6OUhUGMi0FWTJGFtcEwdf4JtoBC/XmHYOawMoEMYeDiFICJXPFj+O9xnq0t3uz8h45V
+ s3zXWv40bzxvcbr8aV97gp5pcjzviumMDOfD7tt1uvfsllmpHG1n8FdMt8tp9asc1fv/XszK3x7
+ GxgwA
 X-Developer-Key: i=jerome.berclaz@proton.me; a=openpgp;
  fpr=058031659FC80650712F9EC233BE6DB1ED151072
 X-Endpoint-Received: by B4 Relay for jerome.berclaz@proton.me/2026-11 with auth_id=1658
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the decoder sits behind the SMMU, buffers use vb2_dma_sg_memops,
-i.e. cached pages, and vb2 cleans the whole bitstream (OUTPUT) buffer
-from the CPU caches on every QBUF. FFmpeg's V4L2 request decoder makes
-these buffers width * height * 3 / 2 bytes, 1.4 MB at 720p, while a coded
-frame is usually a few KB, so most of that work is wasted: it was the
-largest remaining kernel cost of hardware H.264 playback on a Tegra30.
+The hardware cannot decode CABAC. tegra-vde notices only when the decode
+job runs, and then completes the buffers with an error. Stateless
+decoders in userspace (FFmpeg's V4L2 request hwaccel, for one) queue the
+job asynchronously and do not look at the buffer error flag, so a CABAC
+stream plays as broken frames.
 
-The hardware only reads the coded data and the zero padding that
-tegra_buf_prepare() writes after it. Clean that range from
-tegra_buf_prepare() and let vb2 skip its whole-buffer sync. OUTPUT
-buffers are never synced for the CPU on DQBUF already (DMA_TO_DEVICE).
+Validate the PPS in a try_ctrl handler, as other stateless drivers do for
+features they lack, so that setting the controls fails right away. Players
+that handle that error fall back to software decoding (mpv does after a
+few frames).
 
 Signed-off-by: Jerome Berclaz <jerome.berclaz@proton.me>
 ---
- drivers/media/platform/nvidia/tegra-vde/v4l2.c | 33 ++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+ drivers/media/platform/nvidia/tegra-vde/v4l2.c | 30 +++++++++++++++++++++++++-
+ 1 file changed, 29 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/media/platform/nvidia/tegra-vde/v4l2.c b/drivers/media/platform/nvidia/tegra-vde/v4l2.c
-index cd25307ad9db..3269ca75593f 100644
+index 3269ca75593f..e59172d27b94 100644
 --- a/drivers/media/platform/nvidia/tegra-vde/v4l2.c
 +++ b/drivers/media/platform/nvidia/tegra-vde/v4l2.c
-@@ -12,6 +12,7 @@
-  * Copyright (C) 2019 Boris Brezillon <boris.brezillon@collabora.com>
-  */
+@@ -18,10 +18,38 @@
  
-+#include <linux/dma-mapping.h>
- #include <linux/err.h>
- #include <linux/slab.h>
+ #include "vde.h"
  
-@@ -214,6 +215,30 @@ static void tegra_buf_cleanup(struct vb2_buffer *vb)
- 	__tegra_buf_cleanup(vb, vb->num_planes);
- }
- 
-+/*
-+ * With the SMMU the buffers are cached pages (vb2_dma_sg), and vb2 would
-+ * clean the whole bitstream buffer on every QBUF, although the hardware
-+ * only reads the coded data and its padding. Clean just that range.
-+ */
-+static void tegra_sync_coded_data(struct vb2_buffer *vb, unsigned int plane,
-+				  size_t size)
++static int tegra_try_ctrl(struct v4l2_ctrl *ctrl)
 +{
-+	struct device *dev = vb->vb2_queue->dev;
-+	struct sg_table *sgt = vb2_dma_sg_plane_desc(vb, plane);
-+	struct scatterlist *sg;
-+	unsigned int i;
++	const struct v4l2_ctrl_h264_pps *pps;
 +
-+	for_each_sgtable_dma_sg(sgt, sg, i) {
-+		size_t len = min_t(size_t, sg_dma_len(sg), size);
++	switch (ctrl->id) {
++	case V4L2_CID_STATELESS_H264_PPS:
++		pps = ctrl->p_new.p_h264_pps;
 +
-+		dma_sync_single_for_device(dev, sg_dma_address(sg), len,
-+					   DMA_TO_DEVICE);
-+		size -= len;
-+		if (!size)
-+			break;
++		/*
++		 * CABAC is not supported by the hardware. Reject it here
++		 * rather than failing the decode job later, so that
++		 * userspace gets an error and can fall back to software.
++		 */
++		if (pps->flags & V4L2_H264_PPS_FLAG_ENTROPY_CODING_MODE)
++			return -EINVAL;
++		break;
 +	}
++
++	return 0;
 +}
 +
- static int tegra_buf_prepare(struct vb2_buffer *vb)
- {
- 	struct vb2_queue *vq = vb->vb2_queue;
-@@ -264,11 +289,19 @@ static int tegra_buf_prepare(struct vb2_buffer *vb)
- 			if (vb_data)
- 				memset(vb_data + offset + size, 0,
- 				       hw_size - offset - size);
++static const struct v4l2_ctrl_ops tegra_ctrl_ops = {
++	.try_ctrl = tegra_try_ctrl,
++};
 +
-+			if (ctx->vde->domain && vb->memory == VB2_MEMORY_MMAP)
-+				tegra_sync_coded_data(vb, i, hw_size);
- 		}
- 
- 		tb->dma_addr[i] = tb->dma_base[i] + offset;
- 	}
- 
-+	/* the range in use was synced above, skip vb2's whole-buffer sync */
-+	if (V4L2_TYPE_IS_OUTPUT(vq->type) && ctx->vde->domain &&
-+	    vb->memory == VB2_MEMORY_MMAP)
-+		vb->skip_cache_sync_on_prepare = 1;
-+
- 	switch (pixfmt->pixelformat) {
- 	case V4L2_PIX_FMT_YVU420M:
- 		swap(tb->dma_addr[1], tb->dma_addr[2]);
+ static const struct v4l2_ctrl_config ctrl_cfgs[] = {
+ 	{	.id = V4L2_CID_STATELESS_H264_DECODE_PARAMS,	},
+ 	{	.id = V4L2_CID_STATELESS_H264_SPS,		},
+-	{	.id = V4L2_CID_STATELESS_H264_PPS,		},
++	{
++		.id = V4L2_CID_STATELESS_H264_PPS,
++		.ops = &tegra_ctrl_ops,
++	},
+ 	{
+ 		.id = V4L2_CID_STATELESS_H264_DECODE_MODE,
+ 		.min = V4L2_STATELESS_H264_DECODE_MODE_FRAME_BASED,
 
 -- 
 2.53.0
