@@ -1,136 +1,87 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Sat, 28 Nov 2026 09:12:21 +0000
-Subject: [PATCH 6.6.y] mm: list_lru: fix UAF for memory cgroup
+From: Fabio Forni <development@redaril.me>
+Subject: [PATCH v5 0/3] Migrate the multiplexer subsystem to fwnode
+Date: Sat, 28 Nov 2026 11:43:09 +0100
+Message-Id: <20261128-mux_fwnode-v5-0-6689b52f3800@redaril.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-listlru-66b-v1-1-38119b440740@certik.com>
-X-B4-Tracking: v=1; b=H4sIAPSaCmsC/02NwQ7CIBBEf6XZs1uFCDH+ivEAdLEYAoalRtP03
- wW9eJyXmTcrMJVADOdhhULPwCGnFsRuADebdCMMU8sgD1ILIU8YA9dYFtTa4tEraaVSznmCtng
- U8uH1tV1Aj3p8w/WHebF3crWbetEaJrTFJDd3xJSmmnPEzvd/D7BtH2+euYmiAAAA
-X-Change-ID: 20261128-listlru-66b-4f52b255ccfe
-To: stable@vger.kernel.org
-Cc: Muchun Song <muchun.song@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Vlastimil Babka <vbabka@suse.cz>, 
- Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795857140; l=3786;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=POu2beyDobF+0phd+hiYwzwZCt9DRStto5gd3AQtySg=;
- b=mlGUL6TzOy4lzlVmeugaep9HuL/M5Krv56k/4wQTf+FCHY77yp8viURAqToN7Ofyk8c7+RRov
- gtF7vaL5er6CAsoxmGSYZAbH2VtVd/aWo8uOSXe6A5g6EJkzWLWiy4D
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/23MwYrCMBCA4VcJc+5IkklK09O+xyKSOJM1sLaS7
+ lZF+u6LHhaLXn/4/htMUotM0KsbVJnLVMYBeuUbBftDHL4EC0OvwGrb6mA8Hn8vu3weRhaMpvW
+ B9hRyZmgUnKrkcnnMPreNgkOZfsZ6fbxnc69vN7NBg8I+ttxZbdl9VOFYy/fmKHD/zPbZtitr0
+ aDvsuHOp8AsL5aerA0rS6gxJEohiiFyr9b9W6N1t7IONaZIRFqcSzau7LIsfxhIsYZZAQAA
+X-Change-ID: 20260915-mux_fwnode-a16593c39ffd
+To: Peter Rosin <peda@lysator.liu.se>, Linus Walleij <linusw@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jonathan Cameron <jic23@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-kernel@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ xu.yang_2@nxp.com, 
+ =?utf-8?q?Alvin_=C5=A0ipraga?= <alvin.sipraga@analog.com>, 
+ Fabio Forni <development@redaril.me>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2471;
+ i=development@redaril.me; h=from:subject:message-id;
+ bh=1SuCKJ68UOgHpLyDNKZr0RyJjcgerpccp/GgyvBIesI=;
+ b=owGbwMvMwCXWeKho1tqFWemMp9WSGLK5NjhwX3X1zRGa+Zjz/JSbivdu8LzxP7t7nnnTmuczp
+ O9+237sT0cpC4MYF4OsmCLLfyejTd1mJka3+iVqYeawMoEMYeDiFICJGGgzMlzTyV2bdfPL+u8v
+ zRn+XbyWz5WntsbvnBtH7cGjj/a1rn/F8IdDWFvnoVAlw5J9UttsLx7Vvjct7KNL3o/XDw2Mw75
+ IcbMCAA==
+X-Developer-Key: i=development@redaril.me; a=openpgp;
+ fpr=FF4232B28B363432DA8F187D81C2729AADA16A67
+X-Endpoint-Received: by B4 Relay for development@redaril.me/default with auth_id=1033
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Muchun Song <songmuchun@bytedance.com>
+This patch migrates the multiplexer subsystem from using the of_*          
+family of functions and structs, to the more generic fwnode framework.     
+                                                                           
+It is a rebase of a single commit[1] contained in a old patch series[2]
+submitted by Xu Yang. The original commit plus follow-up comments were
+tested on kernel v6.12 on an arm64-based board, but this current rebase
+isn't tested yet.                                                  
 
-commit 5161b48712dcd08ec427c450399d4d1483e21dea upstream.
+While at it, a use-after-free bug was fixed in mux_get(), as suggested by
+Alvin Šipraga.
 
-The mem_cgroup_from_slab_obj() is supposed to be called under rcu lock or
-cgroup_mutex or others which could prevent returned memcg from being
-freed.  Fix it by adding missing rcu read lock.
+v5 is a rebase against most recent master branch, plus a resend, as v4 was
+neither acked not nacked.
+                                                                           
+Link: https://lore.kernel.org/all/20220823195429.1243516-3-xu.yang_2@nxp.com [1]
+Link: https://lore.kernel.org/all/20220823195429.1243516-1-xu.yang_2@nxp.com [2]
 
-Found by code inspection.
-
-[songmuchun@bytedance.com: only grab rcu lock when necessary, per Vlastimil]
-  Link: https://lkml.kernel.org/r/20240801024603.1865-1-songmuchun@bytedance.com
-Link: https://lkml.kernel.org/r/20240718083607.42068-1-songmuchun@bytedance.com
-Fixes: 0a97c01cd20b ("list_lru: allow explicit memcg and NUMA node selection")
-Signed-off-by: Muchun Song <songmuchun@bytedance.com>
-Acked-by: Shakeel Butt <shakeel.butt@linux.dev>
-Acked-by: Vlastimil Babka <vbabka@suse.cz>
-Cc: Johannes Weiner <hannes@cmpxchg.org>
-Cc: Nhat Pham <nphamcs@gmail.com>
-Cc: <stable@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+Signed-off-by: Fabio Forni <development@redaril.me>
 ---
-6.6.y picked up the code this fixes later than the other branches:
-0a97c01cd20b came to 6.6.y as 32d7120a499d in 6.6.160, but this
-follow-up didn't come with it, so 6.6 has the unprotected
-mem_cgroup_from_slab_obj() calls in list_lru_add_obj() and
-list_lru_del_obj(). It applies cleanly.
+Changes in v5:
+- Rebase against master, up to 7cd8495c0f16 ("Merge tag 'io_uring-7.4-20261127' of git://git.kernel.org/pub/scm/linux/kernel/git/axboe/linux")
+- Link to v4: https://lore.kernel.org/r/20261008-mux_fwnode-v4-0-ba3330e44b2a@redaril.me
 
-Tested on 6.6.163: allmodconfig W=1 build of mm/list_lru.o, base vs
-patched, no new warnings. Both kernels booted under QEMU from an ext4
-root and passed all six cgroup test_kmem selftests, including the
-memcg deletion case. I didn't hit the race itself.
+Changes in v4:
+- The patch that fixes the use-after-free bug is applied before converting
+  mux to fwnode, so that it can potentially be backported.
+- Link to v3: https://lore.kernel.org/r/20260929-mux_fwnode-v3-0-9b3b9ae1334e@redaril.me
 
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
----
- mm/list_lru.c | 28 ++++++++++++++++++++++------
- 1 file changed, 22 insertions(+), 6 deletions(-)
+Changes in v3:
+- Expand documentation of mux_chip_find_by_fwnode().
+- Fix use-after-free bug in mux_get().
+- Link to v2: https://lore.kernel.org/r/20260916-mux_fwnode-v2-1-58f1d85b9dde@redaril.me
 
-diff --git a/mm/list_lru.c b/mm/list_lru.c
-index fcca67ac26ec..e362a956bf8f 100644
---- a/mm/list_lru.c
-+++ b/mm/list_lru.c
-@@ -116,6 +116,7 @@ list_lru_from_kmem(struct list_lru *lru, int nid, void *ptr,
- }
- #endif /* CONFIG_MEMCG_KMEM */
- 
-+/* The caller must ensure the memcg lifetime. */
- bool list_lru_add(struct list_lru *lru, struct list_head *item, int nid,
- 		    struct mem_cgroup *memcg)
- {
-@@ -140,14 +141,22 @@ EXPORT_SYMBOL_GPL(list_lru_add);
- 
- bool list_lru_add_obj(struct list_lru *lru, struct list_head *item)
- {
-+	bool ret;
- 	int nid = page_to_nid(virt_to_page(item));
--	struct mem_cgroup *memcg = list_lru_memcg_aware(lru) ?
--		mem_cgroup_from_slab_obj(item) : NULL;
- 
--	return list_lru_add(lru, item, nid, memcg);
-+	if (list_lru_memcg_aware(lru)) {
-+		rcu_read_lock();
-+		ret = list_lru_add(lru, item, nid, mem_cgroup_from_slab_obj(item));
-+		rcu_read_unlock();
-+	} else {
-+		ret = list_lru_add(lru, item, nid, NULL);
-+	}
-+
-+	return ret;
- }
- EXPORT_SYMBOL_GPL(list_lru_add_obj);
- 
-+/* The caller must ensure the memcg lifetime. */
- bool list_lru_del(struct list_lru *lru, struct list_head *item, int nid,
- 		    struct mem_cgroup *memcg)
- {
-@@ -170,11 +179,18 @@ EXPORT_SYMBOL_GPL(list_lru_del);
- 
- bool list_lru_del_obj(struct list_lru *lru, struct list_head *item)
- {
-+	bool ret;
- 	int nid = page_to_nid(virt_to_page(item));
--	struct mem_cgroup *memcg = list_lru_memcg_aware(lru) ?
--		mem_cgroup_from_slab_obj(item) : NULL;
- 
--	return list_lru_del(lru, item, nid, memcg);
-+	if (list_lru_memcg_aware(lru)) {
-+		rcu_read_lock();
-+		ret = list_lru_del(lru, item, nid, mem_cgroup_from_slab_obj(item));
-+		rcu_read_unlock();
-+	} else {
-+		ret = list_lru_del(lru, item, nid, NULL);
-+	}
-+
-+	return ret;
- }
- EXPORT_SYMBOL_GPL(list_lru_del_obj);
- 
+Changes in v2:
+- Rename devm_mux_state_get_from_swnode into devm_mux_state_get_from_fwnode
+- Link to v1: https://lore.kernel.org/r/20260915-mux_fwnode-v1-1-ed5a6d8202d4@redaril.me
 
 ---
-base-commit: e2bb30811e063ce0db964484357973b855b06572
-change-id: 20261128-listlru-66b-4f52b255ccfe
+Fabio Forni (3):
+      mux: Avoid use-after-free of args.np in mux_get()
+      mux: convert to use fwnode interface
+      mux: Document mux_chip_find_by_fwnode()
+
+ drivers/mux/core.c                    | 135 ++++++++++++++++++++--------------
+ drivers/pinctrl/pinctrl-generic-mux.c |   4 +-
+ include/linux/mux/consumer.h          |   6 +-
+ 3 files changed, 87 insertions(+), 58 deletions(-)
+---
+base-commit: 7cd8495c0f16275c4f9abe1cef09a7b5fcd6d046
+change-id: 20260915-mux_fwnode-a16593c39ffd
 
 Best regards,
---  
-Dickson Wu <dickson.wu@certik.com>
+-- 
+Fabio Forni <development@redaril.me>
 
