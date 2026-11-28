@@ -1,65 +1,155 @@
-From: Fabio Forni <development@redaril.me>
-Date: Sat, 28 Nov 2026 11:43:12 +0100
-Subject: [PATCH v5 3/3] mux: Document mux_chip_find_by_fwnode()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-mux_fwnode-v5-3-6689b52f3800@redaril.me>
-References: <20261128-mux_fwnode-v5-0-6689b52f3800@redaril.me>
-In-Reply-To: <20261128-mux_fwnode-v5-0-6689b52f3800@redaril.me>
-To: Peter Rosin <peda@lysator.liu.se>, Linus Walleij <linusw@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jonathan Cameron <jic23@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-kernel@vger.kernel.org, linux-gpio@vger.kernel.org, 
- xu.yang_2@nxp.com, 
- =?utf-8?q?Alvin_=C5=A0ipraga?= <alvin.sipraga@analog.com>, 
- Fabio Forni <development@redaril.me>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1190;
- i=development@redaril.me; h=from:subject:message-id;
- bh=WsfKOTl/y0DS2QwMlaBJvQeQ9+YnIj+MD9uZdj7LBrA=;
- b=owGbwMvMwCXWeKho1tqFWemMp9WSGLK5NjjW/dzuccDozMd+8evcHl4aLhuk1x62OsT2qWtZ3
- +W4Y14CHaUsDGJcDLJiiiz/nYw2dZuZGN3ql6iFmcPKBDKEgYtTACZS+JKR4ca2/9Jik2p26fpm
- fXG8yzX9YXZVcKqKeeKLvglXr5p+ymJk6C488S57tXHfXwauthleVUe/d0rIL5XZ0OSau++LxkZ
- DLgA=
-X-Developer-Key: i=development@redaril.me; a=openpgp;
- fpr=FF4232B28B363432DA8F187D81C2729AADA16A67
-X-Endpoint-Received: by B4 Relay for development@redaril.me/default with auth_id=1033
+Message-Id: <20261128-ktls-close-v2a-v2-1-68a955cbbbcb@certik.com>
+X-B4-Tracking: v=1; b=H4sIAMLgCmsC/yWMQQrCMBBFr1Jm7UA7WgleRVxM0qmNhkQysQild
+ zfR5X/89zZQyV4ULt0GWVavPsU66NCBWzjeBf1UN1BP52Egg88SFF1IKrgS45FPM5mxZxkNVOm
+ VZfafX/AKUQrc/lDf9iGutFS7Wa6+zRzd0pBKnEpKARuHff8Cu7YRXpcAAAA=
+X-Change-ID: 20261128-ktls-close-v2a-3a4f2850ae58
+From: Dickson Wu <dickson.wu@certik.com>
+Date: Sat, 28 Nov 2026 13:20:00 +0000
+Subject: [PATCH net v2] tls: avoid blocking sends from workqueue context
+To: netdev@vger.kernel.org
+Cc: John Fastabend <john.fastabend@gmail.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Willem de Bruijn <willemb@google.com>, 
+ Simon Horman <horms@kernel.org>, Vakul Garg <vakul.garg@nxp.com>, 
+ Jiayuan Chen <jiayuan.chen@linux.dev>, 
+ syzbot+ca1345cca66556f3d79b@syzkaller.appspotmail.com, security@kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795875010; l=6182;
+ i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
+ bh=iLvFDZaO9/KgsE/Y4B9g540F2tdGfRjJr0ZiapIJSAs=;
+ b=kzfmU9dpLLYJ5eJHQP2aoA6KNV3Nl9W0m0T0YxLvIV7k1iYE63/SFV1K3BDmnhOm6D5TdfJdG
+ DxnMJsGtTtgDSHr2YkccZ7KRanD2ePBPRJpa1TMmuSFd2Os/nqCtBhm
+X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
+ pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
+X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-What mux_chip_find_by_fwnode() does it pretty obvious. What's
-not-so-obvious is that the reference count of mux_chip->dev must be
-decreased when done working with it. This commit clarifies the
-requirement.
+tx_work_handler() calls tls_tx_records(sk, -1), so each record is
+pushed with the flags of the sendmsg() call that created it. When a
+blocking send returns early and leaves a partially sent record, the
+work handler pushes the rest with blocking flags. If sk_sndtimeo is
+infinite (the default, or an SO_SNDTIMEO cleared after the partial
+send) and the peer keeps its window closed, the worker sleeps in
+sk_stream_wait_memory() with no bound. tls_sk_proto_close() then waits
+for it in disable_delayed_work_sync(), so the closing task sits in D
+state and ignores SIGKILL.
 
-Signed-off-by: Fabio Forni <development@redaril.me>
+Each such socket holds a system_wq worker. With the tls module loaded,
+an unprivileged local user can occupy all events workers on a CPU this
+way (1024 on a one-CPU test guest), which stalls
+schedule_on_each_cpu() callers.
+
+Pass MSG_DONTWAIT from the work handler. On -EAGAIN the record stays on
+tx_list and tls_sw_write_space() schedules the work again when TCP has
+room. One case has no such callback: when the TCP write and retransmit
+queues are empty, tcp_sendmsg_locked() calls sk_write_space before it
+returns, while splicing_pages is still set, so tls_write_space() skips
+tls_sw_write_space(). In that case the handler requeues itself one
+tick later.
+
+The close flush can block the same way. tls_sw_release_resources_tx()
+usually runs in the task calling close(), where a signal ends the wait.
+The last fput can also run from delayed_fput, for example when AF_UNIX
+garbage collection frees an SCM_RIGHTS cycle, and then a kworker blocks
+in sk_stream_wait_memory() and holds up every later delayed fput. Use
+MSG_DONTWAIT for the close flush when it runs in a kthread. Records it
+cannot push are freed with the rest of tx_list, as they are when a
+signal interrupts the flush in a user task. A close() from a user task
+keeps the blocking flush. In-kernel TLS users (sunrpc, nvme-tcp) call
+kernel_sock_shutdown() before the release on their normal teardown
+paths, so the flush has nothing it can send there either way.
+
+The worker no longer applies the saved per-record flags, such as
+MSG_MORE or MSG_NOSIGNAL, which belong to a sendmsg() call that has
+already returned.
+
+Jiayuan Chen proposed MSG_DONTWAIT for the worker earlier with a new
+extra_flags argument to tls_tx_records() (Link below). This version
+needs no new argument.
+
+Reported-by: syzbot+ca1345cca66556f3d79b@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=ca1345cca66556f3d79b
+Link: https://lore.kernel.org/netdev/20260227063231.168520-1-jiayuan.chen@linux.dev/
+Fixes: a42055e8d2c3 ("net/tls: Add support for async encryption of records for performance")
+Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
- drivers/mux/core.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+Changes in v2:
+- Also use MSG_DONTWAIT for the close flush when it runs in a kthread.
+  v1 left it blocking, and a delayed_fput kworker could still hang
+  there (Sashiko review).
+- Requeue the work one tick later after -EAGAIN with empty TCP queues,
+  where tls_write_space() skips the TLS callback (Sashiko review).
+- Say that the worker wait is unbounded only with an infinite
+  sk_sndtimeo.
+- v1: https://lore.kernel.org/r/20261127-ktls-close-c-v1-1-1470bb718a8d@certik.com
 
-diff --git a/drivers/mux/core.c b/drivers/mux/core.c
-index d5095905b02e..6289cc98f49e 100644
---- a/drivers/mux/core.c
-+++ b/drivers/mux/core.c
-@@ -517,7 +517,16 @@ int mux_state_deselect(struct mux_state *mstate)
- }
- EXPORT_SYMBOL_GPL(mux_state_deselect);
+Tested on x86_64 UML with KASAN at mainline 7cd8495c0f16 (net/main
+28a371228d4e has no change in the relevant TLS, TCP or AF_UNIX code),
+as uid 1000 with no capabilities or namespaces, over loopback:
+- Deferred fput: interrupt a 256 KiB send, then drop the socket
+  through an AF_UNIX SCM_RIGHTS cycle that GC frees. Stock and v1
+  leave a kworker in sk_stream_wait_memory() under delayed_fput, and a
+  later deferred fput waits behind it until the peer reads. v2: no
+  blocked worker, and the later fput completes at once.
+- The v1 close-hang test: the closer stays in S state in the normal
+  close flush, no worker sits in tx_work_handler, and SIGKILL ends it.
+- 1900 kTLS pairs, each with a partial send under a 20 ms SO_SNDTIMEO
+  that is then reset to infinite, 30 s hold: 0 busy events workers
+  (stock 1024), /proc/sys/vm/stat_refresh writes 11-12 ms throughout.
+- Controls: an ordinary close delivered all 32768 accepted bytes; with
+  the sender idle after the worker got -EAGAIN, a slow reader still got
+  all 32768 bytes; an uninterrupted send delivered all 262144 bytes.
+- No KASAN, BUG or WARNING in any run.
+
+Not covered: I found the empty-queue requeue gap by reading the code
+and did not hit it at runtime, since UML here has only synchronous
+crypto. If TCP memory stays exhausted while both queues are empty, the
+worker retries once per tick until memory frees up. Async crypto and
+device offload were not exercised.
+
+This was found and the fix prepared with AI coding tools (OpenAI Codex
+agents, with review by Claude). I went over the analysis, the review
+and the patch before signing off.
+
+ net/tls/tls_sw.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/net/tls/tls_sw.c b/net/tls/tls_sw.c
+index 226e0f176f..50dc45ad0d 100644
+--- a/net/tls/tls_sw.c
++++ b/net/tls/tls_sw.c
+@@ -2327,7 +2327,7 @@ void tls_sw_release_resources_tx(struct sock *sk)
+ 	/* Wait for any pending async encryptions to complete */
+ 	tls_encrypt_async_wait(ctx);
  
--/* Note this function returns a reference to the mux_chip dev. */
-+/**
-+ * mux_chip_find_by_fwnode() - Find a mux-chip by its fwnode.
-+ * @fwnode: The fwnode representing the mux-chip.
-+ *
-+ * When a mux-chip is found, the mux-chip increases the reference count of
-+ * the underlying &struct device. The caller is responsible for calling
-+ * put_device() on it.
-+ *
-+ * Return: Pointer to the mux-chip, or NULL if not found.
-+ */
- static struct mux_chip *mux_chip_find_by_fwnode(struct fwnode_handle *fwnode)
- {
- 	struct device *dev;
-
+-	tls_tx_records(sk, -1);
++	tls_tx_records(sk, current->flags & PF_KTHREAD ? MSG_DONTWAIT : -1);
+ 
+ 	/* Free up un-sent records in tx_list. First, free
+ 	 * the partially sent record if any at head of tx_list.
+@@ -2427,10 +2427,17 @@ static void tx_work_handler(struct work_struct *work)
+ 		return;
+ 
+ 	if (mutex_trylock(&tls_ctx->tx_lock)) {
++		bool retry;
++		int ret;
++
+ 		lock_sock(sk);
+-		tls_tx_records(sk, -1);
++		ret = tls_tx_records(sk, MSG_DONTWAIT);
++		retry = ret == -EAGAIN && tcp_rtx_and_write_queues_empty(sk);
+ 		release_sock(sk);
+ 		mutex_unlock(&tls_ctx->tx_lock);
++		if (retry &&
++		    !test_and_set_bit(BIT_TX_SCHEDULED, &ctx->tx_bitmask))
++			schedule_delayed_work(&ctx->tx_work.work, 1);
+ 	} else if (!test_and_set_bit(BIT_TX_SCHEDULED, &ctx->tx_bitmask)) {
+ 		/* Someone is holding the tx_lock, they will likely run Tx
+ 		 * and cancel the work on their way out of the lock section.
 -- 
-2.56.1
+2.43.0
 
