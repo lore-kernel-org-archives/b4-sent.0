@@ -1,78 +1,74 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 28 Nov 2026 19:04:59 +0000
-Subject: [PATCH] locking/lockdep: Use this_cpu_read() in
- lockdep_assert_RT_in_threaded_ctx()
+Subject: [PATCH v3 0/2] mfd: syscon: Give each syscon its own lockdep class
+Date: Sat, 28 Nov 2026 19:06:23 +0000
+Message-Id: <20261128-syscon-lockdep-v3-0-2c786aa075bf@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-lockdep-rt-threaded-v1-1-7976173c8c49@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTuJU8WgVzEsaPsrowbItBISw
- t2tuvwW762UYIpEl2olw6xJx6FAdhWFvhvuYI3F5PbuJOIafo3hGTGxZc69oYuI7OvaH+TYnIO
- ASjkZbrr8rtf27/T2D4T8XdG2fQBB0i8wdwAAAA==
-X-Change-ID: 20261128-lockdep-rt-threaded-b55b31489c1e
-To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Will Deacon <will@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Waiman Long <longman@redhat.com>, 
- Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
- Clark Williams <clrkwllms@kernel.org>, Steven Rostedt <rostedt@goodmis.org>, 
- Thomas Gleixner <tglx@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-rt-devel@lists.linux.dev, 
- syzbot+7227d49ef464b1dff36d@syzkaller.appspotmail.com, 
- Arun Iyengar <aiyengar1990@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WOyw6CMBBFf8V0bU1bpFRX/odxUdoBqkCxBSIh/
+ LsFSXwtz+See2dEHpwBj46bETnojTe2DhBtN0gVss4BGx0YMcI4pTTGfvDK1ri06qahwZpGUZb
+ GQrEUUJAaB5l5LIXny4t9l15BtXPLmnBw78JS+44VxrfWDcsbPZ2v6yIjv4s9xRRL0ElykITsU
+ 3HKK2nKnbIVmqt69qmzP50FXXBBYi65FORLn6bpCaP+AtoSAQAA
+X-Change-ID: 20261115-syscon-lockdep-d133fb58c2be
+To: Mark Brown <broonie@kernel.org>, Lee Jones <lee@kernel.org>, 
+ Arnd Bergmann <arnd@arndb.de>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
+ Johan Hovold <johan@kernel.org>, driver-core@lists.linux.dev, 
+ mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ Heiko Stuebner <heiko@sntech.de>, linux-rockchip@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795892699; l=1978;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795892783; l=1735;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=M6Q70FwjS3gK8WKT+pEZqDFYuamqQecaM5Af55U1tAQ=;
- b=Y/WatsaFLxjB6zXGU0NNMbw+lDx2F/9HF0A4exN0hoF+QHVf3rt8hBSnsYKxe8kSbWUNtyarJ
- N3BOOie6Jn3ASHOxjIztadUFFfir+jzTD2I7gYrWsF2t3abRZDDUsS6
+ bh=cl55l6BlQAsqIoctvHm7U067i4K1Kn6CwQBaA/ujpbU=;
+ b=YJAEuAskfeK/igBCqgZCgGezinvd+vqT1fL3VIz7edvNs7BPB0tK2J05vKyv7cwbwGIlhaRoo
+ Ax/XMfFYjjdDnUfJ9m0aX7xzijUCGH3MKE8fczpzAode8DiXLtBCB1m
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-lockdep_hardirq_context() is raw_cpu_read(). In preemptible code the
-task can migrate between computing the per-CPU address and the load, and
-read another CPU's hardirq_context. complete_all() from process context
-then warns "Not in threaded context on PREEMPT_RT as expected".
+All syscon regmaps share one lockdep class, so on RK3588 lockdep reports
+a false circular dependency and turns itself off. Patch 1 adds an
+optional lockdep key to regmap_config, patch 2 gives each syscon one.
 
-Commit baffd723e44d ("lockdep: Revert "lockdep: Use raw_cpu_*() for
-per-cpu variables"") fixed this for the other lockdep_assert_*()
-helpers but missed this one, which reads it via irqflags.h.
+Patch 2 needs patch 1, so both could go through regmap with Lee's ack,
+or through mfd with Mark's. Based on regmap for-next; patch 2 also
+merges cleanly with for-mfd-next.
 
-Use this_cpu_read() like the other helpers.
+Tested on an Orange Pi 5 (RK3588S) with a 7.3 based kernel that has
+out-of-tree DisplayPort patches, lockdep and KASAN on. Without the series
+lockdep reports the cycle during boot. With it there is no report and
+lockdep stays on.
 
-Fixes: fddf9055a60d ("lockdep: Use raw_cpu_*() for per-cpu variables")
-Reported-by: syzbot+7227d49ef464b1dff36d@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=7227d49ef464b1dff36d
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
+
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-Tested on an Orange Pi 5 (RK3588S) with KASAN and PROVE_RAW_LOCK_NESTING:
-before, the WARN hit from a panthor drm_sched kworker (1 in 4 boots of
-the same run); after, 0 lockdep/KASAN reports in 5 boots.
+Changes in v3:
+- Move the fix into regmap: new regmap_config.lock_key; syscon passes a
+  per-syscon key and drops its own lock (Lee).
+- Drop the prerequisite, it is in for-mfd-next.
+- Link to v2: https://patch.msgid.link/20261122-syscon-lockdep-v2-1-868056a6a808@gmail.com
 
-This patch was developed with Claude (Anthropic), which wrote the code
-and the commit message. I reviewed every change.
----
- include/linux/lockdep.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index a6451ecbbe9a..d2a6840d03e8 100644
---- a/include/linux/lockdep.h
-+++ b/include/linux/lockdep.h
-@@ -644,7 +644,7 @@ extern void lockdep_assert_in_softirq_func(void);
- 
- # define lockdep_assert_RT_in_threaded_ctx() do {			\
- 		WARN_ONCE(debug_locks && !current->lockdep_recursion &&	\
--			  lockdep_hardirq_context() &&			\
-+			  this_cpu_read(hardirq_context) &&		\
- 			  !(current->hardirq_threaded || current->irq_config),	\
- 			  "Not in threaded context on PREEMPT_RT as expected\n");	\
- } while (0)
+Changes in v2:
+- __acquires/__releases: name the argument, not a local (Sashiko).
+- Link to v1: https://patch.msgid.link/20261120-syscon-lockdep-v1-1-aed779a004b8@gmail.com
 
 ---
-base-commit: 8e7c6217be7f8c016975f5b0954f6736b9ac42cf
-change-id: 20261128-lockdep-rt-threaded-b55b31489c1e
+Arun Iyengar (2):
+      regmap: Add an optional lockdep class to struct regmap_config
+      mfd: syscon: Give each syscon its own lockdep class
+
+ drivers/base/regmap/regmap.c | 3 +++
+ drivers/mfd/syscon.c         | 6 ++++++
+ include/linux/regmap.h       | 3 +++
+ 3 files changed, 12 insertions(+)
+---
+base-commit: 222b61e9c570dac6c7a786d039e4c226624b426d
+change-id: 20261115-syscon-lockdep-d133fb58c2be
 
 Best regards,
 --  
