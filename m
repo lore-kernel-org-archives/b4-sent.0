@@ -1,143 +1,125 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 28 Nov 2026 17:37:05 +0000
-Subject: [PATCH net-next v5 6/6] net: stmmac: dwmac-sun8i: Register the
- MDIO mux in the MDIO setup
+Date: Sat, 28 Nov 2026 17:37:41 +0000
+Subject: [PATCH net-next v3] net: stmmac: Limit the MTU of normal
+ descriptors to one RX buffer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-sun8i-emac-mux-uaf-v5-6-0869f2ccdb8b@gmail.com>
-References: <20261128-sun8i-emac-mux-uaf-v5-0-0869f2ccdb8b@gmail.com>
-In-Reply-To: <20261128-sun8i-emac-mux-uaf-v5-0-0869f2ccdb8b@gmail.com>
+Message-Id: <20261128-sun8i-emac-mtu-limit-v3-1-1ddcb25eba45@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32OwQ6CMBBEf8X07Bq6QFM8+R/GA5QF1tBiaCEYw
+ r8LeOGix8nMvJlZeOqZvLieZtHTyJ47t4r4fBKmyV1NwOWqBUaopEQJfnCagWxuwIYBWrYcQKk
+ 8i1WkkkylYq2+eqp42rF34SiAoymIx9fxQ/EkEzbqlm3Yh65/7w9GuTf+j40SJCAmGeoEy1jqW
+ 21zbi+ms/vEiEcI/oAgRGCSSEtKCx2b6ghZluUDEkR/fhkBAAA=
+X-Change-ID: 20261121-sun8i-emac-mtu-limit-66a936064965
 To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
  Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
  Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
  Samuel Holland <samuel@sholland.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Russell King <linux@armlinux.org.uk>
-Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, linux-stm32@st-md-mailman.stormreply.com, 
- linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ LABBE Corentin <clabbe.montjoie@gmail.com>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
+ Nicolai Buchwitz <nb@tipi-net.de>, 
+ Russell King <rmk+kernel@armlinux.org.uk>, 
+ Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795887420; l=3534;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795887460; l=3795;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=06xMMbK7YMcRgRF52+HyeLRwttdqVvbxWi3c45LCb9c=;
- b=LedbXetbsn+G/QRIf+sec51VZmTvG7/NHISEeTmdSBC2nRVIuYgkHVQG9THIY7usAiKbTRG34
- WkoFaYfUdsAALnVMg1UMF/a0DDanu0wAxXdZ+MxsSsV1IGXuWiN9aYd
+ bh=EOAQQASp3KKXbGGsfxH5IrLe6j8bWGL7hxffH/bUSt0=;
+ b=xaxXmrqVQxWldqAtHuVkx+tK5cCKsDoSdhtu+lm71t4ojLkWLQCrwYGhH1I8E2z5j0g1gNsPN
+ 4fV63T1tSLeCmYelFJ0+WH/nyxYEC7b1CuMagCvrbi6afXoOKvSESCp
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Both PHYs sit behind the mux, but the mux is registered only after
-stmmac_pltfr_probe() has registered the netdev, so an early open does
-not find the PHY. On remove, the mux goes away before
-unregister_netdev(), and unbinding with the link up oopses in
-phy_stop().
+As Russell King pointed out in [1], max_mtu for normal descriptors,
+SKB_MAX_HEAD() (3712 on arm64), is too high: ndesc_get_rx_status()
+drops every frame that spans more than one descriptor, and the DMA does
+not always fill the 2047-byte buffer. Chen-Yu Tsai found the reason in
+the STM32F4 and Arria 10 manuals: the DMA writes whole bus words,
+counted from the word that holds the buffer start. Andrew Lunn noted
+that such an offset aligns the IP header; stmmac_rx_offset() adds
+NET_IP_ALIGN. Maxime Chevallier found the first failing untagged MTU:
+2025 on H2+ (arm32, chain mode), 2029 on A20 and 2031 on meson-g12a
+(ring mode). On H616 (arm64, chain mode) it is 2027.
 
-Register and unregister the mux through the mdio_init() and mdio_exit()
-hooks added by "net: stmmac: Add MDIO init and exit platform hooks".
+Take the widest bus, 16 bytes, NET_IP_ALIGN, the two bytes a Type-1
+checksum engine appends, two VLAN tags and the FCS. max_mtu is then
+2006 on arm64 and 2004 on arm32, two less with Type-1.
 
-Reviewed-by: Maxime Chevallier <maxime.chevallier@bootlin.com>
-Tested-by: Maxime Chevallier <maxime.chevallier@bootlin.com>
+Link: https://lore.kernel.org/r/E1vLJcL-0000000ExBL-0GFe@rmk-PC.armlinux.org.uk [1]
+Fixes: 48febf7e6476 ("stmmac: allow mtu bigger than 1500 in case of normal desc (V4)")
+Cc: Russell King <rmk+kernel@armlinux.org.uk>
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c | 41 ++++++-----------------
- 1 file changed, 10 insertions(+), 31 deletions(-)
+Tested on an Orange Pi Zero2 (H616, arm64, Type-2 COE, chain mode) on
+net-next: before, MTU 2027 drops every full-size RX frame; after, max
+MTU 2006, lossless. Untested: arm32, Type-1 COE, ring mode, dwmac1000
+JE. Ring-mode RX buffer 2 and normal TX lengths: older bugs, separate
+patches.
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-index 0ae0888467bb..09f07546f08c 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-@@ -18,7 +18,6 @@
- #include <linux/of_platform.h>
- #include <linux/phy.h>
- #include <linux/platform_device.h>
--#include <linux/pm_runtime.h>
- #include <linux/regulator/consumer.h>
- #include <linux/regmap.h>
- #include <linux/stmmac.h>
-@@ -961,6 +960,13 @@ static int sun8i_dwmac_register_mdio_mux(struct stmmac_priv *priv)
- 	return ret;
+Claude (AI) helped write this patch; I reviewed and tested it.
+---
+Changes in v3:
+- One generic limit (Chen-Yu, Andrew, Maxime's sweep); RX is the limit
+  (Nicolai); sun8i patch dropped; net-next, no Cc stable.
+- Sashiko: bus width, NET_IP_ALIGN, Type-1 bytes counted; RBS1 unchanged,
+  frames end inside the aligned part; JE only lets longer frames in, and
+  they are dropped as before.
+- Link to v2: https://patch.msgid.link/20261122-sun8i-emac-mtu-limit-v2-0-c4081e5b83cf@gmail.com
+
+Changes in v2:
+- Limit normal descriptors in the core (patch 1, Andrew Lunn, Maxime
+  Chevallier), keep the lower sun8i limit as patch 2
+- Link to v1: https://patch.msgid.link/20261121-sun8i-emac-mtu-limit-v1-1-22492842d318@gmail.com
+---
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index ca4c7fb11b73..bf688ee46c84 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -1568,6 +1568,20 @@ static unsigned int stmmac_rx_offset(struct stmmac_priv *priv)
+ 	return NET_SKB_PAD + NET_IP_ALIGN;
  }
  
-+static void sun8i_dwmac_unregister_mdio_mux(struct stmmac_priv *priv)
++/* A normal descriptor frame must fit one RX buffer. The DMA writes whole bus
++ * words of up to 16 bytes, from the word that holds the NET_IP_ALIGN offset.
++ * Type-1 checksum engines append two bytes.
++ */
++static int stmmac_ndesc_max_mtu(struct stmmac_priv *priv)
 +{
-+	struct sunxi_priv_data *gmac = priv->plat->bsp_priv;
++	int len = ALIGN_DOWN(BUF_SIZE_2KiB - 1, 16) - NET_IP_ALIGN;
 +
-+	mdio_mux_uninit(gmac->mux_handle);
++	if (priv->plat->rx_coe == STMMAC_RX_COE_TYPE1)
++		len -= 2;
++
++	return len - ETH_HLEN - 2 * VLAN_HLEN - ETH_FCS_LEN;
 +}
 +
- static int sun8i_dwmac_set_syscon(struct device *dev,
- 				  struct plat_stmmacenet_data *plat)
+ static int stmmac_set_bfsize(int len)
  {
-@@ -1153,8 +1159,6 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
- 	struct stmmac_resources stmmac_res;
- 	struct sunxi_priv_data *gmac;
- 	struct device *dev = &pdev->dev;
--	struct stmmac_priv *priv;
--	struct net_device *ndev;
- 	struct regmap *regmap;
  	int ret;
+@@ -8315,6 +8329,8 @@ static int __stmmac_dvr_probe(struct device *device,
+ 		ndev->max_mtu = XGMAC_JUMBO_LEN;
+ 	else if (priv->plat->enh_desc || priv->synopsys_id >= DWMAC_CORE_4_00)
+ 		ndev->max_mtu = JUMBO_LEN;
++	else if (priv->hw->desc == &ndesc_ops)
++		ndev->max_mtu = stmmac_ndesc_max_mtu(priv);
+ 	else
+ 		ndev->max_mtu = SKB_MAX_HEAD(NET_SKB_PAD + NET_IP_ALIGN);
  
-@@ -1237,6 +1241,9 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
- 		ret = get_ephy_nodes(dev, gmac);
- 		if (ret)
- 			return ret;
-+
-+		plat_dat->mdio_init = sun8i_dwmac_register_mdio_mux;
-+		plat_dat->mdio_exit = sun8i_dwmac_unregister_mdio_mux;
- 	}
- 
- 	ret = sun8i_dwmac_set_syscon(&pdev->dev, plat_dat);
-@@ -1247,33 +1254,8 @@ static int sun8i_dwmac_probe(struct platform_device *pdev)
- 	if (ret)
- 		goto dwmac_syscon;
- 
--	ndev = dev_get_drvdata(&pdev->dev);
--	priv = netdev_priv(ndev);
--
--	/* the MAC is runtime suspended after stmmac_dvr_probe(), so we
--	 * need to ensure the MAC resume back before other operations such
--	 * as reset.
--	 */
--	pm_runtime_get_sync(&pdev->dev);
--
--	/* The mux must be registered after parent MDIO
--	 * so after stmmac_dvr_probe()
--	 */
--	if (gmac->variant->soc_has_internal_phy) {
--		ret = sun8i_dwmac_register_mdio_mux(priv);
--		if (ret) {
--			dev_err(&pdev->dev, "Failed to register mux\n");
--			goto dwmac_remove;
--		}
--	}
--
--	pm_runtime_put(&pdev->dev);
--
- 	return 0;
- 
--dwmac_remove:
--	pm_runtime_put_noidle(&pdev->dev);
--	stmmac_pltfr_remove(pdev);
- dwmac_syscon:
- 	sun8i_dwmac_unset_syscon(gmac);
- dwmac_ephy:
-@@ -1289,9 +1271,6 @@ static void sun8i_dwmac_remove(struct platform_device *pdev)
- 	struct stmmac_priv *priv = netdev_priv(ndev);
- 	struct sunxi_priv_data *gmac = priv->plat->bsp_priv;
- 
--	if (gmac->variant->soc_has_internal_phy)
--		mdio_mux_uninit(gmac->mux_handle);
--
- 	stmmac_pltfr_remove(pdev);
- 	reset_control_put(gmac->rst_ephy);
- 	clk_put(gmac->ephy_clk);
 
--- 
-2.55.0
+---
+base-commit: f89726ffabef1b08c52e6163b7ab94b0d5f15503
+change-id: 20261121-sun8i-emac-mtu-limit-66a936064965
+
+Best regards,
+--  
+Arun Iyengar <aiyengar1990@gmail.com>
 
