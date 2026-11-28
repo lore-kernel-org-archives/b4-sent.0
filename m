@@ -1,124 +1,110 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Sat, 28 Nov 2026 08:10:35 +0000
-Subject: [PATCH 6.1.y] drm/amdgpu/vcn4: avoid rereading IB param length
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Subject: [PATCH v6 0/4] media: rockchip: Add the IEP2 deinterlacer of
+ RK3568/RK3588
+Date: Sat, 28 Nov 2026 08:30:06 +0000
+Message-Id: <20261128-iep2-v6-0-5f4f10a0dbeb@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-amdgpu-vcn4-61c-v1-1-0f4b00ae33c2@certik.com>
-X-B4-Tracking: v=1; b=H4sIAHqMCmsC/12NzQ6CMBCEX4Xs2UXbaBVexXjozwI12pIuEA3h3
- W315nG+zHyzAlPyxNBWKyRaPPsYchC7CuygQ0/oXc4gD1IJIS+on64fZ1xsOKISFrvGOXk2nTr
- JBvJqTNT519d4BVWL+g23H+bZ3MlOxVaKRjOhSTrYoSCm4KYYH1j4/u8Ftu0D9DmZo6oAAAA=
-X-Change-ID: 20261128-amdgpu-vcn4-61c-f9dd27bf6529
-To: stable@vger.kernel.org
-Cc: Boyuan Zhang <boyuan.zhang@amd.com>, David Rosca <david.rosca@amd.com>, 
- Alex Deucher <alexander.deucher@amd.com>, amd-gfx@lists.freedesktop.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795853434; l=3713;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=B+Yz49Bh1ZXTZrWyQ6EaWYVQ18dVN1NAYdlgp9oDZIo=;
- b=VN0w0FK7GEQeCtbfURpyQ6h84Y7Jk7uCkQ2EKL98dKjnG2GEnKXU+wE9OfX5/gMooCA/936Fu
- ZC29xmdLv1rBXJD1vt39OSwnqtJvnzrgM2R16xVVHW9TUr2I7MecZ12
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13OTW7DIBAF4KtErEvFjPkxWfUeVRcYhoSqiSOTo
+ laR717suBLy8knvezMPlmlKlNnx8GATlZTTeK1BvxyYP7vriXgKNTMUqAFA8EQ35IN11msyxkv
+ JavU2UUw/68z7xzPn7+GT/H2xS+Oc8n2cftc7BZbe/6R8ThbggrueQiDlEAjeTheXvl79eGHLZ
+ MEWqQ1hRV3oje19sE6pPeoahNvzpauIrKTBRo024B7JFsGGZEVGCx9RxQ5x2CPVIr0htb5Hzgt
+ rdATRonme/wCLRsEmfgEAAA==
+X-Change-ID: 20261110-iep2-b9a9c6e77c44
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
+ Robin Murphy <robin.murphy@arm.com>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-rockchip@lists.infradead.org, linux-media@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
+ Hans Verkuil <hverkuil@kernel.org>, 
+ Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Alex Bee <knaerzche@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795854607; l=3235;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=rFNZILi2ME4y6OfNvGVSrCQyr6wuwJ3qgVj2XSS5dA8=;
+ b=WgtOWwnabvlgKjmdigImzuW1G0Qw7LJLJ+7qbj6QJSAT/WgbDKleaZjZoILRGeyC6qubZP/Px
+ zQMQRfKwRt6Akk3R2nDAjcR5FwmN4xyKJvGw2xljgrBM6rW4Ugcd5D7
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Boyuan Zhang <boyuan.zhang@amd.com>
+Add a V4L2 mem2mem driver for the IEP2 deinterlacer of the RK3568 and
+RK3588, with its binding and the RK3588 DT node. The V4L2 side follows
+Alex Bee's IEP driver. 2/4 adds the Rockchip IOMMU helper the driver
+uses after a reset. 2/4 needs an ack from the IOMMU maintainers to go
+through the media tree.
 
-commit 3b4082fabc67c9780b06eb959e59dd92fa79c0f0 upstream.
+Tested on an Orange Pi 5 (RK3588S) with a 7.3-based kernel (KASAN,
+lockdep); build-tested on media next. The test kernel also carries the
+rockchip-iommu fixes 1-4 of
+<20261110-iommu-rockchip-faults-v1-0-b1dda574dbb8@gmail.com>.
+v4l2-compliance 59/59, FFmpeg deinterlacing (local patches; no
+upstream application uses the driver yet), suspend and unbind while
+streaming, forced watchdog and IOMMU fault resets. Not tested: RK3568.
 
-Reuse the parameter length returned by
-vcn_v4_0_enc_find_ib_param() instead of rereading it from
-the IB.
+Open: a reset that cuts a transfer (seen only with forced 1 ms
+watchdogs) can leave the IOMMU with the transfer outstanding: its
+stall and reset commands then time out. Jobs fail until PD_VDPU
+powers off.
 
-This avoids a potential TOCTOU issue if the IB contents
-change between reads.
-
-Signed-off-by: Boyuan Zhang <boyuan.zhang@amd.com>
-Reviewed-by: David Rosca <david.rosca@amd.com>
-Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
-(cherry picked from commit dbb02b4755f8c1f3773263f2d779872c1c0c073a)
-Cc: stable@vger.kernel.org
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
----
-This one went to 6.6.y in 6.6.148, but 6.1.y didn't have the VCN4 IB
-parser fixes yet at that point. Those came to 6.1.y in 6.1.191
-(d19dd814b5b7 and 92724364702f), so 6.1 now has the loop this fixes
-and the patch applies cleanly.
-
-Tested on 6.1.193: allmodconfig W=1 build of vcn_v4_0.o, base vs
-patched, no new warnings, and the patched kernel boots under QEMU. No
-VCN4 hardware here, so the encode path itself wasn't exercised.
-
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
----
- drivers/gpu/drm/amd/amdgpu/vcn_v4_0.c | 15 +++++++++------
- 1 file changed, 9 insertions(+), 6 deletions(-)
-
-diff --git a/drivers/gpu/drm/amd/amdgpu/vcn_v4_0.c b/drivers/gpu/drm/amd/amdgpu/vcn_v4_0.c
-index 83d997f8d500..5df81a21c522 100644
---- a/drivers/gpu/drm/amd/amdgpu/vcn_v4_0.c
-+++ b/drivers/gpu/drm/amd/amdgpu/vcn_v4_0.c
-@@ -1719,14 +1719,17 @@ static int vcn_v4_0_dec_msg(struct amdgpu_cs_parser *p, struct amdgpu_job *job,
- #define RENCODE_IB_PARAM_SESSION_INIT			0x00000003
- 
- /* return the offset in ib if id is found, -1 otherwise */
--static int vcn_v4_0_enc_find_ib_param(struct amdgpu_ib *ib, uint32_t id, int start)
-+static int vcn_v4_0_enc_find_ib_param(struct amdgpu_ib *ib, uint32_t id, int start, uint32_t *length)
- {
- 	int i;
- 	uint32_t len;
- 
- 	for (i = start; (len = amdgpu_ib_get_value(ib, i)) >= 8; i += len / 4) {
--		if (amdgpu_ib_get_value(ib, i + 1) == id)
-+		if (amdgpu_ib_get_value(ib, i + 1) == id) {
-+			if (length)
-+				*length = len;
- 			return i;
-+		}
- 	}
- 	return -1;
- }
-@@ -1736,14 +1739,14 @@ static int vcn_v4_0_ring_patch_cs_in_place(struct amdgpu_cs_parser *p,
- 					   struct amdgpu_ib *ib)
- {
- 	struct amdgpu_ring *ring = amdgpu_job_ring(job);
--	uint32_t val;
-+	uint32_t val, len;
- 	int idx = 0, sidx;
- 
- 	/* The first instance can decode anything */
- 	if (!ring->me)
- 		return 0;
- 
--	while ((idx = vcn_v4_0_enc_find_ib_param(ib, RADEON_VCN_ENGINE_INFO, idx)) >= 0) {
-+	while ((idx = vcn_v4_0_enc_find_ib_param(ib, RADEON_VCN_ENGINE_INFO, idx, &len)) >= 0) {
- 		val = amdgpu_ib_get_value(ib, idx + 2); /* RADEON_VCN_ENGINE_TYPE */
- 		if (val == RADEON_VCN_ENGINE_TYPE_DECODE) {
- 			uint32_t valid_buf_flag = amdgpu_ib_get_value(ib, idx + 6);
-@@ -1756,12 +1759,12 @@ static int vcn_v4_0_ring_patch_cs_in_place(struct amdgpu_cs_parser *p,
- 				amdgpu_ib_get_value(ib, idx + 8);
- 			return vcn_v4_0_dec_msg(p, job, msg_buffer_addr);
- 		} else if (val == RADEON_VCN_ENGINE_TYPE_ENCODE) {
--			sidx = vcn_v4_0_enc_find_ib_param(ib, RENCODE_IB_PARAM_SESSION_INIT, idx);
-+			sidx = vcn_v4_0_enc_find_ib_param(ib, RENCODE_IB_PARAM_SESSION_INIT, idx, NULL);
- 			if (sidx >= 0 &&
- 			    amdgpu_ib_get_value(ib, sidx + 2) == RENCODE_ENCODE_STANDARD_AV1)
- 				return vcn_v4_0_limit_sched(p, job);
- 		}
--		idx += amdgpu_ib_get_value(ib, idx) / 4;
-+		idx += len / 4;
- 	}
- 	return 0;
- }
+Developed with Claude (Anthropic), which wrote the code and the commit
+messages. I reviewed every change.
 
 ---
-base-commit: 1ca1436ccc68275d0b43b6a730b3940fcc46b7c2
-change-id: 20261128-amdgpu-vcn4-61c-f9dd27bf6529
+Changes in v6:
+- 2/4: kernel-doc says the caller must own the IOMMU (Nicolas)
+- Collected Acked-by
+- Link to v5: https://patch.msgid.link/20261126-iep2-v5-0-3deac0976f10@gmail.com
+
+Changes in v5:
+- 1/4: clocks before interrupts (Sashiko)
+- 2/4: new: rockchip_iommu_restore() (Nicolas)
+- 3/4: use it instead of attaching an empty domain (Nicolas)
+- 3/4: IRQ saves and clears the status; the thread finishes the job
+  only if it cancels the watchdog; no spinlock (Nicolas)
+- 3/4: drop the IOMMU fault detection, forced suspend and reset
+  retries (Nicolas)
+- 3/4: after a failed IOMMU restore, fail jobs until PD_VDPU powers
+  off
+- 3/4: defines for md_lambda and the default size; comment the motion
+  table (Nicolas)
+- Link to v4: https://patch.msgid.link/20261121-iep2-v4-0-760cf25f322b@gmail.com
+
+---
+Arun Iyengar (4):
+      media: dt-bindings: Add Rockchip IEP2 deinterlacer
+      iommu/rockchip: Add rockchip_iommu_restore()
+      media: rockchip: Add IEP2 deinterlacer driver
+      arm64: dts: rockchip: Add IEP2 deinterlacer to RK3588
+
+ Documentation/admin-guide/media/rockchip-iep2.rst  |   32 +
+ Documentation/admin-guide/media/v4l-drivers.rst    |    1 +
+ .../bindings/media/rockchip,rk3568-iep2.yaml       |   95 ++
+ MAINTAINERS                                        |    8 +
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      |   22 +
+ drivers/iommu/rockchip-iommu.c                     |   38 +
+ drivers/media/platform/rockchip/Kconfig            |    1 +
+ drivers/media/platform/rockchip/Makefile           |    1 +
+ drivers/media/platform/rockchip/iep2/Kconfig       |   16 +
+ drivers/media/platform/rockchip/iep2/Makefile      |    3 +
+ drivers/media/platform/rockchip/iep2/iep2-regs.h   |  191 +++
+ drivers/media/platform/rockchip/iep2/iep2.c        | 1263 ++++++++++++++++++++
+ drivers/media/platform/rockchip/iep2/iep2.h        |  107 ++
+ include/soc/rockchip/rockchip_iommu.h              |   17 +
+ 14 files changed, 1795 insertions(+)
+---
+base-commit: b7ac871daee981f1963f632586ff9b9d898ce5dd
+change-id: 20261110-iep2-b9a9c6e77c44
 
 Best regards,
 --  
-Dickson Wu <dickson.wu@certik.com>
+Arun Iyengar <aiyengar1990@gmail.com>
 
