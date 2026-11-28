@@ -1,180 +1,169 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 28 Nov 2026 17:38:30 +0000
-Subject: [PATCH v2 3/3] crypto: ecc - Add KUnit test for P-521 public key
- generation
+From: Dickson Wu <dickson.wu@certik.com>
+Date: Sat, 28 Nov 2026 18:28:30 +0000
+Subject: [PATCH 6.6.y] KVM: arm64: vgic-v3: take an LPI reference in
+ vgic_v3_save_pending_tables
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-ecc-p521-small-scalars-v2-3-0648f492bca4@gmail.com>
-References: <20261128-ecc-p521-small-scalars-v2-0-0648f492bca4@gmail.com>
-In-Reply-To: <20261128-ecc-p521-small-scalars-v2-0-0648f492bca4@gmail.com>
-To: Lukas Wunner <lukas@wunner.de>, Ignat Korchagin <ignat@linux.win>, 
- Stefan Berger <stefanb@linux.ibm.com>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>, 
- Jarkko Sakkinen <jarkko@kernel.org>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Erwin Pawliczek <pawliczekerwin@gmail.com>, 
- Laveesh Bansal <laveeshb@laveeshbansal.com>, 
- Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795887508; l=5021;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=9RQyvQkr/A2WLGr5xZoUEE44IbUDVhuj+Vnj7i9lKK0=;
- b=OfKJSsgXE0SDU/iPWggNaFSXdPSAnJhYBOMfEqEncW3eg9oLg9HqRQc/gvo4KHDxiyKYcdfm9
- +PE3+HEuM/1CkmDNTTb14VC43pKTRyOSb272FFafyWmmGuB+tvgonu4
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+Message-Id: <20261128-vgic-66-v1-1-42c9b298dd47@certik.com>
+X-B4-Tracking: v=1; b=H4sIAE0dC2sC/y2MQQ7CIBAAv9Ls2a2AKVG/YjwA3bZrDBi2Npqmf
+ xfU40wms4JQZhI4NytkWlg4xQJ610CYXBwJuS8MRhmrtTniMnJAa9EPBwqdOnXKaSj1I9PAr+/
+ pAra17RuuPy1Pf6Mw10sNvRNCn10MU1VCsZ9TumP1+/8dtu0Da8cLZZoAAAA=
+X-Change-ID: 20261128-vgic-66-bf3ec50950a1
+To: stable@vger.kernel.org
+Cc: Qihang <q.h.hack.winter@gmail.com>, Oliver Upton <oupton@kernel.org>, 
+ Marc Zyngier <maz@kernel.org>, kvmarm@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795890509; l=5156;
+ i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
+ bh=UY6rhXp3UTm9G5h9OzeaO1EkD8Fe6erxDeZcgb6uqxg=;
+ b=+ewcjb/ddFuW/9+OrDUyaqW3XuFCj+IVrSuckw+tB9NHxweBuNnj+TlG5JSHuL/hDzOu9ofO5
+ wOf6YUcp9IaB7mnKWlMTiwNQHvCJ8rqfOUk6n7MCOjyX3mxGyUsN36k
+X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
+ pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
+X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Nothing tests ecc_make_pub_key() on P-521. Add a KUnit test that
-compares the public keys for k = 2, 2^259 and n - 3 with known values.
-It fails without the previous two patches.
+From: Qihang <q.h.hack.winter@gmail.com>
 
-Suggested-by: Laveesh Bansal <laveeshb@laveeshbansal.com>
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+commit f5b8f203bfc07a5a257dff859e66d2c500f9f509 upstream.
+
+vgic_v3_save_pending_tables() iterates dist->lpi_xa using xa_for_each()
+and dereferences the returned struct vgic_irq in the loop body without
+holding a reference on the LPI.
+
+The xarray iterator only provides temporary RCU coverage while looking up
+the current entry. That is not sufficient for this loop body, which reads
+fields from struct vgic_irq and performs guest memory accesses before the
+iteration completes.
+
+A concurrent path can trigger this race: the irqfd cached injection path
+(vgic_its_inject_cached_translation) obtains a transient LPI reference
+via vgic_its_check_cache() without holding kvm->lock, vcpu->mutex,
+config_lock, or its_lock. If guest ITS DISCARD then drops the cache and
+ITE references under its_lock, the transient inject reference may become
+the final one. When vgic_put_irq() drops it, the LPI is erased from
+lpi_xa and freed via kfree_rcu(). Meanwhile, vgic_v3_save_pending_tables()
+may still hold a stale pointer obtained from the xarray iterator and
+dereference it after the RCU grace period completes.
+
+Fix this by re-fetching each iterated LPI via vgic_get_irq(), which takes
+a stable reference, and dropping it with vgic_put_irq() on all paths.
+This matches the pattern already used by other lpi_xa iterators in the
+vgic ITS code.
+
+Cc: stable@vger.kernel.org
+Signed-off-by: Qihang <q.h.hack.winter@gmail.com>
+Reviewed-by: Marc Zyngier <maz@kernel.org>
+Link: https://patch.msgid.link/20260807025534.34125-1-q.h.hack.winter@gmail.com
+Signed-off-by: Oliver Upton <oupton@kernel.org>
+[ adapted to 6.6.y: pin each LPI under the list lock before use ]
+Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
- crypto/Kconfig    | 11 +++++++
- crypto/Makefile   |  1 +
- crypto/ecc_test.c | 94 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 106 insertions(+)
+This one never made it to 6.6.y. 6.12.y got it as 4000462866bc, but
+6.6 still keeps LPIs on lpi_list_head rather than the lpi_xa xarray,
+so the upstream patch doesn't apply. The backport takes a reference on
+each LPI under lpi_list_lock, drops the lock for the guest memory
+accesses, then retakes it to step to the next entry and drop the
+reference with __vgic_put_lpi_locked(). That's the same idea as
+upstream's vgic_get_irq()/vgic_put_irq() pairing.
 
-diff --git a/crypto/Kconfig b/crypto/Kconfig
-index 6682ac091b38..a4c8632ef4f4 100644
---- a/crypto/Kconfig
-+++ b/crypto/Kconfig
-@@ -296,6 +296,17 @@ config CRYPTO_DH_RFC7919_GROUPS
- config CRYPTO_ECC
- 	tristate
- 
-+config CRYPTO_ECC_KUNIT_TEST
-+	tristate "KUnit tests for ECC public key generation" if !KUNIT_ALL_TESTS
-+	depends on KUNIT && CRYPTO_ECC
-+	default KUNIT_ALL_TESTS
-+	help
-+	  Enable KUnit tests for ecc_make_pub_key().  The tests generate
-+	  NIST P-521 public keys for small, mid-sized and large private
-+	  keys and compare them with known values.
-+
-+	  If unsure, say N.
-+
- config CRYPTO_ECDH
- 	tristate "ECDH (Elliptic Curve Diffie-Hellman)"
- 	select CRYPTO_ECC
-diff --git a/crypto/Makefile b/crypto/Makefile
-index 42a4a0d5a466..32a3d3e7fd8e 100644
---- a/crypto/Makefile
-+++ b/crypto/Makefile
-@@ -167,6 +167,7 @@ obj-$(CONFIG_CRYPTO_USER_API_RNG) += algif_rng.o
- obj-$(CONFIG_CRYPTO_USER_API_AEAD) += algif_aead.o
- obj-$(CONFIG_CRYPTO_ZSTD) += zstd.o
- obj-$(CONFIG_CRYPTO_ECC) += ecc.o
-+obj-$(CONFIG_CRYPTO_ECC_KUNIT_TEST) += ecc_test.o
- obj-$(CONFIG_CRYPTO_ESSIV) += essiv.o
- 
- # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124949
-diff --git a/crypto/ecc_test.c b/crypto/ecc_test.c
-new file mode 100644
-index 000000000000..cf6522b7eea4
---- /dev/null
-+++ b/crypto/ecc_test.c
-@@ -0,0 +1,94 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * KUnit tests for ecc_make_pub_key() on NIST P-521.
-+ *
-+ * The expected points were computed with a Python reference and checked
-+ * against OpenSSL.
-+ */
-+#include <kunit/test.h>
-+#include <linux/module.h>
-+#include <crypto/ecdh.h>
-+#include <crypto/internal/ecc.h>
-+
-+#define P521_DIGITS	ECC_CURVE_NIST_P521_DIGITS
-+
-+struct ecc_p521_vec {
-+	const char *desc;
-+	u64 k[P521_DIGITS];
-+	u64 x[P521_DIGITS];
-+	u64 y[P521_DIGITS];
-+};
-+
-+static const struct ecc_p521_vec ecc_p521_vecs[] = {
-+	{
-+		.desc = "k = 2",
-+		.k = { 2 },
-+		.x = { 0xf43e3933ba6d783dull, 0xcf2fa364d60fd967ull,
-+			0xaa104a3a35c5af41ull, 0xb3b204da6ef55507ull,
-+			0x2c6e5505d769be97ull, 0x7403279b1ccc0635ull,
-+			0x2fcb288148c28274ull, 0x3c219024277e7e68ull, 0x43ull },
-+		.y = { 0x1be356d661f41b02ull, 0xeafcbe95edc0f4f7ull,
-+			0x93937fa99a3248f4ull, 0xb3e377de9f251f6bull,
-+			0xab21a29906c42dbbull, 0xc6b5107c4da97740ull,
-+			0xa7f3eceeeed3f0b5ull, 0xbb8cc7f86db26700ull, 0xf4ull },
-+	},
-+	{
-+		.desc = "k = 2^259",
-+		.k = { [4] = 0x8ull },
-+		.x = { 0xdfbfa8c0b9f59031ull, 0x683df70ba5e17023ull,
-+			0x07958fdc42ce28b7ull, 0xb8965b5bc6d4dc78ull,
-+			0x78441b9a6e4b4290ull, 0x3909e659ea4b4aa1ull,
-+			0x9c8f59c629b6cd62ull, 0xf400a01919a026ccull, 0xcfull },
-+		.y = { 0x09844edef77fa34full, 0x9da8cdc495b4acfaull,
-+			0x5bb762074d52835bull, 0xc39505e29c0584e1ull,
-+			0x4c9a0f296c4f318eull, 0xdd1a8f417d87f206ull,
-+			0x423805cd95ec312cull, 0x21639f519304343eull, 0x92ull },
-+	},
-+	{
-+		.desc = "k = n - 3",
-+		.k = { 0xbb6fb71e91386406ull, 0x3bb5c9b8899c47aeull,
-+			0x7fcc0148f709a5d0ull, 0x51868783bf2f966bull,
-+			0xfffffffffffffffaull, 0xffffffffffffffffull,
-+			0xffffffffffffffffull, 0xffffffffffffffffull,
-+			0x1ffull },
-+		.x = { 0xa5919d2ede37ad7dull, 0xaeb490862c32ea05ull,
-+			0x1da6bd16b59fe21bull, 0xad3f164a3a483205ull,
-+			0xe5ad7a112d7a8dd1ull, 0xb52a6e5b123d9ab9ull,
-+			0xd91d6a64b5959479ull, 0x3d352443de29195dull,
-+			0x1a7ull },
-+		.y = { 0xa0a7735e11793f1aull, 0x0efa36436c5a6fbdull,
-+			0xd2a5312e213c38f3ull, 0xd1d22b30723a8a4full,
-+			0x2d0754e05caa3113ull, 0x0eaa8057d562fce8ull,
-+			0x686079393547eb0dull, 0x64fc4682059d2226ull, 0xc1ull },
-+	},
-+};
-+
-+KUNIT_ARRAY_PARAM_DESC(ecc_p521, ecc_p521_vecs, desc);
-+
-+static void ecc_p521_make_pub_key(struct kunit *test)
-+{
-+	const struct ecc_p521_vec *v = test->param_value;
-+	u64 pub[2 * P521_DIGITS], x[P521_DIGITS], y[P521_DIGITS];
-+
-+	KUNIT_ASSERT_EQ(test, ecc_make_pub_key(ECC_CURVE_NIST_P521, P521_DIGITS,
-+					       v->k, pub), 0);
-+	ecc_swap_digits(pub, x, P521_DIGITS);
-+	ecc_swap_digits(&pub[P521_DIGITS], y, P521_DIGITS);
-+	KUNIT_EXPECT_MEMEQ(test, x, v->x, sizeof(x));
-+	KUNIT_EXPECT_MEMEQ(test, y, v->y, sizeof(y));
-+}
-+
-+static struct kunit_case ecc_test_cases[] = {
-+	KUNIT_CASE_PARAM(ecc_p521_make_pub_key, ecc_p521_gen_params),
-+	{}
-+};
-+
-+static struct kunit_suite ecc_test_suite = {
-+	.name = "ecc",
-+	.test_cases = ecc_test_cases,
-+};
-+
-+kunit_test_suite(ecc_test_suite);
-+
-+MODULE_LICENSE("GPL");
-+MODULE_DESCRIPTION("KUnit tests for ECC public key generation");
+Tested on 6.6 (e2bb30811e06): arm64 W=1 build of vgic-v3.o, base vs
+patched, no new warnings. Both kernels booted under QEMU TCG with KVM
+initialized. The KVM vgic_init selftest fails the same way on both at
+memslot deletion, so it doesn't cover this path, and I didn't hit the
+race itself. Build and boot only.
 
--- 
-2.55.0
+The backport and the test runs were prepared with AI coding tools
+(OpenAI Codex agents, with review by Claude). I went over the result
+before signing off.
+---
+ arch/arm64/kvm/vgic/vgic-v3.c | 22 +++++++++++++++++-----
+ 1 file changed, 17 insertions(+), 5 deletions(-)
+
+diff --git a/arch/arm64/kvm/vgic/vgic-v3.c b/arch/arm64/kvm/vgic/vgic-v3.c
+index 3dfc8b84e03e..a34c1b95964e 100644
+--- a/arch/arm64/kvm/vgic/vgic-v3.c
++++ b/arch/arm64/kvm/vgic/vgic-v3.c
+@@ -377,9 +377,11 @@ static void map_all_vpes(struct kvm *kvm)
+ int vgic_v3_save_pending_tables(struct kvm *kvm)
+ {
+ 	struct vgic_dist *dist = &kvm->arch.vgic;
+-	struct vgic_irq *irq;
++	struct list_head *head = &dist->lpi_list_head;
++	struct vgic_irq *irq, *next;
+ 	gpa_t last_ptr = ~(gpa_t)0;
+ 	bool vlpi_avail = false;
++	unsigned long flags;
+ 	int ret = 0;
+ 	u8 val;
+ 
+@@ -396,16 +398,21 @@ int vgic_v3_save_pending_tables(struct kvm *kvm)
+ 		vlpi_avail = true;
+ 	}
+ 
+-	list_for_each_entry(irq, &dist->lpi_list_head, lpi_list) {
++	raw_spin_lock_irqsave(&dist->lpi_list_lock, flags);
++	for (irq = list_first_entry(head, struct vgic_irq, lpi_list);
++	     !list_entry_is_head(irq, head, lpi_list); irq = next) {
+ 		int byte_offset, bit_nr;
+ 		struct kvm_vcpu *vcpu;
+ 		gpa_t pendbase, ptr;
+ 		bool is_pending;
+ 		bool stored;
+ 
++		vgic_get_irq_kref(irq);
++		raw_spin_unlock_irqrestore(&dist->lpi_list_lock, flags);
++
+ 		vcpu = irq->target_vcpu;
+ 		if (!vcpu)
+-			continue;
++			goto put_irq;
+ 
+ 		pendbase = GICR_PENDBASER_ADDRESS(vcpu->arch.vgic_cpu.pendbaser);
+ 
+@@ -416,7 +423,7 @@ int vgic_v3_save_pending_tables(struct kvm *kvm)
+ 		if (ptr != last_ptr) {
+ 			ret = kvm_read_guest_lock(kvm, ptr, &val, 1);
+ 			if (ret)
+-				goto out;
++				goto put_irq;
+ 			last_ptr = ptr;
+ 		}
+ 
+@@ -428,7 +435,7 @@ int vgic_v3_save_pending_tables(struct kvm *kvm)
+ 			vgic_v4_get_vlpi_state(irq, &is_pending);
+ 
+ 		if (stored == is_pending)
+-			continue;
++			goto put_irq;
+ 
+ 		if (is_pending)
+ 			val |= 1 << bit_nr;
+@@ -436,11 +443,16 @@ int vgic_v3_save_pending_tables(struct kvm *kvm)
+ 			val &= ~(1 << bit_nr);
+ 
+ 		ret = vgic_write_guest_lock(kvm, ptr, &val, 1);
++put_irq:
++		raw_spin_lock_irqsave(&dist->lpi_list_lock, flags);
++		next = list_next_entry(irq, lpi_list);
++		__vgic_put_lpi_locked(kvm, irq);
+ 		if (ret)
+ 			goto out;
+ 	}
+ 
+ out:
++	raw_spin_unlock_irqrestore(&dist->lpi_list_lock, flags);
+ 	if (vlpi_avail)
+ 		map_all_vpes(kvm);
+ 
+
+---
+base-commit: e2bb30811e063ce0db964484357973b855b06572
+change-id: 20261128-vgic-66-bf3ec50950a1
+
+Best regards,
+--  
+Dickson Wu <dickson.wu@certik.com>
 
