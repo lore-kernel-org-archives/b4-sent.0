@@ -1,16 +1,13 @@
 From: Robert Ijtsma <robertijtsma@gmail.com>
-Subject: [PATCH v2 0/3] media: i2c: ov7251: software reset settle,
- autosuspend, and non-continuous clock
-Date: Sat, 28 Nov 2026 21:41:06 +0100
-Message-Id: <20261128-ov7251-strobe-ncont-v2-0-9428bbb6347e@gmail.com>
+Date: Sat, 28 Nov 2026 21:41:07 +0100
+Subject: [PATCH v2 1/3] media: i2c: ov7251: wait for software reset before
+ global init
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32Nyw6CMBBFf4XM2prOKI+48j8MCzoOUKOtaWujI
- fy7gHuXJzn33AmiBCsRTsUEQbKN1rsFaFcAj50bRNnrwkCaKkSqlc81lahiCt6IcuxdUtg0dER
- TlgcjsCyfQXr73qqX9sfxZW7CaU2txmhj8uGz3WZcvf8PGZVWLH3XcMWatDkPj87e9+wf0M7z/
- AWoQr4RyAAAAA==
-X-Change-ID: 20261127-ov7251-strobe-ncont-188241b553be
+Message-Id: <20261128-ov7251-strobe-ncont-v2-1-9428bbb6347e@gmail.com>
+References: <20261128-ov7251-strobe-ncont-v2-0-9428bbb6347e@gmail.com>
+In-Reply-To: <20261128-ov7251-strobe-ncont-v2-0-9428bbb6347e@gmail.com>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
  Mauro Carvalho Chehab <mchehab@kernel.org>, 
  Jacopo Mondi <jacopo@jmondi.org>, Todor Tomov <todor.too@gmail.com>
@@ -19,68 +16,84 @@ Cc: Antoine Pichot <antoine.pichot@gmail.com>,
  linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Robert Ijtsma <robertijtsma@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795898468; l=2407;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795898468; l=2318;
  i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=hQCpCWRsC5+pSrupw0ovS5WQH47W/IeMlHibVM2ygHk=;
- b=HKOGqZr+KpXilRNRprxL1+dbLdN2psa4oqz3wwoW4Ybkp0p5bt5yST9rVIxGKvPnXUipjnGZh
- hhC7ih6+bHNAO4a9sj1Okpa3Ot+bp8UPGb8y144xSxZlW1cabKRkN1r
+ bh=EHC/aveA6Auo7eKFp/aG412O4BPmyi+3DLt/cZMOFPw=;
+ b=mGsg+I5eqZD610E9BKujD70Z2HvyW/SxHyVWgocMWgZd51F3u0wcTLeujFdoN02TVEvBTjtVA
+ f24Xvh5q5iUDY4NVDbmTIng8VCzot5lEoYQXmY7pqMEKIGMBvGdWGW5
 X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
  pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
 X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds three small fixes and Qualcomm SC8180X enablement
-changes for the OmniVision OV7251 sensor driver, rebased on top of
-Antoine Pichot's v3 OV7251 series [1]:
+ov7251_set_power_on() writes software reset (0x0103 = 0x01) as the first
+entry of ov7251_global_init_setting[] and immediately follows it with
+the remaining common initialization registers.
 
-1. Issue software reset (0x0103 = 0x01) explicitly in
-   ov7251_set_power_on() and wait 5-10 ms before writing
-   ov7251_global_init_setting[] so the sensor settles before the common
-   register block is programmed.
-2. Use pm_runtime_put_autosuspend() in ov7251_s_ctrl() and
-   ov7251_s_stream() so the 1000 ms autosuspend window configured in
-   probe is actually honored across stream restarts (preserving the
-   common register state introduced in [1]).
-3. Support V4L2_MBUS_CSI2_NONCONTINUOUS_CLOCK by setting
-   CLOCK_LANE_GATE (BIT(5)) in OV7251_MIPI_CTRL00 (0x4800) during
-   power-on when requested by the CSI-2 endpoint.
+Issue OV7251_SC_SOFTWARE_RESET explicitly and wait 5-10 ms for the
+sensor to finish resetting before writing ov7251_global_init_setting[]
+so subsequent I2C writes are not NACKed or lost during reset.
 
-Patch 4 from v1 (V4L2_CID_FLASH_STROBE_OE) is dropped in favor of patch
-8/9 in Antoine Pichot's series [1].
-
-[1] https://lore.kernel.org/linux-media/20261113024059.1087031-1-antoine.pichot@gmail.com/
-
+Fixes: d30bb512da3d ("media: Add a driver for the ov7251 camera sensor")
 Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
 ---
-Based-on: 20261113024059.1087031-1-antoine.pichot@gmail.com
+ drivers/media/i2c/ov7251.c | 21 ++++++++++++++++-----
+ 1 file changed, 16 insertions(+), 5 deletions(-)
 
-Changes in v2:
-- Rebase onto Antoine Pichot's v3 OV7251 series and drop patch 4/4
-  (V4L2_CID_FLASH_STROBE_OE) in favor of Antoine's strobe control patch
-  (Antoine Pichot).
-- Move the software reset (0x0103 = 0x01) out of
-  ov7251_global_init_setting[] and wait 5-10 ms before writing the
-  global init table rather than after it (Antoine Pichot).
-- Drop redundant pm_runtime_mark_last_busy() calls before
-  pm_runtime_put_autosuspend() and point Fixes tag at commit
-  207f4162f1c9 (Antoine Pichot).
-- Program OV7251_MIPI_CTRL00 non-continuous clock gating once per
-  power-on alongside the global init registers.
-- Link to v1: https://patch.msgid.link/20261127-ov7251-strobe-ncont-v1-0-cefa8c6c020b@gmail.com
+diff --git a/drivers/media/i2c/ov7251.c b/drivers/media/i2c/ov7251.c
+index 9e9bbee998ad..393260929f29 100644
+--- a/drivers/media/i2c/ov7251.c
++++ b/drivers/media/i2c/ov7251.c
+@@ -30,6 +30,8 @@
+ #define OV7251_SC_MODE_SELECT		0x0100
+ #define OV7251_SC_MODE_SELECT_SW_STANDBY	0x0
+ #define OV7251_SC_MODE_SELECT_STREAMING		0x1
++#define OV7251_SC_SOFTWARE_RESET	0x0103
++#define OV7251_SC_SOFTWARE_RESET_ASSERT	0x01
+ 
+ #define OV7251_CHIP_ID_HIGH		0x300a
+ #define OV7251_CHIP_ID_HIGH_BYTE	0x77
+@@ -248,7 +250,6 @@ static const struct ov7251_pll_cfgs *ov7251_pll_cfgs[] = {
+ };
+ 
+ static const struct reg_value ov7251_global_init_setting[] = {
+-	{ 0x0103, 0x01 },
+ 	{ 0x303b, 0x02 },
+ 	{ 0x3005, 0x00 },
+ 	{ 0x3012, 0xc0 },
+@@ -698,17 +699,27 @@ static int ov7251_set_power_on(struct device *dev)
+ 			       DIV_ROUND_UP(ov7251->xclk_freq, 1000));
+ 	usleep_range(wait_us, wait_us + 1000);
+ 
++	ret = ov7251_write_reg(ov7251, OV7251_SC_SOFTWARE_RESET,
++			       OV7251_SC_SOFTWARE_RESET_ASSERT);
++	if (ret < 0)
++		goto err_power_off;
++
++	usleep_range(5000, 10000);
++
+ 	ret = ov7251_set_register_array(ov7251,
+ 					ov7251_global_init_setting,
+ 					ARRAY_SIZE(ov7251_global_init_setting));
+ 	if (ret < 0) {
+ 		dev_err(ov7251->dev, "error during global init\n");
+-		gpiod_set_value_cansleep(ov7251->enable_gpio, 0);
+-		clk_disable_unprepare(ov7251->xclk);
+-		ov7251_regulators_disable(ov7251);
+-		return ret;
++		goto err_power_off;
+ 	}
+ 
++	return 0;
++
++err_power_off:
++	gpiod_set_value_cansleep(ov7251->enable_gpio, 0);
++	clk_disable_unprepare(ov7251->xclk);
++	ov7251_regulators_disable(ov7251);
+ 	return ret;
+ }
+ 
 
----
-Robert Ijtsma (3):
-      media: i2c: ov7251: wait for software reset before global init
-      media: i2c: ov7251: use pm_runtime_put_autosuspend()
-      media: i2c: ov7251: support non-continuous MIPI clock mode
-
- drivers/media/i2c/ov7251.c | 45 +++++++++++++++++++++++++++++++++++++--------
- 1 file changed, 37 insertions(+), 8 deletions(-)
----
-base-commit: 299860c8390892ac175e8d3e13aa5b086c735dd1
-change-id: 20261127-ov7251-strobe-ncont-188241b553be
-
-Best regards,
---  
-Robert Ijtsma <robertijtsma@gmail.com>
+-- 
+2.56.0
 
