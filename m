@@ -1,88 +1,124 @@
-From: Felix Huang <akafelixab@gmail.com>
-Date: Sat, 28 Nov 2026 02:06:39 -0500
-Subject: [PATCH v2] i2c: diolan-u2c: Use get_unaligned_le32() to read
- serial number
+From: Dickson Wu <dickson.wu@certik.com>
+Date: Sat, 28 Nov 2026 08:10:35 +0000
+Subject: [PATCH 6.1.y] drm/amdgpu/vcn4: avoid rereading IB param length
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-i2c-diolan-u2c-unaligned-v2-1-c6028a74f24f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NQQ6CMBBFr0K6dgwdI1BX3sOwKO0IY6AlLRAN4
- e4WvIC7/5L//1tFpMAUxS1bRaCFI3uXAE+ZMJ12LQHbxAJzLKTEEhgNWPa9djCnODvdc+vIAl6
- VIktVpRWKNB8DPfl9XD/qH8e5eZGZ9r+90XGcfPgc7kXuvT80iwQJubkUKJuyULm9t4Pm/mz8I
- Opt277Acooi0gAAAA==
-X-Change-ID: 20261127-i2c-diolan-u2c-unaligned-2599ede88a92
-To: Guenter Roeck <linux@roeck-us.net>, Andi Shyti <andi.shyti@kernel.org>
-Cc: linux-i2c@vger.kernel.org, Felix Huang <akafelixab@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795849600; l=1942;
- i=akafelixab@gmail.com; s=20261128; h=from:subject:message-id;
- bh=n00xqsAnw9+08teHGoItt6A75VThG+EK+ZptSH56EsQ=;
- b=rCspYky+MS46n/nURjB5MDUA/m02OpYbVjAv92czm7Brx4kmw14mbTWQG1w1IAwe1HjvX92Ve
- 5r4nThnujT6A6dFWCKRrYLTSIX/cnxz8whsIkvTJwcOjRfli1+3lr37
-X-Developer-Key: i=akafelixab@gmail.com; a=ed25519;
- pk=Axl3BM1UWa+m0/AWcEhRIdIk/WY9FnY4wZkyQn64uVY=
-X-Endpoint-Received: by B4 Relay for akafelixab@gmail.com/20261128 with auth_id=1670
+Message-Id: <20261128-amdgpu-vcn4-61c-v1-1-0f4b00ae33c2@certik.com>
+X-B4-Tracking: v=1; b=H4sIAHqMCmsC/12NzQ6CMBCEX4Xs2UXbaBVexXjozwI12pIuEA3h3
+ W315nG+zHyzAlPyxNBWKyRaPPsYchC7CuygQ0/oXc4gD1IJIS+on64fZ1xsOKISFrvGOXk2nTr
+ JBvJqTNT519d4BVWL+g23H+bZ3MlOxVaKRjOhSTrYoSCm4KYYH1j4/u8Ftu0D9DmZo6oAAAA=
+X-Change-ID: 20261128-amdgpu-vcn4-61c-f9dd27bf6529
+To: stable@vger.kernel.org
+Cc: Boyuan Zhang <boyuan.zhang@amd.com>, David Rosca <david.rosca@amd.com>, 
+ Alex Deucher <alexander.deucher@amd.com>, amd-gfx@lists.freedesktop.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795853434; l=3713;
+ i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
+ bh=B+Yz49Bh1ZXTZrWyQ6EaWYVQ18dVN1NAYdlgp9oDZIo=;
+ b=VN0w0FK7GEQeCtbfURpyQ6h84Y7Jk7uCkQ2EKL98dKjnG2GEnKXU+wE9OfX5/gMooCA/936Fu
+ ZC29xmdLv1rBXJD1vt39OSwnqtJvnzrgM2R16xVVHW9TUr2I7MecZ12
+X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
+ pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
+X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Sparse reports:
+From: Boyuan Zhang <boyuan.zhang@amd.com>
 
-  drivers/i2c/busses/i2c-diolan-u2c.c:290:26: warning:
-  cast to restricted __le32
+commit 3b4082fabc67c9780b06eb959e59dd92fa79c0f0 upstream.
 
-Replace the explicit cast and le32_to_cpu() conversion with
-get_unaligned_le32(). This preserves the existing conversion semantics
-and silences the sparse warning.
+Reuse the parameter length returned by
+vcn_v4_0_enc_find_ib_param() instead of rereading it from
+the IB.
 
-Signed-off-by: Felix Huang <akafelixab@gmail.com>
+This avoids a potential TOCTOU issue if the IB contents
+change between reads.
+
+Signed-off-by: Boyuan Zhang <boyuan.zhang@amd.com>
+Reviewed-by: David Rosca <david.rosca@amd.com>
+Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+(cherry picked from commit dbb02b4755f8c1f3773263f2d779872c1c0c073a)
+Cc: stable@vger.kernel.org
+Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
-Changes in v2:
-- Reword the commit message to accurately describe the motivation.
-- Do not claim that the existing access may be unaligned; the
-  serial-number buffer is naturally aligned.
-- Focus on fixing the sparse "cast to restricted __le32" warning.
-- Link to v1: https://patch.msgid.link/20261127-i2c-diolan-u2c-unaligned-v1-1-0c3621b7690d@gmail.com
+This one went to 6.6.y in 6.6.148, but 6.1.y didn't have the VCN4 IB
+parser fixes yet at that point. Those came to 6.1.y in 6.1.191
+(d19dd814b5b7 and 92724364702f), so 6.1 now has the loop this fixes
+and the patch applies cleanly.
 
-To: Guenter Roeck <linux@roeck-us.net>
-To: Andi Shyti <andi.shyti@kernel.org>
-Cc: linux-i2c@vger.kernel.org
+Tested on 6.1.193: allmodconfig W=1 build of vcn_v4_0.o, base vs
+patched, no new warnings, and the patched kernel boots under QEMU. No
+VCN4 hardware here, so the encode path itself wasn't exercised.
+
+The backport and the test runs were prepared with AI coding tools
+(OpenAI Codex agents, with review by Claude). I went over the result
+before signing off.
 ---
- drivers/i2c/busses/i2c-diolan-u2c.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ drivers/gpu/drm/amd/amdgpu/vcn_v4_0.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/i2c/busses/i2c-diolan-u2c.c b/drivers/i2c/busses/i2c-diolan-u2c.c
-index d502f6e47..24db6d26c 100644
---- a/drivers/i2c/busses/i2c-diolan-u2c.c
-+++ b/drivers/i2c/busses/i2c-diolan-u2c.c
-@@ -16,6 +16,7 @@
- #include <linux/slab.h>
- #include <linux/usb.h>
- #include <linux/i2c.h>
-+#include <linux/unaligned.h>
+diff --git a/drivers/gpu/drm/amd/amdgpu/vcn_v4_0.c b/drivers/gpu/drm/amd/amdgpu/vcn_v4_0.c
+index 83d997f8d500..5df81a21c522 100644
+--- a/drivers/gpu/drm/amd/amdgpu/vcn_v4_0.c
++++ b/drivers/gpu/drm/amd/amdgpu/vcn_v4_0.c
+@@ -1719,14 +1719,17 @@ static int vcn_v4_0_dec_msg(struct amdgpu_cs_parser *p, struct amdgpu_job *job,
+ #define RENCODE_IB_PARAM_SESSION_INIT			0x00000003
  
- #define DRIVER_NAME		"i2c-diolan-u2c"
- 
-@@ -283,13 +284,12 @@ static void diolan_fw_version(struct i2c_diolan_u2c *dev)
- static void diolan_get_serial(struct i2c_diolan_u2c *dev)
+ /* return the offset in ib if id is found, -1 otherwise */
+-static int vcn_v4_0_enc_find_ib_param(struct amdgpu_ib *ib, uint32_t id, int start)
++static int vcn_v4_0_enc_find_ib_param(struct amdgpu_ib *ib, uint32_t id, int start, uint32_t *length)
  {
- 	int ret;
--	u32 serial;
+ 	int i;
+ 	uint32_t len;
  
- 	ret = diolan_usb_cmd(dev, CMD_GET_SERIAL, true);
- 	if (ret >= 4) {
--		serial = le32_to_cpu(*(u32 *)dev->ibuffer);
- 		dev_info(&dev->interface->dev,
--			 "Diolan U2C serial number %u\n", serial);
-+			 "Diolan U2C serial number %u\n",
-+			 get_unaligned_le32(dev->ibuffer));
+ 	for (i = start; (len = amdgpu_ib_get_value(ib, i)) >= 8; i += len / 4) {
+-		if (amdgpu_ib_get_value(ib, i + 1) == id)
++		if (amdgpu_ib_get_value(ib, i + 1) == id) {
++			if (length)
++				*length = len;
+ 			return i;
++		}
  	}
+ 	return -1;
  }
+@@ -1736,14 +1739,14 @@ static int vcn_v4_0_ring_patch_cs_in_place(struct amdgpu_cs_parser *p,
+ 					   struct amdgpu_ib *ib)
+ {
+ 	struct amdgpu_ring *ring = amdgpu_job_ring(job);
+-	uint32_t val;
++	uint32_t val, len;
+ 	int idx = 0, sidx;
  
+ 	/* The first instance can decode anything */
+ 	if (!ring->me)
+ 		return 0;
+ 
+-	while ((idx = vcn_v4_0_enc_find_ib_param(ib, RADEON_VCN_ENGINE_INFO, idx)) >= 0) {
++	while ((idx = vcn_v4_0_enc_find_ib_param(ib, RADEON_VCN_ENGINE_INFO, idx, &len)) >= 0) {
+ 		val = amdgpu_ib_get_value(ib, idx + 2); /* RADEON_VCN_ENGINE_TYPE */
+ 		if (val == RADEON_VCN_ENGINE_TYPE_DECODE) {
+ 			uint32_t valid_buf_flag = amdgpu_ib_get_value(ib, idx + 6);
+@@ -1756,12 +1759,12 @@ static int vcn_v4_0_ring_patch_cs_in_place(struct amdgpu_cs_parser *p,
+ 				amdgpu_ib_get_value(ib, idx + 8);
+ 			return vcn_v4_0_dec_msg(p, job, msg_buffer_addr);
+ 		} else if (val == RADEON_VCN_ENGINE_TYPE_ENCODE) {
+-			sidx = vcn_v4_0_enc_find_ib_param(ib, RENCODE_IB_PARAM_SESSION_INIT, idx);
++			sidx = vcn_v4_0_enc_find_ib_param(ib, RENCODE_IB_PARAM_SESSION_INIT, idx, NULL);
+ 			if (sidx >= 0 &&
+ 			    amdgpu_ib_get_value(ib, sidx + 2) == RENCODE_ENCODE_STANDARD_AV1)
+ 				return vcn_v4_0_limit_sched(p, job);
+ 		}
+-		idx += amdgpu_ib_get_value(ib, idx) / 4;
++		idx += len / 4;
+ 	}
+ 	return 0;
+ }
 
 ---
-base-commit: f4585067150b85e33f60876149a6e742928da75e
-change-id: 20261127-i2c-diolan-u2c-unaligned-2599ede88a92
+base-commit: 1ca1436ccc68275d0b43b6a730b3940fcc46b7c2
+change-id: 20261128-amdgpu-vcn4-61c-f9dd27bf6529
 
 Best regards,
 --  
-Felix Huang <akafelixab@gmail.com>
+Dickson Wu <dickson.wu@certik.com>
 
