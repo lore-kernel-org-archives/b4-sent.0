@@ -1,77 +1,136 @@
-From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 28 Nov 2026 08:30:10 +0000
-Subject: [PATCH v6 4/4] arm64: dts: rockchip: Add IEP2 deinterlacer to
- RK3588
+From: Dickson Wu <dickson.wu@certik.com>
+Date: Sat, 28 Nov 2026 09:12:21 +0000
+Subject: [PATCH 6.6.y] mm: list_lru: fix UAF for memory cgroup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-iep2-v6-4-5f4f10a0dbeb@gmail.com>
-References: <20261128-iep2-v6-0-5f4f10a0dbeb@gmail.com>
-In-Reply-To: <20261128-iep2-v6-0-5f4f10a0dbeb@gmail.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-rockchip@lists.infradead.org, linux-media@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
- Hans Verkuil <hverkuil@kernel.org>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Alex Bee <knaerzche@gmail.com>, Arun Iyengar <aiyengar1990@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795854607; l=1631;
- i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=pLFuCmNVRbb5CYDpQgDI0o9UDTdkG7B7CO7SPDGMaZU=;
- b=DjEC58q6wp80xCKxtbYHGEqqSMvv8+VI1JCLLwNVjznFZD2Do6rjtj0aFp76OH2ADcxrfQR1W
- 4rLY1lGdrqEBgDL7e7+lFt5ZcLJ2Hx4AY6YrN9DFwrnIxbhIjiaINS6
-X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
- pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
-X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
+Message-Id: <20261128-listlru-66b-v1-1-38119b440740@certik.com>
+X-B4-Tracking: v=1; b=H4sIAPSaCmsC/02NwQ7CIBBEf6XZs1uFCDH+ivEAdLEYAoalRtP03
+ wW9eJyXmTcrMJVADOdhhULPwCGnFsRuADebdCMMU8sgD1ILIU8YA9dYFtTa4tEraaVSznmCtng
+ U8uH1tV1Aj3p8w/WHebF3crWbetEaJrTFJDd3xJSmmnPEzvd/D7BtH2+euYmiAAAA
+X-Change-ID: 20261128-listlru-66b-4f52b255ccfe
+To: stable@vger.kernel.org
+Cc: Muchun Song <muchun.song@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Vlastimil Babka <vbabka@suse.cz>, 
+ Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795857140; l=3786;
+ i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
+ bh=POu2beyDobF+0phd+hiYwzwZCt9DRStto5gd3AQtySg=;
+ b=mlGUL6TzOy4lzlVmeugaep9HuL/M5Krv56k/4wQTf+FCHY77yp8viURAqToN7Ofyk8c7+RRov
+ gtF7vaL5er6CAsoxmGSYZAbH2VtVd/aWo8uOSXe6A5g6EJkzWLWiy4D
+X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
+ pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
+X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the IEP2 deinterlacer and its IOMMU to the RK3588 base dtsi. Both
-share GIC SPI 117 and sit in the VDPU power domain.
+From: Muchun Song <songmuchun@bytedance.com>
 
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
+commit 5161b48712dcd08ec427c450399d4d1483e21dea upstream.
+
+The mem_cgroup_from_slab_obj() is supposed to be called under rcu lock or
+cgroup_mutex or others which could prevent returned memcg from being
+freed.  Fix it by adding missing rcu read lock.
+
+Found by code inspection.
+
+[songmuchun@bytedance.com: only grab rcu lock when necessary, per Vlastimil]
+  Link: https://lkml.kernel.org/r/20240801024603.1865-1-songmuchun@bytedance.com
+Link: https://lkml.kernel.org/r/20240718083607.42068-1-songmuchun@bytedance.com
+Fixes: 0a97c01cd20b ("list_lru: allow explicit memcg and NUMA node selection")
+Signed-off-by: Muchun Song <songmuchun@bytedance.com>
+Acked-by: Shakeel Butt <shakeel.butt@linux.dev>
+Acked-by: Vlastimil Babka <vbabka@suse.cz>
+Cc: Johannes Weiner <hannes@cmpxchg.org>
+Cc: Nhat Pham <nphamcs@gmail.com>
+Cc: <stable@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Dickson Wu <dickson.wu@certik.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+6.6.y picked up the code this fixes later than the other branches:
+0a97c01cd20b came to 6.6.y as 32d7120a499d in 6.6.160, but this
+follow-up didn't come with it, so 6.6 has the unprotected
+mem_cgroup_from_slab_obj() calls in list_lru_add_obj() and
+list_lru_del_obj(). It applies cleanly.
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-index aa69fd3793fd..5297519bd251 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-@@ -1397,6 +1397,28 @@ vepu121_3_mmu: iommu@fdbac800 {
- 		#iommu-cells = <0>;
- 	};
+Tested on 6.6.163: allmodconfig W=1 build of mm/list_lru.o, base vs
+patched, no new warnings. Both kernels booted under QEMU from an ext4
+root and passed all six cgroup test_kmem selftests, including the
+memcg deletion case. I didn't hit the race itself.
+
+The backport and the test runs were prepared with AI coding tools
+(OpenAI Codex agents, with review by Claude). I went over the result
+before signing off.
+---
+ mm/list_lru.c | 28 ++++++++++++++++++++++------
+ 1 file changed, 22 insertions(+), 6 deletions(-)
+
+diff --git a/mm/list_lru.c b/mm/list_lru.c
+index fcca67ac26ec..e362a956bf8f 100644
+--- a/mm/list_lru.c
++++ b/mm/list_lru.c
+@@ -116,6 +116,7 @@ list_lru_from_kmem(struct list_lru *lru, int nid, void *ptr,
+ }
+ #endif /* CONFIG_MEMCG_KMEM */
  
-+	iep: deinterlace@fdbb0000 {
-+		compatible = "rockchip,rk3588-iep2", "rockchip,rk3568-iep2";
-+		reg = <0x0 0xfdbb0000 0x0 0x500>;
-+		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH 0>;
-+		clocks = <&cru ACLK_IEP2P0>, <&cru HCLK_IEP2P0>, <&cru CLK_IEP2P0_CORE>;
-+		clock-names = "aclk", "hclk", "sclk";
-+		resets = <&cru SRST_A_IEP2P0>, <&cru SRST_H_IEP2P0>, <&cru SRST_IEP2P0_CORE>;
-+		reset-names = "axi", "ahb", "core";
-+		power-domains = <&power RK3588_PD_VDPU>;
-+		iommus = <&iep_mmu>;
-+	};
++/* The caller must ensure the memcg lifetime. */
+ bool list_lru_add(struct list_lru *lru, struct list_head *item, int nid,
+ 		    struct mem_cgroup *memcg)
+ {
+@@ -140,14 +141,22 @@ EXPORT_SYMBOL_GPL(list_lru_add);
+ 
+ bool list_lru_add_obj(struct list_lru *lru, struct list_head *item)
+ {
++	bool ret;
+ 	int nid = page_to_nid(virt_to_page(item));
+-	struct mem_cgroup *memcg = list_lru_memcg_aware(lru) ?
+-		mem_cgroup_from_slab_obj(item) : NULL;
+ 
+-	return list_lru_add(lru, item, nid, memcg);
++	if (list_lru_memcg_aware(lru)) {
++		rcu_read_lock();
++		ret = list_lru_add(lru, item, nid, mem_cgroup_from_slab_obj(item));
++		rcu_read_unlock();
++	} else {
++		ret = list_lru_add(lru, item, nid, NULL);
++	}
 +
-+	iep_mmu: iommu@fdbb0800 {
-+		compatible = "rockchip,rk3588-iommu", "rockchip,rk3568-iommu";
-+		reg = <0x0 0xfdbb0800 0x0 0x100>;
-+		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH 0>;
-+		clocks = <&cru ACLK_IEP2P0>, <&cru HCLK_IEP2P0>;
-+		clock-names = "aclk", "iface";
-+		power-domains = <&power RK3588_PD_VDPU>;
-+		#iommu-cells = <0>;
-+	};
++	return ret;
+ }
+ EXPORT_SYMBOL_GPL(list_lru_add_obj);
+ 
++/* The caller must ensure the memcg lifetime. */
+ bool list_lru_del(struct list_lru *lru, struct list_head *item, int nid,
+ 		    struct mem_cgroup *memcg)
+ {
+@@ -170,11 +179,18 @@ EXPORT_SYMBOL_GPL(list_lru_del);
+ 
+ bool list_lru_del_obj(struct list_lru *lru, struct list_head *item)
+ {
++	bool ret;
+ 	int nid = page_to_nid(virt_to_page(item));
+-	struct mem_cgroup *memcg = list_lru_memcg_aware(lru) ?
+-		mem_cgroup_from_slab_obj(item) : NULL;
+ 
+-	return list_lru_del(lru, item, nid, memcg);
++	if (list_lru_memcg_aware(lru)) {
++		rcu_read_lock();
++		ret = list_lru_del(lru, item, nid, mem_cgroup_from_slab_obj(item));
++		rcu_read_unlock();
++	} else {
++		ret = list_lru_del(lru, item, nid, NULL);
++	}
 +
- 	vdec0: video-codec@fdc38000 {
- 		compatible = "rockchip,rk3588-vdec";
- 		reg = <0x0 0xfdc38000 0x0 0x100>,
++	return ret;
+ }
+ EXPORT_SYMBOL_GPL(list_lru_del_obj);
+ 
 
--- 
-2.55.0
+---
+base-commit: e2bb30811e063ce0db964484357973b855b06572
+change-id: 20261128-listlru-66b-4f52b255ccfe
+
+Best regards,
+--  
+Dickson Wu <dickson.wu@certik.com>
 
