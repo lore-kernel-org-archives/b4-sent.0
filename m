@@ -1,127 +1,80 @@
-From: Ilia Snezhkov <iasnezhkov@gmail.com>
-To: matthias.bgg@gmail.com, angelogioacchino.delregno@collabora.com, 
- robh@kernel.org, krzk+dt@kernel.org, conor+dt@kernel.org
-Cc: rva333@protonmail.com, amergnat@baylibre.com, me@adomerle.pw, 
- devicetree@vger.kernel.org, linux-mediatek@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, phone-devel@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-Subject: [PATCH v5 3/3] soc: mediatek: mtk-pmic-pwrap: Add MT6789 support
-Date: Sat, 28 Nov 2026 04:36:32 +0000
-Message-Id: <20261128043629.67417-4-iasnezhkov@gmail.com>
-In-Reply-To: <20261128043629.67417-1-iasnezhkov@gmail.com>
-References: <20261128043629.67417-1-iasnezhkov@gmail.com>
+From: Wesley Atwell <atwellwea@gmail.com>
+Date: Fri, 27 Nov 2026 22:54:01 -0700
+Subject: [PATCH] dm crypt: reject an integrity option without a profile
+ delimiter
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795840589; l=3515;
- i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
- bh=+pYLSMXwJ9NiQvGwwMRsrRZ23/yXroYxHZhGWwEq/04=;
- b=L0FHebRo+C8oWpE+WDfSYmZh0ikTiJjDWomJelSI/jNBRMdKsuJf28cARtdkOpMhy3ItV0aex
- C4Vrre4bCgxCXWwOjGzWrNUVlQF2+MAMUP0XlcJNRbkFpPZY8BWDCDg
-X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
- pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
-X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261127-dmcrypt-integrity-option-v1-1-1dc42a7be52a@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MSwrDIBAA0KvIrJ0SpcTGq5Qu/EySWcTIKKUh5
+ O6lfQd4JzQSpgZenSD05sZ7Aa+MVpDWUBZCzuAV2MGOxliHeUty1I5cOi3C/cC9dt4LjpM1NA0
+ uPswMWkEVmvnzr58vrSCGRhgllLT+wryhu93hur62wNd9gwAAAA==
+X-Change-ID: 20261127-dmcrypt-integrity-option-6921e907b81f
+To: Mike Snitzer <snitzer@kernel.org>, 
+ Mikulas Patocka <mpatocka@redhat.com>
+Cc: linux-kernel@vger.kernel.org, Benjamin Marzinski <bmarzins@redhat.com>, 
+ Alasdair Kergon <agk@redhat.com>, dm-devel@lists.linux.dev
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795845253; l=2162;
+ i=atwellwea@gmail.com; s=20261127; h=from:subject:message-id;
+ bh=J18/+zV/EaKtI4zWNPjGJ/UhgvJdrouclOkKfrVrgS4=;
+ b=EdAgMGbBdCBC9RcaOp+gp4JM/8IxlumfnV53toaLD0yaxXzg1+jnUyTRvD4oy6tSimKydxswq
+ PWlj3WJUpnQDPaCyriN78LxRp/lHPp5+NWaWTLaO43UbQ4j4ouPJySq
+X-Developer-Key: i=atwellwea@gmail.com; a=ed25519;
+ pk=Buny5Y3000rYoA3OYcxvjG5W3dpuSWh28lf8IVDjANo=
+X-Endpoint-Received: by B4 Relay for atwellwea@gmail.com/20261127 with auth_id=1671
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Arseniy Velikanov <me@adomerle.pw>
+An administrator creating an authenticated encrypted mapping with
+dmsetup can omit the second colon from integrity:<bytes>:<type>. The
+existing sscanf() conversion still reports one successful assignment
+for integrity:16. The following strchr() then returns NULL; advancing
+that pointer and passing it to strcasecmp() causes a kernel Oops and
+kills dmsetup instead of rejecting the table.
 
-Add PMIC-Wrapper support for the MediaTek MT6789 (Helio G99/G99+/G100/
-G200 and tablet/IoT variant MT8781) SoC.
+Check for the required delimiter before advancing to the profile. Return
+-EINVAL with the existing invalid-integrity error when it is absent.
+Valid aead and none profiles continue to load normally.
 
-MT6789 uses the PMIF-SPI arbiter interface with the same register layout
-as MT8195/MT6833: bank 3 interrupt registers (INT_EN at 0x450, INT_FLG
-at 0x458, INT_CLR at 0x45C, mask 0x180000, matching PMIF_IRQ_*_3 in
-drivers/spmi/spmi-mtk-pmif.c) and WACS2 software interface at
-0x880..0x8A8. Register offsets and wrapper parameters are verified on
-live MT6789 hardware (iKKO MindOne, MT6366 PMIC).
+OpenAI Codex identified the unchecked parser path during source review,
+helped prepare the dmsetup/KVM reproducer, and proposed the guard.
+Fedora dmsetup reproduced the Oops on the unmodified dm-7.4 tree. After
+the change, a fully initialized dm-integrity and dm-crypt stack
+completed read/write I/O, while integrity:16 returned -EINVAL without
+an Oops.
 
-Signed-off-by: Arseniy Velikanov <me@adomerle.pw>
-Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
+Fixes: ef43aa38063a ("dm crypt: add cryptographic data integrity protection (authenticated encryption)")
+Cc: stable@vger.kernel.org
+Signed-off-by: Wesley Atwell <atwellwea@gmail.com>
 ---
-Changes since v4:
-- Rebased onto linux-next (after mt6572 additions).
-- Clarified PMIF bank 3 INT_FLG (0x458) / INT_CLR (0x45C) provenance
-  and MT6789 SoC variants in the commit message.
+ drivers/md/dm-crypt.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-Changes since v2:
-- Added PWRAP_INT_FLG (0x458) and PWRAP_INT_CLR (0x45C) matching bank 3
-  PWRAP_INT_EN (0x450).
-- Depends on patch 2/3 so probing does not write wdt_src to offset 0x0.
-- Updated with an AI coding assistant.
+diff --git a/drivers/md/dm-crypt.c b/drivers/md/dm-crypt.c
+index 02038a9cd..8deba9d43 100644
+--- a/drivers/md/dm-crypt.c
++++ b/drivers/md/dm-crypt.c
+@@ -3145,8 +3145,13 @@ static int crypt_ctr_optional(struct dm_target *ti, unsigned int argc, char **ar
+ 				ti->error = "Invalid integrity arguments";
+ 				return -EINVAL;
+ 			}
++			sval = strchr(opt_string + strlen("integrity:"), ':');
++			if (!sval) {
++				ti->error = "Invalid integrity arguments";
++				return -EINVAL;
++			}
++			sval++;
+ 			cc->used_tag_size = val;
+-			sval = strchr(opt_string + strlen("integrity:"), ':') + 1;
+ 			if (!strcasecmp(sval, "aead")) {
+ 				set_bit(CRYPT_MODE_INTEGRITY_AEAD, &cc->cipher_flags);
+ 			} else if (strcasecmp(sval, "none")) {
 
- drivers/soc/mediatek/mtk-pmic-wrap.c | 29 ++++++++++++++++++++++++++++
- 1 file changed, 29 insertions(+)
+---
+base-commit: e92cd41e8e5ee5616c6c7cd4378661d942f0a7c0
+change-id: 20261127-dmcrypt-integrity-option-6921e907b81f
 
-diff --git a/drivers/soc/mediatek/mtk-pmic-wrap.c b/drivers/soc/mediatek/mtk-pmic-wrap.c
-index bdc0f90..a395b96 100644
---- a/drivers/soc/mediatek/mtk-pmic-wrap.c
-+++ b/drivers/soc/mediatek/mtk-pmic-wrap.c
-@@ -640,6 +640,19 @@ static const int mt6779_regs[] = {
- 	[PWRAP_WACS2_VLDCLR] =		0xC28,
- };
- 
-+static const int mt6789_regs[] = {
-+	[PWRAP_INIT_DONE2] =		0x0,
-+	[PWRAP_TIMER_EN] =		0x3E4,
-+	[PWRAP_INT_EN] =		0x450,
-+	[PWRAP_INT_FLG] =		0x458,
-+	[PWRAP_INT_CLR] =		0x45C,
-+	[PWRAP_WACS2_CMD] =		0x880,
-+	[PWRAP_SWINF_2_WDATA_31_0] =	0x884,
-+	[PWRAP_SWINF_2_RDATA_31_0] =	0x894,
-+	[PWRAP_WACS2_VLDCLR] =		0x8A4,
-+	[PWRAP_WACS2_RDATA] =		0x8A8,
-+};
-+
- static const int mt6795_regs[] = {
- 	[PWRAP_MUX_SEL] =		0x0,
- 	[PWRAP_WRAP_EN] =		0x4,
-@@ -1317,6 +1330,7 @@ enum pwrap_type {
- 	PWRAP_MT6572,
- 	PWRAP_MT6765,
- 	PWRAP_MT6779,
-+	PWRAP_MT6789,
- 	PWRAP_MT6795,
- 	PWRAP_MT6797,
- 	PWRAP_MT6873,
-@@ -1859,6 +1873,7 @@ static int pwrap_init_cipher(struct pmic_wrapper *wrp)
- 	case PWRAP_MT7622:
- 		pwrap_writel(wrp, 0, PWRAP_CIPHER_EN);
- 		break;
-+	case PWRAP_MT6789:
- 	case PWRAP_MT6873:
- 	case PWRAP_MT8183:
- 	case PWRAP_MT8195:
-@@ -2327,6 +2342,19 @@ static const struct pmic_wrapper_type pwrap_mt6779 = {
- 	.init_soc_specific = NULL,
- };
- 
-+static const struct pmic_wrapper_type pwrap_mt6789 = {
-+	.regs = mt6789_regs,
-+	.type = PWRAP_MT6789,
-+	.arb_en_all = 0x777f,
-+	.int_en_all = 0x180000,
-+	.int1_en_all = 0,
-+	.spi_w = PWRAP_MAN_CMD_SPI_WRITE,
-+	.wdt_src = PWRAP_WDT_SRC_MASK_ALL,
-+	.caps = PWRAP_CAP_ARB,
-+	.init_reg_clock = pwrap_common_init_reg_clock,
-+	.init_soc_specific = NULL,
-+};
-+
- static const struct pmic_wrapper_type pwrap_mt6795 = {
- 	.regs = mt6795_regs,
- 	.type = PWRAP_MT6795,
-@@ -2474,6 +2502,7 @@ static const struct of_device_id of_pwrap_match_tbl[] = {
- 	{ .compatible = "mediatek,mt6572-pwrap", .data = &pwrap_mt6572 },
- 	{ .compatible = "mediatek,mt6765-pwrap", .data = &pwrap_mt6765 },
- 	{ .compatible = "mediatek,mt6779-pwrap", .data = &pwrap_mt6779 },
-+	{ .compatible = "mediatek,mt6789-pwrap", .data = &pwrap_mt6789 },
- 	{ .compatible = "mediatek,mt6795-pwrap", .data = &pwrap_mt6795 },
- 	{ .compatible = "mediatek,mt6797-pwrap", .data = &pwrap_mt6797 },
- 	{ .compatible = "mediatek,mt6873-pwrap", .data = &pwrap_mt6873 },
+Best regards,
 -- 
-2.54.0 (Apple Git-157)
-
+Wesley Atwell <atwellwea@gmail.com>
 
