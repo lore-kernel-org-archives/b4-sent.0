@@ -1,80 +1,65 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 28 Nov 2026 17:28:09 +0000
-Subject: [PATCH net-next v2] net: stmmac: dwmac-sun8i: Drop received MAC
- control frames
+Subject: [PATCH v2 0/2] media: cedrus: allocation failure and capture
+ payload fixes
+Date: Sat, 28 Nov 2026 17:35:51 +0000
+Message-Id: <20261128-b4-cedrus-generic-fixes-v2-0-af8472be660b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-sun8i-emac-ctl-frames-v2-1-fdfb23123c38@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WOwQ6CMBBEf4Xs2TVtMUg9+R+GQ1lXqKHFtIVgC
- P8uoFePk5k3MzNEDpYjXLIZAo822t6vQh0yoNb4htHeVw1KqEJKpTAOvrTIzhBS6vARjOOIsix
- I5CzyXGtY2Vfgh5323ht4Tuh5SlB9nTjUT6a01W7Z1sbUh/d+YZQ78Vsr/qyNEiWyFob0qaaSz
- tfGGdsdqXdQLcvyAfa5FK/WAAAA
-X-Change-ID: 20261122-sun8i-emac-ctl-frames-186c03e03399
-To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6CMBBFr0Jm7RjagIIr72FYwHQKY4SaFoiGc
+ HcLxqXLl/lv3gKBvXCAS7KA51mCuCGCPiRAXT20jGIig071SSmVYZMhsfFTwJaH6BJaeXHAgvi
+ sSJvamhyi/fS8H6J8q74cpubONG7vtkUnYXT+vadnte1+lfJvZVaYoi1tnhZKU5E317av5XEk1
+ 0O1rusHDlibTtAAAAA=
+X-Change-ID: 20261114-b4-cedrus-generic-fixes-8ce71c2dafd5
+To: Maxime Ripard <mripard@kernel.org>, 
+ Paul Kocialkowski <paulk@sys-base.io>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Chen-Yu Tsai <wens@kernel.org>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- LABBE Corentin <clabbe.montjoie@gmail.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ Samuel Holland <samuel@sholland.org>, Hans Verkuil <hverkuil@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-staging@lists.linux.dev, 
  linux-arm-kernel@lists.infradead.org, linux-sunxi@lists.linux.dev, 
- Arun Iyengar <aiyengar1990@gmail.com>
+ linux-kernel@vger.kernel.org, Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886889; l=1808;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795887352; l=1257;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=Tg24+za4ID7UyLamOD5zPKEccZ2A2sTrNusAybm3U38=;
- b=tu+zcFWid5Ar1Bt5QKT37pI6OpxjxQEPNq78+eB6b+0zN0Udo4lyx86fEHBBVQjRUWOIS1l6r
- nR7Msp+l84kAMxyuFfn2wy7QvSNPK3zgNgMQfviYmMJkapfRV6QRZJZ
+ bh=dJGnmVJGpSJaB86690jlc2NnembJd/VR2+GSpaAGP1c=;
+ b=F6GLmg1EGyXRb9oUOc0xusNvvZCBujsLbLSA5KQe/uDZGRfNSoVrU5kZIhF25a4Xfag2E3IBk
+ Kw5yGqSEUQRDtGMbDWNykmFcCaUccclorEgBgMwj3YpAQonIJTqD0tt
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sun8i_dwmac_set_filter() sets CTL_FRM_FILTER to "receive all control
-frames", so every PAUSE frame reaches the stack and is counted in
-rx_dropped. Leave it at 0, "drop", as the Allwinner BSP does; the MAC
-still obeys PAUSE.
+Two cedrus fixes, found on an Orange Pi Zero2 (H616) and reproduced on
+media-committers next. Patch 2 concerns the private plane of Jernej
+Skrabec's 10-bit HEVC support.
 
-Fixes: 9f93ac8d4085 ("net-next: stmmac: Add dwmac-sun8i")
-Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
----
-Tested on an Orange Pi Zero2 (H616), net-next, MAC loopback, PAUSE
-(quanta 0xffff) sent to itself from a raw socket: the next frame waits
-32.6 ms with and without this patch; rx_dropped per 20 PAUSE 20 -> 0.
-ethtool -t Flow Control passes on both (the test sets promiscuous mode).
-Claude (AI) helped find the cause and write the patch; I reviewed and
-tested it.
+Tested on H616 only: 17 x 64 MiB REQBUFS gives 12 buffers and no OOM
+kill (next: five processes killed); 10-bit H.265 bytesused 12441600
+(next: 15552000); v4l2-compliance 49/49; MPEG-2, H.264 and H.265
+bit-exact.
+
+Developed with Claude (Anthropic) as a coding assistant, which wrote
+the code and the commit messages. I reviewed and tested them.
+
 ---
 Changes in v2:
-- Target net-next (Maxime).
-- Keep the EMAC_FRM_FLT_CTL define (Andrew).
-- Add the flow control test results (Maxime).
-- Link to v1: https://patch.msgid.link/20261126-sun8i-emac-ctl-frames-v1-1-e90ac94bc8c7@gmail.com
----
- drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-index 613199da57c1..aa1b62f84d07 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sun8i.c
-@@ -728,7 +728,7 @@ static void sun8i_dwmac_set_filter(struct mac_device_info *hw,
- 	struct netdev_hw_addr *ha;
- 	int macaddrs = netdev_uc_count(dev) + netdev_mc_count(dev) + 1;
- 
--	v = EMAC_FRM_FLT_CTL;
-+	v = 0;
- 
- 	if (dev->flags & IFF_PROMISC) {
- 		v = EMAC_FRM_FLT_RXALL;
+- 1/2: commit message: only the IOMMU path is affected (Jernej).
+- 2/2: add Jernej's Reviewed-by.
+- Rebase on media-committers next.
+- Link to v1: https://patch.msgid.link/20261119-b4-cedrus-generic-fixes-v1-0-f9f50812c85b@gmail.com
 
 ---
-base-commit: ccb81d5e317b0ae2cc66ca1c628c0ca907928f94
-change-id: 20261122-sun8i-emac-ctl-frames-186c03e03399
+Arun Iyengar (2):
+      media: cedrus: fail buffer allocations that do not fit with -ENOMEM
+      media: cedrus: report only the picture as capture payload
+
+ drivers/staging/media/sunxi/cedrus/cedrus_video.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+---
+base-commit: fb8b2c10a588f1384b98280b1c32307da9db4747
+change-id: 20261114-b4-cedrus-generic-fixes-8ce71c2dafd5
 
 Best regards,
 --  
