@@ -1,100 +1,117 @@
-From: Silvio Unkovic <silvio.unkovic@pm.me>
-Date: Sat, 28 Nov 2026 02:24:29 +0100
-Subject: [PATCH] media: gspca: ov534: Relabel the 137 fps QVGA mode as 143
- fps
+From: Binoy Ravindran <binoy@vt.edu>
+Date: Fri, 27 Nov 2026 20:26:09 -0500
+Subject: [PATCH] objtool/klp: Copy constant pool entries for local labels
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-pseye-ov534-v1-1-a71e4661d994@pm.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDQyML3YLi1MpU3fwyU2MTXYNEs5SURGPzxERLYyWgjoKi1LTMCrBp0bE
- QfnFpUlZqcgnICKXaWgBGSfMvbwAAAA==
-X-Change-ID: 20261128-pseye-ov534-0a6dda37aa93
-To: Hans Verkuil <hverkuil@kernel.org>
-Cc: Mauro Carvalho Chehab <mchehab@kernel.org>, linux-media@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Silvio Unkovic <silvio.unkovic@pm.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795829078; l=3137;
- i=silvio.unkovic@pm.me; s=20261128; h=from:subject:message-id;
- bh=8fULFlrKgnlUMHAfhORSxpngQfJXvNB/Ft2M6SHjW8A=;
- b=o4SsLptTWwuz1h/BEDYhy/x32HByRpK63H8pC0OsR9Gs21cPx1UEFR5pIwZyfQ77zSSkqPVSW
- apN0Zshs4RgB2by3nGhTwEWS4K0EDPff/LsqJfZeMDKrz1IsZaI6ufr
-X-Developer-Key: i=silvio.unkovic@pm.me; a=ed25519;
- pk=EnRsDjntfFouyIMyaboNgoB+wQ65iMW873YmPIjPiII=
-X-Endpoint-Received: by B4 Relay for silvio.unkovic@pm.me/20261128 with auth_id=1673
+Message-Id: <20261127-objtool-klp-cst-v1-1-dc19b08c8676@vt.edu>
+X-B4-Tracking: v=1; b=H4sIALAtCmsC/yXMTQqDMBBA4avIrB1I4h/tVcRFTMc6KkYysRTEu
+ zfW5bd47wChwCTwzA4I9GFhvyboPAM32vVNyK9kMMrUWpsGfT9F7xeclw2dRKwKa0pVNoOiB6R
+ qCzTw939su9uy9xO5eG3gPH8AF2gMcwAAAA==
+X-Change-ID: 20261127-objtool-klp-cst-53a24047f0e9
+To: Josh Poimboeuf <jpoimboe@kernel.org>, 
+ Peter Zijlstra <peterz@infradead.org>, Song Liu <song@kernel.org>
+Cc: linux-kernel@vger.kernel.org, live-patching@vger.kernel.org, 
+ Binoy Ravindran <binoy@vt.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795829188; l=3839;
+ i=binoy@vt.edu; s=20261123; h=from:subject:message-id;
+ bh=g6HRbPb1IGu2InqS4C2jJUK6JDCQL7R1Kycv7BvVqMg=;
+ b=S7QM5+ShXq94f+j5vazW2vbjBTc+Tw02491KJe6OG0xJF2Uqqmu9qme/pREbm6wCkIYrEwMvH
+ TM70xkRCUVFCaFFT39mWLC/CaAcbxAnoZZHflRaWUrLE/TcKRNLDWdy
+X-Developer-Key: i=binoy@vt.edu; a=ed25519;
+ pk=4cNdKPHP0InmhK/9bb7Tm2ZMUXUvLGfw1pmVt5b98fA=
+X-Endpoint-Received: by B4 Relay for binoy@vt.edu/20261123 with auth_id=1622
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The OV772x QVGA rate table has an entry labelled 137 fps using the
-register values r11=0x02, r0d=0xc1, re5=0x02.  On a PlayStation Eye
-(1415:2000) this setting delivers about 143 fps: 143.27 fps measured
-shortly after plugging in, drifting down to about 141.3 fps as the
-camera warms up.  All other entries in both tables deliver their
-labelled rate to within 0.1% and do not drift.
+The compiler refers to a constant in a .rodata.cst* pool through a local
+label such as .LC32. The label has no size. Since commit 51e1dfce24c8
+("objtool/klp: Don't correlate .rodata.cst* constant pool objects"),
+klp-diff clones such a label together with its data. But
+__clone_symbol() copies data only for a symbol with a nonzero length or
+for a section symbol. For a .LC label it copies nothing and places the
+label at the current end of the output section.
 
-No combination of the three registers used by the table gives 137 fps,
-so relabel the entry with the rate it really produces.  The images in
-this mode are valid.
+The patched function then reads whatever ends up at that place when the
+module is linked. Building livepatches with klp-build for recent fixes
+on v7.4-rc2 (x86-64, GCC 12), three of 54 modules read the wrong 2-byte
+constant:
 
-Note that set_frame_rate() selects the highest entry not above the
-requested rate, so a request for exactly 137 fps now selects 125 fps
-instead of this mode.
+  fib_table_insert()          .LC32  expected 0x0000, reads 0x6e00
+  ieee80211_rx_mgmt_beacon()  .LC68  expected 0x0000, reads 0x6e00
+  cfg80211_inform_bss_data()  .LC9   expected 0x1000, reads 0x0000
 
-Assisted-by: Claude:claude-fable-5-2
-Signed-off-by: Silvio Unkovic <silvio.unkovic@pm.me>
+In each case the bytes come from the end of an unrelated string in the
+module's .rodata. The modules load and patch without any warning. We
+confirmed this in a running kernel: with the first module loaded, the
+patched fib_table_insert() loads 0x6e00.
+
+A label in a SHF_MERGE constant pool names one entry of sh_entsize
+bytes. Copy that entry when the label has no size. With this change, all
+three modules hold the compiler's constants.
+
+Fixes: 51e1dfce24c8 ("objtool/klp: Don't correlate .rodata.cst* constant pool objects")
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Binoy Ravindran <binoy@vt.edu>
 ---
-Tested on a PlayStation Eye (1415:2000, bcdDevice 2.00, sensor OV772x)
-on 7.3.4 with ov534 rebuilt with this patch.  Rates were measured with
-"v4l2-ctl --stream-mmap" in YUYV:
+A small problem in __clone_symbol(): a .LC label in a .rodata.cst*
+pool has no size, so its constant is never copied into the livepatch
+module, and the patched function reads whatever bytes follow. Details
+and the three affected modules are in the patch.
 
-  label  measured        label  measured
-  187    187.34          75     74.93
-  150    149.87          60     59.95
-  137    143.27..141.3   50     49.96
-  125    124.89          37     37.47
-  100    99.91           30     29.97
-
-With the patch VIDIOC_ENUM_FRAMEINTERVALS lists 143 instead of 137 and
-the other modes are unchanged.  This mode uses the same r0d/re5 pair as
-the commented-out 205 fps entry, and it is the only one whose rate
-drifts, so its clock may not be locked; I have not confirmed that.
-Dropping the entry instead would also be fine with me.
-
-Tool use: an AI coding assistant (Claude Code) did the measurements and
-the analysis of the rate table, wrote the patch and drafted this
-changelog, working on my machine with the camera attached.  I loaded
-the modules, and reviewed the change and the results.
+Tested on v7.4-rc2 (x86-64, GCC 12): with the fix, the three modules
+hold the compiler's constants, and three unaffected modules are
+unchanged. The patch applies to tip objtool/core and to mainline.
 ---
- drivers/media/usb/gspca/ov534.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ tools/objtool/klp-diff.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/media/usb/gspca/ov534.c b/drivers/media/usb/gspca/ov534.c
-index bdff64a29..5b7bd1922 100644
---- a/drivers/media/usb/gspca/ov534.c
-+++ b/drivers/media/usb/gspca/ov534.c
-@@ -116,7 +116,7 @@ static const struct v4l2_pix_format ov767x_mode[] = {
- 		.colorspace = V4L2_COLORSPACE_JPEG},
- };
+diff --git a/tools/objtool/klp-diff.c b/tools/objtool/klp-diff.c
+index 95d0d86666d7..f8a638b29a26 100644
+--- a/tools/objtool/klp-diff.c
++++ b/tools/objtool/klp-diff.c
+@@ -923,6 +923,7 @@ static struct symbol *__clone_symbol(struct elf *elf, struct symbol *patched_sym
  
--static const u8 qvga_rates[] = {187, 150, 137, 125, 100, 75, 60, 50, 37, 30};
-+static const u8 qvga_rates[] = {187, 150, 143, 125, 100, 75, 60, 50, 37, 30};
- static const u8 vga_rates[] = {60, 50, 40, 30, 15};
+ 	if (data_too && !is_undef_sym(patched_sym)) {
+ 		struct section *patched_sec = patched_sym->sec;
++		size_t len = patched_sym->len;
  
- static const struct framerates ov772x_framerates[] = {
-@@ -828,7 +828,7 @@ static void set_frame_rate(struct gspca_dev *gspca_dev)
- /*		{205, 0x01, 0xc1, 0x02},  * 205 FPS: video is partly corrupt */
- 		{187, 0x01, 0x81, 0x02}, /* 187 FPS or below: video is valid */
- 		{150, 0x01, 0xc1, 0x04},
--		{137, 0x02, 0xc1, 0x02},
-+		{143, 0x02, 0xc1, 0x02}, /* measured 141-143 FPS, not crystal-stable */
- 		{125, 0x02, 0x81, 0x02},
- 		{100, 0x02, 0xc1, 0x04},
- 		{75, 0x03, 0xc1, 0x04},
+ 		out_sec = find_section_by_name(elf, patched_sec->name);
+ 		if (!out_sec) {
+@@ -946,7 +947,17 @@ static struct symbol *__clone_symbol(struct elf *elf, struct symbol *patched_sym
+ 		if (!is_sec_sym(patched_sym))
+ 			offset = ALIGN(sec_size(out_sec), out_sec->sh.sh_addralign);
+ 
+-		if (patched_sym->len || is_sec_sym(patched_sym)) {
++		/*
++		 * A local label in a constant pool (.rodata.cst*) has no size,
++		 * but it names one entry of sh_entsize bytes.  Copy that entry,
++		 * or the label ends up pointing at whatever data follows it.
++		 */
++		if (!len && !is_sec_sym(patched_sym) &&
++		    (patched_sec->sh.sh_flags & SHF_MERGE) &&
++		    !is_string_sec(patched_sec) && patched_sec->sh.sh_entsize)
++			len = patched_sec->sh.sh_entsize;
++
++		if (len || is_sec_sym(patched_sym)) {
+ 			void *data = NULL;
+ 			size_t size;
+ 
+@@ -957,7 +968,7 @@ static struct symbol *__clone_symbol(struct elf *elf, struct symbol *patched_sym
+ 			if (is_sec_sym(patched_sym))
+ 				size = sec_size(patched_sym->sec);
+ 			else
+-				size = patched_sym->len;
++				size = len;
+ 
+ 			if (!elf_add_data(elf, out_sec, data, size))
+ 				return NULL;
 
 ---
-base-commit: b7ac871daee981f1963f632586ff9b9d898ce5dd
-change-id: 20261128-pseye-ov534-0a6dda37aa93
+base-commit: b99a5337da3c847db216476d645b69acd714c3ba
+change-id: 20261127-objtool-klp-cst-53a24047f0e9
 
 Best regards,
 --  
-Silvio Unkovic <silvio.unkovic@pm.me>
+Binoy Ravindran <binoy@vt.edu>
 
