@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 28 Nov 2026 17:26:32 +0000
-Subject: [PATCH v5 01/17] drm/panfrost: Freeze the reset workqueue during
- system sleep
+Date: Sat, 28 Nov 2026 17:26:33 +0000
+Subject: [PATCH v5 02/17] drm/panfrost: Power the GPU up for a reset queued
+ from the MMU code
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-panfrost-long-jobs-v5-1-e7d62045a676@gmail.com>
+Message-Id: <20261128-panfrost-long-jobs-v5-2-e7d62045a676@gmail.com>
 References: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 In-Reply-To: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 To: Boris Brezillon <boris.brezillon@collabora.com>, 
@@ -17,46 +17,64 @@ To: Boris Brezillon <boris.brezillon@collabora.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=1382;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=1987;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=6c2Dpu03JGJeqBmpPCQQMuKsg5qJDVUkSb2yqZ0AwZ8=;
- b=kQe7+XFw6omzipPyuVsmPQncWYyH6RvhTpPEIqgrAPXAEhxUdgPdikl3FmzMUaOFSXtIT1wK/
- biyhbkLmYrDDpEihAkibrJGwwX5LocTkoHoniMoDUNe4+rBE1ZyDuKb
+ bh=d/LITLeB5gWoIeqZGfkGbg6ByVPkBB9Gpn71KK4MPNA=;
+ b=ZMvgU1oGdpXDDx3z+mAE9PFTvUAFYtX2IiTQXmxjfxpVy1JqfJ2vScuudp2IGdhSbYleDTu4r
+ mf3QzVwrETGBLiESVirDZfG1XoXLTA9Cp6vz4Nqhk1JPESZDgYy1wOs
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-pm_runtime_force_suspend() can power the GPU off under the timeout
-handler or the reset work. Make their workqueue freezable.
+panfrost_reset_work() calls panfrost_reset() without a runtime PM
+reference, and the MMU code that queues it drops its own right after.
+Take a reference in the work. A GPU that cannot be resumed is reset by
+its next runtime resume, so clear reset.pending there. Not reproduced.
 
-Fixes: f3ba91228e8e ("drm/panfrost: Add initial panfrost driver")
+Fixes: f9ab9c66f080 ("drm/panfrost: Reset the GPU when the AS_ACTIVE bit is stuck")
 Cc: stable@vger.kernel.org
 Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/sashiko-outbox-210830@kernel.org/
-Closes: https://sashiko.dev/#/patchset/20261113-panfrost-long-jobs-v3-0-80ae78d38f6e@gmail.com?part=13
+Closes: https://lore.kernel.org/all/sashiko-outbox-206548@kernel.org/
+Closes: https://lore.kernel.org/all/sashiko-outbox-212557@kernel.org/
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-v4: new (Sashiko on v3 01/14 and 13/14). Tested with s2idle entered in
-a test-only 8 s hold in both: before, the GPU was runtime suspended
-inside panfrost_reset(); after, the freezer waited for the work.
+v4: clear reset.pending in runtime resume (Sashiko 212557); system
+sleep is left to patch 1.
 ---
- drivers/gpu/drm/panfrost/panfrost_job.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/gpu/drm/panfrost/panfrost_device.c | 1 +
+ drivers/gpu/drm/panfrost/panfrost_job.c    | 5 +++++
+ 2 files changed, 6 insertions(+)
 
-diff --git a/drivers/gpu/drm/panfrost/panfrost_job.c b/drivers/gpu/drm/panfrost/panfrost_job.c
-index 6a604b5da..79b302fef 100644
---- a/drivers/gpu/drm/panfrost/panfrost_job.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_job.c
-@@ -893,7 +893,7 @@ int panfrost_jm_init(struct panfrost_device *pfdev)
- 		return ret;
+diff --git a/drivers/gpu/drm/panfrost/panfrost_device.c b/drivers/gpu/drm/panfrost/panfrost_device.c
+index 40eda3612..3c5f077db 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_device.c
++++ b/drivers/gpu/drm/panfrost/panfrost_device.c
+@@ -540,6 +540,7 @@ static int panfrost_device_runtime_resume(struct device *dev)
+ 		}
  	}
  
--	pfdev->reset.wq = alloc_ordered_workqueue("panfrost-reset", 0);
-+	pfdev->reset.wq = alloc_ordered_workqueue("panfrost-reset", WQ_FREEZABLE);
- 	if (!pfdev->reset.wq)
- 		return -ENOMEM;
- 	args.timeout_wq = pfdev->reset.wq;
++	atomic_set(&pfdev->reset.pending, 0);
+ 	panfrost_device_reset(pfdev, true);
+ 	panfrost_devfreq_resume(pfdev);
+ 
+diff --git a/drivers/gpu/drm/panfrost/panfrost_job.c b/drivers/gpu/drm/panfrost/panfrost_job.c
+index 79b302fef..b5b523cb2 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_job.c
++++ b/drivers/gpu/drm/panfrost/panfrost_job.c
+@@ -810,7 +810,12 @@ static void panfrost_reset_work(struct work_struct *work)
+ 	struct panfrost_device *pfdev;
+ 
+ 	pfdev = container_of(work, struct panfrost_device, reset.work);
++
++	if (pm_runtime_resume_and_get(pfdev->base.dev))
++		return;
++
+ 	panfrost_reset(pfdev, NULL);
++	pm_runtime_put_autosuspend(pfdev->base.dev);
+ }
+ 
+ static const struct drm_sched_backend_ops panfrost_sched_ops = {
 
 -- 
 2.55.0
