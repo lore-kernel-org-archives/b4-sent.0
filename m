@@ -1,220 +1,137 @@
-From: Nick Dowsett <nick42d@gmail.com>
-Date: Sat, 28 Nov 2026 08:38:10 +0800
-Subject: [PATCH v3] rust: dmi: add basic DMI matching abstraction
+From: Vincent Jardin <vjardin@free.fr>
+Subject: [PATCH net-next v2 0/5] lisp: add a LISP (RFC 9300) tunnel device
+Date: Sat, 28 Nov 2026 01:41:32 +0100
+Message-Id: <20261128-for-upstream-lisp-v1-v2-0-68e8649c3ed2@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-rust-dmi-v3-1-3905388166a4@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02NwQ6CMBAFf4X0bE27VBBO/ofxAO0CawRMC42G8
- O+2GCPHSd7MW5hDS+hYmSzMoidH4xAgPSRMd9XQIicTmIGATEqQ3M5u4qYnrlVhQChpcgQW5k+
- LDb221PX2ZTfXd9RT9OOiIzeN9r19eRl3vyz8s15yyVWlsVCqaM45XNq+osdRjz2LWQ97MduJE
- MQ0FZlqRF0LcdqL67p+AMbxH8vrAAAA
-X-Change-ID: 20261121-rust-dmi-c49d2041d7e2
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Jean Delvare <jdelvare@suse.com>
-Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
- Nick Dowsett <nick42d@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795826295; l=6949;
- i=nick42d@gmail.com; h=from:subject:message-id;
- bh=zws8GwuHEucDf45kI2mJj1xeGJSpqHdicjxl1BHesq4=;
- b=T2IwiVT8c5eDQUhjWIJsPUU2F6VaNnUlRHqLyyy9KH9T+jOE0bq01i81QgK8O2IlTSaSkxjk3
- Y575gZ7VAOqBoIi6K9l1QBQjVxCoPDe73En0+vqZ97B3lqScJUlY5WY
-X-Developer-Key: i=nick42d@gmail.com; a=ed25519;
- pk=1uIkNexEofzEXNN3Y3QW5z8IrgjWaP0yH6Es51jxWOg=
-X-Endpoint-Received: by B4 Relay for nick42d@gmail.com/default with auth_id=1596
+X-B4-Tracking: v=1; b=H4sIADwjCmsC/32NwQqDMBBEf0X23C0mlag9+R/FQzSbutBG2aRiE
+ f+9wQ8ozGWYmTc7RBKmCPdiB6GVI88hG30pYJxseBKyyx50qY1S2qCfBT9LTEL2jS+OC64Kh6q
+ 2o2kbl1uQp4uQ5+3EPiBQwkBbgj4nE8c0y/f8W9WZ/0dnlVjfGm2rYfSuHTovRFcv0B/H8QPCz
+ TqwwAAAAA==
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Vincent Jardin <vjardin@free.fr>, Donald Hunter <donald.hunter@gmail.com>, 
+ Nicolas Dichtel <nicolas.dichtel@6wind.com>, 
+ Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, Shuah Khan <shuah@kernel.org>
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-doc@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ =?utf-8?q?Asbj=C3=B8rn_Sloth_T=C3=B8nnesen?= <ast@fiberby.net>, 
+ Danielle Ratson <danieller@nvidia.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795826502; l=4327;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=3QIbv24rPwGBZWn9xkNpTTUXhCedhThkPImwKnrDxv8=;
+ b=+M8pAoNkv4l30kgyWMv8hMT7VICYTTzvk8BqRtpPTRxtXemyU8UlqJ+AJYXn7ADWiQ+N1X6vr
+ MfzW61hEDXmCMRQXr1wwNaWmCOqLwLTWYWRB7pZas7DFDfkYM/PnLU5
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Exposes `linux/dmi.h` to bindgen, adds MAINTAINERS entry and adds an MVP
-of `kernel::dmi` module.
+LISP (Locator/ID Separation Protocol, RFC 9300) carries the packets sent
+to an endpoint identifier (EID) over UDP, to a routing locator (RLOC) of
+the site of that EID. An EID prefix and its RLOCs are a mapping, which
+the LISP control plane (RFC 9301) provides.
 
-Signed-off-by: Nick Dowsett <nick42d@gmail.com>
----
-This abstraction is used by:
-https://lore.kernel.org/all/20261122-clevo-laptop-v1-0-881debf4d4b0@gmail.com/
+This series adds the data plane of a LISP router (xTR): a tunnel device,
+link kind "lisp", for IPv4 and IPv6 EIDs over IPv4 and IPv6 RLOCs.
 
-This patch adds an initial Rust abstraction for DMI, exposing
-`get_system_info()`.
----
-Changes in v3:
-- Actually add `#[inline]` this time.
-- Rebase onto v7.4-rc4
-- Link to v2: https://patch.msgid.link/20261126-rust-dmi-v2-1-33064f0bb005@gmail.com
+A mapping is a route. The device takes the RLOC of a packet from its
+tunnel metadata, which the lwtunnel encapsulation of the route
+or of its nexthop provides. A remote site is a nexthop, shared by its
+EID prefixes:
 
-Changes in v2:
-- Small improvements - formatting and comments (Miguel)
-  - `get_system_info()` has been marked unsafe to avoid an unnecessary
-    soundness hole (Miguel). The safety requirement is easy to prove, so
-    in my opinion this is sufficient for an MVP. This could potentially be
-    upgraded to a safe function at a later stage with a C change.
-  - Added `#[inline]` to small helper (Sashiko).
-  - Resolved invalid enum variant (Sashiko) and renamed to better reflect
-    the available variants.
-- Link to v1: https://patch.msgid.link/20261122-rust-dmi-v1-1-4ace9449f872@gmail.com
----
- MAINTAINERS                     |   1 +
- rust/bindings/bindings_helper.h |   1 +
- rust/kernel/dmi.rs              | 100 ++++++++++++++++++++++++++++++++++++++++
- rust/kernel/lib.rs              |   1 +
- 4 files changed, 103 insertions(+)
+  ip link add link wan name lisp101 type lisp id 101 local 192.0.2.1
+  ip link set lisp101 master site up
+  ip -6 nexthop add id 1 encap ip dst 198.51.100.1 dev lisp101
+  ip route add 10.2.0.0/24 vrf site nhid 1
+  ip -6 route add 2001:db8:2::/48 vrf site nhid 1
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 44540a1eb2b8..92a227e2345e 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -7977,6 +7977,7 @@ F:	Documentation/ABI/testing/sysfs-firmware-dmi-tables
- F:	drivers/firmware/dmi-id.c
- F:	drivers/firmware/dmi_scan.c
- F:	include/linux/dmi.h
-+F:	rust/kernel/dmi.rs
- 
- DOCUMENTATION
- M:	Jonathan Corbet <corbet@lwn.net>
-diff --git a/rust/bindings/bindings_helper.h b/rust/bindings/bindings_helper.h
-index 3791af0aadc7..ed4ce2ca351d 100644
---- a/rust/bindings/bindings_helper.h
-+++ b/rust/bindings/bindings_helper.h
-@@ -56,6 +56,7 @@
- #include <linux/dma-fence.h>
- #include <linux/dma-mapping.h>
- #include <linux/dma-resv.h>
-+#include <linux/dmi.h>
- #include <linux/errname.h>
- #include <linux/ethtool.h>
- #include <linux/fdtable.h>
-diff --git a/rust/kernel/dmi.rs b/rust/kernel/dmi.rs
-new file mode 100644
-index 000000000000..a8c33c414a76
---- /dev/null
-+++ b/rust/kernel/dmi.rs
-@@ -0,0 +1,100 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+//! Abstractions for DMI (Desktop Management Interface).
-+//!
-+//! C header: [`include/linux/dmi.h`](srctree/include/linux/dmi.h)
-+
-+use crate::{
-+    bindings,
-+    prelude::*, //
-+};
-+
-+/// Corresponds to each DMI identifier type from [`enum dmi_field`] that is valid to
-+/// pass to [`dmi_get_system_info`].
-+///
-+/// # Invariants
-+///
-+/// - Each variant must be a valid variant of [`enum dmi_field`] with value less than
-+///   `DMI_STRING_MAX`.
-+///
-+/// [`enum dmi_field`]: srctree/include/linux/device-id/dmi.h
-+/// [`dmi_get_system_info`]: srctree/include/linux/dmi.h
-+#[repr(u32)]
-+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-+#[expect(missing_docs, reason = "C version of these consts are undocumented")]
-+// NOTE: `DMI_NONE` is intentionally excluded here, as it's a sentinel value
-+// that is not useful to pass to the Rust version of `dmi_get_system_info` (always
-+// returns null).
-+pub enum SystemInfoField {
-+    BiosVendor = bindings::dmi_field_DMI_BIOS_VENDOR,
-+    BiosVersion = bindings::dmi_field_DMI_BIOS_VERSION,
-+    BiosDate = bindings::dmi_field_DMI_BIOS_DATE,
-+    BiosRelease = bindings::dmi_field_DMI_BIOS_RELEASE,
-+    EcFirmwareRelease = bindings::dmi_field_DMI_EC_FIRMWARE_RELEASE,
-+    SysVendor = bindings::dmi_field_DMI_SYS_VENDOR,
-+    ProductName = bindings::dmi_field_DMI_PRODUCT_NAME,
-+    ProductVersion = bindings::dmi_field_DMI_PRODUCT_VERSION,
-+    ProductSerial = bindings::dmi_field_DMI_PRODUCT_SERIAL,
-+    ProductUuid = bindings::dmi_field_DMI_PRODUCT_UUID,
-+    ProductSku = bindings::dmi_field_DMI_PRODUCT_SKU,
-+    ProductFamily = bindings::dmi_field_DMI_PRODUCT_FAMILY,
-+    BoardVendor = bindings::dmi_field_DMI_BOARD_VENDOR,
-+    BoardName = bindings::dmi_field_DMI_BOARD_NAME,
-+    BoardVersion = bindings::dmi_field_DMI_BOARD_VERSION,
-+    BoardSerial = bindings::dmi_field_DMI_BOARD_SERIAL,
-+    BoardAssetTag = bindings::dmi_field_DMI_BOARD_ASSET_TAG,
-+    ChassisVendor = bindings::dmi_field_DMI_CHASSIS_VENDOR,
-+    ChassisType = bindings::dmi_field_DMI_CHASSIS_TYPE,
-+    ChassisVersion = bindings::dmi_field_DMI_CHASSIS_VERSION,
-+    ChassisSerial = bindings::dmi_field_DMI_CHASSIS_SERIAL,
-+    ChassisAssetTag = bindings::dmi_field_DMI_CHASSIS_ASSET_TAG,
-+}
-+
-+/// Returns the DMI string for `field`, or [`None`] if unavailable or `CONFIG_DMI` is disabled.
-+///
-+/// # Safety
-+///
-+/// This function must be called no earlier than driver / module initialisation.
-+///
-+/// # Examples
-+///
-+/// To meet the safety requirement, assume that this example occurs inside driver code e.g.
-+/// a `probe` step.
-+/// ```
-+/// # use kernel::dmi::{
-+/// #     self,
-+/// #     SystemInfoField, //
-+/// # };
-+/// // SAFETY: This function is running during driver initialisation.
-+/// let maybe_vendor = unsafe { dmi::get_system_info(SystemInfoField::SysVendor) };
-+/// if let Some(vendor) = maybe_vendor {
-+///     pr_debug!("Vendor string is {vendor}");
-+/// }
-+/// ```
-+#[inline]
-+pub unsafe fn get_system_info(field: SystemInfoField) -> Option<&'static CStr> {
-+    #[cfg(CONFIG_DMI)]
-+    {
-+        // SAFETY:
-+        // - `field` is a valid variant of `enum dmi_field` to pass to `dmi_get_system_info`.
-+        // - `dmi_get_system_info` is safe to call after DMI has been set up during init.
-+        //   This occurs during `setup_arch` on x86/loongarch/mips and `core_initcall`
-+        //   on arm64/riscv - before driver / module code is run at `device_initcall` level.
-+        let ptr = unsafe { bindings::dmi_get_system_info(field as c_int) };
-+        if ptr.is_null() {
-+            return None;
-+        }
-+
-+        // SAFETY:
-+        // - `ptr` was returned by `dmi_get_system_info` which returns a C string that lives
-+        //   for the life of the kernel, or, a null pointer.
-+        // - `ptr` was confirmed above to be non-null.
-+        Some(unsafe { CStr::from_char_ptr(ptr) })
-+    }
-+    #[cfg(not(CONFIG_DMI))]
-+    {
-+        // Squash `unused_variables` error.
-+        let _ = field;
-+        None
-+    }
-+}
-diff --git a/rust/kernel/lib.rs b/rust/kernel/lib.rs
-index 1ab41129d557..22f10c5d97e8 100644
---- a/rust/kernel/lib.rs
-+++ b/rust/kernel/lib.rs
-@@ -69,6 +69,7 @@
- pub mod dma;
- #[cfg(CONFIG_DMA_SHARED_BUFFER)]
- pub mod dma_buf;
-+pub mod dmi;
- pub mod driver;
- #[cfg(CONFIG_DRM = "y")]
- pub mod drm;
+Design:
+
+- The kernel has no map-cache and it does not resolve anything: no
+  upcall, no state that the packets of a host create. Its tables are the
+  routes and the nexthops, which a control plane in user space writes,
+  as it does for any other routing protocol. A packet without RLOC ends
+  up dropped.
+
+- A remote site is a nexthop object, not a device: it has been designed
+  to scale.
+
+- The common UDP tunnel code is used: its sockets, GRO cells, GSO, the
+  dst cache of the encapsulation, and a zero UDP checksum unless the
+  encapsulation asks for one.
+
+Note: a LISP driver was posted to netdev back to 2014 and was not
+merged. It had a device per remote RLOC and IPv4 RLOCs only, and a
+map-cache that traffic fills was not accepted.
+lwtunnels is an alternative.
+
+This design shall allow routing daemons like FRRouting to support LISP.
+
+Patches:
+- patch 1 adds the driver, drivers/net/lisp.c, and its link attributes
+- patch 2 describes them in the rt-link netlink spec
+- patch 3 adds Documentation/networking/lisp.rst
+- patch 4 adds a selftest, lisp.sh
+- patch 5 adds a scale selftest, lisp_scale.sh
+
+The series only adds: no existing code path is changed.
+
+The lisp support of iproute2 is a separate series, for
+iproute2-next. The tests are skipped without it:
+
+  https://lore.kernel.org/all/20261127-iproute2-lisp-v1-0-df8ea175bc06@free.fr/
 
 ---
-base-commit: b6a9fa34ce4187cb69d3c588a4bbffc31ce5db8f
-change-id: 20261121-rust-dmi-c49d2041d7e2
+Changes in v2, based on CI's checks:
+- 1/5: fix to 80 columns
+- 4/5, 5/5: fix shellcheck report
+- 4/5, 5/5: wrap the lines to 80 columns
+- Cc recent contributors of rt-link.yaml
+
+Changes in v2, based on Sashiko's review:
+- 1/5: link an instance device again only after an RCU grace period
+  since it left its chain (lisp_stop(), lisp_open())
+- 1/5: fix build without CONFIG_IPV6
+- 3/5: device with an instance ID that is down leaves its packets to
+  the device that collects metadata
+- 3/5: rp_filter is the larger of the value of "all" and of the device,
+  ip6tables rpfilter or the nftables fib expression for IPv6
+- 4/5: flush the path MTU of the host on each pass of mtu_test()
+- 5/5: churn_test() improvements
+- Link to v1: https://lore.kernel.org/r/20261126-for-upstream-lisp-v1-v1-0-7382a4bcfd9b@free.fr
+
+---
+Vincent Jardin (5):
+      lisp: add LISP (Locator/ID Separation Protocol)
+      netlink: specs: rt-link: add the lisp link type
+      docs: net: document the LISP devices
+      selftests: net: add a test of the LISP devices
+      selftests: net: add a scale test for LISP
+
+ Documentation/netlink/specs/rt-link.yaml  |   35 +
+ Documentation/networking/index.rst        |    1 +
+ Documentation/networking/lisp.rst         |  159 ++++
+ MAINTAINERS                               |    8 +
+ drivers/net/Kconfig                       |   20 +
+ drivers/net/Makefile                      |    1 +
+ drivers/net/lisp.c                        | 1040 ++++++++++++++++++++++++++
+ include/uapi/linux/if_link.h              |   12 +
+ tools/testing/selftests/net/Makefile      |    2 +
+ tools/testing/selftests/net/config        |    4 +
+ tools/testing/selftests/net/lisp.sh       | 1139 +++++++++++++++++++++++++++++
+ tools/testing/selftests/net/lisp_scale.sh |  542 ++++++++++++++
+ 12 files changed, 2963 insertions(+)
+---
+base-commit: eb6d6c80d35449c27471b1874f13066c09a8964d
+change-id: 20261126-for-upstream-lisp-v1-b47ac698d026
 
 Best regards,
---  
-Nick Dowsett <nick42d@gmail.com>
+-- 
+Vincent Jardin <vjardin@free.fr>
 
