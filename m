@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 28 Nov 2026 17:26:47 +0000
-Subject: [PATCH v5 16/17] drm/panfrost: Soft-stop and resume a job that
- outlives the timeout
+Date: Sat, 28 Nov 2026 17:26:48 +0000
+Subject: [PATCH v5 17/17] drm/panfrost: Name the BOs around an unhandled
+ page fault
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-panfrost-long-jobs-v5-16-e7d62045a676@gmail.com>
+Message-Id: <20261128-panfrost-long-jobs-v5-17-e7d62045a676@gmail.com>
 References: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 In-Reply-To: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 To: Boris Brezillon <boris.brezillon@collabora.com>, 
@@ -17,283 +17,123 @@ To: Boris Brezillon <boris.brezillon@collabora.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=9818;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=3787;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=rvQVFjy3I5tCov1GJcKW/gcPBzj8+JBgYuHjAmedTsg=;
- b=WO49hGB2Kiy4GbkVpW91aDqly59Dp5EcyKVu9XQ2nL0osUUn22u7Y4cdpabB+UaPp6JCQHjn2
- x+2EkVTRXuKDUE0d9XQ5+oIeGnk6gYH6yZsZLUElJq55WUmyaUkwsAz
+ bh=5eVur+mtkqF3KeuduvBSAt8Mmx9XxQ3xEdEtH3eF7lE=;
+ b=KQH4yFG9/G7pUH6NQewUiL4/ukv3sbLAjAYZ4UXZ9qzuxCZzGxPiIA31ylMexXN9Wwuc1Pc5c
+ 2Po3Un3kFq2BALkPAISic/I4dBaw9Lexux8d0DLYoMB73op+I3NBBrw
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-At the 500 ms job timeout panfrost resets the GPU and the job is lost,
-but OpenCL kernels and heavy fragment jobs can take seconds on a small
-GPU. On a Mali-G31 this fails OpenCL CTS Integer Ops long math and
-Thread Dimensions, KHR-GLES31 mixedSequence (a 0.7 s fragment job) and
-dEQP-VK spirv_assembly vec4 fragment cases.
-
-Do as the Arm driver does:
-- A job still ACTIVE at the timeout is soft-stopped and resumed from
-  JS_TAIL, without a reset or karma. Its slot gets
-  JOB_SOFT_STOP_TIMEOUT_MS (5 s) to reach a task boundary.
-- A job still active then is hard-stopped and gets karma and a
-  devcoredump; the other stopped jobs are resumed.
-- If the hard stop has no effect within JOB_HARD_STOP_TIMEOUT_MS
-  (0.5 s), the GPU is reset and that job is failed, not restarted.
-- A reset requested meanwhile (job fault, MMU) overrides the stop-only
-  request, PANFROST_RESET_STOP_ONLY.
-- A job that completes between the fence check and the JS_STATUS read
-  is a spurious timeout.
-- Without a reset, the AS references of jobs cancelled from _NEXT are
-  released here.
-
-With this, those cases pass; two vec4 fragment cases take 4-6 s.
+An unhandled GPU page fault reports only the VA, which does not tell
+an overrun of a BO from a stale or garbage pointer. Also print the BO
+that contains the address, or else its nearest neighbours: VA range,
+size, distance, heap/noexec and the userspace label. For an OpenCL
+image read on a Mali-G31 it showed the texture unit reading past the
+end of a 96-bit-per-texel texture. Heap growth faults are not
+affected.
 
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-v4: the runtime PM reference in panfrost_reset() moved to patch 14.
----
- drivers/gpu/drm/panfrost/panfrost_job.c | 152 +++++++++++++++++++++++++++-----
- 1 file changed, 129 insertions(+), 23 deletions(-)
+ drivers/gpu/drm/panfrost/panfrost_mmu.c | 76 +++++++++++++++++++++++++++++++++
+ 1 file changed, 76 insertions(+)
 
-diff --git a/drivers/gpu/drm/panfrost/panfrost_job.c b/drivers/gpu/drm/panfrost/panfrost_job.c
-index ebdf16968..934c5f39f 100644
---- a/drivers/gpu/drm/panfrost/panfrost_job.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_job.c
-@@ -27,6 +27,13 @@
- #define MAX_JM_CTX_PER_FILE 64
- #define JOB_TIMEOUT_MS 500
- 
-+/* Arm driver: DEFAULT_JS_HARD_STOP_TICKS_SS, DEFAULT_JS_RESET_TICKS_SS */
-+#define JOB_SOFT_STOP_TIMEOUT_MS 5000
-+#define JOB_HARD_STOP_TIMEOUT_MS 500
-+
-+/* reset.pending: stop the slots, no GPU reset; 1 overrides it */
-+#define PANFROST_RESET_STOP_ONLY 2
-+
- #define job_write(dev, reg, data) writel(data, dev->iomem + (reg))
- #define job_read(dev, reg) readl(dev->iomem + (reg))
- 
-@@ -662,13 +669,25 @@ static bool panfrost_slots_idle(struct panfrost_device *pfdev)
- 	return true;
+diff --git a/drivers/gpu/drm/panfrost/panfrost_mmu.c b/drivers/gpu/drm/panfrost/panfrost_mmu.c
+index 92a4d2963..0f81fee10 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_mmu.c
++++ b/drivers/gpu/drm/panfrost/panfrost_mmu.c
+@@ -590,6 +590,81 @@ addr_to_mapping(struct panfrost_device *pfdev, int as, u64 addr)
+ 	return mapping;
  }
  
-+/* The second job if the first's DONE is still pending */
-+static struct panfrost_job *
-+panfrost_running_job(struct panfrost_device *pfdev, unsigned int slot)
++static void panfrost_mmu_print_fault_bo(struct panfrost_device *pfdev,
++					struct panfrost_gem_mapping *m,
++					u64 addr, const char *where)
 +{
-+	if (pfdev->jobs[slot][1] &&
-+	    (job_read(pfdev, JOB_INT_RAWSTAT) & JOB_INT_MASK_DONE(slot)))
-+		return pfdev->jobs[slot][1];
++	struct panfrost_gem_object *bo = m->obj;
++	u64 start = m->mmnode.start << PAGE_SHIFT;
++	u64 end = (m->mmnode.start + m->mmnode.size) << PAGE_SHIFT;
++	u64 dist = addr < start ? start - addr : addr >= end ? addr - end : addr - start;
 +
-+	return pfdev->jobs[slot][0];
++	mutex_lock(&bo->label.lock);
++	dev_err(pfdev->base.dev,
++		"fault bo: %s: VA [0x%llx-0x%llx) size 0x%zx, fault at %s0x%llx%s%s, label \"%s\"\n",
++		where, start, end, bo->base.base.size,
++		addr < start ? "-" : addr >= end ? "end+" : "start+", dist,
++		bo->is_heap ? ", heap" : "", bo->noexec ? ", noexec" : "",
++		bo->label.str ? bo->label.str : "");
++	mutex_unlock(&bo->label.lock);
 +}
 +
- static void
- panfrost_reset(struct panfrost_device *pfdev,
--	       struct drm_sched_job *bad)
-+	       struct drm_sched_job *bad, bool job_active)
- {
- 	struct panfrost_job *evicted[NUM_JOB_SLOTS] = {};
-+	struct panfrost_job *hung[NUM_JOB_SLOTS] = {};
-+	bool cookie, idle, stop_failed = false, reset_gpu;
- 	unsigned int i, j;
--	bool cookie, idle;
- 	int ret;
- 
- 	if (!atomic_read(&pfdev->reset.pending))
-@@ -692,7 +711,7 @@ panfrost_reset(struct panfrost_device *pfdev,
- 
- 	cookie = dma_fence_begin_signalling();
- 
--	if (bad)
-+	if (bad && !job_active)
- 		drm_sched_increase_karma(bad);
- 
- 	/* Mask job interrupts and synchronize to make sure we won't be
-@@ -717,20 +736,65 @@ panfrost_reset(struct panfrost_device *pfdev,
- 	}
- 	spin_unlock(&pfdev->js->job_lock);
- 
--	/* Wait at most 10ms for soft-stops to complete */
--	ret = read_poll_timeout(panfrost_slots_idle, idle, idle, 10, 10000,
-+	/* No slot may be active when we touch the queues. */
-+	ret = read_poll_timeout(panfrost_slots_idle, idle, idle,
-+				job_active ? 200 : 10,
-+				job_active ? JOB_SOFT_STOP_TIMEOUT_MS * 1000 : 10000,
- 				false, pfdev);
- 
-+	if (ret && job_active) {
-+		dev_err(pfdev->base.dev,
-+			"Soft-stop failed after %u ms (js status 0x%x 0x%x 0x%x), hard-stopping the active slots\n",
-+			JOB_SOFT_STOP_TIMEOUT_MS,
-+			job_read(pfdev, JS_STATUS(0)), job_read(pfdev, JS_STATUS(1)),
-+			job_read(pfdev, JS_STATUS(2)));
++static void panfrost_mmu_report_fault_bos(struct panfrost_device *pfdev,
++					  int as, u64 addr)
++{
++	struct panfrost_gem_mapping *below = NULL, *above = NULL;
++	u64 offset = addr >> PAGE_SHIFT;
++	struct drm_mm_node *node;
++	struct panfrost_mmu *mmu;
++	bool inside = false;
 +
-+		for (i = 0; i < NUM_JOB_SLOTS; i++) {
-+			if (job_read(pfdev, JS_STATUS(i)) ==
-+			    DRM_PANFROST_EXCEPTION_ACTIVE)
-+				hung[i] = panfrost_running_job(pfdev, i);
-+			if (hung[i])
-+				drm_sched_increase_karma(&hung[i]->base);
++	spin_lock(&pfdev->as_lock);
++	list_for_each_entry(mmu, &pfdev->as_lru_list, list) {
++		if (as == mmu->as)
++			goto found_mmu;
++	}
++	spin_unlock(&pfdev->as_lock);
++	dev_err(pfdev->base.dev, "fault bo: no context holds AS%d\n", as);
++	return;
++
++found_mmu:
++	spin_lock(&mmu->mm_lock);
++	drm_mm_for_each_node(node, &mmu->mm) {
++		struct panfrost_gem_mapping *m = drm_mm_node_to_panfrost_mapping(node);
++
++		if (!kref_read(&m->refcount))
++			continue;
++		if (node->start > offset) {
++			above = m;
++			break;
 +		}
-+
-+		/* The dump allocates memory: leave the signalling section. */
-+		dma_fence_end_signalling(cookie);
-+		for (i = 0; i < NUM_JOB_SLOTS; i++) {
-+			if (hung[i])
-+				panfrost_core_dump(hung[i]);
-+		}
-+		cookie = dma_fence_begin_signalling();
-+
-+		for (i = 0; i < NUM_JOB_SLOTS; i++) {
-+			if (job_read(pfdev, JS_STATUS(i)) ==
-+			    DRM_PANFROST_EXCEPTION_ACTIVE)
-+				job_write(pfdev, JS_COMMAND(i), JS_COMMAND_HARD_STOP);
-+		}
-+
-+		ret = read_poll_timeout(panfrost_slots_idle, idle, idle, 200,
-+					JOB_HARD_STOP_TIMEOUT_MS * 1000, false,
-+					pfdev);
-+		stop_failed = ret;
++		below = m;
 +	}
-+
- 	if (ret)
--		dev_err(pfdev->base.dev, "Soft-stop failed\n");
-+		dev_err(pfdev->base.dev,
-+			"%s failed (js status 0x%x 0x%x 0x%x), resetting the GPU\n",
-+			job_active ? "Hard-stop" : "Soft-stop",
-+			job_read(pfdev, JS_STATUS(0)), job_read(pfdev, JS_STATUS(1)),
-+			job_read(pfdev, JS_STATUS(2)));
- 
- 	/* Handle the remaining interrupts before we reset. */
- 	panfrost_jm_handle_irqs(pfdev);
- 
-+	reset_gpu = !job_active || stop_failed ||
-+		    atomic_read(&pfdev->reset.pending) != PANFROST_RESET_STOP_ONLY;
-+
- 	/* Remaining interrupts have been handled, but we might still have
--	 * stuck jobs. Let's make sure the PM counters stay balanced by
-+	 * stuck jobs, and jobs that were waiting in _NEXT when it was
-+	 * cancelled. Let's make sure the PM counters stay balanced by
- 	 * manually calling pm_runtime_put_noidle() and
--	 * panfrost_devfreq_record_idle() for each stuck job.
-+	 * panfrost_devfreq_record_idle() for each of them.
- 	 * Let's also make sure the cycle counting register's refcnt is
- 	 * kept balanced to prevent it from running forever
- 	 */
-@@ -740,19 +804,36 @@ panfrost_reset(struct panfrost_device *pfdev,
- 			pfdev->jobs[i][pfdev->jobs[i][0] ? 1 : 0] = evicted[i];
- 
- 		for (j = 0; j < ARRAY_SIZE(pfdev->jobs[0]) && pfdev->jobs[i][j]; j++) {
--			panfrost_job_put_cycle_counter(pfdev->jobs[i][j]);
-+			struct panfrost_job *job = pfdev->jobs[i][j];
-+
-+			panfrost_job_put_cycle_counter(job);
- 			pm_runtime_put_noidle(pfdev->base.dev);
- 			panfrost_devfreq_record_idle(&pfdev->pfdevfreq);
-+
-+			/* A GPU reset drops the AS references itself. */
-+			if (!reset_gpu)
-+				panfrost_mmu_as_put(pfdev, job->mmu);
-+
-+			/* Restarted, it would only time out again. */
-+			if (stop_failed && job == hung[i])
-+				dma_fence_set_error(&job->base.s_fence->finished,
-+						    -ECANCELED);
- 		}
- 	}
- 	memset(pfdev->jobs, 0, sizeof(pfdev->jobs));
- 	spin_unlock(&pfdev->js->job_lock);
- 
- 	/* Proceed with reset now. */
--	panfrost_device_reset(pfdev, false);
-+	if (reset_gpu) {
-+		panfrost_device_reset(pfdev, false);
- 
--	/* GPU has been reset, we can clear the reset pending bit. */
--	atomic_set(&pfdev->reset.pending, 0);
-+		/* GPU has been reset, we can clear the reset pending bit. */
-+		atomic_set(&pfdev->reset.pending, 0);
-+	} else {
-+		/* A reset requested since stays pending for its requester. */
-+		atomic_cmpxchg(&pfdev->reset.pending,
-+			       PANFROST_RESET_STOP_ONLY, 0);
++	if (below) {
++		inside = offset < below->mmnode.start + below->mmnode.size;
++		if (inside)
++			above = NULL;
++		if (!kref_get_unless_zero(&below->refcount))
++			below = NULL;
 +	}
- 
- 	/* Now resubmit jobs that were previously queued but didn't have a
- 	 * chance to finish.
-@@ -782,6 +863,8 @@ panfrost_job_handle_timeout(struct drm_sched_job *sched_job)
- 	struct panfrost_job *job = to_panfrost_job(sched_job);
- 	struct panfrost_device *pfdev = job->pfdev;
- 	int js = panfrost_job_get_slot(job);
-+	bool job_active;
-+	u32 js_status;
- 
- 	/*
- 	 * If the GPU managed to complete this jobs fence, the timeout has
-@@ -806,18 +889,41 @@ panfrost_job_handle_timeout(struct drm_sched_job *sched_job)
- 		return DRM_GPU_SCHED_STAT_NO_HANG;
- 	}
- 
--	dev_err(pfdev->base.dev, "gpu sched timeout, js=%d, config=0x%x, status=0x%x, head=0x%x, tail=0x%x, sched_job=%p",
--		js,
--		job_read(pfdev, JS_CONFIG(js)),
--		job_read(pfdev, JS_STATUS(js)),
--		job_read(pfdev, JS_HEAD_LO(js)),
--		job_read(pfdev, JS_TAIL_LO(js)),
--		sched_job);
-+	js_status = job_read(pfdev, JS_STATUS(js));
-+	job_active = js_status == DRM_PANFROST_EXCEPTION_ACTIVE;
- 
--	panfrost_core_dump(job);
-+	/* The job may have completed since the fence check above. */
-+	if (!job_active) {
-+		if (job_read(pfdev, JOB_INT_RAWSTAT) & JOB_INT_MASK_DONE(js))
-+			return DRM_GPU_SCHED_STAT_NO_HANG;
- 
--	atomic_set(&pfdev->reset.pending, 1);
--	panfrost_reset(pfdev, sched_job);
-+		synchronize_irq(pfdev->js->irq);
-+		if (dma_fence_is_signaled(job->done_fence))
-+			return DRM_GPU_SCHED_STAT_NO_HANG;
++	if (above && !kref_get_unless_zero(&above->refcount))
++		above = NULL;
++	spin_unlock(&mmu->mm_lock);
++	spin_unlock(&pfdev->as_lock);
++
++	if (!below && !above)
++		dev_err(pfdev->base.dev, "fault bo: AS%d has no BO\n", as);
++	if (below) {
++		panfrost_mmu_print_fault_bo(pfdev, below, addr,
++					    inside ? "inside" : "below");
++		panfrost_gem_mapping_put(below);
 +	}
-+
-+	if (job_active) {
-+		dev_dbg(pfdev->base.dev, "job still active after %u ms, js=%d, head=0x%x, sched_job=%p: soft-stopping it to resume",
-+			JOB_TIMEOUT_MS, js, job_read(pfdev, JS_HEAD_LO(js)),
-+			sched_job);
-+	} else {
-+		dev_err(pfdev->base.dev, "gpu sched timeout, js=%d, config=0x%x, status=0x%x, head=0x%x, tail=0x%x, sched_job=%p",
-+			js,
-+			job_read(pfdev, JS_CONFIG(js)),
-+			js_status,
-+			job_read(pfdev, JS_HEAD_LO(js)),
-+			job_read(pfdev, JS_TAIL_LO(js)),
-+			sched_job);
-+
-+		panfrost_core_dump(job);
++	if (above) {
++		panfrost_mmu_print_fault_bo(pfdev, above, addr, "above");
++		panfrost_gem_mapping_put(above);
 +	}
++}
 +
-+	if (job_active)
-+		atomic_cmpxchg(&pfdev->reset.pending, 0,
-+			       PANFROST_RESET_STOP_ONLY);
-+	else
-+		atomic_set(&pfdev->reset.pending, 1);
-+	panfrost_reset(pfdev, sched_job, job_active);
+ #define NUM_FAULT_PAGES (SZ_2M / PAGE_SIZE)
  
- 	return DRM_GPU_SCHED_STAT_RESET;
- }
-@@ -844,7 +950,7 @@ static void panfrost_reset_work(struct work_struct *work)
- 	if (pm_runtime_resume_and_get(pfdev->base.dev))
- 		return;
+ /* [start, end) is whole folios: it can reach past the 2 MB chunk. */
+@@ -964,6 +1039,7 @@ static irqreturn_t panfrost_mmu_irq_handler_thread(int irq, void *data)
+ 				exception_type, panfrost_exception_name(exception_type),
+ 				access_type, access_type_name(pfdev, fault_status),
+ 				source_id);
++			panfrost_mmu_report_fault_bos(pfdev, as, addr);
  
--	panfrost_reset(pfdev, NULL);
-+	panfrost_reset(pfdev, NULL, false);
- 	pm_runtime_put_autosuspend(pfdev->base.dev);
- }
- 
+ 			spin_lock(&pfdev->as_lock);
+ 			/* Ignore MMU interrupts on this AS until it's been
 
 -- 
 2.55.0
