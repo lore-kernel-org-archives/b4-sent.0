@@ -1,119 +1,113 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Sat, 28 Nov 2026 18:23:46 +0000
-Subject: [PATCH 6.12.y] crypto: nx - fix nx_crypto_ctx_exit argument
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Date: Sat, 28 Nov 2026 19:00:38 +0000
+Subject: [PATCH net] net: stmmac: Drop TX buffers too long for normal
+ descriptors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-nx-612-v1-1-7610a67512f3@certik.com>
-X-B4-Tracking: v=1; b=H4sIADEcC2sC/yWMQQrCMBAAv1L27Faz6lb8inhI0tVGJJFslUrp3
- 03scYZhZlDJQRTOzQxZPkFDigXMpgE/2HgXDH1hoB2xMXTCOCEbQhahjln2x0MHJX5luYXpP7o
- At4baL1xXr2/3ED/WSy2dVUGXbfRDVSqxH1N6YvXb9Q7L8gORPdlmmQAAAA==
-X-Change-ID: 20261128-nx-612-6ee2766e3547
-To: stable@vger.kernel.org
-Cc: Sam James <sam@gentoo.org>, Herbert Xu <herbert@gondor.apana.org.au>, 
- Eric Biggers <ebiggers@kernel.org>, leitao@debian.org, 
- Nayna Jain <nayna@linux.ibm.com>, 
- Paulo Flabiano Smorigo <pfsmorigo@gmail.com>, linux-crypto@vger.kernel.org, 
- linuxppc-dev@lists.ozlabs.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795890225; l=3358;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=aB4HR+znA9D6EQ8XLQLZ4whL3VZ/EVrQCTXfZ2ow9oc=;
- b=P640s0WQ+DNkyjd7te2JL8BcjfeBU5hCvfXQ9A5yBTz3enPCx7ZTLjTzhXk5blYaJa8wZNTZe
- gi2JUsneFSiCJjsSkyLQgBvdWUM0Y6sxFGIzhC9JACWfzcin90VNiM+
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+Message-Id: <20261128-stmmac-ndesc-tx-len-v1-1-69f737224dc0@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6Xs2QU3B7X+inhIN6+6YqNkoxRK/
+ 92oxxmYWchRDE7HbqGCt7k9cgPZdKTXmC9gS40pbMNOJOzZ6zRF5ZzgynXmOzJj7HtNEImHgVr
+ 5LBht/l1PlFHp/Jf+Gm7Q+v3Run4AgfLLEnwAAAA=
+X-Change-ID: 20261127-stmmac-ndesc-tx-len-ef99cde11a8b
+To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Chen-Yu Tsai <wens@kernel.org>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, Arun Iyengar <aiyengar1990@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795892437; l=3104;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=UKsD2T2AGKzpC1WaupMUb300yebHh9UxQbyihv5XzcA=;
+ b=6CotknO2Uph/1v38egcb3CMfNMft+oF9JiuwTddyu+L6OEZsBanvDXRX7duiPGFb92TCJ68BP
+ C+T6P+VYkEFDIk2MHgC2bC0qPoPiHpwECs94HSYuEysoB5jkBbiOu7E
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sam James <sam@gentoo.org>
+Sashiko found in [1] that stmmac_xmit() does not check buffer sizes for
+normal descriptors, whose size field has 11 bits. As Chen-Yu Tsai noted
+in [2], only enhanced descriptors take the jumbo path that splits
+buffers, since commit 29896a674c8e ("stmmac: fix chained mode"). A
+longer buffer gets its size cut in chain mode, and in ring mode its
+rest goes to buffer 2 at DES3, which is 0.
 
-commit 4e67f504ee9ded15e256b64f4fde150e917381d7 upstream.
+Such skbs come from MTUs above one buffer, and from act_mirred and BPF
+redirect, which do not check the MTU. Drop them and count them in
+tx_dropped.
 
-nx_crypto_ctx_shash_exit calls nx_crypto_ctx_exit with crypto_shash_ctx(...)
-but crypto_shash_ctx gives a nx_crypto_ctx *, not a crypto_tfm *.
-
-Fix the type in nx_crypto_ctx_exit and drop the bogus crypto_tfm_ctx
-call.
-
-This fixes the following oops:
-
-  BUG: Unable to handle kernel data access at 0xc0403effffffffc8
-  Faulting instruction address: 0xc000000000396cb4
-  Oops: Kernel access of bad area, sig: 11 [#15]
-  Call Trace:
-   nx_crypto_ctx_shash_exit+0x24/0x60
-   crypto_shash_exit_tfm+0x28/0x40
-   crypto_destroy_tfm+0x98/0x140
-   crypto_exit_ahash_using_shash+0x20/0x40
-   crypto_destroy_tfm+0x98/0x140
-   hash_release+0x1c/0x30
-   alg_sock_destruct+0x38/0x60
-   __sk_destruct+0x48/0x2b0
-   af_alg_release+0x58/0xb0
-   __sock_release+0x68/0x150
-   sock_close+0x20/0x40
-   __fput+0x110/0x3a0
-   sys_close+0x48/0xa0
-   system_call_exception+0x140/0x2d0
-   system_call_common+0xf4/0x258
-
-.. which came from hardlink(1) opportunistically using AF_ALG.
-
-The same problem exists with nx_crypto_ctx_skcipher_exit getting a context
-it wasn't expecting, but apparently nobody hit that for years.
-
-Cc: Eric Biggers <ebiggers@kernel.org>
-Cc: stable@vger.kernel.org
-Fixes: bfd9efddf990 ("crypto: nx - convert AES-ECB to skcipher API")
-Fixes: 9420e628e7d8 ("crypto: nx - Use API partial block handling")
-Acked-by: Breno Leitao <leitao@debian.org>
-Reviewed-by: Eric Biggers <ebiggers@kernel.org>
-Reported-by: Calvin Buckley <calvin@cmpct.info>
-Tested-by: Calvin Buckley <calvin@cmpct.info>
-Suggested-by: Brad Spengler <brad.spengler@opensrcsec.com>
-Signed-off-by: Sam James <sam@gentoo.org>
-Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
-[ adapted to 6.12.y: pass the skcipher tfm to the legacy exit helper ]
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+Link: https://lore.kernel.org/r/179542841718.3135.3290374626862889297@kernel.org [1]
+Link: https://lore.kernel.org/r/CAGb2v66oxp7G92psuF-pQsha5doh47j2gSMiTY7PAB2dYfozUw@mail.gmail.com [2]
+Fixes: 48febf7e6476 ("stmmac: allow mtu bigger than 1500 in case of normal desc (V4)")
+Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-This one never made it to 6.12.y. The shash half of the upstream fix
-doesn't apply here, since 6.12 predates 9420e628e7d8, but the skcipher
-half does: nx_crypto_ctx_skcipher_exit() still passes the skcipher ctx
-where nx_crypto_ctx_exit() expects a crypto_tfm. The backport passes
-crypto_skcipher_tfm(tfm), so the exit finds the same nx_crypto_ctx
-that the aes_*_init() helpers set up through crypto_skcipher_ctx().
+Tested on an H616 (chain mode) with skbs of 1600 to 9000 bytes from
+tc mirred at MTU 1500. Without this patch, TX stops at a 2048-byte
+linear skb until the TX watchdog resets it. With it, every skb with a
+buffer of 2048 bytes or more is dropped and counted, and TX stays up.
+Ring mode is untested. AF_XDP zero-copy TX has the same gap and is not
+covered.
 
-Tested on 6.12 (e2e4b92c2b2a): big-endian ppc64 pSeries W=1
-cross-build of drivers/crypto/nx, base vs patched, no new warnings.
-Build-only - I don't have NX hardware, so nothing ran.
-
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
+Developed with Claude (Anthropic), which wrote the code and the commit
+message. I reviewed every change.
 ---
- drivers/crypto/nx/nx.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 25 +++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
-diff --git a/drivers/crypto/nx/nx.c b/drivers/crypto/nx/nx.c
-index 010e87d9da36..e9186ff33945 100644
---- a/drivers/crypto/nx/nx.c
-+++ b/drivers/crypto/nx/nx.c
-@@ -756,7 +756,7 @@ void nx_crypto_ctx_exit(struct crypto_tfm *tfm)
- 
- void nx_crypto_ctx_skcipher_exit(struct crypto_skcipher *tfm)
- {
--	nx_crypto_ctx_exit(crypto_skcipher_ctx(tfm));
-+	nx_crypto_ctx_exit(crypto_skcipher_tfm(tfm));
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index a685ce4638f6..f21f7fc1beb7 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -2033,6 +2033,25 @@ static void stmmac_set_tx_dma_last_segment(struct stmmac_tx_queue *tx_q,
+ 	tx_q->tx_skbuff_dma[entry].last_segment = true;
  }
  
- void nx_crypto_ctx_aead_exit(struct crypto_aead *tfm)
++/* Normal descriptors have an 11-bit buffer size */
++static bool stmmac_ndesc_tx_too_long(struct stmmac_priv *priv,
++				     struct sk_buff *skb)
++{
++	unsigned int i;
++
++	if (priv->hw->desc != &ndesc_ops)
++		return false;
++
++	if (skb_headlen(skb) >= BUF_SIZE_2KiB)
++		return true;
++
++	for (i = 0; i < skb_shinfo(skb)->nr_frags; i++)
++		if (skb_frag_size(&skb_shinfo(skb)->frags[i]) >= BUF_SIZE_2KiB)
++			return true;
++
++	return false;
++}
++
+ /**
+  * __init_dma_tx_desc_rings - init the TX descriptor ring (per queue)
+  * @priv: driver private structure
+@@ -4889,6 +4908,12 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
+ 		}
+ 	}
+ 
++	if (unlikely(stmmac_ndesc_tx_too_long(priv, skb))) {
++		dev_kfree_skb(skb);
++		priv->xstats.tx_dropped++;
++		return NETDEV_TX_OK;
++	}
++
+ 	if (unlikely(stmmac_tx_avail(priv, queue) < nfrags + 1)) {
+ 		if (!netif_tx_queue_stopped(netdev_get_tx_queue(dev, queue))) {
+ 			netif_tx_stop_queue(netdev_get_tx_queue(priv->dev,
 
 ---
-base-commit: e2e4b92c2b2a3ae78423cb343951cb5d2241b405
-change-id: 20261128-nx-612-6ee2766e3547
+base-commit: 28a371228d4eb4857cc31eeb1a0d7d01e9c3ea2f
+change-id: 20261127-stmmac-ndesc-tx-len-ef99cde11a8b
 
 Best regards,
 --  
-Dickson Wu <dickson.wu@certik.com>
+Arun Iyengar <aiyengar1990@gmail.com>
 
