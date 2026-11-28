@@ -1,11 +1,11 @@
 From: Robert Ijtsma <robertijtsma@gmail.com>
-Date: Sat, 28 Nov 2026 21:41:08 +0100
-Subject: [PATCH v2 2/3] media: i2c: ov7251: use
- pm_runtime_put_autosuspend()
+Date: Sat, 28 Nov 2026 21:41:09 +0100
+Subject: [PATCH v2 3/3] media: i2c: ov7251: support non-continuous MIPI
+ clock mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-ov7251-strobe-ncont-v2-2-9428bbb6347e@gmail.com>
+Message-Id: <20261128-ov7251-strobe-ncont-v2-3-9428bbb6347e@gmail.com>
 References: <20261128-ov7251-strobe-ncont-v2-0-9428bbb6347e@gmail.com>
 In-Reply-To: <20261128-ov7251-strobe-ncont-v2-0-9428bbb6347e@gmail.com>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
@@ -16,60 +16,77 @@ Cc: Antoine Pichot <antoine.pichot@gmail.com>,
  linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Robert Ijtsma <robertijtsma@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795898468; l=1466;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795898468; l=1840;
  i=robertijtsma@gmail.com; s=20261122; h=from:subject:message-id;
- bh=4+jnej36VRHVSIe3byc32TNoOJR7alJczgCt59RWw48=;
- b=Em4Un5+jvFYN3nCUyhL6bJmDSUdmP5lW0xlzTGMjs6vX9w7bvXpyxWrH9D2ypOyfpQn2+Yq8V
- XPpi8qL4lIuDvws1M46lpp5dX6YAJjWx2dVS2bJkj+9s4mIXB5pSkzQ
+ bh=iYMD7W8d2+XvLhklCu7QmGnta3lKpQRyUp4O5aryU5g=;
+ b=N0ZHVAQ3vAg6B20XNwDYE40m6NRf02BF5CnT6goTJqdMqWYt4Q6uhRYthermGI3EglJl3yt7g
+ NOcsVY+2t4eBnSGZQcKUbAWRMoiFxpQSvb42ArPDUFrHMXYL5/hEYc6
 X-Developer-Key: i=robertijtsma@gmail.com; a=ed25519;
  pk=qiDyKVqFicxFIR5sB5m+p9SWPKL2/+mMoiQnUx0C9P0=
 X-Endpoint-Received: by B4 Relay for robertijtsma@gmail.com/20261122 with auth_id=1604
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ov7251_probe() configures runtime PM autosuspend with a 1000 ms delay,
-but ov7251_s_ctrl() and ov7251_s_stream() call pm_runtime_put(),
-immediately powering down the sensor on stream stop or control writes
-instead of keeping it in software standby across the autosuspend window.
+Check V4L2_MBUS_CSI2_NONCONTINUOUS_CLOCK from the parsed CSI-2 endpoint
+in ov7251_check_hwcfg() and set BIT(5) (CLOCK_LANE_GATE) in
+OV7251_MIPI_CTRL00 (0x4800) during power-on when non-continuous clock
+mode is configured, allowing the sensor to gate the MIPI clock lane in
+LP-11 idle periods (required by Qualcomm SC8180X CSIPHY).
 
-Use pm_runtime_put_autosuspend() in ov7251_s_ctrl() and
-ov7251_s_stream().
-
-Fixes: 207f4162f1c9 ("media: i2c: Add pm_runtime support to ov7251")
 Signed-off-by: Robert Ijtsma <robertijtsma@gmail.com>
 ---
- drivers/media/i2c/ov7251.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ drivers/media/i2c/ov7251.c | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
 
 diff --git a/drivers/media/i2c/ov7251.c b/drivers/media/i2c/ov7251.c
-index 393260929f29..8c6e610586cd 100644
+index 8c6e610586cd..f4ba9e000a66 100644
 --- a/drivers/media/i2c/ov7251.c
 +++ b/drivers/media/i2c/ov7251.c
-@@ -905,7 +905,7 @@ static int ov7251_s_ctrl(struct v4l2_ctrl *ctrl)
- 		break;
+@@ -81,6 +81,8 @@
+ #define OV7251_TIMING_VTS_REG		0x380e
+ #define OV7251_TIMING_MIN_VTS		1
+ #define OV7251_TIMING_MAX_VTS		0xffff
++#define OV7251_MIPI_CTRL00		0x4800
++#define OV7251_MIPI_CTRL00_CLOCK_LANE_GATE	BIT(5)
+ #define OV7251_INTEGRATION_MARGIN	20
+ 
+ struct reg_value {
+@@ -171,6 +173,7 @@ struct ov7251 {
+ 	u8 timing_format2;
+ 
+ 	bool power_on;
++	bool clock_ncont;
+ 
+ 	struct gpio_desc *enable_gpio;
+ };
+@@ -714,6 +717,19 @@ static int ov7251_set_power_on(struct device *dev)
+ 		goto err_power_off;
  	}
  
--	pm_runtime_put(ov7251->dev);
-+	pm_runtime_put_autosuspend(ov7251->dev);
++	if (ov7251->clock_ncont) {
++		u8 val;
++
++		ret = ov7251_read_reg(ov7251, OV7251_MIPI_CTRL00, &val);
++		if (ret < 0)
++			goto err_power_off;
++
++		ret = ov7251_write_reg(ov7251, OV7251_MIPI_CTRL00,
++				       val | OV7251_MIPI_CTRL00_CLOCK_LANE_GATE);
++		if (ret < 0)
++			goto err_power_off;
++	}
++
+ 	return 0;
  
- 	return ret;
- }
-@@ -1153,14 +1153,14 @@ static int ov7251_s_stream(struct v4l2_subdev *subdev, int enable)
- 	} else {
- 		ret = ov7251_write_reg(ov7251, OV7251_SC_MODE_SELECT,
- 				       OV7251_SC_MODE_SELECT_SW_STANDBY);
--		pm_runtime_put(ov7251->dev);
-+		pm_runtime_put_autosuspend(ov7251->dev);
+ err_power_off:
+@@ -1309,6 +1325,8 @@ static int ov7251_check_hwcfg(struct ov7251 *ov7251)
  	}
  
- 	v4l2_subdev_unlock_state(state);
- 	return ret;
+ 	ov7251->link_freq_idx = j;
++	ov7251->clock_ncont = bus_cfg.bus.mipi_csi2.flags &
++			      V4L2_MBUS_CSI2_NONCONTINUOUS_CLOCK;
  
- err_power_down:
--	pm_runtime_put(ov7251->dev);
-+	pm_runtime_put_autosuspend(ov7251->dev);
- 	v4l2_subdev_unlock_state(state);
- 	return ret;
- }
+ out_free_bus_cfg:
+ 	v4l2_fwnode_endpoint_free(&bus_cfg);
 
 -- 
 2.56.0
