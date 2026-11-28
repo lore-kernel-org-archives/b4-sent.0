@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 28 Nov 2026 17:26:34 +0000
-Subject: [PATCH v5 03/17] drm/panfrost: Refuse to sync the CPU caches of a
- heap BO
+Date: Sat, 28 Nov 2026 17:26:35 +0000
+Subject: [PATCH v5 04/17] drm/panfrost: Don't take a reference on a mapping
+ that is being freed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-panfrost-long-jobs-v5-3-e7d62045a676@gmail.com>
+Message-Id: <20261128-panfrost-long-jobs-v5-4-e7d62045a676@gmail.com>
 References: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 In-Reply-To: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 To: Boris Brezillon <boris.brezillon@collabora.com>, 
@@ -17,45 +17,44 @@ To: Boris Brezillon <boris.brezillon@collabora.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=1145;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=1091;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=RVUC7wk0C94NNPazliV5oYEit+c6cilShSIsrPrq+ds=;
- b=9ovKzVW5b4IBCwtyLr5G7GAFFqiBIcYb0Q6U41w1TUtZ6ZSY4T+B+2vdDEaj4BffQKb0FSCQz
- R9+4eaDAhEPCPsQknGf11n7La4zmc/FJUvLHE8+Bx+uJ5x4ai/YQMLA
+ bh=DRy+Ft25cf0YsAswanqBu0wCkKWVe6G3uWYwsT/P0E0=;
+ b=0wScwfnCs5vnBVKPMRup4vi+ZsugAvfbNfaAMLjLirdbsYmHLZESiIj8++8VlcnCmrbkgb5bA
+ xiAltXXe6CYAyEuxy712nFOkmEYC7Fkr+GwuzsBg/4kC5Xy9d2GJS+F
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On a coherent GPU, PANFROST_SYNC_BO on a heap BO dereferences the NULL
-entries of its sparse page array. Heap BOs cannot be CPU-mapped:
-return -EINVAL. Not tested on a coherent GPU.
+A mapping stays in the drm_mm after its last reference is dropped, so
+a GPU fault can revive it with kref_get(). Use kref_get_unless_zero().
+Not reproduced.
 
-Fixes: 7be45f548976 ("drm/panfrost: Add a PANFROST_SYNC_BO ioctl")
+Fixes: bdefca2d8dc0 ("drm/panfrost: Add the panfrost_gem_mapping concept")
 Cc: stable@vger.kernel.org
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/sashiko-outbox-206561@kernel.org/
+Link: https://lore.kernel.org/all/sashiko-outbox-206570@kernel.org/
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
 v4: shorter commit message.
 ---
- drivers/gpu/drm/panfrost/panfrost_gem.c | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/gpu/drm/panfrost/panfrost_mmu.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/gpu/drm/panfrost/panfrost_gem.c b/drivers/gpu/drm/panfrost/panfrost_gem.c
-index 518f24549..8067c5533 100644
---- a/drivers/gpu/drm/panfrost/panfrost_gem.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_gem.c
-@@ -569,6 +569,9 @@ panfrost_gem_sync(struct drm_gem_object *obj, u32 type, u32 offset, u32 size)
- 	if (drm_gem_is_imported(&shmem->base))
- 		return -EINVAL;
+diff --git a/drivers/gpu/drm/panfrost/panfrost_mmu.c b/drivers/gpu/drm/panfrost/panfrost_mmu.c
+index faa62643c..789a64fd3 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_mmu.c
++++ b/drivers/gpu/drm/panfrost/panfrost_mmu.c
+@@ -576,7 +576,8 @@ addr_to_mapping(struct panfrost_device *pfdev, int as, u64 addr)
+ 		    offset < (node->start + node->size)) {
+ 			mapping = drm_mm_node_to_panfrost_mapping(node);
  
-+	if (bo->is_heap)
-+		return -EINVAL;
-+
- 	switch (type) {
- 	case PANFROST_BO_SYNC_CPU_CACHE_FLUSH:
- 	case PANFROST_BO_SYNC_CPU_CACHE_FLUSH_AND_INVALIDATE:
+-			kref_get(&mapping->refcount);
++			if (!kref_get_unless_zero(&mapping->refcount))
++				mapping = NULL;
+ 			break;
+ 		}
+ 	}
 
 -- 
 2.55.0
