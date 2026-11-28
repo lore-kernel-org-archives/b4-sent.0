@@ -1,133 +1,75 @@
-From: Dickson Wu <dickson.wu@certik.com>
-Date: Sat, 28 Nov 2026 01:50:59 +0000
-Subject: [PATCH 6.12.y] iio: light: apds9306: fix PM reference leak in
- apds9306_read_data()
+From: Felix Huang <akafelixab@gmail.com>
+Date: Fri, 27 Nov 2026 21:33:46 -0500
+Subject: [PATCH] i2c: diolan-u2c: use get_unaligned_le32() in
+ diolan_get_serial()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-apds9306-612-v1-1-5df62a3d7a6c@certik.com>
-X-B4-Tracking: v=1; b=H4sIAIMzCmsC/02NwQ6CMBBEf4Xs2UV2G6vyK8ZDKavUmEK6aDSEf
- 7fVi8d5mXmzgEoKotBWCyR5Bg1jzIE2FfjBxatg6HMGbtgS8QHd1OvRNBYtMRIbb9x+17AQ5Mm
- U5BJeX90JbE1cv+H84/robuLn4irNzqlgl1z0Q0EqsZ/H8Y6Fb/8/YF0/wjJeSaUAAAA=
-X-Change-ID: 20261128-apds9306-612-123c3a7502e1
-In-Reply-To: <2026090952-mollusk-copilot-9a29@gregkh>
-References: <2026090952-mollusk-copilot-9a29@gregkh>
-To: stable@vger.kernel.org
-Cc: Moksh Panicker <mokshpanicker.7@gmail.com>, 
- Jonathan Cameron <jonathan.cameron@oss.qualcomm.com>, 
- linux-iio@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795830659; l=3521;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=HfdZuZUT/oANR7K0kvtpBU+UQ7vFuvHHZoUCp54GJF8=;
- b=5RY8Nlg/feb+3jdI/0axfX6UCV/hO35CSV2CkenZT1FpK2QgU062XPZFXxfwHfTwBsnW6Dugt
- lBhUJLqo9n8Cy/toau9bAC45Jkn0ilufeOSy/naWT/2zVgYNVtuzgUM
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with auth_id=1647
+Message-Id: <20261127-i2c-diolan-u2c-unaligned-v1-1-0c3621b7690d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMBCE4Vcpe3bBLFQbX0U8xGSsK2UriRGh9
+ N0b9TbfYf6FCrKi0KlbKOOtRWdrcLuO4j3YCNbUTLKXg3NyZJXISecpGNc2q4VJR0Ni6b1HwjA
+ EL9Tuz4ybfn7p8+XvUq8PxNe3R+u6AaUcgCx8AAAA
+X-Change-ID: 20261127-i2c-diolan-u2c-unaligned-2599ede88a92
+To: Guenter Roeck <linux@roeck-us.net>, Andi Shyti <andi.shyti@kernel.org>
+Cc: linux-i2c@vger.kernel.org, Felix Huang <akafelixab@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795833227; l=1508;
+ i=akafelixab@gmail.com; s=20261128; h=from:subject:message-id;
+ bh=tWaQaBt3Y5jwyqbvYJKTgjkG1O2HuHP5e0f9pq+Ozgc=;
+ b=O8fJvZE3M4Sj/iA8XY8eQleLHc/CraYpTj0bJDqUhBcvFDFMPKsXvr/HMA1O5QORNqsdKQpTO
+ 6w0H9ht2BijAC5iBFlpinuux7hBE6OEw7eiBpjkpljKFJ7vJEBhM3LV
+X-Developer-Key: i=akafelixab@gmail.com; a=ed25519;
+ pk=Axl3BM1UWa+m0/AWcEhRIdIk/WY9FnY4wZkyQn64uVY=
+X-Endpoint-Received: by B4 Relay for akafelixab@gmail.com/20261128 with auth_id=1670
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Moksh Panicker <mokshpanicker.7@gmail.com>
+Fix the following sparse warning by replacing le32_to_cpu(*(u32 *)...)
+with get_unaligned_le32():
 
-commit d378fceaafd79e0dc59d3546bda251a3058062c0 upstream.
+  drivers/i2c/busses/i2c-diolan-u2c.c:290:26: warning: cast to restricted __le32
 
-apds9306_read_data() calls pm_runtime_resume_and_get() but several
-error paths return directly without calling pm_runtime_put_autosuspend(),
-leaking the runtime PM reference and preventing the device from
-autosuspending.
+This preserves the exact little-endian conversion semantics while also
+avoiding potential unaligned memory access on dev->ibuffer.
 
-Use PM_RUNTIME_ACQUIRE_AUTOSUSPEND() and PM_RUNTIME_ACQUIRE_ERR() to
-automatically handle runtime PM reference release on all return paths.
-
-Fixes: 620d1e6c7a3f ("iio: light: Add support for APDS9306 Light Sensor")
-Signed-off-by: Moksh Panicker <mokshpanicker.7@gmail.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: Jonathan Cameron <jonathan.cameron@oss.qualcomm.com>
-[ adapted to 6.12.y: no PM_RUNTIME_ACQUIRE helpers, goto the put ]
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
+Signed-off-by: Felix Huang <akafelixab@gmail.com>
 ---
-This failed to apply to 6.12.y, which doesn't have the
-PM_RUNTIME_ACQUIRE_AUTOSUSPEND() helpers. Instead every error return
-after pm_runtime_resume_and_get() now jumps to the existing
-mark_last_busy()/put_autosuspend() at the end, so the usage count is
-dropped on all exits.
+ drivers/i2c/busses/i2c-diolan-u2c.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-Tested on 6.12.119: W=1 build of apds9306.o, base vs patched, no new
-warnings, and the patched kernel boots under QEMU. No sensor here, so
-the read paths were checked in the source.
-
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
----
- drivers/iio/light/apds9306.c | 19 +++++++++++--------
- 1 file changed, 11 insertions(+), 8 deletions(-)
-
-diff --git a/drivers/iio/light/apds9306.c b/drivers/iio/light/apds9306.c
-index db648e2cb520..5e483cf4dc15 100644
---- a/drivers/iio/light/apds9306.c
-+++ b/drivers/iio/light/apds9306.c
-@@ -477,19 +477,21 @@ static int apds9306_read_data(struct apds9306_data *data, int *val, int reg)
+diff --git a/drivers/i2c/busses/i2c-diolan-u2c.c b/drivers/i2c/busses/i2c-diolan-u2c.c
+index d502f6e47..24db6d26c 100644
+--- a/drivers/i2c/busses/i2c-diolan-u2c.c
++++ b/drivers/i2c/busses/i2c-diolan-u2c.c
+@@ -16,6 +16,7 @@
+ #include <linux/slab.h>
+ #include <linux/usb.h>
+ #include <linux/i2c.h>
++#include <linux/unaligned.h>
  
- 	ret = regmap_field_read(rf->intg_time, &intg_time_idx);
- 	if (ret)
--		return ret;
-+		goto out_pm;
+ #define DRIVER_NAME		"i2c-diolan-u2c"
  
- 	ret = regmap_field_read(rf->repeat_rate, &repeat_rate_idx);
- 	if (ret)
--		return ret;
-+		goto out_pm;
+@@ -283,13 +284,12 @@ static void diolan_fw_version(struct i2c_diolan_u2c *dev)
+ static void diolan_get_serial(struct i2c_diolan_u2c *dev)
+ {
+ 	int ret;
+-	u32 serial;
  
- 	ret = regmap_field_read(rf->int_src, &int_src);
- 	if (ret)
--		return ret;
-+		goto out_pm;
- 
- 	intg_time = iio_gts_find_int_time_by_sel(&data->gts, intg_time_idx);
--	if (intg_time < 0)
--		return intg_time;
-+	if (intg_time < 0) {
-+		ret = intg_time;
-+		goto out_pm;
-+	}
- 
- 	/* Whichever is greater - integration time period or sampling period. */
- 	delay = max(intg_time, apds9306_repeat_rate_period[repeat_rate_idx]);
-@@ -512,7 +514,7 @@ static int apds9306_read_data(struct apds9306_data *data, int *val, int reg)
- 						  APDS9306_ALS_INT_STAT_MASK)),
- 				       APDS9306_ALS_READ_DATA_DELAY_US, delay * 2);
- 	if (ret)
--		return ret;
-+		goto out_pm;
- 
- 	/* If we reach here before the interrupt handler we push an event */
- 	if ((status & APDS9306_ALS_INT_STAT_MASK)) {
-@@ -532,15 +534,16 @@ static int apds9306_read_data(struct apds9306_data *data, int *val, int reg)
- 	ret = regmap_bulk_read(data->regmap, reg, buff, sizeof(buff));
- 	if (ret) {
- 		dev_err_ratelimited(dev, "read data failed\n");
--		return ret;
-+		goto out_pm;
+ 	ret = diolan_usb_cmd(dev, CMD_GET_SERIAL, true);
+ 	if (ret >= 4) {
+-		serial = le32_to_cpu(*(u32 *)dev->ibuffer);
+ 		dev_info(&dev->interface->dev,
+-			 "Diolan U2C serial number %u\n", serial);
++			 "Diolan U2C serial number %u\n",
++			 get_unaligned_le32(dev->ibuffer));
  	}
- 
- 	*val = get_unaligned_le24(&buff);
- 
-+out_pm:
- 	pm_runtime_mark_last_busy(data->dev);
- 	pm_runtime_put_autosuspend(data->dev);
- 
--	return 0;
-+	return ret;
  }
  
- static int apds9306_intg_time_get(struct apds9306_data *data, int *val2)
 
 ---
-base-commit: e2e4b92c2b2a3ae78423cb343951cb5d2241b405
-change-id: 20261128-apds9306-612-123c3a7502e1
+base-commit: f4585067150b85e33f60876149a6e742928da75e
+change-id: 20261127-i2c-diolan-u2c-unaligned-2599ede88a92
 
 Best regards,
 --  
-Dickson Wu <dickson.wu@certik.com>
+Felix Huang <akafelixab@gmail.com>
 
