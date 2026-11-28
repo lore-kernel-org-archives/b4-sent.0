@@ -5,53 +5,55 @@ Cc: rva333@protonmail.com, amergnat@baylibre.com, me@adomerle.pw,
  devicetree@vger.kernel.org, linux-mediatek@lists.infradead.org, 
  linux-arm-kernel@lists.infradead.org, phone-devel@vger.kernel.org, 
  linux-kernel@vger.kernel.org
-Subject: [PATCH v5 0/3] soc: mediatek: pwrap: Add MT6789 support
-Date: Sat, 28 Nov 2026 04:36:29 +0000
-Message-Id: <20261128043629.67417-1-iasnezhkov@gmail.com>
+Subject: [PATCH v5 1/3] dt-bindings: soc: mediatek: pwrap: Add compatible
+ for MT6789
+Date: Sat, 28 Nov 2026 04:36:30 +0000
+Message-Id: <20261128043629.67417-2-iasnezhkov@gmail.com>
+In-Reply-To: <20261128043629.67417-1-iasnezhkov@gmail.com>
+References: <20261128043629.67417-1-iasnezhkov@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795840589; l=1370;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795840589; l=1222;
  i=iasnezhkov@gmail.com; s=mindone2026; h=from:subject:message-id;
- bh=M3zFXLBGQlmXviuDhtRSayyWoir9sMjZ4AHGCQ5FGYo=;
- b=nTBsL0eBkEhX9Ai6E73QBe9P1mZ2pYlG1y4P6k//RrP+7H9QLh+8I4E2EkzghMdTE4qy+MNJY
- X9h+AhJw2dODbP/PJDnkE2H4g9gL5dfVp3819rrvkGt1guyiTfrvbDH
+ bh=CYLVo9RfP6fxOAooIZCXkxQQ8iqQlvJmQ7Ov0Xsbjsg=;
+ b=60tYNVLWaS6rV6VTH7hdKcxNi9athrstYaCzm8jHhPixubE58nkIRZu4xnwuK/KJzvd8BJgCN
+ 2o5hZOD3lOsDCBnMMheLf1md94+IIRcaNp5Yo5kYLpLY3bWN+V+48h5
 X-Developer-Key: i=iasnezhkov@gmail.com; a=ed25519;
  pk=hQgXfiWi4ukk2jh4BHu1vRVhg9BUivo//AFp50AKMag=
 X-Endpoint-Received: by B4 Relay for iasnezhkov@gmail.com/mindone2026 with auth_id=1643
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series continues the MediaTek MT6789 (Helio G99/G99+/G100/G200,
-MT8781) PMIC wrapper support originally posted by Arseniy Velikanov (on CC):
-- pwrap v1: https://lore.kernel.org/linux-mediatek/20250715225746.1321-1-me@adomerle.pw/
-- v3: https://lore.kernel.org/r/20261126031001.27288-1-iasnezhkov@gmail.com
-- v4: https://lore.kernel.org/r/20261127030009.10572-1-iasnezhkov@gmail.com
+From: Arseniy Velikanov <me@adomerle.pw>
 
-Original authorship and Signed-off-by are preserved on patches 1 and 3.
+Add a compatible for the PMIC Wrapper found on the MT6789 SoC.
 
+Signed-off-by: Arseniy Velikanov <me@adomerle.pw>
+Acked-by: Rob Herring (Arm) <robh@kernel.org>
+Reviewed-by: Roman Vivchar <rva333@protonmail.com>
+Signed-off-by: Ilia Snezhkov <iasnezhkov@gmail.com>
+---
 Changes since v4:
-- Rebased onto linux-next (resolving conflicts with mt6572 support and
-  the dev_err_probe() conversion in pwrap_probe(), per Roman Vivchar).
-- Collected Reviewed-by from Roman Vivchar on patch 1/3.
-- Clarified PMIF bank 3 INT_FLG/INT_CLR (0x458/0x45C) provenance in
-  patch 3/3 commit message.
-- Added phone-devel@vger.kernel.org to Cc.
+- Rebased onto linux-next (after mt6572 binding additions).
+- Collected Reviewed-by from Roman Vivchar (keeping Rob Herring's
+  Acked-by from v1).
 
-The v3-v5 rebases and arbiter fix were prepared with an AI coding assistant.
+ .../devicetree/bindings/soc/mediatek/mediatek,pwrap.yaml         | 1 +
+ 1 file changed, 1 insertion(+)
 
-Arseniy Velikanov (2):
-  dt-bindings: soc: mediatek: pwrap: Add compatible for MT6789
-  soc: mediatek: mtk-pmic-pwrap: Add MT6789 support
-
-Ilia Snezhkov (1):
-  soc: mediatek: mtk-pmic-pwrap: Skip WDT source and init on arbiter
-    SoCs
-
- .../bindings/soc/mediatek/mediatek,pwrap.yaml |  1 +
- drivers/soc/mediatek/mtk-pmic-wrap.c          | 50 +++++++++++++++----
- 2 files changed, 42 insertions(+), 9 deletions(-)
-
+diff --git a/Documentation/devicetree/bindings/soc/mediatek/mediatek,pwrap.yaml b/Documentation/devicetree/bindings/soc/mediatek/mediatek,pwrap.yaml
+index 6546eed..e85e221 100644
+--- a/Documentation/devicetree/bindings/soc/mediatek/mediatek,pwrap.yaml
++++ b/Documentation/devicetree/bindings/soc/mediatek/mediatek,pwrap.yaml
+@@ -34,6 +34,7 @@ properties:
+               - mediatek,mt6572-pwrap
+               - mediatek,mt6765-pwrap
+               - mediatek,mt6779-pwrap
++              - mediatek,mt6789-pwrap
+               - mediatek,mt6795-pwrap
+               - mediatek,mt6797-pwrap
+               - mediatek,mt6873-pwrap
 -- 
 2.54.0 (Apple Git-157)
 
