@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 28 Nov 2026 17:26:45 +0000
-Subject: [PATCH v5 14/17] drm/panfrost: Keep the GPU powered in the job
- timeout handler
+Date: Sat, 28 Nov 2026 17:26:46 +0000
+Subject: [PATCH v5 15/17] drm/panfrost: Keep the job interrupts masked
+ during a reset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-panfrost-long-jobs-v5-14-e7d62045a676@gmail.com>
+Message-Id: <20261128-panfrost-long-jobs-v5-15-e7d62045a676@gmail.com>
 References: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 In-Reply-To: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 To: Boris Brezillon <boris.brezillon@collabora.com>, 
@@ -17,71 +17,79 @@ To: Boris Brezillon <boris.brezillon@collabora.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=2141;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=2619;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=N3/r0MPqmTfHMSYcrVUI3Gc8NQD6K3bi1B+vyvlqWHM=;
- b=E9L2jv8dmFWarrMM2+mkCM+XoPbh7LM40y8WygCML7q7nkzNpmVcLuRTn78Lt9rs/o9KNzaGp
- epMb/lZKiFlD/baRFfTJdX/Gv11G1s4OHRv8st+FDfAATe2DhcA8lfw
+ bh=MmcXjqwywSypeIS6dJaP2eZDGN/CFfrEz6TGp2P6oUg=;
+ b=/GxLkQAysmG9mjRZN/4C16ImOFWnEPLI/bxF3k+PKAL5gZTRIhmkcbuswGqADh2LiwcDv7OTx
+ m/WzZRrmIxSBT3LRh/i+gv+64qQ6R2wzCZZtg8Q3TG/6TOHMj550dvY
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-panfrost_job_timedout() accesses the GPU without a runtime PM reference
-of its own. If the job completes after the fence check, the GPU can
-autosuspend first (clocks off on GPU_PM_RT). Take a reference with
-pm_runtime_get_noresume(): if the fence is still unsignalled after
-that, the job's own reference was held.
+panfrost_reset() masks the job interrupts without setting
+PANFROST_COMP_BIT_JOB, so a running IRQ thread unmasks them. Use
+panfrost_jm_suspend_irq() there.
 
-Tested on an H616 with a test-only wait after the fence check: before,
-the GPU suspended 50 ms after the fence; after, it stayed active.
+Take job_lock around its mask and set_bit, and around the IRQ
+thread's bit test and unmask: a thread that tested the bit before
+could otherwise unmask after it, and the hard IRQ handler returns
+IRQ_NONE without masking while the bit is set.
 
-Fixes: f3ba91228e8e ("drm/panfrost: Add initial panfrost driver")
+Fixes: 1d0cab5461d7 ("drm/panfrost: Make sure job interrupts are masked before resetting")
 Cc: stable@vger.kernel.org
 Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/sashiko-outbox-212575@kernel.org/
+Closes: https://sashiko.dev/#/patchset/20261113-panfrost-long-jobs-v3-0-80ae78d38f6e@gmail.com?part=8
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
-v4: new.
+v5: job_lock instead of a second mask write (Sashiko on v4). With a
+test-only hold in the IRQ thread after its bit test and a job
+interrupt pending, v4 unmasked after the reset's mask (100005
+IRQ_NONE, IRQ disabled); v5 did not in 8 of 8 resets (3 IRQ_NONE in
+all, at most one per reset).
+v4: new (Sashiko on v3 08/14 and 13/14).
 ---
- drivers/gpu/drm/panfrost/panfrost_job.c | 17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/panfrost/panfrost_job.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/gpu/drm/panfrost/panfrost_job.c b/drivers/gpu/drm/panfrost/panfrost_job.c
-index 722f87ebe..74cc3dd02 100644
+index 74cc3dd02..ebdf16968 100644
 --- a/drivers/gpu/drm/panfrost/panfrost_job.c
 +++ b/drivers/gpu/drm/panfrost/panfrost_job.c
-@@ -775,8 +775,8 @@ panfrost_reset(struct panfrost_device *pfdev,
- 	dma_fence_end_signalling(cookie);
+@@ -455,9 +455,11 @@ void panfrost_jm_enable_interrupts(struct panfrost_device *pfdev)
+ 
+ void panfrost_jm_suspend_irq(struct panfrost_device *pfdev)
+ {
++	spin_lock(&pfdev->js->job_lock);
++	job_write(pfdev, JOB_INT_MASK, 0);
+ 	set_bit(PANFROST_COMP_BIT_JOB, pfdev->is_suspended);
++	spin_unlock(&pfdev->js->job_lock);
+ 
+-	job_write(pfdev, JOB_INT_MASK, 0);
+ 	synchronize_irq(pfdev->js->irq);
  }
  
--static enum drm_gpu_sched_stat panfrost_job_timedout(struct drm_sched_job
--						     *sched_job)
-+static enum drm_gpu_sched_stat
-+panfrost_job_handle_timeout(struct drm_sched_job *sched_job)
- {
- 	struct panfrost_job *job = to_panfrost_job(sched_job);
- 	struct panfrost_device *pfdev = job->pfdev;
-@@ -821,6 +821,19 @@ static enum drm_gpu_sched_stat panfrost_job_timedout(struct drm_sched_job
- 	return DRM_GPU_SCHED_STAT_RESET;
- }
+@@ -696,8 +698,7 @@ panfrost_reset(struct panfrost_device *pfdev,
+ 	/* Mask job interrupts and synchronize to make sure we won't be
+ 	 * interrupted during our reset.
+ 	 */
+-	job_write(pfdev, JOB_INT_MASK, 0);
+-	synchronize_irq(pfdev->js->irq);
++	panfrost_jm_suspend_irq(pfdev);
  
-+static enum drm_gpu_sched_stat panfrost_job_timedout(struct drm_sched_job
-+						     *sched_job)
-+{
-+	struct panfrost_device *pfdev = to_panfrost_job(sched_job)->pfdev;
-+	enum drm_gpu_sched_stat stat;
-+
-+	pm_runtime_get_noresume(pfdev->base.dev);
-+	stat = panfrost_job_handle_timeout(sched_job);
-+	pm_runtime_put_autosuspend(pfdev->base.dev);
-+
-+	return stat;
-+}
-+
- static void panfrost_reset_work(struct work_struct *work)
- {
- 	struct panfrost_device *pfdev;
+ 	spin_lock(&pfdev->js->job_lock);
+ 	for (i = 0; i < NUM_JOB_SLOTS; i++) {
+@@ -860,8 +861,10 @@ static irqreturn_t panfrost_jm_irq_handler_thread(int irq, void *data)
+ 	panfrost_jm_handle_irqs(pfdev);
+ 
+ 	/* Enable interrupts only if we're not about to get suspended */
++	spin_lock(&pfdev->js->job_lock);
+ 	if (!test_bit(PANFROST_COMP_BIT_JOB, pfdev->is_suspended))
+ 		job_write(pfdev, JOB_INT_MASK, ALL_JS_INT_MASK);
++	spin_unlock(&pfdev->js->job_lock);
+ 
+ 	return IRQ_HANDLED;
+ }
 
 -- 
 2.55.0
