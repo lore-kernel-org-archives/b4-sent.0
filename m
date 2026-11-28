@@ -1,11 +1,11 @@
 From: Arun Iyengar <aiyengar1990@gmail.com>
-Date: Sat, 28 Nov 2026 17:26:39 +0000
-Subject: [PATCH v5 08/17] drm/panfrost: Don't WARN for a heap folio a
- neighbouring chunk filled
+Date: Sat, 28 Nov 2026 17:26:40 +0000
+Subject: [PATCH v5 09/17] drm/panfrost: Don't signal a job cancelled from
+ _NEXT at a reset as done
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-panfrost-long-jobs-v5-8-e7d62045a676@gmail.com>
+Message-Id: <20261128-panfrost-long-jobs-v5-9-e7d62045a676@gmail.com>
 References: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 In-Reply-To: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 To: Boris Brezillon <boris.brezillon@collabora.com>, 
@@ -17,53 +17,79 @@ To: Boris Brezillon <boris.brezillon@collabora.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=1719;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=2563;
  i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
- bh=h1Sah06axHBoYiBV3DUxqBu4DuKnGCu2PGurGHT6NWk=;
- b=YFVEtyvw/c6rvPjb9MQKU6fWFnI6/rt7x6HoDTXDgJPUHIH1iRqBx3ReKMvLvZhbMH/LGwBm3
- o0HhblgpzPDB/VrpVAxTaqP7DLixK2TwmzFaq7+wgujkotESDqdVvE1
+ bh=+0lclni43/Dq9naPCbsA255rI8BnM42gaj99yqkxcKM=;
+ b=UgR2/Yc27yoLYwjqFyC4XyWrHebfZwfvEVD7C5SwMA2ZoFL1lKrd6dQFx7FRS8JiJpz06sWPU
+ W+sAJ3PonfKBzNePWSKtxjQGBVAJ9uA7DoMI05k0XadQr+yt7rRpcjc
 X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
  pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
 X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With 16K or 64K pages, a THP folio can be larger than the 2 MB heap
-chunk, and the first fault in it fills the page array of neighbouring
-chunks too. Every later fault there WARNs, although dropping the extra
-folio reference is all it has to do. Warn only for a folio that fits
-in the chunk. Not reproduced (4K pages here).
+panfrost_reset() cancels the job in _NEXT with JS_COMMAND_NOP and
+soft-stops the running one. If the running job completes instead,
+panfrost_jm_handle_irq() takes the cancelled job for done too: its
+fence is signalled and it never runs.
 
-Fixes: b49c35ba0ce1 ("drm/panfrost: Fix a page leak in panfrost_mmu_map_fault_addr() when THP is on")
+As the Arm driver does, read JS_HEAD_NEXT after the NOP; if it still
+holds the job, take it off the slot and restart it with the others.
+Found by Sashiko. Not reproduced.
+
+Fixes: 030761e097b4 ("drm/panfrost: Queue jobs on the hardware")
 Cc: stable@vger.kernel.org
 Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/all/sashiko-outbox-210837@kernel.org/
+Closes: https://lore.kernel.org/all/sashiko-outbox-206581@kernel.org/
 Signed-off-by: Arun Iyengar <aiyengar1990@gmail.com>
 ---
- drivers/gpu/drm/panfrost/panfrost_mmu.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ drivers/gpu/drm/panfrost/panfrost_job.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-diff --git a/drivers/gpu/drm/panfrost/panfrost_mmu.c b/drivers/gpu/drm/panfrost/panfrost_mmu.c
-index 9edf66f6e..92a4d2963 100644
---- a/drivers/gpu/drm/panfrost/panfrost_mmu.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_mmu.c
-@@ -703,11 +703,13 @@ static int panfrost_mmu_map_fault_addr(struct panfrost_device *pfdev, int as,
- 			pages[pg++] = folio_page(folio, i);
- 		}
+diff --git a/drivers/gpu/drm/panfrost/panfrost_job.c b/drivers/gpu/drm/panfrost/panfrost_job.c
+index b5b523cb2..c9bd3555f 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_job.c
++++ b/drivers/gpu/drm/panfrost/panfrost_job.c
+@@ -659,6 +659,7 @@ static void
+ panfrost_reset(struct panfrost_device *pfdev,
+ 	       struct drm_sched_job *bad)
+ {
++	struct panfrost_job *evicted[NUM_JOB_SLOTS] = {};
+ 	u32 js_state, js_state_mask = 0xffffffff;
+ 	unsigned int i, j;
+ 	bool cookie;
+@@ -694,11 +695,22 @@ panfrost_reset(struct panfrost_device *pfdev,
+ 	job_write(pfdev, JOB_INT_MASK, 0);
+ 	synchronize_irq(pfdev->js->irq);
  
--		/* We always fill the page array at a folio granularity so
--		 * there's no valid reason for a folio range to be partially
--		 * populated.
-+		/* We always fill the page array at a folio granularity, so a
-+		 * folio is already owned only if it is larger than the chunk
-+		 * and the fault of a neighbouring chunk filled it.
- 		 */
--		if (drm_WARN_ON(&pfdev->base, already_owned)) {
-+		if (already_owned) {
-+			drm_WARN_ON(&pfdev->base,
-+				    folio_nr_pages(folio) <= NUM_FAULT_PAGES);
- 			folio_put(folio);
- 		} else {
- 			got_start = min(got_start, first);
++	spin_lock(&pfdev->js->job_lock);
+ 	for (i = 0; i < NUM_JOB_SLOTS; i++) {
+ 		/* Cancel the next job and soft-stop the running job. */
+ 		job_write(pfdev, JS_COMMAND_NEXT(i), JS_COMMAND_NOP);
++
++		/* Never started: take it off, or the IRQ handler completes it. */
++		if (pfdev->jobs[i][1] &&
++		    (job_read(pfdev, JS_HEAD_NEXT_LO(i)) ||
++		     job_read(pfdev, JS_HEAD_NEXT_HI(i)))) {
++			evicted[i] = pfdev->jobs[i][1];
++			pfdev->jobs[i][1] = NULL;
++		}
++
+ 		job_write(pfdev, JS_COMMAND(i), JS_COMMAND_SOFT_STOP);
+ 	}
++	spin_unlock(&pfdev->js->job_lock);
+ 
+ 	/* Wait at most 10ms for soft-stops to complete */
+ 	ret = readl_poll_timeout(pfdev->iomem + JOB_INT_JS_STATE, js_state,
+@@ -720,6 +732,9 @@ panfrost_reset(struct panfrost_device *pfdev,
+ 	 */
+ 	spin_lock(&pfdev->js->job_lock);
+ 	for (i = 0; i < NUM_JOB_SLOTS; i++) {
++		if (evicted[i])
++			pfdev->jobs[i][pfdev->jobs[i][0] ? 1 : 0] = evicted[i];
++
+ 		for (j = 0; j < ARRAY_SIZE(pfdev->jobs[0]) && pfdev->jobs[i][j]; j++) {
+ 			if (pfdev->jobs[i][j]->requirements & PANFROST_JD_REQ_CYCLE_COUNT ||
+ 			    pfdev->jobs[i][j]->is_profiled)
 
 -- 
 2.55.0
