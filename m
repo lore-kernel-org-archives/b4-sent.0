@@ -1,79 +1,116 @@
-From: Felix Huang <akafelixab@gmail.com>
-Date: Sat, 28 Nov 2026 10:39:24 -0500
-Subject: [PATCH v3] i2c: diolan-u2c: Use __le32 when reading serial number
+From: Arun Iyengar <aiyengar1990@gmail.com>
+Subject: [PATCH v5 00/17] drm/panfrost: Resume long jobs instead of
+ resetting, and mapping error path fixes
+Date: Sat, 28 Nov 2026 17:26:31 +0000
+Message-Id: <20261128-panfrost-long-jobs-v5-0-e7d62045a676@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261128-i2c-diolan-u2c-unaligned-v3-1-a1343865404b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NzQ6CMBAGX8X0bE27ID+efA/jobQLrIHWUCAaw
- rvb4oWT8baTfDuzMI8DoWeXw8IGnMmTswGS44HpVtkGOZnADARkUkLOCTQ35Dpl+RTOyaqOGou
- Gw7ks0WBRqBJYeH8OWNNrU9/uX/ZT9UA9Rl9ctORHN7y39izj7o/MLLnkQicZyCrPSmGuTa+oO
- 2nXs5iZYS8qfoggiHQmoFB5WkNa70Xrun4AOT+BvhsBAAA=
-X-Change-ID: 20261127-i2c-diolan-u2c-unaligned-2599ede88a92
-To: Guenter Roeck <linux@roeck-us.net>, Andi Shyti <andi.shyti@kernel.org>
-Cc: linux-i2c@vger.kernel.org, Felix Huang <akafelixab@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33PQW7DIBAF0KtErEMFg40hq9yj6mICY4coMRG4V
+ qvIdy+kGyuysvzSn/c1D5YpBcrssHuwRHPIIY4ltPsdc2ccB+LBl8xAgJZSCn7HsU8xT/wax4F
+ f4ilzqRsFpkNAJ1k5vCfqw88T/fz6z/n7dCE3Vak2ziFPMf0+V2dZe28HZskFh6YVxiqLZPxxu
+ GG4frh4Y3VghjUBmwQUAoU2SnhU3tpXQq0JtUmoQhiB1BmvTK/plWhWBOhNoqmPqLazGqwjh2t
+ iWZY/2VU3FI8BAAA=
+X-Change-ID: 20261110-panfrost-long-jobs-1643287a2ac1
+To: Boris Brezillon <boris.brezillon@collabora.com>, 
+ Rob Herring <robh@kernel.org>, Steven Price <steven.price@arm.com>, 
+ =?utf-8?q?Adri=C3=A1n_Larumbe?= <adrian.larumbe@collabora.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Arun Iyengar <aiyengar1990@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795880364; l=2009;
- i=akafelixab@gmail.com; s=20261128; h=from:subject:message-id;
- bh=nFFfjDOwR/ESphf3Pfj3xpOEG99vjKOKWw9a9fqH+oc=;
- b=PmERjXF6uV+F4F64XkCHTFLZZL/f2reCSx+ieI3NkI9rquZ7W28b3lVWjCsCGvVSDzwDsj3ey
- S3tGrbxWqjiBKwfk/OHFeDAmrixR6w8RkW9rzY2Z4w4zyxwDgFofTjq
-X-Developer-Key: i=akafelixab@gmail.com; a=ed25519;
- pk=Axl3BM1UWa+m0/AWcEhRIdIk/WY9FnY4wZkyQn64uVY=
-X-Endpoint-Received: by B4 Relay for akafelixab@gmail.com/20261128 with auth_id=1670
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795886791; l=4105;
+ i=aiyengar1990@gmail.com; s=20261110; h=from:subject:message-id;
+ bh=tbGXclzDNAiP/j4k7NypV21beVZq1GlBQ+HrjBtK+lE=;
+ b=T+np9opIWW5EvZmOEOKmlyWVLoHcIjSSqJjNLA98w5T3XAnuVB/jEIK2nxSL2IwqWNsnCWApd
+ COUuI0H/kAxCGB6pkX2shyMG2RNdIp3s59q4oiGA2+WQCa0lsdJOPMq
+X-Developer-Key: i=aiyengar1990@gmail.com; a=ed25519;
+ pk=zXpRgUTrhaFe6jLyPqbBy3ccfkj04w0g2690Wv3mg+0=
+X-Endpoint-Received: by B4 Relay for aiyengar1990@gmail.com/20261110 with auth_id=1480
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Sparse reports:
+Fixes for problems found running the GLES, Vulkan and OpenCL
+conformance tests with Mesa on a Mali-G31 (Allwinner H616), and for
+problems Sashiko found around them:
+- 1-4, 14, 15: reset and timeout paths vs power management, heap BO
+  cache sync, a mapping being freed.
+- 5-8: BO mapping error paths.
+- 9-13: races around panfrost_reset().
+- 16: soft-stop and resume a job still active at the timeout.
+- 17: name the BOs around an unhandled page fault.
 
-  drivers/i2c/busses/i2c-diolan-u2c.c:290:26: warning:
-  cast to restricted __le32
+Open points: a job that keeps reaching task boundaries is never killed;
+stopping a long job holds all slots (here at most 349 ms); 16 can go
+separately.
 
-Cast the serial-number buffer pointer to __le32 before passing it to
-le32_to_cpu(). This makes the byte-order conversion explicit and
-silences the sparse warning.
+Tested v4 on v7.3 with Mesa 26.2: no regressions in 1196 dEQP/KHR
+cases and 9 OpenCL CTS groups; v5's 15 was run through the reset and
+long-job tests. 2-4 and 9-12 were not reproduced.
 
-Signed-off-by: Felix Huang <akafelixab@gmail.com>
+Developed with Claude (Anthropic) as coding assistant (investigation,
+code, commit messages); I reviewed them and ran the tests.
+
 ---
+Changes in v5:
+- Patch 15: job_lock around the mask and the IRQ thread's unmask
+  instead of a second mask write (Sashiko on v4). The hard IRQ
+  handler still does not touch the GPU while it is suspended.
+- Link to v4: https://patch.msgid.link/20261126-panfrost-long-jobs-v4-0-23579629ceca@gmail.com
+
+Changes in v4:
+- New patches 1, 14 and 15 (Sashiko on v3). Patch 2 clears
+  reset.pending in runtime resume and leaves system sleep to patch 1.
+- Shorter commit messages and comments; test results in 1, 6, 7, 14
+  and 15.
+- Renumbered: v3 1-12 are now 2-13, v3 13 and 14 are now 16 and 17.
+- Rebased onto the current drm-misc-next.
+- Link to v3: https://patch.msgid.link/20261113-panfrost-long-jobs-v3-0-80ae78d38f6e@gmail.com
+
 Changes in v3:
-- Cast the serial-number buffer pointer to __le32 before passing it to
-  le32_to_cpu(), as suggested by Guenter Roeck.
-- Keep the serial variable and do not use get_unaligned_le32().
-- Reword the commit message to accurately describe the motivation.
-- Link to v2: https://patch.msgid.link/20261128-i2c-diolan-u2c-unaligned-v2-1-c6028a74f24f@gmail.com
+- Patch 1: disable the reset work across system sleep (Sashiko).
+- New patches 7, 10 and 11 (Sashiko); shorter messages and comments.
+- Renumbered and rebased onto the current drm-misc-next.
+- Link to v2: https://patch.msgid.link/20261112-panfrost-long-jobs-v2-0-a06830da3d99@gmail.com
 
 Changes in v2:
-- Reword the commit message to accurately describe the motivation.
-- The serial-number buffer is naturally aligned; do not claim that the
-  existing access may be unaligned.
-- Focus on fixing the sparse "cast to restricted __le32" warning. 
-- Link to v1: https://patch.msgid.link/20261127-i2c-diolan-u2c-unaligned-v1-1-0c3621b7690d@gmail.com
-
-To: Guenter Roeck <linux@roeck-us.net>
-To: Andi Shyti <andi.shyti@kernel.org>
-Cc: linux-i2c@vger.kernel.org
----
- drivers/i2c/busses/i2c-diolan-u2c.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/i2c/busses/i2c-diolan-u2c.c b/drivers/i2c/busses/i2c-diolan-u2c.c
-index d502f6e47..77471011f 100644
---- a/drivers/i2c/busses/i2c-diolan-u2c.c
-+++ b/drivers/i2c/busses/i2c-diolan-u2c.c
-@@ -287,7 +287,7 @@ static void diolan_get_serial(struct i2c_diolan_u2c *dev)
- 
- 	ret = diolan_usb_cmd(dev, CMD_GET_SERIAL, true);
- 	if (ret >= 4) {
--		serial = le32_to_cpu(*(u32 *)dev->ibuffer);
-+		serial = le32_to_cpu(*(__le32 *)dev->ibuffer);
- 		dev_info(&dev->interface->dev,
- 			 "Diolan U2C serial number %u\n", serial);
- 	}
+- New patches 1-3, 7 and 8 for Sashiko's findings on v1.
+- Patches 6, 10 and 11 reworked and v1 4/7 dropped after Sashiko's review.
+- Renumbered and rebased onto the current drm-misc-next.
+- Link to v1: https://lore.kernel.org/r/20261110-panfrost-long-jobs-v1-0-24508939ae8d@gmail.com
 
 ---
-base-commit: f4585067150b85e33f60876149a6e742928da75e
-change-id: 20261127-i2c-diolan-u2c-unaligned-2599ede88a92
+Arun Iyengar (17):
+      drm/panfrost: Freeze the reset workqueue during system sleep
+      drm/panfrost: Power the GPU up for a reset queued from the MMU code
+      drm/panfrost: Refuse to sync the CPU caches of a heap BO
+      drm/panfrost: Don't take a reference on a mapping that is being freed
+      drm/panfrost: Don't WARN when a GEM mapping cannot get its pages
+      drm/panfrost: Unwind a failed GPU mapping without dropping its pages
+      drm/panfrost: Give back the pages of a heap chunk that failed to map
+      drm/panfrost: Don't WARN for a heap folio a neighbouring chunk filled
+      drm/panfrost: Don't signal a job cancelled from _NEXT at a reset as done
+      drm/panfrost: Don't cancel a job that completed during a reset
+      drm/panfrost: Drop the cycle counter only for a job that holds it
+      drm/panfrost: Don't take a job that was never started for done
+      drm/panfrost: Wait for the soft-stopped slots with the live slot status
+      drm/panfrost: Keep the GPU powered in the job timeout handler
+      drm/panfrost: Keep the job interrupts masked during a reset
+      drm/panfrost: Soft-stop and resume a job that outlives the timeout
+      drm/panfrost: Name the BOs around an unhandled page fault
+
+ drivers/gpu/drm/panfrost/panfrost_device.c |   1 +
+ drivers/gpu/drm/panfrost/panfrost_gem.c    |   3 +
+ drivers/gpu/drm/panfrost/panfrost_job.c    | 259 ++++++++++++++++++++++-------
+ drivers/gpu/drm/panfrost/panfrost_job.h    |   3 +
+ drivers/gpu/drm/panfrost/panfrost_mmu.c    | 145 ++++++++++++++--
+ 5 files changed, 337 insertions(+), 74 deletions(-)
+---
+base-commit: 8a6e49c8557d3ba0fe4c7f1cb7f428289b13bfed
+change-id: 20261110-panfrost-long-jobs-1643287a2ac1
 
 Best regards,
 --  
-Felix Huang <akafelixab@gmail.com>
+Arun Iyengar <aiyengar1990@gmail.com>
 
